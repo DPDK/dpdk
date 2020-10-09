@@ -762,6 +762,19 @@ The sample command line with the new ``devargs`` looks like this::
 	representor=[0], rep-based-pf=8,rep-is-pf=0,rep-q-r2f=1,rep-fc-r2f=1,\
 	rep-q-f2r=0,rep-fc-f2r=1 --log-level="pmd.*",8 -- -i --rxq=3 --txq=3
 
+Number of flows supported
+-------------------------
+The number of flows that can be support can be changed using the devargs
+parameter ``max_num_kflows``. The default number of flows supported is 16K each
+in ingress and egress path.
+
+Selecting EM vs EEM
+-------------------
+Broadcom devices can support filter creation in the onchip memory or the
+external memory. This is referred to as EM or EEM mode respectively.
+The decision for internal/external EM support is based on the ``devargs``
+parameter ``max_num_kflows``.  If this is set by the user, external EM is used.
+Otherwise EM support is enabled with flows created in internal memory.
 
 Application Support
 -------------------

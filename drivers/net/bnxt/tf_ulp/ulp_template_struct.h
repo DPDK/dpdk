@@ -152,13 +152,13 @@ struct ulp_template_device_tbls {
 /* Device specific parameters */
 struct bnxt_ulp_device_params {
 	uint8_t				description[16];
-	enum bnxt_ulp_flow_mem_type	flow_mem_type;
 	enum bnxt_ulp_byte_order	byte_order;
 	uint8_t				encap_byte_swap;
 	uint8_t				num_phy_ports;
 	uint32_t			mark_db_lfid_entries;
 	uint64_t			mark_db_gfid_entries;
-	uint64_t			flow_db_num_entries;
+	uint64_t			int_flow_db_num_entries;
+	uint64_t			ext_flow_db_num_entries;
 	uint32_t			flow_count_db_entries;
 	uint32_t			num_resources_per_flow;
 	uint32_t			ext_cntr_table_type;
@@ -183,6 +183,7 @@ struct bnxt_ulp_mapper_tbl_info {
 	enum bnxt_ulp_resource_sub_type	resource_sub_type;
 	enum bnxt_ulp_cond_opcode	cond_opcode;
 	uint32_t			cond_operand;
+	enum bnxt_ulp_mem_type_opcode	mem_type_opcode;
 	uint8_t				direction;
 	uint32_t			priority;
 	enum bnxt_ulp_search_before_alloc	srch_b4_alloc;

@@ -41,110 +41,110 @@ struct bnxt_ulp_mapper_tbl_list_info ulp_class_stingray_tmpl_list[] = {
 	},
 	[6] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
+	.num_tbls = 5,
 	.start_tbl_idx = 28,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[7] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 32,
+	.num_tbls = 5,
+	.start_tbl_idx = 33,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[8] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 5,
-	.start_tbl_idx = 36,
+	.num_tbls = 6,
+	.start_tbl_idx = 38,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[9] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 5,
-	.start_tbl_idx = 41,
+	.num_tbls = 6,
+	.start_tbl_idx = 44,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[10] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 5,
-	.start_tbl_idx = 46,
+	.num_tbls = 6,
+	.start_tbl_idx = 50,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[11] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 5,
-	.start_tbl_idx = 51,
+	.num_tbls = 6,
+	.start_tbl_idx = 56,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[12] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 56,
+	.num_tbls = 5,
+	.start_tbl_idx = 62,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[13] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 60,
+	.num_tbls = 5,
+	.start_tbl_idx = 67,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[14] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 64,
+	.num_tbls = 5,
+	.start_tbl_idx = 72,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[15] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 68,
+	.num_tbls = 5,
+	.start_tbl_idx = 77,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[16] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 72,
+	.num_tbls = 5,
+	.start_tbl_idx = 82,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[17] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 76,
+	.num_tbls = 5,
+	.start_tbl_idx = 87,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[18] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 5,
-	.start_tbl_idx = 80,
+	.num_tbls = 6,
+	.start_tbl_idx = 92,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[19] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 5,
-	.start_tbl_idx = 85,
+	.num_tbls = 6,
+	.start_tbl_idx = 98,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[20] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 5,
-	.start_tbl_idx = 90,
+	.num_tbls = 6,
+	.start_tbl_idx = 104,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[21] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 5,
-	.start_tbl_idx = 95,
+	.num_tbls = 6,
+	.start_tbl_idx = 110,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[22] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 100,
+	.num_tbls = 5,
+	.start_tbl_idx = 116,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	},
 	[23] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
-	.num_tbls = 4,
-	.start_tbl_idx = 104,
+	.num_tbls = 5,
+	.start_tbl_idx = 121,
 	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
 	}
 };
@@ -629,14 +629,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
-	.resource_type = TF_MEM_INTERNAL,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
 	.direction = TF_DIR_RX,
 	.key_start_idx = 167,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 306,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 5,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 178,
 	.blob_key_bit_size = 200,
 	.key_bit_size = 200,
 	.key_num_fields = 11,
-	.result_start_idx = 306,
+	.result_start_idx = 315,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -651,11 +670,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_SKIP,
-	.key_start_idx = 178,
+	.key_start_idx = 189,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 315,
+	.result_start_idx = 324,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -670,11 +689,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 191,
+	.key_start_idx = 202,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 328,
+	.result_start_idx = 337,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -687,11 +706,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_1,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 194,
+	.key_start_idx = 205,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 329,
+	.result_start_idx = 338,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -701,14 +720,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 248,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 346,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 7,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 237,
+	.key_start_idx = 259,
 	.blob_key_bit_size = 200,
 	.key_bit_size = 200,
 	.key_num_fields = 11,
-	.result_start_idx = 337,
+	.result_start_idx = 355,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -723,11 +761,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 248,
+	.key_start_idx = 270,
 	.blob_key_bit_size = 12,
 	.key_bit_size = 12,
 	.key_num_fields = 1,
-	.result_start_idx = 346,
+	.result_start_idx = 364,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -740,11 +778,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 249,
+	.key_start_idx = 271,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 347,
+	.result_start_idx = 365,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -759,67 +797,86 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 262,
+	.key_start_idx = 284,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 360,
-	.result_bit_size = 10,
-	.result_num_fields = 1,
-	.encap_num_fields = 0,
-	.ident_start_idx = 8,
-	.ident_nums = 1
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
-	.direction = TF_DIR_RX,
-	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
-	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 265,
-	.blob_key_bit_size = 81,
-	.key_bit_size = 81,
-	.key_num_fields = 43,
-	.result_start_idx = 361,
-	.result_bit_size = 38,
-	.result_num_fields = 8,
-	.encap_num_fields = 0,
-	.ident_start_idx = 9,
-	.ident_nums = 0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
-	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
-	.resource_type = TF_MEM_INTERNAL,
-	.direction = TF_DIR_RX,
-	.key_start_idx = 308,
-	.blob_key_bit_size = 200,
-	.key_bit_size = 200,
-	.key_num_fields = 11,
-	.result_start_idx = 369,
-	.result_bit_size = 64,
-	.result_num_fields = 9,
-	.encap_num_fields = 0,
-	.ident_start_idx = 9,
-	.ident_nums = 0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
-	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	.resource_sub_type =
-		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
-	.direction = TF_DIR_RX,
-	.key_start_idx = 319,
-	.blob_key_bit_size = 12,
-	.key_bit_size = 12,
-	.key_num_fields = 1,
 	.result_start_idx = 378,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.ident_start_idx = 8,
+	.ident_nums = 1
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.direction = TF_DIR_RX,
+	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 287,
+	.blob_key_bit_size = 81,
+	.key_bit_size = 81,
+	.key_num_fields = 43,
+	.result_start_idx = 379,
+	.result_bit_size = 38,
+	.result_num_fields = 8,
+	.encap_num_fields = 0,
+	.ident_start_idx = 9,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 330,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 387,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 9,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 341,
+	.blob_key_bit_size = 200,
+	.key_bit_size = 200,
+	.key_num_fields = 11,
+	.result_start_idx = 396,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 9,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
+	.resource_sub_type =
+		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 352,
+	.blob_key_bit_size = 12,
+	.key_bit_size = 12,
+	.key_num_fields = 1,
+	.result_start_idx = 405,
+	.result_bit_size = 10,
+	.result_num_fields = 1,
+	.encap_num_fields = 0,
 	.ident_start_idx = 9,
 	.ident_nums = 1
 	},
@@ -829,11 +886,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 320,
+	.key_start_idx = 353,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 379,
+	.result_start_idx = 406,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -848,11 +905,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 333,
+	.key_start_idx = 366,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 392,
+	.result_start_idx = 419,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -865,11 +922,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 336,
+	.key_start_idx = 369,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 393,
+	.result_start_idx = 420,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -879,14 +936,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 412,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 428,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 11,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 379,
+	.key_start_idx = 423,
 	.blob_key_bit_size = 200,
 	.key_bit_size = 200,
 	.key_num_fields = 11,
-	.result_start_idx = 401,
+	.result_start_idx = 437,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -901,11 +977,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 390,
+	.key_start_idx = 434,
 	.blob_key_bit_size = 12,
 	.key_bit_size = 12,
 	.key_num_fields = 1,
-	.result_start_idx = 410,
+	.result_start_idx = 446,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -918,11 +994,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 391,
+	.key_start_idx = 435,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 411,
+	.result_start_idx = 447,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -937,11 +1013,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 404,
+	.key_start_idx = 448,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 424,
+	.result_start_idx = 460,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -954,11 +1030,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 407,
+	.key_start_idx = 451,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 425,
+	.result_start_idx = 461,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -968,14 +1044,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 494,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 469,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 13,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 450,
+	.key_start_idx = 505,
 	.blob_key_bit_size = 392,
 	.key_bit_size = 392,
 	.key_num_fields = 11,
-	.result_start_idx = 433,
+	.result_start_idx = 478,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -990,11 +1085,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 461,
+	.key_start_idx = 516,
 	.blob_key_bit_size = 12,
 	.key_bit_size = 12,
 	.key_num_fields = 1,
-	.result_start_idx = 442,
+	.result_start_idx = 487,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1007,11 +1102,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 462,
+	.key_start_idx = 517,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 443,
+	.result_start_idx = 488,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1026,11 +1121,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 475,
+	.key_start_idx = 530,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 456,
+	.result_start_idx = 501,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1043,11 +1138,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 478,
+	.key_start_idx = 533,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 457,
+	.result_start_idx = 502,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1057,14 +1152,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 576,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 510,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 15,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 521,
+	.key_start_idx = 587,
 	.blob_key_bit_size = 392,
 	.key_bit_size = 392,
 	.key_num_fields = 11,
-	.result_start_idx = 465,
+	.result_start_idx = 519,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1079,11 +1193,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_SKIP,
-	.key_start_idx = 532,
+	.key_start_idx = 598,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 474,
+	.result_start_idx = 528,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1098,11 +1212,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 545,
+	.key_start_idx = 611,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 487,
+	.result_start_idx = 541,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1115,11 +1229,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 548,
+	.key_start_idx = 614,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 488,
+	.result_start_idx = 542,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1129,14 +1243,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 657,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 550,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 17,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 591,
+	.key_start_idx = 668,
 	.blob_key_bit_size = 200,
 	.key_bit_size = 200,
 	.key_num_fields = 11,
-	.result_start_idx = 496,
+	.result_start_idx = 559,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1151,11 +1284,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_SKIP,
-	.key_start_idx = 602,
+	.key_start_idx = 679,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 505,
+	.result_start_idx = 568,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1170,11 +1303,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 615,
+	.key_start_idx = 692,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 518,
+	.result_start_idx = 581,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1187,11 +1320,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 618,
+	.key_start_idx = 695,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 519,
+	.result_start_idx = 582,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1201,14 +1334,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 738,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 590,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 19,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 661,
+	.key_start_idx = 749,
 	.blob_key_bit_size = 200,
 	.key_bit_size = 200,
 	.key_num_fields = 11,
-	.result_start_idx = 527,
+	.result_start_idx = 599,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1223,11 +1375,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_SKIP,
-	.key_start_idx = 672,
+	.key_start_idx = 760,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 536,
+	.result_start_idx = 608,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1242,11 +1394,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 685,
+	.key_start_idx = 773,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 549,
+	.result_start_idx = 621,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1259,11 +1411,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 688,
+	.key_start_idx = 776,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 550,
+	.result_start_idx = 622,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1273,14 +1425,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 819,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 630,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 21,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 731,
+	.key_start_idx = 830,
 	.blob_key_bit_size = 392,
 	.key_bit_size = 392,
 	.key_num_fields = 11,
-	.result_start_idx = 558,
+	.result_start_idx = 639,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1295,11 +1466,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_SKIP,
-	.key_start_idx = 742,
+	.key_start_idx = 841,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 567,
+	.result_start_idx = 648,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1314,11 +1485,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 755,
+	.key_start_idx = 854,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 580,
+	.result_start_idx = 661,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1331,11 +1502,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 758,
+	.key_start_idx = 857,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 581,
+	.result_start_idx = 662,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1345,14 +1516,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 900,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 670,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 23,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 801,
+	.key_start_idx = 911,
 	.blob_key_bit_size = 392,
 	.key_bit_size = 392,
 	.key_num_fields = 11,
-	.result_start_idx = 589,
+	.result_start_idx = 679,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1367,11 +1557,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_SKIP,
-	.key_start_idx = 812,
+	.key_start_idx = 922,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 598,
+	.result_start_idx = 688,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1386,11 +1576,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 825,
+	.key_start_idx = 935,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 611,
+	.result_start_idx = 701,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1403,11 +1593,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 828,
+	.key_start_idx = 938,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 612,
+	.result_start_idx = 702,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1417,14 +1607,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 981,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 710,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 25,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 871,
+	.key_start_idx = 992,
 	.blob_key_bit_size = 200,
 	.key_bit_size = 200,
 	.key_num_fields = 11,
-	.result_start_idx = 620,
+	.result_start_idx = 719,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1439,11 +1648,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_SKIP,
-	.key_start_idx = 882,
+	.key_start_idx = 1003,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 629,
+	.result_start_idx = 728,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1458,11 +1667,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 895,
+	.key_start_idx = 1016,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 642,
+	.result_start_idx = 741,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1475,11 +1684,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 898,
+	.key_start_idx = 1019,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 643,
+	.result_start_idx = 742,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1489,14 +1698,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
-	.resource_type = TF_MEM_INTERNAL,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
 	.direction = TF_DIR_RX,
-	.key_start_idx = 941,
+	.key_start_idx = 1062,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 750,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 27,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
+	.direction = TF_DIR_RX,
+	.key_start_idx = 1073,
 	.blob_key_bit_size = 392,
 	.key_bit_size = 392,
 	.key_num_fields = 11,
-	.result_start_idx = 651,
+	.result_start_idx = 759,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1511,11 +1739,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 952,
+	.key_start_idx = 1084,
 	.blob_key_bit_size = 12,
 	.key_bit_size = 12,
 	.key_num_fields = 1,
-	.result_start_idx = 660,
+	.result_start_idx = 768,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1528,11 +1756,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 953,
+	.key_start_idx = 1085,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 661,
+	.result_start_idx = 769,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1547,11 +1775,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 966,
+	.key_start_idx = 1098,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 674,
+	.result_start_idx = 782,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1564,11 +1792,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 969,
+	.key_start_idx = 1101,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 675,
+	.result_start_idx = 783,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1578,14 +1806,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1144,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 791,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 29,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 1012,
+	.key_start_idx = 1155,
 	.blob_key_bit_size = 200,
 	.key_bit_size = 200,
 	.key_num_fields = 11,
-	.result_start_idx = 683,
+	.result_start_idx = 800,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1600,206 +1847,244 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 1023,
-	.blob_key_bit_size = 12,
-	.key_bit_size = 12,
-	.key_num_fields = 1,
-	.result_start_idx = 692,
-	.result_bit_size = 10,
-	.result_num_fields = 1,
-	.encap_num_fields = 0,
-	.ident_start_idx = 29,
-	.ident_nums = 1
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	.direction = TF_DIR_TX,
-	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
-	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 1024,
-	.blob_key_bit_size = 171,
-	.key_bit_size = 171,
-	.key_num_fields = 13,
-	.result_start_idx = 693,
-	.result_bit_size = 64,
-	.result_num_fields = 13,
-	.encap_num_fields = 0,
-	.ident_start_idx = 30,
-	.ident_nums = 0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
-	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
-	.resource_sub_type =
-		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
-	.direction = TF_DIR_TX,
-	.key_start_idx = 1037,
-	.blob_key_bit_size = 16,
-	.key_bit_size = 16,
-	.key_num_fields = 3,
-	.result_start_idx = 706,
-	.result_bit_size = 10,
-	.result_num_fields = 1,
-	.encap_num_fields = 0,
-	.ident_start_idx = 30,
-	.ident_nums = 1
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
-	.direction = TF_DIR_TX,
-	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
-	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 1040,
-	.blob_key_bit_size = 81,
-	.key_bit_size = 81,
-	.key_num_fields = 43,
-	.result_start_idx = 707,
-	.result_bit_size = 38,
-	.result_num_fields = 8,
-	.encap_num_fields = 0,
-	.ident_start_idx = 31,
-	.ident_nums = 0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
-	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
-	.resource_type = TF_MEM_INTERNAL,
-	.direction = TF_DIR_TX,
-	.key_start_idx = 1083,
-	.blob_key_bit_size = 200,
-	.key_bit_size = 200,
-	.key_num_fields = 11,
-	.result_start_idx = 715,
-	.result_bit_size = 64,
-	.result_num_fields = 9,
-	.encap_num_fields = 0,
-	.ident_start_idx = 31,
-	.ident_nums = 0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
-	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	.resource_sub_type =
-		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
-	.direction = TF_DIR_TX,
-	.key_start_idx = 1094,
-	.blob_key_bit_size = 12,
-	.key_bit_size = 12,
-	.key_num_fields = 1,
-	.result_start_idx = 724,
-	.result_bit_size = 10,
-	.result_num_fields = 1,
-	.encap_num_fields = 0,
-	.ident_start_idx = 31,
-	.ident_nums = 1
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	.direction = TF_DIR_TX,
-	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
-	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 1095,
-	.blob_key_bit_size = 171,
-	.key_bit_size = 171,
-	.key_num_fields = 13,
-	.result_start_idx = 725,
-	.result_bit_size = 64,
-	.result_num_fields = 13,
-	.encap_num_fields = 0,
-	.ident_start_idx = 32,
-	.ident_nums = 0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
-	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
-	.resource_sub_type =
-		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
-	.direction = TF_DIR_TX,
-	.key_start_idx = 1108,
-	.blob_key_bit_size = 16,
-	.key_bit_size = 16,
-	.key_num_fields = 3,
-	.result_start_idx = 738,
-	.result_bit_size = 10,
-	.result_num_fields = 1,
-	.encap_num_fields = 0,
-	.ident_start_idx = 32,
-	.ident_nums = 1
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
-	.direction = TF_DIR_TX,
-	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
-	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 1111,
-	.blob_key_bit_size = 81,
-	.key_bit_size = 81,
-	.key_num_fields = 43,
-	.result_start_idx = 739,
-	.result_bit_size = 38,
-	.result_num_fields = 8,
-	.encap_num_fields = 0,
-	.ident_start_idx = 33,
-	.ident_nums = 0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
-	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
-	.resource_type = TF_MEM_INTERNAL,
-	.direction = TF_DIR_TX,
-	.key_start_idx = 1154,
-	.blob_key_bit_size = 392,
-	.key_bit_size = 392,
-	.key_num_fields = 11,
-	.result_start_idx = 747,
-	.result_bit_size = 64,
-	.result_num_fields = 9,
-	.encap_num_fields = 0,
-	.ident_start_idx = 33,
-	.ident_nums = 0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
-	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	.resource_sub_type =
-		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
-	.direction = TF_DIR_TX,
-	.key_start_idx = 1165,
-	.blob_key_bit_size = 12,
-	.key_bit_size = 12,
-	.key_num_fields = 1,
-	.result_start_idx = 756,
-	.result_bit_size = 10,
-	.result_num_fields = 1,
-	.encap_num_fields = 0,
-	.ident_start_idx = 33,
-	.ident_nums = 1
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	.direction = TF_DIR_TX,
-	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
-	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
 	.key_start_idx = 1166,
+	.blob_key_bit_size = 12,
+	.key_bit_size = 12,
+	.key_num_fields = 1,
+	.result_start_idx = 809,
+	.result_bit_size = 10,
+	.result_num_fields = 1,
+	.encap_num_fields = 0,
+	.ident_start_idx = 29,
+	.ident_nums = 1
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
+	.direction = TF_DIR_TX,
+	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 1167,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 757,
+	.result_start_idx = 810,
+	.result_bit_size = 64,
+	.result_num_fields = 13,
+	.encap_num_fields = 0,
+	.ident_start_idx = 30,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.resource_sub_type =
+		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1180,
+	.blob_key_bit_size = 16,
+	.key_bit_size = 16,
+	.key_num_fields = 3,
+	.result_start_idx = 823,
+	.result_bit_size = 10,
+	.result_num_fields = 1,
+	.encap_num_fields = 0,
+	.ident_start_idx = 30,
+	.ident_nums = 1
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.direction = TF_DIR_TX,
+	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 1183,
+	.blob_key_bit_size = 81,
+	.key_bit_size = 81,
+	.key_num_fields = 43,
+	.result_start_idx = 824,
+	.result_bit_size = 38,
+	.result_num_fields = 8,
+	.encap_num_fields = 0,
+	.ident_start_idx = 31,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1226,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 832,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 31,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1237,
+	.blob_key_bit_size = 200,
+	.key_bit_size = 200,
+	.key_num_fields = 11,
+	.result_start_idx = 841,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 31,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
+	.resource_sub_type =
+		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1248,
+	.blob_key_bit_size = 12,
+	.key_bit_size = 12,
+	.key_num_fields = 1,
+	.result_start_idx = 850,
+	.result_bit_size = 10,
+	.result_num_fields = 1,
+	.encap_num_fields = 0,
+	.ident_start_idx = 31,
+	.ident_nums = 1
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
+	.direction = TF_DIR_TX,
+	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 1249,
+	.blob_key_bit_size = 171,
+	.key_bit_size = 171,
+	.key_num_fields = 13,
+	.result_start_idx = 851,
+	.result_bit_size = 64,
+	.result_num_fields = 13,
+	.encap_num_fields = 0,
+	.ident_start_idx = 32,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.resource_sub_type =
+		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1262,
+	.blob_key_bit_size = 16,
+	.key_bit_size = 16,
+	.key_num_fields = 3,
+	.result_start_idx = 864,
+	.result_bit_size = 10,
+	.result_num_fields = 1,
+	.encap_num_fields = 0,
+	.ident_start_idx = 32,
+	.ident_nums = 1
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.direction = TF_DIR_TX,
+	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 1265,
+	.blob_key_bit_size = 81,
+	.key_bit_size = 81,
+	.key_num_fields = 43,
+	.result_start_idx = 865,
+	.result_bit_size = 38,
+	.result_num_fields = 8,
+	.encap_num_fields = 0,
+	.ident_start_idx = 33,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1308,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 873,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 33,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
+	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1319,
+	.blob_key_bit_size = 392,
+	.key_bit_size = 392,
+	.key_num_fields = 11,
+	.result_start_idx = 882,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 33,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
+	.resource_sub_type =
+		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1330,
+	.blob_key_bit_size = 12,
+	.key_bit_size = 12,
+	.key_num_fields = 1,
+	.result_start_idx = 891,
+	.result_bit_size = 10,
+	.result_num_fields = 1,
+	.encap_num_fields = 0,
+	.ident_start_idx = 33,
+	.ident_nums = 1
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
+	.direction = TF_DIR_TX,
+	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 1331,
+	.blob_key_bit_size = 171,
+	.key_bit_size = 171,
+	.key_num_fields = 13,
+	.result_start_idx = 892,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1814,11 +2099,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 1179,
+	.key_start_idx = 1344,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 770,
+	.result_start_idx = 905,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1831,11 +2116,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 1182,
+	.key_start_idx = 1347,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 771,
+	.result_start_idx = 906,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1845,14 +2130,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1390,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 11,
+	.result_start_idx = 914,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 35,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 1225,
+	.key_start_idx = 1401,
 	.blob_key_bit_size = 392,
 	.key_bit_size = 392,
 	.key_num_fields = 11,
-	.result_start_idx = 779,
+	.result_start_idx = 923,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1867,11 +2171,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_UPDATE,
-	.key_start_idx = 1236,
+	.key_start_idx = 1412,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 788,
+	.result_start_idx = 932,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1886,11 +2190,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 1249,
+	.key_start_idx = 1425,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 801,
+	.result_start_idx = 945,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1903,11 +2207,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 1252,
+	.key_start_idx = 1428,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 802,
+	.result_start_idx = 946,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1917,14 +2221,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1471,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 7,
+	.result_start_idx = 954,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 37,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 1295,
+	.key_start_idx = 1478,
 	.blob_key_bit_size = 104,
 	.key_bit_size = 104,
 	.key_num_fields = 7,
-	.result_start_idx = 810,
+	.result_start_idx = 963,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -1939,11 +2262,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_SEARCH_IF_HIT_UPDATE,
-	.key_start_idx = 1302,
+	.key_start_idx = 1485,
 	.blob_key_bit_size = 171,
 	.key_bit_size = 171,
 	.key_num_fields = 13,
-	.result_start_idx = 819,
+	.result_start_idx = 972,
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.encap_num_fields = 0,
@@ -1958,11 +2281,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 1315,
+	.key_start_idx = 1498,
 	.blob_key_bit_size = 16,
 	.key_bit_size = 16,
 	.key_num_fields = 3,
-	.result_start_idx = 832,
+	.result_start_idx = 985,
 	.result_bit_size = 10,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
@@ -1975,11 +2298,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.key_start_idx = 1318,
+	.key_start_idx = 1501,
 	.blob_key_bit_size = 81,
 	.key_bit_size = 81,
 	.key_num_fields = 43,
-	.result_start_idx = 833,
+	.result_start_idx = 986,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
 	.encap_num_fields = 0,
@@ -1989,14 +2312,33 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_stingray_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
+	.resource_type = TF_MEM_EXTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT,
+	.direction = TF_DIR_TX,
+	.key_start_idx = 1544,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 448,
+	.key_num_fields = 7,
+	.result_start_idx = 994,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.encap_num_fields = 0,
+	.ident_start_idx = 39,
+	.ident_nums = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
+	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES
+	},
+	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE,
 	.resource_type = TF_MEM_INTERNAL,
+	.mem_type_opcode = BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT,
 	.direction = TF_DIR_TX,
-	.key_start_idx = 1361,
+	.key_start_idx = 1551,
 	.blob_key_bit_size = 104,
 	.key_bit_size = 104,
 	.key_num_fields = 7,
-	.result_start_idx = 841,
+	.result_start_idx = 1003,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
 	.encap_num_fields = 0,
@@ -3084,6 +3426,76 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF6_IDX_O_ETH_SMAC >> 8) & 0xff,
+		BNXT_ULP_HF6_IDX_O_ETH_SMAC & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -3551,6 +3963,76 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF7_IDX_O_ETH_SMAC >> 8) & 0xff,
+		BNXT_ULP_HF7_IDX_O_ETH_SMAC & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -4007,6 +4489,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF8_IDX_O_UDP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF8_IDX_O_UDP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF8_IDX_O_UDP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF8_IDX_O_UDP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_UDP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF8_IDX_O_IPV4_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF8_IDX_O_IPV4_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF8_IDX_O_IPV4_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF8_IDX_O_IPV4_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 3,
@@ -4480,6 +5051,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF9_IDX_O_TCP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF9_IDX_O_TCP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF9_IDX_O_TCP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF9_IDX_O_TCP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_TCP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF9_IDX_O_IPV4_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF9_IDX_O_IPV4_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF9_IDX_O_IPV4_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF9_IDX_O_IPV4_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 3,
@@ -4963,6 +5623,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 59,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF10_IDX_O_UDP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF10_IDX_O_UDP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF10_IDX_O_UDP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF10_IDX_O_UDP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_UDP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF10_IDX_O_IPV6_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF10_IDX_O_IPV6_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF10_IDX_O_IPV6_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF10_IDX_O_IPV6_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -5438,6 +6187,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 59,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF11_IDX_O_TCP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF11_IDX_O_TCP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF11_IDX_O_TCP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF11_IDX_O_TCP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_TCP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF11_IDX_O_IPV6_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF11_IDX_O_IPV6_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF11_IDX_O_IPV6_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF11_IDX_O_IPV6_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 3,
@@ -5936,6 +6774,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF12_IDX_O_UDP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF12_IDX_O_UDP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF12_IDX_O_UDP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF12_IDX_O_UDP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_UDP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF12_IDX_O_IPV4_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF12_IDX_O_IPV4_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF12_IDX_O_IPV4_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF12_IDX_O_IPV4_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -6426,6 +7353,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF13_IDX_O_TCP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF13_IDX_O_TCP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF13_IDX_O_TCP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF13_IDX_O_TCP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_TCP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF13_IDX_O_IPV4_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF13_IDX_O_IPV4_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF13_IDX_O_IPV4_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF13_IDX_O_IPV4_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 3,
@@ -6928,6 +7944,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 59,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF14_IDX_O_UDP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF14_IDX_O_UDP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF14_IDX_O_UDP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF14_IDX_O_UDP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_UDP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF14_IDX_O_IPV6_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF14_IDX_O_IPV6_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF14_IDX_O_IPV6_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF14_IDX_O_IPV6_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -7424,6 +8529,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 59,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF15_IDX_O_TCP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF15_IDX_O_TCP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF15_IDX_O_TCP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF15_IDX_O_TCP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_TCP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF15_IDX_O_IPV6_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF15_IDX_O_IPV6_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF15_IDX_O_IPV6_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF15_IDX_O_IPV6_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -7917,6 +9111,80 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_UDP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF16_IDX_O_IPV4_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF16_IDX_O_IPV4_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -8399,6 +9667,80 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 59,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_UDP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF17_IDX_O_IPV6_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF17_IDX_O_IPV6_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -8855,6 +10197,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF18_IDX_O_UDP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF18_IDX_O_UDP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF18_IDX_O_UDP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF18_IDX_O_UDP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_UDP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF18_IDX_O_IPV4_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF18_IDX_O_IPV4_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF18_IDX_O_IPV4_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF18_IDX_O_IPV4_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 3,
@@ -9324,6 +10755,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 251,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF19_IDX_O_TCP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF19_IDX_O_TCP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF19_IDX_O_TCP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF19_IDX_O_TCP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_TCP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF19_IDX_O_IPV4_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF19_IDX_O_IPV4_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 32,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF19_IDX_O_IPV4_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF19_IDX_O_IPV4_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 3,
@@ -9803,6 +11323,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 59,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF20_IDX_O_UDP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF20_IDX_O_UDP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF20_IDX_O_UDP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF20_IDX_O_UDP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_UDP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF20_IDX_O_IPV6_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF20_IDX_O_IPV6_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF20_IDX_O_IPV6_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF20_IDX_O_IPV6_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 3,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -10274,6 +11883,95 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 59,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF21_IDX_O_TCP_DST_PORT >> 8) & 0xff,
+		BNXT_ULP_HF21_IDX_O_TCP_DST_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF21_IDX_O_TCP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_HF21_IDX_O_TCP_SRC_PORT & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_operand = {
+		BNXT_ULP_SYM_IP_PROTO_TCP,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF21_IDX_O_IPV6_DST_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF21_IDX_O_IPV6_DST_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 128,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF21_IDX_O_IPV6_SRC_ADDR >> 8) & 0xff,
+		BNXT_ULP_HF21_IDX_O_IPV6_SRC_ADDR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 24,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 3,
@@ -10766,6 +12464,56 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 351,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 12,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF22_IDX_O_ETH_DMAC >> 8) & 0xff,
+		BNXT_ULP_HF22_IDX_O_ETH_DMAC & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 7,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -11219,6 +12967,56 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_stingray_key_field_list[] 
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 351,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 3,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 12,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 48,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_HF23_IDX_O_ETH_DMAC >> 8) & 0xff,
+		BNXT_ULP_HF23_IDX_O_ETH_DMAC & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 10,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 8,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 7,
@@ -12791,6 +14589,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -12969,6 +14821,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -13156,6 +15062,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -13287,6 +15247,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 	{
 	.field_bit_size = 1,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 33,
@@ -13530,6 +15544,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0185 >> 8) & 0xff,
+		0x0185 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -13717,6 +15785,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0185 >> 8) & 0xff,
+		0x0185 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -13895,6 +16017,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -14017,6 +16193,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 	{
 	.field_bit_size = 1,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 33,
@@ -14251,6 +16481,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0185 >> 8) & 0xff,
+		0x0185 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -14373,6 +16657,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 	{
 	.field_bit_size = 1,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0185 >> 8) & 0xff,
+		0x0185 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 33,
@@ -14607,6 +16945,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -14785,6 +17177,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0185 >> 8) & 0xff,
+		0x0185 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -14987,6 +17433,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -15133,6 +17633,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 	{
 	.field_bit_size = 1,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 33,
@@ -15391,6 +17945,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0185 >> 8) & 0xff,
+		0x0185 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -15537,6 +18145,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 	{
 	.field_bit_size = 1,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0185 >> 8) & 0xff,
+		0x0185 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 33,
@@ -15786,6 +18448,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0061 >> 8) & 0xff,
+		0x0061 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
 	.field_bit_size = 10,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
 	.result_operand = {
@@ -15923,6 +18639,60 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 	{
 	.field_bit_size = 1,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 33,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR >> 8) & 0xff,
+		BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 5,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 9,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {
+		(0x0061 >> 8) & 0xff,
+		0x0061 & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 33,

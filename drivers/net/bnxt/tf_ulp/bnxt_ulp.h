@@ -54,6 +54,7 @@ struct bnxt_ulp_data {
 	uint32_t			ulp_flags;
 	struct bnxt_ulp_df_rule_info	df_rule_info[RTE_MAX_ETHPORTS];
 	struct bnxt_ulp_vfr_rule_info	vfr_rule_info[RTE_MAX_ETHPORTS];
+	enum bnxt_ulp_flow_mem_type	mem_type;
 };
 
 struct bnxt_ulp_context {
@@ -101,6 +102,16 @@ bnxt_ulp_cntxt_dev_id_set(struct bnxt_ulp_context *ulp_ctx, uint32_t dev_id);
 /* Function to get the device id of the hardware. */
 int32_t
 bnxt_ulp_cntxt_dev_id_get(struct bnxt_ulp_context *ulp_ctx, uint32_t *dev_id);
+
+/* Function to get whether or not ext mem is used for EM */
+int32_t
+bnxt_ulp_cntxt_mem_type_get(struct bnxt_ulp_context *ulp_ctx,
+			    enum bnxt_ulp_flow_mem_type *mem_type);
+
+/* Function to set whether or not ext mem is used for EM */
+int32_t
+bnxt_ulp_cntxt_mem_type_set(struct bnxt_ulp_context *ulp_ctx,
+			    enum bnxt_ulp_flow_mem_type mem_type);
 
 /* Function to set the table scope id of the EEM table. */
 int32_t

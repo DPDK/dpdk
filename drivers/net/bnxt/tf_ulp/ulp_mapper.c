@@ -1679,10 +1679,16 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct ulp_flow_db_res_params	fid_parms = { 0 };
 	struct tf_insert_em_entry_parms iparms = { 0 };
 	struct tf_delete_em_entry_parms free_parms = { 0 };
+	enum bnxt_ulp_flow_mem_type mtype;
 	int32_t	trc;
-	enum bnxt_ulp_flow_mem_type mtype = parms->device_params->flow_mem_type;
 	int32_t rc = 0;
 	uint32_t encap_flds = 0;
+
+	rc = bnxt_ulp_cntxt_mem_type_get(parms->ulp_ctx, &mtype);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get the mem type for EM\n");
+		return -EINVAL;
+	}
 
 	kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
 	if (!kflds || !num_kflds) {
@@ -2327,6 +2333,8 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
  * Function to process the conditional opcode of the mapper table.
  * returns 1 to skip the table.
  * return 0 to continue processing the table.
+ *
+ * defaults to skip
  */
 static int32_t
 ulp_mapper_tbl_cond_opcode_process(struct bnxt_ulp_mapper_parms *parms,
@@ -2376,6 +2384,42 @@ ulp_mapper_tbl_cond_opcode_process(struct bnxt_ulp_mapper_parms *parms,
 	return rc;
 }
 
+/*
+ * Function to process the memtype opcode of the mapper table.
+ * returns 1 to skip the table.
+ * return 0 to continue processing the table.
+ *
+ * defaults to skip
+ */
+static int32_t
+ulp_mapper_tbl_memtype_opcode_process(struct bnxt_ulp_mapper_parms *parms,
+				      struct bnxt_ulp_mapper_tbl_info *tbl)
+{
+	enum bnxt_ulp_flow_mem_type mtype = BNXT_ULP_FLOW_MEM_TYPE_INT;
+	int32_t rc = 1;
+
+	bnxt_ulp_cntxt_mem_type_get(parms->ulp_ctx, &mtype);
+
+	switch (tbl->mem_type_opcode) {
+	case BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT:
+		if (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT)
+			rc = 0;
+		break;
+	case BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT:
+		if (mtype == BNXT_ULP_FLOW_MEM_TYPE_EXT)
+			rc = 0;
+		break;
+	case BNXT_ULP_MEM_TYPE_OPCODE_NOP:
+		rc = 0;
+		break;
+	default:
+		BNXT_TF_DBG(ERR,
+			    "Invalid arg in mapper in memtype opcode\n");
+		break;
+	}
+	return rc;
+}
+
 static int32_t
 ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 {
@@ -2394,6 +2438,8 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 	for (i = 0; i < num_tbls; i++) {
 		struct bnxt_ulp_mapper_tbl_info *tbl = &tbls[i];
 
+		if (ulp_mapper_tbl_memtype_opcode_process(parms, tbl))
+			continue;
 		if (ulp_mapper_tbl_cond_opcode_process(parms, tbl))
 			continue;
 

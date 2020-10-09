@@ -298,7 +298,8 @@ ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 	struct bnxt_ulp_device_params *dparms;
 	struct bnxt_ulp_flow_tbl *flow_tbl;
 	struct bnxt_ulp_flow_db *flow_db;
-	uint32_t dev_id;
+	uint32_t dev_id, num_flows;
+	enum bnxt_ulp_flow_mem_type mtype;
 
 	/* Get the dev specific number of flows that needed to be supported. */
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctxt, &dev_id)) {
@@ -323,10 +324,17 @@ ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 	/* Attach the flow database to the ulp context. */
 	bnxt_ulp_cntxt_ptr2_flow_db_set(ulp_ctxt, flow_db);
 
+	/* Determine the number of flows based on EM type */
+	bnxt_ulp_cntxt_mem_type_get(ulp_ctxt, &mtype);
+	if (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT)
+		num_flows = dparms->int_flow_db_num_entries;
+	else
+		num_flows = dparms->ext_flow_db_num_entries;
+
 	/* Populate the regular flow table limits. */
 	flow_tbl = &flow_db->flow_tbl;
-	flow_tbl->num_flows = dparms->flow_db_num_entries + 1;
-	flow_tbl->num_resources = ((dparms->flow_db_num_entries + 1) *
+	flow_tbl->num_flows = num_flows + 1;
+	flow_tbl->num_resources = ((num_flows + 1) *
 				   dparms->num_resources_per_flow);
 
 	/* Include the default flow table limits. */
@@ -350,6 +358,8 @@ ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 		goto error_free;
 	}
 	/* All good so return. */
+	BNXT_TF_DBG(INFO, "FlowDB initialized with %d flows.\n",
+		    flow_tbl->num_flows);
 	return 0;
 error_free:
 	ulp_flow_db_deinit(ulp_ctxt);

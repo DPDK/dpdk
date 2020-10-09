@@ -359,16 +359,20 @@ bnxt_init_tbl_scope_parms(struct bnxt *bp,
 		params->rx_max_action_entry_sz_in_bits =
 			BNXT_ULP_DFLT_RX_MAX_ACTN_ENTRY;
 		params->rx_mem_size_in_mb = BNXT_ULP_DFLT_RX_MEM;
-		params->rx_num_flows_in_k = dparms->flow_db_num_entries / 1024;
+		params->rx_num_flows_in_k =
+			dparms->ext_flow_db_num_entries / 1024;
 		params->rx_tbl_if_id = BNXT_ULP_RX_TBL_IF_ID;
 
 		params->tx_max_key_sz_in_bits = BNXT_ULP_DFLT_TX_MAX_KEY;
 		params->tx_max_action_entry_sz_in_bits =
 			BNXT_ULP_DFLT_TX_MAX_ACTN_ENTRY;
 		params->tx_mem_size_in_mb = BNXT_ULP_DFLT_TX_MEM;
-		params->tx_num_flows_in_k = dparms->flow_db_num_entries / 1024;
+		params->tx_num_flows_in_k =
+			dparms->ext_flow_db_num_entries / 1024;
 		params->tx_tbl_if_id = BNXT_ULP_TX_TBL_IF_ID;
 	}
+	BNXT_TF_DBG(INFO, "Table Scope initialized with %uK flows.\n",
+		    params->rx_num_flows_in_k);
 }
 
 /* Initialize Extended Exact Match host memory. */
@@ -376,8 +380,9 @@ static int32_t
 ulp_eem_tbl_scope_init(struct bnxt *bp)
 {
 	struct tf_alloc_tbl_scope_parms params = {0};
-	uint32_t dev_id;
 	struct bnxt_ulp_device_params *dparms;
+	enum bnxt_ulp_flow_mem_type mtype;
+	uint32_t dev_id;
 	int rc;
 
 	/* Get the dev specific number of flows that needed to be supported. */
@@ -392,7 +397,10 @@ ulp_eem_tbl_scope_init(struct bnxt *bp)
 		return -ENODEV;
 	}
 
-	if (dparms->flow_mem_type != BNXT_ULP_FLOW_MEM_TYPE_EXT) {
+	if (bnxt_ulp_cntxt_mem_type_get(bp->ulp_ctx, &mtype))
+		return -EINVAL;
+
+	if (mtype != BNXT_ULP_FLOW_MEM_TYPE_EXT) {
 		BNXT_TF_DBG(INFO, "Table Scope alloc is not required\n");
 		return 0;
 	}
@@ -423,6 +431,7 @@ ulp_eem_tbl_scope_deinit(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 	struct tf			*tfp;
 	int32_t				rc = 0;
 	struct bnxt_ulp_device_params *dparms;
+	enum bnxt_ulp_flow_mem_type mtype;
 	uint32_t dev_id;
 
 	if (!ulp_ctx || !ulp_ctx->cfg_data)
@@ -446,7 +455,9 @@ ulp_eem_tbl_scope_deinit(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 		return -ENODEV;
 	}
 
-	if (dparms->flow_mem_type != BNXT_ULP_FLOW_MEM_TYPE_EXT) {
+	if (bnxt_ulp_cntxt_mem_type_get(ulp_ctx, &mtype))
+		return -EINVAL;
+	if (mtype != BNXT_ULP_FLOW_MEM_TYPE_EXT) {
 		BNXT_TF_DBG(INFO, "Table Scope free is not required\n");
 		return 0;
 	}
@@ -539,8 +550,16 @@ ulp_dparms_init(struct bnxt *bp,
 	struct bnxt_ulp_device_params *dparms;
 	uint32_t dev_id;
 
-	if (!bp->max_num_kflows)
+	if (!bp->max_num_kflows) {
+		/* Defaults to Internal */
+		bnxt_ulp_cntxt_mem_type_set(ulp_ctx,
+					    BNXT_ULP_FLOW_MEM_TYPE_INT);
 		return 0;
+	}
+
+	/* The max_num_kflows were set, so move to external */
+	if (bnxt_ulp_cntxt_mem_type_set(ulp_ctx, BNXT_ULP_FLOW_MEM_TYPE_EXT))
+		return -EINVAL;
 
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id)) {
 		BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
@@ -554,11 +573,11 @@ ulp_dparms_init(struct bnxt *bp,
 	}
 
 	/* num_flows = max_num_kflows * 1024 */
-	dparms->flow_db_num_entries = bp->max_num_kflows * 1024;
+	dparms->ext_flow_db_num_entries = bp->max_num_kflows * 1024;
 	/* GFID =  2 * num_flows */
-	dparms->mark_db_gfid_entries = dparms->flow_db_num_entries * 2;
+	dparms->mark_db_gfid_entries = dparms->ext_flow_db_num_entries * 2;
 	BNXT_TF_DBG(DEBUG, "Set the number of flows = %"PRIu64"\n",
-		    dparms->flow_db_num_entries);
+		    dparms->ext_flow_db_num_entries);
 
 	return 0;
 }
@@ -568,22 +587,12 @@ static int32_t
 ulp_dparms_dev_port_intf_update(struct bnxt *bp,
 				struct bnxt_ulp_context *ulp_ctx)
 {
-	struct bnxt_ulp_device_params *dparms;
-	uint32_t dev_id;
+	enum bnxt_ulp_flow_mem_type mtype;
 
-	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id)) {
-		BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
+	if (bnxt_ulp_cntxt_mem_type_get(ulp_ctx, &mtype))
 		return -EINVAL;
-	}
-
-	dparms = bnxt_ulp_device_params_get(dev_id);
-	if (!dparms) {
-		BNXT_TF_DBG(DEBUG, "Failed to get device parms\n");
-		return -EINVAL;
-	}
-
 	/* Update the bp flag with gfid flag */
-	if (dparms->flow_mem_type == BNXT_ULP_FLOW_MEM_TYPE_EXT)
+	if (mtype == BNXT_ULP_FLOW_MEM_TYPE_EXT)
 		bp->flags |= BNXT_FLAG_GFID_ENABLE;
 
 	return 0;
@@ -1197,6 +1206,31 @@ bnxt_ulp_cntxt_dev_id_get(struct bnxt_ulp_context *ulp_ctx,
 		return 0;
 	}
 
+	BNXT_TF_DBG(ERR, "Failed to read dev_id from ulp ctxt\n");
+	return -EINVAL;
+}
+
+int32_t
+bnxt_ulp_cntxt_mem_type_set(struct bnxt_ulp_context *ulp_ctx,
+			    enum bnxt_ulp_flow_mem_type mem_type)
+{
+	if (ulp_ctx && ulp_ctx->cfg_data) {
+		ulp_ctx->cfg_data->mem_type = mem_type;
+		return 0;
+	}
+	BNXT_TF_DBG(ERR, "Failed to write mem_type in ulp ctxt\n");
+	return -EINVAL;
+}
+
+int32_t
+bnxt_ulp_cntxt_mem_type_get(struct bnxt_ulp_context *ulp_ctx,
+			    enum bnxt_ulp_flow_mem_type *mem_type)
+{
+	if (ulp_ctx && ulp_ctx->cfg_data) {
+		*mem_type = ulp_ctx->cfg_data->mem_type;
+		return 0;
+	}
+	BNXT_TF_DBG(ERR, "Failed to read mem_type in ulp ctxt\n");
 	return -EINVAL;
 }
 

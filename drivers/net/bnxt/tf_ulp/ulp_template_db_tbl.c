@@ -314,42 +314,42 @@ struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[] = {
 
 const struct ulp_template_device_tbls ulp_template_stingray_tbls[] = {
 	[BNXT_ULP_TEMPLATE_TYPE_CLASS] = {
-		.tmpl_list = ulp_class_stingray_tmpl_list,
-		.tbl_list = ulp_class_stingray_tbl_list,
-		.key_field_list = ulp_class_stingray_key_field_list,
-		.result_field_list = ulp_class_stingray_result_field_list,
-		.ident_list = ulp_class_stingray_ident_list
+	.tmpl_list               = ulp_class_stingray_tmpl_list,
+	.tbl_list                = ulp_class_stingray_tbl_list,
+	.key_field_list          = ulp_class_stingray_key_field_list,
+	.result_field_list       = ulp_class_stingray_result_field_list,
+	.ident_list              = ulp_class_stingray_ident_list
 	},
 	[BNXT_ULP_TEMPLATE_TYPE_ACTION] = {
-		.tmpl_list = ulp_act_stingray_tmpl_list,
-		.tbl_list = ulp_act_stingray_tbl_list,
-		.result_field_list = ulp_act_stingray_result_field_list,
+	.tmpl_list               = ulp_act_stingray_tmpl_list,
+	.tbl_list                = ulp_act_stingray_tbl_list,
+	.result_field_list       = ulp_act_stingray_result_field_list
 	}
 };
 
 const struct ulp_template_device_tbls ulp_template_wh_plus_tbls[] = {
 	[BNXT_ULP_TEMPLATE_TYPE_CLASS] = {
-		.tmpl_list = ulp_class_wh_plus_tmpl_list,
-		.tbl_list = ulp_class_wh_plus_tbl_list,
-		.key_field_list = ulp_class_wh_plus_key_field_list,
-		.result_field_list = ulp_class_wh_plus_result_field_list,
-		.ident_list = ulp_class_wh_plus_ident_list,
+	.tmpl_list               = ulp_class_wh_plus_tmpl_list,
+	.tbl_list                = ulp_class_wh_plus_tbl_list,
+	.key_field_list          = ulp_class_wh_plus_key_field_list,
+	.result_field_list       = ulp_class_wh_plus_result_field_list,
+	.ident_list              = ulp_class_wh_plus_ident_list
 	},
 	[BNXT_ULP_TEMPLATE_TYPE_ACTION] = {
-		.tmpl_list = ulp_act_wh_plus_tmpl_list,
-		.tbl_list = ulp_act_wh_plus_tbl_list,
-		.result_field_list = ulp_act_wh_plus_result_field_list
+	.tmpl_list               = ulp_act_wh_plus_tmpl_list,
+	.tbl_list                = ulp_act_wh_plus_tbl_list,
+	.result_field_list       = ulp_act_wh_plus_result_field_list
 	}
 };
 
 struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
-	.flow_mem_type           = BNXT_ULP_FLOW_MEM_TYPE_INT,
 	.byte_order              = BNXT_ULP_BYTE_ORDER_LE,
 	.encap_byte_swap         = 1,
-	.flow_db_num_entries     = 16384,
+	.int_flow_db_num_entries = 16384,
+	.ext_flow_db_num_entries = 32768,
 	.mark_db_lfid_entries    = 65536,
-	.mark_db_gfid_entries    = 0,
+	.mark_db_gfid_entries    = 65536,
 	.flow_count_db_entries   = 16384,
 	.num_resources_per_flow  = 8,
 	.num_phy_ports           = 2,
@@ -358,15 +358,15 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.packet_count_mask       = 0xffffffff00000000,
 	.byte_count_shift        = 0,
 	.packet_count_shift      = 36,
-	.dev_tbls		 = ulp_template_wh_plus_tbls
+	.dev_tbls                = ulp_template_wh_plus_tbls
 	},
 	[BNXT_ULP_DEVICE_ID_STINGRAY] = {
-	.flow_mem_type           = BNXT_ULP_FLOW_MEM_TYPE_INT,
 	.byte_order              = BNXT_ULP_BYTE_ORDER_LE,
 	.encap_byte_swap         = 1,
-	.flow_db_num_entries     = 16384,
+	.int_flow_db_num_entries = 16384,
+	.ext_flow_db_num_entries = 32768,
 	.mark_db_lfid_entries    = 65536,
-	.mark_db_gfid_entries    = 0,
+	.mark_db_gfid_entries    = 65536,
 	.flow_count_db_entries   = 16384,
 	.num_resources_per_flow  = 8,
 	.num_phy_ports           = 2,
@@ -375,7 +375,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.packet_count_mask       = 0xffffffff00000000,
 	.byte_count_shift        = 0,
 	.packet_count_shift      = 36,
-	.dev_tbls		 = ulp_template_stingray_tbls
+	.dev_tbls                = ulp_template_stingray_tbls
 	}
 };
 

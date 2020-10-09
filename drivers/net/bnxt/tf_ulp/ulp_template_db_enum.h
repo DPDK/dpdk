@@ -235,6 +235,13 @@ enum bnxt_ulp_match_type {
 	BNXT_ULP_MATCH_TYPE_LAST = 2
 };
 
+enum bnxt_ulp_mem_type_opcode {
+	BNXT_ULP_MEM_TYPE_OPCODE_NOP = 0,
+	BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_INT = 1,
+	BNXT_ULP_MEM_TYPE_OPCODE_EXECUTE_IF_EXT = 2,
+	BNXT_ULP_MEM_TYPE_OPCODE_LAST = 3
+};
+
 enum bnxt_ulp_priority {
 	BNXT_ULP_PRIORITY_LEVEL_0 = 0,
 	BNXT_ULP_PRIORITY_LEVEL_1 = 1,
