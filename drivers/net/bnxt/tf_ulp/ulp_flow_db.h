@@ -8,6 +8,7 @@
 
 #include "bnxt_ulp.h"
 #include "ulp_template_db_enum.h"
+#include "ulp_mapper.h"
 
 #define BNXT_FLOW_DB_DEFAULT_NUM_FLOWS		512
 #define BNXT_FLOW_DB_DEFAULT_NUM_RESOURCES	8
@@ -319,5 +320,40 @@ ulp_flow_db_parent_child_flow_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
 					     uint32_t parent_idx,
 					     uint32_t *child_fid);
 
+/*
+ * Orphan the child flow entry
+ * This is called only for child flows that have
+ * BNXT_ULP_RESOURCE_FUNC_CHILD_FLOW resource
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * flow_type [in] Specify it is regular or default flow
+ * fid [in] The index to the flow entry
+ *
+ * Returns 0 on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_child_flow_reset(struct bnxt_ulp_context *ulp_ctxt,
+			     enum bnxt_ulp_fdb_type flow_type,
+			     uint32_t fid);
+
+/*
+ * Create parent flow in the parent flow tbl
+ *
+ * parms [in] Ptr to mapper params
+ *
+ * Returns 0 on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms);
+
+/*
+ * Create child flow in the parent flow tbl
+ *
+ * parms [in] Ptr to mapper params
+ *
+ * Returns 0 on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_child_flow_create(struct bnxt_ulp_mapper_parms *parms);
 
 #endif /* _ULP_FLOW_DB_H_ */

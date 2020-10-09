@@ -76,6 +76,8 @@ struct bnxt_ulp_mapper_parms {
 	enum bnxt_ulp_cache_table_opc		tcam_tbl_opc;
 	struct bnxt_ulp_mapper_cache_entry	*cache_ptr;
 	struct bnxt_ulp_device_params           *device_params;
+	uint32_t				parent_fid;
+	uint32_t				parent_flow;
 };
 
 struct bnxt_ulp_mapper_create_parms {
@@ -90,6 +92,11 @@ struct bnxt_ulp_mapper_create_parms {
 	uint16_t			func_id;
 	uint32_t			dir_attr;
 	enum bnxt_ulp_fdb_type		flow_type;
+
+	/* if set then create it as a child flow with parent as parent_fid */
+	uint32_t			parent_fid;
+	/* if set then create a parent flow */
+	uint32_t			parent_flow;
 };
 
 /* Function to initialize any dynamic mapper data. */
