@@ -15980,7 +15980,7 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_stingray_result_field_list[] 
 	}
 };
 
-struct bnxt_ulp_mapper_ident_info ulp_stingray_ident_list[] = {
+struct bnxt_ulp_mapper_ident_info ulp_class_stingray_ident_list[] = {
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,

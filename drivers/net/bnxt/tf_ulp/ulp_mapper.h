@@ -53,6 +53,7 @@ struct bnxt_ulp_mapper_data {
 
 /* Internal Structure for passing the arguments around */
 struct bnxt_ulp_mapper_parms {
+	enum bnxt_ulp_template_type		tmpl_type;
 	uint32_t				dev_id;
 	uint32_t				act_tid;
 	struct bnxt_ulp_mapper_tbl_info		*atbls; /* action table */
@@ -70,7 +71,7 @@ struct bnxt_ulp_mapper_parms {
 	struct bnxt_ulp_context			*ulp_ctx;
 	uint8_t					encap_byte_swap;
 	uint32_t				fid;
-	enum bnxt_ulp_flow_db_tables		tbl_idx;
+	enum bnxt_ulp_fdb_type			flow_type;
 	struct bnxt_ulp_mapper_data		*mapper_data;
 	enum bnxt_ulp_cache_table_opc		tcam_tbl_opc;
 	struct bnxt_ulp_mapper_cache_entry	*cache_ptr;
@@ -88,6 +89,7 @@ struct bnxt_ulp_mapper_create_parms {
 	uint32_t			act_tid;
 	uint16_t			func_id;
 	uint32_t			dir_attr;
+	enum bnxt_ulp_fdb_type		flow_type;
 };
 
 /* Function to initialize any dynamic mapper data. */

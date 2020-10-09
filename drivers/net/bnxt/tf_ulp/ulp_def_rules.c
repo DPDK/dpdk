@@ -351,6 +351,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	}
 
 	mapper_params.class_tid = ulp_class_tid;
+	mapper_params.flow_type = BNXT_ULP_FDB_TYPE_DEFAULT;
 
 	rc = ulp_mapper_flow_create(ulp_ctx, &mapper_params, flow_id);
 	if (rc) {

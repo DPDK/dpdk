@@ -142,14 +142,11 @@ extern struct bnxt_ulp_act_match_info ulp_act_match_list[];
 
 /* Device Specific Tables for mapper */
 struct ulp_template_device_tbls {
-	struct bnxt_ulp_mapper_tbl_list_info *class_tmpl_list;
-	struct bnxt_ulp_mapper_tbl_info *class_tbl_list;
-	struct bnxt_ulp_mapper_class_key_field_info *class_key_field_list;
-	struct bnxt_ulp_mapper_result_field_info *class_result_field_list;
+	struct bnxt_ulp_mapper_tbl_list_info *tmpl_list;
+	struct bnxt_ulp_mapper_tbl_info *tbl_list;
+	struct bnxt_ulp_mapper_class_key_field_info *key_field_list;
+	struct bnxt_ulp_mapper_result_field_info *result_field_list;
 	struct bnxt_ulp_mapper_ident_info *ident_list;
-	struct bnxt_ulp_mapper_tbl_list_info *act_tmpl_list;
-	struct bnxt_ulp_mapper_tbl_info *act_tbl_list;
-	struct bnxt_ulp_mapper_result_field_info *act_result_field_list;
 };
 
 /* Device specific parameters */

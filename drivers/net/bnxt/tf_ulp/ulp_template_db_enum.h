@@ -278,6 +278,12 @@ enum bnxt_ulp_search_before_alloc {
 	BNXT_ULP_SEARCH_BEFORE_ALLOC_LAST = 3
 };
 
+enum bnxt_ulp_template_type {
+	BNXT_ULP_TEMPLATE_TYPE_CLASS = 0,
+	BNXT_ULP_TEMPLATE_TYPE_ACTION = 1,
+	BNXT_ULP_TEMPLATE_TYPE_LAST = 2
+};
+
 enum bnxt_ulp_fdb_resource_flags {
 	BNXT_ULP_FDB_RESOURCE_FLAGS_DIR_INGR = 0x00,
 	BNXT_ULP_FDB_RESOURCE_FLAGS_DIR_EGR = 0x01
