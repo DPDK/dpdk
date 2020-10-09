@@ -33,8 +33,6 @@ Supported AEAD algorithms:
 Limitations
 -----------
 
-* AES_CBC Cipher Only combination is not supported.
-* 3DES Cipher Only combination is not supported.
 * Session-less APIs are not supported.
 
 Installation

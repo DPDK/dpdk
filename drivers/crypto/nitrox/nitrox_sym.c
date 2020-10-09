@@ -550,6 +550,9 @@ nitrox_sym_dev_sess_configure(struct rte_cryptodev *cdev,
 	ctx = mp_obj;
 	ctx->nitrox_chain = get_crypto_chain_order(xform);
 	switch (ctx->nitrox_chain) {
+	case NITROX_CHAIN_CIPHER_ONLY:
+		cipher_xform = &xform->cipher;
+		break;
 	case NITROX_CHAIN_CIPHER_AUTH:
 		cipher_xform = &xform->cipher;
 		auth_xform = &xform->next->auth;

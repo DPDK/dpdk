@@ -247,38 +247,6 @@ softreq_copy_iv(struct nitrox_softreq *sr, uint8_t salt_size)
 	sr->iv.len = sr->ctx->iv.length - salt_size;
 }
 
-static int
-extract_cipher_auth_digest(struct nitrox_softreq *sr,
-			   struct nitrox_sglist *digest)
-{
-	struct rte_crypto_op *op = sr->op;
-	struct rte_mbuf *mdst = op->sym->m_dst ? op->sym->m_dst :
-					op->sym->m_src;
-
-	if (sr->ctx->req_op == NITROX_OP_DECRYPT &&
-	    unlikely(!op->sym->auth.digest.data))
-		return -EINVAL;
-
-	digest->len = sr->ctx->digest_length;
-	if (op->sym->auth.digest.data) {
-		digest->iova = op->sym->auth.digest.phys_addr;
-		digest->virt = op->sym->auth.digest.data;
-		return 0;
-	}
-
-	if (unlikely(rte_pktmbuf_data_len(mdst) < op->sym->auth.data.offset +
-	       op->sym->auth.data.length + digest->len))
-		return -EINVAL;
-
-	digest->iova = rte_pktmbuf_iova_offset(mdst,
-					op->sym->auth.data.offset +
-					op->sym->auth.data.length);
-	digest->virt = rte_pktmbuf_mtod_offset(mdst, uint8_t *,
-					op->sym->auth.data.offset +
-					op->sym->auth.data.length);
-	return 0;
-}
-
 static void
 fill_sglist(struct nitrox_sgtable *sgtbl, uint16_t len, rte_iova_t iova,
 	    void *virt)
@@ -337,6 +305,143 @@ create_sglist_from_mbuf(struct nitrox_sgtable *sgtbl, struct rte_mbuf *mbuf,
 
 	RTE_VERIFY(cnt <= MAX_SGBUF_CNT);
 	sgtbl->map_bufs_cnt = cnt;
+	return 0;
+}
+
+static void
+create_sgcomp(struct nitrox_sgtable *sgtbl)
+{
+	int i, j, nr_sgcomp;
+	struct nitrox_sgcomp *sgcomp = sgtbl->sgcomp;
+	struct nitrox_sglist *sglist = sgtbl->sglist;
+
+	nr_sgcomp = RTE_ALIGN_MUL_CEIL(sgtbl->map_bufs_cnt, 4) / 4;
+	sgtbl->nr_sgcomp = nr_sgcomp;
+	for (i = 0; i < nr_sgcomp; i++, sgcomp++) {
+		for (j = 0; j < 4; j++, sglist++) {
+			sgcomp->len[j] = rte_cpu_to_be_16(sglist->len);
+			sgcomp->iova[j] = rte_cpu_to_be_64(sglist->iova);
+		}
+	}
+}
+
+static int
+create_cipher_inbuf(struct nitrox_softreq *sr)
+{
+	int err;
+	struct rte_crypto_op *op = sr->op;
+
+	fill_sglist(&sr->in, sr->iv.len, sr->iv.iova, sr->iv.virt);
+	err = create_sglist_from_mbuf(&sr->in, op->sym->m_src,
+				      op->sym->cipher.data.offset,
+				      op->sym->cipher.data.length);
+	if (unlikely(err))
+		return err;
+
+	create_sgcomp(&sr->in);
+	sr->dptr = sr->iova + offsetof(struct nitrox_softreq, in.sgcomp);
+
+	return 0;
+}
+
+static int
+create_cipher_outbuf(struct nitrox_softreq *sr)
+{
+	struct rte_crypto_op *op = sr->op;
+	int err, cnt = 0;
+	struct rte_mbuf *m_dst = op->sym->m_dst ? op->sym->m_dst :
+		op->sym->m_src;
+
+	sr->resp.orh = PENDING_SIG;
+	sr->out.sglist[cnt].len = sizeof(sr->resp.orh);
+	sr->out.sglist[cnt].iova = sr->iova + offsetof(struct nitrox_softreq,
+						       resp.orh);
+	sr->out.sglist[cnt].virt = &sr->resp.orh;
+	cnt++;
+
+	sr->out.map_bufs_cnt = cnt;
+	fill_sglist(&sr->out, sr->iv.len, sr->iv.iova, sr->iv.virt);
+	err = create_sglist_from_mbuf(&sr->out, m_dst,
+				      op->sym->cipher.data.offset,
+				      op->sym->cipher.data.length);
+	if (unlikely(err))
+		return err;
+
+	cnt = sr->out.map_bufs_cnt;
+	sr->resp.completion = PENDING_SIG;
+	sr->out.sglist[cnt].len = sizeof(sr->resp.completion);
+	sr->out.sglist[cnt].iova = sr->iova + offsetof(struct nitrox_softreq,
+						     resp.completion);
+	sr->out.sglist[cnt].virt = &sr->resp.completion;
+	cnt++;
+
+	RTE_VERIFY(cnt <= MAX_SGBUF_CNT);
+	sr->out.map_bufs_cnt = cnt;
+
+	create_sgcomp(&sr->out);
+	sr->rptr = sr->iova + offsetof(struct nitrox_softreq, out.sgcomp);
+
+	return 0;
+}
+
+static void
+create_cipher_gph(uint32_t cryptlen, uint16_t ivlen, struct gphdr *gph)
+{
+	gph->param0 = rte_cpu_to_be_16(cryptlen);
+	gph->param1 = 0;
+	gph->param2 = rte_cpu_to_be_16(ivlen);
+	gph->param3 = 0;
+}
+
+static int
+process_cipher_data(struct nitrox_softreq *sr)
+{
+	struct rte_crypto_op *op = sr->op;
+	int err;
+
+	softreq_copy_iv(sr, 0);
+	err = create_cipher_inbuf(sr);
+	if (unlikely(err))
+		return err;
+
+	err = create_cipher_outbuf(sr);
+	if (unlikely(err))
+		return err;
+
+	create_cipher_gph(op->sym->cipher.data.length, sr->iv.len, &sr->gph);
+
+	return 0;
+}
+
+static int
+extract_cipher_auth_digest(struct nitrox_softreq *sr,
+			   struct nitrox_sglist *digest)
+{
+	struct rte_crypto_op *op = sr->op;
+	struct rte_mbuf *mdst = op->sym->m_dst ? op->sym->m_dst :
+					op->sym->m_src;
+
+	if (sr->ctx->req_op == NITROX_OP_DECRYPT &&
+	    unlikely(!op->sym->auth.digest.data))
+		return -EINVAL;
+
+	digest->len = sr->ctx->digest_length;
+	if (op->sym->auth.digest.data) {
+		digest->iova = op->sym->auth.digest.phys_addr;
+		digest->virt = op->sym->auth.digest.data;
+		return 0;
+	}
+
+	if (unlikely(rte_pktmbuf_data_len(mdst) < op->sym->auth.data.offset +
+	       op->sym->auth.data.length + digest->len))
+		return -EINVAL;
+
+	digest->iova = rte_pktmbuf_iova_offset(mdst,
+					op->sym->auth.data.offset +
+					op->sym->auth.data.length);
+	digest->virt = rte_pktmbuf_mtod_offset(mdst, uint8_t *,
+					op->sym->auth.data.offset +
+					op->sym->auth.data.length);
 	return 0;
 }
 
@@ -406,23 +511,6 @@ create_aead_sglist(struct nitrox_softreq *sr, struct nitrox_sgtable *sgtbl,
 	}
 
 	return err;
-}
-
-static void
-create_sgcomp(struct nitrox_sgtable *sgtbl)
-{
-	int i, j, nr_sgcomp;
-	struct nitrox_sgcomp *sgcomp = sgtbl->sgcomp;
-	struct nitrox_sglist *sglist = sgtbl->sglist;
-
-	nr_sgcomp = RTE_ALIGN_MUL_CEIL(sgtbl->map_bufs_cnt, 4) / 4;
-	sgtbl->nr_sgcomp = nr_sgcomp;
-	for (i = 0; i < nr_sgcomp; i++, sgcomp++) {
-		for (j = 0; j < 4; j++, sglist++) {
-			sgcomp->len[j] = rte_cpu_to_be_16(sglist->len);
-			sgcomp->iova[j] = rte_cpu_to_be_64(sglist->iova);
-		}
-	}
 }
 
 static int
@@ -661,6 +749,9 @@ process_softreq(struct nitrox_softreq *sr)
 	int err = 0;
 
 	switch (ctx->nitrox_chain) {
+	case NITROX_CHAIN_CIPHER_ONLY:
+		err = process_cipher_data(sr);
+		break;
 	case NITROX_CHAIN_CIPHER_AUTH:
 	case NITROX_CHAIN_AUTH_CIPHER:
 		err = process_cipher_auth_data(sr);

@@ -159,6 +159,7 @@ New Features
 * **Updated Marvell NITROX symmetric crypto PMD.**
 
   * Added AES-GCM support.
+  * Added cipher only offload support.
 
 * **Updated the OCTEON TX2 crypto PMD.**
 
