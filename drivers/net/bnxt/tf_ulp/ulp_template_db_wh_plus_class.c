@@ -12,140 +12,117 @@ struct bnxt_ulp_mapper_tbl_list_info ulp_wh_plus_class_tmpl_list[] = {
 	[1] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 0,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_DEFAULT
+	.start_tbl_idx = 0
 	},
 	[2] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 7,
-	.start_tbl_idx = 6,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_DEFAULT
+	.start_tbl_idx = 6
 	},
 	[3] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 7,
-	.start_tbl_idx = 13,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_DEFAULT
+	.start_tbl_idx = 13
 	},
 	[4] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 7,
-	.start_tbl_idx = 20,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_DEFAULT
+	.start_tbl_idx = 20
 	},
 	[5] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 1,
-	.start_tbl_idx = 27,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_DEFAULT
+	.start_tbl_idx = 27
 	},
 	[6] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 28,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 28
 	},
 	[7] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 33,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 33
 	},
 	[8] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 38,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 38
 	},
 	[9] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 44,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 44
 	},
 	[10] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 50,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 50
 	},
 	[11] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 56,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 56
 	},
 	[12] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 62,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 62
 	},
 	[13] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 67,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 67
 	},
 	[14] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 72,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 72
 	},
 	[15] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 77,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 77
 	},
 	[16] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 82,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 82
 	},
 	[17] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 87,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 87
 	},
 	[18] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 92,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 92
 	},
 	[19] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 98,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 98
 	},
 	[20] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 104,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 104
 	},
 	[21] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 110,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 110
 	},
 	[22] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 116,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 116
 	},
 	[23] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 121,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 121
 	}
 };
 

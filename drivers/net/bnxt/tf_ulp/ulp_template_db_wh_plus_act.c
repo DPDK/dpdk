@@ -12,38 +12,32 @@ struct bnxt_ulp_mapper_tbl_list_info ulp_wh_plus_act_tmpl_list[] = {
 	[1] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 0,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 0
 	},
 	[2] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 3,
-	.start_tbl_idx = 6,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 6
 	},
 	[3] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 3,
-	.start_tbl_idx = 9,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 9
 	},
 	[4] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 12,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 12
 	},
 	[5] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
-	.start_tbl_idx = 18,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 18
 	},
 	[6] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 5,
-	.start_tbl_idx = 24,
-	.flow_db_table_type = BNXT_ULP_FDB_TYPE_REGULAR
+	.start_tbl_idx = 24
 	}
 };
 

@@ -175,7 +175,6 @@ struct bnxt_ulp_mapper_tbl_list_info {
 	uint32_t		device_name;
 	uint32_t		start_tbl_idx;
 	uint32_t		num_tbls;
-	enum bnxt_ulp_fdb_type	flow_db_table_type;
 };
 
 struct bnxt_ulp_mapper_tbl_info {
