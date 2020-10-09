@@ -130,8 +130,9 @@ int rte_eal_init(int argc, char **argv);
  * be made. It is expected that common usage of this function is to call it
  * just before terminating the process.
  *
- * @return 0 Successfully released all internal EAL resources
- * @return -EFAULT There was an error in releasing all resources.
+ * @return
+ *  - 0 Successfully released all internal EAL resources.
+ *  - -EFAULT There was an error in releasing all resources.
  */
 int rte_eal_cleanup(void);
 
