@@ -125,6 +125,18 @@ aesni_mb_get_chain_order(const struct rte_crypto_sym_xform *xform)
 	return AESNI_MB_OP_NOT_SUPPORTED;
 }
 
+static inline int
+is_aead_algo(JOB_HASH_ALG hash_alg, JOB_CIPHER_MODE cipher_mode)
+{
+#if IMB_VERSION(0, 54, 3) <= IMB_VERSION_NUM
+	return (hash_alg == IMB_AUTH_CHACHA20_POLY1305 || hash_alg == AES_CCM ||
+		(hash_alg == AES_GMAC && cipher_mode == GCM));
+#else
+	return ((hash_alg == AES_GMAC && cipher_mode == GCM) ||
+		hash_alg == AES_CCM);
+#endif
+}
+
 /** Set session authentication parameters */
 static int
 aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
@@ -721,6 +733,24 @@ aesni_mb_set_session_aead_parameters(const MB_MGR *mb_mgr,
 		}
 		break;
 
+#if IMB_VERSION(0, 54, 3) <= IMB_VERSION_NUM
+	case RTE_CRYPTO_AEAD_CHACHA20_POLY1305:
+		sess->cipher.mode = IMB_CIPHER_CHACHA20_POLY1305;
+		sess->auth.algo = IMB_AUTH_CHACHA20_POLY1305;
+
+		if (xform->aead.key.length != 32) {
+			AESNI_MB_LOG(ERR, "Invalid key length");
+			return -EINVAL;
+		}
+		sess->cipher.key_length_in_bytes = 32;
+		memcpy(sess->cipher.expanded_aes_keys.encode,
+			xform->aead.key.data, 32);
+		if (sess->auth.req_digest_len != 16) {
+			AESNI_MB_LOG(ERR, "Invalid digest size\n");
+			return -EINVAL;
+		}
+		break;
+#endif
 	default:
 		AESNI_MB_LOG(ERR, "Unsupported aead mode parameter");
 		return -ENOTSUP;
@@ -1220,6 +1250,8 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 	/* Set authentication parameters */
 	job->hash_alg = session->auth.algo;
 
+	const int aead = is_aead_algo(job->hash_alg, job->cipher_mode);
+
 	switch (job->hash_alg) {
 	case AES_XCBC:
 		job->u.XCBC._k1_expanded = session->auth.xcbc.k1_expanded;
@@ -1280,6 +1312,14 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->u.KASUMI_UIA1._key = (void *) &session->auth.pKeySched_kasumi_auth;
 		break;
 #endif
+#if IMB_VERSION(0, 54, 3) <= IMB_VERSION_NUM
+	case IMB_AUTH_CHACHA20_POLY1305:
+		job->u.CHACHA20_POLY1305.aad = op->sym->aead.aad.data;
+		job->u.CHACHA20_POLY1305.aad_len_in_bytes = session->aead.aad_len;
+		job->aes_enc_key_expanded = session->cipher.expanded_aes_keys.encode;
+		job->aes_dec_key_expanded = session->cipher.expanded_aes_keys.encode;
+		break;
+#endif
 	default:
 		job->u.HMAC._hashed_auth_key_xor_ipad = session->auth.pads.inner;
 		job->u.HMAC._hashed_auth_key_xor_opad = session->auth.pads.outer;
@@ -1297,8 +1337,7 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		}
 	}
 
-	if (job->hash_alg == AES_CCM || (job->hash_alg == AES_GMAC &&
-			session->cipher.mode == GCM))
+	if (aead)
 		m_offset = op->sym->aead.data.offset;
 	else
 		m_offset = op->sym->cipher.data.offset;
@@ -1336,8 +1375,7 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->auth_tag_output = qp->temp_digests[*digest_idx];
 		*digest_idx = (*digest_idx + 1) % MAX_JOBS;
 	} else {
-		if (job->hash_alg == AES_CCM || (job->hash_alg == AES_GMAC &&
-				session->cipher.mode == GCM))
+		if (aead)
 			job->auth_tag_output = op->sym->aead.digest.data;
 		else
 			job->auth_tag_output = op->sym->auth.digest.data;
@@ -1397,6 +1435,19 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 				session->iv.offset);
 		break;
 
+#if IMB_VERSION(0, 54, 3) <= IMB_VERSION_NUM
+	case IMB_AUTH_CHACHA20_POLY1305:
+		job->cipher_start_src_offset_in_bytes = op->sym->aead.data.offset;
+		job->hash_start_src_offset_in_bytes = op->sym->aead.data.offset;
+		job->msg_len_to_cipher_in_bytes =
+				op->sym->aead.data.length;
+		job->msg_len_to_hash_in_bytes =
+					op->sym->aead.data.length;
+
+		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+				session->iv.offset);
+		break;
+#endif
 	default:
 		/* For SNOW3G, length and offsets are already in bits */
 		job->cipher_start_src_offset_in_bytes =
@@ -1595,9 +1646,7 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 				break;
 
 			if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
-				if (job->hash_alg == AES_CCM ||
-					(job->hash_alg == AES_GMAC &&
-						sess->cipher.mode == GCM))
+				if (is_aead_algo(job->hash_alg, sess->cipher.mode))
 					verify_digest(job,
 						op->sym->aead.digest.data,
 						sess->auth.req_digest_len,
