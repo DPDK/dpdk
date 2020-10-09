@@ -57,7 +57,8 @@ static const unsigned auth_blocksize[] = {
 		[PLAIN_SHA_512]			= 128,
 #if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 16,
-		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 16
+		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 16,
+		[IMB_AUTH_KASUMI_UIA1]		= 16
 #endif
 };
 
@@ -92,7 +93,8 @@ static const unsigned auth_truncated_digest_byte_lengths[] = {
 		[PLAIN_SHA_512]			= 64,
 #if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
-		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4
+		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
+		[IMB_AUTH_KASUMI_UIA1]		= 4
 #endif
 };
 
@@ -128,7 +130,8 @@ static const unsigned auth_digest_byte_lengths[] = {
 		[PLAIN_SHA_512]			= 64,
 #if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
-		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4
+		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
+		[IMB_AUTH_KASUMI_UIA1]		= 4
 #endif
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 
@@ -244,6 +247,8 @@ struct aesni_mb_session {
 #if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 			snow3g_key_schedule_t pKeySched_snow3g_cipher;
 			/**< SNOW3G scheduled cipher key */
+			kasumi_key_sched_t pKeySched_kasumi_cipher;
+			/**< KASUMI scheduled cipher key */
 #endif
 		};
 	} cipher;
@@ -289,6 +294,8 @@ struct aesni_mb_session {
 #if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 			snow3g_key_schedule_t pKeySched_snow3g_auth;
 			/**< SNOW3G scheduled authentication key */
+			kasumi_key_sched_t pKeySched_kasumi_auth;
+			/**< KASUMI scheduled authentication key */
 #endif
 		};
 	/** Generated digest size by the Multi-buffer library */

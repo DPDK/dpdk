@@ -279,6 +279,19 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 		IMB_SNOW3G_INIT_KEY_SCHED(mb_mgr, xform->auth.key.data,
 					&sess->auth.pKeySched_snow3g_auth);
 		return 0;
+	} else if (xform->auth.algo == RTE_CRYPTO_AUTH_KASUMI_F9) {
+		sess->auth.algo = IMB_AUTH_KASUMI_UIA1;
+		uint16_t kasumi_f9_digest_len =
+			get_truncated_digest_byte_length(IMB_AUTH_KASUMI_UIA1);
+		if (sess->auth.req_digest_len != kasumi_f9_digest_len) {
+			AESNI_MB_LOG(ERR, "Invalid digest size\n");
+			return -EINVAL;
+		}
+		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+
+		IMB_KASUMI_INIT_F9_KEY_SCHED(mb_mgr, xform->auth.key.data,
+					&sess->auth.pKeySched_kasumi_auth);
+		return 0;
 	}
 #endif
 
@@ -417,6 +430,7 @@ aesni_mb_set_session_cipher_parameters(const MB_MGR *mb_mgr,
 #if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 	uint8_t is_zuc = 0;
 	uint8_t is_snow3g = 0;
+	uint8_t is_kasumi = 0;
 #endif
 
 	if (xform == NULL) {
@@ -480,6 +494,10 @@ aesni_mb_set_session_cipher_parameters(const MB_MGR *mb_mgr,
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
 		sess->cipher.mode = IMB_CIPHER_SNOW3G_UEA2_BITLEN;
 		is_snow3g = 1;
+		break;
+	case RTE_CRYPTO_CIPHER_KASUMI_F8:
+		sess->cipher.mode = IMB_CIPHER_KASUMI_UEA1_BITLEN;
+		is_kasumi = 1;
 		break;
 #endif
 	default:
@@ -597,6 +615,14 @@ aesni_mb_set_session_cipher_parameters(const MB_MGR *mb_mgr,
 		sess->cipher.key_length_in_bytes = 16;
 		IMB_SNOW3G_INIT_KEY_SCHED(mb_mgr, xform->cipher.key.data,
 					&sess->cipher.pKeySched_snow3g_cipher);
+	} else if (is_kasumi) {
+		if (xform->cipher.key.length != 16) {
+			AESNI_MB_LOG(ERR, "Invalid cipher key length");
+			return -EINVAL;
+		}
+		sess->cipher.key_length_in_bytes = 16;
+		IMB_KASUMI_INIT_F8_KEY_SCHED(mb_mgr, xform->cipher.key.data,
+					&sess->cipher.pKeySched_kasumi_cipher);
 #endif
 	} else {
 		if (xform->cipher.key.length != 8) {
@@ -1251,6 +1277,9 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->u.SNOW3G_UIA2._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 						session->auth_iv.offset);
 		break;
+	case IMB_AUTH_KASUMI_UIA1:
+		job->u.KASUMI_UIA1._key = (void *) &session->auth.pKeySched_kasumi_auth;
+		break;
 #endif
 	default:
 		job->u.HMAC._hashed_auth_key_xor_ipad = session->auth.pads.inner;
@@ -1281,6 +1310,9 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->aes_dec_key_expanded = session->cipher.zuc_cipher_key;
 	} else if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN) {
 		job->enc_keys = &session->cipher.pKeySched_snow3g_cipher;
+		m_offset = 0;
+	} else if (job->cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN) {
+		job->enc_keys = &session->cipher.pKeySched_kasumi_cipher;
 		m_offset = 0;
 	}
 #endif
@@ -1383,6 +1415,8 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 #if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3)
 		job->msg_len_to_cipher_in_bytes >>= 3;
+	else if (job->hash_alg == IMB_AUTH_KASUMI_UIA1)
+		job->msg_len_to_hash_in_bytes >>= 3;
 #endif
 
 	/* Set user data to be crypto operation data struct */
