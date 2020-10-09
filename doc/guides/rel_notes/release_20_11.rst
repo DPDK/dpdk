@@ -159,6 +159,7 @@ New Features
   * Added support for SNOW3G-UEA2/UIA2 algorithms.
   * Added support for KASUMI-F8/F9 algorithms.
   * Added support for Chacha20-Poly1305.
+  * Added support for AES-256 CCM algorithm.
 
 * **Updated the aesni_gcm crypto PMD.**
 

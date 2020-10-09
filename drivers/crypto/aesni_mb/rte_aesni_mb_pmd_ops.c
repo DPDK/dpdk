@@ -400,8 +400,13 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				.block_size = 16,
 				.key_size = {
 					.min = 16,
+#if IMB_VERSION(0, 54, 2) <= IMB_VERSION_NUM
+					.max = 32,
+					.increment = 16
+#else
 					.max = 16,
 					.increment = 0
+#endif
 				},
 				.digest_size = {
 					.min = 4,

@@ -686,6 +686,12 @@ aesni_mb_set_session_aead_parameters(const MB_MGR *mb_mgr,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
 			break;
+		case AES_256_BYTES:
+			sess->cipher.key_length_in_bytes = AES_256_BYTES;
+			IMB_AES_KEYEXP_256(mb_mgr, xform->aead.key.data,
+					sess->cipher.expanded_aes_keys.encode,
+					sess->cipher.expanded_aes_keys.decode);
+			break;
 		default:
 			AESNI_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
