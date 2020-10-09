@@ -192,6 +192,20 @@ struct rte_sched_subport_params {
 #endif
 };
 
+struct rte_sched_subport_profile_params {
+	/** Token bucket rate (measured in bytes per second) */
+	uint64_t tb_rate;
+
+	/** Token bucket size (measured in credits) */
+	uint64_t tb_size;
+
+	/** Traffic class rates (measured in bytes per second) */
+	uint64_t tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+
+	/** Enforcement period for rates (measured in milliseconds) */
+	uint64_t tc_period;
+};
+
 /** Subport statistics */
 struct rte_sched_subport_stats {
 	/** Number of packets successfully written */
@@ -253,6 +267,17 @@ struct rte_sched_port_params {
 
 	/** Number of subports */
 	uint32_t n_subports_per_port;
+
+	/** subport profile table.
+	 * Every pipe is configured using one of the profiles from this table.
+	 */
+	struct rte_sched_subport_profile_params *subport_profiles;
+
+	/** Profiles in the pipe profile table */
+	uint32_t n_subport_profiles;
+
+	/** Max allowed profiles in the pipe profile table */
+	uint32_t n_max_subport_profiles;
 
 	/** Maximum number of subport pipes.
 	 * This parameter is used to reserve a fixed number of bits

@@ -347,6 +347,8 @@ ABI Changes
 
   * ``ethdev`` internal functions are marked with ``__rte_internal`` tag.
 
+* sched: Added new fields to ``struct rte_sched_subport_port_params``.
+
 
 Known Issues
 ------------

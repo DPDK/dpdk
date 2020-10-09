@@ -101,6 +101,16 @@ enum grinder_state {
 	e_GRINDER_READ_MBUF
 };
 
+struct rte_sched_subport_profile {
+	/* Token bucket (TB) */
+	uint64_t tb_period;
+	uint64_t tb_credits_per_period;
+	uint64_t tb_size;
+
+	uint64_t tc_credits_per_period[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	uint64_t tc_period;
+};
+
 struct rte_sched_grinder {
 	/* Pipe cache */
 	uint16_t pcache_qmask[RTE_SCHED_GRINDER_PCACHE_SIZE];
@@ -212,6 +222,8 @@ struct rte_sched_port {
 	uint16_t pipe_queue[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	uint8_t pipe_tc[RTE_SCHED_QUEUES_PER_PIPE];
 	uint8_t tc_queue[RTE_SCHED_QUEUES_PER_PIPE];
+	uint32_t n_subport_profiles;
+	uint32_t n_max_subport_profiles;
 	uint64_t rate;
 	uint32_t mtu;
 	uint32_t frame_overhead;
@@ -230,6 +242,7 @@ struct rte_sched_port {
 	uint32_t subport_id;
 
 	/* Large data structures */
+	struct rte_sched_subport_profile *subport_profiles;
 	struct rte_sched_subport *subports[0] __rte_cache_aligned;
 } __rte_cache_aligned;
 
@@ -376,8 +389,60 @@ pipe_profile_check(struct rte_sched_pipe_params *params,
 }
 
 static int
+subport_profile_check(struct rte_sched_subport_profile_params *params,
+	uint64_t rate)
+{
+	uint32_t i;
+
+	/* Check user parameters */
+	if (params == NULL) {
+		RTE_LOG(ERR, SCHED, "%s: "
+		"Incorrect value for parameter params\n", __func__);
+		return -EINVAL;
+	}
+
+	if (params->tb_rate == 0 || params->tb_rate > rate) {
+		RTE_LOG(ERR, SCHED, "%s: "
+		"Incorrect value for tb rate\n", __func__);
+		return -EINVAL;
+	}
+
+	if (params->tb_size == 0) {
+		RTE_LOG(ERR, SCHED, "%s: "
+		"Incorrect value for tb size\n", __func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
+		uint64_t tc_rate = params->tc_rate[i];
+
+		if (tc_rate == 0 || (tc_rate > params->tb_rate)) {
+			RTE_LOG(ERR, SCHED, "%s: "
+			"Incorrect value for tc rate\n", __func__);
+			return -EINVAL;
+		}
+	}
+
+	if (params->tc_rate[RTE_SCHED_TRAFFIC_CLASS_BE] == 0) {
+		RTE_LOG(ERR, SCHED, "%s: "
+		"Incorrect tc rate(best effort)\n", __func__);
+		return -EINVAL;
+	}
+
+	if (params->tc_period == 0) {
+		RTE_LOG(ERR, SCHED, "%s: "
+		"Incorrect value for tc period\n", __func__);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 rte_sched_port_check_params(struct rte_sched_port_params *params)
 {
+	uint32_t i;
+
 	if (params == NULL) {
 		RTE_LOG(ERR, SCHED,
 			"%s: Incorrect value for parameter params\n", __func__);
@@ -412,6 +477,29 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 		RTE_LOG(ERR, SCHED,
 			"%s: Incorrect value for number of subports\n", __func__);
 		return -EINVAL;
+	}
+
+	if (params->subport_profiles == NULL ||
+		params->n_subport_profiles == 0 ||
+		params->n_max_subport_profiles == 0 ||
+		params->n_subport_profiles > params->n_max_subport_profiles) {
+		RTE_LOG(ERR, SCHED,
+		"%s: Incorrect value for subport profiles\n", __func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < params->n_subport_profiles; i++) {
+		struct rte_sched_subport_profile_params *p =
+						params->subport_profiles + i;
+		int status;
+
+		status = subport_profile_check(p, params->rate);
+		if (status != 0) {
+			RTE_LOG(ERR, SCHED,
+			"%s: subport profile check failed(%d)\n",
+			__func__, status);
+			return -EINVAL;
+		}
 	}
 
 	/* n_pipes_per_subport: non-zero, power of 2 */
@@ -555,6 +643,42 @@ rte_sched_port_log_pipe_profile(struct rte_sched_subport *subport, uint32_t i)
 		p->wrr_cost[0], p->wrr_cost[1], p->wrr_cost[2], p->wrr_cost[3]);
 }
 
+static void
+rte_sched_port_log_subport_profile(struct rte_sched_port *port, uint32_t i)
+{
+	struct rte_sched_subport_profile *p = port->subport_profiles + i;
+
+	RTE_LOG(DEBUG, SCHED, "Low level config for subport profile %u:\n"
+	"Token bucket: period = %"PRIu64", credits per period = %"PRIu64","
+	"size = %"PRIu64"\n"
+	"Traffic classes: period = %"PRIu64",\n"
+	"credits per period = [%"PRIu64", %"PRIu64", %"PRIu64", %"PRIu64
+	" %"PRIu64", %"PRIu64", %"PRIu64", %"PRIu64", %"PRIu64", %"PRIu64
+	" %"PRIu64", %"PRIu64", %"PRIu64"]\n",
+	i,
+
+	/* Token bucket */
+	p->tb_period,
+	p->tb_credits_per_period,
+	p->tb_size,
+
+	/* Traffic classes */
+	p->tc_period,
+	p->tc_credits_per_period[0],
+	p->tc_credits_per_period[1],
+	p->tc_credits_per_period[2],
+	p->tc_credits_per_period[3],
+	p->tc_credits_per_period[4],
+	p->tc_credits_per_period[5],
+	p->tc_credits_per_period[6],
+	p->tc_credits_per_period[7],
+	p->tc_credits_per_period[8],
+	p->tc_credits_per_period[9],
+	p->tc_credits_per_period[10],
+	p->tc_credits_per_period[11],
+	p->tc_credits_per_period[12]);
+}
+
 static inline uint64_t
 rte_sched_time_ms_to_bytes(uint64_t time_ms, uint64_t rate)
 {
@@ -624,6 +748,37 @@ rte_sched_pipe_profile_convert(struct rte_sched_subport *subport,
 }
 
 static void
+rte_sched_subport_profile_convert(struct rte_sched_subport_profile_params *src,
+	struct rte_sched_subport_profile *dst,
+	uint64_t rate)
+{
+	uint32_t i;
+
+	/* Token Bucket */
+	if (src->tb_rate == rate) {
+		dst->tb_credits_per_period = 1;
+		dst->tb_period = 1;
+	} else {
+		double tb_rate = (double) src->tb_rate
+				/ (double) rate;
+		double d = RTE_SCHED_TB_RATE_CONFIG_ERR;
+
+		rte_approx_64(tb_rate, d, &dst->tb_credits_per_period,
+			&dst->tb_period);
+	}
+
+	dst->tb_size = src->tb_size;
+
+	/* Traffic Classes */
+	dst->tc_period = rte_sched_time_ms_to_bytes(src->tc_period, rate);
+
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
+		dst->tc_credits_per_period[i]
+			= rte_sched_time_ms_to_bytes(src->tc_period,
+				src->tc_rate[i]);
+}
+
+static void
 rte_sched_subport_config_pipe_profile_table(struct rte_sched_subport *subport,
 	struct rte_sched_subport_params *params, uint64_t rate)
 {
@@ -644,6 +799,24 @@ rte_sched_subport_config_pipe_profile_table(struct rte_sched_subport *subport,
 
 		if (subport->pipe_tc_be_rate_max < pipe_tc_be_rate)
 			subport->pipe_tc_be_rate_max = pipe_tc_be_rate;
+	}
+}
+
+static void
+rte_sched_port_config_subport_profile_table(struct rte_sched_port *port,
+	struct rte_sched_port_params *params,
+	uint64_t rate)
+{
+	uint32_t i;
+
+	for (i = 0; i < port->n_subport_profiles; i++) {
+		struct rte_sched_subport_profile_params *src
+				= params->subport_profiles + i;
+		struct rte_sched_subport_profile *dst
+				= port->subport_profiles + i;
+
+		rte_sched_subport_profile_convert(src, dst, rate);
+		rte_sched_port_log_subport_profile(port, i);
 	}
 }
 
@@ -793,7 +966,7 @@ struct rte_sched_port *
 rte_sched_port_config(struct rte_sched_port_params *params)
 {
 	struct rte_sched_port *port = NULL;
-	uint32_t size0, size1;
+	uint32_t size0, size1, size2;
 	uint32_t cycles_per_byte;
 	uint32_t i, j;
 	int status;
@@ -808,10 +981,21 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 
 	size0 = sizeof(struct rte_sched_port);
 	size1 = params->n_subports_per_port * sizeof(struct rte_sched_subport *);
+	size2 = params->n_max_subport_profiles *
+		sizeof(struct rte_sched_subport_profile);
 
 	/* Allocate memory to store the data structures */
-	port = rte_zmalloc_socket("qos_params", size0 + size1, RTE_CACHE_LINE_SIZE,
-		params->socket);
+	port = rte_zmalloc_socket("qos_params", size0 + size1,
+				 RTE_CACHE_LINE_SIZE, params->socket);
+	if (port == NULL) {
+		RTE_LOG(ERR, SCHED, "%s: Memory allocation fails\n", __func__);
+
+		return NULL;
+	}
+
+	/* Allocate memory to store the subport profile */
+	port->subport_profiles  = rte_zmalloc_socket("subport_profile", size2,
+					RTE_CACHE_LINE_SIZE, params->socket);
 	if (port == NULL) {
 		RTE_LOG(ERR, SCHED, "%s: Memory allocation fails\n", __func__);
 
@@ -820,6 +1004,8 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 
 	/* User parameters */
 	port->n_subports_per_port = params->n_subports_per_port;
+	port->n_subport_profiles = params->n_subport_profiles;
+	port->n_max_subport_profiles = params->n_max_subport_profiles;
 	port->n_pipes_per_subport = params->n_pipes_per_subport;
 	port->n_pipes_per_subport_log2 =
 			__builtin_ctz(params->n_pipes_per_subport);
@@ -849,6 +1035,9 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	port->time_cpu_cycles = rte_get_tsc_cycles();
 	port->time_cpu_bytes = 0;
 	port->time = 0;
+
+	/* Subport profile table */
+	rte_sched_port_config_subport_profile_table(port, params, port->rate);
 
 	cycles_per_byte = (rte_get_tsc_hz() << RTE_SCHED_TIME_SHIFT)
 		/ params->rate;
@@ -905,6 +1094,7 @@ rte_sched_port_free(struct rte_sched_port *port)
 	for (i = 0; i < port->n_subports_per_port; i++)
 		rte_sched_subport_free(port, port->subports[i]);
 
+	rte_free(port->subport_profiles);
 	rte_free(port);
 }
 
@@ -961,6 +1151,7 @@ rte_sched_free_memory(struct rte_sched_port *port, uint32_t n_subports)
 		rte_sched_subport_free(port, subport);
 	}
 
+	rte_free(port->subport_profiles);
 	rte_free(port);
 }
 
