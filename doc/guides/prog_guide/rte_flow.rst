@@ -2666,6 +2666,31 @@ timeout passed without any matching on the flow.
    | ``context``  | user input flow context         |
    +--------------+---------------------------------+
 
+Action: ``SAMPLE``
+^^^^^^^^^^^^^^^^^^
+
+Adds a sample action to a matched flow.
+
+The matching packets will be duplicated with the specified ``ratio`` and
+applied with own set of actions with a fate action, the packets sampled
+equals is '1/ratio'. All the packets continue to the target destination.
+
+When the ``ratio`` is set to 1 then the packets will be 100% mirrored.
+``actions`` represent the different set of actions for the sampled or mirrored
+packets, and must have a fate action.
+
+.. _table_rte_flow_action_sample:
+
+.. table:: SAMPLE
+
+   +--------------+---------------------------------+
+   | Field        | Value                           |
+   +==============+=================================+
+   | ``ratio``    | 32 bits sample ratio value      |
+   +--------------+---------------------------------+
+   | ``actions``  | sub-action list for sampling    |
+   +--------------+---------------------------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

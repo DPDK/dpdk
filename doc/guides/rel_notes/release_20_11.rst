@@ -94,6 +94,12 @@ New Features
   whether PMD supports thread safe operations. If PMD doesn't set the flag,
   rte_flow API level functions will protect the flow operations with mutex.
 
+* **Added flow-based traffic sampling support.**
+
+  Added new action: ``RTE_FLOW_ACTION_TYPE_SAMPLE`` to duplicate the matching
+  packets with specified ratio, and apply with own set of actions with a fate
+  action. When the ratio is set to 1 then the packets will be 100% mirrored.
+
 * **Updated Broadcom bnxt driver.**
 
   Updated the Broadcom bnxt driver with new features and improvements, including:

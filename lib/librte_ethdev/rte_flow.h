@@ -2132,6 +2132,14 @@ enum rte_flow_action_type {
 	 * see enum RTE_ETH_EVENT_FLOW_AGED
 	 */
 	RTE_FLOW_ACTION_TYPE_AGE,
+
+	/**
+	 * The matching packets will be duplicated with specified ratio and
+	 * applied with own set of actions with a fate action.
+	 *
+	 * See struct rte_flow_action_sample.
+	 */
+	RTE_FLOW_ACTION_TYPE_SAMPLE,
 };
 
 /**
@@ -2740,6 +2748,28 @@ struct rte_flow_action {
  * destroy it or retrieve counters).
  */
 struct rte_flow;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_SAMPLE
+ *
+ * Adds a sample action to a matched flow.
+ *
+ * The matching packets will be duplicated with specified ratio and applied
+ * with own set of actions with a fate action, the sampled packet could be
+ * redirected to queue or port. All the packets continue processing on the
+ * default flow path.
+ *
+ * When the sample ratio is set to 1 then the packets will be 100% mirrored.
+ * Additional action list be supported to add for sampled or mirrored packets.
+ */
+struct rte_flow_action_sample {
+	uint32_t ratio; /**< packets sampled equals to '1/ratio'. */
+	const struct rte_flow_action *actions;
+		/**< sub-action list specific for the sampling hit cases. */
+};
 
 /**
  * Verbose error types.
