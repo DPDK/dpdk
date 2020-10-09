@@ -8,7 +8,7 @@
 #include "ulp_template_struct.h"
 #include "ulp_rte_parser.h"
 
-struct bnxt_ulp_mapper_tbl_list_info ulp_act_stingray_tmpl_list[] = {
+struct bnxt_ulp_mapper_tbl_list_info ulp_stingray_act_tmpl_list[] = {
 	[1] = {
 	.device_name = BNXT_ULP_DEVICE_ID_STINGRAY,
 	.num_tbls = 6,
@@ -47,7 +47,7 @@ struct bnxt_ulp_mapper_tbl_list_info ulp_act_stingray_tmpl_list[] = {
 	}
 };
 
-struct bnxt_ulp_mapper_tbl_info ulp_act_stingray_tbl_list[] = {
+struct bnxt_ulp_mapper_tbl_info ulp_stingray_act_tbl_list[] = {
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
@@ -531,7 +531,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_stingray_tbl_list[] = {
 	}
 };
 
-struct bnxt_ulp_mapper_result_field_info ulp_act_stingray_result_field_list[] = {
+struct bnxt_ulp_mapper_result_field_info ulp_stingray_act_result_field_list[] = {
 	{
 	.field_bit_size = 64,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO

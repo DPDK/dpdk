@@ -256,7 +256,7 @@ ulp_mapper_tbl_list_get(struct bnxt_ulp_mapper_parms *mparms,
  *
  * Returns array of Key fields, or NULL on error.
  */
-static struct bnxt_ulp_mapper_class_key_field_info *
+static struct bnxt_ulp_mapper_key_field_info *
 ulp_mapper_key_fields_get(struct bnxt_ulp_mapper_parms *mparms,
 			  struct bnxt_ulp_mapper_tbl_info *tbl,
 			  uint32_t *num_flds)
@@ -1009,7 +1009,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 static int32_t
 ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 				 enum tf_dir dir,
-				 struct bnxt_ulp_mapper_class_key_field_info *f,
+				 struct bnxt_ulp_mapper_key_field_info *f,
 				 struct ulp_blob *blob,
 				 uint8_t is_key,
 				 const char *name)
@@ -1020,7 +1020,7 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 	uint8_t *operand;
 	struct ulp_regfile *regfile = parms->regfile;
 	uint8_t *val = NULL;
-	struct bnxt_ulp_mapper_class_key_field_info *fld = f;
+	struct bnxt_ulp_mapper_key_field_info *fld = f;
 	uint32_t field_size;
 
 	if (is_key) {
@@ -1442,7 +1442,7 @@ static int32_t
 ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			    struct bnxt_ulp_mapper_tbl_info *tbl)
 {
-	struct bnxt_ulp_mapper_class_key_field_info	*kflds;
+	struct bnxt_ulp_mapper_key_field_info	*kflds;
 	struct ulp_blob key, mask, data, update_data;
 	uint32_t i, num_kflds;
 	struct tf *tfp;
@@ -1670,7 +1670,7 @@ static int32_t
 ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			  struct bnxt_ulp_mapper_tbl_info *tbl)
 {
-	struct bnxt_ulp_mapper_class_key_field_info	*kflds;
+	struct bnxt_ulp_mapper_key_field_info	*kflds;
 	struct bnxt_ulp_mapper_result_field_info *dflds;
 	struct ulp_blob key, data;
 	uint32_t i, num_kflds, num_dflds;
@@ -2061,7 +2061,7 @@ static int32_t
 ulp_mapper_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			     struct bnxt_ulp_mapper_tbl_info *tbl)
 {
-	struct bnxt_ulp_mapper_class_key_field_info *kflds;
+	struct bnxt_ulp_mapper_key_field_info *kflds;
 	struct bnxt_ulp_mapper_cache_entry *cache_entry;
 	struct bnxt_ulp_mapper_ident_info *idents;
 	uint32_t i, num_kflds = 0, num_idents = 0;

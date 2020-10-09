@@ -144,7 +144,7 @@ extern struct bnxt_ulp_act_match_info ulp_act_match_list[];
 struct ulp_template_device_tbls {
 	struct bnxt_ulp_mapper_tbl_list_info *tmpl_list;
 	struct bnxt_ulp_mapper_tbl_info *tbl_list;
-	struct bnxt_ulp_mapper_class_key_field_info *key_field_list;
+	struct bnxt_ulp_mapper_key_field_info *key_field_list;
 	struct bnxt_ulp_mapper_result_field_info *result_field_list;
 	struct bnxt_ulp_mapper_ident_info *ident_list;
 };
@@ -212,7 +212,7 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint32_t			index_operand;
 };
 
-struct bnxt_ulp_mapper_class_key_field_info {
+struct bnxt_ulp_mapper_key_field_info {
 	uint8_t				description[64];
 	enum bnxt_ulp_mapper_opc	mask_opcode;
 	enum bnxt_ulp_mapper_opc	spec_opcode;

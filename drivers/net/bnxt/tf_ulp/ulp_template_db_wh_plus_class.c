@@ -8,7 +8,7 @@
 #include "ulp_template_struct.h"
 #include "ulp_rte_parser.h"
 
-struct bnxt_ulp_mapper_tbl_list_info ulp_class_wh_plus_tmpl_list[] = {
+struct bnxt_ulp_mapper_tbl_list_info ulp_wh_plus_class_tmpl_list[] = {
 	[1] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
 	.num_tbls = 6,
@@ -149,7 +149,7 @@ struct bnxt_ulp_mapper_tbl_list_info ulp_class_wh_plus_tmpl_list[] = {
 	}
 };
 
-struct bnxt_ulp_mapper_tbl_info ulp_class_wh_plus_tbl_list[] = {
+struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
@@ -2349,7 +2349,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_wh_plus_tbl_list[] = {
 	}
 };
 
-struct bnxt_ulp_mapper_class_key_field_info ulp_class_wh_plus_key_field_list[] = {
+struct bnxt_ulp_mapper_key_field_info ulp_wh_plus_class_key_field_list[] = {
 	{
 	.field_bit_size = 8,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
@@ -13070,7 +13070,7 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_wh_plus_key_field_list[] =
 	}
 };
 
-struct bnxt_ulp_mapper_result_field_info ulp_class_wh_plus_result_field_list[] = {
+struct bnxt_ulp_mapper_result_field_info ulp_wh_plus_class_result_field_list[] = {
 	{
 	.field_bit_size = 14,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
@@ -18750,7 +18750,7 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_wh_plus_result_field_list[] =
 	}
 };
 
-struct bnxt_ulp_mapper_ident_info ulp_class_wh_plus_ident_list[] = {
+struct bnxt_ulp_mapper_ident_info ulp_wh_plus_class_ident_list[] = {
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
