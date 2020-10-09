@@ -28,4 +28,6 @@ EXPERIMENTAL {
 	global:
 
 	rte_sched_subport_pipe_profile_add;
+	# added in 20.11
+	rte_sched_port_subport_profile_add;
 };
