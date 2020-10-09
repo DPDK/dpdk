@@ -220,7 +220,7 @@ ulp_mapper_act_prop_size_get(uint32_t idx)
  * Get the list of result fields that implement the flow action.
  * Gets a device dependent list of tables that implement the action template id.
  *
- * dev_id [in] The device id of the forwarding element
+ * mparms [in] The mappers parms with data related to the flow.
  *
  * tid [in] The action template id that matches the flow
  *
@@ -229,35 +229,29 @@ ulp_mapper_act_prop_size_get(uint32_t idx)
  * Returns An array of action tables to implement the flow, or NULL on error.
  */
 static struct bnxt_ulp_mapper_tbl_info *
-ulp_mapper_action_tbl_list_get(uint32_t dev_id,
+ulp_mapper_action_tbl_list_get(struct bnxt_ulp_mapper_parms *mparms,
 			       uint32_t tid,
 			       uint32_t *num_tbls)
 {
 	uint32_t	idx;
-	uint32_t	tidx;
+	const struct ulp_template_device_tbls *dev_tbls;
 
-	if (!num_tbls) {
-		BNXT_TF_DBG(ERR, "Invalid arguments\n");
-		return NULL;
-	}
-
-	/* template shift and device mask */
-	tidx = ULP_DEVICE_PARAMS_INDEX(tid, dev_id);
+	dev_tbls = mparms->device_params->dev_tbls;
 
 	/* NOTE: Need to have something from template compiler to help validate
 	 * range of dev_id and act_tid
 	 */
-	idx		= ulp_act_tmpl_list[tidx].start_tbl_idx;
-	*num_tbls	= ulp_act_tmpl_list[tidx].num_tbls;
+	idx = dev_tbls->act_tmpl_list[tid].start_tbl_idx;
+	*num_tbls = dev_tbls->act_tmpl_list[tid].num_tbls;
 
-	return &ulp_act_tbl_list[idx];
+	return &dev_tbls->act_tbl_list[idx];
 }
 
 /*
  * Get a list of classifier tables that implement the flow
  * Gets a device dependent list of tables that implement the class template id
  *
- * dev_id [in] The device id of the forwarding element
+ * mparms [in] The mappers parms with data related to the flow.
  *
  * tid [in] The template id that matches the flow
  *
@@ -269,30 +263,30 @@ ulp_mapper_action_tbl_list_get(uint32_t dev_id,
  * error
  */
 static struct bnxt_ulp_mapper_tbl_info *
-ulp_mapper_class_tbl_list_get(uint32_t dev_id,
+ulp_mapper_class_tbl_list_get(struct bnxt_ulp_mapper_parms *mparms,
 			      uint32_t tid,
 			      uint32_t *num_tbls,
 			      uint32_t *fdb_tbl_idx)
 {
 	uint32_t idx;
-	uint32_t tidx = ULP_DEVICE_PARAMS_INDEX(tid, dev_id);
+	const struct ulp_template_device_tbls *dev_tbls;
 
-	if (!num_tbls)
-		return NULL;
+	dev_tbls = mparms->device_params->dev_tbls;
 
 	/* NOTE: Need to have something from template compiler to help validate
 	 * range of dev_id and tid
 	 */
-	idx		= ulp_class_tmpl_list[tidx].start_tbl_idx;
-	*num_tbls	= ulp_class_tmpl_list[tidx].num_tbls;
-	*fdb_tbl_idx = ulp_class_tmpl_list[tidx].flow_db_table_type;
-	return &ulp_class_tbl_list[idx];
+	idx = dev_tbls->class_tmpl_list[tid].start_tbl_idx;
+	*num_tbls = dev_tbls->class_tmpl_list[tid].num_tbls;
+	*fdb_tbl_idx = dev_tbls->class_tmpl_list[tid].flow_db_table_type;
+
+	return &dev_tbls->class_tbl_list[idx];
 }
 
 /*
  * Get the list of key fields that implement the flow.
  *
- * ctxt [in] The ulp context
+ * mparms [in] The mapper parms with information about the flow
  *
  * tbl [in] A single table instance to get the key fields from
  *
@@ -301,75 +295,86 @@ ulp_mapper_class_tbl_list_get(uint32_t dev_id,
  * Returns array of Key fields, or NULL on error.
  */
 static struct bnxt_ulp_mapper_class_key_field_info *
-ulp_mapper_key_fields_get(struct bnxt_ulp_mapper_tbl_info *tbl,
+ulp_mapper_key_fields_get(struct bnxt_ulp_mapper_parms *mparms,
+			  struct bnxt_ulp_mapper_tbl_info *tbl,
 			  uint32_t *num_flds)
 {
 	uint32_t idx;
+	const struct ulp_template_device_tbls *dev_tbls;
 
-	if (!tbl || !num_flds)
-		return NULL;
+	dev_tbls = mparms->device_params->dev_tbls;
 
 	idx		= tbl->key_start_idx;
 	*num_flds	= tbl->key_num_fields;
 
 	/* NOTE: Need template to provide range checking define */
-	return &ulp_class_key_field_list[idx];
+	return &dev_tbls->class_key_field_list[idx];
 }
 
 /*
  * Get the list of data fields that implement the flow.
  *
- * ctxt [in] The ulp context
+ * mparms [in] The mapper parms with information about the flow
  *
  * tbl [in] A single table instance to get the data fields from
  *
  * num_flds [out] The number of data fields in the returned array.
  *
+ * num_encap_flds [out] The number of encap fields in the returned array.
+ *
  * Returns array of data fields, or NULL on error.
  */
 static struct bnxt_ulp_mapper_result_field_info *
-ulp_mapper_result_fields_get(struct bnxt_ulp_mapper_tbl_info *tbl,
+ulp_mapper_result_fields_get(struct bnxt_ulp_mapper_parms *mparms,
+			     struct bnxt_ulp_mapper_tbl_info *tbl,
 			     uint32_t *num_flds,
 			     uint32_t *num_encap_flds)
 {
 	uint32_t idx;
+	const struct ulp_template_device_tbls *dev_tbls;
 
-	if (!tbl || !num_flds)
-		return NULL;
+	dev_tbls = mparms->device_params->dev_tbls;
 
 	idx		= tbl->result_start_idx;
 	*num_flds	= tbl->result_num_fields;
 	*num_encap_flds = tbl->encap_num_fields;
 
 	/* NOTE: Need template to provide range checking define */
-	return &ulp_class_result_field_list[idx];
+	return &dev_tbls->class_result_field_list[idx];
 }
 
 /*
  * Get the list of result fields that implement the flow action.
  *
+ * mparms [in] The mapper parms with information about the flow
+ *
  * tbl [in] A single table instance to get the results fields
- * from num_flds [out] The number of data fields in the returned
+ * from num_flds
+ *
+ * num_rslt_flds [out] The number of data fields in the returned
  * array.
+ *
+ * num_encap_flds [out] The number of encap fields if any.
  *
  * Returns array of data fields, or NULL on error.
  */
 static struct bnxt_ulp_mapper_result_field_info *
-ulp_mapper_act_result_fields_get(struct bnxt_ulp_mapper_tbl_info *tbl,
+ulp_mapper_act_result_fields_get(struct bnxt_ulp_mapper_parms *mparms,
+				 struct bnxt_ulp_mapper_tbl_info *tbl,
 				 uint32_t *num_rslt_flds,
 				 uint32_t *num_encap_flds)
 {
 	uint32_t idx;
+	const struct ulp_template_device_tbls *dev_tbls;
 
-	if (!tbl || !num_rslt_flds || !num_encap_flds)
-		return NULL;
+	dev_tbls = mparms->device_params->dev_tbls;
 
 	idx		= tbl->result_start_idx;
 	*num_rslt_flds	= tbl->result_num_fields;
 	*num_encap_flds = tbl->encap_num_fields;
 
 	/* NOTE: Need template to provide range checking define */
-	return &ulp_act_result_field_list[idx];
+	return &dev_tbls->act_result_field_list[idx];
 }
 
 /*
@@ -382,19 +387,17 @@ ulp_mapper_act_result_fields_get(struct bnxt_ulp_mapper_tbl_info *tbl,
  * returns array of ident fields, or NULL on error
  */
 static struct bnxt_ulp_mapper_ident_info *
-ulp_mapper_ident_fields_get(struct bnxt_ulp_mapper_tbl_info *tbl,
+ulp_mapper_ident_fields_get(struct bnxt_ulp_mapper_parms *mparms,
+			    struct bnxt_ulp_mapper_tbl_info *tbl,
 			    uint32_t *num_flds)
 {
 	uint32_t idx;
-
-	if (!tbl || !num_flds)
-		return NULL;
 
 	idx = tbl->ident_start_idx;
 	*num_flds = tbl->ident_nums;
 
 	/* NOTE: Need template to provide range checking define */
-	return &ulp_ident_list[idx];
+	return &mparms->device_params->dev_tbls->ident_list[idx];
 }
 
 static struct bnxt_ulp_mapper_cache_entry *
@@ -1353,7 +1356,7 @@ ulp_mapper_tcam_tbl_result_create(struct bnxt_ulp_mapper_parms *parms,
 	int32_t rc = 0;
 
 	/* Create the result data blob */
-	dflds = ulp_mapper_result_fields_get(tbl, &num_dflds,
+	dflds = ulp_mapper_result_fields_get(parms, tbl, &num_dflds,
 					     &encap_flds);
 	if (!dflds || !num_dflds || encap_flds) {
 		BNXT_TF_DBG(ERR, "Failed to get data fields.\n");
@@ -1390,7 +1393,7 @@ ulp_mapper_tcam_tbl_scan_ident_alloc(struct bnxt_ulp_mapper_parms *parms,
 	 */
 	if (parms->tcam_tbl_opc ==
 	    BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL) {
-		idents = ulp_mapper_ident_fields_get(tbl, &num_idents);
+		idents = ulp_mapper_ident_fields_get(parms, tbl, &num_idents);
 
 		for (i = 0; i < num_idents; i++) {
 			if (ulp_mapper_ident_process(parms, tbl,
@@ -1418,7 +1421,7 @@ ulp_mapper_tcam_tbl_scan_ident_extract(struct bnxt_ulp_mapper_parms *parms,
 	 * Extract the listed identifiers from the result field,
 	 * no need to allocate them.
 	 */
-	idents = ulp_mapper_ident_fields_get(tbl, &num_idents);
+	idents = ulp_mapper_ident_fields_get(parms, tbl, &num_idents);
 	for (i = 0; i < num_idents; i++) {
 		rc = ulp_mapper_ident_extract(parms, tbl, &idents[i], data);
 		if (rc) {
@@ -1524,7 +1527,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
-	kflds = ulp_mapper_key_fields_get(tbl, &num_kflds);
+	kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
 	if (!kflds || !num_kflds) {
 		BNXT_TF_DBG(ERR, "Failed to get key fields\n");
 		return -EINVAL;
@@ -1740,7 +1743,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	int32_t rc = 0;
 	uint32_t encap_flds = 0;
 
-	kflds = ulp_mapper_key_fields_get(tbl, &num_kflds);
+	kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
 	if (!kflds || !num_kflds) {
 		BNXT_TF_DBG(ERR, "Failed to get key fields\n");
 		return -EINVAL;
@@ -1773,7 +1776,8 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	 */
 
 	/* Create the result data blob */
-	dflds = ulp_mapper_result_fields_get(tbl, &num_dflds, &encap_flds);
+	dflds = ulp_mapper_result_fields_get(parms, tbl,
+					     &num_dflds, &encap_flds);
 	if (!dflds || !num_dflds || encap_flds) {
 		BNXT_TF_DBG(ERR, "Failed to get data fields.\n");
 		return -EINVAL;
@@ -1912,10 +1916,10 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Get the result fields list */
 	if (is_class_tbl)
-		flds = ulp_mapper_result_fields_get(tbl, &num_flds,
+		flds = ulp_mapper_result_fields_get(parms, tbl, &num_flds,
 						    &encap_flds);
 	else
-		flds = ulp_mapper_act_result_fields_get(tbl, &num_flds,
+		flds = ulp_mapper_act_result_fields_get(parms, tbl, &num_flds,
 							&encap_flds);
 
 	if (!flds || (!num_flds && !encap_flds)) {
@@ -2130,7 +2134,7 @@ ulp_mapper_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	int32_t rc;
 
 	/* Get the key fields list and build the key. */
-	kflds = ulp_mapper_key_fields_get(tbl, &num_kflds);
+	kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
 	if (!kflds || !num_kflds) {
 		BNXT_TF_DBG(ERR, "Failed to get key fields\n");
 		return -EINVAL;
@@ -2175,7 +2179,7 @@ ulp_mapper_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	 * Get the identifier list for processing by both the hit and miss
 	 * processing.
 	 */
-	idents = ulp_mapper_ident_fields_get(tbl, &num_idents);
+	idents = ulp_mapper_ident_fields_get(parms, tbl, &num_idents);
 
 	if (!cache_entry->ref_count) {
 		/* Initialize the cache entry */
@@ -2290,7 +2294,7 @@ ulp_mapper_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* Get the result fields list */
-	flds = ulp_mapper_result_fields_get(tbl, &num_flds, &encap_flds);
+	flds = ulp_mapper_result_fields_get(parms, tbl, &num_flds, &encap_flds);
 
 	if (!flds || !num_flds || encap_flds) {
 		BNXT_TF_DBG(ERR, "template undefined for the IF table\n");
@@ -2724,17 +2728,18 @@ ulp_mapper_glb_template_table_init(struct bnxt_ulp_context *ulp_ctx)
 
 		/* Get the class table entry from dev id and class id */
 		parms.class_tid = glbl_tmpl_list[idx];
-		parms.ctbls = ulp_mapper_class_tbl_list_get(parms.dev_id,
+
+		parms.device_params = bnxt_ulp_device_params_get(parms.dev_id);
+		if (!parms.device_params) {
+			BNXT_TF_DBG(ERR, "No device for device id %d\n",
+				    parms.dev_id);
+			return -EINVAL;
+		}
+		parms.ctbls = ulp_mapper_class_tbl_list_get(&parms,
 							    parms.class_tid,
 							    &parms.num_ctbls,
 							    &parms.tbl_idx);
 		if (!parms.ctbls || !parms.num_ctbls) {
-			BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
-				    parms.dev_id, parms.class_tid);
-			return -EINVAL;
-		}
-		parms.device_params = bnxt_ulp_device_params_get(parms.dev_id);
-		if (!parms.device_params) {
 			BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
 				    parms.dev_id, parms.class_tid);
 			return -EINVAL;
@@ -2776,10 +2781,20 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
 	parms.ulp_ctx = ulp_ctx;
 	parms.tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
+	parms.act_tid = cparms->act_tid;
+	parms.class_tid = cparms->class_tid;
 
 	/* Get the device id from the ulp context */
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &parms.dev_id)) {
 		BNXT_TF_DBG(ERR, "Invalid ulp context\n");
+		return -EINVAL;
+	}
+
+	/* Get the device params, it will be used in later processing */
+	parms.device_params = bnxt_ulp_device_params_get(parms.dev_id);
+	if (!parms.device_params) {
+		BNXT_TF_DBG(ERR, "No device parms for device id %d\n",
+			    parms.dev_id);
 		return -EINVAL;
 	}
 
@@ -2795,15 +2810,13 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	/* Get the action table entry from device id and act context id */
-	parms.act_tid = cparms->act_tid;
-
 	/*
 	 * Perform the action table get only if act template is not zero
 	 * for act template zero like for default rules ignore the action
 	 * table processing.
 	 */
 	if (parms.act_tid) {
-		parms.atbls = ulp_mapper_action_tbl_list_get(parms.dev_id,
+		parms.atbls = ulp_mapper_action_tbl_list_get(&parms,
 							     parms.act_tid,
 							     &parms.num_atbls);
 		if (!parms.atbls || !parms.num_atbls) {
@@ -2814,20 +2827,11 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	/* Get the class table entry from device id and act context id */
-	parms.class_tid = cparms->class_tid;
-	parms.ctbls = ulp_mapper_class_tbl_list_get(parms.dev_id,
+	parms.ctbls = ulp_mapper_class_tbl_list_get(&parms,
 						    parms.class_tid,
 						    &parms.num_ctbls,
 						    &parms.tbl_idx);
 	if (!parms.ctbls || !parms.num_ctbls) {
-		BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
-			    parms.dev_id, parms.class_tid);
-		return -EINVAL;
-	}
-
-	/* Get the device params, it will be used in later processing */
-	parms.device_params = bnxt_ulp_device_params_get(parms.dev_id);
-	if (!parms.device_params) {
 		BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
 			    parms.dev_id, parms.class_tid);
 		return -EINVAL;

@@ -64,6 +64,8 @@ sources = files('bnxt_cpr.c',
 	'tf_ulp/ulp_port_db.c',
 	'tf_ulp/ulp_def_rules.c',
 	'tf_ulp/ulp_fc_mgr.c',
+	'tf_ulp/ulp_template_db_wh_plus_act.c',
+	'tf_ulp/ulp_template_db_wh_plus_class.c',
 
 	'rte_pmd_bnxt.c')
 

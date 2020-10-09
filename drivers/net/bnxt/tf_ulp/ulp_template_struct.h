@@ -140,6 +140,18 @@ struct bnxt_ulp_act_match_info {
 extern	uint16_t ulp_act_sig_tbl[];
 extern struct bnxt_ulp_act_match_info ulp_act_match_list[];
 
+/* Device Specific Tables for mapper */
+struct ulp_template_device_tbls {
+	struct bnxt_ulp_mapper_tbl_list_info *class_tmpl_list;
+	struct bnxt_ulp_mapper_tbl_info *class_tbl_list;
+	struct bnxt_ulp_mapper_class_key_field_info *class_key_field_list;
+	struct bnxt_ulp_mapper_result_field_info *class_result_field_list;
+	struct bnxt_ulp_mapper_ident_info *ident_list;
+	struct bnxt_ulp_mapper_tbl_list_info *act_tmpl_list;
+	struct bnxt_ulp_mapper_tbl_info *act_tbl_list;
+	struct bnxt_ulp_mapper_result_field_info *act_result_field_list;
+};
+
 /* Device specific parameters */
 struct bnxt_ulp_device_params {
 	uint8_t				description[16];
@@ -157,6 +169,7 @@ struct bnxt_ulp_device_params {
 	uint64_t			packet_count_mask;
 	uint32_t			byte_count_shift;
 	uint32_t			packet_count_shift;
+	const struct ulp_template_device_tbls *dev_tbls;
 };
 
 /* Flow Mapper */
@@ -250,51 +263,6 @@ struct bnxt_ulp_cache_tbl_params {
  * This table maintains the device specific parameters.
  */
 extern struct bnxt_ulp_device_params ulp_device_params[];
-
-/*
- * The ulp_class_tmpl_list and ulp_act_tmpl_list are indexed by the dev_id
- * and template id (either class or action) returned by the matcher.
- * The result provides the start index and number of entries in the connected
- * ulp_class_tbl_list/ulp_act_tbl_list.
- */
-extern struct bnxt_ulp_mapper_tbl_list_info	ulp_class_tmpl_list[];
-extern struct bnxt_ulp_mapper_tbl_list_info	ulp_act_tmpl_list[];
-
-/*
- * The ulp_class_tbl_list and ulp_act_tbl_list are indexed based on the results
- * of the template lists.  Each entry describes the high level details of the
- * table entry to include the start index and number of instructions in the
- * field lists.
- */
-extern struct bnxt_ulp_mapper_tbl_info	ulp_class_tbl_list[];
-extern struct bnxt_ulp_mapper_tbl_info	ulp_act_tbl_list[];
-
-/*
- * The ulp_class_result_field_list provides the instructions for creating result
- * records such as tcam/em results.
- */
-extern struct bnxt_ulp_mapper_result_field_info	ulp_class_result_field_list[];
-
-/*
- * The ulp_data_field_list provides the instructions for creating an action
- * record.  It uses the same structure as the result list, but is only used for
- * actions.
- */
-extern
-struct bnxt_ulp_mapper_result_field_info ulp_act_result_field_list[];
-
-/*
- * The ulp_act_prop_map_table provides the mapping to index and size of action
- * tcam and em tables.
- */
-extern
-struct bnxt_ulp_mapper_class_key_field_info	ulp_class_key_field_list[];
-
-/*
- * The ulp_ident_list provides the instructions for creating identifiers such
- * as profile ids.
- */
-extern struct bnxt_ulp_mapper_ident_info	ulp_ident_list[];
 
 /*
  * The ulp_act_prop_map_table provides the mapping to index and size of action

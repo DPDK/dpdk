@@ -48,6 +48,110 @@ ulp_ctx_deinit_allowed(struct bnxt_ulp_context *ulp_ctx)
 	return false;
 }
 
+static int32_t
+bnxt_ulp_devid_get(struct bnxt *bp,
+		   enum bnxt_ulp_device_id  *ulp_dev_id)
+{
+	if (BNXT_STINGRAY(bp) || BNXT_CHIP_THOR(bp))
+		return -EINVAL;
+	/* Assuming Whitney */
+	*ulp_dev_id = BNXT_ULP_DEVICE_ID_WH_PLUS;
+
+	return 0;
+}
+
+static int32_t
+bnxt_ulp_tf_session_resources_get(struct bnxt *bp,
+				  struct tf_session_resources *res)
+{
+	uint32_t dev_id;
+	int32_t rc;
+
+	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &dev_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to get device id from ulp.\n");
+		return -EINVAL;
+	}
+
+	switch (dev_id) {
+	case BNXT_ULP_DEVICE_ID_WH_PLUS:
+		/** RX **/
+		/* Identifiers */
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 422;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 6;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_WC_PROF] = 192;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 64;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_EM_PROF] = 192;
+
+		/* Table Types */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 16384;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
+
+		/* ENCAP */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 511;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 63;
+
+		/* TCAMs */
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
+			422;
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] =
+			6;
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 960;
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 88;
+
+		/* EM */
+		res->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 13168;
+
+		/* EEM */
+		res->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
+
+		/* SP */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_SP_SMAC] = 255;
+
+		/** TX **/
+		/* Identifiers */
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 292;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 148;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_WC_PROF] = 192;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 64;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_EM_PROF] = 192;
+
+		/* Table Types */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 16384;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
+
+		/* ENCAP */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_64B] = 511;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 223;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 255;
+
+		/* TCAMs */
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
+			292;
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] =
+			144;
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 960;
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 928;
+
+		/* EM */
+		res->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 15232;
+
+		/* EEM */
+		res->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
+
+		/* SP */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 488;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = 511;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /*
  * Initialize an ULP session.
  * An ULP session will contain all the resources needed to support rte flow
@@ -67,6 +171,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 	int32_t				rc = 0;
 	struct tf_open_session_parms	params;
 	struct tf_session_resources	*resources;
+	uint32_t			ulp_dev_id;
 
 	memset(&params, 0, sizeof(params));
 
@@ -79,77 +184,30 @@ ulp_ctx_session_open(struct bnxt *bp,
 	}
 
 	params.shadow_copy = true;
-	params.device_type = TF_DEVICE_TYPE_WH;
+
+	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &ulp_dev_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to get device id from ulp.\n");
+		return rc;
+	}
+
+	switch (ulp_dev_id) {
+	case BNXT_ULP_DEVICE_ID_WH_PLUS:
+		params.device_type = TF_DEVICE_TYPE_WH;
+		break;
+	default:
+		BNXT_TF_DBG(ERR, "Unable to determine device for "
+			    "opening session.\n");
+		return rc;
+	}
+
 	resources = &params.resources;
-	/** RX **/
-	/* Identifiers */
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 422;
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 6;
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_WC_PROF] = 192;
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 64;
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_EM_PROF] = 192;
-
-	/* Table Types */
-	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
-	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 16384;
-	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
-
-	/* ENCAP */
-	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 511;
-	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 63;
-
-	/* TCAMs */
-	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
-		422;
-	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] =
-		6;
-	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 960;
-	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 88;
-
-	/* EM */
-	resources->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 13168;
-
-	/* EEM */
-	resources->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
-
-	/* SP */
-	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_SP_SMAC] = 255;
-
-	/** TX **/
-	/* Identifiers */
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 292;
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 148;
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_WC_PROF] = 192;
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 64;
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_EM_PROF] = 192;
-
-	/* Table Types */
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 16384;
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
-
-	/* ENCAP */
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_64B] = 511;
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 223;
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 255;
-
-	/* TCAMs */
-	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
-		292;
-	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] =
-		144;
-	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 960;
-	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 928;
-
-	/* EM */
-	resources->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 15232;
-
-	/* EEM */
-	resources->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
-
-	/* SP */
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 488;
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = 511;
+	rc = bnxt_ulp_tf_session_resources_get(bp, resources);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to determine tf resources for "
+			    "session open.\n");
+		return rc;
+	}
 
 	rc = tf_open_session(&bp->tfp, &params);
 	if (rc) {
@@ -352,6 +410,7 @@ ulp_ctx_init(struct bnxt *bp,
 {
 	struct bnxt_ulp_data	*ulp_data;
 	int32_t			rc = 0;
+	enum bnxt_ulp_device_id devid;
 
 	/* Allocate memory to hold ulp context data. */
 	ulp_data = rte_zmalloc("bnxt_ulp_data",
@@ -367,15 +426,29 @@ ulp_ctx_init(struct bnxt *bp,
 	ulp_data->ref_cnt++;
 	ulp_data->ulp_flags |= BNXT_ULP_VF_REP_ENABLED;
 
-	/* Open the ulp session. */
-	rc = ulp_ctx_session_open(bp, session);
+	rc = bnxt_ulp_devid_get(bp, &devid);
 	if (rc) {
-		session->session_opened = 1;
-		(void)ulp_ctx_deinit(bp, session);
-		return rc;
+		BNXT_TF_DBG(ERR, "Unable to determine device for ULP init.\n");
+		goto error_deinit;
 	}
 
+	rc = bnxt_ulp_cntxt_dev_id_set(bp->ulp_ctx, devid);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to set device for ULP init.\n");
+		goto error_deinit;
+	}
+
+	/* Open the ulp session. */
+	rc = ulp_ctx_session_open(bp, session);
+	if (rc)
+		goto error_deinit;
+
 	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, &bp->tfp);
+	return rc;
+
+error_deinit:
+	session->session_opened = 1;
+	(void)ulp_ctx_deinit(bp, session);
 	return rc;
 }
 

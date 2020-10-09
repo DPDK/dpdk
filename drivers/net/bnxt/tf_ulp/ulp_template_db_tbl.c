@@ -7,6 +7,7 @@
 #include "ulp_template_db_field.h"
 #include "ulp_template_struct.h"
 #include "ulp_rte_parser.h"
+#include "ulp_template_db_tbl.h"
 
 uint32_t ulp_act_prop_map_table[] = {
 	[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN_SZ] =
@@ -311,6 +312,17 @@ struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[] = {
 	}
 };
 
+const struct ulp_template_device_tbls ulp_template_wh_plus_tbls = {
+	.class_tmpl_list          = ulp_class_wh_plus_tmpl_list,
+	.class_tbl_list           = ulp_class_wh_plus_tbl_list,
+	.class_key_field_list     = ulp_class_wh_plus_key_field_list,
+	.class_result_field_list  = ulp_class_wh_plus_result_field_list,
+	.ident_list               = ulp_wh_plus_ident_list,
+	.act_tmpl_list            = ulp_act_wh_plus_tmpl_list,
+	.act_tbl_list             = ulp_act_wh_plus_tbl_list,
+	.act_result_field_list    = ulp_act_wh_plus_result_field_list
+};
+
 struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
 	.flow_mem_type           = BNXT_ULP_FLOW_MEM_TYPE_INT,
@@ -326,7 +338,8 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.byte_count_mask         = 0x0000000fffffffff,
 	.packet_count_mask       = 0xffffffff00000000,
 	.byte_count_shift        = 0,
-	.packet_count_shift      = 36
+	.packet_count_shift      = 36,
+	.dev_tbls		 = &ulp_template_wh_plus_tbls
 	}
 };
 
@@ -585,3 +598,4 @@ uint32_t bnxt_ulp_encap_vtag_map[] = {
 uint32_t ulp_glb_template_tbl[] = {
 	BNXT_ULP_DF_TPL_LOOPBACK_ACTION_REC
 };
+
