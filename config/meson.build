@@ -163,11 +163,9 @@ if libbsd.found()
 endif
 
 # check for pcap
-pcap_dep = dependency('pcap', required: false)
-if pcap_dep.found()
-	# pcap got a pkg-config file only in 1.9.0 and before that meson uses
-	# an internal pcap-config finder, which is not compatible with
-	# cross-compilation, so try to fallback to find_library
+pcap_dep = dependency('libpcap', required: false, method: 'pkg-config')
+if not pcap_dep.found()
+	# pcap got a pkg-config file only in 1.9.0
 	pcap_dep = cc.find_library('pcap', required: false)
 endif
 if pcap_dep.found() and cc.has_header('pcap.h', dependencies: pcap_dep)
