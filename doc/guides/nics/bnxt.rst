@@ -734,6 +734,35 @@ Note that currently hot-plugging of representor ports is not supported so all
 the required representors must be specified on the creation of the PF or the
 trusted VF.
 
+Representors on Stingray SoC
+----------------------------
+A representor created on X86 host typically represents a VF running in the same
+X86 domain. But in case of the SoC, the application can run on the CPU complex
+inside the SoC. The representor can be created on the SoC to represent a PF or a
+VF running in the x86 domain. Since the representator creation requires passing
+the bus:device.function of the PCI device endpoint which is not necessarily in the
+same host domain, additional dev args have been added to the PMD.
+
+* rep_is_vf - false to indicate VF representor
+* rep_is_pf - true to indicate PF representor
+* rep_based_pf - Physical index of the PF
+* rep_q_r2f - Logical COS Queue index for the rep to endpoint direction
+* rep_q_f2r - Logical COS Queue index for the endpoint to rep direction
+* rep_fc_r2f - Flow control for the representor to endpoint direction
+* rep_fc_f2r - Flow control for the endpoint to representor direction
+
+The sample command line with the new ``devargs`` looks like this::
+
+  -w 0000:06:02.0,host-based-truflow=1,representor=[1],rep-based-pf=8,\
+	rep-is-pf=1,rep-q-r2f=1,rep-fc-r2f=0,rep-q-f2r=1,rep-fc-f2r=1
+
+.. code-block:: console
+
+	testpmd -l1-4 -n2 -w 0008:01:00.0,host-based-truflow=1,\
+	representor=[0], rep-based-pf=8,rep-is-pf=0,rep-q-r2f=1,rep-fc-r2f=1,\
+	rep-q-f2r=0,rep-fc-f2r=1 --log-level="pmd.*",8 -- -i --rxq=3 --txq=3
+
+
 Application Support
 -------------------
 

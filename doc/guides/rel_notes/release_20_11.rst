@@ -101,6 +101,7 @@ New Features
   * Added support for 200G PAM4 link speed.
   * Added support for RSS hash level selection.
   * Updated HWRM structures to 1.10.1.70 version.
+  * Added TRUFLOW support for Stingray devices.
 
 * **Updated Cisco enic driver.**
 

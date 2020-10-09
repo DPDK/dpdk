@@ -52,11 +52,16 @@ static int32_t
 bnxt_ulp_devid_get(struct bnxt *bp,
 		   enum bnxt_ulp_device_id  *ulp_dev_id)
 {
-	if (BNXT_STINGRAY(bp) || BNXT_CHIP_THOR(bp))
+	if (BNXT_CHIP_THOR(bp))
 		return -EINVAL;
 	/* Assuming Whitney */
 	*ulp_dev_id = BNXT_ULP_DEVICE_ID_WH_PLUS;
 
+	if (BNXT_STINGRAY(bp))
+		*ulp_dev_id = BNXT_ULP_DEVICE_ID_STINGRAY;
+	else
+		/* Assuming Whitney */
+		*ulp_dev_id = BNXT_ULP_DEVICE_ID_WH_PLUS;
 	return 0;
 }
 
@@ -145,6 +150,77 @@ bnxt_ulp_tf_session_resources_get(struct bnxt *bp,
 		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 488;
 		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = 511;
 		break;
+	case BNXT_ULP_DEVICE_ID_STINGRAY:
+		/** RX **/
+		/* Identifiers */
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 100;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 6;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_WC_PROF] = 10;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 10;
+		res->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_EM_PROF] = 10;
+
+		/* Table Types */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 16384;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
+
+		/* ENCAP */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 511;
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 63;
+
+		/* TCAMs */
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
+			100;
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] =
+			6;
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 100;
+		res->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 0;
+
+		/* EM */
+		res->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 13168;
+
+		/* EEM */
+		res->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
+
+		/* SP */
+		res->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_SP_SMAC] = 255;
+
+		/** TX **/
+		/* Identifiers */
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 100;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 100;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_WC_PROF] = 10;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 10;
+		res->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_EM_PROF] = 10;
+
+		/* Table Types */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 16384;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
+
+		/* ENCAP */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_64B] = 511;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 223;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 255;
+
+		/* TCAMs */
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
+			100;
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] =
+			100;
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 100;
+		res->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 0;
+
+		/* EM */
+		res->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 15232;
+
+		/* EEM */
+		res->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
+
+		/* SP */
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 488;
+		res->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = 511;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -194,6 +270,9 @@ ulp_ctx_session_open(struct bnxt *bp,
 	switch (ulp_dev_id) {
 	case BNXT_ULP_DEVICE_ID_WH_PLUS:
 		params.device_type = TF_DEVICE_TYPE_WH;
+		break;
+	case BNXT_ULP_DEVICE_ID_STINGRAY:
+		params.device_type = TF_DEVICE_TYPE_SR;
 		break;
 	default:
 		BNXT_TF_DBG(ERR, "Unable to determine device for "
