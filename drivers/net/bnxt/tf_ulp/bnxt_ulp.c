@@ -159,7 +159,9 @@ ulp_ctx_session_open(struct bnxt *bp,
 	}
 	if (!session->session_opened) {
 		session->session_opened = 1;
-		session->g_tfp = &bp->tfp;
+		session->g_tfp = rte_zmalloc("bnxt_ulp_session_tfp",
+					     sizeof(struct tf), 0);
+		session->g_tfp->session = bp->tfp.session;
 	}
 	return rc;
 }
@@ -176,6 +178,7 @@ ulp_ctx_session_close(struct bnxt *bp,
 	if (session->session_opened)
 		tf_close_session(&bp->tfp);
 	session->session_opened = 0;
+	rte_free(session->g_tfp);
 	session->g_tfp = NULL;
 }
 
