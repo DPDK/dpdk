@@ -938,7 +938,7 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 		req.async_event_fwd[1] |=
 			rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_DBG_NOTIFICATION);
 
-	if (BNXT_VF_IS_TRUSTED(bp))
+	if (BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))
 		req.async_event_fwd[1] |=
 		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE);
 

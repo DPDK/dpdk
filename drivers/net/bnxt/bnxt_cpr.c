@@ -50,7 +50,7 @@ static void
 bnxt_process_default_vnic_change(struct bnxt *bp,
 				 struct hwrm_async_event_cmpl *async_cmp)
 {
-	uint16_t fid, vnic_state, parent_id, vf_fid, vf_id;
+	uint16_t vnic_state, vf_fid, vf_id;
 	struct bnxt_representor *vf_rep_bp;
 	struct rte_eth_dev *eth_dev;
 	bool vfr_found = false;
@@ -67,10 +67,7 @@ bnxt_process_default_vnic_change(struct bnxt *bp,
 	if (vnic_state != BNXT_DEFAULT_VNIC_ALLOC)
 		return;
 
-	parent_id = (event_data & BNXT_DEFAULT_VNIC_CHANGE_PF_ID_MASK) >>
-			BNXT_DEFAULT_VNIC_CHANGE_PF_ID_SFT;
-	fid = BNXT_PF(bp) ? bp->fw_fid : bp->parent->fid;
-	if (parent_id != fid || !bp->rep_info)
+	if (!bp->rep_info)
 		return;
 
 	vf_fid = (event_data & BNXT_DEFAULT_VNIC_CHANGE_VF_ID_MASK) >>
