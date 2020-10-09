@@ -14,4 +14,8 @@ int cfg_load_pipe(struct rte_cfgfile *cfg, struct rte_sched_pipe_params *pipe);
 
 int cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subport);
 
+int cfg_load_subport_profile(struct rte_cfgfile *cfg,
+			     struct rte_sched_subport_profile_params
+			     *subport_profile);
+
 #endif

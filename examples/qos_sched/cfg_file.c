@@ -143,6 +143,93 @@ cfg_load_pipe(struct rte_cfgfile *cfg, struct rte_sched_pipe_params *pipe_params
 }
 
 int
+cfg_load_subport_profile(struct rte_cfgfile *cfg,
+	struct rte_sched_subport_profile_params *subport_profile)
+{
+	int i;
+	const char *entry;
+	int profiles;
+
+	if (!cfg || !subport_profile)
+		return -1;
+
+	profiles = rte_cfgfile_num_sections(cfg, "subport profile",
+					   sizeof("subport profile") - 1);
+	subport_params[0].n_pipe_profiles = profiles;
+
+	for (i = 0; i < profiles; i++) {
+		char sec_name[32];
+		snprintf(sec_name, sizeof(sec_name), "subport profile %d", i);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tb rate");
+		if (entry)
+			subport_profile[i].tb_rate = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tb size");
+		if (entry)
+			subport_profile[i].tb_size = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc period");
+		if (entry)
+			subport_profile[i].tc_period = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 0 rate");
+		if (entry)
+			subport_profile[i].tc_rate[0] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 1 rate");
+		if (entry)
+			subport_profile[i].tc_rate[1] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 2 rate");
+		if (entry)
+			subport_profile[i].tc_rate[2] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 3 rate");
+		if (entry)
+			subport_profile[i].tc_rate[3] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 4 rate");
+		if (entry)
+			subport_profile[i].tc_rate[4] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 5 rate");
+		if (entry)
+			subport_profile[i].tc_rate[5] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 6 rate");
+		if (entry)
+			subport_profile[i].tc_rate[6] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 7 rate");
+		if (entry)
+			subport_profile[i].tc_rate[7] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 8 rate");
+		if (entry)
+			subport_profile[i].tc_rate[8] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 9 rate");
+		if (entry)
+			subport_profile[i].tc_rate[9] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 10 rate");
+		if (entry)
+			subport_profile[i].tc_rate[10] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 11 rate");
+		if (entry)
+			subport_profile[i].tc_rate[11] = (uint64_t)atoi(entry);
+
+		entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 12 rate");
+		if (entry)
+			subport_profile[i].tc_rate[12] = (uint64_t)atoi(entry);
+	}
+
+	return 0;
+}
+
+int
 cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subport_params)
 {
 	const char *entry;
@@ -266,70 +353,6 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 					n_active_queues++;
 				}
 			}
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tb rate");
-			if (entry)
-				subport_params[i].tb_rate = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tb size");
-			if (entry)
-				subport_params[i].tb_size = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc period");
-			if (entry)
-				subport_params[i].tc_period = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 0 rate");
-			if (entry)
-				subport_params[i].tc_rate[0] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 1 rate");
-			if (entry)
-				subport_params[i].tc_rate[1] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 2 rate");
-			if (entry)
-				subport_params[i].tc_rate[2] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 3 rate");
-			if (entry)
-				subport_params[i].tc_rate[3] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 4 rate");
-			if (entry)
-				subport_params[i].tc_rate[4] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 5 rate");
-			if (entry)
-				subport_params[i].tc_rate[5] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 6 rate");
-			if (entry)
-				subport_params[i].tc_rate[6] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 7 rate");
-			if (entry)
-				subport_params[i].tc_rate[7] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 8 rate");
-			if (entry)
-				subport_params[i].tc_rate[8] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 9 rate");
-			if (entry)
-				subport_params[i].tc_rate[9] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 10 rate");
-			if (entry)
-				subport_params[i].tc_rate[10] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 11 rate");
-			if (entry)
-				subport_params[i].tc_rate[11] = (uint64_t)atoi(entry);
-
-			entry = rte_cfgfile_get_entry(cfg, sec_name, "tc 12 rate");
-			if (entry)
-				subport_params[i].tc_rate[12] = (uint64_t)atoi(entry);
 
 			int n_entries = rte_cfgfile_section_num_entries(cfg, sec_name);
 			struct rte_cfgfile_entry entries[n_entries];
