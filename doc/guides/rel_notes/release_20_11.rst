@@ -62,6 +62,10 @@ New Features
   The functions are provided as a generic stubs and
   x86 specific implementation.
 
+* **Updated CRC modules of the net library.**
+
+  * Added runtime selection of the optimal architecture-specific CRC path.
+
 * **Added the FEC API, for a generic FEC query and config.**
 
   Added the FEC API which provides functions for query FEC capabilities and

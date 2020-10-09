@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017 Intel Corporation
+ * Copyright(c) 2017-2020 Intel Corporation
  */
 
 #include <stddef.h>
@@ -10,17 +10,7 @@
 #include <rte_common.h>
 #include <rte_net_crc.h>
 
-#if defined(RTE_ARCH_X86_64) && defined(__PCLMUL__)
-#define X86_64_SSE42_PCLMULQDQ     1
-#elif defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_CRYPTO)
-#define ARM64_NEON_PMULL           1
-#endif
-
-#ifdef X86_64_SSE42_PCLMULQDQ
-#include <net_crc_sse.h>
-#elif defined ARM64_NEON_PMULL
-#include <net_crc_neon.h>
-#endif
+#include "net_crc.h"
 
 /** CRC polynomials */
 #define CRC32_ETH_POLYNOMIAL 0x04c11db7UL
@@ -41,24 +31,26 @@ rte_crc32_eth_handler(const uint8_t *data, uint32_t data_len);
 typedef uint32_t
 (*rte_net_crc_handler)(const uint8_t *data, uint32_t data_len);
 
-static rte_net_crc_handler *handlers;
+static const rte_net_crc_handler *handlers;
 
-static rte_net_crc_handler handlers_scalar[] = {
+static const rte_net_crc_handler handlers_scalar[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_handler,
 };
-
-#ifdef X86_64_SSE42_PCLMULQDQ
-static rte_net_crc_handler handlers_sse42[] = {
+#ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
+static const rte_net_crc_handler handlers_sse42[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_sse42_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_sse42_handler,
 };
-#elif defined ARM64_NEON_PMULL
-static rte_net_crc_handler handlers_neon[] = {
+#endif
+#ifdef CC_ARM64_NEON_PMULL_SUPPORT
+static const rte_net_crc_handler handlers_neon[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_neon_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_neon_handler,
 };
 #endif
+
+/* Scalar handling */
 
 /**
  * Reflect the bits about the middle
@@ -142,29 +134,82 @@ rte_crc32_eth_handler(const uint8_t *data, uint32_t data_len)
 		crc32_eth_lut);
 }
 
+/* SSE4.2/PCLMULQDQ handling */
+
+#define SSE42_PCLMULQDQ_CPU_SUPPORTED \
+	rte_cpu_get_flag_enabled(RTE_CPUFLAG_PCLMULQDQ)
+
+static const rte_net_crc_handler *
+sse42_pclmulqdq_get_handlers(void)
+{
+#ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
+	if (SSE42_PCLMULQDQ_CPU_SUPPORTED)
+		return handlers_sse42;
+#endif
+	return NULL;
+}
+
+static uint8_t
+sse42_pclmulqdq_init(void)
+{
+#ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
+	if (SSE42_PCLMULQDQ_CPU_SUPPORTED) {
+		rte_net_crc_sse42_init();
+		return 1;
+	}
+#endif
+	return 0;
+}
+
+/* NEON/PMULL handling */
+
+#define NEON_PMULL_CPU_SUPPORTED \
+	rte_cpu_get_flag_enabled(RTE_CPUFLAG_PMULL)
+
+static const rte_net_crc_handler *
+neon_pmull_get_handlers(void)
+{
+#ifdef CC_ARM64_NEON_PMULL_SUPPORT
+	if (NEON_PMULL_CPU_SUPPORTED)
+		return handlers_neon;
+#endif
+	return NULL;
+}
+
+static uint8_t
+neon_pmull_init(void)
+{
+#ifdef CC_ARM64_NEON_PMULL_SUPPORT
+	if (NEON_PMULL_CPU_SUPPORTED) {
+		rte_net_crc_neon_init();
+		return 1;
+	}
+#endif
+	return 0;
+}
+
+/* Public API */
+
 void
 rte_net_crc_set_alg(enum rte_net_crc_alg alg)
 {
+	handlers = NULL;
+
 	switch (alg) {
-#ifdef X86_64_SSE42_PCLMULQDQ
 	case RTE_NET_CRC_SSE42:
-		handlers = handlers_sse42;
-		break;
-#elif defined ARM64_NEON_PMULL
-		/* fall-through */
+		handlers = sse42_pclmulqdq_get_handlers();
+		break; /* for x86, always break here */
 	case RTE_NET_CRC_NEON:
-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_PMULL)) {
-			handlers = handlers_neon;
-			break;
-		}
-#endif
+		handlers = neon_pmull_get_handlers();
 		/* fall-through */
 	case RTE_NET_CRC_SCALAR:
 		/* fall-through */
 	default:
-		handlers = handlers_scalar;
 		break;
 	}
+
+	if (handlers == NULL)
+		handlers = handlers_scalar;
 }
 
 uint32_t
@@ -188,15 +233,10 @@ RTE_INIT(rte_net_crc_init)
 
 	rte_net_crc_scalar_init();
 
-#ifdef X86_64_SSE42_PCLMULQDQ
-	alg = RTE_NET_CRC_SSE42;
-	rte_net_crc_sse42_init();
-#elif defined ARM64_NEON_PMULL
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_PMULL)) {
+	if (sse42_pclmulqdq_init())
+		alg = RTE_NET_CRC_SSE42;
+	if (neon_pmull_init())
 		alg = RTE_NET_CRC_NEON;
-		rte_net_crc_neon_init();
-	}
-#endif
 
 	rte_net_crc_set_alg(alg);
 }

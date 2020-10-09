@@ -1,18 +1,16 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017 Intel Corporation
+ * Copyright(c) 2017-2020 Intel Corporation
  */
 
-#ifndef _RTE_NET_CRC_SSE_H_
-#define _RTE_NET_CRC_SSE_H_
+#include <string.h>
 
+#include <rte_common.h>
 #include <rte_branch_prediction.h>
+#include <rte_cpuflags.h>
+
+#include "net_crc.h"
 
 #include <x86intrin.h>
-#include <cpuid.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** PCLMULQDQ CRC computation context structure */
 struct crc_pclmulqdq_ctx {
@@ -259,8 +257,7 @@ barret_reduction:
 	return n;
 }
 
-
-static inline void
+void
 rte_net_crc_sse42_init(void)
 {
 	uint64_t k1, k2, k5, k6;
@@ -303,12 +300,10 @@ rte_net_crc_sse42_init(void)
 	 * use other data types such as float, double, etc.
 	 */
 	_mm_empty();
-
 }
 
-static inline uint32_t
-rte_crc16_ccitt_sse42_handler(const uint8_t *data,
-	uint32_t data_len)
+uint32_t
+rte_crc16_ccitt_sse42_handler(const uint8_t *data, uint32_t data_len)
 {
 	/** return 16-bit CRC value */
 	return (uint16_t)~crc32_eth_calc_pclmulqdq(data,
@@ -317,18 +312,11 @@ rte_crc16_ccitt_sse42_handler(const uint8_t *data,
 		&crc16_ccitt_pclmulqdq);
 }
 
-static inline uint32_t
-rte_crc32_eth_sse42_handler(const uint8_t *data,
-	uint32_t data_len)
+uint32_t
+rte_crc32_eth_sse42_handler(const uint8_t *data, uint32_t data_len)
 {
 	return ~crc32_eth_calc_pclmulqdq(data,
 		data_len,
 		0xffffffffUL,
 		&crc32_eth_pclmulqdq);
 }
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _RTE_NET_CRC_SSE_H_ */
