@@ -239,7 +239,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 		goto reject;
 	}
 
-	if (bnxt_rcv_msg_from_vf(bp, vf_id, fwd_cmd) == true) {
+	if (bnxt_rcv_msg_from_vf(bp, vf_id, fwd_cmd)) {
 		/*
 		 * In older firmware versions, the MAC had to be all zeros for
 		 * the VF to set it's MAC via hwrm_func_vf_cfg. Set to all
@@ -254,6 +254,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 				(const uint8_t *)"\x00\x00\x00\x00\x00");
 			}
 		}
+
 		if (fwd_cmd->req_type == HWRM_CFA_L2_SET_RX_MASK) {
 			struct hwrm_cfa_l2_set_rx_mask_input *srm =
 							(void *)fwd_cmd;
@@ -265,6 +266,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 			    HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN |
 			    HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ANYVLAN_NONVLAN);
 		}
+
 		/* Forward */
 		rc = bnxt_hwrm_exec_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
 		if (rc) {
@@ -306,7 +308,7 @@ int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
 		bnxt_handle_async_event(bp, cmp);
 		evt = 1;
 		break;
-	case CMPL_BASE_TYPE_HWRM_FWD_RESP:
+	case CMPL_BASE_TYPE_HWRM_FWD_REQ:
 		/* Handle HWRM forwarded responses */
 		bnxt_handle_fwd_req(bp, cmp);
 		evt = 1;

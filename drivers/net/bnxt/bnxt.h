@@ -167,6 +167,9 @@
 #define	BNXT_DEFAULT_VNIC_CHANGE_VF_ID_SFT		\
 	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_VF_ID_SFT
 
+#define BNXT_HWRM_CMD_TO_FORWARD(cmd)	\
+		(bp->pf->vf_req_fwd[(cmd) / 32] |= (1 << ((cmd) % 32)))
+
 struct bnxt_led_info {
 	uint8_t	     num_leds;
 	uint8_t      led_id;
@@ -664,9 +667,10 @@ struct bnxt {
 #define BNXT_FW_CAP_IF_CHANGE		BIT(1)
 #define BNXT_FW_CAP_ERROR_RECOVERY	BIT(2)
 #define BNXT_FW_CAP_ERR_RECOVER_RELOAD	BIT(3)
+#define BNXT_FW_CAP_HCOMM_FW_STATUS	BIT(4)
 #define BNXT_FW_CAP_ADV_FLOW_MGMT	BIT(5)
 #define BNXT_FW_CAP_ADV_FLOW_COUNTERS	BIT(6)
-#define BNXT_FW_CAP_HCOMM_FW_STATUS	BIT(7)
+#define BNXT_FW_CAP_LINK_ADMIN		BIT(7)
 
 	pthread_mutex_t         flow_lock;
 

@@ -765,7 +765,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
 	bp->max_rx_em_flows = rte_le_to_cpu_16(resp->max_rx_em_flows);
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-	if (!BNXT_CHIP_THOR(bp))
+	if (!BNXT_CHIP_THOR(bp) && !bp->pdev->max_vfs)
 		bp->max_l2_ctx += bp->max_rx_em_flows;
 	/* TODO: For now, do not support VMDq/RFS on VFs. */
 	if (BNXT_PF(bp)) {
@@ -803,6 +803,9 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_HOT_RESET_CAPABLE)
 		bp->fw_cap |= BNXT_FW_CAP_HOT_RESET;
 
+	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_LINK_ADMIN_STATUS_SUPPORTED)
+		bp->fw_cap |= BNXT_FW_CAP_LINK_ADMIN;
+
 	HWRM_UNLOCK();
 
 	return rc;
@@ -818,15 +821,14 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		if (rc)
 			return rc;
 
+		/* On older FW,
+		 * bnxt_hwrm_func_resc_qcaps can fail and cause init failure.
+		 * But the error can be ignored. Return success.
+		 */
 		rc = bnxt_hwrm_func_resc_qcaps(bp);
 		if (!rc)
 			bp->flags |= BNXT_FLAG_NEW_RM;
 	}
-
-	/* On older FW,
-	 * bnxt_hwrm_func_resc_qcaps can fail and cause init failure.
-	 * But the error can be ignored. Return success.
-	 */
 
 	return 0;
 }
@@ -916,14 +918,6 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 		memcpy(req.vf_req_fwd, bp->pf->vf_req_fwd,
 		       RTE_MIN(sizeof(req.vf_req_fwd),
 			       sizeof(bp->pf->vf_req_fwd)));
-
-		/*
-		 * PF can sniff HWRM API issued by VF. This can be set up by
-		 * linux driver and inherited by the DPDK PF driver. Clear
-		 * this HWRM sniffer list in FW because DPDK PF driver does
-		 * not support this.
-		 */
-		flags |= HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_FWD_NONE_MODE;
 	}
 
 	req.flags = rte_cpu_to_le_32(flags);
@@ -1052,21 +1046,19 @@ int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT_SILENT();
 
-	if (BNXT_VF(bp)) {
-		bp->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
-		bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
-		bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
-		bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
-		bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
-		/* func_resource_qcaps does not return max_rx_em_flows.
-		 * So use the value provided by func_qcaps.
-		 */
-		bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-		if (!BNXT_CHIP_THOR(bp))
-			bp->max_l2_ctx += bp->max_rx_em_flows;
-		bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
-		bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
-	}
+	bp->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
+	bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
+	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
+	bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
+	bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
+	/* func_resource_qcaps does not return max_rx_em_flows.
+	 * So use the value provided by func_qcaps.
+	 */
+	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
+	if (!BNXT_CHIP_THOR(bp) && !bp->pdev->max_vfs)
+		bp->max_l2_ctx += bp->max_rx_em_flows;
+	bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
+	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 	bp->max_nq_rings = rte_le_to_cpu_16(resp->max_msix);
 	bp->vf_resv_strategy = rte_le_to_cpu_16(resp->vf_reservation_strategy);
 	if (bp->vf_resv_strategy >
@@ -3300,33 +3292,8 @@ int bnxt_hwrm_port_mac_qcfg(struct bnxt *bp)
 	return 0;
 }
 
-static void copy_func_cfg_to_qcaps(struct hwrm_func_cfg_input *fcfg,
-				   struct hwrm_func_qcaps_output *qcaps)
-{
-	qcaps->max_rsscos_ctx = fcfg->num_rsscos_ctxs;
-	memcpy(qcaps->mac_address, fcfg->dflt_mac_addr,
-	       sizeof(qcaps->mac_address));
-	qcaps->max_l2_ctxs = fcfg->num_l2_ctxs;
-	qcaps->max_rx_rings = fcfg->num_rx_rings;
-	qcaps->max_tx_rings = fcfg->num_tx_rings;
-	qcaps->max_cmpl_rings = fcfg->num_cmpl_rings;
-	qcaps->max_stat_ctx = fcfg->num_stat_ctxs;
-	qcaps->max_vfs = 0;
-	qcaps->first_vf_id = 0;
-	qcaps->max_vnics = fcfg->num_vnics;
-	qcaps->max_decap_records = 0;
-	qcaps->max_encap_records = 0;
-	qcaps->max_tx_wm_flows = 0;
-	qcaps->max_tx_em_flows = 0;
-	qcaps->max_rx_wm_flows = 0;
-	qcaps->max_rx_em_flows = 0;
-	qcaps->max_flow_id = 0;
-	qcaps->max_mcast_filters = fcfg->num_mcast_filters;
-	qcaps->max_sp_tx_rings = 0;
-	qcaps->max_hw_ring_grps = fcfg->num_hw_ring_grps;
-}
-
-static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings)
+static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp,
+				 struct bnxt_pf_resource_info *pf_resc)
 {
 	struct hwrm_func_cfg_input req = {0};
 	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
@@ -3345,7 +3312,8 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings)
 
 	if (BNXT_HAS_RING_GRPS(bp)) {
 		enables |= HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS;
-		req.num_hw_ring_grps = rte_cpu_to_le_16(bp->max_ring_grps);
+		req.num_hw_ring_grps =
+			rte_cpu_to_le_16(pf_resc->num_hw_ring_grps);
 	} else if (BNXT_HAS_NQ(bp)) {
 		enables |= HWRM_FUNC_CFG_INPUT_ENABLES_NUM_MSIX;
 		req.num_msix = rte_cpu_to_le_16(bp->max_nq_rings);
@@ -3354,12 +3322,12 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings)
 	req.flags = rte_cpu_to_le_32(bp->pf->func_cfg_flags);
 	req.mtu = rte_cpu_to_le_16(BNXT_MAX_MTU);
 	req.mru = rte_cpu_to_le_16(BNXT_VNIC_MRU(bp->eth_dev->data->mtu));
-	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx);
-	req.num_stat_ctxs = rte_cpu_to_le_16(bp->max_stat_ctx);
-	req.num_cmpl_rings = rte_cpu_to_le_16(bp->max_cp_rings);
-	req.num_tx_rings = rte_cpu_to_le_16(tx_rings);
-	req.num_rx_rings = rte_cpu_to_le_16(bp->max_rx_rings);
-	req.num_l2_ctxs = rte_cpu_to_le_16(bp->max_l2_ctx);
+	req.num_rsscos_ctxs = rte_cpu_to_le_16(pf_resc->num_rsscos_ctxs);
+	req.num_stat_ctxs = rte_cpu_to_le_16(pf_resc->num_stat_ctxs);
+	req.num_cmpl_rings = rte_cpu_to_le_16(pf_resc->num_cp_rings);
+	req.num_tx_rings = rte_cpu_to_le_16(pf_resc->num_tx_rings);
+	req.num_rx_rings = rte_cpu_to_le_16(pf_resc->num_rx_rings);
+	req.num_l2_ctxs = rte_cpu_to_le_16(pf_resc->num_l2_ctxs);
 	req.num_vnics = rte_cpu_to_le_16(bp->max_vnics);
 	req.fid = rte_cpu_to_le_16(0xffff);
 	req.enables = rte_cpu_to_le_32(enables);
@@ -3374,9 +3342,43 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings)
 	return rc;
 }
 
-static void populate_vf_func_cfg_req(struct bnxt *bp,
-				     struct hwrm_func_cfg_input *req,
-				     int num_vfs)
+/* min values are the guaranteed resources and max values are subject
+ * to availability. The strategy for now is to keep both min & max
+ * values the same.
+ */
+static void
+bnxt_fill_vf_func_cfg_req_new(struct bnxt *bp,
+			      struct hwrm_func_vf_resource_cfg_input *req,
+			      int num_vfs)
+{
+	req->max_rsscos_ctx = rte_cpu_to_le_16(bp->max_rsscos_ctx /
+					       (num_vfs + 1));
+	req->min_rsscos_ctx = req->max_rsscos_ctx;
+	req->max_stat_ctx = rte_cpu_to_le_16(bp->max_stat_ctx / (num_vfs + 1));
+	req->min_stat_ctx = req->max_stat_ctx;
+	req->max_cmpl_rings = rte_cpu_to_le_16(bp->max_cp_rings /
+					       (num_vfs + 1));
+	req->min_cmpl_rings = req->max_cmpl_rings;
+	req->max_tx_rings = rte_cpu_to_le_16(bp->max_tx_rings / (num_vfs + 1));
+	req->min_tx_rings = req->max_tx_rings;
+	req->max_rx_rings = rte_cpu_to_le_16(bp->max_rx_rings / (num_vfs + 1));
+	req->min_rx_rings = req->max_rx_rings;
+	req->max_l2_ctxs = rte_cpu_to_le_16(bp->max_l2_ctx / (num_vfs + 1));
+	req->min_l2_ctxs = req->max_l2_ctxs;
+	/* TODO: For now, do not support VMDq/RFS on VFs. */
+	req->max_vnics = rte_cpu_to_le_16(1);
+	req->min_vnics = req->max_vnics;
+	req->max_hw_ring_grps = rte_cpu_to_le_16(bp->max_ring_grps /
+						 (num_vfs + 1));
+	req->min_hw_ring_grps = req->max_hw_ring_grps;
+	req->flags =
+	 rte_cpu_to_le_16(HWRM_FUNC_VF_RESOURCE_CFG_INPUT_FLAGS_MIN_GUARANTEED);
+}
+
+static void
+bnxt_fill_vf_func_cfg_req_old(struct bnxt *bp,
+			      struct hwrm_func_cfg_input *req,
+			      int num_vfs)
 {
 	req->enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_MTU |
 			HWRM_FUNC_CFG_INPUT_ENABLES_MRU |
@@ -3407,60 +3409,29 @@ static void populate_vf_func_cfg_req(struct bnxt *bp,
 						 (num_vfs + 1));
 }
 
-static void add_random_mac_if_needed(struct bnxt *bp,
-				     struct hwrm_func_cfg_input *cfg_req,
+/* Update the port wide resource values based on how many resources
+ * got allocated to the VF.
+ */
+static int bnxt_update_max_resources(struct bnxt *bp,
 				     int vf)
 {
-	struct rte_ether_addr mac;
-
-	if (bnxt_hwrm_func_qcfg_vf_default_mac(bp, vf, &mac))
-		return;
-
-	if (memcmp(mac.addr_bytes, "\x00\x00\x00\x00\x00", 6) == 0) {
-		cfg_req->enables |=
-		rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
-		rte_eth_random_addr(cfg_req->dflt_mac_addr);
-		bp->pf->vf_info[vf].random_mac = true;
-	} else {
-		memcpy(cfg_req->dflt_mac_addr, mac.addr_bytes,
-			RTE_ETHER_ADDR_LEN);
-	}
-}
-
-static int reserve_resources_from_vf(struct bnxt *bp,
-				     struct hwrm_func_cfg_input *cfg_req,
-				     int vf)
-{
-	struct hwrm_func_qcaps_input req = {0};
-	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_qcfg_input req = {0};
+	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
 	int rc;
 
 	/* Get the actual allocated values now */
-	HWRM_PREP(&req, HWRM_FUNC_QCAPS, BNXT_USE_CHIMP_MB);
+	HWRM_PREP(&req, HWRM_FUNC_QCFG, BNXT_USE_CHIMP_MB);
 	req.fid = rte_cpu_to_le_16(bp->pf->vf_info[vf].fid);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
 
-	if (rc) {
-		PMD_DRV_LOG(ERR, "hwrm_func_qcaps failed rc:%d\n", rc);
-		copy_func_cfg_to_qcaps(cfg_req, resp);
-	} else if (resp->error_code) {
-		rc = rte_le_to_cpu_16(resp->error_code);
-		PMD_DRV_LOG(ERR, "hwrm_func_qcaps error %d\n", rc);
-		copy_func_cfg_to_qcaps(cfg_req, resp);
-	}
-
-	bp->max_rsscos_ctx -= rte_le_to_cpu_16(resp->max_rsscos_ctx);
-	bp->max_stat_ctx -= rte_le_to_cpu_16(resp->max_stat_ctx);
-	bp->max_cp_rings -= rte_le_to_cpu_16(resp->max_cmpl_rings);
-	bp->max_tx_rings -= rte_le_to_cpu_16(resp->max_tx_rings);
-	bp->max_rx_rings -= rte_le_to_cpu_16(resp->max_rx_rings);
-	bp->max_l2_ctx -= rte_le_to_cpu_16(resp->max_l2_ctxs);
-	/*
-	 * TODO: While not supporting VMDq with VFs, max_vnics is always
-	 * forced to 1 in this case
-	 */
-	//bp->max_vnics -= rte_le_to_cpu_16(esp->max_vnics);
-	bp->max_ring_grps -= rte_le_to_cpu_16(resp->max_hw_ring_grps);
+	bp->max_rsscos_ctx -= rte_le_to_cpu_16(resp->alloc_rsscos_ctx);
+	bp->max_stat_ctx -= rte_le_to_cpu_16(resp->alloc_stat_ctx);
+	bp->max_cp_rings -= rte_le_to_cpu_16(resp->alloc_cmpl_rings);
+	bp->max_tx_rings -= rte_le_to_cpu_16(resp->alloc_tx_rings);
+	bp->max_rx_rings -= rte_le_to_cpu_16(resp->alloc_rx_rings);
+	bp->max_l2_ctx -= rte_le_to_cpu_16(resp->alloc_l2_ctx);
+	bp->max_ring_grps -= rte_le_to_cpu_16(resp->alloc_hw_ring_grps);
 
 	HWRM_UNLOCK();
 
@@ -3485,7 +3456,8 @@ int bnxt_hwrm_func_qcfg_current_vf_vlan(struct bnxt *bp, int vf)
 	return rc;
 }
 
-static int update_pf_resource_max(struct bnxt *bp)
+static int bnxt_query_pf_resources(struct bnxt *bp,
+				   struct bnxt_pf_resource_info *pf_resc)
 {
 	struct hwrm_func_qcfg_input req = {0};
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
@@ -3497,8 +3469,13 @@ static int update_pf_resource_max(struct bnxt *bp)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
 
-	/* Only TX ring value reflects actual allocation? TODO */
-	bp->max_tx_rings = rte_le_to_cpu_16(resp->alloc_tx_rings);
+	pf_resc->num_tx_rings = rte_le_to_cpu_16(resp->alloc_tx_rings);
+	pf_resc->num_rsscos_ctxs = rte_le_to_cpu_16(resp->alloc_rsscos_ctx);
+	pf_resc->num_stat_ctxs = rte_le_to_cpu_16(resp->alloc_stat_ctx);
+	pf_resc->num_cp_rings = rte_le_to_cpu_16(resp->alloc_cmpl_rings);
+	pf_resc->num_rx_rings = rte_le_to_cpu_16(resp->alloc_rx_rings);
+	pf_resc->num_l2_ctxs = rte_le_to_cpu_16(resp->alloc_l2_ctx);
+	pf_resc->num_hw_ring_grps = rte_le_to_cpu_32(resp->alloc_hw_ring_grps);
 	bp->pf->evb_mode = resp->evb_mode;
 
 	HWRM_UNLOCK();
@@ -3506,8 +3483,42 @@ static int update_pf_resource_max(struct bnxt *bp)
 	return rc;
 }
 
+static void
+bnxt_calculate_pf_resources(struct bnxt *bp,
+			    struct bnxt_pf_resource_info *pf_resc,
+			    int num_vfs)
+{
+	if (!num_vfs) {
+		pf_resc->num_rsscos_ctxs = bp->max_rsscos_ctx;
+		pf_resc->num_stat_ctxs = bp->max_stat_ctx;
+		pf_resc->num_cp_rings = bp->max_cp_rings;
+		pf_resc->num_tx_rings = bp->max_tx_rings;
+		pf_resc->num_rx_rings = bp->max_rx_rings;
+		pf_resc->num_l2_ctxs = bp->max_l2_ctx;
+		pf_resc->num_hw_ring_grps = bp->max_ring_grps;
+
+		return;
+	}
+
+	pf_resc->num_rsscos_ctxs = bp->max_rsscos_ctx / (num_vfs + 1) +
+				   bp->max_rsscos_ctx % (num_vfs + 1);
+	pf_resc->num_stat_ctxs = bp->max_stat_ctx / (num_vfs + 1) +
+				 bp->max_stat_ctx % (num_vfs + 1);
+	pf_resc->num_cp_rings = bp->max_cp_rings / (num_vfs + 1) +
+				bp->max_cp_rings % (num_vfs + 1);
+	pf_resc->num_tx_rings = bp->max_tx_rings / (num_vfs + 1) +
+				bp->max_tx_rings % (num_vfs + 1);
+	pf_resc->num_rx_rings = bp->max_rx_rings / (num_vfs + 1) +
+				bp->max_rx_rings % (num_vfs + 1);
+	pf_resc->num_l2_ctxs = bp->max_l2_ctx / (num_vfs + 1) +
+			       bp->max_l2_ctx % (num_vfs + 1);
+	pf_resc->num_hw_ring_grps = bp->max_ring_grps / (num_vfs + 1) +
+				    bp->max_ring_grps % (num_vfs + 1);
+}
+
 int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 {
+	struct bnxt_pf_resource_info pf_resc = { 0 };
 	int rc;
 
 	if (!BNXT_PF(bp)) {
@@ -3519,82 +3530,100 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp)
 	if (rc)
 		return rc;
 
+	bnxt_calculate_pf_resources(bp, &pf_resc, 0);
+
 	bp->pf->func_cfg_flags &=
 		~(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE |
 		  HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE);
 	bp->pf->func_cfg_flags |=
 		HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE;
-	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings);
+	rc = bnxt_hwrm_pf_func_cfg(bp, &pf_resc);
 	rc = __bnxt_hwrm_func_qcaps(bp);
 	return rc;
 }
 
-int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
+static int
+bnxt_configure_vf_req_buf(struct bnxt *bp, int num_vfs)
 {
-	struct hwrm_func_cfg_input req = {0};
-	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
-	int i;
-	size_t sz;
-	int rc = 0;
-	size_t req_buf_sz;
+	size_t req_buf_sz, sz;
+	int i, rc;
 
-	if (!BNXT_PF(bp)) {
-		PMD_DRV_LOG(ERR, "Attempt to allcoate VFs on a VF!\n");
-		return -EINVAL;
-	}
-
-	rc = bnxt_hwrm_func_qcaps(bp);
-
-	if (rc)
-		return rc;
-
-	bp->pf->active_vfs = num_vfs;
-
-	/*
-	 * First, configure the PF to only use one TX ring.  This ensures that
-	 * there are enough rings for all VFs.
-	 *
-	 * If we don't do this, when we call func_alloc() later, we will lock
-	 * extra rings to the PF that won't be available during func_cfg() of
-	 * the VFs.
-	 *
-	 * This has been fixed with firmware versions above 20.6.54
-	 */
-	bp->pf->func_cfg_flags &=
-		~(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE |
-		  HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE);
-	bp->pf->func_cfg_flags |=
-		HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE;
-	rc = bnxt_hwrm_pf_func_cfg(bp, 1);
-	if (rc)
-		return rc;
-
-	/*
-	 * Now, create and register a buffer to hold forwarded VF requests
-	 */
 	req_buf_sz = num_vfs * HWRM_MAX_REQ_LEN;
 	bp->pf->vf_req_buf = rte_malloc("bnxt_vf_fwd", req_buf_sz,
 		page_roundup(num_vfs * HWRM_MAX_REQ_LEN));
 	if (bp->pf->vf_req_buf == NULL) {
-		rc = -ENOMEM;
-		goto error_free;
+		return -ENOMEM;
 	}
+
 	for (sz = 0; sz < req_buf_sz; sz += getpagesize())
 		rte_mem_lock_page(((char *)bp->pf->vf_req_buf) + sz);
+
 	for (i = 0; i < num_vfs; i++)
 		bp->pf->vf_info[i].req_buf = ((char *)bp->pf->vf_req_buf) +
-					(i * HWRM_MAX_REQ_LEN);
+					     (i * HWRM_MAX_REQ_LEN);
 
-	rc = bnxt_hwrm_func_buf_rgtr(bp);
+	rc = bnxt_hwrm_func_buf_rgtr(bp, num_vfs);
 	if (rc)
-		goto error_free;
+		rte_free(bp->pf->vf_req_buf);
 
-	populate_vf_func_cfg_req(bp, &req, num_vfs);
+	return rc;
+}
+
+static int
+bnxt_process_vf_resc_config_new(struct bnxt *bp, int num_vfs)
+{
+	struct hwrm_func_vf_resource_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_vf_resource_cfg_input req = {0};
+	int i, rc = 0;
+
+	bnxt_fill_vf_func_cfg_req_new(bp, &req, num_vfs);
+	bp->pf->active_vfs = 0;
+	for (i = 0; i < num_vfs; i++) {
+		HWRM_PREP(&req, HWRM_FUNC_VF_RESOURCE_CFG, BNXT_USE_CHIMP_MB);
+		req.vf_id = rte_cpu_to_le_16(bp->pf->vf_info[i].fid);
+		rc = bnxt_hwrm_send_message(bp,
+					    &req,
+					    sizeof(req),
+					    BNXT_USE_CHIMP_MB);
+		if (rc || resp->error_code) {
+			PMD_DRV_LOG(ERR,
+				"Failed to initialize VF %d\n", i);
+			PMD_DRV_LOG(ERR,
+				"Not all VFs available. (%d, %d)\n",
+				rc, resp->error_code);
+			HWRM_UNLOCK();
+
+			/* If the first VF configuration itself fails,
+			 * unregister the vf_fwd_request buffer.
+			 */
+			if (i == 0)
+				bnxt_hwrm_func_buf_unrgtr(bp);
+			break;
+		}
+		HWRM_UNLOCK();
+
+		/* Update the max resource values based on the resource values
+		 * allocated to the VF.
+		 */
+		bnxt_update_max_resources(bp, i);
+		bp->pf->active_vfs++;
+		bnxt_hwrm_func_clr_stats(bp, bp->pf->vf_info[i].fid);
+	}
+
+	return 0;
+}
+
+static int
+bnxt_process_vf_resc_config_old(struct bnxt *bp, int num_vfs)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int i, rc;
+
+	bnxt_fill_vf_func_cfg_req_old(bp, &req, num_vfs);
 
 	bp->pf->active_vfs = 0;
 	for (i = 0; i < num_vfs; i++) {
-		add_random_mac_if_needed(bp, &req, i);
-
 		HWRM_PREP(&req, HWRM_FUNC_CFG, BNXT_USE_CHIMP_MB);
 		req.flags = rte_cpu_to_le_32(bp->pf->vf_info[i].func_cfg_flags);
 		req.fid = rte_cpu_to_le_16(bp->pf->vf_info[i].fid);
@@ -3609,40 +3638,107 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 
 		if (rc || resp->error_code) {
 			PMD_DRV_LOG(ERR,
-				"Failed to initizlie VF %d\n", i);
+				"Failed to initialize VF %d\n", i);
 			PMD_DRV_LOG(ERR,
 				"Not all VFs available. (%d, %d)\n",
 				rc, resp->error_code);
 			HWRM_UNLOCK();
+
+			/* If the first VF configuration itself fails,
+			 * unregister the vf_fwd_request buffer.
+			 */
+			if (i == 0)
+				bnxt_hwrm_func_buf_unrgtr(bp);
 			break;
 		}
 
 		HWRM_UNLOCK();
 
-		reserve_resources_from_vf(bp, &req, i);
+		/* Update the max resource values based on the resource values
+		 * allocated to the VF.
+		 */
+		bnxt_update_max_resources(bp, i);
 		bp->pf->active_vfs++;
 		bnxt_hwrm_func_clr_stats(bp, bp->pf->vf_info[i].fid);
 	}
 
+	return 0;
+}
+
+static void
+bnxt_configure_vf_resources(struct bnxt *bp, int num_vfs)
+{
+	if (bp->flags & BNXT_FLAG_NEW_RM)
+		bnxt_process_vf_resc_config_new(bp, num_vfs);
+	else
+		bnxt_process_vf_resc_config_old(bp, num_vfs);
+}
+
+static void
+bnxt_update_pf_resources(struct bnxt *bp,
+			 struct bnxt_pf_resource_info *pf_resc)
+{
+	bp->max_rsscos_ctx = pf_resc->num_rsscos_ctxs;
+	bp->max_stat_ctx = pf_resc->num_stat_ctxs;
+	bp->max_cp_rings = pf_resc->num_cp_rings;
+	bp->max_tx_rings = pf_resc->num_tx_rings;
+	bp->max_rx_rings = pf_resc->num_rx_rings;
+	bp->max_ring_grps = pf_resc->num_hw_ring_grps;
+}
+
+static int32_t
+bnxt_configure_pf_resources(struct bnxt *bp,
+			    struct bnxt_pf_resource_info *pf_resc)
+{
 	/*
-	 * Now configure the PF to use "the rest" of the resources
-	 * We're using STD_TX_RING_MODE here though which will limit the TX
-	 * rings.  This will allow QoS to function properly.  Not setting this
+	 * We're using STD_TX_RING_MODE here which will limit the TX
+	 * rings. This will allow QoS to function properly. Not setting this
 	 * will cause PF rings to break bandwidth settings.
 	 */
-	rc = bnxt_hwrm_pf_func_cfg(bp, bp->max_tx_rings);
+	bp->pf->func_cfg_flags &=
+		~(HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE |
+		  HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_DISABLE);
+	bp->pf->func_cfg_flags |=
+		HWRM_FUNC_CFG_INPUT_FLAGS_STD_TX_RING_MODE_ENABLE;
+	return bnxt_hwrm_pf_func_cfg(bp, pf_resc);
+}
+
+int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
+{
+	struct bnxt_pf_resource_info pf_resc = { 0 };
+	int rc;
+
+	if (!BNXT_PF(bp)) {
+		PMD_DRV_LOG(ERR, "Attempt to allocate VFs on a VF!\n");
+		return -EINVAL;
+	}
+
+	rc = bnxt_hwrm_func_qcaps(bp);
 	if (rc)
-		goto error_free;
+		return rc;
 
-	rc = update_pf_resource_max(bp);
+	bnxt_calculate_pf_resources(bp, &pf_resc, num_vfs);
+
+	rc = bnxt_configure_pf_resources(bp, &pf_resc);
 	if (rc)
-		goto error_free;
+		return rc;
 
-	return rc;
+	rc = bnxt_query_pf_resources(bp, &pf_resc);
+	if (rc)
+		return rc;
 
-error_free:
-	bnxt_hwrm_func_buf_unrgtr(bp);
-	return rc;
+	/*
+	 * Now, create and register a buffer to hold forwarded VF requests
+	 */
+	rc = bnxt_configure_vf_req_buf(bp, num_vfs);
+	if (rc)
+		return rc;
+
+	bnxt_configure_vf_resources(bp, num_vfs);
+
+	bnxt_update_pf_resources(bp, &pf_resc);
+
+	return 0;
 }
 
 int bnxt_hwrm_pf_evb_mode(struct bnxt *bp)
@@ -3747,23 +3843,24 @@ int bnxt_set_rx_mask_no_vlan(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
-int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)
+int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp, int num_vfs)
 {
-	int rc = 0;
-	struct hwrm_func_buf_rgtr_input req = {.req_type = 0 };
 	struct hwrm_func_buf_rgtr_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_buf_rgtr_input req = {.req_type = 0 };
+	int rc;
 
 	HWRM_PREP(&req, HWRM_FUNC_BUF_RGTR, BNXT_USE_CHIMP_MB);
 
 	req.req_buf_num_pages = rte_cpu_to_le_16(1);
-	req.req_buf_page_size = rte_cpu_to_le_16(
-			 page_getenum(bp->pf->active_vfs * HWRM_MAX_REQ_LEN));
+	req.req_buf_page_size =
+		rte_cpu_to_le_16(page_getenum(num_vfs * HWRM_MAX_REQ_LEN));
 	req.req_buf_len = rte_cpu_to_le_16(HWRM_MAX_REQ_LEN);
 	req.req_buf_page_addr0 =
 		rte_cpu_to_le_64(rte_malloc_virt2iova(bp->pf->vf_req_buf));
 	if (req.req_buf_page_addr0 == RTE_BAD_IOVA) {
 		PMD_DRV_LOG(ERR,
 			"unable to map buffer address to physical memory\n");
+		HWRM_UNLOCK();
 		return -ENOMEM;
 	}
 

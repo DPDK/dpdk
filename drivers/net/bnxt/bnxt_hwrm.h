@@ -107,6 +107,16 @@ enum bnxt_flow_dir {
 	BNXT_DIR_MAX
 };
 
+struct bnxt_pf_resource_info {
+	uint16_t num_rsscos_ctxs;
+	uint16_t num_stat_ctxs;
+	uint16_t num_tx_rings;
+	uint16_t num_rx_rings;
+	uint16_t num_cp_rings;
+	uint16_t num_l2_ctxs;
+	uint32_t num_hw_ring_grps;
+};
+
 #define BNXT_CTX_VAL_INVAL	0xFFFF
 
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
@@ -127,7 +137,7 @@ int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
 int bnxt_hwrm_reject_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			      void *encaped, size_t ec_size);
 
-int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp);
+int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp, int num_vfs);
 int bnxt_hwrm_func_buf_unrgtr(struct bnxt *bp);
 int bnxt_hwrm_func_driver_register(struct bnxt *bp);
 int bnxt_hwrm_func_qcaps(struct bnxt *bp);

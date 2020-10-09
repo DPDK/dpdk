@@ -5208,37 +5208,14 @@ static void bnxt_config_vf_req_fwd(struct bnxt *bp)
 	if (!BNXT_PF(bp))
 		return;
 
-#define ALLOW_FUNC(x)	\
-	{ \
-		uint32_t arg = (x); \
-		bp->pf->vf_req_fwd[((arg) >> 5)] &= \
-		~rte_cpu_to_le_32(1 << ((arg) & 0x1f)); \
-	}
+	memset(bp->pf->vf_req_fwd, 0, sizeof(bp->pf->vf_req_fwd));
 
-	/* Forward all requests if firmware is new enough */
-	if (((bp->fw_ver >= ((20 << 24) | (6 << 16) | (100 << 8))) &&
-	     (bp->fw_ver < ((20 << 24) | (7 << 16)))) ||
-	    ((bp->fw_ver >= ((20 << 24) | (8 << 16))))) {
-		memset(bp->pf->vf_req_fwd, 0xff, sizeof(bp->pf->vf_req_fwd));
-	} else {
-		PMD_DRV_LOG(WARNING,
-			    "Firmware too old for VF mailbox functionality\n");
-		memset(bp->pf->vf_req_fwd, 0, sizeof(bp->pf->vf_req_fwd));
-	}
-
-	/*
-	 * The following are used for driver cleanup. If we disallow these,
-	 * VF drivers can't clean up cleanly.
-	 */
-	ALLOW_FUNC(HWRM_FUNC_DRV_UNRGTR);
-	ALLOW_FUNC(HWRM_VNIC_FREE);
-	ALLOW_FUNC(HWRM_RING_FREE);
-	ALLOW_FUNC(HWRM_RING_GRP_FREE);
-	ALLOW_FUNC(HWRM_VNIC_RSS_COS_LB_CTX_FREE);
-	ALLOW_FUNC(HWRM_CFA_L2_FILTER_FREE);
-	ALLOW_FUNC(HWRM_STAT_CTX_FREE);
-	ALLOW_FUNC(HWRM_PORT_PHY_QCFG);
-	ALLOW_FUNC(HWRM_VNIC_TPA_CFG);
+	if (!(bp->fw_cap & BNXT_FW_CAP_LINK_ADMIN))
+		BNXT_HWRM_CMD_TO_FORWARD(HWRM_PORT_PHY_QCFG);
+	BNXT_HWRM_CMD_TO_FORWARD(HWRM_FUNC_CFG);
+	BNXT_HWRM_CMD_TO_FORWARD(HWRM_FUNC_VF_CFG);
+	BNXT_HWRM_CMD_TO_FORWARD(HWRM_CFA_L2_FILTER_ALLOC);
+	BNXT_HWRM_CMD_TO_FORWARD(HWRM_OEM_CMD);
 }
 
 uint16_t
@@ -6189,7 +6166,10 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 
 	bnxt_free_int(bp);
 	bnxt_free_mem(bp, reconfig_dev);
+
 	bnxt_hwrm_func_buf_unrgtr(bp);
+	rte_free(bp->pf->vf_req_buf);
+
 	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
 	bp->flags &= ~BNXT_FLAG_REGISTERED;
 	bnxt_free_ctx_mem(bp);
