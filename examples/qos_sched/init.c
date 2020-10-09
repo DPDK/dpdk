@@ -314,7 +314,8 @@ app_init_sched_port(uint32_t portid, uint32_t socketid)
 	}
 
 	for (subport = 0; subport < port_params.n_subports_per_port; subport ++) {
-		err = rte_sched_subport_config(port, subport, &subport_params[subport]);
+		err = rte_sched_subport_config(port, subport,
+				&subport_params[subport], 0);
 		if (err) {
 			rte_exit(EXIT_FAILURE, "Unable to config sched subport %u, err=%d\n",
 					subport, err);

@@ -92,7 +92,7 @@ softnic_tmgr_port_create(struct pmd_internals *p,
 
 		status = rte_sched_subport_config(sched,
 			subport_id,
-			&t->subport_params[subport_id]);
+			&t->subport_params[subport_id], 0);
 		if (status) {
 			rte_sched_port_free(sched);
 			return NULL;
@@ -1141,7 +1141,7 @@ update_subport_tc_rate(struct rte_eth_dev *dev,
 
 	/* Update the subport configuration. */
 	if (rte_sched_subport_config(SCHED(p),
-		subport_id, &subport_params))
+		subport_id, &subport_params, 0))
 		return -1;
 
 	/* Commit changes. */
@@ -2912,7 +2912,7 @@ update_subport_rate(struct rte_eth_dev *dev,
 
 	/* Update the subport configuration. */
 	if (rte_sched_subport_config(SCHED(p), subport_id,
-		&subport_params))
+		&subport_params, 0))
 		return -1;
 
 	/* Commit changes. */

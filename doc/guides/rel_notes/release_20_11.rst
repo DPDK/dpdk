@@ -191,6 +191,13 @@ New Features
   * Added new ``RTE_ACL_CLASSIFY_AVX512X32`` vector implementation,
     which can process up to 32 flows in parallel. Requires AVX512 support.
 
+* **Added support to update subport bandwidth dynamically.**
+
+   * Added new API ``rte_sched_port_subport_profile_add`` to add new
+     subport bandwidth profile to subport porfile table at runtime.
+
+   * Added support to update subport rate dynamically.
+
 
 Removed Items
 -------------
@@ -315,6 +322,9 @@ API Changes
 * acl: ``RTE_ACL_CLASSIFY_NUM`` enum value has been removed.
   This enum value was not used inside DPDK, while it prevented to add new
   classify algorithms without causing an ABI breakage.
+
+* sched: Added ``subport_profile_id`` as argument
+  to function ``rte_sched_subport_config``.
 
 
 ABI Changes

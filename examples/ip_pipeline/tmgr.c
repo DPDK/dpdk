@@ -119,7 +119,8 @@ tmgr_port_create(const char *name, struct tmgr_port_params *params)
 		status = rte_sched_subport_config(
 			s,
 			i,
-			&subport_profile[0]);
+			&subport_profile[0],
+			0);
 
 		if (status) {
 			rte_sched_port_free(s);
@@ -180,7 +181,8 @@ tmgr_subport_config(const char *port_name,
 	status = rte_sched_subport_config(
 		port->s,
 		subport_id,
-		&subport_profile[subport_profile_id]);
+		&subport_profile[subport_profile_id],
+		0);
 
 	return status;
 }

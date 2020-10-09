@@ -138,7 +138,7 @@ test_sched(void)
 	port = rte_sched_port_config(&port_param);
 	TEST_ASSERT_NOT_NULL(port, "Error config sched port\n");
 
-	err = rte_sched_subport_config(port, SUBPORT, subport_param);
+	err = rte_sched_subport_config(port, SUBPORT, subport_param, 0);
 	TEST_ASSERT_SUCCESS(err, "Error config sched, err=%d\n", err);
 
 	for (pipe = 0; pipe < subport_param[0].n_pipes_per_subport_enabled; pipe++) {
