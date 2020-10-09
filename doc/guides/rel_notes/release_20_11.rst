@@ -152,9 +152,10 @@ New Features
     ``--portmask=N``
     where N represents the hexadecimal bitmask of ports used.
 
-* **Added support for AES-ECB in aesni_mb crypto PMD.**
+* **Updated the aesni_mb crypto PMD.**
 
-  * Added support for AES-ECB 128, 192 and 256 in aesni_mb PMD.
+  * Added support for AES-ECB 128, 192 and 256.
+  * Added support for ZUC-EEA3/EIA3 algorithms.
 
 * **Updated Marvell NITROX symmetric crypto PMD.**
 

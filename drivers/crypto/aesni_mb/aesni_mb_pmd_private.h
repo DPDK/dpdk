@@ -39,22 +39,25 @@ extern int aesni_mb_logtype_driver;
 /* Maximum length for digest */
 #define DIGEST_LENGTH_MAX 64
 static const unsigned auth_blocksize[] = {
-		[NULL_HASH]	= 0,
-		[MD5]		= 64,
-		[SHA1]		= 64,
-		[SHA_224]	= 64,
-		[SHA_256]	= 64,
-		[SHA_384]	= 128,
-		[SHA_512]	= 128,
-		[AES_XCBC]	= 16,
-		[AES_CCM]	= 16,
-		[AES_CMAC]	= 16,
-		[AES_GMAC]	= 16,
-		[PLAIN_SHA1]	= 64,
-		[PLAIN_SHA_224]	= 64,
-		[PLAIN_SHA_256]	= 64,
-		[PLAIN_SHA_384]	= 128,
-		[PLAIN_SHA_512]	= 128
+		[NULL_HASH]			= 0,
+		[MD5]				= 64,
+		[SHA1]				= 64,
+		[SHA_224]			= 64,
+		[SHA_256]			= 64,
+		[SHA_384]			= 128,
+		[SHA_512]			= 128,
+		[AES_XCBC]			= 16,
+		[AES_CCM]			= 16,
+		[AES_CMAC]			= 16,
+		[AES_GMAC]			= 16,
+		[PLAIN_SHA1]			= 64,
+		[PLAIN_SHA_224]			= 64,
+		[PLAIN_SHA_256]			= 64,
+		[PLAIN_SHA_384]			= 128,
+		[PLAIN_SHA_512]			= 128,
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 16
+#endif
 };
 
 /**
@@ -70,22 +73,25 @@ get_auth_algo_blocksize(JOB_HASH_ALG algo)
 }
 
 static const unsigned auth_truncated_digest_byte_lengths[] = {
-		[MD5]		= 12,
-		[SHA1]		= 12,
-		[SHA_224]	= 14,
-		[SHA_256]	= 16,
-		[SHA_384]	= 24,
-		[SHA_512]	= 32,
-		[AES_XCBC]	= 12,
-		[AES_CMAC]	= 12,
-		[AES_CCM]	= 8,
-		[NULL_HASH]	= 0,
-		[AES_GMAC]	= 16,
-		[PLAIN_SHA1]	= 20,
-		[PLAIN_SHA_224]	= 28,
-		[PLAIN_SHA_256]	= 32,
-		[PLAIN_SHA_384]	= 48,
-		[PLAIN_SHA_512]	= 64
+		[MD5]				= 12,
+		[SHA1]				= 12,
+		[SHA_224]			= 14,
+		[SHA_256]			= 16,
+		[SHA_384]			= 24,
+		[SHA_512]			= 32,
+		[AES_XCBC]			= 12,
+		[AES_CMAC]			= 12,
+		[AES_CCM]			= 8,
+		[NULL_HASH]			= 0,
+		[AES_GMAC]			= 16,
+		[PLAIN_SHA1]			= 20,
+		[PLAIN_SHA_224]			= 28,
+		[PLAIN_SHA_256]			= 32,
+		[PLAIN_SHA_384]			= 48,
+		[PLAIN_SHA_512]			= 64,
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4
+#endif
 };
 
 /**
@@ -102,22 +108,25 @@ get_truncated_digest_byte_length(JOB_HASH_ALG algo)
 }
 
 static const unsigned auth_digest_byte_lengths[] = {
-		[MD5]		= 16,
-		[SHA1]		= 20,
-		[SHA_224]	= 28,
-		[SHA_256]	= 32,
-		[SHA_384]	= 48,
-		[SHA_512]	= 64,
-		[AES_XCBC]	= 16,
-		[AES_CMAC]	= 16,
-		[AES_CCM]	= 16,
-		[AES_GMAC]	= 12,
-		[NULL_HASH]	= 0,
-		[PLAIN_SHA1]	= 20,
-		[PLAIN_SHA_224]	= 28,
-		[PLAIN_SHA_256]	= 32,
-		[PLAIN_SHA_384]	= 48,
-		[PLAIN_SHA_512]	= 64
+		[MD5]				= 16,
+		[SHA1]				= 20,
+		[SHA_224]			= 28,
+		[SHA_256]			= 32,
+		[SHA_384]			= 48,
+		[SHA_512]			= 64,
+		[AES_XCBC]			= 16,
+		[AES_CMAC]			= 16,
+		[AES_CCM]			= 16,
+		[AES_GMAC]			= 12,
+		[NULL_HASH]			= 0,
+		[PLAIN_SHA1]			= 20,
+		[PLAIN_SHA_224]			= 28,
+		[PLAIN_SHA_256]			= 32,
+		[PLAIN_SHA_384]			= 48,
+		[PLAIN_SHA_512]			= 64,
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4
+#endif
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 
 };
@@ -189,6 +198,10 @@ struct aesni_mb_session {
 		uint16_t length;
 		uint16_t offset;
 	} iv;
+	struct {
+		uint16_t length;
+		uint16_t offset;
+	} auth_iv;
 	/**< IV parameters */
 
 	/** Cipher Parameters */const struct aesni_mb_op_fns *op_fns;
@@ -209,19 +222,23 @@ struct aesni_mb_session {
 				uint32_t decode[60] __rte_aligned(16);
 				/**< decode key */
 			} expanded_aes_keys;
+			/**< Expanded AES keys - Allocating space to
+			 * contain the maximum expanded key size which
+			 * is 240 bytes for 256 bit AES, calculate by:
+			 * ((key size (bytes)) *
+			 * ((number of rounds) + 1))
+			 */
 			struct {
 				const void *ks_ptr[3];
 				uint64_t key[3][16];
 			} exp_3des_keys;
+			/**< Expanded 3DES keys */
 
 			struct gcm_key_data gcm_key;
+			/**< Expanded GCM key */
+			uint8_t zuc_cipher_key[16];
+			/**< ZUC cipher key */
 		};
-		/**< Expanded AES keys - Allocating space to
-		 * contain the maximum expanded key size which
-		 * is 240 bytes for 256 bit AES, calculate by:
-		 * ((key size (bytes)) *
-		 * ((number of rounds) + 1))
-		 */
 	} cipher;
 
 	/** Authentication Parameters */
@@ -260,6 +277,8 @@ struct aesni_mb_session {
 						    /**< k3. */
 			} cmac;
 			/**< Expanded XCBC authentication keys */
+			uint8_t zuc_auth_key[16];
+			/**< ZUC authentication key */
 		};
 	/** Generated digest size by the Multi-buffer library */
 	uint16_t gen_digest_len;

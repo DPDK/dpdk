@@ -146,6 +146,10 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 		return -1;
 	}
 
+	/* Set IV parameters */
+	sess->auth_iv.offset = xform->auth.iv.offset;
+	sess->auth_iv.length = xform->auth.iv.length;
+
 	/* Set the request digest size */
 	sess->auth.req_digest_len = xform->auth.digest_length;
 
@@ -248,6 +252,22 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 
 		return 0;
 	}
+
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+	if (xform->auth.algo == RTE_CRYPTO_AUTH_ZUC_EIA3) {
+		sess->auth.algo = IMB_AUTH_ZUC_EIA3_BITLEN;
+		uint16_t zuc_eia3_digest_len =
+			get_truncated_digest_byte_length(IMB_AUTH_ZUC_EIA3_BITLEN);
+		if (sess->auth.req_digest_len != zuc_eia3_digest_len) {
+			AESNI_MB_LOG(ERR, "Invalid digest size\n");
+			return -EINVAL;
+		}
+		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+
+		memcpy(sess->auth.zuc_auth_key, xform->auth.key.data, 16);
+		return 0;
+	}
+#endif
 
 	switch (xform->auth.algo) {
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
@@ -381,6 +401,9 @@ aesni_mb_set_session_cipher_parameters(const MB_MGR *mb_mgr,
 	uint8_t is_aes = 0;
 	uint8_t is_3DES = 0;
 	uint8_t is_docsis = 0;
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+	uint8_t is_zuc = 0;
+#endif
 
 	if (xform == NULL) {
 		sess->cipher.mode = NULL_CIPHER;
@@ -435,6 +458,12 @@ aesni_mb_set_session_cipher_parameters(const MB_MGR *mb_mgr,
 		is_aes = 1;
 		break;
 #endif
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
+		sess->cipher.mode = IMB_CIPHER_ZUC_EEA3;
+		is_zuc = 1;
+		break;
+#endif
 	default:
 		AESNI_MB_LOG(ERR, "Unsupported cipher mode parameter");
 		return -ENOTSUP;
@@ -477,7 +506,7 @@ aesni_mb_set_session_cipher_parameters(const MB_MGR *mb_mgr,
 					sess->cipher.expanded_aes_keys.encode,
 					sess->cipher.expanded_aes_keys.decode);
 			break;
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 53, 3)
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
 		case AES_256_BYTES:
 			sess->cipher.key_length_in_bytes = AES_256_BYTES;
 			IMB_AES_KEYEXP_256(mb_mgr, xform->cipher.key.data,
@@ -533,6 +562,16 @@ aesni_mb_set_session_cipher_parameters(const MB_MGR *mb_mgr,
 		}
 
 		sess->cipher.key_length_in_bytes = 24;
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+	} else if (is_zuc) {
+		if (xform->cipher.key.length != 16) {
+			AESNI_MB_LOG(ERR, "Invalid cipher key length");
+			return -EINVAL;
+		}
+		sess->cipher.key_length_in_bytes = 16;
+		memcpy(sess->cipher.zuc_cipher_key, xform->cipher.key.data,
+			16);
+#endif
 	} else {
 		if (xform->cipher.key.length != 8) {
 			AESNI_MB_LOG(ERR, "Invalid cipher key length");
@@ -699,6 +738,7 @@ aesni_mb_set_session_parameters(const MB_MGR *mb_mgr,
 
 	/* Default IV length = 0 */
 	sess->iv.length = 0;
+	sess->auth_iv.length = 0;
 
 	ret = aesni_mb_set_session_auth_parameters(mb_mgr, sess, auth_xform);
 	if (ret != 0) {
@@ -1174,7 +1214,13 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->aes_enc_key_expanded = &session->cipher.gcm_key;
 		job->aes_dec_key_expanded = &session->cipher.gcm_key;
 		break;
-
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+	case IMB_AUTH_ZUC_EIA3_BITLEN:
+		job->u.ZUC_EIA3._key = session->auth.zuc_auth_key;
+		job->u.ZUC_EIA3._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+						session->auth_iv.offset);
+		break;
+#endif
 	default:
 		job->u.HMAC._hashed_auth_key_xor_ipad = session->auth.pads.inner;
 		job->u.HMAC._hashed_auth_key_xor_opad = session->auth.pads.outer;
@@ -1191,6 +1237,13 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 				session->cipher.expanded_aes_keys.decode;
 		}
 	}
+
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3) {
+		job->aes_enc_key_expanded = session->cipher.zuc_cipher_key;
+		job->aes_dec_key_expanded = session->cipher.zuc_cipher_key;
+	}
+#endif
 
 	if (!op->sym->m_dst) {
 		/* in-place operation */
@@ -1291,6 +1344,11 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			session->iv.offset);
 	}
+
+#if IMB_VERSION(0, 53, 3) <= IMB_VERSION_NUM
+	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3)
+		job->msg_len_to_cipher_in_bytes >>= 3;
+#endif
 
 	/* Set user data to be crypto operation data struct */
 	job->user_data = op;
@@ -1915,6 +1973,7 @@ cryptodev_aesni_mb_create(const char *name,
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO |
+			RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA |
 			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 
 #ifdef AESNI_MB_DOCSIS_SEC_ENABLED
