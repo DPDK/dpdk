@@ -393,12 +393,7 @@ static const char cmd_tmgr_subport_profile_help[] =
 "   <tc0_rate> <tc1_rate> <tc2_rate> <tc3_rate> <tc4_rate>"
 "        <tc5_rate> <tc6_rate> <tc7_rate> <tc8_rate>"
 "        <tc9_rate> <tc10_rate> <tc11_rate> <tc12_rate>\n"
-"   <tc_period>\n"
-"   pps <n_pipes_per_subport>\n"
-"   qsize <qsize_tc0> <qsize_tc1> <qsize_tc2>"
-"       <qsize_tc3> <qsize_tc4> <qsize_tc5> <qsize_tc6>"
-"       <qsize_tc7> <qsize_tc8> <qsize_tc9> <qsize_tc10>"
-"       <qsize_tc11> <qsize_tc12>";
+"   <tc_period>\n";
 
 static void
 cmd_tmgr_subport_profile(char **tokens,
@@ -406,57 +401,37 @@ cmd_tmgr_subport_profile(char **tokens,
 	char *out,
 	size_t out_size)
 {
-	struct rte_sched_subport_params p;
+	struct rte_sched_subport_profile_params subport_profile;
 	int status, i;
 
-	if (n_tokens != 35) {
+	if (n_tokens != 19) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
 
-	if (parser_read_uint64(&p.tb_rate, tokens[3]) != 0) {
+	if (parser_read_uint64(&subport_profile.tb_rate, tokens[3]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tb_rate");
 		return;
 	}
 
-	if (parser_read_uint64(&p.tb_size, tokens[4]) != 0) {
+	if (parser_read_uint64(&subport_profile.tb_size, tokens[4]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tb_size");
 		return;
 	}
 
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-		if (parser_read_uint64(&p.tc_rate[i], tokens[5 + i]) != 0) {
+		if (parser_read_uint64(&subport_profile.tc_rate[i],
+				tokens[5 + i]) != 0) {
 			snprintf(out, out_size, MSG_ARG_INVALID, "tc_rate");
 			return;
 		}
 
-	if (parser_read_uint64(&p.tc_period, tokens[18]) != 0) {
+	if (parser_read_uint64(&subport_profile.tc_period, tokens[18]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "tc_period");
 		return;
 	}
 
-	if (strcmp(tokens[19], "pps") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pps");
-		return;
-	}
-
-	if (parser_read_uint32(&p.n_pipes_per_subport_enabled, tokens[20]) != 0) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "n_pipes_per_subport");
-		return;
-	}
-
-	if (strcmp(tokens[21], "qsize") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "qsize");
-		return;
-	}
-
-	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)
-		if (parser_read_uint16(&p.qsize[i], tokens[22 + i]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID, "qsize");
-			return;
-		}
-
-	status = tmgr_subport_profile_add(&p);
+	status = tmgr_subport_profile_add(&subport_profile);
 	if (status != 0) {
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
 		return;
@@ -530,6 +505,7 @@ static const char cmd_tmgr_help[] =
 "tmgr <tmgr_name>\n"
 "   rate <rate>\n"
 "   spp <n_subports_per_port>\n"
+"   pps <n_pipes_per_subport>\n"
 "   fo <frame_overhead>\n"
 "   mtu <mtu>\n"
 "   cpu <cpu_id>\n";
@@ -544,7 +520,7 @@ cmd_tmgr(char **tokens,
 	char *name;
 	struct tmgr_port *tmgr_port;
 
-	if (n_tokens != 12) {
+	if (n_tokens != 14) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
@@ -571,32 +547,42 @@ cmd_tmgr(char **tokens,
 		return;
 	}
 
-	if (strcmp(tokens[6], "fo") != 0) {
+	if (strcmp(tokens[6], "pps") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "spp");
+		return;
+	}
+
+	if (parser_read_uint32(&p.n_pipes_per_subport, tokens[7]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_pipes_per_subport");
+		return;
+	}
+
+	if (strcmp(tokens[8], "fo") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "fo");
 		return;
 	}
 
-	if (parser_read_uint32(&p.frame_overhead, tokens[7]) != 0) {
+	if (parser_read_uint32(&p.frame_overhead, tokens[9]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "frame_overhead");
 		return;
 	}
 
-	if (strcmp(tokens[8], "mtu") != 0) {
+	if (strcmp(tokens[10], "mtu") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mtu");
 		return;
 	}
 
-	if (parser_read_uint32(&p.mtu, tokens[9]) != 0) {
+	if (parser_read_uint32(&p.mtu, tokens[11]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "mtu");
 		return;
 	}
 
-	if (strcmp(tokens[10], "cpu") != 0) {
+	if (strcmp(tokens[12], "cpu") != 0) {
 		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cpu");
 		return;
 	}
 
-	if (parser_read_uint32(&p.cpu_id, tokens[11]) != 0) {
+	if (parser_read_uint32(&p.cpu_id, tokens[13]) != 0) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "cpu_id");
 		return;
 	}

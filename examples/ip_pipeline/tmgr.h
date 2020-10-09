@@ -9,6 +9,7 @@
 #include <sys/queue.h>
 
 #include <rte_sched.h>
+#include <rte_red.h>
 
 #include "common.h"
 
@@ -29,6 +30,7 @@ struct tmgr_port {
 	char name[NAME_SIZE];
 	struct rte_sched_port *s;
 	uint32_t n_subports_per_port;
+	uint32_t n_pipes_per_subport;
 };
 
 TAILQ_HEAD(tmgr_port_list, tmgr_port);
@@ -42,13 +44,14 @@ tmgr_port_find(const char *name);
 struct tmgr_port_params {
 	uint64_t rate;
 	uint32_t n_subports_per_port;
+	uint32_t n_pipes_per_subport;
 	uint32_t frame_overhead;
 	uint32_t mtu;
 	uint32_t cpu_id;
 };
 
 int
-tmgr_subport_profile_add(struct rte_sched_subport_params *p);
+tmgr_subport_profile_add(struct rte_sched_subport_profile_params *sp);
 
 int
 tmgr_pipe_profile_add(struct rte_sched_pipe_params *p);
