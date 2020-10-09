@@ -57,6 +57,8 @@ enum index {
 	SET_RAW_ENCAP,
 	SET_RAW_DECAP,
 	SET_RAW_INDEX,
+	SET_SAMPLE_ACTIONS,
+	SET_SAMPLE_INDEX,
 
 	/* Top-level command. */
 	FLOW,
@@ -361,6 +363,10 @@ enum index {
 	ACTION_SET_IPV6_DSCP_VALUE,
 	ACTION_AGE,
 	ACTION_AGE_TIMEOUT,
+	ACTION_SAMPLE,
+	ACTION_SAMPLE_RATIO,
+	ACTION_SAMPLE_INDEX,
+	ACTION_SAMPLE_INDEX_VALUE,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -495,6 +501,22 @@ struct mplsogre_decap_conf mplsogre_decap_conf;
 struct mplsoudp_encap_conf mplsoudp_encap_conf;
 
 struct mplsoudp_decap_conf mplsoudp_decap_conf;
+
+#define ACTION_SAMPLE_ACTIONS_NUM 10
+#define RAW_SAMPLE_CONFS_MAX_NUM 8
+/** Storage for struct rte_flow_action_sample including external data. */
+struct action_sample_data {
+	struct rte_flow_action_sample conf;
+	uint32_t idx;
+};
+/** Storage for struct rte_flow_action_sample. */
+struct raw_sample_conf {
+	struct rte_flow_action data[ACTION_SAMPLE_ACTIONS_NUM];
+};
+struct raw_sample_conf raw_sample_confs[RAW_SAMPLE_CONFS_MAX_NUM];
+struct rte_flow_action_mark sample_mark[RAW_SAMPLE_CONFS_MAX_NUM];
+struct rte_flow_action_queue sample_queue[RAW_SAMPLE_CONFS_MAX_NUM];
+struct rte_flow_action_count sample_count[RAW_SAMPLE_CONFS_MAX_NUM];
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
 #define CTX_STACK_SIZE 16
@@ -1194,6 +1216,7 @@ static const enum index next_action[] = {
 	ACTION_SET_IPV4_DSCP,
 	ACTION_SET_IPV6_DSCP,
 	ACTION_AGE,
+	ACTION_SAMPLE,
 	ZERO,
 };
 
@@ -1426,9 +1449,28 @@ static const enum index action_age[] = {
 	ZERO,
 };
 
+static const enum index action_sample[] = {
+	ACTION_SAMPLE,
+	ACTION_SAMPLE_RATIO,
+	ACTION_SAMPLE_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index next_action_sample[] = {
+	ACTION_QUEUE,
+	ACTION_MARK,
+	ACTION_COUNT,
+	ACTION_NEXT,
+	ZERO,
+};
+
 static int parse_set_raw_encap_decap(struct context *, const struct token *,
 				     const char *, unsigned int,
 				     void *, unsigned int);
+static int parse_set_sample_action(struct context *, const struct token *,
+				   const char *, unsigned int,
+				   void *, unsigned int);
 static int parse_set_init(struct context *, const struct token *,
 			  const char *, unsigned int,
 			  void *, unsigned int);
@@ -1496,7 +1538,15 @@ static int parse_vc_action_raw_decap_index(struct context *,
 static int parse_vc_action_set_meta(struct context *ctx,
 				    const struct token *token, const char *str,
 				    unsigned int len, void *buf,
+					unsigned int size);
+static int parse_vc_action_sample(struct context *ctx,
+				    const struct token *token, const char *str,
+				    unsigned int len, void *buf,
 				    unsigned int size);
+static int
+parse_vc_action_sample_index(struct context *ctx, const struct token *token,
+				const char *str, unsigned int len, void *buf,
+				unsigned int size);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -1566,6 +1616,8 @@ static int comp_vc_action_rss_type(struct context *, const struct token *,
 static int comp_vc_action_rss_queue(struct context *, const struct token *,
 				    unsigned int, char *, unsigned int);
 static int comp_set_raw_index(struct context *, const struct token *,
+			      unsigned int, char *, unsigned int);
+static int comp_set_sample_index(struct context *, const struct token *,
 			      unsigned int, char *, unsigned int);
 
 /** Token definitions. */
@@ -3722,11 +3774,13 @@ static const struct token token_list[] = {
 	/* Top level command. */
 	[SET] = {
 		.name = "set",
-		.help = "set raw encap/decap data",
-		.type = "set raw_encap|raw_decap <index> <pattern>",
+		.help = "set raw encap/decap/sample data",
+		.type = "set raw_encap|raw_decap <index> <pattern>"
+				" or set sample_actions <index> <action>",
 		.next = NEXT(NEXT_ENTRY
 			     (SET_RAW_ENCAP,
-			      SET_RAW_DECAP)),
+			      SET_RAW_DECAP,
+			      SET_SAMPLE_ACTIONS)),
 		.call = parse_set_init,
 	},
 	/* Sub-level commands. */
@@ -3756,6 +3810,23 @@ static const struct token token_list[] = {
 		.help = "index of raw_encap/raw_decap data",
 		.next = NEXT(next_item),
 		.call = parse_port,
+	},
+	[SET_SAMPLE_INDEX] = {
+		.name = "{index}",
+		.type = "UNSIGNED",
+		.help = "index of sample actions",
+		.next = NEXT(next_action_sample),
+		.call = parse_port,
+	},
+	[SET_SAMPLE_ACTIONS] = {
+		.name = "sample_actions",
+		.help = "set sample actions list",
+		.next = NEXT(NEXT_ENTRY(SET_SAMPLE_INDEX)),
+		.args = ARGS(ARGS_ENTRY_ARB_BOUNDED
+				(offsetof(struct buffer, port),
+				 sizeof(((struct buffer *)0)->port),
+				 0, RAW_SAMPLE_CONFS_MAX_NUM - 1)),
+		.call = parse_set_sample_action,
 	},
 	[ACTION_SET_TAG] = {
 		.name = "set_tag",
@@ -3859,6 +3930,37 @@ static const struct token token_list[] = {
 					   timeout, 24)),
 		.next = NEXT(action_age, NEXT_ENTRY(UNSIGNED)),
 		.call = parse_vc_conf,
+	},
+	[ACTION_SAMPLE] = {
+		.name = "sample",
+		.help = "set a sample action",
+		.next = NEXT(action_sample),
+		.priv = PRIV_ACTION(SAMPLE,
+			sizeof(struct action_sample_data)),
+		.call = parse_vc_action_sample,
+	},
+	[ACTION_SAMPLE_RATIO] = {
+		.name = "ratio",
+		.help = "flow sample ratio value",
+		.next = NEXT(action_sample, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_ARB
+			     (offsetof(struct action_sample_data, conf) +
+			      offsetof(struct rte_flow_action_sample, ratio),
+			      sizeof(((struct rte_flow_action_sample *)0)->
+				     ratio))),
+	},
+	[ACTION_SAMPLE_INDEX] = {
+		.name = "index",
+		.help = "the index of sample actions list",
+		.next = NEXT(NEXT_ENTRY(ACTION_SAMPLE_INDEX_VALUE)),
+	},
+	[ACTION_SAMPLE_INDEX_VALUE] = {
+		.name = "{index}",
+		.type = "UNSIGNED",
+		.help = "unsigned integer value",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_sample_index,
+		.comp = comp_set_sample_index,
 	},
 };
 
@@ -5370,6 +5472,76 @@ parse_vc_action_set_meta(struct context *ctx, const struct token *token,
 	return len;
 }
 
+static int
+parse_vc_action_sample(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len, void *buf,
+			 unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_sample_data *action_sample_data = NULL;
+	static struct rte_flow_action end_action = {
+		RTE_FLOW_ACTION_TYPE_END, 0
+	};
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Copy the headers to the buffer. */
+	action_sample_data = ctx->object;
+	action_sample_data->conf.actions = &end_action;
+	action->conf = &action_sample_data->conf;
+	return ret;
+}
+
+static int
+parse_vc_action_sample_index(struct context *ctx, const struct token *token,
+				const char *str, unsigned int len, void *buf,
+				unsigned int size)
+{
+	struct action_sample_data *action_sample_data;
+	struct rte_flow_action *action;
+	const struct arg *arg;
+	struct buffer *out = buf;
+	int ret;
+	uint16_t idx;
+
+	RTE_SET_USED(token);
+	RTE_SET_USED(buf);
+	RTE_SET_USED(size);
+	if (ctx->curr != ACTION_SAMPLE_INDEX_VALUE)
+		return -1;
+	arg = ARGS_ENTRY_ARB_BOUNDED
+		(offsetof(struct action_sample_data, idx),
+		 sizeof(((struct action_sample_data *)0)->idx),
+		 0, RAW_SAMPLE_CONFS_MAX_NUM - 1);
+	if (push_args(ctx, arg))
+		return -1;
+	ret = parse_int(ctx, token, str, len, NULL, 0);
+	if (ret < 0) {
+		pop_args(ctx);
+		return -1;
+	}
+	if (!ctx->object)
+		return len;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	action_sample_data = ctx->object;
+	idx = action_sample_data->idx;
+	action_sample_data->conf.actions = raw_sample_confs[idx].data;
+	action->conf = &action_sample_data->conf;
+	return len;
+}
+
 /** Parse tokens for destroy command. */
 static int
 parse_destroy(struct context *ctx, const struct token *token,
@@ -6134,6 +6306,38 @@ parse_set_raw_encap_decap(struct context *ctx, const struct token *token,
 	if (!out->command)
 		return -1;
 	out->command = ctx->curr;
+	/* For encap/decap we need is pattern */
+	out->args.vc.pattern = (void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+						       sizeof(double));
+	return len;
+}
+
+/** Parse set command, initialize output buffer for subsequent tokens. */
+static int
+parse_set_sample_action(struct context *ctx, const struct token *token,
+			  const char *str, unsigned int len,
+			  void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	/* Make sure buffer is large enough. */
+	if (size < sizeof(*out))
+		return -1;
+	ctx->objdata = 0;
+	ctx->objmask = NULL;
+	ctx->object = out;
+	if (!out->command)
+		return -1;
+	out->command = ctx->curr;
+	/* For sampler we need is actions */
+	out->args.vc.actions = (void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+						       sizeof(double));
 	return len;
 }
 
@@ -6170,11 +6374,8 @@ parse_set_init(struct context *ctx, const struct token *token,
 			return -1;
 		out->command = ctx->curr;
 		out->args.vc.data = (uint8_t *)out + size;
-		/* All we need is pattern */
-		out->args.vc.pattern =
-			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
-					       sizeof(double));
-		ctx->object = out->args.vc.pattern;
+		ctx->object  = (void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+						       sizeof(double));
 	}
 	return len;
 }
@@ -6318,6 +6519,24 @@ comp_set_raw_index(struct context *ctx, const struct token *token,
 	RTE_SET_USED(ctx);
 	RTE_SET_USED(token);
 	for (idx = 0; idx < RAW_ENCAP_CONFS_MAX_NUM; ++idx) {
+		if (buf && idx == ent)
+			return snprintf(buf, size, "%u", idx);
+		++nb;
+	}
+	return nb;
+}
+
+/** Complete index number for set raw_encap/raw_decap commands. */
+static int
+comp_set_sample_index(struct context *ctx, const struct token *token,
+		   unsigned int ent, char *buf, unsigned int size)
+{
+	uint16_t idx = 0;
+	uint16_t nb = 0;
+
+	RTE_SET_USED(ctx);
+	RTE_SET_USED(token);
+	for (idx = 0; idx < RAW_SAMPLE_CONFS_MAX_NUM; ++idx) {
 		if (buf && idx == ent)
 			return snprintf(buf, size, "%u", idx);
 		++nb;
@@ -6770,7 +6989,53 @@ flow_item_default_mask(const struct rte_flow_item *item)
 	return mask;
 }
 
+/** Dispatch parsed buffer to function calls. */
+static void
+cmd_set_raw_parsed_sample(const struct buffer *in)
+{
+	uint32_t n = in->args.vc.actions_n;
+	uint32_t i = 0;
+	struct rte_flow_action *action = NULL;
+	struct rte_flow_action *data = NULL;
+	size_t size = 0;
+	uint16_t idx = in->port; /* We borrow port field as index */
+	uint32_t max_size = sizeof(struct rte_flow_action) *
+						ACTION_SAMPLE_ACTIONS_NUM;
 
+	RTE_ASSERT(in->command == SET_SAMPLE_ACTIONS);
+	data = (struct rte_flow_action *)&raw_sample_confs[idx].data;
+	memset(data, 0x00, max_size);
+	for (; i <= n - 1; i++) {
+		action = in->args.vc.actions + i;
+		if (action->type == RTE_FLOW_ACTION_TYPE_END)
+			break;
+		switch (action->type) {
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			size = sizeof(struct rte_flow_action_mark);
+			rte_memcpy(&sample_mark[idx],
+				(const void *)action->conf, size);
+			action->conf = &sample_mark[idx];
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			size = sizeof(struct rte_flow_action_count);
+			rte_memcpy(&sample_count[idx],
+				(const void *)action->conf, size);
+			action->conf = &sample_count[idx];
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			size = sizeof(struct rte_flow_action_queue);
+			rte_memcpy(&sample_queue[idx],
+				(const void *)action->conf, size);
+			action->conf = &sample_queue[idx];
+			break;
+		default:
+			printf("Error - Not supported action\n");
+			return;
+		}
+		rte_memcpy(data, action, sizeof(struct rte_flow_action));
+		data++;
+	}
+}
 
 /** Dispatch parsed buffer to function calls. */
 static void
@@ -6787,6 +7052,8 @@ cmd_set_raw_parsed(const struct buffer *in)
 	uint16_t proto = 0;
 	uint16_t idx = in->port; /* We borrow port field as index */
 
+	if (in->command == SET_SAMPLE_ACTIONS)
+		return cmd_set_raw_parsed_sample(in);
 	RTE_ASSERT(in->command == SET_RAW_ENCAP ||
 		   in->command == SET_RAW_DECAP);
 	if (in->command == SET_RAW_ENCAP) {
