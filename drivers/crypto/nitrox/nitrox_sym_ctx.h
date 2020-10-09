@@ -11,6 +11,7 @@
 
 #define AES_MAX_KEY_SIZE 32
 #define AES_BLOCK_SIZE 16
+#define AES_GCM_SALT_SIZE 4
 
 enum nitrox_chain {
 	NITROX_CHAIN_CIPHER_ONLY,
@@ -69,14 +70,14 @@ struct flexi_crypto_context {
 struct nitrox_crypto_ctx {
 	struct flexi_crypto_context fctx;
 	enum nitrox_chain nitrox_chain;
-	enum rte_crypto_auth_operation auth_op;
-	enum rte_crypto_auth_algorithm auth_algo;
 	struct {
 		uint16_t offset;
 		uint16_t length;
 	} iv;
 	rte_iova_t iova;
+	uint8_t salt[AES_GCM_SALT_SIZE];
 	uint16_t digest_length;
+	uint16_t aad_length;
 	uint8_t opcode;
 	uint8_t req_op;
 };

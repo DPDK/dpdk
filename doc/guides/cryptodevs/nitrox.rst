@@ -26,6 +26,10 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_SHA224_HMAC``
 * ``RTE_CRYPTO_AUTH_SHA256_HMAC``
 
+Supported AEAD algorithms:
+
+* ``RTE_CRYPTO_AEAD_AES_GCM``
+
 Limitations
 -----------
 

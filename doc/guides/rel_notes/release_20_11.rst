@@ -156,6 +156,10 @@ New Features
 
   * Added support for AES-ECB 128, 192 and 256 in aesni_mb PMD.
 
+* **Updated Marvell NITROX symmetric crypto PMD.**
+
+  * Added AES-GCM support.
+
 * **Updated the OCTEON TX2 crypto PMD.**
 
   * Updated the OCTEON TX2 crypto PMD lookaside protocol offload for IPsec with
