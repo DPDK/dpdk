@@ -86,13 +86,14 @@ softnic_tmgr_port_create(struct pmd_internals *p,
 	n_subports = t->port_params.n_subports_per_port;
 	for (subport_id = 0; subport_id < n_subports; subport_id++) {
 		uint32_t n_pipes_per_subport =
-			t->subport_params[subport_id].n_pipes_per_subport_enabled;
+		t->subport_params[subport_id].n_pipes_per_subport_enabled;
 		uint32_t pipe_id;
 		int status;
 
 		status = rte_sched_subport_config(sched,
 			subport_id,
-			&t->subport_params[subport_id], 0);
+			&t->subport_params[subport_id],
+			t->subport_to_profile[subport_id]);
 		if (status) {
 			rte_sched_port_free(sched);
 			return NULL;
@@ -1115,33 +1116,50 @@ tm_shared_shaper_get_tc(struct rte_eth_dev *dev,
 }
 
 static int
+subport_profile_exists(struct rte_eth_dev *dev,
+	struct rte_sched_subport_profile_params *sp,
+	uint32_t *subport_profile_id)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct tm_params *t = &p->soft.tm.params;
+	uint32_t i;
+
+	for (i = 0; i < t->n_subport_profiles; i++)
+		if (memcmp(&t->subport_profile[i], sp, sizeof(*sp)) == 0) {
+			if (subport_profile_id)
+				*subport_profile_id = i;
+			return 1;
+		}
+
+	return 0;
+}
+
+static int
 update_subport_tc_rate(struct rte_eth_dev *dev,
 	struct tm_node *nt,
 	struct tm_shared_shaper *ss,
 	struct tm_shaper_profile *sp_new)
 {
+	struct rte_sched_subport_profile_params subport_profile;
 	struct pmd_internals *p = dev->data->dev_private;
 	uint32_t tc_id = tm_node_tc_id(dev, nt);
-
 	struct tm_node *np = nt->parent_node;
-
 	struct tm_node *ns = np->parent_node;
 	uint32_t subport_id = tm_node_subport_id(dev, ns);
-
-	struct rte_sched_subport_params subport_params;
-
+	struct tm_params *t = &p->soft.tm.params;
+	uint32_t subport_profile_id = t->subport_to_profile[subport_id];
 	struct tm_shaper_profile *sp_old = tm_shaper_profile_search(dev,
 		ss->shaper_profile_id);
 
 	/* Derive new subport configuration. */
-	memcpy(&subport_params,
-		&p->soft.tm.params.subport_params[subport_id],
-		sizeof(subport_params));
-	subport_params.tc_rate[tc_id] = sp_new->params.peak.rate;
+	memcpy(&subport_profile,
+		&p->soft.tm.params.subport_profile[subport_profile_id],
+		sizeof(subport_profile));
+	subport_profile.tc_rate[tc_id] = sp_new->params.peak.rate;
 
 	/* Update the subport configuration. */
 	if (rte_sched_subport_config(SCHED(p),
-		subport_id, &subport_params, 0))
+		subport_id, NULL, subport_profile_id))
 		return -1;
 
 	/* Commit changes. */
@@ -1150,9 +1168,9 @@ update_subport_tc_rate(struct rte_eth_dev *dev,
 	ss->shaper_profile_id = sp_new->shaper_profile_id;
 	sp_new->n_users++;
 
-	memcpy(&p->soft.tm.params.subport_params[subport_id],
-		&subport_params,
-		sizeof(subport_params));
+	memcpy(&p->soft.tm.params.subport_profile[subport_profile_id],
+		&subport_profile,
+		sizeof(subport_profile));
 
 	return 0;
 }
@@ -2238,6 +2256,8 @@ pipe_profiles_generate(struct rte_eth_dev *dev)
 			struct rte_sched_pipe_params pp;
 			uint32_t pos;
 
+			memset(&pp, 0, sizeof(pp));
+
 			if (np->level != TM_NODE_LEVEL_PIPE ||
 				np->parent_node_id != ns->node_id)
 				continue;
@@ -2342,6 +2362,123 @@ tm_subport_tc_shared_shaper_get(struct rte_eth_dev *dev,
 
 	return NULL;
 }
+
+static struct rte_sched_subport_profile_params *
+subport_profile_get(struct rte_eth_dev *dev, struct tm_node *np)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct tm_params *t = &p->soft.tm.params;
+	uint32_t subport_id = tm_node_subport_id(dev, np->parent_node);
+
+	return &t->subport_profile[subport_id];
+}
+
+static void
+subport_profile_mark(struct rte_eth_dev *dev,
+	uint32_t subport_id,
+	uint32_t subport_profile_id)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct tm_params *t = &p->soft.tm.params;
+
+	t->subport_to_profile[subport_id] = subport_profile_id;
+}
+
+static void
+subport_profile_install(struct rte_eth_dev *dev,
+	struct rte_sched_subport_profile_params *sp,
+	uint32_t subport_profile_id)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct tm_params *t = &p->soft.tm.params;
+
+	memcpy(&t->subport_profile[subport_profile_id],
+		sp, sizeof(*sp));
+	t->n_subport_profiles++;
+}
+
+static int
+subport_profile_free_exists(struct rte_eth_dev *dev,
+	uint32_t *subport_profile_id)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct tm_params *t = &p->soft.tm.params;
+
+	if (t->n_subport_profiles < TM_MAX_SUBPORT_PROFILE) {
+		*subport_profile_id = t->n_subport_profiles;
+		return 1;
+	}
+
+	return 0;
+}
+
+static void
+subport_profile_build(struct rte_eth_dev *dev, struct tm_node *np,
+	struct rte_sched_subport_profile_params *sp)
+{
+	uint32_t i;
+	memset(sp, 0, sizeof(*sp));
+
+	sp->tb_rate = np->shaper_profile->params.peak.rate;
+	sp->tb_size = np->shaper_profile->params.peak.size;
+
+	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
+		struct tm_shared_shaper *ss;
+		struct tm_shaper_profile *ssp;
+
+		ss = tm_subport_tc_shared_shaper_get(dev, np, i);
+		ssp = (ss) ? tm_shaper_profile_search(dev,
+			ss->shaper_profile_id) :
+			np->shaper_profile;
+		sp->tc_rate[i] = ssp->params.peak.rate;
+	}
+
+	/* Traffic Class (TC) */
+	sp->tc_period = SUBPORT_TC_PERIOD;
+}
+
+static int
+subport_profiles_generate(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct tm_hierarchy *h = &p->soft.tm.h;
+	struct tm_node_list *nl = &h->nodes;
+	struct tm_node *ns;
+	uint32_t subport_id;
+
+	/* Objective: Fill in the following fields in struct tm_params:
+	 *    - subport_profiles
+	 *    - n_subport_profiles
+	 *    - subport_to_profile
+	 */
+
+	subport_id = 0;
+	TAILQ_FOREACH(ns, nl, node) {
+		if (ns->level != TM_NODE_LEVEL_SUBPORT)
+			continue;
+
+		struct rte_sched_subport_profile_params sp;
+		uint32_t pos;
+
+		memset(&sp, 0, sizeof(sp));
+
+		subport_profile_build(dev, ns, &sp);
+
+		if (!subport_profile_exists(dev, &sp, &pos)) {
+			if (!subport_profile_free_exists(dev, &pos))
+				return -1;
+
+			subport_profile_install(dev, &sp, pos);
+		}
+
+		subport_profile_mark(dev, subport_id, pos);
+
+		subport_id++;
+	}
+
+	return 0;
+}
+
 
 static int
 hierarchy_commit_check(struct rte_eth_dev *dev, struct rte_tm_error *error)
@@ -2519,6 +2656,15 @@ hierarchy_commit_check(struct rte_eth_dev *dev, struct rte_tm_error *error)
 				rte_strerror(EINVAL));
 	}
 
+	/* Not too many subport profiles. */
+	if (subport_profiles_generate(dev))
+		return -rte_tm_error_set(error,
+			EINVAL,
+			RTE_TM_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			rte_strerror(EINVAL));
+
+
 	/* Not too many pipe profiles. */
 	if (pipe_profiles_generate(dev))
 		return -rte_tm_error_set(error,
@@ -2600,48 +2746,20 @@ hierarchy_blueprints_create(struct rte_eth_dev *dev)
 		.frame_overhead =
 			root->shaper_profile->params.pkt_length_adjust,
 		.n_subports_per_port = root->n_children,
+		.n_subport_profiles = t->n_subport_profiles,
+		.subport_profiles = t->subport_profile,
+		.n_max_subport_profiles = TM_MAX_SUBPORT_PROFILE,
 		.n_pipes_per_subport = TM_MAX_PIPES_PER_SUBPORT,
 	};
 
 	subport_id = 0;
 	TAILQ_FOREACH(n, nl, node) {
-		uint64_t tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
-		uint32_t i;
 
 		if (n->level != TM_NODE_LEVEL_SUBPORT)
 			continue;
 
-		for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
-			struct tm_shared_shaper *ss;
-			struct tm_shaper_profile *sp;
-
-			ss = tm_subport_tc_shared_shaper_get(dev, n, i);
-			sp = (ss) ? tm_shaper_profile_search(dev,
-				ss->shaper_profile_id) :
-				n->shaper_profile;
-			tc_rate[i] = sp->params.peak.rate;
-		}
-
 		t->subport_params[subport_id] =
 			(struct rte_sched_subport_params) {
-				.tb_rate = n->shaper_profile->params.peak.rate,
-				.tb_size = n->shaper_profile->params.peak.size,
-
-				.tc_rate = {tc_rate[0],
-					tc_rate[1],
-					tc_rate[2],
-					tc_rate[3],
-					tc_rate[4],
-					tc_rate[5],
-					tc_rate[6],
-					tc_rate[7],
-					tc_rate[8],
-					tc_rate[9],
-					tc_rate[10],
-					tc_rate[11],
-					tc_rate[12],
-				},
-				.tc_period = SUBPORT_TC_PERIOD,
 				.n_pipes_per_subport_enabled =
 					h->n_tm_nodes[TM_NODE_LEVEL_PIPE] /
 					h->n_tm_nodes[TM_NODE_LEVEL_SUBPORT],
@@ -2901,18 +3019,27 @@ update_subport_rate(struct rte_eth_dev *dev,
 	struct pmd_internals *p = dev->data->dev_private;
 	uint32_t subport_id = tm_node_subport_id(dev, ns);
 
-	struct rte_sched_subport_params subport_params;
+	struct rte_sched_subport_profile_params *profile0 =
+					subport_profile_get(dev, ns);
+	struct rte_sched_subport_profile_params profile1;
+	uint32_t subport_profile_id;
 
-	/* Derive new subport configuration. */
-	memcpy(&subport_params,
-		&p->soft.tm.params.subport_params[subport_id],
-		sizeof(subport_params));
-	subport_params.tb_rate = sp->params.peak.rate;
-	subport_params.tb_size = sp->params.peak.size;
+	/* Derive new pipe profile. */
+	memcpy(&profile1, profile0, sizeof(profile1));
+	profile1.tb_rate = sp->params.peak.rate;
+	profile1.tb_size = sp->params.peak.size;
+
+	/* Since implementation does not allow adding more subport profiles
+	 * after port configuration, the pipe configuration can be successfully
+	 * updated only if the new profile is also part of the existing set of
+	 * pipe profiles.
+	 */
+	if (subport_profile_exists(dev, &profile1, &subport_profile_id) == 0)
+		return -1;
 
 	/* Update the subport configuration. */
 	if (rte_sched_subport_config(SCHED(p), subport_id,
-		&subport_params, 0))
+		NULL, subport_profile_id))
 		return -1;
 
 	/* Commit changes. */
@@ -2922,9 +3049,11 @@ update_subport_rate(struct rte_eth_dev *dev,
 	ns->params.shaper_profile_id = sp->shaper_profile_id;
 	sp->n_users++;
 
-	memcpy(&p->soft.tm.params.subport_params[subport_id],
-		&subport_params,
-		sizeof(subport_params));
+	subport_profile_mark(dev, subport_id, subport_profile_id);
+
+	memcpy(&p->soft.tm.params.subport_profile[subport_profile_id],
+		&profile1,
+		sizeof(profile1));
 
 	return 0;
 }
