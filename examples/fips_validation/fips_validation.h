@@ -12,7 +12,8 @@
 #define MAX_CASE_LINE		15
 #define MAX_LINE_CHAR		204800 /*< max number of characters per line */
 #define MAX_NB_TESTS		10240
-#define MAX_BUF_SIZE		2048
+#define DEF_MBUF_SEG_SIZE	(UINT16_MAX - sizeof(struct rte_mbuf) - \
+				RTE_PKTMBUF_HEADROOM)
 #define MAX_STRING_SIZE		64
 #define MAX_FILE_NAME_SIZE	256
 #define MAX_DIGEST_SIZE		64

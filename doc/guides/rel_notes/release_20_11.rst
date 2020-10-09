@@ -238,6 +238,10 @@ New Features
 
    * Added support to update subport rate dynamically.
 
+* **Updated FIPS validation sample application.**
+
+  * Added scatter gather support.
+
 
 Removed Items
 -------------

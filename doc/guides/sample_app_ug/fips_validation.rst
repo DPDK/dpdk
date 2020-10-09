@@ -96,6 +96,7 @@ The application requires a number of command line options:
          -- --req-file FILE_PATH/FOLDER_PATH
          --rsp-file FILE_PATH/FOLDER_PATH
          [--cryptodev DEVICE_NAME] [--cryptodev-id ID] [--path-is-folder]
+         --mbuf-dataroom DATAROOM_SIZE
 
 where,
   * req-file: The path of the request file or folder, separated by
@@ -110,6 +111,11 @@ where,
 
   * path-is-folder: If presented the application expects req-file and rsp-file
     are folder paths.
+
+  * mbuf-dataroom: By default the application creates mbuf pool with maximum
+    possible data room (65535 bytes). If the user wants to test scatter-gather
+    list feature of the PMD he or she may set this value to reduce the dataroom
+    size so that the input data may be dividied into multiple chained mbufs.
 
 
 To run the application in linux environment to test one AES FIPS test data
