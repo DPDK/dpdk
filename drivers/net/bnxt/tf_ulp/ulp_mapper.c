@@ -2482,12 +2482,12 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 }
 
 int32_t
-ulp_mapper_resources_free(struct bnxt_ulp_context	*ulp_ctx,
-			  uint32_t fid,
-			  enum bnxt_ulp_flow_db_tables	tbl_type)
+ulp_mapper_resources_free(struct bnxt_ulp_context *ulp_ctx,
+			  enum bnxt_ulp_fdb_type flow_type,
+			  uint32_t fid)
 {
-	struct ulp_flow_db_res_params	res_parms = { 0 };
-	int32_t				rc, trc;
+	struct ulp_flow_db_res_params res_parms = { 0 };
+	int32_t rc, trc;
 
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR, "Invalid parms, unable to free flow\n");
@@ -2499,7 +2499,7 @@ ulp_mapper_resources_free(struct bnxt_ulp_context	*ulp_ctx,
 	 * while status is good
 	 */
 	res_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES;
-	rc = ulp_flow_db_resource_del(ulp_ctx, tbl_type, fid, &res_parms);
+	rc = ulp_flow_db_resource_del(ulp_ctx, flow_type, fid, &res_parms);
 
 	if (rc) {
 		/*
@@ -2507,7 +2507,7 @@ ulp_mapper_resources_free(struct bnxt_ulp_context	*ulp_ctx,
 		 * It likely means that the flow did not exist in the flow db.
 		 */
 		BNXT_TF_DBG(ERR, "Flow[%d][0x%08x] failed to free (rc=%d)\n",
-			    tbl_type, fid, rc);
+			    flow_type, fid, rc);
 		return rc;
 	}
 
@@ -2521,20 +2521,20 @@ ulp_mapper_resources_free(struct bnxt_ulp_context	*ulp_ctx,
 			BNXT_TF_DBG(ERR,
 				    "Flow[%d][0x%x] Res[%d][0x%016" PRIx64
 				    "] failed rc=%d.\n",
-				    tbl_type, fid, res_parms.resource_func,
+				    flow_type, fid, res_parms.resource_func,
 				    res_parms.resource_hndl, trc);
 
 		/* All subsequent call require the non-critical_resource */
 		res_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
 
 		rc = ulp_flow_db_resource_del(ulp_ctx,
-					      tbl_type,
+					      flow_type,
 					      fid,
 					      &res_parms);
 	}
 
 	/* Free the Flow ID since we've removed all resources */
-	rc = ulp_flow_db_fid_free(ulp_ctx, tbl_type, fid);
+	rc = ulp_flow_db_fid_free(ulp_ctx, flow_type, fid);
 
 	return rc;
 }
@@ -2568,8 +2568,9 @@ ulp_mapper_glb_resource_info_deinit(struct bnxt_ulp_context *ulp_ctx,
 }
 
 int32_t
-ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid,
-			enum bnxt_ulp_flow_db_tables flow_tbl_type)
+ulp_mapper_flow_destroy(struct bnxt_ulp_context *ulp_ctx,
+			enum bnxt_ulp_fdb_type flow_type,
+			uint32_t fid)
 {
 	int32_t rc;
 
@@ -2582,7 +2583,7 @@ ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid,
 		return -EINVAL;
 	}
 
-	rc = ulp_mapper_resources_free(ulp_ctx, fid, flow_tbl_type);
+	rc = ulp_mapper_resources_free(ulp_ctx, flow_type, fid);
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 	return rc;
 
@@ -2624,7 +2625,7 @@ ulp_mapper_glb_template_table_init(struct bnxt_ulp_context *ulp_ctx)
 		parms.ulp_ctx = ulp_ctx;
 		parms.dev_id = dev_id;
 		parms.mapper_data = mapper_data;
-		parms.flow_type = BNXT_ULP_DEFAULT_FLOW_TABLE;
+		parms.flow_type = BNXT_ULP_FDB_TYPE_DEFAULT;
 		parms.tmpl_type = BNXT_ULP_TEMPLATE_TYPE_CLASS;
 
 		/* Get the class table entry from dev id and class id */
@@ -2758,8 +2759,8 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 flow_error:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 	/* Free all resources that were allocated during flow creation */
-	trc = ulp_mapper_flow_destroy(ulp_ctx, parms.fid,
-				      BNXT_ULP_REGULAR_FLOW_TABLE);
+	trc = ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR,
+				      parms.fid);
 	if (trc)
 		BNXT_TF_DBG(ERR, "Failed to free all resources rc=%d\n", trc);
 

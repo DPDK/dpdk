@@ -853,7 +853,7 @@ bnxt_ulp_deinit(struct bnxt *bp,
 	bnxt_ulp_destroy_vfr_default_rules(bp, true);
 
 	/* clean up regular flows */
-	ulp_flow_db_flush_flows(bp->ulp_ctx, BNXT_ULP_REGULAR_FLOW_TABLE);
+	ulp_flow_db_flush_flows(bp->ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR);
 
 	/* cleanup the eem table scope */
 	ulp_eem_tbl_scope_deinit(bp, bp->ulp_ctx);

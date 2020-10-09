@@ -561,7 +561,7 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 
 	do {
 		rc = ulp_flow_db_resource_get(ctxt,
-					      BNXT_ULP_REGULAR_FLOW_TABLE,
+					      BNXT_ULP_FDB_TYPE_REGULAR,
 					      flow_id,
 					      &nxt_resource_index,
 					      &params);

@@ -46,21 +46,15 @@ struct bnxt_ulp_flow_tbl {
 	uint32_t	tail_index;
 
 	/* Table to track the active flows. */
-	uint64_t	*active_flow_tbl;
+	uint64_t	*active_reg_flows;
+	uint64_t	*active_dflt_flows;
 	uint32_t	num_flows;
 	uint32_t	num_resources;
 };
 
-/* Flow database supports two tables. */
-enum bnxt_ulp_flow_db_tables {
-	BNXT_ULP_REGULAR_FLOW_TABLE,
-	BNXT_ULP_DEFAULT_FLOW_TABLE,
-	BNXT_ULP_FLOW_TABLE_MAX
-};
-
 /* Structure for the flow database resource information. */
 struct bnxt_ulp_flow_db {
-	struct bnxt_ulp_flow_tbl	flow_tbl[BNXT_ULP_FLOW_TABLE_MAX];
+	struct bnxt_ulp_flow_tbl	flow_tbl;
 	uint16_t			*func_id_tbl;
 	uint32_t			func_id_tbl_size;
 };
@@ -107,10 +101,11 @@ int32_t	ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt);
  *
  * returns 0 on success and negative on failure.
  */
-int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context *ulp_ctxt,
-			      enum bnxt_ulp_flow_db_tables tbl_idx,
-			      uint16_t func_id,
-			      uint32_t *fid);
+int32_t
+ulp_flow_db_fid_alloc(struct bnxt_ulp_context *ulp_ctxt,
+		      enum bnxt_ulp_fdb_type flow_type,
+		      uint16_t func_id,
+		      uint32_t *fid);
 
 /*
  * Allocate the flow database entry.
@@ -123,10 +118,11 @@ int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context *ulp_ctxt,
  *
  * returns 0 on success and negative on failure.
  */
-int32_t	ulp_flow_db_resource_add(struct bnxt_ulp_context	*ulp_ctxt,
-				 enum bnxt_ulp_flow_db_tables	tbl_idx,
-				 uint32_t			fid,
-				 struct ulp_flow_db_res_params	*params);
+int32_t
+ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
+			 enum bnxt_ulp_fdb_type flow_type,
+			 uint32_t fid,
+			 struct ulp_flow_db_res_params *params);
 
 /*
  * Free the flow database entry.
@@ -140,10 +136,11 @@ int32_t	ulp_flow_db_resource_add(struct bnxt_ulp_context	*ulp_ctxt,
  *
  * Returns 0 on success and negative on failure.
  */
-int32_t	ulp_flow_db_resource_del(struct bnxt_ulp_context	*ulp_ctxt,
-				 enum bnxt_ulp_flow_db_tables	tbl_idx,
-				 uint32_t			fid,
-				 struct ulp_flow_db_res_params	*params);
+int32_t
+ulp_flow_db_resource_del(struct bnxt_ulp_context *ulp_ctxt,
+			 enum bnxt_ulp_fdb_type flow_type,
+			 uint32_t fid,
+			 struct ulp_flow_db_res_params *params);
 
 /*
  * Free the flow database entry
@@ -154,9 +151,10 @@ int32_t	ulp_flow_db_resource_del(struct bnxt_ulp_context	*ulp_ctxt,
  *
  * returns 0 on success and negative on failure.
  */
-int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
-			     enum bnxt_ulp_flow_db_tables	tbl_idx,
-			     uint32_t				fid);
+int32_t
+ulp_flow_db_fid_free(struct bnxt_ulp_context *ulp_ctxt,
+		     enum bnxt_ulp_fdb_type tbl_idx,
+		     uint32_t fid);
 
 /*
  *Get the flow database entry details
@@ -169,11 +167,12 @@ int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
  *
  * returns 0 on success and negative on failure.
  */
-int32_t	ulp_flow_db_resource_get(struct bnxt_ulp_context	*ulp_ctxt,
-				 enum bnxt_ulp_flow_db_tables	tbl_idx,
-				 uint32_t			fid,
-				 uint32_t			*nxt_idx,
-				 struct ulp_flow_db_res_params	*params);
+int32_t
+ulp_flow_db_resource_get(struct bnxt_ulp_context *ulp_ctxt,
+			 enum bnxt_ulp_fdb_type flow_type,
+			 uint32_t fid,
+			 uint32_t *nxt_idx,
+			 struct ulp_flow_db_res_params *params);
 
 /*
  * Flush all flows in the flow database.
@@ -183,8 +182,9 @@ int32_t	ulp_flow_db_resource_get(struct bnxt_ulp_context	*ulp_ctxt,
  *
  * returns 0 on success or negative number on failure
  */
-int32_t	ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
-				uint32_t		idx);
+int32_t
+ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
+			uint32_t idx);
 
 /*
  * Flush all flows in the flow database that belong to a device function.
@@ -212,7 +212,7 @@ ulp_flow_db_session_flow_flush(struct bnxt_ulp_context *ulp_ctx);
  * Check that flow id matches the function id or not
  *
  * ulp_ctxt [in] Ptr to ulp context
- * flow_db [in] Ptr to flow table
+ * flow_id [in] flow id of the flow.
  * func_id [in] The func_id to be set, for reset pass zero.
  *
  * returns true on success or false on failure
@@ -235,16 +235,5 @@ int32_t
 ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint32_t flow_id,
 				   uint16_t *cfa_action);
-
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-/*
- * Dump the flow database entry details
- *
- * ulp_ctxt [in] Ptr to ulp_context
- *
- * returns none
- */
-int32_t	ulp_flow_db_debug_dump(struct bnxt_ulp_context	*ulp_ctxt);
-#endif
 
 #endif /* _ULP_FLOW_DB_H_ */

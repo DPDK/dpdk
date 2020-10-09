@@ -281,8 +281,8 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	ret = ulp_mapper_flow_destroy(ulp_ctx, flow_id,
-				      BNXT_ULP_REGULAR_FLOW_TABLE);
+	ret = ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR,
+				      flow_id);
 	if (ret) {
 		BNXT_TF_DBG(ERR, "Failed to destroy flow.\n");
 		if (error)
