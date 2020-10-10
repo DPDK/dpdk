@@ -272,6 +272,8 @@ flow_program_rss_action(struct rte_eth_dev *eth_dev,
 			if (rc)
 				return rc;
 
+			flow->npc_action &= (~(0xfULL));
+			flow->npc_action |= NIX_RX_ACTIONOP_RSS;
 			flow->npc_action |=
 				((uint64_t)(alg_idx & NIX_RSS_ACT_ALG_MASK) <<
 				 NIX_RSS_ACT_ALG_OFFSET) |
