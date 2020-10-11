@@ -15,6 +15,7 @@ if dep.found()
 	qat_sources += files('qat_sym_pmd.c',
 			     'qat_sym.c',
 			     'qat_sym_session.c',
+			     'qat_sym_hw_dp.c',
 			     'qat_asym_pmd.c',
 			     'qat_asym.c')
 	qat_ext_deps += dep

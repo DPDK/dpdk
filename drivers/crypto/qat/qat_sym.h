@@ -264,6 +264,16 @@ qat_sym_process_response(void **op, uint8_t *resp)
 	}
 	*op = (void *)rx_op;
 }
+
+int
+qat_sym_configure_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
+	struct rte_crypto_raw_dp_ctx *raw_dp_ctx,
+	enum rte_crypto_op_sess_type sess_type,
+	union rte_cryptodev_session_ctx session_ctx, uint8_t is_update);
+
+int
+qat_sym_get_dp_ctx_size(struct rte_cryptodev *dev);
+
 #else
 
 static inline void
@@ -276,5 +286,6 @@ static inline void
 qat_sym_process_response(void **op __rte_unused, uint8_t *resp __rte_unused)
 {
 }
+
 #endif
 #endif /* _QAT_SYM_H_ */

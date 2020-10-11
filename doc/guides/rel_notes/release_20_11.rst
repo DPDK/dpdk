@@ -193,6 +193,10 @@ New Features
   * Updated the OCTEON TX2 crypto PMD lookaside protocol offload for IPsec with
     IPv6 support.
 
+* **Updated QAT crypto PMD.**
+
+  * Added Raw Data-path APIs support.
+
 * **Added Intel ACC100 bbdev PMD.**
 
   Added a new ``acc100`` bbdev driver for the Intel\ |reg| ACC100 accelerator
