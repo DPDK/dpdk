@@ -136,6 +136,14 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		nb_segs = 3;
 	}
 
+	if (global_api_test_type == CRYPTODEV_RAW_API_TEST &&
+		!(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP)) {
+		printf("Device doesn't support raw data-path APIs. "
+			"Test Skipped.\n");
+		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "SKIPPED");
+		return TEST_SKIPPED;
+	}
+
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
 		uint64_t oop_flags = RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
@@ -147,6 +155,13 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
 				"SKIPPED");
 			return TEST_SKIPPED;
+		}
+		if (global_api_test_type == CRYPTODEV_RAW_API_TEST) {
+			printf("Raw Data Path APIs do not support OOP, "
+				"Test Skipped.\n");
+			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "SKIPPED");
+			status = TEST_SUCCESS;
+			goto error_exit;
 		}
 	}
 
@@ -462,25 +477,36 @@ iterate:
 	}
 
 	/* Process crypto operation */
-	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
-		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
-			"line %u FAILED: %s",
-			__LINE__, "Error sending packet for encryption");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
+	if (global_api_test_type == CRYPTODEV_RAW_API_TEST) {
+		uint8_t is_cipher = 0, is_auth = 0;
+		if (t->op_mask & BLOCKCIPHER_TEST_OP_CIPHER)
+			is_cipher = 1;
+		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH)
+			is_auth = 1;
 
-	op = NULL;
+		process_sym_raw_dp_op(dev_id, 0, op, is_cipher, is_auth, 0,
+				tdata->iv.len);
+	} else {
+		if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+				"line %u FAILED: %s",
+				__LINE__, "Error sending packet for encryption");
+			status = TEST_FAILED;
+			goto error_exit;
+		}
 
-	while (rte_cryptodev_dequeue_burst(dev_id, 0, &op, 1) == 0)
-		rte_pause();
+		op = NULL;
 
-	if (!op) {
-		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
-			"line %u FAILED: %s",
-			__LINE__, "Failed to process sym crypto op");
-		status = TEST_FAILED;
-		goto error_exit;
+		while (rte_cryptodev_dequeue_burst(dev_id, 0, &op, 1) == 0)
+			rte_pause();
+
+		if (!op) {
+			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+				"line %u FAILED: %s",
+				__LINE__, "Failed to process sym crypto op");
+			status = TEST_FAILED;
+			goto error_exit;
+		}
 	}
 
 	debug_hexdump(stdout, "m_src(after):",
