@@ -151,11 +151,11 @@ static void
 process_cpu_aead_op(uint8_t dev_id, struct rte_crypto_op *op)
 {
 	int32_t n, st;
-	void *iv;
 	struct rte_crypto_sym_op *sop;
 	union rte_crypto_sym_ofs ofs;
 	struct rte_crypto_sgl sgl;
 	struct rte_crypto_sym_vec symvec;
+	struct rte_crypto_va_iova_ptr iv_ptr, aad_ptr, digest_ptr;
 	struct rte_crypto_vec vec[UINT8_MAX];
 
 	sop = op->sym;
@@ -171,12 +171,16 @@ process_cpu_aead_op(uint8_t dev_id, struct rte_crypto_op *op)
 	sgl.vec = vec;
 	sgl.num = n;
 	symvec.sgl = &sgl;
-	iv = rte_crypto_op_ctod_offset(op, void *, IV_OFFSET);
-	symvec.iv = &iv;
-	symvec.aad = (void **)&sop->aead.aad.data;
-	symvec.digest = (void **)&sop->aead.digest.data;
+	symvec.iv = &iv_ptr;
+	symvec.digest = &digest_ptr;
+	symvec.aad = &aad_ptr;
 	symvec.status = &st;
 	symvec.num = 1;
+
+	/* for CPU crypto the IOVA address is not required */
+	iv_ptr.va = rte_crypto_op_ctod_offset(op, void *, IV_OFFSET);
+	digest_ptr.va = (void *)sop->aead.digest.data;
+	aad_ptr.va = (void *)sop->aead.aad.data;
 
 	ofs.raw = 0;
 
@@ -193,11 +197,11 @@ static void
 process_cpu_crypt_auth_op(uint8_t dev_id, struct rte_crypto_op *op)
 {
 	int32_t n, st;
-	void *iv;
 	struct rte_crypto_sym_op *sop;
 	union rte_crypto_sym_ofs ofs;
 	struct rte_crypto_sgl sgl;
 	struct rte_crypto_sym_vec symvec;
+	struct rte_crypto_va_iova_ptr iv_ptr, digest_ptr;
 	struct rte_crypto_vec vec[UINT8_MAX];
 
 	sop = op->sym;
@@ -213,12 +217,13 @@ process_cpu_crypt_auth_op(uint8_t dev_id, struct rte_crypto_op *op)
 	sgl.vec = vec;
 	sgl.num = n;
 	symvec.sgl = &sgl;
-	iv = rte_crypto_op_ctod_offset(op, void *, IV_OFFSET);
-	symvec.iv = &iv;
-	symvec.aad = (void **)&sop->aead.aad.data;
-	symvec.digest = (void **)&sop->auth.digest.data;
+	symvec.iv = &iv_ptr;
+	symvec.digest = &digest_ptr;
 	symvec.status = &st;
 	symvec.num = 1;
+
+	iv_ptr.va = rte_crypto_op_ctod_offset(op, void *, IV_OFFSET);
+	digest_ptr.va = (void *)sop->auth.digest.data;
 
 	ofs.raw = 0;
 	ofs.ofs.cipher.head = sop->cipher.data.offset - sop->auth.data.offset;

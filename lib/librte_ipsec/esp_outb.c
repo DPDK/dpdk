@@ -449,9 +449,9 @@ cpu_outb_pkt_prepare(const struct rte_ipsec_session *ss,
 	uint32_t i, k, n;
 	uint32_t l2, l3;
 	union sym_op_data icv;
-	void *iv[num];
-	void *aad[num];
-	void *dgst[num];
+	struct rte_crypto_va_iova_ptr iv[num];
+	struct rte_crypto_va_iova_ptr aad[num];
+	struct rte_crypto_va_iova_ptr dgst[num];
 	uint32_t dr[num];
 	uint32_t l4ofs[num];
 	uint32_t clen[num];
@@ -488,9 +488,9 @@ cpu_outb_pkt_prepare(const struct rte_ipsec_session *ss,
 				ivbuf[k]);
 
 			/* fill iv, digest and aad */
-			iv[k] = ivbuf[k];
-			aad[k] = icv.va + sa->icv_len;
-			dgst[k++] = icv.va;
+			iv[k].va = ivbuf[k];
+			aad[k].va = icv.va + sa->icv_len;
+			dgst[k++].va = icv.va;
 		} else {
 			dr[i - k] = i;
 			rte_errno = -rc;

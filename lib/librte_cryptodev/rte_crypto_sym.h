@@ -51,26 +51,44 @@ struct rte_crypto_sgl {
 };
 
 /**
- * Synchronous operation descriptor.
- * Supposed to be used with CPU crypto API call.
+ * Crypto virtual and IOVA address descriptor, used to describe cryptographic
+ * data buffer without the length information. The length information is
+ * normally predefined during session creation.
+ */
+struct rte_crypto_va_iova_ptr {
+	void *va;
+	rte_iova_t iova;
+};
+
+/**
+ * Raw data operation descriptor.
+ * Supposed to be used with synchronous CPU crypto API call or asynchronous
+ * RAW data path API call.
  */
 struct rte_crypto_sym_vec {
-	/** array of SGL vectors */
-	struct rte_crypto_sgl *sgl;
-	/** array of pointers to IV */
-	void **iv;
-	/** array of pointers to AAD */
-	void **aad;
-	/** array of pointers to digest */
-	void **digest;
-	/**
-	 * array of statuses for each operation:
-	 *  - 0 on success
-	 *  - errno on error
-	 */
-	int32_t *status;
 	/** number of operations to perform */
 	uint32_t num;
+	/** array of SGL vectors */
+	struct rte_crypto_sgl *sgl;
+	/** array of pointers to cipher IV */
+	struct rte_crypto_va_iova_ptr *iv;
+	/** array of pointers to digest */
+	struct rte_crypto_va_iova_ptr *digest;
+
+	__extension__
+	union {
+		/** array of pointers to auth IV, used for chain operation */
+		struct rte_crypto_va_iova_ptr *auth_iv;
+		/** array of pointers to AAD, used for AEAD operation */
+		struct rte_crypto_va_iova_ptr *aad;
+	};
+
+	/**
+	 * array of statuses for each operation:
+	 * - 0 on success
+	 * - errno on error
+	 */
+	int32_t *status;
 };
 
 /**

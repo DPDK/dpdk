@@ -620,7 +620,8 @@ operation descriptor (``struct rte_crypto_sym_vec``) containing:
   descriptors of performed operations (``struct rte_crypto_sgl``). Each instance
   of ``struct rte_crypto_sgl`` consists of a number of segments and a pointer to
   an array of segment descriptors ``struct rte_crypto_vec``;
-- pointers to arrays of size ``num`` containing IV, AAD and digest information,
+- pointers to arrays of size ``num`` containing IV, AAD and digest information
+  in the ``cpu_crypto`` sub-structure,
 - pointer to an array of size ``num`` where status information will be stored
   for each operation.
 

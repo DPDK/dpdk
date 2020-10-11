@@ -1931,7 +1931,7 @@ generate_sync_dgst(struct rte_crypto_sym_vec *vec,
 
 	for (i = 0, k = 0; i != vec->num; i++) {
 		if (vec->status[i] == 0) {
-			memcpy(vec->digest[i], dgst[i], len);
+			memcpy(vec->digest[i].va, dgst[i], len);
 			k++;
 		}
 	}
@@ -1947,7 +1947,7 @@ verify_sync_dgst(struct rte_crypto_sym_vec *vec,
 
 	for (i = 0, k = 0; i != vec->num; i++) {
 		if (vec->status[i] == 0) {
-			if (memcmp(vec->digest[i], dgst[i], len) != 0)
+			if (memcmp(vec->digest[i].va, dgst[i], len) != 0)
 				vec->status[i] = EBADMSG;
 			else
 				k++;
@@ -2010,9 +2010,8 @@ aesni_mb_cpu_crypto_process_bulk(struct rte_cryptodev *dev,
 		}
 
 		/* Submit job for processing */
-		set_cpu_mb_job_params(job, s, sofs, buf, len,
-			vec->iv[i], vec->aad[i], tmp_dgst[i],
-			&vec->status[i]);
+		set_cpu_mb_job_params(job, s, sofs, buf, len, vec->iv[i].va,
+			vec->aad[i].va, tmp_dgst[i], &vec->status[i]);
 		job = submit_sync_job(mb_mgr);
 		j++;
 

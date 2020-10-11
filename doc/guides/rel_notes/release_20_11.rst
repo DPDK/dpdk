@@ -345,6 +345,9 @@ API Changes
 
 * vhost: Moved vDPA APIs from experimental to stable.
 
+* cryptodev: The structure ``rte_crypto_sym_vec`` is updated to support both
+  cpu_crypto synchrounous operation and asynchronous raw data-path APIs.
+
 * scheduler: Renamed functions ``rte_cryptodev_scheduler_slave_attach``,
   ``rte_cryptodev_scheduler_slave_detach`` and
   ``rte_cryptodev_scheduler_slaves_get`` to

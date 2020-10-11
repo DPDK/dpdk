@@ -112,7 +112,9 @@ mbuf_cut_seg_ofs(struct rte_mbuf *mb, struct rte_mbuf *ms, uint32_t ofs,
 static inline void
 cpu_crypto_bulk(const struct rte_ipsec_session *ss,
 	union rte_crypto_sym_ofs ofs, struct rte_mbuf *mb[],
-	void *iv[], void *aad[], void *dgst[], uint32_t l4ofs[],
+	struct rte_crypto_va_iova_ptr iv[],
+	struct rte_crypto_va_iova_ptr aad[],
+	struct rte_crypto_va_iova_ptr dgst[], uint32_t l4ofs[],
 	uint32_t clen[], uint32_t num)
 {
 	uint32_t i, j, n;
@@ -136,8 +138,8 @@ cpu_crypto_bulk(const struct rte_ipsec_session *ss,
 			/* fill the request structure */
 			symvec.sgl = &vecpkt[j];
 			symvec.iv = &iv[j];
-			symvec.aad = &aad[j];
 			symvec.digest = &dgst[j];
+			symvec.aad = &aad[j];
 			symvec.status = &st[j];
 			symvec.num = i - j;
 

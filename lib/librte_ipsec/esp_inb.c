@@ -693,9 +693,9 @@ cpu_inb_pkt_prepare(const struct rte_ipsec_session *ss,
 	struct rte_ipsec_sa *sa;
 	struct replay_sqn *rsn;
 	union sym_op_data icv;
-	void *iv[num];
-	void *aad[num];
-	void *dgst[num];
+	struct rte_crypto_va_iova_ptr iv[num];
+	struct rte_crypto_va_iova_ptr aad[num];
+	struct rte_crypto_va_iova_ptr dgst[num];
 	uint32_t dr[num];
 	uint32_t l4ofs[num];
 	uint32_t clen[num];
@@ -720,9 +720,9 @@ cpu_inb_pkt_prepare(const struct rte_ipsec_session *ss,
 				l4ofs + k, rc, ivbuf[k]);
 
 			/* fill iv, digest and aad */
-			iv[k] = ivbuf[k];
-			aad[k] = icv.va + sa->icv_len;
-			dgst[k++] = icv.va;
+			iv[k].va = ivbuf[k];
+			aad[k].va = icv.va + sa->icv_len;
+			dgst[k++].va = icv.va;
 		} else {
 			dr[i - k] = i;
 			rte_errno = -rc;
