@@ -152,6 +152,13 @@ New Features
     ``--portmask=N``
     where N represents the hexadecimal bitmask of ports used.
 
+* **Added raw data-path APIs for cryptodev library.**
+
+  Cryptodev is added with raw data-path APIs to accelerate external
+  libraries or applications which need to avail fast cryptodev
+  enqueue/dequeue operations but does not necessarily depends on
+  mbufs and cryptodev operation mempools.
+
 * **Updated the aesni_mb crypto PMD.**
 
   * Added support for AES-ECB 128, 192 and 256.

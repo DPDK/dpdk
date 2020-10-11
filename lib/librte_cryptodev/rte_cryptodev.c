@@ -1772,6 +1772,86 @@ rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
 	return dev->dev_ops->sym_cpu_process(dev, sess, ofs, vec);
 }
 
+int
+rte_cryptodev_get_raw_dp_ctx_size(uint8_t dev_id)
+{
+	struct rte_cryptodev *dev;
+	int32_t size = sizeof(struct rte_crypto_raw_dp_ctx);
+	int32_t priv_size;
+
+	if (!rte_cryptodev_pmd_is_valid_dev(dev_id))
+		return -EINVAL;
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+
+	if (*dev->dev_ops->sym_get_raw_dp_ctx_size == NULL ||
+		!(dev->feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP)) {
+		return -ENOTSUP;
+	}
+
+	priv_size = (*dev->dev_ops->sym_get_raw_dp_ctx_size)(dev);
+	if (priv_size < 0)
+		return -ENOTSUP;
+
+	return RTE_ALIGN_CEIL((size + priv_size), 8);
+}
+
+int
+rte_cryptodev_configure_raw_dp_ctx(uint8_t dev_id, uint16_t qp_id,
+	struct rte_crypto_raw_dp_ctx *ctx,
+	enum rte_crypto_op_sess_type sess_type,
+	union rte_cryptodev_session_ctx session_ctx,
+	uint8_t is_update)
+{
+	struct rte_cryptodev *dev;
+
+	if (!rte_cryptodev_get_qp_status(dev_id, qp_id))
+		return -EINVAL;
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+	if (!(dev->feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP)
+			|| dev->dev_ops->sym_configure_raw_dp_ctx == NULL)
+		return -ENOTSUP;
+
+	return (*dev->dev_ops->sym_configure_raw_dp_ctx)(dev, qp_id, ctx,
+			sess_type, session_ctx, is_update);
+}
+
+uint32_t
+rte_cryptodev_raw_enqueue_burst(struct rte_crypto_raw_dp_ctx *ctx,
+	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
+	void **user_data, int *enqueue_status)
+{
+	return (*ctx->enqueue_burst)(ctx->qp_data, ctx->drv_ctx_data, vec,
+			ofs, user_data, enqueue_status);
+}
+
+int
+rte_cryptodev_raw_enqueue_done(struct rte_crypto_raw_dp_ctx *ctx,
+		uint32_t n)
+{
+	return (*ctx->enqueue_done)(ctx->qp_data, ctx->drv_ctx_data, n);
+}
+
+uint32_t
+rte_cryptodev_raw_dequeue_burst(struct rte_crypto_raw_dp_ctx *ctx,
+	rte_cryptodev_raw_get_dequeue_count_t get_dequeue_count,
+	rte_cryptodev_raw_post_dequeue_t post_dequeue,
+	void **out_user_data, uint8_t is_user_data_array,
+	uint32_t *n_success_jobs, int *status)
+{
+	return (*ctx->dequeue_burst)(ctx->qp_data, ctx->drv_ctx_data,
+		get_dequeue_count, post_dequeue, out_user_data,
+		is_user_data_array, n_success_jobs, status);
+}
+
+int
+rte_cryptodev_raw_dequeue_done(struct rte_crypto_raw_dp_ctx *ctx,
+		uint32_t n)
+{
+	return (*ctx->dequeue_done)(ctx->qp_data, ctx->drv_ctx_data, n);
+}
+
 /** Initialise rte_crypto_op mempool element */
 static void
 rte_crypto_op_init(struct rte_mempool *mempool,
