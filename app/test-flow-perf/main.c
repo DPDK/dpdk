@@ -40,7 +40,8 @@
 
 #define MAX_ITERATIONS             100
 #define DEFAULT_RULES_COUNT    4000000
-#define DEFAULT_ITERATION       100000
+#define DEFAULT_RULES_BATCH     100000
+#define DEFAULT_GROUP                0
 
 struct rte_flow *flow;
 static uint8_t flow_group;
@@ -62,8 +63,8 @@ static bool enable_fwd;
 
 static struct rte_mempool *mbuf_mp;
 static uint32_t nb_lcores;
-static uint32_t flows_count;
-static uint32_t iterations_number;
+static uint32_t rules_count;
+static uint32_t rules_batch;
 static uint32_t hairpin_queues_num; /* total hairpin q number - default: 0 */
 static uint32_t nb_lcores;
 
@@ -98,8 +99,10 @@ usage(char *progname)
 {
 	printf("\nusage: %s\n", progname);
 	printf("\nControl configurations:\n");
-	printf("  --flows-count=N: to set the number of needed"
-		" flows to insert, default is 4,000,000\n");
+	printf("  --rules-count=N: to set the number of needed"
+		" rules to insert, default is %d\n", DEFAULT_RULES_COUNT);
+	printf("  --rules-batch=N: set number of batched rules,"
+		" default is %d\n", DEFAULT_RULES_BATCH);
 	printf("  --dump-iterations: To print rates for each"
 		" iteration\n");
 	printf("  --deletion-rate: Enable deletion rate"
@@ -114,7 +117,7 @@ usage(char *progname)
 	printf("  --egress: set egress attribute in flows\n");
 	printf("  --transfer: set transfer attribute in flows\n");
 	printf("  --group=N: set group for all flows,"
-		" default is 0\n");
+		" default is %d\n", DEFAULT_GROUP);
 
 	printf("To set flow items:\n");
 	printf("  --ether: add ether layer in flow items\n");
@@ -527,7 +530,8 @@ args_parse(int argc, char **argv)
 	static const struct option lgopts[] = {
 		/* Control */
 		{ "help",                       0, 0, 0 },
-		{ "flows-count",                1, 0, 0 },
+		{ "rules-count",                1, 0, 0 },
+		{ "rules-batch",                1, 0, 0 },
 		{ "dump-iterations",            0, 0, 0 },
 		{ "deletion-rate",              0, 0, 0 },
 		{ "dump-socket-mem",            0, 0, 0 },
@@ -705,14 +709,24 @@ args_parse(int argc, char **argv)
 			}
 			/* Control */
 			if (strcmp(lgopts[opt_idx].name,
-					"flows-count") == 0) {
+					"rules-batch") == 0) {
 				n = atoi(optarg);
-				if (n > (int) iterations_number)
-					flows_count = n;
+				if (n >= DEFAULT_RULES_BATCH)
+					rules_batch = n;
 				else {
-					printf("\n\nflows_count should be > %d\n",
-						iterations_number);
+					printf("\n\nrules_batch should be >= %d\n",
+						DEFAULT_RULES_BATCH);
 					rte_exit(EXIT_SUCCESS, " ");
+				}
+			}
+			if (strcmp(lgopts[opt_idx].name,
+					"rules-count") == 0) {
+				n = atoi(optarg);
+				if (n >= (int) rules_batch)
+					rules_count = n;
+				else {
+					printf("\n\nrules_count should be >= %d\n",
+						rules_batch);
 				}
 			}
 			if (strcmp(lgopts[opt_idx].name,
@@ -826,13 +840,13 @@ destroy_flows(int port_id, struct rte_flow **flow_list)
 	for (i = 0; i < MAX_ITERATIONS; i++)
 		cpu_time_per_iter[i] = -1;
 
-	if (iterations_number > flows_count)
-		iterations_number = flows_count;
+	if (rules_batch > rules_count)
+		rules_batch = rules_count;
 
 	/* Deletion Rate */
 	printf("Flows Deletion on port = %d\n", port_id);
 	start_iter = clock();
-	for (i = 0; i < flows_count; i++) {
+	for (i = 0; i < rules_count; i++) {
 		if (flow_list[i] == 0)
 			break;
 
@@ -842,11 +856,11 @@ destroy_flows(int port_id, struct rte_flow **flow_list)
 			rte_exit(EXIT_FAILURE, "Error in deleting flow");
 		}
 
-		if (i && !((i + 1) % iterations_number)) {
+		if (i && !((i + 1) % rules_batch)) {
 			/* Save the deletion rate of each iter */
 			end_iter = clock();
 			delta = (double) (end_iter - start_iter);
-			iter_id = ((i + 1) / iterations_number) - 1;
+			iter_id = ((i + 1) / rules_batch) - 1;
 			cpu_time_per_iter[iter_id] =
 				delta / CLOCKS_PER_SEC;
 			cpu_time_used += cpu_time_per_iter[iter_id];
@@ -859,21 +873,21 @@ destroy_flows(int port_id, struct rte_flow **flow_list)
 		for (i = 0; i < MAX_ITERATIONS; i++) {
 			if (cpu_time_per_iter[i] == -1)
 				continue;
-			delta = (double)(iterations_number /
+			delta = (double)(rules_batch /
 				cpu_time_per_iter[i]);
 			flows_rate = delta / 1000;
 			printf(":: Iteration #%d: %d flows "
 				"in %f sec[ Rate = %f K/Sec ]\n",
-				i, iterations_number,
+				i, rules_batch,
 				cpu_time_per_iter[i], flows_rate);
 		}
 
 	/* Deletion rate for all flows */
-	flows_rate = ((double) (flows_count / cpu_time_used) / 1000);
+	flows_rate = ((double) (rules_count / cpu_time_used) / 1000);
 	printf("\n:: Total flow deletion rate -> %f K/Sec\n",
 		flows_rate);
 	printf(":: The time for deleting %d in flows %f seconds\n",
-		flows_count, cpu_time_used);
+		rules_count, cpu_time_used);
 }
 
 static inline void
@@ -902,13 +916,13 @@ flows_handler(void)
 	for (i = 0; i < MAX_ITERATIONS; i++)
 		cpu_time_per_iter[i] = -1;
 
-	if (iterations_number > flows_count)
-		iterations_number = flows_count;
+	if (rules_batch > rules_count)
+		rules_batch = rules_count;
 
-	printf(":: Flows Count per port: %d\n", flows_count);
+	printf(":: Flows Count per port: %d\n", rules_count);
 
 	flow_list = rte_zmalloc("flow_list",
-		(sizeof(struct rte_flow *) * flows_count) + 1, 0);
+		(sizeof(struct rte_flow *) * rules_count) + 1, 0);
 	if (flow_list == NULL)
 		rte_exit(EXIT_FAILURE, "No Memory available!");
 
@@ -941,7 +955,7 @@ flows_handler(void)
 		/* Insertion Rate */
 		printf("Flows insertion on port = %d\n", port_id);
 		start_iter = clock();
-		for (i = 0; i < flows_count; i++) {
+		for (i = 0; i < rules_count; i++) {
 			flow = generate_flow(port_id, flow_group,
 				flow_attrs, flow_items, flow_actions,
 				JUMP_ACTION_TABLE, i,
@@ -950,7 +964,7 @@ flows_handler(void)
 				&error);
 
 			if (force_quit)
-				i = flows_count;
+				i = rules_count;
 
 			if (!flow) {
 				print_flow_error(error);
@@ -959,11 +973,11 @@ flows_handler(void)
 
 			flow_list[flow_index++] = flow;
 
-			if (i && !((i + 1) % iterations_number)) {
+			if (i && !((i + 1) % rules_batch)) {
 				/* Save the insertion rate of each iter */
 				end_iter = clock();
 				delta = (double) (end_iter - start_iter);
-				iter_id = ((i + 1) / iterations_number) - 1;
+				iter_id = ((i + 1) / rules_batch) - 1;
 				cpu_time_per_iter[iter_id] =
 					delta / CLOCKS_PER_SEC;
 				cpu_time_used += cpu_time_per_iter[iter_id];
@@ -976,21 +990,21 @@ flows_handler(void)
 			for (i = 0; i < MAX_ITERATIONS; i++) {
 				if (cpu_time_per_iter[i] == -1)
 					continue;
-				delta = (double)(iterations_number /
+				delta = (double)(rules_batch /
 					cpu_time_per_iter[i]);
 				flows_rate = delta / 1000;
 				printf(":: Iteration #%d: %d flows "
 					"in %f sec[ Rate = %f K/Sec ]\n",
-					i, iterations_number,
+					i, rules_batch,
 					cpu_time_per_iter[i], flows_rate);
 			}
 
 		/* Insertion rate for all flows */
-		flows_rate = ((double) (flows_count / cpu_time_used) / 1000);
+		flows_rate = ((double) (rules_count / cpu_time_used) / 1000);
 		printf("\n:: Total flow insertion rate -> %f K/Sec\n",
 						flows_rate);
 		printf(":: The time for creating %d in flows %f seconds\n",
-						flows_count, cpu_time_used);
+						rules_count, cpu_time_used);
 
 		if (delete_flag)
 			destroy_flows(port_id, flow_list);
@@ -1415,11 +1429,11 @@ main(int argc, char **argv)
 
 	force_quit = false;
 	dump_iterations = false;
-	flows_count = DEFAULT_RULES_COUNT;
-	iterations_number = DEFAULT_ITERATION;
+	rules_count = DEFAULT_RULES_COUNT;
+	rules_batch = DEFAULT_RULES_BATCH;
 	delete_flag = false;
 	dump_socket_mem_flag = false;
-	flow_group = 0;
+	flow_group = DEFAULT_GROUP;
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);

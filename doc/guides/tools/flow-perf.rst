@@ -5,19 +5,25 @@ Flow Performance Tool
 =====================
 
 Application for rte_flow performance testing.
-The application provide the ability to test insertion rate of specific
-rte_flow rule, by stressing it to the NIC, and calculate the insertion
-rate.
+The application provides the ability to test insertion rate of specific
+rte_flow rule, by stressing it to the NIC, and calculates the insertion
+and deletion rates.
 
-The application offers some options in the command line, to configure
-which rule to apply.
+The application allows to configure which rule to apply through several
+options of the command line.
 
 After that the application will start producing rules with same pattern
 but increasing the outer IP source address by 1 each time, thus it will
 give different flow each time, and all other items will have open masks.
 
-The application also provide the ability to measure rte flow deletion rate,
-in addition to memory consumption before and after the flows creation.
+To assess the rule insertion rate, the flow performance tool breaks
+down the entire number of flow rule operations into windows of fixed size
+(defaults to 100000 flow rule operations per window, but can be configured).
+Then, the flow performance tool measures the total time per window and
+computes an average time across all windows.
+
+The application also provides the ability to measure rte flow deletion rate,
+in addition to memory consumption before and after the flow rules' creation.
 
 The app supports single and multi core performance measurements.
 
@@ -59,21 +65,31 @@ with a ``--`` separator:
 
 .. code-block:: console
 
-	sudo ./dpdk-test-flow_perf -n 4 -w 08:00.0 -- --ingress --ether --ipv4 --queue --flows-count=1000000
+	sudo ./dpdk-test-flow_perf -n 4 -w 08:00.0 -- --ingress --ether --ipv4 --queue --rules-count=1000000
 
 The command line options are:
 
 *	``--help``
 	Display a help message and quit.
 
-*	``--flows-count=N``
-	Set the number of needed flows to insert,
-	where 1 <= N <= "number of flows".
+*	``--rules-count=N``
+	Set the total number of flow rules to insert,
+	where 1 <= N <= "number of flow rules".
 	The default value is 4,000,000.
 
+*	``--rules-batch=N``
+	Set the number of flow rules to insert per iteration window,
+	where 1 <= N <= "number of flow rules per iteration window".
+	The default value is 100,000 flow rules per iteration window.
+	For a total of --rules-count=1000000 flow rules to be inserted
+	and an iteration window size of --rules-batch=100000 flow rules,
+	the application will measure the insertion rate 10 times
+	(i.e., once every 100000 flow rules) and then report an average
+	insertion rate across the 10 measurements.
+
 *	``--dump-iterations``
-	Print rates for each iteration of flows.
-	Default iteration is 1,00,000.
+	Print rates for each iteration window.
+	Default iteration window equals to the rules-batch size (i.e., 100,000).
 
 *	``--deletion-rate``
 	Enable deletion rate calculations.
