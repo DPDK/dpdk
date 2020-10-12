@@ -142,7 +142,7 @@ pkt_burst_5tuple_swap(struct fwd_stream *fs)
 		if (proto == RTE_BE16(RTE_ETHER_TYPE_IPV4)) {
 			swap_ipv4(h.ipv4);
 			next_proto = h.ipv4->next_proto_id;
-			mb->l3_len = (h.ipv4->version_ihl & 0x0f) * 4;
+			mb->l3_len = rte_ipv4_hdr_len(h.ipv4);
 			h.byte += mb->l3_len;
 		} else if (proto == RTE_BE16(RTE_ETHER_TYPE_IPV6)) {
 			swap_ipv6(h.ipv6);

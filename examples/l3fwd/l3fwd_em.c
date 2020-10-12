@@ -579,8 +579,7 @@ em_parse_ptype(struct rte_mbuf *m)
 	l3 = (uint8_t *)eth_hdr + sizeof(struct rte_ether_hdr);
 	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
 		ipv4_hdr = (struct rte_ipv4_hdr *)l3;
-		hdr_len = (ipv4_hdr->version_ihl & RTE_IPV4_HDR_IHL_MASK) *
-			  RTE_IPV4_IHL_MULTIPLIER;
+		hdr_len = rte_ipv4_hdr_len(ipv4_hdr);
 		if (hdr_len == sizeof(struct rte_ipv4_hdr)) {
 			packet_type |= RTE_PTYPE_L3_IPV4;
 			if (ipv4_hdr->next_proto_id == IPPROTO_TCP)

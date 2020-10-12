@@ -316,8 +316,7 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 	if (l3 == RTE_PTYPE_L3_IPV4 || l3 == RTE_PTYPE_L3_IPV4_EXT) {
 		struct rte_ipv4_hdr *iph = l3_hdr;
 
-		/* ihl contains the number of 4-byte words in the header */
-		l3_len = 4 * (iph->version_ihl & 0xf);
+		l3_len = rte_ipv4_hdr_len(iph);
 		if (unlikely(l2_len + l3_len > rte_pktmbuf_data_len(mbuf)))
 			return;
 		/* check that the total length reported by header is not

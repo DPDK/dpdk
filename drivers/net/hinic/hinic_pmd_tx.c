@@ -23,7 +23,6 @@
 /* packet header and tx offload info */
 #define ETHER_LEN_NO_VLAN		14
 #define ETHER_LEN_WITH_VLAN		18
-#define HEADER_LEN_OFFSET		2
 #define VXLANLEN			8
 #define MAX_PLD_OFFSET			221
 #define MAX_SINGLE_SGE_SIZE		65536
@@ -714,7 +713,6 @@ hinic_ipv4_phdr_cksum(const struct rte_ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 		uint8_t  proto;    /* L4 protocol type. */
 		uint16_t len;      /* L4 length. */
 	} psd_hdr;
-	uint8_t ihl;
 
 	psd_hdr.src_addr = ipv4_hdr->src_addr;
 	psd_hdr.dst_addr = ipv4_hdr->dst_addr;
@@ -723,13 +721,9 @@ hinic_ipv4_phdr_cksum(const struct rte_ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 	if (ol_flags & PKT_TX_TCP_SEG) {
 		psd_hdr.len = 0;
 	} else {
-		/* ipv4_hdr->version_ihl is uint8_t big endian, ihl locates
-		 * lower 4 bits and unit is 4 bytes
-		 */
-		ihl = (ipv4_hdr->version_ihl & 0xF) << 2;
 		psd_hdr.len =
 		rte_cpu_to_be_16(rte_be_to_cpu_16(ipv4_hdr->total_length) -
-				 ihl);
+				 rte_ipv4_hdr_len(ipv4_hdr));
 	}
 	return rte_raw_cksum(&psd_hdr, sizeof(psd_hdr));
 }
@@ -803,8 +797,7 @@ static inline void hinic_analyze_tx_info(struct rte_mbuf *mbuf,
 
 	if (pkt_type == RTE_ETHER_TYPE_IPV4) {
 		ip4h = (struct rte_ipv4_hdr *)(hdr + off_info->outer_l2_len);
-		off_info->outer_l3_len = (ip4h->version_ihl & 0xf) <<
-					HEADER_LEN_OFFSET;
+		off_info->outer_l3_len = rte_ipv4_hdr_len(ip4h);
 	} else if (pkt_type == RTE_ETHER_TYPE_IPV6) {
 		/* not support ipv6 extension header */
 		off_info->outer_l3_len = sizeof(struct rte_ipv6_hdr);

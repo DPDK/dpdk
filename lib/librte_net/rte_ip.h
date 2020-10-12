@@ -104,6 +104,21 @@ struct rte_ipv4_hdr {
 #define RTE_IPV4_VHL_DEF    ((IPVERSION << 4) | RTE_IPV4_MIN_IHL)
 
 /**
+ * Get the length of an IPv4 header.
+ *
+ * @param ipv4_hdr
+ *   Pointer to the IPv4 header.
+ * @return
+ *   The length of the IPv4 header (with options if present) in bytes.
+ */
+static inline uint8_t
+rte_ipv4_hdr_len(const struct rte_ipv4_hdr *ipv4_hdr)
+{
+	return (uint8_t)((ipv4_hdr->version_ihl & RTE_IPV4_HDR_IHL_MASK) *
+		RTE_IPV4_IHL_MULTIPLIER);
+}
+
+/**
  * @internal Calculate a sum of all words in the buffer.
  * Helper routine for the rte_raw_cksum().
  *
@@ -272,7 +287,7 @@ static inline uint16_t
 rte_ipv4_cksum(const struct rte_ipv4_hdr *ipv4_hdr)
 {
 	uint16_t cksum;
-	cksum = rte_raw_cksum(ipv4_hdr, (ipv4_hdr->version_ihl & 0xf) * 4);
+	cksum = rte_raw_cksum(ipv4_hdr, rte_ipv4_hdr_len(ipv4_hdr));
 	return (uint16_t)~cksum;
 }
 
@@ -306,7 +321,6 @@ rte_ipv4_phdr_cksum(const struct rte_ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 	} psd_hdr;
 
 	uint32_t l3_len;
-	uint8_t ip_hdr_len;
 
 	psd_hdr.src_addr = ipv4_hdr->src_addr;
 	psd_hdr.dst_addr = ipv4_hdr->dst_addr;
@@ -316,8 +330,8 @@ rte_ipv4_phdr_cksum(const struct rte_ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 		psd_hdr.len = 0;
 	} else {
 		l3_len = rte_be_to_cpu_16(ipv4_hdr->total_length);
-		ip_hdr_len = (ipv4_hdr->version_ihl & 0xf) * 4;
-		psd_hdr.len = rte_cpu_to_be_16((uint16_t)(l3_len - ip_hdr_len));
+		psd_hdr.len = rte_cpu_to_be_16((uint16_t)(l3_len -
+			rte_ipv4_hdr_len(ipv4_hdr)));
 	}
 	return rte_raw_cksum(&psd_hdr, sizeof(psd_hdr));
 }
@@ -342,7 +356,7 @@ rte_ipv4_udptcp_cksum(const struct rte_ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 	uint32_t l3_len, l4_len;
 	uint8_t ip_hdr_len;
 
-	ip_hdr_len = (ipv4_hdr->version_ihl & 0xf) * 4;
+	ip_hdr_len = rte_ipv4_hdr_len(ipv4_hdr);
 	l3_len = rte_be_to_cpu_16(ipv4_hdr->total_length);
 	if (l3_len < ip_hdr_len)
 		return 0;

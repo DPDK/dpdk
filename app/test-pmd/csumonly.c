@@ -105,7 +105,7 @@ parse_ipv4(struct rte_ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
 {
 	struct rte_tcp_hdr *tcp_hdr;
 
-	info->l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
+	info->l3_len = rte_ipv4_hdr_len(ipv4_hdr);
 	info->l4_proto = ipv4_hdr->next_proto_id;
 
 	/* only fill l4_len for TCP, it's useful for TSO */

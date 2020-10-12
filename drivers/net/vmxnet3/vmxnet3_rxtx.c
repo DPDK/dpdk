@@ -687,8 +687,7 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 					- sizeof(struct rte_tcp_hdr);
 
 		ipv4_hdr = (struct rte_ipv4_hdr *)(ptr + hlen);
-		hlen += (ipv4_hdr->version_ihl & RTE_IPV4_HDR_IHL_MASK) *
-				RTE_IPV4_IHL_MULTIPLIER;
+		hlen += rte_ipv4_hdr_len(ipv4_hdr);
 	} else if (rcd->v6) {
 		if (unlikely(slen < hlen + sizeof(struct rte_ipv6_hdr)))
 			return hw->mtu - sizeof(struct rte_ipv6_hdr) -

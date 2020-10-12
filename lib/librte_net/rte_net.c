@@ -171,13 +171,6 @@ ptype_tunnel(uint16_t *proto, const struct rte_mbuf *m,
 	}
 }
 
-/* get the ipv4 header length */
-static uint8_t
-ip4_hlen(const struct rte_ipv4_hdr *hdr)
-{
-	return (hdr->version_ihl & 0xf) * 4;
-}
-
 /* parse ipv6 extended headers, update offset and return next proto */
 int
 rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
@@ -308,7 +301,7 @@ l3:
 			return pkt_type;
 
 		pkt_type |= ptype_l3_ip(ip4h->version_ihl);
-		hdr_lens->l3_len = ip4_hlen(ip4h);
+		hdr_lens->l3_len = rte_ipv4_hdr_len(ip4h);
 		off += hdr_lens->l3_len;
 
 		if ((layers & RTE_PTYPE_L4_MASK) == 0)
@@ -440,7 +433,7 @@ l3:
 			return pkt_type;
 
 		pkt_type |= ptype_inner_l3_ip(ip4h->version_ihl);
-		hdr_lens->inner_l3_len = ip4_hlen(ip4h);
+		hdr_lens->inner_l3_len = rte_ipv4_hdr_len(ip4h);
 		off += hdr_lens->inner_l3_len;
 
 		if ((layers & RTE_PTYPE_INNER_L4_MASK) == 0)

@@ -1847,7 +1847,7 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 	case RTE_ETHER_TYPE_IPV4:
 		ipv4_hdr = l3_hdr;
 		*l4_proto = ipv4_hdr->next_proto_id;
-		m->l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
+		m->l3_len = rte_ipv4_hdr_len(ipv4_hdr);
 		*l4_hdr = (char *)l3_hdr + m->l3_len;
 		m->ol_flags |= PKT_TX_IPV4;
 		break;
