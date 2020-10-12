@@ -36,6 +36,7 @@
 /* RTA header files */
 #include <desc/ipsec.h>
 #include <desc/pdcp.h>
+#include <desc/sdap.h>
 #include <desc/algo.h>
 
 /* Minimum job descriptor consists of a oneword job descriptor HEADER and
@@ -3264,8 +3265,9 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 					&cipherdata, &authdata,
 					0);
 	} else {
-		if (session->dir == DIR_ENC)
-			bufsize = cnstr_shdsc_pdcp_u_plane_encap(
+		if (session->dir == DIR_ENC) {
+			if (pdcp_xform->sdap_enabled)
+				bufsize = cnstr_shdsc_pdcp_sdap_u_plane_encap(
 					priv->flc_desc[0].desc, 1, swap,
 					session->pdcp.sn_size,
 					pdcp_xform->hfn,
@@ -3273,8 +3275,8 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 					pdcp_xform->pkt_dir,
 					pdcp_xform->hfn_threshold,
 					&cipherdata, p_authdata, 0);
-		else if (session->dir == DIR_DEC)
-			bufsize = cnstr_shdsc_pdcp_u_plane_decap(
+			else
+				bufsize = cnstr_shdsc_pdcp_u_plane_encap(
 					priv->flc_desc[0].desc, 1, swap,
 					session->pdcp.sn_size,
 					pdcp_xform->hfn,
@@ -3282,6 +3284,26 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 					pdcp_xform->pkt_dir,
 					pdcp_xform->hfn_threshold,
 					&cipherdata, p_authdata, 0);
+		} else if (session->dir == DIR_DEC) {
+			if (pdcp_xform->sdap_enabled)
+				bufsize = cnstr_shdsc_pdcp_sdap_u_plane_decap(
+					priv->flc_desc[0].desc, 1, swap,
+					session->pdcp.sn_size,
+					pdcp_xform->hfn,
+					pdcp_xform->bearer,
+					pdcp_xform->pkt_dir,
+					pdcp_xform->hfn_threshold,
+					&cipherdata, p_authdata, 0);
+			else
+				bufsize = cnstr_shdsc_pdcp_u_plane_decap(
+					priv->flc_desc[0].desc, 1, swap,
+					session->pdcp.sn_size,
+					pdcp_xform->hfn,
+					pdcp_xform->bearer,
+					pdcp_xform->pkt_dir,
+					pdcp_xform->hfn_threshold,
+					&cipherdata, p_authdata, 0);
+		}
 	}
 
 	if (bufsize < 0) {
