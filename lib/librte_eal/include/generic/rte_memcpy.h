@@ -95,6 +95,10 @@ rte_mov256(uint8_t *dst, const uint8_t *src);
  * @note This is implemented as a macro, so it's address should not be taken
  * and care is needed as parameter expressions may be evaluated multiple times.
  *
+ * @note For x86 platforms to enable the AVX-512 memcpy implementation, set
+ * -DRTE_MEMCPY_AVX512 macro in CFLAGS, or define the RTE_MEMCPY_AVX512 macro
+ * explicitly in the source file before including the rte_memcpy header file.
+ *
  * @param dst
  *   Pointer to the destination of the data.
  * @param src
