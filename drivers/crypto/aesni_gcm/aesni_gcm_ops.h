@@ -53,6 +53,23 @@ typedef void (*aesni_gcm_finalize_t)(const struct gcm_key_data *gcm_key_data,
 		uint8_t *auth_tag,
 		uint64_t auth_tag_len);
 
+#if IMB_VERSION(0, 54, 0) < IMB_VERSION_NUM
+typedef void (*aesni_gmac_init_t)(const struct gcm_key_data *gcm_key_data,
+		struct gcm_context_data *gcm_ctx_data,
+		const uint8_t *iv,
+		const uint64_t iv_len);
+
+typedef void (*aesni_gmac_update_t)(const struct gcm_key_data *gcm_key_data,
+		struct gcm_context_data *gcm_ctx_data,
+		const uint8_t *in,
+		const uint64_t plaintext_len);
+
+typedef void (*aesni_gmac_finalize_t)(const struct gcm_key_data *gcm_key_data,
+		struct gcm_context_data *gcm_ctx_data,
+		uint8_t *auth_tag,
+		const uint64_t auth_tag_len);
+#endif
+
 /** GCM library function pointer table */
 struct aesni_gcm_ops {
 	aesni_gcm_t enc;        /**< GCM encode function pointer */
@@ -63,6 +80,11 @@ struct aesni_gcm_ops {
 	aesni_gcm_update_t update_dec;
 	aesni_gcm_finalize_t finalize_enc;
 	aesni_gcm_finalize_t finalize_dec;
+#if IMB_VERSION(0, 54, 0) < IMB_VERSION_NUM
+	aesni_gmac_init_t gmac_init;
+	aesni_gmac_update_t gmac_update;
+	aesni_gmac_finalize_t gmac_finalize;
+#endif
 };
 
 /** GCM per-session operation handlers */
@@ -72,6 +94,11 @@ struct aesni_gcm_session_ops {
 	aesni_gcm_init_t init;
 	aesni_gcm_update_t update;
 	aesni_gcm_finalize_t finalize;
+#if IMB_VERSION(0, 54, 0) < IMB_VERSION_NUM
+	aesni_gmac_init_t gmac_init;
+	aesni_gmac_update_t gmac_update;
+	aesni_gmac_finalize_t gmac_finalize;
+#endif
 };
 
 #endif /* _AESNI_GCM_OPS_H_ */

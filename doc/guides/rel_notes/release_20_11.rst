@@ -159,6 +159,10 @@ New Features
   * Added support for SNOW3G-UEA2/UIA2 algorithms.
   * Added support for KASUMI-F8/F9 algorithms.
 
+* **Updated the aesni_gcm crypto PMD.**
+
+  * Added SGL support for AES-GMAC.
+
 * **Added Broadcom BCMFS symmetric crypto PMD.**
 
   Added a symmetric crypto PMD for Broadcom FlexSparc crypto units.
