@@ -359,6 +359,11 @@ API Changes
 * cryptodev: The structure ``rte_crypto_sym_vec`` is updated to support both
   cpu_crypto synchrounous operation and asynchronous raw data-path APIs.
 
+* cryptodev: ``RTE_CRYPTO_AEAD_LIST_END`` from ``enum rte_crypto_aead_algorithm``,
+  ``RTE_CRYPTO_CIPHER_LIST_END`` from ``enum rte_crypto_cipher_algorithm`` and
+  ``RTE_CRYPTO_AUTH_LIST_END`` from ``enum rte_crypto_auth_algorithm``
+  are removed to avoid future ABI breakage while adding new algorithms.
+
 * scheduler: Renamed functions ``rte_cryptodev_scheduler_slave_attach``,
   ``rte_cryptodev_scheduler_slave_detach`` and
   ``rte_cryptodev_scheduler_slaves_get`` to

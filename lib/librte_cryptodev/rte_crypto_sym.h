@@ -105,7 +105,13 @@ union rte_crypto_sym_ofs {
 	} ofs;
 };
 
-/** Symmetric Cipher Algorithms */
+/** Symmetric Cipher Algorithms
+ *
+ * Note, to avoid ABI breakage across releases
+ * - LIST_END should not be added to this enum
+ * - the order of enums should not be changed
+ * - new algorithms should only be added to the end
+ */
 enum rte_crypto_cipher_algorithm {
 	RTE_CRYPTO_CIPHER_NULL = 1,
 	/**< NULL cipher algorithm. No mode applies to the NULL algorithm. */
@@ -150,15 +156,12 @@ enum rte_crypto_cipher_algorithm {
 	 * for m_src and m_dst in the rte_crypto_sym_op must be NULL.
 	 */
 
-	RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
+	RTE_CRYPTO_CIPHER_DES_DOCSISBPI
 	/**< DES algorithm using modes required by
 	 * DOCSIS Baseline Privacy Plus Spec.
 	 * Chained mbufs are not supported in this mode, i.e. rte_mbuf.next
 	 * for m_src and m_dst in the rte_crypto_sym_op must be NULL.
 	 */
-
-	RTE_CRYPTO_CIPHER_LIST_END
-
 };
 
 /** Cipher algorithm name strings */
@@ -264,7 +267,13 @@ struct rte_crypto_cipher_xform {
 	} iv;	/**< Initialisation vector parameters */
 };
 
-/** Symmetric Authentication / Hash Algorithms */
+/** Symmetric Authentication / Hash Algorithms
+ *
+ * Note, to avoid ABI breakage across releases
+ * - LIST_END should not be added to this enum
+ * - the order of enums should not be changed
+ * - new algorithms should only be added to the end
+ */
 enum rte_crypto_auth_algorithm {
 	RTE_CRYPTO_AUTH_NULL = 1,
 	/**< NULL hash algorithm. */
@@ -330,10 +339,8 @@ enum rte_crypto_auth_algorithm {
 	/**< HMAC using 384 bit SHA3 algorithm. */
 	RTE_CRYPTO_AUTH_SHA3_512,
 	/**< 512 bit SHA3 algorithm. */
-	RTE_CRYPTO_AUTH_SHA3_512_HMAC,
+	RTE_CRYPTO_AUTH_SHA3_512_HMAC
 	/**< HMAC using 512 bit SHA3 algorithm. */
-
-	RTE_CRYPTO_AUTH_LIST_END
 };
 
 /** Authentication algorithm name strings */
@@ -424,15 +431,20 @@ struct rte_crypto_auth_xform {
 };
 
 
-/** Symmetric AEAD Algorithms */
+/** Symmetric AEAD Algorithms
+ *
+ * Note, to avoid ABI breakage across releases
+ * - LIST_END should not be added to this enum
+ * - the order of enums should not be changed
+ * - new algorithms should only be added to the end
+ */
 enum rte_crypto_aead_algorithm {
 	RTE_CRYPTO_AEAD_AES_CCM = 1,
 	/**< AES algorithm in CCM mode. */
 	RTE_CRYPTO_AEAD_AES_GCM,
 	/**< AES algorithm in GCM mode. */
-	RTE_CRYPTO_AEAD_CHACHA20_POLY1305,
+	RTE_CRYPTO_AEAD_CHACHA20_POLY1305
 	/**< Chacha20 cipher with poly1305 authenticator */
-	RTE_CRYPTO_AEAD_LIST_END
 };
 
 /** AEAD algorithm name strings */
