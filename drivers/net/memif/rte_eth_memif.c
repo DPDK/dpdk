@@ -36,6 +36,7 @@
 #define ETH_MEMIF_PKT_BUFFER_SIZE_ARG	"bsize"
 #define ETH_MEMIF_RING_SIZE_ARG		"rsize"
 #define ETH_MEMIF_SOCKET_ARG		"socket"
+#define ETH_MEMIF_SOCKET_ABSTRACT_ARG	"socket-abstract"
 #define ETH_MEMIF_MAC_ARG		"mac"
 #define ETH_MEMIF_ZC_ARG		"zero-copy"
 #define ETH_MEMIF_SECRET_ARG		"secret"
@@ -46,6 +47,7 @@ static const char * const valid_arguments[] = {
 	ETH_MEMIF_PKT_BUFFER_SIZE_ARG,
 	ETH_MEMIF_RING_SIZE_ARG,
 	ETH_MEMIF_SOCKET_ARG,
+	ETH_MEMIF_SOCKET_ABSTRACT_ARG,
 	ETH_MEMIF_MAC_ARG,
 	ETH_MEMIF_ZC_ARG,
 	ETH_MEMIF_SECRET_ARG,
@@ -1675,7 +1677,23 @@ memif_set_socket_filename(const char *key __rte_unused, const char *value,
 	const char **socket_filename = (const char **)extra_args;
 
 	*socket_filename = value;
-	return memif_check_socket_filename(*socket_filename);
+	return 0;
+}
+
+static int
+memif_set_is_socket_abstract(const char *key __rte_unused, const char *value, void *extra_args)
+{
+	uint32_t *flags = (uint32_t *)extra_args;
+
+	if (strstr(value, "yes") != NULL) {
+		*flags |= ETH_MEMIF_FLAG_SOCKET_ABSTRACT;
+	} else if (strstr(value, "no") != NULL) {
+		*flags &= ~ETH_MEMIF_FLAG_SOCKET_ABSTRACT;
+	} else {
+		MIF_LOG(ERR, "Failed to parse socket-abstract param: %s.", value);
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static int
@@ -1761,6 +1779,9 @@ rte_pmd_memif_probe(struct rte_vdev_device *vdev)
 		MIF_LOG(WARNING, "Failed to register mp action callback: %s",
 			strerror(rte_errno));
 
+	/* use abstract address by default */
+	flags |= ETH_MEMIF_FLAG_SOCKET_ABSTRACT;
+
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(vdev), valid_arguments);
 
 	/* parse parameters */
@@ -1786,6 +1807,10 @@ rte_pmd_memif_probe(struct rte_vdev_device *vdev)
 					 (void *)(&socket_filename));
 		if (ret < 0)
 			goto exit;
+		ret = rte_kvargs_process(kvlist, ETH_MEMIF_SOCKET_ABSTRACT_ARG,
+					 &memif_set_is_socket_abstract, &flags);
+		if (ret < 0)
+			goto exit;
 		ret = rte_kvargs_process(kvlist, ETH_MEMIF_MAC_ARG,
 					 &memif_set_mac, ether_addr);
 		if (ret < 0)
@@ -1796,6 +1821,12 @@ rte_pmd_memif_probe(struct rte_vdev_device *vdev)
 			goto exit;
 		ret = rte_kvargs_process(kvlist, ETH_MEMIF_SECRET_ARG,
 					 &memif_set_secret, (void *)(&secret));
+		if (ret < 0)
+			goto exit;
+	}
+
+	if (!(flags & ETH_MEMIF_FLAG_SOCKET_ABSTRACT)) {
+		ret = memif_check_socket_filename(socket_filename);
 		if (ret < 0)
 			goto exit;
 	}
@@ -1837,6 +1868,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_memif,
 			      ETH_MEMIF_PKT_BUFFER_SIZE_ARG "=<int>"
 			      ETH_MEMIF_RING_SIZE_ARG "=<int>"
 			      ETH_MEMIF_SOCKET_ARG "=<string>"
+				  ETH_MEMIF_SOCKET_ABSTRACT_ARG "=yes|no"
 			      ETH_MEMIF_MAC_ARG "=xx:xx:xx:xx:xx:xx"
 			      ETH_MEMIF_ZC_ARG "=yes|no"
 			      ETH_MEMIF_SECRET_ARG "=<string>");

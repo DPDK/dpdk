@@ -81,14 +81,16 @@ struct pmd_internals {
 	memif_interface_id_t id;		/**< unique id */
 	enum memif_role_t role;			/**< device role */
 	uint32_t flags;				/**< device status flags */
-#define ETH_MEMIF_FLAG_CONNECTING	(1 << 0)
+#define ETH_MEMIF_FLAG_CONNECTING		(1 << 0)
 /**< device is connecting */
-#define ETH_MEMIF_FLAG_CONNECTED	(1 << 1)
+#define ETH_MEMIF_FLAG_CONNECTED		(1 << 1)
 /**< device is connected */
-#define ETH_MEMIF_FLAG_ZERO_COPY	(1 << 2)
+#define ETH_MEMIF_FLAG_ZERO_COPY		(1 << 2)
 /**< device is zero-copy enabled */
-#define ETH_MEMIF_FLAG_DISABLED		(1 << 3)
+#define ETH_MEMIF_FLAG_DISABLED			(1 << 3)
 /**< device has not been configured and can not accept connection requests */
+#define ETH_MEMIF_FLAG_SOCKET_ABSTRACT	(1 << 4)
+/**< use abstract socket address */
 
 	char *socket_filename;			/**< pointer to socket filename */
 	char secret[ETH_MEMIF_SECRET_SIZE]; /**< secret (optional security parameter) */

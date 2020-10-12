@@ -862,10 +862,10 @@ memif_listener_handler(void *arg)
 }
 
 static struct memif_socket *
-memif_socket_create(char *key, uint8_t listener)
+memif_socket_create(char *key, uint8_t listener, bool is_abstract)
 {
 	struct memif_socket *sock;
-	struct sockaddr_un un;
+	struct sockaddr_un un = { 0 };
 	int sockfd;
 	int ret;
 	int on = 1;
@@ -886,7 +886,13 @@ memif_socket_create(char *key, uint8_t listener)
 			goto error;
 
 		un.sun_family = AF_UNIX;
-		strlcpy(un.sun_path, sock->filename, MEMIF_SOCKET_UN_SIZE);
+		if (is_abstract) {
+			/* abstract address */
+			un.sun_path[0] = '\0';
+			strlcpy(un.sun_path + 1, sock->filename, MEMIF_SOCKET_UN_SIZE - 1);
+		} else {
+			strlcpy(un.sun_path, sock->filename, MEMIF_SOCKET_UN_SIZE);
+		}
 
 		ret = setsockopt(sockfd, SOL_SOCKET, SO_PASSCRED, &on,
 				 sizeof(on));
@@ -963,7 +969,8 @@ memif_socket_init(struct rte_eth_dev *dev, const char *socket_filename)
 	ret = rte_hash_lookup_data(hash, key, (void **)&socket);
 	if (ret < 0) {
 		socket = memif_socket_create(key,
-					     (pmd->role == MEMIF_ROLE_SLAVE) ? 0 : 1);
+			(pmd->role == MEMIF_ROLE_SLAVE) ? 0 : 1,
+			pmd->flags & ETH_MEMIF_FLAG_SOCKET_ABSTRACT);
 		if (socket == NULL)
 			return -1;
 		ret = rte_hash_add_key_data(hash, key, socket);
@@ -1025,7 +1032,7 @@ memif_socket_remove_device(struct rte_eth_dev *dev)
 	/* remove socket, if this was the last device using it */
 	if (TAILQ_EMPTY(&socket->dev_queue)) {
 		rte_hash_del_key(hash, socket->filename);
-		if (socket->listener) {
+		if (socket->listener && !(pmd->flags & ETH_MEMIF_FLAG_SOCKET_ABSTRACT)) {
 			/* remove listener socket file,
 			 * so we can create new one later.
 			 */
@@ -1054,7 +1061,7 @@ memif_connect_slave(struct rte_eth_dev *dev)
 {
 	int sockfd;
 	int ret;
-	struct sockaddr_un sun;
+	struct sockaddr_un sun = { 0 };
 	struct pmd_internals *pmd = dev->data->dev_private;
 
 	memset(pmd->local_disc_string, 0, ETH_MEMIF_DISC_STRING_SIZE);
@@ -1068,8 +1075,13 @@ memif_connect_slave(struct rte_eth_dev *dev)
 	}
 
 	sun.sun_family = AF_UNIX;
-
-	memcpy(sun.sun_path, pmd->socket_filename, sizeof(sun.sun_path) - 1);
+	if (pmd->flags & ETH_MEMIF_FLAG_SOCKET_ABSTRACT) {
+		/* abstract address */
+		sun.sun_path[0] = '\0';
+		strlcpy(sun.sun_path + 1,  pmd->socket_filename, MEMIF_SOCKET_UN_SIZE - 1);
+	} else {
+		strlcpy(sun.sun_path,  pmd->socket_filename, MEMIF_SOCKET_UN_SIZE);
+	}
 
 	ret = connect(sockfd, (struct sockaddr *)&sun,
 		      sizeof(struct sockaddr_un));

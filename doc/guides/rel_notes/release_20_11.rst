@@ -143,6 +143,11 @@ New Features
 
   Updated the Intel qat driver to use write combining stores.
 
+* **Updated Memif PMD.**
+
+  * Added support for abstract socket address.
+  * Changed default socket address type to abstract.
+
 * **Added Ice Lake (Gen4) support for Intel NTB.**
 
   Added NTB device support (4th generation) for Intel Ice Lake platform.
