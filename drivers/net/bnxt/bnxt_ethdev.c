@@ -2192,14 +2192,6 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 	}
 
 	rc = bnxt_hwrm_tunnel_dst_port_free(bp, port, tunnel_type);
-	if (!rc) {
-		if (tunnel_type ==
-		    HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_VXLAN)
-			bp->vxlan_port = 0;
-		if (tunnel_type ==
-		    HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GENEVE)
-			bp->geneve_port = 0;
-	}
 	return rc;
 }
 
