@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017,2019 NXP
+ * Copyright 2017,2019-2020 NXP
  * Copyright(c) 2017-2020 Intel Corporation.
  */
 
@@ -290,7 +290,15 @@ struct rte_security_pdcp_xform {
 	 * per packet HFN in place of IV. PMDs will extract the HFN
 	 * and perform operations accordingly.
 	 */
-	uint32_t hfn_ovrd;
+	uint8_t hfn_ovrd;
+	/** In case of 5G NR, a new protocol (SDAP) header may be set
+	 * inside PDCP payload which should be authenticated but not
+	 * encrypted. Hence, driver should be notified if SDAP is
+	 * enabled or not, so that SDAP header is not encrypted.
+	 */
+	uint8_t sdap_enabled;
+	/** Reserved for future */
+	uint16_t reserved;
 };
 
 /** DOCSIS direction */

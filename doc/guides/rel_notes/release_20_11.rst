@@ -203,6 +203,11 @@ New Features
   also known as Mount Bryce.  See the
   :doc:`../bbdevs/acc100` BBDEV guide for more details on this new driver.
 
+* **Updated rte_security library to support SDAP.**
+
+  ``rte_security_pdcp_xform`` in ``rte_security`` lib is updated to enable
+  5G NR processing of SDAP header in PMDs.
+
 * **Added Marvell OCTEON TX2 regex PMD.**
 
   Added a new PMD driver for hardware regex offload block for OCTEON TX2 SoC.
@@ -374,6 +379,10 @@ API Changes
 * scheduler: Renamed the configuration value
   ``RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES`` to
   ``RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS``.
+
+* security: ``hfn_ovrd`` field in ``rte_security_pdcp_xform`` is changed from
+  ``uint32_t`` to ``uint8_t`` so that a new field ``sdap_enabled`` can be added
+  to support SDAP.
 
 * ipsec: ``RTE_SATP_LOG2_NUM`` has been dropped from ``enum`` and
   subsequently moved ``rte_ipsec`` lib from experimental to stable.
