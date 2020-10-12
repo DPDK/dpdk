@@ -36,6 +36,7 @@
 #include <desc/algo.h>
 #include <desc/ipsec.h>
 #include <desc/pdcp.h>
+#include <desc/sdap.h>
 
 #include <rte_dpaa_bus.h>
 #include <dpaa_sec.h>
@@ -293,24 +294,49 @@ dpaa_sec_prep_pdcp_cdb(dpaa_sec_session *ses)
 					&cipherdata, &authdata,
 					0);
 	} else {
-		if (ses->dir == DIR_ENC)
-			shared_desc_len = cnstr_shdsc_pdcp_u_plane_encap(
-					cdb->sh_desc, 1, swap,
-					ses->pdcp.sn_size,
-					ses->pdcp.hfn,
-					ses->pdcp.bearer,
-					ses->pdcp.pkt_dir,
-					ses->pdcp.hfn_threshold,
-					&cipherdata, p_authdata, 0);
-		else if (ses->dir == DIR_DEC)
-			shared_desc_len = cnstr_shdsc_pdcp_u_plane_decap(
-					cdb->sh_desc, 1, swap,
-					ses->pdcp.sn_size,
-					ses->pdcp.hfn,
-					ses->pdcp.bearer,
-					ses->pdcp.pkt_dir,
-					ses->pdcp.hfn_threshold,
-					&cipherdata, p_authdata, 0);
+		if (ses->dir == DIR_ENC) {
+			if (ses->pdcp.sdap_enabled)
+				shared_desc_len =
+					cnstr_shdsc_pdcp_sdap_u_plane_encap(
+						cdb->sh_desc, 1, swap,
+						ses->pdcp.sn_size,
+						ses->pdcp.hfn,
+						ses->pdcp.bearer,
+						ses->pdcp.pkt_dir,
+						ses->pdcp.hfn_threshold,
+						&cipherdata, p_authdata, 0);
+			else
+				shared_desc_len =
+					cnstr_shdsc_pdcp_u_plane_encap(
+						cdb->sh_desc, 1, swap,
+						ses->pdcp.sn_size,
+						ses->pdcp.hfn,
+						ses->pdcp.bearer,
+						ses->pdcp.pkt_dir,
+						ses->pdcp.hfn_threshold,
+						&cipherdata, p_authdata, 0);
+		} else if (ses->dir == DIR_DEC) {
+			if (ses->pdcp.sdap_enabled)
+				shared_desc_len =
+					cnstr_shdsc_pdcp_sdap_u_plane_decap(
+						cdb->sh_desc, 1, swap,
+						ses->pdcp.sn_size,
+						ses->pdcp.hfn,
+						ses->pdcp.bearer,
+						ses->pdcp.pkt_dir,
+						ses->pdcp.hfn_threshold,
+						&cipherdata, p_authdata, 0);
+			else
+				shared_desc_len =
+					cnstr_shdsc_pdcp_u_plane_decap(
+						cdb->sh_desc, 1, swap,
+						ses->pdcp.sn_size,
+						ses->pdcp.hfn,
+						ses->pdcp.bearer,
+						ses->pdcp.pkt_dir,
+						ses->pdcp.hfn_threshold,
+						&cipherdata, p_authdata, 0);
+		}
 	}
 	return shared_desc_len;
 }
@@ -2949,6 +2975,7 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	session->pdcp.hfn = pdcp_xform->hfn;
 	session->pdcp.hfn_threshold = pdcp_xform->hfn_threshold;
 	session->pdcp.hfn_ovd = pdcp_xform->hfn_ovrd;
+	session->pdcp.sdap_enabled = pdcp_xform->sdap_enabled;
 	if (cipher_xform)
 		session->pdcp.hfn_ovd_offset = cipher_xform->iv.offset;
 

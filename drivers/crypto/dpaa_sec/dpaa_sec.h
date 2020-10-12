@@ -109,7 +109,8 @@ struct sec_pdcp_ctxt {
 	int8_t pkt_dir;/*!< PDCP Frame Direction 0:UL 1:DL*/
 	int8_t hfn_ovd;/*!< Overwrite HFN per packet*/
 	uint8_t sn_size;	/*!< Sequence number size, 5/7/12/15/18 */
-	uint32_t hfn_ovd_offset;/*!< offset from rte_crypto_op at which
+	uint8_t sdap_enabled;	/*!< SDAP header is enabled */
+	uint16_t hfn_ovd_offset;/*!< offset from rte_crypto_op at which
 				 * per packet hfn is stored
 				 */
 	uint32_t hfn;	/*!< Hyper Frame Number */
