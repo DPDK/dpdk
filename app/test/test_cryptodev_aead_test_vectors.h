@@ -2613,6 +2613,38 @@ static const struct gmac_test_data gmac_test_case_4 = {
 	}
 };
 
+/*
+ * Test vector used to test GMAC SGL with 16 segments
+ * plaintext length = ~32KB / segment size = ~2 KB
+ */
+static const struct gmac_test_data gmac_test_case_5 = {
+	.key = {
+		.data = {
+			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
+			0x6d, 0x6a, 0x8f, 0x94, 0x67, 0x30, 0x83, 0x08
+		},
+		.len = 16
+	},
+	.iv = {
+		.data = {
+			0xca, 0xfe, 0xba, 0xbe, 0xfa, 0xce, 0xdb, 0xad,
+			0xde, 0xca, 0xf8, 0x88
+		},
+		.len = 12
+	},
+	.plaintext = {
+		.data = gmac_plaintext,
+		.len = GMAC_LARGE_PLAINTEXT_LENGTH/2
+	},
+	.gmac_tag = {
+		.data = {
+			0xb1, 0xba, 0xe7, 0x28, 0xd3, 0x95, 0x80, 0xd7,
+			0x2e, 0xf5, 0xd0, 0x20, 0x80, 0x95, 0x16, 0x97
+		},
+		.len = 16
+	}
+};
+
 static const struct aead_test_data gcm_test_case_SGL_1 = {
 	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {

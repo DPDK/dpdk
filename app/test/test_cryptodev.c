@@ -9993,6 +9993,53 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 	return 0;
 }
 
+static int
+create_gmac_operation_sgl(enum rte_crypto_auth_operation op,
+		const struct gmac_test_data *tdata,
+		void *digest_mem, uint64_t digest_phys)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_crypto_sym_op *sym_op;
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate symmetric crypto operation struct");
+
+	sym_op = ut_params->op->sym;
+
+	sym_op->auth.digest.data = digest_mem;
+	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+			"no room to append digest");
+
+	sym_op->auth.digest.phys_addr = digest_phys;
+
+	if (op == RTE_CRYPTO_AUTH_OP_VERIFY) {
+		rte_memcpy(sym_op->auth.digest.data, tdata->gmac_tag.data,
+				tdata->gmac_tag.len);
+		debug_hexdump(stdout, "digest:",
+				sym_op->auth.digest.data,
+				tdata->gmac_tag.len);
+	}
+
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
+			uint8_t *, IV_OFFSET);
+
+	rte_memcpy(iv_ptr, tdata->iv.data, tdata->iv.len);
+
+	debug_hexdump(stdout, "iv:", iv_ptr, tdata->iv.len);
+
+	sym_op->cipher.data.length = 0;
+	sym_op->cipher.data.offset = 0;
+
+	sym_op->auth.data.offset = 0;
+	sym_op->auth.data.length = tdata->plaintext.len;
+
+	return 0;
+}
+
 static int create_gmac_session(uint8_t dev_id,
 		const struct gmac_test_data *tdata,
 		enum rte_crypto_auth_operation auth_op)
@@ -10247,6 +10294,166 @@ static int
 test_AES_GMAC_authentication_verify_test_case_4(void)
 {
 	return test_AES_GMAC_authentication_verify(&gmac_test_case_4);
+}
+
+static int
+test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
+				uint32_t fragsz)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_cryptodev_info dev_info;
+	uint64_t feature_flags;
+	unsigned int trn_data = 0;
+	void *digest_mem = NULL;
+	uint32_t segs = 1;
+	unsigned int to_trn = 0;
+	struct rte_mbuf *buf = NULL;
+	uint8_t *auth_tag, *plaintext;
+	int retval;
+
+	TEST_ASSERT_NOT_EQUAL(tdata->gmac_tag.len, 0,
+			      "No GMAC length in the source data");
+
+	/* Verify the capabilities */
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	cap_idx.algo.auth = RTE_CRYPTO_AUTH_AES_GMAC;
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return -ENOTSUP;
+
+	/* Check for any input SGL support */
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	feature_flags = dev_info.feature_flags;
+
+	if ((!(feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) &&
+			(!(feature_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT)) &&
+			(!(feature_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)))
+		return -ENOTSUP;
+
+	if (fragsz > tdata->plaintext.len)
+		fragsz = tdata->plaintext.len;
+
+	uint16_t plaintext_len = fragsz;
+
+	retval = create_gmac_session(ts_params->valid_devs[0],
+			tdata, RTE_CRYPTO_AUTH_OP_GENERATE);
+
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
+			"Failed to allocate input buffer in mempool");
+
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_len);
+	TEST_ASSERT_NOT_NULL(plaintext, "no room to append plaintext");
+
+	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
+
+	trn_data += plaintext_len;
+
+	buf = ut_params->ibuf;
+
+	/*
+	 * Loop until no more fragments
+	 */
+
+	while (trn_data < tdata->plaintext.len) {
+		++segs;
+		to_trn = (tdata->plaintext.len - trn_data < fragsz) ?
+				(tdata->plaintext.len - trn_data) : fragsz;
+
+		buf->next = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+		buf = buf->next;
+
+		memset(rte_pktmbuf_mtod(buf, uint8_t *), 0,
+				rte_pktmbuf_tailroom(buf));
+
+		plaintext = (uint8_t *)rte_pktmbuf_append(buf,
+				to_trn);
+
+		memcpy(plaintext, tdata->plaintext.data + trn_data,
+				to_trn);
+		trn_data += to_trn;
+		if (trn_data  == tdata->plaintext.len)
+			digest_mem = (uint8_t *)rte_pktmbuf_append(buf,
+					tdata->gmac_tag.len);
+	}
+	ut_params->ibuf->nb_segs = segs;
+
+	/*
+	 * Place digest at the end of the last buffer
+	 */
+	uint64_t digest_phys = rte_pktmbuf_iova(buf) + to_trn;
+
+	if (!digest_mem) {
+		digest_mem = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				+ tdata->gmac_tag.len);
+		digest_phys = rte_pktmbuf_iova_offset(ut_params->ibuf,
+				tdata->plaintext.len);
+	}
+
+	retval = create_gmac_operation_sgl(RTE_CRYPTO_AUTH_OP_GENERATE,
+			tdata, digest_mem, digest_phys);
+
+	if (retval < 0)
+		return retval;
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	ut_params->op->sym->m_src = ut_params->ibuf;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
+	TEST_ASSERT_NOT_NULL(
+		process_crypto_request(ts_params->valid_devs[0],
+		ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+	auth_tag = digest_mem;
+	debug_hexdump(stdout, "auth tag:", auth_tag, tdata->gmac_tag.len);
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			auth_tag,
+			tdata->gmac_tag.data,
+			tdata->gmac_tag.len,
+			"GMAC Generated auth tag not as expected");
+
+	return 0;
+}
+
+/* Segment size not multiple of block size (16B) */
+static int
+test_AES_GMAC_authentication_SGL_40B(void)
+{
+	return test_AES_GMAC_authentication_SGL(&gmac_test_case_1, 40);
+}
+
+static int
+test_AES_GMAC_authentication_SGL_80B(void)
+{
+	return test_AES_GMAC_authentication_SGL(&gmac_test_case_1, 80);
+}
+
+static int
+test_AES_GMAC_authentication_SGL_2048B(void)
+{
+	return test_AES_GMAC_authentication_SGL(&gmac_test_case_5, 2048);
+}
+
+/* Segment size not multiple of block size (16B) */
+static int
+test_AES_GMAC_authentication_SGL_2047B(void)
+{
+	return test_AES_GMAC_authentication_SGL(&gmac_test_case_5, 2047);
 }
 
 struct test_crypto_vector {
@@ -12162,6 +12369,15 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_AES_GMAC_authentication_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GMAC_authentication_verify_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_SGL_40B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_SGL_80B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_SGL_2048B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_SGL_2047B),
+
 		/** Chacha20-Poly1305 */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_chacha20_poly1305_encrypt_test_case_rfc8439),
