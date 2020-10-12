@@ -44,6 +44,14 @@
 #define PDCP_C_PLANE_SN_MASK_BE		0x0000001F
 
 /**
+ * PDCP_7BIT_SN_MASK - This mask is used in the PDCP descriptors for
+ *                              extracting the sequence number (SN) from the
+ *                              PDCP User Plane header.
+ */
+#define PDCP_7BIT_SN_MASK		0x7F000000
+#define PDCP_7BIT_SN_MASK_BE		0x0000007F
+
+/**
  * PDCP_12BIT_SN_MASK - This mask is used in the PDCP descriptors for
  *                              extracting the sequence number (SN) from the
  *                              PDCP User Plane header.
