@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2015-2020 Intel Corporation
+ * Copyright 2020 NXP
  */
 
 #include <time.h>
@@ -42,8 +43,12 @@
 #include "test_cryptodev_mixed_test_vectors.h"
 #ifdef RTE_LIBRTE_SECURITY
 #include "test_cryptodev_security_pdcp_test_vectors.h"
+#include "test_cryptodev_security_pdcp_sdap_test_vectors.h"
 #include "test_cryptodev_security_pdcp_test_func.h"
 #include "test_cryptodev_security_docsis_test_vectors.h"
+
+#define SDAP_DISABLED	0
+#define SDAP_ENABLED	1
 #endif
 
 #define VDEV_ARGS_SIZE 100
@@ -55,6 +60,10 @@
 
 #define IN_PLACE 0
 #define OUT_OF_PLACE 1
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
 
 static int gbl_driver_id;
 
@@ -8276,6 +8285,90 @@ test_PDCP_PROTO_SGL_oop_128B_32B(void)
 }
 
 static int
+test_PDCP_SDAP_PROTO_encap_all(void)
+{
+	int i = 0, size = 0;
+	int err, all_err = TEST_SUCCESS;
+	const struct pdcp_sdap_test *cur_test;
+
+	size = ARRAY_SIZE(list_pdcp_sdap_tests);
+
+	for (i = 0; i < size; i++) {
+		cur_test = &list_pdcp_sdap_tests[i];
+		err = test_pdcp_proto(
+			i, 0, RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			RTE_CRYPTO_AUTH_OP_GENERATE, cur_test->data_in,
+			cur_test->in_len, cur_test->data_out,
+			cur_test->in_len + ((cur_test->auth_key) ? 4 : 0),
+			cur_test->param.cipher_alg, cur_test->cipher_key,
+			cur_test->param.cipher_key_len,
+			cur_test->param.auth_alg,
+			cur_test->auth_key, cur_test->param.auth_key_len,
+			cur_test->bearer, cur_test->param.domain,
+			cur_test->packet_direction, cur_test->sn_size,
+			cur_test->hfn,
+			cur_test->hfn_threshold, SDAP_ENABLED);
+		if (err) {
+			printf("\t%d) %s: Encapsulation failed\n",
+					cur_test->test_idx,
+					cur_test->param.name);
+			err = TEST_FAILED;
+		} else {
+			printf("\t%d) %s: Encap PASS\n", cur_test->test_idx,
+					cur_test->param.name);
+			err = TEST_SUCCESS;
+		}
+		all_err += err;
+	}
+
+	printf("Success: %d, Failure: %d\n", size + all_err, -all_err);
+
+	return (all_err == TEST_SUCCESS) ? TEST_SUCCESS : TEST_FAILED;
+}
+
+static int
+test_PDCP_SDAP_PROTO_decap_all(void)
+{
+	int i = 0, size = 0;
+	int err, all_err = TEST_SUCCESS;
+	const struct pdcp_sdap_test *cur_test;
+
+	size = ARRAY_SIZE(list_pdcp_sdap_tests);
+
+	for (i = 0; i < size; i++) {
+		cur_test = &list_pdcp_sdap_tests[i];
+		err = test_pdcp_proto(
+			i, 0, RTE_CRYPTO_CIPHER_OP_DECRYPT,
+			RTE_CRYPTO_AUTH_OP_VERIFY,
+			cur_test->data_out,
+			cur_test->in_len + ((cur_test->auth_key) ? 4 : 0),
+			cur_test->data_in, cur_test->in_len,
+			cur_test->param.cipher_alg,
+			cur_test->cipher_key, cur_test->param.cipher_key_len,
+			cur_test->param.auth_alg, cur_test->auth_key,
+			cur_test->param.auth_key_len, cur_test->bearer,
+			cur_test->param.domain, cur_test->packet_direction,
+			cur_test->sn_size, cur_test->hfn,
+			cur_test->hfn_threshold, SDAP_ENABLED);
+		if (err) {
+			printf("\t%d) %s: Decapsulation failed\n",
+					cur_test->test_idx,
+					cur_test->param.name);
+			err = TEST_FAILED;
+		} else {
+			printf("\t%d) %s: Decap PASS\n", cur_test->test_idx,
+					cur_test->param.name);
+			err = TEST_SUCCESS;
+		}
+		all_err += err;
+	}
+
+	printf("Success: %d, Failure: %d\n", size + all_err, -all_err);
+
+	return (all_err == TEST_SUCCESS) ? TEST_SUCCESS : TEST_FAILED;
+}
+
+static int
 test_PDCP_PROTO_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -8306,6 +8399,8 @@ test_PDCP_PROTO_all(void)
 	status += test_PDCP_PROTO_SGL_oop_32B_128B();
 	status += test_PDCP_PROTO_SGL_oop_32B_40B();
 	status += test_PDCP_PROTO_SGL_oop_128B_32B();
+	status += test_PDCP_SDAP_PROTO_encap_all();
+	status += test_PDCP_SDAP_PROTO_decap_all();
 
 	if (status)
 		return TEST_FAILED;
