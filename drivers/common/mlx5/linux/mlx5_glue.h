@@ -98,6 +98,24 @@ struct mlx5dv_dr_flow_sampler_attr {
 };
 #endif
 
+#ifndef HAVE_MLX5_DR_CREATE_ACTION_DEST_ARRAY
+enum mlx5dv_dr_action_dest_type {
+	MLX5DV_DR_ACTION_DEST,
+	MLX5DV_DR_ACTION_DEST_REFORMAT,
+};
+struct mlx5dv_dr_action_dest_reformat {
+	struct mlx5dv_dr_action *reformat;
+	struct mlx5dv_dr_action *dest;
+};
+struct mlx5dv_dr_action_dest_attr {
+	enum mlx5dv_dr_action_dest_type type;
+	union {
+		struct mlx5dv_dr_action *dest;
+		struct mlx5dv_dr_action_dest_reformat *dest_reformat;
+	};
+};
+#endif
+
 #ifndef HAVE_IBV_DEVX_EVENT
 struct mlx5dv_devx_event_channel { int fd; };
 struct mlx5dv_devx_async_event_hdr;
@@ -322,6 +340,10 @@ struct mlx5_glue {
 	void (*dv_free_pp)(struct mlx5dv_pp *pp);
 	void *(*dr_create_flow_action_sampler)
 			(struct mlx5dv_dr_flow_sampler_attr *attr);
+	void *(*dr_create_flow_action_dest_array)
+			(void *domain,
+			 size_t num_dest,
+			 struct mlx5dv_dr_action_dest_attr *dests[]);
 };
 
 extern const struct mlx5_glue *mlx5_glue;

@@ -1064,13 +1064,33 @@ mlx5_glue_dr_dump_domain(FILE *file, void *domain)
 }
 
 static void *
-mlx5_glue_dr_create_flow_action_sampler(
-			struct mlx5dv_dr_flow_sampler_attr *attr)
+mlx5_glue_dr_create_flow_action_sampler
+			(struct mlx5dv_dr_flow_sampler_attr *attr)
 {
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE
 	return mlx5dv_dr_action_create_flow_sampler(attr);
 #else
 	(void)attr;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void *
+mlx5_glue_dr_action_create_dest_array
+			(void *domain,
+			 size_t num_dest,
+			 struct mlx5dv_dr_action_dest_attr *dests[])
+{
+#ifdef HAVE_MLX5_DR_CREATE_ACTION_DEST_ARRAY
+	return mlx5dv_dr_action_create_dest_array
+				(domain,
+				num_dest,
+				dests);
+#else
+	(void)domain;
+	(void)num_dest;
+	(void)dests;
 	errno = ENOTSUP;
 	return NULL;
 #endif
@@ -1354,6 +1374,8 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dr_reclaim_domain_memory = mlx5_glue_dr_reclaim_domain_memory,
 	.dr_create_flow_action_sampler =
 		mlx5_glue_dr_create_flow_action_sampler,
+	.dr_create_flow_action_dest_array =
+		mlx5_glue_dr_action_create_dest_array,
 	.devx_query_eqn = mlx5_glue_devx_query_eqn,
 	.devx_create_event_channel = mlx5_glue_devx_create_event_channel,
 	.devx_destroy_event_channel = mlx5_glue_devx_destroy_event_channel,
