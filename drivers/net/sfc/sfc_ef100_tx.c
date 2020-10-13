@@ -36,6 +36,10 @@
 #define SFC_EF100_TX_SEND_DESC_LEN_MAX \
 	((1u << ESF_GZ_TX_SEND_LEN_WIDTH) - 1)
 
+/** Maximum length of the segment descriptor data */
+#define SFC_EF100_TX_SEG_DESC_LEN_MAX \
+	((1u << ESF_GZ_TX_SEG_LEN_WIDTH) - 1)
+
 /**
  * Maximum number of descriptors/buffers in the Tx ring.
  * It should guarantee that corresponding event queue never overfill.
@@ -80,6 +84,32 @@ static inline struct sfc_ef100_txq *
 sfc_ef100_txq_by_dp_txq(struct sfc_dp_txq *dp_txq)
 {
 	return container_of(dp_txq, struct sfc_ef100_txq, dp);
+}
+
+static uint16_t
+sfc_ef100_tx_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			  uint16_t nb_pkts)
+{
+	struct sfc_ef100_txq * const txq = sfc_ef100_txq_by_dp_txq(tx_queue);
+	uint16_t i;
+
+	for (i = 0; i < nb_pkts; i++) {
+		struct rte_mbuf *m = tx_pkts[i];
+		int ret;
+
+		ret = sfc_dp_tx_prepare_pkt(m, 0, txq->max_fill_level, 0, 0);
+		if (unlikely(ret != 0)) {
+			rte_errno = ret;
+			break;
+		}
+
+		if (m->nb_segs > EFX_MASK32(ESF_GZ_TX_SEND_NUM_SEGS)) {
+			rte_errno = EINVAL;
+			break;
+		}
+	}
+
+	return i;
 }
 
 static bool
@@ -189,8 +219,18 @@ sfc_ef100_tx_qdesc_send_create(const struct rte_mbuf *m, efx_oword_t *tx_desc)
 	EFX_POPULATE_OWORD_4(*tx_desc,
 			ESF_GZ_TX_SEND_ADDR, rte_mbuf_data_iova(m),
 			ESF_GZ_TX_SEND_LEN, rte_pktmbuf_data_len(m),
-			ESF_GZ_TX_SEND_NUM_SEGS, 1,
+			ESF_GZ_TX_SEND_NUM_SEGS, m->nb_segs,
 			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_SEND);
+}
+
+static void
+sfc_ef100_tx_qdesc_seg_create(rte_iova_t addr, uint16_t len,
+			      efx_oword_t *tx_desc)
+{
+	EFX_POPULATE_OWORD_3(*tx_desc,
+			ESF_GZ_TX_SEG_ADDR, addr,
+			ESF_GZ_TX_SEG_LEN, len,
+			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_SEG);
 }
 
 static inline void
@@ -231,8 +271,17 @@ sfc_ef100_tx_pkt_descs_max(const struct rte_mbuf *m)
 	RTE_BUILD_BUG_ON(SFC_EF100_TX_SEND_DESC_LEN_MAX <
 		RTE_MIN((unsigned int)EFX_MAC_PDU_MAX, SFC_MBUF_SEG_LEN_MAX));
 
-	SFC_ASSERT(m->nb_segs == 1);
-	return 1;
+	/*
+	 * Any segment of scattered packet cannot be bigger than maximum
+	 * segment length and maximum packet length since TSO is not
+	 * supported yet.
+	 * Make sure that subsequent segments do not need fragmentation (split
+	 * into many Tx descriptors).
+	 */
+	RTE_BUILD_BUG_ON(SFC_EF100_TX_SEG_DESC_LEN_MAX <
+		RTE_MIN((unsigned int)EFX_MAC_PDU_MAX, SFC_MBUF_SEG_LEN_MAX));
+
+	return m->nb_segs;
 }
 
 static uint16_t
@@ -305,6 +354,17 @@ sfc_ef100_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * is sufficient on reap to inspect all the buffers
 		 */
 		txq->sw_ring[id].mbuf = m_seg;
+
+		while ((m_seg = m_seg->next) != NULL) {
+			RTE_BUILD_BUG_ON(SFC_MBUF_SEG_LEN_MAX >
+					 SFC_EF100_TX_SEG_DESC_LEN_MAX);
+
+			id = added++ & txq->ptr_mask;
+			sfc_ef100_tx_qdesc_seg_create(rte_mbuf_data_iova(m_seg),
+					rte_pktmbuf_data_len(m_seg),
+					&txq->txq_hw_ring[id]);
+			txq->sw_ring[id].mbuf = m_seg;
+		}
 
 		dma_desc_space -= (added - pkt_start);
 	}
@@ -532,7 +592,7 @@ struct sfc_dp_tx sfc_ef100_tx = {
 	},
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
 	.dev_offload_capa	= 0,
-	.queue_offload_capa	= 0,
+	.queue_offload_capa	= DEV_TX_OFFLOAD_MULTI_SEGS,
 	.get_dev_info		= sfc_ef100_get_dev_info,
 	.qsize_up_rings		= sfc_ef100_tx_qsize_up_rings,
 	.qcreate		= sfc_ef100_tx_qcreate,
@@ -542,5 +602,6 @@ struct sfc_dp_tx sfc_ef100_tx = {
 	.qstop			= sfc_ef100_tx_qstop,
 	.qreap			= sfc_ef100_tx_qreap,
 	.qdesc_status		= sfc_ef100_tx_qdesc_status,
+	.pkt_prepare		= sfc_ef100_tx_prepare_pkts,
 	.pkt_burst		= sfc_ef100_xmit_pkts,
 };
