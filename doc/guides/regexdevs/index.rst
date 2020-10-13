@@ -13,3 +13,4 @@ which can be used from an application through RegEx API.
 
    features_overview
    mlx5
+   octeontx2

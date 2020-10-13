@@ -146,6 +146,12 @@ New Features
     ``--portmask=N``
     where N represents the hexadecimal bitmask of ports used.
 
+* **Added Marvell OCTEON TX2 regex PMD.**
+
+  Added a new PMD driver for hardware regex offload block for OCTEON TX2 SoC.
+
+  See the :doc:`../regexdevs/octeontx2` for more details.
+
 * **Updated ioat rawdev driver**
 
   The ioat rawdev driver has been updated and enhanced. Changes include:

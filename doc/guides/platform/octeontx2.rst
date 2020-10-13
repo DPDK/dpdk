@@ -67,6 +67,8 @@ DPDK subsystem.
    +---+-----+--------------------------------------------------------------+
    | 9 | SDP | rte_ethdev                                                   |
    +---+-----+--------------------------------------------------------------+
+   | 10| REE | rte_regexdev                                                 |
+   +---+-----+--------------------------------------------------------------+
 
 PF0 is called the administrative / admin function (AF) and has exclusive
 privileges to provision RVU functional block's LFs to each of the PF/VF.
@@ -155,6 +157,9 @@ This section lists dataplane H/W block(s) available in OCTEON TX2 SoC.
 
 #. **Crypto Device Driver**
    See :doc:`../cryptodevs/octeontx2` for CPT crypto device driver information.
+
+#. **Regex Device Driver**
+   See :doc:`../regexdevs/octeontx2` for REE regex device driver information.
 
 Procedure to Setup Platform
 ---------------------------

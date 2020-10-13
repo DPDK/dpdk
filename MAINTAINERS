@@ -1112,6 +1112,12 @@ F: doc/guides/compressdevs/features/zlib.ini
 RegEx Drivers
 -------------
 
+Marvell OCTEON TX2 regex
+M: Guy Kaneti <guyk@marvell.com>
+F: drivers/regex/octeontx2/
+F: doc/guides/regexdevs/octeontx2.rst
+F: doc/guides/regexdevs/features/octeontx2.ini
+
 Mellanox mlx5
 M: Ori Kam <orika@nvidia.com>
 F: drivers/regex/mlx5/
