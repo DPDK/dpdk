@@ -2159,6 +2159,7 @@ rte_eth_dev_is_removed(uint16_t port_id);
  * @return
  *   - 0: Success, receive queue correctly set up.
  *   - -EIO: if device is removed.
+ *   - -ENODEV: if *port_id* is invalid.
  *   - -EINVAL: The memory pool pointer is null or the size of network buffers
  *      which can be allocated from this memory pool does not fit the various
  *      buffer sizes allowed by the device controller.
@@ -2193,6 +2194,7 @@ int rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
  *
  * @return
  *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* is invalid.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOMEM) if unable to allocate the resources.
@@ -2274,6 +2276,7 @@ int rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
  *
  * @return
  *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* is invalid.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOMEM) if unable to allocate the resources.
@@ -2400,7 +2403,8 @@ int rte_eth_dev_is_valid_port(uint16_t port_id);
  *   to rte_eth_dev_configure().
  * @return
  *   - 0: Success, the receive queue is started.
- *   - -EINVAL: The port_id or the queue_id out of range or belong to hairpin.
+ *   - -ENODEV: if *port_id* is invalid.
+ *   - -EINVAL: The queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -2417,7 +2421,8 @@ int rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id);
  *   to rte_eth_dev_configure().
  * @return
  *   - 0: Success, the receive queue is stopped.
- *   - -EINVAL: The port_id or the queue_id out of range or belong to hairpin.
+ *   - -ENODEV: if *port_id* is invalid.
+ *   - -EINVAL: The queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -2435,7 +2440,8 @@ int rte_eth_dev_rx_queue_stop(uint16_t port_id, uint16_t rx_queue_id);
  *   to rte_eth_dev_configure().
  * @return
  *   - 0: Success, the transmit queue is started.
- *   - -EINVAL: The port_id or the queue_id out of range or belong to hairpin.
+ *   - -ENODEV: if *port_id* is invalid.
+ *   - -EINVAL: The queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -2452,7 +2458,8 @@ int rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id);
  *   to rte_eth_dev_configure().
  * @return
  *   - 0: Success, the transmit queue is stopped.
- *   - -EINVAL: The port_id or the queue_id out of range or belong to hairpin.
+ *   - -ENODEV: if *port_id* is invalid.
+ *   - -EINVAL: The queue_id out of range or belong to hairpin.
  *   - -EIO: if device is removed.
  *   - -ENOTSUP: The function not supported in PMD driver.
  */
@@ -2558,7 +2565,7 @@ int rte_eth_dev_close(uint16_t port_id);
  *
  * @return
  *   - (0) if successful.
- *   - (-EINVAL) if port identifier is invalid.
+ *   - (-ENODEV) if *port_id* is invalid.
  *   - (-ENOTSUP) if hardware doesn't support this function.
  *   - (-EPERM) if not ran from the primary process.
  *   - (-EIO) if re-initialisation failed or device is removed.
@@ -3834,6 +3841,7 @@ int rte_eth_dev_default_mac_addr_set(uint16_t port_id,
  *   rte_eth_dev_info_get().
  * @return
  *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* is invalid.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  *   - (-EIO) if device is removed.
@@ -3855,6 +3863,7 @@ int rte_eth_dev_rss_reta_update(uint16_t port_id,
  *   rte_eth_dev_info_get().
  * @return
  *   - (0) if successful.
+ *   - (-ENODEV) if *port_id* is invalid.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-EINVAL) if bad parameter.
  *   - (-EIO) if device is removed.
@@ -4223,8 +4232,9 @@ rte_eth_add_tx_callback(uint16_t port_id, uint16_t queue_id,
  *
  * @return
  *   - 0: Success. Callback was removed.
+ *   - -ENODEV:  If *port_id* is invalid.
  *   - -ENOTSUP: Callback support is not available.
- *   - -EINVAL:  The port_id or the queue_id is out of range, or the callback
+ *   - -EINVAL:  The queue_id is out of range, or the callback
  *               is NULL or not found for the port/queue.
  */
 int rte_eth_remove_rx_callback(uint16_t port_id, uint16_t queue_id,
@@ -4258,8 +4268,9 @@ int rte_eth_remove_rx_callback(uint16_t port_id, uint16_t queue_id,
  *
  * @return
  *   - 0: Success. Callback was removed.
+ *   - -ENODEV:  If *port_id* is invalid.
  *   - -ENOTSUP: Callback support is not available.
- *   - -EINVAL:  The port_id or the queue_id is out of range, or the callback
+ *   - -EINVAL:  The queue_id is out of range, or the callback
  *               is NULL or not found for the port/queue.
  */
 int rte_eth_remove_tx_callback(uint16_t port_id, uint16_t queue_id,
@@ -4279,8 +4290,9 @@ int rte_eth_remove_tx_callback(uint16_t port_id, uint16_t queue_id,
  *
  * @return
  *   - 0: Success
+ *   - -ENODEV:  If *port_id* is invalid.
  *   - -ENOTSUP: routine is not supported by the device PMD.
- *   - -EINVAL:  The port_id or the queue_id is out of range, or the queue
+ *   - -EINVAL:  The queue_id is out of range, or the queue
  *               is hairpin queue.
  */
 int rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
@@ -4300,8 +4312,9 @@ int rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
  *
  * @return
  *   - 0: Success
+ *   - -ENODEV:  If *port_id* is invalid.
  *   - -ENOTSUP: routine is not supported by the device PMD.
- *   - -EINVAL:  The port_id or the queue_id is out of range, or the queue
+ *   - -EINVAL:  The queue_id is out of range, or the queue
  *               is hairpin queue.
  */
 int rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
@@ -4321,8 +4334,9 @@ int rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
  *
  * @return
  *   - 0: Success
+ *   - -ENODEV:  If *port_id* is invalid.
  *   - -ENOTSUP: routine is not supported by the device PMD.
- *   - -EINVAL:  The port_id or the queue_id is out of range.
+ *   - -EINVAL:  The queue_id is out of range.
  */
 __rte_experimental
 int rte_eth_rx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
@@ -4342,8 +4356,9 @@ int rte_eth_rx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
  *
  * @return
  *   - 0: Success
+ *   - -ENODEV:  If *port_id* is invalid.
  *   - -ENOTSUP: routine is not supported by the device PMD.
- *   - -EINVAL:  The port_id or the queue_id is out of range.
+ *   - -EINVAL:  The queue_id is out of range.
  */
 __rte_experimental
 int rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
@@ -4732,6 +4747,7 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id);
 *   Buffer of size RTE_ETH_NAME_MAX_LEN to store the name.
 * @return
 *   - (0) if successful.
+*   - (-ENODEV) if *port_id* is invalid.
 *   - (-EINVAL) on failure.
 */
 int
@@ -4941,7 +4957,8 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
  *  The queue id on the specific port.
  * @return
  *  The number of used descriptors in the specific queue, or:
- *     (-EINVAL) if *port_id* or *queue_id* is invalid
+ *   - (-ENODEV) if *port_id* is invalid.
+ *     (-EINVAL) if *queue_id* is invalid
  *     (-ENOTSUP) if the device does not support this function
  */
 static inline int
@@ -4949,7 +4966,7 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_queue_count, -ENOTSUP);
 	if (queue_id >= dev->data->nb_rx_queues ||
@@ -5257,6 +5274,7 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
  *   meet devices requirements with rte_errno set appropriately:
  *   - EINVAL: offload flags are not correctly set
  *   - ENOTSUP: the offload feature is not supported by the hardware
+ *   - ENODEV: if *port_id* is invalid (with debug enabled only)
  *
  */
 
@@ -5271,7 +5289,7 @@ rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		RTE_ETHDEV_LOG(ERR, "Invalid TX port_id=%u\n", port_id);
-		rte_errno = EINVAL;
+		rte_errno = ENODEV;
 		return 0;
 	}
 #endif
