@@ -14,6 +14,34 @@
 extern "C" {
 #endif
 
+/**
+ * Prime event queue to allow processed events to be reused.
+ *
+ * @param evq_prime	Global address of the prime register
+ * @param evq_hw_index	Event queue index
+ * @param evq_read_ptr	Masked event qeueu read pointer
+ */
+static inline void
+sfc_ef100_evq_prime(volatile void *evq_prime, unsigned int evq_hw_index,
+		    unsigned int evq_read_ptr)
+{
+	efx_dword_t dword;
+
+	EFX_POPULATE_DWORD_2(dword,
+			     ERF_GZ_EVQ_ID, evq_hw_index,
+			     ERF_GZ_IDX, evq_read_ptr);
+
+	/*
+	 * EvQ prime on EF100 allows HW to reuse descriptors. So we
+	 * should be sure that event descriptor reads are done.
+	 * However, there is implicit data dependency here since we
+	 * move past event if we have found out that the event has
+	 * come (i.e. we read it) and we have processed it.
+	 * So, no extra barriers are required here.
+	 */
+	rte_write32_relaxed(dword.ed_u32[0], evq_prime);
+}
+
 static inline bool
 sfc_ef100_ev_present(const efx_qword_t *ev, bool phase_bit)
 {

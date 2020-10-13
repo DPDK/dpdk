@@ -58,16 +58,21 @@ struct sfc_ef100_rxq {
 #define SFC_EF100_RXQ_EXCEPTION		0x4
 #define SFC_EF100_RXQ_RSS_HASH		0x10
 #define SFC_EF100_RXQ_USER_MARK		0x20
+#define SFC_EF100_RXQ_FLAG_INTR_EN	0x40
 	unsigned int			ptr_mask;
 	unsigned int			evq_phase_bit_shift;
 	unsigned int			ready_pkts;
 	unsigned int			completed;
 	unsigned int			evq_read_ptr;
+	unsigned int			evq_read_ptr_primed;
 	volatile efx_qword_t		*evq_hw_ring;
 	struct sfc_ef100_rx_sw_desc	*sw_ring;
 	uint64_t			rearm_data;
 	uint16_t			buf_size;
 	uint16_t			prefix_size;
+
+	unsigned int			evq_hw_index;
+	volatile void			*evq_prime;
 
 	/* Used on refill */
 	unsigned int			added;
@@ -85,6 +90,14 @@ static inline struct sfc_ef100_rxq *
 sfc_ef100_rxq_by_dp_rxq(struct sfc_dp_rxq *dp_rxq)
 {
 	return container_of(dp_rxq, struct sfc_ef100_rxq, dp);
+}
+
+static void
+sfc_ef100_rx_qprime(struct sfc_ef100_rxq *rxq)
+{
+	sfc_ef100_evq_prime(rxq->evq_prime, rxq->evq_hw_index,
+			    rxq->evq_read_ptr & rxq->ptr_mask);
+	rxq->evq_read_ptr_primed = rxq->evq_read_ptr;
 }
 
 static inline void
@@ -570,6 +583,10 @@ sfc_ef100_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	/* It is not a problem if we refill in the case of exception */
 	sfc_ef100_rx_qrefill(rxq);
 
+	if ((rxq->flags & SFC_EF100_RXQ_FLAG_INTR_EN) &&
+	    rxq->evq_read_ptr_primed != rxq->evq_read_ptr)
+		sfc_ef100_rx_qprime(rxq);
+
 done:
 	return nb_pkts - (rx_pkts_end - rx_pkts);
 }
@@ -717,6 +734,11 @@ sfc_ef100_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 			ER_GZ_RX_RING_DOORBELL_OFST +
 			(info->hw_index << info->vi_window_shift);
 
+	rxq->evq_hw_index = info->evq_hw_index;
+	rxq->evq_prime = (volatile uint8_t *)info->mem_bar +
+			 info->fcw_offset +
+			 ER_GZ_EVQ_INT_PRIME_OFST;
+
 	sfc_ef100_rx_debug(rxq, "RxQ doorbell is %p", rxq->doorbell);
 
 	*dp_rxqp = &rxq->dp;
@@ -789,6 +811,9 @@ sfc_ef100_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr,
 	rxq->flags |= SFC_EF100_RXQ_STARTED;
 	rxq->flags &= ~(SFC_EF100_RXQ_NOT_RUNNING | SFC_EF100_RXQ_EXCEPTION);
 
+	if (rxq->flags & SFC_EF100_RXQ_FLAG_INTR_EN)
+		sfc_ef100_rx_qprime(rxq);
+
 	return 0;
 }
 
@@ -839,13 +864,37 @@ sfc_ef100_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 	rxq->flags &= ~SFC_EF100_RXQ_STARTED;
 }
 
+static sfc_dp_rx_intr_enable_t sfc_ef100_rx_intr_enable;
+static int
+sfc_ef100_rx_intr_enable(struct sfc_dp_rxq *dp_rxq)
+{
+	struct sfc_ef100_rxq *rxq = sfc_ef100_rxq_by_dp_rxq(dp_rxq);
+
+	rxq->flags |= SFC_EF100_RXQ_FLAG_INTR_EN;
+	if (rxq->flags & SFC_EF100_RXQ_STARTED)
+		sfc_ef100_rx_qprime(rxq);
+	return 0;
+}
+
+static sfc_dp_rx_intr_disable_t sfc_ef100_rx_intr_disable;
+static int
+sfc_ef100_rx_intr_disable(struct sfc_dp_rxq *dp_rxq)
+{
+	struct sfc_ef100_rxq *rxq = sfc_ef100_rxq_by_dp_rxq(dp_rxq);
+
+	/* Cannot disarm, just disable rearm */
+	rxq->flags &= ~SFC_EF100_RXQ_FLAG_INTR_EN;
+	return 0;
+}
+
 struct sfc_dp_rx sfc_ef100_rx = {
 	.dp = {
 		.name		= SFC_KVARG_DATAPATH_EF100,
 		.type		= SFC_DP_RX,
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF100,
 	},
-	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS,
+	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS |
+				  SFC_DP_RX_FEAT_INTR,
 	.dev_offload_capa	= 0,
 	.queue_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM |
 				  DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
@@ -863,5 +912,7 @@ struct sfc_dp_rx sfc_ef100_rx = {
 	.supported_ptypes_get	= sfc_ef100_supported_ptypes_get,
 	.qdesc_npending		= sfc_ef100_rx_qdesc_npending,
 	.qdesc_status		= sfc_ef100_rx_qdesc_status,
+	.intr_enable		= sfc_ef100_rx_intr_enable,
+	.intr_disable		= sfc_ef100_rx_intr_disable,
 	.pkt_burst		= sfc_ef100_recv_pkts,
 };
