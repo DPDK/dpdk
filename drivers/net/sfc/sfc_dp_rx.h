@@ -159,7 +159,8 @@ typedef void (sfc_dp_rx_qdestroy_t)(struct sfc_dp_rxq *dp_rxq);
  * It handovers EvQ to the datapath.
  */
 typedef int (sfc_dp_rx_qstart_t)(struct sfc_dp_rxq *dp_rxq,
-				 unsigned int evq_read_ptr);
+				 unsigned int evq_read_ptr,
+				 const efx_rx_prefix_layout_t *pinfo);
 
 /**
  * Receive queue stop function called before flush.

@@ -18,6 +18,7 @@
 
 #include "efx_types.h"
 #include "efx_regs_ef100.h"
+#include "efx.h"
 
 #include "sfc_debug.h"
 #include "sfc_tweak.h"
@@ -336,6 +337,23 @@ sfc_ef100_rx_class_decode(const efx_word_t class, uint64_t *ol_flags)
 
 	return ptype;
 }
+
+/*
+ * Below function relies on the following fields in Rx prefix.
+ * Some fields are mandatory, some fields are optional.
+ * See sfc_ef100_rx_qstart() below.
+ */
+static const efx_rx_prefix_layout_t sfc_ef100_rx_prefix_layout = {
+	.erpl_fields	= {
+#define	SFC_EF100_RX_PREFIX_FIELD(_name, _big_endian) \
+	EFX_RX_PREFIX_FIELD(_name, ESF_GZ_RX_PREFIX_ ## _name, _big_endian)
+
+		SFC_EF100_RX_PREFIX_FIELD(LENGTH, B_FALSE),
+		SFC_EF100_RX_PREFIX_FIELD(CLASS, B_FALSE),
+
+#undef	SFC_EF100_RX_PREFIX_FIELD
+	}
+};
 
 static bool
 sfc_ef100_rx_prefix_to_offloads(const efx_oword_t *rx_prefix,
@@ -667,8 +685,6 @@ sfc_ef100_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	rxq->evq_hw_ring = info->evq_hw_ring;
 	rxq->max_fill_level = info->max_fill_level;
 	rxq->refill_threshold = info->refill_threshold;
-	rxq->rearm_data =
-		sfc_ef100_mk_mbuf_rearm_data(port_id, info->prefix_size);
 	rxq->prefix_size = info->prefix_size;
 	rxq->buf_size = info->buf_size;
 	rxq->refill_mb_pool = info->refill_mb_pool;
@@ -702,12 +718,31 @@ sfc_ef100_rx_qdestroy(struct sfc_dp_rxq *dp_rxq)
 
 static sfc_dp_rx_qstart_t sfc_ef100_rx_qstart;
 static int
-sfc_ef100_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr)
+sfc_ef100_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr,
+		    const efx_rx_prefix_layout_t *pinfo)
 {
 	struct sfc_ef100_rxq *rxq = sfc_ef100_rxq_by_dp_rxq(dp_rxq);
+	uint32_t unsup_rx_prefix_fields;
 
 	SFC_ASSERT(rxq->completed == 0);
 	SFC_ASSERT(rxq->added == 0);
+
+	/* Prefix must fit into reserved Rx buffer space */
+	if (pinfo->erpl_length > rxq->prefix_size)
+		return ENOTSUP;
+
+	unsup_rx_prefix_fields =
+		efx_rx_prefix_layout_check(pinfo, &sfc_ef100_rx_prefix_layout);
+
+	/* LENGTH and CLASS filds must always be present */
+	if ((unsup_rx_prefix_fields &
+	     ((1U << EFX_RX_PREFIX_FIELD_LENGTH) |
+	      (1U << EFX_RX_PREFIX_FIELD_CLASS))) != 0)
+		return ENOTSUP;
+
+	rxq->prefix_size = pinfo->erpl_length;
+	rxq->rearm_data = sfc_ef100_mk_mbuf_rearm_data(rxq->dp.dpq.port_id,
+						       rxq->prefix_size);
 
 	sfc_ef100_rx_qrefill(rxq);
 

@@ -528,12 +528,21 @@ static sfc_dp_rx_qpurge_t sfc_efx_rx_qpurge;
 static sfc_dp_rx_qstart_t sfc_efx_rx_qstart;
 static int
 sfc_efx_rx_qstart(struct sfc_dp_rxq *dp_rxq,
-		  __rte_unused unsigned int evq_read_ptr)
+		  __rte_unused unsigned int evq_read_ptr,
+		  const efx_rx_prefix_layout_t *pinfo)
 {
 	/* libefx-based datapath is specific to libefx-based PMD */
 	struct sfc_efx_rxq *rxq = sfc_efx_rxq_by_dp_rxq(dp_rxq);
 	struct sfc_rxq *crxq = sfc_rxq_by_dp_rxq(dp_rxq);
 	int rc;
+
+	/*
+	 * libefx API is used to extract information from Rx prefix and
+	 * it guarantees consistency. Just do length check to ensure
+	 * that we reserved space in Rx buffers correctly.
+	 */
+	if (rxq->prefix_size != pinfo->erpl_length)
+		return ENOTSUP;
 
 	rxq->common = crxq->common;
 
@@ -760,6 +769,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	struct sfc_rxq_info *rxq_info;
 	struct sfc_rxq *rxq;
 	struct sfc_evq *evq;
+	efx_rx_prefix_layout_t pinfo;
 	int rc;
 
 	sfc_log_init(sa, "sw_index=%u", sw_index);
@@ -811,9 +821,13 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (rc != 0)
 		goto fail_rx_qcreate;
 
+	rc = efx_rx_prefix_get_layout(rxq->common, &pinfo);
+	if (rc != 0)
+		goto fail_prefix_get_layout;
+
 	efx_rx_qenable(rxq->common);
 
-	rc = sa->priv.dp_rx->qstart(rxq_info->dp, evq->read_ptr);
+	rc = sa->priv.dp_rx->qstart(rxq_info->dp, evq->read_ptr, &pinfo);
 	if (rc != 0)
 		goto fail_dp_qstart;
 
@@ -839,6 +853,7 @@ fail_mac_filter_default_rxq_set:
 fail_dp_qstart:
 	efx_rx_qdestroy(rxq->common);
 
+fail_prefix_get_layout:
 fail_rx_qcreate:
 fail_bad_contig_block_size:
 fail_mp_get_info:

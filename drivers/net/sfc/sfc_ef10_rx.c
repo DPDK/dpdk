@@ -223,6 +223,18 @@ sfc_ef10_rx_pending(struct sfc_ef10_rxq *rxq, struct rte_mbuf **rx_pkts,
 	return rx_pkts;
 }
 
+/*
+ * Below Rx pseudo-header (aka Rx prefix) accessors rely on the
+ * following fields layout.
+ */
+static const efx_rx_prefix_layout_t sfc_ef10_rx_prefix_layout = {
+	.erpl_fields	= {
+		[EFX_RX_PREFIX_FIELD_RSS_HASH]	=
+		    { 0, sizeof(uint32_t) * CHAR_BIT, B_FALSE },
+		[EFX_RX_PREFIX_FIELD_LENGTH]	=
+		    { 8 * CHAR_BIT, sizeof(uint16_t) * CHAR_BIT, B_FALSE },
+	}
+};
 static uint16_t
 sfc_ef10_rx_pseudo_hdr_get_len(const uint8_t *pseudo_hdr)
 {
@@ -700,13 +712,18 @@ sfc_ef10_rx_qdestroy(struct sfc_dp_rxq *dp_rxq)
 
 static sfc_dp_rx_qstart_t sfc_ef10_rx_qstart;
 static int
-sfc_ef10_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr)
+sfc_ef10_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr,
+		   const efx_rx_prefix_layout_t *pinfo)
 {
 	struct sfc_ef10_rxq *rxq = sfc_ef10_rxq_by_dp_rxq(dp_rxq);
 
 	SFC_ASSERT(rxq->completed == 0);
 	SFC_ASSERT(rxq->pending == 0);
 	SFC_ASSERT(rxq->added == 0);
+
+	if (pinfo->erpl_length != rxq->prefix_size ||
+	    efx_rx_prefix_layout_check(pinfo, &sfc_ef10_rx_prefix_layout) != 0)
+		return ENOTSUP;
 
 	sfc_ef10_rx_qrefill(rxq);
 
