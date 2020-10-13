@@ -82,3 +82,28 @@ Limitations
 
   Note: The AF_XDP PMD will fail to initialise if an MTU which violates the driver's
   conditions as above is set prior to launching the application.
+
+- **Shared UMEM**
+
+  The sharing of UMEM is only supported for AF_XDP sockets with unique contexts.
+  The context refers to the netdev,qid tuple.
+
+  The following combination will fail:
+
+  .. code-block:: console
+
+    --vdev net_af_xdp0,iface=ens786f1,shared_umem=1 \
+    --vdev net_af_xdp1,iface=ens786f1,shared_umem=1 \
+
+  Either of the following however is permitted since either the netdev or qid differs
+  between the two vdevs:
+
+  .. code-block:: console
+
+    --vdev net_af_xdp0,iface=ens786f1,shared_umem=1 \
+    --vdev net_af_xdp1,iface=ens786f1,start_queue=1,shared_umem=1 \
+
+  .. code-block:: console
+
+    --vdev net_af_xdp0,iface=ens786f1,shared_umem=1 \
+    --vdev net_af_xdp1,iface=ens786f2,shared_umem=1 \

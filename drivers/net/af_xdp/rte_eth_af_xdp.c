@@ -634,16 +634,35 @@ find_internal_resource(struct pmd_internals *port_int)
 	return list;
 }
 
+/* Check if the netdev,qid context already exists */
+static inline bool
+ctx_exists(struct pkt_rx_queue *rxq, const char *ifname,
+		struct pkt_rx_queue *list_rxq, const char *list_ifname)
+{
+	bool exists = false;
+
+	if (rxq->xsk_queue_idx == list_rxq->xsk_queue_idx &&
+			!strncmp(ifname, list_ifname, IFNAMSIZ)) {
+		AF_XDP_LOG(ERR, "ctx %s,%i already exists, cannot share umem\n",
+					ifname, rxq->xsk_queue_idx);
+		exists = true;
+	}
+
+	return exists;
+}
+
 /* Get a pointer to an existing UMEM which overlays the rxq's mb_pool */
-static inline struct xsk_umem_info *
-get_shared_umem(struct pkt_rx_queue *rxq) {
+static inline int
+get_shared_umem(struct pkt_rx_queue *rxq, const char *ifname,
+			struct xsk_umem_info **umem)
+{
 	struct internal_list *list;
 	struct pmd_internals *internals;
-	int i = 0;
+	int i = 0, ret = 0;
 	struct rte_mempool *mb_pool = rxq->mb_pool;
 
 	if (mb_pool == NULL)
-		return NULL;
+		return ret;
 
 	pthread_mutex_lock(&internal_list_lock);
 
@@ -655,20 +674,25 @@ get_shared_umem(struct pkt_rx_queue *rxq) {
 			if (rxq == list_rxq)
 				continue;
 			if (mb_pool == internals->rx_queues[i].mb_pool) {
+				if (ctx_exists(rxq, ifname, list_rxq,
+						internals->if_name)) {
+					ret = -1;
+					goto out;
+				}
 				if (__atomic_load_n(
 					&internals->rx_queues[i].umem->refcnt,
 							__ATOMIC_ACQUIRE)) {
-					pthread_mutex_unlock(
-							&internal_list_lock);
-					return internals->rx_queues[i].umem;
+					*umem = internals->rx_queues[i].umem;
+					goto out;
 				}
 			}
 		}
 	}
 
+out:
 	pthread_mutex_unlock(&internal_list_lock);
 
-	return NULL;
+	return ret;
 }
 
 static int
@@ -913,7 +937,9 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 	uint64_t umem_size, align = 0;
 
 	if (internals->shared_umem) {
-		umem = get_shared_umem(rxq);
+		if (get_shared_umem(rxq, internals->if_name, &umem) < 0)
+			return NULL;
+
 		if (umem != NULL &&
 			__atomic_load_n(&umem->refcnt, __ATOMIC_ACQUIRE) <
 					umem->max_xsks) {
