@@ -4510,10 +4510,15 @@ rte_eth_dev_rx_intr_enable(uint16_t port_id,
 			   uint16_t queue_id)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
 	dev = &rte_eth_devices[port_id];
+
+	ret = eth_dev_validate_rx_queue(dev, queue_id);
+	if (ret != 0)
+		return ret;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_intr_enable, -ENOTSUP);
 	return eth_err(port_id, (*dev->dev_ops->rx_queue_intr_enable)(dev,
@@ -4525,10 +4530,15 @@ rte_eth_dev_rx_intr_disable(uint16_t port_id,
 			    uint16_t queue_id)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
 	dev = &rte_eth_devices[port_id];
+
+	ret = eth_dev_validate_rx_queue(dev, queue_id);
+	if (ret != 0)
+		return ret;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_intr_disable, -ENOTSUP);
 	return eth_err(port_id, (*dev->dev_ops->rx_queue_intr_disable)(dev,
