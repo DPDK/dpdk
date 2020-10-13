@@ -2920,6 +2920,18 @@ typedef struct efx_rx_prefix_layout_s {
 	efx_rx_prefix_field_info_t	erpl_fields[EFX_RX_PREFIX_NFIELDS];
 } efx_rx_prefix_layout_t;
 
+/*
+ * Helper function to find out a bit mask of wanted but not available
+ * Rx prefix fields.
+ *
+ * A field is considered as not available if any parameter mismatch.
+ */
+LIBEFX_API
+extern	__checkReturn	uint32_t
+efx_rx_prefix_layout_check(
+	__in		const efx_rx_prefix_layout_t *available,
+	__in		const efx_rx_prefix_layout_t *wanted);
+
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_prefix_get_layout(

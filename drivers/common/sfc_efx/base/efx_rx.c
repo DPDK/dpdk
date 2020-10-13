@@ -1803,3 +1803,43 @@ siena_rx_fini(
 }
 
 #endif /* EFSYS_OPT_SIENA */
+
+static	__checkReturn	boolean_t
+efx_rx_prefix_layout_fields_match(
+	__in		const efx_rx_prefix_field_info_t *erpfip1,
+	__in		const efx_rx_prefix_field_info_t *erpfip2)
+{
+	if (erpfip1->erpfi_offset_bits != erpfip2->erpfi_offset_bits)
+		return (B_FALSE);
+
+	if (erpfip1->erpfi_width_bits != erpfip2->erpfi_width_bits)
+		return (B_FALSE);
+
+	if (erpfip1->erpfi_big_endian != erpfip2->erpfi_big_endian)
+		return (B_FALSE);
+
+	return (B_TRUE);
+}
+
+	__checkReturn	uint32_t
+efx_rx_prefix_layout_check(
+	__in		const efx_rx_prefix_layout_t *available,
+	__in		const efx_rx_prefix_layout_t *wanted)
+{
+	uint32_t result = 0;
+	unsigned int i;
+
+	EFX_STATIC_ASSERT(EFX_RX_PREFIX_NFIELDS < sizeof (result) * 8);
+	for (i = 0; i < EFX_RX_PREFIX_NFIELDS; ++i) {
+		/* Skip the field if driver does not want to use it */
+		if (wanted->erpl_fields[i].erpfi_width_bits == 0)
+			continue;
+
+		if (efx_rx_prefix_layout_fields_match(
+			    &available->erpl_fields[i],
+			    &wanted->erpl_fields[i]) == B_FALSE)
+			result |= (1U << i);
+	}
+
+	return (result);
+}
