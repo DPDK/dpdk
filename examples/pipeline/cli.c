@@ -866,7 +866,7 @@ cmd_pipeline_table_update(char **tokens,
 	}
 
 	/* Add. */
-	if (file_add) {
+	if (file_add)
 		for (line_id = 1; ; line_id++) {
 			struct rte_swx_table_entry *entry;
 
@@ -893,11 +893,9 @@ cmd_pipeline_table_update(char **tokens,
 			}
 		}
 
-		fclose(file_add);
-	}
 
 	/* Delete. */
-	if (file_delete) {
+	if (file_delete)
 		for (line_id = 1; ; line_id++) {
 			struct rte_swx_table_entry *entry;
 
@@ -924,11 +922,8 @@ cmd_pipeline_table_update(char **tokens,
 			}
 		}
 
-		fclose(file_delete);
-	}
-
 	/* Default. */
-	if (file_default) {
+	if (file_default)
 		for (line_id = 1; ; line_id++) {
 			struct rte_swx_table_entry *entry;
 
@@ -955,19 +950,22 @@ cmd_pipeline_table_update(char **tokens,
 			}
 		}
 
-		fclose(file_default);
-	}
-
 	status = rte_swx_ctl_pipeline_commit(p->ctl, 1);
 	if (status) {
 		snprintf(out, out_size, "Commit failed.");
 		goto error;
 	}
 
-	free(line);
 
 	rte_swx_ctl_pipeline_table_fprintf(stdout, p->ctl, table_name);
 
+	free(line);
+	if (file_add)
+		fclose(file_add);
+	if (file_delete)
+		fclose(file_delete);
+	if (file_default)
+		fclose(file_default);
 	return;
 
 error:
