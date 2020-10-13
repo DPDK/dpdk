@@ -216,14 +216,17 @@ sfc_ef100_tx_reap(struct sfc_ef100_txq *txq)
 static void
 sfc_ef100_tx_qdesc_send_create(const struct rte_mbuf *m, efx_oword_t *tx_desc)
 {
+	bool outer_l3;
 	bool outer_l4;
 
+	outer_l3 = (m->ol_flags & PKT_TX_IP_CKSUM);
 	outer_l4 = (m->ol_flags & PKT_TX_L4_MASK);
 
-	EFX_POPULATE_OWORD_5(*tx_desc,
+	EFX_POPULATE_OWORD_6(*tx_desc,
 			ESF_GZ_TX_SEND_ADDR, rte_mbuf_data_iova(m),
 			ESF_GZ_TX_SEND_LEN, rte_pktmbuf_data_len(m),
 			ESF_GZ_TX_SEND_NUM_SEGS, m->nb_segs,
+			ESF_GZ_TX_SEND_CSO_OUTER_L3, outer_l3,
 			ESF_GZ_TX_SEND_CSO_OUTER_L4, outer_l4,
 			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_SEND);
 }
@@ -597,7 +600,8 @@ struct sfc_dp_tx sfc_ef100_tx = {
 	},
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
 	.dev_offload_capa	= 0,
-	.queue_offload_capa	= DEV_TX_OFFLOAD_UDP_CKSUM |
+	.queue_offload_capa	= DEV_TX_OFFLOAD_IPV4_CKSUM |
+				  DEV_TX_OFFLOAD_UDP_CKSUM |
 				  DEV_TX_OFFLOAD_TCP_CKSUM |
 				  DEV_TX_OFFLOAD_MULTI_SEGS,
 	.get_dev_info		= sfc_ef100_get_dev_info,
