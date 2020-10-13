@@ -1927,6 +1927,9 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		avail_caps |= SFC_DP_HW_FW_CAP_RX_EFX;
 		avail_caps |= SFC_DP_HW_FW_CAP_TX_EFX;
 		break;
+	case EFX_FAMILY_RIVERHEAD:
+		avail_caps |= SFC_DP_HW_FW_CAP_EF100;
+		break;
 	default:
 		break;
 	}
@@ -2302,6 +2305,7 @@ static const struct rte_pci_id pci_id_sfc_efx_map[] = {
 	{ RTE_PCI_DEVICE(EFX_PCI_VENID_SFC, EFX_PCI_DEVID_MEDFORD_VF) },
 	{ RTE_PCI_DEVICE(EFX_PCI_VENID_SFC, EFX_PCI_DEVID_MEDFORD2) },
 	{ RTE_PCI_DEVICE(EFX_PCI_VENID_SFC, EFX_PCI_DEVID_MEDFORD2_VF) },
+	{ RTE_PCI_DEVICE(EFX_PCI_VENID_XILINX, EFX_PCI_DEVID_RIVERHEAD) },
 	{ .vendor_id = 0 /* sentinel */ }
 };
 

@@ -83,6 +83,7 @@ struct sfc_dp {
 #define SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER		0x2
 #define SFC_DP_HW_FW_CAP_RX_EFX				0x4
 #define SFC_DP_HW_FW_CAP_TX_EFX				0x8
+#define SFC_DP_HW_FW_CAP_EF100				0x10
 };
 
 /** List of datapath variants */
