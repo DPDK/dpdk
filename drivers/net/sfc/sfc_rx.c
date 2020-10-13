@@ -624,7 +624,7 @@ struct sfc_dp_rx sfc_efx_rx = {
 	.dp = {
 		.name		= SFC_KVARG_DATAPATH_EFX,
 		.type		= SFC_DP_RX,
-		.hw_fw_caps	= 0,
+		.hw_fw_caps	= SFC_DP_HW_FW_CAP_RX_EFX,
 	},
 	.features		= SFC_DP_RX_FEAT_INTR,
 	.dev_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM |

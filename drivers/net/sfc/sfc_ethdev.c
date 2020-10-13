@@ -1924,6 +1924,8 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	case EFX_FAMILY_MEDFORD:
 	case EFX_FAMILY_MEDFORD2:
 		avail_caps |= SFC_DP_HW_FW_CAP_EF10;
+		avail_caps |= SFC_DP_HW_FW_CAP_RX_EFX;
+		avail_caps |= SFC_DP_HW_FW_CAP_TX_EFX;
 		break;
 	default:
 		break;

@@ -81,6 +81,8 @@ struct sfc_dp {
 	unsigned int			hw_fw_caps;
 #define SFC_DP_HW_FW_CAP_EF10				0x1
 #define SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER		0x2
+#define SFC_DP_HW_FW_CAP_RX_EFX				0x4
+#define SFC_DP_HW_FW_CAP_TX_EFX				0x8
 };
 
 /** List of datapath variants */
