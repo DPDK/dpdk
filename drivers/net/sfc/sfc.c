@@ -52,6 +52,11 @@ sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
 	esmp->esm_mz = mz;
 	esmp->esm_base = mz->addr;
 
+	sfc_info(sa,
+		 "DMA name=%s id=%u len=%lu socket_id=%d => virt=%p iova=%lx",
+		 name, id, len, socket_id, esmp->esm_base,
+		 (unsigned long)esmp->esm_addr);
+
 	return 0;
 }
 
