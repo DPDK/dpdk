@@ -319,9 +319,12 @@ connect_to_socket(void)
 			"%s/dpdk_telemetry.%s",	rte_eal_get_runtime_dir(),
 			TELEMETRY_VERSION);
 	if (connect(sock, (struct sockaddr *) &telem_addr,
-			sizeof(telem_addr)) < 0)
+			sizeof(telem_addr)) < 0) {
 		printf("\n%s: Error connecting to socket: %s\n", __func__,
 				strerror(errno));
+		close(sock);
+		return -1;
+	}
 
 	bytes = read(sock, buf, sizeof(buf) - 1);
 	if (bytes < 0) {
