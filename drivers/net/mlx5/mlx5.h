@@ -40,6 +40,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_PORT_ID, /* Pool for port id resource. */
 	MLX5_IPOOL_JUMP, /* Pool for jump resource. */
 	MLX5_IPOOL_SAMPLE, /* Pool for sample resource. */
+	MLX5_IPOOL_DEST_ARRAY, /* Pool for destination array resource. */
 #endif
 	MLX5_IPOOL_MTR, /* Pool for meter resource. */
 	MLX5_IPOOL_MCP, /* Pool for metadata resource. */
@@ -643,6 +644,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t port_id_action_list; /* List of port ID actions. */
 	uint32_t push_vlan_action_list; /* List of push VLAN actions. */
 	uint32_t sample_action_list; /* List of sample actions. */
+	uint32_t dest_array_list; /* List of destination array actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	struct mlx5_flow_default_miss_resource default_miss;
 	/* Default miss action resource structure. */
