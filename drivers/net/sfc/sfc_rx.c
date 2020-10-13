@@ -1199,6 +1199,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.hw_index = rxq->hw_index;
 	info.mem_bar = sa->mem_bar.esb_base;
 	info.vi_window_shift = encp->enc_vi_window_shift;
+	info.fcw_offset = sa->fcw_offset;
 
 	rc = sa->priv.dp_rx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,

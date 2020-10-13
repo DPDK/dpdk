@@ -221,6 +221,8 @@ struct sfc_adapter {
 	struct rte_kvargs		*kvargs;
 	int				socket_id;
 	efsys_bar_t			mem_bar;
+	/* Function control window offset */
+	efsys_dma_addr_t		fcw_offset;
 	efx_family_t			family;
 	efx_nic_t			*nic;
 	rte_spinlock_t			nic_lock;

@@ -667,6 +667,9 @@ sfc_mem_bar_init(struct sfc_adapter *sa, const efx_bar_region_t *mem_ebrp)
 	ebp->esb_rid = mem_ebrp->ebr_index;
 	ebp->esb_dev = pci_dev;
 	ebp->esb_base = res->addr;
+
+	sa->fcw_offset = mem_ebrp->ebr_offset;
+
 	return 0;
 }
 

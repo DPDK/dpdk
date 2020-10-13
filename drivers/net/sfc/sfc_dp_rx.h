@@ -88,6 +88,8 @@ struct sfc_dp_rx_qcreate_info {
 	 * doorbell
 	 */
 	volatile void		*mem_bar;
+	/** Function control window offset */
+	efsys_dma_addr_t	fcw_offset;
 	/** VI window size shift */
 	unsigned int		vi_window_shift;
 };
