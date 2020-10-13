@@ -626,16 +626,40 @@ sfc_close(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 }
 
+static efx_rc_t
+sfc_find_mem_bar(efsys_pci_config_t *configp, int bar_index,
+		 efsys_bar_t *barp)
+{
+	efsys_bar_t result;
+	struct rte_pci_device *dev;
+
+	memset(&result, 0, sizeof(result));
+
+	if (bar_index < 0 || bar_index >= PCI_MAX_RESOURCE)
+		return EINVAL;
+
+	dev = configp->espc_dev;
+
+	result.esb_rid = bar_index;
+	result.esb_dev = dev;
+	result.esb_base = dev->mem_resource[bar_index].addr;
+
+	*barp = result;
+
+	return 0;
+}
+
 static int
-sfc_mem_bar_init(struct sfc_adapter *sa, unsigned int membar)
+sfc_mem_bar_init(struct sfc_adapter *sa, const efx_bar_region_t *mem_ebrp)
 {
 	struct rte_eth_dev *eth_dev = sa->eth_dev;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	efsys_bar_t *ebp = &sa->mem_bar;
-	struct rte_mem_resource *res = &pci_dev->mem_resource[membar];
+	struct rte_mem_resource *res =
+		&pci_dev->mem_resource[mem_ebrp->ebr_index];
 
 	SFC_BAR_LOCK_INIT(ebp, eth_dev->data->name);
-	ebp->esb_rid = membar;
+	ebp->esb_rid = mem_ebrp->ebr_index;
 	ebp->esb_dev = pci_dev;
 	ebp->esb_base = res->addr;
 	return 0;
@@ -1053,11 +1077,43 @@ sfc_nic_probe(struct sfc_adapter *sa)
 	return 0;
 }
 
+static efx_rc_t
+sfc_pci_config_readd(efsys_pci_config_t *configp, uint32_t offset,
+		     efx_dword_t *edp)
+{
+	int rc;
+
+	rc = rte_pci_read_config(configp->espc_dev, edp->ed_u32, sizeof(*edp),
+				 offset);
+
+	return (rc < 0 || rc != sizeof(*edp)) ? EIO : 0;
+}
+
+static int
+sfc_family(struct sfc_adapter *sa, efx_bar_region_t *mem_ebrp)
+{
+	struct rte_eth_dev *eth_dev = sa->eth_dev;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	efsys_pci_config_t espcp;
+	static const efx_pci_ops_t ops = {
+		.epo_config_readd = sfc_pci_config_readd,
+		.epo_find_mem_bar = sfc_find_mem_bar,
+	};
+	int rc;
+
+	espcp.espc_dev = pci_dev;
+
+	rc = efx_family_probe_bar(pci_dev->id.vendor_id,
+				  pci_dev->id.device_id,
+				  &espcp, &ops, &sa->family, mem_ebrp);
+
+	return rc;
+}
+
 int
 sfc_probe(struct sfc_adapter *sa)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(sa->eth_dev);
-	unsigned int membar;
+	efx_bar_region_t mem_ebrp;
 	efx_nic_t *enp;
 	int rc;
 
@@ -1069,21 +1125,22 @@ sfc_probe(struct sfc_adapter *sa)
 	rte_atomic32_init(&sa->restart_required);
 
 	sfc_log_init(sa, "get family");
-	rc = efx_family(pci_dev->id.vendor_id, pci_dev->id.device_id,
-			&sa->family, &membar);
+	rc = sfc_family(sa, &mem_ebrp);
 	if (rc != 0)
 		goto fail_family;
-	sfc_log_init(sa, "family is %u, membar is %u", sa->family, membar);
+	sfc_log_init(sa,
+		     "family is %u, membar is %u, function control window offset is %lu",
+		     sa->family, mem_ebrp.ebr_index, mem_ebrp.ebr_offset);
 
 	sfc_log_init(sa, "init mem bar");
-	rc = sfc_mem_bar_init(sa, membar);
+	rc = sfc_mem_bar_init(sa, &mem_ebrp);
 	if (rc != 0)
 		goto fail_mem_bar_init;
 
 	sfc_log_init(sa, "create nic");
 	rte_spinlock_init(&sa->nic_lock);
 	rc = efx_nic_create(sa->family, (efsys_identifier_t *)sa,
-			    &sa->mem_bar, 0,
+			    &sa->mem_bar, mem_ebrp.ebr_offset,
 			    &sa->nic_lock, &enp);
 	if (rc != 0)
 		goto fail_nic_create;

@@ -33,7 +33,7 @@ foreach flag: extra_flags
 	endif
 endforeach
 
-deps += ['common_sfc_efx']
+deps += ['common_sfc_efx', 'bus_pci']
 sources = files(
 	'sfc_ethdev.c',
 	'sfc_kvargs.c',

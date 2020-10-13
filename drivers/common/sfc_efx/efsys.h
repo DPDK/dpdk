@@ -163,7 +163,7 @@ prefetch_read_once(const volatile void *addr)
 
 #define EFSYS_OPT_MCDI_PROXY_AUTH_SERVER 0
 
-#define EFSYS_OPT_PCI 0
+#define EFSYS_OPT_PCI 1
 
 #define EFSYS_OPT_DESC_PROXY 0
 
@@ -740,6 +740,12 @@ typedef uint64_t	efsys_stat_t;
 /* ROTATE */
 
 #define EFSYS_HAS_ROTL_DWORD	0
+
+/* PCI */
+
+typedef struct efsys_pci_config_s {
+	struct rte_pci_device	*espc_dev;
+} efsys_pci_config_t;
 
 #ifdef __cplusplus
 }
