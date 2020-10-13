@@ -436,20 +436,65 @@ fail1:
 	return (rc);
 }
 
+static	__checkReturn	efx_rc_t
+efx_mcdi_phy_set_led(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_led_mode_t phy_led_mode)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_SET_ID_LED_IN_LEN,
+		MC_CMD_SET_ID_LED_OUT_LEN);
+	unsigned int led_mode;
+	efx_rc_t rc;
+
+	req.emr_cmd = MC_CMD_SET_ID_LED;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_SET_ID_LED_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_SET_ID_LED_OUT_LEN;
+
+	switch (phy_led_mode) {
+	case EFX_PHY_LED_DEFAULT:
+		led_mode = MC_CMD_LED_DEFAULT;
+		break;
+	case EFX_PHY_LED_OFF:
+		led_mode = MC_CMD_LED_OFF;
+		break;
+	case EFX_PHY_LED_ON:
+		led_mode = MC_CMD_LED_ON;
+		break;
+	default:
+		EFSYS_ASSERT(0);
+		led_mode = MC_CMD_LED_DEFAULT;
+		break;
+	}
+
+	MCDI_IN_SET_DWORD(req, SET_ID_LED_IN_STATE, led_mode);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 	__checkReturn	efx_rc_t
 ef10_phy_reconfigure(
 	__in		efx_nic_t *enp)
 {
 	efx_port_t *epp = &(enp->en_port);
-	efx_mcdi_req_t req;
-	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_SET_ID_LED_IN_LEN,
-		MC_CMD_SET_ID_LED_OUT_LEN);
 	efx_loopback_type_t loopback_type;
 	efx_link_mode_t loopback_link_mode;
 	uint32_t phy_flags;
-#if EFSYS_OPT_PHY_LED_CONTROL
-	unsigned int led_mode;
-#endif
+	efx_phy_led_mode_t phy_led_mode;
 	boolean_t supported;
 	efx_rc_t rc;
 
@@ -477,40 +522,17 @@ ef10_phy_reconfigure(
 		goto fail2;
 
 	/* And set the blink mode */
-	(void) memset(payload, 0, sizeof (payload));
-	req.emr_cmd = MC_CMD_SET_ID_LED;
-	req.emr_in_buf = payload;
-	req.emr_in_length = MC_CMD_SET_ID_LED_IN_LEN;
-	req.emr_out_buf = payload;
-	req.emr_out_length = MC_CMD_SET_ID_LED_OUT_LEN;
 
 #if EFSYS_OPT_PHY_LED_CONTROL
-	switch (epp->ep_phy_led_mode) {
-	case EFX_PHY_LED_DEFAULT:
-		led_mode = MC_CMD_LED_DEFAULT;
-		break;
-	case EFX_PHY_LED_OFF:
-		led_mode = MC_CMD_LED_OFF;
-		break;
-	case EFX_PHY_LED_ON:
-		led_mode = MC_CMD_LED_ON;
-		break;
-	default:
-		EFSYS_ASSERT(0);
-		led_mode = MC_CMD_LED_DEFAULT;
-	}
-
-	MCDI_IN_SET_DWORD(req, SET_ID_LED_IN_STATE, led_mode);
+	phy_led_mode = epp->ep_phy_led_mode;
 #else
-	MCDI_IN_SET_DWORD(req, SET_ID_LED_IN_STATE, MC_CMD_LED_DEFAULT);
-#endif	/* EFSYS_OPT_PHY_LED_CONTROL */
+	phy_led_mode = EFX_PHY_LED_DEFAULT;
+#endif
 
-	efx_mcdi_execute(enp, &req);
-
-	if (req.emr_rc != 0) {
-		rc = req.emr_rc;
+	rc = efx_mcdi_phy_set_led(enp, phy_led_mode);
+	if (rc != 0)
 		goto fail3;
-	}
+
 out:
 	return (0);
 

@@ -1004,8 +1004,6 @@ extern	__checkReturn	efx_rc_t
 efx_phy_verify(
 	__in		efx_nic_t *enp);
 
-#if EFSYS_OPT_PHY_LED_CONTROL
-
 typedef enum efx_phy_led_mode_e {
 	EFX_PHY_LED_DEFAULT = 0,
 	EFX_PHY_LED_OFF,
@@ -1013,6 +1011,8 @@ typedef enum efx_phy_led_mode_e {
 	EFX_PHY_LED_FLASH,
 	EFX_PHY_LED_NMODES
 } efx_phy_led_mode_t;
+
+#if EFSYS_OPT_PHY_LED_CONTROL
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
