@@ -530,8 +530,16 @@ ef10_phy_reconfigure(
 #endif
 
 	rc = efx_mcdi_phy_set_led(enp, phy_led_mode);
-	if (rc != 0)
+	if (rc != 0) {
+		/*
+		 * If LED control is not supported by firmware, we can
+		 * silently ignore default mode set failure
+		 * (see FWRIVERHD-198).
+		 */
+		if (rc == EOPNOTSUPP && phy_led_mode == EFX_PHY_LED_DEFAULT)
+			goto out;
 		goto fail3;
+	}
 
 out:
 	return (0);
