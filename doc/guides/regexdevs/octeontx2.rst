@@ -24,6 +24,17 @@ Prerequisites and Compilation procedure
 
    See :doc:`../platform/octeontx2` for setup information.
 
+Device Setup
+------------
+
+The OCTEON TX2 REE devices will need to be bound to a user-space IO driver
+for use. The script ``dpdk-devbind.py`` script included with DPDK can be
+used to view the state of the devices and to bind them to a suitable
+DPDK-supported kernel driver. When querying the status of the devices,
+they will appear under the category of "REGEX devices", i.e. the command
+``dpdk-devbind.py --status-dev regex`` can be used to see the state of
+those devices alone.
+
 Debugging Options
 -----------------
 
