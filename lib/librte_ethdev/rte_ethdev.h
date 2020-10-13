@@ -4723,7 +4723,8 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_queue_count, -ENOTSUP);
-	if (queue_id >= dev->data->nb_rx_queues)
+	if (queue_id >= dev->data->nb_rx_queues ||
+	    dev->data->rx_queues[queue_id] == NULL)
 		return -EINVAL;
 
 	return (int)(*dev->rx_queue_count)(dev, queue_id);

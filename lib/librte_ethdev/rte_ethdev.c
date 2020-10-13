@@ -892,6 +892,14 @@ eth_dev_validate_rx_queue(const struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -EINVAL;
 	}
 
+	if (dev->data->rx_queues[rx_queue_id] == NULL) {
+		port_id = dev->data->port_id;
+		RTE_ETHDEV_LOG(ERR,
+			       "Queue %u of device with port_id=%u has not been setup\n",
+			       rx_queue_id, port_id);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -904,6 +912,14 @@ eth_dev_validate_tx_queue(const struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		port_id = dev->data->port_id;
 		RTE_ETHDEV_LOG(ERR,
 			       "Invalid Tx queue_id=%u of device with port_id=%u\n",
+			       tx_queue_id, port_id);
+		return -EINVAL;
+	}
+
+	if (dev->data->tx_queues[tx_queue_id] == NULL) {
+		port_id = dev->data->port_id;
+		RTE_ETHDEV_LOG(ERR,
+			       "Queue %u of device with port_id=%u has not been setup\n",
 			       tx_queue_id, port_id);
 		return -EINVAL;
 	}
