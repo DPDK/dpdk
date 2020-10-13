@@ -51,5 +51,6 @@ sources = files(
 	'sfc_dp.c',
 	'sfc_ef10_rx.c',
 	'sfc_ef10_essb_rx.c',
-	'sfc_ef10_tx.c'
+	'sfc_ef10_tx.c',
+	'sfc_ef100_rx.c',
 )

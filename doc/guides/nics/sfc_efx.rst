@@ -301,12 +301,15 @@ boolean parameters value.
   **auto** allows the driver itself to make a choice based on firmware
   features available and required by the datapath implementation.
   **efx** chooses libefx-based datapath which supports Rx scatter.
+  Supported for SFN7xxx, SFN8xxx and X2xxx family adapters only.
   **ef10** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which is
   more efficient than libefx-based and provides richer packet type
   classification.
   **ef10_essb** chooses SFNX2xxx equal stride super-buffer datapath
   which may be used on DPDK firmware variant only
   (see notes about its limitations above).
+  **ef100** chooses EF100 native datapath which is the only supported
+  Rx datapath for EF100 architecture based NICs.
 
 - ``tx_datapath`` [auto|efx|ef10|ef10_simple] (default **auto**)
 
