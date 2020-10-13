@@ -76,6 +76,10 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 static int
 flow_dv_default_miss_resource_release(struct rte_eth_dev *dev);
 
+static int
+flow_dv_encap_decap_resource_release(struct rte_eth_dev *dev,
+				      uint32_t encap_decap_idx);
+
 /**
  * Initialize flow attributes structure according to flow items' types.
  *
@@ -8300,6 +8304,388 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 }
 
 /**
+ * Create an Rx Hash queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] dev_flow
+ *   Pointer to the mlx5_flow.
+ * @param[in] rss_desc
+ *   Pointer to the mlx5_flow_rss_desc.
+ * @param[out] hrxq_idx
+ *   Hash Rx queue index.
+ *
+ * @return
+ *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_hrxq *
+flow_dv_handle_rx_queue(struct rte_eth_dev *dev,
+			  struct mlx5_flow *dev_flow,
+			  struct mlx5_flow_rss_desc *rss_desc,
+			  uint32_t *hrxq_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_handle *dh = dev_flow->handle;
+	struct mlx5_hrxq *hrxq;
+
+	MLX5_ASSERT(rss_desc->queue_num);
+	*hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
+				 MLX5_RSS_HASH_KEY_LEN,
+				 dev_flow->hash_fields,
+				 rss_desc->queue,
+				 rss_desc->queue_num);
+	if (!*hrxq_idx) {
+		*hrxq_idx = mlx5_hrxq_new
+				(dev, rss_desc->key,
+				MLX5_RSS_HASH_KEY_LEN,
+				dev_flow->hash_fields,
+				rss_desc->queue,
+				rss_desc->queue_num,
+				!!(dh->layers &
+				MLX5_FLOW_LAYER_TUNNEL));
+		if (!*hrxq_idx)
+			return NULL;
+	}
+	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+			      *hrxq_idx);
+	return hrxq;
+}
+
+/**
+ * Find existing sample resource or create and register a new one.
+ *
+ * @param[in, out] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[in] resource
+ *   Pointer to sample resource.
+ * @parm[in, out] dev_flow
+ *   Pointer to the dev_flow.
+ * @param[in, out] sample_dv_actions
+ *   Pointer to sample actions list.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_sample_resource_register(struct rte_eth_dev *dev,
+			 const struct rte_flow_attr *attr,
+			 struct mlx5_flow_dv_sample_resource *resource,
+			 struct mlx5_flow *dev_flow,
+			 void **sample_dv_actions,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_flow_dv_sample_resource *cache_resource;
+	struct mlx5dv_dr_flow_sampler_attr sampler_attr;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_flow_tbl_resource *tbl;
+	uint32_t idx = 0;
+	const uint32_t next_ft_step = 1;
+	uint32_t next_ft_id = resource->ft_id +	next_ft_step;
+
+	/* Lookup a matching resource from cache. */
+	ILIST_FOREACH(sh->ipool[MLX5_IPOOL_SAMPLE], sh->sample_action_list,
+		      idx, cache_resource, next) {
+		if (resource->ratio == cache_resource->ratio &&
+		    resource->ft_type == cache_resource->ft_type &&
+		    resource->ft_id == cache_resource->ft_id &&
+		    resource->set_action == cache_resource->set_action &&
+		    !memcmp((void *)&resource->sample_act,
+			    (void *)&cache_resource->sample_act,
+			    sizeof(struct mlx5_flow_sub_actions_list))) {
+			DRV_LOG(DEBUG, "sample resource %p: refcnt %d++",
+				(void *)cache_resource,
+				__atomic_load_n(&cache_resource->refcnt,
+						__ATOMIC_RELAXED));
+			__atomic_fetch_add(&cache_resource->refcnt, 1,
+					   __ATOMIC_RELAXED);
+			dev_flow->handle->dvh.rix_sample = idx;
+			dev_flow->dv.sample_res = cache_resource;
+			return 0;
+		}
+	}
+	/* Register new sample resource. */
+	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_SAMPLE],
+				       &dev_flow->handle->dvh.rix_sample);
+	if (!cache_resource)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "cannot allocate resource memory");
+	*cache_resource = *resource;
+	/* Create normal path table level */
+	tbl = flow_dv_tbl_resource_get(dev, next_ft_id,
+					attr->egress, attr->transfer, error);
+	if (!tbl) {
+		rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "fail to create normal path table "
+					  "for sample");
+		goto error;
+	}
+	cache_resource->normal_path_tbl = tbl;
+	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
+		cache_resource->default_miss =
+				mlx5_glue->dr_create_flow_action_default_miss();
+		if (!cache_resource->default_miss) {
+			rte_flow_error_set(error, ENOMEM,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						NULL,
+						"cannot create default miss "
+						"action");
+			goto error;
+		}
+		sample_dv_actions[resource->sample_act.actions_num++] =
+						cache_resource->default_miss;
+	}
+	/* Create a DR sample action */
+	sampler_attr.sample_ratio = cache_resource->ratio;
+	sampler_attr.default_next_table = tbl->obj;
+	sampler_attr.num_sample_actions = resource->sample_act.actions_num;
+	sampler_attr.sample_actions = (struct mlx5dv_dr_action **)
+							&sample_dv_actions[0];
+	sampler_attr.action = cache_resource->set_action;
+	cache_resource->verbs_action =
+		mlx5_glue->dr_create_flow_action_sampler(&sampler_attr);
+	if (!cache_resource->verbs_action) {
+		rte_flow_error_set(error, ENOMEM,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL, "cannot create sample action");
+		goto error;
+	}
+	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
+	ILIST_INSERT(sh->ipool[MLX5_IPOOL_SAMPLE], &sh->sample_action_list,
+		     dev_flow->handle->dvh.rix_sample, cache_resource,
+		     next);
+	dev_flow->dv.sample_res = cache_resource;
+	DRV_LOG(DEBUG, "new sample resource %p: refcnt %d++",
+		(void *)cache_resource,
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	return 0;
+error:
+	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
+		if (cache_resource->default_miss)
+			claim_zero(mlx5_glue->destroy_flow_action
+				(cache_resource->default_miss));
+	} else {
+		if (cache_resource->sample_idx.rix_hrxq &&
+		    !mlx5_hrxq_release(dev,
+				cache_resource->sample_idx.rix_hrxq))
+			cache_resource->sample_idx.rix_hrxq = 0;
+		if (cache_resource->sample_idx.rix_tag &&
+		    !flow_dv_tag_release(dev,
+				cache_resource->sample_idx.rix_tag))
+			cache_resource->sample_idx.rix_tag = 0;
+		if (cache_resource->sample_idx.cnt) {
+			flow_dv_counter_release(dev,
+				cache_resource->sample_idx.cnt);
+			cache_resource->sample_idx.cnt = 0;
+		}
+	}
+	if (cache_resource->normal_path_tbl)
+		flow_dv_tbl_resource_release(dev,
+				cache_resource->normal_path_tbl);
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_SAMPLE],
+				dev_flow->handle->dvh.rix_sample);
+	dev_flow->handle->dvh.rix_sample = 0;
+	return -rte_errno;
+}
+
+/**
+ * Convert Sample action to DV specification.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] action
+ *   Pointer to action structure.
+ * @param[in, out] dev_flow
+ *   Pointer to the mlx5_flow.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in, out] sample_actions
+ *   Pointer to sample actions list.
+ * @param[in, out] res
+ *   Pointer to sample resource.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_translate_action_sample(struct rte_eth_dev *dev,
+				const struct rte_flow_action *action,
+				struct mlx5_flow *dev_flow,
+				const struct rte_flow_attr *attr,
+				void **sample_actions,
+				struct mlx5_flow_dv_sample_resource *res,
+				struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_sample *sample_action;
+	const struct rte_flow_action *sub_actions;
+	const struct rte_flow_action_queue *queue;
+	struct mlx5_flow_sub_actions_list *sample_act;
+	struct mlx5_flow_sub_actions_idx *sample_idx;
+	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
+					      priv->rss_desc)
+					      [!!priv->flow_nested_idx];
+	uint64_t action_flags = 0;
+
+	sample_act = &res->sample_act;
+	sample_idx = &res->sample_idx;
+	sample_action = (const struct rte_flow_action_sample *)action->conf;
+	res->ratio = sample_action->ratio;
+	sub_actions = sample_action->actions;
+	for (; sub_actions->type != RTE_FLOW_ACTION_TYPE_END; sub_actions++) {
+		int type = sub_actions->type;
+		uint32_t pre_rix = 0;
+		void *pre_r;
+		switch (type) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+		{
+			struct mlx5_hrxq *hrxq;
+			uint32_t hrxq_idx;
+
+			queue = sub_actions->conf;
+			rss_desc->queue_num = 1;
+			rss_desc->queue[0] = queue->index;
+			hrxq = flow_dv_handle_rx_queue(dev, dev_flow,
+					rss_desc, &hrxq_idx);
+			if (!hrxq)
+				return rte_flow_error_set
+					(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_ACTION,
+					 NULL,
+					 "cannot create fate queue");
+			sample_act->dr_queue_action = hrxq->action;
+			sample_idx->rix_hrxq = hrxq_idx;
+			sample_actions[sample_act->actions_num++] =
+						hrxq->action;
+			action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			if (action_flags & MLX5_FLOW_ACTION_MARK)
+				dev_flow->handle->rix_hrxq = hrxq_idx;
+			dev_flow->handle->fate_action =
+					MLX5_FLOW_FATE_QUEUE;
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_MARK:
+		{
+			uint32_t tag_be = mlx5_flow_mark_set
+				(((const struct rte_flow_action_mark *)
+				(sub_actions->conf))->id);
+			dev_flow->handle->mark = 1;
+			pre_rix = dev_flow->handle->dvh.rix_tag;
+			/* Save the mark resource before sample */
+			pre_r = dev_flow->dv.tag_resource;
+			if (flow_dv_tag_resource_register(dev, tag_be,
+						  dev_flow, error))
+				return -rte_errno;
+			MLX5_ASSERT(dev_flow->dv.tag_resource);
+			sample_act->dr_tag_action =
+				dev_flow->dv.tag_resource->action;
+			sample_idx->rix_tag =
+				dev_flow->handle->dvh.rix_tag;
+			sample_actions[sample_act->actions_num++] =
+						sample_act->dr_tag_action;
+			/* Recover the mark resource after sample */
+			dev_flow->dv.tag_resource = pre_r;
+			dev_flow->handle->dvh.rix_tag = pre_rix;
+			action_flags |= MLX5_FLOW_ACTION_MARK;
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+		{
+			uint32_t counter;
+
+			counter = flow_dv_translate_create_counter(dev,
+					dev_flow, sub_actions->conf, 0);
+			if (!counter)
+				return rte_flow_error_set
+						(error, rte_errno,
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 NULL,
+						 "cannot create counter"
+						 " object.");
+			sample_idx->cnt = counter;
+			sample_act->dr_cnt_action =
+				  (flow_dv_counter_get_by_idx(dev,
+				  counter, NULL))->action;
+			sample_actions[sample_act->actions_num++] =
+						sample_act->dr_cnt_action;
+			action_flags |= MLX5_FLOW_ACTION_COUNT;
+			break;
+		}
+		default:
+			return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"Not support for sampler action");
+		}
+	}
+	sample_act->action_flags = action_flags;
+	res->ft_id = dev_flow->dv.group;
+	if (attr->transfer) {
+		union {
+			uint32_t action_in[MLX5_ST_SZ_DW(set_action_in)];
+			uint64_t set_action;
+		} action_ctx = { .set_action = 0 };
+
+		res->ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
+		MLX5_SET(set_action_in, action_ctx.action_in, action_type,
+			 MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, action_ctx.action_in, field,
+			 MLX5_MODI_META_REG_C_0);
+		MLX5_SET(set_action_in, action_ctx.action_in, data,
+			 priv->vport_meta_tag);
+		res->set_action = action_ctx.set_action;
+	} else if (attr->ingress) {
+		res->ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
+	}
+	return 0;
+}
+
+/**
+ * Convert Sample action to DV specification.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in, out] dev_flow
+ *   Pointer to the mlx5_flow.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in, out] res
+ *   Pointer to sample resource.
+ * @param[in] sample_actions
+ *   Pointer to sample path actions list.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_create_action_sample(struct rte_eth_dev *dev,
+				struct mlx5_flow *dev_flow,
+				const struct rte_flow_attr *attr,
+				struct mlx5_flow_dv_sample_resource *res,
+				void **sample_actions,
+				struct rte_flow_error *error)
+{
+	if (flow_dv_sample_resource_register(dev, attr, res, dev_flow,
+						sample_actions, error))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "can't create sample action");
+	return 0;
+}
+
+/**
  * Fill the flow with DV spec, lock free
  * (mutex should be acquired by caller).
  *
@@ -8363,9 +8749,13 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 	void *match_value = dev_flow->dv.value.buf;
 	uint8_t next_protocol = 0xff;
 	struct rte_vlan_hdr vlan = { 0 };
+	struct mlx5_flow_dv_sample_resource sample_res;
+	void *sample_actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS] = {0};
+	uint32_t sample_act_pos = UINT32_MAX;
 	uint32_t table;
 	int ret = 0;
 
+	memset(&sample_res, 0, sizeof(struct mlx5_flow_dv_sample_resource));
 	mhdr_res->ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
 					   MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
 	ret = mlx5_flow_group_to_table(attr, dev_flow->external, attr->group,
@@ -8384,7 +8774,6 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		const struct rte_flow_action_rss *rss;
 		const struct rte_flow_action *action = actions;
 		const uint8_t *rss_key;
-		const struct rte_flow_action_jump *jump_data;
 		const struct rte_flow_action_meter *mtr;
 		struct mlx5_flow_tbl_resource *tbl;
 		uint32_t port_id = 0;
@@ -8392,6 +8781,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		int action_type = actions->type;
 		const struct rte_flow_action *found_action = NULL;
 		struct mlx5_flow_meter *fm = NULL;
+		uint32_t jump_group = 0;
 
 		if (!mlx5_flow_os_action_supported(action_type))
 			return rte_flow_error_set(error, ENOTSUP,
@@ -8630,9 +9020,13 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
-			jump_data = action->conf;
+			jump_group = ((const struct rte_flow_action_jump *)
+							action->conf)->group;
+			if (dev_flow->external && jump_group <
+					MLX5_MAX_TABLES_EXTERNAL)
+				jump_group *= MLX5_FLOW_TABLE_FACTOR;
 			ret = mlx5_flow_group_to_table(attr, dev_flow->external,
-						       jump_data->group,
+						       jump_group,
 						       !!priv->fdb_def_rule,
 						       &table, error);
 			if (ret)
@@ -8798,6 +9192,19 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_IPV6_DSCP;
 			break;
+		case RTE_FLOW_ACTION_TYPE_SAMPLE:
+			sample_act_pos = actions_n;
+			ret = flow_dv_translate_action_sample(dev,
+							      actions,
+							      dev_flow, attr,
+							      sample_actions,
+							      &sample_res,
+							      error);
+			if (ret < 0)
+				return ret;
+			actions_n++;
+			action_flags |= MLX5_FLOW_ACTION_SAMPLE;
+			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			if (mhdr_res->actions_num) {
@@ -8823,6 +9230,21 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				dev_flow->dv.actions[actions_n++] =
 					  (flow_dv_counter_get_by_idx(dev,
 					  flow->counter, NULL))->action;
+			}
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE) {
+				ret = flow_dv_create_action_sample(dev,
+							  dev_flow, attr,
+							  &sample_res,
+							  sample_actions,
+							  error);
+				if (ret < 0)
+					return rte_flow_error_set
+						(error, rte_errno,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"cannot create sample action");
+				dev_flow->dv.actions[sample_act_pos] =
+					dev_flow->dv.sample_res->verbs_action;
 			}
 			break;
 		default:
@@ -9135,7 +9557,8 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				dh->rix_hrxq = UINT32_MAX;
 				dv->actions[n++] = drop_hrxq->action;
 			}
-		} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE) {
+		} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE &&
+			   !dv_h->rix_sample) {
 			struct mlx5_hrxq *hrxq;
 			uint32_t hrxq_idx;
 			struct mlx5_flow_rss_desc *rss_desc =
@@ -9267,18 +9690,18 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param handle
- *   Pointer to mlx5_flow_handle.
+ * @param encap_decap_idx
+ *   Index of encap decap resource.
  *
  * @return
  *   1 while a reference on it exists, 0 when freed.
  */
 static int
 flow_dv_encap_decap_resource_release(struct rte_eth_dev *dev,
-				     struct mlx5_flow_handle *handle)
+				     uint32_t encap_decap_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t idx = handle->dvh.rix_encap_decap;
+	uint32_t idx = encap_decap_idx;
 	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
 
 	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_DECAP_ENCAP],
@@ -9528,6 +9951,72 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 }
 
 /**
+ * Release an sample resource.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param handle
+ *   Pointer to mlx5_flow_handle.
+ *
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+static int
+flow_dv_sample_resource_release(struct rte_eth_dev *dev,
+				     struct mlx5_flow_handle *handle)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t idx = handle->dvh.rix_sample;
+	struct mlx5_flow_dv_sample_resource *cache_resource;
+
+	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_SAMPLE],
+			 idx);
+	if (!cache_resource)
+		return 0;
+	MLX5_ASSERT(cache_resource->verbs_action);
+	DRV_LOG(DEBUG, "sample resource %p: refcnt %d--",
+		(void *)cache_resource,
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
+			       __ATOMIC_RELAXED) == 0) {
+		if (cache_resource->verbs_action)
+			claim_zero(mlx5_glue->destroy_flow_action
+					(cache_resource->verbs_action));
+		if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
+			if (cache_resource->default_miss)
+				claim_zero(mlx5_glue->destroy_flow_action
+				  (cache_resource->default_miss));
+		}
+		if (cache_resource->normal_path_tbl)
+			flow_dv_tbl_resource_release(dev,
+				cache_resource->normal_path_tbl);
+	}
+	if (cache_resource->sample_idx.rix_hrxq &&
+		!mlx5_hrxq_release(dev,
+			cache_resource->sample_idx.rix_hrxq))
+		cache_resource->sample_idx.rix_hrxq = 0;
+	if (cache_resource->sample_idx.rix_tag &&
+		!flow_dv_tag_release(dev,
+			cache_resource->sample_idx.rix_tag))
+		cache_resource->sample_idx.rix_tag = 0;
+	if (cache_resource->sample_idx.cnt) {
+		flow_dv_counter_release(dev,
+			cache_resource->sample_idx.cnt);
+		cache_resource->sample_idx.cnt = 0;
+	}
+	if (!__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED)) {
+		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_SAMPLE],
+			     &priv->sh->sample_action_list, idx,
+			     cache_resource, next);
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_SAMPLE], idx);
+		DRV_LOG(DEBUG, "sample resource %p: removed",
+			(void *)cache_resource);
+		return 0;
+	}
+	return 1;
+}
+
+/**
  * Remove the flow from the NIC but keeps it in memory.
  * Lock free, (mutex should be acquired by caller).
  *
@@ -9606,8 +10095,11 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		flow->dev_handles = dev_handle->next.next;
 		if (dev_handle->dvh.matcher)
 			flow_dv_matcher_release(dev, dev_handle);
+		if (dev_handle->dvh.rix_sample)
+			flow_dv_sample_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.rix_encap_decap)
-			flow_dv_encap_decap_resource_release(dev, dev_handle);
+			flow_dv_encap_decap_resource_release(dev,
+				dev_handle->dvh.rix_encap_decap);
 		if (dev_handle->dvh.modify_hdr)
 			flow_dv_modify_hdr_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.rix_push_vlan)

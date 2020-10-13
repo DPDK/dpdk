@@ -5014,10 +5014,14 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	int hairpin_flow;
 	uint32_t hairpin_id = 0;
 	struct rte_flow_attr attr_tx = { .priority = 0 };
+	struct rte_flow_attr attr_factor = {0};
 	int ret;
 
-	hairpin_flow = flow_check_hairpin_split(dev, attr, actions);
-	ret = flow_drv_validate(dev, attr, items, p_actions_rx,
+	memcpy((void *)&attr_factor, (const void *)attr, sizeof(*attr));
+	if (external)
+		attr_factor.group *= MLX5_FLOW_TABLE_FACTOR;
+	hairpin_flow = flow_check_hairpin_split(dev, &attr_factor, actions);
+	ret = flow_drv_validate(dev, &attr_factor, items, p_actions_rx,
 				external, hairpin_flow, error);
 	if (ret < 0)
 		return 0;
@@ -5036,7 +5040,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		rte_errno = ENOMEM;
 		goto error_before_flow;
 	}
-	flow->drv_type = flow_get_drv_type(dev, attr);
+	flow->drv_type = flow_get_drv_type(dev, &attr_factor);
 	if (hairpin_id != 0)
 		flow->hairpin_flow_id = hairpin_id;
 	MLX5_ASSERT(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
@@ -5081,7 +5085,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		 * depending on configuration. In the simplest
 		 * case it just creates unmodified original flow.
 		 */
-		ret = flow_create_split_outer(dev, flow, attr,
+		ret = flow_create_split_outer(dev, flow, &attr_factor,
 					      buf->entry[i].pattern,
 					      p_actions_rx, external, idx,
 					      error);
@@ -5118,8 +5122,8 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	 * the egress Flows belong to the different device and
 	 * copy table should be updated in peer NIC Rx domain.
 	 */
-	if (attr->ingress &&
-	    (external || attr->group != MLX5_FLOW_MREG_CP_TABLE_GROUP)) {
+	if (attr_factor.ingress &&
+	    (external || attr_factor.group != MLX5_FLOW_MREG_CP_TABLE_GROUP)) {
 		ret = flow_mreg_update_copy_table(dev, flow, actions, error);
 		if (ret)
 			goto error;
