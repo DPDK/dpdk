@@ -21,6 +21,7 @@
 #include "hw/otx2_sso.h"
 #include "hw/otx2_ssow.h"
 #include "hw/otx2_tim.h"
+#include "hw/otx2_ree.h"
 
 /* Alignment */
 #define OTX2_ALIGN  128
@@ -96,6 +97,7 @@ extern int otx2_logtype_tm;
 extern int otx2_logtype_tim;
 extern int otx2_logtype_dpi;
 extern int otx2_logtype_ep;
+extern int otx2_logtype_ree;
 
 #define otx2_err(fmt, args...)			\
 	RTE_LOG(ERR, PMD, "%s():%u " fmt "\n",	\
@@ -119,6 +121,7 @@ extern int otx2_logtype_ep;
 #define otx2_tim_dbg(fmt, ...) otx2_dbg(tim, fmt, ##__VA_ARGS__)
 #define otx2_dpi_dbg(fmt, ...) otx2_dbg(dpi, fmt, ##__VA_ARGS__)
 #define otx2_sdp_dbg(fmt, ...) otx2_dbg(ep, fmt, ##__VA_ARGS__)
+#define otx2_ree_dbg(fmt, ...) otx2_dbg(ree, fmt, ##__VA_ARGS__)
 
 /* PCI IDs */
 #define PCI_VENDOR_ID_CAVIUM			0x177D
@@ -136,6 +139,8 @@ extern int otx2_logtype_ep;
 #define PCI_DEVID_OCTEONTX2_EP_VF		0xB203 /* OCTEON TX2 EP mode */
 #define PCI_DEVID_OCTEONTX2_RVU_SDP_PF		0xA0f6
 #define PCI_DEVID_OCTEONTX2_RVU_SDP_VF		0xA0f7
+#define PCI_DEVID_OCTEONTX2_RVU_REE_PF		0xA0f4
+#define PCI_DEVID_OCTEONTX2_RVU_REE_VF		0xA0f5
 
 /*
  * REVID for RVU PCIe devices.

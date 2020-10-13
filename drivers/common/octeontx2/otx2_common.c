@@ -213,3 +213,4 @@ RTE_LOG_REGISTER(otx2_logtype_sso, pmd.event.octeontx2, NOTICE);
 RTE_LOG_REGISTER(otx2_logtype_tim, pmd.event.octeontx2.timer, NOTICE);
 RTE_LOG_REGISTER(otx2_logtype_dpi, pmd.raw.octeontx2.dpi, NOTICE);
 RTE_LOG_REGISTER(otx2_logtype_ep, pmd.raw.octeontx2.ep, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_ree, pmd.regex.octeontx2, NOTICE);
