@@ -11,6 +11,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_io.h>
+#include <rte_net.h>
 
 #include "efx.h"
 #include "efx_types.h"
@@ -96,7 +97,20 @@ sfc_ef100_tx_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		struct rte_mbuf *m = tx_pkts[i];
 		unsigned int max_nb_header_segs = 0;
+		bool calc_phdr_cksum = false;
 		int ret;
+
+		/*
+		 * Partial checksum offload is used in the case of
+		 * inner TCP/UDP checksum offload. It requires
+		 * pseudo-header checksum which is calculated below,
+		 * but requires contiguous packet headers.
+		 */
+		if ((m->ol_flags & PKT_TX_TUNNEL_MASK) &&
+		    (m->ol_flags & PKT_TX_L4_MASK)) {
+			calc_phdr_cksum = true;
+			max_nb_header_segs = 1;
+		}
 
 		ret = sfc_dp_tx_prepare_pkt(m, max_nb_header_segs, 0,
 					    0, txq->max_fill_level, 0, 0);
@@ -108,6 +122,19 @@ sfc_ef100_tx_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (m->nb_segs > EFX_MASK32(ESF_GZ_TX_SEND_NUM_SEGS)) {
 			rte_errno = EINVAL;
 			break;
+		}
+
+		if (calc_phdr_cksum) {
+			/*
+			 * Full checksum offload does IPv4 header checksum
+			 * and does not require any assistance.
+			 */
+			ret = rte_net_intel_cksum_flags_prepare(m,
+					m->ol_flags & ~PKT_TX_IP_CKSUM);
+			if (unlikely(ret != 0)) {
+				rte_errno = -ret;
+				break;
+			}
 		}
 	}
 
@@ -215,19 +242,75 @@ sfc_ef100_tx_reap(struct sfc_ef100_txq *txq)
 	sfc_ef100_tx_reap_num_descs(txq, sfc_ef100_tx_process_events(txq));
 }
 
+static uint8_t
+sfc_ef100_tx_qdesc_cso_inner_l3(uint64_t tx_tunnel)
+{
+	uint8_t inner_l3;
+
+	switch (tx_tunnel) {
+	case PKT_TX_TUNNEL_VXLAN:
+		inner_l3 = ESE_GZ_TX_DESC_CS_INNER_L3_VXLAN;
+		break;
+	case PKT_TX_TUNNEL_GENEVE:
+		inner_l3 = ESE_GZ_TX_DESC_CS_INNER_L3_GENEVE;
+		break;
+	default:
+		inner_l3 = ESE_GZ_TX_DESC_CS_INNER_L3_OFF;
+		break;
+	}
+	return inner_l3;
+}
+
 static void
 sfc_ef100_tx_qdesc_send_create(const struct rte_mbuf *m, efx_oword_t *tx_desc)
 {
 	bool outer_l3;
 	bool outer_l4;
+	uint8_t inner_l3;
+	uint8_t partial_en;
+	uint16_t part_cksum_w;
+	uint16_t l4_offset_w;
 
-	outer_l3 = (m->ol_flags & PKT_TX_IP_CKSUM);
-	outer_l4 = (m->ol_flags & PKT_TX_L4_MASK);
+	if ((m->ol_flags & PKT_TX_TUNNEL_MASK) == 0) {
+		outer_l3 = (m->ol_flags & PKT_TX_IP_CKSUM);
+		outer_l4 = (m->ol_flags & PKT_TX_L4_MASK);
+		inner_l3 = ESE_GZ_TX_DESC_CS_INNER_L3_OFF;
+		partial_en = ESE_GZ_TX_DESC_CSO_PARTIAL_EN_OFF;
+		part_cksum_w = 0;
+		l4_offset_w = 0;
+	} else {
+		outer_l3 = (m->ol_flags & PKT_TX_OUTER_IP_CKSUM);
+		outer_l4 = (m->ol_flags & PKT_TX_OUTER_UDP_CKSUM);
+		inner_l3 = sfc_ef100_tx_qdesc_cso_inner_l3(m->ol_flags &
+							   PKT_TX_TUNNEL_MASK);
 
-	EFX_POPULATE_OWORD_6(*tx_desc,
+		switch (m->ol_flags & PKT_TX_L4_MASK) {
+		case PKT_TX_TCP_CKSUM:
+			partial_en = ESE_GZ_TX_DESC_CSO_PARTIAL_EN_TCP;
+			part_cksum_w = offsetof(struct rte_tcp_hdr, cksum) >> 1;
+			break;
+		case PKT_TX_UDP_CKSUM:
+			partial_en = ESE_GZ_TX_DESC_CSO_PARTIAL_EN_UDP;
+			part_cksum_w = offsetof(struct rte_udp_hdr,
+						dgram_cksum) >> 1;
+			break;
+		default:
+			partial_en = ESE_GZ_TX_DESC_CSO_PARTIAL_EN_OFF;
+			part_cksum_w = 0;
+			break;
+		}
+		l4_offset_w = (m->outer_l2_len + m->outer_l3_len +
+				m->l2_len + m->l3_len) >> 1;
+	}
+
+	EFX_POPULATE_OWORD_10(*tx_desc,
 			ESF_GZ_TX_SEND_ADDR, rte_mbuf_data_iova(m),
 			ESF_GZ_TX_SEND_LEN, rte_pktmbuf_data_len(m),
 			ESF_GZ_TX_SEND_NUM_SEGS, m->nb_segs,
+			ESF_GZ_TX_SEND_CSO_PARTIAL_START_W, l4_offset_w,
+			ESF_GZ_TX_SEND_CSO_PARTIAL_CSUM_W, part_cksum_w,
+			ESF_GZ_TX_SEND_CSO_PARTIAL_EN, partial_en,
+			ESF_GZ_TX_SEND_CSO_INNER_L3, inner_l3,
 			ESF_GZ_TX_SEND_CSO_OUTER_L3, outer_l3,
 			ESF_GZ_TX_SEND_CSO_OUTER_L4, outer_l4,
 			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_SEND);
@@ -603,6 +686,8 @@ struct sfc_dp_tx sfc_ef100_tx = {
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
 	.dev_offload_capa	= 0,
 	.queue_offload_capa	= DEV_TX_OFFLOAD_IPV4_CKSUM |
+				  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				  DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |
 				  DEV_TX_OFFLOAD_UDP_CKSUM |
 				  DEV_TX_OFFLOAD_TCP_CKSUM |
 				  DEV_TX_OFFLOAD_MULTI_SEGS,
