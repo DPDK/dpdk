@@ -311,7 +311,7 @@ boolean parameters value.
   **ef100** chooses EF100 native datapath which is the only supported
   Rx datapath for EF100 architecture based NICs.
 
-- ``tx_datapath`` [auto|efx|ef10|ef10_simple] (default **auto**)
+- ``tx_datapath`` [auto|efx|ef10|ef10_simple|ef100] (default **auto**)
 
   Choose transmit datapath implementation.
   **auto** allows the driver itself to make a choice based on firmware
@@ -320,6 +320,7 @@ boolean parameters value.
   (full-feature firmware variant only), TSO and multi-segment mbufs.
   Mbuf segments may come from different mempools, and mbuf reference
   counters are treated responsibly.
+  Supported for SFN7xxx, SFN8xxx and X2xxx family adapters only.
   **ef10** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which is
   more efficient than libefx-based but has no VLAN insertion support yet.
   Mbuf segments may come from different mempools, and mbuf reference
@@ -327,6 +328,8 @@ boolean parameters value.
   **ef10_simple** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which
   is even more faster then **ef10** but does not support multi-segment
   mbufs, disallows multiple mempools and neglects mbuf reference counters.
+  **ef100** chooses EF100 native datapath which does not support multi-segment
+  mbufs and any offloads.
 
 - ``perf_profile`` [auto|throughput|low-latency] (default **throughput**)
 

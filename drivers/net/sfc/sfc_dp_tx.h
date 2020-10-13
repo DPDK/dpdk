@@ -289,6 +289,7 @@ sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,
 extern struct sfc_dp_tx sfc_efx_tx;
 extern struct sfc_dp_tx sfc_ef10_tx;
 extern struct sfc_dp_tx sfc_ef10_simple_tx;
+extern struct sfc_dp_tx sfc_ef100_tx;
 
 #ifdef __cplusplus
 }

@@ -2156,6 +2156,7 @@ sfc_register_dp(void)
 		sfc_dp_register(&sfc_dp_head, &sfc_ef10_rx.dp);
 		sfc_dp_register(&sfc_dp_head, &sfc_efx_rx.dp);
 
+		sfc_dp_register(&sfc_dp_head, &sfc_ef100_tx.dp);
 		sfc_dp_register(&sfc_dp_head, &sfc_ef10_tx.dp);
 		sfc_dp_register(&sfc_dp_head, &sfc_efx_tx.dp);
 		sfc_dp_register(&sfc_dp_head, &sfc_ef10_simple_tx.dp);
