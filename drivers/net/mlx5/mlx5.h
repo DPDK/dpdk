@@ -813,6 +813,7 @@ struct mlx5_priv {
 	unsigned int counter_fallback:1; /* Use counter fallback management. */
 	unsigned int mtr_en:1; /* Whether support meter. */
 	unsigned int mtr_reg_share:1; /* Whether support meter REG_C share. */
+	unsigned int sampler_en:1; /* Whether support sampler. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */

@@ -196,6 +196,7 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_SET_IPV6_DSCP (1ull << 33)
 #define MLX5_FLOW_ACTION_AGE (1ull << 34)
 #define MLX5_FLOW_ACTION_DEFAULT_MISS (1ull << 35)
+#define MLX5_FLOW_ACTION_SAMPLE (1ull << 36)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \

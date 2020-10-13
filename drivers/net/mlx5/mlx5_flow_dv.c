@@ -4042,6 +4042,134 @@ flow_dv_modify_hdr_resource_match(struct mlx5_hlist_entry *entry, void *ctx)
 }
 
 /**
+ * Validate the sample action.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the sample action.
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_sample(uint64_t action_flags,
+			       const struct rte_flow_action *action,
+			       struct rte_eth_dev *dev,
+			       const struct rte_flow_attr *attr,
+			       struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *dev_conf = &priv->config;
+	const struct rte_flow_action_sample *sample = action->conf;
+	const struct rte_flow_action *act;
+	uint64_t sub_action_flags = 0;
+	int actions_n = 0;
+	int ret;
+
+	if (!sample)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "configuration cannot be NULL");
+	if (sample->ratio == 0)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "ratio value starts from 1");
+	if (!priv->config.devx || (sample->ratio > 0 && !priv->sampler_en))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "sample action not supported");
+	if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Multiple sample actions not "
+					  "supported");
+	if (action_flags & MLX5_FLOW_ACTION_METER)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "wrong action order, meter should "
+					  "be after sample action");
+	if (action_flags & MLX5_FLOW_ACTION_JUMP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "wrong action order, jump should "
+					  "be after sample action");
+	act = sample->actions;
+	for (; act->type != RTE_FLOW_ACTION_TYPE_END; act++) {
+		if (actions_n == MLX5_DV_MAX_NUMBER_OF_ACTIONS)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  act, "too many actions");
+		switch (act->type) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			ret = mlx5_flow_validate_action_queue(act,
+							      sub_action_flags,
+							      dev,
+							      attr, error);
+			if (ret < 0)
+				return ret;
+			sub_action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			++actions_n;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			ret = flow_dv_validate_action_mark(dev, act,
+							   sub_action_flags,
+							   attr, error);
+			if (ret < 0)
+				return ret;
+			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY)
+				sub_action_flags |= MLX5_FLOW_ACTION_MARK |
+						MLX5_FLOW_ACTION_MARK_EXT;
+			else
+				sub_action_flags |= MLX5_FLOW_ACTION_MARK;
+			++actions_n;
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = flow_dv_validate_action_count(dev, error);
+			if (ret < 0)
+				return ret;
+			sub_action_flags |= MLX5_FLOW_ACTION_COUNT;
+			++actions_n;
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "Doesn't support optional "
+						  "action");
+		}
+	}
+	if (attr->ingress && !attr->transfer) {
+		if (!(sub_action_flags & MLX5_FLOW_ACTION_QUEUE))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "Ingress must has a dest "
+						  "QUEUE for Sample");
+	} else if (attr->egress && !attr->transfer) {
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "Sample Only support Ingress "
+					  "or E-Switch");
+	} else if (sample->actions->type != RTE_FLOW_ACTION_TYPE_END) {
+		MLX5_ASSERT(attr->transfer);
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "E-Switch doesn't support any "
+					  "optional action for sampling");
+	}
+	return 0;
+}
+
+/**
  * Find existing modify-header resource or create and register a new one.
  *
  * @param dev[in, out]
@@ -5802,6 +5930,15 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				++actions_n;
 			action_flags |= MLX5_FLOW_ACTION_SET_IPV6_DSCP;
 			rw_act_num += MLX5_ACT_NUM_SET_DSCP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SAMPLE:
+			ret = flow_dv_validate_action_sample(action_flags,
+							     actions, dev,
+							     attr, error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_SAMPLE;
+			++actions_n;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
