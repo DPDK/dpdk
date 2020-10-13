@@ -4251,6 +4251,8 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
  *
  * @param[in] actions
  *   Pointer to the list of actions.
+ * @param[in] attr
+ *   Flow rule attributes.
  * @param[in] action
  *   The action to be check if exist.
  * @param[out] match_action_pos
@@ -4264,10 +4266,15 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
  */
 static int
 flow_check_match_action(const struct rte_flow_action actions[],
+			const struct rte_flow_attr *attr,
 			enum rte_flow_action_type action,
 			int *match_action_pos, int *qrss_action_pos)
 {
+	const struct rte_flow_action_sample *sample;
 	int actions_n = 0;
+	int jump_flag = 0;
+	uint32_t ratio = 0;
+	int sub_type = 0;
 	int flag = 0;
 
 	*match_action_pos = -1;
@@ -4280,7 +4287,24 @@ flow_check_match_action(const struct rte_flow_action actions[],
 		if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE ||
 		    actions->type == RTE_FLOW_ACTION_TYPE_RSS)
 			*qrss_action_pos = actions_n;
+		if (actions->type == RTE_FLOW_ACTION_TYPE_JUMP)
+			jump_flag = 1;
+		if (actions->type == RTE_FLOW_ACTION_TYPE_SAMPLE) {
+			sample = actions->conf;
+			ratio = sample->ratio;
+			sub_type = ((const struct rte_flow_action *)
+					(sample->actions))->type;
+		}
 		actions_n++;
+	}
+	if (flag && action == RTE_FLOW_ACTION_TYPE_SAMPLE && attr->transfer) {
+		if (ratio == 1) {
+			/* JUMP Action not support for Mirroring;
+			 * Mirroring support multi-destination;
+			 */
+			if (!jump_flag && sub_type != RTE_FLOW_ACTION_TYPE_END)
+				flag = 0;
+		}
 	}
 	/* Count RTE_FLOW_ACTION_TYPE_END. */
 	return flag ? actions_n + 1 : 0;
@@ -4833,7 +4857,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	if (priv->sampler_en)
-		actions_n = flow_check_match_action(actions,
+		actions_n = flow_check_match_action(actions, attr,
 					RTE_FLOW_ACTION_TYPE_SAMPLE,
 					&sample_action_pos, &qrss_action_pos);
 	if (actions_n) {

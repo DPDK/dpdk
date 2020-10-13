@@ -3374,6 +3374,8 @@ flow_dv_create_action_push_vlan(struct rte_eth_dev *dev,
 					    (dev, &res, dev_flow, error);
 }
 
+static int fdb_mirror;
+
 /**
  * Validate the modify-header actions.
  *
@@ -3401,6 +3403,12 @@ flow_dv_validate_action_modify_hdr(const uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have encap action before"
 					  " modify action");
+	if ((action_flags & MLX5_FLOW_ACTION_SAMPLE) && fdb_mirror)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't support sample action before"
+					  " modify action for E-Switch"
+					  " mirroring");
 	return 0;
 }
 
@@ -3724,6 +3732,12 @@ flow_dv_validate_action_jump(const struct rte_flow_action *action,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "jump with meter not support");
+	if ((action_flags & MLX5_FLOW_ACTION_SAMPLE) && fdb_mirror)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "E-Switch mirroring can't support"
+					  " Sample action and jump action in"
+					  " same flow now");
 	if (!action->conf)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
@@ -4074,8 +4088,10 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 	const struct rte_flow_action_sample *sample = action->conf;
 	const struct rte_flow_action *act;
 	uint64_t sub_action_flags = 0;
+	uint16_t queue_index = 0xFFFF;
 	int actions_n = 0;
 	int ret;
+	fdb_mirror = 0;
 
 	if (!sample)
 		return rte_flow_error_set(error, EINVAL,
@@ -4119,6 +4135,8 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 							      attr, error);
 			if (ret < 0)
 				return ret;
+			queue_index = ((const struct rte_flow_action_queue *)
+							(act->conf))->index;
 			sub_action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			++actions_n;
 			break;
@@ -4140,6 +4158,25 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 			if (ret < 0)
 				return ret;
 			sub_action_flags |= MLX5_FLOW_ACTION_COUNT;
+			++actions_n;
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			ret = flow_dv_validate_action_port_id(dev,
+							      sub_action_flags,
+							      act,
+							      attr,
+							      error);
+			if (ret)
+				return ret;
+			sub_action_flags |= MLX5_FLOW_ACTION_PORT_ID;
+			++actions_n;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			ret = flow_dv_validate_action_raw_encap_decap
+				(dev, NULL, act->conf, attr, &sub_action_flags,
+				 &actions_n, error);
+			if (ret < 0)
+				return ret;
 			++actions_n;
 			break;
 		default:
@@ -4165,10 +4202,43 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 					  "or E-Switch");
 	} else if (sample->actions->type != RTE_FLOW_ACTION_TYPE_END) {
 		MLX5_ASSERT(attr->transfer);
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "E-Switch doesn't support any "
-					  "optional action for sampling");
+		if (sample->ratio > 1)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "E-Switch doesn't support "
+						  "any optional action "
+						  "for sampling");
+		fdb_mirror = 1;
+		if (sub_action_flags & MLX5_FLOW_ACTION_QUEUE)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "unsupported action QUEUE");
+		if (!(sub_action_flags & MLX5_FLOW_ACTION_PORT_ID))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "E-Switch must has a dest "
+						  "port for mirroring");
+	}
+	/* Continue validation for Xcap actions.*/
+	if ((sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) &&
+	    (queue_index == 0xFFFF ||
+	     mlx5_rxq_get_type(dev, queue_index) != MLX5_RXQ_TYPE_HAIRPIN)) {
+		if ((sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) ==
+		     MLX5_FLOW_XCAP_ACTIONS)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "encap and decap "
+						  "combination aren't "
+						  "supported");
+		if (!attr->transfer && attr->ingress && (sub_action_flags &
+							MLX5_FLOW_ACTION_ENCAP))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "encap is not supported"
+						  " for ingress traffic");
 	}
 	return 0;
 }
