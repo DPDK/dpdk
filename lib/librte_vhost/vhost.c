@@ -333,8 +333,8 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		rte_free(vq->shadow_used_split);
 		if (vq->async_pkts_pending)
 			rte_free(vq->async_pkts_pending);
-		if (vq->async_pending_info)
-			rte_free(vq->async_pending_info);
+		if (vq->async_pkts_info)
+			rte_free(vq->async_pkts_info);
 	}
 	rte_free(vq->batch_copy_elems);
 	rte_mempool_free(vq->iotlb_pool);
@@ -1559,15 +1559,15 @@ int rte_vhost_async_channel_register(int vid, uint16_t queue_id,
 	vq->async_pkts_pending = rte_malloc(NULL,
 			vq->size * sizeof(uintptr_t),
 			RTE_CACHE_LINE_SIZE);
-	vq->async_pending_info = rte_malloc(NULL,
-			vq->size * sizeof(uint64_t),
+	vq->async_pkts_info = rte_malloc(NULL,
+			vq->size * sizeof(struct async_inflight_info),
 			RTE_CACHE_LINE_SIZE);
-	if (!vq->async_pkts_pending || !vq->async_pending_info) {
+	if (!vq->async_pkts_pending || !vq->async_pkts_info) {
 		if (vq->async_pkts_pending)
 			rte_free(vq->async_pkts_pending);
 
-		if (vq->async_pending_info)
-			rte_free(vq->async_pending_info);
+		if (vq->async_pkts_info)
+			rte_free(vq->async_pkts_info);
 
 		VHOST_LOG_CONFIG(ERR,
 				"async register failed: cannot allocate memory for vq data "
@@ -1621,9 +1621,9 @@ int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 		vq->async_pkts_pending = NULL;
 	}
 
-	if (vq->async_pending_info) {
-		rte_free(vq->async_pending_info);
-		vq->async_pending_info = NULL;
+	if (vq->async_pkts_info) {
+		rte_free(vq->async_pkts_info);
+		vq->async_pkts_info = NULL;
 	}
 
 	vq->async_ops.transfer_data = NULL;

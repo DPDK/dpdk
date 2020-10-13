@@ -76,11 +76,24 @@ struct rte_vhost_async_channel_ops {
 	 * @param max_packets
 	 *  max number of packets could be completed
 	 * @return
-	 *  number of iov segments completed
+	 *  number of async descs completed
 	 */
 	uint32_t (*check_completed_copies)(int vid, uint16_t queue_id,
 		struct rte_vhost_async_status *opaque_data,
 		uint16_t max_packets);
+};
+
+/**
+ * inflight async packet information
+ */
+struct async_inflight_info {
+	union {
+		uint32_t info;
+		struct {
+			uint16_t descs; /* num of descs inflight */
+			uint16_t segs; /* iov segs inflight */
+		};
+	};
 };
 
 /**
