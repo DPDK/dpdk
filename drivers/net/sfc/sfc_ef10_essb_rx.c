@@ -596,6 +596,8 @@ sfc_ef10_essb_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 			ER_DZ_RX_DESC_UPD_REG_OFST +
 			(info->hw_index << info->vi_window_shift);
 
+	sfc_ef10_essb_rx_info(&rxq->dp.dpq, "RxQ doorbell is %p",
+			      rxq->doorbell);
 	sfc_ef10_essb_rx_info(&rxq->dp.dpq,
 			      "block size is %u, buf stride is %u",
 			      rxq->block_size, rxq->buf_stride);

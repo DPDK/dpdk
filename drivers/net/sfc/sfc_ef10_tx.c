@@ -29,6 +29,9 @@
 #define sfc_ef10_tx_err(dpq, ...) \
 	SFC_DP_LOG(SFC_KVARG_DATAPATH_EF10, ERR, dpq, __VA_ARGS__)
 
+#define sfc_ef10_tx_info(dpq, ...) \
+	SFC_DP_LOG(SFC_KVARG_DATAPATH_EF10, INFO, dpq, __VA_ARGS__)
+
 /** Maximum length of the DMA descriptor data */
 #define SFC_EF10_TX_DMA_DESC_LEN_MAX \
 	((1u << ESF_DZ_TX_KER_BYTE_CNT_WIDTH) - 1)
@@ -959,6 +962,8 @@ sfc_ef10_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 			(info->hw_index << info->vi_window_shift);
 	txq->evq_hw_ring = info->evq_hw_ring;
 	txq->tso_tcp_header_offset_limit = info->tso_tcp_header_offset_limit;
+
+	sfc_ef10_tx_info(&txq->dp.dpq, "TxQ doorbell is %p", txq->doorbell);
 
 	*dp_txqp = &txq->dp;
 	return 0;
