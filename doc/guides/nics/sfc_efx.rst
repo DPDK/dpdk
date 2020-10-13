@@ -297,7 +297,7 @@ whitelist option like "-w 02:00.0,arg1=value1,...".
 Case-insensitive 1/y/yes/on or 0/n/no/off may be used to specify
 boolean parameters value.
 
-- ``rx_datapath`` [auto|efx|ef10|ef10_esps] (default **auto**)
+- ``rx_datapath`` [auto|efx|ef10|ef10_essb] (default **auto**)
 
   Choose receive datapath implementation.
   **auto** allows the driver itself to make a choice based on firmware
@@ -306,7 +306,7 @@ boolean parameters value.
   **ef10** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which is
   more efficient than libefx-based and provides richer packet type
   classification.
-  **ef10_esps** chooses SFNX2xxx equal stride packed stream datapath
+  **ef10_essb** chooses SFNX2xxx equal stride super-buffer datapath
   which may be used on DPDK firmware variant only
   (see notes about its limitations above).
 
