@@ -330,6 +330,7 @@ connect_to_socket(void)
 	if (bytes < 0) {
 		printf("%s: Error with socket read - %s\n", __func__,
 				strerror(errno));
+		close(sock);
 		return -1;
 	}
 	buf[bytes] = '\0';
