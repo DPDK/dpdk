@@ -177,6 +177,166 @@ sfc_ef100_rx_qrefill(struct sfc_ef100_rxq *rxq)
 	sfc_ef100_rx_qpush(rxq, added);
 }
 
+static inline uint64_t
+sfc_ef100_rx_nt_or_inner_l4_csum(const efx_word_t class)
+{
+	return EFX_WORD_FIELD(class,
+			      ESF_GZ_RX_PREFIX_HCLASS_NT_OR_INNER_L4_CSUM) ==
+		ESE_GZ_RH_HCLASS_L4_CSUM_GOOD ?
+		PKT_RX_L4_CKSUM_GOOD : PKT_RX_L4_CKSUM_BAD;
+}
+
+static inline uint64_t
+sfc_ef100_rx_tun_outer_l4_csum(const efx_word_t class)
+{
+	return EFX_WORD_FIELD(class,
+			      ESF_GZ_RX_PREFIX_HCLASS_TUN_OUTER_L4_CSUM) ==
+		ESE_GZ_RH_HCLASS_L4_CSUM_GOOD ?
+		PKT_RX_OUTER_L4_CKSUM_GOOD : PKT_RX_OUTER_L4_CKSUM_GOOD;
+}
+
+static uint32_t
+sfc_ef100_rx_class_decode(const efx_word_t class, uint64_t *ol_flags)
+{
+	uint32_t ptype;
+	bool no_tunnel = false;
+
+	if (unlikely(EFX_WORD_FIELD(class, ESF_GZ_RX_PREFIX_HCLASS_L2_CLASS) !=
+		     ESE_GZ_RH_HCLASS_L2_CLASS_E2_0123VLAN))
+		return 0;
+
+	switch (EFX_WORD_FIELD(class, ESF_GZ_RX_PREFIX_HCLASS_L2_N_VLAN)) {
+	case 0:
+		ptype = RTE_PTYPE_L2_ETHER;
+		break;
+	case 1:
+		ptype = RTE_PTYPE_L2_ETHER_VLAN;
+		break;
+	default:
+		ptype = RTE_PTYPE_L2_ETHER_QINQ;
+		break;
+	}
+
+	switch (EFX_WORD_FIELD(class, ESF_GZ_RX_PREFIX_HCLASS_TUNNEL_CLASS)) {
+	case ESE_GZ_RH_HCLASS_TUNNEL_CLASS_NONE:
+		no_tunnel = true;
+		break;
+	case ESE_GZ_RH_HCLASS_TUNNEL_CLASS_VXLAN:
+		ptype |= RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L4_UDP;
+		*ol_flags |= sfc_ef100_rx_tun_outer_l4_csum(class);
+		break;
+	case ESE_GZ_RH_HCLASS_TUNNEL_CLASS_NVGRE:
+		ptype |= RTE_PTYPE_TUNNEL_NVGRE;
+		break;
+	case ESE_GZ_RH_HCLASS_TUNNEL_CLASS_GENEVE:
+		ptype |= RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L4_UDP;
+		*ol_flags |= sfc_ef100_rx_tun_outer_l4_csum(class);
+		break;
+	default:
+		/*
+		 * Driver does not know the tunnel, but it is
+		 * still a tunnel and NT_OR_INNER refer to inner
+		 * frame.
+		 */
+		no_tunnel = false;
+	}
+
+	if (no_tunnel) {
+		bool l4_valid = true;
+
+		switch (EFX_WORD_FIELD(class,
+			ESF_GZ_RX_PREFIX_HCLASS_NT_OR_INNER_L3_CLASS)) {
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4GOOD:
+			ptype |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+			*ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			break;
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4BAD:
+			ptype |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+			*ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			break;
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP6:
+			ptype |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+			break;
+		default:
+			l4_valid = false;
+		}
+
+		if (l4_valid) {
+			switch (EFX_WORD_FIELD(class,
+				ESF_GZ_RX_PREFIX_HCLASS_NT_OR_INNER_L4_CLASS)) {
+			case ESE_GZ_RH_HCLASS_L4_CLASS_TCP:
+				ptype |= RTE_PTYPE_L4_TCP;
+				*ol_flags |=
+					sfc_ef100_rx_nt_or_inner_l4_csum(class);
+				break;
+			case ESE_GZ_RH_HCLASS_L4_CLASS_UDP:
+				ptype |= RTE_PTYPE_L4_UDP;
+				*ol_flags |=
+					sfc_ef100_rx_nt_or_inner_l4_csum(class);
+				break;
+			case ESE_GZ_RH_HCLASS_L4_CLASS_FRAG:
+				ptype |= RTE_PTYPE_L4_FRAG;
+				break;
+			}
+		}
+	} else {
+		bool l4_valid = true;
+
+		switch (EFX_WORD_FIELD(class,
+			ESF_GZ_RX_PREFIX_HCLASS_TUN_OUTER_L3_CLASS)) {
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4GOOD:
+			ptype |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+			break;
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4BAD:
+			ptype |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+			*ol_flags |= PKT_RX_EIP_CKSUM_BAD;
+			break;
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP6:
+			ptype |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+			break;
+		}
+
+		switch (EFX_WORD_FIELD(class,
+			ESF_GZ_RX_PREFIX_HCLASS_NT_OR_INNER_L3_CLASS)) {
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4GOOD:
+			ptype |= RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
+			*ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+			break;
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4BAD:
+			ptype |= RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
+			*ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			break;
+		case ESE_GZ_RH_HCLASS_L3_CLASS_IP6:
+			ptype |= RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
+			break;
+		default:
+			l4_valid = false;
+			break;
+		}
+
+		if (l4_valid) {
+			switch (EFX_WORD_FIELD(class,
+				ESF_GZ_RX_PREFIX_HCLASS_NT_OR_INNER_L4_CLASS)) {
+			case ESE_GZ_RH_HCLASS_L4_CLASS_TCP:
+				ptype |= RTE_PTYPE_INNER_L4_TCP;
+				*ol_flags |=
+					sfc_ef100_rx_nt_or_inner_l4_csum(class);
+				break;
+			case ESE_GZ_RH_HCLASS_L4_CLASS_UDP:
+				ptype |= RTE_PTYPE_INNER_L4_UDP;
+				*ol_flags |=
+					sfc_ef100_rx_nt_or_inner_l4_csum(class);
+				break;
+			case ESE_GZ_RH_HCLASS_L4_CLASS_FRAG:
+				ptype |= RTE_PTYPE_INNER_L4_FRAG;
+				break;
+			}
+		}
+	}
+
+	return ptype;
+}
+
 static bool
 sfc_ef100_rx_prefix_to_offloads(const efx_oword_t *rx_prefix,
 				struct rte_mbuf *m)
@@ -194,6 +354,8 @@ sfc_ef100_rx_prefix_to_offloads(const efx_oword_t *rx_prefix,
 				    ESF_GZ_RX_PREFIX_HCLASS_L2_STATUS) !=
 		     ESE_GZ_RH_HCLASS_L2_STATUS_OK))
 		return false;
+
+	m->packet_type = sfc_ef100_rx_class_decode(*class, &ol_flags);
 
 	m->ol_flags = ol_flags;
 	return true;
@@ -374,6 +536,22 @@ static const uint32_t *
 sfc_ef100_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
 {
 	static const uint32_t ef100_native_ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L2_ETHER_QINQ,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_TUNNEL_VXLAN,
+		RTE_PTYPE_TUNNEL_NVGRE,
+		RTE_PTYPE_TUNNEL_GENEVE,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_INNER_L4_FRAG,
 		RTE_PTYPE_UNKNOWN
 	};
 
@@ -596,7 +774,10 @@ struct sfc_dp_rx sfc_ef100_rx = {
 	},
 	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS,
 	.dev_offload_capa	= 0,
-	.queue_offload_capa	= DEV_RX_OFFLOAD_SCATTER,
+	.queue_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM |
+				  DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+				  DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
+				  DEV_RX_OFFLOAD_SCATTER,
 	.get_dev_info		= sfc_ef100_rx_get_dev_info,
 	.qsize_up_rings		= sfc_ef100_rx_qsize_up_rings,
 	.qcreate		= sfc_ef100_rx_qcreate,
