@@ -273,17 +273,15 @@ Pre-Installation Configuration
 ------------------------------
 
 
-Config File Options
-~~~~~~~~~~~~~~~~~~~
+Build Options
+~~~~~~~~~~~~~
 
-The following options can be modified in the ``.config`` file.
+The following build-time options may be enabled on build time using
+``-Dc_args=`` meson argument (e.g.  ``-Dc_args=-DRTE_LIBRTE_SFC_EFX_DEBUG``).
+
 Please note that enabling debugging options may affect system performance.
 
-- ``CONFIG_RTE_LIBRTE_SFC_EFX_PMD`` (default **y**)
-
-  Enable compilation of Solarflare libefx-based poll-mode driver.
-
-- ``CONFIG_RTE_LIBRTE_SFC_EFX_DEBUG`` (default **n**)
+- ``RTE_LIBRTE_SFC_EFX_DEBUG`` (undefined by default)
 
   Enable compilation of the extra run-time consistency checks.
 
