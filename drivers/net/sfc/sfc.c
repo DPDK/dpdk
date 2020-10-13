@@ -205,7 +205,7 @@ sfc_estimate_resource_limits(struct sfc_adapter *sa)
 		MIN(encp->enc_txq_limit,
 		    limits.edl_max_evq_count - 1 - limits.edl_max_rxq_count);
 
-	if (sa->tso)
+	if (sa->tso && encp->enc_fw_assisted_tso_v2_enabled)
 		limits.edl_max_txq_count =
 			MIN(limits.edl_max_txq_count,
 			    encp->enc_fw_assisted_tso_v2_n_contexts /
@@ -795,7 +795,8 @@ sfc_attach(struct sfc_adapter *sa)
 		encp->enc_tunnel_encapsulations_supported;
 
 	if (sfc_dp_tx_offload_capa(sa->priv.dp_tx) & DEV_TX_OFFLOAD_TCP_TSO) {
-		sa->tso = encp->enc_fw_assisted_tso_v2_enabled;
+		sa->tso = encp->enc_fw_assisted_tso_v2_enabled ||
+			  encp->enc_tso_v3_enabled;
 		if (!sa->tso)
 			sfc_info(sa, "TSO support isn't available on this adapter");
 	}

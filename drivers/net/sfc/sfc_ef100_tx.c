@@ -77,6 +77,13 @@ struct sfc_ef100_txq {
 	unsigned int			evq_phase_bit_shift;
 	volatile efx_qword_t		*evq_hw_ring;
 
+	uint16_t			tso_tcp_header_offset_limit;
+	uint16_t			tso_max_nb_header_descs;
+	uint16_t			tso_max_header_len;
+	uint16_t			tso_max_nb_payload_descs;
+	uint32_t			tso_max_payload_len;
+	uint32_t			tso_max_nb_outgoing_frames;
+
 	/* Datapath transmit queue anchor */
 	struct sfc_dp_txq		dp;
 };
@@ -85,6 +92,42 @@ static inline struct sfc_ef100_txq *
 sfc_ef100_txq_by_dp_txq(struct sfc_dp_txq *dp_txq)
 {
 	return container_of(dp_txq, struct sfc_ef100_txq, dp);
+}
+
+static int
+sfc_ef100_tx_prepare_pkt_tso(struct sfc_ef100_txq * const txq,
+			     struct rte_mbuf *m)
+{
+	size_t header_len = m->l2_len + m->l3_len + m->l4_len;
+	size_t payload_len = m->pkt_len - header_len;
+	unsigned long mss_conformant_max_payload_len;
+	unsigned int nb_payload_descs;
+
+	mss_conformant_max_payload_len =
+		m->tso_segsz * txq->tso_max_nb_outgoing_frames;
+
+	/*
+	 * Don't really want to know exact number of payload segments.
+	 * Just use total number of segments as upper limit. Practically
+	 * maximum number of payload segments is significantly bigger
+	 * than maximum number header segments, so we can neglect header
+	 * segments excluded total number of segments to estimate number
+	 * of payload segments required.
+	 */
+	nb_payload_descs = m->nb_segs;
+
+	/*
+	 * Carry out multiple independent checks using bitwise OR
+	 * to avoid unnecessary conditional branching.
+	 */
+	if (unlikely((header_len > txq->tso_max_header_len) |
+		     (nb_payload_descs > txq->tso_max_nb_payload_descs) |
+		     (payload_len > txq->tso_max_payload_len) |
+		     (payload_len > mss_conformant_max_payload_len) |
+		     (m->pkt_len == header_len)))
+		return EINVAL;
+
+	return 0;
 }
 
 static uint16_t
@@ -110,16 +153,25 @@ sfc_ef100_tx_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		    (m->ol_flags & PKT_TX_L4_MASK)) {
 			calc_phdr_cksum = true;
 			max_nb_header_segs = 1;
+		} else if (m->ol_flags & PKT_TX_TCP_SEG) {
+			max_nb_header_segs = txq->tso_max_nb_header_descs;
 		}
 
 		ret = sfc_dp_tx_prepare_pkt(m, max_nb_header_segs, 0,
-					    0, txq->max_fill_level, 0, 0);
+					    txq->tso_tcp_header_offset_limit,
+					    txq->max_fill_level, 1, 0);
 		if (unlikely(ret != 0)) {
 			rte_errno = ret;
 			break;
 		}
 
-		if (m->nb_segs > EFX_MASK32(ESF_GZ_TX_SEND_NUM_SEGS)) {
+		if (m->ol_flags & PKT_TX_TCP_SEG) {
+			ret = sfc_ef100_tx_prepare_pkt_tso(txq, m);
+			if (unlikely(ret != 0)) {
+				rte_errno = ret;
+				break;
+			}
+		} else if (m->nb_segs > EFX_MASK32(ESF_GZ_TX_SEND_NUM_SEGS)) {
 			rte_errno = EINVAL;
 			break;
 		}
@@ -326,6 +378,48 @@ sfc_ef100_tx_qdesc_seg_create(rte_iova_t addr, uint16_t len,
 			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_SEG);
 }
 
+static void
+sfc_ef100_tx_qdesc_tso_create(const struct rte_mbuf *m,
+			      uint16_t nb_header_descs,
+			      uint16_t nb_payload_descs,
+			      size_t header_len, size_t payload_len,
+			      size_t iph_off, size_t tcph_off,
+			      efx_oword_t *tx_desc)
+{
+	efx_oword_t tx_desc_extra_fields;
+	/*
+	 * If no tunnel encapsulation is present, then the ED_INNER
+	 * fields should be used.
+	 */
+	int ed_inner_ip_id = ESE_GZ_TX_DESC_IP4_ID_INC_MOD16;
+
+	EFX_POPULATE_OWORD_7(*tx_desc,
+			ESF_GZ_TX_TSO_MSS, m->tso_segsz,
+			ESF_GZ_TX_TSO_HDR_NUM_SEGS, nb_header_descs,
+			ESF_GZ_TX_TSO_PAYLOAD_NUM_SEGS, nb_payload_descs,
+			ESF_GZ_TX_TSO_ED_INNER_IP4_ID, ed_inner_ip_id,
+			ESF_GZ_TX_TSO_ED_INNER_IP_LEN, 1,
+			ESF_GZ_TX_TSO_HDR_LEN_W, header_len >> 1,
+			ESF_GZ_TX_TSO_PAYLOAD_LEN, payload_len);
+
+	EFX_POPULATE_OWORD_5(tx_desc_extra_fields,
+			/*
+			 * Inner offsets are required for inner IPv4 ID
+			 * and IP length edits.
+			 */
+			ESF_GZ_TX_TSO_INNER_L3_OFF_W, iph_off >> 1,
+			ESF_GZ_TX_TSO_INNER_L4_OFF_W, tcph_off >> 1,
+			/*
+			 * Use outer full checksum offloads which do
+			 * not require any extra information.
+			 */
+			ESF_GZ_TX_TSO_CSO_OUTER_L3, 1,
+			ESF_GZ_TX_TSO_CSO_OUTER_L4, 1,
+			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_TSO);
+
+	EFX_OR_OWORD(*tx_desc, tx_desc_extra_fields);
+}
+
 static inline void
 sfc_ef100_tx_qpush(struct sfc_ef100_txq *txq, unsigned int added)
 {
@@ -351,30 +445,115 @@ sfc_ef100_tx_qpush(struct sfc_ef100_txq *txq, unsigned int added)
 static unsigned int
 sfc_ef100_tx_pkt_descs_max(const struct rte_mbuf *m)
 {
+	unsigned int extra_descs = 0;
+
 /** Maximum length of an mbuf segment data */
 #define SFC_MBUF_SEG_LEN_MAX		UINT16_MAX
 	RTE_BUILD_BUG_ON(sizeof(m->data_len) != 2);
 
-	/*
-	 * mbuf segment cannot be bigger than maximum segment length and
-	 * maximum packet length since TSO is not supported yet.
-	 * Make sure that the first segment does not need fragmentation
-	 * (split into many Tx descriptors).
-	 */
-	RTE_BUILD_BUG_ON(SFC_EF100_TX_SEND_DESC_LEN_MAX <
-		RTE_MIN((unsigned int)EFX_MAC_PDU_MAX, SFC_MBUF_SEG_LEN_MAX));
+	if (m->ol_flags & PKT_TX_TCP_SEG) {
+		/* Tx TSO descriptor */
+		extra_descs++;
+		/*
+		 * Extra Tx segment descriptor may be required if header
+		 * ends in the middle of segment.
+		 */
+		extra_descs++;
+	} else {
+		/*
+		 * mbuf segment cannot be bigger than maximum segment length
+		 * and maximum packet length since TSO is not supported yet.
+		 * Make sure that the first segment does not need fragmentation
+		 * (split into many Tx descriptors).
+		 */
+		RTE_BUILD_BUG_ON(SFC_EF100_TX_SEND_DESC_LEN_MAX <
+				 RTE_MIN((unsigned int)EFX_MAC_PDU_MAX,
+				 SFC_MBUF_SEG_LEN_MAX));
+	}
 
 	/*
 	 * Any segment of scattered packet cannot be bigger than maximum
-	 * segment length and maximum packet length since TSO is not
-	 * supported yet.
-	 * Make sure that subsequent segments do not need fragmentation (split
-	 * into many Tx descriptors).
+	 * segment length. Make sure that subsequent segments do not need
+	 * fragmentation (split into many Tx descriptors).
 	 */
-	RTE_BUILD_BUG_ON(SFC_EF100_TX_SEG_DESC_LEN_MAX <
-		RTE_MIN((unsigned int)EFX_MAC_PDU_MAX, SFC_MBUF_SEG_LEN_MAX));
+	RTE_BUILD_BUG_ON(SFC_EF100_TX_SEG_DESC_LEN_MAX < SFC_MBUF_SEG_LEN_MAX);
 
-	return m->nb_segs;
+	return m->nb_segs + extra_descs;
+}
+
+static struct rte_mbuf *
+sfc_ef100_xmit_tso_pkt(struct sfc_ef100_txq * const txq,
+		       struct rte_mbuf *m, unsigned int *added)
+{
+	struct rte_mbuf *m_seg = m;
+	unsigned int nb_hdr_descs;
+	unsigned int nb_pld_descs;
+	unsigned int seg_split = 0;
+	unsigned int tso_desc_id;
+	unsigned int id;
+	size_t iph_off;
+	size_t tcph_off;
+	size_t header_len;
+	size_t remaining_hdr_len;
+
+	iph_off = m->l2_len;
+	tcph_off = iph_off + m->l3_len;
+	header_len = tcph_off + m->l4_len;
+
+	/*
+	 * Remember ID of the TX_TSO descriptor to be filled in.
+	 * We can't fill it in right now since we need to calculate
+	 * number of header and payload segments first and don't want
+	 * to traverse it twice here.
+	 */
+	tso_desc_id = (*added)++ & txq->ptr_mask;
+
+	remaining_hdr_len = header_len;
+	do {
+		id = (*added)++ & txq->ptr_mask;
+		if (rte_pktmbuf_data_len(m_seg) <= remaining_hdr_len) {
+			/* The segment is fully header segment */
+			sfc_ef100_tx_qdesc_seg_create(
+				rte_mbuf_data_iova(m_seg),
+				rte_pktmbuf_data_len(m_seg),
+				&txq->txq_hw_ring[id]);
+			remaining_hdr_len -= rte_pktmbuf_data_len(m_seg);
+		} else {
+			/*
+			 * The segment must be split into header and
+			 * payload segments
+			 */
+			sfc_ef100_tx_qdesc_seg_create(
+				rte_mbuf_data_iova(m_seg),
+				remaining_hdr_len,
+				&txq->txq_hw_ring[id]);
+			SFC_ASSERT(txq->sw_ring[id].mbuf == NULL);
+
+			id = (*added)++ & txq->ptr_mask;
+			sfc_ef100_tx_qdesc_seg_create(
+				rte_mbuf_data_iova(m_seg) + remaining_hdr_len,
+				rte_pktmbuf_data_len(m_seg) - remaining_hdr_len,
+				&txq->txq_hw_ring[id]);
+			remaining_hdr_len = 0;
+			seg_split = 1;
+		}
+		txq->sw_ring[id].mbuf = m_seg;
+		m_seg = m_seg->next;
+	} while (remaining_hdr_len > 0);
+
+	/*
+	 * If a segment is split into header and payload segments, added
+	 * pointer counts it twice and we should correct it.
+	 */
+	nb_hdr_descs = ((id - tso_desc_id) & txq->ptr_mask) - seg_split;
+	nb_pld_descs = m->nb_segs - nb_hdr_descs + seg_split;
+
+	sfc_ef100_tx_qdesc_tso_create(m, nb_hdr_descs, nb_pld_descs, header_len,
+				      rte_pktmbuf_pkt_len(m) - header_len,
+				      iph_off, tcph_off,
+				      &txq->txq_hw_ring[tso_desc_id]);
+
+	return m_seg;
 }
 
 static uint16_t
@@ -428,27 +607,33 @@ sfc_ef100_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				break;
 		}
 
-		id = added++ & txq->ptr_mask;
-		sfc_ef100_tx_qdesc_send_create(m_seg, &txq->txq_hw_ring[id]);
+		if (m_seg->ol_flags & PKT_TX_TCP_SEG) {
+			m_seg = sfc_ef100_xmit_tso_pkt(txq, m_seg, &added);
+		} else {
+			id = added++ & txq->ptr_mask;
+			sfc_ef100_tx_qdesc_send_create(m_seg,
+						       &txq->txq_hw_ring[id]);
 
-		/*
-		 * rte_pktmbuf_free() is commonly used in DPDK for
-		 * recycling packets - the function checks every
-		 * segment's reference counter and returns the
-		 * buffer to its pool whenever possible;
-		 * nevertheless, freeing mbuf segments one by one
-		 * may entail some performance decline;
-		 * from this point, sfc_efx_tx_reap() does the same job
-		 * on its own and frees buffers in bulks (all mbufs
-		 * within a bulk belong to the same pool);
-		 * from this perspective, individual segment pointers
-		 * must be associated with the corresponding SW
-		 * descriptors independently so that only one loop
-		 * is sufficient on reap to inspect all the buffers
-		 */
-		txq->sw_ring[id].mbuf = m_seg;
+			/*
+			 * rte_pktmbuf_free() is commonly used in DPDK for
+			 * recycling packets - the function checks every
+			 * segment's reference counter and returns the
+			 * buffer to its pool whenever possible;
+			 * nevertheless, freeing mbuf segments one by one
+			 * may entail some performance decline;
+			 * from this point, sfc_efx_tx_reap() does the same job
+			 * on its own and frees buffers in bulks (all mbufs
+			 * within a bulk belong to the same pool);
+			 * from this perspective, individual segment pointers
+			 * must be associated with the corresponding SW
+			 * descriptors independently so that only one loop
+			 * is sufficient on reap to inspect all the buffers
+			 */
+			txq->sw_ring[id].mbuf = m_seg;
+			m_seg = m_seg->next;
+		}
 
-		while ((m_seg = m_seg->next) != NULL) {
+		while (m_seg != NULL) {
 			RTE_BUILD_BUG_ON(SFC_MBUF_SEG_LEN_MAX >
 					 SFC_EF100_TX_SEG_DESC_LEN_MAX);
 
@@ -457,6 +642,7 @@ sfc_ef100_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					rte_pktmbuf_data_len(m_seg),
 					&txq->txq_hw_ring[id]);
 			txq->sw_ring[id].mbuf = m_seg;
+			m_seg = m_seg->next;
 		}
 
 		dma_desc_space -= (added - pkt_start);
@@ -551,6 +737,13 @@ sfc_ef100_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 			ER_GZ_TX_RING_DOORBELL_OFST +
 			(info->hw_index << info->vi_window_shift);
 	txq->evq_hw_ring = info->evq_hw_ring;
+
+	txq->tso_tcp_header_offset_limit = info->tso_tcp_header_offset_limit;
+	txq->tso_max_nb_header_descs = info->tso_max_nb_header_descs;
+	txq->tso_max_header_len = info->tso_max_header_len;
+	txq->tso_max_nb_payload_descs = info->tso_max_nb_payload_descs;
+	txq->tso_max_payload_len = info->tso_max_payload_len;
+	txq->tso_max_nb_outgoing_frames = info->tso_max_nb_outgoing_frames;
 
 	sfc_ef100_tx_debug(txq, "TxQ doorbell is %p", txq->doorbell);
 
@@ -690,7 +883,8 @@ struct sfc_dp_tx sfc_ef100_tx = {
 				  DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |
 				  DEV_TX_OFFLOAD_UDP_CKSUM |
 				  DEV_TX_OFFLOAD_TCP_CKSUM |
-				  DEV_TX_OFFLOAD_MULTI_SEGS,
+				  DEV_TX_OFFLOAD_MULTI_SEGS |
+				  DEV_TX_OFFLOAD_TCP_TSO,
 	.get_dev_info		= sfc_ef100_get_dev_info,
 	.qsize_up_rings		= sfc_ef100_tx_qsize_up_rings,
 	.qcreate		= sfc_ef100_tx_qcreate,

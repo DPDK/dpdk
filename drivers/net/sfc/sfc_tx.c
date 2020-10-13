@@ -188,6 +188,17 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.vi_window_shift = encp->enc_vi_window_shift;
 	info.tso_tcp_header_offset_limit =
 		encp->enc_tx_tso_tcp_header_offset_limit;
+	info.tso_max_nb_header_descs =
+		RTE_MIN(encp->enc_tx_tso_max_header_ndescs,
+			(uint32_t)UINT16_MAX);
+	info.tso_max_header_len =
+		RTE_MIN(encp->enc_tx_tso_max_header_length,
+			(uint32_t)UINT16_MAX);
+	info.tso_max_nb_payload_descs =
+		RTE_MIN(encp->enc_tx_tso_max_payload_ndescs,
+			(uint32_t)UINT16_MAX);
+	info.tso_max_payload_len = encp->enc_tx_tso_max_payload_length;
+	info.tso_max_nb_outgoing_frames = encp->enc_tx_tso_max_nframes;
 
 	rc = sa->priv.dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
@@ -592,7 +603,8 @@ sfc_tx_start(struct sfc_adapter *sa)
 	sfc_log_init(sa, "txq_count = %u", sas->txq_count);
 
 	if (sa->tso) {
-		if (!encp->enc_fw_assisted_tso_v2_enabled) {
+		if (!encp->enc_fw_assisted_tso_v2_enabled &&
+		    !encp->enc_tso_v3_enabled) {
 			sfc_warn(sa, "TSO support was unable to be restored");
 			sa->tso = B_FALSE;
 			sa->tso_encap = B_FALSE;
