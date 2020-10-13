@@ -329,26 +329,19 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn	efx_rc_t
-ef10_phy_reconfigure(
-	__in		efx_nic_t *enp)
+static	__checkReturn	efx_rc_t
+efx_mcdi_phy_set_link(
+	__in		efx_nic_t *enp,
+	__in		uint32_t cap_mask,
+	__in		efx_loopback_type_t loopback_type,
+	__in		efx_link_mode_t loopback_link_mode,
+	__in		uint32_t phy_flags)
 {
-	efx_port_t *epp = &(enp->en_port);
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_SET_LINK_IN_LEN,
 		MC_CMD_SET_LINK_OUT_LEN);
-	uint32_t cap_mask;
-#if EFSYS_OPT_PHY_LED_CONTROL
-	unsigned int led_mode;
-#endif
 	unsigned int speed;
-	boolean_t supported;
 	efx_rc_t rc;
-
-	if ((rc = efx_mcdi_link_control_supported(enp, &supported)) != 0)
-		goto fail1;
-	if (supported == B_FALSE)
-		goto out;
 
 	req.emr_cmd = MC_CMD_SET_LINK;
 	req.emr_in_buf = payload;
@@ -356,7 +349,6 @@ ef10_phy_reconfigure(
 	req.emr_out_buf = payload;
 	req.emr_out_length = MC_CMD_SET_LINK_OUT_LEN;
 
-	cap_mask = epp->ep_adv_cap_mask;
 	MCDI_IN_POPULATE_DWORD_10(req, SET_LINK_IN_CAP,
 		PHY_CAP_10HDX, (cap_mask >> EFX_PHY_CAP_10HDX) & 0x1,
 		PHY_CAP_10FDX, (cap_mask >> EFX_PHY_CAP_10FDX) & 0x1,
@@ -397,10 +389,9 @@ ef10_phy_reconfigure(
 	    PHY_CAP_25G_BASER_FEC_REQUESTED,
 	    (cap_mask >> EFX_PHY_CAP_25G_BASER_FEC_REQUESTED) & 0x1);
 
-#if EFSYS_OPT_LOOPBACK
-	MCDI_IN_SET_DWORD(req, SET_LINK_IN_LOOPBACK_MODE,
-		    epp->ep_loopback_type);
-	switch (epp->ep_loopback_link_mode) {
+	MCDI_IN_SET_DWORD(req, SET_LINK_IN_LOOPBACK_MODE, loopback_type);
+
+	switch (loopback_link_mode) {
 	case EFX_LINK_100FDX:
 		speed = 100;
 		break;
@@ -424,25 +415,66 @@ ef10_phy_reconfigure(
 		break;
 	default:
 		speed = 0;
+		break;
 	}
-#else
-	MCDI_IN_SET_DWORD(req, SET_LINK_IN_LOOPBACK_MODE, MC_CMD_LOOPBACK_NONE);
-	speed = 0;
-#endif	/* EFSYS_OPT_LOOPBACK */
 	MCDI_IN_SET_DWORD(req, SET_LINK_IN_LOOPBACK_SPEED, speed);
 
-#if EFSYS_OPT_PHY_FLAGS
-	MCDI_IN_SET_DWORD(req, SET_LINK_IN_FLAGS, epp->ep_phy_flags);
-#else
-	MCDI_IN_SET_DWORD(req, SET_LINK_IN_FLAGS, 0);
-#endif	/* EFSYS_OPT_PHY_FLAGS */
+	MCDI_IN_SET_DWORD(req, SET_LINK_IN_FLAGS, phy_flags);
 
 	efx_mcdi_execute(enp, &req);
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail2;
+		goto fail1;
 	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+ef10_phy_reconfigure(
+	__in		efx_nic_t *enp)
+{
+	efx_port_t *epp = &(enp->en_port);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_SET_ID_LED_IN_LEN,
+		MC_CMD_SET_ID_LED_OUT_LEN);
+	efx_loopback_type_t loopback_type;
+	efx_link_mode_t loopback_link_mode;
+	uint32_t phy_flags;
+#if EFSYS_OPT_PHY_LED_CONTROL
+	unsigned int led_mode;
+#endif
+	boolean_t supported;
+	efx_rc_t rc;
+
+	if ((rc = efx_mcdi_link_control_supported(enp, &supported)) != 0)
+		goto fail1;
+	if (supported == B_FALSE)
+		goto out;
+
+#if EFSYS_OPT_LOOPBACK
+	loopback_type = epp->ep_loopback_type;
+	loopback_link_mode = epp->ep_loopback_link_mode;
+#else
+	loopback_type = EFX_LOOPBACK_OFF;
+	loopback_link_mode = EFX_LINK_UNKNOWN;
+#endif
+#if EFSYS_OPT_PHY_FLAGS
+	phy_flags = epp->ep_phy_flags;
+#else
+	phy_flags = 0;
+#endif
+
+	rc = efx_mcdi_phy_set_link(enp, epp->ep_adv_cap_mask,
+	    loopback_type, loopback_link_mode, phy_flags);
+	if (rc != 0)
+		goto fail2;
 
 	/* And set the blink mode */
 	(void) memset(payload, 0, sizeof (payload));
