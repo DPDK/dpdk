@@ -1125,6 +1125,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) != 0)
 		rxq_info->type_flags |= EFX_RXQ_FLAG_INNER_CLASSES;
 
+	if (offloads & DEV_RX_OFFLOAD_RSS_HASH)
+		rxq_info->type_flags |= EFX_RXQ_FLAG_RSS_HASH;
+
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_RX, sw_index,
 			  evq_entries, socket_id, &evq);
 	if (rc != 0)
