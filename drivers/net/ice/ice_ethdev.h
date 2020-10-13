@@ -365,37 +365,37 @@ struct ice_fdir_info {
 	struct ice_fdir_counter_pool_container counter;
 };
 
-#define ICE_HASH_CFG_VALID(p)		\
-	((p)->hash_fld != 0 && (p)->pkt_hdr != 0)
+#define ICE_HASH_GTPU_CTX_EH_IP		0
+#define ICE_HASH_GTPU_CTX_EH_IP_UDP	1
+#define ICE_HASH_GTPU_CTX_EH_IP_TCP	2
+#define ICE_HASH_GTPU_CTX_UP_IP		3
+#define ICE_HASH_GTPU_CTX_UP_IP_UDP	4
+#define ICE_HASH_GTPU_CTX_UP_IP_TCP	5
+#define ICE_HASH_GTPU_CTX_DW_IP		6
+#define ICE_HASH_GTPU_CTX_DW_IP_UDP	7
+#define ICE_HASH_GTPU_CTX_DW_IP_TCP	8
+#define ICE_HASH_GTPU_CTX_MAX		9
 
-#define ICE_HASH_CFG_RESET(p) do {	\
-	(p)->hash_fld = 0;		\
-	(p)->pkt_hdr = 0;		\
-} while (0)
+enum ice_rss_hash_func {
+	ICE_RSS_HASH_TOEPLITZ			= 0,
+	ICE_RSS_HASH_TOEPLITZ_SYMMETRIC		= 1,
+	ICE_RSS_HASH_XOR			= 2,
+	ICE_RSS_HASH_JHASH			= 3,
+};
 
-#define ICE_HASH_CFG_IS_ROTATING(p)	\
-	((p)->rotate == true)
-
-#define ICE_HASH_CFG_ROTATE_START(p)	\
-	((p)->rotate = true)
-
-#define ICE_HASH_CFG_ROTATE_STOP(p)	\
-	((p)->rotate = false)
-
-struct ice_hash_cfg {
-	uint32_t pkt_hdr;
-	uint64_t hash_fld;
-	bool rotate;  /* rotate l3 rule after l4 rule. */
-	bool symm;
+struct ice_rss_hash_cfg {
+	u32 addl_hdrs;
+	u64 hash_flds;
+	enum ice_rss_hash_func hash_func;
 };
 
 struct ice_hash_gtpu_ctx {
-	struct ice_hash_cfg ipv4;
-	struct ice_hash_cfg ipv6;
-	struct ice_hash_cfg ipv4_udp;
-	struct ice_hash_cfg ipv6_udp;
-	struct ice_hash_cfg ipv4_tcp;
-	struct ice_hash_cfg ipv6_tcp;
+	struct ice_rss_hash_cfg ctx[ICE_HASH_GTPU_CTX_MAX];
+};
+
+struct ice_hash_ctx {
+	struct ice_hash_gtpu_ctx gtpu4;
+	struct ice_hash_gtpu_ctx gtpu6;
 };
 
 struct ice_pf {
@@ -421,7 +421,7 @@ struct ice_pf {
 	uint16_t fdir_nb_qps; /* The number of queue pairs of Flow Director */
 	uint16_t fdir_qp_offset;
 	struct ice_fdir_info fdir; /* flow director info */
-	struct ice_hash_gtpu_ctx gtpu_hash_ctx;
+	struct ice_hash_ctx hash_ctx;
 	uint16_t hw_prof_cnt[ICE_FLTR_PTYPE_MAX][ICE_FD_HW_SEG_MAX];
 	uint16_t fdir_fltr_cnt[ICE_FLTR_PTYPE_MAX][ICE_FD_HW_SEG_MAX];
 	struct ice_hw_port_stats stats_offset;
