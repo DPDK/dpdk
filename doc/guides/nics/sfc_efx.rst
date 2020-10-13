@@ -9,8 +9,9 @@ Solarflare libefx-based Poll Mode Driver
 ========================================
 
 The SFC EFX PMD (**librte_pmd_sfc_efx**) provides poll mode driver support
-for **Solarflare SFN7xxx and SFN8xxx** family of 10/40 Gbps adapters and
-**Solarflare XtremeScale X2xxx** family of 10/25/40/50/100 Gbps adapters.
+for **Solarflare SFN7xxx and SFN8xxx** family of 10/40 Gbps adapters,
+**Solarflare XtremeScale X2xxx** family of 10/25/40/50/100 Gbps adapters and
+**Alveo SN1000 SmartNICs** family of 10/25/40/50/100 Gbps adapters.
 SFC EFX PMD has support for the latest Linux and FreeBSD operating systems.
 
 More information can be found at `Solarflare Communications website
@@ -219,6 +220,10 @@ conditions is met:
 Supported NICs
 --------------
 
+- Xilinx Adapters:
+
+   - Alveo SN1022 SmartNIC
+
 - Solarflare XtremeScale Adapters:
 
    - Solarflare X2522 Dual Port SFP28 10/25GbE Adapter
@@ -351,10 +356,11 @@ boolean parameters value.
 - ``fw_variant`` [dont-care|full-feature|ultra-low-latency|
   capture-packed-stream|dpdk] (default **dont-care**)
 
-  Choose the preferred firmware variant to use. In order for the selected
-  option to have an effect, the **sfboot** utility must be configured with the
-  **auto** firmware-variant option. The preferred firmware variant applies to
-  all ports on the NIC.
+  Choose the preferred firmware variant to use.
+  The parameter is supported for SFN7xxX, SFN8xxx and X2xxx families only.
+  In order for the selected option to have an effect, the **sfboot** utility
+  must be configured with the **auto** firmware-variant option.
+  The preferred firmware variant applies to all ports on the NIC.
   **dont-care** ensures that the driver can attach to an unprivileged function.
   The datapath firmware type to use is controlled by the **sfboot**
   utility.

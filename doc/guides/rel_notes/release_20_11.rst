@@ -126,6 +126,7 @@ New Features
   Updated the Solarflare ``sfc_efx`` driver with changes including:
 
   * Added SR-IOV PF support
+  * Added Alveo SN1000 SmartNICs (EF100 architecture) support
 
 * **Updated Virtio driver.**
 
