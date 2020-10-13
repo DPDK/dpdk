@@ -879,10 +879,43 @@ rte_eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	return 0;
 }
 
+static int
+eth_dev_validate_rx_queue(const struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	uint16_t port_id;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues) {
+		port_id = dev->data->port_id;
+		RTE_ETHDEV_LOG(ERR,
+			       "Invalid Rx queue_id=%u of device with port_id=%u\n",
+			       rx_queue_id, port_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+eth_dev_validate_tx_queue(const struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	uint16_t port_id;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues) {
+		port_id = dev->data->port_id;
+		RTE_ETHDEV_LOG(ERR,
+			       "Invalid Tx queue_id=%u of device with port_id=%u\n",
+			       tx_queue_id, port_id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int
 rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -894,10 +927,9 @@ rte_eth_dev_rx_queue_start(uint16_t port_id, uint16_t rx_queue_id)
 		return -EINVAL;
 	}
 
-	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", rx_queue_id);
-		return -EINVAL;
-	}
+	ret = eth_dev_validate_rx_queue(dev, rx_queue_id);
+	if (ret != 0)
+		return ret;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_start, -ENOTSUP);
 
@@ -924,14 +956,15 @@ int
 rte_eth_dev_rx_queue_stop(uint16_t port_id, uint16_t rx_queue_id)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
-	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid RX queue_id=%u\n", rx_queue_id);
-		return -EINVAL;
-	}
+
+	ret = eth_dev_validate_rx_queue(dev, rx_queue_id);
+	if (ret != 0)
+		return ret;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_stop, -ENOTSUP);
 
@@ -957,6 +990,7 @@ int
 rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -968,10 +1002,9 @@ rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
-	if (tx_queue_id >= dev->data->nb_tx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", tx_queue_id);
-		return -EINVAL;
-	}
+	ret = eth_dev_validate_tx_queue(dev, tx_queue_id);
+	if (ret != 0)
+		return ret;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_start, -ENOTSUP);
 
@@ -996,14 +1029,15 @@ int
 rte_eth_dev_tx_queue_stop(uint16_t port_id, uint16_t tx_queue_id)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
 	dev = &rte_eth_devices[port_id];
-	if (tx_queue_id >= dev->data->nb_tx_queues) {
-		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", tx_queue_id);
-		return -EINVAL;
-	}
+
+	ret = eth_dev_validate_tx_queue(dev, tx_queue_id);
+	if (ret != 0)
+		return ret;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_queue_stop, -ENOTSUP);
 
