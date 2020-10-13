@@ -98,10 +98,25 @@ static int
 sfc_ef100_tx_prepare_pkt_tso(struct sfc_ef100_txq * const txq,
 			     struct rte_mbuf *m)
 {
-	size_t header_len = m->l2_len + m->l3_len + m->l4_len;
+	size_t header_len = ((m->ol_flags & PKT_TX_TUNNEL_MASK) ?
+			     m->outer_l2_len + m->outer_l3_len : 0) +
+			    m->l2_len + m->l3_len + m->l4_len;
 	size_t payload_len = m->pkt_len - header_len;
 	unsigned long mss_conformant_max_payload_len;
 	unsigned int nb_payload_descs;
+
+#ifdef RTE_LIBRTE_SFC_EFX_DEBUG
+	switch (m->ol_flags & PKT_TX_TUNNEL_MASK) {
+	case 0:
+		/* FALLTHROUGH */
+	case PKT_TX_TUNNEL_VXLAN:
+		/* FALLTHROUGH */
+	case PKT_TX_TUNNEL_GENEVE:
+		break;
+	default:
+		return ENOTSUP;
+	}
+#endif
 
 	mss_conformant_max_payload_len =
 		m->tso_segsz * txq->tso_max_nb_outgoing_frames;
@@ -383,32 +398,52 @@ sfc_ef100_tx_qdesc_tso_create(const struct rte_mbuf *m,
 			      uint16_t nb_header_descs,
 			      uint16_t nb_payload_descs,
 			      size_t header_len, size_t payload_len,
+			      size_t outer_iph_off, size_t outer_udph_off,
 			      size_t iph_off, size_t tcph_off,
 			      efx_oword_t *tx_desc)
 {
 	efx_oword_t tx_desc_extra_fields;
+	int ed_outer_udp_len = (outer_udph_off != 0) ? 1 : 0;
+	int ed_outer_ip_len = (outer_iph_off != 0) ? 1 : 0;
+	int ed_outer_ip_id = (outer_iph_off != 0) ?
+		ESE_GZ_TX_DESC_IP4_ID_INC_MOD16 : 0;
 	/*
 	 * If no tunnel encapsulation is present, then the ED_INNER
 	 * fields should be used.
 	 */
 	int ed_inner_ip_id = ESE_GZ_TX_DESC_IP4_ID_INC_MOD16;
+	uint8_t inner_l3 = sfc_ef100_tx_qdesc_cso_inner_l3(
+					m->ol_flags & PKT_TX_TUNNEL_MASK);
 
-	EFX_POPULATE_OWORD_7(*tx_desc,
+	EFX_POPULATE_OWORD_10(*tx_desc,
 			ESF_GZ_TX_TSO_MSS, m->tso_segsz,
 			ESF_GZ_TX_TSO_HDR_NUM_SEGS, nb_header_descs,
 			ESF_GZ_TX_TSO_PAYLOAD_NUM_SEGS, nb_payload_descs,
+			ESF_GZ_TX_TSO_ED_OUTER_IP4_ID, ed_outer_ip_id,
 			ESF_GZ_TX_TSO_ED_INNER_IP4_ID, ed_inner_ip_id,
+			ESF_GZ_TX_TSO_ED_OUTER_IP_LEN, ed_outer_ip_len,
 			ESF_GZ_TX_TSO_ED_INNER_IP_LEN, 1,
+			ESF_GZ_TX_TSO_ED_OUTER_UDP_LEN, ed_outer_udp_len,
 			ESF_GZ_TX_TSO_HDR_LEN_W, header_len >> 1,
 			ESF_GZ_TX_TSO_PAYLOAD_LEN, payload_len);
 
-	EFX_POPULATE_OWORD_5(tx_desc_extra_fields,
+	EFX_POPULATE_OWORD_9(tx_desc_extra_fields,
+			/*
+			 * Outer offsets are required for outer IPv4 ID
+			 * and length edits in the case of tunnel TSO.
+			 */
+			ESF_GZ_TX_TSO_OUTER_L3_OFF_W, outer_iph_off >> 1,
+			ESF_GZ_TX_TSO_OUTER_L4_OFF_W, outer_udph_off >> 1,
 			/*
 			 * Inner offsets are required for inner IPv4 ID
-			 * and IP length edits.
+			 * and IP length edits and partial checksum
+			 * offload in the case of tunnel TSO.
 			 */
 			ESF_GZ_TX_TSO_INNER_L3_OFF_W, iph_off >> 1,
 			ESF_GZ_TX_TSO_INNER_L4_OFF_W, tcph_off >> 1,
+			ESF_GZ_TX_TSO_CSO_INNER_L4,
+				inner_l3 != ESE_GZ_TX_DESC_CS_INNER_L3_OFF,
+			ESF_GZ_TX_TSO_CSO_INNER_L3, inner_l3,
 			/*
 			 * Use outer full checksum offloads which do
 			 * not require any extra information.
@@ -491,12 +526,21 @@ sfc_ef100_xmit_tso_pkt(struct sfc_ef100_txq * const txq,
 	unsigned int seg_split = 0;
 	unsigned int tso_desc_id;
 	unsigned int id;
+	size_t outer_iph_off;
+	size_t outer_udph_off;
 	size_t iph_off;
 	size_t tcph_off;
 	size_t header_len;
 	size_t remaining_hdr_len;
 
-	iph_off = m->l2_len;
+	if (m->ol_flags & PKT_TX_TUNNEL_MASK) {
+		outer_iph_off = m->outer_l2_len;
+		outer_udph_off = outer_iph_off + m->outer_l3_len;
+	} else {
+		outer_iph_off = 0;
+		outer_udph_off = 0;
+	}
+	iph_off = outer_udph_off + m->l2_len;
 	tcph_off = iph_off + m->l3_len;
 	header_len = tcph_off + m->l4_len;
 
@@ -550,6 +594,7 @@ sfc_ef100_xmit_tso_pkt(struct sfc_ef100_txq * const txq,
 
 	sfc_ef100_tx_qdesc_tso_create(m, nb_hdr_descs, nb_pld_descs, header_len,
 				      rte_pktmbuf_pkt_len(m) - header_len,
+				      outer_iph_off, outer_udph_off,
 				      iph_off, tcph_off,
 				      &txq->txq_hw_ring[tso_desc_id]);
 
@@ -884,7 +929,9 @@ struct sfc_dp_tx sfc_ef100_tx = {
 				  DEV_TX_OFFLOAD_UDP_CKSUM |
 				  DEV_TX_OFFLOAD_TCP_CKSUM |
 				  DEV_TX_OFFLOAD_MULTI_SEGS |
-				  DEV_TX_OFFLOAD_TCP_TSO,
+				  DEV_TX_OFFLOAD_TCP_TSO |
+				  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+				  DEV_TX_OFFLOAD_GENEVE_TNL_TSO,
 	.get_dev_info		= sfc_ef100_get_dev_info,
 	.qsize_up_rings		= sfc_ef100_tx_qsize_up_rings,
 	.qcreate		= sfc_ef100_tx_qcreate,

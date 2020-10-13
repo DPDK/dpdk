@@ -611,7 +611,8 @@ sfc_tx_start(struct sfc_adapter *sa)
 		}
 	}
 
-	if (sa->tso_encap && !encp->enc_fw_assisted_tso_v2_encap_enabled) {
+	if (sa->tso_encap && !encp->enc_fw_assisted_tso_v2_encap_enabled &&
+	    !encp->enc_tso_v3_enabled) {
 		sfc_warn(sa, "Encapsulated TSO support was unable to be restored");
 		sa->tso_encap = B_FALSE;
 	}

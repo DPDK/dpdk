@@ -805,7 +805,8 @@ sfc_attach(struct sfc_adapter *sa)
 	    (sfc_dp_tx_offload_capa(sa->priv.dp_tx) &
 	     (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 	      DEV_TX_OFFLOAD_GENEVE_TNL_TSO)) != 0) {
-		sa->tso_encap = encp->enc_fw_assisted_tso_v2_encap_enabled;
+		sa->tso_encap = encp->enc_fw_assisted_tso_v2_encap_enabled ||
+				encp->enc_tso_v3_enabled;
 		if (!sa->tso_encap)
 			sfc_info(sa, "Encapsulated TSO support isn't available on this adapter");
 	}
