@@ -158,6 +158,9 @@ rhead_board_cfg(
 	}
 	encp->enc_rx_buf_align_end = end_padding;
 
+	/* FIXME: It should be extracted from design parameters (Bug 86844) */
+	encp->enc_rx_scatter_max = 7;
+
 	/*
 	 * Riverhead stores a single global copy of VPD, not per-PF as on
 	 * Huntington.

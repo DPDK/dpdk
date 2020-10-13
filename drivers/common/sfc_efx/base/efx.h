@@ -1555,6 +1555,8 @@ typedef struct efx_nic_cfg_s {
 	/* Datapath firmware vport reconfigure support */
 	boolean_t		enc_vport_reconfigure_supported;
 	boolean_t		enc_rx_disable_scatter_supported;
+	/* Maximum number of Rx scatter segments supported by HW */
+	uint32_t		enc_rx_scatter_max;
 	boolean_t		enc_allow_set_mac_with_installed_filters;
 	boolean_t		enc_enhanced_set_mac_supported;
 	boolean_t		enc_init_evq_v2_supported;

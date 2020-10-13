@@ -1156,6 +1156,9 @@ ef10_get_datapath_caps(
 	else
 		encp->enc_rx_disable_scatter_supported = B_FALSE;
 
+	/* No limit on maximum number of Rx scatter elements per packet. */
+	encp->enc_rx_scatter_max = -1;
+
 	/* Check if the firmware supports packed stream mode */
 	if (CAP_FLAGS1(req, RX_PACKED_STREAM))
 		encp->enc_rx_packed_stream_supported = B_TRUE;
