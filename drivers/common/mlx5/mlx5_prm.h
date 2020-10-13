@@ -1479,6 +1479,16 @@ union mlx5_ifc_hca_cap_union_bits {
 	u8 reserved_at_0[0x8000];
 };
 
+struct mlx5_ifc_set_action_in_bits {
+	u8 action_type[0x4];
+	u8 field[0xc];
+	u8 reserved_at_10[0x3];
+	u8 offset[0x5];
+	u8 reserved_at_18[0x3];
+	u8 length[0x5];
+	u8 data[0x20];
+};
+
 struct mlx5_ifc_query_hca_cap_out_bits {
 	u8 status[0x8];
 	u8 reserved_at_8[0x18];

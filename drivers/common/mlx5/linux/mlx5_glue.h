@@ -77,6 +77,7 @@ struct mlx5dv_devx_async_cmd_hdr;
 #ifndef HAVE_MLX5DV_DR
 enum  mlx5dv_dr_domain_type { unused, };
 struct mlx5dv_dr_domain;
+struct mlx5dv_dr_action;
 #endif
 
 #ifndef HAVE_MLX5DV_DR_DEVX_PORT
@@ -85,6 +86,16 @@ struct mlx5dv_devx_port;
 
 #ifndef HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER
 struct mlx5dv_dr_flow_meter_attr;
+#endif
+
+#ifndef HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE
+struct mlx5dv_dr_flow_sampler_attr {
+	uint32_t sample_ratio;
+	void *default_next_table;
+	size_t num_sample_actions;
+	struct mlx5dv_dr_action **sample_actions;
+	uint64_t action;
+};
 #endif
 
 #ifndef HAVE_IBV_DEVX_EVENT
@@ -309,6 +320,8 @@ struct mlx5_glue {
 					 const void *pp_context,
 					 uint32_t flags);
 	void (*dv_free_pp)(struct mlx5dv_pp *pp);
+	void *(*dr_create_flow_action_sampler)
+			(struct mlx5dv_dr_flow_sampler_attr *attr);
 };
 
 extern const struct mlx5_glue *mlx5_glue;

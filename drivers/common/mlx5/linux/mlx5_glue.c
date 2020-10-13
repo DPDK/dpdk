@@ -1063,6 +1063,19 @@ mlx5_glue_dr_dump_domain(FILE *file, void *domain)
 #endif
 }
 
+static void *
+mlx5_glue_dr_create_flow_action_sampler(
+			struct mlx5dv_dr_flow_sampler_attr *attr)
+{
+#ifdef HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE
+	return mlx5dv_dr_action_create_flow_sampler(attr);
+#else
+	(void)attr;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
 static int
 mlx5_glue_devx_query_eqn(struct ibv_context *ctx, uint32_t cpus,
 			 uint32_t *eqn)
@@ -1339,6 +1352,8 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.devx_port_query = mlx5_glue_devx_port_query,
 	.dr_dump_domain = mlx5_glue_dr_dump_domain,
 	.dr_reclaim_domain_memory = mlx5_glue_dr_reclaim_domain_memory,
+	.dr_create_flow_action_sampler =
+		mlx5_glue_dr_create_flow_action_sampler,
 	.devx_query_eqn = mlx5_glue_devx_query_eqn,
 	.devx_create_event_channel = mlx5_glue_devx_create_event_channel,
 	.devx_destroy_event_channel = mlx5_glue_devx_destroy_event_channel,
