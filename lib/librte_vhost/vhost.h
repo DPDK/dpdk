@@ -198,8 +198,8 @@ struct vhost_virtqueue {
 	/* operation callbacks for async dma */
 	struct rte_vhost_async_channel_ops	async_ops;
 
-	struct rte_vhost_iov_iter it_pool[VHOST_MAX_ASYNC_IT];
-	struct iovec vec_pool[VHOST_MAX_ASYNC_VEC];
+	struct rte_vhost_iov_iter *it_pool;
+	struct iovec *vec_pool;
 
 	/* async data transfer status */
 	uintptr_t	**async_pkts_pending;
