@@ -1036,6 +1036,7 @@ enum {
 	MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE = 0x0 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS = 0x1 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP = 0xc << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE = 0x7 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION = 0x13 << 1,
 };
 
@@ -1470,12 +1471,62 @@ struct mlx5_ifc_virtio_emulation_cap_bits {
 	u8 reserved_at_1c0[0x620];
 };
 
+struct mlx5_ifc_flow_table_prop_layout_bits {
+	u8 ft_support[0x1];
+	u8 flow_tag[0x1];
+	u8 flow_counter[0x1];
+	u8 flow_modify_en[0x1];
+	u8 modify_root[0x1];
+	u8 identified_miss_table[0x1];
+	u8 flow_table_modify[0x1];
+	u8 reformat[0x1];
+	u8 decap[0x1];
+	u8 reset_root_to_default[0x1];
+	u8 pop_vlan[0x1];
+	u8 push_vlan[0x1];
+	u8 fpga_vendor_acceleration[0x1];
+	u8 pop_vlan_2[0x1];
+	u8 push_vlan_2[0x1];
+	u8 reformat_and_vlan_action[0x1];
+	u8 modify_and_vlan_action[0x1];
+	u8 sw_owner[0x1];
+	u8 reformat_l3_tunnel_to_l2[0x1];
+	u8 reformat_l2_to_l3_tunnel[0x1];
+	u8 reformat_and_modify_action[0x1];
+	u8 reserved_at_15[0x9];
+	u8 sw_owner_v2[0x1];
+	u8 reserved_at_1f[0x1];
+	u8 reserved_at_20[0x2];
+	u8 log_max_ft_size[0x6];
+	u8 log_max_modify_header_context[0x8];
+	u8 max_modify_header_actions[0x8];
+	u8 max_ft_level[0x8];
+	u8 reserved_at_40[0x8];
+	u8 log_max_ft_sampler_num[8];
+	u8 metadata_reg_b_width[0x8];
+	u8 metadata_reg_a_width[0x8];
+	u8 reserved_at_60[0x18];
+	u8 log_max_ft_num[0x8];
+	u8 reserved_at_80[0x10];
+	u8 log_max_flow_counter[0x8];
+	u8 log_max_destination[0x8];
+	u8 reserved_at_a0[0x18];
+	u8 log_max_flow[0x8];
+	u8 reserved_at_c0[0x140];
+};
+
+struct mlx5_ifc_flow_table_nic_cap_bits {
+	u8	   reserved_at_0[0x200];
+	struct mlx5_ifc_flow_table_prop_layout_bits flow_table_properties;
+};
+
 union mlx5_ifc_hca_cap_union_bits {
 	struct mlx5_ifc_cmd_hca_cap_bits cmd_hca_cap;
 	struct mlx5_ifc_per_protocol_networking_offload_caps_bits
 	       per_protocol_networking_offload_caps;
 	struct mlx5_ifc_qos_cap_bits qos_cap;
 	struct mlx5_ifc_virtio_emulation_cap_bits vdpa_caps;
+	struct mlx5_ifc_flow_table_nic_cap_bits flow_table_nic_cap;
 	u8 reserved_at_0[0x8000];
 };
 

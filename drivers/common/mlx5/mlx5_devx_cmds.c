@@ -751,6 +751,33 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	if (!attr->eth_net_offloads)
 		return 0;
 
+	/* Query Flow Sampler Capability From FLow Table Properties Layout. */
+	memset(in, 0, sizeof(in));
+	memset(out, 0, sizeof(out));
+	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
+	MLX5_SET(query_hca_cap_in, in, op_mod,
+		 MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE |
+		 MLX5_HCA_CAP_OPMOD_GET_CUR);
+
+	rc = mlx5_glue->devx_general_cmd(ctx,
+					 in, sizeof(in),
+					 out, sizeof(out));
+	if (rc)
+		goto error;
+	status = MLX5_GET(query_hca_cap_out, out, status);
+	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
+	if (status) {
+		DRV_LOG(DEBUG, "Failed to query devx HCA capabilities, "
+			"status %x, syndrome = %x",
+			status, syndrome);
+		attr->log_max_ft_sampler_num = 0;
+		return -1;
+	}
+	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+	attr->log_max_ft_sampler_num =
+			MLX5_GET(flow_table_nic_cap,
+			hcattr, flow_table_properties.log_max_ft_sampler_num);
+
 	/* Query HCA offloads for Ethernet protocol. */
 	memset(in, 0, sizeof(in));
 	memset(out, 0, sizeof(out));

@@ -102,6 +102,7 @@ struct mlx5_hca_attr {
 	uint32_t scatter_fcs_w_decap_disable:1;
 	uint32_t regex:1;
 	uint32_t regexp_num_of_engines;
+	uint32_t log_max_ft_sampler_num:8;
 	struct mlx5_hca_qos_attr qos;
 	struct mlx5_hca_vdpa_attr vdpa;
 };
