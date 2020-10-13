@@ -718,7 +718,7 @@ sfc_efx_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * insertion offload is requested regardless the offload
 		 * requested/supported.
 		 */
-		ret = sfc_dp_tx_prepare_pkt(tx_pkts[i],
+		ret = sfc_dp_tx_prepare_pkt(tx_pkts[i], 0, SFC_TSOH_STD_LEN,
 				encp->enc_tx_tso_tcp_header_offset_limit,
 				txq->max_fill_level, EFX_TX_FATSOV2_OPT_NDESCS,
 				1);

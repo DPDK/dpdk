@@ -95,9 +95,11 @@ sfc_ef100_tx_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	for (i = 0; i < nb_pkts; i++) {
 		struct rte_mbuf *m = tx_pkts[i];
+		unsigned int max_nb_header_segs = 0;
 		int ret;
 
-		ret = sfc_dp_tx_prepare_pkt(m, 0, txq->max_fill_level, 0, 0);
+		ret = sfc_dp_tx_prepare_pkt(m, max_nb_header_segs, 0,
+					    0, txq->max_fill_level, 0, 0);
 		if (unlikely(ret != 0)) {
 			rte_errno = ret;
 			break;

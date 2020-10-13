@@ -352,7 +352,7 @@ sfc_ef10_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			}
 		}
 #endif
-		ret = sfc_dp_tx_prepare_pkt(m,
+		ret = sfc_dp_tx_prepare_pkt(m, 0, SFC_TSOH_STD_LEN,
 				txq->tso_tcp_header_offset_limit,
 				txq->max_fill_level,
 				SFC_EF10_TSO_OPT_DESCS_NUM, 0);
