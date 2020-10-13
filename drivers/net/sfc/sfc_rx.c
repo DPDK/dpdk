@@ -378,10 +378,20 @@ sfc_efx_rx_qdesc_status(struct sfc_dp_rxq *dp_rxq, uint16_t offset)
 
 boolean_t
 sfc_rx_check_scatter(size_t pdu, size_t rx_buf_size, uint32_t rx_prefix_size,
-		     boolean_t rx_scatter_enabled, const char **error)
+		     boolean_t rx_scatter_enabled, uint32_t rx_scatter_max,
+		     const char **error)
 {
-	if ((rx_buf_size < pdu + rx_prefix_size) && !rx_scatter_enabled) {
-		*error = "Rx scatter is disabled and RxQ mbuf pool object size is too small";
+	uint32_t effective_rx_scatter_max;
+	uint32_t rx_scatter_bufs;
+
+	effective_rx_scatter_max = rx_scatter_enabled ? rx_scatter_max : 1;
+	rx_scatter_bufs = EFX_DIV_ROUND_UP(pdu + rx_prefix_size, rx_buf_size);
+
+	if (rx_scatter_bufs > effective_rx_scatter_max) {
+		if (rx_scatter_enabled)
+			*error = "Possible number of Rx scatter buffers exceeds maximum number";
+		else
+			*error = "Rx scatter is disabled and RxQ mbuf pool object size is too small";
 		return B_FALSE;
 	}
 
@@ -1084,6 +1094,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	if (!sfc_rx_check_scatter(sa->port.pdu, buf_size,
 				  encp->enc_rx_prefix_size,
 				  (offloads & DEV_RX_OFFLOAD_SCATTER),
+				  encp->enc_rx_scatter_max,
 				  &error)) {
 		sfc_err(sa, "RxQ %u MTU check failed: %s", sw_index, error);
 		sfc_err(sa, "RxQ %u calculated Rx buffer size is %u vs "

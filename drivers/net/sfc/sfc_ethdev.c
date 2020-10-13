@@ -954,7 +954,8 @@ sfc_check_scatter_on_all_rx_queues(struct sfc_adapter *sa, size_t pdu)
 
 		if (!sfc_rx_check_scatter(pdu, sa->rxq_ctrl[i].buf_size,
 					  encp->enc_rx_prefix_size,
-					  scatter_enabled, &error)) {
+					  scatter_enabled,
+					  encp->enc_rx_scatter_max, &error)) {
 			sfc_err(sa, "MTU check for RxQ %u failed: %s", i,
 				error);
 			return EINVAL;

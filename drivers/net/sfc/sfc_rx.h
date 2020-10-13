@@ -147,6 +147,7 @@ uint64_t sfc_rx_hf_efx_to_rte(struct sfc_rss *rss, efx_rx_hash_type_t efx);
 boolean_t sfc_rx_check_scatter(size_t pdu, size_t rx_buf_size,
 			       uint32_t rx_prefix_size,
 			       boolean_t rx_scatter_enabled,
+			       uint32_t rx_scatter_max,
 			       const char **error);
 
 #ifdef __cplusplus
