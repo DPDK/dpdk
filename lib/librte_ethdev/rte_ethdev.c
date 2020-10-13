@@ -26,7 +26,6 @@
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_mempool.h>
@@ -4651,8 +4650,12 @@ rte_eth_add_first_rx_callback(uint16_t port_id, uint16_t queue_id,
 	rte_spinlock_lock(&rte_eth_rx_cb_lock);
 	/* Add the callbacks at first position */
 	cb->next = rte_eth_devices[port_id].post_rx_burst_cbs[queue_id];
-	rte_smp_wmb();
-	rte_eth_devices[port_id].post_rx_burst_cbs[queue_id] = cb;
+	/* Stores to cb->fn, cb->param and cb->next should complete before
+	 * cb is visible to data plane threads.
+	 */
+	__atomic_store_n(
+		&rte_eth_devices[port_id].post_rx_burst_cbs[queue_id],
+		cb, __ATOMIC_RELEASE);
 	rte_spinlock_unlock(&rte_eth_rx_cb_lock);
 
 	return cb;
