@@ -56,6 +56,7 @@ struct sfc_ef100_rxq {
 #define SFC_EF100_RXQ_STARTED		0x1
 #define SFC_EF100_RXQ_NOT_RUNNING	0x2
 #define SFC_EF100_RXQ_EXCEPTION		0x4
+#define SFC_EF100_RXQ_RSS_HASH		0x10
 	unsigned int			ptr_mask;
 	unsigned int			evq_phase_bit_shift;
 	unsigned int			ready_pkts;
@@ -349,14 +350,17 @@ static const efx_rx_prefix_layout_t sfc_ef100_rx_prefix_layout = {
 	EFX_RX_PREFIX_FIELD(_name, ESF_GZ_RX_PREFIX_ ## _name, _big_endian)
 
 		SFC_EF100_RX_PREFIX_FIELD(LENGTH, B_FALSE),
+		SFC_EF100_RX_PREFIX_FIELD(RSS_HASH_VALID, B_FALSE),
 		SFC_EF100_RX_PREFIX_FIELD(CLASS, B_FALSE),
+		SFC_EF100_RX_PREFIX_FIELD(RSS_HASH, B_FALSE),
 
 #undef	SFC_EF100_RX_PREFIX_FIELD
 	}
 };
 
 static bool
-sfc_ef100_rx_prefix_to_offloads(const efx_oword_t *rx_prefix,
+sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
+				const efx_oword_t *rx_prefix,
 				struct rte_mbuf *m)
 {
 	const efx_word_t *class;
@@ -374,6 +378,15 @@ sfc_ef100_rx_prefix_to_offloads(const efx_oword_t *rx_prefix,
 		return false;
 
 	m->packet_type = sfc_ef100_rx_class_decode(*class, &ol_flags);
+
+	if ((rxq->flags & SFC_EF100_RXQ_RSS_HASH) &&
+	    EFX_TEST_OWORD_BIT(rx_prefix[0],
+			       ESF_GZ_RX_PREFIX_RSS_HASH_VALID_LBN)) {
+		ol_flags |= PKT_RX_RSS_HASH;
+		/* EFX_OWORD_FIELD converts little-endian to CPU */
+		m->hash.rss = EFX_OWORD_FIELD(rx_prefix[0],
+					      ESF_GZ_RX_PREFIX_RSS_HASH);
+	}
 
 	m->ol_flags = ol_flags;
 	return true;
@@ -461,7 +474,7 @@ sfc_ef100_rx_process_ready_pkts(struct sfc_ef100_rxq *rxq,
 		seg_len = RTE_MIN(pkt_len, rxq->buf_size - rxq->prefix_size);
 		rte_pktmbuf_data_len(pkt) = seg_len;
 
-		deliver = sfc_ef100_rx_prefix_to_offloads(rx_prefix, pkt);
+		deliver = sfc_ef100_rx_prefix_to_offloads(rxq, rx_prefix, pkt);
 
 		lastseg = pkt;
 		while ((pkt_len -= seg_len) > 0) {
@@ -740,6 +753,13 @@ sfc_ef100_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr,
 	      (1U << EFX_RX_PREFIX_FIELD_CLASS))) != 0)
 		return ENOTSUP;
 
+	if ((unsup_rx_prefix_fields &
+	     ((1U << EFX_RX_PREFIX_FIELD_RSS_HASH_VALID) |
+	      (1U << EFX_RX_PREFIX_FIELD_RSS_HASH))) == 0)
+		rxq->flags |= SFC_EF100_RXQ_RSS_HASH;
+	else
+		rxq->flags &= ~SFC_EF100_RXQ_RSS_HASH;
+
 	rxq->prefix_size = pinfo->erpl_length;
 	rxq->rearm_data = sfc_ef100_mk_mbuf_rearm_data(rxq->dp.dpq.port_id,
 						       rxq->prefix_size);
@@ -812,7 +832,8 @@ struct sfc_dp_rx sfc_ef100_rx = {
 	.queue_offload_capa	= DEV_RX_OFFLOAD_CHECKSUM |
 				  DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 				  DEV_RX_OFFLOAD_OUTER_UDP_CKSUM |
-				  DEV_RX_OFFLOAD_SCATTER,
+				  DEV_RX_OFFLOAD_SCATTER |
+				  DEV_RX_OFFLOAD_RSS_HASH,
 	.get_dev_info		= sfc_ef100_rx_get_dev_info,
 	.qsize_up_rings		= sfc_ef100_rx_qsize_up_rings,
 	.qcreate		= sfc_ef100_rx_qcreate,
