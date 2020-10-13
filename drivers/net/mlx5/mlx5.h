@@ -39,6 +39,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_TAG, /* Pool for tag resource. */
 	MLX5_IPOOL_PORT_ID, /* Pool for port id resource. */
 	MLX5_IPOOL_JUMP, /* Pool for jump resource. */
+	MLX5_IPOOL_SAMPLE, /* Pool for sample resource. */
 #endif
 	MLX5_IPOOL_MTR, /* Pool for meter resource. */
 	MLX5_IPOOL_MCP, /* Pool for metadata resource. */
@@ -512,6 +513,7 @@ struct mlx5_flow_tbl_resource {
 #define MLX5_FLOW_TABLE_LEVEL_METER (MLX5_MAX_TABLES - 4)
 #define MLX5_FLOW_TABLE_LEVEL_SUFFIX (MLX5_MAX_TABLES - 3)
 #define MLX5_MAX_TABLES_FDB UINT16_MAX
+#define MLX5_FLOW_TABLE_FACTOR 10
 
 /* ID generation structure. */
 struct mlx5_flow_id_pool {
@@ -640,6 +642,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_hlist *tag_table;
 	uint32_t port_id_action_list; /* List of port ID actions. */
 	uint32_t push_vlan_action_list; /* List of push VLAN actions. */
+	uint32_t sample_action_list; /* List of sample actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	struct mlx5_flow_default_miss_resource default_miss;
 	/* Default miss action resource structure. */

@@ -241,6 +241,17 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.free = mlx5_free,
 		.type = "mlx5_jump_ipool",
 	},
+	{
+		.size = sizeof(struct mlx5_flow_dv_sample_resource),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 0,
+		.release_mem_en = 1,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.type = "mlx5_sample_ipool",
+	},
 #endif
 	{
 		.size = sizeof(struct mlx5_flow_meter),

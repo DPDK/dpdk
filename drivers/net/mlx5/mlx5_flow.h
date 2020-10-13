@@ -520,6 +520,39 @@ struct mlx5_flow_tbl_data_entry {
 	uint32_t idx; /**< index for the indexed mempool. */
 };
 
+/* Sub rdma-core actions list. */
+struct mlx5_flow_sub_actions_list {
+	uint32_t actions_num; /**< Number of sample actions. */
+	uint64_t action_flags;
+	void *dr_queue_action;
+	void *dr_tag_action;
+	void *dr_cnt_action;
+};
+
+/* Sample sub-actions resource list. */
+struct mlx5_flow_sub_actions_idx {
+	uint32_t rix_hrxq; /**< Hash Rx queue object index. */
+	uint32_t rix_tag; /**< Index to the tag action. */
+	uint32_t cnt;
+};
+
+/* Sample action resource structure. */
+struct mlx5_flow_dv_sample_resource {
+	ILIST_ENTRY(uint32_t)next; /**< Pointer to next element. */
+	uint32_t refcnt; /**< Reference counter. */
+	void *verbs_action; /**< Verbs sample action object. */
+	uint8_t ft_type; /** Flow Table Type */
+	uint32_t ft_id; /** Flow Table Level */
+	uint32_t ratio;   /** Sample Ratio */
+	uint64_t set_action; /** Restore reg_c0 value */
+	void *normal_path_tbl; /** Flow Table pointer */
+	void *default_miss; /** default_miss dr_action. */
+	struct mlx5_flow_sub_actions_idx sample_idx;
+	/**< Action index resources. */
+	struct mlx5_flow_sub_actions_list sample_act;
+	/**< Action resources. */
+};
+
 /* Verbs specification header. */
 struct ibv_spec_header {
 	enum ibv_flow_spec_type type;
@@ -552,6 +585,8 @@ struct mlx5_flow_handle_dv {
 	/**< Index to push VLAN action resource in cache. */
 	uint32_t rix_tag;
 	/**< Index to the tag action. */
+	uint32_t rix_sample;
+	/**< Index to sample action resource in cache. */
 } __rte_packed;
 
 /** Device flow handle structure: used both for creating & destroying. */
@@ -617,6 +652,8 @@ struct mlx5_flow_dv_workspace {
 	/**< Pointer to the jump action resource. */
 	struct mlx5_flow_dv_match_params value;
 	/**< Holds the value that the packet is compared to. */
+	struct mlx5_flow_dv_sample_resource *sample_res;
+	/**< Pointer to the sample action resource. */
 };
 
 /*

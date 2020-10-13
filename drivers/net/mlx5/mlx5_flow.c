@@ -3868,6 +3868,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
  *   Pointer to return the created subflow, may be NULL.
  * @param[in] prefix_layers
  *   Prefix subflow layers, may be 0.
+ * @param[in] prefix_mark
+ *   Prefix subflow mark flag, may be 0.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
@@ -3888,6 +3890,7 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 			struct rte_flow *flow,
 			struct mlx5_flow **sub_flow,
 			uint64_t prefix_layers,
+			uint32_t prefix_mark,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item items[],
 			const struct rte_flow_action actions[],
@@ -3907,10 +3910,13 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 		      dev_flow->handle, next);
 	/*
 	 * If dev_flow is as one of the suffix flow, some actions in suffix
-	 * flow may need some user defined item layer flags.
+	 * flow may need some user defined item layer flags, and pass the
+	 * Metadate rxq mark flag to suffix flow as well.
 	 */
 	if (prefix_layers)
 		dev_flow->handle->layers = prefix_layers;
+	if (prefix_mark)
+		dev_flow->handle->mark = 1;
 	if (sub_flow)
 		*sub_flow = dev_flow;
 	return flow_drv_translate(dev, dev_flow, attr, items, actions, error);
@@ -4241,6 +4247,179 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
 }
 
 /**
+ * Check the match action from the action list.
+ *
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[in] action
+ *   The action to be check if exist.
+ * @param[out] match_action_pos
+ *   Pointer to the position of the matched action if exists, otherwise is -1.
+ * @param[out] qrss_action_pos
+ *   Pointer to the position of the Queue/RSS action if exists, otherwise is -1.
+ *
+ * @return
+ *   > 0 the total number of actions.
+ *   0 if not found match action in action list.
+ */
+static int
+flow_check_match_action(const struct rte_flow_action actions[],
+			enum rte_flow_action_type action,
+			int *match_action_pos, int *qrss_action_pos)
+{
+	int actions_n = 0;
+	int flag = 0;
+
+	*match_action_pos = -1;
+	*qrss_action_pos = -1;
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		if (actions->type == action) {
+			flag = 1;
+			*match_action_pos = actions_n;
+		}
+		if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE ||
+		    actions->type == RTE_FLOW_ACTION_TYPE_RSS)
+			*qrss_action_pos = actions_n;
+		actions_n++;
+	}
+	/* Count RTE_FLOW_ACTION_TYPE_END. */
+	return flag ? actions_n + 1 : 0;
+}
+
+#define SAMPLE_SUFFIX_ITEM 2
+
+/**
+ * Split the sample flow.
+ *
+ * As sample flow will split to two sub flow, sample flow with
+ * sample action, the other actions will move to new suffix flow.
+ *
+ * Also add unique tag id with tag action in the sample flow,
+ * the same tag id will be as match in the suffix flow.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] fdb_tx
+ *   FDB egress flow flag.
+ * @param[out] sfx_items
+ *   Suffix flow match items (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[out] actions_sfx
+ *   Suffix flow actions.
+ * @param[out] actions_pre
+ *   Prefix flow actions.
+ * @param[in] actions_n
+ *  The total number of actions.
+ * @param[in] sample_action_pos
+ *   The sample action position.
+ * @param[in] qrss_action_pos
+ *   The Queue/RSS action position.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, or unique flow_id, a negative errno value
+ *   otherwise and rte_errno is set.
+ */
+static int
+flow_sample_split_prep(struct rte_eth_dev *dev,
+		       uint32_t fdb_tx,
+		       struct rte_flow_item sfx_items[],
+		       const struct rte_flow_action actions[],
+		       struct rte_flow_action actions_sfx[],
+		       struct rte_flow_action actions_pre[],
+		       int actions_n,
+		       int sample_action_pos,
+		       int qrss_action_pos,
+		       struct rte_flow_error *error)
+{
+	struct mlx5_rte_flow_action_set_tag *set_tag;
+	struct mlx5_rte_flow_item_tag *tag_spec;
+	struct mlx5_rte_flow_item_tag *tag_mask;
+	uint32_t tag_id = 0;
+	int index;
+	int ret;
+
+	if (sample_action_pos < 0)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "invalid position of sample "
+					  "action in list");
+	if (!fdb_tx) {
+		/* Prepare the prefix tag action. */
+		set_tag = (void *)(actions_pre + actions_n + 1);
+		ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, 0, error);
+		if (ret < 0)
+			return ret;
+		set_tag->id = ret;
+		tag_id = flow_qrss_get_id(dev);
+		set_tag->data = tag_id;
+		/* Prepare the suffix subflow items. */
+		tag_spec = (void *)(sfx_items + SAMPLE_SUFFIX_ITEM);
+		tag_spec->data = tag_id;
+		tag_spec->id = set_tag->id;
+		tag_mask = tag_spec + 1;
+		tag_mask->data = UINT32_MAX;
+		sfx_items[0] = (struct rte_flow_item){
+			.type = (enum rte_flow_item_type)
+				MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+			.spec = tag_spec,
+			.last = NULL,
+			.mask = tag_mask,
+		};
+		sfx_items[1] = (struct rte_flow_item){
+			.type = (enum rte_flow_item_type)
+				RTE_FLOW_ITEM_TYPE_END,
+		};
+	}
+	/* Prepare the actions for prefix and suffix flow. */
+	if (qrss_action_pos >= 0 && qrss_action_pos < sample_action_pos) {
+		index = qrss_action_pos;
+		/* Put the preceding the Queue/RSS action into prefix flow. */
+		if (index != 0)
+			memcpy(actions_pre, actions,
+			       sizeof(struct rte_flow_action) * index);
+		/* Put others preceding the sample action into prefix flow. */
+		if (sample_action_pos > index + 1)
+			memcpy(actions_pre + index, actions + index + 1,
+			       sizeof(struct rte_flow_action) *
+			       (sample_action_pos - index - 1));
+		index = sample_action_pos - 1;
+		/* Put Queue/RSS action into Suffix flow. */
+		memcpy(actions_sfx, actions + qrss_action_pos,
+		       sizeof(struct rte_flow_action));
+		actions_sfx++;
+	} else {
+		index = sample_action_pos;
+		if (index != 0)
+			memcpy(actions_pre, actions,
+			       sizeof(struct rte_flow_action) * index);
+	}
+	/* Add the extra tag action for NIC-RX and E-Switch ingress. */
+	if (!fdb_tx) {
+		actions_pre[index++] =
+			(struct rte_flow_action){
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_TAG,
+			.conf = set_tag,
+		};
+	}
+	memcpy(actions_pre + index, actions + sample_action_pos,
+	       sizeof(struct rte_flow_action));
+	index += 1;
+	actions_pre[index] = (struct rte_flow_action){
+		.type = (enum rte_flow_action_type)
+			RTE_FLOW_ACTION_TYPE_END,
+	};
+	/* Put the actions after sample into Suffix flow. */
+	memcpy(actions_sfx, actions + sample_action_pos + 1,
+	       sizeof(struct rte_flow_action) *
+	       (actions_n - sample_action_pos - 1));
+	return tag_id;
+}
+
+/**
  * The splitting for metadata feature.
  *
  * - Q/RSS action on NIC Rx should be split in order to pass by
@@ -4256,6 +4435,8 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
  *   Parent flow structure pointer.
  * @param[in] prefix_layers
  *   Prefix flow layer flags.
+ * @param[in] prefix_mark
+ *   Prefix subflow mark flag, may be 0.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
@@ -4275,6 +4456,7 @@ static int
 flow_create_split_metadata(struct rte_eth_dev *dev,
 			   struct rte_flow *flow,
 			   uint64_t prefix_layers,
+			   uint32_t prefix_mark,
 			   const struct rte_flow_attr *attr,
 			   const struct rte_flow_item items[],
 			   const struct rte_flow_action actions[],
@@ -4298,8 +4480,9 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	    config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
 	    !mlx5_flow_ext_mreg_supported(dev))
 		return flow_create_split_inner(dev, flow, NULL, prefix_layers,
-					       attr, items, actions, external,
-					       flow_idx, error);
+					       prefix_mark, attr, items,
+					       actions, external, flow_idx,
+					       error);
 	actions_n = flow_parse_metadata_split_actions_info(actions, &qrss,
 							   &encap_idx);
 	if (qrss) {
@@ -4384,7 +4567,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			goto exit;
 	}
 	/* Add the unmodified original or prefix subflow. */
-	ret = flow_create_split_inner(dev, flow, &dev_flow, prefix_layers, attr,
+	ret = flow_create_split_inner(dev, flow, &dev_flow, prefix_layers,
+				      prefix_mark, attr,
 				      items, ext_actions ? ext_actions :
 				      actions, external, flow_idx, error);
 	if (ret < 0)
@@ -4447,7 +4631,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		}
 		dev_flow = NULL;
 		/* Add suffix subflow to execute Q/RSS. */
-		ret = flow_create_split_inner(dev, flow, &dev_flow, layers,
+		ret = flow_create_split_inner(dev, flow, &dev_flow, layers, 0,
 					      &q_attr, mtr_sfx ? items :
 					      q_items, q_actions,
 					      external, flow_idx, error);
@@ -4483,6 +4667,10 @@ exit:
  *   Pointer to Ethernet device.
  * @param[in] flow
  *   Parent flow structure pointer.
+ * @param[in] prefix_layers
+ *   Prefix subflow layers, may be 0.
+ * @param[in] prefix_mark
+ *   Prefix subflow mark flag, may be 0.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
@@ -4500,12 +4688,14 @@ exit:
  */
 static int
 flow_create_split_meter(struct rte_eth_dev *dev,
-			   struct rte_flow *flow,
-			   const struct rte_flow_attr *attr,
-			   const struct rte_flow_item items[],
-			   const struct rte_flow_action actions[],
-			   bool external, uint32_t flow_idx,
-			   struct rte_flow_error *error)
+			struct rte_flow *flow,
+			uint64_t prefix_layers,
+			uint32_t prefix_mark,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_item items[],
+			const struct rte_flow_action actions[],
+			bool external, uint32_t flow_idx,
+			struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_action *sfx_actions = NULL;
@@ -4548,8 +4738,10 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			goto exit;
 		}
 		/* Add the prefix subflow. */
-		ret = flow_create_split_inner(dev, flow, &dev_flow, 0, attr,
-					      items, pre_actions, external,
+		ret = flow_create_split_inner(dev, flow, &dev_flow,
+					      prefix_layers, 0,
+					      attr, items,
+					      pre_actions, external,
 					      flow_idx, error);
 		if (ret) {
 			ret = -rte_errno;
@@ -4564,10 +4756,144 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 	/* Add the prefix subflow. */
 	ret = flow_create_split_metadata(dev, flow, dev_flow ?
 					 flow_get_prefix_layer_flags(dev_flow) :
-					 0, &sfx_attr,
-					 sfx_items ? sfx_items : items,
+					 prefix_layers, dev_flow ?
+					 dev_flow->handle->mark : prefix_mark,
+					 &sfx_attr, sfx_items ?
+					 sfx_items : items,
 					 sfx_actions ? sfx_actions : actions,
 					 external, flow_idx, error);
+exit:
+	if (sfx_actions)
+		mlx5_free(sfx_actions);
+	return ret;
+}
+
+/**
+ * The splitting for sample feature.
+ *
+ * Once Sample action is detected in the action list, the flow actions should
+ * be split into prefix sub flow and suffix sub flow.
+ *
+ * The original items remain in the prefix sub flow, all actions preceding the
+ * sample action and the sample action itself will be copied to the prefix
+ * sub flow, the actions following the sample action will be copied to the
+ * suffix sub flow, Queue action always be located in the suffix sub flow.
+ *
+ * In order to make the packet from prefix sub flow matches with suffix sub
+ * flow, an extra tag action be added into prefix sub flow, and the suffix sub
+ * flow uses tag item with the unique flow id.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Parent flow structure pointer.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
+ * @param[in] flow_idx
+ *   This memory pool index to the flow.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   0 on success, negative value otherwise
+ */
+static int
+flow_create_split_sample(struct rte_eth_dev *dev,
+			 struct rte_flow *flow,
+			 const struct rte_flow_attr *attr,
+			 const struct rte_flow_item items[],
+			 const struct rte_flow_action actions[],
+			 bool external, uint32_t flow_idx,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_action *sfx_actions = NULL;
+	struct rte_flow_action *pre_actions = NULL;
+	struct rte_flow_item *sfx_items = NULL;
+	struct mlx5_flow *dev_flow = NULL;
+	struct rte_flow_attr sfx_attr = *attr;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	struct mlx5_flow_dv_sample_resource *sample_res;
+	struct mlx5_flow_tbl_data_entry *sfx_tbl_data;
+	struct mlx5_flow_tbl_resource *sfx_tbl;
+	union mlx5_flow_tbl_key sfx_table_key;
+#endif
+	size_t act_size;
+	size_t item_size;
+	uint32_t fdb_tx = 0;
+	int32_t tag_id = 0;
+	int actions_n = 0;
+	int sample_action_pos;
+	int qrss_action_pos;
+	int ret = 0;
+
+	if (priv->sampler_en)
+		actions_n = flow_check_match_action(actions,
+					RTE_FLOW_ACTION_TYPE_SAMPLE,
+					&sample_action_pos, &qrss_action_pos);
+	if (actions_n) {
+		/* The prefix actions must includes sample, tag, end. */
+		act_size = sizeof(struct rte_flow_action) * (actions_n * 2 + 1)
+			   + sizeof(struct mlx5_rte_flow_action_set_tag);
+		item_size = sizeof(struct rte_flow_item) * SAMPLE_SUFFIX_ITEM +
+			    sizeof(struct mlx5_rte_flow_item_tag) * 2;
+		sfx_actions = mlx5_malloc(MLX5_MEM_ZERO, (act_size +
+					  item_size), 0, SOCKET_ID_ANY);
+		if (!sfx_actions)
+			return rte_flow_error_set(error, ENOMEM,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "no memory to split "
+						  "sample flow");
+		/* The representor_id is -1 for uplink. */
+		fdb_tx = (attr->transfer && priv->representor_id != -1);
+		if (!fdb_tx)
+			sfx_items = (struct rte_flow_item *)((char *)sfx_actions
+					+ act_size);
+		pre_actions = sfx_actions + actions_n;
+		tag_id = flow_sample_split_prep(dev, fdb_tx, sfx_items,
+						actions, sfx_actions,
+						pre_actions, actions_n,
+						sample_action_pos,
+						qrss_action_pos, error);
+		if (tag_id < 0 || (!fdb_tx && !tag_id)) {
+			ret = -rte_errno;
+			goto exit;
+		}
+		/* Add the prefix subflow. */
+		ret = flow_create_split_inner(dev, flow, &dev_flow, 0, 0, attr,
+					      items, pre_actions, external,
+					      flow_idx, error);
+		if (ret) {
+			ret = -rte_errno;
+			goto exit;
+		}
+		dev_flow->handle->split_flow_id = tag_id;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+		/* Set the sfx group attr. */
+		sample_res = (struct mlx5_flow_dv_sample_resource *)
+					dev_flow->dv.sample_res;
+		sfx_tbl = (struct mlx5_flow_tbl_resource *)
+					sample_res->normal_path_tbl;
+		sfx_tbl_data = container_of(sfx_tbl,
+					struct mlx5_flow_tbl_data_entry, tbl);
+		sfx_table_key.v64 = sfx_tbl_data->entry.key;
+		sfx_attr.group = sfx_attr.transfer ?
+					(sfx_table_key.table_id - 1) :
+					 sfx_table_key.table_id;
+#endif
+	}
+	/* Add the suffix subflow. */
+	ret = flow_create_split_meter(dev, flow, dev_flow ?
+				 flow_get_prefix_layer_flags(dev_flow) : 0,
+				 dev_flow ? dev_flow->handle->mark : 0,
+				 &sfx_attr, sfx_items ? sfx_items : items,
+				 sfx_actions ? sfx_actions : actions,
+				 external, flow_idx, error);
 exit:
 	if (sfx_actions)
 		mlx5_free(sfx_actions);
@@ -4622,8 +4948,8 @@ flow_create_split_outer(struct rte_eth_dev *dev,
 {
 	int ret;
 
-	ret = flow_create_split_meter(dev, flow, attr, items,
-					 actions, external, flow_idx, error);
+	ret = flow_create_split_sample(dev, flow, attr, items,
+				       actions, external, flow_idx, error);
 	MLX5_ASSERT(ret <= 0);
 	return ret;
 }
