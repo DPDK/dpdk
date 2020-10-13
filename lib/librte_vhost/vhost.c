@@ -1633,10 +1633,15 @@ int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 		return ret;
 
 	ret = 0;
-	rte_spinlock_lock(&vq->access_lock);
 
 	if (!vq->async_registered)
-		goto out;
+		return ret;
+
+	if (!rte_spinlock_trylock(&vq->access_lock)) {
+		VHOST_LOG_CONFIG(ERR, "Failed to unregister async channel. "
+			"virt queue busy.\n");
+		return -1;
+	}
 
 	if (vq->async_pkts_inflight_n) {
 		VHOST_LOG_CONFIG(ERR, "Failed to unregister async channel. "

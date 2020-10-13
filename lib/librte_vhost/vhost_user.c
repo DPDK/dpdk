@@ -1980,9 +1980,9 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 		"set queue enable: %d to qp idx: %d\n",
 		enable, index);
 
-	if (!enable && dev->virtqueue[index]->async_registered) {
+	if (enable && dev->virtqueue[index]->async_registered) {
 		if (dev->virtqueue[index]->async_pkts_inflight_n) {
-			VHOST_LOG_CONFIG(ERR, "failed to disable vring. "
+			VHOST_LOG_CONFIG(ERR, "failed to enable vring. "
 			"async inflight packets must be completed first\n");
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
