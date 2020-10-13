@@ -1493,6 +1493,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	struct rte_vhost_iov_iter *dst_it = it_pool + 1;
 	uint16_t n_free_slot, slot_idx;
 	uint16_t pkt_err = 0;
+	uint16_t segs_await = 0;
 	struct async_inflight_info *pkts_info = vq->async_pkts_info;
 	int n_pkts = 0;
 
@@ -1541,6 +1542,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 			dst_iovec += dst_it->nr_segs;
 			src_it += 2;
 			dst_it += 2;
+			segs_await += src_it->nr_segs;
 		} else {
 			pkts_info[slot_idx].info = num_buffers;
 			vq->async_pkts_inflight_n++;
@@ -1548,14 +1550,23 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 
 		vq->last_avail_idx += num_buffers;
 
+		/*
+		 * conditions to trigger async device transfer:
+		 * - buffered packet number reaches transfer threshold
+		 * - this is the last packet in the burst enqueue
+		 * - unused async iov number is less than max vhost vector
+		 */
 		if (pkt_burst_idx >= VHOST_ASYNC_BATCH_THRESHOLD ||
-				(pkt_idx == count - 1 && pkt_burst_idx)) {
+			(pkt_idx == count - 1 && pkt_burst_idx) ||
+			(VHOST_MAX_ASYNC_VEC / 2 - segs_await <
+			BUF_VECTOR_MAX)) {
 			n_pkts = vq->async_ops.transfer_data(dev->vid,
 					queue_id, tdes, 0, pkt_burst_idx);
 			src_iovec = vec_pool;
 			dst_iovec = vec_pool + (VHOST_MAX_ASYNC_VEC >> 1);
 			src_it = it_pool;
 			dst_it = it_pool + 1;
+			segs_await = 0;
 			vq->async_pkts_inflight_n += n_pkts;
 
 			if (unlikely(n_pkts < (int)pkt_burst_idx)) {
