@@ -381,6 +381,16 @@ sfc_ef100_tx_qdesc_send_create(const struct rte_mbuf *m, efx_oword_t *tx_desc)
 			ESF_GZ_TX_SEND_CSO_OUTER_L3, outer_l3,
 			ESF_GZ_TX_SEND_CSO_OUTER_L4, outer_l4,
 			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_SEND);
+
+	if (m->ol_flags & PKT_TX_VLAN_PKT) {
+		efx_oword_t tx_desc_extra_fields;
+
+		EFX_POPULATE_OWORD_2(tx_desc_extra_fields,
+				ESF_GZ_TX_SEND_VLAN_INSERT_EN, 1,
+				ESF_GZ_TX_SEND_VLAN_INSERT_TCI, m->vlan_tci);
+
+		EFX_OR_OWORD(*tx_desc, tx_desc_extra_fields);
+	}
 }
 
 static void
@@ -453,6 +463,14 @@ sfc_ef100_tx_qdesc_tso_create(const struct rte_mbuf *m,
 			ESF_GZ_TX_DESC_TYPE, ESE_GZ_TX_DESC_TYPE_TSO);
 
 	EFX_OR_OWORD(*tx_desc, tx_desc_extra_fields);
+
+	if (m->ol_flags & PKT_TX_VLAN_PKT) {
+		EFX_POPULATE_OWORD_2(tx_desc_extra_fields,
+				ESF_GZ_TX_TSO_VLAN_INSERT_EN, 1,
+				ESF_GZ_TX_TSO_VLAN_INSERT_TCI, m->vlan_tci);
+
+		EFX_OR_OWORD(*tx_desc, tx_desc_extra_fields);
+	}
 }
 
 static inline void
@@ -923,7 +941,8 @@ struct sfc_dp_tx sfc_ef100_tx = {
 	},
 	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
 	.dev_offload_capa	= 0,
-	.queue_offload_capa	= DEV_TX_OFFLOAD_IPV4_CKSUM |
+	.queue_offload_capa	= DEV_TX_OFFLOAD_VLAN_INSERT |
+				  DEV_TX_OFFLOAD_IPV4_CKSUM |
 				  DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 				  DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |
 				  DEV_TX_OFFLOAD_UDP_CKSUM |

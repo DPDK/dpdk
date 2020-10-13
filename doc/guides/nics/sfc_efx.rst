@@ -329,8 +329,8 @@ boolean parameters value.
   is even more faster then **ef10** but does not support multi-segment
   mbufs, disallows multiple mempools and neglects mbuf reference counters.
   **ef100** chooses EF100 native datapath which supports multi-segment
-  mbufs, inner/outer IPv4 and TCP/UDP checksum and TCP segmentation offloads
-  including VXLAN and GENEVE IPv4/IPv6 tunnels.
+  mbufs, VLAN insertion, inner/outer IPv4 and TCP/UDP checksum and TCP
+  segmentation offloads including VXLAN and GENEVE IPv4/IPv6 tunnels.
 
 - ``perf_profile`` [auto|throughput|low-latency] (default **throughput**)
 
