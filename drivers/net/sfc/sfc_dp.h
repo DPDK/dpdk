@@ -51,6 +51,11 @@ void sfc_dp_queue_init(struct sfc_dp_queue *dpq,
 		       uint16_t port_id, uint16_t queue_id,
 		       const struct rte_pci_addr *pci_addr);
 
+/* Maximum datapath log level to be included in build. */
+#ifndef SFC_DP_LOG_LEVEL
+#define SFC_DP_LOG_LEVEL	RTE_LOG_NOTICE
+#endif
+
 /*
  * Helper macro to define datapath logging macros and have uniform
  * logging.
@@ -60,6 +65,8 @@ void sfc_dp_queue_init(struct sfc_dp_queue *dpq,
 		const struct sfc_dp_queue *_dpq = (dpq);		\
 		const struct rte_pci_addr *_addr = &(_dpq)->pci_addr;	\
 									\
+		if (RTE_LOG_ ## level > SFC_DP_LOG_LEVEL)		\
+			break;						\
 		SFC_GENERIC_LOG(level,					\
 			RTE_FMT("%s " PCI_PRI_FMT			\
 				" #%" PRIu16 ".%" PRIu16 ": "		\
