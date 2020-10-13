@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 #include <rte_config.h>
+#include <rte_common.h>
 #include "generic/rte_vect.h"
 
 #if (defined(__ICC) || \
@@ -89,6 +90,24 @@ __extension__ ({                 \
 	(m.x);                   \
 })
 #endif /* (defined(__ICC) && __ICC < 1210) */
+
+#ifdef __AVX512F__
+
+#define RTE_X86_ZMM_SIZE	(sizeof(__m512i))
+#define RTE_X86_ZMM_MASK	(RTE_X86_ZMM_SIZE - 1)
+
+typedef union __rte_x86_zmm {
+	__m512i	 z;
+	ymm_t    y[RTE_X86_ZMM_SIZE / sizeof(ymm_t)];
+	xmm_t    x[RTE_X86_ZMM_SIZE / sizeof(xmm_t)];
+	uint8_t  u8[RTE_X86_ZMM_SIZE / sizeof(uint8_t)];
+	uint16_t u16[RTE_X86_ZMM_SIZE / sizeof(uint16_t)];
+	uint32_t u32[RTE_X86_ZMM_SIZE / sizeof(uint32_t)];
+	uint64_t u64[RTE_X86_ZMM_SIZE / sizeof(uint64_t)];
+	double   pd[RTE_X86_ZMM_SIZE / sizeof(double)];
+} __rte_aligned(RTE_X86_ZMM_SIZE) __rte_x86_zmm_t;
+
+#endif /* __AVX512F__ */
 
 #ifdef __cplusplus
 }
