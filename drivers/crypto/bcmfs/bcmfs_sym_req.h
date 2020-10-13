@@ -11,6 +11,14 @@
 #include "bcmfs_dev_msg.h"
 #include "bcmfs_sym_defs.h"
 
+/** Max variable length. Since we adjust AAD
+ * in same BD if it is less than BCMFS_AAD_THRESH_LEN
+ * so we add it here.
+ */
+#define BCMFS_MAX_OMDMD_LEN	((2 * (BCMFS_MAX_KEY_SIZE)) +	\
+				 (2 * (BCMFS_MAX_IV_SIZE)) +	\
+				 (BCMFS_AAD_THRESH_LEN))
+
 /* Fixed SPU2 Metadata */
 struct spu2_fmd {
 	uint64_t ctrl0;
@@ -24,14 +32,14 @@ struct spu2_fmd {
  * rte_crypto_op
  */
 struct bcmfs_sym_request {
+	/*
+	 * Only single BD for metadata so
+	 * FMD + OMD must be in continuation
+	 */
 	/* spu2 engine related data */
 	struct spu2_fmd fmd;
-	/* cipher key */
-	uint8_t cipher_key[BCMFS_MAX_KEY_SIZE];
-	/* auth key */
-	uint8_t auth_key[BCMFS_MAX_KEY_SIZE];
-	/* iv key */
-	uint8_t iv[BCMFS_MAX_IV_SIZE];
+	/* variable metadata in continuation with fmd */
+	uint8_t omd[BCMFS_MAX_OMDMD_LEN];
 	/* digest data output from crypto h/w */
 	uint8_t digest[BCMFS_MAX_DIGEST_SIZE];
 	/* 2-Bytes response from crypto h/w */
@@ -42,17 +50,12 @@ struct bcmfs_sym_request {
 	 */
 	/* iova for fmd */
 	rte_iova_t fptr;
-	/* iova for cipher key */
-	rte_iova_t cptr;
-	/* iova for auth key */
-	rte_iova_t aptr;
-	/* iova for iv key */
-	rte_iova_t iptr;
+	/* iova for omd */
+	rte_iova_t optr;
 	/* iova for digest */
 	rte_iova_t dptr;
 	/* iova for response */
 	rte_iova_t rptr;
-
 	/* bcmfs qp message for h/w queues to process */
 	struct bcmfs_qp_message msgs;
 	/* crypto op */

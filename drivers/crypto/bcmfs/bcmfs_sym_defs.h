@@ -27,6 +27,11 @@ struct bcmfs_sym_request;
 /** Crypot Request processing hash tag check error. */
 #define BCMFS_SYM_RESPONSE_HASH_TAG_ERROR        (3)
 
+/** Maximum threshold length to adjust AAD in continuation
+ *  with source BD of (FMD + OMD)
+ */
+#define BCMFS_AAD_THRESH_LEN	64
+
 int
 bcmfs_process_sym_crypto_op(struct rte_crypto_op *op,
 			    struct bcmfs_sym_session *sess,

@@ -132,10 +132,8 @@ static void
 spu_req_init(struct bcmfs_sym_request *sr, rte_iova_t iova __rte_unused)
 {
 	memset(sr, 0, sizeof(*sr));
-	sr->fptr = iova;
-	sr->cptr = iova + offsetof(struct bcmfs_sym_request, cipher_key);
-	sr->aptr = iova + offsetof(struct bcmfs_sym_request, auth_key);
-	sr->iptr = iova + offsetof(struct bcmfs_sym_request, iv);
+	sr->fptr = iova + offsetof(struct bcmfs_sym_request, fmd);
+	sr->optr = iova + offsetof(struct bcmfs_sym_request, omd);
 	sr->dptr = iova + offsetof(struct bcmfs_sym_request, digest);
 	sr->rptr = iova + offsetof(struct bcmfs_sym_request, resp);
 }

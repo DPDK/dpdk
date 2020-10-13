@@ -565,6 +565,7 @@ bcmfs_crypto_build_auth_req(struct bcmfs_sym_request *sreq,
 	int src_index = 0;
 	struct spu2_fmd *fmd;
 	uint64_t payload_len;
+	uint32_t src_msg_len = 0;
 	enum spu2_hash_mode spu2_auth_mode;
 	enum spu2_hash_type spu2_auth_type = SPU2_HASH_TYPE_NONE;
 	uint64_t iv_size = (iv != NULL) ? fsattr_sz(iv) : 0;
@@ -613,26 +614,25 @@ bcmfs_crypto_build_auth_req(struct bcmfs_sym_request *sreq,
 
 	spu2_fmd_ctrl3_write(fmd, fsattr_sz(src));
 
-	/* Source metadata and data pointers */
+	/* FMD */
 	sreq->msgs.srcs_addr[src_index] = sreq->fptr;
-	sreq->msgs.srcs_len[src_index] = sizeof(struct spu2_fmd);
+	src_msg_len += sizeof(*fmd);
+
+	/* Start of OMD */
+	if (auth_ksize != 0) {
+		memcpy((uint8_t *)fmd + src_msg_len, fsattr_va(auth_key),
+		       auth_ksize);
+		src_msg_len += auth_ksize;
+	}
+
+	if (iv_size != 0) {
+		memcpy((uint8_t *)fmd + src_msg_len, fsattr_va(iv),
+		       iv_size);
+		src_msg_len += iv_size;
+	} /* End of OMD */
+
+	sreq->msgs.srcs_len[src_index] = src_msg_len;
 	src_index++;
-
-	if (auth_key != NULL && fsattr_sz(auth_key) != 0) {
-		memcpy(sreq->auth_key, fsattr_va(auth_key),
-		       fsattr_sz(auth_key));
-
-		sreq->msgs.srcs_addr[src_index] = sreq->aptr;
-		sreq->msgs.srcs_len[src_index] = fsattr_sz(auth_key);
-		src_index++;
-	}
-
-	if (iv != NULL && fsattr_sz(iv) != 0) {
-		memcpy(sreq->iv, fsattr_va(iv), fsattr_sz(iv));
-		sreq->msgs.srcs_addr[src_index] = sreq->iptr;
-		sreq->msgs.srcs_len[src_index] = iv_size;
-		src_index++;
-	}
 
 	sreq->msgs.srcs_addr[src_index] = fsattr_pa(src);
 	sreq->msgs.srcs_len[src_index] = fsattr_sz(src);
@@ -683,7 +683,7 @@ bcmfs_crypto_build_cipher_req(struct bcmfs_sym_request *sreq,
 	int ret = 0;
 	int src_index = 0;
 	struct spu2_fmd *fmd;
-	unsigned int xts_keylen;
+	uint32_t src_msg_len = 0;
 	enum spu2_cipher_mode spu2_ciph_mode = 0;
 	enum spu2_cipher_type spu2_ciph_type = SPU2_CIPHER_TYPE_NONE;
 	bool is_inbound = (cipher_op == RTE_CRYPTO_CIPHER_OP_DECRYPT);
@@ -714,36 +714,36 @@ bcmfs_crypto_build_cipher_req(struct bcmfs_sym_request *sreq,
 
 	spu2_fmd_ctrl3_write(fmd, fsattr_sz(src));
 
-	/* Source metadata and data pointers */
+	/* FMD */
 	sreq->msgs.srcs_addr[src_index] = sreq->fptr;
-	sreq->msgs.srcs_len[src_index] = sizeof(struct spu2_fmd);
-	src_index++;
+	src_msg_len += sizeof(*fmd);
 
+	/* Start of OMD */
 	if (cipher_key != NULL && fsattr_sz(cipher_key) != 0) {
+		uint8_t *cipher_buf = (uint8_t *)fmd + src_msg_len;
 		if (calgo == RTE_CRYPTO_CIPHER_AES_XTS) {
-			xts_keylen = fsattr_sz(cipher_key) / 2;
-			memcpy(sreq->cipher_key,
+			uint32_t xts_keylen = fsattr_sz(cipher_key) / 2;
+			memcpy(cipher_buf,
 			       (uint8_t *)fsattr_va(cipher_key) + xts_keylen,
 			       xts_keylen);
-			memcpy(sreq->cipher_key + xts_keylen,
+			memcpy(cipher_buf + xts_keylen,
 			       fsattr_va(cipher_key), xts_keylen);
 		} else {
-			memcpy(sreq->cipher_key,
-				fsattr_va(cipher_key), fsattr_sz(cipher_key));
+			memcpy(cipher_buf, fsattr_va(cipher_key),
+			       fsattr_sz(cipher_key));
 		}
 
-		sreq->msgs.srcs_addr[src_index] = sreq->cptr;
-		sreq->msgs.srcs_len[src_index] = fsattr_sz(cipher_key);
-		src_index++;
+		src_msg_len += fsattr_sz(cipher_key);
 	}
 
 	if (iv != NULL && fsattr_sz(iv) != 0) {
-		memcpy(sreq->iv,
-			fsattr_va(iv), fsattr_sz(iv));
-		sreq->msgs.srcs_addr[src_index] = sreq->iptr;
-		sreq->msgs.srcs_len[src_index] = fsattr_sz(iv);
-		src_index++;
-	}
+		memcpy((uint8_t *)fmd + src_msg_len,
+		       fsattr_va(iv), fsattr_sz(iv));
+		src_msg_len +=  fsattr_sz(iv);
+	} /* End of OMD */
+
+	sreq->msgs.srcs_len[src_index] = src_msg_len;
+	src_index++;
 
 	sreq->msgs.srcs_addr[src_index] = fsattr_pa(src);
 	sreq->msgs.srcs_len[src_index] = fsattr_sz(src);
@@ -782,17 +782,19 @@ bcmfs_crypto_build_chain_request(struct bcmfs_sym_request *sreq,
 	bool auth_first = 0;
 	struct spu2_fmd *fmd;
 	uint64_t payload_len;
+	uint32_t src_msg_len = 0;
 	enum spu2_cipher_mode spu2_ciph_mode = 0;
 	enum spu2_hash_mode spu2_auth_mode = 0;
-	uint64_t aad_size = (aad != NULL) ? fsattr_sz(aad) : 0;
-	uint64_t iv_size = (iv != NULL) ? fsattr_sz(iv) : 0;
 	enum spu2_cipher_type spu2_ciph_type = SPU2_CIPHER_TYPE_NONE;
 	uint64_t auth_ksize = (auth_key != NULL) ?
 				fsattr_sz(auth_key) : 0;
 	uint64_t cipher_ksize = (cipher_key != NULL) ?
 					fsattr_sz(cipher_key) : 0;
+	uint64_t iv_size = (iv != NULL) ? fsattr_sz(iv) : 0;
 	uint64_t digest_size = (digest != NULL) ?
 					fsattr_sz(digest) : 0;
+	uint64_t aad_size = (aad != NULL) ?
+				fsattr_sz(aad) : 0;
 	enum spu2_hash_type spu2_auth_type = SPU2_HASH_TYPE_NONE;
 	bool is_inbound = (auth_op == RTE_CRYPTO_AUTH_OP_VERIFY);
 
@@ -821,9 +823,6 @@ bcmfs_crypto_build_chain_request(struct bcmfs_sym_request *sreq,
 
 	auth_first = cipher_first ? 0 : 1;
 
-	if (iv != NULL && fsattr_sz(iv) != 0)
-		memcpy(sreq->iv, fsattr_va(iv), fsattr_sz(iv));
-
 	fmd  = &sreq->fmd;
 
 	spu2_fmd_ctrl0_write(fmd, is_inbound, auth_first, SPU2_PROTO_RESV,
@@ -840,56 +839,60 @@ bcmfs_crypto_build_chain_request(struct bcmfs_sym_request *sreq,
 
 	spu2_fmd_ctrl3_write(fmd, payload_len);
 
-	/* Source metadata and data pointers */
+	/* FMD */
 	sreq->msgs.srcs_addr[src_index] = sreq->fptr;
-	sreq->msgs.srcs_len[src_index] = sizeof(struct spu2_fmd);
-	src_index++;
+	src_msg_len += sizeof(*fmd);
 
-	if (auth_key != NULL && fsattr_sz(auth_key) != 0) {
-		memcpy(sreq->auth_key,
-		       fsattr_va(auth_key), fsattr_sz(auth_key));
-
+	/* Start of OMD */
+	if (auth_ksize != 0) {
+		memcpy((uint8_t *)fmd + src_msg_len,
+		       fsattr_va(auth_key), auth_ksize);
+		src_msg_len += auth_ksize;
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	BCMFS_DP_HEXDUMP_LOG(DEBUG, "auth key:", fsattr_va(auth_key),
-			     fsattr_sz(auth_key));
+			     auth_ksize);
 #endif
-		sreq->msgs.srcs_addr[src_index] = sreq->aptr;
-		sreq->msgs.srcs_len[src_index] = fsattr_sz(auth_key);
-		src_index++;
 	}
 
-	if (cipher_key != NULL && fsattr_sz(cipher_key) != 0) {
-		memcpy(sreq->cipher_key,
-		       fsattr_va(cipher_key), fsattr_sz(cipher_key));
+	if (cipher_ksize != 0) {
+		memcpy((uint8_t *)fmd + src_msg_len,
+		       fsattr_va(cipher_key), cipher_ksize);
+		src_msg_len += cipher_ksize;
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	BCMFS_DP_HEXDUMP_LOG(DEBUG, "cipher key:", fsattr_va(cipher_key),
-			     fsattr_sz(cipher_key));
+			     cipher_ksize);
 #endif
-		sreq->msgs.srcs_addr[src_index] = sreq->cptr;
-		sreq->msgs.srcs_len[src_index] = fsattr_sz(cipher_key);
-		src_index++;
 	}
 
-	if (iv != NULL && fsattr_sz(iv) != 0) {
+	if (iv_size != 0) {
+		memcpy((uint8_t *)fmd + src_msg_len,
+		       fsattr_va(iv), iv_size);
+		src_msg_len += iv_size;
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		BCMFS_DP_HEXDUMP_LOG(DEBUG, "iv key:", fsattr_va(iv),
-				     fsattr_sz(iv));
+				     iv_size);
 #endif
-		sreq->msgs.srcs_addr[src_index] = sreq->iptr;
-		sreq->msgs.srcs_len[src_index] = iv_size;
-		src_index++;
-	}
+	} /* End of OMD */
 
-	if (aad != NULL && fsattr_sz(aad) != 0) {
+	sreq->msgs.srcs_len[src_index] = src_msg_len;
+
+	if (aad_size != 0) {
+		if (fsattr_sz(aad) < BCMFS_AAD_THRESH_LEN) {
+			memcpy((uint8_t *)fmd + src_msg_len, fsattr_va(aad), aad_size);
+			sreq->msgs.srcs_len[src_index] += aad_size;
+		} else {
+			src_index++;
+			sreq->msgs.srcs_addr[src_index] = fsattr_pa(aad);
+			sreq->msgs.srcs_len[src_index] = aad_size;
+		}
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		BCMFS_DP_HEXDUMP_LOG(DEBUG, "aad :", fsattr_va(aad),
-				     fsattr_sz(aad));
+				     aad_size);
 #endif
-		sreq->msgs.srcs_addr[src_index] = fsattr_pa(aad);
-		sreq->msgs.srcs_len[src_index] = fsattr_sz(aad);
-		src_index++;
 	}
+
+	src_index++;
 
 	sreq->msgs.srcs_addr[src_index] = fsattr_pa(src);
 	sreq->msgs.srcs_len[src_index] = fsattr_sz(src);
@@ -916,7 +919,7 @@ bcmfs_crypto_build_chain_request(struct bcmfs_sym_request *sreq,
 		 * as such. So program dummy location to capture
 		 * digest data
 		 */
-		if (digest != NULL && fsattr_sz(digest) != 0) {
+		if (digest_size != 0) {
 			sreq->msgs.dsts_addr[dst_index] =
 				sreq->dptr;
 			sreq->msgs.dsts_len[dst_index] =
@@ -924,7 +927,7 @@ bcmfs_crypto_build_chain_request(struct bcmfs_sym_request *sreq,
 			dst_index++;
 		}
 	} else {
-		if (digest != NULL && fsattr_sz(digest) != 0) {
+		if (digest_size != 0) {
 			sreq->msgs.dsts_addr[dst_index] =
 				fsattr_pa(digest);
 			sreq->msgs.dsts_len[dst_index] =
@@ -943,7 +946,7 @@ bcmfs_crypto_build_chain_request(struct bcmfs_sym_request *sreq,
 
 static void
 bcmfs_crypto_ccm_update_iv(uint8_t *ivbuf,
-			   unsigned int *ivlen, bool is_esp)
+			   uint64_t *ivlen, bool is_esp)
 {
 	int L;  /* size of length field, in bytes */
 
@@ -976,15 +979,17 @@ bcmfs_crypto_build_aead_request(struct bcmfs_sym_request *sreq,
 	bool auth_first = 0;
 	struct spu2_fmd *fmd;
 	uint64_t payload_len;
-	uint64_t aad_size = (aad != NULL) ? fsattr_sz(aad) : 0;
-	unsigned int iv_size = (iv != NULL) ? fsattr_sz(iv) : 0;
+	uint32_t src_msg_len = 0;
+	uint8_t iv_buf[BCMFS_MAX_IV_SIZE];
 	enum spu2_cipher_mode spu2_ciph_mode = 0;
 	enum spu2_hash_mode spu2_auth_mode = 0;
 	enum spu2_cipher_type spu2_ciph_type = SPU2_CIPHER_TYPE_NONE;
 	enum spu2_hash_type spu2_auth_type = SPU2_HASH_TYPE_NONE;
 	uint64_t ksize = (key != NULL) ? fsattr_sz(key) : 0;
+	uint64_t iv_size = (iv != NULL) ? fsattr_sz(iv) : 0;
+	uint64_t aad_size = (aad != NULL) ? fsattr_sz(aad) : 0;
 	uint64_t digest_size = (digest != NULL) ?
-					fsattr_sz(digest) : 0;
+				fsattr_sz(digest) : 0;
 	bool is_inbound = (aeop == RTE_CRYPTO_AEAD_OP_DECRYPT);
 
 	if (src == NULL)
@@ -1032,17 +1037,16 @@ bcmfs_crypto_build_aead_request(struct bcmfs_sym_request *sreq,
 				0 : 1;
 	}
 
-	if (iv != NULL && fsattr_sz(iv) != 0)
-		memcpy(sreq->iv, fsattr_va(iv), fsattr_sz(iv));
+	if (iv_size != 0)
+		memcpy(iv_buf, fsattr_va(iv), iv_size);
 
 	if (ae_algo == RTE_CRYPTO_AEAD_AES_CCM) {
 		spu2_auth_mode = SPU2_HASH_MODE_CCM;
 		spu2_ciph_mode = SPU2_CIPHER_MODE_CCM;
-		if (iv != NULL)  {
-			memcpy(sreq->iv, fsattr_va(iv),
-			       fsattr_sz(iv));
-			iv_size = fsattr_sz(iv);
-			bcmfs_crypto_ccm_update_iv(sreq->iv, &iv_size, false);
+		if (iv_size != 0)  {
+			memcpy(iv_buf, fsattr_va(iv),
+			       iv_size);
+			bcmfs_crypto_ccm_update_iv(iv_buf, &iv_size, false);
 		}
 
 		/* opposite for ccm (auth 1st on encrypt) */
@@ -1066,43 +1070,49 @@ bcmfs_crypto_build_aead_request(struct bcmfs_sym_request *sreq,
 
 	spu2_fmd_ctrl3_write(fmd, payload_len);
 
-	/* Source metadata and data pointers */
+	/* FMD */
 	sreq->msgs.srcs_addr[src_index] = sreq->fptr;
-	sreq->msgs.srcs_len[src_index] = sizeof(struct spu2_fmd);
-	src_index++;
+	src_msg_len += sizeof(*fmd);
 
-	if (key != NULL && fsattr_sz(key) != 0) {
-		memcpy(sreq->cipher_key,
-		       fsattr_va(key), fsattr_sz(key));
+	if (ksize) {
+		memcpy((uint8_t *)fmd + src_msg_len,
+		       fsattr_va(key), ksize);
+		src_msg_len += ksize;
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	BCMFS_DP_HEXDUMP_LOG(DEBUG, "cipher key:", fsattr_va(key),
-			     fsattr_sz(key));
+			     ksize);
 #endif
-		sreq->msgs.srcs_addr[src_index] = sreq->cptr;
-		sreq->msgs.srcs_len[src_index] = fsattr_sz(key);
-		src_index++;
 	}
 
-	if (iv != NULL && fsattr_sz(iv) != 0) {
+	if (iv_size) {
+		memcpy((uint8_t *)fmd + src_msg_len, iv_buf, iv_size);
+		src_msg_len += iv_size;
+
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		BCMFS_DP_HEXDUMP_LOG(DEBUG, "iv key:", fsattr_va(iv),
 				     fsattr_sz(iv));
 #endif
-		sreq->msgs.srcs_addr[src_index] = sreq->iptr;
-		sreq->msgs.srcs_len[src_index] = iv_size;
-		src_index++;
-	}
+	} /* End of OMD */
 
-	if (aad != NULL && fsattr_sz(aad) != 0) {
+	sreq->msgs.srcs_len[src_index] = src_msg_len;
+
+	if (aad_size != 0) {
+		if (aad_size < BCMFS_AAD_THRESH_LEN) {
+			memcpy((uint8_t *)fmd + src_msg_len, fsattr_va(aad), aad_size);
+			sreq->msgs.srcs_len[src_index] += aad_size;
+		} else {
+			src_index++;
+			sreq->msgs.srcs_addr[src_index] = fsattr_pa(aad);
+			sreq->msgs.srcs_len[src_index] = aad_size;
+		}
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		BCMFS_DP_HEXDUMP_LOG(DEBUG, "aad :", fsattr_va(aad),
-				     fsattr_sz(aad));
+				     aad_size);
 #endif
-		sreq->msgs.srcs_addr[src_index] = fsattr_pa(aad);
-		sreq->msgs.srcs_len[src_index] = fsattr_sz(aad);
-		src_index++;
 	}
+
+	src_index++;
 
 	sreq->msgs.srcs_addr[src_index] = fsattr_pa(src);
 	sreq->msgs.srcs_len[src_index] = fsattr_sz(src);
@@ -1129,19 +1139,19 @@ bcmfs_crypto_build_aead_request(struct bcmfs_sym_request *sreq,
 		 * as such. So program dummy location to capture
 		 * digest data
 		 */
-		if (digest != NULL && fsattr_sz(digest) != 0) {
+		if (digest_size != 0) {
 			sreq->msgs.dsts_addr[dst_index] =
 				sreq->dptr;
 			sreq->msgs.dsts_len[dst_index] =
-				fsattr_sz(digest);
+				digest_size;
 			dst_index++;
 		}
 	} else {
-		if (digest != NULL && fsattr_sz(digest) != 0) {
+		if (digest_size != 0) {
 			sreq->msgs.dsts_addr[dst_index] =
 				fsattr_pa(digest);
 			sreq->msgs.dsts_len[dst_index] =
-				fsattr_sz(digest);
+				digest_size;
 			dst_index++;
 		}
 	}
