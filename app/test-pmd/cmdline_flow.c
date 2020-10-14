@@ -161,6 +161,7 @@ enum index {
 	ITEM_IPV6_HOP,
 	ITEM_IPV6_SRC,
 	ITEM_IPV6_DST,
+	ITEM_IPV6_HAS_FRAG_EXT,
 	ITEM_ICMP,
 	ITEM_ICMP_TYPE,
 	ITEM_ICMP_CODE,
@@ -963,6 +964,7 @@ static const enum index item_ipv6[] = {
 	ITEM_IPV6_HOP,
 	ITEM_IPV6_SRC,
 	ITEM_IPV6_DST,
+	ITEM_IPV6_HAS_FRAG_EXT,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2344,6 +2346,13 @@ static const struct token token_list[] = {
 		.next = NEXT(item_ipv6, NEXT_ENTRY(IPV6_ADDR), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6,
 					     hdr.dst_addr)),
+	},
+	[ITEM_IPV6_HAS_FRAG_EXT] = {
+		.name = "has_frag_ext",
+		.help = "fragment packet attribute",
+		.next = NEXT(item_ipv6, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_item_ipv6,
+					   has_frag_ext, 1)),
 	},
 	[ITEM_ICMP] = {
 		.name = "icmp",
