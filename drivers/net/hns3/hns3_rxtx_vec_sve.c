@@ -311,3 +311,162 @@ hns3_recv_pkts_vec_sve(void *__restrict rx_queue,
 
 	return nb_rx;
 }
+
+static inline void
+hns3_tx_free_buffers_sve(struct hns3_tx_queue *txq)
+{
+#define HNS3_SVE_CHECK_DESCS_PER_LOOP	8
+#define TX_VLD_U8_ZIP_INDEX		svindex_u8(0, 4)
+	svbool_t pg32 = svwhilelt_b32(0, HNS3_SVE_CHECK_DESCS_PER_LOOP);
+	svuint32_t vld, vld2;
+	svuint8_t vld_u8;
+	uint64_t vld_all;
+	struct hns3_desc *tx_desc;
+	int i;
+
+	/*
+	 * All mbufs can be released only when the VLD bits of all
+	 * descriptors in a batch are cleared.
+	 */
+	/* do logical OR operation for all desc's valid field */
+	vld = svdup_n_u32(0);
+	tx_desc = &txq->tx_ring[txq->next_to_clean];
+	for (i = 0; i < txq->tx_rs_thresh; i += HNS3_SVE_CHECK_DESCS_PER_LOOP,
+				tx_desc += HNS3_SVE_CHECK_DESCS_PER_LOOP) {
+		vld2 = svld1_gather_u32offset_u32(pg32, (uint32_t *)tx_desc,
+				svindex_u32(BD_FIELD_VALID_OFFSET, BD_SIZE));
+		vld = svorr_u32_z(pg32, vld, vld2);
+	}
+	/* shift left and then right to get all valid bit */
+	vld = svlsl_n_u32_z(pg32, vld,
+			    HNS3_UINT32_BIT - 1 - HNS3_TXD_VLD_B);
+	vld = svreinterpret_u32_s32(svasr_n_s32_z(pg32,
+		svreinterpret_s32_u32(vld), HNS3_UINT32_BIT - 1));
+	/* use tbl to compress 32bit-lane to 8bit-lane */
+	vld_u8 = svtbl_u8(svreinterpret_u8_u32(vld), TX_VLD_U8_ZIP_INDEX);
+	/* dump compressed 64bit to variable */
+	svst1_u64(PG64_64BIT, &vld_all, svreinterpret_u64_u8(vld_u8));
+	if (vld_all > 0)
+		return;
+
+	hns3_tx_bulk_free_buffers(txq);
+}
+
+static inline void
+hns3_tx_fill_hw_ring_sve(struct hns3_tx_queue *txq,
+			 struct rte_mbuf **pkts,
+			 uint16_t nb_pkts)
+{
+#define DATA_OFF_LEN_VAL_MASK	0xFFFF
+	struct hns3_desc *txdp = &txq->tx_ring[txq->next_to_use];
+	struct hns3_entry *tx_entry = &txq->sw_ring[txq->next_to_use];
+	const uint64_t valid_bit = (BIT(HNS3_TXD_VLD_B) | BIT(HNS3_TXD_FE_B)) <<
+				   HNS3_UINT32_BIT;
+	svuint64_t base_addr, buf_iova, data_off, data_len, addr;
+	svuint64_t offsets = svindex_u64(0, BD_SIZE);
+	uint32_t i = 0;
+	svbool_t pg = svwhilelt_b64_u32(i, nb_pkts);
+
+	do {
+		base_addr = svld1_u64(pg, (uint64_t *)pkts);
+		/* calc mbuf's field buf_iova address */
+		buf_iova = svadd_n_u64_z(pg, base_addr,
+					 offsetof(struct rte_mbuf, buf_iova));
+		/* calc mbuf's field data_off address */
+		data_off = svadd_n_u64_z(pg, base_addr,
+					 offsetof(struct rte_mbuf, data_off));
+		/* calc mbuf's field data_len address */
+		data_len = svadd_n_u64_z(pg, base_addr,
+					 offsetof(struct rte_mbuf, data_len));
+		/* store mbuf to tx_entry */
+		svst1_u64(pg, (uint64_t *)tx_entry, base_addr);
+		/* read pkts->buf_iova */
+		buf_iova = svld1_gather_u64base_u64(pg, buf_iova);
+		/* read pkts->data_off's 64bit val  */
+		data_off = svld1_gather_u64base_u64(pg, data_off);
+		/* read pkts->data_len's 64bit val */
+		data_len = svld1_gather_u64base_u64(pg, data_len);
+		/* zero data_off high 48bit by svand ops */
+		data_off = svand_n_u64_z(pg, data_off, DATA_OFF_LEN_VAL_MASK);
+		/* zero data_len high 48bit by svand ops */
+		data_len = svand_n_u64_z(pg, data_len, DATA_OFF_LEN_VAL_MASK);
+		/* calc mbuf data region iova addr */
+		addr = svadd_u64_z(pg, buf_iova, data_off);
+		/* shift due data_len's offset is 2byte of BD's second 8byte */
+		data_len = svlsl_n_u64_z(pg, data_len, HNS3_UINT16_BIT);
+		/* save offset 0~7byte of every BD */
+		svst1_scatter_u64offset_u64(pg, (uint64_t *)&txdp->addr,
+					    offsets, addr);
+		/* save offset 8~15byte of every BD */
+		svst1_scatter_u64offset_u64(pg, (uint64_t *)&txdp->tx.vlan_tag,
+					    offsets, data_len);
+		/* save offset 16~23byte of every BD */
+		svst1_scatter_u64offset_u64(pg,
+				(uint64_t *)&txdp->tx.outer_vlan_tag,
+				offsets, svdup_n_u64(0));
+		/* save offset 24~31byte of every BD */
+		svst1_scatter_u64offset_u64(pg, (uint64_t *)&txdp->tx.paylen,
+					    offsets, svdup_n_u64(valid_bit));
+
+		/* update index for next loop */
+		i += svcntd();
+		pkts += svcntd();
+		txdp += svcntd();
+		tx_entry += svcntd();
+		pg = svwhilelt_b64_u32(i, nb_pkts);
+	} while (svptest_any(svptrue_b64(), pg));
+}
+
+static uint16_t
+hns3_xmit_fixed_burst_vec_sve(void *__restrict tx_queue,
+			      struct rte_mbuf **__restrict tx_pkts,
+			      uint16_t nb_pkts)
+{
+	struct hns3_tx_queue *txq = (struct hns3_tx_queue *)tx_queue;
+	uint16_t nb_tx = 0;
+
+	if (txq->tx_bd_ready < txq->tx_free_thresh)
+		hns3_tx_free_buffers_sve(txq);
+
+	nb_pkts = RTE_MIN(txq->tx_bd_ready, nb_pkts);
+	if (unlikely(nb_pkts == 0)) {
+		txq->queue_full_cnt++;
+		return 0;
+	}
+
+	if (txq->next_to_use + nb_pkts > txq->nb_tx_desc) {
+		nb_tx = txq->nb_tx_desc - txq->next_to_use;
+		hns3_tx_fill_hw_ring_sve(txq, tx_pkts, nb_tx);
+		txq->next_to_use = 0;
+	}
+
+	hns3_tx_fill_hw_ring_sve(txq, tx_pkts + nb_tx, nb_pkts - nb_tx);
+	txq->next_to_use += nb_pkts - nb_tx;
+
+	txq->tx_bd_ready -= nb_pkts;
+	hns3_write_reg_opt(txq->io_tail_reg, nb_pkts);
+
+	return nb_pkts;
+}
+
+uint16_t
+hns3_xmit_pkts_vec_sve(void *tx_queue,
+		       struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts)
+{
+	struct hns3_tx_queue *txq = (struct hns3_tx_queue *)tx_queue;
+	uint16_t ret, new_burst;
+	uint16_t nb_tx = 0;
+
+	while (nb_pkts) {
+		new_burst = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+		ret = hns3_xmit_fixed_burst_vec_sve(tx_queue, &tx_pkts[nb_tx],
+						    new_burst);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < new_burst)
+			break;
+	}
+
+	return nb_tx;
+}
