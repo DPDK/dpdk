@@ -290,6 +290,10 @@ idxd_rawdev_destroy(const char *name)
 	}
 
 	idxd = rdev->dev_private;
+	if (!idxd) {
+		IOAT_PMD_ERR("Error getting dev_private");
+		return -EINVAL;
+	}
 
 	/* disable the device */
 	err_code = idxd_pci_dev_command(idxd, idxd_disable_dev);
@@ -300,13 +304,11 @@ idxd_rawdev_destroy(const char *name)
 	IOAT_PMD_DEBUG("IDXD Device disabled OK");
 
 	/* free device memory */
-	if (rdev->dev_private != NULL) {
-		IOAT_PMD_DEBUG("Freeing device driver memory");
-		rdev->dev_private = NULL;
-		rte_free(idxd->public.batch_ring);
-		rte_free(idxd->public.hdl_ring);
-		rte_memzone_free(idxd->mz);
-	}
+	IOAT_PMD_DEBUG("Freeing device driver memory");
+	rdev->dev_private = NULL;
+	rte_free(idxd->public.batch_ring);
+	rte_free(idxd->public.hdl_ring);
+	rte_memzone_free(idxd->mz);
 
 	/* rte_rawdev_close is called by pmd_release */
 	ret = rte_rawdev_pmd_release(rdev);
