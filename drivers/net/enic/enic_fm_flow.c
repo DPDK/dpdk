@@ -2232,7 +2232,11 @@ enic_action_handle_get(struct enic_flowman *fm, struct fm_action *action_in,
 error_with_action_handle:
 	args[0] = FM_ACTION_FREE;
 	args[1] = ah->handle;
-	flowman_cmd(fm, args, 2);
+	ret = flowman_cmd(fm, args, 2);
+	if (ret != 0)
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "enic: devcmd(action-free)");
 error_with_ah:
 	free(ah);
 	return ret;
