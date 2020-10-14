@@ -28,6 +28,7 @@ __rte_x86_movdiri(uint32_t value, volatile void *addr)
 		: "a" (value), "d" (addr));
 }
 
+__rte_experimental
 static __rte_always_inline void
 rte_write32_wc_relaxed(uint32_t value, volatile void *addr)
 {
@@ -47,11 +48,19 @@ rte_write32_wc_relaxed(uint32_t value, volatile void *addr)
 	}
 }
 
+__rte_experimental
 static __rte_always_inline void
 rte_write32_wc(uint32_t value, volatile void *addr)
 {
+	/* gcc complains about calling this experimental function even
+	 * when not using it. Hide it with ALLOW_EXPERIMENTAL_API.
+	 */
+#ifdef ALLOW_EXPERIMENTAL_API
 	rte_wmb();
 	rte_write32_wc_relaxed(value, addr);
+#else
+	rte_write32(value, addr);
+#endif
 }
 
 #ifdef __cplusplus

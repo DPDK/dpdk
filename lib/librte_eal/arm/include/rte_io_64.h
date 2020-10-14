@@ -164,12 +164,14 @@ rte_write64(uint64_t value, volatile void *addr)
 	rte_write64_relaxed(value, addr);
 }
 
+__rte_experimental
 static __rte_always_inline void
 rte_write32_wc(uint32_t value, volatile void *addr)
 {
 	rte_write32(value, addr);
 }
 
+__rte_experimental
 static __rte_always_inline void
 rte_write32_wc_relaxed(uint32_t value, volatile void *addr)
 {
