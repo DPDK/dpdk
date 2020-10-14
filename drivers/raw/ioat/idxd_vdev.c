@@ -93,23 +93,21 @@ idxd_rawdev_parse_wq(const char *key __rte_unused, const char *value,
 static int
 idxd_vdev_parse_params(struct rte_kvargs *kvlist, struct idxd_vdev_args *args)
 {
+	int ret = 0;
+
 	if (rte_kvargs_count(kvlist, IDXD_ARG_WQ) == 1) {
 		if (rte_kvargs_process(kvlist, IDXD_ARG_WQ,
 				&idxd_rawdev_parse_wq, args) < 0) {
 			IOAT_PMD_ERR("Error parsing %s", IDXD_ARG_WQ);
-			goto free;
+			ret = -EINVAL;
 		}
 	} else {
 		IOAT_PMD_ERR("%s is a mandatory arg", IDXD_ARG_WQ);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 
-	return 0;
-
-free:
-	if (kvlist)
-		rte_kvargs_free(kvlist);
-	return -EINVAL;
+	rte_kvargs_free(kvlist);
+	return ret;
 }
 
 static int
