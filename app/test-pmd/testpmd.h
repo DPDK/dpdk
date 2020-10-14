@@ -142,6 +142,14 @@ struct port_flow {
 	uint8_t data[]; /**< Storage for flow rule description */
 };
 
+/* Descriptor for shared action */
+struct port_shared_action {
+	struct port_shared_action *next; /**< Next flow in list. */
+	uint32_t id; /**< Shared action ID. */
+	enum rte_flow_action_type type; /**< Action type. */
+	struct rte_flow_shared_action *action;	/**< Shared action handle. */
+};
+
 /**
  * The data structure associated with each port.
  */
@@ -172,6 +180,8 @@ struct rte_port {
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	uint8_t                 slave_flag; /**< bonding slave port */
 	struct port_flow        *flow_list; /**< Associated flows. */
+	struct port_shared_action *actions_list;
+	/**< Associated shared actions. */
 	const struct rte_eth_rxtx_callback *rx_dump_cb[RTE_MAX_QUEUES_PER_PORT+1];
 	const struct rte_eth_rxtx_callback *tx_dump_cb[RTE_MAX_QUEUES_PER_PORT+1];
 	/**< metadata value to insert in Tx packets. */
@@ -749,6 +759,15 @@ void port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
 			    uint8_t bit1_pos, uint8_t bit2_pos, uint32_t value);
 void port_reg_display(portid_t port_id, uint32_t reg_off);
 void port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t value);
+int port_shared_action_create(portid_t port_id, uint32_t id,
+			      const struct rte_flow_shared_action_conf *conf,
+			      const struct rte_flow_action *action);
+int port_shared_action_destroy(portid_t port_id,
+			       uint32_t n, const uint32_t *action);
+struct rte_flow_shared_action *port_shared_action_get_by_id(portid_t port_id,
+							    uint32_t id);
+int port_shared_action_update(portid_t port_id, uint32_t id,
+			      const struct rte_flow_action *action);
 int port_flow_validate(portid_t port_id,
 		       const struct rte_flow_attr *attr,
 		       const struct rte_flow_item *pattern,
@@ -757,6 +776,7 @@ int port_flow_create(portid_t port_id,
 		     const struct rte_flow_attr *attr,
 		     const struct rte_flow_item *pattern,
 		     const struct rte_flow_action *actions);
+int port_shared_action_query(portid_t port_id, uint32_t id);
 void update_age_action_context(const struct rte_flow_action *actions,
 		     struct port_flow *pf);
 int port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule);

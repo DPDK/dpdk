@@ -1645,6 +1645,222 @@ rss_config_display(struct rte_flow_action_rss *rss_conf)
 	}
 }
 
+static struct port_shared_action *
+action_get_by_id(portid_t port_id, uint32_t id)
+{
+	struct rte_port *port;
+	struct port_shared_action **ppsa;
+	struct port_shared_action *psa = NULL;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return NULL;
+	port = &ports[port_id];
+	ppsa = &port->actions_list;
+	while (*ppsa) {
+		if ((*ppsa)->id == id) {
+			psa = *ppsa;
+			break;
+		}
+		ppsa = &(*ppsa)->next;
+	}
+	if (!psa)
+		printf("Failed to find shared action #%u on port %u\n",
+		       id, port_id);
+	return psa;
+}
+
+static int
+action_alloc(portid_t port_id, uint32_t id,
+	     struct port_shared_action **action)
+{
+	struct rte_port *port;
+	struct port_shared_action **ppsa;
+	struct port_shared_action *psa = NULL;
+
+	*action = NULL;
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	if (id == UINT32_MAX) {
+		/* taking first available ID */
+		if (port->actions_list) {
+			if (port->actions_list->id == UINT32_MAX - 1) {
+				printf("Highest shared action ID is already"
+				" assigned, delete it first\n");
+				return -ENOMEM;
+			}
+			id = port->actions_list->id + 1;
+		} else {
+			id = 0;
+		}
+	}
+	psa = calloc(1, sizeof(*psa));
+	if (!psa) {
+		printf("Allocation of port %u shared action failed\n",
+		       port_id);
+		return -ENOMEM;
+	}
+	ppsa = &port->actions_list;
+	while (*ppsa && (*ppsa)->id > id)
+		ppsa = &(*ppsa)->next;
+	if (*ppsa && (*ppsa)->id == id) {
+		printf("Shared action #%u is already assigned,"
+			" delete it first\n", id);
+		free(psa);
+		return -EINVAL;
+	}
+	psa->next = *ppsa;
+	psa->id = id;
+	*ppsa = psa;
+	*action = psa;
+	return 0;
+}
+
+/** Create shared action */
+int
+port_shared_action_create(portid_t port_id, uint32_t id,
+			  const struct rte_flow_shared_action_conf *conf,
+			  const struct rte_flow_action *action)
+{
+	struct port_shared_action *psa;
+	int ret;
+	struct rte_flow_error error;
+
+	ret = action_alloc(port_id, id, &psa);
+	if (ret)
+		return ret;
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x22, sizeof(error));
+	psa->action = rte_flow_shared_action_create(port_id, conf, action,
+						    &error);
+	if (!psa->action) {
+		uint32_t destroy_id = psa->id;
+		port_shared_action_destroy(port_id, 1, &destroy_id);
+		return port_flow_complain(&error);
+	}
+	psa->type = action->type;
+	printf("Shared action #%u created\n", psa->id);
+	return 0;
+}
+
+/** Destroy shared action */
+int
+port_shared_action_destroy(portid_t port_id,
+			   uint32_t n,
+			   const uint32_t *actions)
+{
+	struct rte_port *port;
+	struct port_shared_action **tmp;
+	uint32_t c = 0;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	tmp = &port->actions_list;
+	while (*tmp) {
+		uint32_t i;
+
+		for (i = 0; i != n; ++i) {
+			struct rte_flow_error error;
+			struct port_shared_action *psa = *tmp;
+
+			if (actions[i] != psa->id)
+				continue;
+			/*
+			 * Poisoning to make sure PMDs update it in case
+			 * of error.
+			 */
+			memset(&error, 0x33, sizeof(error));
+
+			if (psa->action && rte_flow_shared_action_destroy(
+					port_id, psa->action, &error)) {
+				ret = port_flow_complain(&error);
+				continue;
+			}
+			*tmp = psa->next;
+			free(psa);
+			printf("Shared action #%u destroyed\n", psa->id);
+			break;
+		}
+		if (i == n)
+			tmp = &(*tmp)->next;
+		++c;
+	}
+	return ret;
+}
+
+
+/** Get shared action by port + id */
+struct rte_flow_shared_action *
+port_shared_action_get_by_id(portid_t port_id, uint32_t id)
+{
+
+	struct port_shared_action *psa = action_get_by_id(port_id, id);
+
+	return (psa) ? psa->action : NULL;
+}
+
+/** Update shared action */
+int
+port_shared_action_update(portid_t port_id, uint32_t id,
+			  const struct rte_flow_action *action)
+{
+	struct rte_flow_error error;
+	struct rte_flow_shared_action *shared_action;
+
+	shared_action = port_shared_action_get_by_id(port_id, id);
+	if (!shared_action)
+		return -EINVAL;
+	if (rte_flow_shared_action_update(port_id, shared_action, action,
+					  &error)) {
+		return port_flow_complain(&error);
+	}
+	printf("Shared action #%u updated\n", id);
+	return 0;
+}
+
+int
+port_shared_action_query(portid_t port_id, uint32_t id)
+{
+	struct rte_flow_error error;
+	struct port_shared_action *psa;
+	uint64_t default_data;
+	void *data = NULL;
+	int ret = 0;
+
+	psa = action_get_by_id(port_id, id);
+	if (!psa)
+		return -EINVAL;
+	switch (psa->type) {
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		data = &default_data;
+		break;
+	default:
+		printf("Shared action %u (type: %d) on port %u doesn't support"
+		       " query\n", id, psa->type, port_id);
+		return -1;
+	}
+	if (rte_flow_shared_action_query(port_id, psa->action, data, &error))
+		ret = port_flow_complain(&error);
+	switch (psa->type) {
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		if (!ret)
+			printf("Shared RSS action:\n\trefs:%u\n",
+			       *((uint32_t *)data));
+		data = NULL;
+		break;
+	default:
+		printf("Shared action %u (type: %d) on port %u doesn't support"
+		       " query\n", id, psa->type, port_id);
+		ret = -1;
+	}
+	return ret;
+}
+
 /** Validate flow rule. */
 int
 port_flow_validate(portid_t port_id,

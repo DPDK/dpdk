@@ -1152,6 +1152,24 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    List and destroy aged flows"
 			" flow rules\n\n"
 
+			"flow shared_action {port_id} create"
+			" [action_id {shared_action_id}]"
+			" [ingress] [egress]"
+			" action {action} / end\n"
+			"    Create shared action.\n\n"
+
+			"flow shared_action {port_id} update"
+			" {shared_action_id} action {action} / end\n"
+			"    Update shared action.\n\n"
+
+			"flow shared_action {port_id} destroy"
+			" action_id {shared_action_id} [...]\n"
+			"    Destroy specific shared actions.\n\n"
+
+			"flow shared_action {port_id} query"
+			" {shared_action_id}\n"
+			"    Query an existing shared action.\n\n"
+
 			"set vxlan ip-version (ipv4|ipv6) vni (vni) udp-src"
 			" (udp-src) udp-dst (udp-dst) ip-src (ip-src) ip-dst"
 			" (ip-dst) eth-src (eth-src) eth-dst (eth-dst)\n"

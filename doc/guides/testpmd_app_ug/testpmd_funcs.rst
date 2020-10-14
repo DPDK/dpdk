@@ -4404,6 +4404,11 @@ This section lists supported actions and their attributes, if any.
 
   - ``dscp_value {unsigned}``: The new DSCP value to be set
 
+- ``shared``: Use shared action created via
+  ``flow shared_action {port_id} create``
+
+  - ``shared_action_id {unsigned}``: Shared action ID to use
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -4693,6 +4698,113 @@ If attach ``destroy`` parameter, the command will destroy all the list aged flow
    testpmd> flow aged 0
    Port 0 total aged flows: 0
 
+Creating shared actions
+~~~~~~~~~~~~~~~~~~~~~~~
+``flow shared_action {port_id} create`` creates shared action with optional
+shared action ID. It is bound to ``rte_flow_shared_action_create()``::
+
+   flow shared_action {port_id} create [action_id {shared_action_id}]
+      [ingress] [egress] action {action} / end
+
+If successful, it will show::
+
+   Shared action #[...] created
+
+Otherwise, it will complain either that shared action already exists or that
+some error occurred::
+
+   Shared action #[...] is already assigned, delete it first
+
+::
+
+   Caught error type [...] ([...]): [...]
+
+Create shared rss action with id 100 to queues 1 and 2 on port 0::
+
+   testpmd> flow shared_action 0 create action_id 100 \
+      ingress action rss queues 1 2 end / end
+
+Create shared rss action with id assigned by testpmd to queues 1 and 2 on
+port 0::
+
+	testpmd> flow shared_action 0 create action_id \
+		ingress action rss queues 0 1 end / end
+
+Updating shared actions
+~~~~~~~~~~~~~~~~~~~~~~~
+``flow shared_action {port_id} update`` updates configuration of the shared
+action from its shared action ID (as returned by
+``flow shared_action {port_id} create``). It is bound to
+``rte_flow_shared_action_update()``::
+
+   flow shared_action {port_id} update {shared_action_id}
+      action {action} / end
+
+If successful, it will show::
+
+   Shared action #[...] updated
+
+Otherwise, it will complain either that shared action not found or that some
+error occurred::
+
+   Failed to find shared action #[...] on port [...]
+
+::
+
+   Caught error type [...] ([...]): [...]
+
+Update shared rss action having id 100 on port 0 with rss to queues 0 and 3
+(in create example above rss queues were 1 and 2)::
+
+   testpmd> flow shared_action 0 update 100 action rss queues 0 3 end / end
+
+Destroying shared actions
+~~~~~~~~~~~~~~~~~~~~~~~~~
+``flow shared_action {port_id} update`` destroys one or more shared actions
+from their shared action IDs (as returned by
+``flow shared_action {port_id} create``). It is bound to
+``rte_flow_shared_action_destroy()``::
+
+   flow shared_action {port_id} destroy action_id {shared_action_id} [...]
+
+If successful, it will show::
+
+   Shared action #[...] destroyed
+
+It does not report anything for shared action IDs that do not exist.
+The usual error message is shown when a shared action cannot be destroyed::
+
+   Caught error type [...] ([...]): [...]
+
+Destroy shared actions having id 100 & 101::
+
+   testpmd> flow shared_action 0 destroy action_id 100 action_id 101
+
+Query shared actions
+~~~~~~~~~~~~~~~~~~~~
+``flow shared_action {port_id} query`` queries the shared action from its
+shared action ID (as returned by ``flow shared_action {port_id} create``).
+It is bound to ``rte_flow_shared_action_query()``::
+
+  flow shared_action {port_id} query {shared_action_id}
+
+Currently only rss shared action supported. If successful, it will show::
+
+   Shared RSS action:
+      refs:[...]
+
+Otherwise, it will complain either that shared action not found or that some
+error occurred::
+
+   Failed to find shared action #[...] on port [...]
+
+::
+
+   Caught error type [...] ([...]): [...]
+
+Query shared action having id 100::
+
+   testpmd> flow shared_action 0 query 100
 
 Sample QinQ flow rules
 ~~~~~~~~~~~~~~~~~~~~~~
