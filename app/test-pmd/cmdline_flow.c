@@ -149,6 +149,7 @@ enum index {
 	ITEM_VLAN_INNER_TYPE,
 	ITEM_IPV4,
 	ITEM_IPV4_TOS,
+	ITEM_IPV4_FRAGMENT_OFFSET,
 	ITEM_IPV4_TTL,
 	ITEM_IPV4_PROTO,
 	ITEM_IPV4_SRC,
@@ -946,6 +947,7 @@ static const enum index item_vlan[] = {
 
 static const enum index item_ipv4[] = {
 	ITEM_IPV4_TOS,
+	ITEM_IPV4_FRAGMENT_OFFSET,
 	ITEM_IPV4_TTL,
 	ITEM_IPV4_PROTO,
 	ITEM_IPV4_SRC,
@@ -2256,6 +2258,13 @@ static const struct token token_list[] = {
 		.next = NEXT(item_ipv4, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
 					     hdr.type_of_service)),
+	},
+	[ITEM_IPV4_FRAGMENT_OFFSET] = {
+		.name = "fragment_offset",
+		.help = "fragmentation flags and fragment offset",
+		.next = NEXT(item_ipv4, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
+					     hdr.fragment_offset)),
 	},
 	[ITEM_IPV4_TTL] = {
 		.name = "ttl",
