@@ -253,6 +253,7 @@ struct rte_eth_stats {
 	uint64_t ierrors;   /**< Total number of erroneous received packets. */
 	uint64_t oerrors;   /**< Total number of failed transmitted packets. */
 	uint64_t rx_nombuf; /**< Total number of RX mbuf allocation failures. */
+	/* Queue stats are limited to max 256 queues */
 	uint64_t q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 	/**< Total number of queue RX packets. */
 	uint64_t q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
@@ -2912,6 +2913,7 @@ int rte_eth_xstats_reset(uint16_t port_id);
  *   The per-queue packet statistics functionality number that the transmit
  *   queue is to be assigned.
  *   The value must be in the range [0, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1].
+ *   Max RTE_ETHDEV_QUEUE_STAT_CNTRS being 256.
  * @return
  *   Zero if successful. Non-zero otherwise.
  */
@@ -2932,6 +2934,7 @@ int rte_eth_dev_set_tx_queue_stats_mapping(uint16_t port_id,
  *   The per-queue packet statistics functionality number that the receive
  *   queue is to be assigned.
  *   The value must be in the range [0, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1].
+ *   Max RTE_ETHDEV_QUEUE_STAT_CNTRS being 256.
  * @return
  *   Zero if successful. Non-zero otherwise.
  */

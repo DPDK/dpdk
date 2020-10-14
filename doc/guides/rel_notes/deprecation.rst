@@ -142,6 +142,13 @@ Deprecation Notices
   as deprecated in DPDK 20.11, along with the associated macros ``ETH_MIRROR_*``.
   This API will be fully removed in DPDK 21.11.
 
+* ethdev: Queue specific stats fields will be removed from ``struct rte_eth_stats``.
+  Mentioned fields are: ``q_ipackets``, ``q_opackets``, ``q_ibytes``, ``q_obytes``,
+  ``q_errors``.
+  Instead queue stats will be received via xstats API. Current method support
+  will be limited to maximum 256 queues.
+  Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
+
 * security: The API ``rte_security_session_create`` takes only single mempool
   for session and session private data. So the application need to create
   mempool for twice the number of sessions needed and will also lead to
