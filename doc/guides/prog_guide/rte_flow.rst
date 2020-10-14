@@ -1191,6 +1191,18 @@ Normally preceded by any of:
 - `Item: IPV6`_
 - `Item: IPV6_EXT`_
 
+Item: ``IPV6_FRAG_EXT``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches the presence of IPv6 fragment extension header.
+
+- ``hdr``: IPv6 fragment extension header definition (``rte_ip.h``).
+
+Normally preceded by any of:
+
+- `Item: IPV6`_
+- `Item: IPV6_EXT`_
+
 Item: ``ICMP6``
 ^^^^^^^^^^^^^^^
 

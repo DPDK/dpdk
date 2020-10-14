@@ -110,30 +110,8 @@ struct rte_ip_frag_tbl {
 	__extension__ struct ip_frag_pkt pkt[0]; /**< hash table. */
 };
 
-/** IPv6 fragment extension header */
-#define	RTE_IPV6_EHDR_MF_SHIFT			0
-#define	RTE_IPV6_EHDR_MF_MASK			1
-#define	RTE_IPV6_EHDR_FO_SHIFT			3
-#define	RTE_IPV6_EHDR_FO_MASK			(~((1 << RTE_IPV6_EHDR_FO_SHIFT) - 1))
-#define	RTE_IPV6_EHDR_FO_ALIGN			(1 << RTE_IPV6_EHDR_FO_SHIFT)
-
-#define RTE_IPV6_FRAG_USED_MASK			\
-	(RTE_IPV6_EHDR_MF_MASK | RTE_IPV6_EHDR_FO_MASK)
-
-#define RTE_IPV6_GET_MF(x)				((x) & RTE_IPV6_EHDR_MF_MASK)
-#define RTE_IPV6_GET_FO(x)				((x) >> RTE_IPV6_EHDR_FO_SHIFT)
-
-#define RTE_IPV6_SET_FRAG_DATA(fo, mf)	\
-	(((fo) & RTE_IPV6_EHDR_FO_MASK) | ((mf) & RTE_IPV6_EHDR_MF_MASK))
-
-struct ipv6_extension_fragment {
-	uint8_t next_header;            /**< Next header type */
-	uint8_t reserved;               /**< Reserved */
-	uint16_t frag_data;             /**< All fragmentation data */
-	uint32_t id;                    /**< Packet ID */
-} __rte_packed;
-
-
+/* struct ipv6_extension_fragment moved to librte_net/rte_ip.h and renamed. */
+#define ipv6_extension_fragment	rte_ipv6_fragment_ext
 
 /**
  * Create a new IP fragmentation table.

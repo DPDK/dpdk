@@ -537,6 +537,12 @@ enum rte_flow_item_type {
 	 */
 	RTE_FLOW_ITEM_TYPE_ECPRI,
 
+	/**
+	 * Matches the presence of IPv6 fragment extension header.
+	 *
+	 * See struct rte_flow_item_ipv6_frag_ext.
+	 */
+	RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
 };
 
 /**
@@ -1184,6 +1190,20 @@ struct rte_flow_item_ipv6_ext rte_flow_item_ipv6_ext_mask = {
 	.next_hdr = 0xff,
 };
 #endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT
+ *
+ * Matches the presence of IPv6 fragment extension header.
+ *
+ * Preceded by any of:
+ *
+ * - RTE_FLOW_ITEM_TYPE_IPV6
+ * - RTE_FLOW_ITEM_TYPE_IPV6_EXT
+ */
+struct rte_flow_item_ipv6_frag_ext {
+	struct rte_ipv6_fragment_ext hdr;
+};
 
 /**
  * RTE_FLOW_ITEM_TYPE_ICMP6

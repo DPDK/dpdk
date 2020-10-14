@@ -478,8 +478,30 @@ rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
 	return (uint16_t)cksum;
 }
 
-/* IPv6 fragmentation header size */
-#define RTE_IPV6_FRAG_HDR_SIZE 8
+/** IPv6 fragment extension header. */
+#define	RTE_IPV6_EHDR_MF_SHIFT	0
+#define	RTE_IPV6_EHDR_MF_MASK	1
+#define	RTE_IPV6_EHDR_FO_SHIFT	3
+#define	RTE_IPV6_EHDR_FO_MASK	(~((1 << RTE_IPV6_EHDR_FO_SHIFT) - 1))
+#define	RTE_IPV6_EHDR_FO_ALIGN	(1 << RTE_IPV6_EHDR_FO_SHIFT)
+
+#define RTE_IPV6_FRAG_USED_MASK	(RTE_IPV6_EHDR_MF_MASK | RTE_IPV6_EHDR_FO_MASK)
+
+#define RTE_IPV6_GET_MF(x)	((x) & RTE_IPV6_EHDR_MF_MASK)
+#define RTE_IPV6_GET_FO(x)	((x) >> RTE_IPV6_EHDR_FO_SHIFT)
+
+#define RTE_IPV6_SET_FRAG_DATA(fo, mf)	\
+	(((fo) & RTE_IPV6_EHDR_FO_MASK) | ((mf) & RTE_IPV6_EHDR_MF_MASK))
+
+struct rte_ipv6_fragment_ext {
+	uint8_t next_header;	/**< Next header type */
+	uint8_t reserved;	/**< Reserved */
+	rte_be16_t frag_data;	/**< All fragmentation data */
+	rte_be32_t id;		/**< Packet ID */
+} __rte_packed;
+
+/* IPv6 fragment extension header size */
+#define RTE_IPV6_FRAG_HDR_SIZE	sizeof(struct rte_ipv6_fragment_ext)
 
 /**
  * Parse next IPv6 header extension
