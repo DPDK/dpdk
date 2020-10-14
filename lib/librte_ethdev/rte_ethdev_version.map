@@ -232,6 +232,10 @@ EXPERIMENTAL {
 	rte_eth_fec_get_capability;
 	rte_eth_fec_get;
 	rte_eth_fec_set;
+	rte_flow_shared_action_create;
+	rte_flow_shared_action_destroy;
+	rte_flow_shared_action_query;
+	rte_flow_shared_action_update;
 };
 
 INTERNAL {

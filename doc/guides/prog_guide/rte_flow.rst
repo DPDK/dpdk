@@ -2708,6 +2708,25 @@ packets, and must have a fate action.
    | ``actions``  | sub-action list for sampling    |
    +--------------+---------------------------------+
 
+Action: ``SHARED``
+^^^^^^^^^^^^^^^^^^
+
+Flow utilize shared action by handle as returned from
+``rte_flow_shared_action_create()``.
+
+The behaviour of the shared action defined by ``action`` argument of type
+``struct rte_flow_action`` passed to ``rte_flow_shared_action_create()``.
+
+.. _table_rte_flow_shared_action:
+
+.. table:: SHARED
+
+   +---------------+
+   | Field         |
+   +===============+
+   | no properties |
+   +---------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

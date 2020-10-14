@@ -100,6 +100,16 @@ New Features
   packets with specified ratio, and apply with own set of actions with a fate
   action. When the ratio is set to 1 then the packets will be 100% mirrored.
 
+* **Added support of shared action in flow API.**
+
+  Added shared action support to utilize single flow action in multiple flow
+  rules. An update of shared action configuration alters the behavior of all
+  flow rules using it.
+
+  * Added new action: ``RTE_FLOW_ACTION_TYPE_SHARED`` to use shared action
+    as flow action.
+  * Added new flow APIs to create/update/destroy/query shared action.
+
 * **Updated Broadcom bnxt driver.**
 
   Updated the Broadcom bnxt driver with new features and improvements, including:

@@ -1714,7 +1714,8 @@ enum rte_flow_action_type {
 	/**
 	 * Enables counters for this flow rule.
 	 *
-	 * These counters can be retrieved and reset through rte_flow_query(),
+	 * These counters can be retrieved and reset through rte_flow_query() or
+	 * rte_flow_shared_action_query() if the action provided via handle,
 	 * see struct rte_flow_query_count.
 	 *
 	 * See struct rte_flow_action_count.
@@ -2141,6 +2142,14 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_sample.
 	 */
 	RTE_FLOW_ACTION_TYPE_SAMPLE,
+
+	/**
+	 * Describe action shared across multiple flow rules.
+	 *
+	 * Allow multiple rules reference the same action by handle (see
+	 * struct rte_flow_shared_action).
+	 */
+	RTE_FLOW_ACTION_TYPE_SHARED,
 };
 
 /**
@@ -2715,6 +2724,20 @@ struct rte_flow_action_set_meta {
 struct rte_flow_action_set_dscp {
 	uint8_t dscp;
 };
+
+
+/**
+ * RTE_FLOW_ACTION_TYPE_SHARED
+ *
+ * Opaque type returned after successfully creating a shared action.
+ *
+ * This handle can be used to manage and query the related action:
+ * - share it across multiple flow rules
+ * - update action configuration
+ * - query action data
+ * - destroy action
+ */
+struct rte_flow_shared_action;
 
 /* Mbuf dynamic field offset for metadata. */
 extern int32_t rte_flow_dynf_metadata_offs;
@@ -3401,6 +3424,153 @@ __rte_experimental
 int
 rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
+
+/**
+ * Specify shared action configuration
+ */
+struct rte_flow_shared_action_conf {
+	/**
+	 * Flow direction for shared action configuration.
+	 *
+	 * Shared action should be valid at least for one flow direction,
+	 * otherwise it is invalid for both ingress and egress rules.
+	 */
+	uint32_t ingress:1;
+	/**< Action valid for rules applied to ingress traffic. */
+	uint32_t egress:1;
+	/**< Action valid for rules applied to egress traffic. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create shared action for reuse in multiple flow rules.
+ * The created shared action has single state and configuration
+ * across all flow rules using it.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] conf
+ *   Shared action configuration.
+ * @param[in] action
+ *   Action configuration for shared action creation.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   A valid handle in case of success, NULL otherwise and rte_errno is set
+ *   to one of the error codes defined:
+ *   - (ENODEV) if *port_id* invalid.
+ *   - (ENOSYS) if underlying device does not support this functionality.
+ *   - (EIO) if underlying device is removed.
+ *   - (EINVAL) if *action* invalid.
+ *   - (ENOTSUP) if *action* valid but unsupported.
+ */
+__rte_experimental
+struct rte_flow_shared_action *
+rte_flow_shared_action_create(uint16_t port_id,
+			      const struct rte_flow_shared_action_conf *conf,
+			      const struct rte_flow_action *action,
+			      struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destroy the shared action by handle.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] action
+ *   Handle for the shared action to be destroyed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-ENOENT) if action pointed by *action* handle was not found.
+ *   - (-ETOOMANYREFS) if action pointed by *action* handle still used by one or
+ *     more rules
+ *   rte_errno is also set.
+ */
+__rte_experimental
+int
+rte_flow_shared_action_destroy(uint16_t port_id,
+			       struct rte_flow_shared_action *action,
+			       struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Update in-place the shared action configuration pointed by *action* handle
+ * with the configuration provided as *update* argument.
+ * The update of the shared action configuration effects all flow rules reusing
+ * the action via handle.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] action
+ *   Handle for the shared action to be updated.
+ * @param[in] update
+ *   Action specification used to modify the action pointed by handle.
+ *   *update* should be of same type with the action pointed by the *action*
+ *   handle argument, otherwise considered as invalid.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-EINVAL) if *update* invalid.
+ *   - (-ENOTSUP) if *update* valid but unsupported.
+ *   - (-ENOENT) if action pointed by *ctx* was not found.
+ *   rte_errno is also set.
+ */
+__rte_experimental
+int
+rte_flow_shared_action_update(uint16_t port_id,
+			      struct rte_flow_shared_action *action,
+			      const struct rte_flow_action *update,
+			      struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Query the shared action by handle.
+ *
+ * Retrieve action-specific data such as counters.
+ * Data is gathered by special action which may be present/referenced in
+ * more than one flow rule definition.
+ *
+ * \see RTE_FLOW_ACTION_TYPE_COUNT
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] action
+ *   Handle for the shared action to query.
+ * @param[in, out] data
+ *   Pointer to storage for the associated query data type.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_shared_action_query(uint16_t port_id,
+			     const struct rte_flow_shared_action *action,
+			     void *data,
+			     struct rte_flow_error *error);
 
 #ifdef __cplusplus
 }

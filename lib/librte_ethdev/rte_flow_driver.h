@@ -108,6 +108,29 @@ struct rte_flow_ops {
 		 void **context,
 		 uint32_t nb_contexts,
 		 struct rte_flow_error *err);
+	/** See rte_flow_shared_action_create() */
+	struct rte_flow_shared_action *(*shared_action_create)
+		(struct rte_eth_dev *dev,
+		 const struct rte_flow_shared_action_conf *conf,
+		 const struct rte_flow_action *action,
+		 struct rte_flow_error *error);
+	/** See rte_flow_shared_action_destroy() */
+	int (*shared_action_destroy)
+		(struct rte_eth_dev *dev,
+		 struct rte_flow_shared_action *shared_action,
+		 struct rte_flow_error *error);
+	/** See rte_flow_shared_action_update() */
+	int (*shared_action_update)
+		(struct rte_eth_dev *dev,
+		 struct rte_flow_shared_action *shared_action,
+		 const struct rte_flow_action *update,
+		 struct rte_flow_error *error);
+	/** See rte_flow_shared_action_query() */
+	int (*shared_action_query)
+		(struct rte_eth_dev *dev,
+		 const struct rte_flow_shared_action *shared_action,
+		 void *data,
+		 struct rte_flow_error *error);
 };
 
 /**
