@@ -361,6 +361,7 @@ do_eth_dev_ring_create(const char *name,
 	data->mac_addrs = &internals->address;
 	data->promiscuous = 1;
 	data->all_multicast = 1;
+	data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	eth_dev->dev_ops = &ops;
 	data->numa_node = numa_node;

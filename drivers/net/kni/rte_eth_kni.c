@@ -392,6 +392,7 @@ eth_kni_create(struct rte_vdev_device *vdev,
 	data->mac_addrs = &internals->eth_addr;
 	data->promiscuous = 1;
 	data->all_multicast = 1;
+	data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	rte_eth_random_addr(internals->eth_addr.addr_bytes);
 

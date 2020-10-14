@@ -256,6 +256,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 		return ret;
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	rte_eth_copy_pci_info(dev, pci_dev);
+	dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	/* Use dummy function until setup */
 	dev->rx_pkt_burst = &eth_ark_recv_pkts_noop;
@@ -383,6 +384,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 		eth_dev->rx_pkt_burst = ark->eth_dev->rx_pkt_burst;
 
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 		eth_dev->data->mac_addrs = rte_zmalloc(name,
 						RTE_ETHER_ADDR_LEN, 0);

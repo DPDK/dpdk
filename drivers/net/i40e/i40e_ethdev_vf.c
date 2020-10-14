@@ -1575,6 +1575,7 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 	}
 	i40e_set_default_ptype_table(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->device_id = pci_dev->id.device_id;

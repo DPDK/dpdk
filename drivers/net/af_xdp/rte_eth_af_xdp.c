@@ -1562,6 +1562,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	eth_dev->data->dev_private = internals;
 	eth_dev->data->dev_link = pmd_link;
 	eth_dev->data->mac_addrs = &internals->eth_addr;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	eth_dev->dev_ops = &ops;
 	eth_dev->rx_pkt_burst = eth_af_xdp_rx;
 	eth_dev->tx_pkt_burst = eth_af_xdp_tx;

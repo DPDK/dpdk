@@ -2217,6 +2217,7 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 
 	/* Copy PCI device info to the dev->data */
 	rte_eth_copy_pci_info(dev, pci_dev);
+	dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	rc = sfc_kvargs_parse(sa);
 	if (rc != 0)

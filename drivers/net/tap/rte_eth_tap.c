@@ -1922,7 +1922,8 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	/* Setup some default values */
 	data = dev->data;
 	data->dev_private = pmd;
-	data->dev_flags = RTE_ETH_DEV_INTR_LSC;
+	data->dev_flags = RTE_ETH_DEV_INTR_LSC |
+				RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	data->numa_node = numa_node;
 
 	data->dev_link = pmd_link;

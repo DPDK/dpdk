@@ -1158,6 +1158,7 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 	data->mac_addrs = &(*internals)->eth_addr;
 	data->promiscuous = 1;
 	data->all_multicast = 1;
+	data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	/*
 	 * NOTE: we'll replace the data element, of originally allocated

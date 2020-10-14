@@ -1539,6 +1539,7 @@ memif_create(struct rte_vdev_device *vdev, enum memif_role_t role,
 	data->dev_link = pmd_link;
 	data->mac_addrs = ether_addr;
 	data->promiscuous = 1;
+	data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	eth_dev->dev_ops = &ops;
 	eth_dev->device = &vdev->device;

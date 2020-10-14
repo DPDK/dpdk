@@ -1244,6 +1244,7 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 		return 0;
 
 	rte_eth_copy_pci_info(dev, pci_dev);
+	dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	hw->back = pci_dev;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;

@@ -2966,7 +2966,8 @@ ipn3ke_rpst_init(struct rte_eth_dev *ethdev, void *init_params)
 		return -ENODEV;
 	}
 
-	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
+					RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	rte_spinlock_lock(&ipn3ke_link_notify_list_lk);
 	TAILQ_INSERT_TAIL(&ipn3ke_rpst_list, rpst, next);

@@ -1802,6 +1802,11 @@ struct rte_eth_dev_owner {
 #define RTE_ETH_DEV_REPRESENTOR  0x0010
 /** Device does not support MAC change after started */
 #define RTE_ETH_DEV_NOLIVE_MAC_ADDR  0x0020
+/**
+ * Queue xstats filled automatically by ethdev layer.
+ * PMDs filling the queue xstats themselves should not set this flag
+ */
+#define RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS 0x0040
 
 /**
  * Iterates over valid ethdev ports owned by a specific owner.

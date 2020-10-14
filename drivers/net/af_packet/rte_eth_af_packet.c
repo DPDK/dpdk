@@ -860,6 +860,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	data->nb_tx_queues = (uint16_t)nb_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &(*internals)->eth_addr;
+	data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	(*eth_dev)->dev_ops = &ops;
 

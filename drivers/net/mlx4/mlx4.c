@@ -1035,6 +1035,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->data->mac_addrs = priv->mac;
 		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 		/* Initialize local interrupt handle for current port. */
 		memset(&priv->intr_handle, 0, sizeof(struct rte_intr_handle));
 		priv->intr_handle.fd = -1;

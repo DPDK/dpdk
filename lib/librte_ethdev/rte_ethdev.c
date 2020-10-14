@@ -2698,8 +2698,10 @@ get_xstats_basic_count(struct rte_eth_dev *dev)
 	nb_txqs = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
 	count = RTE_NB_STATS;
-	count += nb_rxqs * RTE_NB_RXQ_STATS;
-	count += nb_txqs * RTE_NB_TXQ_STATS;
+	if (dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS) {
+		count += nb_rxqs * RTE_NB_RXQ_STATS;
+		count += nb_txqs * RTE_NB_TXQ_STATS;
+	}
 
 	return count;
 }
@@ -2790,6 +2792,10 @@ rte_eth_basic_stats_get_names(struct rte_eth_dev *dev,
 			sizeof(xstats_names[0].name));
 		cnt_used_entries++;
 	}
+
+	if ((dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS) == 0)
+		return cnt_used_entries;
+
 	num_q = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	for (id_queue = 0; id_queue < num_q; id_queue++) {
 		for (idx = 0; idx < RTE_NB_RXQ_STATS; idx++) {
@@ -2988,6 +2994,9 @@ rte_eth_basic_stats_get(uint16_t port_id, struct rte_eth_xstat *xstats)
 		xstats[count++].value = val;
 	}
 
+	if ((dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS) == 0)
+		return count;
+
 	/* per-rxq stats */
 	for (q = 0; q < nb_rxqs; q++) {
 		for (i = 0; i < RTE_NB_RXQ_STATS; i++) {
@@ -3123,8 +3132,9 @@ rte_eth_xstats_get(uint16_t port_id, struct rte_eth_xstat *xstats,
 	nb_txqs = RTE_MIN(dev->data->nb_tx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
 	/* Return generic statistics */
-	count = RTE_NB_STATS + (nb_rxqs * RTE_NB_RXQ_STATS) +
-		(nb_txqs * RTE_NB_TXQ_STATS);
+	count = RTE_NB_STATS;
+	if (dev->data->dev_flags & RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS)
+		count += (nb_rxqs * RTE_NB_RXQ_STATS) + (nb_txqs * RTE_NB_TXQ_STATS);
 
 	/* implemented by the driver */
 	if (dev->dev_ops->xstats_get != NULL) {

@@ -3108,6 +3108,8 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+
 	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
 	memset(nic_dev, 0, sizeof(*nic_dev));
 

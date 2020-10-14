@@ -184,7 +184,8 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 	vf_rep_bp->rep_fc_r2f = rep_params->rep_fc_r2f;
 	vf_rep_bp->rep_fc_f2r = rep_params->rep_fc_f2r;
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
+					RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	eth_dev->data->representor_id = rep_params->vf_id;
 
 	rte_eth_random_addr(vf_rep_bp->dflt_mac_addr);

@@ -2992,6 +2992,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	if (!(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR))
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_NOLIVE_MAC_ADDR;
 
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+
 	PMD_INIT_LOG(INFO, "port %d VendorID=0x%x DeviceID=0x%x "
 		     "mac=%02x:%02x:%02x:%02x:%02x:%02x",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,

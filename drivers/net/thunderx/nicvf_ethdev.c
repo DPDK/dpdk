@@ -2155,6 +2155,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	nic->device_id = pci_dev->id.device_id;
 	nic->vendor_id = pci_dev->id.vendor_id;

@@ -2865,6 +2865,7 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	eth_dev->rx_pkt_burst = mrvl_rx_pkt_burst;
 	mrvl_set_tx_function(eth_dev);
 	eth_dev->dev_ops = &mrvl_ops;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
