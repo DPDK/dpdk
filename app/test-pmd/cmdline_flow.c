@@ -215,6 +215,9 @@ enum index {
 	ITEM_ARP_ETH_IPV4_TPA,
 	ITEM_IPV6_EXT,
 	ITEM_IPV6_EXT_NEXT_HDR,
+	ITEM_IPV6_FRAG_EXT,
+	ITEM_IPV6_FRAG_EXT_NEXT_HDR,
+	ITEM_IPV6_FRAG_EXT_FRAG_DATA,
 	ITEM_ICMP6,
 	ITEM_ICMP6_TYPE,
 	ITEM_ICMP6_CODE,
@@ -859,6 +862,7 @@ static const enum index next_item[] = {
 	ITEM_VXLAN_GPE,
 	ITEM_ARP_ETH_IPV4,
 	ITEM_IPV6_EXT,
+	ITEM_IPV6_FRAG_EXT,
 	ITEM_ICMP6,
 	ITEM_ICMP6_ND_NS,
 	ITEM_ICMP6_ND_NA,
@@ -1076,6 +1080,13 @@ static const enum index item_arp_eth_ipv4[] = {
 
 static const enum index item_ipv6_ext[] = {
 	ITEM_IPV6_EXT_NEXT_HDR,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ipv6_frag_ext[] = {
+	ITEM_IPV6_FRAG_EXT_NEXT_HDR,
+	ITEM_IPV6_FRAG_EXT_FRAG_DATA,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2737,6 +2748,30 @@ static const struct token token_list[] = {
 		.next = NEXT(item_ipv6_ext, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6_ext,
 					     next_hdr)),
+	},
+	[ITEM_IPV6_FRAG_EXT] = {
+		.name = "ipv6_frag_ext",
+		.help = "match presence of IPv6 fragment extension header",
+		.priv = PRIV_ITEM(IPV6_FRAG_EXT,
+				sizeof(struct rte_flow_item_ipv6_frag_ext)),
+		.next = NEXT(item_ipv6_frag_ext),
+		.call = parse_vc,
+	},
+	[ITEM_IPV6_FRAG_EXT_NEXT_HDR] = {
+		.name = "next_hdr",
+		.help = "next header",
+		.next = NEXT(item_ipv6_frag_ext, NEXT_ENTRY(UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ipv6_frag_ext,
+					hdr.next_header)),
+	},
+	[ITEM_IPV6_FRAG_EXT_FRAG_DATA] = {
+		.name = "frag_data",
+		.help = "Fragment flags and offset",
+		.next = NEXT(item_ipv6_frag_ext, NEXT_ENTRY(UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6_frag_ext,
+					     hdr.frag_data)),
 	},
 	[ITEM_ICMP6] = {
 		.name = "icmp6",
