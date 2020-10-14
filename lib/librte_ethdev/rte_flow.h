@@ -792,11 +792,30 @@ static const struct rte_flow_item_ipv4 rte_flow_item_ipv4_mask = {
  *
  * Matches an IPv6 header.
  *
- * Note: IPv6 options are handled by dedicated pattern items, see
- * RTE_FLOW_ITEM_TYPE_IPV6_EXT.
+ * Dedicated flags indicate if header contains specific extension headers.
  */
 struct rte_flow_item_ipv6 {
 	struct rte_ipv6_hdr hdr; /**< IPv6 header definition. */
+	uint32_t has_hop_ext:1;
+	/**< Header contains Hop-by-Hop Options extension header. */
+	uint32_t has_route_ext:1;
+	/**< Header contains Routing extension header. */
+	uint32_t has_frag_ext:1;
+	/**< Header contains Fragment extension header. */
+	uint32_t has_auth_ext:1;
+	/**< Header contains Authentication extension header. */
+	uint32_t has_esp_ext:1;
+	/**< Header contains Encapsulation Security Payload extension header. */
+	uint32_t has_dest_ext:1;
+	/**< Header contains Destination Options extension header. */
+	uint32_t has_mobil_ext:1;
+	/**< Header contains Mobility extension header. */
+	uint32_t has_hip_ext:1;
+	/**< Header contains Host Identity Protocol extension header. */
+	uint32_t has_shim6_ext:1;
+	/**< Header contains Shim6 Protocol extension header. */
+	uint32_t reserved:23;
+	/**< Reserved for future extension headers, must be zero. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_IPV6. */

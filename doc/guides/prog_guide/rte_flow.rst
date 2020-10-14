@@ -946,11 +946,25 @@ Item: ``IPV6``
 
 Matches an IPv6 header.
 
-Note: IPv6 options are handled by dedicated pattern items, see `Item:
-IPV6_EXT`_.
+Dedicated flags indicate if header contains specific extension headers.
+To match on packets containing a specific extension header, an application
+should match on the dedicated flag set to 1.
+To match on packets not containing a specific extension header, an application
+should match on the dedicated flag clear to 0.
+In case application doesn't care about the existence of a specific extension
+header, it should not specify the dedicated flag for matching.
 
 - ``hdr``: IPv6 header definition (``rte_ip.h``).
-- Default ``mask`` matches source and destination addresses only.
+- ``has_hop_ext``: header contains Hop-by-Hop Options extension header.
+- ``has_route_ext``: header contains Routing extension header.
+- ``has_frag_ext``: header contains Fragment extension header.
+- ``has_auth_ext``: header contains Authentication extension header.
+- ``has_esp_ext``: header contains Encapsulation Security Payload extension header.
+- ``has_dest_ext``: header contains Destination Options extension header.
+- ``has_mobil_ext``: header contains Mobility extension header.
+- ``has_hip_ext``: header contains Host Identity Protocol extension header.
+- ``has_shim6_ext``: header contains Shim6 Protocol extension header.
+- Default ``mask`` matches ``hdr`` source and destination addresses only.
 
 Item: ``ICMP``
 ^^^^^^^^^^^^^^

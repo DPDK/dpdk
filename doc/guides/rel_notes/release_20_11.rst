@@ -517,6 +517,12 @@ ABI Changes
 
   * ``ethdev`` internal functions are marked with ``__rte_internal`` tag.
 
+  * Added extensions' attributes to struct ``rte_flow_item_ipv6``.
+    A set of additional values added to struct, indicating the existence of
+    every defined extension header type.
+    Applications should use the new values for identification of existing
+    extensions in the packet header.
+
 * eventdev: Following structures are modified to support DLB/DLB2 PMDs
   and future extensions:
 
