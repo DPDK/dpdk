@@ -166,7 +166,7 @@ Forward packets through two network interfaces:
 .. code-block:: console
 
     $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
-        --vdev 'net_pcap0,iface=eth0' --vdev='net_pcap1;iface=eth1'
+        --vdev 'net_pcap0,iface=eth0' --vdev='net_pcap1,iface=eth1'
 
 Enable 2 tx queues on a network interface:
 
