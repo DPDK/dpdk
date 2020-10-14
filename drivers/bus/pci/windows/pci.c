@@ -49,17 +49,6 @@ rte_pci_unmap_device(struct rte_pci_device *dev __rte_unused)
 	 */
 }
 
-int
-pci_update_device(const struct rte_pci_addr *addr __rte_unused)
-{
-	/* This function is not implemented on Windows.
-	 * We really should short-circuit the call to these functions by
-	 * clearing the RTE_PCI_DRV_NEED_MAPPING flag
-	 * in the rte_pci_driver flags.
-	 */
-	return 0;
-}
-
 /* Read PCI config space. */
 int
 rte_pci_read_config(const struct rte_pci_device *dev __rte_unused,

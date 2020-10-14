@@ -67,19 +67,6 @@ void rte_pci_insert_device(struct rte_pci_device *exist_pci_dev,
 		struct rte_pci_device *new_pci_dev);
 
 /**
- * Update a pci device object by asking the kernel for the latest information.
- *
- * This function is private to EAL.
- *
- * @param addr
- *	The PCI Bus-Device-Function address to look for
- * @return
- *   - 0 on success.
- *   - negative on error.
- */
-int pci_update_device(const struct rte_pci_addr *addr);
-
-/**
  * A structure describing a PCI mapping.
  */
 struct pci_map {
