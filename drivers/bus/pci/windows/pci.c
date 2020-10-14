@@ -195,7 +195,7 @@ get_device_pci_address(HDEVINFO dev_info,
 		return -1;
 	}
 
-	addr->domain = bus_num >> 8;
+	addr->domain = (bus_num >> 8) & 0xffff;
 	addr->bus = bus_num & 0xff;
 	addr->devid = dev_and_func >> 16;
 	addr->function = dev_and_func & 0xffff;
