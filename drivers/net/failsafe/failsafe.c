@@ -229,7 +229,7 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 	if (failsafe_mac_from_arg) {
 		/*
 		 * If MAC address was provided as a parameter,
-		 * apply to all probed slaves.
+		 * apply to all probed subdevices.
 		 */
 		FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
 			ret = rte_eth_dev_default_mac_addr_set(PORT_ID(sdev),
@@ -254,8 +254,8 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		 * If no device has been probed and no ether_addr
 		 * has been provided on the command line, use a random
 		 * valid one.
-		 * It will be applied during future slave state syncs to
-		 * probed slaves.
+		 * It will be applied during future state syncs to
+		 * probed subdevices.
 		 */
 		if (i == priv->subs_tail)
 			rte_eth_random_addr(&mac->addr_bytes[0]);

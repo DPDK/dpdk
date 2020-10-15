@@ -149,7 +149,7 @@ struct fs_priv {
 	/*
 	 * Set of sub_devices.
 	 * subs[0] is the preferred device
-	 * any other is just another slave
+	 * any other is just another sub device
 	 */
 	struct sub_device *subs;  /* shared between processes */
 	uint8_t subs_head; /* if head == tail, no subs */
