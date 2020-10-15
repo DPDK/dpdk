@@ -99,8 +99,8 @@ load_loop_fn(__rte_unused void *arg)
 	uint64_t lcount = 0;
 	const unsigned int lcore = rte_lcore_id();
 
-	/* wait synchro for slaves */
-	if (lcore != rte_get_master_lcore())
+	/* wait synchro for workers */
+	if (lcore != rte_get_main_lcore())
 		while (rte_atomic32_read(&synchro) == 0)
 			;
 
@@ -134,12 +134,12 @@ test_rwlock_perf(void)
 
 	printf("\nRwlock Perf Test on %u cores...\n", rte_lcore_count());
 
-	/* clear synchro and start slaves */
+	/* clear synchro and start workers */
 	rte_atomic32_set(&synchro, 0);
-	if (rte_eal_mp_remote_launch(load_loop_fn, NULL, SKIP_MASTER) < 0)
+	if (rte_eal_mp_remote_launch(load_loop_fn, NULL, SKIP_MAIN) < 0)
 		return -1;
 
-	/* start synchro and launch test on master */
+	/* start synchro and launch test on main */
 	rte_atomic32_set(&synchro, 1);
 	load_loop_fn(NULL);
 
@@ -161,7 +161,7 @@ test_rwlock_perf(void)
  * - There is a global rwlock and a table of rwlocks (one per lcore).
  *
  * - The test function takes all of these locks and launches the
- *   ``test_rwlock_per_core()`` function on each core (except the master).
+ *   ``test_rwlock_per_core()`` function on each core (except the main).
  *
  *   - The function takes the global write lock, display something,
  *     then releases the global lock.
@@ -187,21 +187,21 @@ rwlock_test1(void)
 
 	rte_rwlock_write_lock(&sl);
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_rwlock_write_lock(&sl_tab[i]);
 		rte_eal_remote_launch(test_rwlock_per_core, NULL, i);
 	}
 
 	rte_rwlock_write_unlock(&sl);
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_rwlock_write_unlock(&sl_tab[i]);
 		rte_delay_ms(100);
 	}
 
 	rte_rwlock_write_lock(&sl);
 	/* this message should be the last message of test */
-	printf("Global write lock taken on master core %u\n", rte_lcore_id());
+	printf("Global write lock taken on main core %u\n", rte_lcore_id());
 	rte_rwlock_write_unlock(&sl);
 
 	rte_eal_mp_wait_lcore();
@@ -462,26 +462,26 @@ try_rwlock_test_rda(void)
 	try_test_reset();
 
 	/* start read test on all avaialble lcores */
-	rte_eal_mp_remote_launch(try_read_lcore, NULL, CALL_MASTER);
+	rte_eal_mp_remote_launch(try_read_lcore, NULL, CALL_MAIN);
 	rte_eal_mp_wait_lcore();
 
 	return process_try_lcore_stats();
 }
 
-/* all slave lcores grab RDLOCK, master one grabs WRLOCK */
+/* all worker lcores grab RDLOCK, main one grabs WRLOCK */
 static int
 try_rwlock_test_rds_wrm(void)
 {
 	try_test_reset();
 
-	rte_eal_mp_remote_launch(try_read_lcore, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(try_read_lcore, NULL, SKIP_MAIN);
 	try_write_lcore(NULL);
 	rte_eal_mp_wait_lcore();
 
 	return process_try_lcore_stats();
 }
 
-/* master and even slave lcores grab RDLOCK, odd lcores grab WRLOCK */
+/* main and even worker lcores grab RDLOCK, odd lcores grab WRLOCK */
 static int
 try_rwlock_test_rde_wro(void)
 {
@@ -489,7 +489,7 @@ try_rwlock_test_rde_wro(void)
 
 	try_test_reset();
 
-	mlc = rte_get_master_lcore();
+	mlc = rte_get_main_lcore();
 
 	RTE_LCORE_FOREACH(lc) {
 		if (lc != mlc) {

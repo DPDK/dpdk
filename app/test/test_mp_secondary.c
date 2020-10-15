@@ -94,7 +94,7 @@ run_secondary_instances(void)
 #endif
 
 	snprintf(coremask, sizeof(coremask), "%x", \
-			(1 << rte_get_master_lcore()));
+			(1 << rte_get_main_lcore()));
 
 	ret |= launch_proc(argv1);
 	printf("### Testing rte_mp_disable() reject:\n");

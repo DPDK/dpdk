@@ -75,15 +75,15 @@ order_opt_check(struct evt_options *opt)
 		return -1;
 	}
 
-	/* 1 producer + N workers + 1 master */
+	/* 1 producer + N workers + main */
 	if (rte_lcore_count() < 3) {
 		evt_err("test need minimum 3 lcores");
 		return -1;
 	}
 
 	/* Validate worker lcores */
-	if (evt_lcores_has_overlap(opt->wlcores, rte_get_master_lcore())) {
-		evt_err("worker lcores overlaps with master lcore");
+	if (evt_lcores_has_overlap(opt->wlcores, rte_get_main_lcore())) {
+		evt_err("worker lcores overlaps with main lcore");
 		return -1;
 	}
 
@@ -118,8 +118,8 @@ order_opt_check(struct evt_options *opt)
 	}
 
 	/* Validate producer lcore */
-	if (plcore == (int)rte_get_master_lcore()) {
-		evt_err("producer lcore and master lcore should be different");
+	if (plcore == (int)rte_get_main_lcore()) {
+		evt_err("producer lcore and main lcore should be different");
 		return -1;
 	}
 	if (!rte_lcore_is_enabled(plcore)) {
@@ -246,7 +246,7 @@ order_launch_lcores(struct evt_test *test, struct evt_options *opt,
 
 	int wkr_idx = 0;
 	/* launch workers */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (!(opt->wlcores[lcore_id]))
 			continue;
 

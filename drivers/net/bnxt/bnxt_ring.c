@@ -429,7 +429,7 @@ int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp)
 	if (!BNXT_HAS_NQ(bp) || bp->rxtx_nq_ring)
 		return 0;
 
-	socket_id = rte_lcore_to_socket_id(rte_get_master_lcore());
+	socket_id = rte_lcore_to_socket_id(rte_get_main_lcore());
 
 	nqr = rte_zmalloc_socket("nqr",
 				 sizeof(struct bnxt_cp_ring_info),
@@ -820,7 +820,7 @@ int bnxt_alloc_async_ring_struct(struct bnxt *bp)
 	if (BNXT_NUM_ASYNC_CPR(bp) == 0)
 		return 0;
 
-	socket_id = rte_lcore_to_socket_id(rte_get_master_lcore());
+	socket_id = rte_lcore_to_socket_id(rte_get_main_lcore());
 
 	cpr = rte_zmalloc_socket("cpr",
 				 sizeof(struct bnxt_cp_ring_info),

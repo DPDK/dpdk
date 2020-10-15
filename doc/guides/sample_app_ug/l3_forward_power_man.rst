@@ -441,7 +441,7 @@ The telemetry mode support for ``l3fwd-power`` is a standalone mode, in this mod
 ``l3fwd-power`` does simple l3fwding along with calculating empty polls, full polls,
 and busy percentage for each forwarding core. The aggregation of these
 values of all cores is reported as application level telemetry to metric
-library for every 500ms from the master core.
+library for every 500ms from the main core.
 
 The busy percentage is calculated by recording the poll_count
 and when the count reaches a defined value the total

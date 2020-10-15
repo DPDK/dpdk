@@ -132,7 +132,7 @@ run_test(const char *str, lcore_function_t f, struct test_data *data, size_t sz)
 
 	memset(data, 0, sz);
 	data->nb_workers = rte_lcore_count() - 1;
-	RTE_LCORE_FOREACH_SLAVE(id)
+	RTE_LCORE_FOREACH_WORKER(id)
 		rte_eal_remote_launch(f, &data->ldata[worker++], id);
 
 	wait_till_workers_are_ready(data);
@@ -140,7 +140,7 @@ run_test(const char *str, lcore_function_t f, struct test_data *data, size_t sz)
 	measure_perf(str, data);
 	signal_workers_to_finish(data);
 
-	RTE_LCORE_FOREACH_SLAVE(id)
+	RTE_LCORE_FOREACH_WORKER(id)
 		rte_eal_wait_lcore(id);
 }
 

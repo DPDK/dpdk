@@ -64,7 +64,7 @@ test_hash_multiwriter_worker(void *arg)
 
 	/*
 	 * Calculate offset for entries based on the position of the
-	 * logical core, from the master core (not counting not enabled cores)
+	 * logical core, from the main core (not counting not enabled cores)
 	 */
 	offset = pos_core * tbl_multiwriter_test_params.nb_tsx_insertion;
 
@@ -194,7 +194,7 @@ test_hash_multiwriter(void)
 
 	/* Fire all threads. */
 	rte_eal_mp_remote_launch(test_hash_multiwriter_worker,
-				 enabled_core_ids, CALL_MASTER);
+				 enabled_core_ids, CALL_MAIN);
 	rte_eal_mp_wait_lcore();
 
 	count = rte_hash_count(handle);

@@ -1044,7 +1044,7 @@ main(int argc, char **argv)
 	struct stats_lcore_params stats_lcore;
 	struct rte_ring *enc_to_dec_ring;
 	bool stats_thread_started = false;
-	unsigned int master_lcore_id = rte_get_master_lcore();
+	unsigned int main_lcore_id = rte_get_main_lcore();
 
 	rte_atomic16_init(&global_exit_flag);
 
@@ -1147,9 +1147,9 @@ main(int argc, char **argv)
 	stats_lcore.app_params = &app_params;
 	stats_lcore.lconf = lcore_conf;
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (lcore_conf[lcore_id].core_type != 0)
-			/* launch per-lcore processing loop on slave lcores */
+			/* launch per-lcore processing loop on worker lcores */
 			rte_eal_remote_launch(processing_loop,
 					&lcore_conf[lcore_id], lcore_id);
 		else if (!stats_thread_started) {
@@ -1161,15 +1161,15 @@ main(int argc, char **argv)
 	}
 
 	if (!stats_thread_started &&
-			lcore_conf[master_lcore_id].core_type != 0)
+			lcore_conf[main_lcore_id].core_type != 0)
 		rte_exit(EXIT_FAILURE,
 				"Not enough lcores to run the statistics printing loop!");
-	else if (lcore_conf[master_lcore_id].core_type != 0)
-		processing_loop(&lcore_conf[master_lcore_id]);
+	else if (lcore_conf[main_lcore_id].core_type != 0)
+		processing_loop(&lcore_conf[main_lcore_id]);
 	else if (!stats_thread_started)
 		stats_loop(&stats_lcore);
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		ret |= rte_eal_wait_lcore(lcore_id);
 	}
 

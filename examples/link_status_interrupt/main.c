@@ -255,8 +255,8 @@ lsi_main_loop(void)
 				/* if timer has reached its timeout */
 				if (unlikely(timer_tsc >= (uint64_t) timer_period)) {
 
-					/* do this only on master core */
-					if (lcore_id == rte_get_master_lcore()) {
+					/* do this only on main core */
+					if (lcore_id == rte_get_main_lcore()) {
 						print_stats();
 						/* reset the timer */
 						timer_tsc = 0;
@@ -725,8 +725,8 @@ main(int argc, char **argv)
 	check_all_ports_link_status(nb_ports, lsi_enabled_port_mask);
 
 	/* launch per-lcore init on every lcore */
-	rte_eal_mp_remote_launch(lsi_launch_one_lcore, NULL, CALL_MASTER);
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	rte_eal_mp_remote_launch(lsi_launch_one_lcore, NULL, CALL_MAIN);
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			return -1;
 	}

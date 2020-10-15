@@ -172,7 +172,7 @@ converts the received packets to events in the same manner as packets
 received on a polled Rx queue. The interrupt thread is affinitized to the same
 CPUs as the lcores of the Rx adapter service function, if the Rx adapter
 service function has not been mapped to any lcores, the interrupt thread
-is mapped to the master lcore.
+is mapped to the main lcore.
 
 Rx Callback for SW Rx Adapter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

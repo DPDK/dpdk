@@ -452,7 +452,7 @@ rte_power_empty_poll_stat_init(struct ep_params **eptr, uint8_t *freq_tlb,
 		if (get_freq_index(LOW) > total_avail_freqs[i])
 			return -1;
 
-		if (rte_get_master_lcore() != i) {
+		if (rte_get_main_lcore() != i) {
 			w->wrk_stats[i].lcore_id = i;
 			set_policy(&w->wrk_stats[i], policy);
 		}

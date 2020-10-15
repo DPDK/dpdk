@@ -862,13 +862,13 @@ test_distributor(void)
 					sizeof(worker_params.name));
 
 		rte_eal_mp_remote_launch(handle_work,
-				&worker_params, SKIP_MASTER);
+				&worker_params, SKIP_MAIN);
 		if (sanity_test(&worker_params, p) < 0)
 			goto err;
 		quit_workers(&worker_params, p);
 
 		rte_eal_mp_remote_launch(handle_work_with_free_mbufs,
-				&worker_params, SKIP_MASTER);
+				&worker_params, SKIP_MAIN);
 		if (sanity_test_with_mbuf_alloc(&worker_params, p) < 0)
 			goto err;
 		quit_workers(&worker_params, p);
@@ -876,7 +876,7 @@ test_distributor(void)
 		if (rte_lcore_count() > 2) {
 			rte_eal_mp_remote_launch(handle_work_for_shutdown_test,
 					&worker_params,
-					SKIP_MASTER);
+					SKIP_MAIN);
 			if (sanity_test_with_worker_shutdown(&worker_params,
 					p) < 0)
 				goto err;
@@ -884,14 +884,14 @@ test_distributor(void)
 
 			rte_eal_mp_remote_launch(handle_work_for_shutdown_test,
 					&worker_params,
-					SKIP_MASTER);
+					SKIP_MAIN);
 			if (test_flush_with_worker_shutdown(&worker_params,
 					p) < 0)
 				goto err;
 			quit_workers(&worker_params, p);
 
 			rte_eal_mp_remote_launch(handle_and_mark_work,
-					&worker_params, SKIP_MASTER);
+					&worker_params, SKIP_MAIN);
 			if (sanity_mark_test(&worker_params, p) < 0)
 				goto err;
 			quit_workers(&worker_params, p);

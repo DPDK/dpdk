@@ -257,7 +257,7 @@ int rte_dpaa_portal_init(void *arg)
 	BUS_INIT_FUNC_TRACE();
 
 	if ((size_t)arg == 1 || lcore == LCORE_ID_ANY)
-		lcore = rte_get_master_lcore();
+		lcore = rte_get_main_lcore();
 	else
 		if (lcore >= RTE_MAX_LCORE)
 			return -1;

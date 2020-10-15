@@ -71,7 +71,7 @@ Optional application parameters include:
     In this mode, the application shows a command line that can be used for obtaining statistics while
     scheduling is taking place (see interactive mode below for more information).
 
-*   --mst n: Master core index (the default value is 1).
+*   --mnc n: Main core index (the default value is 1).
 
 *   --rsz "A, B, C": Ring sizes:
 
@@ -329,7 +329,7 @@ Another example with 2 packet flow configurations using different ports but shar
 Note that independent cores for the packet flow configurations for each of the RX, WT and TX thread are also supported,
 providing flexibility to balance the work.
 
-The EAL coremask/corelist is constrained to contain the default mastercore 1 and the RX, WT and TX cores only.
+The EAL coremask/corelist is constrained to contain the default main core 1 and the RX, WT and TX cores only.
 
 Explanation
 -----------

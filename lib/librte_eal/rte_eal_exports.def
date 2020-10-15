@@ -58,7 +58,7 @@ EXPORTS
 	rte_eal_wait_lcore
 	rte_exit
 	rte_free
-	rte_get_master_lcore
+	rte_get_main_lcore
 	rte_get_next_lcore
 	rte_get_tsc_hz
 	rte_hexdump

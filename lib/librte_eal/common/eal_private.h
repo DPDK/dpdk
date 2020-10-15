@@ -20,8 +20,8 @@
  */
 struct lcore_config {
 	pthread_t thread_id;       /**< pthread identifier */
-	int pipe_master2slave[2];  /**< communication pipe with master */
-	int pipe_slave2master[2];  /**< communication pipe with master */
+	int pipe_main2worker[2];   /**< communication pipe with main */
+	int pipe_worker2main[2];   /**< communication pipe with main */
 
 	lcore_function_t * volatile f; /**< function to call */
 	void * volatile arg;       /**< argument of function */
@@ -42,7 +42,7 @@ extern struct lcore_config lcore_config[RTE_MAX_LCORE];
  * The global RTE configuration structure.
  */
 struct rte_config {
-	uint32_t master_lcore;       /**< Id of the master lcore */
+	uint32_t main_lcore;         /**< Id of the main lcore */
 	uint32_t lcore_count;        /**< Number of available logical cores. */
 	uint32_t numa_node_count;    /**< Number of detected NUMA nodes. */
 	uint32_t numa_nodes[RTE_MAX_NUMA_NODES]; /**< List of detected NUMA nodes. */

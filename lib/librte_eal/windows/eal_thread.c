@@ -17,34 +17,34 @@
 #include "eal_windows.h"
 
 /*
- * Send a message to a slave lcore identified by slave_id to call a
+ * Send a message to a worker lcore identified by worker_id to call a
  * function f with argument arg. Once the execution is done, the
  * remote lcore switch in FINISHED state.
  */
 int
-rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int slave_id)
+rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
 {
 	int n;
 	char c = 0;
-	int m2s = lcore_config[slave_id].pipe_master2slave[1];
-	int s2m = lcore_config[slave_id].pipe_slave2master[0];
+	int m2w = lcore_config[worker_id].pipe_main2worker[1];
+	int w2m = lcore_config[worker_id].pipe_worker2main[0];
 
-	if (lcore_config[slave_id].state != WAIT)
+	if (lcore_config[worker_id].state != WAIT)
 		return -EBUSY;
 
-	lcore_config[slave_id].f = f;
-	lcore_config[slave_id].arg = arg;
+	lcore_config[worker_id].f = f;
+	lcore_config[worker_id].arg = arg;
 
 	/* send message */
 	n = 0;
 	while (n == 0 || (n < 0 && errno == EINTR))
-		n = _write(m2s, &c, 1);
+		n = _write(m2w, &c, 1);
 	if (n < 0)
 		rte_panic("cannot write on configuration pipe\n");
 
 	/* wait ack */
 	do {
-		n = _read(s2m, &c, 1);
+		n = _read(w2m, &c, 1);
 	} while (n < 0 && errno == EINTR);
 
 	if (n <= 0)
@@ -61,21 +61,21 @@ eal_thread_loop(void *arg __rte_unused)
 	int n, ret;
 	unsigned int lcore_id;
 	pthread_t thread_id;
-	int m2s, s2m;
+	int m2w, w2m;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 
 	thread_id = pthread_self();
 
 	/* retrieve our lcore_id from the configuration structure */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (thread_id == lcore_config[lcore_id].thread_id)
 			break;
 	}
 	if (lcore_id == RTE_MAX_LCORE)
 		rte_panic("cannot retrieve lcore id\n");
 
-	m2s = lcore_config[lcore_id].pipe_master2slave[0];
-	s2m = lcore_config[lcore_id].pipe_slave2master[1];
+	m2w = lcore_config[lcore_id].pipe_main2worker[0];
+	w2m = lcore_config[lcore_id].pipe_worker2main[1];
 
 	__rte_thread_init(lcore_id, &lcore_config[lcore_id].cpuset);
 
@@ -88,7 +88,7 @@ eal_thread_loop(void *arg __rte_unused)
 
 		/* wait command */
 		do {
-			n = _read(m2s, &c, 1);
+			n = _read(m2w, &c, 1);
 		} while (n < 0 && errno == EINTR);
 
 		if (n <= 0)
@@ -99,7 +99,7 @@ eal_thread_loop(void *arg __rte_unused)
 		/* send ack */
 		n = 0;
 		while (n == 0 || (n < 0 && errno == EINTR))
-			n = _write(s2m, &c, 1);
+			n = _write(w2m, &c, 1);
 		if (n < 0)
 			rte_panic("cannot write on configuration pipe\n");
 

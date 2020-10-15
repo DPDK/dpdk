@@ -167,8 +167,8 @@ check_lcore_params(void)
 			return -1;
 		}
 
-		if (lcore == rte_get_master_lcore()) {
-			printf("Error: lcore %u is master lcore\n", lcore);
+		if (lcore == rte_get_main_lcore()) {
+			printf("Error: lcore %u is main lcore\n", lcore);
 			return -1;
 		}
 		socketid = rte_lcore_to_socket_id(lcore);
@@ -1091,16 +1091,16 @@ main(int argc, char **argv)
 			route_str, i);
 	}
 
-	/* Launch per-lcore init on every slave lcore */
-	rte_eal_mp_remote_launch(graph_main_loop, NULL, SKIP_MASTER);
+	/* Launch per-lcore init on every worker lcore */
+	rte_eal_mp_remote_launch(graph_main_loop, NULL, SKIP_MAIN);
 
-	/* Accumulate and print stats on master until exit */
+	/* Accumulate and print stats on main until exit */
 	if (rte_graph_has_stats_feature())
 		print_stats();
 
-	/* Wait for slave cores to exit */
+	/* Wait for worker cores to exit */
 	ret = 0;
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		ret = rte_eal_wait_lcore(lcore_id);
 		/* Destroy graph */
 		if (ret < 0 || rte_graph_destroy(

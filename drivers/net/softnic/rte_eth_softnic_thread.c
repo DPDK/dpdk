@@ -18,14 +18,14 @@
 #include "rte_eth_softnic_internals.h"
 
 /**
- * Master thread: data plane thread init
+ * Main thread: data plane thread init
  */
 void
 softnic_thread_free(struct pmd_internals *softnic)
 {
 	uint32_t i;
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		struct softnic_thread *t = &softnic->thread[i];
 
 		/* MSGQs */
@@ -78,7 +78,7 @@ softnic_thread_init(struct pmd_internals *softnic)
 			return -1;
 		}
 
-		/* Master thread records */
+		/* Main thread records */
 		t->msgq_req = msgq_req;
 		t->msgq_rsp = msgq_rsp;
 		t->service_id = UINT32_MAX;
@@ -99,7 +99,7 @@ softnic_thread_init(struct pmd_internals *softnic)
 static inline int
 thread_is_valid(struct pmd_internals *softnic, uint32_t thread_id)
 {
-	if (thread_id == rte_get_master_lcore())
+	if (thread_id == rte_get_main_lcore())
 		return 0; /* FALSE */
 
 	if (softnic->params.sc && rte_lcore_has_role(thread_id, ROLE_SERVICE))
@@ -209,7 +209,7 @@ pipeline_is_running(struct pipeline *p)
 }
 
 /**
- * Master thread & data plane threads: message passing
+ * Main thread & data plane threads: message passing
  */
 enum thread_req_type {
 	THREAD_REQ_PIPELINE_ENABLE = 0,
@@ -243,7 +243,7 @@ struct thread_msg_rsp {
 };
 
 /**
- * Master thread
+ * Main thread
  */
 static struct thread_msg_req *
 thread_msg_alloc(void)
@@ -587,7 +587,7 @@ thread_msg_handle(struct softnic_thread_data *t)
 }
 
 /**
- * Master thread & data plane threads: message passing
+ * Main thread & data plane threads: message passing
  */
 enum pipeline_req_type {
 	/* Port IN */
@@ -753,7 +753,7 @@ struct pipeline_msg_rsp {
 };
 
 /**
- * Master thread
+ * Main thread
  */
 static struct pipeline_msg_req *
 pipeline_msg_alloc(void)

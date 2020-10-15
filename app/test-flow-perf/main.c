@@ -1445,7 +1445,7 @@ main(int argc, char **argv)
 
 	if (enable_fwd) {
 		init_lcore_info();
-		rte_eal_mp_remote_launch(start_forwarding, NULL, CALL_MASTER);
+		rte_eal_mp_remote_launch(start_forwarding, NULL, CALL_MAIN);
 	}
 
 	RTE_ETH_FOREACH_DEV(port) {

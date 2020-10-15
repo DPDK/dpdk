@@ -1010,11 +1010,11 @@ test_malloc(void)
 	else printf("test_realloc() passed\n");
 
 	/*----------------------------*/
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(test_align_overlap_per_lcore, NULL, lcore_id);
 	}
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			ret = -1;
 	}
@@ -1025,11 +1025,11 @@ test_malloc(void)
 	else printf("test_align_overlap_per_lcore() passed\n");
 
 	/*----------------------------*/
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(test_reordered_free_per_lcore, NULL, lcore_id);
 	}
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			ret = -1;
 	}
@@ -1040,11 +1040,11 @@ test_malloc(void)
 	else printf("test_reordered_free_per_lcore() passed\n");
 
 	/*----------------------------*/
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(test_random_alloc_free, NULL, lcore_id);
 	}
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			ret = -1;
 	}

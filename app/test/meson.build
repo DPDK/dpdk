@@ -189,7 +189,7 @@ fast_tests = [
         ['cycles_autotest', true],
         ['debug_autotest', true],
         ['eal_flags_c_opt_autotest', false],
-        ['eal_flags_master_opt_autotest', false],
+        ['eal_flags_main_opt_autotest', false],
         ['eal_flags_n_opt_autotest', false],
         ['eal_flags_hpet_autotest', false],
         ['eal_flags_no_huge_autotest', false],

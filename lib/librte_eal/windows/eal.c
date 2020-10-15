@@ -355,8 +355,8 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	__rte_thread_init(config->master_lcore,
-		&lcore_config[config->master_lcore].cpuset);
+	__rte_thread_init(config->main_lcore,
+		&lcore_config[config->main_lcore].cpuset);
 
 	bscan = rte_bus_scan();
 	if (bscan < 0) {
@@ -365,16 +365,16 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 
 		/*
-		 * create communication pipes between master thread
+		 * create communication pipes between main thread
 		 * and children
 		 */
-		if (_pipe(lcore_config[i].pipe_master2slave,
+		if (_pipe(lcore_config[i].pipe_main2worker,
 			sizeof(char), _O_BINARY) < 0)
 			rte_panic("Cannot create pipe\n");
-		if (_pipe(lcore_config[i].pipe_slave2master,
+		if (_pipe(lcore_config[i].pipe_worker2main,
 			sizeof(char), _O_BINARY) < 0)
 			rte_panic("Cannot create pipe\n");
 
@@ -399,10 +399,10 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	/*
-	 * Launch a dummy function on all slave lcores, so that master lcore
+	 * Launch a dummy function on all worker lcores, so that main lcore
 	 * knows they are all ready when this function returns.
 	 */
-	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MAIN);
 	rte_eal_mp_wait_lcore();
 	return fctret;
 }

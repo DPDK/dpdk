@@ -385,7 +385,7 @@ The application enables multiple TX and RX queues when it is started.
 
 .. code-block:: console
 
-    testpmd -l 1,3,5 --master-lcore 1 --txq=2 –rxq=2 --nb-cores=2
+    testpmd -l 1,3,5 --main-lcore 1 --txq=2 –rxq=2 --nb-cores=2
 
 **TSS**
 

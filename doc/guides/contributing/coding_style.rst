@@ -362,7 +362,7 @@ For example:
 	typedef int (lcore_function_t)(void *);
 
 	/* launch a function of lcore_function_t type */
-	int rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned slave_id);
+	int rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned worker_id);
 
 
 C Indentation

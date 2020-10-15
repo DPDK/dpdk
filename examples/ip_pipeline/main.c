@@ -250,7 +250,7 @@ main(int argc, char **argv)
 	rte_eal_mp_remote_launch(
 		thread_main,
 		NULL,
-		SKIP_MASTER);
+		SKIP_MAIN);
 
 	/* Script */
 	if (app.script_name)

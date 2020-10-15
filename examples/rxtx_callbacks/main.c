@@ -302,7 +302,7 @@ main(int argc, char *argv[])
 		printf("\nWARNING: Too much enabled lcores - "
 			"App uses only 1 lcore\n");
 
-	/* call lcore_main on master core only */
+	/* call lcore_main on main core only */
 	lcore_main();
 	return 0;
 }

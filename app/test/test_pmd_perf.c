@@ -275,7 +275,7 @@ alloc_lcore(uint16_t socketid)
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		if (LCORE_AVAIL != lcore_conf[lcore_id].status ||
 		    lcore_conf[lcore_id].socketid != socketid ||
-		    lcore_id == rte_get_master_lcore())
+		    lcore_id == rte_get_main_lcore())
 			continue;
 		lcore_conf[lcore_id].status = LCORE_USED;
 		lcore_conf[lcore_id].nb_ports = 0;
@@ -661,7 +661,7 @@ exec_burst(uint32_t flags, int lcore)
 static int
 test_pmd_perf(void)
 {
-	uint16_t nb_ports, num, nb_lcores, slave_id = (uint16_t)-1;
+	uint16_t nb_ports, num, nb_lcores, worker_id = (uint16_t)-1;
 	uint16_t nb_rxd = MAX_TRAFFIC_BURST;
 	uint16_t nb_txd = MAX_TRAFFIC_BURST;
 	uint16_t portid;
@@ -699,13 +699,13 @@ test_pmd_perf(void)
 	RTE_ETH_FOREACH_DEV(portid) {
 		if (socketid == -1) {
 			socketid = rte_eth_dev_socket_id(portid);
-			slave_id = alloc_lcore(socketid);
-			if (slave_id == (uint16_t)-1) {
+			worker_id = alloc_lcore(socketid);
+			if (worker_id == (uint16_t)-1) {
 				printf("No avail lcore to run test\n");
 				return -1;
 			}
 			printf("Performance test runs on lcore %u socket %u\n",
-			       slave_id, socketid);
+			       worker_id, socketid);
 		}
 
 		if (socketid != rte_eth_dev_socket_id(portid)) {
@@ -762,8 +762,8 @@ test_pmd_perf(void)
 				 "rte_eth_promiscuous_enable: err=%s, port=%d\n",
 				 rte_strerror(-ret), portid);
 
-		lcore_conf[slave_id].portlist[num++] = portid;
-		lcore_conf[slave_id].nb_ports++;
+		lcore_conf[worker_id].portlist[num++] = portid;
+		lcore_conf[worker_id].nb_ports++;
 	}
 	check_all_ports_link_status(nb_ports, RTE_PORT_ALL);
 
@@ -788,13 +788,13 @@ test_pmd_perf(void)
 		if (NULL == do_measure)
 			do_measure = measure_rxtx;
 
-		rte_eal_remote_launch(main_loop, NULL, slave_id);
+		rte_eal_remote_launch(main_loop, NULL, worker_id);
 
-		if (rte_eal_wait_lcore(slave_id) < 0)
+		if (rte_eal_wait_lcore(worker_id) < 0)
 			return -1;
 	} else if (sc_flag == SC_BURST_POLL_FIRST ||
 		   sc_flag == SC_BURST_XMIT_FIRST)
-		if (exec_burst(sc_flag, slave_id) < 0)
+		if (exec_burst(sc_flag, worker_id) < 0)
 			return -1;
 
 	/* port tear down */

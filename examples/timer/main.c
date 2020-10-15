@@ -100,7 +100,7 @@ main(int argc, char **argv)
 	rte_timer_init(&timer0);
 	rte_timer_init(&timer1);
 
-	/* load timer0, every second, on master lcore, reloaded automatically */
+	/* load timer0, every second, on main lcore, reloaded automatically */
 	hz = rte_get_timer_hz();
 	lcore_id = rte_lcore_id();
 	rte_timer_reset(&timer0, hz, PERIODICAL, lcore_id, timer0_cb, NULL);
@@ -109,12 +109,12 @@ main(int argc, char **argv)
 	lcore_id = rte_get_next_lcore(lcore_id, 0, 1);
 	rte_timer_reset(&timer1, hz/3, SINGLE, lcore_id, timer1_cb, NULL);
 
-	/* call lcore_mainloop() on every slave lcore */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	/* call lcore_mainloop() on every worker lcore */
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(lcore_mainloop, NULL, lcore_id);
 	}
 
-	/* call it on master lcore too */
+	/* call it on main lcore too */
 	(void) lcore_mainloop(NULL);
 
 	return 0;

@@ -427,19 +427,19 @@ eal_dynmem_calc_num_pages_per_socket(
 			total_size -= default_size;
 		}
 #else
-		/* in 32-bit mode, allocate all of the memory only on master
+		/* in 32-bit mode, allocate all of the memory only on main
 		 * lcore socket
 		 */
 		total_size = internal_conf->memory;
 		for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_size != 0;
 				socket++) {
 			struct rte_config *cfg = rte_eal_get_configuration();
-			unsigned int master_lcore_socket;
+			unsigned int main_lcore_socket;
 
-			master_lcore_socket =
-				rte_lcore_to_socket_id(cfg->master_lcore);
+			main_lcore_socket =
+				rte_lcore_to_socket_id(cfg->main_lcore);
 
-			if (master_lcore_socket != socket)
+			if (main_lcore_socket != socket)
 				continue;
 
 			/* Update sizes */

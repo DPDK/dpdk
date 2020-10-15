@@ -190,7 +190,7 @@ static const char test_buf_shakespeare[] =
 	"	servitude: I will no longer endure it, though yet I\n"
 	"	know no wise remedy how to avoid it.\n"
 	"\n"
-	"ADAM	Yonder comes my master, your brother.\n"
+	"ADAM	Yonder comes my main, your brother.\n"
 	"\n"
 	"ORLANDO	Go apart, Adam, and thou shalt hear how he will\n";
 

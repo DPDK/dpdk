@@ -26,7 +26,7 @@
 #define launch_proc(ARGV) process_dup(ARGV, RTE_DIM(ARGV), __func__)
 
 struct test_info {
-	unsigned int mstr_lcore;
+	unsigned int main_lcore;
 	unsigned int mgr_lcore;
 	unsigned int sec_lcore;
 	uint32_t timer_data_id;
@@ -137,12 +137,12 @@ test_timer_secondary(void)
 		TEST_ASSERT_SUCCESS(ret, "Failed to allocate timer data "
 				    "instance");
 
-		unsigned int *mstr_lcorep = &test_info->mstr_lcore;
+		unsigned int *main_lcorep = &test_info->main_lcore;
 		unsigned int *mgr_lcorep = &test_info->mgr_lcore;
 		unsigned int *sec_lcorep = &test_info->sec_lcore;
 
-		*mstr_lcorep = rte_get_master_lcore();
-		*mgr_lcorep = rte_get_next_lcore(*mstr_lcorep, 1, 1);
+		*main_lcorep = rte_get_main_lcore();
+		*mgr_lcorep = rte_get_next_lcore(*main_lcorep, 1, 1);
 		*sec_lcorep = rte_get_next_lcore(*mgr_lcorep, 1, 1);
 
 		ret = rte_eal_remote_launch(timer_manage_loop,

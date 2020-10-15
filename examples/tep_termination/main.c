@@ -835,7 +835,7 @@ init_data_ll(void)
 {
 	int lcore;
 
-	RTE_LCORE_FOREACH_SLAVE(lcore) {
+	RTE_LCORE_FOREACH_WORKER(lcore) {
 		lcore_info[lcore].lcore_ll =
 			malloc(sizeof(struct lcore_ll_info));
 		if (lcore_info[lcore].lcore_ll == NULL) {
@@ -927,7 +927,7 @@ destroy_device(int vid)
 	rm_data_ll_entry(&ll_root_used, ll_main_dev_cur, ll_main_dev_last);
 
 	/* Set the dev_removal_flag on each lcore. */
-	RTE_LCORE_FOREACH_SLAVE(lcore) {
+	RTE_LCORE_FOREACH_WORKER(lcore) {
 		lcore_info[lcore].lcore_ll->dev_removal_flag =
 			REQUEST_DEV_REMOVAL;
 	}
@@ -938,7 +938,7 @@ destroy_device(int vid)
 	 * the device removed from the linked lists and that the devices
 	 * are no longer in use.
 	 */
-	RTE_LCORE_FOREACH_SLAVE(lcore) {
+	RTE_LCORE_FOREACH_WORKER(lcore) {
 		while (lcore_info[lcore].lcore_ll->dev_removal_flag
 			!= ACK_DEV_REMOVAL)
 			rte_pause();
@@ -998,7 +998,7 @@ new_device(int vid)
 	vdev->remove = 0;
 
 	/* Find a suitable lcore to add the device. */
-	RTE_LCORE_FOREACH_SLAVE(lcore) {
+	RTE_LCORE_FOREACH_WORKER(lcore) {
 		if (lcore_info[lcore].lcore_ll->device_num < device_num_min) {
 			device_num_min = lcore_info[lcore].lcore_ll->device_num;
 			core_add = lcore;
@@ -1204,7 +1204,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Launch all data cores. */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(switch_worker,
 			mbuf_pool, lcore_id);
 	}
@@ -1228,7 +1228,7 @@ main(int argc, char *argv[])
 			"failed to start vhost driver.\n");
 	}
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id)
+	RTE_LCORE_FOREACH_WORKER(lcore_id)
 		rte_eal_wait_lcore(lcore_id);
 
 	return 0;

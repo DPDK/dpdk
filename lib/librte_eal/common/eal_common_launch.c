@@ -21,55 +21,55 @@
  * Wait until a lcore finished its job.
  */
 int
-rte_eal_wait_lcore(unsigned slave_id)
+rte_eal_wait_lcore(unsigned worker_id)
 {
-	if (lcore_config[slave_id].state == WAIT)
+	if (lcore_config[worker_id].state == WAIT)
 		return 0;
 
-	while (lcore_config[slave_id].state != WAIT &&
-	       lcore_config[slave_id].state != FINISHED)
+	while (lcore_config[worker_id].state != WAIT &&
+	       lcore_config[worker_id].state != FINISHED)
 		rte_pause();
 
 	rte_rmb();
 
 	/* we are in finished state, go to wait state */
-	lcore_config[slave_id].state = WAIT;
-	return lcore_config[slave_id].ret;
+	lcore_config[worker_id].state = WAIT;
+	return lcore_config[worker_id].ret;
 }
 
 /*
- * Check that every SLAVE lcores are in WAIT state, then call
- * rte_eal_remote_launch() for all of them. If call_master is true
- * (set to CALL_MASTER), also call the function on the master lcore.
+ * Check that every WORKER lcores are in WAIT state, then call
+ * rte_eal_remote_launch() for all of them. If call_main is true
+ * (set to CALL_MAIN), also call the function on the main lcore.
  */
 int
 rte_eal_mp_remote_launch(int (*f)(void *), void *arg,
-			 enum rte_rmt_call_master_t call_master)
+			 enum rte_rmt_call_main_t call_main)
 {
 	int lcore_id;
-	int master = rte_get_master_lcore();
+	int main_lcore = rte_get_main_lcore();
 
 	/* check state of lcores */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (lcore_config[lcore_id].state != WAIT)
 			return -EBUSY;
 	}
 
 	/* send messages to cores */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(f, arg, lcore_id);
 	}
 
-	if (call_master == CALL_MASTER) {
-		lcore_config[master].ret = f(arg);
-		lcore_config[master].state = FINISHED;
+	if (call_main == CALL_MAIN) {
+		lcore_config[main_lcore].ret = f(arg);
+		lcore_config[main_lcore].state = FINISHED;
 	}
 
 	return 0;
 }
 
 /*
- * Return the state of the lcore identified by slave_id.
+ * Return the state of the lcore identified by worker_id.
  */
 enum rte_lcore_state_t
 rte_eal_get_lcore_state(unsigned lcore_id)
@@ -86,7 +86,7 @@ rte_eal_mp_wait_lcore(void)
 {
 	unsigned lcore_id;
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_wait_lcore(lcore_id);
 	}
 }

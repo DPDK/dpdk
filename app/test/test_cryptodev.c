@@ -717,7 +717,7 @@ testsuite_setup(void)
 		/* Identify the Worker Cores
 		 * Use 2 worker cores for the device args
 		 */
-		RTE_LCORE_FOREACH_SLAVE(i) {
+		RTE_LCORE_FOREACH_WORKER(i) {
 			if (worker_core_count > 1)
 				break;
 			snprintf(vdev_args, sizeof(vdev_args),

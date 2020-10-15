@@ -456,7 +456,7 @@ test_atomic(void)
 
 	printf("usual inc/dec/add/sub functions\n");
 
-	rte_eal_mp_remote_launch(test_atomic_usual, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(test_atomic_usual, NULL, SKIP_MAIN);
 	rte_atomic32_set(&synchro, 1);
 	rte_eal_mp_wait_lcore();
 	rte_atomic32_set(&synchro, 0);
@@ -482,7 +482,7 @@ test_atomic(void)
 	rte_atomic32_set(&a32, 0);
 	rte_atomic16_set(&a16, 0);
 	rte_atomic64_set(&count, 0);
-	rte_eal_mp_remote_launch(test_atomic_tas, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(test_atomic_tas, NULL, SKIP_MAIN);
 	rte_atomic32_set(&synchro, 1);
 	rte_eal_mp_wait_lcore();
 	rte_atomic32_set(&synchro, 0);
@@ -499,7 +499,7 @@ test_atomic(void)
 	rte_atomic16_set(&a16, 0);
 	rte_atomic64_set(&count, 0);
 	rte_eal_mp_remote_launch(test_atomic_addsub_and_return, NULL,
-				 SKIP_MASTER);
+				 SKIP_MAIN);
 	rte_atomic32_set(&synchro, 1);
 	rte_eal_mp_wait_lcore();
 	rte_atomic32_set(&synchro, 0);
@@ -510,8 +510,8 @@ test_atomic(void)
 	}
 
 	/*
-	 * Set a64, a32 and a16 with the same value of minus "number of slave
-	 * lcores", launch all slave lcores to atomically increase by one and
+	 * Set a64, a32 and a16 with the same value of minus "number of worker
+	 * lcores", launch all worker lcores to atomically increase by one and
 	 * test them respectively.
 	 * Each lcore should have only one chance to increase a64 by one and
 	 * then check if it is equal to 0, but there should be only one lcore
@@ -519,7 +519,7 @@ test_atomic(void)
 	 * Then a variable of "count", initialized to zero, is increased by
 	 * one if a64, a32 or a16 is 0 after being increased and tested
 	 * atomically.
-	 * We can check if "count" is finally equal to 3 to see if all slave
+	 * We can check if "count" is finally equal to 3 to see if all worker
 	 * lcores performed "atomic inc and test" right.
 	 */
 	printf("inc and test\n");
@@ -533,7 +533,7 @@ test_atomic(void)
 	rte_atomic64_set(&a64, (int64_t)(1 - (int64_t)rte_lcore_count()));
 	rte_atomic32_set(&a32, (int32_t)(1 - (int32_t)rte_lcore_count()));
 	rte_atomic16_set(&a16, (int16_t)(1 - (int16_t)rte_lcore_count()));
-	rte_eal_mp_remote_launch(test_atomic_inc_and_test, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(test_atomic_inc_and_test, NULL, SKIP_MAIN);
 	rte_atomic32_set(&synchro, 1);
 	rte_eal_mp_wait_lcore();
 	rte_atomic32_clear(&synchro);
@@ -544,7 +544,7 @@ test_atomic(void)
 	}
 
 	/*
-	 * Same as above, but this time we set the values to "number of slave
+	 * Same as above, but this time we set the values to "number of worker
 	 * lcores", and decrement instead of increment.
 	 */
 	printf("dec and test\n");
@@ -555,7 +555,7 @@ test_atomic(void)
 	rte_atomic64_set(&a64, (int64_t)(rte_lcore_count() - 1));
 	rte_atomic32_set(&a32, (int32_t)(rte_lcore_count() - 1));
 	rte_atomic16_set(&a16, (int16_t)(rte_lcore_count() - 1));
-	rte_eal_mp_remote_launch(test_atomic_dec_and_test, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(test_atomic_dec_and_test, NULL, SKIP_MAIN);
 	rte_atomic32_set(&synchro, 1);
 	rte_eal_mp_wait_lcore();
 	rte_atomic32_clear(&synchro);
@@ -569,10 +569,10 @@ test_atomic(void)
 	/*
 	 * This case tests the functionality of rte_atomic128_cmp_exchange
 	 * API. It calls rte_atomic128_cmp_exchange with four kinds of memory
-	 * models successively on each slave core. Once each 128-bit atomic
+	 * models successively on each worker core. Once each 128-bit atomic
 	 * compare and swap operation is successful, it updates the global
 	 * 128-bit counter by 2 for the first 64-bit and 1 for the second
-	 * 64-bit. Each slave core iterates this test N times.
+	 * 64-bit. Each worker core iterates this test N times.
 	 * At the end of test, verify whether the first 64-bits of the 128-bit
 	 * counter and the second 64bits is differ by the total iterations. If
 	 * it is, the test passes.
@@ -585,7 +585,7 @@ test_atomic(void)
 	count128.val[1] = 0;
 
 	rte_eal_mp_remote_launch(test_atomic128_cmp_exchange, NULL,
-				 SKIP_MASTER);
+				 SKIP_MAIN);
 	rte_atomic32_set(&synchro, 1);
 	rte_eal_mp_wait_lcore();
 	rte_atomic32_clear(&synchro);
@@ -619,7 +619,7 @@ test_atomic(void)
 	token64 = ((uint64_t)get_crc8(&t.u8[0], sizeof(token64) - 1) << 56)
 		| (t.u64 & 0x00ffffffffffffff);
 
-	rte_eal_mp_remote_launch(test_atomic_exchange, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(test_atomic_exchange, NULL, SKIP_MAIN);
 	rte_atomic32_set(&synchro, 1);
 	rte_eal_mp_wait_lcore();
 	rte_atomic32_clear(&synchro);

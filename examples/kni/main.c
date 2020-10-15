@@ -967,7 +967,7 @@ kni_alloc(uint16_t port_id)
 		conf.mbuf_size = MAX_PACKET_SZ;
 		/*
 		 * The first KNI device associated to a port
-		 * is the master, for multiple kernel thread
+		 * is the main, for multiple kernel thread
 		 * environment.
 		 */
 		if (i == 0) {
@@ -1120,8 +1120,8 @@ main(int argc, char** argv)
 			"Could not create link status thread!\n");
 
 	/* Launch per-lcore function on every lcore */
-	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MAIN);
+	RTE_LCORE_FOREACH_WORKER(i) {
 		if (rte_eal_wait_lcore(i) < 0)
 			return -1;
 	}

@@ -724,7 +724,7 @@ This is equivalent to the ``--coremask`` command-line option.
 
 .. note::
 
-   The master lcore is reserved for command line parsing only and cannot be masked on for packet forwarding.
+   The main lcore is reserved for command line parsing only and cannot be masked on for packet forwarding.
 
 set portmask
 ~~~~~~~~~~~~

@@ -232,7 +232,7 @@ The following selection demonstrates the launch of the test application to run o
     EAL: coremask set to 1
     EAL: Detected lcore 0 on socket 0
     ...
-    EAL: Master core 0 is ready (tid=1b2ad720)
+    EAL: Main core 0 is ready (tid=1b2ad720)
     RTE>>
 
 Applications
@@ -294,7 +294,7 @@ the logical core layout of the platform should be determined when selecting a co
     EAL: Virtual area found at 0x7f0a5c000000 (size = 0x200000)
     EAL: Requesting 1024 pages of size 2MB from socket 0
     EAL: Requesting 1024 pages of size 2MB from socket 1
-    EAL: Master core 0 is ready (tid=de25b700)
+    EAL: Main core 0 is ready (tid=de25b700)
     EAL: Core 1 is ready (tid=5b7fe700)
     EAL: Core 3 is ready (tid=5a7fc700)
     EAL: Core 2 is ready (tid=5affd700)

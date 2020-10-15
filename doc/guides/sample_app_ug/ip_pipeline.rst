@@ -122,7 +122,7 @@ is displayed and the application is terminated.
 Run-time
 ~~~~~~~~
 
-The master thread is creating and managing all the application objects based on CLI input.
+The main thread is creating and managing all the application objects based on CLI input.
 
 Each data plane thread runs one or several pipelines previously assigned to it in round-robin order. Each data plane thread
 executes two tasks in time-sharing mode:
@@ -130,7 +130,7 @@ executes two tasks in time-sharing mode:
 1. *Packet processing task*: Process bursts of input packets read from the pipeline input ports.
 
 2. *Message handling task*: Periodically, the data plane thread pauses the packet processing task and polls for request
-   messages send by the master thread. Examples: add/remove pipeline to/from current data plane thread, add/delete rules
+   messages send by the main thread. Examples: add/remove pipeline to/from current data plane thread, add/delete rules
    to/from given table of a specific pipeline owned by the current data plane thread, read statistics, etc.
 
 Examples

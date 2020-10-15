@@ -653,8 +653,8 @@ main(int argc, char *argv[])
 	}
 
 	/* call lcore_main() on every lcore */
-	rte_eal_mp_remote_launch(lcore_main, NULL, CALL_MASTER);
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	rte_eal_mp_remote_launch(lcore_main, NULL, CALL_MAIN);
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			return -1;
 	}

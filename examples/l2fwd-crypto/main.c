@@ -874,8 +874,8 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 				if (unlikely(timer_tsc >=
 						(uint64_t)timer_period)) {
 
-					/* do this only on master core */
-					if (lcore_id == rte_get_master_lcore()
+					/* do this only on main core */
+					if (lcore_id == rte_get_main_lcore()
 						&& options->refresh_period) {
 						print_stats();
 						timer_tsc = 0;
@@ -2799,8 +2799,8 @@ main(int argc, char **argv)
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, (void *)&options,
-			CALL_MASTER);
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+			CALL_MAIN);
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			return -1;
 	}

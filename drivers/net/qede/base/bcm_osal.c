@@ -143,7 +143,7 @@ void *osal_dma_alloc_coherent(struct ecore_dev *p_dev,
 	snprintf(mz_name, sizeof(mz_name), "%lx",
 					(unsigned long)rte_get_timer_cycles());
 	if (core_id == (unsigned int)LCORE_ID_ANY)
-		core_id = rte_get_master_lcore();
+		core_id = rte_get_main_lcore();
 	socket_id = rte_lcore_to_socket_id(core_id);
 	mz = rte_memzone_reserve_aligned(mz_name, size, socket_id,
 			RTE_MEMZONE_IOVA_CONTIG, RTE_CACHE_LINE_SIZE);
@@ -182,7 +182,7 @@ void *osal_dma_alloc_coherent_aligned(struct ecore_dev *p_dev,
 	snprintf(mz_name, sizeof(mz_name), "%lx",
 					(unsigned long)rte_get_timer_cycles());
 	if (core_id == (unsigned int)LCORE_ID_ANY)
-		core_id = rte_get_master_lcore();
+		core_id = rte_get_main_lcore();
 	socket_id = rte_lcore_to_socket_id(core_id);
 	mz = rte_memzone_reserve_aligned(mz_name, size, socket_id,
 			RTE_MEMZONE_IOVA_CONTIG, align);

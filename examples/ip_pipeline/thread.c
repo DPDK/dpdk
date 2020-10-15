@@ -32,7 +32,7 @@
 #endif
 
 /**
- * Master thead: data plane thread context
+ * Main thread: data plane thread context
  */
 struct thread {
 	struct rte_ring *msgq_req;
@@ -78,7 +78,7 @@ struct thread_data {
 static struct thread_data thread_data[RTE_MAX_LCORE];
 
 /**
- * Master thread: data plane thread init
+ * Main thread: data plane thread init
  */
 static void
 thread_free(void)
@@ -105,7 +105,7 @@ thread_init(void)
 {
 	uint32_t i;
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		char name[NAME_MAX];
 		struct rte_ring *msgq_req, *msgq_rsp;
 		struct thread *t = &thread[i];
@@ -137,7 +137,7 @@ thread_init(void)
 			return -1;
 		}
 
-		/* Master thread records */
+		/* Main thread records */
 		t->msgq_req = msgq_req;
 		t->msgq_rsp = msgq_rsp;
 		t->enabled = 1;
@@ -179,7 +179,7 @@ pipeline_is_running(struct pipeline *p)
 }
 
 /**
- * Master thread & data plane threads: message passing
+ * Main thread & data plane threads: message passing
  */
 enum thread_req_type {
 	THREAD_REQ_PIPELINE_ENABLE = 0,
@@ -213,7 +213,7 @@ struct thread_msg_rsp {
 };
 
 /**
- * Master thread
+ * Main thread
  */
 static struct thread_msg_req *
 thread_msg_alloc(void)
@@ -556,7 +556,7 @@ thread_msg_handle(struct thread_data *t)
 }
 
 /**
- * Master thread & data plane threads: message passing
+ * Main thread & data plane threads: message passing
  */
 enum pipeline_req_type {
 	/* Port IN */
@@ -730,7 +730,7 @@ struct pipeline_msg_rsp {
 };
 
 /**
- * Master thread
+ * Main thread
  */
 static struct pipeline_msg_req *
 pipeline_msg_alloc(void)

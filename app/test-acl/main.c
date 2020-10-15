@@ -1098,7 +1098,7 @@ main(int argc, char **argv)
 	if (config.trace_file != NULL)
 		tracef_init();
 
-	RTE_LCORE_FOREACH_SLAVE(lcore)
+	RTE_LCORE_FOREACH_WORKER(lcore)
 		 rte_eal_remote_launch(search_ip5tuples, NULL, lcore);
 
 	search_ip5tuples(NULL);

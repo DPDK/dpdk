@@ -396,7 +396,7 @@ main(int argc, char **argv)
 	}
 
 	int worker_idx = 0;
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (lcore_id >= MAX_NUM_CORE)
 			break;
 

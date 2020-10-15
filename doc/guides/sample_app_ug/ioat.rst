@@ -69,13 +69,13 @@ provided parameters. The app can use up to 2 lcores: one of them receives
 incoming traffic and makes a copy of each packet. The second lcore then
 updates MAC address and sends the copy. If one lcore per port is used,
 both operations are done sequentially. For each configuration an additional
-lcore is needed since the master lcore does not handle traffic but is
+lcore is needed since the main lcore does not handle traffic but is
 responsible for configuration, statistics printing and safe shutdown of
 all ports and devices.
 
 The application can use a maximum of 8 ports.
 
-To run the application in a Linux environment with 3 lcores (the master lcore,
+To run the application in a Linux environment with 3 lcores (the main lcore,
 plus two forwarding cores), a single port (port 0), software copying and MAC
 updating issue the command:
 
@@ -83,7 +83,7 @@ updating issue the command:
 
     $ ./build/ioatfwd -l 0-2 -n 2 -- -p 0x1 --mac-updating -c sw
 
-To run the application in a Linux environment with 2 lcores (the master lcore,
+To run the application in a Linux environment with 2 lcores (the main lcore,
 plus one forwarding core), 2 ports (ports 0 and 1), hardware copying and no MAC
 updating issue the command:
 
@@ -208,7 +208,7 @@ After that each port application assigns resources needed.
     cfg.nb_lcores = rte_lcore_count() - 1;
     if (cfg.nb_lcores < 1)
         rte_exit(EXIT_FAILURE,
-            "There should be at least one slave lcore.\n");
+            "There should be at least one worker lcore.\n");
 
     ret = 0;
 
@@ -310,9 +310,9 @@ If initialization is successful, memory for hardware device
 statistics is allocated.
 
 Finally ``main()`` function starts all packet handling lcores and starts
-printing stats in a loop on the master lcore. The application can be
-interrupted and closed using ``Ctrl-C``. The master lcore waits for
-all slave processes to finish, deallocates resources and exits.
+printing stats in a loop on the main lcore. The application can be
+interrupted and closed using ``Ctrl-C``. The main lcore waits for
+all worker lcores to finish, deallocates resources and exits.
 
 The processing lcores launching function are described below.
 

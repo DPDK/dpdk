@@ -438,7 +438,7 @@ evt_options_dump(struct evt_options *opt)
 	evt_dump("verbose_level", "%d", opt->verbose_level);
 	evt_dump("socket_id", "%d", opt->socket_id);
 	evt_dump("pool_sz", "%d", opt->pool_sz);
-	evt_dump("master lcore", "%d", rte_get_master_lcore());
+	evt_dump("main lcore", "%d", rte_get_main_lcore());
 	evt_dump("nb_pkts", "%"PRIu64, opt->nb_pkts);
 	evt_dump("nb_timers", "%"PRIu64, opt->nb_timers);
 	evt_dump_begin("available lcores");

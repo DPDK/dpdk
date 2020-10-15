@@ -58,7 +58,7 @@ do_recursive_call(void)
 #endif
 #endif
 			{ "test_missing_c_flag", no_action },
-			{ "test_master_lcore_flag", no_action },
+			{ "test_main_lcore_flag", no_action },
 			{ "test_invalid_n_flag", no_action },
 			{ "test_no_hpet_flag", no_action },
 			{ "test_whitelist_flag", no_action },

@@ -328,7 +328,7 @@ test_stack_multithreaded(uint32_t flags)
 
 	thread_test_args.s = s;
 
-	if (rte_eal_mp_remote_launch(stack_thread_push_pop, NULL, CALL_MASTER))
+	if (rte_eal_mp_remote_launch(stack_thread_push_pop, NULL, CALL_MAIN))
 		rte_panic("Failed to launch tests\n");
 
 	RTE_LCORE_FOREACH(lcore_id) {

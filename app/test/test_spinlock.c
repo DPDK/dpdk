@@ -28,7 +28,7 @@
  * - There is a global spinlock and a table of spinlocks (one per lcore).
  *
  * - The test function takes all of these locks and launches the
- *   ``test_spinlock_per_core()`` function on each core (except the master).
+ *   ``test_spinlock_per_core()`` function on each core (except the main).
  *
  *   - The function takes the global lock, display something, then releases
  *     the global lock.
@@ -109,8 +109,8 @@ load_loop_fn(void *func_param)
 	const int use_lock = *(int*)func_param;
 	const unsigned lcore = rte_lcore_id();
 
-	/* wait synchro for slaves */
-	if (lcore != rte_get_master_lcore())
+	/* wait synchro for workers */
+	if (lcore != rte_get_main_lcore())
 		while (rte_atomic32_read(&synchro) == 0);
 
 	begin = rte_get_timer_cycles();
@@ -149,11 +149,11 @@ test_spinlock_perf(void)
 
 	printf("\nTest with lock on %u cores...\n", rte_lcore_count());
 
-	/* Clear synchro and start slaves */
+	/* Clear synchro and start workers */
 	rte_atomic32_set(&synchro, 0);
-	rte_eal_mp_remote_launch(load_loop_fn, &lock, SKIP_MASTER);
+	rte_eal_mp_remote_launch(load_loop_fn, &lock, SKIP_MAIN);
 
-	/* start synchro and launch test on master */
+	/* start synchro and launch test on main */
 	rte_atomic32_set(&synchro, 1);
 	load_loop_fn(&lock);
 
@@ -200,8 +200,8 @@ test_spinlock(void)
 	int ret = 0;
 	int i;
 
-	/* slave cores should be waiting: print it */
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	/* worker cores should be waiting: print it */
+	RTE_LCORE_FOREACH_WORKER(i) {
 		printf("lcore %d state: %d\n", i,
 		       (int) rte_eal_get_lcore_state(i));
 	}
@@ -214,19 +214,19 @@ test_spinlock(void)
 
 	rte_spinlock_lock(&sl);
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_spinlock_lock(&sl_tab[i]);
 		rte_eal_remote_launch(test_spinlock_per_core, NULL, i);
 	}
 
-	/* slave cores should be busy: print it */
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	/* worker cores should be busy: print it */
+	RTE_LCORE_FOREACH_WORKER(i) {
 		printf("lcore %d state: %d\n", i,
 		       (int) rte_eal_get_lcore_state(i));
 	}
 	rte_spinlock_unlock(&sl);
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_spinlock_unlock(&sl_tab[i]);
 		rte_delay_ms(10);
 	}
@@ -245,7 +245,7 @@ test_spinlock(void)
 	} else
 		rte_spinlock_recursive_unlock(&slr);
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_eal_remote_launch(test_spinlock_recursive_per_core, NULL, i);
 	}
 	rte_spinlock_recursive_unlock(&slr);
@@ -253,12 +253,12 @@ test_spinlock(void)
 
 	/*
 	 * Test if it could return immediately from try-locking a locked object.
-	 * Here it will lock the spinlock object first, then launch all the slave
+	 * Here it will lock the spinlock object first, then launch all the worker
 	 * lcores to trylock the same spinlock object.
-	 * All the slave lcores should give up try-locking a locked object and
+	 * All the worker lcores should give up try-locking a locked object and
 	 * return immediately, and then increase the "count" initialized with zero
 	 * by one per times.
-	 * We can check if the "count" is finally equal to the number of all slave
+	 * We can check if the "count" is finally equal to the number of all worker
 	 * lcores to see if the behavior of try-locking a locked spinlock object
 	 * is correct.
 	 */
@@ -266,7 +266,7 @@ test_spinlock(void)
 		return -1;
 	}
 	count = 0;
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_eal_remote_launch(test_spinlock_try, NULL, i);
 	}
 	rte_eal_mp_wait_lcore();

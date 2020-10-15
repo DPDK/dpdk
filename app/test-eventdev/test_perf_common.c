@@ -254,7 +254,7 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 
 	int port_idx = 0;
 	/* launch workers */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (!(opt->wlcores[lcore_id]))
 			continue;
 
@@ -268,7 +268,7 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 	}
 
 	/* launch producers */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (!(opt->plcores[lcore_id]))
 			continue;
 
@@ -541,8 +541,8 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 {
 	unsigned int lcores;
 
-	/* N producer + N worker + 1 master when producer cores are used
-	 * Else N worker + 1 master when Rx adapter is used
+	/* N producer + N worker + main when producer cores are used
+	 * Else N worker + main when Rx adapter is used
 	 */
 	lcores = opt->prod_type == EVT_PROD_TYPE_SYNT ? 3 : 2;
 
@@ -552,8 +552,8 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 	}
 
 	/* Validate worker lcores */
-	if (evt_lcores_has_overlap(opt->wlcores, rte_get_master_lcore())) {
-		evt_err("worker lcores overlaps with master lcore");
+	if (evt_lcores_has_overlap(opt->wlcores, rte_get_main_lcore())) {
+		evt_err("worker lcores overlaps with main lcore");
 		return -1;
 	}
 	if (evt_lcores_has_overlap_multi(opt->wlcores, opt->plcores)) {
@@ -573,8 +573,8 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 			opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR) {
 		/* Validate producer lcores */
 		if (evt_lcores_has_overlap(opt->plcores,
-					rte_get_master_lcore())) {
-			evt_err("producer lcores overlaps with master lcore");
+					rte_get_main_lcore())) {
+			evt_err("producer lcores overlaps with main lcore");
 			return -1;
 		}
 		if (evt_has_disabled_lcore(opt->plcores)) {

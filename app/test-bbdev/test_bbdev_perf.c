@@ -3722,14 +3722,14 @@ bler_test(struct active_device *ad,
 
 	rte_atomic16_set(&op_params->sync, SYNC_WAIT);
 
-	/* Master core is set at first entry */
+	/* Main core is set at first entry */
 	t_params[0].dev_id = ad->dev_id;
 	t_params[0].lcore_id = rte_lcore_id();
 	t_params[0].op_params = op_params;
 	t_params[0].queue_id = ad->queue_ids[used_cores++];
 	t_params[0].iter_count = 0;
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (used_cores >= num_lcores)
 			break;
 
@@ -3746,7 +3746,7 @@ bler_test(struct active_device *ad,
 	rte_atomic16_set(&op_params->sync, SYNC_START);
 	ret = bler_function(&t_params[0]);
 
-	/* Master core is always used */
+	/* Main core is always used */
 	for (used_cores = 1; used_cores < num_lcores; used_cores++)
 		ret |= rte_eal_wait_lcore(t_params[used_cores].lcore_id);
 
@@ -3840,14 +3840,14 @@ throughput_test(struct active_device *ad,
 
 	rte_atomic16_set(&op_params->sync, SYNC_WAIT);
 
-	/* Master core is set at first entry */
+	/* Main core is set at first entry */
 	t_params[0].dev_id = ad->dev_id;
 	t_params[0].lcore_id = rte_lcore_id();
 	t_params[0].op_params = op_params;
 	t_params[0].queue_id = ad->queue_ids[used_cores++];
 	t_params[0].iter_count = 0;
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (used_cores >= num_lcores)
 			break;
 
@@ -3864,7 +3864,7 @@ throughput_test(struct active_device *ad,
 	rte_atomic16_set(&op_params->sync, SYNC_START);
 	ret = throughput_function(&t_params[0]);
 
-	/* Master core is always used */
+	/* Main core is always used */
 	for (used_cores = 1; used_cores < num_lcores; used_cores++)
 		ret |= rte_eal_wait_lcore(t_params[used_cores].lcore_id);
 
@@ -3888,7 +3888,7 @@ throughput_test(struct active_device *ad,
 	/* In interrupt TC we need to wait for the interrupt callback to deqeue
 	 * all pending operations. Skip waiting for queues which reported an
 	 * error using processing_status variable.
-	 * Wait for master lcore operations.
+	 * Wait for main lcore operations.
 	 */
 	tp = &t_params[0];
 	while ((rte_atomic16_read(&tp->nb_dequeued) <
@@ -3901,7 +3901,7 @@ throughput_test(struct active_device *ad,
 	tp->mbps /= TEST_REPETITIONS;
 	ret |= (int)rte_atomic16_read(&tp->processing_status);
 
-	/* Wait for slave lcores operations */
+	/* Wait for worker lcores operations */
 	for (used_cores = 1; used_cores < num_lcores; used_cores++) {
 		tp = &t_params[used_cores];
 

@@ -73,7 +73,7 @@ DPDK_21 {
 	rte_free;
 	rte_get_hpet_cycles;
 	rte_get_hpet_hz;
-	rte_get_master_lcore;
+	rte_get_main_lcore;
 	rte_get_next_lcore;
 	rte_get_tsc_hz;
 	rte_hexdump;

@@ -372,7 +372,7 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
 }
 
 /*
- * Parse the PTP FOLLOWUP message and send DELAY_REQ to the master clock.
+ * Parse the PTP FOLLOWUP message and send DELAY_REQ to the main clock.
  */
 static void
 parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
@@ -782,7 +782,7 @@ main(int argc, char *argv[])
 	if (rte_lcore_count() > 1)
 		printf("\nWARNING: Too many lcores enabled. Only 1 used.\n");
 
-	/* Call lcore_main on the master core only. */
+	/* Call lcore_main on the main core only. */
 	lcore_main();
 
 	return 0;

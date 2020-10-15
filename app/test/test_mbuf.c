@@ -72,7 +72,7 @@
 
 #ifdef RTE_MBUF_REFCNT_ATOMIC
 
-static volatile uint32_t refcnt_stop_slaves;
+static volatile uint32_t refcnt_stop_workers;
 static unsigned refcnt_lcore[RTE_MAX_LCORE];
 
 #endif
@@ -1000,7 +1000,7 @@ test_pktmbuf_free_segment(struct rte_mempool *pktmbuf_pool)
 #ifdef RTE_MBUF_REFCNT_ATOMIC
 
 static int
-test_refcnt_slave(void *arg)
+test_refcnt_worker(void *arg)
 {
 	unsigned lcore, free;
 	void *mp = 0;
@@ -1010,7 +1010,7 @@ test_refcnt_slave(void *arg)
 	printf("%s started at lcore %u\n", __func__, lcore);
 
 	free = 0;
-	while (refcnt_stop_slaves == 0) {
+	while (refcnt_stop_workers == 0) {
 		if (rte_ring_dequeue(refcnt_mbuf_ring, &mp) == 0) {
 			free++;
 			rte_pktmbuf_free(mp);
@@ -1038,7 +1038,7 @@ test_refcnt_iter(unsigned int lcore, unsigned int iter,
 	/* For each mbuf in the pool:
 	 * - allocate mbuf,
 	 * - increment it's reference up to N+1,
-	 * - enqueue it N times into the ring for slave cores to free.
+	 * - enqueue it N times into the ring for worker cores to free.
 	 */
 	for (i = 0, n = rte_mempool_avail_count(refcnt_pool);
 	    i != n && (m = rte_pktmbuf_alloc(refcnt_pool)) != NULL;
@@ -1062,7 +1062,7 @@ test_refcnt_iter(unsigned int lcore, unsigned int iter,
 		rte_panic("(lcore=%u, iter=%u): was able to allocate only "
 		          "%u from %u mbufs\n", lcore, iter, i, n);
 
-	/* wait till slave lcores  will consume all mbufs */
+	/* wait till worker lcores  will consume all mbufs */
 	while (!rte_ring_empty(refcnt_mbuf_ring))
 		;
 
@@ -1083,7 +1083,7 @@ test_refcnt_iter(unsigned int lcore, unsigned int iter,
 }
 
 static int
-test_refcnt_master(struct rte_mempool *refcnt_pool,
+test_refcnt_main(struct rte_mempool *refcnt_pool,
 		   struct rte_ring *refcnt_mbuf_ring)
 {
 	unsigned i, lcore;
@@ -1094,7 +1094,7 @@ test_refcnt_master(struct rte_mempool *refcnt_pool,
 	for (i = 0; i != REFCNT_MAX_ITER; i++)
 		test_refcnt_iter(lcore, i, refcnt_pool, refcnt_mbuf_ring);
 
-	refcnt_stop_slaves = 1;
+	refcnt_stop_workers = 1;
 	rte_wmb();
 
 	printf("%s finished at lcore %u\n", __func__, lcore);
@@ -1107,7 +1107,7 @@ static int
 test_refcnt_mbuf(void)
 {
 #ifdef RTE_MBUF_REFCNT_ATOMIC
-	unsigned int master, slave, tref;
+	unsigned int main_lcore, worker, tref;
 	int ret = -1;
 	struct rte_mempool *refcnt_pool = NULL;
 	struct rte_ring *refcnt_mbuf_ring = NULL;
@@ -1126,39 +1126,38 @@ test_refcnt_mbuf(void)
 					      SOCKET_ID_ANY);
 	if (refcnt_pool == NULL) {
 		printf("%s: cannot allocate " MAKE_STRING(refcnt_pool) "\n",
-		    __func__);
+		       __func__);
 		return -1;
 	}
 
 	refcnt_mbuf_ring = rte_ring_create("refcnt_mbuf_ring",
-			rte_align32pow2(REFCNT_RING_SIZE), SOCKET_ID_ANY,
-					RING_F_SP_ENQ);
+					   rte_align32pow2(REFCNT_RING_SIZE), SOCKET_ID_ANY,
+					   RING_F_SP_ENQ);
 	if (refcnt_mbuf_ring == NULL) {
 		printf("%s: cannot allocate " MAKE_STRING(refcnt_mbuf_ring)
-		    "\n", __func__);
+		       "\n", __func__);
 		goto err;
 	}
 
-	refcnt_stop_slaves = 0;
+	refcnt_stop_workers = 0;
 	memset(refcnt_lcore, 0, sizeof (refcnt_lcore));
 
-	rte_eal_mp_remote_launch(test_refcnt_slave, refcnt_mbuf_ring,
-				 SKIP_MASTER);
+	rte_eal_mp_remote_launch(test_refcnt_worker, refcnt_mbuf_ring, SKIP_MAIN);
 
-	test_refcnt_master(refcnt_pool, refcnt_mbuf_ring);
+	test_refcnt_main(refcnt_pool, refcnt_mbuf_ring);
 
 	rte_eal_mp_wait_lcore();
 
 	/* check that we porcessed all references */
 	tref = 0;
-	master = rte_get_master_lcore();
+	main_lcore = rte_get_main_lcore();
 
-	RTE_LCORE_FOREACH_SLAVE(slave)
-		tref += refcnt_lcore[slave];
+	RTE_LCORE_FOREACH_WORKER(worker)
+		tref += refcnt_lcore[worker];
 
-	if (tref != refcnt_lcore[master])
+	if (tref != refcnt_lcore[main_lcore])
 		rte_panic("referenced mbufs: %u, freed mbufs: %u\n",
-		          tref, refcnt_lcore[master]);
+			  tref, refcnt_lcore[main_lcore]);
 
 	rte_mempool_dump(stdout, refcnt_pool);
 	rte_ring_dump(stdout, refcnt_mbuf_ring);

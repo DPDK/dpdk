@@ -12,14 +12,14 @@ Overview
 
 The application uses at least three CPU cores:
 
-* RX core (maser core) receives traffic from the NIC ports and feeds Worker
+* RX core (main core) receives traffic from the NIC ports and feeds Worker
   cores with traffic through SW queues.
 
-* Worker core (slave core) basically do some light work on the packet.
+* Worker (worker core) basically do some light work on the packet.
   Currently it modifies the output port of the packet for configurations with
   more than one port enabled.
 
-* TX Core (slave core) receives traffic from Worker cores through software queues,
+* TX Core (worker core) receives traffic from Worker cores through software queues,
   inserts out-of-order packets into reorder buffer, extracts ordered packets
   from the reorder buffer and sends them to the NIC ports for transmission.
 
@@ -46,7 +46,7 @@ The application execution command line is:
     ./packet_ordering [EAL options] -- -p PORTMASK [--disable-reorder] [--insight-worker]
 
 The -c EAL CPU_COREMASK option has to contain at least 3 CPU cores.
-The first CPU core in the core mask is the master core and would be assigned to
+The first CPU core in the core mask is the main core and would be assigned to
 RX core, the last to TX core and the rest to Worker cores.
 
 The PORTMASK parameter must contain either 1 or even enabled port numbers.

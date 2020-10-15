@@ -64,7 +64,8 @@ The process should start successfully and display a command prompt as follows:
     EAL: Virtual area found at 0x7ff200000000 (size = 0x40000000)
     ...
 
-    EAL: Master core 0 is ready (tid=54e41820)
+    EAL: check module finished
+    EAL: Main core 0 is ready (tid=54e41820)
     EAL: Core 1 is ready (tid=53b32700)
 
     Starting core 1
@@ -90,7 +91,7 @@ At any stage, either process can be terminated using the quit command.
 
 .. code-block:: console
 
-   EAL: Master core 10 is ready (tid=b5f89820)           EAL: Master core 8 is ready (tid=864a3820)
+   EAL: Main core 10 is ready (tid=b5f89820)             EAL: Main core 8 is ready (tid=864a3820)
    EAL: Core 11 is ready (tid=84ffe700)                  EAL: Core 9 is ready (tid=85995700)
    Starting core 11                                      Starting core 9
    simple_mp > send hello_secondary                      simple_mp > core 9: Received 'hello_secondary'
@@ -271,7 +272,7 @@ In addition to the EAL parameters, the application- specific parameters are:
 
 .. note::
 
-    In the server process, a single thread, the master thread, that is, the lowest numbered lcore in the coremask/corelist, performs all packet I/O.
+    In the server process, a single thread, the main thread, that is, the lowest numbered lcore in the coremask/corelist, performs all packet I/O.
     If a coremask/corelist is specified with more than a single lcore bit set in it,
     an additional lcore will be used for a thread to periodically print packet count statistics.
 

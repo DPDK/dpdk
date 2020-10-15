@@ -6,7 +6,7 @@
 
 /**
  * Stress test for ring enqueue/dequeue operations.
- * Performs the following pattern on each slave worker:
+ * Performs the following pattern on each worker:
  * dequeue/read-write data from the dequeued objects/enqueue.
  * Serves as both functional and performance test of ring
  * enqueue/dequeue operations under high contention
@@ -348,8 +348,8 @@ test_mt1(int (*test)(void *))
 
 	memset(arg, 0, sizeof(arg));
 
-	/* launch on all slaves */
-	RTE_LCORE_FOREACH_SLAVE(lc) {
+	/* launch on all workers */
+	RTE_LCORE_FOREACH_WORKER(lc) {
 		arg[lc].rng = r;
 		arg[lc].stats = init_stat;
 		rte_eal_remote_launch(test, &arg[lc], lc);
@@ -365,12 +365,12 @@ test_mt1(int (*test)(void *))
 	wrk_cmd = WRK_CMD_STOP;
 	rte_smp_wmb();
 
-	/* wait for slaves and collect stats. */
+	/* wait for workers and collect stats. */
 	mc = rte_lcore_id();
 	arg[mc].stats = init_stat;
 
 	rc = 0;
-	RTE_LCORE_FOREACH_SLAVE(lc) {
+	RTE_LCORE_FOREACH_WORKER(lc) {
 		rc |= rte_eal_wait_lcore(lc);
 		lcore_stat_aggr(&arg[mc].stats, &arg[lc].stats);
 		if (verbose != 0)

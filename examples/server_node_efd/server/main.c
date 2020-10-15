@@ -95,7 +95,7 @@ get_printable_mac_addr(uint16_t port)
 /*
  * This function displays the recorded statistics for each port
  * and for each node. It uses ANSI terminal codes to clear
- * screen when called. It is called from a single non-master
+ * screen when called. It is called from a single worker
  * thread in the server process, when the process is run with more
  * than one lcore enabled.
  */
@@ -168,7 +168,7 @@ do_stats_display(void)
 }
 
 /*
- * The function called from each non-master lcore used by the process.
+ * The function called from each non-main lcore used by the process.
  * The test_and_set function is used to randomly pick a single lcore on which
  * the code to display the statistics will run. Otherwise, the code just
  * repeatedly sleeps.
@@ -290,7 +290,7 @@ process_packets(uint32_t port_num __rte_unused, struct rte_mbuf *pkts[],
 }
 
 /*
- * Function called by the master lcore of the DPDK process.
+ * Function called by the main lcore of the DPDK process.
  */
 static void
 do_packet_forwarding(void)
@@ -330,8 +330,8 @@ main(int argc, char *argv[])
 	/* clear statistics */
 	clear_stats();
 
-	/* put all other cores to sleep bar master */
-	rte_eal_mp_remote_launch(sleep_lcore, NULL, SKIP_MASTER);
+	/* put all other cores to sleep except main */
+	rte_eal_mp_remote_launch(sleep_lcore, NULL, SKIP_MAIN);
 
 	do_packet_forwarding();
 	return 0;

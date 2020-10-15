@@ -94,7 +94,7 @@ device gets linked to a corresponding ethernet port as whitelisted by
 the parameter -w.
 3 cores are allocated to the application, and assigned as:
 
- - core 3 is the master and used to print the stats live on screen,
+ - core 3 is the main and used to print the stats live on screen,
 
  - core 4 is the encoding lcore performing Rx and Turbo Encode operations
 

@@ -37,7 +37,7 @@
  *    - All cores then simultaneously are set to schedule all the timers at
  *      the same time, so conflicts should occur.
  *    - Then there is a delay while we wait for the timers to expire
- *    - Then the master lcore calls timer_manage() and we check that all
+ *    - Then the main lcore calls timer_manage() and we check that all
  *      timers have had their callbacks called exactly once - no more no less.
  *    - Then we repeat the process, except after setting up the timers, we have
  *      all cores randomly reschedule them.
@@ -58,7 +58,7 @@
  *
  *    - timer0
  *
- *      - At initialization, timer0 is loaded by the master core, on master core
+ *      - At initialization, timer0 is loaded by the main core, on main core
  *        in "single" mode (time = 1 second).
  *      - In the first 19 callbacks, timer0 is reloaded on the same core,
  *        then, it is explicitly stopped at the 20th call.
@@ -66,21 +66,21 @@
  *
  *    - timer1
  *
- *      - At initialization, timer1 is loaded by the master core, on the
- *        master core in "single" mode (time = 2 seconds).
+ *      - At initialization, timer1 is loaded by the main core, on the
+ *        main core in "single" mode (time = 2 seconds).
  *      - In the first 9 callbacks, timer1 is reloaded on another
  *        core. After the 10th callback, timer1 is not reloaded anymore.
  *
  *    - timer2
  *
- *      - At initialization, timer2 is loaded by the master core, on the
- *        master core in "periodical" mode (time = 1 second).
+ *      - At initialization, timer2 is loaded by the main core, on the
+ *        main core in "periodical" mode (time = 1 second).
  *      - In the callback, when t=25s, it stops timer3 and reloads timer0
  *        on the current core.
  *
  *    - timer3
  *
- *      - At initialization, timer3 is loaded by the master core, on
+ *      - At initialization, timer3 is loaded by the main core, on
  *        another core in "periodical" mode (time = 1 second).
  *      - It is stopped at t=25s by timer2.
  */
@@ -201,68 +201,69 @@ timer_stress_main_loop(__rte_unused void *arg)
 	return 0;
 }
 
-/* Need to synchronize slave lcores through multiple steps. */
-enum { SLAVE_WAITING = 1, SLAVE_RUN_SIGNAL, SLAVE_RUNNING, SLAVE_FINISHED };
-static rte_atomic16_t slave_state[RTE_MAX_LCORE];
+/* Need to synchronize worker lcores through multiple steps. */
+enum { WORKER_WAITING = 1, WORKER_RUN_SIGNAL, WORKER_RUNNING, WORKER_FINISHED };
+static rte_atomic16_t lcore_state[RTE_MAX_LCORE];
 
 static void
-master_init_slaves(void)
+main_init_workers(void)
 {
 	unsigned i;
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
-		rte_atomic16_set(&slave_state[i], SLAVE_WAITING);
+	RTE_LCORE_FOREACH_WORKER(i) {
+		rte_atomic16_set(&lcore_state[i], WORKER_WAITING);
 	}
 }
 
 static void
-master_start_slaves(void)
+main_start_workers(void)
 {
 	unsigned i;
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
-		rte_atomic16_set(&slave_state[i], SLAVE_RUN_SIGNAL);
+	RTE_LCORE_FOREACH_WORKER(i) {
+		rte_atomic16_set(&lcore_state[i], WORKER_RUN_SIGNAL);
 	}
-	RTE_LCORE_FOREACH_SLAVE(i) {
-		while (rte_atomic16_read(&slave_state[i]) != SLAVE_RUNNING)
+	RTE_LCORE_FOREACH_WORKER(i) {
+		while (rte_atomic16_read(&lcore_state[i]) != WORKER_RUNNING)
 			rte_pause();
 	}
 }
 
 static void
-master_wait_for_slaves(void)
+main_wait_for_workers(void)
 {
 	unsigned i;
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
-		while (rte_atomic16_read(&slave_state[i]) != SLAVE_FINISHED)
+	RTE_LCORE_FOREACH_WORKER(i) {
+		while (rte_atomic16_read(&lcore_state[i]) != WORKER_FINISHED)
 			rte_pause();
 	}
 }
 
 static void
-slave_wait_to_start(void)
+worker_wait_to_start(void)
 {
 	unsigned lcore_id = rte_lcore_id();
 
-	while (rte_atomic16_read(&slave_state[lcore_id]) != SLAVE_RUN_SIGNAL)
+	while (rte_atomic16_read(&lcore_state[lcore_id]) != WORKER_RUN_SIGNAL)
 		rte_pause();
-	rte_atomic16_set(&slave_state[lcore_id], SLAVE_RUNNING);
+	rte_atomic16_set(&lcore_state[lcore_id], WORKER_RUNNING);
 }
 
 static void
-slave_finish(void)
+worker_finish(void)
 {
 	unsigned lcore_id = rte_lcore_id();
 
-	rte_atomic16_set(&slave_state[lcore_id], SLAVE_FINISHED);
+	rte_atomic16_set(&lcore_state[lcore_id], WORKER_FINISHED);
 }
 
 
 static volatile int cb_count = 0;
 
 /* callback for second stress test. will only be called
- * on master lcore */
+ * on main lcore
+ */
 static void
 timer_stress2_cb(struct rte_timer *tim __rte_unused, void *arg __rte_unused)
 {
@@ -277,36 +278,36 @@ timer_stress2_main_loop(__rte_unused void *arg)
 	static struct rte_timer *timers;
 	int i, ret;
 	uint64_t delay = rte_get_timer_hz() / 20;
-	unsigned lcore_id = rte_lcore_id();
-	unsigned master = rte_get_master_lcore();
+	unsigned int lcore_id = rte_lcore_id();
+	unsigned int main_lcore = rte_get_main_lcore();
 	int32_t my_collisions = 0;
 	static rte_atomic32_t collisions;
 
-	if (lcore_id == master) {
+	if (lcore_id == main_lcore) {
 		cb_count = 0;
 		test_failed = 0;
 		rte_atomic32_set(&collisions, 0);
-		master_init_slaves();
+		main_init_workers();
 		timers = rte_malloc(NULL, sizeof(*timers) * NB_STRESS2_TIMERS, 0);
 		if (timers == NULL) {
 			printf("Test Failed\n");
 			printf("- Cannot allocate memory for timers\n" );
 			test_failed = 1;
-			master_start_slaves();
+			main_start_workers();
 			goto cleanup;
 		}
 		for (i = 0; i < NB_STRESS2_TIMERS; i++)
 			rte_timer_init(&timers[i]);
-		master_start_slaves();
+		main_start_workers();
 	} else {
-		slave_wait_to_start();
+		worker_wait_to_start();
 		if (test_failed)
 			goto cleanup;
 	}
 
-	/* have all cores schedule all timers on master lcore */
+	/* have all cores schedule all timers on main lcore */
 	for (i = 0; i < NB_STRESS2_TIMERS; i++) {
-		ret = rte_timer_reset(&timers[i], delay, SINGLE, master,
+		ret = rte_timer_reset(&timers[i], delay, SINGLE, main_lcore,
 				timer_stress2_cb, NULL);
 		/* there will be collisions when multiple cores simultaneously
 		 * configure the same timers */
@@ -320,14 +321,14 @@ timer_stress2_main_loop(__rte_unused void *arg)
 	rte_delay_ms(100);
 
 	/* all cores rendezvous */
-	if (lcore_id == master) {
-		master_wait_for_slaves();
+	if (lcore_id == main_lcore) {
+		main_wait_for_workers();
 	} else {
-		slave_finish();
+		worker_finish();
 	}
 
 	/* now check that we get the right number of callbacks */
-	if (lcore_id == master) {
+	if (lcore_id == main_lcore) {
 		my_collisions = rte_atomic32_read(&collisions);
 		if (my_collisions != 0)
 			printf("- %d timer reset collisions (OK)\n", my_collisions);
@@ -338,23 +339,23 @@ timer_stress2_main_loop(__rte_unused void *arg)
 			printf("- Expected %d callbacks, got %d\n", NB_STRESS2_TIMERS,
 					cb_count);
 			test_failed = 1;
-			master_start_slaves();
+			main_start_workers();
 			goto cleanup;
 		}
 		cb_count = 0;
 
 		/* proceed */
-		master_start_slaves();
+		main_start_workers();
 	} else {
 		/* proceed */
-		slave_wait_to_start();
+		worker_wait_to_start();
 		if (test_failed)
 			goto cleanup;
 	}
 
 	/* now test again, just stop and restart timers at random after init*/
 	for (i = 0; i < NB_STRESS2_TIMERS; i++)
-		rte_timer_reset(&timers[i], delay, SINGLE, master,
+		rte_timer_reset(&timers[i], delay, SINGLE, main_lcore,
 				timer_stress2_cb, NULL);
 
 	/* pick random timer to reset, stopping them first half the time */
@@ -362,7 +363,7 @@ timer_stress2_main_loop(__rte_unused void *arg)
 		int r = rand() % NB_STRESS2_TIMERS;
 		if (i % 2)
 			rte_timer_stop(&timers[r]);
-		rte_timer_reset(&timers[r], delay, SINGLE, master,
+		rte_timer_reset(&timers[r], delay, SINGLE, main_lcore,
 				timer_stress2_cb, NULL);
 	}
 
@@ -370,8 +371,8 @@ timer_stress2_main_loop(__rte_unused void *arg)
 	rte_delay_ms(100);
 
 	/* now check that we get the right number of callbacks */
-	if (lcore_id == master) {
-		master_wait_for_slaves();
+	if (lcore_id == main_lcore) {
+		main_wait_for_workers();
 
 		rte_timer_manage();
 		if (cb_count != NB_STRESS2_TIMERS) {
@@ -386,14 +387,14 @@ timer_stress2_main_loop(__rte_unused void *arg)
 	}
 
 cleanup:
-	if (lcore_id == master) {
-		master_wait_for_slaves();
+	if (lcore_id == main_lcore) {
+		main_wait_for_workers();
 		if (timers != NULL) {
 			rte_free(timers);
 			timers = NULL;
 		}
 	} else {
-		slave_finish();
+		worker_finish();
 	}
 
 	return 0;
@@ -465,7 +466,7 @@ timer_basic_main_loop(__rte_unused void *arg)
 	int64_t diff = 0;
 
 	/* launch all timers on core 0 */
-	if (lcore_id == rte_get_master_lcore()) {
+	if (lcore_id == rte_get_main_lcore()) {
 		mytimer_reset(&mytiminfo[0], hz/4, SINGLE, lcore_id,
 			      timer_basic_cb);
 		mytimer_reset(&mytiminfo[1], hz/2, SINGLE, lcore_id,
@@ -563,7 +564,7 @@ test_timer(void)
 
 	/* start other cores */
 	printf("Start timer stress tests\n");
-	rte_eal_mp_remote_launch(timer_stress_main_loop, NULL, CALL_MASTER);
+	rte_eal_mp_remote_launch(timer_stress_main_loop, NULL, CALL_MAIN);
 	rte_eal_mp_wait_lcore();
 
 	/* stop timer 0 used for stress test */
@@ -572,7 +573,7 @@ test_timer(void)
 	/* run a second, slightly different set of stress tests */
 	printf("\nStart timer stress tests 2\n");
 	test_failed = 0;
-	rte_eal_mp_remote_launch(timer_stress2_main_loop, NULL, CALL_MASTER);
+	rte_eal_mp_remote_launch(timer_stress2_main_loop, NULL, CALL_MAIN);
 	rte_eal_mp_wait_lcore();
 	if (test_failed)
 		return TEST_FAILED;
@@ -584,7 +585,7 @@ test_timer(void)
 
 	/* start other cores */
 	printf("\nStart timer basic tests\n");
-	rte_eal_mp_remote_launch(timer_basic_main_loop, NULL, CALL_MASTER);
+	rte_eal_mp_remote_launch(timer_basic_main_loop, NULL, CALL_MAIN);
 	rte_eal_mp_wait_lcore();
 
 	/* stop all timers */

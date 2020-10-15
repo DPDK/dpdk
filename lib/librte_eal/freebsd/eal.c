@@ -625,10 +625,10 @@ eal_check_mem_on_local_socket(void)
 	int socket_id;
 	const struct rte_config *config = rte_eal_get_configuration();
 
-	socket_id = rte_lcore_to_socket_id(config->master_lcore);
+	socket_id = rte_lcore_to_socket_id(config->main_lcore);
 
 	if (rte_memseg_list_walk(check_socket, &socket_id) == 0)
-		RTE_LOG(WARNING, EAL, "WARNING: Master core has no memory on local socket!\n");
+		RTE_LOG(WARNING, EAL, "WARNING: Main core has no memory on local socket!\n");
 }
 
 
@@ -851,29 +851,29 @@ rte_eal_init(int argc, char **argv)
 	eal_check_mem_on_local_socket();
 
 	if (pthread_setaffinity_np(pthread_self(), sizeof(rte_cpuset_t),
-			&lcore_config[config->master_lcore].cpuset) != 0) {
+			&lcore_config[config->main_lcore].cpuset) != 0) {
 		rte_eal_init_alert("Cannot set affinity");
 		rte_errno = EINVAL;
 		return -1;
 	}
-	__rte_thread_init(config->master_lcore,
-		&lcore_config[config->master_lcore].cpuset);
+	__rte_thread_init(config->main_lcore,
+		&lcore_config[config->main_lcore].cpuset);
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
 
-	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%p;cpuset=[%s%s])\n",
-		config->master_lcore, thread_id, cpuset,
+	RTE_LOG(DEBUG, EAL, "Main lcore %u is ready (tid=%p;cpuset=[%s%s])\n",
+		config->main_lcore, thread_id, cpuset,
 		ret == 0 ? "" : "...");
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 
 		/*
-		 * create communication pipes between master thread
+		 * create communication pipes between main thread
 		 * and children
 		 */
-		if (pipe(lcore_config[i].pipe_master2slave) < 0)
+		if (pipe(lcore_config[i].pipe_main2worker) < 0)
 			rte_panic("Cannot create pipe\n");
-		if (pipe(lcore_config[i].pipe_slave2master) < 0)
+		if (pipe(lcore_config[i].pipe_worker2main) < 0)
 			rte_panic("Cannot create pipe\n");
 
 		lcore_config[i].state = WAIT;
@@ -886,7 +886,7 @@ rte_eal_init(int argc, char **argv)
 
 		/* Set thread_name for aid in debugging. */
 		snprintf(thread_name, sizeof(thread_name),
-				"lcore-slave-%d", i);
+				"lcore-worker-%d", i);
 		rte_thread_setname(lcore_config[i].thread_id, thread_name);
 
 		ret = pthread_setaffinity_np(lcore_config[i].thread_id,
@@ -896,10 +896,10 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	/*
-	 * Launch a dummy function on all slave lcores, so that master lcore
+	 * Launch a dummy function on all worker lcores, so that main lcore
 	 * knows they are all ready when this function returns.
 	 */
-	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MAIN);
 	rte_eal_mp_wait_lcore();
 
 	/* initialize services so vdevs register service during bus_probe. */

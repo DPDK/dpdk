@@ -625,7 +625,7 @@ test_rcu_qsbr_main(void)
 	rte_atomic64_init(&check_cycles);
 
 	num_cores = 0;
-	RTE_LCORE_FOREACH_SLAVE(core_id) {
+	RTE_LCORE_FOREACH_WORKER(core_id) {
 		enabled_core_ids[num_cores] = core_id;
 		num_cores++;
 	}

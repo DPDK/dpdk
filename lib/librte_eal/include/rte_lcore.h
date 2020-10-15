@@ -78,12 +78,24 @@ rte_lcore_id(void)
 }
 
 /**
- * Get the id of the master lcore
+ * Get the id of the main lcore
  *
  * @return
- *   the id of the master lcore
+ *   the id of the main lcore
  */
-unsigned int rte_get_master_lcore(void);
+unsigned int rte_get_main_lcore(void);
+
+/**
+ * Deprecated function the id of the main lcore
+ *
+ * @return
+ *   the id of the main lcore
+ */
+__rte_deprecated
+static inline unsigned int rte_get_master_lcore(void)
+{
+	return rte_get_main_lcore();
+}
 
 /**
  * Return the number of execution units (lcores) on the system.
@@ -203,31 +215,34 @@ int rte_lcore_is_enabled(unsigned int lcore_id);
  *
  * @param i
  *   The current lcore (reference).
- * @param skip_master
- *   If true, do not return the ID of the master lcore.
+ * @param skip_main
+ *   If true, do not return the ID of the main lcore.
  * @param wrap
  *   If true, go back to 0 when RTE_MAX_LCORE is reached; otherwise,
  *   return RTE_MAX_LCORE.
  * @return
  *   The next lcore_id or RTE_MAX_LCORE if not found.
  */
-unsigned int rte_get_next_lcore(unsigned int i, int skip_master, int wrap);
+unsigned int rte_get_next_lcore(unsigned int i, int skip_main, int wrap);
 
 /**
  * Macro to browse all running lcores.
  */
 #define RTE_LCORE_FOREACH(i)						\
 	for (i = rte_get_next_lcore(-1, 0, 0);				\
-	     i<RTE_MAX_LCORE;						\
+	     i < RTE_MAX_LCORE;						\
 	     i = rte_get_next_lcore(i, 0, 0))
 
 /**
- * Macro to browse all running lcores except the master lcore.
+ * Macro to browse all running lcores except the main lcore.
  */
-#define RTE_LCORE_FOREACH_SLAVE(i)					\
+#define RTE_LCORE_FOREACH_WORKER(i)					\
 	for (i = rte_get_next_lcore(-1, 1, 0);				\
-	     i<RTE_MAX_LCORE;						\
+	     i < RTE_MAX_LCORE;						\
 	     i = rte_get_next_lcore(i, 1, 0))
+
+#define RTE_LCORE_FOREACH_SLAVE(l)					\
+	RTE_DEPRECATED(RTE_LCORE_FOREACH_SLAVE) RTE_LCORE_FOREACH_WORKER(l)
 
 /**
  * Callback prototype for initializing lcores.

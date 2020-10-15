@@ -612,7 +612,7 @@ static int
 init_power_library(void)
 {
 	int ret = 0, lcore_id;
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		/* init power management library */
 		ret = rte_power_init(lcore_id);
 		if (ret) {
@@ -805,7 +805,7 @@ main(int argc, char *argv[])
 		 * available, the higher frequency cores will go to the
 		 * distributor first, then rx, then tx.
 		 */
-		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		RTE_LCORE_FOREACH_WORKER(lcore_id) {
 
 			rte_power_get_capabilities(lcore_id, &lcore_cap);
 
@@ -838,7 +838,7 @@ main(int argc, char *argv[])
 	 * after the high performing core assignment above, pre-assign
 	 * them here.
 	 */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (lcore_id == (unsigned int)distr_core_id ||
 				lcore_id == (unsigned int)rx_core_id ||
 				lcore_id == (unsigned int)tx_core_id)
@@ -869,7 +869,7 @@ main(int argc, char *argv[])
 	 * Kick off all the worker threads first, avoiding the pre-assigned
 	 * lcore_ids for tx, rx and distributor workloads.
 	 */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (lcore_id == (unsigned int)distr_core_id ||
 				lcore_id == (unsigned int)rx_core_id ||
 				lcore_id == (unsigned int)tx_core_id)
@@ -922,7 +922,7 @@ main(int argc, char *argv[])
 		usleep(1000);
 	}
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			return -1;
 	}

@@ -122,7 +122,7 @@ struct rte_rand_state *__rte_rand_get_state(void)
 	lcore_id = rte_lcore_id();
 
 	if (unlikely(lcore_id == LCORE_ID_ANY))
-		lcore_id = rte_get_master_lcore();
+		lcore_id = rte_get_main_lcore();
 
 	return &rand_states[lcore_id];
 }

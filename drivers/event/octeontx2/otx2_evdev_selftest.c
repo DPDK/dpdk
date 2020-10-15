@@ -586,8 +586,8 @@ wait_workers_to_join(const rte_atomic32_t *count)
 }
 
 static inline int
-launch_workers_and_wait(int (*master_worker)(void *),
-			int (*slave_workers)(void *), uint32_t total_events,
+launch_workers_and_wait(int (*main_thread)(void *),
+			int (*worker_thread)(void *), uint32_t total_events,
 			uint8_t nb_workers, uint8_t sched_type)
 {
 	rte_atomic32_t atomic_total_events;
@@ -623,9 +623,9 @@ launch_workers_and_wait(int (*master_worker)(void *),
 
 	w_lcore = rte_get_next_lcore(
 			/* start core */ -1,
-			/* skip master */ 1,
+			/* skip main */ 1,
 			/* wrap */ 0);
-	rte_eal_remote_launch(master_worker, &param[0], w_lcore);
+	rte_eal_remote_launch(main_thread, &param[0], w_lcore);
 
 	for (port = 1; port < nb_workers; port++) {
 		param[port].total_events = &atomic_total_events;
@@ -634,7 +634,7 @@ launch_workers_and_wait(int (*master_worker)(void *),
 		param[port].dequeue_tmo_ticks = dequeue_tmo_ticks;
 		rte_smp_wmb();
 		w_lcore = rte_get_next_lcore(w_lcore, 1, 0);
-		rte_eal_remote_launch(slave_workers, &param[port], w_lcore);
+		rte_eal_remote_launch(worker_thread, &param[port], w_lcore);
 	}
 
 	rte_smp_wmb();

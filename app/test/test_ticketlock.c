@@ -28,7 +28,7 @@
  * - There is a global ticketlock and a table of ticketlocks (one per lcore).
  *
  * - The test function takes all of these locks and launches the
- *   ``test_ticketlock_per_core()`` function on each core (except the master).
+ *   ``test_ticketlock_per_core()`` function on each core (except the main).
  *
  *   - The function takes the global lock, display something, then releases
  *     the global lock.
@@ -110,8 +110,8 @@ load_loop_fn(void *func_param)
 	const int use_lock = *(int *)func_param;
 	const unsigned int lcore = rte_lcore_id();
 
-	/* wait synchro for slaves */
-	if (lcore != rte_get_master_lcore())
+	/* wait synchro for workers */
+	if (lcore != rte_get_main_lcore())
 		while (rte_atomic32_read(&synchro) == 0)
 			;
 
@@ -154,11 +154,11 @@ test_ticketlock_perf(void)
 	lcount = 0;
 	printf("\nTest with lock on %u cores...\n", rte_lcore_count());
 
-	/* Clear synchro and start slaves */
+	/* Clear synchro and start workers */
 	rte_atomic32_set(&synchro, 0);
-	rte_eal_mp_remote_launch(load_loop_fn, &lock, SKIP_MASTER);
+	rte_eal_mp_remote_launch(load_loop_fn, &lock, SKIP_MAIN);
 
-	/* start synchro and launch test on master */
+	/* start synchro and launch test on main */
 	rte_atomic32_set(&synchro, 1);
 	load_loop_fn(&lock);
 
@@ -208,8 +208,8 @@ test_ticketlock(void)
 	int ret = 0;
 	int i;
 
-	/* slave cores should be waiting: print it */
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	/* worker cores should be waiting: print it */
+	RTE_LCORE_FOREACH_WORKER(i) {
 		printf("lcore %d state: %d\n", i,
 		       (int) rte_eal_get_lcore_state(i));
 	}
@@ -217,25 +217,25 @@ test_ticketlock(void)
 	rte_ticketlock_init(&tl);
 	rte_ticketlock_init(&tl_try);
 	rte_ticketlock_recursive_init(&tlr);
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_ticketlock_init(&tl_tab[i]);
 	}
 
 	rte_ticketlock_lock(&tl);
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_ticketlock_lock(&tl_tab[i]);
 		rte_eal_remote_launch(test_ticketlock_per_core, NULL, i);
 	}
 
-	/* slave cores should be busy: print it */
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	/* worker cores should be busy: print it */
+	RTE_LCORE_FOREACH_WORKER(i) {
 		printf("lcore %d state: %d\n", i,
 		       (int) rte_eal_get_lcore_state(i));
 	}
 	rte_ticketlock_unlock(&tl);
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_ticketlock_unlock(&tl_tab[i]);
 		rte_delay_ms(10);
 	}
@@ -254,7 +254,7 @@ test_ticketlock(void)
 	} else
 		rte_ticketlock_recursive_unlock(&tlr);
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_eal_remote_launch(test_ticketlock_recursive_per_core,
 					NULL, i);
 	}
@@ -264,19 +264,19 @@ test_ticketlock(void)
 	/*
 	 * Test if it could return immediately from try-locking a locked object.
 	 * Here it will lock the ticketlock object first, then launch all the
-	 * slave lcores to trylock the same ticketlock object.
-	 * All the slave lcores should give up try-locking a locked object and
+	 * worker lcores to trylock the same ticketlock object.
+	 * All the worker lcores should give up try-locking a locked object and
 	 * return immediately, and then increase the "count" initialized with
 	 * zero by one per times.
 	 * We can check if the "count" is finally equal to the number of all
-	 * slave lcores to see if the behavior of try-locking a locked
+	 * worker lcores to see if the behavior of try-locking a locked
 	 * ticketlock object is correct.
 	 */
 	if (rte_ticketlock_trylock(&tl_try) == 0)
 		return -1;
 
 	count = 0;
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		rte_eal_remote_launch(test_ticketlock_try, NULL, i);
 	}
 	rte_eal_mp_wait_lcore();

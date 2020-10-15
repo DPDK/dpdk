@@ -64,7 +64,7 @@ It consist of calls to the pthread library (more specifically, pthread_self(), p
 .. note::
 
     Initialization of objects, such as memory zones, rings, memory pools, lpm tables and hash tables,
-    should be done as part of the overall application initialization on the master lcore.
+    should be done as part of the overall application initialization on the main lcore.
     The creation and initialization functions for these objects are not multi-thread safe.
     However, once initialized, the objects themselves can safely be used in multiple threads simultaneously.
 
@@ -186,7 +186,7 @@ very dependent on the memory allocation patterns of the application.
 
 Additional restrictions are present when running in 32-bit mode. In dynamic
 memory mode, by default maximum of 2 gigabytes of VA space will be preallocated,
-and all of it will be on master lcore NUMA node unless ``--socket-mem`` flag is
+and all of it will be on main lcore NUMA node unless ``--socket-mem`` flag is
 used.
 
 In legacy mode, VA space will only be preallocated for segments that were
@@ -641,7 +641,7 @@ controlled with tools like taskset (Linux) or cpuset (FreeBSD),
 - with affinity restricted to 2-4, the Control Threads will end up on
   CPU 4.
 - with affinity restricted to 2-3, the Control Threads will end up on
-  CPU 2 (master lcore, which is the default when no CPU is available).
+  CPU 2 (main lcore, which is the default when no CPU is available).
 
 .. _known_issue_label:
 

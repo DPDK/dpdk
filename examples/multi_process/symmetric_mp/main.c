@@ -470,7 +470,7 @@ main(int argc, char **argv)
 
 	RTE_LOG(INFO, APP, "Finished Process Init.\n");
 
-	rte_eal_mp_remote_launch(lcore_main, NULL, CALL_MASTER);
+	rte_eal_mp_remote_launch(lcore_main, NULL, CALL_MAIN);
 
 	return 0;
 }

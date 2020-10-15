@@ -71,7 +71,7 @@ The command line options are:
 *   ``--coremask=0xXX``
 
     Set the hexadecimal bitmask of the cores running the packet forwarding test.
-    The master lcore is reserved for command line parsing only and cannot be masked on for packet forwarding.
+    The main lcore is reserved for command line parsing only and cannot be masked on for packet forwarding.
 
 *   ``--portmask=0xXX``
 

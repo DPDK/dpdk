@@ -57,8 +57,8 @@ typedef void (*case_clean_t)(unsigned lcore_id);
 static rte_atomic32_t obj_count = RTE_ATOMIC32_INIT(0);
 static rte_atomic32_t synchro = RTE_ATOMIC32_INIT(0);
 
-#define WAIT_SYNCHRO_FOR_SLAVES()   do{ \
-	if (lcore_self != rte_get_master_lcore())                  \
+#define WAIT_SYNCHRO_FOR_WORKERS()   do { \
+	if (lcore_self != rte_get_main_lcore())                  \
 		while (rte_atomic32_read(&synchro) == 0);        \
 } while(0)
 
@@ -70,7 +70,7 @@ test_eal_init_once(__rte_unused void *arg)
 {
 	unsigned lcore_self =  rte_lcore_id();
 
-	WAIT_SYNCHRO_FOR_SLAVES();
+	WAIT_SYNCHRO_FOR_WORKERS();
 
 	rte_atomic32_set(&obj_count, 1); /* silent the check in the caller */
 	if (rte_eal_init(0, NULL) != -1)
@@ -106,7 +106,7 @@ ring_create_lookup(__rte_unused void *arg)
 	char ring_name[MAX_STRING_SIZE];
 	int i;
 
-	WAIT_SYNCHRO_FOR_SLAVES();
+	WAIT_SYNCHRO_FOR_WORKERS();
 
 	/* create the same ring simultaneously on all threads */
 	for (i = 0; i < MAX_ITER_ONCE; i++) {
@@ -166,7 +166,7 @@ mempool_create_lookup(__rte_unused void *arg)
 	char mempool_name[MAX_STRING_SIZE];
 	int i;
 
-	WAIT_SYNCHRO_FOR_SLAVES();
+	WAIT_SYNCHRO_FOR_WORKERS();
 
 	/* create the same mempool simultaneously on all threads */
 	for (i = 0; i < MAX_ITER_ONCE; i++) {
@@ -232,7 +232,7 @@ hash_create_free(__rte_unused void *arg)
 		.socket_id = 0,
 	};
 
-	WAIT_SYNCHRO_FOR_SLAVES();
+	WAIT_SYNCHRO_FOR_WORKERS();
 
 	/* create the same hash simultaneously on all threads */
 	hash_params.name = "fr_test_once";
@@ -296,7 +296,7 @@ fbk_create_free(__rte_unused void *arg)
 		.init_val = RTE_FBK_HASH_INIT_VAL_DEFAULT,
 	};
 
-	WAIT_SYNCHRO_FOR_SLAVES();
+	WAIT_SYNCHRO_FOR_WORKERS();
 
 	/* create the same fbk hash table simultaneously on all threads */
 	fbk_params.name = "fr_test_once";
@@ -359,7 +359,7 @@ lpm_create_free(__rte_unused void *arg)
 	char lpm_name[MAX_STRING_SIZE];
 	int i;
 
-	WAIT_SYNCHRO_FOR_SLAVES();
+	WAIT_SYNCHRO_FOR_WORKERS();
 
 	/* create the same lpm simultaneously on all threads */
 	for (i = 0; i < MAX_ITER_ONCE; i++) {
@@ -430,7 +430,7 @@ launch_test(struct test_case *pt_case)
 	rte_atomic32_set(&obj_count, 0);
 	rte_atomic32_set(&synchro, 0);
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (cores == 1)
 			break;
 		cores--;
@@ -443,7 +443,7 @@ launch_test(struct test_case *pt_case)
 		ret = -1;
 
 	cores = cores_save;
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (cores == 1)
 			break;
 		cores--;

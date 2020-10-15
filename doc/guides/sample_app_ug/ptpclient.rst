@@ -21,7 +21,7 @@ The PTP sample application is intended as a simple reference implementation of
 a PTP client using the DPDK IEEE1588 API.
 In order to keep the application simple the following assumptions are made:
 
-* The first discovered master is the master for the session.
+* The first discovered master is the main for the session.
 * Only L2 PTP packets are supported.
 * Only the PTP v2 protocol is supported.
 * Only the slave clock is implemented.

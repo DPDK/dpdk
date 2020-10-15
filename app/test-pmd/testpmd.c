@@ -83,7 +83,7 @@
 uint16_t verbose_level = 0; /**< Silent by default. */
 int testpmd_logtype; /**< Log type for testpmd logs */
 
-/* use master core for command line ? */
+/* use main core for command line ? */
 uint8_t interactive = 0;
 uint8_t auto_start = 0;
 uint8_t tx_first;
@@ -581,7 +581,7 @@ set_default_fwd_lcores_config(void)
 			}
 			socket_ids[num_sockets++] = sock_num;
 		}
-		if (i == rte_get_master_lcore())
+		if (i == rte_get_main_lcore())
 			continue;
 		fwd_lcores_cpuids[nb_lc++] = i;
 	}

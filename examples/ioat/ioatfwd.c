@@ -516,7 +516,7 @@ tx_main_loop(void)
 			ioat_tx_port(&cfg.ports[i]);
 }
 
-/* Main rx and tx loop if only one slave lcore available */
+/* Main rx and tx loop if only one worker lcore available */
 static void
 rxtx_main_loop(void)
 {
@@ -978,7 +978,7 @@ main(int argc, char **argv)
 	cfg.nb_lcores = rte_lcore_count() - 1;
 	if (cfg.nb_lcores < 1)
 		rte_exit(EXIT_FAILURE,
-			"There should be at least one slave lcore.\n");
+			"There should be at least one worker lcore.\n");
 
 	if (copy_mode == COPY_MODE_IOAT_NUM)
 		assign_rawdevs();
@@ -986,7 +986,7 @@ main(int argc, char **argv)
 		assign_rings();
 
 	start_forwarding_cores();
-	/* master core prints stats while other cores forward */
+	/* main core prints stats while other cores forward */
 	print_stats(argv[0]);
 
 	/* force_quit is true when we get here */

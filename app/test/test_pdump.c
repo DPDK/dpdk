@@ -184,7 +184,7 @@ run_pdump_server_tests(void)
 	};
 
 	snprintf(coremask, sizeof(coremask), "%x",
-		 (1 << rte_get_master_lcore()));
+		 (1 << rte_get_main_lcore()));
 
 	ret = test_pdump_init();
 	ret |= launch_p(argv1);

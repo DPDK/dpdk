@@ -1272,7 +1272,7 @@ main(int argc, char **argv)
 
 	ret = 0;
 	/* launch per-lcore init on every lcore */
-	rte_eal_mp_remote_launch(l3fwd_lkp.main_loop, NULL, CALL_MASTER);
+	rte_eal_mp_remote_launch(l3fwd_lkp.main_loop, NULL, CALL_MAIN);
 	if (evt_rsrc->enabled) {
 		for (i = 0; i < evt_rsrc->rx_adptr.nb_rx_adptr; i++)
 			rte_event_eth_rx_adapter_stop(

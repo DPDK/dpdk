@@ -89,7 +89,7 @@ usage(char* progname)
 	printf("  --nb-ports=N: set the number of forwarding ports "
 	       "(1 <= N <= %d).\n", nb_ports);
 	printf("  --coremask=COREMASK: hexadecimal bitmask of cores running "
-	       "the packet forwarding test. The master lcore is reserved for "
+	       "the packet forwarding test. The main lcore is reserved for "
 	       "command line parsing only, and cannot be masked on for "
 	       "packet forwarding.\n");
 	printf("  --portmask=PORTMASK: hexadecimal bitmask of ports used "

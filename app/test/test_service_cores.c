@@ -30,7 +30,7 @@ static int
 testsuite_setup(void)
 {
 	slcore_id = rte_get_next_lcore(/* start core */ -1,
-				       /* skip master */ 1,
+				       /* skip main */ 1,
 				       /* wrap */ 0);
 
 	return TEST_SUCCESS;
@@ -561,12 +561,12 @@ service_lcore_add_del(void)
 	TEST_ASSERT_EQUAL(1, rte_service_lcore_count(),
 			"Service core count not equal to one");
 	uint32_t slcore_1 = rte_get_next_lcore(/* start core */ -1,
-					       /* skip master */ 1,
+					       /* skip main */ 1,
 					       /* wrap */ 0);
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_1),
 			"Service core add did not return zero");
 	uint32_t slcore_2 = rte_get_next_lcore(/* start core */ slcore_1,
-					       /* skip master */ 1,
+					       /* skip main */ 1,
 					       /* wrap */ 0);
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_2),
 			"Service core add did not return zero");
@@ -612,12 +612,12 @@ service_threaded_test(int mt_safe)
 
 	/* add next 2 cores */
 	uint32_t slcore_1 = rte_get_next_lcore(/* start core */ -1,
-					       /* skip master */ 1,
+					       /* skip main */ 1,
 					       /* wrap */ 0);
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_1),
 			"mt safe lcore add fail");
 	uint32_t slcore_2 = rte_get_next_lcore(/* start core */ slcore_1,
-					       /* skip master */ 1,
+					       /* skip main */ 1,
 					       /* wrap */ 0);
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_2),
 			"mt safe lcore add fail");
@@ -951,10 +951,10 @@ service_active_two_cores(void)
 	int i;
 
 	uint32_t lcore = rte_get_next_lcore(/* start core */ -1,
-					    /* skip master */ 1,
+					    /* skip main */ 1,
 					    /* wrap */ 0);
 	uint32_t slcore = rte_get_next_lcore(/* start core */ lcore,
-					     /* skip master */ 1,
+					     /* skip main */ 1,
 					     /* wrap */ 0);
 
 	/* start the service on the second available lcore */

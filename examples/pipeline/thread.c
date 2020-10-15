@@ -93,7 +93,7 @@ thread_init(void)
 {
 	uint32_t i;
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	RTE_LCORE_FOREACH_WORKER(i) {
 		char name[NAME_MAX];
 		struct rte_ring *msgq_req, *msgq_rsp;
 		struct thread *t = &thread[i];

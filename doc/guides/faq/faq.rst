@@ -42,13 +42,13 @@ I am running a 32-bit DPDK application on a NUMA system, and sometimes the appli
 If your system has a lot (>1 GB size) of hugepage memory, not all of it will be allocated.
 Due to hugepages typically being allocated on a local NUMA node, the hugepages allocation the application gets during the initialization depends on which
 NUMA node it is running on (the EAL does not affinitize cores until much later in the initialization process).
-Sometimes, the Linux OS runs the DPDK application on a core that is located on a different NUMA node from DPDK master core and
+Sometimes, the Linux OS runs the DPDK application on a core that is located on a different NUMA node from DPDK main core and
 therefore all the hugepages are allocated on the wrong socket.
 
 To avoid this scenario, either lower the amount of hugepage memory available to 1 GB size (or less), or run the application with taskset
-affinitizing the application to a would-be master core.
+affinitizing the application to a would-be main core.
 
-For example, if your EAL coremask is 0xff0, the master core will usually be the first core in the coremask (0x10); this is what you have to supply to taskset::
+For example, if your EAL coremask is 0xff0, the main core will usually be the first core in the coremask (0x10); this is what you have to supply to taskset::
 
    taskset 0x10 ./l2fwd -l 4-11 -n 2
 

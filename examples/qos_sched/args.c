@@ -22,7 +22,7 @@
 #define MAX_OPT_VALUES 8
 #define SYS_CPU_DIR "/sys/devices/system/cpu/cpu%u/topology/"
 
-static uint32_t app_master_core = 1;
+static uint32_t app_main_core = 1;
 static uint32_t app_numa_mask;
 static uint64_t app_used_core_mask = 0;
 static uint64_t app_used_port_mask = 0;
@@ -40,7 +40,7 @@ static const char usage[] =
 	"                                                                               \n"
 	"Application optional parameters:                                               \n"
         "    --i     : run in interactive mode (default value is %u)                    \n"
-	"    --mst I : master core index (default value is %u)                          \n"
+	"    --mnc I : main core index (default value is %u)                            \n"
 	"    --rsz \"A, B, C\" :   Ring sizes                                           \n"
 	"           A = Size (in number of buffer descriptors) of each of the NIC RX    \n"
 	"               rings read by the I/O RX lcores (default value is %u)           \n"
@@ -72,7 +72,7 @@ static const char usage[] =
 static void
 app_usage(const char *prgname)
 {
-	printf(usage, prgname, APP_INTERACTIVE_DEFAULT, app_master_core,
+	printf(usage, prgname, APP_INTERACTIVE_DEFAULT, app_main_core,
 		APP_RX_DESC_DEFAULT, APP_RING_SIZE, APP_TX_DESC_DEFAULT,
 		MAX_PKT_RX_BURST, PKT_ENQUEUE, PKT_DEQUEUE,
 		MAX_PKT_TX_BURST, NB_MBUF,
@@ -98,7 +98,7 @@ app_eal_core_mask(void)
 			cm |= (1ULL << i);
 	}
 
-	cm |= (1ULL << rte_get_master_lcore());
+	cm |= (1ULL << rte_get_main_lcore());
 
 	return cm;
 }
@@ -312,7 +312,7 @@ app_parse_args(int argc, char **argv)
 
 	static struct option lgopts[] = {
 		{ "pfc", 1, 0, 0 },
-		{ "mst", 1, 0, 0 },
+		{ "mnc", 1, 0, 0 },
 		{ "rsz", 1, 0, 0 },
 		{ "bsz", 1, 0, 0 },
 		{ "msz", 1, 0, 0 },
@@ -352,8 +352,8 @@ app_parse_args(int argc, char **argv)
 					}
 					break;
 				}
-				if (str_is(optname, "mst")) {
-					app_master_core = (uint32_t)atoi(optarg);
+				if (str_is(optname, "mnc")) {
+					app_main_core = (uint32_t)atoi(optarg);
 					break;
 				}
 				if (str_is(optname, "rsz")) {
@@ -408,18 +408,18 @@ app_parse_args(int argc, char **argv)
 			}
 	}
 
-	/* check master core index validity */
-	for(i = 0; i <= app_master_core; i++) {
-		if (app_used_core_mask & (1u << app_master_core)) {
-			RTE_LOG(ERR, APP, "Master core index is not configured properly\n");
+	/* check main core index validity */
+	for (i = 0; i <= app_main_core; i++) {
+		if (app_used_core_mask & (1u << app_main_core)) {
+			RTE_LOG(ERR, APP, "Main core index is not configured properly\n");
 			app_usage(prgname);
 			return -1;
 		}
 	}
-	app_used_core_mask |= 1u << app_master_core;
+	app_used_core_mask |= 1u << app_main_core;
 
 	if ((app_used_core_mask != app_eal_core_mask()) ||
-			(app_master_core != rte_get_master_lcore())) {
+			(app_main_core != rte_get_main_lcore())) {
 		RTE_LOG(ERR, APP, "EAL core mask not configured properly, must be %" PRIx64
 				" instead of %" PRIx64 "\n" , app_used_core_mask, app_eal_core_mask());
 		return -1;

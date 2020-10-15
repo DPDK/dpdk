@@ -554,7 +554,7 @@ TAILQ_HEAD(pipeline_list, pipeline);
 #endif
 
 /**
- * Master thead: data plane thread context
+ * Main thread: data plane thread context
  */
 struct softnic_thread {
 	struct rte_ring *msgq_req;

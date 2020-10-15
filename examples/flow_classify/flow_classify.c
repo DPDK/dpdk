@@ -850,7 +850,7 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Failed to add rules\n");
 	}
 
-	/* Call lcore_main on the master core only. */
+	/* Call lcore_main on the main core only. */
 	lcore_main(cls_app);
 
 	return 0;

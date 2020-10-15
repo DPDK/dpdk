@@ -43,6 +43,8 @@ enum {
 	OPT_TRACE_BUF_SIZE_NUM,
 #define OPT_TRACE_MODE        "trace-mode"
 	OPT_TRACE_MODE_NUM,
+#define OPT_MAIN_LCORE        "main-lcore"
+	OPT_MAIN_LCORE_NUM,
 #define OPT_MASTER_LCORE      "master-lcore"
 	OPT_MASTER_LCORE_NUM,
 #define OPT_MBUF_POOL_OPS_NAME "mbuf-pool-ops-name"

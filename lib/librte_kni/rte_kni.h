@@ -80,7 +80,7 @@ struct rte_kni_conf {
 /**
  * Initialize and preallocate KNI subsystem
  *
- * This function is to be executed on the MASTER lcore only, after EAL
+ * This function is to be executed on the main lcore only, after EAL
  * initialization and before any KNI interface is attempted to be
  * allocated
  *

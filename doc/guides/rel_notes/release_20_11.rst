@@ -384,6 +384,13 @@ API Changes
   The information provided by these macros is available through standard
   compiler macros.
 
+* eal: Replaced the function ``rte_get_master_lcore()`` to
+  ``rte_get_main_lcore()``. The old function is deprecated.
+
+  The iterator for worker lcores is also changed:
+  ``RTE_LCORE_FOREACH_SLAVE`` is replaced with
+  ``RTE_LCORE_FOREACH_WORKER``.
+
 * eal: The ``rte_logs`` struct and global symbol was made private
   and is no longer part of the API.
 

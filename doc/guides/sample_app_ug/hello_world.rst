@@ -1,4 +1,4 @@
-..  SPDX-License-Identifier: BSD-3-Clause
+o..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
 Hello World Sample Application
@@ -75,13 +75,13 @@ The code that launches the function on each lcore is as follows:
 
 .. code-block:: c
 
-    /* call lcore_hello() on every slave lcore */
+    /* call lcore_hello() on every worker lcore */
 
-    RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+    RTE_LCORE_FOREACH_WORKER(lcore_id) {
        rte_eal_remote_launch(lcore_hello, NULL, lcore_id);
     }
 
-    /* call it on master lcore too */
+    /* call it on main lcore too */
 
     lcore_hello(NULL);
 
@@ -89,6 +89,6 @@ The following code is equivalent and simpler:
 
 .. code-block:: c
 
-    rte_eal_mp_remote_launch(lcore_hello, NULL, CALL_MASTER);
+    rte_eal_mp_remote_launch(lcore_hello, NULL, CALL_MAIN);
 
 Refer to the *DPDK API Reference* for detailed information on the rte_eal_mp_remote_launch() function.

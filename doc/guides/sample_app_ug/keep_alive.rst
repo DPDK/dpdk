@@ -16,7 +16,7 @@ Overview
 --------
 
 The application demonstrates how to protect against 'silent outages'
-on packet processing cores. A Keep Alive Monitor Agent Core (master)
+on packet processing cores. A Keep Alive Monitor Agent Core (main)
 monitors the state of packet processing cores (worker cores) by
 dispatching pings at a regular time interval (default is 5ms) and
 monitoring the state of the cores. Cores states are: Alive, MIA, Dead

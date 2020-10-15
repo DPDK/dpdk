@@ -3106,7 +3106,7 @@ worker_loopback(struct test *t, uint8_t disable_implicit_release)
 
 	p_lcore = rte_get_next_lcore(
 			/* start core */ -1,
-			/* skip master */ 1,
+			/* skip main */ 1,
 			/* wrap */ 0);
 	w_lcore = rte_get_next_lcore(p_lcore, 1, 0);
 

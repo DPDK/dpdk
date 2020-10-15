@@ -252,10 +252,10 @@ int main(int argc, char **argv)
 	lthread_num_schedulers_set(num_sched);
 
 	/* launch all threads */
-	rte_eal_mp_remote_launch(lthread_scheduler, (void *)NULL, CALL_MASTER);
+	rte_eal_mp_remote_launch(lthread_scheduler, (void *)NULL, CALL_MAIN);
 
 	/* wait for threads to stop */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_wait_lcore(lcore_id);
 	}
 	return 0;

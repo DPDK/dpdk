@@ -71,7 +71,7 @@ l2fwd_event_device_setup_internal_port(struct l2fwd_resources *rsrc)
 		event_d_conf.nb_event_port_enqueue_depth =
 				dev_info.max_event_port_enqueue_depth;
 
-	/* Ignore Master core. */
+	/* Ignore Main core. */
 	num_workers = rte_lcore_count() - 1;
 	if (dev_info.max_event_ports < num_workers)
 		num_workers = dev_info.max_event_ports;

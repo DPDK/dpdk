@@ -786,8 +786,8 @@ main(int argc, char **argv)
 				) != 0 )
 			rte_exit(EXIT_FAILURE, "Stats setup failure.\n");
 	}
-	/* launch per-lcore init on every slave lcore */
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	/* launch per-lcore init on every worker lcore */
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		struct lcore_queue_conf *qconf = &lcore_queue_conf[lcore_id];
 
 		if (qconf->n_rx_port == 0)
@@ -810,7 +810,7 @@ main(int argc, char **argv)
 		rte_delay_ms(5);
 		}
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			return -1;
 	}

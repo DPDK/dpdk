@@ -297,7 +297,7 @@ run_on_core_pair(struct lcore_pair *cores, struct rte_ring *r, const int esize)
 		lcore_count = 0;
 		param1.size = param2.size = bulk_sizes[i];
 		param1.r = param2.r = r;
-		if (cores->c1 == rte_get_master_lcore()) {
+		if (cores->c1 == rte_get_main_lcore()) {
 			rte_eal_remote_launch(f2, &param2, cores->c2);
 			f1(&param1);
 			rte_eal_wait_lcore(cores->c2);
@@ -340,8 +340,8 @@ load_loop_fn_helper(struct thread_params *p, const int esize)
 	if (burst == NULL)
 		return -1;
 
-	/* wait synchro for slaves */
-	if (lcore != rte_get_master_lcore())
+	/* wait synchro for workers */
+	if (lcore != rte_get_main_lcore())
 		while (rte_atomic32_read(&synchro) == 0)
 			rte_pause();
 
@@ -397,12 +397,12 @@ run_on_all_cores(struct rte_ring *r, const int esize)
 		param.size = bulk_sizes[i];
 		param.r = r;
 
-		/* clear synchro and start slaves */
+		/* clear synchro and start workers */
 		rte_atomic32_set(&synchro, 0);
-		if (rte_eal_mp_remote_launch(lcore_f, &param, SKIP_MASTER) < 0)
+		if (rte_eal_mp_remote_launch(lcore_f, &param, SKIP_MAIN) < 0)
 			return -1;
 
-		/* start synchro and launch test on master */
+		/* start synchro and launch test on main */
 		rte_atomic32_set(&synchro, 1);
 		lcore_f(&param);
 
@@ -553,7 +553,7 @@ test_ring_perf_esize(const int esize)
 			goto test_fail;
 	}
 
-	printf("\n### Testing using all slave nodes ###\n");
+	printf("\n### Testing using all worker nodes ###\n");
 	if (run_on_all_cores(r, esize) < 0)
 		goto test_fail;
 

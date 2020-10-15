@@ -54,10 +54,10 @@ time_cache_line_switch(void)
 	/* allocate a full cache line for data, we use only first byte of it */
 	uint64_t data[RTE_CACHE_LINE_SIZE*3 / sizeof(uint64_t)];
 
-	unsigned i, slaveid = rte_get_next_lcore(rte_lcore_id(), 0, 0);
+	unsigned int i, workerid = rte_get_next_lcore(rte_lcore_id(), 0, 0);
 	volatile uint64_t *pdata = &data[0];
 	*pdata = 1;
-	rte_eal_remote_launch((lcore_function_t *)flip_bit, &data[0], slaveid);
+	rte_eal_remote_launch((lcore_function_t *)flip_bit, &data[0], workerid);
 	while (*pdata)
 		rte_pause();
 
@@ -72,7 +72,7 @@ time_cache_line_switch(void)
 	while (*pdata)
 		rte_pause();
 	*pdata = 2;
-	rte_eal_wait_lcore(slaveid);
+	rte_eal_wait_lcore(workerid);
 	printf("==== Cache line switch test ===\n");
 	printf("Time for %u iterations = %"PRIu64" ticks\n", (1<<ITER_POWER_CL),
 			end_time-start_time);
@@ -251,13 +251,13 @@ test_distributor_perf(void)
 	}
 
 	printf("=== Performance test of distributor (single mode) ===\n");
-	rte_eal_mp_remote_launch(handle_work, ds, SKIP_MASTER);
+	rte_eal_mp_remote_launch(handle_work, ds, SKIP_MAIN);
 	if (perf_test(ds, p) < 0)
 		return -1;
 	quit_workers(ds, p);
 
 	printf("=== Performance test of distributor (burst mode) ===\n");
-	rte_eal_mp_remote_launch(handle_work, db, SKIP_MASTER);
+	rte_eal_mp_remote_launch(handle_work, db, SKIP_MAIN);
 	if (perf_test(db, p) < 0)
 		return -1;
 	quit_workers(db, p);

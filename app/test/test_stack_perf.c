@@ -180,7 +180,7 @@ run_on_core_pair(struct lcore_pair *cores, struct rte_stack *s,
 		args[0].sz = args[1].sz = bulk_sizes[i];
 		args[0].s = args[1].s = s;
 
-		if (cores->c1 == rte_get_master_lcore()) {
+		if (cores->c1 == rte_get_main_lcore()) {
 			rte_eal_remote_launch(fn, &args[1], cores->c2);
 			fn(&args[0]);
 			rte_eal_wait_lcore(cores->c2);
@@ -210,7 +210,7 @@ run_on_n_cores(struct rte_stack *s, lcore_function_t fn, int n)
 
 		rte_atomic32_set(&lcore_barrier, n);
 
-		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		RTE_LCORE_FOREACH_WORKER(lcore_id) {
 			if (++cnt >= n)
 				break;
 
@@ -235,7 +235,7 @@ run_on_n_cores(struct rte_stack *s, lcore_function_t fn, int n)
 		avg = args[rte_lcore_id()].avg;
 
 		cnt = 0;
-		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		RTE_LCORE_FOREACH_WORKER(lcore_id) {
 			if (++cnt >= n)
 				break;
 			avg += args[lcore_id].avg;

@@ -1461,16 +1461,16 @@ eh_conf_init(void)
 
 	/* Set two cores as eth cores for Rx & Tx */
 
-	/* Use first core other than master core as Rx core */
+	/* Use first core other than main core as Rx core */
 	eth_core_id = rte_get_next_lcore(0,	/* curr core */
-					 1,	/* skip master core */
+					 1,	/* skip main core */
 					 0	/* wrap */);
 
 	rte_bitmap_set(em_conf->eth_core_mask, eth_core_id);
 
 	/* Use next core as Tx core */
 	eth_core_id = rte_get_next_lcore(eth_core_id,	/* curr core */
-					 1,		/* skip master core */
+					 1,		/* skip main core */
 					 0		/* wrap */);
 
 	rte_bitmap_set(em_conf->eth_core_mask, eth_core_id);

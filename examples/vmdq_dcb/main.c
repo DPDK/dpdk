@@ -699,12 +699,12 @@ main(int argc, char *argv[])
 			rte_exit(EXIT_FAILURE, "Cannot initialize network ports\n");
 	}
 
-	/* call lcore_main() on every slave lcore */
+	/* call lcore_main() on every worker lcore */
 	i = 0;
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(lcore_main, (void*)i++, lcore_id);
 	}
-	/* call on master too */
+	/* call on main too */
 	(void) lcore_main((void*)i);
 
 	return 0;

@@ -54,10 +54,10 @@
 #define N_TIMERS    50
 
 static struct rte_timer timer[N_TIMERS];
-static unsigned timer_lcore_id[N_TIMERS];
+static unsigned int timer_lcore_id[N_TIMERS];
 
-static unsigned master;
-static volatile unsigned stop_slaves;
+static unsigned int main_lcore;
+static volatile unsigned int stop_workers;
 
 static int reload_timer(struct rte_timer *tim);
 
@@ -90,7 +90,7 @@ reload_timer(struct rte_timer *tim)
 	    (tim - timer);
 	int ret;
 
-	ret = rte_timer_reset(tim, ticks, PERIODICAL, master, timer_cb, NULL);
+	ret = rte_timer_reset(tim, ticks, PERIODICAL, main_lcore, timer_cb, NULL);
 	if (ret != 0) {
 		rte_log(RTE_LOG_DEBUG, timer_logtype_test,
 			"- core %u failed to reset timer %" PRIuPTR " (OK)\n",
@@ -101,7 +101,7 @@ reload_timer(struct rte_timer *tim)
 }
 
 static int
-slave_main_loop(__rte_unused void *arg)
+worker_main_loop(__rte_unused void *arg)
 {
 	unsigned lcore_id = rte_lcore_id();
 	unsigned i;
@@ -110,7 +110,7 @@ slave_main_loop(__rte_unused void *arg)
 
 	printf("Starting main loop on core %u\n", lcore_id);
 
-	while (!stop_slaves) {
+	while (!stop_workers) {
 		/* Wait until the timer manager is running.
 		 * We know it's running when we see timer[0] NOT pending.
 		 */
@@ -147,7 +147,7 @@ test_timer_racecond(void)
 	unsigned lcore_id;
 	unsigned i;
 
-	master = lcore_id = rte_lcore_id();
+	main_lcore = lcore_id = rte_lcore_id();
 	hz = rte_get_timer_hz();
 
 	/* init and start timers */
@@ -156,8 +156,8 @@ test_timer_racecond(void)
 		ret = reload_timer(&timer[i]);
 		TEST_ASSERT(ret == 0, "reload_timer failed");
 
-		/* Distribute timers to slaves.
-		 * Note that we assign timer[0] to the master.
+		/* Distribute timers to workers.
+		 * Note that we assign timer[0] to the main.
 		 */
 		timer_lcore_id[i] = lcore_id;
 		lcore_id = rte_get_next_lcore(lcore_id, 1, 1);
@@ -167,11 +167,11 @@ test_timer_racecond(void)
 	cur_time = rte_get_timer_cycles();
 	end_time = cur_time + (hz * TEST_DURATION_S);
 
-	/* start slave cores */
-	stop_slaves = 0;
+	/* start worker cores */
+	stop_workers = 0;
 	printf("Start timer manage race condition test (%u seconds)\n",
 			TEST_DURATION_S);
-	rte_eal_mp_remote_launch(slave_main_loop, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(worker_main_loop, NULL, SKIP_MAIN);
 
 	while (diff >= 0) {
 		/* run the timers */
@@ -184,9 +184,9 @@ test_timer_racecond(void)
 		diff = end_time - cur_time;
 	}
 
-	/* stop slave cores */
+	/* stop worker cores */
 	printf("Stopping timer manage race condition test\n");
-	stop_slaves = 1;
+	stop_workers = 1;
 	rte_eal_mp_wait_lcore();
 
 	/* stop timers */
