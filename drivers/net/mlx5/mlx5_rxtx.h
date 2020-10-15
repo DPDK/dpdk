@@ -271,7 +271,7 @@ enum mlx5_txq_type {
 /* TX queue control descriptor. */
 struct mlx5_txq_ctrl {
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
-	rte_atomic32_t refcnt; /* Reference counter. */
+	uint32_t refcnt; /* Reference counter. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	enum mlx5_txq_type type; /* The txq ctrl type. */
 	unsigned int max_inline_data; /* Max inline data. */
