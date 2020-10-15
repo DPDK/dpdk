@@ -85,7 +85,7 @@ vmbus_uio_map_secondary(struct rte_vmbus_device *dev)
 		return -1;
 	}
 
-	/* fd is not needed in slave process, close it */
+	/* fd is not needed in secondary process, close it */
 	close(fd);
 
 	dev->primary = uio_res->primary;

@@ -51,7 +51,8 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 			void *mapaddr = pci_map_resource(uio_res->maps[i].addr,
 					fd, (off_t)uio_res->maps[i].offset,
 					(size_t)uio_res->maps[i].size, 0);
-			/* fd is not needed in slave process, close it */
+
+			/* fd is not needed in secondary process, close it */
 			close(fd);
 			if (mapaddr != uio_res->maps[i].addr) {
 				RTE_LOG(ERR, EAL,
