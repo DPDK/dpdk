@@ -311,6 +311,13 @@ Limitations
   - The E-Switch Sample flow must have the eswitch_manager VPORT destination (PF or ECPF) and no additional actions.
   - For ConnectX-5, the ``RTE_FLOW_ACTION_TYPE_SAMPLE`` is typically used as first action in the E-Switch egress flow if with header modify or encapsulation actions.
 
+- IPv6 header item 'proto' field, indicating the next header protocol, should
+  not be set as extension header.
+  In case the next header is an extension header, it should not be specified in
+  IPv6 header item 'proto' field.
+  The last extension header item 'next header' field can specify the following
+  header protocol type.
+
 Statistics
 ----------
 
