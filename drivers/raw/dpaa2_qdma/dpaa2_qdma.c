@@ -221,7 +221,9 @@ static inline int dpdmai_dev_set_fd_lf(
 {
 	struct rte_qdma_rbp *rbp = &qdma_vq->rbp;
 	struct rte_qdma_job **ppjob;
+	void *elem;
 	struct qbman_fle *fle;
+	uint64_t elem_iova, fle_iova;
 	int ret = 0;
 	struct qdma_device *qdma_dev = QDMA_DEV_OF_VQ(qdma_vq);
 
@@ -229,19 +231,29 @@ static inline int dpdmai_dev_set_fd_lf(
 	 * Get an FLE/SDD from FLE pool.
 	 * Note: IO metadata is before the FLE and SDD memory.
 	 */
-	ret = rte_mempool_get(qdma_dev->fle_pool, (void **)(&ppjob));
+	ret = rte_mempool_get(qdma_dev->fle_pool, (void **)(&elem));
 	if (ret) {
 		DPAA2_QDMA_DP_DEBUG("Memory alloc failed for FLE");
 		return ret;
 	}
 
+#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
+	elem_iova = rte_mempool_virt2iova(elem);
+#else
+	elem_iova = DPAA2_VADDR_TO_IOVA(elem);
+#endif
+
 	/* Set the metadata */
 	job->vq_id = qdma_vq->vq_id;
+	ppjob = (struct rte_qdma_job **)
+		((uintptr_t)(uint64_t)elem + QDMA_FLE_JOB_OFFSET);
 	*ppjob = job;
 
-	fle = (struct qbman_fle *)(ppjob + 1);
+	fle = (struct qbman_fle *)
+		((uintptr_t)(uint64_t)elem + QDMA_FLE_FLE_OFFSET);
+	fle_iova = elem_iova + QDMA_FLE_FLE_OFFSET;
 
-	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(fle));
+	DPAA2_SET_FD_ADDR(fd, fle_iova);
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
 	DPAA2_SET_FD_FRC(fd, QDMA_SER_CTX);
 
@@ -283,6 +295,8 @@ static inline uint16_t dpdmai_dev_get_job_lf(
 						const struct qbman_fd *fd,
 						struct rte_qdma_job **job)
 {
+	void *elem;
+	struct qbman_fle *fle;
 	struct rte_qdma_job **ppjob;
 	uint16_t vqid;
 	struct qdma_device *qdma_dev = QDMA_DEV_OF_VQ(qdma_vq);
@@ -291,9 +305,12 @@ static inline uint16_t dpdmai_dev_get_job_lf(
 	 * Fetch metadata from FLE. job and vq_id were set
 	 * in metadata in the enqueue operation.
 	 */
-	ppjob = (struct rte_qdma_job **)
+	fle = (struct qbman_fle *)
 			DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
-	ppjob -= 1;
+	elem = (void *)((uintptr_t)(uint64_t)fle - QDMA_FLE_FLE_OFFSET);
+
+	ppjob = (struct rte_qdma_job **)
+		((uintptr_t)(uint64_t)elem + QDMA_FLE_JOB_OFFSET);
 
 	*job = (struct rte_qdma_job *)*ppjob;
 	(*job)->status = (DPAA2_GET_FD_ERR(fd) << 8) |
@@ -301,7 +318,7 @@ static inline uint16_t dpdmai_dev_get_job_lf(
 	vqid = (*job)->vq_id;
 
 	/* Free FLE to the pool */
-	rte_mempool_put(qdma_dev->fle_pool, (void *)ppjob);
+	rte_mempool_put(qdma_dev->fle_pool, elem);
 
 	return vqid;
 }

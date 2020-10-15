@@ -17,6 +17,11 @@ struct rte_qdma_job;
 #define QDMA_FLE_POOL_SIZE (sizeof(struct rte_qdma_job *) + \
 		sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE + \
 		sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD)
+
+#define QDMA_FLE_JOB_OFFSET 0
+#define QDMA_FLE_FLE_OFFSET \
+		(QDMA_FLE_JOB_OFFSET + sizeof(struct rte_qdma_job *))
+
 /** FLE pool cache size */
 #define QDMA_FLE_CACHE_SIZE(_num) (_num/(RTE_MAX_LCORE * 2))
 
