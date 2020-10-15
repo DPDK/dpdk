@@ -2806,7 +2806,9 @@ stop_port(portid_t pid)
 			}
 		}
 
-		rte_eth_dev_stop(pi);
+		if (rte_eth_dev_stop(pi) != 0)
+			RTE_LOG(ERR, EAL, "rte_eth_dev_stop failed for port %u\n",
+				pi);
 
 		if (rte_atomic16_cmpset(&(port->port_status),
 			RTE_PORT_HANDLING, RTE_PORT_STOPPED) == 0)
