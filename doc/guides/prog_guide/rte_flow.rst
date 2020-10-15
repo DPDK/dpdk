@@ -907,13 +907,15 @@ EtherType/TPID provided by the subsequent pattern item. This is the same
 order as on the wire.
 If the ``type`` field contains a TPID value, then only tagged packets with the
 specified TPID will match the pattern.
-Otherwise, only untagged packets will match the pattern.
-If the ``ETH`` item is the only item in the pattern, and the ``type`` field is
-not specified, then both tagged and untagged packets will match the pattern.
+The field ``has_vlan`` can be used to match any type of tagged packets,
+instead of using the ``type`` field.
+If the ``type`` and ``has_vlan`` fields are not specified, then both tagged
+and untagged packets will match the pattern.
 
 - ``dst``: destination MAC.
 - ``src``: source MAC.
 - ``type``: EtherType or TPID.
+- ``has_vlan``: packet header contains at least one VLAN.
 - Default ``mask`` matches destination and source addresses only.
 
 Item: ``VLAN``
@@ -926,9 +928,14 @@ The corresponding standard outer EtherType (TPID) values are
 preceding pattern item.
 If a ``VLAN`` item is present in the pattern, then only tagged packets will
 match the pattern.
+The field ``has_more_vlan`` can be used to match any type of tagged packets,
+instead of using the ``inner_type field``.
+If the ``inner_type`` and ``has_more_vlan`` fields are not specified,
+then any tagged packets will match the pattern.
 
 - ``tci``: tag control information.
 - ``inner_type``: inner EtherType or TPID.
+- ``has_more_vlan``: packet header contains at least one more VLAN, after this VLAN.
 - Default ``mask`` matches the VID part of TCI only (lower 12 bits).
 
 Item: ``IPV4``

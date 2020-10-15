@@ -154,11 +154,6 @@ Deprecation Notices
   as deprecated in DPDK 20.11, along with the associated macros ``ETH_MIRROR_*``.
   This API will be fully removed in DPDK 21.11.
 
-* ethdev: The ``struct rte_flow_item_eth`` and ``struct rte_flow_item_vlan``
-  structs will be modified, to include an additional value, indicating existence
-  or absence of a VLAN header following the current header, as proposed in RFC
-  https://mails.dpdk.org/archives/dev/2020-August/177536.html.
-
 * security: The API ``rte_security_session_create`` takes only single mempool
   for session and session private data. So the application need to create
   mempool for twice the number of sessions needed and will also lead to

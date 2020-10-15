@@ -534,6 +534,13 @@ ABI Changes
     * ``uint32_t tx_explicit:1;``
     * ``uint32_t manual_bind:1;``
 
+  * Added new field ``has_vlan`` to structure ``rte_flow_item_eth``,
+    indicating that packet header contains at least one VLAN.
+
+  * Added new field ``has_more_vlan`` to structure
+    ``rte_flow_item_vlan``, indicating that packet header contains
+    at least one more VLAN, after this VLAN.
+
 * eventdev: Following structures are modified to support DLB/DLB2 PMDs
   and future extensions:
 
