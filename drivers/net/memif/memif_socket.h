@@ -60,7 +60,8 @@ void memif_disconnect(struct rte_eth_dev *dev);
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int memif_connect_master(struct rte_eth_dev *dev);
+int memif_connect_server(struct rte_eth_dev *dev);
+
 
 /**
  * If device is properly configured, send connection request.
@@ -71,7 +72,7 @@ int memif_connect_master(struct rte_eth_dev *dev);
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-int memif_connect_slave(struct rte_eth_dev *dev);
+int memif_connect_client(struct rte_eth_dev *dev);
 
 struct memif_socket_dev_list_elt {
 	TAILQ_ENTRY(memif_socket_dev_list_elt) next;

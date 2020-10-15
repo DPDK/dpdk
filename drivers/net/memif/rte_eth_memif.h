@@ -36,8 +36,8 @@ extern int memif_logtype;
 		"%s(): " fmt "\n", __func__, ##args)
 
 enum memif_role_t {
-	MEMIF_ROLE_MASTER,
-	MEMIF_ROLE_SLAVE,
+	MEMIF_ROLE_SERVER,
+	MEMIF_ROLE_CLIENT,
 };
 
 struct memif_region {
@@ -64,8 +64,8 @@ struct memif_queue {
 	uint16_t last_tail;			/**< last ring tail */
 
 	struct rte_mbuf **buffers;
-	/**< Stored mbufs. Used in zero-copy tx. Slave stores transmitted
-	 * mbufs to free them once master has received them.
+	/**< Stored mbufs. Used in zero-copy tx. Client stores transmitted
+	 * mbufs to free them once server has received them.
 	 */
 
 	/* rx/tx info */
@@ -104,15 +104,15 @@ struct pmd_internals {
 
 	struct {
 		memif_log2_ring_size_t log2_ring_size; /**< log2 of ring size */
-		uint8_t num_s2m_rings;		/**< number of slave to master rings */
-		uint8_t num_m2s_rings;		/**< number of master to slave rings */
+		uint8_t num_c2s_rings;		/**< number of client to server rings */
+		uint8_t num_s2c_rings;		/**< number of server to client rings */
 		uint16_t pkt_buffer_size;	/**< buffer size */
 	} cfg;					/**< Configured parameters (max values) */
 
 	struct {
 		memif_log2_ring_size_t log2_ring_size; /**< log2 of ring size */
-		uint8_t num_s2m_rings;		/**< number of slave to master rings */
-		uint8_t num_m2s_rings;		/**< number of master to slave rings */
+		uint8_t num_c2s_rings;		/**< number of client to server rings */
+		uint8_t num_s2c_rings;		/**< number of server to client rings */
 		uint16_t pkt_buffer_size;	/**< buffer size */
 	} run;
 	/**< Parameters used in active connection */
@@ -139,7 +139,7 @@ void memif_free_regions(struct rte_eth_dev *dev);
 
 /**
  * Finalize connection establishment process. Map shared memory file
- * (master role), initialize ring queue, set link status up.
+ * (server role), initialize ring queue, set link status up.
  *
  * @param dev
  *   memif device
@@ -151,7 +151,7 @@ int memif_connect(struct rte_eth_dev *dev);
 
 /**
  * Create shared memory file and initialize ring queue.
- * Only called by slave when establishing connection
+ * Only called by client when establishing connection
  *
  * @param dev
  *   memif device
