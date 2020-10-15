@@ -237,7 +237,12 @@ slave_rte_flow_prepare(uint16_t slave_id, struct bond_dev_private *internals)
 	uint16_t slave_port_id = internals->slaves[slave_id].port_id;
 
 	if (internals->flow_isolated_valid != 0) {
-		rte_eth_dev_stop(slave_port_id);
+		if (rte_eth_dev_stop(slave_port_id) != 0) {
+			RTE_BOND_LOG(ERR, "Failed to stop device on port %u",
+				     slave_port_id);
+			return -1;
+		}
+
 		if (rte_flow_isolate(slave_port_id, internals->flow_isolated,
 		    &ferror)) {
 			RTE_BOND_LOG(ERR, "rte_flow_isolate failed for slave"

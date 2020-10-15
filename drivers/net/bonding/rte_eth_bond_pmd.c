@@ -1694,7 +1694,10 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
 
 	/* Stop slave */
-	rte_eth_dev_stop(slave_eth_dev->data->port_id);
+	errval = rte_eth_dev_stop(slave_eth_dev->data->port_id);
+	if (errval != 0)
+		RTE_BOND_LOG(ERR, "rte_eth_dev_stop: port %u, err (%d)",
+			     slave_eth_dev->data->port_id, errval);
 
 	/* Enable interrupts on slave device if supported */
 	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
@@ -2110,7 +2113,11 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	while (internals->slave_count != skipped) {
 		uint16_t port_id = internals->slaves[skipped].port_id;
 
-		rte_eth_dev_stop(port_id);
+		if (rte_eth_dev_stop(port_id) != 0) {
+			RTE_BOND_LOG(ERR, "Failed to stop device on port %u",
+				     port_id);
+			skipped++;
+		}
 
 		if (rte_eth_bond_slave_remove(bond_port_id, port_id) != 0) {
 			RTE_BOND_LOG(ERR,
