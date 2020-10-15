@@ -282,7 +282,9 @@ fs_dev_remove(struct sub_device *sdev)
 	switch (sdev->state) {
 	case DEV_STARTED:
 		failsafe_rx_intr_uninstall_subdevice(sdev);
-		rte_eth_dev_stop(PORT_ID(sdev));
+		ret = rte_eth_dev_stop(PORT_ID(sdev));
+		if (ret < 0)
+			ERROR("Failed to stop sub-device %u", SUB_ID(sdev));
 		sdev->state = DEV_ACTIVE;
 		/* fallthrough */
 	case DEV_ACTIVE:

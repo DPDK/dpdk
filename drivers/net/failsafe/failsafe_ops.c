@@ -147,7 +147,9 @@ fs_dev_start(struct rte_eth_dev *dev)
 		if (ret) {
 			if (!fs_err(sdev, ret))
 				continue;
-			rte_eth_dev_stop(PORT_ID(sdev));
+			if (fs_err(sdev, rte_eth_dev_stop(PORT_ID(sdev))) < 0)
+				ERROR("Failed to stop sub-device %u",
+				      SUB_ID(sdev));
 			fs_unlock(dev, 0);
 			return ret;
 		}
