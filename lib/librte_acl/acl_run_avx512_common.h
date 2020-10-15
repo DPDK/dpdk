@@ -246,8 +246,8 @@ _F_(match_process)(struct acl_flow_avx512 *flow, uint32_t *fmsk,
 	tr_hi[0] = _M_I_(mask_mov_epi32)(tr_hi[0], rmsk[0], _SV_(trhi_idle));
 
 	/* save found match indexes */
-	_M_I_(mask_i32scatter_epi32)(flow->matches, rmsk[0], idx[0], res,
-			sizeof(flow->matches[0]));
+	_M_I_(mask_i32scatter_epi32)((void *)flow->matches, rmsk[0], idx[0],
+			res, sizeof(flow->matches[0]));
 
 	/* update masks and start new flows for matches */
 	n = update_flow_mask(flow, fmsk, rmsk);
