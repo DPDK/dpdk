@@ -5645,6 +5645,61 @@ handle_port_link_status(const char *cmd __rte_unused,
 	return 0;
 }
 
+int
+rte_eth_hairpin_queue_peer_update(uint16_t peer_port, uint16_t peer_queue,
+				  struct rte_hairpin_peer_info *cur_info,
+				  struct rte_hairpin_peer_info *peer_info,
+				  uint32_t direction)
+{
+	struct rte_eth_dev *dev;
+
+	/* Current queue information is not mandatory. */
+	if (peer_info == NULL)
+		return -EINVAL;
+
+	/* No need to check the validity again. */
+	dev = &rte_eth_devices[peer_port];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->hairpin_queue_peer_update,
+				-ENOTSUP);
+
+	return (*dev->dev_ops->hairpin_queue_peer_update)(dev, peer_queue,
+					cur_info, peer_info, direction);
+}
+
+int
+rte_eth_hairpin_queue_peer_bind(uint16_t cur_port, uint16_t cur_queue,
+				struct rte_hairpin_peer_info *peer_info,
+				uint32_t direction)
+{
+	struct rte_eth_dev *dev;
+
+	if (peer_info == NULL)
+		return -EINVAL;
+
+	/* No need to check the validity again. */
+	dev = &rte_eth_devices[cur_port];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->hairpin_queue_peer_bind,
+				-ENOTSUP);
+
+	return (*dev->dev_ops->hairpin_queue_peer_bind)(dev, cur_queue,
+							peer_info, direction);
+}
+
+int
+rte_eth_hairpin_queue_peer_unbind(uint16_t cur_port, uint16_t cur_queue,
+				  uint32_t direction)
+{
+	struct rte_eth_dev *dev;
+
+	/* No need to check the validity again. */
+	dev = &rte_eth_devices[cur_port];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->hairpin_queue_peer_unbind,
+				-ENOTSUP);
+
+	return (*dev->dev_ops->hairpin_queue_peer_unbind)(dev, cur_queue,
+							  direction);
+}
+
 RTE_LOG_REGISTER(rte_eth_dev_logtype, lib.ethdev, INFO);
 
 RTE_INIT(ethdev_init_telemetry)

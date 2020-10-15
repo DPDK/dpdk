@@ -258,6 +258,9 @@ INTERNAL {
 	rte_eth_devargs_parse;
 	rte_eth_dma_zone_free;
 	rte_eth_dma_zone_reserve;
+	rte_eth_hairpin_queue_peer_bind;
+	rte_eth_hairpin_queue_peer_unbind;
+	rte_eth_hairpin_queue_peer_update;
 	rte_eth_switch_domain_alloc;
 	rte_eth_switch_domain_free;
 };
