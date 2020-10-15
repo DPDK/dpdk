@@ -68,6 +68,15 @@ New Features
   which allow the programmer to prefetch a cache line and also indicate
   the intention to write.
 
+* **Added the rte_cldemote API.**
+
+  Added a hardware hint CLDEMOTE, which is similar to prefetch in reverse.
+  CLDEMOTE moves the cache line to the more remote cache, where it expects
+  sharing to be efficient. Moving the cache line to a level more distant from
+  the processor helps to accelerate core-to-core communication.
+  This API is specific to x86 and implemented as a stub for other
+  architectures.
+
 * **Updated CRC modules of the net library.**
 
   * Added runtime selection of the optimal architecture-specific CRC path.

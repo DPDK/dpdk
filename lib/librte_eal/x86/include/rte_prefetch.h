@@ -32,6 +32,17 @@ static inline void rte_prefetch_non_temporal(const volatile void *p)
 	asm volatile ("prefetchnta %[p]" : : [p] "m" (*(const volatile char *)p));
 }
 
+/*
+ * We use raw byte codes for now as only the newest compiler
+ * versions support this instruction natively.
+ */
+__rte_experimental
+static inline void
+rte_cldemote(const volatile void *p)
+{
+	asm volatile(".byte 0x0f, 0x1c, 0x06" :: "S" (p));
+}
+
 #ifdef __cplusplus
 }
 #endif

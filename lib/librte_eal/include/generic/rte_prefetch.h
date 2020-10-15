@@ -116,4 +116,22 @@ rte_prefetch2_write(const void *p)
 	__builtin_prefetch(p, 1, 1);
 }
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Demote a cache line to a more distant level of cache from the processor.
+ * CLDEMOTE hints to hardware to move (demote) a cache line from the closest to
+ * the processor to a level more distant from the processor. It is a hint and
+ * not guaranteed. rte_cldemote is intended to move the cache line to the more
+ * remote cache, where it expects sharing to be efficient and to indicate that
+ * a line may be accessed by a different core in the future.
+ *
+ * @param p
+ *   Address to demote
+ */
+__rte_experimental
+static inline void
+rte_cldemote(const volatile void *p);
+
 #endif /* _RTE_PREFETCH_H_ */
