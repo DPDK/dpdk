@@ -140,8 +140,8 @@ foreach l:libraries
 				# RTE_BUILD_SHARED_LIB defined
 				cflags += '-DRTE_BUILD_SHARED_LIB'
 			endif
-			version_map = '@0@/@1@/rte_@2@_version.map'.format(
-					meson.current_source_dir(), dir_name, name)
+			version_map = '@0@/@1@/version.map'.format(
+					meson.current_source_dir(), dir_name)
 			implib = dir_name + '.dll.a'
 
 			def_file = custom_target(libname + '_def',

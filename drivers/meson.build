@@ -166,9 +166,9 @@ foreach subpath:subdirs
 				install: true)
 
 			# now build the shared driver
-			version_map = '@0@/@1@/@2@_version.map'.format(
+			version_map = '@0@/@1@/version.map'.format(
 					meson.current_source_dir(),
-					drv_path, lib_name)
+					drv_path)
 			implib = 'lib' + lib_name + '.dll.a'
 
 			def_file = custom_target(lib_name + '_def',
