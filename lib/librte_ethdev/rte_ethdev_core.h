@@ -5,6 +5,9 @@
 #ifndef _RTE_ETHDEV_CORE_H_
 #define _RTE_ETHDEV_CORE_H_
 
+#include <pthread.h>
+#include <sys/types.h>
+
 /**
  * @file
  *
@@ -180,6 +183,7 @@ struct rte_eth_dev_data {
 			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
 			 */
 
+	pthread_mutex_t flow_ops_mutex; /**< rte_flow ops mutex. */
 	uint64_t reserved_64s[4]; /**< Reserved for future fields */
 	void *reserved_ptrs[4];   /**< Reserved for future fields */
 } __rte_cache_aligned;

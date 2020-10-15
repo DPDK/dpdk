@@ -1677,6 +1677,8 @@ struct rte_eth_dev_owner {
 	char name[RTE_ETH_MAX_OWNER_NAME_LEN]; /**< The owner name. */
 };
 
+/** PMD supports thread-safe flow operations */
+#define RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE  0x0001
 /** Device supports link state interrupt */
 #define RTE_ETH_DEV_INTR_LSC     0x0002
 /** Device is a bonded slave */

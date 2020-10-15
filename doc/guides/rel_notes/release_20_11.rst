@@ -79,6 +79,12 @@ New Features
   Added the FEC API which provides functions for query FEC capabilities and
   current FEC mode from device. Also, API for configuring FEC mode is also provided.
 
+* **Added thread safety to rte_flow functions.**
+
+  Added ``RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE`` device flag to indicate
+  whether PMD supports thread safe operations. If PMD doesn't set the flag,
+  rte_flow API level functions will protect the flow operations with mutex.
+
 * **Updated Broadcom bnxt driver.**
 
   Updated the Broadcom bnxt driver with new features and improvements, including:
