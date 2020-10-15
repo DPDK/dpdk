@@ -1909,6 +1909,120 @@ flow_dv_validate_item_ipv4(const struct rte_flow_item *item,
 }
 
 /**
+ * Validate IPV6 fragment extension item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_ipv6_frag_ext(const struct rte_flow_item *item,
+				    uint64_t item_flags,
+				    struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv6_frag_ext *spec = item->spec;
+	const struct rte_flow_item_ipv6_frag_ext *last = item->last;
+	const struct rte_flow_item_ipv6_frag_ext *mask = item->mask;
+	rte_be16_t frag_data_spec = 0;
+	rte_be16_t frag_data_last = 0;
+	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
+	int ret = 0;
+	struct rte_flow_item_ipv6_frag_ext nic_mask = {
+		.hdr = {
+			.next_header = 0xff,
+			.frag_data = RTE_BE16(0xffff),
+		},
+	};
+
+	if (item_flags & l4m)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "ipv6 fragment extension item cannot "
+					  "follow L4 item.");
+	if ((tunnel && !(item_flags & MLX5_FLOW_LAYER_INNER_L3_IPV6)) ||
+	    (!tunnel && !(item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV6)))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "ipv6 fragment extension item must "
+					  "follow ipv6 item");
+	if (spec && mask)
+		frag_data_spec = spec->hdr.frag_data & mask->hdr.frag_data;
+	if (!frag_data_spec)
+		return 0;
+	/*
+	 * spec and mask are valid, enforce using full mask to make sure the
+	 * complete value is used correctly.
+	 */
+	if ((mask->hdr.frag_data & RTE_BE16(RTE_IPV6_FRAG_USED_MASK)) !=
+				RTE_BE16(RTE_IPV6_FRAG_USED_MASK))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+					  item, "must use full mask for"
+					  " frag_data");
+	/*
+	 * Match on frag_data 0x00001 means M is 1 and frag-offset is 0.
+	 * This is 1st fragment of fragmented packet.
+	 */
+	if (frag_data_spec == RTE_BE16(RTE_IPV6_EHDR_MF_MASK))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "match on first fragment not "
+					  "supported");
+	if (frag_data_spec && !last)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "specified value not supported");
+	ret = mlx5_flow_item_acceptable
+				(item, (const uint8_t *)mask,
+				 (const uint8_t *)&nic_mask,
+				 sizeof(struct rte_flow_item_ipv6_frag_ext),
+				 MLX5_ITEM_RANGE_ACCEPTED, error);
+	if (ret)
+		return ret;
+	/* spec and last are valid, validate the specified range. */
+	frag_data_last = last->hdr.frag_data & mask->hdr.frag_data;
+	/*
+	 * Match on frag_data spec 0x0009 and last 0xfff9
+	 * means M is 1 and frag-offset is > 0.
+	 * This packet is fragment 2nd and onward, excluding last.
+	 * This is not yet supported in MLX5, return appropriate
+	 * error message.
+	 */
+	if (frag_data_spec == RTE_BE16(RTE_IPV6_EHDR_FO_ALIGN |
+				       RTE_IPV6_EHDR_MF_MASK) &&
+	    frag_data_last == RTE_BE16(RTE_IPV6_FRAG_USED_MASK))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_LAST,
+					  last, "match on following "
+					  "fragments not supported");
+	/*
+	 * Match on frag_data spec 0x0008 and last 0xfff8
+	 * means M is 0 and frag-offset is > 0.
+	 * This packet is last fragment of fragmented packet.
+	 * This is not yet supported in MLX5, return appropriate
+	 * error message.
+	 */
+	if (frag_data_spec == RTE_BE16(RTE_IPV6_EHDR_FO_ALIGN) &&
+	    frag_data_last == RTE_BE16(RTE_IPV6_EHDR_FO_MASK))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_LAST,
+					  last, "match on last "
+					  "fragment not supported");
+	/* Other range values are invalid and rejected. */
+	return rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_ITEM_LAST, last,
+				  "specified range not supported");
+}
+
+/**
  * Validate the pop VLAN action.
  *
  * @param[in] dev
@@ -5555,6 +5669,29 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				next_protocol = 0xff;
 			}
 			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
+			ret = flow_dv_validate_item_ipv6_frag_ext(items,
+								  item_flags,
+								  error);
+			if (ret < 0)
+				return ret;
+			last_item = tunnel ?
+					MLX5_FLOW_LAYER_INNER_L3_IPV6_FRAG_EXT :
+					MLX5_FLOW_LAYER_OUTER_L3_IPV6_FRAG_EXT;
+			if (items->mask != NULL &&
+			    ((const struct rte_flow_item_ipv6_frag_ext *)
+			     items->mask)->hdr.next_header) {
+				next_protocol =
+				((const struct rte_flow_item_ipv6_frag_ext *)
+				 items->spec)->hdr.next_header;
+				next_protocol &=
+				((const struct rte_flow_item_ipv6_frag_ext *)
+				 items->mask)->hdr.next_header;
+			} else {
+				/* Reset for inner layer. */
+				next_protocol = 0xff;
+			}
+			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_validate_item_tcp
 						(items, item_flags,
@@ -6739,6 +6876,57 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 		 !!(ipv6_m->has_frag_ext));
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, frag,
 		 !!(ipv6_v->has_frag_ext & ipv6_m->has_frag_ext));
+}
+
+/**
+ * Add IPV6 fragment extension item to matcher and to the value.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+static void
+flow_dv_translate_item_ipv6_frag_ext(void *matcher, void *key,
+				     const struct rte_flow_item *item,
+				     int inner)
+{
+	const struct rte_flow_item_ipv6_frag_ext *ipv6_frag_ext_m = item->mask;
+	const struct rte_flow_item_ipv6_frag_ext *ipv6_frag_ext_v = item->spec;
+	const struct rte_flow_item_ipv6_frag_ext nic_mask = {
+		.hdr = {
+			.next_header = 0xff,
+			.frag_data = RTE_BE16(0xffff),
+		},
+	};
+	void *headers_m;
+	void *headers_v;
+
+	if (inner) {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 inner_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+	} else {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 outer_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	}
+	/* IPv6 fragment extension item exists, so packet is IP fragment. */
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, frag, 1);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, frag, 1);
+	if (!ipv6_frag_ext_v)
+		return;
+	if (!ipv6_frag_ext_m)
+		ipv6_frag_ext_m = &nic_mask;
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol,
+		 ipv6_frag_ext_m->hdr.next_header);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
+		 ipv6_frag_ext_v->hdr.next_header &
+		 ipv6_frag_ext_m->hdr.next_header);
 }
 
 /**
@@ -9839,6 +10027,27 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				next_protocol &=
 					((const struct rte_flow_item_ipv6 *)
 					 items->mask)->hdr.proto;
+			} else {
+				/* Reset for inner layer. */
+				next_protocol = 0xff;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
+			flow_dv_translate_item_ipv6_frag_ext(match_mask,
+							     match_value,
+							     items, tunnel);
+			last_item = tunnel ?
+					MLX5_FLOW_LAYER_INNER_L3_IPV6_FRAG_EXT :
+					MLX5_FLOW_LAYER_OUTER_L3_IPV6_FRAG_EXT;
+			if (items->mask != NULL &&
+			    ((const struct rte_flow_item_ipv6_frag_ext *)
+			     items->mask)->hdr.next_header) {
+				next_protocol =
+				((const struct rte_flow_item_ipv6_frag_ext *)
+				 items->spec)->hdr.next_header;
+				next_protocol &=
+				((const struct rte_flow_item_ipv6_frag_ext *)
+				 items->mask)->hdr.next_header;
 			} else {
 				/* Reset for inner layer. */
 				next_protocol = 0xff;

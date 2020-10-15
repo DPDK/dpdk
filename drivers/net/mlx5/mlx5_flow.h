@@ -122,6 +122,10 @@ enum mlx5_feature_name {
 /* Pattern eCPRI Layer bit. */
 #define MLX5_FLOW_LAYER_ECPRI (UINT64_C(1) << 29)
 
+/* IPv6 Fragment Extension Header bit. */
+#define MLX5_FLOW_LAYER_OUTER_L3_IPV6_FRAG_EXT (1u << 30)
+#define MLX5_FLOW_LAYER_INNER_L3_IPV6_FRAG_EXT (1u << 31)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
