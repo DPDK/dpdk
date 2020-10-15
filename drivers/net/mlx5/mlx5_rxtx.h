@@ -167,7 +167,7 @@ enum mlx5_rxq_type {
 struct mlx5_rxq_ctrl {
 	struct mlx5_rxq_data rxq; /* Data path structure. */
 	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
-	rte_atomic32_t refcnt; /* Reference counter. */
+	uint32_t refcnt; /* Reference counter. */
 	struct mlx5_rxq_obj *obj; /* Verbs/DevX elements. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
 	enum mlx5_rxq_type type; /* Rxq type. */

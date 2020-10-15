@@ -447,7 +447,8 @@ mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
 		return -rte_errno;
 	}
 	rxq_ctrl = container_of((*priv->rxqs)[idx], struct mlx5_rxq_ctrl, rxq);
-	return (rte_atomic32_read(&rxq_ctrl->refcnt) == 1);
+	return (__atomic_load_n(&rxq_ctrl->refcnt, __ATOMIC_RELAXED) == 1);
+
 }
 
 /* Fetches and drops all SW-owned and error CQEs to synchronize CQ. */
@@ -1549,7 +1550,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.uar_lock_cq = &priv->sh->uar_lock_cq;
 #endif
 	tmpl->rxq.idx = idx;
-	rte_atomic32_inc(&tmpl->refcnt);
+	__atomic_add_fetch(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
 error:
@@ -1596,7 +1597,7 @@ mlx5_rxq_hairpin_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.mr_ctrl.cache_bh = (struct mlx5_mr_btree) { 0 };
 	tmpl->hairpin_conf = *hairpin_conf;
 	tmpl->rxq.idx = idx;
-	rte_atomic32_inc(&tmpl->refcnt);
+	__atomic_add_fetch(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
 }
@@ -1621,7 +1622,7 @@ mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 
 	if (rxq_data) {
 		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-		rte_atomic32_inc(&rxq_ctrl->refcnt);
+		__atomic_add_fetch(&rxq_ctrl->refcnt, 1, __ATOMIC_RELAXED);
 	}
 	return rxq_ctrl;
 }
@@ -1646,7 +1647,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->rxqs)[idx])
 		return 0;
 	rxq_ctrl = container_of((*priv->rxqs)[idx], struct mlx5_rxq_ctrl, rxq);
-	if (!rte_atomic32_dec_and_test(&rxq_ctrl->refcnt))
+	if (__atomic_sub_fetch(&rxq_ctrl->refcnt, 1, __ATOMIC_RELAXED) > 1)
 		return 1;
 	if (rxq_ctrl->obj) {
 		priv->obj_ops.rxq_obj_release(rxq_ctrl->obj);
@@ -1654,13 +1655,15 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 		mlx5_free(rxq_ctrl->obj);
 		rxq_ctrl->obj = NULL;
 	}
-	if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD) {
-		mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
+	if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
 		rxq_free_elts(rxq_ctrl);
+	if (!__atomic_load_n(&rxq_ctrl->refcnt, __ATOMIC_RELAXED)) {
+		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
+			mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
+		LIST_REMOVE(rxq_ctrl, next);
+		mlx5_free(rxq_ctrl);
+		(*priv->rxqs)[idx] = NULL;
 	}
-	LIST_REMOVE(rxq_ctrl, next);
-	mlx5_free(rxq_ctrl);
-	(*priv->rxqs)[idx] = NULL;
 	return 0;
 }
 
