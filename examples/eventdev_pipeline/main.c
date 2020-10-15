@@ -296,7 +296,8 @@ signal_handler(int signum)
 		RTE_ETH_FOREACH_DEV(portid) {
 			rte_event_eth_rx_adapter_stop(portid);
 			rte_event_eth_tx_adapter_stop(portid);
-			rte_eth_dev_stop(portid);
+			if (rte_eth_dev_stop(portid) < 0)
+				printf("Failed to stop port %u", portid);
 		}
 
 		rte_eal_mp_wait_lcore();

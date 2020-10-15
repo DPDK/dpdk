@@ -1116,7 +1116,10 @@ main(int argc, char **argv)
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 		printf("Closing port %d...", portid);
-		rte_eth_dev_stop(portid);
+		ret = rte_eth_dev_stop(portid);
+		if (ret != 0)
+			printf("Failed to stop port %u: %s\n",
+			       portid, rte_strerror(-ret));
 		rte_eth_dev_close(portid);
 		printf(" Done\n");
 	}

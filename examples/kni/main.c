@@ -782,7 +782,12 @@ kni_change_mtu_(uint16_t port_id, unsigned int new_mtu)
 	RTE_LOG(INFO, APP, "Change MTU of port %d to %u\n", port_id, new_mtu);
 
 	/* Stop specific port */
-	rte_eth_dev_stop(port_id);
+	ret = rte_eth_dev_stop(port_id);
+	if (ret != 0) {
+		RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n",
+			port_id, rte_strerror(-ret));
+		return ret;
+	}
 
 	memcpy(&conf, &port_conf, sizeof(conf));
 	/* Set new MTU */
@@ -875,10 +880,23 @@ kni_config_network_interface(uint16_t port_id, uint8_t if_up)
 	rte_atomic32_inc(&kni_pause);
 
 	if (if_up != 0) { /* Configure network interface up */
-		rte_eth_dev_stop(port_id);
+		ret = rte_eth_dev_stop(port_id);
+		if (ret != 0) {
+			RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n",
+				port_id, rte_strerror(-ret));
+			rte_atomic32_dec(&kni_pause);
+			return ret;
+		}
 		ret = rte_eth_dev_start(port_id);
-	} else /* Configure network interface down */
-		rte_eth_dev_stop(port_id);
+	} else { /* Configure network interface down */
+		ret = rte_eth_dev_stop(port_id);
+		if (ret != 0) {
+			RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n",
+				port_id, rte_strerror(-ret));
+			rte_atomic32_dec(&kni_pause);
+			return ret;
+		}
+	}
 
 	rte_atomic32_dec(&kni_pause);
 
@@ -998,6 +1016,7 @@ static int
 kni_free_kni(uint16_t port_id)
 {
 	uint8_t i;
+	int ret;
 	struct kni_port_params **p = kni_port_params_array;
 
 	if (port_id >= RTE_MAX_ETHPORTS || !p[port_id])
@@ -1008,7 +1027,10 @@ kni_free_kni(uint16_t port_id)
 			printf("Fail to release kni\n");
 		p[port_id]->kni[i] = NULL;
 	}
-	rte_eth_dev_stop(port_id);
+	ret = rte_eth_dev_stop(port_id);
+	if (ret != 0)
+		RTE_LOG(ERR, APP, "Failed to stop port %d: %s\n",
+			port_id, rte_strerror(-ret));
 
 	return 0;
 }

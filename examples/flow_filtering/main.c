@@ -52,7 +52,7 @@ print_ether_addr(const char *what, struct rte_ether_addr *eth_addr)
 	printf("%s%s", what, buf);
 }
 
-static void
+static int
 main_loop(void)
 {
 	struct rte_mbuf *mbufs[32];
@@ -61,6 +61,7 @@ main_loop(void)
 	uint16_t nb_rx;
 	uint16_t i;
 	uint16_t j;
+	int ret;
 
 	while (!force_quit) {
 		for (i = 0; i < nr_queues; i++) {
@@ -88,8 +89,12 @@ main_loop(void)
 
 	/* closing and releasing resources */
 	rte_flow_flush(port_id, &error);
-	rte_eth_dev_stop(port_id);
+	ret = rte_eth_dev_stop(port_id);
+	if (ret < 0)
+		printf("Failed to stop port %u: %s",
+		       port_id, rte_strerror(-ret));
 	rte_eth_dev_close(port_id);
+	return ret;
 }
 
 #define CHECK_INTERVAL 1000  /* 100ms */
@@ -254,7 +259,5 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "error in creating flow");
 	}
 
-	main_loop();
-
-	return 0;
+	return main_loop();
 }

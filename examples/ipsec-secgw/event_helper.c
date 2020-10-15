@@ -1583,7 +1583,12 @@ eh_devs_init(struct eh_conf *conf)
 		if ((conf->eth_portmask & (1 << port_id)) == 0)
 			continue;
 
-		rte_eth_dev_stop(port_id);
+		ret = rte_eth_dev_stop(port_id);
+		if (ret != 0) {
+			EH_LOG_ERR("Failed to stop port %u, err: %d",
+					port_id, ret);
+			return ret;
+		}
 	}
 
 	/* Setup eventdev */
