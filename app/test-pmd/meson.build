@@ -38,22 +38,22 @@ if dpdk_conf.has('RTE_LIBRTE_LATENCYSTATS')
 	deps += 'latencystats'
 endif
 if dpdk_conf.has('RTE_LIBRTE_PMD_CRYPTO_SCHEDULER')
-	deps += 'pmd_crypto_scheduler'
+	deps += 'crypto_scheduler'
 endif
 if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
-	deps += 'pmd_bond'
+	deps += 'net_bond'
 endif
 if dpdk_conf.has('RTE_LIBRTE_BNXT_PMD')
-	deps += 'pmd_bnxt'
+	deps += 'net_bnxt'
 endif
 if dpdk_conf.has('RTE_LIBRTE_I40E_PMD')
-	deps += 'pmd_i40e'
+	deps += 'net_i40e'
 endif
 if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
-	deps += 'pmd_ixgbe'
+	deps += 'net_ixgbe'
 endif
 if dpdk_conf.has('RTE_LIBRTE_DPAA_PMD')
-	deps += ['bus_dpaa', 'mempool_dpaa', 'pmd_dpaa']
+	deps += ['bus_dpaa', 'mempool_dpaa', 'net_dpaa']
 endif
 if dpdk_conf.has('RTE_LIBRTE_BPF')
 	sources += files('bpf_cmd.c')

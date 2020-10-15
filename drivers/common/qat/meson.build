@@ -2,7 +2,6 @@
 # Copyright(c) 2017-2018 Intel Corporation
 
 config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
-driver_name_fmt = 'rte_common_@0@'
 
 qat_crypto = true
 qat_crypto_path = 'crypto/qat'

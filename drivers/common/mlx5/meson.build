@@ -8,7 +8,6 @@ if not is_linux
 endif
 
 config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
-driver_name_fmt = 'rte_common_@0@'
 deps += ['hash', 'pci', 'bus_pci', 'net', 'eal', 'kvargs']
 sources += files(
 	'mlx5_devx_cmds.c',

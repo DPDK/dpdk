@@ -27,4 +27,3 @@ drivers = ['aesni_gcm',
 
 std_deps = ['cryptodev'] # cryptodev pulls in all other needed deps
 config_flag_fmt = 'RTE_LIBRTE_PMD_@0@'
-driver_name_fmt = 'rte_pmd_@0@'

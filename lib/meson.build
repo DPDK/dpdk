@@ -99,7 +99,8 @@ foreach l:libraries
 		set_variable(name.underscorify() + '_disable_reason', reason)
 	else
 		enabled_libs += name
-		dpdk_conf.set('RTE_LIBRTE_' + name.to_upper(), 1)
+		dpdk_conf.set('RTE_LIBRTE_' + name.to_upper(), 1) #old macro
+		dpdk_conf.set('RTE_LIB_' + name.to_upper(), 1) # new macro
 		install_headers(headers)
 
 		libname = 'rte_' + name

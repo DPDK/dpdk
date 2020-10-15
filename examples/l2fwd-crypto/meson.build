@@ -8,7 +8,7 @@
 
 deps += 'cryptodev'
 if dpdk_conf.has('RTE_LIBRTE_PMD_CRYPTO_SCHEDULER')
-	deps += 'pmd_crypto_scheduler'
+	deps += 'crypto_scheduler'
 endif
 allow_experimental_apis = true
 sources = files(

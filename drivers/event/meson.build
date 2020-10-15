@@ -12,4 +12,3 @@ if not (toolchain == 'gcc' and cc.version().version_compare('<4.8.6') and
 endif
 std_deps = ['eventdev', 'kvargs']
 config_flag_fmt = 'RTE_LIBRTE_PMD_@0@_EVENTDEV'
-driver_name_fmt = 'rte_pmd_@0@_event'

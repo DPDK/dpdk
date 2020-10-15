@@ -11,7 +11,7 @@ subdir('base')
 objs = [base_objs]
 
 deps += ['ethdev', 'rawdev', 'pci', 'bus_pci', 'kvargs',
-	'bus_vdev', 'bus_ifpga', 'net', 'pmd_i40e', 'pmd_ipn3ke']
+	'bus_vdev', 'bus_ifpga', 'net', 'net_i40e', 'net_ipn3ke']
 
 sources = files('ifpga_rawdev.c')
 

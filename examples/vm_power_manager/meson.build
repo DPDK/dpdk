@@ -14,15 +14,15 @@ endif
 deps += ['power']
 
 if dpdk_conf.has('RTE_LIBRTE_BNXT_PMD')
-	deps += ['pmd_bnxt']
+	deps += ['net_bnxt']
 endif
 
 if dpdk_conf.has('RTE_LIBRTE_I40E_PMD')
-	deps += ['pmd_i40e']
+	deps += ['net_i40e']
 endif
 
 if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
-	deps += ['pmd_ixgbe']
+	deps += ['net_ixgbe']
 endif
 
 allow_experimental_apis = true

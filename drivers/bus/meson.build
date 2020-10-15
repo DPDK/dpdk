@@ -4,4 +4,3 @@
 drivers = ['dpaa', 'fslmc', 'ifpga', 'pci', 'vdev', 'vmbus']
 std_deps = ['eal']
 config_flag_fmt = 'RTE_LIBRTE_@0@_BUS'
-driver_name_fmt = 'rte_bus_@0@'

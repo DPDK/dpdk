@@ -345,7 +345,7 @@ if dpdk_conf.has('RTE_LIBRTE_STACK_MEMPOOL')
 	test_deps += 'mempool_stack'
 endif
 if dpdk_conf.has('RTE_LIBRTE_SKELETON_EVENTDEV_PMD')
-	test_deps += 'pmd_skeleton_event'
+	test_deps += 'event_skeleton'
 endif
 if dpdk_conf.has('RTE_LIBRTE_TELEMETRY')
 	test_sources += ['test_telemetry_json.c', 'test_telemetry_data.c']
@@ -355,7 +355,7 @@ endif
 # The following linkages of drivers are required because
 # they are used via a driver-specific API.
 if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
-	test_deps += 'pmd_bond'
+	test_deps += 'net_bond'
 	test_sources += ['test_link_bonding.c', 'test_link_bonding_rssconf.c']
 	driver_test_names += ['link_bonding_autotest', 'link_bonding_rssconf_autotest']
 	if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
@@ -364,7 +364,7 @@ if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
 	endif
 endif
 if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
-	test_deps += 'pmd_ring'
+	test_deps += 'net_ring'
 	test_sources += 'test_pmd_ring_perf.c'
 	test_sources += 'test_pmd_ring.c'
 	test_sources += 'test_event_eth_tx_adapter.c'
@@ -415,7 +415,7 @@ endif
 
 if dpdk_conf.has('RTE_LIBRTE_PMD_CRYPTO_SCHEDULER')
 	driver_test_names += 'cryptodev_scheduler_autotest'
-	test_deps += 'pmd_crypto_scheduler'
+	test_deps += 'crypto_scheduler'
 endif
 
 foreach d:test_deps

@@ -33,9 +33,6 @@ foreach subpath:subdirs
 	drivers = []
 	std_deps = []
 	config_flag_fmt = '' # format string used to set the value in dpdk_conf
-	driver_name_fmt = '' # format string for driver name, used to name
-	                     # the library, the dependency and to find the
-	                     # version file for linking
 
 	# subpath can be either "class" or "class/driver"
 	if subpath.contains('/')
@@ -113,11 +110,14 @@ foreach subpath:subdirs
 			endif
 		else
 			enabled_drivers += name
+			lib_name = '_'.join(['rte', class, name])
+			dpdk_conf.set(lib_name.to_upper(), 1)
 
 			if fmt_name == ''
 				fmt_name = name
 			endif
-			dpdk_conf.set(config_flag_fmt.format(fmt_name.to_upper()),1)
+
+			dpdk_conf.set(config_flag_fmt.format(fmt_name.to_upper()),1) #old-style macro
 			# for driver compatibility, since we changed the
 			# default to match that of make. Remove in future release
 			# after following deprecation process
@@ -133,7 +133,6 @@ foreach subpath:subdirs
 				dpdk_conf.set(alt_flag_fmt.format(
 						fmt_name.to_upper()), 1)
 			endif
-			lib_name = driver_name_fmt.format(fmt_name)
 
 			dpdk_extra_ldflags += pkgconfig_extra_libs
 

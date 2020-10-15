@@ -14,7 +14,7 @@ includes = include_directories('lib', 'ethtool-app')
 
 deps += 'bus_pci'
 if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
-	deps += 'pmd_ixgbe'
+	deps += 'net_ixgbe'
 endif
 
 allow_experimental_apis = true

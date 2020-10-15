@@ -11,6 +11,14 @@ here.
 Deprecation Notices
 -------------------
 
+* build: The macros defined to indicate which DPDK libraries and drivers
+  are included in the meson build are changing to a standardized format of
+  ``RTE_LIB_<NAME>`` and ``RTE_<CLASS>_<NAME>``, where ``NAME`` is the
+  upper-case component name, e.g. EAL, ETHDEV, IXGBE, and ``CLASS`` is the
+  upper-case name of the device class to which a driver belongs e.g.
+  ``NET``, ``CRYPTO``, ``VDPA``. The old macros are deprecated and will be
+  removed in a future release.
+
 * meson: The minimum supported version of meson for configuring and building
   DPDK will be increased to v0.47.1 (from 0.41) from DPDK 19.05 onwards. For
   those users with a version earlier than 0.47.1, an updated copy of meson

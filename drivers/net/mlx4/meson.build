@@ -116,7 +116,7 @@ configure_file(output : 'mlx4_autoconf.h', configuration : config)
 # Build Glue Library
 if dlopen_ibverbs
 	dlopen_name = 'mlx4_glue'
-	dlopen_lib_name = driver_name_fmt.format(dlopen_name)
+	dlopen_lib_name = 'rte_net_' + dlopen_name
 	dlopen_so_version = LIB_GLUE_VERSION
 	dlopen_sources = files('mlx4_glue.c')
 	dlopen_install_dir = [ eal_pmd_path + '-glue' ]

@@ -9,7 +9,7 @@
 allow_experimental_apis = true
 build = dpdk_conf.has('RTE_LIBRTE_PMD_IOAT_RAWDEV')
 
-deps += ['rawdev_ioat']
+deps += ['raw_ioat']
 
 sources = files(
 	'ioatfwd.c'

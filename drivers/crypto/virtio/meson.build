@@ -3,6 +3,6 @@
 
 includes += include_directories('../../../lib/librte_vhost')
 deps += 'bus_pci'
-name = 'virtio_crypto'
+fmt_name = 'virtio_crypto'
 sources = files('virtio_cryptodev.c', 'virtio_pci.c',
 		'virtio_rxtx.c', 'virtqueue.c')
