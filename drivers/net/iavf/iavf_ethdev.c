@@ -164,7 +164,14 @@ iavf_set_mc_addr_list(struct rte_eth_dev *dev,
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	int err;
+	int err, ret;
+
+	if (mc_addrs_num > IAVF_NUM_MACADDR_MAX) {
+		PMD_DRV_LOG(ERR,
+			    "can't add more than a limited number (%u) of addresses.",
+			    (uint32_t)IAVF_NUM_MACADDR_MAX);
+		return -EINVAL;
+	}
 
 	/* flush previous addresses */
 	err = iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
@@ -172,17 +179,24 @@ iavf_set_mc_addr_list(struct rte_eth_dev *dev,
 	if (err)
 		return err;
 
-	vf->mc_addrs_num = 0;
-
 	/* add new ones */
 	err = iavf_add_del_mc_addr_list(adapter, mc_addrs, mc_addrs_num, true);
-	if (err)
-		return err;
 
-	vf->mc_addrs_num = mc_addrs_num;
-	memcpy(vf->mc_addrs, mc_addrs, mc_addrs_num * sizeof(*mc_addrs));
+	if (err) {
+		/* if adding mac address list fails, should add the previous
+		 * addresses back.
+		 */
+		ret = iavf_add_del_mc_addr_list(adapter, vf->mc_addrs,
+						vf->mc_addrs_num, true);
+		if (ret)
+			return ret;
+	} else {
+		vf->mc_addrs_num = mc_addrs_num;
+		memcpy(vf->mc_addrs,
+		       mc_addrs, mc_addrs_num * sizeof(*mc_addrs));
+	}
 
-	return 0;
+	return err;
 }
 
 static int

@@ -1107,9 +1107,6 @@ iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 	if (mc_addrs == NULL || mc_addrs_num == 0)
 		return 0;
 
-	if (mc_addrs_num > IAVF_NUM_MACADDR_MAX)
-		return -EINVAL;
-
 	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
 	list->vsi_id = vf->vsi_res->vsi_id;
 	list->num_elements = mc_addrs_num;
