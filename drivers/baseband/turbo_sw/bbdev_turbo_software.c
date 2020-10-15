@@ -10,6 +10,7 @@
 #include <rte_ring.h>
 #include <rte_kvargs.h>
 #include <rte_cycles.h>
+#include <rte_errno.h>
 
 #include <rte_bbdev.h>
 #include <rte_bbdev_pmd.h>
@@ -302,7 +303,8 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		rte_bbdev_log(ERR,
 				"Creating queue name for device %u queue %u failed",
 				dev->data->dev_id, q_id);
-		return -ENAMETOOLONG;
+		ret = -ENAMETOOLONG;
+		goto free_q;
 	}
 	q->enc_out = rte_zmalloc_socket(name,
 			((RTE_BBDEV_TURBO_MAX_TB_SIZE >> 3) + 3) *
@@ -311,6 +313,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 	if (q->enc_out == NULL) {
 		rte_bbdev_log(ERR,
 			"Failed to allocate queue memory for %s", name);
+		ret = -ENOMEM;
 		goto free_q;
 	}
 
@@ -322,7 +325,8 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		rte_bbdev_log(ERR,
 				"Creating queue name for device %u queue %u failed",
 				dev->data->dev_id, q_id);
-		return -ENAMETOOLONG;
+		ret = -ENAMETOOLONG;
+		goto free_q;
 	}
 	q->enc_in = rte_zmalloc_socket(name,
 			(RTE_BBDEV_LDPC_MAX_CB_SIZE >> 3) * sizeof(*q->enc_in),
@@ -330,6 +334,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 	if (q->enc_in == NULL) {
 		rte_bbdev_log(ERR,
 			"Failed to allocate queue memory for %s", name);
+		ret = -ENOMEM;
 		goto free_q;
 	}
 
@@ -340,7 +345,8 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		rte_bbdev_log(ERR,
 				"Creating queue name for device %u queue %u failed",
 				dev->data->dev_id, q_id);
-		return -ENAMETOOLONG;
+		ret = -ENAMETOOLONG;
+		goto free_q;
 	}
 	q->ag = rte_zmalloc_socket(name,
 			RTE_BBDEV_TURBO_MAX_CB_SIZE * 10 * sizeof(*q->ag),
@@ -348,6 +354,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 	if (q->ag == NULL) {
 		rte_bbdev_log(ERR,
 			"Failed to allocate queue memory for %s", name);
+		ret = -ENOMEM;
 		goto free_q;
 	}
 
@@ -358,7 +365,8 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		rte_bbdev_log(ERR,
 				"Creating queue name for device %u queue %u failed",
 				dev->data->dev_id, q_id);
-		return -ENAMETOOLONG;
+		ret = -ENAMETOOLONG;
+		goto free_q;
 	}
 	q->code_block = rte_zmalloc_socket(name,
 			RTE_BBDEV_TURBO_MAX_CB_SIZE * sizeof(*q->code_block),
@@ -366,6 +374,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 	if (q->code_block == NULL) {
 		rte_bbdev_log(ERR,
 			"Failed to allocate queue memory for %s", name);
+		ret = -ENOMEM;
 		goto free_q;
 	}
 
@@ -377,7 +386,8 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		rte_bbdev_log(ERR,
 				"Creating queue name for device %u queue %u failed",
 				dev->data->dev_id, q_id);
-		return -ENAMETOOLONG;
+		ret = -ENAMETOOLONG;
+		goto free_q;
 	}
 	q->deint_input = rte_zmalloc_socket(name,
 			DEINT_INPUT_BUF_SIZE * sizeof(*q->deint_input),
@@ -385,6 +395,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 	if (q->deint_input == NULL) {
 		rte_bbdev_log(ERR,
 			"Failed to allocate queue memory for %s", name);
+		ret = -ENOMEM;
 		goto free_q;
 	}
 
@@ -396,7 +407,8 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		rte_bbdev_log(ERR,
 				"Creating queue name for device %u queue %u failed",
 				dev->data->dev_id, q_id);
-		return -ENAMETOOLONG;
+		ret = -ENAMETOOLONG;
+		goto free_q;
 	}
 	q->deint_output = rte_zmalloc_socket(NULL,
 			DEINT_OUTPUT_BUF_SIZE * sizeof(*q->deint_output),
@@ -404,6 +416,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 	if (q->deint_output == NULL) {
 		rte_bbdev_log(ERR,
 			"Failed to allocate queue memory for %s", name);
+		ret = -ENOMEM;
 		goto free_q;
 	}
 
@@ -415,7 +428,8 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		rte_bbdev_log(ERR,
 				"Creating queue name for device %u queue %u failed",
 				dev->data->dev_id, q_id);
-		return -ENAMETOOLONG;
+		ret = -ENAMETOOLONG;
+		goto free_q;
 	}
 	q->adapter_output = rte_zmalloc_socket(NULL,
 			ADAPTER_OUTPUT_BUF_SIZE * sizeof(*q->adapter_output),
@@ -423,6 +437,7 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 	if (q->adapter_output == NULL) {
 		rte_bbdev_log(ERR,
 			"Failed to allocate queue memory for %s", name);
+		ret = -ENOMEM;
 		goto free_q;
 	}
 
@@ -433,12 +448,14 @@ q_setup(struct rte_bbdev *dev, uint16_t q_id,
 		rte_bbdev_log(ERR,
 				"Creating queue name for device %u queue %u failed",
 				dev->data->dev_id, q_id);
-		return -ENAMETOOLONG;
+		ret = -ENAMETOOLONG;
+		goto free_q;
 	}
 	q->processed_pkts = rte_ring_create(name, queue_conf->queue_size,
 			queue_conf->socket, RING_F_SP_ENQ | RING_F_SC_DEQ);
 	if (q->processed_pkts == NULL) {
 		rte_bbdev_log(ERR, "Failed to create ring for %s", name);
+		ret = -rte_errno;
 		goto free_q;
 	}
 
@@ -458,7 +475,7 @@ free_q:
 	rte_free(q->deint_output);
 	rte_free(q->adapter_output);
 	rte_free(q);
-	return -EFAULT;
+	return ret;
 }
 
 static const struct rte_bbdev_ops pmd_ops = {
