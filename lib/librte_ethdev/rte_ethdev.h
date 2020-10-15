@@ -2188,6 +2188,36 @@ int rte_eth_tx_hairpin_queue_setup
  * @warning
  * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
  *
+ * Get all the hairpin peer Rx / Tx ports of the current port.
+ * The caller should ensure that the array is large enough to save the ports
+ * list.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param peer_ports
+ *   Pointer to the array to store the peer ports list.
+ * @param len
+ *   Length of the array to store the port identifiers.
+ * @param direction
+ *   Current port to peer port direction
+ *   positive - current used as Tx to get all peer Rx ports.
+ *   zero - current used as Rx to get all peer Tx ports.
+ *
+ * @return
+ *   - (0 or positive) actual peer ports number.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENODEV) if *port_id* invalid
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - Others detailed errors from PMD drivers.
+ */
+__rte_experimental
+int rte_eth_hairpin_get_peer_ports(uint16_t port_id, uint16_t *peer_ports,
+				   size_t len, uint32_t direction);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
  * Bind all hairpin Tx queues of one port to the Rx queues of the peer port.
  * It is only allowed to call this function after all hairpin queues are
  * configured properly and the devices are in started state.

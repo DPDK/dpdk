@@ -114,6 +114,7 @@ New Features
 
   New APIs are introduced to support binding / unbinding 2 ports hairpin.
   Hairpin Tx part flow rules can be inserted explicitly.
+  New API is added to get the hairpin peer ports list.
 
 * **Updated Broadcom bnxt driver.**
 

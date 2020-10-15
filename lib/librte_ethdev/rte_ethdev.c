@@ -2259,6 +2259,30 @@ rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port)
 	return ret;
 }
 
+int
+rte_eth_hairpin_get_peer_ports(uint16_t port_id, uint16_t *peer_ports,
+			       size_t len, uint32_t direction)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	if (peer_ports == NULL || len == 0)
+		return -EINVAL;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->hairpin_get_peer_ports,
+				-ENOTSUP);
+
+	ret = (*dev->dev_ops->hairpin_get_peer_ports)(dev, peer_ports,
+						      len, direction);
+	if (ret < 0)
+		RTE_ETHDEV_LOG(ERR, "Failed to get %d hairpin peer %s ports\n",
+			       port_id, direction ? "Rx" : "Tx");
+
+	return ret;
+}
+
 void
 rte_eth_tx_buffer_drop_callback(struct rte_mbuf **pkts, uint16_t unsent,
 		void *userdata __rte_unused)
