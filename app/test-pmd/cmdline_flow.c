@@ -141,12 +141,14 @@ enum index {
 	ITEM_ETH_DST,
 	ITEM_ETH_SRC,
 	ITEM_ETH_TYPE,
+	ITEM_ETH_HAS_VLAN,
 	ITEM_VLAN,
 	ITEM_VLAN_TCI,
 	ITEM_VLAN_PCP,
 	ITEM_VLAN_DEI,
 	ITEM_VLAN_VID,
 	ITEM_VLAN_INNER_TYPE,
+	ITEM_VLAN_HAS_MORE_VLAN,
 	ITEM_IPV4,
 	ITEM_IPV4_TOS,
 	ITEM_IPV4_FRAGMENT_OFFSET,
@@ -936,6 +938,7 @@ static const enum index item_eth[] = {
 	ITEM_ETH_DST,
 	ITEM_ETH_SRC,
 	ITEM_ETH_TYPE,
+	ITEM_ETH_HAS_VLAN,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -946,6 +949,7 @@ static const enum index item_vlan[] = {
 	ITEM_VLAN_DEI,
 	ITEM_VLAN_VID,
 	ITEM_VLAN_INNER_TYPE,
+	ITEM_VLAN_HAS_MORE_VLAN,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2217,6 +2221,13 @@ static const struct token token_list[] = {
 		.next = NEXT(item_eth, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, type)),
 	},
+	[ITEM_ETH_HAS_VLAN] = {
+		.name = "has_vlan",
+		.help = "packet header contains VLAN",
+		.next = NEXT(item_eth, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_item_eth,
+					   has_vlan, 1)),
+	},
 	[ITEM_VLAN] = {
 		.name = "vlan",
 		.help = "match 802.1Q/ad VLAN tag",
@@ -2257,6 +2268,13 @@ static const struct token token_list[] = {
 		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan,
 					     inner_type)),
+	},
+	[ITEM_VLAN_HAS_MORE_VLAN] = {
+		.name = "has_more_vlan",
+		.help = "packet header contains another VLAN",
+		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_item_vlan,
+					   has_more_vlan, 1)),
 	},
 	[ITEM_IPV4] = {
 		.name = "ipv4",
