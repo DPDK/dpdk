@@ -113,8 +113,9 @@ static int ixgbe_vf_representor_dev_start(__rte_unused struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void ixgbe_vf_representor_dev_stop(__rte_unused struct rte_eth_dev *dev)
+static int ixgbe_vf_representor_dev_stop(__rte_unused struct rte_eth_dev *dev)
 {
+	return 0;
 }
 
 static int

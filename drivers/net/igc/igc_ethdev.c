@@ -179,7 +179,7 @@ static const struct rte_igc_xstats_name_off rte_igc_stats_strings[] = {
 
 static int eth_igc_configure(struct rte_eth_dev *dev);
 static int eth_igc_link_update(struct rte_eth_dev *dev, int wait_to_complete);
-static void eth_igc_stop(struct rte_eth_dev *dev);
+static int eth_igc_stop(struct rte_eth_dev *dev);
 static int eth_igc_start(struct rte_eth_dev *dev);
 static int eth_igc_set_link_up(struct rte_eth_dev *dev);
 static int eth_igc_set_link_down(struct rte_eth_dev *dev);
@@ -607,7 +607,7 @@ eth_igc_rxtx_control(struct rte_eth_dev *dev, bool enable)
  *  This routine disables all traffic on the adapter by issuing a
  *  global reset on the MAC.
  */
-static void
+static int
 eth_igc_stop(struct rte_eth_dev *dev)
 {
 	struct igc_adapter *adapter = IGC_DEV_PRIVATE(dev);
@@ -669,6 +669,8 @@ eth_igc_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+
+	return 0;
 }
 
 /*
@@ -1174,13 +1176,14 @@ eth_igc_close(struct rte_eth_dev *dev)
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_adapter *adapter = IGC_DEV_PRIVATE(dev);
 	int retry = 0;
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
 	if (!adapter->stopped)
-		eth_igc_stop(dev);
+		ret = eth_igc_stop(dev);
 
 	igc_flow_flush(dev, NULL);
 	igc_clear_all_filter(dev);
@@ -1203,7 +1206,7 @@ eth_igc_close(struct rte_eth_dev *dev)
 	/* Reset any pending lock */
 	igc_reset_swfw_lock(hw);
 
-	return 0;
+	return ret;
 }
 
 static void

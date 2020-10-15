@@ -276,7 +276,7 @@ sfc_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	return ret;
 }
 
-static void
+static int
 sfc_dev_stop(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
@@ -288,6 +288,8 @@ sfc_dev_stop(struct rte_eth_dev *dev)
 	sfc_adapter_unlock(sa);
 
 	sfc_log_init(sa, "done");
+
+	return 0;
 }
 
 static int

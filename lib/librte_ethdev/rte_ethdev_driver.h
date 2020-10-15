@@ -36,7 +36,7 @@ typedef int  (*eth_dev_configure_t)(struct rte_eth_dev *dev);
 typedef int  (*eth_dev_start_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to start a configured Ethernet device. */
 
-typedef void (*eth_dev_stop_t)(struct rte_eth_dev *dev);
+typedef int (*eth_dev_stop_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to stop a configured Ethernet device. */
 
 typedef int  (*eth_dev_set_link_up_t)(struct rte_eth_dev *dev);

@@ -1163,7 +1163,7 @@ err:
 	return -1; /* common error code is < 0 */
 }
 
-static void qede_dev_stop(struct rte_eth_dev *eth_dev)
+static int qede_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -1184,7 +1184,7 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 
 	/* Disable vport */
 	if (qede_activate_vport(eth_dev, false))
-		return;
+		return 0;
 
 	if (qdev->enable_lro)
 		qede_enable_tpa(eth_dev, false);
@@ -1196,6 +1196,8 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 	ecore_hw_stop_fastpath(edev); /* TBD - loop */
 
 	DP_INFO(edev, "Device is stopped\n");
+
+	return 0;
 }
 
 static const char * const valid_args[] = {
@@ -1550,6 +1552,7 @@ static int qede_dev_close(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -1563,7 +1566,7 @@ static int qede_dev_close(struct rte_eth_dev *eth_dev)
 	 * can release all the resources and device can be brought up newly
 	 */
 	if (eth_dev->data->dev_started)
-		qede_dev_stop(eth_dev);
+		ret = qede_dev_stop(eth_dev);
 
 	if (qdev->vport_started)
 		qede_stop_vport(edev);
@@ -1594,7 +1597,7 @@ static int qede_dev_close(struct rte_eth_dev *eth_dev)
 	if (ECORE_IS_CMT(edev))
 		rte_eal_alarm_cancel(qede_poll_sp_sb_cb, (void *)eth_dev);
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -2339,7 +2342,9 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 	if (dev->data->dev_started) {
 		dev->data->dev_started = 0;
-		qede_dev_stop(dev);
+		rc = qede_dev_stop(dev);
+		if (rc != 0)
+			return rc;
 		restart = true;
 	}
 	rte_delay_ms(1000);

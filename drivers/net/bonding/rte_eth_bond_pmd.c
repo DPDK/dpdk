@@ -2049,11 +2049,12 @@ bond_ethdev_free_queues(struct rte_eth_dev *dev)
 	}
 }
 
-void
+int
 bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
 	uint16_t i;
+	int ret;
 
 	if (internals->mode == BONDING_MODE_8023AD) {
 		struct port *port;
@@ -2092,10 +2093,17 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 				internals->active_slave_count, slave_id) !=
 						internals->active_slave_count) {
 			internals->slaves[i].last_link_status = 0;
-			rte_eth_dev_stop(slave_id);
+			ret = rte_eth_dev_stop(slave_id);
+			if (ret != 0) {
+				RTE_BOND_LOG(ERR, "Failed to stop device on port %u",
+					     slave_id);
+				return ret;
+			}
 			deactivate_slave(eth_dev, slave_id);
 		}
 	}
+
+	return 0;
 }
 
 int
@@ -3424,6 +3432,7 @@ bond_remove(struct rte_vdev_device *dev)
 	struct rte_eth_dev *eth_dev;
 	struct bond_dev_private *internals;
 	const char *name;
+	int ret = 0;
 
 	if (!dev)
 		return -EINVAL;
@@ -3446,12 +3455,12 @@ bond_remove(struct rte_vdev_device *dev)
 		return -EBUSY;
 
 	if (eth_dev->data->dev_started == 1) {
-		bond_ethdev_stop(eth_dev);
+		ret = bond_ethdev_stop(eth_dev);
 		bond_ethdev_close(eth_dev);
 	}
 	rte_eth_dev_release_port(eth_dev);
 
-	return 0;
+	return ret;
 }
 
 /* this part will resolve the slave portids after all the other pdev and vdev

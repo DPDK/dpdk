@@ -1152,7 +1152,7 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 fm10k_dev_stop(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1188,6 +1188,8 @@ fm10k_dev_stop(struct rte_eth_dev *dev)
 	rte_intr_efd_disable(intr_handle);
 	rte_free(intr_handle->intr_vec);
 	intr_handle->intr_vec = NULL;
+
+	return 0;
 }
 
 static void
@@ -2786,6 +2788,7 @@ fm10k_dev_close(struct rte_eth_dev *dev)
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -2801,7 +2804,9 @@ fm10k_dev_close(struct rte_eth_dev *dev)
 
 	/* Stop mailbox service first */
 	fm10k_close_mbx_service(hw);
-	fm10k_dev_stop(dev);
+
+	ret = fm10k_dev_stop(dev);
+
 	fm10k_dev_queue_release(dev);
 	fm10k_stop_hw(hw);
 
@@ -2824,7 +2829,7 @@ fm10k_dev_close(struct rte_eth_dev *dev)
 			fm10k_dev_interrupt_handler_vf, (void *)dev);
 	}
 
-	return 0;
+	return ret;
 }
 
 static const struct eth_dev_ops fm10k_eth_dev_ops = {

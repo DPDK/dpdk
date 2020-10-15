@@ -373,7 +373,7 @@ pfe_eth_close_cdev(struct pfe_eth_priv_s *priv)
 	}
 }
 
-static void
+static int
 pfe_eth_stop(struct rte_eth_dev *dev/*, int wake*/)
 {
 	struct pfe_eth_priv_s *priv = dev->data->dev_private;
@@ -385,11 +385,14 @@ pfe_eth_stop(struct rte_eth_dev *dev/*, int wake*/)
 
 	dev->rx_pkt_burst = &pfe_dummy_recv_pkts;
 	dev->tx_pkt_burst = &pfe_dummy_xmit_pkts;
+
+	return 0;
 }
 
 static int
 pfe_eth_close(struct rte_eth_dev *dev)
 {
+	int ret;
 	PMD_INIT_FUNC_TRACE();
 
 	if (!dev)
@@ -401,7 +404,7 @@ pfe_eth_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pfe_eth_stop(dev);
+	ret = pfe_eth_stop(dev);
 	/* Close the device file for link status */
 	pfe_eth_close_cdev(dev->data->dev_private);
 
@@ -415,7 +418,7 @@ pfe_eth_close(struct rte_eth_dev *dev)
 		g_pfe = NULL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -669,8 +672,7 @@ pfe_allmulticast_enable(struct rte_eth_dev *dev)
 static int
 pfe_link_down(struct rte_eth_dev *dev)
 {
-	pfe_eth_stop(dev);
-	return 0;
+	return pfe_eth_stop(dev);
 }
 
 static int
@@ -845,7 +847,9 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 
 	eth_dev->data->mtu = 1500;
 	eth_dev->dev_ops = &ops;
-	pfe_eth_stop(eth_dev);
+	err = pfe_eth_stop(eth_dev);
+	if (err != 0)
+		goto err0;
 	pfe_gemac_init(priv);
 
 	eth_dev->data->nb_rx_queues = 1;

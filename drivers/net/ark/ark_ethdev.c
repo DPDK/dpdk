@@ -29,7 +29,7 @@ static int ark_config_device(struct rte_eth_dev *dev);
 static int eth_ark_dev_uninit(struct rte_eth_dev *eth_dev);
 static int eth_ark_dev_configure(struct rte_eth_dev *dev);
 static int eth_ark_dev_start(struct rte_eth_dev *dev);
-static void eth_ark_dev_stop(struct rte_eth_dev *dev);
+static int eth_ark_dev_stop(struct rte_eth_dev *dev);
 static int eth_ark_dev_close(struct rte_eth_dev *dev);
 static int eth_ark_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
@@ -581,7 +581,7 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_ark_dev_stop(struct rte_eth_dev *dev)
 {
 	uint16_t i;
@@ -590,7 +590,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	struct ark_mpu_t *mpu;
 
 	if (ark->started == 0)
-		return;
+		return 0;
 	ark->started = 0;
 	dev->data->dev_started = 0;
 
@@ -670,6 +670,8 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 		ark_pktchkr_dump_stats(ark->pc);
 		ark_pktchkr_stop(ark->pc);
 	}
+
+	return 0;
 }
 
 static int

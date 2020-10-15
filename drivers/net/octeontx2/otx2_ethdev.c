@@ -2139,7 +2139,7 @@ done:
 	return rc;
 }
 
-static void
+static int
 otx2_nix_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
@@ -2169,6 +2169,8 @@ otx2_nix_dev_stop(struct rte_eth_dev *eth_dev)
 	/* Stop tx queues  */
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
 		otx2_nix_tx_queue_stop(eth_dev, i);
+
+	return 0;
 }
 
 static int

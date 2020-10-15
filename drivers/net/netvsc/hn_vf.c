@@ -273,16 +273,23 @@ int hn_vf_start(struct rte_eth_dev *dev)
 	return ret;
 }
 
-void hn_vf_stop(struct rte_eth_dev *dev)
+int hn_vf_stop(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_dev *vf_dev;
+	int ret = 0;
 
 	rte_rwlock_read_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
-	if (vf_dev)
-		rte_eth_dev_stop(vf_dev->data->port_id);
+	if (vf_dev) {
+		ret = rte_eth_dev_stop(vf_dev->data->port_id);
+		if (ret != 0)
+			PMD_DRV_LOG(ERR, "Failed to stop device on port %u",
+				    vf_dev->data->port_id);
+	}
 	rte_rwlock_read_unlock(&hv->vf_lock);
+
+	return ret;
 }
 
 /* If VF is present, then cascade configuration down */

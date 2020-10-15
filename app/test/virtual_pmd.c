@@ -48,7 +48,7 @@ virtual_ethdev_start_fail(struct rte_eth_dev *eth_dev __rte_unused)
 
 	return -1;
 }
-static void  virtual_ethdev_stop(struct rte_eth_dev *eth_dev __rte_unused)
+static int  virtual_ethdev_stop(struct rte_eth_dev *eth_dev __rte_unused)
 {
 	void *pkt = NULL;
 	struct virtual_ethdev_private *prv = eth_dev->data->dev_private;
@@ -60,6 +60,8 @@ static void  virtual_ethdev_stop(struct rte_eth_dev *eth_dev __rte_unused)
 
 	while (rte_ring_dequeue(prv->tx_queue, &pkt) != -ENOENT)
 		rte_pktmbuf_free(pkt);
+
+	return 0;
 }
 
 static int

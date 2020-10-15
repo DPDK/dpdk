@@ -673,7 +673,7 @@ error:
 	return ret;
 }
 
-static void
+static int
 octeontx_dev_stop(struct rte_eth_dev *dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
@@ -687,14 +687,14 @@ octeontx_dev_stop(struct rte_eth_dev *dev)
 	if (ret < 0) {
 		octeontx_log_err("failed to req stop port %d res=%d",
 					nic->port_id, ret);
-		return;
+		return ret;
 	}
 
 	ret = octeontx_pki_port_stop(nic->port_id);
 	if (ret < 0) {
 		octeontx_log_err("failed to stop pki port %d res=%d",
 					nic->port_id, ret);
-		return;
+		return ret;
 	}
 
 	ret = octeontx_pko_channel_stop(nic->base_ochan);
@@ -702,8 +702,10 @@ octeontx_dev_stop(struct rte_eth_dev *dev)
 		octeontx_log_err("failed to stop channel %d VF%d %d %d",
 			     nic->base_ochan, nic->port_id, nic->num_tx_queues,
 			     ret);
-		return;
+		return ret;
 	}
+
+	return 0;
 }
 
 static int

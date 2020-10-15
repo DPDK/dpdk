@@ -81,7 +81,7 @@ const char *pmd_mlx4_init_params[] = {
 	NULL,
 };
 
-static void mlx4_dev_stop(struct rte_eth_dev *dev);
+static int mlx4_dev_stop(struct rte_eth_dev *dev);
 
 /**
  * Initialize shared data between primary and secondary process.
@@ -343,13 +343,13 @@ err:
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void
+static int
 mlx4_dev_stop(struct rte_eth_dev *dev)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
 
 	if (!priv->started)
-		return;
+		return 0;
 	DEBUG("%p: detaching flows from all RX queues", (void *)dev);
 	priv->started = 0;
 	dev->tx_pkt_burst = mlx4_tx_burst_removed;
@@ -360,6 +360,8 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	mlx4_flow_sync(priv, NULL);
 	mlx4_rxq_intr_disable(priv);
 	mlx4_rss_deinit(priv);
+
+	return 0;
 }
 
 /**

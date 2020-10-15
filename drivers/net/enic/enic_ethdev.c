@@ -428,19 +428,21 @@ static int enicpmd_dev_start(struct rte_eth_dev *eth_dev)
 /*
  * Stop device: disable rx and tx functions to allow for reconfiguring.
  */
-static void enicpmd_dev_stop(struct rte_eth_dev *eth_dev)
+static int enicpmd_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_link link;
 	struct enic *enic = pmd_priv(eth_dev);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return;
+		return 0;
 
 	ENICPMD_FUNC_TRACE();
 	enic_disable(enic);
 
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(eth_dev, &link);
+
+	return 0;
 }
 
 /*

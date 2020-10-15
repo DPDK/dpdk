@@ -900,7 +900,7 @@ tap_dev_start(struct rte_eth_dev *dev)
 
 /* This function gets called when the current port gets stopped.
  */
-static void
+static int
 tap_dev_stop(struct rte_eth_dev *dev)
 {
 	int i;
@@ -912,6 +912,8 @@ tap_dev_stop(struct rte_eth_dev *dev)
 
 	tap_intr_handle_set(dev, 0);
 	tap_link_set_down(dev);
+
+	return 0;
 }
 
 static int

@@ -1030,7 +1030,7 @@ void *mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex);
 /* mlx5_trigger.c */
 
 int mlx5_dev_start(struct rte_eth_dev *dev);
-void mlx5_dev_stop(struct rte_eth_dev *dev);
+int mlx5_dev_stop(struct rte_eth_dev *dev);
 int mlx5_traffic_enable(struct rte_eth_dev *dev);
 void mlx5_traffic_disable(struct rte_eth_dev *dev);
 int mlx5_traffic_restart(struct rte_eth_dev *dev);

@@ -178,7 +178,7 @@ pmd_dev_start(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 pmd_dev_stop(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *p = dev->data->dev_private;
@@ -199,6 +199,8 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 
 	tm_hierarchy_free(p);
 	softnic_mtr_free(p);
+
+	return 0;
 }
 
 static void

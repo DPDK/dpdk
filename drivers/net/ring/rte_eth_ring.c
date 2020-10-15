@@ -106,11 +106,12 @@ eth_dev_start(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_dev_stop(struct rte_eth_dev *dev)
 {
 	dev->data->dev_started = 0;
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	return 0;
 }
 
 static int
@@ -236,11 +237,12 @@ eth_dev_close(struct rte_eth_dev *dev)
 	struct pmd_internals *internals = NULL;
 	struct ring_queue *r = NULL;
 	uint16_t i;
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	eth_dev_stop(dev);
+	ret = eth_dev_stop(dev);
 
 	internals = dev->data->dev_private;
 	if (internals->action == DEV_CREATE) {
@@ -257,7 +259,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 	/* mac_addrs must not be freed alone because part of dev_private */
 	dev->data->mac_addrs = NULL;
 
-	return 0;
+	return ret;
 }
 
 static const struct eth_dev_ops ops = {

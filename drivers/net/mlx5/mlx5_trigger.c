@@ -409,7 +409,7 @@ error:
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-void
+int
 mlx5_dev_stop(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -434,6 +434,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
 	mlx5_txpp_stop(dev);
+
+	return 0;
 }
 
 /**

@@ -272,7 +272,7 @@ eth_dev_start(struct rte_eth_dev *dev)
 /*
  * This function gets called when the current port gets stopped.
  */
-static void
+static int
 eth_dev_stop(struct rte_eth_dev *dev)
 {
 	unsigned i;
@@ -296,6 +296,7 @@ eth_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	return 0;
 }
 
 static int

@@ -179,22 +179,32 @@ fs_set_queues_state_stop(struct rte_eth_dev *dev)
 						RTE_ETH_QUEUE_STATE_STOPPED;
 }
 
-static void
+static int
 fs_dev_stop(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
 	uint8_t i;
+	int ret;
 
 	fs_lock(dev, 0);
 	PRIV(dev)->state = DEV_STARTED - 1;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_STARTED) {
-		rte_eth_dev_stop(PORT_ID(sdev));
+		ret = rte_eth_dev_stop(PORT_ID(sdev));
+		if (fs_err(sdev, ret) < 0) {
+			ERROR("Failed to stop device %u",
+			      PORT_ID(sdev));
+			PRIV(dev)->state = DEV_STARTED + 1;
+			fs_unlock(dev, 0);
+			return ret;
+		}
 		failsafe_rx_intr_uninstall_subdevice(sdev);
 		sdev->state = DEV_STARTED - 1;
 	}
 	failsafe_rx_intr_uninstall(dev);
 	fs_set_queues_state_stop(dev);
 	fs_unlock(dev, 0);
+
+	return 0;
 }
 
 static int
@@ -644,8 +654,13 @@ failsafe_eth_dev_close(struct rte_eth_dev *dev)
 
 	fs_lock(dev, 0);
 	failsafe_hotplug_alarm_cancel(dev);
-	if (PRIV(dev)->state == DEV_STARTED)
-		dev->dev_ops->dev_stop(dev);
+	if (PRIV(dev)->state == DEV_STARTED) {
+		ret = dev->dev_ops->dev_stop(dev);
+		if (ret != 0) {
+			fs_unlock(dev, 0);
+			return ret;
+		}
+	}
 	PRIV(dev)->state = DEV_ACTIVE - 1;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		DEBUG("Closing sub_device %d", i);

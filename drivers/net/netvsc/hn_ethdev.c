@@ -827,7 +827,7 @@ hn_dev_start(struct rte_eth_dev *dev)
 	return error;
 }
 
-static void
+static int
 hn_dev_stop(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
@@ -836,7 +836,7 @@ hn_dev_stop(struct rte_eth_dev *dev)
 	dev->data->dev_started = 0;
 
 	hn_rndis_set_rxfilter(hv, 0);
-	hn_vf_stop(dev);
+	return hn_vf_stop(dev);
 }
 
 static int
@@ -1042,14 +1042,14 @@ static int
 eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct hn_data *hv = eth_dev->data->dev_private;
-	int ret;
+	int ret, ret_stop;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	hn_dev_stop(eth_dev);
+	ret_stop = hn_dev_stop(eth_dev);
 	hn_dev_close(eth_dev);
 
 	hn_detach(hv);
@@ -1060,7 +1060,7 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 	if (ret != 0)
 		return ret;
 
-	return 0;
+	return ret_stop;
 }
 
 static int eth_hn_probe(struct rte_vmbus_driver *drv __rte_unused,

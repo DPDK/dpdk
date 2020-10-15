@@ -44,7 +44,7 @@
 #include "nicvf_svf.h"
 #include "nicvf_logs.h"
 
-static void nicvf_dev_stop(struct rte_eth_dev *dev);
+static int nicvf_dev_stop(struct rte_eth_dev *dev);
 static void nicvf_dev_stop_cleanup(struct rte_eth_dev *dev, bool cleanup);
 static void nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic,
 			  bool cleanup);
@@ -1790,12 +1790,14 @@ nicvf_dev_stop_cleanup(struct rte_eth_dev *dev, bool cleanup)
 		PMD_INIT_LOG(ERR, "Failed to reclaim CPI config %d", ret);
 }
 
-static void
+static int
 nicvf_dev_stop(struct rte_eth_dev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
 
 	nicvf_dev_stop_cleanup(dev, false);
+
+	return 0;
 }
 
 static void

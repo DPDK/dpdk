@@ -843,10 +843,10 @@ mrvl_flush_bpool(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void
+static int
 mrvl_dev_stop(struct rte_eth_dev *dev)
 {
-	mrvl_dev_set_link_down(dev);
+	return mrvl_dev_set_link_down(dev);
 }
 
 /**

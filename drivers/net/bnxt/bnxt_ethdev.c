@@ -1345,12 +1345,13 @@ static void bnxt_free_switch_domain(struct bnxt *bp)
 }
 
 /* Unload the driver, release resources */
-static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
+static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct rte_eth_link link;
+	int ret;
 
 	eth_dev->data->dev_started = 0;
 	eth_dev->data->scattered_rx = 0;
@@ -1365,7 +1366,9 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	rte_intr_disable(intr_handle);
 
 	/* Stop the child representors for this device */
-	bnxt_rep_stop_all(bp);
+	ret = bnxt_rep_stop_all(bp);
+	if (ret != 0)
+		return ret;
 
 	/* delete the bnxt ULP port details */
 	bnxt_ulp_port_deinit(bp);
@@ -1406,11 +1409,14 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	/* All filters are deleted on a port stop. */
 	if (BNXT_FLOW_XSTATS_EN(bp))
 		bp->flow_stat->flow_count = 0;
+
+	return 0;
 }
 
 static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
+	int ret = 0;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -1421,7 +1427,7 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	bnxt_cancel_fc_thread(bp);
 
 	if (eth_dev->data->dev_started)
-		bnxt_dev_stop_op(eth_dev);
+		ret = bnxt_dev_stop_op(eth_dev);
 
 	bnxt_free_switch_domain(bp);
 
@@ -1443,7 +1449,7 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;
 
-	return 0;
+	return ret;
 }
 
 static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,

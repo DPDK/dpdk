@@ -589,7 +589,7 @@ ice_dcf_stop_queues(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+static int
 ice_dcf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
@@ -598,7 +598,7 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 
 	if (ad->pf.adapter_stopped == 1) {
 		PMD_DRV_LOG(DEBUG, "Port is already stopped");
-		return;
+		return 0;
 	}
 
 	ice_dcf_stop_queues(dev);
@@ -612,6 +612,8 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 	ice_dcf_add_del_all_mac_addr(&dcf_ad->real_hw, false);
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	ad->pf.adapter_stopped = 1;
+
+	return 0;
 }
 
 static int

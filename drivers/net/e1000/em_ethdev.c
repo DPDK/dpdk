@@ -33,7 +33,7 @@
 
 static int eth_em_configure(struct rte_eth_dev *dev);
 static int eth_em_start(struct rte_eth_dev *dev);
-static void eth_em_stop(struct rte_eth_dev *dev);
+static int eth_em_stop(struct rte_eth_dev *dev);
 static int eth_em_close(struct rte_eth_dev *dev);
 static int eth_em_promiscuous_enable(struct rte_eth_dev *dev);
 static int eth_em_promiscuous_disable(struct rte_eth_dev *dev);
@@ -533,7 +533,9 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	eth_em_stop(dev);
+	ret = eth_em_stop(dev);
+	if (ret != 0)
+		return ret;
 
 	e1000_power_up_phy(hw);
 
@@ -709,7 +711,7 @@ error_invalid_config:
  *  global reset on the MAC.
  *
  **********************************************************************/
-static void
+static int
 eth_em_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
@@ -753,6 +755,8 @@ eth_em_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+
+	return 0;
 }
 
 static int
@@ -763,11 +767,12 @@ eth_em_close(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	eth_em_stop(dev);
+	ret = eth_em_stop(dev);
 	adapter->stopped = 1;
 	em_dev_free_queues(dev);
 	e1000_phy_hw_reset(hw);
@@ -779,7 +784,7 @@ eth_em_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(intr_handle,
 				     eth_em_interrupt_handler, dev);
 
-	return 0;
+	return ret;
 }
 
 static int

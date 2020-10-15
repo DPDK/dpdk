@@ -76,7 +76,7 @@ static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 
 static int ice_dev_configure(struct rte_eth_dev *dev);
 static int ice_dev_start(struct rte_eth_dev *dev);
-static void ice_dev_stop(struct rte_eth_dev *dev);
+static int ice_dev_stop(struct rte_eth_dev *dev);
 static int ice_dev_close(struct rte_eth_dev *dev);
 static int ice_dev_reset(struct rte_eth_dev *dev);
 static int ice_dev_info_get(struct rte_eth_dev *dev,
@@ -2331,7 +2331,7 @@ ice_vsi_disable_queues_intr(struct ice_vsi *vsi)
 		ICE_WRITE_REG(hw, GLINT_DYN_CTL(0), GLINT_DYN_CTL_WB_ON_ITR_M);
 }
 
-static void
+static int
 ice_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
@@ -2343,7 +2343,7 @@ ice_dev_stop(struct rte_eth_dev *dev)
 
 	/* avoid stopping again */
 	if (pf->adapter_stopped)
-		return;
+		return 0;
 
 	/* stop and clear all Rx queues */
 	for (i = 0; i < data->nb_rx_queues; i++)
@@ -2370,6 +2370,8 @@ ice_dev_stop(struct rte_eth_dev *dev)
 
 	pf->adapter_stopped = true;
 	dev->data->dev_started = 0;
+
+	return 0;
 }
 
 static int
@@ -2381,6 +2383,7 @@ ice_dev_close(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -2392,7 +2395,7 @@ ice_dev_close(struct rte_eth_dev *dev)
 	 */
 	ice_pf_disable_irq0(hw);
 
-	ice_dev_stop(dev);
+	ret = ice_dev_stop(dev);
 
 	if (!ad->is_safe_mode)
 		ice_flow_uninit(ad);
@@ -2417,7 +2420,7 @@ ice_dev_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(intr_handle,
 				     ice_interrupt_handler, dev);
 
-	return 0;
+	return ret;
 }
 
 static int

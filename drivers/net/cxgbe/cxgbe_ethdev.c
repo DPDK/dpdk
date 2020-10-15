@@ -416,7 +416,7 @@ out:
 /*
  * Stop device: disable rx and tx functions to allow for reconfiguring.
  */
-void cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
+int cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
@@ -424,7 +424,7 @@ void cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
 	CXGBE_FUNC_TRACE();
 
 	if (!(adapter->flags & FULL_INIT_DONE))
-		return;
+		return 0;
 
 	cxgbe_down(pi);
 
@@ -434,6 +434,8 @@ void cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
 	 */
 	t4_sge_eth_clear_queues(pi);
 	eth_dev->data->scattered_rx = 0;
+
+	return 0;
 }
 
 int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)

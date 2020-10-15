@@ -251,7 +251,7 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void
+static int
 bnx2x_dev_stop(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
@@ -278,10 +278,10 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 	ret = bnx2x_nic_unload(sc, UNLOAD_NORMAL, FALSE);
 	if (ret) {
 		PMD_DRV_LOG(DEBUG, sc, "bnx2x_nic_unload failed (%d)", ret);
-		return;
+		return ret;
 	}
 
-	return;
+	return 0;
 }
 
 static int

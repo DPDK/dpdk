@@ -77,8 +77,9 @@ RTE_TRACE_POINT(
 
 RTE_TRACE_POINT(
 	rte_ethdev_trace_stop,
-	RTE_TRACE_POINT_ARGS(uint16_t port_id),
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, int ret),
 	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_int(ret);
 )
 
 RTE_TRACE_POINT(

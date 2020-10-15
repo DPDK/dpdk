@@ -13,7 +13,7 @@
 static int eth_axgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int  axgbe_dev_configure(struct rte_eth_dev *dev);
 static int  axgbe_dev_start(struct rte_eth_dev *dev);
-static void axgbe_dev_stop(struct rte_eth_dev *dev);
+static int  axgbe_dev_stop(struct rte_eth_dev *dev);
 static void axgbe_dev_interrupt_handler(void *param);
 static int axgbe_dev_close(struct rte_eth_dev *dev);
 static int axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
@@ -386,7 +386,7 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 }
 
 /* Stop device: disable rx and tx functions to allow for reconfiguring. */
-static void
+static int
 axgbe_dev_stop(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
@@ -396,7 +396,7 @@ axgbe_dev_stop(struct rte_eth_dev *dev)
 	rte_intr_disable(&pdata->pci_dev->intr_handle);
 
 	if (rte_bit_relaxed_get32(AXGBE_STOPPED, &pdata->dev_state))
-		return;
+		return 0;
 
 	rte_bit_relaxed_set32(AXGBE_STOPPED, &pdata->dev_state);
 	axgbe_dev_disable_tx(dev);
@@ -406,6 +406,8 @@ axgbe_dev_stop(struct rte_eth_dev *dev)
 	pdata->hw_if.exit(pdata);
 	memset(&dev->data->dev_link, 0, sizeof(struct rte_eth_link));
 	rte_bit_relaxed_set32(AXGBE_DOWN, &pdata->dev_state);
+
+	return 0;
 }
 
 static int

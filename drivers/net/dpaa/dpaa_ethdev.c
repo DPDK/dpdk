@@ -415,7 +415,7 @@ static int dpaa_eth_dev_start(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void dpaa_eth_dev_stop(struct rte_eth_dev *dev)
+static int dpaa_eth_dev_stop(struct rte_eth_dev *dev)
 {
 	struct fman_if *fif = dev->process_private;
 
@@ -425,6 +425,8 @@ static void dpaa_eth_dev_stop(struct rte_eth_dev *dev)
 	if (!fif->is_shared_mac)
 		fman_if_disable_rx(fif);
 	dev->tx_pkt_burst = dpaa_eth_tx_drop_all;
+
+	return 0;
 }
 
 static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
@@ -437,6 +439,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	struct rte_eth_link *link = &dev->data->dev_link;
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	int loop;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -458,7 +461,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	intr_handle = &dpaa_dev->intr_handle;
 	__fif = container_of(fif, struct __fman_if, __if);
 
-	dpaa_eth_dev_stop(dev);
+	ret = dpaa_eth_dev_stop(dev);
 
 	/* Reset link to autoneg */
 	if (link->link_status && !link->link_autoneg)
@@ -504,7 +507,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	rte_free(dpaa_intf->tx_queues);
 	dpaa_intf->tx_queues = NULL;
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -1290,7 +1293,7 @@ static int dpaa_link_down(struct rte_eth_dev *dev)
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		dpaa_update_link_status(__fif->node_name, ETH_LINK_DOWN);
 	else
-		dpaa_eth_dev_stop(dev);
+		return dpaa_eth_dev_stop(dev);
 	return 0;
 }
 

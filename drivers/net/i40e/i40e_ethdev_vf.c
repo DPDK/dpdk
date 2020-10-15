@@ -74,7 +74,7 @@ enum i40evf_aq_result {
 
 static int i40evf_dev_configure(struct rte_eth_dev *dev);
 static int i40evf_dev_start(struct rte_eth_dev *dev);
-static void i40evf_dev_stop(struct rte_eth_dev *dev);
+static int i40evf_dev_stop(struct rte_eth_dev *dev);
 static int i40evf_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
 static int i40evf_dev_link_update(struct rte_eth_dev *dev,
@@ -2176,7 +2176,7 @@ err_queue:
 	return -1;
 }
 
-static void
+static int
 i40evf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -2190,7 +2190,7 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 		rte_intr_disable(intr_handle);
 
 	if (hw->adapter_stopped == 1)
-		return;
+		return 0;
 	i40evf_stop_queues(dev);
 	i40evf_disable_queues_intr(dev);
 	i40e_dev_clear_queues(dev);
@@ -2208,6 +2208,8 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 				FALSE);
 	hw->adapter_stopped = 1;
 	dev->data->dev_started = 0;
+
+	return 0;
 }
 
 static int
@@ -2401,11 +2403,13 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	i40evf_dev_stop(dev);
+	ret = i40evf_dev_stop(dev);
+
 	i40e_dev_free_queues(dev);
 	/*
 	 * disable promiscuous mode before reset vf
@@ -2427,7 +2431,7 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	vf->aq_resp = NULL;
 
 	hw->adapter_closed = 1;
-	return 0;
+	return ret;
 }
 
 /*

@@ -607,7 +607,7 @@ status_up:
  * Is the only place for us to close all the tx streams dumpers.
  * If not called the dumpers will be flushed within each tx burst.
  */
-static void
+static int
 eth_dev_stop(struct rte_eth_dev *dev)
 {
 	unsigned int i;
@@ -649,6 +649,8 @@ status_down:
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+
+	return 0;
 }
 
 static int
