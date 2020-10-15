@@ -1312,10 +1312,11 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
-							   last_item,
-							   ether_type, NULL,
-							   error);
+			ret = mlx5_flow_validate_item_ipv4
+						(items, item_flags,
+						 last_item, ether_type, NULL,
+						 MLX5_ITEM_RANGE_NOT_ACCEPTED,
+						 error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :

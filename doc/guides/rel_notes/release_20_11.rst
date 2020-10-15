@@ -169,6 +169,12 @@ New Features
   Added the FEC PMD which provides functions for query FEC capabilities and
   current FEC mode from device. Also, PMD for configuring FEC mode is also provided.
 
+* **Updated Mellanox mlx5 driver.**
+
+  Updated Mellanox mlx5 driver with new features and improvements, including:
+
+  * Added support for matching on fragmented/non-fragmented IPv4 packets.
+
 * **Updated Solarflare network PMD.**
 
   Updated the Solarflare ``sfc_efx`` driver with changes including:

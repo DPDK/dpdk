@@ -331,6 +331,14 @@ enum mlx5_feature_name {
 #define MLX5_ENCAPSULATION_DECISION_SIZE (sizeof(struct rte_flow_item_eth) + \
 					  sizeof(struct rte_flow_item_ipv4))
 
+/* IPv4 fragment_offset field contains relevant data in bits 2 to 15. */
+#define MLX5_IPV4_FRAG_OFFSET_MASK \
+		(RTE_IPV4_HDR_OFFSET_MASK | RTE_IPV4_HDR_MF_FLAG)
+
+/* Specific item's fields can accept a range of values (using spec and last). */
+#define MLX5_ITEM_RANGE_NOT_ACCEPTED	false
+#define MLX5_ITEM_RANGE_ACCEPTED	true
+
 /* Software header modify action numbers of a flow. */
 #define MLX5_ACT_NUM_MDF_IPV4		1
 #define MLX5_ACT_NUM_MDF_IPV6		4
@@ -1046,6 +1054,7 @@ int mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 			      const uint8_t *mask,
 			      const uint8_t *nic_mask,
 			      unsigned int size,
+			      bool range_accepted,
 			      struct rte_flow_error *error);
 int mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 				uint64_t item_flags,
@@ -1063,6 +1072,7 @@ int mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 				 uint64_t last_item,
 				 uint16_t ether_type,
 				 const struct rte_flow_item_ipv4 *acc_mask,
+				 bool range_accepted,
 				 struct rte_flow_error *error);
 int mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 				 uint64_t item_flags,

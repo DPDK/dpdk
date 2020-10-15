@@ -1426,7 +1426,7 @@ flow_dv_validate_item_mark(struct rte_eth_dev *dev,
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_mark),
-					error);
+					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret < 0)
 		return ret;
 	return 0;
@@ -1502,7 +1502,7 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_meta),
-					error);
+					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	return ret;
 }
 
@@ -1555,7 +1555,7 @@ flow_dv_validate_item_tag(struct rte_eth_dev *dev,
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_tag),
-					error);
+					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret < 0)
 		return ret;
 	if (mask->index != 0xff)
@@ -1626,7 +1626,7 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 				(item, (const uint8_t *)mask,
 				 (const uint8_t *)&rte_flow_item_port_id_mask,
 				 sizeof(struct rte_flow_item_port_id),
-				 error);
+				 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret)
 		return ret;
 	if (!spec)
@@ -1699,7 +1699,7 @@ flow_dv_validate_item_vlan(const struct rte_flow_item *item,
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_vlan),
-					error);
+					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret)
 		return ret;
 	if (!tunnel && mask->tci != RTE_BE16(0x0fff)) {
@@ -1786,11 +1786,126 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "Match is supported for GTP"
 					  " flags only");
-	return mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
-		 (const uint8_t *)&nic_mask,
-		 sizeof(struct rte_flow_item_gtp),
-		 error);
+	return mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+					 (const uint8_t *)&nic_mask,
+					 sizeof(struct rte_flow_item_gtp),
+					 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
+}
+
+/**
+ * Validate IPV4 item.
+ * Use existing validation function mlx5_flow_validate_item_ipv4(), and
+ * add specific validation of fragment_offset field,
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_ipv4(const struct rte_flow_item *item,
+			   uint64_t item_flags,
+			   uint64_t last_item,
+			   uint16_t ether_type,
+			   struct rte_flow_error *error)
+{
+	int ret;
+	const struct rte_flow_item_ipv4 *spec = item->spec;
+	const struct rte_flow_item_ipv4 *last = item->last;
+	const struct rte_flow_item_ipv4 *mask = item->mask;
+	rte_be16_t fragment_offset_spec = 0;
+	rte_be16_t fragment_offset_last = 0;
+	const struct rte_flow_item_ipv4 nic_ipv4_mask = {
+		.hdr = {
+			.src_addr = RTE_BE32(0xffffffff),
+			.dst_addr = RTE_BE32(0xffffffff),
+			.type_of_service = 0xff,
+			.fragment_offset = RTE_BE16(0xffff),
+			.next_proto_id = 0xff,
+			.time_to_live = 0xff,
+		},
+	};
+
+	ret = mlx5_flow_validate_item_ipv4(item, item_flags, last_item,
+					   ether_type, &nic_ipv4_mask,
+					   MLX5_ITEM_RANGE_ACCEPTED, error);
+	if (ret < 0)
+		return ret;
+	if (spec && mask)
+		fragment_offset_spec = spec->hdr.fragment_offset &
+				       mask->hdr.fragment_offset;
+	if (!fragment_offset_spec)
+		return 0;
+	/*
+	 * spec and mask are valid, enforce using full mask to make sure the
+	 * complete value is used correctly.
+	 */
+	if ((mask->hdr.fragment_offset & RTE_BE16(MLX5_IPV4_FRAG_OFFSET_MASK))
+			!= RTE_BE16(MLX5_IPV4_FRAG_OFFSET_MASK))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+					  item, "must use full mask for"
+					  " fragment_offset");
+	/*
+	 * Match on fragment_offset 0x2000 means MF is 1 and frag-offset is 0,
+	 * indicating this is 1st fragment of fragmented packet.
+	 * This is not yet supported in MLX5, return appropriate error message.
+	 */
+	if (fragment_offset_spec == RTE_BE16(RTE_IPV4_HDR_MF_FLAG))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "match on first fragment not "
+					  "supported");
+	if (fragment_offset_spec && !last)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "specified value not supported");
+	/* spec and last are valid, validate the specified range. */
+	fragment_offset_last = last->hdr.fragment_offset &
+			       mask->hdr.fragment_offset;
+	/*
+	 * Match on fragment_offset spec 0x2001 and last 0x3fff
+	 * means MF is 1 and frag-offset is > 0.
+	 * This packet is fragment 2nd and onward, excluding last.
+	 * This is not yet supported in MLX5, return appropriate
+	 * error message.
+	 */
+	if (fragment_offset_spec == RTE_BE16(RTE_IPV4_HDR_MF_FLAG + 1) &&
+	    fragment_offset_last == RTE_BE16(MLX5_IPV4_FRAG_OFFSET_MASK))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_LAST,
+					  last, "match on following "
+					  "fragments not supported");
+	/*
+	 * Match on fragment_offset spec 0x0001 and last 0x1fff
+	 * means MF is 0 and frag-offset is > 0.
+	 * This packet is last fragment of fragmented packet.
+	 * This is not yet supported in MLX5, return appropriate
+	 * error message.
+	 */
+	if (fragment_offset_spec == RTE_BE16(1) &&
+	    fragment_offset_last == RTE_BE16(RTE_IPV4_HDR_OFFSET_MASK))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_LAST,
+					  last, "match on last "
+					  "fragment not supported");
+	/*
+	 * Match on fragment_offset spec 0x0001 and last 0x3fff
+	 * means MF and/or frag-offset is not 0.
+	 * This is a fragmented packet.
+	 * Other range values are invalid and rejected.
+	 */
+	if (!(fragment_offset_spec == RTE_BE16(1) &&
+	      fragment_offset_last == RTE_BE16(MLX5_IPV4_FRAG_OFFSET_MASK)))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_LAST, last,
+					  "specified range not supported");
+	return 0;
 }
 
 /**
@@ -5290,15 +5405,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			.dst_port = RTE_BE16(UINT16_MAX),
 		}
 	};
-	const struct rte_flow_item_ipv4 nic_ipv4_mask = {
-		.hdr = {
-			.src_addr = RTE_BE32(0xffffffff),
-			.dst_addr = RTE_BE32(0xffffffff),
-			.type_of_service = 0xff,
-			.next_proto_id = 0xff,
-			.time_to_live = 0xff,
-		},
-	};
 	const struct rte_flow_item_ipv6 nic_ipv6_mask = {
 		.hdr = {
 			.src_addr =
@@ -5398,11 +5504,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
-			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
-							   last_item,
-							   ether_type,
-							   &nic_ipv4_mask,
-							   error);
+			ret = flow_dv_validate_item_ipv4(items, item_flags,
+							 last_item, ether_type,
+							 error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
@@ -6511,6 +6615,10 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 		 ipv4_m->hdr.time_to_live);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_ttl_hoplimit,
 		 ipv4_v->hdr.time_to_live & ipv4_m->hdr.time_to_live);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, frag,
+		 !!(ipv4_m->hdr.fragment_offset));
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, frag,
+		 !!(ipv4_v->hdr.fragment_offset & ipv4_m->hdr.fragment_offset));
 }
 
 /**
