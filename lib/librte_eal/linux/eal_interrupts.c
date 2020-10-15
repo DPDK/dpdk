@@ -667,13 +667,15 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 {
 	int rc = 0;
 
-	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+	if (intr_handle == NULL)
+		return -1;
+
+	if (intr_handle->type == RTE_INTR_HANDLE_VDEV) {
 		rc = 0;
 		goto out;
 	}
 
-	if (!intr_handle || intr_handle->fd < 0 ||
-			intr_handle->uio_cfg_fd < 0) {
+	if (intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0) {
 		rc = -1;
 		goto out;
 	}
@@ -794,13 +796,15 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 {
 	int rc = 0;
 
-	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+	if (intr_handle == NULL)
+		return -1;
+
+	if (intr_handle->type == RTE_INTR_HANDLE_VDEV) {
 		rc = 0;
 		goto out;
 	}
 
-	if (!intr_handle || intr_handle->fd < 0 ||
-					intr_handle->uio_cfg_fd < 0) {
+	if (intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0) {
 		rc = -1;
 		goto out;
 	}
