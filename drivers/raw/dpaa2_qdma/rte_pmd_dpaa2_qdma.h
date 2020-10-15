@@ -80,7 +80,7 @@ struct rte_qdma_config {
 	 * maximum number of inflight jobs on the QDMA device. This should
 	 * be power of 2.
 	 */
-	int fle_pool_count;
+	int fle_queue_pool_cnt;
 };
 
 struct rte_qdma_rbp {

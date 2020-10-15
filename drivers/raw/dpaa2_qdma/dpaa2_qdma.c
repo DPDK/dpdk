@@ -300,12 +300,11 @@ static inline int dpdmai_dev_set_multi_fd_lf(
 	struct rte_qdma_job **ppjob;
 	uint16_t i;
 	int ret;
-	struct qdma_device *qdma_dev = QDMA_DEV_OF_VQ(qdma_vq);
 	void *elem[RTE_QDMA_BURST_NB_MAX];
 	struct qbman_fle *fle;
 	uint64_t elem_iova, fle_iova;
 
-	ret = rte_mempool_get_bulk(qdma_dev->fle_pool, elem, nb_jobs);
+	ret = rte_mempool_get_bulk(qdma_vq->fle_pool, elem, nb_jobs);
 	if (ret) {
 		DPAA2_QDMA_DP_DEBUG("Memory alloc failed for FLE");
 		return ret;
@@ -318,11 +317,9 @@ static inline int dpdmai_dev_set_multi_fd_lf(
 		elem_iova = DPAA2_VADDR_TO_IOVA(elem[i]);
 #endif
 
-		*((uint16_t *)
-		((uintptr_t)(uint64_t)elem[i] + QDMA_FLE_JOB_NB_OFFSET)) = 1;
-
 		ppjob = (struct rte_qdma_job **)
-			((uintptr_t)(uint64_t)elem[i] + QDMA_FLE_JOBS_OFFSET);
+			((uintptr_t)(uint64_t)elem[i] +
+			 QDMA_FLE_SINGLE_JOB_OFFSET);
 		*ppjob = job[i];
 
 		job[i]->vq_id = qdma_vq->vq_id;
@@ -360,13 +357,12 @@ static inline int dpdmai_dev_set_sg_fd_lf(
 	int ret = 0, i;
 	struct qdma_sg_entry *src_sge, *dst_sge;
 	uint32_t len, fmt, flags;
-	struct qdma_device *qdma_dev = QDMA_DEV_OF_VQ(qdma_vq);
 
 	/*
 	 * Get an FLE/SDD from FLE pool.
 	 * Note: IO metadata is before the FLE and SDD memory.
 	 */
-	ret = rte_mempool_get(qdma_dev->fle_pool, (void **)(&elem));
+	ret = rte_mempool_get(qdma_vq->fle_pool, (void **)(&elem));
 	if (ret) {
 		DPAA2_QDMA_DP_DEBUG("Memory alloc failed for FLE");
 		return ret;
@@ -383,7 +379,7 @@ static inline int dpdmai_dev_set_sg_fd_lf(
 	*((uint16_t *)
 	((uintptr_t)(uint64_t)elem + QDMA_FLE_JOB_NB_OFFSET)) = nb_jobs;
 	ppjob = (struct rte_qdma_job **)
-		((uintptr_t)(uint64_t)elem + QDMA_FLE_JOBS_OFFSET);
+		((uintptr_t)(uint64_t)elem + QDMA_FLE_SG_JOBS_OFFSET);
 	for (i = 0; i < nb_jobs; i++)
 		ppjob[i] = job[i];
 
@@ -451,7 +447,41 @@ static inline uint16_t dpdmai_dev_get_job_us(
 	return vqid;
 }
 
-static inline uint16_t dpdmai_dev_get_job_lf(
+static inline uint16_t dpdmai_dev_get_single_job_lf(
+						struct qdma_virt_queue *qdma_vq,
+						const struct qbman_fd *fd,
+						struct rte_qdma_job **job,
+						uint16_t *nb_jobs)
+{
+	struct qbman_fle *fle;
+	struct rte_qdma_job **ppjob = NULL;
+	uint16_t status;
+
+	/*
+	 * Fetch metadata from FLE. job and vq_id were set
+	 * in metadata in the enqueue operation.
+	 */
+	fle = (struct qbman_fle *)
+			DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+
+	*nb_jobs = 1;
+	ppjob = (struct rte_qdma_job **)((uintptr_t)(uint64_t)fle -
+			QDMA_FLE_FLE_OFFSET + QDMA_FLE_SINGLE_JOB_OFFSET);
+
+	status = (DPAA2_GET_FD_ERR(fd) << 8) | (DPAA2_GET_FD_FRC(fd) & 0xFF);
+
+	*job = *ppjob;
+	(*job)->status = status;
+
+	/* Free FLE to the pool */
+	rte_mempool_put(qdma_vq->fle_pool,
+			(void *)
+			((uintptr_t)(uint64_t)fle - QDMA_FLE_FLE_OFFSET));
+
+	return (*job)->vq_id;
+}
+
+static inline uint16_t dpdmai_dev_get_sg_job_lf(
 						struct qdma_virt_queue *qdma_vq,
 						const struct qbman_fd *fd,
 						struct rte_qdma_job **job,
@@ -460,7 +490,6 @@ static inline uint16_t dpdmai_dev_get_job_lf(
 	struct qbman_fle *fle;
 	struct rte_qdma_job **ppjob = NULL;
 	uint16_t i, status;
-	struct qdma_device *qdma_dev = QDMA_DEV_OF_VQ(qdma_vq);
 
 	/*
 	 * Fetch metadata from FLE. job and vq_id were set
@@ -470,10 +499,9 @@ static inline uint16_t dpdmai_dev_get_job_lf(
 			DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
 	*nb_jobs = *((uint16_t *)((uintptr_t)(uint64_t)fle -
 				QDMA_FLE_FLE_OFFSET + QDMA_FLE_JOB_NB_OFFSET));
-	status = (DPAA2_GET_FD_ERR(fd) << 8) | (DPAA2_GET_FD_FRC(fd) & 0xFF);
-
 	ppjob = (struct rte_qdma_job **)((uintptr_t)(uint64_t)fle -
-				QDMA_FLE_FLE_OFFSET + QDMA_FLE_JOBS_OFFSET);
+				QDMA_FLE_FLE_OFFSET + QDMA_FLE_SG_JOBS_OFFSET);
+	status = (DPAA2_GET_FD_ERR(fd) << 8) | (DPAA2_GET_FD_FRC(fd) & 0xFF);
 
 	for (i = 0; i < (*nb_jobs); i++) {
 		job[i] = ppjob[i];
@@ -481,7 +509,7 @@ static inline uint16_t dpdmai_dev_get_job_lf(
 	}
 
 	/* Free FLE to the pool */
-	rte_mempool_put(qdma_dev->fle_pool,
+	rte_mempool_put(qdma_vq->fle_pool,
 			(void *)
 			((uintptr_t)(uint64_t)fle - QDMA_FLE_FLE_OFFSET));
 
@@ -1045,14 +1073,9 @@ dpaa2_qdma_reset(struct rte_rawdev *rawdev)
 	memset(&qdma_core_info, 0,
 		sizeof(struct qdma_per_core_info) * RTE_MAX_LCORE);
 
-	/* Free the FLE pool */
-	if (qdma_dev->fle_pool)
-		rte_mempool_free(qdma_dev->fle_pool);
-
 	/* Reset QDMA device structure */
 	qdma_dev->max_hw_queues_per_core = 0;
-	qdma_dev->fle_pool = NULL;
-	qdma_dev->fle_pool_count = 0;
+	qdma_dev->fle_queue_pool_cnt = 0;
 	qdma_dev->max_vqs = 0;
 
 	return 0;
@@ -1099,23 +1122,7 @@ dpaa2_qdma_configure(const struct rte_rawdev *rawdev,
 		return -ENOMEM;
 	}
 	qdma_dev->max_vqs = qdma_config->max_vqs;
-
-	/* Allocate FLE pool; just append PID so that in case of
-	 * multiprocess, the pool's don't collide.
-	 */
-	snprintf(name, sizeof(name), "qdma_fle_pool%u",
-		 getpid());
-	qdma_dev->fle_pool = rte_mempool_create(name,
-			qdma_config->fle_pool_count, QDMA_FLE_POOL_SIZE,
-			QDMA_FLE_CACHE_SIZE(qdma_config->fle_pool_count), 0,
-			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
-	if (!qdma_dev->fle_pool) {
-		DPAA2_QDMA_ERR("qdma_fle_pool create failed");
-		rte_free(qdma_dev->vqs);
-		qdma_dev->vqs = NULL;
-		return -ENOMEM;
-	}
-	qdma_dev->fle_pool_count = qdma_config->fle_pool_count;
+	qdma_dev->fle_queue_pool_cnt = qdma_config->fle_queue_pool_cnt;
 
 	return 0;
 }
@@ -1177,11 +1184,13 @@ dpaa2_qdma_queue_setup(struct rte_rawdev *rawdev,
 			  size_t conf_size)
 {
 	char ring_name[32];
+	char pool_name[64];
 	int i;
 	struct dpaa2_dpdmai_dev *dpdmai_dev = rawdev->dev_private;
 	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
 	struct rte_qdma_queue_config *q_config =
 		(struct rte_qdma_queue_config *)queue_conf;
+	uint32_t pool_size;
 
 	DPAA2_QDMA_FUNC_TRACE();
 
@@ -1216,6 +1225,9 @@ dpaa2_qdma_queue_setup(struct rte_rawdev *rawdev,
 			rte_spinlock_unlock(&qdma_dev->lock);
 			return -ENODEV;
 		}
+		pool_size = QDMA_FLE_SG_POOL_SIZE;
+	} else {
+		pool_size = QDMA_FLE_SINGLE_POOL_SIZE;
 	}
 
 	if (q_config->flags & RTE_QDMA_VQ_EXCLUSIVE_PQ) {
@@ -1226,7 +1238,7 @@ dpaa2_qdma_queue_setup(struct rte_rawdev *rawdev,
 		/* Allocate a Ring for Virtual Queue in VQ mode */
 		snprintf(ring_name, sizeof(ring_name), "status ring %d", i);
 		qdma_dev->vqs[i].status_ring = rte_ring_create(ring_name,
-			qdma_dev->fle_pool_count, rte_socket_id(), 0);
+			qdma_dev->fle_queue_pool_cnt, rte_socket_id(), 0);
 		if (!qdma_dev->vqs[i].status_ring) {
 			DPAA2_QDMA_ERR("Status ring creation failed for vq");
 			rte_spinlock_unlock(&qdma_dev->lock);
@@ -1248,17 +1260,31 @@ dpaa2_qdma_queue_setup(struct rte_rawdev *rawdev,
 		return -ENODEV;
 	}
 
+	snprintf(pool_name, sizeof(pool_name),
+		"qdma_fle_pool%u_queue%d", getpid(), i);
+	qdma_dev->vqs[i].fle_pool = rte_mempool_create(pool_name,
+			qdma_dev->fle_queue_pool_cnt, pool_size,
+			QDMA_FLE_CACHE_SIZE(qdma_dev->fle_queue_pool_cnt), 0,
+			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
+	if (!qdma_dev->vqs[i].fle_pool) {
+		DPAA2_QDMA_ERR("qdma_fle_pool create failed");
+		rte_spinlock_unlock(&qdma_dev->lock);
+		return -ENOMEM;
+	}
+
 	qdma_dev->vqs[i].flags = q_config->flags;
 	qdma_dev->vqs[i].in_use = 1;
 	qdma_dev->vqs[i].lcore_id = q_config->lcore_id;
 	memset(&qdma_dev->vqs[i].rbp, 0, sizeof(struct rte_qdma_rbp));
 
 	if (q_config->flags & RTE_QDMA_VQ_FD_LONG_FORMAT) {
-		if (q_config->flags & RTE_QDMA_VQ_FD_SG_FORMAT)
+		if (q_config->flags & RTE_QDMA_VQ_FD_SG_FORMAT) {
 			qdma_dev->vqs[i].set_fd = dpdmai_dev_set_sg_fd_lf;
-		else
+			qdma_dev->vqs[i].get_job = dpdmai_dev_get_sg_job_lf;
+		} else {
 			qdma_dev->vqs[i].set_fd = dpdmai_dev_set_multi_fd_lf;
-		qdma_dev->vqs[i].get_job = dpdmai_dev_get_job_lf;
+			qdma_dev->vqs[i].get_job = dpdmai_dev_get_single_job_lf;
+		}
 	} else {
 		qdma_dev->vqs[i].set_fd = dpdmai_dev_set_fd_us;
 		qdma_dev->vqs[i].get_job = dpdmai_dev_get_job_us;
@@ -1443,6 +1469,9 @@ dpaa2_qdma_queue_release(struct rte_rawdev *rawdev,
 
 		put_hw_queue(qdma_vq->hw_queue);
 	}
+
+	if (qdma_vq->fle_pool)
+		rte_mempool_free(qdma_vq->fle_pool);
 
 	memset(qdma_vq, 0, sizeof(struct qdma_virt_queue));
 

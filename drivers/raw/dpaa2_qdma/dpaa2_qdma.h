@@ -15,18 +15,26 @@ struct rte_qdma_job;
 
 #define DPAA2_DPDMAI_MAX_QUEUES	8
 
-/** FLE pool size: job number(uint64_t) +
- * 3 Frame list + 2 source/destination descriptor  +
- * 32 (src + dst) sg entries + 32 jobs pointers.
+/** FLE single job pool size: job pointer(uint64_t) +
+ * 3 Frame list + 2 source/destination descriptor.
  */
+#define QDMA_FLE_SINGLE_POOL_SIZE (sizeof(uint64_t) + \
+			sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE + \
+			sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD)
 
-#define QDMA_FLE_POOL_SIZE (sizeof(uint64_t) + \
+/** FLE sg jobs pool size: job number(uint64_t) +
+ * 3 Frame list + 2 source/destination descriptor  +
+ * 64 (src + dst) sg entries + 64 jobs pointers.
+ */
+#define QDMA_FLE_SG_POOL_SIZE (sizeof(uint64_t) + \
 		sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE + \
 		sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD + \
-		sizeof(struct qdma_sg_entry) * DPAA2_QDMA_MAX_SG_NB * 2 + \
+		sizeof(struct qdma_sg_entry) * (DPAA2_QDMA_MAX_SG_NB * 2) + \
 		sizeof(struct rte_qdma_job *) * DPAA2_QDMA_MAX_SG_NB)
 
 #define QDMA_FLE_JOB_NB_OFFSET 0
+
+#define QDMA_FLE_SINGLE_JOB_OFFSET 0
 
 #define QDMA_FLE_FLE_OFFSET \
 		(QDMA_FLE_JOB_NB_OFFSET + sizeof(uint64_t))
@@ -39,7 +47,7 @@ struct rte_qdma_job;
 		(QDMA_FLE_SDD_OFFSET + \
 		sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD)
 
-#define QDMA_FLE_JOBS_OFFSET \
+#define QDMA_FLE_SG_JOBS_OFFSET \
 		(QDMA_FLE_SG_ENTRY_OFFSET + \
 		sizeof(struct qdma_sg_entry) * DPAA2_QDMA_MAX_SG_NB * 2)
 
@@ -85,10 +93,8 @@ struct qdma_device {
 	uint16_t max_vqs;
 	/** Device state - started or stopped */
 	uint8_t state;
-	/** FLE pool for the device */
-	struct rte_mempool *fle_pool;
-	/** FLE pool size */
-	int fle_pool_count;
+	/** FLE queue pool size */
+	int fle_queue_pool_cnt;
 	/** A lock to QDMA device whenever required */
 	rte_spinlock_t lock;
 };
@@ -135,6 +141,8 @@ struct qdma_virt_queue {
 	struct rte_ring *status_ring;
 	/** Associated hw queue */
 	struct qdma_hw_queue *hw_queue;
+	/** FLE pool for the queue */
+	struct rte_mempool *fle_pool;
 	/** Route by port */
 	struct rte_qdma_rbp rbp;
 	/** Associated lcore id */
