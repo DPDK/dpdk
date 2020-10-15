@@ -613,7 +613,9 @@ test_stop_bonded_device(void)
 	struct rte_eth_link link_status;
 	int retval;
 
-	rte_eth_dev_stop(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
+			"Failed to stop bonded port %u",
+			test_params->bonded_port_id);
 
 	retval = rte_eth_link_get(test_params->bonded_port_id, &link_status);
 	TEST_ASSERT(retval >= 0,
@@ -647,7 +649,10 @@ remove_slaves_and_stop_bonded_device(void)
 		TEST_ASSERT_SUCCESS(test_remove_slave_from_bonded_device(),
 				"test_remove_slave_from_bonded_device failed");
 
-	rte_eth_dev_stop(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
+			"Failed to stop bonded port %u",
+			test_params->bonded_port_id);
+
 	rte_eth_stats_reset(test_params->bonded_port_id);
 	rte_eth_bond_mac_address_reset(test_params->bonded_port_id);
 
@@ -755,7 +760,9 @@ test_set_primary_slave(void)
 				test_params->slave_port_ids[i]);
 
 		/* stop/start bonded eth dev to apply new MAC */
-		rte_eth_dev_stop(test_params->bonded_port_id);
+		TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
+				"Failed to stop bonded port %u",
+				test_params->bonded_port_id);
 
 		TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
 				"Failed to start bonded port %d",
@@ -1024,7 +1031,10 @@ test_set_bonded_port_initialization_mac_assignment(void)
 			slave_port_ids[2]),
 			"failed to set primary port on bonded device.");
 
-	rte_eth_dev_stop(bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(bonded_port_id),
+			"Failed to stop bonded port %u",
+			bonded_port_id);
+
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(bonded_port_id),
 				"Failed to start bonded pmd eth device %d.",
 				bonded_port_id);
@@ -1063,7 +1073,9 @@ test_set_bonded_port_initialization_mac_assignment(void)
 	 *    b - remove slave ethdevs
 	 *    c - Verify slave ethdevs MACs are restored
 	 */
-	rte_eth_dev_stop(bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(bonded_port_id),
+			"Failed to stop bonded port %u",
+			bonded_port_id);
 
 	for (i = 0; i < BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT; i++) {
 		TEST_ASSERT_SUCCESS(rte_eth_bond_slave_remove(bonded_port_id,
@@ -1769,7 +1781,9 @@ test_roundrobin_verify_mac_assignment(void)
 
 	/* stop / start bonded device and verify that primary MAC address is
 	 * propagate to bonded device and slaves */
-	rte_eth_dev_stop(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
+			"Failed to stop bonded port %u",
+			test_params->bonded_port_id);
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
 			"Failed to start bonded device");
@@ -2404,7 +2418,9 @@ test_activebackup_verify_mac_assignment(void)
 	/* stop / start bonded device and verify that primary MAC address is
 	 * propagated to bonded device and slaves */
 
-	rte_eth_dev_stop(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
+			"Failed to stop bonded port %u",
+			test_params->bonded_port_id);
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
 			"Failed to start device");
@@ -3335,7 +3351,9 @@ test_balance_verify_mac_assignment(void)
 	/* stop / start bonded device and verify that primary MAC address is
 	 * propagated to bonded device and slaves */
 
-	rte_eth_dev_stop(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
+			"Failed to stop bonded port %u",
+			test_params->bonded_port_id);
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
 			"Failed to start bonded device");
@@ -3932,7 +3950,9 @@ test_broadcast_verify_mac_assignment(void)
 	/* stop / start bonded device and verify that primary MAC address is
 	 * propagated to bonded device and slaves */
 
-	rte_eth_dev_stop(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
+			"Failed to stop bonded port %u",
+			test_params->bonded_port_id);
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
 			"Failed to start bonded device");
@@ -4472,7 +4492,9 @@ test_tlb_verify_mac_assignment(void)
 	/* stop / start bonded device and verify that primary MAC address is
 	 * propagated to bonded device and slaves */
 
-	rte_eth_dev_stop(test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
+			"Failed to stop bonded port %u",
+			test_params->bonded_port_id);
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
 			"Failed to start device");

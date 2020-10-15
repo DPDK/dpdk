@@ -355,7 +355,9 @@ remove_slaves_and_stop_bonded_device(void)
 	uint16_t slaves[RTE_MAX_ETHPORTS];
 	uint16_t i;
 
-	rte_eth_dev_stop(test_params.bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params.bonded_port_id),
+			"Failed to stop bonded port %u",
+			test_params.bonded_port_id);
 
 	FOR_EACH_SLAVE(i, slave)
 		remove_slave(slave);
@@ -368,7 +370,9 @@ remove_slaves_and_stop_bonded_device(void)
 			test_params.bonded_port_id, retval);
 
 	FOR_EACH_PORT(i, slave) {
-		rte_eth_dev_stop(slave->port_id);
+		TEST_ASSERT_SUCCESS(rte_eth_dev_stop(slave->port_id),
+				"Failed to stop bonded port %u",
+				slave->port_id);
 
 		TEST_ASSERT(slave->bonded == 0,
 			"Port id=%u is still marked as enslaved.", slave->port_id);

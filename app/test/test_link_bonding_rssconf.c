@@ -176,7 +176,8 @@ static int
 remove_slaves_and_stop_bonded_device(void)
 {
 	TEST_ASSERT_SUCCESS(remove_slaves(), "Removing slaves");
-	rte_eth_dev_stop(test_params.bond_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params.bond_port_id),
+			"Failed to stop port %u", test_params.bond_port_id);
 	return TEST_SUCCESS;
 }
 

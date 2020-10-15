@@ -755,7 +755,8 @@ test_kni(void)
 	ret = 0;
 
 fail:
-	rte_eth_dev_stop(port_id);
+	if (rte_eth_dev_stop(port_id) != 0)
+		printf("Failed to stop port %u\n", port_id);
 
 	return ret;
 }

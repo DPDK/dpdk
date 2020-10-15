@@ -158,7 +158,9 @@ init_port_rx_intr(int num_ports)
 			default_params.rx_intr_port = portid;
 			return 0;
 		}
-		rte_eth_dev_stop(portid);
+		retval = rte_eth_dev_stop(portid);
+		TEST_ASSERT(retval == 0, "Failed to stop port %u: %d\n",
+					portid, retval);
 	}
 	return 0;
 }
@@ -536,8 +538,11 @@ adapter_multi_eth_add_del(void)
 
 	/* stop eth devices for existing */
 	port_index = 0;
-	for (; port_index < rte_eth_dev_count_total(); port_index += 1)
-		rte_eth_dev_stop(port_index);
+	for (; port_index < rte_eth_dev_count_total(); port_index += 1) {
+		err = rte_eth_dev_stop(port_index);
+		TEST_ASSERT(err == 0, "Failed to stop port %u: %d\n",
+					port_index, err);
+	}
 
 	/* add the max port for rx_adapter */
 	port_index = rte_eth_dev_count_total();
