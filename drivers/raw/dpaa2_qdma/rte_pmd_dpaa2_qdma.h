@@ -54,6 +54,8 @@ enum {
 
 #define RTE_QDMA_VQ_FD_SG_FORMAT		(1ULL << 2)
 
+#define RTE_QDMA_VQ_NO_RESPONSE			(1ULL << 3)
+
 /** States if the source addresses is physical. */
 #define RTE_QDMA_JOB_SRC_PHY		(1ULL)
 
@@ -154,6 +156,11 @@ struct rte_qdma_job {
 	 */
 	uint16_t status;
 	uint16_t vq_id;
+	/**
+	 * FLE pool element maintained by user, in case no qDMA response.
+	 * Note: the address must be allocated from DPDK memory pool.
+	 */
+	void *usr_elem;
 };
 
 struct rte_qdma_enqdeq {

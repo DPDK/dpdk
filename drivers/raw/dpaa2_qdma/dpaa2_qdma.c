@@ -46,7 +46,7 @@ static struct qdma_per_core_info qdma_core_info[RTE_MAX_LCORE];
 static inline int
 qdma_populate_fd_pci(phys_addr_t src, phys_addr_t dest,
 			uint32_t len, struct qbman_fd *fd,
-			struct rte_qdma_rbp *rbp)
+			struct rte_qdma_rbp *rbp, int ser)
 {
 	fd->simple_pci.saddr_lo = lower_32_bits((uint64_t) (src));
 	fd->simple_pci.saddr_hi = upper_32_bits((uint64_t) (src));
@@ -56,7 +56,7 @@ qdma_populate_fd_pci(phys_addr_t src, phys_addr_t dest,
 	fd->simple_pci.bmt = 1;
 	fd->simple_pci.fmt = 3;
 	fd->simple_pci.sl = 1;
-	fd->simple_pci.ser = 1;
+	fd->simple_pci.ser = ser;
 
 	fd->simple_pci.sportid = rbp->sportid;	/*pcie 3 */
 	fd->simple_pci.srbp = rbp->srbp;
@@ -81,7 +81,7 @@ qdma_populate_fd_pci(phys_addr_t src, phys_addr_t dest,
 
 static inline int
 qdma_populate_fd_ddr(phys_addr_t src, phys_addr_t dest,
-			uint32_t len, struct qbman_fd *fd)
+			uint32_t len, struct qbman_fd *fd, int ser)
 {
 	fd->simple_ddr.saddr_lo = lower_32_bits((uint64_t) (src));
 	fd->simple_ddr.saddr_hi = upper_32_bits((uint64_t) (src));
@@ -91,7 +91,7 @@ qdma_populate_fd_ddr(phys_addr_t src, phys_addr_t dest,
 	fd->simple_ddr.bmt = 1;
 	fd->simple_ddr.fmt = 3;
 	fd->simple_ddr.sl = 1;
-	fd->simple_ddr.ser = 1;
+	fd->simple_ddr.ser = ser;
 	/**
 	 * src If RBP=0 {NS,RDTTYPE[3:0]}: 0_1011
 	 * Coherent copy of cacheable memory,
@@ -204,6 +204,8 @@ static inline int dpdmai_dev_set_fd_us(
 	struct rte_qdma_job **ppjob;
 	size_t iova;
 	int ret = 0, loop;
+	int ser = (qdma_vq->flags & RTE_QDMA_VQ_NO_RESPONSE) ?
+				0 : 1;
 
 	for (loop = 0; loop < nb_jobs; loop++) {
 		if (job[loop]->src & QDMA_RBP_UPPER_ADDRESS_MASK)
@@ -218,12 +220,12 @@ static inline int dpdmai_dev_set_fd_us(
 
 		if ((rbp->drbp == 1) || (rbp->srbp == 1))
 			ret = qdma_populate_fd_pci((phys_addr_t)job[loop]->src,
-						(phys_addr_t)job[loop]->dest,
-						job[loop]->len, &fd[loop], rbp);
+					(phys_addr_t)job[loop]->dest,
+					job[loop]->len, &fd[loop], rbp, ser);
 		else
 			ret = qdma_populate_fd_ddr((phys_addr_t)job[loop]->src,
-						(phys_addr_t)job[loop]->dest,
-						job[loop]->len, &fd[loop]);
+					(phys_addr_t)job[loop]->dest,
+					job[loop]->len, &fd[loop], ser);
 	}
 
 	return ret;
@@ -288,6 +290,52 @@ static uint32_t qdma_populate_sg_entry(
 	}
 
 	return total_len;
+}
+
+static inline int dpdmai_dev_set_multi_fd_lf_no_rsp(
+		struct qdma_virt_queue *qdma_vq,
+		struct qbman_fd *fd,
+		struct rte_qdma_job **job,
+		uint16_t nb_jobs)
+{
+	struct rte_qdma_rbp *rbp = &qdma_vq->rbp;
+	struct rte_qdma_job **ppjob;
+	uint16_t i;
+	void *elem;
+	struct qbman_fle *fle;
+	uint64_t elem_iova, fle_iova;
+
+	for (i = 0; i < nb_jobs; i++) {
+		elem = job[i]->usr_elem;
+#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
+		elem_iova = rte_mempool_virt2iova(elem);
+#else
+		elem_iova = DPAA2_VADDR_TO_IOVA(elem);
+#endif
+
+		ppjob = (struct rte_qdma_job **)
+			((uintptr_t)(uint64_t)elem +
+			 QDMA_FLE_SINGLE_JOB_OFFSET);
+		*ppjob = job[i];
+
+		job[i]->vq_id = qdma_vq->vq_id;
+
+		fle = (struct qbman_fle *)
+			((uintptr_t)(uint64_t)elem + QDMA_FLE_FLE_OFFSET);
+		fle_iova = elem_iova + QDMA_FLE_FLE_OFFSET;
+
+		DPAA2_SET_FD_ADDR(&fd[i], fle_iova);
+		DPAA2_SET_FD_COMPOUND_FMT(&fd[i]);
+
+		memset(fle, 0, DPAA2_QDMA_MAX_FLE * sizeof(struct qbman_fle) +
+				DPAA2_QDMA_MAX_SDD * sizeof(struct qdma_sdd));
+
+		dpaa2_qdma_populate_fle(fle, fle_iova, rbp,
+			job[i]->src, job[i]->dest, job[i]->len,
+			job[i]->flags, QBMAN_FLE_WORD4_FMT_SBF);
+	}
+
+	return 0;
 }
 
 static inline int dpdmai_dev_set_multi_fd_lf(
@@ -362,10 +410,14 @@ static inline int dpdmai_dev_set_sg_fd_lf(
 	 * Get an FLE/SDD from FLE pool.
 	 * Note: IO metadata is before the FLE and SDD memory.
 	 */
-	ret = rte_mempool_get(qdma_vq->fle_pool, (void **)(&elem));
-	if (ret) {
-		DPAA2_QDMA_DP_DEBUG("Memory alloc failed for FLE");
-		return ret;
+	if (qdma_vq->flags & RTE_QDMA_VQ_NO_RESPONSE) {
+		elem = job[0]->usr_elem;
+	} else {
+		ret = rte_mempool_get(qdma_vq->fle_pool, &elem);
+		if (ret) {
+			DPAA2_QDMA_DP_DEBUG("Memory alloc failed for FLE");
+			return ret;
+		}
 	}
 
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
@@ -391,7 +443,8 @@ static inline int dpdmai_dev_set_sg_fd_lf(
 
 	DPAA2_SET_FD_ADDR(fd, fle_iova);
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
-	DPAA2_SET_FD_FRC(fd, QDMA_SER_CTX);
+	if (!(qdma_vq->flags & RTE_QDMA_VQ_NO_RESPONSE))
+		DPAA2_SET_FD_FRC(fd, QDMA_SER_CTX);
 
 	/* Populate FLE */
 	if (likely(nb_jobs > 1)) {
@@ -1282,7 +1335,12 @@ dpaa2_qdma_queue_setup(struct rte_rawdev *rawdev,
 			qdma_dev->vqs[i].set_fd = dpdmai_dev_set_sg_fd_lf;
 			qdma_dev->vqs[i].get_job = dpdmai_dev_get_sg_job_lf;
 		} else {
-			qdma_dev->vqs[i].set_fd = dpdmai_dev_set_multi_fd_lf;
+			if (q_config->flags & RTE_QDMA_VQ_NO_RESPONSE)
+				qdma_dev->vqs[i].set_fd =
+					dpdmai_dev_set_multi_fd_lf_no_rsp;
+			else
+				qdma_dev->vqs[i].set_fd =
+					dpdmai_dev_set_multi_fd_lf;
 			qdma_dev->vqs[i].get_job = dpdmai_dev_get_single_job_lf;
 		}
 	} else {
