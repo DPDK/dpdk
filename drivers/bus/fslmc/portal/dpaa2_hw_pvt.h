@@ -210,12 +210,28 @@ struct dpaa2_dpcon_dev {
 };
 
 /* Refer to Table 7-3 in SEC BG */
+#define QBMAN_FLE_WORD4_FMT_SBF 0x0    /* Single buffer frame */
+#define QBMAN_FLE_WORD4_FMT_SGE 0x2 /* Scatter gather frame */
+
+struct qbman_fle_word4 {
+	uint32_t bpid:14; /* Frame buffer pool ID */
+	uint32_t ivp:1; /* Invalid Pool ID. */
+	uint32_t bmt:1; /* Bypass Memory Translation */
+	uint32_t offset:12; /* Frame offset */
+	uint32_t fmt:2; /* Frame Format */
+	uint32_t sl:1; /* Short Length */
+	uint32_t f:1; /* Final bit */
+};
+
 struct qbman_fle {
 	uint32_t addr_lo;
 	uint32_t addr_hi;
 	uint32_t length;
 	/* FMT must be 00, MSB is final bit  */
-	uint32_t fin_bpid_offset;
+	union {
+		uint32_t fin_bpid_offset;
+		struct qbman_fle_word4 word4;
+	};
 	uint32_t frc;
 	uint32_t reserved[3]; /* Not used currently */
 };
