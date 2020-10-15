@@ -656,6 +656,54 @@ typedef int (*eth_fec_get_t)(struct rte_eth_dev *dev,
 typedef int (*eth_fec_set_t)(struct rte_eth_dev *dev, uint32_t fec_capa);
 
 /**
+ * @internal
+ * Bind all hairpin Tx queues of one port to the Rx queues of the peer port.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param rx_port
+ *   the peer Rx port.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, bind successfully.
+ * @retval -ENOTSUP
+ *   Bind API is not supported.
+ * @retval -EINVAL
+ *   One of the parameters is invalid.
+ * @retval -EBUSY
+ *   Device is not started.
+ */
+typedef int (*eth_hairpin_bind_t)(struct rte_eth_dev *dev,
+				uint16_t rx_port);
+
+/**
+ * @internal
+ * Unbind all hairpin Tx queues of one port from the Rx queues of the peer port.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param rx_port
+ *   the peer Rx port.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, unbind successfully.
+ * @retval -ENOTSUP
+ *   Bind API is not supported.
+ * @retval -EINVAL
+ *   One of the parameters is invalid.
+ * @retval -EBUSY
+ *   Device is already stopped.
+ */
+typedef int (*eth_hairpin_unbind_t)(struct rte_eth_dev *dev,
+				  uint16_t rx_port);
+
+/**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
@@ -801,6 +849,10 @@ struct eth_dev_ops {
 	/**< Get Forward Error Correction(FEC) mode. */
 	eth_fec_set_t fec_set;
 	/**< Set Forward Error Correction(FEC) mode. */
+	eth_hairpin_bind_t hairpin_bind;
+	/**< Bind all hairpin Tx queues of device to the peer port Rx queues. */
+	eth_hairpin_unbind_t hairpin_unbind;
+	/**< Unbind all hairpin Tx queues from the peer port Rx queues. */
 };
 
 /**

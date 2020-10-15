@@ -2160,6 +2160,58 @@ int rte_eth_tx_hairpin_queue_setup
 	 const struct rte_eth_hairpin_conf *conf);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Bind all hairpin Tx queues of one port to the Rx queues of the peer port.
+ * It is only allowed to call this function after all hairpin queues are
+ * configured properly and the devices are in started state.
+ *
+ * @param tx_port
+ *   The identifier of the Tx port.
+ * @param rx_port
+ *   The identifier of peer Rx port.
+ *   RTE_MAX_ETHPORTS is allowed for the traversal of all devices.
+ *   Rx port ID could have the same value as Tx port ID.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if Tx port ID is invalid.
+ *   - (-EBUSY) if device is not in started state.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - Others detailed errors from PMD drivers.
+ */
+__rte_experimental
+int rte_eth_hairpin_bind(uint16_t tx_port, uint16_t rx_port);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Unbind all hairpin Tx queues of one port from the Rx queues of the peer port.
+ * This should be called before closing the Tx or Rx devices, if the bind
+ * function is called before.
+ * After unbinding the hairpin ports pair, it is allowed to bind them again.
+ * Changing queues configuration should be after stopping the device(s).
+ *
+ * @param tx_port
+ *   The identifier of the Tx port.
+ * @param rx_port
+ *   The identifier of peer Rx port.
+ *   RTE_MAX_ETHPORTS is allowed for traversal of all devices.
+ *   Rx port ID could have the same value as Tx port ID.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if Tx port ID is invalid.
+ *   - (-EBUSY) if device is in stopped state.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - Others detailed errors from PMD drivers.
+ */
+__rte_experimental
+int rte_eth_hairpin_unbind(uint16_t tx_port, uint16_t rx_port);
+
+/**
  * Return the NUMA socket to which an Ethernet device is connected
  *
  * @param port_id

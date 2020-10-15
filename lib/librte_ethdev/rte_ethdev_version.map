@@ -227,6 +227,8 @@ EXPERIMENTAL {
 	rte_tm_wred_profile_delete;
 
 	# added in 20.11
+	rte_eth_hairpin_bind;
+	rte_eth_hairpin_unbind;
 	rte_eth_link_speed_to_str;
 	rte_eth_link_to_str;
 	rte_eth_fec_get_capability;

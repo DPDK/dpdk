@@ -110,6 +110,10 @@ New Features
     as flow action.
   * Added new flow APIs to create/update/destroy/query shared action.
 
+* **Updated the ethdev library to support hairpin between two ports.**
+
+  New APIs are introduced to support binding / unbinding 2 ports hairpin.
+
 * **Updated Broadcom bnxt driver.**
 
   Updated the Broadcom bnxt driver with new features and improvements, including:
