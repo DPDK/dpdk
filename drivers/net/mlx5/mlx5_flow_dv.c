@@ -5332,10 +5332,8 @@ flow_dv_counter_remove_from_age(struct rte_eth_dev *dev,
 
 	age_info = GET_PORT_AGE_INFO(priv);
 	age_param = flow_dv_counter_idx_get_age(dev, counter);
-	if (rte_atomic16_cmpset((volatile uint16_t *)
-			&age_param->state,
-			AGE_CANDIDATE, AGE_FREE)
-			!= AGE_CANDIDATE) {
+	if (!rte_atomic16_cmpset((volatile uint16_t *)&age_param->state,
+				 AGE_CANDIDATE, AGE_FREE)) {
 		/**
 		 * We need the lock even it is age timeout,
 		 * since counter may still in process.
@@ -5343,9 +5341,10 @@ flow_dv_counter_remove_from_age(struct rte_eth_dev *dev,
 		rte_spinlock_lock(&age_info->aged_sl);
 		TAILQ_REMOVE(&age_info->aged_counters, cnt, next);
 		rte_spinlock_unlock(&age_info->aged_sl);
+		rte_atomic16_set(&age_param->state, AGE_FREE);
 	}
-	rte_atomic16_set(&age_param->state, AGE_FREE);
 }
+
 /**
  * Release a flow counter.
  *

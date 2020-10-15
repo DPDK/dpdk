@@ -6771,12 +6771,8 @@ mlx5_flow_aging_check(struct mlx5_dev_ctx_shared *sh,
 		priv = rte_eth_devices[age_param->port_id].data->dev_private;
 		age_info = GET_PORT_AGE_INFO(priv);
 		rte_spinlock_lock(&age_info->aged_sl);
-		/* If the cpmset fails, release happens. */
-		if (rte_atomic16_cmpset((volatile uint16_t *)
-					&age_param->state,
-					AGE_CANDIDATE,
-					AGE_TMOUT) ==
-					AGE_CANDIDATE) {
+		if (rte_atomic16_cmpset((volatile uint16_t *)&age_param->state,
+					AGE_CANDIDATE, AGE_TMOUT)) {
 			TAILQ_INSERT_TAIL(&age_info->aged_counters, cnt, next);
 			MLX5_AGE_SET(age_info, MLX5_AGE_EVENT_NEW);
 		}
