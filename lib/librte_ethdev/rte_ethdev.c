@@ -1677,7 +1677,7 @@ rte_eth_dev_start(uint16_t port_id)
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	int diag;
-	int ret;
+	int ret, ret_stop;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -1711,7 +1711,13 @@ rte_eth_dev_start(uint16_t port_id)
 		RTE_ETHDEV_LOG(ERR,
 			"Error during restoring configuration for device (port %u): %s\n",
 			port_id, rte_strerror(-ret));
-		rte_eth_dev_stop(port_id);
+		ret_stop = rte_eth_dev_stop(port_id);
+		if (ret_stop != 0) {
+			RTE_ETHDEV_LOG(ERR,
+				"Failed to stop device (port %u): %s\n",
+				port_id, rte_strerror(-ret_stop));
+		}
+
 		return ret;
 	}
 
@@ -1724,26 +1730,28 @@ rte_eth_dev_start(uint16_t port_id)
 	return 0;
 }
 
-void
+int
 rte_eth_dev_stop(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
-	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_stop);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_stop, -ENOTSUP);
 
 	if (dev->data->dev_started == 0) {
 		RTE_ETHDEV_LOG(INFO,
 			"Device with port_id=%"PRIu16" already stopped\n",
 			port_id);
-		return;
+		return 0;
 	}
 
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_stop)(dev);
 	rte_ethdev_trace_stop(port_id);
+
+	return 0;
 }
 
 int
@@ -1804,7 +1812,12 @@ rte_eth_dev_reset(uint16_t port_id)
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_reset, -ENOTSUP);
 
-	rte_eth_dev_stop(port_id);
+	ret = rte_eth_dev_stop(port_id);
+	if (ret != 0) {
+		RTE_ETHDEV_LOG(ERR,
+			"Failed to stop device (port %u) before reset: %s - ignore\n",
+			port_id, rte_strerror(-ret));
+	}
 	ret = dev->dev_ops->dev_reset(dev);
 
 	return eth_err(port_id, ret);

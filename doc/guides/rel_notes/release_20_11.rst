@@ -422,6 +422,9 @@ API Changes
 
 * ethdev: Added capability to query age flow action.
 
+* ethdev: Changed ``rte_eth_dev_stop`` return value from ``void`` to
+  ``int`` to provide a way to report various error conditions.
+
 * ethdev: Added ``int`` return type to ``rte_eth_dev_close()``.
 
 * ethdev: Renamed internal functions:

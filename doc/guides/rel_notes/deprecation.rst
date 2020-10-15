@@ -123,12 +123,6 @@ Deprecation Notices
   ``rte_eth_dev_l2_tunnel_offload_set`` which were not marked as deprecated,
   will be removed in DPDK 20.11.
 
-* ethdev: Update API functions returning ``void`` to return ``int`` with
-  negative errno values to indicate various error conditions (e.g.
-  invalid port ID, unsupported operation, failed operation):
-
-  - ``rte_eth_dev_stop``
-
 * ethdev: New offload flags ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
   This will allow application to enable or disable PMDs from updating
   ``rte_mbuf::hash::fdir``.

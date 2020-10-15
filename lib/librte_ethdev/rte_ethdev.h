@@ -2479,8 +2479,11 @@ int rte_eth_dev_start(uint16_t port_id);
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @return
+ *   - 0: Success, Ethernet device stopped.
+ *   - <0: Error code of the driver device stop function.
  */
-void rte_eth_dev_stop(uint16_t port_id);
+int rte_eth_dev_stop(uint16_t port_id);
 
 /**
  * Link up an Ethernet device.
