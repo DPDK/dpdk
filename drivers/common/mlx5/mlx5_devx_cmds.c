@@ -819,6 +819,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			MLX5_GET(per_protocol_networking_offload_caps, hcattr,
 				 lro_timer_supported_periods[i]);
 	}
+	attr->lro_min_mss_size = MLX5_GET(per_protocol_networking_offload_caps,
+					  hcattr, lro_min_mss_size);
 	attr->tunnel_stateless_geneve_rx =
 			    MLX5_GET(per_protocol_networking_offload_caps,
 				     hcattr, tunnel_stateless_geneve_rx);

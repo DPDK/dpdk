@@ -1057,6 +1057,9 @@ err_secondary:
 				config->hca_attr.lro_timer_supported_periods[0];
 			DRV_LOG(DEBUG, "LRO session timeout set to %d usec",
 				config->lro.timeout);
+			DRV_LOG(DEBUG, "LRO minimal size of TCP segment "
+				"required for coalescing is %d bytes",
+				config->hca_attr.lro_min_mss_size);
 		}
 #if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER)
 		if (config->hca_attr.qos.sup &&
