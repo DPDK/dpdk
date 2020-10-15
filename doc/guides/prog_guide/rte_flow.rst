@@ -2618,6 +2618,9 @@ set, unpredictable value will be seen depending on driver implementation. For
 loopback/hairpin packet, metadata set on Rx/Tx may or may not be propagated to
 the other path depending on HW capability.
 
+In hairpin case with Tx explicit flow mode, metadata could (not mandatory) be
+used to connect the Rx and Tx flows if it can be propagated from Rx to Tx path.
+
 .. _table_rte_flow_action_set_meta:
 
 .. table:: SET_META

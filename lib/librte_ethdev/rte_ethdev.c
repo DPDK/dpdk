@@ -2005,13 +2005,13 @@ rte_eth_rx_hairpin_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	}
 	if (conf->peer_count > cap.max_rx_2_tx) {
 		RTE_ETHDEV_LOG(ERR,
-			"Invalid value for number of peers for Rx queue(=%hu), should be: <= %hu",
+			"Invalid value for number of peers for Rx queue(=%u), should be: <= %hu",
 			conf->peer_count, cap.max_rx_2_tx);
 		return -EINVAL;
 	}
 	if (conf->peer_count == 0) {
 		RTE_ETHDEV_LOG(ERR,
-			"Invalid value for number of peers for Rx queue(=%hu), should be: > 0",
+			"Invalid value for number of peers for Rx queue(=%u), should be: > 0",
 			conf->peer_count);
 		return -EINVAL;
 	}
@@ -2176,13 +2176,13 @@ rte_eth_tx_hairpin_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	}
 	if (conf->peer_count > cap.max_tx_2_rx) {
 		RTE_ETHDEV_LOG(ERR,
-			"Invalid value for number of peers for Tx queue(=%hu), should be: <= %hu",
+			"Invalid value for number of peers for Tx queue(=%u), should be: <= %hu",
 			conf->peer_count, cap.max_tx_2_rx);
 		return -EINVAL;
 	}
 	if (conf->peer_count == 0) {
 		RTE_ETHDEV_LOG(ERR,
-			"Invalid value for number of peers for Tx queue(=%hu), should be: > 0",
+			"Invalid value for number of peers for Tx queue(=%u), should be: > 0",
 			conf->peer_count);
 		return -EINVAL;
 	}

@@ -113,6 +113,7 @@ New Features
 * **Updated the ethdev library to support hairpin between two ports.**
 
   New APIs are introduced to support binding / unbinding 2 ports hairpin.
+  Hairpin Tx part flow rules can be inserted explicitly.
 
 * **Updated Broadcom bnxt driver.**
 
@@ -526,6 +527,11 @@ ABI Changes
     every defined extension header type.
     Applications should use the new values for identification of existing
     extensions in the packet header.
+
+  * ``struct rte_eth_hairpin_conf`` has two new members:
+
+    * ``uint32_t tx_explicit:1;``
+    * ``uint32_t manual_bind:1;``
 
 * eventdev: Following structures are modified to support DLB/DLB2 PMDs
   and future extensions:
