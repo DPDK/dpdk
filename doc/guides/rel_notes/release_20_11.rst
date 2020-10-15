@@ -62,6 +62,12 @@ New Features
   The functions are provided as a generic stubs and
   x86 specific implementation.
 
+* **Added prefetch with intention to write APIs.**
+
+  Added new prefetch function variants e.g. ``rte_prefetch0_write``,
+  which allow the programmer to prefetch a cache line and also indicate
+  the intention to write.
+
 * **Updated CRC modules of the net library.**
 
   * Added runtime selection of the optimal architecture-specific CRC path.
