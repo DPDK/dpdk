@@ -38,9 +38,9 @@ extern "C" {
 #define rte_io_rmb() rte_rmb()
 
 static __rte_always_inline void
-rte_atomic_thread_fence(int memory_order)
+rte_atomic_thread_fence(int memorder)
 {
-	__atomic_thread_fence(memory_order);
+	__atomic_thread_fence(memorder);
 }
 
 /*------------------------ 128 bit atomic operations -------------------------*/

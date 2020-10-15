@@ -122,7 +122,7 @@ static inline void rte_io_rmb(void);
 /**
  * Synchronization fence between threads based on the specified memory order.
  */
-static inline void rte_atomic_thread_fence(int memory_order);
+static inline void rte_atomic_thread_fence(int memorder);
 
 /*------------------------- 16 bit atomic operations -------------------------*/
 
