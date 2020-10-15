@@ -10,7 +10,7 @@
 
 #include "test.h"
 
-#ifndef RTE_LIBRTE_POWER
+#ifndef RTE_LIB_POWER
 
 static int
 test_power_kvm_vm(void)

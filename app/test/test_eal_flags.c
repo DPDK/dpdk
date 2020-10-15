@@ -344,7 +344,7 @@ test_invalid_b_flag(void)
 static int
 test_invalid_vdev_flag(void)
 {
-#ifdef RTE_LIBRTE_PMD_RING
+#ifdef RTE_NET_RING
 #ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point, and we also need to
 	 * run another primary process here */
@@ -1504,7 +1504,7 @@ test_eal_flags(void)
 		return ret;
 	}
 
-#ifdef RTE_LIBRTE_PMD_RING
+#ifdef RTE_NET_RING
 	ret = test_invalid_vdev_flag();
 	if (ret < 0) {
 		printf("Error in test_invalid_vdev_flag()\n");

@@ -30,7 +30,7 @@
 #include <rte_string_fns.h>
 #include <rte_metrics.h>
 #include <rte_cycles.h>
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 #include <rte_security.h>
 #endif
 #include <rte_cryptodev.h>
@@ -739,7 +739,7 @@ show_port(void)
 		}
 
 		printf("  - cyrpto context\n");
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 		void *p_ctx = rte_eth_dev_get_sec_ctx(i);
 		printf("\t  -- security context - %p\n", p_ctx);
 

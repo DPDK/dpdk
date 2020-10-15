@@ -6,7 +6,7 @@
 #define _QAT_SYM_H_
 
 #include <rte_cryptodev_pmd.h>
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 #include <rte_net_crc.h>
 #endif
 
@@ -135,7 +135,7 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 	return sym_op->cipher.data.length - last_block_len;
 }
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 static inline void
 qat_crc_verify(struct qat_sym_session *ctx, struct rte_crypto_op *op)
 {
@@ -231,7 +231,7 @@ qat_sym_process_response(void **op, uint8_t *resp)
 
 		rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	} else {
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 		uint8_t is_docsis_sec = 0;
 
 		if (rx_op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
@@ -256,7 +256,7 @@ qat_sym_process_response(void **op, uint8_t *resp)
 
 		if (sess->bpi_ctx) {
 			qat_bpicipher_postprocess(sess, rx_op);
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 			if (is_docsis_sec)
 				qat_crc_verify(sess, rx_op);
 #endif

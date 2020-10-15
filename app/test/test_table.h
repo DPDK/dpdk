@@ -10,7 +10,7 @@
 #include <rte_table_array.h>
 #include <rte_pipeline.h>
 
-#ifdef RTE_LIBRTE_ACL
+#ifdef RTE_LIB_ACL
 #include <rte_table_acl.h>
 #endif
 

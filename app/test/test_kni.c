@@ -11,7 +11,7 @@
 
 #include "test.h"
 
-#if !defined(RTE_EXEC_ENV_LINUX) || !defined(RTE_LIBRTE_KNI)
+#if !defined(RTE_EXEC_ENV_LINUX) || !defined(RTE_LIB_KNI)
 
 static int
 test_kni(void)

@@ -5,7 +5,7 @@
 #ifndef TEST_CRYPTODEV_HASH_TEST_VECTORS_H_
 #define TEST_CRYPTODEV_HASH_TEST_VECTORS_H_
 
-#ifdef RTE_LIBRTE_PMD_AESNI_MB
+#ifdef RTE_CRYPTO_AESNI_MB
 #include <intel-ipsec-mb.h>
 #endif
 

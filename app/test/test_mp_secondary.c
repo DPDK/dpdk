@@ -34,14 +34,14 @@
 #include <rte_log.h>
 #include <rte_mempool.h>
 
-#ifdef RTE_LIBRTE_HASH
+#ifdef RTE_LIB_HASH
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
-#endif /* RTE_LIBRTE_HASH */
+#endif /* RTE_LIB_HASH */
 
-#ifdef RTE_LIBRTE_LPM
+#ifdef RTE_LIB_LPM
 #include <rte_lpm.h>
-#endif /* RTE_LIBRTE_LPM */
+#endif /* RTE_LIB_LPM */
 
 #include <rte_string_fns.h>
 
@@ -157,7 +157,7 @@ run_object_creation_tests(void)
 	}
 	printf("# Checked rte_mempool_create() OK\n");
 
-#ifdef RTE_LIBRTE_HASH
+#ifdef RTE_LIB_HASH
 	const struct rte_hash_parameters hash_params = { .name = "test_mp_hash" };
 	rte_errno=0;
 	if ((rte_hash_create(&hash_params) != NULL) &&
@@ -177,7 +177,7 @@ run_object_creation_tests(void)
 	printf("# Checked rte_fbk_hash_create() OK\n");
 #endif
 
-#ifdef RTE_LIBRTE_LPM
+#ifdef RTE_LIB_LPM
 	rte_errno=0;
 	struct rte_lpm_config config;
 

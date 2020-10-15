@@ -74,7 +74,7 @@ foreach l:libraries
 	ext_deps = []
 	deps = []
 	# eal is standard dependency once built
-	if dpdk_conf.has('RTE_LIBRTE_EAL')
+	if dpdk_conf.has('RTE_LIB_EAL')
 		deps += ['eal']
 	endif
 

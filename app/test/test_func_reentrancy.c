@@ -27,15 +27,15 @@
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
 
-#ifdef RTE_LIBRTE_HASH
+#ifdef RTE_LIB_HASH
 #include <rte_hash.h>
 #include <rte_fbk_hash.h>
 #include <rte_jhash.h>
-#endif /* RTE_LIBRTE_HASH */
+#endif /* RTE_LIB_HASH */
 
-#ifdef RTE_LIBRTE_LPM
+#ifdef RTE_LIB_LPM
 #include <rte_lpm.h>
-#endif /* RTE_LIBRTE_LPM */
+#endif /* RTE_LIB_LPM */
 
 #include <rte_string_fns.h>
 
@@ -200,7 +200,7 @@ mempool_create_lookup(__rte_unused void *arg)
 	return 0;
 }
 
-#ifdef RTE_LIBRTE_HASH
+#ifdef RTE_LIB_HASH
 static void
 hash_clean(unsigned lcore_id)
 {
@@ -328,9 +328,9 @@ fbk_create_free(__rte_unused void *arg)
 
 	return 0;
 }
-#endif /* RTE_LIBRTE_HASH */
+#endif /* RTE_LIB_HASH */
 
-#ifdef RTE_LIBRTE_LPM
+#ifdef RTE_LIB_LPM
 static void
 lpm_clean(unsigned int lcore_id)
 {
@@ -388,7 +388,7 @@ lpm_create_free(__rte_unused void *arg)
 
 	return 0;
 }
-#endif /* RTE_LIBRTE_LPM */
+#endif /* RTE_LIB_LPM */
 
 struct test_case{
 	case_func_t    func;
@@ -403,13 +403,13 @@ struct test_case test_cases[] = {
 	{ ring_create_lookup,     NULL,  ring_clean,   "ring create/lookup" },
 	{ mempool_create_lookup,  NULL,  mempool_clean,
 			"mempool create/lookup" },
-#ifdef RTE_LIBRTE_HASH
+#ifdef RTE_LIB_HASH
 	{ hash_create_free,       NULL,  hash_clean,   "hash create/free" },
 	{ fbk_create_free,        NULL,  fbk_clean,    "fbk create/free" },
-#endif /* RTE_LIBRTE_HASH */
-#ifdef RTE_LIBRTE_LPM
+#endif /* RTE_LIB_HASH */
+#ifdef RTE_LIB_LPM
 	{ lpm_create_free,        NULL,  lpm_clean,    "lpm create/free" },
-#endif /* RTE_LIBRTE_LPM */
+#endif /* RTE_LIB_LPM */
 };
 
 /**

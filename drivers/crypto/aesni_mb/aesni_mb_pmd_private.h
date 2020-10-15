@@ -7,7 +7,7 @@
 
 #include <intel-ipsec-mb.h>
 
-#if defined(RTE_LIBRTE_SECURITY) && (IMB_VERSION_NUM) >= IMB_VERSION(0, 54, 0)
+#if defined(RTE_LIB_SECURITY) && (IMB_VERSION_NUM) >= IMB_VERSION(0, 54, 0)
 #define AESNI_MB_DOCSIS_SEC_ENABLED 1
 #include <rte_security.h>
 #include <rte_security_driver.h>

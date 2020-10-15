@@ -11,7 +11,7 @@
 
 #include <rte_string_fns.h>
 #include <rte_port_ethdev.h>
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 #include <rte_port_kni.h>
 #endif
 #include <rte_port_ring.h>
@@ -28,7 +28,7 @@
 #include <rte_table_lpm_ipv6.h>
 #include <rte_table_stub.h>
 
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 #include "kni.h"
 #endif
 #include "link.h"
@@ -160,7 +160,7 @@ pipeline_port_in_create(const char *pipeline_name,
 		struct rte_port_ring_reader_params ring;
 		struct rte_port_sched_reader_params sched;
 		struct rte_port_fd_reader_params fd;
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 		struct rte_port_kni_reader_params kni;
 #endif
 		struct rte_port_source_params source;
@@ -264,7 +264,7 @@ pipeline_port_in_create(const char *pipeline_name,
 		break;
 	}
 
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 	case PORT_IN_KNI:
 	{
 		struct kni *kni;
@@ -404,7 +404,7 @@ pipeline_port_out_create(const char *pipeline_name,
 		struct rte_port_ring_writer_params ring;
 		struct rte_port_sched_writer_params sched;
 		struct rte_port_fd_writer_params fd;
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 		struct rte_port_kni_writer_params kni;
 #endif
 		struct rte_port_sink_params sink;
@@ -415,7 +415,7 @@ pipeline_port_out_create(const char *pipeline_name,
 		struct rte_port_ethdev_writer_nodrop_params ethdev;
 		struct rte_port_ring_writer_nodrop_params ring;
 		struct rte_port_fd_writer_nodrop_params fd;
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 		struct rte_port_kni_writer_nodrop_params kni;
 #endif
 		struct rte_port_sym_crypto_writer_nodrop_params sym_crypto;
@@ -537,7 +537,7 @@ pipeline_port_out_create(const char *pipeline_name,
 		break;
 	}
 
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 	case PORT_OUT_KNI:
 	{
 		struct kni *kni;

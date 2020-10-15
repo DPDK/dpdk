@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#ifdef RTE_LIBRTE_EAL
+#ifdef RTE_LIB_EAL
 #include "osdep_rte/osdep_generic.h"
 #else
 #include "osdep_raw/osdep_generic.h"

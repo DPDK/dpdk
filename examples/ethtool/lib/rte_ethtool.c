@@ -9,7 +9,7 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 #include <rte_bus_pci.h>
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 #include <rte_pmd_ixgbe.h>
 #endif
 #include "rte_ethtool.h"
@@ -396,7 +396,7 @@ rte_ethtool_net_set_rx_mode(uint16_t port_id)
 
 	/* Set VF vf_rx_mode, VF unsupport status is discard */
 	for (vf = 0; vf < num_vfs; vf++) {
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 		rte_pmd_ixgbe_set_vf_rxmode(port_id, vf,
 			ETH_VMDQ_ACCEPT_UNTAG, 0);
 #endif

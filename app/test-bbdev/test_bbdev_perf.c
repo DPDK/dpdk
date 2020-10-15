@@ -26,7 +26,7 @@
 #define MAX_QUEUES RTE_MAX_LCORE
 #define TEST_REPETITIONS 1000
 
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
+#ifdef RTE_BASEBAND_FPGA_LTE_FEC
 #include <fpga_lte_fec.h>
 #define FPGA_LTE_PF_DRIVER_NAME ("intel_fpga_lte_fec_pf")
 #define FPGA_LTE_VF_DRIVER_NAME ("intel_fpga_lte_fec_vf")
@@ -39,7 +39,7 @@
 #define FLR_4G_TIMEOUT 610
 #endif
 
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC
+#ifdef RTE_BASEBAND_FPGA_5GNR_FEC
 #include <rte_pmd_fpga_5gnr_fec.h>
 #define FPGA_5GNR_PF_DRIVER_NAME ("intel_fpga_5gnr_fec_pf")
 #define FPGA_5GNR_VF_DRIVER_NAME ("intel_fpga_5gnr_fec_vf")
@@ -52,7 +52,7 @@
 #define FLR_5G_TIMEOUT 610
 #endif
 
-#ifdef RTE_LIBRTE_PMD_BBDEV_ACC100
+#ifdef RTE_BASEBAND_ACC100
 #include <rte_acc100_cfg.h>
 #define ACC100PF_DRIVER_NAME   ("intel_acc100_pf")
 #define ACC100VF_DRIVER_NAME   ("intel_acc100_vf")
@@ -577,7 +577,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 /* Configure fpga lte fec with PF & VF values
  * if '-i' flag is set and using fpga device
  */
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
+#ifdef RTE_BASEBAND_FPGA_LTE_FEC
 	if ((get_init_device() == true) &&
 		(!strcmp(info->drv.driver_name, FPGA_LTE_PF_DRIVER_NAME))) {
 		struct rte_fpga_lte_fec_conf conf;
@@ -621,7 +621,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 				info->dev_name);
 	}
 #endif
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC
+#ifdef RTE_BASEBAND_FPGA_5GNR_FEC
 	if ((get_init_device() == true) &&
 		(!strcmp(info->drv.driver_name, FPGA_5GNR_PF_DRIVER_NAME))) {
 		struct rte_fpga_5gnr_fec_conf conf;
@@ -665,7 +665,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 				info->dev_name);
 	}
 #endif
-#ifdef RTE_LIBRTE_PMD_BBDEV_ACC100
+#ifdef RTE_BASEBAND_ACC100
 	if ((get_init_device() == true) &&
 		(!strcmp(info->drv.driver_name, ACC100PF_DRIVER_NAME))) {
 		struct rte_acc100_conf conf;

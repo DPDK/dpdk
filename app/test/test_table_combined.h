@@ -6,7 +6,7 @@
 int test_table_stub_combined(void);
 int test_table_lpm_combined(void);
 int test_table_lpm_ipv6_combined(void);
-#ifdef RTE_LIBRTE_ACL
+#ifdef RTE_LIB_ACL
 int test_table_acl(void);
 #endif
 int test_table_hash8unoptimized(void);

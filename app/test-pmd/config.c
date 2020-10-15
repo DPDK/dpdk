@@ -39,13 +39,13 @@
 #include <rte_cycles.h>
 #include <rte_flow.h>
 #include <rte_errno.h>
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 #include <rte_pmd_ixgbe.h>
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 #include <rte_pmd_i40e.h>
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 #include <rte_pmd_bnxt.h>
 #endif
 #include <rte_gro.h>
@@ -4761,14 +4761,14 @@ get_fdir_info(portid_t port_id, struct rte_eth_fdir_info *fdir_info,
 		return 0;
 	}
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP) {
 		ret = rte_pmd_i40e_get_fdir_info(port_id, fdir_info);
 		if (!ret)
 			ret = rte_pmd_i40e_get_fdir_stats(port_id, fdir_stat);
 	}
 #endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP) {
 		ret = rte_pmd_ixgbe_get_fdir_info(port_id, fdir_info);
 		if (!ret)
@@ -4921,7 +4921,7 @@ fdir_set_flex_payload(portid_t port_id, struct rte_eth_flex_payload_cfg *cfg)
 void
 set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 {
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	int diag;
 
 	if (is_rx)
@@ -4976,12 +4976,12 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 	RTE_SET_USED(rate);
 	RTE_SET_USED(q_msk);
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (diag == -ENOTSUP)
 		diag = rte_pmd_ixgbe_set_vf_rate_limit(port_id, vf, rate,
 						       q_msk);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (diag == -ENOTSUP)
 		diag = rte_pmd_bnxt_set_vf_rate_limit(port_id, vf, rate, q_msk);
 #endif
@@ -5277,7 +5277,7 @@ close_file(uint8_t *buf)
 void
 port_queue_region_info_display(portid_t port_id, void *buf)
 {
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	uint16_t i, j;
 	struct rte_pmd_i40e_queue_regions *info =
 		(struct rte_pmd_i40e_queue_regions *)buf;

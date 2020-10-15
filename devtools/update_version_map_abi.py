@@ -164,7 +164,7 @@ def __main():
 
     arg_parser.add_argument("map_file", type=str,
                             help='path to linker version script file '
-                                 '(pattern: *version.map)')
+                                 '(pattern: version.map)')
     arg_parser.add_argument("abi_version", type=str,
                             help='target ABI version (pattern: MAJOR.MINOR)')
 

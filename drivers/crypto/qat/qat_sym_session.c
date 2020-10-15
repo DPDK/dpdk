@@ -14,7 +14,7 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_crypto_sym.h>
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 #include <rte_security.h>
 #endif
 
@@ -2109,7 +2109,7 @@ int qat_sym_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	return 0;
 }
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 static int
 qat_sec_session_check_docsis(struct rte_security_session_conf *conf)
 {

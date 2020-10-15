@@ -38,7 +38,7 @@ fi
 find_orphan_windows_symbols ()
 {
     for def in $(find lib drivers -name '*_exports.def') ; do
-        map=${def/_exports.def}_version.map
+        map=$(dirname $def)/version.map
         for sym in $(grep -v ^EXPORTS $def); do
             grep -q $sym $map || echo $sym
         done

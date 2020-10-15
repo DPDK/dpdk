@@ -126,7 +126,7 @@ app_lcore_main_loop(__rte_unused void *arg)
 			return 0;
 
 		case e_APP_PIPELINE_ACL:
-#ifndef RTE_LIBRTE_ACL
+#ifndef RTE_LIB_ACL
 			rte_exit(EXIT_FAILURE, "ACL not present in build\n");
 #else
 			app_main_loop_worker_pipeline_acl();

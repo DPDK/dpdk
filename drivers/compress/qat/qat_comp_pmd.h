@@ -5,7 +5,7 @@
 #ifndef _QAT_COMP_PMD_H_
 #define _QAT_COMP_PMD_H_
 
-#ifdef RTE_LIBRTE_COMPRESSDEV
+#ifdef RTE_LIB_COMPRESSDEV
 
 #include <rte_compressdev.h>
 #include <rte_compressdev_pmd.h>

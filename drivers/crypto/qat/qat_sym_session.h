@@ -6,7 +6,7 @@
 
 #include <rte_crypto.h>
 #include <rte_cryptodev_pmd.h>
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 #include <rte_security.h>
 #endif
 
@@ -159,7 +159,7 @@ qat_cipher_get_block_size(enum icp_qat_hw_cipher_algo qat_cipher_alg);
 int
 qat_sym_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 int
 qat_security_session_create(void *dev, struct rte_security_session_conf *conf,
 		struct rte_security_session *sess, struct rte_mempool *mempool);

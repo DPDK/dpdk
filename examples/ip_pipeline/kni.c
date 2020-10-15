@@ -24,7 +24,7 @@ kni_init(void)
 {
 	TAILQ_INIT(&kni_list);
 
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 	rte_kni_init(KNI_MAX);
 #endif
 
@@ -46,7 +46,7 @@ kni_find(const char *name)
 	return NULL;
 }
 
-#ifndef RTE_LIBRTE_KNI
+#ifndef RTE_LIB_KNI
 
 struct kni *
 kni_create(const char *name __rte_unused,

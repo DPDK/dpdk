@@ -98,7 +98,7 @@ struct sec_cdb {
 
 	uint32_t sh_desc[DPAA_SEC_MAX_DESC_SIZE];
 };
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 /*!
  * The structure is to be filled by user as a part of
  * dpaa_sec_proto_ctxt for PDCP Protocol
@@ -126,7 +126,7 @@ typedef struct dpaa_sec_session_entry {
 	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
 	enum rte_crypto_auth_algorithm auth_alg; /*!< Authentication Algorithm*/
 	enum rte_crypto_aead_algorithm aead_alg; /*!< AEAD Algorithm*/
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	enum rte_security_session_protocol proto_alg; /*!< Security Algorithm*/
 #endif
 	union {
@@ -169,7 +169,7 @@ typedef struct dpaa_sec_session_entry {
 			uint8_t auth_cipher_text;
 				/**< Authenticate/cipher ordering */
 		};
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 		struct sec_pdcp_ctxt pdcp;
 #endif
 	};
@@ -569,7 +569,7 @@ static const struct rte_cryptodev_capabilities dpaa_sec_capabilities[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 static const struct rte_cryptodev_capabilities dpaa_pdcp_capabilities[] = {
 	{	/* SNOW 3G (UIA2) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,

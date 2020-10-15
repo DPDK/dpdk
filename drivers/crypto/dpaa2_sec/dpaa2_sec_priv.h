@@ -8,7 +8,7 @@
 #ifndef _DPAA2_SEC_PMD_PRIVATE_H_
 #define _DPAA2_SEC_PMD_PRIVATE_H_
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
 #endif
 
@@ -141,7 +141,7 @@ struct dpaa2_sec_aead_ctxt {
 	uint8_t auth_cipher_text;       /**< Authenticate/cipher ordering */
 };
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 /*
  * The structure is to be filled by user for PDCP Protocol
  */
@@ -193,7 +193,7 @@ typedef struct dpaa2_sec_session_entry {
 				struct dpaa2_sec_aead_ctxt aead_ctxt;
 			} ext_params;
 		};
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 		struct dpaa2_pdcp_ctxt pdcp;
 #endif
 	};
@@ -697,7 +697,7 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 
 static const struct rte_cryptodev_capabilities dpaa2_pdcp_capabilities[] = {
 	{	/* SNOW 3G (UIA2) */

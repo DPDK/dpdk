@@ -7,7 +7,7 @@
 # DPDK instance, use 'make'
 
 # require the power library
-build = dpdk_conf.has('RTE_LIBRTE_POWER')
+build = dpdk_conf.has('RTE_LIB_POWER')
 
 allow_experimental_apis = true
 deps += ['distributor', 'power']

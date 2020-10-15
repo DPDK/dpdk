@@ -21,9 +21,9 @@ flags_common_default = [
 	#	['RTE_ARM64_MEMCPY_ALIGN_MASK', 0xF],
 	#	['RTE_ARM64_MEMCPY_STRICT_ALIGN', false],
 
-	['RTE_LIBRTE_FM10K_PMD', false],
-	['RTE_LIBRTE_SFC_EFX_PMD', false],
-	['RTE_LIBRTE_AVP_PMD', false],
+	['RTE_NET_FM10K', false],
+	['RTE_NET_SFC_EFX', false],
+	['RTE_NET_AVP', false],
 
 	['RTE_SCHED_VECTOR', false],
 	['RTE_ARM_USE_WFE', false],

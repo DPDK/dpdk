@@ -12,7 +12,7 @@
 #include <ctype.h>
 #include <sys/queue.h>
 
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
@@ -25,12 +25,12 @@ extern cmdline_parse_ctx_t main_ctx[];
 #include <rte_cycles.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_TIMER
+#ifdef RTE_LIB_TIMER
 #include <rte_timer.h>
 #endif
 
 #include "test.h"
-#ifdef RTE_LIBRTE_PDUMP
+#ifdef RTE_LIB_PDUMP
 #include "test_pdump.h"
 #endif
 
@@ -52,8 +52,8 @@ do_recursive_call(void)
 		int (*action_fn)(void);
 	} actions[] =  {
 			{ "run_secondary_instances", test_mp_secondary },
-#ifdef RTE_LIBRTE_PDUMP
-#ifdef RTE_LIBRTE_RING_PMD
+#ifdef RTE_LIB_PDUMP
+#ifdef RTE_NET_RING
 			{ "run_pdump_server_tests", test_pdump },
 #endif
 #endif
@@ -69,7 +69,7 @@ do_recursive_call(void)
 			{ "test_memory_flags", no_action },
 			{ "test_file_prefix", no_action },
 			{ "test_no_huge_flag", no_action },
-#ifdef RTE_LIBRTE_TIMER
+#ifdef RTE_LIB_TIMER
 			{ "timer_secondary_spawn_wait", test_timer_secondary },
 #endif
 	};
@@ -91,7 +91,7 @@ int last_test_result;
 int
 main(int argc, char **argv)
 {
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 	struct cmdline *cl;
 #endif
 	char *extra_args;
@@ -134,7 +134,7 @@ main(int argc, char **argv)
 		goto out;
 	}
 
-#ifdef RTE_LIBRTE_TIMER
+#ifdef RTE_LIB_TIMER
 	if (rte_timer_subsystem_init() < 0) {
 		ret = -1;
 		goto out;
@@ -163,7 +163,7 @@ main(int argc, char **argv)
 				"HPET is not enabled, using TSC as default timer\n");
 
 
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 	cl = cmdline_stdin_new(main_ctx, "RTE>>");
 	if (cl == NULL) {
 		ret = -1;
@@ -191,7 +191,7 @@ main(int argc, char **argv)
 	ret = 0;
 
 out:
-#ifdef RTE_LIBRTE_TIMER
+#ifdef RTE_LIB_TIMER
 	rte_timer_subsystem_finalize();
 #endif
 	rte_eal_cleanup();

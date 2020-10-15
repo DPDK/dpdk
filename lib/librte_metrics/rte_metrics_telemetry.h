@@ -2,7 +2,7 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
-#ifdef RTE_LIBRTE_TELEMETRY
+#ifdef RTE_LIB_TELEMETRY
 #include <jansson.h>
 #else
 #define json_t void *

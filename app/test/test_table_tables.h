@@ -7,7 +7,7 @@ int test_table_hash_cuckoo(void);
 int test_table_lpm(void);
 int test_table_lpm_ipv6(void);
 int test_table_array(void);
-#ifdef RTE_LIBRTE_ACL
+#ifdef RTE_LIB_ACL
 int test_table_acl(void);
 #endif
 int test_table_hash_unoptimized(void);

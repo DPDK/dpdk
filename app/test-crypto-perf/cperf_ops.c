@@ -8,7 +8,7 @@
 #include "cperf_ops.h"
 #include "cperf_test_vectors.h"
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 static int
 cperf_set_ops_security(struct rte_crypto_op **ops,
 		uint32_t src_buf_offset __rte_unused,
@@ -551,7 +551,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 	struct rte_crypto_sym_xform aead_xform;
 	struct rte_cryptodev_sym_session *sess = NULL;
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	/*
 	 * security only
 	 */
@@ -844,7 +844,7 @@ cperf_get_op_functions(const struct cperf_options *options,
 			op_fns->populate_ops = cperf_set_ops_cipher;
 		return 0;
 	}
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	if (options->op_type == CPERF_PDCP) {
 		op_fns->populate_ops = cperf_set_ops_security;
 		return 0;

@@ -6,7 +6,7 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-build = dpdk_conf.has('RTE_LIBRTE_VHOST')
+build = dpdk_conf.has('RTE_LIB_VHOST')
 allow_experimental_apis = true
 deps += ['vhost', 'cryptodev']
 sources = files(

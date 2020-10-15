@@ -39,7 +39,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_PMD_BOND
+#ifdef RTE_NET_BOND
 #include <rte_eth_bond.h>
 #endif
 #include <rte_flow.h>
@@ -50,7 +50,7 @@ static void
 usage(char* progname)
 {
 	printf("usage: %s [EAL options] -- "
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 	       "[--interactive|-i] "
 	       "[--cmdline-file=FILENAME] "
 #endif
@@ -60,7 +60,7 @@ usage(char* progname)
 	       "--portlist=PORTLIST "
 	       "--mbuf-size= | --total-num-mbufs= | "
 	       "--nb-cores= | --nb-ports= | "
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 	       "--eth-peers-configfile= | "
 	       "--eth-peer=X,M:M:M:M:M:M | "
 	       "--tx-ip=SRC,DST | --tx-udp=PORT | "
@@ -73,7 +73,7 @@ usage(char* progname)
 	       "--vxlan-gpe-port= | --geneve-parsed-port= | "
 	       "--record-core-cycles | --record-burst-stats]\n",
 	       progname);
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
 	printf("  --cmdline-file: execute cli commands before startup.\n");
 #endif
@@ -114,7 +114,7 @@ usage(char* progname)
 	printf("  --max-pkt-len=N: set the maximum size of packet to N bytes.\n");
 	printf("  --max-lro-pkt-size=N: set the maximum LRO aggregated packet "
 	       "size to N bytes.\n");
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 	printf("  --eth-peers-configfile=name: config file with ethernet addresses "
 	       "of peer ports.\n");
 	printf("  --eth-peer=X,M:M:M:M:M:M: set the MAC address of the X peer "
@@ -131,7 +131,7 @@ usage(char* progname)
 	       "the packet will be enqueued into the rx drop-queue. "
 	       "If the drop-queue doesn't exist, the packet is dropped. "
 	       "By default drop-queue=127.\n");
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 	printf("  --latencystats=N: enable latency and jitter statistcs "
 	       "monitoring on forwarding lcore id N.\n");
 #endif
@@ -231,7 +231,7 @@ usage(char* progname)
 	       "    0x01 - hairpin ports loop, 0x00 - hairpin port self\n");
 }
 
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 static int
 init_peer_eth_addrs(char *config_filename)
 {
@@ -594,7 +594,7 @@ launch_args_parse(int argc, char** argv)
 
 	static struct option lgopts[] = {
 		{ "help",			0, 0, 0 },
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 		{ "interactive",		0, 0, 0 },
 		{ "cmdline-file",		1, 0, 0 },
 		{ "auto-start",			0, 0, 0 },
@@ -623,10 +623,10 @@ launch_args_parse(int argc, char** argv)
 		{ "pkt-filter-report-hash",     1, 0, 0 },
 		{ "pkt-filter-size",            1, 0, 0 },
 		{ "pkt-filter-drop-queue",      1, 0, 0 },
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 		{ "latencystats",               1, 0, 0 },
 #endif
-#ifdef RTE_LIBRTE_BITRATESTATS
+#ifdef RTE_LIB_BITRATESTATS
 		{ "bitrate-stats",              1, 0, 0 },
 #endif
 		{ "disable-crc-strip",          0, 0, 0 },
@@ -703,7 +703,7 @@ launch_args_parse(int argc, char** argv)
 
 	argvopt = argv;
 
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 #define SHORTOPTS "i"
 #else
 #define SHORTOPTS ""
@@ -711,7 +711,7 @@ launch_args_parse(int argc, char** argv)
 	while ((opt = getopt_long(argc, argvopt, SHORTOPTS "ah",
 				 lgopts, &opt_idx)) != EOF) {
 		switch (opt) {
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 		case 'i':
 			printf("Interactive-mode selected\n");
 			interactive = 1;
@@ -727,7 +727,7 @@ launch_args_parse(int argc, char** argv)
 				usage(argv[0]);
 				rte_exit(EXIT_SUCCESS, "Displayed help\n");
 			}
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 			if (!strcmp(lgopts[opt_idx].name, "interactive")) {
 				printf("Interactive-mode selected\n");
 				interactive = 1;
@@ -1004,7 +1004,7 @@ launch_args_parse(int argc, char** argv)
 						 "drop queue %d invalid - must"
 						 "be >= 0 \n", n);
 			}
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 			if (!strcmp(lgopts[opt_idx].name,
 				    "latencystats")) {
 				n = atoi(optarg);
@@ -1017,7 +1017,7 @@ launch_args_parse(int argc, char** argv)
 						 " must be >= 0\n", n);
 			}
 #endif
-#ifdef RTE_LIBRTE_BITRATESTATS
+#ifdef RTE_LIB_BITRATESTATS
 			if (!strcmp(lgopts[opt_idx].name, "bitrate-stats")) {
 				n = atoi(optarg);
 				if (n >= 0) {

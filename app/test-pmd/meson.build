@@ -25,37 +25,37 @@ sources = files('5tswap.c',
 	'util.c')
 
 deps += ['ethdev', 'gro', 'gso', 'cmdline', 'metrics', 'meter', 'bus_pci']
-if dpdk_conf.has('RTE_LIBRTE_BITRATESTATS')
+if dpdk_conf.has('RTE_LIB_BITRATESTATS')
 	deps += 'bitratestats'
 endif
-if dpdk_conf.has('RTE_LIBRTE_PDUMP')
+if dpdk_conf.has('RTE_LIB_PDUMP')
 	deps += 'pdump'
 endif
-if dpdk_conf.has('RTE_LIBRTE_BITRATESTATS')
+if dpdk_conf.has('RTE_LIB_BITRATESTATS')
 	deps += 'bitratestats'
 endif
-if dpdk_conf.has('RTE_LIBRTE_LATENCYSTATS')
+if dpdk_conf.has('RTE_LIB_LATENCYSTATS')
 	deps += 'latencystats'
 endif
-if dpdk_conf.has('RTE_LIBRTE_PMD_CRYPTO_SCHEDULER')
+if dpdk_conf.has('RTE_CRYPTO_SCHEDULER')
 	deps += 'crypto_scheduler'
 endif
-if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
+if dpdk_conf.has('RTE_NET_BOND')
 	deps += 'net_bond'
 endif
-if dpdk_conf.has('RTE_LIBRTE_BNXT_PMD')
+if dpdk_conf.has('RTE_NET_BNXT')
 	deps += 'net_bnxt'
 endif
-if dpdk_conf.has('RTE_LIBRTE_I40E_PMD')
+if dpdk_conf.has('RTE_NET_I40E')
 	deps += 'net_i40e'
 endif
-if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
+if dpdk_conf.has('RTE_NET_IXGBE')
 	deps += 'net_ixgbe'
 endif
-if dpdk_conf.has('RTE_LIBRTE_DPAA_PMD')
+if dpdk_conf.has('RTE_NET_DPAA')
 	deps += ['bus_dpaa', 'mempool_dpaa', 'net_dpaa']
 endif
-if dpdk_conf.has('RTE_LIBRTE_BPF')
+if dpdk_conf.has('RTE_LIB_BPF')
 	sources += files('bpf_cmd.c')
 	deps += 'bpf'
 endif

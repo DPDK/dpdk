@@ -19,7 +19,7 @@
 #include <rte_cryptodev_pmd.h>
 #include <rte_string_fns.h>
 
-#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+#ifdef RTE_CRYPTO_SCHEDULER
 #include <rte_cryptodev_scheduler.h>
 #include <rte_cryptodev_scheduler_operations.h>
 #endif
@@ -41,7 +41,7 @@
 #include "test_cryptodev_aead_test_vectors.h"
 #include "test_cryptodev_hmac_test_vectors.h"
 #include "test_cryptodev_mixed_test_vectors.h"
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 #include "test_cryptodev_security_pdcp_test_vectors.h"
 #include "test_cryptodev_security_pdcp_sdap_test_vectors.h"
 #include "test_cryptodev_security_pdcp_test_func.h"
@@ -89,17 +89,17 @@ struct crypto_unittest_params {
 	struct rte_crypto_sym_xform cipher_xform;
 	struct rte_crypto_sym_xform auth_xform;
 	struct rte_crypto_sym_xform aead_xform;
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	struct rte_security_docsis_xform docsis_xform;
 #endif
 
 	union {
 		struct rte_cryptodev_sym_session *sess;
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 		struct rte_security_session *sec_session;
 #endif
 	};
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	enum rte_security_session_action_type type;
 #endif
 	struct rte_crypto_op *op;
@@ -704,7 +704,7 @@ testsuite_setup(void)
 		}
 	}
 
-#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+#ifdef RTE_CRYPTO_SCHEDULER
 	char vdev_args[VDEV_ARGS_SIZE] = {""};
 	char temp_str[VDEV_ARGS_SIZE] = {"mode=multi-core,"
 		"ordering=enable,name=cryptodev_test_scheduler,corelist="};
@@ -751,7 +751,7 @@ testsuite_setup(void)
 				i, RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
 		}
 	}
-#endif /* RTE_LIBRTE_PMD_CRYPTO_SCHEDULER */
+#endif /* RTE_CRYPTO_SCHEDULER */
 
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
@@ -782,7 +782,7 @@ testsuite_setup(void)
 	unsigned int session_size =
 		rte_cryptodev_sym_get_private_session_size(dev_id);
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	unsigned int security_session_size = rte_security_session_get_size(
 			rte_cryptodev_get_sec_ctx(dev_id));
 
@@ -930,7 +930,7 @@ ut_teardown(void)
 	struct rte_cryptodev_stats stats;
 
 	/* free crypto session structure */
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	if (ut_params->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
 		if (ut_params->sec_session) {
 			rte_security_session_destroy(rte_cryptodev_get_sec_ctx
@@ -7632,7 +7632,7 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 
 }
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 static int
 security_proto_supported(enum rte_security_session_action_type action,
 	enum rte_security_session_protocol proto)
@@ -12737,7 +12737,7 @@ test_chacha20_poly1305_decrypt_test_case_rfc8439(void)
 	return test_authenticated_decryption(&chacha20_poly1305_case_rfc8439);
 }
 
-#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+#ifdef RTE_CRYPTO_SCHEDULER
 
 /* global AESNI worker IDs for the scheduler test */
 uint8_t aesni_ids[2];
@@ -12957,7 +12957,7 @@ static struct unit_test_suite cryptodev_scheduler_testsuite  = {
 	}
 };
 
-#endif /* RTE_LIBRTE_PMD_CRYPTO_SCHEDULER */
+#endif /* RTE_CRYPTO_SCHEDULER */
 
 static struct unit_test_suite cryptodev_testsuite  = {
 	.suite_name = "Crypto Unit Test Suite",
@@ -13587,7 +13587,7 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_aes_cmac_cipher_null_test_case_1),
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 		TEST_CASE_ST(ut_setup_security, ut_teardown,
 			test_PDCP_PROTO_all),
 		TEST_CASE_ST(ut_setup_security, ut_teardown,
@@ -13880,7 +13880,7 @@ test_cryptodev_mrvl(void)
 	return unit_test_suite_runner(&cryptodev_mrvl_testsuite);
 }
 
-#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+#ifdef RTE_CRYPTO_SCHEDULER
 
 static int
 test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)

@@ -180,7 +180,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		ctx = (struct qat_sym_session *)get_sym_session_private_data(
 				op->sym->session, qat_sym_driver_id);
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	} else {
 		ctx = (struct qat_sym_session *)get_sec_session_private_data(
 				op->sym->sec_session);

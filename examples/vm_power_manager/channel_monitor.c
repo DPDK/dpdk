@@ -28,7 +28,7 @@
 #include <rte_atomic.h>
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 #include <rte_pmd_i40e.h>
 #endif
 #include <rte_power.h>
@@ -439,7 +439,7 @@ get_pfid(struct policy *pol)
 	for (i = 0; i < pol->pkt.nb_mac_to_monitor; i++) {
 
 		RTE_ETH_FOREACH_DEV(x) {
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 			ret = rte_pmd_i40e_query_vfid_by_mac(x,
 				(struct rte_ether_addr *)&(pol->pkt.vfid[i]));
 #else
@@ -538,13 +538,13 @@ get_pkt_diff(struct policy *pol)
 		vsi_pkt_count_prev_total = 0;
 	double rdtsc_curr, rdtsc_diff, diff;
 	int x;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_eth_stats vf_stats;
 #endif
 
 	for (x = 0; x < pol->pkt.nb_mac_to_monitor; x++) {
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 		/*Read vsi stats*/
 		if (rte_pmd_i40e_get_vf_stats(x, pol->pfid[x], &vf_stats) == 0)
 			vsi_pkt_count = vf_stats.ipackets;

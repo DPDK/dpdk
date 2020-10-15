@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 #include <rte_kni.h>
 #endif
 
@@ -17,7 +17,7 @@
 struct kni {
 	TAILQ_ENTRY(kni) node;
 	char name[NAME_SIZE];
-#ifdef RTE_LIBRTE_KNI
+#ifdef RTE_LIB_KNI
 	struct rte_kni *k;
 #endif
 };

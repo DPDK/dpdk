@@ -46,18 +46,18 @@
 #include <rte_ethdev.h>
 #include <rte_dev.h>
 #include <rte_string_fns.h>
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 #include <rte_pmd_ixgbe.h>
 #endif
-#ifdef RTE_LIBRTE_PDUMP
+#ifdef RTE_LIB_PDUMP
 #include <rte_pdump.h>
 #endif
 #include <rte_flow.h>
 #include <rte_metrics.h>
-#ifdef RTE_LIBRTE_BITRATESTATS
+#ifdef RTE_LIB_BITRATESTATS
 #include <rte_bitrate.h>
 #endif
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 #include <rte_latencystats.h>
 #endif
 
@@ -419,13 +419,13 @@ int do_mlockall = 0;
  * NIC bypass mode configuration options.
  */
 
-#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
 /* The NIC bypass watchdog timeout. */
 uint32_t bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_OFF;
 #endif
 
 
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 
 /*
  * Set when latency stats is enabled in the commandline
@@ -503,7 +503,7 @@ uint8_t record_burst_stats;
 unsigned int num_sockets = 0;
 unsigned int socket_ids[RTE_MAX_NUMA_NODES];
 
-#ifdef RTE_LIBRTE_BITRATESTATS
+#ifdef RTE_LIB_BITRATESTATS
 /* Bitrate statistics */
 struct rte_stats_bitrates *bitrate_data;
 lcoreid_t bitrate_lcore_id;
@@ -2081,7 +2081,7 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 	struct fwd_stream **fsm;
 	streamid_t nb_fs;
 	streamid_t sm_id;
-#ifdef RTE_LIBRTE_BITRATESTATS
+#ifdef RTE_LIB_BITRATESTATS
 	uint64_t tics_per_1sec;
 	uint64_t tics_datum;
 	uint64_t tics_current;
@@ -2096,7 +2096,7 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 	do {
 		for (sm_id = 0; sm_id < nb_fs; sm_id++)
 			(*pkt_fwd)(fsm[sm_id]);
-#ifdef RTE_LIBRTE_BITRATESTATS
+#ifdef RTE_LIB_BITRATESTATS
 		if (bitrate_enabled != 0 &&
 				bitrate_lcore_id == rte_lcore_id()) {
 			tics_current = rte_rdtsc();
@@ -2109,7 +2109,7 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 			}
 		}
 #endif
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 		if (latencystats_enabled != 0 &&
 				latencystats_lcore_id == rte_lcore_id())
 			rte_latencystats_update();
@@ -3527,7 +3527,7 @@ init_port_config(void)
 			return;
 
 		map_port_queue_stats_mapping_registers(pid, port);
-#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
 		rte_pmd_ixgbe_bypass_init(pid);
 #endif
 
@@ -3796,11 +3796,11 @@ signal_handler(int signum)
 	if (signum == SIGINT || signum == SIGTERM) {
 		printf("\nSignal %d received, preparing to exit...\n",
 				signum);
-#ifdef RTE_LIBRTE_PDUMP
+#ifdef RTE_LIB_PDUMP
 		/* uninitialize packet capture framework */
 		rte_pdump_uninit();
 #endif
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 		if (latencystats_enabled != 0)
 			rte_latencystats_uninit();
 #endif
@@ -3842,7 +3842,7 @@ main(int argc, char** argv)
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "Cannot register for ethdev events");
 
-#ifdef RTE_LIBRTE_PDUMP
+#ifdef RTE_LIB_PDUMP
 	/* initialize packet capture framework */
 	rte_pdump_init();
 #endif
@@ -3865,10 +3865,10 @@ main(int argc, char** argv)
 			 "Check the core mask argument\n");
 
 	/* Bitrate/latency stats disabled by default */
-#ifdef RTE_LIBRTE_BITRATESTATS
+#ifdef RTE_LIB_BITRATESTATS
 	bitrate_enabled = 0;
 #endif
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 	latencystats_enabled = 0;
 #endif
 
@@ -3947,7 +3947,7 @@ main(int argc, char** argv)
 	/* Init metrics library */
 	rte_metrics_init(rte_socket_id());
 
-#ifdef RTE_LIBRTE_LATENCY_STATS
+#ifdef RTE_LIB_LATENCYSTATS
 	if (latencystats_enabled != 0) {
 		int ret = rte_latencystats_init(1, NULL);
 		if (ret)
@@ -3959,7 +3959,7 @@ main(int argc, char** argv)
 #endif
 
 	/* Setup bitrate stats */
-#ifdef RTE_LIBRTE_BITRATESTATS
+#ifdef RTE_LIB_BITRATESTATS
 	if (bitrate_enabled != 0) {
 		bitrate_data = rte_stats_bitrate_create();
 		if (bitrate_data == NULL)
@@ -3969,7 +3969,7 @@ main(int argc, char** argv)
 	}
 #endif
 
-#ifdef RTE_LIBRTE_CMDLINE
+#ifdef RTE_LIB_CMDLINE
 	if (strlen(cmdline_filename) != 0)
 		cmdline_read_from_file(cmdline_filename);
 

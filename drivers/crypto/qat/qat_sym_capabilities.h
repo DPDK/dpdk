@@ -731,7 +731,7 @@
 		}, }							\
 	}
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 #define QAT_SECURITY_SYM_CAPABILITIES					\
 	{	/* AES DOCSIS BPI */					\
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,			\

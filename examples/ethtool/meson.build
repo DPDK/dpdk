@@ -13,7 +13,7 @@ sources = files('lib/rte_ethtool.c',
 includes = include_directories('lib', 'ethtool-app')
 
 deps += 'bus_pci'
-if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
+if dpdk_conf.has('RTE_NET_IXGBE')
 	deps += 'net_ixgbe'
 endif
 

@@ -50,20 +50,20 @@
 #include <cmdline_parse_etheraddr.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
-#ifdef RTE_LIBRTE_PMD_BOND
+#ifdef RTE_NET_BOND
 #include <rte_eth_bond.h>
 #include <rte_eth_bond_8023ad.h>
 #endif
-#if defined RTE_LIBRTE_DPAA_BUS && defined RTE_LIBRTE_DPAA_PMD
+#if defined RTE_BUS_DPAA && defined RTE_NET_DPAA
 #include <rte_pmd_dpaa.h>
 #endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 #include <rte_pmd_ixgbe.h>
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 #include <rte_pmd_i40e.h>
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 #include <rte_pmd_bnxt.h>
 #endif
 #include "testpmd.h"
@@ -624,7 +624,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"   Show the bypass configuration for a bypass enabled NIC"
 			" using the lowest port on the NIC.\n\n"
 
-#ifdef RTE_LIBRTE_PMD_BOND
+#ifdef RTE_NET_BOND
 			"create bonded device (mode) (socket)\n"
 			"	Create a new bonded device with specific bonding mode and socket.\n\n"
 
@@ -5579,7 +5579,7 @@ cmd_set_bypass_mode_parsed(void *parsed_result,
 	portid_t port_id = res->port_id;
 	int32_t rc = -EINVAL;
 
-#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
 	uint32_t bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_NORMAL;
 
 	if (!strcmp(res->value, "bypass"))
@@ -5647,7 +5647,7 @@ cmd_set_bypass_event_parsed(void *parsed_result,
 	struct cmd_set_bypass_event_result *res = parsed_result;
 	portid_t port_id = res->port_id;
 
-#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
 	uint32_t bypass_event = RTE_PMD_IXGBE_BYPASS_EVENT_NONE;
 	uint32_t bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_NORMAL;
 
@@ -5752,7 +5752,7 @@ cmd_set_bypass_timeout_parsed(void *parsed_result,
 {
 	__rte_unused struct cmd_set_bypass_timeout_result *res = parsed_result;
 
-#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
 	if (!strcmp(res->value, "1.5"))
 		bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_1_5_SEC;
 	else if (!strcmp(res->value, "2"))
@@ -5815,7 +5815,7 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 	struct cmd_show_bypass_config_result *res = parsed_result;
 	portid_t port_id = res->port_id;
 	int rc = -EINVAL;
-#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
 	uint32_t event_mode;
 	uint32_t bypass_mode;
 	uint32_t timeout = bypass_timeout;
@@ -5898,7 +5898,7 @@ cmdline_parse_inst_t cmd_show_bypass_config = {
 	},
 };
 
-#ifdef RTE_LIBRTE_PMD_BOND
+#ifdef RTE_NET_BOND
 /* *** SET BONDING MODE *** */
 struct cmd_set_bonding_mode_result {
 	cmdline_fixed_string_t set;
@@ -6668,7 +6668,7 @@ cmdline_parse_inst_t cmd_set_bonding_agg_mode_policy = {
 };
 
 
-#endif /* RTE_LIBRTE_PMD_BOND */
+#endif /* RTE_NET_BOND */
 
 /* *** SET FORWARDING MODE *** */
 struct cmd_set_fwd_mode_result {
@@ -8957,12 +8957,12 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 
 	RTE_SET_USED(is_on);
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_vf_rxmode(res->port_id, res->vf_id,
 						  vf_rxmode, (uint8_t)is_on);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_vf_rxmode(res->port_id, res->vf_id,
 						 vf_rxmode, (uint8_t)is_on);
@@ -9036,12 +9036,12 @@ static void cmd_vf_mac_addr_parsed(void *parsed_result,
 	if (strcmp(res->what, "add") != 0)
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_add_vf_mac_addr(res->port_num, res->vf_num,
 						   &res->address);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_mac_addr_add(res->port_num, &res->address,
 						res->vf_num);
@@ -9112,17 +9112,17 @@ cmd_vf_rx_vlan_filter_parsed(void *parsed_result,
 
 	__rte_unused int is_add = (strcmp(res->what, "add") == 0) ? 1 : 0;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_vf_vlan_filter(res->port_id,
 				res->vlan_id, res->vf_mask, is_add);
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_vf_vlan_filter(res->port_id,
 				res->vlan_id, res->vf_mask, is_add);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_vf_vlan_filter(res->port_id,
 				res->vlan_id, res->vf_mask, is_add);
@@ -9649,7 +9649,7 @@ cmd_global_config_parsed(void *parsed_result,
 	conf.cfg.gre_key_len = res->len;
 	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_NONE,
 				      RTE_ETH_FILTER_SET, &conf);
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_gre_key_len(res->port_id, res->len);
 #endif
@@ -10213,7 +10213,7 @@ cmd_queue_region_parsed(void *parsed_result,
 {
 	struct cmd_queue_region_result *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_pmd_i40e_queue_region_conf region_conf;
 	enum rte_pmd_i40e_queue_region_op op_type;
 #endif
@@ -10221,7 +10221,7 @@ cmd_queue_region_parsed(void *parsed_result,
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	memset(&region_conf, 0, sizeof(region_conf));
 	op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_SET;
 	region_conf.region_id = res->region_id;
@@ -10312,7 +10312,7 @@ cmd_region_flowtype_parsed(void *parsed_result,
 {
 	struct cmd_region_flowtype_result *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_pmd_i40e_queue_region_conf region_conf;
 	enum rte_pmd_i40e_queue_region_op op_type;
 #endif
@@ -10320,7 +10320,7 @@ cmd_region_flowtype_parsed(void *parsed_result,
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	memset(&region_conf, 0, sizeof(region_conf));
 
 	op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_FLOWTYPE_SET;
@@ -10403,7 +10403,7 @@ cmd_user_priority_region_parsed(void *parsed_result,
 {
 	struct cmd_user_priority_region_result *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_pmd_i40e_queue_region_conf region_conf;
 	enum rte_pmd_i40e_queue_region_op op_type;
 #endif
@@ -10411,7 +10411,7 @@ cmd_user_priority_region_parsed(void *parsed_result,
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	memset(&region_conf, 0, sizeof(region_conf));
 	op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_USER_PRIORITY_SET;
 	region_conf.user_priority = res->user_priority_id;
@@ -10494,7 +10494,7 @@ cmd_flush_queue_region_parsed(void *parsed_result,
 {
 	struct cmd_flush_queue_region_result *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_pmd_i40e_queue_region_conf region_conf;
 	enum rte_pmd_i40e_queue_region_op op_type;
 #endif
@@ -10502,7 +10502,7 @@ cmd_flush_queue_region_parsed(void *parsed_result,
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	memset(&region_conf, 0, sizeof(region_conf));
 
 	if (strcmp(res->what, "on") == 0)
@@ -10576,7 +10576,7 @@ cmd_show_queue_region_info_parsed(void *parsed_result,
 {
 	struct cmd_show_queue_region_info *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_pmd_i40e_queue_regions rte_pmd_regions;
 	enum rte_pmd_i40e_queue_region_op op_type;
 #endif
@@ -10584,7 +10584,7 @@ cmd_show_queue_region_info_parsed(void *parsed_result,
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	memset(&rte_pmd_regions, 0, sizeof(rte_pmd_regions));
 
 	op_type = RTE_PMD_I40E_RSS_QUEUE_REGION_INFO_GET;
@@ -11480,7 +11480,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 		}
 	} else {
 		if (!strcmp(res->mode_value, "raw")) {
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 			struct rte_pmd_i40e_flow_type_mapping
 					mapping[RTE_PMD_I40E_FLOW_TYPE_MAX];
 			struct rte_pmd_i40e_pkt_template_conf conf;
@@ -13838,17 +13838,17 @@ cmd_set_vf_vlan_anti_spoof_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_vf_vlan_anti_spoof(res->port_id,
 				res->vf_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_vf_vlan_anti_spoof(res->port_id,
 				res->vf_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_vf_vlan_anti_spoof(res->port_id,
 				res->vf_id, is_on);
@@ -13944,17 +13944,17 @@ cmd_set_vf_mac_anti_spoof_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_vf_mac_anti_spoof(res->port_id,
 			res->vf_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_vf_mac_anti_spoof(res->port_id,
 			res->vf_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_vf_mac_anti_spoof(res->port_id,
 			res->vf_id, is_on);
@@ -14050,17 +14050,17 @@ cmd_set_vf_vlan_stripq_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_vf_vlan_stripq(res->port_id,
 			res->vf_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_vf_vlan_stripq(res->port_id,
 			res->vf_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_vf_vlan_stripq(res->port_id,
 			res->vf_id, is_on);
@@ -14154,17 +14154,17 @@ cmd_set_vf_vlan_insert_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_vf_vlan_insert(res->port_id, res->vf_id,
 			res->vlan_id);
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_vf_vlan_insert(res->port_id, res->vf_id,
 			res->vlan_id);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_vf_vlan_insert(res->port_id, res->vf_id,
 			res->vlan_id);
@@ -14250,19 +14250,19 @@ cmd_set_tx_loopback_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_tx_loopback(res->port_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_tx_loopback(res->port_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_tx_loopback(res->port_id, is_on);
 #endif
-#if defined RTE_LIBRTE_DPAA_BUS && defined RTE_LIBRTE_DPAA_PMD
+#if defined RTE_BUS_DPAA && defined RTE_NET_DPAA
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_dpaa_set_tx_loopback(res->port_id, is_on);
 #endif
@@ -14349,11 +14349,11 @@ cmd_set_all_queues_drop_en_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_all_queues_drop_en(res->port_id, is_on);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_all_queues_drop_en(res->port_id, is_on);
 #endif
@@ -14445,7 +14445,7 @@ cmd_set_vf_split_drop_en_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	ret = rte_pmd_ixgbe_set_vf_split_drop_en(res->port_id, res->vf_id,
 			is_on);
 #endif
@@ -14537,17 +14537,17 @@ cmd_set_vf_mac_addr_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_ixgbe_set_vf_mac_addr(res->port_id, res->vf_id,
 				&res->mac_addr);
 #endif
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_vf_mac_addr(res->port_id, res->vf_id,
 				&res->mac_addr);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_set_vf_mac_addr(res->port_id, res->vf_id,
 				&res->mac_addr);
@@ -14664,7 +14664,7 @@ cmd_set_macsec_offload_on_parsed(
 		return;
 
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MACSEC_INSERT) {
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 		ret = rte_pmd_ixgbe_macsec_enable(port_id, en, rp);
 #endif
 	}
@@ -14761,7 +14761,7 @@ cmd_set_macsec_offload_off_parsed(
 		return;
 
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MACSEC_INSERT) {
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 		ret = rte_pmd_ixgbe_macsec_disable(port_id);
 #endif
 	}
@@ -14847,7 +14847,7 @@ cmd_set_macsec_sc_parsed(
 	int ret = -ENOTSUP;
 	int is_tx = (strcmp(res->tx_rx, "tx") == 0) ? 1 : 0;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	ret = is_tx ?
 		rte_pmd_ixgbe_macsec_config_txsc(res->port_id,
 				res->mac.addr_bytes) :
@@ -14966,7 +14966,7 @@ cmd_set_macsec_sa_parsed(
 		key[i] = (uint8_t) ((xdgt0 * 16) + xdgt1);
 	}
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	ret = is_tx ?
 		rte_pmd_ixgbe_macsec_select_txsa(res->port_id,
 			res->idx, res->an, res->pn, key) :
@@ -15063,7 +15063,7 @@ cmd_set_vf_promisc_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_set_vf_unicast_promisc(res->port_id,
 						  res->vf_id, is_on);
 #endif
@@ -15153,7 +15153,7 @@ cmd_set_vf_allmulti_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_set_vf_multicast_promisc(res->port_id,
 						    res->vf_id, is_on);
 #endif
@@ -15243,7 +15243,7 @@ cmd_set_vf_broadcast_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_set_vf_broadcast(res->port_id,
 					    res->vf_id, is_on);
 #endif
@@ -15337,7 +15337,7 @@ cmd_set_vf_vlan_tag_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_set_vf_vlan_tag(res->port_id,
 					   res->vf_id, is_on);
 #endif
@@ -15458,7 +15458,7 @@ cmd_vf_max_bw_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_set_vf_max_bw(res->port_id,
 					 res->vf_id, res->bw);
 #endif
@@ -15558,7 +15558,7 @@ cmd_vf_tc_min_bw_parsed(
 	if (ret)
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_set_vf_tc_bw_alloc(res->port_id, res->vf_id,
 					      tc_num, bw);
 #endif
@@ -15624,7 +15624,7 @@ cmd_tc_min_bw_parsed(
 	if (ret)
 		return;
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
+#ifdef RTE_NET_IXGBE
 	ret = rte_pmd_ixgbe_set_tc_bw_alloc(res->port_id, tc_num, bw);
 #endif
 
@@ -15673,7 +15673,7 @@ cmd_vf_tc_max_bw_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_set_vf_tc_max_bw(res->port_id, res->vf_id,
 					    res->tc_no, res->bw);
 #endif
@@ -16727,7 +16727,7 @@ cmd_strict_link_prio_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_set_tc_strict_prio(res->port_id, res->tc_map);
 #endif
 
@@ -16811,7 +16811,7 @@ cmd_ddp_add_parsed(
 		return;
 	}
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_process_ddp_package(res->port_id,
 					       buff, size,
@@ -16879,7 +16879,7 @@ cmd_ddp_del_parsed(
 	if (!buff)
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_process_ddp_package(res->port_id,
 					       buff, size,
@@ -16934,7 +16934,7 @@ cmd_ddp_info_parsed(
 	uint8_t *pkg;
 	uint32_t pkg_size;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	uint32_t i, j, n;
 	uint8_t *buff;
 	uint32_t buff_size = 0;
@@ -16955,7 +16955,7 @@ cmd_ddp_info_parsed(
 	if (!pkg)
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
 				(uint8_t *)&info, sizeof(info),
 				RTE_PMD_I40E_PKG_INFO_GLOBAL_HEADER);
@@ -17170,7 +17170,7 @@ cmd_ddp_get_list_parsed(
 	__rte_unused struct cmdline *cl,
 	__rte_unused void *data)
 {
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct cmd_ddp_get_list_result *res = parsed_result;
 	struct rte_pmd_i40e_profile_list *p_list;
 	struct rte_pmd_i40e_profile_info *p_info;
@@ -17180,7 +17180,7 @@ cmd_ddp_get_list_parsed(
 #endif
 	int ret = -ENOTSUP;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	size = PROFILE_INFO_SIZE * MAX_PROFILE_NUM + 4;
 	p_list = (struct rte_pmd_i40e_profile_list *)malloc(size);
 	if (!p_list) {
@@ -17248,7 +17248,7 @@ cmd_cfg_input_set_parsed(
 	__rte_unused struct cmdline *cl,
 	__rte_unused void *data)
 {
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct cmd_cfg_input_set_result *res = parsed_result;
 	enum rte_pmd_i40e_inset_type inset_type = INSET_NONE;
 	struct rte_pmd_i40e_inset inset;
@@ -17260,7 +17260,7 @@ cmd_cfg_input_set_parsed(
 		return;
 	}
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (!strcmp(res->inset_type, "hash_inset"))
 		inset_type = INSET_HASH;
 	else if (!strcmp(res->inset_type, "fdir_inset"))
@@ -17371,7 +17371,7 @@ cmd_clear_input_set_parsed(
 	__rte_unused struct cmdline *cl,
 	__rte_unused void *data)
 {
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct cmd_clear_input_set_result *res = parsed_result;
 	enum rte_pmd_i40e_inset_type inset_type = INSET_NONE;
 	struct rte_pmd_i40e_inset inset;
@@ -17383,7 +17383,7 @@ cmd_clear_input_set_parsed(
 		return;
 	}
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (!strcmp(res->inset_type, "hash_inset"))
 		inset_type = INSET_HASH;
 	else if (!strcmp(res->inset_type, "fdir_inset"))
@@ -17499,13 +17499,13 @@ cmd_show_vf_stats_parsed(
 
 	memset(&stats, 0, sizeof(stats));
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_get_vf_stats(res->port_id,
 						res->vf_id,
 						&stats);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_get_vf_stats(res->port_id,
 						res->vf_id,
@@ -17604,12 +17604,12 @@ cmd_clear_vf_stats_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_reset_vf_stats(res->port_id,
 						  res->vf_id);
 #endif
-#ifdef RTE_LIBRTE_BNXT_PMD
+#ifdef RTE_NET_BNXT
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_bnxt_reset_vf_stats(res->port_id,
 						  res->vf_id);
@@ -17696,7 +17696,7 @@ cmd_pctype_mapping_reset_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_flow_type_mapping_reset(res->port_id);
 #endif
 
@@ -17770,7 +17770,7 @@ cmd_pctype_mapping_get_parsed(
 {
 	struct cmd_pctype_mapping_get_result *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_pmd_i40e_flow_type_mapping
 				mapping[RTE_PMD_I40E_FLOW_TYPE_MAX];
 	int i, j, first_pctype;
@@ -17779,7 +17779,7 @@ cmd_pctype_mapping_get_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_flow_type_mapping_get(res->port_id, mapping);
 #endif
 
@@ -17797,7 +17797,7 @@ cmd_pctype_mapping_get_parsed(
 		return;
 	}
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	for (i = 0; i < RTE_PMD_I40E_FLOW_TYPE_MAX; i++) {
 		if (mapping[i].pctype != 0ULL) {
 			first_pctype = 1;
@@ -17886,7 +17886,7 @@ cmd_pctype_mapping_update_parsed(
 {
 	struct cmd_pctype_mapping_update_result *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_pmd_i40e_flow_type_mapping mapping;
 	unsigned int i;
 	unsigned int nb_item;
@@ -17896,7 +17896,7 @@ cmd_pctype_mapping_update_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	nb_item = parse_item_list(res->pctype_list, "pctypes",
 				  RTE_PMD_I40E_PCTYPE_MAX, pctype_list, 1);
 	mapping.flow_type = res->flow_type;
@@ -17984,7 +17984,7 @@ cmd_ptype_mapping_get_parsed(
 {
 	struct cmd_ptype_mapping_get_result *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	int max_ptype_num = 256;
 	struct rte_pmd_i40e_ptype_mapping mapping[max_ptype_num];
 	uint16_t count;
@@ -17994,7 +17994,7 @@ cmd_ptype_mapping_get_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_ptype_mapping_get(res->port_id,
 					mapping,
 					max_ptype_num,
@@ -18015,7 +18015,7 @@ cmd_ptype_mapping_get_parsed(
 		printf("programming error: (%s)\n", strerror(-ret));
 	}
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	if (!ret) {
 		for (i = 0; i < count; i++)
 			printf("%3d\t0x%08x\n",
@@ -18093,7 +18093,7 @@ cmd_ptype_mapping_replace_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_ptype_mapping_replace(res->port_id,
 					res->target,
 					res->mask,
@@ -18175,7 +18175,7 @@ cmd_ptype_mapping_reset_parsed(
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	ret = rte_pmd_i40e_ptype_mapping_reset(res->port_id);
 #endif
 
@@ -18252,13 +18252,13 @@ cmd_ptype_mapping_update_parsed(
 {
 	struct cmd_ptype_mapping_update_result *res = parsed_result;
 	int ret = -ENOTSUP;
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	struct rte_pmd_i40e_ptype_mapping mapping;
 #endif
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-#ifdef RTE_LIBRTE_I40E_PMD
+#ifdef RTE_NET_I40E
 	mapping.hw_ptype = res->hw_ptype;
 	mapping.sw_ptype = res->sw_ptype;
 	ret = rte_pmd_i40e_ptype_mapping_update(res->port_id,
@@ -19953,7 +19953,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_bypass_event,
 	(cmdline_parse_inst_t *)&cmd_set_bypass_timeout,
 	(cmdline_parse_inst_t *)&cmd_show_bypass_config,
-#ifdef RTE_LIBRTE_PMD_BOND
+#ifdef RTE_NET_BOND
 	(cmdline_parse_inst_t *) &cmd_set_bonding_mode,
 	(cmdline_parse_inst_t *) &cmd_show_bonding_config,
 	(cmdline_parse_inst_t *) &cmd_set_bonding_primary,
@@ -20200,7 +20200,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tx_offload_get_configuration,
 	(cmdline_parse_inst_t *)&cmd_config_per_port_tx_offload,
 	(cmdline_parse_inst_t *)&cmd_config_per_queue_tx_offload,
-#ifdef RTE_LIBRTE_BPF
+#ifdef RTE_LIB_BPF
 	(cmdline_parse_inst_t *)&cmd_operate_bpf_ld_parse,
 	(cmdline_parse_inst_t *)&cmd_operate_bpf_unld_parse,
 #endif

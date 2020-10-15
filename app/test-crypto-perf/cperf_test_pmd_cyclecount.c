@@ -63,7 +63,7 @@ cperf_pmd_cyclecount_test_free(struct cperf_pmd_cyclecount_ctx *ctx)
 		return;
 
 	if (ctx->sess) {
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 		if (ctx->options->op_type == CPERF_PDCP ||
 				ctx->options->op_type == CPERF_DOCSIS) {
 			struct rte_security_ctx *sec_ctx =
