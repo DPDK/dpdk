@@ -624,8 +624,8 @@ VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_tc_info);
  */
 
 struct virtchnl_l4_spec {
-	u8	src_mac[ETH_ALEN];
-	u8	dst_mac[ETH_ALEN];
+	u8	src_mac[VIRTCHNL_ETH_LENGTH_OF_ADDRESS];
+	u8	dst_mac[VIRTCHNL_ETH_LENGTH_OF_ADDRESS];
 	/* vlan_prio is part of this 16 bit field even from OS perspective
 	 * vlan_id:12 is actual vlan_id, then vlanid:bit14..12 is vlan_prio
 	 * in future, when decided to offload vlan_prio, pass that information
