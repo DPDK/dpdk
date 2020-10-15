@@ -134,6 +134,18 @@ typedef uint16_t unaligned_uint16_t;
 	__attribute__((format(printf, format_index, first_arg)))
 #endif
 
+/**
+ * Tells compiler that the function returns a value that points to
+ * memory, where the size is given by the one or two arguments.
+ * Used by compiler to validate object size.
+ */
+#if defined(RTE_CC_GCC) || defined(RTE_CC_CLANG)
+#define __rte_alloc_size(...) \
+	__attribute__((alloc_size(__VA_ARGS__)))
+#else
+#define __rte_alloc_size(...)
+#endif
+
 #define RTE_PRIORITY_LOG 101
 #define RTE_PRIORITY_BUS 110
 #define RTE_PRIORITY_CLASS 120

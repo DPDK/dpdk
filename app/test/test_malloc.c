@@ -846,6 +846,9 @@ test_malloc_bad_params(void)
 	if (bad_ptr != NULL)
 		goto err_return;
 
+#if defined(RTE_CC_GCC) || defined(RTE_CC_CLANG)
+	/* this test can not be built, will get trapped at compile time! */
+#else
 	/* rte_malloc expected to return null with size will cause overflow */
 	align = RTE_CACHE_LINE_SIZE;
 	size = (size_t)-8;
@@ -857,7 +860,7 @@ test_malloc_bad_params(void)
 	bad_ptr = rte_realloc(NULL, size, align);
 	if (bad_ptr != NULL)
 		goto err_return;
-
+#endif
 	return 0;
 
 err_return:

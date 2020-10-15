@@ -54,7 +54,8 @@ struct rte_malloc_socket_stats {
  *   - Otherwise, the pointer to the allocated object.
  */
 void *
-rte_malloc(const char *type, size_t size, unsigned align);
+rte_malloc(const char *type, size_t size, unsigned align)
+	__rte_alloc_size(2);
 
 /**
  * Allocate zero'ed memory from the heap.
@@ -80,7 +81,8 @@ rte_malloc(const char *type, size_t size, unsigned align);
  *   - Otherwise, the pointer to the allocated object.
  */
 void *
-rte_zmalloc(const char *type, size_t size, unsigned align);
+rte_zmalloc(const char *type, size_t size, unsigned align)
+	__rte_alloc_size(2);
 
 /**
  * Replacement function for calloc(), using huge-page memory. Memory area is
@@ -106,7 +108,8 @@ rte_zmalloc(const char *type, size_t size, unsigned align);
  *   - Otherwise, the pointer to the allocated object.
  */
 void *
-rte_calloc(const char *type, size_t num, size_t size, unsigned align);
+rte_calloc(const char *type, size_t num, size_t size, unsigned align)
+	__rte_alloc_size(2, 3);
 
 /**
  * Replacement function for realloc(), using huge-page memory. Reserved area
@@ -129,7 +132,8 @@ rte_calloc(const char *type, size_t num, size_t size, unsigned align);
  *   - Otherwise, the pointer to the reallocated memory.
  */
 void *
-rte_realloc(void *ptr, size_t size, unsigned int align);
+rte_realloc(void *ptr, size_t size, unsigned int align)
+	__rte_alloc_size(2);
 
 /**
  * Replacement function for realloc(), using huge-page memory. Reserved area
@@ -155,7 +159,8 @@ rte_realloc(void *ptr, size_t size, unsigned int align);
  */
 __rte_experimental
 void *
-rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket);
+rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket)
+	__rte_alloc_size(2, 3);
 
 /**
  * This function allocates memory from the huge-page area of memory. The memory
@@ -181,7 +186,8 @@ rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket);
  *   - Otherwise, the pointer to the allocated object.
  */
 void *
-rte_malloc_socket(const char *type, size_t size, unsigned align, int socket);
+rte_malloc_socket(const char *type, size_t size, unsigned align, int socket)
+	__rte_alloc_size(2);
 
 /**
  * Allocate zero'ed memory from the heap.
@@ -209,7 +215,8 @@ rte_malloc_socket(const char *type, size_t size, unsigned align, int socket);
  *   - Otherwise, the pointer to the allocated object.
  */
 void *
-rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket);
+rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket)
+	__rte_alloc_size(2);
 
 /**
  * Replacement function for calloc(), using huge-page memory. Memory area is
@@ -237,7 +244,8 @@ rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket);
  *   - Otherwise, the pointer to the allocated object.
  */
 void *
-rte_calloc_socket(const char *type, size_t num, size_t size, unsigned align, int socket);
+rte_calloc_socket(const char *type, size_t num, size_t size, unsigned align, int socket)
+	__rte_alloc_size(2, 3);
 
 /**
  * Frees the memory space pointed to by the provided pointer.
