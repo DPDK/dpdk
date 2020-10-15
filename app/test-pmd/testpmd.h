@@ -408,6 +408,8 @@ extern uint32_t param_total_num_mbufs;
 
 extern uint16_t stats_period;
 
+extern uint16_t hairpin_mode;
+
 #ifdef RTE_LIBRTE_LATENCY_STATS
 extern uint8_t latencystats_enabled;
 extern lcoreid_t latencystats_lcore_id;

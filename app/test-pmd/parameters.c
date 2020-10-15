@@ -222,6 +222,9 @@ usage(char* progname)
 	       "enabled\n");
 	printf("  --record-core-cycles: enable measurement of CPU cycles.\n");
 	printf("  --record-burst-stats: enable display of RX and TX bursts.\n");
+	printf("  --hairpin-mode=0xXX: bitmask set the hairpin port mode.\n "
+	       "    0x10 - explicit Tx rule, 0x02 - hairpin ports paired\n"
+	       "    0x01 - hairpin ports loop, 0x00 - hairpin port self\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -645,6 +648,7 @@ launch_args_parse(int argc, char** argv)
 		{ "rxd",			1, 0, 0 },
 		{ "txd",			1, 0, 0 },
 		{ "hairpinq",			1, 0, 0 },
+		{ "hairpin-mode",		1, 0, 0 },
 		{ "burst",			1, 0, 0 },
 		{ "mbcache",			1, 0, 0 },
 		{ "txpt",			1, 0, 0 },
@@ -1112,6 +1116,17 @@ launch_args_parse(int argc, char** argv)
 			if (!nb_rxq && !nb_txq) {
 				rte_exit(EXIT_FAILURE, "Either rx or tx queues should "
 						"be non-zero\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name, "hairpin-mode")) {
+				char *end = NULL;
+				unsigned int n;
+
+				errno = 0;
+				n = strtoul(optarg, &end, 0);
+				if (errno != 0 || end == optarg)
+					rte_exit(EXIT_FAILURE, "hairpin mode invalid\n");
+				else
+					hairpin_mode = (uint16_t)n;
 			}
 			if (!strcmp(lgopts[opt_idx].name, "burst")) {
 				n = atoi(optarg);

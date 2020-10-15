@@ -367,6 +367,9 @@ bool setup_on_probe_event = true;
 /* Clear ptypes on port initialization. */
 uint8_t clear_ptypes = true;
 
+/* Hairpin ports configuration mode. */
+uint16_t hairpin_mode;
+
 /* Pretty printing of ethdev events */
 static const char * const eth_event_desc[] = {
 	[RTE_ETH_EVENT_UNKNOWN] = "unknown",
@@ -2345,7 +2348,7 @@ port_is_started(portid_t port_id)
 
 /* Configure the Rx and Tx hairpin queues for the selected port. */
 static int
-setup_hairpin_queues(portid_t pi)
+setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi)
 {
 	queueid_t qi;
 	struct rte_eth_hairpin_conf hairpin_conf = {
@@ -2354,10 +2357,49 @@ setup_hairpin_queues(portid_t pi)
 	int i;
 	int diag;
 	struct rte_port *port = &ports[pi];
+	uint16_t peer_rx_port = pi;
+	uint16_t peer_tx_port = pi;
+	uint32_t manual = 1;
+	uint32_t tx_exp = hairpin_mode & 0x10;
+
+	if (!(hairpin_mode & 0xf)) {
+		peer_rx_port = pi;
+		peer_tx_port = pi;
+		manual = 0;
+	} else if (hairpin_mode & 0x1) {
+		peer_tx_port = rte_eth_find_next_owned_by(pi + 1,
+						       RTE_ETH_DEV_NO_OWNER);
+		if (peer_tx_port >= RTE_MAX_ETHPORTS)
+			peer_tx_port = rte_eth_find_next_owned_by(0,
+						RTE_ETH_DEV_NO_OWNER);
+		if (p_pi != RTE_MAX_ETHPORTS) {
+			peer_rx_port = p_pi;
+		} else {
+			uint16_t next_pi;
+
+			/* Last port will be the peer RX port of the first. */
+			RTE_ETH_FOREACH_DEV(next_pi)
+				peer_rx_port = next_pi;
+		}
+		manual = 1;
+	} else if (hairpin_mode & 0x2) {
+		if (cnt_pi & 0x1) {
+			peer_rx_port = p_pi;
+		} else {
+			peer_rx_port = rte_eth_find_next_owned_by(pi + 1,
+						RTE_ETH_DEV_NO_OWNER);
+			if (peer_rx_port >= RTE_MAX_ETHPORTS)
+				peer_rx_port = pi;
+		}
+		peer_tx_port = peer_rx_port;
+		manual = 1;
+	}
 
 	for (qi = nb_txq, i = 0; qi < nb_hairpinq + nb_txq; qi++) {
-		hairpin_conf.peers[0].port = pi;
+		hairpin_conf.peers[0].port = peer_rx_port;
 		hairpin_conf.peers[0].queue = i + nb_rxq;
+		hairpin_conf.manual_bind = !!manual;
+		hairpin_conf.tx_explicit = !!tx_exp;
 		diag = rte_eth_tx_hairpin_queue_setup
 			(pi, qi, nb_txd, &hairpin_conf);
 		i++;
@@ -2377,8 +2419,10 @@ setup_hairpin_queues(portid_t pi)
 		return -1;
 	}
 	for (qi = nb_rxq, i = 0; qi < nb_hairpinq + nb_rxq; qi++) {
-		hairpin_conf.peers[0].port = pi;
+		hairpin_conf.peers[0].port = peer_tx_port;
 		hairpin_conf.peers[0].queue = i + nb_txq;
+		hairpin_conf.manual_bind = !!manual;
+		hairpin_conf.tx_explicit = !!tx_exp;
 		diag = rte_eth_rx_hairpin_queue_setup
 			(pi, qi, nb_rxd, &hairpin_conf);
 		i++;
@@ -2405,6 +2449,12 @@ start_port(portid_t pid)
 {
 	int diag, need_check_link_status = -1;
 	portid_t pi;
+	portid_t p_pi = RTE_MAX_ETHPORTS;
+	portid_t pl[RTE_MAX_ETHPORTS];
+	portid_t peer_pl[RTE_MAX_ETHPORTS];
+	uint16_t cnt_pi = 0;
+	uint16_t cfg_pi = 0;
+	int peer_pi;
 	queueid_t qi;
 	struct rte_port *port;
 	struct rte_ether_addr mac_addr;
@@ -2544,7 +2594,7 @@ start_port(portid_t pid)
 				return -1;
 			}
 			/* setup hairpin queues */
-			if (setup_hairpin_queues(pi) != 0)
+			if (setup_hairpin_queues(pi, p_pi, cnt_pi) != 0)
 				return -1;
 		}
 		configure_rxtx_dump_callbacks(verbose_level);
@@ -2556,6 +2606,9 @@ start_port(portid_t pid)
 				"Port %d: Failed to disable Ptype parsing\n",
 				pi);
 		}
+
+		p_pi = pi;
+		cnt_pi++;
 
 		/* start port */
 		if (rte_eth_dev_start(pi) < 0) {
@@ -2581,12 +2634,58 @@ start_port(portid_t pid)
 
 		/* at least one port started, need checking link status */
 		need_check_link_status = 1;
+
+		pl[cfg_pi++] = pi;
 	}
 
 	if (need_check_link_status == 1 && !no_link_check)
 		check_all_ports_link_status(RTE_PORT_ALL);
 	else if (need_check_link_status == 0)
 		printf("Please stop the ports first\n");
+
+	if (hairpin_mode & 0xf) {
+		uint16_t i;
+		int j;
+
+		/* bind all started hairpin ports */
+		for (i = 0; i < cfg_pi; i++) {
+			pi = pl[i];
+			/* bind current Tx to all peer Rx */
+			peer_pi = rte_eth_hairpin_get_peer_ports(pi, peer_pl,
+							RTE_MAX_ETHPORTS, 1);
+			if (peer_pi < 0)
+				return peer_pi;
+			for (j = 0; j < peer_pi; j++) {
+				if (!port_is_started(peer_pl[j]))
+					continue;
+				diag = rte_eth_hairpin_bind(pi, peer_pl[j]);
+				if (diag < 0) {
+					printf("Error during binding hairpin"
+					       " Tx port %u to %u: %s\n",
+					       pi, peer_pl[j],
+					       rte_strerror(-diag));
+					return -1;
+				}
+			}
+			/* bind all peer Tx to current Rx */
+			peer_pi = rte_eth_hairpin_get_peer_ports(pi, peer_pl,
+							RTE_MAX_ETHPORTS, 0);
+			if (peer_pi < 0)
+				return peer_pi;
+			for (j = 0; j < peer_pi; j++) {
+				if (!port_is_started(peer_pl[j]))
+					continue;
+				diag = rte_eth_hairpin_bind(peer_pl[j], pi);
+				if (diag < 0) {
+					printf("Error during binding hairpin"
+					       " Tx port %u to %u: %s\n",
+					       peer_pl[j], pi,
+					       rte_strerror(-diag));
+					return -1;
+				}
+			}
+		}
+	}
 
 	printf("Done\n");
 	return 0;
@@ -2598,6 +2697,8 @@ stop_port(portid_t pid)
 	portid_t pi;
 	struct rte_port *port;
 	int need_check_link_status = 0;
+	portid_t peer_pl[RTE_MAX_ETHPORTS];
+	int peer_pi;
 
 	if (dcb_test) {
 		dcb_test = 0;
@@ -2627,6 +2728,22 @@ stop_port(portid_t pid)
 		if (rte_atomic16_cmpset(&(port->port_status), RTE_PORT_STARTED,
 						RTE_PORT_HANDLING) == 0)
 			continue;
+
+		if (hairpin_mode & 0xf) {
+			int j;
+
+			rte_eth_hairpin_unbind(pi, RTE_MAX_ETHPORTS);
+			/* unbind all peer Tx from current Rx */
+			peer_pi = rte_eth_hairpin_get_peer_ports(pi, peer_pl,
+							RTE_MAX_ETHPORTS, 0);
+			if (peer_pi < 0)
+				continue;
+			for (j = 0; j < peer_pi; j++) {
+				if (!port_is_started(peer_pl[j]))
+					continue;
+				rte_eth_hairpin_unbind(peer_pl[j], pi);
+			}
+		}
 
 		rte_eth_dev_stop(pi);
 

@@ -503,3 +503,11 @@ The command line options are:
 *   ``--record-burst-stats``
 
     Enable display of RX and TX burst stats.
+
+*   ``--hairpin-mode=0xXX``
+
+    Set the hairpin port mode with bitmask, only valid when hairpin queues number is set.
+    bit 4 - explicit Tx flow rule
+    bit 1 - two hairpin ports paired
+    bit 0 - two hairpin ports loop
+    The default value is 0. Hairpin will use single port mode and implicit Tx flow mode.
