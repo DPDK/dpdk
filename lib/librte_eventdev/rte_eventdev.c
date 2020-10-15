@@ -438,9 +438,29 @@ rte_event_dev_configure(uint8_t dev_id,
 					dev_id);
 		return -EINVAL;
 	}
-	if (dev_conf->nb_event_queues > info.max_event_queues) {
-		RTE_EDEV_LOG_ERR("%d nb_event_queues=%d > max_event_queues=%d",
-		dev_id, dev_conf->nb_event_queues, info.max_event_queues);
+	if (dev_conf->nb_event_queues > info.max_event_queues +
+			info.max_single_link_event_port_queue_pairs) {
+		RTE_EDEV_LOG_ERR("%d nb_event_queues=%d > max_event_queues=%d + max_single_link_event_port_queue_pairs=%d",
+				 dev_id, dev_conf->nb_event_queues,
+				 info.max_event_queues,
+				 info.max_single_link_event_port_queue_pairs);
+		return -EINVAL;
+	}
+	if (dev_conf->nb_event_queues -
+			dev_conf->nb_single_link_event_port_queues >
+			info.max_event_queues) {
+		RTE_EDEV_LOG_ERR("id%d nb_event_queues=%d - nb_single_link_event_port_queues=%d > max_event_queues=%d",
+				 dev_id, dev_conf->nb_event_queues,
+				 dev_conf->nb_single_link_event_port_queues,
+				 info.max_event_queues);
+		return -EINVAL;
+	}
+	if (dev_conf->nb_single_link_event_port_queues >
+			dev_conf->nb_event_queues) {
+		RTE_EDEV_LOG_ERR("dev%d nb_single_link_event_port_queues=%d > nb_event_queues=%d",
+				 dev_id,
+				 dev_conf->nb_single_link_event_port_queues,
+				 dev_conf->nb_event_queues);
 		return -EINVAL;
 	}
 
@@ -449,9 +469,31 @@ rte_event_dev_configure(uint8_t dev_id,
 		RTE_EDEV_LOG_ERR("dev%d nb_event_ports cannot be zero", dev_id);
 		return -EINVAL;
 	}
-	if (dev_conf->nb_event_ports > info.max_event_ports) {
-		RTE_EDEV_LOG_ERR("id%d nb_event_ports=%d > max_event_ports= %d",
-		dev_id, dev_conf->nb_event_ports, info.max_event_ports);
+	if (dev_conf->nb_event_ports > info.max_event_ports +
+			info.max_single_link_event_port_queue_pairs) {
+		RTE_EDEV_LOG_ERR("id%d nb_event_ports=%d > max_event_ports=%d + max_single_link_event_port_queue_pairs=%d",
+				 dev_id, dev_conf->nb_event_ports,
+				 info.max_event_ports,
+				 info.max_single_link_event_port_queue_pairs);
+		return -EINVAL;
+	}
+	if (dev_conf->nb_event_ports -
+			dev_conf->nb_single_link_event_port_queues
+			> info.max_event_ports) {
+		RTE_EDEV_LOG_ERR("id%d nb_event_ports=%d - nb_single_link_event_port_queues=%d > max_event_ports=%d",
+				 dev_id, dev_conf->nb_event_ports,
+				 dev_conf->nb_single_link_event_port_queues,
+				 info.max_event_ports);
+		return -EINVAL;
+	}
+
+	if (dev_conf->nb_single_link_event_port_queues >
+	    dev_conf->nb_event_ports) {
+		RTE_EDEV_LOG_ERR(
+				 "dev%d nb_single_link_event_port_queues=%d > nb_event_ports=%d",
+				 dev_id,
+				 dev_conf->nb_single_link_event_port_queues,
+				 dev_conf->nb_event_ports);
 		return -EINVAL;
 	}
 
@@ -738,7 +780,8 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 		return -EINVAL;
 	}
 
-	if (port_conf && port_conf->disable_implicit_release &&
+	if (port_conf &&
+	    (port_conf->event_port_cfg & RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL) &&
 	    !(dev->data->event_dev_cap &
 	      RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE)) {
 		RTE_EDEV_LOG_ERR(
@@ -831,6 +874,14 @@ rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 	case RTE_EVENT_PORT_ATTR_NEW_EVENT_THRESHOLD:
 		*attr_value = dev->data->ports_cfg[port_id].new_event_threshold;
 		break;
+	case RTE_EVENT_PORT_ATTR_IMPLICIT_RELEASE_DISABLE:
+	{
+		uint32_t config;
+
+		config = dev->data->ports_cfg[port_id].event_port_cfg;
+		*attr_value = !!(config & RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
+		break;
+	}
 	default:
 		return -EINVAL;
 	};

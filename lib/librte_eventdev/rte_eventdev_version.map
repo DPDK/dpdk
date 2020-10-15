@@ -100,7 +100,6 @@ EXPERIMENTAL {
 	# added in 20.05
 	__rte_eventdev_trace_configure;
 	__rte_eventdev_trace_queue_setup;
-	__rte_eventdev_trace_port_setup;
 	__rte_eventdev_trace_port_link;
 	__rte_eventdev_trace_port_unlink;
 	__rte_eventdev_trace_start;
@@ -134,4 +133,7 @@ EXPERIMENTAL {
 	__rte_eventdev_trace_crypto_adapter_queue_pair_del;
 	__rte_eventdev_trace_crypto_adapter_start;
 	__rte_eventdev_trace_crypto_adapter_stop;
+
+	# changed in 20.11
+	__rte_eventdev_trace_port_setup;
 };

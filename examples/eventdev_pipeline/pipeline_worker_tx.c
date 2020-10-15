@@ -436,6 +436,7 @@ setup_eventdev_worker_tx_enq(struct worker_data *worker_data)
 	struct rte_event_dev_config config = {
 			.nb_event_queues = nb_queues,
 			.nb_event_ports = nb_ports,
+			.nb_single_link_event_port_queues = 0,
 			.nb_events_limit  = 4096,
 			.nb_event_queue_flows = 1024,
 			.nb_event_port_dequeue_depth = 128,

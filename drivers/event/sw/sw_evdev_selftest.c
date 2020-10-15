@@ -172,7 +172,6 @@ create_ports(struct test *t, int num_ports)
 			.new_event_threshold = 1024,
 			.dequeue_depth = 32,
 			.enqueue_depth = 64,
-			.disable_implicit_release = 0,
 	};
 	if (num_ports > MAX_PORTS)
 		return -1;
@@ -1227,7 +1226,6 @@ port_reconfig_credits(struct test *t)
 				.new_event_threshold = 128,
 				.dequeue_depth = 32,
 				.enqueue_depth = 64,
-				.disable_implicit_release = 0,
 		};
 		if (rte_event_port_setup(evdev, 0, &port_conf) < 0) {
 			printf("%d Error setting up port\n", __LINE__);
@@ -1317,7 +1315,6 @@ port_single_lb_reconfig(struct test *t)
 		.new_event_threshold = 128,
 		.dequeue_depth = 32,
 		.enqueue_depth = 64,
-		.disable_implicit_release = 0,
 	};
 	if (rte_event_port_setup(evdev, 0, &port_conf) < 0) {
 		printf("%d Error setting up port\n", __LINE__);
@@ -3079,7 +3076,8 @@ worker_loopback(struct test *t, uint8_t disable_implicit_release)
 	 * only be initialized once - and this needs to be set for multiple runs
 	 */
 	conf.new_event_threshold = 512;
-	conf.disable_implicit_release = disable_implicit_release;
+	conf.event_port_cfg = disable_implicit_release ?
+		RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL : 0;
 
 	if (rte_event_port_setup(evdev, 0, &conf) < 0) {
 		printf("Error setting up RX port\n");

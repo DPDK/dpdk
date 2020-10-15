@@ -152,7 +152,8 @@ ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 					RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES|
 					RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK |
 					RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT |
-					RTE_EVENT_DEV_CAP_NONSEQ_MODE;
+					RTE_EVENT_DEV_CAP_NONSEQ_MODE |
+					RTE_EVENT_DEV_CAP_CARRY_FLOW_ID;
 
 }
 
@@ -218,7 +219,7 @@ ssovf_port_def_conf(struct rte_eventdev *dev, uint8_t port_id,
 	port_conf->new_event_threshold = edev->max_num_events;
 	port_conf->dequeue_depth = 1;
 	port_conf->enqueue_depth = 1;
-	port_conf->disable_implicit_release = 0;
+	port_conf->event_port_cfg = 0;
 }
 
 static void

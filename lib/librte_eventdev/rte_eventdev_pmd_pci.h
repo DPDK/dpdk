@@ -88,7 +88,6 @@ rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 	return -ENXIO;
 }
 
-
 /**
  * @internal
  * Wrapper for use by pci drivers as a .remove function to detach a event

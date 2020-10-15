@@ -559,10 +559,10 @@ test_eventdev_port_setup(void)
 	if (!(info.event_dev_cap &
 	      RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE)) {
 		pconf.enqueue_depth = info.max_event_port_enqueue_depth;
-		pconf.disable_implicit_release = 1;
+		pconf.event_port_cfg = RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL;
 		ret = rte_event_port_setup(TEST_DEV_ID, 0, &pconf);
 		TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
-		pconf.disable_implicit_release = 0;
+		pconf.event_port_cfg = 0;
 	}
 
 	ret = rte_event_port_setup(TEST_DEV_ID, info.max_event_ports,

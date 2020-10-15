@@ -374,7 +374,8 @@ opdl_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info)
 		.max_event_port_dequeue_depth = MAX_OPDL_CONS_Q_DEPTH,
 		.max_event_port_enqueue_depth = MAX_OPDL_CONS_Q_DEPTH,
 		.max_num_events = OPDL_INFLIGHT_EVENTS_TOTAL,
-		.event_dev_cap = RTE_EVENT_DEV_CAP_BURST_MODE,
+		.event_dev_cap = RTE_EVENT_DEV_CAP_BURST_MODE |
+				 RTE_EVENT_DEV_CAP_CARRY_FLOW_ID,
 	};
 
 	*info = evdev_opdl_info;

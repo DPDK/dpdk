@@ -104,6 +104,16 @@ evt_has_all_types_queue(uint8_t dev_id)
 			true : false;
 }
 
+static inline bool
+evt_has_flow_id(uint8_t dev_id)
+{
+	struct rte_event_dev_info dev_info;
+
+	rte_event_dev_info_get(dev_id, &dev_info);
+	return (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_CARRY_FLOW_ID) ?
+			true : false;
+}
+
 static inline int
 evt_service_setup(uint32_t service_id)
 {
@@ -169,6 +179,7 @@ evt_configure_eventdev(struct evt_options *opt, uint8_t nb_queues,
 			.dequeue_timeout_ns = opt->deq_tmo_nsec,
 			.nb_event_queues = nb_queues,
 			.nb_event_ports = nb_ports,
+			.nb_single_link_event_port_queues = 0,
 			.nb_events_limit  = info.max_num_events,
 			.nb_event_queue_flows = opt->nb_flows,
 			.nb_event_port_dequeue_depth =

@@ -291,6 +291,12 @@ struct rte_event;
  * single queue to each port or map a single queue to many port.
  */
 
+#define RTE_EVENT_DEV_CAP_CARRY_FLOW_ID (1ULL << 9)
+/**< Event device preserves the flow ID from the enqueued
+ * event to the dequeued event if the flag is set. Otherwise,
+ * the content of this field is implementation dependent.
+ */
+
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
 /**< Highest priority expressed across eventdev subsystem
@@ -380,6 +386,10 @@ struct rte_event_dev_info {
 	 * event port by this device.
 	 * A device that does not support bulk enqueue will set this as 1.
 	 */
+	uint8_t max_event_port_links;
+	/**< Maximum number of queues that can be linked to a single event
+	 * port by this device.
+	 */
 	int32_t max_num_events;
 	/**< A *closed system* event dev has a limit on the number of events it
 	 * can manage at a time. An *open system* event dev does not have a
@@ -387,6 +397,12 @@ struct rte_event_dev_info {
 	 */
 	uint32_t event_dev_cap;
 	/**< Event device capabilities(RTE_EVENT_DEV_CAP_)*/
+	uint8_t max_single_link_event_port_queue_pairs;
+	/**< Maximum number of event ports and queues that are optimized for
+	 * (and only capable of) single-link configurations supported by this
+	 * device. These ports and queues are not accounted for in
+	 * max_event_ports or max_event_queues.
+	 */
 };
 
 /**
@@ -494,6 +510,14 @@ struct rte_event_dev_config {
 	 */
 	uint32_t event_dev_cfg;
 	/**< Event device config flags(RTE_EVENT_DEV_CFG_)*/
+	uint8_t nb_single_link_event_port_queues;
+	/**< Number of event ports and queues that will be singly-linked to
+	 * each other. These are a subset of the overall event ports and
+	 * queues; this value cannot exceed *nb_event_ports* or
+	 * *nb_event_queues*. If the device has ports and queues that are
+	 * optimized for single-link usage, this field is a hint for how many
+	 * to allocate; otherwise, regular event ports and queues can be used.
+	 */
 };
 
 /**
@@ -518,7 +542,6 @@ struct rte_event_dev_config {
 int
 rte_event_dev_configure(uint8_t dev_id,
 			const struct rte_event_dev_config *dev_conf);
-
 
 /* Event queue specific APIs */
 
@@ -671,6 +694,20 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 
 /* Event port specific APIs */
 
+/* Event port configuration bitmap flags */
+#define RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL    (1ULL << 0)
+/**< Configure the port not to release outstanding events in
+ * rte_event_dev_dequeue_burst(). If set, all events received through
+ * the port must be explicitly released with RTE_EVENT_OP_RELEASE or
+ * RTE_EVENT_OP_FORWARD. Must be unset if the device is not
+ * RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE capable.
+ */
+#define RTE_EVENT_PORT_CFG_SINGLE_LINK         (1ULL << 1)
+/**< This event port links only to a single event queue.
+ *
+ *  @see rte_event_port_setup(), rte_event_port_link()
+ */
+
 /** Event port configuration structure */
 struct rte_event_port_conf {
 	int32_t new_event_threshold;
@@ -698,13 +735,7 @@ struct rte_event_port_conf {
 	 * which previously supplied to rte_event_dev_configure().
 	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
 	 */
-	uint8_t disable_implicit_release;
-	/**< Configure the port not to release outstanding events in
-	 * rte_event_dev_dequeue_burst(). If true, all events received through
-	 * the port must be explicitly released with RTE_EVENT_OP_RELEASE or
-	 * RTE_EVENT_OP_FORWARD. Must be false when the device is not
-	 * RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE capable.
-	 */
+	uint32_t event_port_cfg; /**< Port cfg flags(EVENT_PORT_CFG_) */
 };
 
 /**
@@ -769,6 +800,10 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
  * The new event threshold of the port
  */
 #define RTE_EVENT_PORT_ATTR_NEW_EVENT_THRESHOLD 2
+/**
+ * The implicit release disable attribute of the port
+ */
+#define RTE_EVENT_PORT_ATTR_IMPLICIT_RELEASE_DISABLE 3
 
 /**
  * Get an attribute from a port.

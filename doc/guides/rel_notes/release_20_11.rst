@@ -474,6 +474,13 @@ ABI Changes
 
   * ``ethdev`` internal functions are marked with ``__rte_internal`` tag.
 
+* eventdev: Following structures are modified to support DLB/DLB2 PMDs
+  and future extensions:
+
+  * ``rte_event_dev_info``
+  * ``rte_event_dev_config``
+  * ``rte_event_port_conf``
+
 * sched: Added new fields to ``struct rte_sched_subport_port_params``.
 
 

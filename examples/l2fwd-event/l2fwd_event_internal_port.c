@@ -123,8 +123,10 @@ l2fwd_event_port_setup_internal_port(struct l2fwd_resources *rsrc)
 	if (def_p_conf.enqueue_depth < event_p_conf.enqueue_depth)
 		event_p_conf.enqueue_depth = def_p_conf.enqueue_depth;
 
-	event_p_conf.disable_implicit_release =
-		evt_rsrc->disable_implicit_release;
+	event_p_conf.event_port_cfg = 0;
+	if (evt_rsrc->disable_implicit_release)
+		event_p_conf.event_port_cfg |=
+			RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL;
 
 	for (event_p_id = 0; event_p_id < evt_rsrc->evp.nb_ports;
 								event_p_id++) {

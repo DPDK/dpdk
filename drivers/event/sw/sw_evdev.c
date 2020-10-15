@@ -179,7 +179,8 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	}
 
 	p->inflight_max = conf->new_event_threshold;
-	p->implicit_release = !conf->disable_implicit_release;
+	p->implicit_release = !(conf->event_port_cfg &
+				RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
 
 	/* check if ring exists, same as rx_worker above */
 	snprintf(buf, sizeof(buf), "sw%d_p%u, %s", dev->data->dev_id,
@@ -501,7 +502,7 @@ sw_port_def_conf(struct rte_eventdev *dev, uint8_t port_id,
 	port_conf->new_event_threshold = 1024;
 	port_conf->dequeue_depth = 16;
 	port_conf->enqueue_depth = 16;
-	port_conf->disable_implicit_release = 0;
+	port_conf->event_port_cfg = 0;
 }
 
 static int
@@ -608,7 +609,8 @@ sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info)
 				RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE|
 				RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK |
 				RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT |
-				RTE_EVENT_DEV_CAP_NONSEQ_MODE),
+				RTE_EVENT_DEV_CAP_NONSEQ_MODE |
+				RTE_EVENT_DEV_CAP_CARRY_FLOW_ID),
 	};
 
 	*info = evdev_sw_info;

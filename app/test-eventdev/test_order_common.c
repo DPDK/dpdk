@@ -49,6 +49,7 @@ order_producer(void *arg)
 		const uint32_t flow = (uintptr_t)m % nb_flows;
 		/* Maintain seq number per flow */
 		m->seqn = producer_flow_seq[flow]++;
+		m->udata64 = flow;
 
 		ev.flow_id = flow;
 		ev.mbuf = m;

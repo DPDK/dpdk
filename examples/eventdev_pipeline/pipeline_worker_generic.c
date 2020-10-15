@@ -129,6 +129,7 @@ setup_eventdev_generic(struct worker_data *worker_data)
 	struct rte_event_dev_config config = {
 			.nb_event_queues = nb_queues,
 			.nb_event_ports = nb_ports,
+			.nb_single_link_event_port_queues = 1,
 			.nb_events_limit  = 4096,
 			.nb_event_queue_flows = 1024,
 			.nb_event_port_dequeue_depth = 128,
@@ -143,7 +144,7 @@ setup_eventdev_generic(struct worker_data *worker_data)
 			.schedule_type = cdata.queue_type,
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 			.nb_atomic_flows = 1024,
-		.nb_atomic_order_sequences = 1024,
+			.nb_atomic_order_sequences = 1024,
 	};
 	struct rte_event_queue_conf tx_q_conf = {
 			.priority = RTE_EVENT_DEV_PRIORITY_HIGHEST,
@@ -167,7 +168,8 @@ setup_eventdev_generic(struct worker_data *worker_data)
 	disable_implicit_release = (dev_info.event_dev_cap &
 			RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE);
 
-	wkr_p_conf.disable_implicit_release = disable_implicit_release;
+	wkr_p_conf.event_port_cfg = disable_implicit_release ?
+		RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL : 0;
 
 	if (dev_info.max_num_events < config.nb_events_limit)
 		config.nb_events_limit = dev_info.max_num_events;
