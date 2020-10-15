@@ -117,6 +117,21 @@ foreach subpath:subdirs
 				fmt_name = name
 			endif
 			dpdk_conf.set(config_flag_fmt.format(fmt_name.to_upper()),1)
+			# for driver compatibility, since we changed the
+			# default to match that of make. Remove in future release
+			# after following deprecation process
+			if config_flag_fmt.contains('_PMD_@0@') and (class == 'crypto'
+					or class == 'compress'
+					or class == 'event')
+				alt_flag_fmt = '_@0@_PMD'.join(
+						config_flag_fmt.split('_PMD_@0@'))
+				if config_flag_fmt.contains('EVENTDEV')
+					alt_flag_fmt = '_@0@_EVENTDEV_PMD'.join(
+						config_flag_fmt.split('_PMD_@0@_EVENTDEV'))
+				endif
+				dpdk_conf.set(alt_flag_fmt.format(
+						fmt_name.to_upper()), 1)
+			endif
 			lib_name = driver_name_fmt.format(fmt_name)
 
 			dpdk_extra_ldflags += pkgconfig_extra_libs
