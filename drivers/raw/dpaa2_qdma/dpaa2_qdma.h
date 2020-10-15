@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2020 NXP
  */
 
 #ifndef __DPAA2_QDMA_H__
@@ -173,6 +173,7 @@ struct dpaa2_dpdmai_dev {
 	struct dpaa2_queue rx_queue[DPAA2_DPDMAI_MAX_QUEUES];
 	/** TX queues */
 	struct dpaa2_queue tx_queue[DPAA2_DPDMAI_MAX_QUEUES];
+	struct qdma_device *qdma_dev;
 };
 
 #endif /* __DPAA2_QDMA_H__ */
