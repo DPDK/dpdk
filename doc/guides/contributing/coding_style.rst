@@ -283,6 +283,29 @@ Thus, the previous example would be better written:
 DPDK also provides an optimized way to store elements in lockless rings.
 This should be used in all data-path code, when there are several consumer and/or producers to avoid locking for concurrent access.
 
+Naming
+------
+
+For symbol names and documentation, new usage of
+'master / slave' (or 'slave' independent of 'master') and 'blacklist /
+whitelist' is not allowed.
+
+Recommended replacements for 'master / slave' are:
+    '{primary,main} / {secondary,replica,subordinate}'
+    '{initiator,requester} / {target,responder}'
+    '{controller,host} / {device,worker,proxy}'
+    'leader / follower'
+    'director / performer'
+
+Recommended replacements for 'blacklist/whitelist' are:
+    'denylist / allowlist'
+    'blocklist / passlist'
+
+Exceptions for introducing new usage is to maintain compatibility
+with an existing (as of 2020) hardware or protocol
+specification that mandates those terms.
+
+
 Typedefs
 ~~~~~~~~
 
