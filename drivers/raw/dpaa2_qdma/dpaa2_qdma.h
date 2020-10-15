@@ -52,10 +52,11 @@ struct qdma_device {
 	 * This is limited by MAX_HW_QUEUE_PER_CORE
 	 */
 	uint16_t max_hw_queues_per_core;
+
+	/** VQ's of this device */
+	struct qdma_virt_queue *vqs;
 	/** Maximum number of VQ's */
 	uint16_t max_vqs;
-	/** mode of operation - physical(h/w) or virtual */
-	uint8_t mode;
 	/** Device state - started or stopped */
 	uint8_t state;
 	/** FLE pool for the device */
@@ -80,6 +81,26 @@ struct qdma_hw_queue {
 	uint32_t num_users;
 };
 
+struct qdma_virt_queue;
+
+typedef uint16_t (qdma_get_job_t)(struct qdma_virt_queue *qdma_vq,
+					const struct qbman_fd *fd,
+					struct rte_qdma_job **job);
+typedef int (qdma_set_fd_t)(struct qdma_virt_queue *qdma_vq,
+					struct qbman_fd *fd,
+					struct rte_qdma_job *job);
+
+typedef int (qdma_dequeue_multijob_t)(
+				struct qdma_virt_queue *qdma_vq,
+				uint16_t *vq_id,
+				struct rte_qdma_job **job,
+				uint16_t nb_jobs);
+
+typedef int (qdma_enqueue_multijob_t)(
+			struct qdma_virt_queue *qdma_vq,
+			struct rte_qdma_job **job,
+			uint16_t nb_jobs);
+
 /** Represents a QDMA virtual queue */
 struct qdma_virt_queue {
 	/** Status ring of the virtual queue */
@@ -98,6 +119,14 @@ struct qdma_virt_queue {
 	uint64_t num_enqueues;
 	/* Total number of dequeues from this VQ */
 	uint64_t num_dequeues;
+
+	uint16_t vq_id;
+
+	qdma_set_fd_t *set_fd;
+	qdma_get_job_t *get_job;
+
+	qdma_dequeue_multijob_t *dequeue_job;
+	qdma_enqueue_multijob_t *enqueue_job;
 };
 
 /** Represents a QDMA per core hw queues allocation in virtual mode */
@@ -175,5 +204,11 @@ struct dpaa2_dpdmai_dev {
 	struct dpaa2_queue tx_queue[DPAA2_DPDMAI_MAX_QUEUES];
 	struct qdma_device *qdma_dev;
 };
+
+static inline struct qdma_device *
+QDMA_DEV_OF_VQ(struct qdma_virt_queue *vq)
+{
+	return vq->hw_queue->dpdmai_dev->qdma_dev;
+}
 
 #endif /* __DPAA2_QDMA_H__ */

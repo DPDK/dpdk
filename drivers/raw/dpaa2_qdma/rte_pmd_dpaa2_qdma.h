@@ -50,6 +50,8 @@ enum {
  */
 #define RTE_QDMA_VQ_EXCLUSIVE_PQ	(1ULL)
 
+#define RTE_QDMA_VQ_FD_LONG_FORMAT		(1ULL << 1)
+
 /** States if the source addresses is physical. */
 #define RTE_QDMA_JOB_SRC_PHY		(1ULL)
 
@@ -68,10 +70,6 @@ struct rte_qdma_config {
 	uint16_t max_hw_queues_per_core;
 	/** Maximum number of VQ's to be used. */
 	uint16_t max_vqs;
-	/** mode of operation - physical(h/w) or virtual */
-	uint8_t mode;
-	/** FD format */
-	uint8_t format;
 	/**
 	 * User provides this as input to the driver as a size of the FLE pool.
 	 * FLE's (and corresponding source/destination descriptors) are
@@ -182,13 +180,16 @@ struct rte_qdma_queue_config {
 /**
  * Get a Virtual Queue statistics.
  *
+ * @param rawdev
+ *   Raw Device.
  * @param vq_id
  *   Virtual Queue ID.
  * @param vq_stats
  *   VQ statistics structure which will be filled in by the driver.
  */
 void
-rte_qdma_vq_stats(uint16_t vq_id,
-		  struct rte_qdma_vq_stats *vq_stats);
+rte_qdma_vq_stats(struct rte_rawdev *rawdev,
+		uint16_t vq_id,
+		struct rte_qdma_vq_stats *vq_stats);
 
 #endif /* __RTE_PMD_DPAA2_QDMA_H__*/
