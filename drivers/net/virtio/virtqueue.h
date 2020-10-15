@@ -698,6 +698,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	struct virtio_net_hdr *hdr;
 	uint16_t prev;
 	bool prepend_header = false;
+	uint16_t seg_num = cookie->nb_segs;
 
 	id = in_order ? vq->vq_avail_idx : vq->vq_desc_head_idx;
 
@@ -732,7 +733,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		 */
 		start_dp[idx].addr  = txvq->virtio_net_hdr_mem +
 			RTE_PTR_DIFF(&txr[idx].tx_packed_indir, txr);
-		start_dp[idx].len   = (needed + 1) *
+		start_dp[idx].len   = (seg_num + 1) *
 			sizeof(struct vring_packed_desc);
 		/* reset flags for indirect desc */
 		head_flags = VRING_DESC_F_INDIRECT;
