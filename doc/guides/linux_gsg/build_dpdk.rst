@@ -113,6 +113,35 @@ dependencies are met on the current system are built.
 When `-Dexamples=all` is set as a meson option, meson will check each example application to see if it can be built,
 and add all which can be built to the list of tasks in the ninja build configuration file.
 
+
+Building 32-bit DPDK on 64-bit Systems
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To build a 32-bit copy of DPDK on a 64-bit OS,
+the ``-m32`` flag should be passed to the compiler and linker
+to force the generation of 32-bit objects and binaries.
+This can be done either by setting ``CFLAGS`` and ``LDFLAGS`` in the environment,
+or by passing the value to meson using ``-Dc_args=-m32`` and ``-Dc_link_args=-m32``.
+For correctly identifying and using any dependency packages,
+the ``pkg-config`` tool must also be configured
+to look in the appropriate directory for .pc files for 32-bit libraries.
+This is done by setting ``PKG_CONFIG_LIBDIR`` to the appropriate path.
+
+The following meson command can be used on RHEL/Fedora systems to configure a 32-bit build,
+assuming the relevant 32-bit development packages, such as a 32-bit libc, are installed::
+
+  PKG_CONFIG_LIBDIR=/usr/lib/pkgconfig \
+      meson -Dc_args='-m32' -Dc_link_args='-m32' build
+
+For Debian/Ubuntu systems, the equivalent command is::
+
+  PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig \
+      meson -Dc_args='-m32' -Dc_link_args='-m32' build
+
+Once the build directory has been configured,
+DPDK can be compiled using ``ninja`` as described above.
+
+
 .. _building_app_using_installed_dpdk:
 
 Building Applications Using Installed DPDK
