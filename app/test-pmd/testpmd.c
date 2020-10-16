@@ -186,7 +186,7 @@ struct fwd_engine * fwd_engines[] = {
 	NULL,
 };
 
-struct rte_mempool *mempools[RTE_MAX_NUMA_NODES];
+struct rte_mempool *mempools[RTE_MAX_NUMA_NODES * MAX_SEGS_BUFFER_SPLIT];
 uint16_t mempool_flags;
 
 struct fwd_config cur_fwd_config;
@@ -195,7 +195,10 @@ uint32_t retry_enabled;
 uint32_t burst_tx_delay_time = BURST_TX_WAIT_US;
 uint32_t burst_tx_retry_num = BURST_TX_RETRIES;
 
-uint16_t mbuf_data_size = DEFAULT_MBUF_DATA_SIZE; /**< Mbuf data space size. */
+uint32_t mbuf_data_size_n = 1; /* Number of specified mbuf sizes. */
+uint16_t mbuf_data_size[MAX_SEGS_BUFFER_SPLIT] = {
+	DEFAULT_MBUF_DATA_SIZE
+}; /**< Mbuf data space size. */
 uint32_t param_total_num_mbufs = 0;  /**< number of mbufs in all pools - if
                                       * specified on command-line. */
 uint16_t stats_period; /**< Period to show statistics (disabled by default) */
@@ -958,14 +961,14 @@ setup_extbuf(uint32_t nb_mbufs, uint16_t mbuf_sz, unsigned int socket_id,
  */
 static struct rte_mempool *
 mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
-		 unsigned int socket_id)
+		 unsigned int socket_id, uint16_t size_idx)
 {
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
 	struct rte_mempool *rte_mp = NULL;
 	uint32_t mb_size;
 
 	mb_size = sizeof(struct rte_mbuf) + mbuf_seg_size;
-	mbuf_poolname_build(socket_id, pool_name, sizeof(pool_name));
+	mbuf_poolname_build(socket_id, pool_name, sizeof(pool_name), size_idx);
 
 	TESTPMD_LOG(INFO,
 		"create a new mbuf pool <%s>: n=%u, size=%u, socket=%u\n",
@@ -1488,8 +1491,8 @@ init_config(void)
 				port->dev_info.rx_desc_lim.nb_mtu_seg_max;
 
 			if ((data_size + RTE_PKTMBUF_HEADROOM) >
-							mbuf_data_size) {
-				mbuf_data_size = data_size +
+							mbuf_data_size[0]) {
+				mbuf_data_size[0] = data_size +
 						 RTE_PKTMBUF_HEADROOM;
 				warning = 1;
 			}
@@ -1497,9 +1500,9 @@ init_config(void)
 	}
 
 	if (warning)
-		TESTPMD_LOG(WARNING, "Configured mbuf size %hu\n",
-			    mbuf_data_size);
-
+		TESTPMD_LOG(WARNING,
+			    "Configured mbuf size of the first segment %hu\n",
+			    mbuf_data_size[0]);
 	/*
 	 * Create pools of mbuf.
 	 * If NUMA support is disabled, create a single pool of mbuf in
@@ -1519,21 +1522,23 @@ init_config(void)
 	}
 
 	if (numa_support) {
-		uint8_t i;
+		uint8_t i, j;
 
 		for (i = 0; i < num_sockets; i++)
-			mempools[i] = mbuf_pool_create(mbuf_data_size,
-						       nb_mbuf_per_pool,
-						       socket_ids[i]);
+			for (j = 0; j < mbuf_data_size_n; j++)
+				mempools[i * MAX_SEGS_BUFFER_SPLIT + j] =
+					mbuf_pool_create(mbuf_data_size[j],
+							  nb_mbuf_per_pool,
+							  socket_ids[i], j);
 	} else {
-		if (socket_num == UMA_NO_CONFIG)
-			mempools[0] = mbuf_pool_create(mbuf_data_size,
-						       nb_mbuf_per_pool, 0);
-		else
-			mempools[socket_num] = mbuf_pool_create
-							(mbuf_data_size,
-							 nb_mbuf_per_pool,
-							 socket_num);
+		uint8_t i;
+
+		for (i = 0; i < mbuf_data_size_n; i++)
+			mempools[i] = mbuf_pool_create
+					(mbuf_data_size[i],
+					 nb_mbuf_per_pool,
+					 socket_num == UMA_NO_CONFIG ?
+					 0 : socket_num, i);
 	}
 
 	init_port_config();
@@ -1545,10 +1550,10 @@ init_config(void)
 	 */
 	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
 		mbp = mbuf_pool_find(
-			rte_lcore_to_socket_id(fwd_lcores_cpuids[lc_id]));
+			rte_lcore_to_socket_id(fwd_lcores_cpuids[lc_id]), 0);
 
 		if (mbp == NULL)
-			mbp = mbuf_pool_find(0);
+			mbp = mbuf_pool_find(0, 0);
 		fwd_lcores[lc_id]->mbp = mbp;
 		/* initialize GSO context */
 		fwd_lcores[lc_id]->gso_ctx.direct_pool = mbp;
@@ -2548,7 +2553,8 @@ start_port(portid_t pid)
 				if ((numa_support) &&
 					(rxring_numa[pi] != NUMA_NO_CONFIG)) {
 					struct rte_mempool * mp =
-						mbuf_pool_find(rxring_numa[pi]);
+						mbuf_pool_find
+							(rxring_numa[pi], 0);
 					if (mp == NULL) {
 						printf("Failed to setup RX queue:"
 							"No mempool allocation"
@@ -2564,7 +2570,8 @@ start_port(portid_t pid)
 					     mp);
 				} else {
 					struct rte_mempool *mp =
-						mbuf_pool_find(port->socket_id);
+						mbuf_pool_find
+							(port->socket_id, 0);
 					if (mp == NULL) {
 						printf("Failed to setup RX queue:"
 							"No mempool allocation"
@@ -3026,13 +3033,13 @@ void
 pmd_test_exit(void)
 {
 	portid_t pt_id;
+	unsigned int i;
 	int ret;
-	int i;
 
 	if (test_done == 0)
 		stop_packet_forwarding();
 
-	for (i = 0 ; i < RTE_MAX_NUMA_NODES ; i++) {
+	for (i = 0 ; i < RTE_DIM(mempools) ; i++) {
 		if (mempools[i]) {
 			if (mp_alloc_type == MP_ALLOC_ANON)
 				rte_mempool_mem_iter(mempools[i], dma_unmap_cb,
@@ -3076,7 +3083,7 @@ pmd_test_exit(void)
 			return;
 		}
 	}
-	for (i = 0 ; i < RTE_MAX_NUMA_NODES ; i++) {
+	for (i = 0 ; i < RTE_DIM(mempools) ; i++) {
 		if (mempools[i])
 			rte_mempool_free(mempools[i]);
 	}

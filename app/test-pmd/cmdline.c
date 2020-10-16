@@ -2925,7 +2925,7 @@ cmd_setup_rxtx_queue_parsed(
 		if (!numa_support || socket_id == NUMA_NO_CONFIG)
 			socket_id = port->socket_id;
 
-		mp = mbuf_pool_find(socket_id);
+		mp = mbuf_pool_find(socket_id, 0);
 		if (mp == NULL) {
 			printf("Failed to setup RX queue: "
 				"No mempool allocation"

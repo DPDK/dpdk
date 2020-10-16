@@ -107,9 +107,12 @@ The command line options are:
     Set the socket from which all memory is allocated in NUMA mode,
     where 0 <= N < number of sockets on the board.
 
-*   ``--mbuf-size=N``
+*   ``--mbuf-size=N[,N1[,...Nn]``
 
-    Set the data size of the mbufs used to N bytes, where N < 65536. The default value is 2048.
+    Set the data size of the mbufs used to N bytes, where N < 65536.
+    The default value is 2048. If multiple mbuf-size values are specified the
+    extra memory pools will be created for allocating mbufs to receive packets
+    with buffer splittling features.
 
 *   ``--total-num-mbufs=N``
 

@@ -69,7 +69,7 @@ bpf_parse_flags(const char *str, struct rte_bpf_arg *arg, uint32_t *flags)
 
 	*flags = RTE_BPF_ETH_F_NONE;
 	arg->type = RTE_BPF_ARG_PTR;
-	arg->size = mbuf_data_size;
+	arg->size = mbuf_data_size[0];
 
 	for (i = 0; str[i] != 0; i++) {
 		v = toupper(str[i]);
@@ -78,7 +78,7 @@ bpf_parse_flags(const char *str, struct rte_bpf_arg *arg, uint32_t *flags)
 		else if (v == 'M') {
 			arg->type = RTE_BPF_ARG_PTR_MBUF;
 			arg->size = sizeof(struct rte_mbuf);
-			arg->buf_size = mbuf_data_size;
+			arg->buf_size = mbuf_data_size[0];
 		} else if (v == '-')
 			continue;
 		else

@@ -690,7 +690,7 @@ port_infos_display(portid_t port_id)
 	printf("\nConnect to socket: %u", port->socket_id);
 
 	if (port_numa[port_id] != NUMA_NO_CONFIG) {
-		mp = mbuf_pool_find(port_numa[port_id]);
+		mp = mbuf_pool_find(port_numa[port_id], 0);
 		if (mp)
 			printf("\nmemory allocation on the socket: %d",
 							port_numa[port_id]);
@@ -3827,9 +3827,9 @@ set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
 	 */
 	tx_pkt_len = 0;
 	for (i = 0; i < nb_segs; i++) {
-		if (seg_lengths[i] > (unsigned) mbuf_data_size) {
+		if (seg_lengths[i] > mbuf_data_size[0]) {
 			printf("length[%u]=%u > mbuf_data_size=%u - give up\n",
-			       i, seg_lengths[i], (unsigned) mbuf_data_size);
+			       i, seg_lengths[i], mbuf_data_size[0]);
 			return;
 		}
 		tx_pkt_len = (uint16_t)(tx_pkt_len + seg_lengths[i]);
