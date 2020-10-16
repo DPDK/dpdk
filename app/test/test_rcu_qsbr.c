@@ -286,13 +286,13 @@ static int
 test_rcu_qsbr_start(void)
 {
 	uint64_t token;
-	int i;
+	unsigned int i;
 
 	printf("\nTest rte_rcu_qsbr_start()\n");
 
 	rte_rcu_qsbr_init(t[0], RTE_MAX_LCORE);
 
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < num_cores; i++)
 		rte_rcu_qsbr_thread_register(t[0], enabled_core_ids[i]);
 
 	token = rte_rcu_qsbr_start(t[0]);
@@ -306,14 +306,18 @@ test_rcu_qsbr_check_reader(void *arg)
 {
 	struct rte_rcu_qsbr *temp;
 	uint8_t read_type = (uint8_t)((uintptr_t)arg);
+	unsigned int i;
 
 	temp = t[read_type];
 
 	/* Update quiescent state counter */
-	rte_rcu_qsbr_quiescent(temp, enabled_core_ids[0]);
-	rte_rcu_qsbr_quiescent(temp, enabled_core_ids[1]);
-	rte_rcu_qsbr_thread_unregister(temp, enabled_core_ids[2]);
-	rte_rcu_qsbr_quiescent(temp, enabled_core_ids[3]);
+	for (i = 0; i < num_cores; i++) {
+		if (i % 2 == 0)
+			rte_rcu_qsbr_quiescent(temp, enabled_core_ids[i]);
+		else
+			rte_rcu_qsbr_thread_unregister(temp,
+							enabled_core_ids[i]);
+	}
 	return 0;
 }
 
@@ -324,7 +328,8 @@ test_rcu_qsbr_check_reader(void *arg)
 static int
 test_rcu_qsbr_check(void)
 {
-	int i, ret;
+	int ret;
+	unsigned int i;
 	uint64_t token;
 
 	printf("\nTest rte_rcu_qsbr_check()\n");
@@ -342,7 +347,7 @@ test_rcu_qsbr_check(void)
 	ret = rte_rcu_qsbr_check(t[0], token, true);
 	TEST_RCU_QSBR_RETURN_IF_ERROR((ret == 0), "Blocking QSBR check");
 
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < num_cores; i++)
 		rte_rcu_qsbr_thread_register(t[0], enabled_core_ids[i]);
 
 	ret = rte_rcu_qsbr_check(t[0], token, false);
@@ -357,7 +362,7 @@ test_rcu_qsbr_check(void)
 	/* Threads are offline, hence this should pass */
 	TEST_RCU_QSBR_RETURN_IF_ERROR((ret == 0), "Non-blocking QSBR check");
 
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < num_cores; i++)
 		rte_rcu_qsbr_thread_unregister(t[0], enabled_core_ids[i]);
 
 	ret = rte_rcu_qsbr_check(t[0], token, true);
@@ -365,7 +370,7 @@ test_rcu_qsbr_check(void)
 
 	rte_rcu_qsbr_init(t[0], RTE_MAX_LCORE);
 
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < num_cores; i++)
 		rte_rcu_qsbr_thread_register(t[0], enabled_core_ids[i]);
 
 	token = rte_rcu_qsbr_start(t[0]);
@@ -928,7 +933,7 @@ end:
 static int
 test_rcu_qsbr_dump(void)
 {
-	int i;
+	unsigned int i;
 
 	printf("\nTest rte_rcu_qsbr_dump()\n");
 
@@ -945,7 +950,7 @@ test_rcu_qsbr_dump(void)
 
 	rte_rcu_qsbr_thread_register(t[0], enabled_core_ids[0]);
 
-	for (i = 1; i < 3; i++)
+	for (i = 1; i < num_cores; i++)
 		rte_rcu_qsbr_thread_register(t[1], enabled_core_ids[i]);
 
 	rte_rcu_qsbr_dump(stdout, t[0]);
@@ -1095,7 +1100,7 @@ test_rcu_qsbr_sw_sv_3qs(void)
 {
 	uint64_t token[3];
 	uint32_t c;
-	int i;
+	int i, num_readers;
 	int32_t pos[3];
 
 	writer_done = 0;
@@ -1118,7 +1123,11 @@ test_rcu_qsbr_sw_sv_3qs(void)
 	thread_info[0].ih = 0;
 
 	/* Reader threads are launched */
-	for (i = 0; i < 4; i++)
+	/* Keep the number of reader threads low to reduce
+	 * the execution time.
+	 */
+	num_readers = num_cores < 4 ? num_cores : 4;
+	for (i = 0; i < num_readers; i++)
 		rte_eal_remote_launch(test_rcu_qsbr_reader, &thread_info[0],
 					enabled_core_ids[i]);
 
@@ -1151,7 +1160,7 @@ test_rcu_qsbr_sw_sv_3qs(void)
 
 	/* Check the quiescent state status */
 	rte_rcu_qsbr_check(t[0], token[0], true);
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < num_readers; i++) {
 		c = hash_data[0][0][enabled_core_ids[i]];
 		if (c != COUNTER_VALUE && c != 0) {
 			printf("Reader lcore %d did not complete #0 = %d\n",
@@ -1169,7 +1178,7 @@ test_rcu_qsbr_sw_sv_3qs(void)
 
 	/* Check the quiescent state status */
 	rte_rcu_qsbr_check(t[0], token[1], true);
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < num_readers; i++) {
 		c = hash_data[0][3][enabled_core_ids[i]];
 		if (c != COUNTER_VALUE && c != 0) {
 			printf("Reader lcore %d did not complete #3 = %d\n",
@@ -1187,7 +1196,7 @@ test_rcu_qsbr_sw_sv_3qs(void)
 
 	/* Check the quiescent state status */
 	rte_rcu_qsbr_check(t[0], token[2], true);
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < num_readers; i++) {
 		c = hash_data[0][6][enabled_core_ids[i]];
 		if (c != COUNTER_VALUE && c != 0) {
 			printf("Reader lcore %d did not complete #6 = %d\n",
@@ -1206,7 +1215,7 @@ test_rcu_qsbr_sw_sv_3qs(void)
 	writer_done = 1;
 
 	/* Wait and check return value from reader threads */
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < num_readers; i++)
 		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
 	rte_hash_free(h[0]);
@@ -1235,6 +1244,12 @@ test_rcu_qsbr_mw_mv_mqs(void)
 {
 	unsigned int i, j;
 	unsigned int test_cores;
+
+	if (RTE_MAX_LCORE < 5 || num_cores < 4) {
+		printf("Not enough cores for %s, expecting at least 5\n",
+			__func__);
+		return TEST_SKIPPED;
+	}
 
 	writer_done = 0;
 	test_cores = num_cores / 4;
@@ -1320,11 +1335,6 @@ static int
 test_rcu_qsbr_main(void)
 {
 	uint16_t core_id;
-
-	if (rte_lcore_count() < 5) {
-		printf("Not enough cores for rcu_qsbr_autotest, expecting at least 5\n");
-		return TEST_SKIPPED;
-	}
 
 	num_cores = 0;
 	RTE_LCORE_FOREACH_WORKER(core_id) {
