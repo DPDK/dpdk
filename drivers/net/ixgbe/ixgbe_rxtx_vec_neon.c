@@ -130,17 +130,6 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 	rx_pkts[3]->ol_flags = vol.e[3];
 }
 
-/*
- * vPMD raw receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)
- *
- * Notice:
- * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
- * - nb_pkts > RTE_IXGBE_MAX_RX_BURST, only scan RTE_IXGBE_MAX_RX_BURST
- *   numbers of DD bit
- * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
- * - don't support ol_flags for rss and csum err
- */
-
 #define IXGBE_VPMD_DESC_EOP_MASK	0x02020202
 #define IXGBE_UINT8_BIT			(CHAR_BIT * sizeof(uint8_t))
 
@@ -206,6 +195,13 @@ desc_to_ptype_v(uint64x2_t descs[4], uint16_t pkt_type_mask,
 				vgetq_lane_u32(tunnel_check, 3));
 }
 
+/**
+ * vPMD raw receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)
+ *
+ * Notice:
+ * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
+ * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
+ */
 static inline uint16_t
 _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		   uint16_t nb_pkts, uint8_t *split_packet)
@@ -225,9 +221,6 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		};
 	uint16x8_t crc_adjust = {0, 0, rxq->crc_len, 0,
 				 rxq->crc_len, 0, 0, 0};
-
-	/* nb_pkts shall be less equal than RTE_IXGBE_MAX_RX_BURST */
-	nb_pkts = RTE_MIN(nb_pkts, RTE_IXGBE_MAX_RX_BURST);
 
 	/* nb_pkts has to be floor-aligned to RTE_IXGBE_DESCS_PER_LOOP */
 	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_IXGBE_DESCS_PER_LOOP);
@@ -382,13 +375,11 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	return nb_pkts_recd;
 }
 
-/*
+/**
  * vPMD receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)
  *
  * Notice:
  * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
- * - nb_pkts > RTE_IXGBE_MAX_RX_BURST, only scan RTE_IXGBE_MAX_RX_BURST
- *   numbers of DD bit
  * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
  * - don't support ol_flags for rss and csum err
  */
@@ -399,19 +390,17 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return _recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
 }
 
-/*
+/**
  * vPMD receive routine that reassembles scattered packets
  *
  * Notice:
  * - don't support ol_flags for rss and csum err
  * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
- * - nb_pkts > RTE_IXGBE_MAX_RX_BURST, only scan RTE_IXGBE_MAX_RX_BURST
- *   numbers of DD bit
  * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
  */
-uint16_t
-ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
-		uint16_t nb_pkts)
+static uint16_t
+ixgbe_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+			       uint16_t nb_pkts)
 {
 	struct ixgbe_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[RTE_IXGBE_MAX_RX_BURST] = {0};
@@ -441,6 +430,32 @@ ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	}
 	return i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
 		&split_flags[i]);
+}
+
+/**
+ * vPMD receive routine that reassembles scattered packets.
+ */
+uint16_t
+ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+			      uint16_t nb_pkts)
+{
+	uint16_t retval = 0;
+
+	while (nb_pkts > RTE_IXGBE_MAX_RX_BURST) {
+		uint16_t burst;
+
+		burst = ixgbe_recv_scattered_burst_vec(rx_queue,
+						       rx_pkts + retval,
+						       RTE_IXGBE_MAX_RX_BURST);
+		retval += burst;
+		nb_pkts -= burst;
+		if (burst < RTE_IXGBE_MAX_RX_BURST)
+			return retval;
+	}
+
+	return retval + ixgbe_recv_scattered_burst_vec(rx_queue,
+						       rx_pkts + retval,
+						       nb_pkts);
 }
 
 static inline void
