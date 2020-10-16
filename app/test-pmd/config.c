@@ -1521,6 +1521,115 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 
 /* Generic flow management functions. */
 
+static struct port_flow_tunnel *
+port_flow_locate_tunnel_id(struct rte_port *port, uint32_t port_tunnel_id)
+{
+	struct port_flow_tunnel *flow_tunnel;
+
+	LIST_FOREACH(flow_tunnel, &port->flow_tunnel_list, chain) {
+		if (flow_tunnel->id == port_tunnel_id)
+			goto out;
+	}
+	flow_tunnel = NULL;
+
+out:
+	return flow_tunnel;
+}
+
+const char *
+port_flow_tunnel_type(struct rte_flow_tunnel *tunnel)
+{
+	const char *type;
+	switch (tunnel->type) {
+	default:
+		type = "unknown";
+		break;
+	case RTE_FLOW_ITEM_TYPE_VXLAN:
+		type = "vxlan";
+		break;
+	}
+
+	return type;
+}
+
+struct port_flow_tunnel *
+port_flow_locate_tunnel(uint16_t port_id, struct rte_flow_tunnel *tun)
+{
+	struct rte_port *port = &ports[port_id];
+	struct port_flow_tunnel *flow_tunnel;
+
+	LIST_FOREACH(flow_tunnel, &port->flow_tunnel_list, chain) {
+		if (!memcmp(&flow_tunnel->tunnel, tun, sizeof(*tun)))
+			goto out;
+	}
+	flow_tunnel = NULL;
+
+out:
+	return flow_tunnel;
+}
+
+void port_flow_tunnel_list(portid_t port_id)
+{
+	struct rte_port *port = &ports[port_id];
+	struct port_flow_tunnel *flt;
+
+	LIST_FOREACH(flt, &port->flow_tunnel_list, chain) {
+		printf("port %u tunnel #%u type=%s",
+			port_id, flt->id, port_flow_tunnel_type(&flt->tunnel));
+		if (flt->tunnel.tun_id)
+			printf(" id=%" PRIu64, flt->tunnel.tun_id);
+		printf("\n");
+	}
+}
+
+void port_flow_tunnel_destroy(portid_t port_id, uint32_t tunnel_id)
+{
+	struct rte_port *port = &ports[port_id];
+	struct port_flow_tunnel *flt;
+
+	LIST_FOREACH(flt, &port->flow_tunnel_list, chain) {
+		if (flt->id == tunnel_id)
+			break;
+	}
+	if (flt) {
+		LIST_REMOVE(flt, chain);
+		free(flt);
+		printf("port %u: flow tunnel #%u destroyed\n",
+			port_id, tunnel_id);
+	}
+}
+
+void port_flow_tunnel_create(portid_t port_id, const struct tunnel_ops *ops)
+{
+	struct rte_port *port = &ports[port_id];
+	enum rte_flow_item_type	type;
+	struct port_flow_tunnel *flt;
+
+	if (!strcmp(ops->type, "vxlan"))
+		type = RTE_FLOW_ITEM_TYPE_VXLAN;
+	else {
+		printf("cannot offload \"%s\" tunnel type\n", ops->type);
+		return;
+	}
+	LIST_FOREACH(flt, &port->flow_tunnel_list, chain) {
+		if (flt->tunnel.type == type)
+			break;
+	}
+	if (!flt) {
+		flt = calloc(1, sizeof(*flt));
+		if (!flt) {
+			printf("failed to allocate port flt object\n");
+			return;
+		}
+		flt->tunnel.type = type;
+		flt->id = LIST_EMPTY(&port->flow_tunnel_list) ? 1 :
+				  LIST_FIRST(&port->flow_tunnel_list)->id + 1;
+		LIST_INSERT_HEAD(&port->flow_tunnel_list, flt, chain);
+	}
+	printf("port %d: flow tunnel #%u type %s\n",
+		port_id, flt->id, ops->type);
+}
+
 /** Generate a port_flow entry from attributes/pattern/actions. */
 static struct port_flow *
 port_flow_new(const struct rte_flow_attr *attr,
@@ -1860,20 +1969,137 @@ port_shared_action_query(portid_t port_id, uint32_t id)
 	}
 	return ret;
 }
+static struct port_flow_tunnel *
+port_flow_tunnel_offload_cmd_prep(portid_t port_id,
+				  const struct rte_flow_item *pattern,
+				  const struct rte_flow_action *actions,
+				  const struct tunnel_ops *tunnel_ops)
+{
+	int ret;
+	struct rte_port *port;
+	struct port_flow_tunnel *pft;
+	struct rte_flow_error error;
+
+	port = &ports[port_id];
+	pft = port_flow_locate_tunnel_id(port, tunnel_ops->id);
+	if (!pft) {
+		printf("failed to locate port flow tunnel #%u\n",
+			tunnel_ops->id);
+		return NULL;
+	}
+	if (tunnel_ops->actions) {
+		uint32_t num_actions;
+		const struct rte_flow_action *aptr;
+
+		ret = rte_flow_tunnel_decap_set(port_id, &pft->tunnel,
+						&pft->pmd_actions,
+						&pft->num_pmd_actions,
+						&error);
+		if (ret) {
+			port_flow_complain(&error);
+			return NULL;
+		}
+		for (aptr = actions, num_actions = 1;
+		     aptr->type != RTE_FLOW_ACTION_TYPE_END;
+		     aptr++, num_actions++);
+		pft->actions = malloc(
+				(num_actions +  pft->num_pmd_actions) *
+				sizeof(actions[0]));
+		if (!pft->actions) {
+			rte_flow_tunnel_action_decap_release(
+					port_id, pft->actions,
+					pft->num_pmd_actions, &error);
+			return NULL;
+		}
+		rte_memcpy(pft->actions, pft->pmd_actions,
+			   pft->num_pmd_actions * sizeof(actions[0]));
+		rte_memcpy(pft->actions + pft->num_pmd_actions, actions,
+			   num_actions * sizeof(actions[0]));
+	}
+	if (tunnel_ops->items) {
+		uint32_t num_items;
+		const struct rte_flow_item *iptr;
+
+		ret = rte_flow_tunnel_match(port_id, &pft->tunnel,
+					    &pft->pmd_items,
+					    &pft->num_pmd_items,
+					    &error);
+		if (ret) {
+			port_flow_complain(&error);
+			return NULL;
+		}
+		for (iptr = pattern, num_items = 1;
+		     iptr->type != RTE_FLOW_ITEM_TYPE_END;
+		     iptr++, num_items++);
+		pft->items = malloc((num_items + pft->num_pmd_items) *
+				    sizeof(pattern[0]));
+		if (!pft->items) {
+			rte_flow_tunnel_item_release(
+					port_id, pft->pmd_items,
+					pft->num_pmd_items, &error);
+			return NULL;
+		}
+		rte_memcpy(pft->items, pft->pmd_items,
+			   pft->num_pmd_items * sizeof(pattern[0]));
+		rte_memcpy(pft->items + pft->num_pmd_items, pattern,
+			   num_items * sizeof(pattern[0]));
+	}
+
+	return pft;
+}
+
+static void
+port_flow_tunnel_offload_cmd_release(portid_t port_id,
+				     const struct tunnel_ops *tunnel_ops,
+				     struct port_flow_tunnel *pft)
+{
+	struct rte_flow_error error;
+
+	if (tunnel_ops->actions) {
+		free(pft->actions);
+		rte_flow_tunnel_action_decap_release(
+			port_id, pft->pmd_actions,
+			pft->num_pmd_actions, &error);
+		pft->actions = NULL;
+		pft->pmd_actions = NULL;
+	}
+	if (tunnel_ops->items) {
+		free(pft->items);
+		rte_flow_tunnel_item_release(port_id, pft->pmd_items,
+					     pft->num_pmd_items,
+					     &error);
+		pft->items = NULL;
+		pft->pmd_items = NULL;
+	}
+}
 
 /** Validate flow rule. */
 int
 port_flow_validate(portid_t port_id,
 		   const struct rte_flow_attr *attr,
 		   const struct rte_flow_item *pattern,
-		   const struct rte_flow_action *actions)
+		   const struct rte_flow_action *actions,
+		   const struct tunnel_ops *tunnel_ops)
 {
 	struct rte_flow_error error;
+	struct port_flow_tunnel *pft = NULL;
 
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x11, sizeof(error));
+	if (tunnel_ops->enabled) {
+		pft = port_flow_tunnel_offload_cmd_prep(port_id, pattern,
+							actions, tunnel_ops);
+		if (!pft)
+			return -ENOENT;
+		if (pft->items)
+			pattern = pft->items;
+		if (pft->actions)
+			actions = pft->actions;
+	}
 	if (rte_flow_validate(port_id, attr, pattern, actions, &error))
 		return port_flow_complain(&error);
+	if (tunnel_ops->enabled)
+		port_flow_tunnel_offload_cmd_release(port_id, tunnel_ops, pft);
 	printf("Flow rule validated\n");
 	return 0;
 }
@@ -1903,13 +2129,15 @@ int
 port_flow_create(portid_t port_id,
 		 const struct rte_flow_attr *attr,
 		 const struct rte_flow_item *pattern,
-		 const struct rte_flow_action *actions)
+		 const struct rte_flow_action *actions,
+		 const struct tunnel_ops *tunnel_ops)
 {
 	struct rte_flow *flow;
 	struct rte_port *port;
 	struct port_flow *pf;
 	uint32_t id = 0;
 	struct rte_flow_error error;
+	struct port_flow_tunnel *pft = NULL;
 
 	port = &ports[port_id];
 	if (port->flow_list) {
@@ -1919,6 +2147,16 @@ port_flow_create(portid_t port_id,
 			return -ENOMEM;
 		}
 		id = port->flow_list->id + 1;
+	}
+	if (tunnel_ops->enabled) {
+		pft = port_flow_tunnel_offload_cmd_prep(port_id, pattern,
+							actions, tunnel_ops);
+		if (!pft)
+			return -ENOENT;
+		if (pft->items)
+			pattern = pft->items;
+		if (pft->actions)
+			actions = pft->actions;
 	}
 	pf = port_flow_new(attr, pattern, actions, &error);
 	if (!pf)
@@ -1935,6 +2173,8 @@ port_flow_create(portid_t port_id,
 	pf->id = id;
 	pf->flow = flow;
 	port->flow_list = pf;
+	if (tunnel_ops->enabled)
+		port_flow_tunnel_offload_cmd_release(port_id, tunnel_ops, pft);
 	printf("Flow rule #%u created\n", pf->id);
 	return 0;
 }
@@ -2247,7 +2487,9 @@ port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group)
 		       pf->rule.attr->egress ? 'e' : '-',
 		       pf->rule.attr->transfer ? 't' : '-');
 		while (item->type != RTE_FLOW_ITEM_TYPE_END) {
-			if (rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_NAME_PTR,
+			if ((uint32_t)item->type > INT_MAX)
+				name = "PMD_INTERNAL";
+			else if (rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_NAME_PTR,
 					  &name, sizeof(name),
 					  (void *)(uintptr_t)item->type,
 					  NULL) <= 0)
@@ -2258,7 +2500,9 @@ port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group)
 		}
 		printf("=>");
 		while (action->type != RTE_FLOW_ACTION_TYPE_END) {
-			if (rte_flow_conv(RTE_FLOW_CONV_OP_ACTION_NAME_PTR,
+			if ((uint32_t)action->type > INT_MAX)
+				name = "PMD_INTERNAL";
+			else if (rte_flow_conv(RTE_FLOW_CONV_OP_ACTION_NAME_PTR,
 					  &name, sizeof(name),
 					  (void *)(uintptr_t)action->type,
 					  NULL) <= 0)

@@ -74,6 +74,14 @@ enum index {
 	LIST,
 	AGED,
 	ISOLATE,
+	TUNNEL,
+
+	/* Tunnel arguments. */
+	TUNNEL_CREATE,
+	TUNNEL_CREATE_TYPE,
+	TUNNEL_LIST,
+	TUNNEL_DESTROY,
+	TUNNEL_DESTROY_ID,
 
 	/* Destroy arguments. */
 	DESTROY_RULE,
@@ -93,6 +101,8 @@ enum index {
 	INGRESS,
 	EGRESS,
 	TRANSFER,
+	TUNNEL_SET,
+	TUNNEL_MATCH,
 
 	/* Shared action arguments */
 	SHARED_ACTION_CREATE,
@@ -713,6 +723,7 @@ struct buffer {
 		} sa; /* Shared action query arguments */
 		struct {
 			struct rte_flow_attr attr;
+			struct tunnel_ops tunnel_ops;
 			struct rte_flow_item *pattern;
 			struct rte_flow_action *actions;
 			uint32_t pattern_n;
@@ -789,7 +800,29 @@ static const enum index next_vc_attr[] = {
 	INGRESS,
 	EGRESS,
 	TRANSFER,
+	TUNNEL_SET,
+	TUNNEL_MATCH,
 	PATTERN,
+	ZERO,
+};
+
+static const enum index tunnel_create_attr[] = {
+	TUNNEL_CREATE,
+	TUNNEL_CREATE_TYPE,
+	END,
+	ZERO,
+};
+
+static const enum index tunnel_destroy_attr[] = {
+	TUNNEL_DESTROY,
+	TUNNEL_DESTROY_ID,
+	END,
+	ZERO,
+};
+
+static const enum index tunnel_list_attr[] = {
+	TUNNEL_LIST,
+	END,
 	ZERO,
 };
 
@@ -1643,6 +1676,9 @@ static int parse_aged(struct context *, const struct token *,
 static int parse_isolate(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
+static int parse_tunnel(struct context *, const struct token *,
+			const char *, unsigned int,
+			void *, unsigned int);
 static int parse_int(struct context *, const struct token *,
 		     const char *, unsigned int,
 		     void *, unsigned int);
@@ -1844,7 +1880,8 @@ static const struct token token_list[] = {
 			      LIST,
 			      AGED,
 			      QUERY,
-			      ISOLATE)),
+			      ISOLATE,
+			      TUNNEL)),
 		.call = parse_init,
 	},
 	/* Top-level command. */
@@ -1955,6 +1992,49 @@ static const struct token token_list[] = {
 			     ARGS_ENTRY(struct buffer, port)),
 		.call = parse_isolate,
 	},
+	[TUNNEL] = {
+		.name = "tunnel",
+		.help = "new tunnel API",
+		.next = NEXT(NEXT_ENTRY
+			     (TUNNEL_CREATE, TUNNEL_LIST, TUNNEL_DESTROY)),
+		.call = parse_tunnel,
+	},
+	/* Tunnel arguments. */
+	[TUNNEL_CREATE] = {
+		.name = "create",
+		.help = "create new tunnel object",
+		.next = NEXT(tunnel_create_attr, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_tunnel,
+	},
+	[TUNNEL_CREATE_TYPE] = {
+		.name = "type",
+		.help = "create new tunnel",
+		.next = NEXT(tunnel_create_attr, NEXT_ENTRY(FILE_PATH)),
+		.args = ARGS(ARGS_ENTRY(struct tunnel_ops, type)),
+		.call = parse_tunnel,
+	},
+	[TUNNEL_DESTROY] = {
+		.name = "destroy",
+		.help = "destroy tunel",
+		.next = NEXT(tunnel_destroy_attr, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_tunnel,
+	},
+	[TUNNEL_DESTROY_ID] = {
+		.name = "id",
+		.help = "tunnel identifier to testroy",
+		.next = NEXT(tunnel_destroy_attr, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct tunnel_ops, id)),
+		.call = parse_tunnel,
+	},
+	[TUNNEL_LIST] = {
+		.name = "list",
+		.help = "list existing tunnels",
+		.next = NEXT(tunnel_list_attr, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_tunnel,
+	},
 	/* Destroy arguments. */
 	[DESTROY_RULE] = {
 		.name = "rule",
@@ -2016,6 +2096,20 @@ static const struct token token_list[] = {
 		.name = "transfer",
 		.help = "apply rule directly to endpoints found in pattern",
 		.next = NEXT(next_vc_attr),
+		.call = parse_vc,
+	},
+	[TUNNEL_SET] = {
+		.name = "tunnel_set",
+		.help = "tunnel steer rule",
+		.next = NEXT(next_vc_attr, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct tunnel_ops, id)),
+		.call = parse_vc,
+	},
+	[TUNNEL_MATCH] = {
+		.name = "tunnel_match",
+		.help = "tunnel match rule",
+		.next = NEXT(next_vc_attr, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct tunnel_ops, id)),
 		.call = parse_vc,
 	},
 	/* Validate/create pattern. */
@@ -4495,11 +4589,27 @@ parse_vc(struct context *ctx, const struct token *token,
 		return len;
 	}
 	ctx->objdata = 0;
-	ctx->object = &out->args.vc.attr;
+	switch (ctx->curr) {
+	default:
+		ctx->object = &out->args.vc.attr;
+		break;
+	case TUNNEL_SET:
+	case TUNNEL_MATCH:
+		ctx->object = &out->args.vc.tunnel_ops;
+		break;
+	}
 	ctx->objmask = NULL;
 	switch (ctx->curr) {
 	case GROUP:
 	case PRIORITY:
+		return len;
+	case TUNNEL_SET:
+		out->args.vc.tunnel_ops.enabled = 1;
+		out->args.vc.tunnel_ops.actions = 1;
+		return len;
+	case TUNNEL_MATCH:
+		out->args.vc.tunnel_ops.enabled = 1;
+		out->args.vc.tunnel_ops.items = 1;
 		return len;
 	case INGRESS:
 		out->args.vc.attr.ingress = 1;
@@ -6108,6 +6218,47 @@ parse_isolate(struct context *ctx, const struct token *token,
 	return len;
 }
 
+static int
+parse_tunnel(struct context *ctx, const struct token *token,
+	     const char *str, unsigned int len,
+	     void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != TUNNEL)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+	} else {
+		switch (ctx->curr) {
+		default:
+			break;
+		case TUNNEL_CREATE:
+		case TUNNEL_DESTROY:
+		case TUNNEL_LIST:
+			out->command = ctx->curr;
+			break;
+		case TUNNEL_CREATE_TYPE:
+		case TUNNEL_DESTROY_ID:
+			ctx->object = &out->args.vc.tunnel_ops;
+			break;
+		}
+	}
+
+	return len;
+}
+
 /**
  * Parse signed/unsigned integers 8 to 64-bit long.
  *
@@ -7148,11 +7299,13 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case VALIDATE:
 		port_flow_validate(in->port, &in->args.vc.attr,
-				   in->args.vc.pattern, in->args.vc.actions);
+				   in->args.vc.pattern, in->args.vc.actions,
+				   &in->args.vc.tunnel_ops);
 		break;
 	case CREATE:
 		port_flow_create(in->port, &in->args.vc.attr,
-				 in->args.vc.pattern, in->args.vc.actions);
+				 in->args.vc.pattern, in->args.vc.actions,
+				 &in->args.vc.tunnel_ops);
 		break;
 	case DESTROY:
 		port_flow_destroy(in->port, in->args.destroy.rule_n,
@@ -7177,6 +7330,15 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case AGED:
 		port_flow_aged(in->port, in->args.aged.destroy);
+		break;
+	case TUNNEL_CREATE:
+		port_flow_tunnel_create(in->port, &in->args.vc.tunnel_ops);
+		break;
+	case TUNNEL_DESTROY:
+		port_flow_tunnel_destroy(in->port, in->args.vc.tunnel_ops.id);
+		break;
+	case TUNNEL_LIST:
+		port_flow_tunnel_list(in->port);
 		break;
 	default:
 		break;

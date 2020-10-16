@@ -3749,6 +3749,45 @@ following sections.
 
    flow aged {port_id} [destroy]
 
+- Tunnel offload - create a tunnel stub::
+
+   flow tunnel create {port_id} type {tunnel_type}
+
+- Tunnel offload - destroy a tunnel stub::
+
+   flow tunnel destroy {port_id} id {tunnel_id}
+
+- Tunnel offload - list port tunnel stubs::
+
+   flow tunnel list {port_id}
+
+Creating a tunnel stub for offload
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow tunnel create`` setup a tunnel stub for tunnel offload flow rules::
+
+   flow tunnel create {port_id} type {tunnel_type}
+
+If successful, it will return a tunnel stub ID usable with other commands::
+
+   port [...]: flow tunnel #[...] type [...]
+
+Tunnel stub ID is relative to a port.
+
+Destroying tunnel offload stub
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow tunnel destroy`` destroy port tunnel stub::
+
+   flow tunnel destroy {port_id} id {tunnel_id}
+
+Listing tunnel offload stubs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow tunnel list`` list port tunnel offload stubs::
+
+   flow tunnel list {port_id}
+
 Validating flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -3795,6 +3834,7 @@ to ``rte_flow_create()``::
 
    flow create {port_id}
       [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
+      [tunnel_set {tunnel_id}] [tunnel_match {tunnel_id}]
       pattern {item} [/ {item} [...]] / end
       actions {action} [/ {action} [...]] / end
 
@@ -3809,6 +3849,7 @@ Otherwise it will show an error message of the form::
 Parameters describe in the following order:
 
 - Attributes (*group*, *priority*, *ingress*, *egress*, *transfer* tokens).
+- Tunnel offload specification (tunnel_set, tunnel_match)
 - A matching pattern, starting with the *pattern* token and terminated by an
   *end* pattern item.
 - Actions, starting with the *actions* token and terminated by an *end*
@@ -3851,6 +3892,14 @@ simultaneously.
 Most rules affect RX therefore contain the ``ingress`` token::
 
    testpmd> flow create 0 ingress pattern [...]
+
+Tunnel offload
+^^^^^^^^^^^^^^
+
+Indicate tunnel offload rule type
+
+- ``tunnel_set {tunnel_id}``: mark rule as tunnel offload decap_set type.
+- ``tunnel_match {tunnel_id}``:  mark rule as tunel offload match type.
 
 Matching pattern
 ^^^^^^^^^^^^^^^^

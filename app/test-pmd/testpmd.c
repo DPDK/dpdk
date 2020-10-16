@@ -3684,6 +3684,8 @@ init_port_dcb_config(portid_t pid,
 static void
 init_port(void)
 {
+	int i;
+
 	/* Configuration of Ethernet ports. */
 	ports = rte_zmalloc("testpmd: ports",
 			    sizeof(struct rte_port) * RTE_MAX_ETHPORTS,
@@ -3693,7 +3695,8 @@ init_port(void)
 				"rte_zmalloc(%d struct rte_port) failed\n",
 				RTE_MAX_ETHPORTS);
 	}
-
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
+		LIST_INIT(&ports[i].flow_tunnel_list);
 	/* Initialize ports NUMA structures */
 	memset(port_numa, NUMA_NO_CONFIG, RTE_MAX_ETHPORTS);
 	memset(rxring_numa, NUMA_NO_CONFIG, RTE_MAX_ETHPORTS);
