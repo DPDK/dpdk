@@ -12,6 +12,7 @@ from os import environ
 from os.path import basename
 from os.path import dirname
 from os.path import join as path_join
+from sys import argv, stderr
 
 import configparser
 
@@ -22,8 +23,11 @@ try:
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 except:
     print('Install the sphinx ReadTheDocs theme for improved html documentation '
-          'layout: https://sphinx-rtd-theme.readthedocs.io/')
+          'layout: https://sphinx-rtd-theme.readthedocs.io/',
+          file=stderr)
     pass
+
+stop_on_error = ('-W' in argv)
 
 project = 'Data Plane Development Kit'
 html_logo = '../logo/DPDK_logo_vertical_rev_small.png'
@@ -217,7 +221,10 @@ def generate_overview_table(output_filename, table_id, section, table_name, titl
         if not config.has_section(section):
             print("{}: File '{}' has no [{}] secton".format(warning,
                                                             ini_filename,
-                                                            section))
+                                                            section),
+                                                            file=stderr)
+            if stop_on_error:
+                raise Exception('Warning is treated as a failure')
             continue
 
         # Check for valid features names.
@@ -225,7 +232,10 @@ def generate_overview_table(output_filename, table_id, section, table_name, titl
             if name not in valid_features:
                 print("{}: Unknown feature '{}' in '{}'".format(warning,
                                                                 name,
-                                                                ini_filename))
+                                                                ini_filename),
+                                                                file=stderr)
+                if stop_on_error:
+                    raise Exception('Warning is treated as a failure')
                 continue
 
             if value:
@@ -418,7 +428,8 @@ def setup(app):
 
     if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):
         print('Upgrade sphinx to version >= 1.3.1 for '
-              'improved Figure/Table number handling.')
+              'improved Figure/Table number handling.',
+              file=stderr)
         # Add a role to handle :numref: references.
         app.add_role('numref', numref_role)
         # Process the numref references once the doctree has been created.
