@@ -83,6 +83,12 @@ New Features
   * Added optimized implementations of CRC32-Ethernet and CRC16-CCITT
     using the AVX512 and VPCLMULQDQ instruction sets.
 
+* **Introduced extended buffer description for receiving.**
+
+  Added the extended Rx buffer description for Rx queue setup routine
+  providing the individual settings for each Rx segment with maximal size,
+  buffer offset and memory pool to allocate data buffers from.
+
 * **Added the FEC API, for a generic FEC query and config.**
 
   Added the FEC API which provides functions for query FEC capabilities and
@@ -538,6 +544,9 @@ ABI Changes
     every defined extension header type.
     Applications should use the new values for identification of existing
     extensions in the packet header.
+
+  * Added fields ``rx_seg`` and ``rx_nseg`` to ``rte_eth_rxconf`` structure
+    to provide extended description of the receiving buffer.
 
   * ``struct rte_eth_hairpin_conf`` has two new members:
 

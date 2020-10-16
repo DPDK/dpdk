@@ -970,6 +970,61 @@ struct rte_eth_txmode {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * A structure used to configure an Rx packet segment to split.
+ *
+ * If RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT flag is set in offloads field,
+ * the PMD will split the received packets into multiple segments
+ * according to the specification in the description array:
+ *
+ * - The first network buffer will be allocated from the memory pool,
+ *   specified in the first array element, the second buffer, from the
+ *   pool in the second element, and so on.
+ *
+ * - The offsets from the segment description elements specify
+ *   the data offset from the buffer beginning except the first mbuf.
+ *   The first segment offset is added with RTE_PKTMBUF_HEADROOM.
+ *
+ * - The lengths in the elements define the maximal data amount
+ *   being received to each segment. The receiving starts with filling
+ *   up the first mbuf data buffer up to specified length. If the
+ *   there are data remaining (packet is longer than buffer in the first
+ *   mbuf) the following data will be pushed to the next segment
+ *   up to its own length, and so on.
+ *
+ * - If the length in the segment description element is zero
+ *   the actual buffer size will be deduced from the appropriate
+ *   memory pool properties.
+ *
+ * - If there is not enough elements to describe the buffer for entire
+ *   packet of maximal length the following parameters will be used
+ *   for the all remaining segments:
+ *     - pool from the last valid element
+ *     - the buffer size from this pool
+ *     - zero offset
+ */
+struct rte_eth_rxseg_split {
+	struct rte_mempool *mp; /**< Memory pool to allocate segment from. */
+	uint16_t length; /**< Segment data length, configures split point. */
+	uint16_t offset; /**< Data offset from beginning of mbuf data buffer. */
+	uint32_t reserved; /**< Reserved field. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * A common structure used to describe Rx packet segment properties.
+ */
+union rte_eth_rxseg {
+	/* The settings for buffer split offload. */
+	struct rte_eth_rxseg_split split;
+	/* The other features settings should be added here. */
+};
+
+/**
  * A structure used to configure an RX ring of an Ethernet port.
  */
 struct rte_eth_rxconf {
@@ -977,12 +1032,21 @@ struct rte_eth_rxconf {
 	uint16_t rx_free_thresh; /**< Drives the freeing of RX descriptors. */
 	uint8_t rx_drop_en; /**< Drop packets if no descriptors are available. */
 	uint8_t rx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
+	uint16_t rx_nseg; /**< Number of descriptions in rx_seg array. */
 	/**
 	 * Per-queue Rx offloads to be set using DEV_RX_OFFLOAD_* flags.
 	 * Only offloads set on rx_queue_offload_capa or rx_offload_capa
 	 * fields on rte_eth_dev_info structure are allowed to be set.
 	 */
 	uint64_t offloads;
+	/**
+	 * Points to the array of segment descriptions for an entire packet.
+	 * Array elements are properties for consecutive Rx segments.
+	 *
+	 * The supported capabilities of receiving segmentation is reported
+	 * in rte_eth_dev_info.rx_seg_capa field.
+	 */
+	union rte_eth_rxseg *rx_seg;
 
 	uint64_t reserved_64s[2]; /**< Reserved for future fields */
 	void *reserved_ptrs[2];   /**< Reserved for future fields */
@@ -1285,6 +1349,7 @@ struct rte_eth_conf {
 #define DEV_RX_OFFLOAD_SCTP_CKSUM	0x00020000
 #define DEV_RX_OFFLOAD_OUTER_UDP_CKSUM  0x00040000
 #define DEV_RX_OFFLOAD_RSS_HASH		0x00080000
+#define RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT 0x00100000
 
 #define DEV_RX_OFFLOAD_CHECKSUM (DEV_RX_OFFLOAD_IPV4_CKSUM | \
 				 DEV_RX_OFFLOAD_UDP_CKSUM | \
@@ -1401,6 +1466,21 @@ struct rte_eth_switch_info {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * Ethernet device Rx buffer segmentation capabilities.
+ */
+struct rte_eth_rxseg_capa {
+	__extension__
+	uint32_t multi_pools:1; /**< Supports receiving to multiple pools.*/
+	uint32_t offset_allowed:1; /**< Supports buffer offsets. */
+	uint32_t offset_align_log2:4; /**< Required offset alignment. */
+	uint16_t max_nseg; /**< Maximum amount of segments to split. */
+	uint16_t reserved; /**< Reserved field. */
+};
+
+/**
  * Ethernet device information
  */
 
@@ -1428,6 +1508,7 @@ struct rte_eth_dev_info {
 	/** Maximum number of hash MAC addresses for MTA and UTA. */
 	uint16_t max_vfs; /**< Maximum number of VFs. */
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
+	struct rte_eth_rxseg_capa rx_seg_capa; /**< Segmentation capability.*/
 	uint64_t rx_offload_capa;
 	/**< All RX offload capabilities including all per-queue ones */
 	uint64_t tx_offload_capa;
@@ -2054,9 +2135,21 @@ rte_eth_dev_is_removed(uint16_t port_id);
  *   No need to repeat any bit in rx_conf->offloads which has already been
  *   enabled in rte_eth_dev_configure() at port level. An offloading enabled
  *   at port level can't be disabled at queue level.
+ *   The configuration structure also contains the pointer to the array
+ *   of the receiving buffer segment descriptions, see rx_seg and rx_nseg
+ *   fields, this extended configuration might be used by split offloads like
+ *   RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT. If mp_pool is not NULL,
+ *   the extended configuration fields must be set to NULL and zero.
  * @param mb_pool
  *   The pointer to the memory pool from which to allocate *rte_mbuf* network
- *   memory buffers to populate each descriptor of the receive ring.
+ *   memory buffers to populate each descriptor of the receive ring. There are
+ *   two options to provide Rx buffer configuration:
+ *   - single pool:
+ *     mb_pool is not NULL, rx_conf.rx_nseg is 0.
+ *   - multiple segments description:
+ *     mb_pool is NULL, rx_conf.rx_seg is not NULL, rx_conf.rx_nseg is not 0.
+ *     Taken only if flag RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT is set in offloads.
+ *
  * @return
  *   - 0: Success, receive queue correctly set up.
  *   - -EIO: if device is removed.
