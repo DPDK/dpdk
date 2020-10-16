@@ -1143,3 +1143,115 @@ rte_flow_shared_action_query(uint16_t port_id,
 				       data, error);
 	return flow_err(port_id, ret, error);
 }
+
+int
+rte_flow_tunnel_decap_set(uint16_t port_id,
+			  struct rte_flow_tunnel *tunnel,
+			  struct rte_flow_action **actions,
+			  uint32_t *num_of_actions,
+			  struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (likely(!!ops->tunnel_decap_set)) {
+		return flow_err(port_id,
+				ops->tunnel_decap_set(dev, tunnel, actions,
+						      num_of_actions, error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}
+
+int
+rte_flow_tunnel_match(uint16_t port_id,
+		      struct rte_flow_tunnel *tunnel,
+		      struct rte_flow_item **items,
+		      uint32_t *num_of_items,
+		      struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (likely(!!ops->tunnel_match)) {
+		return flow_err(port_id,
+				ops->tunnel_match(dev, tunnel, items,
+						  num_of_items, error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}
+
+int
+rte_flow_get_restore_info(uint16_t port_id,
+			  struct rte_mbuf *m,
+			  struct rte_flow_restore_info *restore_info,
+			  struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (likely(!!ops->get_restore_info)) {
+		return flow_err(port_id,
+				ops->get_restore_info(dev, m, restore_info,
+						      error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}
+
+int
+rte_flow_tunnel_action_decap_release(uint16_t port_id,
+				     struct rte_flow_action *actions,
+				     uint32_t num_of_actions,
+				     struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (likely(!!ops->action_release)) {
+		return flow_err(port_id,
+				ops->action_release(dev, actions,
+						    num_of_actions, error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}
+
+int
+rte_flow_tunnel_item_release(uint16_t port_id,
+			     struct rte_flow_item *items,
+			     uint32_t num_of_items,
+			     struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (unlikely(!ops))
+		return -rte_errno;
+	if (likely(!!ops->item_release)) {
+		return flow_err(port_id,
+				ops->item_release(dev, items,
+						  num_of_items, error),
+				error);
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(ENOTSUP));
+}

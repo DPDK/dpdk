@@ -3131,6 +3131,84 @@ operations include:
 - Duplication of a complete flow rule description.
 - Pattern item or action name retrieval.
 
+Tunneled traffic offload
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+rte_flow API provides the building blocks for vendor-agnostic flow
+classification offloads. The rte_flow "patterns" and "actions"
+primitives are fine-grained, thus enabling DPDK applications the
+flexibility to offload network stacks and complex pipelines.
+Applications wishing to offload tunneled traffic are required to use
+the rte_flow primitives, such as group, meta, mark, tag, and others to
+model their high-level objects.  The hardware model design for
+high-level software objects is not trivial.  Furthermore, an optimal
+design is often vendor-specific.
+
+When hardware offloads tunneled traffic in multi-group logic,
+partially offloaded packets may arrive to the application after they
+were modified in hardware. In this case, the application may need to
+restore the original packet headers. Consider the following sequence:
+The application decaps a packet in one group and jumps to a second
+group where it tries to match on a 5-tuple, that will miss and send
+the packet to the application. In this case, the application does not
+receive the original packet but a modified one. Also, in this case,
+the application cannot match on the outer header fields, such as VXLAN
+vni and 5-tuple.
+
+There are several possible ways to use rte_flow "patterns" and
+"actions" to resolve the issues above. For example:
+
+1 Mapping headers to a hardware registers using the
+rte_flow_action_mark/rte_flow_action_tag/rte_flow_set_meta objects.
+
+2 Apply the decap only at the last offload stage after all the
+"patterns" were matched and the packet will be fully offloaded.
+
+Every approach has its pros and cons and is highly dependent on the
+hardware vendor.  For example, some hardware may have a limited number
+of registers while other hardware could not support inner actions and
+must decap before accessing inner headers.
+
+The tunnel offload model resolves these issues. The model goals are:
+
+1 Provide a unified application API to offload tunneled traffic that
+is capable to match on outer headers after decap.
+
+2 Allow the application to restore the outer header of partially
+offloaded packets.
+
+The tunnel offload model does not introduce new elements to the
+existing RTE flow model and is implemented as a set of helper
+functions.
+
+For the application to work with the tunnel offload API it
+has to adjust flow rules in multi-table tunnel offload in the
+following way:
+
+1 Remove explicit call to decap action and replace it with PMD actions
+obtained from rte_flow_tunnel_decap_and_set() helper.
+
+2 Add PMD items obtained from rte_flow_tunnel_match() helper to all
+other rules in the tunnel offload sequence.
+
+The model requirements:
+
+Software application must initialize
+rte_tunnel object with tunnel parameters before calling
+rte_flow_tunnel_decap_set() & rte_flow_tunnel_match().
+
+PMD actions array obtained in rte_flow_tunnel_decap_set() must be
+released by application with rte_flow_action_release() call.
+
+PMD items array obtained with rte_flow_tunnel_match() must be released
+by application with rte_flow_item_release() call.  Application can
+release PMD items and actions after rule was created. However, if the
+application needs to create additional rule for the same tunnel it
+will need to obtain PMD items again.
+
+Application cannot destroy rte_tunnel object before it releases all
+PMD actions & PMD items referencing that tunnel.
+
 Caveats
 -------
 

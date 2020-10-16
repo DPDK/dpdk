@@ -239,6 +239,11 @@ EXPERIMENTAL {
 	rte_flow_shared_action_destroy;
 	rte_flow_shared_action_query;
 	rte_flow_shared_action_update;
+	rte_flow_tunnel_decap_set;
+	rte_flow_tunnel_match;
+	rte_flow_get_restore_info;
+	rte_flow_tunnel_action_decap_release;
+	rte_flow_tunnel_item_release;
 };
 
 INTERNAL {

@@ -3620,6 +3620,201 @@ rte_flow_shared_action_query(uint16_t port_id,
 			     void *data,
 			     struct rte_flow_error *error);
 
+/* Tunnel has a type and the key information. */
+struct rte_flow_tunnel {
+	/**
+	 * Tunnel type, for example RTE_FLOW_ITEM_TYPE_VXLAN,
+	 * RTE_FLOW_ITEM_TYPE_NVGRE etc.
+	 */
+	enum rte_flow_item_type	type;
+	uint64_t tun_id; /**< Tunnel identification. */
+
+	RTE_STD_C11
+	union {
+		struct {
+			rte_be32_t src_addr; /**< IPv4 source address. */
+			rte_be32_t dst_addr; /**< IPv4 destination address. */
+		} ipv4;
+		struct {
+			uint8_t src_addr[16]; /**< IPv6 source address. */
+			uint8_t dst_addr[16]; /**< IPv6 destination address. */
+		} ipv6;
+	};
+	rte_be16_t tp_src; /**< Tunnel port source. */
+	rte_be16_t tp_dst; /**< Tunnel port destination. */
+	uint16_t   tun_flags; /**< Tunnel flags. */
+
+	bool       is_ipv6; /**< True for valid IPv6 fields. Otherwise IPv4. */
+
+	/**
+	 * the following members are required to restore packet
+	 * after miss
+	 */
+	uint8_t    tos; /**< TOS for IPv4, TC for IPv6. */
+	uint8_t    ttl; /**< TTL for IPv4, HL for IPv6. */
+	uint32_t label; /**< Flow Label for IPv6. */
+};
+
+/**
+ * Indicate that the packet has a tunnel.
+ */
+#define RTE_FLOW_RESTORE_INFO_TUNNEL  (1ULL << 0)
+
+/**
+ * Indicate that the packet has a non decapsulated tunnel header.
+ */
+#define RTE_FLOW_RESTORE_INFO_ENCAPSULATED  (1ULL << 1)
+
+/**
+ * Indicate that the packet has a group_id.
+ */
+#define RTE_FLOW_RESTORE_INFO_GROUP_ID  (1ULL << 2)
+
+/**
+ * Restore information structure to communicate the current packet processing
+ * state when some of the processing pipeline is done in hardware and should
+ * continue in software.
+ */
+struct rte_flow_restore_info {
+	/**
+	 * Bitwise flags (RTE_FLOW_RESTORE_INFO_*) to indicate validation of
+	 * other fields in struct rte_flow_restore_info.
+	 */
+	uint64_t flags;
+	uint32_t group_id; /**< Group ID where packed missed */
+	struct rte_flow_tunnel tunnel; /**< Tunnel information. */
+};
+
+/**
+ * Allocate an array of actions to be used in rte_flow_create, to implement
+ * tunnel-decap-set for the given tunnel.
+ * Sample usage:
+ *   actions vxlan_decap / tunnel-decap-set(tunnel properties) /
+ *            jump group 0 / end
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] tunnel
+ *   Tunnel properties.
+ * @param[out] actions
+ *   Array of actions to be allocated by the PMD. This array should be
+ *   concatenated with the actions array provided to rte_flow_create.
+ * @param[out] num_of_actions
+ *   Number of actions allocated.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_tunnel_decap_set(uint16_t port_id,
+			  struct rte_flow_tunnel *tunnel,
+			  struct rte_flow_action **actions,
+			  uint32_t *num_of_actions,
+			  struct rte_flow_error *error);
+
+/**
+ * Allocate an array of items to be used in rte_flow_create, to implement
+ * tunnel-match for the given tunnel.
+ * Sample usage:
+ *   pattern tunnel-match(tunnel properties) / outer-header-matches /
+ *           inner-header-matches / end
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] tunnel
+ *   Tunnel properties.
+ * @param[out] items
+ *   Array of items to be allocated by the PMD. This array should be
+ *   concatenated with the items array provided to rte_flow_create.
+ * @param[out] num_of_items
+ *   Number of items allocated.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_tunnel_match(uint16_t port_id,
+		      struct rte_flow_tunnel *tunnel,
+		      struct rte_flow_item **items,
+		      uint32_t *num_of_items,
+		      struct rte_flow_error *error);
+
+/**
+ * Populate the current packet processing state, if exists, for the given mbuf.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] m
+ *   Mbuf struct.
+ * @param[out] info
+ *   Restore information. Upon success contains the HW state.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_get_restore_info(uint16_t port_id,
+			  struct rte_mbuf *m,
+			  struct rte_flow_restore_info *info,
+			  struct rte_flow_error *error);
+
+/**
+ * Release the action array as allocated by rte_flow_tunnel_decap_set.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] actions
+ *   Array of actions to be released.
+ * @param[in] num_of_actions
+ *   Number of elements in actions array.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_tunnel_action_decap_release(uint16_t port_id,
+				     struct rte_flow_action *actions,
+				     uint32_t num_of_actions,
+				     struct rte_flow_error *error);
+
+/**
+ * Release the item array as allocated by rte_flow_tunnel_match.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] items
+ *   Array of items to be released.
+ * @param[in] num_of_items
+ *   Number of elements in item array.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_tunnel_item_release(uint16_t port_id,
+			     struct rte_flow_item *items,
+			     uint32_t num_of_items,
+			     struct rte_flow_error *error);
 #ifdef __cplusplus
 }
 #endif

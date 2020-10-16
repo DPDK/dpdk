@@ -115,6 +115,11 @@ New Features
   * Flow rule verification was updated to accept private PMD
     items and actions.
 
+* **Added generic API to offload tunneled traffic and restore missed packet.**
+
+  * Added a new hardware independent helper to flow API that
+    offloads tunneled traffic and restores missed packets.
+
 * **Updated the ethdev library to support hairpin between two ports.**
 
   New APIs are introduced to support binding / unbinding 2 ports hairpin.
