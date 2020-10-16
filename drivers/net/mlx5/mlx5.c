@@ -2042,6 +2042,7 @@ static int
 mlx5_pci_remove(struct rte_pci_device *pci_dev)
 {
 	uint16_t port_id;
+	int ret = 0;
 
 	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device) {
 		/*
@@ -2049,11 +2050,11 @@ mlx5_pci_remove(struct rte_pci_device *pci_dev)
 		 * call the close function explicitly for secondary process.
 		 */
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-			mlx5_dev_close(&rte_eth_devices[port_id]);
+			ret |= mlx5_dev_close(&rte_eth_devices[port_id]);
 		else
-			rte_eth_dev_close(port_id);
+			ret |= rte_eth_dev_close(port_id);
 	}
-	return 0;
+	return ret == 0 ? 0 : -EIO;
 }
 
 static const struct rte_pci_id mlx5_pci_id_map[] = {

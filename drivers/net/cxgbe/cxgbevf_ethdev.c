@@ -183,12 +183,13 @@ static int eth_cxgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	uint16_t port_id;
+	int err = 0;
 
 	/* Free up other ports and all resources */
 	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device)
-		rte_eth_dev_close(port_id);
+		err |= rte_eth_dev_close(port_id);
 
-	return 0;
+	return err == 0 ? 0 : -EIO;
 }
 
 static int eth_cxgbevf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,

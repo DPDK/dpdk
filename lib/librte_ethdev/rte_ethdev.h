@@ -2513,8 +2513,11 @@ int rte_eth_dev_set_link_down(uint16_t port_id);
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @return
+ *   - Zero if the port is closed successfully.
+ *   - Negative if something went wrong.
  */
-void rte_eth_dev_close(uint16_t port_id);
+int rte_eth_dev_close(uint16_t port_id);
 
 /**
  * Reset a Ethernet device and keep its port id.

@@ -1850,9 +1850,7 @@ rte_pmd_memif_remove(struct rte_vdev_device *vdev)
 	if (eth_dev == NULL)
 		return 0;
 
-	rte_eth_dev_close(eth_dev->data->port_id);
-
-	return 0;
+	return rte_eth_dev_close(eth_dev->data->port_id);
 }
 
 static struct rte_vdev_driver pmd_memif_drv = {

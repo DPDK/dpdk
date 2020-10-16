@@ -128,7 +128,6 @@ Deprecation Notices
   invalid port ID, unsupported operation, failed operation):
 
   - ``rte_eth_dev_stop``
-  - ``rte_eth_dev_close``
 
 * ethdev: New offload flags ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
   This will allow application to enable or disable PMDs from updating

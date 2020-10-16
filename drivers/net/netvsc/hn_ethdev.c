@@ -842,14 +842,16 @@ hn_dev_stop(struct rte_eth_dev *dev)
 static int
 hn_dev_close(struct rte_eth_dev *dev)
 {
+	int ret;
+
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	hn_vf_close(dev);
+	ret = hn_vf_close(dev);
 	hn_dev_free_queues(dev);
 
-	return 0;
+	return ret;
 }
 
 static const struct eth_dev_ops hn_eth_dev_ops = {

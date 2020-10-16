@@ -3022,14 +3022,15 @@ static int
 rte_pmd_mrvl_remove(struct rte_vdev_device *vdev)
 {
 	uint16_t port_id;
+	int ret = 0;
 
 	RTE_ETH_FOREACH_DEV(port_id) {
 		if (rte_eth_devices[port_id].device != &vdev->device)
 			continue;
-		rte_eth_dev_close(port_id);
+		ret |= rte_eth_dev_close(port_id);
 	}
 
-	return 0;
+	return ret == 0 ? 0 : -EIO;
 }
 
 static struct rte_vdev_driver pmd_mrvl_drv = {

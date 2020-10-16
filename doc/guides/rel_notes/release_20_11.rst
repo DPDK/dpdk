@@ -422,6 +422,8 @@ API Changes
 
 * ethdev: Added capability to query age flow action.
 
+* ethdev: Added ``int`` return type to ``rte_eth_dev_close()``.
+
 * ethdev: Renamed internal functions:
 
   * ``_rte_eth_dev_callback_process()`` -> ``rte_eth_dev_callback_process()``

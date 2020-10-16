@@ -287,7 +287,11 @@ fs_dev_remove(struct sub_device *sdev)
 		/* fallthrough */
 	case DEV_ACTIVE:
 		failsafe_eth_dev_unregister_callbacks(sdev);
-		rte_eth_dev_close(PORT_ID(sdev));
+		ret = rte_eth_dev_close(PORT_ID(sdev));
+		if (ret < 0) {
+			ERROR("Port close failed for sub-device %u",
+			      PORT_ID(sdev));
+		}
 		sdev->state = DEV_PROBED;
 		/* fallthrough */
 	case DEV_PROBED:

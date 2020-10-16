@@ -316,18 +316,21 @@ void hn_vf_reset(struct rte_eth_dev *dev)
 	VF_ETHDEV_FUNC(dev, rte_eth_dev_reset);
 }
 
-void hn_vf_close(struct rte_eth_dev *dev)
+int hn_vf_close(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	uint16_t vf_port;
+	int ret = 0;
 
 	rte_rwlock_read_lock(&hv->vf_lock);
 	vf_port = hv->vf_port;
 	if (vf_port != HN_INVALID_PORT)
-		rte_eth_dev_close(vf_port);
+		ret = rte_eth_dev_close(vf_port);
 
 	hv->vf_port = HN_INVALID_PORT;
 	rte_rwlock_read_unlock(&hv->vf_lock);
+
+	return ret;
 }
 
 int hn_vf_stats_reset(struct rte_eth_dev *dev)

@@ -217,7 +217,7 @@ const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev);
 int	hn_vf_start(struct rte_eth_dev *dev);
 void	hn_vf_reset(struct rte_eth_dev *dev);
 void	hn_vf_stop(struct rte_eth_dev *dev);
-void	hn_vf_close(struct rte_eth_dev *dev);
+int	hn_vf_close(struct rte_eth_dev *dev);
 
 int	hn_vf_allmulticast_enable(struct rte_eth_dev *dev);
 int	hn_vf_allmulticast_disable(struct rte_eth_dev *dev);
