@@ -4658,7 +4658,7 @@ instr_jmp_invalid_translate(struct rte_swx_pipeline *p,
 {
 	struct header *h;
 
-	CHECK(n_tokens == 2, EINVAL);
+	CHECK(n_tokens == 3, EINVAL);
 
 	strcpy(data->jmp_label, tokens[1]);
 
