@@ -330,6 +330,12 @@ New Features
   * Added scatter gather support.
   * Added NIST GCMVS complaint GMAC test method support.
 
+* **Updated l3wfd-acl sample application.**
+
+  * Added new optional parameter ``--eth-dest`` for the ``l3fwd-acl`` to allow
+    the user to specify the destination mac address for each ethernet port
+    used.
+
 
 Removed Items
 -------------
