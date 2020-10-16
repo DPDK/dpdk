@@ -184,6 +184,7 @@ usage(char* progname)
 	       "(0 <= mapping <= %d).\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
 	printf("  --no-flush-rx: Don't flush RX streams before forwarding."
 	       " Used mainly with PCAP drivers.\n");
+	printf("  --rxpkts=X[,Y]*: set RX segment sizes to split.\n");
 	printf("  --txpkts=X[,Y]*: set TX segment sizes"
 		" or total packet length.\n");
 	printf("  --txonly-multi-flow: generate multiple flows in txonly mode\n");
@@ -666,6 +667,7 @@ launch_args_parse(int argc, char** argv)
 		{ "rx-queue-stats-mapping",	1, 0, 0 },
 		{ "no-flush-rx",	0, 0, 0 },
 		{ "flow-isolate-all",	        0, 0, 0 },
+		{ "rxpkts",			1, 0, 0 },
 		{ "txpkts",			1, 0, 0 },
 		{ "txonly-multi-flow",		0, 0, 0 },
 		{ "disable-link-check",		0, 0, 0 },
@@ -1286,6 +1288,19 @@ launch_args_parse(int argc, char** argv)
 					rte_exit(EXIT_FAILURE,
 						 "invalid RX queue statistics mapping config entered\n");
 				}
+			}
+			if (!strcmp(lgopts[opt_idx].name, "rxpkts")) {
+				unsigned int seg_len[MAX_SEGS_BUFFER_SPLIT];
+				unsigned int nb_segs;
+
+				nb_segs = parse_item_list
+						(optarg, "rxpkt segments",
+						 MAX_SEGS_BUFFER_SPLIT,
+						 seg_len, 0);
+				if (nb_segs > 0)
+					set_rx_pkt_segments(seg_len, nb_segs);
+				else
+					rte_exit(EXIT_FAILURE, "bad rxpkts\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "txpkts")) {
 				unsigned seg_lengths[RTE_MAX_SEGS_PER_PKT];

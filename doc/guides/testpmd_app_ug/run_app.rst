@@ -361,6 +361,15 @@ The command line options are:
 
     Don't flush the RX streams before starting forwarding. Used mainly with the PCAP PMD.
 
+*   ``--rxpkts=X[,Y]``
+
+    Set the length of segments to scatter packets on receiving if split
+    feature is engaged. Affects only the queues configured
+    with split offloads (currently BUFFER_SPLIT is supported only).
+    Optionally the multiple memory pools can be specified with --mbuf-size
+    command line parameter and the mbufs to receive will be allocated
+    sequentially from these extra memory pools.
+
 *   ``--txpkts=X[,Y]``
 
     Set TX segment sizes or total packet length. Valid for ``tx-only``

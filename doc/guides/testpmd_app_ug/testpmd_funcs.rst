@@ -273,7 +273,7 @@ show config
 Displays the configuration of the application.
 The configuration comes from the command-line, the runtime or the application defaults::
 
-   testpmd> show config (rxtx|cores|fwd|txpkts|txtimes)
+   testpmd> show config (rxtx|cores|fwd|rxpkts|txpkts|txtimes)
 
 The available information categories are:
 
@@ -282,6 +282,8 @@ The available information categories are:
 * ``cores``: List of forwarding cores.
 
 * ``fwd``: Packet forwarding configuration.
+
+* ``rxpkts``: Packets to RX split configuration.
 
 * ``txpkts``: Packets to TX configuration.
 
@@ -773,6 +775,23 @@ This is equivalent to the ``--burst command-line`` option.
 When retry is enabled, the transmit delay time and number of retries can also be set::
 
    testpmd> set burst tx delay (microseconds) retry (num)
+
+set rxpkts
+~~~~~~~~~~
+
+Set the length of segments to scatter packets on receiving if split
+feature is engaged. Affects only the queues configured with split offloads
+(currently BUFFER_SPLIT is supported only). Optionally the multiple memory
+pools can be specified with --mbuf-size command line parameter and the mbufs
+to receive will be allocated sequentially from these extra memory pools (the
+mbuf for the first segment is allocated from the first pool, the second one
+from the second pool, and so on, if segment number is greater then pool's the
+mbuf for remaining segments will be allocated from the last valid pool).
+
+   testpmd> set rxpkts (x[,y]*)
+
+Where x[,y]* represents a CSV list of values, without white space. Zero value
+means to use the corresponding memory pool data buffer size.
 
 set txpkts
 ~~~~~~~~~~

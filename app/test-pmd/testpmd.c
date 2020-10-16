@@ -210,6 +210,13 @@ uint16_t stats_period; /**< Period to show statistics (disabled by default) */
 uint8_t f_quit;
 
 /*
+ * Configuration of packet segments used to scatter received packets
+ * if some of split features is configured.
+ */
+uint16_t rx_pkt_seg_lengths[MAX_SEGS_BUFFER_SPLIT];
+uint8_t  rx_pkt_nb_segs; /**< Number of segments to split */
+
+/*
  * Configuration of packet segments used by the "txonly" processing engine.
  */
 uint16_t tx_pkt_length = TXONLY_DEF_PACKET_LEN; /**< TXONLY packet length. */

@@ -3775,6 +3775,50 @@ show_fec_capability(unsigned int num, struct rte_eth_fec_capa *speed_fec_capa)
 }
 
 void
+show_rx_pkt_segments(void)
+{
+	uint32_t i, n;
+
+	n = rx_pkt_nb_segs;
+	printf("Number of segments: %u\n", n);
+	if (n) {
+		printf("Segment sizes: ");
+		for (i = 0; i != n - 1; i++)
+			printf("%hu,", rx_pkt_seg_lengths[i]);
+		printf("%hu\n", rx_pkt_seg_lengths[i]);
+	}
+}
+
+void
+set_rx_pkt_segments(unsigned int *seg_lengths, unsigned int nb_segs)
+{
+	unsigned int i;
+
+	if (nb_segs >= MAX_SEGS_BUFFER_SPLIT) {
+		printf("nb segments per RX packets=%u >= "
+		       "MAX_SEGS_BUFFER_SPLIT - ignored\n", nb_segs);
+		return;
+	}
+
+	/*
+	 * No extra check here, the segment length will be checked by PMD
+	 * in the extended queue setup.
+	 */
+	for (i = 0; i < nb_segs; i++) {
+		if (seg_lengths[i] >= UINT16_MAX) {
+			printf("length[%u]=%u > UINT16_MAX - give up\n",
+			       i, seg_lengths[i]);
+			return;
+		}
+	}
+
+	for (i = 0; i < nb_segs; i++)
+		rx_pkt_seg_lengths[i] = (uint16_t) seg_lengths[i];
+
+	rx_pkt_nb_segs = (uint8_t) nb_segs;
+}
+
+void
 show_tx_pkt_segments(void)
 {
 	uint32_t i, n;
@@ -3819,10 +3863,10 @@ nb_segs_is_invalid(unsigned int nb_segs)
 }
 
 void
-set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
+set_tx_pkt_segments(unsigned int *seg_lengths, unsigned int nb_segs)
 {
 	uint16_t tx_pkt_len;
-	unsigned i;
+	unsigned int i;
 
 	if (nb_segs_is_invalid(nb_segs))
 		return;
