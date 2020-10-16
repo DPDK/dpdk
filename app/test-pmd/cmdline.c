@@ -2945,12 +2945,12 @@ cmd_setup_rxtx_queue_parsed(
 				rxring_numa[res->portid]);
 			return;
 		}
-		ret = rte_eth_rx_queue_setup(res->portid,
-					     res->qid,
-					     port->nb_rx_desc[res->qid],
-					     socket_id,
-					     &port->rx_conf[res->qid],
-					     mp);
+		ret = rx_queue_setup(res->portid,
+				     res->qid,
+				     port->nb_rx_desc[res->qid],
+				     socket_id,
+				     &port->rx_conf[res->qid],
+				     mp);
 		if (ret)
 			printf("Failed to setup RX queue\n");
 	} else {

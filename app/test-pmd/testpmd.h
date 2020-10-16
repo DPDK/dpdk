@@ -932,6 +932,11 @@ void port_rss_reta_info(portid_t port_id,
 
 void set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on);
 
+int
+rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
+	       uint16_t nb_rx_desc, unsigned int socket_id,
+	       struct rte_eth_rxconf *rx_conf, struct rte_mempool *mp);
+
 int set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate);
 int set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate,
 				uint64_t q_msk);
