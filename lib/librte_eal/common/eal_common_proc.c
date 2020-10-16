@@ -423,7 +423,7 @@ process_async_request(struct pending_request *sr, const struct timespec *now)
 	/* did we timeout? */
 	timeout = timespec_cmp(&param->end, now) <= 0;
 
-	/* if we received a response, adjust relevant data and copy mesasge. */
+	/* if we received a response, adjust relevant data and copy message. */
 	if (sr->reply_received == 1 && sr->reply) {
 		struct rte_mp_msg *msg, *user_msgs, *tmp;
 
@@ -630,7 +630,7 @@ rte_mp_channel_init(void)
 
 	if (rte_ctrl_thread_create(&mp_handle_tid, "rte_mp_handle",
 			NULL, mp_handle, NULL) < 0) {
-		RTE_LOG(ERR, EAL, "failed to create mp thead: %s\n",
+		RTE_LOG(ERR, EAL, "failed to create mp thread: %s\n",
 			strerror(errno));
 		close(mp_fd);
 		close(dir_fd);
