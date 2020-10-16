@@ -599,8 +599,8 @@ struct thread_rx_conf rx_thread[MAX_RX_THREAD];
 struct thread_tx_conf {
 	struct thread_conf conf;
 
-	uint16_t tx_queue_id[RTE_MAX_LCORE];
-	struct mbuf_table tx_mbufs[RTE_MAX_LCORE];
+	uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
+	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 
 	struct rte_ring *ring;
 	struct lthread_cond **ready;
