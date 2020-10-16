@@ -215,6 +215,8 @@ uint8_t f_quit;
  */
 uint16_t rx_pkt_seg_lengths[MAX_SEGS_BUFFER_SPLIT];
 uint8_t  rx_pkt_nb_segs; /**< Number of segments to split */
+uint16_t rx_pkt_seg_offsets[MAX_SEGS_BUFFER_SPLIT];
+uint8_t  rx_pkt_nb_offs; /**< Number of specified offsets */
 
 /*
  * Configuration of packet segments used by the "txonly" processing engine.

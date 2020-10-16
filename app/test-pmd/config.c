@@ -3775,6 +3775,50 @@ show_fec_capability(unsigned int num, struct rte_eth_fec_capa *speed_fec_capa)
 }
 
 void
+show_rx_pkt_offsets(void)
+{
+	uint32_t i, n;
+
+	n = rx_pkt_nb_offs;
+	printf("Number of offsets: %u\n", n);
+	if (n) {
+		printf("Segment offsets: ");
+		for (i = 0; i != n - 1; i++)
+			printf("%hu,", rx_pkt_seg_offsets[i]);
+		printf("%hu\n", rx_pkt_seg_lengths[i]);
+	}
+}
+
+void
+set_rx_pkt_offsets(unsigned int *seg_offsets, unsigned int nb_offs)
+{
+	unsigned int i;
+
+	if (nb_offs >= MAX_SEGS_BUFFER_SPLIT) {
+		printf("nb segments per RX packets=%u >= "
+		       "MAX_SEGS_BUFFER_SPLIT - ignored\n", nb_offs);
+		return;
+	}
+
+	/*
+	 * No extra check here, the segment length will be checked by PMD
+	 * in the extended queue setup.
+	 */
+	for (i = 0; i < nb_offs; i++) {
+		if (seg_offsets[i] >= UINT16_MAX) {
+			printf("offset[%u]=%u > UINT16_MAX - give up\n",
+			       i, seg_offsets[i]);
+			return;
+		}
+	}
+
+	for (i = 0; i < nb_offs; i++)
+		rx_pkt_seg_offsets[i] = (uint16_t) seg_offsets[i];
+
+	rx_pkt_nb_offs = (uint8_t) nb_offs;
+}
+
+void
 show_rx_pkt_segments(void)
 {
 	uint32_t i, n;

@@ -462,6 +462,8 @@ extern struct rte_fdir_conf fdir_conf;
  */
 extern uint16_t rx_pkt_seg_lengths[MAX_SEGS_BUFFER_SPLIT];
 extern uint8_t  rx_pkt_nb_segs; /**< Number of segments to split */
+extern uint16_t rx_pkt_seg_offsets[MAX_SEGS_BUFFER_SPLIT];
+extern uint8_t  rx_pkt_nb_offs; /**< Number of specified offsets */
 
 /*
  * Configuration of packet segments used by the "txonly" processing engine.
@@ -881,6 +883,8 @@ void set_record_burst_stats(uint8_t on_off);
 void set_verbose_level(uint16_t vb_level);
 void set_rx_pkt_segments(unsigned int *seg_lengths, unsigned int nb_segs);
 void show_rx_pkt_segments(void);
+void set_rx_pkt_offsets(unsigned int *seg_offsets, unsigned int nb_offs);
+void show_rx_pkt_offsets(void);
 void set_tx_pkt_segments(unsigned int *seg_lengths, unsigned int nb_segs);
 void show_tx_pkt_segments(void);
 void set_tx_pkt_times(unsigned int *tx_times);

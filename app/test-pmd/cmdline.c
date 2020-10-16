@@ -183,7 +183,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show (rxq|txq) info (port_id) (queue_id)\n"
 			"    Display information for configured RX/TX queue.\n\n"
 
-			"show config (rxtx|cores|fwd|rxpkts|txpkts)\n"
+			"show config (rxtx|cores|fwd|rxoffs|rxpkts|txpkts)\n"
 			"    Display the given configuration.\n\n"
 
 			"read rxd (port_id) (queue_id) (rxd_id)\n"
@@ -293,6 +293,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set burst tx delay (microseconds) retry (num)\n"
 			"    Set the transmit delay time and number of retries,"
 			" effective when retry is enabled.\n\n"
+
+			"set rxoffs (x[,y]*)\n"
+			"    Set the offset of each packet segment on"
+			" receiving if split feature is engaged."
+			" Affects only the queues configured with split"
+			" offloads.\n\n"
 
 			"set rxpkts (x[,y]*)\n"
 			"    Set the length of each segment to scatter"
@@ -3909,6 +3915,52 @@ cmdline_parse_inst_t cmd_set_log = {
 		(void *)&cmd_set_log_log,
 		(void *)&cmd_set_log_type,
 		(void *)&cmd_set_log_level,
+		NULL,
+	},
+};
+
+/* *** SET SEGMENT OFFSETS OF RX PACKETS SPLIT *** */
+
+struct cmd_set_rxoffs_result {
+	cmdline_fixed_string_t cmd_keyword;
+	cmdline_fixed_string_t rxoffs;
+	cmdline_fixed_string_t seg_offsets;
+};
+
+static void
+cmd_set_rxoffs_parsed(void *parsed_result,
+		      __rte_unused struct cmdline *cl,
+		      __rte_unused void *data)
+{
+	struct cmd_set_rxoffs_result *res;
+	unsigned int seg_offsets[MAX_SEGS_BUFFER_SPLIT];
+	unsigned int nb_segs;
+
+	res = parsed_result;
+	nb_segs = parse_item_list(res->seg_offsets, "segment offsets",
+				  MAX_SEGS_BUFFER_SPLIT, seg_offsets, 0);
+	if (nb_segs > 0)
+		set_rx_pkt_offsets(seg_offsets, nb_segs);
+}
+
+cmdline_parse_token_string_t cmd_set_rxoffs_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxoffs_result,
+				 cmd_keyword, "set");
+cmdline_parse_token_string_t cmd_set_rxoffs_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxoffs_result,
+				 rxoffs, "rxoffs");
+cmdline_parse_token_string_t cmd_set_rxoffs_offsets =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_rxoffs_result,
+				 seg_offsets, NULL);
+
+cmdline_parse_inst_t cmd_set_rxoffs = {
+	.f = cmd_set_rxoffs_parsed,
+	.data = NULL,
+	.help_str = "set rxoffs <len0[,len1]*>",
+	.tokens = {
+		(void *)&cmd_set_rxoffs_keyword,
+		(void *)&cmd_set_rxoffs_name,
+		(void *)&cmd_set_rxoffs_offsets,
 		NULL,
 	},
 };
@@ -7587,6 +7639,8 @@ static void cmd_showcfg_parsed(void *parsed_result,
 		fwd_lcores_config_display();
 	else if (!strcmp(res->what, "fwd"))
 		pkt_fwd_config_display(&cur_fwd_config);
+	else if (!strcmp(res->what, "rxoffs"))
+		show_rx_pkt_offsets();
 	else if (!strcmp(res->what, "rxpkts"))
 		show_rx_pkt_segments();
 	else if (!strcmp(res->what, "txpkts"))
@@ -7601,12 +7655,12 @@ cmdline_parse_token_string_t cmd_showcfg_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showcfg_result, cfg, "config");
 cmdline_parse_token_string_t cmd_showcfg_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showcfg_result, what,
-				 "rxtx#cores#fwd#rxpkts#txpkts#txtimes");
+				 "rxtx#cores#fwd#rxoffs#rxpkts#txpkts#txtimes");
 
 cmdline_parse_inst_t cmd_showcfg = {
 	.f = cmd_showcfg_parsed,
 	.data = NULL,
-	.help_str = "show config rxtx|cores|fwd|rxpkts|txpkts|txtimes",
+	.help_str = "show config rxtx|cores|fwd|rxoffs|rxpkts|txpkts|txtimes",
 	.tokens = {
 		(void *)&cmd_showcfg_show,
 		(void *)&cmd_showcfg_port,
@@ -19879,6 +19933,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_reset,
 	(cmdline_parse_inst_t *)&cmd_set_numbers,
 	(cmdline_parse_inst_t *)&cmd_set_log,
+	(cmdline_parse_inst_t *)&cmd_set_rxoffs,
 	(cmdline_parse_inst_t *)&cmd_set_rxpkts,
 	(cmdline_parse_inst_t *)&cmd_set_txpkts,
 	(cmdline_parse_inst_t *)&cmd_set_txsplit,

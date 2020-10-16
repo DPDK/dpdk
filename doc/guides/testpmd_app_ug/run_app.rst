@@ -361,6 +361,12 @@ The command line options are:
 
     Don't flush the RX streams before starting forwarding. Used mainly with the PCAP PMD.
 
+*   ``--rxoffs=X[,Y]``
+
+    Set the offsets of packet segments on receiving if split
+    feature is engaged. Affects only the queues configured
+    with split offloads (currently BUFFER_SPLIT is supported only).
+
 *   ``--rxpkts=X[,Y]``
 
     Set the length of segments to scatter packets on receiving if split

@@ -184,6 +184,7 @@ usage(char* progname)
 	       "(0 <= mapping <= %d).\n", RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
 	printf("  --no-flush-rx: Don't flush RX streams before forwarding."
 	       " Used mainly with PCAP drivers.\n");
+	printf("  --rxoffs=X[,Y]*: set RX segment offsets for split.\n");
 	printf("  --rxpkts=X[,Y]*: set RX segment sizes to split.\n");
 	printf("  --txpkts=X[,Y]*: set TX segment sizes"
 		" or total packet length.\n");
@@ -667,6 +668,7 @@ launch_args_parse(int argc, char** argv)
 		{ "rx-queue-stats-mapping",	1, 0, 0 },
 		{ "no-flush-rx",	0, 0, 0 },
 		{ "flow-isolate-all",	        0, 0, 0 },
+		{ "rxoffs",			1, 0, 0 },
 		{ "rxpkts",			1, 0, 0 },
 		{ "txpkts",			1, 0, 0 },
 		{ "txonly-multi-flow",		0, 0, 0 },
@@ -1288,6 +1290,19 @@ launch_args_parse(int argc, char** argv)
 					rte_exit(EXIT_FAILURE,
 						 "invalid RX queue statistics mapping config entered\n");
 				}
+			}
+			if (!strcmp(lgopts[opt_idx].name, "rxoffs")) {
+				unsigned int seg_off[MAX_SEGS_BUFFER_SPLIT];
+				unsigned int nb_offs;
+
+				nb_offs = parse_item_list
+						(optarg, "rxpkt offsets",
+						 MAX_SEGS_BUFFER_SPLIT,
+						 seg_off, 0);
+				if (nb_offs > 0)
+					set_rx_pkt_offsets(seg_off, nb_offs);
+				else
+					rte_exit(EXIT_FAILURE, "bad rxoffs\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "rxpkts")) {
 				unsigned int seg_len[MAX_SEGS_BUFFER_SPLIT];
