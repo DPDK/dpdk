@@ -110,6 +110,11 @@ New Features
     as flow action.
   * Added new flow APIs to create/update/destroy/query shared action.
 
+* **Flow rules allowed to use private PMD items / actions.**
+
+  * Flow rule verification was updated to accept private PMD
+    items and actions.
+
 * **Updated the ethdev library to support hairpin between two ports.**
 
   New APIs are introduced to support binding / unbinding 2 ports hairpin.

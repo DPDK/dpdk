@@ -2775,6 +2775,9 @@ identifiers they are not aware of.
 
 A method to generate them remains to be defined.
 
+Application may use PMD dynamic items or actions in flow rules. In that case
+size of configuration object in dynamic element must be a pointer size.
+
 Planned types
 ~~~~~~~~~~~~~
 

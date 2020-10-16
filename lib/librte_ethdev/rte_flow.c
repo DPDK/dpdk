@@ -518,7 +518,11 @@ rte_flow_conv_item_spec(void *buf, const size_t size,
 		}
 		break;
 	default:
-		off = rte_flow_desc_item[item->type].size;
+		/**
+		 * allow PMD private flow item
+		 */
+		off = (int)item->type >= 0 ?
+		      rte_flow_desc_item[item->type].size : sizeof(void *);
 		rte_memcpy(buf, data, (size > off ? off : size));
 		break;
 	}
@@ -621,7 +625,11 @@ rte_flow_conv_action_conf(void *buf, const size_t size,
 		}
 		break;
 	default:
-		off = rte_flow_desc_action[action->type].size;
+		/**
+		 * allow PMD private flow action
+		 */
+		off = (int)action->type >= 0 ?
+		      rte_flow_desc_action[action->type].size : sizeof(void *);
 		rte_memcpy(buf, action->conf, (size > off ? off : size));
 		break;
 	}
@@ -663,8 +671,12 @@ rte_flow_conv_pattern(struct rte_flow_item *dst,
 	unsigned int i;
 
 	for (i = 0, off = 0; !num || i != num; ++i, ++src, ++dst) {
-		if ((size_t)src->type >= RTE_DIM(rte_flow_desc_item) ||
-		    !rte_flow_desc_item[src->type].name)
+		/**
+		 * allow PMD private flow item
+		 */
+		if (((int)src->type >= 0) &&
+			((size_t)src->type >= RTE_DIM(rte_flow_desc_item) ||
+		    !rte_flow_desc_item[src->type].name))
 			return rte_flow_error_set
 				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, src,
 				 "cannot convert unknown item type");
@@ -752,8 +764,12 @@ rte_flow_conv_actions(struct rte_flow_action *dst,
 	unsigned int i;
 
 	for (i = 0, off = 0; !num || i != num; ++i, ++src, ++dst) {
-		if ((size_t)src->type >= RTE_DIM(rte_flow_desc_action) ||
-		    !rte_flow_desc_action[src->type].name)
+		/**
+		 * allow PMD private flow action
+		 */
+		if (((int)src->type >= 0) &&
+		    ((size_t)src->type >= RTE_DIM(rte_flow_desc_action) ||
+		    !rte_flow_desc_action[src->type].name))
 			return rte_flow_error_set
 				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 				 src, "cannot convert unknown action type");
