@@ -54,6 +54,7 @@ enetc_dev_stop(struct rte_eth_dev *dev)
 	uint32_t val;
 
 	PMD_INIT_FUNC_TRACE();
+	dev->data->dev_started = 0;
 	/* Disable port */
 	val = enetc_port_rd(enetc_hw, ENETC_PMR);
 	enetc_port_wr(enetc_hw, ENETC_PMR, val & (~ENETC_PMR_EN));

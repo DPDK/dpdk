@@ -2369,6 +2369,7 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	pf->adapter_stopped = true;
+	dev->data->dev_started = 0;
 }
 
 static int

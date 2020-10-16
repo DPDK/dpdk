@@ -595,6 +595,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	if (ark->started == 0)
 		return;
 	ark->started = 0;
+	dev->data->dev_started = 0;
 
 	/* Stop the extension first */
 	if (ark->user_ext.dev_stop)

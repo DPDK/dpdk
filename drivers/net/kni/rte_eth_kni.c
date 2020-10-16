@@ -196,6 +196,7 @@ eth_kni_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	dev->data->dev_link.link_status = 0;
+	dev->data->dev_started = 0;
 }
 
 static int

@@ -833,6 +833,7 @@ hn_dev_stop(struct rte_eth_dev *dev)
 	struct hn_data *hv = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
+	dev->data->dev_started = 0;
 
 	hn_rndis_set_rxfilter(hv, 0);
 	hn_vf_stop(dev);

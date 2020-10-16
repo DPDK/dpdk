@@ -616,6 +616,7 @@ eth_igc_stop(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct rte_eth_link link;
 
+	dev->data->dev_started = 0;
 	adapter->stopped = 1;
 
 	/* disable receive and transmit */

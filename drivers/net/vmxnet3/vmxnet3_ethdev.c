@@ -858,6 +858,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 	rte_eth_linkstatus_set(dev, &link);
 
 	hw->adapter_stopped = 1;
+	dev->data->dev_started = 0;
 }
 
 static void

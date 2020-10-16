@@ -1772,7 +1772,6 @@ rte_eth_dev_close(uint16_t port_id)
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_close);
-	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_close)(dev);
 
 	rte_ethdev_trace_close(port_id);

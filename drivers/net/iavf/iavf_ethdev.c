@@ -562,6 +562,7 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 				  false);
 
 	adapter->stopped = 1;
+	dev->data->dev_started = 0;
 }
 
 static int

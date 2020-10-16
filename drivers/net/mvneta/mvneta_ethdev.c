@@ -413,6 +413,8 @@ mvneta_dev_stop(struct rte_eth_dev *dev)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
 
+	dev->data->dev_started = 0;
+
 	if (!priv->ppio)
 		return;
 

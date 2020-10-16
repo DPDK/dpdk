@@ -1169,6 +1169,7 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 
 	PMD_INIT_FUNC_TRACE(edev);
+	eth_dev->data->dev_started = 0;
 
 	/* Bring the link down */
 	qede_dev_set_link_state(eth_dev, false);

@@ -1189,6 +1189,8 @@ static void hinic_dev_stop(struct rte_eth_dev *dev)
 	name = dev->data->name;
 	port_id = dev->data->port_id;
 
+	dev->data->dev_started = 0;
+
 	if (!rte_bit_relaxed_test_and_clear32(HINIC_DEV_START,
 					      &nic_dev->dev_status)) {
 		PMD_DRV_LOG(INFO, "Device %s already stopped", name);

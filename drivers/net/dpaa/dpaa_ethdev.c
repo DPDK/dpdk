@@ -420,6 +420,7 @@ static void dpaa_eth_dev_stop(struct rte_eth_dev *dev)
 	struct fman_if *fif = dev->process_private;
 
 	PMD_INIT_FUNC_TRACE();
+	dev->data->dev_started = 0;
 
 	if (!fif->is_shared_mac)
 		fman_if_disable_rx(fif);

@@ -1471,6 +1471,7 @@ lio_dev_stop(struct rte_eth_dev *eth_dev)
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 
 	lio_dev_info(lio_dev, "Stopping port %d\n", eth_dev->data->port_id);
+	eth_dev->data->dev_started = 0;
 	lio_dev->intf_open = 0;
 	rte_mb();
 

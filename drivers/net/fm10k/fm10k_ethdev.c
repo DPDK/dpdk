@@ -1161,6 +1161,7 @@ fm10k_dev_stop(struct rte_eth_dev *dev)
 	int i;
 
 	PMD_INIT_FUNC_TRACE();
+	dev->data->dev_started = 0;
 
 	if (dev->data->tx_queues)
 		for (i = 0; i < dev->data->nb_tx_queues; i++)

@@ -609,6 +609,7 @@ atl_dev_stop(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
+	dev->data->dev_started = 0;
 
 	/* disable interrupts */
 	atl_disable_intr(hw);

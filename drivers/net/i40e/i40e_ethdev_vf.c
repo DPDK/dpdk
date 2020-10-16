@@ -2207,7 +2207,7 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 	i40evf_add_del_mc_addr_list(dev, vf->mc_addrs, vf->mc_addrs_num,
 				FALSE);
 	hw->adapter_stopped = 1;
-
+	dev->data->dev_started = 0;
 }
 
 static int

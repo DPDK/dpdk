@@ -378,6 +378,8 @@ pfe_eth_stop(struct rte_eth_dev *dev/*, int wake*/)
 {
 	struct pfe_eth_priv_s *priv = dev->data->dev_private;
 
+	dev->data->dev_started = 0;
+
 	gemac_disable(priv->EMAC_baseaddr);
 	gpi_disable(priv->GPI_baseaddr);
 

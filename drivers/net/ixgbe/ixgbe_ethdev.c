@@ -2917,6 +2917,7 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	adapter->rss_reta_updated = 0;
 
 	hw->adapter_stopped = true;
+	dev->data->dev_started = 0;
 }
 
 /*
@@ -5418,6 +5419,7 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 
 	ixgbevf_intr_disable(dev);
 
+	dev->data->dev_started = 0;
 	hw->adapter_stopped = 1;
 	ixgbe_stop_adapter(hw);
 

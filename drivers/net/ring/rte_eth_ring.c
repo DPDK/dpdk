@@ -109,6 +109,7 @@ eth_dev_start(struct rte_eth_dev *dev)
 static void
 eth_dev_stop(struct rte_eth_dev *dev)
 {
+	dev->data->dev_started = 0;
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 }
 

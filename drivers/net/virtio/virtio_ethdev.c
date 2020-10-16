@@ -2523,6 +2523,7 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	struct rte_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
 
 	PMD_INIT_LOG(DEBUG, "stop");
+	dev->data->dev_started = 0;
 
 	rte_spinlock_lock(&hw->state_lock);
 	if (!hw->started)

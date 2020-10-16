@@ -2599,6 +2599,7 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	pf->tm_conf.committed = false;
 
 	hw->adapter_stopped = 1;
+	dev->data->dev_started = 0;
 
 	pf->adapter->rss_reta_updated = 0;
 }

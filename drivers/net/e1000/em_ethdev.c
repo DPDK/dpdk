@@ -717,6 +717,8 @@ eth_em_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
+	dev->data->dev_started = 0;
+
 	eth_em_rxtx_control(dev, false);
 	em_rxq_intr_disable(hw);
 	em_lsc_intr_disable(hw);

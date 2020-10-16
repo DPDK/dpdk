@@ -1766,6 +1766,7 @@ nicvf_dev_stop_cleanup(struct rte_eth_dev *dev, bool cleanup)
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 
 	PMD_INIT_FUNC_TRACE();
+	dev->data->dev_started = 0;
 
 	/* Teardown secondary vf first */
 	for (i = 0; i < nic->sqs_count; i++) {

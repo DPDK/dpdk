@@ -1118,6 +1118,7 @@ static void ena_stop(struct rte_eth_dev *dev)
 
 	++adapter->dev_stats.dev_stop;
 	adapter->state = ENA_ADAPTER_STATE_STOPPED;
+	dev->data->dev_started = 0;
 }
 
 static int ena_create_io_queue(struct ena_ring *ring)
