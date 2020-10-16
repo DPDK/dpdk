@@ -119,6 +119,17 @@ unregister_all(void)
 	return TEST_SUCCESS;
 }
 
+/* Wait until service lcore not active, or for 100x SERVICE_DELAY */
+static void
+wait_slcore_inactive(uint32_t slcore_id)
+{
+	int i;
+
+	for (i = 0; rte_service_lcore_may_be_active(slcore_id) == 1 &&
+			i < 100; i++)
+		rte_delay_ms(SERVICE_DELAY);
+}
+
 /* register a single dummy service */
 static int
 dummy_register(void)
@@ -305,6 +316,8 @@ service_attr_get(void)
 
 	rte_service_lcore_stop(slcore_id);
 
+	wait_slcore_inactive(slcore_id);
+
 	TEST_ASSERT_EQUAL(0, rte_service_attr_get(id, attr_calls, &attr_value),
 			"Valid attr_get() call didn't return success");
 	TEST_ASSERT_EQUAL(1, (attr_value > 0),
@@ -394,11 +407,7 @@ service_lcore_attr_get(void)
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_stop(slcore_id),
 			"Failed to stop service lcore");
 
-	/* Wait until service lcore not active, or for 100x SERVICE_DELAY */
-	int i;
-	for (i = 0; rte_service_lcore_may_be_active(slcore_id) == 1 &&
-			i < 100; i++)
-		rte_delay_ms(SERVICE_DELAY);
+	wait_slcore_inactive(slcore_id);
 
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_may_be_active(slcore_id),
 			  "Service lcore not stopped after waiting.");
