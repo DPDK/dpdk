@@ -146,6 +146,40 @@ static struct rte_mempool *pktmbuf_pool[NB_SOCKETS];
 /* ethernet addresses of ports */
 static struct rte_ether_hdr port_l2hdr[RTE_MAX_ETHPORTS];
 
+static const struct {
+	const char *name;
+	enum rte_acl_classify_alg alg;
+} acl_alg[] = {
+	{
+		.name = "scalar",
+		.alg = RTE_ACL_CLASSIFY_SCALAR,
+	},
+	{
+		.name = "sse",
+		.alg = RTE_ACL_CLASSIFY_SSE,
+	},
+	{
+		.name = "avx2",
+		.alg = RTE_ACL_CLASSIFY_AVX2,
+	},
+	{
+		.name = "neon",
+		.alg = RTE_ACL_CLASSIFY_NEON,
+	},
+	{
+		.name = "altivec",
+		.alg = RTE_ACL_CLASSIFY_ALTIVEC,
+	},
+	{
+		.name = "avx512x16",
+		.alg = RTE_ACL_CLASSIFY_AVX512X16,
+	},
+	{
+		.name = "avx512x32",
+		.alg = RTE_ACL_CLASSIFY_AVX512X32,
+	},
+};
+
 /***********************start of ACL part******************************/
 #ifdef DO_RFC_1812_CHECKS
 static inline int
@@ -166,7 +200,7 @@ send_single_packet(struct rte_mbuf *m, uint16_t port);
 #define OPTION_ENBJMO		"enable-jumbo"
 #define OPTION_RULE_IPV4	"rule_ipv4"
 #define OPTION_RULE_IPV6	"rule_ipv6"
-#define OPTION_SCALAR		"scalar"
+#define OPTION_ALG		"alg"
 #define OPTION_ETH_DEST		"eth-dest"
 #define ACL_DENY_SIGNATURE	0xf0000000
 #define RTE_LOGTYPE_L3FWDACL	RTE_LOGTYPE_USER3
@@ -441,7 +475,7 @@ static struct {
 static struct{
 	const char *rule_ipv4_name;
 	const char *rule_ipv6_name;
-	int scalar;
+	enum rte_acl_classify_alg alg;
 } parm_config;
 
 const char cb_port_delim[] = ":";
@@ -1094,13 +1128,58 @@ add_rules(const char *rule_path,
 	return 0;
 }
 
+static int
+usage_acl_alg(char *buf, size_t sz)
+{
+	uint32_t i, n, rc, tn;
+
+	n = 0;
+	tn = 0;
+	for (i = 0; i < RTE_DIM(acl_alg); i++) {
+		rc = snprintf(buf + n, sz - n,
+			i == RTE_DIM(acl_alg) - 1 ? "%s" : "%s|",
+			acl_alg[i].name);
+		tn += rc;
+		if (rc < sz - n)
+			n += rc;
+	}
+
+	return tn;
+}
+
+static const char *
+str_acl_alg(enum rte_acl_classify_alg alg)
+{
+	uint32_t i;
+
+	for (i = 0; i != RTE_DIM(acl_alg); i++) {
+		if (alg == acl_alg[i].alg)
+			return acl_alg[i].name;
+	}
+
+	return "default";
+}
+
+static enum rte_acl_classify_alg
+parse_acl_alg(const char *alg)
+{
+	uint32_t i;
+
+	for (i = 0; i != RTE_DIM(acl_alg); i++) {
+		if (strcmp(alg, acl_alg[i].name) == 0)
+			return acl_alg[i].alg;
+	}
+
+	return RTE_ACL_CLASSIFY_DEFAULT;
+}
+
 static void
 dump_acl_config(void)
 {
 	printf("ACL option are:\n");
 	printf(OPTION_RULE_IPV4": %s\n", parm_config.rule_ipv4_name);
 	printf(OPTION_RULE_IPV6": %s\n", parm_config.rule_ipv6_name);
-	printf(OPTION_SCALAR": %d\n", parm_config.scalar);
+	printf(OPTION_ALG": %s\n", str_acl_alg(parm_config.alg));
 }
 
 static int
@@ -1141,8 +1220,8 @@ setup_acl(struct rte_acl_rule *route_base,
 	if ((context = rte_acl_create(&acl_param)) == NULL)
 		rte_exit(EXIT_FAILURE, "Failed to create ACL context\n");
 
-	if (parm_config.scalar && rte_acl_set_ctx_classify(context,
-			RTE_ACL_CLASSIFY_SCALAR) != 0)
+	if (parm_config.alg != RTE_ACL_CLASSIFY_DEFAULT &&
+			rte_acl_set_ctx_classify(context, parm_config.alg) != 0)
 		rte_exit(EXIT_FAILURE,
 			"Failed to setup classify method for  ACL context\n");
 
@@ -1525,6 +1604,9 @@ init_lcore_rx_queues(void)
 static void
 print_usage(const char *prgname)
 {
+	char alg[PATH_MAX];
+
+	usage_acl_alg(alg, sizeof(alg));
 	printf("%s [EAL options] -- -p PORTMASK -P"
 		"--"OPTION_RULE_IPV4"=FILE"
 		"--"OPTION_RULE_IPV6"=FILE"
@@ -1546,8 +1628,8 @@ print_usage(const char *prgname)
 		"character '%c'.\n"
 		"  --"OPTION_RULE_IPV6"=FILE: specify the ipv6 rules "
 		"entries file.\n"
-		"  --"OPTION_SCALAR": Use scalar function to do lookup\n",
-		prgname, ACL_LEAD_CHAR, ROUTE_LEAD_CHAR);
+		"  --"OPTION_ALG": ACL classify method to use, one of: %s\n",
+		prgname, ACL_LEAD_CHAR, ROUTE_LEAD_CHAR, alg);
 }
 
 static int
@@ -1670,7 +1752,7 @@ parse_args(int argc, char **argv)
 		{OPTION_ENBJMO, 0, 0, 0},
 		{OPTION_RULE_IPV4, 1, 0, 0},
 		{OPTION_RULE_IPV6, 1, 0, 0},
-		{OPTION_SCALAR, 0, 0, 0},
+		{OPTION_ALG, 1, 0, 0},
 		{OPTION_ETH_DEST, 1, 0, 0},
 		{NULL, 0, 0, 0}
 	};
@@ -1764,8 +1846,16 @@ parse_args(int argc, char **argv)
 			}
 
 			if (!strncmp(lgopts[option_index].name,
-					OPTION_SCALAR, sizeof(OPTION_SCALAR)))
-				parm_config.scalar = 1;
+					OPTION_ALG, sizeof(OPTION_ALG))) {
+				parm_config.alg = parse_acl_alg(optarg);
+				if (parm_config.alg ==
+						RTE_ACL_CLASSIFY_DEFAULT) {
+					printf("unknown %s value:\"%s\"\n",
+						OPTION_ALG, optarg);
+					print_usage(prgname);
+					return -1;
+				}
+			}
 
 			if (!strncmp(lgopts[option_index].name, OPTION_ETH_DEST,
 					sizeof(OPTION_ETH_DEST))) {

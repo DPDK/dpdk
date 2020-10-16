@@ -335,6 +335,8 @@ New Features
   * Added new optional parameter ``--eth-dest`` for the ``l3fwd-acl`` to allow
     the user to specify the destination mac address for each ethernet port
     used.
+  * Replaced ``--scalar`` command-line option with ``--alg=<value>``, to allow
+    the user to select the desired classify method.
 
 
 Removed Items

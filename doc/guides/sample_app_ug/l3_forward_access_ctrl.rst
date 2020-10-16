@@ -236,7 +236,7 @@ The application has a number of command line options:
 
 ..  code-block:: console
 
-    ./build/l3fwd-acl [EAL options] -- -p PORTMASK [-P] --config(port,queue,lcore)[,(port,queue,lcore)] --rule_ipv4 FILENAME rule_ipv6 FILENAME [--scalar] [--enable-jumbo [--max-pkt-len PKTLEN]] [--no-numa] [--eth-dest=X,MM:MM:MM:MM:MM:MM]
+    ./build/l3fwd-acl [EAL options] -- -p PORTMASK [-P] --config(port,queue,lcore)[,(port,queue,lcore)] --rule_ipv4 FILENAME rule_ipv6 FILENAME [--alg=<val>] [--enable-jumbo [--max-pkt-len PKTLEN]] [--no-numa] [--eth-dest=X,MM:MM:MM:MM:MM:MM]
 
 
 where,
@@ -252,7 +252,8 @@ where,
 
 *   --rule_ipv6 FILENAME: Specifies the IPv6 ACL and route rules file
 
-*   --scalar: Use a scalar function to perform rule lookup
+*   --alg=<val>: optional, ACL classify method to use, one of:
+    ``scalar|sse|avx2|neon|altivec|avx512x16|avx512x32``
 
 *   --enable-jumbo: optional, enables jumbo frames
 
@@ -270,7 +271,7 @@ To enable L3 forwarding between two ports, assuming that both ports are in the s
 
 ..  code-block:: console
 
-    ./build/l3fwd-acl -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)" --rule_ipv4="./rule_ipv4.db" -- rule_ipv6="./rule_ipv6.db" --scalar
+    ./build/l3fwd-acl -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)" --rule_ipv4="./rule_ipv4.db" -- rule_ipv6="./rule_ipv6.db" --alg=scalar
 
 In this command:
 
@@ -296,7 +297,7 @@ In this command:
 
 *   The --rule_ipv6 option specifies the reading of IPv6 rules sets from the ./ rule_ipv6.db file.
 
-*   The --scalar option specifies the performing of rule lookup with a scalar function.
+*   The --alg=scalar option specifies the performing of rule lookup with a scalar function.
 
 Explanation
 -----------
