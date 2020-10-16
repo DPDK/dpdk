@@ -1956,11 +1956,6 @@ static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	ena_destroy_device(eth_dev);
 
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-	eth_dev->tx_pkt_prepare = NULL;
-
 	return 0;
 }
 

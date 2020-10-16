@@ -774,10 +774,6 @@ eth_em_close(struct rte_eth_dev *dev)
 	em_release_manageability(hw);
 	em_hw_control_release(hw);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,

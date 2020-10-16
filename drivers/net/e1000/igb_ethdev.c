@@ -1565,10 +1565,6 @@ eth_igb_close(struct rte_eth_dev *dev)
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(dev, &link);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	/* Reset any pending lock */
 	igb_reset_swfw_lock(hw);
 
@@ -3404,10 +3400,6 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 
 	memset(&addr, 0, sizeof(addr));
 	igbvf_default_mac_addr_set(dev, &addr);
-
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
 
 	rte_intr_callback_unregister(&pci_dev->intr_handle,
 				     eth_igbvf_interrupt_handler,

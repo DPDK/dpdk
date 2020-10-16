@@ -513,9 +513,6 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 
 	octeontx_port_close(nic);
 
-	dev->tx_pkt_burst = NULL;
-	dev->rx_pkt_burst = NULL;
-
 	return 0;
 }
 

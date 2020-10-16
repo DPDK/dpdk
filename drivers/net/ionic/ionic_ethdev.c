@@ -1065,11 +1065,6 @@ eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev)
 	ionic_lif_deinit(lif);
 	ionic_lif_free(lif);
 
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-	eth_dev->tx_pkt_prepare = NULL;
-
 	return 0;
 }
 

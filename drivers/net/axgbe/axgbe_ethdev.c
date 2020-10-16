@@ -2134,9 +2134,6 @@ axgbe_dev_close(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
 	axgbe_dev_clear_queues(eth_dev);
 
 	/* disable uio intr before callback unregister */

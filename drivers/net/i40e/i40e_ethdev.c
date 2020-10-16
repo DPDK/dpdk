@@ -2693,10 +2693,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 			(reg | I40E_PFGEN_CTRL_PFSWR_MASK));
 	I40E_WRITE_FLUSH(hw);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	/* Clear PXE mode */
 	i40e_clear_pxe_mode(hw);
 

@@ -2068,10 +2068,6 @@ lio_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* lio_free_sc_buffer_pool */
 	lio_free_sc_buffer_pool(lio_dev);
 
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
 	return 0;
 }
 

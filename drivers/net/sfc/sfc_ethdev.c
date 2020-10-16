@@ -324,11 +324,7 @@ static void
 sfc_eth_dev_secondary_clear_ops(struct rte_eth_dev *dev)
 {
 	free(dev->process_private);
-	dev->process_private = NULL;
-	dev->dev_ops = NULL;
-	dev->tx_pkt_prepare = NULL;
-	dev->tx_pkt_burst = NULL;
-	dev->rx_pkt_burst = NULL;
+	rte_eth_dev_release_port(dev);
 }
 
 static int
@@ -380,7 +376,6 @@ sfc_dev_close(struct rte_eth_dev *dev)
 	/* Required for logging, so cleanup last */
 	sa->eth_dev = NULL;
 
-	dev->process_private = NULL;
 	free(sa);
 
 	return 0;

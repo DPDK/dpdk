@@ -3010,10 +3010,6 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	/* Unlock any pending hardware semaphore */
 	ixgbe_swfw_lock_reset(hw);
 
@@ -5467,10 +5463,6 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 	 * after stop, close and detach of the VF
 	 **/
 	ixgbevf_remove_mac_addr(dev, 0);
-
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
 
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,

@@ -702,10 +702,6 @@ atl_dev_close(struct rte_eth_dev *dev)
 
 	atl_free_queues(dev);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,

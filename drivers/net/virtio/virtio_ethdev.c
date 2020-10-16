@@ -2001,10 +2001,6 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	virtio_dev_stop(eth_dev);
 	virtio_dev_close(eth_dev);
 
-	eth_dev->dev_ops = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-
 	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
 
 	return 0;

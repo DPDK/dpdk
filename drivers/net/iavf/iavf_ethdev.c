@@ -1525,10 +1525,6 @@ iavf_dev_close(struct rte_eth_dev *dev)
 				     iavf_dev_interrupt_handler, dev);
 	iavf_disable_irq0(hw);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
 		if (vf->rss_lut) {
 			rte_free(vf->rss_lut);

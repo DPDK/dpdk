@@ -2805,10 +2805,6 @@ fm10k_dev_close(struct rte_eth_dev *dev)
 	fm10k_dev_queue_release(dev);
 	fm10k_stop_hw(hw);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	/* disable uio/vfio intr */
 	rte_intr_disable(intr_handle);
 

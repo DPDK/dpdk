@@ -561,7 +561,16 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 
 	eth_dev->state = RTE_ETH_DEV_UNUSED;
 	eth_dev->device = NULL;
+	eth_dev->process_private = NULL;
 	eth_dev->intr_handle = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
+	eth_dev->tx_pkt_prepare = NULL;
+	eth_dev->rx_queue_count = NULL;
+	eth_dev->rx_descriptor_done = NULL;
+	eth_dev->rx_descriptor_status = NULL;
+	eth_dev->tx_descriptor_status = NULL;
+	eth_dev->dev_ops = NULL;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		rte_free(eth_dev->data->rx_queues);

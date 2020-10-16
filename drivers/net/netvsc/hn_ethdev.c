@@ -1050,10 +1050,6 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 	hn_dev_stop(eth_dev);
 	hn_dev_close(eth_dev);
 
-	eth_dev->dev_ops = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-
 	hn_detach(hv);
 	hn_chim_uninit(eth_dev);
 	rte_vmbus_chan_close(hv->primary->chan);

@@ -2421,10 +2421,6 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	i40e_shutdown_adminq(hw);
 	i40evf_disable_irq0(hw);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	rte_free(vf->vf_res);
 	vf->vf_res = NULL;
 	rte_free(vf->aq_resp);

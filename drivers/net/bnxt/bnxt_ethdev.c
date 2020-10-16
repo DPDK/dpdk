@@ -1433,10 +1433,6 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	bnxt_free_pf_info(bp);
 	bnxt_free_parent_info(bp);
 
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
 	rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
 	bp->tx_mem_zone = NULL;
 	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);

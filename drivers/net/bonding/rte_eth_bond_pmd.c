@@ -2130,10 +2130,6 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	 */
 	rte_mempool_free(internals->mode6.mempool);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	return 0;
 }
 

@@ -255,7 +255,6 @@ int bnxt_representor_uninit(struct rte_eth_dev *eth_dev)
 
 	PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR uninit\n", eth_dev->data->port_id);
 	eth_dev->data->mac_addrs = NULL;
-	eth_dev->dev_ops = NULL;
 
 	parent_bp = rep->parent_dev->data->dev_private;
 	if (!parent_bp) {

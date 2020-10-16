@@ -2410,10 +2410,6 @@ ice_dev_close(struct rte_eth_dev *dev)
 	rte_free(pf->proto_xtr);
 	pf->proto_xtr = NULL;
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 

@@ -1133,7 +1133,6 @@ tap_dev_close(struct rte_eth_dev *dev)
 		internals->ioctl_sock = -1;
 	}
 	rte_free(dev->process_private);
-	dev->process_private = NULL;
 	if (tap_devices_count == 1)
 		rte_mp_action_unregister(TAP_MP_KEY);
 	tap_devices_count--;

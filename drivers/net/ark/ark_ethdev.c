@@ -504,9 +504,6 @@ eth_ark_dev_uninit(struct rte_eth_dev *dev)
 	ark_pktgen_uninit(ark->pg);
 	ark_pktchkr_uninit(ark->pc);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
 	return 0;
 }
 

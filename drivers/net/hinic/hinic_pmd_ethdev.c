@@ -3253,10 +3253,6 @@ static int hinic_dev_uninit(struct rte_eth_dev *dev)
 
 	hinic_dev_close(dev);
 
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
 	rte_free(nic_dev->mc_list);
 
 	return HINIC_OK;
