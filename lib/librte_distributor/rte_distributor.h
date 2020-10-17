@@ -155,7 +155,7 @@ rte_distributor_clear_returns(struct rte_distributor *d);
  * @param pkts
  *   The mbufs pointer array to be filled in (up to 8 packets)
  * @param oldpkt
- *   The previous packet, if any, being processed by the worker
+ *   The previous packets, if any, being processed by the worker
  * @param retcount
  *   The number of packets being returned
  *
@@ -187,15 +187,15 @@ rte_distributor_return_pkt(struct rte_distributor *d,
 
 /**
  * API called by a worker to request a new packet to process.
- * Any previous packet given to the worker is assumed to have completed
+ * Any previous packets given to the worker are assumed to have completed
  * processing, and may be optionally returned to the distributor via
  * the oldpkt parameter.
- * Unlike rte_distributor_get_pkt_burst(), this function does not wait for a
- * new packet to be provided by the distributor.
+ * Unlike rte_distributor_get_pkt(), this function does not wait for
+ * new packets to be provided by the distributor.
  *
- * NOTE: after calling this function, rte_distributor_poll_pkt_burst() should
- * be used to poll for the packet requested. The rte_distributor_get_pkt_burst()
- * API should *not* be used to try and retrieve the new packet.
+ * NOTE: after calling this function, rte_distributor_poll_pkt() should
+ * be used to poll for the packets requested. The rte_distributor_get_pkt()
+ * API should *not* be used to try and retrieve the new packets.
  *
  * @param d
  *   The distributor instance to be used
@@ -213,9 +213,9 @@ rte_distributor_request_pkt(struct rte_distributor *d,
 		unsigned int count);
 
 /**
- * API called by a worker to check for a new packet that was previously
+ * API called by a worker to check for new packets that were previously
  * requested by a call to rte_distributor_request_pkt(). It does not wait
- * for the new packet to be available, but returns NULL if the request has
+ * for the new packets to be available, but returns if the request has
  * not yet been fulfilled by the distributor.
  *
  * @param d
@@ -227,8 +227,9 @@ rte_distributor_request_pkt(struct rte_distributor *d,
  *   The array of mbufs being given to the worker
  *
  * @return
- *   The number of packets being given to the worker thread, zero if no
- *   packet is yet available.
+ *   The number of packets being given to the worker thread,
+ *   -1 if no packets are yet available (burst API - RTE_DIST_ALG_BURST)
+ *   0 if no packets are yet available (legacy single API - RTE_DIST_ALG_SINGLE)
  */
 int
 rte_distributor_poll_pkt(struct rte_distributor *d,
