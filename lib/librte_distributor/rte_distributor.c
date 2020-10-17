@@ -319,12 +319,14 @@ release(struct rte_distributor *d, unsigned int wkr)
 	struct rte_distributor_buffer *buf = &(d->bufs[wkr]);
 	unsigned int i;
 
+	handle_returns(d, wkr);
+
 	/* Sync with worker on GET_BUF flag */
 	while (!(__atomic_load_n(&(d->bufs[wkr].bufptr64[0]), __ATOMIC_ACQUIRE)
-		& RTE_DISTRIB_GET_BUF))
+		& RTE_DISTRIB_GET_BUF)) {
+		handle_returns(d, wkr);
 		rte_pause();
-
-	handle_returns(d, wkr);
+	}
 
 	buf->count = 0;
 
@@ -374,6 +376,7 @@ rte_distributor_process(struct rte_distributor *d,
 		/* Flush out all non-full cache-lines to workers. */
 		for (wid = 0 ; wid < d->num_workers; wid++) {
 			/* Sync with worker on GET_BUF flag. */
+			handle_returns(d, wid);
 			if (__atomic_load_n(&(d->bufs[wid].bufptr64[0]),
 				__ATOMIC_ACQUIRE) & RTE_DISTRIB_GET_BUF) {
 				release(d, wid);
