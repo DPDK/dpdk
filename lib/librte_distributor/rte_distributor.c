@@ -702,6 +702,8 @@ rte_distributor_clear_returns(struct rte_distributor *d)
 		/* Sync with worker. Release retptrs. */
 		__atomic_store_n(&(d->bufs[wkr].retptr64[0]), 0,
 				__ATOMIC_RELEASE);
+
+	d->returns.start = d->returns.count = 0;
 }
 
 /* creates a distributor instance */
