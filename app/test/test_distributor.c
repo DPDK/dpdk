@@ -43,7 +43,8 @@ total_packet_count(void)
 {
 	unsigned i, count = 0;
 	for (i = 0; i < worker_idx; i++)
-		count += worker_stats[i].handled_packets;
+		count += __atomic_load_n(&worker_stats[i].handled_packets,
+				__ATOMIC_RELAXED);
 	return count;
 }
 
@@ -51,7 +52,10 @@ total_packet_count(void)
 static inline void
 clear_packet_count(void)
 {
-	memset(&worker_stats, 0, sizeof(worker_stats));
+	unsigned int i;
+	for (i = 0; i < RTE_MAX_LCORE; i++)
+		__atomic_store_n(&worker_stats[i].handled_packets, 0,
+			__ATOMIC_RELAXED);
 }
 
 /* this is the basic worker function for sanity test
@@ -129,7 +133,8 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-				worker_stats[i].handled_packets);
+			__atomic_load_n(&worker_stats[i].handled_packets,
+					__ATOMIC_RELAXED));
 	printf("Sanity test with all zero hashes done.\n");
 
 	/* pick two flows and check they go correctly */
@@ -154,7 +159,9 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 
 		for (i = 0; i < rte_lcore_count() - 1; i++)
 			printf("Worker %u handled %u packets\n", i,
-					worker_stats[i].handled_packets);
+				__atomic_load_n(
+					&worker_stats[i].handled_packets,
+					__ATOMIC_RELAXED));
 		printf("Sanity test with two hash values done\n");
 	}
 
@@ -180,7 +187,8 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-				worker_stats[i].handled_packets);
+			__atomic_load_n(&worker_stats[i].handled_packets,
+					__ATOMIC_RELAXED));
 	printf("Sanity test with non-zero hashes done\n");
 
 	rte_mempool_put_bulk(p, (void *)bufs, BURST);
@@ -272,12 +280,14 @@ handle_work_with_free_mbufs(void *arg)
 
 	num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 	while (!quit) {
-		worker_stats[id].handled_packets += num;
+		__atomic_fetch_add(&worker_stats[id].handled_packets, num,
+				__ATOMIC_RELAXED);
 		for (i = 0; i < num; i++)
 			rte_pktmbuf_free(buf[i]);
 		num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 	}
-	worker_stats[id].handled_packets += num;
+	__atomic_fetch_add(&worker_stats[id].handled_packets, num,
+			__ATOMIC_RELAXED);
 	rte_distributor_return_pkt(d, id, buf, num);
 	return 0;
 }
@@ -347,7 +357,8 @@ handle_work_for_shutdown_test(void *arg)
 	/* wait for quit single globally, or for worker zero, wait
 	 * for zero_quit */
 	while (!quit && !(id == zero_id && zero_quit)) {
-		worker_stats[id].handled_packets += num;
+		__atomic_fetch_add(&worker_stats[id].handled_packets, num,
+				__ATOMIC_RELAXED);
 		num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 
 		if (num > 0) {
@@ -357,8 +368,9 @@ handle_work_for_shutdown_test(void *arg)
 		}
 		zero_id = __atomic_load_n(&zero_idx, __ATOMIC_ACQUIRE);
 	}
-	worker_stats[id].handled_packets += num;
 
+	__atomic_fetch_add(&worker_stats[id].handled_packets, num,
+			__ATOMIC_RELAXED);
 	if (id == zero_id) {
 		rte_distributor_return_pkt(d, id, NULL, 0);
 
@@ -371,7 +383,8 @@ handle_work_for_shutdown_test(void *arg)
 		num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 
 		while (!quit) {
-			worker_stats[id].handled_packets += num;
+			__atomic_fetch_add(&worker_stats[id].handled_packets,
+					num, __ATOMIC_RELAXED);
 			num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 		}
 	}
@@ -437,7 +450,8 @@ sanity_test_with_worker_shutdown(struct worker_params *wp,
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-				worker_stats[i].handled_packets);
+			__atomic_load_n(&worker_stats[i].handled_packets,
+					__ATOMIC_RELAXED));
 
 	if (total_packet_count() != BURST * 2) {
 		printf("Line %d: Error, not all packets flushed. "
@@ -497,7 +511,8 @@ test_flush_with_worker_shutdown(struct worker_params *wp,
 	zero_quit = 0;
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
-				worker_stats[i].handled_packets);
+			__atomic_load_n(&worker_stats[i].handled_packets,
+					__ATOMIC_RELAXED));
 
 	if (total_packet_count() != BURST) {
 		printf("Line %d: Error, not all packets flushed. "
