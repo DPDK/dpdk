@@ -103,6 +103,7 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 	struct rte_mbuf *returns[BURST*2];
 	unsigned int i, count;
 	unsigned int retries;
+	unsigned int processed;
 
 	printf("=== Basic distributor sanity tests ===\n");
 	clear_packet_count();
@@ -116,7 +117,11 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 	for (i = 0; i < BURST; i++)
 		bufs[i]->hash.usr = 0;
 
-	rte_distributor_process(db, bufs, BURST);
+	processed = 0;
+	while (processed < BURST)
+		processed += rte_distributor_process(db, &bufs[processed],
+			BURST - processed);
+
 	count = 0;
 	do {
 
@@ -304,6 +309,7 @@ sanity_test_with_mbuf_alloc(struct worker_params *wp, struct rte_mempool *p)
 	struct rte_distributor *d = wp->dist;
 	unsigned i;
 	struct rte_mbuf *bufs[BURST];
+	unsigned int processed;
 
 	printf("=== Sanity test with mbuf alloc/free (%s) ===\n", wp->name);
 
@@ -316,7 +322,10 @@ sanity_test_with_mbuf_alloc(struct worker_params *wp, struct rte_mempool *p)
 			bufs[j]->hash.usr = (i+j) << 1;
 		}
 
-		rte_distributor_process(d, bufs, BURST);
+		processed = 0;
+		while (processed < BURST)
+			processed += rte_distributor_process(d,
+				&bufs[processed], BURST - processed);
 	}
 
 	rte_distributor_flush(d);
@@ -410,6 +419,7 @@ sanity_test_with_worker_shutdown(struct worker_params *wp,
 	struct rte_mbuf *bufs2[BURST];
 	unsigned int i;
 	unsigned int failed = 0;
+	unsigned int processed = 0;
 
 	printf("=== Sanity test of worker shutdown ===\n");
 
@@ -427,7 +437,10 @@ sanity_test_with_worker_shutdown(struct worker_params *wp,
 	for (i = 0; i < BURST; i++)
 		bufs[i]->hash.usr = 1;
 
-	rte_distributor_process(d, bufs, BURST);
+	processed = 0;
+	while (processed < BURST)
+		processed += rte_distributor_process(d, &bufs[processed],
+			BURST - processed);
 	rte_distributor_flush(d);
 
 	/* at this point, we will have processed some packets and have a full
@@ -489,6 +502,7 @@ test_flush_with_worker_shutdown(struct worker_params *wp,
 	struct rte_mbuf *bufs[BURST];
 	unsigned int i;
 	unsigned int failed = 0;
+	unsigned int processed;
 
 	printf("=== Test flush fn with worker shutdown (%s) ===\n", wp->name);
 
@@ -503,7 +517,10 @@ test_flush_with_worker_shutdown(struct worker_params *wp,
 	for (i = 0; i < BURST; i++)
 		bufs[i]->hash.usr = 0;
 
-	rte_distributor_process(d, bufs, BURST);
+	processed = 0;
+	while (processed < BURST)
+		processed += rte_distributor_process(d, &bufs[processed],
+			BURST - processed);
 	/* at this point, we will have processed some packets and have a full
 	 * backlog for the other ones at worker 0.
 	 */
@@ -585,6 +602,7 @@ sanity_mark_test(struct worker_params *wp, struct rte_mempool *p)
 	unsigned int i, count, id;
 	unsigned int sorted[buf_count], seq;
 	unsigned int failed = 0;
+	unsigned int processed;
 
 	printf("=== Marked packets test ===\n");
 	clear_packet_count();
@@ -615,7 +633,11 @@ sanity_mark_test(struct worker_params *wp, struct rte_mempool *p)
 
 	count = 0;
 	for (i = 0; i < buf_count/burst; i++) {
-		rte_distributor_process(db, &bufs[i * burst], burst);
+		processed = 0;
+		while (processed < burst)
+			processed += rte_distributor_process(db,
+				&bufs[i * burst + processed],
+				burst - processed);
 		count += rte_distributor_returned_pkts(db, &returns[count],
 			buf_count - count);
 	}
