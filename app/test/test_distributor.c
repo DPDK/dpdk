@@ -591,6 +591,7 @@ quit_workers(struct worker_params *wp, struct rte_mempool *p)
 	const unsigned num_workers = rte_lcore_count() - 1;
 	unsigned i;
 	struct rte_mbuf *bufs[RTE_MAX_LCORE];
+	struct rte_mbuf *returns[RTE_MAX_LCORE];
 	if (rte_mempool_get_bulk(p, (void *)bufs, num_workers) != 0) {
 		printf("line %d: Error getting mbufs from pool\n", __LINE__);
 		return;
@@ -606,6 +607,10 @@ quit_workers(struct worker_params *wp, struct rte_mempool *p)
 	rte_distributor_flush(d);
 	rte_eal_mp_wait_lcore();
 
+	while (rte_distributor_returned_pkts(d, returns, RTE_MAX_LCORE))
+		;
+
+	rte_distributor_clear_returns(d);
 	rte_mempool_put_bulk(p, (void *)bufs, num_workers);
 
 	quit = 0;
