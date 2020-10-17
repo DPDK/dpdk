@@ -259,13 +259,13 @@ find_match_scalar(struct rte_distributor *d,
 
 		for (j = 0; j < RTE_DIST_BURST_SIZE ; j++)
 			for (w = 0; w < RTE_DIST_BURST_SIZE; w++)
-				if (d->in_flight_tags[i][j] == data_ptr[w]) {
+				if (d->in_flight_tags[i][w] == data_ptr[j]) {
 					output_ptr[j] = i+1;
 					break;
 				}
 		for (j = 0; j < RTE_DIST_BURST_SIZE; j++)
 			for (w = 0; w < RTE_DIST_BURST_SIZE; w++)
-				if (bl->tags[j] == data_ptr[w]) {
+				if (bl->tags[w] == data_ptr[j]) {
 					output_ptr[j] = i+1;
 					break;
 				}
