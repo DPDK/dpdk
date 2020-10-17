@@ -769,9 +769,10 @@ quit_workers(struct worker_params *wp, struct rte_mempool *p)
 
 	zero_quit = 0;
 	quit = 1;
-	for (i = 0; i < num_workers; i++)
+	for (i = 0; i < num_workers; i++) {
 		bufs[i]->hash.usr = i << 1;
-	rte_distributor_process(d, bufs, num_workers);
+		rte_distributor_process(d, &bufs[i], 1);
+	}
 
 	rte_distributor_process(d, NULL, 0);
 	rte_distributor_flush(d);
