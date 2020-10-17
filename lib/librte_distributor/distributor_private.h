@@ -155,6 +155,9 @@ struct rte_distributor {
 	enum rte_distributor_match_function dist_match_fn;
 
 	struct rte_distributor_single *d_single;
+
+	uint8_t active[RTE_DISTRIB_MAX_WORKERS];
+	uint8_t activesum;
 };
 
 void
