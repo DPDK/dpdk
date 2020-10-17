@@ -167,6 +167,9 @@ rte_distributor_return_pkt(struct rte_distributor *d,
 		if (num == 1)
 			return rte_distributor_return_pkt_single(d->d_single,
 				worker_id, oldpkt[0]);
+		else if (num == 0)
+			return rte_distributor_return_pkt_single(d->d_single,
+				worker_id, NULL);
 		else
 			return -EINVAL;
 	}
