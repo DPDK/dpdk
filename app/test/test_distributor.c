@@ -27,6 +27,7 @@ struct worker_params worker_params;
 /* statics - all zero-initialized by default */
 static volatile int quit;      /**< general quit variable for all threads */
 static volatile int zero_quit; /**< var for when we just want thr0 to quit*/
+static volatile int zero_sleep; /**< thr0 has quit basic loop and is sleeping*/
 static volatile unsigned worker_idx;
 static volatile unsigned zero_idx;
 
@@ -377,8 +378,10 @@ handle_work_for_shutdown_test(void *arg)
 		/* for worker zero, allow it to restart to pick up last packet
 		 * when all workers are shutting down.
 		 */
+		__atomic_store_n(&zero_sleep, 1, __ATOMIC_RELEASE);
 		while (zero_quit)
 			usleep(100);
+		__atomic_store_n(&zero_sleep, 0, __ATOMIC_RELEASE);
 
 		num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 
@@ -446,7 +449,12 @@ sanity_test_with_worker_shutdown(struct worker_params *wp,
 
 	/* flush the distributor */
 	rte_distributor_flush(d);
-	rte_delay_us(10000);
+	while (!__atomic_load_n(&zero_sleep, __ATOMIC_ACQUIRE))
+		rte_distributor_flush(d);
+
+	zero_quit = 0;
+	while (__atomic_load_n(&zero_sleep, __ATOMIC_ACQUIRE))
+		rte_delay_us(100);
 
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
@@ -506,9 +514,14 @@ test_flush_with_worker_shutdown(struct worker_params *wp,
 	/* flush the distributor */
 	rte_distributor_flush(d);
 
-	rte_delay_us(10000);
+	while (!__atomic_load_n(&zero_sleep, __ATOMIC_ACQUIRE))
+		rte_distributor_flush(d);
 
 	zero_quit = 0;
+
+	while (__atomic_load_n(&zero_sleep, __ATOMIC_ACQUIRE))
+		rte_delay_us(100);
+
 	for (i = 0; i < rte_lcore_count() - 1; i++)
 		printf("Worker %u handled %u packets\n", i,
 			__atomic_load_n(&worker_stats[i].handled_packets,
@@ -616,6 +629,8 @@ quit_workers(struct worker_params *wp, struct rte_mempool *p)
 	quit = 0;
 	worker_idx = 0;
 	zero_idx = RTE_MAX_LCORE;
+	zero_quit = 0;
+	zero_sleep = 0;
 }
 
 static int
