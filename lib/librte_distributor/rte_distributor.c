@@ -169,6 +169,18 @@ rte_distributor_return_pkt(struct rte_distributor *d,
 			return -EINVAL;
 	}
 
+	/* Spin while handshake bits are set (scheduler clears it).
+	 * Sync with worker on GET_BUF flag.
+	 */
+	while (unlikely(__atomic_load_n(&(buf->retptr64[0]), __ATOMIC_RELAXED)
+			& RTE_DISTRIB_GET_BUF)) {
+		rte_pause();
+		uint64_t t = rte_rdtsc()+100;
+
+		while (rte_rdtsc() < t)
+			rte_pause();
+	}
+
 	/* Sync with distributor to acquire retptrs */
 	__atomic_thread_fence(__ATOMIC_ACQUIRE);
 	for (i = 0; i < RTE_DIST_BURST_SIZE; i++)
