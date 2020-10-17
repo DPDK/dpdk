@@ -28,6 +28,7 @@ struct worker_params worker_params;
 static volatile int quit;      /**< general quit variable for all threads */
 static volatile int zero_quit; /**< var for when we just want thr0 to quit*/
 static volatile unsigned worker_idx;
+static volatile unsigned zero_idx;
 
 struct worker_stats {
 	volatile unsigned handled_packets;
@@ -340,26 +341,43 @@ handle_work_for_shutdown_test(void *arg)
 	unsigned int total = 0;
 	unsigned int i;
 	unsigned int returned = 0;
+	unsigned int zero_id = 0;
+	unsigned int zero_unset;
 	const unsigned int id = __atomic_fetch_add(&worker_idx, 1,
 			__ATOMIC_RELAXED);
 
 	num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
 
+	if (num > 0) {
+		zero_unset = RTE_MAX_LCORE;
+		__atomic_compare_exchange_n(&zero_idx, &zero_unset, id,
+			false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+	}
+	zero_id = __atomic_load_n(&zero_idx, __ATOMIC_ACQUIRE);
+
 	/* wait for quit single globally, or for worker zero, wait
 	 * for zero_quit */
-	while (!quit && !(id == 0 && zero_quit)) {
+	while (!quit && !(id == zero_id && zero_quit)) {
 		worker_stats[id].handled_packets += num;
 		count += num;
 		for (i = 0; i < num; i++)
 			rte_pktmbuf_free(buf[i]);
 		num = rte_distributor_get_pkt(d, id, buf, NULL, 0);
+
+		if (num > 0) {
+			zero_unset = RTE_MAX_LCORE;
+			__atomic_compare_exchange_n(&zero_idx, &zero_unset, id,
+				false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+		}
+		zero_id = __atomic_load_n(&zero_idx, __ATOMIC_ACQUIRE);
+
 		total += num;
 	}
 	worker_stats[id].handled_packets += num;
 	count += num;
 	returned = rte_distributor_return_pkt(d, id, buf, num);
 
-	if (id == 0) {
+	if (id == zero_id) {
 		/* for worker zero, allow it to restart to pick up last packet
 		 * when all workers are shutting down.
 		 */
@@ -578,6 +596,7 @@ quit_workers(struct worker_params *wp, struct rte_mempool *p)
 	rte_eal_mp_wait_lcore();
 	quit = 0;
 	worker_idx = 0;
+	zero_idx = RTE_MAX_LCORE;
 }
 
 static int
