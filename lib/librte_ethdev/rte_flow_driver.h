@@ -152,13 +152,13 @@ struct rte_flow_ops {
 		 struct rte_flow_restore_info *info,
 		 struct rte_flow_error *err);
 	/** See rte_flow_action_tunnel_decap_release() */
-	int (*action_release)
+	int (*tunnel_action_decap_release)
 		(struct rte_eth_dev *dev,
 		 struct rte_flow_action *pmd_actions,
 		 uint32_t num_of_actions,
 		 struct rte_flow_error *err);
 	/** See rte_flow_item_release() */
-	int (*item_release)
+	int (*tunnel_item_release)
 		(struct rte_eth_dev *dev,
 		 struct rte_flow_item *pmd_items,
 		 uint32_t num_of_items,

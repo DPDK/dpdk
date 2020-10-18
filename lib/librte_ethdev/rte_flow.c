@@ -1223,10 +1223,11 @@ rte_flow_tunnel_action_decap_release(uint16_t port_id,
 
 	if (unlikely(!ops))
 		return -rte_errno;
-	if (likely(!!ops->action_release)) {
+	if (likely(!!ops->tunnel_action_decap_release)) {
 		return flow_err(port_id,
-				ops->action_release(dev, actions,
-						    num_of_actions, error),
+				ops->tunnel_action_decap_release(dev, actions,
+								 num_of_actions,
+								 error),
 				error);
 	}
 	return rte_flow_error_set(error, ENOTSUP,
@@ -1245,10 +1246,10 @@ rte_flow_tunnel_item_release(uint16_t port_id,
 
 	if (unlikely(!ops))
 		return -rte_errno;
-	if (likely(!!ops->item_release)) {
+	if (likely(!!ops->tunnel_item_release)) {
 		return flow_err(port_id,
-				ops->item_release(dev, items,
-						  num_of_items, error),
+				ops->tunnel_item_release(dev, items,
+							 num_of_items, error),
 				error);
 	}
 	return rte_flow_error_set(error, ENOTSUP,
