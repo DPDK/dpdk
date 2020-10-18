@@ -533,8 +533,12 @@ and this allows further acceleration of the offload of Crypto workloads.
 
 The Security framework provides APIs to create and free sessions for crypto/ethernet
 devices, where sessions are mempool objects. It is the application's responsibility
-to create and manage the session mempools. The mempool object size should be able to
-accommodate the driver's private data of security session.
+to create and manage two session mempools - one for session and other for session
+private data. The private session data mempool object size should be able to
+accommodate the driver's private data of security session. The application can get
+the size of session private data using API ``rte_security_session_get_size``.
+And the session mempool object size should be enough to accommodate
+``rte_security_session``.
 
 Once the session mempools have been created, ``rte_security_session_create()``
 is used to allocate and initialize a session for the required crypto/ethernet device.

@@ -394,6 +394,7 @@ struct rte_security_session {
  * @param   instance	security instance
  * @param   conf	session configuration parameters
  * @param   mp		mempool to allocate session objects from
+ * @param   priv_mp	mempool to allocate session private data objects from
  * @return
  *  - On success, pointer to session
  *  - On failure, NULL
@@ -401,7 +402,8 @@ struct rte_security_session {
 struct rte_security_session *
 rte_security_session_create(struct rte_security_ctx *instance,
 			    struct rte_security_session_conf *conf,
-			    struct rte_mempool *mp);
+			    struct rte_mempool *mp,
+			    struct rte_mempool *priv_mp);
 
 /**
  * Update security session as specified by the session configuration

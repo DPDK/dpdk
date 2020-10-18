@@ -632,7 +632,8 @@ create_dummy_sec_session(struct ipsec_unitest_params *ut,
 	static struct rte_security_session_conf conf;
 
 	ut->ss[j].security.ses = rte_security_session_create(&dummy_sec_ctx,
-					&conf, qp->mp_session_private);
+					&conf, qp->mp_session,
+					qp->mp_session_private);
 
 	if (ut->ss[j].security.ses == NULL)
 		return -ENOMEM;

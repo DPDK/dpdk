@@ -473,6 +473,12 @@ API Changes
   ``uint32_t`` to ``uint8_t`` so that a new field ``sdap_enabled`` can be added
   to support SDAP.
 
+* security: The API ``rte_security_session_create`` is updated to take two
+  mempool objects one for session and other for session private data.
+  So the application need to create two mempools and get the size of session
+  private data using API ``rte_security_session_get_size`` for private session
+  mempool.
+
 * ipsec: ``RTE_SATP_LOG2_NUM`` has been dropped from ``enum`` and
   subsequently moved ``rte_ipsec`` lib from experimental to stable.
 

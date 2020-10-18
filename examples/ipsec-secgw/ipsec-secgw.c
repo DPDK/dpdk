@@ -2348,12 +2348,8 @@ session_pool_init(struct socket_ctx *ctx, int32_t socket_id, size_t sess_sz)
 
 	snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
 			"sess_mp_%u", socket_id);
-	/*
-	 * Doubled due to rte_security_session_create() uses one mempool for
-	 * session and for session private data.
-	 */
 	nb_sess = (get_nb_crypto_sessions() + CDEV_MP_CACHE_SZ *
-		rte_lcore_count()) * 2;
+		rte_lcore_count());
 	sess_mp = rte_cryptodev_sym_session_pool_create(
 			mp_name, nb_sess, sess_sz, CDEV_MP_CACHE_SZ, 0,
 			socket_id);
@@ -2376,12 +2372,8 @@ session_priv_pool_init(struct socket_ctx *ctx, int32_t socket_id,
 
 	snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
 			"sess_mp_priv_%u", socket_id);
-	/*
-	 * Doubled due to rte_security_session_create() uses one mempool for
-	 * session and for session private data.
-	 */
 	nb_sess = (get_nb_crypto_sessions() + CDEV_MP_CACHE_SZ *
-		rte_lcore_count()) * 2;
+		rte_lcore_count());
 	sess_mp = rte_mempool_create(mp_name,
 			nb_sess,
 			sess_sz,

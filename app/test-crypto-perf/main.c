@@ -156,7 +156,14 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		if (sess_size > max_sess_size)
 			max_sess_size = sess_size;
 	}
-
+#ifdef RTE_LIBRTE_SECURITY
+	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
+		sess_size = rte_security_session_get_size(
+				rte_cryptodev_get_sec_ctx(cdev_id));
+		if (sess_size > max_sess_size)
+			max_sess_size = sess_size;
+	}
+#endif
 	/*
 	 * Calculate number of needed queue pairs, based on the amount
 	 * of available number of logical cores and crypto devices.
@@ -247,8 +254,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 				opts->nb_qps * nb_slaves;
 #endif
 		} else
-			sessions_needed = enabled_cdev_count *
-						opts->nb_qps * 2;
+			sessions_needed = enabled_cdev_count * opts->nb_qps;
 
 		/*
 		 * A single session is required per queue pair

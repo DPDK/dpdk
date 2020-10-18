@@ -200,6 +200,24 @@
 			expected_mempool_usage, mempool_usage);		\
 } while (0)
 
+/**
+ * Verify usage of mempool by checking if number of allocated objects matches
+ * expectations. The mempool is used to manage objects for sessions priv data.
+ * A single object is acquired from mempool during session_create
+ * and put back in session_destroy.
+ *
+ * @param   expected_priv_mp_usage	expected number of used priv mp objects
+ */
+#define TEST_ASSERT_PRIV_MP_USAGE(expected_priv_mp_usage) do {		\
+	struct security_testsuite_params *ts_params = &testsuite_params;\
+	unsigned int priv_mp_usage;					\
+	priv_mp_usage = rte_mempool_in_use_count(			\
+			ts_params->session_priv_mpool);			\
+	TEST_ASSERT_EQUAL(expected_priv_mp_usage, priv_mp_usage,	\
+			"Expecting %u priv mempool allocations, "	\
+			"but there are %u allocated objects",		\
+			expected_priv_mp_usage, priv_mp_usage);		\
+} while (0)
 
 /**
  * Mockup structures and functions for rte_security_ops;
@@ -237,26 +255,37 @@ static struct mock_session_create_data {
 	struct rte_security_session_conf *conf;
 	struct rte_security_session *sess;
 	struct rte_mempool *mp;
+	struct rte_mempool *priv_mp;
 
 	int ret;
 
 	int called;
 	int failed;
-} mock_session_create_exp = {NULL, NULL, NULL, NULL, 0, 0, 0};
+} mock_session_create_exp = {NULL, NULL, NULL, NULL, NULL, 0, 0, 0};
 
 static int
 mock_session_create(void *device,
 		struct rte_security_session_conf *conf,
 		struct rte_security_session *sess,
-		struct rte_mempool *mp)
+		struct rte_mempool *priv_mp)
 {
+	void *sess_priv;
+	int ret;
+
 	mock_session_create_exp.called++;
 
 	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_create_exp, device);
 	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_create_exp, conf);
-	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_create_exp, mp);
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_create_exp, priv_mp);
 
-	mock_session_create_exp.sess = sess;
+	if (mock_session_create_exp.ret == 0) {
+		ret = rte_mempool_get(priv_mp, &sess_priv);
+		TEST_ASSERT_EQUAL(0, ret,
+			"priv mempool does not have enough objects");
+
+		set_sec_session_private_data(sess, sess_priv);
+		mock_session_create_exp.sess = sess;
+	}
 
 	return mock_session_create_exp.ret;
 }
@@ -363,8 +392,13 @@ static struct mock_session_destroy_data {
 static int
 mock_session_destroy(void *device, struct rte_security_session *sess)
 {
-	mock_session_destroy_exp.called++;
+	void *sess_priv = get_sec_session_private_data(sess);
 
+	mock_session_destroy_exp.called++;
+	if ((mock_session_destroy_exp.ret == 0) && (sess_priv != NULL)) {
+		rte_mempool_put(rte_mempool_from_obj(sess_priv), sess_priv);
+		set_sec_session_private_data(sess, NULL);
+	}
 	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_destroy_exp, device);
 	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_destroy_exp, sess);
 
@@ -502,6 +536,7 @@ struct rte_security_ops mock_ops = {
  */
 static struct security_testsuite_params {
 	struct rte_mempool *session_mpool;
+	struct rte_mempool *session_priv_mpool;
 } testsuite_params = { NULL };
 
 /**
@@ -524,9 +559,11 @@ static struct security_unittest_params {
 	.sess = NULL,
 };
 
-#define SECURITY_TEST_MEMPOOL_NAME "SecurityTestsMempoolName"
+#define SECURITY_TEST_MEMPOOL_NAME "SecurityTestMp"
+#define SECURITY_TEST_PRIV_MEMPOOL_NAME "SecurityTestPrivMp"
 #define SECURITY_TEST_MEMPOOL_SIZE 15
-#define SECURITY_TEST_SESSION_OBJECT_SIZE sizeof(struct rte_security_session)
+#define SECURITY_TEST_SESSION_OBJ_SZ sizeof(struct rte_security_session)
+#define SECURITY_TEST_SESSION_PRIV_OBJ_SZ 64
 
 /**
  * testsuite_setup initializes whole test suite parameters.
@@ -540,11 +577,27 @@ testsuite_setup(void)
 	ts_params->session_mpool = rte_mempool_create(
 			SECURITY_TEST_MEMPOOL_NAME,
 			SECURITY_TEST_MEMPOOL_SIZE,
-			SECURITY_TEST_SESSION_OBJECT_SIZE,
+			SECURITY_TEST_SESSION_OBJ_SZ,
 			0, 0, NULL, NULL, NULL, NULL,
 			SOCKET_ID_ANY, 0);
 	TEST_ASSERT_NOT_NULL(ts_params->session_mpool,
 			"Cannot create mempool %s\n", rte_strerror(rte_errno));
+
+	ts_params->session_priv_mpool = rte_mempool_create(
+			SECURITY_TEST_PRIV_MEMPOOL_NAME,
+			SECURITY_TEST_MEMPOOL_SIZE,
+			SECURITY_TEST_SESSION_PRIV_OBJ_SZ,
+			0, 0, NULL, NULL, NULL, NULL,
+			SOCKET_ID_ANY, 0);
+	if (ts_params->session_priv_mpool == NULL) {
+		RTE_LOG(ERR, USER1, "TestCase %s() line %d failed (null): "
+				"Cannot create priv mempool %s\n",
+				__func__, __LINE__, rte_strerror(rte_errno));
+		rte_mempool_free(ts_params->session_mpool);
+		ts_params->session_mpool = NULL;
+		return TEST_FAILED;
+	}
+
 	return TEST_SUCCESS;
 }
 
@@ -558,6 +611,10 @@ testsuite_teardown(void)
 	if (ts_params->session_mpool) {
 		rte_mempool_free(ts_params->session_mpool);
 		ts_params->session_mpool = NULL;
+	}
+	if (ts_params->session_priv_mpool) {
+		rte_mempool_free(ts_params->session_priv_mpool);
+		ts_params->session_priv_mpool = NULL;
 	}
 }
 
@@ -656,10 +713,12 @@ ut_setup_with_session(void)
 	mock_session_create_exp.device = NULL;
 	mock_session_create_exp.conf = &ut_params->conf;
 	mock_session_create_exp.mp = ts_params->session_mpool;
+	mock_session_create_exp.priv_mp = ts_params->session_priv_mpool;
 	mock_session_create_exp.ret = 0;
 
 	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
-			ts_params->session_mpool);
+			ts_params->session_mpool,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_NOT_NULL(rte_security_session_create,
 			sess);
 	TEST_ASSERT_EQUAL(sess, mock_session_create_exp.sess,
@@ -701,11 +760,13 @@ test_session_create_inv_context(void)
 	struct rte_security_session *sess;
 
 	sess = rte_security_session_create(NULL, &ut_params->conf,
-			ts_params->session_mpool);
+			ts_params->session_mpool,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
 			sess, NULL, "%p");
 	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
 	TEST_ASSERT_SESSION_COUNT(0);
 
 	return TEST_SUCCESS;
@@ -725,11 +786,13 @@ test_session_create_inv_context_ops(void)
 	ut_params->ctx.ops = NULL;
 
 	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
-			ts_params->session_mpool);
+			ts_params->session_mpool,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
 			sess, NULL, "%p");
 	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
 	TEST_ASSERT_SESSION_COUNT(0);
 
 	return TEST_SUCCESS;
@@ -749,11 +812,13 @@ test_session_create_inv_context_ops_fun(void)
 	ut_params->ctx.ops = &empty_ops;
 
 	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
-			ts_params->session_mpool);
+			ts_params->session_mpool,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
 			sess, NULL, "%p");
 	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
 	TEST_ASSERT_SESSION_COUNT(0);
 
 	return TEST_SUCCESS;
@@ -770,31 +835,59 @@ test_session_create_inv_configuration(void)
 	struct rte_security_session *sess;
 
 	sess = rte_security_session_create(&ut_params->ctx, NULL,
-			ts_params->session_mpool);
+			ts_params->session_mpool,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
 			sess, NULL, "%p");
 	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
 	TEST_ASSERT_SESSION_COUNT(0);
 
 	return TEST_SUCCESS;
 }
 
 /**
- * Test execution of rte_security_session_create with NULL mp parameter
+ * Test execution of rte_security_session_create with NULL session
+ * mempool
  */
 static int
 test_session_create_inv_mempool(void)
 {
 	struct security_unittest_params *ut_params = &unittest_params;
+	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct rte_security_session *sess;
 
 	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
-			NULL);
+			NULL, ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
 			sess, NULL, "%p");
 	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
+	TEST_ASSERT_SESSION_COUNT(0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_create with NULL session
+ * priv mempool
+ */
+static int
+test_session_create_inv_sess_priv_mempool(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct security_testsuite_params *ts_params = &testsuite_params;
+	struct rte_security_session *sess;
+
+	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
+			ts_params->session_mpool, NULL);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
+			sess, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 0);
+	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
 	TEST_ASSERT_SESSION_COUNT(0);
 
 	return TEST_SUCCESS;
@@ -810,6 +903,7 @@ test_session_create_mempool_empty(void)
 	struct security_testsuite_params *ts_params = &testsuite_params;
 	struct security_unittest_params *ut_params = &unittest_params;
 	struct rte_security_session *tmp[SECURITY_TEST_MEMPOOL_SIZE];
+	void *tmp1[SECURITY_TEST_MEMPOOL_SIZE];
 	struct rte_security_session *sess;
 
 	/* Get all available objects from mempool. */
@@ -820,21 +914,34 @@ test_session_create_mempool_empty(void)
 		TEST_ASSERT_EQUAL(0, ret,
 				"Expect getting %d object from mempool"
 				" to succeed", i);
+		ret = rte_mempool_get(ts_params->session_priv_mpool,
+				(void **)(&tmp1[i]));
+		TEST_ASSERT_EQUAL(0, ret,
+				"Expect getting %d object from priv mempool"
+				" to succeed", i);
 	}
 	TEST_ASSERT_MEMPOOL_USAGE(SECURITY_TEST_MEMPOOL_SIZE);
+	TEST_ASSERT_PRIV_MP_USAGE(SECURITY_TEST_MEMPOOL_SIZE);
 
 	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
-			ts_params->session_mpool);
+			ts_params->session_mpool,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
 			sess, NULL, "%p");
 	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(SECURITY_TEST_MEMPOOL_SIZE);
+	TEST_ASSERT_PRIV_MP_USAGE(SECURITY_TEST_MEMPOOL_SIZE);
 	TEST_ASSERT_SESSION_COUNT(0);
 
 	/* Put objects back to the pool. */
-	for (i = 0; i < SECURITY_TEST_MEMPOOL_SIZE; ++i)
-		rte_mempool_put(ts_params->session_mpool, (void *)(tmp[i]));
+	for (i = 0; i < SECURITY_TEST_MEMPOOL_SIZE; ++i) {
+		rte_mempool_put(ts_params->session_mpool,
+				(void *)(tmp[i]));
+		rte_mempool_put(ts_params->session_priv_mpool,
+				(tmp1[i]));
+	}
 	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
 
 	return TEST_SUCCESS;
 }
@@ -853,14 +960,17 @@ test_session_create_ops_failure(void)
 	mock_session_create_exp.device = NULL;
 	mock_session_create_exp.conf = &ut_params->conf;
 	mock_session_create_exp.mp = ts_params->session_mpool;
+	mock_session_create_exp.priv_mp = ts_params->session_priv_mpool;
 	mock_session_create_exp.ret = -1;	/* Return failure status. */
 
 	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
-			ts_params->session_mpool);
+			ts_params->session_mpool,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_create,
 			sess, NULL, "%p");
 	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 1);
 	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
 	TEST_ASSERT_SESSION_COUNT(0);
 
 	return TEST_SUCCESS;
@@ -879,10 +989,12 @@ test_session_create_success(void)
 	mock_session_create_exp.device = NULL;
 	mock_session_create_exp.conf = &ut_params->conf;
 	mock_session_create_exp.mp = ts_params->session_mpool;
+	mock_session_create_exp.priv_mp = ts_params->session_priv_mpool;
 	mock_session_create_exp.ret = 0;	/* Return success status. */
 
 	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
-			ts_params->session_mpool);
+			ts_params->session_mpool,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_MOCK_FUNCTION_CALL_NOT_NULL(rte_security_session_create,
 			sess);
 	TEST_ASSERT_EQUAL(sess, mock_session_create_exp.sess,
@@ -891,6 +1003,7 @@ test_session_create_success(void)
 			sess, mock_session_create_exp.sess);
 	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 1);
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	/*
@@ -1276,6 +1389,7 @@ test_session_destroy_inv_context(void)
 	struct security_unittest_params *ut_params = &unittest_params;
 
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	int ret = rte_security_session_destroy(NULL, ut_params->sess);
@@ -1283,6 +1397,7 @@ test_session_destroy_inv_context(void)
 			ret, -EINVAL, "%d");
 	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	return TEST_SUCCESS;
@@ -1299,6 +1414,7 @@ test_session_destroy_inv_context_ops(void)
 	ut_params->ctx.ops = NULL;
 
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	int ret = rte_security_session_destroy(&ut_params->ctx,
@@ -1307,6 +1423,7 @@ test_session_destroy_inv_context_ops(void)
 			ret, -EINVAL, "%d");
 	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	return TEST_SUCCESS;
@@ -1323,6 +1440,7 @@ test_session_destroy_inv_context_ops_fun(void)
 	ut_params->ctx.ops = &empty_ops;
 
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	int ret = rte_security_session_destroy(&ut_params->ctx,
@@ -1331,6 +1449,7 @@ test_session_destroy_inv_context_ops_fun(void)
 			ret, -ENOTSUP, "%d");
 	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	return TEST_SUCCESS;
@@ -1345,6 +1464,7 @@ test_session_destroy_inv_session(void)
 	struct security_unittest_params *ut_params = &unittest_params;
 
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	int ret = rte_security_session_destroy(&ut_params->ctx, NULL);
@@ -1352,6 +1472,7 @@ test_session_destroy_inv_session(void)
 			ret, -EINVAL, "%d");
 	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 0);
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	return TEST_SUCCESS;
@@ -1371,6 +1492,7 @@ test_session_destroy_ops_failure(void)
 	mock_session_destroy_exp.ret = -1;
 
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	int ret = rte_security_session_destroy(&ut_params->ctx,
@@ -1379,6 +1501,7 @@ test_session_destroy_ops_failure(void)
 			ret, -1, "%d");
 	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 1);
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	return TEST_SUCCESS;
@@ -1396,6 +1519,7 @@ test_session_destroy_success(void)
 	mock_session_destroy_exp.sess = ut_params->sess;
 	mock_session_destroy_exp.ret = 0;
 	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_PRIV_MP_USAGE(1);
 	TEST_ASSERT_SESSION_COUNT(1);
 
 	int ret = rte_security_session_destroy(&ut_params->ctx,
@@ -1404,6 +1528,7 @@ test_session_destroy_success(void)
 			ret, 0, "%d");
 	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 1);
 	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_PRIV_MP_USAGE(0);
 	TEST_ASSERT_SESSION_COUNT(0);
 
 	/*
@@ -2370,6 +2495,8 @@ static struct unit_test_suite security_testsuite  = {
 				test_session_create_inv_configuration),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_session_create_inv_mempool),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_session_create_inv_sess_priv_mempool),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_session_create_mempool_empty),
 		TEST_CASE_ST(ut_setup, ut_teardown,

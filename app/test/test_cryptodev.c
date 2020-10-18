@@ -782,9 +782,15 @@ testsuite_setup(void)
 	unsigned int session_size =
 		rte_cryptodev_sym_get_private_session_size(dev_id);
 
+#ifdef RTE_LIBRTE_SECURITY
+	unsigned int security_session_size = rte_security_session_get_size(
+			rte_cryptodev_get_sec_ctx(dev_id));
+
+	if (session_size < security_session_size)
+		session_size = security_session_size;
+#endif
 	/*
-	 * Create mempool with maximum number of sessions * 2,
-	 * to include the session headers
+	 * Create mempool with maximum number of sessions.
 	 */
 	if (info.sym.max_nb_sessions != 0 &&
 			info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
@@ -7762,7 +7768,8 @@ static int test_pdcp_proto(int i, int oop, enum rte_crypto_cipher_operation opc,
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx,
-				&sess_conf, ts_params->session_priv_mpool);
+				&sess_conf, ts_params->session_mpool,
+				ts_params->session_priv_mpool);
 
 	if (!ut_params->sec_session) {
 		printf("TestCase %s()-%d line %d failed %s: ",
@@ -8022,7 +8029,8 @@ test_pdcp_proto_SGL(int i, int oop,
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx,
-				&sess_conf, ts_params->session_priv_mpool);
+				&sess_conf, ts_params->session_mpool,
+				ts_params->session_priv_mpool);
 
 	if (!ut_params->sec_session) {
 		printf("TestCase %s()-%d line %d failed %s: ",
@@ -8488,6 +8496,7 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
+					ts_params->session_mpool,
 					ts_params->session_priv_mpool);
 
 	if (!ut_params->sec_session) {
@@ -8663,6 +8672,7 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
+					ts_params->session_mpool,
 					ts_params->session_priv_mpool);
 
 	if (!ut_params->sec_session) {

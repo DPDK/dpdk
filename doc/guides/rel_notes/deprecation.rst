@@ -149,13 +149,6 @@ Deprecation Notices
   will be limited to maximum 256 queues.
   Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
 
-* security: The API ``rte_security_session_create`` takes only single mempool
-  for session and session private data. So the application need to create
-  mempool for twice the number of sessions needed and will also lead to
-  wastage of memory as session private data need more memory compared to session.
-  Hence the API will be modified to take two mempool pointers - one for session
-  and one for private data.
-
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,
   ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal

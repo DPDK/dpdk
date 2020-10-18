@@ -621,7 +621,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 
 		/* Create security session */
 		return (void *)rte_security_session_create(ctx,
-					&sess_conf, sess_mp);
+					&sess_conf, sess_mp, priv_mp);
 	}
 	if (options->op_type == CPERF_DOCSIS) {
 		enum rte_security_docsis_direction direction;
@@ -664,7 +664,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 
 		/* Create security session */
 		return (void *)rte_security_session_create(ctx,
-					&sess_conf, priv_mp);
+					&sess_conf, sess_mp, priv_mp);
 	}
 #endif
 	sess = rte_cryptodev_sym_session_create(sess_mp);
