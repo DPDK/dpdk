@@ -66,7 +66,9 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 		/* Perf test only */
 		{ "perf", 0, 0, ARG_PERF_MODE},
 		/* Number of iterations to run with perf test */
-		{ "nb_iter", 1, 0, ARG_NUM_OF_ITERATIONS}
+		{ "nb_iter", 1, 0, ARG_NUM_OF_ITERATIONS},
+		/* End of options */
+		{ 0, 0, 0, 0 }
 	};
 
 	argvopt = argv;
