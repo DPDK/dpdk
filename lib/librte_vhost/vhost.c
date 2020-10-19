@@ -579,22 +579,29 @@ int
 alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 {
 	struct vhost_virtqueue *vq;
+	uint32_t i;
 
-	vq = rte_malloc(NULL, sizeof(struct vhost_virtqueue), 0);
-	if (vq == NULL) {
-		VHOST_LOG_CONFIG(ERR,
-			"Failed to allocate memory for vring:%u.\n", vring_idx);
-		return -1;
+	/* Also allocate holes, if any, up to requested vring index. */
+	for (i = 0; i <= vring_idx; i++) {
+		if (dev->virtqueue[i])
+			continue;
+
+		vq = rte_malloc(NULL, sizeof(struct vhost_virtqueue), 0);
+		if (vq == NULL) {
+			VHOST_LOG_CONFIG(ERR,
+				"Failed to allocate memory for vring:%u.\n", i);
+			return -1;
+		}
+
+		dev->virtqueue[i] = vq;
+		init_vring_queue(dev, vring_idx);
+		rte_spinlock_init(&vq->access_lock);
+		vq->avail_wrap_counter = 1;
+		vq->used_wrap_counter = 1;
+		vq->signalled_used_valid = false;
 	}
 
-	dev->virtqueue[vring_idx] = vq;
-	init_vring_queue(dev, vring_idx);
-	rte_spinlock_init(&vq->access_lock);
-	vq->avail_wrap_counter = 1;
-	vq->used_wrap_counter = 1;
-	vq->signalled_used_valid = false;
-
-	dev->nr_vring += 1;
+	dev->nr_vring = RTE_MAX(dev->nr_vring, vring_idx + 1);
 
 	return 0;
 }
