@@ -9,6 +9,9 @@
 #include <rte_cpuflags.h>
 #include <rte_common.h>
 #include <rte_net_crc.h>
+#include <rte_eal.h>
+#include <rte_log.h>
+#include <rte_vect.h>
 
 #include "net_crc.h"
 
@@ -23,6 +26,12 @@ static uint32_t crc32_eth_lut[CRC_LUT_SIZE];
 static uint32_t crc16_ccitt_lut[CRC_LUT_SIZE];
 
 static uint32_t
+rte_crc16_ccitt_default_handler(const uint8_t *data, uint32_t data_len);
+
+static uint32_t
+rte_crc32_eth_default_handler(const uint8_t *data, uint32_t data_len);
+
+static uint32_t
 rte_crc16_ccitt_handler(const uint8_t *data, uint32_t data_len);
 
 static uint32_t
@@ -31,7 +40,12 @@ rte_crc32_eth_handler(const uint8_t *data, uint32_t data_len);
 typedef uint32_t
 (*rte_net_crc_handler)(const uint8_t *data, uint32_t data_len);
 
-static const rte_net_crc_handler *handlers;
+static rte_net_crc_handler handlers_default[] = {
+	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_default_handler,
+	[RTE_NET_CRC32_ETH] = rte_crc32_eth_default_handler,
+};
+
+static const rte_net_crc_handler *handlers = handlers_default;
 
 static const rte_net_crc_handler handlers_scalar[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_handler,
@@ -55,6 +69,14 @@ static const rte_net_crc_handler handlers_neon[] = {
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_neon_handler,
 };
 #endif
+
+static uint16_t max_simd_bitwidth;
+
+#define NET_LOG(level, fmt, args...)					\
+	rte_log(RTE_LOG_ ## level, libnet_logtype, "%s(): " fmt "\n",	\
+		__func__, ## args)
+
+RTE_LOG_REGISTER(libnet_logtype, lib.net, INFO);
 
 /* Scalar handling */
 
@@ -155,22 +177,21 @@ static const rte_net_crc_handler *
 avx512_vpclmulqdq_get_handlers(void)
 {
 #ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
-	if (AVX512_VPCLMULQDQ_CPU_SUPPORTED)
+	if (AVX512_VPCLMULQDQ_CPU_SUPPORTED &&
+			max_simd_bitwidth >= RTE_VECT_SIMD_512)
 		return handlers_avx512;
 #endif
+	NET_LOG(INFO, "Requirements not met, can't use AVX512\n");
 	return NULL;
 }
 
-static uint8_t
+static void
 avx512_vpclmulqdq_init(void)
 {
 #ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
-	if (AVX512_VPCLMULQDQ_CPU_SUPPORTED) {
+	if (AVX512_VPCLMULQDQ_CPU_SUPPORTED)
 		rte_net_crc_avx512_init();
-		return 1;
-	}
 #endif
-	return 0;
 }
 
 /* SSE4.2/PCLMULQDQ handling */
@@ -182,22 +203,21 @@ static const rte_net_crc_handler *
 sse42_pclmulqdq_get_handlers(void)
 {
 #ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
-	if (SSE42_PCLMULQDQ_CPU_SUPPORTED)
+	if (SSE42_PCLMULQDQ_CPU_SUPPORTED &&
+			max_simd_bitwidth >= RTE_VECT_SIMD_128)
 		return handlers_sse42;
 #endif
+	NET_LOG(INFO, "Requirements not met, can't use SSE\n");
 	return NULL;
 }
 
-static uint8_t
+static void
 sse42_pclmulqdq_init(void)
 {
 #ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
-	if (SSE42_PCLMULQDQ_CPU_SUPPORTED) {
+	if (SSE42_PCLMULQDQ_CPU_SUPPORTED)
 		rte_net_crc_sse42_init();
-		return 1;
-	}
 #endif
-	return 0;
 }
 
 /* NEON/PMULL handling */
@@ -209,22 +229,63 @@ static const rte_net_crc_handler *
 neon_pmull_get_handlers(void)
 {
 #ifdef CC_ARM64_NEON_PMULL_SUPPORT
-	if (NEON_PMULL_CPU_SUPPORTED)
+	if (NEON_PMULL_CPU_SUPPORTED &&
+			max_simd_bitwidth >= RTE_VECT_SIMD_128)
 		return handlers_neon;
 #endif
+	NET_LOG(INFO, "Requirements not met, can't use NEON\n");
 	return NULL;
 }
 
-static uint8_t
+static void
 neon_pmull_init(void)
 {
 #ifdef CC_ARM64_NEON_PMULL_SUPPORT
-	if (NEON_PMULL_CPU_SUPPORTED) {
+	if (NEON_PMULL_CPU_SUPPORTED)
 		rte_net_crc_neon_init();
-		return 1;
-	}
 #endif
-	return 0;
+}
+
+/* Default handling */
+
+static uint32_t
+rte_crc16_ccitt_default_handler(const uint8_t *data, uint32_t data_len)
+{
+	handlers = NULL;
+	if (max_simd_bitwidth == 0)
+		max_simd_bitwidth = rte_vect_get_max_simd_bitwidth();
+
+	handlers = avx512_vpclmulqdq_get_handlers();
+	if (handlers != NULL)
+		return handlers[RTE_NET_CRC16_CCITT](data, data_len);
+	handlers = sse42_pclmulqdq_get_handlers();
+	if (handlers != NULL)
+		return handlers[RTE_NET_CRC16_CCITT](data, data_len);
+	handlers = neon_pmull_get_handlers();
+	if (handlers != NULL)
+		return handlers[RTE_NET_CRC16_CCITT](data, data_len);
+	handlers = handlers_scalar;
+	return handlers[RTE_NET_CRC16_CCITT](data, data_len);
+}
+
+static uint32_t
+rte_crc32_eth_default_handler(const uint8_t *data, uint32_t data_len)
+{
+	handlers = NULL;
+	if (max_simd_bitwidth == 0)
+		max_simd_bitwidth = rte_vect_get_max_simd_bitwidth();
+
+	handlers = avx512_vpclmulqdq_get_handlers();
+	if (handlers != NULL)
+		return handlers[RTE_NET_CRC32_ETH](data, data_len);
+	handlers = sse42_pclmulqdq_get_handlers();
+	if (handlers != NULL)
+		return handlers[RTE_NET_CRC32_ETH](data, data_len);
+	handlers = neon_pmull_get_handlers();
+	if (handlers != NULL)
+		return handlers[RTE_NET_CRC32_ETH](data, data_len);
+	handlers = handlers_scalar;
+	return handlers[RTE_NET_CRC32_ETH](data, data_len);
 }
 
 /* Public API */
@@ -233,6 +294,8 @@ void
 rte_net_crc_set_alg(enum rte_net_crc_alg alg)
 {
 	handlers = NULL;
+	if (max_simd_bitwidth == 0)
+		max_simd_bitwidth = rte_vect_get_max_simd_bitwidth();
 
 	switch (alg) {
 	case RTE_NET_CRC_AVX512:
@@ -270,19 +333,11 @@ rte_net_crc_calc(const void *data,
 	return ret;
 }
 
-/* Select highest available crc algorithm as default one */
+/* Call initialisation helpers for all crc algorithm handlers */
 RTE_INIT(rte_net_crc_init)
 {
-	enum rte_net_crc_alg alg = RTE_NET_CRC_SCALAR;
-
 	rte_net_crc_scalar_init();
-
-	if (sse42_pclmulqdq_init())
-		alg = RTE_NET_CRC_SSE42;
-	if (avx512_vpclmulqdq_init())
-		alg = RTE_NET_CRC_AVX512;
-	if (neon_pmull_init())
-		alg = RTE_NET_CRC_NEON;
-
-	rte_net_crc_set_alg(alg);
+	sse42_pclmulqdq_init();
+	avx512_vpclmulqdq_init();
+	neon_pmull_init();
 }
