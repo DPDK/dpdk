@@ -1742,6 +1742,8 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.uc_hash_table_set          = txgbe_uc_hash_table_set,
 	.uc_all_hash_table_set      = txgbe_uc_all_hash_table_set,
 	.set_mc_addr_list           = txgbe_dev_set_mc_addr_list,
+	.rxq_info_get               = txgbe_rxq_info_get,
+	.txq_info_get               = txgbe_txq_info_get,
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe, rte_txgbe_pmd);

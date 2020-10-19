@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 
+#include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_log.h>
@@ -1939,9 +1940,48 @@ txgbe_dev_tx_queue_release(void *txq)
 	txgbe_tx_queue_release(txq);
 }
 
+/* (Re)set dynamic txgbe_tx_queue fields to defaults */
+static void __rte_cold
+txgbe_reset_tx_queue(struct txgbe_tx_queue *txq)
+{
+	static const struct txgbe_tx_desc zeroed_desc = {0};
+	struct txgbe_tx_entry *txe = txq->sw_ring;
+	uint16_t prev, i;
+
+	/* Zero out HW ring memory */
+	for (i = 0; i < txq->nb_tx_desc; i++)
+		txq->tx_ring[i] = zeroed_desc;
+
+	/* Initialize SW ring entries */
+	prev = (uint16_t)(txq->nb_tx_desc - 1);
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		volatile struct txgbe_tx_desc *txd = &txq->tx_ring[i];
+
+		txd->dw3 = rte_cpu_to_le_32(TXGBE_TXD_DD);
+		txe[i].mbuf = NULL;
+		txe[i].last_id = i;
+		txe[prev].next_id = i;
+		prev = i;
+	}
+
+	txq->tx_next_dd = (uint16_t)(txq->tx_free_thresh - 1);
+	txq->tx_tail = 0;
+
+	/*
+	 * Always allow 1 descriptor to be un-allocated to avoid
+	 * a H/W race condition
+	 */
+	txq->last_desc_cleaned = (uint16_t)(txq->nb_tx_desc - 1);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_desc - 1);
+	txq->ctx_curr = 0;
+	memset((void *)&txq->ctx_cache, 0,
+		TXGBE_CTX_NUM * sizeof(struct txgbe_ctx_info));
+}
+
 static const struct txgbe_txq_ops def_txq_ops = {
 	.release_mbufs = txgbe_tx_queue_release_mbufs,
 	.free_swring = txgbe_tx_free_swring,
+	.reset = txgbe_reset_tx_queue,
 };
 
 /* Takes an ethdev and a queue and sets up the tx function to be used based on
@@ -3209,5 +3249,42 @@ txgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
+}
+
+void
+txgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct txgbe_rx_queue *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+
+	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
+	qinfo->conf.rx_drop_en = rxq->drop_en;
+	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
+	qinfo->conf.offloads = rxq->offloads;
+}
+
+void
+txgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct txgbe_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+
+	qinfo->conf.tx_thresh.pthresh = txq->pthresh;
+	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
+	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
+
+	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
+	qinfo->conf.offloads = txq->offloads;
+	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
 
