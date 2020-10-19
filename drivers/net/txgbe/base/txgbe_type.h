@@ -145,7 +145,138 @@ struct txgbe_bus_info {
 	u16 instance_id;
 };
 
+/* iterator type for walking multicast address lists */
+typedef u8* (*txgbe_mc_addr_itr) (struct txgbe_hw *hw, u8 **mc_addr_ptr,
+				  u32 *vmdq);
+
+struct txgbe_link_info {
+	s32 (*read_link)(struct txgbe_hw *hw, u8 addr, u16 reg, u16 *val);
+	s32 (*read_link_unlocked)(struct txgbe_hw *hw, u8 addr, u16 reg,
+				  u16 *val);
+	s32 (*write_link)(struct txgbe_hw *hw, u8 addr, u16 reg, u16 val);
+	s32 (*write_link_unlocked)(struct txgbe_hw *hw, u8 addr, u16 reg,
+				   u16 val);
+
+	u8 addr;
+};
+
+struct txgbe_rom_info {
+	s32 (*init_params)(struct txgbe_hw *hw);
+	s32 (*read16)(struct txgbe_hw *hw, u32 offset, u16 *data);
+	s32 (*readw_sw)(struct txgbe_hw *hw, u32 offset, u16 *data);
+	s32 (*readw_buffer)(struct txgbe_hw *hw, u32 offset, u32 words,
+			    void *data);
+	s32 (*read32)(struct txgbe_hw *hw, u32 addr, u32 *data);
+	s32 (*read_buffer)(struct txgbe_hw *hw, u32 addr, u32 len, void *data);
+	s32 (*write16)(struct txgbe_hw *hw, u32 offset, u16 data);
+	s32 (*writew_sw)(struct txgbe_hw *hw, u32 offset, u16 data);
+	s32 (*writew_buffer)(struct txgbe_hw *hw, u32 offset, u32 words,
+			     void *data);
+	s32 (*write32)(struct txgbe_hw *hw, u32 addr, u32 data);
+	s32 (*write_buffer)(struct txgbe_hw *hw, u32 addr, u32 len, void *data);
+	s32 (*validate_checksum)(struct txgbe_hw *hw, u16 *checksum_val);
+	s32 (*update_checksum)(struct txgbe_hw *hw);
+	s32 (*calc_checksum)(struct txgbe_hw *hw);
+};
+
+struct txgbe_flash_info {
+	u32 semaphore_delay;
+	u32 dword_size;
+	u16 address_bits;
+};
+
 struct txgbe_mac_info {
+	s32 (*init_hw)(struct txgbe_hw *hw);
+	s32 (*reset_hw)(struct txgbe_hw *hw);
+	s32 (*start_hw)(struct txgbe_hw *hw);
+	s32 (*stop_hw)(struct txgbe_hw *hw);
+	s32 (*clear_hw_cntrs)(struct txgbe_hw *hw);
+	s32 (*get_mac_addr)(struct txgbe_hw *hw, u8 *mac_addr);
+	s32 (*get_san_mac_addr)(struct txgbe_hw *hw, u8 *san_mac_addr);
+	s32 (*set_san_mac_addr)(struct txgbe_hw *hw, u8 *san_mac_addr);
+	s32 (*get_device_caps)(struct txgbe_hw *hw, u16 *device_caps);
+	s32 (*get_wwn_prefix)(struct txgbe_hw *hw, u16 *wwnn_prefix,
+				 u16 *wwpn_prefix);
+	s32 (*setup_sfp)(struct txgbe_hw *hw);
+	s32 (*enable_rx_dma)(struct txgbe_hw *hw, u32 regval);
+	s32 (*disable_sec_rx_path)(struct txgbe_hw *hw);
+	s32 (*enable_sec_rx_path)(struct txgbe_hw *hw);
+	s32 (*disable_sec_tx_path)(struct txgbe_hw *hw);
+	s32 (*enable_sec_tx_path)(struct txgbe_hw *hw);
+	s32 (*acquire_swfw_sync)(struct txgbe_hw *hw, u32 mask);
+	void (*release_swfw_sync)(struct txgbe_hw *hw, u32 mask);
+	u64 (*autoc_read)(struct txgbe_hw *hw);
+	void (*autoc_write)(struct txgbe_hw *hw, u64 value);
+	s32 (*prot_autoc_read)(struct txgbe_hw *hw, bool *locked, u64 *value);
+	s32 (*prot_autoc_write)(struct txgbe_hw *hw, bool locked, u64 value);
+	s32 (*negotiate_api_version)(struct txgbe_hw *hw, int api);
+
+	/* Link */
+	void (*disable_tx_laser)(struct txgbe_hw *hw);
+	void (*enable_tx_laser)(struct txgbe_hw *hw);
+	void (*flap_tx_laser)(struct txgbe_hw *hw);
+	s32 (*setup_link)(struct txgbe_hw *hw, u32 speed,
+			       bool autoneg_wait_to_complete);
+	s32 (*setup_mac_link)(struct txgbe_hw *hw, u32 speed,
+			       bool autoneg_wait_to_complete);
+	s32 (*check_link)(struct txgbe_hw *hw, u32 *speed,
+			       bool *link_up, bool link_up_wait_to_complete);
+	s32 (*get_link_capabilities)(struct txgbe_hw *hw,
+				      u32 *speed, bool *autoneg);
+	void (*set_rate_select_speed)(struct txgbe_hw *hw, u32 speed);
+
+	/* Packet Buffer manipulation */
+	void (*setup_pba)(struct txgbe_hw *hw, int num_pb, u32 headroom,
+			     int strategy);
+
+	/* LED */
+	s32 (*led_on)(struct txgbe_hw *hw, u32 index);
+	s32 (*led_off)(struct txgbe_hw *hw, u32 index);
+
+	/* RAR, Multicast, VLAN */
+	s32 (*set_rar)(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
+			  u32 enable_addr);
+	s32 (*set_uc_addr)(struct txgbe_hw *hw, u32 index, u8 *addr);
+	s32 (*clear_rar)(struct txgbe_hw *hw, u32 index);
+	s32 (*set_vmdq)(struct txgbe_hw *hw, u32 rar, u32 vmdq);
+	s32 (*clear_vmdq)(struct txgbe_hw *hw, u32 rar, u32 vmdq);
+	s32 (*init_rx_addrs)(struct txgbe_hw *hw);
+	s32 (*update_mc_addr_list)(struct txgbe_hw *hw, u8 *mc_addr_list,
+				      u32 mc_addr_count,
+				      txgbe_mc_addr_itr func, bool clear);
+	s32 (*clear_vfta)(struct txgbe_hw *hw);
+	s32 (*set_vfta)(struct txgbe_hw *hw, u32 vlan,
+			 u32 vind, bool vlan_on, bool vlvf_bypass);
+	s32 (*set_vlvf)(struct txgbe_hw *hw, u32 vlan, u32 vind,
+			   bool vlan_on, u32 *vfta_delta, u32 vfta,
+			   bool vlvf_bypass);
+	s32 (*init_uta_tables)(struct txgbe_hw *hw);
+	void (*set_mac_anti_spoofing)(struct txgbe_hw *hw, bool enable, int vf);
+	void (*set_vlan_anti_spoofing)(struct txgbe_hw *hw,
+					bool enable, int vf);
+	s32 (*update_xcast_mode)(struct txgbe_hw *hw, int xcast_mode);
+	s32 (*set_rlpml)(struct txgbe_hw *hw, u16 max_size);
+
+	/* Flow Control */
+	s32 (*fc_enable)(struct txgbe_hw *hw);
+	s32 (*setup_fc)(struct txgbe_hw *hw);
+	void (*fc_autoneg)(struct txgbe_hw *hw);
+
+	/* Manageability interface */
+	s32 (*set_fw_drv_ver)(struct txgbe_hw *hw, u8 maj, u8 min, u8 build,
+			 u8 ver, u16 len, char *driver_ver);
+	s32 (*get_thermal_sensor_data)(struct txgbe_hw *hw);
+	s32 (*init_thermal_sensor_thresh)(struct txgbe_hw *hw);
+	void (*get_rtrup2tc)(struct txgbe_hw *hw, u8 *map);
+	void (*disable_rx)(struct txgbe_hw *hw);
+	void (*enable_rx)(struct txgbe_hw *hw);
+	void (*set_ethertype_anti_spoofing)(struct txgbe_hw *hw,
+						bool enable, int vf);
+	s32 (*dmac_update_tcs)(struct txgbe_hw *hw);
+	s32 (*dmac_config_tcs)(struct txgbe_hw *hw);
+	s32 (*dmac_config)(struct txgbe_hw *hw);
+	s32 (*setup_eee)(struct txgbe_hw *hw, bool enable_eee);
+
 	enum txgbe_mac_type type;
 	u8 perm_addr[ETH_ADDR_LEN];
 	u32 num_rar_entries;
@@ -153,9 +284,58 @@ struct txgbe_mac_info {
 };
 
 struct txgbe_phy_info {
+	u32 (*get_media_type)(struct txgbe_hw *hw);
+	s32 (*identify)(struct txgbe_hw *hw);
+	s32 (*identify_sfp)(struct txgbe_hw *hw);
+	s32 (*init)(struct txgbe_hw *hw);
+	s32 (*reset)(struct txgbe_hw *hw);
+	s32 (*read_reg)(struct txgbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 *phy_data);
+	s32 (*write_reg)(struct txgbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 phy_data);
+	s32 (*read_reg_mdi)(struct txgbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 *phy_data);
+	s32 (*write_reg_mdi)(struct txgbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 phy_data);
+	s32 (*setup_link)(struct txgbe_hw *hw);
+	s32 (*setup_internal_link)(struct txgbe_hw *hw);
+	s32 (*setup_link_speed)(struct txgbe_hw *hw, u32 speed,
+				bool autoneg_wait_to_complete);
+	s32 (*check_link)(struct txgbe_hw *hw, u32 *speed, bool *link_up);
+	s32 (*read_i2c_byte)(struct txgbe_hw *hw, u8 byte_offset,
+				u8 dev_addr, u8 *data);
+	s32 (*write_i2c_byte)(struct txgbe_hw *hw, u8 byte_offset,
+				u8 dev_addr, u8 data);
+	s32 (*read_i2c_sff8472)(struct txgbe_hw *hw, u8 byte_offset,
+				u8 *sff8472_data);
+	s32 (*read_i2c_eeprom)(struct txgbe_hw *hw, u8 byte_offset,
+				u8 *eeprom_data);
+	s32 (*write_i2c_eeprom)(struct txgbe_hw *hw, u8 byte_offset,
+				u8 eeprom_data);
+	s32 (*check_overtemp)(struct txgbe_hw *hw);
+	s32 (*set_phy_power)(struct txgbe_hw *hw, bool on);
+	s32 (*handle_lasi)(struct txgbe_hw *hw);
+	s32 (*read_i2c_byte_unlocked)(struct txgbe_hw *hw, u8 offset, u8 addr,
+				      u8 *value);
+	s32 (*write_i2c_byte_unlocked)(struct txgbe_hw *hw, u8 offset, u8 addr,
+				       u8 value);
+
 	enum txgbe_phy_type type;
 	enum txgbe_sfp_type sfp_type;
 	u32 media_type;
+};
+
+struct txgbe_mbx_info {
+	void (*init_params)(struct txgbe_hw *hw);
+	s32  (*read)(struct txgbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
+	s32  (*write)(struct txgbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
+	s32  (*read_posted)(struct txgbe_hw *hw, u32 *msg, u16 size,
+				u16 mbx_id);
+	s32  (*write_posted)(struct txgbe_hw *hw, u32 *msg, u16 size,
+				u16 mbx_id);
+	s32  (*check_for_msg)(struct txgbe_hw *hw, u16 mbx_id);
+	s32  (*check_for_ack)(struct txgbe_hw *hw, u16 mbx_id);
+	s32  (*check_for_rst)(struct txgbe_hw *hw, u16 mbx_id);
 };
 
 struct txgbe_hw {
@@ -163,8 +343,11 @@ struct txgbe_hw {
 	void *back;
 	struct txgbe_mac_info mac;
 	struct txgbe_phy_info phy;
-
+	struct txgbe_link_info link;
+	struct txgbe_rom_info rom;
+	struct txgbe_flash_info flash;
 	struct txgbe_bus_info bus;
+	struct txgbe_mbx_info mbx;
 	u16 device_id;
 	u16 vendor_id;
 	u16 subsystem_device_id;
@@ -177,4 +360,6 @@ struct txgbe_hw {
 };
 
 #include "txgbe_regs.h"
+#include "txgbe_dummy.h"
+
 #endif /* _TXGBE_TYPE_H_ */

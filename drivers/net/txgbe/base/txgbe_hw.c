@@ -32,6 +32,18 @@ void txgbe_set_lan_id_multi_port(struct txgbe_hw *hw)
 		bus->func = bus->lan_id;
 }
 
+/**
+ *  txgbe_init_shared_code - Initialize the shared code
+ *  @hw: pointer to hardware structure
+ *
+ *  This will assign function pointers and assign the MAC type and PHY code.
+ *  Does not touch the hardware. This function must be called prior to any
+ *  other function in the shared code. The txgbe_hw structure should be
+ *  memset to 0 prior to calling this function.  The following fields in
+ *  hw structure should be filled in prior to calling this function:
+ *  hw_addr, back, device_id, vendor_id, subsystem_device_id,
+ *  subsystem_vendor_id, and revision_id
+ **/
 s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 {
 	s32 status;
@@ -43,6 +55,7 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 	 */
 	txgbe_set_mac_type(hw);
 
+	txgbe_init_ops_dummy(hw);
 	switch (hw->mac.type) {
 	case txgbe_mac_raptor:
 		status = txgbe_init_ops_pf(hw);
