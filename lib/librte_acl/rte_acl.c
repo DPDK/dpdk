@@ -6,6 +6,7 @@
 #include <rte_string_fns.h>
 #include <rte_acl.h>
 #include <rte_tailq.h>
+#include <rte_vect.h>
 
 #include "acl.h"
 
@@ -114,14 +115,14 @@ acl_check_alg_arm(enum rte_acl_classify_alg alg)
 {
 	if (alg == RTE_ACL_CLASSIFY_NEON) {
 #if defined(RTE_ARCH_ARM64)
-		return 0;
-#elif defined(RTE_ARCH_ARM)
-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
 			return 0;
-		return -ENOTSUP;
-#else
-		return -ENOTSUP;
+#elif defined(RTE_ARCH_ARM)
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON) &&
+				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
+			return 0;
 #endif
+		return -ENOTSUP;
 	}
 
 	return -EINVAL;
@@ -136,14 +137,25 @@ acl_check_alg_ppc(enum rte_acl_classify_alg alg)
 {
 	if (alg == RTE_ACL_CLASSIFY_ALTIVEC) {
 #if defined(RTE_ARCH_PPC_64)
-		return 0;
-#else
-		return -ENOTSUP;
+		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
+			return 0;
 #endif
+		return -ENOTSUP;
 	}
 
 	return -EINVAL;
 }
+
+#ifdef CC_AVX512_SUPPORT
+static int
+acl_check_avx512_cpu_flags(void)
+{
+	return (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) &&
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512VL) &&
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512CD) &&
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW));
+}
+#endif
 
 /*
  * Helper function for acl_check_alg.
@@ -152,13 +164,19 @@ acl_check_alg_ppc(enum rte_acl_classify_alg alg)
 static int
 acl_check_alg_x86(enum rte_acl_classify_alg alg)
 {
-	if (alg == RTE_ACL_CLASSIFY_AVX512X16 ||
-			alg == RTE_ACL_CLASSIFY_AVX512X32) {
+	if (alg == RTE_ACL_CLASSIFY_AVX512X32) {
 #ifdef CC_AVX512_SUPPORT
-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) &&
-			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512VL) &&
-			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512CD) &&
-			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW))
+		if (acl_check_avx512_cpu_flags() != 0 &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
+			return 0;
+#endif
+		return -ENOTSUP;
+	}
+
+	if (alg == RTE_ACL_CLASSIFY_AVX512X16) {
+#ifdef CC_AVX512_SUPPORT
+		if (acl_check_avx512_cpu_flags() != 0 &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 			return 0;
 #endif
 		return -ENOTSUP;
@@ -166,7 +184,8 @@ acl_check_alg_x86(enum rte_acl_classify_alg alg)
 
 	if (alg == RTE_ACL_CLASSIFY_AVX2) {
 #ifdef CC_AVX2_SUPPORT
-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) &&
+				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 			return 0;
 #endif
 		return -ENOTSUP;
@@ -174,7 +193,8 @@ acl_check_alg_x86(enum rte_acl_classify_alg alg)
 
 	if (alg == RTE_ACL_CLASSIFY_SSE) {
 #ifdef RTE_ARCH_X86
-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1) &&
+				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
 			return 0;
 #endif
 		return -ENOTSUP;
@@ -226,6 +246,7 @@ acl_get_best_alg(void)
 #elif defined(RTE_ARCH_PPC_64)
 		RTE_ACL_CLASSIFY_ALTIVEC,
 #elif defined(RTE_ARCH_X86)
+		RTE_ACL_CLASSIFY_AVX512X32,
 		RTE_ACL_CLASSIFY_AVX512X16,
 		RTE_ACL_CLASSIFY_AVX2,
 		RTE_ACL_CLASSIFY_SSE,

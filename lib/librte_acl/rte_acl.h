@@ -329,6 +329,7 @@ rte_acl_classify_alg(const struct rte_acl_ctx *ctx,
  *   New default classify algorithm for given ACL context.
  *   It is the caller responsibility to ensure that the value refers to the
  *   existing algorithm, and that it could be run on the given CPU.
+ *   The max SIMD bitwidth value in EAL must also allow for the chosen algorithm.
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOTSUP requested algorithm is not supported by given platform.

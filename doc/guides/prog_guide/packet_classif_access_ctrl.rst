@@ -368,24 +368,27 @@ After rte_acl_build() over given AC context has finished successfully, it can be
 There are several implementations of classify algorithm:
 
 *   **RTE_ACL_CLASSIFY_SCALAR**: generic implementation, doesn't require any specific HW support.
+    Requires max SIMD bitwidth to be at least 64.
 
 *   **RTE_ACL_CLASSIFY_SSE**: vector implementation, can process up to 8 flows in parallel. Requires SSE 4.1 support.
+    Requires max SIMD bitwidth to be at least 128.
 
 *   **RTE_ACL_CLASSIFY_AVX2**: vector implementation, can process up to 16 flows in parallel. Requires AVX2 support.
+    Requires max SIMD bitwidth to be at least 256.
 
 *   **RTE_ACL_CLASSIFY_NEON**: vector implementation, can process up to 8 flows
-    in parallel. Requires NEON support.
+    in parallel. Requires NEON support. Requires max SIMD bitwidth to be at least 128.
 
 *   **RTE_ACL_CLASSIFY_ALTIVEC**: vector implementation, can process up to 8
-    flows in parallel. Requires ALTIVEC support.
+    flows in parallel. Requires ALTIVEC support. Requires max SIMD bitwidth to be at least 128.
 
 *   **RTE_ACL_CLASSIFY_AVX512X16**: vector implementation, can process up to 16
     flows in parallel. Uses 256-bit width SIMD registers.
-    Requires AVX512 support.
+    Requires AVX512 support. Requires max SIMD bitwidth to be at least 256.
 
 *   **RTE_ACL_CLASSIFY_AVX512X32**: vector implementation, can process up to 32
     flows in parallel. Uses 512-bit width SIMD registers.
-    Requires AVX512 support.
+    Requires AVX512 support. Requires max SIMD bitwidth to be at least 512.
 
 It is purely a runtime decision which method to choose, there is no build-time difference.
 All implementations operates over the same internal RT structures and use similar principles. The main difference is that vector implementations can manually exploit IA SIMD instructions and process several input data flows in parallel.
@@ -393,9 +396,8 @@ At startup ACL library determines the highest available classify method for the 
 
 .. note::
 
-     Right now ``RTE_ACL_CLASSIFY_AVX512X32`` is not selected by default
-     (due to possible frequency level change), but it can be selected at
-     runtime by apps through the use of ACL API: ``rte_acl_set_ctx_classify``.
+     Runtime algorithm selection obeys EAL max SIMD bitwidth parameter.
+     For more details about expected behaviour please see :ref:`max_simd_bitwidth`
 
 Application Programming Interface (API) Usage
 ---------------------------------------------
