@@ -10,6 +10,7 @@
 #include <rte_time.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_vect.h>
 
 static void
 axgbe_rx_queue_release(struct axgbe_rx_queue *rx_queue)
@@ -557,7 +558,8 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (!pdata->tx_queues)
 		pdata->tx_queues = dev->data->tx_queues;
 
-	if (txq->vector_disable)
+	if (txq->vector_disable ||
+			rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_128)
 		dev->tx_pkt_burst = &axgbe_xmit_pkts;
 	else
 #ifdef RTE_ARCH_X86
