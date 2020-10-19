@@ -6694,7 +6694,7 @@ next_container:
 	offset = batch ? 0 : dcs->id % MLX5_COUNTERS_PER_POOL;
 	/*
 	 * Identify the counters released between query trigger and query
-	 * handle more effiecntly. The counter released in this gap period
+	 * handle more efficiently. The counter released in this gap period
 	 * should wait for a new round of query as the new arrived packets
 	 * will not be taken into account.
 	 */
@@ -6748,19 +6748,26 @@ mlx5_flow_aging_check(struct mlx5_dev_ctx_shared *sh,
 	struct mlx5_age_param *age_param;
 	struct mlx5_counter_stats_raw *cur = pool->raw_hw;
 	struct mlx5_counter_stats_raw *prev = pool->raw;
-	uint16_t curr = rte_rdtsc() / (rte_get_tsc_hz() / 10);
+	const uint64_t curr_time = MLX5_CURR_TIME_SEC;
+	const uint32_t time_delta = curr_time - pool->time_of_last_age_check;
+	uint16_t expected = AGE_CANDIDATE;
 	uint32_t i;
 
+	pool->time_of_last_age_check = curr_time;
 	for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 		cnt = MLX5_POOL_GET_CNT(pool, i);
 		age_param = MLX5_CNT_TO_AGE(cnt);
-		if (rte_atomic16_read(&age_param->state) != AGE_CANDIDATE)
+		if (__atomic_load_n(&age_param->state,
+				    __ATOMIC_RELAXED) != AGE_CANDIDATE)
 			continue;
 		if (cur->data[i].hits != prev->data[i].hits) {
-			age_param->expire = curr + age_param->timeout;
+			__atomic_store_n(&age_param->sec_since_last_hit, 0,
+					 __ATOMIC_RELAXED);
 			continue;
 		}
-		if ((uint16_t)(curr - age_param->expire) >= (UINT16_MAX / 2))
+		if (__atomic_add_fetch(&age_param->sec_since_last_hit,
+				       time_delta,
+				       __ATOMIC_RELAXED) <= age_param->timeout)
 			continue;
 		/**
 		 * Hold the lock first, or if between the
@@ -6771,8 +6778,10 @@ mlx5_flow_aging_check(struct mlx5_dev_ctx_shared *sh,
 		priv = rte_eth_devices[age_param->port_id].data->dev_private;
 		age_info = GET_PORT_AGE_INFO(priv);
 		rte_spinlock_lock(&age_info->aged_sl);
-		if (rte_atomic16_cmpset((volatile uint16_t *)&age_param->state,
-					AGE_CANDIDATE, AGE_TMOUT)) {
+		if (__atomic_compare_exchange_n(&age_param->state, &expected,
+						AGE_TMOUT, false,
+						__ATOMIC_RELAXED,
+						__ATOMIC_RELAXED)) {
 			TAILQ_INSERT_TAIL(&age_info->aged_counters, cnt, next);
 			MLX5_AGE_SET(age_info, MLX5_AGE_EVENT_NEW);
 		}

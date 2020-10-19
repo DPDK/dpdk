@@ -276,7 +276,6 @@ struct mlx5_drop {
 #define CNT_SIZE (sizeof(struct mlx5_flow_counter))
 #define CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
 #define AGE_SIZE (sizeof(struct mlx5_age_param))
-#define MLX5_AGING_TIME_DELAY	7
 #define CNT_POOL_TYPE_EXT	(1 << 0)
 #define CNT_POOL_TYPE_AGE	(1 << 1)
 #define IS_EXT_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_EXT)
@@ -315,9 +314,7 @@ struct mlx5_drop {
  */
 #define POOL_IDX_INVALID UINT16_MAX
 
-struct mlx5_flow_counter_pool;
-
-/*age status*/
+/* Age status. */
 enum {
 	AGE_FREE, /* Initialized state. */
 	AGE_CANDIDATE, /* Counter assigned to flows. */
@@ -337,10 +334,11 @@ enum {
 
 /* Counter age parameter. */
 struct mlx5_age_param {
-	rte_atomic16_t state; /**< Age state. */
+	uint16_t state; /**< Age state (atomically accessed). */
 	uint16_t port_id; /**< Port id of the counter. */
-	uint32_t timeout:15; /**< Age timeout in unit of 0.1sec. */
-	uint32_t expire:16; /**< Expire time(0.1sec) in the future. */
+	uint32_t timeout:24; /**< Aging timeout in seconds. */
+	uint32_t sec_since_last_hit;
+	/**< Time in seconds since last hit (atomically accessed). */
 	void *context; /**< Flow counter age context. */
 };
 
@@ -349,7 +347,6 @@ struct flow_counter_stats {
 	uint64_t bytes;
 };
 
-struct mlx5_flow_counter_pool;
 /* Generic counters information. */
 struct mlx5_flow_counter {
 	TAILQ_ENTRY(mlx5_flow_counter) next;
@@ -391,6 +388,8 @@ struct mlx5_flow_counter_pool {
 		rte_atomic64_t a64_dcs;
 	};
 	/* The devx object of the minimum counter ID. */
+	uint64_t time_of_last_age_check;
+	/* System time (from rte_rdtsc()) read in the last aging check. */
 	uint32_t index:28; /* Pool index in container. */
 	uint32_t type:2; /* Memory type behind the counter array. */
 	uint32_t skip_cnt:1; /* Pool contains skipped counter. */
@@ -399,8 +398,6 @@ struct mlx5_flow_counter_pool {
 	struct mlx5_counter_stats_raw *raw;
 	struct mlx5_counter_stats_raw *raw_hw; /* The raw on HW working. */
 };
-
-struct mlx5_counter_stats_raw;
 
 /* Memory management structure for group of counter statistics raws. */
 struct mlx5_counter_stats_mem_mng {
@@ -463,10 +460,12 @@ struct mlx5_flow_default_miss_resource {
 	((age_info)->flags & (1 << (BIT)))
 #define GET_PORT_AGE_INFO(priv) \
 	(&((priv)->sh->port[(priv)->dev_port - 1].age_info))
+/* Current time in seconds. */
+#define MLX5_CURR_TIME_SEC	(rte_rdtsc() / rte_get_tsc_hz())
 
 /* Aging information for per port. */
 struct mlx5_age_info {
-	uint8_t flags; /*Indicate if is new event or need be trigered*/
+	uint8_t flags; /* Indicate if is new event or need to be triggered. */
 	struct mlx5_counters aged_counters; /* Aged flow counter list. */
 	rte_spinlock_t aged_sl; /* Aged flow counter list lock. */
 };

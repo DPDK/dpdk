@@ -4179,14 +4179,14 @@ flow_dv_validate_action_age(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "configuration cannot be null");
-	if (age->timeout >= UINT16_MAX / 2 / 10)
-		return rte_flow_error_set(error, ENOTSUP,
+	if (!(age->timeout))
+		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "Max age time: 3275 seconds");
+					  "invalid timeout value 0");
 	if (action_flags & MLX5_FLOW_ACTION_AGE)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "Duplicate age ctions set");
+					  "duplicate age actions set");
 	return 0;
 }
 
@@ -4926,6 +4926,7 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	TAILQ_INIT(&pool->counters[1]);
 	TAILQ_INSERT_HEAD(&cont->pool_list, pool, next);
 	pool->index = n_valid;
+	pool->time_of_last_age_check = MLX5_CURR_TIME_SEC;
 	cont->pools[n_valid] = pool;
 	if (!batch) {
 		int base = RTE_ALIGN_FLOOR(dcs->id, MLX5_COUNTERS_PER_POOL);
@@ -5048,7 +5049,7 @@ retry:
 			       (MLX5_CNT_CONTAINER
 			       (priv->sh, batch, (age ^ 0x1)), dcs->id);
 			/*
-			 * Pool eixsts, counter will be added to the other
+			 * Pool exists, counter will be added to the other
 			 * container, need to reallocate it later.
 			 */
 			if (pool) {
@@ -5329,11 +5330,13 @@ flow_dv_counter_remove_from_age(struct rte_eth_dev *dev,
 	struct mlx5_age_info *age_info;
 	struct mlx5_age_param *age_param;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	uint16_t expected = AGE_CANDIDATE;
 
 	age_info = GET_PORT_AGE_INFO(priv);
 	age_param = flow_dv_counter_idx_get_age(dev, counter);
-	if (!rte_atomic16_cmpset((volatile uint16_t *)&age_param->state,
-				 AGE_CANDIDATE, AGE_FREE)) {
+	if (!__atomic_compare_exchange_n(&age_param->state, &expected,
+					 AGE_FREE, false, __ATOMIC_RELAXED,
+					 __ATOMIC_RELAXED)) {
 		/**
 		 * We need the lock even it is age timeout,
 		 * since counter may still in process.
@@ -5341,7 +5344,7 @@ flow_dv_counter_remove_from_age(struct rte_eth_dev *dev,
 		rte_spinlock_lock(&age_info->aged_sl);
 		TAILQ_REMOVE(&age_info->aged_counters, cnt, next);
 		rte_spinlock_unlock(&age_info->aged_sl);
-		rte_atomic16_set(&age_param->state, AGE_FREE);
+		__atomic_store_n(&age_param->state, AGE_FREE, __ATOMIC_RELAXED);
 	}
 }
 
@@ -8531,22 +8534,12 @@ flow_dv_translate_create_counter(struct rte_eth_dev *dev,
 	if (!counter || age == NULL)
 		return counter;
 	age_param  = flow_dv_counter_idx_get_age(dev, counter);
-	/*
-	 * The counter age accuracy may have a bit delay. Have 3/4
-	 * second bias on the timeount in order to let it age in time.
-	 */
 	age_param->context = age->context ? age->context :
 		(void *)(uintptr_t)(dev_flow->flow_idx);
-	/*
-	 * The counter age accuracy may have a bit delay. Have 3/4
-	 * second bias on the timeount in order to let it age in time.
-	 */
-	age_param->timeout = age->timeout * 10 - MLX5_AGING_TIME_DELAY;
-	/* Set expire time in unit of 0.1 sec. */
+	age_param->timeout = age->timeout;
 	age_param->port_id = dev->data->port_id;
-	age_param->expire = age_param->timeout +
-			rte_rdtsc() / (rte_get_tsc_hz() / 10);
-	rte_atomic16_set(&age_param->state, AGE_CANDIDATE);
+	__atomic_store_n(&age_param->sec_since_last_hit, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&age_param->state, AGE_CANDIDATE, __ATOMIC_RELAXED);
 	return counter;
 }
 /**
@@ -10955,6 +10948,52 @@ flow_dv_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 }
 
 /**
+ * Query a flow rule AGE action for aging information.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Pointer to the sub flow.
+ * @param[out] data
+ *   data retrieved by the query.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_query_age(struct rte_eth_dev *dev, struct rte_flow *flow,
+		  void *data, struct rte_flow_error *error)
+{
+	struct rte_flow_query_age *resp = data;
+
+	if (flow->counter) {
+		struct mlx5_age_param *age_param =
+				flow_dv_counter_idx_get_age(dev, flow->counter);
+
+		if (!age_param || !age_param->timeout)
+			return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					 NULL, "cannot read age data");
+		resp->aged = __atomic_load_n(&age_param->state,
+					     __ATOMIC_RELAXED) ==
+							AGE_TMOUT ? 1 : 0;
+		resp->sec_since_last_hit_valid = !resp->aged;
+		if (resp->sec_since_last_hit_valid)
+			resp->sec_since_last_hit =
+				__atomic_load_n(&age_param->sec_since_last_hit,
+						__ATOMIC_RELAXED);
+		return 0;
+	}
+	return rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL,
+				  "age data not available");
+}
+
+/**
  * Query a flow.
  *
  * @see rte_flow_query()
@@ -10975,6 +11014,9 @@ flow_dv_query(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			ret = flow_dv_query_count(dev, flow, data, error);
+			break;
+		case RTE_FLOW_ACTION_TYPE_AGE:
+			ret = flow_dv_query_age(dev, flow, data, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
