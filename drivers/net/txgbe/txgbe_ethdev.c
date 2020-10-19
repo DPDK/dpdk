@@ -27,6 +27,7 @@ static int  txgbe_dev_set_link_down(struct rte_eth_dev *dev);
 static int txgbe_dev_close(struct rte_eth_dev *dev);
 static int txgbe_dev_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
+static int txgbe_dev_stats_reset(struct rte_eth_dev *dev);
 
 static void txgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int txgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
@@ -235,6 +236,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		PMD_INIT_LOG(ERR, "Hardware Initialization Failure: %d", err);
 		return -EIO;
 	}
+
+	/* Reset the hw statistics */
+	txgbe_dev_stats_reset(eth_dev);
 
 	/* disable interrupt */
 	txgbe_disable_intr(hw);
@@ -568,6 +572,7 @@ static int
 txgbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_hw_stats *hw_stats = TXGBE_DEV_STATS(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
@@ -748,6 +753,9 @@ skip_link_setup:
 	txgbe_dev_link_update(dev, 0);
 
 	wr32m(hw, TXGBE_LEDCTL, 0xFFFFFFFF, TXGBE_LEDCTL_ORD_MASK);
+
+	txgbe_read_stats_registers(hw, hw_stats);
+	hw->offset_loaded = 1;
 
 	return 0;
 
@@ -939,6 +947,267 @@ txgbe_dev_reset(struct rte_eth_dev *dev)
 	ret = eth_txgbe_dev_init(dev, NULL);
 
 	return ret;
+}
+
+#define UPDATE_QP_COUNTER_32bit(reg, last_counter, counter)     \
+	{                                                       \
+		uint32_t current_counter = rd32(hw, reg);       \
+		if (current_counter < last_counter)             \
+			current_counter += 0x100000000LL;       \
+		if (!hw->offset_loaded)                         \
+			last_counter = current_counter;         \
+		counter = current_counter - last_counter;       \
+		counter &= 0xFFFFFFFFLL;                        \
+	}
+
+#define UPDATE_QP_COUNTER_36bit(reg_lsb, reg_msb, last_counter, counter) \
+	{                                                                \
+		uint64_t current_counter_lsb = rd32(hw, reg_lsb);        \
+		uint64_t current_counter_msb = rd32(hw, reg_msb);        \
+		uint64_t current_counter = (current_counter_msb << 32) | \
+			current_counter_lsb;                             \
+		if (current_counter < last_counter)                      \
+			current_counter += 0x1000000000LL;               \
+		if (!hw->offset_loaded)                                  \
+			last_counter = current_counter;                  \
+		counter = current_counter - last_counter;                \
+		counter &= 0xFFFFFFFFFLL;                                \
+	}
+
+void
+txgbe_read_stats_registers(struct txgbe_hw *hw,
+			   struct txgbe_hw_stats *hw_stats)
+{
+	unsigned int i;
+
+	/* QP Stats */
+	for (i = 0; i < hw->nb_rx_queues; i++) {
+		UPDATE_QP_COUNTER_32bit(TXGBE_QPRXPKT(i),
+			hw->qp_last[i].rx_qp_packets,
+			hw_stats->qp[i].rx_qp_packets);
+		UPDATE_QP_COUNTER_36bit(TXGBE_QPRXOCTL(i), TXGBE_QPRXOCTH(i),
+			hw->qp_last[i].rx_qp_bytes,
+			hw_stats->qp[i].rx_qp_bytes);
+		UPDATE_QP_COUNTER_32bit(TXGBE_QPRXMPKT(i),
+			hw->qp_last[i].rx_qp_mc_packets,
+			hw_stats->qp[i].rx_qp_mc_packets);
+	}
+
+	for (i = 0; i < hw->nb_tx_queues; i++) {
+		UPDATE_QP_COUNTER_32bit(TXGBE_QPTXPKT(i),
+			hw->qp_last[i].tx_qp_packets,
+			hw_stats->qp[i].tx_qp_packets);
+		UPDATE_QP_COUNTER_36bit(TXGBE_QPTXOCTL(i), TXGBE_QPTXOCTH(i),
+			hw->qp_last[i].tx_qp_bytes,
+			hw_stats->qp[i].tx_qp_bytes);
+	}
+	/* PB Stats */
+	for (i = 0; i < TXGBE_MAX_UP; i++) {
+		hw_stats->up[i].rx_up_xon_packets +=
+				rd32(hw, TXGBE_PBRXUPXON(i));
+		hw_stats->up[i].rx_up_xoff_packets +=
+				rd32(hw, TXGBE_PBRXUPXOFF(i));
+		hw_stats->up[i].tx_up_xon_packets +=
+				rd32(hw, TXGBE_PBTXUPXON(i));
+		hw_stats->up[i].tx_up_xoff_packets +=
+				rd32(hw, TXGBE_PBTXUPXOFF(i));
+		hw_stats->up[i].tx_up_xon2off_packets +=
+				rd32(hw, TXGBE_PBTXUPOFF(i));
+		hw_stats->up[i].rx_up_dropped +=
+				rd32(hw, TXGBE_PBRXMISS(i));
+	}
+	hw_stats->rx_xon_packets += rd32(hw, TXGBE_PBRXLNKXON);
+	hw_stats->rx_xoff_packets += rd32(hw, TXGBE_PBRXLNKXOFF);
+	hw_stats->tx_xon_packets += rd32(hw, TXGBE_PBTXLNKXON);
+	hw_stats->tx_xoff_packets += rd32(hw, TXGBE_PBTXLNKXOFF);
+
+	/* DMA Stats */
+	hw_stats->rx_packets += rd32(hw, TXGBE_DMARXPKT);
+	hw_stats->tx_packets += rd32(hw, TXGBE_DMATXPKT);
+
+	hw_stats->rx_bytes += rd64(hw, TXGBE_DMARXOCTL);
+	hw_stats->tx_bytes += rd64(hw, TXGBE_DMATXOCTL);
+	hw_stats->rx_drop_packets += rd32(hw, TXGBE_PBRXDROP);
+
+	/* MAC Stats */
+	hw_stats->rx_crc_errors += rd64(hw, TXGBE_MACRXERRCRCL);
+	hw_stats->rx_multicast_packets += rd64(hw, TXGBE_MACRXMPKTL);
+	hw_stats->tx_multicast_packets += rd64(hw, TXGBE_MACTXMPKTL);
+
+	hw_stats->rx_total_packets += rd64(hw, TXGBE_MACRXPKTL);
+	hw_stats->tx_total_packets += rd64(hw, TXGBE_MACTXPKTL);
+	hw_stats->rx_total_bytes += rd64(hw, TXGBE_MACRXGBOCTL);
+
+	hw_stats->rx_broadcast_packets += rd64(hw, TXGBE_MACRXOCTL);
+	hw_stats->tx_broadcast_packets += rd32(hw, TXGBE_MACTXOCTL);
+
+	hw_stats->rx_size_64_packets += rd64(hw, TXGBE_MACRX1TO64L);
+	hw_stats->rx_size_65_to_127_packets += rd64(hw, TXGBE_MACRX65TO127L);
+	hw_stats->rx_size_128_to_255_packets += rd64(hw, TXGBE_MACRX128TO255L);
+	hw_stats->rx_size_256_to_511_packets += rd64(hw, TXGBE_MACRX256TO511L);
+	hw_stats->rx_size_512_to_1023_packets +=
+			rd64(hw, TXGBE_MACRX512TO1023L);
+	hw_stats->rx_size_1024_to_max_packets +=
+			rd64(hw, TXGBE_MACRX1024TOMAXL);
+	hw_stats->tx_size_64_packets += rd64(hw, TXGBE_MACTX1TO64L);
+	hw_stats->tx_size_65_to_127_packets += rd64(hw, TXGBE_MACTX65TO127L);
+	hw_stats->tx_size_128_to_255_packets += rd64(hw, TXGBE_MACTX128TO255L);
+	hw_stats->tx_size_256_to_511_packets += rd64(hw, TXGBE_MACTX256TO511L);
+	hw_stats->tx_size_512_to_1023_packets +=
+			rd64(hw, TXGBE_MACTX512TO1023L);
+	hw_stats->tx_size_1024_to_max_packets +=
+			rd64(hw, TXGBE_MACTX1024TOMAXL);
+
+	hw_stats->rx_undersize_errors += rd64(hw, TXGBE_MACRXERRLENL);
+	hw_stats->rx_oversize_errors += rd32(hw, TXGBE_MACRXOVERSIZE);
+	hw_stats->rx_jabber_errors += rd32(hw, TXGBE_MACRXJABBER);
+
+	/* MNG Stats */
+	hw_stats->mng_bmc2host_packets = rd32(hw, TXGBE_MNGBMC2OS);
+	hw_stats->mng_host2bmc_packets = rd32(hw, TXGBE_MNGOS2BMC);
+	hw_stats->rx_management_packets = rd32(hw, TXGBE_DMARXMNG);
+	hw_stats->tx_management_packets = rd32(hw, TXGBE_DMATXMNG);
+
+	/* FCoE Stats */
+	hw_stats->rx_fcoe_crc_errors += rd32(hw, TXGBE_FCOECRC);
+	hw_stats->rx_fcoe_mbuf_allocation_errors += rd32(hw, TXGBE_FCOELAST);
+	hw_stats->rx_fcoe_dropped += rd32(hw, TXGBE_FCOERPDC);
+	hw_stats->rx_fcoe_packets += rd32(hw, TXGBE_FCOEPRC);
+	hw_stats->tx_fcoe_packets += rd32(hw, TXGBE_FCOEPTC);
+	hw_stats->rx_fcoe_bytes += rd32(hw, TXGBE_FCOEDWRC);
+	hw_stats->tx_fcoe_bytes += rd32(hw, TXGBE_FCOEDWTC);
+
+	/* Flow Director Stats */
+	hw_stats->flow_director_matched_filters += rd32(hw, TXGBE_FDIRMATCH);
+	hw_stats->flow_director_missed_filters += rd32(hw, TXGBE_FDIRMISS);
+	hw_stats->flow_director_added_filters +=
+		TXGBE_FDIRUSED_ADD(rd32(hw, TXGBE_FDIRUSED));
+	hw_stats->flow_director_removed_filters +=
+		TXGBE_FDIRUSED_REM(rd32(hw, TXGBE_FDIRUSED));
+	hw_stats->flow_director_filter_add_errors +=
+		TXGBE_FDIRFAIL_ADD(rd32(hw, TXGBE_FDIRFAIL));
+	hw_stats->flow_director_filter_remove_errors +=
+		TXGBE_FDIRFAIL_REM(rd32(hw, TXGBE_FDIRFAIL));
+
+	/* MACsec Stats */
+	hw_stats->tx_macsec_pkts_untagged += rd32(hw, TXGBE_LSECTX_UTPKT);
+	hw_stats->tx_macsec_pkts_encrypted +=
+			rd32(hw, TXGBE_LSECTX_ENCPKT);
+	hw_stats->tx_macsec_pkts_protected +=
+			rd32(hw, TXGBE_LSECTX_PROTPKT);
+	hw_stats->tx_macsec_octets_encrypted +=
+			rd32(hw, TXGBE_LSECTX_ENCOCT);
+	hw_stats->tx_macsec_octets_protected +=
+			rd32(hw, TXGBE_LSECTX_PROTOCT);
+	hw_stats->rx_macsec_pkts_untagged += rd32(hw, TXGBE_LSECRX_UTPKT);
+	hw_stats->rx_macsec_pkts_badtag += rd32(hw, TXGBE_LSECRX_BTPKT);
+	hw_stats->rx_macsec_pkts_nosci += rd32(hw, TXGBE_LSECRX_NOSCIPKT);
+	hw_stats->rx_macsec_pkts_unknownsci += rd32(hw, TXGBE_LSECRX_UNSCIPKT);
+	hw_stats->rx_macsec_octets_decrypted += rd32(hw, TXGBE_LSECRX_DECOCT);
+	hw_stats->rx_macsec_octets_validated += rd32(hw, TXGBE_LSECRX_VLDOCT);
+	hw_stats->rx_macsec_sc_pkts_unchecked +=
+			rd32(hw, TXGBE_LSECRX_UNCHKPKT);
+	hw_stats->rx_macsec_sc_pkts_delayed += rd32(hw, TXGBE_LSECRX_DLYPKT);
+	hw_stats->rx_macsec_sc_pkts_late += rd32(hw, TXGBE_LSECRX_LATEPKT);
+	for (i = 0; i < 2; i++) {
+		hw_stats->rx_macsec_sa_pkts_ok +=
+			rd32(hw, TXGBE_LSECRX_OKPKT(i));
+		hw_stats->rx_macsec_sa_pkts_invalid +=
+			rd32(hw, TXGBE_LSECRX_INVPKT(i));
+		hw_stats->rx_macsec_sa_pkts_notvalid +=
+			rd32(hw, TXGBE_LSECRX_BADPKT(i));
+	}
+	hw_stats->rx_macsec_sa_pkts_unusedsa +=
+			rd32(hw, TXGBE_LSECRX_INVSAPKT);
+	hw_stats->rx_macsec_sa_pkts_notusingsa +=
+			rd32(hw, TXGBE_LSECRX_BADSAPKT);
+
+	hw_stats->rx_total_missed_packets = 0;
+	for (i = 0; i < TXGBE_MAX_UP; i++) {
+		hw_stats->rx_total_missed_packets +=
+			hw_stats->up[i].rx_up_dropped;
+	}
+}
+
+static int
+txgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_hw_stats *hw_stats = TXGBE_DEV_STATS(dev);
+	struct txgbe_stat_mappings *stat_mappings =
+			TXGBE_DEV_STAT_MAPPINGS(dev);
+	uint32_t i, j;
+
+	txgbe_read_stats_registers(hw, hw_stats);
+
+	if (stats == NULL)
+		return -EINVAL;
+
+	/* Fill out the rte_eth_stats statistics structure */
+	stats->ipackets = hw_stats->rx_packets;
+	stats->ibytes = hw_stats->rx_bytes;
+	stats->opackets = hw_stats->tx_packets;
+	stats->obytes = hw_stats->tx_bytes;
+
+	memset(&stats->q_ipackets, 0, sizeof(stats->q_ipackets));
+	memset(&stats->q_opackets, 0, sizeof(stats->q_opackets));
+	memset(&stats->q_ibytes, 0, sizeof(stats->q_ibytes));
+	memset(&stats->q_obytes, 0, sizeof(stats->q_obytes));
+	memset(&stats->q_errors, 0, sizeof(stats->q_errors));
+	for (i = 0; i < TXGBE_MAX_QP; i++) {
+		uint32_t n = i / NB_QMAP_FIELDS_PER_QSM_REG;
+		uint32_t offset = (i % NB_QMAP_FIELDS_PER_QSM_REG) * 8;
+		uint32_t q_map;
+
+		q_map = (stat_mappings->rqsm[n] >> offset)
+				& QMAP_FIELD_RESERVED_BITS_MASK;
+		j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
+		     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
+		stats->q_ipackets[j] += hw_stats->qp[i].rx_qp_packets;
+		stats->q_ibytes[j] += hw_stats->qp[i].rx_qp_bytes;
+
+		q_map = (stat_mappings->tqsm[n] >> offset)
+				& QMAP_FIELD_RESERVED_BITS_MASK;
+		j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
+		     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
+		stats->q_opackets[j] += hw_stats->qp[i].tx_qp_packets;
+		stats->q_obytes[j] += hw_stats->qp[i].tx_qp_bytes;
+	}
+
+	/* Rx Errors */
+	stats->imissed  = hw_stats->rx_total_missed_packets;
+	stats->ierrors  = hw_stats->rx_crc_errors +
+			  hw_stats->rx_mac_short_packet_dropped +
+			  hw_stats->rx_length_errors +
+			  hw_stats->rx_undersize_errors +
+			  hw_stats->rx_oversize_errors +
+			  hw_stats->rx_drop_packets +
+			  hw_stats->rx_illegal_byte_errors +
+			  hw_stats->rx_error_bytes +
+			  hw_stats->rx_fragment_errors +
+			  hw_stats->rx_fcoe_crc_errors +
+			  hw_stats->rx_fcoe_mbuf_allocation_errors;
+
+	/* Tx Errors */
+	stats->oerrors  = 0;
+	return 0;
+}
+
+static int
+txgbe_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_hw_stats *hw_stats = TXGBE_DEV_STATS(dev);
+
+	/* HW registers are cleared on read */
+	hw->offset_loaded = 0;
+	txgbe_dev_stats_get(dev, NULL);
+	hw->offset_loaded = 1;
+
+	/* Reset software totals */
+	memset(hw_stats, 0, sizeof(*hw_stats));
+
+	return 0;
 }
 
 static int
@@ -1725,6 +1994,8 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_close                  = txgbe_dev_close,
 	.dev_reset                  = txgbe_dev_reset,
 	.link_update                = txgbe_dev_link_update,
+	.stats_get                  = txgbe_dev_stats_get,
+	.stats_reset                = txgbe_dev_stats_reset,
 	.dev_supported_ptypes_get   = txgbe_dev_supported_ptypes_get,
 	.rx_queue_start	            = txgbe_dev_rx_queue_start,
 	.rx_queue_stop              = txgbe_dev_rx_queue_stop,

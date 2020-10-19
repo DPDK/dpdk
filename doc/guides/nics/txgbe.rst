@@ -15,6 +15,7 @@ Features
 - Packet type information
 - Checksum offload
 - TSO offload
+- Port hardware statistics
 - Jumbo frames
 - Link state information
 - Interrupt mode for RX

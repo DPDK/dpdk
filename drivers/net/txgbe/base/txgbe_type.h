@@ -10,6 +10,8 @@
 
 #define TXGBE_FRAME_SIZE_MAX	(9728) /* Maximum frame size, +FCS */
 #define TXGBE_FRAME_SIZE_DFT	(1518) /* Default frame size, +FCS */
+#define TXGBE_MAX_UP		8
+#define TXGBE_MAX_QP		(128)
 #define TXGBE_MAX_UTA		128
 
 #define TXGBE_ALIGN		128 /* as intel did */
@@ -204,6 +206,151 @@ struct txgbe_bus_info {
 	u16 func;
 	u8 lan_id;
 	u16 instance_id;
+};
+
+/* Statistics counters collected by the MAC */
+/* PB[] RxTx */
+struct txgbe_pb_stats {
+	u64 tx_pb_xon_packets;
+	u64 rx_pb_xon_packets;
+	u64 tx_pb_xoff_packets;
+	u64 rx_pb_xoff_packets;
+	u64 rx_pb_dropped;
+	u64 rx_pb_mbuf_alloc_errors;
+	u64 tx_pb_xon2off_packets;
+};
+
+/* QP[] RxTx */
+struct txgbe_qp_stats {
+	u64 rx_qp_packets;
+	u64 tx_qp_packets;
+	u64 rx_qp_bytes;
+	u64 tx_qp_bytes;
+	u64 rx_qp_mc_packets;
+};
+
+struct txgbe_hw_stats {
+	/* MNG RxTx */
+	u64 mng_bmc2host_packets;
+	u64 mng_host2bmc_packets;
+	/* Basix RxTx */
+	u64 rx_packets;
+	u64 tx_packets;
+	u64 rx_bytes;
+	u64 tx_bytes;
+	u64 rx_total_bytes;
+	u64 rx_total_packets;
+	u64 tx_total_packets;
+	u64 rx_total_missed_packets;
+	u64 rx_broadcast_packets;
+	u64 tx_broadcast_packets;
+	u64 rx_multicast_packets;
+	u64 tx_multicast_packets;
+	u64 rx_management_packets;
+	u64 tx_management_packets;
+	u64 rx_management_dropped;
+	u64 rx_drop_packets;
+
+	/* Basic Error */
+	u64 rx_crc_errors;
+	u64 rx_illegal_byte_errors;
+	u64 rx_error_bytes;
+	u64 rx_mac_short_packet_dropped;
+	u64 rx_length_errors;
+	u64 rx_undersize_errors;
+	u64 rx_fragment_errors;
+	u64 rx_oversize_errors;
+	u64 rx_jabber_errors;
+	u64 rx_l3_l4_xsum_error;
+	u64 mac_local_errors;
+	u64 mac_remote_errors;
+
+	/* Flow Director */
+	u64 flow_director_added_filters;
+	u64 flow_director_removed_filters;
+	u64 flow_director_filter_add_errors;
+	u64 flow_director_filter_remove_errors;
+	u64 flow_director_matched_filters;
+	u64 flow_director_missed_filters;
+
+	/* FCoE */
+	u64 rx_fcoe_crc_errors;
+	u64 rx_fcoe_mbuf_allocation_errors;
+	u64 rx_fcoe_dropped;
+	u64 rx_fcoe_packets;
+	u64 tx_fcoe_packets;
+	u64 rx_fcoe_bytes;
+	u64 tx_fcoe_bytes;
+	u64 rx_fcoe_no_ddp;
+	u64 rx_fcoe_no_ddp_ext_buff;
+
+	/* MACSEC */
+	u64 tx_macsec_pkts_untagged;
+	u64 tx_macsec_pkts_encrypted;
+	u64 tx_macsec_pkts_protected;
+	u64 tx_macsec_octets_encrypted;
+	u64 tx_macsec_octets_protected;
+	u64 rx_macsec_pkts_untagged;
+	u64 rx_macsec_pkts_badtag;
+	u64 rx_macsec_pkts_nosci;
+	u64 rx_macsec_pkts_unknownsci;
+	u64 rx_macsec_octets_decrypted;
+	u64 rx_macsec_octets_validated;
+	u64 rx_macsec_sc_pkts_unchecked;
+	u64 rx_macsec_sc_pkts_delayed;
+	u64 rx_macsec_sc_pkts_late;
+	u64 rx_macsec_sa_pkts_ok;
+	u64 rx_macsec_sa_pkts_invalid;
+	u64 rx_macsec_sa_pkts_notvalid;
+	u64 rx_macsec_sa_pkts_unusedsa;
+	u64 rx_macsec_sa_pkts_notusingsa;
+
+	/* MAC RxTx */
+	u64 rx_size_64_packets;
+	u64 rx_size_65_to_127_packets;
+	u64 rx_size_128_to_255_packets;
+	u64 rx_size_256_to_511_packets;
+	u64 rx_size_512_to_1023_packets;
+	u64 rx_size_1024_to_max_packets;
+	u64 tx_size_64_packets;
+	u64 tx_size_65_to_127_packets;
+	u64 tx_size_128_to_255_packets;
+	u64 tx_size_256_to_511_packets;
+	u64 tx_size_512_to_1023_packets;
+	u64 tx_size_1024_to_max_packets;
+
+	/* Flow Control */
+	u64 tx_xon_packets;
+	u64 rx_xon_packets;
+	u64 tx_xoff_packets;
+	u64 rx_xoff_packets;
+
+	/* PB[] RxTx */
+	struct {
+		u64 rx_up_packets;
+		u64 tx_up_packets;
+		u64 rx_up_bytes;
+		u64 tx_up_bytes;
+		u64 rx_up_drop_packets;
+
+		u64 tx_up_xon_packets;
+		u64 rx_up_xon_packets;
+		u64 tx_up_xoff_packets;
+		u64 rx_up_xoff_packets;
+		u64 rx_up_dropped;
+		u64 rx_up_mbuf_alloc_errors;
+		u64 tx_up_xon2off_packets;
+	} up[TXGBE_MAX_UP];
+
+	/* QP[] RxTx */
+	struct {
+		u64 rx_qp_packets;
+		u64 tx_qp_packets;
+		u64 rx_qp_bytes;
+		u64 tx_qp_bytes;
+		u64 rx_qp_mc_packets;
+	} qp[TXGBE_MAX_QP];
+
 };
 
 /* iterator type for walking multicast address lists */
@@ -488,6 +635,14 @@ struct txgbe_hw {
 
 	u32 q_rx_regs[128 * 4];
 	u32 q_tx_regs[128 * 4];
+	bool offset_loaded;
+	struct {
+		u64 rx_qp_packets;
+		u64 tx_qp_packets;
+		u64 rx_qp_bytes;
+		u64 tx_qp_bytes;
+		u64 rx_qp_mc_packets;
+	} qp_last[TXGBE_MAX_QP];
 };
 
 #include "txgbe_regs.h"

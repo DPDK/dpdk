@@ -50,6 +50,15 @@ struct txgbe_interrupt {
 	uint32_t mask[2];
 };
 
+#define TXGBE_NB_STAT_MAPPING  32
+#define QSM_REG_NB_BITS_PER_QMAP_FIELD 8
+#define NB_QMAP_FIELDS_PER_QSM_REG 4
+#define QMAP_FIELD_RESERVED_BITS_MASK 0x0f
+struct txgbe_stat_mappings {
+	uint32_t tqsm[TXGBE_NB_STAT_MAPPING];
+	uint32_t rqsm[TXGBE_NB_STAT_MAPPING];
+};
+
 struct txgbe_uta_info {
 	uint8_t  uc_filter_type;
 	uint16_t uta_in_use;
@@ -61,7 +70,9 @@ struct txgbe_uta_info {
  */
 struct txgbe_adapter {
 	struct txgbe_hw             hw;
+	struct txgbe_hw_stats       stats;
 	struct txgbe_interrupt      intr;
+	struct txgbe_stat_mappings  stat_mappings;
 	struct txgbe_uta_info       uta_info;
 	bool rx_bulk_alloc_allowed;
 };
@@ -72,8 +83,14 @@ struct txgbe_adapter {
 #define TXGBE_DEV_HW(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->hw)
 
+#define TXGBE_DEV_STATS(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->stats)
+
 #define TXGBE_DEV_INTR(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->intr)
+
+#define TXGBE_DEV_STAT_MAPPINGS(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->stat_mappings)
 
 #define TXGBE_DEV_UTA_INFO(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->uta_info)
@@ -172,5 +189,7 @@ int txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
 void txgbe_dev_setup_link_alarm_handler(void *param);
+void txgbe_read_stats_registers(struct txgbe_hw *hw,
+			   struct txgbe_hw_stats *hw_stats);
 
 #endif /* _TXGBE_ETHDEV_H_ */
