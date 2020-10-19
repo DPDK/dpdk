@@ -2,13 +2,20 @@
  * Copyright(c) 2015-2020
  */
 
+#include <stdio.h>
+#include <errno.h>
+#include <stdint.h>
+#include <string.h>
 #include <rte_common.h>
 #include <rte_ethdev_pci.h>
 #include <rte_pci.h>
+#include <rte_memory.h>
 
 #include "txgbe_logs.h"
 #include "base/txgbe.h"
 #include "txgbe_ethdev.h"
+
+static int txgbe_dev_close(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -19,10 +26,68 @@ static const struct rte_pci_id pci_id_txgbe_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+static const struct eth_dev_ops txgbe_eth_dev_ops;
+
 static int
 eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
-	RTE_SET_USED(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	const struct rte_memzone *mz;
+
+	PMD_INIT_FUNC_TRACE();
+
+	eth_dev->dev_ops = &txgbe_eth_dev_ops;
+
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
+
+	/* Vendor and Device ID need to be set before init of shared code */
+	hw->device_id = pci_dev->id.device_id;
+	hw->vendor_id = pci_dev->id.vendor_id;
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+	hw->allow_unsupported_sfp = 1;
+
+	/* Reserve memory for interrupt status block */
+	mz = rte_eth_dma_zone_reserve(eth_dev, "txgbe_driver", -1,
+		16, TXGBE_ALIGN, SOCKET_ID_ANY);
+	if (mz == NULL)
+		return -ENOMEM;
+
+	hw->isb_dma = TMZ_PADDR(mz);
+	hw->isb_mem = TMZ_VADDR(mz);
+
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc("txgbe", RTE_ETHER_ADDR_LEN *
+					       hw->mac.num_rar_entries, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate %u bytes needed to store "
+			     "MAC addresses",
+			     RTE_ETHER_ADDR_LEN * hw->mac.num_rar_entries);
+		return -ENOMEM;
+	}
+
+	/* Copy the permanent MAC address */
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
+			&eth_dev->data->mac_addrs[0]);
+
+	/* Allocate memory for storing hash filter MAC addresses */
+	eth_dev->data->hash_mac_addrs = rte_zmalloc("txgbe",
+			RTE_ETHER_ADDR_LEN * TXGBE_VMDQ_NUM_UC_MAC, 0);
+	if (eth_dev->data->hash_mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate %d bytes needed to store MAC addresses",
+			     RTE_ETHER_ADDR_LEN * TXGBE_VMDQ_NUM_UC_MAC);
+		return -ENOMEM;
+	}
+
+	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id);
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rte_intr_enable(intr_handle);
 
 	return 0;
 }
@@ -30,7 +95,12 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 static int
 eth_txgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	RTE_SET_USED(eth_dev);
+	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	txgbe_dev_close(eth_dev);
 
 	return 0;
 }
@@ -84,6 +154,32 @@ static struct rte_pci_driver rte_txgbe_pmd = {
 		     RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_txgbe_pci_probe,
 	.remove = eth_txgbe_pci_remove,
+};
+
+/*
+ * Reset and stop device.
+ */
+static int
+txgbe_dev_close(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(intr_handle);
+
+	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
+
+	rte_free(dev->data->hash_mac_addrs);
+	dev->data->hash_mac_addrs = NULL;
+
+	return 0;
+}
+
+static const struct eth_dev_ops txgbe_eth_dev_ops = {
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe, rte_txgbe_pmd);

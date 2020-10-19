@@ -14,4 +14,8 @@ struct txgbe_adapter {
 	struct txgbe_hw             hw;
 };
 
+#define TXGBE_DEV_HW(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->hw)
+
+#define TXGBE_VMDQ_NUM_UC_MAC         4096 /* Maximum nb. of UC MAC addr. */
 #endif /* _TXGBE_ETHDEV_H_ */
