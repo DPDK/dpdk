@@ -7,6 +7,7 @@
 #include <rte_prefetch.h>
 #include <rte_random.h>
 #include <rte_log.h>
+#include <rte_vect.h>
 
 #include "rte_member.h"
 #include "rte_member_ht.h"
@@ -113,7 +114,8 @@ rte_member_create_ht(struct rte_member_setsum *ss,
 	}
 #if defined(RTE_ARCH_X86)
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) &&
-			RTE_MEMBER_BUCKET_ENTRIES == 16)
+			RTE_MEMBER_BUCKET_ENTRIES == 16 &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 		ss->sig_cmp_fn = RTE_MEMBER_COMPARE_AVX2;
 	else
 #endif
