@@ -26,6 +26,7 @@ Features
 - Interrupt mode for RX
 - Scattered and gather for TX and RX
 - DCB
+- IEEE 1588
 - FW version
 - LRO
 

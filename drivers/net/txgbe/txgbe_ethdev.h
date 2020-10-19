@@ -5,8 +5,11 @@
 #ifndef _TXGBE_ETHDEV_H_
 #define _TXGBE_ETHDEV_H_
 
+#include <stdint.h>
+
 #include "base/txgbe.h"
 #include "txgbe_ptypes.h"
+#include <rte_time.h>
 
 /* need update link, bit flag */
 #define TXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -149,6 +152,10 @@ struct txgbe_adapter {
 	struct txgbe_filter_info    filter;
 	struct txgbe_bw_conf        bw_conf;
 	bool rx_bulk_alloc_allowed;
+	struct rte_timecounter      systime_tc;
+	struct rte_timecounter      rx_tstamp_tc;
+	struct rte_timecounter      tx_tstamp_tc;
+
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
 };
@@ -351,6 +358,21 @@ txgbe_ethertype_filter_insert(struct txgbe_filter_info *filter_info,
 #define TXGBE_DEFAULT_TX_PTHRESH      32
 #define TXGBE_DEFAULT_TX_HTHRESH      0
 #define TXGBE_DEFAULT_TX_WTHRESH      0
+
+/* Additional timesync values. */
+#define NSEC_PER_SEC             1000000000L
+#define TXGBE_INCVAL_10GB        0xCCCCCC
+#define TXGBE_INCVAL_1GB         0x800000
+#define TXGBE_INCVAL_100         0xA00000
+#define TXGBE_INCVAL_10          0xC7F380
+#define TXGBE_INCVAL_FPGA        0x800000
+#define TXGBE_INCVAL_SHIFT_10GB  20
+#define TXGBE_INCVAL_SHIFT_1GB   18
+#define TXGBE_INCVAL_SHIFT_100   15
+#define TXGBE_INCVAL_SHIFT_10    12
+#define TXGBE_INCVAL_SHIFT_FPGA  17
+
+#define TXGBE_CYCLECOUNTER_MASK   0xffffffffffffffffULL
 
 /* store statistics names and its offset in stats structure */
 struct rte_txgbe_xstats_name_off {
