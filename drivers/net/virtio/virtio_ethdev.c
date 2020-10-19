@@ -23,6 +23,7 @@
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_cpuflags.h>
+#include <rte_vect.h>
 
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -2312,7 +2313,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		if ((hw->use_vec_rx || hw->use_vec_tx) &&
 		    (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) ||
 		     !vtpci_with_feature(hw, VIRTIO_F_IN_ORDER) ||
-		     !vtpci_with_feature(hw, VIRTIO_F_VERSION_1))) {
+		     !vtpci_with_feature(hw, VIRTIO_F_VERSION_1) ||
+		     rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512)) {
 			PMD_DRV_LOG(INFO,
 				"disabled packed ring vectorized path for requirements not met");
 			hw->use_vec_rx = 0;
@@ -2363,6 +2365,12 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 					   DEV_RX_OFFLOAD_VLAN_STRIP)) {
 				PMD_DRV_LOG(INFO,
 					"disabled split ring vectorized rx for offloading enabled");
+				hw->use_vec_rx = 0;
+			}
+
+			if (rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_128) {
+				PMD_DRV_LOG(INFO,
+					"disabled split ring vectorized rx, max SIMD bitwidth too low");
 				hw->use_vec_rx = 0;
 			}
 		}
