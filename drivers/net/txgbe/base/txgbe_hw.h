@@ -29,6 +29,8 @@ s32 txgbe_disable_sec_tx_path(struct txgbe_hw *hw);
 s32 txgbe_enable_sec_tx_path(struct txgbe_hw *hw);
 
 s32 txgbe_validate_mac_addr(u8 *mac_addr);
+s32 txgbe_acquire_swfw_sync(struct txgbe_hw *hw, u32 mask);
+void txgbe_release_swfw_sync(struct txgbe_hw *hw, u32 mask);
 
 s32 txgbe_get_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
 s32 txgbe_set_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
@@ -38,6 +40,9 @@ s32 txgbe_clear_vfta(struct txgbe_hw *hw);
 s32 txgbe_check_mac_link(struct txgbe_hw *hw,
 			       u32 *speed,
 			       bool *link_up, bool link_up_wait_to_complete);
+
+s32 txgbe_get_wwn_prefix(struct txgbe_hw *hw, u16 *wwnn_prefix,
+				 u16 *wwpn_prefix);
 
 s32 txgbe_get_device_caps(struct txgbe_hw *hw, u16 *device_caps);
 void txgbe_clear_tx_pending(struct txgbe_hw *hw);

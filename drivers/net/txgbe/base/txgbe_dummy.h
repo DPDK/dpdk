@@ -326,7 +326,7 @@ static inline void txgbe_mac_fc_autoneg_dummy(struct txgbe_hw *TUP0)
 {
 }
 static inline s32 txgbe_mac_set_fw_drv_ver_dummy(struct txgbe_hw *TUP0, u8 TUP1,
-			u8 TUP2, u8 TUP3, u8 TUP4, u16 TUP5, char *TUP6)
+			u8 TUP2, u8 TUP3, u8 TUP4, u16 TUP5, const char *TUP6)
 {
 	return TXGBE_ERR_OPS_DUMMY;
 }

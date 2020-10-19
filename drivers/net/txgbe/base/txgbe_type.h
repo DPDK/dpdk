@@ -483,7 +483,7 @@ struct txgbe_mac_info {
 
 	/* Manageability interface */
 	s32 (*set_fw_drv_ver)(struct txgbe_hw *hw, u8 maj, u8 min, u8 build,
-			 u8 ver, u16 len, char *driver_ver);
+			 u8 ver, u16 len, const char *driver_ver);
 	s32 (*get_thermal_sensor_data)(struct txgbe_hw *hw);
 	s32 (*init_thermal_sensor_thresh)(struct txgbe_hw *hw);
 	void (*get_rtrup2tc)(struct txgbe_hw *hw, u8 *map);

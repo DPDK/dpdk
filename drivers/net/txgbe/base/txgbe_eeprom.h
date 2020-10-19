@@ -30,6 +30,14 @@
 #define TXGBE_FW_LESM_PARAMETERS_PTR		0x2
 #define TXGBE_FW_LESM_STATE_1			0x1
 #define TXGBE_FW_LESM_STATE_ENABLED		0x8000 /* LESM Enable bit */
+#define TXGBE_ALT_SAN_MAC_ADDR_BLK_PTR		0x27 /* Alt. SAN MAC block */
+#define TXGBE_ALT_SAN_MAC_ADDR_CAPS_OFFSET	0x0 /* Alt SAN MAC capability */
+#define TXGBE_ALT_SAN_MAC_ADDR_PORT0_OFFSET	0x1 /* Alt SAN MAC 0 offset */
+#define TXGBE_ALT_SAN_MAC_ADDR_PORT1_OFFSET	0x4 /* Alt SAN MAC 1 offset */
+#define TXGBE_ALT_SAN_MAC_ADDR_WWNN_OFFSET	0x7 /* Alt WWNN prefix offset */
+#define TXGBE_ALT_SAN_MAC_ADDR_WWPN_OFFSET	0x8 /* Alt WWPN prefix offset */
+#define TXGBE_ALT_SAN_MAC_ADDR_CAPS_SANMAC	0x0 /* Alt SAN MAC exists */
+#define TXGBE_ALT_SAN_MAC_ADDR_CAPS_ALTWWN	0x1 /* Alt WWN base exists */
 
 s32 txgbe_init_eeprom_params(struct txgbe_hw *hw);
 s32 txgbe_calc_eeprom_checksum(struct txgbe_hw *hw);

@@ -671,6 +671,77 @@ s32 txgbe_update_mc_addr_list(struct txgbe_hw *hw, u8 *mc_addr_list,
 }
 
 /**
+ *  txgbe_acquire_swfw_sync - Acquire SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *  @mask: Mask to specify which semaphore to acquire
+ *
+ *  Acquires the SWFW semaphore through the MNGSEM register for the specified
+ *  function (CSR, PHY0, PHY1, EEPROM, Flash)
+ **/
+s32 txgbe_acquire_swfw_sync(struct txgbe_hw *hw, u32 mask)
+{
+	u32 mngsem = 0;
+	u32 swmask = TXGBE_MNGSEM_SW(mask);
+	u32 fwmask = TXGBE_MNGSEM_FW(mask);
+	u32 timeout = 200;
+	u32 i;
+
+	DEBUGFUNC("txgbe_acquire_swfw_sync");
+
+	for (i = 0; i < timeout; i++) {
+		/*
+		 * SW NVM semaphore bit is used for access to all
+		 * SW_FW_SYNC bits (not just NVM)
+		 */
+		if (txgbe_get_eeprom_semaphore(hw))
+			return TXGBE_ERR_SWFW_SYNC;
+
+		mngsem = rd32(hw, TXGBE_MNGSEM);
+		if (mngsem & (fwmask | swmask)) {
+			/* Resource is currently in use by FW or SW */
+			txgbe_release_eeprom_semaphore(hw);
+			msec_delay(5);
+		} else {
+			mngsem |= swmask;
+			wr32(hw, TXGBE_MNGSEM, mngsem);
+			txgbe_release_eeprom_semaphore(hw);
+			return 0;
+		}
+	}
+
+	/* If time expired clear the bits holding the lock and retry */
+	if (mngsem & (fwmask | swmask))
+		txgbe_release_swfw_sync(hw, mngsem & (fwmask | swmask));
+
+	msec_delay(5);
+	return TXGBE_ERR_SWFW_SYNC;
+}
+
+/**
+ *  txgbe_release_swfw_sync - Release SWFW semaphore
+ *  @hw: pointer to hardware structure
+ *  @mask: Mask to specify which semaphore to release
+ *
+ *  Releases the SWFW semaphore through the MNGSEM register for the specified
+ *  function (CSR, PHY0, PHY1, EEPROM, Flash)
+ **/
+void txgbe_release_swfw_sync(struct txgbe_hw *hw, u32 mask)
+{
+	u32 mngsem;
+	u32 swmask = mask;
+
+	DEBUGFUNC("txgbe_release_swfw_sync");
+
+	txgbe_get_eeprom_semaphore(hw);
+
+	mngsem = rd32(hw, TXGBE_MNGSEM);
+	mngsem &= ~swmask;
+	wr32(hw, TXGBE_MNGSEM, mngsem);
+
+	txgbe_release_eeprom_semaphore(hw);
+}
+
+/**
  *  txgbe_disable_sec_rx_path - Stops the receive data path
  *  @hw: pointer to hardware structure
  *
@@ -1044,6 +1115,60 @@ s32 txgbe_check_mac_link(struct txgbe_hw *hw, u32 *speed,
 		*speed = TXGBE_LINK_SPEED_UNKNOWN;
 	}
 
+	return 0;
+}
+
+/**
+ *  txgbe_get_wwn_prefix - Get alternative WWNN/WWPN prefix from
+ *  the EEPROM
+ *  @hw: pointer to hardware structure
+ *  @wwnn_prefix: the alternative WWNN prefix
+ *  @wwpn_prefix: the alternative WWPN prefix
+ *
+ *  This function will read the EEPROM from the alternative SAN MAC address
+ *  block to check the support for the alternative WWNN/WWPN prefix support.
+ **/
+s32 txgbe_get_wwn_prefix(struct txgbe_hw *hw, u16 *wwnn_prefix,
+				 u16 *wwpn_prefix)
+{
+	u16 offset, caps;
+	u16 alt_san_mac_blk_offset;
+
+	DEBUGFUNC("txgbe_get_wwn_prefix");
+
+	/* clear output first */
+	*wwnn_prefix = 0xFFFF;
+	*wwpn_prefix = 0xFFFF;
+
+	/* check if alternative SAN MAC is supported */
+	offset = TXGBE_ALT_SAN_MAC_ADDR_BLK_PTR;
+	if (hw->rom.readw_sw(hw, offset, &alt_san_mac_blk_offset))
+		goto wwn_prefix_err;
+
+	if (alt_san_mac_blk_offset == 0 || alt_san_mac_blk_offset == 0xFFFF)
+		goto wwn_prefix_out;
+
+	/* check capability in alternative san mac address block */
+	offset = alt_san_mac_blk_offset + TXGBE_ALT_SAN_MAC_ADDR_CAPS_OFFSET;
+	if (hw->rom.read16(hw, offset, &caps))
+		goto wwn_prefix_err;
+	if (!(caps & TXGBE_ALT_SAN_MAC_ADDR_CAPS_ALTWWN))
+		goto wwn_prefix_out;
+
+	/* get the corresponding prefix for WWNN/WWPN */
+	offset = alt_san_mac_blk_offset + TXGBE_ALT_SAN_MAC_ADDR_WWNN_OFFSET;
+	if (hw->rom.read16(hw, offset, wwnn_prefix))
+		DEBUGOUT("eeprom read at offset %d failed", offset);
+
+	offset = alt_san_mac_blk_offset + TXGBE_ALT_SAN_MAC_ADDR_WWPN_OFFSET;
+	if (hw->rom.read16(hw, offset, wwpn_prefix))
+		goto wwn_prefix_err;
+
+wwn_prefix_out:
+	return 0;
+
+wwn_prefix_err:
+	DEBUGOUT("eeprom read at offset %d failed", offset);
 	return 0;
 }
 
@@ -1605,6 +1730,8 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->enable_rx_dma = txgbe_enable_rx_dma_raptor;
 	mac->get_mac_addr = txgbe_get_mac_addr;
 	mac->stop_hw = txgbe_stop_hw;
+	mac->acquire_swfw_sync = txgbe_acquire_swfw_sync;
+	mac->release_swfw_sync = txgbe_release_swfw_sync;
 	mac->reset_hw = txgbe_reset_hw;
 
 	mac->disable_sec_rx_path = txgbe_disable_sec_rx_path;
@@ -1614,6 +1741,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->get_san_mac_addr = txgbe_get_san_mac_addr;
 	mac->set_san_mac_addr = txgbe_set_san_mac_addr;
 	mac->get_device_caps = txgbe_get_device_caps;
+	mac->get_wwn_prefix = txgbe_get_wwn_prefix;
 	mac->autoc_read = txgbe_autoc_read;
 	mac->autoc_write = txgbe_autoc_write;
 
@@ -1630,6 +1758,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->check_link = txgbe_check_mac_link;
 
 	/* Manageability interface */
+	mac->set_fw_drv_ver = txgbe_hic_set_drv_ver;
 	mac->get_thermal_sensor_data = txgbe_get_thermal_sensor_data;
 	mac->init_thermal_sensor_thresh = txgbe_init_thermal_sensor_thresh;
 
