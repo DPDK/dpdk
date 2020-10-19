@@ -6,7 +6,7 @@ includes += include_directories('.')
 static_ibverbs = (get_option('ibverbs_link') == 'static')
 dlopen_ibverbs = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_common_mlx5_glue.so'
-LIB_GLUE_VERSION = '20.02.0'
+LIB_GLUE_VERSION = abi_version
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
 if dlopen_ibverbs
 	dpdk_conf.set('RTE_IBVERBS_LINK_DLOPEN', 1)
