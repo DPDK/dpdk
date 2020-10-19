@@ -1151,6 +1151,83 @@ txgbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
 	intr->mask_misc |= TXGBE_ICRMISC_GPIO;
 }
 
+int
+txgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
+			uint16_t tx_rate, uint64_t q_msk)
+{
+	struct txgbe_hw *hw;
+	struct txgbe_vf_info *vfinfo;
+	struct rte_eth_link link;
+	uint8_t  nb_q_per_pool;
+	uint32_t queue_stride;
+	uint32_t queue_idx, idx = 0, vf_idx;
+	uint32_t queue_end;
+	uint16_t total_rate = 0;
+	struct rte_pci_device *pci_dev;
+	int ret;
+
+	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	ret = rte_eth_link_get_nowait(dev->data->port_id, &link);
+	if (ret < 0)
+		return ret;
+
+	if (vf >= pci_dev->max_vfs)
+		return -EINVAL;
+
+	if (tx_rate > link.link_speed)
+		return -EINVAL;
+
+	if (q_msk == 0)
+		return 0;
+
+	hw = TXGBE_DEV_HW(dev);
+	vfinfo = *(TXGBE_DEV_VFDATA(dev));
+	nb_q_per_pool = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+	queue_stride = TXGBE_MAX_RX_QUEUE_NUM / RTE_ETH_DEV_SRIOV(dev).active;
+	queue_idx = vf * queue_stride;
+	queue_end = queue_idx + nb_q_per_pool - 1;
+	if (queue_end >= hw->mac.max_tx_queues)
+		return -EINVAL;
+
+	if (vfinfo) {
+		for (vf_idx = 0; vf_idx < pci_dev->max_vfs; vf_idx++) {
+			if (vf_idx == vf)
+				continue;
+			for (idx = 0; idx < RTE_DIM(vfinfo[vf_idx].tx_rate);
+				idx++)
+				total_rate += vfinfo[vf_idx].tx_rate[idx];
+		}
+	} else {
+		return -EINVAL;
+	}
+
+	/* Store tx_rate for this vf. */
+	for (idx = 0; idx < nb_q_per_pool; idx++) {
+		if (((uint64_t)0x1 << idx) & q_msk) {
+			if (vfinfo[vf].tx_rate[idx] != tx_rate)
+				vfinfo[vf].tx_rate[idx] = tx_rate;
+			total_rate += tx_rate;
+		}
+	}
+
+	if (total_rate > dev->data->dev_link.link_speed) {
+		/* Reset stored TX rate of the VF if it causes exceed
+		 * link speed.
+		 */
+		memset(vfinfo[vf].tx_rate, 0, sizeof(vfinfo[vf].tx_rate));
+		return -EINVAL;
+	}
+
+	/* Set ARBTXRATE of each queue/pool for vf X  */
+	for (; queue_idx <= queue_end; queue_idx++) {
+		if (0x1 & q_msk)
+			txgbe_set_queue_rate_limit(dev, queue_idx, tx_rate);
+		q_msk = q_msk >> 1;
+	}
+
+	return 0;
+}
+
 /*
  * Configure device link speed and setup link.
  * It returns 0 on success.
@@ -1160,6 +1237,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct txgbe_hw_stats *hw_stats = TXGBE_DEV_STATS(dev);
+	struct txgbe_vf_info *vfinfo = *TXGBE_DEV_VFDATA(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
@@ -1169,6 +1247,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	uint32_t allowed_speeds = 0;
 	int mask = 0;
 	int status;
+	uint16_t vf, idx;
 	uint32_t *link_speeds;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1204,6 +1283,9 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 		return -1;
 	hw->mac.start_hw(hw);
 	hw->mac.get_link_status = true;
+
+	/* configure PF module if SRIOV enabled */
+	txgbe_pf_host_configure(dev);
 
 	txgbe_dev_phy_intr_setup(dev);
 
@@ -1246,6 +1328,16 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	if (err) {
 		PMD_INIT_LOG(ERR, "Unable to set VLAN offload");
 		goto error;
+	}
+
+	/* Restore vf rate limit */
+	if (vfinfo != NULL) {
+		for (vf = 0; vf < pci_dev->max_vfs; vf++)
+			for (idx = 0; idx < TXGBE_MAX_QUEUE_NUM_PER_VF; idx++)
+				if (vfinfo[vf].tx_rate[idx] != 0)
+					txgbe_set_vf_rate_limit(dev, vf,
+						vfinfo[vf].tx_rate[idx],
+						1 << idx);
 	}
 
 	err = txgbe_dev_rxtx_start(dev);
@@ -1369,8 +1461,10 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_vf_info *vfinfo = *TXGBE_DEV_VFDATA(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int vf;
 
 	if (hw->adapter_stopped)
 		return 0;
@@ -1388,6 +1482,9 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	/* stop adapter */
 	txgbe_stop_hw(hw);
+
+	for (vf = 0; vfinfo != NULL && vf < pci_dev->max_vfs; vf++)
+		vfinfo[vf].clear_to_send = false;
 
 	if (hw->phy.media_type == txgbe_media_type_copper) {
 		/* Turn off the copper */
@@ -2799,6 +2896,37 @@ txgbe_configure_msix(struct rte_eth_dev *dev)
 			| TXGBE_ITR_WRDSA);
 }
 
+int
+txgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
+			   uint16_t queue_idx, uint16_t tx_rate)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t bcnrc_val;
+
+	if (queue_idx >= hw->mac.max_tx_queues)
+		return -EINVAL;
+
+	if (tx_rate != 0) {
+		bcnrc_val = TXGBE_ARBTXRATE_MAX(tx_rate);
+		bcnrc_val |= TXGBE_ARBTXRATE_MIN(tx_rate / 2);
+	} else {
+		bcnrc_val = 0;
+	}
+
+	/*
+	 * Set global transmit compensation time to the MMW_SIZE in ARBTXMMW
+	 * register. MMW_SIZE=0x014 if 9728-byte jumbo is supported.
+	 */
+	wr32(hw, TXGBE_ARBTXMMW, 0x14);
+
+	/* Set ARBTXRATE of queue X */
+	wr32(hw, TXGBE_ARBPOOLIDX, queue_idx);
+	wr32(hw, TXGBE_ARBTXRATE, bcnrc_val);
+	txgbe_flush(hw);
+
+	return 0;
+}
+
 static u8 *
 txgbe_dev_addr_list_itr(__rte_unused struct txgbe_hw *hw,
 			u8 **mc_addr_ptr, u32 *vmdq)
@@ -2863,6 +2991,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.mac_addr_set               = txgbe_set_default_mac_addr,
 	.uc_hash_table_set          = txgbe_uc_hash_table_set,
 	.uc_all_hash_table_set      = txgbe_uc_all_hash_table_set,
+	.set_queue_rate_limit       = txgbe_set_queue_rate_limit,
 	.set_mc_addr_list           = txgbe_dev_set_mc_addr_list,
 	.rxq_info_get               = txgbe_rxq_info_get,
 	.txq_info_get               = txgbe_txq_info_get,

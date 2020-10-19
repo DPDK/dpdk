@@ -25,6 +25,7 @@
 #include "txgbe_ethdev.h"
 #include "rte_pmd_txgbe.h"
 
+#define TXGBE_MAX_VFTA     (128)
 #define TXGBE_VF_MSG_SIZE_DEFAULT 1
 #define TXGBE_VF_GET_QUEUE_MSG_SIZE 5
 
@@ -142,6 +143,145 @@ void txgbe_pf_host_uninit(struct rte_eth_dev *eth_dev)
 
 	rte_free(*vfinfo);
 	*vfinfo = NULL;
+}
+
+static void
+txgbe_add_tx_flow_control_drop_filter(struct rte_eth_dev *eth_dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(eth_dev);
+	uint16_t vf_num;
+	int i;
+	struct txgbe_ethertype_filter ethertype_filter;
+
+	if (!hw->mac.set_ethertype_anti_spoofing) {
+		PMD_DRV_LOG(INFO, "ether type anti-spoofing is not supported.\n");
+		return;
+	}
+
+	i = txgbe_ethertype_filter_lookup(filter_info,
+					  TXGBE_ETHERTYPE_FLOW_CTRL);
+	if (i >= 0) {
+		PMD_DRV_LOG(ERR, "A ether type filter entity for flow control already exists!\n");
+		return;
+	}
+
+	ethertype_filter.ethertype = TXGBE_ETHERTYPE_FLOW_CTRL;
+	ethertype_filter.etqf = TXGBE_ETFLT_ENA |
+				TXGBE_ETFLT_TXAS |
+				TXGBE_ETHERTYPE_FLOW_CTRL;
+	ethertype_filter.etqs = 0;
+	ethertype_filter.conf = TRUE;
+	i = txgbe_ethertype_filter_insert(filter_info,
+					  &ethertype_filter);
+	if (i < 0) {
+		PMD_DRV_LOG(ERR, "Cannot find an unused ether type filter entity for flow control.\n");
+		return;
+	}
+
+	wr32(hw, TXGBE_ETFLT(i),
+			(TXGBE_ETFLT_ENA |
+			TXGBE_ETFLT_TXAS |
+			TXGBE_ETHERTYPE_FLOW_CTRL));
+
+	vf_num = dev_num_vf(eth_dev);
+	for (i = 0; i < vf_num; i++)
+		hw->mac.set_ethertype_anti_spoofing(hw, true, i);
+}
+
+int txgbe_pf_host_configure(struct rte_eth_dev *eth_dev)
+{
+	uint32_t vtctl, fcrth;
+	uint32_t vfre_slot, vfre_offset;
+	uint16_t vf_num;
+	const uint8_t VFRE_SHIFT = 5;  /* VFRE 32 bits per slot */
+	const uint8_t VFRE_MASK = (uint8_t)((1U << VFRE_SHIFT) - 1);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
+	uint32_t gpie;
+	uint32_t gcr_ext;
+	uint32_t vlanctrl;
+	int i;
+
+	vf_num = dev_num_vf(eth_dev);
+	if (vf_num == 0)
+		return -1;
+
+	/* enable VMDq and set the default pool for PF */
+	vtctl = rd32(hw, TXGBE_POOLCTL);
+	vtctl &= ~TXGBE_POOLCTL_DEFPL_MASK;
+	vtctl |= TXGBE_POOLCTL_DEFPL(RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx);
+	vtctl |= TXGBE_POOLCTL_RPLEN;
+	wr32(hw, TXGBE_POOLCTL, vtctl);
+
+	vfre_offset = vf_num & VFRE_MASK;
+	vfre_slot = (vf_num >> VFRE_SHIFT) > 0 ? 1 : 0;
+
+	/* Enable pools reserved to PF only */
+	wr32(hw, TXGBE_POOLRXENA(vfre_slot), (~0U) << vfre_offset);
+	wr32(hw, TXGBE_POOLRXENA(vfre_slot ^ 1), vfre_slot - 1);
+	wr32(hw, TXGBE_POOLTXENA(vfre_slot), (~0U) << vfre_offset);
+	wr32(hw, TXGBE_POOLTXENA(vfre_slot ^ 1), vfre_slot - 1);
+
+	wr32(hw, TXGBE_PSRCTL, TXGBE_PSRCTL_LBENA);
+
+	/* clear VMDq map to perment rar 0 */
+	hw->mac.clear_vmdq(hw, 0, BIT_MASK32);
+
+	/* clear VMDq map to scan rar 127 */
+	wr32(hw, TXGBE_ETHADDRIDX, hw->mac.num_rar_entries);
+	wr32(hw, TXGBE_ETHADDRASSL, 0);
+	wr32(hw, TXGBE_ETHADDRASSH, 0);
+
+	/* set VMDq map to default PF pool */
+	hw->mac.set_vmdq(hw, 0, RTE_ETH_DEV_SRIOV(eth_dev).def_vmdq_idx);
+
+	/*
+	 * SW msut set PORTCTL.VT_Mode the same as GPIE.VT_Mode
+	 */
+	gpie = rd32(hw, TXGBE_GPIE);
+	gpie |= TXGBE_GPIE_MSIX;
+	gcr_ext = rd32(hw, TXGBE_PORTCTL);
+	gcr_ext &= ~TXGBE_PORTCTL_NUMVT_MASK;
+
+	switch (RTE_ETH_DEV_SRIOV(eth_dev).active) {
+	case ETH_64_POOLS:
+		gcr_ext |= TXGBE_PORTCTL_NUMVT_64;
+		break;
+	case ETH_32_POOLS:
+		gcr_ext |= TXGBE_PORTCTL_NUMVT_32;
+		break;
+	case ETH_16_POOLS:
+		gcr_ext |= TXGBE_PORTCTL_NUMVT_16;
+		break;
+	}
+
+	wr32(hw, TXGBE_PORTCTL, gcr_ext);
+	wr32(hw, TXGBE_GPIE, gpie);
+
+	/*
+	 * enable vlan filtering and allow all vlan tags through
+	 */
+	vlanctrl = rd32(hw, TXGBE_VLANCTL);
+	vlanctrl |= TXGBE_VLANCTL_VFE; /* enable vlan filters */
+	wr32(hw, TXGBE_VLANCTL, vlanctrl);
+
+	/* enable all vlan filters */
+	for (i = 0; i < TXGBE_MAX_VFTA; i++)
+		wr32(hw, TXGBE_VLANTBL(i), 0xFFFFFFFF);
+
+	/* Enable MAC Anti-Spoofing */
+	hw->mac.set_mac_anti_spoofing(hw, FALSE, vf_num);
+
+	/* set flow control threshold to max to avoid tx switch hang */
+	for (i = 0; i < TXGBE_DCB_TC_MAX; i++) {
+		wr32(hw, TXGBE_FCWTRLO(i), 0);
+		fcrth = rd32(hw, TXGBE_PBRXSIZE(i)) - 32;
+		wr32(hw, TXGBE_FCWTRHI(i), fcrth);
+	}
+
+	txgbe_add_tx_flow_control_drop_filter(eth_dev);
+
+	return 0;
 }
 
 static void

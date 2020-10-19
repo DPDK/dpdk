@@ -35,8 +35,17 @@ void txgbe_release_swfw_sync(struct txgbe_hw *hw, u32 mask);
 s32 txgbe_get_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
 s32 txgbe_set_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
 
+s32 txgbe_set_vmdq(struct txgbe_hw *hw, u32 rar, u32 vmdq);
+s32 txgbe_clear_vmdq(struct txgbe_hw *hw, u32 rar, u32 vmdq);
 s32 txgbe_init_uta_tables(struct txgbe_hw *hw);
+s32 txgbe_set_vfta(struct txgbe_hw *hw, u32 vlan,
+			 u32 vind, bool vlan_on, bool vlvf_bypass);
+s32 txgbe_set_vlvf(struct txgbe_hw *hw, u32 vlan, u32 vind,
+			   bool vlan_on, u32 *vfta_delta, u32 vfta,
+			   bool vlvf_bypass);
 s32 txgbe_clear_vfta(struct txgbe_hw *hw);
+s32 txgbe_find_vlvf_slot(struct txgbe_hw *hw, u32 vlan, bool vlvf_bypass);
+
 s32 txgbe_check_mac_link(struct txgbe_hw *hw,
 			       u32 *speed,
 			       bool *link_up, bool link_up_wait_to_complete);
@@ -44,6 +53,9 @@ s32 txgbe_check_mac_link(struct txgbe_hw *hw,
 s32 txgbe_get_wwn_prefix(struct txgbe_hw *hw, u16 *wwnn_prefix,
 				 u16 *wwpn_prefix);
 
+void txgbe_set_mac_anti_spoofing(struct txgbe_hw *hw, bool enable, int vf);
+void txgbe_set_ethertype_anti_spoofing(struct txgbe_hw *hw,
+		bool enable, int vf);
 s32 txgbe_get_device_caps(struct txgbe_hw *hw, u16 *device_caps);
 void txgbe_clear_tx_pending(struct txgbe_hw *hw);
 

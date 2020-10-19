@@ -34,6 +34,8 @@
 
 #define TXGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
 
+#define TXGBE_MAX_QUEUE_NUM_PER_VF  8
+
 #define TXGBE_RSS_OFFLOAD_ALL ( \
 	ETH_RSS_IPV4 | \
 	ETH_RSS_NONFRAG_IPV4_TCP | \
@@ -97,11 +99,32 @@ struct txgbe_vf_info {
 	uint16_t vf_mc_hashes[TXGBE_MAX_VF_MC_ENTRIES];
 	uint16_t num_vf_mc_hashes;
 	bool clear_to_send;
+	uint16_t tx_rate[TXGBE_MAX_QUEUE_NUM_PER_VF];
 	uint16_t vlan_count;
 	uint8_t api_version;
 	uint16_t switch_domain_id;
 	uint16_t xcast_mode;
 	uint16_t mac_count;
+};
+
+struct txgbe_ethertype_filter {
+	uint16_t ethertype;
+	uint32_t etqf;
+	uint32_t etqs;
+	/**
+	 * If this filter is added by configuration,
+	 * it should not be removed.
+	 */
+	bool     conf;
+};
+
+/*
+ * Structure to store filters' info.
+ */
+struct txgbe_filter_info {
+	uint8_t ethertype_mask;  /* Bit mask for every used ethertype filter */
+	/* store used ethertype filters*/
+	struct txgbe_ethertype_filter ethertype_filters[TXGBE_ETF_ID_MAX];
 };
 
 /*
@@ -117,6 +140,7 @@ struct txgbe_adapter {
 	struct txgbe_mirror_info    mr_data;
 	struct txgbe_vf_info        *vfdata;
 	struct txgbe_uta_info       uta_info;
+	struct txgbe_filter_info    filter;
 	bool rx_bulk_alloc_allowed;
 };
 
@@ -149,6 +173,9 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_UTA_INFO(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->uta_info)
+
+#define TXGBE_DEV_FILTER(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->filter)
 
 /*
  * RX/TX function prototypes
@@ -226,6 +253,50 @@ void txgbe_pf_host_init(struct rte_eth_dev *eth_dev);
 void txgbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
 
 void txgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
+
+int txgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
+
+int txgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
+			    uint16_t tx_rate, uint64_t q_msk);
+int txgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+			       uint16_t tx_rate);
+static inline int
+txgbe_ethertype_filter_lookup(struct txgbe_filter_info *filter_info,
+			      uint16_t ethertype)
+{
+	int i;
+
+	for (i = 0; i < TXGBE_ETF_ID_MAX; i++) {
+		if (filter_info->ethertype_filters[i].ethertype == ethertype &&
+		    (filter_info->ethertype_mask & (1 << i)))
+			return i;
+	}
+	return -1;
+}
+
+static inline int
+txgbe_ethertype_filter_insert(struct txgbe_filter_info *filter_info,
+			      struct txgbe_ethertype_filter *ethertype_filter)
+{
+	int i;
+
+	for (i = 0; i < TXGBE_ETF_ID_MAX; i++) {
+		if (filter_info->ethertype_mask & (1 << i))
+			continue;
+
+		filter_info->ethertype_mask |= 1 << i;
+		filter_info->ethertype_filters[i].ethertype =
+				ethertype_filter->ethertype;
+		filter_info->ethertype_filters[i].etqf =
+				ethertype_filter->etqf;
+		filter_info->ethertype_filters[i].etqs =
+				ethertype_filter->etqs;
+		filter_info->ethertype_filters[i].conf =
+				ethertype_filter->conf;
+		break;
+	}
+	return (i < TXGBE_ETF_ID_MAX ? i : -1);
+}
 
 
 #define TXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
