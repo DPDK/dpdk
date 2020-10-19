@@ -184,6 +184,12 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 #define TXGBE_DEFAULT_TX_HTHRESH      0
 #define TXGBE_DEFAULT_TX_WTHRESH      0
 
+/* store statistics names and its offset in stats structure */
+struct rte_txgbe_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
 const uint32_t *txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
