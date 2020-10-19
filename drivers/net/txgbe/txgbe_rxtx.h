@@ -50,6 +50,59 @@ struct txgbe_rx_desc {
 #define TXGBE_RXD_HDRADDR(rxd, v)  \
 	(((volatile __le64 *)(rxd))[1] = cpu_to_le64(v))
 
+/*****************************************************************************
+ * Transmit Descriptor
+ *****************************************************************************/
+/**
+ * Transmit Context Descriptor (TXGBE_TXD_TYP=CTXT)
+ **/
+struct txgbe_tx_ctx_desc {
+	__le32 dw0; /* w.vlan_macip_lens  */
+	__le32 dw1; /* w.seqnum_seed      */
+	__le32 dw2; /* w.type_tucmd_mlhl  */
+	__le32 dw3; /* w.mss_l4len_idx    */
+};
+
+/* @txgbe_tx_ctx_desc.dw0 */
+#define TXGBE_TXD_IPLEN(v)         LS(v, 0, 0x1FF) /* ip/fcoe header end */
+#define TXGBE_TXD_MACLEN(v)        LS(v, 9, 0x7F) /* desc mac len */
+#define TXGBE_TXD_VLAN(v)          LS(v, 16, 0xFFFF) /* vlan tag */
+
+/* @txgbe_tx_ctx_desc.dw1 */
+/*** bit 0-31, when TXGBE_TXD_DTYP_FCOE=0 ***/
+#define TXGBE_TXD_IPSEC_SAIDX(v)   LS(v, 0, 0x3FF) /* ipsec SA index */
+#define TXGBE_TXD_ETYPE(v)         LS(v, 11, 0x1) /* tunnel type */
+#define TXGBE_TXD_ETYPE_UDP        LS(0, 11, 0x1)
+#define TXGBE_TXD_ETYPE_GRE        LS(1, 11, 0x1)
+#define TXGBE_TXD_EIPLEN(v)        LS(v, 12, 0x7F) /* tunnel ip header */
+#define TXGBE_TXD_DTYP_FCOE        MS(16, 0x1) /* FCoE/IP descriptor */
+#define TXGBE_TXD_ETUNLEN(v)       LS(v, 21, 0xFF) /* tunnel header */
+#define TXGBE_TXD_DECTTL(v)        LS(v, 29, 0xF) /* decrease ip TTL */
+/*** bit 0-31, when TXGBE_TXD_DTYP_FCOE=1 ***/
+#define TXGBE_TXD_FCOEF_EOF_MASK   MS(10, 0x3) /* FC EOF index */
+#define TXGBE_TXD_FCOEF_EOF_N      LS(0, 10, 0x3) /* EOFn */
+#define TXGBE_TXD_FCOEF_EOF_T      LS(1, 10, 0x3) /* EOFt */
+#define TXGBE_TXD_FCOEF_EOF_NI     LS(2, 10, 0x3) /* EOFni */
+#define TXGBE_TXD_FCOEF_EOF_A      LS(3, 10, 0x3) /* EOFa */
+#define TXGBE_TXD_FCOEF_SOF        MS(12, 0x1) /* FC SOF index */
+#define TXGBE_TXD_FCOEF_PARINC     MS(13, 0x1) /* Rel_Off in F_CTL */
+#define TXGBE_TXD_FCOEF_ORIE       MS(14, 0x1) /* orientation end */
+#define TXGBE_TXD_FCOEF_ORIS       MS(15, 0x1) /* orientation start */
+
+/* @txgbe_tx_ctx_desc.dw2 */
+#define TXGBE_TXD_IPSEC_ESPLEN(v)  LS(v, 1, 0x1FF) /* ipsec ESP length */
+#define TXGBE_TXD_SNAP             MS(10, 0x1) /* SNAP indication */
+#define TXGBE_TXD_TPID_SEL(v)      LS(v, 11, 0x7) /* vlan tag index */
+#define TXGBE_TXD_IPSEC_ESP        MS(14, 0x1) /* ipsec type: esp=1 ah=0 */
+#define TXGBE_TXD_IPSEC_ESPENC     MS(15, 0x1) /* ESP encrypt */
+#define TXGBE_TXD_CTXT             MS(20, 0x1) /* context descriptor */
+#define TXGBE_TXD_PTID(v)          LS(v, 24, 0xFF) /* packet type */
+/* @txgbe_tx_ctx_desc.dw3 */
+#define TXGBE_TXD_DD               MS(0, 0x1) /* descriptor done */
+#define TXGBE_TXD_IDX(v)           LS(v, 4, 0x1) /* ctxt desc index */
+#define TXGBE_TXD_L4LEN(v)         LS(v, 8, 0xFF) /* l4 header length */
+#define TXGBE_TXD_MSS(v)           LS(v, 16, 0xFFFF) /* l4 MSS */
+
 /**
  * Transmit Data Descriptor (TXGBE_TXD_TYP=DATA)
  **/
@@ -58,9 +111,36 @@ struct txgbe_tx_desc {
 	__le32 dw2; /* r.cmd_type_len,  w.nxtseq_seed */
 	__le32 dw3; /* r.olinfo_status, w.status      */
 };
+/* @txgbe_tx_desc.qw0 */
+
+/* @txgbe_tx_desc.dw2 */
+#define TXGBE_TXD_DATLEN(v)        ((0xFFFF & (v))) /* data buffer length */
+#define TXGBE_TXD_1588             ((0x1) << 19) /* IEEE1588 time stamp */
+#define TXGBE_TXD_DATA             ((0x0) << 20) /* data descriptor */
+#define TXGBE_TXD_EOP              ((0x1) << 24) /* End of Packet */
+#define TXGBE_TXD_FCS              ((0x1) << 25) /* Insert FCS */
+#define TXGBE_TXD_LINKSEC          ((0x1) << 26) /* Insert LinkSec */
+#define TXGBE_TXD_ECU              ((0x1) << 28) /* forward to ECU */
+#define TXGBE_TXD_CNTAG            ((0x1) << 29) /* insert CN tag */
+#define TXGBE_TXD_VLE              ((0x1) << 30) /* insert VLAN tag */
+#define TXGBE_TXD_TSE              ((0x1) << 31) /* transmit segmentation */
+
+#define TXGBE_TXD_FLAGS (TXGBE_TXD_FCS | TXGBE_TXD_EOP)
+
+/* @txgbe_tx_desc.dw3 */
+#define TXGBE_TXD_DD_UNUSED        TXGBE_TXD_DD
+#define TXGBE_TXD_IDX_UNUSED(v)    TXGBE_TXD_IDX(v)
+#define TXGBE_TXD_CC               ((0x1) << 7) /* check context */
+#define TXGBE_TXD_IPSEC            ((0x1) << 8) /* request ipsec offload */
+#define TXGBE_TXD_L4CS             ((0x1) << 9) /* insert TCP/UDP/SCTP csum */
+#define TXGBE_TXD_IPCS             ((0x1) << 10) /* insert IPv4 csum */
+#define TXGBE_TXD_EIPCS            ((0x1) << 11) /* insert outer IP csum */
+#define TXGBE_TXD_MNGFLT           ((0x1) << 12) /* enable management filter */
+#define TXGBE_TXD_PAYLEN(v)        ((0x7FFFF & (v)) << 13) /* payload length */
 
 #define RTE_PMD_TXGBE_TX_MAX_BURST 32
 #define RTE_PMD_TXGBE_RX_MAX_BURST 32
+#define RTE_TXGBE_TX_MAX_FREE_BUF_SZ 64
 
 #define RX_RING_SZ ((TXGBE_RING_DESC_MAX + RTE_PMD_TXGBE_RX_MAX_BURST) * \
 		    sizeof(struct txgbe_rx_desc))
@@ -154,13 +234,15 @@ struct txgbe_tx_queue {
 	 *   this value.
 	 */
 	uint16_t            tx_free_thresh;
+	uint16_t            nb_tx_free;
+	uint16_t            tx_next_dd;    /**< next desc to scan for DD bit */
 	uint16_t            queue_id;      /**< TX queue index. */
 	uint16_t            reg_idx;       /**< TX queue register index. */
 	uint16_t            port_id;       /**< Device port identifier. */
 	uint8_t             pthresh;       /**< Prefetch threshold register. */
 	uint8_t             hthresh;       /**< Host threshold register. */
 	uint8_t             wthresh;       /**< Write-back threshold reg. */
-	uint64_t offloads; /**< Tx offload flags of DEV_TX_OFFLOAD_* */
+	uint64_t            offloads; /* Tx offload flags of DEV_TX_OFFLOAD_* */
 	const struct txgbe_txq_ops *ops;       /**< txq ops */
 	uint8_t             tx_deferred_start; /**< not in global dev start. */
 };
