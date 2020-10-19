@@ -112,6 +112,30 @@ s32 txgbe_identify_phy(struct txgbe_hw *hw)
 }
 
 /**
+ * txgbe_check_reset_blocked - check status of MNG FW veto bit
+ * @hw: pointer to the hardware structure
+ *
+ * This function checks the STAT.MNGVETO bit to see if there are
+ * any constraints on link from manageability.  For MAC's that don't
+ * have this bit just return faluse since the link can not be blocked
+ * via this method.
+ **/
+s32 txgbe_check_reset_blocked(struct txgbe_hw *hw)
+{
+	u32 mmngc;
+
+	DEBUGFUNC("txgbe_check_reset_blocked");
+
+	mmngc = rd32(hw, TXGBE_STAT);
+	if (mmngc & TXGBE_STAT_MNGVETO) {
+		DEBUGOUT("MNG_VETO bit detected.\n");
+		return true;
+	}
+
+	return false;
+}
+
+/**
  *  txgbe_validate_phy_addr - Determines phy address is valid
  *  @hw: pointer to hardware structure
  *  @phy_addr: PHY address
@@ -199,6 +223,208 @@ enum txgbe_phy_type txgbe_get_phy_type_from_id(u32 phy_id)
 	return phy_type;
 }
 
+static s32
+txgbe_reset_extphy(struct txgbe_hw *hw)
+{
+	u16 ctrl = 0;
+	int err, i;
+
+	err = hw->phy.read_reg(hw, TXGBE_MD_PORT_CTRL,
+			TXGBE_MD_DEV_GENERAL, &ctrl);
+	if (err != 0)
+		return err;
+	ctrl |= TXGBE_MD_PORT_CTRL_RESET;
+	err = hw->phy.write_reg(hw, TXGBE_MD_PORT_CTRL,
+			TXGBE_MD_DEV_GENERAL, ctrl);
+	if (err != 0)
+		return err;
+
+	/*
+	 * Poll for reset bit to self-clear indicating reset is complete.
+	 * Some PHYs could take up to 3 seconds to complete and need about
+	 * 1.7 usec delay after the reset is complete.
+	 */
+	for (i = 0; i < 30; i++) {
+		msec_delay(100);
+		err = hw->phy.read_reg(hw, TXGBE_MD_PORT_CTRL,
+			TXGBE_MD_DEV_GENERAL, &ctrl);
+		if (err != 0)
+			return err;
+
+		if (!(ctrl & TXGBE_MD_PORT_CTRL_RESET)) {
+			usec_delay(2);
+			break;
+		}
+	}
+
+	if (ctrl & TXGBE_MD_PORT_CTRL_RESET) {
+		err = TXGBE_ERR_RESET_FAILED;
+		DEBUGOUT("PHY reset polling failed to complete.\n");
+	}
+
+	return err;
+}
+
+/**
+ *  txgbe_reset_phy - Performs a PHY reset
+ *  @hw: pointer to hardware structure
+ **/
+s32 txgbe_reset_phy(struct txgbe_hw *hw)
+{
+	s32 err = 0;
+
+	DEBUGFUNC("txgbe_reset_phy");
+
+	if (hw->phy.type == txgbe_phy_unknown)
+		err = txgbe_identify_phy(hw);
+
+	if (err != 0 || hw->phy.type == txgbe_phy_none)
+		return err;
+
+	/* Don't reset PHY if it's shut down due to overtemp. */
+	if (hw->phy.check_overtemp(hw) == TXGBE_ERR_OVERTEMP)
+		return err;
+
+	/* Blocked by MNG FW so bail */
+	if (txgbe_check_reset_blocked(hw))
+		return err;
+
+	switch (hw->phy.type) {
+	case txgbe_phy_cu_mtd:
+		err = txgbe_reset_extphy(hw);
+		break;
+	default:
+		break;
+	}
+
+	return err;
+}
+
+/**
+ *  txgbe_read_phy_mdi - Reads a value from a specified PHY register without
+ *  the SWFW lock
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit address of PHY register to read
+ *  @device_type: 5 bit device type
+ *  @phy_data: Pointer to read data from PHY register
+ **/
+s32 txgbe_read_phy_reg_mdi(struct txgbe_hw *hw, u32 reg_addr, u32 device_type,
+			   u16 *phy_data)
+{
+	u32 command, data;
+
+	/* Setup and write the address cycle command */
+	command = TXGBE_MDIOSCA_REG(reg_addr) |
+		  TXGBE_MDIOSCA_DEV(device_type) |
+		  TXGBE_MDIOSCA_PORT(hw->phy.addr);
+	wr32(hw, TXGBE_MDIOSCA, command);
+
+	command = TXGBE_MDIOSCD_CMD_READ |
+		  TXGBE_MDIOSCD_BUSY;
+	wr32(hw, TXGBE_MDIOSCD, command);
+
+	/*
+	 * Check every 10 usec to see if the address cycle completed.
+	 * The MDI Command bit will clear when the operation is
+	 * complete
+	 */
+	if (!po32m(hw, TXGBE_MDIOSCD, TXGBE_MDIOSCD_BUSY,
+		0, NULL, 100, 100)) {
+		DEBUGOUT("PHY address command did not complete\n");
+		return TXGBE_ERR_PHY;
+	}
+
+	data = rd32(hw, TXGBE_MDIOSCD);
+	*phy_data = (u16)TXGBD_MDIOSCD_DAT(data);
+
+	return 0;
+}
+
+/**
+ *  txgbe_read_phy_reg - Reads a value from a specified PHY register
+ *  using the SWFW lock - this function is needed in most cases
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit address of PHY register to read
+ *  @device_type: 5 bit device type
+ *  @phy_data: Pointer to read data from PHY register
+ **/
+s32 txgbe_read_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
+			       u32 device_type, u16 *phy_data)
+{
+	s32 err;
+	u32 gssr = hw->phy.phy_semaphore_mask;
+
+	DEBUGFUNC("txgbe_read_phy_reg");
+
+	if (hw->mac.acquire_swfw_sync(hw, gssr))
+		return TXGBE_ERR_SWFW_SYNC;
+
+	err = hw->phy.read_reg_mdi(hw, reg_addr, device_type, phy_data);
+
+	hw->mac.release_swfw_sync(hw, gssr);
+
+	return err;
+}
+
+/**
+ *  txgbe_write_phy_reg_mdi - Writes a value to specified PHY register
+ *  without SWFW lock
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit PHY register to write
+ *  @device_type: 5 bit device type
+ *  @phy_data: Data to write to the PHY register
+ **/
+s32 txgbe_write_phy_reg_mdi(struct txgbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 phy_data)
+{
+	u32 command;
+
+	/* write command */
+	command = TXGBE_MDIOSCA_REG(reg_addr) |
+		  TXGBE_MDIOSCA_DEV(device_type) |
+		  TXGBE_MDIOSCA_PORT(hw->phy.addr);
+	wr32(hw, TXGBE_MDIOSCA, command);
+
+	command = TXGBE_MDIOSCD_CMD_WRITE |
+		  TXGBE_MDIOSCD_DAT(phy_data) |
+		  TXGBE_MDIOSCD_BUSY;
+	wr32(hw, TXGBE_MDIOSCD, command);
+
+	/* wait for completion */
+	if (!po32m(hw, TXGBE_MDIOSCD, TXGBE_MDIOSCD_BUSY,
+		0, NULL, 100, 100)) {
+		TLOG_DEBUG("PHY write cmd didn't complete\n");
+		return -TERR_PHY;
+	}
+
+	return 0;
+}
+
+/**
+ *  txgbe_write_phy_reg - Writes a value to specified PHY register
+ *  using SWFW lock- this function is needed in most cases
+ *  @hw: pointer to hardware structure
+ *  @reg_addr: 32 bit PHY register to write
+ *  @device_type: 5 bit device type
+ *  @phy_data: Data to write to the PHY register
+ **/
+s32 txgbe_write_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 phy_data)
+{
+	s32 err;
+	u32 gssr = hw->phy.phy_semaphore_mask;
+
+	DEBUGFUNC("txgbe_write_phy_reg");
+
+	if (hw->mac.acquire_swfw_sync(hw, gssr))
+		err = TXGBE_ERR_SWFW_SYNC;
+
+	err = hw->phy.write_reg_mdi(hw, reg_addr, device_type,
+					 phy_data);
+	hw->mac.release_swfw_sync(hw, gssr);
+
+	return err;
+}
 /**
  *  txgbe_identify_module - Identifies module type
  *  @hw: pointer to hardware structure

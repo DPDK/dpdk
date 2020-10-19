@@ -327,6 +327,16 @@ bool txgbe_validate_phy_addr(struct txgbe_hw *hw, u32 phy_addr);
 enum txgbe_phy_type txgbe_get_phy_type_from_id(u32 phy_id);
 s32 txgbe_get_phy_id(struct txgbe_hw *hw);
 s32 txgbe_identify_phy(struct txgbe_hw *hw);
+s32 txgbe_reset_phy(struct txgbe_hw *hw);
+s32 txgbe_read_phy_reg_mdi(struct txgbe_hw *hw, u32 reg_addr, u32 device_type,
+			   u16 *phy_data);
+s32 txgbe_write_phy_reg_mdi(struct txgbe_hw *hw, u32 reg_addr, u32 device_type,
+			    u16 phy_data);
+s32 txgbe_read_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
+			       u32 device_type, u16 *phy_data);
+s32 txgbe_write_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
+				u32 device_type, u16 phy_data);
+s32 txgbe_check_reset_blocked(struct txgbe_hw *hw);
 
 /* PHY specific */
 s32 txgbe_identify_module(struct txgbe_hw *hw);
