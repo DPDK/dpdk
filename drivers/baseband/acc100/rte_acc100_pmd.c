@@ -2519,9 +2519,6 @@ enqueue_enc_one_op_tb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
 		r++;
 	}
 
-	if (unlikely(desc == NULL))
-		return current_enqueued_cbs;
-
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	if (check_mbuf_total_left(mbuf_total_left) != 0)
 		return -EINVAL;
@@ -3076,9 +3073,6 @@ enqueue_ldpc_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 		r++;
 	}
 
-	if (unlikely(desc == NULL))
-		return current_enqueued_cbs;
-
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	if (check_mbuf_total_left(mbuf_total_left) != 0)
 		return -EINVAL;
@@ -3180,9 +3174,6 @@ enqueue_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 		current_enqueued_cbs++;
 		r++;
 	}
-
-	if (unlikely(desc == NULL))
-		return current_enqueued_cbs;
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	if (check_mbuf_total_left(mbuf_total_left) != 0)
