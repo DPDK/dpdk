@@ -1235,6 +1235,9 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	for (i = 0; i < dev->nr_vring; i++) {
 		struct vhost_virtqueue *vq = dev->virtqueue[i];
 
+		if (!vq)
+			continue;
+
 		if (vq->desc || vq->avail || vq->used) {
 			/*
 			 * If the memory table got updated, the ring addresses
@@ -1556,6 +1559,9 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev, VhostUserMsg *msg,
 
 	for (i = 0; i < num_queues; i++) {
 		vq = dev->virtqueue[i];
+		if (!vq)
+			continue;
+
 		if (vq_is_packed(dev)) {
 			vq->inflight_packed = addr;
 			vq->inflight_packed->desc_num = queue_size;
@@ -2310,6 +2316,9 @@ vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		for (i = 0; i < dev->nr_vring; i++) {
 			struct vhost_virtqueue *vq = dev->virtqueue[i];
 
+			if (!vq)
+				continue;
+
 			vhost_user_iotlb_cache_insert(vq, imsg->iova, vva,
 					len, imsg->perm);
 
@@ -2320,6 +2329,9 @@ vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	case VHOST_IOTLB_INVALIDATE:
 		for (i = 0; i < dev->nr_vring; i++) {
 			struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+			if (!vq)
+				continue;
 
 			vhost_user_iotlb_cache_remove(vq, imsg->iova,
 					imsg->size);

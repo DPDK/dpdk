@@ -544,6 +544,11 @@ init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 	}
 
 	vq = dev->virtqueue[vring_idx];
+	if (!vq) {
+		VHOST_LOG_CONFIG(ERR, "Virtqueue not allocated (%d)\n",
+				vring_idx);
+		return;
+	}
 
 	memset(vq, 0, sizeof(struct vhost_virtqueue));
 
@@ -570,6 +575,12 @@ reset_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 	}
 
 	vq = dev->virtqueue[vring_idx];
+	if (!vq) {
+		VHOST_LOG_CONFIG(ERR, "Virtqueue not allocated (%d)\n",
+				vring_idx);
+		return;
+	}
+
 	callfd = vq->callfd;
 	init_vring_queue(dev, vring_idx);
 	vq->callfd = callfd;
