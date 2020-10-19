@@ -7,7 +7,7 @@
 
 /* ARM64 NEON */
 static uint16_t
-ip4_lookup_node_process(struct rte_graph *graph, struct rte_node *node,
+ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 			void **objs, uint16_t nb_objs)
 {
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3, **pkts;

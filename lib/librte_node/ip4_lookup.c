@@ -15,6 +15,7 @@
 #include <rte_mbuf.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
+#include <rte_vect.h>
 
 #include "rte_node_ip4_api.h"
 
@@ -34,10 +35,10 @@ static struct ip4_lookup_node_main ip4_lookup_nm;
 #include "ip4_lookup_neon.h"
 #elif defined(RTE_ARCH_X86)
 #include "ip4_lookup_sse.h"
-#else
+#endif
 
 static uint16_t
-ip4_lookup_node_process(struct rte_graph *graph, struct rte_node *node,
+ip4_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 			void **objs, uint16_t nb_objs)
 {
 	struct rte_ipv4_hdr *ipv4_hdr;
@@ -108,8 +109,6 @@ ip4_lookup_node_process(struct rte_graph *graph, struct rte_node *node,
 
 	return nb_objs;
 }
-
-#endif
 
 int
 rte_node_ip4_route_add(uint32_t ip, uint8_t depth, uint16_t next_hop,
@@ -194,13 +193,19 @@ ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
 		init_once = 1;
 	}
 	*lpm_p = ip4_lookup_nm.lpm_tbl[graph->socket];
+
+#if defined(__ARM_NEON) || defined(RTE_ARCH_X86)
+	if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
+		node->process = ip4_lookup_node_process_vec;
+#endif
+
 	node_dbg("ip4_lookup", "Initialized ip4_lookup node");
 
 	return 0;
 }
 
 static struct rte_node_register ip4_lookup_node = {
-	.process = ip4_lookup_node_process,
+	.process = ip4_lookup_node_process_scalar,
 	.name = "ip4_lookup",
 
 	.init = ip4_lookup_node_init,
