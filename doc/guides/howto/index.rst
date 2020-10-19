@@ -20,3 +20,4 @@ HowTo Guides
     telemetry
     debug_troubleshoot
     openwrt
+    avx512

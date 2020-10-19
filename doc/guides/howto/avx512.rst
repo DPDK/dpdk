@@ -1,0 +1,36 @@
+..  SPDX-License-Identifier: BSD-3-Clause
+    Copyright(c) 2020 Intel Corporation.
+
+
+Using AVX-512 with DPDK
+=======================
+
+AVX-512 is not used by default in DPDK, but it can be selected at runtime by apps through the use of EAL API,
+and by the user with a commandline argument. DPDK has a setting for max SIMD bitwidth,
+which can be modified and will then limit the vector path taken by the code.
+
+
+Using the API in apps
+---------------------
+
+Apps can request DPDK uses AVX-512 at runtime, if it provides improved application performance.
+This can be done by modifying the EAL setting for max SIMD bitwidth to 512, as by default it is 256,
+which does not allow for AVX-512.
+
+.. code-block:: c
+
+   rte_vect_set_max_simd_bitwidth(RTE_VECT_SIMD_512);
+
+This API should only be called once at initialization, before EAL init.
+For more information on the possible enum values to use as a parameter, go to :ref:`max_simd_bitwidth`:
+
+
+Using the command-line argument
+---------------------------------------------
+
+The user can select to use AVX-512 at runtime, using the following argument to set the max bitwidth::
+
+   ./app/dpdk-testpmd --force-max-simd-bitwidth=512
+
+This will override any further changes to the max SIMD bitwidth in DPDK,
+which is useful for testing purposes.
