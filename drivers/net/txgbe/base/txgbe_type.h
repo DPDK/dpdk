@@ -38,6 +38,8 @@
 #define TXGBE_PHYSICAL_LAYER_10BASE_T		0x08000
 #define TXGBE_PHYSICAL_LAYER_2500BASE_KX	0x10000
 
+#define TXGBE_ATR_HASH_MASK			0x7fff
+
 enum txgbe_eeprom_type {
 	txgbe_eeprom_unknown = 0,
 	txgbe_eeprom_spi,

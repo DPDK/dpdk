@@ -116,6 +116,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &txgbe_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &txgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &txgbe_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &txgbe_prep_pkts;
 
@@ -684,6 +685,18 @@ txgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txportconf.ring_size = 256;
 
 	return 0;
+}
+
+const uint32_t *
+txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	if (dev->rx_pkt_burst == txgbe_recv_pkts ||
+	    dev->rx_pkt_burst == txgbe_recv_pkts_lro_single_alloc ||
+	    dev->rx_pkt_burst == txgbe_recv_pkts_lro_bulk_alloc ||
+	    dev->rx_pkt_burst == txgbe_recv_pkts_bulk_alloc)
+		return txgbe_get_supported_ptypes();
+
+	return NULL;
 }
 
 void
@@ -1349,6 +1362,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_infos_get              = txgbe_dev_info_get,
 	.dev_set_link_up            = txgbe_dev_set_link_up,
 	.dev_set_link_down          = txgbe_dev_set_link_down,
+	.dev_supported_ptypes_get   = txgbe_dev_supported_ptypes_get,
 	.rx_queue_start	            = txgbe_dev_rx_queue_start,
 	.rx_queue_stop              = txgbe_dev_rx_queue_stop,
 	.tx_queue_start	            = txgbe_dev_tx_queue_start,

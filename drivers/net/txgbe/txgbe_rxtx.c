@@ -8,6 +8,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <unistd.h>
+#include <inttypes.h>
 
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -16,9 +20,17 @@
 #include <rte_ethdev.h>
 #include <rte_ethdev_driver.h>
 #include <rte_memzone.h>
+#include <rte_atomic.h>
 #include <rte_mempool.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
+#include <rte_ether.h>
+#include <rte_prefetch.h>
+#include <rte_udp.h>
+#include <rte_tcp.h>
+#include <rte_sctp.h>
+#include <rte_string_fns.h>
+#include <rte_errno.h>
 #include <rte_ip.h>
 #include <rte_net.h>
 
@@ -41,6 +53,11 @@ static const u64 TXGBE_TX_OFFLOAD_MASK = (PKT_TX_IP_CKSUM |
 
 #define TXGBE_TX_OFFLOAD_NOTSUP_MASK \
 		(PKT_TX_OFFLOAD_MASK ^ TXGBE_TX_OFFLOAD_MASK)
+
+/*
+ * Prefetch a cache line into all cache levels.
+ */
+#define rte_txgbe_prefetch(p)   rte_prefetch0(p)
 
 static int
 txgbe_is_vf(struct rte_eth_dev *dev)
@@ -985,6 +1002,862 @@ txgbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	return i;
 }
 
+/*********************************************************************
+ *
+ *  RX functions
+ *
+ **********************************************************************/
+/* @note: fix txgbe_dev_supported_ptypes_get() if any change here. */
+static inline uint32_t
+txgbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
+{
+	uint16_t ptid = TXGBE_RXD_PTID(pkt_info);
+
+	ptid &= ptid_mask;
+
+	return txgbe_decode_ptype(ptid);
+}
+
+static inline uint64_t
+txgbe_rxd_pkt_info_to_pkt_flags(uint32_t pkt_info)
+{
+	static uint64_t ip_rss_types_map[16] __rte_cache_aligned = {
+		0, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH, PKT_RX_RSS_HASH,
+		0, PKT_RX_RSS_HASH, 0, PKT_RX_RSS_HASH,
+		PKT_RX_RSS_HASH, 0, 0, 0,
+		0, 0, 0,  PKT_RX_FDIR,
+	};
+
+	return ip_rss_types_map[TXGBE_RXD_RSSTYPE(pkt_info)];
+}
+
+static inline uint64_t
+rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
+{
+	uint64_t pkt_flags;
+
+	/*
+	 * Check if VLAN present only.
+	 * Do not check whether L3/L4 rx checksum done by NIC or not,
+	 * That can be found from rte_eth_rxmode.offloads flag
+	 */
+	pkt_flags = (rx_status & TXGBE_RXD_STAT_VLAN &&
+		     vlan_flags & PKT_RX_VLAN_STRIPPED)
+		    ? vlan_flags : 0;
+
+	return pkt_flags;
+}
+
+static inline uint64_t
+rx_desc_error_to_pkt_flags(uint32_t rx_status)
+{
+	uint64_t pkt_flags = 0;
+
+	/* checksum offload can't be disabled */
+	if (rx_status & TXGBE_RXD_STAT_IPCS) {
+		pkt_flags |= (rx_status & TXGBE_RXD_ERR_IPCS
+				? PKT_RX_IP_CKSUM_BAD : PKT_RX_IP_CKSUM_GOOD);
+	}
+
+	if (rx_status & TXGBE_RXD_STAT_L4CS) {
+		pkt_flags |= (rx_status & TXGBE_RXD_ERR_L4CS
+				? PKT_RX_L4_CKSUM_BAD : PKT_RX_L4_CKSUM_GOOD);
+	}
+
+	if (rx_status & TXGBE_RXD_STAT_EIPCS &&
+	    rx_status & TXGBE_RXD_ERR_EIPCS) {
+		pkt_flags |= PKT_RX_EIP_CKSUM_BAD;
+	}
+
+	return pkt_flags;
+}
+
+/*
+ * LOOK_AHEAD defines how many desc statuses to check beyond the
+ * current descriptor.
+ * It must be a pound define for optimal performance.
+ * Do not change the value of LOOK_AHEAD, as the txgbe_rx_scan_hw_ring
+ * function only works with LOOK_AHEAD=8.
+ */
+#define LOOK_AHEAD 8
+#if (LOOK_AHEAD != 8)
+#error "PMD TXGBE: LOOK_AHEAD must be 8\n"
+#endif
+static inline int
+txgbe_rx_scan_hw_ring(struct txgbe_rx_queue *rxq)
+{
+	volatile struct txgbe_rx_desc *rxdp;
+	struct txgbe_rx_entry *rxep;
+	struct rte_mbuf *mb;
+	uint16_t pkt_len;
+	uint64_t pkt_flags;
+	int nb_dd;
+	uint32_t s[LOOK_AHEAD];
+	uint32_t pkt_info[LOOK_AHEAD];
+	int i, j, nb_rx = 0;
+	uint32_t status;
+
+	/* get references to current descriptor and S/W ring entry */
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxep = &rxq->sw_ring[rxq->rx_tail];
+
+	status = rxdp->qw1.lo.status;
+	/* check to make sure there is at least 1 packet to receive */
+	if (!(status & rte_cpu_to_le_32(TXGBE_RXD_STAT_DD)))
+		return 0;
+
+	/*
+	 * Scan LOOK_AHEAD descriptors at a time to determine which descriptors
+	 * reference packets that are ready to be received.
+	 */
+	for (i = 0; i < RTE_PMD_TXGBE_RX_MAX_BURST;
+	     i += LOOK_AHEAD, rxdp += LOOK_AHEAD, rxep += LOOK_AHEAD) {
+		/* Read desc statuses backwards to avoid race condition */
+		for (j = 0; j < LOOK_AHEAD; j++)
+			s[j] = rte_le_to_cpu_32(rxdp[j].qw1.lo.status);
+
+		rte_smp_rmb();
+
+		/* Compute how many status bits were set */
+		for (nb_dd = 0; nb_dd < LOOK_AHEAD &&
+				(s[nb_dd] & TXGBE_RXD_STAT_DD); nb_dd++)
+			;
+
+		for (j = 0; j < nb_dd; j++)
+			pkt_info[j] = rte_le_to_cpu_32(rxdp[j].qw0.dw0);
+
+		nb_rx += nb_dd;
+
+		/* Translate descriptor info to mbuf format */
+		for (j = 0; j < nb_dd; ++j) {
+			mb = rxep[j].mbuf;
+			pkt_len = rte_le_to_cpu_16(rxdp[j].qw1.hi.len) -
+				  rxq->crc_len;
+			mb->data_len = pkt_len;
+			mb->pkt_len = pkt_len;
+			mb->vlan_tci = rte_le_to_cpu_16(rxdp[j].qw1.hi.tag);
+
+			/* convert descriptor fields to rte mbuf flags */
+			pkt_flags = rx_desc_status_to_pkt_flags(s[j],
+					rxq->vlan_flags);
+			pkt_flags |= rx_desc_error_to_pkt_flags(s[j]);
+			pkt_flags |=
+				txgbe_rxd_pkt_info_to_pkt_flags(pkt_info[j]);
+			mb->ol_flags = pkt_flags;
+			mb->packet_type =
+				txgbe_rxd_pkt_info_to_pkt_type(pkt_info[j],
+				rxq->pkt_type_mask);
+
+			if (likely(pkt_flags & PKT_RX_RSS_HASH))
+				mb->hash.rss =
+					rte_le_to_cpu_32(rxdp[j].qw0.dw1);
+			else if (pkt_flags & PKT_RX_FDIR) {
+				mb->hash.fdir.hash =
+					rte_le_to_cpu_16(rxdp[j].qw0.hi.csum) &
+					TXGBE_ATR_HASH_MASK;
+				mb->hash.fdir.id =
+					rte_le_to_cpu_16(rxdp[j].qw0.hi.ipid);
+			}
+		}
+
+		/* Move mbuf pointers from the S/W ring to the stage */
+		for (j = 0; j < LOOK_AHEAD; ++j)
+			rxq->rx_stage[i + j] = rxep[j].mbuf;
+
+		/* stop if all requested packets could not be received */
+		if (nb_dd != LOOK_AHEAD)
+			break;
+	}
+
+	/* clear software ring entries so we can cleanup correctly */
+	for (i = 0; i < nb_rx; ++i)
+		rxq->sw_ring[rxq->rx_tail + i].mbuf = NULL;
+
+	return nb_rx;
+}
+
+static inline int
+txgbe_rx_alloc_bufs(struct txgbe_rx_queue *rxq, bool reset_mbuf)
+{
+	volatile struct txgbe_rx_desc *rxdp;
+	struct txgbe_rx_entry *rxep;
+	struct rte_mbuf *mb;
+	uint16_t alloc_idx;
+	__le64 dma_addr;
+	int diag, i;
+
+	/* allocate buffers in bulk directly into the S/W ring */
+	alloc_idx = rxq->rx_free_trigger - (rxq->rx_free_thresh - 1);
+	rxep = &rxq->sw_ring[alloc_idx];
+	diag = rte_mempool_get_bulk(rxq->mb_pool, (void *)rxep,
+				    rxq->rx_free_thresh);
+	if (unlikely(diag != 0))
+		return -ENOMEM;
+
+	rxdp = &rxq->rx_ring[alloc_idx];
+	for (i = 0; i < rxq->rx_free_thresh; ++i) {
+		/* populate the static rte mbuf fields */
+		mb = rxep[i].mbuf;
+		if (reset_mbuf)
+			mb->port = rxq->port_id;
+
+		rte_mbuf_refcnt_set(mb, 1);
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
+
+		/* populate the descriptors */
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mb));
+		TXGBE_RXD_HDRADDR(&rxdp[i], 0);
+		TXGBE_RXD_PKTADDR(&rxdp[i], dma_addr);
+	}
+
+	/* update state of internal queue structure */
+	rxq->rx_free_trigger = rxq->rx_free_trigger + rxq->rx_free_thresh;
+	if (rxq->rx_free_trigger >= rxq->nb_rx_desc)
+		rxq->rx_free_trigger = rxq->rx_free_thresh - 1;
+
+	/* no errors */
+	return 0;
+}
+
+static inline uint16_t
+txgbe_rx_fill_from_stage(struct txgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
+{
+	struct rte_mbuf **stage = &rxq->rx_stage[rxq->rx_next_avail];
+	int i;
+
+	/* how many packets are ready to return? */
+	nb_pkts = (uint16_t)RTE_MIN(nb_pkts, rxq->rx_nb_avail);
+
+	/* copy mbuf pointers to the application's packet list */
+	for (i = 0; i < nb_pkts; ++i)
+		rx_pkts[i] = stage[i];
+
+	/* update internal queue state */
+	rxq->rx_nb_avail = (uint16_t)(rxq->rx_nb_avail - nb_pkts);
+	rxq->rx_next_avail = (uint16_t)(rxq->rx_next_avail + nb_pkts);
+
+	return nb_pkts;
+}
+
+static inline uint16_t
+txgbe_rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+	     uint16_t nb_pkts)
+{
+	struct txgbe_rx_queue *rxq = (struct txgbe_rx_queue *)rx_queue;
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port_id];
+	uint16_t nb_rx = 0;
+
+	/* Any previously recv'd pkts will be returned from the Rx stage */
+	if (rxq->rx_nb_avail)
+		return txgbe_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
+
+	/* Scan the H/W ring for packets to receive */
+	nb_rx = (uint16_t)txgbe_rx_scan_hw_ring(rxq);
+
+	/* update internal queue state */
+	rxq->rx_next_avail = 0;
+	rxq->rx_nb_avail = nb_rx;
+	rxq->rx_tail = (uint16_t)(rxq->rx_tail + nb_rx);
+
+	/* if required, allocate new buffers to replenish descriptors */
+	if (rxq->rx_tail > rxq->rx_free_trigger) {
+		uint16_t cur_free_trigger = rxq->rx_free_trigger;
+
+		if (txgbe_rx_alloc_bufs(rxq, true) != 0) {
+			int i, j;
+
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u", (uint16_t)rxq->port_id,
+				   (uint16_t)rxq->queue_id);
+
+			dev->data->rx_mbuf_alloc_failed +=
+				rxq->rx_free_thresh;
+
+			/*
+			 * Need to rewind any previous receives if we cannot
+			 * allocate new buffers to replenish the old ones.
+			 */
+			rxq->rx_nb_avail = 0;
+			rxq->rx_tail = (uint16_t)(rxq->rx_tail - nb_rx);
+			for (i = 0, j = rxq->rx_tail; i < nb_rx; ++i, ++j)
+				rxq->sw_ring[j].mbuf = rxq->rx_stage[i];
+
+			return 0;
+		}
+
+		/* update tail pointer */
+		rte_wmb();
+		txgbe_set32_relaxed(rxq->rdt_reg_addr, cur_free_trigger);
+	}
+
+	if (rxq->rx_tail >= rxq->nb_rx_desc)
+		rxq->rx_tail = 0;
+
+	/* received any packets this loop? */
+	if (rxq->rx_nb_avail)
+		return txgbe_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
+
+	return 0;
+}
+
+/* split requests into chunks of size RTE_PMD_TXGBE_RX_MAX_BURST */
+uint16_t
+txgbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
+			   uint16_t nb_pkts)
+{
+	uint16_t nb_rx;
+
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	if (likely(nb_pkts <= RTE_PMD_TXGBE_RX_MAX_BURST))
+		return txgbe_rx_recv_pkts(rx_queue, rx_pkts, nb_pkts);
+
+	/* request is relatively large, chunk it up */
+	nb_rx = 0;
+	while (nb_pkts) {
+		uint16_t ret, n;
+
+		n = (uint16_t)RTE_MIN(nb_pkts, RTE_PMD_TXGBE_RX_MAX_BURST);
+		ret = txgbe_rx_recv_pkts(rx_queue, &rx_pkts[nb_rx], n);
+		nb_rx = (uint16_t)(nb_rx + ret);
+		nb_pkts = (uint16_t)(nb_pkts - ret);
+		if (ret < n)
+			break;
+	}
+
+	return nb_rx;
+}
+
+uint16_t
+txgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct txgbe_rx_queue *rxq;
+	volatile struct txgbe_rx_desc *rx_ring;
+	volatile struct txgbe_rx_desc *rxdp;
+	struct txgbe_rx_entry *sw_ring;
+	struct txgbe_rx_entry *rxe;
+	struct rte_mbuf *rxm;
+	struct rte_mbuf *nmb;
+	struct txgbe_rx_desc rxd;
+	uint64_t dma_addr;
+	uint32_t staterr;
+	uint32_t pkt_info;
+	uint16_t pkt_len;
+	uint16_t rx_id;
+	uint16_t nb_rx;
+	uint16_t nb_hold;
+	uint64_t pkt_flags;
+
+	nb_rx = 0;
+	nb_hold = 0;
+	rxq = rx_queue;
+	rx_id = rxq->rx_tail;
+	rx_ring = rxq->rx_ring;
+	sw_ring = rxq->sw_ring;
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port_id];
+	while (nb_rx < nb_pkts) {
+		/*
+		 * The order of operations here is important as the DD status
+		 * bit must not be read after any other descriptor fields.
+		 * rx_ring and rxdp are pointing to volatile data so the order
+		 * of accesses cannot be reordered by the compiler. If they were
+		 * not volatile, they could be reordered which could lead to
+		 * using invalid descriptor fields when read from rxd.
+		 */
+		rxdp = &rx_ring[rx_id];
+		staterr = rxdp->qw1.lo.status;
+		if (!(staterr & rte_cpu_to_le_32(TXGBE_RXD_STAT_DD)))
+			break;
+		rxd = *rxdp;
+
+		/*
+		 * End of packet.
+		 *
+		 * If the TXGBE_RXD_STAT_EOP flag is not set, the RX packet
+		 * is likely to be invalid and to be dropped by the various
+		 * validation checks performed by the network stack.
+		 *
+		 * Allocate a new mbuf to replenish the RX ring descriptor.
+		 * If the allocation fails:
+		 *    - arrange for that RX descriptor to be the first one
+		 *      being parsed the next time the receive function is
+		 *      invoked [on the same queue].
+		 *
+		 *    - Stop parsing the RX ring and return immediately.
+		 *
+		 * This policy do not drop the packet received in the RX
+		 * descriptor for which the allocation of a new mbuf failed.
+		 * Thus, it allows that packet to be later retrieved if
+		 * mbuf have been freed in the mean time.
+		 * As a side effect, holding RX descriptors instead of
+		 * systematically giving them back to the NIC may lead to
+		 * RX ring exhaustion situations.
+		 * However, the NIC can gracefully prevent such situations
+		 * to happen by sending specific "back-pressure" flow control
+		 * frames to its peer(s).
+		 */
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+			   "ext_err_stat=0x%08x pkt_len=%u",
+			   (uint16_t)rxq->port_id, (uint16_t)rxq->queue_id,
+			   (uint16_t)rx_id, (uint32_t)staterr,
+			   (uint16_t)rte_le_to_cpu_16(rxd.qw1.hi.len));
+
+		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+		if (nmb == NULL) {
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u", (uint16_t)rxq->port_id,
+				   (uint16_t)rxq->queue_id);
+			dev->data->rx_mbuf_alloc_failed++;
+			break;
+		}
+
+		nb_hold++;
+		rxe = &sw_ring[rx_id];
+		rx_id++;
+		if (rx_id == rxq->nb_rx_desc)
+			rx_id = 0;
+
+		/* Prefetch next mbuf while processing current one. */
+		rte_txgbe_prefetch(sw_ring[rx_id].mbuf);
+
+		/*
+		 * When next RX descriptor is on a cache-line boundary,
+		 * prefetch the next 4 RX descriptors and the next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_txgbe_prefetch(&rx_ring[rx_id]);
+			rte_txgbe_prefetch(&sw_ring[rx_id]);
+		}
+
+		rxm = rxe->mbuf;
+		rxe->mbuf = nmb;
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+		TXGBE_RXD_HDRADDR(rxdp, 0);
+		TXGBE_RXD_PKTADDR(rxdp, dma_addr);
+
+		/*
+		 * Initialize the returned mbuf.
+		 * 1) setup generic mbuf fields:
+		 *    - number of segments,
+		 *    - next segment,
+		 *    - packet length,
+		 *    - RX port identifier.
+		 * 2) integrate hardware offload data, if any:
+		 *    - RSS flag & hash,
+		 *    - IP checksum flag,
+		 *    - VLAN TCI, if any,
+		 *    - error flags.
+		 */
+		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.qw1.hi.len) -
+				      rxq->crc_len);
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_packet_prefetch((char *)rxm->buf_addr + rxm->data_off);
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = pkt_len;
+		rxm->data_len = pkt_len;
+		rxm->port = rxq->port_id;
+
+		pkt_info = rte_le_to_cpu_32(rxd.qw0.dw0);
+		/* Only valid if PKT_RX_VLAN set in pkt_flags */
+		rxm->vlan_tci = rte_le_to_cpu_16(rxd.qw1.hi.tag);
+
+		pkt_flags = rx_desc_status_to_pkt_flags(staterr,
+					rxq->vlan_flags);
+		pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+		pkt_flags |= txgbe_rxd_pkt_info_to_pkt_flags(pkt_info);
+		rxm->ol_flags = pkt_flags;
+		rxm->packet_type = txgbe_rxd_pkt_info_to_pkt_type(pkt_info,
+						       rxq->pkt_type_mask);
+
+		if (likely(pkt_flags & PKT_RX_RSS_HASH)) {
+			rxm->hash.rss = rte_le_to_cpu_32(rxd.qw0.dw1);
+		} else if (pkt_flags & PKT_RX_FDIR) {
+			rxm->hash.fdir.hash =
+				rte_le_to_cpu_16(rxd.qw0.hi.csum) &
+				TXGBE_ATR_HASH_MASK;
+			rxm->hash.fdir.id = rte_le_to_cpu_16(rxd.qw0.hi.ipid);
+		}
+		/*
+		 * Store the mbuf address into the next entry of the array
+		 * of returned packets.
+		 */
+		rx_pkts[nb_rx++] = rxm;
+	}
+	rxq->rx_tail = rx_id;
+
+	/*
+	 * If the number of free RX descriptors is greater than the RX free
+	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
+	 * register.
+	 * Update the RDT with the value of the last processed RX descriptor
+	 * minus 1, to guarantee that the RDT register is never equal to the
+	 * RDH register, which creates a "full" ring situation from the
+	 * hardware point of view...
+	 */
+	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
+	if (nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
+			   "nb_hold=%u nb_rx=%u",
+			   (uint16_t)rxq->port_id, (uint16_t)rxq->queue_id,
+			   (uint16_t)rx_id, (uint16_t)nb_hold,
+			   (uint16_t)nb_rx);
+		rx_id = (uint16_t)((rx_id == 0) ?
+				(rxq->nb_rx_desc - 1) : (rx_id - 1));
+		txgbe_set32(rxq->rdt_reg_addr, rx_id);
+		nb_hold = 0;
+	}
+	rxq->nb_rx_hold = nb_hold;
+	return nb_rx;
+}
+
+/**
+ * txgbe_fill_cluster_head_buf - fill the first mbuf of the returned packet
+ *
+ * Fill the following info in the HEAD buffer of the Rx cluster:
+ *    - RX port identifier
+ *    - hardware offload data, if any:
+ *      - RSS flag & hash
+ *      - IP checksum flag
+ *      - VLAN TCI, if any
+ *      - error flags
+ * @head HEAD of the packet cluster
+ * @desc HW descriptor to get data from
+ * @rxq Pointer to the Rx queue
+ */
+static inline void
+txgbe_fill_cluster_head_buf(struct rte_mbuf *head, struct txgbe_rx_desc *desc,
+		struct txgbe_rx_queue *rxq, uint32_t staterr)
+{
+	uint32_t pkt_info;
+	uint64_t pkt_flags;
+
+	head->port = rxq->port_id;
+
+	/* The vlan_tci field is only valid when PKT_RX_VLAN is
+	 * set in the pkt_flags field.
+	 */
+	head->vlan_tci = rte_le_to_cpu_16(desc->qw1.hi.tag);
+	pkt_info = rte_le_to_cpu_32(desc->qw0.dw0);
+	pkt_flags = rx_desc_status_to_pkt_flags(staterr, rxq->vlan_flags);
+	pkt_flags |= rx_desc_error_to_pkt_flags(staterr);
+	pkt_flags |= txgbe_rxd_pkt_info_to_pkt_flags(pkt_info);
+	head->ol_flags = pkt_flags;
+	head->packet_type = txgbe_rxd_pkt_info_to_pkt_type(pkt_info,
+						rxq->pkt_type_mask);
+
+	if (likely(pkt_flags & PKT_RX_RSS_HASH)) {
+		head->hash.rss = rte_le_to_cpu_32(desc->qw0.dw1);
+	} else if (pkt_flags & PKT_RX_FDIR) {
+		head->hash.fdir.hash = rte_le_to_cpu_16(desc->qw0.hi.csum)
+				& TXGBE_ATR_HASH_MASK;
+		head->hash.fdir.id = rte_le_to_cpu_16(desc->qw0.hi.ipid);
+	}
+}
+
+/**
+ * txgbe_recv_pkts_lro - receive handler for and LRO case.
+ *
+ * @rx_queue Rx queue handle
+ * @rx_pkts table of received packets
+ * @nb_pkts size of rx_pkts table
+ * @bulk_alloc if TRUE bulk allocation is used for a HW ring refilling
+ *
+ * Handles the Rx HW ring completions when RSC feature is configured. Uses an
+ * additional ring of txgbe_rsc_entry's that will hold the relevant RSC info.
+ *
+ * We use the same logic as in Linux and in FreeBSD txgbe drivers:
+ * 1) When non-EOP RSC completion arrives:
+ *    a) Update the HEAD of the current RSC aggregation cluster with the new
+ *       segment's data length.
+ *    b) Set the "next" pointer of the current segment to point to the segment
+ *       at the NEXTP index.
+ *    c) Pass the HEAD of RSC aggregation cluster on to the next NEXTP entry
+ *       in the sw_rsc_ring.
+ * 2) When EOP arrives we just update the cluster's total length and offload
+ *    flags and deliver the cluster up to the upper layers. In our case - put it
+ *    in the rx_pkts table.
+ *
+ * Returns the number of received packets/clusters (according to the "bulk
+ * receive" interface).
+ */
+static inline uint16_t
+txgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
+		    bool bulk_alloc)
+{
+	struct txgbe_rx_queue *rxq = rx_queue;
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port_id];
+	volatile struct txgbe_rx_desc *rx_ring = rxq->rx_ring;
+	struct txgbe_rx_entry *sw_ring = rxq->sw_ring;
+	struct txgbe_scattered_rx_entry *sw_sc_ring = rxq->sw_sc_ring;
+	uint16_t rx_id = rxq->rx_tail;
+	uint16_t nb_rx = 0;
+	uint16_t nb_hold = rxq->nb_rx_hold;
+	uint16_t prev_id = rxq->rx_tail;
+
+	while (nb_rx < nb_pkts) {
+		bool eop;
+		struct txgbe_rx_entry *rxe;
+		struct txgbe_scattered_rx_entry *sc_entry;
+		struct txgbe_scattered_rx_entry *next_sc_entry = NULL;
+		struct txgbe_rx_entry *next_rxe = NULL;
+		struct rte_mbuf *first_seg;
+		struct rte_mbuf *rxm;
+		struct rte_mbuf *nmb = NULL;
+		struct txgbe_rx_desc rxd;
+		uint16_t data_len;
+		uint16_t next_id;
+		volatile struct txgbe_rx_desc *rxdp;
+		uint32_t staterr;
+
+next_desc:
+		/*
+		 * The code in this whole file uses the volatile pointer to
+		 * ensure the read ordering of the status and the rest of the
+		 * descriptor fields (on the compiler level only!!!). This is so
+		 * UGLY - why not to just use the compiler barrier instead? DPDK
+		 * even has the rte_compiler_barrier() for that.
+		 *
+		 * But most importantly this is just wrong because this doesn't
+		 * ensure memory ordering in a general case at all. For
+		 * instance, DPDK is supposed to work on Power CPUs where
+		 * compiler barrier may just not be enough!
+		 *
+		 * I tried to write only this function properly to have a
+		 * starting point (as a part of an LRO/RSC series) but the
+		 * compiler cursed at me when I tried to cast away the
+		 * "volatile" from rx_ring (yes, it's volatile too!!!). So, I'm
+		 * keeping it the way it is for now.
+		 *
+		 * The code in this file is broken in so many other places and
+		 * will just not work on a big endian CPU anyway therefore the
+		 * lines below will have to be revisited together with the rest
+		 * of the txgbe PMD.
+		 *
+		 * TODO:
+		 *    - Get rid of "volatile" and let the compiler do its job.
+		 *    - Use the proper memory barrier (rte_rmb()) to ensure the
+		 *      memory ordering below.
+		 */
+		rxdp = &rx_ring[rx_id];
+		staterr = rte_le_to_cpu_32(rxdp->qw1.lo.status);
+
+		if (!(staterr & TXGBE_RXD_STAT_DD))
+			break;
+
+		rxd = *rxdp;
+
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_id=%u "
+				  "staterr=0x%x data_len=%u",
+			   rxq->port_id, rxq->queue_id, rx_id, staterr,
+			   rte_le_to_cpu_16(rxd.qw1.hi.len));
+
+		if (!bulk_alloc) {
+			nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+			if (nmb == NULL) {
+				PMD_RX_LOG(DEBUG, "RX mbuf alloc failed "
+						  "port_id=%u queue_id=%u",
+					   rxq->port_id, rxq->queue_id);
+
+				dev->data->rx_mbuf_alloc_failed++;
+				break;
+			}
+		} else if (nb_hold > rxq->rx_free_thresh) {
+			uint16_t next_rdt = rxq->rx_free_trigger;
+
+			if (!txgbe_rx_alloc_bufs(rxq, false)) {
+				rte_wmb();
+				txgbe_set32_relaxed(rxq->rdt_reg_addr,
+							    next_rdt);
+				nb_hold -= rxq->rx_free_thresh;
+			} else {
+				PMD_RX_LOG(DEBUG, "RX bulk alloc failed "
+						  "port_id=%u queue_id=%u",
+					   rxq->port_id, rxq->queue_id);
+
+				dev->data->rx_mbuf_alloc_failed++;
+				break;
+			}
+		}
+
+		nb_hold++;
+		rxe = &sw_ring[rx_id];
+		eop = staterr & TXGBE_RXD_STAT_EOP;
+
+		next_id = rx_id + 1;
+		if (next_id == rxq->nb_rx_desc)
+			next_id = 0;
+
+		/* Prefetch next mbuf while processing current one. */
+		rte_txgbe_prefetch(sw_ring[next_id].mbuf);
+
+		/*
+		 * When next RX descriptor is on a cache-line boundary,
+		 * prefetch the next 4 RX descriptors and the next 4 pointers
+		 * to mbufs.
+		 */
+		if ((next_id & 0x3) == 0) {
+			rte_txgbe_prefetch(&rx_ring[next_id]);
+			rte_txgbe_prefetch(&sw_ring[next_id]);
+		}
+
+		rxm = rxe->mbuf;
+
+		if (!bulk_alloc) {
+			__le64 dma =
+			  rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+			/*
+			 * Update RX descriptor with the physical address of the
+			 * new data buffer of the new allocated mbuf.
+			 */
+			rxe->mbuf = nmb;
+
+			rxm->data_off = RTE_PKTMBUF_HEADROOM;
+			TXGBE_RXD_HDRADDR(rxdp, 0);
+			TXGBE_RXD_PKTADDR(rxdp, dma);
+		} else {
+			rxe->mbuf = NULL;
+		}
+
+		/*
+		 * Set data length & data buffer address of mbuf.
+		 */
+		data_len = rte_le_to_cpu_16(rxd.qw1.hi.len);
+		rxm->data_len = data_len;
+
+		if (!eop) {
+			uint16_t nextp_id;
+			/*
+			 * Get next descriptor index:
+			 *  - For RSC it's in the NEXTP field.
+			 *  - For a scattered packet - it's just a following
+			 *    descriptor.
+			 */
+			if (TXGBE_RXD_RSCCNT(rxd.qw0.dw0))
+				nextp_id = TXGBE_RXD_NEXTP(staterr);
+			else
+				nextp_id = next_id;
+
+			next_sc_entry = &sw_sc_ring[nextp_id];
+			next_rxe = &sw_ring[nextp_id];
+			rte_txgbe_prefetch(next_rxe);
+		}
+
+		sc_entry = &sw_sc_ring[rx_id];
+		first_seg = sc_entry->fbuf;
+		sc_entry->fbuf = NULL;
+
+		/*
+		 * If this is the first buffer of the received packet,
+		 * set the pointer to the first mbuf of the packet and
+		 * initialize its context.
+		 * Otherwise, update the total length and the number of segments
+		 * of the current scattered packet, and update the pointer to
+		 * the last mbuf of the current packet.
+		 */
+		if (first_seg == NULL) {
+			first_seg = rxm;
+			first_seg->pkt_len = data_len;
+			first_seg->nb_segs = 1;
+		} else {
+			first_seg->pkt_len += data_len;
+			first_seg->nb_segs++;
+		}
+
+		prev_id = rx_id;
+		rx_id = next_id;
+
+		/*
+		 * If this is not the last buffer of the received packet, update
+		 * the pointer to the first mbuf at the NEXTP entry in the
+		 * sw_sc_ring and continue to parse the RX ring.
+		 */
+		if (!eop && next_rxe) {
+			rxm->next = next_rxe->mbuf;
+			next_sc_entry->fbuf = first_seg;
+			goto next_desc;
+		}
+
+		/* Initialize the first mbuf of the returned packet */
+		txgbe_fill_cluster_head_buf(first_seg, &rxd, rxq, staterr);
+
+		/*
+		 * Deal with the case, when HW CRC srip is disabled.
+		 * That can't happen when LRO is enabled, but still could
+		 * happen for scattered RX mode.
+		 */
+		first_seg->pkt_len -= rxq->crc_len;
+		if (unlikely(rxm->data_len <= rxq->crc_len)) {
+			struct rte_mbuf *lp;
+
+			for (lp = first_seg; lp->next != rxm; lp = lp->next)
+				;
+
+			first_seg->nb_segs--;
+			lp->data_len -= rxq->crc_len - rxm->data_len;
+			lp->next = NULL;
+			rte_pktmbuf_free_seg(rxm);
+		} else {
+			rxm->data_len -= rxq->crc_len;
+		}
+
+		/* Prefetch data of first segment, if configured to do so. */
+		rte_packet_prefetch((char *)first_seg->buf_addr +
+			first_seg->data_off);
+
+		/*
+		 * Store the mbuf address into the next entry of the array
+		 * of returned packets.
+		 */
+		rx_pkts[nb_rx++] = first_seg;
+	}
+
+	/*
+	 * Record index of the next RX descriptor to probe.
+	 */
+	rxq->rx_tail = rx_id;
+
+	/*
+	 * If the number of free RX descriptors is greater than the RX free
+	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
+	 * register.
+	 * Update the RDT with the value of the last processed RX descriptor
+	 * minus 1, to guarantee that the RDT register is never equal to the
+	 * RDH register, which creates a "full" ring situation from the
+	 * hardware point of view...
+	 */
+	if (!bulk_alloc && nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
+			   "nb_hold=%u nb_rx=%u",
+			   rxq->port_id, rxq->queue_id, rx_id, nb_hold, nb_rx);
+
+		rte_wmb();
+		txgbe_set32_relaxed(rxq->rdt_reg_addr, prev_id);
+		nb_hold = 0;
+	}
+
+	rxq->nb_rx_hold = nb_hold;
+	return nb_rx;
+}
+
+uint16_t
+txgbe_recv_pkts_lro_single_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts)
+{
+	return txgbe_recv_pkts_lro(rx_queue, rx_pkts, nb_pkts, false);
+}
+
+uint16_t
+txgbe_recv_pkts_lro_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
+			       uint16_t nb_pkts)
+{
+	return txgbe_recv_pkts_lro(rx_queue, rx_pkts, nb_pkts, true);
+}
+
 uint64_t
 txgbe_get_rx_queue_offloads(struct rte_eth_dev *dev __rte_unused)
 {
@@ -1608,12 +2481,6 @@ txgbe_dev_free_queues(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
-void __rte_cold
-txgbe_set_rx_function(struct rte_eth_dev *dev)
-{
-	RTE_SET_USED(dev);
-}
-
 static int __rte_cold
 txgbe_alloc_rx_queue_mbufs(struct txgbe_rx_queue *rxq)
 {
@@ -1786,6 +2653,71 @@ txgbe_set_rsc(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "enabling LRO mode");
 
 	return 0;
+}
+
+void __rte_cold
+txgbe_set_rx_function(struct rte_eth_dev *dev)
+{
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+
+	/*
+	 * Initialize the appropriate LRO callback.
+	 *
+	 * If all queues satisfy the bulk allocation preconditions
+	 * (adapter->rx_bulk_alloc_allowed is TRUE) then we may use
+	 * bulk allocation. Otherwise use a single allocation version.
+	 */
+	if (dev->data->lro) {
+		if (adapter->rx_bulk_alloc_allowed) {
+			PMD_INIT_LOG(DEBUG, "LRO is requested. Using a bulk "
+					   "allocation version");
+			dev->rx_pkt_burst = txgbe_recv_pkts_lro_bulk_alloc;
+		} else {
+			PMD_INIT_LOG(DEBUG, "LRO is requested. Using a single "
+					   "allocation version");
+			dev->rx_pkt_burst = txgbe_recv_pkts_lro_single_alloc;
+		}
+	} else if (dev->data->scattered_rx) {
+		/*
+		 * Set the non-LRO scattered callback: there are bulk and
+		 * single allocation versions.
+		 */
+		if (adapter->rx_bulk_alloc_allowed) {
+			PMD_INIT_LOG(DEBUG, "Using a Scattered with bulk "
+					   "allocation callback (port=%d).",
+				     dev->data->port_id);
+			dev->rx_pkt_burst = txgbe_recv_pkts_lro_bulk_alloc;
+		} else {
+			PMD_INIT_LOG(DEBUG, "Using Regular (non-vector, "
+					    "single allocation) "
+					    "Scattered Rx callback "
+					    "(port=%d).",
+				     dev->data->port_id);
+
+			dev->rx_pkt_burst = txgbe_recv_pkts_lro_single_alloc;
+		}
+	/*
+	 * Below we set "simple" callbacks according to port/queues parameters.
+	 * If parameters allow we are going to choose between the following
+	 * callbacks:
+	 *    - Bulk Allocation
+	 *    - Single buffer allocation (the simplest one)
+	 */
+	} else if (adapter->rx_bulk_alloc_allowed) {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
+				    "satisfied. Rx Burst Bulk Alloc function "
+				    "will be used on port=%d.",
+			     dev->data->port_id);
+
+		dev->rx_pkt_burst = txgbe_recv_pkts_bulk_alloc;
+	} else {
+		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are not "
+				    "satisfied, or Scattered Rx is requested "
+				    "(port=%d).",
+			     dev->data->port_id);
+
+		dev->rx_pkt_burst = txgbe_recv_pkts;
+	}
 }
 
 /*

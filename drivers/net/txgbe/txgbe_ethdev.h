@@ -113,6 +113,17 @@ int txgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 int txgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
+uint16_t txgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+
+uint16_t txgbe_recv_pkts_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
+				    uint16_t nb_pkts);
+
+uint16_t txgbe_recv_pkts_lro_single_alloc(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t txgbe_recv_pkts_lro_bulk_alloc(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+
 uint16_t txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
@@ -146,6 +157,7 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 #define TXGBE_DEFAULT_TX_HTHRESH      0
 #define TXGBE_DEFAULT_TX_WTHRESH      0
 
+const uint32_t *txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
