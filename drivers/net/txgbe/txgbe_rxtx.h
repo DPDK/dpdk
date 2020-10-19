@@ -214,6 +214,45 @@ struct txgbe_rx_queue {
 };
 
 /**
+ * TXGBE CTX Constants
+ */
+enum txgbe_ctx_num {
+	TXGBE_CTX_0    = 0, /**< CTX0 */
+	TXGBE_CTX_1    = 1, /**< CTX1  */
+	TXGBE_CTX_NUM  = 2, /**< CTX NUMBER  */
+};
+
+/** Offload features */
+union txgbe_tx_offload {
+	uint64_t data[2];
+	struct {
+		uint64_t ptid:8; /**< Packet Type Identifier. */
+		uint64_t l2_len:7; /**< L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /**< L3 (IP) Header Length. */
+		uint64_t l4_len:8; /**< L4 (TCP/UDP) Header Length. */
+		uint64_t tso_segsz:16; /**< TCP TSO segment size */
+		uint64_t vlan_tci:16;
+		/**< VLAN Tag Control Identifier (CPU order). */
+
+		/* fields for TX offloading of tunnels */
+		uint64_t outer_tun_len:8; /**< Outer TUN (Tunnel) Hdr Length. */
+		uint64_t outer_l2_len:8; /**< Outer L2 (MAC) Hdr Length. */
+		uint64_t outer_l3_len:16; /**< Outer L3 (IP) Hdr Length. */
+	};
+};
+
+/**
+ * Structure to check if new context need be built
+ */
+struct txgbe_ctx_info {
+	uint64_t flags;           /**< ol_flags for context build. */
+	/**< tx offload: vlan, tso, l2-l3-l4 lengths. */
+	union txgbe_tx_offload tx_offload;
+	/** compare mask for tx offload. */
+	union txgbe_tx_offload tx_offload_mask;
+};
+
+/**
  * Structure associated with each TX queue.
  */
 struct txgbe_tx_queue {
@@ -234,6 +273,9 @@ struct txgbe_tx_queue {
 	 *   this value.
 	 */
 	uint16_t            tx_free_thresh;
+	/** Index to last TX descriptor to have been cleaned. */
+	uint16_t            last_desc_cleaned;
+	/** Total number of TX descriptors ready to be allocated. */
 	uint16_t            nb_tx_free;
 	uint16_t            tx_next_dd;    /**< next desc to scan for DD bit */
 	uint16_t            queue_id;      /**< TX queue index. */
@@ -243,6 +285,9 @@ struct txgbe_tx_queue {
 	uint8_t             hthresh;       /**< Host threshold register. */
 	uint8_t             wthresh;       /**< Write-back threshold reg. */
 	uint64_t            offloads; /* Tx offload flags of DEV_TX_OFFLOAD_* */
+	uint32_t            ctx_curr;      /**< Hardware context states. */
+	/** Hardware context0 history. */
+	struct txgbe_ctx_info ctx_cache[TXGBE_CTX_NUM];
 	const struct txgbe_txq_ops *ops;       /**< txq ops */
 	uint8_t             tx_deferred_start; /**< not in global dev start. */
 };

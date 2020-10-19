@@ -116,6 +116,32 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &txgbe_eth_dev_ops;
+	eth_dev->tx_pkt_burst = &txgbe_xmit_pkts;
+
+	/*
+	 * For secondary processes, we don't initialise any further as primary
+	 * has already done this work. Only check we don't need a different
+	 * RX and TX function.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		struct txgbe_tx_queue *txq;
+		/* TX queue function in primary, set by last queue initialized
+		 * Tx queue may not initialized by primary process
+		 */
+		if (eth_dev->data->tx_queues) {
+			uint16_t nb_tx_queues = eth_dev->data->nb_tx_queues;
+			txq = eth_dev->data->tx_queues[nb_tx_queues - 1];
+			txgbe_set_tx_function(eth_dev, txq);
+		} else {
+			/* Use default TX function if we get here */
+			PMD_INIT_LOG(NOTICE, "No TX queues configured yet. "
+				     "Using default TX function.");
+		}
+
+		txgbe_set_rx_function(eth_dev);
+
+		return 0;
+	}
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
