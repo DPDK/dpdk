@@ -23,6 +23,7 @@
 #include <rte_udp.h>
 #include <rte_ip.h>
 #include <rte_net.h>
+#include <rte_vect.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_prototype.h"
@@ -3098,7 +3099,8 @@ static eth_rx_burst_t
 i40e_get_latest_rx_vec(bool scatter)
 {
 #if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 		return scatter ? i40e_recv_scattered_pkts_vec_avx2 :
 				 i40e_recv_pkts_vec_avx2;
 #endif
@@ -3115,7 +3117,8 @@ i40e_get_recommend_rx_vec(bool scatter)
 	 * use of AVX2 version to later plaforms, not all those that could
 	 * theoretically run it.
 	 */
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 		return scatter ? i40e_recv_scattered_pkts_vec_avx2 :
 				 i40e_recv_pkts_vec_avx2;
 #endif
@@ -3154,7 +3157,8 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (ad->rx_vec_allowed) {
+	if (ad->rx_vec_allowed  &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 		/* Vec Rx path */
 		PMD_INIT_LOG(DEBUG, "Vector Rx path will be used on port=%d.",
 				dev->data->port_id);
@@ -3268,7 +3272,8 @@ static eth_tx_burst_t
 i40e_get_latest_tx_vec(void)
 {
 #if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 		return i40e_xmit_pkts_vec_avx2;
 #endif
 	return i40e_xmit_pkts_vec;
@@ -3283,7 +3288,8 @@ i40e_get_recommend_tx_vec(void)
 	 * use of AVX2 version to later plaforms, not all those that could
 	 * theoretically run it.
 	 */
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 		return i40e_xmit_pkts_vec_avx2;
 #endif
 	return i40e_xmit_pkts_vec;
@@ -3311,7 +3317,8 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 	}
 
 	if (ad->tx_simple_allowed) {
-		if (ad->tx_vec_allowed) {
+		if (ad->tx_vec_allowed &&
+				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			PMD_INIT_LOG(DEBUG, "Vector tx finally be used.");
 			if (ad->use_latest_vec)
 				dev->tx_pkt_burst =
