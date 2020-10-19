@@ -117,6 +117,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	eth_dev->dev_ops = &txgbe_eth_dev_ops;
 	eth_dev->tx_pkt_burst = &txgbe_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &txgbe_prep_pkts;
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary

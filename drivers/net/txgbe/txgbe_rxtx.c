@@ -19,6 +19,8 @@
 #include <rte_mempool.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
+#include <rte_ip.h>
+#include <rte_net.h>
 
 #include "txgbe_logs.h"
 #include "base/txgbe.h"
@@ -36,6 +38,9 @@ static const u64 TXGBE_TX_OFFLOAD_MASK = (PKT_TX_IP_CKSUM |
 		PKT_TX_TCP_SEG |
 		PKT_TX_TUNNEL_MASK |
 		PKT_TX_OUTER_IP_CKSUM);
+
+#define TXGBE_TX_OFFLOAD_NOTSUP_MASK \
+		(PKT_TX_OFFLOAD_MASK ^ TXGBE_TX_OFFLOAD_MASK)
 
 static int
 txgbe_is_vf(struct rte_eth_dev *dev)
@@ -929,6 +934,57 @@ end_of_tx:
 	return nb_tx;
 }
 
+/*********************************************************************
+ *
+ *  TX prep functions
+ *
+ **********************************************************************/
+uint16_t
+txgbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	int i, ret;
+	uint64_t ol_flags;
+	struct rte_mbuf *m;
+	struct txgbe_tx_queue *txq = (struct txgbe_tx_queue *)tx_queue;
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+
+		/**
+		 * Check if packet meets requirements for number of segments
+		 *
+		 * NOTE: for txgbe it's always (40 - WTHRESH) for both TSO and
+		 *       non-TSO
+		 */
+
+		if (m->nb_segs > TXGBE_TX_MAX_SEG - txq->wthresh) {
+			rte_errno = -EINVAL;
+			return i;
+		}
+
+		if (ol_flags & TXGBE_TX_OFFLOAD_NOTSUP_MASK) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		ret = rte_net_intel_cksum_prepare(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+
+	return i;
+}
+
 uint64_t
 txgbe_get_rx_queue_offloads(struct rte_eth_dev *dev __rte_unused)
 {
@@ -1015,6 +1071,10 @@ static const struct txgbe_txq_ops def_txq_ops = {
 	.free_swring = txgbe_tx_free_swring,
 };
 
+/* Takes an ethdev and a queue and sets up the tx function to be used based on
+ * the queue parameters. Used in tx_queue_setup by primary process and then
+ * in dev_init by secondary process when attaching to an existing ethdev.
+ */
 void __rte_cold
 txgbe_set_tx_function(struct rte_eth_dev *dev, struct txgbe_tx_queue *txq)
 {
@@ -1034,6 +1094,7 @@ txgbe_set_tx_function(struct rte_eth_dev *dev, struct txgbe_tx_queue *txq)
 				(unsigned long)txq->tx_free_thresh,
 				(unsigned long)RTE_PMD_TXGBE_TX_MAX_BURST);
 		dev->tx_pkt_burst = txgbe_xmit_pkts;
+		dev->tx_pkt_prepare = txgbe_prep_pkts;
 	}
 }
 
