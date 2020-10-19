@@ -10,6 +10,7 @@
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
+#include <rte_vect.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_prm.h>
@@ -148,6 +149,8 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t i;
 
+	if (rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_128)
+		return -ENOTSUP;
 	if (!priv->config.rx_vec_en)
 		return -ENOTSUP;
 	if (mlx5_mprq_enabled(dev))
