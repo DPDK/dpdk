@@ -1017,6 +1017,205 @@ out:
 }
 
 /**
+ *  txgbe_negotiate_fc - Negotiate flow control
+ *  @hw: pointer to hardware structure
+ *  @adv_reg: flow control advertised settings
+ *  @lp_reg: link partner's flow control settings
+ *  @adv_sym: symmetric pause bit in advertisement
+ *  @adv_asm: asymmetric pause bit in advertisement
+ *  @lp_sym: symmetric pause bit in link partner advertisement
+ *  @lp_asm: asymmetric pause bit in link partner advertisement
+ *
+ *  Find the intersection between advertised settings and link partner's
+ *  advertised settings
+ **/
+s32 txgbe_negotiate_fc(struct txgbe_hw *hw, u32 adv_reg, u32 lp_reg,
+		       u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm)
+{
+	if ((!(adv_reg)) ||  (!(lp_reg))) {
+		DEBUGOUT("Local or link partner's advertised flow control "
+			      "settings are NULL. Local: %x, link partner: %x\n",
+			      adv_reg, lp_reg);
+		return TXGBE_ERR_FC_NOT_NEGOTIATED;
+	}
+
+	if ((adv_reg & adv_sym) && (lp_reg & lp_sym)) {
+		/*
+		 * Now we need to check if the user selected Rx ONLY
+		 * of pause frames.  In this case, we had to advertise
+		 * FULL flow control because we could not advertise RX
+		 * ONLY. Hence, we must now check to see if we need to
+		 * turn OFF the TRANSMISSION of PAUSE frames.
+		 */
+		if (hw->fc.requested_mode == txgbe_fc_full) {
+			hw->fc.current_mode = txgbe_fc_full;
+			DEBUGOUT("Flow Control = FULL.\n");
+		} else {
+			hw->fc.current_mode = txgbe_fc_rx_pause;
+			DEBUGOUT("Flow Control=RX PAUSE frames only\n");
+		}
+	} else if (!(adv_reg & adv_sym) && (adv_reg & adv_asm) &&
+		   (lp_reg & lp_sym) && (lp_reg & lp_asm)) {
+		hw->fc.current_mode = txgbe_fc_tx_pause;
+		DEBUGOUT("Flow Control = TX PAUSE frames only.\n");
+	} else if ((adv_reg & adv_sym) && (adv_reg & adv_asm) &&
+		   !(lp_reg & lp_sym) && (lp_reg & lp_asm)) {
+		hw->fc.current_mode = txgbe_fc_rx_pause;
+		DEBUGOUT("Flow Control = RX PAUSE frames only.\n");
+	} else {
+		hw->fc.current_mode = txgbe_fc_none;
+		DEBUGOUT("Flow Control = NONE.\n");
+	}
+	return 0;
+}
+
+/**
+ *  txgbe_fc_autoneg_fiber - Enable flow control on 1 gig fiber
+ *  @hw: pointer to hardware structure
+ *
+ *  Enable flow control according on 1 gig fiber.
+ **/
+STATIC s32 txgbe_fc_autoneg_fiber(struct txgbe_hw *hw)
+{
+	u32 pcs_anadv_reg, pcs_lpab_reg;
+	s32 err = TXGBE_ERR_FC_NOT_NEGOTIATED;
+
+	/*
+	 * On multispeed fiber at 1g, bail out if
+	 * - link is up but AN did not complete, or if
+	 * - link is up and AN completed but timed out
+	 */
+
+	pcs_anadv_reg = rd32_epcs(hw, SR_MII_MMD_AN_ADV);
+	pcs_lpab_reg = rd32_epcs(hw, SR_MII_MMD_LP_BABL);
+
+	err =  txgbe_negotiate_fc(hw, pcs_anadv_reg,
+				      pcs_lpab_reg,
+				      SR_MII_MMD_AN_ADV_PAUSE_SYM,
+				      SR_MII_MMD_AN_ADV_PAUSE_ASM,
+				      SR_MII_MMD_AN_ADV_PAUSE_SYM,
+				      SR_MII_MMD_AN_ADV_PAUSE_ASM);
+
+	return err;
+}
+
+/**
+ *  txgbe_fc_autoneg_backplane - Enable flow control IEEE clause 37
+ *  @hw: pointer to hardware structure
+ *
+ *  Enable flow control according to IEEE clause 37.
+ **/
+STATIC s32 txgbe_fc_autoneg_backplane(struct txgbe_hw *hw)
+{
+	u32 anlp1_reg, autoc_reg;
+	s32 err = TXGBE_ERR_FC_NOT_NEGOTIATED;
+
+	/*
+	 * Read the 10g AN autoc and LP ability registers and resolve
+	 * local flow control settings accordingly
+	 */
+	autoc_reg = rd32_epcs(hw, SR_AN_MMD_ADV_REG1);
+	anlp1_reg = rd32_epcs(hw, SR_AN_MMD_LP_ABL1);
+
+	err = txgbe_negotiate_fc(hw, autoc_reg,
+		anlp1_reg,
+		SR_AN_MMD_ADV_REG1_PAUSE_SYM,
+		SR_AN_MMD_ADV_REG1_PAUSE_ASM,
+		SR_AN_MMD_ADV_REG1_PAUSE_SYM,
+		SR_AN_MMD_ADV_REG1_PAUSE_ASM);
+
+	return err;
+}
+
+/**
+ *  txgbe_fc_autoneg_copper - Enable flow control IEEE clause 37
+ *  @hw: pointer to hardware structure
+ *
+ *  Enable flow control according to IEEE clause 37.
+ **/
+STATIC s32 txgbe_fc_autoneg_copper(struct txgbe_hw *hw)
+{
+	u16 technology_ability_reg = 0;
+	u16 lp_technology_ability_reg = 0;
+
+	hw->phy.read_reg(hw, TXGBE_MD_AUTO_NEG_ADVT,
+			     TXGBE_MD_DEV_AUTO_NEG,
+			     &technology_ability_reg);
+	hw->phy.read_reg(hw, TXGBE_MD_AUTO_NEG_LP,
+			     TXGBE_MD_DEV_AUTO_NEG,
+			     &lp_technology_ability_reg);
+
+	return txgbe_negotiate_fc(hw, (u32)technology_ability_reg,
+				  (u32)lp_technology_ability_reg,
+				  TXGBE_TAF_SYM_PAUSE, TXGBE_TAF_ASM_PAUSE,
+				  TXGBE_TAF_SYM_PAUSE, TXGBE_TAF_ASM_PAUSE);
+}
+
+/**
+ *  txgbe_fc_autoneg - Configure flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Compares our advertised flow control capabilities to those advertised by
+ *  our link partner, and determines the proper flow control mode to use.
+ **/
+void txgbe_fc_autoneg(struct txgbe_hw *hw)
+{
+	s32 err = TXGBE_ERR_FC_NOT_NEGOTIATED;
+	u32 speed;
+	bool link_up;
+
+	DEBUGFUNC("txgbe_fc_autoneg");
+
+	/*
+	 * AN should have completed when the cable was plugged in.
+	 * Look for reasons to bail out.  Bail out if:
+	 * - FC autoneg is disabled, or if
+	 * - link is not up.
+	 */
+	if (hw->fc.disable_fc_autoneg) {
+		DEBUGOUT("Flow control autoneg is disabled");
+		goto out;
+	}
+
+	hw->mac.check_link(hw, &speed, &link_up, false);
+	if (!link_up) {
+		DEBUGOUT("The link is down");
+		goto out;
+	}
+
+	switch (hw->phy.media_type) {
+	/* Autoneg flow control on fiber adapters */
+	case txgbe_media_type_fiber_qsfp:
+	case txgbe_media_type_fiber:
+		if (speed == TXGBE_LINK_SPEED_1GB_FULL)
+			err = txgbe_fc_autoneg_fiber(hw);
+		break;
+
+	/* Autoneg flow control on backplane adapters */
+	case txgbe_media_type_backplane:
+		err = txgbe_fc_autoneg_backplane(hw);
+		break;
+
+	/* Autoneg flow control on copper adapters */
+	case txgbe_media_type_copper:
+		if (txgbe_device_supports_autoneg_fc(hw))
+			err = txgbe_fc_autoneg_copper(hw);
+		break;
+
+	default:
+		break;
+	}
+
+out:
+	if (err == 0) {
+		hw->fc.fc_was_autonegged = true;
+	} else {
+		hw->fc.fc_was_autonegged = false;
+		hw->fc.current_mode = hw->fc.requested_mode;
+	}
+}
+
+/**
  *  txgbe_acquire_swfw_sync - Acquire SWFW semaphore
  *  @hw: pointer to hardware structure
  *  @mask: Mask to specify which semaphore to acquire
@@ -2588,6 +2787,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* Flow Control */
 	mac->fc_enable = txgbe_fc_enable;
 	mac->setup_fc = txgbe_setup_fc;
+	mac->fc_autoneg = txgbe_fc_autoneg;
 
 	/* Link */
 	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;

@@ -30,6 +30,7 @@ s32 txgbe_enable_sec_tx_path(struct txgbe_hw *hw);
 
 s32 txgbe_fc_enable(struct txgbe_hw *hw);
 bool txgbe_device_supports_autoneg_fc(struct txgbe_hw *hw);
+void txgbe_fc_autoneg(struct txgbe_hw *hw);
 s32 txgbe_setup_fc(struct txgbe_hw *hw);
 
 s32 txgbe_validate_mac_addr(u8 *mac_addr);
@@ -76,6 +77,8 @@ s32 txgbe_setup_mac_link_multispeed_fiber(struct txgbe_hw *hw,
 					  u32 speed,
 					  bool autoneg_wait_to_complete);
 void txgbe_set_mta(struct txgbe_hw *hw, u8 *mc_addr);
+s32 txgbe_negotiate_fc(struct txgbe_hw *hw, u32 adv_reg, u32 lp_reg,
+			u32 adv_sym, u32 adv_asm, u32 lp_sym, u32 lp_asm);
 s32 txgbe_init_shared_code(struct txgbe_hw *hw);
 s32 txgbe_set_mac_type(struct txgbe_hw *hw);
 s32 txgbe_init_ops_pf(struct txgbe_hw *hw);
