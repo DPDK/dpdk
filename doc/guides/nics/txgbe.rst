@@ -26,6 +26,7 @@ Features
 - Interrupt mode for RX
 - Scattered and gather for TX and RX
 - DCB
+- FW version
 - LRO
 
 Prerequisites

@@ -2224,6 +2224,27 @@ txgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 }
 
 static int
+txgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	u16 eeprom_verh, eeprom_verl;
+	u32 etrack_id;
+	int ret;
+
+	hw->rom.readw_sw(hw, TXGBE_EEPROM_VERSION_H, &eeprom_verh);
+	hw->rom.readw_sw(hw, TXGBE_EEPROM_VERSION_L, &eeprom_verl);
+
+	etrack_id = (eeprom_verh << 16) | eeprom_verl;
+	ret = snprintf(fw_version, fw_size, "0x%08x", etrack_id);
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (u32)ret)
+		return ret;
+	else
+		return 0;
+}
+
+static int
 txgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -3425,6 +3446,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.xstats_get_names           = txgbe_dev_xstats_get_names,
 	.xstats_get_names_by_id     = txgbe_dev_xstats_get_names_by_id,
 	.queue_stats_mapping_set    = txgbe_dev_queue_stats_mapping_set,
+	.fw_version_get             = txgbe_fw_version_get,
 	.dev_supported_ptypes_get   = txgbe_dev_supported_ptypes_get,
 	.mtu_set                    = txgbe_dev_mtu_set,
 	.vlan_filter_set            = txgbe_vlan_filter_set,
