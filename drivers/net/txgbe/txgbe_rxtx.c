@@ -2548,6 +2548,33 @@ txgbe_dev_free_queues(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
+/**
+ * Receive Side Scaling (RSS)
+ *
+ * Principles:
+ * The source and destination IP addresses of the IP header and the source
+ * and destination ports of TCP/UDP headers, if any, of received packets are
+ * hashed against a configurable random key to compute a 32-bit RSS hash result.
+ * The seven (7) LSBs of the 32-bit hash result are used as an index into a
+ * 128-entry redirection table (RETA).  Each entry of the RETA provides a 3-bit
+ * RSS output index which is used as the RX queue index where to store the
+ * received packets.
+ * The following output is supplied in the RX write-back descriptor:
+ *     - 32-bit result of the Microsoft RSS hash function,
+ *     - 4-bit RSS type field.
+ */
+
+/*
+ * Used as the default key.
+ */
+static uint8_t rss_intel_key[40] = {
+	0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2,
+	0x41, 0x67, 0x25, 0x3D, 0x43, 0xA3, 0x8F, 0xB0,
+	0xD0, 0xCA, 0x2B, 0xCB, 0xAE, 0x7B, 0x30, 0xB4,
+	0x77, 0xCB, 0x2D, 0xA3, 0x80, 0x30, 0xF2, 0x0C,
+	0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
+};
+
 static void
 txgbe_rss_disable(struct rte_eth_dev *dev)
 {
@@ -2556,6 +2583,151 @@ txgbe_rss_disable(struct rte_eth_dev *dev)
 	hw = TXGBE_DEV_HW(dev);
 
 	wr32m(hw, TXGBE_RACTL, TXGBE_RACTL_RSSENA, 0);
+}
+
+int
+txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint8_t  *hash_key;
+	uint32_t mrqc;
+	uint32_t rss_key;
+	uint64_t rss_hf;
+	uint16_t i;
+
+	if (!txgbe_rss_update_sp(hw->mac.type)) {
+		PMD_DRV_LOG(ERR, "RSS hash update is not supported on this "
+			"NIC.");
+		return -ENOTSUP;
+	}
+
+	hash_key = rss_conf->rss_key;
+	if (hash_key) {
+		/* Fill in RSS hash key */
+		for (i = 0; i < 10; i++) {
+			rss_key  = LS32(hash_key[(i * 4) + 0], 0, 0xFF);
+			rss_key |= LS32(hash_key[(i * 4) + 1], 8, 0xFF);
+			rss_key |= LS32(hash_key[(i * 4) + 2], 16, 0xFF);
+			rss_key |= LS32(hash_key[(i * 4) + 3], 24, 0xFF);
+			wr32a(hw, TXGBE_REG_RSSKEY, i, rss_key);
+		}
+	}
+
+	/* Set configured hashing protocols */
+	rss_hf = rss_conf->rss_hf & TXGBE_RSS_OFFLOAD_ALL;
+	mrqc = rd32(hw, TXGBE_RACTL);
+	mrqc &= ~TXGBE_RACTL_RSSMASK;
+	if (rss_hf & ETH_RSS_IPV4)
+		mrqc |= TXGBE_RACTL_RSSIPV4;
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+		mrqc |= TXGBE_RACTL_RSSIPV4TCP;
+	if (rss_hf & ETH_RSS_IPV6 ||
+	    rss_hf & ETH_RSS_IPV6_EX)
+		mrqc |= TXGBE_RACTL_RSSIPV6;
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP ||
+	    rss_hf & ETH_RSS_IPV6_TCP_EX)
+		mrqc |= TXGBE_RACTL_RSSIPV6TCP;
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+		mrqc |= TXGBE_RACTL_RSSIPV4UDP;
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP ||
+	    rss_hf & ETH_RSS_IPV6_UDP_EX)
+		mrqc |= TXGBE_RACTL_RSSIPV6UDP;
+
+	if (rss_hf)
+		mrqc |= TXGBE_RACTL_RSSENA;
+	else
+		mrqc &= ~TXGBE_RACTL_RSSENA;
+
+	wr32(hw, TXGBE_RACTL, mrqc);
+
+	return 0;
+}
+
+int
+txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_conf *rss_conf)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint8_t *hash_key;
+	uint32_t mrqc;
+	uint32_t rss_key;
+	uint64_t rss_hf;
+	uint16_t i;
+
+	hash_key = rss_conf->rss_key;
+	if (hash_key) {
+		/* Return RSS hash key */
+		for (i = 0; i < 10; i++) {
+			rss_key = rd32a(hw, TXGBE_REG_RSSKEY, i);
+			hash_key[(i * 4) + 0] = RS32(rss_key, 0, 0xFF);
+			hash_key[(i * 4) + 1] = RS32(rss_key, 8, 0xFF);
+			hash_key[(i * 4) + 2] = RS32(rss_key, 16, 0xFF);
+			hash_key[(i * 4) + 3] = RS32(rss_key, 24, 0xFF);
+		}
+	}
+
+	rss_hf = 0;
+	mrqc = rd32(hw, TXGBE_RACTL);
+	if (mrqc & TXGBE_RACTL_RSSIPV4)
+		rss_hf |= ETH_RSS_IPV4;
+	if (mrqc & TXGBE_RACTL_RSSIPV4TCP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+	if (mrqc & TXGBE_RACTL_RSSIPV6)
+		rss_hf |= ETH_RSS_IPV6 |
+			  ETH_RSS_IPV6_EX;
+	if (mrqc & TXGBE_RACTL_RSSIPV6TCP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP |
+			  ETH_RSS_IPV6_TCP_EX;
+	if (mrqc & TXGBE_RACTL_RSSIPV4UDP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+	if (mrqc & TXGBE_RACTL_RSSIPV6UDP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP |
+			  ETH_RSS_IPV6_UDP_EX;
+	if (!(mrqc & TXGBE_RACTL_RSSENA))
+		rss_hf = 0;
+
+	rss_hf &= TXGBE_RSS_OFFLOAD_ALL;
+
+	rss_conf->rss_hf = rss_hf;
+	return 0;
+}
+
+static void
+txgbe_rss_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_rss_conf rss_conf;
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t reta;
+	uint16_t i;
+	uint16_t j;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/*
+	 * Fill in redirection table
+	 * The byte-swap is needed because NIC registers are in
+	 * little-endian order.
+	 */
+	if (adapter->rss_reta_updated == 0) {
+		reta = 0;
+		for (i = 0, j = 0; i < ETH_RSS_RETA_SIZE_128; i++, j++) {
+			if (j == dev->data->nb_rx_queues)
+				j = 0;
+			reta = (reta >> 8) | LS32(j, 24, 0xFF);
+			if ((i & 3) == 3)
+				wr32a(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
+		}
+	}
+	/*
+	 * Configure the RSS key and the RSS protocols used to compute
+	 * the RSS hash of input packets.
+	 */
+	rss_conf = dev->data->dev_conf.rx_adv_conf.rss_conf;
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = rss_intel_key; /* Default hash key */
+	txgbe_dev_rss_hash_update(dev, &rss_conf);
 }
 
 #define NUM_VFTA_REGISTERS 128
@@ -2720,6 +2892,38 @@ txgbe_alloc_rx_queue_mbufs(struct txgbe_rx_queue *rxq)
 }
 
 static int
+txgbe_config_vf_rss(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw;
+	uint32_t mrqc;
+
+	txgbe_rss_configure(dev);
+
+	hw = TXGBE_DEV_HW(dev);
+
+	/* enable VF RSS */
+	mrqc = rd32(hw, TXGBE_PORTCTL);
+	mrqc &= ~(TXGBE_PORTCTL_NUMTC_MASK | TXGBE_PORTCTL_NUMVT_MASK);
+	switch (RTE_ETH_DEV_SRIOV(dev).active) {
+	case ETH_64_POOLS:
+		mrqc |= TXGBE_PORTCTL_NUMVT_64;
+		break;
+
+	case ETH_32_POOLS:
+		mrqc |= TXGBE_PORTCTL_NUMVT_32;
+		break;
+
+	default:
+		PMD_INIT_LOG(ERR, "Invalid pool number in IOV mode with VMDQ RSS");
+		return -EINVAL;
+	}
+
+	wr32(hw, TXGBE_PORTCTL, mrqc);
+
+	return 0;
+}
+
+static int
 txgbe_config_vf_default(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
@@ -2756,9 +2960,14 @@ txgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
 		/*
 		 * SRIOV inactive scheme
-		 * VMDq multi-queue setting
+		 * any RSS w/o VMDq multi-queue setting
 		 */
 		switch (dev->data->dev_conf.rxmode.mq_mode) {
+		case ETH_MQ_RX_RSS:
+		case ETH_MQ_RX_VMDQ_RSS:
+			txgbe_rss_configure(dev);
+			break;
+
 		case ETH_MQ_RX_VMDQ_ONLY:
 			txgbe_vmdq_rx_hw_configure(dev);
 			break;
@@ -2771,8 +2980,13 @@ txgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 		}
 	} else {
 		/* SRIOV active scheme
+		 * Support RSS together with SRIOV.
 		 */
 		switch (dev->data->dev_conf.rxmode.mq_mode) {
+		case ETH_MQ_RX_RSS:
+		case ETH_MQ_RX_VMDQ_RSS:
+			txgbe_config_vf_rss(dev);
+			break;
 		default:
 			txgbe_config_vf_default(dev);
 			break;

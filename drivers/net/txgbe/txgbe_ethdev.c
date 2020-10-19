@@ -1476,6 +1476,7 @@ static int
 txgbe_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct txgbe_vf_info *vfinfo = *TXGBE_DEV_VFDATA(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1533,6 +1534,7 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 		intr_handle->intr_vec = NULL;
 	}
 
+	adapter->rss_reta_updated = 0;
 	wr32m(hw, TXGBE_LEDCTL, 0xFFFFFFFF, TXGBE_LEDCTL_SEL_MASK);
 
 	hw->adapter_stopped = true;
@@ -2632,6 +2634,91 @@ txgbe_dev_interrupt_handler(void *param)
 	txgbe_dev_interrupt_action(dev, dev->intr_handle);
 }
 
+int
+txgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_reta_entry64 *reta_conf,
+			  uint16_t reta_size)
+{
+	uint8_t i, j, mask;
+	uint32_t reta;
+	uint16_t idx, shift;
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (!txgbe_rss_update_sp(hw->mac.type)) {
+		PMD_DRV_LOG(ERR, "RSS reta update is not supported on this "
+			"NIC.");
+		return -ENOTSUP;
+	}
+
+	if (reta_size != ETH_RSS_RETA_SIZE_128) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)", reta_size, ETH_RSS_RETA_SIZE_128);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i += 4) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)RS64(reta_conf[idx].mask, shift, 0xF);
+		if (!mask)
+			continue;
+
+		reta = rd32a(hw, TXGBE_REG_RSSTBL, i >> 2);
+		for (j = 0; j < 4; j++) {
+			if (RS8(mask, j, 0x1)) {
+				reta  &= ~(MS32(8 * j, 0xFF));
+				reta |= LS32(reta_conf[idx].reta[shift + j],
+						8 * j, 0xFF);
+			}
+		}
+		wr32a(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
+	}
+	adapter->rss_reta_updated = 1;
+
+	return 0;
+}
+
+int
+txgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint8_t i, j, mask;
+	uint32_t reta;
+	uint16_t idx, shift;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (reta_size != ETH_RSS_RETA_SIZE_128) {
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%d) doesn't match the number hardware can supported "
+			"(%d)", reta_size, ETH_RSS_RETA_SIZE_128);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i += 4) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)RS64(reta_conf[idx].mask, shift, 0xF);
+		if (!mask)
+			continue;
+
+		reta = rd32a(hw, TXGBE_REG_RSSTBL, i >> 2);
+		for (j = 0; j < 4; j++) {
+			if (RS8(mask, j, 0x1))
+				reta_conf[idx].reta[shift + j] =
+					(uint16_t)RS32(reta, 8 * j, 0xFF);
+		}
+	}
+
+	return 0;
+}
+
 static int
 txgbe_add_rar(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 				uint32_t index, uint32_t pool)
@@ -2988,6 +3075,17 @@ txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 					 txgbe_dev_addr_list_itr, TRUE);
 }
 
+bool
+txgbe_rss_update_sp(enum txgbe_mac_type mac_type)
+{
+	switch (mac_type) {
+	case txgbe_mac_raptor:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_configure              = txgbe_dev_configure,
 	.dev_infos_get              = txgbe_dev_info_get,
@@ -3027,6 +3125,10 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.uc_hash_table_set          = txgbe_uc_hash_table_set,
 	.uc_all_hash_table_set      = txgbe_uc_all_hash_table_set,
 	.set_queue_rate_limit       = txgbe_set_queue_rate_limit,
+	.reta_update                = txgbe_dev_rss_reta_update,
+	.reta_query                 = txgbe_dev_rss_reta_query,
+	.rss_hash_update            = txgbe_dev_rss_hash_update,
+	.rss_hash_conf_get          = txgbe_dev_rss_hash_conf_get,
 	.set_mc_addr_list           = txgbe_dev_set_mc_addr_list,
 	.rxq_info_get               = txgbe_rxq_info_get,
 	.txq_info_get               = txgbe_txq_info_get,

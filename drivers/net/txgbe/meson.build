@@ -11,6 +11,8 @@ sources = files(
 	'txgbe_rxtx.c',
 )
 
+deps += ['hash']
+
 includes += include_directories('base')
 
 install_headers('rte_pmd_txgbe.h')

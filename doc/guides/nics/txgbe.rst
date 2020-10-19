@@ -11,6 +11,7 @@ Features
 --------
 
 - Multiple queues for TX and RX
+- Receiver Side Scaling (RSS)
 - MAC/VLAN filtering
 - Packet type information
 - Checksum offload

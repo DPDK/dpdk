@@ -142,6 +142,8 @@ struct txgbe_adapter {
 	struct txgbe_uta_info       uta_info;
 	struct txgbe_filter_info    filter;
 	bool rx_bulk_alloc_allowed;
+	/* For RSS reta table update */
+	uint8_t rss_reta_updated;
 };
 
 #define TXGBE_DEV_ADAPTER(dev) \
@@ -242,6 +244,14 @@ uint16_t txgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 uint16_t txgbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
+int txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_conf *rss_conf);
+
+int txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+				struct rte_eth_rss_conf *rss_conf);
+
+bool txgbe_rss_update_sp(enum txgbe_mac_type mac_type);
+
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 
@@ -328,6 +338,12 @@ const uint32_t *txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
+int txgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
+int txgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
 void txgbe_dev_setup_link_alarm_handler(void *param);
 void txgbe_read_stats_registers(struct txgbe_hw *hw,
 			   struct txgbe_hw_stats *hw_stats);
