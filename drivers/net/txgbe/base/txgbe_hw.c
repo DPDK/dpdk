@@ -116,6 +116,123 @@ s32 txgbe_init_hw(struct txgbe_hw *hw)
 }
 
 /**
+ *  txgbe_clear_hw_cntrs - Generic clear hardware counters
+ *  @hw: pointer to hardware structure
+ *
+ *  Clears all hardware statistics counters by reading them from the hardware
+ *  Statistics counters are clear on read.
+ **/
+s32 txgbe_clear_hw_cntrs(struct txgbe_hw *hw)
+{
+	u16 i = 0;
+
+	DEBUGFUNC("txgbe_clear_hw_cntrs");
+
+	/* QP Stats */
+	/* don't write clear queue stats */
+	for (i = 0; i < TXGBE_MAX_QP; i++) {
+		hw->qp_last[i].rx_qp_packets = 0;
+		hw->qp_last[i].tx_qp_packets = 0;
+		hw->qp_last[i].rx_qp_bytes = 0;
+		hw->qp_last[i].tx_qp_bytes = 0;
+		hw->qp_last[i].rx_qp_mc_packets = 0;
+	}
+
+	/* PB Stats */
+	for (i = 0; i < TXGBE_MAX_UP; i++) {
+		rd32(hw, TXGBE_PBRXUPXON(i));
+		rd32(hw, TXGBE_PBRXUPXOFF(i));
+		rd32(hw, TXGBE_PBTXUPXON(i));
+		rd32(hw, TXGBE_PBTXUPXOFF(i));
+		rd32(hw, TXGBE_PBTXUPOFF(i));
+
+		rd32(hw, TXGBE_PBRXMISS(i));
+	}
+	rd32(hw, TXGBE_PBRXLNKXON);
+	rd32(hw, TXGBE_PBRXLNKXOFF);
+	rd32(hw, TXGBE_PBTXLNKXON);
+	rd32(hw, TXGBE_PBTXLNKXOFF);
+
+	/* DMA Stats */
+	rd32(hw, TXGBE_DMARXPKT);
+	rd32(hw, TXGBE_DMATXPKT);
+
+	rd64(hw, TXGBE_DMARXOCTL);
+	rd64(hw, TXGBE_DMATXOCTL);
+
+	/* MAC Stats */
+	rd64(hw, TXGBE_MACRXERRCRCL);
+	rd64(hw, TXGBE_MACRXMPKTL);
+	rd64(hw, TXGBE_MACTXMPKTL);
+
+	rd64(hw, TXGBE_MACRXPKTL);
+	rd64(hw, TXGBE_MACTXPKTL);
+	rd64(hw, TXGBE_MACRXGBOCTL);
+
+	rd64(hw, TXGBE_MACRXOCTL);
+	rd32(hw, TXGBE_MACTXOCTL);
+
+	rd64(hw, TXGBE_MACRX1TO64L);
+	rd64(hw, TXGBE_MACRX65TO127L);
+	rd64(hw, TXGBE_MACRX128TO255L);
+	rd64(hw, TXGBE_MACRX256TO511L);
+	rd64(hw, TXGBE_MACRX512TO1023L);
+	rd64(hw, TXGBE_MACRX1024TOMAXL);
+	rd64(hw, TXGBE_MACTX1TO64L);
+	rd64(hw, TXGBE_MACTX65TO127L);
+	rd64(hw, TXGBE_MACTX128TO255L);
+	rd64(hw, TXGBE_MACTX256TO511L);
+	rd64(hw, TXGBE_MACTX512TO1023L);
+	rd64(hw, TXGBE_MACTX1024TOMAXL);
+
+	rd64(hw, TXGBE_MACRXERRLENL);
+	rd32(hw, TXGBE_MACRXOVERSIZE);
+	rd32(hw, TXGBE_MACRXJABBER);
+
+	/* FCoE Stats */
+	rd32(hw, TXGBE_FCOECRC);
+	rd32(hw, TXGBE_FCOELAST);
+	rd32(hw, TXGBE_FCOERPDC);
+	rd32(hw, TXGBE_FCOEPRC);
+	rd32(hw, TXGBE_FCOEPTC);
+	rd32(hw, TXGBE_FCOEDWRC);
+	rd32(hw, TXGBE_FCOEDWTC);
+
+	/* Flow Director Stats */
+	rd32(hw, TXGBE_FDIRMATCH);
+	rd32(hw, TXGBE_FDIRMISS);
+	rd32(hw, TXGBE_FDIRUSED);
+	rd32(hw, TXGBE_FDIRUSED);
+	rd32(hw, TXGBE_FDIRFAIL);
+	rd32(hw, TXGBE_FDIRFAIL);
+
+	/* MACsec Stats */
+	rd32(hw, TXGBE_LSECTX_UTPKT);
+	rd32(hw, TXGBE_LSECTX_ENCPKT);
+	rd32(hw, TXGBE_LSECTX_PROTPKT);
+	rd32(hw, TXGBE_LSECTX_ENCOCT);
+	rd32(hw, TXGBE_LSECTX_PROTOCT);
+	rd32(hw, TXGBE_LSECRX_UTPKT);
+	rd32(hw, TXGBE_LSECRX_BTPKT);
+	rd32(hw, TXGBE_LSECRX_NOSCIPKT);
+	rd32(hw, TXGBE_LSECRX_UNSCIPKT);
+	rd32(hw, TXGBE_LSECRX_DECOCT);
+	rd32(hw, TXGBE_LSECRX_VLDOCT);
+	rd32(hw, TXGBE_LSECRX_UNCHKPKT);
+	rd32(hw, TXGBE_LSECRX_DLYPKT);
+	rd32(hw, TXGBE_LSECRX_LATEPKT);
+	for (i = 0; i < 2; i++) {
+		rd32(hw, TXGBE_LSECRX_OKPKT(i));
+		rd32(hw, TXGBE_LSECRX_INVPKT(i));
+		rd32(hw, TXGBE_LSECRX_BADPKT(i));
+	}
+	rd32(hw, TXGBE_LSECRX_INVSAPKT);
+	rd32(hw, TXGBE_LSECRX_BADSAPKT);
+
+	return 0;
+}
+
+/**
  *  txgbe_get_mac_addr - Generic get MAC address
  *  @hw: pointer to hardware structure
  *  @mac_addr: Adapter MAC address
@@ -1455,6 +1572,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;
 	mac->start_hw = txgbe_start_hw_raptor;
+	mac->clear_hw_cntrs = txgbe_clear_hw_cntrs;
 	mac->enable_rx_dma = txgbe_enable_rx_dma_raptor;
 	mac->get_mac_addr = txgbe_get_mac_addr;
 	mac->stop_hw = txgbe_stop_hw;

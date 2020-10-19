@@ -262,6 +262,60 @@ txgbe_disable_intr(struct txgbe_hw *hw)
 }
 
 static int
+txgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
+				  uint16_t queue_id,
+				  uint8_t stat_idx,
+				  uint8_t is_rx)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
+	struct txgbe_stat_mappings *stat_mappings =
+		TXGBE_DEV_STAT_MAPPINGS(eth_dev);
+	uint32_t qsmr_mask = 0;
+	uint32_t clearing_mask = QMAP_FIELD_RESERVED_BITS_MASK;
+	uint32_t q_map;
+	uint8_t n, offset;
+
+	if (hw->mac.type != txgbe_mac_raptor)
+		return -ENOSYS;
+
+	if (stat_idx & !QMAP_FIELD_RESERVED_BITS_MASK)
+		return -EIO;
+
+	PMD_INIT_LOG(DEBUG, "Setting port %d, %s queue_id %d to stat index %d",
+		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
+		     queue_id, stat_idx);
+
+	n = (uint8_t)(queue_id / NB_QMAP_FIELDS_PER_QSM_REG);
+	if (n >= TXGBE_NB_STAT_MAPPING) {
+		PMD_INIT_LOG(ERR, "Nb of stat mapping registers exceeded");
+		return -EIO;
+	}
+	offset = (uint8_t)(queue_id % NB_QMAP_FIELDS_PER_QSM_REG);
+
+	/* Now clear any previous stat_idx set */
+	clearing_mask <<= (QSM_REG_NB_BITS_PER_QMAP_FIELD * offset);
+	if (!is_rx)
+		stat_mappings->tqsm[n] &= ~clearing_mask;
+	else
+		stat_mappings->rqsm[n] &= ~clearing_mask;
+
+	q_map = (uint32_t)stat_idx;
+	q_map &= QMAP_FIELD_RESERVED_BITS_MASK;
+	qsmr_mask = q_map << (QSM_REG_NB_BITS_PER_QMAP_FIELD * offset);
+	if (!is_rx)
+		stat_mappings->tqsm[n] |= qsmr_mask;
+	else
+		stat_mappings->rqsm[n] |= qsmr_mask;
+
+	PMD_INIT_LOG(DEBUG, "Set port %d, %s queue_id %d to stat index %d",
+		     (int)(eth_dev->data->port_id), is_rx ? "RX" : "TX",
+		     queue_id, stat_idx);
+	PMD_INIT_LOG(DEBUG, "%s[%d] = 0x%08x", is_rx ? "RQSMR" : "TQSM", n,
+		     is_rx ? stat_mappings->rqsm[n] : stat_mappings->tqsm[n]);
+	return 0;
+}
+
+static int
 eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -2374,6 +2428,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.xstats_reset               = txgbe_dev_xstats_reset,
 	.xstats_get_names           = txgbe_dev_xstats_get_names,
 	.xstats_get_names_by_id     = txgbe_dev_xstats_get_names_by_id,
+	.queue_stats_mapping_set    = txgbe_dev_queue_stats_mapping_set,
 	.dev_supported_ptypes_get   = txgbe_dev_supported_ptypes_get,
 	.rx_queue_start	            = txgbe_dev_rx_queue_start,
 	.rx_queue_stop              = txgbe_dev_rx_queue_stop,

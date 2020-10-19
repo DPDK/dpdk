@@ -11,6 +11,7 @@ s32 txgbe_init_hw(struct txgbe_hw *hw);
 s32 txgbe_start_hw(struct txgbe_hw *hw);
 s32 txgbe_stop_hw(struct txgbe_hw *hw);
 s32 txgbe_start_hw_gen2(struct txgbe_hw *hw);
+s32 txgbe_clear_hw_cntrs(struct txgbe_hw *hw);
 s32 txgbe_get_mac_addr(struct txgbe_hw *hw, u8 *mac_addr);
 
 void txgbe_set_lan_id_multi_port(struct txgbe_hw *hw);
