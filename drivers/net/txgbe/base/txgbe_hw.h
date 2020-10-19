@@ -16,6 +16,9 @@ s32 txgbe_get_mac_addr(struct txgbe_hw *hw, u8 *mac_addr);
 
 void txgbe_set_lan_id_multi_port(struct txgbe_hw *hw);
 
+s32 txgbe_led_on(struct txgbe_hw *hw, u32 index);
+s32 txgbe_led_off(struct txgbe_hw *hw, u32 index);
+
 s32 txgbe_set_rar(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);
 s32 txgbe_clear_rar(struct txgbe_hw *hw, u32 index);

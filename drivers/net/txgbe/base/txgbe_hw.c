@@ -561,6 +561,52 @@ s32 txgbe_stop_hw(struct txgbe_hw *hw)
 }
 
 /**
+ *  txgbe_led_on - Turns on the software controllable LEDs.
+ *  @hw: pointer to hardware structure
+ *  @index: led number to turn on
+ **/
+s32 txgbe_led_on(struct txgbe_hw *hw, u32 index)
+{
+	u32 led_reg = rd32(hw, TXGBE_LEDCTL);
+
+	DEBUGFUNC("txgbe_led_on");
+
+	if (index > 4)
+		return TXGBE_ERR_PARAM;
+
+	/* To turn on the LED, set mode to ON. */
+	led_reg |= TXGBE_LEDCTL_SEL(index);
+	led_reg |= TXGBE_LEDCTL_ORD(index);
+	wr32(hw, TXGBE_LEDCTL, led_reg);
+	txgbe_flush(hw);
+
+	return 0;
+}
+
+/**
+ *  txgbe_led_off - Turns off the software controllable LEDs.
+ *  @hw: pointer to hardware structure
+ *  @index: led number to turn off
+ **/
+s32 txgbe_led_off(struct txgbe_hw *hw, u32 index)
+{
+	u32 led_reg = rd32(hw, TXGBE_LEDCTL);
+
+	DEBUGFUNC("txgbe_led_off");
+
+	if (index > 4)
+		return TXGBE_ERR_PARAM;
+
+	/* To turn off the LED, set mode to OFF. */
+	led_reg &= ~(TXGBE_LEDCTL_SEL(index));
+	led_reg &= ~(TXGBE_LEDCTL_ORD(index));
+	wr32(hw, TXGBE_LEDCTL, led_reg);
+	txgbe_flush(hw);
+
+	return 0;
+}
+
+/**
  *  txgbe_validate_mac_addr - Validate MAC address
  *  @mac_addr: pointer to MAC address.
  *

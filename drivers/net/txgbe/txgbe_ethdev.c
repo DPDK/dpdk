@@ -2842,6 +2842,24 @@ txgbe_dev_interrupt_handler(void *param)
 }
 
 static int
+txgbe_dev_led_on(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw;
+
+	hw = TXGBE_DEV_HW(dev);
+	return txgbe_led_on(hw, 4) == 0 ? 0 : -ENOTSUP;
+}
+
+static int
+txgbe_dev_led_off(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw;
+
+	hw = TXGBE_DEV_HW(dev);
+	return txgbe_led_off(hw, 4) == 0 ? 0 : -ENOTSUP;
+}
+
+static int
 txgbe_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct txgbe_hw *hw;
@@ -3696,6 +3714,8 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.rx_queue_release           = txgbe_dev_rx_queue_release,
 	.tx_queue_setup             = txgbe_dev_tx_queue_setup,
 	.tx_queue_release           = txgbe_dev_tx_queue_release,
+	.dev_led_on                 = txgbe_dev_led_on,
+	.dev_led_off                = txgbe_dev_led_off,
 	.flow_ctrl_get              = txgbe_flow_ctrl_get,
 	.flow_ctrl_set              = txgbe_flow_ctrl_set,
 	.priority_flow_ctrl_set     = txgbe_priority_flow_ctrl_set,
