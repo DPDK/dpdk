@@ -469,6 +469,9 @@ struct txgbe_hw {
 		TXGBE_SW_RESET,
 		TXGBE_GLOBAL_RESET
 	} reset_type;
+
+	u32 q_rx_regs[128 * 4];
+	u32 q_tx_regs[128 * 4];
 };
 
 #include "txgbe_regs.h"

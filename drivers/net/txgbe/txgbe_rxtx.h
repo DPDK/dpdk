@@ -42,6 +42,14 @@ struct txgbe_rx_desc {
 	} qw1; /* also as r.hdr_addr */
 };
 
+/* @txgbe_rx_desc.qw0 */
+#define TXGBE_RXD_PKTADDR(rxd, v)  \
+	(((volatile __le64 *)(rxd))[0] = cpu_to_le64(v))
+
+/* @txgbe_rx_desc.qw1 */
+#define TXGBE_RXD_HDRADDR(rxd, v)  \
+	(((volatile __le64 *)(rxd))[1] = cpu_to_le64(v))
+
 /**
  * Transmit Data Descriptor (TXGBE_TXD_TYP=DATA)
  **/
@@ -58,6 +66,9 @@ struct txgbe_tx_desc {
 		    sizeof(struct txgbe_rx_desc))
 
 #define TXGBE_PTID_MASK                 0xFF
+
+#define RTE_TXGBE_REGISTER_POLL_WAIT_10_MS  10
+#define RTE_TXGBE_WAIT_100_US               100
 
 #define TXGBE_TX_MAX_SEG                    40
 
@@ -140,6 +151,7 @@ struct txgbe_tx_queue {
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
 	volatile uint32_t   *tdc_reg_addr; /**< Address of TDC register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
+	uint16_t            tx_tail;       /**< current value of TDT reg. */
 	/**< Start freeing TX buffers if there are less free descriptors than
 	 *   this value.
 	 */

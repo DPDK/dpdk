@@ -566,6 +566,8 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	txgbe_dev_free_queues(dev);
+
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 
@@ -1320,6 +1322,10 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_infos_get              = txgbe_dev_info_get,
 	.dev_set_link_up            = txgbe_dev_set_link_up,
 	.dev_set_link_down          = txgbe_dev_set_link_down,
+	.rx_queue_start	            = txgbe_dev_rx_queue_start,
+	.rx_queue_stop              = txgbe_dev_rx_queue_stop,
+	.tx_queue_start	            = txgbe_dev_tx_queue_start,
+	.tx_queue_stop              = txgbe_dev_tx_queue_stop,
 	.rx_queue_setup             = txgbe_dev_rx_queue_setup,
 	.rx_queue_release           = txgbe_dev_rx_queue_release,
 	.tx_queue_setup             = txgbe_dev_tx_queue_setup,

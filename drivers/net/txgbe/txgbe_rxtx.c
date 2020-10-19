@@ -10,6 +10,9 @@
 #include <errno.h>
 
 #include <rte_common.h>
+#include <rte_cycles.h>
+#include <rte_log.h>
+#include <rte_debug.h>
 #include <rte_ethdev.h>
 #include <rte_ethdev_driver.h>
 #include <rte_memzone.h>
@@ -622,10 +625,62 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+void
+txgbe_dev_free_queues(struct rte_eth_dev *dev)
+{
+	unsigned int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		txgbe_dev_rx_queue_release(dev->data->rx_queues[i]);
+		dev->data->rx_queues[i] = NULL;
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txgbe_dev_tx_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
+	}
+	dev->data->nb_tx_queues = 0;
+}
+
 void __rte_cold
 txgbe_set_rx_function(struct rte_eth_dev *dev)
 {
 	RTE_SET_USED(dev);
+}
+
+static int __rte_cold
+txgbe_alloc_rx_queue_mbufs(struct txgbe_rx_queue *rxq)
+{
+	struct txgbe_rx_entry *rxe = rxq->sw_ring;
+	uint64_t dma_addr;
+	unsigned int i;
+
+	/* Initialize software ring entries */
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		volatile struct txgbe_rx_desc *rxd;
+		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
+
+		if (mbuf == NULL) {
+			PMD_INIT_LOG(ERR, "RX mbuf alloc failed queue_id=%u",
+				     (unsigned int)rxq->queue_id);
+			return -ENOMEM;
+		}
+
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->port = rxq->port_id;
+
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+		rxd = &rxq->rx_ring[i];
+		TXGBE_RXD_HDRADDR(rxd, 0);
+		TXGBE_RXD_PKTADDR(rxd, dma_addr);
+		rxe[i].mbuf = mbuf;
+	}
+
+	return 0;
 }
 
 /**
@@ -956,5 +1011,206 @@ txgbe_dev_tx_init(struct rte_eth_dev *dev)
 		wr32(hw, TXGBE_TXRP(txq->reg_idx), 0);
 		wr32(hw, TXGBE_TXWP(txq->reg_idx), 0);
 	}
+}
+
+void
+txgbe_dev_save_rx_queue(struct txgbe_hw *hw, uint16_t rx_queue_id)
+{
+	u32 *reg = &hw->q_rx_regs[rx_queue_id * 8];
+	*(reg++) = rd32(hw, TXGBE_RXBAL(rx_queue_id));
+	*(reg++) = rd32(hw, TXGBE_RXBAH(rx_queue_id));
+	*(reg++) = rd32(hw, TXGBE_RXCFG(rx_queue_id));
+}
+
+void
+txgbe_dev_store_rx_queue(struct txgbe_hw *hw, uint16_t rx_queue_id)
+{
+	u32 *reg = &hw->q_rx_regs[rx_queue_id * 8];
+	wr32(hw, TXGBE_RXBAL(rx_queue_id), *(reg++));
+	wr32(hw, TXGBE_RXBAH(rx_queue_id), *(reg++));
+	wr32(hw, TXGBE_RXCFG(rx_queue_id), *(reg++) & ~TXGBE_RXCFG_ENA);
+}
+
+void
+txgbe_dev_save_tx_queue(struct txgbe_hw *hw, uint16_t tx_queue_id)
+{
+	u32 *reg = &hw->q_tx_regs[tx_queue_id * 8];
+	*(reg++) = rd32(hw, TXGBE_TXBAL(tx_queue_id));
+	*(reg++) = rd32(hw, TXGBE_TXBAH(tx_queue_id));
+	*(reg++) = rd32(hw, TXGBE_TXCFG(tx_queue_id));
+}
+
+void
+txgbe_dev_store_tx_queue(struct txgbe_hw *hw, uint16_t tx_queue_id)
+{
+	u32 *reg = &hw->q_tx_regs[tx_queue_id * 8];
+	wr32(hw, TXGBE_TXBAL(tx_queue_id), *(reg++));
+	wr32(hw, TXGBE_TXBAH(tx_queue_id), *(reg++));
+	wr32(hw, TXGBE_TXCFG(tx_queue_id), *(reg++) & ~TXGBE_TXCFG_ENA);
+}
+
+/*
+ * Start Receive Units for specified queue.
+ */
+int __rte_cold
+txgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_rx_queue *rxq;
+	uint32_t rxdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	/* Allocate buffers for descriptor rings */
+	if (txgbe_alloc_rx_queue_mbufs(rxq) != 0) {
+		PMD_INIT_LOG(ERR, "Could not alloc mbuf for queue:%d",
+			     rx_queue_id);
+		return -1;
+	}
+	rxdctl = rd32(hw, TXGBE_RXCFG(rxq->reg_idx));
+	rxdctl |= TXGBE_RXCFG_ENA;
+	wr32(hw, TXGBE_RXCFG(rxq->reg_idx), rxdctl);
+
+	/* Wait until RX Enable ready */
+	poll_ms = RTE_TXGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_ms(1);
+		rxdctl = rd32(hw, TXGBE_RXCFG(rxq->reg_idx));
+	} while (--poll_ms && !(rxdctl & TXGBE_RXCFG_ENA));
+	if (!poll_ms)
+		PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d", rx_queue_id);
+	rte_wmb();
+	wr32(hw, TXGBE_RXRP(rxq->reg_idx), 0);
+	wr32(hw, TXGBE_RXWP(rxq->reg_idx), rxq->nb_rx_desc - 1);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+/*
+ * Stop Receive Units for specified queue.
+ */
+int __rte_cold
+txgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+	struct txgbe_rx_queue *rxq;
+	uint32_t rxdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	txgbe_dev_save_rx_queue(hw, rxq->reg_idx);
+	wr32m(hw, TXGBE_RXCFG(rxq->reg_idx), TXGBE_RXCFG_ENA, 0);
+
+	/* Wait until RX Enable bit clear */
+	poll_ms = RTE_TXGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_ms(1);
+		rxdctl = rd32(hw, TXGBE_RXCFG(rxq->reg_idx));
+	} while (--poll_ms && (rxdctl & TXGBE_RXCFG_ENA));
+	if (!poll_ms)
+		PMD_INIT_LOG(ERR, "Could not disable Rx Queue %d", rx_queue_id);
+
+	rte_delay_us(RTE_TXGBE_WAIT_100_US);
+	txgbe_dev_store_rx_queue(hw, rxq->reg_idx);
+
+	txgbe_rx_queue_release_mbufs(rxq);
+	txgbe_reset_rx_queue(adapter, rxq);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+/*
+ * Start Transmit Units for specified queue.
+ */
+int __rte_cold
+txgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_tx_queue *txq;
+	uint32_t txdctl;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+
+	txq = dev->data->tx_queues[tx_queue_id];
+	wr32m(hw, TXGBE_TXCFG(txq->reg_idx), TXGBE_TXCFG_ENA, TXGBE_TXCFG_ENA);
+
+	/* Wait until TX Enable ready */
+	poll_ms = RTE_TXGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_ms(1);
+		txdctl = rd32(hw, TXGBE_TXCFG(txq->reg_idx));
+	} while (--poll_ms && !(txdctl & TXGBE_TXCFG_ENA));
+	if (!poll_ms)
+		PMD_INIT_LOG(ERR, "Could not enable "
+			     "Tx Queue %d", tx_queue_id);
+
+	rte_wmb();
+	wr32(hw, TXGBE_TXWP(txq->reg_idx), txq->tx_tail);
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+/*
+ * Stop Transmit Units for specified queue.
+ */
+int __rte_cold
+txgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_tx_queue *txq;
+	uint32_t txdctl;
+	uint32_t txtdh, txtdt;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+
+	txq = dev->data->tx_queues[tx_queue_id];
+
+	/* Wait until TX queue is empty */
+	poll_ms = RTE_TXGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_us(RTE_TXGBE_WAIT_100_US);
+		txtdh = rd32(hw, TXGBE_TXRP(txq->reg_idx));
+		txtdt = rd32(hw, TXGBE_TXWP(txq->reg_idx));
+	} while (--poll_ms && (txtdh != txtdt));
+	if (!poll_ms)
+		PMD_INIT_LOG(ERR,
+			"Tx Queue %d is not empty when stopping.",
+			tx_queue_id);
+
+	txgbe_dev_save_tx_queue(hw, txq->reg_idx);
+	wr32m(hw, TXGBE_TXCFG(txq->reg_idx), TXGBE_TXCFG_ENA, 0);
+
+	/* Wait until TX Enable bit clear */
+	poll_ms = RTE_TXGBE_REGISTER_POLL_WAIT_10_MS;
+	do {
+		rte_delay_ms(1);
+		txdctl = rd32(hw, TXGBE_TXCFG(txq->reg_idx));
+	} while (--poll_ms && (txdctl & TXGBE_TXCFG_ENA));
+	if (!poll_ms)
+		PMD_INIT_LOG(ERR, "Could not disable Tx Queue %d",
+			tx_queue_id);
+
+	rte_delay_us(RTE_TXGBE_WAIT_100_US);
+	txgbe_dev_store_tx_queue(hw, txq->reg_idx);
+
+	if (txq->ops != NULL) {
+		txq->ops->release_mbufs(txq);
+		txq->ops->reset(txq);
+	}
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
 }
 

@@ -80,6 +80,8 @@ struct txgbe_adapter {
 /*
  * RX/TX function prototypes
  */
+void txgbe_dev_free_queues(struct rte_eth_dev *dev);
+
 void txgbe_dev_rx_queue_release(void *rxq);
 
 void txgbe_dev_tx_queue_release(void *txq);
@@ -96,6 +98,19 @@ int  txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 int txgbe_dev_rx_init(struct rte_eth_dev *dev);
 
 void txgbe_dev_tx_init(struct rte_eth_dev *dev);
+
+void txgbe_dev_save_rx_queue(struct txgbe_hw *hw, uint16_t rx_queue_id);
+void txgbe_dev_store_rx_queue(struct txgbe_hw *hw, uint16_t rx_queue_id);
+void txgbe_dev_save_tx_queue(struct txgbe_hw *hw, uint16_t tx_queue_id);
+void txgbe_dev_store_tx_queue(struct txgbe_hw *hw, uint16_t tx_queue_id);
+
+int txgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int txgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int txgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+int txgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
