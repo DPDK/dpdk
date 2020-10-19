@@ -22,6 +22,10 @@ s32 txgbe_init_rx_addrs(struct txgbe_hw *hw);
 s32 txgbe_update_mc_addr_list(struct txgbe_hw *hw, u8 *mc_addr_list,
 				      u32 mc_addr_count,
 				      txgbe_mc_addr_itr func, bool clear);
+s32 txgbe_disable_sec_rx_path(struct txgbe_hw *hw);
+s32 txgbe_enable_sec_rx_path(struct txgbe_hw *hw);
+s32 txgbe_disable_sec_tx_path(struct txgbe_hw *hw);
+s32 txgbe_enable_sec_tx_path(struct txgbe_hw *hw);
 
 s32 txgbe_validate_mac_addr(u8 *mac_addr);
 
@@ -67,5 +71,6 @@ void txgbe_init_mac_link_ops(struct txgbe_hw *hw);
 s32 txgbe_reset_hw(struct txgbe_hw *hw);
 s32 txgbe_start_hw_raptor(struct txgbe_hw *hw);
 s32 txgbe_init_phy_raptor(struct txgbe_hw *hw);
+s32 txgbe_enable_rx_dma_raptor(struct txgbe_hw *hw, u32 regval);
 bool txgbe_verify_lesm_fw_enabled_raptor(struct txgbe_hw *hw);
 #endif /* _TXGBE_HW_H_ */

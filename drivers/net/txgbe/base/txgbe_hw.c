@@ -550,6 +550,113 @@ s32 txgbe_update_mc_addr_list(struct txgbe_hw *hw, u8 *mc_addr_list,
 }
 
 /**
+ *  txgbe_disable_sec_rx_path - Stops the receive data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Stops the receive data path and waits for the HW to internally empty
+ *  the Rx security block
+ **/
+s32 txgbe_disable_sec_rx_path(struct txgbe_hw *hw)
+{
+#define TXGBE_MAX_SECRX_POLL 4000
+
+	int i;
+	u32 secrxreg;
+
+	DEBUGFUNC("txgbe_disable_sec_rx_path");
+
+	secrxreg = rd32(hw, TXGBE_SECRXCTL);
+	secrxreg |= TXGBE_SECRXCTL_XDSA;
+	wr32(hw, TXGBE_SECRXCTL, secrxreg);
+	for (i = 0; i < TXGBE_MAX_SECRX_POLL; i++) {
+		secrxreg = rd32(hw, TXGBE_SECRXSTAT);
+		if (!(secrxreg & TXGBE_SECRXSTAT_RDY))
+			/* Use interrupt-safe sleep just in case */
+			usec_delay(10);
+		else
+			break;
+	}
+
+	/* For informational purposes only */
+	if (i >= TXGBE_MAX_SECRX_POLL)
+		DEBUGOUT("Rx unit being enabled before security "
+			 "path fully disabled.  Continuing with init.\n");
+
+	return 0;
+}
+
+/**
+ *  txgbe_enable_sec_rx_path - Enables the receive data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Enables the receive data path.
+ **/
+s32 txgbe_enable_sec_rx_path(struct txgbe_hw *hw)
+{
+	u32 secrxreg;
+
+	DEBUGFUNC("txgbe_enable_sec_rx_path");
+
+	secrxreg = rd32(hw, TXGBE_SECRXCTL);
+	secrxreg &= ~TXGBE_SECRXCTL_XDSA;
+	wr32(hw, TXGBE_SECRXCTL, secrxreg);
+	txgbe_flush(hw);
+
+	return 0;
+}
+
+/**
+ *  txgbe_disable_sec_tx_path - Stops the transmit data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Stops the transmit data path and waits for the HW to internally empty
+ *  the Tx security block
+ **/
+int txgbe_disable_sec_tx_path(struct txgbe_hw *hw)
+{
+#define TXGBE_MAX_SECTX_POLL 40
+
+	int i;
+	u32 sectxreg;
+
+	sectxreg = rd32(hw, TXGBE_SECTXCTL);
+	sectxreg |= TXGBE_SECTXCTL_XDSA;
+	wr32(hw, TXGBE_SECTXCTL, sectxreg);
+	for (i = 0; i < TXGBE_MAX_SECTX_POLL; i++) {
+		sectxreg = rd32(hw, TXGBE_SECTXSTAT);
+		if (sectxreg & TXGBE_SECTXSTAT_RDY)
+			break;
+		/* Use interrupt-safe sleep just in case */
+		usec_delay(1000);
+	}
+
+	/* For informational purposes only */
+	if (i >= TXGBE_MAX_SECTX_POLL)
+		PMD_DRV_LOG(DEBUG, "Tx unit being enabled before security "
+			 "path fully disabled.  Continuing with init.");
+
+	return 0;
+}
+
+/**
+ *  txgbe_enable_sec_tx_path - Enables the transmit data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Enables the transmit data path.
+ **/
+int txgbe_enable_sec_tx_path(struct txgbe_hw *hw)
+{
+	uint32_t sectxreg;
+
+	sectxreg = rd32(hw, TXGBE_SECTXCTL);
+	sectxreg &= ~TXGBE_SECTXCTL_XDSA;
+	wr32(hw, TXGBE_SECTXCTL, sectxreg);
+	txgbe_flush(hw);
+
+	return 0;
+}
+
+/**
  *  txgbe_get_san_mac_addr_offset - Get SAN MAC address offset from the EEPROM
  *  @hw: pointer to hardware structure
  *  @san_mac_offset: SAN MAC address offset
@@ -1283,9 +1390,15 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;
 	mac->start_hw = txgbe_start_hw_raptor;
+	mac->enable_rx_dma = txgbe_enable_rx_dma_raptor;
 	mac->get_mac_addr = txgbe_get_mac_addr;
 	mac->stop_hw = txgbe_stop_hw;
 	mac->reset_hw = txgbe_reset_hw;
+
+	mac->disable_sec_rx_path = txgbe_disable_sec_rx_path;
+	mac->enable_sec_rx_path = txgbe_enable_sec_rx_path;
+	mac->disable_sec_tx_path = txgbe_disable_sec_tx_path;
+	mac->enable_sec_tx_path = txgbe_enable_sec_tx_path;
 	mac->get_san_mac_addr = txgbe_get_san_mac_addr;
 	mac->set_san_mac_addr = txgbe_set_san_mac_addr;
 	mac->get_device_caps = txgbe_get_device_caps;
@@ -2123,6 +2236,35 @@ out:
 	return err;
 }
 
+/**
+ *  txgbe_enable_rx_dma_raptor - Enable the Rx DMA unit
+ *  @hw: pointer to hardware structure
+ *  @regval: register value to write to RXCTRL
+ *
+ *  Enables the Rx DMA unit
+ **/
+s32 txgbe_enable_rx_dma_raptor(struct txgbe_hw *hw, u32 regval)
+{
+	DEBUGFUNC("txgbe_enable_rx_dma_raptor");
+
+	/*
+	 * Workaround silicon errata when enabling the Rx datapath.
+	 * If traffic is incoming before we enable the Rx unit, it could hang
+	 * the Rx DMA unit.  Therefore, make sure the security engine is
+	 * completely disabled prior to enabling the Rx unit.
+	 */
+
+	hw->mac.disable_sec_rx_path(hw);
+
+	if (regval & TXGBE_PBRXCTL_ENA)
+		txgbe_enable_rx(hw);
+	else
+		txgbe_disable_rx(hw);
+
+	hw->mac.enable_sec_rx_path(hw);
+
+	return 0;
+}
 
 /**
  *  txgbe_verify_lesm_fw_enabled_raptor - Checks LESM FW module state.
