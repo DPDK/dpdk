@@ -1523,15 +1523,23 @@ rte_vhost_get_vring_base_from_inflight(int vid,
 				       uint16_t *last_used_idx)
 {
 	struct rte_vhost_inflight_info_packed *inflight_info;
+	struct vhost_virtqueue *vq;
 	struct virtio_net *dev = get_device(vid);
 
 	if (dev == NULL || last_avail_idx == NULL || last_used_idx == NULL)
 		return -1;
 
+	if (queue_id >= VHOST_MAX_VRING)
+		return -1;
+
+	vq = dev->virtqueue[queue_id];
+	if (!vq)
+		return -1;
+
 	if (!vq_is_packed(dev))
 		return -1;
 
-	inflight_info = dev->virtqueue[queue_id]->inflight_packed;
+	inflight_info = vq->inflight_packed;
 	if (!inflight_info)
 		return -1;
 
