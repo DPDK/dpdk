@@ -80,6 +80,18 @@ struct txgbe_uta_info {
 	uint32_t uta_shadow[TXGBE_MAX_UTA];
 };
 
+#define TXGBE_MAX_MIRROR_RULES 4  /* Maximum nb. of mirror rules. */
+
+struct txgbe_mirror_info {
+	struct rte_eth_mirror_conf mr_conf[TXGBE_MAX_MIRROR_RULES];
+	/* store PF mirror rules configuration */
+};
+
+struct txgbe_vf_info {
+	uint8_t vf_mac_addresses[RTE_ETHER_ADDR_LEN];
+	uint16_t switch_domain_id;
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -90,6 +102,8 @@ struct txgbe_adapter {
 	struct txgbe_stat_mappings  stat_mappings;
 	struct txgbe_vfta           shadow_vfta;
 	struct txgbe_hwstrip        hwstrip;
+	struct txgbe_mirror_info    mr_data;
+	struct txgbe_vf_info        *vfdata;
 	struct txgbe_uta_info       uta_info;
 	bool rx_bulk_alloc_allowed;
 };
@@ -117,6 +131,9 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_VFDATA(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->vfdata)
+
+#define TXGBE_DEV_MR_INFO(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->mr_data)
 
 #define TXGBE_DEV_UTA_INFO(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->uta_info)
@@ -192,6 +209,10 @@ void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 int
 txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		int wait_to_complete);
+void txgbe_pf_host_init(struct rte_eth_dev *eth_dev);
+
+void txgbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
+
 
 #define TXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define TXGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */

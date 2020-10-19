@@ -368,6 +368,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	struct txgbe_hwstrip *hwstrip = TXGBE_DEV_HWSTRIP(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	const struct rte_memzone *mz;
+	uint32_t ctrl_ext;
 	uint16_t csum;
 	int err;
 
@@ -514,6 +515,17 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* initialize the hw strip bitmap*/
 	memset(hwstrip, 0, sizeof(*hwstrip));
+
+	/* initialize PF if max_vfs not zero */
+	txgbe_pf_host_init(eth_dev);
+
+	ctrl_ext = rd32(hw, TXGBE_PORTCTL);
+	/* let hardware know driver is loaded */
+	ctrl_ext |= TXGBE_PORTCTL_DRVLOAD;
+	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
+	ctrl_ext |= TXGBE_PORTCTL_RSTDONE;
+	wr32(hw, TXGBE_PORTCTL, ctrl_ext);
+	txgbe_flush(hw);
 
 	if (txgbe_is_sfp(hw) && hw->phy.sfp_type != txgbe_sfp_type_not_present)
 		PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d, SFP+: %d",
@@ -1500,6 +1512,9 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	/* cancel the delay handler before remove dev */
 	rte_eal_alarm_cancel(txgbe_dev_interrupt_delayed_handler, dev);
+
+	/* uninitialize PF if max_vfs not zero */
+	txgbe_pf_host_uninit(dev);
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;

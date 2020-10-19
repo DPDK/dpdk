@@ -3,6 +3,7 @@
  */
 
 #include "txgbe_type.h"
+#include "txgbe_mbx.h"
 #include "txgbe_phy.h"
 #include "txgbe_eeprom.h"
 #include "txgbe_mng.h"
@@ -1701,6 +1702,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	struct txgbe_mac_info *mac = &hw->mac;
 	struct txgbe_phy_info *phy = &hw->phy;
 	struct txgbe_rom_info *rom = &hw->rom;
+	struct txgbe_mbx_info *mbx = &hw->mbx;
 
 	DEBUGFUNC("txgbe_init_ops_pf");
 
@@ -1761,6 +1763,8 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->set_fw_drv_ver = txgbe_hic_set_drv_ver;
 	mac->get_thermal_sensor_data = txgbe_get_thermal_sensor_data;
 	mac->init_thermal_sensor_thresh = txgbe_init_thermal_sensor_thresh;
+
+	mbx->init_params = txgbe_init_mbx_params_pf;
 
 	/* EEPROM */
 	rom->init_params = txgbe_init_eeprom_params;

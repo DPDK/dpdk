@@ -4,6 +4,7 @@
 sources = [
 	'txgbe_eeprom.c',
 	'txgbe_hw.c',
+	'txgbe_mbx.c',
 	'txgbe_mng.c',
 	'txgbe_phy.c',
 ]
