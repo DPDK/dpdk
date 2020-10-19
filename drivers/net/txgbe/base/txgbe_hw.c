@@ -8,6 +8,8 @@
 #include "txgbe_mng.h"
 #include "txgbe_hw.h"
 
+#define TXGBE_RAPTOR_MAX_TX_QUEUES 128
+#define TXGBE_RAPTOR_MAX_RX_QUEUES 128
 #define TXGBE_RAPTOR_RAR_ENTRIES   128
 
 /**
@@ -304,7 +306,6 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;
 	mac->reset_hw = txgbe_reset_hw;
-	mac->num_rar_entries	= TXGBE_RAPTOR_RAR_ENTRIES;
 
 	/* EEPROM */
 	rom->init_params = txgbe_init_eeprom_params;
@@ -319,6 +320,10 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	rom->validate_checksum = txgbe_validate_eeprom_checksum;
 	rom->update_checksum = txgbe_update_eeprom_checksum;
 	rom->calc_checksum = txgbe_calc_eeprom_checksum;
+
+	mac->num_rar_entries	= TXGBE_RAPTOR_RAR_ENTRIES;
+	mac->max_rx_queues	= TXGBE_RAPTOR_MAX_RX_QUEUES;
+	mac->max_tx_queues	= TXGBE_RAPTOR_MAX_TX_QUEUES;
 
 	return 0;
 }

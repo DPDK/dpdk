@@ -303,6 +303,8 @@ struct txgbe_mac_info {
 	u16 wwpn_prefix;
 
 	u32 num_rar_entries;
+	u32 max_tx_queues;
+	u32 max_rx_queues;
 
 	u8  san_mac_rar_index;
 	u64 orig_autoc;  /* cached value of AUTOC */
