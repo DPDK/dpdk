@@ -2740,8 +2740,12 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	phy->setup_link_speed = txgbe_setup_phy_link_speed;
 	phy->read_i2c_byte = txgbe_read_i2c_byte;
 	phy->write_i2c_byte = txgbe_write_i2c_byte;
+	phy->read_i2c_sff8472 = txgbe_read_i2c_sff8472;
 	phy->read_i2c_eeprom = txgbe_read_i2c_eeprom;
 	phy->write_i2c_eeprom = txgbe_write_i2c_eeprom;
+	phy->identify_sfp = txgbe_identify_module;
+	phy->read_i2c_byte_unlocked = txgbe_read_i2c_byte_unlocked;
+	phy->write_i2c_byte_unlocked = txgbe_write_i2c_byte_unlocked;
 	phy->reset = txgbe_reset_phy;
 
 	/* MAC */

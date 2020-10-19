@@ -354,6 +354,7 @@ s32 txgbe_setup_phy_link_tnx(struct txgbe_hw *hw);
 s32 txgbe_identify_module(struct txgbe_hw *hw);
 s32 txgbe_identify_sfp_module(struct txgbe_hw *hw);
 s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw);
+
 s32 txgbe_read_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
 				u8 dev_addr, u8 *data);
 s32 txgbe_read_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
@@ -362,6 +363,8 @@ s32 txgbe_write_i2c_byte(struct txgbe_hw *hw, u8 byte_offset,
 				 u8 dev_addr, u8 data);
 s32 txgbe_write_i2c_byte_unlocked(struct txgbe_hw *hw, u8 byte_offset,
 					  u8 dev_addr, u8 data);
+s32 txgbe_read_i2c_sff8472(struct txgbe_hw *hw, u8 byte_offset,
+					  u8 *sff8472_data);
 s32 txgbe_read_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 				  u8 *eeprom_data);
 s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
