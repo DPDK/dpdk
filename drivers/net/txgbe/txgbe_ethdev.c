@@ -3902,6 +3902,96 @@ txgbe_rss_update_sp(enum txgbe_mac_type mac_type)
 	}
 }
 
+static int
+txgbe_dev_get_dcb_info(struct rte_eth_dev *dev,
+			struct rte_eth_dcb_info *dcb_info)
+{
+	struct txgbe_dcb_config *dcb_config = TXGBE_DEV_DCB_CONFIG(dev);
+	struct txgbe_dcb_tc_config *tc;
+	struct rte_eth_dcb_tc_queue_mapping *tc_queue;
+	uint8_t nb_tcs;
+	uint8_t i, j;
+
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_DCB_FLAG)
+		dcb_info->nb_tcs = dcb_config->num_tcs.pg_tcs;
+	else
+		dcb_info->nb_tcs = 1;
+
+	tc_queue = &dcb_info->tc_queue;
+	nb_tcs = dcb_info->nb_tcs;
+
+	if (dcb_config->vt_mode) { /* vt is enabled */
+		struct rte_eth_vmdq_dcb_conf *vmdq_rx_conf =
+				&dev->data->dev_conf.rx_adv_conf.vmdq_dcb_conf;
+		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++)
+			dcb_info->prio_tc[i] = vmdq_rx_conf->dcb_tc[i];
+		if (RTE_ETH_DEV_SRIOV(dev).active > 0) {
+			for (j = 0; j < nb_tcs; j++) {
+				tc_queue->tc_rxq[0][j].base = j;
+				tc_queue->tc_rxq[0][j].nb_queue = 1;
+				tc_queue->tc_txq[0][j].base = j;
+				tc_queue->tc_txq[0][j].nb_queue = 1;
+			}
+		} else {
+			for (i = 0; i < vmdq_rx_conf->nb_queue_pools; i++) {
+				for (j = 0; j < nb_tcs; j++) {
+					tc_queue->tc_rxq[i][j].base =
+						i * nb_tcs + j;
+					tc_queue->tc_rxq[i][j].nb_queue = 1;
+					tc_queue->tc_txq[i][j].base =
+						i * nb_tcs + j;
+					tc_queue->tc_txq[i][j].nb_queue = 1;
+				}
+			}
+		}
+	} else { /* vt is disabled */
+		struct rte_eth_dcb_rx_conf *rx_conf =
+				&dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
+		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++)
+			dcb_info->prio_tc[i] = rx_conf->dcb_tc[i];
+		if (dcb_info->nb_tcs == ETH_4_TCS) {
+			for (i = 0; i < dcb_info->nb_tcs; i++) {
+				dcb_info->tc_queue.tc_rxq[0][i].base = i * 32;
+				dcb_info->tc_queue.tc_rxq[0][i].nb_queue = 16;
+			}
+			dcb_info->tc_queue.tc_txq[0][0].base = 0;
+			dcb_info->tc_queue.tc_txq[0][1].base = 64;
+			dcb_info->tc_queue.tc_txq[0][2].base = 96;
+			dcb_info->tc_queue.tc_txq[0][3].base = 112;
+			dcb_info->tc_queue.tc_txq[0][0].nb_queue = 64;
+			dcb_info->tc_queue.tc_txq[0][1].nb_queue = 32;
+			dcb_info->tc_queue.tc_txq[0][2].nb_queue = 16;
+			dcb_info->tc_queue.tc_txq[0][3].nb_queue = 16;
+		} else if (dcb_info->nb_tcs == ETH_8_TCS) {
+			for (i = 0; i < dcb_info->nb_tcs; i++) {
+				dcb_info->tc_queue.tc_rxq[0][i].base = i * 16;
+				dcb_info->tc_queue.tc_rxq[0][i].nb_queue = 16;
+			}
+			dcb_info->tc_queue.tc_txq[0][0].base = 0;
+			dcb_info->tc_queue.tc_txq[0][1].base = 32;
+			dcb_info->tc_queue.tc_txq[0][2].base = 64;
+			dcb_info->tc_queue.tc_txq[0][3].base = 80;
+			dcb_info->tc_queue.tc_txq[0][4].base = 96;
+			dcb_info->tc_queue.tc_txq[0][5].base = 104;
+			dcb_info->tc_queue.tc_txq[0][6].base = 112;
+			dcb_info->tc_queue.tc_txq[0][7].base = 120;
+			dcb_info->tc_queue.tc_txq[0][0].nb_queue = 32;
+			dcb_info->tc_queue.tc_txq[0][1].nb_queue = 32;
+			dcb_info->tc_queue.tc_txq[0][2].nb_queue = 16;
+			dcb_info->tc_queue.tc_txq[0][3].nb_queue = 16;
+			dcb_info->tc_queue.tc_txq[0][4].nb_queue = 8;
+			dcb_info->tc_queue.tc_txq[0][5].nb_queue = 8;
+			dcb_info->tc_queue.tc_txq[0][6].nb_queue = 8;
+			dcb_info->tc_queue.tc_txq[0][7].nb_queue = 8;
+		}
+	}
+	for (i = 0; i < dcb_info->nb_tcs; i++) {
+		tc = &dcb_config->tc_config[i];
+		dcb_info->tc_bws[i] = tc->path[TXGBE_DCB_TX_CONFIG].bwg_percent;
+	}
+	return 0;
+}
+
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_configure              = txgbe_dev_configure,
 	.dev_infos_get              = txgbe_dev_info_get,
@@ -3969,6 +4059,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.set_eeprom                 = txgbe_set_eeprom,
 	.get_module_info            = txgbe_get_module_info,
 	.get_module_eeprom          = txgbe_get_module_eeprom,
+	.get_dcb_info               = txgbe_dev_get_dcb_info,
 	.timesync_adjust_time       = txgbe_timesync_adjust_time,
 	.timesync_read_time         = txgbe_timesync_read_time,
 	.timesync_write_time        = txgbe_timesync_write_time,
