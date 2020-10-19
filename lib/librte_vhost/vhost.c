@@ -1260,7 +1260,12 @@ rte_vhost_avail_entries(int vid, uint16_t queue_id)
 	if (!dev)
 		return 0;
 
+	if (queue_id >= VHOST_MAX_VRING)
+		return 0;
+
 	vq = dev->virtqueue[queue_id];
+	if (!vq)
+		return 0;
 
 	rte_spinlock_lock(&vq->access_lock);
 
