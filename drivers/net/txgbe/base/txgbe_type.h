@@ -673,6 +673,8 @@ struct txgbe_hw {
 	void IOMEM *isb_mem;
 	u16 nb_rx_queues;
 	u16 nb_tx_queues;
+
+	u32 mode;
 	enum txgbe_link_status {
 		TXGBE_LINK_STATUS_NONE = 0,
 		TXGBE_LINK_STATUS_KX,
