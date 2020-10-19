@@ -366,5 +366,7 @@ s32 txgbe_read_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 				  u8 *eeprom_data);
 s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 				   u8 eeprom_data);
+u64 txgbe_autoc_read(struct txgbe_hw *hw);
+void txgbe_autoc_write(struct txgbe_hw *hw, u64 value);
 
 #endif /* _TXGBE_PHY_H_ */

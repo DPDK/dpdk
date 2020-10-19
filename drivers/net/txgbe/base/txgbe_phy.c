@@ -1370,3 +1370,862 @@ static void txgbe_i2c_stop(struct txgbe_hw *hw)
 	wr32(hw, TXGBE_I2CENA, 0);
 }
 
+static s32
+txgbe_set_sgmii_an37_ability(struct txgbe_hw *hw)
+{
+	u32 value;
+
+	wr32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1, 0x3002);
+	wr32_epcs(hw, SR_MII_MMD_AN_CTL, 0x0105);
+	wr32_epcs(hw, SR_MII_MMD_DIGI_CTL, 0x0200);
+	value = rd32_epcs(hw, SR_MII_MMD_CTL);
+	value = (value & ~0x1200) | (0x1 << 12) | (0x1 << 9);
+	wr32_epcs(hw, SR_MII_MMD_CTL, value);
+	return 0;
+}
+
+static s32
+txgbe_set_link_to_kr(struct txgbe_hw *hw, bool autoneg)
+{
+	u32 i;
+	s32 err = 0;
+
+	/* 1. Wait xpcs power-up good */
+	for (i = 0; i < 100; i++) {
+		if ((rd32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_STATUS) &
+			VR_XS_OR_PCS_MMD_DIGI_STATUS_PSEQ_MASK) ==
+			VR_XS_OR_PCS_MMD_DIGI_STATUS_PSEQ_POWER_GOOD)
+			break;
+		msec_delay(10);
+	}
+	if (i == 100) {
+		err = TXGBE_ERR_XPCS_POWER_UP_FAILED;
+		goto out;
+	}
+
+	if (!autoneg) {
+		/* 2. Disable xpcs AN-73 */
+		wr32_epcs(hw, SR_AN_CTRL, 0x0);
+		/* Disable PHY MPLLA for eth mode change(after ECO) */
+		wr32_ephy(hw, 0x4, 0x243A);
+		txgbe_flush(hw);
+		msec_delay(1);
+		/* Set the eth change_mode bit first in mis_rst register
+		 * for corresponding LAN port
+		 */
+		wr32(hw, TXGBE_RST, TXGBE_RST_ETH(hw->bus.lan_id));
+
+		/* 3. Set VR_XS_PMA_Gen5_12G_MPLLA_CTRL3 Register
+		 * Bit[10:0](MPLLA_BANDWIDTH) = 11'd123 (default: 11'd16)
+		 */
+		wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL3,
+			TXGBE_PHY_MPLLA_CTL3_MULTIPLIER_BW_10GBASER_KR);
+
+		/* 4. Set VR_XS_PMA_Gen5_12G_MISC_CTRL0 Register
+		 * Bit[12:8](RX_VREF_CTRL) = 5'hF (default: 5'h11)
+		 */
+		wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0xCF00);
+
+		/* 5. Set VR_XS_PMA_Gen5_12G_RX_EQ_CTRL0 Register
+		 * Bit[15:8](VGA1/2_GAIN_0) = 8'h77
+		 * Bit[7:5](CTLE_POLE_0) = 3'h2
+		 * Bit[4:0](CTLE_BOOST_0) = 4'hA
+		 */
+		wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0, 0x774A);
+
+		/* 6. Set VR_MII_Gen5_12G_RX_GENCTRL3 Register
+		 * Bit[2:0](LOS_TRSHLD_0) = 3'h4 (default: 3)
+		 */
+		wr32_epcs(hw, TXGBE_PHY_RX_GEN_CTL3, 0x0004);
+
+		/* 7. Initialize the mode by setting VR XS or PCS MMD Digital
+		 * Control1 Register Bit[15](VR_RST)
+		 */
+		wr32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1, 0xA000);
+
+		/* Wait phy initialization done */
+		for (i = 0; i < 100; i++) {
+			if ((rd32_epcs(hw,
+				VR_XS_OR_PCS_MMD_DIGI_CTL1) &
+				VR_XS_OR_PCS_MMD_DIGI_CTL1_VR_RST) == 0)
+				break;
+			msleep(100);
+		}
+		if (i == 100) {
+			err = TXGBE_ERR_PHY_INIT_NOT_DONE;
+			goto out;
+		}
+	} else {
+		wr32_epcs(hw, VR_AN_KR_MODE_CL, 0x1);
+	}
+out:
+	return err;
+}
+
+static s32
+txgbe_set_link_to_kx4(struct txgbe_hw *hw, bool autoneg)
+{
+	u32 i;
+	s32 err = 0;
+	u32 value;
+
+	/* Check link status, if already set, skip setting it again */
+	if (hw->link_status == TXGBE_LINK_STATUS_KX4)
+		goto out;
+
+	/* 1. Wait xpcs power-up good */
+	for (i = 0; i < 100; i++) {
+		if ((rd32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_STATUS) &
+			VR_XS_OR_PCS_MMD_DIGI_STATUS_PSEQ_MASK) ==
+			VR_XS_OR_PCS_MMD_DIGI_STATUS_PSEQ_POWER_GOOD)
+			break;
+		msec_delay(10);
+	}
+	if (i == 100) {
+		err = TXGBE_ERR_XPCS_POWER_UP_FAILED;
+		goto out;
+	}
+
+	wr32m(hw, TXGBE_MACTXCFG, TXGBE_MACTXCFG_TXE,
+			~TXGBE_MACTXCFG_TXE);
+
+	/* 2. Disable xpcs AN-73 */
+	if (!autoneg)
+		wr32_epcs(hw, SR_AN_CTRL, 0x0);
+	else
+		wr32_epcs(hw, SR_AN_CTRL, 0x3000);
+
+	/* Disable PHY MPLLA for eth mode change(after ECO) */
+	wr32_ephy(hw, 0x4, 0x250A);
+	txgbe_flush(hw);
+	msec_delay(1);
+
+	/* Set the eth change_mode bit first in mis_rst register
+	 * for corresponding LAN port
+	 */
+	wr32(hw, TXGBE_RST, TXGBE_RST_ETH(hw->bus.lan_id));
+
+	/* Set SR PCS Control2 Register Bits[1:0] = 2'b01
+	 * PCS_TYPE_SEL: non KR
+	 */
+	wr32_epcs(hw, SR_XS_PCS_CTRL2,
+			SR_PCS_CTRL2_TYPE_SEL_X);
+
+	/* Set SR PMA MMD Control1 Register Bit[13] = 1'b1
+	 * SS13: 10G speed
+	 */
+	wr32_epcs(hw, SR_PMA_CTRL1,
+			SR_PMA_CTRL1_SS13_KX4);
+
+	value = (0xf5f0 & ~0x7F0) |  (0x5 << 8) | (0x7 << 5) | 0x10;
+	wr32_epcs(hw, TXGBE_PHY_TX_GENCTRL1, value);
+
+	wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0x4F00);
+
+	value = (0x1804 & ~0x3F3F);
+	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+	value = (0x50 & ~0x7F) | 40 | (1 << 6);
+	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+
+	for (i = 0; i < 4; i++) {
+		if (i == 0)
+			value = (0x45 & ~0xFFFF) | (0x7 << 12) |
+				(0x7 << 8) | 0x6;
+		else
+			value = (0xff06 & ~0xFFFF) | (0x7 << 12) |
+				(0x7 << 8) | 0x6;
+		wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0 + i, value);
+	}
+
+	value = 0x0 & ~0x7777;
+	wr32_epcs(hw, TXGBE_PHY_RX_EQ_ATT_LVL0, value);
+
+	wr32_epcs(hw, TXGBE_PHY_DFE_TAP_CTL0, 0x0);
+
+	value = (0x6db & ~0xFFF) | (0x1 << 9) | (0x1 << 6) | (0x1 << 3) | 0x1;
+	wr32_epcs(hw, TXGBE_PHY_RX_GEN_CTL3, value);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY MPLLA
+	 * Control 0 Register Bit[7:0] = 8'd40  //MPLLA_MULTIPLIER
+	 */
+	wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL0,
+			TXGBE_PHY_MPLLA_CTL0_MULTIPLIER_OTHER);
+
+	/* Set VR XS, PMA or MII Gen5 12G PHY MPLLA
+	 * Control 3 Register Bit[10:0] = 11'd86  //MPLLA_BANDWIDTH
+	 */
+	wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL3,
+			TXGBE_PHY_MPLLA_CTL3_MULTIPLIER_BW_OTHER);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY VCO
+	 * Calibration Load 0 Register  Bit[12:0] = 13'd1360  //VCO_LD_VAL_0
+	 */
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD0,
+			TXGBE_PHY_VCO_CAL_LD0_OTHER);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY VCO
+	 * Calibration Load 1 Register  Bit[12:0] = 13'd1360  //VCO_LD_VAL_1
+	 */
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD1,
+			TXGBE_PHY_VCO_CAL_LD0_OTHER);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY VCO
+	 * Calibration Load 2 Register  Bit[12:0] = 13'd1360  //VCO_LD_VAL_2
+	 */
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD2,
+			TXGBE_PHY_VCO_CAL_LD0_OTHER);
+	/* Set VR XS, PMA, or MII Gen5 12G PHY VCO
+	 * Calibration Load 3 Register  Bit[12:0] = 13'd1360  //VCO_LD_VAL_3
+	 */
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD3,
+			TXGBE_PHY_VCO_CAL_LD0_OTHER);
+	/* Set VR XS, PMA, or MII Gen5 12G PHY VCO
+	 * Calibration Reference 0 Register Bit[5:0] = 6'd34  //VCO_REF_LD_0/1
+	 */
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_REF0, 0x2222);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY VCO
+	 * Calibration Reference 1 Register Bit[5:0] = 6'd34  //VCO_REF_LD_2/3
+	 */
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_REF1, 0x2222);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY AFE-DFE
+	 * Enable Register Bit[7:0] = 8'd0  //AFE_EN_0/3_1, DFE_EN_0/3_1
+	 */
+	wr32_epcs(hw, TXGBE_PHY_AFE_DFE_ENABLE, 0x0);
+
+	/* Set  VR XS, PMA, or MII Gen5 12G PHY Rx
+	 * Equalization Control 4 Register Bit[3:0] = 4'd0  //CONT_ADAPT_0/3_1
+	 */
+	wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL, 0x00F0);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Tx Rate
+	 * Control Register Bit[14:12], Bit[10:8], Bit[6:4], Bit[2:0],
+	 * all rates to 3'b010  //TX0/1/2/3_RATE
+	 */
+	wr32_epcs(hw, TXGBE_PHY_TX_RATE_CTL, 0x2222);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Rx Rate
+	 * Control Register Bit[13:12], Bit[9:8], Bit[5:4], Bit[1:0],
+	 * all rates to 2'b10  //RX0/1/2/3_RATE
+	 */
+	wr32_epcs(hw, TXGBE_PHY_RX_RATE_CTL, 0x2222);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Tx General
+	 * Control 2 Register Bit[15:8] = 2'b01  //TX0/1/2/3_WIDTH: 10bits
+	 */
+	wr32_epcs(hw, TXGBE_PHY_TX_GEN_CTL2, 0x5500);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Rx General
+	 * Control 2 Register Bit[15:8] = 2'b01  //RX0/1/2/3_WIDTH: 10bits
+	 */
+	wr32_epcs(hw, TXGBE_PHY_RX_GEN_CTL2, 0x5500);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY MPLLA Control
+	 * 2 Register Bit[10:8] = 3'b010
+	 * MPLLA_DIV16P5_CLK_EN=0, MPLLA_DIV10_CLK_EN=1, MPLLA_DIV8_CLK_EN=0
+	 */
+	wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL2,
+			TXGBE_PHY_MPLLA_CTL2_DIV_CLK_EN_10);
+
+	wr32_epcs(hw, 0x1f0000, 0x0);
+	wr32_epcs(hw, 0x1f8001, 0x0);
+	wr32_epcs(hw, SR_MII_MMD_DIGI_CTL, 0x0);
+
+	/* 10. Initialize the mode by setting VR XS or PCS MMD Digital Control1
+	 * Register Bit[15](VR_RST)
+	 */
+	wr32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1, 0xA000);
+
+	/* Wait phy initialization done */
+	for (i = 0; i < 100; i++) {
+		if ((rd32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1) &
+			VR_XS_OR_PCS_MMD_DIGI_CTL1_VR_RST) == 0)
+			break;
+		msleep(100);
+	}
+
+	/* If success, set link status */
+	hw->link_status = TXGBE_LINK_STATUS_KX4;
+
+	if (i == 100) {
+		err = TXGBE_ERR_PHY_INIT_NOT_DONE;
+		goto out;
+	}
+
+out:
+	return err;
+}
+
+static s32
+txgbe_set_link_to_kx(struct txgbe_hw *hw,
+			       u32 speed,
+			       bool autoneg)
+{
+	u32 i;
+	s32 err = 0;
+	u32 wdata = 0;
+	u32 value;
+
+	/* Check link status, if already set, skip setting it again */
+	if (hw->link_status == TXGBE_LINK_STATUS_KX)
+		goto out;
+
+	/* 1. Wait xpcs power-up good */
+	for (i = 0; i < 100; i++) {
+		if ((rd32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_STATUS) &
+			VR_XS_OR_PCS_MMD_DIGI_STATUS_PSEQ_MASK) ==
+			VR_XS_OR_PCS_MMD_DIGI_STATUS_PSEQ_POWER_GOOD)
+			break;
+		msec_delay(10);
+	}
+	if (i == 100) {
+		err = TXGBE_ERR_XPCS_POWER_UP_FAILED;
+		goto out;
+	}
+
+	wr32m(hw, TXGBE_MACTXCFG, TXGBE_MACTXCFG_TXE,
+				~TXGBE_MACTXCFG_TXE);
+
+	/* 2. Disable xpcs AN-73 */
+	if (!autoneg)
+		wr32_epcs(hw, SR_AN_CTRL, 0x0);
+	else
+		wr32_epcs(hw, SR_AN_CTRL, 0x3000);
+
+	/* Disable PHY MPLLA for eth mode change(after ECO) */
+	wr32_ephy(hw, 0x4, 0x240A);
+	txgbe_flush(hw);
+	msec_delay(1);
+
+	/* Set the eth change_mode bit first in mis_rst register
+	 * for corresponding LAN port
+	 */
+	wr32(hw, TXGBE_RST, TXGBE_RST_ETH(hw->bus.lan_id));
+
+	/* Set SR PCS Control2 Register Bits[1:0] = 2'b01
+	 * PCS_TYPE_SEL: non KR
+	 */
+	wr32_epcs(hw, SR_XS_PCS_CTRL2,
+			SR_PCS_CTRL2_TYPE_SEL_X);
+
+	/* Set SR PMA MMD Control1 Register Bit[13] = 1'b0
+	 * SS13: 1G speed
+	 */
+	wr32_epcs(hw, SR_PMA_CTRL1,
+			SR_PMA_CTRL1_SS13_KX);
+
+	/* Set SR MII MMD Control Register to corresponding speed: {Bit[6],
+	 * Bit[13]}=[2'b00,2'b01,2'b10]->[10M,100M,1G]
+	 */
+	if (speed == TXGBE_LINK_SPEED_100M_FULL)
+		wdata = 0x2100;
+	else if (speed == TXGBE_LINK_SPEED_1GB_FULL)
+		wdata = 0x0140;
+	else if (speed == TXGBE_LINK_SPEED_10M_FULL)
+		wdata = 0x0100;
+	wr32_epcs(hw, SR_MII_MMD_CTL,
+			wdata);
+
+	value = (0xf5f0 & ~0x710) |  (0x5 << 8);
+	wr32_epcs(hw, TXGBE_PHY_TX_GENCTRL1, value);
+
+	wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0x4F00);
+
+	value = (0x1804 & ~0x3F3F) | (24 << 8) | 4;
+	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+	value = (0x50 & ~0x7F) | 16 | (1 << 6);
+	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+
+	for (i = 0; i < 4; i++) {
+		if (i) {
+			value = 0xff06;
+		} else {
+			value = (0x45 & ~0xFFFF) | (0x7 << 12) |
+				(0x7 << 8) | 0x6;
+		}
+		wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0 + i, value);
+	}
+
+	value = 0x0 & ~0x7;
+	wr32_epcs(hw, TXGBE_PHY_RX_EQ_ATT_LVL0, value);
+
+	wr32_epcs(hw, TXGBE_PHY_DFE_TAP_CTL0, 0x0);
+
+	value = (0x6db & ~0x7) | 0x4;
+	wr32_epcs(hw, TXGBE_PHY_RX_GEN_CTL3, value);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY MPLLA Control
+	 * 0 Register Bit[7:0] = 8'd32  //MPLLA_MULTIPLIER
+	 */
+	wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL0,
+			TXGBE_PHY_MPLLA_CTL0_MULTIPLIER_1GBASEX_KX);
+
+	/* Set VR XS, PMA or MII Gen5 12G PHY MPLLA Control
+	 * 3 Register Bit[10:0] = 11'd70  //MPLLA_BANDWIDTH
+	 */
+	wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL3,
+			TXGBE_PHY_MPLLA_CTL3_MULTIPLIER_BW_1GBASEX_KX);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY VCO
+	 * Calibration Load 0 Register  Bit[12:0] = 13'd1344  //VCO_LD_VAL_0
+	 */
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD0,
+			TXGBE_PHY_VCO_CAL_LD0_1GBASEX_KX);
+
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD1, 0x549);
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD2, 0x549);
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD3, 0x549);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY VCO
+	 * Calibration Reference 0 Register Bit[5:0] = 6'd42  //VCO_REF_LD_0
+	 */
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_REF0,
+			TXGBE_PHY_VCO_CAL_REF0_LD0_1GBASEX_KX);
+
+	wr32_epcs(hw, TXGBE_PHY_VCO_CAL_REF1, 0x2929);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY AFE-DFE
+	 * Enable Register Bit[4], Bit[0] = 1'b0  //AFE_EN_0, DFE_EN_0
+	 */
+	wr32_epcs(hw, TXGBE_PHY_AFE_DFE_ENABLE,
+			0x0);
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Rx
+	 * Equalization Control 4 Register Bit[0] = 1'b0  //CONT_ADAPT_0
+	 */
+	wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL,
+			0x0010);
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Tx Rate
+	 * Control Register Bit[2:0] = 3'b011  //TX0_RATE
+	 */
+	wr32_epcs(hw, TXGBE_PHY_TX_RATE_CTL,
+			TXGBE_PHY_TX_RATE_CTL_TX0_RATE_1GBASEX_KX);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Rx Rate
+	 * Control Register Bit[2:0] = 3'b011 //RX0_RATE
+	 */
+	wr32_epcs(hw, TXGBE_PHY_RX_RATE_CTL,
+			TXGBE_PHY_RX_RATE_CTL_RX0_RATE_1GBASEX_KX);
+
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Tx General
+	 * Control 2 Register Bit[9:8] = 2'b01  //TX0_WIDTH: 10bits
+	 */
+	wr32_epcs(hw, TXGBE_PHY_TX_GEN_CTL2,
+			TXGBE_PHY_TX_GEN_CTL2_TX0_WIDTH_OTHER);
+	/* Set VR XS, PMA, or MII Gen5 12G PHY Rx General
+	 * Control 2 Register Bit[9:8] = 2'b01  //RX0_WIDTH: 10bits
+	 */
+	wr32_epcs(hw, TXGBE_PHY_RX_GEN_CTL2,
+			TXGBE_PHY_RX_GEN_CTL2_RX0_WIDTH_OTHER);
+	/* Set VR XS, PMA, or MII Gen5 12G PHY MPLLA Control
+	 * 2 Register Bit[10:8] = 3'b010   //MPLLA_DIV16P5_CLK_EN=0,
+	 * MPLLA_DIV10_CLK_EN=1, MPLLA_DIV8_CLK_EN=0
+	 */
+	wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL2,
+			TXGBE_PHY_MPLLA_CTL2_DIV_CLK_EN_10);
+
+	/* VR MII MMD AN Control Register Bit[8] = 1'b1 //MII_CTRL
+	 * Set to 8bit MII (required in 10M/100M SGMII)
+	 */
+	wr32_epcs(hw, SR_MII_MMD_AN_CTL,
+			0x0100);
+
+	/* 10. Initialize the mode by setting VR XS or PCS MMD Digital Control1
+	 * Register Bit[15](VR_RST)
+	 */
+	wr32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1, 0xA000);
+
+	/* Wait phy initialization done */
+	for (i = 0; i < 100; i++) {
+		if ((rd32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1) &
+			VR_XS_OR_PCS_MMD_DIGI_CTL1_VR_RST) == 0)
+			break;
+		msleep(100);
+	}
+
+	/* If success, set link status */
+	hw->link_status = TXGBE_LINK_STATUS_KX;
+
+	if (i == 100) {
+		err = TXGBE_ERR_PHY_INIT_NOT_DONE;
+		goto out;
+	}
+
+out:
+	return err;
+}
+
+static s32
+txgbe_set_link_to_sfi(struct txgbe_hw *hw,
+			       u32 speed)
+{
+	u32 i;
+	s32 err = 0;
+	u32 value = 0;
+
+	/* Set the module link speed */
+	hw->mac.set_rate_select_speed(hw, speed);
+	/* 1. Wait xpcs power-up good */
+	for (i = 0; i < 100; i++) {
+		if ((rd32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_STATUS) &
+			VR_XS_OR_PCS_MMD_DIGI_STATUS_PSEQ_MASK) ==
+			VR_XS_OR_PCS_MMD_DIGI_STATUS_PSEQ_POWER_GOOD)
+			break;
+		msec_delay(10);
+	}
+	if (i == 100) {
+		err = TXGBE_ERR_XPCS_POWER_UP_FAILED;
+		goto out;
+	}
+
+	wr32m(hw, TXGBE_MACTXCFG, TXGBE_MACTXCFG_TXE,
+			~TXGBE_MACTXCFG_TXE);
+
+	/* 2. Disable xpcs AN-73 */
+	wr32_epcs(hw, SR_AN_CTRL, 0x0);
+
+	/* Disable PHY MPLLA for eth mode change(after ECO) */
+	wr32_ephy(hw, 0x4, 0x243A);
+	txgbe_flush(hw);
+	msec_delay(1);
+	/* Set the eth change_mode bit first in mis_rst register
+	 * for corresponding LAN port
+	 */
+	wr32(hw, TXGBE_RST, TXGBE_RST_ETH(hw->bus.lan_id));
+
+	if (speed == TXGBE_LINK_SPEED_10GB_FULL) {
+		/* Set SR PCS Control2 Register Bits[1:0] = 2'b00
+		 * PCS_TYPE_SEL: KR
+		 */
+		wr32_epcs(hw, SR_XS_PCS_CTRL2, 0);
+		value = rd32_epcs(hw, SR_PMA_CTRL1);
+		value = value | 0x2000;
+		wr32_epcs(hw, SR_PMA_CTRL1, value);
+		/* Set VR_XS_PMA_Gen5_12G_MPLLA_CTRL0 Register Bit[7:0] = 8'd33
+		 * MPLLA_MULTIPLIER
+		 */
+		wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL0, 0x0021);
+		/* 3. Set VR_XS_PMA_Gen5_12G_MPLLA_CTRL3 Register
+		 * Bit[10:0](MPLLA_BANDWIDTH) = 11'd0
+		 */
+		wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL3, 0);
+		value = rd32_epcs(hw, TXGBE_PHY_TX_GENCTRL1);
+		value = (value & ~0x700) | 0x500;
+		wr32_epcs(hw, TXGBE_PHY_TX_GENCTRL1, value);
+		/* 4. Set VR_XS_PMA_Gen5_12G_MISC_CTRL0 Register
+		 * Bit[12:8](RX_VREF_CTRL) = 5'hF
+		 */
+		wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0xCF00);
+		/* Set VR_XS_PMA_Gen5_12G_VCO_CAL_LD0 Register
+		 * Bit[12:0] = 13'd1353  //VCO_LD_VAL_0
+		 */
+		wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD0, 0x0549);
+		/* Set VR_XS_PMA_Gen5_12G_VCO_CAL_REF0 Register
+		 * Bit[5:0] = 6'd41  //VCO_REF_LD_0
+		 */
+		wr32_epcs(hw, TXGBE_PHY_VCO_CAL_REF0, 0x0029);
+		/* Set VR_XS_PMA_Gen5_12G_TX_RATE_CTRL Register
+		 * Bit[2:0] = 3'b000  //TX0_RATE
+		 */
+		wr32_epcs(hw, TXGBE_PHY_TX_RATE_CTL, 0);
+		/* Set VR_XS_PMA_Gen5_12G_RX_RATE_CTRL Register
+		 * Bit[2:0] = 3'b000  //RX0_RATE
+		 */
+		wr32_epcs(hw, TXGBE_PHY_RX_RATE_CTL, 0);
+		/* Set VR_XS_PMA_Gen5_12G_TX_GENCTRL2 Register Bit[9:8] = 2'b11
+		 * TX0_WIDTH: 20bits
+		 */
+		wr32_epcs(hw, TXGBE_PHY_TX_GEN_CTL2, 0x0300);
+		/* Set VR_XS_PMA_Gen5_12G_RX_GENCTRL2 Register Bit[9:8] = 2'b11
+		 * RX0_WIDTH: 20bits
+		 */
+		wr32_epcs(hw, TXGBE_PHY_RX_GEN_CTL2, 0x0300);
+		/* Set VR_XS_PMA_Gen5_12G_MPLLA_CTRL2 Register
+		 * Bit[10:8] = 3'b110
+		 * MPLLA_DIV16P5_CLK_EN=1
+		 * MPLLA_DIV10_CLK_EN=1
+		 * MPLLA_DIV8_CLK_EN=0
+		 */
+		wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL2, 0x0600);
+		/* 5. Set VR_XS_PMA_Gen5_12G_TX_EQ_CTRL0 Register
+		 * Bit[13:8](TX_EQ_MAIN) = 6'd30, Bit[5:0](TX_EQ_PRE) = 6'd4
+		 */
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0);
+		value = (value & ~0x3F3F) | (24 << 8) | 4;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+		/* 6. Set VR_XS_PMA_Gen5_12G_TX_EQ_CTRL1 Register
+		 * Bit[6](TX_EQ_OVR_RIDE) = 1'b1, Bit[5:0](TX_EQ_POST) = 6'd36
+		 */
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
+		value = (value & ~0x7F) | 16 | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+		if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
+			hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1) {
+			/* 7. Set VR_XS_PMA_Gen5_12G_RX_EQ_CTRL0 Register
+			 * Bit[15:8](VGA1/2_GAIN_0) = 8'h77
+			 * Bit[7:5](CTLE_POLE_0) = 3'h2
+			 * Bit[4:0](CTLE_BOOST_0) = 4'hF
+			 */
+			wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0, 0x774F);
+
+		} else {
+			/* 7. Set VR_XS_PMA_Gen5_12G_RX_EQ_CTRL0 Register
+			 * Bit[15:8](VGA1/2_GAIN_0) = 8'h00
+			 * Bit[7:5](CTLE_POLE_0) = 3'h2
+			 * Bit[4:0](CTLE_BOOST_0) = 4'hA
+			 */
+			value = rd32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0);
+			value = (value & ~0xFFFF) | (2 << 5) | 0x05;
+			wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0, value);
+		}
+		value = rd32_epcs(hw, TXGBE_PHY_RX_EQ_ATT_LVL0);
+		value = (value & ~0x7) | 0x0;
+		wr32_epcs(hw, TXGBE_PHY_RX_EQ_ATT_LVL0, value);
+
+		if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
+			hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1) {
+			/* 8. Set VR_XS_PMA_Gen5_12G_DFE_TAP_CTRL0 Register
+			 * Bit[7:0](DFE_TAP1_0) = 8'd20
+			 */
+			wr32_epcs(hw, TXGBE_PHY_DFE_TAP_CTL0, 0x0014);
+			value = rd32_epcs(hw, TXGBE_PHY_AFE_DFE_ENABLE);
+			value = (value & ~0x11) | 0x11;
+			wr32_epcs(hw, TXGBE_PHY_AFE_DFE_ENABLE, value);
+		} else {
+			/* 8. Set VR_XS_PMA_Gen5_12G_DFE_TAP_CTRL0 Register
+			 * Bit[7:0](DFE_TAP1_0) = 8'd20
+			 */
+			wr32_epcs(hw, TXGBE_PHY_DFE_TAP_CTL0, 0xBE);
+			/* 9. Set VR_MII_Gen5_12G_AFE_DFE_EN_CTRL Register
+			 * Bit[4](DFE_EN_0) = 1'b0, Bit[0](AFE_EN_0) = 1'b0
+			 */
+			value = rd32_epcs(hw, TXGBE_PHY_AFE_DFE_ENABLE);
+			value = (value & ~0x11) | 0x0;
+			wr32_epcs(hw, TXGBE_PHY_AFE_DFE_ENABLE, value);
+		}
+		value = rd32_epcs(hw, TXGBE_PHY_RX_EQ_CTL);
+		value = value & ~0x1;
+		wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL, value);
+	} else {
+		/* Set SR PCS Control2 Register Bits[1:0] = 2'b00
+		 * PCS_TYPE_SEL: KR
+		 */
+		wr32_epcs(hw, SR_XS_PCS_CTRL2, 0x1);
+		/* Set SR PMA MMD Control1 Register Bit[13] = 1'b0
+		 * SS13: 1G speed
+		 */
+		wr32_epcs(hw, SR_PMA_CTRL1, 0x0000);
+		/* Set SR MII MMD Control Register to corresponding speed */
+		wr32_epcs(hw, SR_MII_MMD_CTL, 0x0140);
+
+		value = rd32_epcs(hw, TXGBE_PHY_TX_GENCTRL1);
+		value = (value & ~0x710) | 0x500;
+		wr32_epcs(hw, TXGBE_PHY_TX_GENCTRL1, value);
+		/* 4. Set VR_XS_PMA_Gen5_12G_MISC_CTRL0 Register
+		 * Bit[12:8](RX_VREF_CTRL) = 5'hF
+		 */
+		wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0xCF00);
+		/* 5. Set VR_XS_PMA_Gen5_12G_TX_EQ_CTRL0 Register
+		 * Bit[13:8](TX_EQ_MAIN) = 6'd30, Bit[5:0](TX_EQ_PRE) = 6'd4
+		 */
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0);
+		value = (value & ~0x3F3F) | (24 << 8) | 4;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+		/* 6. Set VR_XS_PMA_Gen5_12G_TX_EQ_CTRL1 Register Bit[6]
+		 * (TX_EQ_OVR_RIDE) = 1'b1, Bit[5:0](TX_EQ_POST) = 6'd36
+		 */
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
+		value = (value & ~0x7F) | 16 | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+		if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
+			hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1) {
+			wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0, 0x774F);
+		} else {
+			/* 7. Set VR_XS_PMA_Gen5_12G_RX_EQ_CTRL0 Register
+			 * Bit[15:8](VGA1/2_GAIN_0) = 8'h00
+			 * Bit[7:5](CTLE_POLE_0) = 3'h2
+			 * Bit[4:0](CTLE_BOOST_0) = 4'hA
+			 */
+			value = rd32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0);
+			value = (value & ~0xFFFF) | 0x7706;
+			wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0, value);
+		}
+		value = rd32_epcs(hw, TXGBE_PHY_RX_EQ_ATT_LVL0);
+		value = (value & ~0x7) | 0x0;
+		wr32_epcs(hw, TXGBE_PHY_RX_EQ_ATT_LVL0, value);
+		/* 8. Set VR_XS_PMA_Gen5_12G_DFE_TAP_CTRL0 Register
+		 * Bit[7:0](DFE_TAP1_0) = 8'd00
+		 */
+		wr32_epcs(hw, TXGBE_PHY_DFE_TAP_CTL0, 0x0);
+		/* 9. Set VR_MII_Gen5_12G_AFE_DFE_EN_CTRL Register
+		 * Bit[4](DFE_EN_0) = 1'b0, Bit[0](AFE_EN_0) = 1'b0
+		 */
+		value = rd32_epcs(hw, TXGBE_PHY_RX_GEN_CTL3);
+		value = (value & ~0x7) | 0x4;
+		wr32_epcs(hw, TXGBE_PHY_RX_GEN_CTL3, value);
+		wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL0, 0x0020);
+		wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL3, 0x0046);
+		wr32_epcs(hw, TXGBE_PHY_VCO_CAL_LD0, 0x0540);
+		wr32_epcs(hw, TXGBE_PHY_VCO_CAL_REF0, 0x002A);
+		wr32_epcs(hw, TXGBE_PHY_AFE_DFE_ENABLE, 0x0);
+		wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL, 0x0010);
+		wr32_epcs(hw, TXGBE_PHY_TX_RATE_CTL, 0x0003);
+		wr32_epcs(hw, TXGBE_PHY_RX_RATE_CTL, 0x0003);
+		wr32_epcs(hw, TXGBE_PHY_TX_GEN_CTL2, 0x0100);
+		wr32_epcs(hw, TXGBE_PHY_RX_GEN_CTL2, 0x0100);
+		wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL2, 0x0200);
+		wr32_epcs(hw, SR_MII_MMD_AN_CTL, 0x0100);
+	}
+	/* 10. Initialize the mode by setting VR XS or PCS MMD Digital Control1
+	 * Register Bit[15](VR_RST)
+	 */
+	wr32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1, 0xA000);
+
+	/* Wait phy initialization done */
+	for (i = 0; i < 100; i++) {
+		if ((rd32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_CTL1) &
+			VR_XS_OR_PCS_MMD_DIGI_CTL1_VR_RST) == 0)
+			break;
+		msleep(100);
+	}
+	if (i == 100) {
+		err = TXGBE_ERR_PHY_INIT_NOT_DONE;
+		goto out;
+	}
+
+out:
+	return err;
+}
+
+/**
+ *  txgbe_autoc_read - Hides MAC differences needed for AUTOC read
+ *  @hw: pointer to hardware structure
+ */
+u64 txgbe_autoc_read(struct txgbe_hw *hw)
+{
+	u64 autoc = 0;
+	u32 sr_pcs_ctl;
+	u32 sr_pma_ctl1;
+	u32 sr_an_ctl;
+	u32 sr_an_adv_reg2;
+
+	if (hw->phy.multispeed_fiber) {
+		autoc |= TXGBE_AUTOC_LMS_10G;
+	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_SFP ||
+		   hw->device_id == TXGBE_DEV_ID_WX1820_SFP) {
+		autoc |= TXGBE_AUTOC_LMS_10G |
+			 TXGBE_AUTOC_10GS_SFI;
+	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_QSFP) {
+		autoc = 0; /*TBD*/
+	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_XAUI) {
+		autoc |= TXGBE_AUTOC_LMS_10G_LINK_NO_AN |
+			 TXGBE_AUTOC_10G_XAUI;
+		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_10GBASE_T;
+	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_SGMII) {
+		autoc |= TXGBE_AUTOC_LMS_SGMII_1G_100M;
+		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_1000BASE_T |
+				TXGBE_PHYSICAL_LAYER_100BASE_TX;
+	}
+
+	if (hw->device_id != TXGBE_DEV_ID_RAPTOR_SGMII)
+		return autoc;
+
+	sr_pcs_ctl = rd32_epcs(hw, SR_XS_PCS_CTRL2);
+	sr_pma_ctl1 = rd32_epcs(hw, SR_PMA_CTRL1);
+	sr_an_ctl = rd32_epcs(hw, SR_AN_CTRL);
+	sr_an_adv_reg2 = rd32_epcs(hw, SR_AN_MMD_ADV_REG2);
+
+	if ((sr_pcs_ctl & SR_PCS_CTRL2_TYPE_SEL) == SR_PCS_CTRL2_TYPE_SEL_X &&
+	    (sr_pma_ctl1 & SR_PMA_CTRL1_SS13) == SR_PMA_CTRL1_SS13_KX &&
+	    (sr_an_ctl & SR_AN_CTRL_AN_EN) == 0) {
+		/* 1G or KX - no backplane auto-negotiation */
+		autoc |= TXGBE_AUTOC_LMS_1G_LINK_NO_AN |
+			 TXGBE_AUTOC_1G_KX;
+		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_1000BASE_KX;
+	} else if ((sr_pcs_ctl & SR_PCS_CTRL2_TYPE_SEL) ==
+		SR_PCS_CTRL2_TYPE_SEL_X &&
+		(sr_pma_ctl1 & SR_PMA_CTRL1_SS13) == SR_PMA_CTRL1_SS13_KX4 &&
+		(sr_an_ctl & SR_AN_CTRL_AN_EN) == 0) {
+		autoc |= TXGBE_AUTOC_LMS_10G |
+			 TXGBE_AUTOC_10G_KX4;
+		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_10GBASE_KX4;
+	} else if ((sr_pcs_ctl & SR_PCS_CTRL2_TYPE_SEL) ==
+		SR_PCS_CTRL2_TYPE_SEL_R &&
+		(sr_an_ctl & SR_AN_CTRL_AN_EN) == 0) {
+		/* 10 GbE serial link (KR -no backplane auto-negotiation) */
+		autoc |= TXGBE_AUTOC_LMS_10G |
+			 TXGBE_AUTOC_10GS_KR;
+		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_10GBASE_KR;
+	} else if ((sr_an_ctl & SR_AN_CTRL_AN_EN)) {
+		/* KX/KX4/KR backplane auto-negotiation enable */
+		if (sr_an_adv_reg2 & SR_AN_MMD_ADV_REG2_BP_TYPE_KR)
+			autoc |= TXGBE_AUTOC_10G_KR;
+		if (sr_an_adv_reg2 & SR_AN_MMD_ADV_REG2_BP_TYPE_KX4)
+			autoc |= TXGBE_AUTOC_10G_KX4;
+		if (sr_an_adv_reg2 & SR_AN_MMD_ADV_REG2_BP_TYPE_KX)
+			autoc |= TXGBE_AUTOC_1G_KX;
+		autoc |= TXGBE_AUTOC_LMS_KX4_KX_KR;
+		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_10GBASE_KR |
+				TXGBE_PHYSICAL_LAYER_10GBASE_KX4 |
+				TXGBE_PHYSICAL_LAYER_1000BASE_KX;
+	}
+
+	return autoc;
+}
+
+/**
+ * txgbe_autoc_write - Hides MAC differences needed for AUTOC write
+ * @hw: pointer to hardware structure
+ * @autoc: value to write to AUTOC
+ */
+void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
+{
+	bool autoneg;
+	u32 speed;
+	u32 mactxcfg = 0;
+
+	speed = TXGBE_AUTOC_SPEED(autoc);
+	autoc &= ~TXGBE_AUTOC_SPEED_MASK;
+	autoneg = (autoc & TXGBE_AUTOC_AUTONEG ? true : false);
+	autoc &= ~TXGBE_AUTOC_AUTONEG;
+
+	if (hw->device_id == TXGBE_DEV_ID_RAPTOR_KR_KX_KX4) {
+		if (!autoneg) {
+			switch (hw->phy.link_mode) {
+			case TXGBE_PHYSICAL_LAYER_10GBASE_KR:
+				txgbe_set_link_to_kr(hw, autoneg);
+				break;
+			case TXGBE_PHYSICAL_LAYER_10GBASE_KX4:
+				txgbe_set_link_to_kx4(hw, autoneg);
+				break;
+			case TXGBE_PHYSICAL_LAYER_1000BASE_KX:
+				txgbe_set_link_to_kx(hw, speed, autoneg);
+				break;
+			default:
+				return;
+			}
+		}
+	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_XAUI ||
+		   hw->device_id == TXGBE_DEV_ID_RAPTOR_SGMII) {
+		if (speed == TXGBE_LINK_SPEED_10GB_FULL) {
+			txgbe_set_link_to_kx4(hw, autoneg);
+		} else {
+			txgbe_set_link_to_kx(hw, speed, 0);
+			txgbe_set_sgmii_an37_ability(hw);
+		}
+	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_SFP ||
+		   hw->device_id == TXGBE_DEV_ID_WX1820_SFP) {
+		txgbe_set_link_to_sfi(hw, speed);
+	}
+
+	if (speed == TXGBE_LINK_SPEED_10GB_FULL)
+		mactxcfg = TXGBE_MACTXCFG_SPEED_10G;
+	else if (speed == TXGBE_LINK_SPEED_1GB_FULL)
+		mactxcfg = TXGBE_MACTXCFG_SPEED_1G;
+
+	/* enable mac transmitter */
+	wr32m(hw, TXGBE_MACTXCFG, TXGBE_MACTXCFG_SPEED_MASK, mactxcfg);
+}
+

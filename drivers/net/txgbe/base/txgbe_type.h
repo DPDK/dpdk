@@ -14,6 +14,26 @@
 #include "txgbe_osdep.h"
 #include "txgbe_devids.h"
 
+/* Physical layer type */
+#define TXGBE_PHYSICAL_LAYER_UNKNOWN		0
+#define TXGBE_PHYSICAL_LAYER_10GBASE_T		0x00001
+#define TXGBE_PHYSICAL_LAYER_1000BASE_T		0x00002
+#define TXGBE_PHYSICAL_LAYER_100BASE_TX		0x00004
+#define TXGBE_PHYSICAL_LAYER_SFP_PLUS_CU	0x00008
+#define TXGBE_PHYSICAL_LAYER_10GBASE_LR		0x00010
+#define TXGBE_PHYSICAL_LAYER_10GBASE_LRM	0x00020
+#define TXGBE_PHYSICAL_LAYER_10GBASE_SR		0x00040
+#define TXGBE_PHYSICAL_LAYER_10GBASE_KX4	0x00080
+#define TXGBE_PHYSICAL_LAYER_10GBASE_CX4	0x00100
+#define TXGBE_PHYSICAL_LAYER_1000BASE_KX	0x00200
+#define TXGBE_PHYSICAL_LAYER_1000BASE_BX	0x00400
+#define TXGBE_PHYSICAL_LAYER_10GBASE_KR		0x00800
+#define TXGBE_PHYSICAL_LAYER_10GBASE_XAUI	0x01000
+#define TXGBE_PHYSICAL_LAYER_SFP_ACTIVE_DA	0x02000
+#define TXGBE_PHYSICAL_LAYER_1000BASE_SX	0x04000
+#define TXGBE_PHYSICAL_LAYER_10BASE_T		0x08000
+#define TXGBE_PHYSICAL_LAYER_2500BASE_KX	0x10000
+
 enum txgbe_eeprom_type {
 	txgbe_eeprom_unknown = 0,
 	txgbe_eeprom_spi,
@@ -378,6 +398,7 @@ struct txgbe_phy_info {
 	bool multispeed_fiber;
 	bool qsfp_shared_i2c_bus;
 	u32 nw_mng_if_sel;
+	u32 link_mode;
 };
 
 struct txgbe_mbx_info {

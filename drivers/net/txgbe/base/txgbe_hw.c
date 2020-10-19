@@ -615,6 +615,8 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;
 	mac->reset_hw = txgbe_reset_hw;
+	mac->autoc_read = txgbe_autoc_read;
+	mac->autoc_write = txgbe_autoc_write;
 
 	/* Link */
 	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;
