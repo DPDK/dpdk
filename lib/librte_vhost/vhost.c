@@ -1352,7 +1352,12 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 	if (!dev)
 		return -1;
 
+	if (queue_id >= VHOST_MAX_VRING)
+		return -1;
+
 	vq = dev->virtqueue[queue_id];
+	if (!vq)
+		return -1;
 
 	rte_spinlock_lock(&vq->access_lock);
 
