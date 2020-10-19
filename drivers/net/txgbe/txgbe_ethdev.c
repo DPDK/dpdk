@@ -299,6 +299,200 @@ static struct rte_pci_driver rte_txgbe_pmd = {
 	.remove = eth_txgbe_pci_remove,
 };
 
+static int
+txgbe_check_vf_rss_rxq_num(struct rte_eth_dev *dev, uint16_t nb_rx_q)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+
+	switch (nb_rx_q) {
+	case 1:
+	case 2:
+		RTE_ETH_DEV_SRIOV(dev).active = ETH_64_POOLS;
+		break;
+	case 4:
+		RTE_ETH_DEV_SRIOV(dev).active = ETH_32_POOLS;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool =
+		TXGBE_MAX_RX_QUEUE_NUM / RTE_ETH_DEV_SRIOV(dev).active;
+	RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx =
+		pci_dev->max_vfs * RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+	return 0;
+}
+
+static int
+txgbe_check_mq_mode(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	uint16_t nb_rx_q = dev->data->nb_rx_queues;
+	uint16_t nb_tx_q = dev->data->nb_tx_queues;
+
+	if (RTE_ETH_DEV_SRIOV(dev).active != 0) {
+		/* check multi-queue mode */
+		switch (dev_conf->rxmode.mq_mode) {
+		case ETH_MQ_RX_VMDQ_DCB:
+			PMD_INIT_LOG(INFO, "ETH_MQ_RX_VMDQ_DCB mode supported in SRIOV");
+			break;
+		case ETH_MQ_RX_VMDQ_DCB_RSS:
+			/* DCB/RSS VMDQ in SRIOV mode, not implement yet */
+			PMD_INIT_LOG(ERR, "SRIOV active,"
+					" unsupported mq_mode rx %d.",
+					dev_conf->rxmode.mq_mode);
+			return -EINVAL;
+		case ETH_MQ_RX_RSS:
+		case ETH_MQ_RX_VMDQ_RSS:
+			dev->data->dev_conf.rxmode.mq_mode = ETH_MQ_RX_VMDQ_RSS;
+			if (nb_rx_q <= RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool)
+				if (txgbe_check_vf_rss_rxq_num(dev, nb_rx_q)) {
+					PMD_INIT_LOG(ERR, "SRIOV is active,"
+						" invalid queue number"
+						" for VMDQ RSS, allowed"
+						" value are 1, 2 or 4.");
+					return -EINVAL;
+				}
+			break;
+		case ETH_MQ_RX_VMDQ_ONLY:
+		case ETH_MQ_RX_NONE:
+			/* if nothing mq mode configure, use default scheme */
+			dev->data->dev_conf.rxmode.mq_mode =
+				ETH_MQ_RX_VMDQ_ONLY;
+			break;
+		default: /* ETH_MQ_RX_DCB, ETH_MQ_RX_DCB_RSS or ETH_MQ_TX_DCB*/
+			/* SRIOV only works in VMDq enable mode */
+			PMD_INIT_LOG(ERR, "SRIOV is active,"
+					" wrong mq_mode rx %d.",
+					dev_conf->rxmode.mq_mode);
+			return -EINVAL;
+		}
+
+		switch (dev_conf->txmode.mq_mode) {
+		case ETH_MQ_TX_VMDQ_DCB:
+			PMD_INIT_LOG(INFO, "ETH_MQ_TX_VMDQ_DCB mode supported in SRIOV");
+			dev->data->dev_conf.txmode.mq_mode = ETH_MQ_TX_VMDQ_DCB;
+			break;
+		default: /* ETH_MQ_TX_VMDQ_ONLY or ETH_MQ_TX_NONE */
+			dev->data->dev_conf.txmode.mq_mode =
+				ETH_MQ_TX_VMDQ_ONLY;
+			break;
+		}
+
+		/* check valid queue number */
+		if ((nb_rx_q > RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool) ||
+		    (nb_tx_q > RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool)) {
+			PMD_INIT_LOG(ERR, "SRIOV is active,"
+					" nb_rx_q=%d nb_tx_q=%d queue number"
+					" must be less than or equal to %d.",
+					nb_rx_q, nb_tx_q,
+					RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool);
+			return -EINVAL;
+		}
+	} else {
+		if (dev_conf->rxmode.mq_mode == ETH_MQ_RX_VMDQ_DCB_RSS) {
+			PMD_INIT_LOG(ERR, "VMDQ+DCB+RSS mq_mode is"
+					  " not supported.");
+			return -EINVAL;
+		}
+		/* check configuration for vmdb+dcb mode */
+		if (dev_conf->rxmode.mq_mode == ETH_MQ_RX_VMDQ_DCB) {
+			const struct rte_eth_vmdq_dcb_conf *conf;
+
+			if (nb_rx_q != TXGBE_VMDQ_DCB_NB_QUEUES) {
+				PMD_INIT_LOG(ERR, "VMDQ+DCB, nb_rx_q != %d.",
+						TXGBE_VMDQ_DCB_NB_QUEUES);
+				return -EINVAL;
+			}
+			conf = &dev_conf->rx_adv_conf.vmdq_dcb_conf;
+			if (!(conf->nb_queue_pools == ETH_16_POOLS ||
+			       conf->nb_queue_pools == ETH_32_POOLS)) {
+				PMD_INIT_LOG(ERR, "VMDQ+DCB selected,"
+						" nb_queue_pools must be %d or %d.",
+						ETH_16_POOLS, ETH_32_POOLS);
+				return -EINVAL;
+			}
+		}
+		if (dev_conf->txmode.mq_mode == ETH_MQ_TX_VMDQ_DCB) {
+			const struct rte_eth_vmdq_dcb_tx_conf *conf;
+
+			if (nb_tx_q != TXGBE_VMDQ_DCB_NB_QUEUES) {
+				PMD_INIT_LOG(ERR, "VMDQ+DCB, nb_tx_q != %d",
+						 TXGBE_VMDQ_DCB_NB_QUEUES);
+				return -EINVAL;
+			}
+			conf = &dev_conf->tx_adv_conf.vmdq_dcb_tx_conf;
+			if (!(conf->nb_queue_pools == ETH_16_POOLS ||
+			       conf->nb_queue_pools == ETH_32_POOLS)) {
+				PMD_INIT_LOG(ERR, "VMDQ+DCB selected,"
+						" nb_queue_pools != %d and"
+						" nb_queue_pools != %d.",
+						ETH_16_POOLS, ETH_32_POOLS);
+				return -EINVAL;
+			}
+		}
+
+		/* For DCB mode check our configuration before we go further */
+		if (dev_conf->rxmode.mq_mode == ETH_MQ_RX_DCB) {
+			const struct rte_eth_dcb_rx_conf *conf;
+
+			conf = &dev_conf->rx_adv_conf.dcb_rx_conf;
+			if (!(conf->nb_tcs == ETH_4_TCS ||
+			       conf->nb_tcs == ETH_8_TCS)) {
+				PMD_INIT_LOG(ERR, "DCB selected, nb_tcs != %d"
+						" and nb_tcs != %d.",
+						ETH_4_TCS, ETH_8_TCS);
+				return -EINVAL;
+			}
+		}
+
+		if (dev_conf->txmode.mq_mode == ETH_MQ_TX_DCB) {
+			const struct rte_eth_dcb_tx_conf *conf;
+
+			conf = &dev_conf->tx_adv_conf.dcb_tx_conf;
+			if (!(conf->nb_tcs == ETH_4_TCS ||
+			       conf->nb_tcs == ETH_8_TCS)) {
+				PMD_INIT_LOG(ERR, "DCB selected, nb_tcs != %d"
+						" and nb_tcs != %d.",
+						ETH_4_TCS, ETH_8_TCS);
+				return -EINVAL;
+			}
+		}
+	}
+	return 0;
+}
+
+static int
+txgbe_dev_configure(struct rte_eth_dev *dev)
+{
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
+	/* multiple queue mode checking */
+	ret  = txgbe_check_mq_mode(dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "txgbe_check_mq_mode fails with %d.",
+			    ret);
+		return ret;
+	}
+
+	/* set flag to update link status after init */
+	intr->flags |= TXGBE_FLAG_NEED_LINK_UPDATE;
+
+	/*
+	 * Initialize to TRUE. If any of Rx queues doesn't meet the bulk
+	 * allocation Rx preconditions we will reset it.
+	 */
+	adapter->rx_bulk_alloc_allowed = true;
+
+	return 0;
+}
 
 static void
 txgbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
@@ -806,6 +1000,7 @@ txgbe_configure_msix(struct rte_eth_dev *dev)
 }
 
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
+	.dev_configure              = txgbe_dev_configure,
 	.dev_infos_get              = txgbe_dev_info_get,
 };
 

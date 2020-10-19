@@ -10,6 +10,7 @@ for Wangxun 10 Gigabit Ethernet NICs.
 Features
 --------
 
+- Multiple queues for TX and RX
 - Link state information
 
 Prerequisites

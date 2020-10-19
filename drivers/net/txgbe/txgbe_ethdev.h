@@ -19,6 +19,9 @@
  * FreeBSD driver.
  */
 #define TXGBE_HKEY_MAX_INDEX 10
+/*Default value of Max Rx Queue*/
+#define TXGBE_MAX_RX_QUEUE_NUM	128
+#define TXGBE_VMDQ_DCB_NB_QUEUES     TXGBE_MAX_RX_QUEUE_NUM
 
 #define TXGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
 
@@ -51,7 +54,11 @@ struct txgbe_interrupt {
 struct txgbe_adapter {
 	struct txgbe_hw             hw;
 	struct txgbe_interrupt      intr;
+	bool rx_bulk_alloc_allowed;
 };
+
+#define TXGBE_DEV_ADAPTER(dev) \
+		((struct txgbe_adapter *)(dev)->data->dev_private)
 
 #define TXGBE_DEV_HW(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->hw)
