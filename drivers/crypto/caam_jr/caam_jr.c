@@ -2388,6 +2388,8 @@ init_error:
 static int
 cryptodev_caam_jr_probe(struct rte_vdev_device *vdev)
 {
+	int ret;
+
 	struct rte_cryptodev_pmd_init_params init_params = {
 		"",
 		sizeof(struct sec_job_ring_t),
@@ -2404,6 +2406,12 @@ cryptodev_caam_jr_probe(struct rte_vdev_device *vdev)
 	input_args = rte_vdev_device_args(vdev);
 	rte_cryptodev_pmd_parse_input_args(&init_params, input_args);
 
+	ret = of_init();
+	if (ret) {
+		RTE_LOG(ERR, PMD,
+		"of_init failed\n");
+		return -EINVAL;
+	}
 	/* if sec device version is not configured */
 	if (!rta_get_sec_era()) {
 		const struct device_node *caam_node;
@@ -2414,7 +2422,7 @@ cryptodev_caam_jr_probe(struct rte_vdev_device *vdev)
 					NULL);
 			if (prop) {
 				rta_set_sec_era(
-					INTL_SEC_ERA(cpu_to_caam32(*prop)));
+					INTL_SEC_ERA(rte_be_to_cpu_32(*prop)));
 				break;
 			}
 		}
