@@ -28,6 +28,22 @@ static const struct rte_pci_id pci_id_txgbe_map[] = {
 
 static const struct eth_dev_ops txgbe_eth_dev_ops;
 
+static inline int
+txgbe_is_sfp(struct txgbe_hw *hw)
+{
+	switch (hw->phy.type) {
+	case txgbe_phy_sfp_avago:
+	case txgbe_phy_sfp_ftl:
+	case txgbe_phy_sfp_intel:
+	case txgbe_phy_sfp_unknown:
+	case txgbe_phy_sfp_tyco_passive:
+	case txgbe_phy_sfp_unknown_passive:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 static int
 eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
@@ -35,6 +51,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	const struct rte_memzone *mz;
+	int err;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -56,6 +73,13 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	hw->isb_dma = TMZ_PADDR(mz);
 	hw->isb_mem = TMZ_VADDR(mz);
+
+	/* Initialize the shared code (base driver) */
+	err = txgbe_init_shared_code(hw);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Shared code init failed: %d", err);
+		return -EIO;
+	}
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("txgbe", RTE_ETHER_ADDR_LEN *
@@ -81,6 +105,14 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 			     RTE_ETHER_ADDR_LEN * TXGBE_VMDQ_NUM_UC_MAC);
 		return -ENOMEM;
 	}
+
+	if (txgbe_is_sfp(hw) && hw->phy.sfp_type != txgbe_sfp_type_not_present)
+		PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d, SFP+: %d",
+			     (int)hw->mac.type, (int)hw->phy.type,
+			     (int)hw->phy.sfp_type);
+	else
+		PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d",
+			     (int)hw->mac.type, (int)hw->phy.type);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
