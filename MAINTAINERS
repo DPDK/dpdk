@@ -870,6 +870,13 @@ F: drivers/net/sfc/
 F: doc/guides/nics/sfc_efx.rst
 F: doc/guides/nics/features/sfc_efx.ini
 
+Wangxun txgbe
+M: Jiawen Wu <jiawenwu@trustnetic.com>
+M: Jian Wang <jianwang@trustnetic.com>
+F: drivers/net/txgbe/
+F: doc/guides/nics/txgbe.rst
+F: doc/guides/nics/features/txgbe.ini
+
 VMware vmxnet3
 M: Yong Wang <yongwang@vmware.com>
 F: drivers/net/vmxnet3/

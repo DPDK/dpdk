@@ -191,6 +191,12 @@ New Features
   * Added Alveo SN1000 SmartNICs (EF100 architecture) support including
     flow API transfer rules for switch HW offload
 
+* **Added Wangxun txgbe PMD.**
+
+  Added a new PMD driver for Wangxun 10 Gigabit Ethernet NICs.
+
+  See the :doc:`../nics/txgbe` for more details.
+
 * **Updated Virtio driver.**
 
   * Added support for Vhost-vDPA backend to Virtio-user PMD.
