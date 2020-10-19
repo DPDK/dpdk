@@ -336,6 +336,43 @@ txgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static void
+txgbe_dcb_init(struct txgbe_hw *hw, struct txgbe_dcb_config *dcb_config)
+{
+	int i;
+	u8 bwgp;
+	struct txgbe_dcb_tc_config *tc;
+
+	UNREFERENCED_PARAMETER(hw);
+
+	dcb_config->num_tcs.pg_tcs = TXGBE_DCB_TC_MAX;
+	dcb_config->num_tcs.pfc_tcs = TXGBE_DCB_TC_MAX;
+	bwgp = (u8)(100 / TXGBE_DCB_TC_MAX);
+	for (i = 0; i < TXGBE_DCB_TC_MAX; i++) {
+		tc = &dcb_config->tc_config[i];
+		tc->path[TXGBE_DCB_TX_CONFIG].bwg_id = i;
+		tc->path[TXGBE_DCB_TX_CONFIG].bwg_percent = bwgp + (i & 1);
+		tc->path[TXGBE_DCB_RX_CONFIG].bwg_id = i;
+		tc->path[TXGBE_DCB_RX_CONFIG].bwg_percent = bwgp + (i & 1);
+		tc->pfc = txgbe_dcb_pfc_disabled;
+	}
+
+	/* Initialize default user to priority mapping, UPx->TC0 */
+	tc = &dcb_config->tc_config[0];
+	tc->path[TXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = 0xFF;
+	tc->path[TXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = 0xFF;
+	for (i = 0; i < TXGBE_DCB_BWG_MAX; i++) {
+		dcb_config->bw_percentage[i][TXGBE_DCB_TX_CONFIG] = 100;
+		dcb_config->bw_percentage[i][TXGBE_DCB_RX_CONFIG] = 100;
+	}
+	dcb_config->rx_pba_cfg = txgbe_dcb_pba_equal;
+	dcb_config->pfc_mode_enable = false;
+	dcb_config->vt_mode = true;
+	dcb_config->round_robin_enable = false;
+	/* support all DCB capabilities */
+	dcb_config->support.capabilities = 0xFF;
+}
+
 /*
  * Ensure that all locks are released before first NVM or PHY access
  */
@@ -366,6 +403,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
 	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(eth_dev);
 	struct txgbe_hwstrip *hwstrip = TXGBE_DEV_HWSTRIP(eth_dev);
+	struct txgbe_dcb_config *dcb_config = TXGBE_DEV_DCB_CONFIG(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	const struct rte_memzone *mz;
 	uint32_t ctrl_ext;
@@ -430,6 +468,10 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* Unlock any pending hardware semaphore */
 	txgbe_swfw_lock_reset(hw);
+
+	/* Initialize DCB configuration*/
+	memset(dcb_config, 0, sizeof(struct txgbe_dcb_config));
+	txgbe_dcb_init(hw, dcb_config);
 
 	err = hw->rom.init_params(hw);
 	if (err != 0) {
@@ -1345,6 +1387,11 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 		/* Enable vlan filtering for VMDq */
 		txgbe_vmdq_vlan_hw_filter_enable(dev);
 	}
+
+	/* Configure DCB hw */
+	txgbe_configure_pb(dev);
+	txgbe_configure_port(dev);
+	txgbe_configure_dcb(dev);
 
 	/* Restore vf rate limit */
 	if (vfinfo != NULL) {

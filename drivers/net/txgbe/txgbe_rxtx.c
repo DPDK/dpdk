@@ -2731,6 +2731,651 @@ txgbe_rss_configure(struct rte_eth_dev *dev)
 }
 
 #define NUM_VFTA_REGISTERS 128
+#define NIC_RX_BUFFER_SIZE 0x200
+
+static void
+txgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_vmdq_dcb_conf *cfg;
+	struct txgbe_hw *hw;
+	enum rte_eth_nb_pools num_pools;
+	uint32_t mrqc, vt_ctl, queue_mapping, vlanctrl;
+	uint16_t pbsize;
+	uint8_t nb_tcs; /* number of traffic classes */
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = TXGBE_DEV_HW(dev);
+	cfg = &dev->data->dev_conf.rx_adv_conf.vmdq_dcb_conf;
+	num_pools = cfg->nb_queue_pools;
+	/* Check we have a valid number of pools */
+	if (num_pools != ETH_16_POOLS && num_pools != ETH_32_POOLS) {
+		txgbe_rss_disable(dev);
+		return;
+	}
+	/* 16 pools -> 8 traffic classes, 32 pools -> 4 traffic classes */
+	nb_tcs = (uint8_t)(ETH_VMDQ_DCB_NUM_QUEUES / (int)num_pools);
+
+	/*
+	 * split rx buffer up into sections, each for 1 traffic class
+	 */
+	pbsize = (uint16_t)(NIC_RX_BUFFER_SIZE / nb_tcs);
+	for (i = 0; i < nb_tcs; i++) {
+		uint32_t rxpbsize = rd32(hw, TXGBE_PBRXSIZE(i));
+
+		rxpbsize &= (~(0x3FF << 10));
+		/* clear 10 bits. */
+		rxpbsize |= (pbsize << 10); /* set value */
+		wr32(hw, TXGBE_PBRXSIZE(i), rxpbsize);
+	}
+	/* zero alloc all unused TCs */
+	for (i = nb_tcs; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+		uint32_t rxpbsize = rd32(hw, TXGBE_PBRXSIZE(i));
+
+		rxpbsize &= (~(0x3FF << 10));
+		/* clear 10 bits. */
+		wr32(hw, TXGBE_PBRXSIZE(i), rxpbsize);
+	}
+
+	if (num_pools == ETH_16_POOLS) {
+		mrqc = TXGBE_PORTCTL_NUMTC_8;
+		mrqc |= TXGBE_PORTCTL_NUMVT_16;
+	} else {
+		mrqc = TXGBE_PORTCTL_NUMTC_4;
+		mrqc |= TXGBE_PORTCTL_NUMVT_32;
+	}
+	wr32m(hw, TXGBE_PORTCTL,
+	      TXGBE_PORTCTL_NUMTC_MASK | TXGBE_PORTCTL_NUMVT_MASK, mrqc);
+
+	vt_ctl = TXGBE_POOLCTL_RPLEN;
+	if (cfg->enable_default_pool)
+		vt_ctl |= TXGBE_POOLCTL_DEFPL(cfg->default_pool);
+	else
+		vt_ctl |= TXGBE_POOLCTL_DEFDSA;
+
+	wr32(hw, TXGBE_POOLCTL, vt_ctl);
+
+	queue_mapping = 0;
+	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++)
+		/*
+		 * mapping is done with 3 bits per priority,
+		 * so shift by i*3 each time
+		 */
+		queue_mapping |= ((cfg->dcb_tc[i] & 0x07) << (i * 3));
+
+	wr32(hw, TXGBE_RPUP2TC, queue_mapping);
+
+	wr32(hw, TXGBE_ARBRXCTL, TXGBE_ARBRXCTL_RRM);
+
+	/* enable vlan filtering and allow all vlan tags through */
+	vlanctrl = rd32(hw, TXGBE_VLANCTL);
+	vlanctrl |= TXGBE_VLANCTL_VFE; /* enable vlan filters */
+	wr32(hw, TXGBE_VLANCTL, vlanctrl);
+
+	/* enable all vlan filters */
+	for (i = 0; i < NUM_VFTA_REGISTERS; i++)
+		wr32(hw, TXGBE_VLANTBL(i), 0xFFFFFFFF);
+
+	wr32(hw, TXGBE_POOLRXENA(0),
+			num_pools == ETH_16_POOLS ? 0xFFFF : 0xFFFFFFFF);
+
+	wr32(hw, TXGBE_ETHADDRIDX, 0);
+	wr32(hw, TXGBE_ETHADDRASSL, 0xFFFFFFFF);
+	wr32(hw, TXGBE_ETHADDRASSH, 0xFFFFFFFF);
+
+	/* set up filters for vlan tags as configured */
+	for (i = 0; i < cfg->nb_pool_maps; i++) {
+		/* set vlan id in VF register and set the valid bit */
+		wr32(hw, TXGBE_PSRVLANIDX, i);
+		wr32(hw, TXGBE_PSRVLAN, (TXGBE_PSRVLAN_EA |
+				(cfg->pool_map[i].vlan_id & 0xFFF)));
+
+		wr32(hw, TXGBE_PSRVLANPLM(0), cfg->pool_map[i].pools);
+	}
+}
+
+/**
+ * txgbe_dcb_config_tx_hw_config - Configure general DCB TX parameters
+ * @dev: pointer to eth_dev structure
+ * @dcb_config: pointer to txgbe_dcb_config structure
+ */
+static void
+txgbe_dcb_tx_hw_config(struct rte_eth_dev *dev,
+		       struct txgbe_dcb_config *dcb_config)
+{
+	uint32_t reg;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Disable the Tx desc arbiter */
+	reg = rd32(hw, TXGBE_ARBTXCTL);
+	reg |= TXGBE_ARBTXCTL_DIA;
+	wr32(hw, TXGBE_ARBTXCTL, reg);
+
+	/* Enable DCB for Tx with 8 TCs */
+	reg = rd32(hw, TXGBE_PORTCTL);
+	reg &= TXGBE_PORTCTL_NUMTC_MASK;
+	reg |= TXGBE_PORTCTL_DCB;
+	if (dcb_config->num_tcs.pg_tcs == 8)
+		reg |= TXGBE_PORTCTL_NUMTC_8;
+	else
+		reg |= TXGBE_PORTCTL_NUMTC_4;
+
+	wr32(hw, TXGBE_PORTCTL, reg);
+
+	/* Enable the Tx desc arbiter */
+	reg = rd32(hw, TXGBE_ARBTXCTL);
+	reg &= ~TXGBE_ARBTXCTL_DIA;
+	wr32(hw, TXGBE_ARBTXCTL, reg);
+}
+
+/**
+ * txgbe_vmdq_dcb_hw_tx_config - Configure general VMDQ+DCB TX parameters
+ * @dev: pointer to rte_eth_dev structure
+ * @dcb_config: pointer to txgbe_dcb_config structure
+ */
+static void
+txgbe_vmdq_dcb_hw_tx_config(struct rte_eth_dev *dev,
+			struct txgbe_dcb_config *dcb_config)
+{
+	struct rte_eth_vmdq_dcb_tx_conf *vmdq_tx_conf =
+			&dev->data->dev_conf.tx_adv_conf.vmdq_dcb_tx_conf;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	/*PF VF Transmit Enable*/
+	wr32(hw, TXGBE_POOLTXENA(0),
+		vmdq_tx_conf->nb_queue_pools ==
+				ETH_16_POOLS ? 0xFFFF : 0xFFFFFFFF);
+
+	/*Configure general DCB TX parameters*/
+	txgbe_dcb_tx_hw_config(dev, dcb_config);
+}
+
+static void
+txgbe_vmdq_dcb_rx_config(struct rte_eth_dev *dev,
+			struct txgbe_dcb_config *dcb_config)
+{
+	struct rte_eth_vmdq_dcb_conf *vmdq_rx_conf =
+			&dev->data->dev_conf.rx_adv_conf.vmdq_dcb_conf;
+	struct txgbe_dcb_tc_config *tc;
+	uint8_t i, j;
+
+	/* convert rte_eth_conf.rx_adv_conf to struct txgbe_dcb_config */
+	if (vmdq_rx_conf->nb_queue_pools == ETH_16_POOLS) {
+		dcb_config->num_tcs.pg_tcs = ETH_8_TCS;
+		dcb_config->num_tcs.pfc_tcs = ETH_8_TCS;
+	} else {
+		dcb_config->num_tcs.pg_tcs = ETH_4_TCS;
+		dcb_config->num_tcs.pfc_tcs = ETH_4_TCS;
+	}
+
+	/* Initialize User Priority to Traffic Class mapping */
+	for (j = 0; j < TXGBE_DCB_TC_MAX; j++) {
+		tc = &dcb_config->tc_config[j];
+		tc->path[TXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = 0;
+	}
+
+	/* User Priority to Traffic Class mapping */
+	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+		j = vmdq_rx_conf->dcb_tc[i];
+		tc = &dcb_config->tc_config[j];
+		tc->path[TXGBE_DCB_RX_CONFIG].up_to_tc_bitmap |=
+						(uint8_t)(1 << i);
+	}
+}
+
+static void
+txgbe_dcb_vt_tx_config(struct rte_eth_dev *dev,
+			struct txgbe_dcb_config *dcb_config)
+{
+	struct rte_eth_vmdq_dcb_tx_conf *vmdq_tx_conf =
+			&dev->data->dev_conf.tx_adv_conf.vmdq_dcb_tx_conf;
+	struct txgbe_dcb_tc_config *tc;
+	uint8_t i, j;
+
+	/* convert rte_eth_conf.rx_adv_conf to struct txgbe_dcb_config */
+	if (vmdq_tx_conf->nb_queue_pools == ETH_16_POOLS) {
+		dcb_config->num_tcs.pg_tcs = ETH_8_TCS;
+		dcb_config->num_tcs.pfc_tcs = ETH_8_TCS;
+	} else {
+		dcb_config->num_tcs.pg_tcs = ETH_4_TCS;
+		dcb_config->num_tcs.pfc_tcs = ETH_4_TCS;
+	}
+
+	/* Initialize User Priority to Traffic Class mapping */
+	for (j = 0; j < TXGBE_DCB_TC_MAX; j++) {
+		tc = &dcb_config->tc_config[j];
+		tc->path[TXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = 0;
+	}
+
+	/* User Priority to Traffic Class mapping */
+	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+		j = vmdq_tx_conf->dcb_tc[i];
+		tc = &dcb_config->tc_config[j];
+		tc->path[TXGBE_DCB_TX_CONFIG].up_to_tc_bitmap |=
+						(uint8_t)(1 << i);
+	}
+}
+
+static void
+txgbe_dcb_rx_config(struct rte_eth_dev *dev,
+		struct txgbe_dcb_config *dcb_config)
+{
+	struct rte_eth_dcb_rx_conf *rx_conf =
+			&dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
+	struct txgbe_dcb_tc_config *tc;
+	uint8_t i, j;
+
+	dcb_config->num_tcs.pg_tcs = (uint8_t)rx_conf->nb_tcs;
+	dcb_config->num_tcs.pfc_tcs = (uint8_t)rx_conf->nb_tcs;
+
+	/* Initialize User Priority to Traffic Class mapping */
+	for (j = 0; j < TXGBE_DCB_TC_MAX; j++) {
+		tc = &dcb_config->tc_config[j];
+		tc->path[TXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = 0;
+	}
+
+	/* User Priority to Traffic Class mapping */
+	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+		j = rx_conf->dcb_tc[i];
+		tc = &dcb_config->tc_config[j];
+		tc->path[TXGBE_DCB_RX_CONFIG].up_to_tc_bitmap |=
+						(uint8_t)(1 << i);
+	}
+}
+
+static void
+txgbe_dcb_tx_config(struct rte_eth_dev *dev,
+		struct txgbe_dcb_config *dcb_config)
+{
+	struct rte_eth_dcb_tx_conf *tx_conf =
+			&dev->data->dev_conf.tx_adv_conf.dcb_tx_conf;
+	struct txgbe_dcb_tc_config *tc;
+	uint8_t i, j;
+
+	dcb_config->num_tcs.pg_tcs = (uint8_t)tx_conf->nb_tcs;
+	dcb_config->num_tcs.pfc_tcs = (uint8_t)tx_conf->nb_tcs;
+
+	/* Initialize User Priority to Traffic Class mapping */
+	for (j = 0; j < TXGBE_DCB_TC_MAX; j++) {
+		tc = &dcb_config->tc_config[j];
+		tc->path[TXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = 0;
+	}
+
+	/* User Priority to Traffic Class mapping */
+	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+		j = tx_conf->dcb_tc[i];
+		tc = &dcb_config->tc_config[j];
+		tc->path[TXGBE_DCB_TX_CONFIG].up_to_tc_bitmap |=
+						(uint8_t)(1 << i);
+	}
+}
+
+/**
+ * txgbe_dcb_rx_hw_config - Configure general DCB RX HW parameters
+ * @dev: pointer to eth_dev structure
+ * @dcb_config: pointer to txgbe_dcb_config structure
+ */
+static void
+txgbe_dcb_rx_hw_config(struct rte_eth_dev *dev,
+		       struct txgbe_dcb_config *dcb_config)
+{
+	uint32_t reg;
+	uint32_t vlanctrl;
+	uint8_t i;
+	uint32_t q;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	/*
+	 * Disable the arbiter before changing parameters
+	 * (always enable recycle mode; WSP)
+	 */
+	reg = TXGBE_ARBRXCTL_RRM | TXGBE_ARBRXCTL_WSP | TXGBE_ARBRXCTL_DIA;
+	wr32(hw, TXGBE_ARBRXCTL, reg);
+
+	reg = rd32(hw, TXGBE_PORTCTL);
+	reg &= ~(TXGBE_PORTCTL_NUMTC_MASK | TXGBE_PORTCTL_NUMVT_MASK);
+	if (dcb_config->num_tcs.pg_tcs == 4) {
+		reg |= TXGBE_PORTCTL_NUMTC_4;
+		if (dcb_config->vt_mode)
+			reg |= TXGBE_PORTCTL_NUMVT_32;
+		else
+			wr32(hw, TXGBE_POOLCTL, 0);
+	}
+
+	if (dcb_config->num_tcs.pg_tcs == 8) {
+		reg |= TXGBE_PORTCTL_NUMTC_8;
+		if (dcb_config->vt_mode)
+			reg |= TXGBE_PORTCTL_NUMVT_16;
+		else
+			wr32(hw, TXGBE_POOLCTL, 0);
+	}
+
+	wr32(hw, TXGBE_PORTCTL, reg);
+
+	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
+		/* Disable drop for all queues in VMDQ mode*/
+		for (q = 0; q < TXGBE_MAX_RX_QUEUE_NUM; q++) {
+			u32 val = 1 << (q % 32);
+			wr32m(hw, TXGBE_QPRXDROP(q / 32), val, val);
+		}
+	} else {
+		/* Enable drop for all queues in SRIOV mode */
+		for (q = 0; q < TXGBE_MAX_RX_QUEUE_NUM; q++) {
+			u32 val = 1 << (q % 32);
+			wr32m(hw, TXGBE_QPRXDROP(q / 32), val, val);
+		}
+	}
+
+	/* VLNCTL: enable vlan filtering and allow all vlan tags through */
+	vlanctrl = rd32(hw, TXGBE_VLANCTL);
+	vlanctrl |= TXGBE_VLANCTL_VFE; /* enable vlan filters */
+	wr32(hw, TXGBE_VLANCTL, vlanctrl);
+
+	/* VLANTBL - enable all vlan filters */
+	for (i = 0; i < NUM_VFTA_REGISTERS; i++)
+		wr32(hw, TXGBE_VLANTBL(i), 0xFFFFFFFF);
+
+	/*
+	 * Configure Rx packet plane (recycle mode; WSP) and
+	 * enable arbiter
+	 */
+	reg = TXGBE_ARBRXCTL_RRM | TXGBE_ARBRXCTL_WSP;
+	wr32(hw, TXGBE_ARBRXCTL, reg);
+}
+
+static void
+txgbe_dcb_hw_arbite_rx_config(struct txgbe_hw *hw, uint16_t *refill,
+		uint16_t *max, uint8_t *bwg_id, uint8_t *tsa, uint8_t *map)
+{
+	txgbe_dcb_config_rx_arbiter_raptor(hw, refill, max, bwg_id,
+					  tsa, map);
+}
+
+static void
+txgbe_dcb_hw_arbite_tx_config(struct txgbe_hw *hw, uint16_t *refill,
+		uint16_t *max, uint8_t *bwg_id, uint8_t *tsa, uint8_t *map)
+{
+	switch (hw->mac.type) {
+	case txgbe_mac_raptor:
+		txgbe_dcb_config_tx_desc_arbiter_raptor(hw, refill,
+							max, bwg_id, tsa);
+		txgbe_dcb_config_tx_data_arbiter_raptor(hw, refill,
+							max, bwg_id, tsa, map);
+		break;
+	default:
+		break;
+	}
+}
+
+#define DCB_RX_CONFIG  1
+#define DCB_TX_CONFIG  1
+#define DCB_TX_PB      1024
+/**
+ * txgbe_dcb_hw_configure - Enable DCB and configure
+ * general DCB in VT mode and non-VT mode parameters
+ * @dev: pointer to rte_eth_dev structure
+ * @dcb_config: pointer to txgbe_dcb_config structure
+ */
+static int
+txgbe_dcb_hw_configure(struct rte_eth_dev *dev,
+			struct txgbe_dcb_config *dcb_config)
+{
+	int     ret = 0;
+	uint8_t i, nb_tcs;
+	uint16_t pbsize, rx_buffer_size;
+	uint8_t config_dcb_rx = 0;
+	uint8_t config_dcb_tx = 0;
+	uint8_t tsa[TXGBE_DCB_TC_MAX] = {0};
+	uint8_t bwgid[TXGBE_DCB_TC_MAX] = {0};
+	uint16_t refill[TXGBE_DCB_TC_MAX] = {0};
+	uint16_t max[TXGBE_DCB_TC_MAX] = {0};
+	uint8_t map[TXGBE_DCB_TC_MAX] = {0};
+	struct txgbe_dcb_tc_config *tc;
+	uint32_t max_frame = dev->data->mtu +
+			RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_bw_conf *bw_conf = TXGBE_DEV_BW_CONF(dev);
+
+	switch (dev->data->dev_conf.rxmode.mq_mode) {
+	case ETH_MQ_RX_VMDQ_DCB:
+		dcb_config->vt_mode = true;
+		config_dcb_rx = DCB_RX_CONFIG;
+		/*
+		 * get dcb and VT rx configuration parameters
+		 * from rte_eth_conf
+		 */
+		txgbe_vmdq_dcb_rx_config(dev, dcb_config);
+		/*Configure general VMDQ and DCB RX parameters*/
+		txgbe_vmdq_dcb_configure(dev);
+		break;
+	case ETH_MQ_RX_DCB:
+	case ETH_MQ_RX_DCB_RSS:
+		dcb_config->vt_mode = false;
+		config_dcb_rx = DCB_RX_CONFIG;
+		/* Get dcb TX configuration parameters from rte_eth_conf */
+		txgbe_dcb_rx_config(dev, dcb_config);
+		/*Configure general DCB RX parameters*/
+		txgbe_dcb_rx_hw_config(dev, dcb_config);
+		break;
+	default:
+		PMD_INIT_LOG(ERR, "Incorrect DCB RX mode configuration");
+		break;
+	}
+	switch (dev->data->dev_conf.txmode.mq_mode) {
+	case ETH_MQ_TX_VMDQ_DCB:
+		dcb_config->vt_mode = true;
+		config_dcb_tx = DCB_TX_CONFIG;
+		/* get DCB and VT TX configuration parameters
+		 * from rte_eth_conf
+		 */
+		txgbe_dcb_vt_tx_config(dev, dcb_config);
+		/* Configure general VMDQ and DCB TX parameters */
+		txgbe_vmdq_dcb_hw_tx_config(dev, dcb_config);
+		break;
+
+	case ETH_MQ_TX_DCB:
+		dcb_config->vt_mode = false;
+		config_dcb_tx = DCB_TX_CONFIG;
+		/* get DCB TX configuration parameters from rte_eth_conf */
+		txgbe_dcb_tx_config(dev, dcb_config);
+		/* Configure general DCB TX parameters */
+		txgbe_dcb_tx_hw_config(dev, dcb_config);
+		break;
+	default:
+		PMD_INIT_LOG(ERR, "Incorrect DCB TX mode configuration");
+		break;
+	}
+
+	nb_tcs = dcb_config->num_tcs.pfc_tcs;
+	/* Unpack map */
+	txgbe_dcb_unpack_map_cee(dcb_config, TXGBE_DCB_RX_CONFIG, map);
+	if (nb_tcs == ETH_4_TCS) {
+		/* Avoid un-configured priority mapping to TC0 */
+		uint8_t j = 4;
+		uint8_t mask = 0xFF;
+
+		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES - 4; i++)
+			mask = (uint8_t)(mask & (~(1 << map[i])));
+		for (i = 0; mask && (i < TXGBE_DCB_TC_MAX); i++) {
+			if ((mask & 0x1) && j < ETH_DCB_NUM_USER_PRIORITIES)
+				map[j++] = i;
+			mask >>= 1;
+		}
+		/* Re-configure 4 TCs BW */
+		for (i = 0; i < nb_tcs; i++) {
+			tc = &dcb_config->tc_config[i];
+			if (bw_conf->tc_num != nb_tcs)
+				tc->path[TXGBE_DCB_TX_CONFIG].bwg_percent =
+					(uint8_t)(100 / nb_tcs);
+			tc->path[TXGBE_DCB_RX_CONFIG].bwg_percent =
+						(uint8_t)(100 / nb_tcs);
+		}
+		for (; i < TXGBE_DCB_TC_MAX; i++) {
+			tc = &dcb_config->tc_config[i];
+			tc->path[TXGBE_DCB_TX_CONFIG].bwg_percent = 0;
+			tc->path[TXGBE_DCB_RX_CONFIG].bwg_percent = 0;
+		}
+	} else {
+		/* Re-configure 8 TCs BW */
+		for (i = 0; i < nb_tcs; i++) {
+			tc = &dcb_config->tc_config[i];
+			if (bw_conf->tc_num != nb_tcs)
+				tc->path[TXGBE_DCB_TX_CONFIG].bwg_percent =
+					(uint8_t)(100 / nb_tcs + (i & 1));
+			tc->path[TXGBE_DCB_RX_CONFIG].bwg_percent =
+				(uint8_t)(100 / nb_tcs + (i & 1));
+		}
+	}
+
+	rx_buffer_size = NIC_RX_BUFFER_SIZE;
+
+	if (config_dcb_rx) {
+		/* Set RX buffer size */
+		pbsize = (uint16_t)(rx_buffer_size / nb_tcs);
+		uint32_t rxpbsize = pbsize << 10;
+
+		for (i = 0; i < nb_tcs; i++)
+			wr32(hw, TXGBE_PBRXSIZE(i), rxpbsize);
+
+		/* zero alloc all unused TCs */
+		for (; i < ETH_DCB_NUM_USER_PRIORITIES; i++)
+			wr32(hw, TXGBE_PBRXSIZE(i), 0);
+	}
+	if (config_dcb_tx) {
+		/* Only support an equally distributed
+		 *  Tx packet buffer strategy.
+		 */
+		uint32_t txpktsize = TXGBE_PBTXSIZE_MAX / nb_tcs;
+		uint32_t txpbthresh = (txpktsize / DCB_TX_PB) -
+					TXGBE_TXPKT_SIZE_MAX;
+
+		for (i = 0; i < nb_tcs; i++) {
+			wr32(hw, TXGBE_PBTXSIZE(i), txpktsize);
+			wr32(hw, TXGBE_PBTXDMATH(i), txpbthresh);
+		}
+		/* Clear unused TCs, if any, to zero buffer size*/
+		for (; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+			wr32(hw, TXGBE_PBTXSIZE(i), 0);
+			wr32(hw, TXGBE_PBTXDMATH(i), 0);
+		}
+	}
+
+	/*Calculates traffic class credits*/
+	txgbe_dcb_calculate_tc_credits_cee(hw, dcb_config, max_frame,
+				TXGBE_DCB_TX_CONFIG);
+	txgbe_dcb_calculate_tc_credits_cee(hw, dcb_config, max_frame,
+				TXGBE_DCB_RX_CONFIG);
+
+	if (config_dcb_rx) {
+		/* Unpack CEE standard containers */
+		txgbe_dcb_unpack_refill_cee(dcb_config,
+				TXGBE_DCB_RX_CONFIG, refill);
+		txgbe_dcb_unpack_max_cee(dcb_config, max);
+		txgbe_dcb_unpack_bwgid_cee(dcb_config,
+				TXGBE_DCB_RX_CONFIG, bwgid);
+		txgbe_dcb_unpack_tsa_cee(dcb_config,
+				TXGBE_DCB_RX_CONFIG, tsa);
+		/* Configure PG(ETS) RX */
+		txgbe_dcb_hw_arbite_rx_config(hw, refill, max, bwgid, tsa, map);
+	}
+
+	if (config_dcb_tx) {
+		/* Unpack CEE standard containers */
+		txgbe_dcb_unpack_refill_cee(dcb_config,
+				TXGBE_DCB_TX_CONFIG, refill);
+		txgbe_dcb_unpack_max_cee(dcb_config, max);
+		txgbe_dcb_unpack_bwgid_cee(dcb_config,
+				TXGBE_DCB_TX_CONFIG, bwgid);
+		txgbe_dcb_unpack_tsa_cee(dcb_config,
+				TXGBE_DCB_TX_CONFIG, tsa);
+		/* Configure PG(ETS) TX */
+		txgbe_dcb_hw_arbite_tx_config(hw, refill, max, bwgid, tsa, map);
+	}
+
+	/* Configure queue statistics registers */
+	txgbe_dcb_config_tc_stats_raptor(hw, dcb_config);
+
+	return ret;
+}
+
+void txgbe_configure_pb(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	int hdrm;
+	int tc = dev_conf->rx_adv_conf.dcb_rx_conf.nb_tcs;
+
+	/* Reserve 256KB(/512KB) rx buffer for fdir */
+	hdrm = 256; /*KB*/
+
+	hw->mac.setup_pba(hw, tc, hdrm, PBA_STRATEGY_EQUAL);
+}
+
+void txgbe_configure_port(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int i = 0;
+	uint16_t tpids[8] = {RTE_ETHER_TYPE_VLAN, RTE_ETHER_TYPE_QINQ,
+				0x9100, 0x9200,
+				0x0000, 0x0000,
+				0x0000, 0x0000};
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* default outer vlan tpid */
+	wr32(hw, TXGBE_EXTAG,
+		TXGBE_EXTAG_ETAG(RTE_ETHER_TYPE_ETAG) |
+		TXGBE_EXTAG_VLAN(RTE_ETHER_TYPE_QINQ));
+
+	/* default inner vlan tpid */
+	wr32m(hw, TXGBE_VLANCTL,
+		TXGBE_VLANCTL_TPID_MASK,
+		TXGBE_VLANCTL_TPID(RTE_ETHER_TYPE_VLAN));
+	wr32m(hw, TXGBE_DMATXCTRL,
+		TXGBE_DMATXCTRL_TPID_MASK,
+		TXGBE_DMATXCTRL_TPID(RTE_ETHER_TYPE_VLAN));
+
+	/* default vlan tpid filters */
+	for (i = 0; i < 8; i++) {
+		wr32m(hw, TXGBE_TAGTPID(i / 2),
+			(i % 2 ? TXGBE_TAGTPID_MSB_MASK
+			       : TXGBE_TAGTPID_LSB_MASK),
+			(i % 2 ? TXGBE_TAGTPID_MSB(tpids[i])
+			       : TXGBE_TAGTPID_LSB(tpids[i])));
+	}
+
+	/* default vxlan port */
+	wr32(hw, TXGBE_VXLANPORT, 4789);
+}
+
+/**
+ * txgbe_configure_dcb - Configure DCB  Hardware
+ * @dev: pointer to rte_eth_dev
+ */
+void txgbe_configure_dcb(struct rte_eth_dev *dev)
+{
+	struct txgbe_dcb_config *dcb_cfg = TXGBE_DEV_DCB_CONFIG(dev);
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* check support mq_mode for DCB */
+	if (dev_conf->rxmode.mq_mode != ETH_MQ_RX_VMDQ_DCB &&
+	    dev_conf->rxmode.mq_mode != ETH_MQ_RX_DCB &&
+	    dev_conf->rxmode.mq_mode != ETH_MQ_RX_DCB_RSS)
+		return;
+
+	if (dev->data->nb_rx_queues > ETH_DCB_NUM_QUEUES)
+		return;
+
+	/** Configure DCB hardware **/
+	txgbe_dcb_hw_configure(dev, dcb_cfg);
+}
 
 /*
  * VMDq only support for 10 GbE NIC.
@@ -2960,12 +3605,17 @@ txgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
 		/*
 		 * SRIOV inactive scheme
-		 * any RSS w/o VMDq multi-queue setting
+		 * any DCB/RSS w/o VMDq multi-queue setting
 		 */
 		switch (dev->data->dev_conf.rxmode.mq_mode) {
 		case ETH_MQ_RX_RSS:
+		case ETH_MQ_RX_DCB_RSS:
 		case ETH_MQ_RX_VMDQ_RSS:
 			txgbe_rss_configure(dev);
+			break;
+
+		case ETH_MQ_RX_VMDQ_DCB:
+			txgbe_vmdq_dcb_configure(dev);
 			break;
 
 		case ETH_MQ_RX_VMDQ_ONLY:
@@ -2987,6 +3637,17 @@ txgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 		case ETH_MQ_RX_VMDQ_RSS:
 			txgbe_config_vf_rss(dev);
 			break;
+		case ETH_MQ_RX_VMDQ_DCB:
+		case ETH_MQ_RX_DCB:
+		/* In SRIOV, the configuration is the same as VMDq case */
+			txgbe_vmdq_dcb_configure(dev);
+			break;
+		/* DCB/RSS together with SRIOV is not supported */
+		case ETH_MQ_RX_VMDQ_DCB_RSS:
+		case ETH_MQ_RX_DCB_RSS:
+			PMD_INIT_LOG(ERR,
+				"Could not support DCB/RSS with VMDq & SRIOV");
+			return -1;
 		default:
 			txgbe_config_vf_default(dev);
 			break;

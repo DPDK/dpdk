@@ -6,12 +6,16 @@
 #define _TXGBE_TYPE_H_
 
 #define TXGBE_DCB_TC_MAX	TXGBE_MAX_UP
+#define TXGBE_DCB_UP_MAX	TXGBE_MAX_UP
+#define TXGBE_DCB_BWG_MAX	TXGBE_MAX_UP
 #define TXGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 #define TXGBE_AUTO_NEG_TIME	45 /* 4.5 Seconds */
 
 #define TXGBE_FRAME_SIZE_MAX	(9728) /* Maximum frame size, +FCS */
 #define TXGBE_FRAME_SIZE_DFT	(1518) /* Default frame size, +FCS */
 #define TXGBE_NUM_POOL		(64)
+#define TXGBE_PBTXSIZE_MAX	0x00028000 /* 160KB Packet Buffer */
+#define TXGBE_TXPKT_SIZE_MAX	0xA /* Max Tx Packet size */
 #define TXGBE_MAX_UP		8
 #define TXGBE_MAX_QP		(128)
 #define TXGBE_MAX_UTA		128
@@ -30,6 +34,14 @@ struct txgbe_thermal_diode_data {
 
 struct txgbe_thermal_sensor_data {
 	struct txgbe_thermal_diode_data sensor[1];
+};
+
+/* Packet buffer allocation strategies */
+enum {
+	PBA_STRATEGY_EQUAL	= 0, /* Distribute PB space equally */
+#define PBA_STRATEGY_EQUAL	PBA_STRATEGY_EQUAL
+	PBA_STRATEGY_WEIGHTED	= 1, /* Weight front half of TCs */
+#define PBA_STRATEGY_WEIGHTED	PBA_STRATEGY_WEIGHTED
 };
 
 /* Physical layer type */
@@ -511,9 +523,9 @@ struct txgbe_mac_info {
 	u32 mcft_size;
 	u32 vft_size;
 	u32 num_rar_entries;
+	u32 rx_pb_size;
 	u32 max_tx_queues;
 	u32 max_rx_queues;
-
 	u8  san_mac_rar_index;
 	bool get_link_status;
 	u64 orig_autoc;  /* cached value of AUTOC */

@@ -57,6 +57,8 @@ void txgbe_set_mac_anti_spoofing(struct txgbe_hw *hw, bool enable, int vf);
 void txgbe_set_ethertype_anti_spoofing(struct txgbe_hw *hw,
 		bool enable, int vf);
 s32 txgbe_get_device_caps(struct txgbe_hw *hw, u16 *device_caps);
+void txgbe_set_pba(struct txgbe_hw *hw, int num_pb, u32 headroom,
+			     int strategy);
 void txgbe_clear_tx_pending(struct txgbe_hw *hw);
 
 s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw);

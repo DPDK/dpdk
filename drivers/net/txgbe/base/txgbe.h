@@ -11,5 +11,6 @@
 #include "txgbe_eeprom.h"
 #include "txgbe_phy.h"
 #include "txgbe_hw.h"
+#include "txgbe_dcb.h"
 
 #endif /* _TXGBE_H_ */

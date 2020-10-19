@@ -5,6 +5,7 @@
 #include "txgbe_type.h"
 #include "txgbe_mbx.h"
 #include "txgbe_phy.h"
+#include "txgbe_dcb.h"
 #include "txgbe_eeprom.h"
 #include "txgbe_mng.h"
 #include "txgbe_hw.h"
@@ -14,6 +15,7 @@
 #define TXGBE_RAPTOR_RAR_ENTRIES   128
 #define TXGBE_RAPTOR_MC_TBL_SIZE   128
 #define TXGBE_RAPTOR_VFT_TBL_SIZE  128
+#define TXGBE_RAPTOR_RX_PB_SIZE	  512 /*KB*/
 
 static s32 txgbe_setup_copper_link_raptor(struct txgbe_hw *hw,
 					 u32 speed,
@@ -1528,6 +1530,68 @@ s32 txgbe_get_device_caps(struct txgbe_hw *hw, u16 *device_caps)
 }
 
 /**
+ * txgbe_set_pba - Initialize Rx packet buffer
+ * @hw: pointer to hardware structure
+ * @num_pb: number of packet buffers to allocate
+ * @headroom: reserve n KB of headroom
+ * @strategy: packet buffer allocation strategy
+ **/
+void txgbe_set_pba(struct txgbe_hw *hw, int num_pb, u32 headroom,
+			     int strategy)
+{
+	u32 pbsize = hw->mac.rx_pb_size;
+	int i = 0;
+	u32 rxpktsize, txpktsize, txpbthresh;
+
+	UNREFERENCED_PARAMETER(hw);
+
+	/* Reserve headroom */
+	pbsize -= headroom;
+
+	if (!num_pb)
+		num_pb = 1;
+
+	/* Divide remaining packet buffer space amongst the number of packet
+	 * buffers requested using supplied strategy.
+	 */
+	switch (strategy) {
+	case PBA_STRATEGY_WEIGHTED:
+		/* txgbe_dcb_pba_80_48 strategy weight first half of packet
+		 * buffer with 5/8 of the packet buffer space.
+		 */
+		rxpktsize = (pbsize * 5) / (num_pb * 4);
+		pbsize -= rxpktsize * (num_pb / 2);
+		rxpktsize <<= 10;
+		for (; i < (num_pb / 2); i++)
+			wr32(hw, TXGBE_PBRXSIZE(i), rxpktsize);
+		/* fall through - configure remaining packet buffers */
+	case PBA_STRATEGY_EQUAL:
+		rxpktsize = (pbsize / (num_pb - i));
+		rxpktsize <<= 10;
+		for (; i < num_pb; i++)
+			wr32(hw, TXGBE_PBRXSIZE(i), rxpktsize);
+		break;
+	default:
+		break;
+	}
+
+	/* Only support an equally distributed Tx packet buffer strategy. */
+	txpktsize = TXGBE_PBTXSIZE_MAX / num_pb;
+	txpbthresh = (txpktsize / 1024) - TXGBE_TXPKT_SIZE_MAX;
+	for (i = 0; i < num_pb; i++) {
+		wr32(hw, TXGBE_PBTXSIZE(i), txpktsize);
+		wr32(hw, TXGBE_PBTXDMATH(i), txpbthresh);
+	}
+
+	/* Clear unused TCs, if any, to zero buffer size*/
+	for (; i < TXGBE_MAX_UP; i++) {
+		wr32(hw, TXGBE_PBRXSIZE(i), 0);
+		wr32(hw, TXGBE_PBTXSIZE(i), 0);
+		wr32(hw, TXGBE_PBTXDMATH(i), 0);
+	}
+}
+
+/**
  * txgbe_clear_tx_pending - Clear pending TX work from the PCIe fifo
  * @hw: pointer to the hardware structure
  *
@@ -2103,6 +2167,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* Link */
 	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;
 	mac->check_link = txgbe_check_mac_link;
+	mac->setup_pba = txgbe_set_pba;
 
 	/* Manageability interface */
 	mac->set_fw_drv_ver = txgbe_hic_set_drv_ver;
@@ -2133,6 +2198,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->mcft_size		= TXGBE_RAPTOR_MC_TBL_SIZE;
 	mac->vft_size		= TXGBE_RAPTOR_VFT_TBL_SIZE;
 	mac->num_rar_entries	= TXGBE_RAPTOR_RAR_ENTRIES;
+	mac->rx_pb_size		= TXGBE_RAPTOR_RX_PB_SIZE;
 	mac->max_rx_queues	= TXGBE_RAPTOR_MAX_RX_QUEUES;
 	mac->max_tx_queues	= TXGBE_RAPTOR_MAX_TX_QUEUES;
 

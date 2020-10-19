@@ -127,6 +127,11 @@ struct txgbe_filter_info {
 	struct txgbe_ethertype_filter ethertype_filters[TXGBE_ETF_ID_MAX];
 };
 
+/* The configuration of bandwidth */
+struct txgbe_bw_conf {
+	uint8_t tc_num; /* Number of TCs. */
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -137,10 +142,12 @@ struct txgbe_adapter {
 	struct txgbe_stat_mappings  stat_mappings;
 	struct txgbe_vfta           shadow_vfta;
 	struct txgbe_hwstrip        hwstrip;
+	struct txgbe_dcb_config     dcb_config;
 	struct txgbe_mirror_info    mr_data;
 	struct txgbe_vf_info        *vfdata;
 	struct txgbe_uta_info       uta_info;
 	struct txgbe_filter_info    filter;
+	struct txgbe_bw_conf        bw_conf;
 	bool rx_bulk_alloc_allowed;
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
@@ -167,6 +174,9 @@ struct txgbe_adapter {
 #define TXGBE_DEV_HWSTRIP(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->hwstrip)
 
+#define TXGBE_DEV_DCB_CONFIG(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->dcb_config)
+
 #define TXGBE_DEV_VFDATA(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->vfdata)
 
@@ -178,6 +188,9 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_FILTER(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->filter)
+#define TXGBE_DEV_BW_CONF(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->bw_conf)
+
 
 /*
  * RX/TX function prototypes
@@ -254,6 +267,10 @@ bool txgbe_rss_update_sp(enum txgbe_mac_type mac_type);
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
+
+void txgbe_configure_pb(struct rte_eth_dev *dev);
+void txgbe_configure_port(struct rte_eth_dev *dev);
+void txgbe_configure_dcb(struct rte_eth_dev *dev);
 
 int
 txgbe_dev_link_update_share(struct rte_eth_dev *dev,
