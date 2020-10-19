@@ -2393,8 +2393,10 @@ txgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 
 	PMD_DRV_LOG(DEBUG, "intr action type %d", intr->flags);
 
-	if (intr->flags & TXGBE_FLAG_MAILBOX)
+	if (intr->flags & TXGBE_FLAG_MAILBOX) {
+		txgbe_pf_mbx_process(dev);
 		intr->flags &= ~TXGBE_FLAG_MAILBOX;
+	}
 
 	if (intr->flags & TXGBE_FLAG_PHY_INTERRUPT) {
 		hw->phy.handle_lasi(hw);
@@ -2465,6 +2467,8 @@ txgbe_dev_interrupt_delayed_handler(void *param)
 	txgbe_disable_intr(hw);
 
 	eicr = ((u32 *)hw->isb_mem)[TXGBE_ISB_MISC];
+	if (eicr & TXGBE_ICRMISC_VFMBX)
+		txgbe_pf_mbx_process(dev);
 
 	if (intr->flags & TXGBE_FLAG_PHY_INTERRUPT) {
 		hw->phy.handle_lasi(hw);

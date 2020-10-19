@@ -1765,6 +1765,11 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->init_thermal_sensor_thresh = txgbe_init_thermal_sensor_thresh;
 
 	mbx->init_params = txgbe_init_mbx_params_pf;
+	mbx->read = txgbe_read_mbx_pf;
+	mbx->write = txgbe_write_mbx_pf;
+	mbx->check_for_msg = txgbe_check_for_msg_pf;
+	mbx->check_for_ack = txgbe_check_for_ack_pf;
+	mbx->check_for_rst = txgbe_check_for_rst_pf;
 
 	/* EEPROM */
 	rom->init_params = txgbe_init_eeprom_params;

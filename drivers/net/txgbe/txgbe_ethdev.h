@@ -74,6 +74,11 @@ struct txgbe_hwstrip {
 	uint32_t bitmap[TXGBE_HWSTRIP_BITMAP_SIZE];
 };
 
+/*
+ * VF data which used by PF host only
+ */
+#define TXGBE_MAX_VF_MC_ENTRIES      30
+
 struct txgbe_uta_info {
 	uint8_t  uc_filter_type;
 	uint16_t uta_in_use;
@@ -89,7 +94,14 @@ struct txgbe_mirror_info {
 
 struct txgbe_vf_info {
 	uint8_t vf_mac_addresses[RTE_ETHER_ADDR_LEN];
+	uint16_t vf_mc_hashes[TXGBE_MAX_VF_MC_ENTRIES];
+	uint16_t num_vf_mc_hashes;
+	bool clear_to_send;
+	uint16_t vlan_count;
+	uint8_t api_version;
 	uint16_t switch_domain_id;
+	uint16_t xcast_mode;
+	uint16_t mac_count;
 };
 
 /*
@@ -212,6 +224,8 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 void txgbe_pf_host_init(struct rte_eth_dev *eth_dev);
 
 void txgbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
+
+void txgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 
 
 #define TXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
