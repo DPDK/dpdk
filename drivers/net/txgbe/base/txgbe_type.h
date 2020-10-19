@@ -13,6 +13,13 @@
 #include "txgbe_osdep.h"
 #include "txgbe_devids.h"
 
+enum txgbe_eeprom_type {
+	txgbe_eeprom_unknown = 0,
+	txgbe_eeprom_spi,
+	txgbe_eeprom_flash,
+	txgbe_eeprom_none /* No NVM support */
+};
+
 enum txgbe_mac_type {
 	txgbe_mac_unknown = 0,
 	txgbe_mac_raptor,
@@ -177,6 +184,15 @@ struct txgbe_rom_info {
 	s32 (*validate_checksum)(struct txgbe_hw *hw, u16 *checksum_val);
 	s32 (*update_checksum)(struct txgbe_hw *hw);
 	s32 (*calc_checksum)(struct txgbe_hw *hw);
+
+	enum txgbe_eeprom_type type;
+	u32 semaphore_delay;
+	u16 word_size;
+	u16 address_bits;
+	u16 word_page_size;
+	u16 ctrl_word_3;
+
+	u32 sw_addr;
 };
 
 struct txgbe_flash_info {
@@ -357,6 +373,11 @@ struct txgbe_hw {
 
 	uint64_t isb_dma;
 	void IOMEM *isb_mem;
+	enum txgbe_reset_type {
+		TXGBE_LAN_RESET = 0,
+		TXGBE_SW_RESET,
+		TXGBE_GLOBAL_RESET
+	} reset_type;
 };
 
 #include "txgbe_regs.h"

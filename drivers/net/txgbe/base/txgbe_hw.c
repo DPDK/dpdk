@@ -3,6 +3,7 @@
  */
 
 #include "txgbe_type.h"
+#include "txgbe_eeprom.h"
 #include "txgbe_hw.h"
 
 #define TXGBE_RAPTOR_RAR_ENTRIES   128
@@ -135,13 +136,29 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 {
 	struct txgbe_bus_info *bus = &hw->bus;
 	struct txgbe_mac_info *mac = &hw->mac;
+	struct txgbe_rom_info *rom = &hw->rom;
 
 	DEBUGFUNC("txgbe_init_ops_pf");
 
 	/* BUS */
 	bus->set_lan_id = txgbe_set_lan_id_multi_port;
 
+	/* MAC */
 	mac->num_rar_entries	= TXGBE_RAPTOR_RAR_ENTRIES;
+
+	/* EEPROM */
+	rom->init_params = txgbe_init_eeprom_params;
+	rom->read16 = txgbe_ee_read16;
+	rom->readw_buffer = txgbe_ee_readw_buffer;
+	rom->readw_sw = txgbe_ee_readw_sw;
+	rom->read32 = txgbe_ee_read32;
+	rom->write16 = txgbe_ee_write16;
+	rom->writew_buffer = txgbe_ee_writew_buffer;
+	rom->writew_sw = txgbe_ee_writew_sw;
+	rom->write32 = txgbe_ee_write32;
+	rom->validate_checksum = txgbe_validate_eeprom_checksum;
+	rom->update_checksum = txgbe_update_eeprom_checksum;
+	rom->calc_checksum = txgbe_calc_eeprom_checksum;
 
 	return 0;
 }

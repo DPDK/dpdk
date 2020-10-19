@@ -51,6 +51,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	const struct rte_memzone *mz;
+	uint16_t csum;
 	int err;
 
 	PMD_INIT_FUNC_TRACE();
@@ -78,6 +79,19 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	err = txgbe_init_shared_code(hw);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "Shared code init failed: %d", err);
+		return -EIO;
+	}
+
+	err = hw->rom.init_params(hw);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "The EEPROM init failed: %d", err);
+		return -EIO;
+	}
+
+	/* Make sure we have a good EEPROM before we read from it */
+	err = hw->rom.validate_checksum(hw, &csum);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "The EEPROM checksum is not valid: %d", err);
 		return -EIO;
 	}
 

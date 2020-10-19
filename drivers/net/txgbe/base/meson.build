@@ -2,7 +2,9 @@
 # Copyright(c) 2015-2020
 
 sources = [
+	'txgbe_eeprom.c',
 	'txgbe_hw.c',
+	'txgbe_mng.c',
 ]
 
 error_cflags = []
