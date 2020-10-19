@@ -19,11 +19,18 @@
  * Defines that were not part of txgbe_type.h as they are not used by the
  * FreeBSD driver.
  */
+#define TXGBE_VFTA_SIZE 128
 #define TXGBE_VLAN_TAG_SIZE 4
 #define TXGBE_HKEY_MAX_INDEX 10
 /*Default value of Max Rx Queue*/
 #define TXGBE_MAX_RX_QUEUE_NUM	128
 #define TXGBE_VMDQ_DCB_NB_QUEUES     TXGBE_MAX_RX_QUEUE_NUM
+
+#ifndef NBBY
+#define NBBY	8	/* number of bits in a byte */
+#endif
+#define TXGBE_HWSTRIP_BITMAP_SIZE \
+	(TXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
 
 #define TXGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
 
@@ -59,6 +66,14 @@ struct txgbe_stat_mappings {
 	uint32_t rqsm[TXGBE_NB_STAT_MAPPING];
 };
 
+struct txgbe_vfta {
+	uint32_t vfta[TXGBE_VFTA_SIZE];
+};
+
+struct txgbe_hwstrip {
+	uint32_t bitmap[TXGBE_HWSTRIP_BITMAP_SIZE];
+};
+
 struct txgbe_uta_info {
 	uint8_t  uc_filter_type;
 	uint16_t uta_in_use;
@@ -73,6 +88,8 @@ struct txgbe_adapter {
 	struct txgbe_hw_stats       stats;
 	struct txgbe_interrupt      intr;
 	struct txgbe_stat_mappings  stat_mappings;
+	struct txgbe_vfta           shadow_vfta;
+	struct txgbe_hwstrip        hwstrip;
 	struct txgbe_uta_info       uta_info;
 	bool rx_bulk_alloc_allowed;
 };
@@ -91,6 +108,15 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_STAT_MAPPINGS(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->stat_mappings)
+
+#define TXGBE_DEV_VFTA(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->shadow_vfta)
+
+#define TXGBE_DEV_HWSTRIP(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->hwstrip)
+
+#define TXGBE_DEV_VFDATA(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->vfdata)
 
 #define TXGBE_DEV_UTA_INFO(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->uta_info)
@@ -197,5 +223,13 @@ int txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 void txgbe_dev_setup_link_alarm_handler(void *param);
 void txgbe_read_stats_registers(struct txgbe_hw *hw,
 			   struct txgbe_hw_stats *hw_stats);
+
+void txgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev);
+void txgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev);
+void txgbe_vlan_hw_strip_config(struct rte_eth_dev *dev);
+void txgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
+		uint16_t queue, bool on);
+void txgbe_config_vlan_strip_on_all_queues(struct rte_eth_dev *dev,
+						  int mask);
 
 #endif /* _TXGBE_ETHDEV_H_ */

@@ -11,9 +11,10 @@ Features
 --------
 
 - Multiple queues for TX and RX
-- MAC filtering
+- MAC/VLAN filtering
 - Packet type information
 - Checksum offload
+- VLAN/QinQ stripping and inserting
 - TSO offload
 - Port hardware statistics
 - Jumbo frames

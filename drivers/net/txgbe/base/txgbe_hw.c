@@ -12,6 +12,7 @@
 #define TXGBE_RAPTOR_MAX_RX_QUEUES 128
 #define TXGBE_RAPTOR_RAR_ENTRIES   128
 #define TXGBE_RAPTOR_MC_TBL_SIZE   128
+#define TXGBE_RAPTOR_VFT_TBL_SIZE  128
 
 static s32 txgbe_setup_copper_link_raptor(struct txgbe_hw *hw,
 					 u32 speed,
@@ -38,6 +39,9 @@ s32 txgbe_start_hw(struct txgbe_hw *hw)
 
 	/* Set the media type */
 	hw->phy.media_type = hw->phy.get_media_type(hw);
+
+	/* Clear the VLAN filter table */
+	hw->mac.clear_vfta(hw);
 
 	/* Clear statistics registers */
 	hw->mac.clear_hw_cntrs(hw);
@@ -908,6 +912,31 @@ s32 txgbe_init_uta_tables(struct txgbe_hw *hw)
 }
 
 /**
+ *  txgbe_clear_vfta - Clear VLAN filter table
+ *  @hw: pointer to hardware structure
+ *
+ *  Clears the VLAN filer table, and the VMDq index associated with the filter
+ **/
+s32 txgbe_clear_vfta(struct txgbe_hw *hw)
+{
+	u32 offset;
+
+	DEBUGFUNC("txgbe_clear_vfta");
+
+	for (offset = 0; offset < hw->mac.vft_size; offset++)
+		wr32(hw, TXGBE_VLANTBL(offset), 0);
+
+	for (offset = 0; offset < TXGBE_NUM_POOL; offset++) {
+		wr32(hw, TXGBE_PSRVLANIDX, offset);
+		wr32(hw, TXGBE_PSRVLAN, 0);
+		wr32(hw, TXGBE_PSRVLANPLM(0), 0);
+		wr32(hw, TXGBE_PSRVLANPLM(1), 0);
+	}
+
+	return 0;
+}
+
+/**
  *  txgbe_need_crosstalk_fix - Determine if we need to do cross talk fix
  *  @hw: pointer to hardware structure
  *
@@ -1593,6 +1622,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->init_rx_addrs = txgbe_init_rx_addrs;
 	mac->enable_rx = txgbe_enable_rx;
 	mac->disable_rx = txgbe_disable_rx;
+	mac->clear_vfta = txgbe_clear_vfta;
 	mac->init_uta_tables = txgbe_init_uta_tables;
 	mac->setup_sfp = txgbe_setup_sfp_modules;
 	/* Link */
@@ -1618,6 +1648,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	rom->calc_checksum = txgbe_calc_eeprom_checksum;
 
 	mac->mcft_size		= TXGBE_RAPTOR_MC_TBL_SIZE;
+	mac->vft_size		= TXGBE_RAPTOR_VFT_TBL_SIZE;
 	mac->num_rar_entries	= TXGBE_RAPTOR_RAR_ENTRIES;
 	mac->max_rx_queues	= TXGBE_RAPTOR_MAX_RX_QUEUES;
 	mac->max_tx_queues	= TXGBE_RAPTOR_MAX_TX_QUEUES;

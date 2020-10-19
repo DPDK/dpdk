@@ -28,6 +28,9 @@ static int txgbe_dev_close(struct rte_eth_dev *dev);
 static int txgbe_dev_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static int txgbe_dev_stats_reset(struct rte_eth_dev *dev);
+static void txgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue);
+static void txgbe_vlan_hw_strip_disable(struct rte_eth_dev *dev,
+					uint16_t queue);
 
 static void txgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int txgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
@@ -39,6 +42,24 @@ static int txgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 static void txgbe_dev_interrupt_handler(void *param);
 static void txgbe_dev_interrupt_delayed_handler(void *param);
 static void txgbe_configure_msix(struct rte_eth_dev *dev);
+
+#define TXGBE_SET_HWSTRIP(h, q) do {\
+		uint32_t idx = (q) / (sizeof((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof((h)->bitmap[0]) * NBBY); \
+		(h)->bitmap[idx] |= 1 << bit;\
+	} while (0)
+
+#define TXGBE_CLEAR_HWSTRIP(h, q) do {\
+		uint32_t idx = (q) / (sizeof((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof((h)->bitmap[0]) * NBBY); \
+		(h)->bitmap[idx] &= ~(1 << bit);\
+	} while (0)
+
+#define TXGBE_GET_HWSTRIP(h, q, r) do {\
+		uint32_t idx = (q) / (sizeof((h)->bitmap[0]) * NBBY); \
+		uint32_t bit = (q) % (sizeof((h)->bitmap[0]) * NBBY); \
+		(r) = (h)->bitmap[idx] >> bit & 1;\
+	} while (0)
 
 /*
  * The set of PCI devices this driver supports
@@ -320,6 +341,8 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
+	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(eth_dev);
+	struct txgbe_hwstrip *hwstrip = TXGBE_DEV_HWSTRIP(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	const struct rte_memzone *mz;
 	uint16_t csum;
@@ -460,6 +483,12 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return -ENOMEM;
 	}
 
+	/* initialize the vfta */
+	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
+
+	/* initialize the hw strip bitmap*/
+	memset(hwstrip, 0, sizeof(*hwstrip));
+
 	if (txgbe_is_sfp(hw) && hw->phy.sfp_type != txgbe_sfp_type_not_present)
 		PMD_INIT_LOG(DEBUG, "MAC: %d, PHY: %d, SFP+: %d",
 			     (int)hw->mac.type, (int)hw->phy.type,
@@ -547,6 +576,334 @@ static struct rte_pci_driver rte_txgbe_pmd = {
 	.probe = eth_txgbe_pci_probe,
 	.remove = eth_txgbe_pci_remove,
 };
+
+static int
+txgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(dev);
+	uint32_t vfta;
+	uint32_t vid_idx;
+	uint32_t vid_bit;
+
+	vid_idx = (uint32_t)((vlan_id >> 5) & 0x7F);
+	vid_bit = (uint32_t)(1 << (vlan_id & 0x1F));
+	vfta = rd32(hw, TXGBE_VLANTBL(vid_idx));
+	if (on)
+		vfta |= vid_bit;
+	else
+		vfta &= ~vid_bit;
+	wr32(hw, TXGBE_VLANTBL(vid_idx), vfta);
+
+	/* update local VFTA copy */
+	shadow_vfta->vfta[vid_idx] = vfta;
+
+	return 0;
+}
+
+static void
+txgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_rx_queue *rxq;
+	bool restart;
+	uint32_t rxcfg, rxbal, rxbah;
+
+	if (on)
+		txgbe_vlan_hw_strip_enable(dev, queue);
+	else
+		txgbe_vlan_hw_strip_disable(dev, queue);
+
+	rxq = dev->data->rx_queues[queue];
+	rxbal = rd32(hw, TXGBE_RXBAL(rxq->reg_idx));
+	rxbah = rd32(hw, TXGBE_RXBAH(rxq->reg_idx));
+	rxcfg = rd32(hw, TXGBE_RXCFG(rxq->reg_idx));
+	if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
+		restart = (rxcfg & TXGBE_RXCFG_ENA) &&
+			!(rxcfg & TXGBE_RXCFG_VLAN);
+		rxcfg |= TXGBE_RXCFG_VLAN;
+	} else {
+		restart = (rxcfg & TXGBE_RXCFG_ENA) &&
+			(rxcfg & TXGBE_RXCFG_VLAN);
+		rxcfg &= ~TXGBE_RXCFG_VLAN;
+	}
+	rxcfg &= ~TXGBE_RXCFG_ENA;
+
+	if (restart) {
+		/* set vlan strip for ring */
+		txgbe_dev_rx_queue_stop(dev, queue);
+		wr32(hw, TXGBE_RXBAL(rxq->reg_idx), rxbal);
+		wr32(hw, TXGBE_RXBAH(rxq->reg_idx), rxbah);
+		wr32(hw, TXGBE_RXCFG(rxq->reg_idx), rxcfg);
+		txgbe_dev_rx_queue_start(dev, queue);
+	}
+}
+
+static int
+txgbe_vlan_tpid_set(struct rte_eth_dev *dev,
+		    enum rte_vlan_type vlan_type,
+		    uint16_t tpid)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int ret = 0;
+	uint32_t portctrl, vlan_ext, qinq;
+
+	portctrl = rd32(hw, TXGBE_PORTCTL);
+
+	vlan_ext = (portctrl & TXGBE_PORTCTL_VLANEXT);
+	qinq = vlan_ext && (portctrl & TXGBE_PORTCTL_QINQ);
+	switch (vlan_type) {
+	case ETH_VLAN_TYPE_INNER:
+		if (vlan_ext) {
+			wr32m(hw, TXGBE_VLANCTL,
+				TXGBE_VLANCTL_TPID_MASK,
+				TXGBE_VLANCTL_TPID(tpid));
+			wr32m(hw, TXGBE_DMATXCTRL,
+				TXGBE_DMATXCTRL_TPID_MASK,
+				TXGBE_DMATXCTRL_TPID(tpid));
+		} else {
+			ret = -ENOTSUP;
+			PMD_DRV_LOG(ERR, "Inner type is not supported"
+				    " by single VLAN");
+		}
+
+		if (qinq) {
+			wr32m(hw, TXGBE_TAGTPID(0),
+				TXGBE_TAGTPID_LSB_MASK,
+				TXGBE_TAGTPID_LSB(tpid));
+		}
+		break;
+	case ETH_VLAN_TYPE_OUTER:
+		if (vlan_ext) {
+			/* Only the high 16-bits is valid */
+			wr32m(hw, TXGBE_EXTAG,
+				TXGBE_EXTAG_VLAN_MASK,
+				TXGBE_EXTAG_VLAN(tpid));
+		} else {
+			wr32m(hw, TXGBE_VLANCTL,
+				TXGBE_VLANCTL_TPID_MASK,
+				TXGBE_VLANCTL_TPID(tpid));
+			wr32m(hw, TXGBE_DMATXCTRL,
+				TXGBE_DMATXCTRL_TPID_MASK,
+				TXGBE_DMATXCTRL_TPID(tpid));
+		}
+
+		if (qinq) {
+			wr32m(hw, TXGBE_TAGTPID(0),
+				TXGBE_TAGTPID_MSB_MASK,
+				TXGBE_TAGTPID_MSB(tpid));
+		}
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unsupported VLAN type %d", vlan_type);
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+void
+txgbe_vlan_hw_filter_disable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t vlnctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Filter Table Disable */
+	vlnctrl = rd32(hw, TXGBE_VLANCTL);
+	vlnctrl &= ~TXGBE_VLANCTL_VFE;
+	wr32(hw, TXGBE_VLANCTL, vlnctrl);
+}
+
+void
+txgbe_vlan_hw_filter_enable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(dev);
+	uint32_t vlnctrl;
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Filter Table Enable */
+	vlnctrl = rd32(hw, TXGBE_VLANCTL);
+	vlnctrl &= ~TXGBE_VLANCTL_CFIENA;
+	vlnctrl |= TXGBE_VLANCTL_VFE;
+	wr32(hw, TXGBE_VLANCTL, vlnctrl);
+
+	/* write whatever is in local vfta copy */
+	for (i = 0; i < TXGBE_VFTA_SIZE; i++)
+		wr32(hw, TXGBE_VLANTBL(i), shadow_vfta->vfta[i]);
+}
+
+void
+txgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, uint16_t queue, bool on)
+{
+	struct txgbe_hwstrip *hwstrip = TXGBE_DEV_HWSTRIP(dev);
+	struct txgbe_rx_queue *rxq;
+
+	if (queue >= TXGBE_MAX_RX_QUEUE_NUM)
+		return;
+
+	if (on)
+		TXGBE_SET_HWSTRIP(hwstrip, queue);
+	else
+		TXGBE_CLEAR_HWSTRIP(hwstrip, queue);
+
+	if (queue >= dev->data->nb_rx_queues)
+		return;
+
+	rxq = dev->data->rx_queues[queue];
+
+	if (on) {
+		rxq->vlan_flags = PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		rxq->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	} else {
+		rxq->vlan_flags = PKT_RX_VLAN;
+		rxq->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+	}
+}
+
+static void
+txgbe_vlan_hw_strip_disable(struct rte_eth_dev *dev, uint16_t queue)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ctrl = rd32(hw, TXGBE_RXCFG(queue));
+	ctrl &= ~TXGBE_RXCFG_VLAN;
+	wr32(hw, TXGBE_RXCFG(queue), ctrl);
+
+	/* record those setting for HW strip per queue */
+	txgbe_vlan_hw_strip_bitmap_set(dev, queue, 0);
+}
+
+static void
+txgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ctrl = rd32(hw, TXGBE_RXCFG(queue));
+	ctrl |= TXGBE_RXCFG_VLAN;
+	wr32(hw, TXGBE_RXCFG(queue), ctrl);
+
+	/* record those setting for HW strip per queue */
+	txgbe_vlan_hw_strip_bitmap_set(dev, queue, 1);
+}
+
+static void
+txgbe_vlan_hw_extend_disable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ctrl = rd32(hw, TXGBE_PORTCTL);
+	ctrl &= ~TXGBE_PORTCTL_VLANEXT;
+	ctrl &= ~TXGBE_PORTCTL_QINQ;
+	wr32(hw, TXGBE_PORTCTL, ctrl);
+}
+
+static void
+txgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ctrl  = rd32(hw, TXGBE_PORTCTL);
+	ctrl |= TXGBE_PORTCTL_VLANEXT;
+	if (rxmode->offloads & DEV_RX_OFFLOAD_QINQ_STRIP ||
+	    txmode->offloads & DEV_TX_OFFLOAD_QINQ_INSERT)
+		ctrl |= TXGBE_PORTCTL_QINQ;
+	wr32(hw, TXGBE_PORTCTL, ctrl);
+}
+
+void
+txgbe_vlan_hw_strip_config(struct rte_eth_dev *dev)
+{
+	struct txgbe_rx_queue *rxq;
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+
+		if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			txgbe_vlan_strip_queue_set(dev, i, 1);
+		else
+			txgbe_vlan_strip_queue_set(dev, i, 0);
+	}
+}
+
+void
+txgbe_config_vlan_strip_on_all_queues(struct rte_eth_dev *dev, int mask)
+{
+	uint16_t i;
+	struct rte_eth_rxmode *rxmode;
+	struct txgbe_rx_queue *rxq;
+
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		rxmode = &dev->data->dev_conf.rxmode;
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				rxq = dev->data->rx_queues[i];
+				rxq->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+			}
+		else
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				rxq = dev->data->rx_queues[i];
+				rxq->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+			}
+	}
+}
+
+static int
+txgbe_vlan_offload_config(struct rte_eth_dev *dev, int mask)
+{
+	struct rte_eth_rxmode *rxmode;
+	rxmode = &dev->data->dev_conf.rxmode;
+
+	if (mask & ETH_VLAN_STRIP_MASK)
+		txgbe_vlan_hw_strip_config(dev);
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+			txgbe_vlan_hw_filter_enable(dev);
+		else
+			txgbe_vlan_hw_filter_disable(dev);
+	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
+			txgbe_vlan_hw_extend_enable(dev);
+		else
+			txgbe_vlan_hw_extend_disable(dev);
+	}
+
+	return 0;
+}
+
+static int
+txgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	txgbe_config_vlan_strip_on_all_queues(dev, mask);
+
+	txgbe_vlan_offload_config(dev, mask);
+
+	return 0;
+}
 
 static int
 txgbe_check_vf_rss_rxq_num(struct rte_eth_dev *dev, uint16_t nb_rx_q)
@@ -772,6 +1129,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	bool link_up = false, negotiate = 0;
 	uint32_t speed = 0;
 	uint32_t allowed_speeds = 0;
+	int mask = 0;
 	int status;
 	uint32_t *link_speeds;
 
@@ -841,6 +1199,14 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	err = txgbe_dev_rx_init(dev);
 	if (err) {
 		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware");
+		goto error;
+	}
+
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
+		ETH_VLAN_EXTEND_MASK;
+	err = txgbe_vlan_offload_config(dev, mask);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to set VLAN offload");
 		goto error;
 	}
 
@@ -2430,6 +2796,10 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.xstats_get_names_by_id     = txgbe_dev_xstats_get_names_by_id,
 	.queue_stats_mapping_set    = txgbe_dev_queue_stats_mapping_set,
 	.dev_supported_ptypes_get   = txgbe_dev_supported_ptypes_get,
+	.vlan_filter_set            = txgbe_vlan_filter_set,
+	.vlan_tpid_set              = txgbe_vlan_tpid_set,
+	.vlan_offload_set           = txgbe_vlan_offload_set,
+	.vlan_strip_queue_set       = txgbe_vlan_strip_queue_set,
 	.rx_queue_start	            = txgbe_dev_rx_queue_start,
 	.rx_queue_stop              = txgbe_dev_rx_queue_stop,
 	.tx_queue_start	            = txgbe_dev_tx_queue_start,

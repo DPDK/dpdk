@@ -34,6 +34,7 @@ s32 txgbe_get_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
 s32 txgbe_set_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
 
 s32 txgbe_init_uta_tables(struct txgbe_hw *hw);
+s32 txgbe_clear_vfta(struct txgbe_hw *hw);
 s32 txgbe_check_mac_link(struct txgbe_hw *hw,
 			       u32 *speed,
 			       bool *link_up, bool link_up_wait_to_complete);

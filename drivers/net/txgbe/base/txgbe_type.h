@@ -10,6 +10,7 @@
 
 #define TXGBE_FRAME_SIZE_MAX	(9728) /* Maximum frame size, +FCS */
 #define TXGBE_FRAME_SIZE_DFT	(1518) /* Default frame size, +FCS */
+#define TXGBE_NUM_POOL		(64)
 #define TXGBE_MAX_UP		8
 #define TXGBE_MAX_QP		(128)
 #define TXGBE_MAX_UTA		128
@@ -507,6 +508,7 @@ struct txgbe_mac_info {
 	u32 mta_shadow[TXGBE_MAX_MTA];
 	s32 mc_filter_type;
 	u32 mcft_size;
+	u32 vft_size;
 	u32 num_rar_entries;
 	u32 max_tx_queues;
 	u32 max_rx_queues;
