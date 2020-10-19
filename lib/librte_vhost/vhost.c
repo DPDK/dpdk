@@ -1577,6 +1577,9 @@ int rte_vhost_async_channel_register(int vid, uint16_t queue_id,
 
 	f.intval = features;
 
+	if (queue_id >= VHOST_MAX_VRING)
+		return -1;
+
 	vq = dev->virtqueue[queue_id];
 
 	if (unlikely(vq == NULL || !dev->async_copy))
@@ -1656,6 +1659,9 @@ int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 	int ret = -1;
 
 	if (dev == NULL)
+		return ret;
+
+	if (queue_id >= VHOST_MAX_VRING)
 		return ret;
 
 	vq = dev->virtqueue[queue_id];
