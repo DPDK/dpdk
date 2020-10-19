@@ -22,6 +22,71 @@ static s32 txgbe_get_san_mac_addr_offset(struct txgbe_hw *hw,
 					 u16 *san_mac_offset);
 
 /**
+ *  txgbe_start_hw - Prepare hardware for Tx/Rx
+ *  @hw: pointer to hardware structure
+ *
+ *  Starts the hardware by filling the bus info structure and media type, clears
+ *  all on chip counters, initializes receive address registers, multicast
+ *  table, VLAN filter table, calls routine to set up link and flow control
+ *  settings, and leaves transmit and receive units disabled and uninitialized
+ **/
+s32 txgbe_start_hw(struct txgbe_hw *hw)
+{
+	u16 device_caps;
+
+	DEBUGFUNC("txgbe_start_hw");
+
+	/* Set the media type */
+	hw->phy.media_type = hw->phy.get_media_type(hw);
+
+	/* Clear statistics registers */
+	hw->mac.clear_hw_cntrs(hw);
+
+	/* Cache bit indicating need for crosstalk fix */
+	switch (hw->mac.type) {
+	case txgbe_mac_raptor:
+		hw->mac.get_device_caps(hw, &device_caps);
+		if (device_caps & TXGBE_DEVICE_CAPS_NO_CROSSTALK_WR)
+			hw->need_crosstalk_fix = false;
+		else
+			hw->need_crosstalk_fix = true;
+		break;
+	default:
+		hw->need_crosstalk_fix = false;
+		break;
+	}
+
+	/* Clear adapter stopped flag */
+	hw->adapter_stopped = false;
+
+	return 0;
+}
+
+/**
+ *  txgbe_start_hw_gen2 - Init sequence for common device family
+ *  @hw: pointer to hw structure
+ *
+ * Performs the init sequence common to the second generation
+ * of 10 GbE devices.
+ **/
+s32 txgbe_start_hw_gen2(struct txgbe_hw *hw)
+{
+	u32 i;
+
+	/* Clear the rate limiters */
+	for (i = 0; i < hw->mac.max_tx_queues; i++) {
+		wr32(hw, TXGBE_ARBPOOLIDX, i);
+		wr32(hw, TXGBE_ARBTXRATE, 0);
+	}
+	txgbe_flush(hw);
+
+	/* We need to run link autotry after the driver loads */
+	hw->mac.autotry_restart = true;
+
+	return 0;
+}
+
+/**
  *  txgbe_init_hw - Generic hardware initialization
  *  @hw: pointer to hardware structure
  *
@@ -103,6 +168,59 @@ void txgbe_set_lan_id_multi_port(struct txgbe_hw *hw)
 		bus->func = 0;
 	else
 		bus->func = bus->lan_id;
+}
+
+/**
+ *  txgbe_stop_hw - Generic stop Tx/Rx units
+ *  @hw: pointer to hardware structure
+ *
+ *  Sets the adapter_stopped flag within txgbe_hw struct. Clears interrupts,
+ *  disables transmit and receive units. The adapter_stopped flag is used by
+ *  the shared code and drivers to determine if the adapter is in a stopped
+ *  state and should not touch the hardware.
+ **/
+s32 txgbe_stop_hw(struct txgbe_hw *hw)
+{
+	u32 reg_val;
+	u16 i;
+
+	DEBUGFUNC("txgbe_stop_hw");
+
+	/*
+	 * Set the adapter_stopped flag so other driver functions stop touching
+	 * the hardware
+	 */
+	hw->adapter_stopped = true;
+
+	/* Disable the receive unit */
+	txgbe_disable_rx(hw);
+
+	/* Clear interrupt mask to stop interrupts from being generated */
+	wr32(hw, TXGBE_IENMISC, 0);
+	wr32(hw, TXGBE_IMS(0), TXGBE_IMS_MASK);
+	wr32(hw, TXGBE_IMS(1), TXGBE_IMS_MASK);
+
+	/* Clear any pending interrupts, flush previous writes */
+	wr32(hw, TXGBE_ICRMISC, TXGBE_ICRMISC_MASK);
+	wr32(hw, TXGBE_ICR(0), TXGBE_ICR_MASK);
+	wr32(hw, TXGBE_ICR(1), TXGBE_ICR_MASK);
+
+	/* Disable the transmit unit.  Each queue must be disabled. */
+	for (i = 0; i < hw->mac.max_tx_queues; i++)
+		wr32(hw, TXGBE_TXCFG(i), TXGBE_TXCFG_FLUSH);
+
+	/* Disable the receive unit by stopping each queue */
+	for (i = 0; i < hw->mac.max_rx_queues; i++) {
+		reg_val = rd32(hw, TXGBE_RXCFG(i));
+		reg_val &= ~TXGBE_RXCFG_ENA;
+		wr32(hw, TXGBE_RXCFG(i), reg_val);
+	}
+
+	/* flush all queues disables */
+	txgbe_flush(hw);
+	msec_delay(2);
+
+	return 0;
 }
 
 /**
@@ -677,6 +795,23 @@ s32 txgbe_check_mac_link(struct txgbe_hw *hw, u32 *speed,
 }
 
 /**
+ *  txgbe_get_device_caps - Get additional device capabilities
+ *  @hw: pointer to hardware structure
+ *  @device_caps: the EEPROM word with the extra device capabilities
+ *
+ *  This function will read the EEPROM location for the device capabilities,
+ *  and return the word through device_caps.
+ **/
+s32 txgbe_get_device_caps(struct txgbe_hw *hw, u16 *device_caps)
+{
+	DEBUGFUNC("txgbe_get_device_caps");
+
+	hw->rom.readw_sw(hw, TXGBE_DEVICE_CAPS, device_caps);
+
+	return 0;
+}
+
+/**
  * txgbe_clear_tx_pending - Clear pending TX work from the PCIe fifo
  * @hw: pointer to the hardware structure
  *
@@ -716,6 +851,38 @@ void txgbe_clear_tx_pending(struct txgbe_hw *hw)
 
 	/* restore previous register values */
 	wr32(hw, TXGBE_PSRCTL, hlreg0);
+}
+
+void txgbe_disable_rx(struct txgbe_hw *hw)
+{
+	u32 pfdtxgswc;
+
+	pfdtxgswc = rd32(hw, TXGBE_PSRCTL);
+	if (pfdtxgswc & TXGBE_PSRCTL_LBENA) {
+		pfdtxgswc &= ~TXGBE_PSRCTL_LBENA;
+		wr32(hw, TXGBE_PSRCTL, pfdtxgswc);
+		hw->mac.set_lben = true;
+	} else {
+		hw->mac.set_lben = false;
+	}
+
+	wr32m(hw, TXGBE_PBRXCTL, TXGBE_PBRXCTL_ENA, 0);
+	wr32m(hw, TXGBE_MACRXCFG, TXGBE_MACRXCFG_ENA, 0);
+}
+
+void txgbe_enable_rx(struct txgbe_hw *hw)
+{
+	u32 pfdtxgswc;
+
+	wr32m(hw, TXGBE_MACRXCFG, TXGBE_MACRXCFG_ENA, TXGBE_MACRXCFG_ENA);
+	wr32m(hw, TXGBE_PBRXCTL, TXGBE_PBRXCTL_ENA, TXGBE_PBRXCTL_ENA);
+
+	if (hw->mac.set_lben) {
+		pfdtxgswc = rd32(hw, TXGBE_PSRCTL);
+		pfdtxgswc |= TXGBE_PSRCTL_LBENA;
+		wr32(hw, TXGBE_PSRCTL, pfdtxgswc);
+		hw->mac.set_lben = false;
+	}
 }
 
 /**
@@ -1046,6 +1213,38 @@ init_phy_ops_out:
 	return err;
 }
 
+s32 txgbe_setup_sfp_modules(struct txgbe_hw *hw)
+{
+	s32 err = 0;
+
+	DEBUGFUNC("txgbe_setup_sfp_modules");
+
+	if (hw->phy.sfp_type == txgbe_sfp_type_unknown)
+		return 0;
+
+	txgbe_init_mac_link_ops(hw);
+
+	/* PHY config will finish before releasing the semaphore */
+	err = hw->mac.acquire_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+	if (err != 0)
+		return TXGBE_ERR_SWFW_SYNC;
+
+	/* Release the semaphore */
+	hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+
+	/* Delay obtaining semaphore again to allow FW access
+	 * prot_autoc_write uses the semaphore too.
+	 */
+	msec_delay(hw->rom.semaphore_delay);
+
+	if (err) {
+		DEBUGOUT("sfp module setup not complete\n");
+		return TXGBE_ERR_SFP_SETUP_NOT_COMPLETE;
+	}
+
+	return err;
+}
+
 /**
  *  txgbe_init_ops_pf - Inits func ptrs and MAC type
  *  @hw: pointer to hardware structure
@@ -1066,6 +1265,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	bus->set_lan_id = txgbe_set_lan_id_multi_port;
 
 	/* PHY */
+	phy->get_media_type = txgbe_get_media_type_raptor;
 	phy->identify = txgbe_identify_phy;
 	phy->init = txgbe_init_phy_raptor;
 	phy->read_reg = txgbe_read_phy_reg;
@@ -1082,17 +1282,23 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;
+	mac->start_hw = txgbe_start_hw_raptor;
 	mac->get_mac_addr = txgbe_get_mac_addr;
+	mac->stop_hw = txgbe_stop_hw;
 	mac->reset_hw = txgbe_reset_hw;
 	mac->get_san_mac_addr = txgbe_get_san_mac_addr;
 	mac->set_san_mac_addr = txgbe_set_san_mac_addr;
+	mac->get_device_caps = txgbe_get_device_caps;
 	mac->autoc_read = txgbe_autoc_read;
 	mac->autoc_write = txgbe_autoc_write;
 
 	mac->set_rar = txgbe_set_rar;
 	mac->clear_rar = txgbe_clear_rar;
 	mac->init_rx_addrs = txgbe_init_rx_addrs;
+	mac->enable_rx = txgbe_enable_rx;
+	mac->disable_rx = txgbe_disable_rx;
 	mac->init_uta_tables = txgbe_init_uta_tables;
+	mac->setup_sfp = txgbe_setup_sfp_modules;
 	/* Link */
 	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;
 	mac->check_link = txgbe_check_mac_link;
@@ -1227,6 +1433,52 @@ s32 txgbe_get_link_capabilities_raptor(struct txgbe_hw *hw,
 	}
 
 	return status;
+}
+
+/**
+ *  txgbe_get_media_type_raptor - Get media type
+ *  @hw: pointer to hardware structure
+ *
+ *  Returns the media type (fiber, copper, backplane)
+ **/
+u32 txgbe_get_media_type_raptor(struct txgbe_hw *hw)
+{
+	u32 media_type;
+
+	DEBUGFUNC("txgbe_get_media_type_raptor");
+
+	/* Detect if there is a copper PHY attached. */
+	switch (hw->phy.type) {
+	case txgbe_phy_cu_unknown:
+	case txgbe_phy_tn:
+		media_type = txgbe_media_type_copper;
+		return media_type;
+	default:
+		break;
+	}
+
+	switch (hw->device_id) {
+	case TXGBE_DEV_ID_RAPTOR_KR_KX_KX4:
+		/* Default device ID is mezzanine card KX/KX4 */
+		media_type = txgbe_media_type_backplane;
+		break;
+	case TXGBE_DEV_ID_RAPTOR_SFP:
+	case TXGBE_DEV_ID_WX1820_SFP:
+		media_type = txgbe_media_type_fiber;
+		break;
+	case TXGBE_DEV_ID_RAPTOR_QSFP:
+		media_type = txgbe_media_type_fiber_qsfp;
+		break;
+	case TXGBE_DEV_ID_RAPTOR_XAUI:
+	case TXGBE_DEV_ID_RAPTOR_SGMII:
+		media_type = txgbe_media_type_copper;
+		break;
+	default:
+		media_type = txgbe_media_type_unknown;
+		break;
+	}
+
+	return media_type;
 }
 
 /**
@@ -1648,6 +1900,68 @@ txgbe_check_flash_load(struct txgbe_hw *hw, u32 check_bit)
 	return err;
 }
 
+static void
+txgbe_reset_misc(struct txgbe_hw *hw)
+{
+	int i;
+	u32 value;
+
+	wr32(hw, TXGBE_ISBADDRL, hw->isb_dma & 0x00000000FFFFFFFF);
+	wr32(hw, TXGBE_ISBADDRH, hw->isb_dma >> 32);
+
+	value = rd32_epcs(hw, SR_XS_PCS_CTRL2);
+	if ((value & 0x3) != SR_PCS_CTRL2_TYPE_SEL_X)
+		hw->link_status = TXGBE_LINK_STATUS_NONE;
+
+	/* receive packets that size > 2048 */
+	wr32m(hw, TXGBE_MACRXCFG,
+		TXGBE_MACRXCFG_JUMBO, TXGBE_MACRXCFG_JUMBO);
+
+	wr32m(hw, TXGBE_FRMSZ, TXGBE_FRMSZ_MAX_MASK,
+		TXGBE_FRMSZ_MAX(TXGBE_FRAME_SIZE_DFT));
+
+	/* clear counters on read */
+	wr32m(hw, TXGBE_MACCNTCTL,
+		TXGBE_MACCNTCTL_RC, TXGBE_MACCNTCTL_RC);
+
+	wr32m(hw, TXGBE_RXFCCFG,
+		TXGBE_RXFCCFG_FC, TXGBE_RXFCCFG_FC);
+	wr32m(hw, TXGBE_TXFCCFG,
+		TXGBE_TXFCCFG_FC, TXGBE_TXFCCFG_FC);
+
+	wr32m(hw, TXGBE_MACRXFLT,
+		TXGBE_MACRXFLT_PROMISC, TXGBE_MACRXFLT_PROMISC);
+
+	wr32m(hw, TXGBE_RSTSTAT,
+		TXGBE_RSTSTAT_TMRINIT_MASK, TXGBE_RSTSTAT_TMRINIT(30));
+
+	/* errata 4: initialize mng flex tbl and wakeup flex tbl*/
+	wr32(hw, TXGBE_MNGFLEXSEL, 0);
+	for (i = 0; i < 16; i++) {
+		wr32(hw, TXGBE_MNGFLEXDWL(i), 0);
+		wr32(hw, TXGBE_MNGFLEXDWH(i), 0);
+		wr32(hw, TXGBE_MNGFLEXMSK(i), 0);
+	}
+	wr32(hw, TXGBE_LANFLEXSEL, 0);
+	for (i = 0; i < 16; i++) {
+		wr32(hw, TXGBE_LANFLEXDWL(i), 0);
+		wr32(hw, TXGBE_LANFLEXDWH(i), 0);
+		wr32(hw, TXGBE_LANFLEXMSK(i), 0);
+	}
+
+	/* set pause frame dst mac addr */
+	wr32(hw, TXGBE_RXPBPFCDMACL, 0xC2000001);
+	wr32(hw, TXGBE_RXPBPFCDMACH, 0x0180);
+
+	hw->mac.init_thermal_sensor_thresh(hw);
+
+	/* enable mac transmitter */
+	wr32m(hw, TXGBE_MACTXCFG, TXGBE_MACTXCFG_TXE, TXGBE_MACTXCFG_TXE);
+
+	for (i = 0; i < 4; i++)
+		wr32m(hw, TXGBE_IVAR(i), 0x80808080, 0);
+}
+
 /**
  *  txgbe_reset_hw - Perform hardware reset
  *  @hw: pointer to hardware structure
@@ -1705,6 +2019,8 @@ mac_reset_top:
 		txgbe_flush(hw);
 	}
 	usec_delay(10);
+
+	txgbe_reset_misc(hw);
 
 	if (hw->bus.lan_id == 0) {
 		status = txgbe_check_flash_load(hw,
@@ -1777,6 +2093,36 @@ mac_reset_top:
 
 	return status;
 }
+
+/**
+ *  txgbe_start_hw_raptor - Prepare hardware for Tx/Rx
+ *  @hw: pointer to hardware structure
+ *
+ *  Starts the hardware using the generic start_hw function
+ *  and the generation start_hw function.
+ *  Then performs revision-specific operations, if any.
+ **/
+s32 txgbe_start_hw_raptor(struct txgbe_hw *hw)
+{
+	s32 err = 0;
+
+	DEBUGFUNC("txgbe_start_hw_raptor");
+
+	err = txgbe_start_hw(hw);
+	if (err != 0)
+		goto out;
+
+	err = txgbe_start_hw_gen2(hw);
+	if (err != 0)
+		goto out;
+
+	/* We need to run link autotry after the driver loads */
+	hw->mac.autotry_restart = true;
+
+out:
+	return err;
+}
+
 
 /**
  *  txgbe_verify_lesm_fw_enabled_raptor - Checks LESM FW module state.

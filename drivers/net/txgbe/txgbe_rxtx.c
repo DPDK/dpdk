@@ -2461,6 +2461,33 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+void __rte_cold
+txgbe_dev_clear_queues(struct rte_eth_dev *dev)
+{
+	unsigned int i;
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct txgbe_tx_queue *txq = dev->data->tx_queues[i];
+
+		if (txq != NULL) {
+			txq->ops->release_mbufs(txq);
+			txq->ops->reset(txq);
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct txgbe_rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (rxq != NULL) {
+			txgbe_rx_queue_release_mbufs(rxq);
+			txgbe_reset_rx_queue(adapter, rxq);
+		}
+	}
+}
+
 void
 txgbe_dev_free_queues(struct rte_eth_dev *dev)
 {
@@ -2906,6 +2933,81 @@ txgbe_dev_tx_init(struct rte_eth_dev *dev)
 		wr32(hw, TXGBE_TXRP(txq->reg_idx), 0);
 		wr32(hw, TXGBE_TXWP(txq->reg_idx), 0);
 	}
+}
+
+/*
+ * Set up link loopback mode Tx->Rx.
+ */
+static inline void __rte_cold
+txgbe_setup_loopback_link_raptor(struct txgbe_hw *hw)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	wr32m(hw, TXGBE_MACRXCFG, TXGBE_MACRXCFG_LB, TXGBE_MACRXCFG_LB);
+
+	msec_delay(50);
+}
+
+/*
+ * Start Transmit and Receive Units.
+ */
+int __rte_cold
+txgbe_dev_rxtx_start(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw     *hw;
+	struct txgbe_tx_queue *txq;
+	struct txgbe_rx_queue *rxq;
+	uint32_t dmatxctl;
+	uint32_t rxctrl;
+	uint16_t i;
+	int ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = TXGBE_DEV_HW(dev);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		/* Setup Transmit Threshold Registers */
+		wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
+		      TXGBE_TXCFG_HTHRESH_MASK |
+		      TXGBE_TXCFG_WTHRESH_MASK,
+		      TXGBE_TXCFG_HTHRESH(txq->hthresh) |
+		      TXGBE_TXCFG_WTHRESH(txq->wthresh));
+	}
+
+	dmatxctl = rd32(hw, TXGBE_DMATXCTRL);
+	dmatxctl |= TXGBE_DMATXCTRL_ENA;
+	wr32(hw, TXGBE_DMATXCTRL, dmatxctl);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (!txq->tx_deferred_start) {
+			ret = txgbe_dev_tx_queue_start(dev, i);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (!rxq->rx_deferred_start) {
+			ret = txgbe_dev_rx_queue_start(dev, i);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	/* Enable Receive engine */
+	rxctrl = rd32(hw, TXGBE_PBRXCTL);
+	rxctrl |= TXGBE_PBRXCTL_ENA;
+	hw->mac.enable_rx_dma(hw, rxctrl);
+
+	/* If loopback mode is enabled, set up the link accordingly */
+	if (hw->mac.type == txgbe_mac_raptor &&
+	    dev->data->dev_conf.lpbk_mode)
+		txgbe_setup_loopback_link_raptor(hw);
+
+	return 0;
 }
 
 void

@@ -81,6 +81,8 @@ struct txgbe_adapter {
 /*
  * RX/TX function prototypes
  */
+void txgbe_dev_clear_queues(struct rte_eth_dev *dev);
+
 void txgbe_dev_free_queues(struct rte_eth_dev *dev);
 
 void txgbe_dev_rx_queue_release(void *rxq);
@@ -99,6 +101,8 @@ int  txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 int txgbe_dev_rx_init(struct rte_eth_dev *dev);
 
 void txgbe_dev_tx_init(struct rte_eth_dev *dev);
+
+int txgbe_dev_rxtx_start(struct rte_eth_dev *dev);
 
 void txgbe_dev_save_rx_queue(struct txgbe_hw *hw, uint16_t rx_queue_id);
 void txgbe_dev_store_rx_queue(struct txgbe_hw *hw, uint16_t rx_queue_id);

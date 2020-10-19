@@ -360,6 +360,7 @@ struct txgbe_mac_info {
 	bool orig_link_settings_stored;
 	bool autotry_restart;
 	u8 flags;
+	bool set_lben;
 	u32  max_link_up_time;
 };
 
@@ -455,12 +456,14 @@ struct txgbe_hw {
 	u16 vendor_id;
 	u16 subsystem_device_id;
 	u16 subsystem_vendor_id;
-
+	bool adapter_stopped;
 	bool allow_unsupported_sfp;
 	bool need_crosstalk_fix;
 
 	uint64_t isb_dma;
 	void IOMEM *isb_mem;
+	u16 nb_rx_queues;
+	u16 nb_tx_queues;
 	enum txgbe_link_status {
 		TXGBE_LINK_STATUS_NONE = 0,
 		TXGBE_LINK_STATUS_KX,

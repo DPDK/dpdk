@@ -80,6 +80,25 @@ txgbe_is_sfp(struct txgbe_hw *hw)
 	}
 }
 
+static inline int32_t
+txgbe_pf_reset_hw(struct txgbe_hw *hw)
+{
+	uint32_t ctrl_ext;
+	int32_t status;
+
+	status = hw->mac.reset_hw(hw);
+
+	ctrl_ext = rd32(hw, TXGBE_PORTCTL);
+	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
+	ctrl_ext |= TXGBE_PORTCTL_RSTDONE;
+	wr32(hw, TXGBE_PORTCTL, ctrl_ext);
+	txgbe_flush(hw);
+
+	if (status == TXGBE_ERR_SFP_NOT_PRESENT)
+		status = 0;
+	return status;
+}
+
 static inline void
 txgbe_enable_intr(struct rte_eth_dev *dev)
 {
@@ -539,6 +558,203 @@ txgbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
 	gpie |= TXGBE_GPIOBIT_6;
 	wr32(hw, TXGBE_GPIOINTEN, gpie);
 	intr->mask_misc |= TXGBE_ICRMISC_GPIO;
+}
+
+/*
+ * Configure device link speed and setup link.
+ * It returns 0 on success.
+ */
+static int
+txgbe_dev_start(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint32_t intr_vector = 0;
+	int err;
+	bool link_up = false, negotiate = 0;
+	uint32_t speed = 0;
+	uint32_t allowed_speeds = 0;
+	int status;
+	uint32_t *link_speeds;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* TXGBE devices don't support:
+	 *    - half duplex (checked afterwards for valid speeds)
+	 *    - fixed speed: TODO implement
+	 */
+	if (dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED) {
+		PMD_INIT_LOG(ERR,
+		"Invalid link_speeds for port %u, fix speed not supported",
+				dev->data->port_id);
+		return -EINVAL;
+	}
+
+	/* Stop the link setup handler before resetting the HW. */
+	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
+
+	/* disable uio/vfio intr/eventfd mapping */
+	rte_intr_disable(intr_handle);
+
+	/* stop adapter */
+	hw->adapter_stopped = 0;
+	txgbe_stop_hw(hw);
+
+	/* reinitialize adapter
+	 * this calls reset and start
+	 */
+	hw->nb_rx_queues = dev->data->nb_rx_queues;
+	hw->nb_tx_queues = dev->data->nb_tx_queues;
+	status = txgbe_pf_reset_hw(hw);
+	if (status != 0)
+		return -1;
+	hw->mac.start_hw(hw);
+	hw->mac.get_link_status = true;
+
+	txgbe_dev_phy_intr_setup(dev);
+
+	/* check and configure queue intr-vector mapping */
+	if ((rte_intr_cap_multiple(intr_handle) ||
+	     !RTE_ETH_DEV_SRIOV(dev).active) &&
+	    dev->data->dev_conf.intr_conf.rxq != 0) {
+		intr_vector = dev->data->nb_rx_queues;
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				     " intr_vec", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+
+	/* confiugre msix for sleep until rx interrupt */
+	txgbe_configure_msix(dev);
+
+	/* initialize transmission unit */
+	txgbe_dev_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
+	err = txgbe_dev_rx_init(dev);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware");
+		goto error;
+	}
+
+	err = txgbe_dev_rxtx_start(dev);
+	if (err < 0) {
+		PMD_INIT_LOG(ERR, "Unable to start rxtx queues");
+		goto error;
+	}
+
+	/* Skip link setup if loopback mode is enabled. */
+	if (hw->mac.type == txgbe_mac_raptor &&
+	    dev->data->dev_conf.lpbk_mode)
+		goto skip_link_setup;
+
+	if (txgbe_is_sfp(hw) && hw->phy.multispeed_fiber) {
+		err = hw->mac.setup_sfp(hw);
+		if (err)
+			goto error;
+	}
+
+	if (hw->phy.media_type == txgbe_media_type_copper) {
+		/* Turn on the copper */
+		hw->phy.set_phy_power(hw, true);
+	} else {
+		/* Turn on the laser */
+		hw->mac.enable_tx_laser(hw);
+	}
+
+	err = hw->mac.check_link(hw, &speed, &link_up, 0);
+	if (err)
+		goto error;
+	dev->data->dev_link.link_status = link_up;
+
+	err = hw->mac.get_link_capabilities(hw, &speed, &negotiate);
+	if (err)
+		goto error;
+
+	allowed_speeds = ETH_LINK_SPEED_100M | ETH_LINK_SPEED_1G |
+			ETH_LINK_SPEED_10G;
+
+	link_speeds = &dev->data->dev_conf.link_speeds;
+	if (*link_speeds & ~allowed_speeds) {
+		PMD_INIT_LOG(ERR, "Invalid link setting");
+		goto error;
+	}
+
+	speed = 0x0;
+	if (*link_speeds == ETH_LINK_SPEED_AUTONEG) {
+		speed = (TXGBE_LINK_SPEED_100M_FULL |
+			 TXGBE_LINK_SPEED_1GB_FULL |
+			 TXGBE_LINK_SPEED_10GB_FULL);
+	} else {
+		if (*link_speeds & ETH_LINK_SPEED_10G)
+			speed |= TXGBE_LINK_SPEED_10GB_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_5G)
+			speed |= TXGBE_LINK_SPEED_5GB_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_2_5G)
+			speed |= TXGBE_LINK_SPEED_2_5GB_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_1G)
+			speed |= TXGBE_LINK_SPEED_1GB_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_100M)
+			speed |= TXGBE_LINK_SPEED_100M_FULL;
+	}
+
+	err = hw->mac.setup_link(hw, speed, link_up);
+	if (err)
+		goto error;
+
+skip_link_setup:
+
+	if (rte_intr_allow_others(intr_handle)) {
+		/* check if lsc interrupt is enabled */
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
+			txgbe_dev_lsc_interrupt_setup(dev, TRUE);
+		else
+			txgbe_dev_lsc_interrupt_setup(dev, FALSE);
+		txgbe_dev_macsec_interrupt_setup(dev);
+		txgbe_set_ivar_map(hw, -1, 1, TXGBE_MISC_VEC_ID);
+	} else {
+		rte_intr_callback_unregister(intr_handle,
+					     txgbe_dev_interrupt_handler, dev);
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
+			PMD_INIT_LOG(INFO, "lsc won't enable because of"
+				     " no intr multiplex");
+	}
+
+	/* check if rxq interrupt is enabled */
+	if (dev->data->dev_conf.intr_conf.rxq != 0 &&
+	    rte_intr_dp_is_en(intr_handle))
+		txgbe_dev_rxq_interrupt_setup(dev);
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rte_intr_enable(intr_handle);
+
+	/* resume enabled intr since hw reset */
+	txgbe_enable_intr(dev);
+
+	/*
+	 * Update link status right before return, because it may
+	 * start link configuration process in a separate thread.
+	 */
+	txgbe_dev_link_update(dev, 0);
+
+	wr32m(hw, TXGBE_LEDCTL, 0xFFFFFFFF, TXGBE_LEDCTL_ORD_MASK);
+
+	return 0;
+
+error:
+	PMD_INIT_LOG(ERR, "failure in dev start: %d", err);
+	txgbe_dev_clear_queues(dev);
+	return -EIO;
 }
 
 /*
@@ -1360,6 +1576,7 @@ txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_configure              = txgbe_dev_configure,
 	.dev_infos_get              = txgbe_dev_info_get,
+	.dev_start                  = txgbe_dev_start,
 	.dev_set_link_up            = txgbe_dev_set_link_up,
 	.dev_set_link_down          = txgbe_dev_set_link_down,
 	.dev_supported_ptypes_get   = txgbe_dev_supported_ptypes_get,
