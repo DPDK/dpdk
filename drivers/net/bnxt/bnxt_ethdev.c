@@ -13,6 +13,7 @@
 #include <rte_cycles.h>
 #include <rte_alarm.h>
 #include <rte_kvargs.h>
+#include <rte_vect.h>
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
@@ -1169,7 +1170,8 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_RSS_HASH |
 		DEV_RX_OFFLOAD_VLAN_FILTER)) &&
-	    !BNXT_TRUFLOW_EN(bp) && BNXT_NUM_ASYNC_CPR(bp)) {
+	    !BNXT_TRUFLOW_EN(bp) && BNXT_NUM_ASYNC_CPR(bp) &&
+	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 		PMD_DRV_LOG(INFO, "Using vector mode receive for port %d\n",
 			    eth_dev->data->port_id);
 		bp->flags |= BNXT_FLAG_RX_VECTOR_PKT_MODE;
@@ -1202,7 +1204,8 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 	 */
 	if (!eth_dev->data->scattered_rx &&
 	    !(offloads & ~DEV_TX_OFFLOAD_MBUF_FAST_FREE) &&
-	    !BNXT_TRUFLOW_EN(bp)) {
+	    !BNXT_TRUFLOW_EN(bp) &&
+	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 		PMD_DRV_LOG(INFO, "Using vector mode transmit for port %d\n",
 			    eth_dev->data->port_id);
 		return bnxt_xmit_pkts_vec;
