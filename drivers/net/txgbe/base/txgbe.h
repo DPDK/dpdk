@@ -8,6 +8,7 @@
 #include "txgbe_type.h"
 #include "txgbe_mng.h"
 #include "txgbe_eeprom.h"
+#include "txgbe_phy.h"
 #include "txgbe_hw.h"
 
 #endif /* _TXGBE_H_ */

@@ -5,6 +5,7 @@ sources = [
 	'txgbe_eeprom.c',
 	'txgbe_hw.c',
 	'txgbe_mng.c',
+	'txgbe_phy.c',
 ]
 
 error_cflags = []

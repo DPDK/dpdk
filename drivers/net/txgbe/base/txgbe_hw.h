@@ -16,5 +16,7 @@ void txgbe_clear_tx_pending(struct txgbe_hw *hw);
 s32 txgbe_init_shared_code(struct txgbe_hw *hw);
 s32 txgbe_set_mac_type(struct txgbe_hw *hw);
 s32 txgbe_init_ops_pf(struct txgbe_hw *hw);
+void txgbe_init_mac_link_ops(struct txgbe_hw *hw);
 s32 txgbe_reset_hw(struct txgbe_hw *hw);
+s32 txgbe_init_phy_raptor(struct txgbe_hw *hw);
 #endif /* _TXGBE_HW_H_ */

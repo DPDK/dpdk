@@ -3,6 +3,7 @@
  */
 
 #include "txgbe_type.h"
+#include "txgbe_phy.h"
 #include "txgbe_eeprom.h"
 #include "txgbe_mng.h"
 #include "txgbe_hw.h"
@@ -224,6 +225,50 @@ s32 txgbe_set_mac_type(struct txgbe_hw *hw)
 	return err;
 }
 
+void txgbe_init_mac_link_ops(struct txgbe_hw *hw)
+{
+	struct txgbe_mac_info *mac = &hw->mac;
+
+	DEBUGFUNC("txgbe_init_mac_link_ops");
+	RTE_SET_USED(mac);
+}
+
+/**
+ *  txgbe_init_phy_raptor - PHY/SFP specific init
+ *  @hw: pointer to hardware structure
+ *
+ *  Initialize any function pointers that were not able to be
+ *  set during init_shared_code because the PHY/SFP type was
+ *  not known.  Perform the SFP init if necessary.
+ *
+ **/
+s32 txgbe_init_phy_raptor(struct txgbe_hw *hw)
+{
+	struct txgbe_phy_info *phy = &hw->phy;
+	s32 err = 0;
+
+	DEBUGFUNC("txgbe_init_phy_raptor");
+
+	if (hw->device_id == TXGBE_DEV_ID_RAPTOR_QSFP) {
+		/* Store flag indicating I2C bus access control unit. */
+		hw->phy.qsfp_shared_i2c_bus = TRUE;
+
+		/* Initialize access to QSFP+ I2C bus */
+		txgbe_flush(hw);
+	}
+
+	/* Identify the PHY or SFP module */
+	err = phy->identify(hw);
+	if (err == TXGBE_ERR_SFP_NOT_SUPPORTED)
+		goto init_phy_ops_out;
+
+	/* Setup function pointers based on detected SFP module and speeds */
+	txgbe_init_mac_link_ops(hw);
+
+init_phy_ops_out:
+	return err;
+}
+
 /**
  *  txgbe_init_ops_pf - Inits func ptrs and MAC type
  *  @hw: pointer to hardware structure
@@ -235,12 +280,17 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 {
 	struct txgbe_bus_info *bus = &hw->bus;
 	struct txgbe_mac_info *mac = &hw->mac;
+	struct txgbe_phy_info *phy = &hw->phy;
 	struct txgbe_rom_info *rom = &hw->rom;
 
 	DEBUGFUNC("txgbe_init_ops_pf");
 
 	/* BUS */
 	bus->set_lan_id = txgbe_set_lan_id_multi_port;
+
+	/* PHY */
+	phy->identify = txgbe_identify_phy;
+	phy->init = txgbe_init_phy_raptor;
 
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;

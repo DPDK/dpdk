@@ -350,10 +350,16 @@ struct txgbe_phy_info {
 				       u8 value);
 
 	enum txgbe_phy_type type;
+	u32 addr;
+	u32 id;
 	enum txgbe_sfp_type sfp_type;
 	bool sfp_setup_needed;
-	bool reset_disable;
+	u32 revision;
 	u32 media_type;
+	u32 phy_semaphore_mask;
+	bool reset_disable;
+	bool qsfp_shared_i2c_bus;
+	u32 nw_mng_if_sel;
 };
 
 struct txgbe_mbx_info {
