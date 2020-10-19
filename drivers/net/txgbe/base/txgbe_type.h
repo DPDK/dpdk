@@ -201,6 +201,7 @@ struct txgbe_flash_info {
 	u16 address_bits;
 };
 
+#define TXGBE_FLAGS_DOUBLE_RESET_REQUIRED	0x01
 struct txgbe_mac_info {
 	s32 (*init_hw)(struct txgbe_hw *hw);
 	s32 (*reset_hw)(struct txgbe_hw *hw);
@@ -295,7 +296,19 @@ struct txgbe_mac_info {
 
 	enum txgbe_mac_type type;
 	u8 perm_addr[ETH_ADDR_LEN];
+	u8 san_addr[ETH_ADDR_LEN];
+	/* prefix for World Wide Node Name (WWNN) */
+	u16 wwnn_prefix;
+	/* prefix for World Wide Port Name (WWPN) */
+	u16 wwpn_prefix;
+
 	u32 num_rar_entries;
+
+	u8  san_mac_rar_index;
+	u64 orig_autoc;  /* cached value of AUTOC */
+	bool orig_link_settings_stored;
+	bool autotry_restart;
+	u8 flags;
 	u32  max_link_up_time;
 };
 
@@ -338,6 +351,8 @@ struct txgbe_phy_info {
 
 	enum txgbe_phy_type type;
 	enum txgbe_sfp_type sfp_type;
+	bool sfp_setup_needed;
+	bool reset_disable;
 	u32 media_type;
 };
 

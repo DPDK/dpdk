@@ -95,6 +95,41 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return -EIO;
 	}
 
+	err = hw->mac.init_hw(hw);
+
+	/*
+	 * Devices with copper phys will fail to initialise if txgbe_init_hw()
+	 * is called too soon after the kernel driver unbinding/binding occurs.
+	 * The failure occurs in txgbe_identify_phy() for all devices,
+	 * but for non-copper devies, txgbe_identify_sfp_module() is
+	 * also called. See txgbe_identify_phy(). The reason for the
+	 * failure is not known, and only occuts when virtualisation features
+	 * are disabled in the bios. A delay of 200ms  was found to be enough by
+	 * trial-and-error, and is doubled to be safe.
+	 */
+	if (err && hw->phy.media_type == txgbe_media_type_copper) {
+		rte_delay_ms(200);
+		err = hw->mac.init_hw(hw);
+	}
+
+	if (err == TXGBE_ERR_SFP_NOT_PRESENT)
+		err = 0;
+
+	if (err == TXGBE_ERR_EEPROM_VERSION) {
+		PMD_INIT_LOG(ERR, "This device is a pre-production adapter/"
+			     "LOM.  Please be aware there may be issues associated "
+			     "with your hardware.");
+		PMD_INIT_LOG(ERR, "If you are experiencing problems "
+			     "please contact your hardware representative "
+			     "who provided you with this hardware.");
+	} else if (err == TXGBE_ERR_SFP_NOT_SUPPORTED) {
+		PMD_INIT_LOG(ERR, "Unsupported SFP+ Module");
+	}
+	if (err) {
+		PMD_INIT_LOG(ERR, "Hardware Initialization Failure: %d", err);
+		return -EIO;
+	}
+
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("txgbe", RTE_ETHER_ADDR_LEN *
 					       hw->mac.num_rar_entries, 0);
