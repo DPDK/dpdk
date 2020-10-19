@@ -48,12 +48,19 @@ struct txgbe_interrupt {
 	uint32_t mask[2];
 };
 
+struct txgbe_uta_info {
+	uint8_t  uc_filter_type;
+	uint16_t uta_in_use;
+	uint32_t uta_shadow[TXGBE_MAX_UTA];
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
 struct txgbe_adapter {
 	struct txgbe_hw             hw;
 	struct txgbe_interrupt      intr;
+	struct txgbe_uta_info       uta_info;
 	bool rx_bulk_alloc_allowed;
 };
 
@@ -65,6 +72,9 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_INTR(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->intr)
+
+#define TXGBE_DEV_UTA_INFO(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->uta_info)
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);

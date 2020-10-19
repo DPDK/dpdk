@@ -8,7 +8,9 @@
 #define TXGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 #define TXGBE_AUTO_NEG_TIME	45 /* 4.5 Seconds */
 
-#define TXGBE_ALIGN				128 /* as intel did */
+#define TXGBE_MAX_UTA		128
+
+#define TXGBE_ALIGN		128 /* as intel did */
 
 #include "txgbe_status.h"
 #include "txgbe_osdep.h"
