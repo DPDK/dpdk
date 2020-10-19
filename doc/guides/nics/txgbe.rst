@@ -12,6 +12,7 @@ Features
 
 - Multiple queues for TX and RX
 - MAC filtering
+- Packet type information
 - Jumbo frames
 - Link state information
 

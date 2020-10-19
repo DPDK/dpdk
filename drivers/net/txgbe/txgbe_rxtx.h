@@ -65,8 +65,6 @@ struct txgbe_tx_desc {
 #define RX_RING_SZ ((TXGBE_RING_DESC_MAX + RTE_PMD_TXGBE_RX_MAX_BURST) * \
 		    sizeof(struct txgbe_rx_desc))
 
-#define TXGBE_PTID_MASK                 0xFF
-
 #define RTE_TXGBE_REGISTER_POLL_WAIT_10_MS  10
 #define RTE_TXGBE_WAIT_100_US               100
 

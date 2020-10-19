@@ -6,6 +6,7 @@
 #define _TXGBE_ETHDEV_H_
 
 #include "base/txgbe.h"
+#include "txgbe_ptypes.h"
 
 /* need update link, bit flag */
 #define TXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
