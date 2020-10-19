@@ -21,6 +21,72 @@
 #include "base/txgbe.h"
 #include "txgbe_ethdev.h"
 #include "txgbe_rxtx.h"
+#include "txgbe_regs_group.h"
+
+static const struct reg_info txgbe_regs_general[] = {
+	{TXGBE_RST, 1, 1, "TXGBE_RST"},
+	{TXGBE_STAT, 1, 1, "TXGBE_STAT"},
+	{TXGBE_PORTCTL, 1, 1, "TXGBE_PORTCTL"},
+	{TXGBE_SDP, 1, 1, "TXGBE_SDP"},
+	{TXGBE_SDPCTL, 1, 1, "TXGBE_SDPCTL"},
+	{TXGBE_LEDCTL, 1, 1, "TXGBE_LEDCTL"},
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_nvm[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_interrupt[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_fctl_others[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_rxdma[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_rx[] = {
+	{0, 0, 0, ""}
+};
+
+static struct reg_info txgbe_regs_tx[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_wakeup[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_dcb[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_mac[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbe_regs_diagnostic[] = {
+	{0, 0, 0, ""},
+};
+
+/* PF registers */
+static const struct reg_info *txgbe_regs_others[] = {
+				txgbe_regs_general,
+				txgbe_regs_nvm,
+				txgbe_regs_interrupt,
+				txgbe_regs_fctl_others,
+				txgbe_regs_rxdma,
+				txgbe_regs_rx,
+				txgbe_regs_tx,
+				txgbe_regs_wakeup,
+				txgbe_regs_dcb,
+				txgbe_regs_mac,
+				txgbe_regs_diagnostic,
+				NULL};
 
 static int  txgbe_dev_set_link_up(struct rte_eth_dev *dev);
 static int  txgbe_dev_set_link_down(struct rte_eth_dev *dev);
@@ -3414,6 +3480,52 @@ txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 }
 
 static int
+txgbe_get_reg_length(struct rte_eth_dev *dev __rte_unused)
+{
+	int count = 0;
+	int g_ind = 0;
+	const struct reg_info *reg_group;
+	const struct reg_info **reg_set = txgbe_regs_others;
+
+	while ((reg_group = reg_set[g_ind++]))
+		count += txgbe_regs_group_count(reg_group);
+
+	return count;
+}
+
+static int
+txgbe_get_regs(struct rte_eth_dev *dev,
+	      struct rte_dev_reg_info *regs)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t *data = regs->data;
+	int g_ind = 0;
+	int count = 0;
+	const struct reg_info *reg_group;
+	const struct reg_info **reg_set = txgbe_regs_others;
+
+	if (data == NULL) {
+		regs->length = txgbe_get_reg_length(dev);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
+	/* Support only full register dump */
+	if (regs->length == 0 ||
+	    regs->length == (uint32_t)txgbe_get_reg_length(dev)) {
+		regs->version = hw->mac.type << 24 |
+				hw->revision_id << 16 |
+				hw->device_id;
+		while ((reg_group = reg_set[g_ind++]))
+			count += txgbe_read_regs_group(dev, &data[count],
+						      reg_group);
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
 txgbe_get_eeprom_length(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
@@ -3600,6 +3712,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.set_mc_addr_list           = txgbe_dev_set_mc_addr_list,
 	.rxq_info_get               = txgbe_rxq_info_get,
 	.txq_info_get               = txgbe_txq_info_get,
+	.get_reg                    = txgbe_get_regs,
 	.get_eeprom_length          = txgbe_get_eeprom_length,
 	.get_eeprom                 = txgbe_get_eeprom,
 	.set_eeprom                 = txgbe_set_eeprom,

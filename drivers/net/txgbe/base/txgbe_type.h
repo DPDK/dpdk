@@ -665,6 +665,7 @@ struct txgbe_hw {
 	u16 vendor_id;
 	u16 subsystem_device_id;
 	u16 subsystem_vendor_id;
+	u8 revision_id;
 	bool adapter_stopped;
 	bool allow_unsupported_sfp;
 	bool need_crosstalk_fix;
