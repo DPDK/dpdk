@@ -960,6 +960,71 @@ void txgbe_clear_tx_pending(struct txgbe_hw *hw)
 	wr32(hw, TXGBE_PSRCTL, hlreg0);
 }
 
+/**
+ *  txgbe_get_thermal_sensor_data - Gathers thermal sensor data
+ *  @hw: pointer to hardware structure
+ *
+ *  Returns the thermal sensor data structure
+ **/
+s32 txgbe_get_thermal_sensor_data(struct txgbe_hw *hw)
+{
+	struct txgbe_thermal_sensor_data *data = &hw->mac.thermal_sensor_data;
+	s64 tsv;
+	u32 ts_stat;
+
+	DEBUGFUNC("txgbe_get_thermal_sensor_data");
+
+	/* Only support thermal sensors attached to physical port 0 */
+	if (hw->bus.lan_id != 0)
+		return TXGBE_NOT_IMPLEMENTED;
+
+	ts_stat = rd32(hw, TXGBE_TSSTAT);
+	tsv = (s64)TXGBE_TSSTAT_DATA(ts_stat);
+	tsv = tsv > 1200 ? tsv : 1200;
+	tsv = -(48380 << 8) / 1000
+		+ tsv * (31020 << 8) / 100000
+		- tsv * tsv * (18201 << 8) / 100000000
+		+ tsv * tsv * tsv * (81542 << 8) / 1000000000000
+		- tsv * tsv * tsv * tsv * (16743 << 8) / 1000000000000000;
+	tsv >>= 8;
+
+	data->sensor[0].temp = (s16)tsv;
+
+	return 0;
+}
+
+/**
+ *  txgbe_init_thermal_sensor_thresh - Inits thermal sensor thresholds
+ *  @hw: pointer to hardware structure
+ *
+ *  Inits the thermal sensor thresholds according to the NVM map
+ *  and save off the threshold and location values into mac.thermal_sensor_data
+ **/
+s32 txgbe_init_thermal_sensor_thresh(struct txgbe_hw *hw)
+{
+	struct txgbe_thermal_sensor_data *data = &hw->mac.thermal_sensor_data;
+
+	DEBUGFUNC("txgbe_init_thermal_sensor_thresh");
+
+	memset(data, 0, sizeof(struct txgbe_thermal_sensor_data));
+
+	if (hw->bus.lan_id != 0)
+		return TXGBE_NOT_IMPLEMENTED;
+
+	wr32(hw, TXGBE_TSCTRL, TXGBE_TSCTRL_EVALMD);
+	wr32(hw, TXGBE_TSINTR,
+		TXGBE_TSINTR_AEN | TXGBE_TSINTR_DEN);
+	wr32(hw, TXGBE_TSEN, TXGBE_TSEN_ENA);
+
+
+	data->sensor[0].alarm_thresh = 100;
+	wr32(hw, TXGBE_TSATHRE, 677);
+	data->sensor[0].dalarm_thresh = 90;
+	wr32(hw, TXGBE_TSDTHRE, 614);
+
+	return 0;
+}
+
 void txgbe_disable_rx(struct txgbe_hw *hw)
 {
 	u32 pfdtxgswc;
@@ -1415,6 +1480,10 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* Link */
 	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;
 	mac->check_link = txgbe_check_mac_link;
+
+	/* Manageability interface */
+	mac->get_thermal_sensor_data = txgbe_get_thermal_sensor_data;
+	mac->init_thermal_sensor_thresh = txgbe_init_thermal_sensor_thresh;
 
 	/* EEPROM */
 	rom->init_params = txgbe_init_eeprom_params;

@@ -18,6 +18,16 @@
 #include "txgbe_osdep.h"
 #include "txgbe_devids.h"
 
+struct txgbe_thermal_diode_data {
+	s16 temp;
+	s16 alarm_thresh;
+	s16 dalarm_thresh;
+};
+
+struct txgbe_thermal_sensor_data {
+	struct txgbe_thermal_diode_data sensor[1];
+};
+
 /* Physical layer type */
 #define TXGBE_PHYSICAL_LAYER_UNKNOWN		0
 #define TXGBE_PHYSICAL_LAYER_10GBASE_T		0x00001
@@ -360,6 +370,7 @@ struct txgbe_mac_info {
 	bool orig_link_settings_stored;
 	bool autotry_restart;
 	u8 flags;
+	struct txgbe_thermal_sensor_data  thermal_sensor_data;
 	bool set_lben;
 	u32  max_link_up_time;
 };

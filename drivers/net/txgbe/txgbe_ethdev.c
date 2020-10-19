@@ -758,6 +758,73 @@ error:
 }
 
 /*
+ * Stop device: disable rx and tx functions to allow for reconfiguring.
+ */
+static int
+txgbe_dev_stop(struct rte_eth_dev *dev)
+{
+	struct rte_eth_link link;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	if (hw->adapter_stopped)
+		return 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
+
+	/* disable interrupts */
+	txgbe_disable_intr(hw);
+
+	/* reset the NIC */
+	txgbe_pf_reset_hw(hw);
+	hw->adapter_stopped = 0;
+
+	/* stop adapter */
+	txgbe_stop_hw(hw);
+
+	if (hw->phy.media_type == txgbe_media_type_copper) {
+		/* Turn off the copper */
+		hw->phy.set_phy_power(hw, false);
+	} else {
+		/* Turn off the laser */
+		hw->mac.disable_tx_laser(hw);
+	}
+
+	txgbe_dev_clear_queues(dev);
+
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
+	dev->data->lro = 0;
+
+	/* Clear recorded link status */
+	memset(&link, 0, sizeof(link));
+	rte_eth_linkstatus_set(dev, &link);
+
+	if (!rte_intr_allow_others(intr_handle))
+		/* resume to the default handler */
+		rte_intr_callback_register(intr_handle,
+					   txgbe_dev_interrupt_handler,
+					   (void *)dev);
+
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+
+	wr32m(hw, TXGBE_LEDCTL, 0xFFFFFFFF, TXGBE_LEDCTL_SEL_MASK);
+
+	hw->adapter_stopped = true;
+	dev->data->dev_started = 0;
+
+	return 0;
+}
+
+/*
  * Set device link up: enable tx.
  */
 static int
@@ -803,6 +870,7 @@ txgbe_dev_set_link_down(struct rte_eth_dev *dev)
 static int
 txgbe_dev_close(struct rte_eth_dev *dev)
 {
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int retries = 0;
@@ -810,7 +878,14 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	txgbe_pf_reset_hw(hw);
+
+	ret = txgbe_dev_stop(dev);
+
 	txgbe_dev_free_queues(dev);
+
+	/* reprogram the RAR[0] in case user changed it. */
+	txgbe_set_rar(hw, 0, hw->mac.addr, 0, true);
 
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
@@ -837,7 +912,33 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 	rte_free(dev->data->hash_mac_addrs);
 	dev->data->hash_mac_addrs = NULL;
 
-	return 0;
+	return ret;
+}
+
+/*
+ * Reset PF device.
+ */
+static int
+txgbe_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	/* When a DPDK PMD PF begin to reset PF port, it should notify all
+	 * its VF to make them align with it. The detailed notification
+	 * mechanism is PMD specific. As to txgbe PF, it is rather complex.
+	 * To avoid unexpected behavior in VF, currently reset of PF with
+	 * SR-IOV activation is not supported. It might be supported later.
+	 */
+	if (dev->data->sriov.active)
+		return -ENOTSUP;
+
+	ret = eth_txgbe_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	ret = eth_txgbe_dev_init(dev, NULL);
+
+	return ret;
 }
 
 static int
@@ -1577,8 +1678,12 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_configure              = txgbe_dev_configure,
 	.dev_infos_get              = txgbe_dev_info_get,
 	.dev_start                  = txgbe_dev_start,
+	.dev_stop                   = txgbe_dev_stop,
 	.dev_set_link_up            = txgbe_dev_set_link_up,
 	.dev_set_link_down          = txgbe_dev_set_link_down,
+	.dev_close                  = txgbe_dev_close,
+	.dev_reset                  = txgbe_dev_reset,
+	.link_update                = txgbe_dev_link_update,
 	.dev_supported_ptypes_get   = txgbe_dev_supported_ptypes_get,
 	.rx_queue_start	            = txgbe_dev_rx_queue_start,
 	.rx_queue_stop              = txgbe_dev_rx_queue_stop,

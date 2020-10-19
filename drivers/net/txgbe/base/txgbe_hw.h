@@ -42,6 +42,9 @@ void txgbe_clear_tx_pending(struct txgbe_hw *hw);
 
 s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw);
 
+s32 txgbe_get_thermal_sensor_data(struct txgbe_hw *hw);
+s32 txgbe_init_thermal_sensor_thresh(struct txgbe_hw *hw);
+
 void txgbe_disable_rx(struct txgbe_hw *hw);
 void txgbe_enable_rx(struct txgbe_hw *hw);
 s32 txgbe_setup_mac_link_multispeed_fiber(struct txgbe_hw *hw,
