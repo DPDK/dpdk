@@ -21,6 +21,7 @@
 #include <rte_jhash.h>
 #include <rte_hash_crc.h>
 #include <rte_tailq.h>
+#include <rte_vect.h>
 
 #include "rte_efd.h"
 #if defined(RTE_ARCH_X86)
@@ -645,7 +646,9 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 	 * For less than 4 bits, scalar function performs better
 	 * than vectorised version
 	 */
-	if (RTE_EFD_VALUE_NUM_BITS > 3 && rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+	if (RTE_EFD_VALUE_NUM_BITS > 3
+			&& rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2)
+			&& rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 		table->lookup_fn = EFD_LOOKUP_AVX2;
 	else
 #endif
@@ -655,7 +658,8 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 	 * than vectorised version
 	 */
 	if (RTE_EFD_VALUE_NUM_BITS > 16 &&
-	    rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+	    rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON) &&
+			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)
 		table->lookup_fn = EFD_LOOKUP_NEON;
 	else
 #endif
