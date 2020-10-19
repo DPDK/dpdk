@@ -80,6 +80,19 @@ struct txgbe_adapter {
 /*
  * RX/TX function prototypes
  */
+void txgbe_dev_rx_queue_release(void *rxq);
+
+void txgbe_dev_tx_queue_release(void *txq);
+
+int  txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
+		uint16_t nb_rx_desc, unsigned int socket_id,
+		const struct rte_eth_rxconf *rx_conf,
+		struct rte_mempool *mb_pool);
+
+int  txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		uint16_t nb_tx_desc, unsigned int socket_id,
+		const struct rte_eth_txconf *tx_conf);
+
 int txgbe_dev_rx_init(struct rte_eth_dev *dev);
 
 void txgbe_dev_tx_init(struct rte_eth_dev *dev);
