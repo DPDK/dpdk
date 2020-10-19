@@ -8,6 +8,8 @@
 #define TXGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 #define TXGBE_AUTO_NEG_TIME	45 /* 4.5 Seconds */
 
+#define TXGBE_FRAME_SIZE_MAX	(9728) /* Maximum frame size, +FCS */
+#define TXGBE_FRAME_SIZE_DFT	(1518) /* Default frame size, +FCS */
 #define TXGBE_MAX_UTA		128
 
 #define TXGBE_ALIGN		128 /* as intel did */

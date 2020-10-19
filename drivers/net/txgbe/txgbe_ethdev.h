@@ -18,6 +18,7 @@
  * Defines that were not part of txgbe_type.h as they are not used by the
  * FreeBSD driver.
  */
+#define TXGBE_VLAN_TAG_SIZE 4
 #define TXGBE_HKEY_MAX_INDEX 10
 /*Default value of Max Rx Queue*/
 #define TXGBE_MAX_RX_QUEUE_NUM	128
@@ -75,6 +76,13 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_UTA_INFO(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->uta_info)
+
+/*
+ * RX/TX function prototypes
+ */
+int txgbe_dev_rx_init(struct rte_eth_dev *dev);
+
+void txgbe_dev_tx_init(struct rte_eth_dev *dev);
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);

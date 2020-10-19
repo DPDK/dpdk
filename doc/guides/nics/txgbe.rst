@@ -12,6 +12,7 @@ Features
 
 - Multiple queues for TX and RX
 - MAC filtering
+- Jumbo frames
 - Link state information
 
 Prerequisites
