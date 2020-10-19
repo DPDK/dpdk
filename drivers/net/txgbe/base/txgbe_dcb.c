@@ -8,6 +8,146 @@
 #include "txgbe_dcb_hw.h"
 
 /**
+ *  txgbe_pfc_enable - Enable flow control
+ *  @hw: pointer to hardware structure
+ *  @tc_num: traffic class number
+ *  Enable flow control according to the current settings.
+ */
+int
+txgbe_dcb_pfc_enable(struct txgbe_hw *hw, uint8_t tc_num)
+{
+	int ret_val = 0;
+	uint32_t mflcn_reg, fccfg_reg;
+	uint32_t pause_time;
+	uint32_t fcrtl, fcrth;
+	uint8_t i;
+	uint8_t nb_rx_en;
+
+	/* Validate the water mark configuration */
+	if (!hw->fc.pause_time) {
+		ret_val = TXGBE_ERR_INVALID_LINK_SETTINGS;
+		goto out;
+	}
+
+	/* Low water mark of zero causes XOFF floods */
+	if (hw->fc.current_mode & txgbe_fc_tx_pause) {
+		 /* High/Low water can not be 0 */
+		if (!hw->fc.high_water[tc_num] ||
+		    !hw->fc.low_water[tc_num]) {
+			PMD_INIT_LOG(ERR, "Invalid water mark configuration");
+			ret_val = TXGBE_ERR_INVALID_LINK_SETTINGS;
+			goto out;
+		}
+
+		if (hw->fc.low_water[tc_num] >= hw->fc.high_water[tc_num]) {
+			PMD_INIT_LOG(ERR, "Invalid water mark configuration");
+			ret_val = TXGBE_ERR_INVALID_LINK_SETTINGS;
+			goto out;
+		}
+	}
+	/* Negotiate the fc mode to use */
+	txgbe_fc_autoneg(hw);
+
+	/* Disable any previous flow control settings */
+	mflcn_reg = rd32(hw, TXGBE_RXFCCFG);
+	mflcn_reg &= ~(TXGBE_RXFCCFG_FC | TXGBE_RXFCCFG_PFC);
+
+	fccfg_reg = rd32(hw, TXGBE_TXFCCFG);
+	fccfg_reg &= ~(TXGBE_TXFCCFG_FC | TXGBE_TXFCCFG_PFC);
+
+	switch (hw->fc.current_mode) {
+	case txgbe_fc_none:
+		/*
+		 * If the count of enabled RX Priority Flow control > 1,
+		 * and the TX pause can not be disabled
+		 */
+		nb_rx_en = 0;
+		for (i = 0; i < TXGBE_DCB_TC_MAX; i++) {
+			uint32_t reg = rd32(hw, TXGBE_FCWTRHI(i));
+			if (reg & TXGBE_FCWTRHI_XOFF)
+				nb_rx_en++;
+		}
+		if (nb_rx_en > 1)
+			fccfg_reg |= TXGBE_TXFCCFG_PFC;
+		break;
+	case txgbe_fc_rx_pause:
+		/*
+		 * Rx Flow control is enabled and Tx Flow control is
+		 * disabled by software override. Since there really
+		 * isn't a way to advertise that we are capable of RX
+		 * Pause ONLY, we will advertise that we support both
+		 * symmetric and asymmetric Rx PAUSE.  Later, we will
+		 * disable the adapter's ability to send PAUSE frames.
+		 */
+		mflcn_reg |= TXGBE_RXFCCFG_PFC;
+		/*
+		 * If the count of enabled RX Priority Flow control > 1,
+		 * and the TX pause can not be disabled
+		 */
+		nb_rx_en = 0;
+		for (i = 0; i < TXGBE_DCB_TC_MAX; i++) {
+			uint32_t reg = rd32(hw, TXGBE_FCWTRHI(i));
+			if (reg & TXGBE_FCWTRHI_XOFF)
+				nb_rx_en++;
+		}
+		if (nb_rx_en > 1)
+			fccfg_reg |= TXGBE_TXFCCFG_PFC;
+		break;
+	case txgbe_fc_tx_pause:
+		/*
+		 * Tx Flow control is enabled, and Rx Flow control is
+		 * disabled by software override.
+		 */
+		fccfg_reg |= TXGBE_TXFCCFG_PFC;
+		break;
+	case txgbe_fc_full:
+		/* Flow control (both Rx and Tx) is enabled by SW override. */
+		mflcn_reg |= TXGBE_RXFCCFG_PFC;
+		fccfg_reg |= TXGBE_TXFCCFG_PFC;
+		break;
+	default:
+		PMD_DRV_LOG(DEBUG, "Flow control param set incorrectly");
+		ret_val = TXGBE_ERR_CONFIG;
+		goto out;
+	}
+
+	/* Set 802.3x based flow control settings. */
+	wr32(hw, TXGBE_RXFCCFG, mflcn_reg);
+	wr32(hw, TXGBE_TXFCCFG, fccfg_reg);
+
+	/* Set up and enable Rx high/low water mark thresholds, enable XON. */
+	if ((hw->fc.current_mode & txgbe_fc_tx_pause) &&
+		hw->fc.high_water[tc_num]) {
+		fcrtl = TXGBE_FCWTRLO_TH(hw->fc.low_water[tc_num]) |
+			TXGBE_FCWTRLO_XON;
+		fcrth = TXGBE_FCWTRHI_TH(hw->fc.high_water[tc_num]) |
+			TXGBE_FCWTRHI_XOFF;
+	} else {
+		/*
+		 * In order to prevent Tx hangs when the internal Tx
+		 * switch is enabled we must set the high water mark
+		 * to the maximum FCRTH value.  This allows the Tx
+		 * switch to function even under heavy Rx workloads.
+		 */
+		fcrtl = 0;
+		fcrth = rd32(hw, TXGBE_PBRXSIZE(tc_num)) - 32;
+	}
+	wr32(hw, TXGBE_FCWTRLO(tc_num), fcrtl);
+	wr32(hw, TXGBE_FCWTRHI(tc_num), fcrth);
+
+	/* Configure pause time (2 TCs per register) */
+	pause_time = TXGBE_RXFCFSH_TIME(hw->fc.pause_time);
+	for (i = 0; i < (TXGBE_DCB_TC_MAX / 2); i++)
+		wr32(hw, TXGBE_FCXOFFTM(i), pause_time * 0x00010001);
+
+	/* Configure flow control refresh threshold value */
+	wr32(hw, TXGBE_RXFCRFSH, pause_time / 2);
+
+out:
+	return ret_val;
+}
+
+/**
  * txgbe_dcb_calculate_tc_credits_cee - Calculates traffic class credits
  * @hw: pointer to hardware structure
  * @dcb_config: Struct containing DCB settings
@@ -208,5 +348,13 @@ void txgbe_dcb_unpack_map_cee(struct txgbe_dcb_config *cfg, int direction,
 
 	for (up = 0; up < TXGBE_DCB_UP_MAX; up++)
 		map[up] = txgbe_dcb_get_tc_from_up(cfg, direction, up);
+}
+
+/* Helper routines to abstract HW specifics from DCB netlink ops */
+s32 txgbe_dcb_config_pfc(struct txgbe_hw *hw, u8 pfc_en, u8 *map)
+{
+	int ret = TXGBE_ERR_PARAM;
+	ret = txgbe_dcb_config_pfc_raptor(hw, pfc_en, map);
+	return ret;
 }
 

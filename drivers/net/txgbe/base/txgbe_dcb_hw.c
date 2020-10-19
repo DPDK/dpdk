@@ -181,6 +181,79 @@ s32 txgbe_dcb_config_tx_data_arbiter_raptor(struct txgbe_hw *hw, u16 *refill,
 }
 
 /**
+ * txgbe_dcb_config_pfc_raptor - Configure priority flow control
+ * @hw: pointer to hardware structure
+ * @pfc_en: enabled pfc bitmask
+ * @map: priority to tc assignments indexed by priority
+ *
+ * Configure Priority Flow Control (PFC) for each traffic class.
+ */
+s32 txgbe_dcb_config_pfc_raptor(struct txgbe_hw *hw, u8 pfc_en, u8 *map)
+{
+	u32 i, j, fcrtl, reg;
+	u8 max_tc = 0;
+
+	/* Enable Transmit Priority Flow Control */
+	wr32(hw, TXGBE_TXFCCFG, TXGBE_TXFCCFG_PFC);
+
+	/* Enable Receive Priority Flow Control */
+	wr32m(hw, TXGBE_RXFCCFG, TXGBE_RXFCCFG_PFC,
+		pfc_en ? TXGBE_RXFCCFG_PFC : 0);
+
+	for (i = 0; i < TXGBE_DCB_UP_MAX; i++) {
+		if (map[i] > max_tc)
+			max_tc = map[i];
+	}
+
+	/* Configure PFC Tx thresholds per TC */
+	for (i = 0; i <= max_tc; i++) {
+		int enabled = 0;
+
+		for (j = 0; j < TXGBE_DCB_UP_MAX; j++) {
+			if (map[j] == i && (pfc_en & (1 << j))) {
+				enabled = 1;
+				break;
+			}
+		}
+
+		if (enabled) {
+			reg = TXGBE_FCWTRHI_TH(hw->fc.high_water[i]) |
+			      TXGBE_FCWTRHI_XOFF;
+			fcrtl = TXGBE_FCWTRLO_TH(hw->fc.low_water[i]) |
+				TXGBE_FCWTRLO_XON;
+			wr32(hw, TXGBE_FCWTRLO(i), fcrtl);
+		} else {
+			/*
+			 * In order to prevent Tx hangs when the internal Tx
+			 * switch is enabled we must set the high water mark
+			 * to the Rx packet buffer size - 24KB.  This allows
+			 * the Tx switch to function even under heavy Rx
+			 * workloads.
+			 */
+			reg = rd32(hw, TXGBE_PBRXSIZE(i)) - 24576;
+			wr32(hw, TXGBE_FCWTRLO(i), 0);
+		}
+
+		wr32(hw, TXGBE_FCWTRHI(i), reg);
+	}
+
+	for (; i < TXGBE_DCB_TC_MAX; i++) {
+		wr32(hw, TXGBE_FCWTRLO(i), 0);
+		wr32(hw, TXGBE_FCWTRHI(i), 0);
+	}
+
+	/* Configure pause time (2 TCs per register) */
+	reg = hw->fc.pause_time | (hw->fc.pause_time << 16);
+	for (i = 0; i < (TXGBE_DCB_TC_MAX / 2); i++)
+		wr32(hw, TXGBE_FCXOFFTM(i), reg);
+
+	/* Configure flow control refresh threshold value */
+	wr32(hw, TXGBE_RXFCRFSH, hw->fc.pause_time / 2);
+
+	return 0;
+}
+
+/**
  * txgbe_dcb_config_tc_stats_raptor - Config traffic class statistics
  * @hw: pointer to hardware structure
  * @dcb_config: pointer to txgbe_dcb_config structure

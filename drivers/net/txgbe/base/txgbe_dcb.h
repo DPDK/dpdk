@@ -92,6 +92,8 @@ struct txgbe_dcb_config {
 	bool vt_mode;
 };
 
+int txgbe_dcb_pfc_enable(struct txgbe_hw *hw, u8 tc_num);
+
 /* DCB credits calculation */
 s32 txgbe_dcb_calculate_tc_credits_cee(struct txgbe_hw *hw,
 				   struct txgbe_dcb_config *dcb_config,

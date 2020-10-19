@@ -2799,6 +2799,59 @@ txgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	return -EIO;
 }
 
+static int
+txgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
+		struct rte_eth_pfc_conf *pfc_conf)
+{
+	int err;
+	uint32_t rx_buf_size;
+	uint32_t max_high_water;
+	uint8_t tc_num;
+	uint8_t  map[TXGBE_DCB_UP_MAX] = { 0 };
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_dcb_config *dcb_config = TXGBE_DEV_DCB_CONFIG(dev);
+
+	enum txgbe_fc_mode rte_fcmode_2_txgbe_fcmode[] = {
+		txgbe_fc_none,
+		txgbe_fc_rx_pause,
+		txgbe_fc_tx_pause,
+		txgbe_fc_full
+	};
+
+	PMD_INIT_FUNC_TRACE();
+
+	txgbe_dcb_unpack_map_cee(dcb_config, TXGBE_DCB_RX_CONFIG, map);
+	tc_num = map[pfc_conf->priority];
+	rx_buf_size = rd32(hw, TXGBE_PBRXSIZE(tc_num));
+	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
+	/*
+	 * At least reserve one Ethernet frame for watermark
+	 * high_water/low_water in kilo bytes for txgbe
+	 */
+	max_high_water = (rx_buf_size - RTE_ETHER_MAX_LEN) >> 10;
+	if (pfc_conf->fc.high_water > max_high_water ||
+	    pfc_conf->fc.high_water <= pfc_conf->fc.low_water) {
+		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
+		PMD_INIT_LOG(ERR, "High_water must <= 0x%x", max_high_water);
+		return -EINVAL;
+	}
+
+	hw->fc.requested_mode = rte_fcmode_2_txgbe_fcmode[pfc_conf->fc.mode];
+	hw->fc.pause_time = pfc_conf->fc.pause_time;
+	hw->fc.send_xon = pfc_conf->fc.send_xon;
+	hw->fc.low_water[tc_num] =  pfc_conf->fc.low_water;
+	hw->fc.high_water[tc_num] = pfc_conf->fc.high_water;
+
+	err = txgbe_dcb_pfc_enable(hw, tc_num);
+
+	/* Not negotiated is not an error case */
+	if (err == 0 || err == TXGBE_ERR_FC_NOT_NEGOTIATED)
+		return 0;
+
+	PMD_INIT_LOG(ERR, "txgbe_dcb_pfc_enable = 0x%x", err);
+	return -EIO;
+}
+
 int
 txgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -3286,6 +3339,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.tx_queue_release           = txgbe_dev_tx_queue_release,
 	.flow_ctrl_get              = txgbe_flow_ctrl_get,
 	.flow_ctrl_set              = txgbe_flow_ctrl_set,
+	.priority_flow_ctrl_set     = txgbe_priority_flow_ctrl_set,
 	.mac_addr_add               = txgbe_add_rar,
 	.mac_addr_remove            = txgbe_remove_rar,
 	.mac_addr_set               = txgbe_set_default_mac_addr,

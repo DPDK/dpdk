@@ -3125,7 +3125,7 @@ txgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 			struct txgbe_dcb_config *dcb_config)
 {
 	int     ret = 0;
-	uint8_t i, nb_tcs;
+	uint8_t i, pfc_en, nb_tcs;
 	uint16_t pbsize, rx_buffer_size;
 	uint8_t config_dcb_rx = 0;
 	uint8_t config_dcb_tx = 0;
@@ -3298,6 +3298,26 @@ txgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 
 	/* Configure queue statistics registers */
 	txgbe_dcb_config_tc_stats_raptor(hw, dcb_config);
+
+	/* Check if the PFC is supported */
+	if (dev->data->dev_conf.dcb_capability_en & ETH_DCB_PFC_SUPPORT) {
+		pbsize = (uint16_t)(rx_buffer_size / nb_tcs);
+		for (i = 0; i < nb_tcs; i++) {
+			/* If the TC count is 8,
+			 * and the default high_water is 48,
+			 * the low_water is 16 as default.
+			 */
+			hw->fc.high_water[i] = (pbsize * 3) / 4;
+			hw->fc.low_water[i] = pbsize / 4;
+			/* Enable pfc for this TC */
+			tc = &dcb_config->tc_config[i];
+			tc->pfc = txgbe_dcb_pfc_enabled;
+		}
+		txgbe_dcb_unpack_pfc_cee(dcb_config, map, &pfc_en);
+		if (dcb_config->num_tcs.pfc_tcs == ETH_4_TCS)
+			pfc_en &= 0x0F;
+		ret = txgbe_dcb_config_pfc(hw, pfc_en, map);
+	}
 
 	return ret;
 }
