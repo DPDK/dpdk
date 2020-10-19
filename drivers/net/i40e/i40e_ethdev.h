@@ -1209,6 +1209,7 @@ struct i40e_vf {
 	bool promisc_unicast_enabled;
 	bool promisc_multicast_enabled;
 
+	rte_spinlock_t cmd_send_lock;
 	uint32_t version_major; /* Major version number */
 	uint32_t version_minor; /* Minor version number */
 	uint16_t promisc_flags; /* Promiscuous setting */
