@@ -1557,6 +1557,47 @@ txgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 	return 0;
 }
 
+static int
+txgbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint32_t mask;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	if (queue_id < 32) {
+		mask = rd32(hw, TXGBE_IMS(0));
+		mask &= (1 << queue_id);
+		wr32(hw, TXGBE_IMS(0), mask);
+	} else if (queue_id < 64) {
+		mask = rd32(hw, TXGBE_IMS(1));
+		mask &= (1 << (queue_id - 32));
+		wr32(hw, TXGBE_IMS(1), mask);
+	}
+	rte_intr_enable(intr_handle);
+
+	return 0;
+}
+
+static int
+txgbe_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	uint32_t mask;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	if (queue_id < 32) {
+		mask = rd32(hw, TXGBE_IMS(0));
+		mask &= ~(1 << queue_id);
+		wr32(hw, TXGBE_IMS(0), mask);
+	} else if (queue_id < 64) {
+		mask = rd32(hw, TXGBE_IMS(1));
+		mask &= ~(1 << (queue_id - 32));
+		wr32(hw, TXGBE_IMS(1), mask);
+	}
+
+	return 0;
+}
+
 /**
  * set the IVAR registers, mapping interrupt causes to vectors
  * @param hw
@@ -1690,6 +1731,8 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.tx_queue_start	            = txgbe_dev_tx_queue_start,
 	.tx_queue_stop              = txgbe_dev_tx_queue_stop,
 	.rx_queue_setup             = txgbe_dev_rx_queue_setup,
+	.rx_queue_intr_enable       = txgbe_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable      = txgbe_dev_rx_queue_intr_disable,
 	.rx_queue_release           = txgbe_dev_rx_queue_release,
 	.tx_queue_setup             = txgbe_dev_tx_queue_setup,
 	.tx_queue_release           = txgbe_dev_tx_queue_release,

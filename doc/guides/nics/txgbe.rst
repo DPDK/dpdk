@@ -17,6 +17,7 @@ Features
 - TSO offload
 - Jumbo frames
 - Link state information
+- Interrupt mode for RX
 - Scattered and gather for TX and RX
 - LRO
 
