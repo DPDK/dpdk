@@ -943,6 +943,17 @@ txgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	return 0;
 }
 
+static void
+txgbe_vmdq_vlan_hw_filter_enable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	/* VLNCTL: enable vlan filtering and allow all vlan tags through */
+	uint32_t vlanctrl = rd32(hw, TXGBE_VLANCTL);
+
+	vlanctrl |= TXGBE_VLANCTL_VFE; /* enable vlan filters */
+	wr32(hw, TXGBE_VLANCTL, vlanctrl);
+}
+
 static int
 txgbe_check_vf_rss_rxq_num(struct rte_eth_dev *dev, uint16_t nb_rx_q)
 {
@@ -1328,6 +1339,11 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	if (err) {
 		PMD_INIT_LOG(ERR, "Unable to set VLAN offload");
 		goto error;
+	}
+
+	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_VMDQ_ONLY) {
+		/* Enable vlan filtering for VMDq */
+		txgbe_vmdq_vlan_hw_filter_enable(dev);
 	}
 
 	/* Restore vf rate limit */
@@ -2762,6 +2778,25 @@ txgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 	wr32(hw, TXGBE_PSRCTL, psrctl);
 
 	return 0;
+}
+
+uint32_t
+txgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val)
+{
+	uint32_t new_val = orig_val;
+
+	if (rx_mask & ETH_VMDQ_ACCEPT_UNTAG)
+		new_val |= TXGBE_POOLETHCTL_UTA;
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_MC)
+		new_val |= TXGBE_POOLETHCTL_MCHA;
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC)
+		new_val |= TXGBE_POOLETHCTL_UCHA;
+	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
+		new_val |= TXGBE_POOLETHCTL_BCA;
+	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
+		new_val |= TXGBE_POOLETHCTL_MCP;
+
+	return new_val;
 }
 
 static int

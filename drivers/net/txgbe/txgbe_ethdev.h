@@ -256,6 +256,8 @@ void txgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 
 int txgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
+uint32_t txgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
+
 int txgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 			    uint16_t tx_rate, uint64_t q_msk);
 int txgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,

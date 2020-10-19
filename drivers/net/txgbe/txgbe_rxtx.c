@@ -2548,6 +2548,145 @@ txgbe_dev_free_queues(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
+static void
+txgbe_rss_disable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw;
+
+	hw = TXGBE_DEV_HW(dev);
+
+	wr32m(hw, TXGBE_RACTL, TXGBE_RACTL_RSSENA, 0);
+}
+
+#define NUM_VFTA_REGISTERS 128
+
+/*
+ * VMDq only support for 10 GbE NIC.
+ */
+static void
+txgbe_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_vmdq_rx_conf *cfg;
+	struct txgbe_hw *hw;
+	enum rte_eth_nb_pools num_pools;
+	uint32_t mrqc, vt_ctl, vlanctrl;
+	uint32_t vmolr = 0;
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = TXGBE_DEV_HW(dev);
+	cfg = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
+	num_pools = cfg->nb_queue_pools;
+
+	txgbe_rss_disable(dev);
+
+	/* enable vmdq */
+	mrqc = TXGBE_PORTCTL_NUMVT_64;
+	wr32m(hw, TXGBE_PORTCTL, TXGBE_PORTCTL_NUMVT_MASK, mrqc);
+
+	/* turn on virtualisation and set the default pool */
+	vt_ctl = TXGBE_POOLCTL_RPLEN;
+	if (cfg->enable_default_pool)
+		vt_ctl |= TXGBE_POOLCTL_DEFPL(cfg->default_pool);
+	else
+		vt_ctl |= TXGBE_POOLCTL_DEFDSA;
+
+	wr32(hw, TXGBE_POOLCTL, vt_ctl);
+
+	for (i = 0; i < (int)num_pools; i++) {
+		vmolr = txgbe_convert_vm_rx_mask_to_val(cfg->rx_mode, vmolr);
+		wr32(hw, TXGBE_POOLETHCTL(i), vmolr);
+	}
+
+	/* enable vlan filtering and allow all vlan tags through */
+	vlanctrl = rd32(hw, TXGBE_VLANCTL);
+	vlanctrl |= TXGBE_VLANCTL_VFE; /* enable vlan filters */
+	wr32(hw, TXGBE_VLANCTL, vlanctrl);
+
+	/* enable all vlan filters */
+	for (i = 0; i < NUM_VFTA_REGISTERS; i++)
+		wr32(hw, TXGBE_VLANTBL(i), UINT32_MAX);
+
+	/* pool enabling for receive - 64 */
+	wr32(hw, TXGBE_POOLRXENA(0), UINT32_MAX);
+	if (num_pools == ETH_64_POOLS)
+		wr32(hw, TXGBE_POOLRXENA(1), UINT32_MAX);
+
+	/*
+	 * allow pools to read specific mac addresses
+	 * In this case, all pools should be able to read from mac addr 0
+	 */
+	wr32(hw, TXGBE_ETHADDRIDX, 0);
+	wr32(hw, TXGBE_ETHADDRASSL, 0xFFFFFFFF);
+	wr32(hw, TXGBE_ETHADDRASSH, 0xFFFFFFFF);
+
+	/* set up filters for vlan tags as configured */
+	for (i = 0; i < cfg->nb_pool_maps; i++) {
+		/* set vlan id in VF register and set the valid bit */
+		wr32(hw, TXGBE_PSRVLANIDX, i);
+		wr32(hw, TXGBE_PSRVLAN, (TXGBE_PSRVLAN_EA |
+				TXGBE_PSRVLAN_VID(cfg->pool_map[i].vlan_id)));
+		/*
+		 * Put the allowed pools in VFB reg. As we only have 16 or 64
+		 * pools, we only need to use the first half of the register
+		 * i.e. bits 0-31
+		 */
+		if (((cfg->pool_map[i].pools >> 32) & UINT32_MAX) == 0)
+			wr32(hw, TXGBE_PSRVLANPLM(0),
+				(cfg->pool_map[i].pools & UINT32_MAX));
+		else
+			wr32(hw, TXGBE_PSRVLANPLM(1),
+				((cfg->pool_map[i].pools >> 32) & UINT32_MAX));
+	}
+
+	/* Tx General Switch Control Enables VMDQ loopback */
+	if (cfg->enable_loop_back) {
+		wr32(hw, TXGBE_PSRCTL, TXGBE_PSRCTL_LBENA);
+		for (i = 0; i < 64; i++)
+			wr32m(hw, TXGBE_POOLETHCTL(i),
+				TXGBE_POOLETHCTL_LLB, TXGBE_POOLETHCTL_LLB);
+	}
+
+	txgbe_flush(hw);
+}
+
+/*
+ * txgbe_vmdq_tx_hw_configure - Configure general VMDq TX parameters
+ * @hw: pointer to hardware structure
+ */
+static void
+txgbe_vmdq_tx_hw_configure(struct txgbe_hw *hw)
+{
+	uint32_t reg;
+	uint32_t q;
+
+	PMD_INIT_FUNC_TRACE();
+	/*PF VF Transmit Enable*/
+	wr32(hw, TXGBE_POOLTXENA(0), UINT32_MAX);
+	wr32(hw, TXGBE_POOLTXENA(1), UINT32_MAX);
+
+	/* Disable the Tx desc arbiter */
+	reg = rd32(hw, TXGBE_ARBTXCTL);
+	reg |= TXGBE_ARBTXCTL_DIA;
+	wr32(hw, TXGBE_ARBTXCTL, reg);
+
+	wr32m(hw, TXGBE_PORTCTL, TXGBE_PORTCTL_NUMVT_MASK,
+		TXGBE_PORTCTL_NUMVT_64);
+
+	/* Disable drop for all queues */
+	for (q = 0; q < 128; q++) {
+		u32 val = 1 << (q % 32);
+		wr32m(hw, TXGBE_QPRXDROP(q / 32), val, val);
+	}
+
+	/* Enable the Tx desc arbiter */
+	reg = rd32(hw, TXGBE_ARBTXCTL);
+	reg &= ~TXGBE_ARBTXCTL_DIA;
+	wr32(hw, TXGBE_ARBTXCTL, reg);
+
+	txgbe_flush(hw);
+}
+
 static int __rte_cold
 txgbe_alloc_rx_queue_mbufs(struct txgbe_rx_queue *rxq)
 {
@@ -2576,6 +2715,119 @@ txgbe_alloc_rx_queue_mbufs(struct txgbe_rx_queue *rxq)
 		TXGBE_RXD_PKTADDR(rxd, dma_addr);
 		rxe[i].mbuf = mbuf;
 	}
+
+	return 0;
+}
+
+static int
+txgbe_config_vf_default(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t mrqc;
+
+	mrqc = rd32(hw, TXGBE_PORTCTL);
+	mrqc &= ~(TXGBE_PORTCTL_NUMTC_MASK | TXGBE_PORTCTL_NUMVT_MASK);
+	switch (RTE_ETH_DEV_SRIOV(dev).active) {
+	case ETH_64_POOLS:
+		mrqc |= TXGBE_PORTCTL_NUMVT_64;
+		break;
+
+	case ETH_32_POOLS:
+		mrqc |= TXGBE_PORTCTL_NUMVT_32;
+		break;
+
+	case ETH_16_POOLS:
+		mrqc |= TXGBE_PORTCTL_NUMVT_16;
+		break;
+	default:
+		PMD_INIT_LOG(ERR,
+			"invalid pool number in IOV mode");
+		return 0;
+	}
+
+	wr32(hw, TXGBE_PORTCTL, mrqc);
+
+	return 0;
+}
+
+static int
+txgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
+{
+	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
+		/*
+		 * SRIOV inactive scheme
+		 * VMDq multi-queue setting
+		 */
+		switch (dev->data->dev_conf.rxmode.mq_mode) {
+		case ETH_MQ_RX_VMDQ_ONLY:
+			txgbe_vmdq_rx_hw_configure(dev);
+			break;
+
+		case ETH_MQ_RX_NONE:
+		default:
+			/* if mq_mode is none, disable rss mode.*/
+			txgbe_rss_disable(dev);
+			break;
+		}
+	} else {
+		/* SRIOV active scheme
+		 */
+		switch (dev->data->dev_conf.rxmode.mq_mode) {
+		default:
+			txgbe_config_vf_default(dev);
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static int
+txgbe_dev_mq_tx_configure(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t mtqc;
+	uint32_t rttdcs;
+
+	/* disable arbiter */
+	rttdcs = rd32(hw, TXGBE_ARBTXCTL);
+	rttdcs |= TXGBE_ARBTXCTL_DIA;
+	wr32(hw, TXGBE_ARBTXCTL, rttdcs);
+
+	if (RTE_ETH_DEV_SRIOV(dev).active == 0) {
+		/*
+		 * SRIOV inactive scheme
+		 * any DCB w/o VMDq multi-queue setting
+		 */
+		if (dev->data->dev_conf.txmode.mq_mode == ETH_MQ_TX_VMDQ_ONLY)
+			txgbe_vmdq_tx_hw_configure(hw);
+		else
+			wr32m(hw, TXGBE_PORTCTL, TXGBE_PORTCTL_NUMVT_MASK, 0);
+	} else {
+		switch (RTE_ETH_DEV_SRIOV(dev).active) {
+		/*
+		 * SRIOV active scheme
+		 * FIXME if support DCB together with VMDq & SRIOV
+		 */
+		case ETH_64_POOLS:
+			mtqc = TXGBE_PORTCTL_NUMVT_64;
+			break;
+		case ETH_32_POOLS:
+			mtqc = TXGBE_PORTCTL_NUMVT_32;
+			break;
+		case ETH_16_POOLS:
+			mtqc = TXGBE_PORTCTL_NUMVT_16;
+			break;
+		default:
+			mtqc = 0;
+			PMD_INIT_LOG(ERR, "invalid pool number in IOV mode");
+		}
+		wr32m(hw, TXGBE_PORTCTL, TXGBE_PORTCTL_NUMVT_MASK, mtqc);
+	}
+
+	/* re-enable arbiter */
+	rttdcs &= ~TXGBE_ARBTXCTL_DIA;
+	wr32(hw, TXGBE_ARBTXCTL, rttdcs);
 
 	return 0;
 }
@@ -2913,6 +3165,11 @@ txgbe_dev_rx_init(struct rte_eth_dev *dev)
 		dev->data->scattered_rx = 1;
 
 	/*
+	 * Device configured with multiple RX queues.
+	 */
+	txgbe_dev_mq_rx_configure(dev);
+
+	/*
 	 * Setup the Checksum Register.
 	 * Disable Full-Packet Checksum which is mutually exclusive with RSS.
 	 * Enable IP/L4 checksum computation by hardware if requested to do so.
@@ -2973,6 +3230,9 @@ txgbe_dev_tx_init(struct rte_eth_dev *dev)
 		wr32(hw, TXGBE_TXRP(txq->reg_idx), 0);
 		wr32(hw, TXGBE_TXWP(txq->reg_idx), 0);
 	}
+
+	/* Device configured with multiple TX queues. */
+	txgbe_dev_mq_tx_configure(dev);
 }
 
 /*
