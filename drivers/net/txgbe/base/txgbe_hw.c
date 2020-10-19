@@ -251,6 +251,151 @@ void txgbe_clear_tx_pending(struct txgbe_hw *hw)
 }
 
 /**
+ *  txgbe_setup_mac_link_multispeed_fiber - Set MAC link speed
+ *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
+ *
+ *  Set the link speed in the MAC and/or PHY register and restarts link.
+ **/
+s32 txgbe_setup_mac_link_multispeed_fiber(struct txgbe_hw *hw,
+					  u32 speed,
+					  bool autoneg_wait_to_complete)
+{
+	u32 link_speed = TXGBE_LINK_SPEED_UNKNOWN;
+	u32 highest_link_speed = TXGBE_LINK_SPEED_UNKNOWN;
+	s32 status = 0;
+	u32 speedcnt = 0;
+	u32 i = 0;
+	bool autoneg, link_up = false;
+
+	DEBUGFUNC("txgbe_setup_mac_link_multispeed_fiber");
+
+	/* Mask off requested but non-supported speeds */
+	status = hw->mac.get_link_capabilities(hw, &link_speed, &autoneg);
+	if (status != 0)
+		return status;
+
+	speed &= link_speed;
+
+	/* Try each speed one by one, highest priority first.  We do this in
+	 * software because 10Gb fiber doesn't support speed autonegotiation.
+	 */
+	if (speed & TXGBE_LINK_SPEED_10GB_FULL) {
+		speedcnt++;
+		highest_link_speed = TXGBE_LINK_SPEED_10GB_FULL;
+
+		/* Set the module link speed */
+		switch (hw->phy.media_type) {
+		case txgbe_media_type_fiber:
+			hw->mac.set_rate_select_speed(hw,
+				TXGBE_LINK_SPEED_10GB_FULL);
+			break;
+		case txgbe_media_type_fiber_qsfp:
+			/* QSFP module automatically detects MAC link speed */
+			break;
+		default:
+			DEBUGOUT("Unexpected media type.\n");
+			break;
+		}
+
+		/* Allow module to change analog characteristics (1G->10G) */
+		msec_delay(40);
+
+		status = hw->mac.setup_mac_link(hw,
+				TXGBE_LINK_SPEED_10GB_FULL,
+				autoneg_wait_to_complete);
+		if (status != 0)
+			return status;
+
+		/* Flap the Tx laser if it has not already been done */
+		hw->mac.flap_tx_laser(hw);
+
+		/* Wait for the controller to acquire link.  Per IEEE 802.3ap,
+		 * Section 73.10.2, we may have to wait up to 500ms if KR is
+		 * attempted.  uses the same timing for 10g SFI.
+		 */
+		for (i = 0; i < 5; i++) {
+			/* Wait for the link partner to also set speed */
+			msec_delay(100);
+
+			/* If we have link, just jump out */
+			status = hw->mac.check_link(hw, &link_speed,
+				&link_up, false);
+			if (status != 0)
+				return status;
+
+			if (link_up)
+				goto out;
+		}
+	}
+
+	if (speed & TXGBE_LINK_SPEED_1GB_FULL) {
+		speedcnt++;
+		if (highest_link_speed == TXGBE_LINK_SPEED_UNKNOWN)
+			highest_link_speed = TXGBE_LINK_SPEED_1GB_FULL;
+
+		/* Set the module link speed */
+		switch (hw->phy.media_type) {
+		case txgbe_media_type_fiber:
+			hw->mac.set_rate_select_speed(hw,
+				TXGBE_LINK_SPEED_1GB_FULL);
+			break;
+		case txgbe_media_type_fiber_qsfp:
+			/* QSFP module automatically detects link speed */
+			break;
+		default:
+			DEBUGOUT("Unexpected media type.\n");
+			break;
+		}
+
+		/* Allow module to change analog characteristics (10G->1G) */
+		msec_delay(40);
+
+		status = hw->mac.setup_mac_link(hw,
+				TXGBE_LINK_SPEED_1GB_FULL,
+				autoneg_wait_to_complete);
+		if (status != 0)
+			return status;
+
+		/* Flap the Tx laser if it has not already been done */
+		hw->mac.flap_tx_laser(hw);
+
+		/* Wait for the link partner to also set speed */
+		msec_delay(100);
+
+		/* If we have link, just jump out */
+		status = hw->mac.check_link(hw, &link_speed, &link_up, false);
+		if (status != 0)
+			return status;
+
+		if (link_up)
+			goto out;
+	}
+
+	/* We didn't get link.  Configure back to the highest speed we tried,
+	 * (if there was more than one).  We call ourselves back with just the
+	 * single highest speed that the user requested.
+	 */
+	if (speedcnt > 1)
+		status = txgbe_setup_mac_link_multispeed_fiber(hw,
+						      highest_link_speed,
+						      autoneg_wait_to_complete);
+
+out:
+	/* Set autoneg_advertised value based on input link speed */
+	hw->phy.autoneg_advertised = 0;
+
+	if (speed & TXGBE_LINK_SPEED_10GB_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_10GB_FULL;
+
+	if (speed & TXGBE_LINK_SPEED_1GB_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_1GB_FULL;
+
+	return status;
+}
+
+/**
  *  txgbe_init_shared_code - Initialize the shared code
  *  @hw: pointer to hardware structure
  *
@@ -348,7 +493,35 @@ void txgbe_init_mac_link_ops(struct txgbe_hw *hw)
 
 	DEBUGFUNC("txgbe_init_mac_link_ops");
 
-	mac->setup_link = txgbe_setup_mac_link;
+	/*
+	 * enable the laser control functions for SFP+ fiber
+	 * and MNG not enabled
+	 */
+	if (hw->phy.media_type == txgbe_media_type_fiber &&
+	    !txgbe_mng_enabled(hw)) {
+		mac->disable_tx_laser =
+			txgbe_disable_tx_laser_multispeed_fiber;
+		mac->enable_tx_laser =
+			txgbe_enable_tx_laser_multispeed_fiber;
+		mac->flap_tx_laser =
+			txgbe_flap_tx_laser_multispeed_fiber;
+	}
+
+	if ((hw->phy.media_type == txgbe_media_type_fiber ||
+	     hw->phy.media_type == txgbe_media_type_fiber_qsfp) &&
+	    hw->phy.multispeed_fiber) {
+		/* Set up dual speed SFP+ support */
+		mac->setup_link = txgbe_setup_mac_link_multispeed_fiber;
+		mac->setup_mac_link = txgbe_setup_mac_link;
+		mac->set_rate_select_speed = txgbe_set_hard_rate_select_speed;
+	} else if ((hw->phy.media_type == txgbe_media_type_backplane) &&
+		    (hw->phy.smart_speed == txgbe_smart_speed_auto ||
+		     hw->phy.smart_speed == txgbe_smart_speed_on) &&
+		     !txgbe_verify_lesm_fw_enabled_raptor(hw)) {
+		mac->setup_link = txgbe_setup_mac_link_smartspeed;
+	} else {
+		mac->setup_link = txgbe_setup_mac_link;
+	}
 }
 
 /**
@@ -562,6 +735,19 @@ s32 txgbe_get_link_capabilities_raptor(struct txgbe_hw *hw,
 		return TXGBE_ERR_LINK_SETUP;
 	}
 
+	if (hw->phy.multispeed_fiber) {
+		*speed |= TXGBE_LINK_SPEED_10GB_FULL |
+			  TXGBE_LINK_SPEED_1GB_FULL;
+
+		/* QSFP must not enable full auto-negotiation
+		 * Limited autoneg is enabled at 1G
+		 */
+		if (hw->phy.media_type == txgbe_media_type_fiber_qsfp)
+			*autoneg = false;
+		else
+			*autoneg = true;
+	}
+
 	return status;
 }
 
@@ -604,6 +790,216 @@ s32 txgbe_start_mac_link_raptor(struct txgbe_hw *hw,
 	msec_delay(50);
 
 out:
+	return status;
+}
+
+/**
+ *  txgbe_disable_tx_laser_multispeed_fiber - Disable Tx laser
+ *  @hw: pointer to hardware structure
+ *
+ *  The base drivers may require better control over SFP+ module
+ *  PHY states.  This includes selectively shutting down the Tx
+ *  laser on the PHY, effectively halting physical link.
+ **/
+void txgbe_disable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
+{
+	u32 esdp_reg = rd32(hw, TXGBE_GPIODATA);
+
+	/* Blocked by MNG FW so bail */
+	if (txgbe_check_reset_blocked(hw))
+		return;
+
+	/* Disable Tx laser; allow 100us to go dark per spec */
+	esdp_reg |= (TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	wr32(hw, TXGBE_GPIODATA, esdp_reg);
+	txgbe_flush(hw);
+	usec_delay(100);
+}
+
+/**
+ *  txgbe_enable_tx_laser_multispeed_fiber - Enable Tx laser
+ *  @hw: pointer to hardware structure
+ *
+ *  The base drivers may require better control over SFP+ module
+ *  PHY states.  This includes selectively turning on the Tx
+ *  laser on the PHY, effectively starting physical link.
+ **/
+void txgbe_enable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
+{
+	u32 esdp_reg = rd32(hw, TXGBE_GPIODATA);
+
+	/* Enable Tx laser; allow 100ms to light up */
+	esdp_reg &= ~(TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	wr32(hw, TXGBE_GPIODATA, esdp_reg);
+	txgbe_flush(hw);
+	msec_delay(100);
+}
+
+/**
+ *  txgbe_flap_tx_laser_multispeed_fiber - Flap Tx laser
+ *  @hw: pointer to hardware structure
+ *
+ *  When the driver changes the link speeds that it can support,
+ *  it sets autotry_restart to true to indicate that we need to
+ *  initiate a new autotry session with the link partner.  To do
+ *  so, we set the speed then disable and re-enable the Tx laser, to
+ *  alert the link partner that it also needs to restart autotry on its
+ *  end.  This is consistent with true clause 37 autoneg, which also
+ *  involves a loss of signal.
+ **/
+void txgbe_flap_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
+{
+	DEBUGFUNC("txgbe_flap_tx_laser_multispeed_fiber");
+
+	/* Blocked by MNG FW so bail */
+	if (txgbe_check_reset_blocked(hw))
+		return;
+
+	if (hw->mac.autotry_restart) {
+		txgbe_disable_tx_laser_multispeed_fiber(hw);
+		txgbe_enable_tx_laser_multispeed_fiber(hw);
+		hw->mac.autotry_restart = false;
+	}
+}
+
+/**
+ *  txgbe_set_hard_rate_select_speed - Set module link speed
+ *  @hw: pointer to hardware structure
+ *  @speed: link speed to set
+ *
+ *  Set module link speed via RS0/RS1 rate select pins.
+ */
+void txgbe_set_hard_rate_select_speed(struct txgbe_hw *hw,
+					u32 speed)
+{
+	u32 esdp_reg = rd32(hw, TXGBE_GPIODATA);
+
+	switch (speed) {
+	case TXGBE_LINK_SPEED_10GB_FULL:
+		esdp_reg |= (TXGBE_GPIOBIT_4 | TXGBE_GPIOBIT_5);
+		break;
+	case TXGBE_LINK_SPEED_1GB_FULL:
+		esdp_reg &= ~(TXGBE_GPIOBIT_4 | TXGBE_GPIOBIT_5);
+		break;
+	default:
+		DEBUGOUT("Invalid fixed module speed\n");
+		return;
+	}
+
+	wr32(hw, TXGBE_GPIODATA, esdp_reg);
+	txgbe_flush(hw);
+}
+
+/**
+ *  txgbe_setup_mac_link_smartspeed - Set MAC link speed using SmartSpeed
+ *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
+ *
+ *  Implements the Intel SmartSpeed algorithm.
+ **/
+s32 txgbe_setup_mac_link_smartspeed(struct txgbe_hw *hw,
+				    u32 speed,
+				    bool autoneg_wait_to_complete)
+{
+	s32 status = 0;
+	u32 link_speed = TXGBE_LINK_SPEED_UNKNOWN;
+	s32 i, j;
+	bool link_up = false;
+	u32 autoc_reg = rd32_epcs(hw, SR_AN_MMD_ADV_REG1);
+
+	DEBUGFUNC("txgbe_setup_mac_link_smartspeed");
+
+	 /* Set autoneg_advertised value based on input link speed */
+	hw->phy.autoneg_advertised = 0;
+
+	if (speed & TXGBE_LINK_SPEED_10GB_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_10GB_FULL;
+
+	if (speed & TXGBE_LINK_SPEED_1GB_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_1GB_FULL;
+
+	if (speed & TXGBE_LINK_SPEED_100M_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_100M_FULL;
+
+	/*
+	 * Implement Intel SmartSpeed algorithm.  SmartSpeed will reduce the
+	 * autoneg advertisement if link is unable to be established at the
+	 * highest negotiated rate.  This can sometimes happen due to integrity
+	 * issues with the physical media connection.
+	 */
+
+	/* First, try to get link with full advertisement */
+	hw->phy.smart_speed_active = false;
+	for (j = 0; j < TXGBE_SMARTSPEED_MAX_RETRIES; j++) {
+		status = txgbe_setup_mac_link(hw, speed,
+						    autoneg_wait_to_complete);
+		if (status != 0)
+			goto out;
+
+		/*
+		 * Wait for the controller to acquire link.  Per IEEE 802.3ap,
+		 * Section 73.10.2, we may have to wait up to 500ms if KR is
+		 * attempted, or 200ms if KX/KX4/BX/BX4 is attempted, per
+		 * Table 9 in the AN MAS.
+		 */
+		for (i = 0; i < 5; i++) {
+			msec_delay(100);
+
+			/* If we have link, just jump out */
+			status = hw->mac.check_link(hw, &link_speed, &link_up,
+						  false);
+			if (status != 0)
+				goto out;
+
+			if (link_up)
+				goto out;
+		}
+	}
+
+	/*
+	 * We didn't get link.  If we advertised KR plus one of KX4/KX
+	 * (or BX4/BX), then disable KR and try again.
+	 */
+	if (((autoc_reg & TXGBE_AUTOC_KR_SUPP) == 0) ||
+	    ((autoc_reg & TXGBE_AUTOC_KX_SUPP) == 0 &&
+	     (autoc_reg & TXGBE_AUTOC_KX4_SUPP) == 0))
+		goto out;
+
+	/* Turn SmartSpeed on to disable KR support */
+	hw->phy.smart_speed_active = true;
+	status = txgbe_setup_mac_link(hw, speed,
+					    autoneg_wait_to_complete);
+	if (status != 0)
+		goto out;
+
+	/*
+	 * Wait for the controller to acquire link.  600ms will allow for
+	 * the AN link_fail_inhibit_timer as well for multiple cycles of
+	 * parallel detect, both 10g and 1g. This allows for the maximum
+	 * connect attempts as defined in the AN MAS table 73-7.
+	 */
+	for (i = 0; i < 6; i++) {
+		msec_delay(100);
+
+		/* If we have link, just jump out */
+		status = hw->mac.check_link(hw, &link_speed, &link_up, false);
+		if (status != 0)
+			goto out;
+
+		if (link_up)
+			goto out;
+	}
+
+	/* We didn't get link.  Turn SmartSpeed back off. */
+	hw->phy.smart_speed_active = false;
+	status = txgbe_setup_mac_link(hw, speed,
+					    autoneg_wait_to_complete);
+
+out:
+	if (link_up && link_speed == TXGBE_LINK_SPEED_1GB_FULL)
+		DEBUGOUT("Smartspeed has downgraded the link speed "
+		"from the maximum advertised\n");
 	return status;
 }
 
