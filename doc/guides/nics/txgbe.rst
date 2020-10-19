@@ -15,6 +15,47 @@ Prerequisites
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
+Pre-Installation Configuration
+------------------------------
+
+Build Options
+~~~~~~~~~~~~~
+
+The following build-time options may be enabled on build time using.
+
+``-Dc_args=`` meson argument (e.g. ``-Dc_args=-DRTE_LIBRTE_TXGBE_DEBUG_RX``).
+
+Please note that enabling debugging options may affect system performance.
+
+- ``RTE_LIBRTE_TXGBE_DEBUG_RX`` (undefined by default)
+
+  Toggle display of receive fast path run-time messages.
+
+- ``RTE_LIBRTE_TXGBE_DEBUG_TX`` (undefined by default)
+
+  Toggle display of transmit fast path run-time messages.
+
+- ``RTE_LIBRTE_TXGBE_DEBUG_TX_FREE`` (undefined by default)
+
+  Toggle display of transmit descriptor clean messages.
+
+Dynamic Logging Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One may leverage EAL option "--log-level" to change default levels
+for the log types supported by the driver. The option is used with
+an argument typically consisting of two parts separated by a colon.
+
+TXGBE PMD provides the following log types available for control:
+
+- ``pmd.net.txgbe.driver`` (default level is **notice**)
+
+  Affects driver-wide messages unrelated to any particular devices.
+
+- ``pmd.net.txgbe.init`` (default level is **notice**)
+
+  Extra logging of the messages during PMD initialization.
+
 Driver compilation and testing
 ------------------------------
 
