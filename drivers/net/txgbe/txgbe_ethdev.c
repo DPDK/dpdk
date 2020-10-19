@@ -2402,6 +2402,65 @@ txgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	return txgbe_dev_link_update_share(dev, wait_to_complete);
 }
 
+static int
+txgbe_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t fctrl;
+
+	fctrl = rd32(hw, TXGBE_PSRCTL);
+	fctrl |= (TXGBE_PSRCTL_UCP | TXGBE_PSRCTL_MCP);
+	wr32(hw, TXGBE_PSRCTL, fctrl);
+
+	return 0;
+}
+
+static int
+txgbe_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t fctrl;
+
+	fctrl = rd32(hw, TXGBE_PSRCTL);
+	fctrl &= (~TXGBE_PSRCTL_UCP);
+	if (dev->data->all_multicast == 1)
+		fctrl |= TXGBE_PSRCTL_MCP;
+	else
+		fctrl &= (~TXGBE_PSRCTL_MCP);
+	wr32(hw, TXGBE_PSRCTL, fctrl);
+
+	return 0;
+}
+
+static int
+txgbe_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t fctrl;
+
+	fctrl = rd32(hw, TXGBE_PSRCTL);
+	fctrl |= TXGBE_PSRCTL_MCP;
+	wr32(hw, TXGBE_PSRCTL, fctrl);
+
+	return 0;
+}
+
+static int
+txgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t fctrl;
+
+	if (dev->data->promiscuous == 1)
+		return 0; /* must remain in all_multicast mode */
+
+	fctrl = rd32(hw, TXGBE_PSRCTL);
+	fctrl &= (~TXGBE_PSRCTL_MCP);
+	wr32(hw, TXGBE_PSRCTL, fctrl);
+
+	return 0;
+}
+
 /**
  * It clears the interrupt causes and enables the interrupt.
  * It will be called once only during nic initialized.
@@ -3313,6 +3372,10 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_set_link_down          = txgbe_dev_set_link_down,
 	.dev_close                  = txgbe_dev_close,
 	.dev_reset                  = txgbe_dev_reset,
+	.promiscuous_enable         = txgbe_dev_promiscuous_enable,
+	.promiscuous_disable        = txgbe_dev_promiscuous_disable,
+	.allmulticast_enable        = txgbe_dev_allmulticast_enable,
+	.allmulticast_disable       = txgbe_dev_allmulticast_disable,
 	.link_update                = txgbe_dev_link_update,
 	.stats_get                  = txgbe_dev_stats_get,
 	.xstats_get                 = txgbe_dev_xstats_get,
