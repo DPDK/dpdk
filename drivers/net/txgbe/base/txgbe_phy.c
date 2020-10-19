@@ -425,6 +425,318 @@ s32 txgbe_write_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
 
 	return err;
 }
+
+/**
+ *  txgbe_setup_phy_link - Set and restart auto-neg
+ *  @hw: pointer to hardware structure
+ *
+ *  Restart auto-negotiation and PHY and waits for completion.
+ **/
+s32 txgbe_setup_phy_link(struct txgbe_hw *hw)
+{
+	s32 err = 0;
+	u16 autoneg_reg = TXGBE_MII_AUTONEG_REG;
+	bool autoneg = false;
+	u32 speed;
+
+	DEBUGFUNC("txgbe_setup_phy_link");
+
+	txgbe_get_copper_link_capabilities(hw, &speed, &autoneg);
+
+	/* Set or unset auto-negotiation 10G advertisement */
+	hw->phy.read_reg(hw, TXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
+			     TXGBE_MD_DEV_AUTO_NEG,
+			     &autoneg_reg);
+
+	autoneg_reg &= ~TXGBE_MII_10GBASE_T_ADVERTISE;
+	if ((hw->phy.autoneg_advertised & TXGBE_LINK_SPEED_10GB_FULL) &&
+	    (speed & TXGBE_LINK_SPEED_10GB_FULL))
+		autoneg_reg |= TXGBE_MII_10GBASE_T_ADVERTISE;
+
+	hw->phy.write_reg(hw, TXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
+			      TXGBE_MD_DEV_AUTO_NEG,
+			      autoneg_reg);
+
+	hw->phy.read_reg(hw, TXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+			     TXGBE_MD_DEV_AUTO_NEG,
+			     &autoneg_reg);
+
+	/* Set or unset auto-negotiation 5G advertisement */
+	autoneg_reg &= ~TXGBE_MII_5GBASE_T_ADVERTISE;
+	if ((hw->phy.autoneg_advertised & TXGBE_LINK_SPEED_5GB_FULL) &&
+	    (speed & TXGBE_LINK_SPEED_5GB_FULL))
+		autoneg_reg |= TXGBE_MII_5GBASE_T_ADVERTISE;
+
+	/* Set or unset auto-negotiation 2.5G advertisement */
+	autoneg_reg &= ~TXGBE_MII_2_5GBASE_T_ADVERTISE;
+	if ((hw->phy.autoneg_advertised &
+	     TXGBE_LINK_SPEED_2_5GB_FULL) &&
+	    (speed & TXGBE_LINK_SPEED_2_5GB_FULL))
+		autoneg_reg |= TXGBE_MII_2_5GBASE_T_ADVERTISE;
+	/* Set or unset auto-negotiation 1G advertisement */
+	autoneg_reg &= ~TXGBE_MII_1GBASE_T_ADVERTISE;
+	if ((hw->phy.autoneg_advertised & TXGBE_LINK_SPEED_1GB_FULL) &&
+	    (speed & TXGBE_LINK_SPEED_1GB_FULL))
+		autoneg_reg |= TXGBE_MII_1GBASE_T_ADVERTISE;
+
+	hw->phy.write_reg(hw, TXGBE_MII_AUTONEG_VENDOR_PROVISION_1_REG,
+			      TXGBE_MD_DEV_AUTO_NEG,
+			      autoneg_reg);
+
+	/* Set or unset auto-negotiation 100M advertisement */
+	hw->phy.read_reg(hw, TXGBE_MII_AUTONEG_ADVERTISE_REG,
+			     TXGBE_MD_DEV_AUTO_NEG,
+			     &autoneg_reg);
+
+	autoneg_reg &= ~(TXGBE_MII_100BASE_T_ADVERTISE |
+			 TXGBE_MII_100BASE_T_ADVERTISE_HALF);
+	if ((hw->phy.autoneg_advertised & TXGBE_LINK_SPEED_100M_FULL) &&
+	    (speed & TXGBE_LINK_SPEED_100M_FULL))
+		autoneg_reg |= TXGBE_MII_100BASE_T_ADVERTISE;
+
+	hw->phy.write_reg(hw, TXGBE_MII_AUTONEG_ADVERTISE_REG,
+			      TXGBE_MD_DEV_AUTO_NEG,
+			      autoneg_reg);
+
+	/* Blocked by MNG FW so don't reset PHY */
+	if (txgbe_check_reset_blocked(hw))
+		return err;
+
+	/* Restart PHY auto-negotiation. */
+	hw->phy.read_reg(hw, TXGBE_MD_AUTO_NEG_CONTROL,
+			     TXGBE_MD_DEV_AUTO_NEG, &autoneg_reg);
+
+	autoneg_reg |= TXGBE_MII_RESTART;
+
+	hw->phy.write_reg(hw, TXGBE_MD_AUTO_NEG_CONTROL,
+			      TXGBE_MD_DEV_AUTO_NEG, autoneg_reg);
+
+	return err;
+}
+
+/**
+ *  txgbe_setup_phy_link_speed - Sets the auto advertised capabilities
+ *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: unused
+ **/
+s32 txgbe_setup_phy_link_speed(struct txgbe_hw *hw,
+				       u32 speed,
+				       bool autoneg_wait_to_complete)
+{
+	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
+
+	DEBUGFUNC("txgbe_setup_phy_link_speed");
+
+	/*
+	 * Clear autoneg_advertised and set new values based on input link
+	 * speed.
+	 */
+	hw->phy.autoneg_advertised = 0;
+
+	if (speed & TXGBE_LINK_SPEED_10GB_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_10GB_FULL;
+
+	if (speed & TXGBE_LINK_SPEED_5GB_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_5GB_FULL;
+
+	if (speed & TXGBE_LINK_SPEED_2_5GB_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_2_5GB_FULL;
+
+	if (speed & TXGBE_LINK_SPEED_1GB_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_1GB_FULL;
+
+	if (speed & TXGBE_LINK_SPEED_100M_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_100M_FULL;
+
+	if (speed & TXGBE_LINK_SPEED_10M_FULL)
+		hw->phy.autoneg_advertised |= TXGBE_LINK_SPEED_10M_FULL;
+
+	/* Setup link based on the new speed settings */
+	hw->phy.setup_link(hw);
+
+	return 0;
+}
+
+/**
+ * txgbe_get_copper_speeds_supported - Get copper link speeds from phy
+ * @hw: pointer to hardware structure
+ *
+ * Determines the supported link capabilities by reading the PHY auto
+ * negotiation register.
+ **/
+static s32 txgbe_get_copper_speeds_supported(struct txgbe_hw *hw)
+{
+	s32 err;
+	u16 speed_ability;
+
+	err = hw->phy.read_reg(hw, TXGBE_MD_PHY_SPEED_ABILITY,
+				      TXGBE_MD_DEV_PMA_PMD,
+				      &speed_ability);
+	if (err)
+		return err;
+
+	if (speed_ability & TXGBE_MD_PHY_SPEED_10G)
+		hw->phy.speeds_supported |= TXGBE_LINK_SPEED_10GB_FULL;
+	if (speed_ability & TXGBE_MD_PHY_SPEED_1G)
+		hw->phy.speeds_supported |= TXGBE_LINK_SPEED_1GB_FULL;
+	if (speed_ability & TXGBE_MD_PHY_SPEED_100M)
+		hw->phy.speeds_supported |= TXGBE_LINK_SPEED_100M_FULL;
+
+	return err;
+}
+
+/**
+ *  txgbe_get_copper_link_capabilities - Determines link capabilities
+ *  @hw: pointer to hardware structure
+ *  @speed: pointer to link speed
+ *  @autoneg: boolean auto-negotiation value
+ **/
+s32 txgbe_get_copper_link_capabilities(struct txgbe_hw *hw,
+					       u32 *speed,
+					       bool *autoneg)
+{
+	s32 err = 0;
+
+	DEBUGFUNC("txgbe_get_copper_link_capabilities");
+
+	*autoneg = true;
+	if (!hw->phy.speeds_supported)
+		err = txgbe_get_copper_speeds_supported(hw);
+
+	*speed = hw->phy.speeds_supported;
+	return err;
+}
+
+/**
+ *  txgbe_check_phy_link_tnx - Determine link and speed status
+ *  @hw: pointer to hardware structure
+ *  @speed: current link speed
+ *  @link_up: true is link is up, false otherwise
+ *
+ *  Reads the VS1 register to determine if link is up and the current speed for
+ *  the PHY.
+ **/
+s32 txgbe_check_phy_link_tnx(struct txgbe_hw *hw, u32 *speed,
+			     bool *link_up)
+{
+	s32 err = 0;
+	u32 time_out;
+	u32 max_time_out = 10;
+	u16 phy_link = 0;
+	u16 phy_speed = 0;
+	u16 phy_data = 0;
+
+	DEBUGFUNC("txgbe_check_phy_link_tnx");
+
+	/* Initialize speed and link to default case */
+	*link_up = false;
+	*speed = TXGBE_LINK_SPEED_10GB_FULL;
+
+	/*
+	 * Check current speed and link status of the PHY register.
+	 * This is a vendor specific register and may have to
+	 * be changed for other copper PHYs.
+	 */
+	for (time_out = 0; time_out < max_time_out; time_out++) {
+		usec_delay(10);
+		err = hw->phy.read_reg(hw,
+					TXGBE_MD_VENDOR_SPECIFIC_1_STATUS,
+					TXGBE_MD_DEV_VENDOR_1,
+					&phy_data);
+		phy_link = phy_data & TXGBE_MD_VENDOR_SPECIFIC_1_LINK_STATUS;
+		phy_speed = phy_data &
+				 TXGBE_MD_VENDOR_SPECIFIC_1_SPEED_STATUS;
+		if (phy_link == TXGBE_MD_VENDOR_SPECIFIC_1_LINK_STATUS) {
+			*link_up = true;
+			if (phy_speed ==
+			    TXGBE_MD_VENDOR_SPECIFIC_1_SPEED_STATUS)
+				*speed = TXGBE_LINK_SPEED_1GB_FULL;
+			break;
+		}
+	}
+
+	return err;
+}
+
+/**
+ *  txgbe_setup_phy_link_tnx - Set and restart auto-neg
+ *  @hw: pointer to hardware structure
+ *
+ *  Restart auto-negotiation and PHY and waits for completion.
+ **/
+s32 txgbe_setup_phy_link_tnx(struct txgbe_hw *hw)
+{
+	s32 err = 0;
+	u16 autoneg_reg = TXGBE_MII_AUTONEG_REG;
+	bool autoneg = false;
+	u32 speed;
+
+	DEBUGFUNC("txgbe_setup_phy_link_tnx");
+
+	txgbe_get_copper_link_capabilities(hw, &speed, &autoneg);
+
+	if (speed & TXGBE_LINK_SPEED_10GB_FULL) {
+		/* Set or unset auto-negotiation 10G advertisement */
+		hw->phy.read_reg(hw, TXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
+				     TXGBE_MD_DEV_AUTO_NEG,
+				     &autoneg_reg);
+
+		autoneg_reg &= ~TXGBE_MII_10GBASE_T_ADVERTISE;
+		if (hw->phy.autoneg_advertised & TXGBE_LINK_SPEED_10GB_FULL)
+			autoneg_reg |= TXGBE_MII_10GBASE_T_ADVERTISE;
+
+		hw->phy.write_reg(hw, TXGBE_MII_10GBASE_T_AUTONEG_CTRL_REG,
+				      TXGBE_MD_DEV_AUTO_NEG,
+				      autoneg_reg);
+	}
+
+	if (speed & TXGBE_LINK_SPEED_1GB_FULL) {
+		/* Set or unset auto-negotiation 1G advertisement */
+		hw->phy.read_reg(hw, TXGBE_MII_AUTONEG_XNP_TX_REG,
+				     TXGBE_MD_DEV_AUTO_NEG,
+				     &autoneg_reg);
+
+		autoneg_reg &= ~TXGBE_MII_1GBASE_T_ADVERTISE_XNP_TX;
+		if (hw->phy.autoneg_advertised & TXGBE_LINK_SPEED_1GB_FULL)
+			autoneg_reg |= TXGBE_MII_1GBASE_T_ADVERTISE_XNP_TX;
+
+		hw->phy.write_reg(hw, TXGBE_MII_AUTONEG_XNP_TX_REG,
+				      TXGBE_MD_DEV_AUTO_NEG,
+				      autoneg_reg);
+	}
+
+	if (speed & TXGBE_LINK_SPEED_100M_FULL) {
+		/* Set or unset auto-negotiation 100M advertisement */
+		hw->phy.read_reg(hw, TXGBE_MII_AUTONEG_ADVERTISE_REG,
+				     TXGBE_MD_DEV_AUTO_NEG,
+				     &autoneg_reg);
+
+		autoneg_reg &= ~TXGBE_MII_100BASE_T_ADVERTISE;
+		if (hw->phy.autoneg_advertised & TXGBE_LINK_SPEED_100M_FULL)
+			autoneg_reg |= TXGBE_MII_100BASE_T_ADVERTISE;
+
+		hw->phy.write_reg(hw, TXGBE_MII_AUTONEG_ADVERTISE_REG,
+				      TXGBE_MD_DEV_AUTO_NEG,
+				      autoneg_reg);
+	}
+
+	/* Blocked by MNG FW so don't reset PHY */
+	if (txgbe_check_reset_blocked(hw))
+		return err;
+
+	/* Restart PHY auto-negotiation. */
+	hw->phy.read_reg(hw, TXGBE_MD_AUTO_NEG_CONTROL,
+			     TXGBE_MD_DEV_AUTO_NEG, &autoneg_reg);
+
+	autoneg_reg |= TXGBE_MII_RESTART;
+
+	hw->phy.write_reg(hw, TXGBE_MD_AUTO_NEG_CONTROL,
+			      TXGBE_MD_DEV_AUTO_NEG, autoneg_reg);
+
+	return err;
+}
+
 /**
  *  txgbe_identify_module - Identifies module type
  *  @hw: pointer to hardware structure

@@ -58,7 +58,7 @@ struct txgbe_adapter {
 };
 
 #define TXGBE_DEV_ADAPTER(dev) \
-		((struct txgbe_adapter *)(dev)->data->dev_private)
+	((struct txgbe_adapter *)(dev)->data->dev_private)
 
 #define TXGBE_DEV_HW(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->hw)
@@ -68,6 +68,10 @@ struct txgbe_adapter {
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
+
+int
+txgbe_dev_link_update_share(struct rte_eth_dev *dev,
+		int wait_to_complete);
 
 #define TXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define TXGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
@@ -85,5 +89,7 @@ void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 #define TXGBE_DEFAULT_TX_PTHRESH      32
 #define TXGBE_DEFAULT_TX_HTHRESH      0
 #define TXGBE_DEFAULT_TX_WTHRESH      0
+
+void txgbe_dev_setup_link_alarm_handler(void *param);
 
 #endif /* _TXGBE_ETHDEV_H_ */

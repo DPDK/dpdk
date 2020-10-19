@@ -6,6 +6,7 @@
 #define _TXGBE_TYPE_H_
 
 #define TXGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
+#define TXGBE_AUTO_NEG_TIME	45 /* 4.5 Seconds */
 
 #define TXGBE_ALIGN				128 /* as intel did */
 
@@ -98,6 +99,15 @@ enum txgbe_media_type {
 	txgbe_media_type_backplane,
 	txgbe_media_type_cx4,
 	txgbe_media_type_virtual
+};
+
+
+/* Smart Speed Settings */
+#define TXGBE_SMARTSPEED_MAX_RETRIES	3
+enum txgbe_smart_speed {
+	txgbe_smart_speed_auto = 0,
+	txgbe_smart_speed_on,
+	txgbe_smart_speed_off
 };
 
 /* PCI bus types */
@@ -307,6 +317,7 @@ struct txgbe_mac_info {
 	u32 max_rx_queues;
 
 	u8  san_mac_rar_index;
+	bool get_link_status;
 	u64 orig_autoc;  /* cached value of AUTOC */
 	bool orig_link_settings_stored;
 	bool autotry_restart;
@@ -360,6 +371,10 @@ struct txgbe_phy_info {
 	u32 media_type;
 	u32 phy_semaphore_mask;
 	bool reset_disable;
+	u32 autoneg_advertised;
+	u32 speeds_supported;
+	enum txgbe_smart_speed smart_speed;
+	bool smart_speed_active;
 	bool multispeed_fiber;
 	bool qsfp_shared_i2c_bus;
 	u32 nw_mng_if_sel;
@@ -402,9 +417,15 @@ struct txgbe_hw {
 	u16 subsystem_vendor_id;
 
 	bool allow_unsupported_sfp;
+	bool need_crosstalk_fix;
 
 	uint64_t isb_dma;
 	void IOMEM *isb_mem;
+	enum txgbe_link_status {
+		TXGBE_LINK_STATUS_NONE = 0,
+		TXGBE_LINK_STATUS_KX,
+		TXGBE_LINK_STATUS_KX4
+	} link_status;
 	enum txgbe_reset_type {
 		TXGBE_LAN_RESET = 0,
 		TXGBE_SW_RESET,

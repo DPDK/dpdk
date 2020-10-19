@@ -52,7 +52,7 @@
 #define   TXGBE_AUTOC_1G_KX_BX            LS64(1, 9, 0x7)
 #define   TXGBE_AUTOC_AN_RESTART          MS64(12, 0x1)
 #define   TXGBE_AUTOC_LMS_MASK            MS64(13, 0x7)
-#define   TXGBE_AUTOC_LMS_10Gs            LS64(3, 13, 0x7)
+#define   TXGBE_AUTOC_LMS_10G             LS64(3, 13, 0x7)
 #define   TXGBE_AUTOC_LMS_KX4_KX_KR       LS64(4, 13, 0x7)
 #define   TXGBE_AUTOC_LMS_SGMII_1G_100M   LS64(5, 13, 0x7)
 #define   TXGBE_AUTOC_LMS_KX4_KX_KR_1G_AN LS64(6, 13, 0x7)
@@ -79,10 +79,10 @@
 #define   TXGBE_AUTOC_KX_SUPP             MS64(30, 0x1)
 #define   TXGBE_AUTOC_KX4_SUPP            MS64(31, 0x1)
 
-#define   TXGBE_AUTOC_10Gs_PMA_PMD_MASK   MS64(48, 0x3)  /* serial */
-#define   TXGBE_AUTOC_10Gs_KR             LS64(0, 48, 0x3)
-#define   TXGBE_AUTOC_10Gs_XFI            LS64(1, 48, 0x3)
-#define   TXGBE_AUTOC_10Gs_SFI            LS64(2, 48, 0x3)
+#define   TXGBE_AUTOC_10GS_PMA_PMD_MASK   MS64(48, 0x3)  /* serial */
+#define   TXGBE_AUTOC_10GS_KR             LS64(0, 48, 0x3)
+#define   TXGBE_AUTOC_10GS_XFI            LS64(1, 48, 0x3)
+#define   TXGBE_AUTOC_10GS_SFI            LS64(2, 48, 0x3)
 #define   TXGBE_AUTOC_LINK_DIA_MASK       MS64(60, 0x7)
 #define   TXGBE_AUTOC_LINK_DIA_D3_MASK    LS64(5, 60, 0x7)
 

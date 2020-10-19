@@ -24,6 +24,9 @@
 #define TXGBE_ISCSI_BOOT_CONFIG         0x07
 
 #define TXGBE_DEVICE_CAPS_ALLOW_ANY_SFP		0x1
+#define TXGBE_FW_LESM_PARAMETERS_PTR		0x2
+#define TXGBE_FW_LESM_STATE_1			0x1
+#define TXGBE_FW_LESM_STATE_ENABLED		0x8000 /* LESM Enable bit */
 
 s32 txgbe_init_eeprom_params(struct txgbe_hw *hw);
 s32 txgbe_calc_eeprom_checksum(struct txgbe_hw *hw);

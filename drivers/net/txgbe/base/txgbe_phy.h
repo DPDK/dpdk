@@ -336,9 +336,21 @@ s32 txgbe_read_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
 			       u32 device_type, u16 *phy_data);
 s32 txgbe_write_phy_reg(struct txgbe_hw *hw, u32 reg_addr,
 				u32 device_type, u16 phy_data);
+s32 txgbe_setup_phy_link(struct txgbe_hw *hw);
+s32 txgbe_setup_phy_link_speed(struct txgbe_hw *hw,
+				       u32 speed,
+				       bool autoneg_wait_to_complete);
+s32 txgbe_get_copper_link_capabilities(struct txgbe_hw *hw,
+					       u32 *speed,
+					       bool *autoneg);
 s32 txgbe_check_reset_blocked(struct txgbe_hw *hw);
 
 /* PHY specific */
+s32 txgbe_check_phy_link_tnx(struct txgbe_hw *hw,
+			     u32 *speed,
+			     bool *link_up);
+s32 txgbe_setup_phy_link_tnx(struct txgbe_hw *hw);
+
 s32 txgbe_identify_module(struct txgbe_hw *hw);
 s32 txgbe_identify_sfp_module(struct txgbe_hw *hw);
 s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw);

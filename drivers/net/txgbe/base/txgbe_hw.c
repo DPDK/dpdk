@@ -12,6 +12,10 @@
 #define TXGBE_RAPTOR_MAX_RX_QUEUES 128
 #define TXGBE_RAPTOR_RAR_ENTRIES   128
 
+static s32 txgbe_setup_copper_link_raptor(struct txgbe_hw *hw,
+					 u32 speed,
+					 bool autoneg_wait_to_complete);
+
 /**
  *  txgbe_init_hw - Generic hardware initialization
  *  @hw: pointer to hardware structure
@@ -91,6 +95,117 @@ s32 txgbe_validate_mac_addr(u8 *mac_addr)
 		status = TXGBE_ERR_INVALID_MAC_ADDR;
 	}
 	return status;
+}
+
+/**
+ *  txgbe_need_crosstalk_fix - Determine if we need to do cross talk fix
+ *  @hw: pointer to hardware structure
+ *
+ *  Contains the logic to identify if we need to verify link for the
+ *  crosstalk fix
+ **/
+static bool txgbe_need_crosstalk_fix(struct txgbe_hw *hw)
+{
+	/* Does FW say we need the fix */
+	if (!hw->need_crosstalk_fix)
+		return false;
+
+	/* Only consider SFP+ PHYs i.e. media type fiber */
+	switch (hw->phy.media_type) {
+	case txgbe_media_type_fiber:
+	case txgbe_media_type_fiber_qsfp:
+		break;
+	default:
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ *  txgbe_check_mac_link - Determine link and speed status
+ *  @hw: pointer to hardware structure
+ *  @speed: pointer to link speed
+ *  @link_up: true when link is up
+ *  @link_up_wait_to_complete: bool used to wait for link up or not
+ *
+ *  Reads the links register to determine if link is up and the current speed
+ **/
+s32 txgbe_check_mac_link(struct txgbe_hw *hw, u32 *speed,
+				 bool *link_up, bool link_up_wait_to_complete)
+{
+	u32 links_reg, links_orig;
+	u32 i;
+
+	DEBUGFUNC("txgbe_check_mac_link");
+
+	/* If Crosstalk fix enabled do the sanity check of making sure
+	 * the SFP+ cage is full.
+	 */
+	if (txgbe_need_crosstalk_fix(hw)) {
+		u32 sfp_cage_full;
+
+		switch (hw->mac.type) {
+		case txgbe_mac_raptor:
+			sfp_cage_full = !rd32m(hw, TXGBE_GPIODATA,
+					TXGBE_GPIOBIT_2);
+			break;
+		default:
+			/* sanity check - No SFP+ devices here */
+			sfp_cage_full = false;
+			break;
+		}
+
+		if (!sfp_cage_full) {
+			*link_up = false;
+			*speed = TXGBE_LINK_SPEED_UNKNOWN;
+			return 0;
+		}
+	}
+
+	/* clear the old state */
+	links_orig = rd32(hw, TXGBE_PORTSTAT);
+
+	links_reg = rd32(hw, TXGBE_PORTSTAT);
+
+	if (links_orig != links_reg) {
+		DEBUGOUT("LINKS changed from %08X to %08X\n",
+			  links_orig, links_reg);
+	}
+
+	if (link_up_wait_to_complete) {
+		for (i = 0; i < hw->mac.max_link_up_time; i++) {
+			if (!(links_reg & TXGBE_PORTSTAT_UP)) {
+				*link_up = false;
+			} else {
+				*link_up = true;
+				break;
+			}
+			msec_delay(100);
+			links_reg = rd32(hw, TXGBE_PORTSTAT);
+		}
+	} else {
+		if (links_reg & TXGBE_PORTSTAT_UP)
+			*link_up = true;
+		else
+			*link_up = false;
+	}
+
+	switch (links_reg & TXGBE_PORTSTAT_BW_MASK) {
+	case TXGBE_PORTSTAT_BW_10G:
+		*speed = TXGBE_LINK_SPEED_10GB_FULL;
+		break;
+	case TXGBE_PORTSTAT_BW_1G:
+		*speed = TXGBE_LINK_SPEED_1GB_FULL;
+		break;
+	case TXGBE_PORTSTAT_BW_100M:
+		*speed = TXGBE_LINK_SPEED_100M_FULL;
+		break;
+	default:
+		*speed = TXGBE_LINK_SPEED_UNKNOWN;
+	}
+
+	return 0;
 }
 
 /**
@@ -232,7 +347,8 @@ void txgbe_init_mac_link_ops(struct txgbe_hw *hw)
 	struct txgbe_mac_info *mac = &hw->mac;
 
 	DEBUGFUNC("txgbe_init_mac_link_ops");
-	RTE_SET_USED(mac);
+
+	mac->setup_link = txgbe_setup_mac_link;
 }
 
 /**
@@ -246,6 +362,7 @@ void txgbe_init_mac_link_ops(struct txgbe_hw *hw)
  **/
 s32 txgbe_init_phy_raptor(struct txgbe_hw *hw)
 {
+	struct txgbe_mac_info *mac = &hw->mac;
 	struct txgbe_phy_info *phy = &hw->phy;
 	s32 err = 0;
 
@@ -266,6 +383,23 @@ s32 txgbe_init_phy_raptor(struct txgbe_hw *hw)
 
 	/* Setup function pointers based on detected SFP module and speeds */
 	txgbe_init_mac_link_ops(hw);
+
+	/* If copper media, overwrite with copper function pointers */
+	if (phy->media_type == txgbe_media_type_copper) {
+		mac->setup_link = txgbe_setup_copper_link_raptor;
+		mac->get_link_capabilities =
+				  txgbe_get_copper_link_capabilities;
+	}
+
+	/* Set necessary function pointers based on PHY type */
+	switch (hw->phy.type) {
+	case txgbe_phy_tn:
+		phy->setup_link = txgbe_setup_phy_link_tnx;
+		phy->check_link = txgbe_check_phy_link_tnx;
+		break;
+	default:
+		break;
+	}
 
 init_phy_ops_out:
 	return err;
@@ -297,6 +431,8 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	phy->write_reg = txgbe_write_phy_reg;
 	phy->read_reg_mdi = txgbe_read_phy_reg_mdi;
 	phy->write_reg_mdi = txgbe_write_phy_reg_mdi;
+	phy->setup_link = txgbe_setup_phy_link;
+	phy->setup_link_speed = txgbe_setup_phy_link_speed;
 	phy->read_i2c_byte = txgbe_read_i2c_byte;
 	phy->write_i2c_byte = txgbe_write_i2c_byte;
 	phy->read_i2c_eeprom = txgbe_read_i2c_eeprom;
@@ -306,6 +442,10 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;
 	mac->reset_hw = txgbe_reset_hw;
+
+	/* Link */
+	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;
+	mac->check_link = txgbe_check_mac_link;
 
 	/* EEPROM */
 	rom->init_params = txgbe_init_eeprom_params;
@@ -326,6 +466,289 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->max_tx_queues	= TXGBE_RAPTOR_MAX_TX_QUEUES;
 
 	return 0;
+}
+
+/**
+ *  txgbe_get_link_capabilities_raptor - Determines link capabilities
+ *  @hw: pointer to hardware structure
+ *  @speed: pointer to link speed
+ *  @autoneg: true when autoneg or autotry is enabled
+ *
+ *  Determines the link capabilities by reading the AUTOC register.
+ **/
+s32 txgbe_get_link_capabilities_raptor(struct txgbe_hw *hw,
+				      u32 *speed,
+				      bool *autoneg)
+{
+	s32 status = 0;
+	u32 autoc = 0;
+
+	DEBUGFUNC("txgbe_get_link_capabilities_raptor");
+
+	/* Check if 1G SFP module. */
+	if (hw->phy.sfp_type == txgbe_sfp_type_1g_cu_core0 ||
+	    hw->phy.sfp_type == txgbe_sfp_type_1g_cu_core1 ||
+	    hw->phy.sfp_type == txgbe_sfp_type_1g_lx_core0 ||
+	    hw->phy.sfp_type == txgbe_sfp_type_1g_lx_core1 ||
+	    hw->phy.sfp_type == txgbe_sfp_type_1g_sx_core0 ||
+	    hw->phy.sfp_type == txgbe_sfp_type_1g_sx_core1) {
+		*speed = TXGBE_LINK_SPEED_1GB_FULL;
+		*autoneg = true;
+		return 0;
+	}
+
+	/*
+	 * Determine link capabilities based on the stored value of AUTOC,
+	 * which represents EEPROM defaults.  If AUTOC value has not
+	 * been stored, use the current register values.
+	 */
+	if (hw->mac.orig_link_settings_stored)
+		autoc = hw->mac.orig_autoc;
+	else
+		autoc = hw->mac.autoc_read(hw);
+
+	switch (autoc & TXGBE_AUTOC_LMS_MASK) {
+	case TXGBE_AUTOC_LMS_1G_LINK_NO_AN:
+		*speed = TXGBE_LINK_SPEED_1GB_FULL;
+		*autoneg = false;
+		break;
+
+	case TXGBE_AUTOC_LMS_10G_LINK_NO_AN:
+		*speed = TXGBE_LINK_SPEED_10GB_FULL;
+		*autoneg = false;
+		break;
+
+	case TXGBE_AUTOC_LMS_1G_AN:
+		*speed = TXGBE_LINK_SPEED_1GB_FULL;
+		*autoneg = true;
+		break;
+
+	case TXGBE_AUTOC_LMS_10G:
+		*speed = TXGBE_LINK_SPEED_10GB_FULL;
+		*autoneg = false;
+		break;
+
+	case TXGBE_AUTOC_LMS_KX4_KX_KR:
+	case TXGBE_AUTOC_LMS_KX4_KX_KR_1G_AN:
+		*speed = TXGBE_LINK_SPEED_UNKNOWN;
+		if (autoc & TXGBE_AUTOC_KR_SUPP)
+			*speed |= TXGBE_LINK_SPEED_10GB_FULL;
+		if (autoc & TXGBE_AUTOC_KX4_SUPP)
+			*speed |= TXGBE_LINK_SPEED_10GB_FULL;
+		if (autoc & TXGBE_AUTOC_KX_SUPP)
+			*speed |= TXGBE_LINK_SPEED_1GB_FULL;
+		*autoneg = true;
+		break;
+
+	case TXGBE_AUTOC_LMS_KX4_KX_KR_SGMII:
+		*speed = TXGBE_LINK_SPEED_100M_FULL;
+		if (autoc & TXGBE_AUTOC_KR_SUPP)
+			*speed |= TXGBE_LINK_SPEED_10GB_FULL;
+		if (autoc & TXGBE_AUTOC_KX4_SUPP)
+			*speed |= TXGBE_LINK_SPEED_10GB_FULL;
+		if (autoc & TXGBE_AUTOC_KX_SUPP)
+			*speed |= TXGBE_LINK_SPEED_1GB_FULL;
+		*autoneg = true;
+		break;
+
+	case TXGBE_AUTOC_LMS_SGMII_1G_100M:
+		*speed = TXGBE_LINK_SPEED_1GB_FULL |
+			 TXGBE_LINK_SPEED_100M_FULL |
+			 TXGBE_LINK_SPEED_10M_FULL;
+		*autoneg = false;
+		break;
+
+	default:
+		return TXGBE_ERR_LINK_SETUP;
+	}
+
+	return status;
+}
+
+/**
+ *  txgbe_start_mac_link_raptor - Setup MAC link settings
+ *  @hw: pointer to hardware structure
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
+ *
+ *  Configures link settings based on values in the txgbe_hw struct.
+ *  Restarts the link.  Performs autonegotiation if needed.
+ **/
+s32 txgbe_start_mac_link_raptor(struct txgbe_hw *hw,
+			       bool autoneg_wait_to_complete)
+{
+	s32 status = 0;
+	bool got_lock = false;
+
+	DEBUGFUNC("txgbe_start_mac_link_raptor");
+
+	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
+
+	/*  reset_pipeline requires us to hold this lock as it writes to
+	 *  AUTOC.
+	 */
+	if (txgbe_verify_lesm_fw_enabled_raptor(hw)) {
+		status = hw->mac.acquire_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+		if (status != 0)
+			goto out;
+
+		got_lock = true;
+	}
+
+	/* Restart link */
+	txgbe_reset_pipeline_raptor(hw);
+
+	if (got_lock)
+		hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+
+	/* Add delay to filter out noises during initial link setup */
+	msec_delay(50);
+
+out:
+	return status;
+}
+
+/**
+ *  txgbe_setup_mac_link - Set MAC link speed
+ *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
+ *
+ *  Set the link speed in the AUTOC register and restarts link.
+ **/
+s32 txgbe_setup_mac_link(struct txgbe_hw *hw,
+			       u32 speed,
+			       bool autoneg_wait_to_complete)
+{
+	bool autoneg = false;
+	s32 status = 0;
+
+	u64 autoc = hw->mac.autoc_read(hw);
+	u64 pma_pmd_10gs = autoc & TXGBE_AUTOC_10GS_PMA_PMD_MASK;
+	u64 pma_pmd_1g = autoc & TXGBE_AUTOC_1G_PMA_PMD_MASK;
+	u64 link_mode = autoc & TXGBE_AUTOC_LMS_MASK;
+	u64 current_autoc = autoc;
+	u64 orig_autoc = 0;
+	u32 links_reg;
+	u32 i;
+	u32 link_capabilities = TXGBE_LINK_SPEED_UNKNOWN;
+
+	DEBUGFUNC("txgbe_setup_mac_link");
+
+	/* Check to see if speed passed in is supported. */
+	status = hw->mac.get_link_capabilities(hw,
+			&link_capabilities, &autoneg);
+	if (status)
+		return status;
+
+	speed &= link_capabilities;
+	if (speed == TXGBE_LINK_SPEED_UNKNOWN)
+		return TXGBE_ERR_LINK_SETUP;
+
+	/* Use stored value (EEPROM defaults) of AUTOC to find KR/KX4 support*/
+	if (hw->mac.orig_link_settings_stored)
+		orig_autoc = hw->mac.orig_autoc;
+	else
+		orig_autoc = autoc;
+
+	link_mode = autoc & TXGBE_AUTOC_LMS_MASK;
+	pma_pmd_1g = autoc & TXGBE_AUTOC_1G_PMA_PMD_MASK;
+
+	if (link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR ||
+	    link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR_1G_AN ||
+	    link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR_SGMII) {
+		/* Set KX4/KX/KR support according to speed requested */
+		autoc &= ~(TXGBE_AUTOC_KX_SUPP |
+			   TXGBE_AUTOC_KX4_SUPP |
+			   TXGBE_AUTOC_KR_SUPP);
+		if (speed & TXGBE_LINK_SPEED_10GB_FULL) {
+			if (orig_autoc & TXGBE_AUTOC_KX4_SUPP)
+				autoc |= TXGBE_AUTOC_KX4_SUPP;
+			if ((orig_autoc & TXGBE_AUTOC_KR_SUPP) &&
+			    !hw->phy.smart_speed_active)
+				autoc |= TXGBE_AUTOC_KR_SUPP;
+		}
+		if (speed & TXGBE_LINK_SPEED_1GB_FULL)
+			autoc |= TXGBE_AUTOC_KX_SUPP;
+	} else if ((pma_pmd_1g == TXGBE_AUTOC_1G_SFI) &&
+		   (link_mode == TXGBE_AUTOC_LMS_1G_LINK_NO_AN ||
+		    link_mode == TXGBE_AUTOC_LMS_1G_AN)) {
+		/* Switch from 1G SFI to 10G SFI if requested */
+		if (speed == TXGBE_LINK_SPEED_10GB_FULL &&
+		    pma_pmd_10gs == TXGBE_AUTOC_10GS_SFI) {
+			autoc &= ~TXGBE_AUTOC_LMS_MASK;
+			autoc |= TXGBE_AUTOC_LMS_10G;
+		}
+	} else if ((pma_pmd_10gs == TXGBE_AUTOC_10GS_SFI) &&
+		   (link_mode == TXGBE_AUTOC_LMS_10G)) {
+		/* Switch from 10G SFI to 1G SFI if requested */
+		if (speed == TXGBE_LINK_SPEED_1GB_FULL &&
+		    pma_pmd_1g == TXGBE_AUTOC_1G_SFI) {
+			autoc &= ~TXGBE_AUTOC_LMS_MASK;
+			if (autoneg || hw->phy.type == txgbe_phy_qsfp_intel)
+				autoc |= TXGBE_AUTOC_LMS_1G_AN;
+			else
+				autoc |= TXGBE_AUTOC_LMS_1G_LINK_NO_AN;
+		}
+	}
+
+	if (autoc == current_autoc)
+		return status;
+
+	autoc &= ~TXGBE_AUTOC_SPEED_MASK;
+	autoc |= TXGBE_AUTOC_SPEED(speed);
+	autoc |= (autoneg ? TXGBE_AUTOC_AUTONEG : 0);
+
+	/* Restart link */
+	hw->mac.autoc_write(hw, autoc);
+
+	/* Only poll for autoneg to complete if specified to do so */
+	if (autoneg_wait_to_complete) {
+		if (link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR ||
+		    link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR_1G_AN ||
+		    link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR_SGMII) {
+			links_reg = 0; /*Just in case Autoneg time=0*/
+			for (i = 0; i < TXGBE_AUTO_NEG_TIME; i++) {
+				links_reg = rd32(hw, TXGBE_PORTSTAT);
+				if (links_reg & TXGBE_PORTSTAT_UP)
+					break;
+				msec_delay(100);
+			}
+			if (!(links_reg & TXGBE_PORTSTAT_UP)) {
+				status = TXGBE_ERR_AUTONEG_NOT_COMPLETE;
+				DEBUGOUT("Autoneg did not complete.\n");
+			}
+		}
+	}
+
+	/* Add delay to filter out noises during initial link setup */
+	msec_delay(50);
+
+	return status;
+}
+
+/**
+ *  txgbe_setup_copper_link_raptor - Set the PHY autoneg advertised field
+ *  @hw: pointer to hardware structure
+ *  @speed: new link speed
+ *  @autoneg_wait_to_complete: true if waiting is needed to complete
+ *
+ *  Restarts link on PHY and MAC based on settings passed in.
+ **/
+static s32 txgbe_setup_copper_link_raptor(struct txgbe_hw *hw,
+					 u32 speed,
+					 bool autoneg_wait_to_complete)
+{
+	s32 status;
+
+	DEBUGFUNC("txgbe_setup_copper_link_raptor");
+
+	/* Setup the PHY according to input speed */
+	status = hw->phy.setup_link_speed(hw, speed,
+					      autoneg_wait_to_complete);
+	/* Set up MAC */
+	txgbe_start_mac_link_raptor(hw, autoneg_wait_to_complete);
+
+	return status;
 }
 
 static int
@@ -479,5 +902,78 @@ mac_reset_top:
 				   &hw->mac.wwpn_prefix);
 
 	return status;
+}
+
+/**
+ *  txgbe_verify_lesm_fw_enabled_raptor - Checks LESM FW module state.
+ *  @hw: pointer to hardware structure
+ *
+ *  Returns true if the LESM FW module is present and enabled. Otherwise
+ *  returns false. Smart Speed must be disabled if LESM FW module is enabled.
+ **/
+bool txgbe_verify_lesm_fw_enabled_raptor(struct txgbe_hw *hw)
+{
+	bool lesm_enabled = false;
+	u16 fw_offset, fw_lesm_param_offset, fw_lesm_state;
+	s32 status;
+
+	DEBUGFUNC("txgbe_verify_lesm_fw_enabled_raptor");
+
+	/* get the offset to the Firmware Module block */
+	status = hw->rom.read16(hw, TXGBE_FW_PTR, &fw_offset);
+
+	if (status != 0 || fw_offset == 0 || fw_offset == 0xFFFF)
+		goto out;
+
+	/* get the offset to the LESM Parameters block */
+	status = hw->rom.read16(hw, (fw_offset +
+				     TXGBE_FW_LESM_PARAMETERS_PTR),
+				     &fw_lesm_param_offset);
+
+	if (status != 0 ||
+	    fw_lesm_param_offset == 0 || fw_lesm_param_offset == 0xFFFF)
+		goto out;
+
+	/* get the LESM state word */
+	status = hw->rom.read16(hw, (fw_lesm_param_offset +
+				     TXGBE_FW_LESM_STATE_1),
+				     &fw_lesm_state);
+
+	if (status == 0 && (fw_lesm_state & TXGBE_FW_LESM_STATE_ENABLED))
+		lesm_enabled = true;
+
+out:
+	lesm_enabled = false;
+	return lesm_enabled;
+}
+
+/**
+ * txgbe_reset_pipeline_raptor - perform pipeline reset
+ *
+ *  @hw: pointer to hardware structure
+ *
+ * Reset pipeline by asserting Restart_AN together with LMS change to ensure
+ * full pipeline reset.  This function assumes the SW/FW lock is held.
+ **/
+s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw)
+{
+	s32 err = 0;
+	u64 autoc;
+
+	autoc = hw->mac.autoc_read(hw);
+
+	/* Enable link if disabled in NVM */
+	if (autoc & TXGBE_AUTOC_LINK_DIA_MASK)
+		autoc &= ~TXGBE_AUTOC_LINK_DIA_MASK;
+
+	autoc |= TXGBE_AUTOC_AN_RESTART;
+	/* Write AUTOC register with toggled LMS[2] bit and Restart_AN */
+	hw->mac.autoc_write(hw, autoc ^ TXGBE_AUTOC_LMS_AN);
+
+	/* Write AUTOC register with original LMS field and Restart_AN */
+	hw->mac.autoc_write(hw, autoc);
+	txgbe_flush(hw);
+
+	return err;
 }
 

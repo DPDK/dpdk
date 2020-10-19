@@ -20,7 +20,11 @@
 #include "txgbe_ethdev.h"
 #include "txgbe_rxtx.h"
 
+static int  txgbe_dev_set_link_up(struct rte_eth_dev *dev);
+static int  txgbe_dev_set_link_down(struct rte_eth_dev *dev);
 static int txgbe_dev_close(struct rte_eth_dev *dev);
+static int txgbe_dev_link_update(struct rte_eth_dev *dev,
+				int wait_to_complete);
 
 static void txgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int txgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
@@ -508,6 +512,46 @@ txgbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
 }
 
 /*
+ * Set device link up: enable tx.
+ */
+static int
+txgbe_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	if (hw->phy.media_type == txgbe_media_type_copper) {
+		/* Turn on the copper */
+		hw->phy.set_phy_power(hw, true);
+	} else {
+		/* Turn on the laser */
+		hw->mac.enable_tx_laser(hw);
+		txgbe_dev_link_update(dev, 0);
+	}
+
+	return 0;
+}
+
+/*
+ * Set device link down: disable tx.
+ */
+static int
+txgbe_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	if (hw->phy.media_type == txgbe_media_type_copper) {
+		/* Turn off the copper */
+		hw->phy.set_phy_power(hw, false);
+	} else {
+		/* Turn off the laser */
+		hw->mac.disable_tx_laser(hw);
+		txgbe_dev_link_update(dev, 0);
+	}
+
+	return 0;
+}
+
+/*
  * Reset and stop device.
  */
 static int
@@ -611,12 +655,108 @@ txgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	return 0;
 }
 
+void
+txgbe_dev_setup_link_alarm_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	u32 speed;
+	bool autoneg = false;
+
+	speed = hw->phy.autoneg_advertised;
+	if (!speed)
+		hw->mac.get_link_capabilities(hw, &speed, &autoneg);
+
+	hw->mac.setup_link(hw, speed, true);
+
+	intr->flags &= ~TXGBE_FLAG_NEED_LINK_CONFIG;
+}
+
+/* return 0 means link status changed, -1 means not changed */
+int
+txgbe_dev_link_update_share(struct rte_eth_dev *dev,
+			    int wait_to_complete)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct rte_eth_link link;
+	u32 link_speed = TXGBE_LINK_SPEED_UNKNOWN;
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	bool link_up;
+	int err;
+	int wait = 1;
+
+	memset(&link, 0, sizeof(link));
+	link.link_status = ETH_LINK_DOWN;
+	link.link_speed = ETH_SPEED_NUM_NONE;
+	link.link_duplex = ETH_LINK_HALF_DUPLEX;
+	link.link_autoneg = ETH_LINK_AUTONEG;
+
+	hw->mac.get_link_status = true;
+
+	if (intr->flags & TXGBE_FLAG_NEED_LINK_CONFIG)
+		return rte_eth_linkstatus_set(dev, &link);
+
+	/* check if it needs to wait to complete, if lsc interrupt is enabled */
+	if (wait_to_complete == 0 || dev->data->dev_conf.intr_conf.lsc != 0)
+		wait = 0;
+
+	err = hw->mac.check_link(hw, &link_speed, &link_up, wait);
+
+	if (err != 0) {
+		link.link_speed = ETH_SPEED_NUM_100M;
+		link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		return rte_eth_linkstatus_set(dev, &link);
+	}
+
+	if (link_up == 0) {
+		if (hw->phy.media_type == txgbe_media_type_fiber) {
+			intr->flags |= TXGBE_FLAG_NEED_LINK_CONFIG;
+			rte_eal_alarm_set(10,
+				txgbe_dev_setup_link_alarm_handler, dev);
+		}
+		return rte_eth_linkstatus_set(dev, &link);
+	}
+
+	intr->flags &= ~TXGBE_FLAG_NEED_LINK_CONFIG;
+	link.link_status = ETH_LINK_UP;
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+
+	switch (link_speed) {
+	default:
+	case TXGBE_LINK_SPEED_UNKNOWN:
+		link.link_duplex = ETH_LINK_FULL_DUPLEX;
+		link.link_speed = ETH_SPEED_NUM_100M;
+		break;
+
+	case TXGBE_LINK_SPEED_100M_FULL:
+		link.link_speed = ETH_SPEED_NUM_100M;
+		break;
+
+	case TXGBE_LINK_SPEED_1GB_FULL:
+		link.link_speed = ETH_SPEED_NUM_1G;
+		break;
+
+	case TXGBE_LINK_SPEED_2_5GB_FULL:
+		link.link_speed = ETH_SPEED_NUM_2_5G;
+		break;
+
+	case TXGBE_LINK_SPEED_5GB_FULL:
+		link.link_speed = ETH_SPEED_NUM_5G;
+		break;
+
+	case TXGBE_LINK_SPEED_10GB_FULL:
+		link.link_speed = ETH_SPEED_NUM_10G;
+		break;
+	}
+
+	return rte_eth_linkstatus_set(dev, &link);
+}
+
 static int
 txgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(wait_to_complete);
-	return 0;
+	return txgbe_dev_link_update_share(dev, wait_to_complete);
 }
 
 /**
@@ -1002,6 +1142,8 @@ txgbe_configure_msix(struct rte_eth_dev *dev)
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_configure              = txgbe_dev_configure,
 	.dev_infos_get              = txgbe_dev_info_get,
+	.dev_set_link_up            = txgbe_dev_set_link_up,
+	.dev_set_link_down          = txgbe_dev_set_link_down,
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe, rte_txgbe_pmd);
