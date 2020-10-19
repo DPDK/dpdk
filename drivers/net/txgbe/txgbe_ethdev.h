@@ -90,6 +90,9 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 #define TXGBE_DEFAULT_TX_HTHRESH      0
 #define TXGBE_DEFAULT_TX_WTHRESH      0
 
+int txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+				      struct rte_ether_addr *mc_addr_set,
+				      uint32_t nb_mc_addr);
 void txgbe_dev_setup_link_alarm_handler(void *param);
 
 #endif /* _TXGBE_ETHDEV_H_ */

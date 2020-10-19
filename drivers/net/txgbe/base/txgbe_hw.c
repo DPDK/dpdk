@@ -11,10 +11,15 @@
 #define TXGBE_RAPTOR_MAX_TX_QUEUES 128
 #define TXGBE_RAPTOR_MAX_RX_QUEUES 128
 #define TXGBE_RAPTOR_RAR_ENTRIES   128
+#define TXGBE_RAPTOR_MC_TBL_SIZE   128
 
 static s32 txgbe_setup_copper_link_raptor(struct txgbe_hw *hw,
 					 u32 speed,
 					 bool autoneg_wait_to_complete);
+
+static s32 txgbe_mta_vector(struct txgbe_hw *hw, u8 *mc_addr);
+static s32 txgbe_get_san_mac_addr_offset(struct txgbe_hw *hw,
+					 u16 *san_mac_offset);
 
 /**
  *  txgbe_init_hw - Generic hardware initialization
@@ -45,6 +50,35 @@ s32 txgbe_init_hw(struct txgbe_hw *hw)
 	return status;
 }
 
+/**
+ *  txgbe_get_mac_addr - Generic get MAC address
+ *  @hw: pointer to hardware structure
+ *  @mac_addr: Adapter MAC address
+ *
+ *  Reads the adapter's MAC address from first Receive Address Register (RAR0)
+ *  A reset of the adapter must be performed prior to calling this function
+ *  in order for the MAC address to have been loaded from the EEPROM into RAR0
+ **/
+s32 txgbe_get_mac_addr(struct txgbe_hw *hw, u8 *mac_addr)
+{
+	u32 rar_high;
+	u32 rar_low;
+	u16 i;
+
+	DEBUGFUNC("txgbe_get_mac_addr");
+
+	wr32(hw, TXGBE_ETHADDRIDX, 0);
+	rar_high = rd32(hw, TXGBE_ETHADDRH);
+	rar_low = rd32(hw, TXGBE_ETHADDRL);
+
+	for (i = 0; i < 2; i++)
+		mac_addr[i] = (u8)(rar_high >> (1 - i) * 8);
+
+	for (i = 0; i < 4; i++)
+		mac_addr[i + 2] = (u8)(rar_low >> (3 - i) * 8);
+
+	return 0;
+}
 
 /**
  *  txgbe_set_lan_id_multi_port - Set LAN id for PCIe multiple port devices
@@ -95,6 +129,440 @@ s32 txgbe_validate_mac_addr(u8 *mac_addr)
 		status = TXGBE_ERR_INVALID_MAC_ADDR;
 	}
 	return status;
+}
+
+/**
+ *  txgbe_set_rar - Set Rx address register
+ *  @hw: pointer to hardware structure
+ *  @index: Receive address register to write
+ *  @addr: Address to put into receive address register
+ *  @vmdq: VMDq "set" or "pool" index
+ *  @enable_addr: set flag that address is active
+ *
+ *  Puts an ethernet address into a receive address register.
+ **/
+s32 txgbe_set_rar(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
+			  u32 enable_addr)
+{
+	u32 rar_low, rar_high;
+	u32 rar_entries = hw->mac.num_rar_entries;
+
+	DEBUGFUNC("txgbe_set_rar");
+
+	/* Make sure we are using a valid rar index range */
+	if (index >= rar_entries) {
+		DEBUGOUT("RAR index %d is out of range.\n", index);
+		return TXGBE_ERR_INVALID_ARGUMENT;
+	}
+
+	/* setup VMDq pool selection before this RAR gets enabled */
+	hw->mac.set_vmdq(hw, index, vmdq);
+
+	/*
+	 * HW expects these in little endian so we reverse the byte
+	 * order from network order (big endian) to little endian
+	 */
+	rar_low = TXGBE_ETHADDRL_AD0(addr[5]) |
+		  TXGBE_ETHADDRL_AD1(addr[4]) |
+		  TXGBE_ETHADDRL_AD2(addr[3]) |
+		  TXGBE_ETHADDRL_AD3(addr[2]);
+	/*
+	 * Some parts put the VMDq setting in the extra RAH bits,
+	 * so save everything except the lower 16 bits that hold part
+	 * of the address and the address valid bit.
+	 */
+	rar_high = rd32(hw, TXGBE_ETHADDRH);
+	rar_high &= ~TXGBE_ETHADDRH_AD_MASK;
+	rar_high |= (TXGBE_ETHADDRH_AD4(addr[1]) |
+		     TXGBE_ETHADDRH_AD5(addr[0]));
+
+	rar_high &= ~TXGBE_ETHADDRH_VLD;
+	if (enable_addr != 0)
+		rar_high |= TXGBE_ETHADDRH_VLD;
+
+	wr32(hw, TXGBE_ETHADDRIDX, index);
+	wr32(hw, TXGBE_ETHADDRL, rar_low);
+	wr32(hw, TXGBE_ETHADDRH, rar_high);
+
+	return 0;
+}
+
+/**
+ *  txgbe_clear_rar - Remove Rx address register
+ *  @hw: pointer to hardware structure
+ *  @index: Receive address register to write
+ *
+ *  Clears an ethernet address from a receive address register.
+ **/
+s32 txgbe_clear_rar(struct txgbe_hw *hw, u32 index)
+{
+	u32 rar_high;
+	u32 rar_entries = hw->mac.num_rar_entries;
+
+	DEBUGFUNC("txgbe_clear_rar");
+
+	/* Make sure we are using a valid rar index range */
+	if (index >= rar_entries) {
+		DEBUGOUT("RAR index %d is out of range.\n", index);
+		return TXGBE_ERR_INVALID_ARGUMENT;
+	}
+
+	/*
+	 * Some parts put the VMDq setting in the extra RAH bits,
+	 * so save everything except the lower 16 bits that hold part
+	 * of the address and the address valid bit.
+	 */
+	wr32(hw, TXGBE_ETHADDRIDX, index);
+	rar_high = rd32(hw, TXGBE_ETHADDRH);
+	rar_high &= ~(TXGBE_ETHADDRH_AD_MASK | TXGBE_ETHADDRH_VLD);
+
+	wr32(hw, TXGBE_ETHADDRL, 0);
+	wr32(hw, TXGBE_ETHADDRH, rar_high);
+
+	/* clear VMDq pool/queue selection for this RAR */
+	hw->mac.clear_vmdq(hw, index, BIT_MASK32);
+
+	return 0;
+}
+
+/**
+ *  txgbe_init_rx_addrs - Initializes receive address filters.
+ *  @hw: pointer to hardware structure
+ *
+ *  Places the MAC address in receive address register 0 and clears the rest
+ *  of the receive address registers. Clears the multicast table. Assumes
+ *  the receiver is in reset when the routine is called.
+ **/
+s32 txgbe_init_rx_addrs(struct txgbe_hw *hw)
+{
+	u32 i;
+	u32 psrctl;
+	u32 rar_entries = hw->mac.num_rar_entries;
+
+	DEBUGFUNC("txgbe_init_rx_addrs");
+
+	/*
+	 * If the current mac address is valid, assume it is a software override
+	 * to the permanent address.
+	 * Otherwise, use the permanent address from the eeprom.
+	 */
+	if (txgbe_validate_mac_addr(hw->mac.addr) ==
+	    TXGBE_ERR_INVALID_MAC_ADDR) {
+		/* Get the MAC address from the RAR0 for later reference */
+		hw->mac.get_mac_addr(hw, hw->mac.addr);
+
+		DEBUGOUT(" Keeping Current RAR0 Addr =%.2X %.2X %.2X ",
+			  hw->mac.addr[0], hw->mac.addr[1],
+			  hw->mac.addr[2]);
+		DEBUGOUT("%.2X %.2X %.2X\n", hw->mac.addr[3],
+			  hw->mac.addr[4], hw->mac.addr[5]);
+	} else {
+		/* Setup the receive address. */
+		DEBUGOUT("Overriding MAC Address in RAR[0]\n");
+		DEBUGOUT(" New MAC Addr =%.2X %.2X %.2X ",
+			  hw->mac.addr[0], hw->mac.addr[1],
+			  hw->mac.addr[2]);
+		DEBUGOUT("%.2X %.2X %.2X\n", hw->mac.addr[3],
+			  hw->mac.addr[4], hw->mac.addr[5]);
+
+		hw->mac.set_rar(hw, 0, hw->mac.addr, 0, true);
+	}
+
+	/* clear VMDq pool/queue selection for RAR 0 */
+	hw->mac.clear_vmdq(hw, 0, BIT_MASK32);
+
+	hw->addr_ctrl.overflow_promisc = 0;
+
+	hw->addr_ctrl.rar_used_count = 1;
+
+	/* Zero out the other receive addresses. */
+	DEBUGOUT("Clearing RAR[1-%d]\n", rar_entries - 1);
+	for (i = 1; i < rar_entries; i++) {
+		wr32(hw, TXGBE_ETHADDRIDX, i);
+		wr32(hw, TXGBE_ETHADDRL, 0);
+		wr32(hw, TXGBE_ETHADDRH, 0);
+	}
+
+	/* Clear the MTA */
+	hw->addr_ctrl.mta_in_use = 0;
+	psrctl = rd32(hw, TXGBE_PSRCTL);
+	psrctl &= ~(TXGBE_PSRCTL_ADHF12_MASK | TXGBE_PSRCTL_MCHFENA);
+	psrctl |= TXGBE_PSRCTL_ADHF12(hw->mac.mc_filter_type);
+	wr32(hw, TXGBE_PSRCTL, psrctl);
+
+	DEBUGOUT(" Clearing MTA\n");
+	for (i = 0; i < hw->mac.mcft_size; i++)
+		wr32(hw, TXGBE_MCADDRTBL(i), 0);
+
+	txgbe_init_uta_tables(hw);
+
+	return 0;
+}
+
+/**
+ *  txgbe_mta_vector - Determines bit-vector in multicast table to set
+ *  @hw: pointer to hardware structure
+ *  @mc_addr: the multicast address
+ *
+ *  Extracts the 12 bits, from a multicast address, to determine which
+ *  bit-vector to set in the multicast table. The hardware uses 12 bits, from
+ *  incoming rx multicast addresses, to determine the bit-vector to check in
+ *  the MTA. Which of the 4 combination, of 12-bits, the hardware uses is set
+ *  by the MO field of the PSRCTRL. The MO field is set during initialization
+ *  to mc_filter_type.
+ **/
+static s32 txgbe_mta_vector(struct txgbe_hw *hw, u8 *mc_addr)
+{
+	u32 vector = 0;
+
+	DEBUGFUNC("txgbe_mta_vector");
+
+	switch (hw->mac.mc_filter_type) {
+	case 0:   /* use bits [47:36] of the address */
+		vector = ((mc_addr[4] >> 4) | (((u16)mc_addr[5]) << 4));
+		break;
+	case 1:   /* use bits [46:35] of the address */
+		vector = ((mc_addr[4] >> 3) | (((u16)mc_addr[5]) << 5));
+		break;
+	case 2:   /* use bits [45:34] of the address */
+		vector = ((mc_addr[4] >> 2) | (((u16)mc_addr[5]) << 6));
+		break;
+	case 3:   /* use bits [43:32] of the address */
+		vector = ((mc_addr[4]) | (((u16)mc_addr[5]) << 8));
+		break;
+	default:  /* Invalid mc_filter_type */
+		DEBUGOUT("MC filter type param set incorrectly\n");
+		ASSERT(0);
+		break;
+	}
+
+	/* vector can only be 12-bits or boundary will be exceeded */
+	vector &= 0xFFF;
+	return vector;
+}
+
+/**
+ *  txgbe_set_mta - Set bit-vector in multicast table
+ *  @hw: pointer to hardware structure
+ *  @mc_addr: Multicast address
+ *
+ *  Sets the bit-vector in the multicast table.
+ **/
+void txgbe_set_mta(struct txgbe_hw *hw, u8 *mc_addr)
+{
+	u32 vector;
+	u32 vector_bit;
+	u32 vector_reg;
+
+	DEBUGFUNC("txgbe_set_mta");
+
+	hw->addr_ctrl.mta_in_use++;
+
+	vector = txgbe_mta_vector(hw, mc_addr);
+	DEBUGOUT(" bit-vector = 0x%03X\n", vector);
+
+	/*
+	 * The MTA is a register array of 128 32-bit registers. It is treated
+	 * like an array of 4096 bits.  We want to set bit
+	 * BitArray[vector_value]. So we figure out what register the bit is
+	 * in, read it, OR in the new bit, then write back the new value.  The
+	 * register is determined by the upper 7 bits of the vector value and
+	 * the bit within that register are determined by the lower 5 bits of
+	 * the value.
+	 */
+	vector_reg = (vector >> 5) & 0x7F;
+	vector_bit = vector & 0x1F;
+	hw->mac.mta_shadow[vector_reg] |= (1 << vector_bit);
+}
+
+/**
+ *  txgbe_update_mc_addr_list - Updates MAC list of multicast addresses
+ *  @hw: pointer to hardware structure
+ *  @mc_addr_list: the list of new multicast addresses
+ *  @mc_addr_count: number of addresses
+ *  @next: iterator function to walk the multicast address list
+ *  @clear: flag, when set clears the table beforehand
+ *
+ *  When the clear flag is set, the given list replaces any existing list.
+ *  Hashes the given addresses into the multicast table.
+ **/
+s32 txgbe_update_mc_addr_list(struct txgbe_hw *hw, u8 *mc_addr_list,
+				      u32 mc_addr_count, txgbe_mc_addr_itr next,
+				      bool clear)
+{
+	u32 i;
+	u32 vmdq;
+
+	DEBUGFUNC("txgbe_update_mc_addr_list");
+
+	/*
+	 * Set the new number of MC addresses that we are being requested to
+	 * use.
+	 */
+	hw->addr_ctrl.num_mc_addrs = mc_addr_count;
+	hw->addr_ctrl.mta_in_use = 0;
+
+	/* Clear mta_shadow */
+	if (clear) {
+		DEBUGOUT(" Clearing MTA\n");
+		memset(&hw->mac.mta_shadow, 0, sizeof(hw->mac.mta_shadow));
+	}
+
+	/* Update mta_shadow */
+	for (i = 0; i < mc_addr_count; i++) {
+		DEBUGOUT(" Adding the multicast addresses:\n");
+		txgbe_set_mta(hw, next(hw, &mc_addr_list, &vmdq));
+	}
+
+	/* Enable mta */
+	for (i = 0; i < hw->mac.mcft_size; i++)
+		wr32a(hw, TXGBE_MCADDRTBL(0), i,
+				      hw->mac.mta_shadow[i]);
+
+	if (hw->addr_ctrl.mta_in_use > 0) {
+		u32 psrctl = rd32(hw, TXGBE_PSRCTL);
+		psrctl &= ~(TXGBE_PSRCTL_ADHF12_MASK | TXGBE_PSRCTL_MCHFENA);
+		psrctl |= TXGBE_PSRCTL_MCHFENA |
+			 TXGBE_PSRCTL_ADHF12(hw->mac.mc_filter_type);
+		wr32(hw, TXGBE_PSRCTL, psrctl);
+	}
+
+	DEBUGOUT("txgbe update mc addr list complete\n");
+	return 0;
+}
+
+/**
+ *  txgbe_get_san_mac_addr_offset - Get SAN MAC address offset from the EEPROM
+ *  @hw: pointer to hardware structure
+ *  @san_mac_offset: SAN MAC address offset
+ *
+ *  This function will read the EEPROM location for the SAN MAC address
+ *  pointer, and returns the value at that location.  This is used in both
+ *  get and set mac_addr routines.
+ **/
+static s32 txgbe_get_san_mac_addr_offset(struct txgbe_hw *hw,
+					 u16 *san_mac_offset)
+{
+	s32 err;
+
+	DEBUGFUNC("txgbe_get_san_mac_addr_offset");
+
+	/*
+	 * First read the EEPROM pointer to see if the MAC addresses are
+	 * available.
+	 */
+	err = hw->rom.readw_sw(hw, TXGBE_SAN_MAC_ADDR_PTR,
+				      san_mac_offset);
+	if (err) {
+		DEBUGOUT("eeprom at offset %d failed",
+			 TXGBE_SAN_MAC_ADDR_PTR);
+	}
+
+	return err;
+}
+
+/**
+ *  txgbe_get_san_mac_addr - SAN MAC address retrieval from the EEPROM
+ *  @hw: pointer to hardware structure
+ *  @san_mac_addr: SAN MAC address
+ *
+ *  Reads the SAN MAC address from the EEPROM, if it's available.  This is
+ *  per-port, so set_lan_id() must be called before reading the addresses.
+ *  set_lan_id() is called by identify_sfp(), but this cannot be relied
+ *  upon for non-SFP connections, so we must call it here.
+ **/
+s32 txgbe_get_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr)
+{
+	u16 san_mac_data, san_mac_offset;
+	u8 i;
+	s32 err;
+
+	DEBUGFUNC("txgbe_get_san_mac_addr");
+
+	/*
+	 * First read the EEPROM pointer to see if the MAC addresses are
+	 * available. If they're not, no point in calling set_lan_id() here.
+	 */
+	err = txgbe_get_san_mac_addr_offset(hw, &san_mac_offset);
+	if (err || san_mac_offset == 0 || san_mac_offset == 0xFFFF)
+		goto san_mac_addr_out;
+
+	/* apply the port offset to the address offset */
+	(hw->bus.func) ? (san_mac_offset += TXGBE_SAN_MAC_ADDR_PORT1_OFFSET) :
+			 (san_mac_offset += TXGBE_SAN_MAC_ADDR_PORT0_OFFSET);
+	for (i = 0; i < 3; i++) {
+		err = hw->rom.read16(hw, san_mac_offset,
+					      &san_mac_data);
+		if (err) {
+			DEBUGOUT("eeprom read at offset %d failed",
+				 san_mac_offset);
+			goto san_mac_addr_out;
+		}
+		san_mac_addr[i * 2] = (u8)(san_mac_data);
+		san_mac_addr[i * 2 + 1] = (u8)(san_mac_data >> 8);
+		san_mac_offset++;
+	}
+	return 0;
+
+san_mac_addr_out:
+	/*
+	 * No addresses available in this EEPROM.  It's not an
+	 * error though, so just wipe the local address and return.
+	 */
+	for (i = 0; i < 6; i++)
+		san_mac_addr[i] = 0xFF;
+	return 0;
+}
+
+/**
+ *  txgbe_set_san_mac_addr - Write the SAN MAC address to the EEPROM
+ *  @hw: pointer to hardware structure
+ *  @san_mac_addr: SAN MAC address
+ *
+ *  Write a SAN MAC address to the EEPROM.
+ **/
+s32 txgbe_set_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr)
+{
+	s32 err;
+	u16 san_mac_data, san_mac_offset;
+	u8 i;
+
+	DEBUGFUNC("txgbe_set_san_mac_addr");
+
+	/* Look for SAN mac address pointer.  If not defined, return */
+	err = txgbe_get_san_mac_addr_offset(hw, &san_mac_offset);
+	if (err || san_mac_offset == 0 || san_mac_offset == 0xFFFF)
+		return TXGBE_ERR_NO_SAN_ADDR_PTR;
+
+	/* Apply the port offset to the address offset */
+	(hw->bus.func) ? (san_mac_offset += TXGBE_SAN_MAC_ADDR_PORT1_OFFSET) :
+			 (san_mac_offset += TXGBE_SAN_MAC_ADDR_PORT0_OFFSET);
+
+	for (i = 0; i < 3; i++) {
+		san_mac_data = (u16)((u16)(san_mac_addr[i * 2 + 1]) << 8);
+		san_mac_data |= (u16)(san_mac_addr[i * 2]);
+		hw->rom.write16(hw, san_mac_offset, san_mac_data);
+		san_mac_offset++;
+	}
+
+	return 0;
+}
+
+/**
+ *  txgbe_init_uta_tables - Initialize the Unicast Table Array
+ *  @hw: pointer to hardware structure
+ **/
+s32 txgbe_init_uta_tables(struct txgbe_hw *hw)
+{
+	int i;
+
+	DEBUGFUNC("txgbe_init_uta_tables");
+	DEBUGOUT(" Clearing UTA\n");
+
+	for (i = 0; i < 128; i++)
+		wr32(hw, TXGBE_UCADDRTBL(i), 0);
+
+	return 0;
 }
 
 /**
@@ -614,10 +1082,17 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;
+	mac->get_mac_addr = txgbe_get_mac_addr;
 	mac->reset_hw = txgbe_reset_hw;
+	mac->get_san_mac_addr = txgbe_get_san_mac_addr;
+	mac->set_san_mac_addr = txgbe_set_san_mac_addr;
 	mac->autoc_read = txgbe_autoc_read;
 	mac->autoc_write = txgbe_autoc_write;
 
+	mac->set_rar = txgbe_set_rar;
+	mac->clear_rar = txgbe_clear_rar;
+	mac->init_rx_addrs = txgbe_init_rx_addrs;
+	mac->init_uta_tables = txgbe_init_uta_tables;
 	/* Link */
 	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;
 	mac->check_link = txgbe_check_mac_link;
@@ -636,6 +1111,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	rom->update_checksum = txgbe_update_eeprom_checksum;
 	rom->calc_checksum = txgbe_calc_eeprom_checksum;
 
+	mac->mcft_size		= TXGBE_RAPTOR_MC_TBL_SIZE;
 	mac->num_rar_entries	= TXGBE_RAPTOR_RAR_ENTRIES;
 	mac->max_rx_queues	= TXGBE_RAPTOR_MAX_RX_QUEUES;
 	mac->max_tx_queues	= TXGBE_RAPTOR_MAX_TX_QUEUES;

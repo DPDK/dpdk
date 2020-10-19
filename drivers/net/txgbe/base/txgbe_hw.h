@@ -8,11 +8,24 @@
 #include "txgbe_type.h"
 
 s32 txgbe_init_hw(struct txgbe_hw *hw);
+s32 txgbe_get_mac_addr(struct txgbe_hw *hw, u8 *mac_addr);
 
 void txgbe_set_lan_id_multi_port(struct txgbe_hw *hw);
 
+s32 txgbe_set_rar(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
+			  u32 enable_addr);
+s32 txgbe_clear_rar(struct txgbe_hw *hw, u32 index);
+s32 txgbe_init_rx_addrs(struct txgbe_hw *hw);
+s32 txgbe_update_mc_addr_list(struct txgbe_hw *hw, u8 *mc_addr_list,
+				      u32 mc_addr_count,
+				      txgbe_mc_addr_itr func, bool clear);
+
 s32 txgbe_validate_mac_addr(u8 *mac_addr);
 
+s32 txgbe_get_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
+s32 txgbe_set_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
+
+s32 txgbe_init_uta_tables(struct txgbe_hw *hw);
 s32 txgbe_check_mac_link(struct txgbe_hw *hw,
 			       u32 *speed,
 			       bool *link_up, bool link_up_wait_to_complete);
@@ -24,6 +37,7 @@ s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw);
 s32 txgbe_setup_mac_link_multispeed_fiber(struct txgbe_hw *hw,
 					  u32 speed,
 					  bool autoneg_wait_to_complete);
+void txgbe_set_mta(struct txgbe_hw *hw, u8 *mc_addr);
 s32 txgbe_init_shared_code(struct txgbe_hw *hw);
 s32 txgbe_set_mac_type(struct txgbe_hw *hw);
 s32 txgbe_init_ops_pf(struct txgbe_hw *hw);

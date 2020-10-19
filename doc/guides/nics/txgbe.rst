@@ -11,6 +11,7 @@ Features
 --------
 
 - Multiple queues for TX and RX
+- MAC filtering
 - Link state information
 
 Prerequisites

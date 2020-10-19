@@ -10,6 +10,8 @@
 #include <rte_ethdev_pci.h>
 
 #include <rte_interrupts.h>
+#include <rte_log.h>
+#include <rte_debug.h>
 #include <rte_pci.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -1048,6 +1050,36 @@ txgbe_dev_interrupt_handler(void *param)
 	txgbe_dev_interrupt_action(dev, dev->intr_handle);
 }
 
+static int
+txgbe_add_rar(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+				uint32_t index, uint32_t pool)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t enable_addr = 1;
+
+	return txgbe_set_rar(hw, index, mac_addr->addr_bytes,
+			     pool, enable_addr);
+}
+
+static void
+txgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	txgbe_clear_rar(hw, index);
+}
+
+static int
+txgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+
+	txgbe_remove_rar(dev, 0);
+	txgbe_add_rar(dev, addr, 0, pci_dev->max_vfs);
+
+	return 0;
+}
+
 /**
  * set the IVAR registers, mapping interrupt causes to vectors
  * @param hw
@@ -1139,11 +1171,41 @@ txgbe_configure_msix(struct rte_eth_dev *dev)
 			| TXGBE_ITR_WRDSA);
 }
 
+static u8 *
+txgbe_dev_addr_list_itr(__rte_unused struct txgbe_hw *hw,
+			u8 **mc_addr_ptr, u32 *vmdq)
+{
+	u8 *mc_addr;
+
+	*vmdq = 0;
+	mc_addr = *mc_addr_ptr;
+	*mc_addr_ptr = (mc_addr + sizeof(struct rte_ether_addr));
+	return mc_addr;
+}
+
+int
+txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+			  struct rte_ether_addr *mc_addr_set,
+			  uint32_t nb_mc_addr)
+{
+	struct txgbe_hw *hw;
+	u8 *mc_addr_list;
+
+	hw = TXGBE_DEV_HW(dev);
+	mc_addr_list = (u8 *)mc_addr_set;
+	return txgbe_update_mc_addr_list(hw, mc_addr_list, nb_mc_addr,
+					 txgbe_dev_addr_list_itr, TRUE);
+}
+
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_configure              = txgbe_dev_configure,
 	.dev_infos_get              = txgbe_dev_info_get,
 	.dev_set_link_up            = txgbe_dev_set_link_up,
 	.dev_set_link_down          = txgbe_dev_set_link_down,
+	.mac_addr_add               = txgbe_add_rar,
+	.mac_addr_remove            = txgbe_remove_rar,
+	.mac_addr_set               = txgbe_set_default_mac_addr,
+	.set_mc_addr_list           = txgbe_dev_set_mc_addr_list,
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe, rte_txgbe_pmd);

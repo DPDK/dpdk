@@ -168,6 +168,14 @@ enum txgbe_bus_width {
 
 struct txgbe_hw;
 
+struct txgbe_addr_filter_info {
+	u32 num_mc_addrs;
+	u32 rar_used_count;
+	u32 mta_in_use;
+	u32 overflow_promisc;
+	bool user_set_promisc;
+};
+
 /* Bus parameters */
 struct txgbe_bus_info {
 	s32 (*get_bus_info)(struct txgbe_hw *hw);
@@ -325,13 +333,17 @@ struct txgbe_mac_info {
 	s32 (*setup_eee)(struct txgbe_hw *hw, bool enable_eee);
 
 	enum txgbe_mac_type type;
+	u8 addr[ETH_ADDR_LEN];
 	u8 perm_addr[ETH_ADDR_LEN];
 	u8 san_addr[ETH_ADDR_LEN];
 	/* prefix for World Wide Node Name (WWNN) */
 	u16 wwnn_prefix;
 	/* prefix for World Wide Port Name (WWPN) */
 	u16 wwpn_prefix;
-
+#define TXGBE_MAX_MTA			128
+	u32 mta_shadow[TXGBE_MAX_MTA];
+	s32 mc_filter_type;
+	u32 mcft_size;
 	u32 num_rar_entries;
 	u32 max_tx_queues;
 	u32 max_rx_queues;
@@ -426,6 +438,7 @@ struct txgbe_hw {
 	void IOMEM *hw_addr;
 	void *back;
 	struct txgbe_mac_info mac;
+	struct txgbe_addr_filter_info addr_ctrl;
 	struct txgbe_phy_info phy;
 	struct txgbe_link_info link;
 	struct txgbe_rom_info rom;
