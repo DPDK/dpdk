@@ -7,6 +7,11 @@ TXGBE Poll Mode Driver
 The TXGBE PMD (librte_pmd_txgbe) provides poll mode driver support
 for Wangxun 10 Gigabit Ethernet NICs.
 
+Features
+--------
+
+- Link state information
+
 Prerequisites
 -------------
 

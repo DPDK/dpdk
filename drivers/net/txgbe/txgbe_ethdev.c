@@ -8,8 +8,12 @@
 #include <string.h>
 #include <rte_common.h>
 #include <rte_ethdev_pci.h>
+
+#include <rte_interrupts.h>
 #include <rte_pci.h>
 #include <rte_memory.h>
+#include <rte_eal.h>
+#include <rte_alarm.h>
 
 #include "txgbe_logs.h"
 #include "base/txgbe.h"
@@ -17,6 +21,17 @@
 #include "txgbe_rxtx.h"
 
 static int txgbe_dev_close(struct rte_eth_dev *dev);
+
+static void txgbe_dev_link_status_print(struct rte_eth_dev *dev);
+static int txgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
+static int txgbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev);
+static int txgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
+static int txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
+static int txgbe_dev_interrupt_action(struct rte_eth_dev *dev,
+				      struct rte_intr_handle *handle);
+static void txgbe_dev_interrupt_handler(void *param);
+static void txgbe_dev_interrupt_delayed_handler(void *param);
+static void txgbe_configure_msix(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -57,6 +72,29 @@ txgbe_is_sfp(struct txgbe_hw *hw)
 	default:
 		return 0;
 	}
+}
+
+static inline void
+txgbe_enable_intr(struct rte_eth_dev *dev)
+{
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	wr32(hw, TXGBE_IENMISC, intr->mask_misc);
+	wr32(hw, TXGBE_IMC(0), TXGBE_IMC_MASK);
+	wr32(hw, TXGBE_IMC(1), TXGBE_IMC_MASK);
+	txgbe_flush(hw);
+}
+
+static void
+txgbe_disable_intr(struct txgbe_hw *hw)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	wr32(hw, TXGBE_IENMISC, ~BIT_MASK32);
+	wr32(hw, TXGBE_IMS(0), TXGBE_IMC_MASK);
+	wr32(hw, TXGBE_IMS(1), TXGBE_IMC_MASK);
+	txgbe_flush(hw);
 }
 
 static int
@@ -145,6 +183,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return -EIO;
 	}
 
+	/* disable interrupt */
+	txgbe_disable_intr(hw);
+
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("txgbe", RTE_ETHER_ADDR_LEN *
 					       hw->mac.num_rar_entries, 0);
@@ -182,8 +223,14 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id);
 
+	rte_intr_callback_register(intr_handle,
+				   txgbe_dev_interrupt_handler, eth_dev);
+
 	/* enable uio/vfio intr/eventfd mapping */
 	rte_intr_enable(intr_handle);
+
+	/* enable support intr */
+	txgbe_enable_intr(eth_dev);
 
 	return 0;
 }
@@ -252,6 +299,20 @@ static struct rte_pci_driver rte_txgbe_pmd = {
 	.remove = eth_txgbe_pci_remove,
 };
 
+
+static void
+txgbe_dev_phy_intr_setup(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	uint32_t gpie;
+
+	gpie = rd32(hw, TXGBE_GPIOINTEN);
+	gpie |= TXGBE_GPIOBIT_6;
+	wr32(hw, TXGBE_GPIOINTEN, gpie);
+	intr->mask_misc |= TXGBE_ICRMISC_GPIO;
+}
+
 /*
  * Reset and stop device.
  */
@@ -260,11 +321,29 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int retries = 0;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
+
+	do {
+		ret = rte_intr_callback_unregister(intr_handle,
+				txgbe_dev_interrupt_handler, dev);
+		if (ret >= 0 || ret == -ENOENT) {
+			break;
+		} else if (ret != -EAGAIN) {
+			PMD_INIT_LOG(ERR,
+				"intr callback unregister failed: %d",
+				ret);
+		}
+		rte_delay_ms(100);
+	} while (retries++ < (10 + TXGBE_LINK_UP_TIME));
+
+	/* cancel the delay handler before remove dev */
+	rte_eal_alarm_cancel(txgbe_dev_interrupt_delayed_handler, dev);
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
@@ -336,6 +415,394 @@ txgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txportconf.ring_size = 256;
 
 	return 0;
+}
+
+static int
+txgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(wait_to_complete);
+	return 0;
+}
+
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during nic initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ * @param on
+ *  Enable or Disable.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+txgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on)
+{
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+
+	txgbe_dev_link_status_print(dev);
+	if (on)
+		intr->mask_misc |= TXGBE_ICRMISC_LSC;
+	else
+		intr->mask_misc &= ~TXGBE_ICRMISC_LSC;
+
+	return 0;
+}
+
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during nic initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+txgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+
+	intr->mask[0] |= TXGBE_ICR_MASK;
+	intr->mask[1] |= TXGBE_ICR_MASK;
+
+	return 0;
+}
+
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during nic initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+txgbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+
+	intr->mask_misc |= TXGBE_ICRMISC_LNKSEC;
+
+	return 0;
+}
+
+/*
+ * It reads ICR and sets flag (TXGBE_ICRMISC_LSC) for the link_update.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
+{
+	uint32_t eicr;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+
+	/* clear all cause mask */
+	txgbe_disable_intr(hw);
+
+	/* read-on-clear nic registers here */
+	eicr = ((u32 *)hw->isb_mem)[TXGBE_ISB_MISC];
+	PMD_DRV_LOG(DEBUG, "eicr %x", eicr);
+
+	intr->flags = 0;
+
+	/* set flag for async link update */
+	if (eicr & TXGBE_ICRMISC_LSC)
+		intr->flags |= TXGBE_FLAG_NEED_LINK_UPDATE;
+
+	if (eicr & TXGBE_ICRMISC_VFMBX)
+		intr->flags |= TXGBE_FLAG_MAILBOX;
+
+	if (eicr & TXGBE_ICRMISC_LNKSEC)
+		intr->flags |= TXGBE_FLAG_MACSEC;
+
+	if (eicr & TXGBE_ICRMISC_GPIO)
+		intr->flags |= TXGBE_FLAG_PHY_INTERRUPT;
+
+	return 0;
+}
+
+/**
+ * It gets and then prints the link status.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static void
+txgbe_dev_link_status_print(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_eth_link link;
+
+	rte_eth_linkstatus_get(dev, &link);
+
+	if (link.link_status) {
+		PMD_INIT_LOG(INFO, "Port %d: Link Up - speed %u Mbps - %s",
+					(int)(dev->data->port_id),
+					(unsigned int)link.link_speed,
+			link.link_duplex == ETH_LINK_FULL_DUPLEX ?
+					"full-duplex" : "half-duplex");
+	} else {
+		PMD_INIT_LOG(INFO, " Port %d: Link Down",
+				(int)(dev->data->port_id));
+	}
+	PMD_INIT_LOG(DEBUG, "PCI Address: " PCI_PRI_FMT,
+				pci_dev->addr.domain,
+				pci_dev->addr.bus,
+				pci_dev->addr.devid,
+				pci_dev->addr.function);
+}
+
+/*
+ * It executes link_update after knowing an interrupt occurred.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+txgbe_dev_interrupt_action(struct rte_eth_dev *dev,
+			   struct rte_intr_handle *intr_handle)
+{
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	int64_t timeout;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	PMD_DRV_LOG(DEBUG, "intr action type %d", intr->flags);
+
+	if (intr->flags & TXGBE_FLAG_MAILBOX)
+		intr->flags &= ~TXGBE_FLAG_MAILBOX;
+
+	if (intr->flags & TXGBE_FLAG_PHY_INTERRUPT) {
+		hw->phy.handle_lasi(hw);
+		intr->flags &= ~TXGBE_FLAG_PHY_INTERRUPT;
+	}
+
+	if (intr->flags & TXGBE_FLAG_NEED_LINK_UPDATE) {
+		struct rte_eth_link link;
+
+		/*get the link status before link update, for predicting later*/
+		rte_eth_linkstatus_get(dev, &link);
+
+		txgbe_dev_link_update(dev, 0);
+
+		/* likely to up */
+		if (!link.link_status)
+			/* handle it 1 sec later, wait it being stable */
+			timeout = TXGBE_LINK_UP_CHECK_TIMEOUT;
+		/* likely to down */
+		else
+			/* handle it 4 sec later, wait it being stable */
+			timeout = TXGBE_LINK_DOWN_CHECK_TIMEOUT;
+
+		txgbe_dev_link_status_print(dev);
+		if (rte_eal_alarm_set(timeout * 1000,
+				      txgbe_dev_interrupt_delayed_handler,
+				      (void *)dev) < 0) {
+			PMD_DRV_LOG(ERR, "Error setting alarm");
+		} else {
+			/* remember original mask */
+			intr->mask_misc_orig = intr->mask_misc;
+			/* only disable lsc interrupt */
+			intr->mask_misc &= ~TXGBE_ICRMISC_LSC;
+		}
+	}
+
+	PMD_DRV_LOG(DEBUG, "enable intr immediately");
+	txgbe_enable_intr(dev);
+	rte_intr_enable(intr_handle);
+
+	return 0;
+}
+
+/**
+ * Interrupt handler which shall be registered for alarm callback for delayed
+ * handling specific interrupt to wait for the stable nic state. As the
+ * NIC interrupt state is not stable for txgbe after link is just down,
+ * it needs to wait 4 seconds to get the stable status.
+ *
+ * @param handle
+ *  Pointer to interrupt handle.
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) registered before.
+ *
+ * @return
+ *  void
+ */
+static void
+txgbe_dev_interrupt_delayed_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t eicr;
+
+	txgbe_disable_intr(hw);
+
+	eicr = ((u32 *)hw->isb_mem)[TXGBE_ISB_MISC];
+
+	if (intr->flags & TXGBE_FLAG_PHY_INTERRUPT) {
+		hw->phy.handle_lasi(hw);
+		intr->flags &= ~TXGBE_FLAG_PHY_INTERRUPT;
+	}
+
+	if (intr->flags & TXGBE_FLAG_NEED_LINK_UPDATE) {
+		txgbe_dev_link_update(dev, 0);
+		intr->flags &= ~TXGBE_FLAG_NEED_LINK_UPDATE;
+		txgbe_dev_link_status_print(dev);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+					      NULL);
+	}
+
+	if (intr->flags & TXGBE_FLAG_MACSEC) {
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_MACSEC,
+					      NULL);
+		intr->flags &= ~TXGBE_FLAG_MACSEC;
+	}
+
+	/* restore original mask */
+	intr->mask_misc = intr->mask_misc_orig;
+	intr->mask_misc_orig = 0;
+
+	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler S[%08x]", eicr);
+	txgbe_enable_intr(dev);
+	rte_intr_enable(intr_handle);
+}
+
+/**
+ * Interrupt handler triggered by NIC  for handling
+ * specific interrupt.
+ *
+ * @param handle
+ *  Pointer to interrupt handle.
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) registered before.
+ *
+ * @return
+ *  void
+ */
+static void
+txgbe_dev_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	txgbe_dev_interrupt_get_status(dev);
+	txgbe_dev_interrupt_action(dev, dev->intr_handle);
+}
+
+/**
+ * set the IVAR registers, mapping interrupt causes to vectors
+ * @param hw
+ *  pointer to txgbe_hw struct
+ * @direction
+ *  0 for Rx, 1 for Tx, -1 for other causes
+ * @queue
+ *  queue to map the corresponding interrupt to
+ * @msix_vector
+ *  the vector to map to the corresponding queue
+ */
+void
+txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
+		   uint8_t queue, uint8_t msix_vector)
+{
+	uint32_t tmp, idx;
+
+	if (direction == -1) {
+		/* other causes */
+		msix_vector |= TXGBE_IVARMISC_VLD;
+		idx = 0;
+		tmp = rd32(hw, TXGBE_IVARMISC);
+		tmp &= ~(0xFF << idx);
+		tmp |= (msix_vector << idx);
+		wr32(hw, TXGBE_IVARMISC, tmp);
+	} else {
+		/* rx or tx causes */
+		/* Workround for ICR lost */
+		idx = ((16 * (queue & 1)) + (8 * direction));
+		tmp = rd32(hw, TXGBE_IVAR(queue >> 1));
+		tmp &= ~(0xFF << idx);
+		tmp |= (msix_vector << idx);
+		wr32(hw, TXGBE_IVAR(queue >> 1), tmp);
+	}
+}
+
+/**
+ * Sets up the hardware to properly generate MSI-X interrupts
+ * @hw
+ *  board private structure
+ */
+static void
+txgbe_configure_msix(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t queue_id, base = TXGBE_MISC_VEC_ID;
+	uint32_t vec = TXGBE_MISC_VEC_ID;
+	uint32_t gpie;
+
+	/* won't configure msix register if no mapping is done
+	 * between intr vector and event fd
+	 * but if misx has been enabled already, need to configure
+	 * auto clean, auto mask and throttling.
+	 */
+	gpie = rd32(hw, TXGBE_GPIE);
+	if (!rte_intr_dp_is_en(intr_handle) &&
+	    !(gpie & TXGBE_GPIE_MSIX))
+		return;
+
+	if (rte_intr_allow_others(intr_handle)) {
+		base = TXGBE_RX_VEC_START;
+		vec = base;
+	}
+
+	/* setup GPIE for MSI-x mode */
+	gpie = rd32(hw, TXGBE_GPIE);
+	gpie |= TXGBE_GPIE_MSIX;
+	wr32(hw, TXGBE_GPIE, gpie);
+
+	/* Populate the IVAR table and set the ITR values to the
+	 * corresponding register.
+	 */
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (queue_id = 0; queue_id < dev->data->nb_rx_queues;
+			queue_id++) {
+			/* by default, 1:1 mapping */
+			txgbe_set_ivar_map(hw, 0, queue_id, vec);
+			intr_handle->intr_vec[queue_id] = vec;
+			if (vec < base + intr_handle->nb_efd - 1)
+				vec++;
+		}
+
+		txgbe_set_ivar_map(hw, -1, 1, TXGBE_MISC_VEC_ID);
+	}
+	wr32(hw, TXGBE_ITR(TXGBE_MISC_VEC_ID),
+			TXGBE_ITR_IVAL_10G(TXGBE_QUEUE_ITR_INTERVAL_DEFAULT)
+			| TXGBE_ITR_WRDSA);
 }
 
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
