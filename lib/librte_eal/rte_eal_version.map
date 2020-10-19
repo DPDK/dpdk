@@ -400,6 +400,8 @@ EXPERIMENTAL {
 	__rte_eal_trace_generic_size_t;
 	rte_epoll_wait_interruptible;
 	rte_service_lcore_may_be_active;
+	rte_vect_get_max_simd_bitwidth;
+	rte_vect_set_max_simd_bitwidth;
 };
 
 INTERNAL {

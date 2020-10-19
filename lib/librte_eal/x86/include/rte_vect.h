@@ -36,6 +36,8 @@
 extern "C" {
 #endif
 
+#define RTE_VECT_DEFAULT_SIMD_BITWIDTH RTE_VECT_SIMD_256
+
 typedef __m128i xmm_t;
 
 #define	XMM_SIZE	(sizeof(xmm_t))

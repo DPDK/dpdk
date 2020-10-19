@@ -7,12 +7,15 @@
 
 /**
  * @file
- * SIMD vector types
+ * SIMD vector types and control
  *
- * This file defines types to use vector instructions with generic C code.
+ * This file defines types to use vector instructions with generic C code
+ * and APIs to enable the code using them.
  */
 
 #include <stdint.h>
+
+#include <rte_compat.h>
 
 /* Unsigned vector types */
 
@@ -182,5 +185,51 @@ typedef int32_t rte_v256s32_t __attribute__((vector_size(32), aligned(32)));
  * a = (rte_v256s64_t){ a0, a1, a2, a3 }
  */
 typedef int64_t rte_v256s64_t __attribute__((vector_size(32), aligned(32)));
+
+/**
+ * The max SIMD bitwidth value to limit vector path selection.
+ */
+enum rte_vect_max_simd {
+	RTE_VECT_SIMD_DISABLED = 64,
+	/**< Limits path selection to scalar, disables all vector paths. */
+	RTE_VECT_SIMD_128 = 128,
+	/**< Limits path selection to SSE/NEON/Altivec or below. */
+	RTE_VECT_SIMD_256 = 256, /**< Limits path selection to AVX2 or below. */
+	RTE_VECT_SIMD_512 = 512, /**< Limits path selection to AVX512 or below. */
+	RTE_VECT_SIMD_MAX = INT16_MAX + 1,
+	/**<
+	 * Disables limiting by max SIMD bitwidth, allows all suitable paths.
+	 * This value is used as it is a large number and a power of 2.
+	 */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the supported SIMD bitwidth.
+ *
+ * @return
+ *   uint16_t bitwidth.
+ */
+__rte_experimental
+uint16_t rte_vect_get_max_simd_bitwidth(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Set the supported SIMD bitwidth.
+ * This API should only be called once at initialization, before EAL init.
+ *
+ * @param bitwidth
+ *   uint16_t bitwidth.
+ * @return
+ *   - 0 on success.
+ *   - -EINVAL on invalid bitwidth parameter.
+ *   - -EPERM if bitwidth is forced.
+ */
+__rte_experimental
+int rte_vect_set_max_simd_bitwidth(uint16_t bitwidth);
 
 #endif /* _RTE_VECT_H_ */

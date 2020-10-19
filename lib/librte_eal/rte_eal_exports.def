@@ -303,6 +303,9 @@ EXPORTS
 	rte_thread_register
 	rte_thread_unregister
 
+	rte_vect_get_max_simd_bitwidth
+	rte_vect_set_max_simd_bitwidth
+
 	rte_mem_lock
 	rte_mem_map
 	rte_mem_page_size

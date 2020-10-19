@@ -85,6 +85,8 @@ enum {
 	OPT_TELEMETRY_NUM,
 #define OPT_NO_TELEMETRY      "no-telemetry"
 	OPT_NO_TELEMETRY_NUM,
+#define OPT_FORCE_MAX_SIMD_BITWIDTH  "force-max-simd-bitwidth"
+	OPT_FORCE_MAX_SIMD_BITWIDTH_NUM,
 	OPT_LONG_MAX_NUM
 };
 

@@ -35,6 +35,7 @@
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include <rte_telemetry.h>
 #endif
+#include <rte_vect.h>
 
 #include "eal_internal_cfg.h"
 #include "eal_options.h"
@@ -102,6 +103,7 @@ eal_long_options[] = {
 	{OPT_MATCH_ALLOCATIONS, 0, NULL, OPT_MATCH_ALLOCATIONS_NUM},
 	{OPT_TELEMETRY,         0, NULL, OPT_TELEMETRY_NUM        },
 	{OPT_NO_TELEMETRY,      0, NULL, OPT_NO_TELEMETRY_NUM     },
+	{OPT_FORCE_MAX_SIMD_BITWIDTH, 1, NULL, OPT_FORCE_MAX_SIMD_BITWIDTH_NUM},
 	{0,                     0, NULL, 0                        }
 };
 
@@ -343,6 +345,8 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->user_mbuf_pool_ops_name = NULL;
 	CPU_ZERO(&internal_cfg->ctrl_cpuset);
 	internal_cfg->init_complete = 0;
+	internal_cfg->max_simd_bitwidth.bitwidth = RTE_VECT_DEFAULT_SIMD_BITWIDTH;
+	internal_cfg->max_simd_bitwidth.forced = 0;
 }
 
 static int
@@ -1310,6 +1314,34 @@ eal_parse_iova_mode(const char *name)
 }
 
 static int
+eal_parse_simd_bitwidth(const char *arg)
+{
+	char *end;
+	unsigned long bitwidth;
+	int ret;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	if (arg == NULL || arg[0] == '\0')
+		return -1;
+
+	errno = 0;
+	bitwidth = strtoul(arg, &end, 0);
+
+	/* check for errors */
+	if (errno != 0 || end == NULL || *end != '\0' || bitwidth > RTE_VECT_SIMD_MAX)
+		return -1;
+
+	if (bitwidth == 0)
+		bitwidth = (unsigned long) RTE_VECT_SIMD_MAX;
+	ret = rte_vect_set_max_simd_bitwidth(bitwidth);
+	if (ret < 0)
+		return -1;
+	internal_conf->max_simd_bitwidth.forced = 1;
+	return 0;
+}
+
+static int
 eal_parse_base_virtaddr(const char *arg)
 {
 	char *end;
@@ -1707,6 +1739,13 @@ eal_parse_common_option(int opt, const char *optarg,
 	case OPT_NO_TELEMETRY_NUM:
 		conf->no_telemetry = 1;
 		break;
+	case OPT_FORCE_MAX_SIMD_BITWIDTH_NUM:
+		if (eal_parse_simd_bitwidth(optarg) < 0) {
+			RTE_LOG(ERR, EAL, "invalid parameter for --"
+					OPT_FORCE_MAX_SIMD_BITWIDTH "\n");
+			return -1;
+		}
+		break;
 
 	/* don't know what to do, leave this to caller */
 	default:
@@ -1903,6 +1942,32 @@ eal_check_common_options(struct internal_config *internal_cfg)
 	return 0;
 }
 
+uint16_t
+rte_vect_get_max_simd_bitwidth(void)
+{
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+	return internal_conf->max_simd_bitwidth.bitwidth;
+}
+
+int
+rte_vect_set_max_simd_bitwidth(uint16_t bitwidth)
+{
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+	if (internal_conf->max_simd_bitwidth.forced) {
+		RTE_LOG(NOTICE, EAL, "Cannot set max SIMD bitwidth - user runtime override enabled");
+		return -EPERM;
+	}
+
+	if (bitwidth < RTE_VECT_SIMD_DISABLED || !rte_is_power_of_2(bitwidth)) {
+		RTE_LOG(ERR, EAL, "Invalid bitwidth value!\n");
+		return -EINVAL;
+	}
+	internal_conf->max_simd_bitwidth.bitwidth = bitwidth;
+	return 0;
+}
+
 void
 eal_common_usage(void)
 {
@@ -1981,6 +2046,7 @@ eal_common_usage(void)
 	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
 	       "  --"OPT_TELEMETRY"   Enable telemetry support (on by default)\n"
 	       "  --"OPT_NO_TELEMETRY"   Disable telemetry support\n"
+	       "  --"OPT_FORCE_MAX_SIMD_BITWIDTH" Force the max SIMD bitwidth\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_HUGE_UNLINK"       Unlink hugepage files after init\n"
 	       "  --"OPT_NO_HUGE"           Use malloc instead of hugetlbfs\n"

@@ -77,6 +77,13 @@ New Features
   This API is specific to x86 and implemented as a stub for other
   architectures.
 
+* **Added support for limiting maximum SIMD bitwidth.**
+
+  Added a new EAL config setting ``max_simd_bitwidth`` to limit the vector
+  path selection at runtime. This value can be set by apps using the
+  ``rte_vect_set_max_simd_bitwidth`` function, or by the user with EAL flag
+  ``--force-max-simd-bitwidth``.
+
 * **Updated CRC modules of the net library.**
 
   * Added runtime selection of the optimal architecture-specific CRC path.

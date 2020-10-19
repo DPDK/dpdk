@@ -486,6 +486,40 @@ the desired addressing mode when virtual devices that are not directly attached 
 To facilitate forcing the IOVA mode to a specific value the EAL command line option ``--iova-mode`` can
 be used to select either physical addressing('pa') or virtual addressing('va').
 
+.. _max_simd_bitwidth:
+
+
+Max SIMD bitwidth
+~~~~~~~~~~~~~~~~~
+
+The EAL provides a single setting to limit the max SIMD bitwidth used by DPDK,
+which is used in determining the vector path, if any, chosen by a component.
+The value can be set at runtime by an application using the
+'rte_vect_set_max_simd_bitwidth(uint16_t bitwidth)' function,
+which should only be called once at initialization, before EAL init.
+The value can be overridden by the user using the EAL command-line option '--force-max-simd-bitwidth'.
+
+When choosing a vector path, along with checking the CPU feature support,
+the value of the max SIMD bitwidth must also be checked, and can be retrieved using the
+'rte_vect_get_max_simd_bitwidth()' function.
+The value should be compared against the enum values for accepted max SIMD bitwidths:
+
+.. code-block:: c
+
+   enum rte_vect_max_simd {
+       RTE_VECT_SIMD_DISABLED = 64,
+       RTE_VECT_SIMD_128 = 128,
+       RTE_VECT_SIMD_256 = 256,
+       RTE_VECT_SIMD_512 = 512,
+       RTE_VECT_SIMD_MAX = INT16_MAX + 1,
+   };
+
+    if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
+        /* Take AVX-512 vector path */
+    else if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
+        /* Take AVX2 vector path */
+
+
 Memory Segments and Memory Zones (memzone)
 ------------------------------------------
 
