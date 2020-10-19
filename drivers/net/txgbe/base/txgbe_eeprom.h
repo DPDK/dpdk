@@ -23,6 +23,7 @@
 #define TXGBE_EEPROM_VERSION_H          0x1E
 #define TXGBE_ISCSI_BOOT_CONFIG         0x07
 
+#define TXGBE_DEVICE_CAPS_ALLOW_ANY_SFP		0x1
 
 s32 txgbe_init_eeprom_params(struct txgbe_hw *hw);
 s32 txgbe_calc_eeprom_checksum(struct txgbe_hw *hw);

@@ -291,6 +291,10 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	/* PHY */
 	phy->identify = txgbe_identify_phy;
 	phy->init = txgbe_init_phy_raptor;
+	phy->read_i2c_byte = txgbe_read_i2c_byte;
+	phy->write_i2c_byte = txgbe_write_i2c_byte;
+	phy->read_i2c_eeprom = txgbe_read_i2c_eeprom;
+	phy->write_i2c_eeprom = txgbe_write_i2c_eeprom;
 
 	/* MAC */
 	mac->init_hw = txgbe_init_hw;

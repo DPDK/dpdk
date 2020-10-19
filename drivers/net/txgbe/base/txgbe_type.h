@@ -358,6 +358,7 @@ struct txgbe_phy_info {
 	u32 media_type;
 	u32 phy_semaphore_mask;
 	bool reset_disable;
+	bool multispeed_fiber;
 	bool qsfp_shared_i2c_bus;
 	u32 nw_mng_if_sel;
 };
