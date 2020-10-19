@@ -1467,6 +1467,9 @@ int rte_vhost_get_vring_base(int vid, uint16_t queue_id,
 	if (dev == NULL || last_avail_idx == NULL || last_used_idx == NULL)
 		return -1;
 
+	if (queue_id >= VHOST_MAX_VRING)
+		return -1;
+
 	vq = dev->virtqueue[queue_id];
 	if (!vq)
 		return -1;
@@ -1491,6 +1494,9 @@ int rte_vhost_set_vring_base(int vid, uint16_t queue_id,
 	struct virtio_net *dev = get_device(vid);
 
 	if (!dev)
+		return -1;
+
+	if (queue_id >= VHOST_MAX_VRING)
 		return -1;
 
 	vq = dev->virtqueue[queue_id];
