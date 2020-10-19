@@ -153,6 +153,14 @@ enum txgbe_media_type {
 	txgbe_media_type_virtual
 };
 
+/* Flow Control Settings */
+enum txgbe_fc_mode {
+	txgbe_fc_none = 0,
+	txgbe_fc_rx_pause,
+	txgbe_fc_tx_pause,
+	txgbe_fc_full,
+	txgbe_fc_default
+};
 
 /* Smart Speed Settings */
 #define TXGBE_SMARTSPEED_MAX_RETRIES	3
@@ -220,6 +228,19 @@ struct txgbe_bus_info {
 	u16 func;
 	u8 lan_id;
 	u16 instance_id;
+};
+
+/* Flow control parameters */
+struct txgbe_fc_info {
+	u32 high_water[TXGBE_DCB_TC_MAX]; /* Flow Ctrl High-water */
+	u32 low_water[TXGBE_DCB_TC_MAX]; /* Flow Ctrl Low-water */
+	u16 pause_time; /* Flow Control Pause timer */
+	bool send_xon; /* Flow control send XON */
+	bool strict_ieee; /* Strict IEEE mode */
+	bool disable_fc_autoneg; /* Do not autonegotiate FC */
+	bool fc_was_autonegged; /* Is current_mode the result of autonegging? */
+	enum txgbe_fc_mode current_mode; /* FC mode in effect */
+	enum txgbe_fc_mode requested_mode; /* FC mode requested by caller */
 };
 
 /* Statistics counters collected by the MAC */
@@ -633,6 +654,7 @@ struct txgbe_hw {
 	void *back;
 	struct txgbe_mac_info mac;
 	struct txgbe_addr_filter_info addr_ctrl;
+	struct txgbe_fc_info fc;
 	struct txgbe_phy_info phy;
 	struct txgbe_link_info link;
 	struct txgbe_rom_info rom;

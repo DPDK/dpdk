@@ -327,6 +327,13 @@ txgbe_ethertype_filter_insert(struct txgbe_filter_info *filter_info,
 	return (i < TXGBE_ETF_ID_MAX ? i : -1);
 }
 
+/* High threshold controlling when to start sending XOFF frames. */
+#define TXGBE_FC_XOFF_HITH              128 /*KB*/
+/* Low threshold controlling when to start sending XON frames. */
+#define TXGBE_FC_XON_LOTH               64 /*KB*/
+
+/* Timer value included in XOFF frames. */
+#define TXGBE_FC_PAUSE_TIME 0x680
 
 #define TXGBE_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define TXGBE_LINK_UP_CHECK_TIMEOUT   1000 /* ms */

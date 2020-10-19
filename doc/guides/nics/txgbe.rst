@@ -20,6 +20,7 @@ Features
 - Port hardware statistics
 - Jumbo frames
 - Link state information
+- Link flow control
 - Interrupt mode for RX
 - Scattered and gather for TX and RX
 - DCB

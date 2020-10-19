@@ -28,6 +28,10 @@ s32 txgbe_enable_sec_rx_path(struct txgbe_hw *hw);
 s32 txgbe_disable_sec_tx_path(struct txgbe_hw *hw);
 s32 txgbe_enable_sec_tx_path(struct txgbe_hw *hw);
 
+s32 txgbe_fc_enable(struct txgbe_hw *hw);
+bool txgbe_device_supports_autoneg_fc(struct txgbe_hw *hw);
+s32 txgbe_setup_fc(struct txgbe_hw *hw);
+
 s32 txgbe_validate_mac_addr(u8 *mac_addr);
 s32 txgbe_acquire_swfw_sync(struct txgbe_hw *hw, u32 mask);
 void txgbe_release_swfw_sync(struct txgbe_hw *hw, u32 mask);
@@ -96,5 +100,7 @@ s32 txgbe_reset_hw(struct txgbe_hw *hw);
 s32 txgbe_start_hw_raptor(struct txgbe_hw *hw);
 s32 txgbe_init_phy_raptor(struct txgbe_hw *hw);
 s32 txgbe_enable_rx_dma_raptor(struct txgbe_hw *hw, u32 regval);
+s32 txgbe_prot_autoc_read_raptor(struct txgbe_hw *hw, bool *locked, u64 *value);
+s32 txgbe_prot_autoc_write_raptor(struct txgbe_hw *hw, bool locked, u64 value);
 bool txgbe_verify_lesm_fw_enabled_raptor(struct txgbe_hw *hw);
 #endif /* _TXGBE_HW_H_ */

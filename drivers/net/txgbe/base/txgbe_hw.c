@@ -26,6 +26,211 @@ static s32 txgbe_get_san_mac_addr_offset(struct txgbe_hw *hw,
 					 u16 *san_mac_offset);
 
 /**
+ * txgbe_device_supports_autoneg_fc - Check if device supports autonegotiation
+ * of flow control
+ * @hw: pointer to hardware structure
+ *
+ * This function returns true if the device supports flow control
+ * autonegotiation, and false if it does not.
+ *
+ **/
+bool txgbe_device_supports_autoneg_fc(struct txgbe_hw *hw)
+{
+	bool supported = false;
+	u32 speed;
+	bool link_up;
+
+	DEBUGFUNC("txgbe_device_supports_autoneg_fc");
+
+	switch (hw->phy.media_type) {
+	case txgbe_media_type_fiber_qsfp:
+	case txgbe_media_type_fiber:
+		hw->mac.check_link(hw, &speed, &link_up, false);
+		/* if link is down, assume supported */
+		if (link_up)
+			supported = speed == TXGBE_LINK_SPEED_1GB_FULL ?
+			true : false;
+		else
+			supported = true;
+
+		break;
+	case txgbe_media_type_backplane:
+		supported = true;
+		break;
+	case txgbe_media_type_copper:
+		/* only some copper devices support flow control autoneg */
+		switch (hw->device_id) {
+		case TXGBE_DEV_ID_RAPTOR_XAUI:
+		case TXGBE_DEV_ID_RAPTOR_SGMII:
+			supported = true;
+			break;
+		default:
+			supported = false;
+		}
+	default:
+		break;
+	}
+
+	if (!supported)
+		DEBUGOUT("Device %x does not support flow control autoneg",
+			      hw->device_id);
+	return supported;
+}
+
+/**
+ *  txgbe_setup_fc - Set up flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Called at init time to set up flow control.
+ **/
+s32 txgbe_setup_fc(struct txgbe_hw *hw)
+{
+	s32 err = 0;
+	u32 reg = 0;
+	u16 reg_cu = 0;
+	u32 value = 0;
+	u64 reg_bp = 0;
+	bool locked = false;
+
+	DEBUGFUNC("txgbe_setup_fc");
+
+	/* Validate the requested mode */
+	if (hw->fc.strict_ieee && hw->fc.requested_mode == txgbe_fc_rx_pause) {
+		DEBUGOUT("txgbe_fc_rx_pause not valid in strict IEEE mode\n");
+		err = TXGBE_ERR_INVALID_LINK_SETTINGS;
+		goto out;
+	}
+
+	/*
+	 * 10gig parts do not have a word in the EEPROM to determine the
+	 * default flow control setting, so we explicitly set it to full.
+	 */
+	if (hw->fc.requested_mode == txgbe_fc_default)
+		hw->fc.requested_mode = txgbe_fc_full;
+
+	/*
+	 * Set up the 1G and 10G flow control advertisement registers so the
+	 * HW will be able to do fc autoneg once the cable is plugged in.  If
+	 * we link at 10G, the 1G advertisement is harmless and vice versa.
+	 */
+	switch (hw->phy.media_type) {
+	case txgbe_media_type_backplane:
+		/* some MAC's need RMW protection on AUTOC */
+		err = hw->mac.prot_autoc_read(hw, &locked, &reg_bp);
+		if (err != 0)
+			goto out;
+
+		/* fall through - only backplane uses autoc */
+	case txgbe_media_type_fiber_qsfp:
+	case txgbe_media_type_fiber:
+	case txgbe_media_type_copper:
+		hw->phy.read_reg(hw, TXGBE_MD_AUTO_NEG_ADVT,
+				     TXGBE_MD_DEV_AUTO_NEG, &reg_cu);
+		break;
+	default:
+		break;
+	}
+
+	/*
+	 * The possible values of fc.requested_mode are:
+	 * 0: Flow control is completely disabled
+	 * 1: Rx flow control is enabled (we can receive pause frames,
+	 *    but not send pause frames).
+	 * 2: Tx flow control is enabled (we can send pause frames but
+	 *    we do not support receiving pause frames).
+	 * 3: Both Rx and Tx flow control (symmetric) are enabled.
+	 * other: Invalid.
+	 */
+	switch (hw->fc.requested_mode) {
+	case txgbe_fc_none:
+		/* Flow control completely disabled by software override. */
+		reg &= ~(SR_MII_MMD_AN_ADV_PAUSE_SYM |
+			SR_MII_MMD_AN_ADV_PAUSE_ASM);
+		if (hw->phy.media_type == txgbe_media_type_backplane)
+			reg_bp &= ~(TXGBE_AUTOC_SYM_PAUSE |
+				    TXGBE_AUTOC_ASM_PAUSE);
+		else if (hw->phy.media_type == txgbe_media_type_copper)
+			reg_cu &= ~(TXGBE_TAF_SYM_PAUSE | TXGBE_TAF_ASM_PAUSE);
+		break;
+	case txgbe_fc_tx_pause:
+		/*
+		 * Tx Flow control is enabled, and Rx Flow control is
+		 * disabled by software override.
+		 */
+		reg |= SR_MII_MMD_AN_ADV_PAUSE_ASM;
+		reg &= ~SR_MII_MMD_AN_ADV_PAUSE_SYM;
+		if (hw->phy.media_type == txgbe_media_type_backplane) {
+			reg_bp |= TXGBE_AUTOC_ASM_PAUSE;
+			reg_bp &= ~TXGBE_AUTOC_SYM_PAUSE;
+		} else if (hw->phy.media_type == txgbe_media_type_copper) {
+			reg_cu |= TXGBE_TAF_ASM_PAUSE;
+			reg_cu &= ~TXGBE_TAF_SYM_PAUSE;
+		}
+		reg |= SR_MII_MMD_AN_ADV_PAUSE_ASM;
+		reg_bp |= SR_AN_MMD_ADV_REG1_PAUSE_ASM;
+		break;
+	case txgbe_fc_rx_pause:
+		/*
+		 * Rx Flow control is enabled and Tx Flow control is
+		 * disabled by software override. Since there really
+		 * isn't a way to advertise that we are capable of RX
+		 * Pause ONLY, we will advertise that we support both
+		 * symmetric and asymmetric Rx PAUSE, as such we fall
+		 * through to the fc_full statement.  Later, we will
+		 * disable the adapter's ability to send PAUSE frames.
+		 */
+	case txgbe_fc_full:
+		/* Flow control (both Rx and Tx) is enabled by SW override. */
+		reg |= SR_MII_MMD_AN_ADV_PAUSE_SYM |
+			SR_MII_MMD_AN_ADV_PAUSE_ASM;
+		if (hw->phy.media_type == txgbe_media_type_backplane)
+			reg_bp |= TXGBE_AUTOC_SYM_PAUSE |
+				  TXGBE_AUTOC_ASM_PAUSE;
+		else if (hw->phy.media_type == txgbe_media_type_copper)
+			reg_cu |= TXGBE_TAF_SYM_PAUSE | TXGBE_TAF_ASM_PAUSE;
+		reg |= SR_MII_MMD_AN_ADV_PAUSE_SYM |
+			SR_MII_MMD_AN_ADV_PAUSE_ASM;
+		reg_bp |= SR_AN_MMD_ADV_REG1_PAUSE_SYM |
+			SR_AN_MMD_ADV_REG1_PAUSE_ASM;
+		break;
+	default:
+		DEBUGOUT("Flow control param set incorrectly\n");
+		err = TXGBE_ERR_CONFIG;
+		goto out;
+	}
+
+	/*
+	 * Enable auto-negotiation between the MAC & PHY;
+	 * the MAC will advertise clause 37 flow control.
+	 */
+	value = rd32_epcs(hw, SR_MII_MMD_AN_ADV);
+	value = (value & ~(SR_MII_MMD_AN_ADV_PAUSE_ASM |
+		SR_MII_MMD_AN_ADV_PAUSE_SYM)) | reg;
+	wr32_epcs(hw, SR_MII_MMD_AN_ADV, value);
+
+	/*
+	 * AUTOC restart handles negotiation of 1G and 10G on backplane
+	 * and copper. There is no need to set the PCS1GCTL register.
+	 *
+	 */
+	if (hw->phy.media_type == txgbe_media_type_backplane) {
+		value = rd32_epcs(hw, SR_AN_MMD_ADV_REG1);
+		value = (value & ~(SR_AN_MMD_ADV_REG1_PAUSE_ASM |
+			SR_AN_MMD_ADV_REG1_PAUSE_SYM)) |
+			reg_bp;
+		wr32_epcs(hw, SR_AN_MMD_ADV_REG1, value);
+	} else if ((hw->phy.media_type == txgbe_media_type_copper) &&
+		    (txgbe_device_supports_autoneg_fc(hw))) {
+		hw->phy.write_reg(hw, TXGBE_MD_AUTO_NEG_ADVT,
+				      TXGBE_MD_DEV_AUTO_NEG, reg_cu);
+	}
+
+	DEBUGOUT("Set up FC; reg = 0x%08X\n", reg);
+out:
+	return err;
+}
+
+/**
  *  txgbe_start_hw - Prepare hardware for Tx/Rx
  *  @hw: pointer to hardware structure
  *
@@ -36,6 +241,7 @@ static s32 txgbe_get_san_mac_addr_offset(struct txgbe_hw *hw,
  **/
 s32 txgbe_start_hw(struct txgbe_hw *hw)
 {
+	s32 err;
 	u16 device_caps;
 
 	DEBUGFUNC("txgbe_start_hw");
@@ -48,6 +254,13 @@ s32 txgbe_start_hw(struct txgbe_hw *hw)
 
 	/* Clear statistics registers */
 	hw->mac.clear_hw_cntrs(hw);
+
+	/* Setup flow control */
+	err = txgbe_setup_fc(hw);
+	if (err != 0 && err != TXGBE_NOT_IMPLEMENTED) {
+		DEBUGOUT("Flow control setup failed, returning %d\n", err);
+		return err;
+	}
 
 	/* Cache bit indicating need for crosstalk fix */
 	switch (hw->mac.type) {
@@ -671,6 +884,136 @@ s32 txgbe_update_mc_addr_list(struct txgbe_hw *hw, u8 *mc_addr_list,
 
 	DEBUGOUT("txgbe update mc addr list complete\n");
 	return 0;
+}
+
+/**
+ *  txgbe_fc_enable - Enable flow control
+ *  @hw: pointer to hardware structure
+ *
+ *  Enable flow control according to the current settings.
+ **/
+s32 txgbe_fc_enable(struct txgbe_hw *hw)
+{
+	s32 err = 0;
+	u32 mflcn_reg, fccfg_reg;
+	u32 pause_time;
+	u32 fcrtl, fcrth;
+	int i;
+
+	DEBUGFUNC("txgbe_fc_enable");
+
+	/* Validate the water mark configuration */
+	if (!hw->fc.pause_time) {
+		err = TXGBE_ERR_INVALID_LINK_SETTINGS;
+		goto out;
+	}
+
+	/* Low water mark of zero causes XOFF floods */
+	for (i = 0; i < TXGBE_DCB_TC_MAX; i++) {
+		if ((hw->fc.current_mode & txgbe_fc_tx_pause) &&
+		    hw->fc.high_water[i]) {
+			if (!hw->fc.low_water[i] ||
+			    hw->fc.low_water[i] >= hw->fc.high_water[i]) {
+				DEBUGOUT("Invalid water mark configuration\n");
+				err = TXGBE_ERR_INVALID_LINK_SETTINGS;
+				goto out;
+			}
+		}
+	}
+
+	/* Negotiate the fc mode to use */
+	hw->mac.fc_autoneg(hw);
+
+	/* Disable any previous flow control settings */
+	mflcn_reg = rd32(hw, TXGBE_RXFCCFG);
+	mflcn_reg &= ~(TXGBE_RXFCCFG_FC | TXGBE_RXFCCFG_PFC);
+
+	fccfg_reg = rd32(hw, TXGBE_TXFCCFG);
+	fccfg_reg &= ~(TXGBE_TXFCCFG_FC | TXGBE_TXFCCFG_PFC);
+
+	/*
+	 * The possible values of fc.current_mode are:
+	 * 0: Flow control is completely disabled
+	 * 1: Rx flow control is enabled (we can receive pause frames,
+	 *    but not send pause frames).
+	 * 2: Tx flow control is enabled (we can send pause frames but
+	 *    we do not support receiving pause frames).
+	 * 3: Both Rx and Tx flow control (symmetric) are enabled.
+	 * other: Invalid.
+	 */
+	switch (hw->fc.current_mode) {
+	case txgbe_fc_none:
+		/*
+		 * Flow control is disabled by software override or autoneg.
+		 * The code below will actually disable it in the HW.
+		 */
+		break;
+	case txgbe_fc_rx_pause:
+		/*
+		 * Rx Flow control is enabled and Tx Flow control is
+		 * disabled by software override. Since there really
+		 * isn't a way to advertise that we are capable of RX
+		 * Pause ONLY, we will advertise that we support both
+		 * symmetric and asymmetric Rx PAUSE.  Later, we will
+		 * disable the adapter's ability to send PAUSE frames.
+		 */
+		mflcn_reg |= TXGBE_RXFCCFG_FC;
+		break;
+	case txgbe_fc_tx_pause:
+		/*
+		 * Tx Flow control is enabled, and Rx Flow control is
+		 * disabled by software override.
+		 */
+		fccfg_reg |= TXGBE_TXFCCFG_FC;
+		break;
+	case txgbe_fc_full:
+		/* Flow control (both Rx and Tx) is enabled by SW override. */
+		mflcn_reg |= TXGBE_RXFCCFG_FC;
+		fccfg_reg |= TXGBE_TXFCCFG_FC;
+		break;
+	default:
+		DEBUGOUT("Flow control param set incorrectly\n");
+		err = TXGBE_ERR_CONFIG;
+		goto out;
+	}
+
+	/* Set 802.3x based flow control settings. */
+	wr32(hw, TXGBE_RXFCCFG, mflcn_reg);
+	wr32(hw, TXGBE_TXFCCFG, fccfg_reg);
+
+	/* Set up and enable Rx high/low water mark thresholds, enable XON. */
+	for (i = 0; i < TXGBE_DCB_TC_MAX; i++) {
+		if ((hw->fc.current_mode & txgbe_fc_tx_pause) &&
+		    hw->fc.high_water[i]) {
+			fcrtl = TXGBE_FCWTRLO_TH(hw->fc.low_water[i]) |
+				TXGBE_FCWTRLO_XON;
+			fcrth = TXGBE_FCWTRHI_TH(hw->fc.high_water[i]) |
+				TXGBE_FCWTRHI_XOFF;
+		} else {
+			/*
+			 * In order to prevent Tx hangs when the internal Tx
+			 * switch is enabled we must set the high water mark
+			 * to the Rx packet buffer size - 24KB.  This allows
+			 * the Tx switch to function even under heavy Rx
+			 * workloads.
+			 */
+			fcrtl = 0;
+			fcrth = rd32(hw, TXGBE_PBRXSIZE(i)) - 24576;
+		}
+		wr32(hw, TXGBE_FCWTRLO(i), fcrtl);
+		wr32(hw, TXGBE_FCWTRHI(i), fcrth);
+	}
+
+	/* Configure pause time (2 TCs per register) */
+	pause_time = TXGBE_RXFCFSH_TIME(hw->fc.pause_time);
+	for (i = 0; i < (TXGBE_DCB_TC_MAX / 2); i++)
+		wr32(hw, TXGBE_FCXOFFTM(i), pause_time * 0x00010001);
+
+	/* Configure flow control refresh threshold value */
+	wr32(hw, TXGBE_RXFCRFSH, hw->fc.pause_time / 2);
+
+out:
+	return err;
 }
 
 /**
@@ -2091,6 +2434,82 @@ s32 txgbe_setup_sfp_modules(struct txgbe_hw *hw)
 }
 
 /**
+ *  txgbe_prot_autoc_read_raptor - Hides MAC differences needed for AUTOC read
+ *  @hw: pointer to hardware structure
+ *  @locked: Return the if we locked for this read.
+ *  @value: Value we read from AUTOC
+ *
+ *  For this part we need to wrap read-modify-writes with a possible
+ *  FW/SW lock.  It is assumed this lock will be freed with the next
+ *  prot_autoc_write_raptor().
+ */
+s32 txgbe_prot_autoc_read_raptor(struct txgbe_hw *hw, bool *locked, u64 *value)
+{
+	s32 err;
+	bool lock_state = false;
+
+	 /* If LESM is on then we need to hold the SW/FW semaphore. */
+	if (txgbe_verify_lesm_fw_enabled_raptor(hw)) {
+		err = hw->mac.acquire_swfw_sync(hw,
+					TXGBE_MNGSEM_SWPHY);
+		if (err != 0)
+			return TXGBE_ERR_SWFW_SYNC;
+
+		lock_state = true;
+	}
+
+	if (locked)
+		*locked = lock_state;
+
+	*value = txgbe_autoc_read(hw);
+	return 0;
+}
+
+/**
+ * txgbe_prot_autoc_write_raptor - Hides MAC differences needed for AUTOC write
+ * @hw: pointer to hardware structure
+ * @autoc: value to write to AUTOC
+ * @locked: bool to indicate whether the SW/FW lock was already taken by
+ *           previous prot_autoc_read_raptor.
+ *
+ * This part may need to hold the SW/FW lock around all writes to
+ * AUTOC. Likewise after a write we need to do a pipeline reset.
+ */
+s32 txgbe_prot_autoc_write_raptor(struct txgbe_hw *hw, bool locked, u64 autoc)
+{
+	int err = 0;
+
+	/* Blocked by MNG FW so bail */
+	if (txgbe_check_reset_blocked(hw))
+		goto out;
+
+	/* We only need to get the lock if:
+	 *  - We didn't do it already (in the read part of a read-modify-write)
+	 *  - LESM is enabled.
+	 */
+	if (!locked && txgbe_verify_lesm_fw_enabled_raptor(hw)) {
+		err = hw->mac.acquire_swfw_sync(hw,
+					TXGBE_MNGSEM_SWPHY);
+		if (err != 0)
+			return TXGBE_ERR_SWFW_SYNC;
+
+		locked = true;
+	}
+
+	txgbe_autoc_write(hw, autoc);
+	err = txgbe_reset_pipeline_raptor(hw);
+
+out:
+	/* Free the SW/FW semaphore as we either grabbed it here or
+	 * already had it when this function was called.
+	 */
+	if (locked)
+		hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+
+	return err;
+}
+
+/**
  *  txgbe_init_ops_pf - Inits func ptrs and MAC type
  *  @hw: pointer to hardware structure
  *
@@ -2147,6 +2566,8 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->get_wwn_prefix = txgbe_get_wwn_prefix;
 	mac->autoc_read = txgbe_autoc_read;
 	mac->autoc_write = txgbe_autoc_write;
+	mac->prot_autoc_read = txgbe_prot_autoc_read_raptor;
+	mac->prot_autoc_write = txgbe_prot_autoc_write_raptor;
 
 	/* RAR, Multicast, VLAN */
 	mac->set_rar = txgbe_set_rar;
@@ -2163,6 +2584,10 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->setup_sfp = txgbe_setup_sfp_modules;
 	mac->set_mac_anti_spoofing = txgbe_set_mac_anti_spoofing;
 	mac->set_ethertype_anti_spoofing = txgbe_set_ethertype_anti_spoofing;
+
+	/* Flow Control */
+	mac->fc_enable = txgbe_fc_enable;
+	mac->setup_fc = txgbe_setup_fc;
 
 	/* Link */
 	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;

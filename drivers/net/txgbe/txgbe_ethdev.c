@@ -404,11 +404,12 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(eth_dev);
 	struct txgbe_hwstrip *hwstrip = TXGBE_DEV_HWSTRIP(eth_dev);
 	struct txgbe_dcb_config *dcb_config = TXGBE_DEV_DCB_CONFIG(eth_dev);
+	struct txgbe_bw_conf *bw_conf = TXGBE_DEV_BW_CONF(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	const struct rte_memzone *mz;
 	uint32_t ctrl_ext;
 	uint16_t csum;
-	int err;
+	int err, i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -472,6 +473,16 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* Initialize DCB configuration*/
 	memset(dcb_config, 0, sizeof(struct txgbe_dcb_config));
 	txgbe_dcb_init(hw, dcb_config);
+
+	/* Get Hardware Flow Control setting */
+	hw->fc.requested_mode = txgbe_fc_full;
+	hw->fc.current_mode = txgbe_fc_full;
+	hw->fc.pause_time = TXGBE_FC_PAUSE_TIME;
+	for (i = 0; i < TXGBE_DCB_TC_MAX; i++) {
+		hw->fc.low_water[i] = TXGBE_FC_XON_LOTH;
+		hw->fc.high_water[i] = TXGBE_FC_XOFF_HITH;
+	}
+	hw->fc.send_xon = 1;
 
 	err = hw->rom.init_params(hw);
 	if (err != 0) {
@@ -589,6 +600,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* enable support intr */
 	txgbe_enable_intr(eth_dev);
+
+	/* initialize bandwidth configuration info */
+	memset(bw_conf, 0, sizeof(struct txgbe_bw_conf));
 
 	return 0;
 }
@@ -2681,6 +2695,110 @@ txgbe_dev_interrupt_handler(void *param)
 	txgbe_dev_interrupt_action(dev, dev->intr_handle);
 }
 
+static int
+txgbe_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct txgbe_hw *hw;
+	uint32_t mflcn_reg;
+	uint32_t fccfg_reg;
+	int rx_pause;
+	int tx_pause;
+
+	hw = TXGBE_DEV_HW(dev);
+
+	fc_conf->pause_time = hw->fc.pause_time;
+	fc_conf->high_water = hw->fc.high_water[0];
+	fc_conf->low_water = hw->fc.low_water[0];
+	fc_conf->send_xon = hw->fc.send_xon;
+	fc_conf->autoneg = !hw->fc.disable_fc_autoneg;
+
+	/*
+	 * Return rx_pause status according to actual setting of
+	 * RXFCCFG register.
+	 */
+	mflcn_reg = rd32(hw, TXGBE_RXFCCFG);
+	if (mflcn_reg & (TXGBE_RXFCCFG_FC | TXGBE_RXFCCFG_PFC))
+		rx_pause = 1;
+	else
+		rx_pause = 0;
+
+	/*
+	 * Return tx_pause status according to actual setting of
+	 * TXFCCFG register.
+	 */
+	fccfg_reg = rd32(hw, TXGBE_TXFCCFG);
+	if (fccfg_reg & (TXGBE_TXFCCFG_FC | TXGBE_TXFCCFG_PFC))
+		tx_pause = 1;
+	else
+		tx_pause = 0;
+
+	if (rx_pause && tx_pause)
+		fc_conf->mode = RTE_FC_FULL;
+	else if (rx_pause)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else if (tx_pause)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+	else
+		fc_conf->mode = RTE_FC_NONE;
+
+	return 0;
+}
+
+static int
+txgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct txgbe_hw *hw;
+	int err;
+	uint32_t rx_buf_size;
+	uint32_t max_high_water;
+	enum txgbe_fc_mode rte_fcmode_2_txgbe_fcmode[] = {
+		txgbe_fc_none,
+		txgbe_fc_rx_pause,
+		txgbe_fc_tx_pause,
+		txgbe_fc_full
+	};
+
+	PMD_INIT_FUNC_TRACE();
+
+	hw = TXGBE_DEV_HW(dev);
+	rx_buf_size = rd32(hw, TXGBE_PBRXSIZE(0));
+	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
+
+	/*
+	 * At least reserve one Ethernet frame for watermark
+	 * high_water/low_water in kilo bytes for txgbe
+	 */
+	max_high_water = (rx_buf_size - RTE_ETHER_MAX_LEN) >> 10;
+	if (fc_conf->high_water > max_high_water ||
+	    fc_conf->high_water < fc_conf->low_water) {
+		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
+		PMD_INIT_LOG(ERR, "High_water must <= 0x%x", max_high_water);
+		return -EINVAL;
+	}
+
+	hw->fc.requested_mode = rte_fcmode_2_txgbe_fcmode[fc_conf->mode];
+	hw->fc.pause_time     = fc_conf->pause_time;
+	hw->fc.high_water[0]  = fc_conf->high_water;
+	hw->fc.low_water[0]   = fc_conf->low_water;
+	hw->fc.send_xon       = fc_conf->send_xon;
+	hw->fc.disable_fc_autoneg = !fc_conf->autoneg;
+
+	err = txgbe_fc_enable(hw);
+
+	/* Not negotiated is not an error case */
+	if (err == 0 || err == TXGBE_ERR_FC_NOT_NEGOTIATED) {
+		wr32m(hw, TXGBE_MACRXFLT, TXGBE_MACRXFLT_CTL_MASK,
+		      (fc_conf->mac_ctrl_frame_fwd
+		       ? TXGBE_MACRXFLT_CTL_NOPS : TXGBE_MACRXFLT_CTL_DROP));
+		txgbe_flush(hw);
+
+		return 0;
+	}
+
+	PMD_INIT_LOG(ERR, "txgbe_fc_enable = 0x%x", err);
+	return -EIO;
+}
+
 int
 txgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -3166,6 +3284,8 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.rx_queue_release           = txgbe_dev_rx_queue_release,
 	.tx_queue_setup             = txgbe_dev_tx_queue_setup,
 	.tx_queue_release           = txgbe_dev_tx_queue_release,
+	.flow_ctrl_get              = txgbe_flow_ctrl_get,
+	.flow_ctrl_set              = txgbe_flow_ctrl_set,
 	.mac_addr_add               = txgbe_add_rar,
 	.mac_addr_remove            = txgbe_remove_rar,
 	.mac_addr_set               = txgbe_set_default_mac_addr,
