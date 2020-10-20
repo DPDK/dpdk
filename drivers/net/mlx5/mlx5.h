@@ -276,19 +276,19 @@ struct mlx5_drop {
 #define IS_SHARED_CNT(cnt) (!!((cnt) & MLX5_CNT_SHARED_OFFSET))
 #define IS_BATCH_CNT(cnt) (((cnt) & (MLX5_CNT_SHARED_OFFSET - 1)) >= \
 			   MLX5_CNT_BATCH_OFFSET)
-#define CNT_SIZE (sizeof(struct mlx5_flow_counter))
-#define CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
-#define AGE_SIZE (sizeof(struct mlx5_age_param))
-#define CNT_POOL_TYPE_EXT	(1 << 0)
-#define CNT_POOL_TYPE_AGE	(1 << 1)
+#define MLX5_CNT_SIZE (sizeof(struct mlx5_flow_counter))
+#define MLX5_CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
+#define MLX5_AGE_SIZE (sizeof(struct mlx5_age_param))
+#define MLX5_CNT_POOL_TYPE_EXT (1 << 0)
+#define MLX5_CNT_POOL_TYPE_AGE (1 << 1)
 
-#define IS_EXT_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_EXT)
-#define IS_AGE_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_AGE)
+#define IS_EXT_POOL(pool) (((pool)->type) & MLX5_CNT_POOL_TYPE_EXT)
+#define IS_AGE_POOL(pool) (((pool)->type) & MLX5_CNT_POOL_TYPE_AGE)
 
 #define MLX5_CNT_LEN(pool) \
-	(CNT_SIZE + \
-	(IS_AGE_POOL(pool) ? AGE_SIZE : 0) + \
-	(IS_EXT_POOL(pool) ? CNTEXT_SIZE : 0))
+	(MLX5_CNT_SIZE + \
+	(IS_AGE_POOL(pool) ? MLX5_AGE_SIZE : 0) + \
+	(IS_EXT_POOL(pool) ? MLX5_CNTEXT_SIZE : 0))
 #define MLX5_POOL_GET_CNT(pool, index) \
 	((struct mlx5_flow_counter *) \
 	((uint8_t *)((pool) + 1) + (index) * (MLX5_CNT_LEN(pool))))
@@ -306,7 +306,7 @@ struct mlx5_drop {
 #define MLX5_CNT_TO_CNT_EXT(pool, cnt) \
 	((struct mlx5_flow_counter_ext *)\
 	((uint8_t *)((cnt) + 1) + \
-	(IS_AGE_POOL(pool) ? AGE_SIZE : 0)))
+	(IS_AGE_POOL(pool) ? MLX5_AGE_SIZE : 0)))
 #define MLX5_GET_POOL_CNT_EXT(pool, offset) \
 	MLX5_CNT_TO_CNT_EXT(pool, MLX5_POOL_GET_CNT((pool), (offset)))
 #define MLX5_CNT_TO_AGE(cnt) \

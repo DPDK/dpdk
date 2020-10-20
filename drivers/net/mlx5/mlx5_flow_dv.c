@@ -4787,9 +4787,9 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	uint32_t fallback = priv->counter_fallback;
 	uint32_t size = sizeof(*pool);
 
-	size += MLX5_COUNTERS_PER_POOL * CNT_SIZE;
-	size += (!fallback ? 0 : MLX5_COUNTERS_PER_POOL * CNTEXT_SIZE);
-	size += (!age ? 0 : MLX5_COUNTERS_PER_POOL * AGE_SIZE);
+	size += MLX5_COUNTERS_PER_POOL * MLX5_CNT_SIZE;
+	size += (!fallback ? 0 : MLX5_COUNTERS_PER_POOL * MLX5_CNTEXT_SIZE);
+	size += (!age ? 0 : MLX5_COUNTERS_PER_POOL * MLX5_AGE_SIZE);
 	pool = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
 	if (!pool) {
 		rte_errno = ENOMEM;
@@ -4797,7 +4797,7 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	}
 	pool->raw = NULL;
 	pool->type = 0;
-	pool->type |= (!age ? 0 :  CNT_POOL_TYPE_AGE);
+	pool->type |= (!age ? 0 :  MLX5_CNT_POOL_TYPE_AGE);
 	pool->query_gen = 0;
 	pool->min_dcs = dcs;
 	rte_spinlock_init(&pool->sl);
@@ -4822,7 +4822,7 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		if (base > cmng->max_id)
 			cmng->max_id = base + MLX5_COUNTERS_PER_POOL - 1;
 		cmng->last_pool_idx = pool->index;
-		pool->type |= CNT_POOL_TYPE_EXT;
+		pool->type |= MLX5_CNT_POOL_TYPE_EXT;
 	}
 	rte_spinlock_unlock(&cmng->pool_update_sl);
 	return pool;

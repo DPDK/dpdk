@@ -302,7 +302,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		pool = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
 		if (!pool)
 			return 0;
-		pool->type |= CNT_POOL_TYPE_EXT;
+		pool->type |= MLX5_CNT_POOL_TYPE_EXT;
 		for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 			cnt = MLX5_POOL_GET_CNT(pool, i);
 			TAILQ_INSERT_HEAD(&pool->counters[0], cnt, next);
