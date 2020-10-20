@@ -678,6 +678,44 @@ fail1:
 }
 
 static	__checkReturn			efx_rc_t
+efx_mae_action_set_add_vlan_push(
+	__in				efx_mae_actions_t *spec,
+	__in				size_t arg_size,
+	__in_bcount(arg_size)		const uint8_t *arg)
+{
+	unsigned int n_tags = spec->ema_n_vlan_tags_to_push;
+	efx_rc_t rc;
+
+	if (arg_size != sizeof (*spec->ema_vlan_push_descs)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (arg == NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	if (n_tags == EFX_MAE_VLAN_PUSH_MAX_NTAGS) {
+		rc = ENOTSUP;
+		goto fail3;
+	}
+
+	memcpy(&spec->ema_vlan_push_descs[n_tags], arg, arg_size);
+	++(spec->ema_n_vlan_tags_to_push);
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+static	__checkReturn			efx_rc_t
 efx_mae_action_set_add_deliver(
 	__in				efx_mae_actions_t *spec,
 	__in				size_t arg_size,
@@ -716,6 +754,9 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 	[EFX_MAE_ACTION_VLAN_POP] = {
 		.emad_add = efx_mae_action_set_add_vlan_pop
 	},
+	[EFX_MAE_ACTION_VLAN_PUSH] = {
+		.emad_add = efx_mae_action_set_add_vlan_push
+	},
 	[EFX_MAE_ACTION_DELIVER] = {
 		.emad_add = efx_mae_action_set_add_deliver
 	}
@@ -723,10 +764,12 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 
 static const uint32_t efx_mae_action_ordered_map =
 	(1U << EFX_MAE_ACTION_VLAN_POP) |
+	(1U << EFX_MAE_ACTION_VLAN_PUSH) |
 	(1U << EFX_MAE_ACTION_DELIVER);
 
 static const uint32_t efx_mae_action_repeat_map =
-	(1U << EFX_MAE_ACTION_VLAN_POP);
+	(1U << EFX_MAE_ACTION_VLAN_POP) |
+	(1U << EFX_MAE_ACTION_VLAN_PUSH);
 
 /*
  * Add an action to an action set.
@@ -806,6 +849,22 @@ efx_mae_action_set_populate_vlan_pop(
 {
 	return (efx_mae_action_set_spec_populate(spec,
 	    EFX_MAE_ACTION_VLAN_POP, 0, NULL));
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_vlan_push(
+	__in				efx_mae_actions_t *spec,
+	__in				uint16_t tpid_be,
+	__in				uint16_t tci_be)
+{
+	efx_mae_action_vlan_push_t action;
+	const uint8_t *arg = (const uint8_t *)&action;
+
+	action.emavp_tpid_be = tpid_be;
+	action.emavp_tci_be = tci_be;
+
+	return (efx_mae_action_set_spec_populate(spec,
+	    EFX_MAE_ACTION_VLAN_PUSH, sizeof (action), arg));
 }
 
 	__checkReturn			efx_rc_t
@@ -974,6 +1033,31 @@ efx_mae_action_set_alloc(
 
 	MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
 	    MAE_ACTION_SET_ALLOC_IN_VLAN_POP, spec->ema_n_vlan_tags_to_pop);
+
+	if (spec->ema_n_vlan_tags_to_push > 0) {
+		unsigned int outer_tag_idx;
+
+		MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
+		    MAE_ACTION_SET_ALLOC_IN_VLAN_PUSH,
+		    spec->ema_n_vlan_tags_to_push);
+
+		if (spec->ema_n_vlan_tags_to_push ==
+		    EFX_MAE_VLAN_PUSH_MAX_NTAGS) {
+			MCDI_IN_SET_WORD(req,
+			    MAE_ACTION_SET_ALLOC_IN_VLAN1_PROTO_BE,
+			    spec->ema_vlan_push_descs[0].emavp_tpid_be);
+			MCDI_IN_SET_WORD(req,
+			    MAE_ACTION_SET_ALLOC_IN_VLAN1_TCI_BE,
+			    spec->ema_vlan_push_descs[0].emavp_tci_be);
+		}
+
+		outer_tag_idx = spec->ema_n_vlan_tags_to_push - 1;
+
+		MCDI_IN_SET_WORD(req, MAE_ACTION_SET_ALLOC_IN_VLAN0_PROTO_BE,
+		    spec->ema_vlan_push_descs[outer_tag_idx].emavp_tpid_be);
+		MCDI_IN_SET_WORD(req, MAE_ACTION_SET_ALLOC_IN_VLAN0_TCI_BE,
+		    spec->ema_vlan_push_descs[outer_tag_idx].emavp_tci_be);
+	}
 
 	MCDI_IN_SET_DWORD(req,
 	    MAE_ACTION_SET_ALLOC_IN_DELIVER, spec->ema_deliver_mport.sel);

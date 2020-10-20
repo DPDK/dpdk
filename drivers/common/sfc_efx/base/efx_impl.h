@@ -1702,6 +1702,7 @@ struct efx_mae_match_spec_s {
 typedef enum efx_mae_action_e {
 	/* These actions are strictly ordered. */
 	EFX_MAE_ACTION_VLAN_POP,
+	EFX_MAE_ACTION_VLAN_PUSH,
 
 	/* DELIVER is always the last action. */
 	EFX_MAE_ACTION_DELIVER,
@@ -1712,11 +1713,22 @@ typedef enum efx_mae_action_e {
 /* MAE VLAN_POP action can handle 1 or 2 tags. */
 #define	EFX_MAE_VLAN_POP_MAX_NTAGS	(2)
 
+/* MAE VLAN_PUSH action can handle 1 or 2 tags. */
+#define	EFX_MAE_VLAN_PUSH_MAX_NTAGS	(2)
+
+typedef struct efx_mae_action_vlan_push_s {
+	uint16_t			emavp_tpid_be;
+	uint16_t			emavp_tci_be;
+} efx_mae_action_vlan_push_t;
+
 struct efx_mae_actions_s {
 	/* Bitmap of actions in spec, indexed by action type */
 	uint32_t			ema_actions;
 
 	unsigned int			ema_n_vlan_tags_to_pop;
+	unsigned int			ema_n_vlan_tags_to_push;
+	efx_mae_action_vlan_push_t	ema_vlan_push_descs[
+	    EFX_MAE_VLAN_PUSH_MAX_NTAGS];
 	efx_mport_sel_t			ema_deliver_mport;
 };
 
