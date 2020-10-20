@@ -173,7 +173,7 @@ init_port(struct rte_mempool **mbuf_mp, uint32_t nb_jobs,
 	};
 	struct rte_regexdev_qp_conf qp_conf = {
 		.nb_desc = 1024,
-		.qp_conf_flags = RTE_REGEX_QUEUE_PAIR_CFG_OOS_F,
+		.qp_conf_flags = 0,
 	};
 	int res = 0;
 
@@ -218,6 +218,8 @@ init_port(struct rte_mempool **mbuf_mp, uint32_t nb_jobs,
 			printf("Error, can't configure device %d.\n", id);
 			goto error;
 		}
+		if (info.regexdev_capa & RTE_REGEXDEV_CAPA_QUEUE_PAIR_OOS_F)
+			qp_conf.qp_conf_flags |= RTE_REGEX_QUEUE_PAIR_CFG_OOS_F;
 		res = rte_regexdev_queue_pair_setup(id, 0, &qp_conf);
 		if (res < 0) {
 			printf("Error, can't setup queue pair for device %d.\n",
