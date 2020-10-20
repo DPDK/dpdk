@@ -2662,10 +2662,9 @@ ice_sched_cfg_agg(struct ice_port_info *pi, u32 agg_id,
 		/* Create new entry for new aggregator ID */
 		agg_info = (struct ice_sched_agg_info *)
 			ice_malloc(hw, sizeof(*agg_info));
-		if (!agg_info) {
-			status = ICE_ERR_NO_MEMORY;
-			goto exit_reg_agg;
-		}
+		if (!agg_info)
+			return ICE_ERR_NO_MEMORY;
+
 		agg_info->agg_id = agg_id;
 		agg_info->agg_type = agg_type;
 		agg_info->tc_bitmap[0] = 0;
@@ -2698,7 +2697,7 @@ ice_sched_cfg_agg(struct ice_port_info *pi, u32 agg_id,
 		/* Save aggregator node's TC information */
 		ice_set_bit(tc, agg_info->tc_bitmap);
 	}
-exit_reg_agg:
+
 	return status;
 }
 
