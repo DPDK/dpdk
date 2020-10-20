@@ -4080,6 +4080,24 @@ efx_mae_match_spec_fini(
 	__in				efx_nic_t *enp,
 	__in				efx_mae_match_spec_t *spec);
 
+typedef enum efx_mae_field_id_e {
+	EFX_MAE_FIELD_NIDS
+} efx_mae_field_id_t;
+
+/*
+ * Make sure that match fields known by EFX have proper masks set
+ * in the match specification as per requirements of SF-122526-TC.
+ *
+ * In the case efx_mae_field_id_t lacks named identifiers for any
+ * fields which the FW maintains with support status MATCH_ALWAYS,
+ * the validation result may not be accurate.
+ */
+LIBEFX_API
+extern	__checkReturn			boolean_t
+efx_mae_match_spec_is_valid(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_match_spec_t *spec);
+
 #endif /* EFSYS_OPT_MAE */
 
 #ifdef	__cplusplus

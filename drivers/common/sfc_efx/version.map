@@ -90,6 +90,7 @@ INTERNAL {
 	efx_mae_init;
 	efx_mae_match_spec_fini;
 	efx_mae_match_spec_init;
+	efx_mae_match_spec_is_valid;
 
 	efx_mcdi_fini;
 	efx_mcdi_get_proxy_handle;

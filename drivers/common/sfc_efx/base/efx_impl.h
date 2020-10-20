@@ -782,8 +782,22 @@ typedef struct efx_proxy_ops_s {
 
 #if EFSYS_OPT_MAE
 
+typedef struct efx_mae_field_cap_s {
+	uint32_t			emfc_support;
+	boolean_t			emfc_mask_affects_class;
+	boolean_t			emfc_match_affects_class;
+} efx_mae_field_cap_t;
+
 typedef struct efx_mae_s {
 	uint32_t			em_max_n_action_prios;
+	/*
+	 * The number of MAE field IDs recognised by the FW implementation.
+	 * Any field ID greater than or equal to this value is unsupported.
+	 */
+	uint32_t			em_max_nfields;
+	/** Action rule match field capabilities. */
+	efx_mae_field_cap_t		*em_action_rule_field_caps;
+	size_t				em_action_rule_field_caps_size;
 } efx_mae_t;
 
 #endif /* EFSYS_OPT_MAE */
@@ -1680,6 +1694,9 @@ efx_pci_xilinx_cap_tbl_find(
 struct efx_mae_match_spec_s {
 	efx_mae_rule_type_t		emms_type;
 	uint32_t			emms_prio;
+	union emms_mask_value_pairs {
+		uint8_t			action[MAE_FIELD_MASK_VALUE_PAIRS_LEN];
+	} emms_mask_value_pairs;
 };
 
 #endif /* EFSYS_OPT_MAE */

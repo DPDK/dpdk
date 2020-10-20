@@ -421,6 +421,10 @@ efx_mcdi_phy_module_get_info(
 	EFX_DWORD_FIELD(*MCDI_OUT2(_emr, efx_dword_t, _ofst),		\
 			MC_CMD_ ## _field)
 
+#define	MCDI_OUT_INDEXED_DWORD_FIELD(_emr, _ofst, _idx, _field)		\
+	EFX_DWORD_FIELD(*(MCDI_OUT2(_emr, efx_dword_t, _ofst) +		\
+			(_idx)), _field)
+
 #define	MCDI_EV_FIELD(_eqp, _field)					\
 	EFX_QWORD_FIELD(*_eqp, MCDI_EVENT_ ## _field)
 
