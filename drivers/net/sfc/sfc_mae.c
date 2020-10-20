@@ -391,18 +391,50 @@ fail_init_match_spec_action:
 }
 
 static int
-sfc_mae_rule_parse_action(const struct rte_flow_action *action,
-			  __rte_unused efx_mae_actions_t *spec,
+sfc_mae_rule_parse_action_phy_port(struct sfc_adapter *sa,
+				   const struct rte_flow_action_phy_port *conf,
+				   efx_mae_actions_t *spec)
+{
+	efx_mport_sel_t mport;
+	uint32_t phy_port;
+	int rc;
+
+	if (conf->original != 0)
+		phy_port = efx_nic_cfg_get(sa->nic)->enc_assigned_port;
+	else
+		phy_port = conf->index;
+
+	rc = efx_mae_mport_by_phy_port(phy_port, &mport);
+	if (rc != 0)
+		return rc;
+
+	return efx_mae_action_set_populate_deliver(spec, &mport);
+}
+
+static int
+sfc_mae_rule_parse_action(struct sfc_adapter *sa,
+			  const struct rte_flow_action *action,
+			  efx_mae_actions_t *spec,
 			  struct rte_flow_error *error)
 {
+	int rc;
+
 	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+		rc = sfc_mae_rule_parse_action_phy_port(sa, action->conf, spec);
+		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 				"Unsupported action");
 	}
 
-	return 0;
+	if (rc != 0) {
+		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "Failed to request the action");
+	}
+
+	return rc;
 }
 
 int
@@ -427,7 +459,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 
 	for (action = actions;
 	     action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
-		rc = sfc_mae_rule_parse_action(action, spec, error);
+		rc = sfc_mae_rule_parse_action(sa, action, spec, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
 	}
