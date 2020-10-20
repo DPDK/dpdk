@@ -204,6 +204,8 @@ Supported actions (***transfer*** rules):
 
 - OF_VLAN_SET_PCP
 
+- FLAG
+
 - PHY_PORT
 
 Validating flow rules depends on the firmware variant.

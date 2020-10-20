@@ -631,6 +631,11 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 				       bundle->actions_mask);
 		sfc_mae_rule_parse_action_of_set_vlan_pcp(action->conf, bundle);
 		break;
+	case RTE_FLOW_ACTION_TYPE_FLAG:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_FLAG,
+				       bundle->actions_mask);
+		rc = efx_mae_action_set_populate_flag(spec);
+		break;
 	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PHY_PORT,
 				       bundle->actions_mask);
