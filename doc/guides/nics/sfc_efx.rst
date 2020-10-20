@@ -212,6 +212,12 @@ Supported pattern items (***transfer*** rules):
 
 - UDP (source/destination ports)
 
+- VXLAN (exact match of VXLAN network identifier)
+
+- GENEVE (exact match of virtual network identifier)
+
+- NVGRE (exact match of virtual subnet ID)
+
 Supported actions (***transfer*** rules):
 
 - OF_POP_VLAN

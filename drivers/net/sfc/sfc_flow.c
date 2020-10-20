@@ -1288,7 +1288,8 @@ sfc_flow_parse_pattern(const struct sfc_flow_item *flow_items,
 			break;
 
 		default:
-			if (is_ifrm) {
+			if (parse_ctx->type == SFC_FLOW_PARSE_CTX_FILTER &&
+			    is_ifrm) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
 					pattern,
@@ -2565,13 +2566,8 @@ sfc_flow_verify(struct sfc_adapter *sa, struct rte_flow *flow,
 	}
 
 	if (ops->verify != NULL) {
-		/*
-		 * Use locking since verify method may need to
-		 * access the list of already created rules.
-		 */
-		sfc_adapter_lock(sa);
+		SFC_ASSERT(sfc_adapter_is_locked(sa));
 		rc = ops->verify(sa, flow);
-		sfc_adapter_unlock(sa);
 	}
 
 	if (rc != 0) {
@@ -2599,11 +2595,15 @@ sfc_flow_validate(struct rte_eth_dev *dev,
 	if (flow == NULL)
 		return -rte_errno;
 
+	sfc_adapter_lock(sa);
+
 	rc = sfc_flow_parse(dev, attr, pattern, actions, flow, error);
 	if (rc == 0)
 		rc = sfc_flow_verify(sa, flow, error);
 
 	sfc_flow_free(sa, flow);
+
+	sfc_adapter_unlock(sa);
 
 	return rc;
 }
@@ -2623,11 +2623,11 @@ sfc_flow_create(struct rte_eth_dev *dev,
 	if (flow == NULL)
 		goto fail_no_mem;
 
+	sfc_adapter_lock(sa);
+
 	rc = sfc_flow_parse(dev, attr, pattern, actions, flow, error);
 	if (rc != 0)
 		goto fail_bad_value;
-
-	sfc_adapter_lock(sa);
 
 	TAILQ_INSERT_TAIL(&sa->flow_list, flow, entries);
 

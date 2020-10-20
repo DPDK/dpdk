@@ -26,8 +26,20 @@ struct sfc_mae_fw_rsrc {
 	RTE_STD_C11
 	union {
 		efx_mae_aset_id_t	aset_id;
+		efx_mae_rule_id_t	rule_id;
 	};
 };
+
+/** Outer rule registry entry */
+struct sfc_mae_outer_rule {
+	TAILQ_ENTRY(sfc_mae_outer_rule)	entries;
+	unsigned int			refcnt;
+	efx_mae_match_spec_t		*match_spec;
+	efx_tunnel_protocol_t		encap_type;
+	struct sfc_mae_fw_rsrc		fw_rsrc;
+};
+
+TAILQ_HEAD(sfc_mae_outer_rules, sfc_mae_outer_rule);
 
 /** Action set registry entry */
 struct sfc_mae_action_set {
@@ -53,8 +65,14 @@ struct sfc_mae {
 	uint16_t			switch_port_id;
 	/** NIC support for MAE status */
 	enum sfc_mae_status		status;
+	/** Priority level limit for MAE outer rules */
+	unsigned int			nb_outer_rule_prios_max;
 	/** Priority level limit for MAE action rules */
 	unsigned int			nb_action_rule_prios_max;
+	/** Encapsulation support status */
+	uint32_t			encap_types_supported;
+	/** Outer rule registry */
+	struct sfc_mae_outer_rules	outer_rules;
 	/** Action set registry */
 	struct sfc_mae_action_sets	action_sets;
 };
@@ -149,8 +167,24 @@ struct sfc_mae_pattern_data {
 struct sfc_mae_parse_ctx {
 	struct sfc_adapter		*sa;
 	efx_mae_match_spec_t		*match_spec_action;
+	efx_mae_match_spec_t		*match_spec_outer;
+	/*
+	 * This points to either of the above two specifications depending
+	 * on which part of the pattern is being parsed (outer / inner).
+	 */
+	efx_mae_match_spec_t		*match_spec;
+	/*
+	 * This points to either "field_ids_remap_to_encap"
+	 * or "field_ids_no_remap" (see sfc_mae.c) depending on
+	 * which part of the pattern is being parsed.
+	 */
+	const efx_mae_field_id_t	*field_ids_remap;
+	/* This points to a tunnel-specific default mask. */
+	const void			*tunnel_def_mask;
 	bool				match_mport_set;
 	struct sfc_mae_pattern_data	pattern_data;
+	efx_tunnel_protocol_t		encap_type;
+	unsigned int			priority;
 };
 
 int sfc_mae_attach(struct sfc_adapter *sa);

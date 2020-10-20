@@ -67,6 +67,8 @@ struct sfc_flow_spec_filter {
 struct sfc_flow_spec_mae {
 	/* Desired priority level */
 	unsigned int			priority;
+	/* Outer rule registry entry */
+	struct sfc_mae_outer_rule	*outer_rule;
 	/* EFX match specification */
 	efx_mae_match_spec_t		*match_spec;
 	/* Action set registry entry */
