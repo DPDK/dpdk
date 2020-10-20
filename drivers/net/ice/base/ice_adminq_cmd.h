@@ -1635,6 +1635,22 @@ struct ice_aqc_sff_eeprom {
 	__le32 addr_low;
 };
 
+/* SW Set GPIO command (indirect 0x6EF)
+ * SW Get GPIO command (indirect 0x6F0)
+ */
+struct ice_aqc_sw_gpio {
+	__le16 gpio_ctrl_handle;
+#define ICE_AQC_SW_GPIO_CONTROLLER_HANDLE_S	0
+#define ICE_AQC_SW_GPIO_CONTROLLER_HANDLE_M	(0x3FF << ICE_AQC_SW_GPIO_CONTROLLER_HANDLE_S)
+	u8 gpio_num;
+#define ICE_AQC_SW_GPIO_NUMBER_S	0
+#define ICE_AQC_SW_GPIO_NUMBER_M	(0x1F << ICE_AQC_SW_GPIO_NUMBER_S)
+	u8 gpio_params;
+#define ICE_AQC_SW_GPIO_PARAMS_DIRECTION    BIT(1)
+#define ICE_AQC_SW_GPIO_PARAMS_VALUE        BIT(0)
+	u8 rsvd[12];
+};
+
 /* NVM Read command (indirect 0x0701)
  * NVM Erase commands (direct 0x0702)
  * NVM Write commands (indirect 0x0703)
@@ -2925,6 +2941,8 @@ enum ice_adminq_opc {
 	ice_aqc_opc_set_gpio				= 0x06EC,
 	ice_aqc_opc_get_gpio				= 0x06ED,
 	ice_aqc_opc_sff_eeprom				= 0x06EE,
+	ice_aqc_opc_sw_set_gpio				= 0x06EF,
+	ice_aqc_opc_sw_get_gpio				= 0x06F0,
 
 	/* NVM commands */
 	ice_aqc_opc_nvm_read				= 0x0701,
