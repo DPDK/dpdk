@@ -188,6 +188,10 @@ Supported actions (***non-transfer*** rules):
 
 - MARK (supported only with ef10_essb Rx datapath)
 
+Supported pattern items (***transfer*** rules):
+
+- PHY_PORT (cannot repeat; conflicts with other traffic source items)
+
 Validating flow rules depends on the firmware variant.
 
 The :ref:`flow_isolated_mode` is supported.
