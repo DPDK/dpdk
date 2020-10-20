@@ -282,6 +282,8 @@ efx_mae_match_spec_fini(
 
 /* Named identifiers which are valid indices to efx_mae_field_cap_t */
 typedef enum efx_mae_field_cap_id_e {
+	EFX_MAE_FIELD_ID_INGRESS_MPORT_SELECTOR = MAE_FIELD_INGRESS_PORT,
+
 	EFX_MAE_FIELD_CAP_NIDS
 } efx_mae_field_cap_id_t;
 
@@ -311,7 +313,175 @@ typedef struct efx_mae_mv_desc_s {
 
 /* Indices to this array are provided by efx_mae_field_id_t */
 static const efx_mae_mv_desc_t __efx_mae_action_rule_mv_desc_set[] = {
+#define	EFX_MAE_MV_DESC(_name, _endianness)				\
+	[EFX_MAE_FIELD_##_name] =					\
+	{								\
+		EFX_MAE_FIELD_ID_##_name,				\
+		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_LEN,		\
+		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_OFST,		\
+		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_MASK_LEN,		\
+		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_MASK_OFST,		\
+		_endianness						\
+	}
+
+	EFX_MAE_MV_DESC(INGRESS_MPORT_SELECTOR, EFX_MAE_FIELD_LE),
+
+#undef EFX_MAE_MV_DESC
 };
+
+	__checkReturn			efx_rc_t
+efx_mae_mport_by_phy_port(
+	__in				uint32_t phy_port,
+	__out				efx_mport_sel_t *mportp)
+{
+	efx_dword_t dword;
+	efx_rc_t rc;
+
+	if (phy_port > EFX_MASK32(MAE_MPORT_SELECTOR_PPORT_ID)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	EFX_POPULATE_DWORD_2(dword,
+	    MAE_MPORT_SELECTOR_TYPE, MAE_MPORT_SELECTOR_TYPE_PPORT,
+	    MAE_MPORT_SELECTOR_PPORT_ID, phy_port);
+
+	memset(mportp, 0, sizeof (*mportp));
+	mportp->sel = dword.ed_u32[0];
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_match_spec_field_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				efx_mae_field_id_t field_id,
+	__in				size_t value_size,
+	__in_bcount(value_size)		const uint8_t *value,
+	__in				size_t mask_size,
+	__in_bcount(mask_size)		const uint8_t *mask)
+{
+	const efx_mae_mv_desc_t *descp;
+	uint8_t *mvp;
+	efx_rc_t rc;
+
+	if (field_id >= EFX_MAE_FIELD_NIDS) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	switch (spec->emms_type) {
+	case EFX_MAE_RULE_ACTION:
+		descp = &__efx_mae_action_rule_mv_desc_set[field_id];
+		mvp = spec->emms_mask_value_pairs.action;
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
+	if (value_size != descp->emmd_value_size) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
+	if (mask_size != descp->emmd_mask_size) {
+		rc = EINVAL;
+		goto fail4;
+	}
+
+	if (descp->emmd_endianness == EFX_MAE_FIELD_BE) {
+		/*
+		 * The mask/value are in network (big endian) order.
+		 * The MCDI request field is also big endian.
+		 */
+		memcpy(mvp + descp->emmd_value_offset, value, value_size);
+		memcpy(mvp + descp->emmd_mask_offset, mask, mask_size);
+	} else {
+		efx_dword_t dword;
+
+		/*
+		 * The mask/value are in host byte order.
+		 * The MCDI request field is little endian.
+		 */
+		switch (value_size) {
+		case 4:
+			EFX_POPULATE_DWORD_1(dword,
+			    EFX_DWORD_0, *(const uint32_t *)value);
+
+			memcpy(mvp + descp->emmd_value_offset,
+			    &dword, sizeof (dword));
+			break;
+		default:
+			EFSYS_ASSERT(B_FALSE);
+		}
+
+		switch (mask_size) {
+		case 4:
+			EFX_POPULATE_DWORD_1(dword,
+			    EFX_DWORD_0, *(const uint32_t *)mask);
+
+			memcpy(mvp + descp->emmd_mask_offset,
+			    &dword, sizeof (dword));
+			break;
+		default:
+			EFSYS_ASSERT(B_FALSE);
+		}
+	}
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_match_spec_mport_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				const efx_mport_sel_t *valuep,
+	__in_opt			const efx_mport_sel_t *maskp)
+{
+	uint32_t full_mask = UINT32_MAX;
+	const uint8_t *vp;
+	const uint8_t *mp;
+	efx_rc_t rc;
+
+	if (valuep == NULL) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	vp = (const uint8_t *)&valuep->sel;
+	if (maskp != NULL)
+		mp = (const uint8_t *)&maskp->sel;
+	else
+		mp = (const uint8_t *)&full_mask;
+
+	rc = efx_mae_match_spec_field_set(spec,
+	    EFX_MAE_FIELD_INGRESS_MPORT_SELECTOR,
+	    sizeof (valuep->sel), vp, sizeof (maskp->sel), mp);
+	if (rc != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
 
 #define	EFX_MASK_BIT_IS_SET(_mask, _mask_page_nbits, _bit)		\
 	    ((_mask)[(_bit) / (_mask_page_nbits)] &			\

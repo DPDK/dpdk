@@ -91,10 +91,13 @@ INTERNAL {
 	efx_mae_fini;
 	efx_mae_get_limits;
 	efx_mae_init;
+	efx_mae_match_spec_field_set;
 	efx_mae_match_spec_fini;
 	efx_mae_match_spec_init;
 	efx_mae_match_spec_is_valid;
+	efx_mae_match_spec_mport_set;
 	efx_mae_match_specs_class_cmp;
+	efx_mae_mport_by_phy_port;
 
 	efx_mcdi_fini;
 	efx_mcdi_get_proxy_handle;
