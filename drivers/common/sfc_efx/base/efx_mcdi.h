@@ -118,6 +118,18 @@ efx_mcdi_raise_exception(
 	__in_opt	efx_mcdi_req_t *emrp,
 	__in		int rc);
 
+typedef struct efx_mcdi_version_s {
+	/* Basic version information */
+	uint16_t		emv_version[4];
+	uint32_t		emv_firmware;
+} efx_mcdi_version_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_get_version(
+	__in		efx_nic_t *enp,
+	__out		efx_mcdi_version_t *verp);
+
 typedef enum efx_mcdi_boot_e {
 	EFX_MCDI_BOOT_PRIMARY,
 	EFX_MCDI_BOOT_SECONDARY,

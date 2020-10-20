@@ -962,30 +962,31 @@ efx_mcdi_ev_death(
 }
 
 	__checkReturn		efx_rc_t
-efx_mcdi_version(
+efx_mcdi_get_version(
 	__in			efx_nic_t *enp,
-	__out_ecount_opt(4)	uint16_t versionp[4],
-	__out_opt		uint32_t *buildp,
-	__out_opt		efx_mcdi_boot_t *statusp)
+	__out			efx_mcdi_version_t *verp)
 {
-	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
-		MAX(MC_CMD_GET_VERSION_IN_LEN, MC_CMD_GET_BOOT_STATUS_IN_LEN),
-		MAX(MC_CMD_GET_VERSION_OUT_LEN,
-			MC_CMD_GET_BOOT_STATUS_OUT_LEN));
-	efx_word_t *ver_words;
-	uint16_t version[4];
-	uint32_t build;
-	efx_mcdi_boot_t status;
+	    MC_CMD_GET_VERSION_IN_LEN,
+	    MC_CMD_GET_VERSION_OUT_LEN);
+	size_t min_resp_len_required;
+	efx_mcdi_req_t req;
 	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(sizeof (verp->emv_version) ==
+	    MC_CMD_GET_VERSION_OUT_VERSION_LEN);
+	EFX_STATIC_ASSERT(sizeof (verp->emv_firmware) ==
+	    MC_CMD_GET_VERSION_OUT_FIRMWARE_LEN);
 
 	EFSYS_ASSERT3U(enp->en_features, &, EFX_FEATURE_MCDI);
 
 	req.emr_cmd = MC_CMD_GET_VERSION;
 	req.emr_in_buf = payload;
-	req.emr_in_length = MC_CMD_GET_VERSION_IN_LEN;
 	req.emr_out_buf = payload;
+	req.emr_in_length = MC_CMD_GET_VERSION_IN_LEN;
 	req.emr_out_length = MC_CMD_GET_VERSION_OUT_LEN;
+
+	min_resp_len_required = MC_CMD_GET_VERSION_V0_OUT_LEN;
 
 	efx_mcdi_execute(enp, &req);
 
@@ -994,34 +995,56 @@ efx_mcdi_version(
 		goto fail1;
 	}
 
-	/* bootrom support */
-	if (req.emr_out_length_used == MC_CMD_GET_VERSION_V0_OUT_LEN) {
-		version[0] = version[1] = version[2] = version[3] = 0;
-		build = MCDI_OUT_DWORD(req, GET_VERSION_OUT_FIRMWARE);
-
-		goto version;
-	}
-
-	if (req.emr_out_length_used < MC_CMD_GET_VERSION_OUT_LEN) {
+	if (req.emr_out_length_used < min_resp_len_required) {
 		rc = EMSGSIZE;
 		goto fail2;
 	}
 
-	ver_words = MCDI_OUT2(req, efx_word_t, GET_VERSION_OUT_VERSION);
-	version[0] = EFX_WORD_FIELD(ver_words[0], EFX_WORD_0);
-	version[1] = EFX_WORD_FIELD(ver_words[1], EFX_WORD_0);
-	version[2] = EFX_WORD_FIELD(ver_words[2], EFX_WORD_0);
-	version[3] = EFX_WORD_FIELD(ver_words[3], EFX_WORD_0);
-	build = MCDI_OUT_DWORD(req, GET_VERSION_OUT_FIRMWARE);
+	memset(verp, 0, sizeof (*verp));
 
-version:
-	/* The bootrom doesn't understand BOOT_STATUS */
-	if (MC_FW_VERSION_IS_BOOTLOADER(build)) {
-		status = EFX_MCDI_BOOT_ROM;
-		goto out;
+	if (req.emr_out_length_used > min_resp_len_required) {
+		efx_word_t *ver_words;
+
+		if (req.emr_out_length_used < MC_CMD_GET_VERSION_OUT_LEN) {
+			rc = EMSGSIZE;
+			goto fail3;
+		}
+
+		ver_words = MCDI_OUT2(req, efx_word_t, GET_VERSION_OUT_VERSION);
+
+		verp->emv_version[0] = EFX_WORD_FIELD(ver_words[0], EFX_WORD_0);
+		verp->emv_version[1] = EFX_WORD_FIELD(ver_words[1], EFX_WORD_0);
+		verp->emv_version[2] = EFX_WORD_FIELD(ver_words[2], EFX_WORD_0);
+		verp->emv_version[3] = EFX_WORD_FIELD(ver_words[3], EFX_WORD_0);
 	}
 
-	(void) memset(payload, 0, sizeof (payload));
+	verp->emv_firmware = MCDI_OUT_DWORD(req, GET_VERSION_OUT_FIRMWARE);
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static	__checkReturn		efx_rc_t
+efx_mcdi_get_boot_status(
+	__in			efx_nic_t *enp,
+	__out			efx_mcdi_boot_t *statusp)
+{
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_GET_BOOT_STATUS_IN_LEN,
+	    MC_CMD_GET_BOOT_STATUS_OUT_LEN);
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_features, &, EFX_FEATURE_MCDI);
+
 	req.emr_cmd = MC_CMD_GET_BOOT_STATUS;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_GET_BOOT_STATUS_IN_LEN;
@@ -1030,44 +1053,73 @@ version:
 
 	efx_mcdi_execute_quiet(enp, &req);
 
-	if (req.emr_rc == EACCES) {
-		/* Unprivileged functions cannot access BOOT_STATUS */
-		status = EFX_MCDI_BOOT_PRIMARY;
-		version[0] = version[1] = version[2] = version[3] = 0;
-		build = 0;
-		goto out;
-	}
-
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail3;
+		goto fail1;
 	}
 
 	if (req.emr_out_length_used < MC_CMD_GET_BOOT_STATUS_OUT_LEN) {
 		rc = EMSGSIZE;
-		goto fail4;
+		goto fail2;
 	}
 
 	if (MCDI_OUT_DWORD_FIELD(req, GET_BOOT_STATUS_OUT_FLAGS,
 	    GET_BOOT_STATUS_OUT_FLAGS_PRIMARY))
-		status = EFX_MCDI_BOOT_PRIMARY;
+		*statusp = EFX_MCDI_BOOT_PRIMARY;
 	else
-		status = EFX_MCDI_BOOT_SECONDARY;
+		*statusp = EFX_MCDI_BOOT_SECONDARY;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+efx_mcdi_version(
+	__in			efx_nic_t *enp,
+	__out_ecount_opt(4)	uint16_t versionp[4],
+	__out_opt		uint32_t *buildp,
+	__out_opt		efx_mcdi_boot_t *statusp)
+{
+	efx_mcdi_version_t ver;
+	efx_mcdi_boot_t status;
+	efx_rc_t rc;
+
+	rc = efx_mcdi_get_version(enp, &ver);
+	if (rc != 0)
+		goto fail1;
+
+	/* The bootrom doesn't understand BOOT_STATUS */
+	if (MC_FW_VERSION_IS_BOOTLOADER(ver.emv_firmware)) {
+		status = EFX_MCDI_BOOT_ROM;
+		goto out;
+	}
+
+	rc = efx_mcdi_get_boot_status(enp, &status);
+	if (rc == EACCES) {
+		/* Unprivileged functions cannot access BOOT_STATUS */
+		status = EFX_MCDI_BOOT_PRIMARY;
+		memset(ver.emv_version, 0, sizeof (ver.emv_version));
+		ver.emv_firmware = 0;
+	} else if (rc != 0) {
+		goto fail2;
+	}
 
 out:
 	if (versionp != NULL)
-		memcpy(versionp, version, sizeof (version));
+		memcpy(versionp, ver.emv_version, sizeof (ver.emv_version));
 	if (buildp != NULL)
-		*buildp = build;
+		*buildp = ver.emv_firmware;
 	if (statusp != NULL)
 		*statusp = status;
 
 	return (0);
 
-fail4:
-	EFSYS_PROBE(fail4);
-fail3:
-	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
