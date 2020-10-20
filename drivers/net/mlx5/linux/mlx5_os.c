@@ -1067,6 +1067,11 @@ err_secondary:
 			err = -err;
 			goto error;
 		}
+		/* Check relax ordering support. */
+		if (config->hca_attr.relaxed_ordering_write &&
+		    config->hca_attr.relaxed_ordering_read  &&
+		    !haswell_broadwell_cpu)
+			sh->cmng.relaxed_ordering = 1;
 		/* Check for LRO support. */
 		if (config->dest_tir && config->hca_attr.lro_cap &&
 		    config->dv_flow_en) {

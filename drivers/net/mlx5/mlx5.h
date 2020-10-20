@@ -406,8 +406,10 @@ struct mlx5_flow_counter_pool {
 	uint32_t type:2; /* Memory type behind the counter array. */
 	volatile uint32_t query_gen:1; /* Query round. */
 	rte_spinlock_t sl; /* The pool lock. */
+	rte_spinlock_t csl; /* The pool counter free list lock. */
 	struct mlx5_counter_stats_raw *raw;
-	struct mlx5_counter_stats_raw *raw_hw; /* The raw on HW working. */
+	struct mlx5_counter_stats_raw *raw_hw;
+	/* The raw on HW working. */
 };
 
 /* Memory management structure for group of counter statistics raws. */
@@ -429,17 +431,16 @@ TAILQ_HEAD(mlx5_counter_pools, mlx5_flow_counter_pool);
 
 /* Counter global management structure. */
 struct mlx5_flow_counter_mng {
-	rte_atomic16_t n_valid; /* Number of valid pools. */
+	volatile uint16_t n_valid; /* Number of valid pools. */
 	uint16_t n; /* Number of pools. */
 	uint16_t last_pool_idx; /* Last used pool index */
 	int min_id; /* The minimum counter ID in the pools. */
 	int max_id; /* The maximum counter ID in the pools. */
-	rte_spinlock_t resize_sl; /* The resize lock. */
+	rte_spinlock_t pool_update_sl; /* The pool update lock. */
 	rte_spinlock_t csl[MLX5_COUNTER_TYPE_MAX];
 	/* The counter free list lock. */
 	struct mlx5_counters counters[MLX5_COUNTER_TYPE_MAX];
 	/* Free counter list. */
-	struct mlx5_counter_pools pool_list; /* Counter pool list. */
 	struct mlx5_flow_counter_pool **pools; /* Counter pool array. */
 	struct mlx5_counter_stats_mem_mng *mem_mng;
 	/* Hold the memory management for the next allocated pools raws. */
@@ -447,6 +448,7 @@ struct mlx5_flow_counter_mng {
 	uint8_t pending_queries;
 	uint16_t pool_index;
 	uint8_t query_thread_on;
+	bool relaxed_ordering;
 	LIST_HEAD(mem_mngs, mlx5_counter_stats_mem_mng) mem_mngs;
 	LIST_HEAD(stat_raws, mlx5_counter_stats_raw) free_stat_raws;
 };

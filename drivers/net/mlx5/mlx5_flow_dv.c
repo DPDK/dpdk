@@ -4653,104 +4653,35 @@ static struct mlx5_flow_counter_pool *
 flow_dv_find_pool_by_id(struct mlx5_flow_counter_mng *cmng, int id)
 {
 	uint32_t i;
+	struct mlx5_flow_counter_pool *pool = NULL;
 
+	rte_spinlock_lock(&cmng->pool_update_sl);
 	/* Check last used pool. */
 	if (cmng->last_pool_idx != POOL_IDX_INVALID &&
-	    flow_dv_is_counter_in_pool(cmng->pools[cmng->last_pool_idx], id))
-		return cmng->pools[cmng->last_pool_idx];
+	    flow_dv_is_counter_in_pool(cmng->pools[cmng->last_pool_idx], id)) {
+		pool = cmng->pools[cmng->last_pool_idx];
+		goto out;
+	}
 	/* ID out of range means no suitable pool in the container. */
 	if (id > cmng->max_id || id < cmng->min_id)
-		return NULL;
+		goto out;
 	/*
 	 * Find the pool from the end of the container, since mostly counter
 	 * ID is sequence increasing, and the last pool should be the needed
 	 * one.
 	 */
-	i = rte_atomic16_read(&cmng->n_valid);
+	i = cmng->n_valid;
 	while (i--) {
-		struct mlx5_flow_counter_pool *pool = cmng->pools[i];
+		struct mlx5_flow_counter_pool *pool_tmp = cmng->pools[i];
 
-		if (flow_dv_is_counter_in_pool(pool, id))
-			return pool;
+		if (flow_dv_is_counter_in_pool(pool_tmp, id)) {
+			pool = pool_tmp;
+			break;
+		}
 	}
-	return NULL;
-}
-
-/**
- * Allocate a new memory for the counter values wrapped by all the needed
- * management.
- *
- * @param[in] dev
- *   Pointer to the Ethernet device structure.
- * @param[in] raws_n
- *   The raw memory areas - each one for MLX5_COUNTERS_PER_POOL counters.
- *
- * @return
- *   The new memory management pointer on success, otherwise NULL and rte_errno
- *   is set.
- */
-static struct mlx5_counter_stats_mem_mng *
-flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_devx_mkey_attr mkey_attr;
-	struct mlx5_counter_stats_mem_mng *mem_mng;
-	volatile struct flow_counter_stats *raw_data;
-	int size = (sizeof(struct flow_counter_stats) *
-			MLX5_COUNTERS_PER_POOL +
-			sizeof(struct mlx5_counter_stats_raw)) * raws_n +
-			sizeof(struct mlx5_counter_stats_mem_mng);
-	size_t pgsize = rte_mem_page_size();
-	if (pgsize == (size_t)-1) {
-		DRV_LOG(ERR, "Failed to get mem page size");
-		rte_errno = ENOMEM;
-		return NULL;
-	}
-	uint8_t *mem = mlx5_malloc(MLX5_MEM_ZERO, size, pgsize,
-				  SOCKET_ID_ANY);
-	int i;
-
-	if (!mem) {
-		rte_errno = ENOMEM;
-		return NULL;
-	}
-	mem_mng = (struct mlx5_counter_stats_mem_mng *)(mem + size) - 1;
-	size = sizeof(*raw_data) * MLX5_COUNTERS_PER_POOL * raws_n;
-	mem_mng->umem = mlx5_glue->devx_umem_reg(sh->ctx, mem, size,
-						 IBV_ACCESS_LOCAL_WRITE);
-	if (!mem_mng->umem) {
-		rte_errno = errno;
-		mlx5_free(mem);
-		return NULL;
-	}
-	mkey_attr.addr = (uintptr_t)mem;
-	mkey_attr.size = size;
-	mkey_attr.umem_id = mlx5_os_get_umem_id(mem_mng->umem);
-	mkey_attr.pd = sh->pdn;
-	mkey_attr.log_entity_size = 0;
-	mkey_attr.pg_access = 0;
-	mkey_attr.klm_array = NULL;
-	mkey_attr.klm_num = 0;
-	if (priv->config.hca_attr.relaxed_ordering_write &&
-		priv->config.hca_attr.relaxed_ordering_read  &&
-		!haswell_broadwell_cpu)
-		mkey_attr.relaxed_ordering = 1;
-	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);
-	if (!mem_mng->dm) {
-		mlx5_glue->devx_umem_dereg(mem_mng->umem);
-		rte_errno = errno;
-		mlx5_free(mem);
-		return NULL;
-	}
-	mem_mng->raws = (struct mlx5_counter_stats_raw *)(mem + size);
-	raw_data = (volatile struct flow_counter_stats *)mem;
-	for (i = 0; i < raws_n; ++i) {
-		mem_mng->raws[i].mem_mng = mem_mng;
-		mem_mng->raws[i].data = raw_data + i * MLX5_COUNTERS_PER_POOL;
-	}
-	LIST_INSERT_HEAD(&sh->cmng.mem_mngs, mem_mng, next);
-	return mem_mng;
+out:
+	rte_spinlock_unlock(&cmng->pool_update_sl);
+	return pool;
 }
 
 /**
@@ -4767,7 +4698,6 @@ flow_dv_container_resize(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
-	struct mlx5_counter_stats_mem_mng *mem_mng = NULL;
 	void *old_pools = cmng->pools;
 	uint32_t resize = cmng->n + MLX5_CNT_CONTAINER_RESIZE;
 	uint32_t mem_size = sizeof(struct mlx5_flow_counter_pool *) * resize;
@@ -4780,30 +4710,8 @@ flow_dv_container_resize(struct rte_eth_dev *dev)
 	if (old_pools)
 		memcpy(pools, old_pools, cmng->n *
 				       sizeof(struct mlx5_flow_counter_pool *));
-	/*
-	 * Fallback mode query the counter directly, no background query
-	 * resources are needed.
-	 */
-	if (!priv->counter_fallback) {
-		int i;
-
-		mem_mng = flow_dv_create_counter_stat_mem_mng(dev,
-			  MLX5_CNT_CONTAINER_RESIZE + MLX5_MAX_PENDING_QUERIES);
-		if (!mem_mng) {
-			mlx5_free(pools);
-			return -ENOMEM;
-		}
-		for (i = 0; i < MLX5_MAX_PENDING_QUERIES; ++i)
-			LIST_INSERT_HEAD(&priv->sh->cmng.free_stat_raws,
-					 mem_mng->raws +
-					 MLX5_CNT_CONTAINER_RESIZE +
-					 i, next);
-	}
-	rte_spinlock_lock(&cmng->resize_sl);
 	cmng->n = resize;
-	cmng->mem_mng = mem_mng;
 	cmng->pools = pools;
-	rte_spinlock_unlock(&cmng->resize_sl);
 	if (old_pools)
 		mlx5_free(old_pools);
 	return 0;
@@ -4842,9 +4750,14 @@ _flow_dv_query_count(struct rte_eth_dev *dev, uint32_t counter, uint64_t *pkts,
 					0, pkts, bytes, 0, NULL, NULL, 0);
 	}
 	rte_spinlock_lock(&pool->sl);
-	offset = MLX5_CNT_ARRAY_IDX(pool, cnt);
-	*pkts = rte_be_to_cpu_64(pool->raw->data[offset].hits);
-	*bytes = rte_be_to_cpu_64(pool->raw->data[offset].bytes);
+	if (!pool->raw) {
+		*pkts = 0;
+		*bytes = 0;
+	} else {
+		offset = MLX5_CNT_ARRAY_IDX(pool, cnt);
+		*pkts = rte_be_to_cpu_64(pool->raw->data[offset].hits);
+		*bytes = rte_be_to_cpu_64(pool->raw->data[offset].bytes);
+	}
 	rte_spinlock_unlock(&pool->sl);
 	return 0;
 }
@@ -4871,12 +4784,9 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
-	int16_t n_valid = rte_atomic16_read(&cmng->n_valid);
 	uint32_t fallback = priv->counter_fallback;
 	uint32_t size = sizeof(*pool);
 
-	if (cmng->n == n_valid && flow_dv_container_resize(dev))
-		return NULL;
 	size += MLX5_COUNTERS_PER_POOL * CNT_SIZE;
 	size += (!fallback ? 0 : MLX5_COUNTERS_PER_POOL * CNTEXT_SIZE);
 	size += (!age ? 0 : MLX5_COUNTERS_PER_POOL * AGE_SIZE);
@@ -4885,24 +4795,26 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	if (!fallback) {
-		pool->min_dcs = dcs;
-		pool->raw = cmng->mem_mng->raws + n_valid %
-						      MLX5_CNT_CONTAINER_RESIZE;
-	}
-	pool->raw_hw = NULL;
+	pool->raw = NULL;
 	pool->type = 0;
-	pool->type |= (!fallback ? 0 :  CNT_POOL_TYPE_EXT);
 	pool->type |= (!age ? 0 :  CNT_POOL_TYPE_AGE);
 	pool->query_gen = 0;
+	pool->min_dcs = dcs;
 	rte_spinlock_init(&pool->sl);
+	rte_spinlock_init(&pool->csl);
 	TAILQ_INIT(&pool->counters[0]);
 	TAILQ_INIT(&pool->counters[1]);
-	TAILQ_INSERT_HEAD(&cmng->pool_list, pool, next);
-	pool->index = n_valid;
 	pool->time_of_last_age_check = MLX5_CURR_TIME_SEC;
-	cmng->pools[n_valid] = pool;
-	if (fallback) {
+	rte_spinlock_lock(&cmng->pool_update_sl);
+	pool->index = cmng->n_valid;
+	if (pool->index == cmng->n && flow_dv_container_resize(dev)) {
+		mlx5_free(pool);
+		rte_spinlock_unlock(&cmng->pool_update_sl);
+		return NULL;
+	}
+	cmng->pools[pool->index] = pool;
+	cmng->n_valid++;
+	if (unlikely(fallback)) {
 		int base = RTE_ALIGN_FLOOR(dcs->id, MLX5_COUNTERS_PER_POOL);
 
 		if (base < cmng->min_id)
@@ -4910,10 +4822,9 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		if (base > cmng->max_id)
 			cmng->max_id = base + MLX5_COUNTERS_PER_POOL - 1;
 		cmng->last_pool_idx = pool->index;
+		pool->type |= CNT_POOL_TYPE_EXT;
 	}
-	/* Pool initialization must be updated before host thread access. */
-	rte_io_wmb();
-	rte_atomic16_add(&cmng->n_valid, 1);
+	rte_spinlock_unlock(&cmng->pool_update_sl);
 	return pool;
 }
 
@@ -5219,12 +5130,16 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 	 *
 	 */
 	if (!priv->counter_fallback) {
+		rte_spinlock_lock(&pool->csl);
 		TAILQ_INSERT_TAIL(&pool->counters[pool->query_gen], cnt, next);
+		rte_spinlock_unlock(&pool->csl);
 	} else {
 		cnt_type = IS_AGE_POOL(pool) ? MLX5_COUNTER_TYPE_AGE :
 					       MLX5_COUNTER_TYPE_ORIGIN;
+		rte_spinlock_lock(&priv->sh->cmng.csl[cnt_type]);
 		TAILQ_INSERT_TAIL(&priv->sh->cmng.counters[cnt_type],
 				  cnt, next);
+		rte_spinlock_unlock(&priv->sh->cmng.csl[cnt_type]);
 	}
 }
 

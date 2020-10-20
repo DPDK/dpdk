@@ -487,8 +487,7 @@ mlx5_flow_counters_mng_init(struct mlx5_dev_ctx_shared *sh)
 	sh->cmng.min_id = MLX5_CNT_BATCH_OFFSET;
 	sh->cmng.max_id = -1;
 	sh->cmng.last_pool_idx = POOL_IDX_INVALID;
-	TAILQ_INIT(&sh->cmng.pool_list);
-	rte_spinlock_init(&sh->cmng.resize_sl);
+	rte_spinlock_init(&sh->cmng.pool_update_sl);
 	for (i = 0; i < MLX5_COUNTER_TYPE_MAX; i++) {
 		TAILQ_INIT(&sh->cmng.counters[i]);
 		rte_spinlock_init(&sh->cmng.csl[i]);
@@ -522,7 +521,7 @@ static void
 mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 {
 	struct mlx5_counter_stats_mem_mng *mng;
-	int j;
+	int i, j;
 	int retries = 1024;
 
 	rte_errno = 0;
@@ -535,9 +534,10 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 
 	if (sh->cmng.pools) {
 		struct mlx5_flow_counter_pool *pool;
+		uint16_t n_valid = sh->cmng.n_valid;
 
-		pool = TAILQ_FIRST(&sh->cmng.pool_list);
-		while (pool) {
+		for (i = 0; i < n_valid; ++i) {
+			pool = sh->cmng.pools[i];
 			if (!IS_EXT_POOL(pool) && pool->min_dcs)
 				claim_zero(mlx5_devx_cmd_destroy
 							       (pool->min_dcs));
@@ -553,9 +553,7 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 						   (MLX5_GET_POOL_CNT_EXT
 						    (pool, j)->dcs));
 			}
-			TAILQ_REMOVE(&sh->cmng.pool_list, pool, next);
 			mlx5_free(pool);
-			pool = TAILQ_FIRST(&sh->cmng.pool_list);
 		}
 		mlx5_free(sh->cmng.pools);
 	}

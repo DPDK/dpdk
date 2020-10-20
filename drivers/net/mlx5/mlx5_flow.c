@@ -13,6 +13,7 @@
 #include <rte_common.h>
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
+#include <rte_eal_paging.h>
 #include <rte_flow.h>
 #include <rte_cycles.h>
 #include <rte_flow_driver.h>
@@ -29,6 +30,7 @@
 #include "mlx5_flow.h"
 #include "mlx5_flow_os.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_common_os.h"
 
 /** Device flow drivers. */
 extern const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops;
@@ -6589,6 +6591,111 @@ mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 	return -ENOTSUP;
 }
 
+/**
+ * Allocate a new memory for the counter values wrapped by all the needed
+ * management.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_dev_ctx_shared object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_devx_mkey_attr mkey_attr;
+	struct mlx5_counter_stats_mem_mng *mem_mng;
+	volatile struct flow_counter_stats *raw_data;
+	int raws_n = MLX5_CNT_CONTAINER_RESIZE + MLX5_MAX_PENDING_QUERIES;
+	int size = (sizeof(struct flow_counter_stats) *
+			MLX5_COUNTERS_PER_POOL +
+			sizeof(struct mlx5_counter_stats_raw)) * raws_n +
+			sizeof(struct mlx5_counter_stats_mem_mng);
+	size_t pgsize = rte_mem_page_size();
+	uint8_t *mem;
+	int i;
+
+	if (pgsize == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		rte_errno = ENOMEM;
+		return -ENOMEM;
+	}
+	mem = mlx5_malloc(MLX5_MEM_ZERO, size, pgsize, SOCKET_ID_ANY);
+	if (!mem) {
+		rte_errno = ENOMEM;
+		return -ENOMEM;
+	}
+	mem_mng = (struct mlx5_counter_stats_mem_mng *)(mem + size) - 1;
+	size = sizeof(*raw_data) * MLX5_COUNTERS_PER_POOL * raws_n;
+	mem_mng->umem = mlx5_glue->devx_umem_reg(sh->ctx, mem, size,
+						 IBV_ACCESS_LOCAL_WRITE);
+	if (!mem_mng->umem) {
+		rte_errno = errno;
+		mlx5_free(mem);
+		return -rte_errno;
+	}
+	mkey_attr.addr = (uintptr_t)mem;
+	mkey_attr.size = size;
+	mkey_attr.umem_id = mlx5_os_get_umem_id(mem_mng->umem);
+	mkey_attr.pd = sh->pdn;
+	mkey_attr.log_entity_size = 0;
+	mkey_attr.pg_access = 0;
+	mkey_attr.klm_array = NULL;
+	mkey_attr.klm_num = 0;
+	mkey_attr.relaxed_ordering = sh->cmng.relaxed_ordering;
+	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);
+	if (!mem_mng->dm) {
+		mlx5_glue->devx_umem_dereg(mem_mng->umem);
+		rte_errno = errno;
+		mlx5_free(mem);
+		return -rte_errno;
+	}
+	mem_mng->raws = (struct mlx5_counter_stats_raw *)(mem + size);
+	raw_data = (volatile struct flow_counter_stats *)mem;
+	for (i = 0; i < raws_n; ++i) {
+		mem_mng->raws[i].mem_mng = mem_mng;
+		mem_mng->raws[i].data = raw_data + i * MLX5_COUNTERS_PER_POOL;
+	}
+	for (i = 0; i < MLX5_MAX_PENDING_QUERIES; ++i)
+		LIST_INSERT_HEAD(&sh->cmng.free_stat_raws,
+				 mem_mng->raws + MLX5_CNT_CONTAINER_RESIZE + i,
+				 next);
+	LIST_INSERT_HEAD(&sh->cmng.mem_mngs, mem_mng, next);
+	sh->cmng.mem_mng = mem_mng;
+	return 0;
+}
+
+/**
+ * Set the statistic memory to the new counter pool.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_dev_ctx_shared object.
+ * @param[in] pool
+ *   Pointer to the pool to set the statistic memory.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+mlx5_flow_set_counter_stat_mem(struct mlx5_dev_ctx_shared *sh,
+			       struct mlx5_flow_counter_pool *pool)
+{
+	struct mlx5_flow_counter_mng *cmng = &sh->cmng;
+	/* Resize statistic memory once used out. */
+	if (!(pool->index % MLX5_CNT_CONTAINER_RESIZE) &&
+	    mlx5_flow_create_counter_stat_mem_mng(sh)) {
+		DRV_LOG(ERR, "Cannot resize counter stat mem.");
+		return -1;
+	}
+	rte_spinlock_lock(&pool->sl);
+	pool->raw = cmng->mem_mng->raws + pool->index %
+		    MLX5_CNT_CONTAINER_RESIZE;
+	rte_spinlock_unlock(&pool->sl);
+	pool->raw_hw = NULL;
+	return 0;
+}
+
 #define MLX5_POOL_QUERY_FREQ_US 1000000
 
 /**
@@ -6603,7 +6710,7 @@ mlx5_set_query_alarm(struct mlx5_dev_ctx_shared *sh)
 {
 	uint32_t pools_n, us;
 
-	pools_n = rte_atomic16_read(&sh->cmng.n_valid);
+	pools_n = __atomic_load_n(&sh->cmng.n_valid, __ATOMIC_RELAXED);
 	us = MLX5_POOL_QUERY_FREQ_US / pools_n;
 	DRV_LOG(DEBUG, "Set alarm for %u pools each %u us", pools_n, us);
 	if (rte_eal_alarm_set(us, mlx5_flow_query_alarm, sh)) {
@@ -6629,12 +6736,17 @@ mlx5_flow_query_alarm(void *arg)
 	uint16_t pool_index = sh->cmng.pool_index;
 	struct mlx5_flow_counter_mng *cmng = &sh->cmng;
 	struct mlx5_flow_counter_pool *pool;
+	uint16_t n_valid;
 
 	if (sh->cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
 		goto set_alarm;
-	rte_spinlock_lock(&cmng->resize_sl);
+	rte_spinlock_lock(&cmng->pool_update_sl);
 	pool = cmng->pools[pool_index];
-	rte_spinlock_unlock(&cmng->resize_sl);
+	n_valid = cmng->n_valid;
+	rte_spinlock_unlock(&cmng->pool_update_sl);
+	/* Set the statistic memory to the new created pool. */
+	if ((!pool->raw && mlx5_flow_set_counter_stat_mem(sh, pool)))
+		goto set_alarm;
 	if (pool->raw_hw)
 		/* There is a pool query in progress. */
 		goto set_alarm;
@@ -6667,7 +6779,7 @@ mlx5_flow_query_alarm(void *arg)
 	LIST_REMOVE(pool->raw_hw, next);
 	sh->cmng.pending_queries++;
 	pool_index++;
-	if (pool_index >= rte_atomic16_read(&cmng->n_valid))
+	if (pool_index >= n_valid)
 		pool_index = 0;
 set_alarm:
 	sh->cmng.pool_index = pool_index;

@@ -259,7 +259,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	struct mlx5_flow_counter_ext *cnt_ext = NULL;
 	struct mlx5_flow_counter *cnt = NULL;
 	union mlx5_l3t_data data;
-	uint32_t n_valid = rte_atomic16_read(&cmng->n_valid);
+	uint32_t n_valid = cmng->n_valid;
 	uint32_t pool_idx, cnt_idx;
 	uint32_t i;
 	int ret;
@@ -317,8 +317,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		cnt = MLX5_POOL_GET_CNT(pool, 0);
 		cmng->pools[n_valid] = pool;
 		pool_idx = n_valid;
-		rte_atomic16_add(&cmng->n_valid, 1);
-		TAILQ_INSERT_HEAD(&cmng->pool_list, pool, next);
+		cmng->n_valid++;
 	}
 	i = MLX5_CNT_ARRAY_IDX(pool, cnt);
 	cnt_idx = MLX5_MAKE_CNT_IDX(pool_idx, i);
