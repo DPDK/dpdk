@@ -395,7 +395,7 @@ ice_bitmap_set(ice_bitmap_t *dst, u16 pos, u16 num_bits)
 {
 	u16 i;
 
-	for (i = pos; i < num_bits; i++)
+	for (i = pos; i < pos + num_bits; i++)
 		ice_set_bit(i, dst);
 }
 
