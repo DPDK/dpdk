@@ -207,7 +207,7 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 	struct bnxt_tpa_info *tpa_info;
 	uint16_t i;
 
-	if (!rxq)
+	if (!rxq || !rxq->rx_ring)
 		return;
 
 	rte_spinlock_lock(&rxq->lock);
@@ -273,12 +273,21 @@ void bnxt_rx_queue_release_op(void *rx_queue)
 		bnxt_rx_queue_release_mbufs(rxq);
 
 		/* Free RX ring hardware descriptors */
-		bnxt_free_ring(rxq->rx_ring->rx_ring_struct);
-		/* Free RX Agg ring hardware descriptors */
-		bnxt_free_ring(rxq->rx_ring->ag_ring_struct);
+		if (rxq->rx_ring) {
+			bnxt_free_ring(rxq->rx_ring->rx_ring_struct);
+			rte_free(rxq->rx_ring->rx_ring_struct);
+			/* Free RX Agg ring hardware descriptors */
+			bnxt_free_ring(rxq->rx_ring->ag_ring_struct);
+			rte_free(rxq->rx_ring->ag_ring_struct);
 
+			rte_free(rxq->rx_ring);
+		}
 		/* Free RX completion ring hardware descriptors */
-		bnxt_free_ring(rxq->cp_ring->cp_ring_struct);
+		if (rxq->cp_ring) {
+			bnxt_free_ring(rxq->cp_ring->cp_ring_struct);
+			rte_free(rxq->cp_ring->cp_ring_struct);
+			rte_free(rxq->cp_ring);
+		}
 
 		bnxt_free_rxq_stats(rxq);
 		rte_memzone_free(rxq->mz);
@@ -314,8 +323,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	if (nb_desc < BNXT_MIN_RING_DESC || nb_desc > MAX_RX_DESC_CNT) {
 		PMD_DRV_LOG(ERR, "nb_desc %d is invalid\n", nb_desc);
-		rc = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	if (eth_dev->data->rx_queues) {
@@ -327,8 +335,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
 		PMD_DRV_LOG(ERR, "bnxt_rx_queue allocation failed!\n");
-		rc = -ENOMEM;
-		goto out;
+		return -ENOMEM;
 	}
 	rxq->bp = bp;
 	rxq->mb_pool = mp;
@@ -344,8 +351,11 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	PMD_DRV_LOG(DEBUG, "RX Buf MTU %d\n", eth_dev->data->mtu);
 
 	rc = bnxt_init_rx_ring_struct(rxq, socket_id);
-	if (rc)
-		goto out;
+	if (rc) {
+		PMD_DRV_LOG(ERR,
+			    "init_rx_ring_struct failed!\n");
+		goto err;
+	}
 
 	PMD_DRV_LOG(DEBUG, "RX Buf size is %d\n", rxq->rx_buf_size);
 	rxq->queue_id = queue_idx;
@@ -360,10 +370,8 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq, rxq->cp_ring, NULL,
 			     "rxr")) {
 		PMD_DRV_LOG(ERR,
-			"ring_dma_zone_reserve for rx_ring failed!\n");
-		bnxt_rx_queue_release_op(rxq);
-		rc = -ENOMEM;
-		goto out;
+			    "ring_dma_zone_reserve for rx_ring failed!\n");
+		goto err;
 	}
 	rte_atomic64_init(&rxq->rx_mbuf_alloc_fail);
 
@@ -387,7 +395,9 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	if (!queue_idx)
 		bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
 
-out:
+	return 0;
+err:
+	bnxt_rx_queue_release_op(rxq);
 	return rc;
 }
 
