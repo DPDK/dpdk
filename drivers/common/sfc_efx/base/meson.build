@@ -15,6 +15,7 @@ sources = [
 	'efx_intr.c',
 	'efx_lic.c',
 	'efx_mac.c',
+	'efx_mae.c',
 	'efx_mcdi.c',
 	'efx_mon.c',
 	'efx_nic.c',

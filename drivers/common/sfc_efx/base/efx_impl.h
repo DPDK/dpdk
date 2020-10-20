@@ -780,6 +780,13 @@ typedef struct efx_proxy_ops_s {
 
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
+#if EFSYS_OPT_MAE
+
+typedef struct efx_mae_s {
+} efx_mae_t;
+
+#endif /* EFSYS_OPT_MAE */
+
 #define	EFX_DRV_VER_MAX		20
 
 typedef struct efx_drv_cfg_s {
@@ -886,6 +893,9 @@ struct efx_nic_s {
 #if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
 	const efx_proxy_ops_t	*en_epop;
 #endif	/* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
+#if EFSYS_OPT_MAE
+	efx_mae_t		*en_maep;
+#endif	/* EFSYS_OPT_MAE */
 };
 
 #define	EFX_FAMILY_IS_EF10(_enp) \

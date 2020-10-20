@@ -85,6 +85,9 @@ INTERNAL {
 	efx_mac_stats_upload;
 	efx_mac_up;
 
+	efx_mae_fini;
+	efx_mae_init;
+
 	efx_mcdi_fini;
 	efx_mcdi_get_proxy_handle;
 	efx_mcdi_get_timeout;
