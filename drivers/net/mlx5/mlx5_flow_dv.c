@@ -4903,36 +4903,10 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 }
 
 /**
- * Search for existed shared counter.
- *
- * @param[in] dev
- *   Pointer to the Ethernet device structure.
- * @param[in] id
- *   The shared counter ID to search.
- *
- * @return
- *   0 if not existed, otherwise shared counter index.
- */
-static uint32_t
-flow_dv_counter_shared_search(struct rte_eth_dev *dev, uint32_t id)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	union mlx5_l3t_data data;
-
-	if (mlx5_l3t_get_entry(priv->sh->cnt_id_tbl, id, &data))
-		return 0;
-	return data.dword;
-}
-
-/**
  * Allocate a flow counter.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
- * @param[in] shared
- *   Indicate if this counter is shared with other flows.
- * @param[in] id
- *   Counter identifier.
  * @param[in] age
  *   Whether the counter was allocated for aging.
  *
@@ -4940,8 +4914,7 @@ flow_dv_counter_shared_search(struct rte_eth_dev *dev, uint32_t id)
  *   Index to flow counter on success, 0 otherwise and rte_errno is set.
  */
 static uint32_t
-flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
-		      uint32_t age)
+flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t age)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool = NULL;
@@ -4956,19 +4929,6 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	if (!priv->config.devx) {
 		rte_errno = ENOTSUP;
 		return 0;
-	}
-	if (shared) {
-		cnt_idx = flow_dv_counter_shared_search(dev, id);
-		if (cnt_idx) {
-			cnt_free = flow_dv_counter_get_by_idx(dev, cnt_idx,
-							      NULL);
-			if (cnt_free->shared_info.ref_cnt + 1 == 0) {
-				rte_errno = E2BIG;
-				return 0;
-			}
-			cnt_free->shared_info.ref_cnt++;
-			return cnt_idx;
-		}
 	}
 	/* Get free counters from container. */
 	rte_spinlock_lock(&cmng->csl[cnt_type]);
@@ -5007,16 +4967,6 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	if (_flow_dv_query_count(dev, cnt_idx, &cnt_free->hits,
 				 &cnt_free->bytes))
 		goto err;
-	if (shared) {
-		union mlx5_l3t_data data;
-
-		data.dword = cnt_idx;
-		if (mlx5_l3t_set_entry(priv->sh->cnt_id_tbl, id, &data))
-			goto err;
-		cnt_free->shared_info.ref_cnt = 1;
-		cnt_free->shared_info.id = id;
-		cnt_idx |= MLX5_CNT_SHARED_OFFSET;
-	}
 	if (!fallback && !priv->sh->cmng.query_thread_on)
 		/* Start the asynchronous batch query by the host thread. */
 		mlx5_set_query_alarm(priv->sh);
@@ -5029,6 +4979,60 @@ err:
 		rte_spinlock_unlock(&cmng->csl[cnt_type]);
 	}
 	return 0;
+}
+
+/**
+ * Allocate a shared flow counter.
+ *
+ * @param[in] ctx
+ *   Pointer to the shared counter configuration.
+ * @param[in] data
+ *   Pointer to save the allocated counter index.
+ *
+ * @return
+ *   Index to flow counter on success, 0 otherwise and rte_errno is set.
+ */
+
+static int32_t
+flow_dv_counter_alloc_shared_cb(void *ctx, union mlx5_l3t_data *data)
+{
+	struct mlx5_shared_counter_conf *conf = ctx;
+	struct rte_eth_dev *dev = conf->dev;
+	struct mlx5_flow_counter *cnt;
+
+	data->dword = flow_dv_counter_alloc(dev, 0);
+	data->dword |= MLX5_CNT_SHARED_OFFSET;
+	cnt = flow_dv_counter_get_by_idx(dev, data->dword, NULL);
+	cnt->shared_info.id = conf->id;
+	return 0;
+}
+
+/**
+ * Get a shared flow counter.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] id
+ *   Counter identifier.
+ *
+ * @return
+ *   Index to flow counter on success, 0 otherwise and rte_errno is set.
+ */
+static uint32_t
+flow_dv_counter_get_shared(struct rte_eth_dev *dev, uint32_t id)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_shared_counter_conf conf = {
+		.dev = dev,
+		.id = id,
+	};
+	union mlx5_l3t_data data = {
+		.dword = 0,
+	};
+
+	mlx5_l3t_prepare_entry(priv->sh->cnt_id_tbl, id, &data,
+			       flow_dv_counter_alloc_shared_cb, &conf);
+	return data.dword;
 }
 
 /**
@@ -5110,12 +5114,9 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 		return;
 	cnt = flow_dv_counter_get_by_idx(dev, counter, &pool);
 	MLX5_ASSERT(pool);
-	if (IS_SHARED_CNT(counter)) {
-		if (--cnt->shared_info.ref_cnt)
-			return;
-		mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl,
-				     cnt->shared_info.id);
-	}
+	if (IS_SHARED_CNT(counter) &&
+	    mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl, cnt->shared_info.id))
+		return;
 	if (IS_AGE_POOL(pool))
 		flow_dv_counter_remove_from_age(dev, counter, cnt);
 	cnt->pool = pool;
@@ -8271,9 +8272,10 @@ flow_dv_translate_create_counter(struct rte_eth_dev *dev,
 	uint32_t counter;
 	struct mlx5_age_param *age_param;
 
-	counter = flow_dv_counter_alloc(dev,
-				count ? count->shared : 0,
-				count ? count->id : 0, !!age);
+	if (count && count->shared)
+		counter = flow_dv_counter_get_shared(dev, count->id);
+	else
+		counter = flow_dv_counter_alloc(dev, !!age);
 	if (!counter || age == NULL)
 		return counter;
 	age_param  = flow_dv_counter_idx_get_age(dev, counter);
@@ -11442,7 +11444,7 @@ flow_dv_counter_allocate(struct rte_eth_dev *dev)
 	uint32_t cnt;
 
 	flow_dv_shared_lock(dev);
-	cnt = flow_dv_counter_alloc(dev, 0, 0, 0);
+	cnt = flow_dv_counter_alloc(dev, 0);
 	flow_dv_shared_unlock(dev);
 	return cnt;
 }

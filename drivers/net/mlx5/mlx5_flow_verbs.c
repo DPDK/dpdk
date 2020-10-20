@@ -265,15 +265,8 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	int ret;
 
 	if (shared && !mlx5_l3t_get_entry(priv->sh->cnt_id_tbl, id, &data) &&
-	    data.dword) {
-		cnt = flow_verbs_counter_get_by_idx(dev, data.dword, NULL);
-		if (cnt->shared_info.ref_cnt + 1 == 0) {
-			rte_errno = E2BIG;
-			return 0;
-		}
-		cnt->shared_info.ref_cnt++;
+	    data.dword)
 		return data.dword;
-	}
 	for (pool_idx = 0; pool_idx < n_valid; ++pool_idx) {
 		pool = cmng->pools[pool_idx];
 		if (!pool)
@@ -325,7 +318,6 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		data.dword = cnt_idx;
 		if (mlx5_l3t_set_entry(priv->sh->cnt_id_tbl, id, &data))
 			return 0;
-		cnt->shared_info.ref_cnt = 1;
 		cnt->shared_info.id = id;
 		cnt_idx |= MLX5_CNT_SHARED_OFFSET;
 	}
@@ -360,12 +352,9 @@ flow_verbs_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 	struct mlx5_flow_counter_ext *cnt_ext;
 
 	cnt = flow_verbs_counter_get_by_idx(dev, counter, &pool);
-	if (IS_SHARED_CNT(counter)) {
-		if (--cnt->shared_info.ref_cnt)
-			return;
-		mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl,
-				     cnt->shared_info.id);
-	}
+	if (IS_SHARED_CNT(counter) &&
+	    mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl, cnt->shared_info.id))
+		return;
 	cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	claim_zero(mlx5_glue->destroy_counter_set(cnt_ext->cs));

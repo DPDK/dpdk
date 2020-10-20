@@ -348,8 +348,13 @@ struct flow_counter_stats {
 
 /* Shared counters information for counters. */
 struct mlx5_flow_counter_shared {
-	uint32_t ref_cnt; /**< Reference counter. */
 	uint32_t id; /**< User counter ID. */
+};
+
+/* Shared counter configuration. */
+struct mlx5_shared_counter_conf {
+	struct rte_eth_dev *dev; /* The device shared counter belongs to. */
+	uint32_t id; /* The shared counter ID. */
 };
 
 struct mlx5_flow_counter_pool;
