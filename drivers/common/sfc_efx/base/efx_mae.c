@@ -75,6 +75,88 @@ fail1:
 }
 
 static	__checkReturn			efx_rc_t
+efx_mae_get_outer_rule_caps(
+	__in				efx_nic_t *enp,
+	__in				unsigned int field_ncaps,
+	__out_ecount(field_ncaps)	efx_mae_field_cap_t *field_caps)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_GET_OR_CAPS_IN_LEN,
+	    MC_CMD_MAE_GET_OR_CAPS_OUT_LENMAX_MCDI2);
+	unsigned int mcdi_field_ncaps;
+	unsigned int i;
+	efx_rc_t rc;
+
+	if (MC_CMD_MAE_GET_OR_CAPS_OUT_LEN(field_ncaps) >
+	    MC_CMD_MAE_GET_OR_CAPS_OUT_LENMAX_MCDI2) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_GET_OR_CAPS;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_GET_OR_CAPS_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_GET_OR_CAPS_OUT_LEN(field_ncaps);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	mcdi_field_ncaps = MCDI_OUT_DWORD(req, MAE_GET_OR_CAPS_OUT_COUNT);
+
+	if (req.emr_out_length_used <
+	    MC_CMD_MAE_GET_OR_CAPS_OUT_LEN(mcdi_field_ncaps)) {
+		rc = EMSGSIZE;
+		goto fail3;
+	}
+
+	if (mcdi_field_ncaps > field_ncaps) {
+		rc = EMSGSIZE;
+		goto fail4;
+	}
+
+	for (i = 0; i < mcdi_field_ncaps; ++i) {
+		uint32_t match_flag;
+		uint32_t mask_flag;
+
+		field_caps[i].emfc_support = MCDI_OUT_INDEXED_DWORD_FIELD(req,
+		    MAE_GET_OR_CAPS_OUT_FIELD_FLAGS, i,
+		    MAE_FIELD_FLAGS_SUPPORT_STATUS);
+
+		match_flag = MCDI_OUT_INDEXED_DWORD_FIELD(req,
+		    MAE_GET_OR_CAPS_OUT_FIELD_FLAGS, i,
+		    MAE_FIELD_FLAGS_MATCH_AFFECTS_CLASS);
+
+		field_caps[i].emfc_match_affects_class =
+		    (match_flag != 0) ? B_TRUE : B_FALSE;
+
+		mask_flag = MCDI_OUT_INDEXED_DWORD_FIELD(req,
+		    MAE_GET_OR_CAPS_OUT_FIELD_FLAGS, i,
+		    MAE_FIELD_FLAGS_MASK_AFFECTS_CLASS);
+
+		field_caps[i].emfc_mask_affects_class =
+		    (mask_flag != 0) ? B_TRUE : B_FALSE;
+	}
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+static	__checkReturn			efx_rc_t
 efx_mae_get_action_rule_caps(
 	__in				efx_nic_t *enp,
 	__in				unsigned int field_ncaps,
@@ -161,6 +243,8 @@ efx_mae_init(
 	__in				efx_nic_t *enp)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mae_field_cap_t *or_fcaps;
+	size_t or_fcaps_size;
 	efx_mae_field_cap_t *ar_fcaps;
 	size_t ar_fcaps_size;
 	efx_mae_t *maep;
@@ -183,11 +267,25 @@ efx_mae_init(
 	if (rc != 0)
 		goto fail3;
 
+	or_fcaps_size = maep->em_max_nfields * sizeof (*or_fcaps);
+	EFSYS_KMEM_ALLOC(enp->en_esip, or_fcaps_size, or_fcaps);
+	if (or_fcaps == NULL) {
+		rc = ENOMEM;
+		goto fail4;
+	}
+
+	maep->em_outer_rule_field_caps_size = or_fcaps_size;
+	maep->em_outer_rule_field_caps = or_fcaps;
+
+	rc = efx_mae_get_outer_rule_caps(enp, maep->em_max_nfields, or_fcaps);
+	if (rc != 0)
+		goto fail5;
+
 	ar_fcaps_size = maep->em_max_nfields * sizeof (*ar_fcaps);
 	EFSYS_KMEM_ALLOC(enp->en_esip, ar_fcaps_size, ar_fcaps);
 	if (ar_fcaps == NULL) {
 		rc = ENOMEM;
-		goto fail4;
+		goto fail6;
 	}
 
 	maep->em_action_rule_field_caps_size = ar_fcaps_size;
@@ -195,13 +293,18 @@ efx_mae_init(
 
 	rc = efx_mae_get_action_rule_caps(enp, maep->em_max_nfields, ar_fcaps);
 	if (rc != 0)
-		goto fail5;
+		goto fail7;
 
 	return (0);
 
-fail5:
+fail7:
 	EFSYS_PROBE(fail5);
 	EFSYS_KMEM_FREE(enp->en_esip, ar_fcaps_size, ar_fcaps);
+fail6:
+	EFSYS_PROBE(fail4);
+fail5:
+	EFSYS_PROBE(fail5);
+	EFSYS_KMEM_FREE(enp->en_esip, or_fcaps_size, or_fcaps);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
@@ -227,6 +330,8 @@ efx_mae_fini(
 
 	EFSYS_KMEM_FREE(enp->en_esip, maep->em_action_rule_field_caps_size,
 	    maep->em_action_rule_field_caps);
+	EFSYS_KMEM_FREE(enp->en_esip, maep->em_outer_rule_field_caps_size,
+	    maep->em_outer_rule_field_caps);
 	EFSYS_KMEM_FREE(enp->en_esip, sizeof (*maep), maep);
 	enp->en_maep = NULL;
 }
@@ -711,6 +816,13 @@ efx_mae_match_spec_is_valid(
 	const uint8_t *mvp;
 
 	switch (spec->emms_type) {
+	case EFX_MAE_RULE_OUTER:
+		field_caps = maep->em_outer_rule_field_caps;
+		desc_setp = __efx_mae_outer_rule_mv_desc_set;
+		desc_set_nentries =
+		    EFX_ARRAY_SIZE(__efx_mae_outer_rule_mv_desc_set);
+		mvp = spec->emms_mask_value_pairs.outer;
+		break;
 	case EFX_MAE_RULE_ACTION:
 		field_caps = maep->em_action_rule_field_caps;
 		desc_setp = __efx_mae_action_rule_mv_desc_set;
@@ -1190,6 +1302,14 @@ efx_mae_match_specs_class_cmp(
 	efx_rc_t rc;
 
 	switch (left->emms_type) {
+	case EFX_MAE_RULE_OUTER:
+		field_caps = maep->em_outer_rule_field_caps;
+		desc_setp = __efx_mae_outer_rule_mv_desc_set;
+		desc_set_nentries =
+		    EFX_ARRAY_SIZE(__efx_mae_outer_rule_mv_desc_set);
+		mvpl = left->emms_mask_value_pairs.outer;
+		mvpr = right->emms_mask_value_pairs.outer;
+		break;
 	case EFX_MAE_RULE_ACTION:
 		field_caps = maep->em_action_rule_field_caps;
 		desc_setp = __efx_mae_action_rule_mv_desc_set;
