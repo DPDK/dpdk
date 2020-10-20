@@ -1259,3 +1259,47 @@ sfc_register_logtype(const struct rte_pci_addr *pci_addr,
 
 	return ret;
 }
+
+struct sfc_hw_switch_id {
+	char	board_sn[RTE_SIZEOF_FIELD(efx_nic_board_info_t, enbi_serial)];
+};
+
+int
+sfc_hw_switch_id_init(struct sfc_adapter *sa,
+		      struct sfc_hw_switch_id **idp)
+{
+	efx_nic_board_info_t board_info;
+	struct sfc_hw_switch_id *id;
+	int rc;
+
+	if (idp == NULL)
+		return EINVAL;
+
+	id = rte_zmalloc("sfc_hw_switch_id", sizeof(*id), 0);
+	if (id == NULL)
+		return ENOMEM;
+
+	rc = efx_nic_get_board_info(sa->nic, &board_info);
+	if (rc != 0)
+		return rc;
+
+	memcpy(id->board_sn, board_info.enbi_serial, sizeof(id->board_sn));
+
+	*idp = id;
+
+	return 0;
+}
+
+void
+sfc_hw_switch_id_fini(__rte_unused struct sfc_adapter *sa,
+		      struct sfc_hw_switch_id *id)
+{
+	rte_free(id);
+}
+
+bool
+sfc_hw_switch_ids_equal(const struct sfc_hw_switch_id *left,
+			const struct sfc_hw_switch_id *right)
+{
+	return strcmp(left->board_sn, right->board_sn) == 0;
+}
