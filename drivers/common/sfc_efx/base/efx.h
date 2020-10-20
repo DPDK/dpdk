@@ -4112,6 +4112,20 @@ efx_mae_mport_by_phy_port(
 	__out				efx_mport_sel_t *mportp);
 
 /*
+ * Get MPORT selector of a PCIe function.
+ *
+ * The resulting MPORT selector is opaque to the caller and can be
+ * passed as an argument to efx_mae_match_spec_mport_set()
+ * and efx_mae_action_set_populate_deliver().
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_mport_by_pcie_function(
+	__in				uint32_t pf,
+	__in				uint32_t vf,
+	__out				efx_mport_sel_t *mportp);
+
+/*
  * Fields which have BE postfix in their named constants are expected
  * to be passed by callers in big-endian byte order. They will appear
  * in the MCDI buffer, which is a part of the match specification, in

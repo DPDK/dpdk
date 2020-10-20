@@ -106,6 +106,7 @@ INTERNAL {
 	efx_mae_match_spec_is_valid;
 	efx_mae_match_spec_mport_set;
 	efx_mae_match_specs_class_cmp;
+	efx_mae_mport_by_pcie_function;
 	efx_mae_mport_by_phy_port;
 
 	efx_mcdi_fini;
