@@ -463,6 +463,7 @@ fail_init_match_spec_action:
 
 enum sfc_mae_actions_bundle_type {
 	SFC_MAE_ACTIONS_BUNDLE_EMPTY = 0,
+	SFC_MAE_ACTIONS_BUNDLE_VLAN_PUSH,
 };
 
 struct sfc_mae_actions_bundle {
@@ -470,6 +471,10 @@ struct sfc_mae_actions_bundle {
 
 	/* Indicates actions already tracked by the current bundle */
 	uint64_t				actions_mask;
+
+	/* Parameters used by SFC_MAE_ACTIONS_BUNDLE_VLAN_PUSH */
+	rte_be16_t				vlan_push_tpid;
+	rte_be16_t				vlan_push_tci;
 };
 
 /*
@@ -479,12 +484,16 @@ struct sfc_mae_actions_bundle {
  */
 static int
 sfc_mae_actions_bundle_submit(const struct sfc_mae_actions_bundle *bundle,
-			      __rte_unused efx_mae_actions_t *spec)
+			      efx_mae_actions_t *spec)
 {
 	int rc = 0;
 
 	switch (bundle->type) {
 	case SFC_MAE_ACTIONS_BUNDLE_EMPTY:
+		break;
+	case SFC_MAE_ACTIONS_BUNDLE_VLAN_PUSH:
+		rc = efx_mae_action_set_populate_vlan_push(
+			spec, bundle->vlan_push_tpid, bundle->vlan_push_tci);
 		break;
 	default:
 		SFC_ASSERT(B_FALSE);
@@ -509,6 +518,11 @@ sfc_mae_actions_bundle_sync(const struct rte_flow_action *action,
 	int rc;
 
 	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+		bundle_type_new = SFC_MAE_ACTIONS_BUNDLE_VLAN_PUSH;
+		break;
 	default:
 		/*
 		 * Self-sufficient actions, including END, are handled in this
@@ -536,6 +550,34 @@ fail_submit:
 	return rte_flow_error_set(error, rc,
 			RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 			"Failed to request the (group of) action(s)");
+}
+
+static void
+sfc_mae_rule_parse_action_of_push_vlan(
+			    const struct rte_flow_action_of_push_vlan *conf,
+			    struct sfc_mae_actions_bundle *bundle)
+{
+	bundle->vlan_push_tpid = conf->ethertype;
+}
+
+static void
+sfc_mae_rule_parse_action_of_set_vlan_vid(
+			    const struct rte_flow_action_of_set_vlan_vid *conf,
+			    struct sfc_mae_actions_bundle *bundle)
+{
+	bundle->vlan_push_tci |= (conf->vlan_vid &
+				  rte_cpu_to_be_16(RTE_LEN2MASK(12, uint16_t)));
+}
+
+static void
+sfc_mae_rule_parse_action_of_set_vlan_pcp(
+			    const struct rte_flow_action_of_set_vlan_pcp *conf,
+			    struct sfc_mae_actions_bundle *bundle)
+{
+	uint16_t vlan_tci_pcp = (uint16_t)(conf->vlan_pcp &
+					   RTE_LEN2MASK(3, uint8_t)) << 13;
+
+	bundle->vlan_push_tci |= rte_cpu_to_be_16(vlan_tci_pcp);
 }
 
 static int
@@ -566,13 +608,28 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  efx_mae_actions_t *spec,
 			  struct rte_flow_error *error)
 {
-	int rc;
+	int rc = 0;
 
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_POP_VLAN,
 				       bundle->actions_mask);
 		rc = efx_mae_action_set_populate_vlan_pop(spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN,
+				       bundle->actions_mask);
+		sfc_mae_rule_parse_action_of_push_vlan(action->conf, bundle);
+		break;
+	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID,
+				       bundle->actions_mask);
+		sfc_mae_rule_parse_action_of_set_vlan_vid(action->conf, bundle);
+		break;
+	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP,
+				       bundle->actions_mask);
+		sfc_mae_rule_parse_action_of_set_vlan_pcp(action->conf, bundle);
 		break;
 	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PHY_PORT,

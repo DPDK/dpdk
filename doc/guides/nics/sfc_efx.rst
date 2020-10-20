@@ -198,6 +198,12 @@ Supported actions (***transfer*** rules):
 
 - OF_POP_VLAN
 
+- OF_PUSH_VLAN
+
+- OF_VLAN_SET_VID
+
+- OF_VLAN_SET_PCP
+
 - PHY_PORT
 
 Validating flow rules depends on the firmware variant.
