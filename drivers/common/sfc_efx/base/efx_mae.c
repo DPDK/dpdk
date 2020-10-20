@@ -636,6 +636,14 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			boolean_t
+efx_mae_match_specs_equal(
+	__in				const efx_mae_match_spec_t *left,
+	__in				const efx_mae_match_spec_t *right)
+{
+	return ((memcmp(left, right, sizeof (*left)) == 0) ? B_TRUE : B_FALSE);
+}
+
 #define	EFX_MASK_BIT_IS_SET(_mask, _mask_page_nbits, _bit)		\
 	    ((_mask)[(_bit) / (_mask_page_nbits)] &			\
 		    (1ULL << ((_bit) & ((_mask_page_nbits) - 1))))

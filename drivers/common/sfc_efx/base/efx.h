@@ -4204,6 +4204,12 @@ efx_mae_match_spec_mport_set(
 	__in				const efx_mport_sel_t *valuep,
 	__in_opt			const efx_mport_sel_t *maskp);
 
+LIBEFX_API
+extern	__checkReturn			boolean_t
+efx_mae_match_specs_equal(
+	__in				const efx_mae_match_spec_t *left,
+	__in				const efx_mae_match_spec_t *right);
+
 /*
  * Make sure that match fields known by EFX have proper masks set
  * in the match specification as per requirements of SF-122526-TC.
