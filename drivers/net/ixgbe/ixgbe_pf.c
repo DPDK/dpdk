@@ -88,8 +88,11 @@ int ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 		return ret;
 
 	*vfinfo = rte_zmalloc("vf_info", sizeof(struct ixgbe_vf_info) * vf_num, 0);
-	if (*vfinfo == NULL)
-		rte_panic("Cannot allocate memory for private VF data\n");
+	if (*vfinfo == NULL) {
+		PMD_INIT_LOG(ERR,
+			"Cannot allocate memory for private VF data");
+		return -ENOMEM;
+	}
 
 	ret = rte_eth_switch_domain_alloc(&(*vfinfo)->switch_domain_id);
 	if (ret) {
