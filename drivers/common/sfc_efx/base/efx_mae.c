@@ -446,6 +446,7 @@ typedef enum efx_mae_field_cap_id_e {
 	EFX_MAE_FIELD_ID_ENC_L4_SPORT_BE = MAE_FIELD_ENC_L4_SPORT,
 	EFX_MAE_FIELD_ID_ENC_L4_DPORT_BE = MAE_FIELD_ENC_L4_DPORT,
 	EFX_MAE_FIELD_ID_ENC_VNET_ID_BE = MAE_FIELD_ENC_VNET_ID,
+	EFX_MAE_FIELD_ID_OUTER_RULE_ID = MAE_FIELD_OUTER_RULE_ID,
 
 	EFX_MAE_FIELD_CAP_NIDS
 } efx_mae_field_cap_id_t;
@@ -506,6 +507,7 @@ static const efx_mae_mv_desc_t __efx_mae_action_rule_mv_desc_set[] = {
 	EFX_MAE_MV_DESC(L4_DPORT_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(TCP_FLAGS_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_VNET_ID_BE, EFX_MAE_FIELD_BE),
+	EFX_MAE_MV_DESC(OUTER_RULE_ID, EFX_MAE_FIELD_LE),
 
 #undef EFX_MAE_MV_DESC
 };
@@ -1380,6 +1382,201 @@ efx_mae_match_specs_class_cmp(
 
 	return (0);
 
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+efx_mae_outer_rule_insert(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_match_spec_t *spec,
+	__in			efx_tunnel_protocol_t encap_type,
+	__out			efx_mae_rule_id_t *or_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_OUTER_RULE_INSERT_IN_LENMAX_MCDI2,
+	    MC_CMD_MAE_OUTER_RULE_INSERT_OUT_LEN);
+	uint32_t encap_type_mcdi;
+	efx_mae_rule_id_t or_id;
+	size_t offset;
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(sizeof (or_idp->id) ==
+	    MC_CMD_MAE_OUTER_RULE_INSERT_OUT_OR_ID_LEN);
+
+	EFX_STATIC_ASSERT(EFX_MAE_RSRC_ID_INVALID ==
+	    MC_CMD_MAE_OUTER_RULE_INSERT_OUT_OUTER_RULE_ID_NULL);
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (spec->emms_type != EFX_MAE_RULE_OUTER) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	switch (encap_type) {
+	case EFX_TUNNEL_PROTOCOL_NONE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_NONE;
+		break;
+	case EFX_TUNNEL_PROTOCOL_VXLAN:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_VXLAN;
+		break;
+	case EFX_TUNNEL_PROTOCOL_GENEVE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_GENEVE;
+		break;
+	case EFX_TUNNEL_PROTOCOL_NVGRE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_NVGRE;
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail3;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_OUTER_RULE_INSERT;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_OUTER_RULE_INSERT_IN_LENMAX_MCDI2;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_OUTER_RULE_INSERT_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req,
+	    MAE_OUTER_RULE_INSERT_IN_ENCAP_TYPE, encap_type_mcdi);
+
+	MCDI_IN_SET_DWORD(req, MAE_OUTER_RULE_INSERT_IN_PRIO, spec->emms_prio);
+
+	/*
+	 * Mask-value pairs have been stored in the byte order needed for the
+	 * MCDI request and are thus safe to be copied directly to the buffer.
+	 * The library cares about byte order in efx_mae_match_spec_field_set().
+	 */
+	EFX_STATIC_ASSERT(sizeof (spec->emms_mask_value_pairs.outer) >=
+	    MAE_ENC_FIELD_PAIRS_LEN);
+	offset = MC_CMD_MAE_OUTER_RULE_INSERT_IN_FIELD_MATCH_CRITERIA_OFST;
+	memcpy(payload + offset, spec->emms_mask_value_pairs.outer,
+	    MAE_ENC_FIELD_PAIRS_LEN);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail4;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_MAE_OUTER_RULE_INSERT_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail5;
+	}
+
+	or_id.id = MCDI_OUT_DWORD(req, MAE_OUTER_RULE_INSERT_OUT_OR_ID);
+	if (or_id.id == EFX_MAE_RSRC_ID_INVALID) {
+		rc = ENOENT;
+		goto fail6;
+	}
+
+	or_idp->id = or_id.id;
+
+	return (0);
+
+fail6:
+	EFSYS_PROBE(fail6);
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+efx_mae_outer_rule_remove(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_rule_id_t *or_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_OUTER_RULE_REMOVE_IN_LEN(1),
+	    MC_CMD_MAE_OUTER_RULE_REMOVE_OUT_LEN(1));
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_OUTER_RULE_REMOVE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_OUTER_RULE_REMOVE_IN_LEN(1);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_OUTER_RULE_REMOVE_OUT_LEN(1);
+
+	MCDI_IN_SET_DWORD(req, MAE_OUTER_RULE_REMOVE_IN_OR_ID, or_idp->id);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	if (MCDI_OUT_DWORD(req, MAE_OUTER_RULE_REMOVE_OUT_REMOVED_OR_ID) !=
+	    or_idp->id) {
+		/* Firmware failed to remove the outer rule. */
+		rc = EAGAIN;
+		goto fail3;
+	}
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_match_spec_outer_rule_id_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				const efx_mae_rule_id_t *or_idp)
+{
+	uint32_t full_mask = UINT32_MAX;
+	efx_rc_t rc;
+
+	if (spec->emms_type != EFX_MAE_RULE_ACTION) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (or_idp == NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	rc = efx_mae_match_spec_field_set(spec, EFX_MAE_FIELD_OUTER_RULE_ID,
+	    sizeof (or_idp->id), (const uint8_t *)&or_idp->id,
+	    sizeof (full_mask), (const uint8_t *)&full_mask);
+	if (rc != 0)
+		goto fail3;
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:

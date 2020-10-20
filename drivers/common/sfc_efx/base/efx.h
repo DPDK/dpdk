@@ -4137,6 +4137,7 @@ typedef enum efx_mae_field_id_e {
 	EFX_MAE_FIELD_ENC_L4_SPORT_BE,
 	EFX_MAE_FIELD_ENC_L4_DPORT_BE,
 	EFX_MAE_FIELD_ENC_VNET_ID_BE,
+	EFX_MAE_FIELD_OUTER_RULE_ID,
 
 	EFX_MAE_FIELD_NIDS
 } efx_mae_field_id_t;
@@ -4297,6 +4298,26 @@ efx_mae_match_specs_class_cmp(
 typedef struct efx_mae_rule_id_s {
 	uint32_t id;
 } efx_mae_rule_id_t;
+
+LIBEFX_API
+extern	__checkReturn		efx_rc_t
+efx_mae_outer_rule_insert(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_match_spec_t *spec,
+	__in			efx_tunnel_protocol_t encap_type,
+	__out			efx_mae_rule_id_t *or_idp);
+
+LIBEFX_API
+extern	__checkReturn		efx_rc_t
+efx_mae_outer_rule_remove(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_rule_id_t *or_idp);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_match_spec_outer_rule_id_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				const efx_mae_rule_id_t *or_idp);
 
 /* Action set ID */
 typedef struct efx_mae_aset_id_s {
