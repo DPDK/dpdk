@@ -208,6 +208,8 @@ Supported pattern items (***transfer*** rules):
 - IPV6 (source/destination addresses, IP transport protocol,
   traffic class, hop limit)
 
+- TCP (source/destination ports, TCP header length + TCP flags)
+
 Supported actions (***transfer*** rules):
 
 - OF_POP_VLAN

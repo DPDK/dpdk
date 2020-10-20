@@ -123,10 +123,23 @@ struct sfc_mae_pattern_data {
 	/**
 	 * The following two fields keep track of L3 "proto" mask and value.
 	 * The corresponding fields get filled in MAE match specification
-	 * at the end of parsing.
+	 * at the end of parsing. Also, the information is used by a
+	 * post-check to enforce consistency requirements:
+	 *
+	 * - If a L3 item is followed by an item TCP, the former has
+	 *   its "proto" set to either 0x06/0xff or 0x00/0x00.
 	 */
 	uint8_t				l3_next_proto_value;
 	uint8_t				l3_next_proto_mask;
+
+	/*
+	 * L4 requirement for L3 item's "proto".
+	 * This contains one of:
+	 * - 0x06/0xff: TCP
+	 * - 0x00/0x00: no L4 item
+	 */
+	uint8_t				l3_next_proto_restriction_value;
+	uint8_t				l3_next_proto_restriction_mask;
 };
 
 struct sfc_mae_parse_ctx {
