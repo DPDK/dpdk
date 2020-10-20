@@ -735,6 +735,30 @@ sfc_mae_rule_parse_action_phy_port(struct sfc_adapter *sa,
 }
 
 static int
+sfc_mae_rule_parse_action_pf_vf(struct sfc_adapter *sa,
+				const struct rte_flow_action_vf *vf_conf,
+				efx_mae_actions_t *spec)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	efx_mport_sel_t mport;
+	uint32_t vf;
+	int rc;
+
+	if (vf_conf == NULL)
+		vf = EFX_PCI_VF_INVALID;
+	else if (vf_conf->original != 0)
+		vf = encp->enc_vf;
+	else
+		vf = vf_conf->id;
+
+	rc = efx_mae_mport_by_pcie_function(encp->enc_pf, vf, &mport);
+	if (rc != 0)
+		return rc;
+
+	return efx_mae_action_set_populate_deliver(spec, &mport);
+}
+
+static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
 			  struct sfc_mae_actions_bundle *bundle,
@@ -778,6 +802,16 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PHY_PORT,
 				       bundle->actions_mask);
 		rc = sfc_mae_rule_parse_action_phy_port(sa, action->conf, spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_PF:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PF,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_pf_vf(sa, NULL, spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_VF:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_VF,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_pf_vf(sa, action->conf, spec);
 		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,

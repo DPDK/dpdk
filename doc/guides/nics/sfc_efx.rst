@@ -214,6 +214,10 @@ Supported actions (***transfer*** rules):
 
 - PHY_PORT
 
+- PF
+
+- VF
+
 Validating flow rules depends on the firmware variant.
 
 The :ref:`flow_isolated_mode` is supported.
