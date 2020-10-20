@@ -159,6 +159,9 @@ typedef int (sfc_flow_parse_cb_t)(struct rte_eth_dev *dev,
 				  struct rte_flow *flow,
 				  struct rte_flow_error *error);
 
+typedef int (sfc_flow_verify_cb_t)(struct sfc_adapter *sa,
+				   struct rte_flow *flow);
+
 typedef void (sfc_flow_cleanup_cb_t)(struct sfc_adapter *sa,
 				     struct rte_flow *flow);
 

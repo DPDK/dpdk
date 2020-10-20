@@ -27,6 +27,7 @@
 
 struct sfc_flow_ops_by_spec {
 	sfc_flow_parse_cb_t	*parse;
+	sfc_flow_verify_cb_t	*verify;
 	sfc_flow_cleanup_cb_t	*cleanup;
 	sfc_flow_insert_cb_t	*insert;
 	sfc_flow_remove_cb_t	*remove;
@@ -39,6 +40,7 @@ static sfc_flow_remove_cb_t sfc_flow_filter_remove;
 
 static const struct sfc_flow_ops_by_spec sfc_flow_ops_filter = {
 	.parse = sfc_flow_parse_rte_to_filter,
+	.verify = NULL,
 	.cleanup = NULL,
 	.insert = sfc_flow_filter_insert,
 	.remove = sfc_flow_filter_remove,
@@ -46,6 +48,7 @@ static const struct sfc_flow_ops_by_spec sfc_flow_ops_filter = {
 
 static const struct sfc_flow_ops_by_spec sfc_flow_ops_mae = {
 	.parse = sfc_flow_parse_rte_to_mae,
+	.verify = sfc_mae_flow_verify,
 	.cleanup = sfc_mae_flow_cleanup,
 	.insert = NULL,
 	.remove = NULL,
@@ -2544,6 +2547,41 @@ sfc_flow_remove(struct sfc_adapter *sa, struct rte_flow *flow,
 }
 
 static int
+sfc_flow_verify(struct sfc_adapter *sa, struct rte_flow *flow,
+		struct rte_flow_error *error)
+{
+	const struct sfc_flow_ops_by_spec *ops;
+	int rc = 0;
+
+	ops = sfc_flow_get_ops_by_spec(flow);
+	if (ops == NULL) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "No backend to handle this flow");
+		return -rte_errno;
+	}
+
+	if (ops->verify != NULL) {
+		/*
+		 * Use locking since verify method may need to
+		 * access the list of already created rules.
+		 */
+		sfc_adapter_lock(sa);
+		rc = ops->verify(sa, flow);
+		sfc_adapter_unlock(sa);
+	}
+
+	if (rc != 0) {
+		rte_flow_error_set(error, rc,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Failed to verify flow validity with FW");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
 sfc_flow_validate(struct rte_eth_dev *dev,
 		  const struct rte_flow_attr *attr,
 		  const struct rte_flow_item pattern[],
@@ -2559,6 +2597,8 @@ sfc_flow_validate(struct rte_eth_dev *dev,
 		return -rte_errno;
 
 	rc = sfc_flow_parse(dev, attr, pattern, actions, flow, error);
+	if (rc == 0)
+		rc = sfc_flow_verify(sa, flow, error);
 
 	sfc_flow_free(sa, flow);
 

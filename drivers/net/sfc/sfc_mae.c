@@ -148,3 +148,78 @@ fail_parse_pattern:
 fail_init_match_spec_action:
 	return rc;
 }
+
+static bool
+sfc_mae_rules_class_cmp(struct sfc_adapter *sa,
+			const efx_mae_match_spec_t *left,
+			const efx_mae_match_spec_t *right)
+{
+	bool have_same_class;
+	int rc;
+
+	rc = efx_mae_match_specs_class_cmp(sa->nic, left, right,
+					   &have_same_class);
+
+	return (rc == 0) ? have_same_class : false;
+}
+
+static int
+sfc_mae_action_rule_class_verify(struct sfc_adapter *sa,
+				 struct sfc_flow_spec_mae *spec)
+{
+	const struct rte_flow *entry;
+
+	TAILQ_FOREACH_REVERSE(entry, &sa->flow_list, sfc_flow_list, entries) {
+		const struct sfc_flow_spec *entry_spec = &entry->spec;
+		const struct sfc_flow_spec_mae *es_mae = &entry_spec->mae;
+		const efx_mae_match_spec_t *left = es_mae->match_spec;
+		const efx_mae_match_spec_t *right = spec->match_spec;
+
+		switch (entry_spec->type) {
+		case SFC_FLOW_SPEC_FILTER:
+			/* Ignore VNIC-level flows */
+			break;
+		case SFC_FLOW_SPEC_MAE:
+			if (sfc_mae_rules_class_cmp(sa, left, right))
+				return 0;
+			break;
+		default:
+			SFC_ASSERT(false);
+		}
+	}
+
+	sfc_info(sa, "for now, the HW doesn't support rule validation, and HW "
+		 "support for inner frame pattern items is not guaranteed; "
+		 "other than that, the items are valid from SW standpoint");
+	return 0;
+}
+
+/**
+ * Confirm that a given flow can be accepted by the FW.
+ *
+ * @param sa
+ *   Software adapter context
+ * @param flow
+ *   Flow to be verified
+ * @return
+ *   Zero on success and non-zero in the case of error.
+ *   A special value of EAGAIN indicates that the adapter is
+ *   not in started state. This state is compulsory because
+ *   it only makes sense to compare the rule class of the flow
+ *   being validated with classes of the active rules.
+ *   Such classes are wittingly supported by the FW.
+ */
+int
+sfc_mae_flow_verify(struct sfc_adapter *sa,
+		    struct rte_flow *flow)
+{
+	struct sfc_flow_spec *spec = &flow->spec;
+	struct sfc_flow_spec_mae *spec_mae = &spec->mae;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	if (sa->state != SFC_ADAPTER_STARTED)
+		return EAGAIN;
+
+	return sfc_mae_action_rule_class_verify(sa, spec_mae);
+}

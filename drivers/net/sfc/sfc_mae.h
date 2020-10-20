@@ -46,6 +46,7 @@ int sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 			       const struct rte_flow_item pattern[],
 			       struct sfc_flow_spec_mae *spec,
 			       struct rte_flow_error *error);
+sfc_flow_verify_cb_t sfc_mae_flow_verify;
 
 #ifdef __cplusplus
 }
