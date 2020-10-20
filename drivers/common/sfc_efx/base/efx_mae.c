@@ -434,4 +434,100 @@ efx_mae_match_spec_is_valid(
 	return (is_valid);
 }
 
+	__checkReturn			efx_rc_t
+efx_mae_match_specs_class_cmp(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_match_spec_t *left,
+	__in				const efx_mae_match_spec_t *right,
+	__out				boolean_t *have_same_classp)
+{
+	efx_mae_t *maep = enp->en_maep;
+	unsigned int field_ncaps = maep->em_max_nfields;
+	const efx_mae_field_cap_t *field_caps;
+	const efx_mae_mv_desc_t *desc_setp;
+	unsigned int desc_set_nentries;
+	boolean_t have_same_class = B_TRUE;
+	efx_mae_field_id_t field_id;
+	const uint8_t *mvpl;
+	const uint8_t *mvpr;
+	efx_rc_t rc;
+
+	switch (left->emms_type) {
+	case EFX_MAE_RULE_ACTION:
+		field_caps = maep->em_action_rule_field_caps;
+		desc_setp = __efx_mae_action_rule_mv_desc_set;
+		desc_set_nentries =
+		    EFX_ARRAY_SIZE(__efx_mae_action_rule_mv_desc_set);
+		mvpl = left->emms_mask_value_pairs.action;
+		mvpr = right->emms_mask_value_pairs.action;
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (field_caps == NULL) {
+		rc = EAGAIN;
+		goto fail2;
+	}
+
+	if (left->emms_type != right->emms_type ||
+	    left->emms_prio != right->emms_prio) {
+		/*
+		 * Rules of different types can never map to the same class.
+		 *
+		 * The FW can support some set of match criteria for one
+		 * priority and not support the very same set for
+		 * another priority. Thus, two rules which have
+		 * different priorities can never map to
+		 * the same class.
+		 */
+		*have_same_classp = B_FALSE;
+		return (0);
+	}
+
+	for (field_id = 0; field_id < desc_set_nentries; ++field_id) {
+		const efx_mae_mv_desc_t *descp = &desc_setp[field_id];
+		efx_mae_field_cap_id_t field_cap_id = descp->emmd_field_cap_id;
+
+		if (descp->emmd_mask_size == 0)
+			continue; /* Skip array gap */
+
+		if (field_cap_id >= field_ncaps)
+			break;
+
+		if (field_caps[field_cap_id].emfc_mask_affects_class) {
+			const uint8_t *lmaskp = mvpl + descp->emmd_mask_offset;
+			const uint8_t *rmaskp = mvpr + descp->emmd_mask_offset;
+			size_t mask_size = descp->emmd_mask_size;
+
+			if (memcmp(lmaskp, rmaskp, mask_size) != 0) {
+				have_same_class = B_FALSE;
+				break;
+			}
+		}
+
+		if (field_caps[field_cap_id].emfc_match_affects_class) {
+			const uint8_t *lvalp = mvpl + descp->emmd_value_offset;
+			const uint8_t *rvalp = mvpr + descp->emmd_value_offset;
+			size_t value_size = descp->emmd_value_size;
+
+			if (memcmp(lvalp, rvalp, value_size) != 0) {
+				have_same_class = B_FALSE;
+				break;
+			}
+		}
+	}
+
+	*have_same_classp = have_same_class;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 #endif /* EFSYS_OPT_MAE */
