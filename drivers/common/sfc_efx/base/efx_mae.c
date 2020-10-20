@@ -283,6 +283,9 @@ efx_mae_match_spec_fini(
 /* Named identifiers which are valid indices to efx_mae_field_cap_t */
 typedef enum efx_mae_field_cap_id_e {
 	EFX_MAE_FIELD_ID_INGRESS_MPORT_SELECTOR = MAE_FIELD_INGRESS_PORT,
+	EFX_MAE_FIELD_ID_ETHER_TYPE_BE = MAE_FIELD_ETHER_TYPE,
+	EFX_MAE_FIELD_ID_ETH_SADDR_BE = MAE_FIELD_ETH_SADDR,
+	EFX_MAE_FIELD_ID_ETH_DADDR_BE = MAE_FIELD_ETH_DADDR,
 
 	EFX_MAE_FIELD_CAP_NIDS
 } efx_mae_field_cap_id_t;
@@ -325,6 +328,9 @@ static const efx_mae_mv_desc_t __efx_mae_action_rule_mv_desc_set[] = {
 	}
 
 	EFX_MAE_MV_DESC(INGRESS_MPORT_SELECTOR, EFX_MAE_FIELD_LE),
+	EFX_MAE_MV_DESC(ETHER_TYPE_BE, EFX_MAE_FIELD_BE),
+	EFX_MAE_MV_DESC(ETH_SADDR_BE, EFX_MAE_FIELD_BE),
+	EFX_MAE_MV_DESC(ETH_DADDR_BE, EFX_MAE_FIELD_BE),
 
 #undef EFX_MAE_MV_DESC
 };

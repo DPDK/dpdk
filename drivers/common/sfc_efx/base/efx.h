@@ -4082,6 +4082,9 @@ efx_mae_match_spec_fini(
 
 typedef enum efx_mae_field_id_e {
 	EFX_MAE_FIELD_INGRESS_MPORT_SELECTOR = 0,
+	EFX_MAE_FIELD_ETHER_TYPE_BE,
+	EFX_MAE_FIELD_ETH_SADDR_BE,
+	EFX_MAE_FIELD_ETH_DADDR_BE,
 
 	EFX_MAE_FIELD_NIDS
 } efx_mae_field_id_t;
