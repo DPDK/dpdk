@@ -4136,6 +4136,7 @@ typedef enum efx_mae_field_id_e {
 	EFX_MAE_FIELD_ENC_DST_IP6_BE,
 	EFX_MAE_FIELD_ENC_L4_SPORT_BE,
 	EFX_MAE_FIELD_ENC_L4_DPORT_BE,
+	EFX_MAE_FIELD_ENC_VNET_ID_BE,
 
 	EFX_MAE_FIELD_NIDS
 } efx_mae_field_id_t;
