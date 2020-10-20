@@ -2989,7 +2989,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 
 	/* Configure RSS for sctp4 with src/dst addr and port as input set */
 	if (rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) {
-		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, ICE_FLOW_HASH_IPV4,
+		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, ICE_HASH_SCTP_IPV4,
 				      ICE_FLOW_SEG_HDR_SCTP |
 				      ICE_FLOW_SEG_HDR_IPV4 |
 				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
@@ -3000,7 +3000,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 
 	/* Configure RSS for sctp6 with src/dst addr and port as input set */
 	if (rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) {
-		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, ICE_FLOW_HASH_IPV6,
+		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, ICE_HASH_SCTP_IPV6,
 				      ICE_FLOW_SEG_HDR_SCTP |
 				      ICE_FLOW_SEG_HDR_IPV6 |
 				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
