@@ -202,6 +202,9 @@ Supported pattern items (***transfer*** rules):
 
 - VLAN (double-tagging is supported)
 
+- IPV4 (source/destination addresses, IP transport protocol,
+  type of service, time to live)
+
 Supported actions (***transfer*** rules):
 
 - OF_POP_VLAN

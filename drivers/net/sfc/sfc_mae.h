@@ -90,6 +90,10 @@ struct sfc_mae_pattern_data {
 	 *   values (0x88a8, 0x9100, 0x9200, 0x9300), and the outermost
 	 *   VLAN item must have "inner_type" set to TPID value 0x8100.
 	 *
+	 * - If a L2 item is followed by a L3 one, the former must
+	 *   indicate "type" ("inner_type") which corresponds to
+	 *   the protocol used in the L3 item, or 0x0000/0x0000.
+	 *
 	 * In turn, mapping between RTE convention (above requirements) and
 	 * MAE fields is non-trivial. The following scheme indicates
 	 * which item EtherTypes go to which MAE fields in the case
@@ -106,6 +110,22 @@ struct sfc_mae_pattern_data {
 	 */
 	struct sfc_mae_ethertype	ethertypes[SFC_MAE_L2_MAX_NITEMS];
 	unsigned int			nb_vlan_tags;
+
+	/**
+	 * L3 requirement for the innermost L2 item's "type" ("inner_type").
+	 * This contains one of:
+	 * - 0x0800/0xffff: IPV4
+	 * - 0x0000/0x0000: no L3 item
+	 */
+	struct sfc_mae_ethertype	innermost_ethertype_restriction;
+
+	/**
+	 * The following two fields keep track of L3 "proto" mask and value.
+	 * The corresponding fields get filled in MAE match specification
+	 * at the end of parsing.
+	 */
+	uint8_t				l3_next_proto_value;
+	uint8_t				l3_next_proto_mask;
 };
 
 struct sfc_mae_parse_ctx {

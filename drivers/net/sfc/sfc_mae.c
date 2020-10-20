@@ -312,6 +312,7 @@ static int
 sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 				  struct rte_flow_error *error)
 {
+	efx_mae_match_spec_t *efx_spec = ctx->match_spec_action;
 	struct sfc_mae_pattern_data *pdata = &ctx->pattern_data;
 	struct sfc_mae_ethertype *ethertypes = pdata->ethertypes;
 	const rte_be16_t supported_tpids[] = {
@@ -326,7 +327,18 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 	};
 	unsigned int nb_supported_tpids = RTE_DIM(supported_tpids);
 	unsigned int ethertype_idx;
+	const uint8_t *valuep;
+	const uint8_t *maskp;
 	int rc;
+
+	if (pdata->innermost_ethertype_restriction.mask != 0 &&
+	    pdata->nb_vlan_tags < SFC_MAE_MATCH_VLAN_MAX_NTAGS) {
+		/*
+		 * If a single item VLAN is followed by a L3 item, value
+		 * of "type" in item ETH can't be a double-tagging TPID.
+		 */
+		nb_supported_tpids = 1;
+	}
 
 	/*
 	 * sfc_mae_rule_parse_item_vlan() has already made sure
@@ -359,6 +371,21 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 		nb_supported_tpids = 1;
 	}
 
+	if (pdata->innermost_ethertype_restriction.mask == RTE_BE16(0xffff)) {
+		struct sfc_mae_ethertype *et = &ethertypes[ethertype_idx];
+
+		if (et->mask == 0) {
+			et->mask = RTE_BE16(0xffff);
+			et->value =
+			    pdata->innermost_ethertype_restriction.value;
+		} else if (et->mask != RTE_BE16(0xffff) ||
+			   et->value !=
+			   pdata->innermost_ethertype_restriction.value) {
+			rc = EINVAL;
+			goto fail;
+		}
+	}
+
 	/*
 	 * Now, when the number of VLAN tags is known, set fields
 	 * ETHER_TYPE, VLAN0_PROTO and VLAN1_PROTO so that the first
@@ -366,6 +393,16 @@ sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
 	 * and the last two are valid TPIDs (or 0x0000/0x0000).
 	 */
 	rc = sfc_mae_set_ethertypes(ctx);
+	if (rc != 0)
+		goto fail;
+
+	valuep = (const uint8_t *)&pdata->l3_next_proto_value;
+	maskp = (const uint8_t *)&pdata->l3_next_proto_mask;
+	rc = efx_mae_match_spec_field_set(efx_spec, EFX_MAE_FIELD_IP_PROTO,
+					  sizeof(pdata->l3_next_proto_value),
+					  valuep,
+					  sizeof(pdata->l3_next_proto_mask),
+					  maskp);
 	if (rc != 0)
 		goto fail;
 
@@ -832,6 +869,83 @@ sfc_mae_rule_parse_item_vlan(const struct rte_flow_item *item,
 				  ctx_mae->match_spec_action, error);
 }
 
+static const struct sfc_mae_field_locator flocs_ipv4[] = {
+	{
+		EFX_MAE_FIELD_SRC_IP4_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.src_addr),
+		offsetof(struct rte_flow_item_ipv4, hdr.src_addr),
+	},
+	{
+		EFX_MAE_FIELD_DST_IP4_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.dst_addr),
+		offsetof(struct rte_flow_item_ipv4, hdr.dst_addr),
+	},
+	{
+		/*
+		 * This locator is used only for building supported fields mask.
+		 * The field is handled by sfc_mae_rule_process_pattern_data().
+		 */
+		SFC_MAE_FIELD_HANDLING_DEFERRED,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.next_proto_id),
+		offsetof(struct rte_flow_item_ipv4, hdr.next_proto_id),
+	},
+	{
+		EFX_MAE_FIELD_IP_TOS,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4,
+				 hdr.type_of_service),
+		offsetof(struct rte_flow_item_ipv4, hdr.type_of_service),
+	},
+	{
+		EFX_MAE_FIELD_IP_TTL,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv4, hdr.time_to_live),
+		offsetof(struct rte_flow_item_ipv4, hdr.time_to_live),
+	},
+};
+
+static int
+sfc_mae_rule_parse_item_ipv4(const struct rte_flow_item *item,
+			     struct sfc_flow_parse_ctx *ctx,
+			     struct rte_flow_error *error)
+{
+	rte_be16_t ethertype_ipv4_be = RTE_BE16(RTE_ETHER_TYPE_IPV4);
+	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
+	struct sfc_mae_pattern_data *pdata = &ctx_mae->pattern_data;
+	struct rte_flow_item_ipv4 supp_mask;
+	const uint8_t *spec = NULL;
+	const uint8_t *mask = NULL;
+	int rc;
+
+	sfc_mae_item_build_supp_mask(flocs_ipv4, RTE_DIM(flocs_ipv4),
+				     &supp_mask, sizeof(supp_mask));
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec, (const void **)&mask,
+				 (const void *)&supp_mask,
+				 &rte_flow_item_ipv4_mask,
+				 sizeof(struct rte_flow_item_ipv4), error);
+	if (rc != 0)
+		return rc;
+
+	pdata->innermost_ethertype_restriction.value = ethertype_ipv4_be;
+	pdata->innermost_ethertype_restriction.mask = RTE_BE16(0xffff);
+
+	if (spec != NULL) {
+		const struct rte_flow_item_ipv4 *item_spec;
+		const struct rte_flow_item_ipv4 *item_mask;
+
+		item_spec = (const struct rte_flow_item_ipv4 *)spec;
+		item_mask = (const struct rte_flow_item_ipv4 *)mask;
+
+		pdata->l3_next_proto_value = item_spec->hdr.next_proto_id;
+		pdata->l3_next_proto_mask = item_mask->hdr.next_proto_id;
+	} else {
+		return 0;
+	}
+
+	return sfc_mae_parse_item(flocs_ipv4, RTE_DIM(flocs_ipv4), spec, mask,
+				  ctx_mae->match_spec_action, error);
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PORT_ID,
@@ -890,6 +1004,13 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.layer = SFC_FLOW_ITEM_L2,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_vlan,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_IPV4,
+		.prev_layer = SFC_FLOW_ITEM_L2,
+		.layer = SFC_FLOW_ITEM_L3,
+		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
+		.parse = sfc_mae_rule_parse_item_ipv4,
 	},
 };
 
