@@ -57,6 +57,7 @@ struct sfc_adapter;
 struct sfc_flow_spec;
 
 struct sfc_mae_parse_ctx {
+	struct sfc_adapter		*sa;
 	efx_mae_match_spec_t		*match_spec_action;
 	bool				match_mport_set;
 };

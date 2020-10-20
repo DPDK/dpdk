@@ -192,6 +192,10 @@ Supported pattern items (***transfer*** rules):
 
 - PHY_PORT (cannot repeat; conflicts with other traffic source items)
 
+- PF (cannot repeat; conflicts with other traffic source items)
+
+- VF (cannot repeat; conflicts with other traffic source items)
+
 - ETH
 
 Supported actions (***transfer*** rules):
