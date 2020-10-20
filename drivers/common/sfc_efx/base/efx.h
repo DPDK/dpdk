@@ -1603,11 +1603,13 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_assigned_port;
 } efx_nic_cfg_t;
 
-#define	EFX_VPORT_PCI_FUNCTION_IS_PF(configp) \
-	((configp)->evc_function == 0xffff)
+#define	EFX_PCI_VF_INVALID 0xffff
 
-#define	EFX_PCI_FUNCTION_IS_PF(_encp)	((_encp)->enc_vf == 0xffff)
-#define	EFX_PCI_FUNCTION_IS_VF(_encp)	((_encp)->enc_vf != 0xffff)
+#define	EFX_VPORT_PCI_FUNCTION_IS_PF(configp) \
+	((configp)->evc_function == EFX_PCI_VF_INVALID)
+
+#define	EFX_PCI_FUNCTION_IS_PF(_encp)	((_encp)->enc_vf == EFX_PCI_VF_INVALID)
+#define	EFX_PCI_FUNCTION_IS_VF(_encp)	((_encp)->enc_vf != EFX_PCI_VF_INVALID)
 
 #define	EFX_PCI_FUNCTION(_encp)	\
 	(EFX_PCI_FUNCTION_IS_PF(_encp) ? (_encp)->enc_pf : (_encp)->enc_vf)
@@ -3871,7 +3873,7 @@ typedef enum efx_vport_type_e {
 #define		EFX_VPORT_ID_INVALID	0
 
 typedef struct efx_vport_config_s {
-	/* Either VF index or 0xffff for PF */
+	/* Either VF index or EFX_PCI_VF_INVALID for PF */
 	uint16_t	evc_function;
 	/* VLAN ID of the associated function */
 	uint16_t	evc_vid;
