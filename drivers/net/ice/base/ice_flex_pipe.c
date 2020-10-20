@@ -1833,7 +1833,7 @@ ice_pkg_buf_reserve_section(struct ice_buf_build *bld, u16 count)
 	bld->reserved_section_table_entries += count;
 
 	data_end = LE16_TO_CPU(buf->data_end) +
-		   (count * sizeof(buf->section_entry[0]));
+		FLEX_ARRAY_SIZE(buf, section_entry, count);
 	buf->data_end = CPU_TO_LE16(data_end);
 
 	return ICE_SUCCESS;
