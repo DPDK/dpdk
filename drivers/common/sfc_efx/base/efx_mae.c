@@ -886,4 +886,132 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_mae_action_set_alloc(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_actions_t *spec,
+	__out				efx_mae_aset_id_t *aset_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ACTION_SET_ALLOC_IN_LEN,
+	    MC_CMD_MAE_ACTION_SET_ALLOC_OUT_LEN);
+	efx_mae_aset_id_t aset_id;
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ACTION_SET_ALLOC;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ACTION_SET_ALLOC_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ACTION_SET_ALLOC_OUT_LEN;
+
+	/*
+	 * TODO: Remove these EFX_MAE_RSRC_ID_INVALID assignments once the
+	 * corresponding resource types are supported by the implementation.
+	 * Use proper resource ID assignments instead.
+	 */
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ACTION_SET_ALLOC_IN_COUNTER_LIST_ID, EFX_MAE_RSRC_ID_INVALID);
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ACTION_SET_ALLOC_IN_COUNTER_ID, EFX_MAE_RSRC_ID_INVALID);
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ACTION_SET_ALLOC_IN_ENCAP_HEADER_ID, EFX_MAE_RSRC_ID_INVALID);
+
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ACTION_SET_ALLOC_IN_DELIVER, spec->ema_deliver_mport.sel);
+
+	MCDI_IN_SET_DWORD(req, MAE_ACTION_SET_ALLOC_IN_SRC_MAC_ID,
+	    MC_CMD_MAE_MAC_ADDR_ALLOC_OUT_MAC_ID_NULL);
+	MCDI_IN_SET_DWORD(req, MAE_ACTION_SET_ALLOC_IN_DST_MAC_ID,
+	    MC_CMD_MAE_MAC_ADDR_ALLOC_OUT_MAC_ID_NULL);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_MAE_ACTION_SET_ALLOC_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail3;
+	}
+
+	aset_id.id = MCDI_OUT_DWORD(req, MAE_ACTION_SET_ALLOC_OUT_AS_ID);
+	if (aset_id.id == EFX_MAE_RSRC_ID_INVALID) {
+		rc = ENOENT;
+		goto fail4;
+	}
+
+	aset_idp->id = aset_id.id;
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_set_free(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_aset_id_t *aset_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ACTION_SET_FREE_IN_LEN(1),
+	    MC_CMD_MAE_ACTION_SET_FREE_OUT_LEN(1));
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ACTION_SET_FREE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ACTION_SET_FREE_IN_LEN(1);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ACTION_SET_FREE_OUT_LEN(1);
+
+	MCDI_IN_SET_DWORD(req, MAE_ACTION_SET_FREE_IN_AS_ID, aset_idp->id);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	if (MCDI_OUT_DWORD(req, MAE_ACTION_SET_FREE_OUT_FREED_AS_ID) !=
+	    aset_idp->id) {
+		/* Firmware failed to free the action set. */
+		rc = EAGAIN;
+		goto fail3;
+	}
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 #endif /* EFSYS_OPT_MAE */

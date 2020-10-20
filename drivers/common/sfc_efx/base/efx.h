@@ -4191,6 +4191,26 @@ efx_mae_match_specs_class_cmp(
 	__in				const efx_mae_match_spec_t *right,
 	__out				boolean_t *have_same_classp);
 
+#define	EFX_MAE_RSRC_ID_INVALID	UINT32_MAX
+
+/* Action set ID */
+typedef struct efx_mae_aset_id_s {
+	uint32_t id;
+} efx_mae_aset_id_t;
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_alloc(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_actions_t *spec,
+	__out				efx_mae_aset_id_t *aset_idp);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_free(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_aset_id_t *aset_idp);
+
 #endif /* EFSYS_OPT_MAE */
 
 #ifdef	__cplusplus
