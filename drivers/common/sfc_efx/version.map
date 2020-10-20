@@ -86,6 +86,7 @@ INTERNAL {
 	efx_mac_up;
 
 	efx_mae_fini;
+	efx_mae_get_limits;
 	efx_mae_init;
 
 	efx_mcdi_fini;

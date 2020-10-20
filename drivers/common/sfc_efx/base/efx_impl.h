@@ -783,6 +783,7 @@ typedef struct efx_proxy_ops_s {
 #if EFSYS_OPT_MAE
 
 typedef struct efx_mae_s {
+	uint32_t			em_max_n_action_prios;
 } efx_mae_t;
 
 #endif /* EFSYS_OPT_MAE */
