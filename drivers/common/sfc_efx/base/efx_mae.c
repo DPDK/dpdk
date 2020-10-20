@@ -641,6 +641,147 @@ efx_mae_action_set_spec_fini(
 	EFSYS_KMEM_FREE(enp->en_esip, sizeof (*spec), spec);
 }
 
+static	__checkReturn			efx_rc_t
+efx_mae_action_set_add_deliver(
+	__in				efx_mae_actions_t *spec,
+	__in				size_t arg_size,
+	__in_bcount(arg_size)		const uint8_t *arg)
+{
+	efx_rc_t rc;
+
+	if (arg_size != sizeof (spec->ema_deliver_mport)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (arg == NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	memcpy(&spec->ema_deliver_mport, arg, arg_size);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+typedef struct efx_mae_action_desc_s {
+	/* Action specific handler */
+	efx_rc_t	(*emad_add)(efx_mae_actions_t *,
+				    size_t, const uint8_t *);
+} efx_mae_action_desc_t;
+
+static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
+	[EFX_MAE_ACTION_DELIVER] = {
+		.emad_add = efx_mae_action_set_add_deliver
+	}
+};
+
+static const uint32_t efx_mae_action_ordered_map =
+	(1U << EFX_MAE_ACTION_DELIVER);
+
+static const uint32_t efx_mae_action_repeat_map = 0;
+
+/*
+ * Add an action to an action set.
+ *
+ * This has to be invoked in the desired action order.
+ * An out-of-order action request will be turned down.
+ */
+static	__checkReturn			efx_rc_t
+efx_mae_action_set_spec_populate(
+	__in				efx_mae_actions_t *spec,
+	__in				efx_mae_action_t type,
+	__in				size_t arg_size,
+	__in_bcount(arg_size)		const uint8_t *arg)
+{
+	uint32_t action_mask;
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(EFX_MAE_NACTIONS <=
+	    (sizeof (efx_mae_action_ordered_map) * 8));
+	EFX_STATIC_ASSERT(EFX_MAE_NACTIONS <=
+	    (sizeof (efx_mae_action_repeat_map) * 8));
+
+	EFX_STATIC_ASSERT(EFX_MAE_ACTION_DELIVER + 1 == EFX_MAE_NACTIONS);
+
+	if (type >= EFX_ARRAY_SIZE(efx_mae_actions)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	action_mask = (1U << type);
+
+	if ((spec->ema_actions & action_mask) != 0) {
+		/* The action set already contains this action. */
+		if ((efx_mae_action_repeat_map & action_mask) == 0) {
+			/* Cannot add another non-repeatable action. */
+			rc = ENOTSUP;
+			goto fail2;
+		}
+	}
+
+	if ((efx_mae_action_ordered_map & action_mask) != 0) {
+		uint32_t later_actions_mask =
+			efx_mae_action_ordered_map &
+			~(action_mask | (action_mask - 1));
+
+		if ((spec->ema_actions & later_actions_mask) != 0) {
+			/* Cannot add an action after later ordered actions. */
+			rc = ENOTSUP;
+			goto fail3;
+		}
+	}
+
+	if (efx_mae_actions[type].emad_add != NULL) {
+		rc = efx_mae_actions[type].emad_add(spec, arg_size, arg);
+		if (rc != 0)
+			goto fail4;
+	}
+
+	spec->ema_actions |= action_mask;
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_deliver(
+	__in				efx_mae_actions_t *spec,
+	__in				const efx_mport_sel_t *mportp)
+{
+	const uint8_t *arg;
+	efx_rc_t rc;
+
+	if (mportp == NULL) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	arg = (const uint8_t *)&mportp->sel;
+
+	return (efx_mae_action_set_spec_populate(spec,
+	    EFX_MAE_ACTION_DELIVER, sizeof (mportp->sel), arg));
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 	__checkReturn			boolean_t
 efx_mae_action_set_specs_equal(
 	__in				const efx_mae_actions_t *left,

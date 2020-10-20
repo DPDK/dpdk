@@ -4094,11 +4094,14 @@ typedef struct efx_mport_sel_s {
 	uint32_t sel;
 } efx_mport_sel_t;
 
+#define	EFX_MPORT_NULL			(0U)
+
 /*
  * Get MPORT selector of a physical port.
  *
  * The resulting MPORT selector is opaque to the caller and can be
- * passed as an argument to efx_mae_match_spec_mport_set().
+ * passed as an argument to efx_mae_match_spec_mport_set()
+ * and efx_mae_action_set_populate_deliver().
  */
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
@@ -4162,6 +4165,12 @@ extern					void
 efx_mae_action_set_spec_fini(
 	__in				efx_nic_t *enp,
 	__in				efx_mae_actions_t *spec);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_deliver(
+	__in				efx_mae_actions_t *spec,
+	__in				const efx_mport_sel_t *mportp);
 
 LIBEFX_API
 extern	__checkReturn			boolean_t
