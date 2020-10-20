@@ -62,10 +62,57 @@ struct sfc_mae {
 struct sfc_adapter;
 struct sfc_flow_spec;
 
+/** This implementation supports double-tagging */
+#define SFC_MAE_MATCH_VLAN_MAX_NTAGS	(2)
+
+/** It is possible to keep track of one item ETH and two items VLAN */
+#define SFC_MAE_L2_MAX_NITEMS		(SFC_MAE_MATCH_VLAN_MAX_NTAGS + 1)
+
+/** Auxiliary entry format to keep track of L2 "type" ("inner_type") */
+struct sfc_mae_ethertype {
+	rte_be16_t	value;
+	rte_be16_t	mask;
+};
+
+struct sfc_mae_pattern_data {
+	/**
+	 * Keeps track of "type" ("inner_type") mask and value for each
+	 * parsed L2 item in a pattern. These values/masks get filled
+	 * in MAE match specification at the end of parsing. Also, this
+	 * information is used to conduct consistency checks:
+	 *
+	 * - If an item ETH is followed by a single item VLAN,
+	 *   the former must have "type" set to one of supported
+	 *   TPID values (0x8100, 0x88a8, 0x9100, 0x9200, 0x9300).
+	 *
+	 * - If an item ETH is followed by two items VLAN, the
+	 *   item ETH must have "type" set to one of supported TPID
+	 *   values (0x88a8, 0x9100, 0x9200, 0x9300), and the outermost
+	 *   VLAN item must have "inner_type" set to TPID value 0x8100.
+	 *
+	 * In turn, mapping between RTE convention (above requirements) and
+	 * MAE fields is non-trivial. The following scheme indicates
+	 * which item EtherTypes go to which MAE fields in the case
+	 * of single tag:
+	 *
+	 * ETH	(0x8100)	--> VLAN0_PROTO_BE
+	 * VLAN	(L3 EtherType)	--> ETHER_TYPE_BE
+	 *
+	 * Similarly, in the case of double tagging:
+	 *
+	 * ETH	(0x88a8)	--> VLAN0_PROTO_BE
+	 * VLAN	(0x8100)	--> VLAN1_PROTO_BE
+	 * VLAN	(L3 EtherType)	--> ETHER_TYPE_BE
+	 */
+	struct sfc_mae_ethertype	ethertypes[SFC_MAE_L2_MAX_NITEMS];
+	unsigned int			nb_vlan_tags;
+};
+
 struct sfc_mae_parse_ctx {
 	struct sfc_adapter		*sa;
 	efx_mae_match_spec_t		*match_spec_action;
 	bool				match_mport_set;
+	struct sfc_mae_pattern_data	pattern_data;
 };
 
 int sfc_mae_attach(struct sfc_adapter *sa);

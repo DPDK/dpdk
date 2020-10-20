@@ -261,6 +261,122 @@ sfc_mae_flow_cleanup(struct sfc_adapter *sa,
 }
 
 static int
+sfc_mae_set_ethertypes(struct sfc_mae_parse_ctx *ctx)
+{
+	efx_mae_match_spec_t *efx_spec = ctx->match_spec_action;
+	struct sfc_mae_pattern_data *pdata = &ctx->pattern_data;
+	const efx_mae_field_id_t field_ids[] = {
+		EFX_MAE_FIELD_VLAN0_PROTO_BE,
+		EFX_MAE_FIELD_VLAN1_PROTO_BE,
+	};
+	const struct sfc_mae_ethertype *et;
+	unsigned int i;
+	int rc;
+
+	/*
+	 * In accordance with RTE flow API convention, the innermost L2
+	 * item's "type" ("inner_type") is a L3 EtherType. If there is
+	 * no L3 item, it's 0x0000/0x0000.
+	 */
+	et = &pdata->ethertypes[pdata->nb_vlan_tags];
+	rc = efx_mae_match_spec_field_set(efx_spec, EFX_MAE_FIELD_ETHER_TYPE_BE,
+					  sizeof(et->value),
+					  (const uint8_t *)&et->value,
+					  sizeof(et->mask),
+					  (const uint8_t *)&et->mask);
+	if (rc != 0)
+		return rc;
+
+	/*
+	 * sfc_mae_rule_parse_item_vlan() has already made sure
+	 * that pdata->nb_vlan_tags does not exceed this figure.
+	 */
+	RTE_BUILD_BUG_ON(SFC_MAE_MATCH_VLAN_MAX_NTAGS != 2);
+
+	for (i = 0; i < pdata->nb_vlan_tags; ++i) {
+		et = &pdata->ethertypes[i];
+
+		rc = efx_mae_match_spec_field_set(efx_spec, field_ids[i],
+						  sizeof(et->value),
+						  (const uint8_t *)&et->value,
+						  sizeof(et->mask),
+						  (const uint8_t *)&et->mask);
+		if (rc != 0)
+			return rc;
+	}
+
+	return 0;
+}
+
+static int
+sfc_mae_rule_process_pattern_data(struct sfc_mae_parse_ctx *ctx,
+				  struct rte_flow_error *error)
+{
+	struct sfc_mae_pattern_data *pdata = &ctx->pattern_data;
+	struct sfc_mae_ethertype *ethertypes = pdata->ethertypes;
+	const rte_be16_t supported_tpids[] = {
+		/* VLAN standard TPID (always the first element) */
+		RTE_BE16(RTE_ETHER_TYPE_VLAN),
+
+		/* Double-tagging TPIDs */
+		RTE_BE16(RTE_ETHER_TYPE_QINQ),
+		RTE_BE16(RTE_ETHER_TYPE_QINQ1),
+		RTE_BE16(RTE_ETHER_TYPE_QINQ2),
+		RTE_BE16(RTE_ETHER_TYPE_QINQ3),
+	};
+	unsigned int nb_supported_tpids = RTE_DIM(supported_tpids);
+	unsigned int ethertype_idx;
+	int rc;
+
+	/*
+	 * sfc_mae_rule_parse_item_vlan() has already made sure
+	 * that pdata->nb_vlan_tags does not exceed this figure.
+	 */
+	RTE_BUILD_BUG_ON(SFC_MAE_MATCH_VLAN_MAX_NTAGS != 2);
+
+	for (ethertype_idx = 0;
+	     ethertype_idx < pdata->nb_vlan_tags; ++ethertype_idx) {
+		unsigned int tpid_idx;
+
+		/* Exact match is supported only. */
+		if (ethertypes[ethertype_idx].mask != RTE_BE16(0xffff)) {
+			rc = EINVAL;
+			goto fail;
+		}
+
+		for (tpid_idx = pdata->nb_vlan_tags - ethertype_idx - 1;
+		     tpid_idx < nb_supported_tpids; ++tpid_idx) {
+			if (ethertypes[ethertype_idx].value ==
+			    supported_tpids[tpid_idx])
+				break;
+		}
+
+		if (tpid_idx == nb_supported_tpids) {
+			rc = EINVAL;
+			goto fail;
+		}
+
+		nb_supported_tpids = 1;
+	}
+
+	/*
+	 * Now, when the number of VLAN tags is known, set fields
+	 * ETHER_TYPE, VLAN0_PROTO and VLAN1_PROTO so that the first
+	 * one is either a valid L3 EtherType (or 0x0000/0x0000),
+	 * and the last two are valid TPIDs (or 0x0000/0x0000).
+	 */
+	rc = sfc_mae_set_ethertypes(ctx);
+	if (rc != 0)
+		goto fail;
+
+	return 0;
+
+fail:
+	return rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				  "Failed to process pattern data");
+}
+
+static int
 sfc_mae_rule_parse_item_port_id(const struct rte_flow_item *item,
 				struct sfc_flow_parse_ctx *ctx,
 				struct rte_flow_error *error)
@@ -486,6 +602,16 @@ sfc_mae_rule_parse_item_vf(const struct rte_flow_item *item,
 	return 0;
 }
 
+/*
+ * Having this field ID in a field locator means that this
+ * locator cannot be used to actually set the field at the
+ * time when the corresponding item gets encountered. Such
+ * fields get stashed in the parsing context instead. This
+ * is required to resolve dependencies between the stashed
+ * fields. See sfc_mae_rule_process_pattern_data().
+ */
+#define SFC_MAE_FIELD_HANDLING_DEFERRED	EFX_MAE_FIELD_NIDS
+
 struct sfc_mae_field_locator {
 	efx_mae_field_id_t		field_id;
 	size_t				size;
@@ -522,6 +648,9 @@ sfc_mae_parse_item(const struct sfc_mae_field_locator *field_locators,
 	for (i = 0; i < nb_field_locators; ++i) {
 		const struct sfc_mae_field_locator *fl = &field_locators[i];
 
+		if (fl->field_id == SFC_MAE_FIELD_HANDLING_DEFERRED)
+			continue;
+
 		rc = efx_mae_match_spec_field_set(efx_spec, fl->field_id,
 						  fl->size, spec + fl->ofst,
 						  fl->size, mask + fl->ofst);
@@ -539,7 +668,11 @@ sfc_mae_parse_item(const struct sfc_mae_field_locator *field_locators,
 
 static const struct sfc_mae_field_locator flocs_eth[] = {
 	{
-		EFX_MAE_FIELD_ETHER_TYPE_BE,
+		/*
+		 * This locator is used only for building supported fields mask.
+		 * The field is handled by sfc_mae_rule_process_pattern_data().
+		 */
+		SFC_MAE_FIELD_HANDLING_DEFERRED,
 		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, type),
 		offsetof(struct rte_flow_item_eth, type),
 	},
@@ -577,11 +710,125 @@ sfc_mae_rule_parse_item_eth(const struct rte_flow_item *item,
 	if (rc != 0)
 		return rc;
 
-	/* If "spec" is not set, could be any Ethernet */
-	if (spec == NULL)
+	if (spec != NULL) {
+		struct sfc_mae_pattern_data *pdata = &ctx_mae->pattern_data;
+		struct sfc_mae_ethertype *ethertypes = pdata->ethertypes;
+		const struct rte_flow_item_eth *item_spec;
+		const struct rte_flow_item_eth *item_mask;
+
+		item_spec = (const struct rte_flow_item_eth *)spec;
+		item_mask = (const struct rte_flow_item_eth *)mask;
+
+		ethertypes[0].value = item_spec->type;
+		ethertypes[0].mask = item_mask->type;
+	} else {
+		/*
+		 * The specification is empty. This is wrong in the case
+		 * when there are more network patterns in line. Other
+		 * than that, any Ethernet can match. All of that is
+		 * checked at the end of parsing.
+		 */
 		return 0;
+	}
 
 	return sfc_mae_parse_item(flocs_eth, RTE_DIM(flocs_eth), spec, mask,
+				  ctx_mae->match_spec_action, error);
+}
+
+static const struct sfc_mae_field_locator flocs_vlan[] = {
+	/* Outermost tag */
+	{
+		EFX_MAE_FIELD_VLAN0_TCI_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, tci),
+		offsetof(struct rte_flow_item_vlan, tci),
+	},
+	{
+		/*
+		 * This locator is used only for building supported fields mask.
+		 * The field is handled by sfc_mae_rule_process_pattern_data().
+		 */
+		SFC_MAE_FIELD_HANDLING_DEFERRED,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, inner_type),
+		offsetof(struct rte_flow_item_vlan, inner_type),
+	},
+
+	/* Innermost tag */
+	{
+		EFX_MAE_FIELD_VLAN1_TCI_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, tci),
+		offsetof(struct rte_flow_item_vlan, tci),
+	},
+	{
+		/*
+		 * This locator is used only for building supported fields mask.
+		 * The field is handled by sfc_mae_rule_process_pattern_data().
+		 */
+		SFC_MAE_FIELD_HANDLING_DEFERRED,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_vlan, inner_type),
+		offsetof(struct rte_flow_item_vlan, inner_type),
+	},
+};
+
+static int
+sfc_mae_rule_parse_item_vlan(const struct rte_flow_item *item,
+			     struct sfc_flow_parse_ctx *ctx,
+			     struct rte_flow_error *error)
+{
+	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
+	struct sfc_mae_pattern_data *pdata = &ctx_mae->pattern_data;
+	const struct sfc_mae_field_locator *flocs;
+	struct rte_flow_item_vlan supp_mask;
+	const uint8_t *spec = NULL;
+	const uint8_t *mask = NULL;
+	unsigned int nb_flocs;
+	int rc;
+
+	RTE_BUILD_BUG_ON(SFC_MAE_MATCH_VLAN_MAX_NTAGS != 2);
+
+	if (pdata->nb_vlan_tags == SFC_MAE_MATCH_VLAN_MAX_NTAGS) {
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Can't match that many VLAN tags");
+	}
+
+	nb_flocs = RTE_DIM(flocs_vlan) / SFC_MAE_MATCH_VLAN_MAX_NTAGS;
+	flocs = flocs_vlan + pdata->nb_vlan_tags * nb_flocs;
+
+	/* If parsing fails, this can remain incremented. */
+	++pdata->nb_vlan_tags;
+
+	sfc_mae_item_build_supp_mask(flocs, nb_flocs,
+				     &supp_mask, sizeof(supp_mask));
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec, (const void **)&mask,
+				 (const void *)&supp_mask,
+				 &rte_flow_item_vlan_mask,
+				 sizeof(struct rte_flow_item_vlan), error);
+	if (rc != 0)
+		return rc;
+
+	if (spec != NULL) {
+		struct sfc_mae_ethertype *ethertypes = pdata->ethertypes;
+		const struct rte_flow_item_vlan *item_spec;
+		const struct rte_flow_item_vlan *item_mask;
+
+		item_spec = (const struct rte_flow_item_vlan *)spec;
+		item_mask = (const struct rte_flow_item_vlan *)mask;
+
+		ethertypes[pdata->nb_vlan_tags].value = item_spec->inner_type;
+		ethertypes[pdata->nb_vlan_tags].mask = item_mask->inner_type;
+	} else {
+		/*
+		 * The specification is empty. This is wrong in the case
+		 * when there are more network patterns in line. Other
+		 * than that, any Ethernet can match. All of that is
+		 * checked at the end of parsing.
+		 */
+		return 0;
+	}
+
+	return sfc_mae_parse_item(flocs, nb_flocs, spec, mask,
 				  ctx_mae->match_spec_action, error);
 }
 
@@ -637,6 +884,13 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_eth,
 	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_VLAN,
+		.prev_layer = SFC_FLOW_ITEM_L2,
+		.layer = SFC_FLOW_ITEM_L2,
+		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
+		.parse = sfc_mae_rule_parse_item_vlan,
+	},
 };
 
 int
@@ -670,6 +924,10 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_parse_pattern;
 
+	rc = sfc_mae_rule_process_pattern_data(&ctx_mae, error);
+	if (rc != 0)
+		goto fail_process_pattern_data;
+
 	if (!efx_mae_match_spec_is_valid(sa->nic, ctx_mae.match_spec_action)) {
 		rc = rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ITEM, NULL,
@@ -682,6 +940,7 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	return 0;
 
 fail_validate_match_spec_action:
+fail_process_pattern_data:
 fail_parse_pattern:
 	efx_mae_match_spec_fini(sa->nic, ctx_mae.match_spec_action);
 
