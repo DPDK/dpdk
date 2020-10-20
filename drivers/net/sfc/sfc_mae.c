@@ -475,6 +475,9 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	int rc;
 
 	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+		rc = efx_mae_action_set_populate_vlan_pop(spec);
+		break;
 	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		rc = sfc_mae_rule_parse_action_phy_port(sa, action->conf, spec);
 		break;

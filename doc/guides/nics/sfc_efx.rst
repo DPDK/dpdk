@@ -196,6 +196,8 @@ Supported pattern items (***transfer*** rules):
 
 Supported actions (***transfer*** rules):
 
+- OF_POP_VLAN
+
 - PHY_PORT
 
 Validating flow rules depends on the firmware variant.
