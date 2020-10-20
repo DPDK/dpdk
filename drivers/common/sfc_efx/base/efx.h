@@ -4212,6 +4212,11 @@ efx_mae_action_set_populate_deliver(
 	__in				const efx_mport_sel_t *mportp);
 
 LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_drop(
+	__in				efx_mae_actions_t *spec);
+
+LIBEFX_API
 extern	__checkReturn			boolean_t
 efx_mae_action_set_specs_equal(
 	__in				const efx_mae_actions_t *left,

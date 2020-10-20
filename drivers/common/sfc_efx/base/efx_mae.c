@@ -1028,6 +1028,25 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_drop(
+	__in				efx_mae_actions_t *spec)
+{
+	efx_mport_sel_t mport;
+	const uint8_t *arg;
+	efx_dword_t dword;
+
+	EFX_POPULATE_DWORD_1(dword,
+	    MAE_MPORT_SELECTOR_FLAT, MAE_MPORT_SELECTOR_NULL);
+
+	mport.sel = dword.ed_u32[0];
+
+	arg = (const uint8_t *)&mport.sel;
+
+	return (efx_mae_action_set_spec_populate(spec,
+	    EFX_MAE_ACTION_DELIVER, sizeof (mport.sel), arg));
+}
+
 	__checkReturn			boolean_t
 efx_mae_action_set_specs_equal(
 	__in				const efx_mae_actions_t *left,
