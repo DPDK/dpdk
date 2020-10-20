@@ -218,6 +218,8 @@ Supported actions (***transfer*** rules):
 
 - VF
 
+- DROP
+
 Validating flow rules depends on the firmware variant.
 
 The :ref:`flow_isolated_mode` is supported.

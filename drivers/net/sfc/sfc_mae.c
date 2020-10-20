@@ -813,6 +813,11 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 				       bundle->actions_mask);
 		rc = sfc_mae_rule_parse_action_pf_vf(sa, action->conf, spec);
 		break;
+	case RTE_FLOW_ACTION_TYPE_DROP:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_DROP,
+				       bundle->actions_mask);
+		rc = efx_mae_action_set_populate_drop(spec);
+		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
