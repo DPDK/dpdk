@@ -192,6 +192,8 @@ Supported pattern items (***transfer*** rules):
 
 - PHY_PORT (cannot repeat; conflicts with other traffic source items)
 
+- ETH
+
 Validating flow rules depends on the firmware variant.
 
 The :ref:`flow_isolated_mode` is supported.

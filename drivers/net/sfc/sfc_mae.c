@@ -221,6 +221,105 @@ sfc_mae_rule_parse_item_phy_port(const struct rte_flow_item *item,
 	return 0;
 }
 
+struct sfc_mae_field_locator {
+	efx_mae_field_id_t		field_id;
+	size_t				size;
+	/* Field offset in the corresponding rte_flow_item_ struct */
+	size_t				ofst;
+};
+
+static void
+sfc_mae_item_build_supp_mask(const struct sfc_mae_field_locator *field_locators,
+			     unsigned int nb_field_locators, void *mask_ptr,
+			     size_t mask_size)
+{
+	unsigned int i;
+
+	memset(mask_ptr, 0, mask_size);
+
+	for (i = 0; i < nb_field_locators; ++i) {
+		const struct sfc_mae_field_locator *fl = &field_locators[i];
+
+		SFC_ASSERT(fl->ofst + fl->size <= mask_size);
+		memset(RTE_PTR_ADD(mask_ptr, fl->ofst), 0xff, fl->size);
+	}
+}
+
+static int
+sfc_mae_parse_item(const struct sfc_mae_field_locator *field_locators,
+		   unsigned int nb_field_locators, const uint8_t *spec,
+		   const uint8_t *mask, efx_mae_match_spec_t *efx_spec,
+		   struct rte_flow_error *error)
+{
+	unsigned int i;
+	int rc = 0;
+
+	for (i = 0; i < nb_field_locators; ++i) {
+		const struct sfc_mae_field_locator *fl = &field_locators[i];
+
+		rc = efx_mae_match_spec_field_set(efx_spec, fl->field_id,
+						  fl->size, spec + fl->ofst,
+						  fl->size, mask + fl->ofst);
+		if (rc != 0)
+			break;
+	}
+
+	if (rc != 0) {
+		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ITEM,
+				NULL, "Failed to process item fields");
+	}
+
+	return rc;
+}
+
+static const struct sfc_mae_field_locator flocs_eth[] = {
+	{
+		EFX_MAE_FIELD_ETHER_TYPE_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, type),
+		offsetof(struct rte_flow_item_eth, type),
+	},
+	{
+		EFX_MAE_FIELD_ETH_DADDR_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, dst),
+		offsetof(struct rte_flow_item_eth, dst),
+	},
+	{
+		EFX_MAE_FIELD_ETH_SADDR_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_eth, src),
+		offsetof(struct rte_flow_item_eth, src),
+	},
+};
+
+static int
+sfc_mae_rule_parse_item_eth(const struct rte_flow_item *item,
+			    struct sfc_flow_parse_ctx *ctx,
+			    struct rte_flow_error *error)
+{
+	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
+	struct rte_flow_item_eth supp_mask;
+	const uint8_t *spec = NULL;
+	const uint8_t *mask = NULL;
+	int rc;
+
+	sfc_mae_item_build_supp_mask(flocs_eth, RTE_DIM(flocs_eth),
+				     &supp_mask, sizeof(supp_mask));
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec, (const void **)&mask,
+				 (const void *)&supp_mask,
+				 &rte_flow_item_eth_mask,
+				 sizeof(struct rte_flow_item_eth), error);
+	if (rc != 0)
+		return rc;
+
+	/* If "spec" is not set, could be any Ethernet */
+	if (spec == NULL)
+		return 0;
+
+	return sfc_mae_parse_item(flocs_eth, RTE_DIM(flocs_eth), spec, mask,
+				  ctx_mae->match_spec_action, error);
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PHY_PORT,
@@ -232,6 +331,13 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_phy_port,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.prev_layer = SFC_FLOW_ITEM_START_LAYER,
+		.layer = SFC_FLOW_ITEM_L2,
+		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
+		.parse = sfc_mae_rule_parse_item_eth,
 	},
 };
 
