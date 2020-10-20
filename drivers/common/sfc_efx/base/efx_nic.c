@@ -801,6 +801,52 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	efx_rc_t
+efx_nic_get_board_info(
+	__in		efx_nic_t *enp,
+	__out		efx_nic_board_info_t *board_infop)
+{
+	efx_mcdi_version_t ver;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_MCDI);
+	EFSYS_ASSERT3U(enp->en_features, &, EFX_FEATURE_MCDI);
+
+	rc = efx_mcdi_get_version(enp, EFX_MCDI_VERSION_BOARD_INFO, &ver);
+	if (rc == EMSGSIZE) {
+		/*
+		 * Typically, EMSGSIZE is returned by above call in the
+		 * case when the NIC does not provide extra information.
+		 */
+		rc = ENOTSUP;
+		goto fail1;
+	} else if (rc != 0) {
+		goto fail2;
+	}
+
+	if ((ver.emv_flags & EFX_MCDI_VERSION_BOARD_INFO) == 0) {
+		rc = ENOTSUP;
+		goto fail3;
+	}
+
+	memcpy(board_infop, &ver.emv_board_info, sizeof (*board_infop));
+
+	/* MCDI should provide NUL-terminated strings, but stay vigilant. */
+	board_infop->enbi_serial[sizeof (board_infop->enbi_serial) - 1] = '\0';
+	board_infop->enbi_name[sizeof (board_infop->enbi_name) - 1] = '\0';
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 	__checkReturn	boolean_t
 efx_nic_hw_unavailable(
 	__in		efx_nic_t *enp)

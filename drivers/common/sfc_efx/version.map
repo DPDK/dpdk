@@ -131,6 +131,7 @@ INTERNAL {
 	efx_nic_destroy;
 	efx_nic_fini;
 	efx_nic_get_bar_region;
+	efx_nic_get_board_info;
 	efx_nic_get_fw_subvariant;
 	efx_nic_get_fw_version;
 	efx_nic_get_vi_pool;

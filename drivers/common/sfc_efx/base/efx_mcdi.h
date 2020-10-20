@@ -118,16 +118,34 @@ efx_mcdi_raise_exception(
 	__in_opt	efx_mcdi_req_t *emrp,
 	__in		int rc);
 
+/*
+ * Flags that name portions of extended version information
+ *
+ * The values match their MCDI counterparts.
+ */
+#define	EFX_MCDI_VERSION_BOARD_INFO	(1U << 4)
+
 typedef struct efx_mcdi_version_s {
 	/* Basic version information */
 	uint16_t		emv_version[4];
 	uint32_t		emv_firmware;
+
+	/*
+	 * Extended version information
+	 *
+	 * Valid portions of obtained information are indicated by flags.
+	 */
+	uint32_t		emv_flags;
+
+	/* Information valid if emv_flags has EFX_MCDI_VERSION_BOARD_INFO set */
+	efx_nic_board_info_t	emv_board_info;
 } efx_mcdi_version_t;
 
 LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_get_version(
 	__in		efx_nic_t *enp,
+	__in		uint32_t flags_req,
 	__out		efx_mcdi_version_t *verp);
 
 typedef enum efx_mcdi_boot_e {

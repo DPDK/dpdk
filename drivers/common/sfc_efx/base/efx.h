@@ -1647,6 +1647,22 @@ efx_nic_get_fw_version(
 	__in			efx_nic_t *enp,
 	__out			efx_nic_fw_info_t *enfip);
 
+#define	EFX_NIC_BOARD_INFO_SERIAL_LEN	(64)
+#define	EFX_NIC_BOARD_INFO_NAME_LEN	(16)
+
+typedef struct efx_nic_board_info_s {
+	/* The following two fields are NUL-terminated ASCII strings. */
+	char			enbi_serial[EFX_NIC_BOARD_INFO_SERIAL_LEN];
+	char			enbi_name[EFX_NIC_BOARD_INFO_NAME_LEN];
+	uint32_t		enbi_revision;
+} efx_nic_board_info_t;
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_nic_get_board_info(
+	__in		efx_nic_t *enp,
+	__out		efx_nic_board_info_t *board_infop);
+
 /* Driver resource limits (minimum required/maximum usable). */
 typedef struct efx_drv_limits_s {
 	uint32_t	edl_min_evq_count;

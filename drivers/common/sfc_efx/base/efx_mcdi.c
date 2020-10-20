@@ -964,11 +964,13 @@ efx_mcdi_ev_death(
 	__checkReturn		efx_rc_t
 efx_mcdi_get_version(
 	__in			efx_nic_t *enp,
+	__in			uint32_t flags_req,
 	__out			efx_mcdi_version_t *verp)
 {
+	efx_nic_board_info_t *board_infop = &verp->emv_board_info;
 	EFX_MCDI_DECLARE_BUF(payload,
-	    MC_CMD_GET_VERSION_IN_LEN,
-	    MC_CMD_GET_VERSION_OUT_LEN);
+	    MC_CMD_GET_VERSION_EXT_IN_LEN,
+	    MC_CMD_GET_VERSION_V2_OUT_LEN);
 	size_t min_resp_len_required;
 	efx_mcdi_req_t req;
 	efx_rc_t rc;
@@ -978,15 +980,35 @@ efx_mcdi_get_version(
 	EFX_STATIC_ASSERT(sizeof (verp->emv_firmware) ==
 	    MC_CMD_GET_VERSION_OUT_FIRMWARE_LEN);
 
+	EFX_STATIC_ASSERT(EFX_MCDI_VERSION_BOARD_INFO ==
+	    (1U << MC_CMD_GET_VERSION_V2_OUT_BOARD_EXT_INFO_PRESENT_LBN));
+
+	EFX_STATIC_ASSERT(sizeof (board_infop->enbi_serial) ==
+	    MC_CMD_GET_VERSION_V2_OUT_BOARD_SERIAL_LEN);
+	EFX_STATIC_ASSERT(sizeof (board_infop->enbi_name) ==
+	    MC_CMD_GET_VERSION_V2_OUT_BOARD_NAME_LEN);
+	EFX_STATIC_ASSERT(sizeof (board_infop->enbi_revision) ==
+	    MC_CMD_GET_VERSION_V2_OUT_BOARD_REVISION_LEN);
+
 	EFSYS_ASSERT3U(enp->en_features, &, EFX_FEATURE_MCDI);
 
 	req.emr_cmd = MC_CMD_GET_VERSION;
 	req.emr_in_buf = payload;
 	req.emr_out_buf = payload;
-	req.emr_in_length = MC_CMD_GET_VERSION_IN_LEN;
-	req.emr_out_length = MC_CMD_GET_VERSION_OUT_LEN;
 
-	min_resp_len_required = MC_CMD_GET_VERSION_V0_OUT_LEN;
+	if (flags_req != 0) {
+		/* Request basic + extended version information. */
+		req.emr_in_length = MC_CMD_GET_VERSION_EXT_IN_LEN;
+		req.emr_out_length = MC_CMD_GET_VERSION_V2_OUT_LEN;
+
+		min_resp_len_required = MC_CMD_GET_VERSION_V2_OUT_LEN;
+	} else {
+		/* Request only basic version information. */
+		req.emr_in_length = MC_CMD_GET_VERSION_IN_LEN;
+		req.emr_out_length = MC_CMD_GET_VERSION_OUT_LEN;
+
+		min_resp_len_required = MC_CMD_GET_VERSION_V0_OUT_LEN;
+	}
 
 	efx_mcdi_execute(enp, &req);
 
@@ -1019,6 +1041,20 @@ efx_mcdi_get_version(
 	}
 
 	verp->emv_firmware = MCDI_OUT_DWORD(req, GET_VERSION_OUT_FIRMWARE);
+
+	verp->emv_flags = MCDI_OUT_DWORD(req, GET_VERSION_V2_OUT_FLAGS);
+	verp->emv_flags &= flags_req;
+
+	if ((verp->emv_flags & EFX_MCDI_VERSION_BOARD_INFO) != 0) {
+		memcpy(board_infop->enbi_serial,
+		    MCDI_OUT2(req, char, GET_VERSION_V2_OUT_BOARD_SERIAL),
+		    sizeof (board_infop->enbi_serial));
+		memcpy(board_infop->enbi_name,
+		    MCDI_OUT2(req, char, GET_VERSION_V2_OUT_BOARD_NAME),
+		    sizeof (board_infop->enbi_name));
+		board_infop->enbi_revision =
+		    MCDI_OUT_DWORD(req, GET_VERSION_V2_OUT_BOARD_REVISION);
+	}
 
 	return (0);
 
@@ -1090,7 +1126,7 @@ efx_mcdi_version(
 	efx_mcdi_boot_t status;
 	efx_rc_t rc;
 
-	rc = efx_mcdi_get_version(enp, &ver);
+	rc = efx_mcdi_get_version(enp, 0, &ver);
 	if (rc != 0)
 		goto fail1;
 
