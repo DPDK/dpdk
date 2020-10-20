@@ -1711,6 +1711,7 @@ typedef enum efx_mae_action_e {
 	 * in the end of the enumeration (before DELIVER).
 	 */
 	EFX_MAE_ACTION_FLAG,
+	EFX_MAE_ACTION_MARK,
 
 	/* DELIVER is always the last action. */
 	EFX_MAE_ACTION_DELIVER,
@@ -1737,6 +1738,7 @@ struct efx_mae_actions_s {
 	unsigned int			ema_n_vlan_tags_to_push;
 	efx_mae_action_vlan_push_t	ema_vlan_push_descs[
 	    EFX_MAE_VLAN_PUSH_MAX_NTAGS];
+	uint32_t			ema_mark_value;
 	efx_mport_sel_t			ema_deliver_mport;
 };
 

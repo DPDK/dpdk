@@ -747,6 +747,35 @@ fail1:
 }
 
 static	__checkReturn			efx_rc_t
+efx_mae_action_set_add_mark(
+	__in				efx_mae_actions_t *spec,
+	__in				size_t arg_size,
+	__in_bcount(arg_size)		const uint8_t *arg)
+{
+	efx_rc_t rc;
+
+	if (arg_size != sizeof (spec->ema_mark_value)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (arg == NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	memcpy(&spec->ema_mark_value, arg, arg_size);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+static	__checkReturn			efx_rc_t
 efx_mae_action_set_add_deliver(
 	__in				efx_mae_actions_t *spec,
 	__in				size_t arg_size,
@@ -791,6 +820,9 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 	[EFX_MAE_ACTION_FLAG] = {
 		.emad_add = efx_mae_action_set_add_flag
 	},
+	[EFX_MAE_ACTION_MARK] = {
+		.emad_add = efx_mae_action_set_add_mark
+	},
 	[EFX_MAE_ACTION_DELIVER] = {
 		.emad_add = efx_mae_action_set_add_deliver
 	}
@@ -800,6 +832,7 @@ static const uint32_t efx_mae_action_ordered_map =
 	(1U << EFX_MAE_ACTION_VLAN_POP) |
 	(1U << EFX_MAE_ACTION_VLAN_PUSH) |
 	(1U << EFX_MAE_ACTION_FLAG) |
+	(1U << EFX_MAE_ACTION_MARK) |
 	(1U << EFX_MAE_ACTION_DELIVER);
 
 /*
@@ -808,7 +841,8 @@ static const uint32_t efx_mae_action_ordered_map =
  * strictly ordered actions.
  */
 static const uint32_t efx_mae_action_nonstrict_map =
-	(1U << EFX_MAE_ACTION_FLAG);
+	(1U << EFX_MAE_ACTION_FLAG) |
+	(1U << EFX_MAE_ACTION_MARK);
 
 static const uint32_t efx_mae_action_repeat_map =
 	(1U << EFX_MAE_ACTION_VLAN_POP) |
@@ -836,7 +870,8 @@ efx_mae_action_set_spec_populate(
 	    (sizeof (efx_mae_action_repeat_map) * 8));
 
 	EFX_STATIC_ASSERT(EFX_MAE_ACTION_DELIVER + 1 == EFX_MAE_NACTIONS);
-	EFX_STATIC_ASSERT(EFX_MAE_ACTION_FLAG + 1 == EFX_MAE_ACTION_DELIVER);
+	EFX_STATIC_ASSERT(EFX_MAE_ACTION_FLAG + 1 == EFX_MAE_ACTION_MARK);
+	EFX_STATIC_ASSERT(EFX_MAE_ACTION_MARK + 1 == EFX_MAE_ACTION_DELIVER);
 
 	if (type >= EFX_ARRAY_SIZE(efx_mae_actions)) {
 		rc = EINVAL;
@@ -918,6 +953,17 @@ efx_mae_action_set_populate_flag(
 {
 	return (efx_mae_action_set_spec_populate(spec,
 	    EFX_MAE_ACTION_FLAG, 0, NULL));
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_mark(
+	__in				efx_mae_actions_t *spec,
+	__in				uint32_t mark_value)
+{
+	const uint8_t *arg = (const uint8_t *)&mark_value;
+
+	return (efx_mae_action_set_spec_populate(spec,
+	    EFX_MAE_ACTION_MARK, sizeof (mark_value), arg));
 }
 
 	__checkReturn			efx_rc_t
@@ -1115,6 +1161,14 @@ efx_mae_action_set_alloc(
 	if ((spec->ema_actions & (1U << EFX_MAE_ACTION_FLAG)) != 0) {
 		MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
 		    MAE_ACTION_SET_ALLOC_IN_FLAG, 1);
+	}
+
+	if ((spec->ema_actions & (1U << EFX_MAE_ACTION_MARK)) != 0) {
+		MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
+		    MAE_ACTION_SET_ALLOC_IN_MARK, 1);
+
+		MCDI_IN_SET_DWORD(req,
+		    MAE_ACTION_SET_ALLOC_IN_MARK_VALUE, spec->ema_mark_value);
 	}
 
 	MCDI_IN_SET_DWORD(req,
