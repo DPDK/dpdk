@@ -39,8 +39,28 @@ efx_mae_get_capabilities(
 		goto fail2;
 	}
 
+	maep->em_max_n_outer_prios =
+	    MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_OUTER_PRIOS);
+
 	maep->em_max_n_action_prios =
 	    MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_ACTION_PRIOS);
+
+	maep->em_encap_types_supported = 0;
+
+	if (MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_ENCAP_TYPE_VXLAN) == 1) {
+		maep->em_encap_types_supported |=
+		    (1U << EFX_TUNNEL_PROTOCOL_VXLAN);
+	}
+
+	if (MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_ENCAP_TYPE_GENEVE) == 1) {
+		maep->em_encap_types_supported |=
+		    (1U << EFX_TUNNEL_PROTOCOL_GENEVE);
+	}
+
+	if (MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_ENCAP_TYPE_NVGRE) == 1) {
+		maep->em_encap_types_supported |=
+		    (1U << EFX_TUNNEL_PROTOCOL_NVGRE);
+	}
 
 	maep->em_max_nfields =
 	    MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_MATCH_FIELD_COUNT);
@@ -225,7 +245,9 @@ efx_mae_get_limits(
 		goto fail1;
 	}
 
+	emlp->eml_max_n_outer_prios = maep->em_max_n_outer_prios;
 	emlp->eml_max_n_action_prios = maep->em_max_n_action_prios;
+	emlp->eml_encap_types_supported = maep->em_encap_types_supported;
 
 	return (0);
 

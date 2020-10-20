@@ -798,6 +798,8 @@ typedef struct efx_mae_s {
 	/** Action rule match field capabilities. */
 	efx_mae_field_cap_t		*em_action_rule_field_caps;
 	size_t				em_action_rule_field_caps_size;
+	uint32_t			em_max_n_outer_prios;
+	uint32_t			em_encap_types_supported;
 } efx_mae_t;
 
 #endif /* EFSYS_OPT_MAE */
