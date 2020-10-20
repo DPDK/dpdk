@@ -169,6 +169,11 @@ New Features
   Added the FEC PMD which provides functions for query FEC capabilities and
   current FEC mode from device. Also, PMD for configuring FEC mode is also provided.
 
+* **Updated Intel ice driver.**
+
+  * Used write combining stores.
+  * Added ACL filter support for Intel DCF.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:
@@ -198,10 +203,6 @@ New Features
 * **Updated Intel ixgbe driver.**
 
   Updated the Intel ixgbe driver to use write combining stores.
-
-* **Updated Intel ice driver.**
-
-  Updated the Intel ice driver to use write combining stores.
 
 * **Updated Intel qat driver.**
 

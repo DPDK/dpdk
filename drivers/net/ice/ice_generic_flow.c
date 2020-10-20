@@ -1896,6 +1896,8 @@ ice_register_parser(struct ice_flow_parser *parser,
 			TAILQ_INSERT_TAIL(list, parser_node, node);
 		else if (parser->engine->type == ICE_FLOW_ENGINE_FDIR)
 			TAILQ_INSERT_HEAD(list, parser_node, node);
+		else if (parser->engine->type == ICE_FLOW_ENGINE_ACL)
+			TAILQ_INSERT_HEAD(list, parser_node, node);
 		else
 			return -EINVAL;
 	}

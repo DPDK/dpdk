@@ -10,7 +10,8 @@ sources = files(
 	'ice_switch_filter.c',
 	'ice_generic_flow.c',
 	'ice_fdir_filter.c',
-	'ice_hash.c'
+	'ice_hash.c',
+	'ice_acl_filter.c'
 	)
 
 deps += ['hash', 'net', 'common_iavf']

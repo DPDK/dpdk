@@ -49,6 +49,8 @@
 #define ICE_PKG_FILE_SEARCH_PATH_UPDATES "/lib/firmware/updates/intel/ice/ddp/"
 #define ICE_MAX_PKG_FILENAME_SIZE   256
 
+#define MAX_ACL_ENTRIES    512
+
 /**
  * vlan_id is a 12 bit number.
  * The VFTA array is actually a 4096 bit array, 128 of 32bit elements.
@@ -398,6 +400,20 @@ struct ice_hash_ctx {
 	struct ice_hash_gtpu_ctx gtpu6;
 };
 
+struct ice_acl_conf {
+	struct ice_fdir_fltr input;
+	uint64_t input_set;
+};
+
+/**
+ * A structure used to define fields of ACL related info.
+ */
+struct ice_acl_info {
+	struct ice_acl_conf conf;
+	struct rte_bitmap *slots;
+	uint64_t hw_entry_id[MAX_ACL_ENTRIES];
+};
+
 struct ice_pf {
 	struct ice_adapter *adapter; /* The adapter this PF associate to */
 	struct ice_vsi *main_vsi; /* pointer to main VSI structure */
@@ -421,6 +437,7 @@ struct ice_pf {
 	uint16_t fdir_nb_qps; /* The number of queue pairs of Flow Director */
 	uint16_t fdir_qp_offset;
 	struct ice_fdir_info fdir; /* flow director info */
+	struct ice_acl_info acl; /* ACL info */
 	struct ice_hash_ctx hash_ctx;
 	uint16_t hw_prof_cnt[ICE_FLTR_PTYPE_MAX][ICE_FD_HW_SEG_MAX];
 	uint16_t fdir_fltr_cnt[ICE_FLTR_PTYPE_MAX][ICE_FD_HW_SEG_MAX];
