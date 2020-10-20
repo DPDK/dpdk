@@ -272,7 +272,6 @@ struct mlx5_drop {
 #define MLX5_COUNTERS_PER_POOL 512
 #define MLX5_MAX_PENDING_QUERIES 4
 #define MLX5_CNT_CONTAINER_RESIZE 64
-#define MLX5_CNT_AGE_OFFSET 0x80000000
 #define CNT_SIZE (sizeof(struct mlx5_flow_counter))
 #define CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
 #define AGE_SIZE (sizeof(struct mlx5_age_param))
@@ -280,7 +279,6 @@ struct mlx5_drop {
 #define CNT_POOL_TYPE_AGE	(1 << 1)
 #define IS_EXT_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_EXT)
 #define IS_AGE_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_AGE)
-#define MLX_CNT_IS_AGE(counter) ((counter) & MLX5_CNT_AGE_OFFSET ? 1 : 0)
 #define MLX5_CNT_LEN(pool) \
 	(CNT_SIZE + \
 	(IS_AGE_POOL(pool) ? AGE_SIZE : 0) + \
@@ -321,15 +319,18 @@ enum {
 	AGE_TMOUT, /* Timeout, wait for rte_flow_get_aged_flows and destroy. */
 };
 
-#define MLX5_CNT_CONTAINER(sh, batch, age) (&(sh)->cmng.ccont \
-					    [(batch) * 2 + (age)])
+#define MLX5_CNT_CONTAINER(sh, batch) (&(sh)->cmng.ccont[batch])
 
 enum {
 	MLX5_CCONT_TYPE_SINGLE,
-	MLX5_CCONT_TYPE_SINGLE_FOR_AGE,
 	MLX5_CCONT_TYPE_BATCH,
-	MLX5_CCONT_TYPE_BATCH_FOR_AGE,
 	MLX5_CCONT_TYPE_MAX,
+};
+
+enum mlx5_counter_type {
+	MLX5_COUNTER_TYPE_ORIGIN,
+	MLX5_COUNTER_TYPE_AGE,
+	MLX5_COUNTER_TYPE_MAX,
 };
 
 /* Counter age parameter. */
@@ -426,7 +427,8 @@ struct mlx5_pools_container {
 	int max_id; /* The maximum counter ID in the pools. */
 	rte_spinlock_t resize_sl; /* The resize lock. */
 	rte_spinlock_t csl; /* The counter free list lock. */
-	struct mlx5_counters counters; /* Free counter list. */
+	struct mlx5_counters counters[MLX5_COUNTER_TYPE_MAX];
+	/* Free counter list. */
 	struct mlx5_counter_pools pool_list; /* Counter pool list. */
 	struct mlx5_flow_counter_pool **pools; /* Counter pool array. */
 	struct mlx5_counter_stats_mem_mng *mem_mng;
@@ -440,7 +442,6 @@ struct mlx5_flow_counter_mng {
 	uint8_t pending_queries;
 	uint8_t batch;
 	uint16_t pool_index;
-	uint8_t age;
 	uint8_t query_thread_on;
 	LIST_HEAD(mem_mngs, mlx5_counter_stats_mem_mng) mem_mngs;
 	LIST_HEAD(stat_raws, mlx5_counter_stats_raw) free_stat_raws;

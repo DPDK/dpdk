@@ -480,7 +480,7 @@ mlx5_flow_aging_init(struct mlx5_dev_ctx_shared *sh)
 static void
 mlx5_flow_counters_mng_init(struct mlx5_dev_ctx_shared *sh)
 {
-	int i;
+	int i, j;
 
 	memset(&sh->cmng, 0, sizeof(sh->cmng));
 	TAILQ_INIT(&sh->cmng.flow_counters);
@@ -490,7 +490,8 @@ mlx5_flow_counters_mng_init(struct mlx5_dev_ctx_shared *sh)
 		sh->cmng.ccont[i].last_pool_idx = POOL_IDX_INVALID;
 		TAILQ_INIT(&sh->cmng.ccont[i].pool_list);
 		rte_spinlock_init(&sh->cmng.ccont[i].resize_sl);
-		TAILQ_INIT(&sh->cmng.ccont[i].counters);
+		for (j = 0; j < MLX5_COUNTER_TYPE_MAX; j++)
+			TAILQ_INIT(&sh->cmng.ccont[i].counters[j]);
 		rte_spinlock_init(&sh->cmng.ccont[i].csl);
 	}
 }
@@ -535,7 +536,7 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 	}
 	for (i = 0; i < MLX5_CCONT_TYPE_MAX; ++i) {
 		struct mlx5_flow_counter_pool *pool;
-		uint32_t batch = !!(i > 1);
+		uint32_t batch = (i == MLX5_CCONT_TYPE_BATCH);
 
 		if (!sh->cmng.ccont[i].pools)
 			continue;

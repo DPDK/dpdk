@@ -6649,7 +6649,6 @@ mlx5_flow_query_alarm(void *arg)
 	uint16_t offset;
 	int ret;
 	uint8_t batch = sh->cmng.batch;
-	uint8_t age = sh->cmng.age;
 	uint16_t pool_index = sh->cmng.pool_index;
 	struct mlx5_pools_container *cont;
 	struct mlx5_flow_counter_pool *pool;
@@ -6658,7 +6657,7 @@ mlx5_flow_query_alarm(void *arg)
 	if (sh->cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
 		goto set_alarm;
 next_container:
-	cont = MLX5_CNT_CONTAINER(sh, batch, age);
+	cont = MLX5_CNT_CONTAINER(sh, batch);
 	rte_spinlock_lock(&cont->resize_sl);
 	if (!cont->pools) {
 		rte_spinlock_unlock(&cont->resize_sl);
@@ -6667,11 +6666,6 @@ next_container:
 			goto set_alarm;
 		batch ^= 0x1;
 		pool_index = 0;
-		if (batch == 0 && pool_index == 0) {
-			age ^= 0x1;
-			sh->cmng.batch = batch;
-			sh->cmng.age = age;
-		}
 		goto next_container;
 	}
 	pool = cont->pools[pool_index];
@@ -6720,13 +6714,10 @@ next_pool:
 	if (pool_index >= rte_atomic16_read(&cont->n_valid)) {
 		batch ^= 0x1;
 		pool_index = 0;
-		if (batch == 0 && pool_index == 0)
-			age ^= 0x1;
 	}
 set_alarm:
 	sh->cmng.batch = batch;
 	sh->cmng.pool_index = pool_index;
-	sh->cmng.age = age;
 	mlx5_set_query_alarm(sh);
 }
 
@@ -6817,10 +6808,12 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 	struct mlx5_flow_counter_pool *pool =
 		(struct mlx5_flow_counter_pool *)(uintptr_t)async_id;
 	struct mlx5_counter_stats_raw *raw_to_free;
-	uint8_t age = !!IS_AGE_POOL(pool);
 	uint8_t query_gen = pool->query_gen ^ 1;
 	struct mlx5_pools_container *cont =
-		MLX5_CNT_CONTAINER(sh, !IS_EXT_POOL(pool), age);
+		MLX5_CNT_CONTAINER(sh, !IS_EXT_POOL(pool));
+	enum mlx5_counter_type cnt_type =
+		IS_AGE_POOL(pool) ? MLX5_COUNTER_TYPE_AGE :
+				    MLX5_COUNTER_TYPE_ORIGIN;
 
 	if (unlikely(status)) {
 		raw_to_free = pool->raw_hw;
@@ -6835,7 +6828,7 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 		rte_io_wmb();
 		if (!TAILQ_EMPTY(&pool->counters[query_gen])) {
 			rte_spinlock_lock(&cont->csl);
-			TAILQ_CONCAT(&cont->counters,
+			TAILQ_CONCAT(&cont->counters[cnt_type],
 				     &pool->counters[query_gen], next);
 			rte_spinlock_unlock(&cont->csl);
 		}

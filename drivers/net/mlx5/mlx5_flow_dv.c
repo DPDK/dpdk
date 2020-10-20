@@ -4605,16 +4605,14 @@ flow_dv_counter_get_by_idx(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_pools_container *cont;
 	struct mlx5_flow_counter_pool *pool;
-	uint32_t batch = 0, age = 0;
+	uint32_t batch = 0;
 
 	idx--;
-	age = MLX_CNT_IS_AGE(idx);
-	idx = age ? idx - MLX5_CNT_AGE_OFFSET : idx;
 	if (idx >= MLX5_CNT_BATCH_OFFSET) {
 		idx -= MLX5_CNT_BATCH_OFFSET;
 		batch = 1;
 	}
-	cont = MLX5_CNT_CONTAINER(priv->sh, batch, age);
+	cont = MLX5_CNT_CONTAINER(priv->sh, batch);
 	MLX5_ASSERT(idx / MLX5_COUNTERS_PER_POOL < cont->n);
 	pool = cont->pools[idx / MLX5_COUNTERS_PER_POOL];
 	MLX5_ASSERT(pool);
@@ -4767,19 +4765,15 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
  *   Pointer to the Ethernet device structure.
  * @param[in] batch
  *   Whether the pool is for counter that was allocated by batch command.
- * @param[in] age
- *   Whether the pool is for Aging counter.
  *
  * @return
  *   0 on success, otherwise negative errno value and rte_errno is set.
  */
 static int
-flow_dv_container_resize(struct rte_eth_dev *dev,
-				uint32_t batch, uint32_t age)
+flow_dv_container_resize(struct rte_eth_dev *dev, uint32_t batch)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch,
-							       age);
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch);
 	struct mlx5_counter_stats_mem_mng *mem_mng = NULL;
 	void *old_pools = cont->pools;
 	uint32_t resize = cont->n + MLX5_CNT_CONTAINER_RESIZE;
@@ -4897,12 +4891,11 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch,
-							       age);
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch);
 	int16_t n_valid = rte_atomic16_read(&cont->n_valid);
 	uint32_t size = sizeof(*pool);
 
-	if (cont->n == n_valid && flow_dv_container_resize(dev, batch, age))
+	if (cont->n == n_valid && flow_dv_container_resize(dev, batch))
 		return NULL;
 	size += MLX5_COUNTERS_PER_POOL * CNT_SIZE;
 	size += (batch ? 0 : MLX5_COUNTERS_PER_POOL * CNTEXT_SIZE);
@@ -5031,10 +5024,12 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 	struct mlx5_devx_obj *last_min_dcs;
 	struct mlx5_devx_obj *dcs = NULL;
 	struct mlx5_flow_counter *cnt;
+	enum mlx5_counter_type cnt_type =
+			age ? MLX5_COUNTER_TYPE_AGE : MLX5_COUNTER_TYPE_ORIGIN;
 	uint32_t add2other;
 	uint32_t i;
 
-	cont = MLX5_CNT_CONTAINER(priv->sh, batch, age);
+	cont = MLX5_CNT_CONTAINER(priv->sh, batch);
 	if (!batch) {
 retry:
 		add2other = 0;
@@ -5043,25 +5038,20 @@ retry:
 		if (!dcs)
 			return NULL;
 		pool = flow_dv_find_pool_by_id(cont, dcs->id);
-		/* Check if counter belongs to exist pool ID range. */
+		/*
+		 * If pool eixsts but with other type, counter will be added
+		 * to the other pool, need to reallocate new counter in the
+		 * ragne with same type later.
+		 */
 		if (!pool) {
-			pool = flow_dv_find_pool_by_id
-			       (MLX5_CNT_CONTAINER
-			       (priv->sh, batch, (age ^ 0x1)), dcs->id);
-			/*
-			 * Pool exists, counter will be added to the other
-			 * container, need to reallocate it later.
-			 */
-			if (pool) {
-				add2other = 1;
-			} else {
-				pool = flow_dv_pool_create(dev, dcs, batch,
-							   age);
-				if (!pool) {
-					mlx5_devx_cmd_destroy(dcs);
-					return NULL;
-				}
+			pool = flow_dv_pool_create(dev, dcs, batch,
+						   age);
+			if (!pool) {
+				mlx5_devx_cmd_destroy(dcs);
+				return NULL;
 			}
+		} else if ((!!IS_AGE_POOL(pool)) != age) {
+			add2other = 1;
 		}
 		if ((dcs->id < pool->min_dcs->id ||
 		    pool->min_dcs->id &
@@ -5128,7 +5118,7 @@ retry:
 		TAILQ_INSERT_HEAD(&tmp_tq, cnt, next);
 	}
 	rte_spinlock_lock(&cont->csl);
-	TAILQ_CONCAT(&cont->counters, &tmp_tq, next);
+	TAILQ_CONCAT(&cont->counters[cnt_type], &tmp_tq, next);
 	rte_spinlock_unlock(&cont->csl);
 	*cnt_free = MLX5_POOL_GET_CNT(pool, 0);
 	(*cnt_free)->pool = pool;
@@ -5201,8 +5191,9 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	 * shared counters from the single container.
 	 */
 	uint32_t batch = (group && !shared && !priv->counter_fallback) ? 1 : 0;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch,
-							       age);
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch);
+	enum mlx5_counter_type cnt_type =
+			age ? MLX5_COUNTER_TYPE_AGE : MLX5_COUNTER_TYPE_ORIGIN;
 	uint32_t cnt_idx;
 
 	if (!priv->config.devx) {
@@ -5225,9 +5216,9 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	}
 	/* Get free counters from container. */
 	rte_spinlock_lock(&cont->csl);
-	cnt_free = TAILQ_FIRST(&cont->counters);
+	cnt_free = TAILQ_FIRST(&cont->counters[cnt_type]);
 	if (cnt_free)
-		TAILQ_REMOVE(&cont->counters, cnt_free, next);
+		TAILQ_REMOVE(&cont->counters[cnt_type], cnt_free, next);
 	rte_spinlock_unlock(&cont->csl);
 	if (!cnt_free && !flow_dv_counter_pool_prepare(dev, &cnt_free,
 						       batch, age))
@@ -5258,7 +5249,6 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	cnt_idx = MLX5_MAKE_CNT_IDX(pool->index,
 				MLX5_CNT_ARRAY_IDX(pool, cnt_free));
 	cnt_idx += batch * MLX5_CNT_BATCH_OFFSET;
-	cnt_idx += age * MLX5_CNT_AGE_OFFSET;
 	/* Update the counter reset values. */
 	if (_flow_dv_query_count(dev, cnt_idx, &cnt_free->hits,
 				 &cnt_free->bytes))
@@ -5283,7 +5273,7 @@ err:
 	if (cnt_free) {
 		cnt_free->pool = pool;
 		rte_spinlock_lock(&cont->csl);
-		TAILQ_INSERT_TAIL(&cont->counters, cnt_free, next);
+		TAILQ_INSERT_TAIL(&cont->counters[cnt_type], cnt_free, next);
 		rte_spinlock_unlock(&cont->csl);
 	}
 	return 0;
@@ -5363,6 +5353,7 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter *cnt;
 	struct mlx5_flow_counter_ext *cnt_ext = NULL;
+	enum mlx5_counter_type cnt_type;
 
 	if (!counter)
 		return;
@@ -5391,12 +5382,15 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 	 * function both operate with the different list.
 	 *
 	 */
-	if (!priv->counter_fallback)
+	if (!priv->counter_fallback) {
 		TAILQ_INSERT_TAIL(&pool->counters[pool->query_gen], cnt, next);
-	else
+	} else {
+		cnt_type = IS_AGE_POOL(pool) ? MLX5_COUNTER_TYPE_AGE :
+					       MLX5_COUNTER_TYPE_ORIGIN;
 		TAILQ_INSERT_TAIL(&((MLX5_CNT_CONTAINER
-				  (priv->sh, 0, 0))->counters),
+				  (priv->sh, 0))->counters[cnt_type]),
 				  cnt, next);
+	}
 }
 
 /**
