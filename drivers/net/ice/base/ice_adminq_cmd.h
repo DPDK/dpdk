@@ -2652,8 +2652,8 @@ struct ice_aqc_clear_health_status {
  * @opcode: AQ command opcode
  * @datalen: length in bytes of indirect/external data buffer
  * @retval: return value from firmware
- * @cookie_h: opaque data high-half
- * @cookie_l: opaque data low-half
+ * @cookie_high: opaque data high-half
+ * @cookie_low: opaque data low-half
  * @params: command-specific parameters
  *
  * Descriptor format for commands the driver posts on the Admin Transmit Queue
