@@ -3198,7 +3198,7 @@ ice_aq_sff_eeprom(struct ice_hw *hw, u16 lport, u8 bus_addr,
 
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_sff_eeprom);
 	cmd = &desc.params.read_write_sff_param;
-	desc.flags = CPU_TO_LE16(ICE_AQ_FLAG_RD | ICE_AQ_FLAG_BUF);
+	desc.flags = CPU_TO_LE16(ICE_AQ_FLAG_RD);
 	cmd->lport_num = (u8)(lport & 0xff);
 	cmd->lport_num_valid = (u8)((lport >> 8) & 0x01);
 	cmd->i2c_bus_addr = CPU_TO_LE16(((bus_addr >> 1) &
