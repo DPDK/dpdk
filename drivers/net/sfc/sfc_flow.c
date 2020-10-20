@@ -50,8 +50,8 @@ static const struct sfc_flow_ops_by_spec sfc_flow_ops_mae = {
 	.parse = sfc_flow_parse_rte_to_mae,
 	.verify = sfc_mae_flow_verify,
 	.cleanup = sfc_mae_flow_cleanup,
-	.insert = NULL,
-	.remove = NULL,
+	.insert = sfc_mae_flow_insert,
+	.remove = sfc_mae_flow_remove,
 };
 
 static const struct sfc_flow_ops_by_spec *
@@ -1202,6 +1202,7 @@ sfc_flow_parse_attr(struct sfc_adapter *sa,
 		spec_mae->priority = attr->priority;
 		spec_mae->match_spec = NULL;
 		spec_mae->action_set = NULL;
+		spec_mae->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
 	}
 
 	return 0;

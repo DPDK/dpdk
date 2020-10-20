@@ -113,6 +113,8 @@ sfc_mae_action_set_add(struct sfc_adapter *sa,
 	action_set->refcnt = 1;
 	action_set->spec = spec;
 
+	action_set->fw_rsrc.aset_id.id = EFX_MAE_RSRC_ID_INVALID;
+
 	TAILQ_INSERT_TAIL(&mae->action_sets, action_set, entries);
 
 	*action_setp = action_set;
@@ -134,9 +136,60 @@ sfc_mae_action_set_del(struct sfc_adapter *sa,
 	if (action_set->refcnt != 0)
 		return;
 
+	SFC_ASSERT(action_set->fw_rsrc.aset_id.id == EFX_MAE_RSRC_ID_INVALID);
+	SFC_ASSERT(action_set->fw_rsrc.refcnt == 0);
+
 	efx_mae_action_set_spec_fini(sa->nic, action_set->spec);
 	TAILQ_REMOVE(&mae->action_sets, action_set, entries);
 	rte_free(action_set);
+}
+
+static int
+sfc_mae_action_set_enable(struct sfc_adapter *sa,
+			  struct sfc_mae_action_set *action_set)
+{
+	struct sfc_mae_fw_rsrc *fw_rsrc = &action_set->fw_rsrc;
+	int rc;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	if (fw_rsrc->refcnt == 0) {
+		SFC_ASSERT(fw_rsrc->aset_id.id == EFX_MAE_RSRC_ID_INVALID);
+		SFC_ASSERT(action_set->spec != NULL);
+
+		rc = efx_mae_action_set_alloc(sa->nic, action_set->spec,
+					      &fw_rsrc->aset_id);
+		if (rc != 0)
+			return rc;
+	}
+
+	++(fw_rsrc->refcnt);
+
+	return 0;
+}
+
+static int
+sfc_mae_action_set_disable(struct sfc_adapter *sa,
+			   struct sfc_mae_action_set *action_set)
+{
+	struct sfc_mae_fw_rsrc *fw_rsrc = &action_set->fw_rsrc;
+	int rc;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(fw_rsrc->aset_id.id != EFX_MAE_RSRC_ID_INVALID);
+	SFC_ASSERT(fw_rsrc->refcnt != 0);
+
+	if (fw_rsrc->refcnt == 1) {
+		rc = efx_mae_action_set_free(sa->nic, &fw_rsrc->aset_id);
+		if (rc != 0)
+			return rc;
+
+		fw_rsrc->aset_id.id = EFX_MAE_RSRC_ID_INVALID;
+	}
+
+	--(fw_rsrc->refcnt);
+
+	return 0;
 }
 
 void
@@ -155,6 +208,8 @@ sfc_mae_flow_cleanup(struct sfc_adapter *sa,
 		return;
 
 	spec_mae = &spec->mae;
+
+	SFC_ASSERT(spec_mae->rule_id.id == EFX_MAE_RSRC_ID_INVALID);
 
 	if (spec_mae->action_set != NULL)
 		sfc_mae_action_set_del(sa, spec_mae->action_set);
@@ -562,4 +617,57 @@ sfc_mae_flow_verify(struct sfc_adapter *sa,
 		return EAGAIN;
 
 	return sfc_mae_action_rule_class_verify(sa, spec_mae);
+}
+
+int
+sfc_mae_flow_insert(struct sfc_adapter *sa,
+		    struct rte_flow *flow)
+{
+	struct sfc_flow_spec *spec = &flow->spec;
+	struct sfc_flow_spec_mae *spec_mae = &spec->mae;
+	struct sfc_mae_action_set *action_set = spec_mae->action_set;
+	struct sfc_mae_fw_rsrc *fw_rsrc = &action_set->fw_rsrc;
+	int rc;
+
+	SFC_ASSERT(spec_mae->rule_id.id == EFX_MAE_RSRC_ID_INVALID);
+	SFC_ASSERT(action_set != NULL);
+
+	rc = sfc_mae_action_set_enable(sa, action_set);
+	if (rc != 0)
+		goto fail_action_set_enable;
+
+	rc = efx_mae_action_rule_insert(sa->nic, spec_mae->match_spec,
+					NULL, &fw_rsrc->aset_id,
+					&spec_mae->rule_id);
+	if (rc != 0)
+		goto fail_action_rule_insert;
+
+	return 0;
+
+fail_action_rule_insert:
+	(void)sfc_mae_action_set_disable(sa, action_set);
+
+fail_action_set_enable:
+	return rc;
+}
+
+int
+sfc_mae_flow_remove(struct sfc_adapter *sa,
+		    struct rte_flow *flow)
+{
+	struct sfc_flow_spec *spec = &flow->spec;
+	struct sfc_flow_spec_mae *spec_mae = &spec->mae;
+	struct sfc_mae_action_set *action_set = spec_mae->action_set;
+	int rc;
+
+	SFC_ASSERT(spec_mae->rule_id.id != EFX_MAE_RSRC_ID_INVALID);
+	SFC_ASSERT(action_set != NULL);
+
+	rc = efx_mae_action_rule_remove(sa->nic, &spec_mae->rule_id);
+	if (rc != 0)
+		return rc;
+
+	spec_mae->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
+
+	return sfc_mae_action_set_disable(sa, action_set);
 }

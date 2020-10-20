@@ -18,11 +18,21 @@
 extern "C" {
 #endif
 
+/** FW-allocatable resource context */
+struct sfc_mae_fw_rsrc {
+	unsigned int			refcnt;
+	RTE_STD_C11
+	union {
+		efx_mae_aset_id_t	aset_id;
+	};
+};
+
 /** Action set registry entry */
 struct sfc_mae_action_set {
 	TAILQ_ENTRY(sfc_mae_action_set)	entries;
 	unsigned int			refcnt;
 	efx_mae_actions_t		*spec;
+	struct sfc_mae_fw_rsrc		fw_rsrc;
 };
 
 TAILQ_HEAD(sfc_mae_action_sets, sfc_mae_action_set);
@@ -63,6 +73,8 @@ int sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			       struct sfc_mae_action_set **action_setp,
 			       struct rte_flow_error *error);
 sfc_flow_verify_cb_t sfc_mae_flow_verify;
+sfc_flow_insert_cb_t sfc_mae_flow_insert;
+sfc_flow_remove_cb_t sfc_mae_flow_remove;
 
 #ifdef __cplusplus
 }
