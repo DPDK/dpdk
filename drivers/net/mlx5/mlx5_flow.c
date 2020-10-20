@@ -6592,26 +6592,6 @@ mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 #define MLX5_POOL_QUERY_FREQ_US 1000000
 
 /**
- * Get number of all validate pools.
- *
- * @param[in] sh
- *   Pointer to mlx5_dev_ctx_shared object.
- *
- * @return
- *   The number of all validate pools.
- */
-static uint32_t
-mlx5_get_all_valid_pool_count(struct mlx5_dev_ctx_shared *sh)
-{
-	int i;
-	uint32_t pools_n = 0;
-
-	for (i = 0; i < MLX5_CCONT_TYPE_MAX; ++i)
-		pools_n += rte_atomic16_read(&sh->cmng.ccont[i].n_valid);
-	return pools_n;
-}
-
-/**
  * Set the periodic procedure for triggering asynchronous batch queries for all
  * the counter pools.
  *
@@ -6623,7 +6603,7 @@ mlx5_set_query_alarm(struct mlx5_dev_ctx_shared *sh)
 {
 	uint32_t pools_n, us;
 
-	pools_n = mlx5_get_all_valid_pool_count(sh);
+	pools_n = rte_atomic16_read(&sh->cmng.n_valid);
 	us = MLX5_POOL_QUERY_FREQ_US / pools_n;
 	DRV_LOG(DEBUG, "Set alarm for %u pools each %u us", pools_n, us);
 	if (rte_eal_alarm_set(us, mlx5_flow_query_alarm, sh)) {
@@ -6645,31 +6625,16 @@ void
 mlx5_flow_query_alarm(void *arg)
 {
 	struct mlx5_dev_ctx_shared *sh = arg;
-	struct mlx5_devx_obj *dcs;
-	uint16_t offset;
 	int ret;
-	uint8_t batch = sh->cmng.batch;
 	uint16_t pool_index = sh->cmng.pool_index;
-	struct mlx5_pools_container *cont;
+	struct mlx5_flow_counter_mng *cmng = &sh->cmng;
 	struct mlx5_flow_counter_pool *pool;
-	int cont_loop = MLX5_CCONT_TYPE_MAX;
 
 	if (sh->cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
 		goto set_alarm;
-next_container:
-	cont = MLX5_CNT_CONTAINER(sh, batch);
-	rte_spinlock_lock(&cont->resize_sl);
-	if (!cont->pools) {
-		rte_spinlock_unlock(&cont->resize_sl);
-		/* Check if all the containers are empty. */
-		if (unlikely(--cont_loop == 0))
-			goto set_alarm;
-		batch ^= 0x1;
-		pool_index = 0;
-		goto next_container;
-	}
-	pool = cont->pools[pool_index];
-	rte_spinlock_unlock(&cont->resize_sl);
+	rte_spinlock_lock(&cmng->resize_sl);
+	pool = cmng->pools[pool_index];
+	rte_spinlock_unlock(&cmng->resize_sl);
 	if (pool->raw_hw)
 		/* There is a pool query in progress. */
 		goto set_alarm;
@@ -6678,14 +6643,6 @@ next_container:
 	if (!pool->raw_hw)
 		/* No free counter statistics raw memory. */
 		goto set_alarm;
-	dcs = (struct mlx5_devx_obj *)(uintptr_t)rte_atomic64_read
-							      (&pool->a64_dcs);
-	if (dcs->id & (MLX5_CNT_BATCH_QUERY_ID_ALIGNMENT - 1)) {
-		/* Pool without valid counter. */
-		pool->raw_hw = NULL;
-		goto next_pool;
-	}
-	offset = batch ? 0 : dcs->id % MLX5_COUNTERS_PER_POOL;
 	/*
 	 * Identify the counters released between query trigger and query
 	 * handle more efficiently. The counter released in this gap period
@@ -6693,11 +6650,12 @@ next_container:
 	 * will not be taken into account.
 	 */
 	pool->query_gen++;
-	ret = mlx5_devx_cmd_flow_counter_query(dcs, 0, MLX5_COUNTERS_PER_POOL -
-					       offset, NULL, NULL,
+	ret = mlx5_devx_cmd_flow_counter_query(pool->min_dcs, 0,
+					       MLX5_COUNTERS_PER_POOL,
+					       NULL, NULL,
 					       pool->raw_hw->mem_mng->dm->id,
 					       (void *)(uintptr_t)
-					       (pool->raw_hw->data + offset),
+					       pool->raw_hw->data,
 					       sh->devx_comp,
 					       (uint64_t)(uintptr_t)pool);
 	if (ret) {
@@ -6706,17 +6664,12 @@ next_container:
 		pool->raw_hw = NULL;
 		goto set_alarm;
 	}
-	pool->raw_hw->min_dcs_id = dcs->id;
 	LIST_REMOVE(pool->raw_hw, next);
 	sh->cmng.pending_queries++;
-next_pool:
 	pool_index++;
-	if (pool_index >= rte_atomic16_read(&cont->n_valid)) {
-		batch ^= 0x1;
+	if (pool_index >= rte_atomic16_read(&cmng->n_valid))
 		pool_index = 0;
-	}
 set_alarm:
-	sh->cmng.batch = batch;
 	sh->cmng.pool_index = pool_index;
 	mlx5_set_query_alarm(sh);
 }
@@ -6809,8 +6762,7 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 		(struct mlx5_flow_counter_pool *)(uintptr_t)async_id;
 	struct mlx5_counter_stats_raw *raw_to_free;
 	uint8_t query_gen = pool->query_gen ^ 1;
-	struct mlx5_pools_container *cont =
-		MLX5_CNT_CONTAINER(sh, !IS_EXT_POOL(pool));
+	struct mlx5_flow_counter_mng *cmng = &sh->cmng;
 	enum mlx5_counter_type cnt_type =
 		IS_AGE_POOL(pool) ? MLX5_COUNTER_TYPE_AGE :
 				    MLX5_COUNTER_TYPE_ORIGIN;
@@ -6827,10 +6779,10 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 		/* Be sure the new raw counters data is updated in memory. */
 		rte_io_wmb();
 		if (!TAILQ_EMPTY(&pool->counters[query_gen])) {
-			rte_spinlock_lock(&cont->csl);
-			TAILQ_CONCAT(&cont->counters[cnt_type],
+			rte_spinlock_lock(&cmng->csl[cnt_type]);
+			TAILQ_CONCAT(&cmng->counters[cnt_type],
 				     &pool->counters[query_gen], next);
-			rte_spinlock_unlock(&cont->csl);
+			rte_spinlock_unlock(&cmng->csl[cnt_type]);
 		}
 	}
 	LIST_INSERT_HEAD(&sh->cmng.free_stat_raws, raw_to_free, next);

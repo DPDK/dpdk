@@ -562,6 +562,39 @@ mlx5_os_txq_obj_release(struct mlx5_txq_obj *txq_obj)
 }
 
 /**
+ * DV flow counter mode detect and config.
+ *
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
+ *
+ */
+static void
+mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	/* If devx is not supported or not DV mode, counters are not working. */
+	if (!priv->config.devx || !priv->config.dv_flow_en)
+		return;
+#ifndef HAVE_IBV_DEVX_ASYNC
+	priv->counter_fallback = 1;
+#else
+	priv->counter_fallback = 0;
+	if (!priv->config.hca_attr.flow_counters_dump ||
+	    !(priv->config.hca_attr.flow_counter_bulk_alloc_bitmap & 0x4) ||
+	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
+		priv->counter_fallback = 1;
+#endif
+	if (priv->counter_fallback)
+		DRV_LOG(INFO, "Use fall-back DV counter management. Flow "
+			"counter dump:%d, bulk_alloc_bitmap:0x%hhx.",
+			priv->config.hca_attr.flow_counters_dump,
+			priv->config.hca_attr.flow_counter_bulk_alloc_bitmap);
+#endif
+}
+
+/**
  * Spawn an Ethernet device from Verbs information.
  *
  * @param dpdk_dev
@@ -1029,19 +1062,11 @@ err_secondary:
 		DRV_LOG(INFO, "Rx CQE padding is enabled");
 	}
 	if (config->devx) {
-		priv->counter_fallback = 0;
 		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config->hca_attr);
 		if (err) {
 			err = -err;
 			goto error;
 		}
-		if (!config->hca_attr.flow_counters_dump)
-			priv->counter_fallback = 1;
-#ifndef HAVE_IBV_DEVX_ASYNC
-		priv->counter_fallback = 1;
-#endif
-		if (priv->counter_fallback)
-			DRV_LOG(INFO, "Use fall-back DV counter management");
 		/* Check for LRO support. */
 		if (config->dest_tir && config->hca_attr.lro_cap &&
 		    config->dv_flow_en) {
@@ -1443,6 +1468,7 @@ err_secondary:
 			goto error;
 		}
 	}
+	mlx5_flow_counter_mode_config(eth_dev);
 	return eth_dev;
 error:
 	if (priv) {

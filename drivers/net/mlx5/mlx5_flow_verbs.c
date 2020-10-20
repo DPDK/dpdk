@@ -159,11 +159,11 @@ flow_verbs_counter_get_by_idx(struct rte_eth_dev *dev,
 			      struct mlx5_flow_counter_pool **ppool)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, 0);
+	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
 	struct mlx5_flow_counter_pool *pool;
 
 	idx = (idx - 1) & (MLX5_CNT_SHARED_OFFSET - 1);
-	pool = cont->pools[idx / MLX5_COUNTERS_PER_POOL];
+	pool = cmng->pools[idx / MLX5_COUNTERS_PER_POOL];
 	MLX5_ASSERT(pool);
 	if (ppool)
 		*ppool = pool;
@@ -254,12 +254,12 @@ static uint32_t
 flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, 0);
+	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter_ext *cnt_ext = NULL;
 	struct mlx5_flow_counter *cnt = NULL;
 	union mlx5_l3t_data data;
-	uint32_t n_valid = rte_atomic16_read(&cont->n_valid);
+	uint32_t n_valid = rte_atomic16_read(&cmng->n_valid);
 	uint32_t pool_idx, cnt_idx;
 	uint32_t i;
 	int ret;
@@ -275,7 +275,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		return data.dword;
 	}
 	for (pool_idx = 0; pool_idx < n_valid; ++pool_idx) {
-		pool = cont->pools[pool_idx];
+		pool = cmng->pools[pool_idx];
 		if (!pool)
 			continue;
 		cnt = TAILQ_FIRST(&pool->counters[0]);
@@ -286,7 +286,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		struct mlx5_flow_counter_pool **pools;
 		uint32_t size;
 
-		if (n_valid == cont->n) {
+		if (n_valid == cmng->n) {
 			/* Resize the container pool array. */
 			size = sizeof(struct mlx5_flow_counter_pool *) *
 				     (n_valid + MLX5_CNT_CONTAINER_RESIZE);
@@ -295,13 +295,13 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 			if (!pools)
 				return 0;
 			if (n_valid) {
-				memcpy(pools, cont->pools,
+				memcpy(pools, cmng->pools,
 				       sizeof(struct mlx5_flow_counter_pool *) *
 				       n_valid);
-				mlx5_free(cont->pools);
+				mlx5_free(cmng->pools);
 			}
-			cont->pools = pools;
-			cont->n += MLX5_CNT_CONTAINER_RESIZE;
+			cmng->pools = pools;
+			cmng->n += MLX5_CNT_CONTAINER_RESIZE;
 		}
 		/* Allocate memory for new pool*/
 		size = sizeof(*pool) + (sizeof(*cnt_ext) + sizeof(*cnt)) *
@@ -315,10 +315,10 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 			TAILQ_INSERT_HEAD(&pool->counters[0], cnt, next);
 		}
 		cnt = MLX5_POOL_GET_CNT(pool, 0);
-		cont->pools[n_valid] = pool;
+		cmng->pools[n_valid] = pool;
 		pool_idx = n_valid;
-		rte_atomic16_add(&cont->n_valid, 1);
-		TAILQ_INSERT_HEAD(&cont->pool_list, pool, next);
+		rte_atomic16_add(&cmng->n_valid, 1);
+		TAILQ_INSERT_HEAD(&cmng->pool_list, pool, next);
 	}
 	i = MLX5_CNT_ARRAY_IDX(pool, cnt);
 	cnt_idx = MLX5_MAKE_CNT_IDX(pool_idx, i);
