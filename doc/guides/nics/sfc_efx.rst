@@ -210,6 +210,8 @@ Supported pattern items (***transfer*** rules):
 
 - TCP (source/destination ports, TCP header length + TCP flags)
 
+- UDP (source/destination ports)
+
 Supported actions (***transfer*** rules):
 
 - OF_POP_VLAN

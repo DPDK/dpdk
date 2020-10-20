@@ -1115,6 +1115,52 @@ sfc_mae_rule_parse_item_tcp(const struct rte_flow_item *item,
 				  ctx_mae->match_spec_action, error);
 }
 
+static const struct sfc_mae_field_locator flocs_udp[] = {
+	{
+		EFX_MAE_FIELD_L4_SPORT_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_udp, hdr.src_port),
+		offsetof(struct rte_flow_item_udp, hdr.src_port),
+	},
+	{
+		EFX_MAE_FIELD_L4_DPORT_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_udp, hdr.dst_port),
+		offsetof(struct rte_flow_item_udp, hdr.dst_port),
+	},
+};
+
+static int
+sfc_mae_rule_parse_item_udp(const struct rte_flow_item *item,
+			    struct sfc_flow_parse_ctx *ctx,
+			    struct rte_flow_error *error)
+{
+	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
+	struct sfc_mae_pattern_data *pdata = &ctx_mae->pattern_data;
+	struct rte_flow_item_udp supp_mask;
+	const uint8_t *spec = NULL;
+	const uint8_t *mask = NULL;
+	int rc;
+
+	sfc_mae_item_build_supp_mask(flocs_udp, RTE_DIM(flocs_udp),
+				     &supp_mask, sizeof(supp_mask));
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec, (const void **)&mask,
+				 (const void *)&supp_mask,
+				 &rte_flow_item_udp_mask,
+				 sizeof(struct rte_flow_item_udp), error);
+	if (rc != 0)
+		return rc;
+
+	pdata->l3_next_proto_restriction_value = IPPROTO_UDP;
+	pdata->l3_next_proto_restriction_mask = 0xff;
+
+	if (spec == NULL)
+		return 0;
+
+	return sfc_mae_parse_item(flocs_udp, RTE_DIM(flocs_udp), spec, mask,
+				  ctx_mae->match_spec_action, error);
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PORT_ID,
@@ -1194,6 +1240,13 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.layer = SFC_FLOW_ITEM_L4,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_tcp,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_UDP,
+		.prev_layer = SFC_FLOW_ITEM_L3,
+		.layer = SFC_FLOW_ITEM_L4,
+		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
+		.parse = sfc_mae_rule_parse_item_udp,
 	},
 };
 

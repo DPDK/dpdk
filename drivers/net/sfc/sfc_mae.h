@@ -128,6 +128,9 @@ struct sfc_mae_pattern_data {
 	 *
 	 * - If a L3 item is followed by an item TCP, the former has
 	 *   its "proto" set to either 0x06/0xff or 0x00/0x00.
+	 *
+	 * - If a L3 item is followed by an item UDP, the former has
+	 *   its "proto" set to either 0x11/0xff or 0x00/0x00.
 	 */
 	uint8_t				l3_next_proto_value;
 	uint8_t				l3_next_proto_mask;
@@ -136,6 +139,7 @@ struct sfc_mae_pattern_data {
 	 * L4 requirement for L3 item's "proto".
 	 * This contains one of:
 	 * - 0x06/0xff: TCP
+	 * - 0x11/0xff: UDP
 	 * - 0x00/0x00: no L4 item
 	 */
 	uint8_t				l3_next_proto_restriction_value;
