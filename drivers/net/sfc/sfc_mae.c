@@ -130,10 +130,18 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_parse_pattern;
 
+	if (!efx_mae_match_spec_is_valid(sa->nic, ctx_mae.match_spec_action)) {
+		rc = rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					"Inconsistent pattern");
+		goto fail_validate_match_spec_action;
+	}
+
 	spec->match_spec = ctx_mae.match_spec_action;
 
 	return 0;
 
+fail_validate_match_spec_action:
 fail_parse_pattern:
 	efx_mae_match_spec_fini(sa->nic, ctx_mae.match_spec_action);
 
