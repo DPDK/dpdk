@@ -78,6 +78,35 @@ ice_dcf_update_vf_vsi_map(struct ice_hw *hw, uint16_t num_vfs,
 		ice_dcf_update_vsi_ctx(hw, vf_id, vf_vsi_map[vf_id]);
 }
 
+static void
+ice_dcf_update_pf_vsi_map(struct ice_hw *hw, uint16_t pf_vsi_idx,
+			uint16_t pf_vsi_num)
+{
+	struct ice_vsi_ctx *vsi_ctx;
+
+	if (unlikely(pf_vsi_idx >= ICE_MAX_VSI)) {
+		PMD_DRV_LOG(ERR, "Invalid vsi handle %u", pf_vsi_idx);
+		return;
+	}
+
+	vsi_ctx = hw->vsi_ctx[pf_vsi_idx];
+
+	if (!vsi_ctx)
+		vsi_ctx = ice_malloc(hw, sizeof(*vsi_ctx));
+
+	if (!vsi_ctx) {
+		PMD_DRV_LOG(ERR, "No memory for vsi context %u",
+				pf_vsi_idx);
+		return;
+	}
+
+	vsi_ctx->vsi_num = pf_vsi_num;
+	hw->vsi_ctx[pf_vsi_idx] = vsi_ctx;
+
+	PMD_DRV_LOG(DEBUG, "VF%u is assigned with vsi number %u",
+			pf_vsi_idx, vsi_ctx->vsi_num);
+}
+
 static void*
 ice_dcf_vsi_update_service_handler(void *param)
 {
@@ -368,13 +397,17 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 	}
 	parent_adapter->active_pkg_type = ice_load_pkg_type(parent_hw);
 
+	parent_adapter->pf.main_vsi->idx = hw->num_vfs;
+	ice_dcf_update_pf_vsi_map(parent_hw,
+			parent_adapter->pf.main_vsi->idx, hw->pf_vsi_id);
+
+	ice_dcf_update_vf_vsi_map(parent_hw, hw->num_vfs, hw->vf_vsi_map);
+
 	err = ice_flow_init(parent_adapter);
 	if (err) {
 		PMD_INIT_LOG(ERR, "Failed to initialize flow");
 		goto uninit_hw;
 	}
-
-	ice_dcf_update_vf_vsi_map(parent_hw, hw->num_vfs, hw->vf_vsi_map);
 
 	mac = (const struct rte_ether_addr *)hw->avf.mac.addr;
 	if (rte_is_valid_assigned_ether_addr(mac))

@@ -318,6 +318,7 @@ ice_dcf_get_vf_vsi_map(struct ice_dcf_hw *hw)
 		}
 
 		hw->num_vfs = vsi_map->num_vfs;
+		hw->pf_vsi_id = vsi_map->pf_vsi;
 	}
 
 	if (!memcmp(hw->vf_vsi_map, vsi_map->vf_vsi, len)) {
