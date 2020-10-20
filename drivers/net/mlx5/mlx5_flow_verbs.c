@@ -186,16 +186,16 @@ flow_verbs_counter_get_by_idx(struct rte_eth_dev *dev,
  */
 static int
 flow_verbs_counter_create(struct rte_eth_dev *dev,
-			  struct mlx5_flow_counter_ext *counter)
+			  struct mlx5_flow_counter *counter)
 {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct ibv_context *ctx = priv->sh->ctx;
 	struct ibv_counter_set_init_attr init = {
-			 .counter_set_id = counter->id};
+			 .counter_set_id = counter->shared_info.id};
 
-	counter->cs = mlx5_glue->create_counter_set(ctx, &init);
-	if (!counter->cs) {
+	counter->dcs_when_free = mlx5_glue->create_counter_set(ctx, &init);
+	if (!counter->dcs_when_free) {
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
@@ -208,23 +208,23 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
 	int ret;
 
 	memset(&attach, 0, sizeof(attach));
-	counter->cs = mlx5_glue->create_counters(ctx, &init);
-	if (!counter->cs) {
+	counter->dcs_when_free = mlx5_glue->create_counters(ctx, &init);
+	if (!counter->dcs_when_free) {
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
 	attach.counter_desc = IBV_COUNTER_PACKETS;
 	attach.index = 0;
-	ret = mlx5_glue->attach_counters(counter->cs, &attach, NULL);
+	ret = mlx5_glue->attach_counters(counter->dcs_when_free, &attach, NULL);
 	if (!ret) {
 		attach.counter_desc = IBV_COUNTER_BYTES;
 		attach.index = 1;
 		ret = mlx5_glue->attach_counters
-					(counter->cs, &attach, NULL);
+					(counter->dcs_when_free, &attach, NULL);
 	}
 	if (ret) {
-		claim_zero(mlx5_glue->destroy_counters(counter->cs));
-		counter->cs = NULL;
+		claim_zero(mlx5_glue->destroy_counters(counter->dcs_when_free));
+		counter->dcs_when_free = NULL;
 		rte_errno = ret;
 		return -ret;
 	}
@@ -256,7 +256,6 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
 	struct mlx5_flow_counter_pool *pool = NULL;
-	struct mlx5_flow_counter_ext *cnt_ext = NULL;
 	struct mlx5_flow_counter *cnt = NULL;
 	union mlx5_l3t_data data;
 	uint32_t n_valid = cmng->n_valid;
@@ -297,12 +296,10 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 			cmng->n += MLX5_CNT_CONTAINER_RESIZE;
 		}
 		/* Allocate memory for new pool*/
-		size = sizeof(*pool) + (sizeof(*cnt_ext) + sizeof(*cnt)) *
-		       MLX5_COUNTERS_PER_POOL;
+		size = sizeof(*pool) + sizeof(*cnt) * MLX5_COUNTERS_PER_POOL;
 		pool = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
 		if (!pool)
 			return 0;
-		pool->type |= MLX5_CNT_POOL_TYPE_EXT;
 		for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 			cnt = MLX5_POOL_GET_CNT(pool, i);
 			TAILQ_INSERT_HEAD(&pool->counters[0], cnt, next);
@@ -312,6 +309,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		pool_idx = n_valid;
 		cmng->n_valid++;
 	}
+	TAILQ_REMOVE(&pool->counters[0], cnt, next);
 	i = MLX5_CNT_ARRAY_IDX(pool, cnt);
 	cnt_idx = MLX5_MAKE_CNT_IDX(pool_idx, i);
 	if (shared) {
@@ -321,15 +319,15 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		cnt->shared_info.id = id;
 		cnt_idx |= MLX5_CNT_SHARED_OFFSET;
 	}
-	cnt_ext = MLX5_GET_POOL_CNT_EXT(pool, i);
-	cnt->hits = 0;
-	cnt->bytes = 0;
 	/* Create counter with Verbs. */
-	ret = flow_verbs_counter_create(dev, cnt_ext);
+	ret = flow_verbs_counter_create(dev, cnt);
 	if (!ret) {
-		TAILQ_REMOVE(&pool->counters[0], cnt, next);
+		cnt->dcs_when_active = cnt->dcs_when_free;
+		cnt->hits = 0;
+		cnt->bytes = 0;
 		return cnt_idx;
 	}
+	TAILQ_INSERT_HEAD(&pool->counters[0], cnt, next);
 	/* Some error occurred in Verbs library. */
 	rte_errno = -ret;
 	return 0;
@@ -349,21 +347,18 @@ flow_verbs_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_flow_counter *cnt;
-	struct mlx5_flow_counter_ext *cnt_ext;
 
 	cnt = flow_verbs_counter_get_by_idx(dev, counter, &pool);
 	if (IS_SHARED_CNT(counter) &&
 	    mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl, cnt->shared_info.id))
 		return;
-	cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
-	claim_zero(mlx5_glue->destroy_counter_set(cnt_ext->cs));
-	cnt_ext->cs = NULL;
+	claim_zero(mlx5_glue->destroy_counter_set
+			((struct ibv_counter_set *)cnt->dcs_when_active));
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-	claim_zero(mlx5_glue->destroy_counters(cnt_ext->cs));
-	cnt_ext->cs = NULL;
+	claim_zero(mlx5_glue->destroy_counters
+				((struct ibv_counters *)cnt->dcs_when_active));
 #endif
-	(void)cnt_ext;
 	TAILQ_INSERT_HEAD(&pool->counters[0], cnt, next);
 }
 
@@ -384,13 +379,12 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
 		struct mlx5_flow_counter_pool *pool;
 		struct mlx5_flow_counter *cnt = flow_verbs_counter_get_by_idx
 						(dev, flow->counter, &pool);
-		struct mlx5_flow_counter_ext *cnt_ext = MLX5_CNT_TO_CNT_EXT
-						(pool, cnt);
 		struct rte_flow_query_count *qc = data;
 		uint64_t counters[2] = {0, 0};
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 		struct ibv_query_counter_set_attr query_cs_attr = {
-			.cs = cnt_ext->cs,
+			.dcs_when_free = (struct ibv_counter_set *)
+						cnt->dcs_when_active,
 			.query_flags = IBV_COUNTER_SET_FORCE_UPDATE,
 		};
 		struct ibv_counter_set_data query_out = {
@@ -401,7 +395,7 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
 						       &query_out);
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 		int err = mlx5_glue->query_counters
-			       (cnt_ext->cs, counters,
+			((struct ibv_counters *)cnt->dcs_when_active, counters,
 				RTE_DIM(counters),
 				IBV_READ_COUNTERS_ATTR_PREFER_CACHED);
 #endif
@@ -1188,7 +1182,6 @@ flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
 	defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_flow_counter *cnt = NULL;
-	struct mlx5_flow_counter_ext *cnt_ext;
 	unsigned int size = sizeof(struct ibv_flow_spec_counter_action);
 	struct ibv_flow_spec_counter_action counter = {
 		.type = IBV_FLOW_SPEC_ACTION_COUNT,
@@ -1208,13 +1201,12 @@ flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
 	}
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	cnt = flow_verbs_counter_get_by_idx(dev, flow->counter, &pool);
-	cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
-	counter.counter_set_handle = cnt_ext->cs->handle;
+	counter.counter_set_handle =
+		((struct ibv_counter_set *)cnt->dcs_when_active)->handle;
 	flow_verbs_spec_add(&dev_flow->verbs, &counter, size);
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	cnt = flow_verbs_counter_get_by_idx(dev, flow->counter, &pool);
-	cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
-	counter.counters = cnt_ext->cs;
+	counter.counters = (struct ibv_counters *)cnt->dcs_when_active;
 	flow_verbs_spec_add(&dev_flow->verbs, &counter, size);
 #endif
 	return 0;

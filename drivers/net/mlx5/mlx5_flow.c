@@ -6876,14 +6876,14 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 	uint8_t query_gen = pool->query_gen ^ 1;
 	struct mlx5_flow_counter_mng *cmng = &sh->cmng;
 	enum mlx5_counter_type cnt_type =
-		IS_AGE_POOL(pool) ? MLX5_COUNTER_TYPE_AGE :
-				    MLX5_COUNTER_TYPE_ORIGIN;
+		pool->is_aged ? MLX5_COUNTER_TYPE_AGE :
+				MLX5_COUNTER_TYPE_ORIGIN;
 
 	if (unlikely(status)) {
 		raw_to_free = pool->raw_hw;
 	} else {
 		raw_to_free = pool->raw;
-		if (IS_AGE_POOL(pool))
+		if (pool->is_aged)
 			mlx5_flow_aging_check(sh, pool);
 		rte_spinlock_lock(&pool->sl);
 		pool->raw = pool->raw_hw;

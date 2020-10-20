@@ -4170,7 +4170,7 @@ flow_dv_validate_action_age(uint64_t action_flags,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_age *age = action->conf;
 
-	if (!priv->config.devx || priv->counter_fallback)
+	if (!priv->config.devx || priv->sh->cmng.counter_fallback)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
@@ -4739,16 +4739,13 @@ _flow_dv_query_count(struct rte_eth_dev *dev, uint32_t counter, uint64_t *pkts,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter *cnt;
-	struct mlx5_flow_counter_ext *cnt_ext = NULL;
 	int offset;
 
 	cnt = flow_dv_counter_get_by_idx(dev, counter, &pool);
 	MLX5_ASSERT(pool);
-	if (priv->counter_fallback) {
-		cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
-		return mlx5_devx_cmd_flow_counter_query(cnt_ext->dcs, 0,
+	if (priv->sh->cmng.counter_fallback)
+		return mlx5_devx_cmd_flow_counter_query(cnt->dcs_when_active, 0,
 					0, pkts, bytes, 0, NULL, NULL, 0);
-	}
 	rte_spinlock_lock(&pool->sl);
 	if (!pool->raw) {
 		*pkts = 0;
@@ -4784,11 +4781,10 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
-	uint32_t fallback = priv->counter_fallback;
+	bool fallback = priv->sh->cmng.counter_fallback;
 	uint32_t size = sizeof(*pool);
 
 	size += MLX5_COUNTERS_PER_POOL * MLX5_CNT_SIZE;
-	size += (!fallback ? 0 : MLX5_COUNTERS_PER_POOL * MLX5_CNTEXT_SIZE);
 	size += (!age ? 0 : MLX5_COUNTERS_PER_POOL * MLX5_AGE_SIZE);
 	pool = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
 	if (!pool) {
@@ -4796,8 +4792,7 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		return NULL;
 	}
 	pool->raw = NULL;
-	pool->type = 0;
-	pool->type |= (!age ? 0 :  MLX5_CNT_POOL_TYPE_AGE);
+	pool->is_aged = !!age;
 	pool->query_gen = 0;
 	pool->min_dcs = dcs;
 	rte_spinlock_init(&pool->sl);
@@ -4822,7 +4817,6 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		if (base > cmng->max_id)
 			cmng->max_id = base + MLX5_COUNTERS_PER_POOL - 1;
 		cmng->last_pool_idx = pool->index;
-		pool->type |= MLX5_CNT_POOL_TYPE_EXT;
 	}
 	rte_spinlock_unlock(&cmng->pool_update_sl);
 	return pool;
@@ -4855,7 +4849,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 	struct mlx5_flow_counter *cnt;
 	enum mlx5_counter_type cnt_type =
 			age ? MLX5_COUNTER_TYPE_AGE : MLX5_COUNTER_TYPE_ORIGIN;
-	uint32_t fallback = priv->counter_fallback;
+	bool fallback = priv->sh->cmng.counter_fallback;
 	uint32_t i;
 
 	if (fallback) {
@@ -4874,7 +4868,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 		i = dcs->id % MLX5_COUNTERS_PER_POOL;
 		cnt = MLX5_POOL_GET_CNT(pool, i);
 		cnt->pool = pool;
-		MLX5_GET_POOL_CNT_EXT(pool, i)->dcs = dcs;
+		cnt->dcs_when_free = dcs;
 		*cnt_free = cnt;
 		return pool;
 	}
@@ -4919,8 +4913,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t age)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter *cnt_free = NULL;
-	struct mlx5_flow_counter_ext *cnt_ext = NULL;
-	uint32_t fallback = priv->counter_fallback;
+	bool fallback = priv->sh->cmng.counter_fallback;
 	struct mlx5_flow_counter_mng *cmng = &priv->sh->cmng;
 	enum mlx5_counter_type cnt_type =
 			age ? MLX5_COUNTER_TYPE_AGE : MLX5_COUNTER_TYPE_ORIGIN;
@@ -4940,7 +4933,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t age)
 		goto err;
 	pool = cnt_free->pool;
 	if (fallback)
-		cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt_free);
+		cnt_free->dcs_when_active = cnt_free->dcs_when_free;
 	/* Create a DV counter action only in the first time usage. */
 	if (!cnt_free->action) {
 		uint16_t offset;
@@ -4952,7 +4945,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t age)
 			dcs = pool->min_dcs;
 		} else {
 			offset = 0;
-			dcs = cnt_ext->dcs;
+			dcs = cnt_free->dcs_when_free;
 		}
 		ret = mlx5_flow_os_create_flow_action_count(dcs->obj, offset,
 							    &cnt_free->action);
@@ -4974,6 +4967,8 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t age)
 err:
 	if (cnt_free) {
 		cnt_free->pool = pool;
+		if (fallback)
+			cnt_free->dcs_when_free = cnt_free->dcs_when_active;
 		rte_spinlock_lock(&cmng->csl[cnt_type]);
 		TAILQ_INSERT_TAIL(&cmng->counters[cnt_type], cnt_free, next);
 		rte_spinlock_unlock(&cmng->csl[cnt_type]);
@@ -5117,7 +5112,7 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 	if (IS_SHARED_CNT(counter) &&
 	    mlx5_l3t_clear_entry(priv->sh->cnt_id_tbl, cnt->shared_info.id))
 		return;
-	if (IS_AGE_POOL(pool))
+	if (pool->is_aged)
 		flow_dv_counter_remove_from_age(dev, counter, cnt);
 	cnt->pool = pool;
 	/*
@@ -5130,13 +5125,14 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 	 * function both operate with the different list.
 	 *
 	 */
-	if (!priv->counter_fallback) {
+	if (!priv->sh->cmng.counter_fallback) {
 		rte_spinlock_lock(&pool->csl);
 		TAILQ_INSERT_TAIL(&pool->counters[pool->query_gen], cnt, next);
 		rte_spinlock_unlock(&pool->csl);
 	} else {
-		cnt_type = IS_AGE_POOL(pool) ? MLX5_COUNTER_TYPE_AGE :
-					       MLX5_COUNTER_TYPE_ORIGIN;
+		cnt->dcs_when_free = cnt->dcs_when_active;
+		cnt_type = pool->is_aged ? MLX5_COUNTER_TYPE_AGE :
+					   MLX5_COUNTER_TYPE_ORIGIN;
 		rte_spinlock_lock(&priv->sh->cmng.csl[cnt_type]);
 		TAILQ_INSERT_TAIL(&priv->sh->cmng.counters[cnt_type],
 				  cnt, next);

@@ -277,18 +277,11 @@ struct mlx5_drop {
 #define IS_BATCH_CNT(cnt) (((cnt) & (MLX5_CNT_SHARED_OFFSET - 1)) >= \
 			   MLX5_CNT_BATCH_OFFSET)
 #define MLX5_CNT_SIZE (sizeof(struct mlx5_flow_counter))
-#define MLX5_CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
 #define MLX5_AGE_SIZE (sizeof(struct mlx5_age_param))
-#define MLX5_CNT_POOL_TYPE_EXT (1 << 0)
-#define MLX5_CNT_POOL_TYPE_AGE (1 << 1)
-
-#define IS_EXT_POOL(pool) (((pool)->type) & MLX5_CNT_POOL_TYPE_EXT)
-#define IS_AGE_POOL(pool) (((pool)->type) & MLX5_CNT_POOL_TYPE_AGE)
 
 #define MLX5_CNT_LEN(pool) \
 	(MLX5_CNT_SIZE + \
-	(IS_AGE_POOL(pool) ? MLX5_AGE_SIZE : 0) + \
-	(IS_EXT_POOL(pool) ? MLX5_CNTEXT_SIZE : 0))
+	((pool)->is_aged ? MLX5_AGE_SIZE : 0))
 #define MLX5_POOL_GET_CNT(pool, index) \
 	((struct mlx5_flow_counter *) \
 	((uint8_t *)((pool) + 1) + (index) * (MLX5_CNT_LEN(pool))))
@@ -303,12 +296,6 @@ struct mlx5_drop {
  */
 #define MLX5_MAKE_CNT_IDX(pi, offset) \
 	((pi) * MLX5_COUNTERS_PER_POOL + (offset) + 1)
-#define MLX5_CNT_TO_CNT_EXT(pool, cnt) \
-	((struct mlx5_flow_counter_ext *)\
-	((uint8_t *)((cnt) + 1) + \
-	(IS_AGE_POOL(pool) ? MLX5_AGE_SIZE : 0)))
-#define MLX5_GET_POOL_CNT_EXT(pool, offset) \
-	MLX5_CNT_TO_CNT_EXT(pool, MLX5_POOL_GET_CNT((pool), (offset)))
 #define MLX5_CNT_TO_AGE(cnt) \
 	((struct mlx5_age_param *)((cnt) + 1))
 /*
@@ -368,30 +355,41 @@ struct mlx5_flow_counter {
 		 * to the aging list. For shared counter, only when it is
 		 * released, the TAILQ entry memory will be used, at that
 		 * time, shared memory is not used anymore.
+		 *
+		 * Similarly to none-batch counter dcs, since it doesn't
+		 * support aging, while counter is allocated, the entry
+		 * memory is not used anymore. In this case, as bytes
+		 * memory is used only when counter is allocated, and
+		 * entry memory is used only when counter is free. The
+		 * dcs pointer can be saved to these two different place
+		 * at different stage. It will eliminate the individual
+		 * counter extend struct.
 		 */
 		TAILQ_ENTRY(mlx5_flow_counter) next;
 		/**< Pointer to the next flow counter structure. */
-		struct mlx5_flow_counter_shared shared_info;
-		/**< Shared counter information. */
+		struct {
+			struct mlx5_flow_counter_shared shared_info;
+			/**< Shared counter information. */
+			void *dcs_when_active;
+			/*
+			 * For non-batch mode, the dcs will be saved
+			 * here when the counter is free.
+			 */
+		};
 	};
 	union {
 		uint64_t hits; /**< Reset value of hits packets. */
 		struct mlx5_flow_counter_pool *pool; /**< Counter pool. */
 	};
-	uint64_t bytes; /**< Reset value of bytes. */
-	void *action; /**< Pointer to the dv action. */
-};
-
-/* Extend counters information for none batch fallback counters. */
-struct mlx5_flow_counter_ext {
 	union {
-#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
-		struct ibv_counter_set *cs;
-#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-		struct ibv_counters *cs;
-#endif
-		struct mlx5_devx_obj *dcs; /**< Counter Devx object. */
+		uint64_t bytes; /**< Reset value of bytes. */
+		void *dcs_when_free;
+		/*
+		 * For non-batch mode, the dcs will be saved here
+		 * when the counter is free.
+		 */
 	};
+	void *action; /**< Pointer to the dv action. */
 };
 
 TAILQ_HEAD(mlx5_counters, mlx5_flow_counter);
@@ -407,8 +405,8 @@ struct mlx5_flow_counter_pool {
 	/* The devx object of the minimum counter ID. */
 	uint64_t time_of_last_age_check;
 	/* System time (from rte_rdtsc()) read in the last aging check. */
-	uint32_t index:29; /* Pool index in container. */
-	uint32_t type:2; /* Memory type behind the counter array. */
+	uint32_t index:30; /* Pool index in container. */
+	uint32_t is_aged:1; /* Pool with aging counter. */
 	volatile uint32_t query_gen:1; /* Query round. */
 	rte_spinlock_t sl; /* The pool lock. */
 	rte_spinlock_t csl; /* The pool counter free list lock. */
@@ -454,6 +452,7 @@ struct mlx5_flow_counter_mng {
 	uint16_t pool_index;
 	uint8_t query_thread_on;
 	bool relaxed_ordering;
+	bool counter_fallback; /* Use counter fallback management. */
 	LIST_HEAD(mem_mngs, mlx5_counter_stats_mem_mng) mem_mngs;
 	LIST_HEAD(stat_raws, mlx5_counter_stats_raw) free_stat_raws;
 };
@@ -826,7 +825,6 @@ struct mlx5_priv {
 	unsigned int master:1; /* Device is a E-Switch master. */
 	unsigned int dr_shared:1; /* DV/DR data is shared. */
 	unsigned int txpp_en:1; /* Tx packet pacing enabled. */
-	unsigned int counter_fallback:1; /* Use counter fallback management. */
 	unsigned int mtr_en:1; /* Whether support meter. */
 	unsigned int mtr_reg_share:1; /* Whether support meter REG_C share. */
 	unsigned int sampler_en:1; /* Whether support sampler. */

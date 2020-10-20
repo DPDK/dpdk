@@ -573,24 +573,30 @@ mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
 {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	bool fallback;
 
-	/* If devx is not supported or not DV mode, counters are not working. */
-	if (!priv->config.devx || !priv->config.dv_flow_en)
-		return;
 #ifndef HAVE_IBV_DEVX_ASYNC
-	priv->counter_fallback = 1;
+	fallback = true;
 #else
-	priv->counter_fallback = 0;
-	if (!priv->config.hca_attr.flow_counters_dump ||
+	fallback = false;
+	if (!priv->config.devx || !priv->config.dv_flow_en ||
+	    !priv->config.hca_attr.flow_counters_dump ||
 	    !(priv->config.hca_attr.flow_counter_bulk_alloc_bitmap & 0x4) ||
 	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
-		priv->counter_fallback = 1;
+		fallback = true;
 #endif
-	if (priv->counter_fallback)
+	if (fallback)
 		DRV_LOG(INFO, "Use fall-back DV counter management. Flow "
 			"counter dump:%d, bulk_alloc_bitmap:0x%hhx.",
 			priv->config.hca_attr.flow_counters_dump,
 			priv->config.hca_attr.flow_counter_bulk_alloc_bitmap);
+	/* Initialize fallback mode only on the port initializes sh. */
+	if (sh->refcnt == 1)
+		sh->cmng.counter_fallback = fallback;
+	else if (fallback != sh->cmng.counter_fallback)
+		DRV_LOG(WARNING, "Port %d in sh has different fallback mode "
+			"with others:%d.", PORT_ID(priv), fallback);
 #endif
 }
 

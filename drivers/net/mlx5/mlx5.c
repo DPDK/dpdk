@@ -535,23 +535,25 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 	if (sh->cmng.pools) {
 		struct mlx5_flow_counter_pool *pool;
 		uint16_t n_valid = sh->cmng.n_valid;
+		bool fallback = sh->cmng.counter_fallback;
 
 		for (i = 0; i < n_valid; ++i) {
 			pool = sh->cmng.pools[i];
-			if (!IS_EXT_POOL(pool) && pool->min_dcs)
+			if (!fallback && pool->min_dcs)
 				claim_zero(mlx5_devx_cmd_destroy
 							       (pool->min_dcs));
 			for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j) {
-				if (MLX5_POOL_GET_CNT(pool, j)->action)
+				struct mlx5_flow_counter *cnt =
+						MLX5_POOL_GET_CNT(pool, j);
+
+				if (cnt->action)
 					claim_zero
 					 (mlx5_glue->destroy_flow_action
-					  (MLX5_POOL_GET_CNT
-					  (pool, j)->action));
-				if (IS_EXT_POOL(pool) && MLX5_GET_POOL_CNT_EXT
-				    (pool, j)->dcs)
+					  (cnt->action));
+				if (fallback && MLX5_POOL_GET_CNT
+				    (pool, j)->dcs_when_free)
 					claim_zero(mlx5_devx_cmd_destroy
-						   (MLX5_GET_POOL_CNT_EXT
-						    (pool, j)->dcs));
+						   (cnt->dcs_when_free));
 			}
 			mlx5_free(pool);
 		}
