@@ -755,19 +755,28 @@ struct ice_dcb_app_priority_table {
 	u8 selector;
 };
 
-#define ICE_MAX_USER_PRIORITY	8
-#define ICE_DCBX_MAX_APPS	32
-#define ICE_LLDPDU_SIZE		1500
-#define ICE_TLV_STATUS_OPER	0x1
-#define ICE_TLV_STATUS_SYNC	0x2
-#define ICE_TLV_STATUS_ERR	0x4
-#define ICE_APP_PROT_ID_FCOE	0x8906
-#define ICE_APP_PROT_ID_ISCSI	0x0cbc
-#define ICE_APP_PROT_ID_FIP	0x8914
-#define ICE_APP_SEL_ETHTYPE	0x1
-#define ICE_APP_SEL_TCPIP	0x2
-#define ICE_CEE_APP_SEL_ETHTYPE	0x0
-#define ICE_CEE_APP_SEL_TCPIP	0x1
+#define ICE_MAX_USER_PRIORITY		8
+#define ICE_DCBX_MAX_APPS		32
+#define ICE_LLDPDU_SIZE			1500
+#define ICE_TLV_STATUS_OPER		0x1
+#define ICE_TLV_STATUS_SYNC		0x2
+#define ICE_TLV_STATUS_ERR		0x4
+#ifndef ICE_APP_PROT_ID_FCOE
+#define ICE_APP_PROT_ID_FCOE		0x8906
+#endif /* ICE_APP_PROT_ID_FCOE */
+#ifndef ICE_APP_PROT_ID_ISCSI
+#define ICE_APP_PROT_ID_ISCSI		0x0cbc
+#endif /* ICE_APP_PROT_ID_ISCSI */
+#ifndef ICE_APP_PROT_ID_ISCSI_860
+#define ICE_APP_PROT_ID_ISCSI_860	0x035c
+#endif /* ICE_APP_PROT_ID_ISCSI_860 */
+#ifndef ICE_APP_PROT_ID_FIP
+#define ICE_APP_PROT_ID_FIP		0x8914
+#endif /* ICE_APP_PROT_ID_FIP */
+#define ICE_APP_SEL_ETHTYPE		0x1
+#define ICE_APP_SEL_TCPIP		0x2
+#define ICE_CEE_APP_SEL_ETHTYPE		0x0
+#define ICE_CEE_APP_SEL_TCPIP		0x1
 
 struct ice_dcbx_cfg {
 	u32 numapps;
