@@ -21,6 +21,7 @@ sfc_mae_attach(struct sfc_adapter *sa)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	struct sfc_mae *mae = &sa->mae;
+	efx_mae_limits_t limits;
 	int rc;
 
 	sfc_log_init(sa, "entry");
@@ -35,11 +36,20 @@ sfc_mae_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mae_init;
 
+	sfc_log_init(sa, "get MAE limits");
+	rc = efx_mae_get_limits(sa->nic, &limits);
+	if (rc != 0)
+		goto fail_mae_get_limits;
+
 	mae->status = SFC_MAE_STATUS_SUPPORTED;
+	mae->nb_action_rule_prios_max = limits.eml_max_n_action_prios;
 
 	sfc_log_init(sa, "done");
 
 	return 0;
+
+fail_mae_get_limits:
+	efx_mae_fini(sa->nic);
 
 fail_mae_init:
 	sfc_log_init(sa, "failed %d", rc);
@@ -55,6 +65,7 @@ sfc_mae_detach(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "entry");
 
+	mae->nb_action_rule_prios_max = 0;
 	mae->status = SFC_MAE_STATUS_UNKNOWN;
 
 	if (status_prev != SFC_MAE_STATUS_SUPPORTED)

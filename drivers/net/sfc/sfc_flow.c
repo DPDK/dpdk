@@ -1124,12 +1124,15 @@ static const struct sfc_flow_item sfc_flow_items[] = {
  * Protocol-independent flow API support
  */
 static int
-sfc_flow_parse_attr(const struct rte_flow_attr *attr,
+sfc_flow_parse_attr(struct sfc_adapter *sa,
+		    const struct rte_flow_attr *attr,
 		    struct rte_flow *flow,
 		    struct rte_flow_error *error)
 {
 	struct sfc_flow_spec *spec = &flow->spec;
 	struct sfc_flow_spec_filter *spec_filter = &spec->filter;
+	struct sfc_flow_spec_mae *spec_mae = &spec->mae;
+	struct sfc_mae *mae = &sa->mae;
 
 	if (attr == NULL) {
 		rte_flow_error_set(error, EINVAL,
@@ -1167,10 +1170,20 @@ sfc_flow_parse_attr(const struct rte_flow_attr *attr,
 		spec_filter->template.efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 		spec_filter->template.efs_priority = EFX_FILTER_PRI_MANUAL;
 	} else {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, attr,
-				   "Transfer is not supported");
-		return -rte_errno;
+		if (mae->status != SFC_MAE_STATUS_SUPPORTED) {
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+					   attr, "Transfer is not supported");
+			return -rte_errno;
+		}
+		if (attr->priority > mae->nb_action_rule_prios_max) {
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					   attr, "Unsupported priority level");
+			return -rte_errno;
+		}
+		spec->type = SFC_FLOW_SPEC_MAE;
+		spec_mae->priority = attr->priority;
 	}
 
 	return 0;
@@ -2403,10 +2416,11 @@ sfc_flow_parse(struct rte_eth_dev *dev,
 	       struct rte_flow *flow,
 	       struct rte_flow_error *error)
 {
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	const struct sfc_flow_ops_by_spec *ops;
 	int rc;
 
-	rc = sfc_flow_parse_attr(attr, flow, error);
+	rc = sfc_flow_parse_attr(sa, attr, flow, error);
 	if (rc != 0)
 		return rc;
 

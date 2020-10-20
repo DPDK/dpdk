@@ -38,6 +38,7 @@ struct sfc_flow_rss {
 /* Flow engines supported by the implementation */
 enum sfc_flow_spec_type {
 	SFC_FLOW_SPEC_FILTER = 0,
+	SFC_FLOW_SPEC_MAE,
 
 	SFC_FLOW_SPEC_NTYPES
 };
@@ -58,6 +59,12 @@ struct sfc_flow_spec_filter {
 	struct sfc_flow_rss rss_conf;
 };
 
+/* MAE-specific flow specification */
+struct sfc_flow_spec_mae {
+	/* Desired priority level */
+	unsigned int			priority;
+};
+
 /* Flow specification */
 struct sfc_flow_spec {
 	/* Flow specification type (engine-based) */
@@ -67,6 +74,8 @@ struct sfc_flow_spec {
 	union {
 		/* Filter-based (VNIC level flows) specification */
 		struct sfc_flow_spec_filter filter;
+		/* MAE-based (lower-level HW switch flows) specification */
+		struct sfc_flow_spec_mae mae;
 	};
 };
 

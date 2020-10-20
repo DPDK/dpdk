@@ -28,6 +28,8 @@ enum sfc_mae_status {
 struct sfc_mae {
 	/** NIC support for MAE status */
 	enum sfc_mae_status		status;
+	/** Priority level limit for MAE action rules */
+	unsigned int			nb_action_rule_prios_max;
 };
 
 struct sfc_adapter;
