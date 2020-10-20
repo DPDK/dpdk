@@ -649,7 +649,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set bonding mode IEEE802.3AD aggregator policy (port_id) (agg_name)"
 			"	Set Aggregation mode for IEEE802.3AD (mode 4)"
 
-			"set bonding xmit_balance_policy (port_id) (l2|l23|l34)\n"
+			"set bonding balance_xmit_policy (port_id) (l2|l23|l34)\n"
 			"	Set the transmit balance policy for bonded device running in balance mode.\n\n"
 
 			"set bonding mon_period (port_id) (value)\n"

@@ -2605,16 +2605,16 @@ For example, to set the MAC address of a Link Bonding device (port 10) to 00:00:
 
    testpmd> set bonding mac 10 00:00:00:00:00:01
 
-set bonding xmit_balance_policy
+set bonding balance_xmit_policy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Set the transmission policy for a Link Bonding device when it is in Balance XOR mode::
 
-   testpmd> set bonding xmit_balance_policy (port_id) (l2|l23|l34)
+   testpmd> set bonding balance_xmit_policy (port_id) (l2|l23|l34)
 
 For example, set a Link Bonding device (port 10) to use a balance policy of layer 3+4 (IP addresses & UDP ports)::
 
-   testpmd> set bonding xmit_balance_policy 10 l34
+   testpmd> set bonding balance_xmit_policy 10 l34
 
 
 set bonding mon_period
