@@ -1014,4 +1014,154 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_mae_action_rule_insert(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_match_spec_t *spec,
+	__in				const efx_mae_aset_list_id_t *asl_idp,
+	__in				const efx_mae_aset_id_t *as_idp,
+	__out				efx_mae_rule_id_t *ar_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ACTION_RULE_INSERT_IN_LENMAX_MCDI2,
+	    MC_CMD_MAE_ACTION_RULE_INSERT_OUT_LEN);
+	efx_oword_t *rule_response;
+	efx_mae_rule_id_t ar_id;
+	size_t offset;
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(sizeof (ar_idp->id) ==
+	    MC_CMD_MAE_ACTION_RULE_INSERT_OUT_AR_ID_LEN);
+
+	EFX_STATIC_ASSERT(EFX_MAE_RSRC_ID_INVALID ==
+	    MC_CMD_MAE_ACTION_RULE_INSERT_OUT_ACTION_RULE_ID_NULL);
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (spec->emms_type != EFX_MAE_RULE_ACTION ||
+	    (asl_idp != NULL && as_idp != NULL) ||
+	    (asl_idp == NULL && as_idp == NULL)) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ACTION_RULE_INSERT;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ACTION_RULE_INSERT_IN_LENMAX_MCDI2;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ACTION_RULE_INSERT_OUT_LEN;
+
+	EFX_STATIC_ASSERT(sizeof (*rule_response) <=
+	    MC_CMD_MAE_ACTION_RULE_INSERT_IN_RESPONSE_LEN);
+	offset = MC_CMD_MAE_ACTION_RULE_INSERT_IN_RESPONSE_OFST;
+	rule_response = (efx_oword_t *)(payload + offset);
+	EFX_POPULATE_OWORD_3(*rule_response,
+	    MAE_ACTION_RULE_RESPONSE_ASL_ID,
+	    (asl_idp != NULL) ? asl_idp->id : EFX_MAE_RSRC_ID_INVALID,
+	    MAE_ACTION_RULE_RESPONSE_AS_ID,
+	    (as_idp != NULL) ? as_idp->id : EFX_MAE_RSRC_ID_INVALID,
+	    MAE_ACTION_RULE_RESPONSE_COUNTER_ID, EFX_MAE_RSRC_ID_INVALID);
+
+	MCDI_IN_SET_DWORD(req, MAE_ACTION_RULE_INSERT_IN_PRIO, spec->emms_prio);
+
+	/*
+	 * Mask-value pairs have been stored in the byte order needed for the
+	 * MCDI request and are thus safe to be copied directly to the buffer.
+	 */
+	EFX_STATIC_ASSERT(sizeof (spec->emms_mask_value_pairs.action) >=
+	    MAE_FIELD_MASK_VALUE_PAIRS_LEN);
+	offset = MC_CMD_MAE_ACTION_RULE_INSERT_IN_MATCH_CRITERIA_OFST;
+	memcpy(payload + offset, spec->emms_mask_value_pairs.action,
+	    MAE_FIELD_MASK_VALUE_PAIRS_LEN);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail3;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_MAE_ACTION_RULE_INSERT_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail4;
+	}
+
+	ar_id.id = MCDI_OUT_DWORD(req, MAE_ACTION_RULE_INSERT_OUT_AR_ID);
+	if (ar_id.id == EFX_MAE_RSRC_ID_INVALID) {
+		rc = ENOENT;
+		goto fail5;
+	}
+
+	ar_idp->id = ar_id.id;
+
+	return (0);
+
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_rule_remove(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_rule_id_t *ar_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ACTION_RULE_DELETE_IN_LEN(1),
+	    MC_CMD_MAE_ACTION_RULE_DELETE_OUT_LEN(1));
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ACTION_RULE_DELETE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ACTION_RULE_DELETE_IN_LEN(1);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ACTION_RULE_DELETE_OUT_LEN(1);
+
+	MCDI_IN_SET_DWORD(req, MAE_ACTION_RULE_DELETE_IN_AR_ID, ar_idp->id);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	if (MCDI_OUT_DWORD(req, MAE_ACTION_RULE_DELETE_OUT_DELETED_AR_ID) !=
+	    ar_idp->id) {
+		/* Firmware failed to delete the action rule. */
+		rc = EAGAIN;
+		goto fail3;
+	}
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 #endif /* EFSYS_OPT_MAE */

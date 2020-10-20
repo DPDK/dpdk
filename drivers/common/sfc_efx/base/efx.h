@@ -4193,6 +4193,11 @@ efx_mae_match_specs_class_cmp(
 
 #define	EFX_MAE_RSRC_ID_INVALID	UINT32_MAX
 
+/* Rule ID */
+typedef struct efx_mae_rule_id_s {
+	uint32_t id;
+} efx_mae_rule_id_t;
+
 /* Action set ID */
 typedef struct efx_mae_aset_id_s {
 	uint32_t id;
@@ -4210,6 +4215,30 @@ extern	__checkReturn			efx_rc_t
 efx_mae_action_set_free(
 	__in				efx_nic_t *enp,
 	__in				const efx_mae_aset_id_t *aset_idp);
+
+/* Action set list ID */
+typedef struct efx_mae_aset_list_id_s {
+	uint32_t id;
+} efx_mae_aset_list_id_t;
+
+/*
+ * Either action set list ID or action set ID must be passed to this API,
+ * but not both.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_rule_insert(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_match_spec_t *spec,
+	__in				const efx_mae_aset_list_id_t *asl_idp,
+	__in				const efx_mae_aset_id_t *as_idp,
+	__out				efx_mae_rule_id_t *ar_idp);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_rule_remove(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_rule_id_t *ar_idp);
 
 #endif /* EFSYS_OPT_MAE */
 
