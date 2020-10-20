@@ -716,6 +716,37 @@ fail1:
 }
 
 static	__checkReturn			efx_rc_t
+efx_mae_action_set_add_flag(
+	__in				efx_mae_actions_t *spec,
+	__in				size_t arg_size,
+	__in_bcount(arg_size)		const uint8_t *arg)
+{
+	efx_rc_t rc;
+
+	_NOTE(ARGUNUSED(spec))
+
+	if (arg_size != 0) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (arg != NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	/* This action does not have any arguments, so do nothing here. */
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+static	__checkReturn			efx_rc_t
 efx_mae_action_set_add_deliver(
 	__in				efx_mae_actions_t *spec,
 	__in				size_t arg_size,
@@ -757,6 +788,9 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 	[EFX_MAE_ACTION_VLAN_PUSH] = {
 		.emad_add = efx_mae_action_set_add_vlan_push
 	},
+	[EFX_MAE_ACTION_FLAG] = {
+		.emad_add = efx_mae_action_set_add_flag
+	},
 	[EFX_MAE_ACTION_DELIVER] = {
 		.emad_add = efx_mae_action_set_add_deliver
 	}
@@ -765,7 +799,16 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 static const uint32_t efx_mae_action_ordered_map =
 	(1U << EFX_MAE_ACTION_VLAN_POP) |
 	(1U << EFX_MAE_ACTION_VLAN_PUSH) |
+	(1U << EFX_MAE_ACTION_FLAG) |
 	(1U << EFX_MAE_ACTION_DELIVER);
+
+/*
+ * These actions must not be added after DELIVER, but
+ * they can have any place among the rest of
+ * strictly ordered actions.
+ */
+static const uint32_t efx_mae_action_nonstrict_map =
+	(1U << EFX_MAE_ACTION_FLAG);
 
 static const uint32_t efx_mae_action_repeat_map =
 	(1U << EFX_MAE_ACTION_VLAN_POP) |
@@ -793,6 +836,7 @@ efx_mae_action_set_spec_populate(
 	    (sizeof (efx_mae_action_repeat_map) * 8));
 
 	EFX_STATIC_ASSERT(EFX_MAE_ACTION_DELIVER + 1 == EFX_MAE_NACTIONS);
+	EFX_STATIC_ASSERT(EFX_MAE_ACTION_FLAG + 1 == EFX_MAE_ACTION_DELIVER);
 
 	if (type >= EFX_ARRAY_SIZE(efx_mae_actions)) {
 		rc = EINVAL;
@@ -811,9 +855,10 @@ efx_mae_action_set_spec_populate(
 	}
 
 	if ((efx_mae_action_ordered_map & action_mask) != 0) {
+		uint32_t strict_ordered_map =
+		    efx_mae_action_ordered_map & ~efx_mae_action_nonstrict_map;
 		uint32_t later_actions_mask =
-			efx_mae_action_ordered_map &
-			~(action_mask | (action_mask - 1));
+		    strict_ordered_map & ~(action_mask | (action_mask - 1));
 
 		if ((spec->ema_actions & later_actions_mask) != 0) {
 			/* Cannot add an action after later ordered actions. */
@@ -865,6 +910,14 @@ efx_mae_action_set_populate_vlan_push(
 
 	return (efx_mae_action_set_spec_populate(spec,
 	    EFX_MAE_ACTION_VLAN_PUSH, sizeof (action), arg));
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_flag(
+	__in				efx_mae_actions_t *spec)
+{
+	return (efx_mae_action_set_spec_populate(spec,
+	    EFX_MAE_ACTION_FLAG, 0, NULL));
 }
 
 	__checkReturn			efx_rc_t
@@ -1057,6 +1110,11 @@ efx_mae_action_set_alloc(
 		    spec->ema_vlan_push_descs[outer_tag_idx].emavp_tpid_be);
 		MCDI_IN_SET_WORD(req, MAE_ACTION_SET_ALLOC_IN_VLAN0_TCI_BE,
 		    spec->ema_vlan_push_descs[outer_tag_idx].emavp_tci_be);
+	}
+
+	if ((spec->ema_actions & (1U << EFX_MAE_ACTION_FLAG)) != 0) {
+		MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
+		    MAE_ACTION_SET_ALLOC_IN_FLAG, 1);
 	}
 
 	MCDI_IN_SET_DWORD(req,

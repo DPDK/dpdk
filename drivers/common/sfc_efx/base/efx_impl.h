@@ -1704,6 +1704,14 @@ typedef enum efx_mae_action_e {
 	EFX_MAE_ACTION_VLAN_POP,
 	EFX_MAE_ACTION_VLAN_PUSH,
 
+	/*
+	 * These actions are not strictly ordered and can
+	 * be passed by a client in any order (before DELIVER).
+	 * However, these enumerants must be kept compactly
+	 * in the end of the enumeration (before DELIVER).
+	 */
+	EFX_MAE_ACTION_FLAG,
+
 	/* DELIVER is always the last action. */
 	EFX_MAE_ACTION_DELIVER,
 
