@@ -5,6 +5,7 @@
 #ifndef _IN_H_
 #define _IN_H_
 
+#include <stdint.h>
 #include <sys/socket.h>
 
 #define IPPROTO_IP         0
