@@ -18,6 +18,15 @@
 extern "C" {
 #endif
 
+/** Action set registry entry */
+struct sfc_mae_action_set {
+	TAILQ_ENTRY(sfc_mae_action_set)	entries;
+	unsigned int			refcnt;
+	efx_mae_actions_t		*spec;
+};
+
+TAILQ_HEAD(sfc_mae_action_sets, sfc_mae_action_set);
+
 /** Options for MAE support status */
 enum sfc_mae_status {
 	SFC_MAE_STATUS_UNKNOWN = 0,
@@ -30,6 +39,8 @@ struct sfc_mae {
 	enum sfc_mae_status		status;
 	/** Priority level limit for MAE action rules */
 	unsigned int			nb_action_rule_prios_max;
+	/** Action set registry */
+	struct sfc_mae_action_sets	action_sets;
 };
 
 struct sfc_adapter;
@@ -45,6 +56,10 @@ sfc_flow_cleanup_cb_t sfc_mae_flow_cleanup;
 int sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 			       const struct rte_flow_item pattern[],
 			       struct sfc_flow_spec_mae *spec,
+			       struct rte_flow_error *error);
+int sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
+			       const struct rte_flow_action actions[],
+			       struct sfc_mae_action_set **action_setp,
 			       struct rte_flow_error *error);
 sfc_flow_verify_cb_t sfc_mae_flow_verify;
 

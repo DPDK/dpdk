@@ -1201,6 +1201,7 @@ sfc_flow_parse_attr(struct sfc_adapter *sa,
 		spec->type = SFC_FLOW_SPEC_MAE;
 		spec_mae->priority = attr->priority;
 		spec_mae->match_spec = NULL;
+		spec_mae->action_set = NULL;
 	}
 
 	return 0;
@@ -2428,7 +2429,7 @@ fail_bad_value:
 static int
 sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 			  const struct rte_flow_item pattern[],
-			  __rte_unused const struct rte_flow_action actions[],
+			  const struct rte_flow_action actions[],
 			  struct rte_flow *flow,
 			  struct rte_flow_error *error)
 {
@@ -2438,6 +2439,11 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 	int rc;
 
 	rc = sfc_mae_rule_parse_pattern(sa, pattern, spec_mae, error);
+	if (rc != 0)
+		return rc;
+
+	rc = sfc_mae_rule_parse_actions(sa, actions, &spec_mae->action_set,
+					error);
 	if (rc != 0)
 		return rc;
 

@@ -65,6 +65,8 @@ struct sfc_flow_spec_mae {
 	unsigned int			priority;
 	/* EFX match specification */
 	efx_mae_match_spec_t		*match_spec;
+	/* Action set registry entry */
+	struct sfc_mae_action_set	*action_set;
 };
 
 /* Flow specification */

@@ -43,6 +43,7 @@ sfc_mae_attach(struct sfc_adapter *sa)
 
 	mae->status = SFC_MAE_STATUS_SUPPORTED;
 	mae->nb_action_rule_prios_max = limits.eml_max_n_action_prios;
+	TAILQ_INIT(&mae->action_sets);
 
 	sfc_log_init(sa, "done");
 
@@ -76,6 +77,68 @@ sfc_mae_detach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 }
 
+static struct sfc_mae_action_set *
+sfc_mae_action_set_attach(struct sfc_adapter *sa,
+			  const efx_mae_actions_t *spec)
+{
+	struct sfc_mae_action_set *action_set;
+	struct sfc_mae *mae = &sa->mae;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	TAILQ_FOREACH(action_set, &mae->action_sets, entries) {
+		if (efx_mae_action_set_specs_equal(action_set->spec, spec)) {
+			++(action_set->refcnt);
+			return action_set;
+		}
+	}
+
+	return NULL;
+}
+
+static int
+sfc_mae_action_set_add(struct sfc_adapter *sa,
+		       efx_mae_actions_t *spec,
+		       struct sfc_mae_action_set **action_setp)
+{
+	struct sfc_mae_action_set *action_set;
+	struct sfc_mae *mae = &sa->mae;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	action_set = rte_zmalloc("sfc_mae_action_set", sizeof(*action_set), 0);
+	if (action_set == NULL)
+		return ENOMEM;
+
+	action_set->refcnt = 1;
+	action_set->spec = spec;
+
+	TAILQ_INSERT_TAIL(&mae->action_sets, action_set, entries);
+
+	*action_setp = action_set;
+
+	return 0;
+}
+
+static void
+sfc_mae_action_set_del(struct sfc_adapter *sa,
+		       struct sfc_mae_action_set *action_set)
+{
+	struct sfc_mae *mae = &sa->mae;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(action_set->refcnt != 0);
+
+	--(action_set->refcnt);
+
+	if (action_set->refcnt != 0)
+		return;
+
+	efx_mae_action_set_spec_fini(sa->nic, action_set->spec);
+	TAILQ_REMOVE(&mae->action_sets, action_set, entries);
+	rte_free(action_set);
+}
+
 void
 sfc_mae_flow_cleanup(struct sfc_adapter *sa,
 		     struct rte_flow *flow)
@@ -92,6 +155,9 @@ sfc_mae_flow_cleanup(struct sfc_adapter *sa,
 		return;
 
 	spec_mae = &spec->mae;
+
+	if (spec_mae->action_set != NULL)
+		sfc_mae_action_set_del(sa, spec_mae->action_set);
 
 	if (spec_mae->match_spec != NULL)
 		efx_mae_match_spec_fini(sa->nic, spec_mae->match_spec);
@@ -146,6 +212,73 @@ fail_parse_pattern:
 	efx_mae_match_spec_fini(sa->nic, ctx_mae.match_spec_action);
 
 fail_init_match_spec_action:
+	return rc;
+}
+
+static int
+sfc_mae_rule_parse_action(const struct rte_flow_action *action,
+			  __rte_unused efx_mae_actions_t *spec,
+			  struct rte_flow_error *error)
+{
+	switch (action->type) {
+	default:
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"Unsupported action");
+	}
+
+	return 0;
+}
+
+int
+sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
+			   const struct rte_flow_action actions[],
+			   struct sfc_mae_action_set **action_setp,
+			   struct rte_flow_error *error)
+{
+	const struct rte_flow_action *action;
+	efx_mae_actions_t *spec;
+	int rc;
+
+	if (actions == NULL) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
+				"NULL actions");
+	}
+
+	rc = efx_mae_action_set_spec_init(sa->nic, &spec);
+	if (rc != 0)
+		goto fail_action_set_spec_init;
+
+	for (action = actions;
+	     action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
+		rc = sfc_mae_rule_parse_action(action, spec, error);
+		if (rc != 0)
+			goto fail_rule_parse_action;
+	}
+
+	*action_setp = sfc_mae_action_set_attach(sa, spec);
+	if (*action_setp != NULL) {
+		efx_mae_action_set_spec_fini(sa->nic, spec);
+		return 0;
+	}
+
+	rc = sfc_mae_action_set_add(sa, spec, action_setp);
+	if (rc != 0)
+		goto fail_action_set_add;
+
+	return 0;
+
+fail_action_set_add:
+fail_rule_parse_action:
+	efx_mae_action_set_spec_fini(sa->nic, spec);
+
+fail_action_set_spec_init:
+	if (rc > 0) {
+		rc = rte_flow_error_set(error, rc,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL, "Failed to process the action");
+	}
 	return rc;
 }
 
