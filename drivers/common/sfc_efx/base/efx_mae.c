@@ -126,4 +126,50 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_mae_match_spec_init(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_rule_type_t type,
+	__in				uint32_t prio,
+	__out				efx_mae_match_spec_t **specp)
+{
+	efx_mae_match_spec_t *spec;
+	efx_rc_t rc;
+
+	switch (type) {
+	case EFX_MAE_RULE_ACTION:
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	EFSYS_KMEM_ALLOC(enp->en_esip, sizeof (*spec), spec);
+	if (spec == NULL) {
+		rc = ENOMEM;
+		goto fail2;
+	}
+
+	spec->emms_type = type;
+	spec->emms_prio = prio;
+
+	*specp = spec;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+					void
+efx_mae_match_spec_fini(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_match_spec_t *spec)
+{
+	EFSYS_KMEM_FREE(enp->en_esip, sizeof (*spec), spec);
+}
+
 #endif /* EFSYS_OPT_MAE */

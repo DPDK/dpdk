@@ -4058,6 +4058,28 @@ efx_mae_get_limits(
 	__in				efx_nic_t *enp,
 	__out				efx_mae_limits_t *emlp);
 
+typedef enum efx_mae_rule_type_e {
+	EFX_MAE_RULE_ACTION = 0,
+
+	EFX_MAE_RULE_NTYPES
+} efx_mae_rule_type_t;
+
+typedef struct efx_mae_match_spec_s	efx_mae_match_spec_t;
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_match_spec_init(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_rule_type_t type,
+	__in				uint32_t prio,
+	__out				efx_mae_match_spec_t **specp);
+
+LIBEFX_API
+extern					void
+efx_mae_match_spec_fini(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_match_spec_t *spec);
+
 #endif /* EFSYS_OPT_MAE */
 
 #ifdef	__cplusplus

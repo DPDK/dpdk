@@ -88,6 +88,8 @@ INTERNAL {
 	efx_mae_fini;
 	efx_mae_get_limits;
 	efx_mae_init;
+	efx_mae_match_spec_fini;
+	efx_mae_match_spec_init;
 
 	efx_mcdi_fini;
 	efx_mcdi_get_proxy_handle;
