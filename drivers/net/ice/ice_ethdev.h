@@ -11,6 +11,7 @@
 
 #include "base/ice_common.h"
 #include "base/ice_adminq_cmd.h"
+#include "base/ice_flow.h"
 
 #define ICE_VLAN_TAG_SIZE        4
 
@@ -378,19 +379,6 @@ struct ice_fdir_info {
 #define ICE_HASH_GTPU_CTX_DW_IP_TCP	8
 #define ICE_HASH_GTPU_CTX_MAX		9
 
-enum ice_rss_hash_func {
-	ICE_RSS_HASH_TOEPLITZ			= 0,
-	ICE_RSS_HASH_TOEPLITZ_SYMMETRIC		= 1,
-	ICE_RSS_HASH_XOR			= 2,
-	ICE_RSS_HASH_JHASH			= 3,
-};
-
-struct ice_rss_hash_cfg {
-	u32 addl_hdrs;
-	u64 hash_flds;
-	enum ice_rss_hash_func hash_func;
-};
-
 struct ice_hash_gtpu_ctx {
 	struct ice_rss_hash_cfg ctx[ICE_HASH_GTPU_CTX_MAX];
 };
@@ -543,9 +531,9 @@ void ice_vsi_enable_queues_intr(struct ice_vsi *vsi);
 void ice_vsi_disable_queues_intr(struct ice_vsi *vsi);
 void ice_vsi_queues_bind_intr(struct ice_vsi *vsi);
 int ice_add_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
-		uint64_t hash_fld, uint32_t pkt_hdr, bool symm);
+			 struct ice_rss_hash_cfg *cfg);
 int ice_rem_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
-		uint64_t hash_fld, uint32_t pkt_hdr);
+			 struct ice_rss_hash_cfg *cfg);
 
 static inline int
 ice_align_floor(int n)
