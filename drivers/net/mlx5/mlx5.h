@@ -272,6 +272,10 @@ struct mlx5_drop {
 #define MLX5_COUNTERS_PER_POOL 512
 #define MLX5_MAX_PENDING_QUERIES 4
 #define MLX5_CNT_CONTAINER_RESIZE 64
+#define MLX5_CNT_SHARED_OFFSET 0x80000000
+#define IS_SHARED_CNT(cnt) (!!((cnt) & MLX5_CNT_SHARED_OFFSET))
+#define IS_BATCH_CNT(cnt) (((cnt) & (MLX5_CNT_SHARED_OFFSET - 1)) >= \
+			   MLX5_CNT_BATCH_OFFSET)
 #define CNT_SIZE (sizeof(struct mlx5_flow_counter))
 #define CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
 #define AGE_SIZE (sizeof(struct mlx5_age_param))
@@ -348,10 +352,29 @@ struct flow_counter_stats {
 	uint64_t bytes;
 };
 
+/* Shared counters information for counters. */
+struct mlx5_flow_counter_shared {
+	uint32_t ref_cnt; /**< Reference counter. */
+	uint32_t id; /**< User counter ID. */
+};
+
+struct mlx5_flow_counter_pool;
 /* Generic counters information. */
 struct mlx5_flow_counter {
-	TAILQ_ENTRY(mlx5_flow_counter) next;
-	/**< Pointer to the next flow counter structure. */
+	union {
+		/*
+		 * User-defined counter shared info is only used during
+		 * counter active time. And aging counter sharing is not
+		 * supported, so active shared counter will not be chained
+		 * to the aging list. For shared counter, only when it is
+		 * released, the TAILQ entry memory will be used, at that
+		 * time, shared memory is not used anymore.
+		 */
+		TAILQ_ENTRY(mlx5_flow_counter) next;
+		/**< Pointer to the next flow counter structure. */
+		struct mlx5_flow_counter_shared shared_info;
+		/**< Shared counter information. */
+	};
 	union {
 		uint64_t hits; /**< Reset value of hits packets. */
 		struct mlx5_flow_counter_pool *pool; /**< Counter pool. */
@@ -360,15 +383,10 @@ struct mlx5_flow_counter {
 	void *action; /**< Pointer to the dv action. */
 };
 
-/* Extend counters information for none batch counters. */
+/* Extend counters information for none batch fallback counters. */
 struct mlx5_flow_counter_ext {
-	uint32_t shared:1; /**< Share counter ID with other flow rules. */
-	uint32_t batch: 1;
 	uint32_t skipped:1; /* This counter is skipped or not. */
-	/**< Whether the counter was allocated by batch command. */
-	uint32_t ref_cnt:29; /**< Reference counter. */
-	uint32_t id; /**< User counter ID. */
-	union {  /**< Holds the counters for the rule. */
+	union {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 		struct ibv_counter_set *cs;
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
