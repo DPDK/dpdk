@@ -41,9 +41,21 @@
  * This mapping comprises a port type to ensure that RTE switch port ID
  * of a represented entity and that of its representor are different in
  * the case when the entity gets plugged into DPDK and not into a guest.
+ *
+ * Entry data also comprises RTE ethdev's own MPORT. This value
+ * coincides with the entity MPORT in the case of independent ports.
+ * In the case of representors, this ID is not a selector and refers
+ * to an allocatable object (that is, it's likely to change on RTE
+ * ethdev replug). Flow API backend must use this value rather
+ * than entity_mport to support flow rule action PORT_ID.
  */
 struct sfc_mae_switch_port {
 	TAILQ_ENTRY(sfc_mae_switch_port)	switch_domain_ports;
+
+	/** RTE ethdev MPORT */
+	efx_mport_sel_t				ethdev_mport;
+	/** RTE ethdev port ID */
+	uint16_t				ethdev_port_id;
 
 	/** Entity (PCIe function) MPORT selector */
 	efx_mport_sel_t				entity_mport;
@@ -263,6 +275,9 @@ sfc_mae_assign_switch_port(uint16_t switch_domain_id,
 	TAILQ_INSERT_TAIL(&domain->ports, port, switch_domain_ports);
 
 done:
+	port->ethdev_mport = *req->ethdev_mportp;
+	port->ethdev_port_id = req->ethdev_port_id;
+
 	*switch_port_id = port->id;
 
 	rte_spinlock_unlock(&sfc_mae_switch.lock);
@@ -272,5 +287,48 @@ done:
 fail_mem_alloc:
 fail_find_switch_domain_by_id:
 	rte_spinlock_unlock(&sfc_mae_switch.lock);
+	return rc;
+}
+
+/* This function expects to be called only when the lock is held */
+static int
+sfc_mae_find_switch_port_by_ethdev(uint16_t switch_domain_id,
+				   uint16_t ethdev_port_id,
+				   efx_mport_sel_t *mport_sel)
+{
+	struct sfc_mae_switch_domain *domain;
+	struct sfc_mae_switch_port *port;
+
+	SFC_ASSERT(rte_spinlock_is_locked(&sfc_mae_switch.lock));
+
+	if (ethdev_port_id == RTE_MAX_ETHPORTS)
+		return EINVAL;
+
+	domain = sfc_mae_find_switch_domain_by_id(switch_domain_id);
+	if (domain == NULL)
+		return EINVAL;
+
+	TAILQ_FOREACH(port, &domain->ports, switch_domain_ports) {
+		if (port->ethdev_port_id == ethdev_port_id) {
+			*mport_sel = port->ethdev_mport;
+			return 0;
+		}
+	}
+
+	return ENOENT;
+}
+
+int
+sfc_mae_switch_port_by_ethdev(uint16_t switch_domain_id,
+			      uint16_t ethdev_port_id,
+			      efx_mport_sel_t *mport_sel)
+{
+	int rc;
+
+	rte_spinlock_lock(&sfc_mae_switch.lock);
+	rc = sfc_mae_find_switch_port_by_ethdev(switch_domain_id,
+						ethdev_port_id, mport_sel);
+	rte_spinlock_unlock(&sfc_mae_switch.lock);
+
 	return rc;
 }

@@ -30,6 +30,7 @@ sfc_mae_assign_entity_mport(struct sfc_adapter *sa,
 int
 sfc_mae_attach(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_mae_switch_port_request switch_port_request = {0};
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	efx_mport_sel_t entity_mport;
@@ -67,6 +68,12 @@ sfc_mae_attach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "assign RTE switch port");
 	switch_port_request.type = SFC_MAE_SWITCH_PORT_INDEPENDENT;
 	switch_port_request.entity_mportp = &entity_mport;
+	/*
+	 * As of now, the driver does not support representors, so
+	 * RTE ethdev MPORT simply matches that of the entity.
+	 */
+	switch_port_request.ethdev_mportp = &entity_mport;
+	switch_port_request.ethdev_port_id = sas->port_id;
 	rc = sfc_mae_assign_switch_port(mae->switch_domain_id,
 					&switch_port_request,
 					&mae->switch_port_id);
@@ -794,6 +801,27 @@ sfc_mae_rule_parse_action_pf_vf(struct sfc_adapter *sa,
 }
 
 static int
+sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
+				  const struct rte_flow_action_port_id *conf,
+				  efx_mae_actions_t *spec)
+{
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	struct sfc_mae *mae = &sa->mae;
+	efx_mport_sel_t mport;
+	uint16_t port_id;
+	int rc;
+
+	port_id = (conf->original != 0) ? sas->port_id : conf->id;
+
+	rc = sfc_mae_switch_port_by_ethdev(mae->switch_domain_id,
+					   port_id, &mport);
+	if (rc != 0)
+		return rc;
+
+	return efx_mae_action_set_populate_deliver(spec, &mport);
+}
+
+static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
 			  struct sfc_mae_actions_bundle *bundle,
@@ -847,6 +875,11 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_VF,
 				       bundle->actions_mask);
 		rc = sfc_mae_rule_parse_action_pf_vf(sa, action->conf, spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_PORT_ID:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PORT_ID,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_port_id(sa, action->conf, spec);
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_DROP,

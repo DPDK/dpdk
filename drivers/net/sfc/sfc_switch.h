@@ -32,6 +32,8 @@ enum sfc_mae_switch_port_type {
 struct sfc_mae_switch_port_request {
 	enum sfc_mae_switch_port_type		type;
 	const efx_mport_sel_t			*entity_mportp;
+	const efx_mport_sel_t			*ethdev_mportp;
+	uint16_t				ethdev_port_id;
 };
 
 int sfc_mae_assign_switch_domain(struct sfc_adapter *sa,
@@ -40,6 +42,10 @@ int sfc_mae_assign_switch_domain(struct sfc_adapter *sa,
 int sfc_mae_assign_switch_port(uint16_t switch_domain_id,
 			       const struct sfc_mae_switch_port_request *req,
 			       uint16_t *switch_port_id);
+
+int sfc_mae_switch_port_by_ethdev(uint16_t switch_domain_id,
+				  uint16_t ethdev_port_id,
+				  efx_mport_sel_t *mport_sel);
 
 #ifdef __cplusplus
 }

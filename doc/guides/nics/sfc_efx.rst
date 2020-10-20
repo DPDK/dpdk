@@ -218,6 +218,8 @@ Supported actions (***transfer*** rules):
 
 - VF
 
+- PORT_ID
+
 - DROP
 
 Validating flow rules depends on the firmware variant.
