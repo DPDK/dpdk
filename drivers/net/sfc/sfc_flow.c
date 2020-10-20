@@ -1679,9 +1679,6 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 		return -rte_errno;
 	}
 
-#define SFC_BUILD_SET_OVERFLOW(_action, _set) \
-	RTE_BUILD_BUG_ON(_action >= sizeof(_set) * CHAR_BIT)
-
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -1777,7 +1774,6 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 
 		actions_set |= (1UL << actions->type);
 	}
-#undef SFC_BUILD_SET_OVERFLOW
 
 	/* When fate is unknown, drop traffic. */
 	if ((actions_set & fate_actions_mask) == 0) {

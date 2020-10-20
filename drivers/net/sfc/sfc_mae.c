@@ -445,6 +445,99 @@ fail_init_match_spec_action:
 	return rc;
 }
 
+/*
+ * An action supported by MAE may correspond to a bundle of RTE flow actions,
+ * in example, VLAN_PUSH = OF_PUSH_VLAN + OF_VLAN_SET_VID + OF_VLAN_SET_PCP.
+ * That is, related RTE flow actions need to be tracked as parts of a whole
+ * so that they can be combined into a single action and submitted to MAE
+ * representation of a given rule's action set.
+ *
+ * Each RTE flow action provided by an application gets classified as
+ * one belonging to some bundle type. If an action is not supposed to
+ * belong to any bundle, or if this action is END, it is described as
+ * one belonging to a dummy bundle of type EMPTY.
+ *
+ * A currently tracked bundle will be submitted if a repeating
+ * action or an action of different bundle type follows.
+ */
+
+enum sfc_mae_actions_bundle_type {
+	SFC_MAE_ACTIONS_BUNDLE_EMPTY = 0,
+};
+
+struct sfc_mae_actions_bundle {
+	enum sfc_mae_actions_bundle_type	type;
+
+	/* Indicates actions already tracked by the current bundle */
+	uint64_t				actions_mask;
+};
+
+/*
+ * Combine configuration of RTE flow actions tracked by the bundle into a
+ * single action and submit the result to MAE action set specification.
+ * Do nothing in the case of dummy action bundle.
+ */
+static int
+sfc_mae_actions_bundle_submit(const struct sfc_mae_actions_bundle *bundle,
+			      __rte_unused efx_mae_actions_t *spec)
+{
+	int rc = 0;
+
+	switch (bundle->type) {
+	case SFC_MAE_ACTIONS_BUNDLE_EMPTY:
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+		break;
+	}
+
+	return rc;
+}
+
+/*
+ * Given the type of the next RTE flow action in the line, decide
+ * whether a new bundle is about to start, and, if this is the case,
+ * submit and reset the current bundle.
+ */
+static int
+sfc_mae_actions_bundle_sync(const struct rte_flow_action *action,
+			    struct sfc_mae_actions_bundle *bundle,
+			    efx_mae_actions_t *spec,
+			    struct rte_flow_error *error)
+{
+	enum sfc_mae_actions_bundle_type bundle_type_new;
+	int rc;
+
+	switch (action->type) {
+	default:
+		/*
+		 * Self-sufficient actions, including END, are handled in this
+		 * case. No checks for unsupported actions are needed here
+		 * because parsing doesn't occur at this point.
+		 */
+		bundle_type_new = SFC_MAE_ACTIONS_BUNDLE_EMPTY;
+		break;
+	}
+
+	if (bundle_type_new != bundle->type ||
+	    (bundle->actions_mask & (1ULL << action->type)) != 0) {
+		rc = sfc_mae_actions_bundle_submit(bundle, spec);
+		if (rc != 0)
+			goto fail_submit;
+
+		memset(bundle, 0, sizeof(*bundle));
+	}
+
+	bundle->type = bundle_type_new;
+
+	return 0;
+
+fail_submit:
+	return rte_flow_error_set(error, rc,
+			RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+			"Failed to request the (group of) action(s)");
+}
+
 static int
 sfc_mae_rule_parse_action_phy_port(struct sfc_adapter *sa,
 				   const struct rte_flow_action_phy_port *conf,
@@ -469,6 +562,7 @@ sfc_mae_rule_parse_action_phy_port(struct sfc_adapter *sa,
 static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
+			  struct sfc_mae_actions_bundle *bundle,
 			  efx_mae_actions_t *spec,
 			  struct rte_flow_error *error)
 {
@@ -476,9 +570,13 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_POP_VLAN,
+				       bundle->actions_mask);
 		rc = efx_mae_action_set_populate_vlan_pop(spec);
 		break;
 	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PHY_PORT,
+				       bundle->actions_mask);
 		rc = sfc_mae_rule_parse_action_phy_port(sa, action->conf, spec);
 		break;
 	default:
@@ -490,6 +588,8 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	if (rc != 0) {
 		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
 				NULL, "Failed to request the action");
+	} else {
+		bundle->actions_mask |= (1ULL << action->type);
 	}
 
 	return rc;
@@ -501,6 +601,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			   struct sfc_mae_action_set **action_setp,
 			   struct rte_flow_error *error)
 {
+	struct sfc_mae_actions_bundle bundle = {0};
 	const struct rte_flow_action *action;
 	efx_mae_actions_t *spec;
 	int rc;
@@ -517,10 +618,19 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 
 	for (action = actions;
 	     action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
-		rc = sfc_mae_rule_parse_action(sa, action, spec, error);
+		rc = sfc_mae_actions_bundle_sync(action, &bundle, spec, error);
+		if (rc != 0)
+			goto fail_rule_parse_action;
+
+		rc = sfc_mae_rule_parse_action(sa, action, &bundle, spec,
+					       error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
 	}
+
+	rc = sfc_mae_actions_bundle_sync(action, &bundle, spec, error);
+	if (rc != 0)
+		goto fail_rule_parse_action;
 
 	*action_setp = sfc_mae_action_set_attach(sa, spec);
 	if (*action_setp != NULL) {

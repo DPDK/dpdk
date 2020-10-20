@@ -26,6 +26,10 @@ extern "C" {
  */
 #define SF_FLOW_SPEC_NB_FILTERS_MAX 8
 
+/* Used to guard action masks */
+#define SFC_BUILD_SET_OVERFLOW(_action, _set) \
+	RTE_BUILD_BUG_ON((_action) >= sizeof(_set) * CHAR_BIT)
+
 /* RSS configuration storage */
 struct sfc_flow_rss {
 	unsigned int	rxq_hw_index_min;
