@@ -1421,8 +1421,23 @@ ef10_get_datapath_caps(
 	else
 		encp->enc_filter_action_mark_max = 0;
 
+#if EFSYS_OPT_MAE
+	/*
+	 * Indicate support for MAE.
+	 * MAE is supported by Riverhead boards starting with R2,
+	 * and it is required that FW is built with MAE support, too.
+	 */
+	if (CAP_FLAGS3(req, MAE_SUPPORTED))
+		encp->enc_mae_supported = B_TRUE;
+	else
+		encp->enc_mae_supported = B_FALSE;
+#else
+	encp->enc_mae_supported = B_FALSE;
+#endif /* EFSYS_OPT_MAE */
+
 #undef CAP_FLAGS1
 #undef CAP_FLAGS2
+#undef CAP_FLAGS3
 
 	return (0);
 

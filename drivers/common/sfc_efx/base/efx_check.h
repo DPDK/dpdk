@@ -401,4 +401,10 @@
 # endif
 #endif /* EFSYS_OPT_DESC_PROXY */
 
+#if EFSYS_OPT_MAE
+# if !EFSYS_OPT_RIVERHEAD
+#  error "MAE requires RIVERHEAD"
+# endif
+#endif /* EFSYS_OPT_MAE */
+
 #endif /* _SYS_EFX_CHECK_H */

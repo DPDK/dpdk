@@ -1593,6 +1593,8 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_mac_stats_nstats;
 	boolean_t		enc_fec_counters;
 	boolean_t		enc_hlb_counters;
+	/* NIC support for Match-Action Engine (MAE). */
+	boolean_t		enc_mae_supported;
 	/* Firmware support for "FLAG" and "MARK" filter actions */
 	boolean_t		enc_filter_action_flag_supported;
 	boolean_t		enc_filter_action_mark_supported;
