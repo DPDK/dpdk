@@ -47,6 +47,7 @@ sources = files(
 	'sfc_tx.c',
 	'sfc_tso.c',
 	'sfc_filter.c',
+	'sfc_switch.c',
 	'sfc_mae.c',
 	'sfc_flow.c',
 	'sfc_dp.c',

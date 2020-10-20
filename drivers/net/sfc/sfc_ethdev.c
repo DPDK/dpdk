@@ -93,6 +93,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_rss *rss = &sas->rss;
+	struct sfc_mae *mae = &sa->mae;
 	uint64_t txq_offloads_def = 0;
 
 	sfc_log_init(sa, "entry");
@@ -186,6 +187,12 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 			     RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
+
+	if (mae->status == SFC_MAE_STATUS_SUPPORTED) {
+		dev_info->switch_info.name = dev->device->driver->name;
+		dev_info->switch_info.domain_id = mae->switch_domain_id;
+		dev_info->switch_info.port_id = mae->switch_port_id;
+	}
 
 	return 0;
 }

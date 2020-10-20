@@ -15,11 +15,24 @@
 
 #include "sfc.h"
 #include "sfc_log.h"
+#include "sfc_switch.h"
+
+static int
+sfc_mae_assign_entity_mport(struct sfc_adapter *sa,
+			    efx_mport_sel_t *mportp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+
+	return efx_mae_mport_by_pcie_function(encp->enc_pf, encp->enc_vf,
+					      mportp);
+}
 
 int
 sfc_mae_attach(struct sfc_adapter *sa)
 {
+	struct sfc_mae_switch_port_request switch_port_request = {0};
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	efx_mport_sel_t entity_mport;
 	struct sfc_mae *mae = &sa->mae;
 	efx_mae_limits_t limits;
 	int rc;
@@ -41,6 +54,25 @@ sfc_mae_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mae_get_limits;
 
+	sfc_log_init(sa, "assign entity MPORT");
+	rc = sfc_mae_assign_entity_mport(sa, &entity_mport);
+	if (rc != 0)
+		goto fail_mae_assign_entity_mport;
+
+	sfc_log_init(sa, "assign RTE switch domain");
+	rc = sfc_mae_assign_switch_domain(sa, &mae->switch_domain_id);
+	if (rc != 0)
+		goto fail_mae_assign_switch_domain;
+
+	sfc_log_init(sa, "assign RTE switch port");
+	switch_port_request.type = SFC_MAE_SWITCH_PORT_INDEPENDENT;
+	switch_port_request.entity_mportp = &entity_mport;
+	rc = sfc_mae_assign_switch_port(mae->switch_domain_id,
+					&switch_port_request,
+					&mae->switch_port_id);
+	if (rc != 0)
+		goto fail_mae_assign_switch_port;
+
 	mae->status = SFC_MAE_STATUS_SUPPORTED;
 	mae->nb_action_rule_prios_max = limits.eml_max_n_action_prios;
 	TAILQ_INIT(&mae->action_sets);
@@ -49,6 +81,9 @@ sfc_mae_attach(struct sfc_adapter *sa)
 
 	return 0;
 
+fail_mae_assign_switch_port:
+fail_mae_assign_switch_domain:
+fail_mae_assign_entity_mport:
 fail_mae_get_limits:
 	efx_mae_fini(sa->nic);
 

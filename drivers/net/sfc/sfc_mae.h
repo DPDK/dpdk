@@ -12,6 +12,8 @@
 
 #include <stdbool.h>
 
+#include <rte_spinlock.h>
+
 #include "efx.h"
 
 #ifdef __cplusplus
@@ -45,6 +47,10 @@ enum sfc_mae_status {
 };
 
 struct sfc_mae {
+	/** Assigned switch domain identifier */
+	uint16_t			switch_domain_id;
+	/** Assigned switch port identifier */
+	uint16_t			switch_port_id;
 	/** NIC support for MAE status */
 	enum sfc_mae_status		status;
 	/** Priority level limit for MAE action rules */
