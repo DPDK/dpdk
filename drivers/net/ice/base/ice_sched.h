@@ -153,13 +153,21 @@ enum ice_status
 ice_cfg_agg_bw_dflt_lmt_per_tc(struct ice_port_info *pi, u32 agg_id, u8 tc,
 			       enum ice_rl_type rl_type);
 enum ice_status
-ice_cfg_vsi_bw_shared_lmt(struct ice_port_info *pi, u16 vsi_handle, u32 bw);
+ice_cfg_vsi_bw_shared_lmt(struct ice_port_info *pi, u16 vsi_handle, u32 min_bw,
+			  u32 max_bw, u32 shared_bw);
 enum ice_status
 ice_cfg_vsi_bw_no_shared_lmt(struct ice_port_info *pi, u16 vsi_handle);
 enum ice_status
-ice_cfg_agg_bw_shared_lmt(struct ice_port_info *pi, u32 agg_id, u32 bw);
+ice_cfg_agg_bw_shared_lmt(struct ice_port_info *pi, u32 agg_id, u32 min_bw,
+			  u32 max_bw, u32 shared_bw);
 enum ice_status
 ice_cfg_agg_bw_no_shared_lmt(struct ice_port_info *pi, u32 agg_id);
+enum ice_status
+ice_cfg_agg_bw_shared_lmt_per_tc(struct ice_port_info *pi, u32 agg_id, u8 tc,
+				 u32 min_bw, u32 max_bw, u32 shared_bw);
+enum ice_status
+ice_cfg_agg_bw_no_shared_lmt_per_tc(struct ice_port_info *pi, u32 agg_id,
+				    u8 tc);
 enum ice_status
 ice_cfg_vsi_q_priority(struct ice_port_info *pi, u16 num_qs, u32 *q_ids,
 		       u8 *q_prio);
@@ -184,9 +192,14 @@ ice_sched_set_node_bw_lmt_per_tc(struct ice_port_info *pi, u32 id,
 				 enum ice_rl_type rl_type, u32 bw);
 enum ice_status
 ice_sched_set_vsi_bw_shared_lmt(struct ice_port_info *pi, u16 vsi_handle,
-				u32 bw);
+				u32 min_bw, u32 max_bw, u32 shared_bw);
 enum ice_status
-ice_sched_set_agg_bw_shared_lmt(struct ice_port_info *pi, u32 agg_id, u32 bw);
+ice_sched_set_agg_bw_shared_lmt(struct ice_port_info *pi, u32 agg_id, u32 min_bw,
+				u32 max_bw, u32 shared_bw);
+enum ice_status
+ice_sched_set_agg_bw_shared_lmt_per_tc(struct ice_port_info *pi, u32 agg_id,
+				       u8 tc, u32 min_bw, u32 max_bw,
+				       u32 shared_bw);
 enum ice_status
 ice_sched_cfg_sibl_node_prio(struct ice_port_info *pi,
 			     struct ice_sched_node *node, u8 priority);
