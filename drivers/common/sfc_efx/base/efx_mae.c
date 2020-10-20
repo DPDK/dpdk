@@ -435,6 +435,45 @@ efx_mae_match_spec_is_valid(
 }
 
 	__checkReturn			efx_rc_t
+efx_mae_action_set_spec_init(
+	__in				efx_nic_t *enp,
+	__out				efx_mae_actions_t **specp)
+{
+	efx_mae_actions_t *spec;
+	efx_rc_t rc;
+
+	EFSYS_KMEM_ALLOC(enp->en_esip, sizeof (*spec), spec);
+	if (spec == NULL) {
+		rc = ENOMEM;
+		goto fail1;
+	}
+
+	*specp = spec;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+					void
+efx_mae_action_set_spec_fini(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_actions_t *spec)
+{
+	EFSYS_KMEM_FREE(enp->en_esip, sizeof (*spec), spec);
+}
+
+	__checkReturn			boolean_t
+efx_mae_action_set_specs_equal(
+	__in				const efx_mae_actions_t *left,
+	__in				const efx_mae_actions_t *right)
+{
+	return ((memcmp(left, right, sizeof (*left)) == 0) ? B_TRUE : B_FALSE);
+}
+
+	__checkReturn			efx_rc_t
 efx_mae_match_specs_class_cmp(
 	__in				efx_nic_t *enp,
 	__in				const efx_mae_match_spec_t *left,

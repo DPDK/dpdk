@@ -4098,6 +4098,26 @@ efx_mae_match_spec_is_valid(
 	__in				efx_nic_t *enp,
 	__in				const efx_mae_match_spec_t *spec);
 
+typedef struct efx_mae_actions_s efx_mae_actions_t;
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_spec_init(
+	__in				efx_nic_t *enp,
+	__out				efx_mae_actions_t **specp);
+
+LIBEFX_API
+extern					void
+efx_mae_action_set_spec_fini(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_actions_t *spec);
+
+LIBEFX_API
+extern	__checkReturn			boolean_t
+efx_mae_action_set_specs_equal(
+	__in				const efx_mae_actions_t *left,
+	__in				const efx_mae_actions_t *right);
+
 /*
  * Conduct a comparison to check whether two match specifications
  * of equal rule type (action / outer) and priority would map to
