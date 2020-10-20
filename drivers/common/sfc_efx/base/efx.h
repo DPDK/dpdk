@@ -4112,6 +4112,8 @@ typedef enum efx_mae_field_id_e {
 	EFX_MAE_FIELD_IP_PROTO,
 	EFX_MAE_FIELD_IP_TOS,
 	EFX_MAE_FIELD_IP_TTL,
+	EFX_MAE_FIELD_SRC_IP6_BE,
+	EFX_MAE_FIELD_DST_IP6_BE,
 
 	EFX_MAE_FIELD_NIDS
 } efx_mae_field_id_t;
