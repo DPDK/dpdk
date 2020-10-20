@@ -205,6 +205,9 @@ Supported pattern items (***transfer*** rules):
 - IPV4 (source/destination addresses, IP transport protocol,
   type of service, time to live)
 
+- IPV6 (source/destination addresses, IP transport protocol,
+  traffic class, hop limit)
+
 Supported actions (***transfer*** rules):
 
 - OF_POP_VLAN

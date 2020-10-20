@@ -946,6 +946,105 @@ sfc_mae_rule_parse_item_ipv4(const struct rte_flow_item *item,
 				  ctx_mae->match_spec_action, error);
 }
 
+static const struct sfc_mae_field_locator flocs_ipv6[] = {
+	{
+		EFX_MAE_FIELD_SRC_IP6_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv6, hdr.src_addr),
+		offsetof(struct rte_flow_item_ipv6, hdr.src_addr),
+	},
+	{
+		EFX_MAE_FIELD_DST_IP6_BE,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv6, hdr.dst_addr),
+		offsetof(struct rte_flow_item_ipv6, hdr.dst_addr),
+	},
+	{
+		/*
+		 * This locator is used only for building supported fields mask.
+		 * The field is handled by sfc_mae_rule_process_pattern_data().
+		 */
+		SFC_MAE_FIELD_HANDLING_DEFERRED,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv6, hdr.proto),
+		offsetof(struct rte_flow_item_ipv6, hdr.proto),
+	},
+	{
+		EFX_MAE_FIELD_IP_TTL,
+		RTE_SIZEOF_FIELD(struct rte_flow_item_ipv6, hdr.hop_limits),
+		offsetof(struct rte_flow_item_ipv6, hdr.hop_limits),
+	},
+};
+
+static int
+sfc_mae_rule_parse_item_ipv6(const struct rte_flow_item *item,
+			     struct sfc_flow_parse_ctx *ctx,
+			     struct rte_flow_error *error)
+{
+	rte_be16_t ethertype_ipv6_be = RTE_BE16(RTE_ETHER_TYPE_IPV6);
+	struct sfc_mae_parse_ctx *ctx_mae = ctx->mae;
+	struct sfc_mae_pattern_data *pdata = &ctx_mae->pattern_data;
+	struct rte_flow_item_ipv6 supp_mask;
+	const uint8_t *spec = NULL;
+	const uint8_t *mask = NULL;
+	rte_be32_t vtc_flow_be;
+	uint32_t vtc_flow;
+	uint8_t tc_value;
+	uint8_t tc_mask;
+	int rc;
+
+	sfc_mae_item_build_supp_mask(flocs_ipv6, RTE_DIM(flocs_ipv6),
+				     &supp_mask, sizeof(supp_mask));
+
+	vtc_flow_be = RTE_BE32(RTE_IPV6_HDR_TC_MASK);
+	memcpy(&supp_mask, &vtc_flow_be, sizeof(vtc_flow_be));
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec, (const void **)&mask,
+				 (const void *)&supp_mask,
+				 &rte_flow_item_ipv6_mask,
+				 sizeof(struct rte_flow_item_ipv6), error);
+	if (rc != 0)
+		return rc;
+
+	pdata->innermost_ethertype_restriction.value = ethertype_ipv6_be;
+	pdata->innermost_ethertype_restriction.mask = RTE_BE16(0xffff);
+
+	if (spec != NULL) {
+		const struct rte_flow_item_ipv6 *item_spec;
+		const struct rte_flow_item_ipv6 *item_mask;
+
+		item_spec = (const struct rte_flow_item_ipv6 *)spec;
+		item_mask = (const struct rte_flow_item_ipv6 *)mask;
+
+		pdata->l3_next_proto_value = item_spec->hdr.proto;
+		pdata->l3_next_proto_mask = item_mask->hdr.proto;
+	} else {
+		return 0;
+	}
+
+	rc = sfc_mae_parse_item(flocs_ipv6, RTE_DIM(flocs_ipv6), spec, mask,
+				ctx_mae->match_spec_action, error);
+	if (rc != 0)
+		return rc;
+
+	memcpy(&vtc_flow_be, spec, sizeof(vtc_flow_be));
+	vtc_flow = rte_be_to_cpu_32(vtc_flow_be);
+	tc_value = (vtc_flow & RTE_IPV6_HDR_TC_MASK) >> RTE_IPV6_HDR_TC_SHIFT;
+
+	memcpy(&vtc_flow_be, mask, sizeof(vtc_flow_be));
+	vtc_flow = rte_be_to_cpu_32(vtc_flow_be);
+	tc_mask = (vtc_flow & RTE_IPV6_HDR_TC_MASK) >> RTE_IPV6_HDR_TC_SHIFT;
+
+	rc = efx_mae_match_spec_field_set(ctx_mae->match_spec_action,
+					  EFX_MAE_FIELD_IP_TOS,
+					  sizeof(tc_value), &tc_value,
+					  sizeof(tc_mask), &tc_mask);
+	if (rc != 0) {
+		return rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ITEM,
+				NULL, "Failed to process item fields");
+	}
+
+	return 0;
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_PORT_ID,
@@ -1011,6 +1110,13 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.layer = SFC_FLOW_ITEM_L3,
 		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
 		.parse = sfc_mae_rule_parse_item_ipv4,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_IPV6,
+		.prev_layer = SFC_FLOW_ITEM_L2,
+		.layer = SFC_FLOW_ITEM_L3,
+		.ctx_type = SFC_FLOW_PARSE_CTX_MAE,
+		.parse = sfc_mae_rule_parse_item_ipv6,
 	},
 };
 

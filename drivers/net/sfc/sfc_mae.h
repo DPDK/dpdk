@@ -115,6 +115,7 @@ struct sfc_mae_pattern_data {
 	 * L3 requirement for the innermost L2 item's "type" ("inner_type").
 	 * This contains one of:
 	 * - 0x0800/0xffff: IPV4
+	 * - 0x86dd/0xffff: IPV6
 	 * - 0x0000/0x0000: no L3 item
 	 */
 	struct sfc_mae_ethertype	innermost_ethertype_restriction;
