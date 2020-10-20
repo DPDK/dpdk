@@ -75,3 +75,68 @@ sfc_mae_detach(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "done");
 }
+
+void
+sfc_mae_flow_cleanup(struct sfc_adapter *sa,
+		     struct rte_flow *flow)
+{
+	struct sfc_flow_spec *spec;
+	struct sfc_flow_spec_mae *spec_mae;
+
+	if (flow == NULL)
+		return;
+
+	spec = &flow->spec;
+
+	if (spec == NULL)
+		return;
+
+	spec_mae = &spec->mae;
+
+	if (spec_mae->match_spec != NULL)
+		efx_mae_match_spec_fini(sa->nic, spec_mae->match_spec);
+}
+
+static const struct sfc_flow_item sfc_flow_items[] = {
+};
+
+int
+sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
+			   const struct rte_flow_item pattern[],
+			   struct sfc_flow_spec_mae *spec,
+			   struct rte_flow_error *error)
+{
+	struct sfc_mae_parse_ctx ctx_mae;
+	struct sfc_flow_parse_ctx ctx;
+	int rc;
+
+	memset(&ctx_mae, 0, sizeof(ctx_mae));
+
+	rc = efx_mae_match_spec_init(sa->nic, EFX_MAE_RULE_ACTION,
+				     spec->priority,
+				     &ctx_mae.match_spec_action);
+	if (rc != 0) {
+		rc = rte_flow_error_set(error, rc,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Failed to initialise action rule match specification");
+		goto fail_init_match_spec_action;
+	}
+
+	ctx.type = SFC_FLOW_PARSE_CTX_MAE;
+	ctx.mae = &ctx_mae;
+
+	rc = sfc_flow_parse_pattern(sfc_flow_items, RTE_DIM(sfc_flow_items),
+				    pattern, &ctx, error);
+	if (rc != 0)
+		goto fail_parse_pattern;
+
+	spec->match_spec = ctx_mae.match_spec_action;
+
+	return 0;
+
+fail_parse_pattern:
+	efx_mae_match_spec_fini(sa->nic, ctx_mae.match_spec_action);
+
+fail_init_match_spec_action:
+	return rc;
+}

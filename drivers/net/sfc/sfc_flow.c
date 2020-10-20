@@ -27,18 +27,28 @@
 
 struct sfc_flow_ops_by_spec {
 	sfc_flow_parse_cb_t	*parse;
+	sfc_flow_cleanup_cb_t	*cleanup;
 	sfc_flow_insert_cb_t	*insert;
 	sfc_flow_remove_cb_t	*remove;
 };
 
 static sfc_flow_parse_cb_t sfc_flow_parse_rte_to_filter;
+static sfc_flow_parse_cb_t sfc_flow_parse_rte_to_mae;
 static sfc_flow_insert_cb_t sfc_flow_filter_insert;
 static sfc_flow_remove_cb_t sfc_flow_filter_remove;
 
 static const struct sfc_flow_ops_by_spec sfc_flow_ops_filter = {
 	.parse = sfc_flow_parse_rte_to_filter,
+	.cleanup = NULL,
 	.insert = sfc_flow_filter_insert,
 	.remove = sfc_flow_filter_remove,
+};
+
+static const struct sfc_flow_ops_by_spec sfc_flow_ops_mae = {
+	.parse = sfc_flow_parse_rte_to_mae,
+	.cleanup = sfc_mae_flow_cleanup,
+	.insert = NULL,
+	.remove = NULL,
 };
 
 static const struct sfc_flow_ops_by_spec *
@@ -50,6 +60,9 @@ sfc_flow_get_ops_by_spec(struct rte_flow *flow)
 	switch (spec->type) {
 	case SFC_FLOW_SPEC_FILTER:
 		ops = &sfc_flow_ops_filter;
+		break;
+	case SFC_FLOW_SPEC_MAE:
+		ops = &sfc_flow_ops_mae;
 		break;
 	default:
 		SFC_ASSERT(false);
@@ -1184,6 +1197,7 @@ sfc_flow_parse_attr(struct sfc_adapter *sa,
 		}
 		spec->type = SFC_FLOW_SPEC_MAE;
 		spec_mae->priority = attr->priority;
+		spec_mae->match_spec = NULL;
 	}
 
 	return 0;
@@ -2409,6 +2423,25 @@ fail_bad_value:
 }
 
 static int
+sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
+			  const struct rte_flow_item pattern[],
+			  __rte_unused const struct rte_flow_action actions[],
+			  struct rte_flow *flow,
+			  struct rte_flow_error *error)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct sfc_flow_spec *spec = &flow->spec;
+	struct sfc_flow_spec_mae *spec_mae = &spec->mae;
+	int rc;
+
+	rc = sfc_mae_rule_parse_pattern(sa, pattern, spec_mae, error);
+	if (rc != 0)
+		return rc;
+
+	return 0;
+}
+
+static int
 sfc_flow_parse(struct rte_eth_dev *dev,
 	       const struct rte_flow_attr *attr,
 	       const struct rte_flow_item pattern[],
@@ -2451,8 +2484,14 @@ sfc_flow_zmalloc(struct rte_flow_error *error)
 }
 
 static void
-sfc_flow_free(__rte_unused struct sfc_adapter *sa, struct rte_flow *flow)
+sfc_flow_free(struct sfc_adapter *sa, struct rte_flow *flow)
 {
+	const struct sfc_flow_ops_by_spec *ops;
+
+	ops = sfc_flow_get_ops_by_spec(flow);
+	if (ops != NULL && ops->cleanup != NULL)
+		ops->cleanup(sa, flow);
+
 	rte_free(flow);
 }
 
