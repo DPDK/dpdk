@@ -1399,8 +1399,18 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
 					  "too many queues for RSS context");
 
+	/*
+	 * For Kunpeng920 and Kunpeng930 NIC hardware, it is not supported to
+	 * use dst port/src port fields to RSS hash for the following packet
+	 * types.
+	 * - IPV4 FRAG | IPV4 NONFRAG | IPV6 FRAG | IPV6 NONFRAG
+	 * Besides, for Kunpeng920, The NIC hardware is not supported to use
+	 * src/dst port fields to RSS hash for IPV6 SCTP packet type.
+	 */
 	if (rss->types & (ETH_RSS_L4_DST_ONLY | ETH_RSS_L4_SRC_ONLY) &&
-	    (rss->types & ETH_RSS_IP))
+	   (rss->types & ETH_RSS_IP ||
+	   (!hw->rss_info.ipv6_sctp_offload_supported &&
+	   rss->types & ETH_RSS_NONFRAG_IPV6_SCTP)))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->types,

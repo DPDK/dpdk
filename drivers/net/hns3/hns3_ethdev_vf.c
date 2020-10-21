@@ -1213,6 +1213,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
 		hw->tso_mode = HNS3_TSO_SW_CAL_PSEUDO_H_CSUM;
 		hw->min_tx_pkt_len = HNS3_HIP08_MIN_TX_PKT_LEN;
+		hw->rss_info.ipv6_sctp_offload_supported = false;
 		return 0;
 	}
 
@@ -1229,6 +1230,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 	hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_1US;
 	hw->tso_mode = HNS3_TSO_HW_CAL_PSEUDO_H_CSUM;
 	hw->min_tx_pkt_len = HNS3_HIP09_MIN_TX_PKT_LEN;
+	hw->rss_info.ipv6_sctp_offload_supported = true;
 
 	return 0;
 }

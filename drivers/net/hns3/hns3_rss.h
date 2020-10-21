@@ -48,6 +48,12 @@ struct hns3_rss_conf {
 	uint16_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE]; /* Shadow table */
 	uint16_t queue[HNS3_RSS_QUEUES_BUFFER_NUM]; /* Queues indices to use */
 	bool valid; /* check if RSS rule is valid */
+	/*
+	 * For IPv6 SCTP packets type, check whether the NIC hardware support
+	 * RSS hash using the src/dst port as the input tuple. For Kunpeng920
+	 * NIC hardware, it is not supported
+	 */
+	bool ipv6_sctp_offload_supported;
 };
 
 #ifndef ilog2
