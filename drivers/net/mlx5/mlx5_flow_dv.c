@@ -293,7 +293,7 @@ flow_dv_shared_lock(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 
-	if (sh->dv_refcnt > 1) {
+	if (sh->refcnt > 1) {
 		int ret;
 
 		ret = pthread_mutex_lock(&sh->dv_mutex);
@@ -308,7 +308,7 @@ flow_dv_shared_unlock(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 
-	if (sh->dv_refcnt > 1) {
+	if (sh->refcnt > 1) {
 		int ret;
 
 		ret = pthread_mutex_unlock(&sh->dv_mutex);
