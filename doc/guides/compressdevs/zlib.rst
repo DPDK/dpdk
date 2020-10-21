@@ -53,10 +53,6 @@ Installation
 Initialization
 --------------
 
-In order to enable this virtual compression PMD, user must:
-
-* Set ``CONFIG_RTE_LIBRTE_PMD_ZLIB=y`` in config/common_base.
-
 To use the PMD in an application, user must:
 
 * Call ``rte_vdev_init("compress_zlib")`` within the application.

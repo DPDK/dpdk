@@ -56,21 +56,6 @@ Steps To Setup Platform
 
    SDK and related information can be obtained from: `Cavium support site <https://support.cavium.com/>`_.
 
-Installation
-------------
-
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
-
-To compile the OCTEON TX ZIP PMD for Linux arm64 gcc target, run the
-following ``make`` command:
-
-   .. code-block:: console
-
-      cd <DPDK-source-directory>
-      make config T=arm64-thunderx-linux-gcc install
-
-
 Initialization
 --------------
 
@@ -96,10 +81,5 @@ probed. To use the PMD in an application, user must:
    .. code-block:: console
 
       reserve enough huge pages
-      cd to the top-level DPDK directory
-      export RTE_TARGET=arm64-thunderx-linux-gcc
-      export RTE_SDK=`pwd`
-      cd to app/test
-      type the command "make" to compile
-      run the tests with "./test"
-      type the command "compressdev_autotest" to test
+      cd to <build_dir>
+      meson test compressdev_autotest
