@@ -60,6 +60,20 @@ static uint32_t hashtest_key_lens[] = {0, 2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 
 	}								\
 } while(0)
 
+#define RETURN_IF_ERROR_RCU_QSBR(cond, str, ...) do {			\
+	if (cond) {							\
+		printf("ERROR line %d: " str "\n", __LINE__, ##__VA_ARGS__); \
+		if (rcu_cfg.mode == RTE_HASH_QSBR_MODE_SYNC) {		\
+			writer_done = 1;				\
+			/* Wait until reader exited. */			\
+			rte_eal_mp_wait_lcore();			\
+		}							\
+		rte_hash_free(g_handle);				\
+		rte_free(g_qsv);					\
+		return -1;						\
+	}								\
+} while (0)
+
 /* 5-tuple key type */
 struct flow_key {
 	uint32_t ip_src;
@@ -1801,6 +1815,365 @@ fail_jhash_3word:
 	return ret;
 }
 
+static struct rte_hash *g_handle;
+static struct rte_rcu_qsbr *g_qsv;
+static volatile uint8_t writer_done;
+struct flow_key g_rand_keys[9];
+
+/*
+ * rte_hash_rcu_qsbr_add positive and negative tests.
+ *  - Add RCU QSBR variable to Hash
+ *  - Add another RCU QSBR variable to Hash
+ *  - Check returns
+ */
+static int
+test_hash_rcu_qsbr_add(void)
+{
+	size_t sz;
+	struct rte_rcu_qsbr *qsv2 = NULL;
+	int32_t status;
+	struct rte_hash_rcu_config rcu_cfg = {0};
+	struct rte_hash_parameters params;
+
+	printf("\n# Running RCU QSBR add tests\n");
+	memcpy(&params, &ut_params, sizeof(params));
+	params.name = "test_hash_rcu_qsbr_add";
+	params.extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF |
+				RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
+	g_handle = rte_hash_create(&params);
+	RETURN_IF_ERROR_RCU_QSBR(g_handle == NULL, "Hash creation failed");
+
+	/* Create RCU QSBR variable */
+	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
+	g_qsv = (struct rte_rcu_qsbr *)rte_zmalloc_socket(NULL, sz,
+					RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	RETURN_IF_ERROR_RCU_QSBR(g_qsv == NULL,
+				 "RCU QSBR variable creation failed");
+
+	status = rte_rcu_qsbr_init(g_qsv, RTE_MAX_LCORE);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0,
+				 "RCU QSBR variable initialization failed");
+
+	rcu_cfg.v = g_qsv;
+	/* Invalid QSBR mode */
+	rcu_cfg.mode = 0xff;
+	status = rte_hash_rcu_qsbr_add(g_handle, &rcu_cfg);
+	RETURN_IF_ERROR_RCU_QSBR(status == 0, "Invalid QSBR mode test failed");
+
+	rcu_cfg.mode = RTE_HASH_QSBR_MODE_DQ;
+	/* Attach RCU QSBR to hash table */
+	status = rte_hash_rcu_qsbr_add(g_handle, &rcu_cfg);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0,
+				 "Attach RCU QSBR to hash table failed");
+
+	/* Create and attach another RCU QSBR to hash table */
+	qsv2 = (struct rte_rcu_qsbr *)rte_zmalloc_socket(NULL, sz,
+					RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	RETURN_IF_ERROR_RCU_QSBR(qsv2 == NULL,
+				 "RCU QSBR variable creation failed");
+
+	rcu_cfg.v = qsv2;
+	rcu_cfg.mode = RTE_HASH_QSBR_MODE_SYNC;
+	status = rte_hash_rcu_qsbr_add(g_handle, &rcu_cfg);
+	rte_free(qsv2);
+	RETURN_IF_ERROR_RCU_QSBR(status == 0,
+			"Attach RCU QSBR to hash table succeeded where failure"
+			" is expected");
+
+	rte_hash_free(g_handle);
+	rte_free(g_qsv);
+
+	return 0;
+}
+
+/*
+ * rte_hash_rcu_qsbr_add DQ mode functional test.
+ * Reader and writer are in the same thread in this test.
+ *  - Create hash which supports maximum 8 (9 if ext bkt is enabled) entries
+ *  - Add RCU QSBR variable to hash
+ *  - Add 8 hash entries and fill the bucket
+ *  - If ext bkt is enabled, add 1 extra entry that is available in the ext bkt
+ *  - Register a reader thread (not a real thread)
+ *  - Reader lookup existing entry
+ *  - Writer deletes the entry
+ *  - Reader lookup the entry
+ *  - Writer re-add the entry (no available free index)
+ *  - Reader report quiescent state and unregister
+ *  - Writer re-add the entry
+ *  - Reader lookup the entry
+ */
+static int
+test_hash_rcu_qsbr_dq_mode(uint8_t ext_bkt)
+{
+	uint32_t total_entries = (ext_bkt == 0) ? 8 : 9;
+
+	uint8_t hash_extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
+
+	if (ext_bkt)
+		hash_extra_flag |= RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+
+	struct rte_hash_parameters params_pseudo_hash = {
+		.name = "test_hash_rcu_qsbr_dq_mode",
+		.entries = total_entries,
+		.key_len = sizeof(struct flow_key), /* 13 */
+		.hash_func = pseudo_hash,
+		.hash_func_init_val = 0,
+		.socket_id = 0,
+		.extra_flag = hash_extra_flag,
+	};
+	int pos[total_entries];
+	int expected_pos[total_entries];
+	unsigned int i;
+	size_t sz;
+	int32_t status;
+	struct rte_hash_rcu_config rcu_cfg = {0};
+
+	g_qsv = NULL;
+	g_handle = NULL;
+
+	for (i = 0; i < total_entries; i++) {
+		g_rand_keys[i].port_dst = i;
+		g_rand_keys[i].port_src = i+1;
+	}
+
+	if (ext_bkt)
+		printf("\n# Running RCU QSBR DQ mode functional test with"
+		       " ext bkt\n");
+	else
+		printf("\n# Running RCU QSBR DQ mode functional test\n");
+
+	g_handle = rte_hash_create(&params_pseudo_hash);
+	RETURN_IF_ERROR_RCU_QSBR(g_handle == NULL, "Hash creation failed");
+
+	/* Create RCU QSBR variable */
+	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
+	g_qsv = (struct rte_rcu_qsbr *)rte_zmalloc_socket(NULL, sz,
+					RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	RETURN_IF_ERROR_RCU_QSBR(g_qsv == NULL,
+				 "RCU QSBR variable creation failed");
+
+	status = rte_rcu_qsbr_init(g_qsv, RTE_MAX_LCORE);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0,
+				 "RCU QSBR variable initialization failed");
+
+	rcu_cfg.v = g_qsv;
+	rcu_cfg.mode = RTE_HASH_QSBR_MODE_DQ;
+	/* Attach RCU QSBR to hash table */
+	status = rte_hash_rcu_qsbr_add(g_handle, &rcu_cfg);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0,
+				 "Attach RCU QSBR to hash table failed");
+
+	/* Fill bucket */
+	for (i = 0; i < total_entries; i++) {
+		pos[i] = rte_hash_add_key(g_handle, &g_rand_keys[i]);
+		print_key_info("Add", &g_rand_keys[i], pos[i]);
+		RETURN_IF_ERROR_RCU_QSBR(pos[i] < 0,
+					 "failed to add key (pos[%u]=%d)", i,
+					 pos[i]);
+		expected_pos[i] = pos[i];
+	}
+
+	/* Register pseudo reader */
+	status = rte_rcu_qsbr_thread_register(g_qsv, 0);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0,
+				 "RCU QSBR thread registration failed");
+	rte_rcu_qsbr_thread_online(g_qsv, 0);
+
+	/* Lookup */
+	pos[0] = rte_hash_lookup(g_handle, &g_rand_keys[0]);
+	print_key_info("Lkp", &g_rand_keys[0], pos[0]);
+	RETURN_IF_ERROR_RCU_QSBR(pos[0] != expected_pos[0],
+				 "failed to find correct key (pos[%u]=%d)", 0,
+				 pos[0]);
+
+	/* Writer update */
+	pos[0] = rte_hash_del_key(g_handle, &g_rand_keys[0]);
+	print_key_info("Del", &g_rand_keys[0], pos[0]);
+	RETURN_IF_ERROR_RCU_QSBR(pos[0] != expected_pos[0],
+				 "failed to del correct key (pos[%u]=%d)", 0,
+				 pos[0]);
+
+	/* Lookup */
+	pos[0] = rte_hash_lookup(g_handle, &g_rand_keys[0]);
+	print_key_info("Lkp", &g_rand_keys[0], pos[0]);
+	RETURN_IF_ERROR_RCU_QSBR(pos[0] != -ENOENT,
+				 "found deleted key (pos[%u]=%d)", 0, pos[0]);
+
+	/* Fill bucket */
+	pos[0] = rte_hash_add_key(g_handle, &g_rand_keys[0]);
+	print_key_info("Add", &g_rand_keys[0], pos[0]);
+	RETURN_IF_ERROR_RCU_QSBR(pos[0] != -ENOSPC,
+				 "Added key successfully (pos[%u]=%d)", 0, pos[0]);
+
+	/* Reader quiescent */
+	rte_rcu_qsbr_quiescent(g_qsv, 0);
+
+	/* Fill bucket */
+	pos[0] = rte_hash_add_key(g_handle, &g_rand_keys[0]);
+	print_key_info("Add", &g_rand_keys[0], pos[0]);
+	RETURN_IF_ERROR_RCU_QSBR(pos[0] < 0,
+				 "failed to add key (pos[%u]=%d)", 0, pos[0]);
+	expected_pos[0] = pos[0];
+
+	rte_rcu_qsbr_thread_offline(g_qsv, 0);
+	(void)rte_rcu_qsbr_thread_unregister(g_qsv, 0);
+
+	/* Lookup */
+	pos[0] = rte_hash_lookup(g_handle, &g_rand_keys[0]);
+	print_key_info("Lkp", &g_rand_keys[0], pos[0]);
+	RETURN_IF_ERROR_RCU_QSBR(pos[0] != expected_pos[0],
+				 "failed to find correct key (pos[%u]=%d)", 0,
+				 pos[0]);
+
+	rte_hash_free(g_handle);
+	rte_free(g_qsv);
+	return 0;
+
+}
+
+/* Report quiescent state interval every 1024 lookups. Larger critical
+ * sections in reader will result in writer polling multiple times.
+ */
+#define QSBR_REPORTING_INTERVAL 1024
+#define WRITER_ITERATIONS	512
+
+/*
+ * Reader thread using rte_hash data structure with RCU.
+ */
+static int
+test_hash_rcu_qsbr_reader(void *arg)
+{
+	int i;
+
+	RTE_SET_USED(arg);
+	/* Register this thread to report quiescent state */
+	(void)rte_rcu_qsbr_thread_register(g_qsv, 0);
+	rte_rcu_qsbr_thread_online(g_qsv, 0);
+
+	do {
+		for (i = 0; i < QSBR_REPORTING_INTERVAL; i++)
+			rte_hash_lookup(g_handle, &g_rand_keys[0]);
+
+		/* Update quiescent state */
+		rte_rcu_qsbr_quiescent(g_qsv, 0);
+	} while (!writer_done);
+
+	rte_rcu_qsbr_thread_offline(g_qsv, 0);
+	(void)rte_rcu_qsbr_thread_unregister(g_qsv, 0);
+
+	return 0;
+}
+
+/*
+ * rte_hash_rcu_qsbr_add sync mode functional test.
+ * 1 Reader and 1 writer. They cannot be in the same thread in this test.
+ *  - Create hash which supports maximum 8 (9 if ext bkt is enabled) entries
+ *  - Add RCU QSBR variable to hash
+ *  - Register a reader thread. Reader keeps looking up a specific key.
+ *  - Writer keeps adding and deleting a specific key.
+ */
+static int
+test_hash_rcu_qsbr_sync_mode(uint8_t ext_bkt)
+{
+	uint32_t total_entries = (ext_bkt == 0) ? 8 : 9;
+
+	uint8_t hash_extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
+
+	if (ext_bkt)
+		hash_extra_flag |= RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+
+	struct rte_hash_parameters params_pseudo_hash = {
+		.name = "test_hash_rcu_qsbr_sync_mode",
+		.entries = total_entries,
+		.key_len = sizeof(struct flow_key), /* 13 */
+		.hash_func = pseudo_hash,
+		.hash_func_init_val = 0,
+		.socket_id = 0,
+		.extra_flag = hash_extra_flag,
+	};
+	int pos[total_entries];
+	int expected_pos[total_entries];
+	unsigned int i;
+	size_t sz;
+	int32_t status;
+	struct rte_hash_rcu_config rcu_cfg = {0};
+
+	g_qsv = NULL;
+	g_handle = NULL;
+
+	for (i = 0; i < total_entries; i++) {
+		g_rand_keys[i].port_dst = i;
+		g_rand_keys[i].port_src = i+1;
+	}
+
+	if (ext_bkt)
+		printf("\n# Running RCU QSBR sync mode functional test with"
+		       " ext bkt\n");
+	else
+		printf("\n# Running RCU QSBR sync mode functional test\n");
+
+	g_handle = rte_hash_create(&params_pseudo_hash);
+	RETURN_IF_ERROR_RCU_QSBR(g_handle == NULL, "Hash creation failed");
+
+	/* Create RCU QSBR variable */
+	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
+	g_qsv = (struct rte_rcu_qsbr *)rte_zmalloc_socket(NULL, sz,
+					RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	RETURN_IF_ERROR_RCU_QSBR(g_qsv == NULL,
+				 "RCU QSBR variable creation failed");
+
+	status = rte_rcu_qsbr_init(g_qsv, RTE_MAX_LCORE);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0,
+				 "RCU QSBR variable initialization failed");
+
+	rcu_cfg.v = g_qsv;
+	rcu_cfg.mode = RTE_HASH_QSBR_MODE_SYNC;
+	/* Attach RCU QSBR to hash table */
+	status = rte_hash_rcu_qsbr_add(g_handle, &rcu_cfg);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0,
+				 "Attach RCU QSBR to hash table failed");
+
+	/* Launch reader thread */
+	rte_eal_remote_launch(test_hash_rcu_qsbr_reader, NULL,
+				rte_get_next_lcore(-1, 1, 0));
+
+	/* Fill bucket */
+	for (i = 0; i < total_entries; i++) {
+		pos[i] = rte_hash_add_key(g_handle, &g_rand_keys[i]);
+		print_key_info("Add", &g_rand_keys[i], pos[i]);
+		RETURN_IF_ERROR_RCU_QSBR(pos[i] < 0,
+				"failed to add key (pos[%u]=%d)", i, pos[i]);
+		expected_pos[i] = pos[i];
+	}
+	writer_done = 0;
+
+	/* Writer Update */
+	for (i = 0; i < WRITER_ITERATIONS; i++) {
+		expected_pos[0] = pos[0];
+		pos[0] = rte_hash_del_key(g_handle, &g_rand_keys[0]);
+		print_key_info("Del", &g_rand_keys[0], status);
+		RETURN_IF_ERROR_RCU_QSBR(pos[0] != expected_pos[0],
+					 "failed to del correct key (pos[%u]=%d)"
+					 , 0, pos[0]);
+
+		pos[0] = rte_hash_add_key(g_handle, &g_rand_keys[0]);
+		print_key_info("Add", &g_rand_keys[0], pos[0]);
+		RETURN_IF_ERROR_RCU_QSBR(pos[0] < 0,
+					 "failed to add key (pos[%u]=%d)", 0,
+					 pos[0]);
+	}
+
+	writer_done = 1;
+	/* Wait until reader exited. */
+	rte_eal_mp_wait_lcore();
+
+	rte_hash_free(g_handle);
+	rte_free(g_qsv);
+
+	return  0;
+
+}
+
 /*
  * Do all unit and performance tests.
  */
@@ -1860,6 +2233,21 @@ test_hash(void)
 	run_hash_func_tests();
 
 	if (test_crc32_hash_alg_equiv() < 0)
+		return -1;
+
+	if (test_hash_rcu_qsbr_add() < 0)
+		return -1;
+
+	if (test_hash_rcu_qsbr_dq_mode(0) < 0)
+		return -1;
+
+	if (test_hash_rcu_qsbr_dq_mode(1) < 0)
+		return -1;
+
+	if (test_hash_rcu_qsbr_sync_mode(0) < 0)
+		return -1;
+
+	if (test_hash_rcu_qsbr_sync_mode(1) < 0)
 		return -1;
 
 	return 0;
