@@ -11,19 +11,6 @@ directly by DMA. Besides, it supports dirty page logging and device state
 report/restore, this driver enables its vDPA functionality.
 
 
-Pre-Installation Configuration
-------------------------------
-
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-The following option can be modified in the ``config`` file.
-
-- ``CONFIG_RTE_LIBRTE_IFC_PMD`` (default ``y`` for linux)
-
-  Toggle compilation of the ``librte_pmd_ifc`` driver.
-
-
 IFCVF vDPA Implementation
 -------------------------
 

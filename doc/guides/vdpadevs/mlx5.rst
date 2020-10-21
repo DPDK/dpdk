@@ -14,9 +14,7 @@ SR-IOV context.
 
 .. note::
 
-   Due to external dependencies, this driver is disabled in default
-   configuration of the "make" build. It can be enabled with
-   ``CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD=y`` or by using "meson" build system which
+   This driver is enabled automatically when using "meson" build system which
    will detect dependencies.
 
 
@@ -62,16 +60,13 @@ Prerequisites
 - Mellanox OFED version: **5.0**
   see :doc:`../../nics/mlx5` guide for more Mellanox OFED details.
 
-Compilation options
-~~~~~~~~~~~~~~~~~~~
+Compilation option
+~~~~~~~~~~~~~~~~~~
 
-These options can be modified in the ``.config`` file.
+The meson option ``ibverbs_link`` is **shared** by default,
+but can be configured to have the following values:
 
-- ``CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD`` (default **n**)
-
-  Toggle compilation of librte_pmd_mlx5 itself.
-
-- ``CONFIG_RTE_IBVERBS_LINK_DLOPEN`` (default **n**)
+- ``dlopen``
 
   Build PMD with additional code to make it loadable without hard
   dependencies on **libibverbs** nor **libmlx5**, which may not be installed
@@ -79,28 +74,23 @@ These options can be modified in the ``.config`` file.
 
   In this mode, their presence is still required for it to run properly,
   however their absence won't prevent a DPDK application from starting (with
-  ``CONFIG_RTE_BUILD_SHARED_LIB`` disabled) and they won't show up as
-  missing with ``ldd(1)``.
+  DPDK shared build disabled) and they won't show up as missing with ``ldd(1)``.
 
   It works by moving these dependencies to a purpose-built rdma-core "glue"
-  plug-in which must either be installed in a directory whose name is based
-  on ``CONFIG_RTE_EAL_PMD_PATH`` suffixed with ``-glue`` if set, or in a
-  standard location for the dynamic linker (e.g. ``/lib``) if left to the
-  default empty string (``""``).
+  plug-in which must be installed in a directory whose name is based
+  on ``RTE_EAL_PMD_PATH`` suffixed with ``-glue``.
 
   This option has no performance impact.
 
-- ``CONFIG_RTE_IBVERBS_LINK_STATIC`` (default **n**)
+- ``static``
 
   Embed static flavor of the dependencies **libibverbs** and **libmlx5**
   in the PMD shared library or the executable static binary.
 
 .. note::
 
-   For BlueField, target should be set to ``arm64-bluefield-linux-gcc``. This
-   will enable ``CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD`` and set
-   ``RTE_CACHE_LINE_SIZE`` to 64. Default armv8a configuration of make build and
-   meson build set it to 128 then brings performance degradation.
+   Default armv8a configuration of meson build sets ``RTE_CACHE_LINE_SIZE``
+   to 128 then brings performance degradation.
 
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
