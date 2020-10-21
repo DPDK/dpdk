@@ -474,6 +474,15 @@ rte_regexdev_get_dev_id(const char *name);
  * @see RTE_REGEXDEV_CFG_MATCH_ALL_F
  */
 
+#define RTE_REGEXDEV_CAPA_QUEUE_PAIR_OOS_F (1ULL << 22)
+/**< RegEx device supports out of order scan.
+ * Out of order scan means the response of a specific job can be returned as
+ * soon as it is ready even if previous jobs on the same queue didn't complete.
+ *
+ * @see RTE_REGEX_QUEUE_PAIR_CFG_OOS_F
+ * @see struct rte_regexdev_info::regexdev_capa
+ */
+
 /* Enumerates PCRE rule flags */
 #define RTE_REGEX_PCRE_RULE_ALLOW_EMPTY_F (1ULL << 0)
 /**< When this flag is set, the pattern that can match against an empty string,
