@@ -30,6 +30,7 @@
 #include "mlx5_utils.h"
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
+#include "mlx5_mr.h"
 
 /* Support tunnel matching. */
 #define MLX5_FLOW_TUNNEL 10
@@ -94,6 +95,12 @@ enum mlx5_rxq_err_state {
 	MLX5_RXQ_ERR_STATE_NEED_READY,
 };
 
+enum mlx5_rqx_code {
+	MLX5_RXQ_CODE_EXIT = 0,
+	MLX5_RXQ_CODE_NOMBUF,
+	MLX5_RXQ_CODE_DROPPED,
+};
+
 /* RX queue descriptor. */
 struct mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
@@ -116,6 +123,7 @@ struct mlx5_rxq_data {
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
+	uint32_t elts_ci;
 	uint32_t rq_ci;
 	uint16_t consumed_strd; /* Number of consumed strides in WQE. */
 	uint32_t rq_pi;
@@ -130,11 +138,8 @@ struct mlx5_rxq_data {
 	uint16_t mprq_max_memcpy_len; /* Maximum size of packet to memcpy. */
 	volatile void *wqes;
 	volatile struct mlx5_cqe(*cqes)[];
-	RTE_STD_C11
-	union  {
-		struct rte_mbuf *(*elts)[];
-		struct mlx5_mprq_buf *(*mprq_bufs)[];
-	};
+	struct rte_mbuf *(*elts)[];
+	struct mlx5_mprq_buf *(*mprq_bufs)[];
 	struct rte_mempool *mp;
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
 	struct mlx5_mprq_buf *mprq_repl; /* Stashed mbuf for replenish. */
@@ -423,6 +428,8 @@ int mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq_data);
 int mlx5_check_vec_rx_support(struct rte_eth_dev *dev);
 uint16_t mlx5_rx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 			   uint16_t pkts_n);
+uint16_t mlx5_rx_burst_mprq_vec(void *dpdk_txq, struct rte_mbuf **pkts,
+				uint16_t pkts_n);
 
 /* mlx5_mr.c */
 
@@ -698,6 +705,189 @@ mlx5_timestamp_set(struct rte_mbuf *mbuf, int offset,
 		rte_mbuf_timestamp_t timestamp)
 {
 	*RTE_MBUF_DYNFIELD(mbuf, offset, rte_mbuf_timestamp_t *) = timestamp;
+}
+
+/**
+ * Replace MPRQ buffer.
+ *
+ * @param rxq
+ *   Pointer to Rx queue structure.
+ * @param rq_idx
+ *   RQ index to replace.
+ */
+static __rte_always_inline void
+mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx)
+{
+	const uint32_t strd_n = 1 << rxq->strd_num_n;
+	struct mlx5_mprq_buf *rep = rxq->mprq_repl;
+	volatile struct mlx5_wqe_data_seg *wqe =
+		&((volatile struct mlx5_wqe_mprq *)rxq->wqes)[rq_idx].dseg;
+	struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[rq_idx];
+	void *addr;
+
+	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) > 1) {
+		MLX5_ASSERT(rep != NULL);
+		/* Replace MPRQ buf. */
+		(*rxq->mprq_bufs)[rq_idx] = rep;
+		/* Replace WQE. */
+		addr = mlx5_mprq_buf_addr(rep, strd_n);
+		wqe->addr = rte_cpu_to_be_64((uintptr_t)addr);
+		/* If there's only one MR, no need to replace LKey in WQE. */
+		if (unlikely(mlx5_mr_btree_len(&rxq->mr_ctrl.cache_bh) > 1))
+			wqe->lkey = mlx5_rx_addr2mr(rxq, (uintptr_t)addr);
+		/* Stash a mbuf for next replacement. */
+		if (likely(!rte_mempool_get(rxq->mprq_mp, (void **)&rep)))
+			rxq->mprq_repl = rep;
+		else
+			rxq->mprq_repl = NULL;
+		/* Release the old buffer. */
+		mlx5_mprq_buf_free(buf);
+	} else if (unlikely(rxq->mprq_repl == NULL)) {
+		struct mlx5_mprq_buf *rep;
+
+		/*
+		 * Currently, the MPRQ mempool is out of buffer
+		 * and doing memcpy regardless of the size of Rx
+		 * packet. Retry allocation to get back to
+		 * normal.
+		 */
+		if (!rte_mempool_get(rxq->mprq_mp, (void **)&rep))
+			rxq->mprq_repl = rep;
+	}
+}
+
+/**
+ * Attach or copy MPRQ buffer content to a packet.
+ *
+ * @param rxq
+ *   Pointer to Rx queue structure.
+ * @param pkt
+ *   Pointer to a packet to fill.
+ * @param len
+ *   Packet length.
+ * @param buf
+ *   Pointer to a MPRQ buffer to take the data from.
+ * @param strd_idx
+ *   Stride index to start from.
+ * @param strd_cnt
+ *   Number of strides to consume.
+ */
+static __rte_always_inline enum mlx5_rqx_code
+mprq_buf_to_pkt(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt, uint32_t len,
+		struct mlx5_mprq_buf *buf, uint16_t strd_idx, uint16_t strd_cnt)
+{
+	const uint32_t strd_n = 1 << rxq->strd_num_n;
+	const uint16_t strd_sz = 1 << rxq->strd_sz_n;
+	const uint16_t strd_shift =
+		MLX5_MPRQ_STRIDE_SHIFT_BYTE * rxq->strd_shift_en;
+	const int32_t hdrm_overlap =
+		len + RTE_PKTMBUF_HEADROOM - strd_cnt * strd_sz;
+	const uint32_t offset = strd_idx * strd_sz + strd_shift;
+	void *addr = RTE_PTR_ADD(mlx5_mprq_buf_addr(buf, strd_n), offset);
+
+	/*
+	 * Memcpy packets to the target mbuf if:
+	 * - The size of packet is smaller than mprq_max_memcpy_len.
+	 * - Out of buffer in the Mempool for Multi-Packet RQ.
+	 * - The packet's stride overlaps a headroom and scatter is off.
+	 */
+	if (len <= rxq->mprq_max_memcpy_len ||
+	    rxq->mprq_repl == NULL ||
+	    (hdrm_overlap > 0 && !rxq->strd_scatter_en)) {
+		if (likely(len <=
+			   (uint32_t)(pkt->buf_len - RTE_PKTMBUF_HEADROOM))) {
+			rte_memcpy(rte_pktmbuf_mtod(pkt, void *),
+				   addr, len);
+			DATA_LEN(pkt) = len;
+		} else if (rxq->strd_scatter_en) {
+			struct rte_mbuf *prev = pkt;
+			uint32_t seg_len = RTE_MIN(len, (uint32_t)
+				(pkt->buf_len - RTE_PKTMBUF_HEADROOM));
+			uint32_t rem_len = len - seg_len;
+
+			rte_memcpy(rte_pktmbuf_mtod(pkt, void *),
+				   addr, seg_len);
+			DATA_LEN(pkt) = seg_len;
+			while (rem_len) {
+				struct rte_mbuf *next =
+					rte_pktmbuf_alloc(rxq->mp);
+
+				if (unlikely(next == NULL))
+					return MLX5_RXQ_CODE_NOMBUF;
+				NEXT(prev) = next;
+				SET_DATA_OFF(next, 0);
+				addr = RTE_PTR_ADD(addr, seg_len);
+				seg_len = RTE_MIN(rem_len, (uint32_t)
+					(next->buf_len - RTE_PKTMBUF_HEADROOM));
+				rte_memcpy
+					(rte_pktmbuf_mtod(next, void *),
+					 addr, seg_len);
+				DATA_LEN(next) = seg_len;
+				rem_len -= seg_len;
+				prev = next;
+				++NB_SEGS(pkt);
+			}
+		} else {
+			return MLX5_RXQ_CODE_DROPPED;
+		}
+	} else {
+		rte_iova_t buf_iova;
+		struct rte_mbuf_ext_shared_info *shinfo;
+		uint16_t buf_len = strd_cnt * strd_sz;
+		void *buf_addr;
+
+		/* Increment the refcnt of the whole chunk. */
+		__atomic_add_fetch(&buf->refcnt, 1, __ATOMIC_RELAXED);
+		MLX5_ASSERT(__atomic_load_n(&buf->refcnt,
+			    __ATOMIC_RELAXED) <= strd_n + 1);
+		buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
+		/*
+		 * MLX5 device doesn't use iova but it is necessary in a
+		 * case where the Rx packet is transmitted via a
+		 * different PMD.
+		 */
+		buf_iova = rte_mempool_virt2iova(buf) +
+			   RTE_PTR_DIFF(buf_addr, buf);
+		shinfo = &buf->shinfos[strd_idx];
+		rte_mbuf_ext_refcnt_set(shinfo, 1);
+		/*
+		 * EXT_ATTACHED_MBUF will be set to pkt->ol_flags when
+		 * attaching the stride to mbuf and more offload flags
+		 * will be added below by calling rxq_cq_to_mbuf().
+		 * Other fields will be overwritten.
+		 */
+		rte_pktmbuf_attach_extbuf(pkt, buf_addr, buf_iova,
+					  buf_len, shinfo);
+		/* Set mbuf head-room. */
+		SET_DATA_OFF(pkt, RTE_PKTMBUF_HEADROOM);
+		MLX5_ASSERT(pkt->ol_flags == EXT_ATTACHED_MBUF);
+		MLX5_ASSERT(rte_pktmbuf_tailroom(pkt) >=
+			len - (hdrm_overlap > 0 ? hdrm_overlap : 0));
+		DATA_LEN(pkt) = len;
+		/*
+		 * Copy the last fragment of a packet (up to headroom
+		 * size bytes) in case there is a stride overlap with
+		 * a next packet's headroom. Allocate a separate mbuf
+		 * to store this fragment and link it. Scatter is on.
+		 */
+		if (hdrm_overlap > 0) {
+			MLX5_ASSERT(rxq->strd_scatter_en);
+			struct rte_mbuf *seg =
+				rte_pktmbuf_alloc(rxq->mp);
+
+			if (unlikely(seg == NULL))
+				return MLX5_RXQ_CODE_NOMBUF;
+			SET_DATA_OFF(seg, 0);
+			rte_memcpy(rte_pktmbuf_mtod(seg, void *),
+				RTE_PTR_ADD(addr, len - hdrm_overlap),
+				hdrm_overlap);
+			DATA_LEN(seg) = hdrm_overlap;
+			DATA_LEN(pkt) = len - hdrm_overlap;
+			NEXT(pkt) = seg;
+			NB_SEGS(pkt) = 2;
+		}
+	}
+	return MLX5_RXQ_CODE_EXIT;
 }
 
 #endif /* RTE_PMD_MLX5_RXTX_H_ */

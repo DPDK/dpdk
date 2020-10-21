@@ -437,10 +437,17 @@ mlx5_rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	if (priv->config.cqe_comp && !rxq_data->hw_timestamp &&
 	    !rxq_data->lro) {
 		cq_attr.cqe_comp_en = 1u;
-		cq_attr.mini_cqe_res_format =
-				mlx5_rxq_mprq_enabled(rxq_data) ?
-					MLX5_CQE_RESP_FORMAT_CSUM_STRIDX :
-					MLX5_CQE_RESP_FORMAT_HASH;
+		/*
+		 * Select CSUM miniCQE format only for non-vectorized MPRQ
+		 * Rx burst, use HASH miniCQE format for everything else.
+		 */
+		if (mlx5_rxq_check_vec_support(rxq_data) < 0 &&
+			mlx5_rxq_mprq_enabled(rxq_data))
+			cq_attr.mini_cqe_res_format =
+				MLX5_CQE_RESP_FORMAT_CSUM_STRIDX;
+		else
+			cq_attr.mini_cqe_res_format =
+				MLX5_CQE_RESP_FORMAT_HASH;
 		/*
 		 * For vectorized Rx, it must not be doubled in order to
 		 * make cq_ci and rq_ci aligned.

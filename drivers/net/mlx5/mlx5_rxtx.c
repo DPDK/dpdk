@@ -19,12 +19,12 @@
 #include <mlx5_prm.h>
 #include <mlx5_common.h>
 
+#include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 #include "mlx5.h"
 #include "mlx5_mr.h"
 #include "mlx5_utils.h"
 #include "mlx5_rxtx.h"
-#include "mlx5_autoconf.h"
 
 /* TX burst subroutines return codes. */
 enum mlx5_txcmp_code {
@@ -92,10 +92,6 @@ rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe);
 static __rte_always_inline void
 rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 	       volatile struct mlx5_cqe *cqe, uint32_t rss_hash_res);
-
-static __rte_always_inline void
-mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx,
-		 const unsigned int strd_n);
 
 static int
 mlx5_queue_state_modify(struct rte_eth_dev *dev,
@@ -584,7 +580,14 @@ mlx5_rx_burst_mode_get(struct rte_eth_dev *dev,
 		       struct rte_eth_burst_mode *mode)
 {
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq;
 
+	rxq = (*priv->rxqs)[rx_queue_id];
+	if (!rxq) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	if (pkt_burst == mlx5_rx_burst) {
 		snprintf(mode->info, sizeof(mode->info), "%s", "Scalar");
 	} else if (pkt_burst == mlx5_rx_burst_mprq) {
@@ -596,6 +599,16 @@ mlx5_rx_burst_mode_get(struct rte_eth_dev *dev,
 		snprintf(mode->info, sizeof(mode->info), "%s", "Vector Neon");
 #elif defined RTE_ARCH_PPC_64
 		snprintf(mode->info, sizeof(mode->info), "%s", "Vector AltiVec");
+#else
+		return -EINVAL;
+#endif
+	} else if (pkt_burst == mlx5_rx_burst_mprq_vec) {
+#if defined RTE_ARCH_X86_64
+		snprintf(mode->info, sizeof(mode->info), "%s", "MPRQ Vector SSE");
+#elif defined RTE_ARCH_ARM64
+		snprintf(mode->info, sizeof(mode->info), "%s", "MPRQ Vector Neon");
+#elif defined RTE_ARCH_PPC_64
+		snprintf(mode->info, sizeof(mode->info), "%s", "MPRQ Vector AltiVec");
 #else
 		return -EINVAL;
 #endif
@@ -866,6 +879,8 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 	rxq->zip = (struct rxq_zip){
 		.ai = 0,
 	};
+	rxq->elts_ci = mlx5_rxq_mprq_enabled(rxq) ?
+		(wqe_n >> rxq->sges_n) * (1 << rxq->strd_num_n) : 0;
 	/* Update doorbell counter. */
 	rxq->rq_ci = wqe_n >> rxq->sges_n;
 	rte_io_wmb();
@@ -969,7 +984,8 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 {
 	const uint16_t cqe_n = 1 << rxq->cqe_n;
 	const uint16_t cqe_mask = cqe_n - 1;
-	const unsigned int wqe_n = 1 << rxq->elts_n;
+	const uint16_t wqe_n = 1 << rxq->elts_n;
+	const uint16_t strd_n = 1 << rxq->strd_num_n;
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	union {
@@ -1033,21 +1049,27 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 						    &sm))
 				return -1;
 			if (vec) {
-				const uint16_t q_mask = wqe_n - 1;
-				uint16_t elt_idx;
+				const uint32_t elts_n =
+					mlx5_rxq_mprq_enabled(rxq) ?
+					wqe_n * strd_n : wqe_n;
+				const uint32_t e_mask = elts_n - 1;
+				uint32_t elts_ci =
+					mlx5_rxq_mprq_enabled(rxq) ?
+					rxq->elts_ci : rxq->rq_ci;
+				uint32_t elt_idx;
 				struct rte_mbuf **elt;
 				int i;
-				unsigned int n = wqe_n - (rxq->rq_ci -
+				unsigned int n = elts_n - (elts_ci -
 							  rxq->rq_pi);
 
 				for (i = 0; i < (int)n; ++i) {
-					elt_idx = (rxq->rq_ci + i) & q_mask;
+					elt_idx = (elts_ci + i) & e_mask;
 					elt = &(*rxq->elts)[elt_idx];
 					*elt = rte_mbuf_raw_alloc(rxq->mp);
 					if (!*elt) {
 						for (i--; i >= 0; --i) {
-							elt_idx = (rxq->rq_ci +
-								   i) & q_mask;
+							elt_idx = (elts_ci +
+								   i) & elts_n;
 							elt = &(*rxq->elts)
 								[elt_idx];
 							rte_pktmbuf_free_seg
@@ -1056,7 +1078,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 						return -1;
 					}
 				}
-				for (i = 0; i < (int)wqe_n; ++i) {
+				for (i = 0; i < (int)elts_n; ++i) {
 					elt = &(*rxq->elts)[i];
 					DATA_LEN(*elt) =
 						(uint16_t)((*elt)->buf_len -
@@ -1064,7 +1086,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 				}
 				/* Padding with a fake mbuf for vec Rx. */
 				for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
-					(*rxq->elts)[wqe_n + i] =
+					(*rxq->elts)[elts_n + i] =
 								&rxq->fake_mbuf;
 			}
 			mlx5_rxq_initialize(rxq);
@@ -1545,31 +1567,6 @@ mlx5_mprq_buf_free(struct mlx5_mprq_buf *buf)
 	mlx5_mprq_buf_free_cb(NULL, buf);
 }
 
-static inline void
-mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx,
-		 const unsigned int strd_n)
-{
-	struct mlx5_mprq_buf *rep = rxq->mprq_repl;
-	volatile struct mlx5_wqe_data_seg *wqe =
-		&((volatile struct mlx5_wqe_mprq *)rxq->wqes)[rq_idx].dseg;
-	void *addr;
-
-	MLX5_ASSERT(rep != NULL);
-	/* Replace MPRQ buf. */
-	(*rxq->mprq_bufs)[rq_idx] = rep;
-	/* Replace WQE. */
-	addr = mlx5_mprq_buf_addr(rep, strd_n);
-	wqe->addr = rte_cpu_to_be_64((uintptr_t)addr);
-	/* If there's only one MR, no need to replace LKey in WQE. */
-	if (unlikely(mlx5_mr_btree_len(&rxq->mr_ctrl.cache_bh) > 1))
-		wqe->lkey = mlx5_rx_addr2mr(rxq, (uintptr_t)addr);
-	/* Stash a mbuf for next replacement. */
-	if (likely(!rte_mempool_get(rxq->mprq_mp, (void **)&rep)))
-		rxq->mprq_repl = rep;
-	else
-		rxq->mprq_repl = NULL;
-}
-
 /**
  * DPDK callback for RX with Multi-Packet RQ support.
  *
@@ -1587,12 +1584,9 @@ uint16_t
 mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct mlx5_rxq_data *rxq = dpdk_rxq;
-	const unsigned int strd_n = 1 << rxq->strd_num_n;
-	const unsigned int strd_sz = 1 << rxq->strd_sz_n;
-	const unsigned int strd_shift =
-		MLX5_MPRQ_STRIDE_SHIFT_BYTE * rxq->strd_shift_en;
-	const unsigned int cq_mask = (1 << rxq->cqe_n) - 1;
-	const unsigned int wq_mask = (1 << rxq->elts_n) - 1;
+	const uint32_t strd_n = 1 << rxq->strd_num_n;
+	const uint32_t cq_mask = (1 << rxq->cqe_n) - 1;
+	const uint32_t wq_mask = (1 << rxq->elts_n) - 1;
 	volatile struct mlx5_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];
 	unsigned int i = 0;
 	uint32_t rq_ci = rxq->rq_ci;
@@ -1601,37 +1595,18 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 	while (i < pkts_n) {
 		struct rte_mbuf *pkt;
-		void *addr;
 		int ret;
 		uint32_t len;
 		uint16_t strd_cnt;
 		uint16_t strd_idx;
-		uint32_t offset;
 		uint32_t byte_cnt;
-		int32_t hdrm_overlap;
 		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
 		uint32_t rss_hash_res = 0;
+		enum mlx5_rqx_code rxq_code;
 
 		if (consumed_strd == strd_n) {
-			/* Replace WQE only if the buffer is still in use. */
-			if (__atomic_load_n(&buf->refcnt,
-					    __ATOMIC_RELAXED) > 1) {
-				mprq_buf_replace(rxq, rq_ci & wq_mask, strd_n);
-				/* Release the old buffer. */
-				mlx5_mprq_buf_free(buf);
-			} else if (unlikely(rxq->mprq_repl == NULL)) {
-				struct mlx5_mprq_buf *rep;
-
-				/*
-				 * Currently, the MPRQ mempool is out of buffer
-				 * and doing memcpy regardless of the size of Rx
-				 * packet. Retry allocation to get back to
-				 * normal.
-				 */
-				if (!rte_mempool_get(rxq->mprq_mp,
-						     (void **)&rep))
-					rxq->mprq_repl = rep;
-			}
+			/* Replace WQE if the buffer is still in use. */
+			mprq_buf_replace(rxq, rq_ci & wq_mask);
 			/* Advance to the next WQE. */
 			consumed_strd = 0;
 			++rq_ci;
@@ -1667,122 +1642,23 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		MLX5_ASSERT((int)len >= (rxq->crc_present << 2));
 		if (rxq->crc_present)
 			len -= RTE_ETHER_CRC_LEN;
-		offset = strd_idx * strd_sz + strd_shift;
-		addr = RTE_PTR_ADD(mlx5_mprq_buf_addr(buf, strd_n), offset);
-		hdrm_overlap = len + RTE_PKTMBUF_HEADROOM - strd_cnt * strd_sz;
-		/*
-		 * Memcpy packets to the target mbuf if:
-		 * - The size of packet is smaller than mprq_max_memcpy_len.
-		 * - Out of buffer in the Mempool for Multi-Packet RQ.
-		 * - The packet's stride overlaps a headroom and scatter is off.
-		 */
-		if (len <= rxq->mprq_max_memcpy_len ||
-		    rxq->mprq_repl == NULL ||
-		    (hdrm_overlap > 0 && !rxq->strd_scatter_en)) {
-			if (likely(rte_pktmbuf_tailroom(pkt) >= len)) {
-				rte_memcpy(rte_pktmbuf_mtod(pkt, void *),
-					   addr, len);
-				DATA_LEN(pkt) = len;
-			} else if (rxq->strd_scatter_en) {
-				struct rte_mbuf *prev = pkt;
-				uint32_t seg_len =
-					RTE_MIN(rte_pktmbuf_tailroom(pkt), len);
-				uint32_t rem_len = len - seg_len;
-
-				rte_memcpy(rte_pktmbuf_mtod(pkt, void *),
-					   addr, seg_len);
-				DATA_LEN(pkt) = seg_len;
-				while (rem_len) {
-					struct rte_mbuf *next =
-						rte_pktmbuf_alloc(rxq->mp);
-
-					if (unlikely(next == NULL)) {
-						rte_pktmbuf_free(pkt);
-						++rxq->stats.rx_nombuf;
-						goto out;
-					}
-					NEXT(prev) = next;
-					SET_DATA_OFF(next, 0);
-					addr = RTE_PTR_ADD(addr, seg_len);
-					seg_len = RTE_MIN
-						(rte_pktmbuf_tailroom(next),
-						 rem_len);
-					rte_memcpy
-						(rte_pktmbuf_mtod(next, void *),
-						 addr, seg_len);
-					DATA_LEN(next) = seg_len;
-					rem_len -= seg_len;
-					prev = next;
-					++NB_SEGS(pkt);
-				}
-			} else {
-				rte_pktmbuf_free_seg(pkt);
+		rxq_code = mprq_buf_to_pkt(rxq, pkt, len, buf,
+					   strd_idx, strd_cnt);
+		if (unlikely(rxq_code != MLX5_RXQ_CODE_EXIT)) {
+			rte_pktmbuf_free_seg(pkt);
+			if (rxq_code == MLX5_RXQ_CODE_DROPPED) {
 				++rxq->stats.idropped;
 				continue;
 			}
-		} else {
-			rte_iova_t buf_iova;
-			struct rte_mbuf_ext_shared_info *shinfo;
-			uint16_t buf_len = strd_cnt * strd_sz;
-			void *buf_addr;
-
-			/* Increment the refcnt of the whole chunk. */
-			__atomic_add_fetch(&buf->refcnt, 1, __ATOMIC_RELAXED);
-			MLX5_ASSERT(__atomic_load_n(&buf->refcnt,
-				    __ATOMIC_RELAXED) <= strd_n + 1);
-			buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
-			/*
-			 * MLX5 device doesn't use iova but it is necessary in a
-			 * case where the Rx packet is transmitted via a
-			 * different PMD.
-			 */
-			buf_iova = rte_mempool_virt2iova(buf) +
-				   RTE_PTR_DIFF(buf_addr, buf);
-			shinfo = &buf->shinfos[strd_idx];
-			rte_mbuf_ext_refcnt_set(shinfo, 1);
-			/*
-			 * EXT_ATTACHED_MBUF will be set to pkt->ol_flags when
-			 * attaching the stride to mbuf and more offload flags
-			 * will be added below by calling rxq_cq_to_mbuf().
-			 * Other fields will be overwritten.
-			 */
-			rte_pktmbuf_attach_extbuf(pkt, buf_addr, buf_iova,
-						  buf_len, shinfo);
-			/* Set mbuf head-room. */
-			SET_DATA_OFF(pkt, RTE_PKTMBUF_HEADROOM);
-			MLX5_ASSERT(pkt->ol_flags == EXT_ATTACHED_MBUF);
-			MLX5_ASSERT(rte_pktmbuf_tailroom(pkt) >=
-				len - (hdrm_overlap > 0 ? hdrm_overlap : 0));
-			DATA_LEN(pkt) = len;
-			/*
-			 * Copy the last fragment of a packet (up to headroom
-			 * size bytes) in case there is a stride overlap with
-			 * a next packet's headroom. Allocate a separate mbuf
-			 * to store this fragment and link it. Scatter is on.
-			 */
-			if (hdrm_overlap > 0) {
-				MLX5_ASSERT(rxq->strd_scatter_en);
-				struct rte_mbuf *seg =
-					rte_pktmbuf_alloc(rxq->mp);
-
-				if (unlikely(seg == NULL)) {
-					rte_pktmbuf_free_seg(pkt);
-					++rxq->stats.rx_nombuf;
-					break;
-				}
-				SET_DATA_OFF(seg, 0);
-				rte_memcpy(rte_pktmbuf_mtod(seg, void *),
-					RTE_PTR_ADD(addr, len - hdrm_overlap),
-					hdrm_overlap);
-				DATA_LEN(seg) = hdrm_overlap;
-				DATA_LEN(pkt) = len - hdrm_overlap;
-				NEXT(pkt) = seg;
-				NB_SEGS(pkt) = 2;
+			if (rxq_code == MLX5_RXQ_CODE_NOMBUF) {
+				++rxq->stats.rx_nombuf;
+				break;
 			}
 		}
 		rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
 		if (cqe->lro_num_seg > 1) {
-			mlx5_lro_update_hdr(addr, cqe, len);
+			mlx5_lro_update_hdr(rte_pktmbuf_mtod(pkt, uint8_t *),
+					    cqe, len);
 			pkt->ol_flags |= PKT_RX_LRO;
 			pkt->tso_segsz = len / cqe->lro_num_seg;
 		}
@@ -1796,7 +1672,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		*(pkts++) = pkt;
 		++i;
 	}
-out:
 	/* Update the consumer indexes. */
 	rxq->consumed_strd = consumed_strd;
 	rte_io_wmb();
@@ -1874,6 +1749,14 @@ __rte_weak uint16_t
 mlx5_rx_burst_vec(void *dpdk_txq __rte_unused,
 		  struct rte_mbuf **pkts __rte_unused,
 		  uint16_t pkts_n __rte_unused)
+{
+	return 0;
+}
+
+__rte_weak uint16_t
+mlx5_rx_burst_mprq_vec(void *dpdk_txq __rte_unused,
+		       struct rte_mbuf **pkts __rte_unused,
+		       uint16_t pkts_n __rte_unused)
 {
 	return 0;
 }

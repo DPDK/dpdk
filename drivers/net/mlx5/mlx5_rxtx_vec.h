@@ -12,7 +12,6 @@
 #include <mlx5_prm.h>
 
 #include "mlx5_autoconf.h"
-
 #include "mlx5_mr.h"
 
 /* HW checksum offload capabilities of vectorized Tx. */
@@ -67,60 +66,5 @@ S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, sop_drop_qpn) ==
 		  RTE_ALIGN(offsetof(struct mlx5_cqe, sop_drop_qpn), 8));
 S_ASSERT_MLX5_CQE(offsetof(struct mlx5_cqe, op_own) ==
 		  offsetof(struct mlx5_cqe, sop_drop_qpn) + 7);
-
-/**
- * Replenish buffers for RX in bulk.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- */
-static inline void
-mlx5_rx_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq)
-{
-	const uint16_t q_n = 1 << rxq->elts_n;
-	const uint16_t q_mask = q_n - 1;
-	uint16_t n = q_n - (rxq->rq_ci - rxq->rq_pi);
-	uint16_t elts_idx = rxq->rq_ci & q_mask;
-	struct rte_mbuf **elts = &(*rxq->elts)[elts_idx];
-	volatile struct mlx5_wqe_data_seg *wq =
-		&((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[elts_idx];
-	unsigned int i;
-
-	if (n >= rxq->rq_repl_thresh) {
-		MLX5_ASSERT(n >= MLX5_VPMD_RXQ_RPLNSH_THRESH(q_n));
-		MLX5_ASSERT(MLX5_VPMD_RXQ_RPLNSH_THRESH(q_n) >
-			    MLX5_VPMD_DESCS_PER_LOOP);
-		/* Not to cross queue end. */
-		n = RTE_MIN(n - MLX5_VPMD_DESCS_PER_LOOP, q_n - elts_idx);
-		if (rte_mempool_get_bulk(rxq->mp, (void *)elts, n) < 0) {
-			rxq->stats.rx_nombuf += n;
-			return;
-		}
-		for (i = 0; i < n; ++i) {
-			void *buf_addr;
-
-			/*
-			 * In order to support the mbufs with external attached
-			 * data buffer we should use the buf_addr pointer
-			 * instead of rte_mbuf_buf_addr(). It touches the mbuf
-			 * itself and may impact the performance.
-			 */
-			buf_addr = elts[i]->buf_addr;
-			wq[i].addr = rte_cpu_to_be_64((uintptr_t)buf_addr +
-						      RTE_PKTMBUF_HEADROOM);
-			/* If there's a single MR, no need to replace LKey. */
-			if (unlikely(mlx5_mr_btree_len(&rxq->mr_ctrl.cache_bh)
-				     > 1))
-				wq[i].lkey = mlx5_rx_mb2mr(rxq, elts[i]);
-		}
-		rxq->rq_ci += n;
-		/* Prevent overflowing into consumed mbufs. */
-		elts_idx = rxq->rq_ci & q_mask;
-		for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
-			(*rxq->elts)[elts_idx + i] = &rxq->fake_mbuf;
-		rte_io_wmb();
-		*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
-	}
-}
 
 #endif /* RTE_PMD_MLX5_RXTX_VEC_H_ */
