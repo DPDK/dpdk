@@ -21,7 +21,7 @@ A file located in a subdir of "linux" is specific to this execution environment.
 
 When absolutely necessary, there are several ways to handle specific code:
 
-* Use a ``#ifdef`` with the CONFIG option in the C code.
+* Use a ``#ifdef`` with a build definition macro in the C code.
   This can be done when the differences are small and they can be embedded in the same C file:
 
   .. code-block:: c
@@ -32,30 +32,25 @@ When absolutely necessary, there are several ways to handle specific code:
      titi();
      #endif
 
-* Use the CONFIG option in the Makefile. This is done when the differences are more significant.
+* Use build definition macros and conditions in the Meson build file. This is done when the differences are more significant.
   In this case, the code is split into two separate files that are architecture or environment specific.
   This should only apply inside the EAL library.
-
-.. note::
-
-   As in the linux kernel, the ``CONFIG_`` prefix is not used in C code.
-   This is only needed in Makefiles or shell scripts.
 
 Per Architecture Sources
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following config options can be used:
+The following macro options can be used:
 
-* ``CONFIG_RTE_ARCH`` is a string that contains the name of the architecture.
-* ``CONFIG_RTE_ARCH_I686``, ``CONFIG_RTE_ARCH_X86_64``, ``CONFIG_RTE_ARCH_X86_64_32`` or ``CONFIG_RTE_ARCH_PPC_64`` are defined only if we are building for those architectures.
+* ``RTE_ARCH`` is a string that contains the name of the architecture.
+* ``RTE_ARCH_I686``, ``RTE_ARCH_X86_64``, ``RTE_ARCH_X86_X32``, ``RTE_ARCH_PPC_64``, ``RTE_ARCH_ARM``, ``RTE_ARCH_ARMv7`` or ``RTE_ARCH_ARM64`` are defined only if we are building for those architectures.
 
 Per Execution Environment Sources
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following config options can be used:
+The following macro options can be used:
 
-* ``CONFIG_RTE_EXEC_ENV`` is a string that contains the name of the executive environment.
-* ``CONFIG_RTE_EXEC_ENV_FREEBSD`` or ``CONFIG_RTE_EXEC_ENV_LINUX`` are defined only if we are building for this execution environment.
+* ``RTE_EXEC_ENV`` is a string that contains the name of the executive environment.
+* ``RTE_EXEC_ENV_FREEBSD``, ``RTE_EXEC_ENV_LINUX`` or ``RTE_EXEC_ENV_WINDOWS`` are defined only if we are building for this execution environment.
 
 Mbuf features
 -------------
@@ -87,21 +82,13 @@ requirements for preventing ABI changes when implementing statistics.
 Mechanism to allow the application to turn library statistics on and off
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Each library that maintains statistics counters should provide a single build
-time flag that decides whether the statistics counter collection is enabled or
-not. This flag should be exposed as a variable within the DPDK configuration
-file. When this flag is set, all the counters supported by current library are
+Having runtime support for enabling/disabling library statistics is recommended,
+as build-time options should be avoided. However, if build-time options are used,
+for example as in the table library, the options can be set using c_args.
+When this flag is set, all the counters supported by current library are
 collected for all the instances of every object type provided by the library.
 When this flag is cleared, none of the counters supported by the current library
 are collected for any instance of any object type provided by the library:
-
-.. code-block:: console
-
-   # DPDK file config/common_linux, config/common_freebsd, etc.
-   CONFIG_RTE_<LIBRARY_NAME>_STATS_COLLECT=y/n
-
-The default value for this DPDK configuration file variable (either "yes" or
-"no") is decided by each library.
 
 
 Prevention of ABI changes due to library statistics support

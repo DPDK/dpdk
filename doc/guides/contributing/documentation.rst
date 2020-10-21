@@ -218,25 +218,14 @@ Build commands
 ~~~~~~~~~~~~~~
 
 The documentation is built using the standard DPDK build system.
-Some examples are shown below:
 
-* Generate all the documentation targets::
+To build the documentation::
 
-     make doc
+   ninja -C build doc
 
-* Generate the Doxygen API documentation in Html::
+See :doc:`../linux_gsg/build_dpdk` for more detail on compiling DPDK with meson.
 
-     make doc-api-html
-
-* Generate the guides documentation in Html::
-
-     make doc-guides-html
-
-* Generate the guides documentation in Pdf::
-
-     make doc-guides-pdf
-
-The output of these commands is generated in the ``build`` directory::
+The output is generated in the ``build`` directory::
 
    build/doc
          |-- html
@@ -250,10 +239,6 @@ The output of these commands is generated in the ``build`` directory::
 .. Note::
 
    Make sure to fix any Sphinx or Doxygen warnings when adding or updating documentation.
-
-The documentation output files can be removed as follows::
-
-   make doc-clean
 
 
 Document Guidelines
@@ -304,7 +289,7 @@ Line Length
   Long literal command lines can be shown wrapped with backslashes. For
   example::
 
-     testpmd -l 2-3 -n 4 \
+     dpdk-testpmd -l 2-3 -n 4 \
              --vdev=virtio_user0,path=/dev/vhost-net,queues=2,queue_size=1024 \
              -- -i --tx-offloads=0x0000002c --enable-lro --txq=2 --rxq=2 \
              --txd=1024 --rxd=1024
@@ -456,7 +441,7 @@ Code and Literal block sections
   For long literal lines that exceed that limit try to wrap the text at sensible locations.
   For example a long command line could be documented like this and still work if copied directly from the docs::
 
-     build/app/testpmd -l 0-2 -n3 --vdev=net_pcap0,iface=eth0     \
+     ./<build_dir>/app/dpdk-testpmd -l 0-2 -n3 --vdev=net_pcap0,iface=eth0    \
                                --vdev=net_pcap1,iface=eth1     \
                                -- -i --nb-cores=2 --nb-ports=2 \
                                   --total-num-mbufs=2048
@@ -738,10 +723,6 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
      uintptr_t   elt_va_end;
      /** Array of physical page addresses for the mempool buffer. */
      phys_addr_t elt_pa[MEMPOOL_PG_NUM_DEFAULT];
-
-* Check for Doxygen warnings in new code by checking the API documentation build::
-
-     make doc-api-html >/dev/null
 
 * Read the rendered section of the documentation that you have added for correctness, clarity and consistency
   with the surrounding text.
