@@ -58,8 +58,8 @@ Supported Asymmetric Crypto algorithms:
 Installation
 ------------
 
-To compile openssl PMD, it has to be enabled in the config/common_base file
-and appropriate openssl packages have to be installed in the build environment.
+To compile openssl PMD, appropriate openssl packages have to be installed
+in the build environment.
 
 The newest openssl library version is supported:
 
@@ -93,7 +93,7 @@ To verify real traffic l2fwd-crypto example can be used with this command:
 
 .. code-block:: console
 
-	sudo ./build/l2fwd-crypto -l 0-1 -n 4 --vdev "crypto_openssl"
+	sudo ./<build_dir>/examples/dpdk-l2fwd-crypto -l 0-1 -n 4 --vdev "crypto_openssl"
 	--vdev "crypto_openssl"-- -p 0x3 --chain CIPHER_HASH
 	--cipher_op ENCRYPT --cipher_algo AES_CBC
 	--cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f

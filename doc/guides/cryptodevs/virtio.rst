@@ -83,27 +83,17 @@ The unit test cases can be tested as below:
 .. code-block:: console
 
     reserve enough huge pages
-    cd to the top-level DPDK directory
-    export RTE_TARGET=x86_64-native-linux-gcc
-    export RTE_SDK=`pwd`
-    cd to app/test
-    type the command "make" to compile
-    run the tests with "./test"
-    type the command "cryptodev_virtio_autotest" to test
+    cd to <build_dir>
+    meson test cryptodev_virtio_autotest
 
 The performance can be tested as below:
 
 .. code-block:: console
 
     reserve enough huge pages
-    cd to the top-level DPDK directory
-    export RTE_TARGET=x86_64-native-linux-gcc
-    export RTE_SDK=`pwd`
-    cd to app/test-crypto-perf
-    type the command "make" to compile
-    run the tests with the following command:
+    cd to <build_dir>
 
-    ./dpdk-test-crypto-perf -l 0,1 -- --devtype crypto_virtio \
+    ./app/dpdk-test-crypto-perf -l 0,1 -- --devtype crypto_virtio \
         --ptest throughput --optype cipher-then-auth --cipher-algo aes-cbc \
         --cipher-op encrypt --cipher-key-sz 16 --auth-algo sha1-hmac \
         --auth-op generate --auth-key-sz 64 --digest-sz 12 \

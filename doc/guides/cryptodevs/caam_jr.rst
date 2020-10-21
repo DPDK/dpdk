@@ -109,36 +109,6 @@ Currently supported by DPDK:
 
 * Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
-Pre-Installation Configuration
-------------------------------
-
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-The following options can be modified in the ``config`` file
-to enable caam_jr PMD.
-
-Please note that enabling debugging options may affect system performance.
-
-* ``CONFIG_RTE_LIBRTE_PMD_CAAM_JR`` (default ``n``)
-  By default it is only enabled in common_linux config.
-  Toggle compilation of the ``librte_pmd_caam_jr`` driver.
-
-* ``CONFIG_RTE_LIBRTE_PMD_CAAM_JR_BE`` (default ``n``)
-  By default it is disabled.
-  It can be used when the underlying hardware supports the CAAM in BE mode.
-  LS1043A, LS1046A and LS1012A support CAAM in BE mode.
-  LS1028A supports CAAM in LE mode.
-
-Installations
--------------
-To compile the caam_jr PMD for Linux arm64 gcc target, run the
-following ``make`` command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=arm64-armv8a-linux-gcc install
 
 Enabling logs
 -------------

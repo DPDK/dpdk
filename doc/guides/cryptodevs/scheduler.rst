@@ -32,14 +32,6 @@ Limitations
   is enabled.
 
 
-Installation
-------------
-
-To build DPDK with CRYTPO_SCHEDULER_PMD the user is required to set
-CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER=y in config/common_base, and
-recompile DPDK
-
-
 Initialization
 --------------
 

@@ -59,14 +59,6 @@ Supported Asymmetric Crypto Algorithms
 * ``RTE_CRYPTO_ASYM_XFORM_RSA``
 * ``RTE_CRYPTO_ASYM_XFORM_MODEX``
 
-Config flags
-------------
-
-For compiling the OCTEON TX crypto poll mode driver, please check if the
-CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO setting is set to `y` in
-config/common_base file.
-
-* ``CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO=y``
 
 Compilation
 -----------
@@ -135,7 +127,7 @@ application:
 
 .. code-block:: console
 
-        ./test
+        ./dpdk-test
         RTE>>cryptodev_octeontx_autotest
 
 The asymmetric crypto operations on OCTEON TX crypto PMD may be verified by running the test
@@ -143,5 +135,5 @@ application:
 
 .. code-block:: console
 
-        ./test
+        ./dpdk-test
         RTE>>cryptodev_octeontx_asym_autotest

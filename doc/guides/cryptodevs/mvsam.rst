@@ -64,14 +64,6 @@ Limitations
 Installation
 ------------
 
-MVSAM CRYPTO PMD driver compilation is disabled by default due to external dependencies.
-Currently there are two driver specific compilation options in
-``config/common_base`` available:
-
-- ``CONFIG_RTE_LIBRTE_PMD_MVSAM_CRYPTO`` (default: ``n``)
-
-    Toggle compilation of the librte_pmd_mvsam driver.
-
 MVSAM CRYPTO PMD requires MUSDK built with EIP197 support thus following
 extra option must be passed to the library configuration script:
 
@@ -105,7 +97,7 @@ operation:
 
 .. code-block:: console
 
-   ./l2fwd-crypto --vdev=eth_mvpp2,iface=eth0 --vdev=crypto_mvsam -- \
+   ./dpdk-l2fwd-crypto --vdev=eth_mvpp2,iface=eth0 --vdev=crypto_mvsam -- \
      --cipher_op ENCRYPT --cipher_algo aes-cbc \
      --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f  \
      --auth_op GENERATE --auth_algo sha1-hmac \

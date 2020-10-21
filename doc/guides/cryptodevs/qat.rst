@@ -207,27 +207,6 @@ Configuring and Building the DPDK QAT PMDs
 Further information on configuring, building and installing DPDK is described
 :doc:`here <../linux_gsg/build_dpdk>`.
 
-
-Quick instructions for QAT cryptodev PMD are as follows:
-
-.. code-block:: console
-
-	cd to the top-level DPDK directory
-	make defconfig
-	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_QAT_SYM\)=n,\1=y,' build/.config
-	or/and
-	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_QAT_ASYM\)=n,\1=y,' build/.config
-	make
-
-Quick instructions for QAT compressdev PMD are as follows:
-
-.. code-block:: console
-
-	cd to the top-level DPDK directory
-	make defconfig
-	make
-
-
 .. _building_qat_config:
 
 Build Configuration
@@ -237,38 +216,32 @@ These are the build configuration options affecting QAT, and their default value
 
 .. code-block:: console
 
-	CONFIG_RTE_LIBRTE_PMD_QAT=y
-	CONFIG_RTE_LIBRTE_PMD_QAT_SYM=n
-	CONFIG_RTE_LIBRTE_PMD_QAT_ASYM=n
-	CONFIG_RTE_PMD_QAT_MAX_PCI_DEVICES=48
-	CONFIG_RTE_PMD_QAT_COMP_IM_BUFFER_SIZE=65536
-
-CONFIG_RTE_LIBRTE_PMD_QAT must be enabled for any QAT PMD to be built.
+	RTE_PMD_QAT_MAX_PCI_DEVICES=48
+	RTE_PMD_QAT_COMP_IM_BUFFER_SIZE=65536
 
 Both QAT SYM PMD and QAT ASYM PMD have an external dependency on libcrypto, so are not
-built by default. CONFIG_RTE_LIBRTE_PMD_QAT_SYM/ASYM should be enabled to build them.
+built by default.
 
-The QAT compressdev PMD has no external dependencies, so needs no configuration
-options and is built by default.
+The QAT compressdev PMD has no external dependencies, so is built by default.
 
 The number of VFs per PF varies - see table below. If multiple QAT packages are
-installed on a platform then CONFIG_RTE_PMD_QAT_MAX_PCI_DEVICES should be
+installed on a platform then RTE_PMD_QAT_MAX_PCI_DEVICES should be
 adjusted to the number of VFs which the QAT common code will need to handle.
 
 .. Note::
 
         There are separate config items (not QAT-specific) for max cryptodevs
-        CONFIG_RTE_CRYPTO_MAX_DEVS and max compressdevs CONFIG_RTE_COMPRESS_MAX_DEVS,
+        RTE_CRYPTO_MAX_DEVS and max compressdevs RTE_COMPRESS_MAX_DEVS,
         if necessary these should be adjusted to handle the total of QAT and other
         devices which the process will use. In particular for crypto, where each
         QAT VF may expose two crypto devices, sym and asym, it may happen that the
         number of devices will be bigger than MAX_DEVS and the process will show an error
-        during PMD initialisation. To avoid this problem CONFIG_RTE_CRYPTO_MAX_DEVS may be
+        during PMD initialisation. To avoid this problem RTE_CRYPTO_MAX_DEVS may be
         increased or -w, pci-whitelist domain:bus:devid:func option may be used.
 
 
 QAT compression PMD needs intermediate buffers to support Deflate compression
-with Dynamic Huffman encoding. CONFIG_RTE_PMD_QAT_COMP_IM_BUFFER_SIZE
+with Dynamic Huffman encoding. RTE_PMD_QAT_COMP_IM_BUFFER_SIZE
 specifies the size of a single buffer, the PMD will allocate a multiple of these,
 plus some extra space for associated meta-data. For GEN2 devices, 20 buffers are
 allocated while for GEN1 devices, 12 buffers are allocated, plus 1472 bytes overhead.
@@ -483,7 +456,6 @@ To complete the installation follow the instructions in
       insmod ./drivers/crypto/qat/qat_common/intel_qat.ko
       insmod ./drivers/crypto/qat/qat_dh895xcc/qat_dh895xcc.ko
 
-
 .. Note::
 
    If you see the following warning in ``/var/log/messages`` it can be ignored:
@@ -659,27 +631,20 @@ Testing
 
 QAT SYM crypto PMD can be tested by running the test application::
 
-    make defconfig
-    make -j
-    cd ./build/app
-    ./test -l1 -n1 -w <your qat bdf>
+    cd ./<build_dir>/app/test
+    ./dpdk-test -l1 -n1 -w <your qat bdf>
     RTE>>cryptodev_qat_autotest
 
 QAT ASYM crypto PMD can be tested by running the test application::
 
-    make defconfig
-    make -j
-    cd ./build/app
-    ./test -l1 -n1 -w <your qat bdf>
+    cd ./<build_dir>/app/test
+    ./dpdk-test -l1 -n1 -w <your qat bdf>
     RTE>>cryptodev_qat_asym_autotest
 
 QAT compression PMD can be tested by running the test application::
 
-    make defconfig
-    sed -i 's,\(CONFIG_RTE_COMPRESSDEV_TEST\)=n,\1=y,' build/.config
-    make -j
-    cd ./build/app
-    ./test -l1 -n1 -w <your qat bdf>
+    cd ./<build_dir>/app/test
+    ./dpdk-test -l1 -n1 -w <your qat bdf>
     RTE>>compressdev_autotest
 
 
@@ -703,7 +668,7 @@ the process cmdline, e.g. using any of the following::
 
     The global RTE_LOG_DP_LEVEL overrides data-path trace so must be set to
     RTE_LOG_DEBUG to see all the trace. This variable is in config/rte_config.h
-    for meson build and config/common_base for gnu make.
+    for meson build.
     Also the dynamic global log level overrides both sets of trace, so e.g. no
     QAT trace would display in this case::
 

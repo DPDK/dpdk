@@ -167,31 +167,6 @@ Currently supported by DPDK:
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
-Pre-Installation Configuration
-------------------------------
-
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-Basic DPAA2 config file options are described in :ref:`dpaa2_overview`.
-In addition to those, the following options can be modified in the ``config`` file
-to enable DPAA2_SEC PMD.
-
-Please note that enabling debugging options may affect system performance.
-
-* ``CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC`` (default ``n``)
-  By default it is only enabled in defconfig_arm64-dpaa-* config.
-  Toggle compilation of the ``librte_pmd_dpaa2_sec`` driver.
-
-Installations
--------------
-To compile the DPAA2_SEC PMD for Linux arm64 gcc target, run the
-following ``make`` command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=arm64-dpaa-linux-gcc install
 
 Enabling logs
 -------------

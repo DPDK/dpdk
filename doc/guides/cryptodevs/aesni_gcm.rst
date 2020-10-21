@@ -94,8 +94,6 @@ In order to enable this virtual crypto PMD, user must:
 
 * Build the multi buffer library (explained in Installation section).
 
-* Set CONFIG_RTE_LIBRTE_PMD_AESNI_GCM=y in config/common_base.
-
 To use the PMD in an application, user must:
 
 * Call rte_vdev_init("crypto_aesni_gcm") within the application.
@@ -115,5 +113,5 @@ Example:
 
 .. code-block:: console
 
-    ./l2fwd-crypto -l 1 -n 4 --vdev="crypto_aesni_gcm,socket_id=0,max_nb_sessions=128" \
+    ./dpdk-l2fwd-crypto -l 1 -n 4 --vdev="crypto_aesni_gcm,socket_id=0,max_nb_sessions=128" \
     -- -p 1 --cdev SW --chain AEAD --aead_algo "aes-gcm"
