@@ -168,6 +168,11 @@ struct rte_hash {
 	struct lcore_cache *local_free_slots;
 	/**< Local cache per lcore, storing some indexes of the free slots */
 
+	/* RCU config */
+	struct rte_hash_rcu_config *hash_rcu_cfg;
+	/**< HASH RCU QSBR configuration structure */
+	struct rte_rcu_qsbr_dq *dq;	/**< RCU QSBR defer queue. */
+
 	/* Fields used in lookup */
 
 	uint32_t key_len __rte_cache_aligned;
@@ -229,5 +234,8 @@ struct queue_node {
 	struct queue_node *prev;     /* Parent(bucket) in search path */
 	int prev_slot;               /* Parent(slot) in search path */
 };
+
+/** @internal Default RCU defer queue entries to reclaim in one go. */
+#define RTE_HASH_RCU_DQ_RECLAIM_MAX	16
 
 #endif

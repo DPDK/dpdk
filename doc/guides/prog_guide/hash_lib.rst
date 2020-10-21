@@ -102,6 +102,10 @@ For concurrent writes, and concurrent reads and writes the following flag values
 *  If the 'do not free on delete' (RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL) flag is set, the position of the entry in the hash table is not freed upon calling delete(). This flag is enabled
    by default when the lock free read/write concurrency flag is set. The application should free the position after all the readers have stopped referencing the position.
    Where required, the application can make use of RCU mechanisms to determine when the readers have stopped referencing the position.
+   RCU QSBR process is integrated within the Hash library for safe freeing of the position. Application has certain responsibilities while using this feature.
+   For example, rte_hash_rcu_qsbr_add() need to be called to use the integrated RCU mechanism.
+   Please refer to resource reclamation framework of :ref:`RCU library <RCU_Library>` for more details.
+
 
 Extendable Bucket Functionality support
 ----------------------------------------
@@ -109,8 +113,8 @@ An extra flag is used to enable this functionality (flag is not set by default).
 in the very unlikely case due to excessive hash collisions that a key has failed to be inserted, the hash table bucket is extended with a linked
 list to insert these failed keys. This feature is important for the workloads (e.g. telco workloads) that need to insert up to 100% of the
 hash table size and can't tolerate any key insertion failure (even if very few).
-Please note that with the 'lock free read/write concurrency' flag enabled, users need to call 'rte_hash_free_key_with_position' API in order to free the empty buckets and
-deleted keys, to maintain the 100% capacity guarantee.
+Please note that with the 'lock free read/write concurrency' flag enabled, users need to call 'rte_hash_free_key_with_position' API or configure integrated RCU QSBR
+(or use external RCU mechanisms) in order to free the empty buckets and deleted keys, to maintain the 100% capacity guarantee.
 
 Implementation Details (non Extendable Bucket Case)
 ---------------------------------------------------
@@ -172,7 +176,7 @@ Example of deletion:
 Similar to lookup, the key is searched in its primary and secondary buckets. If the key is found, the
 entry is marked as empty. If the hash table was configured with 'no free on delete' or 'lock free read/write concurrency',
 the position of the key is not freed. It is the responsibility of the user to free the position after
-readers are not referencing the position anymore.
+readers are not referencing the position anymore. User can configure integrated RCU QSBR or use external RCU mechanisms to safely free the position on delete.
 
 
 Implementation Details (with Extendable Bucket)
@@ -286,6 +290,8 @@ The flow table operations on the application side are described below:
 *   Free flow: Free flow key position. If 'no free on delete' or 'lock-free read/write concurrency' flags are set,
     wait till the readers are not referencing the position returned during add/delete flow and then free the position.
     RCU mechanisms can be used to find out when the readers are not referencing the position anymore.
+    RCU QSBR process is integrated within the Hash library for safe freeing of the position. Application has certain responsibilities while using this feature.
+    Please refer to resource reclamation framework of :ref:`RCU library <RCU_Library>` for more details.
 
 *   Lookup flow: Lookup for the flow key in the hash.
     If the returned position is valid (flow lookup hit), use the returned position to access the flow entry in the flow table.
