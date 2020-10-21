@@ -33,18 +33,16 @@
 /**
  * Store free buffers to RX SW ring.
  *
- * @param rxq
- *   Pointer to RX queue structure.
+ * @param elts
+ *   Pointer to SW ring to be filled.
  * @param pkts
  *   Pointer to array of packets to be stored.
  * @param pkts_n
  *   Number of packets to be stored.
  */
 static inline void
-rxq_copy_mbuf_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t n)
+rxq_copy_mbuf_v(struct rte_mbuf **elts, struct rte_mbuf **pkts, uint16_t n)
 {
-	const uint16_t q_mask = (1 << rxq->elts_n) - 1;
-	struct rte_mbuf **elts = &(*rxq->elts)[rxq->rq_pi & q_mask];
 	unsigned int pos;
 	uint16_t p = n & -2;
 
@@ -550,14 +548,17 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 		(vector unsigned char *)&pkts[3]->rearm_data);
 }
 
-
 /**
- * Receive burst of packets. An errored completion also consumes a mbuf, but the
- * packet_type is set to be RTE_PTYPE_ALL_MASK. Marked mbufs should be freed
- * before returning to application.
+ * Process a non-compressed completion and fill in mbufs in RX SW ring
+ * with data extracted from the title completion descriptor.
  *
  * @param rxq
  *   Pointer to RX queue structure.
+ * @param cq
+ *   Pointer to completion array having a non-compressed completion at first.
+ * @param elts
+ *   Pointer to SW ring to be filled. The first mbuf has to be pre-built from
+ *   the title completion descriptor to be copied to the rest of mbufs.
  * @param[out] pkts
  *   Array to store received packets.
  * @param pkts_n
@@ -565,28 +566,23 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
  * @param[out] err
  *   Pointer to a flag. Set non-zero value if pkts array has at least one error
  *   packet to handle.
- * @param[out] no_cq
- *  Pointer to a boolean. Set true if no new CQE seen.
+ * @param[out] comp
+ *   Pointer to a index. Set it to the first compressed completion if any.
  *
  * @return
- *   Number of packets received including errors (<= pkts_n).
+ *   Number of CQEs successfully processed.
  */
 static inline uint16_t
-rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
-	    uint64_t *err, bool *no_cq)
+rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
+		 struct rte_mbuf **elts, struct rte_mbuf **pkts,
+		 uint16_t pkts_n, uint64_t *err, uint64_t *comp)
 {
 	const uint16_t q_n = 1 << rxq->cqe_n;
 	const uint16_t q_mask = q_n - 1;
-	volatile struct mlx5_cqe *cq;
-	struct rte_mbuf **elts;
 	unsigned int pos;
-	uint64_t n;
-	uint16_t repl_n;
+	uint64_t n = 0;
 	uint64_t comp_idx = MLX5_VPMD_DESCS_PER_LOOP;
 	uint16_t nocmp_n = 0;
-	uint16_t rcvd_pkt = 0;
-	unsigned int cq_idx = rxq->cq_ci & q_mask;
-	unsigned int elts_idx;
 	unsigned int ownership = !!(rxq->cq_ci & (q_mask + 1));
 	const vector unsigned char zero = (vector unsigned char){0};
 	const vector unsigned char ones = vec_splat_u8(-1);
@@ -637,41 +633,6 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		(vector unsigned short){0, 0, 0, 0, 0xffff, 0xffff, 0, 0};
 	const vector unsigned short cqe_sel_mask2 =
 		(vector unsigned short){0, 0, 0xffff, 0, 0, 0, 0, 0};
-
-	MLX5_ASSERT(rxq->sges_n == 0);
-	MLX5_ASSERT(rxq->cqe_n == rxq->elts_n);
-	cq = &(*rxq->cqes)[cq_idx];
-	rte_prefetch0(cq);
-	rte_prefetch0(cq + 1);
-	rte_prefetch0(cq + 2);
-	rte_prefetch0(cq + 3);
-	pkts_n = RTE_MIN(pkts_n, MLX5_VPMD_RX_MAX_BURST);
-
-	repl_n = q_n - (rxq->rq_ci - rxq->rq_pi);
-	if (repl_n >= rxq->rq_repl_thresh)
-		mlx5_rx_replenish_bulk_mbuf(rxq, repl_n);
-	/* See if there're unreturned mbufs from compressed CQE. */
-	rcvd_pkt = rxq->decompressed;
-	if (rcvd_pkt > 0) {
-		rcvd_pkt = RTE_MIN(rcvd_pkt, pkts_n);
-		rxq_copy_mbuf_v(rxq, pkts, rcvd_pkt);
-		rxq->rq_pi += rcvd_pkt;
-		rxq->decompressed -= rcvd_pkt;
-		pkts += rcvd_pkt;
-	}
-	elts_idx = rxq->rq_pi & q_mask;
-	elts = &(*rxq->elts)[elts_idx];
-	/* Not to overflow pkts array. */
-	pkts_n = RTE_ALIGN_FLOOR(pkts_n - rcvd_pkt, MLX5_VPMD_DESCS_PER_LOOP);
-	/* Not to cross queue end. */
-	pkts_n = RTE_MIN(pkts_n, q_n - elts_idx);
-	pkts_n = RTE_MIN(pkts_n, q_n - cq_idx);
-	if (!pkts_n) {
-		*no_cq = !rcvd_pkt;
-		return rcvd_pkt;
-	}
-	/* At this point, there shouldn't be any remaining packets. */
-	MLX5_ASSERT(rxq->decompressed == 0);
 
 	/*
 	 * A. load first Qword (8bytes) in one loop.
@@ -1102,40 +1063,13 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		if (n != MLX5_VPMD_DESCS_PER_LOOP)
 			break;
 	}
-	/* If no new CQE seen, return without updating cq_db. */
-	if (unlikely(!nocmp_n && comp_idx == MLX5_VPMD_DESCS_PER_LOOP)) {
-		*no_cq = true;
-		return rcvd_pkt;
-	}
-	/* Update the consumer indexes for non-compressed CQEs. */
-	MLX5_ASSERT(nocmp_n <= pkts_n);
-	rxq->cq_ci += nocmp_n;
-	rxq->rq_pi += nocmp_n;
-	rcvd_pkt += nocmp_n;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	rxq->stats.ipackets += nocmp_n;
 	rxq->stats.ibytes += rcvd_byte;
 #endif
-	/* Decompress the last CQE if compressed. */
-	if (comp_idx < MLX5_VPMD_DESCS_PER_LOOP && comp_idx == n) {
-		MLX5_ASSERT(comp_idx == (nocmp_n % MLX5_VPMD_DESCS_PER_LOOP));
-		rxq->decompressed =
-			rxq_cq_decompress_v(rxq, &cq[nocmp_n], &elts[nocmp_n]);
-		/* Return more packets if needed. */
-		if (nocmp_n < pkts_n) {
-			uint16_t n = rxq->decompressed;
-
-			n = RTE_MIN(n, pkts_n - nocmp_n);
-			rxq_copy_mbuf_v(rxq, &pkts[nocmp_n], n);
-			rxq->rq_pi += n;
-			rcvd_pkt += n;
-			rxq->decompressed -= n;
-		}
-	}
-	rte_compiler_barrier();
-	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
-	*no_cq = !rcvd_pkt;
-	return rcvd_pkt;
+	if (comp_idx == n)
+		*comp = comp_idx;
+	return nocmp_n;
 }
 
 #endif /* RTE_PMD_MLX5_RXTX_VEC_ALTIVEC_H_ */
