@@ -41,6 +41,7 @@ if is_windows
 		'telemetry',
 		'eal',
 		'ring',
+		'rcu',
 		'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci',
 		'cmdline',
 		'hash',
