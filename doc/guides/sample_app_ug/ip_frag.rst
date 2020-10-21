@@ -53,7 +53,7 @@ Application usage:
 
 .. code-block:: console
 
-    ./build/ip_fragmentation [EAL options] -- -p PORTMASK [-q NQ]
+    ./<build_dir>/examples/dpdk-ip_fragmentation [EAL options] -- -p PORTMASK [-q NQ]
 
 where:
 
@@ -65,7 +65,7 @@ To run the example in linux environment with 2 lcores (2,4) over 2 ports(0,2) wi
 
 .. code-block:: console
 
-    ./build/ip_fragmentation -l 2,4 -n 3 -- -p 5
+    ./<build_dir>/examples/dpdk-ip_fragmentation -l 2,4 -n 3 -- -p 5
     EAL: coremask set to 14
     EAL: Detected lcore 0 on socket 0
     EAL: Detected lcore 1 on socket 1
@@ -94,7 +94,7 @@ To run the example in linux environment with 1 lcore (4) over 2 ports(0,2) with 
 
 .. code-block:: console
 
-    ./build/ip_fragmentation -l 4 -n 3 -- -p 5 -q 2
+    ./<build_dir>/examples/dpdk-ip_fragmentation -l 4 -n 3 -- -p 5 -q 2
 
 To test the application, flows should be set up in the flow generator that match the values in the
 l3fwd_ipv4_route_array and/or l3fwd_ipv6_route_array table.

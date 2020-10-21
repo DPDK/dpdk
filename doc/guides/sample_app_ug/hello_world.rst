@@ -21,7 +21,7 @@ To run the example in a linux environment:
 
 .. code-block:: console
 
-    $ ./build/helloworld -l 0-3 -n 4
+    $ ./<build_dir>/examples/dpdk-helloworld -l 0-3 -n 4
 
 Refer to *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.

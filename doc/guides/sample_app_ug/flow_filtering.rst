@@ -13,28 +13,7 @@ It is intended as a demonstration of the basic components RTE flow rules.
 Compiling the Application
 -------------------------
 
-To compile the application export the path to the DPDK source tree and go to
-the example directory:
-
-.. code-block:: console
-
-    export RTE_SDK=/path/to/rte_sdk
-
-    cd ${RTE_SDK}/examples/flow_filtering
-
-Set the target, for example:
-
-.. code-block:: console
-
-    export RTE_TARGET=x86_64-native-linux-gcc
-
-See the *DPDK Getting Started* Guide for possible ``RTE_TARGET`` values.
-
-Build the application as follows:
-
-.. code-block:: console
-
-    make
+To compile the sample application see :doc:`compiling`.
 
 
 Running the Application
@@ -44,7 +23,7 @@ To run the example in a ``linux`` environment:
 
 .. code-block:: console
 
-    ./build/flow -l 1 -n 1
+    ./<build_dir>/examples/dpdk-flow_filtering -l 1 -n 1
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.

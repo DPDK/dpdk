@@ -42,7 +42,7 @@ The application has a number of command line options:
 
 .. code-block:: console
 
-    ./build/ip_reassembly [EAL options] -- -p PORTMASK [-q NQ] [--maxflows=FLOWS>] [--flowttl=TTL[(s|ms)]]
+    ./<build_dir>/examples/dpdk-ip_reassembly [EAL options] -- -p PORTMASK [-q NQ] [--maxflows=FLOWS>] [--flowttl=TTL[(s|ms)]]
 
 where:
 
@@ -61,7 +61,7 @@ To run the example in linux environment with 2 lcores (2,4) over 2 ports(0,2) wi
 
 .. code-block:: console
 
-    ./build/ip_reassembly -l 2,4 -n 3 -- -p 5
+    ./<build_dir>/examples/dpdk-ip_reassembly -l 2,4 -n 3 -- -p 5
     EAL: coremask set to 14
     EAL: Detected lcore 0 on socket 0
     EAL: Detected lcore 1 on socket 1
@@ -92,7 +92,7 @@ To run the example in linux environment with 1 lcore (4) over 2 ports(0,2) with 
 
 .. code-block:: console
 
-    ./build/ip_reassembly -l 4 -n 3 -- -p 5 -q 2
+    ./<build_dir>/examples/dpdk-ip_reassembly -l 4 -n 3 -- -p 5 -q 2
 
 To test the application, flows should be set up in the flow generator that match the values in the
 l3fwd_ipv4_route_array and/or l3fwd_ipv6_route_array table.
@@ -231,7 +231,8 @@ Debug logging and Statistics Collection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The RTE_LIBRTE_IP_FRAG_TBL_STAT controls statistics collection for the IP Fragment Table.
-This macro is disabled by default.
+This macro is disabled by default, but it can be enabled by modifying the appropriate line
+in ``config/rte_config.h``.
 To make ip_reassembly print the statistics to the standard output,
 the user must send either an USR1, INT or TERM signal to the process.
 For all of these signals, the ip_reassembly process prints Fragment table statistics for each RX queue,

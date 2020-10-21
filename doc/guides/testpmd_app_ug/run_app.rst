@@ -20,7 +20,7 @@ They must be separated from the EAL options, shown in the previous section, with
 
 .. code-block:: console
 
-    sudo ./testpmd -l 0-3 -n 4 -- -i --portmask=0x1 --nb-cores=2
+    sudo ./dpdk-testpmd -l 0-3 -n 4 -- -i --portmask=0x1 --nb-cores=2
 
 The command line options are:
 
@@ -59,13 +59,13 @@ The command line options are:
 *   ``--nb-cores=N``
 
     Set the number of forwarding cores,
-    where 1 <= N <= "number of cores" or ``CONFIG_RTE_MAX_LCORE`` from the configuration file.
+    where 1 <= N <= "number of cores" or ``RTE_MAX_LCORE`` from the configuration file.
     The default value is 1.
 
 *   ``--nb-ports=N``
 
     Set the number of forwarding ports,
-    where 1 <= N <= "number of ports" on the board or ``CONFIG_RTE_MAX_ETHPORTS`` from the configuration file.
+    where 1 <= N <= "number of ports" on the board or ``RTE_MAX_ETHPORTS`` from the configuration file.
     The default value is the number of ports on the board.
 
 *   ``--coremask=0xXX``
@@ -138,7 +138,7 @@ The command line options are:
 *   ``--eth-peer=N,XX:XX:XX:XX:XX:XX``
 
     Set the MAC address ``XX:XX:XX:XX:XX:XX`` of the peer port N,
-    where 0 <= N < ``CONFIG_RTE_MAX_ETHPORTS`` from the configuration file.
+    where 0 <= N < ``RTE_MAX_ETHPORTS``.
 
 *   ``--tx-ip=SRC,DST``
 

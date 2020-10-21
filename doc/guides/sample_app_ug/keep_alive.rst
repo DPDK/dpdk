@@ -49,7 +49,7 @@ The application has a number of command line options:
 
 .. code-block:: console
 
-    ./build/l2fwd-keepalive [EAL options] \
+    ./<build_dir>/examples/dpdk-l2fwd-keepalive [EAL options] \
             -- -p PORTMASK [-q NQ] [-K PERIOD] [-T PERIOD]
 
 where,
@@ -68,7 +68,7 @@ To run the application in linux environment with 4 lcores, 16 ports
 
 .. code-block:: console
 
-    ./build/l2fwd-keepalive -l 0-3 -n 4 -- -q 8 -p ffff -K 10
+    ./<build_dir>/examples/dpdk-l2fwd-keepalive -l 0-3 -n 4 -- -q 8 -p ffff -K 10
 
 Refer to the *DPDK Getting Started Guide* for general information on
 running applications and the Environment Abstraction Layer (EAL)

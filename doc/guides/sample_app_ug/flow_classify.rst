@@ -28,8 +28,8 @@ To run the example in a ``linux`` environment:
 
 .. code-block:: console
 
-    cd ~/dpdk/examples/flow_classify
-    ./build/flow_classify -c 4 -n 4 -- --rule_ipv4="../ipv4_rules_file.txt"
+    ./<build_dir>/examples/dpdk-flow_classify -c 4 -n 4 -- /
+    --rule_ipv4="../ipv4_rules_file.txt"
 
 Please refer to the *DPDK Getting Started Guide*, section
 :doc:`../linux_gsg/build_sample_apps`

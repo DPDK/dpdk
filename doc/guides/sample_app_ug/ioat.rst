@@ -45,7 +45,7 @@ The application requires a number of command line options:
 
 .. code-block:: console
 
-    ./build/ioatfwd [EAL options] -- [-p MASK] [-q NQ] [-s RS] [-c <sw|hw>]
+    ./<build_dir>/examples/dpdk-ioat [EAL options] -- [-p MASK] [-q NQ] [-s RS] [-c <sw|hw>]
         [--[no-]mac-updating]
 
 where,
@@ -81,7 +81,7 @@ updating issue the command:
 
 .. code-block:: console
 
-    $ ./build/ioatfwd -l 0-2 -n 2 -- -p 0x1 --mac-updating -c sw
+    $ ./<build_dir>/examples/dpdk-ioat -l 0-2 -n 2 -- -p 0x1 --mac-updating -c sw
 
 To run the application in a Linux environment with 2 lcores (the main lcore,
 plus one forwarding core), 2 ports (ports 0 and 1), hardware copying and no MAC
@@ -89,7 +89,7 @@ updating issue the command:
 
 .. code-block:: console
 
-    $ ./build/ioatfwd -l 0-1 -n 1 -- -p 0x3 --no-mac-updating -c hw
+    $ ./<build_dir>/examples/dpdk-ioat -l 0-1 -n 1 -- -p 0x3 --no-mac-updating -c hw
 
 Refer to the *DPDK Getting Started Guide* for general information on
 running applications and the Environment Abstraction Layer (EAL) options.

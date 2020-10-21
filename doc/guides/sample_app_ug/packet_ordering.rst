@@ -43,7 +43,8 @@ The application execution command line is:
 
 .. code-block:: console
 
-    ./packet_ordering [EAL options] -- -p PORTMASK [--disable-reorder] [--insight-worker]
+    ./<build_dir>/examples/dpdk-packet_ordering [EAL options] -- -p PORTMASK /
+    [--disable-reorder] [--insight-worker]
 
 The -c EAL CPU_COREMASK option has to contain at least 3 CPU cores.
 The first CPU core in the core mask is the main core and would be assigned to

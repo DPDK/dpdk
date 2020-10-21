@@ -48,7 +48,7 @@ The application execution command line is as below:
 
 .. code-block:: console
 
-    ./qos_meter [EAL options] -- -p PORTMASK
+    ./dpdk-qos_meter [EAL options] -- -p PORTMASK
 
 The application is constrained to use a single core in the EAL core mask and 2 ports only in the application port mask
 (first port from the port mask is used for RX and the other port in the core mask is used for TX).

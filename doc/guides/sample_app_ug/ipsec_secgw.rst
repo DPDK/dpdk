@@ -116,12 +116,6 @@ To compile the sample application see :doc:`compiling`.
 
 The application is located in the ``ipsec-secgw`` sub-directory.
 
-#. [Optional] Build the application for debugging:
-   This option adds some extra flags, disables compiler optimizations and
-   is verbose::
-
-       make DEBUG=1
-
 
 Running the Application
 -----------------------
@@ -129,7 +123,7 @@ Running the Application
 The application has a number of command line options::
 
 
-   ./build/ipsec-secgw [EAL options] --
+   ./<build_dir>/examples/dpdk-ipsec-secgw [EAL options] --
                         -p PORTMASK -P -u PORTMASK -j FRAMESIZE
                         -l -w REPLAY_WINOW_SIZE -e -a
                         -c SAD_CACHE_SIZE
@@ -245,7 +239,7 @@ The mapping of lcores to port/queues is similar to other l3fwd applications.
 
 For example, given the following command line to run application in poll mode::
 
-    ./build/ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048       \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048       \
            --vdev "crypto_null" -- -p 0xf -P -u 0x3             \
            --config="(0,0,20),(1,0,20),(2,0,21),(3,0,21)"       \
            -f /path/to/config_file --transfer-mode poll         \
@@ -297,7 +291,7 @@ where each option means:
 Similarly for example, given the following command line to run application in
 event app mode::
 
-    ./build/ipsec-secgw -c 0x3 -- -P -p 0x3 -u 0x1       \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -c 0x3 -- -P -p 0x3 -u 0x1       \
            -f /path/to/config_file --transfer-mode event \
            --event-schedule-type parallel                \
 
@@ -336,7 +330,7 @@ For example, something like the following command line:
 
 .. code-block:: console
 
-    ./build/ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048 \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048 \
             -w 81:00.0 -w 81:00.1 -w 81:00.2 -w 81:00.3 \
             --vdev "crypto_aesni_mb" --vdev "crypto_null" \
 	    -- \

@@ -93,7 +93,7 @@ and the back-end node.
 
 The frontend server (server) has the following command line options::
 
-    ./server [EAL options] -- -p PORTMASK -n NUM_NODES -f NUM_FLOWS
+    ./<build_dir>/examples/dpdk-server [EAL options] -- -p PORTMASK -n NUM_NODES -f NUM_FLOWS
 
 Where,
 

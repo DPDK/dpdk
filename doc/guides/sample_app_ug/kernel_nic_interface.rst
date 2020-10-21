@@ -96,7 +96,7 @@ The ``kni`` example application requires a number of command line options:
 
 .. code-block:: console
 
-    kni [EAL options] -- -p PORTMASK --config="(port,lcore_rx,lcore_tx[,lcore_kthread,...])[,(port,lcore_rx,lcore_tx[,lcore_kthread,...])]" [-P] [-m]
+    dpdk-kni [EAL options] -- -p PORTMASK --config="(port,lcore_rx,lcore_tx[,lcore_kthread,...])[,(port,lcore_rx,lcore_tx[,lcore_kthread,...])]" [-P] [-m]
 
 Where:
 
@@ -168,8 +168,8 @@ interface ``vEth1_0`` with the kernel thread bound to lcore 9.
 .. code-block:: console
 
     # rmmod rte_kni
-    # insmod kmod/rte_kni.ko kthread_mode=multiple
-    # ./build/kni -l 4-7 -n 4 -- -P -p 0x3 -m --config="(0,4,6,8),(1,5,7,9)"
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko kthread_mode=multiple
+    # ./<build-dir>/examples/dpdk-kni -l 4-7 -n 4 -- -P -p 0x3 -m --config="(0,4,6,8),(1,5,7,9)"
 
 The following example is identical, except an additional ``lcore_kthread``
 core is specified per physical port.  In this case, ``kni`` will create
@@ -186,8 +186,8 @@ The kernel thread for each interface will be bound as follows:
 .. code-block:: console
 
     # rmmod rte_kni
-    # insmod kmod/rte_kni.ko kthread_mode=multiple
-    # ./build/kni -l 4-7 -n 4 -- -P -p 0x3 -m --config="(0,4,6,8,10),(1,5,7,9,11)"
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko kthread_mode=multiple
+    # ./<build-dir>/examples/dpdk-kni -l 4-7 -n 4 -- -P -p 0x3 -m --config="(0,4,6,8,10),(1,5,7,9,11)"
 
 The following example can be used to test the interface between the ``kni``
 test application and the ``rte_kni`` kernel module.  In this example,
@@ -206,8 +206,8 @@ disabled by **not** specifying the ``-m`` flag to ``kni``:
 .. code-block:: console
 
     # rmmod rte_kni
-    # insmod kmod/rte_kni.ko lo_mode=lo_mode_fifo carrier=on
-    # ./build/kni -l 4-7 -n 4 -- -P -p 0x3 --config="(0,4,6,8),(1,5,7,9)"
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko lo_mode=lo_mode_fifo carrier=on
+    # ./<build-dir>/examples/dpdk-kni -l 4-7 -n 4 -- -P -p 0x3 --config="(0,4,6,8),(1,5,7,9)"
 
 KNI Operations
 --------------

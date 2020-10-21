@@ -44,7 +44,7 @@ Running the Application
 
 The application has a number of command line options similar to l3fwd::
 
-    ./l3fwd-graph [EAL options] -- -p PORTMASK
+    ./dpdk-l3fwd-graph [EAL options] -- -p PORTMASK
                                    [-P]
                                    --config(port,queue,lcore)[,(port,queue,lcore)]
                                    [--eth-dest=X,MM:MM:MM:MM:MM:MM]
@@ -79,7 +79,7 @@ To enable L3 forwarding between two ports, assuming that both ports are in the s
 
 .. code-block:: console
 
-    ./build/l3fwd-graph -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)"
+    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)"
 
 In this command:
 

@@ -71,7 +71,7 @@ practical or possible testpmd supports alternative methods for executing command
 
 .. code-block:: console
 
-   ./testpmd -n4 -r2 ... -- -i --cmdline-file=/home/ubuntu/flow-create-commands.txt
+   ./dpdk-testpmd -n4 -r2 ... -- -i --cmdline-file=/home/ubuntu/flow-create-commands.txt
    Interactive-mode selected
    CLI commands to be read from /home/ubuntu/flow-create-commands.txt
    Configuring Port 0 (socket 0)
@@ -340,7 +340,7 @@ The available information categories are:
 
 * ``icmpecho``: Receives a burst of packets, lookup for ICMP echo requests and, if any, send back ICMP echo replies.
 
-* ``ieee1588``: Demonstrate L2 IEEE1588 V2 PTP timestamping for RX and TX. Requires ``CONFIG_RTE_LIBRTE_IEEE1588=y``.
+* ``ieee1588``: Demonstrate L2 IEEE1588 V2 PTP timestamping for RX and TX.
 
 * ``noisy``: Noisy neighbor simulation.
   Simulate more realistic behavior of a guest machine engaged in receiving
@@ -390,11 +390,6 @@ Example for the io forwarding engine, with some packet drops on the tx side::
      TX-packets: 548595568      TX-dropped: 128           TX-total: 548595696
      ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-.. note::
-
-   Enabling CONFIG_RTE_TEST_PMD_RECORD_CORE_CYCLES appends "CPU cycles/packet" stats, like:
-
-   CPU cycles/packet=xx.dd (total cycles=xxxx / total RX packets=xxxx) at xxx MHz clock
 
 clear fwd
 ~~~~~~~~~

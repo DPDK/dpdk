@@ -28,7 +28,7 @@ Start the vhost_crypto example
 
 .. code-block:: console
 
-    ./vhost_crypto [EAL options] --
+    ./dpdk-vhost_crypto [EAL options] --
     		--config (lcore,cdev-id,queue-id)[,(lcore,cdev-id,queue-id)]
     		--socket-file lcore,PATH
     		[--zero-copy]

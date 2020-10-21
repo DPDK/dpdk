@@ -38,7 +38,7 @@ Start the vswitch example
 
 .. code-block:: console
 
-        ./vhost-switch -l 0-3 -n 4 --socket-mem 1024  \
+        ./dpdk-vhost-switch -l 0-3 -n 4 --socket-mem 1024  \
              -- --socket-file /tmp/sock0 --client \
              ...
 
@@ -78,13 +78,13 @@ could be done by:
 .. code-block:: console
 
    modprobe uio_pci_generic
-   $RTE_SDK/usertools/dpdk-devbind.py -b uio_pci_generic 0000:00:04.0
+   dpdk/usertools/dpdk-devbind.py -b uio_pci_generic 0000:00:04.0
 
 Then start testpmd for packet forwarding testing.
 
 .. code-block:: console
 
-    ./x86_64-native-gcc/app/testpmd -l 0-1 -- -i
+    ./<build_dir>/app/dpdk-testpmd -l 0-1 -- -i
     > start tx_first
 
 Inject packets
@@ -191,11 +191,6 @@ Common Issues
   mbuf pool size is dependent on the MAX_QUEUES configuration, if NIC's
   max queue number is larger than 128, device start will fail due to
   insufficient mbuf.
-
-  Change the default number to make it work as below, just set the number
-  according to the NIC's property. ::
-
-      make EXTRA_CFLAGS="-DMAX_QUEUES=320"
 
 * Option "builtin-net-driver" is incompatible with QEMU
 

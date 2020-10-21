@@ -51,7 +51,7 @@ Running the Application
 
 The application has a number of command line options::
 
-    ./l3fwd [EAL options] -- -p PORTMASK
+    ./dpdk-l3fwd [EAL options] -- -p PORTMASK
                              [-P]
                              [-E]
                              [-L]
@@ -111,7 +111,7 @@ To enable L3 forwarding between two ports, assuming that both ports are in the s
 
 .. code-block:: console
 
-    ./build/l3fwd -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)"
+    ./<build_dir>/examples/dpdk-l3fwd -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)"
 
 In this command:
 
@@ -138,13 +138,13 @@ Following is the sample command:
 
 .. code-block:: console
 
-    ./build/l3fwd -l 0-3 -n 4 -w <event device> -- -p 0x3 --eventq-sched=ordered
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -n 4 -w <event device> -- -p 0x3 --eventq-sched=ordered
 
 or
 
 .. code-block:: console
 
-    ./build/l3fwd -l 0-3 -n 4 -w <event device> -- -p 0x03 --mode=eventdev --eventq-sched=ordered
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -n 4 -w <event device> -- -p 0x03 --mode=eventdev --eventq-sched=ordered
 
 In this command:
 
@@ -166,7 +166,7 @@ scheduler. Following is the sample command:
 
 .. code-block:: console
 
-    ./build/l3fwd -l 0-7 -s 0xf0000 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-7 -s 0xf0000 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered
 
 In case of eventdev mode, *--config* option is not used for ethernet port
 configuration. Instead each ethernet port will be configured with mentioned

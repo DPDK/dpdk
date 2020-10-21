@@ -31,30 +31,12 @@ Limitations
 Compiling the Application
 -------------------------
 
-#. DPDK needs to be built with ``baseband_turbo_sw`` PMD driver enabled along
-   with ``FLEXRAN SDK`` Libraries. Refer to *SW Turbo Poll Mode Driver*
-   documentation for more details on this.
+DPDK needs to be built with ``baseband_turbo_sw`` PMD driver enabled along
+with ``FLEXRAN SDK`` Libraries. Refer to *SW Turbo Poll Mode Driver*
+documentation for more details on this.
 
-#. Go to the example directory:
+To compile the sample application see :doc:`compiling`.
 
-    .. code-block:: console
-
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/bbdev_app
-
-#. Set the target (a default target is used if not specified). For example:
-
-    .. code-block:: console
-
-        export RTE_TARGET=x86_64-native-linux-gcc
-
-    See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
-
-#. Build the application:
-
-    .. code-block:: console
-
-        make
 
 Running the Application
 -----------------------
@@ -63,8 +45,8 @@ The application accepts a number of command line options:
 
 .. code-block:: console
 
-    $ ./build/bbdev [EAL options] -- [-e ENCODING_CORES] [-d DECODING_CORES] /
-    [-p ETH_PORT_ID] [-b BBDEV_ID]
+    $ ./<build_dir>/examples/dpdk-bbdev [EAL options] -- [-e ENCODING_CORES] /
+    [-d DECODING_CORES] [-p ETH_PORT_ID] [-b BBDEV_ID]
 
 where:
 
@@ -84,8 +66,8 @@ issue the command:
 
 .. code-block:: console
 
-    $ ./build/bbdev --vdev='baseband_turbo_sw' -w <NIC0PCIADDR> -c 0x38 --socket-mem=2,2 \
-    --file-prefix=bbdev -- -e 0x10 -d 0x20
+    $ ./<build_dir>/examples/dpdk-bbdev --vdev='baseband_turbo_sw' -w <NIC0PCIADDR> \
+    -c 0x38 --socket-mem=2,2 --file-prefix=bbdev -- -e 0x10 -d 0x20
 
 where, NIC0PCIADDR is the PCI address of the Rx port
 

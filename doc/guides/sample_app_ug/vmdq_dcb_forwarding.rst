@@ -26,13 +26,13 @@ multiple queues. When run with 8 threads, that is, with the -c FF option, each t
 As supplied, the sample application configures the VMDQ feature to have 32 pools with 4 queues each as indicated in :numref:`figure_vmdq_dcb_example`.
 The Intel® 82599 10 Gigabit Ethernet Controller NIC also supports the splitting of traffic into 16 pools of 8 queues. While the
 Intel® X710 or XL710 Ethernet Controller NICs support many configurations of VMDQ pools of 4 or 8 queues each. For simplicity, only 16
-or 32 pools is supported in this sample. And queues numbers for each VMDQ pool can be changed by setting CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM
-in config/common_* file.
+or 32 pools is supported in this sample. And queues numbers for each VMDQ pool can be changed by setting RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM
+in config/rte_config.h file.
 The nb-pools, nb-tcs and enable-rss parameters can be passed on the command line, after the EAL parameters:
 
 .. code-block:: console
 
-    ./build/vmdq_dcb [EAL options] -- -p PORTMASK --nb-pools NP --nb-tcs TC --enable-rss
+    ./<build_dir>/examples/dpdk-vmdq_dcb [EAL options] -- -p PORTMASK --nb-pools NP --nb-tcs TC --enable-rss
 
 where, NP can be 16 or 32, TC can be 4 or 8, rss is disabled by default.
 
@@ -72,7 +72,7 @@ To run the example in a linux environment:
 
 .. code-block:: console
 
-    user@target:~$ ./build/vmdq_dcb -l 0-3 -n 4 -- -p 0x3 --nb-pools 32 --nb-tcs 4
+    user@target:~$ ./<build_dir>/examples/dpdk-vmdq_dcb -l 0-3 -n 4 -- -p 0x3 --nb-pools 32 --nb-tcs 4
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.

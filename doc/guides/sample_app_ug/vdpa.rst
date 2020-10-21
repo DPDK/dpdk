@@ -29,7 +29,7 @@ Start the vdpa example
 
 .. code-block:: console
 
-        ./vdpa [EAL options]  -- [--client] [--interactive|-i] or [--iface SOCKET_PATH]
+        ./dpdk-vdpa [EAL options]  -- [--client] [--interactive|-i] or [--iface SOCKET_PATH]
 
 where
 
@@ -51,7 +51,7 @@ Take IFCVF driver for example:
 
 .. code-block:: console
 
-        ./vdpa -c 0x2 -n 4 --socket-mem 1024,1024 \
+        ./dpdk-vdpa -c 0x2 -n 4 --socket-mem 1024,1024 \
                 -w 0000:06:00.3,vdpa=1 -w 0000:06:00.4,vdpa=1 \
                 -- --interactive
 

@@ -184,7 +184,7 @@ Packet 2 matches Rule 2 and is forwarded to port 1.
 Packet 3 matches Rule 3 and is forwarded to port 0.
 
 For more details on the rule file format,
-please refer to rule_ipv4.db and rule_ipv6.db files (inside <RTE_SDK>/examples/l3fwd-acl/).
+please refer to rule_ipv4.db and rule_ipv6.db files (inside dpdk/examples/l3fwd-acl/).
 
 Application Phases
 ~~~~~~~~~~~~~~~~~~
@@ -236,7 +236,7 @@ The application has a number of command line options:
 
 ..  code-block:: console
 
-    ./build/l3fwd-acl [EAL options] -- -p PORTMASK [-P] --config(port,queue,lcore)[,(port,queue,lcore)] --rule_ipv4 FILENAME rule_ipv6 FILENAME [--alg=<val>] [--enable-jumbo [--max-pkt-len PKTLEN]] [--no-numa] [--eth-dest=X,MM:MM:MM:MM:MM:MM]
+    ./<build_dir>/examples/dpdk-l3fwd-acl [EAL options] -- -p PORTMASK [-P] --config(port,queue,lcore)[,(port,queue,lcore)] --rule_ipv4 FILENAME rule_ipv6 FILENAME [--alg=<val>] [--enable-jumbo [--max-pkt-len PKTLEN]] [--no-numa] [--eth-dest=X,MM:MM:MM:MM:MM:MM]
 
 
 where,
@@ -271,7 +271,7 @@ To enable L3 forwarding between two ports, assuming that both ports are in the s
 
 ..  code-block:: console
 
-    ./build/l3fwd-acl -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)" --rule_ipv4="./rule_ipv4.db" -- rule_ipv6="./rule_ipv6.db" --alg=scalar
+    ./<build_dir>/examples/dpdk-l3fwd-acl -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)" --rule_ipv4="./rule_ipv4.db" -- rule_ipv6="./rule_ipv6.db" --alg=scalar
 
 In this command:
 

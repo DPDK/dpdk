@@ -57,13 +57,6 @@ To compile the sample application see :doc:`compiling`.
 
 The application is located in the ``ptpclient`` sub-directory.
 
-.. note::
-   To compile the application edit the ``config/common_linux`` configuration file to enable IEEE1588
-   and then recompile DPDK:
-
-   .. code-block:: console
-
-      CONFIG_RTE_LIBRTE_IEEE1588=y
 
 Running the Application
 -----------------------
@@ -72,7 +65,7 @@ To run the example in a ``linux`` environment:
 
 .. code-block:: console
 
-    ./build/ptpclient -l 1 -n 4 -- -p 0x1 -T 0
+    ./<build_dir>/examples/dpdk-ptpclient -l 1 -n 4 -- -p 0x1 -T 0
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.

@@ -90,36 +90,17 @@ The example in this section have been validated with the following distributions
 
 *   Fedora* 20
 
-Compiling the Sample Code
--------------------------
-
-To enable vhost, turn on vhost library in the configure file
-``config/common_linux``.
-
-    .. code-block:: console
-
-        CONFIG_RTE_LIBRTE_VHOST=y
-
-Then following the to compile the sample application shown in
-:doc:`compiling`.
 
 Running the Sample Code
 -----------------------
 
-#.  Go to the examples directory:
+Run the tep_termination sample code:
 
-    .. code-block:: console
+.. code-block:: console
 
-        export RTE_SDK=/path/to/rte_sdk
-        cd ${RTE_SDK}/examples/tep_termination
-
-#.  Run the tep_termination sample code:
-
-    .. code-block:: console
-
-        user@target:~$ ./build/app/tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
-                        -p 0x1 --dev-basename tep-termination --nb-devices 4
-                        --udp-port 4789 --filter-type 1
+    user@target:~$ ./<build_dir>/examples/dpdk-tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
+                    -p 0x1 --dev-basename tep-termination --nb-devices 4
+                    --udp-port 4789 --filter-type 1
 
 .. note::
 
@@ -139,7 +120,7 @@ The default value is 2.
 
 .. code-block:: console
 
-    user@target:~$ ./build/app/tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
+    user@target:~$ ./<build_dir>/examples/dpdk-tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
                     --nb-devices 2
 
 **Tunneling UDP port.**
@@ -149,7 +130,7 @@ The default value is 4789.
 
 .. code-block:: console
 
-    user@target:~$ ./build/app/tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
+    user@target:~$ ./<build_dir>/examples/dpdk-tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
                     --nb-devices 2 --udp-port 4789
 
 **Filter Type.**
@@ -160,7 +141,7 @@ The default value is 1, which means the filter type of inner MAC and tenant ID i
 
 .. code-block:: console
 
-    user@target:~$ ./build/app/tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
+    user@target:~$ ./<build_dir>/examples/dpdk-tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
                 --nb-devices 2 --udp-port 4789 --filter-type 1
 
 **TX Checksum.**
@@ -170,7 +151,7 @@ The default value is 0, which means the checksum offload is disabled.
 
 .. code-block:: console
 
-    user@target:~$ ./build/app/tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
+    user@target:~$ ./<build_dir>/examples/dpdk-tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
                 --nb-devices 2 --tx-checksum
 
 **TCP segment size.**
@@ -180,7 +161,7 @@ The default value is 0, which means TSO offload is disabled.
 
 .. code-block:: console
 
-    user@target:~$ ./build/app/tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
+    user@target:~$ ./<build_dir>/examples/dpdk-tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
                 --tx-checksum --tso-segsz 800
 
 **Decapsulation option.**
@@ -190,7 +171,7 @@ The default value is 1.
 
 .. code-block:: console
 
-    user@target:~$ ./build/app/tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
+    user@target:~$ ./<build_dir>/examples/dpdk-tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
                 --nb-devices 4 --udp-port 4789 --decap 1
 
 **Encapsulation option.**
@@ -200,7 +181,7 @@ The default value is 1.
 
 .. code-block:: console
 
-    user@target:~$ ./build/app/tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
+    user@target:~$ ./<build_dir>/examples/dpdk-tep_termination -l 0-3 -n 4 --huge-dir /mnt/huge --
                 --nb-devices 4 --udp-port 4789 --encap 1
 
 

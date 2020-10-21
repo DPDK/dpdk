@@ -42,7 +42,7 @@ Running the Application
 
    ..  code-block:: console
 
-       ./build/distributor_app [EAL options] -- -p PORTMASK
+       ./<build-dir>/examples/dpdk-distributor [EAL options] -- -p PORTMASK
 
    where,
 
@@ -53,7 +53,7 @@ Running the Application
 
    ..  code-block:: console
 
-       $ ./build/distributor_app -l 1-9,22 -n 4 -- -p f
+       $ ./<build-dir>/examples/dpdk-distributor -l 1-9,22 -n 4 -- -p f
 
 #. Refer to the DPDK Getting Started Guide for general information on running
    applications and the Environment Abstraction Layer (EAL) options.

@@ -32,7 +32,7 @@ Compiling the Application
 -------------------------
 To compile the sample application see :doc:`compiling`
 
-The application is located in the ``$RTE_SDK/app/test-pipeline`` directory.
+The application is located in the ``dpdk/<build_dir>/app`` directory.
 
 
 Running the Application
@@ -45,7 +45,7 @@ The application execution command line is:
 
 .. code-block:: console
 
-    ./test-pipeline [EAL options] -- -p PORTMASK --TABLE_TYPE
+    ./dpdk-test-pipeline [EAL options] -- -p PORTMASK --TABLE_TYPE
 
 The -c or -l EAL CPU coremask/corelist option has to contain exactly 3 CPU cores.
 The first CPU core in the core mask is assigned for core A, the second for core B and the third for core C.

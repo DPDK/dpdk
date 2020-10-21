@@ -50,7 +50,7 @@ The application has a number of command line options:
 
 .. code-block:: console
 
-    ./build/ipv4_multicast [EAL options] -- -p PORTMASK [-q NQ]
+    ./<build_dir>/examples/dpdk-ipv4_multicast [EAL options] -- -p PORTMASK [-q NQ]
 
 where,
 
@@ -67,7 +67,7 @@ Typically, to run the IPv4 Multicast sample application, issue the following com
 
 .. code-block:: console
 
-    ./build/ipv4_multicast -l 0-3 -n 3 -- -p 0x3 -q 1
+    ./<build_dir>/examples/dpdk-ipv4_multicast -l 0-3 -n 3 -- -p 0x3 -q 1
 
 In this command:
 

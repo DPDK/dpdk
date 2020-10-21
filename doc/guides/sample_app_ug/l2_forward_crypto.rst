@@ -39,7 +39,7 @@ The application requires a number of command line options:
 
 .. code-block:: console
 
-    ./build/l2fwd-crypto [EAL options] -- [-p PORTMASK] [-q NQ] [-s] [-T PERIOD] /
+    ./<build_dir>/examples/dpdk-l2fwd-crypto [EAL options] -- [-p PORTMASK] [-q NQ] [-s] [-T PERIOD] /
     [--cdev_type HW/SW/ANY] [--chain HASH_CIPHER/CIPHER_HASH/CIPHER_ONLY/HASH_ONLY/AEAD] /
     [--cipher_algo ALGO] [--cipher_op ENCRYPT/DECRYPT] [--cipher_key KEY] /
     [--cipher_key_random_size SIZE] [--cipher_iv IV] [--cipher_iv_random_size SIZE] /
@@ -162,7 +162,7 @@ To run the application in linux environment with 2 lcores, 2 ports and 2 crypto 
 
 .. code-block:: console
 
-    $ ./build/l2fwd-crypto -l 0-1 -n 4 --vdev "crypto_aesni_mb0" \
+    $ ./<build_dir>/examples/dpdk-l2fwd-crypto -l 0-1 -n 4 --vdev "crypto_aesni_mb0" \
     --vdev "crypto_aesni_mb1" -- -p 0x3 --chain CIPHER_HASH \
     --cipher_op ENCRYPT --cipher_algo aes-cbc \
     --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f \
