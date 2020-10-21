@@ -41,30 +41,6 @@ Prerequisites
 
 See :doc:`../platform/octeontx` for setup information.
 
-Pre-Installation Configuration
-------------------------------
-
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-The following options can be modified in the ``config`` file.
-Please note that enabling debugging options may affect system performance.
-
-- ``CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF`` (default ``y``)
-
-  Toggle compilation of the ``librte_pmd_octeontx_ssovf`` driver.
-
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
-
-To compile the OCTEON TX SSOVF PMD for Linux arm64 gcc target, run the
-following ``make`` command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=arm64-thunderx-linux-gcc install
-
 
 Initialization
 --------------

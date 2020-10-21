@@ -40,29 +40,6 @@ Currently supported by DPDK:
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
-Pre-Installation Configuration
-------------------------------
-
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-The following options can be modified in the ``config`` file.
-Please note that enabling debugging options may affect system performance.
-
-- ``CONFIG_RTE_LIBRTE_PMD_DPAA_EVENTDEV`` (default ``y``)
-
-  Toggle compilation of the ``librte_pmd_dpaa_event`` driver.
-
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
-
-To compile the DPAA EVENTDEV PMD for Linux arm64 gcc target, run the
-following ``make`` command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=arm64-dpaa-linux-gcc install
 
 Initialization
 --------------
