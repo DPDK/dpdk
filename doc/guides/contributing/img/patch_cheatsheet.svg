@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
@@ -13,7 +11,7 @@
    width="210mm"
    height="297mm"
    id="svg2985"
-   inkscape:version="0.48.4 r9939"
+   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"
    sodipodi:docname="patch_cheatsheet.svg">
   <sodipodi:namedview
      pagecolor="#ffffff"
@@ -24,17 +22,19 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1184"
-     inkscape:window-height="1822"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
      id="namedview274"
      showgrid="false"
-     inkscape:zoom="1.2685914"
-     inkscape:cx="289.93958"
-     inkscape:cy="509.84194"
-     inkscape:window-x="0"
-     inkscape:window-y="19"
-     inkscape:window-maximized="0"
-     inkscape:current-layer="g3272" />
+     inkscape:zoom="0.89702958"
+     inkscape:cx="246.07409"
+     inkscape:cy="416.76022"
+     inkscape:window-x="1072"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1"
+     inkscape:document-rotation="0"
+     inkscape:snap-grids="false" />
   <defs
      id="defs3">
     <linearGradient
@@ -549,347 +549,336 @@
       </g>
     </switch>
     <g
-       transform="matrix(0.89980358,0,0,0.89980358,45.57817,-2.8793563)"
+       transform="matrix(0.89980358,0,0,0.89980358,57.57817,-2.8793563)"
        id="g4009">
       <text
          x="325.02054"
          y="107.5126"
          id="text3212"
          xml:space="preserve"
-         style="font-size:43.11383057px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-         sodipodi:linespacing="125%"
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:43.1138px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
          transform="scale(1.193782,0.83767389)"><tspan
            x="325.02054"
            y="107.5126"
-           id="tspan3214">CHEATSHEET</tspan></text>
+           id="tspan3214"
+           style="font-family:monospace">CHEATSHEET</tspan></text>
       <text
          x="386.51117"
          y="58.178116"
          transform="scale(1.0054999,0.99453018)"
          id="text3212-1"
          xml:space="preserve"
-         style="font-size:42.11373901px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:42.1137px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="386.51117"
            y="58.178116"
-           id="tspan3214-7">PATCH SUBMIT</tspan></text>
+           id="tspan3214-7"
+           style="font-family:monospace">PATCH SUBMIT</tspan></text>
     </g>
     <rect
-       width="714.94495"
-       height="88.618027"
-       rx="20.780111"
-       ry="15.96909"
-       x="14.574773"
-       y="7.0045133"
+       width="759.50977"
+       height="88.591248"
+       rx="22.075403"
+       ry="15.964265"
+       x="14.588161"
+       y="7.0179014"
        id="rect3239"
-       style="fill:none;stroke:#00233b;stroke-width:0.87678075;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:0.903557;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <rect
-       width="713.28113"
-       height="887.29156"
-       rx="17.656931"
-       ry="17.280584"
-       x="15.406689"
-       y="104.73515"
+       width="757.84167"
+       height="887.2605"
+       rx="18.760006"
+       ry="17.27998"
+       x="15.422211"
+       y="104.75068"
        id="rect3239-0"
-       style="fill:none;stroke:#00233b;stroke-width:1.00973284;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:1.04078;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <rect
-       width="694.94904"
-       height="381.31"
-       rx="9.4761629"
-       ry="9.0904856"
-       x="24.336016"
-       y="601.75836"
+       width="732.82446"
+       height="381.28253"
+       rx="9.9926233"
+       ry="9.0898304"
+       x="24.349754"
+       y="601.77209"
        id="rect3239-0-9-4"
-       style="fill:none;stroke:#00233b;stroke-width:1.02322531;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:1.0507;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <path
-       d="m 386.3921,327.23442 323.14298,0"
+       d="M 422.0654,327.23442 H 709.53508"
        id="path4088"
-       style="fill:none;stroke:#00233b;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#00233b;stroke-width:0.943189px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        inkscape:connector-curvature="0" />
     <text
-       x="396.18015"
+       x="428.18015"
        y="314.45731"
        id="text4090"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="396.18015"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="428.18015"
          y="314.45731"
          id="tspan4092"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">Patch Pre-Checks</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">Patch Pre-Checks</tspan></text>
     <text
        x="43.44949"
        y="147.32129"
        id="text4090-4"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
          x="43.44949"
          y="147.32129"
          id="tspan4092-3"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">Commit Pre-Checks</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">Commit Pre-Checks</tspan></text>
     <text
-       x="397.1235"
+       x="429.1235"
        y="144.8549"
        id="text4090-4-3"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="397.1235"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="429.1235"
          y="144.8549"
          id="tspan4092-3-3"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">Bugfix?</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">Bugfix?</tspan></text>
     <text
        x="41.215897"
        y="634.38617"
        id="text4090-1"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
          x="41.215897"
          y="634.38617"
          id="tspan4092-38"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">Git send-email </tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">Git send-email </tspan></text>
     <path
        d="m 31.232443,642.80575 376.113467,0"
        id="path4088-7"
        style="fill:none;stroke:#00233b;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        inkscape:connector-curvature="0" />
     <rect
-       width="342.13785"
-       height="230.74609"
-       rx="10.411126"
-       ry="10.411126"
-       x="25.418407"
-       y="114.92036"
+       width="376.65033"
+       height="230.70007"
+       rx="11.461329"
+       ry="10.40905"
+       x="25.441414"
+       y="114.94337"
        id="rect3239-0-9-4-2"
-       style="fill:none;stroke:#00233b;stroke-width:0.93674862;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:0.982762;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <text
        x="43.44949"
        y="385.8045"
        id="text4090-86"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
          x="43.44949"
          y="385.8045"
          id="tspan4092-5"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">Compile Pre-Checks</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">Compile Pre-Checks</tspan></text>
     <g
-       transform="translate(352.00486,-348.25973)"
+       transform="matrix(1.0077634,0,0,1,384.57109,-348.25973)"
        id="g3295">
       <text
          x="43.87738"
          y="568.03088"
          id="text4090-8-14"
          xml:space="preserve"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="43.87738"
            y="568.03088"
            id="tspan4289"
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Include warning/error</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Include warning/error</tspan></text>
       <text
          x="43.87738"
          y="537.71906"
          id="text4090-8-14-4"
          xml:space="preserve"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="43.87738"
            y="537.71906"
            id="tspan4289-1"
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Fixes: line</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Fixes: line</tspan></text>
       <text
          x="43.87738"
          y="598.9939"
          id="text4090-8-14-0"
          xml:space="preserve"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="43.87738"
            y="598.9939"
            id="tspan4289-2"
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ How to reproduce</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ How to reproduce</tspan></text>
     </g>
     <g
-       transform="translate(-2.6258125,-26.708615)"
+       transform="matrix(0.88614399,0,0,1.0199334,-5.7864591,-38.84504)"
        id="g4115">
       <g
          id="g3272">
         <text
-           sodipodi:linespacing="125%"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
            xml:space="preserve"
            id="text4090-8-1"
            y="454.36987"
            x="49.093246"><tspan
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
              id="tspan4092-8-7"
              y="454.36987"
              x="49.093246">+ build gcc icc clang </tspan></text>
         <text
-           sodipodi:linespacing="125%"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
+           xml:space="preserve"
+           id="text581"
+           y="454.36987"
+           x="49.093246" />
+        <text
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
            xml:space="preserve"
            id="text4090-8-2"
            y="516.59979"
            x="49.093246"><tspan
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
              id="tspan4092-8-79"
              y="516.59979"
-             x="49.093246">+ make test doc </tspan></text>
+             x="49.093246">+ meson -Denable_docs=true</tspan></text>
         <text
-           sodipodi:linespacing="125%"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
            xml:space="preserve"
            id="text4090-8-2-0-0"
            y="544.71033"
            x="49.093246"><tspan
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
              id="tspan4092-8-79-9-0"
              y="544.71033"
-             x="49.093246">+ make examples</tspan></text>
+             x="49.093246">+ meson -Dexamples=all</tspan></text>
         <text
-           sodipodi:linespacing="125%"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
            xml:space="preserve"
            id="text4090-8-2-0-07"
            y="576.83533"
            x="49.093246"><tspan
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
              id="tspan4092-8-79-9-3"
              y="576.83533"
-             x="49.093246">+ make shared-lib</tspan></text>
+             x="49.093246"
+             transform="matrix(1.0305467,0,0,1,-1.5447426,0)">+ meson -Ddefault_library=shared</tspan></text>
         <text
-           sodipodi:linespacing="125%"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
            xml:space="preserve"
            id="text4090-8-2-0-07-4"
            y="604.88947"
            x="49.093246"><tspan
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
              id="tspan4092-8-79-9-3-9"
              y="604.88947"
              x="49.093246">+ library ABI version</tspan></text>
         <text
-           sodipodi:linespacing="125%"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
            xml:space="preserve"
            id="text4090-8-2-9"
            y="486.56659"
            x="49.093246"><tspan
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
              id="tspan4092-8-79-3"
              y="486.56659"
              x="49.093246">+ build 32 and 64 bits</tspan></text>
       </g>
     </g>
     <text
-       x="74.388756"
-       y="914.65686"
+       x="72.598656"
+       y="937.21002"
        id="text4090-8-1-8-65-9"
        xml:space="preserve"
-       style="font-size:19px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace"
-       sodipodi:linespacing="125%"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:12.2959px;line-height:0%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.02466"
+       transform="scale(1.0246575,0.97593587)"><tspan
          sodipodi:role="line"
          id="tspan3268"
-         x="74.388756"
-         y="914.65686">git send-email *.patch --annotate --to &lt;maintainer&gt;</tspan><tspan
+         x="72.598656"
+         y="937.21002"
+         style="font-size:19.4685px;line-height:1.25;font-family:monospace;stroke-width:1.02466">git send-email *.patch --annotate --to &lt;maintainer&gt;</tspan><tspan
          sodipodi:role="line"
          id="tspan3272"
-         x="74.388756"
-         y="938.40686">  --cc dev@dpdk.org [ --cc other@participants.com</tspan><tspan
+         x="72.598656"
+         y="961.54565"
+         style="font-size:19.4685px;line-height:1.25;font-family:monospace;stroke-width:1.02466">  --cc dev@dpdk.org [ --cc other@participants.com</tspan><tspan
          sodipodi:role="line"
-         x="74.388756"
-         y="962.15686"
-         id="tspan3266">  --cover-letter -v[N] --in-reply-to &lt;message ID&gt; ]</tspan></text>
+         x="72.598656"
+         y="985.88129"
+         id="tspan3266"
+         style="font-size:19.4685px;line-height:1.25;font-family:monospace;stroke-width:1.02466">  --cover-letter -v[N] --in-reply-to &lt;message ID&gt; ]</tspan></text>
     <text
        x="543.47675"
        y="1032.3459"
        id="text4090-8-7-8-7-6-3-8-2-5"
        xml:space="preserve"
-       style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-       sodipodi:linespacing="125%"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
          x="543.47675"
          y="1032.3459"
          id="tspan4092-8-6-3-1-8-4-4-5-3"
-         style="font-size:11px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace">harry.van.haaren@intel.com</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:125%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;writing-mode:lr-tb;text-anchor:start">harry.van.haaren@intel.com</tspan></text>
     <rect
-       width="678.14105"
-       height="87.351799"
-       rx="6.7972355"
-       ry="6.7972355"
-       x="31.865864"
-       y="888.44696"
+       width="711.56055"
+       height="87.327599"
+       rx="7.1322103"
+       ry="6.795352"
+       x="31.877964"
+       y="888.45905"
        id="rect3239-0-9-4-3"
-       style="fill:none;stroke:#00233b;stroke-width:1;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:1.0242;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <text
        x="543.29498"
        y="1018.1843"
        id="text4090-8-7-8-7-6-3-8-2-5-3"
        xml:space="preserve"
-       style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-       sodipodi:linespacing="125%"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
          x="543.29498"
          y="1018.1843"
          id="tspan4092-8-6-3-1-8-4-4-5-3-7"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">Suggestions / Updates?</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">Suggestions / Updates?</tspan></text>
     <g
        id="g3268"
        transform="translate(0,-6)">
       <text
-         sodipodi:linespacing="125%"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"
          id="text4090-8-1-8"
          y="704.07019"
          x="41.658669"><tspan
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
            id="tspan4092-8-7-6"
            y="704.07019"
            x="41.658669">+ Patch version ( eg: -v2 ) </tspan></text>
       <text
-         sodipodi:linespacing="125%"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"
          id="text4090-8-1-8-0"
          y="736.29175"
          x="41.658669"><tspan
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
            id="tspan4092-8-7-6-2"
            y="736.29175"
            x="41.658669">+ Patch version annotations</tspan></text>
       <text
-         sodipodi:linespacing="125%"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"
          id="text4090-8-1-8-6"
          y="766.70355"
          x="41.911205"><tspan
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
            id="tspan4092-8-7-6-1"
            y="766.70355"
            x="41.911205">+ Send --to maintainer </tspan></text>
       <text
-         sodipodi:linespacing="125%"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"
          id="text4090-8-1-8-6-3"
          y="795.30548"
          x="41.658669"><tspan
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
            id="tspan4092-8-7-6-1-8"
            y="795.30548"
            x="41.658669">+ Send --cc dev@dpdk.org </tspan></text>
       <text
-         sodipodi:linespacing="125%"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"
          id="text4090-8-1-8-9"
          y="675.25287"
          x="41.658669"><tspan
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
            id="tspan4092-8-7-6-9"
            y="675.25287"
            x="41.658669">+ Cover letter</tspan></text>
@@ -897,73 +886,70 @@
          id="g3303"
          transform="translate(1.0962334,-40.034939)">
         <text
-           sodipodi:linespacing="125%"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
            xml:space="preserve"
            id="text4090-8-1-8-65"
            y="868.70337"
            x="41.572586"><tspan
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
              id="tspan4092-8-7-6-10"
              y="868.70337"
              x="41.572586">+ Send --in-reply-to &lt;message ID&gt;<tspan
-   style="font-size:20px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+   style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:20px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
    id="tspan3184" /></tspan></text>
         <text
-           sodipodi:linespacing="125%"
-           style="font-size:25.6917057px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+           style="font-style:normal;font-weight:normal;font-size:25.6917px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
            xml:space="preserve"
            id="text4090-8-1-8-9-1"
            y="855.79816"
            x="460.18405"><tspan
-             style="font-size:11.56126785px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:11.5613px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start"
              id="tspan4092-8-7-6-9-7"
              y="855.79816"
              x="460.18405">****</tspan></text>
       </g>
     </g>
     <text
-       x="685.67828"
+       x="697.67828"
        y="76.55056"
        id="text4090-8-1-8-9-1-9"
        xml:space="preserve"
-       style="font-size:20.20989037px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="685.67828"
+       style="font-style:normal;font-weight:normal;font-size:20.2099px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="697.67828"
          y="76.55056"
          id="tspan4092-8-7-6-9-7-4"
-         style="font-size:9.09445095px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">v1.0</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:9.09445px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">v2.0</tspan></text>
     <rect
-       width="342.3053"
-       height="155.54948"
-       rx="9.2344503"
-       ry="9.2344503"
-       x="377.58942"
-       y="114.55766"
+       width="347.40179"
+       height="155.50351"
+       rx="9.3719397"
+       ry="9.2317209"
+       x="412.60239"
+       y="114.58065"
        id="rect3239-0-9-4-2-1"
-       style="fill:none;stroke:#00233b;stroke-width:0.76930124;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:0.774892;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <rect
-       width="342.12564"
-       height="236.79482"
-       rx="10.647112"
-       ry="9.584527"
-       x="25.642178"
-       y="356.86249"
+       width="377.75555"
+       height="234.52185"
+       rx="11.755931"
+       ry="9.4925261"
+       x="25.663876"
+       y="356.88416"
        id="rect3239-0-9-4-2-0"
-       style="fill:none;stroke:#00233b;stroke-width:0.9489302;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:0.99232;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <rect
-       width="341.98428"
-       height="312.73181"
-       rx="8.5358429"
-       ry="8.5358429"
-       x="377.96762"
-       y="280.45331"
+       width="343.53604"
+       height="312.67508"
+       rx="8.5745735"
+       ry="8.5342941"
+       x="414.29037"
+       y="280.48166"
        id="rect3239-0-9-4-2-1-9"
-       style="fill:none;stroke:#00233b;stroke-width:1;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:1.00217;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <path
-       d="m 387.02742,157.3408 323.14298,0"
+       d="M 419.35634,157.3408 H 710.1704"
        id="path4088-8"
-       style="fill:none;stroke:#00233b;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#00233b;stroke-width:0.94866px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        inkscape:connector-curvature="0" />
     <path
        d="m 36.504486,397.33869 323.142974,0"
@@ -971,9 +957,9 @@
        style="fill:none;stroke:#00233b;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        inkscape:connector-curvature="0" />
     <path
-       d="m 35.494337,156.92238 323.142983,0"
+       d="M 35.494337,156.92238 H 372.01481"
        id="path4088-4"
-       style="fill:none;stroke:#00233b;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#00233b;stroke-width:1.02049px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        inkscape:connector-curvature="0" />
     <g
        transform="translate(1.0962334,-30.749225)"
@@ -983,45 +969,41 @@
          y="214.1572"
          id="text4090-8-11"
          xml:space="preserve"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="45.371201"
            y="214.1572"
            id="tspan4092-8-52"
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Signed-off-by: </tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Signed-off-by: </tspan></text>
       <text
          x="45.371201"
          y="243.81795"
          id="text4090-8-7-8"
          xml:space="preserve"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="45.371201"
            y="243.81795"
            id="tspan4092-8-6-3"
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Suggested-by:</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Suggested-by:</tspan></text>
       <text
          x="45.371201"
          y="273.90939"
          id="text4090-8-7-8-7"
          xml:space="preserve"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="45.371201"
            y="273.90939"
            id="tspan4092-8-6-3-1"
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Reported-by:</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Reported-by:</tspan></text>
       <text
          x="45.371201"
          y="304.00082"
          id="text4090-8-7-8-7-6"
          xml:space="preserve"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="45.371201"
            y="304.00082"
            id="tspan4092-8-6-3-1-8"
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Tested-by:</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Tested-by:</tspan></text>
       <g
          id="g3297"
          transform="translate(1.1147904,-7.2461378)">
@@ -1030,110 +1012,102 @@
            y="368.8187"
            id="text4090-8-7-8-7-6-3"
            xml:space="preserve"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-           sodipodi:linespacing="125%"><tspan
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
              x="45.371201"
              y="368.8187"
              id="tspan4092-8-6-3-1-8-4"
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Previous Acks</tspan></text>
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Previous Acks</tspan></text>
         <text
            x="235.24362"
            y="360.3028"
            id="text4090-8-1-8-9-1-4"
            xml:space="preserve"
-           style="font-size:25.6917057px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-           sodipodi:linespacing="125%"><tspan
+           style="font-style:normal;font-weight:normal;font-size:25.6917px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
              x="235.24362"
              y="360.3028"
              id="tspan4092-8-7-6-9-7-0"
-             style="font-size:11.56126785px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:11.5613px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
       </g>
       <text
          x="45.371201"
          y="334.52298"
          id="text4090-8-7-8-7-6-3-4"
          xml:space="preserve"
-         style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="45.371201"
            y="334.52298"
            id="tspan4092-8-6-3-1-8-4-0"
-           style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Commit message</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Commit message</tspan></text>
     </g>
     <rect
        width="295.87207"
        height="164.50136"
        rx="7.3848925"
        ry="4.489974"
-       x="414.80502"
+       x="444.80502"
        y="611.47064"
        id="rect3239-0-9-4-2-1-9-9"
-       style="fill:none;stroke:#00233b;stroke-width:1;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <text
-       x="439.4429"
+       x="469.4429"
        y="638.35608"
        id="text4090-1-4"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="439.4429"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="469.4429"
          y="638.35608"
          id="tspan4092-38-8"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">Mailing List</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">Mailing List</tspan></text>
     <text
-       x="431.55353"
+       x="461.55353"
        y="675.59857"
        id="text4090-8-5-6-9-4-6-6-8"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="431.55353"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="461.55353"
          y="675.59857"
          id="tspan4092-8-5-5-3-4-0-6-2"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Acked-by:</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Acked-by:</tspan></text>
     <text
-       x="431.39734"
+       x="461.39734"
        y="734.18231"
        id="text4090-8-5-6-9-4-6-6-8-5"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="431.39734"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="461.39734"
          y="734.18231"
          id="tspan4092-8-5-5-3-4-0-6-2-1"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Reviewed-by:</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Reviewed-by:</tspan></text>
     <text
-       x="450.8428"
+       x="480.8428"
        y="766.5578"
        id="text4090-8-5-6-9-4-6-6-8-7"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="450.8428"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="480.8428"
          y="766.5578"
          id="tspan4092-8-5-5-3-4-0-6-2-11"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">Nack (refuse patch)</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">Nack (refuse patch)</tspan></text>
     <path
-       d="m 426.99385,647.80575 272.72607,0"
+       d="M 456.99385,647.80575 H 729.71992"
        id="path4088-7-5"
-       style="fill:none;stroke:#00233b;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:none;stroke:#00233b;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        inkscape:connector-curvature="0" />
     <path
-       d="m 424.7332,742.35699 272.72607,0"
+       d="M 454.7332,742.35699 H 727.45927"
        id="path4088-7-5-2"
-       style="fill:none;stroke:#00233b;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:none;stroke:#00233b;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        inkscape:connector-curvature="0" />
     <text
-       x="431.39734"
+       x="461.39734"
        y="704.78278"
        id="text4090-8-5-6-9-4-6-6-8-5-1"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="431.39734"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="461.39734"
          y="704.78278"
          id="tspan4092-8-5-5-3-4-0-6-2-1-7"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Tested-by:</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Tested-by:</tspan></text>
     <g
        transform="translate(1.0962334,-2.7492248)"
        id="g3613">
@@ -1142,22 +1116,21 @@
          y="1007.5879"
          id="text4090-8-7-8-7-6-3-8"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="43.146141"
            y="1007.5879"
            id="tspan4092-8-6-3-1-8-4-4"
-           style="font-size:11px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace">Previous Acks only when fixing typos, rebased, or checkpatch issues.</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:125%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;writing-mode:lr-tb;text-anchor:start">Previous Acks only when fixing typos, rebased, or checkpatch issues.</tspan></text>
       <text
          x="30.942892"
          y="1011.3757"
          id="text4090-8-7-8-7-6-3-8-4-1"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="30.942892"
            y="1011.3757"
            id="tspan4092-8-6-3-1-8-4-4-55-7"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
     </g>
     <g
        transform="translate(1.0962334,-2.7492248)"
@@ -1167,35 +1140,34 @@
          y="1020.4383"
          id="text4090-8-7-8-7-6-3-8-4"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="42.176418"
            y="1020.4383"
            id="tspan4092-8-6-3-1-8-4-4-55"
-           style="font-size:11px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace">The version.map function names must be in alphabetical order.</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:125%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;writing-mode:lr-tb;text-anchor:start">The version.map function names must be in alphabetical order.</tspan></text>
       <text
          x="30.942892"
          y="1024.2014"
          id="text4090-8-7-8-7-6-3-8-4-1-5"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="30.942892"
            y="1024.2014"
            id="tspan4092-8-6-3-1-8-4-4-55-7-2"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
       <text
          x="25.247679"
          y="1024.2014"
          id="text4090-8-7-8-7-6-3-8-4-1-5-6"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="25.247679"
            y="1024.2014"
            id="tspan4092-8-6-3-1-8-4-4-55-7-2-8"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
     </g>
     <g
-       transform="translate(1.0962334,-30.749225)"
+       transform="matrix(1.0211743,0,0,1,25.427515,-30.749225)"
        id="g3275">
       <g
          id="g3341">
@@ -1204,67 +1176,61 @@
            y="390.17807"
            id="text4090-8"
            xml:space="preserve"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-           sodipodi:linespacing="125%"><tspan
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
              x="394.78601"
              y="390.17807"
              id="tspan4092-8"
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Rebase to git  </tspan></text>
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Rebase to git  </tspan></text>
         <text
            x="394.78601"
            y="420.24835"
            id="text4090-8-5"
            xml:space="preserve"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-           sodipodi:linespacing="125%"><tspan
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
              x="394.78601"
              y="420.24835"
              id="tspan4092-8-5"
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Checkpatch </tspan></text>
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Checkpatch </tspan></text>
         <text
            x="394.78601"
            y="450.53394"
            id="text4090-8-5-6"
            xml:space="preserve"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-           sodipodi:linespacing="125%"><tspan
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
              x="394.78601"
              y="450.53394"
              id="tspan4092-8-5-5"
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ ABI breakage </tspan></text>
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ ABI breakage </tspan></text>
         <text
            x="394.78601"
            y="513.13031"
            id="text4090-8-5-6-9-4"
            xml:space="preserve"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-           sodipodi:linespacing="125%"><tspan
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
              x="394.78601"
              y="513.13031"
              id="tspan4092-8-5-5-3-4"
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Maintainers file</tspan></text>
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Maintainers file</tspan></text>
         <text
            x="394.78601"
            y="573.48621"
            id="text4090-8-5-6-9-4-6"
            xml:space="preserve"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-           sodipodi:linespacing="125%"><tspan
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
              x="394.78601"
              y="573.48621"
              id="tspan4092-8-5-5-3-4-0"
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Release notes</tspan></text>
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Release notes</tspan></text>
         <text
            x="395.79617"
            y="603.98718"
            id="text4090-8-5-6-9-4-6-6"
            xml:space="preserve"
-           style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-           sodipodi:linespacing="125%"><tspan
+           style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
              x="395.79617"
              y="603.98718"
              id="tspan4092-8-5-5-3-4-0-6"
-             style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Documentation</tspan></text>
+             style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Documentation</tspan></text>
         <g
            transform="translate(0,-0.83470152)"
            id="g3334">
@@ -1276,24 +1242,22 @@
                y="468.01297"
                id="text4090-8-1-8-9-1-4-1"
                xml:space="preserve"
-               style="font-size:25.6917057px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-               sodipodi:linespacing="125%"><tspan
+               style="font-style:normal;font-weight:normal;font-size:25.6917px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
                  x="660.46729"
                  y="468.01297"
                  id="tspan4092-8-7-6-9-7-0-7"
-                 style="font-size:11.56126785px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">**</tspan></text>
+                 style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:11.5613px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">**</tspan></text>
           </g>
           <text
              x="394.78601"
              y="483.59955"
              id="text4090-8-5-6-9"
              xml:space="preserve"
-             style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-             sodipodi:linespacing="125%"><tspan
+             style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
                x="394.78601"
                y="483.59955"
                id="tspan4092-8-5-5-3"
-               style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Update version.map</tspan></text>
+               style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Update version.map</tspan></text>
         </g>
         <g
            id="g3428"
@@ -1303,12 +1267,11 @@
              y="541.38928"
              id="text4090-8-5-6-9-4-6-1"
              xml:space="preserve"
-             style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-             sodipodi:linespacing="125%"><tspan
+             style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
                x="394.78601"
                y="541.38928"
                id="tspan4092-8-5-5-3-4-0-7"
-               style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+ Doxygen</tspan></text>
+               style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+ Doxygen</tspan></text>
           <g
              transform="translate(-119.92979,57.949844)"
              id="g3267-9">
@@ -1317,28 +1280,26 @@
                y="473.13675"
                id="text4090-8-1-8-9-1-4-1-4"
                xml:space="preserve"
-               style="font-size:25.6917057px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-               sodipodi:linespacing="125%"><tspan
+               style="font-style:normal;font-weight:normal;font-size:25.6917px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
                  x="628.93628"
                  y="473.13675"
                  id="tspan4092-8-7-6-9-7-0-7-8"
-                 style="font-size:11.56126785px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">***</tspan></text>
+                 style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:11.5613px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">***</tspan></text>
           </g>
         </g>
       </g>
     </g>
     <text
-       x="840.1828"
-       y="234.34692"
-       transform="matrix(0.70710678,0.70710678,-0.70710678,0.70710678,0,0)"
+       x="861.39557"
+       y="213.1337"
+       transform="rotate(45)"
        id="text4090-8-5-6-9-4-6-6-8-7-4"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       sodipodi:linespacing="125%"><tspan
-         x="840.1828"
-         y="234.34692"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><tspan
+         x="861.39557"
+         y="213.1337"
          id="tspan4092-8-5-5-3-4-0-6-2-11-0"
-         style="font-size:21px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">+</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:21px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">+</tspan></text>
     <g
        transform="translate(1.0962334,-2.7492248)"
        id="g3595">
@@ -1347,42 +1308,41 @@
          y="1037.0271"
          id="text4090-8-7-8-7-6-3-8-4-1-2"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="30.942892"
            y="1037.0271"
            id="tspan4092-8-6-3-1-8-4-4-55-7-3"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
       <text
          x="25.247679"
          y="1037.0271"
          id="text4090-8-7-8-7-6-3-8-4-1-2-5"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="25.247679"
            y="1037.0271"
            id="tspan4092-8-6-3-1-8-4-4-55-7-3-7"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
       <text
          x="19.552465"
          y="1037.0271"
          id="text4090-8-7-8-7-6-3-8-4-1-2-7"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="19.552465"
            y="1037.0271"
            id="tspan4092-8-6-3-1-8-4-4-55-7-3-9"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
       <text
          x="42.830166"
          y="1033.2393"
          id="text4090-8-7-8-7-6-3-8-4-8"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="42.830166"
            y="1033.2393"
            id="tspan4092-8-6-3-1-8-4-4-55-2"
-           style="font-size:11px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace">New header files must get a new page in the API docs.</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:125%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;writing-mode:lr-tb;text-anchor:start">New header files must get a new page in the API docs.</tspan></text>
     </g>
     <g
        transform="translate(1.0962334,-2.7492248)"
@@ -1392,52 +1352,51 @@
          y="1046.0962"
          id="text4090-8-7-8-7-6-3-8-2"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"
-         sodipodi:linespacing="125%"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="42.212418"
            y="1046.0962"
            id="tspan4092-8-6-3-1-8-4-4-5"
-           style="font-size:11px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace">Available from patchwork, or email header. Reply to Cover letters.</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:125%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;writing-mode:lr-tb;text-anchor:start">Available from patchwork, or email header. Reply to Cover letters.</tspan></text>
       <text
          x="31.140535"
          y="1049.8527"
          id="text4090-8-7-8-7-6-3-8-4-1-2-2"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="31.140535"
            y="1049.8527"
            id="tspan4092-8-6-3-1-8-4-4-55-7-3-3"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
       <text
          x="25.445322"
          y="1049.8527"
          id="text4090-8-7-8-7-6-3-8-4-1-2-5-2"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="25.445322"
            y="1049.8527"
            id="tspan4092-8-6-3-1-8-4-4-55-7-3-7-2"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
       <text
          x="19.750109"
          y="1049.8527"
          id="text4090-8-7-8-7-6-3-8-4-1-2-7-1"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="19.750109"
            y="1049.8527"
            id="tspan4092-8-6-3-1-8-4-4-55-7-3-9-6"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
       <text
          x="14.016749"
          y="1049.8527"
          id="text4090-8-7-8-7-6-3-8-4-1-2-7-1-8"
          xml:space="preserve"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace Bold"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:0%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
            x="14.016749"
            y="1049.8527"
            id="tspan4092-8-6-3-1-8-4-4-55-7-3-9-6-5"
-           style="font-size:13px;font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace Bold">*</tspan></text>
+           style="font-style:normal;font-variant:normal;font-weight:300;font-stretch:normal;font-size:13px;line-height:125%;font-family:monospace;-inkscape-font-specification:'Monospace Bold';text-align:start;writing-mode:lr-tb;text-anchor:start">*</tspan></text>
     </g>
     <rect
        width="196.44218"
@@ -1449,36 +1408,35 @@
        id="rect3239-0-9-4-2-1-9-9-7"
        style="fill:none;stroke:#00233b;stroke-width:1;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <rect
-       width="678.43036"
-       height="43.497677"
-       rx="7.8557949"
-       ry="6.7630997"
-       x="31.274473"
-       y="836.69745"
+       width="710.73767"
+       height="43.476074"
+       rx="8.2298937"
+       ry="6.7597408"
+       x="31.285275"
+       y="836.70825"
        id="rect3239-0-9-4-3-6"
-       style="fill:none;stroke:#00233b;stroke-width:0.92794865;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+       style="fill:none;stroke:#00233b;stroke-width:0.949551;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <text
        x="73.804535"
        y="864.28137"
        id="text4090-8-1-8-65-9-1"
        xml:space="preserve"
-       style="font-size:19px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace"
-       sodipodi:linespacing="125%"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
          sodipodi:role="line"
          x="73.804535"
          y="864.28137"
-         id="tspan3266-8">git format-patch -[N]</tspan></text>
+         id="tspan3266-8"
+         style="font-size:19px;line-height:1.25;font-family:monospace">git format-patch -[N]</tspan></text>
     <text
        x="342.70221"
        y="862.83478"
        id="text4090-8-1-8-65-9-1-7"
        xml:space="preserve"
-       style="font-size:19px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Monospace;-inkscape-font-specification:Monospace"
-       sodipodi:linespacing="125%"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><tspan
          sodipodi:role="line"
          x="342.70221"
          y="862.83478"
          id="tspan3266-8-2"
-         style="font-size:14px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Monospace;-inkscape-font-specification:Monospace">// creates .patch files for final review</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:14px;line-height:125%;font-family:monospace;-inkscape-font-specification:Monospace;text-align:start;writing-mode:lr-tb;text-anchor:start">// creates .patch files for final review</tspan></text>
   </g>
 </svg>
