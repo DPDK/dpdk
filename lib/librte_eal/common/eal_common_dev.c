@@ -526,6 +526,7 @@ rte_dev_event_callback_unregister(const char *device_name,
 		 */
 		if (event_cb->active == 0) {
 			TAILQ_REMOVE(&dev_event_cbs, event_cb, next);
+			free(event_cb->dev_name);
 			free(event_cb);
 			ret++;
 		} else {
