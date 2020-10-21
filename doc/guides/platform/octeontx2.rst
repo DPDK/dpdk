@@ -503,27 +503,6 @@ an x86 based platform.
 Native Compilation
 ~~~~~~~~~~~~~~~~~~
 
-make build
-^^^^^^^^^^
-
-.. code-block:: console
-
-        make config T=arm64-octeontx2-linux-gcc
-        make -j
-
-The example applications can be compiled using the following:
-
-.. code-block:: console
-
-        cd <dpdk directory>
-        export RTE_SDK=$PWD
-        export RTE_TARGET=build
-        cd examples/<application>
-        make -j
-
-meson build
-^^^^^^^^^^^
-
 .. code-block:: console
 
         meson build
@@ -533,17 +512,6 @@ Cross Compilation
 ~~~~~~~~~~~~~~~~~
 
 Refer to :doc:`../linux_gsg/cross_build_dpdk_for_arm64` for generic arm64 details.
-
-make build
-^^^^^^^^^^
-
-.. code-block:: console
-
-        make config T=arm64-octeontx2-linux-gcc
-        make -j CROSS=aarch64-marvell-linux-gnu- CONFIG_RTE_KNI_KMOD=n
-
-meson build
-^^^^^^^^^^^
 
 .. code-block:: console
 

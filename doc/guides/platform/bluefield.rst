@@ -60,17 +60,6 @@ Native Compilation
 Refer to :doc:`../nics/mlx5` for prerequisites. Either Mellanox OFED/EN or
 rdma-core library with corresponding kernel drivers is required.
 
-make build
-^^^^^^^^^^
-
-.. code-block:: console
-
-        make config T=arm64-bluefield-linux-gcc
-        make -j
-
-meson build
-^^^^^^^^^^^
-
 .. code-block:: console
 
         meson build
@@ -125,17 +114,6 @@ Then, untar the tarball at the cross toolchain directory on the x86 host.
 
         cd $(dirname $(which aarch64-linux-gnu-gcc))/..
         tar xf aarch64-linux-gnu-mlx.tar
-
-make build
-^^^^^^^^^^
-
-.. code-block:: console
-
-        make config T=arm64-bluefield-linux-gcc
-        make -j CROSS=aarch64-linux-gnu- CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n
-
-meson build
-^^^^^^^^^^^
 
 .. code-block:: console
 
