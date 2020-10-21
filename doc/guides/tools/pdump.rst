@@ -19,12 +19,9 @@ a DPDK secondary process and is capable of enabling packet capture on dpdk ports
         framework initialization code. Refer ``app/test-pmd/testpmd.c``
         code to see how this is done.
 
-      * The ``dpdk-pdump`` tool depends on libpcap based PMD which is disabled
-        by default in the build configuration files,
-        owing to an external dependency on the libpcap development files
-        which must be installed on the board.
-        Once the libpcap development files are installed, the libpcap based PMD
-        can be enabled by setting CONFIG_RTE_LIBRTE_PMD_PCAP=y and recompiling the DPDK.
+      * The ``dpdk-pdump`` tool depends on DPDK pcap PMD, so the system should
+        have libpcap development files installed and the pcap PMD not disabled
+        in the build.
 
       * The ``dpdk-pdump`` tool runs as a DPDK secondary process. It exits when
         the primary application exits.
@@ -37,7 +34,7 @@ The tool has a number of command line options:
 
 .. code-block:: console
 
-   ./build/app/dpdk-pdump --
+   ./<build_dir>/app/dpdk-pdump --
                           [--multi]
                           --pdump '(port=<port id> | device_id=<pci id or vdev name>),
                                    (queue=<queue_id>),
@@ -120,5 +117,5 @@ Example
 
 .. code-block:: console
 
-   $ sudo ./build/app/dpdk-pdump -l 3 -- --pdump 'port=0,queue=*,rx-dev=/tmp/rx.pcap'
-   $ sudo ./build/app/dpdk-pdump -l 3,4,5 -- --multi --pdump 'port=0,queue=*,rx-dev=/tmp/rx-1.pcap' --pdump 'port=1,queue=*,rx-dev=/tmp/rx-2.pcap'
+   $ sudo ./<build_dir>/app/dpdk-pdump -l 3 -- --pdump 'port=0,queue=*,rx-dev=/tmp/rx.pcap'
+   $ sudo ./<build_dir>/app/dpdk-pdump -l 3,4,5 -- --multi --pdump 'port=0,queue=*,rx-dev=/tmp/rx-1.pcap' --pdump 'port=1,queue=*,rx-dev=/tmp/rx-2.pcap'

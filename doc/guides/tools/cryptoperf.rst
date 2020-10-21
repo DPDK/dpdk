@@ -30,22 +30,9 @@ On hardware devices the throughput measurement is not necessarily the maximum
 possible for the device, e.g. it may be necessary to use multiple cores to keep
 the hardware accelerator fully loaded and so measure maximum throughput.
 
-Compiling the Application
--------------------------
 
-**Step 1: PMD setting**
-
-The ``dpdk-test-crypto-perf`` tool depends on crypto device drivers PMD which
-are disabled by default in the build configuration file ``common_base``.
-The crypto device drivers PMD which should be tested can be enabled by setting::
-
-   CONFIG_RTE_LIBRTE_PMD_<name>=y
-
-Setting example for open ssl PMD::
-
-   CONFIG_RTE_LIBRTE_PMD_OPENSSL=y
-
-**Step 2: Linearization setting**
+Linearization setting
+---------------------
 
 It is possible linearized input segmented packets just before crypto operation
 for devices which doesn't support scatter-gather, and allows to measure
@@ -56,16 +43,6 @@ To set on the linearization options add below definition to the
 
    #define CPERF_LINEARIZATION_ENABLE
 
-**Step 3: Build the application**
-
-Execute the ``dpdk-setup.sh`` script to build the DPDK library together with the
-``dpdk-test-crypto-perf`` application.
-
-Initially, the user must select a DPDK target to choose the correct target type
-and compiler options to use when building the libraries.
-The user must have all libraries, modules, updates and compilers installed
-in the system prior to this,
-as described in the earlier chapters in this Getting Started Guide.
 
 Running the Application
 -----------------------
