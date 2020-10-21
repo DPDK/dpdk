@@ -213,6 +213,7 @@ struct otx2_parse_state {
 	uint8_t flags[NPC_MAX_LID];
 	uint8_t *mcam_data; /* point to flow->mcam_data + key_len */
 	uint8_t *mcam_mask; /* point to flow->mcam_mask + key_len */
+	bool is_vf;
 };
 
 struct otx2_flow_item_info {

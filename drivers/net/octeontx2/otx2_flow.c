@@ -605,6 +605,8 @@ otx2_flow_create(struct rte_eth_dev *dev,
 		goto err_exit;
 	}
 
+	parse_state.is_vf = otx2_dev_is_vf(hw);
+
 	rc = flow_program_npc(&parse_state, mbox, &hw->npc_flow);
 	if (rc != 0) {
 		rte_flow_error_set(error, EIO,

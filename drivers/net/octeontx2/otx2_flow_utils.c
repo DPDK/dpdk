@@ -884,11 +884,13 @@ flow_check_preallocated_entry_cache(struct otx2_mbox *mbox,
 
 int
 otx2_flow_mcam_alloc_and_write(struct rte_flow *flow, struct otx2_mbox *mbox,
-			       __rte_unused struct otx2_parse_state *pst,
+			       struct otx2_parse_state *pst,
 			       struct otx2_npc_flow_info *flow_info)
 {
 	int use_ctr = (flow->ctr_id == NPC_COUNTER_NONE ? 0 : 1);
+	struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
 	struct npc_mcam_write_entry_req *req;
+	struct mcam_entry *base_entry;
 	struct mbox_msghdr *rsp;
 	uint16_t ctr = ~(0);
 	int rc, idx;
@@ -906,6 +908,21 @@ otx2_flow_mcam_alloc_and_write(struct rte_flow *flow, struct otx2_mbox *mbox,
 		otx2_flow_mcam_free_counter(mbox, ctr);
 		return NPC_MCAM_ALLOC_FAILED;
 	}
+
+	if (pst->is_vf) {
+		(void)otx2_mbox_alloc_msg_npc_read_base_steer_rule(mbox);
+		rc = otx2_mbox_process_msg(mbox, (void *)&base_rule_rsp);
+		if (rc) {
+			otx2_err("Failed to fetch VF's base MCAM entry");
+			return rc;
+		}
+		base_entry = &base_rule_rsp->entry_data;
+		for (idx = 0; idx < OTX2_MAX_MCAM_WIDTH_DWORDS; idx++) {
+			flow->mcam_data[idx] |= base_entry->kw[idx];
+			flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
+		}
+	}
+
 	req = otx2_mbox_alloc_msg_npc_mcam_write_entry(mbox);
 	req->set_cntr = use_ctr;
 	req->cntr = ctr;
