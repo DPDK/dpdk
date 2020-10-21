@@ -122,12 +122,7 @@ The driver supports single-port, multi-queue for both RX and TX.
 Configuration Information
 -------------------------
 
-**DPDK Configuration Parameters**
-
-  The following configuration options are available for the ARK PMD:
-
-   * **CONFIG_RTE_LIBRTE_ARK_PMD** (default y): Enables or disables inclusion
-     of the ARK PMD driver in the DPDK compilation.
+**DPDK Configuration Parameter**
 
    * **RTE_LIBRTE_ARK_MIN_TX_PKTLEN** (default 0): Sets the minimum
      packet length for tx packets to the FPGA.  Packets less than this

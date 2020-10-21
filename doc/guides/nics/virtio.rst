@@ -110,7 +110,7 @@ Host2VM communication example
 
     .. code-block:: console
 
-        examples/kni/build/app/kni -l 0-3 -n 4 -- -p 0x1 -P --config="(0,1,3)"
+        <build_dir>/examples/dpdk-kni -l 0-3 -n 4 -- -p 0x1 -P --config="(0,1,3)"
 
     This command generates one network device vEth0 for physical port.
     If specify more physical ports, the generated network device will be vEth1, vEth2, and so on.
@@ -340,7 +340,7 @@ Here we use l3fwd-power as an example to show how to get started.
 
     .. code-block:: console
 
-        $ l3fwd-power -l 0-1 -- -p 1 -P --config="(0,0,1)" \
+        $ dpdk-l3fwd-power -l 0-1 -- -p 1 -P --config="(0,0,1)" \
                                                --no-numa --parse-ptype
 
 

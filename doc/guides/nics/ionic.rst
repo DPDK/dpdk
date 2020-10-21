@@ -24,14 +24,6 @@ on the host, check for the PCI devices:
       b5:00.0 Ethernet controller: Device 1dd8:1002
       b6:00.0 Ethernet controller: Device 1dd8:1002
 
-Pre-Installation Configuration
-------------------------------
-
-The following options can be modified in the ``config`` file.
-
-- ``CONFIG_RTE_LIBRTE_IONIC_PMD`` (default ``y``)
-
-  Toggle compilation of ionic PMD.
 
 Building DPDK
 -------------

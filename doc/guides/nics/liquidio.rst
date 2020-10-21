@@ -20,33 +20,6 @@ Supported LiquidIO Adapters
 - LiquidIO II CN2360 210SVPT
 
 
-Pre-Installation Configuration
-------------------------------
-
-The following options can be modified in the ``config`` file.
-Please note that enabling debugging options may affect system performance.
-
-- ``CONFIG_RTE_LIBRTE_LIO_PMD`` (default ``y``)
-
-  Toggle compilation of LiquidIO PMD.
-
-- ``CONFIG_RTE_LIBRTE_LIO_DEBUG_RX`` (default ``n``)
-
-  Toggle display of receive fast path run-time messages.
-
-- ``CONFIG_RTE_LIBRTE_LIO_DEBUG_TX`` (default ``n``)
-
-  Toggle display of transmit fast path run-time messages.
-
-- ``CONFIG_RTE_LIBRTE_LIO_DEBUG_MBOX`` (default ``n``)
-
-  Toggle display of mailbox messages.
-
-- ``CONFIG_RTE_LIBRTE_LIO_DEBUG_REGS`` (default ``n``)
-
-  Toggle display of register reads and writes.
-
-
 SR-IOV: Prerequisites and Sample Application Notes
 --------------------------------------------------
 

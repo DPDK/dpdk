@@ -18,13 +18,6 @@ can be found on the `Netcope Technologies website <http://www.netcope.com/>`_.
 
 .. note::
 
-   This driver has external dependencies.
-   Therefore it is disabled in default configuration files.
-   It can be enabled by setting ``CONFIG_RTE_LIBRTE_NFB_PMD=y``
-   and recompiling.
-
-.. note::
-
    Currently the driver is supported only on x86_64 architectures.
    Only x86_64 versions of the external libraries are provided.
 
@@ -62,14 +55,6 @@ The minimum version of the provided packages:
 Configuration
 -------------
 
-These configuration options can be modified before compilation in the
-``.config`` file:
-
-*  ``CONFIG_RTE_LIBRTE_NFB_PMD`` default value: **n**
-
-   Value **y** enables compilation of nfb PMD.
-
-
 Timestamps
 
 The PMD supports hardware timestamps of frame receipt on physical network interface. In order to use
@@ -78,7 +63,7 @@ products) and the device argument `timestamp=1` must be used.
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -w b3:00.0,timestamp=1 <other EAL params> -- <testpmd params>
+    ./<build_dir>/app/dpdk-testpmd -w b3:00.0,timestamp=1 <other EAL params> -- <testpmd params>
 
 When the timestamps are enabled with the *devarg*, a timestamp validity flag is set in the MBUFs
 containing received frames and timestamp is inserted into the `rte_mbuf` struct.
@@ -133,7 +118,7 @@ transmit queue:
 
 .. code-block:: console
 
-   $RTE_TARGET/app/testpmd -l 0-3 -n 2 \
+   ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 2 \
    -- --port-topology=chained --rxq=2 --txq=2 --nb-cores=2 -i -a
 
 Example output:

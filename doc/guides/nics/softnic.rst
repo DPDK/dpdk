@@ -51,15 +51,6 @@ Any Linux distribution fulfilling the conditions described in ``System Requireme
 section of :ref:`the DPDK documentation <linux_gsg>` or refer to *DPDK
 Release Notes*.
 
-Build options
--------------
-
-The default PMD configuration available in the common_linux configuration file:
-
-CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y
-
-Once the DPDK is built, all the DPDK applications include support for the
-Soft NIC PMD.
 
 Soft NIC PMD arguments
 ----------------------
@@ -130,7 +121,7 @@ Soft NIC testing
 
     .. code-block:: console
 
-         ./testpmd -c 0x7 -s 0x4 --vdev 'net_softnic0,firmware=<script path>/firmware.cli,cpu_id=0,conn_port=8086' -- -i
+         ./dpdk-testpmd -c 0x7 -s 0x4 --vdev 'net_softnic0,firmware=<script path>/firmware.cli,cpu_id=0,conn_port=8086' -- -i
               --portmask=0x2
 
     .. code-block:: console
@@ -375,7 +366,7 @@ commands.
 
     .. code-block:: console
 
-        ./x86_64-native-linux-gcc/app/testpmd -c 0x7 -s 0x4 -n 4 \
+        ./<build_dir>/app/dpdk-testpmd -c 0x7 -s 0x4 -n 4 \
                                     --vdev 'net_softnic0, \
                                     firmware=./drivers/net/softnic/ \
                                         firmware.cli, \

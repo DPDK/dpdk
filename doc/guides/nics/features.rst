@@ -826,8 +826,6 @@ ARMv7
 
 Support armv7 architecture.
 
-Use ``defconfig_arm-armv7a-*-*``.
-
 
 .. _nic_features_armv8:
 
@@ -835,8 +833,6 @@ ARMv8
 -----
 
 Support armv8a (64bit) architecture.
-
-Use ``defconfig_arm64-armv8a-*-*``
 
 
 .. _nic_features_power8:
@@ -846,7 +842,6 @@ Power8
 
 Support PowerPC architecture.
 
-Use ``defconfig_ppc_64-power8-*-*``
 
 .. _nic_features_x86-32:
 
@@ -855,8 +850,6 @@ x86-32
 
 Support 32bits x86 architecture.
 
-Use ``defconfig_x86_x32-native-*-*`` and ``defconfig_i686-native-*-*``.
-
 
 .. _nic_features_x86-64:
 
@@ -864,8 +857,6 @@ x86-64
 ------
 
 Support 64bits x86 architecture.
-
-Use ``defconfig_x86_64-native-*-*``.
 
 
 .. _nic_features_usage_doc:

@@ -124,7 +124,6 @@ Intel® X710/XL710 Gigabit Ethernet Controller VF Infrastructure
 
 In a virtualized environment, the programmer can enable a maximum of *128 Virtual Functions (VF)*
 globally per Intel® X710/XL710 Gigabit Ethernet Controller NIC device.
-The number of queue pairs of each VF can be configured by ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF`` in ``config`` file.
 The Physical Function in host could be either configured by the Linux* i40e driver
 (in the case of the Linux Kernel-based Virtual Machine [KVM]) or by DPDK PMD PF driver.
 When using both DPDK PMD PF/VF drivers, the whole NIC will be taken over by DPDK based application.
@@ -521,20 +520,12 @@ The setup procedure is as follows:
 
     .. code-block:: console
 
-        make install T=x86_64-native-linux-gcc
-        ./x86_64-native-linux-gcc/app/testpmd -l 0-3 -n 4 -- -i
+        ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 -- -i
 
 #.  Finally, access the Guest OS using vncviewer with the localhost:5900 port and check the lspci command output in the Guest OS.
     The virtual functions will be listed as available for use.
 
-#.  Configure and install the DPDK with an x86_64-native-linux-gcc configuration on the Guest OS as normal,
-    that is, there is no change to the normal installation procedure.
-
-    .. code-block:: console
-
-        make config T=x86_64-native-linux-gcc O=x86_64-native-linux-gcc
-        cd x86_64-native-linux-gcc
-        make
+#.  Configure and install the DPDK on the Guest OS as normal, that is, there is no change to the normal installation procedure.
 
 .. note::
 

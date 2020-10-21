@@ -27,21 +27,6 @@ AXGBE PMD has support for:
 - Jumbo Frame up to 9K
 
 
-Configuration Information
--------------------------
-
-The following options can be modified in the ``.config`` file. Please note that
-enabling debugging options may affect system performance.
-
-- ``CONFIG_RTE_LIBRTE_AXGBE_PMD`` (default **y**)
-
-  Toggle compilation of axgbe PMD.
-
-- ``CONFIG_RTE_LIBRTE_AXGBE_PMD_DEBUG`` (default **n**)
-
-  Toggle display for PMD debug related messages.
-
-
 Building DPDK
 -------------
 

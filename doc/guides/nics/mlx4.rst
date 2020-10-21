@@ -16,11 +16,6 @@ the `Mellanox community <http://community.mellanox.com/welcome>`_.
 There is also a `section dedicated to this poll mode driver
 <http://www.mellanox.com/page/products_dyn?product_family=209&mtag=pmd_for_dpdk>`_.
 
-.. note::
-
-   Due to external dependencies, this driver is disabled by default. It must
-   be enabled manually by setting ``CONFIG_RTE_LIBRTE_MLX4_PMD=y`` and
-   recompiling DPDK.
 
 Implementation details
 ----------------------
@@ -56,45 +51,19 @@ Configuration
 Compilation options
 ~~~~~~~~~~~~~~~~~~~
 
-These options can be modified in the ``.config`` file.
+The ibverbs libraries can be linked with this PMD in a number of ways,
+configured by the ``ibverbs_link`` build option:
 
-- ``CONFIG_RTE_LIBRTE_MLX4_PMD`` (default **n**)
+- ``shared`` (default): the PMD depends on some .so files.
 
-  Toggle compilation of librte_pmd_mlx4 itself.
+- ``dlopen``: Split the dependencies glue in a separate library
+  loaded when needed by dlopen.
+  It make dependencies on libibverbs and libmlx4 optional,
+  and has no performance impact.
 
-- ``CONFIG_RTE_IBVERBS_LINK_DLOPEN`` (default **n**)
-
-  Build PMD with additional code to make it loadable without hard
-  dependencies on **libibverbs** nor **libmlx4**, which may not be installed
-  on the target system.
-
-  In this mode, their presence is still required for it to run properly,
-  however their absence won't prevent a DPDK application from starting (with
-  ``CONFIG_RTE_BUILD_SHARED_LIB`` disabled) and they won't show up as
-  missing with ``ldd(1)``.
-
-  It works by moving these dependencies to a purpose-built rdma-core "glue"
-  plug-in which must either be installed in a directory whose name is based
-  on ``CONFIG_RTE_EAL_PMD_PATH`` suffixed with ``-glue`` if set, or in a
-  standard location for the dynamic linker (e.g. ``/lib``) if left to the
-  default empty string (``""``).
-
-  This option has no performance impact.
-
-- ``CONFIG_RTE_IBVERBS_LINK_STATIC`` (default **n**)
-
-  Embed static flavor of the dependencies **libibverbs** and **libmlx4**
+- ``static``: Embed static flavor of the dependencies libibverbs and libmlx4
   in the PMD shared library or the executable static binary.
 
-- ``CONFIG_RTE_LIBRTE_MLX4_DEBUG`` (default **n**)
-
-  Toggle debugging code and stricter compilation flags. Enabling this option
-  adds additional run-time checks and debugging messages at the cost of
-  lower performance.
-
-This option is available in meson:
-
-- ``ibverbs_link`` can be ``static``, ``shared``, or ``dlopen``.
 
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~
@@ -104,9 +73,6 @@ Environment variables
   A list of directories in which to search for the rdma-core "glue" plug-in,
   separated by colons or semi-colons.
 
-  Only matters when compiled with ``CONFIG_RTE_IBVERBS_LINK_DLOPEN``
-  enabled and most useful when ``CONFIG_RTE_EAL_PMD_PATH`` is also set,
-  since ``LD_LIBRARY_PATH`` has no effect in this case.
 
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -244,13 +210,6 @@ Current RDMA core package and Linux kernel (recommended)
     ninja
 
 .. _`RDMA core installation documentation`: https://raw.githubusercontent.com/linux-rdma/rdma-core/master/README.md
-
-If rdma-core libraries are built but not installed, DPDK makefile can link them,
-thanks to these environment variables:
-
-   - ``EXTRA_CFLAGS=-I/path/to/rdma-core/build/include``
-   - ``EXTRA_LDFLAGS=-L/path/to/rdma-core/build/lib``
-   - ``PKG_CONFIG_PATH=/path/to/rdma-core/build/lib/pkgconfig``
 
 .. _Mellanox_OFED_as_a_fallback:
 

@@ -97,13 +97,13 @@ It is possible to test PMD quickly using KNI kernel module loopback feature:
 
     .. code-block:: console
 
-        insmod build/kmod/rte_kni.ko lo_mode=lo_mode_fifo_skb
+        insmod <build_dir>/kernel/linux/kni/rte_kni.ko lo_mode=lo_mode_fifo_skb
 
 * Start testpmd with no physical device but two KNI virtual devices:
 
     .. code-block:: console
 
-        ./testpmd --vdev net_kni0 --vdev net_kni1 -- -i
+        ./dpdk-testpmd --vdev net_kni0 --vdev net_kni1 -- -i
 
     .. code-block:: console
 

@@ -26,10 +26,6 @@ Experimental API features
 
 - MACSEC PMD API is considered as experimental and is subject to change/removal in next DPDK releases.
 
-Configuration Information
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- ``CONFIG_RTE_LIBRTE_ATLANTIC_PMD`` (default ``y``)
 
 Application Programming Interface
 ---------------------------------

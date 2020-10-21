@@ -155,35 +155,13 @@ Pre-Installation Configuration
 Config File Options
 ~~~~~~~~~~~~~~~~~~~
 
-The following options can be modified in the ``config`` file.
-Please note that enabling debugging options may affect system performance.
+The following options can be modified in the ``config/rte_config.h`` file.
 
-- ``CONFIG_RTE_LIBRTE_I40E_PMD`` (default ``y``)
-
-  Toggle compilation of the ``librte_pmd_i40e`` driver.
-
-- ``CONFIG_RTE_LIBRTE_I40E_DEBUG_*`` (default ``n``)
-
-  Toggle display of generic debugging messages.
-
-- ``CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC`` (default ``y``)
-
-  Toggle bulk allocation for RX.
-
-- ``CONFIG_RTE_LIBRTE_I40E_INC_VECTOR`` (default ``n``)
-
-  Toggle the use of Vector PMD instead of normal RX/TX path.
-  To enable vPMD for RX, bulk allocation for Rx must be allowed.
-
-- ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC`` (default ``n``)
-
-  Toggle to use a 16-byte RX descriptor, by default the RX descriptor is 32 byte.
-
-- ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF`` (default ``64``)
+- ``RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF`` (default ``64``)
 
   Number of queues reserved for PF.
 
-- ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM`` (default ``4``)
+- ``RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM`` (default ``4``)
 
   Number of queues reserved for each VMDQ Pool.
 
@@ -354,7 +332,7 @@ To start ``testpmd``, and add vlan 10 to port 0:
 
 .. code-block:: console
 
-    ./app/testpmd -l 0-15 -n 4 -- -i --forward-mode=mac
+    ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --forward-mode=mac
     ...
 
     testpmd> set promisc 0 off
@@ -389,8 +367,9 @@ Start ``testpmd`` with ``--disable-rss`` and ``--pkt-filter-mode=perfect``:
 
 .. code-block:: console
 
-   ./app/testpmd -l 0-15 -n 4 -- -i --disable-rss --pkt-filter-mode=perfect \
-                 --rxq=8 --txq=8 --nb-cores=8 --nb-ports=1
+   ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --disable-rss \
+                 --pkt-filter-mode=perfect --rxq=8 --txq=8 --nb-cores=8 \
+                 --nb-ports=1
 
 Add a rule to direct ``ipv4-udp`` packet whose ``dst_ip=2.2.2.5, src_ip=2.2.2.3, src_port=32, dst_port=32`` to queue 1:
 
@@ -648,8 +627,7 @@ For all available versions of the i40e driver, these drivers don't support 16
 byte RX descriptor. If the Linux i40e kernel driver is used as host driver,
 while DPDK i40e PMD is used as the VF driver, DPDK cannot choose 16 byte receive
 descriptor. The reason is that the RX descriptor is already set to 32 byte by
-the i40e kernel driver. That is to say, user should keep
-``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n`` in config file.
+the i40e kernel driver.
 In the future, if the Linux i40e driver supports 16 byte RX descriptor, user
 should make sure the DPDK VF uses the same RX descriptor mode, 16 byte or 32
 byte, as the PF driver.
@@ -769,7 +747,9 @@ Use 16 Bytes RX Descriptor Size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As i40e PMD supports both 16 and 32 bytes RX descriptor sizes, and 16 bytes size can provide helps to high performance of small packets.
-Configuration of ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC`` in config files can be changed to use 16 bytes size RX descriptors.
+In ``config/rte_config.h`` set the following to use 16 bytes size RX descriptors::
+
+   #define RTE_LIBRTE_I40E_16BYTE_RX_DESC 1
 
 Input set requirement of each pctype for FDIR
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -822,7 +802,7 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
 
 7. The command line of running l3fwd would be something like the following::
 
-      ./l3fwd -l 18-21 -n 4 -w 82:00.0 -w 85:00.0 \
+      ./dpdk-l3fwd -l 18-21 -n 4 -w 82:00.0 -w 85:00.0 \
               -- -p 0x3 --config '(0,0,18),(0,1,19),(1,0,20),(1,1,21)'
 
    This means that the application uses core 18 for port 0, queue pair 0 forwarding, core 19 for port 0, queue pair 1 forwarding,

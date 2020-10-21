@@ -20,23 +20,6 @@ Prerequisites
 Pre-Installation Configuration
 ------------------------------
 
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-The following options can be modified in the ``config`` file.
-Please note that enabling debugging options may affect system performance.
-
-- ``CONFIG_RTE_LIBRTE_ICE_PMD`` (default ``y``)
-
-  Toggle compilation of the ``librte_pmd_ice`` driver.
-
-- ``CONFIG_RTE_LIBRTE_ICE_DEBUG_*`` (default ``n``)
-
-  Toggle display of generic debugging messages.
-
-- ``CONFIG_RTE_LIBRTE_ICE_16BYTE_RX_DESC`` (default ``n``)
-
-  Toggle to use a 16-byte RX descriptor, by default the RX descriptor is 32 byte.
 
 Runtime Config Options
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -91,14 +74,14 @@ Runtime Config Options
 
   .. code-block:: console
 
-    testpmd -w 18:00.0,proto_xtr='[(1,2-3,8-9):tcp,10-13:vlan]'
+    dpdk-testpmd -w 18:00.0,proto_xtr='[(1,2-3,8-9):tcp,10-13:vlan]'
 
   This setting means queues 1, 2-3, 8-9 are TCP extraction, queues 10-13 are
   VLAN extraction, other queues run with no protocol extraction.
 
   .. code-block:: console
 
-    testpmd -w 18:00.0,proto_xtr=vlan,proto_xtr='[(1,2-3,8-9):tcp,10-23:ipv6]'
+    dpdk-testpmd -w 18:00.0,proto_xtr=vlan,proto_xtr='[(1,2-3,8-9):tcp,10-23:ipv6]'
 
   This setting means queues 1, 2-3, 8-9 are TCP extraction, queues 10-23 are
   IPv6 extraction, other queues use the default VLAN extraction.
@@ -250,7 +233,7 @@ responses for the same from PF.
 
 #. Bind the VF0,  and run testpmd with 'cap=dcf' devarg::
 
-      testpmd -l 22-25 -n 4 -w 18:01.0,cap=dcf -- -i
+      dpdk-testpmd -l 22-25 -n 4 -w 18:01.0,cap=dcf -- -i
 
 #. Monitor the VF2 interface network traffic::
 
@@ -279,7 +262,7 @@ To start ``testpmd``, and add vlan 10 to port 0:
 
 .. code-block:: console
 
-    ./app/testpmd -l 0-15 -n 4 -- -i
+    ./app/dpdk-testpmd -l 0-15 -n 4 -- -i
     ...
 
     testpmd> rx_vlan add 10 0

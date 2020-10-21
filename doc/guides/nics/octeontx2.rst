@@ -46,23 +46,12 @@ Prerequisites
 
 See :doc:`../platform/octeontx2` for setup information.
 
-Compile time Config Options
----------------------------
-
-The following options may be modified in the ``config`` file.
-
-- ``CONFIG_RTE_LIBRTE_OCTEONTX2_PMD`` (default ``y``)
-
-  Toggle compilation of the ``librte_pmd_octeontx2`` driver.
 
 Driver compilation and testing
 ------------------------------
 
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
-
-To compile the OCTEON TX2 PMD for Linux arm64 gcc,
-use arm64-octeontx2-linux-gcc as target.
 
 #. Running testpmd:
 
@@ -74,7 +63,7 @@ use arm64-octeontx2-linux-gcc as target.
 
    .. code-block:: console
 
-      ./build/app/testpmd -c 0x300 -w 0002:02:00.0 -- --portmask=0x1 --nb-cores=1 --port-topology=loop --rxq=1 --txq=1
+      ./<build_dir>/app/dpdk-testpmd -c 0x300 -w 0002:02:00.0 -- --portmask=0x1 --nb-cores=1 --port-topology=loop --rxq=1 --txq=1
       EAL: Detected 24 lcore(s)
       EAL: Detected 1 NUMA nodes
       EAL: Multi-process socket /var/run/dpdk/rte/mp_socket

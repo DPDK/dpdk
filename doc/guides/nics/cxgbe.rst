@@ -87,35 +87,19 @@ Prerequisites
   :ref:`linux-installation` for Linux and section :ref:`freebsd-installation`
   for FreeBSD.
 
-Pre-Installation Configuration
-------------------------------
-
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-The following options can be modified in the ``.config`` file. Please note that
-enabling debugging options may affect system performance.
-
-- ``CONFIG_RTE_LIBRTE_CXGBE_PMD`` (default **y**)
-
-  Toggle compilation of librte_pmd_cxgbe driver.
-
-  .. note::
-
-     This controls compilation of both CXGBE and CXGBEVF PMD.
 
 Runtime Options
-~~~~~~~~~~~~~~~
+---------------
 
 The following ``devargs`` options can be enabled at runtime. They must
 be passed as part of EAL arguments. For example,
 
 .. code-block:: console
 
-   testpmd -w 02:00.4,keep_ovlan=1 -- -i
+   dpdk-testpmd -w 02:00.4,keep_ovlan=1 -- -i
 
 Common Runtime Options
-^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~
 
 - ``keep_ovlan`` (default **0**)
 
@@ -133,7 +117,7 @@ Common Runtime Options
   coalesce limit has been reached.
 
 CXGBE VF Only Runtime Options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``force_link_up`` (default **0**)
 
@@ -142,7 +126,7 @@ CXGBE VF Only Runtime Options
   to send traffic to each other even when the physical link is down.
 
 CXGBE PF Only Runtime Options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ``filtermode`` (default **0**)
 
@@ -317,7 +301,7 @@ CXGBE PF Only Runtime Options
 
   .. code-block:: console
 
-     testpmd -w 02:00.4,filtermode=0x88 -- -i
+     dpdk-testpmd -w 02:00.4,filtermode=0x88 -- -i
 
 - ``filtermask`` (default **0**)
 
@@ -344,7 +328,7 @@ CXGBE PF Only Runtime Options
 
   .. code-block:: console
 
-     testpmd -w 02:00.4,filtermode=0x88,filtermask=0x80 -- -i
+     dpdk-testpmd -w 02:00.4,filtermode=0x88,filtermask=0x80 -- -i
 
 .. _driver-compilation:
 
@@ -689,7 +673,7 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 
    .. code-block:: console
 
-      cp x86_64-native-freebsd-clang/kmod/contigmem.ko /boot/kernel/
+      cp <build_dir>/kernel/freebsd/contigmem.ko /boot/kernel/
 
 #. Add the following lines to /boot/loader.conf:
 
@@ -770,13 +754,13 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 
    .. code-block:: console
 
-      kldload ./x86_64-native-freebsd-clang/kmod/nic_uio.ko
+      kldload <build_dir>/kernel/freebsd/nic_uio.ko
 
 #. Start testpmd with basic parameters:
 
    .. code-block:: console
 
-      ./x86_64-native-freebsd-clang/app/testpmd -l 0-3 -n 4 -w 0000:02:00.4 -- -i
+      ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 -w 0000:02:00.4 -- -i
 
    Example output:
 

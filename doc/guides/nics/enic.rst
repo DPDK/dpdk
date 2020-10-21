@@ -20,13 +20,6 @@ should be downloaded from https://core.dpdk.org/download/
 Configuration information
 -------------------------
 
-- **DPDK Configuration Parameters**
-
-  The following configuration options are available for the ENIC PMD:
-
-  - **CONFIG_RTE_LIBRTE_ENIC_PMD** (default y): Enables or disables inclusion
-    of the ENIC PMD driver in the DPDK compilation.
-
 - **vNIC Configuration Parameters**
 
   - **Number of Queues**
@@ -582,11 +575,6 @@ The following command could be used to do this.
 The value depends on the memory configuration of the application, DPDK and
 PMD.  Typically, the limit has to be raised to higher than 2GB.
 e.g., 2621440
-
-The compilation of any unused drivers can be disabled using the
-configuration file in config/ directory (e.g., config/common_linux).
-This would help in bringing down the time taken for building the
-libraries and the initialization time of the application.
 
 Additional Reference
 --------------------

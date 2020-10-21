@@ -79,22 +79,6 @@ The driver supports multi-queue for both Tx and Rx.
 Configuration information
 -------------------------
 
-**DPDK Configuration Parameters**
-
-  The following configuration options are available for the ENA PMD:
-
-   * **CONFIG_RTE_LIBRTE_ENA_PMD** (default y): Enables or disables inclusion
-     of the ENA PMD driver in the DPDK compilation.
-
-   * **CONFIG_RTE_LIBRTE_ENA_DEBUG_RX** (default n): Enables or disables debug
-     logging of RX logic within the ENA PMD driver.
-
-   * **CONFIG_RTE_LIBRTE_ENA_DEBUG_TX** (default n): Enables or disables debug
-     logging of TX logic within the ENA PMD driver.
-
-   * **CONFIG_RTE_LIBRTE_ENA_COM_DEBUG** (default n): Enables or disables debug
-     logging of low level tx/rx logic in ena_com(base) within the ENA PMD driver.
-
 **Runtime Configuration Parameters**
 
    * **large_llq_hdr** (default 0)

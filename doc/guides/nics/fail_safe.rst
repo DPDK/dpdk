@@ -14,10 +14,6 @@ Additionally to the Seamless Hotplug feature, the Fail-safe PMD offers the
 ability to redirect operations to a secondary device when the primary has been
 removed from the system.
 
-.. note::
-
-   The library is enabled by default. You can enable it or disable it manually
-   by setting the ``CONFIG_RTE_LIBRTE_PMD_FAILSAFE`` configuration option.
 
 Features
 --------
@@ -33,14 +29,6 @@ automatically by detecting capable devices and registering the relevant handler.
 
 Check the feature matrix for the complete set of supported features.
 
-Compilation option
-------------------
-
-Available options within the ``$RTE_TARGET/build/.config`` file:
-
-- ``CONFIG_RTE_LIBRTE_PMD_FAILSAFE`` (default **y**)
-
-  This option enables or disables compiling librte_pmd_failsafe.
 
 Using the Fail-safe PMD from the EAL command line
 -------------------------------------------------
@@ -128,7 +116,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
    .. code-block:: console
 
-      $RTE_TARGET/build/app/testpmd -c 0xff -n 4 \
+      ./<build_dir>/app/dpdk-testpmd -c 0xff -n 4 \
          --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)' \
          -b 84:00.0 -b 00:04.0 -- -i
 
@@ -142,7 +130,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
    .. code-block:: console
 
-      $RTE_TARGET/build/app/testpmd -c 0xff -n 4 \
+      ./<build_dir>/app/dpdk-testpmd -c 0xff -n 4 \
          --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)' \
          -w 81:00.0 -- -i
 
@@ -150,7 +138,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
    .. code-block:: console
 
-      $RTE_TARGET/build/app/testpmd -c 0xff -n 4 -w ff:ff.f \
+      ./<build_dir>/app/dpdk-testpmd -c 0xff -n 4 -w ff:ff.f \
          --vdev='net_failsafe0,exec(echo 84:00.0)' -- -i
 
 #. Start testpmd, automatically probing the device 84:00.0 and using it with
@@ -158,7 +146,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
    .. code-block:: console
 
-      $RTE_TARGET/build/app/testpmd -c 0xff -n 4 \
+      ./<build_dir>/app/dpdk-testpmd -c 0xff -n 4 \
          --vdev 'net_failsafe0,dev(0000:84:00.0),dev(net_ring0)' -- -i
 
 

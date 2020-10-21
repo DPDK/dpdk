@@ -103,25 +103,12 @@ Performance note
 
 - For better performance, it is recommended to use 4K or higher RX/TX rings.
 
-Config File Options
-~~~~~~~~~~~~~~~~~~~
+Config Options
+~~~~~~~~~~~~~~
 
-The following options can be modified in the ``.config`` file. Please note that
-enabling debugging options may affect system performance.
+The following option can be modified in the ``config/rte_config.h`` file.
 
-- ``CONFIG_RTE_LIBRTE_QEDE_PMD`` (default **y**)
-
-  Toggle compilation of QEDE PMD driver.
-
-- ``CONFIG_RTE_LIBRTE_QEDE_DEBUG_TX`` (default **n**)
-
-  Toggle display of transmit fast path run-time messages.
-
-- ``CONFIG_RTE_LIBRTE_QEDE_DEBUG_RX`` (default **n**)
-
-  Toggle display of receive fast path run-time messages.
-
-- ``CONFIG_RTE_LIBRTE_QEDE_FW`` (default **""**)
+- ``RTE_LIBRTE_QEDE_FW`` (default **""**)
 
   Gives absolute path of firmware file.
   ``Eg: "/lib/firmware/qed/qed_init_values-8.40.33.0.bin"``
@@ -129,6 +116,16 @@ enabling debugging options may affect system performance.
   from the default location /lib/firmware/qed.
   CAUTION this option is more for custom firmware, it is not
   recommended for use under normal condition.
+
+The following options can be enabled with Meson flags.
+
+- ``RTE_LIBRTE_QEDE_DEBUG_TX`` (default **disabled**)
+
+  Toggle display of transmit fast path run-time messages.
+
+- ``RTE_LIBRTE_QEDE_DEBUG_RX`` (default **disabled**)
+
+  Toggle display of receive fast path run-time messages.
 
 Config notes
 ~~~~~~~~~~~~

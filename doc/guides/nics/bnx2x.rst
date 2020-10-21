@@ -75,30 +75,23 @@ Prerequisites
 Pre-Installation Configuration
 ------------------------------
 
-Config File Options
-~~~~~~~~~~~~~~~~~~~
+Config Options
+~~~~~~~~~~~~~~
 
-The following options can be modified in the ``.config`` file. Please note that
+The following options can be enabled with Meson flags. Please note that
 enabling debugging options may affect system performance.
 
-- ``CONFIG_RTE_LIBRTE_BNX2X_PMD`` (default **n**)
-
-  Toggle compilation of bnx2x driver. To use bnx2x PMD set this config parameter
-  to 'y'. Also, in order for firmware binary to load user will need zlib devel
-  package installed.
-
-- ``CONFIG_RTE_LIBRTE_BNX2X_DEBUG_TX`` (default **n**)
+- ``RTE_LIBRTE_BNX2X_DEBUG_TX`` (default **disabled**)
 
   Toggle display of transmit fast path run-time messages.
 
-- ``CONFIG_RTE_LIBRTE_BNX2X_DEBUG_RX`` (default **n**)
+- ``RTE_LIBRTE_BNX2X_DEBUG_RX`` (default **disabled**)
 
   Toggle display of receive fast path run-time messages.
 
-- ``CONFIG_RTE_LIBRTE_BNX2X_DEBUG_PERIODIC`` (default **n**)
+- ``RTE_LIBRTE_BNX2X_DEBUG_PERIODIC`` (default **disabled**)
 
   Toggle display of register reads and writes.
-
 
 .. _bnx2x_driver-compilation:
 

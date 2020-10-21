@@ -15,12 +15,6 @@ Detailed information about SoCs that use PPv2 can be obtained here:
 * https://www.marvell.com/embedded-processors/armada-70xx/
 * https://www.marvell.com/embedded-processors/armada-80xx/
 
-.. Note::
-
-   Due to external dependencies, this driver is disabled by default. It must
-   be enabled manually by setting relevant configuration option manually.
-   Please refer to `Config File Options`_ section for further details.
-
 
 Features
 --------
@@ -114,20 +108,6 @@ Prerequisites
   DPDK environment.
 
 
-Config File Options
--------------------
-
-The following options can be modified in the ``config`` file.
-
-- ``CONFIG_RTE_LIBRTE_MVPP2_PMD`` (default ``n``)
-
-    Toggle compilation of the librte mvpp2 driver.
-
-    .. Note::
-
-       When MVPP2 PMD is enabled ``CONFIG_RTE_LIBRTE_MVNETA_PMD`` must be disabled
-
-
 Building DPDK
 -------------
 
@@ -143,22 +123,15 @@ Driver needs precompiled MUSDK library during compilation.
 MUSDK will be installed to `usr/local` under current directory.
 For the detailed build instructions please consult ``doc/musdk_get_started.txt``.
 
-Before the DPDK build process the environmental variable ``LIBMUSDK_PATH`` with
-the path to the MUSDK installation directory needs to be exported.
+The path to the MUSDK installation directory needs to set in meson, shown in the
+command below.
 
 For additional instructions regarding DPDK cross compilation please refer to :doc:`Cross compile DPDK for ARM64 <../linux_gsg/cross_build_dpdk_for_arm64>`.
 
 .. code-block:: console
 
-   export LIBMUSDK_PATH=<musdk>/usr/local
-   export CROSS=<toolchain>/bin/aarch64-linux-gnu-
-   export RTE_KERNELDIR=<kernel-dir>
-   export RTE_TARGET=arm64-armv8a-linux-gcc
+   meson -Dlib_musdk_dir=/path/to/musdk build ninja -C build
 
-   make config T=arm64-armv8a-linux-gcc
-   sed -i "s/MVNETA_PMD=y/MVNETA_PMD=n/" build/.config
-   sed -i "s/MVPP2_PMD=n/MVPP2_PMD=y/" build/.config
-   make
 
 Usage Example
 -------------
@@ -185,7 +158,7 @@ In order to run testpmd example application following command can be used:
 
 .. code-block:: console
 
-   ./testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 7 -- \
+   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 7 -- \
      --burst=128 --txd=2048 --rxd=1024 --rxq=2 --txq=2  --nb-cores=2 \
      -i -a --rss-udp
 
@@ -373,7 +346,7 @@ Usage example
 
 .. code-block:: console
 
-   ./testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
+   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
      -c 7 -- -i -a --disable-hw-vlan-strip --rxq=3 --txq=3
 
 .. _flowapi:
@@ -486,7 +459,7 @@ Before proceeding run testpmd user application:
 
 .. code-block:: console
 
-   ./testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 3 -- -i --p 3 -a --disable-hw-vlan-strip
+   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 3 -- -i --p 3 -a --disable-hw-vlan-strip
 
 Example #1
 ^^^^^^^^^^
@@ -578,7 +551,7 @@ Usage example
 
    .. code-block:: console
 
-		./testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 6 -- -i -p 3 -a --txd 1024 --rxd 1024
+		./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 6 -- -i -p 3 -a --txd 1024 --rxd 1024
 
 2. Create meter profile:
 
@@ -657,7 +630,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 
    .. code-block:: console
 
-		./testpmd --vdev=net_mrvl,iface=eth0,iface=eth2,cfg=./qos_config -c 7 -- \
+		./dpdk-testpmd --vdev=net_mrvl,iface=eth0,iface=eth2,cfg=./qos_config -c 7 -- \
 		-i -p 3 --disable-hw-vlan-strip --rxq 3 --txq 3 --txd 1024 --rxd 1024
 
 2. Stop all ports:
