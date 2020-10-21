@@ -29,14 +29,6 @@ Prerequisites and Compilation procedure
 Pre-Installation Configuration
 ------------------------------
 
-Compile time Config Options
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The following option can be modified in the ``config`` file.
-
-- ``CONFIG_RTE_LIBRTE_OCTEONTX2_MEMPOOL`` (default ``y``)
-
-  Toggle compilation of the ``librte_mempool_octeontx2`` driver.
 
 Runtime Config Options
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -97,4 +89,4 @@ Standalone mempool device
 
    Example command to run ``mempool_autotest`` test with standalone OCTEONTX2 NPA device::
 
-     echo "mempool_autotest" | build/app/test -c 0xf0 --mbuf-pool-ops-name="octeontx2_npa"
+     echo "mempool_autotest" | <build_dir>/app/test/dpdk-test -c 0xf0 --mbuf-pool-ops-name="octeontx2_npa"

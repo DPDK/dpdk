@@ -36,27 +36,17 @@ Pre-Installation Configuration
 Config File Options
 ~~~~~~~~~~~~~~~~~~~
 
-The following options can be modified in the ``config`` file.
+The following option can be modified in the ``config/rte_config.h`` file.
 Please note that enabling debugging options may affect system performance.
 
-- ``CONFIG_RTE_MBUF_DEFAULT_MEMPOOL_OPS`` ( set to ``octeontx_fpavf``)
+- ``RTE_MBUF_DEFAULT_MEMPOOL_OPS`` ( set to ``octeontx_fpavf``)
 
   Set default mempool ops to octeontx_fpavf.
-
-- ``CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL`` (default ``y``)
-
-  Toggle compilation of the ``librte_mempool_octeontx`` driver.
 
 Driver Compilation
 ~~~~~~~~~~~~~~~~~~
 
-To compile the OCTEON TX FPAVF MEMPOOL PMD for Linux arm64 gcc target, run the
-following ``make`` command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=arm64-thunderx-linux-gcc
+See :doc:`../linux_gsg/build_dpdk` for more information on compiling DPDK.
 
 
 Initialization
@@ -70,5 +60,5 @@ Example:
 
 .. code-block:: console
 
-    ./build/app/test -c 0xf --base-virtaddr=0x100000000000 \
+    ./<build_dir>/app/test/dpdk-test -c 0xf --base-virtaddr=0x100000000000 \
                         --mbuf-pool-ops-name="octeontx_fpavf"
