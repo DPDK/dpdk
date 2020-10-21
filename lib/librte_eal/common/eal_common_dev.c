@@ -530,9 +530,15 @@ rte_dev_event_callback_unregister(const char *device_name,
 			free(event_cb);
 			ret++;
 		} else {
-			continue;
+			ret = -EAGAIN;
+			break;
 		}
 	}
+
+	/* this callback is not be registered */
+	if (ret == 0)
+		ret = -ENOENT;
+
 	rte_spinlock_unlock(&dev_event_lock);
 	return ret;
 }
