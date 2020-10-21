@@ -30,12 +30,6 @@ Skylake is https://www.intel.com/content/dam/support/us/en/documents/server-prod
 - Disable PCIe PII SSC (Spread Spectrum Clocking) for both hosts. This
   is a hardware requirement.
 
-Build Options
--------------
-
-- ``CONFIG_RTE_LIBRTE_PMD_NTB_RAWDEV`` (default ``y``)
-
-   Toggle compilation of the ``ntb`` driver.
 
 Device Setup
 ------------

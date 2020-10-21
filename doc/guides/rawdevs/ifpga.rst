@@ -76,16 +76,6 @@ summarized by the following block diagram::
      |        vdev_ifpga_cfg driver       |        |  Intel FpgaDev  |
      +------------------------------------+        +-----------------+
 
-Build options
--------------
-
-- ``CONFIG_RTE_LIBRTE_IFPGA_BUS`` (default ``y``)
-
-   Toggle compilation of IFPGA Bus library.
-
-- ``CONFIG_RTE_LIBRTE_IFPGA_RAWDEV`` (default ``y``)
-
-   Toggle compilation of the ``ifpga_rawdev`` driver.
 
 Run-time parameters
 -------------------

@@ -48,17 +48,6 @@ Currently supported by DPDK:
    Some part of fslmc bus code (mc flib - object library) routines are
    dual licensed (BSD & GPLv2).
 
-Pre-Installation Configuration
-------------------------------
-
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-The following options can be modified in the ``config`` file.
-
-- ``CONFIG_RTE_LIBRTE_PMD_DPAA2_QDMA_RAWDEV`` (default ``y``)
-
-  Toggle compilation of the ``lrte_pmd_dpaa2_qdma`` driver.
 
 Enabling logs
 -------------
@@ -72,16 +61,6 @@ For enabling logs, use the following EAL parameter:
 Using ``pmd.raw.dpaa2.qdma`` as log matching criteria, all Event PMD logs can be
 enabled which are lower than logging ``level``.
 
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
-
-To compile the DPAA2 QDMA PMD for Linux arm64 gcc target, run the
-following ``make`` command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=arm64-dpaa-linux-gcc install
 
 Initialization
 --------------

@@ -26,18 +26,6 @@ Prerequisites and Compilation procedure
    See :doc:`../platform/octeontx2` for setup information.
 
 
-Pre-Installation Configuration
-------------------------------
-
-Config File Options
-~~~~~~~~~~~~~~~~~~~
-
-The following options can be modified in the ``config`` file.
-
-- ``CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_DMA_RAWDEV`` (default ``y``)
-
-  Toggle compilation of the ``lrte_pmd_octeontx2_dma`` driver.
-
 Enabling logs
 -------------
 
