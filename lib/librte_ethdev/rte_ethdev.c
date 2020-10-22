@@ -5317,38 +5317,6 @@ rte_eth_dev_get_dcb_info(uint16_t port_id,
 	return eth_err(port_id, (*dev->dev_ops->get_dcb_info)(dev, dcb_info));
 }
 
-int
-rte_eth_dev_l2_tunnel_offload_set(uint16_t port_id,
-				  struct rte_eth_l2_tunnel_conf *l2_tunnel,
-				  uint32_t mask,
-				  uint8_t en)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	if (l2_tunnel == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Invalid l2_tunnel parameter\n");
-		return -EINVAL;
-	}
-
-	if (l2_tunnel->l2_tunnel_type >= RTE_TUNNEL_TYPE_MAX) {
-		RTE_ETHDEV_LOG(ERR, "Invalid tunnel type\n");
-		return -EINVAL;
-	}
-
-	if (mask == 0) {
-		RTE_ETHDEV_LOG(ERR, "Mask should have a value\n");
-		return -EINVAL;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->l2_tunnel_offload_set,
-				-ENOTSUP);
-	return eth_err(port_id, (*dev->dev_ops->l2_tunnel_offload_set)(dev,
-							l2_tunnel, mask, en));
-}
-
 static void
 eth_dev_adjust_nb_desc(uint16_t *nb_desc,
 		const struct rte_eth_desc_lim *desc_lim)

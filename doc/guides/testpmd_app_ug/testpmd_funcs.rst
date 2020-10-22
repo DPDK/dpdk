@@ -2334,13 +2334,6 @@ Where the threshold type can be:
 
 These threshold options are also available from the command-line.
 
-port config - E-tag
-~~~~~~~~~~~~~~~~~~~
-
-Enable/disable the E-tag support::
-
-   testpmd> port config (port_id|all) l2-tunnel E-tag (enable|disable)
-
 port config pctype mapping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

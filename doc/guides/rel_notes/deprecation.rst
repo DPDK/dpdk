@@ -92,12 +92,6 @@ Deprecation Notices
   and the related structures (``rte_fdir_*`` and ``rte_eth_fdir_*``),
   will be removed in DPDK 20.11.
 
-* ethdev: The legacy L2 tunnel filtering API is deprecated as the rest of
-  the legacy filtering API.
-  The function
-  ``rte_eth_dev_l2_tunnel_offload_set`` which were not marked as deprecated,
-  will be removed in DPDK 20.11.
-
 * ethdev: New offload flags ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
   This will allow application to enable or disable PMDs from updating
   ``rte_mbuf::hash::fdir``.

@@ -929,10 +929,8 @@ Other dev ops not represented by a Feature
 * ``vlan_strip_queue_set``
 * ``vlan_pvid_set``
 * ``rx_queue_count``
-* ``l2_tunnel_offload_set``
 * ``uc_hash_table_set``
 * ``uc_all_hash_table_set``
 * ``udp_tunnel_port_add``
 * ``udp_tunnel_port_del``
-* ``l2_tunnel_offload_set``
 * ``tx_pkt_prepare``

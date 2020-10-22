@@ -465,13 +465,6 @@ typedef int (*eth_get_module_eeprom_t)(struct rte_eth_dev *dev,
 				       struct rte_dev_eeprom_info *info);
 /**< @internal Retrieve plugin module eeprom data */
 
-typedef int (*eth_l2_tunnel_offload_set_t)
-	(struct rte_eth_dev *dev,
-	 struct rte_eth_l2_tunnel_conf *l2_tunnel,
-	 uint32_t mask,
-	 uint8_t en);
-/**< @internal enable/disable the l2 tunnel offload functions */
-
 /**
  * Feature filter types
  */
@@ -849,8 +842,6 @@ struct eth_dev_ops {
 
 	eth_udp_tunnel_port_add_t  udp_tunnel_port_add; /** Add UDP tunnel port. */
 	eth_udp_tunnel_port_del_t  udp_tunnel_port_del; /** Del UDP tunnel port. */
-	eth_l2_tunnel_offload_set_t   l2_tunnel_offload_set;
-	/** Enable/disable l2 tunnel offload functions. */
 
 	eth_set_queue_rate_limit_t set_queue_rate_limit; /**< Set queue rate limit. */
 

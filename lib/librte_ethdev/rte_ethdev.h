@@ -4638,36 +4638,6 @@ int
 rte_eth_read_clock(uint16_t port_id, uint64_t *clock);
 
 /**
- * Enable/disable l2 tunnel offload functions. Include,
- * 1, The ability of parsing a type of l2 tunnel of an Ethernet device.
- *    Filtering, forwarding and offloading this type of tunnel packets depend on
- *    this ability.
- * 2, Stripping the l2 tunnel tag.
- * 3, Insertion of the l2 tunnel tag.
- * 4, Forwarding the packets based on the l2 tunnel tag.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param l2_tunnel
- *   l2 tunnel parameters.
- * @param mask
- *   Indicate the offload function.
- * @param en
- *   Enable or disable this function.
- *
- * @return
- *   - (0) if successful.
- *   - (-ENODEV) if port identifier is invalid.
- *   - (-EIO) if device is removed.
- *   - (-ENOTSUP) if hardware doesn't support tunnel type.
- */
-int
-rte_eth_dev_l2_tunnel_offload_set(uint16_t port_id,
-				  struct rte_eth_l2_tunnel_conf *l2_tunnel,
-				  uint32_t mask,
-				  uint8_t en);
-
-/**
 * Get the port id from device name. The device name should be specified
 * as below:
 * - PCIe address (Domain:Bus:Device.Function), for example- 0000:2:00.0
