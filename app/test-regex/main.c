@@ -35,6 +35,10 @@ enum app_args {
 	ARG_NUM_OF_ITERATIONS,
 };
 
+struct job_ctx {
+	struct rte_mbuf *mbuf;
+};
+
 static void
 usage(const char *prog_name)
 {
@@ -268,12 +272,19 @@ run_regex(struct rte_mempool *mbuf_mp, uint32_t nb_jobs,
 	time_t start;
 	time_t end;
 	double time;
+	struct job_ctx *jobs_ctx;
 
 	shinfo.free_cb = extbuf_free_cb;
 
 	ops = rte_malloc(NULL, sizeof(*ops) * nb_jobs, 0);
 	if (!ops) {
 		printf("Error, can't allocate memory for ops.\n");
+		return -ENOMEM;
+	}
+
+	jobs_ctx = rte_malloc(NULL, sizeof(struct job_ctx)*nb_jobs, 0);
+	if (!jobs_ctx) {
+		printf("Error, can't allocate memory for jobs_ctx.\n");
 		return -ENOMEM;
 	}
 
@@ -319,6 +330,7 @@ run_regex(struct rte_mempool *mbuf_mp, uint32_t nb_jobs,
 		long act_job_len = RTE_MIN(job_len, buf_len - pos);
 		rte_pktmbuf_attach_extbuf(ops[i]->mbuf, &buf[pos], 0,
 					  act_job_len, &shinfo);
+		jobs_ctx[i].mbuf = ops[i]->mbuf;
 		ops[i]->mbuf->data_len = job_len;
 		ops[i]->mbuf->pkt_len = act_job_len;
 		ops[i]->user_id = i;
@@ -388,13 +400,13 @@ run_regex(struct rte_mempool *mbuf_mp, uint32_t nb_jobs,
 	}
 end:
 	for (i = 0; i < actual_jobs; i++) {
-		if (ops[i]) {
-			if (ops[i]->mbuf)
-				rte_pktmbuf_free(ops[i]->mbuf);
+		if (ops[i])
 			rte_free(ops[i]);
-		}
+		if (jobs_ctx[i].mbuf)
+			rte_pktmbuf_free(jobs_ctx[i].mbuf);
 	}
 	rte_free(ops);
+	rte_free(jobs_ctx);
 	if (buf)
 		rte_free(buf);
 	return res;
