@@ -3,11 +3,22 @@
  */
 #include <rte_rawdev.h>
 #include <rte_ioat_rawdev.h>
+#include <sys/uio.h>
 
 #include "ioat.h"
 #include "main.h"
 
 struct dma_for_vhost dma_bind[MAX_VHOST_DEVICE];
+
+struct packet_tracker {
+	unsigned short size_track[MAX_ENQUEUED_SIZE];
+	unsigned short next_read;
+	unsigned short next_write;
+	unsigned short last_remain;
+};
+
+struct packet_tracker cb_tracker[MAX_VHOST_DEVICE];
+
 
 int
 open_ioat(const char *value)
@@ -98,4 +109,93 @@ open_ioat(const char *value)
 out:
 	free(input);
 	return ret;
+}
+
+uint32_t
+ioat_transfer_data_cb(int vid, uint16_t queue_id,
+		struct rte_vhost_async_desc *descs,
+		struct rte_vhost_async_status *opaque_data, uint16_t count)
+{
+	uint32_t i_desc;
+	int dev_id = dma_bind[vid].dmas[queue_id * 2 + VIRTIO_RXQ].dev_id;
+	struct rte_vhost_iov_iter *src = NULL;
+	struct rte_vhost_iov_iter *dst = NULL;
+	unsigned long i_seg;
+	unsigned short mask = MAX_ENQUEUED_SIZE - 1;
+	unsigned short write = cb_tracker[dev_id].next_write;
+
+	if (!opaque_data) {
+		for (i_desc = 0; i_desc < count; i_desc++) {
+			src = descs[i_desc].src;
+			dst = descs[i_desc].dst;
+			i_seg = 0;
+			while (i_seg < src->nr_segs) {
+				/*
+				 * TODO: Assuming that the ring space of the
+				 * IOAT device is large enough, so there is no
+				 * error here, and the actual error handling
+				 * will be added later.
+				 */
+				rte_ioat_enqueue_copy(dev_id,
+					(uintptr_t)(src->iov[i_seg].iov_base)
+						+ src->offset,
+					(uintptr_t)(dst->iov[i_seg].iov_base)
+						+ dst->offset,
+					src->iov[i_seg].iov_len,
+					0,
+					0);
+				i_seg++;
+			}
+			write &= mask;
+			cb_tracker[dev_id].size_track[write] = i_seg;
+			write++;
+		}
+	} else {
+		/* Opaque data is not supported */
+		return -1;
+	}
+	/* ring the doorbell */
+	rte_ioat_perform_ops(dev_id);
+	cb_tracker[dev_id].next_write = write;
+	return i_desc;
+}
+
+uint32_t
+ioat_check_completed_copies_cb(int vid, uint16_t queue_id,
+		struct rte_vhost_async_status *opaque_data,
+		uint16_t max_packets)
+{
+	if (!opaque_data) {
+		uintptr_t dump[255];
+		unsigned short n_seg;
+		unsigned short read, write;
+		unsigned short nb_packet = 0;
+		unsigned short mask = MAX_ENQUEUED_SIZE - 1;
+		unsigned short i;
+		int dev_id = dma_bind[vid].dmas[queue_id * 2
+				+ VIRTIO_RXQ].dev_id;
+		n_seg = rte_ioat_completed_ops(dev_id, 255, dump, dump);
+		n_seg += cb_tracker[dev_id].last_remain;
+		if (!n_seg)
+			return 0;
+		read = cb_tracker[dev_id].next_read;
+		write = cb_tracker[dev_id].next_write;
+		for (i = 0; i < max_packets; i++) {
+			read &= mask;
+			if (read == write)
+				break;
+			if (n_seg >= cb_tracker[dev_id].size_track[read]) {
+				n_seg -= cb_tracker[dev_id].size_track[read];
+				read++;
+				nb_packet++;
+			} else {
+				break;
+			}
+		}
+		cb_tracker[dev_id].next_read = read;
+		cb_tracker[dev_id].last_remain = n_seg;
+		return nb_packet;
+	}
+	/* Opaque data is not supported */
+	return -1;
 }

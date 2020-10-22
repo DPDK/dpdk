@@ -803,9 +803,22 @@ virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 	    struct rte_mbuf *m)
 {
 	uint16_t ret;
+	struct rte_mbuf *m_cpl[1];
 
 	if (builtin_net_driver) {
 		ret = vs_enqueue_pkts(dst_vdev, VIRTIO_RXQ, &m, 1);
+	} else if (async_vhost_driver) {
+		ret = rte_vhost_submit_enqueue_burst(dst_vdev->vid, VIRTIO_RXQ,
+						&m, 1);
+
+		if (likely(ret))
+			dst_vdev->nr_async_pkts++;
+
+		while (likely(dst_vdev->nr_async_pkts)) {
+			if (rte_vhost_poll_enqueue_completed(dst_vdev->vid,
+					VIRTIO_RXQ, m_cpl, 1))
+				dst_vdev->nr_async_pkts--;
+		}
 	} else {
 		ret = rte_vhost_enqueue_burst(dst_vdev->vid, VIRTIO_RXQ, &m, 1);
 	}
@@ -1055,6 +1068,19 @@ drain_mbuf_table(struct mbuf_table *tx_q)
 }
 
 static __rte_always_inline void
+complete_async_pkts(struct vhost_dev *vdev, uint16_t qid)
+{
+	struct rte_mbuf *p_cpl[MAX_PKT_BURST];
+	uint16_t complete_count;
+
+	complete_count = rte_vhost_poll_enqueue_completed(vdev->vid,
+						qid, p_cpl, MAX_PKT_BURST);
+	vdev->nr_async_pkts -= complete_count;
+	if (complete_count)
+		free_pkts(p_cpl, complete_count);
+}
+
+static __rte_always_inline void
 drain_eth_rx(struct vhost_dev *vdev)
 {
 	uint16_t rx_count, enqueue_count;
@@ -1062,6 +1088,10 @@ drain_eth_rx(struct vhost_dev *vdev)
 
 	rx_count = rte_eth_rx_burst(ports[0], vdev->vmdq_rx_q,
 				    pkts, MAX_PKT_BURST);
+
+	while (likely(vdev->nr_async_pkts))
+		complete_async_pkts(vdev, VIRTIO_RXQ);
+
 	if (!rx_count)
 		return;
 
@@ -1086,16 +1116,22 @@ drain_eth_rx(struct vhost_dev *vdev)
 	if (builtin_net_driver) {
 		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ,
 						pkts, rx_count);
+	} else if (async_vhost_driver) {
+		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
+					VIRTIO_RXQ, pkts, rx_count);
+		vdev->nr_async_pkts += enqueue_count;
 	} else {
 		enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
 						pkts, rx_count);
 	}
+
 	if (enable_stats) {
 		rte_atomic64_add(&vdev->stats.rx_total_atomic, rx_count);
 		rte_atomic64_add(&vdev->stats.rx_atomic, enqueue_count);
 	}
 
-	free_pkts(pkts, rx_count);
+	if (!async_vhost_driver)
+		free_pkts(pkts, rx_count);
 }
 
 static __rte_always_inline void
@@ -1242,6 +1278,9 @@ destroy_device(int vid)
 		"(%d) device has been removed from data core\n",
 		vdev->vid);
 
+	if (async_vhost_driver)
+		rte_vhost_async_channel_unregister(vid, VIRTIO_RXQ);
+
 	rte_free(vdev);
 }
 
@@ -1255,6 +1294,12 @@ new_device(int vid)
 	int lcore, core_add = 0;
 	uint32_t device_num_min = num_devices;
 	struct vhost_dev *vdev;
+
+	struct rte_vhost_async_channel_ops channel_ops = {
+		.transfer_data = ioat_transfer_data_cb,
+		.check_completed_copies = ioat_check_completed_copies_cb
+	};
+	struct rte_vhost_async_features f;
 
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
@@ -1295,6 +1340,13 @@ new_device(int vid)
 	RTE_LOG(INFO, VHOST_DATA,
 		"(%d) device has been added to data core %d\n",
 		vid, vdev->coreid);
+
+	if (async_vhost_driver) {
+		f.async_inorder = 1;
+		f.async_threshold = 256;
+		return rte_vhost_async_channel_register(vid, VIRTIO_RXQ,
+			f.intval, &channel_ops);
+	}
 
 	return 0;
 }
@@ -1534,6 +1586,9 @@ main(int argc, char *argv[])
 	/* Register vhost user driver to handle vhost messages. */
 	for (i = 0; i < nb_sockets; i++) {
 		char *file = socket_files + i * PATH_MAX;
+		if (async_vhost_driver)
+			flags = flags | RTE_VHOST_USER_ASYNC_COPY;
+
 		ret = rte_vhost_driver_register(file, flags);
 		if (ret != 0) {
 			unregister_drivers(i);

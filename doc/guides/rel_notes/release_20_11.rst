@@ -379,6 +379,12 @@ New Features
   * Replaced ``--scalar`` command-line option with ``--alg=<value>``, to allow
     the user to select the desired classify method.
 
+* **Updated vhost sample application.**
+
+  Added vhost asynchronous APIs support, which demonstrated how the application
+  leverage IOAT DMA channel with vhost asynchronous APIs.
+  See the :doc:`../sample_app_ug/vhost` for more details.
+
 
 Removed Items
 -------------

@@ -7,9 +7,11 @@
 
 #include <rte_vhost.h>
 #include <rte_pci.h>
+#include <rte_vhost_async.h>
 
 #define MAX_VHOST_DEVICE 1024
 #define IOAT_RING_SIZE 4096
+#define MAX_ENQUEUED_SIZE 256
 
 struct dma_info {
 	struct rte_pci_addr addr;
@@ -30,4 +32,14 @@ static int open_ioat(const char *value __rte_unused)
 	return -1;
 }
 #endif
+
+uint32_t
+ioat_transfer_data_cb(int vid, uint16_t queue_id,
+		struct rte_vhost_async_desc *descs,
+		struct rte_vhost_async_status *opaque_data, uint16_t count);
+
+uint32_t
+ioat_check_completed_copies_cb(int vid, uint16_t queue_id,
+		struct rte_vhost_async_status *opaque_data,
+		uint16_t max_packets);
 #endif /* _IOAT_H_ */
