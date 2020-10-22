@@ -40,8 +40,8 @@ sfc_ef10_ev_qclear_cache_line(void *ptr)
 static inline void
 sfc_ef10_ev_qclear_cache_line(void *ptr)
 {
-	const __m128i val = _mm_set1_epi64x(UINT64_MAX);
-	__m128i *addr = ptr;
+	const efsys_uint128_t val = _mm_set1_epi64x(UINT64_MAX);
+	efsys_uint128_t *addr = ptr;
 	unsigned int i;
 
 	RTE_BUILD_BUG_ON(sizeof(val) > RTE_CACHE_LINE_SIZE);
