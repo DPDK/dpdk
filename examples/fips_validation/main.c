@@ -927,10 +927,14 @@ prepare_gmac_xform(struct rte_crypto_sym_xform *xform)
 
 	if (rte_cryptodev_sym_capability_check_auth(cap,
 			auth_xform->key.length,
-			auth_xform->digest_length, 0) != 0) {
-		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+			auth_xform->digest_length,
+			auth_xform->iv.length) != 0) {
+
+		RTE_LOG(ERR, USER1,
+			"PMD %s key length %u Digest length %u IV length %u\n",
 				info.device_name, auth_xform->key.length,
-				auth_xform->digest_length);
+				auth_xform->digest_length,
+				auth_xform->iv.length);
 		return -EPERM;
 	}
 

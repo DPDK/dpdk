@@ -175,7 +175,6 @@ parse_test_gcm_writeback(struct fips_val *val)
 		if (vec.status == RTE_CRYPTO_OP_STATUS_SUCCESS) {
 			fprintf(info.fp_wr, "%s", PT_STR);
 			if (!info.interim_info.gcm_data.is_gmac) {
-				fprintf(info.fp_wr, "%s", PT_STR);
 				tmp_val.val = val->val;
 				tmp_val.len = vec.pt.len;
 
