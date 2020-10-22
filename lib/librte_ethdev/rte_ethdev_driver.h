@@ -476,6 +476,28 @@ typedef int (*eth_l2_tunnel_offload_set_t)
 	 uint8_t en);
 /**< @internal enable/disable the l2 tunnel offload functions */
 
+/**
+ * Feature filter types
+ */
+enum rte_filter_type {
+	RTE_ETH_FILTER_NONE = 0,
+	RTE_ETH_FILTER_ETHERTYPE,
+	RTE_ETH_FILTER_FLEXIBLE,
+	RTE_ETH_FILTER_SYN,
+	RTE_ETH_FILTER_NTUPLE,
+	RTE_ETH_FILTER_TUNNEL,
+	RTE_ETH_FILTER_FDIR,
+	RTE_ETH_FILTER_HASH,
+	RTE_ETH_FILTER_L2_TUNNEL,
+	RTE_ETH_FILTER_GENERIC,
+};
+
+/**
+ * Generic operations on filters
+ */
+enum rte_filter_op {
+	RTE_ETH_FILTER_GET,      /**< get flow API ops */
+};
 
 typedef int (*eth_filter_ctrl_t)(struct rte_eth_dev *dev,
 				 enum rte_filter_type filter_type,

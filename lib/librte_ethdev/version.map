@@ -15,8 +15,6 @@ DPDK_21 {
 	rte_eth_dev_count_avail;
 	rte_eth_dev_count_total;
 	rte_eth_dev_default_mac_addr_set;
-	rte_eth_dev_filter_ctrl;
-	rte_eth_dev_filter_supported;
 	rte_eth_dev_flow_ctrl_get;
 	rte_eth_dev_flow_ctrl_set;
 	rte_eth_dev_fw_version_get;

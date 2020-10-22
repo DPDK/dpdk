@@ -1070,7 +1070,6 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 
 		*(const void **)arg = &qede_flow_ops;
 		return 0;
-	case RTE_ETH_FILTER_MAX:
 	default:
 		DP_ERR(edev, "Unsupported filter type %d\n",
 			filter_type);

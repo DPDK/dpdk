@@ -4068,47 +4068,6 @@ rte_eth_dev_udp_tunnel_port_delete(uint16_t port_id,
 				   struct rte_eth_udp_tunnel *tunnel_udp);
 
 /**
- * Check whether the filter type is supported on an Ethernet device.
- * All the supported filter types are defined in 'rte_eth_ctrl.h'.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param filter_type
- *   Filter type.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support this filter type.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EIO) if device is removed.
- */
-__rte_deprecated
-int rte_eth_dev_filter_supported(uint16_t port_id,
-		enum rte_filter_type filter_type);
-
-/**
- * Take operations to assigned filter type on an Ethernet device.
- * All the supported operations and filter types are defined in 'rte_eth_ctrl.h'.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param filter_type
- *   Filter type.
- * @param filter_op
- *   Type of operation.
- * @param arg
- *   A pointer to arguments defined specifically for the operation.
- * @return
- *   - (0) if successful.
- *   - (-ENOTSUP) if hardware doesn't support.
- *   - (-ENODEV) if *port_id* invalid.
- *   - (-EIO) if device is removed.
- *   - others depends on the specific operations implementation.
- */
-__rte_deprecated
-int rte_eth_dev_filter_ctrl(uint16_t port_id, enum rte_filter_type filter_type,
-			enum rte_filter_op filter_op, void *arg);
-
-/**
  * Get DCB information on an Ethernet device.
  *
  * @param port_id

@@ -4758,34 +4758,6 @@ rte_eth_dev_rx_intr_disable(uint16_t port_id,
 }
 
 
-int
-rte_eth_dev_filter_supported(uint16_t port_id,
-			     enum rte_filter_type filter_type)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->filter_ctrl, -ENOTSUP);
-	return (*dev->dev_ops->filter_ctrl)(dev, filter_type,
-				RTE_ETH_FILTER_NOP, NULL);
-}
-
-int
-rte_eth_dev_filter_ctrl(uint16_t port_id, enum rte_filter_type filter_type,
-			enum rte_filter_op filter_op, void *arg)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-
-	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->filter_ctrl, -ENOTSUP);
-	return eth_err(port_id, (*dev->dev_ops->filter_ctrl)(dev, filter_type,
-							     filter_op, arg));
-}
-
 const struct rte_eth_rxtx_callback *
 rte_eth_add_rx_callback(uint16_t port_id, uint16_t queue_id,
 		rte_rx_callback_fn fn, void *user_param)

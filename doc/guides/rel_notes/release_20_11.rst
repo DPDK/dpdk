@@ -538,6 +538,9 @@ API Changes
   As the data of ``uint8_t`` will be truncated when queue number under
   a TC is greater than 256.
 
+* ethdev: Removed the legacy filter API, including
+  ``rte_eth_dev_filter_supported()`` and ``rte_eth_dev_filter_ctrl()``.
+
 * vhost: Moved vDPA APIs from experimental to stable.
 
 * vhost: Add a new function ``rte_vhost_crypto_driver_start`` to be called

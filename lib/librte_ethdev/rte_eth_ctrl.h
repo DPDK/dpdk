@@ -23,40 +23,6 @@ extern "C" {
 #endif
 
 /**
- * Feature filter types
- */
-enum rte_filter_type {
-	RTE_ETH_FILTER_NONE = 0,
-	RTE_ETH_FILTER_ETHERTYPE,
-	RTE_ETH_FILTER_FLEXIBLE,
-	RTE_ETH_FILTER_SYN,
-	RTE_ETH_FILTER_NTUPLE,
-	RTE_ETH_FILTER_TUNNEL,
-	RTE_ETH_FILTER_FDIR,
-	RTE_ETH_FILTER_HASH,
-	RTE_ETH_FILTER_L2_TUNNEL,
-	RTE_ETH_FILTER_GENERIC,
-	RTE_ETH_FILTER_MAX
-};
-
-/**
- * Generic operations on filters
- */
-enum rte_filter_op {
-	/** used to check whether the type filter is supported */
-	RTE_ETH_FILTER_NOP = 0,
-	RTE_ETH_FILTER_ADD,      /**< add filter entry */
-	RTE_ETH_FILTER_UPDATE,   /**< update filter entry */
-	RTE_ETH_FILTER_DELETE,   /**< delete filter entry */
-	RTE_ETH_FILTER_FLUSH,    /**< flush all entries */
-	RTE_ETH_FILTER_GET,      /**< get filter entry */
-	RTE_ETH_FILTER_SET,      /**< configurations */
-	RTE_ETH_FILTER_INFO,     /**< retrieve information */
-	RTE_ETH_FILTER_STATS,    /**< retrieve statistics */
-	RTE_ETH_FILTER_OP_MAX
-};
-
-/**
  * Define all structures for ntuple Filter type.
  */
 

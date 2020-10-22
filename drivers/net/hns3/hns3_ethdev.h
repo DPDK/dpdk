@@ -7,6 +7,7 @@
 
 #include <sys/time.h>
 #include <rte_alarm.h>
+#include <rte_ethdev_driver.h>
 
 #include "hns3_cmd.h"
 #include "hns3_mbx.h"

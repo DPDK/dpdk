@@ -93,10 +93,6 @@ static const struct rte_dpaa2_xstats_name_off dpaa2_xstats_strings[] = {
 };
 
 static const enum rte_filter_op dpaa2_supported_filter_ops[] = {
-	RTE_ETH_FILTER_ADD,
-	RTE_ETH_FILTER_DELETE,
-	RTE_ETH_FILTER_UPDATE,
-	RTE_ETH_FILTER_FLUSH,
 	RTE_ETH_FILTER_GET
 };
 

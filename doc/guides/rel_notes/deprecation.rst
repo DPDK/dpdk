@@ -88,13 +88,6 @@ Deprecation Notices
   avoiding impact on vectorized implementation of the driver datapaths,
   while evaluating performance gains of a better use of the first cache line.
 
-
-* ethdev: the legacy filter API, including
-  ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()``
-  is superseded by the generic flow API (rte_flow) in
-  PMDs that implement the latter.
-  The legacy API will be removed in DPDK 20.11.
-
 * ethdev: The flow director API, including ``rte_eth_conf.fdir_conf`` field,
   and the related structures (``rte_fdir_*`` and ``rte_eth_fdir_*``),
   will be removed in DPDK 20.11.
