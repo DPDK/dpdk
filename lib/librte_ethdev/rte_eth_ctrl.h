@@ -56,25 +56,6 @@ enum rte_filter_op {
 	RTE_ETH_FILTER_OP_MAX
 };
 
-/**
- * Define all structures for Ethertype Filter type.
- */
-
-#define RTE_ETHTYPE_FLAGS_MAC    0x0001 /**< If set, compare mac */
-#define RTE_ETHTYPE_FLAGS_DROP   0x0002 /**< If set, drop packet when match */
-
-/**
- * A structure used to define the ethertype filter entry
- * to support RTE_ETH_FILTER_ETHERTYPE with RTE_ETH_FILTER_ADD,
- * RTE_ETH_FILTER_DELETE and RTE_ETH_FILTER_GET operations.
- */
-struct rte_eth_ethertype_filter {
-	struct rte_ether_addr mac_addr;   /**< Mac address to match. */
-	uint16_t ether_type;          /**< Ether type to match */
-	uint16_t flags;               /**< Flags from RTE_ETHTYPE_FLAGS_* */
-	uint16_t queue;               /**< Queue assigned to when match*/
-};
-
 #define RTE_FLEX_FILTER_MAXLEN	128	/**< bytes to use in flex filter. */
 #define RTE_FLEX_FILTER_MASK_SIZE	\
 	(RTE_ALIGN(RTE_FLEX_FILTER_MAXLEN, CHAR_BIT) / CHAR_BIT)

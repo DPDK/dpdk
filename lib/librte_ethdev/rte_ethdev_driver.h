@@ -1342,6 +1342,29 @@ int
 rte_eth_hairpin_queue_peer_unbind(uint16_t cur_port, uint16_t cur_queue,
 				  uint32_t direction);
 
+
+/*
+ * Legacy ethdev API used internally by drivers.
+ */
+
+/**
+ * Define all structures for Ethertype Filter type.
+ */
+
+#define RTE_ETHTYPE_FLAGS_MAC    0x0001 /**< If set, compare mac */
+#define RTE_ETHTYPE_FLAGS_DROP   0x0002 /**< If set, drop packet when match */
+
+/**
+ * A structure used to define the ethertype filter entry
+ * to support RTE_ETH_FILTER_ETHERTYPE data representation.
+ */
+struct rte_eth_ethertype_filter {
+	struct rte_ether_addr mac_addr;   /**< Mac address to match. */
+	uint16_t ether_type;          /**< Ether type to match */
+	uint16_t flags;               /**< Flags from RTE_ETHTYPE_FLAGS_* */
+	uint16_t queue;               /**< Queue assigned to when match*/
+};
+
 #ifdef __cplusplus
 }
 #endif

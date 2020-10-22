@@ -3271,38 +3271,6 @@ This section details the available filter functions that are available.
 Note these functions interface the deprecated legacy filtering framework,
 superseded by *rte_flow*. See `Flow rules management`_.
 
-ethertype_filter
-~~~~~~~~~~~~~~~~~~~~
-
-Add or delete a L2 Ethertype filter, which identify packets by their L2 Ethertype mainly assign them to a receive queue::
-
-   ethertype_filter (port_id) (add|del) (mac_addr|mac_ignr) (mac_address) \
-                    ethertype (ether_type) (drop|fwd) queue (queue_id)
-
-The available information parameters are:
-
-* ``port_id``: The port which the Ethertype filter assigned on.
-
-* ``mac_addr``: Compare destination mac address.
-
-* ``mac_ignr``: Ignore destination mac address match.
-
-* ``mac_address``: Destination mac address to match.
-
-* ``ether_type``: The EtherType value want to match,
-  for example 0x0806 for ARP packet. 0x0800 (IPv4) and 0x86DD (IPv6) are invalid.
-
-* ``queue_id``: The receive queue associated with this EtherType filter.
-  It is meaningless when deleting or dropping.
-
-Example, to add/remove an ethertype filter rule::
-
-   testpmd> ethertype_filter 0 add mac_ignr 00:11:22:33:44:55 \
-                             ethertype 0x0806 fwd queue 3
-
-   testpmd> ethertype_filter 0 del mac_ignr 00:11:22:33:44:55 \
-                             ethertype 0x0806 fwd queue 3
-
 2tuple_filter
 ~~~~~~~~~~~~~~~~~
 

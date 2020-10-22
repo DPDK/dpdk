@@ -614,8 +614,8 @@ L2 Payload flow type in flow director cannot be used to classify MPLS packet
 as with previous firmware versions. Meanwhile, the Ethertype filter can be
 used to classify MPLS packet by using a command in testpmd like:
 
-   testpmd> ethertype_filter 0 add mac_ignr 00:00:00:00:00:00 ethertype \
-            0x8847 fwd queue <M>
+   testpmd> flow create 0 ingress pattern eth type is 0x8847 / end \
+            actions queue index <M> / end
 
 16 Byte RX Descriptor setting on DPDK VF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

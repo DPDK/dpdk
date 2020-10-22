@@ -1561,7 +1561,6 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 
 		*(const void **)arg = &qede_flow_ops;
 		return 0;
-	case RTE_ETH_FILTER_ETHERTYPE:
 	case RTE_ETH_FILTER_FLEXIBLE:
 	case RTE_ETH_FILTER_SYN:
 	case RTE_ETH_FILTER_HASH:

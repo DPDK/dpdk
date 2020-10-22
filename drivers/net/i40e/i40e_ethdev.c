@@ -319,9 +319,6 @@ static int i40e_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 static int i40e_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					struct rte_eth_udp_tunnel *udp_tunnel);
 static void i40e_filter_input_set_init(struct i40e_pf *pf);
-static int i40e_ethertype_filter_handle(struct rte_eth_dev *dev,
-				enum rte_filter_op filter_op,
-				void *arg);
 static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 				enum rte_filter_type filter_type,
 				enum rte_filter_op filter_op,
@@ -10449,45 +10446,6 @@ i40e_ethertype_filter_set(struct i40e_pf *pf,
 	return ret;
 }
 
-/*
- * Handle operations for ethertype filter.
- */
-static int
-i40e_ethertype_filter_handle(struct rte_eth_dev *dev,
-				enum rte_filter_op filter_op,
-				void *arg)
-{
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	int ret = 0;
-
-	if (filter_op == RTE_ETH_FILTER_NOP)
-		return ret;
-
-	if (arg == NULL) {
-		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u",
-			    filter_op);
-		return -EINVAL;
-	}
-
-	switch (filter_op) {
-	case RTE_ETH_FILTER_ADD:
-		ret = i40e_ethertype_filter_set(pf,
-			(struct rte_eth_ethertype_filter *)arg,
-			TRUE);
-		break;
-	case RTE_ETH_FILTER_DELETE:
-		ret = i40e_ethertype_filter_set(pf,
-			(struct rte_eth_ethertype_filter *)arg,
-			FALSE);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u", filter_op);
-		ret = -ENOSYS;
-		break;
-	}
-	return ret;
-}
-
 static int
 i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
@@ -10506,9 +10464,6 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		break;
 	case RTE_ETH_FILTER_HASH:
 		ret = i40e_hash_filter_ctrl(dev, filter_op, arg);
-		break;
-	case RTE_ETH_FILTER_ETHERTYPE:
-		ret = i40e_ethertype_filter_handle(dev, filter_op, arg);
 		break;
 	case RTE_ETH_FILTER_TUNNEL:
 		ret = i40e_tunnel_filter_handle(dev, filter_op, arg);
