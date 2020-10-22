@@ -56,25 +56,6 @@ enum rte_filter_op {
 	RTE_ETH_FILTER_OP_MAX
 };
 
-#define RTE_FLEX_FILTER_MAXLEN	128	/**< bytes to use in flex filter. */
-#define RTE_FLEX_FILTER_MASK_SIZE	\
-	(RTE_ALIGN(RTE_FLEX_FILTER_MAXLEN, CHAR_BIT) / CHAR_BIT)
-					/**< mask bytes in flex filter. */
-
-/**
- *  A structure used to define the flex filter entry
- *  to support RTE_ETH_FILTER_FLEXIBLE with RTE_ETH_FILTER_ADD,
- *  RTE_ETH_FILTER_DELETE and RTE_ETH_FILTER_GET operations.
- */
-struct rte_eth_flex_filter {
-	uint16_t len;
-	uint8_t bytes[RTE_FLEX_FILTER_MAXLEN];  /**< flex bytes in big endian.*/
-	uint8_t mask[RTE_FLEX_FILTER_MASK_SIZE];    /**< if mask bit is 1b, do
-					not compare corresponding byte. */
-	uint8_t priority;
-	uint16_t queue;       /**< Queue assigned to when match. */
-};
-
 /**
  * A structure used to define the TCP syn filter entry
  * to support RTE_ETH_FILTER_SYN with RTE_ETH_FILTER_ADD,

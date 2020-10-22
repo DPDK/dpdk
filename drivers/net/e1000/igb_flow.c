@@ -1041,7 +1041,7 @@ static int
 cons_parse_flex_filter(const struct rte_flow_attr *attr,
 				const struct rte_flow_item pattern[],
 				const struct rte_flow_action actions[],
-				struct rte_eth_flex_filter *filter,
+				struct igb_flex_filter *filter,
 				struct rte_flow_error *error)
 {
 	const struct rte_flow_item *item;
@@ -1102,7 +1102,7 @@ item_loop:
 
 	if (!raw_mask->length ||
 	    !raw_mask->relative) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
 				item, "Not supported by flex filter");
@@ -1116,7 +1116,7 @@ item_loop:
 
 	for (j = 0; j < raw_spec->length; j++) {
 		if (raw_mask->pattern[j] != 0xFF) {
-			memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+			memset(filter, 0, sizeof(struct igb_flex_filter));
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
 					item, "Not supported by flex filter");
@@ -1140,8 +1140,8 @@ item_loop:
 	}
 
 	if ((raw_spec->length + offset + total_offset) >
-			RTE_FLEX_FILTER_MAXLEN) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+			IGB_FLEX_FILTER_MAXLEN) {
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
 				item, "Not supported by flex filter");
@@ -1204,7 +1204,7 @@ item_loop:
 	/* check if the first not void action is QUEUE. */
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	if (act->type != RTE_FLOW_ACTION_TYPE_QUEUE) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION,
 				act, "Not supported action.");
@@ -1218,7 +1218,7 @@ item_loop:
 	index++;
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION,
 				act, "Not supported action.");
@@ -1228,7 +1228,7 @@ item_loop:
 	/* parse attr */
 	/* must be input direction */
 	if (!attr->ingress) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
 			attr, "Only support ingress.");
@@ -1237,7 +1237,7 @@ item_loop:
 
 	/* not supported */
 	if (attr->egress) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
 			attr, "Not support egress.");
@@ -1246,7 +1246,7 @@ item_loop:
 
 	/* not supported */
 	if (attr->transfer) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
 			attr, "No support for transfer.");
@@ -1254,7 +1254,7 @@ item_loop:
 	}
 
 	if (attr->priority > 0xFFFF) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 				   attr, "Error priority.");
@@ -1271,7 +1271,7 @@ igb_parse_flex_filter(struct rte_eth_dev *dev,
 				 const struct rte_flow_attr *attr,
 			     const struct rte_flow_item pattern[],
 			     const struct rte_flow_action actions[],
-			     struct rte_eth_flex_filter *filter,
+			     struct igb_flex_filter *filter,
 			     struct rte_flow_error *error)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1283,7 +1283,7 @@ igb_parse_flex_filter(struct rte_eth_dev *dev,
 					actions, filter, error);
 
 	if (filter->queue >= IGB_MAX_RX_QUEUE_NUM) {
-		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		memset(filter, 0, sizeof(struct igb_flex_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
 			NULL, "queue number not supported by flex filter");
@@ -1444,7 +1444,7 @@ igb_flow_create(struct rte_eth_dev *dev,
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
-	struct rte_eth_flex_filter flex_filter;
+	struct igb_flex_filter flex_filter;
 	struct igb_rte_flow_rss_conf rss_conf;
 	struct rte_flow *flow = NULL;
 	struct igb_ntuple_filter_ele *ntuple_filter_ptr;
@@ -1549,7 +1549,7 @@ igb_flow_create(struct rte_eth_dev *dev,
 		goto out;
 	}
 
-	memset(&flex_filter, 0, sizeof(struct rte_eth_flex_filter));
+	memset(&flex_filter, 0, sizeof(struct igb_flex_filter));
 	ret = igb_parse_flex_filter(dev, attr, pattern,
 					actions, &flex_filter, error);
 	if (!ret) {
@@ -1564,7 +1564,7 @@ igb_flow_create(struct rte_eth_dev *dev,
 
 			rte_memcpy(&flex_filter_ptr->filter_info,
 				&flex_filter,
-				sizeof(struct rte_eth_flex_filter));
+				sizeof(struct igb_flex_filter));
 			TAILQ_INSERT_TAIL(&igb_filter_flex_list,
 				flex_filter_ptr, entries);
 			flow->rule = flex_filter_ptr;
@@ -1621,7 +1621,7 @@ igb_flow_validate(__rte_unused struct rte_eth_dev *dev,
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
-	struct rte_eth_flex_filter flex_filter;
+	struct igb_flex_filter flex_filter;
 	struct igb_rte_flow_rss_conf rss_conf;
 	int ret;
 
@@ -1643,7 +1643,7 @@ igb_flow_validate(__rte_unused struct rte_eth_dev *dev,
 	if (!ret)
 		return 0;
 
-	memset(&flex_filter, 0, sizeof(struct rte_eth_flex_filter));
+	memset(&flex_filter, 0, sizeof(struct igb_flex_filter));
 	ret = igb_parse_flex_filter(dev, attr, pattern,
 				actions, &flex_filter, error);
 	if (!ret)
