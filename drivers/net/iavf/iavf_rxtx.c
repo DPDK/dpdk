@@ -532,6 +532,7 @@ iavf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct iavf_rx_queue *rxq;
 	int err = 0;
@@ -556,7 +557,11 @@ iavf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	IAVF_WRITE_FLUSH(hw);
 
 	/* Ready to switch the queue on */
-	err = iavf_switch_queue(adapter, rx_queue_id, true, true);
+	if (!vf->lv_enabled)
+		err = iavf_switch_queue(adapter, rx_queue_id, true, true);
+	else
+		err = iavf_switch_queue_lv(adapter, rx_queue_id, true, true);
+
 	if (err)
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
 			    rx_queue_id);
@@ -572,6 +577,7 @@ iavf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct iavf_tx_queue *txq;
 	int err = 0;
@@ -588,7 +594,10 @@ iavf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	IAVF_WRITE_FLUSH(hw);
 
 	/* Ready to switch the queue on */
-	err = iavf_switch_queue(adapter, tx_queue_id, false, true);
+	if (!vf->lv_enabled)
+		err = iavf_switch_queue(adapter, tx_queue_id, false, true);
+	else
+		err = iavf_switch_queue_lv(adapter, tx_queue_id, false, true);
 
 	if (err)
 		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
@@ -689,12 +698,22 @@ iavf_stop_queues(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_rx_queue *rxq;
 	struct iavf_tx_queue *txq;
 	int ret, i;
 
 	/* Stop All queues */
-	ret = iavf_disable_queues(adapter);
+	if (!vf->lv_enabled) {
+		ret = iavf_disable_queues(adapter);
+		if (ret)
+			PMD_DRV_LOG(WARNING, "Fail to stop queues");
+	} else {
+		ret = iavf_disable_queues_lv(adapter);
+		if (ret)
+			PMD_DRV_LOG(WARNING, "Fail to stop queues for large VF");
+	}
+
 	if (ret)
 		PMD_DRV_LOG(WARNING, "Fail to stop queues");
 

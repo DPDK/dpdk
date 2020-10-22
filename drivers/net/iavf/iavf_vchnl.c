@@ -609,6 +609,138 @@ iavf_switch_queue(struct iavf_adapter *adapter, uint16_t qid,
 }
 
 int
+iavf_enable_queues_lv(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_del_ena_dis_queues *queue_select;
+	struct virtchnl_queue_chunk *queue_chunk;
+	struct iavf_cmd_info args;
+	int err, len;
+
+	len = sizeof(struct virtchnl_del_ena_dis_queues) +
+		  sizeof(struct virtchnl_queue_chunk) *
+		  (IAVF_RXTX_QUEUE_CHUNKS_NUM - 1);
+	queue_select = rte_zmalloc("queue_select", len, 0);
+	if (!queue_select)
+		return -ENOMEM;
+
+	queue_chunk = queue_select->chunks.chunks;
+	queue_select->chunks.num_chunks = IAVF_RXTX_QUEUE_CHUNKS_NUM;
+	queue_select->vport_id = vf->vsi_res->vsi_id;
+
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_TX].type = VIRTCHNL_QUEUE_TYPE_TX;
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_TX].start_queue_id = 0;
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_TX].num_queues =
+		adapter->eth_dev->data->nb_tx_queues;
+
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_RX].type = VIRTCHNL_QUEUE_TYPE_RX;
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_RX].start_queue_id = 0;
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_RX].num_queues =
+		adapter->eth_dev->data->nb_rx_queues;
+
+	args.ops = VIRTCHNL_OP_ENABLE_QUEUES_V2;
+	args.in_args = (u8 *)queue_select;
+	args.in_args_size = len;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_ENABLE_QUEUES_V2");
+		return err;
+	}
+	return 0;
+}
+
+int
+iavf_disable_queues_lv(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_del_ena_dis_queues *queue_select;
+	struct virtchnl_queue_chunk *queue_chunk;
+	struct iavf_cmd_info args;
+	int err, len;
+
+	len = sizeof(struct virtchnl_del_ena_dis_queues) +
+		  sizeof(struct virtchnl_queue_chunk) *
+		  (IAVF_RXTX_QUEUE_CHUNKS_NUM - 1);
+	queue_select = rte_zmalloc("queue_select", len, 0);
+	if (!queue_select)
+		return -ENOMEM;
+
+	queue_chunk = queue_select->chunks.chunks;
+	queue_select->chunks.num_chunks = IAVF_RXTX_QUEUE_CHUNKS_NUM;
+	queue_select->vport_id = vf->vsi_res->vsi_id;
+
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_TX].type = VIRTCHNL_QUEUE_TYPE_TX;
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_TX].start_queue_id = 0;
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_TX].num_queues =
+		adapter->eth_dev->data->nb_tx_queues;
+
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_RX].type = VIRTCHNL_QUEUE_TYPE_RX;
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_RX].start_queue_id = 0;
+	queue_chunk[VIRTCHNL_QUEUE_TYPE_RX].num_queues =
+		adapter->eth_dev->data->nb_rx_queues;
+
+	args.ops = VIRTCHNL_OP_DISABLE_QUEUES_V2;
+	args.in_args = (u8 *)queue_select;
+	args.in_args_size = len;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_DISABLE_QUEUES_V2");
+		return err;
+	}
+	return 0;
+}
+
+int
+iavf_switch_queue_lv(struct iavf_adapter *adapter, uint16_t qid,
+		 bool rx, bool on)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_del_ena_dis_queues *queue_select;
+	struct virtchnl_queue_chunk *queue_chunk;
+	struct iavf_cmd_info args;
+	int err, len;
+
+	len = sizeof(struct virtchnl_del_ena_dis_queues);
+	queue_select = rte_zmalloc("queue_select", len, 0);
+	if (!queue_select)
+		return -ENOMEM;
+
+	queue_chunk = queue_select->chunks.chunks;
+	queue_select->chunks.num_chunks = 1;
+	queue_select->vport_id = vf->vsi_res->vsi_id;
+
+	if (rx) {
+		queue_chunk->type = VIRTCHNL_QUEUE_TYPE_RX;
+		queue_chunk->start_queue_id = qid;
+		queue_chunk->num_queues = 1;
+	} else {
+		queue_chunk->type = VIRTCHNL_QUEUE_TYPE_TX;
+		queue_chunk->start_queue_id = qid;
+		queue_chunk->num_queues = 1;
+	}
+
+	if (on)
+		args.ops = VIRTCHNL_OP_ENABLE_QUEUES_V2;
+	else
+		args.ops = VIRTCHNL_OP_DISABLE_QUEUES_V2;
+	args.in_args = (u8 *)queue_select;
+	args.in_args_size = len;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "Failed to execute command of %s",
+			    on ? "OP_ENABLE_QUEUES_V2" : "OP_DISABLE_QUEUES_V2");
+	return err;
+}
+
+int
 iavf_configure_rss_lut(struct iavf_adapter *adapter)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);

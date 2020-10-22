@@ -23,6 +23,7 @@
 #define IAVF_MAX_NUM_QUEUES_LV		 256
 #define IAVF_CFG_Q_NUM_PER_BUF		 32
 #define IAVF_IRQ_MAP_NUM_PER_BUF	 128
+#define IAVF_RXTX_QUEUE_CHUNKS_NUM	 2
 
 #define IAVF_NUM_MACADDR_MAX      64
 
@@ -268,8 +269,12 @@ int iavf_enable_vlan_strip(struct iavf_adapter *adapter);
 int iavf_disable_vlan_strip(struct iavf_adapter *adapter);
 int iavf_switch_queue(struct iavf_adapter *adapter, uint16_t qid,
 		     bool rx, bool on);
+int iavf_switch_queue_lv(struct iavf_adapter *adapter, uint16_t qid,
+		     bool rx, bool on);
 int iavf_enable_queues(struct iavf_adapter *adapter);
+int iavf_enable_queues_lv(struct iavf_adapter *adapter);
 int iavf_disable_queues(struct iavf_adapter *adapter);
+int iavf_disable_queues_lv(struct iavf_adapter *adapter);
 int iavf_configure_rss_lut(struct iavf_adapter *adapter);
 int iavf_configure_rss_key(struct iavf_adapter *adapter);
 int iavf_configure_queues(struct iavf_adapter *adapter,
