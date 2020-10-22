@@ -486,17 +486,6 @@ struct rte_eth_fdir_stats {
 	uint32_t best_cnt;     /**< Number of filters in best effort spaces. */
 };
 
-/**
- * l2 tunnel configuration.
- */
-struct rte_eth_l2_tunnel_conf {
-	enum rte_eth_tunnel_type l2_tunnel_type;
-	uint16_t ether_type; /* ether type in l2 header */
-	uint32_t tunnel_id; /* port tag id for e-tag */
-	uint16_t vf_id; /* VF id for tag insertion */
-	uint32_t pool; /* destination pool for tag based forwarding */
-};
-
 #ifdef __cplusplus
 }
 #endif

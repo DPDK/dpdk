@@ -7557,7 +7557,7 @@ ixgbe_e_tag_enable(struct ixgbe_hw *hw)
 
 static int
 ixgbe_e_tag_filter_del(struct rte_eth_dev *dev,
-		       struct rte_eth_l2_tunnel_conf *l2_tunnel)
+		       struct ixgbe_l2_tunnel_conf *l2_tunnel)
 {
 	int ret = 0;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -7593,7 +7593,7 @@ ixgbe_e_tag_filter_del(struct rte_eth_dev *dev,
 
 static int
 ixgbe_e_tag_filter_add(struct rte_eth_dev *dev,
-		       struct rte_eth_l2_tunnel_conf *l2_tunnel)
+		       struct ixgbe_l2_tunnel_conf *l2_tunnel)
 {
 	int ret = 0;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -7697,7 +7697,7 @@ ixgbe_remove_l2_tn_filter(struct ixgbe_l2_tn_info *l2_tn_info,
 /* Add l2 tunnel filter */
 int
 ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
-			       struct rte_eth_l2_tunnel_conf *l2_tunnel,
+			       struct ixgbe_l2_tunnel_conf *l2_tunnel,
 			       bool restore)
 {
 	int ret;
@@ -7754,7 +7754,7 @@ ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 /* Delete l2 tunnel filter */
 int
 ixgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
-			       struct rte_eth_l2_tunnel_conf *l2_tunnel)
+			       struct ixgbe_l2_tunnel_conf *l2_tunnel)
 {
 	int ret;
 	struct ixgbe_l2_tn_info *l2_tn_info =
@@ -8176,7 +8176,7 @@ ixgbe_l2_tn_filter_restore(struct rte_eth_dev *dev)
 	struct ixgbe_l2_tn_info *l2_tn_info =
 		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
 	struct ixgbe_l2_tn_filter *node;
-	struct rte_eth_l2_tunnel_conf l2_tn_conf;
+	struct ixgbe_l2_tunnel_conf l2_tn_conf;
 
 	TAILQ_FOREACH(node, &l2_tn_info->l2_tn_list, entries) {
 		l2_tn_conf.l2_tunnel_type = node->key.l2_tn_type;
@@ -8283,7 +8283,7 @@ ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev)
 	struct ixgbe_l2_tn_info *l2_tn_info =
 		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
 	struct ixgbe_l2_tn_filter *l2_tn_filter;
-	struct rte_eth_l2_tunnel_conf l2_tn_conf;
+	struct ixgbe_l2_tunnel_conf l2_tn_conf;
 	int ret = 0;
 
 	while ((l2_tn_filter = TAILQ_FIRST(&l2_tn_info->l2_tn_list))) {

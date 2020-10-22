@@ -72,7 +72,7 @@ struct ixgbe_fdir_rule_ele {
 /* l2_tunnel filter list structure */
 struct ixgbe_eth_l2_tunnel_conf_ele {
 	TAILQ_ENTRY(ixgbe_eth_l2_tunnel_conf_ele) entries;
-	struct rte_eth_l2_tunnel_conf filter_info;
+	struct ixgbe_l2_tunnel_conf filter_info;
 };
 /* rss filter list structure */
 struct ixgbe_rss_conf_ele {
@@ -1197,7 +1197,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
-			struct rte_eth_l2_tunnel_conf *filter,
+			struct ixgbe_l2_tunnel_conf *filter,
 			struct rte_flow_error *error)
 {
 	const struct rte_flow_item *item;
@@ -1231,7 +1231,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	/* The first not void item should be e-tag. */
 	item = next_no_void_pattern(pattern, NULL);
 	if (item->type != RTE_FLOW_ITEM_TYPE_E_TAG) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
 			item, "Not supported by L2 tunnel filter");
@@ -1239,7 +1239,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	}
 
 	if (!item->spec || !item->mask) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 			item, "Not supported by L2 tunnel filter");
 		return -rte_errno;
@@ -1261,7 +1261,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	    e_tag_mask->in_ecid_e ||
 	    e_tag_mask->ecid_e ||
 	    e_tag_mask->rsvd_grp_ecid_b != rte_cpu_to_be_16(0x3FFF)) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
 			item, "Not supported by L2 tunnel filter");
@@ -1278,7 +1278,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	/* check if the next not void item is END */
 	item = next_no_void_pattern(pattern, item);
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
 			item, "Not supported by L2 tunnel filter");
@@ -1288,7 +1288,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	/* parse attr */
 	/* must be input direction */
 	if (!attr->ingress) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
 			attr, "Only support ingress.");
@@ -1297,7 +1297,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 
 	/* not supported */
 	if (attr->egress) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
 			attr, "Not support egress.");
@@ -1306,7 +1306,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 
 	/* not supported */
 	if (attr->transfer) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
 			attr, "No support for transfer.");
@@ -1315,7 +1315,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 
 	/* not supported */
 	if (attr->priority) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 			attr, "Not support priority.");
@@ -1326,7 +1326,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	act = next_no_void_action(actions, NULL);
 	if (act->type != RTE_FLOW_ACTION_TYPE_VF &&
 			act->type != RTE_FLOW_ACTION_TYPE_PF) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION,
 			act, "Not supported action.");
@@ -1343,7 +1343,7 @@ cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	/* check if the next not void item is END */
 	act = next_no_void_action(actions, act);
 	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
-		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION,
 			act, "Not supported action.");
@@ -1358,7 +1358,7 @@ ixgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
-			struct rte_eth_l2_tunnel_conf *l2_tn_filter,
+			struct ixgbe_l2_tunnel_conf *l2_tn_filter,
 			struct rte_flow_error *error)
 {
 	int ret = 0;
@@ -1372,7 +1372,7 @@ ixgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
 	if (hw->mac.type != ixgbe_mac_X550 &&
 		hw->mac.type != ixgbe_mac_X550EM_x &&
 		hw->mac.type != ixgbe_mac_X550EM_a) {
-		memset(l2_tn_filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		memset(l2_tn_filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
 			NULL, "Not supported by L2 tunnel filter");
@@ -3023,7 +3023,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
 	struct ixgbe_fdir_rule fdir_rule;
-	struct rte_eth_l2_tunnel_conf l2_tn_filter;
+	struct ixgbe_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	struct ixgbe_rte_flow_rss_conf rss_conf;
@@ -3211,7 +3211,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		goto out;
 	}
 
-	memset(&l2_tn_filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+	memset(&l2_tn_filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 	ret = ixgbe_parse_l2_tn_filter(dev, attr, pattern,
 					actions, &l2_tn_filter, error);
 	if (!ret) {
@@ -3225,7 +3225,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 			}
 			rte_memcpy(&l2_tn_filter_ptr->filter_info,
 				&l2_tn_filter,
-				sizeof(struct rte_eth_l2_tunnel_conf));
+				sizeof(struct ixgbe_l2_tunnel_conf));
 			TAILQ_INSERT_TAIL(&filter_l2_tunnel_list,
 				l2_tn_filter_ptr, entries);
 			flow->rule = l2_tn_filter_ptr;
@@ -3282,7 +3282,7 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
-	struct rte_eth_l2_tunnel_conf l2_tn_filter;
+	struct ixgbe_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_fdir_rule fdir_rule;
 	struct ixgbe_rte_flow_rss_conf rss_conf;
 	int ret;
@@ -3311,7 +3311,7 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 	if (!ret)
 		return 0;
 
-	memset(&l2_tn_filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+	memset(&l2_tn_filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
 	ret = ixgbe_parse_l2_tn_filter(dev, attr, pattern,
 				actions, &l2_tn_filter, error);
 	if (!ret)
@@ -3337,7 +3337,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
 	struct ixgbe_fdir_rule fdir_rule;
-	struct rte_eth_l2_tunnel_conf l2_tn_filter;
+	struct ixgbe_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
 	struct ixgbe_ethertype_filter_ele *ethertype_filter_ptr;
 	struct ixgbe_eth_syn_filter_ele *syn_filter_ptr;
@@ -3407,7 +3407,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		l2_tn_filter_ptr = (struct ixgbe_eth_l2_tunnel_conf_ele *)
 				pmd_flow->rule;
 		rte_memcpy(&l2_tn_filter, &l2_tn_filter_ptr->filter_info,
-			sizeof(struct rte_eth_l2_tunnel_conf));
+			sizeof(struct ixgbe_l2_tunnel_conf));
 		ret = ixgbe_dev_l2_tunnel_filter_del(dev, &l2_tn_filter);
 		if (!ret) {
 			TAILQ_REMOVE(&filter_l2_tunnel_list,

@@ -678,13 +678,25 @@ int ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 int ixgbe_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
 			bool add);
+
+/**
+ * l2 tunnel configuration.
+ */
+struct ixgbe_l2_tunnel_conf {
+	enum rte_eth_tunnel_type l2_tunnel_type;
+	uint16_t ether_type; /* ether type in l2 header */
+	uint32_t tunnel_id; /* port tag id for e-tag */
+	uint16_t vf_id; /* VF id for tag insertion */
+	uint32_t pool; /* destination pool for tag based forwarding */
+};
+
 int
 ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
-			       struct rte_eth_l2_tunnel_conf *l2_tunnel,
+			       struct ixgbe_l2_tunnel_conf *l2_tunnel,
 			       bool restore);
 int
 ixgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
-			       struct rte_eth_l2_tunnel_conf *l2_tunnel);
+			       struct ixgbe_l2_tunnel_conf *l2_tunnel);
 void ixgbe_filterlist_init(void);
 void ixgbe_filterlist_flush(void);
 /*
