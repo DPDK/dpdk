@@ -1375,6 +1375,59 @@ struct rte_eth_syn_filter {
 	uint16_t queue;      /**< Queue assigned to when match */
 };
 
+/**
+ * filter type of tunneling packet
+ */
+#define ETH_TUNNEL_FILTER_OMAC  0x01 /**< filter by outer MAC addr */
+#define ETH_TUNNEL_FILTER_OIP   0x02 /**< filter by outer IP Addr */
+#define ETH_TUNNEL_FILTER_TENID 0x04 /**< filter by tenant ID */
+#define ETH_TUNNEL_FILTER_IMAC  0x08 /**< filter by inner MAC addr */
+#define ETH_TUNNEL_FILTER_IVLAN 0x10 /**< filter by inner VLAN ID */
+#define ETH_TUNNEL_FILTER_IIP   0x20 /**< filter by inner IP addr */
+
+#define RTE_TUNNEL_FILTER_IMAC_IVLAN (ETH_TUNNEL_FILTER_IMAC | \
+					ETH_TUNNEL_FILTER_IVLAN)
+#define RTE_TUNNEL_FILTER_IMAC_IVLAN_TENID (ETH_TUNNEL_FILTER_IMAC | \
+					ETH_TUNNEL_FILTER_IVLAN | \
+					ETH_TUNNEL_FILTER_TENID)
+#define RTE_TUNNEL_FILTER_IMAC_TENID (ETH_TUNNEL_FILTER_IMAC | \
+					ETH_TUNNEL_FILTER_TENID)
+#define RTE_TUNNEL_FILTER_OMAC_TENID_IMAC (ETH_TUNNEL_FILTER_OMAC | \
+					ETH_TUNNEL_FILTER_TENID | \
+					ETH_TUNNEL_FILTER_IMAC)
+
+/**
+ *  Select IPv4 or IPv6 for tunnel filters.
+ */
+enum rte_tunnel_iptype {
+	RTE_TUNNEL_IPTYPE_IPV4 = 0, /**< IPv4. */
+	RTE_TUNNEL_IPTYPE_IPV6,     /**< IPv6. */
+};
+
+/**
+ * Tunneling Packet filter configuration.
+ */
+struct rte_eth_tunnel_filter_conf {
+	struct rte_ether_addr outer_mac;    /**< Outer MAC address to match. */
+	struct rte_ether_addr inner_mac;    /**< Inner MAC address to match. */
+	uint16_t inner_vlan;            /**< Inner VLAN to match. */
+	enum rte_tunnel_iptype ip_type; /**< IP address type. */
+	/**
+	 * Outer destination IP address to match if ETH_TUNNEL_FILTER_OIP
+	 * is set in filter_type, or inner destination IP address to match
+	 * if ETH_TUNNEL_FILTER_IIP is set in filter_type.
+	 */
+	union {
+		uint32_t ipv4_addr;     /**< IPv4 address in big endian. */
+		uint32_t ipv6_addr[4];  /**< IPv6 address in big endian. */
+	} ip_addr;
+	/** Flags from ETH_TUNNEL_FILTER_XX - see above. */
+	uint16_t filter_type;
+	enum rte_eth_tunnel_type tunnel_type; /**< Tunnel Type. */
+	uint32_t tenant_id;     /**< Tenant ID to match. VNI, GRE key... */
+	uint16_t queue_id;      /**< Queue assigned to if match. */
+};
+
 #ifdef __cplusplus
 }
 #endif

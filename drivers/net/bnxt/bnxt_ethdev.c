@@ -3415,10 +3415,6 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 		return ret;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_TUNNEL:
-		PMD_DRV_LOG(ERR,
-			"filter type: %d: To be implemented\n", filter_type);
-		break;
 	case RTE_ETH_FILTER_FDIR:
 		ret = bnxt_fdir_filter(dev, filter_op, arg);
 		break;
