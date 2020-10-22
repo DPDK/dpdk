@@ -67,15 +67,7 @@ int rte_eal_iopl_init(void);
  *
  * This function is to be executed on the MAIN lcore only, as soon
  * as possible in the application's main() function.
- *
- * The function finishes the initialization process before main() is called.
  * It puts the WORKER lcores in the WAIT state.
- *
- * When the multi-partition feature is supported, depending on the
- * configuration (if CONFIG_RTE_EAL_MAIN_PARTITION is disabled), this
- * function waits to ensure that the magic number is set before
- * returning. See also the rte_eal_get_configuration() function. Note:
- * This behavior may change in the future.
  *
  * @param argc
  *   A non-negative value.  If it is greater than 0, the array members
