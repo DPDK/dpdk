@@ -63,29 +63,14 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 			     0xFF, 0xFF, 3, 2,        /* pkt_len */
 			     0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
 	const __m128i flags_type_mask =
-		_mm_set_epi32(RX_PKT_CMPL_FLAGS_ITYPE_MASK,
-			      RX_PKT_CMPL_FLAGS_ITYPE_MASK,
-			      RX_PKT_CMPL_FLAGS_ITYPE_MASK,
-			      RX_PKT_CMPL_FLAGS_ITYPE_MASK);
+		_mm_set1_epi32(RX_PKT_CMPL_FLAGS_ITYPE_MASK);
 	const __m128i flags2_mask1 =
-		_mm_set_epi32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-				RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC,
-			      RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-				RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC,
-			      RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-				RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC,
-			      RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-				RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC);
+		_mm_set1_epi32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
+			       RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC);
 	const __m128i flags2_mask2 =
-		_mm_set_epi32(RX_PKT_CMPL_FLAGS2_IP_TYPE,
-			      RX_PKT_CMPL_FLAGS2_IP_TYPE,
-			      RX_PKT_CMPL_FLAGS2_IP_TYPE,
-			      RX_PKT_CMPL_FLAGS2_IP_TYPE);
+		_mm_set1_epi32(RX_PKT_CMPL_FLAGS2_IP_TYPE);
 	const __m128i rss_mask =
-		_mm_set_epi32(RX_PKT_CMPL_FLAGS_RSS_VALID,
-			      RX_PKT_CMPL_FLAGS_RSS_VALID,
-			      RX_PKT_CMPL_FLAGS_RSS_VALID,
-			      RX_PKT_CMPL_FLAGS_RSS_VALID);
+		_mm_set1_epi32(RX_PKT_CMPL_FLAGS_RSS_VALID);
 	__m128i t0, t1, flags_type, flags2, index, errors, rss_flags;
 	__m128i ptype_idx;
 	uint32_t ol_flags;
@@ -114,10 +99,10 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	t1 = _mm_unpackhi_epi32(mm_rxcmp1[2], mm_rxcmp1[3]);
 
 	/* Compute ol_flags and checksum error indexes for four packets. */
-	flags2 = _mm_and_si128(flags2, _mm_set_epi32(0x1F, 0x1F, 0x1F, 0x1F));
+	flags2 = _mm_and_si128(flags2, _mm_set1_epi32(0x1F));
 
 	errors = _mm_srli_epi32(_mm_unpacklo_epi64(t0, t1), 4);
-	errors = _mm_and_si128(errors, _mm_set_epi32(0xF, 0xF, 0xF, 0xF));
+	errors = _mm_and_si128(errors, _mm_set1_epi32(0xF));
 	errors = _mm_and_si128(errors, flags2);
 
 	index = _mm_andnot_si128(errors, flags2);
@@ -165,16 +150,12 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
 	uint64_t valid, desc_valid_mask = ~0ULL;
-	const __m128i info3_v_mask = _mm_set_epi32(CMPL_BASE_V, CMPL_BASE_V,
-						   CMPL_BASE_V, CMPL_BASE_V);
+	const __m128i info3_v_mask = _mm_set1_epi32(CMPL_BASE_V);
 	uint32_t raw_cons = cpr->cp_raw_cons;
 	uint32_t cons, mbcons;
 	int nb_rx_pkts = 0;
 	const __m128i valid_target =
-		_mm_set_epi32(!!(raw_cons & cp_ring_size),
-			      !!(raw_cons & cp_ring_size),
-			      !!(raw_cons & cp_ring_size),
-			      !!(raw_cons & cp_ring_size));
+		_mm_set1_epi32(!!(raw_cons & cp_ring_size));
 	int i;
 
 	/* If Rx Q was stopped return */

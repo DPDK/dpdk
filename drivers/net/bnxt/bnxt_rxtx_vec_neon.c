@@ -67,40 +67,17 @@ descs_to_mbufs(uint32x4_t mm_rxcmp[4], uint32x4_t mm_rxcmp1[4],
 		0xFF, 0xFF,                /* vlan_tci (zeroes) */
 		12, 13, 14, 15             /* rss hash */
 	};
-	const uint32x4_t flags_type_mask = {
-		RX_PKT_CMPL_FLAGS_ITYPE_MASK,
-		RX_PKT_CMPL_FLAGS_ITYPE_MASK,
-		RX_PKT_CMPL_FLAGS_ITYPE_MASK,
-		RX_PKT_CMPL_FLAGS_ITYPE_MASK
-	};
-	const uint32x4_t flags2_mask1 = {
-		RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-			RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC,
-		RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-			RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC,
-		RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-			RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC,
-		RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
-			RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC
-	};
-	const uint32x4_t flags2_mask2 = {
-		RX_PKT_CMPL_FLAGS2_IP_TYPE,
-		RX_PKT_CMPL_FLAGS2_IP_TYPE,
-		RX_PKT_CMPL_FLAGS2_IP_TYPE,
-		RX_PKT_CMPL_FLAGS2_IP_TYPE
-	};
-	const uint32x4_t rss_mask = {
-		RX_PKT_CMPL_FLAGS_RSS_VALID,
-		RX_PKT_CMPL_FLAGS_RSS_VALID,
-		RX_PKT_CMPL_FLAGS_RSS_VALID,
-		RX_PKT_CMPL_FLAGS_RSS_VALID
-	};
-	const uint32x4_t flags2_index_mask = {
-		0x1F, 0x1F, 0x1F, 0x1F
-	};
-	const uint32x4_t flags2_error_mask = {
-		0xF, 0xF, 0xF, 0xF
-	};
+	const uint32x4_t flags_type_mask =
+		vdupq_n_u32(RX_PKT_CMPL_FLAGS_ITYPE_MASK);
+	const uint32x4_t flags2_mask1 =
+		vdupq_n_u32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
+			    RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC);
+	const uint32x4_t flags2_mask2 =
+		vdupq_n_u32(RX_PKT_CMPL_FLAGS2_IP_TYPE);
+	const uint32x4_t rss_mask =
+		vdupq_n_u32(RX_PKT_CMPL_FLAGS_RSS_VALID);
+	const uint32x4_t flags2_index_mask = vdupq_n_u32(0x1F);
+	const uint32x4_t flags2_error_mask = vdupq_n_u32(0x0F);
 	uint32x4_t flags_type, flags2, index, errors, rss_flags;
 	uint32x4_t tmp, ptype_idx;
 	uint64x2_t t0, t1;
@@ -180,20 +157,13 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
 	uint64_t valid, desc_valid_mask = ~0UL;
-	const uint32x4_t info3_v_mask = {
-		CMPL_BASE_V, CMPL_BASE_V,
-		CMPL_BASE_V, CMPL_BASE_V
-	};
+	const uint32x4_t info3_v_mask = vdupq_n_u32(CMPL_BASE_V);
 	uint32_t raw_cons = cpr->cp_raw_cons;
 	uint32_t cons, mbcons;
 	int nb_rx_pkts = 0;
 	const uint64x2_t mb_init = {rxq->mbuf_initializer, 0};
-	const uint32x4_t valid_target = {
-		!!(raw_cons & cp_ring_size),
-		!!(raw_cons & cp_ring_size),
-		!!(raw_cons & cp_ring_size),
-		!!(raw_cons & cp_ring_size)
-	};
+	const uint32x4_t valid_target =
+		vdupq_n_u32(!!(raw_cons & cp_ring_size));
 	int i;
 
 	/* If Rx Q was stopped return */
