@@ -590,67 +590,6 @@ qede_fdir_filter_conf(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
-int qede_ntuple_filter_conf(struct rte_eth_dev *eth_dev,
-			    enum rte_filter_op filter_op,
-			    void *arg)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct rte_eth_ntuple_filter *ntuple;
-	struct rte_eth_fdir_filter fdir_entry;
-	struct rte_eth_tcpv4_flow *tcpv4_flow;
-	struct rte_eth_udpv4_flow *udpv4_flow;
-	bool add = false;
-
-	switch (filter_op) {
-	case RTE_ETH_FILTER_NOP:
-		/* Typically used to query fdir support */
-		if (ECORE_IS_CMT(edev)) {
-			DP_ERR(edev, "flowdir is not supported in 100G mode\n");
-			return -ENOTSUP;
-		}
-		return 0; /* means supported */
-	case RTE_ETH_FILTER_ADD:
-		add = true;
-	break;
-	case RTE_ETH_FILTER_DELETE:
-	break;
-	case RTE_ETH_FILTER_INFO:
-	case RTE_ETH_FILTER_GET:
-	case RTE_ETH_FILTER_UPDATE:
-	case RTE_ETH_FILTER_FLUSH:
-	case RTE_ETH_FILTER_SET:
-	case RTE_ETH_FILTER_STATS:
-	case RTE_ETH_FILTER_OP_MAX:
-		DP_ERR(edev, "Unsupported filter_op %d\n", filter_op);
-		return -ENOTSUP;
-	}
-	ntuple = (struct rte_eth_ntuple_filter *)arg;
-	/* Internally convert ntuple to fdir entry */
-	memset(&fdir_entry, 0, sizeof(fdir_entry));
-	if (ntuple->proto == IPPROTO_TCP) {
-		fdir_entry.input.flow_type = RTE_ETH_FLOW_NONFRAG_IPV4_TCP;
-		tcpv4_flow = &fdir_entry.input.flow.tcp4_flow;
-		tcpv4_flow->ip.src_ip = ntuple->src_ip;
-		tcpv4_flow->ip.dst_ip = ntuple->dst_ip;
-		tcpv4_flow->ip.proto = IPPROTO_TCP;
-		tcpv4_flow->src_port = ntuple->src_port;
-		tcpv4_flow->dst_port = ntuple->dst_port;
-	} else {
-		fdir_entry.input.flow_type = RTE_ETH_FLOW_NONFRAG_IPV4_UDP;
-		udpv4_flow = &fdir_entry.input.flow.udp4_flow;
-		udpv4_flow->ip.src_ip = ntuple->src_ip;
-		udpv4_flow->ip.dst_ip = ntuple->dst_ip;
-		udpv4_flow->ip.proto = IPPROTO_TCP;
-		udpv4_flow->src_port = ntuple->src_port;
-		udpv4_flow->dst_port = ntuple->dst_port;
-	}
-
-	fdir_entry.action.rx_queue = ntuple->queue;
-
-	return qede_config_cmn_fdir_filter(eth_dev, &fdir_entry, add);
-}
-
 static int
 qede_tunnel_update(struct qede_dev *qdev,
 		   struct ecore_tunnel_info *tunn_info)
@@ -1548,8 +1487,6 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 		break;
 	case RTE_ETH_FILTER_FDIR:
 		return qede_fdir_filter_conf(eth_dev, filter_op, arg);
-	case RTE_ETH_FILTER_NTUPLE:
-		return qede_ntuple_filter_conf(eth_dev, filter_op, arg);
 	case RTE_ETH_FILTER_GENERIC:
 		if (ECORE_IS_CMT(edev)) {
 			DP_ERR(edev, "flowdir is not supported in 100G mode\n");

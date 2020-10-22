@@ -304,11 +304,6 @@ static int ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
 			struct ixgbe_5tuple_filter *filter);
 static void ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
 			struct ixgbe_5tuple_filter *filter);
-static int ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
-				enum rte_filter_op filter_op,
-				void *arg);
-static int ixgbe_get_ntuple_filter(struct rte_eth_dev *dev,
-			struct rte_eth_ntuple_filter *filter);
 static int ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
 		     enum rte_filter_op filter_op,
@@ -6739,99 +6734,6 @@ ixgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/*
- * get a ntuple filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * ntuple_filter: Pointer to struct rte_eth_ntuple_filter
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_get_ntuple_filter(struct rte_eth_dev *dev,
-			struct rte_eth_ntuple_filter *ntuple_filter)
-{
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-	struct ixgbe_5tuple_filter_info filter_5tuple;
-	struct ixgbe_5tuple_filter *filter;
-	int ret;
-
-	if (ntuple_filter->flags != RTE_5TUPLE_FLAGS) {
-		PMD_DRV_LOG(ERR, "only 5tuple is supported.");
-		return -EINVAL;
-	}
-
-	memset(&filter_5tuple, 0, sizeof(struct ixgbe_5tuple_filter_info));
-	ret = ntuple_filter_to_5tuple(ntuple_filter, &filter_5tuple);
-	if (ret < 0)
-		return ret;
-
-	filter = ixgbe_5tuple_filter_lookup(&filter_info->fivetuple_list,
-					 &filter_5tuple);
-	if (filter == NULL) {
-		PMD_DRV_LOG(ERR, "filter doesn't exist.");
-		return -ENOENT;
-	}
-	ntuple_filter->queue = filter->queue;
-	return 0;
-}
-
-/*
- * ixgbe_ntuple_filter_handle - Handle operations for ntuple filter.
- * @dev: pointer to rte_eth_dev structure
- * @filter_op:operation will be taken.
- * @arg: a pointer to specific structure corresponding to the filter_op
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
-				enum rte_filter_op filter_op,
-				void *arg)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int ret;
-
-	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
-
-	if (filter_op == RTE_ETH_FILTER_NOP)
-		return 0;
-
-	if (arg == NULL) {
-		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
-			    filter_op);
-		return -EINVAL;
-	}
-
-	switch (filter_op) {
-	case RTE_ETH_FILTER_ADD:
-		ret = ixgbe_add_del_ntuple_filter(dev,
-			(struct rte_eth_ntuple_filter *)arg,
-			TRUE);
-		break;
-	case RTE_ETH_FILTER_DELETE:
-		ret = ixgbe_add_del_ntuple_filter(dev,
-			(struct rte_eth_ntuple_filter *)arg,
-			FALSE);
-		break;
-	case RTE_ETH_FILTER_GET:
-		ret = ixgbe_get_ntuple_filter(dev,
-			(struct rte_eth_ntuple_filter *)arg);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
-
 int
 ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ethertype_filter *filter,
@@ -6915,9 +6817,6 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_NTUPLE:
-		ret = ixgbe_ntuple_filter_handle(dev, filter_op, arg);
-		break;
 	case RTE_ETH_FILTER_FDIR:
 		ret = ixgbe_fdir_ctrl_func(dev, filter_op, arg);
 		break;

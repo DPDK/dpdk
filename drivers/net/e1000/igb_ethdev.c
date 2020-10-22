@@ -194,11 +194,6 @@ static int igb_add_5tuple_filter_82576(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
 static int igb_remove_5tuple_filter_82576(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
-static int igb_get_ntuple_filter(struct rte_eth_dev *dev,
-			struct rte_eth_ntuple_filter *filter);
-static int igb_ntuple_filter_handle(struct rte_eth_dev *dev,
-				enum rte_filter_op filter_op,
-				void *arg);
 static int eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
 		     enum rte_filter_op filter_op,
@@ -4445,126 +4440,6 @@ igb_add_del_ntuple_filter(struct rte_eth_dev *dev,
 	return ret;
 }
 
-/*
- * igb_get_ntuple_filter - get a ntuple filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * ntuple_filter: Pointer to struct rte_eth_ntuple_filter
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-igb_get_ntuple_filter(struct rte_eth_dev *dev,
-			struct rte_eth_ntuple_filter *ntuple_filter)
-{
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_filter_info *filter_info =
-		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-	struct e1000_5tuple_filter_info filter_5tuple;
-	struct e1000_2tuple_filter_info filter_2tuple;
-	struct e1000_5tuple_filter *p_5tuple_filter;
-	struct e1000_2tuple_filter *p_2tuple_filter;
-	int ret;
-
-	switch (ntuple_filter->flags) {
-	case RTE_5TUPLE_FLAGS:
-	case (RTE_5TUPLE_FLAGS | RTE_NTUPLE_FLAGS_TCP_FLAG):
-		if (hw->mac.type != e1000_82576)
-			return -ENOTSUP;
-		memset(&filter_5tuple,
-			0,
-			sizeof(struct e1000_5tuple_filter_info));
-		ret = ntuple_filter_to_5tuple_82576(ntuple_filter,
-						    &filter_5tuple);
-		if (ret < 0)
-			return ret;
-		p_5tuple_filter = igb_5tuple_filter_lookup_82576(
-					&filter_info->fivetuple_list,
-					&filter_5tuple);
-		if (p_5tuple_filter == NULL) {
-			PMD_DRV_LOG(ERR, "filter doesn't exist.");
-			return -ENOENT;
-		}
-		ntuple_filter->queue = p_5tuple_filter->queue;
-		break;
-	case RTE_2TUPLE_FLAGS:
-	case (RTE_2TUPLE_FLAGS | RTE_NTUPLE_FLAGS_TCP_FLAG):
-		if (hw->mac.type != e1000_82580 && hw->mac.type != e1000_i350)
-			return -ENOTSUP;
-		memset(&filter_2tuple,
-			0,
-			sizeof(struct e1000_2tuple_filter_info));
-		ret = ntuple_filter_to_2tuple(ntuple_filter, &filter_2tuple);
-		if (ret < 0)
-			return ret;
-		p_2tuple_filter = igb_2tuple_filter_lookup(
-					&filter_info->twotuple_list,
-					&filter_2tuple);
-		if (p_2tuple_filter == NULL) {
-			PMD_DRV_LOG(ERR, "filter doesn't exist.");
-			return -ENOENT;
-		}
-		ntuple_filter->queue = p_2tuple_filter->queue;
-		break;
-	default:
-		ret = -EINVAL;
-		break;
-	}
-
-	return 0;
-}
-
-/*
- * igb_ntuple_filter_handle - Handle operations for ntuple filter.
- * @dev: pointer to rte_eth_dev structure
- * @filter_op:operation will be taken.
- * @arg: a pointer to specific structure corresponding to the filter_op
- */
-static int
-igb_ntuple_filter_handle(struct rte_eth_dev *dev,
-				enum rte_filter_op filter_op,
-				void *arg)
-{
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int ret;
-
-	MAC_TYPE_FILTER_SUP(hw->mac.type);
-
-	if (filter_op == RTE_ETH_FILTER_NOP)
-		return 0;
-
-	if (arg == NULL) {
-		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
-			    filter_op);
-		return -EINVAL;
-	}
-
-	switch (filter_op) {
-	case RTE_ETH_FILTER_ADD:
-		ret = igb_add_del_ntuple_filter(dev,
-			(struct rte_eth_ntuple_filter *)arg,
-			TRUE);
-		break;
-	case RTE_ETH_FILTER_DELETE:
-		ret = igb_add_del_ntuple_filter(dev,
-			(struct rte_eth_ntuple_filter *)arg,
-			FALSE);
-		break;
-	case RTE_ETH_FILTER_GET:
-		ret = igb_get_ntuple_filter(dev,
-			(struct rte_eth_ntuple_filter *)arg);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
-
 static inline int
 igb_ethertype_filter_lookup(struct e1000_filter_info *filter_info,
 			uint16_t ethertype)
@@ -4670,7 +4545,7 @@ igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
 }
 
 static int
-eth_igb_filter_ctrl(struct rte_eth_dev *dev,
+eth_igb_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
 		     enum rte_filter_type filter_type,
 		     enum rte_filter_op filter_op,
 		     void *arg)
@@ -4678,9 +4553,6 @@ eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_NTUPLE:
-		ret = igb_ntuple_filter_handle(dev, filter_op, arg);
-		break;
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
 			return -EINVAL;

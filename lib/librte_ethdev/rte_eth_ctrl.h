@@ -82,8 +82,7 @@ enum rte_filter_op {
 
 /**
  * A structure used to define the ntuple filter entry
- * to support RTE_ETH_FILTER_NTUPLE with RTE_ETH_FILTER_ADD,
- * RTE_ETH_FILTER_DELETE and RTE_ETH_FILTER_GET operations.
+ * to support RTE_ETH_FILTER_NTUPLE data representation.
  */
 struct rte_eth_ntuple_filter {
 	uint16_t flags;          /**< Flags from RTE_NTUPLE_FLAGS_* */
