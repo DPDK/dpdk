@@ -174,7 +174,7 @@ rte_eal_hugepage_init(void)
 			if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
 				RTE_LOG(ERR, EAL, "Could not find space for memseg. Please increase %s and/or %s in configuration.\n",
 					RTE_STR(CONFIG_RTE_MAX_MEMSEG_PER_TYPE),
-					RTE_STR(CONFIG_RTE_MAX_MEM_PER_TYPE));
+					RTE_STR(CONFIG_RTE_MAX_MEM_MB_PER_TYPE));
 				return -1;
 			}
 			arr = &msl->memseg_arr;
