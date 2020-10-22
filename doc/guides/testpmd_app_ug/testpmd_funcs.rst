@@ -1709,13 +1709,6 @@ Enable/disable E-tag based forwarding on a port::
 
    testpmd> E-tag set forwarding (on|off) port (port_id)
 
-Add an E-tag forwarding filter on a port::
-
-   testpmd> E-tag set filter add e-tag-id (value) dst-pool (pool_id) port (port_id)
-
-Delete an E-tag forwarding filter on a port::
-   testpmd> E-tag set filter del e-tag-id (value) port (port_id)
-
 ddp add
 ~~~~~~~
 

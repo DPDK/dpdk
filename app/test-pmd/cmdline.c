@@ -664,13 +664,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Enable/disable E-tag based forwarding"
 			" on a port\n\n"
 
-			"E-tag set filter add e-tag-id (value) dst-pool"
-			" (pool_id) port (port_id)\n"
-			"    Add an E-tag forwarding filter on a port\n\n"
-
-			"E-tag set filter del e-tag-id (value) port (port_id)\n"
-			"    Delete an E-tag forwarding filter on a port\n\n"
-
 			"ddp add (port_id) (profile_path[,backup_profile_path])\n"
 			"    Load a profile package on a port\n\n"
 
@@ -12199,120 +12192,6 @@ cmdline_parse_inst_t cmd_config_e_tag_forwarding_en_dis = {
 	},
 };
 
-/* E-tag filter configuration */
-static void
-cmd_config_e_tag_filter_add_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	__rte_unused void *data)
-{
-	struct cmd_config_e_tag_result *res = parsed_result;
-	struct rte_eth_l2_tunnel_conf entry;
-	int ret = 0;
-
-	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
-		return;
-
-	if (res->e_tag_id_val > 0x3fff) {
-		printf("e-tag-id must be equal or less than 0x3fff.\n");
-		return;
-	}
-
-	ret = rte_eth_dev_filter_supported(res->port_id,
-					   RTE_ETH_FILTER_L2_TUNNEL);
-	if (ret < 0) {
-		printf("E-tag filter is not supported on port %u.\n",
-		       res->port_id);
-		return;
-	}
-
-	entry.l2_tunnel_type = RTE_L2_TUNNEL_TYPE_E_TAG;
-	entry.tunnel_id = res->e_tag_id_val;
-	entry.pool = res->dst_pool_val;
-
-	ret = rte_eth_dev_filter_ctrl(res->port_id,
-				      RTE_ETH_FILTER_L2_TUNNEL,
-				      RTE_ETH_FILTER_ADD,
-				      &entry);
-	if (ret < 0)
-		printf("E-tag filter programming error: (%s)\n",
-		       strerror(-ret));
-}
-
-cmdline_parse_inst_t cmd_config_e_tag_filter_add = {
-	.f = cmd_config_e_tag_filter_add_parsed,
-	.data = NULL,
-	.help_str = "E-tag ... : E-tag filter add",
-	.tokens = {
-		(void *)&cmd_config_e_tag_e_tag,
-		(void *)&cmd_config_e_tag_set,
-		(void *)&cmd_config_e_tag_filter,
-		(void *)&cmd_config_e_tag_add,
-		(void *)&cmd_config_e_tag_e_tag_id,
-		(void *)&cmd_config_e_tag_e_tag_id_val,
-		(void *)&cmd_config_e_tag_dst_pool,
-		(void *)&cmd_config_e_tag_dst_pool_val,
-		(void *)&cmd_config_e_tag_port,
-		(void *)&cmd_config_e_tag_port_id,
-		NULL,
-	},
-};
-
-static void
-cmd_config_e_tag_filter_del_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	__rte_unused void *data)
-{
-	struct cmd_config_e_tag_result *res = parsed_result;
-	struct rte_eth_l2_tunnel_conf entry;
-	int ret = 0;
-
-	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
-		return;
-
-	if (res->e_tag_id_val > 0x3fff) {
-		printf("e-tag-id must be less than 0x3fff.\n");
-		return;
-	}
-
-	ret = rte_eth_dev_filter_supported(res->port_id,
-					   RTE_ETH_FILTER_L2_TUNNEL);
-	if (ret < 0) {
-		printf("E-tag filter is not supported on port %u.\n",
-		       res->port_id);
-		return;
-	}
-
-	entry.l2_tunnel_type = RTE_L2_TUNNEL_TYPE_E_TAG;
-	entry.tunnel_id = res->e_tag_id_val;
-
-	ret = rte_eth_dev_filter_ctrl(res->port_id,
-				      RTE_ETH_FILTER_L2_TUNNEL,
-				      RTE_ETH_FILTER_DELETE,
-				      &entry);
-	if (ret < 0)
-		printf("E-tag filter programming error: (%s)\n",
-		       strerror(-ret));
-}
-
-cmdline_parse_inst_t cmd_config_e_tag_filter_del = {
-	.f = cmd_config_e_tag_filter_del_parsed,
-	.data = NULL,
-	.help_str = "E-tag ... : E-tag filter delete",
-	.tokens = {
-		(void *)&cmd_config_e_tag_e_tag,
-		(void *)&cmd_config_e_tag_set,
-		(void *)&cmd_config_e_tag_filter,
-		(void *)&cmd_config_e_tag_del,
-		(void *)&cmd_config_e_tag_e_tag_id,
-		(void *)&cmd_config_e_tag_e_tag_id_val,
-		(void *)&cmd_config_e_tag_port,
-		(void *)&cmd_config_e_tag_port_id,
-		NULL,
-	},
-};
-
 /* vf vlan anti spoof configuration */
 
 /* Common result structure for vf vlan anti spoof */
@@ -18621,8 +18500,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_e_tag_insertion_dis,
 	(cmdline_parse_inst_t *)&cmd_config_e_tag_stripping_en_dis,
 	(cmdline_parse_inst_t *)&cmd_config_e_tag_forwarding_en_dis,
-	(cmdline_parse_inst_t *)&cmd_config_e_tag_filter_add,
-	(cmdline_parse_inst_t *)&cmd_config_e_tag_filter_del,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_anti_spoof,
 	(cmdline_parse_inst_t *)&cmd_set_vf_mac_anti_spoof,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_stripq,

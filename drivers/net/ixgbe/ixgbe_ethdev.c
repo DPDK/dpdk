@@ -355,9 +355,6 @@ static int ixgbe_dev_l2_tunnel_offload_set
 	 struct rte_eth_l2_tunnel_conf *l2_tunnel,
 	 uint32_t mask,
 	 uint8_t en);
-static int ixgbe_dev_l2_tunnel_filter_handle(struct rte_eth_dev *dev,
-					     enum rte_filter_op filter_op,
-					     void *arg);
 
 static int ixgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *udp_tunnel);
@@ -6820,9 +6817,6 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_FDIR:
 		ret = ixgbe_fdir_ctrl_func(dev, filter_op, arg);
 		break;
-	case RTE_ETH_FILTER_L2_TUNNEL:
-		ret = ixgbe_dev_l2_tunnel_filter_handle(dev, filter_op, arg);
-		break;
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
 			return -EINVAL;
@@ -7891,48 +7885,6 @@ ixgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 		break;
 	}
 
-	return ret;
-}
-
-/**
- * ixgbe_dev_l2_tunnel_filter_handle - Handle operations for l2 tunnel filter.
- * @dev: pointer to rte_eth_dev structure
- * @filter_op:operation will be taken.
- * @arg: a pointer to specific structure corresponding to the filter_op
- */
-static int
-ixgbe_dev_l2_tunnel_filter_handle(struct rte_eth_dev *dev,
-				  enum rte_filter_op filter_op,
-				  void *arg)
-{
-	int ret;
-
-	if (filter_op == RTE_ETH_FILTER_NOP)
-		return 0;
-
-	if (arg == NULL) {
-		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u.",
-			    filter_op);
-		return -EINVAL;
-	}
-
-	switch (filter_op) {
-	case RTE_ETH_FILTER_ADD:
-		ret = ixgbe_dev_l2_tunnel_filter_add
-			(dev,
-			 (struct rte_eth_l2_tunnel_conf *)arg,
-			 FALSE);
-		break;
-	case RTE_ETH_FILTER_DELETE:
-		ret = ixgbe_dev_l2_tunnel_filter_del
-			(dev,
-			 (struct rte_eth_l2_tunnel_conf *)arg);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u.", filter_op);
-		ret = -EINVAL;
-		break;
-	}
 	return ret;
 }
 
