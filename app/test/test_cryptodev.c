@@ -2680,6 +2680,9 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -2768,6 +2771,9 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -2849,6 +2855,9 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 		printf("Device doesn't support RAW data-path APIs.\n");
 		return -ENOTSUP;
 	}
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -2935,6 +2944,9 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 		printf("Device doesn't support RAW data-path APIs.\n");
 		return -ENOTSUP;
 	}
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3157,6 +3169,9 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -3265,6 +3280,9 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
@@ -3349,6 +3367,9 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
 		return -ENOTSUP;
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
@@ -3431,6 +3452,9 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 		return -ENOTSUP;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
+		return -ENOTSUP;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -3521,6 +3545,9 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
 		return -ENOTSUP;
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Create KASUMI session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
@@ -3599,6 +3626,9 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 		printf("Device doesn't support RAW data-path APIs.\n");
 		return -ENOTSUP;
 	}
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3689,6 +3719,9 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -3778,6 +3811,9 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
 		return -ENOTSUP;
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
@@ -3862,6 +3898,9 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 		return -ENOTSUP;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
+		return -ENOTSUP;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -3986,6 +4025,9 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
 		return -ENOTSUP;
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
@@ -4087,6 +4129,9 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -4171,6 +4216,9 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 		return -ENOTSUP;
 
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
+		return -ENOTSUP;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	/* Create SNOW 3G session */
@@ -4265,6 +4313,9 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 		printf("Device doesn't support RAW data-path APIs.\n");
 		return -ENOTSUP;
 	}
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
 
 	/* Check if device supports ZUC EEA3 */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -4363,6 +4414,9 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 		printf("Device doesn't support RAW data-path APIs.\n");
 		return -ENOTSUP;
 	}
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -4479,6 +4533,9 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata,
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
+		return -ENOTSUP;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -4668,6 +4725,9 @@ test_snow3g_auth_cipher_sgl(const struct snow3g_test_data *tdata,
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_SNOW3G_UEA2;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
+		return -ENOTSUP;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -4884,6 +4944,9 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata,
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	if (op_mode == OUT_OF_PLACE) {
 		if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
 			return -ENOTSUP;
@@ -5063,6 +5126,9 @@ test_kasumi_auth_cipher_sgl(const struct kasumi_test_data *tdata,
 	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_KASUMI_F8;
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
+		return -ENOTSUP;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -5261,6 +5327,9 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -5374,6 +5443,9 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 		return -ENOTSUP;
 	}
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
+
 	struct rte_cryptodev_sym_capability_idx cap_idx;
 
 	/* Check if device supports ZUC EEA3 */
@@ -5464,6 +5536,9 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 
 	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
 			&cap_idx) == NULL)
+		return -ENOTSUP;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -5571,6 +5646,9 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 		printf("Device doesn't support RAW data-path APIs.\n");
 		return -ENOTSUP;
 	}
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return -ENOTSUP;
 
 	/* Check if device supports ZUC EIA3 */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
