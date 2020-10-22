@@ -47,7 +47,7 @@
  * Each HW Rx descriptor has many Rx buffers. The number of buffers
  * in one HW Rx descriptor is equal to size of contiguous block
  * provided by Rx buffers memory pool. The contiguous block size
- * depends on CONFIG_RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB and rte_mbuf
+ * depends on RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB and rte_mbuf
  * data size specified on the memory pool creation. Typical rte_mbuf
  * data size is about 2k which makes a bit less than 32 buffers in
  * contiguous block with default bucket size equal to 64k.

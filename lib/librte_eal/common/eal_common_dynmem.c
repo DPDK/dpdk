@@ -120,7 +120,7 @@ eal_dynmem_memseg_lists_init(void)
 
 	if (max_seglists_per_type == 0) {
 		RTE_LOG(ERR, EAL, "Cannot accommodate all memory types, please increase %s\n",
-			RTE_STR(CONFIG_RTE_MAX_MEMSEG_LISTS));
+			RTE_STR(RTE_MAX_MEMSEG_LISTS));
 		goto out;
 	}
 
@@ -180,7 +180,7 @@ eal_dynmem_memseg_lists_init(void)
 			if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
 				RTE_LOG(ERR, EAL,
 					"No more space in memseg lists, please increase %s\n",
-					RTE_STR(CONFIG_RTE_MAX_MEMSEG_LISTS));
+					RTE_STR(RTE_MAX_MEMSEG_LISTS));
 				goto out;
 			}
 			msl = &mcfg->memsegs[msl_idx++];

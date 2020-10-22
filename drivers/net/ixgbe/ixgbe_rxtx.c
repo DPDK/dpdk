@@ -5920,7 +5920,7 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/* Stubs needed for linkage when CONFIG_RTE_ARCH_PPC_64 is set */
+/* Stubs needed for linkage when RTE_ARCH_PPC_64 is set */
 #if defined(RTE_ARCH_PPC_64)
 int
 ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev __rte_unused *dev)

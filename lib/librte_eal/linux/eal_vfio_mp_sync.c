@@ -17,7 +17,7 @@
  * @file
  * VFIO socket for communication between primary and secondary processes.
  *
- * This file is only compiled if CONFIG_RTE_EAL_VFIO is set to "y".
+ * This file is only compiled if RTE_EAL_VFIO is set.
  */
 
 #ifdef VFIO_PRESENT

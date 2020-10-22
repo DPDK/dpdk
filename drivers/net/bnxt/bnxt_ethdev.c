@@ -1255,7 +1255,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 		PMD_DRV_LOG(ERR,
-			"RxQ cnt %d > CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
+			"RxQ cnt %d > RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
 			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	}
 

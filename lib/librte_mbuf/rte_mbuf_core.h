@@ -495,8 +495,7 @@ struct rte_mbuf {
 	 * It should only be accessed using the following functions:
 	 * rte_mbuf_refcnt_update(), rte_mbuf_refcnt_read(), and
 	 * rte_mbuf_refcnt_set(). The functionality of these functions (atomic,
-	 * or non-atomic) is controlled by the CONFIG_RTE_MBUF_REFCNT_ATOMIC
-	 * config option.
+	 * or non-atomic) is controlled by the RTE_MBUF_REFCNT_ATOMIC flag.
 	 */
 	uint16_t refcnt;
 	uint16_t nb_segs;         /**< Number of segments. */

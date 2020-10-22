@@ -7,7 +7,7 @@
 #define _RTE_ATOMIC_ARM64_H_
 
 #ifndef RTE_FORCE_INTRINSICS
-#  error Platform must be built with CONFIG_RTE_FORCE_INTRINSICS
+#  error Platform must be built with RTE_FORCE_INTRINSICS
 #endif
 
 #ifdef __cplusplus

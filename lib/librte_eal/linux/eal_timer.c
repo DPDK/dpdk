@@ -163,7 +163,7 @@ rte_eal_hpet_init(int make_default)
 		RTE_LOG(ERR, EAL, "ERROR: Cannot mmap "DEV_HPET"!\n"
 				"Please enable CONFIG_HPET_MMAP in your kernel configuration "
 				"to allow HPET support.\n"
-				"To run without using HPET, set CONFIG_RTE_LIBEAL_USE_HPET=n "
+				"To run without using HPET, unset RTE_LIBEAL_USE_HPET "
 				"in your build configuration or use '--no-hpet' EAL flag.\n");
 		close(fd);
 		internal_conf->no_hpet = 1;
