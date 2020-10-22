@@ -21,6 +21,7 @@
 
 #define IAVF_MAX_NUM_QUEUES_DFLT	 16
 #define IAVF_MAX_NUM_QUEUES_LV		 256
+#define IAVF_CFG_Q_NUM_PER_BUF		 32
 
 #define IAVF_NUM_MACADDR_MAX      64
 
@@ -269,7 +270,8 @@ int iavf_enable_queues(struct iavf_adapter *adapter);
 int iavf_disable_queues(struct iavf_adapter *adapter);
 int iavf_configure_rss_lut(struct iavf_adapter *adapter);
 int iavf_configure_rss_key(struct iavf_adapter *adapter);
-int iavf_configure_queues(struct iavf_adapter *adapter);
+int iavf_configure_queues(struct iavf_adapter *adapter,
+			uint16_t num_queue_pairs, uint16_t index);
 int iavf_get_supported_rxdid(struct iavf_adapter *adapter);
 int iavf_config_irq_map(struct iavf_adapter *adapter);
 void iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add);

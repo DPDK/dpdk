@@ -564,6 +564,8 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
+	uint16_t num_queue_pairs;
+	uint16_t index = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -572,13 +574,27 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	vf->max_pkt_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	vf->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
 				      dev->data->nb_tx_queues);
+	num_queue_pairs = vf->num_queue_pairs;
 
 	if (iavf_init_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "failed to do Queue init");
 		return -1;
 	}
 
-	if (iavf_configure_queues(adapter) != 0) {
+	/* If needed, send configure queues msg multiple times to make the
+	 * adminq buffer length smaller than the 4K limitation.
+	 */
+	while (num_queue_pairs > IAVF_CFG_Q_NUM_PER_BUF) {
+		if (iavf_configure_queues(adapter,
+				IAVF_CFG_Q_NUM_PER_BUF, index) != 0) {
+			PMD_DRV_LOG(ERR, "configure queues failed");
+			goto err_queue;
+		}
+		num_queue_pairs -= IAVF_CFG_Q_NUM_PER_BUF;
+		index += IAVF_CFG_Q_NUM_PER_BUF;
+	}
+
+	if (iavf_configure_queues(adapter, num_queue_pairs, index) != 0) {
 		PMD_DRV_LOG(ERR, "configure queues failed");
 		goto err_queue;
 	}

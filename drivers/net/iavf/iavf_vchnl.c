@@ -673,7 +673,8 @@ iavf_configure_rss_key(struct iavf_adapter *adapter)
 }
 
 int
-iavf_configure_queues(struct iavf_adapter *adapter)
+iavf_configure_queues(struct iavf_adapter *adapter,
+		uint16_t num_queue_pairs, uint16_t index)
 {
 	struct iavf_rx_queue **rxq =
 		(struct iavf_rx_queue **)adapter->eth_dev->data->rx_queues;
@@ -687,16 +688,16 @@ iavf_configure_queues(struct iavf_adapter *adapter)
 	int err;
 
 	size = sizeof(*vc_config) +
-	       sizeof(vc_config->qpair[0]) * vf->num_queue_pairs;
+	       sizeof(vc_config->qpair[0]) * num_queue_pairs;
 	vc_config = rte_zmalloc("cfg_queue", size, 0);
 	if (!vc_config)
 		return -ENOMEM;
 
 	vc_config->vsi_id = vf->vsi_res->vsi_id;
-	vc_config->num_queue_pairs = vf->num_queue_pairs;
+	vc_config->num_queue_pairs = num_queue_pairs;
 
-	for (i = 0, vc_qp = vc_config->qpair;
-	     i < vf->num_queue_pairs;
+	for (i = index, vc_qp = vc_config->qpair;
+		 i < index + num_queue_pairs;
 	     i++, vc_qp++) {
 		vc_qp->txq.vsi_id = vf->vsi_res->vsi_id;
 		vc_qp->txq.queue_id = i;
