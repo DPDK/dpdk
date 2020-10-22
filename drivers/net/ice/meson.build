@@ -39,4 +39,4 @@ sources += files('ice_dcf.c',
 		 'ice_dcf_ethdev.c',
 		 'ice_dcf_parent.c')
 
-install_headers('rte_pmd_ice.h')
+headers = files('rte_pmd_ice.h')

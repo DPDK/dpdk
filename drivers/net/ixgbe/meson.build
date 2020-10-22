@@ -30,4 +30,4 @@ endif
 
 includes += include_directories('base')
 
-install_headers('rte_pmd_ixgbe.h')
+headers = files('rte_pmd_ixgbe.h')

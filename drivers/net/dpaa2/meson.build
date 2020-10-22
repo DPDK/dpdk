@@ -21,4 +21,4 @@ sources = files('base/dpaa2_hw_dpni.c',
 
 includes += include_directories('base', 'mc')
 
-install_headers('rte_pmd_dpaa2.h')
+headers = files('rte_pmd_dpaa2.h')

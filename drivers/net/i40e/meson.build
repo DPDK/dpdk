@@ -52,4 +52,4 @@ elif arch_subdir == 'arm'
        sources += files('i40e_rxtx_vec_neon.c')
 endif
 
-install_headers('rte_pmd_i40e.h')
+headers = files('rte_pmd_i40e.h')

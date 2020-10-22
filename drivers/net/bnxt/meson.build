@@ -2,7 +2,7 @@
 # Copyright(c) 2018 Intel Corporation
 # Copyright(c) 2020 Broadcom
 
-install_headers('rte_pmd_bnxt.h')
+headers = files('rte_pmd_bnxt.h')
 
 includes += include_directories('tf_ulp')
 includes += include_directories('tf_core')

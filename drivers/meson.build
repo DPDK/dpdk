@@ -60,6 +60,7 @@ foreach subpath:subdirs
 		name = drv
 		fmt_name = ''
 		sources = []
+		headers = []
 		objs = []
 		cflags = default_cflags
 		includes = [include_directories(drv_path)]
@@ -135,6 +136,8 @@ foreach subpath:subdirs
 			endif
 
 			dpdk_extra_ldflags += pkgconfig_extra_libs
+
+			install_headers(headers)
 
 			# generate pmdinfo sources by building a temporary
 			# lib and then running pmdinfogen on the contents of

@@ -2,7 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 deps += ['pci']
-install_headers('rte_bus_pci.h')
+headers = files('rte_bus_pci.h')
 sources = files('pci_common.c',
 	'pci_params.c')
 if is_linux

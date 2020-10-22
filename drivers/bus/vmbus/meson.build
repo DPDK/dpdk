@@ -7,7 +7,7 @@ if is_windows
 endif
 
 
-install_headers('rte_bus_vmbus.h','rte_vmbus_reg.h')
+headers = files('rte_bus_vmbus.h','rte_vmbus_reg.h')
 
 sources = files('vmbus_common.c',
 		'vmbus_channel.c',

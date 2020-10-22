@@ -18,4 +18,4 @@ if cc.has_argument('-Wno-pointer-arith')
 	cflags += '-Wno-pointer-arith'
 endif
 
-install_headers('rte_pmd_dpaa.h')
+headers = files('rte_pmd_dpaa.h')
