@@ -54,7 +54,9 @@ struct hn_tx_queue {
 	uint16_t	queue_id;
 	uint32_t	free_thresh;
 	struct rte_mempool *txdesc_pool;
+	const struct rte_memzone *tx_rndis_mz;
 	void		*tx_rndis;
+	rte_iova_t	tx_rndis_iova;
 
 	/* Applied packet transmission aggregation limits. */
 	uint32_t	agg_szmax;

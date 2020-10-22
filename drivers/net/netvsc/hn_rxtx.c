@@ -283,10 +283,15 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_LOG(DEBUG, "TX descriptor pool %s n=%u size=%zu",
 		     name, nb_desc, sizeof(struct hn_txdesc));
 
-	txq->tx_rndis = rte_calloc("hn_txq_rndis", nb_desc,
-				   HN_RNDIS_PKT_ALIGNED, RTE_CACHE_LINE_SIZE);
-	if (txq->tx_rndis == NULL)
+	txq->tx_rndis_mz = rte_memzone_reserve_aligned(name,
+			nb_desc * HN_RNDIS_PKT_ALIGNED, rte_socket_id(),
+			RTE_MEMZONE_IOVA_CONTIG, HN_RNDIS_PKT_ALIGNED);
+	if (!txq->tx_rndis_mz) {
+		err = -rte_errno;
 		goto error;
+	}
+	txq->tx_rndis = txq->tx_rndis_mz->addr;
+	txq->tx_rndis_iova = txq->tx_rndis_mz->iova;
 
 	txq->txdesc_pool = rte_mempool_create(name, nb_desc,
 					      sizeof(struct hn_txdesc),
@@ -315,7 +320,7 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 error:
 	if (txq->txdesc_pool)
 		rte_mempool_free(txq->txdesc_pool);
-	rte_free(txq->tx_rndis);
+	rte_memzone_free(txq->tx_rndis_mz);
 	rte_free(txq);
 	return err;
 }
@@ -366,7 +371,7 @@ hn_dev_tx_queue_release(void *arg)
 	if (txq->txdesc_pool)
 		rte_mempool_free(txq->txdesc_pool);
 
-	rte_free(txq->tx_rndis);
+	rte_memzone_free(txq->tx_rndis_mz);
 	rte_free(txq);
 }
 
@@ -1445,12 +1450,8 @@ static int hn_xmit_sg(struct hn_tx_queue *txq,
 	hn_rndis_dump(txd->rndis_pkt);
 
 	/* pass IOVA of rndis header in first segment */
-	addr = rte_malloc_virt2iova(txq->tx_rndis);
-	if (unlikely(addr == RTE_BAD_IOVA)) {
-		PMD_DRV_LOG(ERR, "RNDIS transmit can not get iova");
-		return -EINVAL;
-	}
-	addr = addr + ((char *)txd->rndis_pkt - (char *)txq->tx_rndis);
+	addr = txq->tx_rndis_iova +
+		((char *)txd->rndis_pkt - (char *)txq->tx_rndis);
 
 	sg[0].page = addr / PAGE_SIZE;
 	sg[0].ofs = addr & PAGE_MASK;
