@@ -1108,7 +1108,8 @@ auth_start_offset(struct rte_crypto_op *op, struct aesni_mb_session *session,
 static inline void
 set_cpu_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_session *session,
 		union rte_crypto_sym_ofs sofs, void *buf, uint32_t len,
-		void *iv, void *aad, void *digest, void *udata)
+		struct rte_crypto_va_iova_ptr *iv,
+		struct rte_crypto_va_iova_ptr *aad, void *digest, void *udata)
 {
 	/* Set crypto operation */
 	job->chain_order = session->chain_order;
@@ -1121,7 +1122,7 @@ set_cpu_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_session *session,
 
 	/* Set authentication parameters */
 	job->hash_alg = session->auth.algo;
-	job->iv = iv;
+	job->iv = iv->va;
 
 	switch (job->hash_alg) {
 	case AES_XCBC:
@@ -1136,7 +1137,7 @@ set_cpu_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_session *session,
 		break;
 
 	case AES_CCM:
-		job->u.CCM.aad = (uint8_t *)aad + 18;
+		job->u.CCM.aad = (uint8_t *)aad->va + 18;
 		job->u.CCM.aad_len_in_bytes = session->aead.aad_len;
 		job->aes_enc_key_expanded =
 				session->cipher.expanded_aes_keys.encode;
@@ -1157,7 +1158,7 @@ set_cpu_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_session *session,
 
 	case AES_GMAC:
 		if (session->cipher.mode == GCM) {
-			job->u.GCM.aad = aad;
+			job->u.GCM.aad = aad->va;
 			job->u.GCM.aad_len_in_bytes = session->aead.aad_len;
 		} else {
 			/* For GMAC */
@@ -1169,6 +1170,14 @@ set_cpu_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_session *session,
 		job->aes_dec_key_expanded = &session->cipher.gcm_key;
 		break;
 
+#if IMB_VERSION(0, 54, 3) <= IMB_VERSION_NUM
+	case IMB_AUTH_CHACHA20_POLY1305:
+		job->u.CHACHA20_POLY1305.aad = aad->va;
+		job->u.CHACHA20_POLY1305.aad_len_in_bytes = session->aead.aad_len;
+		job->aes_enc_key_expanded = session->cipher.expanded_aes_keys.encode;
+		job->aes_dec_key_expanded = session->cipher.expanded_aes_keys.encode;
+		break;
+#endif
 	default:
 		job->u.HMAC._hashed_auth_key_xor_ipad =
 				session->auth.pads.inner;
@@ -2010,8 +2019,8 @@ aesni_mb_cpu_crypto_process_bulk(struct rte_cryptodev *dev,
 		}
 
 		/* Submit job for processing */
-		set_cpu_mb_job_params(job, s, sofs, buf, len, vec->iv[i].va,
-			vec->aad[i].va, tmp_dgst[i], &vec->status[i]);
+		set_cpu_mb_job_params(job, s, sofs, buf, len, &vec->iv[i],
+			&vec->aad[i], tmp_dgst[i], &vec->status[i]);
 		job = submit_sync_job(mb_mgr);
 		j++;
 
