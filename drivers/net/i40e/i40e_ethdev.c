@@ -4329,9 +4329,9 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 
 	rte_memcpy(&mac_filter.mac_addr, mac_addr, RTE_ETHER_ADDR_LEN);
 	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
-		mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+		mac_filter.filter_type = I40E_MACVLAN_PERFECT_MATCH;
 	else
-		mac_filter.filter_type = RTE_MAC_PERFECT_MATCH;
+		mac_filter.filter_type = I40E_MAC_PERFECT_MATCH;
 
 	if (pool == 0)
 		vsi = pf->main_vsi;
@@ -5537,7 +5537,7 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 		mac = &f->mac_info.mac_addr;
 		rte_memcpy(&mac->addr_bytes, hw->mac.perm_addr,
 				ETH_ADDR_LEN);
-		f->mac_info.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+		f->mac_info.filter_type = I40E_MACVLAN_PERFECT_MATCH;
 		TAILQ_INSERT_TAIL(&vsi->mac_list, f, next);
 		vsi->mac_num++;
 
@@ -5545,7 +5545,7 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 	}
 	rte_memcpy(&filter.mac_addr,
 		(struct rte_ether_addr *)(hw->mac.perm_addr), ETH_ADDR_LEN);
-	filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+	filter.filter_type = I40E_MACVLAN_PERFECT_MATCH;
 	return i40e_vsi_add_mac(vsi, &filter);
 }
 
@@ -6011,7 +6011,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 
 	/* MAC/VLAN configuration */
 	rte_memcpy(&filter.mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
-	filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+	filter.filter_type = I40E_MACVLAN_PERFECT_MATCH;
 
 	ret = i40e_vsi_add_mac(vsi, &filter);
 	if (ret != I40E_SUCCESS) {
@@ -6039,15 +6039,15 @@ i40e_vsi_config_vlan_filter(struct i40e_vsi *vsi, bool on)
 	struct i40e_mac_filter *f;
 	void *temp;
 	struct i40e_mac_filter_info *mac_filter;
-	enum rte_mac_filter_type desired_filter;
+	enum i40e_mac_filter_type desired_filter;
 	int ret = I40E_SUCCESS;
 
 	if (on) {
 		/* Filter to match MAC and VLAN */
-		desired_filter = RTE_MACVLAN_PERFECT_MATCH;
+		desired_filter = I40E_MACVLAN_PERFECT_MATCH;
 	} else {
 		/* Filter to match only MAC */
-		desired_filter = RTE_MAC_PERFECT_MATCH;
+		desired_filter = I40E_MAC_PERFECT_MATCH;
 	}
 
 	num = vsi->mac_num;
@@ -6990,18 +6990,18 @@ i40e_add_macvlan_filters(struct i40e_vsi *vsi,
 				rte_cpu_to_le_16(filter[num + i].vlan_id);
 
 			switch (filter[num + i].filter_type) {
-			case RTE_MAC_PERFECT_MATCH:
+			case I40E_MAC_PERFECT_MATCH:
 				flags = I40E_AQC_MACVLAN_ADD_PERFECT_MATCH |
 					I40E_AQC_MACVLAN_ADD_IGNORE_VLAN;
 				break;
-			case RTE_MACVLAN_PERFECT_MATCH:
+			case I40E_MACVLAN_PERFECT_MATCH:
 				flags = I40E_AQC_MACVLAN_ADD_PERFECT_MATCH;
 				break;
-			case RTE_MAC_HASH_MATCH:
+			case I40E_MAC_HASH_MATCH:
 				flags = I40E_AQC_MACVLAN_ADD_HASH_MATCH |
 					I40E_AQC_MACVLAN_ADD_IGNORE_VLAN;
 				break;
-			case RTE_MACVLAN_HASH_MATCH:
+			case I40E_MACVLAN_HASH_MATCH:
 				flags = I40E_AQC_MACVLAN_ADD_HASH_MATCH;
 				break;
 			default:
@@ -7065,18 +7065,18 @@ i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
 				rte_cpu_to_le_16(filter[num + i].vlan_id);
 
 			switch (filter[num + i].filter_type) {
-			case RTE_MAC_PERFECT_MATCH:
+			case I40E_MAC_PERFECT_MATCH:
 				flags = I40E_AQC_MACVLAN_DEL_PERFECT_MATCH |
 					I40E_AQC_MACVLAN_DEL_IGNORE_VLAN;
 				break;
-			case RTE_MACVLAN_PERFECT_MATCH:
+			case I40E_MACVLAN_PERFECT_MATCH:
 				flags = I40E_AQC_MACVLAN_DEL_PERFECT_MATCH;
 				break;
-			case RTE_MAC_HASH_MATCH:
+			case I40E_MAC_HASH_MATCH:
 				flags = I40E_AQC_MACVLAN_DEL_HASH_MATCH |
 					I40E_AQC_MACVLAN_DEL_IGNORE_VLAN;
 				break;
-			case RTE_MACVLAN_HASH_MATCH:
+			case I40E_MACVLAN_HASH_MATCH:
 				flags = I40E_AQC_MACVLAN_DEL_HASH_MATCH;
 				break;
 			default:
@@ -7421,8 +7421,8 @@ i40e_vsi_add_mac(struct i40e_vsi *vsi, struct i40e_mac_filter_info *mac_filter)
 	f = i40e_find_mac_filter(vsi, &mac_filter->mac_addr);
 	if (f != NULL)
 		return I40E_SUCCESS;
-	if ((mac_filter->filter_type == RTE_MACVLAN_PERFECT_MATCH) ||
-		(mac_filter->filter_type == RTE_MACVLAN_HASH_MATCH)) {
+	if (mac_filter->filter_type == I40E_MACVLAN_PERFECT_MATCH ||
+		mac_filter->filter_type == I40E_MACVLAN_HASH_MATCH) {
 
 		/**
 		 * If vlan_num is 0, that's the first time to add mac,
@@ -7433,8 +7433,8 @@ i40e_vsi_add_mac(struct i40e_vsi *vsi, struct i40e_mac_filter_info *mac_filter)
 			vsi->vlan_num = 1;
 		}
 		vlan_num = vsi->vlan_num;
-	} else if ((mac_filter->filter_type == RTE_MAC_PERFECT_MATCH) ||
-			(mac_filter->filter_type == RTE_MAC_HASH_MATCH))
+	} else if (mac_filter->filter_type == I40E_MAC_PERFECT_MATCH ||
+			mac_filter->filter_type == I40E_MAC_HASH_MATCH)
 		vlan_num = 1;
 
 	mv_f = rte_zmalloc("macvlan_data", vlan_num * sizeof(*mv_f), 0);
@@ -7449,8 +7449,8 @@ i40e_vsi_add_mac(struct i40e_vsi *vsi, struct i40e_mac_filter_info *mac_filter)
 				ETH_ADDR_LEN);
 	}
 
-	if (mac_filter->filter_type == RTE_MACVLAN_PERFECT_MATCH ||
-		mac_filter->filter_type == RTE_MACVLAN_HASH_MATCH) {
+	if (mac_filter->filter_type == I40E_MACVLAN_PERFECT_MATCH ||
+		mac_filter->filter_type == I40E_MACVLAN_HASH_MATCH) {
 		ret = i40e_find_all_vlan_for_mac(vsi, mv_f, vlan_num,
 					&mac_filter->mac_addr);
 		if (ret != I40E_SUCCESS)
@@ -7487,7 +7487,7 @@ i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct rte_ether_addr *addr)
 	struct i40e_mac_filter *f;
 	struct i40e_macvlan_filter *mv_f;
 	int i, vlan_num;
-	enum rte_mac_filter_type filter_type;
+	enum i40e_mac_filter_type filter_type;
 	int ret = I40E_SUCCESS;
 
 	/* Can't find it, return an error */
@@ -7497,14 +7497,14 @@ i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct rte_ether_addr *addr)
 
 	vlan_num = vsi->vlan_num;
 	filter_type = f->mac_info.filter_type;
-	if (filter_type == RTE_MACVLAN_PERFECT_MATCH ||
-		filter_type == RTE_MACVLAN_HASH_MATCH) {
+	if (filter_type == I40E_MACVLAN_PERFECT_MATCH ||
+		filter_type == I40E_MACVLAN_HASH_MATCH) {
 		if (vlan_num == 0) {
 			PMD_DRV_LOG(ERR, "VLAN number shouldn't be 0");
 			return I40E_ERR_PARAM;
 		}
-	} else if (filter_type == RTE_MAC_PERFECT_MATCH ||
-			filter_type == RTE_MAC_HASH_MATCH)
+	} else if (filter_type == I40E_MAC_PERFECT_MATCH ||
+			filter_type == I40E_MAC_HASH_MATCH)
 		vlan_num = 1;
 
 	mv_f = rte_zmalloc("macvlan_data", vlan_num * sizeof(*mv_f), 0);
@@ -7518,8 +7518,8 @@ i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct rte_ether_addr *addr)
 		rte_memcpy(&mv_f[i].macaddr, &f->mac_info.mac_addr,
 				ETH_ADDR_LEN);
 	}
-	if (filter_type == RTE_MACVLAN_PERFECT_MATCH ||
-			filter_type == RTE_MACVLAN_HASH_MATCH) {
+	if (filter_type == I40E_MACVLAN_PERFECT_MATCH ||
+			filter_type == I40E_MACVLAN_HASH_MATCH) {
 		ret = i40e_find_all_vlan_for_mac(vsi, mv_f, vlan_num, addr);
 		if (ret != I40E_SUCCESS)
 			goto DONE;

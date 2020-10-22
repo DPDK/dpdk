@@ -57,17 +57,6 @@ enum rte_filter_op {
 };
 
 /**
- * MAC filter type
- */
-enum rte_mac_filter_type {
-	RTE_MAC_PERFECT_MATCH = 1, /**< exact match of MAC addr. */
-	RTE_MACVLAN_PERFECT_MATCH, /**< exact match of MAC addr and VLAN ID. */
-	RTE_MAC_HASH_MATCH, /**< hash match of MAC addr. */
-	/** hash match of MAC addr and exact match of VLAN ID. */
-	RTE_MACVLAN_HASH_MATCH,
-};
-
-/**
  * Define all structures for Ethertype Filter type.
  */
 

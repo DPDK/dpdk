@@ -289,10 +289,21 @@ struct i40e_adapter;
 struct rte_pci_driver;
 
 /**
+ * MAC filter type
+ */
+enum i40e_mac_filter_type {
+	I40E_MAC_PERFECT_MATCH = 1, /**< exact match of MAC addr. */
+	I40E_MACVLAN_PERFECT_MATCH, /**< exact match of MAC addr and VLAN ID. */
+	I40E_MAC_HASH_MATCH, /**< hash match of MAC addr. */
+	/** hash match of MAC addr and exact match of VLAN ID. */
+	I40E_MACVLAN_HASH_MATCH,
+};
+
+/**
  * MAC filter structure
  */
 struct i40e_mac_filter_info {
-	enum rte_mac_filter_type filter_type;
+	enum i40e_mac_filter_type filter_type;
 	struct rte_ether_addr mac_addr;
 };
 
@@ -347,7 +358,7 @@ struct i40e_veb {
 /* i40e MACVLAN filter structure */
 struct i40e_macvlan_filter {
 	struct rte_ether_addr macaddr;
-	enum rte_mac_filter_type filter_type;
+	enum i40e_mac_filter_type filter_type;
 	uint16_t vlan_id;
 };
 
