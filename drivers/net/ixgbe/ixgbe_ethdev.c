@@ -6806,7 +6806,7 @@ ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 }
 
 static int
-ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
+ixgbe_dev_filter_ctrl(__rte_unused struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
 		     enum rte_filter_op filter_op,
 		     void *arg)
@@ -6814,9 +6814,6 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_FDIR:
-		ret = ixgbe_fdir_ctrl_func(dev, filter_op, arg);
-		break;
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
 			return -EINVAL;

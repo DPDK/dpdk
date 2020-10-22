@@ -394,12 +394,6 @@ enic_ring_incr(uint32_t n_descriptors, uint32_t idx)
 }
 
 int dev_is_enic(struct rte_eth_dev *dev);
-void enic_fdir_stats_get(struct enic *enic,
-			 struct rte_eth_fdir_stats *stats);
-int enic_fdir_add_fltr(struct enic *enic,
-		       struct rte_eth_fdir_filter *params);
-int enic_fdir_del_fltr(struct enic *enic,
-		       struct rte_eth_fdir_filter *params);
 void enic_free_wq(void *txq);
 int enic_alloc_intr_resources(struct enic *enic);
 int enic_setup_finish(struct enic *enic);
@@ -464,7 +458,6 @@ bool enic_use_vector_rx_handler(struct rte_eth_dev *eth_dev);
 void enic_pick_rx_handler(struct rte_eth_dev *eth_dev);
 void enic_pick_tx_handler(struct rte_eth_dev *eth_dev);
 void enic_fdir_info(struct enic *enic);
-void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
 int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params);
 int enic_vf_representor_uninit(struct rte_eth_dev *ethdev);
 int enic_fm_allocate_switch_domain(struct enic *pf);

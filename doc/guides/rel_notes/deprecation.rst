@@ -90,8 +90,8 @@ Deprecation Notices
 
 
 * ethdev: the legacy filter API, including
-  ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
-  as filter types FDIR, is superseded by the generic flow API (rte_flow) in
+  ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()``
+  is superseded by the generic flow API (rte_flow) in
   PMDs that implement the latter.
   The legacy API will be removed in DPDK 20.11.
 

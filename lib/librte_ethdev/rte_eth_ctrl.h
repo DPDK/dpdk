@@ -372,9 +372,7 @@ struct rte_eth_fdir_action {
 };
 
 /**
- * A structure used to define the flow director filter entry by filter_ctrl API
- * It supports RTE_ETH_FILTER_FDIR with RTE_ETH_FILTER_ADD and
- * RTE_ETH_FILTER_DELETE operations.
+ * A structure used to define the flow director filter entry by filter_ctrl API.
  */
 struct rte_eth_fdir_filter {
 	uint32_t soft_id;
@@ -520,29 +518,6 @@ struct rte_eth_fdir_stats {
 	uint64_t f_remove;     /**< Number of failed removed filters. */
 	uint32_t guarant_cnt;  /**< Number of filters in guaranteed spaces. */
 	uint32_t best_cnt;     /**< Number of filters in best effort spaces. */
-};
-
-/**
- * Flow Director filter information types.
- */
-enum rte_eth_fdir_filter_info_type {
-	RTE_ETH_FDIR_FILTER_INFO_TYPE_UNKNOWN = 0,
-	/** Flow Director filter input set configuration */
-	RTE_ETH_FDIR_FILTER_INPUT_SET_SELECT,
-	RTE_ETH_FDIR_FILTER_INFO_TYPE_MAX,
-};
-
-/**
- * A structure used to set FDIR filter information, to support filter type
- * of 'RTE_ETH_FILTER_FDIR' RTE_ETH_FDIR_FILTER_INPUT_SET_SELECT operation.
- */
-struct rte_eth_fdir_filter_info {
-	enum rte_eth_fdir_filter_info_type info_type; /**< Information type */
-	/** Details of fdir filter information */
-	union {
-		/** Flow Director input set configuration per port */
-		struct rte_eth_input_set_conf input_set_conf;
-	} info;
 };
 
 /**

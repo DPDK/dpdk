@@ -293,11 +293,6 @@ int qede_ntuple_filter_conf(struct rte_eth_dev *eth_dev,
 
 int qede_check_fdir_support(struct rte_eth_dev *eth_dev);
 
-uint16_t qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
-				 struct rte_eth_fdir_filter *fdir,
-				 void *buff,
-				 struct ecore_arfs_config_params *params);
-
 void qede_fdir_dealloc_resc(struct rte_eth_dev *eth_dev);
 
 int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg);

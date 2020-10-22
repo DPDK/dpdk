@@ -909,13 +909,6 @@ struct mlx5_flow_meter_profile {
 	uint32_t ref_cnt; /**< Use count. */
 };
 
-/* Fdir flow structure */
-struct mlx5_fdir_flow {
-	LIST_ENTRY(mlx5_fdir_flow) next; /* Pointer to the next element. */
-	struct mlx5_fdir *fdir; /* Pointer to fdir. */
-	uint32_t rix_flow; /* Index to flow. */
-};
-
 #define MLX5_MAX_TUNNELS 256
 #define MLX5_TNL_MISS_RULE_PRIORITY 3
 #define MLX5_TNL_MISS_FDB_JUMP_GRP  0x1234faac
@@ -1028,7 +1021,6 @@ struct rte_flow {
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
 	uint32_t drv_type:2; /**< Driver type. */
-	uint32_t fdir:1; /**< Identifier of associated FDIR if any. */
 	uint32_t tunnel:1;
 	uint32_t meter:16; /**< Holds flow meter id. */
 	uint32_t rix_mreg_copy;

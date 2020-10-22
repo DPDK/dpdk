@@ -921,7 +921,9 @@ int all_ports_stopped(void);
 int port_is_stopped(portid_t port_id);
 int port_is_started(portid_t port_id);
 void pmd_test_exit(void);
+#if defined(RTE_NET_I40E) || defined(RTE_NET_IXGBE)
 void fdir_get_infos(portid_t port_id);
+#endif
 void fdir_set_flex_mask(portid_t port_id,
 			   struct rte_eth_fdir_flex_mask *cfg);
 void fdir_set_flex_payload(portid_t port_id,

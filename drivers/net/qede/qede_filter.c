@@ -130,14 +130,6 @@ const struct _qede_udp_tunn_types {
  */
 #define QEDE_MAX_FDIR_PKT_LEN			(86)
 
-static inline bool qede_valid_flow(uint16_t flow_type)
-{
-	return  ((flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_TCP) ||
-		 (flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_UDP) ||
-		 (flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_TCP) ||
-		 (flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP));
-}
-
 static uint16_t
 qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 			struct qede_arfs_entry *arfs,
@@ -195,74 +187,6 @@ void qede_fdir_dealloc_resc(struct rte_eth_dev *eth_dev)
 			rte_free(tmp);
 		}
 	}
-}
-
-static int
-qede_fdir_to_arfs_filter(struct rte_eth_dev *eth_dev,
-			 struct rte_eth_fdir_filter *fdir,
-			 struct qede_arfs_entry *arfs)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct rte_eth_fdir_input *input;
-
-	static const uint8_t next_proto[] = {
-		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] = IPPROTO_TCP,
-		[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] = IPPROTO_UDP,
-		[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] = IPPROTO_TCP,
-		[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] = IPPROTO_UDP,
-	};
-
-	input = &fdir->input;
-
-	DP_INFO(edev, "flow_type %d\n", input->flow_type);
-
-	switch (input->flow_type) {
-	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
-	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
-		/* fill the common ip header */
-		arfs->tuple.eth_proto = RTE_ETHER_TYPE_IPV4;
-		arfs->tuple.dst_ipv4 = input->flow.ip4_flow.dst_ip;
-		arfs->tuple.src_ipv4 = input->flow.ip4_flow.src_ip;
-		arfs->tuple.ip_proto = next_proto[input->flow_type];
-
-		/* UDP */
-		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_UDP) {
-			arfs->tuple.dst_port = input->flow.udp4_flow.dst_port;
-			arfs->tuple.src_port = input->flow.udp4_flow.src_port;
-		} else { /* TCP */
-			arfs->tuple.dst_port = input->flow.tcp4_flow.dst_port;
-			arfs->tuple.src_port = input->flow.tcp4_flow.src_port;
-		}
-		break;
-	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
-	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
-		arfs->tuple.eth_proto = RTE_ETHER_TYPE_IPV6;
-		arfs->tuple.ip_proto = next_proto[input->flow_type];
-		rte_memcpy(arfs->tuple.dst_ipv6,
-			   &input->flow.ipv6_flow.dst_ip,
-			   IPV6_ADDR_LEN);
-		rte_memcpy(arfs->tuple.src_ipv6,
-			   &input->flow.ipv6_flow.src_ip,
-			   IPV6_ADDR_LEN);
-
-		/* UDP */
-		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP) {
-			arfs->tuple.dst_port = input->flow.udp6_flow.dst_port;
-			arfs->tuple.src_port = input->flow.udp6_flow.src_port;
-		} else { /* TCP */
-			arfs->tuple.dst_port = input->flow.tcp6_flow.dst_port;
-			arfs->tuple.src_port = input->flow.tcp6_flow.src_port;
-		}
-		break;
-	default:
-		DP_ERR(edev, "Unsupported flow_type %u\n",
-		       input->flow_type);
-		return -ENOTSUP;
-	}
-
-	arfs->rx_queue = fdir->action.rx_queue;
-	return 0;
 }
 
 static int
@@ -397,61 +321,6 @@ err1:
 	return rc;
 }
 
-static int
-qede_config_cmn_fdir_filter(struct rte_eth_dev *eth_dev,
-			    struct rte_eth_fdir_filter *fdir_filter,
-			    bool add)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct qede_arfs_entry *arfs = NULL;
-	int rc = 0;
-
-	arfs = rte_malloc(NULL, sizeof(struct qede_arfs_entry),
-				  RTE_CACHE_LINE_SIZE);
-	if (!arfs) {
-		DP_ERR(edev, "Did not allocate memory for arfs\n");
-		return -ENOMEM;
-	}
-
-	rc = qede_fdir_to_arfs_filter(eth_dev, fdir_filter, arfs);
-	if (rc < 0)
-		return rc;
-
-	rc = qede_config_arfs_filter(eth_dev, arfs, add);
-	if (rc < 0)
-		rte_free(arfs);
-
-	return rc;
-}
-
-static int
-qede_fdir_filter_add(struct rte_eth_dev *eth_dev,
-		     struct rte_eth_fdir_filter *fdir,
-		     bool add)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-
-	if (!qede_valid_flow(fdir->input.flow_type)) {
-		DP_ERR(edev, "invalid flow_type input\n");
-		return -EINVAL;
-	}
-
-	if (fdir->action.rx_queue >= QEDE_RSS_COUNT(eth_dev)) {
-		DP_ERR(edev, "invalid queue number %u\n",
-		       fdir->action.rx_queue);
-		return -EINVAL;
-	}
-
-	if (fdir->input.flow_ext.is_vf) {
-		DP_ERR(edev, "flowdir is not supported over VF\n");
-		return -EINVAL;
-	}
-
-	return qede_config_cmn_fdir_filter(eth_dev, fdir, add);
-}
-
 /* Fills the L3/L4 headers and returns the actual length  of flowdir packet */
 static uint16_t
 qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
@@ -550,44 +419,6 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 	}
 
 	return len;
-}
-
-static int
-qede_fdir_filter_conf(struct rte_eth_dev *eth_dev,
-		      enum rte_filter_op filter_op,
-		      void *arg)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct rte_eth_fdir_filter *fdir;
-	int ret;
-
-	fdir = (struct rte_eth_fdir_filter *)arg;
-	switch (filter_op) {
-	case RTE_ETH_FILTER_NOP:
-		/* Typically used to query flowdir support */
-		if (ECORE_IS_CMT(edev)) {
-			DP_ERR(edev, "flowdir is not supported in 100G mode\n");
-			return -ENOTSUP;
-		}
-		return 0; /* means supported */
-	case RTE_ETH_FILTER_ADD:
-		ret = qede_fdir_filter_add(eth_dev, fdir, 1);
-	break;
-	case RTE_ETH_FILTER_DELETE:
-		ret = qede_fdir_filter_add(eth_dev, fdir, 0);
-	break;
-	case RTE_ETH_FILTER_FLUSH:
-	case RTE_ETH_FILTER_UPDATE:
-	case RTE_ETH_FILTER_INFO:
-		return -ENOTSUP;
-	break;
-	default:
-		DP_ERR(edev, "unknown operation %u", filter_op);
-		ret = -EINVAL;
-	}
-
-	return ret;
 }
 
 static int
@@ -1228,8 +1059,6 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_FDIR:
-		return qede_fdir_filter_conf(eth_dev, filter_op, arg);
 	case RTE_ETH_FILTER_GENERIC:
 		if (ECORE_IS_CMT(edev)) {
 			DP_ERR(edev, "flowdir is not supported in 100G mode\n");

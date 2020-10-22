@@ -9685,89 +9685,6 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 	return 0;
 }
 
-int
-i40e_fdir_filter_inset_select(struct i40e_pf *pf,
-			 struct rte_eth_input_set_conf *conf)
-{
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	enum i40e_filter_pctype pctype;
-	uint64_t input_set, inset_reg = 0;
-	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG] = {0};
-	int ret, i, num;
-
-	if (!hw || !conf) {
-		PMD_DRV_LOG(ERR, "Invalid pointer");
-		return -EFAULT;
-	}
-	if (conf->op != RTE_ETH_INPUT_SET_SELECT &&
-	    conf->op != RTE_ETH_INPUT_SET_ADD) {
-		PMD_DRV_LOG(ERR, "Unsupported input set operation");
-		return -EINVAL;
-	}
-
-	pctype = i40e_flowtype_to_pctype(pf->adapter, conf->flow_type);
-
-	if (pctype == I40E_FILTER_PCTYPE_INVALID) {
-		PMD_DRV_LOG(ERR, "invalid flow_type input.");
-		return -EINVAL;
-	}
-
-	ret = i40e_parse_input_set(&input_set, pctype, conf->field,
-				   conf->inset_size);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "Failed to parse input set");
-		return -EINVAL;
-	}
-
-	/* get inset value in register */
-	inset_reg = i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 1));
-	inset_reg <<= I40E_32_BIT_WIDTH;
-	inset_reg |= i40e_read_rx_ctl(hw, I40E_PRTQF_FD_INSET(pctype, 0));
-
-	/* Can not change the inset reg for flex payload for fdir,
-	 * it is done by writing I40E_PRTQF_FD_FLXINSET
-	 * in i40e_set_flex_mask_on_pctype.
-	 */
-	if (conf->op == RTE_ETH_INPUT_SET_SELECT)
-		inset_reg &= I40E_REG_INSET_FLEX_PAYLOAD_WORDS;
-	else
-		input_set |= pf->fdir.input_set[pctype];
-	num = i40e_generate_inset_mask_reg(input_set, mask_reg,
-					   I40E_INSET_MASK_NUM_REG);
-	if (num < 0)
-		return -EINVAL;
-	if (pf->support_multi_driver && num > 0) {
-		PMD_DRV_LOG(ERR, "FDIR bit mask is not supported.");
-		return -ENOTSUP;
-	}
-
-	inset_reg |= i40e_translate_input_set_reg(hw->mac.type, input_set);
-
-	i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
-			      (uint32_t)(inset_reg & UINT32_MAX));
-	i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 1),
-			     (uint32_t)((inset_reg >>
-			     I40E_32_BIT_WIDTH) & UINT32_MAX));
-
-	if (!pf->support_multi_driver) {
-		for (i = 0; i < num; i++)
-			i40e_check_write_global_reg(hw,
-						    I40E_GLQF_FD_MSK(i, pctype),
-						    mask_reg[i]);
-		/*clear unused mask registers of the pctype */
-		for (i = num; i < I40E_INSET_MASK_NUM_REG; i++)
-			i40e_check_write_global_reg(hw,
-						    I40E_GLQF_FD_MSK(i, pctype),
-						    0);
-	} else {
-		PMD_DRV_LOG(ERR, "FDIR bit mask is not supported.");
-	}
-	I40E_WRITE_FLUSH(hw);
-
-	pf->fdir.input_set[pctype] = input_set;
-	return 0;
-}
-
 /* Convert ethertype filter structure */
 static int
 i40e_ethertype_filter_convert(const struct rte_eth_ethertype_filter *input,
@@ -9945,9 +9862,6 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_FDIR:
-		ret = i40e_fdir_ctrl_func(dev, filter_op, arg);
-		break;
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
 			return -EINVAL;

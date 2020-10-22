@@ -73,51 +73,6 @@ static const struct vic_speed_capa {
 RTE_LOG_REGISTER(enic_pmd_logtype, pmd.net.enic, INFO);
 
 static int
-enicpmd_fdir_ctrl_func(struct rte_eth_dev *eth_dev,
-			enum rte_filter_op filter_op, void *arg)
-{
-	struct enic *enic = pmd_priv(eth_dev);
-	int ret = 0;
-
-	ENICPMD_FUNC_TRACE();
-	if (filter_op == RTE_ETH_FILTER_NOP)
-		return 0;
-
-	if (arg == NULL && filter_op != RTE_ETH_FILTER_FLUSH)
-		return -EINVAL;
-
-	switch (filter_op) {
-	case RTE_ETH_FILTER_ADD:
-	case RTE_ETH_FILTER_UPDATE:
-		ret = enic_fdir_add_fltr(enic,
-			(struct rte_eth_fdir_filter *)arg);
-		break;
-
-	case RTE_ETH_FILTER_DELETE:
-		ret = enic_fdir_del_fltr(enic,
-			(struct rte_eth_fdir_filter *)arg);
-		break;
-
-	case RTE_ETH_FILTER_STATS:
-		enic_fdir_stats_get(enic, (struct rte_eth_fdir_stats *)arg);
-		break;
-
-	case RTE_ETH_FILTER_FLUSH:
-		dev_warning(enic, "unsupported operation %u", filter_op);
-		ret = -ENOTSUP;
-		break;
-	case RTE_ETH_FILTER_INFO:
-		enic_fdir_info_get(enic, (struct rte_eth_fdir_info *)arg);
-		break;
-	default:
-		dev_err(enic, "unknown operation %u", filter_op);
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
-
-static int
 enicpmd_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
 		     enum rte_filter_op filter_op,
@@ -142,9 +97,6 @@ enicpmd_dev_filter_ctrl(struct rte_eth_dev *dev,
 			*(const void **)arg = &enic_fm_flow_ops;
 		else
 			*(const void **)arg = &enic_flow_ops;
-		break;
-	case RTE_ETH_FILTER_FDIR:
-		ret = enicpmd_fdir_ctrl_func(dev, filter_op, arg);
 		break;
 	default:
 		dev_warning(enic, "Filter type (%d) not supported",

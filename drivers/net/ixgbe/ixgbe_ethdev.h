@@ -727,8 +727,6 @@ int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
 uint32_t ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
 
-int ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
-			enum rte_filter_op filter_op, void *arg);
 void ixgbe_fdir_filter_restore(struct rte_eth_dev *dev);
 int ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev);
 

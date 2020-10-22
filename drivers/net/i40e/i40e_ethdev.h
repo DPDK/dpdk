@@ -664,8 +664,7 @@ struct i40e_fdir_action {
 };
 
 /* A structure used to define the flow director filter entry by filter_ctrl API
- * It supports RTE_ETH_FILTER_FDIR with RTE_ETH_FILTER_ADD and
- * RTE_ETH_FILTER_DELETE operations.
+ * It supports RTE_ETH_FILTER_FDIR data representation.
  */
 struct i40e_fdir_filter_conf {
 	uint32_t soft_id;
@@ -1369,16 +1368,11 @@ void i40e_fdir_info_get(struct rte_eth_dev *dev,
 			struct rte_eth_fdir_info *fdir);
 void i40e_fdir_stats_get(struct rte_eth_dev *dev,
 			 struct rte_eth_fdir_stats *stat);
-int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
-			  enum rte_filter_op filter_op,
-			  void *arg);
 int i40e_select_filter_input_set(struct i40e_hw *hw,
 				 struct rte_eth_input_set_conf *conf,
 				 enum rte_filter_type filter);
 void i40e_fdir_filter_restore(struct i40e_pf *pf);
 int i40e_hash_filter_inset_select(struct i40e_hw *hw,
-			     struct rte_eth_input_set_conf *conf);
-int i40e_fdir_filter_inset_select(struct i40e_pf *pf,
 			     struct rte_eth_input_set_conf *conf);
 int i40e_pf_host_send_msg_to_vf(struct i40e_pf_vf *vf, uint32_t opcode,
 				uint32_t retval, uint8_t *msg,
@@ -1407,9 +1401,6 @@ uint64_t i40e_get_default_input_set(uint16_t pctype);
 int i40e_ethertype_filter_set(struct i40e_pf *pf,
 			      struct rte_eth_ethertype_filter *filter,
 			      bool add);
-int i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
-			     const struct rte_eth_fdir_filter *filter,
-			     bool add);
 struct rte_flow *
 i40e_fdir_entry_pool_get(struct i40e_fdir_info *fdir_info);
 void i40e_fdir_entry_pool_put(struct i40e_fdir_info *fdir_info,
