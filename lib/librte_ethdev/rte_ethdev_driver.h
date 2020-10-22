@@ -1365,6 +1365,16 @@ struct rte_eth_ethertype_filter {
 	uint16_t queue;               /**< Queue assigned to when match*/
 };
 
+/**
+ * A structure used to define the TCP syn filter entry
+ * to support RTE_ETH_FILTER_SYN data representation.
+ */
+struct rte_eth_syn_filter {
+	/** 1 - higher priority than other filters, 0 - lower priority. */
+	uint8_t hig_pri;
+	uint16_t queue;      /**< Queue assigned to when match */
+};
+
 #ifdef __cplusplus
 }
 #endif

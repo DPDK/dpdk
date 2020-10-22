@@ -990,9 +990,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" priority (prio_value) queue (queue_id)\n"
 			"    Add/Del a 5tuple filter.\n\n"
 
-			"syn_filter (port_id) (add|del) priority (high|low) queue (queue_id)"
-			"    Add/Del syn filter.\n\n"
-
 			"flow_director_filter (port_id) mode IP (add|del|update)"
 			" flow (ipv4-other|ipv4-frag|ipv6-other|ipv6-frag)"
 			" src (src_ip_address) dst (dst_ip_address)"
@@ -9978,97 +9975,6 @@ cmdline_parse_inst_t cmd_dump_one = {
 	.tokens = {        /* token list, NULL terminated */
 		(void *)&cmd_dump_one_dump,
 		(void *)&cmd_dump_one_name,
-		NULL,
-	},
-};
-
-/* *** Add/Del syn filter *** */
-struct cmd_syn_filter_result {
-	cmdline_fixed_string_t filter;
-	portid_t port_id;
-	cmdline_fixed_string_t ops;
-	cmdline_fixed_string_t priority;
-	cmdline_fixed_string_t high;
-	cmdline_fixed_string_t queue;
-	uint16_t queue_id;
-};
-
-static void
-cmd_syn_filter_parsed(void *parsed_result,
-			__rte_unused struct cmdline *cl,
-			__rte_unused void *data)
-{
-	struct cmd_syn_filter_result *res = parsed_result;
-	struct rte_eth_syn_filter syn_filter;
-	int ret = 0;
-
-	ret = rte_eth_dev_filter_supported(res->port_id,
-					RTE_ETH_FILTER_SYN);
-	if (ret < 0) {
-		printf("syn filter is not supported on port %u.\n",
-				res->port_id);
-		return;
-	}
-
-	memset(&syn_filter, 0, sizeof(syn_filter));
-
-	if (!strcmp(res->ops, "add")) {
-		if (!strcmp(res->high, "high"))
-			syn_filter.hig_pri = 1;
-		else
-			syn_filter.hig_pri = 0;
-
-		syn_filter.queue = res->queue_id;
-		ret = rte_eth_dev_filter_ctrl(res->port_id,
-						RTE_ETH_FILTER_SYN,
-						RTE_ETH_FILTER_ADD,
-						&syn_filter);
-	} else
-		ret = rte_eth_dev_filter_ctrl(res->port_id,
-						RTE_ETH_FILTER_SYN,
-						RTE_ETH_FILTER_DELETE,
-						&syn_filter);
-
-	if (ret < 0)
-		printf("syn filter programming error: (%s)\n",
-				strerror(-ret));
-}
-
-cmdline_parse_token_string_t cmd_syn_filter_filter =
-	TOKEN_STRING_INITIALIZER(struct cmd_syn_filter_result,
-	filter, "syn_filter");
-cmdline_parse_token_num_t cmd_syn_filter_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_syn_filter_result,
-	port_id, UINT16);
-cmdline_parse_token_string_t cmd_syn_filter_ops =
-	TOKEN_STRING_INITIALIZER(struct cmd_syn_filter_result,
-	ops, "add#del");
-cmdline_parse_token_string_t cmd_syn_filter_priority =
-	TOKEN_STRING_INITIALIZER(struct cmd_syn_filter_result,
-				priority, "priority");
-cmdline_parse_token_string_t cmd_syn_filter_high =
-	TOKEN_STRING_INITIALIZER(struct cmd_syn_filter_result,
-				high, "high#low");
-cmdline_parse_token_string_t cmd_syn_filter_queue =
-	TOKEN_STRING_INITIALIZER(struct cmd_syn_filter_result,
-				queue, "queue");
-cmdline_parse_token_num_t cmd_syn_filter_queue_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_syn_filter_result,
-				queue_id, UINT16);
-
-cmdline_parse_inst_t cmd_syn_filter = {
-	.f = cmd_syn_filter_parsed,
-	.data = NULL,
-	.help_str = "syn_filter <port_id> add|del priority high|low queue "
-		"<queue_id>: Add/Delete syn filter",
-	.tokens = {
-		(void *)&cmd_syn_filter_filter,
-		(void *)&cmd_syn_filter_port_id,
-		(void *)&cmd_syn_filter_ops,
-		(void *)&cmd_syn_filter_priority,
-		(void *)&cmd_syn_filter_high,
-		(void *)&cmd_syn_filter_queue,
-		(void *)&cmd_syn_filter_queue_id,
 		NULL,
 	},
 };
@@ -19636,7 +19542,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_rss_hash_key,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
-	(cmdline_parse_inst_t *)&cmd_syn_filter,
 	(cmdline_parse_inst_t *)&cmd_2tuple_filter,
 	(cmdline_parse_inst_t *)&cmd_5tuple_filter,
 	(cmdline_parse_inst_t *)&cmd_add_del_ip_flow_director,

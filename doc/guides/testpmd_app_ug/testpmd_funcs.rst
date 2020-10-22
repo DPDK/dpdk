@@ -3352,27 +3352,6 @@ Example, to add/remove an 5tuple filter rule::
             dst_port 64 src_port 32 protocol 0x06 mask 0x1F \
             flags 0x0 priority 3 queue 3
 
-syn_filter
-~~~~~~~~~~
-
-Using the  SYN filter, TCP packets whose *SYN* flag is set can be forwarded to a separate queue::
-
-   syn_filter (port_id) (add|del) priority (high|low) queue (queue_id)
-
-The available information parameters are:
-
-* ``port_id``: The port which the SYN filter assigned on.
-
-* ``high``: This SYN filter has higher priority than other filters.
-
-* ``low``: This SYN filter has lower priority than other filters.
-
-* ``queue_id``: The receive queue associated with this SYN filter
-
-Example::
-
-   testpmd> syn_filter 0 add priority high queue 3
-
 .. _testpmd_flow_director:
 
 flow_director_filter
