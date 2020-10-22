@@ -832,37 +832,14 @@ rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
 	}
 }
 
-static void
-service_dump_one(FILE *f, struct rte_service_spec_impl *s, uint32_t reset)
-{
-	/* avoid divide by zero */
-	int calls = 1;
-	if (s->calls != 0)
-		calls = s->calls;
-
-	if (reset) {
-		s->cycles_spent = 0;
-		s->calls = 0;
-		return;
-	}
-
-	if (f == NULL)
-		return;
-
-	fprintf(f, "  %s: stats %d\tcalls %"PRIu64"\tcycles %"
-			PRIu64"\tavg: %"PRIu64"\n",
-			s->spec.name, service_stats_enabled(s), s->calls,
-			s->cycles_spent, s->cycles_spent / calls);
-}
-
 int32_t
 rte_service_attr_reset_all(uint32_t id)
 {
 	struct rte_service_spec_impl *s;
 	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 
-	int reset = 1;
-	service_dump_one(NULL, s, reset);
+	s->cycles_spent = 0;
+	s->calls = 0;
 	return 0;
 }
 
@@ -884,7 +861,21 @@ rte_service_lcore_attr_reset_all(uint32_t lcore)
 }
 
 static void
-service_dump_calls_per_lcore(FILE *f, uint32_t lcore, uint32_t reset)
+service_dump_one(FILE *f, struct rte_service_spec_impl *s)
+{
+	/* avoid divide by zero */
+	int calls = 1;
+
+	if (s->calls != 0)
+		calls = s->calls;
+	fprintf(f, "  %s: stats %d\tcalls %"PRIu64"\tcycles %"
+			PRIu64"\tavg: %"PRIu64"\n",
+			s->spec.name, service_stats_enabled(s), s->calls,
+			s->cycles_spent, s->cycles_spent / calls);
+}
+
+static void
+service_dump_calls_per_lcore(FILE *f, uint32_t lcore)
 {
 	uint32_t i;
 	struct core_state *cs = &lcore_states[lcore];
@@ -894,8 +885,6 @@ service_dump_calls_per_lcore(FILE *f, uint32_t lcore, uint32_t reset)
 		if (!service_valid(i))
 			continue;
 		fprintf(f, "%"PRIu64"\t", cs->calls_per_service[i]);
-		if (reset)
-			cs->calls_per_service[i] = 0;
 	}
 	fprintf(f, "\n");
 }
@@ -911,8 +900,7 @@ rte_service_dump(FILE *f, uint32_t id)
 		struct rte_service_spec_impl *s;
 		SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 		fprintf(f, "Service %s Summary\n", s->spec.name);
-		uint32_t reset = 0;
-		service_dump_one(f, s, reset);
+		service_dump_one(f, s);
 		return 0;
 	}
 
@@ -921,8 +909,7 @@ rte_service_dump(FILE *f, uint32_t id)
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
 		if (!service_valid(i))
 			continue;
-		uint32_t reset = 0;
-		service_dump_one(f, &rte_services[i], reset);
+		service_dump_one(f, &rte_services[i]);
 	}
 
 	fprintf(f, "Service Cores Summary\n");
@@ -930,8 +917,7 @@ rte_service_dump(FILE *f, uint32_t id)
 		if (lcore_config[i].core_role != ROLE_SERVICE)
 			continue;
 
-		uint32_t reset = 0;
-		service_dump_calls_per_lcore(f, i, reset);
+		service_dump_calls_per_lcore(f, i);
 	}
 
 	return 0;
