@@ -457,7 +457,8 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 		VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC |
 		VIRTCHNL_VF_OFFLOAD_FDIR_PF |
 		VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF |
-		VIRTCHNL_VF_OFFLOAD_REQ_QUEUES;
+		VIRTCHNL_VF_OFFLOAD_REQ_QUEUES |
+		VIRTCHNL_VF_LARGE_NUM_QPAIRS;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);
@@ -1266,4 +1267,32 @@ iavf_request_queues(struct iavf_adapter *adapter, uint16_t num)
 		"available", num_queue_pairs);
 
 	return -1;
+}
+
+int
+iavf_get_max_rss_queue_region(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct iavf_cmd_info args;
+	uint16_t qregion_width;
+	int err;
+
+	args.ops = VIRTCHNL_OP_GET_MAX_RSS_QREGION;
+	args.in_args = NULL;
+	args.in_args_size = 0;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to execute command of VIRTCHNL_OP_GET_MAX_RSS_QREGION");
+		return err;
+	}
+
+	qregion_width =
+	((struct virtchnl_max_rss_qregion *)args.out_buffer)->qregion_width;
+
+	vf->max_rss_qregion = (uint16_t)(1 << qregion_width);
+
+	return 0;
 }

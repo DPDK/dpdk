@@ -19,7 +19,8 @@
 #define IAVF_FRAME_SIZE_MAX       9728
 #define IAVF_QUEUE_BASE_ADDR_UNIT 128
 
-#define IAVF_MAX_NUM_QUEUES       16
+#define IAVF_MAX_NUM_QUEUES_DFLT	 16
+#define IAVF_MAX_NUM_QUEUES_LV		 256
 
 #define IAVF_NUM_MACADDR_MAX      64
 
@@ -149,6 +150,7 @@ struct iavf_info {
 	uint8_t *rss_key;
 	uint16_t nb_msix;   /* number of MSI-X interrupts on Rx */
 	uint16_t msix_base; /* msix vector base from */
+	uint16_t max_rss_qregion; /* max RSS queue region supported by PF */
 	/* queue bitmask for each vector */
 	uint16_t rxq_map[IAVF_MAX_MSIX_VECTORS];
 	struct iavf_flow_list flow_list;
@@ -157,6 +159,8 @@ struct iavf_info {
 	struct iavf_parser_list dist_parser_list;
 
 	struct iavf_fdir_info fdir; /* flow director info */
+	/* indicate large VF support enabled or not */
+	bool lv_enabled;
 };
 
 #define IAVF_MAX_PKT_TYPE 1024
@@ -288,4 +292,5 @@ int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num, bool add);
 int iavf_request_queues(struct iavf_adapter *adapter, uint16_t num);
+int iavf_get_max_rss_queue_region(struct iavf_adapter *adapter);
 #endif /* _IAVF_ETHDEV_H_ */

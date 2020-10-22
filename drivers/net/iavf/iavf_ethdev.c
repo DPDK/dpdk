@@ -209,7 +209,7 @@ iavf_init_rss(struct iavf_adapter *adapter)
 
 	rss_conf = &adapter->eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
 	nb_q = RTE_MIN(adapter->eth_dev->data->nb_rx_queues,
-		       IAVF_MAX_NUM_QUEUES);
+		       vf->max_rss_qregion);
 
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF)) {
 		PMD_DRV_LOG(DEBUG, "RSS is not supported");
@@ -256,12 +256,40 @@ iavf_init_rss(struct iavf_adapter *adapter)
 }
 
 static int
+iavf_queues_req_reset(struct rte_eth_dev *dev, uint16_t num)
+{
+	struct iavf_adapter *ad =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(ad);
+	int ret;
+
+	ret = iavf_request_queues(ad, num);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "request queues from PF failed");
+		return ret;
+	}
+	PMD_DRV_LOG(INFO, "change queue pairs from %u to %u",
+			vf->vsi_res->num_queue_pairs, num);
+
+	ret = iavf_dev_reset(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "vf reset failed");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
 iavf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *ad =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(ad);
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	uint16_t num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
+		dev->data->nb_tx_queues);
+	int ret;
 
 	ad->rx_bulk_alloc_allowed = true;
 	/* Initialize to TRUE. If any of Rx queues doesn't meet the
@@ -272,6 +300,46 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
+	/* Large VF setting */
+	if (num_queue_pairs > IAVF_MAX_NUM_QUEUES_DFLT) {
+		if (!(vf->vf_res->vf_cap_flags &
+				VIRTCHNL_VF_LARGE_NUM_QPAIRS)) {
+			PMD_DRV_LOG(ERR, "large VF is not supported");
+			return -1;
+		}
+
+		if (num_queue_pairs > IAVF_MAX_NUM_QUEUES_LV) {
+			PMD_DRV_LOG(ERR, "queue pairs number cannot be larger than %u",
+				IAVF_MAX_NUM_QUEUES_LV);
+			return -1;
+		}
+
+		ret = iavf_queues_req_reset(dev, num_queue_pairs);
+		if (ret)
+			return ret;
+
+		ret = iavf_get_max_rss_queue_region(ad);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "get max rss queue region failed");
+			return ret;
+		}
+
+		vf->lv_enabled = true;
+	} else {
+		/* Check if large VF is already enabled. If so, disable and
+		 * release redundant queue resource.
+		 */
+		if (vf->lv_enabled) {
+			ret = iavf_queues_req_reset(dev, num_queue_pairs);
+			if (ret)
+				return ret;
+
+			vf->lv_enabled = false;
+		}
+		/* if large VF is not required, use default rss queue region */
+		vf->max_rss_qregion = IAVF_MAX_NUM_QUEUES_DFLT;
+	}
 
 	/* Vlan stripping setting */
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN) {
@@ -586,8 +654,8 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
-	dev_info->max_rx_queues = vf->vsi_res->num_queue_pairs;
-	dev_info->max_tx_queues = vf->vsi_res->num_queue_pairs;
+	dev_info->max_rx_queues = IAVF_MAX_NUM_QUEUES_LV;
+	dev_info->max_tx_queues = IAVF_MAX_NUM_QUEUES_LV;
 	dev_info->min_rx_bufsize = IAVF_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = IAVF_FRAME_SIZE_MAX;
 	dev_info->max_mtu = dev_info->max_rx_pktlen - IAVF_ETH_OVERHEAD;
