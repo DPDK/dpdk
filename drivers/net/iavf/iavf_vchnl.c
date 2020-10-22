@@ -17,6 +17,7 @@
 #include <rte_eal.h>
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
+#include <rte_ethdev_pci.h>
 #include <rte_dev.h>
 
 #include "iavf.h"
@@ -189,7 +190,33 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 		}
 		_clear_cmd(vf);
 		break;
-
+	case VIRTCHNL_OP_REQUEST_QUEUES:
+		/*
+		 * ignore async reply, only wait for system message,
+		 * vf_reset = true if get VIRTCHNL_EVENT_RESET_IMPENDING,
+		 * if not, means request queues failed.
+		 */
+		do {
+			result = iavf_read_msg_from_pf(adapter, args->out_size,
+						   args->out_buffer);
+			if (result == IAVF_MSG_SYS && vf->vf_reset) {
+				break;
+			} else if (result == IAVF_MSG_CMD ||
+				result == IAVF_MSG_ERR) {
+				err = -1;
+				break;
+			}
+			rte_delay_ms(ASQ_DELAY_MS);
+			/* If don't read msg or read sys event, continue */
+		} while (i++ < MAX_TRY_TIMES);
+		if (i >= MAX_TRY_TIMES ||
+			vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
+			err = -1;
+			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
+				    " for cmd %d", vf->cmd_retval, args->ops);
+		}
+		_clear_cmd(vf);
+		break;
 	default:
 		/* For other virtchnl ops in running time,
 		 * wait for the cmd done flag.
@@ -429,7 +456,8 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 	caps = IAVF_BASIC_OFFLOAD_CAPS | VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
 		VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC |
 		VIRTCHNL_VF_OFFLOAD_FDIR_PF |
-		VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF;
+		VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF |
+		VIRTCHNL_VF_OFFLOAD_REQ_QUEUES;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);
@@ -1182,4 +1210,60 @@ iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 	}
 
 	return 0;
+}
+
+int
+iavf_request_queues(struct iavf_adapter *adapter, uint16_t num)
+{
+	struct rte_eth_dev *dev = adapter->eth_dev;
+	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct virtchnl_vf_res_request vfres;
+	struct iavf_cmd_info args;
+	uint16_t num_queue_pairs;
+	int err;
+
+	if (!(vf->vf_res->vf_cap_flags &
+		VIRTCHNL_VF_OFFLOAD_REQ_QUEUES)) {
+		PMD_DRV_LOG(ERR, "request queues not supported");
+		return -1;
+	}
+
+	if (num == 0) {
+		PMD_DRV_LOG(ERR, "queue number cannot be zero");
+		return -1;
+	}
+	vfres.num_queue_pairs = num;
+
+	args.ops = VIRTCHNL_OP_REQUEST_QUEUES;
+	args.in_args = (u8 *)&vfres;
+	args.in_args_size = sizeof(vfres);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	/*
+	 * disable interrupt to avoid the admin queue message to be read
+	 * before iavf_read_msg_from_pf.
+	 */
+	rte_intr_disable(&pci_dev->intr_handle);
+	err = iavf_execute_vf_cmd(adapter, &args);
+	rte_intr_enable(&pci_dev->intr_handle);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to execute command OP_REQUEST_QUEUES");
+		return err;
+	}
+
+	/* request queues succeeded, vf is resetting */
+	if (vf->vf_reset) {
+		PMD_DRV_LOG(INFO, "vf is resetting");
+		return 0;
+	}
+
+	/* request additional queues failed, return available number */
+	num_queue_pairs =
+	  ((struct virtchnl_vf_res_request *)args.out_buffer)->num_queue_pairs;
+	PMD_DRV_LOG(ERR, "request queues failed, only %u queues "
+		"available", num_queue_pairs);
+
+	return -1;
 }

@@ -287,4 +287,5 @@ int iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num, bool add);
+int iavf_request_queues(struct iavf_adapter *adapter, uint16_t num);
 #endif /* _IAVF_ETHDEV_H_ */
