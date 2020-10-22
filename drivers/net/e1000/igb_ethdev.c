@@ -195,11 +195,6 @@ static int igb_add_2tuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
 static int igb_remove_2tuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
-static int eth_igb_get_flex_filter(struct rte_eth_dev *dev,
-			struct rte_eth_flex_filter *filter);
-static int eth_igb_flex_filter_handle(struct rte_eth_dev *dev,
-			enum rte_filter_op filter_op,
-			void *arg);
 static int igb_add_5tuple_filter_82576(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
 static int igb_remove_5tuple_filter_82576(struct rte_eth_dev *dev,
@@ -4127,102 +4122,6 @@ eth_igb_add_del_flex_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int
-eth_igb_get_flex_filter(struct rte_eth_dev *dev,
-			struct rte_eth_flex_filter *filter)
-{
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_filter_info *filter_info =
-		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-	struct e1000_flex_filter flex_filter, *it;
-	uint32_t wufc, queueing, wufc_en = 0;
-
-	memset(&flex_filter, 0, sizeof(struct e1000_flex_filter));
-	flex_filter.filter_info.len = filter->len;
-	flex_filter.filter_info.priority = filter->priority;
-	memcpy(flex_filter.filter_info.dwords, filter->bytes, filter->len);
-	memcpy(flex_filter.filter_info.mask, filter->mask,
-			RTE_ALIGN(filter->len, CHAR_BIT) / CHAR_BIT);
-
-	it = eth_igb_flex_filter_lookup(&filter_info->flex_list,
-				&flex_filter.filter_info);
-	if (it == NULL) {
-		PMD_DRV_LOG(ERR, "filter doesn't exist.");
-		return -ENOENT;
-	}
-
-	wufc = E1000_READ_REG(hw, E1000_WUFC);
-	wufc_en = E1000_WUFC_FLEX_HQ | (E1000_WUFC_FLX0 << it->index);
-
-	if ((wufc & wufc_en) == wufc_en) {
-		uint32_t reg_off = 0;
-		if (it->index < E1000_MAX_FHFT)
-			reg_off = E1000_FHFT(it->index);
-		else
-			reg_off = E1000_FHFT_EXT(it->index - E1000_MAX_FHFT);
-
-		queueing = E1000_READ_REG(hw,
-				reg_off + E1000_FHFT_QUEUEING_OFFSET);
-		filter->len = queueing & E1000_FHFT_QUEUEING_LEN;
-		filter->priority = (queueing & E1000_FHFT_QUEUEING_PRIO) >>
-			E1000_FHFT_QUEUEING_PRIO_SHIFT;
-		filter->queue = (queueing & E1000_FHFT_QUEUEING_QUEUE) >>
-			E1000_FHFT_QUEUEING_QUEUE_SHIFT;
-		return 0;
-	}
-	return -ENOENT;
-}
-
-static int
-eth_igb_flex_filter_handle(struct rte_eth_dev *dev,
-			enum rte_filter_op filter_op,
-			void *arg)
-{
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_eth_flex_filter *filter;
-	int ret = 0;
-
-	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
-
-	if (filter_op == RTE_ETH_FILTER_NOP)
-		return ret;
-
-	if (arg == NULL) {
-		PMD_DRV_LOG(ERR, "arg shouldn't be NULL for operation %u",
-			    filter_op);
-		return -EINVAL;
-	}
-
-	filter = (struct rte_eth_flex_filter *)arg;
-	if (filter->len == 0 || filter->len > E1000_MAX_FLEX_FILTER_LEN
-	    || filter->len % sizeof(uint64_t) != 0) {
-		PMD_DRV_LOG(ERR, "filter's length is out of range");
-		return -EINVAL;
-	}
-	if (filter->priority > E1000_MAX_FLEX_FILTER_PRI) {
-		PMD_DRV_LOG(ERR, "filter's priority is out of range");
-		return -EINVAL;
-	}
-
-	switch (filter_op) {
-	case RTE_ETH_FILTER_ADD:
-		ret = eth_igb_add_del_flex_filter(dev, filter, TRUE);
-		break;
-	case RTE_ETH_FILTER_DELETE:
-		ret = eth_igb_add_del_flex_filter(dev, filter, FALSE);
-		break;
-	case RTE_ETH_FILTER_GET:
-		ret = eth_igb_get_flex_filter(dev, filter);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u", filter_op);
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
-}
-
 /* translate elements in struct rte_eth_ntuple_filter to struct e1000_5tuple_filter_info*/
 static inline int
 ntuple_filter_to_5tuple_82576(struct rte_eth_ntuple_filter *filter,
@@ -4851,9 +4750,6 @@ eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 		break;
 	case RTE_ETH_FILTER_SYN:
 		ret = eth_igb_syn_filter_handle(dev, filter_op, arg);
-		break;
-	case RTE_ETH_FILTER_FLEXIBLE:
-		ret = eth_igb_flex_filter_handle(dev, filter_op, arg);
 		break;
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)

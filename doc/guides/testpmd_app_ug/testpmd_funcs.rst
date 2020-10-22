@@ -3373,38 +3373,6 @@ Example::
 
    testpmd> syn_filter 0 add priority high queue 3
 
-flex_filter
-~~~~~~~~~~~
-
-With flex filter, packets can be recognized by any arbitrary pattern within the first 128 bytes of the packet
-and routed into one of the receive queues::
-
-   flex_filter (port_id) (add|del) len (len_value) bytes (bytes_value) \
-               mask (mask_value) priority (prio_value) queue (queue_id)
-
-The available information parameters are:
-
-* ``port_id``: The port which the Flex filter is assigned on.
-
-* ``len_value``: Filter length in bytes, no greater than 128.
-
-* ``bytes_value``: A string in hexadecimal, means the value the flex filter needs to match.
-
-* ``mask_value``: A string in hexadecimal, bit 1 means corresponding byte participates in the match.
-
-* ``prio_value``: The priority of this filter.
-
-* ``queue_id``: The receive queue associated with this Flex filter.
-
-Example::
-
-   testpmd> flex_filter 0 add len 16 bytes 0x00000000000000000000000008060000 \
-                          mask 000C priority 3 queue 3
-
-   testpmd> flex_filter 0 del len 16 bytes 0x00000000000000000000000008060000 \
-                          mask 000C priority 3 queue 3
-
-
 .. _testpmd_flow_director:
 
 flow_director_filter
