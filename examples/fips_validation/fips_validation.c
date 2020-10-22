@@ -118,7 +118,7 @@ fips_test_parse_header(void)
 	if (info.nb_vec_lines)
 		fips_test_parse_version();
 
-	for (i = 1; i < info.nb_vec_lines; i++) {
+	for (i = 0; i < info.nb_vec_lines; i++) {
 		if (!algo_parsed) {
 			if (strstr(info.vec[i], "AESVS")) {
 				algo_parsed = 1;
