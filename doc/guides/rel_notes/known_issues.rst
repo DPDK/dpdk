@@ -118,8 +118,8 @@ HPET timers do not work on the Osage customer reference platform
    On Osage boards, the implementation of the ``rte_delay_us()`` function must be changed to not use the HPET timer.
 
 **Resolution/Workaround**:
-   This can be addressed by building the system with the ``CONFIG_RTE_LIBEAL_USE_HPET=n``
-   configuration option or by using the ``--no-hpet`` EAL option.
+   This can be addressed by building the system with ``RTE_LIBEAL_USE_HPET`` unset
+   or by using the ``--no-hpet`` EAL option.
 
 **Affected Environment/Platform**:
    The Osage customer reference platform.
@@ -833,10 +833,6 @@ AVX-512 support disabled
 
 **Description**:
    ``AVX-512`` support has been disabled on some conditions.
-   This shouldn't be confused with ``CONFIG_RTE_ENABLE_AVX512`` config option which is already
-   disabled by default. This config option defines if ``AVX-512`` specific implementations of
-   some file to be used or not. What has been disabled is compiler feature to produce ``AVX-512``
-   instructions from any source code.
 
    On DPDK v18.11 ``AVX-512`` is disabled for all ``GCC`` builds which reported to cause a performance
    drop.
