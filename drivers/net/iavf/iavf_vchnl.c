@@ -775,13 +775,14 @@ iavf_config_irq_map(struct iavf_adapter *adapter)
 		return -ENOMEM;
 
 	map_info->num_vectors = vf->nb_msix;
-	for (i = 0; i < vf->nb_msix; i++) {
-		vecmap = &map_info->vecmap[i];
+	for (i = 0; i < adapter->eth_dev->data->nb_rx_queues; i++) {
+		vecmap =
+		    &map_info->vecmap[vf->qv_map[i].vector_id - vf->msix_base];
 		vecmap->vsi_id = vf->vsi_res->vsi_id;
 		vecmap->rxitr_idx = IAVF_ITR_INDEX_DEFAULT;
-		vecmap->vector_id = vf->msix_base + i;
+		vecmap->vector_id = vf->qv_map[i].vector_id;
 		vecmap->txq_map = 0;
-		vecmap->rxq_map = vf->rxq_map[vf->msix_base + i];
+		vecmap->rxq_map |= 1 << vf->qv_map[i].queue_id;
 	}
 
 	args.ops = VIRTCHNL_OP_CONFIG_IRQ_MAP;
@@ -792,6 +793,47 @@ iavf_config_irq_map(struct iavf_adapter *adapter)
 	err = iavf_execute_vf_cmd(adapter, &args);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command OP_CONFIG_IRQ_MAP");
+
+	rte_free(map_info);
+	return err;
+}
+
+int
+iavf_config_irq_map_lv(struct iavf_adapter *adapter, uint16_t num,
+		uint16_t index)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_queue_vector_maps *map_info;
+	struct virtchnl_queue_vector *qv_maps;
+	struct iavf_cmd_info args;
+	int len, i, err;
+	int count = 0;
+
+	len = sizeof(struct virtchnl_queue_vector_maps) +
+	      sizeof(struct virtchnl_queue_vector) * (num - 1);
+
+	map_info = rte_zmalloc("map_info", len, 0);
+	if (!map_info)
+		return -ENOMEM;
+
+	map_info->vport_id = vf->vsi_res->vsi_id;
+	map_info->num_qv_maps = num;
+	for (i = index; i < index + map_info->num_qv_maps; i++) {
+		qv_maps = &map_info->qv_maps[count++];
+		qv_maps->itr_idx = VIRTCHNL_ITR_IDX_0;
+		qv_maps->queue_type = VIRTCHNL_QUEUE_TYPE_RX;
+		qv_maps->queue_id = vf->qv_map[i].queue_id;
+		qv_maps->vector_id = vf->qv_map[i].vector_id;
+	}
+
+	args.ops = VIRTCHNL_OP_MAP_QUEUE_VECTOR;
+	args.in_args = (u8 *)map_info;
+	args.in_args_size = len;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command OP_MAP_QUEUE_VECTOR");
 
 	rte_free(map_info);
 	return err;

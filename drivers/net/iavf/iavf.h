@@ -22,6 +22,7 @@
 #define IAVF_MAX_NUM_QUEUES_DFLT	 16
 #define IAVF_MAX_NUM_QUEUES_LV		 256
 #define IAVF_CFG_Q_NUM_PER_BUF		 32
+#define IAVF_IRQ_MAP_NUM_PER_BUF	 128
 
 #define IAVF_NUM_MACADDR_MAX      64
 
@@ -106,8 +107,10 @@ struct iavf_fdir_info {
 	struct iavf_fdir_conf conf;
 };
 
-/* TODO: is that correct to assume the max number to be 16 ?*/
-#define IAVF_MAX_MSIX_VECTORS   16
+struct iavf_qv_map {
+	uint16_t queue_id;
+	uint16_t vector_id;
+};
 
 /* Message type read in admin queue from PF */
 enum iavf_aq_result {
@@ -152,8 +155,7 @@ struct iavf_info {
 	uint16_t nb_msix;   /* number of MSI-X interrupts on Rx */
 	uint16_t msix_base; /* msix vector base from */
 	uint16_t max_rss_qregion; /* max RSS queue region supported by PF */
-	/* queue bitmask for each vector */
-	uint16_t rxq_map[IAVF_MAX_MSIX_VECTORS];
+	struct iavf_qv_map *qv_map; /* queue vector mapping */
 	struct iavf_flow_list flow_list;
 	rte_spinlock_t flow_ops_lock;
 	struct iavf_parser_list rss_parser_list;
@@ -274,6 +276,8 @@ int iavf_configure_queues(struct iavf_adapter *adapter,
 			uint16_t num_queue_pairs, uint16_t index);
 int iavf_get_supported_rxdid(struct iavf_adapter *adapter);
 int iavf_config_irq_map(struct iavf_adapter *adapter);
+int iavf_config_irq_map_lv(struct iavf_adapter *adapter, uint16_t num,
+			uint16_t index);
 void iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add);
 int iavf_dev_link_update(struct rte_eth_dev *dev,
 			__rte_unused int wait_to_complete);
