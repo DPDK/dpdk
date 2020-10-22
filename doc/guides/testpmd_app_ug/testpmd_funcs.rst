@@ -3240,22 +3240,6 @@ Example, to set flow director mask on port 0::
             dst_mask 255.255.255.255 \
                 FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF 0xFFFF
 
-flow_director_flex_mask
-~~~~~~~~~~~~~~~~~~~~~~~
-
-set masks of flow director's flexible payload based on certain flow type::
-
-   testpmd> flow_director_flex_mask (port_id) \
-            flow (none|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
-                  ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp| \
-                  l2_payload|all) (mask)
-
-Example, to set flow director's flex mask for all flow type on port 0::
-
-   testpmd> flow_director_flex_mask 0 flow all \
-            (0xff,0xff,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
-
-
 flow_director_flex_payload
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -981,12 +981,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" tunnel-id (tunnel_id_value)\n"
 			"    Set flow director Tunnel mask.\n\n"
 
-			"flow_director_flex_mask (port_id)"
-			" flow (none|ipv4-other|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|"
-			"ipv6-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|l2_payload|all)"
-			" (mask)\n"
-			"    Configure mask of flex payload.\n\n"
-
 			"flow_director_flex_payload (port_id)"
 			" (raw|l2|l3|l4) (config)\n"
 			"    Configure flex payload selection.\n\n"
@@ -10100,44 +10094,6 @@ cmdline_parse_inst_t cmd_show_queue_region_info_all = {
 
 /* *** Filters Control *** */
 
-static inline int
-parse_flexbytes(const char *q_arg, uint8_t *flexbytes, uint16_t max_num)
-{
-	char s[256];
-	const char *p, *p0 = q_arg;
-	char *end;
-	unsigned long int_fld;
-	char *str_fld[max_num];
-	int i;
-	unsigned size;
-	int ret = -1;
-
-	p = strchr(p0, '(');
-	if (p == NULL)
-		return -1;
-	++p;
-	p0 = strchr(p, ')');
-	if (p0 == NULL)
-		return -1;
-
-	size = p0 - p;
-	if (size >= sizeof(s))
-		return -1;
-
-	snprintf(s, sizeof(s), "%.*s", size, p);
-	ret = rte_strsplit(s, sizeof(s), str_fld, max_num, ',');
-	if (ret < 0 || ret > max_num)
-		return -1;
-	for (i = 0; i < ret; i++) {
-		errno = 0;
-		int_fld = strtoul(str_fld[i], &end, 0);
-		if (errno != 0 || *end != '\0' || int_fld > UINT8_MAX)
-			return -1;
-		flexbytes[i] = (uint8_t)int_fld;
-	}
-	return ret;
-}
-
 static uint16_t
 str2flowtype(char *string)
 {
@@ -10547,123 +10503,6 @@ cmdline_parse_inst_t cmd_set_flow_director_tunnel_mask = {
 		(void *)&cmd_flow_director_mask_tunnel_type_value,
 		(void *)&cmd_flow_director_mask_tunnel_id,
 		(void *)&cmd_flow_director_mask_tunnel_id_value,
-		NULL,
-	},
-};
-
-/* *** deal with flow director mask on flexible payload *** */
-struct cmd_flow_director_flex_mask_result {
-	cmdline_fixed_string_t flow_director_flexmask;
-	portid_t port_id;
-	cmdline_fixed_string_t flow;
-	cmdline_fixed_string_t flow_type;
-	cmdline_fixed_string_t mask;
-};
-
-static void
-cmd_flow_director_flex_mask_parsed(void *parsed_result,
-			  __rte_unused struct cmdline *cl,
-			  __rte_unused void *data)
-{
-	struct cmd_flow_director_flex_mask_result *res = parsed_result;
-	struct rte_eth_fdir_info fdir_info;
-	struct rte_eth_fdir_flex_mask flex_mask;
-	struct rte_port *port;
-	uint64_t flow_type_mask;
-	uint16_t i;
-	int ret;
-
-	port = &ports[res->port_id];
-	/** Check if the port is not started **/
-	if (port->port_status != RTE_PORT_STOPPED) {
-		printf("Please stop port %d first\n", res->port_id);
-		return;
-	}
-
-	memset(&flex_mask, 0, sizeof(struct rte_eth_fdir_flex_mask));
-	ret = parse_flexbytes(res->mask,
-			flex_mask.mask,
-			RTE_ETH_FDIR_MAX_FLEXLEN);
-	if (ret < 0) {
-		printf("error: Cannot parse mask input.\n");
-		return;
-	}
-
-	memset(&fdir_info, 0, sizeof(fdir_info));
-	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_FDIR,
-				RTE_ETH_FILTER_INFO, &fdir_info);
-	if (ret < 0) {
-		printf("Cannot get FDir filter info\n");
-		return;
-	}
-
-	if (!strcmp(res->flow_type, "none")) {
-		/* means don't specify the flow type */
-		flex_mask.flow_type = RTE_ETH_FLOW_UNKNOWN;
-		for (i = 0; i < RTE_ETH_FLOW_MAX; i++)
-			memset(&port->dev_conf.fdir_conf.flex_conf.flex_mask[i],
-			       0, sizeof(struct rte_eth_fdir_flex_mask));
-		port->dev_conf.fdir_conf.flex_conf.nb_flexmasks = 1;
-		rte_memcpy(&port->dev_conf.fdir_conf.flex_conf.flex_mask[0],
-				 &flex_mask,
-				 sizeof(struct rte_eth_fdir_flex_mask));
-		cmd_reconfig_device_queue(res->port_id, 1, 1);
-		return;
-	}
-	flow_type_mask = fdir_info.flow_types_mask[0];
-	if (!strcmp(res->flow_type, "all")) {
-		if (!flow_type_mask) {
-			printf("No flow type supported\n");
-			return;
-		}
-		for (i = RTE_ETH_FLOW_UNKNOWN; i < RTE_ETH_FLOW_MAX; i++) {
-			if (flow_type_mask & (1ULL << i)) {
-				flex_mask.flow_type = i;
-				fdir_set_flex_mask(res->port_id, &flex_mask);
-			}
-		}
-		cmd_reconfig_device_queue(res->port_id, 1, 1);
-		return;
-	}
-	flex_mask.flow_type = str2flowtype(res->flow_type);
-	if (!(flow_type_mask & (1ULL << flex_mask.flow_type))) {
-		printf("Flow type %s not supported on port %d\n",
-				res->flow_type, res->port_id);
-		return;
-	}
-	fdir_set_flex_mask(res->port_id, &flex_mask);
-	cmd_reconfig_device_queue(res->port_id, 1, 1);
-}
-
-cmdline_parse_token_string_t cmd_flow_director_flexmask =
-	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
-				 flow_director_flexmask,
-				 "flow_director_flex_mask");
-cmdline_parse_token_num_t cmd_flow_director_flexmask_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_flow_director_flex_mask_result,
-			      port_id, UINT16);
-cmdline_parse_token_string_t cmd_flow_director_flexmask_flow =
-	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
-				 flow, "flow");
-cmdline_parse_token_string_t cmd_flow_director_flexmask_flow_type =
-	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
-		flow_type, "none#ipv4-other#ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#"
-		"ipv6-other#ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#l2_payload#all");
-cmdline_parse_token_string_t cmd_flow_director_flexmask_mask =
-	TOKEN_STRING_INITIALIZER(struct cmd_flow_director_flex_mask_result,
-				 mask, NULL);
-
-cmdline_parse_inst_t cmd_set_flow_director_flex_mask = {
-	.f = cmd_flow_director_flex_mask_parsed,
-	.data = NULL,
-	.help_str = "flow_director_flex_mask ... : "
-		"Set flow director's flex mask on NIC",
-	.tokens = {
-		(void *)&cmd_flow_director_flexmask,
-		(void *)&cmd_flow_director_flexmask_port_id,
-		(void *)&cmd_flow_director_flexmask_flow,
-		(void *)&cmd_flow_director_flexmask_flow_type,
-		(void *)&cmd_flow_director_flexmask_mask,
 		NULL,
 	},
 };
@@ -17659,7 +17498,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_ip_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_mac_vlan_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_tunnel_mask,
-	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_mask,
 	(cmdline_parse_inst_t *)&cmd_set_flow_director_flex_payload,
 	(cmdline_parse_inst_t *)&cmd_flow,
 	(cmdline_parse_inst_t *)&cmd_show_port_meter_cap,
