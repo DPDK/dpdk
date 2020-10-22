@@ -3387,70 +3387,6 @@ For example, to select the first 16 bytes from the offset 4 (bytes) of packet's 
    testpmd> flow_director_flex_payload 0 l4 \
             (4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)
 
-get_sym_hash_ena_per_port
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Get symmetric hash enable configuration per port::
-
-   get_sym_hash_ena_per_port (port_id)
-
-For example, to get symmetric hash enable configuration of port 1::
-
-   testpmd> get_sym_hash_ena_per_port 1
-
-set_sym_hash_ena_per_port
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set symmetric hash enable configuration per port to enable or disable::
-
-   set_sym_hash_ena_per_port (port_id) (enable|disable)
-
-For example, to set symmetric hash enable configuration of port 1 to enable::
-
-   testpmd> set_sym_hash_ena_per_port 1 enable
-
-get_hash_global_config
-~~~~~~~~~~~~~~~~~~~~~~
-
-Get the global configurations of hash filters::
-
-   get_hash_global_config (port_id)
-
-For example, to get the global configurations of hash filters of port 1::
-
-   testpmd> get_hash_global_config 1
-
-set_hash_global_config
-~~~~~~~~~~~~~~~~~~~~~~
-
-Set the global configurations of hash filters::
-
-   set_hash_global_config (port_id) (toeplitz|simple_xor|symmetric_toeplitz|default) \
-   (ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|ipv6-frag| \
-   ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload|<flow_id>) \
-   (enable|disable)
-
-For example, to enable simple_xor for flow type of ipv6 on port 2::
-
-   testpmd> set_hash_global_config 2 simple_xor ipv6 enable
-
-set_hash_input_set
-~~~~~~~~~~~~~~~~~~
-
-Set the input set for hash::
-
-   set_hash_input_set (port_id) (ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp| \
-   ipv4-other|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other| \
-   l2_payload|<flow_id>) (ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6| \
-   ipv4-tos|ipv4-proto|ipv6-tc|ipv6-next-header|udp-src-port|udp-dst-port| \
-   tcp-src-port|tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag| \
-   udp-key|gre-key|fld-1st|fld-2nd|fld-3rd|fld-4th|fld-5th|fld-6th|fld-7th| \
-   fld-8th|none) (select|add)
-
-For example, to add source IP to hash input set for flow type of ipv4-udp on port 0::
-
-   testpmd> set_hash_input_set 0 ipv4-udp src-ipv4 add
-
 set_fdir_input_set
 ~~~~~~~~~~~~~~~~~~
 
@@ -4090,14 +4026,13 @@ This section lists supported actions and their attributes, if any.
 - ``rss``: spread packets among several queues.
 
   - ``func {hash function}``: RSS hash function to apply, allowed tokens are
-    the same as `set_hash_global_config`_.
+    ``toeplitz``, ``simple_xor``, ``symmetric_toeplitz`` and ``default``.
 
   - ``level {unsigned}``: encapsulation level for ``types``.
 
-  - ``types [{RSS hash type} [...]] end``: specific RSS hash types, allowed
-    tokens are the same as `set_hash_input_set`_, except that an empty list
-    does not disable RSS but instead requests unspecified "best-effort"
-    settings.
+  - ``types [{RSS hash type} [...]] end``: specific RSS hash types.
+    Note that an empty list does not disable RSS but instead requests
+    unspecified "best-effort" settings.
 
   - ``key {string}``: RSS hash key, overrides ``key_len``.
 
