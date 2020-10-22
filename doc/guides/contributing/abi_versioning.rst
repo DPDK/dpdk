@@ -58,12 +58,12 @@ persists over multiple releases.
 
 .. code-block:: none
 
- $ head ./lib/librte_acl/rte_acl_version.map
+ $ head ./lib/librte_acl/version.map
  DPDK_20 {
         global:
  ...
 
- $ head ./lib/librte_eal/rte_eal_version.map
+ $ head ./lib/librte_eal/version.map
  DPDK_20 {
         global:
  ...
@@ -77,7 +77,7 @@ that library.
 
 .. code-block:: none
 
- $ head ./lib/librte_acl/rte_acl_version.map
+ $ head ./lib/librte_acl/version.map
  DPDK_20 {
         global:
  ...
@@ -88,7 +88,7 @@ that library.
  } DPDK_20;
  ...
 
- $ head ./lib/librte_eal/rte_eal_version.map
+ $ head ./lib/librte_eal/version.map
  DPDK_20 {
         global:
  ...
@@ -100,12 +100,12 @@ how this may be done.
 
 .. code-block:: none
 
- $ head ./lib/librte_acl/rte_acl_version.map
+ $ head ./lib/librte_acl/version.map
  DPDK_21 {
         global:
  ...
 
- $ head ./lib/librte_eal/rte_eal_version.map
+ $ head ./lib/librte_eal/version.map
  DPDK_21 {
         global:
  ...
@@ -134,7 +134,7 @@ linked to the DPDK.
 
 To support backward compatibility the ``rte_function_versioning.h``
 header file provides macros to use when updating exported functions. These
-macros are used in conjunction with the ``rte_<library>_version.map`` file for
+macros are used in conjunction with the ``version.map`` file for
 a given library to allow multiple versions of a symbol to exist in a shared
 library so that older binaries need not be immediately recompiled.
 

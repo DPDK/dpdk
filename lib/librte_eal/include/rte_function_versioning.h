@@ -22,7 +22,7 @@
  * allow for backwards compatibility for a time with older binaries that are
  * dynamically linked to the dpdk.  To support that, the __vsym and
  * VERSION_SYMBOL macros are created.  They, in conjunction with the
- * <library>_version.map file for a given library allow for multiple versions of
+ * version.map file for a given library allow for multiple versions of
  * a symbol to exist in a shared library so that older binaries need not be
  * immediately recompiled.
  *
