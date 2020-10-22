@@ -671,6 +671,7 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 	int ret;
 
 	DRV_LOG(DEBUG, "invoked as \"%s\", using arguments \"%s\"", name, args);
+	rte_eal_alarm_cancel(vdev_netvsc_alarm, NULL);
 	if (!kvargs) {
 		DRV_LOG(ERR, "cannot parse arguments list");
 		goto error;
@@ -686,17 +687,13 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 			 !strcmp(pair->key, VDEV_NETVSC_ARG_MAC))
 			++specified;
 	}
-	if (ignore) {
-		if (kvargs)
-			rte_kvargs_free(kvargs);
-		return 0;
-	}
+	if (ignore)
+		goto ignore;
 	if (specified > 1) {
 		DRV_LOG(ERR, "More than one way used to specify the netvsc"
 			" device.");
 		goto error;
 	}
-	rte_eal_alarm_cancel(vdev_netvsc_alarm, NULL);
 	/* Gather interfaces. */
 	ret = vdev_netvsc_foreach_iface(vdev_netvsc_netvsc_probe, 1, name,
 					kvargs, specified, &matched);
@@ -717,17 +714,19 @@ vdev_netvsc_vdev_probe(struct rte_vdev_device *dev)
 		}
 		DRV_LOG(WARNING, "non-netvsc device was probed as netvsc");
 	}
-	ret = rte_eal_alarm_set(VDEV_NETVSC_PROBE_MS * 1000,
-				vdev_netvsc_alarm, NULL);
-	if (ret < 0) {
-		DRV_LOG(ERR, "unable to schedule alarm callback: %s",
-			rte_strerror(-ret));
-		goto error;
-	}
 error:
+	++vdev_netvsc_ctx_inst;
+ignore:
 	if (kvargs)
 		rte_kvargs_free(kvargs);
-	++vdev_netvsc_ctx_inst;
+	/* Reset alarm if there are device context created */
+	if (vdev_netvsc_ctx_count) {
+		ret = rte_eal_alarm_set(VDEV_NETVSC_PROBE_MS * 1000,
+					vdev_netvsc_alarm, NULL);
+		if (ret < 0)
+			DRV_LOG(ERR, "unable to schedule alarm callback: %s",
+				rte_strerror(-ret));
+	}
 	return 0;
 }
 
