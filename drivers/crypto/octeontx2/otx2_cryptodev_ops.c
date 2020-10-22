@@ -1019,6 +1019,15 @@ otx2_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	return nb_completed;
 }
 
+void
+otx2_cpt_set_enqdeq_fns(struct rte_cryptodev *dev)
+{
+	dev->enqueue_burst = otx2_cpt_enqueue_burst;
+	dev->dequeue_burst = otx2_cpt_dequeue_burst;
+
+	rte_mb();
+}
+
 /* PMD ops */
 
 static int
@@ -1081,10 +1090,8 @@ otx2_cpt_dev_config(struct rte_cryptodev *dev,
 		goto intr_unregister;
 	}
 
-	dev->enqueue_burst = otx2_cpt_enqueue_burst;
-	dev->dequeue_burst = otx2_cpt_dequeue_burst;
+	otx2_cpt_set_enqdeq_fns(dev);
 
-	rte_mb();
 	return 0;
 
 intr_unregister:

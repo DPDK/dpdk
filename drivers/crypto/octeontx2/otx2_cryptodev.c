@@ -70,36 +70,39 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	otx2_dev = &vf->otx2_dev;
 
-	/* Initialize the base otx2_dev object */
-	ret = otx2_dev_init(pci_dev, otx2_dev);
-	if (ret) {
-		CPT_LOG_ERR("Could not initialize otx2_dev");
-		goto pmd_destroy;
-	}
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* Initialize the base otx2_dev object */
+		ret = otx2_dev_init(pci_dev, otx2_dev);
+		if (ret) {
+			CPT_LOG_ERR("Could not initialize otx2_dev");
+			goto pmd_destroy;
+		}
 
-	/* Get number of queues available on the device */
-	ret = otx2_cpt_available_queues_get(dev, &nb_queues);
-	if (ret) {
-		CPT_LOG_ERR("Could not determine the number of queues available");
-		goto otx2_dev_fini;
-	}
+		/* Get number of queues available on the device */
+		ret = otx2_cpt_available_queues_get(dev, &nb_queues);
+		if (ret) {
+			CPT_LOG_ERR("Could not determine the number of queues available");
+			goto otx2_dev_fini;
+		}
 
-	/* Don't exceed the limits set per VF */
-	nb_queues = RTE_MIN(nb_queues, OTX2_CPT_MAX_QUEUES_PER_VF);
+		/* Don't exceed the limits set per VF */
+		nb_queues = RTE_MIN(nb_queues, OTX2_CPT_MAX_QUEUES_PER_VF);
 
-	if (nb_queues == 0) {
-		CPT_LOG_ERR("No free queues available on the device");
-		goto otx2_dev_fini;
-	}
+		if (nb_queues == 0) {
+			CPT_LOG_ERR("No free queues available on the device");
+			goto otx2_dev_fini;
+		}
 
-	vf->max_queues = nb_queues;
+		vf->max_queues = nb_queues;
 
-	CPT_LOG_INFO("Max queues supported by device: %d", vf->max_queues);
+		CPT_LOG_INFO("Max queues supported by device: %d",
+				vf->max_queues);
 
-	ret = otx2_cpt_hardware_caps_get(dev, vf->hw_caps);
-	if (ret) {
-		CPT_LOG_ERR("Could not determine hardware capabilities");
-		goto otx2_dev_fini;
+		ret = otx2_cpt_hardware_caps_get(dev, vf->hw_caps);
+		if (ret) {
+			CPT_LOG_ERR("Could not determine hardware capabilities");
+			goto otx2_dev_fini;
+		}
 	}
 
 	otx2_crypto_capabilities_init(vf->hw_caps);
@@ -121,10 +124,14 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			     RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
 			     RTE_CRYPTODEV_FF_SECURITY;
 
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+		otx2_cpt_set_enqdeq_fns(dev);
+
 	return 0;
 
 otx2_dev_fini:
-	otx2_dev_fini(pci_dev, otx2_dev);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		otx2_dev_fini(pci_dev, otx2_dev);
 pmd_destroy:
 	rte_cryptodev_pmd_destroy(dev);
 exit:
