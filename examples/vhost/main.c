@@ -25,6 +25,7 @@
 #include <rte_tcp.h>
 #include <rte_pause.h>
 
+#include "ioat.h"
 #include "main.h"
 
 #ifndef MAX_QUEUES
@@ -94,6 +95,10 @@ static uint32_t enable_tso;
 static int client_mode;
 
 static int builtin_net_driver;
+
+static int async_vhost_driver;
+
+static char dma_type[MAX_LONG_OPT_SZ];
 
 /* Specify timeout (in useconds) between retries on RX. */
 static uint32_t burst_rx_delay_time = BURST_RX_WAIT_US;
@@ -180,6 +185,15 @@ struct mbuf_table lcore_tx_queue[RTE_MAX_LCORE];
 #define MBUF_TABLE_DRAIN_TSC	((rte_get_tsc_hz() + US_PER_S - 1) \
 				 / US_PER_S * BURST_TX_DRAIN_US)
 #define VLAN_HLEN       4
+
+static inline int
+open_dma(const char *value)
+{
+	if (strncmp(dma_type, "ioat", 4) == 0)
+		return open_ioat(value);
+
+	return -1;
+}
 
 /*
  * Builds up the correct configuration for VMDQ VLAN pool map
@@ -446,7 +460,9 @@ us_vhost_usage(const char *prgname)
 	"		--socket-file: The path of the socket file.\n"
 	"		--tx-csum [0|1] disable/enable TX checksum offload.\n"
 	"		--tso [0|1] disable/enable TCP segment offload.\n"
-	"		--client register a vhost-user socket as client mode.\n",
+	"		--client register a vhost-user socket as client mode.\n"
+	"		--dma-type register dma type for your vhost async driver. For example \"ioat\" for now.\n"
+	"		--dmas register dma channel for specific vhost device.\n",
 	       prgname);
 }
 
@@ -472,6 +488,8 @@ us_vhost_parse_args(int argc, char **argv)
 		{"tso", required_argument, NULL, 0},
 		{"client", no_argument, &client_mode, 1},
 		{"builtin-net-driver", no_argument, &builtin_net_driver, 1},
+		{"dma-type", required_argument, NULL, 0},
+		{"dmas", required_argument, NULL, 0},
 		{NULL, 0, 0, 0},
 	};
 
@@ -612,6 +630,22 @@ us_vhost_parse_args(int argc, char **argv)
 					us_vhost_usage(prgname);
 					return -1;
 				}
+			}
+
+			if (!strncmp(long_option[option_index].name,
+						"dma-type", MAX_LONG_OPT_SZ)) {
+				strcpy(dma_type, optarg);
+			}
+
+			if (!strncmp(long_option[option_index].name,
+						"dmas", MAX_LONG_OPT_SZ)) {
+				if (open_dma(optarg) == -1) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Wrong DMA args\n");
+					us_vhost_usage(prgname);
+					return -1;
+				}
+				async_vhost_driver = 1;
 			}
 
 			break;

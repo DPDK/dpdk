@@ -162,6 +162,17 @@ enabled and cannot be disabled.
 A very simple vhost-user net driver which demonstrates how to use the generic
 vhost APIs will be used when this option is given. It is disabled by default.
 
+**--dma-type**
+This parameter is used to specify DMA type for async vhost-user net driver which
+demonstrates how to use the async vhost APIs. It's used in combination with dmas.
+
+**--dmas**
+This parameter is used to specify the assigned DMA device of a vhost device.
+Async vhost-user net driver will be used if --dmas is set. For example
+--dmas [txd0@00:04.0,txd1@00:04.1] means use DMA channel 00:04.0 for vhost
+device 0 enqueue operation and use DMA channel 00:04.1 for vhost device 1
+enqueue operation.
+
 Common Issues
 -------------
 
