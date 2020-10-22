@@ -934,6 +934,5 @@ Other dev ops not represented by a Feature
 * ``uc_all_hash_table_set``
 * ``udp_tunnel_port_add``
 * ``udp_tunnel_port_del``
-* ``l2_tunnel_eth_type_conf``
 * ``l2_tunnel_offload_set``
 * ``tx_pkt_prepare``

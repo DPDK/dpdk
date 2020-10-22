@@ -2337,10 +2337,6 @@ These threshold options are also available from the command-line.
 port config - E-tag
 ~~~~~~~~~~~~~~~~~~~
 
-Set the value of ether-type for E-tag::
-
-   testpmd> port config (port_id|all) l2-tunnel E-tag ether-type (value)
-
 Enable/disable the E-tag support::
 
    testpmd> port config (port_id|all) l2-tunnel E-tag (enable|disable)

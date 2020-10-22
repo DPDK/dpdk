@@ -348,8 +348,6 @@ static int ixgbe_timesync_write_time(struct rte_eth_dev *dev,
 				   const struct timespec *timestamp);
 static void ixgbevf_dev_interrupt_handler(void *param);
 
-static int ixgbe_dev_l2_tunnel_eth_type_conf
-	(struct rte_eth_dev *dev, struct rte_eth_l2_tunnel_conf *l2_tunnel);
 static int ixgbe_dev_l2_tunnel_offload_set
 	(struct rte_eth_dev *dev,
 	 struct rte_eth_l2_tunnel_conf *l2_tunnel,
@@ -564,7 +562,6 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.timesync_adjust_time = ixgbe_timesync_adjust_time,
 	.timesync_read_time   = ixgbe_timesync_read_time,
 	.timesync_write_time  = ixgbe_timesync_write_time,
-	.l2_tunnel_eth_type_conf = ixgbe_dev_l2_tunnel_eth_type_conf,
 	.l2_tunnel_offload_set   = ixgbe_dev_l2_tunnel_offload_set,
 	.udp_tunnel_port_add  = ixgbe_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del  = ixgbe_dev_udp_tunnel_port_del,
@@ -7543,33 +7540,6 @@ ixgbe_update_e_tag_eth_type(struct ixgbe_hw *hw,
 	IXGBE_WRITE_FLUSH(hw);
 
 	return 0;
-}
-
-/* Config l2 tunnel ether type */
-static int
-ixgbe_dev_l2_tunnel_eth_type_conf(struct rte_eth_dev *dev,
-				  struct rte_eth_l2_tunnel_conf *l2_tunnel)
-{
-	int ret = 0;
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_l2_tn_info *l2_tn_info =
-		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
-
-	if (l2_tunnel == NULL)
-		return -EINVAL;
-
-	switch (l2_tunnel->l2_tunnel_type) {
-	case RTE_L2_TUNNEL_TYPE_E_TAG:
-		l2_tn_info->e_tag_ether_type = l2_tunnel->ether_type;
-		ret = ixgbe_update_e_tag_eth_type(hw, l2_tunnel->ether_type);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "Invalid tunnel type");
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
 }
 
 /* Enable e-tag tunnel */

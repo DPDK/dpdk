@@ -541,6 +541,9 @@ API Changes
 * ethdev: Removed the legacy filter API, including
   ``rte_eth_dev_filter_supported()`` and ``rte_eth_dev_filter_ctrl()``.
 
+* ethdev: Removed the legacy L2 tunnel configuration API, including
+  ``rte_eth_dev_l2_tunnel_eth_type_conf()``.
+
 * vhost: Moved vDPA APIs from experimental to stable.
 
 * vhost: Add a new function ``rte_vhost_crypto_driver_start`` to be called

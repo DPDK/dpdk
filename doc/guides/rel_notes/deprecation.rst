@@ -94,7 +94,7 @@ Deprecation Notices
 
 * ethdev: The legacy L2 tunnel filtering API is deprecated as the rest of
   the legacy filtering API.
-  The functions ``rte_eth_dev_l2_tunnel_eth_type_conf`` and
+  The function
   ``rte_eth_dev_l2_tunnel_offload_set`` which were not marked as deprecated,
   will be removed in DPDK 20.11.
 

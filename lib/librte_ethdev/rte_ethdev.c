@@ -5318,30 +5318,6 @@ rte_eth_dev_get_dcb_info(uint16_t port_id,
 }
 
 int
-rte_eth_dev_l2_tunnel_eth_type_conf(uint16_t port_id,
-				    struct rte_eth_l2_tunnel_conf *l2_tunnel)
-{
-	struct rte_eth_dev *dev;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	if (l2_tunnel == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Invalid l2_tunnel parameter\n");
-		return -EINVAL;
-	}
-
-	if (l2_tunnel->l2_tunnel_type >= RTE_TUNNEL_TYPE_MAX) {
-		RTE_ETHDEV_LOG(ERR, "Invalid tunnel type\n");
-		return -EINVAL;
-	}
-
-	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->l2_tunnel_eth_type_conf,
-				-ENOTSUP);
-	return eth_err(port_id, (*dev->dev_ops->l2_tunnel_eth_type_conf)(dev,
-								l2_tunnel));
-}
-
-int
 rte_eth_dev_l2_tunnel_offload_set(uint16_t port_id,
 				  struct rte_eth_l2_tunnel_conf *l2_tunnel,
 				  uint32_t mask,

@@ -4638,25 +4638,6 @@ int
 rte_eth_read_clock(uint16_t port_id, uint64_t *clock);
 
 /**
- * Config l2 tunnel ether type of an Ethernet device for filtering specific
- * tunnel packets by ether type.
- *
- * @param port_id
- *   The port identifier of the Ethernet device.
- * @param l2_tunnel
- *   l2 tunnel configuration.
- *
- * @return
- *   - (0) if successful.
- *   - (-ENODEV) if port identifier is invalid.
- *   - (-EIO) if device is removed.
- *   - (-ENOTSUP) if hardware doesn't support tunnel type.
- */
-int
-rte_eth_dev_l2_tunnel_eth_type_conf(uint16_t port_id,
-				    struct rte_eth_l2_tunnel_conf *l2_tunnel);
-
-/**
  * Enable/disable l2 tunnel offload functions. Include,
  * 1, The ability of parsing a type of l2 tunnel of an Ethernet device.
  *    Filtering, forwarding and offloading this type of tunnel packets depend on

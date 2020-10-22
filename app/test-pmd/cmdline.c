@@ -843,10 +843,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port (port_id) (rxq|txq) (queue_id) setup\n"
 			"    Setup a rx/tx queue of port X.\n\n"
 
-			"port config (port_id|all) l2-tunnel E-tag ether-type"
-			" (value)\n"
-			"    Set the value of E-tag ether-type.\n\n"
-
 			"port config (port_id|all) l2-tunnel E-tag"
 			" (enable|disable)\n"
 			"    Enable/disable the E-tag support.\n\n"
@@ -10679,51 +10675,6 @@ cmdline_parse_inst_t cmd_mcast_addr = {
  * only support E-tag now.
  */
 
-/* Ether type config */
-struct cmd_config_l2_tunnel_eth_type_result {
-	cmdline_fixed_string_t port;
-	cmdline_fixed_string_t config;
-	cmdline_fixed_string_t all;
-	portid_t id;
-	cmdline_fixed_string_t l2_tunnel;
-	cmdline_fixed_string_t l2_tunnel_type;
-	cmdline_fixed_string_t eth_type;
-	uint16_t eth_type_val;
-};
-
-cmdline_parse_token_string_t cmd_config_l2_tunnel_eth_type_port =
-	TOKEN_STRING_INITIALIZER
-		(struct cmd_config_l2_tunnel_eth_type_result,
-		 port, "port");
-cmdline_parse_token_string_t cmd_config_l2_tunnel_eth_type_config =
-	TOKEN_STRING_INITIALIZER
-		(struct cmd_config_l2_tunnel_eth_type_result,
-		 config, "config");
-cmdline_parse_token_string_t cmd_config_l2_tunnel_eth_type_all_str =
-	TOKEN_STRING_INITIALIZER
-		(struct cmd_config_l2_tunnel_eth_type_result,
-		 all, "all");
-cmdline_parse_token_num_t cmd_config_l2_tunnel_eth_type_id =
-	TOKEN_NUM_INITIALIZER
-		(struct cmd_config_l2_tunnel_eth_type_result,
-		 id, UINT16);
-cmdline_parse_token_string_t cmd_config_l2_tunnel_eth_type_l2_tunnel =
-	TOKEN_STRING_INITIALIZER
-		(struct cmd_config_l2_tunnel_eth_type_result,
-		 l2_tunnel, "l2-tunnel");
-cmdline_parse_token_string_t cmd_config_l2_tunnel_eth_type_l2_tunnel_type =
-	TOKEN_STRING_INITIALIZER
-		(struct cmd_config_l2_tunnel_eth_type_result,
-		 l2_tunnel_type, "E-tag");
-cmdline_parse_token_string_t cmd_config_l2_tunnel_eth_type_eth_type =
-	TOKEN_STRING_INITIALIZER
-		(struct cmd_config_l2_tunnel_eth_type_result,
-		 eth_type, "ether-type");
-cmdline_parse_token_num_t cmd_config_l2_tunnel_eth_type_eth_type_val =
-	TOKEN_NUM_INITIALIZER
-		(struct cmd_config_l2_tunnel_eth_type_result,
-		 eth_type_val, UINT16);
-
 static enum rte_eth_tunnel_type
 str2fdir_l2_tunnel_type(char *string)
 {
@@ -10742,77 +10693,6 @@ str2fdir_l2_tunnel_type(char *string)
 	}
 	return RTE_TUNNEL_TYPE_NONE;
 }
-
-/* ether type config for all ports */
-static void
-cmd_config_l2_tunnel_eth_type_all_parsed
-	(void *parsed_result,
-	 __rte_unused struct cmdline *cl,
-	 __rte_unused void *data)
-{
-	struct cmd_config_l2_tunnel_eth_type_result *res = parsed_result;
-	struct rte_eth_l2_tunnel_conf entry;
-	portid_t pid;
-
-	entry.l2_tunnel_type = str2fdir_l2_tunnel_type(res->l2_tunnel_type);
-	entry.ether_type = res->eth_type_val;
-
-	RTE_ETH_FOREACH_DEV(pid) {
-		rte_eth_dev_l2_tunnel_eth_type_conf(pid, &entry);
-	}
-}
-
-cmdline_parse_inst_t cmd_config_l2_tunnel_eth_type_all = {
-	.f = cmd_config_l2_tunnel_eth_type_all_parsed,
-	.data = NULL,
-	.help_str = "port config all l2-tunnel E-tag ether-type <value>",
-	.tokens = {
-		(void *)&cmd_config_l2_tunnel_eth_type_port,
-		(void *)&cmd_config_l2_tunnel_eth_type_config,
-		(void *)&cmd_config_l2_tunnel_eth_type_all_str,
-		(void *)&cmd_config_l2_tunnel_eth_type_l2_tunnel,
-		(void *)&cmd_config_l2_tunnel_eth_type_l2_tunnel_type,
-		(void *)&cmd_config_l2_tunnel_eth_type_eth_type,
-		(void *)&cmd_config_l2_tunnel_eth_type_eth_type_val,
-		NULL,
-	},
-};
-
-/* ether type config for a specific port */
-static void
-cmd_config_l2_tunnel_eth_type_specific_parsed(
-	void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	__rte_unused void *data)
-{
-	struct cmd_config_l2_tunnel_eth_type_result *res =
-		 parsed_result;
-	struct rte_eth_l2_tunnel_conf entry;
-
-	if (port_id_is_invalid(res->id, ENABLED_WARN))
-		return;
-
-	entry.l2_tunnel_type = str2fdir_l2_tunnel_type(res->l2_tunnel_type);
-	entry.ether_type = res->eth_type_val;
-
-	rte_eth_dev_l2_tunnel_eth_type_conf(res->id, &entry);
-}
-
-cmdline_parse_inst_t cmd_config_l2_tunnel_eth_type_specific = {
-	.f = cmd_config_l2_tunnel_eth_type_specific_parsed,
-	.data = NULL,
-	.help_str = "port config <port_id> l2-tunnel E-tag ether-type <value>",
-	.tokens = {
-		(void *)&cmd_config_l2_tunnel_eth_type_port,
-		(void *)&cmd_config_l2_tunnel_eth_type_config,
-		(void *)&cmd_config_l2_tunnel_eth_type_id,
-		(void *)&cmd_config_l2_tunnel_eth_type_l2_tunnel,
-		(void *)&cmd_config_l2_tunnel_eth_type_l2_tunnel_type,
-		(void *)&cmd_config_l2_tunnel_eth_type_eth_type,
-		(void *)&cmd_config_l2_tunnel_eth_type_eth_type_val,
-		NULL,
-	},
-};
 
 /* Enable/disable l2 tunnel */
 struct cmd_config_l2_tunnel_en_dis_result {
@@ -17514,8 +17394,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_port_meter_stats_mask,
 	(cmdline_parse_inst_t *)&cmd_show_port_meter_stats,
 	(cmdline_parse_inst_t *)&cmd_mcast_addr,
-	(cmdline_parse_inst_t *)&cmd_config_l2_tunnel_eth_type_all,
-	(cmdline_parse_inst_t *)&cmd_config_l2_tunnel_eth_type_specific,
 	(cmdline_parse_inst_t *)&cmd_config_l2_tunnel_en_dis_all,
 	(cmdline_parse_inst_t *)&cmd_config_l2_tunnel_en_dis_specific,
 	(cmdline_parse_inst_t *)&cmd_config_e_tag_insertion_en,
