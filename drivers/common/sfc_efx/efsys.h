@@ -39,8 +39,25 @@ extern "C" {
 
 #define EFSYS_HAS_UINT64 1
 #define EFSYS_USE_UINT64 1
+/*
+ * __SSE2__ is defined by a compiler if target architecture supports
+ * Streaming SIMD Extensions 2 (SSE2). __m128i is a data type used
+ * by the extension instructions.
+ */
+#if defined(__SSE2__)
 #define EFSYS_HAS_UINT128 1
 typedef __m128i efsys_uint128_t;
+/*
+ * __int128 and unsigned __int128 are compiler extensions (built-in types).
+ * __SIZEOF_INT128__ is defined by the compiler if these data types are
+ * available.
+ */
+#elif defined(__SIZEOF_INT128__)
+#define EFSYS_HAS_UINT128 1
+typedef unsigned __int128 efsys_uint128_t;
+#else
+#error Unsigned 128-bit width integers support is required
+#endif
 
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 #define EFSYS_IS_BIG_ENDIAN 1

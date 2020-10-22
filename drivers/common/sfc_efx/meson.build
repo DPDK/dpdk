@@ -5,9 +5,9 @@
 # This software was jointly developed between OKTET Labs (under contract
 # for Solarflare) and Solarflare Communications, Inc.
 
-if arch_subdir != 'x86' or not dpdk_conf.get('RTE_ARCH_64')
+if (arch_subdir != 'x86' or not dpdk_conf.get('RTE_ARCH_64')) and (arch_subdir != 'arm' or not host_machine.cpu_family().startswith('aarch64'))
 	build = false
-	reason = 'only supported on x86_64'
+	reason = 'only supported on x86_64 and aarch64'
 endif
 
 extra_flags = []

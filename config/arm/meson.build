@@ -22,7 +22,6 @@ flags_common_default = [
 	#	['RTE_ARM64_MEMCPY_STRICT_ALIGN', false],
 
 	['RTE_NET_FM10K', false],
-	['RTE_NET_SFC_EFX', false],
 	['RTE_NET_AVP', false],
 
 	['RTE_SCHED_VECTOR', false],

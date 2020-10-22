@@ -206,6 +206,7 @@ New Features
   * Added SR-IOV PF support
   * Added Alveo SN1000 SmartNICs (EF100 architecture) support including
     flow API transfer rules for switch HW offload
+  * Added ARMv8 support
 
 * **Added Wangxun txgbe PMD.**
 
