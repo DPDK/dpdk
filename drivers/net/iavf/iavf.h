@@ -107,6 +107,14 @@ struct iavf_fdir_info {
 /* TODO: is that correct to assume the max number to be 16 ?*/
 #define IAVF_MAX_MSIX_VECTORS   16
 
+/* Message type read in admin queue from PF */
+enum iavf_aq_result {
+	IAVF_MSG_ERR = -1, /* Meet error when accessing admin queue */
+	IAVF_MSG_NON,      /* Read nothing from admin queue */
+	IAVF_MSG_SYS,      /* Read system msg from admin queue */
+	IAVF_MSG_CMD,      /* Read async command result */
+};
+
 /* Structure to store private data specific for VF instance. */
 struct iavf_info {
 	uint16_t num_queue_pairs;

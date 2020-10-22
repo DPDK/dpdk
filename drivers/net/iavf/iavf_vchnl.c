@@ -25,117 +25,6 @@
 #define MAX_TRY_TIMES 200
 #define ASQ_DELAY_MS  10
 
-/* Read data in admin queue to get msg from pf driver */
-static enum iavf_status
-iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
-		     uint8_t *buf)
-{
-	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	struct iavf_arq_event_info event;
-	enum virtchnl_ops opcode;
-	int ret;
-
-	event.buf_len = buf_len;
-	event.msg_buf = buf;
-	ret = iavf_clean_arq_element(hw, &event, NULL);
-	/* Can't read any msg from adminQ */
-	if (ret) {
-		PMD_DRV_LOG(DEBUG, "Can't read msg from AQ");
-		return ret;
-	}
-
-	opcode = (enum virtchnl_ops)rte_le_to_cpu_32(event.desc.cookie_high);
-	vf->cmd_retval = (enum virtchnl_status_code)rte_le_to_cpu_32(
-			event.desc.cookie_low);
-
-	PMD_DRV_LOG(DEBUG, "AQ from pf carries opcode %u, retval %d",
-		    opcode, vf->cmd_retval);
-
-	if (opcode != vf->pend_cmd) {
-		if (opcode != VIRTCHNL_OP_EVENT) {
-			PMD_DRV_LOG(WARNING,
-				    "command mismatch, expect %u, get %u",
-				    vf->pend_cmd, opcode);
-		}
-		return IAVF_ERR_OPCODE_MISMATCH;
-	}
-
-	return IAVF_SUCCESS;
-}
-
-static int
-iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
-{
-	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	enum iavf_status ret;
-	int err = 0;
-	int i = 0;
-
-	if (vf->vf_reset)
-		return -EIO;
-
-	if (_atomic_set_cmd(vf, args->ops))
-		return -1;
-
-	ret = iavf_aq_send_msg_to_pf(hw, args->ops, IAVF_SUCCESS,
-				    args->in_args, args->in_args_size, NULL);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "fail to send cmd %d", args->ops);
-		_clear_cmd(vf);
-		return err;
-	}
-
-	switch (args->ops) {
-	case VIRTCHNL_OP_RESET_VF:
-		/*no need to wait for response */
-		_clear_cmd(vf);
-		break;
-	case VIRTCHNL_OP_VERSION:
-	case VIRTCHNL_OP_GET_VF_RESOURCES:
-	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
-		/* for init virtchnl ops, need to poll the response */
-		do {
-			ret = iavf_read_msg_from_pf(adapter, args->out_size,
-						   args->out_buffer);
-			if (ret == IAVF_SUCCESS)
-				break;
-			rte_delay_ms(ASQ_DELAY_MS);
-		} while (i++ < MAX_TRY_TIMES);
-		if (i >= MAX_TRY_TIMES ||
-		    vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
-			err = -1;
-			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
-				    " for cmd %d", vf->cmd_retval, args->ops);
-		}
-		_clear_cmd(vf);
-		break;
-
-	default:
-		/* For other virtchnl ops in running time,
-		 * wait for the cmd done flag.
-		 */
-		do {
-			if (vf->pend_cmd == VIRTCHNL_OP_UNKNOWN)
-				break;
-			rte_delay_ms(ASQ_DELAY_MS);
-			/* If don't read msg or read sys event, continue */
-		} while (i++ < MAX_TRY_TIMES);
-		/* If there's no response is received, clear command */
-		if (i >= MAX_TRY_TIMES  ||
-		    vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
-			err = -1;
-			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
-				    " for cmd %d", vf->cmd_retval, args->ops);
-			_clear_cmd(vf);
-		}
-		break;
-	}
-
-	return err;
-}
-
 static uint32_t
 iavf_convert_link_speed(enum virtchnl_link_speed virt_link_speed)
 {
@@ -172,6 +61,157 @@ iavf_convert_link_speed(enum virtchnl_link_speed virt_link_speed)
 	}
 
 	return speed;
+}
+
+/* Read data in admin queue to get msg from pf driver */
+static enum iavf_aq_result
+iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
+		     uint8_t *buf)
+{
+	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct rte_eth_dev *dev = adapter->eth_dev;
+	struct iavf_arq_event_info event;
+	enum iavf_aq_result result = IAVF_MSG_NON;
+	enum virtchnl_ops opcode;
+	int ret;
+
+	event.buf_len = buf_len;
+	event.msg_buf = buf;
+	ret = iavf_clean_arq_element(hw, &event, NULL);
+	/* Can't read any msg from adminQ */
+	if (ret) {
+		PMD_DRV_LOG(DEBUG, "Can't read msg from AQ");
+		if (ret != IAVF_ERR_ADMIN_QUEUE_NO_WORK)
+			result = IAVF_MSG_ERR;
+		return result;
+	}
+
+	opcode = (enum virtchnl_ops)rte_le_to_cpu_32(event.desc.cookie_high);
+	vf->cmd_retval = (enum virtchnl_status_code)rte_le_to_cpu_32(
+			event.desc.cookie_low);
+
+	PMD_DRV_LOG(DEBUG, "AQ from pf carries opcode %u, retval %d",
+		    opcode, vf->cmd_retval);
+
+	if (opcode == VIRTCHNL_OP_EVENT) {
+		struct virtchnl_pf_event *vpe =
+			(struct virtchnl_pf_event *)event.msg_buf;
+
+		result = IAVF_MSG_SYS;
+		switch (vpe->event) {
+		case VIRTCHNL_EVENT_LINK_CHANGE:
+			vf->link_up =
+				vpe->event_data.link_event.link_status;
+			if (vf->vf_res->vf_cap_flags &
+				VIRTCHNL_VF_CAP_ADV_LINK_SPEED) {
+				vf->link_speed =
+				    vpe->event_data.link_event_adv.link_speed;
+			} else {
+				enum virtchnl_link_speed speed;
+				speed = vpe->event_data.link_event.link_speed;
+				vf->link_speed = iavf_convert_link_speed(speed);
+			}
+			iavf_dev_link_update(dev, 0);
+			PMD_DRV_LOG(INFO, "Link status update:%s",
+					vf->link_up ? "up" : "down");
+			break;
+		case VIRTCHNL_EVENT_RESET_IMPENDING:
+			vf->vf_reset = true;
+			PMD_DRV_LOG(INFO, "VF is resetting");
+			break;
+		case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
+			vf->dev_closed = true;
+			PMD_DRV_LOG(INFO, "PF driver closed");
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "%s: Unknown event %d from pf",
+					__func__, vpe->event);
+		}
+	}  else {
+		/* async reply msg on command issued by vf previously */
+		result = IAVF_MSG_CMD;
+		if (opcode != vf->pend_cmd) {
+			PMD_DRV_LOG(WARNING, "command mismatch, expect %u, get %u",
+					vf->pend_cmd, opcode);
+			result = IAVF_MSG_ERR;
+		}
+	}
+
+	return result;
+}
+
+static int
+iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
+{
+	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	enum iavf_aq_result result;
+	enum iavf_status ret;
+	int err = 0;
+	int i = 0;
+
+	if (vf->vf_reset)
+		return -EIO;
+
+	if (_atomic_set_cmd(vf, args->ops))
+		return -1;
+
+	ret = iavf_aq_send_msg_to_pf(hw, args->ops, IAVF_SUCCESS,
+				    args->in_args, args->in_args_size, NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "fail to send cmd %d", args->ops);
+		_clear_cmd(vf);
+		return err;
+	}
+
+	switch (args->ops) {
+	case VIRTCHNL_OP_RESET_VF:
+		/*no need to wait for response */
+		_clear_cmd(vf);
+		break;
+	case VIRTCHNL_OP_VERSION:
+	case VIRTCHNL_OP_GET_VF_RESOURCES:
+	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
+		/* for init virtchnl ops, need to poll the response */
+		do {
+			result = iavf_read_msg_from_pf(adapter, args->out_size,
+						   args->out_buffer);
+			if (result == IAVF_MSG_CMD)
+				break;
+			rte_delay_ms(ASQ_DELAY_MS);
+		} while (i++ < MAX_TRY_TIMES);
+		if (i >= MAX_TRY_TIMES ||
+		    vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
+			err = -1;
+			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
+				    " for cmd %d", vf->cmd_retval, args->ops);
+		}
+		_clear_cmd(vf);
+		break;
+
+	default:
+		/* For other virtchnl ops in running time,
+		 * wait for the cmd done flag.
+		 */
+		do {
+			if (vf->pend_cmd == VIRTCHNL_OP_UNKNOWN)
+				break;
+			rte_delay_ms(ASQ_DELAY_MS);
+			/* If don't read msg or read sys event, continue */
+		} while (i++ < MAX_TRY_TIMES);
+		/* If there's no response is received, clear command */
+		if (i >= MAX_TRY_TIMES  ||
+		    vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
+			err = -1;
+			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
+				    " for cmd %d", vf->cmd_retval, args->ops);
+			_clear_cmd(vf);
+		}
+		break;
+	}
+
+	return err;
 }
 
 static void
