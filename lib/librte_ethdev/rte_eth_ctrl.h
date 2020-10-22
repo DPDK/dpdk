@@ -27,7 +27,6 @@ extern "C" {
  */
 enum rte_filter_type {
 	RTE_ETH_FILTER_NONE = 0,
-	RTE_ETH_FILTER_MACVLAN,
 	RTE_ETH_FILTER_ETHERTYPE,
 	RTE_ETH_FILTER_FLEXIBLE,
 	RTE_ETH_FILTER_SYN,
@@ -66,16 +65,6 @@ enum rte_mac_filter_type {
 	RTE_MAC_HASH_MATCH, /**< hash match of MAC addr. */
 	/** hash match of MAC addr and exact match of VLAN ID. */
 	RTE_MACVLAN_HASH_MATCH,
-};
-
-/**
- * MAC filter info
- */
-struct rte_eth_mac_filter {
-	uint8_t is_vf; /**< 1 for VF, 0 for port dev */
-	uint16_t dst_id; /**< VF ID, available when is_vf is 1*/
-	enum rte_mac_filter_type filter_type; /**< MAC filter type */
-	struct rte_ether_addr mac_addr;
 };
 
 /**

@@ -1617,14 +1617,6 @@ Set VF receive/transmit from a port::
 
    testpmd> set port (port_id) vf (vf_id) (rx|tx) (on|off)
 
-set port - mac address filter (for VF)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Add/Remove unicast or multicast MAC addr filter for a VF::
-
-   testpmd> set port (port_id) vf (vf_id) (mac_addr) \
-            (exact-mac|exact-mac-vlan|hashmac|hashmac-vlan) (on|off)
-
 set port - rx mode(for VF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

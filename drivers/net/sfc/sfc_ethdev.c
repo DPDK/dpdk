@@ -1755,9 +1755,6 @@ sfc_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
 	case RTE_ETH_FILTER_NONE:
 		sfc_err(sa, "Global filters configuration not supported");
 		break;
-	case RTE_ETH_FILTER_MACVLAN:
-		sfc_err(sa, "MACVLAN filters not supported");
-		break;
 	case RTE_ETH_FILTER_ETHERTYPE:
 		sfc_err(sa, "EtherType filters not supported");
 		break;
