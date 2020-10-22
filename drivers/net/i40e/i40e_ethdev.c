@@ -8909,47 +8909,6 @@ i40e_dev_set_gre_key_len(struct i40e_hw *hw, uint8_t len)
 	return ret;
 }
 
-static int
-i40e_dev_global_config_set(struct i40e_hw *hw, struct rte_eth_global_cfg *cfg)
-{
-	int ret = -EINVAL;
-
-	if (!hw || !cfg)
-		return -EINVAL;
-
-	switch (cfg->cfg_type) {
-	case RTE_ETH_GLOBAL_CFG_TYPE_GRE_KEY_LEN:
-		ret = i40e_dev_set_gre_key_len(hw, cfg->cfg.gre_key_len);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "Unknown config type %u", cfg->cfg_type);
-		break;
-	}
-
-	return ret;
-}
-
-static int
-i40e_filter_ctrl_global_config(struct rte_eth_dev *dev,
-			       enum rte_filter_op filter_op,
-			       void *arg)
-{
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int ret = I40E_ERR_PARAM;
-
-	switch (filter_op) {
-	case RTE_ETH_FILTER_SET:
-		ret = i40e_dev_global_config_set(hw,
-			(struct rte_eth_global_cfg *)arg);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "unknown operation %u", filter_op);
-		break;
-	}
-
-	return ret;
-}
-
 /* Set the symmetric hash enable configurations per port */
 static void
 i40e_set_symmetric_hash_enable_per_port(struct i40e_hw *hw, uint8_t enable)
@@ -9986,10 +9945,6 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_NONE:
-		/* For global configuration */
-		ret = i40e_filter_ctrl_global_config(dev, filter_op, arg);
-		break;
 	case RTE_ETH_FILTER_FDIR:
 		ret = i40e_fdir_ctrl_func(dev, filter_op, arg);
 		break;

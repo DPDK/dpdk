@@ -9295,62 +9295,6 @@ cmdline_parse_inst_t cmd_cfg_tunnel_udp_port = {
 	},
 };
 
-/* *** GLOBAL CONFIG *** */
-struct cmd_global_config_result {
-	cmdline_fixed_string_t cmd;
-	portid_t port_id;
-	cmdline_fixed_string_t cfg_type;
-	uint8_t len;
-};
-
-static void
-cmd_global_config_parsed(void *parsed_result,
-			 __rte_unused struct cmdline *cl,
-			 __rte_unused void *data)
-{
-	struct cmd_global_config_result *res = parsed_result;
-	struct rte_eth_global_cfg conf;
-	int ret;
-
-	memset(&conf, 0, sizeof(conf));
-	conf.cfg_type = RTE_ETH_GLOBAL_CFG_TYPE_GRE_KEY_LEN;
-	conf.cfg.gre_key_len = res->len;
-	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_NONE,
-				      RTE_ETH_FILTER_SET, &conf);
-#ifdef RTE_NET_I40E
-	if (ret == -ENOTSUP)
-		ret = rte_pmd_i40e_set_gre_key_len(res->port_id, res->len);
-#endif
-	if (ret != 0)
-		printf("Global config error\n");
-}
-
-cmdline_parse_token_string_t cmd_global_config_cmd =
-	TOKEN_STRING_INITIALIZER(struct cmd_global_config_result, cmd,
-		"global_config");
-cmdline_parse_token_num_t cmd_global_config_port_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_global_config_result, port_id,
-			       UINT16);
-cmdline_parse_token_string_t cmd_global_config_type =
-	TOKEN_STRING_INITIALIZER(struct cmd_global_config_result,
-		cfg_type, "gre-key-len");
-cmdline_parse_token_num_t cmd_global_config_gre_key_len =
-	TOKEN_NUM_INITIALIZER(struct cmd_global_config_result,
-		len, UINT8);
-
-cmdline_parse_inst_t cmd_global_config = {
-	.f = cmd_global_config_parsed,
-	.data = (void *)NULL,
-	.help_str = "global_config <port_id> gre-key-len <key_len>",
-	.tokens = {
-		(void *)&cmd_global_config_cmd,
-		(void *)&cmd_global_config_port_id,
-		(void *)&cmd_global_config_type,
-		(void *)&cmd_global_config_gre_key_len,
-		NULL,
-	},
-};
-
 /* *** CONFIGURE VM MIRROR VLAN/POOL RULE *** */
 struct cmd_set_mirror_mask_result {
 	cmdline_fixed_string_t set;
@@ -18454,7 +18398,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_mac_addr_filter,
 	(cmdline_parse_inst_t *)&cmd_queue_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_tunnel_udp_config,
-	(cmdline_parse_inst_t *)&cmd_global_config,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_mask,
 	(cmdline_parse_inst_t *)&cmd_set_mirror_link,
 	(cmdline_parse_inst_t *)&cmd_reset_mirror_rule,
