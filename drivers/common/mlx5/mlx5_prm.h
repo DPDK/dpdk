@@ -830,6 +830,7 @@ enum {
 	MLX5_CMD_OP_ACCESS_REGISTER = 0x805,
 	MLX5_CMD_OP_ALLOC_TRANSPORT_DOMAIN = 0x816,
 	MLX5_CMD_OP_CREATE_TIR = 0x900,
+	MLX5_CMD_OP_MODIFY_TIR = 0x901,
 	MLX5_CMD_OP_CREATE_SQ = 0X904,
 	MLX5_CMD_OP_MODIFY_SQ = 0X905,
 	MLX5_CMD_OP_CREATE_RQ = 0x908,
@@ -1916,6 +1917,34 @@ struct mlx5_ifc_create_tir_in_bits {
 	u8 reserved_at_20[0x10];
 	u8 op_mod[0x10];
 	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_tirc_bits ctx;
+};
+
+enum {
+	MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_LRO = 1ULL << 0,
+	MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_INDIRECT_TABLE = 1ULL << 1,
+	MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_HASH = 1ULL << 2,
+	/* bit 3 - tunneled_offload_en modify not supported. */
+	MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_SELF_LB_EN = 1ULL << 4,
+};
+
+struct mlx5_ifc_modify_tir_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_modify_tir_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x8];
+	u8 tirn[0x18];
+	u8 reserved_at_60[0x20];
+	u8 modify_bitmask[0x40];
+	u8 reserved_at_c0[0x40];
 	struct mlx5_ifc_tirc_bits ctx;
 };
 

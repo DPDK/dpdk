@@ -1110,6 +1110,90 @@ mlx5_devx_cmd_create_tir(void *ctx,
 }
 
 /**
+ * Modify TIR using DevX API.
+ *
+ * @param[in] tir
+ *   Pointer to TIR DevX object structure.
+ * @param [in] modify_tir_attr
+ *   Pointer to TIR modification attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_modify_tir(struct mlx5_devx_obj *tir,
+			 struct mlx5_devx_modify_tir_attr *modify_tir_attr)
+{
+	struct mlx5_devx_tir_attr *tir_attr = &modify_tir_attr->tir;
+	uint32_t in[MLX5_ST_SZ_DW(modify_tir_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(modify_tir_out)] = {0};
+	void *tir_ctx;
+	int ret;
+
+	MLX5_SET(modify_tir_in, in, opcode, MLX5_CMD_OP_MODIFY_TIR);
+	MLX5_SET(modify_tir_in, in, tirn, modify_tir_attr->tirn);
+	MLX5_SET64(modify_tir_in, in, modify_bitmask,
+		   modify_tir_attr->modify_bitmask);
+	tir_ctx = MLX5_ADDR_OF(modify_rq_in, in, ctx);
+	if (modify_tir_attr->modify_bitmask &
+			MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_LRO) {
+		MLX5_SET(tirc, tir_ctx, lro_timeout_period_usecs,
+			 tir_attr->lro_timeout_period_usecs);
+		MLX5_SET(tirc, tir_ctx, lro_enable_mask,
+			 tir_attr->lro_enable_mask);
+		MLX5_SET(tirc, tir_ctx, lro_max_msg_sz,
+			 tir_attr->lro_max_msg_sz);
+	}
+	if (modify_tir_attr->modify_bitmask &
+			MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_INDIRECT_TABLE)
+		MLX5_SET(tirc, tir_ctx, indirect_table,
+			 tir_attr->indirect_table);
+	if (modify_tir_attr->modify_bitmask &
+			MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_HASH) {
+		int i;
+		void *outer, *inner;
+
+		MLX5_SET(tirc, tir_ctx, rx_hash_symmetric,
+			 tir_attr->rx_hash_symmetric);
+		MLX5_SET(tirc, tir_ctx, rx_hash_fn, tir_attr->rx_hash_fn);
+		for (i = 0; i < 10; i++) {
+			MLX5_SET(tirc, tir_ctx, rx_hash_toeplitz_key[i],
+				 tir_attr->rx_hash_toeplitz_key[i]);
+		}
+		outer = MLX5_ADDR_OF(tirc, tir_ctx,
+				     rx_hash_field_selector_outer);
+		MLX5_SET(rx_hash_field_select, outer, l3_prot_type,
+			 tir_attr->rx_hash_field_selector_outer.l3_prot_type);
+		MLX5_SET(rx_hash_field_select, outer, l4_prot_type,
+			 tir_attr->rx_hash_field_selector_outer.l4_prot_type);
+		MLX5_SET
+		(rx_hash_field_select, outer, selected_fields,
+		 tir_attr->rx_hash_field_selector_outer.selected_fields);
+		inner = MLX5_ADDR_OF(tirc, tir_ctx,
+				     rx_hash_field_selector_inner);
+		MLX5_SET(rx_hash_field_select, inner, l3_prot_type,
+			 tir_attr->rx_hash_field_selector_inner.l3_prot_type);
+		MLX5_SET(rx_hash_field_select, inner, l4_prot_type,
+			 tir_attr->rx_hash_field_selector_inner.l4_prot_type);
+		MLX5_SET
+		(rx_hash_field_select, inner, selected_fields,
+		 tir_attr->rx_hash_field_selector_inner.selected_fields);
+	}
+	if (modify_tir_attr->modify_bitmask &
+	    MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_SELF_LB_EN) {
+		MLX5_SET(tirc, tir_ctx, self_lb_block, tir_attr->self_lb_block);
+	}
+	ret = mlx5_glue->devx_obj_modify(tir->obj, in, sizeof(in),
+					 out, sizeof(out));
+	if (ret) {
+		DRV_LOG(ERR, "Failed to modify TIR using DevX");
+		rte_errno = errno;
+		return -errno;
+	}
+	return ret;
+}
+
+/**
  * Create RQT using DevX API.
  *
  * @param[in] ctx

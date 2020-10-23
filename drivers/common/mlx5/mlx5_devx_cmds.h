@@ -192,6 +192,13 @@ struct mlx5_devx_tir_attr {
 	struct mlx5_rx_hash_field_select rx_hash_field_selector_inner;
 };
 
+/* TIR attributes structure, used by TIR modify. */
+struct mlx5_devx_modify_tir_attr {
+	uint32_t tirn:24;
+	uint64_t modify_bitmask;
+	struct mlx5_devx_tir_attr tir;
+};
+
 /* RQT attributes structure, used by RQT operations. */
 struct mlx5_devx_rqt_attr {
 	uint8_t rq_type;
@@ -435,6 +442,9 @@ int mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp,
 __rte_internal
 int mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 			     struct mlx5_devx_rqt_attr *rqt_attr);
+__rte_internal
+int mlx5_devx_cmd_modify_tir(struct mlx5_devx_obj *tir,
+			     struct mlx5_devx_modify_tir_attr *tir_attr);
 __rte_internal
 int mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 				      uint32_t ids[], uint32_t num);
