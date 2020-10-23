@@ -1559,7 +1559,7 @@ ifpga_rawdev_destroy(struct rte_pci_device *pci_dev)
 		return -ENODEV;
 
 	if (ifpga_unregister_msix_irq(IFPGA_FME_IRQ, 0,
-				fme_interrupt_handler, mgr))
+				fme_interrupt_handler, mgr) < 0)
 		return -EINVAL;
 
 	opae_adapter_data_free(adapter->data);
