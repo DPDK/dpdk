@@ -1332,17 +1332,16 @@ int
 ifpga_unregister_msix_irq(enum ifpga_irq_type type,
 		int vec_start, rte_intr_callback_fn handler, void *arg)
 {
-	struct rte_intr_handle intr_handle;
+	struct rte_intr_handle *intr_handle;
 
 	if (type == IFPGA_FME_IRQ)
-		intr_handle = ifpga_irq_handle[0];
+		intr_handle = &ifpga_irq_handle[0];
 	else if (type == IFPGA_AFU_IRQ)
-		intr_handle = ifpga_irq_handle[vec_start + 1];
+		intr_handle = &ifpga_irq_handle[vec_start + 1];
 
-	rte_intr_efd_disable(&intr_handle);
+	rte_intr_efd_disable(intr_handle);
 
-	return rte_intr_callback_unregister(&intr_handle,
-			handler, arg);
+	return rte_intr_callback_unregister(intr_handle, handler, arg);
 }
 
 int
@@ -1352,7 +1351,7 @@ ifpga_register_msix_irq(struct rte_rawdev *dev, int port_id,
 		void *arg)
 {
 	int ret;
-	struct rte_intr_handle intr_handle;
+	struct rte_intr_handle *intr_handle;
 	struct opae_adapter *adapter;
 	struct opae_manager *mgr;
 	struct opae_accelerator *acc;
@@ -1366,26 +1365,26 @@ ifpga_register_msix_irq(struct rte_rawdev *dev, int port_id,
 		return -ENODEV;
 
 	if (type == IFPGA_FME_IRQ) {
-		intr_handle = ifpga_irq_handle[0];
+		intr_handle = &ifpga_irq_handle[0];
 		count = 1;
 	} else if (type == IFPGA_AFU_IRQ)
-		intr_handle = ifpga_irq_handle[vec_start + 1];
+		intr_handle = &ifpga_irq_handle[vec_start + 1];
 
-	intr_handle.type = RTE_INTR_HANDLE_VFIO_MSIX;
+	intr_handle->type = RTE_INTR_HANDLE_VFIO_MSIX;
 
-	ret = rte_intr_efd_enable(&intr_handle, count);
+	ret = rte_intr_efd_enable(intr_handle, count);
 	if (ret)
 		return -ENODEV;
 
-	intr_handle.fd = intr_handle.efds[0];
+	intr_handle->fd = intr_handle->efds[0];
 
 	IFPGA_RAWDEV_PMD_DEBUG("register %s irq, vfio_fd=%d, fd=%d\n",
-			name, intr_handle.vfio_dev_fd,
-			intr_handle.fd);
+			name, intr_handle->vfio_dev_fd,
+			intr_handle->fd);
 
 	if (type == IFPGA_FME_IRQ) {
 		struct fpga_fme_err_irq_set err_irq_set;
-		err_irq_set.evtfd = intr_handle.efds[0];
+		err_irq_set.evtfd = intr_handle->efds[0];
 
 		ret = opae_manager_ifpga_set_err_irq(mgr, &err_irq_set);
 		if (ret)
@@ -1395,13 +1394,14 @@ ifpga_register_msix_irq(struct rte_rawdev *dev, int port_id,
 		if (!acc)
 			return -EINVAL;
 
-		ret = opae_acc_set_irq(acc, vec_start, count, intr_handle.efds);
+		ret = opae_acc_set_irq(acc, vec_start, count,
+				intr_handle->efds);
 		if (ret)
 			return -EINVAL;
 	}
 
 	/* register interrupt handler using DPDK API */
-	ret = rte_intr_callback_register(&intr_handle,
+	ret = rte_intr_callback_register(intr_handle,
 			handler, (void *)arg);
 	if (ret)
 		return -EINVAL;
