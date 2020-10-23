@@ -1338,6 +1338,8 @@ ifpga_unregister_msix_irq(enum ifpga_irq_type type,
 		intr_handle = &ifpga_irq_handle[0];
 	else if (type == IFPGA_AFU_IRQ)
 		intr_handle = &ifpga_irq_handle[vec_start + 1];
+	else
+		return 0;
 
 	rte_intr_efd_disable(intr_handle);
 
@@ -1367,8 +1369,11 @@ ifpga_register_msix_irq(struct rte_rawdev *dev, int port_id,
 	if (type == IFPGA_FME_IRQ) {
 		intr_handle = &ifpga_irq_handle[0];
 		count = 1;
-	} else if (type == IFPGA_AFU_IRQ)
+	} else if (type == IFPGA_AFU_IRQ) {
 		intr_handle = &ifpga_irq_handle[vec_start + 1];
+	} else {
+		return -EINVAL;
+	}
 
 	intr_handle->type = RTE_INTR_HANDLE_VFIO_MSIX;
 
