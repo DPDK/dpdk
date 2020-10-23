@@ -159,7 +159,7 @@ ice_rx_desc_to_olflags_v(struct ice_rx_queue *rxq, __m128i descs[4],
 	flags = _mm_unpackhi_epi32(descs[0], descs[1]);
 	tmp_desc = _mm_unpackhi_epi32(descs[2], descs[3]);
 	tmp_desc = _mm_unpacklo_epi64(flags, tmp_desc);
-	tmp_desc = _mm_and_si128(flags, desc_mask);
+	tmp_desc = _mm_and_si128(tmp_desc, desc_mask);
 
 	/* checksum flags */
 	tmp_desc = _mm_srli_epi32(tmp_desc, 4);
