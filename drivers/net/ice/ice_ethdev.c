@@ -3345,7 +3345,7 @@ __vsi_queues_bind_intr(struct ice_vsi *vsi, uint16_t msix_vect,
 		PMD_DRV_LOG(INFO, "queue %d is binding to vect %d",
 			    base_queue + i, msix_vect);
 		/* set ITR0 value */
-		ICE_WRITE_REG(hw, GLINT_ITR(0, msix_vect), 0x10);
+		ICE_WRITE_REG(hw, GLINT_ITR(0, msix_vect), 0x2);
 		ICE_WRITE_REG(hw, QINT_RQCTL(base_queue + i), val);
 		ICE_WRITE_REG(hw, QINT_TQCTL(base_queue + i), val_tx);
 	}
