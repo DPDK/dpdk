@@ -9944,6 +9944,158 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 }
 
 /**
+ * Set hash RX queue by hash fields (see enum ibv_rx_hash_fields)
+ * and tunnel.
+ *
+ * @param[in, out] action
+ *   Shred RSS action holding hash RX queue objects.
+ * @param[in] hash_fields
+ *   Defines combination of packet fields to participate in RX hash.
+ * @param[in] tunnel
+ *   Tunnel type
+ * @param[in] hrxq_idx
+ *   Hash RX queue index to set.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+__flow_dv_action_rss_hrxq_set(struct mlx5_shared_action_rss *action,
+			      const uint64_t hash_fields,
+			      const int tunnel,
+			      uint32_t hrxq_idx)
+{
+	uint32_t *hrxqs = tunnel ? action->hrxq : action->hrxq_tunnel;
+
+	switch (hash_fields & ~IBV_RX_HASH_INNER) {
+	case MLX5_RSS_HASH_IPV4:
+		hrxqs[0] = hrxq_idx;
+		return 0;
+	case MLX5_RSS_HASH_IPV4_TCP:
+		hrxqs[1] = hrxq_idx;
+		return 0;
+	case MLX5_RSS_HASH_IPV4_UDP:
+		hrxqs[2] = hrxq_idx;
+		return 0;
+	case MLX5_RSS_HASH_IPV6:
+		hrxqs[3] = hrxq_idx;
+		return 0;
+	case MLX5_RSS_HASH_IPV6_TCP:
+		hrxqs[4] = hrxq_idx;
+		return 0;
+	case MLX5_RSS_HASH_IPV6_UDP:
+		hrxqs[5] = hrxq_idx;
+		return 0;
+	case MLX5_RSS_HASH_NONE:
+		hrxqs[6] = hrxq_idx;
+		return 0;
+	default:
+		return -1;
+	}
+}
+
+/**
+ * Look up for hash RX queue by hash fields (see enum ibv_rx_hash_fields)
+ * and tunnel.
+ *
+ * @param[in] action
+ *   Shred RSS action holding hash RX queue objects.
+ * @param[in] hash_fields
+ *   Defines combination of packet fields to participate in RX hash.
+ * @param[in] tunnel
+ *   Tunnel type
+ *
+ * @return
+ *   Valid hash RX queue index, otherwise 0.
+ */
+static uint32_t
+__flow_dv_action_rss_hrxq_lookup(const struct mlx5_shared_action_rss *action,
+				 const uint64_t hash_fields,
+				 const int tunnel)
+{
+	const uint32_t *hrxqs = tunnel ? action->hrxq : action->hrxq_tunnel;
+
+	switch (hash_fields & ~IBV_RX_HASH_INNER) {
+	case MLX5_RSS_HASH_IPV4:
+		return hrxqs[0];
+	case MLX5_RSS_HASH_IPV4_TCP:
+		return hrxqs[1];
+	case MLX5_RSS_HASH_IPV4_UDP:
+		return hrxqs[2];
+	case MLX5_RSS_HASH_IPV6:
+		return hrxqs[3];
+	case MLX5_RSS_HASH_IPV6_TCP:
+		return hrxqs[4];
+	case MLX5_RSS_HASH_IPV6_UDP:
+		return hrxqs[5];
+	case MLX5_RSS_HASH_NONE:
+		return hrxqs[6];
+	default:
+		return 0;
+	}
+}
+
+/**
+ * Retrieves hash RX queue suitable for the *flow*.
+ * If shared action configured for *flow* suitable hash RX queue will be
+ * retrieved from attached shared action.
+ *
+ * @param[in] flow
+ *   Shred RSS action holding hash RX queue objects.
+ * @param[in] dev_flow
+ *   Pointer to the sub flow.
+ * @param[out] hrxq
+ *   Pointer to retrieved hash RX queue object.
+ *
+ * @return
+ *   Valid hash RX queue index, otherwise 0 and rte_errno is set.
+ */
+static uint32_t
+__flow_dv_rss_get_hrxq(struct rte_eth_dev *dev, struct rte_flow *flow,
+			   struct mlx5_flow *dev_flow,
+			   struct mlx5_hrxq **hrxq)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t hrxq_idx;
+
+	if (flow->shared_rss) {
+		hrxq_idx = __flow_dv_action_rss_hrxq_lookup
+				(flow->shared_rss, dev_flow->hash_fields,
+				 !!(dev_flow->handle->layers &
+				    MLX5_FLOW_LAYER_TUNNEL));
+		if (hrxq_idx) {
+			*hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+					       hrxq_idx);
+			rte_atomic32_inc(&(*hrxq)->refcnt);
+		}
+	} else {
+		struct mlx5_flow_rss_desc *rss_desc =
+				&((struct mlx5_flow_rss_desc *)priv->rss_desc)
+				[!!priv->flow_nested_idx];
+
+		MLX5_ASSERT(rss_desc->queue_num);
+		hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
+					 MLX5_RSS_HASH_KEY_LEN,
+					 dev_flow->hash_fields,
+					 rss_desc->queue, rss_desc->queue_num);
+		if (!hrxq_idx) {
+			hrxq_idx = mlx5_hrxq_new(dev,
+						 rss_desc->key,
+						 MLX5_RSS_HASH_KEY_LEN,
+						 dev_flow->hash_fields,
+						 rss_desc->queue,
+						 rss_desc->queue_num,
+						 !!(dev_flow->handle->layers &
+						 MLX5_FLOW_LAYER_TUNNEL),
+						 false);
+		}
+		*hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+				       hrxq_idx);
+	}
+	return hrxq_idx;
+}
+
+/**
  * Apply the flow to the NIC, lock free,
  * (mutex should be acquired by caller).
  *
@@ -10002,31 +10154,10 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			}
 		} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE &&
 			   !dv_h->rix_sample && !dv_h->rix_dest_array) {
-			struct mlx5_hrxq *hrxq;
-			uint32_t hrxq_idx;
-			struct mlx5_flow_rss_desc *rss_desc =
-				&((struct mlx5_flow_rss_desc *)priv->rss_desc)
-				[!!priv->flow_nested_idx];
+			struct mlx5_hrxq *hrxq = NULL;
+			uint32_t hrxq_idx = __flow_dv_rss_get_hrxq
+						(dev, flow, dev_flow, &hrxq);
 
-			MLX5_ASSERT(rss_desc->queue_num);
-			hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
-						 MLX5_RSS_HASH_KEY_LEN,
-						 dev_flow->hash_fields,
-						 rss_desc->queue,
-						 rss_desc->queue_num);
-			if (!hrxq_idx) {
-				hrxq_idx = mlx5_hrxq_new
-						(dev, rss_desc->key,
-						 MLX5_RSS_HASH_KEY_LEN,
-						 dev_flow->hash_fields,
-						 rss_desc->queue,
-						 rss_desc->queue_num,
-						 !!(dh->layers &
-						 MLX5_FLOW_LAYER_TUNNEL),
-						 false);
-			}
-			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
-					      hrxq_idx);
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,
@@ -10579,12 +10710,16 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 static void
 __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
+	struct rte_flow_shared_action *shared;
 	struct mlx5_flow_handle *dev_handle;
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (!flow)
 		return;
 	__flow_dv_remove(dev, flow);
+	shared = mlx5_flow_get_shared_rss(flow);
+	if (shared)
+		__atomic_sub_fetch(&shared->refcnt, 1, __ATOMIC_RELAXED);
 	if (flow->counter) {
 		flow_dv_counter_release(dev, flow->counter);
 		flow->counter = 0;
@@ -10629,6 +10764,423 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	}
 }
 
+/**
+ * Release array of hash RX queue objects.
+ * Helper function.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in, out] hrxqs
+ *   Array of hash RX queue objects.
+ *
+ * @return
+ *   Total number of references to hash RX queue objects in *hrxqs* array
+ *   after this operation.
+ */
+static int
+__flow_dv_hrxqs_release(struct rte_eth_dev *dev,
+			uint32_t (*hrxqs)[MLX5_RSS_HASH_FIELDS_LEN])
+{
+	size_t i;
+	int remaining = 0;
+
+	for (i = 0; i < RTE_DIM(*hrxqs); i++) {
+		int ret = mlx5_hrxq_release(dev, (*hrxqs)[i]);
+
+		if (!ret)
+			(*hrxqs)[i] = 0;
+		remaining += ret;
+	}
+	return remaining;
+}
+
+/**
+ * Release all hash RX queue objects representing shared RSS action.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in, out] action
+ *   Shared RSS action to remove hash RX queue objects from.
+ *
+ * @return
+ *   Total number of references to hash RX queue objects stored in *action*
+ *   after this operation.
+ *   Expected to be 0 if no external references held.
+ */
+static int
+__flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
+				 struct mlx5_shared_action_rss *action)
+{
+	return __flow_dv_hrxqs_release(dev, &action->hrxq) +
+		__flow_dv_hrxqs_release(dev, &action->hrxq_tunnel);
+}
+
+/**
+ * Setup shared RSS action.
+ * Prepare set of hash RX queue objects sufficient to handle all valid
+ * hash_fields combinations (see enum ibv_rx_hash_fields).
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in, out] action
+ *   Partially initialized shared RSS action.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+__flow_dv_action_rss_setup(struct rte_eth_dev *dev,
+			struct mlx5_shared_action_rss *action,
+			struct rte_flow_error *error)
+{
+	size_t i;
+	int err;
+
+	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
+		uint32_t hrxq_idx;
+		uint64_t hash_fields = mlx5_rss_hash_fields[i];
+		int tunnel;
+
+		for (tunnel = 0; tunnel < 2; tunnel++) {
+			hrxq_idx = mlx5_hrxq_new(dev, action->origin.key,
+					MLX5_RSS_HASH_KEY_LEN,
+					hash_fields,
+					action->origin.queue,
+					action->origin.queue_num,
+					tunnel, true);
+			if (!hrxq_idx) {
+				rte_flow_error_set
+					(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "cannot get hash queue");
+				goto error_hrxq_new;
+			}
+			err = __flow_dv_action_rss_hrxq_set
+				(action, hash_fields, tunnel, hrxq_idx);
+			MLX5_ASSERT(!err);
+		}
+	}
+	return 0;
+error_hrxq_new:
+	err = rte_errno;
+	__flow_dv_action_rss_hrxqs_release(dev, action);
+	rte_errno = err;
+	return -rte_errno;
+}
+
+/**
+ * Create shared RSS action.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] conf
+ *   Shared action configuration.
+ * @param[in] rss
+ *   RSS action specification used to create shared action.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   A valid shared action handle in case of success, NULL otherwise and
+ *   rte_errno is set.
+ */
+static struct rte_flow_shared_action *
+__flow_dv_action_rss_create(struct rte_eth_dev *dev,
+			    const struct rte_flow_shared_action_conf *conf,
+			    const struct rte_flow_action_rss *rss,
+			    struct rte_flow_error *error)
+{
+	struct rte_flow_shared_action *shared_action = NULL;
+	void *queue = NULL;
+	struct mlx5_shared_action_rss *shared_rss;
+	struct rte_flow_action_rss *origin;
+	const uint8_t *rss_key;
+	uint32_t queue_size = rss->queue_num * sizeof(uint16_t);
+
+	RTE_SET_USED(conf);
+	queue = mlx5_malloc(0, RTE_ALIGN_CEIL(queue_size, sizeof(void *)),
+			    0, SOCKET_ID_ANY);
+	shared_action = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*shared_action), 0,
+				    SOCKET_ID_ANY);
+	if (!shared_action || !queue) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate resource memory");
+		goto error_rss_init;
+	}
+	shared_rss = &shared_action->rss;
+	shared_rss->queue = queue;
+	origin = &shared_rss->origin;
+	origin->func = rss->func;
+	origin->level = rss->level;
+	/* RSS type 0 indicates default RSS type (ETH_RSS_IP). */
+	origin->types = !rss->types ? ETH_RSS_IP : rss->types;
+	/* NULL RSS key indicates default RSS key. */
+	rss_key = !rss->key ? rss_hash_default_key : rss->key;
+	memcpy(shared_rss->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+	origin->key = &shared_rss->key[0];
+	origin->key_len = MLX5_RSS_HASH_KEY_LEN;
+	memcpy(shared_rss->queue, rss->queue, queue_size);
+	origin->queue = shared_rss->queue;
+	origin->queue_num = rss->queue_num;
+	if (__flow_dv_action_rss_setup(dev, shared_rss, error))
+		goto error_rss_init;
+	shared_action->type = MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS;
+	return shared_action;
+error_rss_init:
+	mlx5_free(shared_action);
+	mlx5_free(queue);
+	return NULL;
+}
+
+/**
+ * Destroy the shared RSS action.
+ * Release related hash RX queue objects.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] shared_rss
+ *   The shared RSS action object to be removed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+__flow_dv_action_rss_release(struct rte_eth_dev *dev,
+			 struct mlx5_shared_action_rss *shared_rss,
+			 struct rte_flow_error *error)
+{
+	struct rte_flow_shared_action *shared_action = NULL;
+	uint32_t old_refcnt = 1;
+	int remaining = __flow_dv_action_rss_hrxqs_release(dev, shared_rss);
+
+	if (remaining) {
+		return rte_flow_error_set(error, ETOOMANYREFS,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "shared rss hrxq has references");
+	}
+	shared_action = container_of(shared_rss,
+				     struct rte_flow_shared_action, rss);
+	if (!__atomic_compare_exchange_n(&shared_action->refcnt, &old_refcnt,
+					 0, 0,
+					 __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+		return rte_flow_error_set(error, ETOOMANYREFS,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "shared rss has references");
+	}
+	rte_free(shared_rss->queue);
+	return 0;
+}
+
+/**
+ * Create shared action, lock free,
+ * (mutex should be acquired by caller).
+ * Dispatcher for action type specific call.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] conf
+ *   Shared action configuration.
+ * @param[in] action
+ *   Action specification used to create shared action.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   A valid shared action handle in case of success, NULL otherwise and
+ *   rte_errno is set.
+ */
+static struct rte_flow_shared_action *
+__flow_dv_action_create(struct rte_eth_dev *dev,
+			const struct rte_flow_shared_action_conf *conf,
+			const struct rte_flow_action *action,
+			struct rte_flow_error *error)
+{
+	struct rte_flow_shared_action *shared_action = NULL;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		shared_action = __flow_dv_action_rss_create(dev, conf,
+							    action->conf,
+							    error);
+		break;
+	default:
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, "action type not supported");
+		break;
+	}
+	if (shared_action) {
+		__atomic_add_fetch(&shared_action->refcnt, 1,
+				   __ATOMIC_RELAXED);
+		LIST_INSERT_HEAD(&priv->shared_actions, shared_action, next);
+	}
+	return shared_action;
+}
+
+/**
+ * Destroy the shared action.
+ * Release action related resources on the NIC and the memory.
+ * Lock free, (mutex should be acquired by caller).
+ * Dispatcher for action type specific call.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] action
+ *   The shared action object to be removed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+__flow_dv_action_destroy(struct rte_eth_dev *dev,
+			 struct rte_flow_shared_action *action,
+			 struct rte_flow_error *error)
+{
+	int ret;
+
+	switch (action->type) {
+	case MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS:
+		ret = __flow_dv_action_rss_release(dev, &action->rss, error);
+		break;
+	default:
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "action type not supported");
+	}
+	if (ret)
+		return ret;
+	LIST_REMOVE(action, next);
+	rte_free(action);
+	return 0;
+}
+
+/**
+ * Updates in place shared RSS action configuration.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] shared_rss
+ *   The shared RSS action object to be updated.
+ * @param[in] action_conf
+ *   RSS action specification used to modify *shared_rss*.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ * @note: currently only support update of RSS queues.
+ */
+static int
+__flow_dv_action_rss_update(struct rte_eth_dev *dev,
+			    struct mlx5_shared_action_rss *shared_rss,
+			    const struct rte_flow_action_rss *action_conf,
+			    struct rte_flow_error *error)
+{
+	size_t i;
+	int ret;
+	void *queue = NULL;
+	const uint8_t *rss_key;
+	uint32_t rss_key_len;
+	uint32_t queue_size = action_conf->queue_num * sizeof(uint16_t);
+
+	queue = mlx5_malloc(MLX5_MEM_ZERO,
+			    RTE_ALIGN_CEIL(queue_size, sizeof(void *)),
+			    0, SOCKET_ID_ANY);
+	if (!queue)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "cannot allocate resource memory");
+	if (action_conf->key) {
+		rss_key = action_conf->key;
+		rss_key_len = action_conf->key_len;
+	} else {
+		rss_key = rss_hash_default_key;
+		rss_key_len = MLX5_RSS_HASH_KEY_LEN;
+	}
+	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
+		uint32_t hrxq_idx;
+		uint64_t hash_fields = mlx5_rss_hash_fields[i];
+		int tunnel;
+
+		for (tunnel = 0; tunnel < 2; tunnel++) {
+			hrxq_idx = __flow_dv_action_rss_hrxq_lookup
+					(shared_rss, hash_fields, tunnel);
+			MLX5_ASSERT(hrxq_idx);
+			ret = mlx5_hrxq_modify
+				(dev, hrxq_idx,
+				 rss_key, rss_key_len,
+				 hash_fields,
+				 action_conf->queue, action_conf->queue_num);
+			if (ret) {
+				mlx5_free(queue);
+				return rte_flow_error_set
+					(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					 "cannot update hash queue");
+			}
+		}
+	}
+	mlx5_free(shared_rss->queue);
+	shared_rss->queue = queue;
+	memcpy(shared_rss->queue, action_conf->queue, queue_size);
+	shared_rss->origin.queue = shared_rss->queue;
+	shared_rss->origin.queue_num = action_conf->queue_num;
+	return 0;
+}
+
+/**
+ * Updates in place shared action configuration, lock free,
+ * (mutex should be acquired by caller).
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] action
+ *   The shared action object to be updated.
+ * @param[in] action_conf
+ *   Action specification used to modify *action*.
+ *   *action_conf* should be of type correlating with type of the *action*,
+ *   otherwise considered as invalid.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+__flow_dv_action_update(struct rte_eth_dev *dev,
+			struct rte_flow_shared_action *action,
+			const void *action_conf,
+			struct rte_flow_error *error)
+{
+	switch (action->type) {
+	case MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS:
+		return __flow_dv_action_rss_update(dev, &action->rss,
+						   action_conf, error);
+	default:
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "action type not supported");
+	}
+}
 /**
  * Query a dv flow  rule for its statistics via devx.
  *
@@ -11453,6 +12005,92 @@ flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t cnt)
 	flow_dv_shared_unlock(dev);
 }
 
+/**
+ * Validate shared action.
+ * Dispatcher for action type specific validation.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] conf
+ *   Shared action configuration.
+ * @param[in] action
+ *   The shared action object to validate.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+static int
+flow_dv_action_validate(struct rte_eth_dev *dev,
+			const struct rte_flow_shared_action_conf *conf,
+			const struct rte_flow_action *action,
+			struct rte_flow_error *error)
+{
+	RTE_SET_USED(conf);
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		return mlx5_validate_action_rss(dev, action, error);
+	default:
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "action type not supported");
+	}
+}
+
+/*
+ * Mutex-protected thunk to lock-free  __flow_dv_action_create().
+ */
+static struct rte_flow_shared_action *
+flow_dv_action_create(struct rte_eth_dev *dev,
+		      const struct rte_flow_shared_action_conf *conf,
+		      const struct rte_flow_action *action,
+		      struct rte_flow_error *error)
+{
+	struct rte_flow_shared_action *shared_action = NULL;
+
+	flow_dv_shared_lock(dev);
+	shared_action = __flow_dv_action_create(dev, conf, action, error);
+	flow_dv_shared_unlock(dev);
+	return shared_action;
+}
+
+/*
+ * Mutex-protected thunk to lock-free  __flow_dv_action_destroy().
+ */
+static int
+flow_dv_action_destroy(struct rte_eth_dev *dev,
+		       struct rte_flow_shared_action *action,
+		       struct rte_flow_error *error)
+{
+	int ret;
+
+	flow_dv_shared_lock(dev);
+	ret = __flow_dv_action_destroy(dev, action, error);
+	flow_dv_shared_unlock(dev);
+	return ret;
+}
+
+/*
+ * Mutex-protected thunk to lock-free  __flow_dv_action_update().
+ */
+static int
+flow_dv_action_update(struct rte_eth_dev *dev,
+		      struct rte_flow_shared_action *action,
+		      const void *action_conf,
+		      struct rte_flow_error *error)
+{
+	int ret;
+
+	flow_dv_shared_lock(dev);
+	ret = __flow_dv_action_update(dev, action, action_conf,
+				      error);
+	flow_dv_shared_unlock(dev);
+	return ret;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.validate = flow_dv_validate,
 	.prepare = flow_dv_prepare,
@@ -11469,6 +12107,10 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.counter_free = flow_dv_counter_free,
 	.counter_query = flow_dv_counter_query,
 	.get_aged_flows = flow_get_aged_flows,
+	.action_validate = flow_dv_action_validate,
+	.action_create = flow_dv_action_create,
+	.action_destroy = flow_dv_action_destroy,
+	.action_update = flow_dv_action_update,
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
