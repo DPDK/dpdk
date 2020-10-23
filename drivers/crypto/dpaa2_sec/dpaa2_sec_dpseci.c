@@ -2820,12 +2820,6 @@ dpaa2_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 	return 0;
 }
 
-#ifdef RTE_LIBRTE_SECURITY_TEST
-static uint8_t aes_cbc_iv[] = {
-	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
-#endif
-
 static int
 dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			    struct rte_security_session_conf *conf,
