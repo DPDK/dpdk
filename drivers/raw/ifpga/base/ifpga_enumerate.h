@@ -6,6 +6,7 @@
 #define _IFPGA_ENUMERATE_H_
 
 int ifpga_bus_init(struct ifpga_hw *hw);
+int ifpga_bus_uinit(struct ifpga_hw *hw);
 int ifpga_bus_enumerate(struct ifpga_hw *hw);
 
 #endif /* _IFPGA_ENUMERATE_H_ */

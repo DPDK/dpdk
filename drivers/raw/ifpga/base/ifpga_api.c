@@ -330,8 +330,20 @@ error:
 	return -ENOMEM;
 }
 
+static void ifpga_adapter_destroy(struct opae_adapter *adapter)
+{
+	struct ifpga_fme_hw *fme;
+
+	if (adapter && adapter->mgr && adapter->mgr->data) {
+		fme = (struct ifpga_fme_hw *)adapter->mgr->data;
+		if (fme->parent)
+			ifpga_bus_uinit(fme->parent);
+	}
+}
+
 struct opae_adapter_ops ifpga_adapter_ops = {
 	.enumerate = ifpga_adapter_enumerate,
+	.destroy = ifpga_adapter_destroy,
 };
 
 /**

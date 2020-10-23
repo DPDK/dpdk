@@ -722,3 +722,19 @@ int ifpga_bus_init(struct ifpga_hw *hw)
 
 	return 0;
 }
+
+int ifpga_bus_uinit(struct ifpga_hw *hw)
+{
+	int i;
+	struct ifpga_port_hw *port;
+
+	if (hw) {
+		fme_hw_uinit(&hw->fme);
+		for (i = 0; i < MAX_FPGA_PORT_NUM; i++) {
+			port = &hw->port[i];
+			port_hw_uinit(port);
+		}
+	}
+
+	return 0;
+}
