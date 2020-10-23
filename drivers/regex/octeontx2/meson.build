@@ -38,7 +38,7 @@ foreach flag: extra_flags
 	endif
 endforeach
 
-name = 'octeontx2_regex'
+fmt_name = 'octeontx2_regex'
 deps += ['bus_pci', 'common_octeontx2', 'regexdev']
 
 includes += include_directories('../../common/octeontx2')
