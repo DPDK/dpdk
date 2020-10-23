@@ -118,31 +118,12 @@ struct rte_lpm_config {
 	int flags;               /**< This field is currently unused. */
 };
 
-/** @internal Rule structure. */
-struct rte_lpm_rule {
-	uint32_t ip; /**< Rule IP address. */
-	uint32_t next_hop; /**< Rule next hop. */
-};
-
-/** @internal Contains metadata about the rules table. */
-struct rte_lpm_rule_info {
-	uint32_t used_rules; /**< Used rules so far. */
-	uint32_t first_rule; /**< Indexes the first rule of a given depth. */
-};
-
 /** @internal LPM structure. */
 struct rte_lpm {
-	/* LPM metadata. */
-	char name[RTE_LPM_NAMESIZE];        /**< Name of the lpm. */
-	uint32_t max_rules; /**< Max. balanced rules per lpm. */
-	uint32_t number_tbl8s; /**< Number of tbl8s. */
-	struct rte_lpm_rule_info rule_info[RTE_LPM_MAX_DEPTH]; /**< Rule info table. */
-
 	/* LPM Tables. */
 	struct rte_lpm_tbl_entry tbl24[RTE_LPM_TBL24_NUM_ENTRIES]
 			__rte_cache_aligned; /**< LPM tbl24 table. */
 	struct rte_lpm_tbl_entry *tbl8; /**< LPM tbl8 table. */
-	struct rte_lpm_rule *rules_tbl; /**< LPM rules. */
 };
 
 /** LPM RCU QSBR configuration structure. */

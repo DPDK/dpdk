@@ -606,6 +606,9 @@ ABI Changes
 
 * sched: Added new fields to ``struct rte_sched_subport_port_params``.
 
+* lpm: Removed fields other than ``tbl24`` and ``tbl8`` from the struct
+  ``rte_lpm``. The removed fields were made internal.
+
 
 Known Issues
 ------------
