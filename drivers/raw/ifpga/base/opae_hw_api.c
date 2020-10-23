@@ -2,6 +2,10 @@
  * Copyright(c) 2010-2018 Intel Corporation
  */
 
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "opae_hw_api.h"
 #include "opae_debug.h"
 #include "ifpga_api.h"
@@ -305,6 +309,244 @@ static struct opae_adapter_ops *match_ops(struct opae_adapter *adapter)
 	return NULL;
 }
 
+static void opae_mutex_init(pthread_mutex_t *mutex)
+{
+	pthread_mutexattr_t mattr;
+
+	pthread_mutexattr_init(&mattr);
+	pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
+	pthread_mutexattr_setrobust(&mattr, PTHREAD_MUTEX_ROBUST);
+	pthread_mutexattr_setprotocol(&mattr, PTHREAD_PRIO_INHERIT);
+	pthread_mutex_init(mutex, &mattr);
+	pthread_mutexattr_destroy(&mattr);
+}
+
+static int opae_shm_open(char *shm_name, u32 size, int *new_shm)
+{
+	int shm_id;
+	int ret;
+
+	shm_id = shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, 0666);
+	if (shm_id == -1) {
+		if (errno == EEXIST) {
+			dev_info(NULL, "shared memory %s already exist\n",
+					shm_name);
+			shm_id = shm_open(shm_name, O_RDWR, 0666);
+		} else {
+			dev_err(NULL, "failed to create shared memory %s\n",
+					shm_name);
+			return -1;
+		}
+	} else {
+		*new_shm = 1;
+		ret = ftruncate(shm_id, size);
+		if (ret == -1) {
+			dev_err(NULL,
+					"failed to set shared memory size to %u\n",
+					size);
+			ret = shm_unlink(shm_name);
+			if (ret == -1) {
+				dev_err(NULL,
+						"failed to unlink shared memory %s\n",
+						shm_name);
+			}
+			return -1;
+		}
+	}
+
+	return shm_id;
+}
+
+static pthread_mutex_t *opae_adapter_mutex_open(struct opae_adapter *adapter)
+{
+	char shm_name[32];
+	void *ptr;
+	int shm_id;
+	int new_shm = 0;
+
+	if (!adapter->data)
+		return NULL;
+	adapter->lock = NULL;
+
+	snprintf(shm_name, sizeof(shm_name), "/mutex.IFPGA:%s", adapter->name);
+	shm_id = opae_shm_open(shm_name, sizeof(pthread_mutex_t), &new_shm);
+	if (shm_id == -1) {
+		dev_err(NULL, "failed to open shared memory %s\n", shm_name);
+	} else {
+		dev_info(NULL, "shared memory %s id is %d\n",
+				shm_name, shm_id);
+		ptr = mmap(NULL, sizeof(pthread_mutex_t),
+				PROT_READ | PROT_WRITE, MAP_SHARED,
+				shm_id, 0);
+		adapter->lock = (pthread_mutex_t *)ptr;
+		if (ptr) {
+			dev_info(NULL,
+					"shared memory %s address is %p\n",
+					shm_name, ptr);
+			if (new_shm)
+				opae_mutex_init(adapter->lock);
+		} else {
+			dev_err(NULL, "failed to map shared memory %s\n",
+					shm_name);
+		}
+	}
+
+	return adapter->lock;
+}
+
+static void opae_adapter_mutex_close(struct opae_adapter *adapter)
+{
+	char shm_name[32];
+	int ret;
+
+	if (!adapter->lock)
+		return;
+
+	snprintf(shm_name, sizeof(shm_name), "/mutex.IFPGA:%s", adapter->name);
+
+	ret = munmap(adapter->lock, sizeof(pthread_mutex_t));
+	if (ret == -1)
+		dev_err(NULL, "failed to unmap shared memory %s\n", shm_name);
+	else
+		adapter->lock = NULL;
+}
+
+/**
+ * opae_adapter_lock - lock this adapter
+ * @adapter: adapter to lock.
+ * @timeout: maximum time to wait for lock done
+ *           -1  wait until the lock is available
+ *           0   do not wait and return immediately
+ *           t   positive time in second to wait
+ *
+ * Return: 0 on success, otherwise error code.
+ */
+int opae_adapter_lock(struct opae_adapter *adapter, int timeout)
+{
+	struct timespec t;
+	int ret = -EINVAL;
+
+	if (adapter && adapter->lock) {
+		if (timeout < 0) {
+			ret = pthread_mutex_lock(adapter->lock);
+		} else if (timeout == 0) {
+			ret = pthread_mutex_trylock(adapter->lock);
+		} else {
+			clock_gettime(CLOCK_REALTIME, &t);
+			t.tv_sec += timeout;
+			ret = pthread_mutex_timedlock(adapter->lock, &t);
+		}
+	}
+	return ret;
+}
+
+/**
+ * opae_adapter_unlock - unlock this adapter
+ * @adapter: adapter to unlock.
+ *
+ * Return: 0 on success, otherwise error code.
+ */
+int opae_adapter_unlock(struct opae_adapter *adapter)
+{
+	int ret = -EINVAL;
+
+	if (adapter && adapter->lock)
+		ret = pthread_mutex_unlock(adapter->lock);
+
+	return ret;
+}
+
+static void opae_adapter_shm_init(struct opae_adapter *adapter)
+{
+	opae_share_data *sd;
+
+	if (!adapter->shm.ptr)
+		return;
+
+	sd = (opae_share_data *)adapter->shm.ptr;
+	dev_info(NULL, "initialize shared memory\n");
+	opae_mutex_init(&sd->spi_mutex);
+	opae_mutex_init(&sd->i2c_mutex);
+	sd->ref_cnt = 0;
+	sd->dtb_size = SHM_BLK_SIZE;
+}
+
+static void *opae_adapter_shm_alloc(struct opae_adapter *adapter)
+{
+	char shm_name[32];
+	opae_share_data *sd;
+	u32 size = sizeof(opae_share_data);
+	int shm_id;
+	int new_shm = 0;
+
+	if (!adapter->data)
+		return NULL;
+
+	snprintf(shm_name, sizeof(shm_name), "/IFPGA:%s", adapter->name);
+	adapter->shm.ptr = NULL;
+
+	opae_adapter_lock(adapter, -1);
+	shm_id = opae_shm_open(shm_name, size, &new_shm);
+	if (shm_id == -1) {
+		dev_err(NULL, "failed to open shared memory %s\n", shm_name);
+	} else {
+		dev_info(NULL, "shared memory %s id is %d\n",
+				shm_name, shm_id);
+		adapter->shm.id = shm_id;
+		adapter->shm.size = size;
+		adapter->shm.ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
+							MAP_SHARED, shm_id, 0);
+		if (adapter->shm.ptr) {
+			dev_info(NULL,
+					"shared memory %s address is %p\n",
+					shm_name, adapter->shm.ptr);
+			if (new_shm)
+				opae_adapter_shm_init(adapter);
+			sd = (opae_share_data *)adapter->shm.ptr;
+			sd->ref_cnt++;
+		} else {
+			dev_err(NULL, "failed to map shared memory %s\n",
+					shm_name);
+		}
+	}
+	opae_adapter_unlock(adapter);
+
+	return adapter->shm.ptr;
+}
+
+static void opae_adapter_shm_free(struct opae_adapter *adapter)
+{
+	char shm_name[32];
+	opae_share_data *sd;
+	u32 ref_cnt;
+	int ret;
+
+	if (!adapter->shm.ptr)
+		return;
+
+	sd = (opae_share_data *)adapter->shm.ptr;
+	snprintf(shm_name, sizeof(shm_name), "/IFPGA:%s", adapter->name);
+
+	opae_adapter_lock(adapter, -1);
+	ref_cnt = --sd->ref_cnt;
+	ret = munmap(adapter->shm.ptr, adapter->shm.size);
+	if (ret == -1)
+		dev_err(NULL, "failed to unmap shared memory %s\n", shm_name);
+	else
+		adapter->shm.ptr = NULL;
+
+	if (ref_cnt == 0) {
+		dev_info(NULL, "unlink shared memory %s\n", shm_name);
+		ret = shm_unlink(shm_name);
+		if (ret == -1) {
+			dev_err(NULL, "failed to unlink shared memory %s\n",
+					shm_name);
+		}
+	}
+	opae_adapter_unlock(adapter);
+}
+
 /**
  * opae_adapter_init - init opae_adapter data structure
  * @adapter: pointer of opae_adapter data structure
@@ -323,6 +565,12 @@ int opae_adapter_init(struct opae_adapter *adapter,
 	adapter->data = data;
 	adapter->name = name;
 	adapter->ops = match_ops(adapter);
+
+	if (!opae_adapter_mutex_open(adapter))
+		return -ENOMEM;
+
+	if (!opae_adapter_shm_alloc(adapter))
+		return -ENOMEM;
 
 	return 0;
 }
@@ -359,6 +607,8 @@ void opae_adapter_destroy(struct opae_adapter *adapter)
 {
 	if (adapter && adapter->ops && adapter->ops->destroy)
 		adapter->ops->destroy(adapter);
+	opae_adapter_shm_free(adapter);
+	opae_adapter_mutex_close(adapter);
 }
 
 /**

@@ -94,6 +94,7 @@ struct altera_i2c_dev {
 	u8 *buf;
 	int (*xfer)(struct altera_i2c_dev *dev, struct i2c_msg *msg, int num);
 	pthread_mutex_t lock;
+	pthread_mutex_t *mutex;  /* multi-process mutex from adapter */
 };
 
 /**

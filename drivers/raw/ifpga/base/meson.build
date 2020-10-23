@@ -23,6 +23,18 @@ sources = [
 	'opae_eth_group.c',
 ]
 
+rtdep = dependency('librt', required: false)
+if not rtdep.found()
+	rtdep = cc.find_library('librt', required: false)
+endif
+if not rtdep.found()
+	build = false
+	reason = 'missing dependency, "librt"'
+	subdir_done()
+endif
+
+ext_deps += rtdep
+
 base_lib = static_library('ifpga_rawdev_base', sources,
 	dependencies: static_rte_eal,
 	c_args: cflags)

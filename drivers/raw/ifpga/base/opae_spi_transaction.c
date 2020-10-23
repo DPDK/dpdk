@@ -434,11 +434,11 @@ int spi_transaction_read(struct spi_transaction_dev *dev, unsigned int addr,
 {
 	int ret;
 
-	pthread_mutex_lock(&dev->lock);
+	pthread_mutex_lock(dev->mutex);
 	ret = do_transaction(dev, addr, size, data,
 			(size > SPI_REG_BYTES) ?
 			SPI_TRAN_SEQ_READ : SPI_TRAN_NON_SEQ_READ);
-	pthread_mutex_unlock(&dev->lock);
+	pthread_mutex_unlock(dev->mutex);
 
 	return ret;
 }
@@ -448,11 +448,11 @@ int spi_transaction_write(struct spi_transaction_dev *dev, unsigned int addr,
 {
 	int ret;
 
-	pthread_mutex_lock(&dev->lock);
+	pthread_mutex_lock(dev->mutex);
 	ret = do_transaction(dev, addr, size, data,
 			(size > SPI_REG_BYTES) ?
 			SPI_TRAN_SEQ_WRITE : SPI_TRAN_NON_SEQ_WRITE);
-	pthread_mutex_unlock(&dev->lock);
+	pthread_mutex_unlock(dev->mutex);
 
 	return ret;
 }
@@ -478,6 +478,13 @@ struct spi_transaction_dev *spi_transaction_init(struct altera_spi_device *dev,
 	if (ret) {
 		dev_err(spi_tran_dev, "fail to init mutex lock\n");
 		goto err;
+	}
+	if (dev->mutex) {
+		dev_info(NULL, "use multi-process mutex in spi\n");
+		spi_tran_dev->mutex = dev->mutex;
+	} else {
+		dev_info(NULL, "use multi-thread mutex in spi\n");
+		spi_tran_dev->mutex = &spi_tran_dev->lock;
 	}
 
 	return spi_tran_dev;

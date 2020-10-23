@@ -77,6 +77,10 @@ struct altera_spi_device {
 	int (*reg_read)(struct altera_spi_device *dev, u32 reg, u32 *val);
 	int (*reg_write)(struct altera_spi_device *dev, u32 reg,
 			u32 value);
+	/* below are data to be shared in multiple process */
+	pthread_mutex_t *mutex;     /* to be passed to spi_transaction_dev */
+	unsigned int *dtb_sz_ptr;   /* to be used in init_max10_device_table */
+	unsigned char *dtb;         /* to be used in init_max10_device_table */
 };
 
 #define HEADER_LEN 8
@@ -103,6 +107,7 @@ struct spi_transaction_dev {
 	int chipselect;
 	struct spi_tran_buffer *buffer;
 	pthread_mutex_t lock;
+	pthread_mutex_t *mutex;  /* multi-process mutex from adapter */
 };
 
 struct spi_tran_header {

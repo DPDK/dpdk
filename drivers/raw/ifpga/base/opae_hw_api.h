@@ -265,12 +265,36 @@ TAILQ_HEAD(opae_accelerator_list, opae_accelerator);
 #define opae_adapter_for_each_acc(adatper, acc) \
 	TAILQ_FOREACH(acc, &adapter->acc_list, node)
 
+#define SHM_PREFIX     "/IFPGA:"
+#define SHM_BLK_SIZE   0x2000
+
+typedef struct {
+	union {
+		u8 byte[SHM_BLK_SIZE];
+		struct {
+			pthread_mutex_t spi_mutex;
+			pthread_mutex_t i2c_mutex;
+			u32 ref_cnt;    /* reference count of shared memory */
+			u32 dtb_size;   /* actual length of DTB data in byte */
+		};
+	};
+	u8 dtb[SHM_BLK_SIZE];   /* DTB data */
+} opae_share_data;
+
+typedef struct  {
+	int id;       /* shared memory id returned by shm_open */
+	u32 size;     /* size of shared memory in byte */
+	void *ptr;    /* start address of shared memory */
+} opae_share_memory;
+
 struct opae_adapter {
 	const char *name;
 	struct opae_manager *mgr;
 	struct opae_accelerator_list acc_list;
 	struct opae_adapter_ops *ops;
 	void *data;
+	pthread_mutex_t *lock;   /* multi-process mutex for IFPGA */
+	opae_share_memory shm;
 };
 
 /* OPAE Adapter APIs */
@@ -280,7 +304,8 @@ void *opae_adapter_data_alloc(enum opae_adapter_type type);
 int opae_adapter_init(struct opae_adapter *adapter,
 		const char *name, void *data);
 #define opae_adapter_free(adapter) opae_free(adapter)
-
+int opae_adapter_lock(struct opae_adapter *adapter, int timeout);
+int opae_adapter_unlock(struct opae_adapter *adapter);
 int opae_adapter_enumerate(struct opae_adapter *adapter);
 void opae_adapter_destroy(struct opae_adapter *adapter);
 static inline struct opae_manager *

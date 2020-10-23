@@ -30,7 +30,7 @@ int i2c_read(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 	int i = 0;
 	int ret;
 
-	pthread_mutex_lock(&dev->lock);
+	pthread_mutex_lock(dev->mutex);
 
 	if (flags & I2C_FLAG_ADDR16)
 		msgbuf[i++] = offset >> 8;
@@ -60,7 +60,7 @@ int i2c_read(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 	ret = i2c_transfer(dev, msg, 2);
 
 exit:
-	pthread_mutex_unlock(&dev->lock);
+	pthread_mutex_unlock(dev->mutex);
 	return ret;
 }
 
@@ -72,7 +72,7 @@ int i2c_write(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 	int ret;
 	int i = 0;
 
-	pthread_mutex_lock(&dev->lock);
+	pthread_mutex_lock(dev->mutex);
 
 	if (!dev->xfer) {
 		ret = -ENODEV;
@@ -100,7 +100,7 @@ int i2c_write(struct altera_i2c_dev *dev, int flags, unsigned int slave_addr,
 
 	opae_free(buf);
 exit:
-	pthread_mutex_unlock(&dev->lock);
+	pthread_mutex_unlock(dev->mutex);
 	return ret;
 }
 
@@ -496,6 +496,7 @@ struct altera_i2c_dev *altera_i2c_probe(void *base)
 
 	if (pthread_mutex_init(&dev->lock, NULL))
 		return NULL;
+	dev->mutex = &dev->lock;
 
 	altera_i2c_hardware_init(dev);
 
