@@ -268,7 +268,7 @@ rte_lpm_free(struct rte_lpm *lpm)
 		rte_rcu_qsbr_dq_delete(internal_lpm->dq);
 	rte_free(lpm->tbl8);
 	rte_free(lpm->rules_tbl);
-	rte_free(lpm);
+	rte_free(internal_lpm);
 	rte_free(te);
 }
 
