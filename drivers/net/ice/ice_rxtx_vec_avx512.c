@@ -176,8 +176,8 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 	/* mask to shuffle from desc. to mbuf (4 descriptors)*/
 	const __m512i shuf_msk =
 		_mm512_set4_epi32
-			(/* octet 12~15, 32 bits rss */
-			 15 << 24 | 14 << 16 | 13 << 8 | 12,
+			(/* rss hash parsed separately */
+			 0xFFFFFFFF,
 			 /* octet 10~11, 16 bits vlan_macip */
 			 /* octet 4~5, 16 bits data_len */
 			 11 << 24 | 10 << 16 | 5 << 8 | 4,
@@ -399,6 +399,11 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 		mb4_7 = _mm512_mask_blend_epi32(0x1111, mb4_7, ptype4_7);
 		mb0_3 = _mm512_mask_blend_epi32(0x1111, mb0_3, ptype0_3);
 
+		__m256i mb4_5 = _mm512_extracti64x4_epi64(mb4_7, 0);
+		__m256i mb6_7 = _mm512_extracti64x4_epi64(mb4_7, 1);
+		__m256i mb0_1 = _mm512_extracti64x4_epi64(mb0_3, 0);
+		__m256i mb2_3 = _mm512_extracti64x4_epi64(mb0_3, 1);
+
 		/**
 		 * use permute/extract to get status content
 		 * After the operations, the packets status flags are in the
@@ -438,6 +443,97 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 		/* merge flags */
 		const __m256i mbuf_flags = _mm256_or_si256(l3_l4_flags,
 				rss_vlan_flags);
+
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+		/**
+		 * needs to load 2nd 16B of each desc for RSS hash parsing,
+		 * will cause performance drop to get into this context.
+		 */
+		if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
+				DEV_RX_OFFLOAD_RSS_HASH) {
+			/* load bottom half of every 32B desc */
+			const __m128i raw_desc_bh7 =
+				_mm_load_si128
+					((void *)(&rxdp[7].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh6 =
+				_mm_load_si128
+					((void *)(&rxdp[6].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh5 =
+				_mm_load_si128
+					((void *)(&rxdp[5].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh4 =
+				_mm_load_si128
+					((void *)(&rxdp[4].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh3 =
+				_mm_load_si128
+					((void *)(&rxdp[3].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh2 =
+				_mm_load_si128
+					((void *)(&rxdp[2].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh1 =
+				_mm_load_si128
+					((void *)(&rxdp[1].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh0 =
+				_mm_load_si128
+					((void *)(&rxdp[0].wb.status_error1));
+
+			__m256i raw_desc_bh6_7 =
+				_mm256_inserti128_si256
+					(_mm256_castsi128_si256(raw_desc_bh6),
+					raw_desc_bh7, 1);
+			__m256i raw_desc_bh4_5 =
+				_mm256_inserti128_si256
+					(_mm256_castsi128_si256(raw_desc_bh4),
+					raw_desc_bh5, 1);
+			__m256i raw_desc_bh2_3 =
+				_mm256_inserti128_si256
+					(_mm256_castsi128_si256(raw_desc_bh2),
+					raw_desc_bh3, 1);
+			__m256i raw_desc_bh0_1 =
+				_mm256_inserti128_si256
+					(_mm256_castsi128_si256(raw_desc_bh0),
+					raw_desc_bh1, 1);
+
+			/**
+			 * to shift the 32b RSS hash value to the
+			 * highest 32b of each 128b before mask
+			 */
+			__m256i rss_hash6_7 =
+				_mm256_slli_epi64(raw_desc_bh6_7, 32);
+			__m256i rss_hash4_5 =
+				_mm256_slli_epi64(raw_desc_bh4_5, 32);
+			__m256i rss_hash2_3 =
+				_mm256_slli_epi64(raw_desc_bh2_3, 32);
+			__m256i rss_hash0_1 =
+				_mm256_slli_epi64(raw_desc_bh0_1, 32);
+
+			__m256i rss_hash_msk =
+				_mm256_set_epi32(0xFFFFFFFF, 0, 0, 0,
+						 0xFFFFFFFF, 0, 0, 0);
+
+			rss_hash6_7 = _mm256_and_si256
+					(rss_hash6_7, rss_hash_msk);
+			rss_hash4_5 = _mm256_and_si256
+					(rss_hash4_5, rss_hash_msk);
+			rss_hash2_3 = _mm256_and_si256
+					(rss_hash2_3, rss_hash_msk);
+			rss_hash0_1 = _mm256_and_si256
+					(rss_hash0_1, rss_hash_msk);
+
+			mb6_7 = _mm256_or_si256(mb6_7, rss_hash6_7);
+			mb4_5 = _mm256_or_si256(mb4_5, rss_hash4_5);
+			mb2_3 = _mm256_or_si256(mb2_3, rss_hash2_3);
+			mb0_1 = _mm256_or_si256(mb0_1, rss_hash0_1);
+		} /* if() on RSS hash parsing */
+#endif
+
 		/**
 		 * At this point, we have the 8 sets of flags in the low 16-bits
 		 * of each 32-bit value in vlan0.
@@ -470,11 +566,6 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 		rearm0 = _mm256_blend_epi32(mbuf_init,
 					    _mm256_srli_si256(mbuf_flags, 4),
 					    0x04);
-
-		const __m256i mb4_5 = _mm512_extracti64x4_epi64(mb4_7, 0);
-		const __m256i mb6_7 = _mm512_extracti64x4_epi64(mb4_7, 1);
-		const __m256i mb0_1 = _mm512_extracti64x4_epi64(mb0_3, 0);
-		const __m256i mb2_3 = _mm512_extracti64x4_epi64(mb0_3, 1);
 
 		/* permute to add in the rx_descriptor e.g. rss fields */
 		rearm6 = _mm256_permute2f128_si256(rearm6, mb6_7, 0x20);
