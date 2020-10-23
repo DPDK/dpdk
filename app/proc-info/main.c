@@ -1223,7 +1223,7 @@ show_crypto(void)
 			       stats.dequeue_err_count);
 		}
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 		show_security_context(i);
 #endif
 	}
