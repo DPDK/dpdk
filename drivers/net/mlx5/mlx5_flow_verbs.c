@@ -1984,7 +1984,8 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						 rss_desc->queue,
 						 rss_desc->queue_num,
 						 !!(handle->layers &
-						 MLX5_FLOW_LAYER_TUNNEL));
+						 MLX5_FLOW_LAYER_TUNNEL),
+						 false);
 			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 					      hrxq_idx);
 			if (!hrxq) {

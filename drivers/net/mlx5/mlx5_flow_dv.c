@@ -8425,20 +8425,16 @@ flow_dv_handle_rx_queue(struct rte_eth_dev *dev,
 	struct mlx5_hrxq *hrxq;
 
 	MLX5_ASSERT(rss_desc->queue_num);
-	*hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
-				  MLX5_RSS_HASH_KEY_LEN,
+	*hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key, MLX5_RSS_HASH_KEY_LEN,
 				  dev_flow->hash_fields,
-				  rss_desc->queue,
-				  rss_desc->queue_num);
+				  rss_desc->queue, rss_desc->queue_num);
 	if (!*hrxq_idx) {
 		*hrxq_idx = mlx5_hrxq_new
-				(dev, rss_desc->key,
-				 MLX5_RSS_HASH_KEY_LEN,
+				(dev, rss_desc->key, MLX5_RSS_HASH_KEY_LEN,
 				 dev_flow->hash_fields,
-				 rss_desc->queue,
-				 rss_desc->queue_num,
-				 !!(dh->layers &
-				 MLX5_FLOW_LAYER_TUNNEL));
+				 rss_desc->queue, rss_desc->queue_num,
+				 !!(dh->layers & MLX5_FLOW_LAYER_TUNNEL),
+				 false);
 		if (!*hrxq_idx)
 			return NULL;
 	}
@@ -10026,7 +10022,8 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						 rss_desc->queue,
 						 rss_desc->queue_num,
 						 !!(dh->layers &
-						 MLX5_FLOW_LAYER_TUNNEL));
+						 MLX5_FLOW_LAYER_TUNNEL),
+						 false);
 			}
 			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 					      hrxq_idx);

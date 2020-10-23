@@ -341,7 +341,7 @@ uint32_t mlx5_hrxq_new(struct rte_eth_dev *dev,
 		       const uint8_t *rss_key, uint32_t rss_key_len,
 		       uint64_t hash_fields,
 		       const uint16_t *queues, uint32_t queues_n,
-		       int tunnel __rte_unused);
+		       int tunnel, bool shared);
 uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
 		       const uint8_t *rss_key, uint32_t rss_key_len,
 		       uint64_t hash_fields,
@@ -354,7 +354,10 @@ void mlx5_drop_action_destroy(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_port_offloads(void);
 uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
 void mlx5_rxq_timestamp_set(struct rte_eth_dev *dev);
-
+int mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hxrq_idx,
+		     const uint8_t *rss_key, uint32_t rss_key_len,
+		     uint64_t hash_fields,
+		     const uint16_t *queues, uint32_t queues_n);
 
 /* mlx5_txq.c */
 

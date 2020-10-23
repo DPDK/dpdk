@@ -727,6 +727,7 @@ struct mlx5_ind_table_obj {
 struct mlx5_hrxq {
 	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
+	uint32_t shared:1; /* This object used in shared action. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
 	RTE_STD_C11
 	union {
@@ -798,6 +799,10 @@ struct mlx5_obj_ops {
 	void (*ind_table_destroy)(struct mlx5_ind_table_obj *ind_tbl);
 	int (*hrxq_new)(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 			int tunnel __rte_unused);
+	int (*hrxq_modify)(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
+			   const uint8_t *rss_key,
+			   uint64_t hash_fields,
+			   const struct mlx5_ind_table_obj *ind_tbl);
 	void (*hrxq_destroy)(struct mlx5_hrxq *hrxq);
 	int (*drop_action_create)(struct rte_eth_dev *dev);
 	void (*drop_action_destroy)(struct rte_eth_dev *dev);

@@ -1732,6 +1732,29 @@ mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
+ * Match queues listed in arguments to queues contained in indirection table
+ * object.
+ *
+ * @param ind_tbl
+ *   Pointer to indirection table to match.
+ * @param queues
+ *   Queues to match to ques in indirection table.
+ * @param queues_n
+ *   Number of queues in the array.
+ *
+ * @return
+ *   1 if all queues in indirection table match 0 othrwise.
+ */
+static int
+mlx5_ind_table_obj_match_queues(const struct mlx5_ind_table_obj *ind_tbl,
+		       const uint16_t *queues, uint32_t queues_n)
+{
+		return (ind_tbl->queues_n == queues_n) &&
+		    (!memcmp(ind_tbl->queues, queues,
+			    ind_tbl->queues_n * sizeof(ind_tbl->queues[0])));
+}
+
+/**
  * Get an indirection table.
  *
  * @param dev
@@ -1908,6 +1931,8 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 		      hrxq, next) {
 		struct mlx5_ind_table_obj *ind_tbl;
 
+		if (hrxq->shared)
+			continue;
 		if (hrxq->rss_key_len != rss_key_len)
 			continue;
 		if (memcmp(hrxq->rss_key, rss_key, rss_key_len))
@@ -1925,6 +1950,86 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 		return idx;
 	}
 	return 0;
+}
+
+/**
+ * Modify an Rx Hash queue configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param hrxq
+ *   Index to Hash Rx queue to modify.
+ * @param rss_key
+ *   RSS key for the Rx hash queue.
+ * @param rss_key_len
+ *   RSS key length.
+ * @param hash_fields
+ *   Verbs protocol hash field to make the RSS on.
+ * @param queues
+ *   Queues entering in hash queue. In case of empty hash_fields only the
+ *   first queue index will be taken for the indirection table.
+ * @param queues_n
+ *   Number of queues.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
+		 const uint8_t *rss_key, uint32_t rss_key_len,
+		 uint64_t hash_fields,
+		 const uint16_t *queues, uint32_t queues_n)
+{
+	int err;
+	struct mlx5_ind_table_obj *ind_tbl = NULL;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq =
+		mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
+	int ret;
+
+	if (!hrxq) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	/* validations */
+	if (hrxq->rss_key_len != rss_key_len) {
+		/* rss_key_len is fixed size 40 byte & not supposed to change */
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	queues_n = hash_fields ? queues_n : 1;
+	if (mlx5_ind_table_obj_match_queues(hrxq->ind_table,
+					    queues, queues_n)) {
+		ind_tbl = hrxq->ind_table;
+	} else {
+		ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
+		if (!ind_tbl)
+			ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n);
+	}
+	if (!ind_tbl) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	MLX5_ASSERT(priv->obj_ops.hrxq_modify);
+	ret = priv->obj_ops.hrxq_modify(dev, hrxq, rss_key,
+					hash_fields, ind_tbl);
+	if (ret) {
+		rte_errno = errno;
+		goto error;
+	}
+	if (ind_tbl != hrxq->ind_table) {
+		mlx5_ind_table_obj_release(dev, hrxq->ind_table);
+		hrxq->ind_table = ind_tbl;
+	}
+	hrxq->hash_fields = hash_fields;
+	memcpy(hrxq->rss_key, rss_key, rss_key_len);
+	return 0;
+error:
+	err = rte_errno;
+	if (ind_tbl != hrxq->ind_table)
+		mlx5_ind_table_obj_release(dev, ind_tbl);
+	rte_errno = err;
+	return -rte_errno;
 }
 
 /**
@@ -1980,6 +2085,8 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hrxq_idx)
  *   Number of queues.
  * @param tunnel
  *   Tunnel type.
+ * @param shared
+ *   If true new object of Rx Hash queue will be used in shared action.
  *
  * @return
  *   The DevX object initialized index, 0 otherwise and rte_errno is set.
@@ -1989,7 +2096,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
 	      const uint16_t *queues, uint32_t queues_n,
-	      int tunnel __rte_unused)
+	      int tunnel, bool shared)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq = NULL;
@@ -2008,6 +2115,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
 	if (!hrxq)
 		goto error;
+	hrxq->shared = !!shared;
 	hrxq->ind_table = ind_tbl;
 	hrxq->rss_key_len = rss_key_len;
 	hrxq->hash_fields = hash_fields;

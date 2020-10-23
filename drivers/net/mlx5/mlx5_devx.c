@@ -738,6 +738,93 @@ mlx5_devx_ind_table_destroy(struct mlx5_ind_table_obj *ind_tbl)
 }
 
 /**
+ * Set TIR attribute struct with relevant input values.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] rss_key
+ *   RSS key for the Rx hash queue.
+ * @param[in] hash_fields
+ *   Verbs protocol hash field to make the RSS on.
+ * @param[in] ind_tbl
+ *   Indirection table for TIR.
+ * @param[in] tunnel
+ *   Tunnel type.
+ * @param[out] tir_attr
+ *   Parameters structure for TIR creation/modification.
+ *
+ * @return
+ *   The Verbs/DevX object initialised index, 0 otherwise and rte_errno is set.
+ */
+static void
+mlx5_devx_tir_attr_set(struct rte_eth_dev *dev, const uint8_t *rss_key,
+		       uint64_t hash_fields,
+		       const struct mlx5_ind_table_obj *ind_tbl,
+		       int tunnel, struct mlx5_devx_tir_attr *tir_attr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[ind_tbl->queues[0]];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	enum mlx5_rxq_type rxq_obj_type = rxq_ctrl->type;
+	bool lro = true;
+	uint32_t i;
+
+	/* Enable TIR LRO only if all the queues were configured for. */
+	for (i = 0; i < ind_tbl->queues_n; ++i) {
+		if (!(*priv->rxqs)[ind_tbl->queues[i]]->lro) {
+			lro = false;
+			break;
+		}
+	}
+	memset(tir_attr, 0, sizeof(*tir_attr));
+	tir_attr->disp_type = MLX5_TIRC_DISP_TYPE_INDIRECT;
+	tir_attr->rx_hash_fn = MLX5_RX_HASH_FN_TOEPLITZ;
+	tir_attr->tunneled_offload_en = !!tunnel;
+	/* If needed, translate hash_fields bitmap to PRM format. */
+	if (hash_fields) {
+		struct mlx5_rx_hash_field_select *rx_hash_field_select =
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+			hash_fields & IBV_RX_HASH_INNER ?
+				&tir_attr->rx_hash_field_selector_inner :
+#endif
+				&tir_attr->rx_hash_field_selector_outer;
+		/* 1 bit: 0: IPv4, 1: IPv6. */
+		rx_hash_field_select->l3_prot_type =
+					!!(hash_fields & MLX5_IPV6_IBV_RX_HASH);
+		/* 1 bit: 0: TCP, 1: UDP. */
+		rx_hash_field_select->l4_prot_type =
+					!!(hash_fields & MLX5_UDP_IBV_RX_HASH);
+		/* Bitmask which sets which fields to use in RX Hash. */
+		rx_hash_field_select->selected_fields =
+			((!!(hash_fields & MLX5_L3_SRC_IBV_RX_HASH)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_SRC_IP) |
+			(!!(hash_fields & MLX5_L3_DST_IBV_RX_HASH)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_DST_IP |
+			(!!(hash_fields & MLX5_L4_SRC_IBV_RX_HASH)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_SPORT |
+			(!!(hash_fields & MLX5_L4_DST_IBV_RX_HASH)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_DPORT;
+	}
+	if (rxq_obj_type == MLX5_RXQ_TYPE_HAIRPIN)
+		tir_attr->transport_domain = priv->sh->td->id;
+	else
+		tir_attr->transport_domain = priv->sh->tdn;
+	memcpy(tir_attr->rx_hash_toeplitz_key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+	tir_attr->indirect_table = ind_tbl->rqt->id;
+	if (dev->data->dev_conf.lpbk_mode)
+		tir_attr->self_lb_block =
+					MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
+	if (lro) {
+		tir_attr->lro_timeout_period_usecs = priv->config.lro.timeout;
+		tir_attr->lro_max_msg_sz = priv->max_lro_msg_size;
+		tir_attr->lro_enable_mask =
+				MLX5_TIRC_LRO_ENABLE_MASK_IPV4_LRO |
+				MLX5_TIRC_LRO_ENABLE_MASK_IPV6_LRO;
+	}
+}
+
+/**
  * Create an Rx Hash queue.
  *
  * @param dev
@@ -755,69 +842,11 @@ mlx5_devx_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 		   int tunnel __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_obj *ind_tbl = hrxq->ind_table;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[ind_tbl->queues[0]];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-	struct mlx5_devx_tir_attr tir_attr;
-	const uint8_t *rss_key = hrxq->rss_key;
-	uint64_t hash_fields = hrxq->hash_fields;
-	bool lro = true;
-	uint32_t i;
+	struct mlx5_devx_tir_attr tir_attr = {0};
 	int err;
 
-	/* Enable TIR LRO only if all the queues were configured for. */
-	for (i = 0; i < ind_tbl->queues_n; ++i) {
-		if (!(*priv->rxqs)[ind_tbl->queues[i]]->lro) {
-			lro = false;
-			break;
-		}
-	}
-	memset(&tir_attr, 0, sizeof(tir_attr));
-	tir_attr.disp_type = MLX5_TIRC_DISP_TYPE_INDIRECT;
-	tir_attr.rx_hash_fn = MLX5_RX_HASH_FN_TOEPLITZ;
-	tir_attr.tunneled_offload_en = !!tunnel;
-	/* If needed, translate hash_fields bitmap to PRM format. */
-	if (hash_fields) {
-		struct mlx5_rx_hash_field_select *rx_hash_field_select = NULL;
-#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-		rx_hash_field_select = hash_fields & IBV_RX_HASH_INNER ?
-				       &tir_attr.rx_hash_field_selector_inner :
-				       &tir_attr.rx_hash_field_selector_outer;
-#else
-		rx_hash_field_select = &tir_attr.rx_hash_field_selector_outer;
-#endif
-		/* 1 bit: 0: IPv4, 1: IPv6. */
-		rx_hash_field_select->l3_prot_type =
-					!!(hash_fields & MLX5_IPV6_IBV_RX_HASH);
-		/* 1 bit: 0: TCP, 1: UDP. */
-		rx_hash_field_select->l4_prot_type =
-					 !!(hash_fields & MLX5_UDP_IBV_RX_HASH);
-		/* Bitmask which sets which fields to use in RX Hash. */
-		rx_hash_field_select->selected_fields =
-			((!!(hash_fields & MLX5_L3_SRC_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_SRC_IP) |
-			(!!(hash_fields & MLX5_L3_DST_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_DST_IP |
-			(!!(hash_fields & MLX5_L4_SRC_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_SPORT |
-			(!!(hash_fields & MLX5_L4_DST_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_DPORT;
-	}
-	if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
-		tir_attr.transport_domain = priv->sh->td->id;
-	else
-		tir_attr.transport_domain = priv->sh->tdn;
-	memcpy(tir_attr.rx_hash_toeplitz_key, rss_key, MLX5_RSS_HASH_KEY_LEN);
-	tir_attr.indirect_table = ind_tbl->rqt->id;
-	if (dev->data->dev_conf.lpbk_mode)
-		tir_attr.self_lb_block = MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
-	if (lro) {
-		tir_attr.lro_timeout_period_usecs = priv->config.lro.timeout;
-		tir_attr.lro_max_msg_sz = priv->max_lro_msg_size;
-		tir_attr.lro_enable_mask = MLX5_TIRC_LRO_ENABLE_MASK_IPV4_LRO |
-					   MLX5_TIRC_LRO_ENABLE_MASK_IPV6_LRO;
-	}
+	mlx5_devx_tir_attr_set(dev, hrxq->rss_key, hrxq->hash_fields,
+			       hrxq->ind_table, tunnel, &tir_attr);
 	hrxq->tir = mlx5_devx_cmd_create_tir(priv->sh->ctx, &tir_attr);
 	if (!hrxq->tir) {
 		DRV_LOG(ERR, "Port %u cannot create DevX TIR.",
@@ -852,6 +881,57 @@ static void
 mlx5_devx_tir_destroy(struct mlx5_hrxq *hrxq)
 {
 	claim_zero(mlx5_devx_cmd_destroy(hrxq->tir));
+}
+
+/**
+ * Modify an Rx Hash queue configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param hrxq
+ *   Hash Rx queue to modify.
+ * @param rss_key
+ *   RSS key for the Rx hash queue.
+ * @param hash_fields
+ *   Verbs protocol hash field to make the RSS on.
+ * @param[in] ind_tbl
+ *   Indirection table for TIR.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_devx_hrxq_modify(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
+		       const uint8_t *rss_key,
+		       uint64_t hash_fields,
+		       const struct mlx5_ind_table_obj *ind_tbl)
+{
+	struct mlx5_devx_modify_tir_attr modify_tir = {0};
+
+	/*
+	 * untested for modification fields:
+	 * - rx_hash_symmetric not set in hrxq_new(),
+	 * - rx_hash_fn set hard-coded in hrxq_new(),
+	 * - lro_xxx not set after rxq setup
+	 */
+	if (ind_tbl != hrxq->ind_table)
+		modify_tir.modify_bitmask |=
+			MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_INDIRECT_TABLE;
+	if (hash_fields != hrxq->hash_fields ||
+			memcmp(hrxq->rss_key, rss_key, MLX5_RSS_HASH_KEY_LEN))
+		modify_tir.modify_bitmask |=
+			MLX5_MODIFY_TIR_IN_MODIFY_BITMASK_HASH;
+	mlx5_devx_tir_attr_set(dev, rss_key, hash_fields, ind_tbl,
+			       0, /* N/A - tunnel modification unsupported */
+			       &modify_tir.tir);
+	modify_tir.tirn = hrxq->tir->id;
+	if (mlx5_devx_cmd_modify_tir(hrxq->tir, &modify_tir)) {
+		DRV_LOG(ERR, "port %u cannot modify DevX TIR",
+			dev->data->port_id);
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	return 0;
 }
 
 /**
@@ -1364,6 +1444,7 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.ind_table_destroy = mlx5_devx_ind_table_destroy,
 	.hrxq_new = mlx5_devx_hrxq_new,
 	.hrxq_destroy = mlx5_devx_tir_destroy,
+	.hrxq_modify = mlx5_devx_hrxq_modify,
 	.drop_action_create = mlx5_devx_drop_action_create,
 	.drop_action_destroy = mlx5_devx_drop_action_destroy,
 	.txq_obj_new = mlx5_txq_devx_obj_new,
