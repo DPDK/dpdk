@@ -891,6 +891,8 @@ struct mlx5_priv {
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
 	struct mlx5_mp_id mp_id; /* ID of a multi-process process */
 	LIST_HEAD(fdir, mlx5_fdir_flow) fdir_flows; /* fdir flows. */
+	LIST_HEAD(shared_action, rte_flow_shared_action) shared_actions;
+	/* shared actions */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

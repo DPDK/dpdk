@@ -35,6 +35,7 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_MARK,
 	MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 	MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
+	MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS,
 };
 
 /* Matches on selected register. */
@@ -916,6 +917,7 @@ struct mlx5_fdir_flow {
 /* Flow structure. */
 struct rte_flow {
 	ILIST_ENTRY(uint32_t)next; /**< Index to the next flow structure. */
+	struct mlx5_shared_action_rss *shared_rss; /** < Shred RSS action. */
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
 	uint32_t drv_type:2; /**< Driver type. */
@@ -928,6 +930,62 @@ struct rte_flow {
 	uint32_t counter; /**< Holds flow counter. */
 	uint16_t meter; /**< Holds flow meter id. */
 } __rte_packed;
+
+/*
+ * Define list of valid combinations of RX Hash fields
+ * (see enum ibv_rx_hash_fields).
+ */
+#define MLX5_RSS_HASH_IPV4 (IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4)
+#define MLX5_RSS_HASH_IPV4_TCP \
+	(MLX5_RSS_HASH_IPV4 | \
+	 IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_SRC_PORT_TCP)
+#define MLX5_RSS_HASH_IPV4_UDP \
+	(MLX5_RSS_HASH_IPV4 | \
+	 IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_SRC_PORT_UDP)
+#define MLX5_RSS_HASH_IPV6 (IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6)
+#define MLX5_RSS_HASH_IPV6_TCP \
+	(MLX5_RSS_HASH_IPV6 | \
+	 IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_SRC_PORT_TCP)
+#define MLX5_RSS_HASH_IPV6_UDP \
+	(MLX5_RSS_HASH_IPV6 | \
+	 IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_SRC_PORT_UDP)
+#define MLX5_RSS_HASH_NONE 0ULL
+
+/* array of valid combinations of RX Hash fields for RSS */
+static const uint64_t mlx5_rss_hash_fields[] = {
+	MLX5_RSS_HASH_IPV4,
+	MLX5_RSS_HASH_IPV4_TCP,
+	MLX5_RSS_HASH_IPV4_UDP,
+	MLX5_RSS_HASH_IPV6,
+	MLX5_RSS_HASH_IPV6_TCP,
+	MLX5_RSS_HASH_IPV6_UDP,
+	MLX5_RSS_HASH_NONE,
+};
+
+#define MLX5_RSS_HASH_FIELDS_LEN RTE_DIM(mlx5_rss_hash_fields)
+
+/* Shared RSS action structure */
+struct mlx5_shared_action_rss {
+	struct rte_flow_action_rss origin; /**< Original rte RSS action. */
+	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
+	uint16_t *queue; /**< Queue indices to use. */
+	uint32_t hrxq[MLX5_RSS_HASH_FIELDS_LEN];
+	/**< Hash RX queue indexes mapped to mlx5_rss_hash_fields */
+	uint32_t hrxq_tunnel[MLX5_RSS_HASH_FIELDS_LEN];
+	/**< Hash RX queue indexes for tunneled RSS */
+};
+
+struct rte_flow_shared_action {
+	LIST_ENTRY(rte_flow_shared_action) next;
+		/**< Pointer to the next element. */
+	uint32_t refcnt; /**< Atomically accessed refcnt. */
+	uint64_t type;
+		/**< Shared action type (see MLX5_FLOW_ACTION_SHARED_*). */
+	union {
+		struct mlx5_shared_action_rss rss;
+			/**< Shared RSS action. */
+	};
+};
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
@@ -983,6 +1041,25 @@ typedef int (*mlx5_flow_get_aged_flows_t)
 					 void **context,
 					 uint32_t nb_contexts,
 					 struct rte_flow_error *error);
+typedef int (*mlx5_flow_action_validate_t)
+				(struct rte_eth_dev *dev,
+				 const struct rte_flow_shared_action_conf *conf,
+				 const struct rte_flow_action *action,
+				 struct rte_flow_error *error);
+typedef struct rte_flow_shared_action *(*mlx5_flow_action_create_t)
+				(struct rte_eth_dev *dev,
+				 const struct rte_flow_shared_action_conf *conf,
+				 const struct rte_flow_action *action,
+				 struct rte_flow_error *error);
+typedef int (*mlx5_flow_action_destroy_t)
+				(struct rte_eth_dev *dev,
+				 struct rte_flow_shared_action *action,
+				 struct rte_flow_error *error);
+typedef int (*mlx5_flow_action_update_t)
+			(struct rte_eth_dev *dev,
+			 struct rte_flow_shared_action *action,
+			 const void *action_conf,
+			 struct rte_flow_error *error);
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
@@ -999,6 +1076,10 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_counter_free_t counter_free;
 	mlx5_flow_counter_query_t counter_query;
 	mlx5_flow_get_aged_flows_t get_aged_flows;
+	mlx5_flow_action_validate_t action_validate;
+	mlx5_flow_action_create_t action_create;
+	mlx5_flow_action_destroy_t action_destroy;
+	mlx5_flow_action_update_t action_update;
 };
 
 /* mlx5_flow.c */
@@ -1024,6 +1105,9 @@ int mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 const struct rte_flow_action *mlx5_flow_find_action
 					(const struct rte_flow_action *actions,
 					 enum rte_flow_action_type action);
+int mlx5_validate_action_rss(struct rte_eth_dev *dev,
+			     const struct rte_flow_action *action,
+			     struct rte_flow_error *error);
 int mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    struct rte_flow_error *error);
@@ -1145,4 +1229,6 @@ int mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
 int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
+struct rte_flow_shared_action *mlx5_flow_get_shared_rss(struct rte_flow *flow);
+int mlx5_shared_action_flush(struct rte_eth_dev *dev);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
