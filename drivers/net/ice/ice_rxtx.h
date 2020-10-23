@@ -96,6 +96,10 @@ struct ice_tx_entry {
 	uint16_t last_id;
 };
 
+struct ice_vec_tx_entry {
+	struct rte_mbuf *mbuf;
+};
+
 struct ice_tx_queue {
 	uint16_t nb_tx_desc; /* number of TX descriptors */
 	rte_iova_t tx_ring_dma; /* TX ring DMA address */

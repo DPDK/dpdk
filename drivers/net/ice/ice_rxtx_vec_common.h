@@ -189,16 +189,38 @@ _ice_tx_queue_release_mbufs_vec(struct ice_tx_queue *txq)
 	 *  so need to free remains more carefully.
 	 */
 	i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
-	if (txq->tx_tail < i) {
-		for (; i < txq->nb_tx_desc; i++) {
+
+#ifdef CC_AVX512_SUPPORT
+	struct rte_eth_dev *dev = txq->vsi->adapter->eth_dev;
+
+	if (dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512) {
+		struct ice_vec_tx_entry *swr = (void *)txq->sw_ring;
+
+		if (txq->tx_tail < i) {
+			for (; i < txq->nb_tx_desc; i++) {
+				rte_pktmbuf_free_seg(swr[i].mbuf);
+				swr[i].mbuf = NULL;
+			}
+			i = 0;
+		}
+		for (; i < txq->tx_tail; i++) {
+			rte_pktmbuf_free_seg(swr[i].mbuf);
+			swr[i].mbuf = NULL;
+		}
+	} else
+#endif
+	{
+		if (txq->tx_tail < i) {
+			for (; i < txq->nb_tx_desc; i++) {
+				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+				txq->sw_ring[i].mbuf = NULL;
+			}
+			i = 0;
+		}
+		for (; i < txq->tx_tail; i++) {
 			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
 			txq->sw_ring[i].mbuf = NULL;
 		}
-		i = 0;
-	}
-	for (; i < txq->tx_tail; i++) {
-		rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-		txq->sw_ring[i].mbuf = NULL;
 	}
 }
 
