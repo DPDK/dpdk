@@ -98,7 +98,6 @@ F: Makefile
 F: meson.build
 F: meson_options.txt
 F: config/
-F: buildtools/binutils-avx512-check.sh
 F: buildtools/call-sphinx-build.py
 F: buildtools/gen-pmdinfo-cfile.sh
 F: buildtools/list-dir-globs.py
@@ -256,33 +255,48 @@ F: app/test/test_rand_perf.c
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
 M: Ruifeng Wang <ruifeng.wang@arm.com>
+F: config/arm/
 F: lib/librte_eal/arm/
+X: lib/librte_eal/arm/include/*_64.h
 
 ARM v8
 M: Jerin Jacob <jerinj@marvell.com>
 M: Ruifeng Wang <ruifeng.wang@arm.com>
-F: lib/librte_eal/arm/include/*_64.h
-F: lib/librte_net/net_crc_neon.c
-F: lib/librte_acl/acl_run_neon.*
-F: lib/librte_bpf/bpf_jit_arm64.c
-F: lib/librte_lpm/rte_lpm_neon.h
-F: lib/librte_hash/rte*_arm64.h
-F: lib/librte_efd/rte*_arm64.h
-F: lib/librte_table/rte*_arm64.h
-F: drivers/net/ixgbe/ixgbe_rxtx_vec_neon.c
-F: drivers/net/i40e/i40e_rxtx_vec_neon.c
-F: drivers/net/virtio/virtio_rxtx_simple_neon.c
+F: config/arm/
+F: doc/guides/linux_gsg/cross_build_dpdk_for_arm64.rst
+F: lib/librte_eal/arm/
+X: lib/librte_eal/arm/include/*_32.h
+F: lib/*/*_arm64.*
+F: lib/*/*_neon.*
+F: drivers/*/*/*_neon.*
+F: app/*/*_neon.*
+F: examples/*/*_neon.*
 
 IBM POWER (alpha)
 M: David Christensen <drc@linux.vnet.ibm.com>
+F: config/ppc/
 F: lib/librte_eal/ppc/
-F: drivers/net/i40e/i40e_rxtx_vec_altivec.c
-F: examples/l3fwd/*altivec.h
+F: lib/*/*_altivec*
+F: drivers/*/*/*_altivec.*
+F: app/*/*_altivec.*
+F: examples/*/*_altivec.*
 
 Intel x86
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+F: config/x86/
+F: doc/guides/linux_gsg/nic_perf_intel_platform.rst
+F: buildtools/binutils-avx512-check.sh
+F: doc/guides/howto/avx512.rst
 F: lib/librte_eal/x86/
+F: lib/*/*_sse*
+F: lib/*/*_avx*
+F: drivers/*/*/*_sse*
+F: drivers/*/*/*_avx*
+F: app/*/*_sse*
+F: app/*/*_avx*
+F: examples/*/*_sse*
+F: examples/*/*_avx*
 
 Linux EAL (with overlaps)
 F: lib/librte_eal/linux/
