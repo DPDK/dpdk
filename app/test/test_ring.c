@@ -262,7 +262,7 @@ test_ring_mem_init(void *obj, unsigned int count, int esize)
 	/* Legacy queue APIs? */
 	if (esize == -1)
 		for (i = 0; i < count; i++)
-			((void **)obj)[i] = (void *)(unsigned long)i;
+			((void **)obj)[i] = (void *)(uintptr_t)i;
 	else
 		for (i = 0; i < (count * esize / sizeof(uint32_t)); i++)
 			((uint32_t *)obj)[i] = i;
