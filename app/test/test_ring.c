@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2020 Arm Limited
  */
 
 #include <string.h>
@@ -67,6 +68,149 @@
 #define TEST_RING_FULL_EMPTY_ITER	8
 
 static const int esize[] = {-1, 4, 8, 16, 20};
+
+/* Wrappers around the zero-copy APIs. The wrappers match
+ * the normal enqueue/dequeue API declarations.
+ */
+static unsigned int
+test_ring_enqueue_zc_bulk(struct rte_ring *r, void * const *obj_table,
+	unsigned int n, unsigned int *free_space)
+{
+	uint32_t ret;
+	struct rte_ring_zc_data zcd;
+
+	ret = rte_ring_enqueue_zc_bulk_start(r, n, &zcd, free_space);
+	if (ret != 0) {
+		/* Copy the data to the ring */
+		test_ring_copy_to(&zcd, obj_table, sizeof(void *), ret);
+		rte_ring_enqueue_zc_finish(r, ret);
+	}
+
+	return ret;
+}
+
+static unsigned int
+test_ring_enqueue_zc_bulk_elem(struct rte_ring *r, const void *obj_table,
+	unsigned int esize, unsigned int n, unsigned int *free_space)
+{
+	unsigned int ret;
+	struct rte_ring_zc_data zcd;
+
+	ret = rte_ring_enqueue_zc_bulk_elem_start(r, esize, n,
+				&zcd, free_space);
+	if (ret != 0) {
+		/* Copy the data to the ring */
+		test_ring_copy_to(&zcd, obj_table, esize, ret);
+		rte_ring_enqueue_zc_finish(r, ret);
+	}
+
+	return ret;
+}
+
+static unsigned int
+test_ring_enqueue_zc_burst(struct rte_ring *r, void * const *obj_table,
+	unsigned int n, unsigned int *free_space)
+{
+	unsigned int ret;
+	struct rte_ring_zc_data zcd;
+
+	ret = rte_ring_enqueue_zc_burst_start(r, n, &zcd, free_space);
+	if (ret != 0) {
+		/* Copy the data to the ring */
+		test_ring_copy_to(&zcd, obj_table, sizeof(void *), ret);
+		rte_ring_enqueue_zc_finish(r, ret);
+	}
+
+	return ret;
+}
+
+static unsigned int
+test_ring_enqueue_zc_burst_elem(struct rte_ring *r, const void *obj_table,
+	unsigned int esize, unsigned int n, unsigned int *free_space)
+{
+	unsigned int ret;
+	struct rte_ring_zc_data zcd;
+
+	ret = rte_ring_enqueue_zc_burst_elem_start(r, esize, n,
+				&zcd, free_space);
+	if (ret != 0) {
+		/* Copy the data to the ring */
+		test_ring_copy_to(&zcd, obj_table, esize, ret);
+		rte_ring_enqueue_zc_finish(r, ret);
+	}
+
+	return ret;
+}
+
+static unsigned int
+test_ring_dequeue_zc_bulk(struct rte_ring *r, void **obj_table,
+	unsigned int n, unsigned int *available)
+{
+	unsigned int ret;
+	struct rte_ring_zc_data zcd;
+
+	ret = rte_ring_dequeue_zc_bulk_start(r, n, &zcd, available);
+	if (ret != 0) {
+		/* Copy the data from the ring */
+		test_ring_copy_from(&zcd, obj_table, sizeof(void *), ret);
+		rte_ring_dequeue_zc_finish(r, ret);
+	}
+
+	return ret;
+}
+
+static unsigned int
+test_ring_dequeue_zc_bulk_elem(struct rte_ring *r, void *obj_table,
+	unsigned int esize, unsigned int n, unsigned int *available)
+{
+	unsigned int ret;
+	struct rte_ring_zc_data zcd;
+
+	ret = rte_ring_dequeue_zc_bulk_elem_start(r, esize, n,
+				&zcd, available);
+	if (ret != 0) {
+		/* Copy the data from the ring */
+		test_ring_copy_from(&zcd, obj_table, esize, ret);
+		rte_ring_dequeue_zc_finish(r, ret);
+	}
+
+	return ret;
+}
+
+static unsigned int
+test_ring_dequeue_zc_burst(struct rte_ring *r, void **obj_table,
+	unsigned int n, unsigned int *available)
+{
+	unsigned int ret;
+	struct rte_ring_zc_data zcd;
+
+	ret = rte_ring_dequeue_zc_burst_start(r, n, &zcd, available);
+	if (ret != 0) {
+		/* Copy the data from the ring */
+		test_ring_copy_from(&zcd, obj_table, sizeof(void *), ret);
+		rte_ring_dequeue_zc_finish(r, ret);
+	}
+
+	return ret;
+}
+
+static unsigned int
+test_ring_dequeue_zc_burst_elem(struct rte_ring *r, void *obj_table,
+	unsigned int esize, unsigned int n, unsigned int *available)
+{
+	unsigned int ret;
+	struct rte_ring_zc_data zcd;
+
+	ret = rte_ring_dequeue_zc_burst_elem_start(r, esize, n,
+				&zcd, available);
+	if (ret != 0) {
+		/* Copy the data from the ring */
+		test_ring_copy_from(&zcd, obj_table, esize, ret);
+		rte_ring_dequeue_zc_finish(r, ret);
+	}
+
+	return ret;
+}
 
 static const struct {
 	const char *desc;
@@ -219,6 +363,58 @@ static const struct {
 			.felem = rte_ring_dequeue_burst_elem,
 		},
 	},
+	{
+		.desc = "SP/SC sync mode (ZC)",
+		.api_type = TEST_RING_ELEM_BULK | TEST_RING_THREAD_SPSC,
+		.create_flags = RING_F_SP_ENQ | RING_F_SC_DEQ,
+		.enq = {
+			.flegacy = test_ring_enqueue_zc_bulk,
+			.felem = test_ring_enqueue_zc_bulk_elem,
+		},
+		.deq = {
+			.flegacy = test_ring_dequeue_zc_bulk,
+			.felem = test_ring_dequeue_zc_bulk_elem,
+		},
+	},
+	{
+		.desc = "MP_HTS/MC_HTS sync mode (ZC)",
+		.api_type = TEST_RING_ELEM_BULK | TEST_RING_THREAD_DEF,
+		.create_flags = RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ,
+		.enq = {
+			.flegacy = test_ring_enqueue_zc_bulk,
+			.felem = test_ring_enqueue_zc_bulk_elem,
+		},
+		.deq = {
+			.flegacy = test_ring_dequeue_zc_bulk,
+			.felem = test_ring_dequeue_zc_bulk_elem,
+		},
+	},
+	{
+		.desc = "SP/SC sync mode (ZC)",
+		.api_type = TEST_RING_ELEM_BURST | TEST_RING_THREAD_SPSC,
+		.create_flags = RING_F_SP_ENQ | RING_F_SC_DEQ,
+		.enq = {
+			.flegacy = test_ring_enqueue_zc_burst,
+			.felem = test_ring_enqueue_zc_burst_elem,
+		},
+		.deq = {
+			.flegacy = test_ring_dequeue_zc_burst,
+			.felem = test_ring_dequeue_zc_burst_elem,
+		},
+	},
+	{
+		.desc = "MP_HTS/MC_HTS sync mode (ZC)",
+		.api_type = TEST_RING_ELEM_BURST | TEST_RING_THREAD_DEF,
+		.create_flags = RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ,
+		.enq = {
+			.flegacy = test_ring_enqueue_zc_burst,
+			.felem = test_ring_enqueue_zc_burst_elem,
+		},
+		.deq = {
+			.flegacy = test_ring_dequeue_zc_burst,
+			.felem = test_ring_dequeue_zc_burst_elem,
+		},
+	}
 };
 
 static unsigned int
@@ -241,17 +437,6 @@ test_ring_deq_impl(struct rte_ring *r, void **obj, int esize, unsigned int n,
 	else
 		return test_enqdeq_impl[test_idx].deq.felem(r, obj, esize, n,
 			NULL);
-}
-
-static void**
-test_ring_inc_ptr(void **obj, int esize, unsigned int n)
-{
-	/* Legacy queue APIs? */
-	if (esize == -1)
-		return ((void **)obj) + n;
-	else
-		return (void **)(((uint32_t *)obj) +
-					(n * esize / sizeof(uint32_t)));
 }
 
 static void
