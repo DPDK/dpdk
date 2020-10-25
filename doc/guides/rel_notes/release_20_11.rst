@@ -442,6 +442,9 @@ API Changes
   the structures ``rte_mbuf`` and ``rte_mbuf_ext_shared_info``.
   The field ``refcnt`` is remaining from the old unions.
 
+* mbuf: Removed the unioned fields ``userdata`` and ``udata64``
+  from the structure ``rte_mbuf``. It is replaced with dynamic fields.
+
 * pci: Removed the ``rte_kernel_driver`` enum defined in rte_dev.h and
   replaced with a private enum in the PCI subsystem.
 

@@ -599,12 +599,6 @@ struct rte_mbuf {
 	/* second cache line - fields only used in slow path or on TX */
 	RTE_MARKER cacheline1 __rte_cache_min_aligned;
 
-	RTE_STD_C11
-	union {
-		void *userdata;   /**< Can be used for external metadata */
-		uint64_t udata64; /**< Allow 8-byte userdata on 32-bit */
-	};
-
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
 
@@ -662,7 +656,7 @@ struct rte_mbuf {
 	 */
 	struct rte_mbuf_ext_shared_info *shinfo;
 
-	uint64_t dynfield1[2]; /**< Reserved for dynamic fields. */
+	uint64_t dynfield1[3]; /**< Reserved for dynamic fields. */
 } __rte_cache_aligned;
 
 /**

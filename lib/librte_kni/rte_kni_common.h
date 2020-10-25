@@ -86,7 +86,7 @@ struct rte_kni_mbuf {
 	uint16_t data_len;      /**< Amount of data in segment buffer. */
 
 	/* fields on second cache line */
-	char pad3[8] __attribute__((__aligned__(RTE_CACHE_LINE_MIN_SIZE)));
+	__attribute__((__aligned__(RTE_CACHE_LINE_MIN_SIZE)))
 	void *pool;
 	void *next;             /**< Physical address of next mbuf in kernel. */
 };
