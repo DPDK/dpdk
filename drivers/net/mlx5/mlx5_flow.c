@@ -1793,6 +1793,8 @@ mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
  *   Item specification.
  * @param[in] item_flags
  *   Bit-fields that holds the items detected until now.
+ * @param[in] ext_vlan_sup
+ *   Whether extended VLAN features are supported or not.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -1913,7 +1915,7 @@ mlx5_flow_validate_item_icmp(const struct rte_flow_item *item,
  */
 int
 mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
-			    uint64_t item_flags,
+			    uint64_t item_flags, bool ext_vlan_sup,
 			    struct rte_flow_error *error)
 {
 	const struct rte_flow_item_eth *mask = item->mask;
@@ -1921,6 +1923,7 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		.type = RTE_BE16(0xffff),
+		.has_vlan = ext_vlan_sup ? 1 : 0,
 	};
 	int ret;
 	int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);

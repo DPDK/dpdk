@@ -123,23 +123,29 @@ Limitations
 
   Will match any ipv4 packet (VLAN included).
 
-- When using DV flow engine (``dv_flow_en`` = 1), flow pattern without VLAN item
-  will match untagged packets only.
+- When using Verbs flow engine (``dv_flow_en`` = 0), multi-tagged(QinQ) match is not supported.
+
+- When using DV flow engine (``dv_flow_en`` = 1), flow pattern with any VLAN specification will match only single-tagged packets unless the ETH item ``type`` field is 0x88A8 or the VLAN item ``has_more_vlan`` field is 1.
   The flow rule::
 
         flow create 0 ingress pattern eth / ipv4 / end ...
 
-  Will match untagged packets only.
-  The flow rule::
+  Will match any ipv4 packet.
+  The flow rules::
 
-        flow create 0 ingress pattern eth / vlan / ipv4 / end ...
+        flow create 0 ingress pattern eth / vlan / end ...
+        flow create 0 ingress pattern eth has_vlan is 1 / end ...
+        flow create 0 ingress pattern eth type is 0x8100 / end ...
 
-  Will match tagged packets only, with any VLAN ID value.
-  The flow rule::
+  Will match single-tagged packets only, with any VLAN ID value.
+  The flow rules::
 
-        flow create 0 ingress pattern eth / vlan vid is 3 / ipv4 / end ...
+        flow create 0 ingress pattern eth type is 0x88A8 / end ...
+        flow create 0 ingress pattern eth / vlan has_more_vlan is 1 / end ...
 
-  Will only match tagged packets with VLAN ID 3.
+  Will match multi-tagged packets only, with any VLAN ID value.
+
+- A flow pattern with 2 sequential VLAN items is not supported.
 
 - VLAN pop offload command:
 

@@ -1263,7 +1263,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = mlx5_flow_validate_item_eth(items, item_flags,
-							  error);
+							  false, error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :

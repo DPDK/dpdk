@@ -1306,7 +1306,7 @@ int mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 			      bool range_accepted,
 			      struct rte_flow_error *error);
 int mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
-				uint64_t item_flags,
+				uint64_t item_flags, bool ext_vlan_sup,
 				struct rte_flow_error *error);
 int mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
 				uint64_t item_flags,

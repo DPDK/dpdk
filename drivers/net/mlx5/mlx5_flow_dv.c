@@ -1676,6 +1676,7 @@ flow_dv_validate_item_vlan(const struct rte_flow_item *item,
 	const struct rte_flow_item_vlan nic_mask = {
 		.tci = RTE_BE16(UINT16_MAX),
 		.inner_type = RTE_BE16(UINT16_MAX),
+		.has_more_vlan = 1,
 	};
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 	int ret;
@@ -5359,7 +5360,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = mlx5_flow_validate_item_eth(items, item_flags,
-							  error);
+							  true, error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
@@ -6371,9 +6372,10 @@ flow_dv_translate_item_eth(void *matcher, void *key,
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		.type = RTE_BE16(0xffff),
+		.has_vlan = 0,
 	};
-	void *headers_m;
-	void *headers_v;
+	void *hdrs_m;
+	void *hdrs_v;
 	char *l24_v;
 	unsigned int i;
 
@@ -6382,38 +6384,26 @@ flow_dv_translate_item_eth(void *matcher, void *key,
 	if (!eth_m)
 		eth_m = &nic_mask;
 	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
 	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	}
-	memcpy(MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_m, dmac_47_16),
+	memcpy(MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_m, dmac_47_16),
 	       &eth_m->dst, sizeof(eth_m->dst));
 	/* The value must be in the range of the mask. */
-	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v, dmac_47_16);
+	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_v, dmac_47_16);
 	for (i = 0; i < sizeof(eth_m->dst); ++i)
 		l24_v[i] = eth_m->dst.addr_bytes[i] & eth_v->dst.addr_bytes[i];
-	memcpy(MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_m, smac_47_16),
+	memcpy(MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_m, smac_47_16),
 	       &eth_m->src, sizeof(eth_m->src));
-	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v, smac_47_16);
+	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_v, smac_47_16);
 	/* The value must be in the range of the mask. */
 	for (i = 0; i < sizeof(eth_m->dst); ++i)
 		l24_v[i] = eth_m->src.addr_bytes[i] & eth_v->src.addr_bytes[i];
-	if (eth_v->type) {
-		/* When ethertype is present set mask for tagged VLAN. */
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, cvlan_tag, 1);
-		/* Set value for tagged VLAN if ethertype is 802.1Q. */
-		if (eth_v->type == RTE_BE16(RTE_ETHER_TYPE_VLAN) ||
-		    eth_v->type == RTE_BE16(RTE_ETHER_TYPE_QINQ)) {
-			MLX5_SET(fte_match_set_lyr_2_4, headers_v, cvlan_tag,
-				 1);
-			/* Return here to avoid setting match on ethertype. */
-			return;
-		}
-	}
 	/*
 	 * HW supports match on one Ethertype, the Ethertype following the last
 	 * VLAN tag of the packet (see PRM).
@@ -6422,19 +6412,42 @@ flow_dv_translate_item_eth(void *matcher, void *key,
 	 * ethertype, and use ip_version field instead.
 	 * eCPRI over Ether layer will use type value 0xAEFE.
 	 */
-	if (eth_v->type == RTE_BE16(RTE_ETHER_TYPE_IPV4) &&
-	    eth_m->type == 0xFFFF) {
-		flow_dv_set_match_ip_version(group, headers_v, headers_m, 4);
-	} else if (eth_v->type == RTE_BE16(RTE_ETHER_TYPE_IPV6) &&
-		   eth_m->type == 0xFFFF) {
-		flow_dv_set_match_ip_version(group, headers_v, headers_m, 6);
-	} else {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ethertype,
-			 rte_be_to_cpu_16(eth_m->type));
-		l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v,
-				     ethertype);
-		*(uint16_t *)(l24_v) = eth_m->type & eth_v->type;
+	if (eth_m->type == 0xFFFF) {
+		/* Set cvlan_tag mask for any single\multi\un-tagged case. */
+		MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, cvlan_tag, 1);
+		switch (eth_v->type) {
+		case RTE_BE16(RTE_ETHER_TYPE_VLAN):
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 1);
+			return;
+		case RTE_BE16(RTE_ETHER_TYPE_QINQ):
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, svlan_tag, 1);
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag, 1);
+			return;
+		case RTE_BE16(RTE_ETHER_TYPE_IPV4):
+			flow_dv_set_match_ip_version(group, hdrs_v, hdrs_m, 4);
+			return;
+		case RTE_BE16(RTE_ETHER_TYPE_IPV6):
+			flow_dv_set_match_ip_version(group, hdrs_v, hdrs_m, 6);
+			return;
+		default:
+			break;
+		}
 	}
+	if (eth_m->has_vlan) {
+		MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, cvlan_tag, 1);
+		if (eth_v->has_vlan) {
+			/*
+			 * Here, when also has_more_vlan field in VLAN item is
+			 * not set, only single-tagged packets will be matched.
+			 */
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 1);
+			return;
+		}
+	}
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, ethertype,
+		 rte_be_to_cpu_16(eth_m->type));
+	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, hdrs_v, ethertype);
+	*(uint16_t *)(l24_v) = eth_m->type & eth_v->type;
 }
 
 /**
@@ -6459,19 +6472,19 @@ flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
 {
 	const struct rte_flow_item_vlan *vlan_m = item->mask;
 	const struct rte_flow_item_vlan *vlan_v = item->spec;
-	void *headers_m;
-	void *headers_v;
+	void *hdrs_m;
+	void *hdrs_v;
 	uint16_t tci_m;
 	uint16_t tci_v;
 
 	if (inner) {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
 	} else {
-		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+		hdrs_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 outer_headers);
-		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+		hdrs_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 		/*
 		 * This is workaround, masks are not supported,
 		 * and pre-validated.
@@ -6484,37 +6497,54 @@ flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
 	 * When VLAN item exists in flow, mark packet as tagged,
 	 * even if TCI is not specified.
 	 */
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, cvlan_tag, 1);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, cvlan_tag, 1);
+	if (!MLX5_GET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag)) {
+		MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, cvlan_tag, 1);
+		MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 1);
+	}
 	if (!vlan_v)
 		return;
 	if (!vlan_m)
 		vlan_m = &rte_flow_item_vlan_mask;
 	tci_m = rte_be_to_cpu_16(vlan_m->tci);
 	tci_v = rte_be_to_cpu_16(vlan_m->tci & vlan_v->tci);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, first_vid, tci_m);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, first_vid, tci_v);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, first_cfi, tci_m >> 12);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, first_cfi, tci_v >> 12);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, first_prio, tci_m >> 13);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, first_prio, tci_v >> 13);
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, first_vid, tci_m);
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, first_vid, tci_v);
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, first_cfi, tci_m >> 12);
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, first_cfi, tci_v >> 12);
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, first_prio, tci_m >> 13);
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, first_prio, tci_v >> 13);
 	/*
 	 * HW is optimized for IPv4/IPv6. In such cases, avoid setting
 	 * ethertype, and use ip_version field instead.
 	 */
-	if (vlan_v->inner_type == RTE_BE16(RTE_ETHER_TYPE_IPV4) &&
-	    vlan_m->inner_type == 0xFFFF) {
-		flow_dv_set_match_ip_version(group, headers_v, headers_m, 4);
-	} else if (vlan_v->inner_type == RTE_BE16(RTE_ETHER_TYPE_IPV6) &&
-		   vlan_m->inner_type == 0xFFFF) {
-		flow_dv_set_match_ip_version(group, headers_v, headers_m, 6);
-	} else {
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ethertype,
-			 rte_be_to_cpu_16(vlan_m->inner_type));
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ethertype,
-			 rte_be_to_cpu_16(vlan_m->inner_type &
-					  vlan_v->inner_type));
+	if (vlan_m->inner_type == 0xFFFF) {
+		switch (vlan_v->inner_type) {
+		case RTE_BE16(RTE_ETHER_TYPE_VLAN):
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, svlan_tag, 1);
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag, 1);
+			MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 0);
+			return;
+		case RTE_BE16(RTE_ETHER_TYPE_IPV4):
+			flow_dv_set_match_ip_version(group, hdrs_v, hdrs_m, 4);
+			return;
+		case RTE_BE16(RTE_ETHER_TYPE_IPV6):
+			flow_dv_set_match_ip_version(group, hdrs_v, hdrs_m, 6);
+			return;
+		default:
+			break;
+		}
 	}
+	if (vlan_m->has_more_vlan && vlan_v->has_more_vlan) {
+		MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, svlan_tag, 1);
+		MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, svlan_tag, 1);
+		/* Only one vlan_tag bit can be set. */
+		MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, cvlan_tag, 0);
+		return;
+	}
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_m, ethertype,
+		 rte_be_to_cpu_16(vlan_m->inner_type));
+	MLX5_SET(fte_match_set_lyr_2_4, hdrs_v, ethertype,
+		 rte_be_to_cpu_16(vlan_m->inner_type & vlan_v->inner_type));
 }
 
 /**
@@ -6526,8 +6556,6 @@ flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
- * @param[in] item_flags
- *   Bit-fields that holds the items detected until now.
  * @param[in] inner
  *   Item is inner pattern.
  * @param[in] group
@@ -6536,7 +6564,6 @@ flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
 static void
 flow_dv_translate_item_ipv4(void *matcher, void *key,
 			    const struct rte_flow_item *item,
-			    const uint64_t item_flags,
 			    int inner, uint32_t group)
 {
 	const struct rte_flow_item_ipv4 *ipv4_m = item->mask;
@@ -6566,13 +6593,6 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	}
 	flow_dv_set_match_ip_version(group, headers_v, headers_m, 4);
-	/*
-	 * On outer header (which must contains L2), or inner header with L2,
-	 * set cvlan_tag mask bit to mark this packet as untagged.
-	 * This should be done even if item->spec is empty.
-	 */
-	if (!inner || item_flags & MLX5_FLOW_LAYER_INNER_L2)
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, cvlan_tag, 1);
 	if (!ipv4_v)
 		return;
 	if (!ipv4_m)
@@ -6619,8 +6639,6 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
- * @param[in] item_flags
- *   Bit-fields that holds the items detected until now.
  * @param[in] inner
  *   Item is inner pattern.
  * @param[in] group
@@ -6629,7 +6647,6 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 static void
 flow_dv_translate_item_ipv6(void *matcher, void *key,
 			    const struct rte_flow_item *item,
-			    const uint64_t item_flags,
 			    int inner, uint32_t group)
 {
 	const struct rte_flow_item_ipv6 *ipv6_m = item->mask;
@@ -6668,13 +6685,6 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	}
 	flow_dv_set_match_ip_version(group, headers_v, headers_m, 6);
-	/*
-	 * On outer header (which must contains L2), or inner header with L2,
-	 * set cvlan_tag mask bit to mark this packet as untagged.
-	 * This should be done even if item->spec is empty.
-	 */
-	if (!inner || item_flags & MLX5_FLOW_LAYER_INNER_L2)
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, cvlan_tag, 1);
 	if (!ipv6_v)
 		return;
 	if (!ipv6_m)
@@ -9926,7 +9936,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
 			flow_dv_translate_item_ipv4(match_mask, match_value,
-						    items, item_flags, tunnel,
+						    items, tunnel,
 						    dev_flow->dv.group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
@@ -9949,7 +9959,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
 						  &item_flags, &tunnel);
 			flow_dv_translate_item_ipv6(match_mask, match_value,
-						    items, item_flags, tunnel,
+						    items, tunnel,
 						    dev_flow->dv.group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
