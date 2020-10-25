@@ -159,7 +159,7 @@ check_updt_elem(struct ring_elem *elm[], uint32_t num,
 				"offending object: %p\n",
 				__func__, rte_lcore_id(), num, i, elm[i]);
 			rte_memdump(stdout, "expected", check, sizeof(*check));
-			rte_memdump(stdout, "result", elm[i], sizeof(elm[i]));
+			rte_memdump(stdout, "result", elm[i], sizeof(*elm[i]));
 			rte_spinlock_unlock(&dump_lock);
 			return -EINVAL;
 		}
