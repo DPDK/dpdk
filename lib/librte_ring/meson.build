@@ -11,5 +11,6 @@ headers = files('rte_ring.h',
 		'rte_ring_hts_c11_mem.h',
 		'rte_ring_peek.h',
 		'rte_ring_peek_c11_mem.h',
+		'rte_ring_peek_zc.h',
 		'rte_ring_rts.h',
 		'rte_ring_rts_c11_mem.h')

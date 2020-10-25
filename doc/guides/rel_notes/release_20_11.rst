@@ -84,6 +84,15 @@ New Features
   ``rte_vect_set_max_simd_bitwidth`` function, or by the user with EAL flag
   ``--force-max-simd-bitwidth``.
 
+* **Added zero copy APIs for rte_ring.**
+
+  For rings with producer/consumer in ``RTE_RING_SYNC_ST``, ``RTE_RING_SYNC_MT_HTS``
+  modes, these APIs split enqueue/dequeue operation into three phases
+  (enqueue/dequeue start, copy data to/from ring, enqueue/dequeue finish).
+  Along with the advantages of the peek APIs, these provide the ability to
+  copy the data to the ring memory directly without the need for temporary
+  storage.
+
 * **Updated CRC modules of the net library.**
 
   * Added runtime selection of the optimal architecture-specific CRC path.
