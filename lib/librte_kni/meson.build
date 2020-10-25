@@ -6,5 +6,5 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 	reason = 'only supported on 64-bit linux'
 endif
 sources = files('rte_kni.c')
-headers = files('rte_kni.h')
+headers = files('rte_kni.h', 'rte_kni_common.h')
 deps += ['ethdev', 'pci']
