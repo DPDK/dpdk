@@ -165,6 +165,8 @@
 #define MLX5_XMETA_MODE_LEGACY 0
 #define MLX5_XMETA_MODE_META16 1
 #define MLX5_XMETA_MODE_META32 2
+/* Provide info on patrial hw miss. Implies MLX5_XMETA_MODE_META16 */
+#define MLX5_XMETA_MODE_MISS_INFO 3
 
 /* MLX5_TX_DB_NC supported values. */
 #define MLX5_TXDB_CACHED 0

@@ -208,6 +208,7 @@ struct mlx5_dev_config {
 	unsigned int rt_timestamp:1; /* realtime timestamp format. */
 	unsigned int sys_mem_en:1; /* The default memory allocator. */
 	unsigned int decap_en:1; /* Whether decap will be used or not. */
+	unsigned int dv_miss_info:1; /* restore packet after partial hw miss */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */
@@ -644,6 +645,7 @@ struct mlx5_dev_ctx_shared {
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
 	struct mlx5_hlist *flow_tbls;
+	struct mlx5_flow_tunnel_hub *tunnel_hub;
 	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
 	void *pop_vlan_action; /* Pointer to DR pop VLAN action. */

@@ -1619,13 +1619,17 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	} else if (strcmp(MLX5_DV_XMETA_EN, key) == 0) {
 		if (tmp != MLX5_XMETA_MODE_LEGACY &&
 		    tmp != MLX5_XMETA_MODE_META16 &&
-		    tmp != MLX5_XMETA_MODE_META32) {
+		    tmp != MLX5_XMETA_MODE_META32 &&
+		    tmp != MLX5_XMETA_MODE_MISS_INFO) {
 			DRV_LOG(ERR, "invalid extensive "
 				     "metadata parameter");
 			rte_errno = EINVAL;
 			return -rte_errno;
 		}
-		config->dv_xmeta_en = tmp;
+		if (tmp != MLX5_XMETA_MODE_MISS_INFO)
+			config->dv_xmeta_en = tmp;
+		else
+			config->dv_miss_info = 1;
 	} else if (strcmp(MLX5_LACP_BY_USER, key) == 0) {
 		config->lacp_by_user = !!tmp;
 	} else if (strcmp(MLX5_MR_EXT_MEMSEG_EN, key) == 0) {

@@ -26,6 +26,7 @@ enum mlx5_rte_flow_item_type {
 	MLX5_RTE_FLOW_ITEM_TYPE_TAG,
 	MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
 	MLX5_RTE_FLOW_ITEM_TYPE_VLAN,
+	MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL,
 };
 
 /* Private (internal) rte flow actions. */
@@ -36,6 +37,7 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 	MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
 	MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS,
+	MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET,
 };
 
 /* Matches on selected register. */
@@ -74,7 +76,6 @@ enum mlx5_feature_name {
 	MLX5_MTR_SFX,
 };
 
-/* Pattern outer Layer bits. */
 #define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV6 (1u << 2)
@@ -202,6 +203,8 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_AGE (1ull << 34)
 #define MLX5_FLOW_ACTION_DEFAULT_MISS (1ull << 35)
 #define MLX5_FLOW_ACTION_SAMPLE (1ull << 36)
+#define MLX5_FLOW_ACTION_TUNNEL_SET (1ull << 37)
+#define MLX5_FLOW_ACTION_TUNNEL_MATCH (1ull << 38)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
@@ -531,6 +534,10 @@ struct mlx5_flow_tbl_data_entry {
 	struct mlx5_flow_dv_jump_tbl_resource jump;
 	/**< jump resource, at most one for each table created. */
 	uint32_t idx; /**< index for the indexed mempool. */
+	/**< tunnel offload */
+	const struct mlx5_flow_tunnel *tunnel;
+	uint32_t group_id;
+	bool external;
 };
 
 /* Sub rdma-core actions list. */
@@ -769,6 +776,7 @@ struct mlx5_flow {
 	};
 	struct mlx5_flow_handle *handle;
 	uint32_t handle_idx; /* Index of the mlx5 flow handle memory. */
+	const struct mlx5_flow_tunnel *tunnel;
 };
 
 /* Flow meter state. */
@@ -914,6 +922,112 @@ struct mlx5_fdir_flow {
 
 #define HAIRPIN_FLOW_ID_BITS 28
 
+#define MLX5_MAX_TUNNELS 256
+#define MLX5_TNL_MISS_RULE_PRIORITY 3
+#define MLX5_TNL_MISS_FDB_JUMP_GRP  0x1234faac
+
+/*
+ * When tunnel offload is active, all JUMP group ids are converted
+ * using the same method. That conversion is applied both to tunnel and
+ * regular rule types.
+ * Group ids used in tunnel rules are relative to it's tunnel (!).
+ * Application can create number of steer rules, using the same
+ * tunnel, with different group id in each rule.
+ * Each tunnel stores its groups internally in PMD tunnel object.
+ * Groups used in regular rules do not belong to any tunnel and are stored
+ * in tunnel hub.
+ */
+
+struct mlx5_flow_tunnel {
+	LIST_ENTRY(mlx5_flow_tunnel) chain;
+	struct rte_flow_tunnel app_tunnel;	/** app tunnel copy */
+	uint32_t tunnel_id;			/** unique tunnel ID */
+	uint32_t refctn;
+	struct rte_flow_action action;
+	struct rte_flow_item item;
+	struct mlx5_hlist *groups;		/** tunnel groups */
+};
+
+/** PMD tunnel related context */
+struct mlx5_flow_tunnel_hub {
+	LIST_HEAD(, mlx5_flow_tunnel) tunnels;
+	struct mlx5_flow_id_pool *tunnel_ids;
+	struct mlx5_flow_id_pool *table_ids;
+	struct mlx5_hlist *groups;		/** non tunnel groups */
+};
+
+/* convert jump group to flow table ID in tunnel rules */
+struct tunnel_tbl_entry {
+	struct mlx5_hlist_entry hash;
+	uint32_t flow_table;
+};
+
+static inline uint32_t
+tunnel_id_to_flow_tbl(uint32_t id)
+{
+	return id | (1u << 16);
+}
+
+static inline uint32_t
+tunnel_flow_tbl_to_id(uint32_t flow_tbl)
+{
+	return flow_tbl & ~(1u << 16);
+}
+
+union tunnel_tbl_key {
+	uint64_t val;
+	struct {
+		uint32_t tunnel_id;
+		uint32_t group;
+	};
+};
+
+static inline struct mlx5_flow_tunnel_hub *
+mlx5_tunnel_hub(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	return priv->sh->tunnel_hub;
+}
+
+static inline bool
+is_tunnel_offload_active(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	return !!priv->config.dv_miss_info;
+}
+
+static inline bool
+is_flow_tunnel_match_rule(__rte_unused struct rte_eth_dev *dev,
+			  __rte_unused const struct rte_flow_attr *attr,
+			  __rte_unused const struct rte_flow_item items[],
+			  __rte_unused const struct rte_flow_action actions[])
+{
+	return (items[0].type == (typeof(items[0].type))
+				 MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL);
+}
+
+static inline bool
+is_flow_tunnel_steer_rule(__rte_unused struct rte_eth_dev *dev,
+			  __rte_unused const struct rte_flow_attr *attr,
+			  __rte_unused const struct rte_flow_item items[],
+			  __rte_unused const struct rte_flow_action actions[])
+{
+	return (actions[0].type == (typeof(actions[0].type))
+				   MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET);
+}
+
+static inline const struct mlx5_flow_tunnel *
+flow_actions_to_tunnel(const struct rte_flow_action actions[])
+{
+	return actions[0].conf;
+}
+
+static inline const struct mlx5_flow_tunnel *
+flow_items_to_tunnel(const struct rte_flow_item items[])
+{
+	return items[0].spec;
+}
+
 /* Flow structure. */
 struct rte_flow {
 	ILIST_ENTRY(uint32_t)next; /**< Index to the next flow structure. */
@@ -922,12 +1036,14 @@ struct rte_flow {
 	/**< Device flow handles that are part of the flow. */
 	uint32_t drv_type:2; /**< Driver type. */
 	uint32_t fdir:1; /**< Identifier of associated FDIR if any. */
+	uint32_t tunnel:1;
 	uint32_t hairpin_flow_id:HAIRPIN_FLOW_ID_BITS;
 	/**< The flow id used for hairpin. */
 	uint32_t copy_applied:1; /**< The MARK copy Flow os applied. */
 	uint32_t rix_mreg_copy;
 	/**< Index to metadata register copy table resource. */
 	uint32_t counter; /**< Holds flow counter. */
+	uint32_t tunnel_id;  /**< Tunnel id */
 	uint16_t meter; /**< Holds flow meter id. */
 } __rte_packed;
 
@@ -1089,9 +1205,54 @@ void mlx5_flow_id_pool_release(struct mlx5_flow_id_pool *pool);
 uint32_t mlx5_flow_id_get(struct mlx5_flow_id_pool *pool, uint32_t *id);
 uint32_t mlx5_flow_id_release(struct mlx5_flow_id_pool *pool,
 			      uint32_t id);
-int mlx5_flow_group_to_table(const struct rte_flow_attr *attributes,
-			     bool external, uint32_t group, bool fdb_def_rule,
-			     uint32_t *table, struct rte_flow_error *error);
+__extension__
+struct flow_grp_info {
+	uint64_t external:1;
+	uint64_t transfer:1;
+	uint64_t fdb_def_rule:1;
+	/* force standard group translation */
+	uint64_t std_tbl_fix:1;
+};
+
+static inline bool
+tunnel_use_standard_attr_group_translate
+		    (struct rte_eth_dev *dev,
+		     const struct mlx5_flow_tunnel *tunnel,
+		     const struct rte_flow_attr *attr,
+		     const struct rte_flow_item items[],
+		     const struct rte_flow_action actions[])
+{
+	bool verdict;
+
+	if (!is_tunnel_offload_active(dev))
+		/* no tunnel offload API */
+		verdict = true;
+	else if (tunnel) {
+		/*
+		 * OvS will use jump to group 0 in tunnel steer rule.
+		 * If tunnel steer rule starts from group 0 (attr.group == 0)
+		 * that 0 group must be translated with standard method.
+		 * attr.group == 0 in tunnel match rule translated with tunnel
+		 * method
+		 */
+		verdict = !attr->group &&
+			  is_flow_tunnel_steer_rule(dev, attr, items, actions);
+	} else {
+		/*
+		 * non-tunnel group translation uses standard method for
+		 * root group only: attr.group == 0
+		 */
+		verdict = !attr->group;
+	}
+
+	return verdict;
+}
+
+int mlx5_flow_group_to_table(struct rte_eth_dev *dev,
+			     const struct mlx5_flow_tunnel *tunnel,
+			     uint32_t group, uint32_t *table,
+			     struct flow_grp_info flags,
+				 struct rte_flow_error *error);
 uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow_rss_desc *rss_desc,
 				     int tunnel, uint64_t layer_types,
 				     uint64_t hash_fields);
@@ -1231,4 +1392,6 @@ int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
 struct rte_flow_shared_action *mlx5_flow_get_shared_rss(struct rte_flow *flow);
 int mlx5_shared_action_flush(struct rte_eth_dev *dev);
+void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
+int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

@@ -787,6 +787,9 @@ Driver options
     24 bits. The actual supported width can be retrieved in runtime by
     series of rte_flow_validate() trials.
 
+  - 3, this engages tunnel offload mode. In E-Switch configuration, that
+    mode implicitly activates ``dv_xmeta_en=1``.
+
   +------+-----------+-----------+-------------+-------------+
   | Mode | ``MARK``  | ``META``  | ``META`` Tx | FDB/Through |
   +======+===========+===========+=============+=============+

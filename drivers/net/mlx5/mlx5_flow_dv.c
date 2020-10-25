@@ -3947,14 +3947,21 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_validate_action_jump(const struct rte_flow_action *action,
+flow_dv_validate_action_jump(struct rte_eth_dev *dev,
+			     const struct mlx5_flow_tunnel *tunnel,
+			     const struct rte_flow_action *action,
 			     uint64_t action_flags,
 			     const struct rte_flow_attr *attributes,
 			     bool external, struct rte_flow_error *error)
 {
 	uint32_t target_group, table;
 	int ret = 0;
-
+	struct flow_grp_info grp_info = {
+		.external = !!external,
+		.transfer = !!attributes->transfer,
+		.fdb_def_rule = 1,
+		.std_tbl_fix = 0
+	};
 	if (action_flags & (MLX5_FLOW_FATE_ACTIONS |
 			    MLX5_FLOW_FATE_ESWITCH_ACTIONS))
 		return rte_flow_error_set(error, EINVAL,
@@ -3977,11 +3984,13 @@ flow_dv_validate_action_jump(const struct rte_flow_action *action,
 					  NULL, "action configuration not set");
 	target_group =
 		((const struct rte_flow_action_jump *)action->conf)->group;
-	ret = mlx5_flow_group_to_table(attributes, external, target_group,
-				       true, &table, error);
+	ret = mlx5_flow_group_to_table(dev, tunnel, target_group, &table,
+				       grp_info, error);
 	if (ret)
 		return ret;
-	if (attributes->group == target_group)
+	if (attributes->group == target_group &&
+	    !(action_flags & (MLX5_FLOW_ACTION_TUNNEL_SET |
+			      MLX5_FLOW_ACTION_TUNNEL_MATCH)))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "target group must be other than"
@@ -5160,8 +5169,9 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
  */
 static int
 flow_dv_validate_attributes(struct rte_eth_dev *dev,
+			    const struct mlx5_flow_tunnel *tunnel,
 			    const struct rte_flow_attr *attributes,
-			    bool external __rte_unused,
+			    struct flow_grp_info grp_info,
 			    struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5169,6 +5179,8 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 	int ret = 0;
 
 #ifndef HAVE_MLX5DV_DR
+	RTE_SET_USED(tunnel);
+	RTE_SET_USED(grp_info);
 	if (attributes->group)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
@@ -5177,9 +5189,8 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 #else
 	uint32_t table = 0;
 
-	ret = mlx5_flow_group_to_table(attributes, external,
-				       attributes->group, !!priv->fdb_def_rule,
-				       &table, error);
+	ret = mlx5_flow_group_to_table(dev, tunnel, attributes->group, &table,
+				       grp_info, error);
 	if (ret)
 		return ret;
 	if (!table)
@@ -5293,10 +5304,28 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	const struct rte_flow_item_vlan *vlan_m = NULL;
 	int16_t rw_act_num = 0;
 	uint64_t is_root;
+	const struct mlx5_flow_tunnel *tunnel;
+	struct flow_grp_info grp_info = {
+		.external = !!external,
+		.transfer = !!attr->transfer,
+		.fdb_def_rule = !!priv->fdb_def_rule,
+	};
 
 	if (items == NULL)
 		return -1;
-	ret = flow_dv_validate_attributes(dev, attr, external, error);
+	if (is_flow_tunnel_match_rule(dev, attr, items, actions)) {
+		tunnel = flow_items_to_tunnel(items);
+		action_flags |= MLX5_FLOW_ACTION_TUNNEL_MATCH |
+				MLX5_FLOW_ACTION_DECAP;
+	} else if (is_flow_tunnel_steer_rule(dev, attr, items, actions)) {
+		tunnel = flow_actions_to_tunnel(actions);
+		action_flags |= MLX5_FLOW_ACTION_TUNNEL_SET;
+	} else {
+		tunnel = NULL;
+	}
+	grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
+				(dev, tunnel, attr, items, actions);
+	ret = flow_dv_validate_attributes(dev, tunnel, attr, grp_info, error);
 	if (ret < 0)
 		return ret;
 	is_root = (uint64_t)ret;
@@ -5309,6 +5338,15 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "item not supported");
 		switch (type) {
+		case MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL:
+			if (items[0].type != (typeof(items[0].type))
+						MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL)
+				return rte_flow_error_set
+						(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						NULL, "MLX5 private items "
+						"must be the first");
+			break;
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
@@ -5894,7 +5932,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += MLX5_ACT_NUM_MDF_TTL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
-			ret = flow_dv_validate_action_jump(actions,
+			ret = flow_dv_validate_action_jump(dev, tunnel, actions,
 							   action_flags,
 							   attr, external,
 							   error);
@@ -6003,12 +6041,71 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			action_flags |= MLX5_FLOW_ACTION_SAMPLE;
 			++actions_n;
 			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET:
+			if (actions[0].type != (typeof(actions[0].type))
+				MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET)
+				return rte_flow_error_set
+						(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL, "MLX5 private action "
+						"must be the first");
+
+			action_flags |= MLX5_FLOW_ACTION_TUNNEL_SET;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  actions,
 						  "action not supported");
 		}
+	}
+	/*
+	 * Validate actions in flow rules
+	 * - Explicit decap action is prohibited by the tunnel offload API.
+	 * - Drop action in tunnel steer rule is prohibited by the API.
+	 * - Application cannot use MARK action because it's value can mask
+	 *   tunnel default miss nitification.
+	 * - JUMP in tunnel match rule has no support in current PMD
+	 *   implementation.
+	 * - TAG & META are reserved for future uses.
+	 */
+	if (action_flags & MLX5_FLOW_ACTION_TUNNEL_SET) {
+		uint64_t bad_actions_mask = MLX5_FLOW_ACTION_DECAP    |
+					    MLX5_FLOW_ACTION_MARK     |
+					    MLX5_FLOW_ACTION_SET_TAG  |
+					    MLX5_FLOW_ACTION_SET_META |
+					    MLX5_FLOW_ACTION_DROP;
+
+		if (action_flags & bad_actions_mask)
+			return rte_flow_error_set
+					(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"Invalid RTE action in tunnel "
+					"set decap rule");
+		if (!(action_flags & MLX5_FLOW_ACTION_JUMP))
+			return rte_flow_error_set
+					(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"tunnel set decap rule must terminate "
+					"with JUMP");
+		if (!attr->ingress)
+			return rte_flow_error_set
+					(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"tunnel flows for ingress traffic only");
+	}
+	if (action_flags & MLX5_FLOW_ACTION_TUNNEL_MATCH) {
+		uint64_t bad_actions_mask = MLX5_FLOW_ACTION_JUMP    |
+					    MLX5_FLOW_ACTION_MARK    |
+					    MLX5_FLOW_ACTION_SET_TAG |
+					    MLX5_FLOW_ACTION_SET_META;
+
+		if (action_flags & bad_actions_mask)
+			return rte_flow_error_set
+					(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"Invalid RTE action in tunnel "
+					"set match rule");
 	}
 	/*
 	 * Validate the drop action mutual exclusion with other actions.
@@ -7876,6 +7973,9 @@ static struct mlx5_flow_tbl_resource *
 flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 			 uint32_t table_id, uint8_t egress,
 			 uint8_t transfer,
+			 bool external,
+			 const struct mlx5_flow_tunnel *tunnel,
+			 uint32_t group_id,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -7912,6 +8012,9 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		return NULL;
 	}
 	tbl_data->idx = idx;
+	tbl_data->tunnel = tunnel;
+	tbl_data->group_id = group_id;
+	tbl_data->external = external;
 	tbl = &tbl_data->tbl;
 	pos = &tbl_data->entry;
 	if (transfer)
@@ -7975,6 +8078,41 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 
 		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
 		tbl->obj = NULL;
+		if (is_tunnel_offload_active(dev) && tbl_data->external) {
+			struct mlx5_hlist_entry *he;
+			struct mlx5_hlist *tunnel_grp_hash;
+			struct mlx5_flow_tunnel_hub *thub =
+							mlx5_tunnel_hub(dev);
+			union tunnel_tbl_key tunnel_key = {
+				.tunnel_id = tbl_data->tunnel ?
+						tbl_data->tunnel->tunnel_id : 0,
+				.group = tbl_data->group_id
+			};
+			union mlx5_flow_tbl_key table_key = {
+				.v64 = pos->key
+			};
+			uint32_t table_id = table_key.table_id;
+
+			tunnel_grp_hash = tbl_data->tunnel ?
+						tbl_data->tunnel->groups :
+						thub->groups;
+			he = mlx5_hlist_lookup(tunnel_grp_hash, tunnel_key.val);
+			if (he) {
+				struct tunnel_tbl_entry *tte;
+				tte = container_of(he, typeof(*tte), hash);
+				MLX5_ASSERT(tte->flow_table == table_id);
+				mlx5_hlist_remove(tunnel_grp_hash, he);
+				mlx5_free(tte);
+			}
+			mlx5_flow_id_release(mlx5_tunnel_hub(dev)->table_ids,
+					     tunnel_flow_tbl_to_id(table_id));
+			DRV_LOG(DEBUG,
+				"port %u release table_id %#x tunnel %u group %u",
+				dev->data->port_id, table_id,
+				tbl_data->tunnel ?
+				tbl_data->tunnel->tunnel_id : 0,
+				tbl_data->group_id);
+		}
 		/* remove the entry from the hash list and free memory. */
 		mlx5_hlist_remove(sh->flow_tbls, pos);
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_JUMP],
@@ -8020,7 +8158,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	int ret;
 
 	tbl = flow_dv_tbl_resource_get(dev, key->table_id, key->direction,
-				       key->domain, error);
+				       key->domain, false, NULL, 0, error);
 	if (!tbl)
 		return -rte_errno;	/* No need to refill the error info */
 	tbl_data = container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
@@ -8511,7 +8649,8 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 	*cache_resource = *resource;
 	/* Create normal path table level */
 	tbl = flow_dv_tbl_resource_get(dev, next_ft_id,
-					attr->egress, attr->transfer, error);
+					attr->egress, attr->transfer,
+					dev_flow->external, NULL, 0, error);
 	if (!tbl) {
 		rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -9123,6 +9262,12 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 	int tmp_actions_n = 0;
 	uint32_t table;
 	int ret = 0;
+	const struct mlx5_flow_tunnel *tunnel;
+	struct flow_grp_info grp_info = {
+		.external = !!dev_flow->external,
+		.transfer = !!attr->transfer,
+		.fdb_def_rule = !!priv->fdb_def_rule,
+	};
 
 	memset(&mdest_res, 0, sizeof(struct mlx5_flow_dv_dest_array_resource));
 	memset(&sample_res, 0, sizeof(struct mlx5_flow_dv_sample_resource));
@@ -9130,8 +9275,17 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 					   MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
 	/* update normal path action resource into last index of array */
 	sample_act = &mdest_res.sample_act[MLX5_MAX_DEST_NUM - 1];
-	ret = mlx5_flow_group_to_table(attr, dev_flow->external, attr->group,
-				       !!priv->fdb_def_rule, &table, error);
+	tunnel = is_flow_tunnel_match_rule(dev, attr, items, actions) ?
+		 flow_items_to_tunnel(items) :
+		 is_flow_tunnel_steer_rule(dev, attr, items, actions) ?
+		 flow_actions_to_tunnel(actions) :
+		 dev_flow->tunnel ? dev_flow->tunnel : NULL;
+	mhdr_res->ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
+					   MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
+	grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
+				(dev, tunnel, attr, items, actions);
+	ret = mlx5_flow_group_to_table(dev, tunnel, attr->group, &table,
+				       grp_info, error);
 	if (ret)
 		return ret;
 	dev_flow->dv.group = table;
@@ -9141,6 +9295,45 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		priority = dev_conf->flow_prio - 1;
 	/* number of actions must be set to 0 in case of dirty stack. */
 	mhdr_res->actions_num = 0;
+	if (is_flow_tunnel_match_rule(dev, attr, items, actions)) {
+		/*
+		 * do not add decap action if match rule drops packet
+		 * HW rejects rules with decap & drop
+		 */
+		bool add_decap = true;
+		const struct rte_flow_action *ptr = actions;
+		struct mlx5_flow_tbl_resource *tbl;
+
+		for (; ptr->type != RTE_FLOW_ACTION_TYPE_END; ptr++) {
+			if (ptr->type == RTE_FLOW_ACTION_TYPE_DROP) {
+				add_decap = false;
+				break;
+			}
+		}
+		if (add_decap) {
+			if (flow_dv_create_action_l2_decap(dev, dev_flow,
+							   attr->transfer,
+							   error))
+				return -rte_errno;
+			dev_flow->dv.actions[actions_n++] =
+					dev_flow->dv.encap_decap->action;
+			action_flags |= MLX5_FLOW_ACTION_DECAP;
+		}
+		/*
+		 * bind table_id with <group, table> for tunnel match rule.
+		 * Tunnel set rule establishes that bind in JUMP action handler.
+		 * Required for scenario when application creates tunnel match
+		 * rule before tunnel set rule.
+		 */
+		tbl = flow_dv_tbl_resource_get(dev, table, attr->egress,
+					       attr->transfer,
+					       !!dev_flow->external, tunnel,
+					       attr->group, error);
+		if (!tbl)
+			return rte_flow_error_set
+			       (error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+			       actions, "cannot register tunnel group");
+	}
 	for (; !actions_end ; actions++) {
 		const struct rte_flow_action_queue *queue;
 		const struct rte_flow_action_rss *rss;
@@ -9161,6 +9354,9 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 						  actions,
 						  "action not supported");
 		switch (action_type) {
+		case MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET:
+			action_flags |= MLX5_FLOW_ACTION_TUNNEL_SET;
+			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
@@ -9404,18 +9600,18 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			jump_group = ((const struct rte_flow_action_jump *)
 							action->conf)->group;
-			if (dev_flow->external && jump_group <
-					MLX5_MAX_TABLES_EXTERNAL)
-				jump_group *= MLX5_FLOW_TABLE_FACTOR;
-			ret = mlx5_flow_group_to_table(attr, dev_flow->external,
+			grp_info.std_tbl_fix = 0;
+			ret = mlx5_flow_group_to_table(dev, tunnel,
 						       jump_group,
-						       !!priv->fdb_def_rule,
-						       &table, error);
+						       &table,
+						       grp_info, error);
 			if (ret)
 				return ret;
-			tbl = flow_dv_tbl_resource_get(dev, table,
-						       attr->egress,
-						       attr->transfer, error);
+			tbl = flow_dv_tbl_resource_get(dev, table, attr->egress,
+						       attr->transfer,
+						       !!dev_flow->external,
+						       tunnel, jump_group,
+						       error);
 			if (!tbl)
 				return rte_flow_error_set
 						(error, errno,
@@ -11439,7 +11635,8 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 		dtb = &mtb->ingress;
 	/* Create the meter table with METER level. */
 	dtb->tbl = flow_dv_tbl_resource_get(dev, MLX5_FLOW_TABLE_LEVEL_METER,
-					    egress, transfer, &error);
+					    egress, transfer, false, NULL, 0,
+					    &error);
 	if (!dtb->tbl) {
 		DRV_LOG(ERR, "Failed to create meter policer table.");
 		return -1;
@@ -11447,7 +11644,8 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 	/* Create the meter suffix table with SUFFIX level. */
 	dtb->sfx_tbl = flow_dv_tbl_resource_get(dev,
 					    MLX5_FLOW_TABLE_LEVEL_SUFFIX,
-					    egress, transfer, &error);
+					    egress, transfer, false, NULL, 0,
+					    &error);
 	if (!dtb->sfx_tbl) {
 		DRV_LOG(ERR, "Failed to create meter suffix table.");
 		return -1;
@@ -11766,10 +11964,10 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 	void *flow = NULL;
 	int i, ret = -1;
 
-	tbl = flow_dv_tbl_resource_get(dev, 0, 0, 0, NULL);
+	tbl = flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL, 0, NULL);
 	if (!tbl)
 		goto err;
-	dest_tbl = flow_dv_tbl_resource_get(dev, 1, 0, 0, NULL);
+	dest_tbl = flow_dv_tbl_resource_get(dev, 1, 0, 0, false, NULL, 0, NULL);
 	if (!dest_tbl)
 		goto err;
 	dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0x4);
