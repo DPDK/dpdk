@@ -62,7 +62,7 @@
  * conventions than function names in dpdk:
  * - "rte_mbuf_dynfield_<name>" if defined in mbuf library
  * - "rte_<libname>_dynfield_<name>" if defined in another library
- * - "rte_net_<pmd>_dynfield_<name>" if defined in a in PMD
+ * - "rte_net_<pmd>_dynfield_<name>" if defined in a PMD
  * - any name that does not start with "rte_" in an application
  */
 
