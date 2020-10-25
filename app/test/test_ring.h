@@ -35,11 +35,11 @@ test_ring_create(const char *name, int esize, unsigned int count,
 		int socket_id, unsigned int flags)
 {
 	/* Legacy queue APIs? */
-	if ((esize) == -1)
-		return rte_ring_create((name), (count), (socket_id), (flags));
+	if (esize == -1)
+		return rte_ring_create(name, count, socket_id, flags);
 	else
-		return rte_ring_create_elem((name), (esize), (count),
-						(socket_id), (flags));
+		return rte_ring_create_elem(name, esize, count,
+						socket_id, flags);
 }
 
 static __rte_always_inline unsigned int
@@ -47,7 +47,7 @@ test_ring_enqueue(struct rte_ring *r, void **obj, int esize, unsigned int n,
 			unsigned int api_type)
 {
 	/* Legacy queue APIs? */
-	if ((esize) == -1)
+	if (esize == -1)
 		switch (api_type) {
 		case (TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE):
 			return rte_ring_enqueue(r, *obj);
@@ -108,7 +108,7 @@ test_ring_dequeue(struct rte_ring *r, void **obj, int esize, unsigned int n,
 			unsigned int api_type)
 {
 	/* Legacy queue APIs? */
-	if ((esize) == -1)
+	if (esize == -1)
 		switch (api_type) {
 		case (TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE):
 			return rte_ring_dequeue(r, obj);

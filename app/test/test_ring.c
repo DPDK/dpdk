@@ -247,7 +247,7 @@ static void**
 test_ring_inc_ptr(void **obj, int esize, unsigned int n)
 {
 	/* Legacy queue APIs? */
-	if ((esize) == -1)
+	if (esize == -1)
 		return ((void **)obj) + n;
 	else
 		return (void **)(((uint32_t *)obj) +
