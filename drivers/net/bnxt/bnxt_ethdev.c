@@ -31,6 +31,7 @@
 #include "bnxt_nvm_defs.h"
 #include "bnxt_tf_common.h"
 #include "ulp_flow_db.h"
+#include "rte_pmd_bnxt.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -162,6 +163,8 @@ static const char *const bnxt_dev_args[] = {
  * rep_fc_f2r == Flow control for the endpoint to representor direction
  */
 #define BNXT_DEVARG_REP_FC_F2R_INVALID(rep_fc_f2r)	((rep_fc_f2r) > 1)
+
+int bnxt_cfa_code_dynfield_offset = -1;
 
 /*
  * max_num_kflows must be >= 32
@@ -6020,6 +6023,22 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_58808 ||
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_58802_VF)
 		bp->flags |= BNXT_FLAG_STINGRAY;
+
+	if (BNXT_TRUFLOW_EN(bp)) {
+		/* extra mbuf field is required to store CFA code from mark */
+		static const struct rte_mbuf_dynfield bnxt_cfa_code_dynfield_desc = {
+			.name = RTE_PMD_BNXT_CFA_CODE_DYNFIELD_NAME,
+			.size = sizeof(bnxt_cfa_code_dynfield_t),
+			.align = __alignof__(bnxt_cfa_code_dynfield_t),
+		};
+		bnxt_cfa_code_dynfield_offset =
+			rte_mbuf_dynfield_register(&bnxt_cfa_code_dynfield_desc);
+		if (bnxt_cfa_code_dynfield_offset < 0) {
+			PMD_DRV_LOG(ERR,
+			    "Failed to register mbuf field for TruFlow mark\n");
+			return -rte_errno;
+		}
+	}
 
 	rc = bnxt_init_board(eth_dev);
 	if (rc) {

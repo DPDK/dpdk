@@ -9,6 +9,9 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 
+/** mbuf dynamic field where CFA code is stored */
+#define RTE_PMD_BNXT_CFA_CODE_DYNFIELD_NAME "rte_net_bnxt_dynfield_cfa_code"
+
 /*
  * Response sent back to the caller after callback
  */
