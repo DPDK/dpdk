@@ -1073,6 +1073,8 @@ int mlx5_hairpin_queue_peer_unbind(struct rte_eth_dev *dev, uint16_t cur_queue,
 				   uint32_t direction);
 int mlx5_hairpin_bind(struct rte_eth_dev *dev, uint16_t rx_port);
 int mlx5_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port);
+int mlx5_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
+				size_t len, uint32_t direction);
 
 /* mlx5_flow.c */
 

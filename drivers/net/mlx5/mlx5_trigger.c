@@ -910,6 +910,95 @@ mlx5_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port)
 	return ret;
 }
 
+/*
+ * DPDK callback to get the hairpin peer ports list.
+ * This will return the actual number of peer ports and save the identifiers
+ * into the array (sorted, may be different from that when setting up the
+ * hairpin peer queues).
+ * The peer port ID could be the same as the port ID of the current device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param peer_ports
+ *   Pointer to array to save the port identifiers.
+ * @param len
+ *   The length of the array.
+ * @param direction
+ *   Current port to peer port direction.
+ *   positive - current used as Tx to get all peer Rx ports.
+ *   zero - current used as Rx to get all peer Tx ports.
+ *
+ * @return
+ *   0 or positive value on success, actual number of peer ports.
+ *   a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
+			    size_t len, uint32_t direction)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_ctrl *txq_ctrl;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+	uint32_t i;
+	uint16_t pp;
+	uint32_t bits[(RTE_MAX_ETHPORTS + 31) / 32] = {0};
+	int ret = 0;
+
+	if (direction) {
+		for (i = 0; i < priv->txqs_n; i++) {
+			txq_ctrl = mlx5_txq_get(dev, i);
+			if (!txq_ctrl)
+				continue;
+			if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+				mlx5_txq_release(dev, i);
+				continue;
+			}
+			pp = txq_ctrl->hairpin_conf.peers[0].port;
+			if (pp >= RTE_MAX_ETHPORTS) {
+				rte_errno = ERANGE;
+				mlx5_txq_release(dev, i);
+				DRV_LOG(ERR, "port %hu queue %u peer port "
+					"out of range %hu",
+					priv->dev_data->port_id, i, pp);
+				return -rte_errno;
+			}
+			bits[pp / 32] |= 1 << (pp % 32);
+			mlx5_txq_release(dev, i);
+		}
+	} else {
+		for (i = 0; i < priv->rxqs_n; i++) {
+			rxq_ctrl = mlx5_rxq_get(dev, i);
+			if (!rxq_ctrl)
+				continue;
+			if (rxq_ctrl->type != MLX5_RXQ_TYPE_HAIRPIN) {
+				mlx5_rxq_release(dev, i);
+				continue;
+			}
+			pp = rxq_ctrl->hairpin_conf.peers[0].port;
+			if (pp >= RTE_MAX_ETHPORTS) {
+				rte_errno = ERANGE;
+				mlx5_rxq_release(dev, i);
+				DRV_LOG(ERR, "port %hu queue %u peer port "
+					"out of range %hu",
+					priv->dev_data->port_id, i, pp);
+				return -rte_errno;
+			}
+			bits[pp / 32] |= 1 << (pp % 32);
+			mlx5_rxq_release(dev, i);
+		}
+	}
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (bits[i / 32] & (1 << (i % 32))) {
+			if ((size_t)ret >= len) {
+				rte_errno = E2BIG;
+				return -rte_errno;
+			}
+			peer_ports[ret++] = i;
+		}
+	}
+	return ret;
+}
+
 /**
  * DPDK callback to start the device.
  *
