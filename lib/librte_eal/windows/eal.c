@@ -295,6 +295,7 @@ rte_eal_init(int argc, char **argv)
 		RTE_LOG(WARNING, EAL, "Multi-process support is requested, "
 			"but not available.\n");
 		internal_conf->in_memory = 1;
+		internal_conf->no_shconf = 1;
 	}
 
 	if (!internal_conf->no_hugetlbfs && (eal_hugepage_info_init() < 0)) {
