@@ -17,6 +17,7 @@
 #define TEST_SKIPPED    1
 
 #define MAX_BURST 512U
+#define MAX_OPS 1024U
 #define DEFAULT_BURST 32U
 #define DEFAULT_OPS 64U
 #define DEFAULT_ITER 6U

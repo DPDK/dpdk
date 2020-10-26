@@ -2467,7 +2467,7 @@ retrieve_harq_ddr(uint16_t dev_id, uint16_t queue_id,
 {
 	uint16_t j;
 	int save_status, ret;
-	uint32_t harq_offset = (uint32_t) queue_id * HARQ_INCR * 1024;
+	uint32_t harq_offset = (uint32_t) queue_id * HARQ_INCR * MAX_OPS;
 	struct rte_bbdev_dec_op *ops_deq[MAX_BURST];
 	uint32_t flags = ops[0]->ldpc_dec.op_flags;
 	bool loopback = flags & RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK;
@@ -2513,20 +2513,20 @@ preload_harq_ddr(uint16_t dev_id, uint16_t queue_id,
 		bool preload)
 {
 	uint16_t j;
-	int ret;
-	uint32_t harq_offset = (uint32_t) queue_id * HARQ_INCR * 1024;
-	struct rte_bbdev_op_data save_hc_in, save_hc_out;
-	struct rte_bbdev_dec_op *ops_deq[MAX_BURST];
+	int deq;
+	uint32_t harq_offset = (uint32_t) queue_id * HARQ_INCR * MAX_OPS;
+	struct rte_bbdev_op_data save_hc_in[MAX_OPS], save_hc_out[MAX_OPS];
+	struct rte_bbdev_dec_op *ops_deq[MAX_OPS];
 	uint32_t flags = ops[0]->ldpc_dec.op_flags;
 	bool mem_in = flags & RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE;
 	bool hc_in = flags & RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
 	bool mem_out = flags & RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
 	bool hc_out = flags & RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
 	bool h_comp = flags & RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION;
-	for (j = 0; j < n; ++j) {
-		if ((mem_in || hc_in) && preload) {
-			save_hc_in = ops[j]->ldpc_dec.harq_combined_input;
-			save_hc_out = ops[j]->ldpc_dec.harq_combined_output;
+	if ((mem_in || hc_in) && preload) {
+		for (j = 0; j < n; ++j) {
+			save_hc_in[j] = ops[j]->ldpc_dec.harq_combined_input;
+			save_hc_out[j] = ops[j]->ldpc_dec.harq_combined_output;
 			ops[j]->ldpc_dec.op_flags =
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK +
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
@@ -2536,16 +2536,23 @@ preload_harq_ddr(uint16_t dev_id, uint16_t queue_id,
 			ops[j]->ldpc_dec.harq_combined_output.offset =
 					harq_offset;
 			ops[j]->ldpc_dec.harq_combined_input.offset = 0;
-			rte_bbdev_enqueue_ldpc_dec_ops(dev_id, queue_id,
-					&ops[j], 1);
-			ret = 0;
-			while (ret == 0)
-				ret = rte_bbdev_dequeue_ldpc_dec_ops(
-					dev_id, queue_id, &ops_deq[j], 1);
-			ops[j]->ldpc_dec.op_flags = flags;
-			ops[j]->ldpc_dec.harq_combined_input = save_hc_in;
-			ops[j]->ldpc_dec.harq_combined_output = save_hc_out;
+			harq_offset += HARQ_INCR;
 		}
+		rte_bbdev_enqueue_ldpc_dec_ops(dev_id, queue_id, &ops[0], n);
+		deq = 0;
+		while (deq != n)
+			deq += rte_bbdev_dequeue_ldpc_dec_ops(
+					dev_id, queue_id, &ops_deq[deq],
+					n - deq);
+		/* Restore the operations */
+		for (j = 0; j < n; ++j) {
+			ops[j]->ldpc_dec.op_flags = flags;
+			ops[j]->ldpc_dec.harq_combined_input = save_hc_in[j];
+			ops[j]->ldpc_dec.harq_combined_output = save_hc_out[j];
+		}
+	}
+	harq_offset = (uint32_t) queue_id * HARQ_INCR * MAX_OPS;
+	for (j = 0; j < n; ++j) {
 		/* Adjust HARQ offset when we reach external DDR */
 		if (mem_in || hc_in)
 			ops[j]->ldpc_dec.harq_combined_input.offset
@@ -3231,11 +3238,9 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 				mbuf_reset(
 				ops_enq[j]->ldpc_dec.harq_combined_output.data);
 		}
-		if (extDdr) {
-			bool preload = i == (TEST_REPETITIONS - 1);
+		if (extDdr)
 			preload_harq_ddr(tp->dev_id, queue_id, ops_enq,
-					num_ops, preload);
-		}
+					num_ops, true);
 		start_time = rte_rdtsc_precise();
 
 		for (enq = 0, deq = 0; enq < num_ops;) {
@@ -3362,11 +3367,9 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 				mbuf_reset(
 				ops_enq[j]->ldpc_dec.harq_combined_output.data);
 		}
-		if (extDdr) {
-			bool preload = i == (TEST_REPETITIONS - 1);
+		if (extDdr)
 			preload_harq_ddr(tp->dev_id, queue_id, ops_enq,
-					num_ops, preload);
-		}
+					num_ops, true);
 		start_time = rte_rdtsc_precise();
 
 		for (enq = 0, deq = 0; enq < num_ops;) {
