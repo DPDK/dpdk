@@ -218,6 +218,8 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 	struct mlx5_devx_obj *rq;
 	unsigned int i;
 	int ret = 0;
+	bool need_auto = false;
+	uint16_t self_port = dev->data->port_id;
 
 	for (i = 0; i != priv->txqs_n; ++i) {
 		txq_ctrl = mlx5_txq_get(dev, i);
@@ -227,6 +229,28 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 			mlx5_txq_release(dev, i);
 			continue;
 		}
+		if (txq_ctrl->hairpin_conf.peers[0].port != self_port)
+			continue;
+		if (txq_ctrl->hairpin_conf.manual_bind) {
+			mlx5_txq_release(dev, i);
+			return 0;
+		}
+		need_auto = true;
+		mlx5_txq_release(dev, i);
+	}
+	if (!need_auto)
+		return 0;
+	for (i = 0; i != priv->txqs_n; ++i) {
+		txq_ctrl = mlx5_txq_get(dev, i);
+		if (!txq_ctrl)
+			continue;
+		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN) {
+			mlx5_txq_release(dev, i);
+			continue;
+		}
+		/* Skip hairpin queues with other peer ports. */
+		if (txq_ctrl->hairpin_conf.peers[0].port != self_port)
+			continue;
 		if (!txq_ctrl->obj) {
 			rte_errno = ENOMEM;
 			DRV_LOG(ERR, "port %u no txq object found: %d",
@@ -275,6 +299,9 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 		ret = mlx5_devx_cmd_modify_rq(rq, &rq_attr);
 		if (ret)
 			goto error;
+		/* Qs with auto-bind will be destroyed directly. */
+		rxq_ctrl->hairpin_status = 1;
+		txq_ctrl->hairpin_status = 1;
 		mlx5_txq_release(dev, i);
 		mlx5_rxq_release(dev, txq_ctrl->hairpin_conf.peers[0].queue);
 	}
@@ -1050,9 +1077,13 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
+	/*
+	 * Such step will be skipped if there is no hairpin TX queue configured
+	 * with RX peer queue from the same device.
+	 */
 	ret = mlx5_hairpin_auto_bind(dev);
 	if (ret) {
-		DRV_LOG(ERR, "port %u hairpin binding failed: %s",
+		DRV_LOG(ERR, "port %u hairpin auto binding failed: %s",
 			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
@@ -1203,7 +1234,11 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		struct mlx5_txq_ctrl *txq_ctrl = mlx5_txq_get(dev, i);
 		if (!txq_ctrl)
 			continue;
-		if (txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN) {
+		/* Only Tx implicit mode requires the default Tx flow. */
+		if (txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN &&
+		    txq_ctrl->hairpin_conf.tx_explicit == 0 &&
+		    txq_ctrl->hairpin_conf.peers[0].port ==
+		    priv->dev_data->port_id) {
 			ret = mlx5_ctrl_flow_source_queue(dev, i);
 			if (ret) {
 				mlx5_txq_release(dev, i);
