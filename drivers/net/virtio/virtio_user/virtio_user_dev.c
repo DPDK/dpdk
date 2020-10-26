@@ -523,6 +523,12 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		 * later.
 		 */
 		dev->device_features = VIRTIO_USER_SUPPORTED_FEATURES;
+
+		/* We cannot assume VHOST_USER_PROTOCOL_F_STATUS is supported
+		 * until it's negotiated
+		 */
+		dev->protocol_features &=
+			~(1ULL << VHOST_USER_PROTOCOL_F_STATUS);
 	}
 
 
