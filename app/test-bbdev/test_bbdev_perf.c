@@ -3719,7 +3719,11 @@ bler_test(struct active_device *ad,
 			RTE_ALIGN(sizeof(struct thread_params) * num_lcores,
 				RTE_CACHE_LINE_SIZE));
 
-	if (test_vector.op_type == RTE_BBDEV_OP_LDPC_DEC)
+	if ((test_vector.op_type == RTE_BBDEV_OP_LDPC_DEC) &&
+			!check_bit(test_vector.ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)
+			&& !check_bit(test_vector.ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_LLR_COMPRESSION))
 		bler_function = bler_pmd_lcore_ldpc_dec;
 	else
 		return TEST_SKIPPED;
