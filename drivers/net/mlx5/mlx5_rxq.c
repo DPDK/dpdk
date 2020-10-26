@@ -1844,6 +1844,33 @@ mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx)
 	return MLX5_RXQ_TYPE_UNDEFINED;
 }
 
+/*
+ * Get a Rx hairpin queue configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   Rx queue index.
+ *
+ * @return
+ *   Pointer to the configuration if a hairpin RX queue, otherwise NULL.
+ */
+const struct rte_eth_hairpin_conf *
+mlx5_rxq_get_hairpin_conf(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_ctrl *rxq_ctrl = NULL;
+
+	if (idx < priv->rxqs_n && (*priv->rxqs)[idx]) {
+		rxq_ctrl = container_of((*priv->rxqs)[idx],
+					struct mlx5_rxq_ctrl,
+					rxq);
+		if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
+			return &rxq_ctrl->hairpin_conf;
+	}
+	return NULL;
+}
+
 /**
  * Match queues listed in arguments to queues contained in indirection table
  * object.

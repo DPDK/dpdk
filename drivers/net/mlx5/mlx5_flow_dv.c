@@ -5310,6 +5310,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		.transfer = !!attr->transfer,
 		.fdb_def_rule = !!priv->fdb_def_rule,
 	};
+	const struct rte_eth_hairpin_conf *conf;
 
 	if (items == NULL)
 		return -1;
@@ -6155,11 +6156,18 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  actions,
 						  "no fate action is found");
 	}
-	/* Continue validation for Xcap and VLAN actions.*/
+	/*
+	 * Continue validation for Xcap and VLAN actions.
+	 * If hairpin is working in explicit TX rule mode, there is no actions
+	 * splitting and the validation of hairpin ingress flow should be the
+	 * same as other standard flows.
+	 */
 	if ((action_flags & (MLX5_FLOW_XCAP_ACTIONS |
 			     MLX5_FLOW_VLAN_ACTIONS)) &&
 	    (queue_index == 0xFFFF ||
-	     mlx5_rxq_get_type(dev, queue_index) != MLX5_RXQ_TYPE_HAIRPIN)) {
+	     mlx5_rxq_get_type(dev, queue_index) != MLX5_RXQ_TYPE_HAIRPIN ||
+	     ((conf = mlx5_rxq_get_hairpin_conf(dev, queue_index)) != NULL &&
+	     conf->tx_explicit != 0))) {
 		if ((action_flags & MLX5_FLOW_XCAP_ACTIONS) ==
 		    MLX5_FLOW_XCAP_ACTIONS)
 			return rte_flow_error_set(error, ENOTSUP,
@@ -6188,7 +6196,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						 "multiple VLAN actions");
 		}
 	}
-	/* Hairpin flow will add one more TAG action. */
+	/*
+	 * Hairpin flow will add one more TAG action in TX implicit mode.
+	 * In TX explicit mode, there will be no hairpin flow ID.
+	 */
 	if (hairpin > 0)
 		rw_act_num += MLX5_ACT_NUM_SET_TAG;
 	/* extra metadata enabled: one more TAG action will be add. */
