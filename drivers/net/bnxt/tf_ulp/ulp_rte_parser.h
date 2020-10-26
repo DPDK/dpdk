@@ -11,6 +11,7 @@
 #include <rte_flow_driver.h>
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
+#include "ulp_mapper.h"
 
 /* defines to be used in the tunnel header parsing */
 #define BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS	2
@@ -33,6 +34,14 @@
 #define	BNXT_ULP_PARSER_IPV6_VER_MASK		0xf0000000
 #define	BNXT_ULP_PARSER_IPV6_TC			0x0ff00000
 #define	BNXT_ULP_PARSER_IPV6_FLOW_LABEL		0x000fffff
+
+void
+bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
+			    struct ulp_rte_parser_params *params,
+			    uint32_t priority, uint32_t class_id,
+			    uint32_t act_tmpl, uint16_t func_id,
+			    uint32_t flow_id,
+			    enum bnxt_ulp_fdb_type flow_type);
 
 /* Function to handle the parsing of the RTE port id. */
 int32_t

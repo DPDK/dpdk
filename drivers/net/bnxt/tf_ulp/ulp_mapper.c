@@ -2723,15 +2723,9 @@ ulp_mapper_flow_destroy(struct bnxt_ulp_context *ulp_ctx,
 		BNXT_TF_DBG(ERR, "Invalid parms, unable to free flow\n");
 		return -EINVAL;
 	}
-	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
-		return -EINVAL;
-	}
 
 	rc = ulp_mapper_resources_free(ulp_ctx, flow_type, fid);
-	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 	return rc;
-
 }
 
 /* Function to handle the default global templates that are allocated during
@@ -2795,8 +2789,7 @@ ulp_mapper_glb_template_table_init(struct bnxt_ulp_context *ulp_ctx)
  */
 int32_t
 ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
-		       struct bnxt_ulp_mapper_create_parms *cparms,
-		       uint32_t *flowid)
+		       struct bnxt_ulp_mapper_create_parms *cparms)
 {
 	struct bnxt_ulp_mapper_parms parms;
 	struct ulp_regfile regfile;
@@ -2821,6 +2814,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.flow_type = cparms->flow_type;
 	parms.parent_flow = cparms->parent_flow;
 	parms.parent_fid = cparms->parent_fid;
+	parms.fid = cparms->flow_id;
 
 	/* Get the device id from the ulp context */
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &parms.dev_id)) {
@@ -2861,26 +2855,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
-	/* Protect flow creation */
-	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
-		return -EINVAL;
-	}
-
-	/* Allocate a Flow ID for attaching all resources for the flow to.
-	 * Once allocated, all errors have to walk the list of resources and
-	 * free each of them.
-	 */
-	rc = ulp_flow_db_fid_alloc(ulp_ctx,
-				   parms.flow_type,
-				   cparms->func_id,
-				   &parms.fid);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
-		bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
-		return rc;
-	}
-
+	/* Process the action template list from the selected action table*/
 	if (parms.act_tid) {
 		parms.tmpl_type = BNXT_ULP_TEMPLATE_TYPE_ACTION;
 		/* Process the action template tables */
@@ -2911,13 +2886,9 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 			goto flow_error;
 	}
 
-	*flowid = parms.fid;
-	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
-
 	return rc;
 
 flow_error:
-	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 	/* Free all resources that were allocated during flow creation */
 	trc = ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR,
 				      parms.fid);

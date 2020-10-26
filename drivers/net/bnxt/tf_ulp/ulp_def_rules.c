@@ -304,8 +304,8 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	struct ulp_rte_act_prop		act_prop;
 	struct ulp_rte_act_bitmap	act = { 0 };
 	struct bnxt_ulp_context		*ulp_ctx;
-	uint32_t type, ulp_flags = 0;
-	int rc;
+	uint32_t type, ulp_flags = 0, fid;
+	int rc = 0;
 
 	memset(&mapper_params, 0, sizeof(mapper_params));
 	memset(hdr_field, 0, sizeof(hdr_field));
@@ -316,6 +316,8 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	mapper_params.act = &act;
 	mapper_params.act_prop = &act_prop;
 	mapper_params.comp_fld = comp_fld;
+	mapper_params.class_tid = ulp_class_tid;
+	mapper_params.flow_type = BNXT_ULP_FDB_TYPE_DEFAULT;
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (!ulp_ctx) {
@@ -350,16 +352,43 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 		type = param_list->type;
 	}
 
-	mapper_params.class_tid = ulp_class_tid;
-	mapper_params.flow_type = BNXT_ULP_FDB_TYPE_DEFAULT;
-
-	rc = ulp_mapper_flow_create(ulp_ctx, &mapper_params, flow_id);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to create default flow.\n");
-		return rc;
+	/* Get the function id */
+	if (ulp_port_db_port_func_id_get(ulp_ctx,
+					 eth_dev->data->port_id,
+					 &mapper_params.func_id)) {
+		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		goto err1;
 	}
 
+	/* Protect flow creation */
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
+		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		goto err1;
+	}
+
+	rc = ulp_flow_db_fid_alloc(ulp_ctx, BNXT_ULP_FDB_TYPE_DEFAULT,
+				   mapper_params.func_id, &fid);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
+		goto err2;
+	}
+
+	mapper_params.flow_id = fid;
+	rc = ulp_mapper_flow_create(ulp_ctx, &mapper_params);
+	if (rc)
+		goto err3;
+
+	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
+	*flow_id = fid;
 	return 0;
+
+err3:
+	ulp_flow_db_fid_free(ulp_ctx, BNXT_ULP_FDB_TYPE_DEFAULT, fid);
+err2:
+	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
+err1:
+	BNXT_TF_DBG(ERR, "Failed to create default flow.\n");
+	return rc;
 }
 
 /*
@@ -391,10 +420,15 @@ ulp_default_flow_destroy(struct rte_eth_dev *eth_dev, uint32_t flow_id)
 		return rc;
 	}
 
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
+		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		return -EINVAL;
+	}
 	rc = ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_DEFAULT,
 				     flow_id);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Failed to destroy flow.\n");
+	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	return rc;
 }
