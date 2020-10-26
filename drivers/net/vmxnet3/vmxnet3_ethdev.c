@@ -59,6 +59,8 @@
 	 DEV_RX_OFFLOAD_JUMBO_FRAME |   \
 	 DEV_RX_OFFLOAD_RSS_HASH)
 
+int vmxnet3_segs_dynfield_offset = -1;
+
 static int eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev);
 static int vmxnet3_dev_configure(struct rte_eth_dev *dev);
@@ -233,6 +235,11 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	struct vmxnet3_hw *hw = eth_dev->data->dev_private;
 	uint32_t mac_hi, mac_lo, ver;
 	struct rte_eth_link link;
+	static const struct rte_mbuf_dynfield vmxnet3_segs_dynfield_desc = {
+		.name = VMXNET3_SEGS_DYNFIELD_NAME,
+		.size = sizeof(vmxnet3_segs_dynfield_t),
+		.align = __alignof__(vmxnet3_segs_dynfield_t),
+	};
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -241,6 +248,14 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = &vmxnet3_xmit_pkts;
 	eth_dev->tx_pkt_prepare = vmxnet3_prep_pkts;
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	/* extra mbuf field is required to guess MSS */
+	vmxnet3_segs_dynfield_offset =
+		rte_mbuf_dynfield_register(&vmxnet3_segs_dynfield_desc);
+	if (vmxnet3_segs_dynfield_offset < 0) {
+		PMD_INIT_LOG(ERR, "Cannot register mbuf field.");
+		return -rte_errno;
+	}
 
 	/*
 	 * for secondary processes, we don't initialize any further as primary

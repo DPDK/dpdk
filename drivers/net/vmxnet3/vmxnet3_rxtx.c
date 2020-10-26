@@ -674,6 +674,7 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 	struct rte_ipv6_hdr *ipv6_hdr;
 	struct rte_tcp_hdr *tcp_hdr;
 	char *ptr;
+	uint8_t segs;
 
 	RTE_ASSERT(rcd->tcp);
 
@@ -710,9 +711,9 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 	tcp_hdr = (struct rte_tcp_hdr *)(ptr + hlen);
 	hlen += (tcp_hdr->data_off & 0xf0) >> 2;
 
-	if (rxm->udata64 > 1)
-		return (rte_pktmbuf_pkt_len(rxm) - hlen +
-				rxm->udata64 - 1) / rxm->udata64;
+	segs = *vmxnet3_segs_dynfield(rxm);
+	if (segs > 1)
+		return (rte_pktmbuf_pkt_len(rxm) - hlen + segs - 1) / segs;
 	else
 		return hw->mtu - hlen + sizeof(struct rte_ether_hdr);
 }
@@ -737,7 +738,7 @@ vmxnet3_rx_offload(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 					(const Vmxnet3_RxCompDescExt *)rcd;
 
 			rxm->tso_segsz = rcde->mss;
-			rxm->udata64 = rcde->segCnt;
+			*vmxnet3_segs_dynfield(rxm) = rcde->segCnt;
 			ol_flags |= PKT_RX_LRO;
 		}
 	} else { /* Offloads set in eop */
