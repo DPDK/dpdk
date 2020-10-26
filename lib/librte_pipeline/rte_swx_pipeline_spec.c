@@ -10,9 +10,8 @@
 #include "rte_swx_pipeline.h"
 #include "rte_swx_ctl.h"
 
-#define MAX_LINE_LENGTH 256
-#define MAX_TOKENS 16
-#define MAX_INSTRUCTION_LENGTH 256
+#define MAX_LINE_LENGTH RTE_SWX_INSTRUCTION_SIZE
+#define MAX_TOKENS RTE_SWX_INSTRUCTION_TOKENS_MAX
 
 #define STRUCT_BLOCK 0
 #define ACTION_BLOCK 1
@@ -442,7 +441,7 @@ action_block_parse(struct action_spec *s,
 		   uint32_t *err_line,
 		   const char **err_msg)
 {
-	char buffer[MAX_INSTRUCTION_LENGTH], *instr;
+	char buffer[RTE_SWX_INSTRUCTION_SIZE], *instr;
 	const char **new_instructions;
 	uint32_t i;
 
@@ -1006,7 +1005,7 @@ apply_block_parse(struct apply_spec *s,
 		  uint32_t *err_line,
 		  const char **err_msg)
 {
-	char buffer[MAX_INSTRUCTION_LENGTH], *instr;
+	char buffer[RTE_SWX_INSTRUCTION_SIZE], *instr;
 	const char **new_instructions;
 	uint32_t i;
 
@@ -1122,6 +1121,17 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 					*err_line = n_lines;
 				if (err_msg)
 					*err_msg = "Too many tokens.";
+				status = -EINVAL;
+				goto error;
+			}
+
+			/* Handle excessively long tokens. */
+			if (strnlen(token, RTE_SWX_NAME_SIZE) >=
+			    RTE_SWX_NAME_SIZE) {
+				if (err_line)
+					*err_line = n_lines;
+				if (err_msg)
+					*err_msg = "Token too big.";
 				status = -EINVAL;
 				goto error;
 			}

@@ -22,7 +22,17 @@ do {                                                                           \
 } while (0)
 
 #define CHECK_NAME(name, err_code)                                             \
-	CHECK((name) && (name)[0], err_code)
+	CHECK((name) &&                                                        \
+	      (name)[0] &&                                                     \
+	      (strnlen((name), RTE_SWX_NAME_SIZE) < RTE_SWX_NAME_SIZE),        \
+	      err_code)
+
+#define CHECK_INSTRUCTION(instr, err_code)                                     \
+	CHECK((instr) &&                                                       \
+	      (instr)[0] &&                                                    \
+	      (strnlen((instr), RTE_SWX_INSTRUCTION_SIZE) <                    \
+	       RTE_SWX_INSTRUCTION_SIZE),                                      \
+	      err_code)
 
 #ifndef TRACE_LEVEL
 #define TRACE_LEVEL 0
@@ -1635,12 +1645,12 @@ rte_swx_pipeline_extern_type_member_func_register(struct rte_swx_pipeline *p,
 
 	CHECK(p, EINVAL);
 
-	CHECK(extern_type_name, EINVAL);
+	CHECK_NAME(extern_type_name, EINVAL);
 	type = extern_type_find(p, extern_type_name);
 	CHECK(type, EINVAL);
 	CHECK(type->n_funcs < RTE_SWX_EXTERN_TYPE_MEMBER_FUNCS_MAX, ENOSPC);
 
-	CHECK(name, EINVAL);
+	CHECK_NAME(name, EINVAL);
 	CHECK(!extern_type_member_func_find(type, name), EEXIST);
 
 	CHECK(member_func, EINVAL);
@@ -5280,8 +5290,6 @@ instr_return_exec(struct rte_swx_pipeline *p)
 	t->ip = t->ret;
 }
 
-#define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
-
 static int
 instr_translate(struct rte_swx_pipeline *p,
 		struct action *action,
@@ -5301,6 +5309,7 @@ instr_translate(struct rte_swx_pipeline *p,
 			break;
 
 		CHECK(n_tokens < RTE_SWX_INSTRUCTION_TOKENS_MAX, EINVAL);
+		CHECK_NAME(token, EINVAL);
 
 		tokens[n_tokens] = token;
 		n_tokens++;
@@ -5938,7 +5947,7 @@ instruction_config(struct rte_swx_pipeline *p,
 	CHECK(n_instructions, EINVAL);
 	CHECK(instructions, EINVAL);
 	for (i = 0; i < n_instructions; i++)
-		CHECK(instructions[i], EINVAL);
+		CHECK_INSTRUCTION(instructions[i], EINVAL);
 
 	/* Memory allocation. */
 	instr = calloc(n_instructions, sizeof(struct instruction));
@@ -6442,7 +6451,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 		struct action *a;
 		uint32_t action_data_size;
 
-		CHECK(action_name, EINVAL);
+		CHECK_NAME(action_name, EINVAL);
 
 		a = action_find(p, action_name);
 		CHECK(a, EINVAL);
@@ -6452,7 +6461,7 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 			action_data_size_max = action_data_size;
 	}
 
-	CHECK(params->default_action_name, EINVAL);
+	CHECK_NAME(params->default_action_name, EINVAL);
 	for (i = 0; i < p->n_actions; i++)
 		if (!strcmp(params->action_names[i],
 			    params->default_action_name))
@@ -6463,6 +6472,9 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	      !params->default_action_data, EINVAL);
 
 	/* Table type checks. */
+	if (recommended_table_type_name)
+		CHECK_NAME(recommended_table_type_name, EINVAL);
+
 	if (params->n_fields) {
 		enum rte_swx_table_match_type match_type;
 

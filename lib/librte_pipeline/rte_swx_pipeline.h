@@ -26,6 +26,17 @@ extern "C" {
 #ifndef RTE_SWX_NAME_SIZE
 #define RTE_SWX_NAME_SIZE 64
 #endif
+
+/** Instruction size. */
+#ifndef RTE_SWX_INSTRUCTION_SIZE
+#define RTE_SWX_INSTRUCTION_SIZE 256
+#endif
+
+/** Instruction tokens. */
+#ifndef RTE_SWX_INSTRUCTION_TOKENS_MAX
+#define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
+#endif
+
 /*
  * Pipeline setup and operation
  */
