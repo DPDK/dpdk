@@ -88,6 +88,12 @@ Deprecation Notices
   will be limited to maximum 256 queues.
   Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
 
+* Broadcom bnxt PMD: NetXtreme devices belonging to the ``BCM573xx and
+  BCM5740x`` families will no longer be supported as of DPDK 21.02.
+  Specifically the support for the following Broadcom PCI IDs will be removed
+  from the release: ``0x16c8, 0x16c9, 0x16ca, 0x16ce, 0x16cf, 0x16df,``
+  ``0x16d0, 0x16d1, 0x16d2, 0x16d4, 0x16d5, 0x16e7, 0x16e8, 0x16e9``.
+
 * sched: To allow more traffic classes, flexible mapping of pipe queues to
   traffic classes, and subport level configuration of pipes and queues
   changes will be made to macros, data structures and API functions defined
