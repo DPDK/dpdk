@@ -35,7 +35,7 @@ order_atq_worker(void *arg, const bool flow_id_cap)
 		}
 
 		if (!flow_id_cap)
-			ev.flow_id = ev.mbuf->udata64;
+			order_flow_id_copy_from_mbuf(t, &ev);
 
 		if (ev.sub_event_type == 0) { /* stage 0 from producer */
 			order_atq_process_stage_0(&ev);
@@ -72,7 +72,7 @@ order_atq_worker_burst(void *arg, const bool flow_id_cap)
 
 		for (i = 0; i < nb_rx; i++) {
 			if (!flow_id_cap)
-				ev[i].flow_id = ev[i].mbuf->udata64;
+				order_flow_id_copy_from_mbuf(t, &ev[i]);
 
 			if (ev[i].sub_event_type == 0) { /*stage 0 */
 				order_atq_process_stage_0(&ev[i]);
