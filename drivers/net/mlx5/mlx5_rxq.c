@@ -818,14 +818,34 @@ mlx5_rx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 	res = mlx5_rx_queue_pre_setup(dev, idx, &desc);
 	if (res)
 		return res;
-	if (hairpin_conf->peer_count != 1 ||
-	    hairpin_conf->peers[0].port != dev->data->port_id ||
-	    hairpin_conf->peers[0].queue >= priv->txqs_n) {
-		DRV_LOG(ERR, "port %u unable to setup hairpin queue index %u "
-			" invalid hairpind configuration", dev->data->port_id,
-			idx);
+	if (hairpin_conf->peer_count != 1) {
 		rte_errno = EINVAL;
+		DRV_LOG(ERR, "port %u unable to setup Rx hairpin queue index %u"
+			" peer count is %u", dev->data->port_id,
+			idx, hairpin_conf->peer_count);
 		return -rte_errno;
+	}
+	if (hairpin_conf->peers[0].port == dev->data->port_id) {
+		if (hairpin_conf->peers[0].queue >= priv->txqs_n) {
+			rte_errno = EINVAL;
+			DRV_LOG(ERR, "port %u unable to setup Rx hairpin queue"
+				" index %u, Tx %u is larger than %u",
+				dev->data->port_id, idx,
+				hairpin_conf->peers[0].queue, priv->txqs_n);
+			return -rte_errno;
+		}
+	} else {
+		if (hairpin_conf->manual_bind == 0 ||
+		    hairpin_conf->tx_explicit == 0) {
+			rte_errno = EINVAL;
+			DRV_LOG(ERR, "port %u unable to setup Rx hairpin queue"
+				" index %u peer port %u with attributes %u %u",
+				dev->data->port_id, idx,
+				hairpin_conf->peers[0].port,
+				hairpin_conf->manual_bind,
+				hairpin_conf->tx_explicit);
+			return -rte_errno;
+		}
 	}
 	rxq_ctrl = mlx5_rxq_hairpin_new(dev, idx, desc, hairpin_conf);
 	if (!rxq_ctrl) {
