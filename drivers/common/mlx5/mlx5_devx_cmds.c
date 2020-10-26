@@ -1333,7 +1333,7 @@ mlx5_devx_cmd_create_sq(void *ctx,
 	MLX5_SET(sqc, sq_ctx, fre, sq_attr->fre);
 	MLX5_SET(sqc, sq_ctx, flush_in_error_en, sq_attr->flush_in_error_en);
 	MLX5_SET(sqc, sq_ctx, allow_multi_pkt_send_wqe,
-		 sq_attr->flush_in_error_en);
+		 sq_attr->allow_multi_pkt_send_wqe);
 	MLX5_SET(sqc, sq_ctx, min_wqe_inline_mode,
 		 sq_attr->min_wqe_inline_mode);
 	MLX5_SET(sqc, sq_ctx, state, sq_attr->state);
