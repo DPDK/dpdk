@@ -559,6 +559,9 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 	if (!ulp_fc_info)
 		return -ENODEV;
 
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ctxt))
+		return -EIO;
+
 	do {
 		rc = ulp_flow_db_resource_get(ctxt,
 					      BNXT_ULP_FDB_TYPE_REGULAR,
@@ -575,35 +578,35 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 			break;
 		}
 
-	} while (!rc);
+	} while (!rc && nxt_resource_index);
 
-	if (rc)
+	bnxt_ulp_cntxt_release_fdb_lock(ctxt);
+
+	if (rc || !found_cntr_resource)
 		return rc;
 
-	if (found_cntr_resource) {
-		dir = params.direction;
-		hw_cntr_id = params.resource_hndl;
-		sw_cntr_idx = hw_cntr_id -
-				ulp_fc_info->shadow_hw_tbl[dir].start_idx;
-		sw_acc_tbl_entry = &ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx];
-		if (params.resource_sub_type ==
+	dir = params.direction;
+	hw_cntr_id = params.resource_hndl;
+	sw_cntr_idx = hw_cntr_id -
+		ulp_fc_info->shadow_hw_tbl[dir].start_idx;
+	sw_acc_tbl_entry = &ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx];
+	if (params.resource_sub_type ==
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
-			pthread_mutex_lock(&ulp_fc_info->fc_lock);
-			if (sw_acc_tbl_entry->pkt_count) {
-				count->hits_set = 1;
-				count->bytes_set = 1;
-				count->hits = sw_acc_tbl_entry->pkt_count;
-				count->bytes = sw_acc_tbl_entry->byte_count;
-			}
-			if (count->reset) {
-				sw_acc_tbl_entry->pkt_count = 0;
-				sw_acc_tbl_entry->byte_count = 0;
-			}
-			pthread_mutex_unlock(&ulp_fc_info->fc_lock);
-		} else {
-			/* TBD: Handle External counters */
-			rc = -EINVAL;
+		pthread_mutex_lock(&ulp_fc_info->fc_lock);
+		if (sw_acc_tbl_entry->pkt_count) {
+			count->hits_set = 1;
+			count->bytes_set = 1;
+			count->hits = sw_acc_tbl_entry->pkt_count;
+			count->bytes = sw_acc_tbl_entry->byte_count;
 		}
+		if (count->reset) {
+			sw_acc_tbl_entry->pkt_count = 0;
+			sw_acc_tbl_entry->byte_count = 0;
+		}
+		pthread_mutex_unlock(&ulp_fc_info->fc_lock);
+	} else {
+		/* TBD: Handle External counters */
+		rc = -EINVAL;
 	}
 
 	return rc;
