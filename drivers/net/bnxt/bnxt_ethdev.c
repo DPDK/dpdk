@@ -5768,6 +5768,8 @@ bnxt_parse_devarg_rep_based_pf(__rte_unused const char *key,
 	}
 
 	vfr_bp->rep_based_pf = rep_based_pf;
+	vfr_bp->flags |= BNXT_REP_BASED_PF_VALID;
+
 	PMD_DRV_LOG(INFO, "rep-based-pf = %d\n", vfr_bp->rep_based_pf);
 
 	return 0;

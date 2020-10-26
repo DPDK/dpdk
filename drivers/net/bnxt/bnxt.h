@@ -836,12 +836,14 @@ struct bnxt_representor {
 #define BNXT_REP_Q_F2R_VALID		BIT(2)
 #define BNXT_REP_FC_R2F_VALID		BIT(3)
 #define BNXT_REP_FC_F2R_VALID		BIT(4)
+#define BNXT_REP_BASED_PF_VALID		BIT(5)
 	uint32_t		flags;
 	uint16_t		fw_fid;
 #define	BNXT_DFLT_VNIC_ID_INVALID	0xFFFF
 	uint16_t		dflt_vnic_id;
 	uint16_t		svif;
 	uint16_t		vfr_tx_cfa_action;
+	uint8_t			parent_pf_idx; /* Logical PF index */
 	uint32_t		dpdk_port_id;
 	uint32_t		rep_based_pf;
 	uint8_t			rep_q_r2f;
@@ -863,7 +865,9 @@ struct bnxt_representor {
 	uint64_t                rx_drop_bytes[BNXT_MAX_VF_REP_RINGS];
 };
 
-#define BNXT_REP_PF(vfr_bp)	((vfr_bp)->flags & BNXT_REP_IS_PF)
+#define BNXT_REP_PF(vfr_bp)		((vfr_bp)->flags & BNXT_REP_IS_PF)
+#define BNXT_REP_BASED_PF(vfr_bp)	\
+		((vfr_bp)->flags & BNXT_REP_BASED_PF_VALID)
 
 struct bnxt_vf_rep_tx_queue {
 	struct bnxt_tx_queue *txq;

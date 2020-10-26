@@ -216,8 +216,9 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 		    "Switch domain id %d: Representor Device %d init done\n",
 		    vf_rep_bp->switch_domain_id, vf_rep_bp->vf_id);
 
-	if (vf_rep_bp->rep_based_pf) {
+	if (BNXT_REP_BASED_PF(vf_rep_bp)) {
 		vf_rep_bp->fw_fid = vf_rep_bp->rep_based_pf + 1;
+		vf_rep_bp->parent_pf_idx = vf_rep_bp->rep_based_pf;
 		if (!(BNXT_REP_PF(vf_rep_bp))) {
 			/* VF representor for the remote PF,get first_vf_id */
 			rc = bnxt_hwrm_first_vf_id_query(parent_bp,
@@ -237,6 +238,10 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 		}
 	}  else {
 		vf_rep_bp->fw_fid = rep_params->vf_id + parent_bp->first_vf_id;
+		if (BNXT_VF_IS_TRUSTED(parent_bp))
+			vf_rep_bp->parent_pf_idx = parent_bp->parent->fid - 1;
+		else
+			vf_rep_bp->parent_pf_idx = parent_bp->fw_fid - 1;
 	}
 
 	PMD_DRV_LOG(INFO, "vf_rep->fw_fid = %d\n", vf_rep_bp->fw_fid);
@@ -329,11 +334,7 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	/* update the port id so you can backtrack to ethdev */
 	vfr->dpdk_port_id = vfr_ethdev->data->port_id;
 
-	if (BNXT_STINGRAY(parent_bp)) {
-		rc = bnxt_hwrm_cfa_pair_alloc(parent_bp, vfr);
-	} else {
-		rc = bnxt_hwrm_cfa_vfr_alloc(parent_bp, vfr->vf_id);
-	}
+	rc = bnxt_hwrm_cfa_pair_alloc(parent_bp, vfr);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed in hwrm vfr alloc vfr:%u rc=%d\n",
 			    vfr->vf_id, rc);
@@ -468,10 +469,7 @@ static int bnxt_vfr_free(struct bnxt_representor *vfr)
 		    vfr->vf_id);
 	vfr->vfr_tx_cfa_action = 0;
 
-	if (BNXT_STINGRAY(parent_bp))
-		rc = bnxt_hwrm_cfa_pair_free(parent_bp, vfr);
-	else
-		rc = bnxt_hwrm_cfa_vfr_free(parent_bp, vfr->vf_id);
+	rc = bnxt_hwrm_cfa_pair_free(parent_bp, vfr);
 
 	return rc;
 }
