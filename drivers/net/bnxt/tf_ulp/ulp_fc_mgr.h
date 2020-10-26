@@ -26,6 +26,7 @@ struct sw_acc_counter {
 	uint64_t byte_count;
 	bool	valid;
 	uint32_t hw_cntr_id;
+	uint32_t parent_flow_id;
 };
 
 struct hw_fc_mem_info {
@@ -163,4 +164,22 @@ bool ulp_fc_mgr_thread_isstarted(struct bnxt_ulp_context *ctxt);
 int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ulp_ctx,
 			       uint32_t flow_id,
 			       struct rte_flow_query_count *count);
+
+/*
+ * Set the parent flow if in the SW accumulator table entry
+ *
+ * ctxt [in] The ulp context for the flow counter manager
+ *
+ * dir [in] The direction of the flow
+ *
+ * hw_cntr_id [in] The HW flow counter ID
+ *
+ * fid [in] parent flow id
+ *
+ */
+int32_t ulp_fc_mgr_cntr_parent_flow_set(struct bnxt_ulp_context *ctxt,
+					enum tf_dir dir,
+					uint32_t hw_cntr_id,
+					uint32_t fid);
+
 #endif /* _ULP_FC_MGR_H_ */

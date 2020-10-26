@@ -21,13 +21,13 @@ static int
 ulp_fc_mgr_shadow_mem_alloc(struct hw_fc_mem_info *parms, int size)
 {
 	/* Allocate memory*/
-	if (parms == NULL)
+	if (!parms)
 		return -EINVAL;
 
 	parms->mem_va = rte_zmalloc("ulp_fc_info",
 				    RTE_CACHE_LINE_ROUNDUP(size),
 				    4096);
-	if (parms->mem_va == NULL) {
+	if (!parms->mem_va) {
 		BNXT_TF_DBG(ERR, "Allocate failed mem_va\n");
 		return -ENOMEM;
 	}
@@ -149,7 +149,6 @@ ulp_fc_mgr_deinit(struct bnxt_ulp_context *ctxt)
 	for (i = 0; i < TF_DIR_MAX; i++)
 		ulp_fc_mgr_shadow_mem_free(&ulp_fc_info->shadow_hw_tbl[i]);
 
-
 	rte_free(ulp_fc_info);
 
 	/* Safe to ignore on deinit */
@@ -254,7 +253,7 @@ ulp_bulk_get_flow_stats(struct tf *tfp,
 	stats = (uint64_t *)fc_info->shadow_hw_tbl[dir].mem_va;
 	parms.physical_mem_addr = (uintptr_t)fc_info->shadow_hw_tbl[dir].mem_pa;
 
-	if (stats == NULL) {
+	if (!stats) {
 		PMD_DRV_LOG(ERR,
 			    "BULK: Memory not initialized id:0x%x dir:%d\n",
 			    parms.starting_idx, dir);
@@ -274,7 +273,8 @@ ulp_bulk_get_flow_stats(struct tf *tfp,
 		sw_acc_tbl_entry = &fc_info->sw_acc_tbl[dir][i];
 		if (!sw_acc_tbl_entry->valid)
 			continue;
-		sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats[i], dparms);
+		sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats[i],
+							      dparms);
 		sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats[i],
 								dparms);
 	}
@@ -282,7 +282,8 @@ ulp_bulk_get_flow_stats(struct tf *tfp,
 	return rc;
 }
 
-static int ulp_get_single_flow_stat(struct tf *tfp,
+static int ulp_get_single_flow_stat(struct bnxt_ulp_context *ctxt,
+				    struct tf *tfp,
 				    struct bnxt_ulp_fc_info *fc_info,
 				    enum tf_dir dir,
 				    uint32_t hw_cntr_id,
@@ -291,7 +292,7 @@ static int ulp_get_single_flow_stat(struct tf *tfp,
 	int rc = 0;
 	struct tf_get_tbl_entry_parms parms = { 0 };
 	enum tf_tbl_type stype = TF_TBL_TYPE_ACT_STATS_64;  /* TBD:Template? */
-	struct sw_acc_counter *sw_acc_tbl_entry = NULL;
+	struct sw_acc_counter *sw_acc_tbl_entry = NULL, *t_sw;
 	uint64_t stats = 0;
 	uint32_t sw_cntr_indx = 0;
 
@@ -317,6 +318,18 @@ static int ulp_get_single_flow_stat(struct tf *tfp,
 	sw_acc_tbl_entry = &fc_info->sw_acc_tbl[dir][sw_cntr_indx];
 	sw_acc_tbl_entry->pkt_count = FLOW_CNTR_PKTS(stats, dparms);
 	sw_acc_tbl_entry->byte_count = FLOW_CNTR_BYTES(stats, dparms);
+
+	/* Update the parent counters if it is child flow */
+	if (sw_acc_tbl_entry->parent_flow_id) {
+		/* Update the parent counters */
+		t_sw = sw_acc_tbl_entry;
+		if (ulp_flow_db_parent_flow_count_update(ctxt,
+							 t_sw->parent_flow_id,
+							 t_sw->pkt_count,
+							 t_sw->byte_count)) {
+			PMD_DRV_LOG(ERR, "Error updating parent counters\n");
+		}
+	}
 
 	return rc;
 }
@@ -384,13 +397,17 @@ ulp_fc_mgr_alarm_cb(void *arg)
 			break;
 	}
 	*/
+
+	/* reset the parent accumulation counters before accumulation if any */
+	ulp_flow_db_parent_flow_count_reset(ctxt);
+
 	num_entries = dparms->flow_count_db_entries / 2;
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		for (j = 0; j < num_entries; j++) {
 			if (!ulp_fc_info->sw_acc_tbl[i][j].valid)
 				continue;
 			hw_cntr_id = ulp_fc_info->sw_acc_tbl[i][j].hw_cntr_id;
-			rc = ulp_get_single_flow_stat(tfp, ulp_fc_info, i,
+			rc = ulp_get_single_flow_stat(ctxt, tfp, ulp_fc_info, i,
 						      hw_cntr_id, dparms);
 			if (rc)
 				break;
@@ -573,11 +590,12 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 		     (params.resource_sub_type ==
 		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT ||
 		      params.resource_sub_type ==
-		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_EXT_COUNT)) {
+		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_EXT_COUNT ||
+		      params.resource_sub_type ==
+		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC)) {
 			found_cntr_resource = true;
 			break;
 		}
-
 	} while (!rc && nxt_resource_index);
 
 	bnxt_ulp_cntxt_release_fdb_lock(ctxt);
@@ -587,12 +605,12 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 
 	dir = params.direction;
 	hw_cntr_id = params.resource_hndl;
-	sw_cntr_idx = hw_cntr_id -
-		ulp_fc_info->shadow_hw_tbl[dir].start_idx;
-	sw_acc_tbl_entry = &ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx];
 	if (params.resource_sub_type ==
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
 		pthread_mutex_lock(&ulp_fc_info->fc_lock);
+		sw_cntr_idx = hw_cntr_id -
+			ulp_fc_info->shadow_hw_tbl[dir].start_idx;
+		sw_acc_tbl_entry = &ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx];
 		if (sw_acc_tbl_entry->pkt_count) {
 			count->hits_set = 1;
 			count->bytes_set = 1;
@@ -604,10 +622,58 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 			sw_acc_tbl_entry->byte_count = 0;
 		}
 		pthread_mutex_unlock(&ulp_fc_info->fc_lock);
+	} else if (params.resource_sub_type ==
+			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC) {
+		/* Get the stats from the parent child table */
+		ulp_flow_db_parent_flow_count_get(ctxt,
+						  flow_id,
+						  &count->hits,
+						  &count->bytes);
+		count->hits_set = 1;
+		count->bytes_set = 1;
 	} else {
 		/* TBD: Handle External counters */
 		rc = -EINVAL;
 	}
+
+	return rc;
+}
+
+/*
+ * Set the parent flow if it is SW accumulation counter entry.
+ *
+ * ctxt [in] The ulp context for the flow counter manager
+ *
+ * dir [in] The direction of the flow
+ *
+ * hw_cntr_id [in] The HW flow counter ID
+ *
+ * fid [in] parent flow id
+ *
+ */
+int32_t ulp_fc_mgr_cntr_parent_flow_set(struct bnxt_ulp_context *ctxt,
+					enum tf_dir dir,
+					uint32_t hw_cntr_id,
+					uint32_t fid)
+{
+	struct bnxt_ulp_fc_info *ulp_fc_info;
+	uint32_t sw_cntr_idx;
+	int32_t rc = 0;
+
+	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
+	if (!ulp_fc_info)
+		return -EIO;
+
+	pthread_mutex_lock(&ulp_fc_info->fc_lock);
+	sw_cntr_idx = hw_cntr_id - ulp_fc_info->shadow_hw_tbl[dir].start_idx;
+	if (ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].valid) {
+		ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].parent_flow_id = fid;
+	} else {
+		BNXT_TF_DBG(ERR, "Failed to set parent flow id %x:%x\n",
+			    hw_cntr_id, fid);
+		rc = -ENOENT;
+	}
+	pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 
 	return rc;
 }

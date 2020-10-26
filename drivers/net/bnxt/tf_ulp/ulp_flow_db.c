@@ -1058,12 +1058,12 @@ ulp_flow_db_validate_flow_func(struct bnxt_ulp_context *ulp_ctx,
  * the first match.
  */
 static int32_t
-ulp_flow_db_resource_hndl_get(struct bnxt_ulp_context *ulp_ctx,
-			      enum bnxt_ulp_fdb_type flow_type,
-			      uint32_t flow_id,
-			      uint32_t resource_func,
-			      uint32_t res_subtype,
-			      uint64_t *res_hndl)
+ulp_flow_db_resource_params_get(struct bnxt_ulp_context *ulp_ctx,
+				enum bnxt_ulp_fdb_type flow_type,
+				uint32_t flow_id,
+				uint32_t resource_func,
+				uint32_t res_subtype,
+				struct ulp_flow_db_res_params *params)
 {
 	struct bnxt_ulp_flow_db *flow_db;
 	struct bnxt_ulp_flow_tbl *flow_tbl;
@@ -1073,6 +1073,11 @@ ulp_flow_db_resource_hndl_get(struct bnxt_ulp_context *ulp_ctx,
 	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctx);
 	if (!flow_db) {
 		BNXT_TF_DBG(ERR, "Flow database not found\n");
+		return -EINVAL;
+	}
+
+	if (!params) {
+		BNXT_TF_DBG(ERR, "invalid argument\n");
 		return -EINVAL;
 	}
 
@@ -1096,12 +1101,14 @@ ulp_flow_db_resource_hndl_get(struct bnxt_ulp_context *ulp_ctx,
 	}
 	/* Iterate the resource to get the resource handle */
 	res_id =  flow_id;
+	memset(params, 0, sizeof(struct ulp_flow_db_res_params));
 	while (res_id) {
 		fid_res = &flow_tbl->flow_resources[res_id];
 		if (ulp_flow_db_resource_func_get(fid_res) == resource_func) {
 			if (resource_func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER) {
 				if (res_subtype == fid_res->resource_sub_type) {
-					*res_hndl = fid_res->resource_hndl;
+					ulp_flow_db_res_info_to_params(fid_res,
+								       params);
 					return 0;
 				}
 
@@ -1109,7 +1116,8 @@ ulp_flow_db_resource_hndl_get(struct bnxt_ulp_context *ulp_ctx,
 				   BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE ||
 				   resource_func ==
 				   BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE) {
-				*res_hndl = fid_res->resource_em_handle;
+				ulp_flow_db_res_info_to_params(fid_res,
+							       params);
 				return 0;
 			}
 		}
@@ -1134,21 +1142,49 @@ ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint16_t *cfa_action)
 {
 	uint8_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_VFR_CFA_ACTION;
-	uint64_t hndl;
+	struct ulp_flow_db_res_params params;
 	int32_t rc;
 
-	rc = ulp_flow_db_resource_hndl_get(ulp_ctx,
-					   BNXT_ULP_FDB_TYPE_DEFAULT,
-					   flow_id,
-					   BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-					   sub_type, &hndl);
+	rc = ulp_flow_db_resource_params_get(ulp_ctx,
+					     BNXT_ULP_FDB_TYPE_DEFAULT,
+					     flow_id,
+					     BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+					     sub_type, &params);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "CFA Action ptr not found for flow id %u\n",
 			    flow_id);
 		return -ENOENT;
 	}
-	*cfa_action = hndl;
+	*cfa_action = params.resource_hndl;
 	return 0;
+}
+
+/* internal validation function for parent flow tbl */
+static struct bnxt_ulp_flow_db *
+ulp_flow_db_parent_arg_validation(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t fid)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return NULL;
+	}
+
+	/* check for max flows */
+	if (fid >= flow_db->flow_tbl.num_flows || !fid) {
+		BNXT_TF_DBG(ERR, "Invalid flow index\n");
+		return NULL;
+	}
+
+	/* No support for parent child db then just exit */
+	if (!flow_db->parent_child_db.entries_count) {
+		BNXT_TF_DBG(ERR, "parent child db not supported\n");
+		return NULL;
+	}
+
+	return flow_db;
 }
 
 /*
@@ -1167,26 +1203,15 @@ ulp_flow_db_parent_flow_alloc(struct bnxt_ulp_context *ulp_ctxt,
 	struct ulp_fdb_parent_child_db *p_pdb;
 	uint32_t idx, free_idx = 0;
 
-	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, fid);
 	if (!flow_db) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return -EINVAL;
-	}
-
-	/* check for max flows */
-	if (fid >= flow_db->flow_tbl.num_flows || !fid) {
-		BNXT_TF_DBG(ERR, "Invalid flow index\n");
-		return -EINVAL;
-	}
-
-	/* No support for parent child db then just exit */
-	if (!flow_db->parent_child_db.entries_count) {
-		BNXT_TF_DBG(ERR, "parent child db not supported\n");
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
 		return -EINVAL;
 	}
 
 	p_pdb = &flow_db->parent_child_db;
-	for (idx = 0; idx <= p_pdb->entries_count; idx++) {
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
 		if (p_pdb->parent_flow_tbl[idx].parent_fid == fid) {
 			BNXT_TF_DBG(ERR, "fid is already allocated\n");
 			return -EINVAL;
@@ -1222,26 +1247,15 @@ ulp_flow_db_parent_flow_free(struct bnxt_ulp_context *ulp_ctxt,
 	struct ulp_fdb_parent_child_db *p_pdb;
 	uint32_t idx;
 
-	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, fid);
 	if (!flow_db) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return -EINVAL;
-	}
-
-	/* check for max flows */
-	if (fid >= flow_db->flow_tbl.num_flows || !fid) {
-		BNXT_TF_DBG(ERR, "Invalid flow index\n");
-		return -EINVAL;
-	}
-
-	/* No support for parent child db then just exit */
-	if (!flow_db->parent_child_db.entries_count) {
-		BNXT_TF_DBG(ERR, "parent child db not supported\n");
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
 		return -EINVAL;
 	}
 
 	p_pdb = &flow_db->parent_child_db;
-	for (idx = 0; idx <= p_pdb->entries_count; idx++) {
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
 		if (p_pdb->parent_flow_tbl[idx].parent_fid == fid) {
 			/* free the contents */
 			p_pdb->parent_flow_tbl[idx].parent_fid = 0;
@@ -1275,15 +1289,10 @@ ulp_flow_db_parent_child_flow_set(struct bnxt_ulp_context *ulp_ctxt,
 	uint32_t idx, a_idx;
 	uint64_t *t;
 
-	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, parent_fid);
 	if (!flow_db) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return -EINVAL;
-	}
-
-	/* check for fid validity */
-	if (parent_fid >= flow_db->flow_tbl.num_flows || !parent_fid) {
-		BNXT_TF_DBG(ERR, "Invalid parent flow index %x\n", parent_fid);
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
 		return -EINVAL;
 	}
 
@@ -1293,15 +1302,9 @@ ulp_flow_db_parent_child_flow_set(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 
-	/* No support for parent child db then just exit */
-	if (!flow_db->parent_child_db.entries_count) {
-		BNXT_TF_DBG(ERR, "parent child db not supported\n");
-		return -EINVAL;
-	}
-
 	p_pdb = &flow_db->parent_child_db;
 	a_idx = child_fid / ULP_INDEX_BITMAP_SIZE;
-	for (idx = 0; idx <= p_pdb->entries_count; idx++) {
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
 		if (p_pdb->parent_flow_tbl[idx].parent_fid == parent_fid) {
 			t = p_pdb->parent_flow_tbl[idx].child_fid_bitset;
 			if (set_flag)
@@ -1334,26 +1337,15 @@ ulp_flow_db_parent_flow_idx_get(struct bnxt_ulp_context *ulp_ctxt,
 	struct ulp_fdb_parent_child_db *p_pdb;
 	uint32_t idx;
 
-	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, parent_fid);
 	if (!flow_db) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return -EINVAL;
-	}
-
-	/* check for fid validity */
-	if (parent_fid >= flow_db->flow_tbl.num_flows || !parent_fid) {
-		BNXT_TF_DBG(ERR, "Invalid parent flow index %x\n", parent_fid);
-		return -EINVAL;
-	}
-
-	/* No support for parent child db then just exit */
-	if (!flow_db->parent_child_db.entries_count) {
-		BNXT_TF_DBG(ERR, "parent child db not supported\n");
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
 		return -EINVAL;
 	}
 
 	p_pdb = &flow_db->parent_child_db;
-	for (idx = 0; idx <= p_pdb->entries_count; idx++) {
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
 		if (p_pdb->parent_flow_tbl[idx].parent_fid == parent_fid) {
 			*parent_idx = idx;
 			return 0;
@@ -1423,6 +1415,73 @@ ulp_flow_db_parent_child_flow_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
 	} while (!ULP_INDEX_BITMAP_GET(child_bitset[idx], next_fid));
 	*child_fid = next_fid;
 	return 0;
+}
+
+/*
+ * Set the counter accumulation in the parent flow
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_idx [in] The parent index of the parent flow entry
+ *
+ * returns index on success and negative on failure.
+ */
+static int32_t
+ulp_flow_db_parent_flow_count_accum_set(struct bnxt_ulp_context *ulp_ctxt,
+					uint32_t parent_idx)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	/* check for parent idx validity */
+	p_pdb = &flow_db->parent_child_db;
+	if (parent_idx >= p_pdb->entries_count ||
+	    !p_pdb->parent_flow_tbl[parent_idx].parent_fid) {
+		BNXT_TF_DBG(ERR, "Invalid parent flow index %x\n", parent_idx);
+		return -EINVAL;
+	}
+
+	p_pdb->parent_flow_tbl[parent_idx].counter_acc = 1;
+	return 0;
+}
+
+/*
+ * Get the counter accumulation in the parent flow
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ *
+ * returns 0 if counter accum is set else -1.
+ */
+static int32_t
+ulp_flow_db_parent_flow_count_accum_get(struct bnxt_ulp_context *ulp_ctxt,
+					uint32_t parent_fid)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx;
+
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, parent_fid);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
+		return -EINVAL;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid == parent_fid) {
+			if (p_pdb->parent_flow_tbl[idx].counter_acc)
+				return 0;
+			break;
+		}
+	}
+	return -1;
 }
 
 /*
@@ -1498,6 +1557,8 @@ int32_t
 ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms)
 {
 	struct ulp_flow_db_res_params fid_parms;
+	uint32_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC;
+	struct ulp_flow_db_res_params res_params;
 	int32_t fid_idx;
 
 	/* create the child flow entry in parent flow table */
@@ -1519,6 +1580,22 @@ ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms)
 			    parms->fid);
 		return -1;
 	}
+
+	/* check of the flow has internal counter accumulation enabled */
+	if (!ulp_flow_db_resource_params_get(parms->ulp_ctx,
+					     BNXT_ULP_FDB_TYPE_REGULAR,
+					     parms->fid,
+					     BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+					     sub_type,
+					     &res_params)) {
+		/* Enable the counter accumulation in parent entry */
+		if (ulp_flow_db_parent_flow_count_accum_set(parms->ulp_ctx,
+							    fid_idx)) {
+			BNXT_TF_DBG(ERR, "Error in setting counter acc %x\n",
+				    parms->fid);
+			return -1;
+		}
+	}
 	return 0;
 }
 
@@ -1533,6 +1610,10 @@ int32_t
 ulp_flow_db_child_flow_create(struct bnxt_ulp_mapper_parms *parms)
 {
 	struct ulp_flow_db_res_params fid_parms;
+	uint32_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT;
+	enum bnxt_ulp_resource_func res_fun;
+	struct ulp_flow_db_res_params res_p;
+	uint32_t parent_fid = parms->parent_fid;
 	int32_t rc;
 
 	/* create the parent flow entry in parent flow table */
@@ -1541,7 +1622,7 @@ ulp_flow_db_child_flow_create(struct bnxt_ulp_mapper_parms *parms)
 					       parms->fid, 1);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Error in setting child fid %x\n", parms->fid);
-		return -1;
+		return rc;
 	}
 
 	/* Add the parent details in the resource list of the flow */
@@ -1549,11 +1630,154 @@ ulp_flow_db_child_flow_create(struct bnxt_ulp_mapper_parms *parms)
 	fid_parms.resource_func	= BNXT_ULP_RESOURCE_FUNC_CHILD_FLOW;
 	fid_parms.resource_hndl	= parms->parent_fid;
 	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
-	if (ulp_flow_db_resource_add(parms->ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR,
-				     parms->fid, &fid_parms)) {
+	rc  = ulp_flow_db_resource_add(parms->ulp_ctx,
+				       BNXT_ULP_FDB_TYPE_REGULAR,
+				       parms->fid, &fid_parms);
+	if (rc) {
 		BNXT_TF_DBG(ERR, "Error in adding flow res for fid %x\n",
 			    parms->fid);
-		return -1;
+		return rc;
 	}
+
+	/* check if accumulation count is set for parent flow */
+	rc = ulp_flow_db_parent_flow_count_accum_get(parms->ulp_ctx,
+						     parms->parent_fid);
+	if (!rc) {
+		/* check if internal count action included for this flow.*/
+		res_fun = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE;
+		rc = ulp_flow_db_resource_params_get(parms->ulp_ctx,
+						     BNXT_ULP_FDB_TYPE_REGULAR,
+						     parms->fid,
+						     res_fun,
+						     sub_type,
+						     &res_p);
+		if (!rc) {
+			/* update the counter manager to include parent fid */
+			if (ulp_fc_mgr_cntr_parent_flow_set(parms->ulp_ctx,
+							    res_p.direction,
+							    res_p.resource_hndl,
+							    parent_fid)) {
+				BNXT_TF_DBG(ERR, "Error in setting child %x\n",
+					    parms->fid);
+				return -1;
+			}
+		}
+	}
+	/* return success */
 	return 0;
+}
+
+/*
+ * Update the parent counters
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * packet_count [in] - packet count
+ * byte_count [in] - byte count
+ *
+ * returns 0 on success
+ */
+int32_t
+ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
+				     uint32_t parent_fid,
+				     uint64_t packet_count,
+				     uint64_t byte_count)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx;
+
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, parent_fid);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
+		return -EINVAL;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid == parent_fid) {
+			if (p_pdb->parent_flow_tbl[idx].counter_acc) {
+				p_pdb->parent_flow_tbl[idx].pkt_count +=
+					packet_count;
+				p_pdb->parent_flow_tbl[idx].byte_count +=
+					byte_count;
+			}
+			return 0;
+		}
+	}
+	return -ENOENT;
+}
+
+/*
+ * Get the parent accumulation counters
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * packet_count [out] - packet count
+ * byte_count [out] - byte count
+ *
+ * returns 0 on success
+ */
+int32_t
+ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t parent_fid,
+				  uint64_t *packet_count,
+				  uint64_t *byte_count)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx;
+
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, parent_fid);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
+		return -EINVAL;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid == parent_fid) {
+			if (p_pdb->parent_flow_tbl[idx].counter_acc) {
+				*packet_count =
+					p_pdb->parent_flow_tbl[idx].pkt_count;
+				*byte_count =
+					p_pdb->parent_flow_tbl[idx].byte_count;
+			}
+			return 0;
+		}
+	}
+	return -ENOENT;
+}
+
+/*
+ * reset the parent accumulation counters
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ *
+ * returns none
+ */
+void
+ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx;
+
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, 1);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
+		return;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid &&
+		    p_pdb->parent_flow_tbl[idx].counter_acc) {
+			p_pdb->parent_flow_tbl[idx].pkt_count = 0;
+			p_pdb->parent_flow_tbl[idx].byte_count = 0;
+		}
+	}
 }

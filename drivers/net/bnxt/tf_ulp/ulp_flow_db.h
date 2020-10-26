@@ -56,6 +56,9 @@ struct bnxt_ulp_flow_tbl {
 /* Structure to maintain parent-child flow relationships */
 struct ulp_fdb_parent_info {
 	uint32_t	parent_fid;
+	uint32_t	counter_acc;
+	uint64_t	pkt_count;
+	uint64_t	byte_count;
 	uint64_t	*child_fid_bitset;
 };
 
@@ -355,5 +358,46 @@ ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms);
  */
 int32_t
 ulp_flow_db_child_flow_create(struct bnxt_ulp_mapper_parms *parms);
+
+/*
+ * Update the parent counters
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * packet_count [in] - packet count
+ * byte_count [in] - byte count
+ *
+ * returns 0 on success
+ */
+int32_t
+ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
+				     uint32_t parent_fid,
+				     uint64_t packet_count,
+				     uint64_t byte_count);
+/*
+ * Get the parent accumulation counters
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * packet_count [out] - packet count
+ * byte_count [out] - byte count
+ *
+ * returns 0 on success
+ */
+int32_t
+ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t parent_fid,
+				  uint64_t *packet_count,
+				  uint64_t *byte_count);
+
+/*
+ * reset the parent accumulation counters
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ *
+ * returns none
+ */
+void
+ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt);
 
 #endif /* _ULP_FLOW_DB_H_ */
