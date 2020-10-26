@@ -278,8 +278,9 @@ vhost_user_sock(struct virtio_user_dev *dev,
 
 	switch (req) {
 	case VHOST_USER_GET_STATUS:
-		if (!(dev->protocol_features &
-				(1ULL << VHOST_USER_PROTOCOL_F_STATUS)))
+		if (!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK) ||
+		    (!(dev->protocol_features &
+				(1ULL << VHOST_USER_PROTOCOL_F_STATUS))))
 			return 0;
 		/* Fallthrough */
 	case VHOST_USER_GET_FEATURES:
@@ -288,8 +289,9 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		break;
 
 	case VHOST_USER_SET_STATUS:
-		if (!(dev->protocol_features &
-				(1ULL << VHOST_USER_PROTOCOL_F_STATUS)))
+		if (!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK) ||
+		    (!(dev->protocol_features &
+				(1ULL << VHOST_USER_PROTOCOL_F_STATUS))))
 			return 0;
 
 		if (has_reply_ack)
