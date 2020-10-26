@@ -16,9 +16,6 @@ struct bnxt;
 struct bnxt_rx_ring_info;
 struct bnxt_cp_ring_info;
 struct bnxt_rx_queue {
-	rte_spinlock_t		lock;	/* Synchronize between rx_queue_stop
-					 * and fast path
-					 */
 	struct rte_mempool	*mb_pool; /* mbuf pool for RX ring */
 	uint64_t		mbuf_initializer; /* val to init mbuf */
 	uint16_t		nb_rx_desc; /* num of RX desc */

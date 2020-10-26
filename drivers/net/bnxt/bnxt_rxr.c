@@ -843,8 +843,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		return 0;
 
 	/* If Rx Q was stopped return */
-	if (unlikely(!rxq->rx_started ||
-		     !rte_spinlock_trylock(&rxq->lock)))
+	if (unlikely(!rxq->rx_started))
 		return 0;
 
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
@@ -946,8 +945,6 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	}
 
 done:
-	rte_spinlock_unlock(&rxq->lock);
-
 	return nb_rx_pkts;
 }
 

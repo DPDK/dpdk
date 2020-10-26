@@ -210,8 +210,6 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 	if (!rxq || !rxq->rx_ring)
 		return;
 
-	rte_spinlock_lock(&rxq->lock);
-
 	sw_ring = rxq->rx_ring->rx_buf_ring;
 	if (sw_ring) {
 		for (i = 0;
@@ -248,7 +246,6 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 		}
 	}
 
-	rte_spinlock_unlock(&rxq->lock);
 }
 
 void bnxt_free_rx_mbufs(struct bnxt *bp)
@@ -389,7 +386,6 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		rxq->rx_started = true;
 	}
 	eth_dev->data->rx_queue_state[queue_idx] = queue_state;
-	rte_spinlock_init(&rxq->lock);
 
 	/* Configure mtu if it is different from what was configured before */
 	if (!queue_idx)
