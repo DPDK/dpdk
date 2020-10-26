@@ -24,7 +24,7 @@
 #define GET_SOCKET(socket_id) (((socket_id) == SOCKET_ID_ANY) ? 0 : (socket_id))
 
 #define MAX_QUEUES RTE_MAX_LCORE
-#define TEST_REPETITIONS 1000
+#define TEST_REPETITIONS 100
 #define WAIT_OFFLOAD_US 1000
 
 #ifdef RTE_BASEBAND_FPGA_LTE_FEC
