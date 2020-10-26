@@ -536,6 +536,9 @@ mlx5_mr_update_mp(struct rte_eth_dev *dev, struct mlx5_mr_ctrl *mr_ctrl,
 		.ret = 0,
 	};
 
+	DRV_LOG(DEBUG, "Port %u Rx queue registering mp %s "
+		       "having %u chunks.", dev->data->port_id,
+		       mp->name, mp->nb_mem_chunks);
 	rte_mempool_mem_iter(mp, mlx5_mr_update_mp_cb, &data);
 	if (data.ret < 0 && rte_errno == ENXIO) {
 		/* Mempool may have externally allocated memory. */
