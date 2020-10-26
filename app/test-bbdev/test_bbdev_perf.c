@@ -4777,6 +4777,23 @@ offload_cost_test(struct active_device *ad,
 			(double)(time_st.deq_max_time * 1000000) /
 			rte_get_tsc_hz());
 
+	struct rte_bbdev_stats stats = {0};
+	get_bbdev_queue_stats(ad->dev_id, queue_id, &stats);
+	if (op_type != RTE_BBDEV_OP_LDPC_DEC) {
+		TEST_ASSERT_SUCCESS(stats.enqueued_count != num_to_process,
+				"Mismatch in enqueue count %10"PRIu64" %d",
+				stats.enqueued_count, num_to_process);
+		TEST_ASSERT_SUCCESS(stats.dequeued_count != num_to_process,
+				"Mismatch in dequeue count %10"PRIu64" %d",
+				stats.dequeued_count, num_to_process);
+	}
+	TEST_ASSERT_SUCCESS(stats.enqueue_err_count != 0,
+			"Enqueue count Error %10"PRIu64"",
+			stats.enqueue_err_count);
+	TEST_ASSERT_SUCCESS(stats.dequeue_err_count != 0,
+			"Dequeue count Error (%10"PRIu64"",
+			stats.dequeue_err_count);
+
 	return TEST_SUCCESS;
 #endif
 }
