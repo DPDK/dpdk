@@ -818,15 +818,13 @@ virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status)
 		ret = dev->ops->send_request(dev,
 				VHOST_USER_SET_STATUS, &status);
 	else
-		return 0;
+		ret = -ENOTSUP;
 
-	if (ret) {
+	if (ret && ret != -ENOTSUP) {
 		PMD_INIT_LOG(ERR, "VHOST_USER_SET_STATUS failed (%d): %s", ret,
 			     strerror(errno));
-		return -1;
 	}
-
-	return 0;
+	return ret;
 }
 
 int
@@ -849,17 +847,12 @@ virtio_user_update_status(struct virtio_user_dev *dev)
 		err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS,
 				&status);
 	} else {
-		return 0;
+		err = -ENOTSUP;
 	}
 
-	if (err) {
-		PMD_INIT_LOG(ERR, "VHOST_USER_GET_STATUS failed (%d): %s", err,
-			     strerror(errno));
-		return -1;
-	}
-
-	dev->status = status;
-	PMD_INIT_LOG(DEBUG, "Updated Device Status(0x%08x):\n"
+	if (!err) {
+		dev->status = status;
+		PMD_INIT_LOG(DEBUG, "Updated Device Status(0x%08x):\n"
 			"\t-RESET: %u\n"
 			"\t-ACKNOWLEDGE: %u\n"
 			"\t-DRIVER: %u\n"
@@ -875,5 +868,10 @@ virtio_user_update_status(struct virtio_user_dev *dev)
 			!!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK),
 			!!(dev->status & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET),
 			!!(dev->status & VIRTIO_CONFIG_STATUS_FAILED));
-	return 0;
+	} else if (err != -ENOTSUP) {
+		PMD_INIT_LOG(ERR, "VHOST_USER_GET_STATUS failed (%d): %s", err,
+			     strerror(errno));
+	}
+
+	return err;
 }
