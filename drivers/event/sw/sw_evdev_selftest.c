@@ -40,6 +40,16 @@ struct test {
 	uint32_t service_id;
 };
 
+typedef uint8_t counter_dynfield_t;
+static int counter_dynfield_offset = -1;
+
+static inline counter_dynfield_t *
+counter_field(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf, \
+			counter_dynfield_offset, counter_dynfield_t *);
+}
+
 static struct rte_event release_ev;
 
 static inline struct rte_mbuf *
@@ -2987,8 +2997,8 @@ worker_loopback_worker_fn(void *arg)
 			}
 
 			ev[i].queue_id = 0;
-			ev[i].mbuf->udata64++;
-			if (ev[i].mbuf->udata64 != 16) {
+			(*counter_field(ev[i].mbuf))++;
+			if (*counter_field(ev[i].mbuf) != 16) {
 				ev[i].op = RTE_EVENT_OP_FORWARD;
 				enqd = rte_event_enqueue_burst(evdev, port,
 						&ev[i], 1);
@@ -3028,7 +3038,7 @@ worker_loopback_producer_fn(void *arg)
 			m = rte_pktmbuf_alloc(t->mbuf_pool);
 		} while (m == NULL);
 
-		m->udata64 = 0;
+		*counter_field(m) = 0;
 
 		struct rte_event ev = {
 				.op = RTE_EVENT_OP_NEW,
@@ -3060,6 +3070,18 @@ worker_loopback(struct test *t, uint8_t disable_implicit_release)
 	uint64_t tx_pkts = 0;
 	int err;
 	int w_lcore, p_lcore;
+
+	static const struct rte_mbuf_dynfield counter_dynfield_desc = {
+		.name = "rte_event_sw_dynfield_selftest_counter",
+		.size = sizeof(counter_dynfield_t),
+		.align = __alignof__(counter_dynfield_t),
+	};
+	counter_dynfield_offset =
+		rte_mbuf_dynfield_register(&counter_dynfield_desc);
+	if (counter_dynfield_offset < 0) {
+		printf("Error registering mbuf field\n");
+		return -rte_errno;
+	}
 
 	if (init(t, 8, 2) < 0 ||
 			create_atomic_qids(t, 8) < 0) {
