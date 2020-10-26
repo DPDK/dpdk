@@ -1104,8 +1104,10 @@ int tf_em_ext_map_tbl_scope(struct tf *tfp,
 	}
 	mask = aparms.mem_va;
 
-	rc = dev->ops->tf_dev_map_parif(tfp, parms, (uint8_t *)data,
-					(uint8_t *)mask, sz_in_bytes);
+	rc = dev->ops->tf_dev_map_parif(tfp, parms->parif_bitmask,
+					tbl_scope_cb->pf,
+					(uint8_t *)data, (uint8_t *)mask,
+					sz_in_bytes);
 
 	if (rc) {
 		TFP_DRV_LOG(ERR,

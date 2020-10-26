@@ -579,8 +579,11 @@ struct tf_dev_ops {
 	 * [in] tfp
 	 *   Pointer to TF handle
 	 *
-	 * [in] parms
-	 *   Pointer to table scope map parameters
+	 * [in] pf
+	 * PF associated with the table scope
+	 *
+	 * [in] parif_bitmask
+	 * Bitmask of PARIFs to enable
 	 *
 	 * [in/out] pointer to the parif_2_pf data to be updated
 	 *
@@ -593,7 +596,8 @@ struct tf_dev_ops {
 	 *    -EINVAL - Error
 	 */
 	int (*tf_dev_map_parif)(struct tf *tfp,
-				struct tf_map_tbl_scope_parms *parms,
+				uint16_t parif_bitmask,
+				uint16_t pf,
 				uint8_t *data,
 				uint8_t *mask,
 				uint16_t sz_in_bytes);

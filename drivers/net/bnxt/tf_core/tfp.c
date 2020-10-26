@@ -178,3 +178,22 @@ tfp_get_fid(struct tf *tfp, uint16_t *fw_fid)
 
 	return 0;
 }
+
+int
+tfp_get_pf(struct tf *tfp, uint16_t *pf)
+{
+	struct bnxt *bp = NULL;
+
+	if (tfp == NULL || pf == NULL)
+		return -EINVAL;
+
+	bp = container_of(tfp, struct bnxt, tfp);
+	if (BNXT_VF(bp) && bp->parent) {
+		*pf = bp->parent->fid - 1;
+		return 0;
+	} else if (BNXT_PF(bp)) {
+		*pf = bp->fw_fid - 1;
+		return 0;
+	}
+	return -EINVAL;
+}

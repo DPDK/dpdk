@@ -392,6 +392,14 @@ tf_em_ext_alloc(struct tf *tfp, struct tf_alloc_tbl_scope_parms *parms)
 	tbl_scope_cb->index = parms->tbl_scope_id;
 	tbl_scope_cb->tbl_scope_id = parms->tbl_scope_id;
 
+	rc = tfp_get_pf(tfp, &tbl_scope_cb->pf);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "EEM: PF query error rc:%s\n",
+			    strerror(-rc));
+		goto cleanup;
+	}
+
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
 		rc = tf_msg_em_qcaps(tfp,
 				     dir,

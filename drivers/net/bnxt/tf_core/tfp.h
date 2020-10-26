@@ -268,4 +268,20 @@ int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
  */
 int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
 
+/**
+ * Get the PF associated with the fw communications channel.
+ *
+ * [in] session
+ *   Pointer to session handle
+ *
+ * [out] pf
+ *   Pointer to the pf id
+ *
+ * Returns:
+ *   0       - Success
+ *   -EINVAL - Failure
+ *
+ */
+int tfp_get_pf(struct tf *tfp, uint16_t *pf);
+
 #endif /* _TFP_H_ */

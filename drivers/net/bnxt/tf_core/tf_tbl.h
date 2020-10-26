@@ -38,6 +38,9 @@ struct tf_em_caps {
  */
 struct tf_tbl_scope_cb {
 	uint32_t tbl_scope_id;
+       /** The pf or parent pf of the vf used for table scope creation
+	*/
+	uint16_t pf;
 	int index;
 	struct hcapi_cfa_em_ctx_mem_info em_ctx_info[TF_DIR_MAX];
 	struct tf_em_caps em_caps[TF_DIR_MAX];

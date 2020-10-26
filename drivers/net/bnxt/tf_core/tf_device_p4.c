@@ -103,7 +103,8 @@ tf_dev_p4_get_tcam_slice_info(struct tf *tfp __rte_unused,
 
 static int
 tf_dev_p4_map_parif(struct tf *tfp __rte_unused,
-		    struct tf_map_tbl_scope_parms *parms,
+		    uint16_t parif_bitmask,
+		    uint16_t pf,
 		    uint8_t *data,
 		    uint8_t *mask,
 		    uint16_t sz_in_bytes)
@@ -112,21 +113,20 @@ tf_dev_p4_map_parif(struct tf *tfp __rte_unused,
 	uint32_t parif_pf_mask[2] = { 0 };
 	uint32_t parif;
 	uint32_t shift;
-	uint32_t scope_id = (uint32_t)(parms->tbl_scope_id);
 
 	if (sz_in_bytes != sizeof(uint64_t))
 		return -ENOTSUP;
 
 	for (parif = 0; parif < TF_DEV_P4_PARIF_MAX; parif++) {
-		if (parms->parif_bitmask & (1UL << parif)) {
+		if (parif_bitmask & (1UL << parif)) {
 			if (parif < 8) {
 				shift = 4 * parif;
 				parif_pf_mask[0] |= TF_DEV_P4_PF_MASK << shift;
-				parif_pf[0] |= scope_id << shift;
+				parif_pf[0] |= pf << shift;
 			} else {
 				shift = 4 * (parif - 8);
 				parif_pf_mask[1] |= TF_DEV_P4_PF_MASK << shift;
-				parif_pf[1] |= scope_id << shift;
+				parif_pf[1] |= pf << shift;
 			}
 		}
 	}
