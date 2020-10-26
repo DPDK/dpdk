@@ -64,79 +64,47 @@
 #define CFA_RESOURCE_TYPE_P59_LAST              CFA_RESOURCE_TYPE_P59_VEB_TCAM
 
 
-/* Multicast Group */
-#define CFA_RESOURCE_TYPE_P58_MCG                 0x0UL
-/* Encap 8 byte record */
-#define CFA_RESOURCE_TYPE_P58_ENCAP_8B            0x1UL
-/* Encap 16 byte record */
-#define CFA_RESOURCE_TYPE_P58_ENCAP_16B           0x2UL
-/* Encap 64 byte record */
-#define CFA_RESOURCE_TYPE_P58_ENCAP_64B           0x3UL
-/* Source Property MAC */
-#define CFA_RESOURCE_TYPE_P58_SP_MAC              0x4UL
-/* Source Property MAC and IPv4 */
-#define CFA_RESOURCE_TYPE_P58_SP_MAC_IPV4         0x5UL
-/* Source Property MAC and IPv6 */
-#define CFA_RESOURCE_TYPE_P58_SP_MAC_IPV6         0x6UL
-/* Network Address Translation Port */
-#define CFA_RESOURCE_TYPE_P58_NAT_PORT            0x7UL
-/* Network Address Translation IPv4 address */
-#define CFA_RESOURCE_TYPE_P58_NAT_IPV4            0x8UL
 /* Meter */
-#define CFA_RESOURCE_TYPE_P58_METER               0x9UL
-/* Flow State */
-#define CFA_RESOURCE_TYPE_P58_FLOW_STATE          0xaUL
-/* Full Action Records */
-#define CFA_RESOURCE_TYPE_P58_FULL_ACTION         0xbUL
-/* Action Record Format 0 */
-#define CFA_RESOURCE_TYPE_P58_FORMAT_0_ACTION     0xcUL
-/* Action Record Ext Format 0 */
-#define CFA_RESOURCE_TYPE_P58_EXT_FORMAT_0_ACTION 0xdUL
-/* Action Record Format 1 */
-#define CFA_RESOURCE_TYPE_P58_FORMAT_1_ACTION     0xeUL
-/* Action Record Format 2 */
-#define CFA_RESOURCE_TYPE_P58_FORMAT_2_ACTION     0xfUL
-/* Action Record Format 3 */
-#define CFA_RESOURCE_TYPE_P58_FORMAT_3_ACTION     0x10UL
-/* Action Record Format 4 */
-#define CFA_RESOURCE_TYPE_P58_FORMAT_4_ACTION     0x11UL
-/* Action Record Format 5 */
-#define CFA_RESOURCE_TYPE_P58_FORMAT_5_ACTION     0x12UL
-/* Action Record Format 6 */
-#define CFA_RESOURCE_TYPE_P58_FORMAT_6_ACTION     0x13UL
+#define CFA_RESOURCE_TYPE_P58_METER              0x0UL
+/* SRAM_Bank_0 */
+#define CFA_RESOURCE_TYPE_P58_SRAM_BANK_0        0x1UL
+/* SRAM_Bank_1 */
+#define CFA_RESOURCE_TYPE_P58_SRAM_BANK_1        0x2UL
+/* SRAM_Bank_2 */
+#define CFA_RESOURCE_TYPE_P58_SRAM_BANK_2        0x3UL
+/* SRAM_Bank_3 */
+#define CFA_RESOURCE_TYPE_P58_SRAM_BANK_3        0x4UL
 /* L2 Context TCAM High priority entries */
-#define CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH   0x14UL
+#define CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_HIGH  0x5UL
 /* L2 Context TCAM Low priority entries */
-#define CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW    0x15UL
+#define CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM_LOW   0x6UL
 /* L2 Context REMAP high priority entries */
-#define CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_HIGH  0x16UL
+#define CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_HIGH 0x7UL
 /* L2 Context REMAP Low priority entries */
-#define CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_LOW   0x17UL
+#define CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP_LOW  0x8UL
 /* Profile Func */
-#define CFA_RESOURCE_TYPE_P58_PROF_FUNC           0x18UL
+#define CFA_RESOURCE_TYPE_P58_PROF_FUNC          0x9UL
 /* Profile TCAM */
-#define CFA_RESOURCE_TYPE_P58_PROF_TCAM           0x19UL
+#define CFA_RESOURCE_TYPE_P58_PROF_TCAM          0xaUL
 /* Exact Match Profile Id */
-#define CFA_RESOURCE_TYPE_P58_EM_PROF_ID          0x1aUL
+#define CFA_RESOURCE_TYPE_P58_EM_PROF_ID         0xbUL
 /* Wildcard Profile Id */
-#define CFA_RESOURCE_TYPE_P58_WC_TCAM_PROF_ID     0x1bUL
+#define CFA_RESOURCE_TYPE_P58_WC_TCAM_PROF_ID    0xcUL
 /* Exact Match Record */
-#define CFA_RESOURCE_TYPE_P58_EM_REC              0x1cUL
+#define CFA_RESOURCE_TYPE_P58_EM_REC             0xdUL
 /* Wildcard TCAM */
-#define CFA_RESOURCE_TYPE_P58_WC_TCAM             0x1dUL
+#define CFA_RESOURCE_TYPE_P58_WC_TCAM            0xeUL
 /* Meter profile */
-#define CFA_RESOURCE_TYPE_P58_METER_PROF          0x1eUL
+#define CFA_RESOURCE_TYPE_P58_METER_PROF         0xfUL
 /* Meter */
-#define CFA_RESOURCE_TYPE_P58_MIRROR              0x1fUL
-/* Source Property TCAM */
-#define CFA_RESOURCE_TYPE_P58_SP_TCAM             0x20UL
+#define CFA_RESOURCE_TYPE_P58_MIRROR             0x10UL
 /* Exact Match Flexible Key Builder */
-#define CFA_RESOURCE_TYPE_P58_EM_FKB              0x21UL
+#define CFA_RESOURCE_TYPE_P58_EM_FKB             0x11UL
 /* Wildcard Flexible Key Builder */
-#define CFA_RESOURCE_TYPE_P58_WC_FKB              0x22UL
+#define CFA_RESOURCE_TYPE_P58_WC_FKB             0x12UL
 /* VEB TCAM */
-#define CFA_RESOURCE_TYPE_P58_VEB_TCAM            0x23UL
-#define CFA_RESOURCE_TYPE_P58_LAST               CFA_RESOURCE_TYPE_P58_VEB_TCAM
+#define CFA_RESOURCE_TYPE_P58_VEB_TCAM           0x13UL
+#define CFA_RESOURCE_TYPE_P58_LAST              CFA_RESOURCE_TYPE_P58_VEB_TCAM
 
 
 /* Multicast Group */

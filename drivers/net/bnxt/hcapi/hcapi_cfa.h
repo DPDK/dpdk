@@ -14,7 +14,15 @@
 
 #include "hcapi_cfa_defs.h"
 
+#if CHIP_CFG == SR_A
+#define SUPPORT_CFA_HW_P45  1
+#undef SUPPORT_CFA_HW_P4
+#define SUPPORT_CFA_HW_P4   0
+#elif CHIP_CFG == CMB_A
 #define SUPPORT_CFA_HW_P4  1
+#else
+#error "Chip not supported"
+#endif
 
 #if SUPPORT_CFA_HW_P4 && SUPPORT_CFA_HW_P58 && SUPPORT_CFA_HW_P59
 #define SUPPORT_CFA_HW_ALL  1
@@ -81,17 +89,20 @@ struct hcapi_cfa_key_result {
 /* common CFA register access macros */
 #define CFA_REG(x)		OFFSETOF(cfa_reg_t, cfa_##x)
 
-#ifndef REG_WR
-#define REG_WR(_p, x, y)  (*((uint32_t volatile *)(x)) = (y))
+#ifndef TF_REG_WR
+#define TF_REG_WR(_p, x, y)  (*((uint32_t volatile *)(x)) = (y))
 #endif
-#ifndef REG_RD
-#define REG_RD(_p, x)  (*((uint32_t volatile *)(x)))
+#ifndef TF_REG_RD
+#define TF_REG_RD(_p, x)  (*((uint32_t volatile *)(x)))
 #endif
-#define CFA_REG_RD(_p, x)	\
-	REG_RD(0, (uint32_t)(_p)->base_addr + CFA_REG(x))
-#define CFA_REG_WR(_p, x, y)	\
-	REG_WR(0, (uint32_t)(_p)->base_addr + CFA_REG(x), y)
-
+#ifndef TF_CFA_REG_RD
+#define TF_CFA_REG_RD(_p, x)	\
+	TF_REG_RD(0, (uint32_t)(_p)->base_addr + CFA_REG(x))
+#endif
+#ifndef TF_CFA_REG_WR
+#define TF_CFA_REG_WR(_p, x, y)	\
+	TF_REG_WR(0, (uint32_t)(_p)->base_addr + CFA_REG(x), y)
+#endif
 
 /* Constants used by Resource Manager Registration*/
 #define RM_CLIENT_NAME_MAX_LEN          32
@@ -248,7 +259,15 @@ int hcapi_cfa_p4_mirror_hwop(struct hcapi_cfa_hwop *op,
 int hcapi_cfa_p4_global_cfg_hwop(struct hcapi_cfa_hwop *op,
 				 uint32_t type,
 				 struct hcapi_cfa_data *config);
-#endif /* SUPPORT_CFA_HW_P4 */
+/* SUPPORT_CFA_HW_P4 */
+#elif SUPPORT_CFA_HW_P45
+int hcapi_cfa_p45_mirror_hwop(struct hcapi_cfa_hwop *op,
+			      struct hcapi_cfa_data *mirror);
+int hcapi_cfa_p45_global_cfg_hwop(struct hcapi_cfa_hwop *op,
+				  uint32_t type,
+				  struct hcapi_cfa_data *config);
+/* SUPPORT_CFA_HW_P45 */
+#endif
 /**
  *  HCAPI CFA device HW operation function callback definition
  *  This is standardized function callback hook to install different

@@ -47,7 +47,6 @@ tf_dev_bind_p4(struct tf *tfp,
 	struct tf_if_tbl_cfg_parms if_tbl_cfg;
 	struct tf_global_cfg_cfg_parms global_cfg;
 
-	dev_handle->type = TF_DEVICE_TYPE_WH;
 	/* Initial function initialization */
 	dev_handle->ops = &tf_dev_ops_p4_init;
 
@@ -90,7 +89,10 @@ tf_dev_bind_p4(struct tf *tfp,
 	 * EEM
 	 */
 	em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
-	em_cfg.cfg = tf_em_ext_p4;
+	if (dev_handle->type == TF_DEVICE_TYPE_WH)
+		em_cfg.cfg = tf_em_ext_p4;
+	else
+		em_cfg.cfg = tf_em_ext_p45;
 	em_cfg.resources = resources;
 	em_cfg.mem_type = TF_EEM_MEM_TYPE_HOST;
 	rc = tf_em_ext_common_bind(tfp, &em_cfg);
@@ -241,6 +243,8 @@ tf_dev_bind(struct tf *tfp __rte_unused,
 {
 	switch (type) {
 	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_SR:
+		dev_handle->type = type;
 		return tf_dev_bind_p4(tfp,
 				      shadow_copy,
 				      resources,
@@ -258,6 +262,7 @@ tf_dev_unbind(struct tf *tfp,
 {
 	switch (dev_handle->type) {
 	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_SR:
 		return tf_dev_unbind_p4(tfp);
 	default:
 		TFP_DRV_LOG(ERR,

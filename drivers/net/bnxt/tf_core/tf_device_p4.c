@@ -28,13 +28,32 @@
  *   - (-EINVAL) on failure.
  */
 static int
-tf_dev_p4_get_max_types(struct tf *tfp __rte_unused,
+tf_dev_p4_get_max_types(struct tf *tfp,
 			uint16_t *max_types)
 {
-	if (max_types == NULL)
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	int rc;
+
+	if (max_types == NULL || tfp == NULL)
 		return -EINVAL;
 
-	*max_types = CFA_RESOURCE_TYPE_P4_LAST + 1;
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	if (dev->type == TF_DEVICE_TYPE_WH)
+		*max_types = CFA_RESOURCE_TYPE_P4_LAST + 1;
+	else if (dev->type == TF_DEVICE_TYPE_SR)
+		*max_types = CFA_RESOURCE_TYPE_P45_LAST + 1;
+	else
+		return -ENODEV;
 
 	return 0;
 }
