@@ -168,7 +168,7 @@ sfc_ef100_rx_qrefill(struct sfc_ef100_rxq *rxq)
 			struct sfc_ef100_rx_sw_desc *rxd;
 			rte_iova_t phys_addr;
 
-			MBUF_RAW_ALLOC_CHECK(m);
+			__rte_mbuf_raw_sanity_check(m);
 
 			SFC_ASSERT((id & ~ptr_mask) == 0);
 			rxd = &rxq->sw_ring[id];
@@ -481,7 +481,7 @@ sfc_ef100_rx_process_ready_pkts(struct sfc_ef100_rxq *rxq,
 		rxq->ready_pkts--;
 
 		pkt = sfc_ef100_rx_next_mbuf(rxq);
-		MBUF_RAW_ALLOC_CHECK(pkt);
+		__rte_mbuf_raw_sanity_check(pkt);
 
 		RTE_BUILD_BUG_ON(sizeof(pkt->rearm_data[0]) !=
 				 sizeof(rxq->rearm_data));
@@ -505,7 +505,7 @@ sfc_ef100_rx_process_ready_pkts(struct sfc_ef100_rxq *rxq,
 			struct rte_mbuf *seg;
 
 			seg = sfc_ef100_rx_next_mbuf(rxq);
-			MBUF_RAW_ALLOC_CHECK(seg);
+			__rte_mbuf_raw_sanity_check(seg);
 
 			seg->data_off = RTE_PKTMBUF_HEADROOM;
 

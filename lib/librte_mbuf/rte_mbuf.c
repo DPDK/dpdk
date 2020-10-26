@@ -104,7 +104,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	/* init some constant fields */
 	m->pool = mp;
 	m->nb_segs = 1;
-	m->port = MBUF_INVALID_PORT;
+	m->port = RTE_MBUF_PORT_INVALID;
 	rte_mbuf_refcnt_set(m, 1);
 	m->next = NULL;
 }
@@ -207,7 +207,7 @@ __rte_pktmbuf_init_extmem(struct rte_mempool *mp,
 	/* init some constant fields */
 	m->pool = mp;
 	m->nb_segs = 1;
-	m->port = MBUF_INVALID_PORT;
+	m->port = RTE_MBUF_PORT_INVALID;
 	m->ol_flags = EXT_ATTACHED_MBUF;
 	rte_mbuf_refcnt_set(m, 1);
 	m->next = NULL;

@@ -540,12 +540,29 @@ __rte_experimental
 int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
 		   const char **reason);
 
-#define MBUF_RAW_ALLOC_CHECK(m) do {				\
-	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);		\
-	RTE_ASSERT((m)->next == NULL);				\
-	RTE_ASSERT((m)->nb_segs == 1);				\
-	__rte_mbuf_sanity_check(m, 0);				\
-} while (0)
+/**
+ * Sanity checks on a reinitialized mbuf in debug mode.
+ *
+ * Check the consistency of the given reinitialized mbuf.
+ * The function will cause a panic if corruption is detected.
+ *
+ * Check that the mbuf is properly reinitialized (refcnt=1, next=NULL,
+ * nb_segs=1), as done by rte_pktmbuf_prefree_seg().
+ *
+ * @param m
+ *   The mbuf to be checked.
+ */
+static __rte_always_inline void
+__rte_mbuf_raw_sanity_check(__rte_unused const struct rte_mbuf *m)
+{
+	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);
+	RTE_ASSERT(m->next == NULL);
+	RTE_ASSERT(m->nb_segs == 1);
+	__rte_mbuf_sanity_check(m, 0);
+}
+
+/** For backwards compatibility. */
+#define MBUF_RAW_ALLOC_CHECK(m) __rte_mbuf_raw_sanity_check(m)
 
 /**
  * Allocate an uninitialized mbuf from mempool *mp*.
@@ -572,7 +589,7 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 
 	if (rte_mempool_get(mp, (void **)&m) < 0)
 		return NULL;
-	MBUF_RAW_ALLOC_CHECK(m);
+	__rte_mbuf_raw_sanity_check(m);
 	return m;
 }
 
@@ -595,10 +612,7 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
 {
 	RTE_ASSERT(!RTE_MBUF_CLONED(m) &&
 		  (!RTE_MBUF_HAS_EXTBUF(m) || RTE_MBUF_HAS_PINNED_EXTBUF(m)));
-	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);
-	RTE_ASSERT(m->next == NULL);
-	RTE_ASSERT(m->nb_segs == 1);
-	__rte_mbuf_sanity_check(m, 0);
+	__rte_mbuf_raw_sanity_check(m);
 	rte_mempool_put(m->pool, m);
 }
 
@@ -844,8 +858,6 @@ static inline void rte_pktmbuf_reset_headroom(struct rte_mbuf *m)
  * @param m
  *   The packet mbuf to be reset.
  */
-#define MBUF_INVALID_PORT UINT16_MAX
-
 static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 {
 	m->next = NULL;
@@ -854,7 +866,7 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 	m->vlan_tci = 0;
 	m->vlan_tci_outer = 0;
 	m->nb_segs = 1;
-	m->port = MBUF_INVALID_PORT;
+	m->port = RTE_MBUF_PORT_INVALID;
 
 	m->ol_flags &= EXT_ATTACHED_MBUF;
 	m->packet_type = 0;
@@ -917,22 +929,22 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	switch (count % 4) {
 	case 0:
 		while (idx != count) {
-			MBUF_RAW_ALLOC_CHECK(mbufs[idx]);
+			__rte_mbuf_raw_sanity_check(mbufs[idx]);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 3:
-			MBUF_RAW_ALLOC_CHECK(mbufs[idx]);
+			__rte_mbuf_raw_sanity_check(mbufs[idx]);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 2:
-			MBUF_RAW_ALLOC_CHECK(mbufs[idx]);
+			__rte_mbuf_raw_sanity_check(mbufs[idx]);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 1:
-			MBUF_RAW_ALLOC_CHECK(mbufs[idx]);
+			__rte_mbuf_raw_sanity_check(mbufs[idx]);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */

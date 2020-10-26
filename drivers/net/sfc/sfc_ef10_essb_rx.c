@@ -125,7 +125,7 @@ sfc_ef10_essb_next_mbuf(const struct sfc_ef10_essb_rxq *rxq,
 	struct rte_mbuf *m;
 
 	m = (struct rte_mbuf *)((uintptr_t)mbuf + rxq->buf_stride);
-	MBUF_RAW_ALLOC_CHECK(m);
+	__rte_mbuf_raw_sanity_check(m);
 	return m;
 }
 
@@ -136,7 +136,7 @@ sfc_ef10_essb_mbuf_by_index(const struct sfc_ef10_essb_rxq *rxq,
 	struct rte_mbuf *m;
 
 	m = (struct rte_mbuf *)((uintptr_t)mbuf + idx * rxq->buf_stride);
-	MBUF_RAW_ALLOC_CHECK(m);
+	__rte_mbuf_raw_sanity_check(m);
 	return m;
 }
 

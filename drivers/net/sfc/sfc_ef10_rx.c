@@ -148,7 +148,7 @@ sfc_ef10_rx_qrefill(struct sfc_ef10_rxq *rxq)
 			struct sfc_ef10_rx_sw_desc *rxd;
 			rte_iova_t phys_addr;
 
-			MBUF_RAW_ALLOC_CHECK(m);
+			__rte_mbuf_raw_sanity_check(m);
 
 			SFC_ASSERT((id & ~ptr_mask) == 0);
 			rxd = &rxq->sw_ring[id];
@@ -297,7 +297,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 		rxd = &rxq->sw_ring[pending++ & ptr_mask];
 		m = rxd->mbuf;
 
-		MBUF_RAW_ALLOC_CHECK(m);
+		__rte_mbuf_raw_sanity_check(m);
 
 		m->data_off = RTE_PKTMBUF_HEADROOM;
 		rte_pktmbuf_data_len(m) = seg_len;

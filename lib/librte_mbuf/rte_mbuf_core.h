@@ -276,7 +276,7 @@ extern "C" {
  * mbuf 'vlan_tci' & 'vlan_tci_outer' must be valid when this flag is set.
  */
 #define PKT_TX_QINQ        (1ULL << 49)
-/* this old name is deprecated */
+/** This old name is deprecated. */
 #define PKT_TX_QINQ_PKT    PKT_TX_QINQ
 
 /**
@@ -662,7 +662,7 @@ struct rte_mbuf_ext_shared_info {
 	uint16_t refcnt;
 };
 
-/**< Maximum number of nb_segs allowed. */
+/** Maximum number of nb_segs allowed. */
 #define RTE_MBUF_MAX_NB_SEGS	UINT16_MAX
 
 /**
@@ -690,7 +690,10 @@ struct rte_mbuf_ext_shared_info {
 #define RTE_MBUF_DIRECT(mb) \
 	(!((mb)->ol_flags & (IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF)))
 
-#define MBUF_INVALID_PORT UINT16_MAX
+/** Uninitialized or unspecified port. */
+#define RTE_MBUF_PORT_INVALID UINT16_MAX
+/** For backwards compatibility. */
+#define MBUF_INVALID_PORT RTE_MBUF_PORT_INVALID
 
 /**
  * A macro that points to an offset into the data in the mbuf.
