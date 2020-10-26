@@ -90,6 +90,8 @@ uint32_t ulp_act_prop_map_table[] = {
 		BNXT_ULP_ACT_PROP_SZ_ENCAP_UDP,
 	[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN] =
 		BNXT_ULP_ACT_PROP_SZ_ENCAP_TUN,
+	[BNXT_ULP_ACT_PROP_IDX_JUMP] =
+		BNXT_ULP_ACT_PROP_SZ_JUMP,
 	[BNXT_ULP_ACT_PROP_IDX_LAST] =
 		BNXT_ULP_ACT_PROP_SZ_LAST
 };
@@ -108,8 +110,8 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	.proto_act_func          = NULL
 	},
 	[RTE_FLOW_ACTION_TYPE_JUMP] = {
-	.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-	.proto_act_func          = NULL
+	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+	.proto_act_func          = ulp_rte_jump_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_MARK] = {
 	.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
@@ -369,6 +371,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.mark_db_lfid_entries    = 65536,
 	.mark_db_gfid_entries    = 65536,
 	.flow_count_db_entries   = 16384,
+	.fdb_parent_flow_entries = 2,
 	.num_resources_per_flow  = 8,
 	.num_phy_ports           = 2,
 	.ext_cntr_table_type     = 0,
@@ -414,7 +417,7 @@ struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	[5] = {
 	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
-	.glb_regfile_index = BNXT_ULP_GLB_REGFILE_INDEX_VXLAN_PROF_FUNC_ID,
+	.glb_regfile_index       = BNXT_ULP_GLB_REGFILE_INDEX_VXLAN_PROF_FUNC_ID,
 	.direction               = TF_DIR_RX
 	},
 	[6] = {

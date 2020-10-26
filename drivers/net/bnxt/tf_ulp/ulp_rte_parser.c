@@ -2110,3 +2110,13 @@ ulp_rte_dec_ttl_act_handler(const struct rte_flow_action *act __rte_unused,
 	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_DEC_TTL);
 	return BNXT_TF_RC_SUCCESS;
 }
+
+/* Function to handle the parsing of RTE Flow action JUMP */
+int32_t
+ulp_rte_jump_act_handler(const struct rte_flow_action *action_item __rte_unused,
+			    struct ulp_rte_parser_params *params)
+{
+	/* Update the act_bitmap with dec ttl */
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_JUMP);
+	return BNXT_TF_RC_SUCCESS;
+}

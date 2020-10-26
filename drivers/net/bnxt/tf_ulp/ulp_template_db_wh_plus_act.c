@@ -55,9 +55,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -72,9 +72,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MODIFY_IPV4_SRC_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MODIFY_IPV4_SRC_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -89,9 +89,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MODIFY_IPV4_DST_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MODIFY_IPV4_DST_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -104,9 +104,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 0,
 	.result_num_fields = 0,
 	.encap_num_fields = 12,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_GLOBAL,
-	.index_operand = BNXT_ULP_GLB_REGFILE_INDEX_ENCAP_MAC_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_GLB_REGFILE_INDEX_ENCAP_MAC_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -120,9 +120,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -136,9 +136,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -153,9 +153,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -169,9 +169,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -185,9 +185,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -202,9 +202,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -218,9 +218,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -234,9 +234,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -251,9 +251,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -268,9 +268,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 0,
 	.result_num_fields = 0,
 	.encap_num_fields = 3,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_SP_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_SP_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -285,9 +285,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 0,
 	.result_num_fields = 0,
 	.encap_num_fields = 3,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_SP_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_SP_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -300,9 +300,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 0,
 	.result_num_fields = 0,
 	.encap_num_fields = 12,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_ENCAP_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_ENCAP_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -316,9 +316,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 12,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -332,9 +332,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -349,9 +349,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -366,9 +366,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MODIFY_IPV4_SRC_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MODIFY_IPV4_SRC_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -383,9 +383,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 32,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MODIFY_IPV4_DST_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MODIFY_IPV4_DST_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -399,9 +399,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 0,
 	.result_num_fields = 0,
 	.encap_num_fields = 12,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_GLOBAL,
-	.index_operand = BNXT_ULP_GLB_REGFILE_INDEX_ENCAP_MAC_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_GLB_REGFILE_INDEX_ENCAP_MAC_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -415,9 +415,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -431,9 +431,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 11,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -448,9 +448,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 1,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_FLOW_CNTR_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -466,9 +466,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 0,
 	.result_num_fields = 0,
 	.encap_num_fields = 12,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_ENCAP_PTR_0,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_ENCAP_PTR_0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -482,9 +482,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -500,9 +500,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -518,9 +518,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 11,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
-	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
-	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
 	}
 };
 

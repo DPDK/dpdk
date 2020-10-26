@@ -233,4 +233,9 @@ int32_t
 ulp_rte_dec_ttl_act_handler(const struct rte_flow_action *action_item,
 			    struct ulp_rte_parser_params *params);
 
+/* Function to handle the parsing of RTE Flow action JUMP .*/
+int32_t
+ulp_rte_jump_act_handler(const struct rte_flow_action *action_item,
+			 struct ulp_rte_parser_params *params);
+
 #endif /* _ULP_RTE_PARSER_H_ */
