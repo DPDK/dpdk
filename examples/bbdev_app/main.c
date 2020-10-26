@@ -28,6 +28,7 @@
 #include <rte_lcore.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_log.h>
@@ -58,6 +59,15 @@
 		return -1; \
 	} \
 } while (0)
+
+static int input_dynfield_offset = -1;
+
+static inline struct rte_mbuf **
+mbuf_input(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+			input_dynfield_offset, struct rte_mbuf **);
+}
 
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
@@ -294,11 +304,11 @@ pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int nb_to_free)
 }
 
 static inline void
-pktmbuf_userdata_free_bulk(struct rte_mbuf **mbufs, unsigned int nb_to_free)
+pktmbuf_input_free_bulk(struct rte_mbuf **mbufs, unsigned int nb_to_free)
 {
 	unsigned int i;
 	for (i = 0; i < nb_to_free; ++i) {
-		struct rte_mbuf *rx_pkt = mbufs[i]->userdata;
+		struct rte_mbuf *rx_pkt = *mbuf_input(mbufs[i]);
 		rte_pktmbuf_free(rx_pkt);
 		rte_pktmbuf_free(mbufs[i]);
 	}
@@ -429,7 +439,7 @@ verify_data(struct rte_mbuf **mbufs, uint16_t num_pkts)
 	uint16_t i;
 	for (i = 0; i < num_pkts; ++i) {
 		struct rte_mbuf *out = mbufs[i];
-		struct rte_mbuf *in = out->userdata;
+		struct rte_mbuf *in = *mbuf_input(out);
 
 		if (memcmp(rte_pktmbuf_mtod_offset(in, uint8_t *,
 				sizeof(struct rte_ether_hdr)),
@@ -731,7 +741,7 @@ run_encoding(struct lcore_conf *lcore_conf)
 				rte_pktmbuf_data_len(rx_pkts_burst[i]) -
 				sizeof(struct rte_ether_hdr);
 		/* save input mbuf pointer for later comparison */
-		enc_out_pkts[i]->userdata = rx_pkts_burst[i];
+		*mbuf_input(enc_out_pkts[i]) = rx_pkts_burst[i];
 
 		/* copy ethernet header */
 		rte_pktmbuf_reset(enc_out_pkts[i]);
@@ -775,7 +785,7 @@ run_encoding(struct lcore_conf *lcore_conf)
 	nb_enq = rte_bbdev_enqueue_enc_ops(bbdev_id, enc_queue_id,
 			bbdev_ops_burst, nb_rx);
 	if (unlikely(nb_enq < nb_rx)) {
-		pktmbuf_userdata_free_bulk(&enc_out_pkts[nb_enq],
+		pktmbuf_input_free_bulk(&enc_out_pkts[nb_enq],
 				nb_rx - nb_enq);
 		rte_bbdev_enc_op_free_bulk(&bbdev_ops_burst[nb_enq],
 				nb_rx - nb_enq);
@@ -805,7 +815,7 @@ run_encoding(struct lcore_conf *lcore_conf)
 	nb_sent = rte_ring_enqueue_burst(enc_to_dec_ring, (void **)enc_out_pkts,
 			nb_deq, NULL);
 	if (unlikely(nb_sent < nb_deq)) {
-		pktmbuf_userdata_free_bulk(&enc_out_pkts[nb_sent],
+		pktmbuf_input_free_bulk(&enc_out_pkts[nb_sent],
 				nb_deq - nb_sent);
 		lcore_stats->enc_to_dec_lost_packets += nb_deq - nb_sent;
 	}
@@ -842,7 +852,7 @@ run_decoding(struct lcore_conf *lcore_conf)
 
 	if (unlikely(rte_bbdev_dec_op_alloc_bulk(bbdev_op_pool, bbdev_ops_burst,
 			nb_recv) != 0)) {
-		pktmbuf_userdata_free_bulk(recv_pkts_burst, nb_recv);
+		pktmbuf_input_free_bulk(recv_pkts_burst, nb_recv);
 		lcore_stats->rx_lost_packets += nb_recv;
 		return;
 	}
@@ -871,7 +881,7 @@ run_decoding(struct lcore_conf *lcore_conf)
 	nb_enq = rte_bbdev_enqueue_dec_ops(bbdev_id, bbdev_queue_id,
 			bbdev_ops_burst, nb_recv);
 	if (unlikely(nb_enq < nb_recv)) {
-		pktmbuf_userdata_free_bulk(&recv_pkts_burst[nb_enq],
+		pktmbuf_input_free_bulk(&recv_pkts_burst[nb_enq],
 				nb_recv - nb_enq);
 		rte_bbdev_dec_op_free_bulk(&bbdev_ops_burst[nb_enq],
 				nb_recv - nb_enq);
@@ -898,12 +908,12 @@ run_decoding(struct lcore_conf *lcore_conf)
 
 	/* Free the RX mbufs after verification */
 	for (i = 0; i < nb_deq; ++i)
-		rte_pktmbuf_free(recv_pkts_burst[i]->userdata);
+		rte_pktmbuf_free(*mbuf_input(recv_pkts_burst[i]));
 
 	/* Transmit the packets */
 	nb_tx = rte_eth_tx_burst(port_id, tx_queue_id, recv_pkts_burst, nb_deq);
 	if (unlikely(nb_tx < nb_deq)) {
-		pktmbuf_userdata_free_bulk(&recv_pkts_burst[nb_tx],
+		pktmbuf_input_free_bulk(&recv_pkts_burst[nb_tx],
 				nb_deq - nb_tx);
 		lcore_stats->tx_lost_packets += nb_deq - nb_tx;
 	}
@@ -1046,6 +1056,12 @@ main(int argc, char **argv)
 	bool stats_thread_started = false;
 	unsigned int main_lcore_id = rte_get_main_lcore();
 
+	static const struct rte_mbuf_dynfield input_dynfield_desc = {
+		.name = "example_bbdev_dynfield_input",
+		.size = sizeof(struct rte_mbuf *),
+		.align = __alignof__(struct rte_mbuf *),
+	};
+
 	rte_atomic16_init(&global_exit_flag);
 
 	sigret = signal(SIGTERM, signal_handler);
@@ -1114,6 +1130,12 @@ main(int argc, char **argv)
 			RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (bbdev_mbuf_mempool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create ethdev mbuf mempool\n");
+
+	/* register mbuf field to store input pointer */
+	input_dynfield_offset =
+		rte_mbuf_dynfield_register(&input_dynfield_desc);
+	if (input_dynfield_offset < 0)
+		rte_exit(EXIT_FAILURE, "Cannot register mbuf field\n");
 
 	/* initialize ports */
 	ret = initialize_ports(&app_params, ethdev_mbuf_mempool);
