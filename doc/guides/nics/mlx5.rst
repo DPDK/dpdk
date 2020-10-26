@@ -59,7 +59,8 @@ Features
 
 - Multi arch support: x86_64, POWER8, ARMv8, i686.
 - Multiple TX and RX queues.
-- Support for scattered TX and RX frames.
+- Support for scattered TX frames.
+- Advanced support for scattered Rx frames with tunable buffer attributes.
 - IPv4, IPv6, TCPv4, TCPv6, UDPv4 and UDPv6 RSS on any number of queues.
 - RSS using different combinations of fields: L3 only, L4 only or both,
   and source only, destination only or both.
@@ -186,6 +187,9 @@ Limitations
    kernel network device will be added and cleaned up by the PMD when closing
    the device. In case of ungraceful program termination, some entries may
    remain present and should be removed manually by other means.
+
+- Buffer split offload is supported with regular Rx burst routine only,
+  no MPRQ feature or vectorized code can be engaged.
 
 - When Multi-Packet Rx queue is configured (``mprq_en``), a Rx packet can be
   externally attached to a user-provided mbuf with having EXT_ATTACHED_MBUF in
