@@ -1670,10 +1670,6 @@ M: John McNamara <john.mcnamara@intel.com>
 F: examples/skeleton/
 F: doc/guides/sample_app_ug/skeleton.rst
 
-TEP termination example
-M: Xiaoyun Li <xiaoyun.li@intel.com>
-F: examples/tep_termination/
-
 VMDq examples
 F: examples/vmdq/
 F: doc/guides/sample_app_ug/vmdq_forwarding.rst

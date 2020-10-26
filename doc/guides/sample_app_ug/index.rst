@@ -51,7 +51,6 @@ Sample Applications User Guides
     eventdev_pipeline
     dist_app
     vm_power_management
-    tep_termination
     ptpclient
     performance_thread
     fips_validation

@@ -373,6 +373,9 @@ Removed Items
 
 * Removed Python 2 support since it was EOL'd in January 2020.
 
+* Removed TEP termination sample application.
+
+
 API Changes
 -----------
 

@@ -40,7 +40,7 @@ all_examples = [
 	'server_node_efd/node',
 	'server_node_efd/server',
 	'service_cores',
-	'skeleton', 'tep_termination',
+	'skeleton',
 	'timer', 'vdpa',
 	'vhost', 'vhost_crypto',
 	'vhost_blk', 'vm_power_manager',

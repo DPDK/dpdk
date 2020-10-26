@@ -4933,6 +4933,49 @@ Validate and create a QinQ rule on port 0 to steer traffic to a queue on the hos
    0       0       0       i-      ETH VLAN VLAN=>VF QUEUE
    1       0       0       i-      ETH VLAN VLAN=>PF QUEUE
 
+Sample VXLAN flow rules
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Before creating VXLAN rule(s), the UDP port should be added for VXLAN packet
+filter on a port::
+
+  testpmd> rx_vxlan_port add 4789 0
+
+Create VXLAN rules on port 0 to steer traffic to PF queues.
+
+::
+
+  testpmd> flow create 0 ingress pattern eth / ipv4 / udp / vxlan /
+         eth dst is 00:11:22:33:44:55 / end actions pf / queue index 1 / end
+  Flow rule #0 created
+
+  testpmd> flow create 0 ingress pattern eth / ipv4 / udp / vxlan vni is 3 /
+         eth dst is 00:11:22:33:44:55 / end actions pf / queue index 2 / end
+  Flow rule #1 created
+
+  testpmd> flow create 0 ingress pattern eth / ipv4 / udp / vxlan /
+         eth dst is 00:11:22:33:44:55 / vlan tci is 10 / end actions pf /
+         queue index 3 / end
+  Flow rule #2 created
+
+  testpmd> flow create 0 ingress pattern eth / ipv4 / udp / vxlan vni is 5 /
+         eth dst is 00:11:22:33:44:55 / vlan tci is 20 / end actions pf /
+         queue index 4 / end
+  Flow rule #3 created
+
+  testpmd> flow create 0 ingress pattern eth dst is 00:00:00:00:01:00 / ipv4 /
+         udp / vxlan vni is 6 /  eth dst is 00:11:22:33:44:55 / end actions pf /
+         queue index 5 / end
+  Flow rule #4 created
+
+  testpmd> flow list 0
+  ID      Group   Prio    Attr    Rule
+  0       0       0       i-      ETH IPV4 UDP VXLAN ETH => QUEUE
+  1       0       0       i-      ETH IPV4 UDP VXLAN ETH => QUEUE
+  2       0       0       i-      ETH IPV4 UDP VXLAN ETH VLAN => QUEUE
+  3       0       0       i-      ETH IPV4 UDP VXLAN ETH VLAN => QUEUE
+  4       0       0       i-      ETH IPV4 UDP VXLAN ETH => QUEUE
+
 Sample VXLAN encapsulation rule
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
