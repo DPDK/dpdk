@@ -779,6 +779,18 @@ cmd_pipeline_build(char **tokens,
 	}
 }
 
+static void
+table_entry_free(struct rte_swx_table_entry *entry)
+{
+	if (!entry)
+		return;
+
+	free(entry->key);
+	free(entry->key_mask);
+	free(entry->action_data);
+	free(entry);
+}
+
 static const char cmd_pipeline_table_update_help[] =
 "pipeline <pipeline_name> table <table_name> update <file_name_add> "
 "<file_name_delete> <file_name_default>";
@@ -885,6 +897,7 @@ cmd_pipeline_table_update(char **tokens,
 			status = rte_swx_ctl_pipeline_table_entry_add(p->ctl,
 				table_name,
 				entry);
+			table_entry_free(entry);
 			if (status) {
 				snprintf(out, out_size,
 					"Invalid entry in file %s at line %u",
@@ -914,6 +927,7 @@ cmd_pipeline_table_update(char **tokens,
 			status = rte_swx_ctl_pipeline_table_entry_delete(p->ctl,
 				table_name,
 				entry);
+			table_entry_free(entry);
 			if (status)  {
 				snprintf(out, out_size,
 					"Invalid entry in file %s at line %u",
@@ -942,6 +956,7 @@ cmd_pipeline_table_update(char **tokens,
 			status = rte_swx_ctl_pipeline_table_default_entry_add(p->ctl,
 				table_name,
 				entry);
+			table_entry_free(entry);
 			if (status) {
 				snprintf(out, out_size,
 					"Invalid entry in file %s at line %u",
