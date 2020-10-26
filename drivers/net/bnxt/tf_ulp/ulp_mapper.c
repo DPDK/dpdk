@@ -1497,6 +1497,29 @@ ulp_mapper_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 	return rc;
 }
 
+#define BNXT_ULP_WC_TCAM_SLICE_SIZE 80
+/* internal function to post process the key/mask blobs for wildcard tcam tbl */
+static void ulp_mapper_wc_tcam_tbl_post_process(struct ulp_blob *blob,
+						uint32_t len)
+{
+	uint8_t mode[2] = {0x0, 0x0};
+	uint32_t mode_len = len / BNXT_ULP_WC_TCAM_SLICE_SIZE;
+	uint32_t size, idx;
+
+	/* Add the mode bits to the key and mask*/
+	if (mode_len == 2)
+		mode[1] = 2;
+	else if (mode_len > 2)
+		mode[1] = 3;
+
+	size = BNXT_ULP_WC_TCAM_SLICE_SIZE + ULP_BYTE_2_BITS(sizeof(mode));
+	for (idx = 0; idx < mode_len; idx++)
+		ulp_blob_insert(blob, (size * idx), mode,
+				ULP_BYTE_2_BITS(sizeof(mode)));
+	ulp_blob_perform_64B_word_swap(blob);
+	ulp_blob_perform_64B_byte_swap(blob);
+}
+
 static int32_t
 ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			    struct bnxt_ulp_mapper_tbl_info *tbl)
@@ -1533,9 +1556,9 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
-	if (!ulp_blob_init(&key, tbl->key_bit_size,
+	if (!ulp_blob_init(&key, tbl->blob_key_bit_size,
 			   parms->device_params->byte_order) ||
-	    !ulp_blob_init(&mask, tbl->key_bit_size,
+	    !ulp_blob_init(&mask, tbl->blob_key_bit_size,
 			   parms->device_params->byte_order) ||
 	    !ulp_blob_init(&data, tbl->result_bit_size,
 			   parms->device_params->byte_order) ||
@@ -1543,6 +1566,11 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			   parms->device_params->byte_order)) {
 		BNXT_TF_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
+	}
+
+	if (tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM) {
+		key.byte_order = BNXT_ULP_BYTE_ORDER_BE;
+		mask.byte_order = BNXT_ULP_BYTE_ORDER_BE;
 	}
 
 	/* create the key/mask */
@@ -1570,6 +1598,11 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 	}
 
+	if (tbl->resource_type == TF_TCAM_TBL_TYPE_WC_TCAM) {
+		ulp_mapper_wc_tcam_tbl_post_process(&key, tbl->key_bit_size);
+		ulp_mapper_wc_tcam_tbl_post_process(&mask, tbl->key_bit_size);
+	}
+
 	if (tbl->srch_b4_alloc == BNXT_ULP_SEARCH_BEFORE_ALLOC_NO) {
 		/*
 		 * No search for re-use is requested, so simply allocate the
@@ -1578,18 +1611,18 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		aparms.dir		= tbl->direction;
 		aparms.tcam_tbl_type	= tbl->resource_type;
 		aparms.search_enable	= tbl->srch_b4_alloc;
-		aparms.key_sz_in_bits	= tbl->key_bit_size;
 		aparms.key		= ulp_blob_data_get(&key, &tmplen);
-		if (tbl->key_bit_size != tmplen) {
+		aparms.key_sz_in_bits	= tmplen;
+		if (tbl->blob_key_bit_size != tmplen) {
 			BNXT_TF_DBG(ERR, "Key len (%d) != Expected (%d)\n",
-				    tmplen, tbl->key_bit_size);
+				    tmplen, tbl->blob_key_bit_size);
 			return -EINVAL;
 		}
 
 		aparms.mask		= ulp_blob_data_get(&mask, &tmplen);
-		if (tbl->key_bit_size != tmplen) {
+		if (tbl->blob_key_bit_size != tmplen) {
 			BNXT_TF_DBG(ERR, "Mask len (%d) != Expected (%d)\n",
-				    tmplen, tbl->key_bit_size);
+				    tmplen, tbl->blob_key_bit_size);
 			return -EINVAL;
 		}
 

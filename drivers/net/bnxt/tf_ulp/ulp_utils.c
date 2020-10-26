@@ -274,6 +274,69 @@ ulp_blob_push(struct ulp_blob *blob,
 }
 
 /*
+ * Insert data into the binary blob at the given offset.
+ *
+ * blob [in] The blob that data is added to.  The blob must
+ * be initialized prior to pushing data.
+ *
+ * offset [in] The offset where the data needs to be inserted.
+ *
+ * data [in/out] A pointer to bytes to be added to the blob.
+ *
+ * datalen [in] The number of bits to be added to the blob.
+ *
+ * The offset of the data is updated after each push of data.
+ * NULL returned on error.
+ */
+uint32_t
+ulp_blob_insert(struct ulp_blob *blob, uint32_t offset,
+		uint8_t *data, uint32_t datalen)
+{
+	uint32_t rc;
+	uint8_t local_data[BNXT_ULP_FLMP_BLOB_SIZE];
+	uint16_t mov_len;
+
+	/* validate the arguments */
+	if (!blob || datalen > (uint32_t)(blob->bitlen - blob->write_idx) ||
+	    offset > blob->write_idx) {
+		BNXT_TF_DBG(ERR, "invalid argument\n");
+		return 0; /* failure */
+	}
+
+	mov_len = blob->write_idx - offset;
+	/* If offset and data len are not 8 bit aligned then return error */
+	if (ULP_BITS_IS_BYTE_NOT_ALIGNED(offset) ||
+	    ULP_BITS_IS_BYTE_NOT_ALIGNED(datalen)) {
+		BNXT_TF_DBG(ERR, "invalid argument, not aligned\n");
+		return 0; /* failure */
+	}
+
+	/* copy the data so we can move the data */
+	memcpy(local_data, &blob->data[ULP_BITS_2_BYTE_NR(offset)],
+	       ULP_BITS_2_BYTE(mov_len));
+	blob->write_idx = offset;
+	if (blob->byte_order == BNXT_ULP_BYTE_ORDER_BE)
+		rc = ulp_bs_push_msb(blob->data,
+				     blob->write_idx,
+				     datalen,
+				     data);
+	else
+		rc = ulp_bs_push_lsb(blob->data,
+				     blob->write_idx,
+				     datalen,
+				     data);
+	if (!rc) {
+		BNXT_TF_DBG(ERR, "Failed ro write blob\n");
+		return 0;
+	}
+	/* copy the previously stored data */
+	memcpy(&blob->data[ULP_BITS_2_BYTE_NR(offset + datalen)], local_data,
+	       ULP_BITS_2_BYTE(mov_len));
+	blob->write_idx += (mov_len + datalen);
+	return datalen;
+}
+
+/*
  * Add data to the binary blob at the current offset.
  *
  * blob [in] The blob that data is added to.  The blob must
@@ -600,6 +663,68 @@ ulp_blob_perform_byte_reverse(struct ulp_blob *blob)
 		xchar = blob->data[idx];
 		blob->data[idx] = blob->data[(num - 1) - idx];
 		blob->data[(num - 1) - idx] = xchar;
+	}
+}
+
+/*
+ * Perform the blob buffer 64 bit word swap.
+ * This api makes the first 4 bytes the last in
+ * a given 64 bit value and vice-versa.
+ *
+ * blob [in] The blob's data to be used for swap.
+ *
+ * returns void.
+ */
+void
+ulp_blob_perform_64B_word_swap(struct ulp_blob *blob)
+{
+	uint32_t i, j, num;
+	uint8_t xchar;
+	uint32_t word_size = ULP_64B_IN_BYTES / 2;
+
+	/* validate the arguments */
+	if (!blob) {
+		BNXT_TF_DBG(ERR, "invalid argument\n");
+		return; /* failure */
+	}
+	num = ULP_BITS_2_BYTE(blob->write_idx);
+	for (i = 0; i < num; i = i + ULP_64B_IN_BYTES) {
+		for (j = 0; j < word_size; j++) {
+			xchar = blob->data[i + j];
+			blob->data[i + j] = blob->data[i + j + word_size];
+			blob->data[i + j + word_size] = xchar;
+		}
+	}
+}
+
+/*
+ * Perform the blob buffer 64 bit byte swap.
+ * This api makes the first byte the last in
+ * a given 64 bit value and vice-versa.
+ *
+ * blob [in] The blob's data to be used for swap.
+ *
+ * returns void.
+ */
+void
+ulp_blob_perform_64B_byte_swap(struct ulp_blob *blob)
+{
+	uint32_t i, j, num;
+	uint8_t xchar;
+	uint32_t offset = ULP_64B_IN_BYTES - 1;
+
+	/* validate the arguments */
+	if (!blob) {
+		BNXT_TF_DBG(ERR, "invalid argument\n");
+		return; /* failure */
+	}
+	num = ULP_BITS_2_BYTE(blob->write_idx);
+	for (i = 0; i < num; i = i + ULP_64B_IN_BYTES) {
+		for (j = 0; j < (ULP_64B_IN_BYTES / 2); j++) {
+			xchar = blob->data[i + j];
+			blob->data[i + j] = blob->data[i + offset - j];
+			blob->data[i + offset - j] = xchar;
+		}
 	}
 }
 

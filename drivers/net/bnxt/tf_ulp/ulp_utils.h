@@ -12,7 +12,7 @@
 #define ULP_BUFFER_ALIGN_8_BYTE		8
 #define ULP_BUFFER_ALIGN_16_BYTE	16
 #define ULP_BUFFER_ALIGN_64_BYTE	64
-
+#define ULP_64B_IN_BYTES		8
 /*
  * Macros for bitmap sets and gets
  * These macros can be used if the val are power of 2.
@@ -56,6 +56,9 @@
 
 /* Macro to round off to next multiple of 8*/
 #define ULP_BYTE_ROUND_OFF_8(x)	(((x) + 7) & ~7)
+
+/* Macro to check bits are byte aligned */
+#define ULP_BITS_IS_BYTE_NOT_ALIGNED(x)	((x) % 8)
 
 /* Macros to read the computed fields */
 #define ULP_COMP_FLD_IDX_RD(params, idx) \
@@ -166,6 +169,25 @@ uint32_t
 ulp_blob_push(struct ulp_blob *blob,
 	      uint8_t *data,
 	      uint32_t datalen);
+
+/*
+ * Insert data into the binary blob at the given offset.
+ *
+ * blob [in] The blob that data is added to.  The blob must
+ * be initialized prior to pushing data.
+ *
+ * offset [in] The offset where the data needs to be inserted.
+ *
+ * data [in/out] A pointer to bytes to be added to the blob.
+ *
+ * datalen [in] The number of bits to be added to the blob.
+ *
+ * The offset of the data is updated after each push of data.
+ * NULL returned on error.
+ */
+uint32_t
+ulp_blob_insert(struct ulp_blob *blob, uint32_t offset,
+		uint8_t *data, uint32_t datalen);
 
 /*
  * Add data to the binary blob at the current offset.
@@ -298,6 +320,30 @@ ulp_blob_perform_encap_swap(struct ulp_blob *blob);
  */
 void
 ulp_blob_perform_byte_reverse(struct ulp_blob *blob);
+
+/*
+ * Perform the blob buffer 64 bit word swap.
+ * This api makes the first 4 bytes the last in
+ * a given 64 bit value and vice-versa.
+ *
+ * blob [in] The blob's data to be used for swap.
+ *
+ * returns void.
+ */
+void
+ulp_blob_perform_64B_word_swap(struct ulp_blob *blob);
+
+/*
+ * Perform the blob buffer 64 bit byte swap.
+ * This api makes the first byte the last in
+ * a given 64 bit value and vice-versa.
+ *
+ * blob [in] The blob's data to be used for swap.
+ *
+ * returns void.
+ */
+void
+ulp_blob_perform_64B_byte_swap(struct ulp_blob *blob);
 
 /*
  * Read data from the operand
