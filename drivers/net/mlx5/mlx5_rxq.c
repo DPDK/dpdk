@@ -744,12 +744,40 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct rte_eth_rxseg_split *rx_seg =
+				(struct rte_eth_rxseg_split *)conf->rx_seg;
+	struct rte_eth_rxseg_split rx_single = {.mp = mp};
+	uint16_t n_seg = conf->rx_nseg;
 	int res;
 
+	if (mp) {
+		/*
+		 * The parameters should be checked on rte_eth_dev layer.
+		 * If mp is specified it means the compatible configuration
+		 * without buffer split feature tuning.
+		 */
+		rx_seg = &rx_single;
+		n_seg = 1;
+	}
+	if (n_seg > 1) {
+		uint64_t offloads = conf->offloads |
+				    dev->data->dev_conf.rxmode.offloads;
+
+		/* The offloads should be checked on rte_eth_dev layer. */
+		MLX5_ASSERT(offloads & DEV_RX_OFFLOAD_SCATTER);
+		if (!(offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT)) {
+			DRV_LOG(ERR, "port %u queue index %u split "
+				     "offload not configured",
+				     dev->data->port_id, idx);
+			rte_errno = ENOSPC;
+			return -rte_errno;
+		}
+		MLX5_ASSERT(n_seg < MLX5_MAX_RXQ_NSEG);
+	}
 	res = mlx5_rx_queue_pre_setup(dev, idx, &desc);
 	if (res)
 		return res;
-	rxq_ctrl = mlx5_rxq_new(dev, idx, desc, socket, conf, mp);
+	rxq_ctrl = mlx5_rxq_new(dev, idx, desc, socket, conf, rx_seg, n_seg);
 	if (!rxq_ctrl) {
 		DRV_LOG(ERR, "port %u unable to allocate queue index %u",
 			dev->data->port_id, idx);
@@ -1342,11 +1370,11 @@ mlx5_max_lro_msg_size_adjust(struct rte_eth_dev *dev, uint16_t idx,
 struct mlx5_rxq_ctrl *
 mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	     unsigned int socket, const struct rte_eth_rxconf *conf,
-	     struct rte_mempool *mp)
+	     const struct rte_eth_rxseg_split *rx_seg, uint16_t n_seg)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *tmpl;
-	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
+	unsigned int mb_len = rte_pktmbuf_data_room_size(rx_seg[0].mp);
 	struct mlx5_dev_config *config = &priv->config;
 	uint64_t offloads = conf->offloads |
 			   dev->data->dev_conf.rxmode.offloads;
@@ -1358,7 +1386,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 							RTE_PKTMBUF_HEADROOM;
 	unsigned int max_lro_size = 0;
 	unsigned int first_mb_free_size = mb_len - RTE_PKTMBUF_HEADROOM;
-	const int mprq_en = mlx5_check_mprq_support(dev) > 0;
+	const int mprq_en = mlx5_check_mprq_support(dev) > 0 && n_seg == 1 &&
+			    !rx_seg[0].offset && !rx_seg[0].length;
 	unsigned int mprq_stride_nums = config->mprq.stride_num_n ?
 		config->mprq.stride_num_n : MLX5_MPRQ_STRIDE_NUM_N;
 	unsigned int mprq_stride_size = non_scatter_min_mbuf_size <=
@@ -1552,7 +1581,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		(!!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS));
 	tmpl->rxq.port_id = dev->data->port_id;
 	tmpl->priv = priv;
-	tmpl->rxq.mp = mp;
+	tmpl->rxq.mp = rx_seg[0].mp;
 	tmpl->rxq.elts_n = log2above(desc);
 	tmpl->rxq.rq_repl_thresh =
 		MLX5_VPMD_RXQ_RPLNSH_THRESH(desc_n);

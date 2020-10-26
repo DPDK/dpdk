@@ -164,6 +164,9 @@ struct mlx5_stats_ctrl {
 /* Maximal size of aggregated LRO packet. */
 #define MLX5_MAX_LRO_SIZE (UINT8_MAX * MLX5_LRO_SEG_CHUNK_SIZE)
 
+/* Maximal number of segments to split. */
+#define MLX5_MAX_RXQ_NSEG (1u << MLX5_MAX_LOG_RQ_SEGS)
+
 /* LRO configurations structure. */
 struct mlx5_lro_config {
 	uint32_t supported:1; /* Whether LRO is supported. */
