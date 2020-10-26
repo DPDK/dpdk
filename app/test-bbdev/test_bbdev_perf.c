@@ -25,6 +25,7 @@
 
 #define MAX_QUEUES RTE_MAX_LCORE
 #define TEST_REPETITIONS 1000
+#define WAIT_OFFLOAD_US 1000
 
 #ifdef RTE_BASEBAND_FPGA_LTE_FEC
 #include <fpga_lte_fec.h>
@@ -4388,7 +4389,7 @@ offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 		time_st->enq_acc_total_time += stats.acc_offload_cycles;
 
 		/* give time for device to process ops */
-		rte_delay_us(200);
+		rte_delay_us(WAIT_OFFLOAD_US);
 
 		/* Start time meas for dequeue function offload latency */
 		deq_start_time = rte_rdtsc_precise();
@@ -4479,7 +4480,7 @@ offload_latency_test_ldpc_dec(struct rte_mempool *mempool,
 		time_st->enq_acc_total_time += stats.acc_offload_cycles;
 
 		/* give time for device to process ops */
-		rte_delay_us(200);
+		rte_delay_us(WAIT_OFFLOAD_US);
 
 		/* Start time meas for dequeue function offload latency */
 		deq_start_time = rte_rdtsc_precise();
@@ -4567,7 +4568,7 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 		time_st->enq_acc_total_time += stats.acc_offload_cycles;
 
 		/* give time for device to process ops */
-		rte_delay_us(200);
+		rte_delay_us(WAIT_OFFLOAD_US);
 
 		/* Start time meas for dequeue function offload latency */
 		deq_start_time = rte_rdtsc_precise();
@@ -4650,7 +4651,7 @@ offload_latency_test_ldpc_enc(struct rte_mempool *mempool,
 		time_st->enq_acc_total_time += stats.acc_offload_cycles;
 
 		/* give time for device to process ops */
-		rte_delay_us(200);
+		rte_delay_us(WAIT_OFFLOAD_US);
 
 		/* Start time meas for dequeue function offload latency */
 		deq_start_time = rte_rdtsc_precise();
