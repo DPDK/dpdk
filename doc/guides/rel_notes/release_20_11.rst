@@ -569,6 +569,12 @@ API Changes
 
 * bpf: ``RTE_BPF_XTYPE_NUM`` has been dropped from ``rte_bpf_xtype``.
 
+* gso: Changed ``rte_gso_segment`` behaviour and return value:
+
+  * ``pkt`` is not saved to ``pkts_out[0]`` if not GSOed.
+  * Return 0 instead of 1 for the above case.
+  * ``pkt`` is not freed, no matter whether it is GSOed, leaving to the caller.
+
 * acl: ``RTE_ACL_CLASSIFY_NUM`` enum value has been removed.
   This enum value was not used inside DPDK, while it prevented to add new
   classify algorithms without causing an ABI breakage.

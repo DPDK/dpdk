@@ -1080,9 +1080,17 @@ tunnel_update:
 			ret = rte_gso_segment(pkts_burst[i], gso_ctx,
 					&gso_segments[nb_segments],
 					GSO_MAX_PKT_BURST - nb_segments);
-			if (ret >= 0)
+			if (ret >= 1) {
+				/* pkts_burst[i] can be freed safely here. */
+				rte_pktmbuf_free(pkts_burst[i]);
 				nb_segments += ret;
-			else {
+			} else if (ret == 0) {
+				/* 0 means it can be transmitted directly
+				 * without gso.
+				 */
+				gso_segments[nb_segments] = pkts_burst[i];
+				nb_segments += 1;
+			} else {
 				TESTPMD_LOG(DEBUG, "Unable to segment packet");
 				rte_pktmbuf_free(pkts_burst[i]);
 			}

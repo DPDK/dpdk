@@ -62,7 +62,7 @@ gso_tunnel_tcp4_segment(struct rte_mbuf *pkt,
 {
 	struct rte_ipv4_hdr *inner_ipv4_hdr;
 	uint16_t pyld_unit_size, hdr_offset, frag_off;
-	int ret = 1;
+	int ret;
 
 	hdr_offset = pkt->outer_l2_len + pkt->outer_l3_len + pkt->l2_len;
 	inner_ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
@@ -73,25 +73,21 @@ gso_tunnel_tcp4_segment(struct rte_mbuf *pkt,
 	 */
 	frag_off = rte_be_to_cpu_16(inner_ipv4_hdr->fragment_offset);
 	if (unlikely(IS_FRAGMENTED(frag_off))) {
-		pkts_out[0] = pkt;
-		return 1;
+		return 0;
 	}
 
 	hdr_offset += pkt->l3_len + pkt->l4_len;
 	/* Don't process the packet without data */
 	if (hdr_offset >= pkt->pkt_len) {
-		pkts_out[0] = pkt;
-		return 1;
+		return 0;
 	}
 	pyld_unit_size = gso_size - hdr_offset;
 
 	/* Segment the payload */
 	ret = gso_do_segment(pkt, hdr_offset, pyld_unit_size, direct_pool,
 			indirect_pool, pkts_out, nb_pkts_out);
-	if (ret <= 1)
-		return ret;
-
-	update_tunnel_ipv4_tcp_headers(pkt, ipid_delta, pkts_out, ret);
+	if (ret > 1)
+		update_tunnel_ipv4_tcp_headers(pkt, ipid_delta, pkts_out, ret);
 
 	return ret;
 }

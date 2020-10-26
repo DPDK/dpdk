@@ -25,8 +25,9 @@ Bearing that in mind, the GSO library enables DPDK applications to segment
 packets in software. Note however, that GSO is implemented as a standalone
 library, and not via a 'fallback' mechanism (i.e. for when TSO is unsupported
 in the underlying hardware); that is, applications must explicitly invoke the
-GSO library to segment packets. The size of GSO segments ``(segsz)`` is
-configurable by the application.
+GSO library to segment packets, they also must call ``rte_pktmbuf_free()``
+to free mbuf GSO segments attached after calling ``rte_gso_segment()``.
+The size of GSO segments (``segsz``) is configurable by the application.
 
 Limitations
 -----------
@@ -232,6 +233,8 @@ To segment an outgoing packet, an application must:
    space allocated by the application is insufficient, segmentation will fail.
 
 #. Invoke the GSO segmentation API, ``rte_gso_segment()``.
+
+#. Call ``rte_pktmbuf_free()`` to free mbuf ``rte_gso_segment()`` segments.
 
 #. If required, update the L3 and L4 checksums of the newly-created segments.
    For tunneled packets, the outer IPv4 headers' checksums should also be

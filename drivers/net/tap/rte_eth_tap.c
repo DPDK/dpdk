@@ -751,8 +751,16 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			if (num_tso_mbufs < 0)
 				break;
 
-			mbuf = gso_mbufs;
-			num_mbufs = num_tso_mbufs;
+			if (num_tso_mbufs >= 1) {
+				mbuf = gso_mbufs;
+				num_mbufs = num_tso_mbufs;
+			} else {
+				/* 0 means it can be transmitted directly
+				 * without gso.
+				 */
+				mbuf = &mbuf_in;
+				num_mbufs = 1;
+			}
 		} else {
 			/* stats.errs will be incremented */
 			if (rte_pktmbuf_pkt_len(mbuf_in) > max_size)

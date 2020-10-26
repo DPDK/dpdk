@@ -50,15 +50,13 @@ gso_tcp4_segment(struct rte_mbuf *pkt,
 			pkt->l2_len);
 	frag_off = rte_be_to_cpu_16(ipv4_hdr->fragment_offset);
 	if (unlikely(IS_FRAGMENTED(frag_off))) {
-		pkts_out[0] = pkt;
-		return 1;
+		return 0;
 	}
 
 	/* Don't process the packet without data */
 	hdr_offset = pkt->l2_len + pkt->l3_len + pkt->l4_len;
 	if (unlikely(hdr_offset >= pkt->pkt_len)) {
-		pkts_out[0] = pkt;
-		return 1;
+		return 0;
 	}
 
 	pyld_unit_size = gso_size - hdr_offset;
