@@ -41,6 +41,10 @@
 #include <rte_tcp.h>
 #include <rte_arp.h>
 #include <rte_spinlock.h>
+#include <rte_devargs.h>
+#include <rte_byteorder.h>
+#include <rte_cpuflags.h>
+#include <rte_eth_bond.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -52,13 +56,6 @@
 #include <cmdline.h>
 
 #include "main.h"
-
-#include <rte_devargs.h>
-
-
-#include "rte_byteorder.h"
-#include "rte_cpuflags.h"
-#include "rte_eth_bond.h"
 
 #define RTE_LOGTYPE_DCB RTE_LOGTYPE_USER1
 
