@@ -5,7 +5,7 @@ includes += include_directories('.')
 
 static_ibverbs = (get_option('ibverbs_link') == 'static')
 dlopen_ibverbs = (get_option('ibverbs_link') == 'dlopen')
-LIB_GLUE_BASE = 'librte_pmd_mlx5_glue.so'
+LIB_GLUE_BASE = 'librte_common_mlx5_glue.so'
 LIB_GLUE_VERSION = '20.02.0'
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
 if dlopen_ibverbs
@@ -195,7 +195,7 @@ configure_file(output : 'mlx5_autoconf.h', configuration : config)
 # Build Glue Library
 if dlopen_ibverbs
 	dlopen_name = 'mlx5_glue'
-	dlopen_lib_name = 'rte_pmd_@0@'.format(dlopen_name)
+	dlopen_lib_name = 'rte_common_' + dlopen_name
 	dlopen_so_version = LIB_GLUE_VERSION
 	dlopen_sources = files('mlx5_glue.c')
 	dlopen_install_dir = [ eal_pmd_path + '-glue' ]
