@@ -152,7 +152,7 @@ all packets received:
         uint64_t now = rte_rdtsc();
 
         for (i = 0; i < nb_pkts; i++)
-            pkts[i]->udata64 = now;
+            *tsc_field(pkts[i]) = now;
 
         return nb_pkts;
     }
@@ -179,7 +179,7 @@ packets prior to transmission:
         unsigned i;
 
         for (i = 0; i < nb_pkts; i++)
-            cycles += now - pkts[i]->udata64;
+            cycles += now - *tsc_field(pkts[i]);
 
         latency_numbers.total_cycles += cycles;
         latency_numbers.total_pkts   += nb_pkts;

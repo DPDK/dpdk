@@ -10,6 +10,7 @@
 #include <rte_cycles.h>
 #include <rte_lcore.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
@@ -17,6 +18,15 @@
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
+
+typedef uint64_t tsc_t;
+static int tsc_dynfield_offset = -1;
+
+static inline tsc_t *
+tsc_field(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf, tsc_dynfield_offset, tsc_t *);
+}
 
 static const char usage[] =
 	"%s EAL_ARGS -- [-t]\n";
@@ -47,7 +57,7 @@ add_timestamps(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
 	uint64_t now = rte_rdtsc();
 
 	for (i = 0; i < nb_pkts; i++)
-		pkts[i]->udata64 = now;
+		*tsc_field(pkts[i]) = now;
 	return nb_pkts;
 }
 
@@ -65,7 +75,7 @@ calc_latency(uint16_t port, uint16_t qidx __rte_unused,
 		rte_eth_read_clock(port, &ticks);
 
 	for (i = 0; i < nb_pkts; i++) {
-		cycles += now - pkts[i]->udata64;
+		cycles += now - *tsc_field(pkts[i]);
 		if (hw_timestamping)
 			queue_ticks += ticks - pkts[i]->timestamp;
 	}
@@ -261,6 +271,11 @@ main(int argc, char *argv[])
 	};
 	int opt, option_index;
 
+	static const struct rte_mbuf_dynfield tsc_dynfield_desc = {
+		.name = "example_bbdev_dynfield_tsc",
+		.size = sizeof(tsc_t),
+		.align = __alignof__(tsc_t),
+	};
 
 	/* init EAL */
 	int ret = rte_eal_init(argc, argv);
@@ -291,6 +306,11 @@ main(int argc, char *argv[])
 		RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
+
+	tsc_dynfield_offset =
+		rte_mbuf_dynfield_register(&tsc_dynfield_desc);
+	if (tsc_dynfield_offset < 0)
+		rte_exit(EXIT_FAILURE, "Cannot register mbuf field\n");
 
 	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid)
