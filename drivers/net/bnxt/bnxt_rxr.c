@@ -150,6 +150,7 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 	tpa_info->mbuf = mbuf;
 	tpa_info->len = rte_le_to_cpu_32(tpa_start->len);
 
+	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 	mbuf->nb_segs = 1;
 	mbuf->next = NULL;
 	mbuf->pkt_len = rte_le_to_cpu_32(tpa_start->len);
