@@ -22,6 +22,13 @@
 
 #define VIRTIO_USER_MEM_EVENT_CLB_NAME "virtio_user_mem_event_clb"
 
+const char * const virtio_user_backend_strings[] = {
+	[VIRTIO_USER_BACKEND_UNKNOWN] = "VIRTIO_USER_BACKEND_UNKNOWN",
+	[VIRTIO_USER_BACKEND_VHOST_USER] = "VHOST_USER",
+	[VIRTIO_USER_BACKEND_VHOST_KERNEL] = "VHOST_NET",
+	[VIRTIO_USER_BACKEND_VHOST_VDPA] = "VHOST_VDPA",
+};
+
 static int
 virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 {

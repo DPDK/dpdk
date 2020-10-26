@@ -560,6 +560,9 @@ virtio_user_backend_type(const char *path)
 	struct stat sb;
 
 	if (stat(path, &sb) == -1) {
+		if (errno == ENOENT)
+			return VIRTIO_USER_BACKEND_VHOST_USER;
+
 		PMD_INIT_LOG(ERR, "Stat fails: %s (%s)\n", path,
 			     strerror(errno));
 		return VIRTIO_USER_BACKEND_UNKNOWN;
@@ -697,7 +700,8 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 			path);
 		goto end;
 	}
-
+	PMD_INIT_LOG(INFO, "Backend type detected: %s",
+		     virtio_user_backend_strings[backend_type]);
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_INTERFACE_NAME) == 1) {
 		if (backend_type != VIRTIO_USER_BACKEND_VHOST_KERNEL) {

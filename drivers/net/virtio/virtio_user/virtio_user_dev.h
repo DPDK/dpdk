@@ -83,4 +83,5 @@ void virtio_user_handle_cq_packed(struct virtio_user_dev *dev,
 uint8_t virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs);
 int virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status);
 int virtio_user_update_status(struct virtio_user_dev *dev);
+extern const char * const virtio_user_backend_strings[];
 #endif
