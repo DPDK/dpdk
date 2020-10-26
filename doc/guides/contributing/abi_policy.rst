@@ -78,15 +78,15 @@ The DPDK ABI policy
 -------------------
 
 A new major ABI version is declared no more frequently than yearly, with
-declarations usually aligning with a LTS release, e.g. ABI 20 for DPDK 19.11.
+declarations usually aligning with a LTS release, e.g. ABI 21 for DPDK 20.11.
 Compatibility with the major ABI version is then mandatory in subsequent
-releases until the next major ABI version is declared, e.g. ABI 21 for DPDK
-20.11.
+releases until the next major ABI version is declared, e.g. ABI 22 for DPDK
+21.11.
 
 At the declaration of a major ABI version, major version numbers encoded in
 libraries' sonames are bumped to indicate the new version, with the minor
-version reset to ``0``. An example would be ``librte_eal.so.20.3`` would become
-``librte_eal.so.21.0``.
+version reset to ``0``. An example would be ``librte_eal.so.21.3`` would become
+``librte_eal.so.22.0``.
 
 The ABI may then change multiple times, without warning, between the last major
 ABI version increment and the HEAD label of the git tree, with the condition
@@ -95,8 +95,8 @@ sonames do not change.
 
 Minor versions are incremented to indicate the release of a new ABI compatible
 DPDK release, typically the DPDK quarterly releases. An example of this, might
-be that ``librte_eal.so.20.1`` would indicate the first ABI compatible DPDK
-release, following the declaration of the new major ABI version ``20``.
+be that ``librte_eal.so.21.1`` would indicate the first ABI compatible DPDK
+release, following the declaration of the new major ABI version ``21``.
 
 An ABI version is supported in all new releases until the next major ABI version
 is declared. When changing the major ABI version, the release notes will detail
@@ -222,11 +222,11 @@ Examples of ABI Changes
 The following are examples of allowable ABI changes occurring between
 declarations of major ABI versions.
 
-* DPDK 19.11 release defines the function ``rte_foo()`` ; ``rte_foo()``
-  is part of the major ABI version ``20``.
+* DPDK 20.11 release defines the function ``rte_foo()`` ; ``rte_foo()``
+  is part of the major ABI version ``21``.
 
-* DPDK 20.02 release defines a new function ``rte_foo(uint8_t bar)``.
-  This is not a problem as long as the symbol ``rte_foo@DPDK20`` is
+* DPDK 21.02 release defines a new function ``rte_foo(uint8_t bar)``.
+  This is not a problem as long as the symbol ``rte_foo@DPDK_21`` is
   preserved through :ref:`abi_versioning`.
 
   - The new function may be marked with the ``__rte_experimental`` tag for a
@@ -235,21 +235,21 @@ declarations of major ABI versions.
   - Once ``rte_foo(uint8_t bar)`` becomes non-experimental, ``rte_foo()`` is
     declared as ``__rte_deprecated`` and an deprecation notice is provided.
 
-* DPDK 19.11 is not re-released to include ``rte_foo(uint8_t bar)``, the new
-  version of ``rte_foo`` only exists from DPDK 20.02 onwards as described in the
+* DPDK 20.11 is not re-released to include ``rte_foo(uint8_t bar)``, the new
+  version of ``rte_foo`` only exists from DPDK 21.02 onwards as described in the
   :ref:`note on forward-only compatibility<forward-only>`.
 
-* DPDK 20.02 release defines the experimental function ``__rte_experimental
-  rte_baz()``. This function may or may not exist in the DPDK 20.05 release.
+* DPDK 21.02 release defines the experimental function ``__rte_experimental
+  rte_baz()``. This function may or may not exist in the DPDK 21.05 release.
 
 * An application ``dPacket`` wishes to use ``rte_foo(uint8_t bar)``, before the
-  declaration of the DPDK ``21`` major ABI version. The application can only
-  ensure its runtime dependencies are met by specifying ``DPDK (>= 20.2)`` as
+  declaration of the DPDK ``22`` major ABI version. The application can only
+  ensure its runtime dependencies are met by specifying ``DPDK (>= 21.2)`` as
   an explicit package dependency, as the soname can only indicate the
   supported major ABI version.
 
-* At the release of DPDK 20.11, the function ``rte_foo(uint8_t bar)`` becomes
-  formally part of then new major ABI version DPDK ``21`` and ``rte_foo()`` may be
+* At the release of DPDK 21.11, the function ``rte_foo(uint8_t bar)`` becomes
+  formally part of then new major ABI version DPDK ``22`` and ``rte_foo()`` may be
   removed.
 
 .. _deprecation_notices:
@@ -261,25 +261,25 @@ The following are some examples of ABI deprecation notices which would be
 added to the Release Notes:
 
 * The Macro ``#RTE_FOO`` is deprecated and will be removed with ABI version
-  21, to be replaced with the inline function ``rte_foo()``.
+  22, to be replaced with the inline function ``rte_foo()``.
 
 * The function ``rte_mbuf_grok()`` has been updated to include a new parameter
-  in version 20.2. Backwards compatibility will be maintained for this function
-  until the release of the new DPDK major ABI version 21, in DPDK version
-  20.11.
+  in version 21.2. Backwards compatibility will be maintained for this function
+  until the release of the new DPDK major ABI version 22, in DPDK version
+  21.11.
 
-* The members of ``struct rte_foo`` have been reorganized in DPDK 20.02 for
+* The members of ``struct rte_foo`` have been reorganized in DPDK 21.02 for
   performance reasons. Existing binary applications will have backwards
-  compatibility in release 20.02, while newly built binaries will need to
+  compatibility in release 21.02, while newly built binaries will need to
   reference the new structure variant ``struct rte_foo2``. Compatibility will be
-  removed in release 20.11, and all applications will require updating and
+  removed in release 21.11, and all applications will require updating and
   rebuilding to the new structure at that time, which will be renamed to the
   original ``struct rte_foo``.
 
 * Significant ABI changes are planned for the ``librte_dostuff`` library. The
-  upcoming release 20.02 will not contain these changes, but release 20.11 will,
+  upcoming release 21.02 will not contain these changes, but release 21.11 will,
   and no backwards compatibility is planned due to the extensive nature of
-  these changes. Binaries using this library built prior to ABI version 21 will
+  these changes. Binaries using this library built prior to ABI version 22 will
   require updating and recompilation.
 
 
