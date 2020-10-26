@@ -212,9 +212,10 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 
 	/* Iterate on segments. */
 	for (i = 0; (i != elts_n); ++i) {
+		struct mlx5_eth_rxseg *seg = &rxq_ctrl->rxq.rxseg[i % sges_n];
 		struct rte_mbuf *buf;
 
-		buf = rte_pktmbuf_alloc(rxq_ctrl->rxq.mp);
+		buf = rte_pktmbuf_alloc(seg->mp);
 		if (buf == NULL) {
 			DRV_LOG(ERR, "port %u empty mbuf pool",
 				PORT_ID(rxq_ctrl->priv));
@@ -227,12 +228,10 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		MLX5_ASSERT(rte_pktmbuf_data_len(buf) == 0);
 		MLX5_ASSERT(rte_pktmbuf_pkt_len(buf) == 0);
 		MLX5_ASSERT(!buf->next);
-		/* Only the first segment keeps headroom. */
-		if (i % sges_n)
-			SET_DATA_OFF(buf, 0);
+		SET_DATA_OFF(buf, seg->offset);
 		PORT(buf) = rxq_ctrl->rxq.port_id;
-		DATA_LEN(buf) = rte_pktmbuf_tailroom(buf);
-		PKT_LEN(buf) = DATA_LEN(buf);
+		DATA_LEN(buf) = seg->length;
+		PKT_LEN(buf) = seg->length;
 		NB_SEGS(buf) = 1;
 		(*rxq_ctrl->rxq.elts)[i] = buf;
 	}
