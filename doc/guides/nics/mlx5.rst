@@ -325,6 +325,11 @@ Limitations
   The last extension header item 'next header' field can specify the following
   header protocol type.
 
+- Hairpin:
+
+  - Hairpin between two ports could only manual binding and explicit Tx flow mode. For single port hairpin, all the combinations of auto/manual binding and explicit/implicit Tx flow mode could be supported.
+  - Hairpin in switchdev SR-IOV mode is not supported till now.
+
 Statistics
 ----------
 

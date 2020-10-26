@@ -189,6 +189,7 @@ New Features
   * Updated the supported timeout for Age action to the maximal value supported
     by rte_flow API.
   * Added support of Age action query.
+  * Added support of multi-ports hairpin.
 
 * **Updated Solarflare network PMD.**
 
