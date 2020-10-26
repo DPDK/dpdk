@@ -904,6 +904,14 @@ struct mlx5_priv {
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
 #define ETH_DEV(priv) (&rte_eth_devices[PORT_ID(priv)])
 
+struct rte_hairpin_peer_info {
+	uint32_t qp_id;
+	uint32_t vhca_id;
+	uint16_t peer_q;
+	uint16_t tx_explicit;
+	uint16_t manual_bind;
+};
+
 /* mlx5.c */
 
 int mlx5_getenv_int(const char *);
@@ -1054,6 +1062,17 @@ int mlx5_dev_stop(struct rte_eth_dev *dev);
 int mlx5_traffic_enable(struct rte_eth_dev *dev);
 void mlx5_traffic_disable(struct rte_eth_dev *dev);
 int mlx5_traffic_restart(struct rte_eth_dev *dev);
+int mlx5_hairpin_queue_peer_update(struct rte_eth_dev *dev, uint16_t peer_queue,
+				   struct rte_hairpin_peer_info *current_info,
+				   struct rte_hairpin_peer_info *peer_info,
+				   uint32_t direction);
+int mlx5_hairpin_queue_peer_bind(struct rte_eth_dev *dev, uint16_t cur_queue,
+				 struct rte_hairpin_peer_info *peer_info,
+				 uint32_t direction);
+int mlx5_hairpin_queue_peer_unbind(struct rte_eth_dev *dev, uint16_t cur_queue,
+				   uint32_t direction);
+int mlx5_hairpin_bind(struct rte_eth_dev *dev, uint16_t rx_port);
+int mlx5_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port);
 
 /* mlx5_flow.c */
 
