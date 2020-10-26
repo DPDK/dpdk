@@ -10,12 +10,22 @@
 #include <rte_errno.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_distributor.h>
 #include <rte_string_fns.h>
 
 #define ITER_POWER 20 /* log 2 of how many iterations we do when timing. */
 #define BURST 32
 #define BIG_BATCH 1024
+
+typedef uint32_t seq_dynfield_t;
+static int seq_dynfield_offset = -1;
+
+static inline seq_dynfield_t *
+seq_field(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf, seq_dynfield_offset, seq_dynfield_t *);
+}
 
 struct worker_params {
 	char name[64];
@@ -578,7 +588,7 @@ handle_and_mark_work(void *arg)
 		__atomic_fetch_add(&worker_stats[id].handled_packets, num,
 				__ATOMIC_RELAXED);
 		for (i = 0; i < num; i++)
-			buf[i]->udata64 += id + 1;
+			*seq_field(buf[i]) += id + 1;
 		num = rte_distributor_get_pkt(db, id,
 				buf, buf, num);
 	}
@@ -631,10 +641,10 @@ sanity_mark_test(struct worker_params *wp, struct rte_mempool *p)
 			<< shift;
 	}
 	/* Assign a sequence number to each packet. The sequence is shifted,
-	 * so that lower bits of the udate64 will hold mark from worker.
+	 * so that lower bits will hold mark from worker.
 	 */
 	for (i = 0; i < buf_count; i++)
-		bufs[i]->udata64 = i << seq_shift;
+		*seq_field(bufs[i]) = i << seq_shift;
 
 	count = 0;
 	for (i = 0; i < buf_count/burst; i++) {
@@ -660,8 +670,8 @@ sanity_mark_test(struct worker_params *wp, struct rte_mempool *p)
 
 	/* Sort returned packets by sent order (sequence numbers). */
 	for (i = 0; i < buf_count; i++) {
-		seq = returns[i]->udata64 >> seq_shift;
-		id = returns[i]->udata64 - (seq << seq_shift);
+		seq = *seq_field(returns[i]) >> seq_shift;
+		id = *seq_field(returns[i]) - (seq << seq_shift);
 		sorted[seq] = id;
 	}
 
@@ -804,6 +814,18 @@ test_distributor(void)
 	static struct rte_distributor *dist[2];
 	static struct rte_mempool *p;
 	int i;
+
+	static const struct rte_mbuf_dynfield seq_dynfield_desc = {
+		.name = "test_distributor_dynfield_seq",
+		.size = sizeof(seq_dynfield_t),
+		.align = __alignof__(seq_dynfield_t),
+	};
+	seq_dynfield_offset =
+		rte_mbuf_dynfield_register(&seq_dynfield_desc);
+	if (seq_dynfield_offset < 0) {
+		printf("Error registering mbuf field\n");
+		return TEST_FAILED;
+	}
 
 	if (rte_lcore_count() < 2) {
 		printf("Not enough cores for distributor_autotest, expecting at least 2\n");
