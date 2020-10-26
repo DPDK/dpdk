@@ -11,9 +11,6 @@
 
 #include "mlx5_autoconf.h"
 
-/* Reported driver name. */
-#define MLX5_DRIVER_NAME "net_mlx5"
-
 /* Maximum number of simultaneous VLAN filters. */
 #define MLX5_MAX_VLAN_IDS 128
 
