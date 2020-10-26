@@ -67,8 +67,7 @@ virtio_user_reset_queues_packed(struct rte_eth_dev *dev)
 static int
 virtio_user_server_reconnect(struct virtio_user_dev *dev)
 {
-	int ret;
-	int connectfd;
+	int ret, connectfd, old_status;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	uint64_t protocol_features;
@@ -78,6 +77,14 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 		return -1;
 
 	dev->vhostfd = connectfd;
+	old_status = vtpci_get_status(hw);
+
+	vtpci_reset(hw);
+
+	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_ACK);
+
+	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
+
 	if (dev->ops->send_request(dev, VHOST_USER_GET_FEATURES,
 				   &dev->device_features) < 0) {
 		PMD_INIT_LOG(ERR, "get_features failed: %s",
@@ -116,14 +123,17 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 
 	/* For packed ring, resetting queues is required in reconnection. */
 	if (vtpci_packed_queue(hw) &&
-	   (vtpci_get_status(hw) & VIRTIO_CONFIG_STATUS_DRIVER_OK)) {
+	   (old_status & VIRTIO_CONFIG_STATUS_DRIVER_OK)) {
 		PMD_INIT_LOG(NOTICE, "Packets on the fly will be dropped"
 				" when packed ring reconnecting.");
 		virtio_user_reset_queues_packed(eth_dev);
 	}
 
-	ret = virtio_user_start_device(dev);
-	if (ret < 0)
+	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_FEATURES_OK);
+
+	/* Start the device */
+	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER_OK);
+	if (!dev->started)
 		return -1;
 
 	if (dev->queue_pairs > 1) {
