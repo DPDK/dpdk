@@ -158,6 +158,7 @@ New Features
   * Added TRUFLOW support for Stingray devices.
   * Added support for representors on MAIA cores of SR.
   * Added support for VXLAN decap offload using rte_flow.
+  * Added support to indicate native rte_flow API thread safety.
 
 * **Updated Cisco enic driver.**
 

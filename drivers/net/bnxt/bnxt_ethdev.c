@@ -3827,6 +3827,12 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
 			return -EINVAL;
+
+		/* PMD supports thread-safe flow operations.  rte_flow API
+		 * functions can avoid mutex for multi-thread safety.
+		 */
+		dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
+
 		if (BNXT_TRUFLOW_EN(bp))
 			*(const void **)arg = &bnxt_ulp_rte_flow_ops;
 		else

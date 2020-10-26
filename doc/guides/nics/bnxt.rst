@@ -721,6 +721,8 @@ Notes
   of deferring Flow2 for offloading. Flow2 that arrive after Flow1 is offloaded
   will be directly programmed and not cached.
 
+- PMD supports thread-safe rte_flow operations.
+
 Note: A VNIC represents a virtual interface in the hardware. It is a resource
 in the RX path of the chip and is used to setup various target actions such as
 RSS, MAC filtering etc. for the physical function in use.
