@@ -33,16 +33,16 @@
 #define TF_SESSION_ID_INVALID     0xFFFFFFFF /** Invalid Session ID define */
 
 /**
- * Number of EM entries. Static for now will be removed
- * when parameter added at a later date. At this stage we
- * are using fixed size entries so that each stack entry
- * represents 4 RT (f/n)blocks. So we take the total block
- * allocation for truflow and divide that by 4.
+ * At this stage we are using fixed size entries so that each
+ * stack entry represents either 2 or 4 RT (f/n)blocks. So we
+ * take the total block allocation for truflow and divide that
+ * by either 2 or 4.
  */
-#define TF_SESSION_TOTAL_FN_BLOCKS (1024 * 8) /* 8K blocks */
+#ifdef TF_EM_ENTRY_IPV4_ONLY
+#define TF_SESSION_EM_ENTRY_SIZE 2 /* 2 blocks per entry */
+#else
 #define TF_SESSION_EM_ENTRY_SIZE 4 /* 4 blocks per entry */
-#define TF_SESSION_EM_POOL_SIZE \
-	(TF_SESSION_TOTAL_FN_BLOCKS / TF_SESSION_EM_ENTRY_SIZE)
+#endif
 
 /**
  * Session
