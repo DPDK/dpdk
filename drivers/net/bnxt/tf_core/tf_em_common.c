@@ -44,28 +44,6 @@ static enum tf_mem_type mem_type;
 /** Table scope array */
 struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
 
-/** Table scope reversal table
- *
- * Table scope are allocated from 15 to 0 within HCAPI RM.  Because of the
- * association between PFs and legacy table scopes, reverse table scope ids.
- * 15 indicates 0, 14 indicates 1, etc... The application will only see the 0
- * based number.  The firmware will only use the 0 based number.  Only HCAPI RM
- * and Truflow RM believe the number is 15.  When HCAPI RM support allocation
- * from low to high is supported, this adjust function can be removed.
- */
-const uint32_t tbl_scope_reverse[TF_NUM_TBL_SCOPE] = {
-	15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
-
-static uint32_t
-tf_tbl_scope_adjust(uint32_t tbl_scope_id)
-{
-	if (tbl_scope_id < TF_NUM_TBL_SCOPE)
-		return tbl_scope_reverse[tbl_scope_id];
-	else
-		return TF_TBL_SCOPE_INVALID;
-};
-
-
 /* API defined in tf_em.h */
 struct tf_tbl_scope_cb *
 tbl_scope_cb_find(uint32_t tbl_scope_id)
@@ -73,17 +51,11 @@ tbl_scope_cb_find(uint32_t tbl_scope_id)
 	int i;
 	struct tf_rm_is_allocated_parms parms = { 0 };
 	int allocated;
-	uint32_t rm_tbl_scope_id;
-
-	rm_tbl_scope_id = tf_tbl_scope_adjust(tbl_scope_id);
-
-	if (rm_tbl_scope_id == TF_TBL_SCOPE_INVALID)
-		return NULL;
 
 	/* Check that id is valid */
 	parms.rm_db = eem_db[TF_DIR_RX];
 	parms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-	parms.index = rm_tbl_scope_id;
+	parms.index = tbl_scope_id;
 	parms.allocated = &allocated;
 
 	i = tf_rm_is_allocated(&parms);
@@ -98,61 +70,6 @@ tbl_scope_cb_find(uint32_t tbl_scope_id)
 
 	return NULL;
 }
-
-int tf_tbl_scope_alloc(uint32_t *tbl_scope_id)
-{
-	int rc;
-	struct tf_rm_allocate_parms parms = { 0 };
-	uint32_t rm_tbl_scope_id;
-	uint32_t usr_tbl_scope_id = TF_TBL_SCOPE_INVALID;
-
-	/* Get Table Scope control block from the session pool */
-	parms.rm_db = eem_db[TF_DIR_RX];
-	parms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-	parms.index = &rm_tbl_scope_id;
-
-	rc = tf_rm_allocate(&parms);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to allocate table scope rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-
-	usr_tbl_scope_id = tf_tbl_scope_adjust(rm_tbl_scope_id);
-
-	if (usr_tbl_scope_id == TF_TBL_SCOPE_INVALID) {
-		TFP_DRV_LOG(ERR,
-			    "Invalid table scope allocated id:%d\n",
-			    (int)rm_tbl_scope_id);
-		return -EINVAL;
-	}
-	*tbl_scope_id = usr_tbl_scope_id;
-	return 0;
-};
-
-int tf_tbl_scope_free(uint32_t tbl_scope_id)
-{
-	struct tf_rm_free_parms parms = { 0 };
-	uint32_t rm_tbl_scope_id;
-	uint32_t rc;
-
-	rm_tbl_scope_id = tf_tbl_scope_adjust(tbl_scope_id);
-
-	if (rm_tbl_scope_id == TF_TBL_SCOPE_INVALID) {
-		TFP_DRV_LOG(ERR,
-			    "Invalid table scope allocated id:%d\n",
-			    (int)tbl_scope_id);
-		return -EINVAL;
-	}
-
-	parms.rm_db = eem_db[TF_DIR_RX];
-	parms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-	parms.index = rm_tbl_scope_id;
-
-	rc = tf_rm_free(&parms);
-	return rc;
-};
 
 int
 tf_create_tbl_pool_external(enum tf_dir dir,
@@ -1128,4 +1045,93 @@ tf_em_ext_common_free(struct tf *tfp,
 		      struct tf_free_tbl_scope_parms *parms)
 {
 	return tf_em_ext_free(tfp, parms);
+}
+
+int tf_em_ext_map_tbl_scope(struct tf *tfp,
+			    struct tf_map_tbl_scope_parms *parms)
+{
+	int rc = 0;
+	struct tf_session *tfs;
+	struct tf_tbl_scope_cb *tbl_scope_cb;
+	struct tf_global_cfg_parms gcfg_parms = { 0 };
+	struct tfp_calloc_parms aparms;
+	uint32_t *data, *mask;
+	uint32_t sz_in_bytes = 8;
+	struct tf_dev_info *dev;
+
+	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
+
+	if (tbl_scope_cb == NULL) {
+		TFP_DRV_LOG(ERR, "Invalid tbl_scope_cb tbl_scope_id(%d)\n",
+			    parms->tbl_scope_id);
+		return -EINVAL;
+	}
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc)
+		return rc;
+
+	if (dev->ops->tf_dev_map_tbl_scope == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "Map table scope operation not supported, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	aparms.nitems = 2;
+	aparms.size = sizeof(uint32_t);
+	aparms.alignment = 0;
+
+	if (tfp_calloc(&aparms) != 0) {
+		TFP_DRV_LOG(ERR, "Map tbl scope alloc data error %s\n",
+			    strerror(ENOMEM));
+		return -ENOMEM;
+	}
+	data = aparms.mem_va;
+
+	if (tfp_calloc(&aparms) != 0) {
+		TFP_DRV_LOG(ERR, "Map tbl scope alloc mask error %s\n",
+			    strerror(ENOMEM));
+		rc = -ENOMEM;
+		goto clean;
+	}
+	mask = aparms.mem_va;
+
+	rc = dev->ops->tf_dev_map_parif(tfp, parms, (uint8_t *)data,
+					(uint8_t *)mask, sz_in_bytes);
+
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Map table scope config failure, rc:%s\n",
+			    strerror(-rc));
+		goto cleaner;
+	}
+
+	gcfg_parms.type =
+		(enum tf_global_config_type)TF_GLOBAL_CFG_INTERNAL_PARIF_2_PF;
+	gcfg_parms.offset = 0;
+	gcfg_parms.config = (uint8_t *)data;
+	gcfg_parms.config_mask = (uint8_t *)mask;
+	gcfg_parms.config_sz_in_bytes = sizeof(uint64_t);
+
+
+	rc = tf_msg_set_global_cfg(tfp, &gcfg_parms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Map tbl scope, set failed, rc:%s\n",
+			    strerror(-rc));
+	}
+cleaner:
+	tfp_free(mask);
+clean:
+	tfp_free(data);
+
+	return rc;
 }

@@ -898,12 +898,29 @@ struct tf_alloc_tbl_scope_parms {
 	 */
 	uint32_t tbl_scope_id;
 };
-
+/**
+ * tf_free_tbl_scope_parms definition
+ */
 struct tf_free_tbl_scope_parms {
 	/**
 	 * [in] table scope identifier
 	 */
 	uint32_t tbl_scope_id;
+};
+
+/**
+ * tf_map_tbl_scope_parms definition
+ */
+struct tf_map_tbl_scope_parms {
+	/**
+	 * [in] table scope identifier
+	 */
+	uint32_t tbl_scope_id;
+	/**
+	 * [in] Which parifs are associated with this table scope.  Bit 0
+	 *      indicates parif 0.
+	 */
+	uint16_t parif_bitmask;
 };
 
 /**
@@ -915,13 +932,13 @@ struct tf_free_tbl_scope_parms {
  * device constraints based upon calculations using either the number of flows
  * requested or the size of memory indicated.  Other parameters passed in
  * determine the configuration (maximum key size, maximum external action record
- * size.
+ * size).
  *
- * This API will allocate the table region in
- * DRAM, program the PTU page table entries, and program the number of static
- * buckets (if SR2) in the RX and TX CFAs.  Buckets are assumed to start at
- * 0 in the EM memory for the scope.  Upon successful completion of this API,
- * hash tables are fully initialized and ready for entries to be inserted.
+ * This API will allocate the table region in DRAM, program the PTU page table
+ * entries, and program the number of static buckets (if SR2) in the RX and TX
+ * CFAs.  Buckets are assumed to start at 0 in the EM memory for the scope.
+ * Upon successful completion of this API, hash tables are fully initialized and
+ * ready for entries to be inserted.
  *
  * A single API is used to allocate a common table scope identifier in both
  * receive and transmit CFA. The scope identifier is common due to nature of
@@ -944,7 +961,25 @@ struct tf_free_tbl_scope_parms {
 int tf_alloc_tbl_scope(struct tf *tfp,
 		       struct tf_alloc_tbl_scope_parms *parms);
 
+/**
+ * map a table scope (legacy device only Wh+/SR)
+ *
+ * Map a table scope to one or more partition interfaces (parifs).
+ * The parif can be remapped in the L2 context lookup for legacy devices.  This
+ * API allows a number of parifs to be mapped to the same table scope.  On
+ * legacy devices a table scope identifies one of 16 sets of EEM table base
+ * addresses and is associated with a PF communication channel.  The associated
+ * PF must be configured for the table scope to operate.
+ *
+ * An L2 context TCAM lookup returns a remapped parif value used to
+ * index into the set of 16 parif_to_pf registers which are used to map to one
+ * of the 16 table scopes.  This API allows the user to map the parifs in the
+ * mask to the previously allocated table scope (EEM table).
 
+ * Returns success or failure code.
+ */
+int tf_map_tbl_scope(struct tf *tfp,
+		      struct tf_map_tbl_scope_parms *parms);
 /**
  * free a table scope
  *
@@ -1908,6 +1943,12 @@ struct tf_global_cfg_parms {
 	 * get - Read the full configuration
 	 */
 	uint8_t *config;
+	/**
+	 * [in] Configuration mask
+	 * set - Read, Modify with mask and Write
+	 * get - unused
+	 */
+	uint8_t *config_mask;
 	/**
 	 * [in] struct containing size
 	 */

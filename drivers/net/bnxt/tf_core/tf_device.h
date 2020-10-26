@@ -573,6 +573,45 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_alloc_tbl_scope)(struct tf *tfp,
 				      struct tf_alloc_tbl_scope_parms *parms);
+	/**
+	 * Map EEM parif
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table scope map parameters
+	 *
+	 * [in/out] pointer to the parif_2_pf data to be updated
+	 *
+	 * [in/out] pointer to the parif_2_pf mask to be updated
+	 *
+	 * [in] sz_in_bytes - number of bytes to be written
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_map_parif)(struct tf *tfp,
+				struct tf_map_tbl_scope_parms *parms,
+				uint8_t *data,
+				uint8_t *mask,
+				uint16_t sz_in_bytes);
+	/**
+	 * Map EEM table scope
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table scope map parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_map_tbl_scope)(struct tf *tfp,
+				    struct tf_map_tbl_scope_parms *parms);
 
 	/**
 	 * Free EEM table scope
@@ -642,7 +681,7 @@ struct tf_dev_ops {
 	 *    -EINVAL - Error
 	 */
 	int (*tf_dev_set_global_cfg)(struct tf *tfp,
-				     struct tf_dev_global_cfg_parms *parms);
+				     struct tf_global_cfg_parms *parms);
 
 	/**
 	 * Get global cfg
@@ -658,7 +697,7 @@ struct tf_dev_ops {
 	 *    -EINVAL - Error
 	 */
 	int (*tf_dev_get_global_cfg)(struct tf *tfp,
-				     struct tf_dev_global_cfg_parms *parms);
+				     struct tf_global_cfg_parms *parms);
 };
 
 /**

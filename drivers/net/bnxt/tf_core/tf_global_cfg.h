@@ -13,7 +13,15 @@
  * The global cfg module provides processing of global cfg types.
  */
 
-struct tf;
+/* struct tf; */
+
+/* Internal type not available to user
+ * but available internally within Truflow
+ */
+enum tf_global_config_internal_type {
+	TF_GLOBAL_CFG_INTERNAL_PARIF_2_PF = TF_GLOBAL_CFG_TYPE_MAX,
+	TF_GLOBAL_CFG_INTERNAL_TYPE_MAX
+};
 
 /**
  * Global cfg configuration enumeration.
@@ -59,34 +67,6 @@ struct tf_global_cfg_cfg_parms {
 	 * Table Type element configuration array
 	 */
 	struct tf_global_cfg_cfg *cfg;
-};
-
-/**
- * global cfg parameters
- */
-struct tf_dev_global_cfg_parms {
-	/**
-	 * [in] Receive or transmit direction
-	 */
-	enum tf_dir dir;
-	/**
-	 * [in] Global config type
-	 */
-	enum tf_global_config_type type;
-	/**
-	 * [in] Offset @ the type
-	 */
-	uint32_t offset;
-	/**
-	 * [in/out] Value of the configuration
-	 * set - Read, Modify and Write
-	 * get - Read the full configuration
-	 */
-	uint8_t *config;
-	/**
-	 * [in] struct containing size
-	 */
-	uint16_t config_sz_in_bytes;
 };
 
 /**
@@ -149,7 +129,7 @@ tf_global_cfg_unbind(struct tf *tfp);
  *   - (-EINVAL) on failure.
  */
 int tf_global_cfg_set(struct tf *tfp,
-		      struct tf_dev_global_cfg_parms *parms);
+		      struct tf_global_cfg_parms *parms);
 
 /**
  * Get global configuration
@@ -165,6 +145,6 @@ int tf_global_cfg_set(struct tf *tfp,
  *   - (-EINVAL) on failure.
  */
 int tf_global_cfg_get(struct tf *tfp,
-		      struct tf_dev_global_cfg_parms *parms);
+		      struct tf_global_cfg_parms *parms);
 
 #endif /* TF_GLOBAL_CFG_H */

@@ -1075,7 +1075,7 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 
 int
 tf_msg_get_global_cfg(struct tf *tfp,
-		      struct tf_dev_global_cfg_parms *params)
+		      struct tf_global_cfg_parms *params)
 {
 	int rc = 0;
 	struct tfp_send_msg_parms parms = { 0 };
@@ -1133,7 +1133,7 @@ tf_msg_get_global_cfg(struct tf *tfp,
 
 int
 tf_msg_set_global_cfg(struct tf *tfp,
-		      struct tf_dev_global_cfg_parms *params)
+		      struct tf_global_cfg_parms *params)
 {
 	int rc = 0;
 	struct tfp_send_msg_parms parms = { 0 };
@@ -1173,6 +1173,15 @@ tf_msg_set_global_cfg(struct tf *tfp,
 
 	tfp_memcpy(req.data, params->config,
 		   params->config_sz_in_bytes);
+
+	/* Only set mask if pointer is provided
+	 */
+	if (params->config_mask) {
+		tfp_memcpy(req.data + params->config_sz_in_bytes,
+			   params->config_mask,
+			   params->config_sz_in_bytes);
+	}
+
 	req.size = tfp_cpu_to_le_32(params->config_sz_in_bytes);
 
 	parms.tf_type = HWRM_TF_GLOBAL_CFG_SET;

@@ -462,7 +462,7 @@ int tf_msg_get_tbl_entry(struct tf *tfp,
  *   0 on Success else internal Truflow error
  */
 int tf_msg_get_global_cfg(struct tf *tfp,
-			  struct tf_dev_global_cfg_parms *params);
+			  struct tf_global_cfg_parms *params);
 
 /**
  * Sends global cfg update request to Firmware
@@ -477,7 +477,7 @@ int tf_msg_get_global_cfg(struct tf *tfp,
  *   0 on Success else internal Truflow error
  */
 int tf_msg_set_global_cfg(struct tf *tfp,
-			  struct tf_dev_global_cfg_parms *params);
+			  struct tf_global_cfg_parms *params);
 
 /**
  * Sends bulk get message of a Table Type element to the firmware.

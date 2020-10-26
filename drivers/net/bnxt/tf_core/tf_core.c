@@ -303,7 +303,6 @@ int tf_get_global_cfg(struct tf *tfp,
 	int rc = 0;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_dev_global_cfg_parms gparms = { 0 };
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -342,12 +341,7 @@ int tf_get_global_cfg(struct tf *tfp,
 		return -EOPNOTSUPP;
 	}
 
-	gparms.dir = parms->dir;
-	gparms.type = parms->type;
-	gparms.offset = parms->offset;
-	gparms.config = parms->config;
-	gparms.config_sz_in_bytes = parms->config_sz_in_bytes;
-	rc = dev->ops->tf_dev_get_global_cfg(tfp, &gparms);
+	rc = dev->ops->tf_dev_get_global_cfg(tfp, parms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s: Global Cfg get failed, rc:%s\n",
@@ -371,7 +365,6 @@ int tf_set_global_cfg(struct tf *tfp,
 	int rc = 0;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_dev_global_cfg_parms gparms = { 0 };
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -410,12 +403,7 @@ int tf_set_global_cfg(struct tf *tfp,
 		return -EOPNOTSUPP;
 	}
 
-	gparms.dir = parms->dir;
-	gparms.type = parms->type;
-	gparms.offset = parms->offset;
-	gparms.config = parms->config;
-	gparms.config_sz_in_bytes = parms->config_sz_in_bytes;
-	rc = dev->ops->tf_dev_set_global_cfg(tfp, &gparms);
+	rc = dev->ops->tf_dev_set_global_cfg(tfp, parms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s: Global Cfg set failed, rc:%s\n",
@@ -1347,6 +1335,44 @@ tf_alloc_tbl_scope(struct tf *tfp,
 	} else {
 		TFP_DRV_LOG(ERR,
 			    "Alloc table scope not supported by device\n");
+		return -EINVAL;
+	}
+
+	return rc;
+}
+int
+tf_map_tbl_scope(struct tf *tfp,
+		   struct tf_map_tbl_scope_parms *parms)
+{
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	int rc;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup device, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_map_tbl_scope != NULL) {
+		rc = dev->ops->tf_dev_map_tbl_scope(tfp, parms);
+	} else {
+		TFP_DRV_LOG(ERR,
+			    "Map table scope not supported by device\n");
 		return -EINVAL;
 	}
 
