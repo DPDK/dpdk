@@ -34,6 +34,7 @@
 #include <rte_mbuf.h>
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
+#include <rte_security_driver.h>
 #include <rte_prefetch.h>
 #include <rte_udp.h>
 #include <rte_tcp.h>
@@ -694,7 +695,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			if (use_ipsec) {
 				union ixgbe_crypto_tx_desc_md *ipsec_mdata =
 					(union ixgbe_crypto_tx_desc_md *)
-							&tx_pkt->udata64;
+						rte_security_dynfield(tx_pkt);
 				tx_offload.sa_idx = ipsec_mdata->sa_idx;
 				tx_offload.sec_pad_len = ipsec_mdata->pad_len;
 			}
@@ -859,7 +860,8 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				}
 
 				ixgbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req,
-					tx_offload, &tx_pkt->udata64);
+					tx_offload,
+					rte_security_dynfield(tx_pkt));
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;

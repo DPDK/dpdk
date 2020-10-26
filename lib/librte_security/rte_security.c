@@ -23,6 +23,22 @@
 	RTE_PTR_OR_ERR_RET(p1->p2->p3, last_retval);			\
 } while (0)
 
+#define RTE_SECURITY_DYNFIELD_NAME "rte_security_dynfield_metadata"
+int rte_security_dynfield_offset = -1;
+
+int
+rte_security_dynfield_register(void)
+{
+	static const struct rte_mbuf_dynfield dynfield_desc = {
+		.name = RTE_SECURITY_DYNFIELD_NAME,
+		.size = sizeof(rte_security_dynfield_t),
+		.align = __alignof__(rte_security_dynfield_t),
+	};
+	rte_security_dynfield_offset =
+		rte_mbuf_dynfield_register(&dynfield_desc);
+	return rte_security_dynfield_offset;
+}
+
 struct rte_security_session *
 rte_security_session_create(struct rte_security_ctx *instance,
 			    struct rte_security_session_conf *conf,

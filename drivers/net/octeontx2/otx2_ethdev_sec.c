@@ -684,7 +684,7 @@ otx2_eth_sec_set_pkt_mdata(void *device __rte_unused,
 			    struct rte_mbuf *m, void *params __rte_unused)
 {
 	/* Set security session as the pkt metadata */
-	m->udata64 = (uint64_t)session;
+	*rte_security_dynfield(m) = (rte_security_dynfield_t)session;
 
 	return 0;
 }
@@ -830,6 +830,9 @@ otx2_eth_sec_init(struct rte_eth_dev *eth_dev)
 	if (!(dev->tx_offloads & DEV_TX_OFFLOAD_SECURITY) &&
 	    !(dev->rx_offloads & DEV_RX_OFFLOAD_SECURITY))
 		return 0;
+
+	if (rte_security_dynfield_register() < 0)
+		return -rte_errno;
 
 	nb_sa = dev->ipsec_in_max_spi;
 	mz_sz = nb_sa * sa_width;

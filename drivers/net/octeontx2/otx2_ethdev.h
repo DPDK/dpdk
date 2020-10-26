@@ -13,6 +13,7 @@
 #include <rte_kvargs.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
+#include <rte_security_driver.h>
 #include <rte_string_fns.h>
 #include <rte_time.h>
 

@@ -455,6 +455,9 @@ otx2_crypto_sec_session_create(void *device,
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL)
 		return -ENOTSUP;
 
+	if (rte_security_dynfield_register() < 0)
+		return -rte_errno;
+
 	if (rte_mempool_get(mempool, (void **)&priv)) {
 		otx2_err("Could not allocate security session private data");
 		return -ENOMEM;
@@ -514,7 +517,7 @@ otx2_crypto_sec_set_pkt_mdata(void *device __rte_unused,
 			      struct rte_mbuf *m, void *params __rte_unused)
 {
 	/* Set security session as the pkt metadata */
-	m->udata64 = (uint64_t)session;
+	*rte_security_dynfield(m) = (rte_security_dynfield_t)session;
 
 	return 0;
 }

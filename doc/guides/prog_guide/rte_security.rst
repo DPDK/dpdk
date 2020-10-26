@@ -125,8 +125,9 @@ ESP/AH headers will be removed from the packet and the received packet
 will contains the decrypted packet only. The driver Rx path checks the
 descriptors and based on the crypto status sets additional flags in
 ``rte_mbuf.ol_flags`` field. The driver would also set device-specific
-metadata in ``rte_mbuf.udata64`` field. This will allow the application
-to identify the security processing done on the packet.
+metadata in ``RTE_SECURITY_DYNFIELD_NAME`` field.
+This will allow the application to identify the security processing
+done on the packet.
 
 .. note::
 
@@ -568,8 +569,8 @@ security session which processed the packet.
 
 .. note::
 
-    In case of inline processed packets, ``rte_mbuf.udata64`` field would be
-    used by the driver to relay information on the security processing
+    In case of inline processed packets, ``RTE_SECURITY_DYNFIELD_NAME`` field
+    would be used by the driver to relay information on the security processing
     associated with the packet. In ingress, the driver would set this in Rx
     path while in egress, ``rte_security_set_pkt_metadata()`` would perform a
     similar operation. The application is expected not to modify the field

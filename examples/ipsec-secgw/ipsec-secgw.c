@@ -426,7 +426,8 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 	 * with the security session.
 	 */
 
-	if (pkt->ol_flags & PKT_RX_SEC_OFFLOAD) {
+	if (pkt->ol_flags & PKT_RX_SEC_OFFLOAD &&
+			rte_security_dynfield_is_registered()) {
 		struct ipsec_sa *sa;
 		struct ipsec_mbuf_metadata *priv;
 		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
@@ -436,10 +437,8 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		/* Retrieve the userdata registered. Here, the userdata
 		 * registered is the SA pointer.
 		 */
-
-		sa = (struct ipsec_sa *)
-				rte_security_get_userdata(ctx, pkt->udata64);
-
+		sa = (struct ipsec_sa *)rte_security_get_userdata(ctx,
+				*rte_security_dynfield(pkt));
 		if (sa == NULL) {
 			/* userdata could not be retrieved */
 			return;

@@ -89,6 +89,9 @@ typedef int (*security_session_stats_get_t)(void *device,
 		struct rte_security_session *sess,
 		struct rte_security_stats *stats);
 
+__rte_experimental
+int rte_security_dynfield_register(void);
+
 /**
  * Update the mbuf with provided metadata.
  *

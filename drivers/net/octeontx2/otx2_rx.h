@@ -241,7 +241,7 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	spi = cq->tag & 0xFFFFF;
 
 	sa = nix_rx_sec_sa_get(lookup_mem, spi, m->port);
-	m->udata64 = (uint64_t)sa->userdata;
+	*rte_security_dynfield(m) = sa->udata64;
 
 	data = rte_pktmbuf_mtod(m, char *);
 
