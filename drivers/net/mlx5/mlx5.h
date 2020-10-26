@@ -729,6 +729,7 @@ struct mlx5_ind_table_obj {
 };
 
 /* Hash Rx queue. */
+__extension__
 struct mlx5_hrxq {
 	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */

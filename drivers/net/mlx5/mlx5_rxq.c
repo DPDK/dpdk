@@ -1402,24 +1402,88 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 * the vector Rx will not be used.
 	 */
 	uint16_t desc_n = desc + config->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
+	const struct rte_eth_rxseg_split *qs_seg = rx_seg;
+	unsigned int tail_len;
 
-	if (non_scatter_min_mbuf_size > mb_len && !(offloads &
-						    DEV_RX_OFFLOAD_SCATTER)) {
+	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl) +
+			   desc_n * sizeof(struct rte_mbuf *), 0, socket);
+	if (!tmpl) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_ASSERT(n_seg && n_seg <= MLX5_MAX_RXQ_NSEG);
+	/*
+	 * Build the array of actual buffer offsets and lengths.
+	 * Pad with the buffers from the last memory pool if
+	 * needed to handle max size packets, replace zero length
+	 * with the buffer length from the pool.
+	 */
+	tail_len = max_rx_pkt_len;
+	do {
+		struct mlx5_eth_rxseg *hw_seg =
+					&tmpl->rxq.rxseg[tmpl->rxq.rxseg_n];
+		uint32_t buf_len, offset, seg_len;
+
+		/*
+		 * For the buffers beyond descriptions offset is zero,
+		 * the first buffer contains head room.
+		 */
+		buf_len = rte_pktmbuf_data_room_size(qs_seg->mp);
+		offset = (tmpl->rxq.rxseg_n >= n_seg ? 0 : qs_seg->offset) +
+			 (tmpl->rxq.rxseg_n ? 0 : RTE_PKTMBUF_HEADROOM);
+		/*
+		 * For the buffers beyond descriptions the length is
+		 * pool buffer length, zero lengths are replaced with
+		 * pool buffer length either.
+		 */
+		seg_len = tmpl->rxq.rxseg_n >= n_seg ? buf_len :
+						       qs_seg->length ?
+						       qs_seg->length :
+						       (buf_len - offset);
+		/* Check is done in long int, now overflows. */
+		if (buf_len < seg_len + offset) {
+			DRV_LOG(ERR, "port %u Rx queue %u: Split offset/length "
+				     "%u/%u can't be satisfied",
+				     dev->data->port_id, idx,
+				     qs_seg->length, qs_seg->offset);
+			rte_errno = EINVAL;
+			goto error;
+		}
+		if (seg_len > tail_len)
+			seg_len = buf_len - offset;
+		if (++tmpl->rxq.rxseg_n > MLX5_MAX_RXQ_NSEG) {
+			DRV_LOG(ERR,
+				"port %u too many SGEs (%u) needed to handle"
+				" requested maximum packet size %u, the maximum"
+				" supported are %u", dev->data->port_id,
+				tmpl->rxq.rxseg_n, max_rx_pkt_len,
+				MLX5_MAX_RXQ_NSEG);
+			rte_errno = ENOTSUP;
+			goto error;
+		}
+		/* Build the actual scattering element in the queue object. */
+		hw_seg->mp = qs_seg->mp;
+		MLX5_ASSERT(offset <= UINT16_MAX);
+		MLX5_ASSERT(seg_len <= UINT16_MAX);
+		hw_seg->offset = (uint16_t)offset;
+		hw_seg->length = (uint16_t)seg_len;
+		/*
+		 * Advance the segment descriptor, the padding is the based
+		 * on the attributes of the last descriptor.
+		 */
+		if (tmpl->rxq.rxseg_n < n_seg)
+			qs_seg++;
+		tail_len -= RTE_MIN(tail_len, seg_len);
+	} while (tail_len || !rte_is_power_of_2(tmpl->rxq.rxseg_n));
+	MLX5_ASSERT(tmpl->rxq.rxseg_n &&
+		    tmpl->rxq.rxseg_n <= MLX5_MAX_RXQ_NSEG);
+	if (tmpl->rxq.rxseg_n > 1 && !(offloads & DEV_RX_OFFLOAD_SCATTER)) {
 		DRV_LOG(ERR, "port %u Rx queue %u: Scatter offload is not"
 			" configured and no enough mbuf space(%u) to contain "
 			"the maximum RX packet length(%u) with head-room(%u)",
 			dev->data->port_id, idx, mb_len, max_rx_pkt_len,
 			RTE_PKTMBUF_HEADROOM);
 		rte_errno = ENOSPC;
-		return NULL;
-	}
-	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-		sizeof(*tmpl) + desc_n * sizeof(struct rte_mbuf *) +
-		(desc >> mprq_stride_nums) * sizeof(struct mlx5_mprq_buf *),
-		0, socket);
-
-	if (!tmpl) {
-		rte_errno = ENOMEM;
 		return NULL;
 	}
 	tmpl->type = MLX5_RXQ_TYPE_STANDARD;
@@ -1438,7 +1502,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 *  - The number of descs is more than the number of strides.
 	 *  - max_rx_pkt_len plus overhead is less than the max size
 	 *    of a stride or mprq_stride_size is specified by a user.
-	 *    Need to nake sure that there are enough stides to encap
+	 *    Need to make sure that there are enough strides to encap
 	 *    the maximum packet size in case mprq_stride_size is set.
 	 *  Otherwise, enable Rx scatter if necessary.
 	 */
@@ -1468,11 +1532,11 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			" strd_num_n = %u, strd_sz_n = %u",
 			dev->data->port_id, idx,
 			tmpl->rxq.strd_num_n, tmpl->rxq.strd_sz_n);
-	} else if (max_rx_pkt_len <= first_mb_free_size) {
+	} else if (tmpl->rxq.rxseg_n == 1) {
+		MLX5_ASSERT(max_rx_pkt_len <= first_mb_free_size);
 		tmpl->rxq.sges_n = 0;
 		max_lro_size = max_rx_pkt_len;
 	} else if (offloads & DEV_RX_OFFLOAD_SCATTER) {
-		unsigned int size = non_scatter_min_mbuf_size;
 		unsigned int sges_n;
 
 		if (lro_on_queue && first_mb_free_size <
@@ -1487,7 +1551,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		 * Determine the number of SGEs needed for a full packet
 		 * and round it to the next power of two.
 		 */
-		sges_n = log2above((size / mb_len) + !!(size % mb_len));
+		sges_n = log2above(tmpl->rxq.rxseg_n);
 		if (sges_n > MLX5_MAX_LOG_RQ_SEGS) {
 			DRV_LOG(ERR,
 				"port %u too many SGEs (%u) needed to handle"
