@@ -157,6 +157,7 @@ New Features
   * Updated HWRM structures to 1.10.1.70 version.
   * Added TRUFLOW support for Stingray devices.
   * Added support for representors on MAIA cores of SR.
+  * Added support for VXLAN decap offload using rte_flow.
 
 * **Updated Cisco enic driver.**
 

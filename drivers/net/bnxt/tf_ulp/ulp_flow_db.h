@@ -60,6 +60,8 @@ struct ulp_fdb_parent_info {
 	uint64_t	pkt_count;
 	uint64_t	byte_count;
 	uint64_t	*child_fid_bitset;
+	uint32_t	f2_cnt;
+	uint8_t		tun_idx;
 };
 
 /* Structure to maintain parent-child flow relationships */

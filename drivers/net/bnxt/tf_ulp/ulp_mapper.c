@@ -2815,6 +2815,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.parent_flow = cparms->parent_flow;
 	parms.parent_fid = cparms->parent_fid;
 	parms.fid = cparms->flow_id;
+	parms.tun_idx = cparms->tun_idx;
 
 	/* Get the device id from the ulp context */
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &parms.dev_id)) {

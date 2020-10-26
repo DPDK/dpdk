@@ -13,6 +13,8 @@
 #include "rte_ethdev.h"
 
 #include "ulp_template_db_enum.h"
+#include "ulp_tun.h"
+#include "bnxt_tf_common.h"
 
 /* NAT defines to reuse existing inner L2 SMAC and DMAC */
 #define BNXT_ULP_NAT_INNER_L2_HEADER_SMAC	0x2000
@@ -55,6 +57,9 @@ struct bnxt_ulp_data {
 	struct bnxt_ulp_df_rule_info	df_rule_info[RTE_MAX_ETHPORTS];
 	struct bnxt_ulp_vfr_rule_info	vfr_rule_info[RTE_MAX_ETHPORTS];
 	enum bnxt_ulp_flow_mem_type	mem_type;
+#define	BNXT_ULP_TUN_ENTRY_INVALID	-1
+#define	BNXT_ULP_MAX_TUN_CACHE_ENTRIES	16
+	struct bnxt_tun_cache_entry	tun_tbl[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
 };
 
 struct bnxt_ulp_context {
@@ -151,6 +156,10 @@ bnxt_ulp_cntxt_ptr2_flow_db_set(struct bnxt_ulp_context	*ulp_ctx,
 struct bnxt_ulp_flow_db	*
 bnxt_ulp_cntxt_ptr2_flow_db_get(struct bnxt_ulp_context	*ulp_ctx);
 
+/* Function to get the tunnel cache table info from the ulp context. */
+struct bnxt_tun_cache_entry *
+bnxt_ulp_cntxt_ptr2_tun_tbl_get(struct bnxt_ulp_context	*ulp_ctx);
+
 /* Function to get the ulp context from eth device. */
 struct bnxt_ulp_context	*
 bnxt_ulp_eth_dev_ptr2_cntxt_get(struct rte_eth_dev *dev);
@@ -213,5 +222,8 @@ bnxt_ulp_cntxt_acquire_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
 
 void
 bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
+
+int32_t
+ulp_post_process_tun_flow(struct ulp_rte_parser_params *params);
 
 #endif /* _BNXT_ULP_H_ */

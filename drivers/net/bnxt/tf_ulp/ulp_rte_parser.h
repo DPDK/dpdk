@@ -12,6 +12,7 @@
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 #include "ulp_mapper.h"
+#include "bnxt_tf_common.h"
 
 /* defines to be used in the tunnel header parsing */
 #define BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS	2
@@ -38,9 +39,6 @@
 void
 bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    struct ulp_rte_parser_params *params,
-			    uint32_t priority, uint32_t class_id,
-			    uint32_t act_tmpl, uint16_t func_id,
-			    uint32_t flow_id,
 			    enum bnxt_ulp_fdb_type flow_type);
 
 /* Function to handle the parsing of the RTE port id. */

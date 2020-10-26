@@ -11,6 +11,7 @@
 #include "ulp_mapper.h"
 #include "ulp_flow_db.h"
 #include "ulp_fc_mgr.h"
+#include "ulp_tun.h"
 
 #define ULP_FLOW_DB_RES_DIR_BIT		31
 #define ULP_FLOW_DB_RES_DIR_MASK	0x80000000
@@ -375,6 +376,101 @@ ulp_flow_db_parent_tbl_deinit(struct bnxt_ulp_flow_db *flow_db)
 	}
 }
 
+/* internal validation function for parent flow tbl */
+static struct bnxt_ulp_flow_db *
+ulp_flow_db_parent_arg_validation(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t fid)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return NULL;
+	}
+
+	/* check for max flows */
+	if (fid >= flow_db->flow_tbl.num_flows || !fid) {
+		BNXT_TF_DBG(ERR, "Invalid flow index\n");
+		return NULL;
+	}
+
+	/* No support for parent child db then just exit */
+	if (!flow_db->parent_child_db.entries_count) {
+		BNXT_TF_DBG(ERR, "parent child db not supported\n");
+		return NULL;
+	}
+
+	return flow_db;
+}
+
+/*
+ * Set the tunnel index in the parent flow
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_idx [in] The parent index of the parent flow entry
+ *
+ * returns index on success and negative on failure.
+ */
+static int32_t
+ulp_flow_db_parent_tun_idx_set(struct bnxt_ulp_context *ulp_ctxt,
+			       uint32_t parent_idx, uint8_t tun_idx)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	/* check for parent idx validity */
+	p_pdb = &flow_db->parent_child_db;
+	if (parent_idx >= p_pdb->entries_count ||
+	    !p_pdb->parent_flow_tbl[parent_idx].parent_fid) {
+		BNXT_TF_DBG(ERR, "Invalid parent flow index %x\n", parent_idx);
+		return -EINVAL;
+	}
+
+	p_pdb->parent_flow_tbl[parent_idx].tun_idx = tun_idx;
+	return 0;
+}
+
+/*
+ * Get the tunnel index from the parent flow
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ *
+ * returns 0 if counter accum is set else -1.
+ */
+static int32_t
+ulp_flow_db_parent_tun_idx_get(struct bnxt_ulp_context *ulp_ctxt,
+			       uint32_t parent_fid, uint8_t *tun_idx)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx;
+
+	/* validate the arguments */
+	flow_db = ulp_flow_db_parent_arg_validation(ulp_ctxt, parent_fid);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "parent child db validation failed\n");
+		return -EINVAL;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	for (idx = 0; idx < p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid == parent_fid) {
+			*tun_idx = p_pdb->parent_flow_tbl[idx].tun_idx;
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
 /*
  * Initialize the flow database. Memory is allocated in this
  * call and assigned to the flow database.
@@ -663,6 +759,9 @@ ulp_flow_db_resource_del(struct bnxt_ulp_context *ulp_ctxt,
 	struct bnxt_ulp_flow_tbl *flow_tbl;
 	struct ulp_fdb_resource_info *nxt_resource, *fid_resource;
 	uint32_t nxt_idx = 0;
+	struct bnxt_tun_cache_entry *tun_tbl;
+	uint8_t tun_idx = 0;
+	int rc;
 
 	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
 	if (!flow_db) {
@@ -737,6 +836,18 @@ ulp_flow_db_resource_del(struct bnxt_ulp_context *ulp_ctxt,
 	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
 		ulp_fc_mgr_cntr_reset(ulp_ctxt, params->direction,
 				      params->resource_hndl);
+	}
+
+	if (params->resource_func == BNXT_ULP_RESOURCE_FUNC_PARENT_FLOW) {
+		tun_tbl = bnxt_ulp_cntxt_ptr2_tun_tbl_get(ulp_ctxt);
+		if (!tun_tbl)
+			return -EINVAL;
+
+		rc = ulp_flow_db_parent_tun_idx_get(ulp_ctxt, fid, &tun_idx);
+		if (rc)
+			return rc;
+
+		ulp_clear_tun_entry(tun_tbl, tun_idx);
 	}
 
 	/* all good, return success */
@@ -1159,34 +1270,6 @@ ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 	return 0;
 }
 
-/* internal validation function for parent flow tbl */
-static struct bnxt_ulp_flow_db *
-ulp_flow_db_parent_arg_validation(struct bnxt_ulp_context *ulp_ctxt,
-				  uint32_t fid)
-{
-	struct bnxt_ulp_flow_db *flow_db;
-
-	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
-	if (!flow_db) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return NULL;
-	}
-
-	/* check for max flows */
-	if (fid >= flow_db->flow_tbl.num_flows || !fid) {
-		BNXT_TF_DBG(ERR, "Invalid flow index\n");
-		return NULL;
-	}
-
-	/* No support for parent child db then just exit */
-	if (!flow_db->parent_child_db.entries_count) {
-		BNXT_TF_DBG(ERR, "parent child db not supported\n");
-		return NULL;
-	}
-
-	return flow_db;
-}
-
 /*
  * Allocate the entry in the parent-child database
  *
@@ -1559,7 +1642,7 @@ ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms)
 	struct ulp_flow_db_res_params fid_parms;
 	uint32_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC;
 	struct ulp_flow_db_res_params res_params;
-	int32_t fid_idx;
+	int32_t fid_idx, rc;
 
 	/* create the child flow entry in parent flow table */
 	fid_idx = ulp_flow_db_parent_flow_alloc(parms->ulp_ctx, parms->fid);
@@ -1596,6 +1679,14 @@ ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms)
 			return -1;
 		}
 	}
+
+	rc  = ulp_flow_db_parent_tun_idx_set(parms->ulp_ctx, fid_idx,
+					     parms->tun_idx);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Error setting tun_idx in the parent flow\n");
+		return rc;
+	}
+
 	return 0;
 }
 

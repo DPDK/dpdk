@@ -1321,6 +1321,16 @@ bnxt_ulp_cntxt_ptr2_flow_db_get(struct bnxt_ulp_context	*ulp_ctx)
 	return ulp_ctx->cfg_data->flow_db;
 }
 
+/* Function to get the tunnel cache table info from the ulp context. */
+struct bnxt_tun_cache_entry *
+bnxt_ulp_cntxt_ptr2_tun_tbl_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return NULL;
+
+	return ulp_ctx->cfg_data->tun_tbl;
+}
+
 /* Function to get the ulp context from eth device. */
 struct bnxt_ulp_context	*
 bnxt_ulp_eth_dev_ptr2_cntxt_get(struct rte_eth_dev	*dev)

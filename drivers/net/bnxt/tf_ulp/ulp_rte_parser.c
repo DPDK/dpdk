@@ -6,11 +6,16 @@
 #include "bnxt.h"
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
+#include "bnxt_ulp.h"
 #include "bnxt_tf_common.h"
 #include "ulp_rte_parser.h"
+#include "ulp_matcher.h"
 #include "ulp_utils.h"
 #include "tfp.h"
 #include "ulp_port_db.h"
+#include "ulp_flow_db.h"
+#include "ulp_mapper.h"
+#include "ulp_tun.h"
 
 /* Local defines for the parsing functions */
 #define ULP_VLAN_PRIORITY_SHIFT		13 /* First 3 bits */
@@ -243,14 +248,11 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 	}
 }
 
-/*
- * Function to handle the post processing of the parsing details
- */
-int32_t
-bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params)
+static int32_t
+ulp_post_process_normal_flow(struct ulp_rte_parser_params *params)
 {
-	enum bnxt_ulp_direction_type dir;
 	enum bnxt_ulp_intf_type match_port_type, act_port_type;
+	enum bnxt_ulp_direction_type dir;
 	uint32_t act_port_set;
 
 	/* Get the computed details */
@@ -303,6 +305,16 @@ bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params)
 
 	/* TBD: Handle the flow rejection scenarios */
 	return 0;
+}
+
+/*
+ * Function to handle the post processing of the parsing details
+ */
+int32_t
+bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params)
+{
+	ulp_post_process_normal_flow(params);
+	return ulp_post_process_tun_flow(params);
 }
 
 /*
@@ -679,7 +691,16 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 	params->field_idx += BNXT_ULP_PROTO_HDR_VLAN_NUM;
 
 	/* Update the protocol hdr bitmap */
-	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_ETH)) {
+	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			     BNXT_ULP_HDR_BIT_O_ETH) ||
+	    ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			     BNXT_ULP_HDR_BIT_O_IPV4) ||
+	    ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			     BNXT_ULP_HDR_BIT_O_IPV6) ||
+	    ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			     BNXT_ULP_HDR_BIT_O_UDP) ||
+	    ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			     BNXT_ULP_HDR_BIT_O_TCP)) {
 		ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_I_ETH);
 		inner_flag = 1;
 	} else {
@@ -875,6 +896,22 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	if (!ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			      BNXT_ULP_HDR_BIT_O_ETH) &&
+	    !ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			      BNXT_ULP_HDR_BIT_I_ETH)) {
+		/* Since F2 flow does not include eth item, when parser detects
+		 * IPv4/IPv6 item list and it belongs to the outer header; i.e.,
+		 * o_ipv4/o_ipv6, check if O_ETH and I_ETH is set. If not set,
+		 * then add offset sizeof(o_eth/oo_vlan/oi_vlan) to the index.
+		 * This will allow the parser post processor to update the
+		 * t_dmac in hdr_field[o_eth.dmac]
+		 */
+		idx += (BNXT_ULP_PROTO_HDR_ETH_NUM +
+			BNXT_ULP_PROTO_HDR_VLAN_NUM);
+		params->field_idx = idx;
+	}
+
 	/*
 	 * Copy the rte_flow_item for ipv4 into hdr_field using ipv4
 	 * header fields
@@ -1004,6 +1041,22 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	if (!ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			      BNXT_ULP_HDR_BIT_O_ETH) &&
+	    !ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+			      BNXT_ULP_HDR_BIT_I_ETH)) {
+		/* Since F2 flow does not include eth item, when parser detects
+		 * IPv4/IPv6 item list and it belongs to the outer header; i.e.,
+		 * o_ipv4/o_ipv6, check if O_ETH and I_ETH is set. If not set,
+		 * then add offset sizeof(o_eth/oo_vlan/oi_vlan) to the index.
+		 * This will allow the parser post processor to update the
+		 * t_dmac in hdr_field[o_eth.dmac]
+		 */
+		idx += (BNXT_ULP_PROTO_HDR_ETH_NUM +
+			BNXT_ULP_PROTO_HDR_VLAN_NUM);
+		params->field_idx = idx;
+	}
+
 	/*
 	 * Copy the rte_flow_item for ipv6 into hdr_field using ipv6
 	 * header fields
@@ -1109,9 +1162,11 @@ static void
 ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *param,
 			     uint16_t dst_port)
 {
-	if (dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN))
+	if (dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN)) {
 		ULP_BITMAP_SET(param->hdr_fp_bit.bits,
 			       BNXT_ULP_HDR_BIT_T_VXLAN);
+		ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_L3_TUN, 1);
+	}
 }
 
 /* Function to handle the parsing of RTE Flow item UDP Header. */
@@ -1143,6 +1198,7 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
 						&udp_spec->hdr.src_port,
 						size);
+
 		size = sizeof(udp_spec->hdr.dst_port);
 		field = ulp_rte_parser_fld_copy(field,
 						&udp_spec->hdr.dst_port,
@@ -1689,6 +1745,9 @@ ulp_rte_vxlan_decap_act_handler(const struct rte_flow_action *action_item
 	/* update the hdr_bitmap with vxlan */
 	ULP_BITMAP_SET(params->act_bitmap.bits,
 		       BNXT_ULP_ACTION_BIT_VXLAN_DECAP);
+	/* Update computational field with tunnel decap info */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN_DECAP, 1);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
 	return BNXT_TF_RC_SUCCESS;
 }
 

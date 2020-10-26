@@ -78,6 +78,7 @@ struct bnxt_ulp_mapper_parms {
 	struct bnxt_ulp_device_params           *device_params;
 	uint32_t				parent_fid;
 	uint32_t				parent_flow;
+	uint8_t					tun_idx;
 };
 
 struct bnxt_ulp_mapper_create_parms {
@@ -98,6 +99,7 @@ struct bnxt_ulp_mapper_create_parms {
 	uint32_t			parent_fid;
 	/* if set then create a parent flow */
 	uint32_t			parent_flow;
+	uint8_t				tun_idx;
 };
 
 /* Function to initialize any dynamic mapper data. */

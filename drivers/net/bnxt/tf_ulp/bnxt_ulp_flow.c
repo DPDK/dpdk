@@ -77,24 +77,22 @@ bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
 void
 bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 			    struct ulp_rte_parser_params *params,
-			    uint32_t priority, uint32_t class_id,
-			    uint32_t act_tmpl, uint16_t func_id,
-			    uint32_t fid,
 			    enum bnxt_ulp_fdb_type flow_type)
 {
-	mapper_cparms->app_priority = priority;
-	mapper_cparms->dir_attr = params->dir_attr;
-
-	mapper_cparms->class_tid = class_id;
-	mapper_cparms->act_tid = act_tmpl;
-	mapper_cparms->func_id = func_id;
-	mapper_cparms->hdr_bitmap = &params->hdr_bitmap;
-	mapper_cparms->hdr_field = params->hdr_field;
-	mapper_cparms->comp_fld = params->comp_fld;
-	mapper_cparms->act = &params->act_bitmap;
-	mapper_cparms->act_prop = &params->act_prop;
-	mapper_cparms->flow_type = flow_type;
-	mapper_cparms->flow_id = fid;
+	mapper_cparms->flow_type	= flow_type;
+	mapper_cparms->app_priority	= params->priority;
+	mapper_cparms->dir_attr		= params->dir_attr;
+	mapper_cparms->class_tid	= params->class_id;
+	mapper_cparms->act_tid		= params->act_tmpl;
+	mapper_cparms->func_id		= params->func_id;
+	mapper_cparms->hdr_bitmap	= &params->hdr_bitmap;
+	mapper_cparms->hdr_field	= params->hdr_field;
+	mapper_cparms->comp_fld		= params->comp_fld;
+	mapper_cparms->act		= &params->act_bitmap;
+	mapper_cparms->act_prop		= &params->act_prop;
+	mapper_cparms->flow_id		= params->fid;
+	mapper_cparms->parent_flow	= params->parent_flow;
+	mapper_cparms->parent_fid	= params->parent_fid;
 }
 
 /* Function to create the rte flow. */
@@ -109,7 +107,6 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	struct ulp_rte_parser_params params;
 	struct bnxt_ulp_context *ulp_ctx;
 	int rc, ret = BNXT_TF_RC_ERROR;
-	uint32_t class_id, act_tmpl;
 	struct rte_flow *flow_id;
 	uint16_t func_id;
 	uint32_t fid;
@@ -118,13 +115,13 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 					pattern, actions,
 					error) == BNXT_TF_RC_ERROR) {
 		BNXT_TF_DBG(ERR, "Invalid arguments being passed\n");
-		goto parse_err1;
+		goto flow_error;
 	}
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
-		goto parse_err1;
+		goto flow_error;
 	}
 
 	/* Initialize the parser params */
@@ -145,13 +142,13 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 					 dev->data->port_id,
 					 &func_id)) {
 		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
-		goto parse_err1;
+		goto flow_error;
 	}
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
 		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
-		goto parse_err1;
+		goto flow_error;
 	}
 
 	/* Allocate a Flow ID for attaching all resources for the flow to.
@@ -162,50 +159,55 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 				   func_id, &fid);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
-		goto parse_err2;
+		goto release_lock;
 	}
 
 	/* Parse the rte flow pattern */
 	ret = bnxt_ulp_rte_parser_hdr_parse(pattern, &params);
 	if (ret != BNXT_TF_RC_SUCCESS)
-		goto parse_err3;
+		goto free_fid;
 
 	/* Parse the rte flow action */
 	ret = bnxt_ulp_rte_parser_act_parse(actions, &params);
 	if (ret != BNXT_TF_RC_SUCCESS)
-		goto parse_err3;
+		goto free_fid;
 
+	params.fid = fid;
+	params.func_id = func_id;
+	params.priority = attr->priority;
 	/* Perform the rte flow post process */
 	ret = bnxt_ulp_rte_parser_post_process(&params);
-	if (ret != BNXT_TF_RC_SUCCESS)
-		goto parse_err3;
+	if (ret == BNXT_TF_RC_ERROR)
+		goto free_fid;
+	else if (ret == BNXT_TF_RC_FID)
+		goto return_fid;
 
-	ret = ulp_matcher_pattern_match(&params, &class_id);
+	ret = ulp_matcher_pattern_match(&params, &params.class_id);
 	if (ret != BNXT_TF_RC_SUCCESS)
-		goto parse_err3;
+		goto free_fid;
 
-	ret = ulp_matcher_action_match(&params, &act_tmpl);
+	ret = ulp_matcher_action_match(&params, &params.act_tmpl);
 	if (ret != BNXT_TF_RC_SUCCESS)
-		goto parse_err3;
+		goto free_fid;
 
-	bnxt_ulp_init_mapper_params(&mapper_cparms, &params, attr->priority,
-				    class_id, act_tmpl, func_id, fid,
+	bnxt_ulp_init_mapper_params(&mapper_cparms, &params,
 				    BNXT_ULP_FDB_TYPE_REGULAR);
 	/* Call the ulp mapper to create the flow in the hardware. */
 	ret = ulp_mapper_flow_create(ulp_ctx, &mapper_cparms);
 	if (ret)
-		goto parse_err3;
+		goto free_fid;
 
+return_fid:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	flow_id = (struct rte_flow *)((uintptr_t)fid);
 	return flow_id;
 
-parse_err3:
+free_fid:
 	ulp_flow_db_fid_free(ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR, fid);
-parse_err2:
+release_lock:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
-parse_err1:
+flow_error:
 	rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			   "Failed to create flow.");
 	return NULL;
@@ -219,10 +221,10 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 		       const struct rte_flow_action actions[],
 		       struct rte_flow_error *error)
 {
-	struct ulp_rte_parser_params		params;
+	struct ulp_rte_parser_params params;
+	struct bnxt_ulp_context *ulp_ctx;
 	uint32_t class_id, act_tmpl;
 	int ret = BNXT_TF_RC_ERROR;
-	struct bnxt_ulp_context *ulp_ctx;
 
 	if (bnxt_ulp_flow_validate_args(attr,
 					pattern, actions,
@@ -256,8 +258,10 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 
 	/* Perform the rte flow post process */
 	ret = bnxt_ulp_rte_parser_post_process(&params);
-	if (ret != BNXT_TF_RC_SUCCESS)
+	if (ret == BNXT_TF_RC_ERROR)
 		goto parse_error;
+	else if (ret == BNXT_TF_RC_FID)
+		return 0;
 
 	ret = ulp_matcher_pattern_match(&params, &class_id);
 
@@ -283,10 +287,10 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 		      struct rte_flow *flow,
 		      struct rte_flow_error *error)
 {
-	int ret = 0;
 	struct bnxt_ulp_context *ulp_ctx;
 	uint32_t flow_id;
 	uint16_t func_id;
+	int ret;
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {

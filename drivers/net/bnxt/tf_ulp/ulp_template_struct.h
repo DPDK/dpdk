@@ -72,6 +72,13 @@ struct ulp_rte_parser_params {
 	struct ulp_rte_act_bitmap	act_bitmap;
 	struct ulp_rte_act_prop		act_prop;
 	uint32_t			dir_attr;
+	uint32_t			priority;
+	uint32_t			fid;
+	uint32_t			parent_flow;
+	uint32_t			parent_fid;
+	uint16_t			func_id;
+	uint32_t			class_id;
+	uint32_t			act_tmpl;
 	struct bnxt_ulp_context		*ulp_ctx;
 };
 
