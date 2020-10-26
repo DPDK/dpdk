@@ -278,8 +278,8 @@ virtio_user_set_status(struct virtio_hw *hw, uint8_t status)
 		virtio_user_start_device(dev);
 	else if (status == VIRTIO_CONFIG_STATUS_RESET)
 		virtio_user_reset(hw);
-	dev->status = status;
-	virtio_user_send_status_update(dev, status);
+
+	virtio_user_dev_set_status(dev, status);
 }
 
 static uint8_t
@@ -287,7 +287,7 @@ virtio_user_get_status(struct virtio_hw *hw)
 {
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
-	virtio_user_update_status(dev);
+	virtio_user_dev_update_status(dev);
 
 	return dev->status;
 }

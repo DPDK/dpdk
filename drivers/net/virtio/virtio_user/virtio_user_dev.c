@@ -806,11 +806,13 @@ virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx)
 }
 
 int
-virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status)
+virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status)
 {
 	int ret;
 	uint64_t arg = status;
 
+	pthread_mutex_lock(&dev->mutex);
+	dev->status = status;
 	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER)
 		ret = dev->ops->send_request(dev,
 				VHOST_USER_SET_STATUS, &arg);
@@ -824,22 +826,26 @@ virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status)
 		PMD_INIT_LOG(ERR, "VHOST_USER_SET_STATUS failed (%d): %s", ret,
 			     strerror(errno));
 	}
+
+	pthread_mutex_unlock(&dev->mutex);
 	return ret;
 }
 
 int
-virtio_user_update_status(struct virtio_user_dev *dev)
+virtio_user_dev_update_status(struct virtio_user_dev *dev)
 {
 	uint64_t ret;
 	uint8_t status;
 	int err;
 
+	pthread_mutex_lock(&dev->mutex);
 	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER) {
 		err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS, &ret);
 		if (!err && ret > UINT8_MAX) {
 			PMD_INIT_LOG(ERR, "Invalid VHOST_USER_GET_STATUS "
 					"response 0x%" PRIx64 "\n", ret);
-			return -1;
+			err = -1;
+			goto error;
 		}
 
 		status = ret;
@@ -873,5 +879,7 @@ virtio_user_update_status(struct virtio_user_dev *dev)
 			     strerror(errno));
 	}
 
+error:
+	pthread_mutex_unlock(&dev->mutex);
 	return err;
 }
