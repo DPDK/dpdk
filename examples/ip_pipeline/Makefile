@@ -39,7 +39,7 @@ CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 
-CFLAGS += -I.
+CFLAGS += -I. -DALLOW_EXPERIMENTAL_API -D_GNU_SOURCE
 
 OBJS := $(patsubst %.c,build/%.o,$(SRCS-y))
 
