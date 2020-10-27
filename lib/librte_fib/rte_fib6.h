@@ -61,7 +61,10 @@ enum rte_fib_trie_nh_sz {
 
 /** Type of lookup function implementation */
 enum rte_fib6_lookup_type {
-	RTE_FIB6_LOOKUP_TRIE_SCALAR /**< Scalar lookup function implementation*/
+	RTE_FIB6_LOOKUP_DEFAULT,
+	/**< Selects the best implementation based on the max simd bitwidth */
+	RTE_FIB6_LOOKUP_TRIE_SCALAR, /**< Scalar lookup function implementation*/
+	RTE_FIB6_LOOKUP_TRIE_VECTOR_AVX512 /**< Vector implementation using AVX512 */
 };
 
 /** FIB configuration structure */

@@ -30,6 +30,12 @@ if dpdk_conf.has('RTE_ARCH_X86_64') and binutils_ok.returncode() == 0
 	if acl_avx512_on == true
 		cflags += ['-DCC_DIR24_8_AVX512_SUPPORT']
 		sources += files('dir24_8_avx512.c')
+		# TRIE AVX512 implementation uses avx512bw intrinsics along with
+		# avx512f and avx512dq
+		if cc.get_define('__AVX512BW__', args: machine_args) != ''
+			cflags += ['-DCC_TRIE_AVX512_SUPPORT']
+			sources += files('trie_avx512.c')
+		endif
 	elif cc.has_multi_arguments('-mavx512f', '-mavx512dq')
 		dir24_8_avx512_tmp = static_library('dir24_8_avx512_tmp',
 				'dir24_8_avx512.c',
@@ -37,5 +43,16 @@ if dpdk_conf.has('RTE_ARCH_X86_64') and binutils_ok.returncode() == 0
 				c_args: cflags + ['-mavx512f', '-mavx512dq'])
 		objs += dir24_8_avx512_tmp.extract_objects('dir24_8_avx512.c')
 		cflags += ['-DCC_DIR24_8_AVX512_SUPPORT']
+		# TRIE AVX512 implementation uses avx512bw intrinsics along with
+		# avx512f and avx512dq
+		if cc.has_argument('-mavx512bw')
+			trie_avx512_tmp = static_library('trie_avx512_tmp',
+				'trie_avx512.c',
+				dependencies: static_rte_eal,
+				c_args: cflags + ['-mavx512f', \
+					'-mavx512dq', '-mavx512bw'])
+			objs += trie_avx512_tmp.extract_objects('trie_avx512.c')
+			cflags += ['-DCC_TRIE_AVX512_SUPPORT']
+		endif
 	endif
 endif

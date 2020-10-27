@@ -107,7 +107,7 @@ init_dataplane(struct rte_fib6 *fib, __rte_unused int socket_id,
 		fib->dp = trie_create(dp_name, socket_id, conf);
 		if (fib->dp == NULL)
 			return -rte_errno;
-		fib->lookup = trie_get_lookup_fn(fib->dp, RTE_FIB6_LOOKUP_TRIE_SCALAR);
+		fib->lookup = trie_get_lookup_fn(fib->dp, RTE_FIB6_LOOKUP_DEFAULT);
 		fib->modify = trie_modify;
 		return 0;
 	default:

@@ -13,10 +13,17 @@
 #include <rte_malloc.h>
 #include <rte_errno.h>
 #include <rte_memory.h>
+#include <rte_vect.h>
 
 #include <rte_rib6.h>
 #include <rte_fib6.h>
 #include "trie.h"
+
+#ifdef CC_TRIE_AVX512_SUPPORT
+
+#include "trie_avx512.h"
+
+#endif /* CC_TRIE_AVX512_SUPPORT */
 
 #define TRIE_NAMESIZE		64
 
@@ -40,10 +47,34 @@ get_scalar_fn(enum rte_fib_trie_nh_sz nh_sz)
 	}
 }
 
+static inline rte_fib6_lookup_fn_t
+get_vector_fn(enum rte_fib_trie_nh_sz nh_sz)
+{
+#ifdef CC_TRIE_AVX512_SUPPORT
+	if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0) ||
+			(rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512))
+		return NULL;
+	switch (nh_sz) {
+	case RTE_FIB6_TRIE_2B:
+		return rte_trie_vec_lookup_bulk_2b;
+	case RTE_FIB6_TRIE_4B:
+		return rte_trie_vec_lookup_bulk_4b;
+	case RTE_FIB6_TRIE_8B:
+		return rte_trie_vec_lookup_bulk_8b;
+	default:
+		return NULL;
+	}
+#else
+	RTE_SET_USED(nh_sz);
+#endif
+	return NULL;
+}
+
 rte_fib6_lookup_fn_t
 trie_get_lookup_fn(void *p, enum rte_fib6_lookup_type type)
 {
 	enum rte_fib_trie_nh_sz nh_sz;
+	rte_fib6_lookup_fn_t ret_fn;
 	struct rte_trie_tbl *dp = p;
 
 	if (dp == NULL)
@@ -54,6 +85,11 @@ trie_get_lookup_fn(void *p, enum rte_fib6_lookup_type type)
 	switch (type) {
 	case RTE_FIB6_LOOKUP_TRIE_SCALAR:
 		return get_scalar_fn(nh_sz);
+	case RTE_FIB6_LOOKUP_TRIE_VECTOR_AVX512:
+		return get_vector_fn(nh_sz);
+	case RTE_FIB6_LOOKUP_DEFAULT:
+		ret_fn = get_vector_fn(nh_sz);
+		return (ret_fn != NULL) ? ret_fn : get_scalar_fn(nh_sz);
 	default:
 		return NULL;
 	}
