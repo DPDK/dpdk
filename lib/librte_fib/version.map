@@ -19,6 +19,7 @@ EXPERIMENTAL {
 	rte_fib6_lookup_bulk;
 	rte_fib6_get_dp;
 	rte_fib6_get_rib;
+	rte_fib6_select_lookup;
 
 	local: *;
 };

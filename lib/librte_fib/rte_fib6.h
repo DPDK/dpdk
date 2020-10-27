@@ -52,10 +52,16 @@ enum rte_fib6_op {
 	RTE_FIB6_DEL,
 };
 
+/** Size of nexthop (1 << nh_sz) bits for TRIE based FIB */
 enum rte_fib_trie_nh_sz {
 	RTE_FIB6_TRIE_2B = 1,
 	RTE_FIB6_TRIE_4B,
 	RTE_FIB6_TRIE_8B
+};
+
+/** Type of lookup function implementation */
+enum rte_fib6_lookup_type {
+	RTE_FIB6_LOOKUP_TRIE_SCALAR /**< Scalar lookup function implementation*/
 };
 
 /** FIB configuration structure */
@@ -199,6 +205,22 @@ rte_fib6_get_dp(struct rte_fib6 *fib);
 __rte_experimental
 struct rte_rib6 *
 rte_fib6_get_rib(struct rte_fib6 *fib);
+
+/**
+ * Set lookup function based on type
+ *
+ * @param fib
+ *   FIB object handle
+ * @param type
+ *   type of lookup function
+ *
+ * @return
+ *   0 on success
+ *   -EINVAL on failure
+ */
+__rte_experimental
+int
+rte_fib6_select_lookup(struct rte_fib6 *fib, enum rte_fib6_lookup_type type);
 
 #ifdef __cplusplus
 }

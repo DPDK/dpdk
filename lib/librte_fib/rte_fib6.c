@@ -107,7 +107,7 @@ init_dataplane(struct rte_fib6 *fib, __rte_unused int socket_id,
 		fib->dp = trie_create(dp_name, socket_id, conf);
 		if (fib->dp == NULL)
 			return -rte_errno;
-		fib->lookup = rte_trie_get_lookup_fn(conf);
+		fib->lookup = trie_get_lookup_fn(fib->dp, RTE_FIB6_LOOKUP_TRIE_SCALAR);
 		fib->modify = trie_modify;
 		return 0;
 	default:
@@ -318,4 +318,22 @@ struct rte_rib6 *
 rte_fib6_get_rib(struct rte_fib6 *fib)
 {
 	return (fib == NULL) ? NULL : fib->rib;
+}
+
+int
+rte_fib6_select_lookup(struct rte_fib6 *fib,
+	enum rte_fib6_lookup_type type)
+{
+	rte_fib6_lookup_fn_t fn;
+
+	switch (fib->type) {
+	case RTE_FIB6_TRIE:
+		fn = trie_get_lookup_fn(fib->dp, type);
+		if (fn == NULL)
+			return -EINVAL;
+		fib->lookup = fn;
+		return 0;
+	default:
+		return -EINVAL;
+	}
 }

@@ -22,7 +22,7 @@ void
 trie_free(void *p);
 
 rte_fib6_lookup_fn_t
-rte_trie_get_lookup_fn(struct rte_fib6_conf *fib_conf);
+trie_get_lookup_fn(void *p, enum rte_fib6_lookup_type type);
 
 int
 trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],

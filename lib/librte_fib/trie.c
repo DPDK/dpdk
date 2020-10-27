@@ -59,13 +59,6 @@ enum edge {
 	REDGE
 };
 
-enum lookup_type {
-	MACRO,
-	INLINE,
-	UNI
-};
-static enum lookup_type test_lookup = MACRO;
-
 static inline uint32_t
 get_tbl24_idx(const uint8_t *ip)
 {
@@ -153,22 +146,38 @@ LOOKUP_FUNC(2b, uint16_t, 1)
 LOOKUP_FUNC(4b, uint32_t, 2)
 LOOKUP_FUNC(8b, uint64_t, 3)
 
-rte_fib6_lookup_fn_t
-rte_trie_get_lookup_fn(struct rte_fib6_conf *conf)
+static inline rte_fib6_lookup_fn_t
+get_scalar_fn(enum rte_fib_trie_nh_sz nh_sz)
 {
-	enum rte_fib_trie_nh_sz nh_sz = conf->trie.nh_sz;
-
-	if (test_lookup == MACRO) {
-		switch (nh_sz) {
-		case RTE_FIB6_TRIE_2B:
-			return rte_trie_lookup_bulk_2b;
-		case RTE_FIB6_TRIE_4B:
-			return rte_trie_lookup_bulk_4b;
-		case RTE_FIB6_TRIE_8B:
-			return rte_trie_lookup_bulk_8b;
-		}
+	switch (nh_sz) {
+	case RTE_FIB6_TRIE_2B:
+		return rte_trie_lookup_bulk_2b;
+	case RTE_FIB6_TRIE_4B:
+		return rte_trie_lookup_bulk_4b;
+	case RTE_FIB6_TRIE_8B:
+		return rte_trie_lookup_bulk_8b;
+	default:
+		return NULL;
 	}
+}
 
+rte_fib6_lookup_fn_t
+trie_get_lookup_fn(void *p, enum rte_fib6_lookup_type type)
+{
+	enum rte_fib_trie_nh_sz nh_sz;
+	struct rte_trie_tbl *dp = p;
+
+	if (dp == NULL)
+		return NULL;
+
+	nh_sz = dp->nh_sz;
+
+	switch (type) {
+	case RTE_FIB6_LOOKUP_TRIE_SCALAR:
+		return get_scalar_fn(nh_sz);
+	default:
+		return NULL;
+	}
 	return NULL;
 }
 
