@@ -31,6 +31,7 @@
 #include "mlx5_flow_os.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_common_os.h"
+#include "rte_pmd_mlx5.h"
 
 static struct mlx5_flow_tunnel *
 mlx5_find_tunnel_id(struct rte_eth_dev *dev, uint32_t id);
@@ -3042,6 +3043,14 @@ flow_null_query(struct rte_eth_dev *dev __rte_unused,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL, NULL);
 }
 
+static int
+flow_null_sync_domain(struct rte_eth_dev *dev __rte_unused,
+		      uint32_t domains __rte_unused,
+		      uint32_t flags __rte_unused)
+{
+	return 0;
+}
+
 /* Void driver to protect from null pointer reference. */
 const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops = {
 	.validate = flow_null_validate,
@@ -3051,6 +3060,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops = {
 	.remove = flow_null_remove,
 	.destroy = flow_null_destroy,
 	.query = flow_null_query,
+	.sync_domain = flow_null_sync_domain,
 };
 
 /**
@@ -8167,4 +8177,25 @@ err:
 	if (thub)
 		mlx5_free(thub);
 	return err;
+}
+
+#ifndef HAVE_MLX5DV_DR
+#define MLX5_DOMAIN_SYNC_FLOW ((1 << 0) | (1 << 1))
+#else
+#define MLX5_DOMAIN_SYNC_FLOW \
+	(MLX5DV_DR_DOMAIN_SYNC_FLAGS_SW | MLX5DV_DR_DOMAIN_SYNC_FLAGS_HW)
+#endif
+
+int rte_pmd_mlx5_sync_flow(uint16_t port_id, uint32_t domains)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct mlx5_flow_driver_ops *fops;
+	int ret;
+	struct rte_flow_attr attr = { .transfer = 0 };
+
+	fops = flow_get_drv_ops(flow_get_drv_type(dev, &attr));
+	ret = fops->sync_domain(dev, domains, MLX5_DOMAIN_SYNC_FLOW);
+	if (ret > 0)
+		ret = -ret;
+	return ret;
 }

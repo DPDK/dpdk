@@ -33,6 +33,7 @@
 #include "mlx5_flow.h"
 #include "mlx5_flow_os.h"
 #include "mlx5_rxtx.h"
+#include "rte_pmd_mlx5.h"
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 
@@ -12324,6 +12325,31 @@ flow_dv_action_update(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int
+flow_dv_sync_domain(struct rte_eth_dev *dev, uint32_t domains, uint32_t flags)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int ret = 0;
+
+	if ((domains & MLX5_DOMAIN_BIT_NIC_RX) && priv->sh->rx_domain != NULL) {
+		ret = mlx5_glue->dr_sync_domain(priv->sh->rx_domain,
+						flags);
+		if (ret != 0)
+			return ret;
+	}
+	if ((domains & MLX5_DOMAIN_BIT_NIC_TX) && priv->sh->tx_domain != NULL) {
+		ret = mlx5_glue->dr_sync_domain(priv->sh->tx_domain, flags);
+		if (ret != 0)
+			return ret;
+	}
+	if ((domains & MLX5_DOMAIN_BIT_FDB) && priv->sh->fdb_domain != NULL) {
+		ret = mlx5_glue->dr_sync_domain(priv->sh->fdb_domain, flags);
+		if (ret != 0)
+			return ret;
+	}
+	return 0;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.validate = flow_dv_validate,
 	.prepare = flow_dv_prepare,
@@ -12344,6 +12370,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.action_create = flow_dv_action_create,
 	.action_destroy = flow_dv_action_destroy,
 	.action_update = flow_dv_action_update,
+	.sync_domain = flow_dv_sync_domain,
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */

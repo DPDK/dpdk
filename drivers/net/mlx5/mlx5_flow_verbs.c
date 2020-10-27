@@ -2078,6 +2078,17 @@ flow_verbs_query(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int
+flow_verbs_sync_domain(struct rte_eth_dev *dev, uint32_t domains,
+		       uint32_t flags)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(domains);
+	RTE_SET_USED(flags);
+
+	return 0;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {
 	.validate = flow_verbs_validate,
 	.prepare = flow_verbs_prepare,
@@ -2086,4 +2097,5 @@ const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {
 	.remove = flow_verbs_remove,
 	.destroy = flow_verbs_destroy,
 	.query = flow_verbs_query,
+	.sync_domain = flow_verbs_sync_domain,
 };

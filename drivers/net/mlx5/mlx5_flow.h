@@ -1175,6 +1175,10 @@ typedef int (*mlx5_flow_action_update_t)
 			 struct rte_flow_shared_action *action,
 			 const void *action_conf,
 			 struct rte_flow_error *error);
+typedef int (*mlx5_flow_sync_domain_t)
+			(struct rte_eth_dev *dev,
+			 uint32_t domains,
+			 uint32_t flags);
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
@@ -1195,6 +1199,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_action_create_t action_create;
 	mlx5_flow_action_destroy_t action_destroy;
 	mlx5_flow_action_update_t action_update;
+	mlx5_flow_sync_domain_t sync_domain;
 };
 
 /* mlx5_flow.c */
