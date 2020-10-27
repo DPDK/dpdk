@@ -3504,6 +3504,10 @@ set_fwd_lcores_mask(uint64_t lcoremask)
 void
 set_fwd_lcores_number(uint16_t nb_lc)
 {
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
 	if (nb_lc > nb_cfg_lcores) {
 		printf("nb fwd cores %u > %u (max. number of configured "
 		       "lcores) - ignored\n",
