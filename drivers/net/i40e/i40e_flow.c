@@ -27,7 +27,10 @@
 #define I40E_IPV6_TC_MASK	(0xFF << I40E_FDIR_IPv6_TC_OFFSET)
 #define I40E_IPV6_FRAG_HEADER	44
 #define I40E_TENANT_ARRAY_NUM	3
-#define I40E_TCI_MASK		0xFFFF
+#define I40E_VLAN_TCI_MASK	0xFFFF
+#define I40E_VLAN_PRI_MASK	0xE000
+#define I40E_VLAN_CFI_MASK	0x1000
+#define I40E_VLAN_VID_MASK	0x0FFF
 
 static int i40e_flow_validate(struct rte_eth_dev *dev,
 			      const struct rte_flow_attr *attr,
@@ -2705,12 +2708,22 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 			RTE_ASSERT(!(input_set & I40E_INSET_LAST_ETHER_TYPE));
 			if (vlan_spec && vlan_mask) {
-				if (vlan_mask->tci ==
-				    rte_cpu_to_be_16(I40E_TCI_MASK)) {
-					input_set |= I40E_INSET_VLAN_INNER;
-					filter->input.flow_ext.vlan_tci =
-						vlan_spec->tci;
+				if (vlan_mask->tci !=
+				    rte_cpu_to_be_16(I40E_VLAN_TCI_MASK) &&
+				    vlan_mask->tci !=
+				    rte_cpu_to_be_16(I40E_VLAN_PRI_MASK) &&
+				    vlan_mask->tci !=
+				    rte_cpu_to_be_16(I40E_VLAN_CFI_MASK) &&
+				    vlan_mask->tci !=
+				    rte_cpu_to_be_16(I40E_VLAN_VID_MASK)) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Unsupported TCI mask.");
 				}
+				input_set |= I40E_INSET_VLAN_INNER;
+				filter->input.flow_ext.vlan_tci =
+					vlan_spec->tci;
 			}
 			if (vlan_spec && vlan_mask && vlan_mask->inner_type) {
 				if (vlan_mask->inner_type != RTE_BE16(0xffff)) {
@@ -3894,10 +3907,10 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 
 			if (vlan_spec && vlan_mask) {
 				if (vlan_mask->tci ==
-				    rte_cpu_to_be_16(I40E_TCI_MASK))
+				    rte_cpu_to_be_16(I40E_VLAN_TCI_MASK))
 					filter->inner_vlan =
 					      rte_be_to_cpu_16(vlan_spec->tci) &
-					      I40E_TCI_MASK;
+					      I40E_VLAN_TCI_MASK;
 				filter_type |= ETH_TUNNEL_FILTER_IVLAN;
 			}
 			break;
@@ -4125,10 +4138,10 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 
 			if (vlan_spec && vlan_mask) {
 				if (vlan_mask->tci ==
-				    rte_cpu_to_be_16(I40E_TCI_MASK))
+				    rte_cpu_to_be_16(I40E_VLAN_TCI_MASK))
 					filter->inner_vlan =
 					      rte_be_to_cpu_16(vlan_spec->tci) &
-					      I40E_TCI_MASK;
+					      I40E_VLAN_TCI_MASK;
 				filter_type |= ETH_TUNNEL_FILTER_IVLAN;
 			}
 			break;
@@ -4800,7 +4813,7 @@ i40e_flow_parse_rss_pattern(__rte_unused struct rte_eth_dev *dev,
 			vlan_mask = item->mask;
 			if (vlan_spec && vlan_mask) {
 				if (vlan_mask->tci ==
-					rte_cpu_to_be_16(I40E_TCI_MASK)) {
+					rte_cpu_to_be_16(I40E_VLAN_TCI_MASK)) {
 					info->region[0].user_priority[0] =
 						(rte_be_to_cpu_16(
 						vlan_spec->tci) >> 13) & 0x7;
