@@ -403,6 +403,7 @@ struct txgbe_txq_ops {
 void txgbe_set_tx_function(struct rte_eth_dev *dev, struct txgbe_tx_queue *txq);
 
 void txgbe_set_rx_function(struct rte_eth_dev *dev);
+int txgbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt);
 
 uint64_t txgbe_get_tx_port_offloads(struct rte_eth_dev *dev);
 uint64_t txgbe_get_rx_queue_offloads(struct rte_eth_dev *dev);

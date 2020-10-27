@@ -4066,6 +4066,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.timesync_adjust_time       = txgbe_timesync_adjust_time,
 	.timesync_read_time         = txgbe_timesync_read_time,
 	.timesync_write_time        = txgbe_timesync_write_time,
+	.tx_done_cleanup            = txgbe_dev_tx_done_cleanup,
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe, rte_txgbe_pmd);
