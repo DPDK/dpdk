@@ -18,7 +18,6 @@
 #include <unistd.h>
 
 #include <rte_errno.h>
-#include <rte_atomic.h>
 
 #include "mlx5_nl.h"
 #include "mlx5_common_utils.h"
@@ -169,10 +168,10 @@ struct mlx5_nl_ifindex_data {
 	uint32_t portnum; /**< IB device max port number (out). */
 };
 
-rte_atomic32_t atomic_sn = RTE_ATOMIC32_INIT(0);
+uint32_t atomic_sn;
 
 /* Generate Netlink sequence number. */
-#define MLX5_NL_SN_GENERATE ((uint32_t)rte_atomic32_add_return(&atomic_sn, 1))
+#define MLX5_NL_SN_GENERATE __atomic_add_fetch(&atomic_sn, 1, __ATOMIC_RELAXED)
 
 /**
  * Opens a Netlink socket.
