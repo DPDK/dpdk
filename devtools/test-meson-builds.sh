@@ -264,10 +264,13 @@ if [ -z "$DPDK_ABI_REF_VERSION" ]; then
 fi
 pc_file=$(find $DESTDIR -name libdpdk.pc)
 export PKG_CONFIG_PATH=$(dirname $pc_file):$PKG_CONFIG_PATH
+libdir=$(dirname $(find $DESTDIR -name librte_eal.so))
+export LD_LIBRARY_PATH=$libdir:$LD_LIBRARY_PATH
+examples=${DPDK_BUILD_TEST_EXAMPLES:-"cmdline helloworld l2fwd l3fwd skeleton timer"}
 # if pkg-config defines the necessary flags, test building some examples
 if pkg-config --define-prefix libdpdk >/dev/null 2>&1; then
 	export PKGCONF="pkg-config --define-prefix"
-	for example in cmdline helloworld l2fwd l3fwd skeleton timer; do
+	for example in $examples; do
 		echo "## Building $example"
 		$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example \
 			clean shared static >&$veryverbose
