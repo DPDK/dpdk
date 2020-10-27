@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <rte_memory.h>
 /*
  * Not needed by this file; included to work around the lack of off_t
  * definition for mlx5dv.h with unpatched rdma-core versions.
@@ -16,7 +15,6 @@
 #include <sys/types.h>
 
 #include "mlx5_glue.h"
-#include "../mlx5_malloc.h"
 
 static int
 mlx5_glue_fork_init(void)
@@ -186,7 +184,7 @@ mlx5_glue_destroy_flow_action(void *action)
 		res = ibv_destroy_flow_action(attr->action);
 		break;
 	}
-	mlx5_free(action);
+	free(action);
 	return res;
 #endif
 #else
@@ -632,7 +630,7 @@ mlx5_glue_dv_create_flow_action_counter(void *counter_obj, uint32_t offset)
 	struct mlx5dv_flow_action_attr *action;
 
 	(void)offset;
-	action = mlx5_malloc(0, sizeof(*action), 0, SOCKET_ID_ANY);
+	action = malloc(sizeof(*action));
 	if (!action)
 		return NULL;
 	action->type = MLX5DV_FLOW_ACTION_COUNTERS_DEVX;
@@ -656,7 +654,7 @@ mlx5_glue_dv_create_flow_action_dest_ibv_qp(void *qp)
 #else
 	struct mlx5dv_flow_action_attr *action;
 
-	action = mlx5_malloc(0, sizeof(*action), 0, SOCKET_ID_ANY);
+	action = malloc(sizeof(*action));
 	if (!action)
 		return NULL;
 	action->type = MLX5DV_FLOW_ACTION_DEST_IBV_QP;
@@ -701,7 +699,7 @@ mlx5_glue_dv_create_flow_action_modify_header
 
 	(void)domain;
 	(void)flags;
-	action = mlx5_malloc(0, sizeof(*action), 0, SOCKET_ID_ANY);
+	action = malloc(sizeof(*action));
 	if (!action)
 		return NULL;
 	action->type = MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
@@ -741,7 +739,7 @@ mlx5_glue_dv_create_flow_action_packet_reformat
 	(void)flags;
 	struct mlx5dv_flow_action_attr *action;
 
-	action = mlx5_malloc(0, sizeof(*action), 0, SOCKET_ID_ANY);
+	action = malloc(sizeof(*action));
 	if (!action)
 		return NULL;
 	action->type = MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
@@ -771,7 +769,7 @@ mlx5_glue_dv_create_flow_action_tag(uint32_t tag)
 #else /* HAVE_MLX5DV_DR */
 	struct mlx5dv_flow_action_attr *action;
 
-	action = mlx5_malloc(0, sizeof(*action), 0, SOCKET_ID_ANY);
+	action = malloc(sizeof(*action));
 	if (!action)
 		return NULL;
 	action->type = MLX5DV_FLOW_ACTION_TAG;
