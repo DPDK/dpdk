@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <rte_atomic.h>
 #include <rte_alarm.h>
 #include <rte_mtr.h>
 
@@ -396,7 +395,7 @@ struct mlx5_flow_dv_matcher {
 	/**< Pointer to the next element. */
 	struct mlx5_flow_tbl_resource *tbl;
 	/**< Pointer to the table(group) the matcher associated with. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 	void *matcher_object; /**< Pointer to DV matcher */
 	uint16_t crc; /**< CRC of key. */
 	uint16_t priority; /**< Priority of matcher. */
@@ -421,7 +420,7 @@ union mlx5_flow_encap_decap_key {
 struct mlx5_flow_dv_encap_decap_resource {
 	struct mlx5_hlist_entry entry;
 	/* Pointer to next element. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 	void *action;
 	/**< Encap/decap action object. */
 	uint8_t buf[MLX5_ENCAP_MAX_LEN];
@@ -438,7 +437,7 @@ struct mlx5_flow_dv_tag_resource {
 	/**< hash list entry for tag resource, tag value as the key. */
 	void *action;
 	/**< Tag action object. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 	uint32_t idx; /**< Index for the index memory pool. */
 };
 
@@ -459,7 +458,7 @@ struct mlx5_flow_dv_tag_resource {
 struct mlx5_flow_dv_modify_hdr_resource {
 	struct mlx5_hlist_entry entry;
 	/* Pointer to next element. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 	void *action;
 	/**< Modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
@@ -482,7 +481,7 @@ union mlx5_flow_modify_hdr_key {
 
 /* Jump action resource structure. */
 struct mlx5_flow_dv_jump_tbl_resource {
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	void *action; /**< Pointer to the rdma core action. */
 };
@@ -491,7 +490,7 @@ struct mlx5_flow_dv_jump_tbl_resource {
 struct mlx5_flow_dv_port_id_action_resource {
 	ILIST_ENTRY(uint32_t)next;
 	/* Pointer to next element. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 	void *action;
 	/**< Action object. */
 	uint32_t port_id; /**< Port ID value. */
@@ -501,7 +500,7 @@ struct mlx5_flow_dv_port_id_action_resource {
 struct mlx5_flow_dv_push_vlan_action_resource {
 	ILIST_ENTRY(uint32_t)next;
 	/* Pointer to next element. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 	void *action; /**< Action object. */
 	uint8_t ft_type; /**< Flow table type, Rx, Tx or FDB. */
 	rte_be32_t vlan_tag; /**< VLAN tag value. */

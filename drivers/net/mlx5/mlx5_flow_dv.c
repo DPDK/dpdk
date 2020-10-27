@@ -2873,8 +2873,10 @@ flow_dv_encap_decap_resource_register
 			struct mlx5_flow_dv_encap_decap_resource, entry);
 		DRV_LOG(DEBUG, "encap/decap resource %p: refcnt %d++",
 			(void *)cache_resource,
-			rte_atomic32_read(&cache_resource->refcnt));
-		rte_atomic32_inc(&cache_resource->refcnt);
+			__atomic_load_n(&cache_resource->refcnt,
+					__ATOMIC_RELAXED));
+		__atomic_fetch_add(&cache_resource->refcnt, 1,
+				   __ATOMIC_RELAXED);
 		dev_flow->handle->dvh.rix_encap_decap = cache_resource->idx;
 		dev_flow->dv.encap_decap = cache_resource;
 		return 0;
@@ -2897,8 +2899,7 @@ flow_dv_encap_decap_resource_register
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
 	}
-	rte_atomic32_init(&cache_resource->refcnt);
-	rte_atomic32_inc(&cache_resource->refcnt);
+	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
 	if (mlx5_hlist_insert_ex(sh->encaps_decaps, &cache_resource->entry,
 				 flow_dv_encap_decap_resource_match,
 				 (void *)cache_resource)) {
@@ -2913,7 +2914,7 @@ flow_dv_encap_decap_resource_register
 	dev_flow->dv.encap_decap = cache_resource;
 	DRV_LOG(DEBUG, "new encap/decap resource %p: refcnt %d++",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
 	return 0;
 }
 
@@ -2944,7 +2945,7 @@ flow_dv_jump_tbl_resource_register
 	int cnt, ret;
 
 	MLX5_ASSERT(tbl);
-	cnt = rte_atomic32_read(&tbl_data->jump.refcnt);
+	cnt = __atomic_load_n(&tbl_data->jump.refcnt, __ATOMIC_ACQUIRE);
 	if (!cnt) {
 		ret = mlx5_flow_os_create_flow_action_dest_flow_tbl
 				(tbl->obj, &tbl_data->jump.action);
@@ -2961,7 +2962,7 @@ flow_dv_jump_tbl_resource_register
 		DRV_LOG(DEBUG, "existed jump table resource %p: refcnt %d++",
 			(void *)&tbl_data->jump, cnt);
 	}
-	rte_atomic32_inc(&tbl_data->jump.refcnt);
+	__atomic_fetch_add(&tbl_data->jump.refcnt, 1, __ATOMIC_RELEASE);
 	dev_flow->handle->rix_jump = tbl_data->idx;
 	dev_flow->dv.jump = &tbl_data->jump;
 	return 0;
@@ -2986,7 +2987,7 @@ flow_dv_default_miss_resource_register(struct rte_eth_dev *dev,
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_flow_default_miss_resource *cache_resource =
 			&sh->default_miss;
-	int cnt = rte_atomic32_read(&cache_resource->refcnt);
+	int cnt = __atomic_load_n(&cache_resource->refcnt, __ATOMIC_ACQUIRE);
 
 	if (!cnt) {
 		MLX5_ASSERT(cache_resource->action);
@@ -2999,7 +3000,7 @@ flow_dv_default_miss_resource_register(struct rte_eth_dev *dev,
 		DRV_LOG(DEBUG, "new default miss resource %p: refcnt %d++",
 				(void *)cache_resource->action, cnt);
 	}
-	rte_atomic32_inc(&cache_resource->refcnt);
+	__atomic_fetch_add(&cache_resource->refcnt, 1, __ATOMIC_RELEASE);
 	return 0;
 }
 
@@ -3038,8 +3039,10 @@ flow_dv_port_id_action_resource_register
 			DRV_LOG(DEBUG, "port id action resource resource %p: "
 				"refcnt %d++",
 				(void *)cache_resource,
-				rte_atomic32_read(&cache_resource->refcnt));
-			rte_atomic32_inc(&cache_resource->refcnt);
+				__atomic_load_n(&cache_resource->refcnt,
+						__ATOMIC_RELAXED));
+			__atomic_fetch_add(&cache_resource->refcnt, 1,
+					   __ATOMIC_RELAXED);
 			dev_flow->handle->rix_port_id_action = idx;
 			dev_flow->dv.port_id_action = cache_resource;
 			return 0;
@@ -3062,15 +3065,14 @@ flow_dv_port_id_action_resource_register
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
 	}
-	rte_atomic32_init(&cache_resource->refcnt);
-	rte_atomic32_inc(&cache_resource->refcnt);
+	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
 	ILIST_INSERT(sh->ipool[MLX5_IPOOL_PORT_ID], &sh->port_id_action_list,
 		     dev_flow->handle->rix_port_id_action, cache_resource,
 		     next);
 	dev_flow->dv.port_id_action = cache_resource;
 	DRV_LOG(DEBUG, "new port id action resource %p: refcnt %d++",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
 	return 0;
 }
 
@@ -3111,8 +3113,10 @@ flow_dv_push_vlan_action_resource_register
 			DRV_LOG(DEBUG, "push-VLAN action resource resource %p: "
 				"refcnt %d++",
 				(void *)cache_resource,
-				rte_atomic32_read(&cache_resource->refcnt));
-			rte_atomic32_inc(&cache_resource->refcnt);
+				__atomic_load_n(&cache_resource->refcnt,
+						__ATOMIC_RELAXED));
+			__atomic_fetch_add(&cache_resource->refcnt, 1,
+					   __ATOMIC_RELAXED);
 			dev_flow->handle->dvh.rix_push_vlan = idx;
 			dev_flow->dv.push_vlan_res = cache_resource;
 			return 0;
@@ -3141,8 +3145,7 @@ flow_dv_push_vlan_action_resource_register
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
 	}
-	rte_atomic32_init(&cache_resource->refcnt);
-	rte_atomic32_inc(&cache_resource->refcnt);
+	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
 	ILIST_INSERT(sh->ipool[MLX5_IPOOL_PUSH_VLAN],
 		     &sh->push_vlan_action_list,
 		     dev_flow->handle->dvh.rix_push_vlan,
@@ -3150,7 +3153,7 @@ flow_dv_push_vlan_action_resource_register
 	dev_flow->dv.push_vlan_res = cache_resource;
 	DRV_LOG(DEBUG, "new push vlan action resource %p: refcnt %d++",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
 	return 0;
 }
 /**
@@ -4550,8 +4553,10 @@ flow_dv_modify_hdr_resource_register
 					entry);
 		DRV_LOG(DEBUG, "modify-header resource %p: refcnt %d++",
 			(void *)cache_resource,
-			rte_atomic32_read(&cache_resource->refcnt));
-		rte_atomic32_inc(&cache_resource->refcnt);
+			__atomic_load_n(&cache_resource->refcnt,
+					__ATOMIC_RELAXED));
+		__atomic_fetch_add(&cache_resource->refcnt, 1,
+				   __ATOMIC_RELAXED);
 		dev_flow->handle->dvh.modify_hdr = cache_resource;
 		return 0;
 
@@ -4575,8 +4580,7 @@ flow_dv_modify_hdr_resource_register
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
 	}
-	rte_atomic32_init(&cache_resource->refcnt);
-	rte_atomic32_inc(&cache_resource->refcnt);
+	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
 	if (mlx5_hlist_insert_ex(sh->modify_cmds, &cache_resource->entry,
 				 flow_dv_modify_hdr_resource_match,
 				 (void *)cache_resource)) {
@@ -4590,7 +4594,7 @@ flow_dv_modify_hdr_resource_register
 	dev_flow->handle->dvh.modify_hdr = cache_resource;
 	DRV_LOG(DEBUG, "new modify-header resource %p: refcnt %d++",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
 	return 0;
 }
 
@@ -8021,7 +8025,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
 					entry);
 		tbl = &tbl_data->tbl;
-		rte_atomic32_inc(&tbl->refcnt);
+		__atomic_fetch_add(&tbl->refcnt, 1, __ATOMIC_RELAXED);
 		return tbl;
 	}
 	tbl_data = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_JUMP], &idx);
@@ -8056,9 +8060,9 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 	 * No multi-threads now, but still better to initialize the reference
 	 * count before insert it into the hash list.
 	 */
-	rte_atomic32_init(&tbl->refcnt);
+	__atomic_store_n(&tbl->refcnt, 0, __ATOMIC_RELAXED);
 	/* Jump action reference count is initialized here. */
-	rte_atomic32_init(&tbl_data->jump.refcnt);
+	__atomic_store_n(&tbl_data->jump.refcnt, 0, __ATOMIC_RELAXED);
 	pos->key = table_key.v64;
 	ret = mlx5_hlist_insert(sh->flow_tbls, pos);
 	if (ret < 0) {
@@ -8068,7 +8072,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
 		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], idx);
 	}
-	rte_atomic32_inc(&tbl->refcnt);
+	__atomic_fetch_add(&tbl->refcnt, 1, __ATOMIC_RELAXED);
 	return tbl;
 }
 
@@ -8094,7 +8098,7 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 
 	if (!tbl)
 		return 0;
-	if (rte_atomic32_dec_and_test(&tbl->refcnt)) {
+	if (__atomic_sub_fetch(&tbl->refcnt, 1, __ATOMIC_RELAXED) == 0) {
 		struct mlx5_hlist_entry *pos = &tbl_data->entry;
 
 		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
@@ -8197,8 +8201,10 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 				cache_matcher->priority,
 				key->direction ? "tx" : "rx",
 				(void *)cache_matcher,
-				rte_atomic32_read(&cache_matcher->refcnt));
-			rte_atomic32_inc(&cache_matcher->refcnt);
+				__atomic_load_n(&cache_matcher->refcnt,
+						__ATOMIC_RELAXED));
+			__atomic_fetch_add(&cache_matcher->refcnt, 1,
+					   __ATOMIC_RELAXED);
 			dev_flow->handle->dvh.matcher = cache_matcher;
 			/* old matcher should not make the table ref++. */
 			flow_dv_tbl_resource_release(dev, tbl);
@@ -8233,16 +8239,15 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	}
 	/* Save the table information */
 	cache_matcher->tbl = tbl;
-	rte_atomic32_init(&cache_matcher->refcnt);
 	/* only matcher ref++, table ref++ already done above in get API. */
-	rte_atomic32_inc(&cache_matcher->refcnt);
+	__atomic_store_n(&cache_matcher->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&tbl_data->matchers, cache_matcher, next);
 	dev_flow->handle->dvh.matcher = cache_matcher;
 	DRV_LOG(DEBUG, "%s group %u priority %hd new %s matcher %p: refcnt %d",
 		key->domain ? "FDB" : "NIC", key->table_id,
 		cache_matcher->priority,
 		key->direction ? "tx" : "rx", (void *)cache_matcher,
-		rte_atomic32_read(&cache_matcher->refcnt));
+		__atomic_load_n(&cache_matcher->refcnt, __ATOMIC_RELAXED));
 	return 0;
 }
 
@@ -8279,12 +8284,14 @@ flow_dv_tag_resource_register
 	if (entry) {
 		cache_resource = container_of
 			(entry, struct mlx5_flow_dv_tag_resource, entry);
-		rte_atomic32_inc(&cache_resource->refcnt);
+		__atomic_fetch_add(&cache_resource->refcnt, 1,
+				   __ATOMIC_RELAXED);
 		dev_flow->handle->dvh.rix_tag = cache_resource->idx;
 		dev_flow->dv.tag_resource = cache_resource;
 		DRV_LOG(DEBUG, "cached tag resource %p: refcnt now %d++",
 			(void *)cache_resource,
-			rte_atomic32_read(&cache_resource->refcnt));
+			__atomic_load_n(&cache_resource->refcnt,
+					__ATOMIC_RELAXED));
 		return 0;
 	}
 	/* Register new resource. */
@@ -8303,8 +8310,7 @@ flow_dv_tag_resource_register
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
 	}
-	rte_atomic32_init(&cache_resource->refcnt);
-	rte_atomic32_inc(&cache_resource->refcnt);
+	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
 	if (mlx5_hlist_insert(sh->tag_table, &cache_resource->entry)) {
 		mlx5_flow_os_destroy_flow_action(cache_resource->action);
 		mlx5_free(cache_resource);
@@ -8315,7 +8321,7 @@ flow_dv_tag_resource_register
 	dev_flow->dv.tag_resource = cache_resource;
 	DRV_LOG(DEBUG, "new tag resource %p: refcnt now %d++",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
 	return 0;
 }
 
@@ -8343,8 +8349,8 @@ flow_dv_tag_release(struct rte_eth_dev *dev,
 		return 0;
 	DRV_LOG(DEBUG, "port %u tag %p: refcnt %d--",
 		dev->data->port_id, (void *)tag,
-		rte_atomic32_read(&tag->refcnt));
-	if (rte_atomic32_dec_and_test(&tag->refcnt)) {
+		__atomic_load_n(&tag->refcnt, __ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&tag->refcnt, 1, __ATOMIC_RELAXED) == 0) {
 		claim_zero(mlx5_flow_os_destroy_flow_action(tag->action));
 		mlx5_hlist_remove(sh->tag_table, &tag->entry);
 		DRV_LOG(DEBUG, "port %u tag %p: removed",
@@ -10463,8 +10469,8 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 	MLX5_ASSERT(matcher->matcher_object);
 	DRV_LOG(DEBUG, "port %u matcher %p: refcnt %d--",
 		dev->data->port_id, (void *)matcher,
-		rte_atomic32_read(&matcher->refcnt));
-	if (rte_atomic32_dec_and_test(&matcher->refcnt)) {
+		__atomic_load_n(&matcher->refcnt, __ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&matcher->refcnt, 1, __ATOMIC_RELAXED) == 0) {
 		claim_zero(mlx5_flow_os_destroy_flow_matcher
 			   (matcher->matcher_object));
 		LIST_REMOVE(matcher, next);
@@ -10504,8 +10510,9 @@ flow_dv_encap_decap_resource_release(struct rte_eth_dev *dev,
 	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "encap/decap resource %p: refcnt %d--",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
-	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
+			       __ATOMIC_RELAXED) == 0) {
 		claim_zero(mlx5_flow_os_destroy_flow_action
 						(cache_resource->action));
 		mlx5_hlist_remove(priv->sh->encaps_decaps,
@@ -10545,8 +10552,9 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "jump table resource %p: refcnt %d--",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
-	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
+			       __ATOMIC_RELAXED) == 0) {
 		claim_zero(mlx5_flow_os_destroy_flow_action
 						(cache_resource->action));
 		/* jump action memory free is inside the table release. */
@@ -10577,8 +10585,10 @@ flow_dv_default_miss_resource_release(struct rte_eth_dev *dev)
 	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "default miss resource %p: refcnt %d--",
 			(void *)cache_resource->action,
-			rte_atomic32_read(&cache_resource->refcnt));
-	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+			__atomic_load_n(&cache_resource->refcnt,
+					__ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
+			       __ATOMIC_RELAXED) == 0) {
 		claim_zero(mlx5_glue->destroy_flow_action
 				(cache_resource->action));
 		DRV_LOG(DEBUG, "default miss resource %p: removed",
@@ -10610,8 +10620,9 @@ flow_dv_modify_hdr_resource_release(struct rte_eth_dev *dev,
 	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "modify-header resource %p: refcnt %d--",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
-	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
+				__ATOMIC_RELAXED) == 0) {
 		claim_zero(mlx5_flow_os_destroy_flow_action
 						(cache_resource->action));
 		mlx5_hlist_remove(priv->sh->modify_cmds,
@@ -10650,8 +10661,9 @@ flow_dv_port_id_action_resource_release(struct rte_eth_dev *dev,
 	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "port ID action resource %p: refcnt %d--",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
-	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
+			       __ATOMIC_RELAXED) == 0) {
 		claim_zero(mlx5_flow_os_destroy_flow_action
 						(cache_resource->action));
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_PORT_ID],
@@ -10691,8 +10703,9 @@ flow_dv_push_vlan_action_resource_release(struct rte_eth_dev *dev,
 	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "push VLAN action resource %p: refcnt %d--",
 		(void *)cache_resource,
-		rte_atomic32_read(&cache_resource->refcnt));
-	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
+			       __ATOMIC_RELAXED) == 0) {
 		claim_zero(mlx5_flow_os_destroy_flow_action
 						(cache_resource->action));
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_PUSH_VLAN],

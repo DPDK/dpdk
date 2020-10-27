@@ -402,10 +402,7 @@ TAILQ_HEAD(mlx5_counters, mlx5_flow_counter);
 struct mlx5_flow_counter_pool {
 	TAILQ_ENTRY(mlx5_flow_counter_pool) next;
 	struct mlx5_counters counters[2]; /* Free counter list. */
-	union {
-		struct mlx5_devx_obj *min_dcs;
-		rte_atomic64_t a64_dcs;
-	};
+	struct mlx5_devx_obj *min_dcs;
 	/* The devx object of the minimum counter ID. */
 	uint64_t time_of_last_age_check;
 	/* System time (from rte_rdtsc()) read in the last aging check. */
@@ -464,7 +461,7 @@ struct mlx5_flow_counter_mng {
 /* Default miss action resource structure. */
 struct mlx5_flow_default_miss_resource {
 	void *action; /* Pointer to the rdma-core action. */
-	rte_atomic32_t refcnt; /* Default miss action reference counter. */
+	uint32_t refcnt; /* Default miss action reference counter. */
 };
 
 #define MLX5_AGE_EVENT_NEW		1
@@ -515,7 +512,7 @@ union mlx5_flow_tbl_key {
 /* Table structure. */
 struct mlx5_flow_tbl_resource {
 	void *obj; /**< Pointer to DR table object. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 };
 
 #define MLX5_MAX_TABLES UINT16_MAX
