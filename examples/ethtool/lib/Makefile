@@ -27,7 +27,7 @@ LDFLAGS += -Wl,--no-undefined $(LDFLAGS_SHARED)
 
 # check for ixgbe by grepping pre-processor output
 ifneq ($(shell $(CC) $(CFLAGS) -dM -E - < /dev/null | grep IXGBE),)
-LDFLAGS += -lrte_pmd_ixgbe
+LDFLAGS += -lrte_net_ixgbe
 endif
 
 .PHONY: all clean static shared

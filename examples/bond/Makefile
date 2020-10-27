@@ -19,7 +19,7 @@ shared: build/$(APP)-shared
 static: build/$(APP)-static
 	ln -sf $(APP)-static build/$(APP)
 
-LDFLAGS += -lrte_pmd_bond
+LDFLAGS += -lrte_net_bond
 
 PKGCONF ?= pkg-config
 
