@@ -108,7 +108,7 @@ init_dataplane(struct rte_fib *fib, __rte_unused int socket_id,
 		if (fib->dp == NULL)
 			return -rte_errno;
 		fib->lookup = dir24_8_get_lookup_fn(fib->dp,
-			RTE_FIB_LOOKUP_DIR24_8_SCALAR_MACRO);
+			RTE_FIB_LOOKUP_DEFAULT);
 		fib->modify = dir24_8_modify;
 		return 0;
 	default:

@@ -325,6 +325,10 @@ New Features
   * Added new ``RTE_ACL_CLASSIFY_AVX512X32`` vector implementation,
     which can process up to 32 flows in parallel. Requires AVX512 support.
 
+* **Added AVX512 lookup implementation for FIB.**
+
+  Added a AVX512 lookup functions implementation into FIB library.
+
 * **Added support to update subport bandwidth dynamically.**
 
    * Added new API ``rte_sched_port_subport_profile_add`` to add new
