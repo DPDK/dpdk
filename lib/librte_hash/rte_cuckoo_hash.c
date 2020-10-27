@@ -1515,14 +1515,15 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 	struct rte_rcu_qsbr_dq_parameters params = {0};
 	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
 	struct rte_hash_rcu_config *hash_rcu_cfg = NULL;
-	const uint32_t total_entries = h->use_local_cache ?
-		h->entries + (RTE_MAX_LCORE - 1) * (LCORE_CACHE_SIZE - 1) + 1
-							: h->entries + 1;
 
 	if (h == NULL || cfg == NULL || cfg->v == NULL) {
 		rte_errno = EINVAL;
 		return 1;
 	}
+
+	const uint32_t total_entries = h->use_local_cache ?
+		h->entries + (RTE_MAX_LCORE - 1) * (LCORE_CACHE_SIZE - 1) + 1
+							: h->entries + 1;
 
 	if (h->hash_rcu_cfg) {
 		rte_errno = EEXIST;
