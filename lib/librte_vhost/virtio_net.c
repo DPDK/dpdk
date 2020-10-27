@@ -1491,7 +1491,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	struct iovec *dst_iovec = vec_pool + (VHOST_MAX_ASYNC_VEC >> 1);
 	struct rte_vhost_iov_iter *src_it = it_pool;
 	struct rte_vhost_iov_iter *dst_it = it_pool + 1;
-	uint16_t n_free_slot, slot_idx;
+	uint16_t n_free_slot, slot_idx = 0;
 	uint16_t pkt_err = 0;
 	uint16_t segs_await = 0;
 	struct async_inflight_info *pkts_info = vq->async_pkts_info;
