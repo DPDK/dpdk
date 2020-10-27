@@ -34,8 +34,7 @@ struct rte_rib;
 /** Type of FIB struct */
 enum rte_fib_type {
 	RTE_FIB_DUMMY,		/**< RIB tree based FIB */
-	RTE_FIB_DIR24_8,	/**< DIR24_8 based FIB */
-	RTE_FIB_TYPE_MAX
+	RTE_FIB_DIR24_8		/**< DIR24_8 based FIB */
 };
 
 /** Modify FIB function */

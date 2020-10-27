@@ -158,7 +158,7 @@ rte_fib_create(const char *name, int socket_id, struct rte_fib_conf *conf)
 
 	/* Check user arguments. */
 	if ((name == NULL) || (conf == NULL) ||	(conf->max_routes < 0) ||
-			(conf->type >= RTE_FIB_TYPE_MAX)) {
+			(conf->type > RTE_FIB_DIR24_8)) {
 		rte_errno = EINVAL;
 		return NULL;
 	}

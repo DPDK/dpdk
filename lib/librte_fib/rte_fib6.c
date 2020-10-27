@@ -160,7 +160,7 @@ rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf)
 
 	/* Check user arguments. */
 	if ((name == NULL) || (conf == NULL) || (conf->max_routes < 0) ||
-			(conf->type >= RTE_FIB6_TYPE_MAX)) {
+			(conf->type > RTE_FIB6_TRIE)) {
 		rte_errno = EINVAL;
 		return NULL;
 	}

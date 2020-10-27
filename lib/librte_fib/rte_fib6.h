@@ -35,8 +35,7 @@ struct rte_rib6;
 /** Type of FIB struct */
 enum rte_fib6_type {
 	RTE_FIB6_DUMMY,		/**< RIB6 tree based FIB */
-	RTE_FIB6_TRIE,		/**< TRIE based fib  */
-	RTE_FIB6_TYPE_MAX
+	RTE_FIB6_TRIE		/**< TRIE based fib  */
 };
 
 /** Modify FIB function */
