@@ -787,7 +787,6 @@ enum mlx5_rxq_modify_type {
 };
 
 enum mlx5_txq_modify_type {
-	MLX5_TXQ_MOD_RDY2RDY, /* modify state from ready to ready. */
 	MLX5_TXQ_MOD_RST2RDY, /* modify state from reset to ready. */
 	MLX5_TXQ_MOD_RDY2RST, /* modify state from ready to reset. */
 	MLX5_TXQ_MOD_ERR2RDY, /* modify state from error to ready. */

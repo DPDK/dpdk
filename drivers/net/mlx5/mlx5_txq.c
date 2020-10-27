@@ -253,7 +253,7 @@ mlx5_tx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 
 	MLX5_ASSERT(rte_eal_process_type() ==  RTE_PROC_PRIMARY);
 	ret = priv->obj_ops.txq_obj_modify(txq_ctrl->obj,
-					   MLX5_TXQ_MOD_RDY2RDY,
+					   MLX5_TXQ_MOD_RST2RDY,
 					   (uint8_t)priv->dev_port);
 	if (ret)
 		return ret;
