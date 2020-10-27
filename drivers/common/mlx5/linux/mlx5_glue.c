@@ -494,6 +494,19 @@ mlx5_glue_dr_destroy_domain(void *domain)
 #endif
 }
 
+static int
+mlx5_glue_dr_sync_domain(void *domain, uint32_t flags)
+{
+#ifdef HAVE_MLX5DV_DR
+	return mlx5dv_dr_domain_sync(domain, flags);
+#else
+	(void)domain;
+	(void)flags;
+	errno = ENOTSUP;
+	return errno;
+#endif
+}
+
 static struct ibv_cq_ex *
 mlx5_glue_dv_create_cq(struct ibv_context *context,
 		       struct ibv_cq_init_attr_ex *cq_attr,
@@ -1331,6 +1344,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dr_destroy_flow_tbl = mlx5_glue_dr_destroy_flow_tbl,
 	.dr_create_domain = mlx5_glue_dr_create_domain,
 	.dr_destroy_domain = mlx5_glue_dr_destroy_domain,
+	.dr_sync_domain = mlx5_glue_dr_sync_domain,
 	.dv_create_cq = mlx5_glue_dv_create_cq,
 	.dv_create_wq = mlx5_glue_dv_create_wq,
 	.dv_query_device = mlx5_glue_dv_query_device,

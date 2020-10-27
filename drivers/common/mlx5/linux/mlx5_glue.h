@@ -224,6 +224,7 @@ struct mlx5_glue {
 	void *(*dr_create_domain)(struct ibv_context *ctx,
 				  enum mlx5dv_dr_domain_type domain);
 	int (*dr_destroy_domain)(void *domain);
+	int (*dr_sync_domain)(void *domain, uint32_t flags);
 	struct ibv_cq_ex *(*dv_create_cq)
 		(struct ibv_context *context,
 		 struct ibv_cq_init_attr_ex *cq_attr,
