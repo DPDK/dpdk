@@ -480,6 +480,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &txgbe_eth_dev_ops;
+	eth_dev->rx_queue_count       = txgbe_dev_rx_queue_count;
+	eth_dev->rx_descriptor_status = txgbe_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = txgbe_dev_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &txgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &txgbe_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &txgbe_prep_pkts;
