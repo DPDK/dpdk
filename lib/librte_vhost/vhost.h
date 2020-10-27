@@ -563,38 +563,6 @@ static __rte_always_inline int guest_page_addrcmp(const void *p1,
 	return 0;
 }
 
-/* Convert guest physical address to host physical address */
-static __rte_always_inline rte_iova_t
-gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
-{
-	uint32_t i;
-	struct guest_page *page;
-	struct guest_page key;
-
-	if (dev->nr_guest_pages >= VHOST_BINARY_SEARCH_THRESH) {
-		key.guest_phys_addr = gpa;
-		page = bsearch(&key, dev->guest_pages, dev->nr_guest_pages,
-			       sizeof(struct guest_page), guest_page_addrcmp);
-		if (page) {
-			if (gpa + size < page->guest_phys_addr + page->size)
-				return gpa - page->guest_phys_addr +
-					page->host_phys_addr;
-		}
-	} else {
-		for (i = 0; i < dev->nr_guest_pages; i++) {
-			page = &dev->guest_pages[i];
-
-			if (gpa >= page->guest_phys_addr &&
-			    gpa + size < page->guest_phys_addr +
-			    page->size)
-				return gpa - page->guest_phys_addr +
-				       page->host_phys_addr;
-		}
-	}
-
-	return 0;
-}
-
 static __rte_always_inline rte_iova_t
 gpa_to_first_hpa(struct virtio_net *dev, uint64_t gpa,
 	uint64_t gpa_size, uint64_t *hpa_size)
@@ -643,6 +611,17 @@ gpa_to_first_hpa(struct virtio_net *dev, uint64_t gpa,
 
 	*hpa_size = 0;
 	return 0;
+}
+
+/* Convert guest physical address to host physical address */
+static __rte_always_inline rte_iova_t
+gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
+{
+	rte_iova_t hpa;
+	uint64_t hpa_size;
+
+	hpa = gpa_to_first_hpa(dev, gpa, size, &hpa_size);
+	return hpa_size == size ? hpa : 0;
 }
 
 static __rte_always_inline uint64_t
