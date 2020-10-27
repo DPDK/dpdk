@@ -298,6 +298,7 @@ struct mlx5_devx_virtq_attr {
 		uint32_t size;
 		uint64_t offset;
 	} umems[3];
+	uint8_t error_type;
 };
 
 

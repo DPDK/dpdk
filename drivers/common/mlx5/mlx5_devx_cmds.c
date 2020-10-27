@@ -1754,6 +1754,9 @@ mlx5_devx_cmd_query_virtq(struct mlx5_devx_obj *virtq_obj,
 	attr->hw_available_index = MLX5_GET16(virtio_net_q, virtq,
 					      hw_available_index);
 	attr->hw_used_index = MLX5_GET16(virtio_net_q, virtq, hw_used_index);
+	attr->state = MLX5_GET16(virtio_net_q, virtq, state);
+	attr->error_type = MLX5_GET16(virtio_net_q, virtq,
+				      virtio_q_context.error_type);
 	return ret;
 }
 

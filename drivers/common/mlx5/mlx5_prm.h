@@ -2280,7 +2280,8 @@ struct mlx5_ifc_virtio_q_bits {
 	u8 used_addr[0x40];
 	u8 available_addr[0x40];
 	u8 virtio_q_mkey[0x20];
-	u8 reserved_at_160[0x20];
+	u8 reserved_at_160[0x18];
+	u8 error_type[0x8];
 	u8 umem_1_id[0x20];
 	u8 umem_1_size[0x20];
 	u8 umem_1_offset[0x40];
@@ -2308,7 +2309,7 @@ struct mlx5_ifc_virtio_net_q_bits {
 	u8 vhost_log_page[0x5];
 	u8 reserved_at_90[0xc];
 	u8 state[0x4];
-	u8 error_type[0x8];
+	u8 reserved_at_a0[0x8];
 	u8 tisn_or_qpn[0x18];
 	u8 dirty_bitmap_mkey[0x20];
 	u8 dirty_bitmap_size[0x20];
@@ -2327,6 +2328,10 @@ struct mlx5_ifc_create_virtq_in_bits {
 struct mlx5_ifc_query_virtq_out_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_virtio_net_q_bits virtq;
+};
+
+enum {
+	MLX5_EVENT_TYPE_OBJECT_CHANGE = 0x27,
 };
 
 enum {
