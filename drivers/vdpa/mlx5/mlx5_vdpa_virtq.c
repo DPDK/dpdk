@@ -88,11 +88,6 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 			rte_free(virtq->umems[i].buf);
 	}
 	memset(&virtq->umems, 0, sizeof(virtq->umems));
-	if (virtq->counters) {
-		claim_zero(mlx5_devx_cmd_destroy(virtq->counters));
-		virtq->counters = NULL;
-	}
-	memset(&virtq->reset, 0, sizeof(virtq->reset));
 	if (virtq->eqp.fw_qp)
 		mlx5_vdpa_event_qp_destroy(&virtq->eqp);
 	virtq->notifier_state = MLX5_VDPA_NOTIFIER_STATE_DISABLED;
@@ -103,9 +98,19 @@ void
 mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 {
 	int i;
+	struct mlx5_vdpa_virtq *virtq;
 
-	for (i = 0; i < priv->nr_virtqs; i++)
-		mlx5_vdpa_virtq_unset(&priv->virtqs[i]);
+	for (i = 0; i < priv->nr_virtqs; i++) {
+		virtq = &priv->virtqs[i];
+		mlx5_vdpa_virtq_unset(virtq);
+		if (virtq->counters) {
+			claim_zero(mlx5_devx_cmd_destroy(virtq->counters));
+			virtq->counters = NULL;
+			memset(&virtq->reset, 0, sizeof(virtq->reset));
+		}
+		memset(virtq->err_time, 0, sizeof(virtq->err_time));
+		virtq->n_retry = 0;
+	}
 	if (priv->tis) {
 		claim_zero(mlx5_devx_cmd_destroy(priv->tis));
 		priv->tis = NULL;
@@ -138,7 +143,6 @@ mlx5_vdpa_virtq_modify(struct mlx5_vdpa_virtq *virtq, int state)
 int
 mlx5_vdpa_virtq_stop(struct mlx5_vdpa_priv *priv, int index)
 {
-	struct mlx5_devx_virtq_attr attr = {0};
 	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
 	int ret;
 
@@ -148,6 +152,17 @@ mlx5_vdpa_virtq_stop(struct mlx5_vdpa_priv *priv, int index)
 	if (ret)
 		return -1;
 	virtq->stopped = true;
+	DRV_LOG(DEBUG, "vid %u virtq %u was stopped.", priv->vid, index);
+	return mlx5_vdpa_virtq_query(priv, index);
+}
+
+int
+mlx5_vdpa_virtq_query(struct mlx5_vdpa_priv *priv, int index)
+{
+	struct mlx5_devx_virtq_attr attr = {0};
+	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
+	int ret;
+
 	if (mlx5_devx_cmd_query_virtq(virtq->virtq, &attr)) {
 		DRV_LOG(ERR, "Failed to query virtq %d.", index);
 		return -1;
@@ -162,7 +177,9 @@ mlx5_vdpa_virtq_stop(struct mlx5_vdpa_priv *priv, int index)
 		DRV_LOG(ERR, "Failed to set virtq %d base.", index);
 		return -1;
 	}
-	DRV_LOG(DEBUG, "vid %u virtq %u was stopped.", priv->vid, index);
+	if (attr.state == MLX5_VIRTQ_STATE_ERROR)
+		DRV_LOG(WARNING, "vid %d vring %d hw error=%hhu",
+			priv->vid, index, attr.error_type);
 	return 0;
 }
 
@@ -195,6 +212,8 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	unsigned int i;
 	uint16_t last_avail_idx;
 	uint16_t last_used_idx;
+	uint16_t event_num = MLX5_EVENT_TYPE_OBJECT_CHANGE;
+	uint64_t cookie;
 
 	ret = rte_vhost_get_vhost_vring(priv->vid, index, &vq);
 	if (ret)
@@ -231,8 +250,9 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 			" need event QPs and event mechanism.", index);
 	}
 	if (priv->caps.queue_counters_valid) {
-		virtq->counters = mlx5_devx_cmd_create_virtio_q_counters
-								    (priv->ctx);
+		if (!virtq->counters)
+			virtq->counters = mlx5_devx_cmd_create_virtio_q_counters
+								(priv->ctx);
 		if (!virtq->counters) {
 			DRV_LOG(ERR, "Failed to create virtq couners for virtq"
 				" %d.", index);
@@ -331,6 +351,19 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 			DRV_LOG(DEBUG, "Register fd %d interrupt for virtq %d.",
 				virtq->intr_handle.fd, index);
 		}
+	}
+	/* Subscribe virtq error event. */
+	virtq->version++;
+	cookie = ((uint64_t)virtq->version << 32) + index;
+	ret = mlx5_glue->devx_subscribe_devx_event(priv->err_chnl,
+						   virtq->virtq->obj,
+						   sizeof(event_num),
+						   &event_num, cookie);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to subscribe device %d virtq %d error event.",
+			priv->vid, index);
+		rte_errno = errno;
+		goto error;
 	}
 	virtq->stopped = false;
 	DRV_LOG(DEBUG, "vid %u virtq %u was created successfully.", priv->vid,
@@ -526,12 +559,11 @@ mlx5_vdpa_virtq_stats_get(struct mlx5_vdpa_priv *priv, int qid,
 	struct mlx5_devx_virtio_q_couners_attr attr = {0};
 	int ret;
 
-	if (!virtq->virtq || !virtq->enable) {
+	if (!virtq->counters) {
 		DRV_LOG(ERR, "Failed to read virtq %d statistics - virtq "
 			"is invalid.", qid);
 		return -EINVAL;
 	}
-	MLX5_ASSERT(virtq->counters);
 	ret = mlx5_devx_cmd_query_virtio_q_counters(virtq->counters, &attr);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to read virtq %d stats from HW.", qid);
@@ -583,12 +615,11 @@ mlx5_vdpa_virtq_stats_reset(struct mlx5_vdpa_priv *priv, int qid)
 	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[qid];
 	int ret;
 
-	if (!virtq->virtq || !virtq->enable) {
+	if (!virtq->counters) {
 		DRV_LOG(ERR, "Failed to read virtq %d statistics - virtq "
 			"is invalid.", qid);
 		return -EINVAL;
 	}
-	MLX5_ASSERT(virtq->counters);
 	ret = mlx5_devx_cmd_query_virtio_q_counters(virtq->counters,
 						    &virtq->reset);
 	if (ret)

@@ -195,6 +195,10 @@ New Features
   * Added support of Age action query.
   * Added support of multi-ports hairpin.
 
+  Updated Mellanox mlx5 vDPA driver:
+
+  * Added support of vDPA VirtQ error handling.
+
 * **Updated Solarflare network PMD.**
 
   Updated the Solarflare ``sfc_efx`` driver with changes including:

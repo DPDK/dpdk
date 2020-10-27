@@ -134,3 +134,11 @@ Driver options
   driver to no-traffic mode. In this mode the timer events are stopped and
   interrupts are configured to the device in order to notify traffic for the
   driver. Default value is 2s.
+
+Error handling
+^^^^^^^^^^^^^^
+
+Upon potential hardware errors, mlx5 PMD try to recover, give up if failed 3
+times in 3 seconds, virtq will be put in disable state. User should check log
+to get error information, or query vdpa statistics counter to know error type
+and count report.

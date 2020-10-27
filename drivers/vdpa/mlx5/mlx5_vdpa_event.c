@@ -15,10 +15,13 @@
 #include <rte_alarm.h>
 
 #include <mlx5_common.h>
+#include <mlx5_glue.h>
 
 #include "mlx5_vdpa_utils.h"
 #include "mlx5_vdpa.h"
 
+
+#define MLX5_VDPA_ERROR_TIME_SEC 3u
 
 void
 mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
@@ -376,6 +379,147 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 	}
 	pthread_mutex_unlock(&priv->timer_lock);
 	pthread_mutex_unlock(&priv->vq_config_lock);
+}
+
+static void
+mlx5_vdpa_err_interrupt_handler(void *cb_arg __rte_unused)
+{
+#ifdef HAVE_IBV_DEVX_EVENT
+	struct mlx5_vdpa_priv *priv = cb_arg;
+	union {
+		struct mlx5dv_devx_async_event_hdr event_resp;
+		uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr) + 128];
+	} out;
+	uint32_t vq_index, i, version;
+	struct mlx5_vdpa_virtq *virtq;
+	uint64_t sec;
+
+	pthread_mutex_lock(&priv->vq_config_lock);
+	while (mlx5_glue->devx_get_event(priv->err_chnl, &out.event_resp,
+					 sizeof(out.buf)) >=
+				       (ssize_t)sizeof(out.event_resp.cookie)) {
+		vq_index = out.event_resp.cookie & UINT32_MAX;
+		version = out.event_resp.cookie >> 32;
+		if (vq_index >= priv->nr_virtqs) {
+			DRV_LOG(ERR, "Invalid device %s error event virtq %d.",
+				priv->vdev->device->name, vq_index);
+			continue;
+		}
+		virtq = &priv->virtqs[vq_index];
+		if (!virtq->enable || virtq->version != version)
+			continue;
+		if (rte_rdtsc() / rte_get_tsc_hz() < MLX5_VDPA_ERROR_TIME_SEC)
+			continue;
+		virtq->stopped = true;
+		/* Query error info. */
+		if (mlx5_vdpa_virtq_query(priv, vq_index))
+			goto log;
+		/* Disable vq. */
+		if (mlx5_vdpa_virtq_enable(priv, vq_index, 0)) {
+			DRV_LOG(ERR, "Failed to disable virtq %d.", vq_index);
+			goto log;
+		}
+		/* Retry if error happens less than N times in 3 seconds. */
+		sec = (rte_rdtsc() - virtq->err_time[0]) / rte_get_tsc_hz();
+		if (sec > MLX5_VDPA_ERROR_TIME_SEC) {
+			/* Retry. */
+			if (mlx5_vdpa_virtq_enable(priv, vq_index, 1))
+				DRV_LOG(ERR, "Failed to enable virtq %d.",
+					vq_index);
+			else
+				DRV_LOG(WARNING, "Recover virtq %d: %u.",
+					vq_index, ++virtq->n_retry);
+		} else {
+			/* Retry timeout, give up. */
+			DRV_LOG(ERR, "Device %s virtq %d failed to recover.",
+				priv->vdev->device->name, vq_index);
+		}
+log:
+		/* Shift in current time to error time log end. */
+		for (i = 1; i < RTE_DIM(virtq->err_time); i++)
+			virtq->err_time[i - 1] = virtq->err_time[i];
+		virtq->err_time[RTE_DIM(virtq->err_time) - 1] = rte_rdtsc();
+	}
+	pthread_mutex_unlock(&priv->vq_config_lock);
+#endif
+}
+
+int
+mlx5_vdpa_err_event_setup(struct mlx5_vdpa_priv *priv)
+{
+	int ret;
+	int flags;
+
+	/* Setup device event channel. */
+	priv->err_chnl = mlx5_glue->devx_create_event_channel(priv->ctx, 0);
+	if (!priv->err_chnl) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create device event channel %d.",
+			rte_errno);
+		goto error;
+	}
+	flags = fcntl(priv->err_chnl->fd, F_GETFL);
+	ret = fcntl(priv->err_chnl->fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to change device event channel FD.");
+		goto error;
+	}
+	priv->err_intr_handle.fd = priv->err_chnl->fd;
+	priv->err_intr_handle.type = RTE_INTR_HANDLE_EXT;
+	if (rte_intr_callback_register(&priv->err_intr_handle,
+				       mlx5_vdpa_err_interrupt_handler,
+				       priv)) {
+		priv->err_intr_handle.fd = 0;
+		DRV_LOG(ERR, "Failed to register error interrupt for device %d.",
+			priv->vid);
+		goto error;
+	} else {
+		DRV_LOG(DEBUG, "Registered error interrupt for device%d.",
+			priv->vid);
+	}
+	return 0;
+error:
+	mlx5_vdpa_err_event_unset(priv);
+	return -1;
+}
+
+void
+mlx5_vdpa_err_event_unset(struct mlx5_vdpa_priv *priv)
+{
+	int retries = MLX5_VDPA_INTR_RETRIES;
+	int ret = -EAGAIN;
+
+	if (!priv->err_intr_handle.fd)
+		return;
+	while (retries-- && ret == -EAGAIN) {
+		ret = rte_intr_callback_unregister(&priv->err_intr_handle,
+					    mlx5_vdpa_err_interrupt_handler,
+					    priv);
+		if (ret == -EAGAIN) {
+			DRV_LOG(DEBUG, "Try again to unregister fd %d "
+				"of error interrupt, retries = %d.",
+				priv->err_intr_handle.fd, retries);
+			rte_pause();
+		}
+	}
+	memset(&priv->err_intr_handle, 0, sizeof(priv->err_intr_handle));
+	if (priv->err_chnl) {
+#ifdef HAVE_IBV_DEVX_EVENT
+		union {
+			struct mlx5dv_devx_async_event_hdr event_resp;
+			uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr) +
+				    128];
+		} out;
+
+		/* Clean all pending events. */
+		while (mlx5_glue->devx_get_event(priv->err_chnl,
+		       &out.event_resp, sizeof(out.buf)) >=
+		       (ssize_t)sizeof(out.event_resp.cookie))
+			;
+#endif
+		mlx5_glue->devx_destroy_event_channel(priv->err_chnl);
+		priv->err_chnl = NULL;
+	}
 }
 
 int

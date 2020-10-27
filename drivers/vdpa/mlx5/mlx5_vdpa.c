@@ -283,6 +283,7 @@ mlx5_vdpa_dev_close(int vid)
 	}
 	if (priv->configured)
 		ret |= mlx5_vdpa_lm_log(priv);
+	mlx5_vdpa_err_event_unset(priv);
 	mlx5_vdpa_cqe_event_unset(priv);
 	mlx5_vdpa_steer_unset(priv);
 	mlx5_vdpa_virtqs_release(priv);
@@ -318,6 +319,7 @@ mlx5_vdpa_dev_config(int vid)
 		DRV_LOG(WARNING, "MTU cannot be set on device %s.",
 				vdev->device->name);
 	if (mlx5_vdpa_pd_create(priv) || mlx5_vdpa_mem_register(priv) ||
+	    mlx5_vdpa_err_event_setup(priv) ||
 	    mlx5_vdpa_virtqs_prepare(priv) || mlx5_vdpa_steer_setup(priv) ||
 	    mlx5_vdpa_cqe_event_setup(priv)) {
 		mlx5_vdpa_dev_close(vid);
