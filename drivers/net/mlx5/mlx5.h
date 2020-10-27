@@ -718,7 +718,7 @@ struct mlx5_rxq_obj {
 /* Indirection table. */
 struct mlx5_ind_table_obj {
 	LIST_ENTRY(mlx5_ind_table_obj) next; /* Pointer to the next element. */
-	rte_atomic32_t refcnt; /* Reference counter. */
+	uint32_t refcnt; /* Reference counter. */
 	RTE_STD_C11
 	union {
 		void *ind_table; /**< Indirection table. */
@@ -732,7 +732,7 @@ struct mlx5_ind_table_obj {
 __extension__
 struct mlx5_hrxq {
 	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */
-	rte_atomic32_t refcnt; /* Reference counter. */
+	uint32_t refcnt; /* Reference counter. */
 	uint32_t shared:1; /* This object used in shared action. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
 	RTE_STD_C11
@@ -870,7 +870,7 @@ struct mlx5_priv {
 	/* Indirection tables. */
 	LIST_HEAD(ind_tables, mlx5_ind_table_obj) ind_tbls;
 	/* Pointer to next element. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t refcnt; /**< Reference counter. */
 	/**< Verbs modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint8_t max_lro_msg_size;

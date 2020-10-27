@@ -461,7 +461,6 @@ mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
 	}
 	rxq_ctrl = container_of((*priv->rxqs)[idx], struct mlx5_rxq_ctrl, rxq);
 	return (__atomic_load_n(&rxq_ctrl->refcnt, __ATOMIC_RELAXED) == 1);
-
 }
 
 /* Fetches and drops all SW-owned and error CQEs to synchronize CQ. */
@@ -1677,7 +1676,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.uar_lock_cq = &priv->sh->uar_lock_cq;
 #endif
 	tmpl->rxq.idx = idx;
-	__atomic_add_fetch(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
 error:
@@ -1724,7 +1723,7 @@ mlx5_rxq_hairpin_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.mr_ctrl.cache_bh = (struct mlx5_mr_btree) { 0 };
 	tmpl->hairpin_conf = *hairpin_conf;
 	tmpl->rxq.idx = idx;
-	__atomic_add_fetch(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
 }
@@ -1749,7 +1748,7 @@ mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 
 	if (rxq_data) {
 		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-		__atomic_add_fetch(&rxq_ctrl->refcnt, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&rxq_ctrl->refcnt, 1, __ATOMIC_RELAXED);
 	}
 	return rxq_ctrl;
 }
@@ -1924,7 +1923,7 @@ mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
 	if (ind_tbl) {
 		unsigned int i;
 
-		rte_atomic32_inc(&ind_tbl->refcnt);
+		__atomic_fetch_add(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
 		for (i = 0; i != ind_tbl->queues_n; ++i)
 			mlx5_rxq_get(dev, ind_tbl->queues[i]);
 	}
@@ -1949,11 +1948,11 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
-	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt))
+	if (__atomic_sub_fetch(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED) == 0)
 		priv->obj_ops.ind_table_destroy(ind_tbl);
 	for (i = 0; i != ind_tbl->queues_n; ++i)
 		claim_nonzero(mlx5_rxq_release(dev, ind_tbl->queues[i]));
-	if (!rte_atomic32_read(&ind_tbl->refcnt)) {
+	if (__atomic_load_n(&ind_tbl->refcnt, __ATOMIC_RELAXED) == 0) {
 		LIST_REMOVE(ind_tbl, next);
 		mlx5_free(ind_tbl);
 		return 0;
@@ -2027,7 +2026,7 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 	ret = priv->obj_ops.ind_table_new(dev, n, ind_tbl);
 	if (ret < 0)
 		goto error;
-	rte_atomic32_inc(&ind_tbl->refcnt);
+	__atomic_fetch_add(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
 	return ind_tbl;
 error:
@@ -2086,7 +2085,7 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 			mlx5_ind_table_obj_release(dev, ind_tbl);
 			continue;
 		}
-		rte_atomic32_inc(&hrxq->refcnt);
+		__atomic_fetch_add(&hrxq->refcnt, 1, __ATOMIC_RELAXED);
 		return idx;
 	}
 	return 0;
@@ -2192,7 +2191,7 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hrxq_idx)
 	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
 	if (!hrxq)
 		return 0;
-	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
+	if (__atomic_sub_fetch(&hrxq->refcnt, 1, __ATOMIC_RELAXED) == 0) {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
@@ -2265,7 +2264,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		rte_errno = errno;
 		goto error;
 	}
-	rte_atomic32_inc(&hrxq->refcnt);
+	__atomic_fetch_add(&hrxq->refcnt, 1, __ATOMIC_RELAXED);
 	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs, hrxq_idx,
 		     hrxq, next);
 	return hrxq_idx;
@@ -2295,7 +2294,8 @@ mlx5_drop_action_create(struct rte_eth_dev *dev)
 	int ret;
 
 	if (priv->drop_queue.hrxq) {
-		rte_atomic32_inc(&priv->drop_queue.hrxq->refcnt);
+		__atomic_fetch_add(&priv->drop_queue.hrxq->refcnt, 1,
+				   __ATOMIC_RELAXED);
 		return priv->drop_queue.hrxq;
 	}
 	hrxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hrxq), 0, SOCKET_ID_ANY);
@@ -2316,7 +2316,7 @@ mlx5_drop_action_create(struct rte_eth_dev *dev)
 	ret = priv->obj_ops.drop_action_create(dev);
 	if (ret < 0)
 		goto error;
-	rte_atomic32_set(&hrxq->refcnt, 1);
+	__atomic_store_n(&hrxq->refcnt, 1, __ATOMIC_RELAXED);
 	return hrxq;
 error:
 	if (hrxq) {
@@ -2340,7 +2340,7 @@ mlx5_drop_action_destroy(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
 
-	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
+	if (__atomic_sub_fetch(&hrxq->refcnt, 1, __ATOMIC_RELAXED) == 0) {
 		priv->obj_ops.drop_action_destroy(dev);
 		mlx5_free(priv->drop_queue.rxq);
 		mlx5_free(hrxq->ind_table);

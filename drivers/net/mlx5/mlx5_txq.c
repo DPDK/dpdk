@@ -1141,7 +1141,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	__atomic_add_fetch(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
 	tmpl->type = MLX5_TXQ_TYPE_STANDARD;
 	LIST_INSERT_HEAD(&priv->txqsctrl, tmpl, next);
 	return tmpl;
@@ -1185,7 +1185,7 @@ mlx5_txq_hairpin_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.idx = idx;
 	tmpl->hairpin_conf = *hairpin_conf;
 	tmpl->type = MLX5_TXQ_TYPE_HAIRPIN;
-	__atomic_add_fetch(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
+	__atomic_fetch_add(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
 	LIST_INSERT_HEAD(&priv->txqsctrl, tmpl, next);
 	return tmpl;
 }
@@ -1210,7 +1210,7 @@ mlx5_txq_get(struct rte_eth_dev *dev, uint16_t idx)
 
 	if (txq_data) {
 		ctrl = container_of(txq_data, struct mlx5_txq_ctrl, txq);
-		__atomic_add_fetch(&ctrl->refcnt, 1, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&ctrl->refcnt, 1, __ATOMIC_RELAXED);
 	}
 	return ctrl;
 }
@@ -1235,7 +1235,7 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->txqs)[idx])
 		return 0;
 	txq_ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	if (__atomic_sub_fetch(&txq_ctrl->refcnt, 1, __ATOMIC_RELAXED) > 1)
+	if (__atomic_sub_fetch(&txq_ctrl->refcnt, 1, __ATOMIC_RELAXED) != 0)
 		return 1;
 	if (txq_ctrl->obj) {
 		priv->obj_ops.txq_obj_release(txq_ctrl->obj);

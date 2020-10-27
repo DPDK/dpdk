@@ -1232,8 +1232,7 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
 	if (err)
 		goto error;
-	rte_atomic32_init(&tbl_data->tbl.refcnt);
-	rte_atomic32_inc(&tbl_data->tbl.refcnt);
+	__atomic_store_n(&tbl_data->tbl.refcnt, 1, __ATOMIC_RELAXED);
 	table_key.direction = 1;
 	tbl_data = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tbl_data), 0,
 			       SOCKET_ID_ANY);
@@ -1245,8 +1244,7 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
 	if (err)
 		goto error;
-	rte_atomic32_init(&tbl_data->tbl.refcnt);
-	rte_atomic32_inc(&tbl_data->tbl.refcnt);
+	__atomic_store_n(&tbl_data->tbl.refcnt, 1, __ATOMIC_RELAXED);
 	table_key.direction = 0;
 	table_key.domain = 1;
 	tbl_data = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tbl_data), 0,
@@ -1259,8 +1257,7 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
 	if (err)
 		goto error;
-	rte_atomic32_init(&tbl_data->tbl.refcnt);
-	rte_atomic32_inc(&tbl_data->tbl.refcnt);
+	__atomic_store_n(&tbl_data->tbl.refcnt, 1, __ATOMIC_RELAXED);
 	return err;
 error:
 	mlx5_free_table_hash_list(priv);

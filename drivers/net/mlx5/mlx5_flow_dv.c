@@ -10283,7 +10283,8 @@ __flow_dv_rss_get_hrxq(struct rte_eth_dev *dev, struct rte_flow *flow,
 		if (hrxq_idx) {
 			*hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 					       hrxq_idx);
-			rte_atomic32_inc(&(*hrxq)->refcnt);
+			__atomic_fetch_add(&(*hrxq)->refcnt, 1,
+					   __ATOMIC_RELAXED);
 		}
 	} else {
 		struct mlx5_flow_rss_desc *rss_desc =
