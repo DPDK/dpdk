@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 
+#include "rte_pmd_ark.h"
 #include "ark_ethdev_tx.h"
 #include "ark_global.h"
 #include "ark_mpu.h"
@@ -70,7 +71,7 @@ eth_ark_tx_meta_from_mbuf(struct ark_tx_meta *meta,
 			  uint8_t flags)
 {
 	meta->physaddr = rte_mbuf_data_iova(mbuf);
-	meta->user1 = (uint32_t)mbuf->udata64;
+	meta->user1 = rte_pmd_ark_mbuf_tx_userdata_get(mbuf);
 	meta->data_len = rte_pktmbuf_data_len(mbuf);
 	meta->flags = flags;
 }
