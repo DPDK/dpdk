@@ -22,7 +22,7 @@ void
 dir24_8_free(void *p);
 
 rte_fib_lookup_fn_t
-dir24_8_get_lookup_fn(struct rte_fib_conf *conf);
+dir24_8_get_lookup_fn(void *p, enum rte_fib_lookup_type type);
 
 int
 dir24_8_modify(struct rte_fib *fib, uint32_t ip, uint8_t depth,
