@@ -8,8 +8,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include <rte_atomic.h>
-
 #include "mlx5_common_utils.h"
 #include "mlx5_malloc.h"
 
@@ -17,27 +15,24 @@ struct mlx5_sys_mem {
 	uint32_t init:1; /* Memory allocator initialized. */
 	uint32_t enable:1; /* System memory select. */
 	uint32_t reserve:30; /* Reserve. */
-	union {
-		struct rte_memseg_list *last_msl;
-		rte_atomic64_t a64_last_msl;
-	};
+	struct rte_memseg_list *last_msl;
 	/* last allocated rte memory memseg list. */
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-	rte_atomic64_t malloc_sys;
+	uint64_t malloc_sys;
 	/* Memory allocated from system count. */
-	rte_atomic64_t malloc_rte;
+	uint64_t malloc_rte;
 	/* Memory allocated from hugepage count. */
-	rte_atomic64_t realloc_sys;
+	uint64_t realloc_sys;
 	/* Memory reallocate from system count. */
-	rte_atomic64_t realloc_rte;
+	uint64_t realloc_rte;
 	/* Memory reallocate from hugepage count. */
-	rte_atomic64_t free_sys;
+	uint64_t free_sys;
 	/* Memory free to system count. */
-	rte_atomic64_t free_rte;
+	uint64_t free_rte;
 	/* Memory free to hugepage count. */
-	rte_atomic64_t msl_miss;
+	uint64_t msl_miss;
 	/* MSL miss count. */
-	rte_atomic64_t msl_update;
+	uint64_t msl_update;
 	/* MSL update count. */
 #endif
 };
@@ -47,14 +42,14 @@ static struct mlx5_sys_mem mlx5_sys_mem = {
 	.init = 0,
 	.enable = 0,
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-	.malloc_sys = RTE_ATOMIC64_INIT(0),
-	.malloc_rte = RTE_ATOMIC64_INIT(0),
-	.realloc_sys = RTE_ATOMIC64_INIT(0),
-	.realloc_rte = RTE_ATOMIC64_INIT(0),
-	.free_sys = RTE_ATOMIC64_INIT(0),
-	.free_rte = RTE_ATOMIC64_INIT(0),
-	.msl_miss = RTE_ATOMIC64_INIT(0),
-	.msl_update = RTE_ATOMIC64_INIT(0),
+	.malloc_sys = 0,
+	.malloc_rte = 0,
+	.realloc_sys = 0,
+	.realloc_rte = 0,
+	.free_sys = 0,
+	.free_rte = 0,
+	.msl_miss = 0,
+	.msl_update = 0,
 #endif
 };
 
@@ -97,12 +92,14 @@ mlx5_mem_update_msl(void *addr)
 	 * different with the cached msl.
 	 */
 	if (addr && !mlx5_mem_check_msl(addr,
-	    (struct rte_memseg_list *)(uintptr_t)rte_atomic64_read
-	    (&mlx5_sys_mem.a64_last_msl))) {
-		rte_atomic64_set(&mlx5_sys_mem.a64_last_msl,
-			(int64_t)(uintptr_t)rte_mem_virt2memseg_list(addr));
+	    (struct rte_memseg_list *)__atomic_load_n
+	    (&mlx5_sys_mem.last_msl, __ATOMIC_RELAXED))) {
+		__atomic_store_n(&mlx5_sys_mem.last_msl,
+			rte_mem_virt2memseg_list(addr),
+			__ATOMIC_RELAXED);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-		rte_atomic64_inc(&mlx5_sys_mem.msl_update);
+		__atomic_add_fetch(&mlx5_sys_mem.msl_update, 1,
+				   __ATOMIC_RELAXED);
 #endif
 	}
 }
@@ -123,12 +120,12 @@ mlx5_mem_is_rte(void *addr)
 	 * Check if the last cache msl matches. Drop to slow path
 	 * to check if the memory belongs to rte memory.
 	 */
-	if (!mlx5_mem_check_msl(addr, (struct rte_memseg_list *)(uintptr_t)
-	    rte_atomic64_read(&mlx5_sys_mem.a64_last_msl))) {
+	if (!mlx5_mem_check_msl(addr, (struct rte_memseg_list *)
+	    __atomic_load_n(&mlx5_sys_mem.last_msl, __ATOMIC_RELAXED))) {
 		if (!rte_mem_virt2memseg_list(addr))
 			return false;
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-		rte_atomic64_inc(&mlx5_sys_mem.msl_miss);
+		__atomic_add_fetch(&mlx5_sys_mem.msl_miss, 1, __ATOMIC_RELAXED);
 #endif
 	}
 	return true;
@@ -190,7 +187,8 @@ mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
 		mlx5_mem_update_msl(addr);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 		if (addr)
-			rte_atomic64_inc(&mlx5_sys_mem.malloc_rte);
+			__atomic_add_fetch(&mlx5_sys_mem->malloc_rte, 1,
+					   __ATOMIC_RELAXED);
 #endif
 		return addr;
 	}
@@ -203,7 +201,8 @@ mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
 		addr = malloc(size);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	if (addr)
-		rte_atomic64_inc(&mlx5_sys_mem.malloc_sys);
+		__atomic_add_fetch(&mlx5_sys_mem->malloc_sys, 1,
+				   __ATOMIC_RELAXED);
 #endif
 	return addr;
 }
@@ -236,7 +235,8 @@ mlx5_realloc(void *addr, uint32_t flags, size_t size, unsigned int align,
 		mlx5_mem_update_msl(new_addr);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 		if (new_addr)
-			rte_atomic64_inc(&mlx5_sys_mem.realloc_rte);
+			__atomic_add_fetch(&mlx5_sys_mem->realloc_rte, 1,
+					   __ATOMIC_RELAXED);
 #endif
 		return new_addr;
 	}
@@ -248,7 +248,8 @@ mlx5_realloc(void *addr, uint32_t flags, size_t size, unsigned int align,
 	new_addr = realloc(addr, size);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	if (new_addr)
-		rte_atomic64_inc(&mlx5_sys_mem.realloc_sys);
+		__atomic_add_fetch(&mlx5_sys_mem->realloc_sys, 1,
+				   __ATOMIC_RELAXED);
 #endif
 	return new_addr;
 }
@@ -260,12 +261,14 @@ mlx5_free(void *addr)
 		return;
 	if (!mlx5_mem_is_rte(addr)) {
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-		rte_atomic64_inc(&mlx5_sys_mem.free_sys);
+		__atomic_add_fetch(&mlx5_sys_mem->free_sys, 1,
+				   __ATOMIC_RELAXED);
 #endif
 		free(addr);
 	} else {
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-		rte_atomic64_inc(&mlx5_sys_mem.free_rte);
+		__atomic_add_fetch(&mlx5_sys_mem->free_rte, 1,
+				   __ATOMIC_RELAXED);
 #endif
 		rte_free(addr);
 	}
@@ -279,14 +282,14 @@ mlx5_memory_stat_dump(void)
 		" free:%"PRIi64"\nRTE memory malloc:%"PRIi64","
 		" realloc:%"PRIi64", free:%"PRIi64"\nMSL miss:%"PRIi64","
 		" update:%"PRIi64"",
-		rte_atomic64_read(&mlx5_sys_mem.malloc_sys),
-		rte_atomic64_read(&mlx5_sys_mem.realloc_sys),
-		rte_atomic64_read(&mlx5_sys_mem.free_sys),
-		rte_atomic64_read(&mlx5_sys_mem.malloc_rte),
-		rte_atomic64_read(&mlx5_sys_mem.realloc_rte),
-		rte_atomic64_read(&mlx5_sys_mem.free_rte),
-		rte_atomic64_read(&mlx5_sys_mem.msl_miss),
-		rte_atomic64_read(&mlx5_sys_mem.msl_update));
+		__atomic_load_n(&mlx5_sys_mem.malloc_sys, __ATOMIC_RELAXED),
+		__atomic_load_n(&mlx5_sys_mem.realloc_sys, __ATOMIC_RELAXED),
+		__atomic_load_n(&mlx5_sys_mem.free_sys, __ATOMIC_RELAXED),
+		__atomic_load_n(&mlx5_sys_mem.malloc_rte, __ATOMIC_RELAXED),
+		__atomic_load_n(&mlx5_sys_mem.realloc_rte, __ATOMIC_RELAXED),
+		__atomic_load_n(&mlx5_sys_mem.free_rte, __ATOMIC_RELAXED),
+		__atomic_load_n(&mlx5_sys_mem.msl_miss, __ATOMIC_RELAXED),
+		__atomic_load_n(&mlx5_sys_mem.msl_update, __ATOMIC_RELAXED));
 #endif
 }
 
