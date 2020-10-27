@@ -8,6 +8,7 @@
 #include <elf.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <string.h>
 #include <unistd.h>
 
 /* Symbolic values for the entries in the auxiliary table */
@@ -107,4 +108,10 @@ rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)
 	if (feature >= RTE_CPUFLAG_NUMFLAGS)
 		return NULL;
 	return rte_cpu_feature_table[feature].name;
+}
+
+void
+rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
+{
+	memset(intrinsics, 0, sizeof(*intrinsics));
 }

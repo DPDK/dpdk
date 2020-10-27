@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "rte_cpuid.h"
 
@@ -178,4 +179,15 @@ rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)
 	if (feature >= RTE_CPUFLAG_NUMFLAGS)
 		return NULL;
 	return rte_cpu_feature_table[feature].name;
+}
+
+void
+rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
+{
+	memset(intrinsics, 0, sizeof(*intrinsics));
+
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_WAITPKG)) {
+		intrinsics->power_monitor = 1;
+		intrinsics->power_pause = 1;
+	}
 }

@@ -398,6 +398,7 @@ EXPERIMENTAL {
 
 	# added in 20.11
 	__rte_eal_trace_generic_size_t;
+	rte_cpu_get_intrinsics_support;
 	rte_epoll_wait_interruptible;
 	rte_service_lcore_may_be_active;
 	rte_vect_get_max_simd_bitwidth;

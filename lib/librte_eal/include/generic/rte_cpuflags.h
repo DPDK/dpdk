@@ -13,6 +13,32 @@
 #include "rte_common.h"
 #include <errno.h>
 
+#include <rte_compat.h>
+
+/**
+ * Structure used to describe platform-specific intrinsics that may or may not
+ * be supported at runtime.
+ */
+struct rte_cpu_intrinsics {
+	uint32_t power_monitor : 1;
+	/**< indicates support for rte_power_monitor function */
+	uint32_t power_pause : 1;
+	/**< indicates support for rte_power_pause function */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Check CPU support for various intrinsics at runtime.
+ *
+ * @param intrinsics
+ *     Pointer to a structure to be filled.
+ */
+__rte_experimental
+void
+rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics);
+
 /**
  * Enumeration of all CPU features supported
  */

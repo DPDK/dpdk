@@ -151,3 +151,9 @@ rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)
 		return NULL;
 	return rte_cpu_feature_table[feature].name;
 }
+
+void
+rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
+{
+	memset(intrinsics, 0, sizeof(*intrinsics));
+}
