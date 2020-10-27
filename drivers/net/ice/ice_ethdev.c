@@ -33,7 +33,7 @@ static const char * const ice_valid_args[] = {
 };
 
 static const struct rte_mbuf_dynfield ice_proto_xtr_metadata_param = {
-	.name = "ice_dynfield_proto_xtr_metadata",
+	.name = "intel_pmd_dynfield_proto_xtr_metadata",
 	.size = sizeof(uint32_t),
 	.align = __alignof__(uint32_t),
 	.flags = 0,
@@ -49,22 +49,22 @@ static bool ice_proto_xtr_hw_support[PROTO_XTR_MAX];
 
 static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 	[PROTO_XTR_VLAN] = {
-		.param = { .name = "ice_dynflag_proto_xtr_vlan" },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_vlan" },
 		.ol_flag = &rte_net_ice_dynflag_proto_xtr_vlan_mask },
 	[PROTO_XTR_IPV4] = {
-		.param = { .name = "ice_dynflag_proto_xtr_ipv4" },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv4" },
 		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv4_mask },
 	[PROTO_XTR_IPV6] = {
-		.param = { .name = "ice_dynflag_proto_xtr_ipv6" },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv6" },
 		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv6_mask },
 	[PROTO_XTR_IPV6_FLOW] = {
-		.param = { .name = "ice_dynflag_proto_xtr_ipv6_flow" },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv6_flow" },
 		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask },
 	[PROTO_XTR_TCP] = {
-		.param = { .name = "ice_dynflag_proto_xtr_tcp" },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_tcp" },
 		.ol_flag = &rte_net_ice_dynflag_proto_xtr_tcp_mask },
 	[PROTO_XTR_IP_OFFSET] = {
-		.param = { .name = "ice_dynflag_proto_xtr_ip_offset" },
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ip_offset" },
 		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ip_offset_mask },
 };
 
