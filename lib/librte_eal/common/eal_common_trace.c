@@ -435,7 +435,7 @@ __rte_trace_point_emit_field(size_t sz, const char *in, const char *datatype)
 	fixup = trace_metadata_fixup_field(in);
 	if (fixup != NULL)
 		in = fixup;
-	rc = asprintf(&field, "%s%s %s;",
+	rc = asprintf(&field, "%s        %s %s;\n",
 		RTE_PER_LCORE(ctf_field) != NULL ?
 			RTE_PER_LCORE(ctf_field) : "",
 		datatype, in);
