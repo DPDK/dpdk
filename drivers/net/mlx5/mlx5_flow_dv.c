@@ -8605,8 +8605,6 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
  *
  * @param[in, out] dev
  *   Pointer to rte_eth_dev structure.
- * @param[in] attr
- *   Attributes of flow that includes this item.
  * @param[in] resource
  *   Pointer to sample resource.
  * @parm[in, out] dev_flow
@@ -8621,7 +8619,6 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
  */
 static int
 flow_dv_sample_resource_register(struct rte_eth_dev *dev,
-			 const struct rte_flow_attr *attr,
 			 struct mlx5_flow_dv_sample_resource *resource,
 			 struct mlx5_flow *dev_flow,
 			 void **sample_dv_actions,
@@ -8635,6 +8632,8 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 	uint32_t idx = 0;
 	const uint32_t next_ft_step = 1;
 	uint32_t next_ft_id = resource->ft_id +	next_ft_step;
+	uint8_t is_egress = 0;
+	uint8_t is_transfer = 0;
 
 	/* Lookup a matching resource from cache. */
 	ILIST_FOREACH(sh->ipool[MLX5_IPOOL_SAMPLE], sh->sample_action_list,
@@ -8667,8 +8666,12 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 					  "cannot allocate resource memory");
 	*cache_resource = *resource;
 	/* Create normal path table level */
+	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
+		is_transfer = 1;
+	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
+		is_egress = 1;
 	tbl = flow_dv_tbl_resource_get(dev, next_ft_id,
-					attr->egress, attr->transfer,
+					is_egress, is_transfer,
 					dev_flow->external, NULL, 0, 0, error);
 	if (!tbl) {
 		rte_flow_error_set(error, ENOMEM,
@@ -8751,8 +8754,6 @@ error:
  *
  * @param[in, out] dev
  *   Pointer to rte_eth_dev structure.
- * @param[in] attr
- *   Attributes of flow that includes this item.
  * @param[in] resource
  *   Pointer to destination array resource.
  * @parm[in, out] dev_flow
@@ -8765,7 +8766,6 @@ error:
  */
 static int
 flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
-			 const struct rte_flow_attr *attr,
 			 struct mlx5_flow_dv_dest_array_resource *resource,
 			 struct mlx5_flow *dev_flow,
 			 struct rte_flow_error *error)
@@ -8809,9 +8809,9 @@ flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
 					  NULL,
 					  "cannot allocate resource memory");
 	*cache_resource = *resource;
-	if (attr->transfer)
+	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
 		domain = sh->fdb_domain;
-	else if (attr->ingress)
+	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_RX)
 		domain = sh->rx_domain;
 	else
 		domain = sh->tx_domain;
@@ -9100,6 +9100,8 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 		res->set_action = action_ctx.set_action;
 	} else if (attr->ingress) {
 		res->ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
+	} else {
+		res->ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_TX;
 	}
 	return 0;
 }
@@ -9111,8 +9113,6 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
  *   Pointer to rte_eth_dev structure.
  * @param[in, out] dev_flow
  *   Pointer to the mlx5_flow.
- * @param[in] attr
- *   Pointer to the flow attributes.
  * @param[in] num_of_dest
  *   The num of destination.
  * @param[in, out] res
@@ -9132,7 +9132,6 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 static int
 flow_dv_create_action_sample(struct rte_eth_dev *dev,
 			     struct mlx5_flow *dev_flow,
-			     const struct rte_flow_attr *attr,
 			     uint32_t num_of_dest,
 			     struct mlx5_flow_dv_sample_resource *res,
 			     struct mlx5_flow_dv_dest_array_resource *mdest_res,
@@ -9192,14 +9191,14 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 		memcpy(&mdest_res->sample_act[0], &res->sample_act,
 				sizeof(struct mlx5_flow_sub_actions_list));
 		mdest_res->num_of_dest = num_of_dest;
-		if (flow_dv_dest_array_resource_register(dev, attr, mdest_res,
+		if (flow_dv_dest_array_resource_register(dev, mdest_res,
 							 dev_flow, error))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "can't create sample "
 						  "action");
 	} else {
-		if (flow_dv_sample_resource_register(dev, attr, res, dev_flow,
+		if (flow_dv_sample_resource_register(dev, res, dev_flow,
 						     sample_actions, error))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -9839,7 +9838,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			}
 			if (action_flags & MLX5_FLOW_ACTION_SAMPLE) {
 				ret = flow_dv_create_action_sample(dev,
-							  dev_flow, attr,
+							  dev_flow,
 							  num_of_dest,
 							  &sample_res,
 							  &mdest_res,
