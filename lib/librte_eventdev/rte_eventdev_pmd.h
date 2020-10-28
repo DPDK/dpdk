@@ -20,10 +20,13 @@ extern "C" {
 #include <string.h>
 
 #include <rte_common.h>
+#include <rte_compat.h>
 #include <rte_config.h>
 #include <rte_dev.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 
 #include "rte_eventdev.h"
 #include "rte_event_timer_adapter_pmd.h"
@@ -635,6 +638,23 @@ typedef int (*eventdev_eth_rx_adapter_stats_reset)
  */
 typedef int (*eventdev_selftest)(void);
 
+typedef uint32_t rte_event_pmd_selftest_seqn_t;
+extern int rte_event_pmd_selftest_seqn_dynfield_offset;
+
+/**
+ * Read test sequence number from mbuf.
+ *
+ * @param mbuf Structure to read from.
+ * @return pointer to test sequence number.
+ */
+__rte_internal
+static inline rte_event_pmd_selftest_seqn_t *
+rte_event_pmd_selftest_seqn(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+		rte_event_pmd_selftest_seqn_dynfield_offset,
+		rte_event_pmd_selftest_seqn_t *);
+}
 
 struct rte_cryptodev;
 

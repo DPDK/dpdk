@@ -256,7 +256,7 @@ ordered_basic(struct test *t)
 		ev.queue_id = t->qid[0];
 		ev.op = RTE_EVENT_OP_NEW;
 		ev.mbuf = mbufs[i];
-		mbufs[i]->seqn = MAGIC_SEQN + i;
+		*rte_event_pmd_selftest_seqn(mbufs[i]) = MAGIC_SEQN + i;
 
 		/* generate pkt and enqueue */
 		err = rte_event_enqueue_burst(evdev, t->port[rx_port], &ev, 1);
@@ -281,7 +281,7 @@ ordered_basic(struct test *t)
 			rte_event_dev_dump(evdev, stdout);
 			return -1;
 		}
-		seq = deq_ev[i].mbuf->seqn  - MAGIC_SEQN;
+		seq = *rte_event_pmd_selftest_seqn(deq_ev[i].mbuf)  - MAGIC_SEQN;
 
 		if (seq != (i-1)) {
 			PMD_DRV_LOG(ERR, " seq test failed ! eq is %d , "
@@ -396,7 +396,7 @@ atomic_basic(struct test *t)
 		ev.op = RTE_EVENT_OP_NEW;
 		ev.flow_id = 1;
 		ev.mbuf = mbufs[i];
-		mbufs[i]->seqn = MAGIC_SEQN + i;
+		*rte_event_pmd_selftest_seqn(mbufs[i]) = MAGIC_SEQN + i;
 
 		/* generate pkt and enqueue */
 		err = rte_event_enqueue_burst(evdev, t->port[rx_port], &ev, 1);
@@ -625,7 +625,7 @@ single_link_w_stats(struct test *t)
 		ev.queue_id = t->qid[0];
 		ev.op = RTE_EVENT_OP_NEW;
 		ev.mbuf = mbufs[i];
-		mbufs[i]->seqn = 1234 + i;
+		*rte_event_pmd_selftest_seqn(mbufs[i]) = 1234 + i;
 
 		/* generate pkt and enqueue */
 		err = rte_event_enqueue_burst(evdev, t->port[rx_port], &ev, 1);

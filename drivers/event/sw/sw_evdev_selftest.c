@@ -385,7 +385,7 @@ run_prio_packet_test(struct test *t)
 			printf("%d: gen of pkt failed\n", __LINE__);
 			return -1;
 		}
-		arp->seqn = MAGIC_SEQN[i];
+		*rte_event_pmd_selftest_seqn(arp) = MAGIC_SEQN[i];
 
 		ev = (struct rte_event){
 			.priority = PRIORITY[i],
@@ -424,7 +424,7 @@ run_prio_packet_test(struct test *t)
 		rte_event_dev_dump(evdev, stdout);
 		return -1;
 	}
-	if (ev.mbuf->seqn != MAGIC_SEQN[1]) {
+	if (*rte_event_pmd_selftest_seqn(ev.mbuf) != MAGIC_SEQN[1]) {
 		printf("%d: first packet out not highest priority\n",
 				__LINE__);
 		rte_event_dev_dump(evdev, stdout);
@@ -438,7 +438,7 @@ run_prio_packet_test(struct test *t)
 		rte_event_dev_dump(evdev, stdout);
 		return -1;
 	}
-	if (ev2.mbuf->seqn != MAGIC_SEQN[0]) {
+	if (*rte_event_pmd_selftest_seqn(ev2.mbuf) != MAGIC_SEQN[0]) {
 		printf("%d: second packet out not lower priority\n",
 				__LINE__);
 		rte_event_dev_dump(evdev, stdout);
@@ -482,7 +482,7 @@ test_single_directed_packet(struct test *t)
 	}
 
 	const uint32_t MAGIC_SEQN = 4711;
-	arp->seqn = MAGIC_SEQN;
+	*rte_event_pmd_selftest_seqn(arp) = MAGIC_SEQN;
 
 	/* generate pkt and enqueue */
 	err = rte_event_enqueue_burst(evdev, rx_enq, &ev, 1);
@@ -521,7 +521,7 @@ test_single_directed_packet(struct test *t)
 		return -1;
 	}
 
-	if (ev.mbuf->seqn != MAGIC_SEQN) {
+	if (*rte_event_pmd_selftest_seqn(ev.mbuf) != MAGIC_SEQN) {
 		printf("%d: error magic sequence number not dequeued\n",
 				__LINE__);
 		return -1;
@@ -939,7 +939,7 @@ xstats_tests(struct test *t)
 		ev.op = RTE_EVENT_OP_NEW;
 		ev.mbuf = arp;
 		ev.flow_id = 7;
-		arp->seqn = i;
+		*rte_event_pmd_selftest_seqn(arp) = i;
 
 		int err = rte_event_enqueue_burst(evdev, t->port[0], &ev, 1);
 		if (err != 1) {
@@ -1490,7 +1490,7 @@ xstats_id_reset_tests(struct test *t)
 		ev.queue_id = t->qid[i];
 		ev.op = RTE_EVENT_OP_NEW;
 		ev.mbuf = arp;
-		arp->seqn = i;
+		*rte_event_pmd_selftest_seqn(arp) = i;
 
 		int err = rte_event_enqueue_burst(evdev, t->port[0], &ev, 1);
 		if (err != 1) {
@@ -1878,7 +1878,7 @@ qid_priorities(struct test *t)
 		ev.queue_id = t->qid[i];
 		ev.op = RTE_EVENT_OP_NEW;
 		ev.mbuf = arp;
-		arp->seqn = i;
+		*rte_event_pmd_selftest_seqn(arp) = i;
 
 		int err = rte_event_enqueue_burst(evdev, t->port[0], &ev, 1);
 		if (err != 1) {
@@ -1899,7 +1899,7 @@ qid_priorities(struct test *t)
 		return -1;
 	}
 	for (i = 0; i < 3; i++) {
-		if (ev[i].mbuf->seqn != 2-i) {
+		if (*rte_event_pmd_selftest_seqn(ev[i].mbuf) != 2-i) {
 			printf(
 				"%d: qid priority test: seqn %d incorrectly prioritized\n",
 					__LINE__, i);
@@ -2376,7 +2376,7 @@ single_packet(struct test *t)
 	ev.mbuf = arp;
 	ev.queue_id = 0;
 	ev.flow_id = 3;
-	arp->seqn = MAGIC_SEQN;
+	*rte_event_pmd_selftest_seqn(arp) = MAGIC_SEQN;
 
 	err = rte_event_enqueue_burst(evdev, t->port[rx_enq], &ev, 1);
 	if (err != 1) {
@@ -2416,7 +2416,7 @@ single_packet(struct test *t)
 	}
 
 	err = test_event_dev_stats_get(evdev, &stats);
-	if (ev.mbuf->seqn != MAGIC_SEQN) {
+	if (*rte_event_pmd_selftest_seqn(ev.mbuf) != MAGIC_SEQN) {
 		printf("%d: magic sequence number not dequeued\n", __LINE__);
 		return -1;
 	}
@@ -2689,7 +2689,7 @@ parallel_basic(struct test *t, int check_order)
 		ev.queue_id = t->qid[0];
 		ev.op = RTE_EVENT_OP_NEW;
 		ev.mbuf = mbufs[i];
-		mbufs[i]->seqn = MAGIC_SEQN + i;
+		*rte_event_pmd_selftest_seqn(mbufs[i]) = MAGIC_SEQN + i;
 
 		/* generate pkt and enqueue */
 		err = rte_event_enqueue_burst(evdev, t->port[rx_port], &ev, 1);
@@ -2744,10 +2744,12 @@ parallel_basic(struct test *t, int check_order)
 	/* Check to see if the sequence numbers are in expected order */
 	if (check_order) {
 		for (j = 0 ; j < deq_pkts ; j++) {
-			if (deq_ev[j].mbuf->seqn != MAGIC_SEQN + j) {
-				printf(
-					"%d: Incorrect sequence number(%d) from port %d\n",
-					__LINE__, mbufs_out[j]->seqn, tx_port);
+			if (*rte_event_pmd_selftest_seqn(deq_ev[j].mbuf) !=
+					MAGIC_SEQN + j) {
+				printf("%d: Incorrect sequence number(%d) from port %d\n",
+					__LINE__,
+					*rte_event_pmd_selftest_seqn(mbufs_out[j]),
+					tx_port);
 				return -1;
 			}
 		}

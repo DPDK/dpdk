@@ -1242,13 +1242,25 @@ int rte_event_dev_xstats_reset(uint8_t dev_id,
 	return -ENOTSUP;
 }
 
+int rte_event_pmd_selftest_seqn_dynfield_offset = -1;
+
 int rte_event_dev_selftest(uint8_t dev_id)
 {
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	static const struct rte_mbuf_dynfield test_seqn_dynfield_desc = {
+		.name = "rte_event_pmd_selftest_seqn_dynfield",
+		.size = sizeof(rte_event_pmd_selftest_seqn_t),
+		.align = __alignof__(rte_event_pmd_selftest_seqn_t),
+	};
 	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
 
-	if (dev->dev_ops->dev_selftest != NULL)
+	if (dev->dev_ops->dev_selftest != NULL) {
+		rte_event_pmd_selftest_seqn_dynfield_offset =
+			rte_mbuf_dynfield_register(&test_seqn_dynfield_desc);
+		if (rte_event_pmd_selftest_seqn_dynfield_offset < 0)
+			return -ENOMEM;
 		return (*dev->dev_ops->dev_selftest)();
+	}
 	return -ENOTSUP;
 }
 
