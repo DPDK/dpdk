@@ -11,12 +11,13 @@ ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 			void **objs, uint16_t nb_objs)
 {
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3, **pkts;
+	struct rte_lpm *lpm = IP4_LOOKUP_NODE_LPM(node->ctx);
+	const int dyn = IP4_LOOKUP_NODE_PRIV1_OFF(node->ctx);
 	struct rte_ipv4_hdr *ipv4_hdr;
 	void **to_next, **from;
 	uint16_t last_spec = 0;
 	rte_edge_t next_index;
 	uint16_t n_left_from;
-	struct rte_lpm *lpm;
 	uint16_t held = 0;
 	uint32_t drop_nh;
 	rte_xmm_t result;
@@ -29,9 +30,6 @@ ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 	next_index = RTE_NODE_IP4_LOOKUP_NEXT_REWRITE;
 	/* Drop node */
 	drop_nh = ((uint32_t)RTE_NODE_IP4_LOOKUP_NEXT_PKT_DROP) << 16;
-
-	/* Get socket specific LPM from ctx */
-	lpm = *((struct rte_lpm **)node->ctx);
 
 	pkts = (struct rte_mbuf **)objs;
 	from = objs;
@@ -119,10 +117,10 @@ ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 		priv23.u16[0] = result.u16[4];
 		priv23.u16[4] = result.u16[6];
 
-		node_mbuf_priv1(mbuf0)->u = priv01.u64[0];
-		node_mbuf_priv1(mbuf1)->u = priv01.u64[1];
-		node_mbuf_priv1(mbuf2)->u = priv23.u64[0];
-		node_mbuf_priv1(mbuf3)->u = priv23.u64[1];
+		node_mbuf_priv1(mbuf0, dyn)->u = priv01.u64[0];
+		node_mbuf_priv1(mbuf1, dyn)->u = priv01.u64[1];
+		node_mbuf_priv1(mbuf2, dyn)->u = priv23.u64[0];
+		node_mbuf_priv1(mbuf3, dyn)->u = priv23.u64[1];
 
 		/* Enqueue four to next node */
 		rte_edge_t fix_spec = ((next_index == result.u16[1]) &&
@@ -197,14 +195,14 @@ ip4_lookup_node_process_vec(struct rte_graph *graph, struct rte_node *node,
 		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf0, struct rte_ipv4_hdr *,
 						sizeof(struct rte_ether_hdr));
 		/* Extract cksum, ttl as ipv4 hdr is in cache */
-		node_mbuf_priv1(mbuf0)->cksum = ipv4_hdr->hdr_checksum;
-		node_mbuf_priv1(mbuf0)->ttl = ipv4_hdr->time_to_live;
+		node_mbuf_priv1(mbuf0, dyn)->cksum = ipv4_hdr->hdr_checksum;
+		node_mbuf_priv1(mbuf0, dyn)->ttl = ipv4_hdr->time_to_live;
 
 		rc = rte_lpm_lookup(lpm, rte_be_to_cpu_32(ipv4_hdr->dst_addr),
 				    &next_hop);
 		next_hop = (rc == 0) ? next_hop : drop_nh;
 
-		node_mbuf_priv1(mbuf0)->nh = (uint16_t)next_hop;
+		node_mbuf_priv1(mbuf0, dyn)->nh = (uint16_t)next_hop;
 		next_hop = next_hop >> 16;
 		next0 = (uint16_t)next_hop;
 

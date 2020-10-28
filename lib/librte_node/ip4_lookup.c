@@ -29,7 +29,22 @@ struct ip4_lookup_node_main {
 	struct rte_lpm *lpm_tbl[RTE_MAX_NUMA_NODES];
 };
 
+struct ip4_lookup_node_ctx {
+	/* Socket's LPM table */
+	struct rte_lpm *lpm;
+	/* Dynamic offset to mbuf priv1 */
+	int mbuf_priv1_off;
+};
+
+int node_mbuf_priv1_dynfield_offset = -1;
+
 static struct ip4_lookup_node_main ip4_lookup_nm;
+
+#define IP4_LOOKUP_NODE_LPM(ctx) \
+	(((struct ip4_lookup_node_ctx *)ctx)->lpm)
+
+#define IP4_LOOKUP_NODE_PRIV1_OFF(ctx) \
+	(((struct ip4_lookup_node_ctx *)ctx)->mbuf_priv1_off)
 
 #if defined(__ARM_NEON)
 #include "ip4_lookup_neon.h"
@@ -41,12 +56,13 @@ static uint16_t
 ip4_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 			void **objs, uint16_t nb_objs)
 {
+	struct rte_lpm *lpm = IP4_LOOKUP_NODE_LPM(node->ctx);
+	const int dyn = IP4_LOOKUP_NODE_PRIV1_OFF(node->ctx);
 	struct rte_ipv4_hdr *ipv4_hdr;
 	void **to_next, **from;
 	uint16_t last_spec = 0;
 	struct rte_mbuf *mbuf;
 	rte_edge_t next_index;
-	struct rte_lpm *lpm;
 	uint16_t held = 0;
 	uint32_t drop_nh;
 	int i, rc;
@@ -55,9 +71,6 @@ ip4_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 	next_index = RTE_NODE_IP4_LOOKUP_NEXT_REWRITE;
 	/* Drop node */
 	drop_nh = ((uint32_t)RTE_NODE_IP4_LOOKUP_NEXT_PKT_DROP) << 16;
-
-	/* Get socket specific LPM from ctx */
-	lpm = *((struct rte_lpm **)node->ctx);
 	from = objs;
 
 	/* Get stream for the speculated next node */
@@ -72,14 +85,14 @@ ip4_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv4_hdr *,
 				sizeof(struct rte_ether_hdr));
 		/* Extract cksum, ttl as ipv4 hdr is in cache */
-		node_mbuf_priv1(mbuf)->cksum = ipv4_hdr->hdr_checksum;
-		node_mbuf_priv1(mbuf)->ttl = ipv4_hdr->time_to_live;
+		node_mbuf_priv1(mbuf, dyn)->cksum = ipv4_hdr->hdr_checksum;
+		node_mbuf_priv1(mbuf, dyn)->ttl = ipv4_hdr->time_to_live;
 
 		rc = rte_lpm_lookup(lpm, rte_be_to_cpu_32(ipv4_hdr->dst_addr),
 				    &next_hop);
 		next_hop = (rc == 0) ? next_hop : drop_nh;
 
-		node_mbuf_priv1(mbuf)->nh = (uint16_t)next_hop;
+		node_mbuf_priv1(mbuf, dyn)->nh = (uint16_t)next_hop;
 		next_hop = next_hop >> 16;
 		next = (uint16_t)next_hop;
 
@@ -169,15 +182,19 @@ setup_lpm(struct ip4_lookup_node_main *nm, int socket)
 static int
 ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
 {
-	struct rte_lpm **lpm_p = (struct rte_lpm **)&node->ctx;
 	uint16_t socket, lcore_id;
 	static uint8_t init_once;
 	int rc;
 
 	RTE_SET_USED(graph);
-	RTE_SET_USED(node);
+	RTE_BUILD_BUG_ON(sizeof(struct ip4_lookup_node_ctx) > RTE_NODE_CTX_SZ);
 
 	if (!init_once) {
+		node_mbuf_priv1_dynfield_offset = rte_mbuf_dynfield_register(
+				&node_mbuf_priv1_dynfield_desc);
+		if (node_mbuf_priv1_dynfield_offset < 0)
+			return -rte_errno;
+
 		/* Setup LPM tables for all sockets */
 		RTE_LCORE_FOREACH(lcore_id)
 		{
@@ -192,7 +209,10 @@ ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
 		}
 		init_once = 1;
 	}
-	*lpm_p = ip4_lookup_nm.lpm_tbl[graph->socket];
+
+	/* Update socket's LPM and mbuf dyn priv1 offset in node ctx */
+	IP4_LOOKUP_NODE_LPM(node->ctx) = ip4_lookup_nm.lpm_tbl[graph->socket];
+	IP4_LOOKUP_NODE_PRIV1_OFF(node->ctx) = node_mbuf_priv1_dynfield_offset;
 
 #if defined(__ARM_NEON) || defined(RTE_ARCH_X86)
 	if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)

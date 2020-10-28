@@ -8,6 +8,7 @@
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 
 extern int rte_node_logtype;
 #define NODE_LOG(level, node_name, ...)                                        \
@@ -21,7 +22,6 @@ extern int rte_node_logtype;
 #define node_dbg(node_name, ...) NODE_LOG(DEBUG, node_name, __VA_ARGS__)
 
 /**
- *
  * Node mbuf private data to store next hop, ttl and checksum.
  */
 struct node_mbuf_priv1 {
@@ -36,6 +36,13 @@ struct node_mbuf_priv1 {
 		uint64_t u;
 	};
 };
+
+static const struct rte_mbuf_dynfield node_mbuf_priv1_dynfield_desc = {
+	.name = "rte_node_dynfield_priv1",
+	.size = sizeof(struct node_mbuf_priv1),
+	.align = __alignof__(struct node_mbuf_priv1),
+};
+extern int node_mbuf_priv1_dynfield_offset;
 
 /**
  * Node mbuf private area 2.
@@ -58,9 +65,9 @@ struct node_mbuf_priv2 {
  *   Pointer to the mbuf_priv1.
  */
 static __rte_always_inline struct node_mbuf_priv1 *
-node_mbuf_priv1(struct rte_mbuf *m)
+node_mbuf_priv1(struct rte_mbuf *m, const int offset)
 {
-	return (struct node_mbuf_priv1 *)&m->udata64;
+	return RTE_MBUF_DYNFIELD(m, offset, struct node_mbuf_priv1 *);
 }
 
 /**

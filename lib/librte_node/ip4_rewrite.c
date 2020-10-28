@@ -19,7 +19,20 @@
 #include "ip4_rewrite_priv.h"
 #include "node_private.h"
 
+struct ip4_rewrite_node_ctx {
+	/* Dynamic offset to mbuf priv1 */
+	int mbuf_priv1_off;
+	/* Cached next index */
+	uint16_t next_index;
+};
+
 static struct ip4_rewrite_node_main *ip4_rewrite_nm;
+
+#define IP4_REWRITE_NODE_LAST_NEXT(ctx) \
+	(((struct ip4_rewrite_node_ctx *)ctx)->next_index)
+
+#define IP4_REWRITE_NODE_PRIV1_OFF(ctx) \
+	(((struct ip4_rewrite_node_ctx *)ctx)->mbuf_priv1_off)
 
 static uint16_t
 ip4_rewrite_node_process(struct rte_graph *graph, struct rte_node *node,
@@ -27,6 +40,7 @@ ip4_rewrite_node_process(struct rte_graph *graph, struct rte_node *node,
 {
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3, **pkts;
 	struct ip4_rewrite_nh_header *nh = ip4_rewrite_nm->nh;
+	const int dyn = IP4_REWRITE_NODE_PRIV1_OFF(node->ctx);
 	uint16_t next0, next1, next2, next3, next_index;
 	struct rte_ipv4_hdr *ip0, *ip1, *ip2, *ip3;
 	uint16_t n_left_from, held = 0, last_spec = 0;
@@ -37,7 +51,7 @@ ip4_rewrite_node_process(struct rte_graph *graph, struct rte_node *node,
 	int i;
 
 	/* Speculative next as last next */
-	next_index = *(uint16_t *)node->ctx;
+	next_index = IP4_REWRITE_NODE_LAST_NEXT(node->ctx);
 	rte_prefetch0(nh);
 
 	pkts = (struct rte_mbuf **)objs;
@@ -68,10 +82,10 @@ ip4_rewrite_node_process(struct rte_graph *graph, struct rte_node *node,
 
 		pkts += 4;
 		n_left_from -= 4;
-		priv01.u64[0] = node_mbuf_priv1(mbuf0)->u;
-		priv01.u64[1] = node_mbuf_priv1(mbuf1)->u;
-		priv23.u64[0] = node_mbuf_priv1(mbuf2)->u;
-		priv23.u64[1] = node_mbuf_priv1(mbuf3)->u;
+		priv01.u64[0] = node_mbuf_priv1(mbuf0, dyn)->u;
+		priv01.u64[1] = node_mbuf_priv1(mbuf1, dyn)->u;
+		priv23.u64[0] = node_mbuf_priv1(mbuf2, dyn)->u;
+		priv23.u64[1] = node_mbuf_priv1(mbuf3, dyn)->u;
 
 		/* Increment checksum by one. */
 		priv01.u32[1] += rte_cpu_to_be_16(0x0100);
@@ -203,17 +217,17 @@ ip4_rewrite_node_process(struct rte_graph *graph, struct rte_node *node,
 		n_left_from -= 1;
 
 		d0 = rte_pktmbuf_mtod(mbuf0, void *);
-		rte_memcpy(d0, nh[node_mbuf_priv1(mbuf0)->nh].rewrite_data,
-			   nh[node_mbuf_priv1(mbuf0)->nh].rewrite_len);
+		rte_memcpy(d0, nh[node_mbuf_priv1(mbuf0, dyn)->nh].rewrite_data,
+			   nh[node_mbuf_priv1(mbuf0, dyn)->nh].rewrite_len);
 
-		next0 = nh[node_mbuf_priv1(mbuf0)->nh].tx_node;
+		next0 = nh[node_mbuf_priv1(mbuf0, dyn)->nh].tx_node;
 		ip0 = (struct rte_ipv4_hdr *)((uint8_t *)d0 +
 					      sizeof(struct rte_ether_hdr));
-		chksum = node_mbuf_priv1(mbuf0)->cksum +
+		chksum = node_mbuf_priv1(mbuf0, dyn)->cksum +
 			 rte_cpu_to_be_16(0x0100);
 		chksum += chksum >= 0xffff;
 		ip0->hdr_checksum = chksum;
-		ip0->time_to_live = node_mbuf_priv1(mbuf0)->ttl - 1;
+		ip0->time_to_live = node_mbuf_priv1(mbuf0, dyn)->ttl - 1;
 
 		if (unlikely(next_index ^ next0)) {
 			/* Copy things successfully speculated till now */
@@ -240,7 +254,7 @@ ip4_rewrite_node_process(struct rte_graph *graph, struct rte_node *node,
 	rte_memcpy(to_next, from, last_spec * sizeof(from[0]));
 	rte_node_next_stream_put(graph, node, next_index, held);
 	/* Save the last next used */
-	*(uint16_t *)node->ctx = next_index;
+	IP4_REWRITE_NODE_LAST_NEXT(node->ctx) = next_index;
 
 	return nb_objs;
 }
@@ -248,9 +262,20 @@ ip4_rewrite_node_process(struct rte_graph *graph, struct rte_node *node,
 static int
 ip4_rewrite_node_init(const struct rte_graph *graph, struct rte_node *node)
 {
+	static bool init_once;
 
 	RTE_SET_USED(graph);
-	RTE_SET_USED(node);
+	RTE_BUILD_BUG_ON(sizeof(struct ip4_rewrite_node_ctx) > RTE_NODE_CTX_SZ);
+
+	if (!init_once) {
+		node_mbuf_priv1_dynfield_offset = rte_mbuf_dynfield_register(
+				&node_mbuf_priv1_dynfield_desc);
+		if (node_mbuf_priv1_dynfield_offset < 0)
+			return -rte_errno;
+		init_once = true;
+	}
+	IP4_REWRITE_NODE_PRIV1_OFF(node->ctx) = node_mbuf_priv1_dynfield_offset;
+
 	node_dbg("ip4_rewrite", "Initialized ip4_rewrite node initialized");
 
 	return 0;
