@@ -17,8 +17,7 @@
 
 RTE_DEFINE_PER_LCORE(volatile int, trace_point_sz);
 RTE_DEFINE_PER_LCORE(void *, trace_mem);
-static RTE_DEFINE_PER_LCORE(char, ctf_field[TRACE_CTF_FIELD_SIZE]);
-static RTE_DEFINE_PER_LCORE(int, ctf_count);
+static RTE_DEFINE_PER_LCORE(char *, ctf_field);
 
 static struct trace_point_head tp_list = STAILQ_HEAD_INITIALIZER(tp_list);
 static struct trace trace = { .args = STAILQ_HEAD_INITIALIZER(trace.args), };
@@ -429,32 +428,33 @@ trace_mem_free(void)
 void
 __rte_trace_point_emit_field(size_t sz, const char *in, const char *datatype)
 {
-	char *field = RTE_PER_LCORE(ctf_field);
-	int count = RTE_PER_LCORE(ctf_count);
-	size_t size;
+	char *field;
 	char *fixup;
 	int rc;
 
-	size = RTE_MAX(0, TRACE_CTF_FIELD_SIZE - 1 - count);
-	RTE_PER_LCORE(trace_point_sz) += sz;
 	fixup = trace_metadata_fixup_field(in);
 	if (fixup != NULL)
 		in = fixup;
-	rc = snprintf(RTE_PTR_ADD(field, count), size, "%s %s;", datatype, in);
+	rc = asprintf(&field, "%s%s %s;",
+		RTE_PER_LCORE(ctf_field) != NULL ?
+			RTE_PER_LCORE(ctf_field) : "",
+		datatype, in);
+	free(RTE_PER_LCORE(ctf_field));
 	free(fixup);
-	if (rc <= 0 || (size_t)rc >= size) {
+	if (rc == -1) {
 		RTE_PER_LCORE(trace_point_sz) = 0;
-		trace_crit("CTF field is too long");
+		RTE_PER_LCORE(ctf_field) = NULL;
+		trace_crit("could not allocate CTF field");
 		return;
 	}
-	RTE_PER_LCORE(ctf_count) += rc;
+	RTE_PER_LCORE(trace_point_sz) += sz;
+	RTE_PER_LCORE(ctf_field) = field;
 }
 
 int
 __rte_trace_point_register(rte_trace_point_t *handle, const char *name,
 		void (*register_fn)(void))
 {
-	char *field = RTE_PER_LCORE(ctf_field);
 	struct trace_point *tp;
 	uint16_t sz;
 
@@ -467,7 +467,6 @@ __rte_trace_point_register(rte_trace_point_t *handle, const char *name,
 
 	/* Check the size of the trace point object */
 	RTE_PER_LCORE(trace_point_sz) = 0;
-	RTE_PER_LCORE(ctf_count) = 0;
 	register_fn();
 	if (RTE_PER_LCORE(trace_point_sz) == 0) {
 		trace_err("missing rte_trace_emit_header() in register fn");
@@ -505,15 +504,11 @@ __rte_trace_point_register(rte_trace_point_t *handle, const char *name,
 		goto free;
 	}
 
-	/* Copy the field data for future use */
-	if (rte_strscpy(tp->ctf_field, field, TRACE_CTF_FIELD_SIZE) < 0) {
-		trace_err("CTF field size is too long");
-		rte_errno = E2BIG;
-		goto free;
-	}
-
-	/* Clear field memory for the next event */
-	memset(field, 0, TRACE_CTF_FIELD_SIZE);
+	/* Copy the accumulated fields description and clear it for the next
+	 * trace point.
+	 */
+	tp->ctf_field = RTE_PER_LCORE(ctf_field);
+	RTE_PER_LCORE(ctf_field) = NULL;
 
 	/* Form the trace handle */
 	*handle = sz;

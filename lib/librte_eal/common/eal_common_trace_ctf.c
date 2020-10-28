@@ -233,7 +233,8 @@ meta_event_emit(char **meta, int *offset, struct trace_point *tp)
 		"    fields := struct {\n"
 		"        %s\n"
 		"    };\n"
-		"};\n\n", trace_id_get(tp->handle), tp->name, tp->ctf_field);
+		"};\n\n", trace_id_get(tp->handle), tp->name,
+		tp->ctf_field != NULL ? tp->ctf_field : "");
 	return meta_copy(meta, offset, str, rc);
 }
 
