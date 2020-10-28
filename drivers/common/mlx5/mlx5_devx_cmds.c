@@ -711,6 +711,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->non_wire_sq = MLX5_GET(cmd_hca_cap, hcattr, non_wire_sq);
 	attr->log_max_static_sq_wq = MLX5_GET(cmd_hca_cap, hcattr,
 					      log_max_static_sq_wq);
+	attr->num_lag_ports = MLX5_GET(cmd_hca_cap, hcattr, num_lag_ports);
 	attr->dev_freq_khz = MLX5_GET(cmd_hca_cap, hcattr,
 				      device_frequency_khz);
 	attr->scatter_fcs_w_decap_disable =
@@ -1429,8 +1430,8 @@ mlx5_devx_cmd_create_tis(void *ctx,
 	tis_ctx = MLX5_ADDR_OF(create_tis_in, in, ctx);
 	MLX5_SET(tisc, tis_ctx, strict_lag_tx_port_affinity,
 		 tis_attr->strict_lag_tx_port_affinity);
-	MLX5_SET(tisc, tis_ctx, strict_lag_tx_port_affinity,
-		 tis_attr->strict_lag_tx_port_affinity);
+	MLX5_SET(tisc, tis_ctx, lag_tx_port_affinity,
+		 tis_attr->lag_tx_port_affinity);
 	MLX5_SET(tisc, tis_ctx, prio, tis_attr->prio);
 	MLX5_SET(tisc, tis_ctx, transport_domain,
 		 tis_attr->transport_domain);
