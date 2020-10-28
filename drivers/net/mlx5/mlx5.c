@@ -1400,8 +1400,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_flow_list_flush(dev, &priv->flows, true);
 	mlx5_shared_action_flush(dev);
 	mlx5_flow_meter_flush(dev, NULL);
-	/* Free the intermediate buffers for flow creation. */
-	mlx5_flow_free_intermediate(dev);
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;

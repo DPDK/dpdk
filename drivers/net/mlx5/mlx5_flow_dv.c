@@ -6253,9 +6253,11 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 	struct mlx5_flow *dev_flow;
 	struct mlx5_flow_handle *dev_handle;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
+	MLX5_ASSERT(wks);
 	/* In case of corrupting the memory. */
-	if (priv->flow_idx >= MLX5_NUM_MAX_DEV_FLOWS) {
+	if (wks->flow_idx >= MLX5_NUM_MAX_DEV_FLOWS) {
 		rte_flow_error_set(error, ENOSPC,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "not free temporary device flow");
@@ -6269,8 +6271,8 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 				   "not enough memory to create flow handle");
 		return NULL;
 	}
-	/* No multi-thread supporting. */
-	dev_flow = &((struct mlx5_flow *)priv->inter_flows)[priv->flow_idx++];
+	MLX5_ASSERT(wks->flow_idx + 1 < RTE_DIM(wks->flows));
+	dev_flow = &wks->flows[wks->flow_idx++];
 	dev_flow->handle = dev_handle;
 	dev_flow->handle_idx = handle_idx;
 	/*
@@ -8942,11 +8944,12 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 	const struct rte_flow_action_queue *queue;
 	struct mlx5_flow_sub_actions_list *sample_act;
 	struct mlx5_flow_sub_actions_idx *sample_idx;
-	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
-					      priv->rss_desc)
-					      [!!priv->flow_nested_idx];
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
+	struct mlx5_flow_rss_desc *rss_desc;
 	uint64_t action_flags = 0;
 
+	MLX5_ASSERT(wks);
+	rss_desc = &wks->rss_desc[!!wks->flow_nested_idx];
 	sample_act = &res->sample_act;
 	sample_idx = &res->sample_idx;
 	sample_action = (const struct rte_flow_action_sample *)action->conf;
@@ -9148,18 +9151,18 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 			     uint64_t action_flags,
 			     struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	/* update normal path action resource into last index of array */
 	uint32_t dest_index = MLX5_MAX_DEST_NUM - 1;
 	struct mlx5_flow_sub_actions_list *sample_act =
 					&mdest_res->sample_act[dest_index];
-	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
-					      priv->rss_desc)
-					      [!!priv->flow_nested_idx];
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
+	struct mlx5_flow_rss_desc *rss_desc;
 	uint32_t normal_idx = 0;
 	struct mlx5_hrxq *hrxq;
 	uint32_t hrxq_idx;
 
+	MLX5_ASSERT(wks);
+	rss_desc = &wks->rss_desc[!!wks->flow_nested_idx];
 	if (num_of_dest > 1) {
 		if (sample_act->action_flags & MLX5_FLOW_ACTION_QUEUE) {
 			/* Handle QP action for mirroring */
@@ -9249,9 +9252,8 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 	struct mlx5_dev_config *dev_conf = &priv->config;
 	struct rte_flow *flow = dev_flow->flow;
 	struct mlx5_flow_handle *handle = dev_flow->handle;
-	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
-					      priv->rss_desc)
-					      [!!priv->flow_nested_idx];
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
+	struct mlx5_flow_rss_desc *rss_desc;
 	uint64_t item_flags = 0;
 	uint64_t last_item = 0;
 	uint64_t action_flags = 0;
@@ -9297,6 +9299,8 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		.fdb_def_rule = !!priv->fdb_def_rule,
 	};
 
+	MLX5_ASSERT(wks);
+	rss_desc = &wks->rss_desc[!!wks->flow_nested_idx];
 	memset(&mdest_res, 0, sizeof(struct mlx5_flow_dv_dest_array_resource));
 	memset(&sample_res, 0, sizeof(struct mlx5_flow_dv_sample_resource));
 	mhdr_res->ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
@@ -10280,6 +10284,7 @@ __flow_dv_rss_get_hrxq(struct rte_eth_dev *dev, struct rte_flow *flow,
 			   struct mlx5_hrxq **hrxq)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 	uint32_t hrxq_idx;
 
 	if (flow->shared_rss) {
@@ -10295,8 +10300,7 @@ __flow_dv_rss_get_hrxq(struct rte_eth_dev *dev, struct rte_flow *flow,
 		}
 	} else {
 		struct mlx5_flow_rss_desc *rss_desc =
-				&((struct mlx5_flow_rss_desc *)priv->rss_desc)
-				[!!priv->flow_nested_idx];
+				&wks->rss_desc[!!wks->flow_nested_idx];
 
 		MLX5_ASSERT(rss_desc->queue_num);
 		hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
@@ -10347,9 +10351,11 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	int n;
 	int err;
 	int idx;
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
-	for (idx = priv->flow_idx - 1; idx >= priv->flow_nested_idx; idx--) {
-		dev_flow = &((struct mlx5_flow *)priv->inter_flows)[idx];
+	MLX5_ASSERT(wks);
+	for (idx = wks->flow_idx - 1; idx >= wks->flow_nested_idx; idx--) {
+		dev_flow = &wks->flows[idx];
 		dv = &dev_flow->dv;
 		dh = dev_flow->handle;
 		dv_h = &dh->dvh;

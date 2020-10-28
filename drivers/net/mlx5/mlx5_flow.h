@@ -75,6 +75,9 @@ enum mlx5_feature_name {
 	MLX5_MTR_SFX,
 };
 
+/* Default queue number. */
+#define MLX5_RSSQ_DEFAULT_NUM 16
+
 #define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV6 (1u << 2)
@@ -603,7 +606,7 @@ struct mlx5_flow_rss_desc {
 	uint32_t queue_num; /**< Number of entries in @p queue. */
 	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
-	uint16_t queue[]; /**< Destination queues to redirect traffic to. */
+	uint16_t *queue; /**< Destination queues. */
 };
 
 /* PMD flow priority for tunnel */
@@ -1102,6 +1105,15 @@ struct rte_flow_shared_action {
 	};
 };
 
+/* Thread specific flow workspace intermediate data. */
+struct mlx5_flow_workspace {
+	struct mlx5_flow flows[MLX5_NUM_MAX_DEV_FLOWS];
+	struct mlx5_flow_rss_desc rss_desc[2];
+	uint32_t rssq_num[2]; /* Allocated queue num in rss_desc. */
+	int flow_idx; /* Intermediate device flow index. */
+	int flow_nested_idx; /* Intermediate device flow index, nested. */
+};
+
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    const struct rte_flow_item items[],
@@ -1204,6 +1216,7 @@ struct mlx5_flow_driver_ops {
 
 /* mlx5_flow.c */
 
+struct mlx5_flow_workspace *mlx5_flow_get_thread_workspace(void);
 struct mlx5_flow_id_pool *mlx5_flow_id_pool_alloc(uint32_t max_id);
 void mlx5_flow_id_pool_release(struct mlx5_flow_id_pool *pool);
 uint32_t mlx5_flow_id_get(struct mlx5_flow_id_pool *pool, uint32_t *id);

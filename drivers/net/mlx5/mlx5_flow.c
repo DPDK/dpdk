@@ -832,6 +832,13 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 	},
 };
 
+/* Key of thread specific flow workspace data. */
+static pthread_key_t key_workspace;
+
+/* Thread specific flow workspace data once initialization data. */
+static pthread_once_t key_workspace_init;
+
+
 /**
  * Translate tag ID to register.
  *
@@ -5532,6 +5539,38 @@ flow_tunnel_from_rule(struct rte_eth_dev *dev,
 }
 
 /**
+ * Adjust flow RSS workspace if needed.
+ *
+ * @param wks
+ *   Pointer to thread flow work space.
+ * @param rss_desc
+ *   Pointer to RSS descriptor.
+ * @param[in] nrssq_num
+ *   New RSS queue number.
+ *
+ * @return
+ *   0 on success, -1 otherwise and rte_errno is set.
+ */
+static int
+flow_rss_workspace_adjust(struct mlx5_flow_workspace *wks,
+			  struct mlx5_flow_rss_desc *rss_desc,
+			  uint32_t nrssq_num)
+{
+	bool fidx = !!wks->flow_idx;
+
+	if (likely(nrssq_num <= wks->rssq_num[fidx]))
+		return 0;
+	rss_desc->queue = realloc(rss_desc->queue,
+			  sizeof(rss_desc->queue[0]) * RTE_ALIGN(nrssq_num, 2));
+	if (!rss_desc->queue) {
+		rte_errno = ENOMEM;
+		return -1;
+	}
+	wks->rssq_num[fidx] = RTE_ALIGN(nrssq_num, 2);
+	return 0;
+}
+
+/**
  * Create a flow and add it to @p list.
  *
  * @param dev
@@ -5586,8 +5625,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		uint8_t buffer[2048];
 	} items_tx;
 	struct mlx5_flow_expand_rss *buf = &expand_buffer.buf;
-	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
-					      priv->rss_desc)[!!priv->flow_idx];
+	struct mlx5_flow_rss_desc *rss_desc;
 	const struct rte_flow_action *p_actions_rx;
 	uint32_t i;
 	uint32_t idx = 0;
@@ -5599,11 +5637,16 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	struct rte_flow_action *translated_actions = NULL;
 	struct mlx5_flow_tunnel *tunnel;
 	struct tunnel_default_miss_ctx default_miss_ctx = { 0, };
-	int ret = flow_shared_actions_translate(original_actions,
-						shared_actions,
-						&shared_actions_n,
-						&translated_actions, error);
+	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
+	bool fidx = !!wks->flow_idx;
+	int ret;
 
+	MLX5_ASSERT(wks);
+	rss_desc = &wks->rss_desc[fidx];
+	ret = flow_shared_actions_translate(original_actions,
+					    shared_actions,
+					    &shared_actions_n,
+					    &translated_actions, error);
 	if (ret < 0) {
 		MLX5_ASSERT(translated_actions == NULL);
 		return 0;
@@ -5636,9 +5679,11 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		flow->hairpin_flow_id = hairpin_id;
 	MLX5_ASSERT(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
 		    flow->drv_type < MLX5_FLOW_TYPE_MAX);
-	memset(rss_desc, 0, sizeof(*rss_desc));
+	memset(rss_desc, 0, offsetof(struct mlx5_flow_rss_desc, queue));
 	rss = flow_get_rss_action(p_actions_rx);
 	if (rss) {
+		if (flow_rss_workspace_adjust(wks, rss_desc, rss->queue_num))
+			return 0;
 		/*
 		 * The following information is required by
 		 * mlx5_flow_hashfields_adjust() in advance.
@@ -5668,9 +5713,9 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	 * need to be translated before another calling.
 	 * No need to use ping-pong buffer to save memory here.
 	 */
-	if (priv->flow_idx) {
-		MLX5_ASSERT(!priv->flow_nested_idx);
-		priv->flow_nested_idx = priv->flow_idx;
+	if (fidx) {
+		MLX5_ASSERT(!wks->flow_nested_idx);
+		wks->flow_nested_idx = fidx;
 	}
 	for (i = 0; i < buf->entries; ++i) {
 		/*
@@ -5749,9 +5794,9 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	flow_rxq_flags_set(dev, flow);
 	rte_free(translated_actions);
 	/* Nested flow creation index recovery. */
-	priv->flow_idx = priv->flow_nested_idx;
-	if (priv->flow_nested_idx)
-		priv->flow_nested_idx = 0;
+	wks->flow_idx = wks->flow_nested_idx;
+	if (wks->flow_nested_idx)
+		wks->flow_nested_idx = 0;
 	tunnel = flow_tunnel_from_rule(dev, attr, items, actions);
 	if (tunnel) {
 		flow->tunnel = 1;
@@ -5773,9 +5818,9 @@ error_before_flow:
 		mlx5_flow_id_release(priv->sh->flow_id_pool,
 				     hairpin_id);
 	rte_errno = ret;
-	priv->flow_idx = priv->flow_nested_idx;
-	if (priv->flow_nested_idx)
-		priv->flow_nested_idx = 0;
+	wks->flow_idx = wks->flow_nested_idx;
+	if (wks->flow_nested_idx)
+		wks->flow_nested_idx = 0;
 error_before_hairpin_split:
 	rte_free(translated_actions);
 	return 0;
@@ -6081,48 +6126,75 @@ mlx5_flow_start_default(struct rte_eth_dev *dev)
 }
 
 /**
- * Allocate intermediate resources for flow creation.
- *
- * @param dev
- *   Pointer to Ethernet device.
+ * Release key of thread specific flow workspace data.
  */
-void
-mlx5_flow_alloc_intermediate(struct rte_eth_dev *dev)
+static void
+flow_release_workspace(void *data)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_workspace *wks = data;
 
-	if (!priv->inter_flows) {
-		priv->inter_flows = mlx5_malloc(MLX5_MEM_ZERO,
-				    MLX5_NUM_MAX_DEV_FLOWS *
-				    sizeof(struct mlx5_flow) +
-				    (sizeof(struct mlx5_flow_rss_desc) +
-				    sizeof(uint16_t) * UINT16_MAX) * 2, 0,
-				    SOCKET_ID_ANY);
-		if (!priv->inter_flows) {
-			DRV_LOG(ERR, "can't allocate intermediate memory.");
-			return;
-		}
-	}
-	priv->rss_desc = &((struct mlx5_flow *)priv->inter_flows)
-			 [MLX5_NUM_MAX_DEV_FLOWS];
-	/* Reset the index. */
-	priv->flow_idx = 0;
-	priv->flow_nested_idx = 0;
+	if (!wks)
+		return;
+	free(wks->rss_desc[0].queue);
+	free(wks->rss_desc[1].queue);
+	free(wks);
 }
 
 /**
- * Free intermediate resources for flows.
- *
- * @param dev
- *   Pointer to Ethernet device.
+ * Initialize key of thread specific flow workspace data.
  */
-void
-mlx5_flow_free_intermediate(struct rte_eth_dev *dev)
+static void
+flow_alloc_workspace(void)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
+	if (pthread_key_create(&key_workspace, flow_release_workspace))
+		DRV_LOG(ERR, "Can't create flow workspace data thread key.");
+}
 
-	mlx5_free(priv->inter_flows);
-	priv->inter_flows = NULL;
+/**
+ * Get thread specific flow workspace.
+ *
+ * @return pointer to thread specific flowworkspace data, NULL on error.
+ */
+struct mlx5_flow_workspace*
+mlx5_flow_get_thread_workspace(void)
+{
+	struct mlx5_flow_workspace *data;
+
+	if (pthread_once(&key_workspace_init, flow_alloc_workspace)) {
+		DRV_LOG(ERR, "Failed to init flow workspace data thread key.");
+		return NULL;
+	}
+	data = pthread_getspecific(key_workspace);
+	if (!data) {
+		data = calloc(1, sizeof(*data));
+		if (!data) {
+			DRV_LOG(ERR, "Failed to allocate flow workspace "
+				"memory.");
+			return NULL;
+		}
+		data->rss_desc[0].queue = calloc(1,
+				sizeof(uint16_t) * MLX5_RSSQ_DEFAULT_NUM);
+		if (!data->rss_desc[0].queue)
+			goto err;
+		data->rss_desc[1].queue = calloc(1,
+				sizeof(uint16_t) * MLX5_RSSQ_DEFAULT_NUM);
+		if (!data->rss_desc[1].queue)
+			goto err;
+		data->rssq_num[0] = MLX5_RSSQ_DEFAULT_NUM;
+		data->rssq_num[1] = MLX5_RSSQ_DEFAULT_NUM;
+		if (pthread_setspecific(key_workspace, data)) {
+			DRV_LOG(ERR, "Failed to set flow workspace to thread.");
+			goto err;
+		}
+	}
+	return data;
+err:
+	if (data->rss_desc[0].queue)
+		free(data->rss_desc[0].queue);
+	if (data->rss_desc[1].queue)
+		free(data->rss_desc[1].queue);
+	free(data);
+	return NULL;
 }
 
 /**

@@ -1449,11 +1449,6 @@ err_secondary:
 			err = ENOTSUP;
 			goto error;
 	}
-	/*
-	 * Allocate the buffer for flow creating, just once.
-	 * The allocation must be done before any flow creating.
-	 */
-	mlx5_flow_alloc_intermediate(eth_dev);
 	/* Query availability of metadata reg_c's. */
 	err = mlx5_flow_discover_mreg_c(eth_dev);
 	if (err < 0) {
