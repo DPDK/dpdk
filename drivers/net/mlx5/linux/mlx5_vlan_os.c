@@ -44,12 +44,14 @@ mlx5_vlan_vmwa_release(struct rte_eth_dev *dev,
 	if (!vlan->created || !vmwa)
 		return;
 	vlan->created = 0;
+	rte_spinlock_lock(&vmwa->sl);
 	MLX5_ASSERT(vlan_dev[vlan->tag].refcnt);
 	if (--vlan_dev[vlan->tag].refcnt == 0 &&
 	    vlan_dev[vlan->tag].ifindex) {
 		mlx5_nl_vlan_vmwa_delete(vmwa, vlan_dev[vlan->tag].ifindex);
 		vlan_dev[vlan->tag].ifindex = 0;
 	}
+	rte_spinlock_unlock(&vmwa->sl);
 }
 
 /**
@@ -72,6 +74,7 @@ mlx5_vlan_vmwa_acquire(struct rte_eth_dev *dev,
 	MLX5_ASSERT(priv->vmwa_context);
 	if (vlan->created || !vmwa)
 		return;
+	rte_spinlock_lock(&vmwa->sl);
 	if (vlan_dev[vlan->tag].refcnt == 0) {
 		MLX5_ASSERT(!vlan_dev[vlan->tag].ifindex);
 		vlan_dev[vlan->tag].ifindex =
@@ -82,6 +85,7 @@ mlx5_vlan_vmwa_acquire(struct rte_eth_dev *dev,
 		vlan_dev[vlan->tag].refcnt++;
 		vlan->created = 1;
 	}
+	rte_spinlock_unlock(&vmwa->sl);
 }
 
 /*
@@ -131,6 +135,7 @@ mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex)
 			" for VLAN workaround context");
 		return NULL;
 	}
+	rte_spinlock_init(&vmwa->sl);
 	vmwa->nl_socket = mlx5_nl_init(NETLINK_ROUTE);
 	if (vmwa->nl_socket < 0) {
 		DRV_LOG(WARNING,

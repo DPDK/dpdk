@@ -25,6 +25,7 @@ struct mlx5_nl_vlan_dev {
 struct mlx5_nl_vlan_vmwa_context {
 	int nl_socket;
 	uint32_t vf_ifindex;
+	rte_spinlock_t sl;
 	struct mlx5_nl_vlan_dev vlan_dev[4096];
 };
 
