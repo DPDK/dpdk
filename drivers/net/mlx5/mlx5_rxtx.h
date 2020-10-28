@@ -349,12 +349,13 @@ struct mlx5_ind_table_obj *mlx5_ind_table_obj_get(struct rte_eth_dev *dev,
 						  const uint16_t *queues,
 						  uint32_t queues_n);
 int mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
-			       struct mlx5_ind_table_obj *ind_tbl);
+			       struct mlx5_ind_table_obj *ind_tbl,
+			       bool standalone);
 uint32_t mlx5_hrxq_new(struct rte_eth_dev *dev,
 		       const uint8_t *rss_key, uint32_t rss_key_len,
 		       uint64_t hash_fields,
 		       const uint16_t *queues, uint32_t queues_n,
-		       int tunnel, bool shared);
+		       int tunnel, bool standalone);
 uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
 		       const uint8_t *rss_key, uint32_t rss_key_len,
 		       uint64_t hash_fields,

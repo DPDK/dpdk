@@ -725,7 +725,7 @@ __extension__
 struct mlx5_hrxq {
 	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */
 	uint32_t refcnt; /* Reference counter. */
-	uint32_t shared:1; /* This object used in shared action. */
+	uint32_t standalone:1; /* This object used in shared action. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
 	RTE_STD_C11
 	union {
