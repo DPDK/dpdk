@@ -475,7 +475,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	const struct rte_memzone *mz;
 	uint32_t ctrl_ext;
 	uint16_t csum;
-	int err, i;
+	int err, i, ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -639,7 +639,14 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	memset(hwstrip, 0, sizeof(*hwstrip));
 
 	/* initialize PF if max_vfs not zero */
-	txgbe_pf_host_init(eth_dev);
+	ret = txgbe_pf_host_init(eth_dev);
+	if (ret) {
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
+		rte_free(eth_dev->data->hash_mac_addrs);
+		eth_dev->data->hash_mac_addrs = NULL;
+		return ret;
+	}
 
 	ctrl_ext = rd32(hw, TXGBE_PORTCTL);
 	/* let hardware know driver is loaded */

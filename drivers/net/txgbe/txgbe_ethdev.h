@@ -288,7 +288,7 @@ void txgbe_configure_dcb(struct rte_eth_dev *dev);
 int
 txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		int wait_to_complete);
-void txgbe_pf_host_init(struct rte_eth_dev *eth_dev);
+int txgbe_pf_host_init(struct rte_eth_dev *eth_dev);
 
 void txgbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
 

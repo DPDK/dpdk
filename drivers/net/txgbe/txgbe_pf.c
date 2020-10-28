@@ -64,7 +64,7 @@ txgbe_mb_intr_setup(struct rte_eth_dev *dev)
 	return 0;
 }
 
-void txgbe_pf_host_init(struct rte_eth_dev *eth_dev)
+int txgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 {
 	struct txgbe_vf_info **vfinfo = TXGBE_DEV_VFDATA(eth_dev);
 	struct txgbe_mirror_info *mirror_info = TXGBE_DEV_MR_INFO(eth_dev);
@@ -72,20 +72,31 @@ void txgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
 	uint16_t vf_num;
 	uint8_t nb_queue;
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
 	RTE_ETH_DEV_SRIOV(eth_dev).active = 0;
 	vf_num = dev_num_vf(eth_dev);
 	if (vf_num == 0)
-		return;
+		return ret;
 
 	*vfinfo = rte_zmalloc("vf_info",
 			sizeof(struct txgbe_vf_info) * vf_num, 0);
-	if (*vfinfo == NULL)
-		rte_panic("Cannot allocate memory for private VF data\n");
+	if (*vfinfo == NULL) {
+		PMD_INIT_LOG(ERR,
+			"Cannot allocate memory for private VF data\n");
+		return -ENOMEM;
+	}
 
-	rte_eth_switch_domain_alloc(&(*vfinfo)->switch_domain_id);
+	ret = rte_eth_switch_domain_alloc(&(*vfinfo)->switch_domain_id);
+	if (ret) {
+		PMD_INIT_LOG(ERR,
+			"failed to allocate switch domain for device %d", ret);
+		rte_free(*vfinfo);
+		*vfinfo = NULL;
+		return ret;
+	}
 
 	memset(mirror_info, 0, sizeof(struct txgbe_mirror_info));
 	memset(uta_info, 0, sizeof(struct txgbe_uta_info));
@@ -114,6 +125,8 @@ void txgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 
 	/* set mb interrupt mask */
 	txgbe_mb_intr_setup(eth_dev);
+
+	return ret;
 }
 
 void txgbe_pf_host_uninit(struct rte_eth_dev *eth_dev)
