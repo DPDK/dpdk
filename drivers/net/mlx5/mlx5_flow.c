@@ -5888,8 +5888,6 @@ flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
 			     flow_idx, flow, next);
 		rte_spinlock_unlock(&priv->flow_list_lock);
 	}
-	flow_mreg_del_copy_action(dev, flow);
-	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], flow_idx);
 	if (flow->tunnel) {
 		struct mlx5_flow_tunnel *tunnel;
 
@@ -5901,6 +5899,8 @@ flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
 		if (!__atomic_sub_fetch(&tunnel->refctn, 1, __ATOMIC_RELAXED))
 			mlx5_flow_tunnel_free(dev, tunnel);
 	}
+	flow_mreg_del_copy_action(dev, flow);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], flow_idx);
 }
 
 /**
