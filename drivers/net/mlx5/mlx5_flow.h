@@ -845,6 +845,8 @@ struct mlx5_flow_meter {
 	struct mlx5_flow_meter_profile *profile;
 	/**< Meter profile parameters. */
 
+	rte_spinlock_t sl; /**< Meter action spinlock. */
+
 	/** Policer actions (per meter output color). */
 	enum rte_mtr_policer_action action[RTE_COLORS];
 
