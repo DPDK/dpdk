@@ -384,6 +384,13 @@ enum mlx5_flow_fate_type {
 	MLX5_FLOW_FATE_MAX,
 };
 
+/* Hash list callback context */
+struct mlx5_flow_cb_ctx {
+	struct rte_eth_dev *dev;
+	struct rte_flow_error *error;
+	void *data;
+};
+
 /* Matcher PRM representation */
 struct mlx5_flow_dv_match_params {
 	size_t size;
@@ -521,6 +528,13 @@ struct mlx5_flow_mreg_copy_resource {
 	uint32_t appcnt; /* Apply/Remove counter. */
 	uint32_t idx;
 	uint32_t rix_flow; /* Built flow for copy. */
+};
+
+/* Table tunnel parameter. */
+struct mlx5_flow_tbl_tunnel_prm {
+	const struct mlx5_flow_tunnel *tunnel;
+	uint32_t group_id;
+	bool external;
 };
 
 /* Table data structure of the hash organization. */
@@ -1401,4 +1415,15 @@ struct rte_flow_shared_action *mlx5_flow_get_shared_rss(struct rte_flow *flow);
 int mlx5_shared_action_flush(struct rte_eth_dev *dev);
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
 int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh);
+
+/* Hash list callbacks for flow tables: */
+struct mlx5_hlist_entry *flow_dv_tbl_create_cb(struct mlx5_hlist *list,
+					       uint64_t key, void *entry_ctx);
+void flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
+			   struct mlx5_hlist_entry *entry);
+struct mlx5_flow_tbl_resource *flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
+		uint32_t table_id, uint8_t egress, uint8_t transfer,
+		bool external, const struct mlx5_flow_tunnel *tunnel,
+		uint32_t group_id, uint8_t dummy, struct rte_flow_error *error);
+
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

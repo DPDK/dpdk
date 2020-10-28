@@ -7922,58 +7922,21 @@ flow_dv_matcher_enable(uint32_t *match_criteria)
 	return match_criteria_enable;
 }
 
-
-/**
- * Get a flow table.
- *
- * @param[in, out] dev
- *   Pointer to rte_eth_dev structure.
- * @param[in] table_id
- *   Table id to use.
- * @param[in] egress
- *   Direction of the table.
- * @param[in] transfer
- *   E-Switch or NIC flow.
- * @param[out] error
- *   pointer to error structure.
- *
- * @return
- *   Returns tables resource based on the index, NULL in case of failed.
- */
-static struct mlx5_flow_tbl_resource *
-flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
-			 uint32_t table_id, uint8_t egress,
-			 uint8_t transfer,
-			 bool external,
-			 const struct mlx5_flow_tunnel *tunnel,
-			 uint32_t group_id,
-			 struct rte_flow_error *error)
+struct mlx5_hlist_entry *
+flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_flow_tbl_resource *tbl;
-	union mlx5_flow_tbl_key table_key = {
-		{
-			.table_id = table_id,
-			.reserved = 0,
-			.domain = !!transfer,
-			.direction = !!egress,
-		}
-	};
-	struct mlx5_hlist_entry *pos = mlx5_hlist_lookup(sh->flow_tbls,
-							 table_key.v64, NULL);
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct rte_eth_dev *dev = ctx->dev;
 	struct mlx5_flow_tbl_data_entry *tbl_data;
+	struct mlx5_flow_tbl_tunnel_prm *tt_prm = ctx->data;
+	struct rte_flow_error *error = ctx->error;
+	union mlx5_flow_tbl_key key = { .v64 = key64 };
+	struct mlx5_flow_tbl_resource *tbl;
+	void *domain;
 	uint32_t idx = 0;
 	int ret;
-	void *domain;
 
-	if (pos) {
-		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
-					entry);
-		tbl = &tbl_data->tbl;
-		__atomic_fetch_add(&tbl->refcnt, 1, __ATOMIC_RELAXED);
-		return tbl;
-	}
 	tbl_data = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_JUMP], &idx);
 	if (!tbl_data) {
 		rte_flow_error_set(error, ENOMEM,
@@ -7983,19 +7946,20 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		return NULL;
 	}
 	tbl_data->idx = idx;
-	tbl_data->tunnel = tunnel;
-	tbl_data->group_id = group_id;
-	tbl_data->external = external;
+	tbl_data->tunnel = tt_prm->tunnel;
+	tbl_data->group_id = tt_prm->group_id;
+	tbl_data->external = tt_prm->external;
 	tbl_data->tunnel_offload = is_tunnel_offload_active(dev);
 	tbl = &tbl_data->tbl;
-	pos = &tbl_data->entry;
-	if (transfer)
+	if (key.dummy)
+		return &tbl_data->entry;
+	if (key.domain)
 		domain = sh->fdb_domain;
-	else if (egress)
+	else if (key.direction)
 		domain = sh->tx_domain;
 	else
 		domain = sh->rx_domain;
-	ret = mlx5_flow_os_create_flow_tbl(domain, table_id, &tbl->obj);
+	ret = mlx5_flow_os_create_flow_tbl(domain, key.table_id, &tbl->obj);
 	if (ret) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8003,13 +7967,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], idx);
 		return NULL;
 	}
-	/*
-	 * No multi-threads now, but still better to initialize the reference
-	 * count before insert it into the hash list.
-	 */
-	__atomic_store_n(&tbl->refcnt, 0, __ATOMIC_RELAXED);
-
-	if (table_id) {
+	if (key.table_id) {
 		ret = mlx5_flow_os_create_flow_action_dest_flow_tbl
 					(tbl->obj, &tbl_data->jump.action);
 		if (ret) {
@@ -8022,17 +7980,118 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 			return NULL;
 		}
 	}
-	pos->key = table_key.v64;
-	ret = !mlx5_hlist_insert(sh->flow_tbls, pos);
-	if (ret < 0) {
-		rte_flow_error_set(error, -ret,
+	return &tbl_data->entry;
+}
+
+/**
+ * Get a flow table.
+ *
+ * @param[in, out] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] table_id
+ *   Table id to use.
+ * @param[in] egress
+ *   Direction of the table.
+ * @param[in] transfer
+ *   E-Switch or NIC flow.
+ * @param[in] dummy
+ *   Dummy entry for dv API.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   Returns tables resource based on the index, NULL in case of failed.
+ */
+struct mlx5_flow_tbl_resource *
+flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
+			 uint32_t table_id, uint8_t egress,
+			 uint8_t transfer,
+			 bool external,
+			 const struct mlx5_flow_tunnel *tunnel,
+			 uint32_t group_id, uint8_t dummy,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	union mlx5_flow_tbl_key table_key = {
+		{
+			.table_id = table_id,
+			.dummy = dummy,
+			.domain = !!transfer,
+			.direction = !!egress,
+		}
+	};
+	struct mlx5_flow_tbl_tunnel_prm tt_prm = {
+		.tunnel = tunnel,
+		.group_id = group_id,
+		.external = external,
+	};
+	struct mlx5_flow_cb_ctx ctx = {
+		.dev = dev,
+		.error = error,
+		.data = &tt_prm,
+	};
+	struct mlx5_hlist_entry *entry;
+	struct mlx5_flow_tbl_data_entry *tbl_data;
+
+	entry = mlx5_hlist_register(priv->sh->flow_tbls, table_key.v64, &ctx);
+	if (!entry) {
+		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "cannot insert flow table data entry");
-		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
-		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], idx);
+				   "cannot get table");
+		return NULL;
 	}
-	__atomic_fetch_add(&tbl->refcnt, 1, __ATOMIC_RELAXED);
-	return tbl;
+	tbl_data = container_of(entry, struct mlx5_flow_tbl_data_entry, entry);
+	return &tbl_data->tbl;
+}
+
+void
+flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
+		      struct mlx5_hlist_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_tbl_data_entry *tbl_data =
+		container_of(entry, struct mlx5_flow_tbl_data_entry, entry);
+
+	MLX5_ASSERT(entry && sh);
+	if (tbl_data->jump.action)
+		mlx5_flow_os_destroy_flow_action(tbl_data->jump.action);
+	if (tbl_data->tbl.obj)
+		mlx5_flow_os_destroy_flow_tbl(tbl_data->tbl.obj);
+	if (tbl_data->tunnel_offload && tbl_data->external) {
+		struct mlx5_hlist_entry *he;
+		struct mlx5_hlist *tunnel_grp_hash;
+		struct mlx5_flow_tunnel_hub *thub = sh->tunnel_hub;
+		union tunnel_tbl_key tunnel_key = {
+			.tunnel_id = tbl_data->tunnel ?
+					tbl_data->tunnel->tunnel_id : 0,
+			.group = tbl_data->group_id
+		};
+		union mlx5_flow_tbl_key table_key = {
+			.v64 = entry->key
+		};
+		uint32_t table_id = table_key.table_id;
+
+		tunnel_grp_hash = tbl_data->tunnel ?
+					tbl_data->tunnel->groups :
+					thub->groups;
+		he = mlx5_hlist_lookup(tunnel_grp_hash, tunnel_key.val, NULL);
+		if (he) {
+			struct tunnel_tbl_entry *tte;
+			tte = container_of(he, typeof(*tte), hash);
+			MLX5_ASSERT(tte->flow_table == table_id);
+			mlx5_hlist_remove(tunnel_grp_hash, he);
+			mlx5_free(tte);
+		}
+		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
+				tunnel_flow_tbl_to_id(table_id));
+		DRV_LOG(DEBUG,
+			"Table_id %#x tunnel %u group %u released.",
+			table_id,
+			tbl_data->tunnel ?
+			tbl_data->tunnel->tunnel_id : 0,
+			tbl_data->group_id);
+	}
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], tbl_data->idx);
 }
 
 /**
@@ -8057,54 +8116,7 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 
 	if (!tbl)
 		return 0;
-	if (__atomic_sub_fetch(&tbl->refcnt, 1, __ATOMIC_RELAXED) == 0) {
-		struct mlx5_hlist_entry *pos = &tbl_data->entry;
-
-		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
-		tbl->obj = NULL;
-		if (tbl_data->tunnel_offload && tbl_data->external) {
-			struct mlx5_hlist_entry *he;
-			struct mlx5_hlist *tunnel_grp_hash;
-			struct mlx5_flow_tunnel_hub *thub =
-							mlx5_tunnel_hub(dev);
-			union tunnel_tbl_key tunnel_key = {
-				.tunnel_id = tbl_data->tunnel ?
-						tbl_data->tunnel->tunnel_id : 0,
-				.group = tbl_data->group_id
-			};
-			union mlx5_flow_tbl_key table_key = {
-				.v64 = pos->key
-			};
-			uint32_t table_id = table_key.table_id;
-
-			tunnel_grp_hash = tbl_data->tunnel ?
-						tbl_data->tunnel->groups :
-						thub->groups;
-			he = mlx5_hlist_lookup(tunnel_grp_hash,
-					       tunnel_key.val, NULL);
-			if (he) {
-				struct tunnel_tbl_entry *tte;
-				tte = container_of(he, typeof(*tte), hash);
-				MLX5_ASSERT(tte->flow_table == table_id);
-				mlx5_hlist_remove(tunnel_grp_hash, he);
-				mlx5_free(tte);
-			}
-			mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
-					tunnel_flow_tbl_to_id(table_id));
-			DRV_LOG(DEBUG,
-				"port %u release table_id %#x tunnel %u group %u",
-				dev->data->port_id, table_id,
-				tbl_data->tunnel ?
-				tbl_data->tunnel->tunnel_id : 0,
-				tbl_data->group_id);
-		}
-		/* remove the entry from the hash list and free memory. */
-		mlx5_hlist_remove(sh->flow_tbls, pos);
-		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_JUMP],
-				tbl_data->idx);
-		return 0;
-	}
-	return 1;
+	return mlx5_hlist_unregister(sh->flow_tbls, &tbl_data->entry);
 }
 
 /**
@@ -8143,7 +8155,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	int ret;
 
 	tbl = flow_dv_tbl_resource_get(dev, key->table_id, key->direction,
-				       key->domain, false, NULL, 0, error);
+				       key->domain, false, NULL, 0, 0, error);
 	if (!tbl)
 		return -rte_errno;	/* No need to refill the error info */
 	tbl_data = container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
@@ -8637,7 +8649,7 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 	/* Create normal path table level */
 	tbl = flow_dv_tbl_resource_get(dev, next_ft_id,
 					attr->egress, attr->transfer,
-					dev_flow->external, NULL, 0, error);
+					dev_flow->external, NULL, 0, 0, error);
 	if (!tbl) {
 		rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -9317,7 +9329,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		tbl = flow_dv_tbl_resource_get(dev, table, attr->egress,
 					       attr->transfer,
 					       !!dev_flow->external, tunnel,
-					       attr->group, error);
+					       attr->group, 0, error);
 		if (!tbl)
 			return rte_flow_error_set
 			       (error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
@@ -9599,7 +9611,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			tbl = flow_dv_tbl_resource_get(dev, table, attr->egress,
 						       attr->transfer,
 						       !!dev_flow->external,
-						       tunnel, jump_group,
+						       tunnel, jump_group, 0,
 						       error);
 			if (!tbl)
 				return rte_flow_error_set
@@ -11554,7 +11566,7 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 	/* Create the meter table with METER level. */
 	dtb->tbl = flow_dv_tbl_resource_get(dev, MLX5_FLOW_TABLE_LEVEL_METER,
 					    egress, transfer, false, NULL, 0,
-					    &error);
+					    0, &error);
 	if (!dtb->tbl) {
 		DRV_LOG(ERR, "Failed to create meter policer table.");
 		return -1;
@@ -11563,7 +11575,7 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 	dtb->sfx_tbl = flow_dv_tbl_resource_get(dev,
 					    MLX5_FLOW_TABLE_LEVEL_SUFFIX,
 					    egress, transfer, false, NULL, 0,
-					    &error);
+					    0, &error);
 	if (!dtb->sfx_tbl) {
 		DRV_LOG(ERR, "Failed to create meter suffix table.");
 		return -1;
@@ -11882,10 +11894,11 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 	void *flow = NULL;
 	int i, ret = -1;
 
-	tbl = flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL, 0, NULL);
+	tbl = flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL, 0, 0, NULL);
 	if (!tbl)
 		goto err;
-	dest_tbl = flow_dv_tbl_resource_get(dev, 1, 0, 0, false, NULL, 0, NULL);
+	dest_tbl = flow_dv_tbl_resource_get(dev, 1, 0, 0, false,
+					    NULL, 0, 0, NULL);
 	if (!dest_tbl)
 		goto err;
 	dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0x4);

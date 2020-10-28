@@ -499,7 +499,7 @@ union mlx5_flow_tbl_key {
 	struct {
 		/* Table ID should be at the lowest address. */
 		uint32_t table_id;	/**< ID of the table. */
-		uint16_t reserved;	/**< must be zero for comparison. */
+		uint16_t dummy;		/**< Dummy table for DV API. */
 		uint8_t domain;		/**< 1 - FDB, 0 - NIC TX/RX. */
 		uint8_t direction;	/**< 1 - egress, 0 - ingress. */
 	};

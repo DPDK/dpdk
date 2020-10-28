@@ -7556,7 +7556,7 @@ tunnel_mark_decode(struct rte_eth_dev *dev, uint32_t mark)
 	union mlx5_flow_tbl_key table_key = {
 		{
 			.table_id = tunnel_id_to_flow_tbl(mbits.table_id),
-			.reserved = 0,
+			.dummy = 0,
 			.domain = !!mbits.transfer,
 			.direction = 0,
 		}

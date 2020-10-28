@@ -1012,7 +1012,7 @@ exit:
 }
 
 /**
- * Destroy table hash list and all the root entries per domain.
+ * Destroy table hash list.
  *
  * @param[in] priv
  *   Pointer to the private device data structure.
@@ -1021,46 +1021,9 @@ void
 mlx5_free_table_hash_list(struct mlx5_priv *priv)
 {
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_flow_tbl_data_entry *tbl_data;
-	union mlx5_flow_tbl_key table_key = {
-		{
-			.table_id = 0,
-			.reserved = 0,
-			.domain = 0,
-			.direction = 0,
-		}
-	};
-	struct mlx5_hlist_entry *pos;
 
 	if (!sh->flow_tbls)
 		return;
-	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, NULL);
-	if (pos) {
-		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
-					entry);
-		MLX5_ASSERT(tbl_data);
-		mlx5_hlist_remove(sh->flow_tbls, pos);
-		mlx5_free(tbl_data);
-	}
-	table_key.direction = 1;
-	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, NULL);
-	if (pos) {
-		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
-					entry);
-		MLX5_ASSERT(tbl_data);
-		mlx5_hlist_remove(sh->flow_tbls, pos);
-		mlx5_free(tbl_data);
-	}
-	table_key.direction = 0;
-	table_key.domain = 1;
-	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, NULL);
-	if (pos) {
-		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
-					entry);
-		MLX5_ASSERT(tbl_data);
-		mlx5_hlist_remove(sh->flow_tbls, pos);
-		mlx5_free(tbl_data);
-	}
 	mlx5_hlist_destroy(sh->flow_tbls);
 }
 
@@ -1075,77 +1038,45 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
  *   Zero on success, positive error code otherwise.
  */
 int
-mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
+mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 {
+	int err = 0;
+	/* Tables are only used in DV and DR modes. */
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	char s[MLX5_HLIST_NAMESIZE];
-	int err = 0;
 
 	MLX5_ASSERT(sh);
 	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
 	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,
-					  0, 0, NULL, NULL, NULL);
+					  0, 0, flow_dv_tbl_create_cb, NULL,
+					  flow_dv_tbl_remove_cb);
 	if (!sh->flow_tbls) {
 		DRV_LOG(ERR, "flow tables with hash creation failed.");
 		err = ENOMEM;
 		return err;
 	}
+	sh->flow_tbls->ctx = sh;
 #ifndef HAVE_MLX5DV_DR
+	struct rte_flow_error error;
+	struct rte_eth_dev *dev = &rte_eth_devices[priv->dev_data->port_id];
+
 	/*
 	 * In case we have not DR support, the zero tables should be created
 	 * because DV expect to see them even if they cannot be created by
 	 * RDMA-CORE.
 	 */
-	union mlx5_flow_tbl_key table_key = {
-		{
-			.table_id = 0,
-			.reserved = 0,
-			.domain = 0,
-			.direction = 0,
-		}
-	};
-	struct mlx5_flow_tbl_data_entry *tbl_data = mlx5_malloc(MLX5_MEM_ZERO,
-							  sizeof(*tbl_data), 0,
-							  SOCKET_ID_ANY);
-
-	if (!tbl_data) {
+	if (!flow_dv_tbl_resource_get(dev, 0, 0, 0, 0, NULL, 0, 1, &error) ||
+	    !flow_dv_tbl_resource_get(dev, 0, 1, 0, 0, NULL, 0, 1, &error) ||
+	    !flow_dv_tbl_resource_get(dev, 0, 0, 1, 0, NULL, 0, 1, &error)) {
 		err = ENOMEM;
 		goto error;
 	}
-	tbl_data->entry.key = table_key.v64;
-	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
-	if (err)
-		goto error;
-	__atomic_store_n(&tbl_data->tbl.refcnt, 1, __ATOMIC_RELAXED);
-	table_key.direction = 1;
-	tbl_data = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tbl_data), 0,
-			       SOCKET_ID_ANY);
-	if (!tbl_data) {
-		err = ENOMEM;
-		goto error;
-	}
-	tbl_data->entry.key = table_key.v64;
-	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
-	if (err)
-		goto error;
-	__atomic_store_n(&tbl_data->tbl.refcnt, 1, __ATOMIC_RELAXED);
-	table_key.direction = 0;
-	table_key.domain = 1;
-	tbl_data = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tbl_data), 0,
-			       SOCKET_ID_ANY);
-	if (!tbl_data) {
-		err = ENOMEM;
-		goto error;
-	}
-	tbl_data->entry.key = table_key.v64;
-	err = mlx5_hlist_insert(sh->flow_tbls, &tbl_data->entry);
-	if (err)
-		goto error;
-	__atomic_store_n(&tbl_data->tbl.refcnt, 1, __ATOMIC_RELAXED);
 	return err;
 error:
 	mlx5_free_table_hash_list(priv);
 #endif /* HAVE_MLX5DV_DR */
+#endif
 	return err;
 }
 
