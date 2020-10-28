@@ -37,11 +37,12 @@ meta_copy(char **meta, int *offset, char *str, int rc)
 	if (rc < 0)
 		return rc;
 
-	ptr = realloc(ptr, count + rc);
+	ptr = realloc(ptr, count + rc + 1);
 	if (ptr == NULL)
 		goto free_str;
 
 	memcpy(RTE_PTR_ADD(ptr, count), str, rc);
+	ptr[count + rc] = '\0';
 	count += rc;
 	free(str);
 
