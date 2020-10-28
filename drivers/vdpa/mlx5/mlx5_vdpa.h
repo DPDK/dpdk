@@ -151,8 +151,9 @@ struct mlx5_vdpa_priv {
 	struct rte_intr_handle intr_handle;
 	struct rte_intr_handle err_intr_handle;
 	struct mlx5_devx_obj *td;
-	struct mlx5_devx_obj *tis;
+	struct mlx5_devx_obj *tiss[16]; /* TIS list for each LAG port. */
 	uint16_t nr_virtqs;
+	uint8_t num_lag_ports;
 	uint64_t features; /* Negotiated features. */
 	uint16_t log_max_rqt_size;
 	struct mlx5_vdpa_steer steer;

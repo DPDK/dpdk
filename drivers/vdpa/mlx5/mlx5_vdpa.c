@@ -732,6 +732,9 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	priv->caps = attr.vdpa;
 	priv->log_max_rqt_size = attr.log_max_rqt_size;
+	priv->num_lag_ports = attr.num_lag_ports;
+	if (attr.num_lag_ports == 0)
+		priv->num_lag_ports = 1;
 	priv->ctx = ctx;
 	priv->pci_dev = pci_dev;
 	priv->var = mlx5_glue->dv_alloc_var(ctx, 0);

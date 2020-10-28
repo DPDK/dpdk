@@ -111,9 +111,11 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 		memset(virtq->err_time, 0, sizeof(virtq->err_time));
 		virtq->n_retry = 0;
 	}
-	if (priv->tis) {
-		claim_zero(mlx5_devx_cmd_destroy(priv->tis));
-		priv->tis = NULL;
+	for (i = 0; i < priv->num_lag_ports; i++) {
+		if (priv->tiss[i]) {
+			claim_zero(mlx5_devx_cmd_destroy(priv->tiss[i]));
+			priv->tiss[i] = NULL;
+		}
 	}
 	if (priv->td) {
 		claim_zero(mlx5_devx_cmd_destroy(priv->td));
@@ -322,7 +324,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	attr.hw_used_index = last_used_idx;
 	attr.q_size = vq.size;
 	attr.mkey = priv->gpa_mkey_index;
-	attr.tis_id = priv->tis->id;
+	attr.tis_id = priv->tiss[(index / 2) % priv->num_lag_ports]->id;
 	attr.queue_index = index;
 	attr.pd = priv->pdn;
 	virtq->virtq = mlx5_devx_cmd_create_virtq(priv->ctx, &attr);
@@ -465,10 +467,14 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 		return -rte_errno;
 	}
 	tis_attr.transport_domain = priv->td->id;
-	priv->tis = mlx5_devx_cmd_create_tis(priv->ctx, &tis_attr);
-	if (!priv->tis) {
-		DRV_LOG(ERR, "Failed to create TIS.");
-		goto error;
+	for (i = 0; i < priv->num_lag_ports; i++) {
+		/* 0 is auto affinity, non-zero value to propose port. */
+		tis_attr.lag_tx_port_affinity = i + 1;
+		priv->tiss[i] = mlx5_devx_cmd_create_tis(priv->ctx, &tis_attr);
+		if (!priv->tiss[i]) {
+			DRV_LOG(ERR, "Failed to create TIS %u.", i);
+			goto error;
+		}
 	}
 	priv->nr_virtqs = nr_vring;
 	for (i = 0; i < nr_vring; i++)
