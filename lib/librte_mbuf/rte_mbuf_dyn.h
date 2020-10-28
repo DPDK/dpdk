@@ -258,13 +258,36 @@ void rte_mbuf_dyn_dump(FILE *out);
  * timestamp. The dynamic Tx timestamp flag tells whether the field contains
  * actual timestamp value for the packets being sent, this value can be
  * used by PMD to schedule packet sending.
- *
- * After PKT_RX_TIMESTAMP flag and fixed timestamp field deprecation
- * and obsoleting, the dedicated Rx timestamp flag is supposed to be
- * introduced and the shared dynamic timestamp field will be used
- * to handle the timestamps on receiving datapath as well.
  */
 #define RTE_MBUF_DYNFIELD_TIMESTAMP_NAME "rte_dynfield_timestamp"
+typedef uint64_t rte_mbuf_timestamp_t;
+
+/**
+ * Indicate that the timestamp field in the mbuf was filled by the driver.
+ */
+#define RTE_MBUF_DYNFLAG_RX_TIMESTAMP_NAME "rte_dynflag_rx_timestamp"
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Register dynamic mbuf field and flag for Rx timestamp.
+ *
+ * @param field_offset
+ *   Pointer to the offset of the registered mbuf field, can be NULL.
+ *   The same field is shared for Rx and Tx timestamp.
+ * @param rx_flag
+ *   Pointer to the mask of the registered offload flag, can be NULL.
+ * @return
+ *   0 on success, -1 otherwise.
+ *   Possible values for rte_errno:
+ *   - EEXIST: already registered with different parameters.
+ *   - EPERM: called from a secondary process.
+ *   - ENOENT: no more field or flag available.
+ *   - ENOMEM: allocation failure.
+ */
+__rte_experimental
+int rte_mbuf_dyn_rx_timestamp_register(int *field_offset, uint64_t *rx_flag);
 
 /**
  * When PMD sees the RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME flag set on the

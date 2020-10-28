@@ -42,6 +42,7 @@ EXPERIMENTAL {
 	rte_mbuf_dynflag_register;
 	rte_mbuf_dynflag_register_bitnum;
 	rte_mbuf_dyn_dump;
+	rte_mbuf_dyn_rx_timestamp_register;
 	rte_pktmbuf_copy;
 	rte_pktmbuf_free_bulk;
 	rte_pktmbuf_pool_create_extbuf;
