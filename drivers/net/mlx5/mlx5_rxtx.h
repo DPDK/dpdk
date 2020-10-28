@@ -14,7 +14,6 @@
 #include <rte_mempool.h>
 #include <rte_common.h>
 #include <rte_hexdump.h>
-#include <rte_atomic.h>
 #include <rte_spinlock.h>
 #include <rte_io.h>
 #include <rte_bus_pci.h>
@@ -682,8 +681,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 		 * the service thread, data should be re-read.
 		 */
 		rte_compiler_barrier();
-		ci = rte_atomic64_read(&sh->txpp.ts.ci_ts);
-		ts = rte_atomic64_read(&sh->txpp.ts.ts);
+		ci = __atomic_load_n(&sh->txpp.ts.ci_ts, __ATOMIC_RELAXED);
+		ts = __atomic_load_n(&sh->txpp.ts.ts, __ATOMIC_RELAXED);
 		rte_compiler_barrier();
 		if (!((ts ^ ci) << (64 - MLX5_CQ_INDEX_WIDTH)))
 			break;
@@ -693,7 +692,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	mts -= ts;
 	if (unlikely(mts >= UINT64_MAX / 2)) {
 		/* We have negative integer, mts is in the past. */
-		rte_atomic32_inc(&sh->txpp.err_ts_past);
+		__atomic_fetch_add(&sh->txpp.err_ts_past,
+				   1, __ATOMIC_RELAXED);
 		return -1;
 	}
 	tick = sh->txpp.tick;
@@ -702,7 +702,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	mts = (mts + tick - 1) / tick;
 	if (unlikely(mts >= (1 << MLX5_CQ_INDEX_WIDTH) / 2 - 1)) {
 		/* We have mts is too distant future. */
-		rte_atomic32_inc(&sh->txpp.err_ts_future);
+		__atomic_fetch_add(&sh->txpp.err_ts_future,
+				   1, __ATOMIC_RELAXED);
 		return -1;
 	}
 	mts <<= 64 - MLX5_CQ_INDEX_WIDTH;

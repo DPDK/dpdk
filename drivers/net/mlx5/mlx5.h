@@ -570,8 +570,8 @@ struct mlx5_txpp_wq {
 
 /* Tx packet pacing internal timestamp. */
 struct mlx5_txpp_ts {
-	rte_atomic64_t ci_ts;
-	rte_atomic64_t ts;
+	uint64_t ci_ts;
+	uint64_t ts;
 };
 
 /* Tx packet pacing structure. */
@@ -594,11 +594,11 @@ struct mlx5_dev_txpp {
 	struct mlx5_txpp_ts ts; /* Cached completion id/timestamp. */
 	uint32_t sync_lost:1; /* ci/timestamp synchronization lost. */
 	/* Statistics counters. */
-	rte_atomic32_t err_miss_int; /* Missed service interrupt. */
-	rte_atomic32_t err_rearm_queue; /* Rearm Queue errors. */
-	rte_atomic32_t err_clock_queue; /* Clock Queue errors. */
-	rte_atomic32_t err_ts_past; /* Timestamp in the past. */
-	rte_atomic32_t err_ts_future; /* Timestamp in the distant future. */
+	uint64_t err_miss_int; /* Missed service interrupt. */
+	uint64_t err_rearm_queue; /* Rearm Queue errors. */
+	uint64_t err_clock_queue; /* Clock Queue errors. */
+	uint64_t err_ts_past; /* Timestamp in the past. */
+	uint64_t err_ts_future; /* Timestamp in the distant future. */
 };
 
 /* Supported flex parser profile ID. */

@@ -642,6 +642,32 @@ mlx5_txpp_cq_arm(struct mlx5_dev_ctx_shared *sh)
 	aq->arm_sn++;
 }
 
+#if defined(RTE_ARCH_X86_64)
+static inline int
+mlx5_atomic128_compare_exchange(rte_int128_t *dst,
+				rte_int128_t *exp,
+				const rte_int128_t *src)
+{
+	uint8_t res;
+
+	asm volatile (MPLOCKED
+		      "cmpxchg16b %[dst];"
+		      " sete %[res]"
+		      : [dst] "=m" (dst->val[0]),
+			"=a" (exp->val[0]),
+			"=d" (exp->val[1]),
+			[res] "=r" (res)
+		      : "b" (src->val[0]),
+			"c" (src->val[1]),
+			"a" (exp->val[0]),
+			"d" (exp->val[1]),
+			"m" (dst->val[0])
+		      : "memory");
+
+	return res;
+}
+#endif
+
 static inline void
 mlx5_atomic_read_cqe(rte_int128_t *from, rte_int128_t *ts)
 {
@@ -650,31 +676,33 @@ mlx5_atomic_read_cqe(rte_int128_t *from, rte_int128_t *ts)
 	 * update by hardware with soecified rate. We have to
 	 * read timestump and WQE completion index atomically.
 	 */
-#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_ARM64)
+#if defined(RTE_ARCH_X86_64)
 	rte_int128_t src;
 
 	memset(&src, 0, sizeof(src));
 	*ts = src;
 	/* if (*from == *ts) *from = *src else *ts = *from; */
-	rte_atomic128_cmp_exchange(from, ts, &src, 0,
-				   __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	mlx5_atomic128_compare_exchange(from, ts, &src);
 #else
-	rte_atomic64_t *cqe = (rte_atomic64_t *)from;
+	uint64_t *cqe = (uint64_t *)from;
 
-	/* Power architecture does not support 16B compare-and-swap. */
+	/*
+	 * Power architecture does not support 16B compare-and-swap.
+	 * ARM implements it in software, code below is more relevant.
+	 */
 	for (;;) {
-		int64_t tm, op;
-		int64_t *ps;
+		uint64_t tm, op;
+		uint64_t *ps;
 
 		rte_compiler_barrier();
-		tm = rte_atomic64_read(cqe + 0);
-		op = rte_atomic64_read(cqe + 1);
+		tm = __atomic_load_n(cqe + 0, __ATOMIC_RELAXED);
+		op = __atomic_load_n(cqe + 1, __ATOMIC_RELAXED);
 		rte_compiler_barrier();
-		if (tm != rte_atomic64_read(cqe + 0))
+		if (tm != __atomic_load_n(cqe + 0, __ATOMIC_RELAXED))
 			continue;
-		if (op != rte_atomic64_read(cqe + 1))
+		if (op != __atomic_load_n(cqe + 1, __ATOMIC_RELAXED))
 			continue;
-		ps = (int64_t *)ts;
+		ps = (uint64_t *)ts;
 		ps[0] = tm;
 		ps[1] = op;
 		return;
@@ -690,8 +718,8 @@ mlx5_txpp_cache_timestamp(struct mlx5_dev_ctx_shared *sh,
 	ci = ci << (64 - MLX5_CQ_INDEX_WIDTH);
 	ci |= (ts << MLX5_CQ_INDEX_WIDTH) >> MLX5_CQ_INDEX_WIDTH;
 	rte_compiler_barrier();
-	rte_atomic64_set(&sh->txpp.ts.ts, ts);
-	rte_atomic64_set(&sh->txpp.ts.ci_ts, ci);
+	__atomic_store_n(&sh->txpp.ts.ts, ts, __ATOMIC_RELAXED);
+	__atomic_store_n(&sh->txpp.ts.ci_ts, ci, __ATOMIC_RELAXED);
 	rte_wmb();
 }
 
@@ -713,7 +741,8 @@ mlx5_txpp_update_timestamp(struct mlx5_dev_ctx_shared *sh)
 	mlx5_atomic_read_cqe((rte_int128_t *)&cqe->timestamp, &to.u128);
 	if (to.cts.op_own >> 4) {
 		DRV_LOG(DEBUG, "Clock Queue error sync lost.");
-		rte_atomic32_inc(&sh->txpp.err_clock_queue);
+		__atomic_fetch_add(&sh->txpp.err_clock_queue,
+				   1, __ATOMIC_RELAXED);
 		sh->txpp.sync_lost = 1;
 		return;
 	}
@@ -758,7 +787,10 @@ mlx5_txpp_gather_timestamp(struct mlx5_dev_ctx_shared *sh)
 	if (!sh->txpp.clock_queue.sq_ci && !sh->txpp.ts_n)
 		return;
 	MLX5_ASSERT(sh->txpp.ts_p < MLX5_TXPP_REARM_SQ_SIZE);
-	sh->txpp.tsa[sh->txpp.ts_p] = sh->txpp.ts;
+	__atomic_store_n(&sh->txpp.tsa[sh->txpp.ts_p].ts,
+			 sh->txpp.ts.ts, __ATOMIC_RELAXED);
+	__atomic_store_n(&sh->txpp.tsa[sh->txpp.ts_p].ci_ts,
+			 sh->txpp.ts.ci_ts, __ATOMIC_RELAXED);
 	if (++sh->txpp.ts_p >= MLX5_TXPP_REARM_SQ_SIZE)
 		sh->txpp.ts_p = 0;
 	if (sh->txpp.ts_n < MLX5_TXPP_REARM_SQ_SIZE)
@@ -799,7 +831,8 @@ mlx5_txpp_handle_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 		/* Check whether we have missed interrupts. */
 		if (cq_ci - wq->cq_ci != 1) {
 			DRV_LOG(DEBUG, "Rearm Queue missed interrupt.");
-			rte_atomic32_inc(&sh->txpp.err_miss_int);
+			__atomic_fetch_add(&sh->txpp.err_miss_int,
+					   1, __ATOMIC_RELAXED);
 			/* Check sync lost on wqe index. */
 			if (cq_ci - wq->cq_ci >=
 				(((1UL << MLX5_WQ_INDEX_WIDTH) /
@@ -814,7 +847,8 @@ mlx5_txpp_handle_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 		/* Fire new requests to Rearm Queue. */
 		if (error) {
 			DRV_LOG(DEBUG, "Rearm Queue error sync lost.");
-			rte_atomic32_inc(&sh->txpp.err_rearm_queue);
+			__atomic_fetch_add(&sh->txpp.err_rearm_queue,
+					   1, __ATOMIC_RELAXED);
 			sh->txpp.sync_lost = 1;
 		}
 	}
@@ -877,11 +911,11 @@ mlx5_txpp_start_service(struct mlx5_dev_ctx_shared *sh)
 	int ret;
 	int fd;
 
-	rte_atomic32_set(&sh->txpp.err_miss_int, 0);
-	rte_atomic32_set(&sh->txpp.err_rearm_queue, 0);
-	rte_atomic32_set(&sh->txpp.err_clock_queue, 0);
-	rte_atomic32_set(&sh->txpp.err_ts_past, 0);
-	rte_atomic32_set(&sh->txpp.err_ts_future, 0);
+	sh->txpp.err_miss_int = 0;
+	sh->txpp.err_rearm_queue = 0;
+	sh->txpp.err_clock_queue = 0;
+	sh->txpp.err_ts_past = 0;
+	sh->txpp.err_ts_future = 0;
 	/* Attach interrupt handler to process Rearm Queue completions. */
 	fd = mlx5_os_get_devx_channel_fd(sh->txpp.echan);
 	ret = mlx5_os_set_nonblock_channel_fd(fd);
@@ -1116,7 +1150,8 @@ mlx5_txpp_read_clock(struct rte_eth_dev *dev, uint64_t *timestamp)
 		mlx5_atomic_read_cqe((rte_int128_t *)&cqe->timestamp, &to.u128);
 		if (to.cts.op_own >> 4) {
 			DRV_LOG(DEBUG, "Clock Queue error sync lost.");
-			rte_atomic32_inc(&sh->txpp.err_clock_queue);
+			__atomic_fetch_add(&sh->txpp.err_clock_queue,
+					   1, __ATOMIC_RELAXED);
 			sh->txpp.sync_lost = 1;
 			return -EIO;
 		}
@@ -1147,11 +1182,11 @@ int mlx5_txpp_xstats_reset(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 
-	rte_atomic32_set(&sh->txpp.err_miss_int, 0);
-	rte_atomic32_set(&sh->txpp.err_rearm_queue, 0);
-	rte_atomic32_set(&sh->txpp.err_clock_queue, 0);
-	rte_atomic32_set(&sh->txpp.err_ts_past, 0);
-	rte_atomic32_set(&sh->txpp.err_ts_future, 0);
+	__atomic_store_n(&sh->txpp.err_miss_int, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&sh->txpp.err_rearm_queue, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&sh->txpp.err_clock_queue, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&sh->txpp.err_ts_past, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&sh->txpp.err_ts_future, 0, __ATOMIC_RELAXED);
 	return 0;
 }
 
@@ -1196,19 +1231,21 @@ mlx5_txpp_read_tsa(struct mlx5_dev_txpp *txpp,
 		   struct mlx5_txpp_ts *tsa, uint16_t idx)
 {
 	do {
-		int64_t ts, ci;
+		uint64_t ts, ci;
 
-		ts = rte_atomic64_read(&txpp->tsa[idx].ts);
-		ci = rte_atomic64_read(&txpp->tsa[idx].ci_ts);
+		ts = __atomic_load_n(&txpp->tsa[idx].ts, __ATOMIC_RELAXED);
+		ci = __atomic_load_n(&txpp->tsa[idx].ci_ts, __ATOMIC_RELAXED);
 		rte_compiler_barrier();
 		if ((ci ^ ts) << MLX5_CQ_INDEX_WIDTH != 0)
 			continue;
-		if (rte_atomic64_read(&txpp->tsa[idx].ts) != ts)
+		if (__atomic_load_n(&txpp->tsa[idx].ts,
+				    __ATOMIC_RELAXED) != ts)
 			continue;
-		if (rte_atomic64_read(&txpp->tsa[idx].ci_ts) != ci)
+		if (__atomic_load_n(&txpp->tsa[idx].ci_ts,
+				    __ATOMIC_RELAXED) != ci)
 			continue;
-		rte_atomic64_set(&tsa->ts, ts);
-		rte_atomic64_set(&tsa->ci_ts, ci);
+		tsa->ts = ts;
+		tsa->ci_ts = ci;
 		return;
 	} while (true);
 }
@@ -1244,9 +1281,9 @@ mlx5_txpp_xstats_jitter(struct mlx5_dev_txpp *txpp)
 		rte_compiler_barrier();
 	} while (ts_p != txpp->ts_p);
 	/* We have two neighbor reports, calculate the jitter. */
-	dts = rte_atomic64_read(&tsa1.ts) - rte_atomic64_read(&tsa0.ts);
-	dci = (rte_atomic64_read(&tsa1.ci_ts) >> (64 - MLX5_CQ_INDEX_WIDTH)) -
-	      (rte_atomic64_read(&tsa0.ci_ts) >> (64 - MLX5_CQ_INDEX_WIDTH));
+	dts = tsa1.ts - tsa0.ts;
+	dci = (tsa1.ci_ts >> (64 - MLX5_CQ_INDEX_WIDTH)) -
+	      (tsa0.ci_ts >> (64 - MLX5_CQ_INDEX_WIDTH));
 	if (dci < 0)
 		dci += 1 << MLX5_CQ_INDEX_WIDTH;
 	dci *= txpp->tick;
@@ -1284,9 +1321,9 @@ mlx5_txpp_xstats_wander(struct mlx5_dev_txpp *txpp)
 		rte_compiler_barrier();
 	} while (ts_p != txpp->ts_p);
 	/* We have two neighbor reports, calculate the jitter. */
-	dts = rte_atomic64_read(&tsa1.ts) - rte_atomic64_read(&tsa0.ts);
-	dci = (rte_atomic64_read(&tsa1.ci_ts) >> (64 - MLX5_CQ_INDEX_WIDTH)) -
-	      (rte_atomic64_read(&tsa0.ci_ts) >> (64 - MLX5_CQ_INDEX_WIDTH));
+	dts = tsa1.ts - tsa0.ts;
+	dci = (tsa1.ci_ts >> (64 - MLX5_CQ_INDEX_WIDTH)) -
+	      (tsa0.ci_ts >> (64 - MLX5_CQ_INDEX_WIDTH));
 	dci += 1 << MLX5_CQ_INDEX_WIDTH;
 	dci *= txpp->tick;
 	return (dts > dci) ? dts - dci : dci - dts;
@@ -1325,15 +1362,20 @@ mlx5_txpp_xstats_get(struct rte_eth_dev *dev,
 		for (i = 0; i < n_txpp; ++i)
 			stats[n_used + i].id = n_used + i;
 		stats[n_used + 0].value =
-				rte_atomic32_read(&sh->txpp.err_miss_int);
+				__atomic_load_n(&sh->txpp.err_miss_int,
+						__ATOMIC_RELAXED);
 		stats[n_used + 1].value =
-				rte_atomic32_read(&sh->txpp.err_rearm_queue);
+				__atomic_load_n(&sh->txpp.err_rearm_queue,
+						__ATOMIC_RELAXED);
 		stats[n_used + 2].value =
-				rte_atomic32_read(&sh->txpp.err_clock_queue);
+				__atomic_load_n(&sh->txpp.err_clock_queue,
+						__ATOMIC_RELAXED);
 		stats[n_used + 3].value =
-				rte_atomic32_read(&sh->txpp.err_ts_past);
+				__atomic_load_n(&sh->txpp.err_ts_past,
+						__ATOMIC_RELAXED);
 		stats[n_used + 4].value =
-				rte_atomic32_read(&sh->txpp.err_ts_future);
+				__atomic_load_n(&sh->txpp.err_ts_future,
+						__ATOMIC_RELAXED);
 		stats[n_used + 5].value = mlx5_txpp_xstats_jitter(&sh->txpp);
 		stats[n_used + 6].value = mlx5_txpp_xstats_wander(&sh->txpp);
 		stats[n_used + 7].value = sh->txpp.sync_lost;
