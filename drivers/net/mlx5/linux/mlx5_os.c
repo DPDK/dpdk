@@ -1534,6 +1534,7 @@ err_secondary:
 		}
 		priv->mreg_cp_tbl->ctx = eth_dev;
 	}
+	rte_spinlock_init(&priv->shared_act_sl);
 	mlx5_flow_counter_mode_config(eth_dev);
 	return eth_dev;
 error:

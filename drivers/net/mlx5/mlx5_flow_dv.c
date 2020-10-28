@@ -11191,7 +11191,9 @@ __flow_dv_action_create(struct rte_eth_dev *dev,
 	if (shared_action) {
 		__atomic_add_fetch(&shared_action->refcnt, 1,
 				   __ATOMIC_RELAXED);
+		rte_spinlock_lock(&priv->shared_act_sl);
 		LIST_INSERT_HEAD(&priv->shared_actions, shared_action, next);
+		rte_spinlock_unlock(&priv->shared_act_sl);
 	}
 	return shared_action;
 }
@@ -11218,6 +11220,7 @@ __flow_dv_action_destroy(struct rte_eth_dev *dev,
 			 struct rte_flow_shared_action *action,
 			 struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	switch (action->type) {
@@ -11232,7 +11235,9 @@ __flow_dv_action_destroy(struct rte_eth_dev *dev,
 	}
 	if (ret)
 		return ret;
+	rte_spinlock_lock(&priv->shared_act_sl);
 	LIST_REMOVE(action, next);
+	rte_spinlock_unlock(&priv->shared_act_sl);
 	rte_free(action);
 	return 0;
 }
