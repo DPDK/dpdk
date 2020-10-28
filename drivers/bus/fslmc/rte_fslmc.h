@@ -32,11 +32,34 @@ extern "C" {
 #include <rte_bus.h>
 #include <rte_tailq.h>
 #include <rte_devargs.h>
+#include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 
 #include <fslmc_vfio.h>
 
 #define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
 
+#define DPAA2_INVALID_MBUF_SEQN        0
+
+typedef uint32_t dpaa2_seqn_t;
+extern int dpaa2_seqn_dynfield_offset;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Read dpaa2 sequence number from mbuf.
+ *
+ * @param mbuf Structure to read from.
+ * @return pointer to dpaa2 sequence number.
+ */
+__rte_experimental
+static inline dpaa2_seqn_t *
+dpaa2_seqn(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf, dpaa2_seqn_dynfield_offset,
+		dpaa2_seqn_t *);
+}
 
 /** Device driver supports link state interrupt */
 #define RTE_DPAA2_DRV_INTR_LSC	0x0008

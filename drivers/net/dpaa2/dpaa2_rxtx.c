@@ -710,7 +710,7 @@ dpaa2_dev_process_atomic_event(struct qbman_swp *swp __rte_unused,
 	ev->mbuf = eth_fd_to_mbuf(fd, rxq->eth_data->port_id);
 
 	dqrr_index = qbman_get_dqrr_idx(dq);
-	ev->mbuf->seqn = dqrr_index + 1;
+	*dpaa2_seqn(ev->mbuf) = dqrr_index + 1;
 	DPAA2_PER_LCORE_DQRR_SIZE++;
 	DPAA2_PER_LCORE_DQRR_HELD |= 1 << dqrr_index;
 	DPAA2_PER_LCORE_DQRR_MBUF(dqrr_index) = ev->mbuf;
@@ -736,9 +736,9 @@ dpaa2_dev_process_ordered_event(struct qbman_swp *swp,
 
 	ev->mbuf = eth_fd_to_mbuf(fd, rxq->eth_data->port_id);
 
-	ev->mbuf->seqn = DPAA2_ENQUEUE_FLAG_ORP;
-	ev->mbuf->seqn |= qbman_result_DQ_odpid(dq) << DPAA2_EQCR_OPRID_SHIFT;
-	ev->mbuf->seqn |= qbman_result_DQ_seqnum(dq) << DPAA2_EQCR_SEQNUM_SHIFT;
+	*dpaa2_seqn(ev->mbuf) = DPAA2_ENQUEUE_FLAG_ORP;
+	*dpaa2_seqn(ev->mbuf) |= qbman_result_DQ_odpid(dq) << DPAA2_EQCR_OPRID_SHIFT;
+	*dpaa2_seqn(ev->mbuf) |= qbman_result_DQ_seqnum(dq) << DPAA2_EQCR_SEQNUM_SHIFT;
 
 	qbman_swp_dqrr_consume(swp, dq);
 }
@@ -1063,14 +1063,14 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			dpaa2_eqcr_size : nb_pkts;
 
 		for (loop = 0; loop < frames_to_send; loop++) {
-			if ((*bufs)->seqn) {
-				uint8_t dqrr_index = (*bufs)->seqn - 1;
+			if (*dpaa2_seqn(*bufs)) {
+				uint8_t dqrr_index = *dpaa2_seqn(*bufs) - 1;
 
 				flags[loop] = QBMAN_ENQUEUE_FLAG_DCA |
 						dqrr_index;
 				DPAA2_PER_LCORE_DQRR_SIZE--;
 				DPAA2_PER_LCORE_DQRR_HELD &= ~(1 << dqrr_index);
-				(*bufs)->seqn = DPAA2_INVALID_MBUF_SEQN;
+				*dpaa2_seqn(*bufs) = DPAA2_INVALID_MBUF_SEQN;
 			}
 
 			if (likely(RTE_MBUF_DIRECT(*bufs))) {
@@ -1230,10 +1230,10 @@ dpaa2_set_enqueue_descriptor(struct dpaa2_queue *dpaa2_q,
 
 	qbman_eq_desc_set_fq(eqdesc, dpaa2_q->fqid);
 
-	if (m->seqn & DPAA2_ENQUEUE_FLAG_ORP) {
-		orpid = (m->seqn & DPAA2_EQCR_OPRID_MASK) >>
+	if (*dpaa2_seqn(m) & DPAA2_ENQUEUE_FLAG_ORP) {
+		orpid = (*dpaa2_seqn(m) & DPAA2_EQCR_OPRID_MASK) >>
 			DPAA2_EQCR_OPRID_SHIFT;
-		seqnum = (m->seqn & DPAA2_EQCR_SEQNUM_MASK) >>
+		seqnum = (*dpaa2_seqn(m) & DPAA2_EQCR_SEQNUM_MASK) >>
 			DPAA2_EQCR_SEQNUM_SHIFT;
 
 		if (!priv->en_loose_ordered) {
@@ -1255,12 +1255,12 @@ dpaa2_set_enqueue_descriptor(struct dpaa2_queue *dpaa2_q,
 			qbman_eq_desc_set_orp(eqdesc, 0, orpid, seqnum, 0);
 		}
 	} else {
-		dq_idx = m->seqn - 1;
+		dq_idx = *dpaa2_seqn(m) - 1;
 		qbman_eq_desc_set_dca(eqdesc, 1, dq_idx, 0);
 		DPAA2_PER_LCORE_DQRR_SIZE--;
 		DPAA2_PER_LCORE_DQRR_HELD &= ~(1 << dq_idx);
 	}
-	m->seqn = DPAA2_INVALID_MBUF_SEQN;
+	*dpaa2_seqn(m) = DPAA2_INVALID_MBUF_SEQN;
 }
 
 /* Callback to handle sending ordered packets through WRIOP based interface */
@@ -1314,7 +1314,7 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			dpaa2_eqcr_size : nb_pkts;
 
 		if (!priv->en_loose_ordered) {
-			if ((*bufs)->seqn & DPAA2_ENQUEUE_FLAG_ORP) {
+			if (*dpaa2_seqn(*bufs) & DPAA2_ENQUEUE_FLAG_ORP) {
 				num_free_eq_desc = dpaa2_free_eq_descriptors();
 				if (num_free_eq_desc < frames_to_send)
 					frames_to_send = num_free_eq_desc;
@@ -1325,7 +1325,7 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			/*Prepare enqueue descriptor*/
 			qbman_eq_desc_clear(&eqdesc[loop]);
 
-			if ((*bufs)->seqn) {
+			if (*dpaa2_seqn(*bufs)) {
 				/* Use only queue 0 for Tx in case of atomic/
 				 * ordered packets as packets can get unordered
 				 * when being tranmitted out from the interface

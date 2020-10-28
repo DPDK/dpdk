@@ -1472,13 +1472,15 @@ dpaa2_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			dpaa2_eqcr_size : nb_ops;
 
 		for (loop = 0; loop < frames_to_send; loop++) {
-			if ((*ops)->sym->m_src->seqn) {
-			 uint8_t dqrr_index = (*ops)->sym->m_src->seqn - 1;
+			if (*dpaa2_seqn((*ops)->sym->m_src)) {
+				uint8_t dqrr_index =
+					*dpaa2_seqn((*ops)->sym->m_src) - 1;
 
-			 flags[loop] = QBMAN_ENQUEUE_FLAG_DCA | dqrr_index;
-			 DPAA2_PER_LCORE_DQRR_SIZE--;
-			 DPAA2_PER_LCORE_DQRR_HELD &= ~(1 << dqrr_index);
-			 (*ops)->sym->m_src->seqn = DPAA2_INVALID_MBUF_SEQN;
+				flags[loop] = QBMAN_ENQUEUE_FLAG_DCA | dqrr_index;
+				DPAA2_PER_LCORE_DQRR_SIZE--;
+				DPAA2_PER_LCORE_DQRR_HELD &= ~(1 << dqrr_index);
+				*dpaa2_seqn((*ops)->sym->m_src) =
+					DPAA2_INVALID_MBUF_SEQN;
 			}
 
 			/*Clear the unused FD fields before sending*/
@@ -3714,7 +3716,7 @@ dpaa2_sec_process_atomic_event(struct qbman_swp *swp __rte_unused,
 
 	ev->event_ptr = sec_fd_to_mbuf(fd);
 	dqrr_index = qbman_get_dqrr_idx(dq);
-	crypto_op->sym->m_src->seqn = dqrr_index + 1;
+	*dpaa2_seqn(crypto_op->sym->m_src) = dqrr_index + 1;
 	DPAA2_PER_LCORE_DQRR_SIZE++;
 	DPAA2_PER_LCORE_DQRR_HELD |= 1 << dqrr_index;
 	DPAA2_PER_LCORE_DQRR_MBUF(dqrr_index) = crypto_op->sym->m_src;

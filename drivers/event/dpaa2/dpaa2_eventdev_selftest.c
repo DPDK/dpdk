@@ -19,6 +19,7 @@
 #include <rte_random.h>
 #include <rte_bus_vdev.h>
 #include <rte_test.h>
+#include <rte_fslmc.h>
 
 #include "dpaa2_eventdev.h"
 #include "dpaa2_eventdev_logs.h"
@@ -274,7 +275,8 @@ check_excess_events(uint8_t port)
 		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
 
 		RTE_TEST_ASSERT_SUCCESS(valid_event,
-				"Unexpected valid event=%d", ev.mbuf->seqn);
+				"Unexpected valid event=%d",
+				*dpaa2_seqn(ev.mbuf));
 	}
 	return 0;
 }
