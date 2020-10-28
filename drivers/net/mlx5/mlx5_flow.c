@@ -3239,28 +3239,6 @@ flow_drv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 }
 
 /**
- * Flow driver remove API. This abstracts calling driver specific functions.
- * Parent flow (rte_flow) should have driver type (drv_type). It removes a flow
- * on device. All the resources of the flow should be freed by calling
- * flow_drv_destroy().
- *
- * @param[in] dev
- *   Pointer to Ethernet device.
- * @param[in, out] flow
- *   Pointer to flow structure.
- */
-static inline void
-flow_drv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
-{
-	const struct mlx5_flow_driver_ops *fops;
-	enum mlx5_flow_drv_type type = flow->drv_type;
-
-	MLX5_ASSERT(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
-	fops = flow_get_drv_ops(type);
-	fops->remove(dev, flow);
-}
-
-/**
  * Flow driver destroy API. This abstracts calling driver specific functions.
  * Parent flow (rte_flow) should have driver type (drv_type). It removes a flow
  * on device and releases resources of the flow.
@@ -3857,19 +3835,6 @@ flow_mreg_del_copy_action(struct rte_eth_dev *dev,
 				 flow->rix_mreg_copy);
 	if (!mcp_res || !priv->mreg_cp_tbl)
 		return;
-	if (flow->copy_applied) {
-		MLX5_ASSERT(mcp_res->appcnt);
-		flow->copy_applied = 0;
-		--mcp_res->appcnt;
-		if (!mcp_res->appcnt) {
-			struct rte_flow *mcp_flow = mlx5_ipool_get
-					(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW],
-					mcp_res->rix_flow);
-
-			if (mcp_flow)
-				flow_drv_remove(dev, mcp_flow);
-		}
-	}
 	/*
 	 * We do not check availability of metadata registers here,
 	 * because copy resources are not allocated in this case.
@@ -3881,81 +3846,6 @@ flow_mreg_del_copy_action(struct rte_eth_dev *dev,
 	mlx5_hlist_remove(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], mcp_res->idx);
 	flow->rix_mreg_copy = 0;
-}
-
-/**
- * Start flow in RX_CP_TBL.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @flow
- *   Parent flow for wich copying is provided.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-static int
-flow_mreg_start_copy_action(struct rte_eth_dev *dev,
-			    struct rte_flow *flow)
-{
-	struct mlx5_flow_mreg_copy_resource *mcp_res;
-	struct mlx5_priv *priv = dev->data->dev_private;
-	int ret;
-
-	if (!flow->rix_mreg_copy || flow->copy_applied)
-		return 0;
-	mcp_res = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MCP],
-				 flow->rix_mreg_copy);
-	if (!mcp_res)
-		return 0;
-	if (!mcp_res->appcnt) {
-		struct rte_flow *mcp_flow = mlx5_ipool_get
-				(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW],
-				mcp_res->rix_flow);
-
-		if (mcp_flow) {
-			ret = flow_drv_apply(dev, mcp_flow, NULL);
-			if (ret)
-				return ret;
-		}
-	}
-	++mcp_res->appcnt;
-	flow->copy_applied = 1;
-	return 0;
-}
-
-/**
- * Stop flow in RX_CP_TBL.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @flow
- *   Parent flow for wich copying is provided.
- */
-static void
-flow_mreg_stop_copy_action(struct rte_eth_dev *dev,
-			   struct rte_flow *flow)
-{
-	struct mlx5_flow_mreg_copy_resource *mcp_res;
-	struct mlx5_priv *priv = dev->data->dev_private;
-
-	if (!flow->rix_mreg_copy || !flow->copy_applied)
-		return;
-	mcp_res = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MCP],
-				 flow->rix_mreg_copy);
-	if (!mcp_res)
-		return;
-	MLX5_ASSERT(mcp_res->appcnt);
-	--mcp_res->appcnt;
-	flow->copy_applied = 0;
-	if (!mcp_res->appcnt) {
-		struct rte_flow *mcp_flow = mlx5_ipool_get
-				(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW],
-				mcp_res->rix_flow);
-
-		if (mcp_flow)
-			flow_drv_remove(dev, mcp_flow);
-	}
 }
 
 /**
@@ -4073,10 +3963,6 @@ flow_mreg_update_copy_table(struct rte_eth_dev *dev,
 			if (!mcp_res)
 				return -rte_errno;
 			flow->rix_mreg_copy = mcp_res->idx;
-			if (dev->data->dev_started) {
-				mcp_res->appcnt++;
-				flow->copy_applied = 1;
-			}
 			return 0;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			mark = (const struct rte_flow_action_mark *)
@@ -4086,10 +3972,6 @@ flow_mreg_update_copy_table(struct rte_eth_dev *dev,
 			if (!mcp_res)
 				return -rte_errno;
 			flow->rix_mreg_copy = mcp_res->idx;
-			if (dev->data->dev_started) {
-				mcp_res->appcnt++;
-				flow->copy_applied = 1;
-			}
 			return 0;
 		default:
 			break;
@@ -6010,73 +5892,6 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, uint32_t *list, bool active)
 		DRV_LOG(INFO, "port %u: %u flows flushed before stopping",
 			dev->data->port_id, num_flushed);
 	}
-}
-
-/**
- * Remove all flows.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param list
- *   Pointer to the Indexed flow list.
- */
-void
-mlx5_flow_stop(struct rte_eth_dev *dev, uint32_t *list)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow *flow = NULL;
-	uint32_t idx;
-
-	ILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], *list, idx,
-		      flow, next) {
-		flow_drv_remove(dev, flow);
-		flow_mreg_stop_copy_action(dev, flow);
-	}
-	flow_mreg_del_default_copy_action(dev);
-	flow_rxq_flags_clear(dev);
-}
-
-/**
- * Add all flows.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param list
- *   Pointer to the Indexed flow list.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-int
-mlx5_flow_start(struct rte_eth_dev *dev, uint32_t *list)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow *flow = NULL;
-	struct rte_flow_error error;
-	uint32_t idx;
-	int ret = 0;
-
-	/* Make sure default copy action (reg_c[0] -> reg_b) is created. */
-	ret = flow_mreg_add_default_copy_action(dev, &error);
-	if (ret < 0)
-		return -rte_errno;
-	/* Apply Flows created by application. */
-	ILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], *list, idx,
-		      flow, next) {
-		ret = flow_mreg_start_copy_action(dev, flow);
-		if (ret < 0)
-			goto error;
-		ret = flow_drv_apply(dev, flow, &error);
-		if (ret < 0)
-			goto error;
-		flow_rxq_flags_set(dev, flow);
-	}
-	return 0;
-error:
-	ret = rte_errno; /* Save rte_errno before cleanup. */
-	mlx5_flow_stop(dev, list);
-	rte_errno = ret; /* Restore rte_errno. */
-	return -rte_errno;
 }
 
 /**

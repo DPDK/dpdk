@@ -523,7 +523,6 @@ struct mlx5_flow_mreg_copy_resource {
 	LIST_ENTRY(mlx5_flow_mreg_copy_resource) next;
 	/* List entry for device flows. */
 	uint32_t refcnt; /* Reference counter. */
-	uint32_t appcnt; /* Apply/Remove counter. */
 	uint32_t idx;
 	uint32_t rix_flow; /* Built flow for copy. */
 };
@@ -1048,7 +1047,6 @@ struct rte_flow {
 	uint32_t drv_type:2; /**< Driver type. */
 	uint32_t fdir:1; /**< Identifier of associated FDIR if any. */
 	uint32_t tunnel:1;
-	uint32_t copy_applied:1; /**< The MARK copy Flow os applied. */
 	uint32_t meter:16; /**< Holds flow meter id. */
 	uint32_t rix_mreg_copy;
 	/**< Index to metadata register copy table resource. */

@@ -1091,8 +1091,6 @@ int mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 			 enum rte_filter_type filter_type,
 			 enum rte_filter_op filter_op,
 			 void *arg);
-int mlx5_flow_start(struct rte_eth_dev *dev, uint32_t *list);
-void mlx5_flow_stop(struct rte_eth_dev *dev, uint32_t *list);
 int mlx5_flow_start_default(struct rte_eth_dev *dev);
 void mlx5_flow_stop_default(struct rte_eth_dev *dev);
 int mlx5_flow_verify(struct rte_eth_dev *dev);
