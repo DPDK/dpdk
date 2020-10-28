@@ -9,6 +9,7 @@
 
 #include <rte_string_fns.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_log.h>
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
@@ -30,6 +31,16 @@ latencystat_cycles_per_ns(void)
 
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_LATENCY_STATS RTE_LOGTYPE_USER1
+
+static uint64_t timestamp_dynflag;
+static int timestamp_dynfield_offset = -1;
+
+static inline rte_mbuf_timestamp_t *
+timestamp_dynfield(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+			timestamp_dynfield_offset, rte_mbuf_timestamp_t *);
+}
 
 static const char *MZ_RTE_LATENCY_STATS = "rte_latencystats";
 static int latency_stats_index;
@@ -128,10 +139,10 @@ add_time_stamps(uint16_t pid __rte_unused,
 		diff_tsc = now - prev_tsc;
 		timer_tsc += diff_tsc;
 
-		if ((pkts[i]->ol_flags & PKT_RX_TIMESTAMP) == 0
+		if ((pkts[i]->ol_flags & timestamp_dynflag) == 0
 				&& (timer_tsc >= samp_intvl)) {
-			pkts[i]->timestamp = now;
-			pkts[i]->ol_flags |= PKT_RX_TIMESTAMP;
+			*timestamp_dynfield(pkts[i]) = now;
+			pkts[i]->ol_flags |= timestamp_dynflag;
 			timer_tsc = 0;
 		}
 		prev_tsc = now;
@@ -161,8 +172,8 @@ calc_latency(uint16_t pid __rte_unused,
 
 	now = rte_rdtsc();
 	for (i = 0; i < nb_pkts; i++) {
-		if (pkts[i]->ol_flags & PKT_RX_TIMESTAMP)
-			latency[cnt++] = now - pkts[i]->timestamp;
+		if (pkts[i]->ol_flags & timestamp_dynflag)
+			latency[cnt++] = now - *timestamp_dynfield(pkts[i]);
 	}
 
 	rte_spinlock_lock(&glob_stats->lock);
@@ -239,6 +250,15 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 		RTE_LOG(DEBUG, LATENCY_STATS,
 			"Failed to register latency stats names\n");
 		return -1;
+	}
+
+	/* Register mbuf field and flag for Rx timestamp */
+	ret = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
+			&timestamp_dynflag);
+	if (ret != 0) {
+		RTE_LOG(ERR, LATENCY_STATS,
+			"Cannot register mbuf field/flag for timestamp\n");
+		return -rte_errno;
 	}
 
 	/** Register Rx/Tx callbacks */
