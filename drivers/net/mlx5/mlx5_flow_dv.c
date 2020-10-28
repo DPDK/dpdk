@@ -2939,31 +2939,13 @@ flow_dv_jump_tbl_resource_register
 			(struct rte_eth_dev *dev __rte_unused,
 			 struct mlx5_flow_tbl_resource *tbl,
 			 struct mlx5_flow *dev_flow,
-			 struct rte_flow_error *error)
+			 struct rte_flow_error *error __rte_unused)
 {
 	struct mlx5_flow_tbl_data_entry *tbl_data =
 		container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
-	int cnt, ret;
 
 	MLX5_ASSERT(tbl);
-	cnt = __atomic_load_n(&tbl_data->jump.refcnt, __ATOMIC_ACQUIRE);
-	if (!cnt) {
-		ret = mlx5_flow_os_create_flow_action_dest_flow_tbl
-				(tbl->obj, &tbl_data->jump.action);
-		if (ret)
-			return rte_flow_error_set(error, ENOMEM,
-					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					NULL, "cannot create jump action");
-		DRV_LOG(DEBUG, "new jump table resource %p: refcnt %d++",
-			(void *)&tbl_data->jump, cnt);
-	} else {
-		/* old jump should not make the table ref++. */
-		flow_dv_tbl_resource_release(dev, &tbl_data->tbl);
-		MLX5_ASSERT(tbl_data->jump.action);
-		DRV_LOG(DEBUG, "existed jump table resource %p: refcnt %d++",
-			(void *)&tbl_data->jump, cnt);
-	}
-	__atomic_fetch_add(&tbl_data->jump.refcnt, 1, __ATOMIC_RELEASE);
+	MLX5_ASSERT(tbl_data->jump.action);
 	dev_flow->handle->rix_jump = tbl_data->idx;
 	dev_flow->dv.jump = &tbl_data->jump;
 	return 0;
@@ -8064,8 +8046,20 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 	 * count before insert it into the hash list.
 	 */
 	__atomic_store_n(&tbl->refcnt, 0, __ATOMIC_RELAXED);
-	/* Jump action reference count is initialized here. */
-	__atomic_store_n(&tbl_data->jump.refcnt, 0, __ATOMIC_RELAXED);
+
+	if (table_id) {
+		ret = mlx5_flow_os_create_flow_action_dest_flow_tbl
+					(tbl->obj, &tbl_data->jump.action);
+		if (ret) {
+			rte_flow_error_set(error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL,
+					   "cannot create flow jump action");
+			mlx5_flow_os_destroy_flow_tbl(tbl->obj);
+			mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], idx);
+			return NULL;
+		}
+	}
 	pos->key = table_key.v64;
 	ret = mlx5_hlist_insert(sh->flow_tbls, pos);
 	if (ret < 0) {
@@ -10548,29 +10542,13 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 				  struct mlx5_flow_handle *handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_dv_jump_tbl_resource *cache_resource;
 	struct mlx5_flow_tbl_data_entry *tbl_data;
 
 	tbl_data = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_JUMP],
 			     handle->rix_jump);
 	if (!tbl_data)
 		return 0;
-	cache_resource = &tbl_data->jump;
-	MLX5_ASSERT(cache_resource->action);
-	DRV_LOG(DEBUG, "jump table resource %p: refcnt %d--",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
-	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
-			       __ATOMIC_RELAXED) == 0) {
-		claim_zero(mlx5_flow_os_destroy_flow_action
-						(cache_resource->action));
-		/* jump action memory free is inside the table release. */
-		flow_dv_tbl_resource_release(dev, &tbl_data->tbl);
-		DRV_LOG(DEBUG, "jump table resource %p: removed",
-			(void *)cache_resource);
-		return 0;
-	}
-	return 1;
+	return flow_dv_tbl_resource_release(dev, &tbl_data->tbl);
 }
 
 /**

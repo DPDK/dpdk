@@ -484,8 +484,6 @@ union mlx5_flow_modify_hdr_key {
 
 /* Jump action resource structure. */
 struct mlx5_flow_dv_jump_tbl_resource {
-	uint32_t refcnt; /**< Reference counter. */
-	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	void *action; /**< Pointer to the rdma core action. */
 };
 
