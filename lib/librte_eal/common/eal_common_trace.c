@@ -432,11 +432,16 @@ __rte_trace_point_emit_field(size_t sz, const char *in, const char *datatype)
 	char *field = RTE_PER_LCORE(ctf_field);
 	int count = RTE_PER_LCORE(ctf_count);
 	size_t size;
+	char *fixup;
 	int rc;
 
 	size = RTE_MAX(0, TRACE_CTF_FIELD_SIZE - 1 - count);
 	RTE_PER_LCORE(trace_point_sz) += sz;
+	fixup = trace_metadata_fixup_field(in);
+	if (fixup != NULL)
+		in = fixup;
 	rc = snprintf(RTE_PTR_ADD(field, count), size, "%s %s;", datatype, in);
+	free(fixup);
 	if (rc <= 0 || (size_t)rc >= size) {
 		RTE_PER_LCORE(trace_point_sz) = 0;
 		trace_crit("CTF field is too long");

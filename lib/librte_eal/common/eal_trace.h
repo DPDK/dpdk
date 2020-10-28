@@ -104,6 +104,7 @@ bool trace_has_duplicate_entry(void);
 void trace_uuid_generate(void);
 int trace_metadata_create(void);
 void trace_metadata_destroy(void);
+char *trace_metadata_fixup_field(const char *field);
 int trace_mkdir(void);
 int trace_epoch_time_save(void);
 void trace_mem_free(void);
