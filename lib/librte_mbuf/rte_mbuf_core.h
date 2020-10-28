@@ -640,6 +640,11 @@ struct rte_mbuf {
 		};
 	};
 
+	/** Shared data for external buffer attached to mbuf. See
+	 * rte_pktmbuf_attach_extbuf().
+	 */
+	struct rte_mbuf_ext_shared_info *shinfo;
+
 	/** Size of the application private data. In case of an indirect
 	 * mbuf, it stores the direct mbuf private data size.
 	 */
@@ -648,15 +653,7 @@ struct rte_mbuf {
 	/** Timesync flags for use with IEEE1588. */
 	uint16_t timesync;
 
-	/** Sequence number. See also rte_reorder_insert(). */
-	uint32_t seqn;
-
-	/** Shared data for external buffer attached to mbuf. See
-	 * rte_pktmbuf_attach_extbuf().
-	 */
-	struct rte_mbuf_ext_shared_info *shinfo;
-
-	uint64_t dynfield1[3]; /**< Reserved for dynamic fields. */
+	uint32_t dynfield1[7]; /**< Reserved for dynamic fields. */
 } __rte_cache_aligned;
 
 /**

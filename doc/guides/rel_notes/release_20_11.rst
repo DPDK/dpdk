@@ -445,6 +445,9 @@ API Changes
 * mbuf: Removed the unioned fields ``userdata`` and ``udata64``
   from the structure ``rte_mbuf``. It is replaced with dynamic fields.
 
+* mbuf: Removed the field ``seqn`` from the structure ``rte_mbuf``.
+  It is replaced with dynamic fields.
+
 * pci: Removed the ``rte_kernel_driver`` enum defined in rte_dev.h and
   replaced with a private enum in the PCI subsystem.
 
