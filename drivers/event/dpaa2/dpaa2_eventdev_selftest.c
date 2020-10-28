@@ -47,17 +47,6 @@ struct event_attr {
 	uint8_t seq;
 };
 
-static uint32_t seqn_list_index;
-static int seqn_list[NUM_PACKETS];
-
-static void
-seqn_list_init(void)
-{
-	RTE_BUILD_BUG_ON(NUM_PACKETS < MAX_EVENTS);
-	memset(seqn_list, 0, sizeof(seqn_list));
-	seqn_list_index = 0;
-}
-
 struct test_core_param {
 	rte_atomic32_t *total_events;
 	uint64_t dequeue_tmo_ticks;
@@ -516,7 +505,7 @@ launch_workers_and_wait(int (*main_worker)(void *),
 		return 0;
 
 	rte_atomic32_set(&atomic_total_events, total_events);
-	seqn_list_init();
+	RTE_BUILD_BUG_ON(NUM_PACKETS < MAX_EVENTS);
 
 	param = malloc(sizeof(struct test_core_param) * nb_workers);
 	if (!param)
