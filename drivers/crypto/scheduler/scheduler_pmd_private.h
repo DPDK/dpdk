@@ -59,7 +59,6 @@ struct scheduler_qp_ctx {
 	uint32_t max_nb_objs;
 
 	struct rte_ring *order_ring;
-	uint32_t seqn;
 } __rte_cache_aligned;
 
 
