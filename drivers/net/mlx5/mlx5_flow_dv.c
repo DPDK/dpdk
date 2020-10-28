@@ -276,45 +276,6 @@ mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item __rte_unused,
 	}
 }
 
-/**
- * Acquire the synchronizing object to protect multithreaded access
- * to shared dv context. Lock occurs only if context is actually
- * shared, i.e. we have multiport IB device and representors are
- * created.
- *
- * @param[in] dev
- *   Pointer to the rte_eth_dev structure.
- */
-static void
-flow_dv_shared_lock(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-
-	if (sh->refcnt > 1) {
-		int ret;
-
-		ret = pthread_mutex_lock(&sh->dv_mutex);
-		MLX5_ASSERT(!ret);
-		(void)ret;
-	}
-}
-
-static void
-flow_dv_shared_unlock(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-
-	if (sh->refcnt > 1) {
-		int ret;
-
-		ret = pthread_mutex_unlock(&sh->dv_mutex);
-		MLX5_ASSERT(!ret);
-		(void)ret;
-	}
-}
-
 /* Update VLAN's VID/PCP based on input rte_flow_action.
  *
  * @param[in] action
@@ -5075,7 +5036,7 @@ flow_dv_counter_remove_from_age(struct rte_eth_dev *dev,
  *   Index to the counter handler.
  */
 static void
-flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
+flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t counter)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool = NULL;
@@ -8624,7 +8585,7 @@ flow_dv_sample_sub_actions_release(struct rte_eth_dev *dev,
 		act_res->rix_tag = 0;
 	}
 	if (act_res->cnt) {
-		flow_dv_counter_release(dev, act_res->cnt);
+		flow_dv_counter_free(dev, act_res->cnt);
 		act_res->cnt = 0;
 	}
 }
@@ -9298,12 +9259,12 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-__flow_dv_translate(struct rte_eth_dev *dev,
-		    struct mlx5_flow *dev_flow,
-		    const struct rte_flow_attr *attr,
-		    const struct rte_flow_item items[],
-		    const struct rte_flow_action actions[],
-		    struct rte_flow_error *error)
+flow_dv_translate(struct rte_eth_dev *dev,
+		  struct mlx5_flow *dev_flow,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item items[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *dev_conf = &priv->config;
@@ -10380,8 +10341,8 @@ __flow_dv_rss_get_hrxq(struct rte_eth_dev *dev, struct rte_flow *flow,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-__flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
-		struct rte_flow_error *error)
+flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
+	      struct rte_flow_error *error)
 {
 	struct mlx5_flow_dv_workspace *dv;
 	struct mlx5_flow_handle *dh;
@@ -10837,7 +10798,7 @@ flow_dv_dest_array_resource_release(struct rte_eth_dev *dev,
  *   Pointer to flow structure.
  */
 static void
-__flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
+flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct mlx5_flow_handle *dh;
 	uint32_t handle_idx;
@@ -10873,7 +10834,7 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
  *   Pointer to flow structure.
  */
 static void
-__flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
+flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct rte_flow_shared_action *shared;
 	struct mlx5_flow_handle *dev_handle;
@@ -10881,12 +10842,12 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 	if (!flow)
 		return;
-	__flow_dv_remove(dev, flow);
+	flow_dv_remove(dev, flow);
 	shared = mlx5_flow_get_shared_rss(flow);
 	if (shared)
 		__atomic_sub_fetch(&shared->refcnt, 1, __ATOMIC_RELAXED);
 	if (flow->counter) {
-		flow_dv_counter_release(dev, flow->counter);
+		flow_dv_counter_free(dev, flow->counter);
 		flow->counter = 0;
 	}
 	if (flow->meter) {
@@ -11169,10 +11130,10 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev,
  *   rte_errno is set.
  */
 static struct rte_flow_shared_action *
-__flow_dv_action_create(struct rte_eth_dev *dev,
-			const struct rte_flow_shared_action_conf *conf,
-			const struct rte_flow_action *action,
-			struct rte_flow_error *error)
+flow_dv_action_create(struct rte_eth_dev *dev,
+		      const struct rte_flow_shared_action_conf *conf,
+		      const struct rte_flow_action *action,
+		      struct rte_flow_error *error)
 {
 	struct rte_flow_shared_action *shared_action = NULL;
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -11216,9 +11177,9 @@ __flow_dv_action_create(struct rte_eth_dev *dev,
  *   0 on success, otherwise negative errno value.
  */
 static int
-__flow_dv_action_destroy(struct rte_eth_dev *dev,
-			 struct rte_flow_shared_action *action,
-			 struct rte_flow_error *error)
+flow_dv_action_destroy(struct rte_eth_dev *dev,
+		       struct rte_flow_shared_action *action,
+		       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
@@ -11338,7 +11299,7 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev,
  *   0 on success, otherwise negative errno value.
  */
 static int
-__flow_dv_action_update(struct rte_eth_dev *dev,
+flow_dv_action_update(struct rte_eth_dev *dev,
 			struct rte_flow_shared_action *action,
 			const void *action_conf,
 			struct rte_flow_error *error)
@@ -12102,85 +12063,12 @@ flow_get_aged_flows(struct rte_eth_dev *dev,
 }
 
 /*
- * Mutex-protected thunk to lock-free  __flow_dv_translate().
- */
-static int
-flow_dv_translate(struct rte_eth_dev *dev,
-		  struct mlx5_flow *dev_flow,
-		  const struct rte_flow_attr *attr,
-		  const struct rte_flow_item items[],
-		  const struct rte_flow_action actions[],
-		  struct rte_flow_error *error)
-{
-	int ret;
-
-	flow_dv_shared_lock(dev);
-	ret = __flow_dv_translate(dev, dev_flow, attr, items, actions, error);
-	flow_dv_shared_unlock(dev);
-	return ret;
-}
-
-/*
- * Mutex-protected thunk to lock-free  __flow_dv_apply().
- */
-static int
-flow_dv_apply(struct rte_eth_dev *dev,
-	      struct rte_flow *flow,
-	      struct rte_flow_error *error)
-{
-	int ret;
-
-	flow_dv_shared_lock(dev);
-	ret = __flow_dv_apply(dev, flow, error);
-	flow_dv_shared_unlock(dev);
-	return ret;
-}
-
-/*
- * Mutex-protected thunk to lock-free __flow_dv_remove().
- */
-static void
-flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
-{
-	flow_dv_shared_lock(dev);
-	__flow_dv_remove(dev, flow);
-	flow_dv_shared_unlock(dev);
-}
-
-/*
- * Mutex-protected thunk to lock-free __flow_dv_destroy().
- */
-static void
-flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
-{
-	flow_dv_shared_lock(dev);
-	__flow_dv_destroy(dev, flow);
-	flow_dv_shared_unlock(dev);
-}
-
-/*
  * Mutex-protected thunk to lock-free flow_dv_counter_alloc().
  */
 static uint32_t
 flow_dv_counter_allocate(struct rte_eth_dev *dev)
 {
-	uint32_t cnt;
-
-	flow_dv_shared_lock(dev);
-	cnt = flow_dv_counter_alloc(dev, 0);
-	flow_dv_shared_unlock(dev);
-	return cnt;
-}
-
-/*
- * Mutex-protected thunk to lock-free flow_dv_counter_release().
- */
-static void
-flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t cnt)
-{
-	flow_dv_shared_lock(dev);
-	flow_dv_counter_release(dev, cnt);
-	flow_dv_shared_unlock(dev);
+	return flow_dv_counter_alloc(dev, 0);
 }
 
 /**
@@ -12216,57 +12104,6 @@ flow_dv_action_validate(struct rte_eth_dev *dev,
 					  NULL,
 					  "action type not supported");
 	}
-}
-
-/*
- * Mutex-protected thunk to lock-free  __flow_dv_action_create().
- */
-static struct rte_flow_shared_action *
-flow_dv_action_create(struct rte_eth_dev *dev,
-		      const struct rte_flow_shared_action_conf *conf,
-		      const struct rte_flow_action *action,
-		      struct rte_flow_error *error)
-{
-	struct rte_flow_shared_action *shared_action = NULL;
-
-	flow_dv_shared_lock(dev);
-	shared_action = __flow_dv_action_create(dev, conf, action, error);
-	flow_dv_shared_unlock(dev);
-	return shared_action;
-}
-
-/*
- * Mutex-protected thunk to lock-free  __flow_dv_action_destroy().
- */
-static int
-flow_dv_action_destroy(struct rte_eth_dev *dev,
-		       struct rte_flow_shared_action *action,
-		       struct rte_flow_error *error)
-{
-	int ret;
-
-	flow_dv_shared_lock(dev);
-	ret = __flow_dv_action_destroy(dev, action, error);
-	flow_dv_shared_unlock(dev);
-	return ret;
-}
-
-/*
- * Mutex-protected thunk to lock-free  __flow_dv_action_update().
- */
-static int
-flow_dv_action_update(struct rte_eth_dev *dev,
-		      struct rte_flow_shared_action *action,
-		      const void *action_conf,
-		      struct rte_flow_error *error)
-{
-	int ret;
-
-	flow_dv_shared_lock(dev);
-	ret = __flow_dv_action_update(dev, action, action_conf,
-				      error);
-	flow_dv_shared_unlock(dev);
-	return ret;
 }
 
 static int

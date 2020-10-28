@@ -185,6 +185,7 @@ New Features
 
   Updated Mellanox mlx5 driver with new features and improvements, including:
 
+  * Added support for PMD level multiple-thread flow insertion.
   * Added support for matching on fragmented/non-fragmented IPv4/IPv6 packets.
   * Added support for QinQ packets matching.
   * Added support for the new VLAN fields ``has_vlan`` in the Ethernet item

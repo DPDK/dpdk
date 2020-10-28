@@ -321,7 +321,6 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		err = errno;
 		goto error;
 	}
-	pthread_mutex_init(&sh->dv_mutex, NULL);
 	sh->tx_domain = domain;
 #ifdef HAVE_MLX5DV_DR_ESWITCH
 	if (priv->config.dv_esw_en) {
@@ -435,7 +434,6 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
 	}
-	pthread_mutex_destroy(&sh->dv_mutex);
 #endif /* HAVE_MLX5DV_DR */
 	if (sh->default_miss_action)
 		mlx5_glue->destroy_flow_action
@@ -1536,6 +1534,8 @@ err_secondary:
 	}
 	rte_spinlock_init(&priv->shared_act_sl);
 	mlx5_flow_counter_mode_config(eth_dev);
+	if (priv->config.dv_flow_en)
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
 	return eth_dev;
 error:
 	if (priv) {

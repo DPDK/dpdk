@@ -96,6 +96,7 @@ Features
 - Per packet no-inline hint flag to disable packet data copying into Tx descriptors.
 - Hardware LRO.
 - Hairpin.
+- Multiple-thread flow insertion.
 
 Limitations
 -----------

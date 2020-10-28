@@ -639,7 +639,6 @@ struct mlx5_dev_ctx_shared {
 	/* Packet pacing related structure. */
 	struct mlx5_dev_txpp txpp;
 	/* Shared DV/DR flow data section. */
-	pthread_mutex_t dv_mutex; /* DV context mutex. */
 	uint32_t dv_meta_mask; /* flow META metadata supported mask. */
 	uint32_t dv_mark_mask; /* flow MARK metadata supported mask. */
 	uint32_t dv_regc0_mask; /* available bits of metatada reg_c[0]. */
