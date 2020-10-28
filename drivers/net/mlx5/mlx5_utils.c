@@ -362,6 +362,11 @@ mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 	MLX5_ASSERT(iidx < mlx5_trunk_size_get(pool, trunk->idx));
 	rte_bitmap_clear(trunk->bmp, iidx);
 	p = &trunk->data[iidx * pool->cfg.size];
+	/*
+	 * The ipool index should grow continually from small to big,
+	 * some features as metering only accept limited bits of index.
+	 * Random index with MSB set may be rejected.
+	 */
 	iidx += mlx5_trunk_idx_offset_get(pool, trunk->idx);
 	iidx += 1; /* non-zero index. */
 	trunk->free--;

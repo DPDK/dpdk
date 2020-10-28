@@ -321,6 +321,21 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.free = mlx5_free,
 		.type = "rte_flow_ipool",
 	},
+	{
+		.size = 0,
+		.need_lock = 1,
+		.type = "mlx5_flow_rss_id_ipool",
+	},
+	{
+		.size = 0,
+		.need_lock = 1,
+		.type = "mlx5_flow_tnl_flow_ipool",
+	},
+	{
+		.size = 0,
+		.need_lock = 1,
+		.type = "mlx5_flow_tnl_tbl_ipool",
+	},
 };
 
 
@@ -328,127 +343,6 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 #define MLX5_ID_GENERATION_ARRAY_FACTOR 16
 
 #define MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE 4096
-
-/**
- * Allocate ID pool structure.
- *
- * @param[in] max_id
- *   The maximum id can be allocated from the pool.
- *
- * @return
- *   Pointer to pool object, NULL value otherwise.
- */
-struct mlx5_flow_id_pool *
-mlx5_flow_id_pool_alloc(uint32_t max_id)
-{
-	struct mlx5_flow_id_pool *pool;
-	void *mem;
-
-	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool),
-			   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
-	if (!pool) {
-		DRV_LOG(ERR, "can't allocate id pool");
-		rte_errno  = ENOMEM;
-		return NULL;
-	}
-	mem = mlx5_malloc(MLX5_MEM_ZERO,
-			  MLX5_FLOW_MIN_ID_POOL_SIZE * sizeof(uint32_t),
-			  RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
-	if (!mem) {
-		DRV_LOG(ERR, "can't allocate mem for id pool");
-		rte_errno  = ENOMEM;
-		goto error;
-	}
-	pool->free_arr = mem;
-	pool->curr = pool->free_arr;
-	pool->last = pool->free_arr + MLX5_FLOW_MIN_ID_POOL_SIZE;
-	pool->base_index = 0;
-	pool->max_id = max_id;
-	return pool;
-error:
-	mlx5_free(pool);
-	return NULL;
-}
-
-/**
- * Release ID pool structure.
- *
- * @param[in] pool
- *   Pointer to flow id pool object to free.
- */
-void
-mlx5_flow_id_pool_release(struct mlx5_flow_id_pool *pool)
-{
-	mlx5_free(pool->free_arr);
-	mlx5_free(pool);
-}
-
-/**
- * Generate ID.
- *
- * @param[in] pool
- *   Pointer to flow id pool.
- * @param[out] id
- *   The generated ID.
- *
- * @return
- *   0 on success, error value otherwise.
- */
-uint32_t
-mlx5_flow_id_get(struct mlx5_flow_id_pool *pool, uint32_t *id)
-{
-	if (pool->curr == pool->free_arr) {
-		if (pool->base_index == pool->max_id) {
-			rte_errno  = ENOMEM;
-			DRV_LOG(ERR, "no free id");
-			return -rte_errno;
-		}
-		*id = ++pool->base_index;
-		return 0;
-	}
-	*id = *(--pool->curr);
-	return 0;
-}
-
-/**
- * Release ID.
- *
- * @param[in] pool
- *   Pointer to flow id pool.
- * @param[out] id
- *   The generated ID.
- *
- * @return
- *   0 on success, error value otherwise.
- */
-uint32_t
-mlx5_flow_id_release(struct mlx5_flow_id_pool *pool, uint32_t id)
-{
-	uint32_t size;
-	uint32_t size2;
-	void *mem;
-
-	if (pool->curr == pool->last) {
-		size = pool->curr - pool->free_arr;
-		size2 = size * MLX5_ID_GENERATION_ARRAY_FACTOR;
-		MLX5_ASSERT(size2 > size);
-		mem = mlx5_malloc(0, size2 * sizeof(uint32_t), 0,
-				  SOCKET_ID_ANY);
-		if (!mem) {
-			DRV_LOG(ERR, "can't allocate mem for id pool");
-			rte_errno  = ENOMEM;
-			return -rte_errno;
-		}
-		memcpy(mem, pool->free_arr, size * sizeof(uint32_t));
-		mlx5_free(pool->free_arr);
-		pool->free_arr = mem;
-		pool->curr = pool->free_arr + size;
-		pool->last = pool->free_arr + size2;
-	}
-	*pool->curr = id;
-	pool->curr++;
-	return 0;
-}
 
 /**
  * Initialize the shared aging list information per port.

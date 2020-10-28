@@ -47,6 +47,9 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_HRXQ, /* Pool for hrxq resource. */
 	MLX5_IPOOL_MLX5_FLOW, /* Pool for mlx5 flow handle. */
 	MLX5_IPOOL_RTE_FLOW, /* Pool for rte_flow. */
+	MLX5_IPOOL_RSS_EXPANTION_FLOW_ID, /* Pool for Queue/RSS flow ID. */
+	MLX5_IPOOL_TUNNEL_ID, /* Pool for flow tunnel ID. */
+	MLX5_IPOOL_TNL_TBL_ID, /* Pool for tunnel table ID. */
 	MLX5_IPOOL_MAX,
 };
 
@@ -877,7 +880,6 @@ struct mlx5_priv {
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
 	struct mlx5_dbr_page_list dbrpgs; /* Door-bell pages. */
 	struct mlx5_nl_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
-	struct mlx5_flow_id_pool *qrss_id_pool;
 	struct mlx5_hlist *mreg_cp_tbl;
 	/* Hash table of Rx metadata register copy table. */
 	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */

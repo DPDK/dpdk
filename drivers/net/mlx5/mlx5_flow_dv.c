@@ -8132,8 +8132,8 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 				mlx5_hlist_remove(tunnel_grp_hash, he);
 				mlx5_free(tte);
 			}
-			mlx5_flow_id_release(mlx5_tunnel_hub(dev)->table_ids,
-					     tunnel_flow_tbl_to_id(table_id));
+			mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
+					tunnel_flow_tbl_to_id(table_id));
 			DRV_LOG(DEBUG,
 				"port %u release table_id %#x tunnel %u group %u",
 				dev->data->port_id, table_id,

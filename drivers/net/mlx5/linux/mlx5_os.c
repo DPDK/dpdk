@@ -1395,17 +1395,6 @@ err_secondary:
 		err = mlx5_alloc_shared_dr(priv);
 		if (err)
 			goto error;
-		/*
-		 * RSS id is shared with meter flow id. Meter flow id can only
-		 * use the 24 MSB of the register.
-		 */
-		priv->qrss_id_pool = mlx5_flow_id_pool_alloc(UINT32_MAX >>
-				     MLX5_MTR_COLOR_BITS);
-		if (!priv->qrss_id_pool) {
-			DRV_LOG(ERR, "can't create flow id pool");
-			err = ENOMEM;
-			goto error;
-		}
 	}
 	if (config->devx && config->dv_flow_en && config->dest_tir) {
 		priv->obj_ops = devx_obj_ops;
@@ -1492,8 +1481,6 @@ error:
 			close(priv->nl_socket_rdma);
 		if (priv->vmwa_context)
 			mlx5_vlan_vmwa_exit(priv->vmwa_context);
-		if (priv->qrss_id_pool)
-			mlx5_flow_id_pool_release(priv->qrss_id_pool);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		mlx5_free(priv);

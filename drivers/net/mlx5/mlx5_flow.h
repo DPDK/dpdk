@@ -951,8 +951,6 @@ struct mlx5_flow_tunnel {
 /** PMD tunnel related context */
 struct mlx5_flow_tunnel_hub {
 	LIST_HEAD(, mlx5_flow_tunnel) tunnels;
-	struct mlx5_flow_id_pool *tunnel_ids;
-	struct mlx5_flow_id_pool *table_ids;
 	struct mlx5_hlist *groups;		/** non tunnel groups */
 };
 
@@ -1213,11 +1211,6 @@ struct mlx5_flow_driver_ops {
 /* mlx5_flow.c */
 
 struct mlx5_flow_workspace *mlx5_flow_get_thread_workspace(void);
-struct mlx5_flow_id_pool *mlx5_flow_id_pool_alloc(uint32_t max_id);
-void mlx5_flow_id_pool_release(struct mlx5_flow_id_pool *pool);
-uint32_t mlx5_flow_id_get(struct mlx5_flow_id_pool *pool, uint32_t *id);
-uint32_t mlx5_flow_id_release(struct mlx5_flow_id_pool *pool,
-			      uint32_t id);
 __extension__
 struct flow_grp_info {
 	uint64_t external:1;

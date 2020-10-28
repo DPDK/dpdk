@@ -2935,30 +2935,6 @@ mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
 					 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 }
 
-/* Allocate unique ID for the split Q/RSS subflows. */
-static uint32_t
-flow_qrss_get_id(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t qrss_id, ret;
-
-	ret = mlx5_flow_id_get(priv->qrss_id_pool, &qrss_id);
-	if (ret)
-		return 0;
-	MLX5_ASSERT(qrss_id);
-	return qrss_id;
-}
-
-/* Free unique ID for the split Q/RSS subflows. */
-static void
-flow_qrss_free_id(struct rte_eth_dev *dev,  uint32_t qrss_id)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-
-	if (qrss_id)
-		mlx5_flow_id_release(priv->qrss_id_pool, qrss_id);
-}
-
 /**
  * Release resource related QUEUE/RSS action split.
  *
@@ -2978,7 +2954,9 @@ flow_mreg_split_qrss_release(struct rte_eth_dev *dev,
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dev_handle, next)
 		if (dev_handle->split_flow_id)
-			flow_qrss_free_id(dev, dev_handle->split_flow_id);
+			mlx5_ipool_free(priv->sh->ipool
+					[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID],
+					dev_handle->split_flow_id);
 }
 
 static int
@@ -4499,6 +4477,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		 struct rte_flow_action actions_sfx[],
 		 struct rte_flow_action actions_pre[])
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_action *tag_action = NULL;
 	struct rte_flow_item *tag_item;
 	struct mlx5_rte_flow_action_set_tag *set_tag;
@@ -4507,7 +4486,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	const struct rte_flow_action_raw_decap *raw_decap;
 	struct mlx5_rte_flow_item_tag *tag_spec;
 	struct mlx5_rte_flow_item_tag *tag_mask;
-	uint32_t tag_id;
+	uint32_t tag_id = 0;
 	bool copy_vlan = false;
 
 	/* Prepare the actions for prefix and suffix flow. */
@@ -4556,10 +4535,17 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	/* Set the tag. */
 	set_tag = (void *)actions_pre;
 	set_tag->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_SFX, 0, &error);
-	/*
-	 * Get the id from the qrss_pool to make qrss share the id with meter.
-	 */
-	tag_id = flow_qrss_get_id(dev);
+	mlx5_ipool_malloc(priv->sh->ipool[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID],
+			  &tag_id);
+	if (tag_id >= (1 << (sizeof(tag_id) * 8 - MLX5_MTR_COLOR_BITS))) {
+		DRV_LOG(ERR, "Port %u meter flow id exceed max limit.",
+			dev->data->port_id);
+		mlx5_ipool_free(priv->sh->ipool
+				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], tag_id);
+		return 0;
+	} else if (!tag_id) {
+		return 0;
+	}
 	set_tag->data = tag_id << MLX5_MTR_COLOR_BITS;
 	assert(tag_action);
 	tag_action->conf = set_tag;
@@ -4652,6 +4638,7 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
 			  const struct rte_flow_action *qrss,
 			  int actions_n, struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rte_flow_action_set_tag *set_tag;
 	struct rte_flow_action_jump *jump;
 	const int qrss_idx = qrss - actions;
@@ -4683,7 +4670,8 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
 		 * representors) domain even if they have coinciding
 		 * IDs.
 		 */
-		flow_id = flow_qrss_get_id(dev);
+		mlx5_ipool_malloc(priv->sh->ipool
+				  [MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], &flow_id);
 		if (!flow_id)
 			return rte_flow_error_set(error, ENOMEM,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4895,6 +4883,7 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 		       int qrss_action_pos,
 		       struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rte_flow_action_set_tag *set_tag;
 	struct mlx5_rte_flow_item_tag *tag_spec;
 	struct mlx5_rte_flow_item_tag *tag_mask;
@@ -4914,7 +4903,8 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 		if (ret < 0)
 			return ret;
 		set_tag->id = ret;
-		tag_id = flow_qrss_get_id(dev);
+		mlx5_ipool_malloc(priv->sh->ipool
+				  [MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], &tag_id);
 		set_tag->data = tag_id;
 		/* Prepare the suffix subflow items. */
 		tag_spec = (void *)(sfx_items + SAMPLE_SUFFIX_ITEM);
@@ -5209,7 +5199,8 @@ exit:
 	 * These ones are included into parent flow list and will be destroyed
 	 * by flow_drv_destroy.
 	 */
-	flow_qrss_free_id(dev, qrss_id);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID],
+			qrss_id);
 	mlx5_free(ext_actions);
 	return ret;
 }
@@ -7576,6 +7567,7 @@ tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 				uint32_t group, uint32_t *table,
 				struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hlist_entry *he;
 	struct tunnel_tbl_entry *tte;
 	union tunnel_tbl_key key = {
@@ -7588,16 +7580,21 @@ tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 	group_hash = tunnel ? tunnel->groups : thub->groups;
 	he = mlx5_hlist_lookup(group_hash, key.val);
 	if (!he) {
-		int ret;
 		tte = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO,
 				  sizeof(*tte), 0,
 				  SOCKET_ID_ANY);
 		if (!tte)
 			goto err;
 		tte->hash.key = key.val;
-		ret = mlx5_flow_id_get(thub->table_ids, &tte->flow_table);
-		if (ret) {
-			mlx5_free(tte);
+		mlx5_ipool_malloc(priv->sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
+				  &tte->flow_table);
+		if (tte->flow_table >= MLX5_MAX_TABLES) {
+			DRV_LOG(ERR, "Tunnel TBL ID %d exceed max limit.",
+				tte->flow_table);
+			mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
+					tte->flow_table);
+			goto err;
+		} else if (!tte->flow_table) {
 			goto err;
 		}
 		tte->flow_table = tunnel_id_to_flow_tbl(tte->flow_table);
@@ -7611,6 +7608,8 @@ tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 	return 0;
 
 err:
+	if (tte)
+		mlx5_free(tte);
 	return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
 				  NULL, "tunnel group index not supported");
 }
@@ -8078,14 +8077,14 @@ static void
 mlx5_flow_tunnel_free(struct rte_eth_dev *dev,
 		      struct mlx5_flow_tunnel *tunnel)
 {
-	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
-	struct mlx5_flow_id_pool *id_pool = thub->tunnel_ids;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	DRV_LOG(DEBUG, "port %u release pmd tunnel id=0x%x",
 		dev->data->port_id, tunnel->tunnel_id);
 	RTE_VERIFY(!__atomic_load_n(&tunnel->refctn, __ATOMIC_RELAXED));
 	LIST_REMOVE(tunnel, chain);
-	mlx5_flow_id_release(id_pool, tunnel->tunnel_id);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TUNNEL_ID],
+			tunnel->tunnel_id);
 	mlx5_hlist_destroy(tunnel->groups, NULL, NULL);
 	mlx5_free(tunnel);
 }
@@ -8108,15 +8107,20 @@ static struct mlx5_flow_tunnel *
 mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 			  const struct rte_flow_tunnel *app_tunnel)
 {
-	int ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_tunnel *tunnel;
-	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
-	struct mlx5_flow_id_pool *id_pool = thub->tunnel_ids;
 	uint32_t id;
 
-	ret = mlx5_flow_id_get(id_pool, &id);
-	if (ret)
+	mlx5_ipool_malloc(priv->sh->ipool[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID],
+			  &id);
+	if (id >= MLX5_MAX_TUNNELS) {
+		mlx5_ipool_free(priv->sh->ipool
+				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
+		DRV_LOG(ERR, "Tunnel ID %d exceed max limit.", id);
 		return NULL;
+	} else if (!id) {
+		return NULL;
+	}
 	/**
 	 * mlx5 flow tunnel is an auxlilary data structure
 	 * It's not part of IO. No need to allocate it from
@@ -8125,12 +8129,14 @@ mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 	tunnel = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO, sizeof(*tunnel),
 			     0, SOCKET_ID_ANY);
 	if (!tunnel) {
-		mlx5_flow_id_pool_release(id_pool);
+		mlx5_ipool_free(priv->sh->ipool
+				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
 		return NULL;
 	}
 	tunnel->groups = mlx5_hlist_create("tunnel groups", 1024);
 	if (!tunnel->groups) {
-		mlx5_flow_id_pool_release(id_pool);
+		mlx5_ipool_free(priv->sh->ipool
+				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
 		mlx5_free(tunnel);
 		return NULL;
 	}
@@ -8192,8 +8198,6 @@ void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id)
 		return;
 	if (!LIST_EMPTY(&thub->tunnels))
 		DRV_LOG(WARNING, "port %u tunnels present\n", port_id);
-	mlx5_flow_id_pool_release(thub->tunnel_ids);
-	mlx5_flow_id_pool_release(thub->table_ids);
 	mlx5_hlist_destroy(thub->groups, NULL, NULL);
 	mlx5_free(thub);
 }
@@ -8208,16 +8212,6 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 	if (!thub)
 		return -ENOMEM;
 	LIST_INIT(&thub->tunnels);
-	thub->tunnel_ids = mlx5_flow_id_pool_alloc(MLX5_MAX_TUNNELS);
-	if (!thub->tunnel_ids) {
-		err = -rte_errno;
-		goto err;
-	}
-	thub->table_ids = mlx5_flow_id_pool_alloc(MLX5_MAX_TABLES);
-	if (!thub->table_ids) {
-		err = -rte_errno;
-		goto err;
-	}
 	thub->groups = mlx5_hlist_create("flow groups", MLX5_MAX_TABLES);
 	if (!thub->groups) {
 		err = -rte_errno;
@@ -8230,10 +8224,6 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 err:
 	if (thub->groups)
 		mlx5_hlist_destroy(thub->groups, NULL, NULL);
-	if (thub->table_ids)
-		mlx5_flow_id_pool_release(thub->table_ids);
-	if (thub->tunnel_ids)
-		mlx5_flow_id_pool_release(thub->tunnel_ids);
 	if (thub)
 		mlx5_free(thub);
 	return err;
