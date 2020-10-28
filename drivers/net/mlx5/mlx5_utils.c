@@ -230,7 +230,7 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 	struct mlx5_indexed_pool *pool;
 	uint32_t i;
 
-	if (!cfg || !cfg->size || (!cfg->malloc ^ !cfg->free) ||
+	if (!cfg || (!cfg->malloc ^ !cfg->free) ||
 	    (cfg->trunk_size && ((cfg->trunk_size & (cfg->trunk_size - 1)) ||
 	    ((__builtin_ffs(cfg->trunk_size) + TRUNK_IDX_BITS) > 32))))
 		return NULL;
@@ -391,7 +391,7 @@ mlx5_ipool_zmalloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 {
 	void *entry = mlx5_ipool_malloc(pool, idx);
 
-	if (entry)
+	if (entry && pool->cfg.size)
 		memset(entry, 0, pool->cfg.size);
 	return entry;
 }
