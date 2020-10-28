@@ -5774,9 +5774,12 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		if (ret < 0)
 			goto error;
 	}
-	if (list)
+	if (list) {
+		rte_spinlock_lock(&priv->flow_list_lock);
 		ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], list, idx,
 			     flow, next);
+		rte_spinlock_unlock(&priv->flow_list_lock);
+	}
 	flow_rxq_flags_set(dev, flow);
 	rte_free(translated_actions);
 	/* Nested flow creation index recovery. */
@@ -5957,9 +5960,12 @@ flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
 	if (dev->data->dev_started)
 		flow_rxq_flags_trim(dev, flow);
 	flow_drv_destroy(dev, flow);
-	if (list)
+	if (list) {
+		rte_spinlock_lock(&priv->flow_list_lock);
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], list,
 			     flow_idx, flow, next);
+		rte_spinlock_unlock(&priv->flow_list_lock);
+	}
 	flow_mreg_del_copy_action(dev, flow);
 	if (flow->fdir) {
 		LIST_FOREACH(priv_fdir_flow, &priv->fdir_flows, next) {

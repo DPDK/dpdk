@@ -1358,6 +1358,7 @@ err_secondary:
 				      MLX5_MAX_MAC_ADDRESSES);
 	priv->flows = 0;
 	priv->ctrl_flows = 0;
+	rte_spinlock_init(&priv->flow_list_lock);
 	TAILQ_INIT(&priv->flow_meters);
 	TAILQ_INIT(&priv->flow_meter_profiles);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */

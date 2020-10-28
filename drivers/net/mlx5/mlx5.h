@@ -856,6 +856,7 @@ struct mlx5_priv {
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
 	uint32_t flows; /* RTE Flow rules. */
 	uint32_t ctrl_flows; /* Control flow rules. */
+	rte_spinlock_t flow_list_lock;
 	struct mlx5_obj_ops obj_ops; /* HW objects operations. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
