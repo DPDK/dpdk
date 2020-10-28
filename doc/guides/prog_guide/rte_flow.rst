@@ -1778,7 +1778,7 @@ these RSS types are simply ignored. For example, it happens if:
   (e.g. pattern has UDP item, but RSS types contain TCP).
 
 If requested RSS hash types are not supported by the Ethernet device at all
-(not reported in ``dev_info.flow_tpe_rss_offloads``),
+(not reported in ``dev_info.flow_type_rss_offloads``),
 the flow creation will fail.
 
 Note: RSS hash result is stored in the ``hash.rss`` mbuf field which
