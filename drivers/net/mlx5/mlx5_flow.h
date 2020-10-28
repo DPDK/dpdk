@@ -562,9 +562,12 @@ struct mlx5_flow_sub_actions_idx {
 
 /* Sample action resource structure. */
 struct mlx5_flow_dv_sample_resource {
-	ILIST_ENTRY(uint32_t)next; /**< Pointer to next element. */
-	uint32_t refcnt; /**< Reference counter. */
-	void *verbs_action; /**< Verbs sample action object. */
+	struct mlx5_cache_entry entry; /**< Cache entry. */
+	union {
+		void *verbs_action; /**< Verbs sample action object. */
+		void **sub_actions; /**< Sample sub-action array. */
+	};
+	uint32_t idx; /** Sample object index. */
 	uint8_t ft_type; /** Flow Table Type */
 	uint32_t ft_id; /** Flow Table Level */
 	uint32_t ratio;   /** Sample Ratio */
@@ -581,8 +584,8 @@ struct mlx5_flow_dv_sample_resource {
 
 /* Destination array action resource structure. */
 struct mlx5_flow_dv_dest_array_resource {
-	ILIST_ENTRY(uint32_t)next; /**< Pointer to next element. */
-	uint32_t refcnt; /**< Reference counter. */
+	struct mlx5_cache_entry entry; /**< Cache entry. */
+	uint32_t idx; /** Destination array action object index. */
 	uint8_t ft_type; /** Flow Table Type */
 	uint8_t num_of_dest; /**< Number of destination actions. */
 	void *action; /**< Pointer to the rdma core action. */
@@ -1449,4 +1452,19 @@ struct mlx5_cache_entry *flow_dv_push_vlan_create_cb
 void flow_dv_push_vlan_remove_cb(struct mlx5_cache_list *list,
 				 struct mlx5_cache_entry *entry);
 
+int flow_dv_sample_match_cb(struct mlx5_cache_list *list,
+			    struct mlx5_cache_entry *entry, void *cb_ctx);
+struct mlx5_cache_entry *flow_dv_sample_create_cb
+				(struct mlx5_cache_list *list,
+				 struct mlx5_cache_entry *entry, void *cb_ctx);
+void flow_dv_sample_remove_cb(struct mlx5_cache_list *list,
+			      struct mlx5_cache_entry *entry);
+
+int flow_dv_dest_array_match_cb(struct mlx5_cache_list *list,
+				struct mlx5_cache_entry *entry, void *cb_ctx);
+struct mlx5_cache_entry *flow_dv_dest_array_create_cb
+				(struct mlx5_cache_list *list,
+				 struct mlx5_cache_entry *entry, void *cb_ctx);
+void flow_dv_dest_array_remove_cb(struct mlx5_cache_list *list,
+				  struct mlx5_cache_entry *entry);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

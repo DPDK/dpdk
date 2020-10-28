@@ -8636,30 +8636,43 @@ flow_dv_sample_sub_actions_release(struct rte_eth_dev *dev,
 	}
 }
 
-/**
- * Find existing sample resource or create and register a new one.
- *
- * @param[in, out] dev
- *   Pointer to rte_eth_dev structure.
- * @param[in] resource
- *   Pointer to sample resource.
- * @parm[in, out] dev_flow
- *   Pointer to the dev_flow.
- * @param[in, out] sample_dv_actions
- *   Pointer to sample actions list.
- * @param[out] error
- *   pointer to error structure.
- *
- * @return
- *   0 on success otherwise -errno and errno is set.
- */
-static int
-flow_dv_sample_resource_register(struct rte_eth_dev *dev,
-			 struct mlx5_flow_dv_sample_resource *resource,
-			 struct mlx5_flow *dev_flow,
-			 void **sample_dv_actions,
-			 struct rte_flow_error *error)
+int
+flow_dv_sample_match_cb(struct mlx5_cache_list *list __rte_unused,
+			struct mlx5_cache_entry *entry, void *cb_ctx)
 {
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct rte_eth_dev *dev = ctx->dev;
+	struct mlx5_flow_dv_sample_resource *resource = ctx->data;
+	struct mlx5_flow_dv_sample_resource *cache_resource =
+			container_of(entry, typeof(*cache_resource), entry);
+
+	if (resource->ratio == cache_resource->ratio &&
+	    resource->ft_type == cache_resource->ft_type &&
+	    resource->ft_id == cache_resource->ft_id &&
+	    resource->set_action == cache_resource->set_action &&
+	    !memcmp((void *)&resource->sample_act,
+		    (void *)&cache_resource->sample_act,
+		    sizeof(struct mlx5_flow_sub_actions_list))) {
+		/*
+		 * Existing sample action should release the prepared
+		 * sub-actions reference counter.
+		 */
+		flow_dv_sample_sub_actions_release(dev,
+						&resource->sample_idx);
+		return 0;
+	}
+	return 1;
+}
+
+struct mlx5_cache_entry *
+flow_dv_sample_create_cb(struct mlx5_cache_list *list __rte_unused,
+			 struct mlx5_cache_entry *entry __rte_unused,
+			 void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct rte_eth_dev *dev = ctx->dev;
+	struct mlx5_flow_dv_sample_resource *resource = ctx->data;
+	void **sample_dv_actions = resource->sub_actions;
 	struct mlx5_flow_dv_sample_resource *cache_resource;
 	struct mlx5dv_dr_flow_sampler_attr sampler_attr;
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -8670,42 +8683,17 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 	uint32_t next_ft_id = resource->ft_id +	next_ft_step;
 	uint8_t is_egress = 0;
 	uint8_t is_transfer = 0;
+	struct rte_flow_error *error = ctx->error;
 
-	/* Lookup a matching resource from cache. */
-	ILIST_FOREACH(sh->ipool[MLX5_IPOOL_SAMPLE], sh->sample_action_list,
-		      idx, cache_resource, next) {
-		if (resource->ratio == cache_resource->ratio &&
-		    resource->ft_type == cache_resource->ft_type &&
-		    resource->ft_id == cache_resource->ft_id &&
-		    resource->set_action == cache_resource->set_action &&
-		    !memcmp((void *)&resource->sample_act,
-			    (void *)&cache_resource->sample_act,
-			    sizeof(struct mlx5_flow_sub_actions_list))) {
-			DRV_LOG(DEBUG, "sample resource %p: refcnt %d++",
-				(void *)cache_resource,
-				__atomic_load_n(&cache_resource->refcnt,
-						__ATOMIC_RELAXED));
-			__atomic_fetch_add(&cache_resource->refcnt, 1,
-					   __ATOMIC_RELAXED);
-			dev_flow->handle->dvh.rix_sample = idx;
-			dev_flow->dv.sample_res = cache_resource;
-			/*
-			 * Existing sample action should release the prepared
-			 * sub-actions reference counter.
-			 */
-			flow_dv_sample_sub_actions_release(dev,
-							&resource->sample_idx);
-			return 0;
-		}
-	}
 	/* Register new sample resource. */
-	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_SAMPLE],
-				       &dev_flow->handle->dvh.rix_sample);
-	if (!cache_resource)
-		return rte_flow_error_set(error, ENOMEM,
+	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_SAMPLE], &idx);
+	if (!cache_resource) {
+		rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "cannot allocate resource memory");
+		return NULL;
+	}
 	*cache_resource = *resource;
 	/* Create normal path table level */
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
@@ -8714,7 +8702,7 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 		is_egress = 1;
 	tbl = flow_dv_tbl_resource_get(dev, next_ft_id,
 					is_egress, is_transfer,
-					dev_flow->external, NULL, 0, 0, error);
+					true, NULL, 0, 0, error);
 	if (!tbl) {
 		rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8753,15 +8741,8 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 					NULL, "cannot create sample action");
 		goto error;
 	}
-	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
-	ILIST_INSERT(sh->ipool[MLX5_IPOOL_SAMPLE], &sh->sample_action_list,
-		     dev_flow->handle->dvh.rix_sample, cache_resource,
-		     next);
-	dev_flow->dv.sample_res = cache_resource;
-	DRV_LOG(DEBUG, "new sample resource %p: refcnt %d++",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
-	return 0;
+	cache_resource->idx = idx;
+	return &cache_resource->entry;
 error:
 	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB &&
 	    cache_resource->default_miss)
@@ -8773,19 +8754,18 @@ error:
 	if (cache_resource->normal_path_tbl)
 		flow_dv_tbl_resource_release(MLX5_SH(dev),
 				cache_resource->normal_path_tbl);
-	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_SAMPLE],
-				dev_flow->handle->dvh.rix_sample);
-	dev_flow->handle->dvh.rix_sample = 0;
-	return -rte_errno;
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_SAMPLE], idx);
+	return NULL;
+
 }
 
 /**
- * Find existing destination array resource or create and register a new one.
+ * Find existing sample resource or create and register a new one.
  *
  * @param[in, out] dev
  *   Pointer to rte_eth_dev structure.
  * @param[in] resource
- *   Pointer to destination array resource.
+ *   Pointer to sample resource.
  * @parm[in, out] dev_flow
  *   Pointer to the dev_flow.
  * @param[out] error
@@ -8795,56 +8775,86 @@ error:
  *   0 on success otherwise -errno and errno is set.
  */
 static int
-flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
-			 struct mlx5_flow_dv_dest_array_resource *resource,
+flow_dv_sample_resource_register(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_sample_resource *resource,
 			 struct mlx5_flow *dev_flow,
 			 struct rte_flow_error *error)
 {
+	struct mlx5_flow_dv_sample_resource *cache_resource;
+	struct mlx5_cache_entry *entry;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_cb_ctx ctx = {
+		.dev = dev,
+		.error = error,
+		.data = resource,
+	};
+
+	entry = mlx5_cache_register(&priv->sh->sample_action_list, &ctx);
+	if (!entry)
+		return -rte_errno;
+	cache_resource = container_of(entry, typeof(*cache_resource), entry);
+	dev_flow->handle->dvh.rix_sample = cache_resource->idx;
+	dev_flow->dv.sample_res = cache_resource;
+	return 0;
+}
+
+int
+flow_dv_dest_array_match_cb(struct mlx5_cache_list *list __rte_unused,
+			    struct mlx5_cache_entry *entry, void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_dest_array_resource *resource = ctx->data;
+	struct rte_eth_dev *dev = ctx->dev;
+	struct mlx5_flow_dv_dest_array_resource *cache_resource =
+			container_of(entry, typeof(*cache_resource), entry);
+	uint32_t idx = 0;
+
+	if (resource->num_of_dest == cache_resource->num_of_dest &&
+	    resource->ft_type == cache_resource->ft_type &&
+	    !memcmp((void *)cache_resource->sample_act,
+		    (void *)resource->sample_act,
+		   (resource->num_of_dest *
+		   sizeof(struct mlx5_flow_sub_actions_list)))) {
+		/*
+		 * Existing sample action should release the prepared
+		 * sub-actions reference counter.
+		 */
+		for (idx = 0; idx < resource->num_of_dest; idx++)
+			flow_dv_sample_sub_actions_release(dev,
+					&resource->sample_idx[idx]);
+		return 0;
+	}
+	return 1;
+}
+
+struct mlx5_cache_entry *
+flow_dv_dest_array_create_cb(struct mlx5_cache_list *list __rte_unused,
+			 struct mlx5_cache_entry *entry __rte_unused,
+			 void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct rte_eth_dev *dev = ctx->dev;
 	struct mlx5_flow_dv_dest_array_resource *cache_resource;
+	struct mlx5_flow_dv_dest_array_resource *resource = ctx->data;
 	struct mlx5dv_dr_action_dest_attr *dest_attr[MLX5_MAX_DEST_NUM] = { 0 };
 	struct mlx5dv_dr_action_dest_reformat dest_reformat[MLX5_MAX_DEST_NUM];
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_flow_sub_actions_list *sample_act;
 	struct mlx5dv_dr_domain *domain;
-	uint32_t idx = 0;
+	uint32_t idx = 0, res_idx = 0;
+	struct rte_flow_error *error = ctx->error;
 
-	/* Lookup a matching resource from cache. */
-	ILIST_FOREACH(sh->ipool[MLX5_IPOOL_DEST_ARRAY],
-		      sh->dest_array_list,
-		      idx, cache_resource, next) {
-		if (resource->num_of_dest == cache_resource->num_of_dest &&
-		    resource->ft_type == cache_resource->ft_type &&
-		    !memcmp((void *)cache_resource->sample_act,
-			    (void *)resource->sample_act,
-			   (resource->num_of_dest *
-			   sizeof(struct mlx5_flow_sub_actions_list)))) {
-			DRV_LOG(DEBUG, "dest array resource %p: refcnt %d++",
-				(void *)cache_resource,
-				__atomic_load_n(&cache_resource->refcnt,
-						__ATOMIC_RELAXED));
-			__atomic_fetch_add(&cache_resource->refcnt, 1,
-					   __ATOMIC_RELAXED);
-			dev_flow->handle->dvh.rix_dest_array = idx;
-			dev_flow->dv.dest_array_res = cache_resource;
-			/*
-			 * Existing sample action should release the prepared
-			 * sub-actions reference counter.
-			 */
-			for (idx = 0; idx < resource->num_of_dest; idx++)
-				flow_dv_sample_sub_actions_release(dev,
-						&resource->sample_idx[idx]);
-			return 0;
-		}
-	}
 	/* Register new destination array resource. */
 	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_DEST_ARRAY],
-				       &dev_flow->handle->dvh.rix_dest_array);
-	if (!cache_resource)
-		return rte_flow_error_set(error, ENOMEM,
+					    &res_idx);
+	if (!cache_resource) {
+		rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "cannot allocate resource memory");
+		return NULL;
+	}
 	*cache_resource = *resource;
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
 		domain = sh->fdb_domain;
@@ -8893,18 +8903,10 @@ flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
 				   "cannot create destination array action");
 		goto error;
 	}
-	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
-	ILIST_INSERT(sh->ipool[MLX5_IPOOL_DEST_ARRAY],
-		     &sh->dest_array_list,
-		     dev_flow->handle->dvh.rix_dest_array, cache_resource,
-		     next);
-	dev_flow->dv.dest_array_res = cache_resource;
-	DRV_LOG(DEBUG, "new destination array resource %p: refcnt %d++",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	cache_resource->idx = res_idx;
 	for (idx = 0; idx < resource->num_of_dest; idx++)
 		mlx5_free(dest_attr[idx]);
-	return 0;
+	return &cache_resource->entry;
 error:
 	for (idx = 0; idx < resource->num_of_dest; idx++) {
 		struct mlx5_flow_sub_actions_idx *act_res =
@@ -8925,10 +8927,47 @@ error:
 			mlx5_free(dest_attr[idx]);
 	}
 
-	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_DEST_ARRAY],
-				dev_flow->handle->dvh.rix_dest_array);
-	dev_flow->handle->dvh.rix_dest_array = 0;
-	return -rte_errno;
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_DEST_ARRAY], res_idx);
+	return NULL;
+}
+
+/**
+ * Find existing destination array resource or create and register a new one.
+ *
+ * @param[in, out] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] resource
+ *   Pointer to destination array resource.
+ * @parm[in, out] dev_flow
+ *   Pointer to the dev_flow.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_dest_array_resource *resource,
+			 struct mlx5_flow *dev_flow,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_flow_dv_dest_array_resource *cache_resource;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_cache_entry *entry;
+	struct mlx5_flow_cb_ctx ctx = {
+		.dev = dev,
+		.error = error,
+		.data = resource,
+	};
+
+	entry = mlx5_cache_register(&priv->sh->dest_array_list, &ctx);
+	if (!entry)
+		return -rte_errno;
+	cache_resource = container_of(entry, typeof(*cache_resource), entry);
+	dev_flow->handle->dvh.rix_dest_array = cache_resource->idx;
+	dev_flow->dv.dest_array_res = cache_resource;
+	return 0;
 }
 
 /**
@@ -9235,8 +9274,8 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 						  NULL, "can't create sample "
 						  "action");
 	} else {
-		if (flow_dv_sample_resource_register(dev, res, dev_flow,
-						     sample_actions, error))
+		res->sub_actions = sample_actions;
+		if (flow_dv_sample_resource_register(dev, res, dev_flow, error))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
@@ -10690,6 +10729,34 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 	handle->rix_fate = 0;
 }
 
+void
+flow_dv_sample_remove_cb(struct mlx5_cache_list *list,
+			 struct mlx5_cache_entry *entry)
+{
+	struct rte_eth_dev *dev = list->ctx;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_dv_sample_resource *cache_resource =
+			container_of(entry, typeof(*cache_resource), entry);
+
+	if (cache_resource->verbs_action)
+		claim_zero(mlx5_glue->destroy_flow_action
+				(cache_resource->verbs_action));
+	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
+		if (cache_resource->default_miss)
+			claim_zero(mlx5_glue->destroy_flow_action
+			  (cache_resource->default_miss));
+	}
+	if (cache_resource->normal_path_tbl)
+		flow_dv_tbl_resource_release(MLX5_SH(dev),
+			cache_resource->normal_path_tbl);
+	flow_dv_sample_sub_actions_release(dev,
+				&cache_resource->sample_idx);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_SAMPLE],
+			cache_resource->idx);
+	DRV_LOG(DEBUG, "sample resource %p: removed",
+		(void *)cache_resource);
+}
+
 /**
  * Release an sample resource.
  *
@@ -10706,41 +10773,38 @@ flow_dv_sample_resource_release(struct rte_eth_dev *dev,
 				     struct mlx5_flow_handle *handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t idx = handle->dvh.rix_sample;
 	struct mlx5_flow_dv_sample_resource *cache_resource;
 
 	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_SAMPLE],
-			 idx);
+			 handle->dvh.rix_sample);
 	if (!cache_resource)
 		return 0;
 	MLX5_ASSERT(cache_resource->verbs_action);
-	DRV_LOG(DEBUG, "sample resource %p: refcnt %d--",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
-	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
-			       __ATOMIC_RELAXED) == 0) {
-		if (cache_resource->verbs_action)
-			claim_zero(mlx5_glue->destroy_flow_action
-					(cache_resource->verbs_action));
-		if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
-			if (cache_resource->default_miss)
-				claim_zero(mlx5_glue->destroy_flow_action
-				  (cache_resource->default_miss));
-		}
-		if (cache_resource->normal_path_tbl)
-			flow_dv_tbl_resource_release(MLX5_SH(dev),
-				cache_resource->normal_path_tbl);
+	return mlx5_cache_unregister(&priv->sh->sample_action_list,
+				     &cache_resource->entry);
+}
+
+void
+flow_dv_dest_array_remove_cb(struct mlx5_cache_list *list,
+			     struct mlx5_cache_entry *entry)
+{
+	struct rte_eth_dev *dev = list->ctx;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_dv_dest_array_resource *cache_resource =
+			container_of(entry, typeof(*cache_resource), entry);
+	uint32_t i = 0;
+
+	MLX5_ASSERT(cache_resource->action);
+	if (cache_resource->action)
+		claim_zero(mlx5_glue->destroy_flow_action
+					(cache_resource->action));
+	for (; i < cache_resource->num_of_dest; i++)
 		flow_dv_sample_sub_actions_release(dev,
-					&cache_resource->sample_idx);
-		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_SAMPLE],
-			     &priv->sh->sample_action_list, idx,
-			     cache_resource, next);
-		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_SAMPLE], idx);
-		DRV_LOG(DEBUG, "sample resource %p: removed",
-			(void *)cache_resource);
-		return 0;
-	}
-	return 1;
+				&cache_resource->sample_idx[i]);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_DEST_ARRAY],
+			cache_resource->idx);
+	DRV_LOG(DEBUG, "destination array resource %p: removed",
+		(void *)cache_resource);
 }
 
 /**
@@ -10756,38 +10820,18 @@ flow_dv_sample_resource_release(struct rte_eth_dev *dev,
  */
 static int
 flow_dv_dest_array_resource_release(struct rte_eth_dev *dev,
-				     struct mlx5_flow_handle *handle)
+				    struct mlx5_flow_handle *handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_dv_dest_array_resource *cache_resource;
-	uint32_t idx = handle->dvh.rix_dest_array;
-	uint32_t i = 0;
+	struct mlx5_flow_dv_dest_array_resource *cache;
 
-	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_DEST_ARRAY],
-			 idx);
-	if (!cache_resource)
+	cache = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_DEST_ARRAY],
+			       handle->dvh.rix_dest_array);
+	if (!cache)
 		return 0;
-	MLX5_ASSERT(cache_resource->action);
-	DRV_LOG(DEBUG, "destination array resource %p: refcnt %d--",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
-	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
-			       __ATOMIC_RELAXED) == 0) {
-		if (cache_resource->action)
-			claim_zero(mlx5_glue->destroy_flow_action
-						(cache_resource->action));
-		for (; i < cache_resource->num_of_dest; i++)
-			flow_dv_sample_sub_actions_release(dev,
-					&cache_resource->sample_idx[i]);
-		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_DEST_ARRAY],
-			     &priv->sh->dest_array_list, idx,
-			     cache_resource, next);
-		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_DEST_ARRAY], idx);
-		DRV_LOG(DEBUG, "destination array resource %p: removed",
-			(void *)cache_resource);
-		return 0;
-	}
-	return 1;
+	MLX5_ASSERT(cache->action);
+	return mlx5_cache_unregister(&priv->sh->dest_array_list,
+				     &cache->entry);
 }
 
 /**

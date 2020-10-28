@@ -661,8 +661,9 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_hlist *tag_table;
 	struct mlx5_cache_list port_id_action_list; /* Port ID action cache. */
 	struct mlx5_cache_list push_vlan_action_list; /* Push VLAN actions. */
-	uint32_t sample_action_list; /* List of sample actions. */
-	uint32_t dest_array_list; /* List of destination array actions. */
+	struct mlx5_cache_list sample_action_list; /* List of sample actions. */
+	struct mlx5_cache_list dest_array_list;
+	/* List of destination array actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	void *default_miss_action; /* Default miss action. */
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
