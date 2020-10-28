@@ -305,6 +305,10 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	}
 	sh->pop_vlan_action = mlx5_glue->dr_create_flow_action_pop_vlan();
 #endif /* HAVE_MLX5DV_DR */
+	sh->default_miss_action =
+			mlx5_glue->dr_create_flow_action_default_miss();
+	if (!sh->default_miss_action)
+		DRV_LOG(WARNING, "Default miss action is not supported.");
 	return 0;
 error:
 	/* Rollback the created objects. */
@@ -388,6 +392,9 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 	}
 	pthread_mutex_destroy(&sh->dv_mutex);
 #endif /* HAVE_MLX5DV_DR */
+	if (sh->default_miss_action)
+		mlx5_glue->destroy_flow_action
+				(sh->default_miss_action);
 	if (sh->encaps_decaps) {
 		mlx5_hlist_destroy(sh->encaps_decaps, NULL, NULL);
 		sh->encaps_decaps = NULL;

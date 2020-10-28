@@ -461,12 +461,6 @@ struct mlx5_flow_counter_mng {
 	LIST_HEAD(stat_raws, mlx5_counter_stats_raw) free_stat_raws;
 };
 
-/* Default miss action resource structure. */
-struct mlx5_flow_default_miss_resource {
-	void *action; /* Pointer to the rdma-core action. */
-	uint32_t refcnt; /* Default miss action reference counter. */
-};
-
 #define MLX5_AGE_EVENT_NEW		1
 #define MLX5_AGE_TRIGGER		2
 #define MLX5_AGE_SET(age_info, BIT) \
@@ -660,8 +654,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t sample_action_list; /* List of sample actions. */
 	uint32_t dest_array_list; /* List of destination array actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
-	struct mlx5_flow_default_miss_resource default_miss;
-	/* Default miss action resource structure. */
+	void *default_miss_action; /* Default miss action. */
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
 	/* Memory Pool for mlx5 flow resources. */
 	struct mlx5_l3t_tbl *cnt_id_tbl; /* Shared counter lookup table. */
