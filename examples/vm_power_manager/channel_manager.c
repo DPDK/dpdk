@@ -467,9 +467,15 @@ add_all_channels(const char *vm_name)
 			continue;
 		}
 
-		snprintf(chan_info->channel_path,
+		if ((size_t)snprintf(chan_info->channel_path,
 				sizeof(chan_info->channel_path), "%s%s",
-				CHANNEL_MGR_SOCKET_PATH, dir->d_name);
+				CHANNEL_MGR_SOCKET_PATH, dir->d_name)
+					>= sizeof(chan_info->channel_path)) {
+			RTE_LOG(ERR, CHANNEL_MANAGER, "Pathname too long for channel '%s%s'\n",
+					CHANNEL_MGR_SOCKET_PATH, dir->d_name);
+			rte_free(chan_info);
+			continue;
+		}
 
 		if (setup_channel_info(&vm_info, &chan_info, channel_num) < 0) {
 			rte_free(chan_info);
