@@ -451,7 +451,7 @@ rx_thread(struct rte_ring *ring_out)
 
 				/* mark sequence number */
 				for (i = 0; i < nb_rx_pkts; )
-					pkts[i++]->seqn = seqn++;
+					*rte_reorder_seqn(pkts[i++]) = seqn++;
 
 				/* enqueue to rx_to_workers ring */
 				ret = rte_ring_enqueue_burst(ring_out,

@@ -8,6 +8,7 @@
 #include <rte_string_fns.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
@@ -28,6 +29,9 @@ EAL_REGISTER_TAILQ(rte_reorder_tailq)
 
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_REORDER	RTE_LOGTYPE_USER1
+
+#define RTE_REORDER_SEQN_DYNFIELD_NAME "rte_reorder_seqn_dynfield"
+int rte_reorder_seqn_dynfield_offset = -1;
 
 /* A generic circular buffer */
 struct cir_buffer {
@@ -103,6 +107,11 @@ rte_reorder_create(const char *name, unsigned socket_id, unsigned int size)
 	struct rte_reorder_list *reorder_list;
 	const unsigned int bufsize = sizeof(struct rte_reorder_buffer) +
 					(2 * size * sizeof(struct rte_mbuf *));
+	static const struct rte_mbuf_dynfield reorder_seqn_dynfield_desc = {
+		.name = RTE_REORDER_SEQN_DYNFIELD_NAME,
+		.size = sizeof(rte_reorder_seqn_t),
+		.align = __alignof__(rte_reorder_seqn_t),
+	};
 
 	reorder_list = RTE_TAILQ_CAST(rte_reorder_tailq.head, rte_reorder_list);
 
@@ -117,6 +126,14 @@ rte_reorder_create(const char *name, unsigned socket_id, unsigned int size)
 		RTE_LOG(ERR, REORDER, "Invalid reorder buffer name ptr:"
 					" NULL\n");
 		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	rte_reorder_seqn_dynfield_offset =
+		rte_mbuf_dynfield_register(&reorder_seqn_dynfield_desc);
+	if (rte_reorder_seqn_dynfield_offset < 0) {
+		RTE_LOG(ERR, REORDER, "Failed to register mbuf field for reorder sequence number\n");
+		rte_errno = ENOMEM;
 		return NULL;
 	}
 
@@ -310,7 +327,7 @@ rte_reorder_insert(struct rte_reorder_buffer *b, struct rte_mbuf *mbuf)
 
 	order_buf = &b->order_buf;
 	if (!b->is_initialized) {
-		b->min_seqn = mbuf->seqn;
+		b->min_seqn = *rte_reorder_seqn(mbuf);
 		b->is_initialized = 1;
 	}
 
@@ -322,7 +339,7 @@ rte_reorder_insert(struct rte_reorder_buffer *b, struct rte_mbuf *mbuf)
 	 *	mbuf_seqn = 0x0010
 	 *	offset    = 0x0010 - 0xFFFD = 0x13
 	 */
-	offset = mbuf->seqn - b->min_seqn;
+	offset = *rte_reorder_seqn(mbuf) - b->min_seqn;
 
 	/*
 	 * action to take depends on offset.
@@ -352,7 +369,7 @@ rte_reorder_insert(struct rte_reorder_buffer *b, struct rte_mbuf *mbuf)
 			rte_errno = ENOSPC;
 			return -1;
 		}
-		offset = mbuf->seqn - b->min_seqn;
+		offset = *rte_reorder_seqn(mbuf) - b->min_seqn;
 		position = (order_buf->head + offset) & order_buf->mask;
 		order_buf->entries[position] = mbuf;
 	} else {

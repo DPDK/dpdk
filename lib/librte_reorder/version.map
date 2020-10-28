@@ -11,3 +11,9 @@ DPDK_21 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_reorder_seqn_dynfield_offset;
+};

@@ -16,12 +16,33 @@
  */
 
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct rte_reorder_buffer;
+
+typedef uint32_t rte_reorder_seqn_t;
+extern int rte_reorder_seqn_dynfield_offset;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Read reorder sequence number from mbuf.
+ *
+ * @param mbuf Structure to read from.
+ * @return pointer to reorder sequence number.
+ */
+__rte_experimental
+static inline rte_reorder_seqn_t *
+rte_reorder_seqn(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf, rte_reorder_seqn_dynfield_offset,
+		rte_reorder_seqn_t *);
+}
 
 /**
  * Create a new reorder buffer instance
