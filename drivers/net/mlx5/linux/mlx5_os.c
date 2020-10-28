@@ -225,7 +225,7 @@ static int
 mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 {
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	char s[MLX5_HLIST_NAMESIZE];
+	char s[MLX5_HLIST_NAMESIZE] __rte_unused;
 	int err;
 
 	MLX5_ASSERT(sh && sh->refcnt);
@@ -233,7 +233,9 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		return 0;
 	err = mlx5_alloc_table_hash_list(priv);
 	if (err)
-		return err;
+		goto error;
+	/* The resources below are only valid with DV support. */
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/* Create tags hash list table. */
 	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
 	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE, 0,
@@ -260,6 +262,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		err = ENOMEM;
 		goto error;
 	}
+#endif
 #ifdef HAVE_MLX5DV_DR
 	void *domain;
 
