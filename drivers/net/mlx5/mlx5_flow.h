@@ -467,10 +467,8 @@ struct mlx5_flow_dv_tag_resource {
 /* Modify resource structure */
 struct mlx5_flow_dv_modify_hdr_resource {
 	struct mlx5_hlist_entry entry;
-	/* Pointer to next element. */
-	uint32_t refcnt; /**< Reference counter. */
-	void *action;
-	/**< Modify header action object. */
+	void *action; /**< Modify header action object. */
+	/* Key area for hash list matching: */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint32_t actions_num; /**< Number of modification actions. */
 	uint64_t flags; /**< Flags for RDMA API. */
@@ -1430,5 +1428,13 @@ struct mlx5_hlist_entry *flow_dv_tag_create_cb(struct mlx5_hlist *list,
 					       uint64_t key, void *cb_ctx);
 void flow_dv_tag_remove_cb(struct mlx5_hlist *list,
 			   struct mlx5_hlist_entry *entry);
+
+int flow_dv_modify_match_cb(struct mlx5_hlist *list,
+			    struct mlx5_hlist_entry *entry,
+			    uint64_t key, void *cb_ctx);
+struct mlx5_hlist_entry *flow_dv_modify_create_cb(struct mlx5_hlist *list,
+						  uint64_t key, void *ctx);
+void flow_dv_modify_remove_cb(struct mlx5_hlist *list,
+			      struct mlx5_hlist_entry *entry);
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

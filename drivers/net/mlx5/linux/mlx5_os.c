@@ -250,12 +250,17 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	sh->tag_table->ctx = sh;
 	snprintf(s, sizeof(s), "%s_hdr_modify", sh->ibdev_name);
 	sh->modify_cmds = mlx5_hlist_create(s, MLX5_FLOW_HDR_MODIFY_HTABLE_SZ,
-					    0, 0, NULL, NULL, NULL);
+					    0, MLX5_HLIST_WRITE_MOST |
+					    MLX5_HLIST_DIRECT_KEY,
+					    flow_dv_modify_create_cb,
+					    flow_dv_modify_match_cb,
+					    flow_dv_modify_remove_cb);
 	if (!sh->modify_cmds) {
 		DRV_LOG(ERR, "hdr modify hash creation failed");
 		err = ENOMEM;
 		goto error;
 	}
+	sh->modify_cmds->ctx = sh;
 	snprintf(s, sizeof(s), "%s_encaps_decaps", sh->ibdev_name);
 	sh->encaps_decaps = mlx5_hlist_create(s,
 					      MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ,

@@ -4218,35 +4218,75 @@ flow_dv_validate_action_modify_ipv6_dscp(const uint64_t action_flags,
 /**
  * Match modify-header resource.
  *
+ * @param list
+ *   Pointer to the hash list.
  * @param entry
  *   Pointer to exist resource entry object.
+ * @param key
+ *   Key of the new entry.
  * @param ctx
  *   Pointer to new modify-header resource.
  *
  * @return
- *   0 on matching, -1 otherwise.
+ *   0 on matching, non-zero otherwise.
  */
-static int
-flow_dv_modify_hdr_resource_match(struct mlx5_hlist_entry *entry, void *ctx)
+int
+flow_dv_modify_match_cb(struct mlx5_hlist *list __rte_unused,
+			struct mlx5_hlist_entry *entry,
+			uint64_t key __rte_unused, void *cb_ctx)
 {
-	struct mlx5_flow_dv_modify_hdr_resource *resource;
-	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
-	uint32_t actions_len;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_modify_hdr_resource *ref = ctx->data;
+	struct mlx5_flow_dv_modify_hdr_resource *resource =
+			container_of(entry, typeof(*resource), entry);
+	uint32_t key_len = sizeof(*ref) - offsetof(typeof(*ref), ft_type);
 
-	resource = (struct mlx5_flow_dv_modify_hdr_resource *)ctx;
-	cache_resource = container_of(entry,
-				      struct mlx5_flow_dv_modify_hdr_resource,
-				      entry);
-	actions_len = resource->actions_num * sizeof(resource->actions[0]);
-	if (resource->entry.key == cache_resource->entry.key &&
-	    resource->ft_type == cache_resource->ft_type &&
-	    resource->actions_num == cache_resource->actions_num &&
-	    resource->flags == cache_resource->flags &&
-	    !memcmp((const void *)resource->actions,
-		    (const void *)cache_resource->actions,
-		    actions_len))
-		return 0;
-	return -1;
+	key_len += ref->actions_num * sizeof(ref->actions[0]);
+	return ref->actions_num != resource->actions_num ||
+	       memcmp(&ref->ft_type, &resource->ft_type, key_len);
+}
+
+struct mlx5_hlist_entry *
+flow_dv_modify_create_cb(struct mlx5_hlist *list, uint64_t key __rte_unused,
+			 void *cb_ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5dv_dr_domain *ns;
+	struct mlx5_flow_dv_modify_hdr_resource *entry;
+	struct mlx5_flow_dv_modify_hdr_resource *ref = ctx->data;
+	int ret;
+	uint32_t data_len = ref->actions_num * sizeof(ref->actions[0]);
+	uint32_t key_len = sizeof(*ref) - offsetof(typeof(*ref), ft_type);
+
+	entry = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*entry) + data_len, 0,
+			    SOCKET_ID_ANY);
+	if (!entry) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate resource memory");
+		return NULL;
+	}
+	rte_memcpy(&entry->ft_type,
+		   RTE_PTR_ADD(ref, offsetof(typeof(*ref), ft_type)),
+		   key_len + data_len);
+	if (entry->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
+		ns = sh->fdb_domain;
+	else if (entry->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
+		ns = sh->tx_domain;
+	else
+		ns = sh->rx_domain;
+	ret = mlx5_flow_os_create_flow_action_modify_header
+					(sh->ctx, ns, entry,
+					 data_len, &entry->action);
+	if (ret) {
+		mlx5_free(entry);
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "cannot create modification action");
+		return NULL;
+	}
+	return &entry->entry;
 }
 
 /**
@@ -4457,19 +4497,14 @@ flow_dv_modify_hdr_resource_register
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
-	struct mlx5dv_dr_domain *ns;
-	uint32_t actions_len;
+	uint32_t key_len = sizeof(*resource) -
+			   offsetof(typeof(*resource), ft_type) +
+			   resource->actions_num * sizeof(resource->actions[0]);
 	struct mlx5_hlist_entry *entry;
-	union mlx5_flow_modify_hdr_key hdr_mod_key = {
-		{
-			.ft_type = resource->ft_type,
-			.actions_num = resource->actions_num,
-			.group = dev_flow->dv.group,
-			.cksum = 0,
-		}
+	struct mlx5_flow_cb_ctx ctx = {
+		.error = error,
+		.data = resource,
 	};
-	int ret;
 
 	resource->flags = dev_flow->dv.group ? 0 :
 			  MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
@@ -4478,67 +4513,12 @@ flow_dv_modify_hdr_resource_register
 		return rte_flow_error_set(error, EOVERFLOW,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "too many modify header items");
-	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
-		ns = sh->fdb_domain;
-	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
-		ns = sh->tx_domain;
-	else
-		ns = sh->rx_domain;
-	/* Lookup a matching resource from cache. */
-	actions_len = resource->actions_num * sizeof(resource->actions[0]);
-	hdr_mod_key.cksum = __rte_raw_cksum(resource->actions, actions_len, 0);
-	resource->entry.key = hdr_mod_key.v64;
-	entry = mlx5_hlist_lookup_ex(sh->modify_cmds, resource->entry.key,
-				     flow_dv_modify_hdr_resource_match,
-				     (void *)resource);
-	if (entry) {
-		cache_resource = container_of(entry,
-					struct mlx5_flow_dv_modify_hdr_resource,
-					entry);
-		DRV_LOG(DEBUG, "modify-header resource %p: refcnt %d++",
-			(void *)cache_resource,
-			__atomic_load_n(&cache_resource->refcnt,
-					__ATOMIC_RELAXED));
-		__atomic_fetch_add(&cache_resource->refcnt, 1,
-				   __ATOMIC_RELAXED);
-		dev_flow->handle->dvh.modify_hdr = cache_resource;
-		return 0;
-
-	}
-	/* Register new modify-header resource. */
-	cache_resource = mlx5_malloc(MLX5_MEM_ZERO,
-				    sizeof(*cache_resource) + actions_len, 0,
-				    SOCKET_ID_ANY);
-	if (!cache_resource)
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "cannot allocate resource memory");
-	*cache_resource = *resource;
-	rte_memcpy(cache_resource->actions, resource->actions, actions_len);
-	ret = mlx5_flow_os_create_flow_action_modify_header
-					(sh->ctx, ns, cache_resource,
-					 actions_len, &cache_resource->action);
-	if (ret) {
-		mlx5_free(cache_resource);
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "cannot create action");
-	}
-	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
-	if (mlx5_hlist_insert_ex(sh->modify_cmds, &cache_resource->entry,
-				 flow_dv_modify_hdr_resource_match,
-				 (void *)cache_resource)) {
-		claim_zero(mlx5_flow_os_destroy_flow_action
-						(cache_resource->action));
-		mlx5_free(cache_resource);
-		return rte_flow_error_set(error, EEXIST,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "action exist");
-	}
-	dev_flow->handle->dvh.modify_hdr = cache_resource;
-	DRV_LOG(DEBUG, "new modify-header resource %p: refcnt %d++",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	resource->entry.key = __rte_raw_cksum(&resource->ft_type, key_len, 0);
+	entry = mlx5_hlist_register(sh->modify_cmds, resource->entry.key, &ctx);
+	if (!entry)
+		return -rte_errno;
+	resource = container_of(entry, typeof(*resource), entry);
+	dev_flow->handle->dvh.modify_hdr = resource;
 	return 0;
 }
 
@@ -10497,6 +10477,17 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 	return flow_dv_tbl_resource_release(dev, &tbl_data->tbl);
 }
 
+void
+flow_dv_modify_remove_cb(struct mlx5_hlist *list __rte_unused,
+			 struct mlx5_hlist_entry *entry)
+{
+	struct mlx5_flow_dv_modify_hdr_resource *res =
+		container_of(entry, typeof(*res), entry);
+
+	claim_zero(mlx5_flow_os_destroy_flow_action(res->action));
+	mlx5_free(entry);
+}
+
 /**
  * Release a modify-header resource.
  *
@@ -10513,25 +10504,10 @@ flow_dv_modify_hdr_resource_release(struct rte_eth_dev *dev,
 				    struct mlx5_flow_handle *handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_dv_modify_hdr_resource *cache_resource =
-							handle->dvh.modify_hdr;
+	struct mlx5_flow_dv_modify_hdr_resource *entry = handle->dvh.modify_hdr;
 
-	MLX5_ASSERT(cache_resource->action);
-	DRV_LOG(DEBUG, "modify-header resource %p: refcnt %d--",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
-	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
-				__ATOMIC_RELAXED) == 0) {
-		claim_zero(mlx5_flow_os_destroy_flow_action
-						(cache_resource->action));
-		mlx5_hlist_remove(priv->sh->modify_cmds,
-				  &cache_resource->entry);
-		mlx5_free(cache_resource);
-		DRV_LOG(DEBUG, "modify-header resource %p: removed",
-			(void *)cache_resource);
-		return 0;
-	}
-	return 1;
+	MLX5_ASSERT(entry->action);
+	return mlx5_hlist_unregister(priv->sh->modify_cmds, &entry->entry);
 }
 
 /**
