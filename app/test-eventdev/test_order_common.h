@@ -22,6 +22,7 @@
 #define BURST_SIZE 16
 
 typedef uint32_t flow_id_t;
+typedef uint32_t seqn_t;
 
 struct test_order;
 
@@ -53,6 +54,7 @@ struct test_order {
 	uint64_t nb_pkts;
 	struct rte_mempool *pool;
 	int flow_id_dynfield_offset;
+	int seqn_dynfield_offset;
 	struct prod_data prod;
 	struct worker_data worker[EVT_MAX_PORTS];
 	uint32_t *producer_flow_seq;
@@ -77,6 +79,12 @@ order_flow_id_save(struct test_order *t, flow_id_t flow_id,
 	event->mbuf = mbuf;
 }
 
+static inline seqn_t *
+order_mbuf_seqn(struct test_order *t, struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf, t->seqn_dynfield_offset, seqn_t *);
+}
+
 static inline int
 order_nb_event_ports(struct evt_options *opt)
 {
@@ -91,9 +99,10 @@ order_process_stage_1(struct test_order *const t,
 {
 	const uint32_t flow = (uintptr_t)ev->mbuf % nb_flows;
 	/* compare the seqn against expected value */
-	if (ev->mbuf->seqn != expected_flow_seq[flow]) {
+	if (*order_mbuf_seqn(t, ev->mbuf) != expected_flow_seq[flow]) {
 		evt_err("flow=%x seqn mismatch got=%x expected=%x",
-			flow, ev->mbuf->seqn, expected_flow_seq[flow]);
+			flow, *order_mbuf_seqn(t, ev->mbuf),
+			expected_flow_seq[flow]);
 		t->err = true;
 		rte_smp_wmb();
 	}
