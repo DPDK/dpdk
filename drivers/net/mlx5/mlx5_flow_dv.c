@@ -8223,6 +8223,35 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	return 0;
 }
 
+struct mlx5_hlist_entry *
+flow_dv_tag_create_cb(struct mlx5_hlist *list, uint64_t key, void *ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct rte_flow_error *error = ctx;
+	struct mlx5_flow_dv_tag_resource *entry;
+	uint32_t idx = 0;
+	int ret;
+
+	entry = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_TAG], &idx);
+	if (!entry) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate resource memory");
+		return NULL;
+	}
+	entry->idx = idx;
+	ret = mlx5_flow_os_create_flow_action_tag(key,
+						  &entry->action);
+	if (ret) {
+		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TAG], idx);
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "cannot create action");
+		return NULL;
+	}
+	return &entry->entry;
+}
+
 /**
  * Find existing tag resource or create and register a new one.
  *
@@ -8246,55 +8275,32 @@ flow_dv_tag_resource_register
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_flow_dv_tag_resource *cache_resource;
 	struct mlx5_hlist_entry *entry;
-	int ret;
 
-	/* Lookup a matching resource from cache. */
-	entry = mlx5_hlist_lookup(sh->tag_table, (uint64_t)tag_be24, NULL);
+	entry = mlx5_hlist_register(priv->sh->tag_table, tag_be24, error);
 	if (entry) {
 		cache_resource = container_of
 			(entry, struct mlx5_flow_dv_tag_resource, entry);
-		__atomic_fetch_add(&cache_resource->refcnt, 1,
-				   __ATOMIC_RELAXED);
 		dev_flow->handle->dvh.rix_tag = cache_resource->idx;
 		dev_flow->dv.tag_resource = cache_resource;
-		DRV_LOG(DEBUG, "cached tag resource %p: refcnt now %d++",
-			(void *)cache_resource,
-			__atomic_load_n(&cache_resource->refcnt,
-					__ATOMIC_RELAXED));
 		return 0;
 	}
-	/* Register new resource. */
-	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_TAG],
-				       &dev_flow->handle->dvh.rix_tag);
-	if (!cache_resource)
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "cannot allocate resource memory");
-	cache_resource->entry.key = (uint64_t)tag_be24;
-	ret = mlx5_flow_os_create_flow_action_tag(tag_be24,
-						  &cache_resource->action);
-	if (ret) {
-		mlx5_free(cache_resource);
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "cannot create action");
-	}
-	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
-	if (mlx5_hlist_insert(sh->tag_table, &cache_resource->entry)) {
-		mlx5_flow_os_destroy_flow_action(cache_resource->action);
-		mlx5_free(cache_resource);
-		return rte_flow_error_set(error, EEXIST,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "cannot insert tag");
-	}
-	dev_flow->dv.tag_resource = cache_resource;
-	DRV_LOG(DEBUG, "new tag resource %p: refcnt now %d++",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
-	return 0;
+	return -rte_errno;
+}
+
+void
+flow_dv_tag_remove_cb(struct mlx5_hlist *list,
+		      struct mlx5_hlist_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_dv_tag_resource *tag =
+		container_of(entry, struct mlx5_flow_dv_tag_resource, entry);
+
+	MLX5_ASSERT(tag && sh && tag->action);
+	claim_zero(mlx5_flow_os_destroy_flow_action(tag->action));
+	DRV_LOG(DEBUG, "Tag %p: removed.", (void *)tag);
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TAG], tag->idx);
 }
 
 /**
@@ -8313,24 +8319,14 @@ flow_dv_tag_release(struct rte_eth_dev *dev,
 		    uint32_t tag_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_flow_dv_tag_resource *tag;
 
 	tag = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_TAG], tag_idx);
 	if (!tag)
 		return 0;
 	DRV_LOG(DEBUG, "port %u tag %p: refcnt %d--",
-		dev->data->port_id, (void *)tag,
-		__atomic_load_n(&tag->refcnt, __ATOMIC_RELAXED));
-	if (__atomic_sub_fetch(&tag->refcnt, 1, __ATOMIC_RELAXED) == 0) {
-		claim_zero(mlx5_flow_os_destroy_flow_action(tag->action));
-		mlx5_hlist_remove(sh->tag_table, &tag->entry);
-		DRV_LOG(DEBUG, "port %u tag %p: removed",
-			dev->data->port_id, (void *)tag);
-		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TAG], tag_idx);
-		return 0;
-	}
-	return 1;
+		dev->data->port_id, (void *)tag, tag->entry.ref_cnt);
+	return mlx5_hlist_unregister(priv->sh->tag_table, &tag->entry);
 }
 
 /**

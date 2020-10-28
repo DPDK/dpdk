@@ -239,12 +239,15 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	/* Create tags hash list table. */
 	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
 	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE, 0,
-					  0, NULL, NULL, NULL);
+					  MLX5_HLIST_WRITE_MOST,
+					  flow_dv_tag_create_cb, NULL,
+					  flow_dv_tag_remove_cb);
 	if (!sh->tag_table) {
 		DRV_LOG(ERR, "tags with hash creation failed.");
 		err = ENOMEM;
 		goto error;
 	}
+	sh->tag_table->ctx = sh;
 	snprintf(s, sizeof(s), "%s_hdr_modify", sh->ibdev_name);
 	sh->modify_cmds = mlx5_hlist_create(s, MLX5_FLOW_HDR_MODIFY_HTABLE_SZ,
 					    0, 0, NULL, NULL, NULL);

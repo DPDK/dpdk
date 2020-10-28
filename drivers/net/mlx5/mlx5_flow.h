@@ -1426,4 +1426,9 @@ struct mlx5_flow_tbl_resource *flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		bool external, const struct mlx5_flow_tunnel *tunnel,
 		uint32_t group_id, uint8_t dummy, struct rte_flow_error *error);
 
+struct mlx5_hlist_entry *flow_dv_tag_create_cb(struct mlx5_hlist *list,
+					       uint64_t key, void *cb_ctx);
+void flow_dv_tag_remove_cb(struct mlx5_hlist *list,
+			   struct mlx5_hlist_entry *entry);
+
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
