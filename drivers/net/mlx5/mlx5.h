@@ -659,7 +659,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_hlist *encaps_decaps; /* Encap/decap action hash list. */
 	struct mlx5_hlist *modify_cmds;
 	struct mlx5_hlist *tag_table;
-	uint32_t port_id_action_list; /* List of port ID actions. */
+	struct mlx5_cache_list port_id_action_list; /* Port ID action cache. */
 	uint32_t push_vlan_action_list; /* List of push VLAN actions. */
 	uint32_t sample_action_list; /* List of sample actions. */
 	uint32_t dest_array_list; /* List of destination array actions. */

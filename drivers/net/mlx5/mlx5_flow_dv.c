@@ -2962,6 +2962,52 @@ flow_dv_jump_tbl_resource_register
 	return 0;
 }
 
+int
+flow_dv_port_id_match_cb(struct mlx5_cache_list *list __rte_unused,
+			 struct mlx5_cache_entry *entry, void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_port_id_action_resource *ref = ctx->data;
+	struct mlx5_flow_dv_port_id_action_resource *res =
+			container_of(entry, typeof(*res), entry);
+
+	return ref->port_id != res->port_id;
+}
+
+struct mlx5_cache_entry *
+flow_dv_port_id_create_cb(struct mlx5_cache_list *list,
+			  struct mlx5_cache_entry *entry __rte_unused,
+			  void *cb_ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_port_id_action_resource *ref = ctx->data;
+	struct mlx5_flow_dv_port_id_action_resource *cache;
+	uint32_t idx;
+	int ret;
+
+	/* Register new port id action resource. */
+	cache = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PORT_ID], &idx);
+	if (!cache) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate port_id action cache memory");
+		return NULL;
+	}
+	*cache = *ref;
+	ret = mlx5_flow_os_create_flow_action_dest_port(sh->fdb_domain,
+							ref->port_id,
+							&cache->action);
+	if (ret) {
+		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_PORT_ID], idx);
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot create action");
+		return NULL;
+	}
+	return &cache->entry;
+}
+
 /**
  * Find existing table port ID resource or create and register a new one.
  *
@@ -2985,52 +3031,19 @@ flow_dv_port_id_action_resource_register
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_flow_dv_port_id_action_resource *cache_resource;
-	uint32_t idx = 0;
-	int ret;
+	struct mlx5_cache_entry *entry;
+	struct mlx5_flow_dv_port_id_action_resource *cache;
+	struct mlx5_flow_cb_ctx ctx = {
+		.error = error,
+		.data = resource,
+	};
 
-	/* Lookup a matching resource from cache. */
-	ILIST_FOREACH(sh->ipool[MLX5_IPOOL_PORT_ID], sh->port_id_action_list,
-		      idx, cache_resource, next) {
-		if (resource->port_id == cache_resource->port_id) {
-			DRV_LOG(DEBUG, "port id action resource resource %p: "
-				"refcnt %d++",
-				(void *)cache_resource,
-				__atomic_load_n(&cache_resource->refcnt,
-						__ATOMIC_RELAXED));
-			__atomic_fetch_add(&cache_resource->refcnt, 1,
-					   __ATOMIC_RELAXED);
-			dev_flow->handle->rix_port_id_action = idx;
-			dev_flow->dv.port_id_action = cache_resource;
-			return 0;
-		}
-	}
-	/* Register new port id action resource. */
-	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PORT_ID],
-				       &dev_flow->handle->rix_port_id_action);
-	if (!cache_resource)
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "cannot allocate resource memory");
-	*cache_resource = *resource;
-	ret = mlx5_flow_os_create_flow_action_dest_port
-				(priv->sh->fdb_domain, resource->port_id,
-				 &cache_resource->action);
-	if (ret) {
-		mlx5_free(cache_resource);
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "cannot create action");
-	}
-	__atomic_store_n(&cache_resource->refcnt, 1, __ATOMIC_RELAXED);
-	ILIST_INSERT(sh->ipool[MLX5_IPOOL_PORT_ID], &sh->port_id_action_list,
-		     dev_flow->handle->rix_port_id_action, cache_resource,
-		     next);
-	dev_flow->dv.port_id_action = cache_resource;
-	DRV_LOG(DEBUG, "new port id action resource %p: refcnt %d++",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
+	entry = mlx5_cache_register(&priv->sh->port_id_action_list, &ctx);
+	if (!entry)
+		return -rte_errno;
+	cache = container_of(entry, typeof(*cache), entry);
+	dev_flow->dv.port_id_action = cache;
+	dev_flow->handle->rix_port_id_action = cache->idx;
 	return 0;
 }
 
@@ -10520,6 +10533,18 @@ flow_dv_modify_hdr_resource_release(struct rte_eth_dev *dev,
 	return mlx5_hlist_unregister(priv->sh->modify_cmds, &entry->entry);
 }
 
+void
+flow_dv_port_id_remove_cb(struct mlx5_cache_list *list,
+			  struct mlx5_cache_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_dv_port_id_action_resource *cache =
+			container_of(entry, typeof(*cache), entry);
+
+	claim_zero(mlx5_flow_os_destroy_flow_action(cache->action));
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_PORT_ID], cache->idx);
+}
+
 /**
  * Release port ID action resource.
  *
@@ -10536,30 +10561,14 @@ flow_dv_port_id_action_resource_release(struct rte_eth_dev *dev,
 					uint32_t port_id)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_dv_port_id_action_resource *cache_resource;
-	uint32_t idx = port_id;
+	struct mlx5_flow_dv_port_id_action_resource *cache;
 
-	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_PORT_ID],
-					idx);
-	if (!cache_resource)
+	cache = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_PORT_ID], port_id);
+	if (!cache)
 		return 0;
-	MLX5_ASSERT(cache_resource->action);
-	DRV_LOG(DEBUG, "port ID action resource %p: refcnt %d--",
-		(void *)cache_resource,
-		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
-	if (__atomic_sub_fetch(&cache_resource->refcnt, 1,
-			       __ATOMIC_RELAXED) == 0) {
-		claim_zero(mlx5_flow_os_destroy_flow_action
-						(cache_resource->action));
-		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_PORT_ID],
-			     &priv->sh->port_id_action_list, idx,
-			     cache_resource, next);
-		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_PORT_ID], idx);
-		DRV_LOG(DEBUG, "port id action resource %p: removed",
-			(void *)cache_resource);
-		return 0;
-	}
-	return 1;
+	MLX5_ASSERT(cache->action);
+	return mlx5_cache_unregister(&priv->sh->port_id_action_list,
+				     &cache->entry);
 }
 
 /**

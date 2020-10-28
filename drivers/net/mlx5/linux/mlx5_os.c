@@ -236,6 +236,12 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		goto error;
 	/* The resources below are only valid with DV support. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	/* Init port id action cache list. */
+	snprintf(s, sizeof(s), "%s_port_id_action_cache", sh->ibdev_name);
+	mlx5_cache_list_init(&sh->port_id_action_list, s, 0, sh,
+			     flow_dv_port_id_create_cb,
+			     flow_dv_port_id_match_cb,
+			     flow_dv_port_id_remove_cb);
 	/* Create tags hash list table. */
 	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
 	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE, 0,
@@ -431,6 +437,7 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 		mlx5_release_tunnel_hub(sh, priv->dev_port);
 		sh->tunnel_hub = NULL;
 	}
+	mlx5_cache_list_destroy(&sh->port_id_action_list);
 	mlx5_free_table_hash_list(priv);
 }
 

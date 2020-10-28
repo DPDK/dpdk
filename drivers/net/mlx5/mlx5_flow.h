@@ -485,12 +485,10 @@ struct mlx5_flow_dv_jump_tbl_resource {
 
 /* Port ID resource structure. */
 struct mlx5_flow_dv_port_id_action_resource {
-	ILIST_ENTRY(uint32_t)next;
-	/* Pointer to next element. */
-	uint32_t refcnt; /**< Reference counter. */
-	void *action;
-	/**< Action object. */
+	struct mlx5_cache_entry entry;
+	void *action; /**< Action object. */
 	uint32_t port_id; /**< Port ID value. */
+	uint32_t idx; /**< Indexed pool memory index. */
 };
 
 /* Push VLAN action resource structure */
@@ -1435,6 +1433,13 @@ int flow_dv_matcher_match_cb(struct mlx5_cache_list *list,
 struct mlx5_cache_entry *flow_dv_matcher_create_cb(struct mlx5_cache_list *list,
 		struct mlx5_cache_entry *entry, void *ctx);
 void flow_dv_matcher_remove_cb(struct mlx5_cache_list *list,
+			       struct mlx5_cache_entry *entry);
+
+int flow_dv_port_id_match_cb(struct mlx5_cache_list *list,
+			     struct mlx5_cache_entry *entry, void *cb_ctx);
+struct mlx5_cache_entry *flow_dv_port_id_create_cb(struct mlx5_cache_list *list,
+		struct mlx5_cache_entry *entry, void *cb_ctx);
+void flow_dv_port_id_remove_cb(struct mlx5_cache_list *list,
 			       struct mlx5_cache_entry *entry);
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
