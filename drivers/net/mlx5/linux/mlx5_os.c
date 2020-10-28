@@ -1488,11 +1488,14 @@ err_secondary:
 		priv->mreg_cp_tbl = mlx5_hlist_create(MLX5_FLOW_MREG_HNAME,
 						      MLX5_FLOW_MREG_HTABLE_SZ,
 						      0, 0,
-						      NULL, NULL, NULL);
+						      flow_dv_mreg_create_cb,
+						      NULL,
+						      flow_dv_mreg_remove_cb);
 		if (!priv->mreg_cp_tbl) {
 			err = ENOMEM;
 			goto error;
 		}
+		priv->mreg_cp_tbl->ctx = eth_dev;
 	}
 	mlx5_flow_counter_mode_config(eth_dev);
 	return eth_dev;

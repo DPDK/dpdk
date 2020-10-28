@@ -522,7 +522,6 @@ struct mlx5_flow_mreg_copy_resource {
 	struct mlx5_hlist_entry hlist_ent;
 	LIST_ENTRY(mlx5_flow_mreg_copy_resource) next;
 	/* List entry for device flows. */
-	uint32_t refcnt; /* Reference counter. */
 	uint32_t idx;
 	uint32_t rix_flow; /* Built flow for copy. */
 };
@@ -1434,5 +1433,10 @@ struct mlx5_hlist_entry *flow_dv_modify_create_cb(struct mlx5_hlist *list,
 						  uint64_t key, void *ctx);
 void flow_dv_modify_remove_cb(struct mlx5_hlist *list,
 			      struct mlx5_hlist_entry *entry);
+
+struct mlx5_hlist_entry *flow_dv_mreg_create_cb(struct mlx5_hlist *list,
+						uint64_t key, void *ctx);
+void flow_dv_mreg_remove_cb(struct mlx5_hlist *list,
+			    struct mlx5_hlist_entry *entry);
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

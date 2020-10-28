@@ -3657,36 +3657,18 @@ static void
 flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
 		  uint32_t flow_idx);
 
-/**
- * Add a flow of copying flow metadata registers in RX_CP_TBL.
- *
- * As mark_id is unique, if there's already a registered flow for the mark_id,
- * return by increasing the reference counter of the resource. Otherwise, create
- * the resource (mcp_res) and flow.
- *
- * Flow looks like,
- *   - If ingress port is ANY and reg_c[1] is mark_id,
- *     flow_tag := mark_id, reg_b := reg_c[0] and jump to RX_ACT_TBL.
- *
- * For default flow (zero mark_id), flow is like,
- *   - If ingress port is ANY,
- *     reg_b := reg_c[0] and jump to RX_ACT_TBL.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param mark_id
- *   ID of MARK action, zero means default flow for META.
- * @param[out] error
- *   Perform verbose error reporting if not NULL.
- *
- * @return
- *   Associated resource on success, NULL otherwise and rte_errno is set.
- */
-static struct mlx5_flow_mreg_copy_resource *
-flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
-			  struct rte_flow_error *error)
+struct mlx5_hlist_entry *
+flow_dv_mreg_create_cb(struct mlx5_hlist *list, uint64_t key,
+		       void *cb_ctx)
 {
+	struct rte_eth_dev *dev = list->ctx;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	struct rte_flow_error *error = ctx->error;
+	uint32_t idx = 0;
+	int ret;
+	uint32_t mark_id = key;
 	struct rte_flow_attr attr = {
 		.group = MLX5_FLOW_MREG_CP_TABLE_GROUP,
 		.ingress = 1,
@@ -3710,9 +3692,6 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 	struct rte_flow_action actions[] = {
 		[3] = { .type = RTE_FLOW_ACTION_TYPE_END, },
 	};
-	struct mlx5_flow_mreg_copy_resource *mcp_res;
-	uint32_t idx = 0;
-	int ret;
 
 	/* Fill the register fileds in the flow. */
 	ret = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK, 0, error);
@@ -3723,17 +3702,6 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 	if (ret < 0)
 		return NULL;
 	cp_mreg.src = ret;
-	/* Check if already registered. */
-	MLX5_ASSERT(priv->mreg_cp_tbl);
-	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl, mark_id, NULL);
-	if (mcp_res) {
-		/* For non-default rule. */
-		if (mark_id != MLX5_DEFAULT_COPY_ID)
-			mcp_res->refcnt++;
-		MLX5_ASSERT(mark_id != MLX5_DEFAULT_COPY_ID ||
-			    mcp_res->refcnt == 1);
-		return mcp_res;
-	}
 	/* Provide the full width of FLAG specific value. */
 	if (mark_id == (priv->sh->dv_regc0_mask & MLX5_FLOW_MARK_DEFAULT))
 		tag_spec.data = MLX5_FLOW_MARK_DEFAULT;
@@ -3798,20 +3766,69 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 	 */
 	mcp_res->rix_flow = flow_list_create(dev, NULL, &attr, items,
 					 actions, false, error);
-	if (!mcp_res->rix_flow)
-		goto error;
-	mcp_res->refcnt++;
-	mcp_res->hlist_ent.key = mark_id;
-	ret = !mlx5_hlist_insert(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
-	MLX5_ASSERT(!ret);
-	if (ret)
-		goto error;
-	return mcp_res;
-error:
-	if (mcp_res->rix_flow)
-		flow_list_destroy(dev, NULL, mcp_res->rix_flow);
+	if (!mcp_res->rix_flow) {
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], idx);
+		return NULL;
+	}
+	return &mcp_res->hlist_ent;
+}
+
+/**
+ * Add a flow of copying flow metadata registers in RX_CP_TBL.
+ *
+ * As mark_id is unique, if there's already a registered flow for the mark_id,
+ * return by increasing the reference counter of the resource. Otherwise, create
+ * the resource (mcp_res) and flow.
+ *
+ * Flow looks like,
+ *   - If ingress port is ANY and reg_c[1] is mark_id,
+ *     flow_tag := mark_id, reg_b := reg_c[0] and jump to RX_ACT_TBL.
+ *
+ * For default flow (zero mark_id), flow is like,
+ *   - If ingress port is ANY,
+ *     reg_b := reg_c[0] and jump to RX_ACT_TBL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param mark_id
+ *   ID of MARK action, zero means default flow for META.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   Associated resource on success, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_flow_mreg_copy_resource *
+flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
+			  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hlist_entry *entry;
+	struct mlx5_flow_cb_ctx ctx = {
+		.dev = dev,
+		.error = error,
+	};
+
+	/* Check if already registered. */
+	MLX5_ASSERT(priv->mreg_cp_tbl);
+	entry = mlx5_hlist_register(priv->mreg_cp_tbl, mark_id, &ctx);
+	if (!entry)
+		return NULL;
+	return container_of(entry, struct mlx5_flow_mreg_copy_resource,
+			    hlist_ent);
+}
+
+void
+flow_dv_mreg_remove_cb(struct mlx5_hlist *list, struct mlx5_hlist_entry *entry)
+{
+	struct mlx5_flow_mreg_copy_resource *mcp_res =
+		container_of(entry, typeof(*mcp_res), hlist_ent);
+	struct rte_eth_dev *dev = list->ctx;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	MLX5_ASSERT(mcp_res->rix_flow);
+	flow_list_destroy(dev, NULL, mcp_res->rix_flow);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], mcp_res->idx);
-	return NULL;
 }
 
 /**
@@ -3835,21 +3852,16 @@ flow_mreg_del_copy_action(struct rte_eth_dev *dev,
 				 flow->rix_mreg_copy);
 	if (!mcp_res || !priv->mreg_cp_tbl)
 		return;
-	/*
-	 * We do not check availability of metadata registers here,
-	 * because copy resources are not allocated in this case.
-	 */
-	if (--mcp_res->refcnt)
-		return;
 	MLX5_ASSERT(mcp_res->rix_flow);
-	flow_list_destroy(dev, NULL, mcp_res->rix_flow);
-	mlx5_hlist_remove(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
-	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], mcp_res->idx);
+	mlx5_hlist_unregister(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
 	flow->rix_mreg_copy = 0;
 }
 
 /**
  * Remove the default copy action from RX_CP_TBL.
+ *
+ * This functions is called in the mlx5_dev_start(). No thread safe
+ * is guaranteed.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -3857,24 +3869,24 @@ flow_mreg_del_copy_action(struct rte_eth_dev *dev,
 static void
 flow_mreg_del_default_copy_action(struct rte_eth_dev *dev)
 {
-	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	struct mlx5_hlist_entry *entry;
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	/* Check if default flow is registered. */
 	if (!priv->mreg_cp_tbl)
 		return;
-	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl,
-					    MLX5_DEFAULT_COPY_ID, NULL);
-	if (!mcp_res)
+	entry = mlx5_hlist_lookup(priv->mreg_cp_tbl,
+				  MLX5_DEFAULT_COPY_ID, NULL);
+	if (!entry)
 		return;
-	MLX5_ASSERT(mcp_res->rix_flow);
-	flow_list_destroy(dev, NULL, mcp_res->rix_flow);
-	mlx5_hlist_remove(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
-	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], mcp_res->idx);
+	mlx5_hlist_unregister(priv->mreg_cp_tbl, entry);
 }
 
 /**
  * Add the default copy action in in RX_CP_TBL.
+ *
+ * This functions is called in the mlx5_dev_start(). No thread safe
+ * is guaranteed.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -3896,6 +3908,12 @@ flow_mreg_add_default_copy_action(struct rte_eth_dev *dev,
 	    priv->config.dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
 	    !mlx5_flow_ext_mreg_supported(dev) ||
 	    !priv->sh->dv_regc0_mask)
+		return 0;
+	/*
+	 * Add default mreg copy flow may be called multiple time, but
+	 * only be called once in stop. Avoid register it twice.
+	 */
+	if (mlx5_hlist_lookup(priv->mreg_cp_tbl, MLX5_DEFAULT_COPY_ID, NULL))
 		return 0;
 	mcp_res = flow_mreg_add_copy_action(dev, MLX5_DEFAULT_COPY_ID, error);
 	if (!mcp_res)
