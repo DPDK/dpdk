@@ -1439,4 +1439,11 @@ struct mlx5_hlist_entry *flow_dv_mreg_create_cb(struct mlx5_hlist *list,
 void flow_dv_mreg_remove_cb(struct mlx5_hlist *list,
 			    struct mlx5_hlist_entry *entry);
 
+int flow_dv_encap_decap_match_cb(struct mlx5_hlist *list,
+				 struct mlx5_hlist_entry *entry,
+				 uint64_t key, void *cb_ctx);
+struct mlx5_hlist_entry *flow_dv_encap_decap_create_cb(struct mlx5_hlist *list,
+				uint64_t key, void *cb_ctx);
+void flow_dv_encap_decap_remove_cb(struct mlx5_hlist *list,
+				   struct mlx5_hlist_entry *entry);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

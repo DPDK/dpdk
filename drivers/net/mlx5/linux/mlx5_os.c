@@ -264,12 +264,17 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	snprintf(s, sizeof(s), "%s_encaps_decaps", sh->ibdev_name);
 	sh->encaps_decaps = mlx5_hlist_create(s,
 					      MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ,
-					      0, 0, NULL, NULL, NULL);
+					      0, MLX5_HLIST_DIRECT_KEY |
+					      MLX5_HLIST_WRITE_MOST,
+					      flow_dv_encap_decap_create_cb,
+					      flow_dv_encap_decap_match_cb,
+					      flow_dv_encap_decap_remove_cb);
 	if (!sh->encaps_decaps) {
 		DRV_LOG(ERR, "encap decap hash creation failed");
 		err = ENOMEM;
 		goto error;
 	}
+	sh->encaps_decaps->ctx = sh;
 #endif
 #ifdef HAVE_MLX5DV_DR
 	void *domain;
