@@ -1095,6 +1095,7 @@ rte_pktmbuf_attach_extbuf(struct rte_mbuf *m, void *buf_addr,
 static inline void
 rte_mbuf_dynfield_copy(struct rte_mbuf *mdst, const struct rte_mbuf *msrc)
 {
+	memcpy(&mdst->dynfield0, msrc->dynfield0, sizeof(mdst->dynfield0));
 	memcpy(&mdst->dynfield1, msrc->dynfield1, sizeof(mdst->dynfield1));
 }
 
@@ -1108,7 +1109,6 @@ __rte_pktmbuf_copy_hdr(struct rte_mbuf *mdst, const struct rte_mbuf *msrc)
 	mdst->tx_offload = msrc->tx_offload;
 	mdst->hash = msrc->hash;
 	mdst->packet_type = msrc->packet_type;
-	mdst->timestamp = msrc->timestamp;
 	rte_mbuf_dynfield_copy(mdst, msrc);
 }
 

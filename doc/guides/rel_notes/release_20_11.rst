@@ -458,6 +458,10 @@ API Changes
 * mbuf: Removed the field ``seqn`` from the structure ``rte_mbuf``.
   It is replaced with dynamic fields.
 
+* mbuf: Removed the field ``timestamp`` from the structure ``rte_mbuf``.
+  It is replaced with the dynamic field RTE_MBUF_DYNFIELD_TIMESTAMP_NAME
+  which was previously used only for Tx.
+
 * pci: Removed the ``rte_kernel_driver`` enum defined in rte_dev.h and
   replaced with a private enum in the PCI subsystem.
 

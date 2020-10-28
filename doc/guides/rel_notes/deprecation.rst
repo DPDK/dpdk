@@ -84,10 +84,6 @@ Deprecation Notices
 * mbuf: Some fields will be converted to dynamic API in DPDK 20.11
   in order to reserve more space for the dynamic fields, as explained in
   `this presentation <https://www.youtube.com/watch?v=Ttl6MlhmzWY>`_.
-  The following static fields will be moved as dynamic:
-
-  - ``timestamp``
-
   As a consequence, the layout of the ``struct rte_mbuf`` will be re-arranged,
   avoiding impact on vectorized implementation of the driver datapaths,
   while evaluating performance gains of a better use of the first cache line.

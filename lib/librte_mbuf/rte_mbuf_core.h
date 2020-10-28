@@ -149,10 +149,7 @@ extern "C" {
  */
 #define PKT_RX_LRO           (1ULL << 16)
 
-/**
- * Indicate that the timestamp field in the mbuf is valid.
- */
-#define PKT_RX_TIMESTAMP     (1ULL << 17)
+/* There is no flag defined at offset 17. It is free for any future use. */
 
 /**
  * Indicate that security offload processing was applied on the RX packet.
@@ -589,12 +586,7 @@ struct rte_mbuf {
 
 	uint16_t buf_len;         /**< Length of segment buffer. */
 
-	/** Valid if PKT_RX_TIMESTAMP is set. The unit and time reference
-	 * are not normalized but are always the same for a given port.
-	 * Some devices allow to query rte_eth_read_clock that will return the
-	 * current device timestamp.
-	 */
-	uint64_t timestamp;
+	uint64_t dynfield0[1]; /**< Reserved for dynamic fields. */
 
 	/* second cache line - fields only used in slow path or on TX */
 	RTE_MARKER cacheline1 __rte_cache_min_aligned;
