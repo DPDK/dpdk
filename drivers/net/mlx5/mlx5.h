@@ -65,6 +65,13 @@ enum mlx5_reclaim_mem_mode {
 	MLX5_RCM_AGGR, /* Reclaim PMD and rdma-core level. */
 };
 
+/* Hash and cache list callback context. */
+struct mlx5_flow_cb_ctx {
+	struct rte_eth_dev *dev;
+	struct rte_flow_error *error;
+	void *data;
+};
+
 /* Device attributes used in mlx5 PMD */
 struct mlx5_dev_attr {
 	uint64_t	device_cap_flags_ex;
@@ -684,6 +691,22 @@ TAILQ_HEAD(mlx5_mtr_profiles, mlx5_flow_meter_profile);
 /* MTR list. */
 TAILQ_HEAD(mlx5_flow_meters, mlx5_flow_meter);
 
+/* RSS description. */
+struct mlx5_flow_rss_desc {
+	uint32_t level;
+	uint32_t queue_num; /**< Number of entries in @p queue. */
+	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
+	uint64_t hash_fields; /* Verbs Hash fields. */
+	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
+	uint32_t key_len; /**< RSS hash key len. */
+	uint32_t tunnel; /**< Queue in tunnel. */
+	union {
+		uint16_t *queue; /**< Destination queues. */
+		const uint16_t *const_q; /**< Const pointer convert. */
+	};
+	bool standalone; /**< Queue is standalone or not. */
+};
+
 #define MLX5_PROC_PRIV(port_id) \
 	((struct mlx5_proc_priv *)rte_eth_devices[port_id].process_private)
 
@@ -723,7 +746,7 @@ struct mlx5_ind_table_obj {
 /* Hash Rx queue. */
 __extension__
 struct mlx5_hrxq {
-	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */
+	struct mlx5_cache_entry entry; /* Cache entry. */
 	uint32_t refcnt; /* Reference counter. */
 	uint32_t standalone:1; /* This object used in shared action. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
@@ -737,6 +760,7 @@ struct mlx5_hrxq {
 #endif
 	uint64_t hash_fields; /* Verbs Hash fields. */
 	uint32_t rss_key_len; /* Hash key length in bytes. */
+	uint32_t idx; /* Hash Rx queue index. */
 	uint8_t rss_key[]; /* Hash key. */
 };
 
@@ -853,7 +877,7 @@ struct mlx5_priv {
 	struct mlx5_obj_ops obj_ops; /* HW objects operations. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
-	uint32_t hrxqs; /* Verbs Hash Rx queues. */
+	struct mlx5_cache_list hrxqs; /* Hash Rx queues. */
 	LIST_HEAD(txq, mlx5_txq_ctrl) txqsctrl; /* DPDK Tx queues. */
 	LIST_HEAD(txqobj, mlx5_txq_obj) txqsobj; /* Verbs/DevX Tx queues. */
 	/* Indirection tables. */

@@ -1468,6 +1468,10 @@ err_secondary:
 			err = ENOTSUP;
 			goto error;
 	}
+	mlx5_cache_list_init(&priv->hrxqs, "hrxq", 0, eth_dev,
+			     mlx5_hrxq_create_cb,
+			     mlx5_hrxq_match_cb,
+			     mlx5_hrxq_remove_cb);
 	/* Query availability of metadata reg_c's. */
 	err = mlx5_flow_discover_mreg_c(eth_dev);
 	if (err < 0) {
@@ -1520,6 +1524,7 @@ error:
 			mlx5_drop_action_destroy(eth_dev);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
+		mlx5_cache_list_destroy(&priv->hrxqs);
 		mlx5_free(priv);
 		if (eth_dev != NULL)
 			eth_dev->data->dev_private = NULL;

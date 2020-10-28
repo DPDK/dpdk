@@ -384,13 +384,6 @@ enum mlx5_flow_fate_type {
 	MLX5_FLOW_FATE_MAX,
 };
 
-/* Hash list callback context */
-struct mlx5_flow_cb_ctx {
-	struct rte_eth_dev *dev;
-	struct rte_flow_error *error;
-	void *data;
-};
-
 /* Matcher PRM representation */
 struct mlx5_flow_dv_match_params {
 	size_t size;
@@ -607,15 +600,6 @@ struct mlx5_flow_dv_dest_array_resource {
 struct ibv_spec_header {
 	enum ibv_flow_spec_type type;
 	uint16_t size;
-};
-
-/* RSS description. */
-struct mlx5_flow_rss_desc {
-	uint32_t level;
-	uint32_t queue_num; /**< Number of entries in @p queue. */
-	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
-	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
-	uint16_t *queue; /**< Destination queues. */
 };
 
 /* PMD flow priority for tunnel */

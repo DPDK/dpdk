@@ -351,17 +351,19 @@ struct mlx5_ind_table_obj *mlx5_ind_table_obj_get(struct rte_eth_dev *dev,
 int mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 			       struct mlx5_ind_table_obj *ind_tbl,
 			       bool standalone);
-uint32_t mlx5_hrxq_new(struct rte_eth_dev *dev,
-		       const uint8_t *rss_key, uint32_t rss_key_len,
-		       uint64_t hash_fields,
-		       const uint16_t *queues, uint32_t queues_n,
-		       int tunnel, bool standalone);
+struct mlx5_cache_entry *mlx5_hrxq_create_cb(struct mlx5_cache_list *list,
+		struct mlx5_cache_entry *entry __rte_unused, void *cb_ctx);
+int mlx5_hrxq_match_cb(struct mlx5_cache_list *list,
+		       struct mlx5_cache_entry *entry,
+		       void *cb_ctx);
+void mlx5_hrxq_remove_cb(struct mlx5_cache_list *list,
+			 struct mlx5_cache_entry *entry);
 uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
-		       const uint8_t *rss_key, uint32_t rss_key_len,
-		       uint64_t hash_fields,
-		       const uint16_t *queues, uint32_t queues_n);
+		       struct mlx5_flow_rss_desc *rss_desc);
 int mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hxrq_idx);
-int mlx5_hrxq_verify(struct rte_eth_dev *dev);
+uint32_t mlx5_hrxq_verify(struct rte_eth_dev *dev);
+
+
 enum mlx5_rxq_type mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx);
 const struct rte_eth_hairpin_conf *mlx5_rxq_get_hairpin_conf
 	(struct rte_eth_dev *dev, uint16_t idx);

@@ -1968,21 +1968,12 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				&wks->rss_desc[!!wks->flow_nested_idx];
 
 			MLX5_ASSERT(rss_desc->queue_num);
-			hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
-						 MLX5_RSS_HASH_KEY_LEN,
-						 dev_flow->hash_fields,
-						 rss_desc->queue,
-						 rss_desc->queue_num);
-			if (!hrxq_idx)
-				hrxq_idx = mlx5_hrxq_new
-						(dev, rss_desc->key,
-						 MLX5_RSS_HASH_KEY_LEN,
-						 dev_flow->hash_fields,
-						 rss_desc->queue,
-						 rss_desc->queue_num,
-						 !!(handle->layers &
-						 MLX5_FLOW_LAYER_TUNNEL),
-						 false);
+			rss_desc->key_len = MLX5_RSS_HASH_KEY_LEN;
+			rss_desc->hash_fields = dev_flow->hash_fields;
+			rss_desc->tunnel = !!(handle->layers &
+					      MLX5_FLOW_LAYER_TUNNEL);
+			rss_desc->standalone = false;
+			hrxq_idx = mlx5_hrxq_get(dev, rss_desc);
 			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 					      hrxq_idx);
 			if (!hrxq) {

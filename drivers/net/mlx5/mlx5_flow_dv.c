@@ -8527,7 +8527,7 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
 }
 
 /**
- * Create an Rx Hash queue.
+ * Prepare an Rx Hash queue.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -8542,29 +8542,23 @@ flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
  *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
  */
 static struct mlx5_hrxq *
-flow_dv_handle_rx_queue(struct rte_eth_dev *dev,
-			struct mlx5_flow *dev_flow,
-			struct mlx5_flow_rss_desc *rss_desc,
-			uint32_t *hrxq_idx)
+flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
+		     struct mlx5_flow *dev_flow,
+		     struct mlx5_flow_rss_desc *rss_desc,
+		     uint32_t *hrxq_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_handle *dh = dev_flow->handle;
 	struct mlx5_hrxq *hrxq;
 
 	MLX5_ASSERT(rss_desc->queue_num);
-	*hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key, MLX5_RSS_HASH_KEY_LEN,
-				  dev_flow->hash_fields,
-				  rss_desc->queue, rss_desc->queue_num);
-	if (!*hrxq_idx) {
-		*hrxq_idx = mlx5_hrxq_new
-				(dev, rss_desc->key, MLX5_RSS_HASH_KEY_LEN,
-				 dev_flow->hash_fields,
-				 rss_desc->queue, rss_desc->queue_num,
-				 !!(dh->layers & MLX5_FLOW_LAYER_TUNNEL),
-				 false);
-		if (!*hrxq_idx)
-			return NULL;
-	}
+	rss_desc->key_len = MLX5_RSS_HASH_KEY_LEN;
+	rss_desc->hash_fields = dev_flow->hash_fields;
+	rss_desc->tunnel = !!(dh->layers & MLX5_FLOW_LAYER_TUNNEL);
+	rss_desc->standalone = false;
+	*hrxq_idx = mlx5_hrxq_get(dev, rss_desc);
+	if (!*hrxq_idx)
+		return NULL;
 	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 			      *hrxq_idx);
 	return hrxq;
@@ -8927,8 +8921,8 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 			queue = sub_actions->conf;
 			rss_desc->queue_num = 1;
 			rss_desc->queue[0] = queue->index;
-			hrxq = flow_dv_handle_rx_queue(dev, dev_flow,
-					rss_desc, &hrxq_idx);
+			hrxq = flow_dv_hrxq_prepare(dev, dev_flow,
+						    rss_desc, &hrxq_idx);
 			if (!hrxq)
 				return rte_flow_error_set
 					(error, rte_errno,
@@ -9125,8 +9119,8 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 	if (num_of_dest > 1) {
 		if (sample_act->action_flags & MLX5_FLOW_ACTION_QUEUE) {
 			/* Handle QP action for mirroring */
-			hrxq = flow_dv_handle_rx_queue(dev, dev_flow,
-						       rss_desc, &hrxq_idx);
+			hrxq = flow_dv_hrxq_prepare(dev, dev_flow,
+						    rss_desc, &hrxq_idx);
 			if (!hrxq)
 				return rte_flow_error_set
 				     (error, rte_errno,
@@ -10261,24 +10255,8 @@ __flow_dv_rss_get_hrxq(struct rte_eth_dev *dev, struct rte_flow *flow,
 		struct mlx5_flow_rss_desc *rss_desc =
 				&wks->rss_desc[!!wks->flow_nested_idx];
 
-		MLX5_ASSERT(rss_desc->queue_num);
-		hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
-					 MLX5_RSS_HASH_KEY_LEN,
-					 dev_flow->hash_fields,
-					 rss_desc->queue, rss_desc->queue_num);
-		if (!hrxq_idx) {
-			hrxq_idx = mlx5_hrxq_new(dev,
-						 rss_desc->key,
-						 MLX5_RSS_HASH_KEY_LEN,
-						 dev_flow->hash_fields,
-						 rss_desc->queue,
-						 rss_desc->queue_num,
-						 !!(dev_flow->handle->layers &
-						 MLX5_FLOW_LAYER_TUNNEL),
-						 false);
-		}
-		*hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
-				       hrxq_idx);
+		*hrxq = flow_dv_hrxq_prepare(dev, dev_flow, rss_desc,
+					     &hrxq_idx);
 	}
 	return hrxq_idx;
 }
@@ -10332,7 +10310,6 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			struct mlx5_hrxq *hrxq = NULL;
 			uint32_t hrxq_idx = __flow_dv_rss_get_hrxq
 						(dev, flow, dev_flow, &hrxq);
-
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,
@@ -10954,21 +10931,24 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 			struct mlx5_shared_action_rss *action,
 			struct rte_flow_error *error)
 {
+	struct mlx5_flow_rss_desc rss_desc = { 0 };
 	size_t i;
 	int err;
 
+	memcpy(rss_desc.key, action->origin.key, MLX5_RSS_HASH_KEY_LEN);
+	rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
+	rss_desc.const_q = action->origin.queue;
+	rss_desc.queue_num = action->origin.queue_num;
+	rss_desc.standalone = true;
 	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
 		uint32_t hrxq_idx;
 		uint64_t hash_fields = mlx5_rss_hash_fields[i];
 		int tunnel;
 
 		for (tunnel = 0; tunnel < 2; tunnel++) {
-			hrxq_idx = mlx5_hrxq_new(dev, action->origin.key,
-					MLX5_RSS_HASH_KEY_LEN,
-					hash_fields,
-					action->origin.queue,
-					action->origin.queue_num,
-					tunnel, true);
+			rss_desc.tunnel = tunnel;
+			rss_desc.hash_fields = hash_fields;
+			hrxq_idx = mlx5_hrxq_get(dev, &rss_desc);
 			if (!hrxq_idx) {
 				rte_flow_error_set
 					(error, rte_errno,
