@@ -4154,9 +4154,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 		   struct rte_flow_action actions_rx[],
 		   struct rte_flow_action actions_tx[],
 		   struct rte_flow_item pattern_tx[],
-		   uint32_t *flow_id)
+		   uint32_t flow_id)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_raw_encap *raw_encap;
 	const struct rte_flow_action_raw_decap *raw_decap;
 	struct mlx5_rte_flow_action_set_tag *set_tag;
@@ -4166,7 +4165,6 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	char *addr;
 	int encap = 0;
 
-	mlx5_flow_id_get(priv->sh->flow_id_pool, flow_id);
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
@@ -4235,7 +4233,7 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	set_tag = (void *)actions_rx;
 	set_tag->id = mlx5_flow_get_reg_id(dev, MLX5_HAIRPIN_RX, 0, NULL);
 	MLX5_ASSERT(set_tag->id > REG_NON);
-	set_tag->data = *flow_id;
+	set_tag->data = flow_id;
 	tag_action->conf = set_tag;
 	/* Create Tx item list. */
 	rte_memcpy(actions_tx, actions, sizeof(struct rte_flow_action));
@@ -4244,7 +4242,7 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	item->type = (enum rte_flow_item_type)
 		     MLX5_RTE_FLOW_ITEM_TYPE_TAG;
 	tag_item = (void *)addr;
-	tag_item->data = *flow_id;
+	tag_item->data = flow_id;
 	tag_item->id = mlx5_flow_get_reg_id(dev, MLX5_HAIRPIN_TX, 0, NULL);
 	MLX5_ASSERT(set_tag->id > REG_NON);
 	item->spec = tag_item;
@@ -5630,7 +5628,6 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	uint32_t i;
 	uint32_t idx = 0;
 	int hairpin_flow;
-	uint32_t hairpin_id = 0;
 	struct rte_flow_attr attr_tx = { .priority = 0 };
 	struct rte_flow_attr attr_factor = {0};
 	const struct rte_flow_action *actions;
@@ -5659,6 +5656,11 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 				external, hairpin_flow, error);
 	if (ret < 0)
 		goto error_before_hairpin_split;
+	flow = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], &idx);
+	if (!flow) {
+		rte_errno = ENOMEM;
+		goto error_before_hairpin_split;
+	}
 	if (hairpin_flow > 0) {
 		if (hairpin_flow > MLX5_MAX_SPLIT_ACTIONS) {
 			rte_errno = EINVAL;
@@ -5666,17 +5668,10 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		}
 		flow_hairpin_split(dev, actions, actions_rx.actions,
 				   actions_hairpin_tx.actions, items_tx.items,
-				   &hairpin_id);
+				   idx);
 		p_actions_rx = actions_rx.actions;
 	}
-	flow = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], &idx);
-	if (!flow) {
-		rte_errno = ENOMEM;
-		goto error_before_flow;
-	}
 	flow->drv_type = flow_get_drv_type(dev, &attr_factor);
-	if (hairpin_id != 0)
-		flow->hairpin_flow_id = hairpin_id;
 	MLX5_ASSERT(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
 		    flow->drv_type < MLX5_FLOW_TYPE_MAX);
 	memset(rss_desc, 0, offsetof(struct mlx5_flow_rss_desc, queue));
@@ -5812,11 +5807,7 @@ error:
 	flow_drv_destroy(dev, flow);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], idx);
 	rte_errno = ret; /* Restore rte_errno. */
-error_before_flow:
 	ret = rte_errno;
-	if (hairpin_id)
-		mlx5_flow_id_release(priv->sh->flow_id_pool,
-				     hairpin_id);
 	rte_errno = ret;
 	wks->flow_idx = wks->flow_nested_idx;
 	if (wks->flow_nested_idx)
@@ -5974,9 +5965,6 @@ flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
 	 */
 	if (dev->data->dev_started)
 		flow_rxq_flags_trim(dev, flow);
-	if (flow->hairpin_flow_id)
-		mlx5_flow_id_release(priv->sh->flow_id_pool,
-				     flow->hairpin_flow_id);
 	flow_drv_destroy(dev, flow);
 	if (list)
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], list,

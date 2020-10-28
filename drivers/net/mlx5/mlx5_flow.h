@@ -922,8 +922,6 @@ struct mlx5_fdir_flow {
 	uint32_t rix_flow; /* Index to flow. */
 };
 
-#define HAIRPIN_FLOW_ID_BITS 28
-
 #define MLX5_MAX_TUNNELS 256
 #define MLX5_TNL_MISS_RULE_PRIORITY 3
 #define MLX5_TNL_MISS_FDB_JUMP_GRP  0x1234faac
@@ -1039,14 +1037,12 @@ struct rte_flow {
 	uint32_t drv_type:2; /**< Driver type. */
 	uint32_t fdir:1; /**< Identifier of associated FDIR if any. */
 	uint32_t tunnel:1;
-	uint32_t hairpin_flow_id:HAIRPIN_FLOW_ID_BITS;
-	/**< The flow id used for hairpin. */
 	uint32_t copy_applied:1; /**< The MARK copy Flow os applied. */
+	uint32_t meter:16; /**< Holds flow meter id. */
 	uint32_t rix_mreg_copy;
 	/**< Index to metadata register copy table resource. */
 	uint32_t counter; /**< Holds flow counter. */
 	uint32_t tunnel_id;  /**< Tunnel id */
-	uint16_t meter; /**< Holds flow meter id. */
 } __rte_packed;
 
 /*

@@ -668,7 +668,6 @@ struct mlx5_dev_ctx_shared {
 	void *devx_comp; /* DEVX async comp obj. */
 	struct mlx5_devx_obj *tis; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
-	struct mlx5_flow_id_pool *flow_id_pool; /* Flow ID pool. */
 	void *tx_uar; /* Tx/packet pacing shared UAR. */
 	struct mlx5_flex_parser_profiles fp[MLX5_FLEX_PARSER_MAX];
 	/* Flex parser profiles information. */

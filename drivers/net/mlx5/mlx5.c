@@ -979,13 +979,6 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		MLX5_ASSERT(sh->devx_rx_uar);
 		MLX5_ASSERT(mlx5_os_get_devx_uar_base_addr(sh->devx_rx_uar));
 	}
-	sh->flow_id_pool = mlx5_flow_id_pool_alloc
-					((1 << HAIRPIN_FLOW_ID_BITS) - 1);
-	if (!sh->flow_id_pool) {
-		DRV_LOG(ERR, "can't create flow id pool");
-		err = ENOMEM;
-		goto error;
-	}
 #ifndef RTE_ARCH_64
 	/* Initialize UAR access locks for 32bit implementations. */
 	rte_spinlock_init(&sh->uar_lock_cq);
@@ -1047,8 +1040,6 @@ error:
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
 	if (sh->ctx)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
-	if (sh->flow_id_pool)
-		mlx5_flow_id_pool_release(sh->flow_id_pool);
 	mlx5_free(sh);
 	MLX5_ASSERT(err > 0);
 	rte_errno = err;
@@ -1119,8 +1110,6 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
 	if (sh->ctx)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
-	if (sh->flow_id_pool)
-		mlx5_flow_id_pool_release(sh->flow_id_pool);
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	mlx5_free(sh);
 	return;
