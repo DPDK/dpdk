@@ -1721,8 +1721,8 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				DPAA_SEC_BURST : nb_ops;
 		for (loop = 0; loop < frames_to_send; loop++) {
 			op = *(ops++);
-			if (op->sym->m_src->seqn != 0) {
-				index = op->sym->m_src->seqn - 1;
+			if (*dpaa_seqn(op->sym->m_src) != 0) {
+				index = *dpaa_seqn(op->sym->m_src) - 1;
 				if (DPAA_PER_LCORE_DQRR_HELD & (1 << index)) {
 					/* QM_EQCR_DCA_IDXMASK = 0x0f */
 					flags[loop] = ((index & 0x0f) << 8);
@@ -3212,7 +3212,7 @@ dpaa_sec_process_atomic_event(void *event,
 	DPAA_PER_LCORE_DQRR_HELD |= 1 << index;
 	DPAA_PER_LCORE_DQRR_MBUF(index) = ctx->op->sym->m_src;
 	ev->impl_opaque = index + 1;
-	ctx->op->sym->m_src->seqn = (uint32_t)index + 1;
+	*dpaa_seqn(ctx->op->sym->m_src) = (uint32_t)index + 1;
 	*bufs = (void *)ctx->op;
 
 	rte_mempool_put(ctx->ctx_pool, (void *)ctx);

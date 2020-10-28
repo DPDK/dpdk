@@ -7,6 +7,7 @@
 #define __RTE_DPAA_BUS_H__
 
 #include <rte_bus.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_mempool.h>
 #include <dpaax_iova_table.h>
 
@@ -15,6 +16,33 @@
 #include <fsl_qman.h>
 #include <fsl_bman.h>
 #include <netcfg.h>
+
+/* This sequence number field is used to store event entry index for
+ * driver specific usage. For parallel mode queues, invalid
+ * index will be set and for atomic mode queues, valid value
+ * ranging from 1 to 16.
+ */
+#define DPAA_INVALID_MBUF_SEQN  0
+
+typedef uint32_t dpaa_seqn_t;
+extern int dpaa_seqn_dynfield_offset;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Read dpaa sequence number from mbuf.
+ *
+ * @param mbuf Structure to read from.
+ * @return pointer to dpaa sequence number.
+ */
+__rte_experimental
+static inline dpaa_seqn_t *
+dpaa_seqn(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf, dpaa_seqn_dynfield_offset,
+		dpaa_seqn_t *);
+}
 
 #define DPAA_MEMPOOL_OPS_NAME	"dpaa"
 

@@ -22,13 +22,6 @@
 #define DPAA_MBUF_HW_ANNOTATION		64
 #define DPAA_FD_PTA_SIZE		64
 
-/* mbuf->seqn will be used to store event entry index for
- * driver specific usage. For parallel mode queues, invalid
- * index will be set and for atomic mode queues, valid value
- * ranging from 1 to 16.
- */
-#define DPAA_INVALID_MBUF_SEQN  0
-
 /* we will re-use the HEADROOM for annotation in RX */
 #define DPAA_HW_BUF_RESERVE	0
 #define DPAA_PACKET_LAYOUT_ALIGN	64

@@ -32,6 +32,7 @@
 #include <rte_ring.h>
 #include <rte_bus.h>
 #include <rte_mbuf_pool_ops.h>
+#include <rte_mbuf_dyn.h>
 
 #include <dpaa_of.h>
 #include <rte_dpaa_bus.h>
@@ -54,6 +55,9 @@ unsigned int dpaa_svr_family;
 #define FSL_DPAA_BUS_NAME	dpaa_bus
 
 RTE_DEFINE_PER_LCORE(struct dpaa_portal *, dpaa_io);
+
+#define DPAA_SEQN_DYNFIELD_NAME "dpaa_seqn_dynfield"
+int dpaa_seqn_dynfield_offset = -1;
 
 struct fm_eth_port_cfg *
 dpaa_get_eth_port_cfg(int dev_id)
@@ -251,6 +255,11 @@ dpaa_clean_device_list(void)
 
 int rte_dpaa_portal_init(void *arg)
 {
+	static const struct rte_mbuf_dynfield dpaa_seqn_dynfield_desc = {
+		.name = DPAA_SEQN_DYNFIELD_NAME,
+		.size = sizeof(dpaa_seqn_t),
+		.align = __alignof__(dpaa_seqn_t),
+	};
 	unsigned int cpu, lcore = rte_lcore_id();
 	int ret;
 
@@ -263,6 +272,13 @@ int rte_dpaa_portal_init(void *arg)
 			return -1;
 
 	cpu = rte_lcore_to_cpu_id(lcore);
+
+	dpaa_seqn_dynfield_offset =
+		rte_mbuf_dynfield_register(&dpaa_seqn_dynfield_desc);
+	if (dpaa_seqn_dynfield_offset < 0) {
+		DPAA_BUS_LOG(ERR, "Failed to register mbuf field for dpaa sequence number\n");
+		return -rte_errno;
+	}
 
 	/* Initialise bman thread portals */
 	ret = bman_thread_init();

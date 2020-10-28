@@ -649,7 +649,7 @@ dpaa_rx_cb_parallel(void *event,
 	ev->queue_id = fq->ev.queue_id;
 	ev->priority = fq->ev.priority;
 	ev->impl_opaque = (uint8_t)DPAA_INVALID_MBUF_SEQN;
-	mbuf->seqn = DPAA_INVALID_MBUF_SEQN;
+	*dpaa_seqn(mbuf) = DPAA_INVALID_MBUF_SEQN;
 	*bufs = mbuf;
 
 	return qman_cb_dqrr_consume;
@@ -683,7 +683,7 @@ dpaa_rx_cb_atomic(void *event,
 	DPAA_PER_LCORE_DQRR_HELD |= 1 << index;
 	DPAA_PER_LCORE_DQRR_MBUF(index) = mbuf;
 	ev->impl_opaque = index + 1;
-	mbuf->seqn = (uint32_t)index + 1;
+	*dpaa_seqn(mbuf) = (uint32_t)index + 1;
 	*bufs = mbuf;
 
 	return qman_cb_dqrr_defer;
@@ -1078,7 +1078,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 			if (dpaa_svr_family == SVR_LS1043A_FAMILY &&
 					(mbuf->data_off & 0x7F) != 0x0)
 				realloc_mbuf = 1;
-			seqn = mbuf->seqn;
+			seqn = *dpaa_seqn(mbuf);
 			if (seqn != DPAA_INVALID_MBUF_SEQN) {
 				index = seqn - 1;
 				if (DPAA_PER_LCORE_DQRR_HELD & (1 << index)) {

@@ -14,6 +14,7 @@ INTERNAL {
 	dpaa_get_qm_channel_pool;
 	dpaa_get_link_status;
 	dpaa_restart_link_autoneg;
+	dpaa_seqn_dynfield_offset;
 	dpaa_update_link_speed;
 	dpaa_intr_disable;
 	dpaa_intr_enable;
