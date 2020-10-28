@@ -394,11 +394,9 @@ struct mlx5_flow_dv_match_params {
 
 /* Matcher structure. */
 struct mlx5_flow_dv_matcher {
-	LIST_ENTRY(mlx5_flow_dv_matcher) next;
-	/**< Pointer to the next element. */
+	struct mlx5_cache_entry entry; /**< Pointer to the next element. */
 	struct mlx5_flow_tbl_resource *tbl;
 	/**< Pointer to the table(group) the matcher associated with. */
-	uint32_t refcnt; /**< Reference counter. */
 	void *matcher_object; /**< Pointer to DV matcher */
 	uint16_t crc; /**< CRC of key. */
 	uint16_t priority; /**< Priority of matcher. */
@@ -532,7 +530,7 @@ struct mlx5_flow_tbl_data_entry {
 	/**< hash list entry, 64-bits key inside. */
 	struct mlx5_flow_tbl_resource tbl;
 	/**< flow table resource. */
-	LIST_HEAD(matchers, mlx5_flow_dv_matcher) matchers;
+	struct mlx5_cache_list matchers;
 	/**< matchers' header associated with the flow table. */
 	struct mlx5_flow_dv_jump_tbl_resource jump;
 	/**< jump resource, at most one for each table created. */
@@ -542,6 +540,7 @@ struct mlx5_flow_tbl_data_entry {
 	uint32_t group_id;
 	bool external;
 	bool tunnel_offload; /* Tunnel offlod table or not. */
+	bool is_egress; /**< Egress table. */
 };
 
 /* Sub rdma-core actions list. */
@@ -1430,4 +1429,12 @@ struct mlx5_hlist_entry *flow_dv_encap_decap_create_cb(struct mlx5_hlist *list,
 				uint64_t key, void *cb_ctx);
 void flow_dv_encap_decap_remove_cb(struct mlx5_hlist *list,
 				   struct mlx5_hlist_entry *entry);
+
+int flow_dv_matcher_match_cb(struct mlx5_cache_list *list,
+			     struct mlx5_cache_entry *entry, void *ctx);
+struct mlx5_cache_entry *flow_dv_matcher_create_cb(struct mlx5_cache_list *list,
+		struct mlx5_cache_entry *entry, void *ctx);
+void flow_dv_matcher_remove_cb(struct mlx5_cache_list *list,
+			       struct mlx5_cache_entry *entry);
+
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

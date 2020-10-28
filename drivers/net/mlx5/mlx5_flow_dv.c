@@ -71,7 +71,7 @@ union flow_dv_attr {
 };
 
 static int
-flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
+flow_dv_tbl_resource_release(struct mlx5_dev_ctx_shared *sh,
 			     struct mlx5_flow_tbl_resource *tbl);
 
 static int
@@ -7944,6 +7944,7 @@ flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 	tbl_data->group_id = tt_prm->group_id;
 	tbl_data->external = tt_prm->external;
 	tbl_data->tunnel_offload = is_tunnel_offload_active(dev);
+	tbl_data->is_egress = !!key.direction;
 	tbl = &tbl_data->tbl;
 	if (key.dummy)
 		return &tbl_data->entry;
@@ -7974,6 +7975,13 @@ flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 			return NULL;
 		}
 	}
+	MKSTR(matcher_name, "%s_%s_%u_matcher_cache",
+	      key.domain ? "FDB" : "NIC", key.direction ? "egress" : "ingress",
+	      key.table_id);
+	mlx5_cache_list_init(&tbl_data->matchers, matcher_name, 0, sh,
+			     flow_dv_matcher_create_cb,
+			     flow_dv_matcher_match_cb,
+			     flow_dv_matcher_remove_cb);
 	return &tbl_data->entry;
 }
 
@@ -8085,14 +8093,15 @@ flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 			tbl_data->tunnel->tunnel_id : 0,
 			tbl_data->group_id);
 	}
+	mlx5_cache_list_destroy(&tbl_data->matchers);
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], tbl_data->idx);
 }
 
 /**
  * Release a flow table.
  *
- * @param[in] dev
- *   Pointer to rte_eth_dev structure.
+ * @param[in] sh
+ *   Pointer to device shared structure.
  * @param[in] tbl
  *   Table resource to be released.
  *
@@ -8100,17 +8109,72 @@ flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
  *   Returns 0 if table was released, else return 1;
  */
 static int
-flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
+flow_dv_tbl_resource_release(struct mlx5_dev_ctx_shared *sh,
 			     struct mlx5_flow_tbl_resource *tbl)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_flow_tbl_data_entry *tbl_data =
 		container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
 
 	if (!tbl)
 		return 0;
 	return mlx5_hlist_unregister(sh->flow_tbls, &tbl_data->entry);
+}
+
+int
+flow_dv_matcher_match_cb(struct mlx5_cache_list *list __rte_unused,
+			 struct mlx5_cache_entry *entry, void *cb_ctx)
+{
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_matcher *ref = ctx->data;
+	struct mlx5_flow_dv_matcher *cur = container_of(entry, typeof(*cur),
+							entry);
+
+	return cur->crc != ref->crc ||
+	       cur->priority != ref->priority ||
+	       memcmp((const void *)cur->mask.buf,
+		      (const void *)ref->mask.buf, ref->mask.size);
+}
+
+struct mlx5_cache_entry *
+flow_dv_matcher_create_cb(struct mlx5_cache_list *list,
+			  struct mlx5_cache_entry *entry __rte_unused,
+			  void *cb_ctx)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
+	struct mlx5_flow_dv_matcher *ref = ctx->data;
+	struct mlx5_flow_dv_matcher *cache;
+	struct mlx5dv_flow_matcher_attr dv_attr = {
+		.type = IBV_FLOW_ATTR_NORMAL,
+		.match_mask = (void *)&ref->mask,
+	};
+	struct mlx5_flow_tbl_data_entry *tbl = container_of(ref->tbl,
+							    typeof(*tbl), tbl);
+	int ret;
+
+	cache = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*cache), 0, SOCKET_ID_ANY);
+	if (!cache) {
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot create matcher");
+		return NULL;
+	}
+	*cache = *ref;
+	dv_attr.match_criteria_enable =
+		flow_dv_matcher_enable(cache->mask.buf);
+	dv_attr.priority = ref->priority;
+	if (tbl->is_egress)
+		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
+	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->tbl.obj,
+					       &cache->matcher_object);
+	if (ret) {
+		mlx5_free(cache);
+		rte_flow_error_set(ctx->error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot create matcher");
+		return NULL;
+	}
+	return &cache->entry;
 }
 
 /**
@@ -8132,88 +8196,35 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
  */
 static int
 flow_dv_matcher_register(struct rte_eth_dev *dev,
-			 struct mlx5_flow_dv_matcher *matcher,
+			 struct mlx5_flow_dv_matcher *ref,
 			 union mlx5_flow_tbl_key *key,
 			 struct mlx5_flow *dev_flow,
 			 struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_flow_dv_matcher *cache_matcher;
-	struct mlx5dv_flow_matcher_attr dv_attr = {
-		.type = IBV_FLOW_ATTR_NORMAL,
-		.match_mask = (void *)&matcher->mask,
-	};
+	struct mlx5_cache_entry *entry;
+	struct mlx5_flow_dv_matcher *cache;
 	struct mlx5_flow_tbl_resource *tbl;
 	struct mlx5_flow_tbl_data_entry *tbl_data;
-	int ret;
+	struct mlx5_flow_cb_ctx ctx = {
+		.error = error,
+		.data = ref,
+	};
 
 	tbl = flow_dv_tbl_resource_get(dev, key->table_id, key->direction,
 				       key->domain, false, NULL, 0, 0, error);
 	if (!tbl)
 		return -rte_errno;	/* No need to refill the error info */
 	tbl_data = container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
-	/* Lookup from cache. */
-	LIST_FOREACH(cache_matcher, &tbl_data->matchers, next) {
-		if (matcher->crc == cache_matcher->crc &&
-		    matcher->priority == cache_matcher->priority &&
-		    !memcmp((const void *)matcher->mask.buf,
-			    (const void *)cache_matcher->mask.buf,
-			    cache_matcher->mask.size)) {
-			DRV_LOG(DEBUG,
-				"%s group %u priority %hd use %s "
-				"matcher %p: refcnt %d++",
-				key->domain ? "FDB" : "NIC", key->table_id,
-				cache_matcher->priority,
-				key->direction ? "tx" : "rx",
-				(void *)cache_matcher,
-				__atomic_load_n(&cache_matcher->refcnt,
-						__ATOMIC_RELAXED));
-			__atomic_fetch_add(&cache_matcher->refcnt, 1,
-					   __ATOMIC_RELAXED);
-			dev_flow->handle->dvh.matcher = cache_matcher;
-			/* old matcher should not make the table ref++. */
-			flow_dv_tbl_resource_release(dev, tbl);
-			return 0;
-		}
-	}
-	/* Register new matcher. */
-	cache_matcher = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*cache_matcher), 0,
-				    SOCKET_ID_ANY);
-	if (!cache_matcher) {
-		flow_dv_tbl_resource_release(dev, tbl);
+	ref->tbl = tbl;
+	entry = mlx5_cache_register(&tbl_data->matchers, &ctx);
+	if (!entry) {
+		flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "cannot allocate matcher memory");
+					  "cannot allocate ref memory");
 	}
-	*cache_matcher = *matcher;
-	dv_attr.match_criteria_enable =
-		flow_dv_matcher_enable(cache_matcher->mask.buf);
-	dv_attr.priority = matcher->priority;
-	if (key->direction)
-		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
-	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj,
-					       &cache_matcher->matcher_object);
-	if (ret) {
-		mlx5_free(cache_matcher);
-#ifdef HAVE_MLX5DV_DR
-		flow_dv_tbl_resource_release(dev, tbl);
-#endif
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "cannot create matcher");
-	}
-	/* Save the table information */
-	cache_matcher->tbl = tbl;
-	/* only matcher ref++, table ref++ already done above in get API. */
-	__atomic_store_n(&cache_matcher->refcnt, 1, __ATOMIC_RELAXED);
-	LIST_INSERT_HEAD(&tbl_data->matchers, cache_matcher, next);
-	dev_flow->handle->dvh.matcher = cache_matcher;
-	DRV_LOG(DEBUG, "%s group %u priority %hd new %s matcher %p: refcnt %d",
-		key->domain ? "FDB" : "NIC", key->table_id,
-		cache_matcher->priority,
-		key->direction ? "tx" : "rx", (void *)cache_matcher,
-		__atomic_load_n(&cache_matcher->refcnt, __ATOMIC_RELAXED));
+	cache = container_of(entry, typeof(*cache), entry);
+	dev_flow->handle->dvh.matcher = cache;
 	return 0;
 }
 
@@ -8702,7 +8713,7 @@ error:
 		}
 	}
 	if (cache_resource->normal_path_tbl)
-		flow_dv_tbl_resource_release(dev,
+		flow_dv_tbl_resource_release(MLX5_SH(dev),
 				cache_resource->normal_path_tbl);
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_SAMPLE],
 				dev_flow->handle->dvh.rix_sample);
@@ -9605,7 +9616,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 						 "cannot create jump action.");
 			if (flow_dv_jump_tbl_resource_register
 			    (dev, tbl, dev_flow, error)) {
-				flow_dv_tbl_resource_release(dev, tbl);
+				flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
 				return rte_flow_error_set
 						(error, errno,
 						 RTE_FLOW_ERROR_TYPE_ACTION,
@@ -10367,6 +10378,17 @@ error:
 	return -rte_errno;
 }
 
+void
+flow_dv_matcher_remove_cb(struct mlx5_cache_list *list __rte_unused,
+			  struct mlx5_cache_entry *entry)
+{
+	struct mlx5_flow_dv_matcher *cache = container_of(entry, typeof(*cache),
+							  entry);
+
+	claim_zero(mlx5_flow_os_destroy_flow_matcher(cache->matcher_object));
+	mlx5_free(cache);
+}
+
 /**
  * Release the flow matcher.
  *
@@ -10383,23 +10405,14 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 			struct mlx5_flow_handle *handle)
 {
 	struct mlx5_flow_dv_matcher *matcher = handle->dvh.matcher;
+	struct mlx5_flow_tbl_data_entry *tbl = container_of(matcher->tbl,
+							    typeof(*tbl), tbl);
+	int ret;
 
 	MLX5_ASSERT(matcher->matcher_object);
-	DRV_LOG(DEBUG, "port %u matcher %p: refcnt %d--",
-		dev->data->port_id, (void *)matcher,
-		__atomic_load_n(&matcher->refcnt, __ATOMIC_RELAXED));
-	if (__atomic_sub_fetch(&matcher->refcnt, 1, __ATOMIC_RELAXED) == 0) {
-		claim_zero(mlx5_flow_os_destroy_flow_matcher
-			   (matcher->matcher_object));
-		LIST_REMOVE(matcher, next);
-		/* table ref-- in release interface. */
-		flow_dv_tbl_resource_release(dev, matcher->tbl);
-		mlx5_free(matcher);
-		DRV_LOG(DEBUG, "port %u matcher %p: removed",
-			dev->data->port_id, (void *)matcher);
-		return 0;
-	}
-	return 1;
+	ret = mlx5_cache_unregister(&tbl->matchers, &matcher->entry);
+	flow_dv_tbl_resource_release(MLX5_SH(dev), &tbl->tbl);
+	return ret;
 }
 
 /**
@@ -10471,7 +10484,7 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 			     handle->rix_jump);
 	if (!tbl_data)
 		return 0;
-	return flow_dv_tbl_resource_release(dev, &tbl_data->tbl);
+	return flow_dv_tbl_resource_release(MLX5_SH(dev), &tbl_data->tbl);
 }
 
 void
@@ -10661,7 +10674,7 @@ flow_dv_sample_resource_release(struct rte_eth_dev *dev,
 				  (cache_resource->default_miss));
 		}
 		if (cache_resource->normal_path_tbl)
-			flow_dv_tbl_resource_release(dev,
+			flow_dv_tbl_resource_release(MLX5_SH(dev),
 				cache_resource->normal_path_tbl);
 	}
 	if (cache_resource->sample_idx.rix_hrxq &&
@@ -11454,9 +11467,9 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 		claim_zero(mlx5_flow_os_destroy_flow_matcher
 			   (mtd->egress.any_matcher));
 	if (mtd->egress.tbl)
-		flow_dv_tbl_resource_release(dev, mtd->egress.tbl);
+		flow_dv_tbl_resource_release(MLX5_SH(dev), mtd->egress.tbl);
 	if (mtd->egress.sfx_tbl)
-		flow_dv_tbl_resource_release(dev, mtd->egress.sfx_tbl);
+		flow_dv_tbl_resource_release(MLX5_SH(dev), mtd->egress.sfx_tbl);
 	if (mtd->ingress.color_matcher)
 		claim_zero(mlx5_flow_os_destroy_flow_matcher
 			   (mtd->ingress.color_matcher));
@@ -11464,9 +11477,10 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 		claim_zero(mlx5_flow_os_destroy_flow_matcher
 			   (mtd->ingress.any_matcher));
 	if (mtd->ingress.tbl)
-		flow_dv_tbl_resource_release(dev, mtd->ingress.tbl);
+		flow_dv_tbl_resource_release(MLX5_SH(dev), mtd->ingress.tbl);
 	if (mtd->ingress.sfx_tbl)
-		flow_dv_tbl_resource_release(dev, mtd->ingress.sfx_tbl);
+		flow_dv_tbl_resource_release(MLX5_SH(dev),
+					     mtd->ingress.sfx_tbl);
 	if (mtd->transfer.color_matcher)
 		claim_zero(mlx5_flow_os_destroy_flow_matcher
 			   (mtd->transfer.color_matcher));
@@ -11474,9 +11488,10 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 		claim_zero(mlx5_flow_os_destroy_flow_matcher
 			   (mtd->transfer.any_matcher));
 	if (mtd->transfer.tbl)
-		flow_dv_tbl_resource_release(dev, mtd->transfer.tbl);
+		flow_dv_tbl_resource_release(MLX5_SH(dev), mtd->transfer.tbl);
 	if (mtd->transfer.sfx_tbl)
-		flow_dv_tbl_resource_release(dev, mtd->transfer.sfx_tbl);
+		flow_dv_tbl_resource_release(MLX5_SH(dev),
+					     mtd->transfer.sfx_tbl);
 	if (mtd->drop_actn)
 		claim_zero(mlx5_flow_os_destroy_flow_action(mtd->drop_actn));
 	mlx5_free(mtd);
@@ -11920,9 +11935,9 @@ err:
 	if (matcher)
 		claim_zero(mlx5_flow_os_destroy_flow_matcher(matcher));
 	if (tbl)
-		flow_dv_tbl_resource_release(dev, tbl);
+		flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
 	if (dest_tbl)
-		flow_dv_tbl_resource_release(dev, dest_tbl);
+		flow_dv_tbl_resource_release(MLX5_SH(dev), dest_tbl);
 	if (dcs)
 		claim_zero(mlx5_devx_cmd_destroy(dcs));
 	return ret;

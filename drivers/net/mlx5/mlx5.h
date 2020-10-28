@@ -32,6 +32,9 @@
 #include "mlx5_os.h"
 #include "mlx5_autoconf.h"
 
+
+#define MLX5_SH(dev) (((struct mlx5_priv *)(dev)->data->dev_private)->sh)
+
 enum mlx5_ipool_index {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
