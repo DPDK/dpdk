@@ -72,12 +72,12 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 		},
 	};
 	struct ibv_flow *flow;
-	struct mlx5_hrxq *drop = mlx5_drop_action_create(dev);
+	struct mlx5_hrxq *drop = priv->drop_queue.hrxq;
 	uint16_t vprio[] = { 8, 16 };
 	int i;
 	int priority = 0;
 
-	if (!drop) {
+	if (!drop->qp) {
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
@@ -89,7 +89,6 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 		claim_zero(mlx5_glue->destroy_flow(flow));
 		priority = vprio[i];
 	}
-	mlx5_drop_action_destroy(dev);
 	switch (priority) {
 	case 8:
 		priority = RTE_DIM(priority_map_3);
@@ -1886,15 +1885,10 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			handle->drv_flow = NULL;
 		}
 		/* hrxq is union, don't touch it only the flag is set. */
-		if (handle->rix_hrxq) {
-			if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
-				mlx5_drop_action_destroy(dev);
-				handle->rix_hrxq = 0;
-			} else if (handle->fate_action ==
-				   MLX5_FLOW_FATE_QUEUE) {
-				mlx5_hrxq_release(dev, handle->rix_hrxq);
-				handle->rix_hrxq = 0;
-			}
+		if (handle->rix_hrxq &&
+		    handle->fate_action == MLX5_FLOW_FATE_QUEUE) {
+			mlx5_hrxq_release(dev, handle->rix_hrxq);
+			handle->rix_hrxq = 0;
 		}
 		if (handle->vf_vlan.tag && handle->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &handle->vf_vlan);
@@ -1966,14 +1960,8 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		dev_flow = &wks->flows[idx];
 		handle = dev_flow->handle;
 		if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
-			hrxq = mlx5_drop_action_create(dev);
-			if (!hrxq) {
-				rte_flow_error_set
-					(error, errno,
-					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					 "cannot get drop hash queue");
-				goto error;
-			}
+			MLX5_ASSERT(priv->drop_queue.hrxq);
+			hrxq = priv->drop_queue.hrxq;
 		} else {
 			uint32_t hrxq_idx;
 			struct mlx5_flow_rss_desc *rss_desc =
@@ -2033,15 +2021,10 @@ error:
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       dev_handles, handle, next) {
 		/* hrxq is union, don't touch it only the flag is set. */
-		if (handle->rix_hrxq) {
-			if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
-				mlx5_drop_action_destroy(dev);
-				handle->rix_hrxq = 0;
-			} else if (handle->fate_action ==
-				   MLX5_FLOW_FATE_QUEUE) {
-				mlx5_hrxq_release(dev, handle->rix_hrxq);
-				handle->rix_hrxq = 0;
-			}
+		if (handle->rix_hrxq &&
+		    handle->fate_action == MLX5_FLOW_FATE_QUEUE) {
+			mlx5_hrxq_release(dev, handle->rix_hrxq);
+			handle->rix_hrxq = 0;
 		}
 		if (handle->vf_vlan.tag && handle->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &handle->vf_vlan);

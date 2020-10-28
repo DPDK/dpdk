@@ -1308,6 +1308,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->txqs = NULL;
 	}
 	mlx5_proc_priv_uninit(dev);
+	if (priv->drop_queue.hrxq)
+		mlx5_drop_action_destroy(dev);
 	if (priv->mreg_cp_tbl)
 		mlx5_hlist_destroy(priv->mreg_cp_tbl, NULL, NULL);
 	mlx5_mprq_free_mp(dev);

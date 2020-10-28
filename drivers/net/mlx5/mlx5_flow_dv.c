@@ -10319,24 +10319,9 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			if (dv->transfer) {
 				dv->actions[n++] = priv->sh->esw_drop_action;
 			} else {
-				struct mlx5_hrxq *drop_hrxq;
-				drop_hrxq = mlx5_drop_action_create(dev);
-				if (!drop_hrxq) {
-					rte_flow_error_set
-						(error, errno,
-						 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-						 NULL,
-						 "cannot get drop hash queue");
-					goto error;
-				}
-				/*
-				 * Drop queues will be released by the specify
-				 * mlx5_drop_action_destroy() function. Assign
-				 * the special index to hrxq to mark the queue
-				 * has been allocated.
-				 */
-				dh->rix_hrxq = UINT32_MAX;
-				dv->actions[n++] = drop_hrxq->action;
+				MLX5_ASSERT(priv->drop_queue.hrxq);
+				dv->actions[n++] =
+						priv->drop_queue.hrxq->action;
 			}
 		} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE &&
 			   !dv_h->rix_sample && !dv_h->rix_dest_array) {
@@ -10390,14 +10375,9 @@ error:
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dh, next) {
 		/* hrxq is union, don't clear it if the flag is not set. */
-		if (dh->rix_hrxq) {
-			if (dh->fate_action == MLX5_FLOW_FATE_DROP) {
-				mlx5_drop_action_destroy(dev);
-				dh->rix_hrxq = 0;
-			} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE) {
-				mlx5_hrxq_release(dev, dh->rix_hrxq);
-				dh->rix_hrxq = 0;
-			}
+		if (dh->fate_action == MLX5_FLOW_FATE_QUEUE && dh->rix_hrxq) {
+			mlx5_hrxq_release(dev, dh->rix_hrxq);
+			dh->rix_hrxq = 0;
 		}
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);
@@ -10643,9 +10623,6 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 	if (!handle->rix_fate)
 		return;
 	switch (handle->fate_action) {
-	case MLX5_FLOW_FATE_DROP:
-		mlx5_drop_action_destroy(dev);
-		break;
 	case MLX5_FLOW_FATE_QUEUE:
 		mlx5_hrxq_release(dev, handle->rix_hrxq);
 		break;
@@ -10825,8 +10802,7 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			claim_zero(mlx5_flow_os_destroy_flow(dh->drv_flow));
 			dh->drv_flow = NULL;
 		}
-		if (dh->fate_action == MLX5_FLOW_FATE_DROP ||
-		    dh->fate_action == MLX5_FLOW_FATE_QUEUE)
+		if (dh->fate_action == MLX5_FLOW_FATE_QUEUE)
 			flow_dv_fate_resource_release(dev, dh);
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);

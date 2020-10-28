@@ -1424,6 +1424,9 @@ err_secondary:
 	} else {
 		priv->obj_ops = ibv_obj_ops;
 	}
+	priv->drop_queue.hrxq = mlx5_drop_action_create(eth_dev);
+	if (!priv->drop_queue.hrxq)
+		goto error;
 	/* Supported Verbs flow priority number detection. */
 	err = mlx5_flow_discover_priorities(eth_dev);
 	if (err < 0) {
@@ -1489,6 +1492,8 @@ error:
 			close(priv->nl_socket_rdma);
 		if (priv->vmwa_context)
 			mlx5_vlan_vmwa_exit(priv->vmwa_context);
+		if (eth_dev && priv->drop_queue.hrxq)
+			mlx5_drop_action_destroy(eth_dev);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		mlx5_free(priv);
