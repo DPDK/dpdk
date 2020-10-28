@@ -8601,6 +8601,42 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
 }
 
 /**
+ * Release sample sub action resource.
+ *
+ * @param[in, out] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] act_res
+ *   Pointer to sample sub action resource.
+ */
+static void
+flow_dv_sample_sub_actions_release(struct rte_eth_dev *dev,
+				   struct mlx5_flow_sub_actions_idx *act_res)
+{
+	if (act_res->rix_hrxq) {
+		mlx5_hrxq_release(dev, act_res->rix_hrxq);
+		act_res->rix_hrxq = 0;
+	}
+	if (act_res->rix_encap_decap) {
+		flow_dv_encap_decap_resource_release(dev,
+						     act_res->rix_encap_decap);
+		act_res->rix_encap_decap = 0;
+	}
+	if (act_res->rix_port_id_action) {
+		flow_dv_port_id_action_resource_release(dev,
+						act_res->rix_port_id_action);
+		act_res->rix_port_id_action = 0;
+	}
+	if (act_res->rix_tag) {
+		flow_dv_tag_release(dev, act_res->rix_tag);
+		act_res->rix_tag = 0;
+	}
+	if (act_res->cnt) {
+		flow_dv_counter_release(dev, act_res->cnt);
+		act_res->cnt = 0;
+	}
+}
+
+/**
  * Find existing sample resource or create and register a new one.
  *
  * @param[in, out] dev
@@ -8653,6 +8689,12 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 					   __ATOMIC_RELAXED);
 			dev_flow->handle->dvh.rix_sample = idx;
 			dev_flow->dv.sample_res = cache_resource;
+			/*
+			 * Existing sample action should release the prepared
+			 * sub-actions reference counter.
+			 */
+			flow_dv_sample_sub_actions_release(dev,
+							&resource->sample_idx);
 			return 0;
 		}
 	}
@@ -8721,25 +8763,13 @@ flow_dv_sample_resource_register(struct rte_eth_dev *dev,
 		__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED));
 	return 0;
 error:
-	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
-		if (cache_resource->default_miss)
-			claim_zero(mlx5_glue->destroy_flow_action
+	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB &&
+	    cache_resource->default_miss)
+		claim_zero(mlx5_glue->destroy_flow_action
 				(cache_resource->default_miss));
-	} else {
-		if (cache_resource->sample_idx.rix_hrxq &&
-		    !mlx5_hrxq_release(dev,
-				cache_resource->sample_idx.rix_hrxq))
-			cache_resource->sample_idx.rix_hrxq = 0;
-		if (cache_resource->sample_idx.rix_tag &&
-		    !flow_dv_tag_release(dev,
-				cache_resource->sample_idx.rix_tag))
-			cache_resource->sample_idx.rix_tag = 0;
-		if (cache_resource->sample_idx.cnt) {
-			flow_dv_counter_release(dev,
-				cache_resource->sample_idx.cnt);
-			cache_resource->sample_idx.cnt = 0;
-		}
-	}
+	else
+		flow_dv_sample_sub_actions_release(dev,
+						   &cache_resource->sample_idx);
 	if (cache_resource->normal_path_tbl)
 		flow_dv_tbl_resource_release(MLX5_SH(dev),
 				cache_resource->normal_path_tbl);
@@ -8797,6 +8827,13 @@ flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
 					   __ATOMIC_RELAXED);
 			dev_flow->handle->dvh.rix_dest_array = idx;
 			dev_flow->dv.dest_array_res = cache_resource;
+			/*
+			 * Existing sample action should release the prepared
+			 * sub-actions reference counter.
+			 */
+			for (idx = 0; idx < resource->num_of_dest; idx++)
+				flow_dv_sample_sub_actions_release(dev,
+						&resource->sample_idx[idx]);
 			return 0;
 		}
 	}
@@ -10693,21 +10730,8 @@ flow_dv_sample_resource_release(struct rte_eth_dev *dev,
 		if (cache_resource->normal_path_tbl)
 			flow_dv_tbl_resource_release(MLX5_SH(dev),
 				cache_resource->normal_path_tbl);
-	}
-	if (cache_resource->sample_idx.rix_hrxq &&
-		!mlx5_hrxq_release(dev,
-			cache_resource->sample_idx.rix_hrxq))
-		cache_resource->sample_idx.rix_hrxq = 0;
-	if (cache_resource->sample_idx.rix_tag &&
-		!flow_dv_tag_release(dev,
-			cache_resource->sample_idx.rix_tag))
-		cache_resource->sample_idx.rix_tag = 0;
-	if (cache_resource->sample_idx.cnt) {
-		flow_dv_counter_release(dev,
-			cache_resource->sample_idx.cnt);
-		cache_resource->sample_idx.cnt = 0;
-	}
-	if (!__atomic_load_n(&cache_resource->refcnt, __ATOMIC_RELAXED)) {
+		flow_dv_sample_sub_actions_release(dev,
+					&cache_resource->sample_idx);
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_SAMPLE],
 			     &priv->sh->sample_action_list, idx,
 			     cache_resource, next);
@@ -10736,7 +10760,6 @@ flow_dv_dest_array_resource_release(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_dest_array_resource *cache_resource;
-	struct mlx5_flow_sub_actions_idx *mdest_act_res;
 	uint32_t idx = handle->dvh.rix_dest_array;
 	uint32_t i = 0;
 
@@ -10753,29 +10776,9 @@ flow_dv_dest_array_resource_release(struct rte_eth_dev *dev,
 		if (cache_resource->action)
 			claim_zero(mlx5_glue->destroy_flow_action
 						(cache_resource->action));
-		for (; i < cache_resource->num_of_dest; i++) {
-			mdest_act_res = &cache_resource->sample_idx[i];
-			if (mdest_act_res->rix_hrxq) {
-				mlx5_hrxq_release(dev,
-					mdest_act_res->rix_hrxq);
-				mdest_act_res->rix_hrxq = 0;
-			}
-			if (mdest_act_res->rix_encap_decap) {
-				flow_dv_encap_decap_resource_release(dev,
-					mdest_act_res->rix_encap_decap);
-				mdest_act_res->rix_encap_decap = 0;
-			}
-			if (mdest_act_res->rix_port_id_action) {
-				flow_dv_port_id_action_resource_release(dev,
-					mdest_act_res->rix_port_id_action);
-				mdest_act_res->rix_port_id_action = 0;
-			}
-			if (mdest_act_res->rix_tag) {
-				flow_dv_tag_release(dev,
-					mdest_act_res->rix_tag);
-				mdest_act_res->rix_tag = 0;
-			}
-		}
+		for (; i < cache_resource->num_of_dest; i++)
+			flow_dv_sample_sub_actions_release(dev,
+					&cache_resource->sample_idx[i]);
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_DEST_ARRAY],
 			     &priv->sh->dest_array_list, idx,
 			     cache_resource, next);
