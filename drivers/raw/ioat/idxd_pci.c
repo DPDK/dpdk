@@ -44,10 +44,16 @@ idxd_pci_dev_command(struct idxd_rawdev *idxd, enum rte_idxd_cmds command)
 	return err_code & CMDSTATUS_ERR_MASK;
 }
 
+static uint32_t *
+idxd_get_wq_cfg(struct idxd_pci_common *pci, uint8_t wq_idx)
+{
+	return RTE_PTR_ADD(pci->wq_regs_base, wq_idx << (5 + pci->wq_cfg_sz));
+}
+
 static int
 idxd_is_wq_enabled(struct idxd_rawdev *idxd)
 {
-	uint32_t state = idxd->u.pci->wq_regs[idxd->qid].wqcfg[WQ_STATE_IDX];
+	uint32_t state = idxd_get_wq_cfg(idxd->u.pci, idxd->qid)[WQ_STATE_IDX];
 	return ((state >> WQ_STATE_SHIFT) & WQ_STATE_MASK) == 0x1;
 }
 
@@ -137,8 +143,9 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_rawdev *idxd)
 	grp_offset = (uint16_t)pci->regs->offsets[0];
 	pci->grp_regs = RTE_PTR_ADD(pci->regs, grp_offset * 0x100);
 	wq_offset = (uint16_t)(pci->regs->offsets[0] >> 16);
-	pci->wq_regs = RTE_PTR_ADD(pci->regs, wq_offset * 0x100);
+	pci->wq_regs_base = RTE_PTR_ADD(pci->regs, wq_offset * 0x100);
 	pci->portals = dev->mem_resource[2].addr;
+	pci->wq_cfg_sz = (pci->regs->wqcap >> 24) & 0x0F;
 
 	/* sanity check device status */
 	if (pci->regs->gensts & GENSTS_DEV_STATE_MASK) {
@@ -169,7 +176,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_rawdev *idxd)
 		pci->grp_regs[i].grpwqcfg[0] = 0;
 	}
 	for (i = 0; i < nb_wqs; i++)
-		pci->wq_regs[i].wqcfg[0] = 0;
+		idxd_get_wq_cfg(pci, i)[0] = 0;
 
 	/* put each engine into a separate group to avoid reordering */
 	if (nb_groups > nb_engines)
@@ -194,10 +201,10 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_rawdev *idxd)
 				i, i % nb_groups);
 		pci->grp_regs[i % nb_groups].grpwqcfg[0] |= (1ULL << i);
 		/* now configure it, in terms of size, max batch, mode */
-		pci->wq_regs[i].wqcfg[WQ_SIZE_IDX] = wq_size;
-		pci->wq_regs[i].wqcfg[WQ_MODE_IDX] = (1 << WQ_PRIORITY_SHIFT) |
+		idxd_get_wq_cfg(pci, i)[WQ_SIZE_IDX] = wq_size;
+		idxd_get_wq_cfg(pci, i)[WQ_MODE_IDX] = (1 << WQ_PRIORITY_SHIFT) |
 				WQ_MODE_DEDICATED;
-		pci->wq_regs[i].wqcfg[WQ_SIZES_IDX] = lg2_max_copy_size |
+		idxd_get_wq_cfg(pci, i)[WQ_SIZES_IDX] = lg2_max_copy_size |
 				(lg2_max_batch << WQ_BATCH_SZ_SHIFT);
 	}
 

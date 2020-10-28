@@ -302,10 +302,7 @@ struct rte_idxd_bar0 {
 	uint64_t __rte_aligned(0x20) swerror[4]; /* offset 0xC0 */
 };
 
-struct rte_idxd_wqcfg {
-	uint32_t wqcfg[8] __rte_aligned(32); /* 32-byte register */
-};
-
+/* workqueue config is provided by array of uint32_t. */
 #define WQ_SIZE_IDX      0 /* size is in first 32-bit value */
 #define WQ_THRESHOLD_IDX 1 /* WQ threshold second 32-bits */
 #define WQ_MODE_IDX      2 /* WQ mode and other flags */

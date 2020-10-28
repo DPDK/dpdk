@@ -30,8 +30,10 @@ extern int ioat_pmd_logtype;
 
 struct idxd_pci_common {
 	rte_spinlock_t lk;
+
+	uint8_t wq_cfg_sz;
 	volatile struct rte_idxd_bar0 *regs;
-	volatile struct rte_idxd_wqcfg *wq_regs;
+	volatile uint32_t *wq_regs_base;
 	volatile struct rte_idxd_grpcfg *grp_regs;
 	volatile void *portals;
 };
