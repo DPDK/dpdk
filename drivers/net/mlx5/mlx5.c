@@ -1034,7 +1034,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 
 	if (!sh->flow_tbls)
 		return;
-	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
+	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, NULL);
 	if (pos) {
 		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
 					entry);
@@ -1043,7 +1043,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 		mlx5_free(tbl_data);
 	}
 	table_key.direction = 1;
-	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
+	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, NULL);
 	if (pos) {
 		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
 					entry);
@@ -1053,7 +1053,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 	}
 	table_key.direction = 0;
 	table_key.domain = 1;
-	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
+	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, NULL);
 	if (pos) {
 		tbl_data = container_of(pos, struct mlx5_flow_tbl_data_entry,
 					entry);
@@ -1061,7 +1061,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 		mlx5_hlist_remove(sh->flow_tbls, pos);
 		mlx5_free(tbl_data);
 	}
-	mlx5_hlist_destroy(sh->flow_tbls, NULL, NULL);
+	mlx5_hlist_destroy(sh->flow_tbls);
 }
 
 /**
@@ -1083,7 +1083,8 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 
 	MLX5_ASSERT(sh);
 	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
-	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE);
+	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,
+					  0, 0, NULL, NULL, NULL);
 	if (!sh->flow_tbls) {
 		DRV_LOG(ERR, "flow tables with hash creation failed.");
 		err = ENOMEM;
@@ -1311,7 +1312,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->drop_queue.hrxq)
 		mlx5_drop_action_destroy(dev);
 	if (priv->mreg_cp_tbl)
-		mlx5_hlist_destroy(priv->mreg_cp_tbl, NULL, NULL);
+		mlx5_hlist_destroy(priv->mreg_cp_tbl);
 	mlx5_mprq_free_mp(dev);
 	mlx5_os_free_shared_dr(priv);
 	if (priv->rss_conf.rss_key != NULL)

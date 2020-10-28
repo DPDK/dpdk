@@ -7961,7 +7961,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		}
 	};
 	struct mlx5_hlist_entry *pos = mlx5_hlist_lookup(sh->flow_tbls,
-							 table_key.v64);
+							 table_key.v64, NULL);
 	struct mlx5_flow_tbl_data_entry *tbl_data;
 	uint32_t idx = 0;
 	int ret;
@@ -8022,7 +8022,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		}
 	}
 	pos->key = table_key.v64;
-	ret = mlx5_hlist_insert(sh->flow_tbls, pos);
+	ret = !mlx5_hlist_insert(sh->flow_tbls, pos);
 	if (ret < 0) {
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -8079,7 +8079,8 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 			tunnel_grp_hash = tbl_data->tunnel ?
 						tbl_data->tunnel->groups :
 						thub->groups;
-			he = mlx5_hlist_lookup(tunnel_grp_hash, tunnel_key.val);
+			he = mlx5_hlist_lookup(tunnel_grp_hash,
+					       tunnel_key.val, NULL);
 			if (he) {
 				struct tunnel_tbl_entry *tte;
 				tte = container_of(he, typeof(*tte), hash);
@@ -8238,7 +8239,7 @@ flow_dv_tag_resource_register
 	int ret;
 
 	/* Lookup a matching resource from cache. */
-	entry = mlx5_hlist_lookup(sh->tag_table, (uint64_t)tag_be24);
+	entry = mlx5_hlist_lookup(sh->tag_table, (uint64_t)tag_be24, NULL);
 	if (entry) {
 		cache_resource = container_of
 			(entry, struct mlx5_flow_dv_tag_resource, entry);

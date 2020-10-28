@@ -236,14 +236,16 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		return err;
 	/* Create tags hash list table. */
 	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
-	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE);
+	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE, 0,
+					  0, NULL, NULL, NULL);
 	if (!sh->tag_table) {
 		DRV_LOG(ERR, "tags with hash creation failed.");
 		err = ENOMEM;
 		goto error;
 	}
 	snprintf(s, sizeof(s), "%s_hdr_modify", sh->ibdev_name);
-	sh->modify_cmds = mlx5_hlist_create(s, MLX5_FLOW_HDR_MODIFY_HTABLE_SZ);
+	sh->modify_cmds = mlx5_hlist_create(s, MLX5_FLOW_HDR_MODIFY_HTABLE_SZ,
+					    0, 0, NULL, NULL, NULL);
 	if (!sh->modify_cmds) {
 		DRV_LOG(ERR, "hdr modify hash creation failed");
 		err = ENOMEM;
@@ -251,7 +253,8 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	}
 	snprintf(s, sizeof(s), "%s_encaps_decaps", sh->ibdev_name);
 	sh->encaps_decaps = mlx5_hlist_create(s,
-					      MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ);
+					      MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ,
+					      0, 0, NULL, NULL, NULL);
 	if (!sh->encaps_decaps) {
 		DRV_LOG(ERR, "encap decap hash creation failed");
 		err = ENOMEM;
@@ -333,16 +336,16 @@ error:
 		sh->pop_vlan_action = NULL;
 	}
 	if (sh->encaps_decaps) {
-		mlx5_hlist_destroy(sh->encaps_decaps, NULL, NULL);
+		mlx5_hlist_destroy(sh->encaps_decaps);
 		sh->encaps_decaps = NULL;
 	}
 	if (sh->modify_cmds) {
-		mlx5_hlist_destroy(sh->modify_cmds, NULL, NULL);
+		mlx5_hlist_destroy(sh->modify_cmds);
 		sh->modify_cmds = NULL;
 	}
 	if (sh->tag_table) {
 		/* tags should be destroyed with flow before. */
-		mlx5_hlist_destroy(sh->tag_table, NULL, NULL);
+		mlx5_hlist_destroy(sh->tag_table);
 		sh->tag_table = NULL;
 	}
 	if (sh->tunnel_hub) {
@@ -396,16 +399,16 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 		mlx5_glue->destroy_flow_action
 				(sh->default_miss_action);
 	if (sh->encaps_decaps) {
-		mlx5_hlist_destroy(sh->encaps_decaps, NULL, NULL);
+		mlx5_hlist_destroy(sh->encaps_decaps);
 		sh->encaps_decaps = NULL;
 	}
 	if (sh->modify_cmds) {
-		mlx5_hlist_destroy(sh->modify_cmds, NULL, NULL);
+		mlx5_hlist_destroy(sh->modify_cmds);
 		sh->modify_cmds = NULL;
 	}
 	if (sh->tag_table) {
 		/* tags should be destroyed with flow before. */
-		mlx5_hlist_destroy(sh->tag_table, NULL, NULL);
+		mlx5_hlist_destroy(sh->tag_table);
 		sh->tag_table = NULL;
 	}
 	if (sh->tunnel_hub) {
@@ -1472,7 +1475,9 @@ err_secondary:
 	    mlx5_flow_ext_mreg_supported(eth_dev) &&
 	    priv->sh->dv_regc0_mask) {
 		priv->mreg_cp_tbl = mlx5_hlist_create(MLX5_FLOW_MREG_HNAME,
-						      MLX5_FLOW_MREG_HTABLE_SZ);
+						      MLX5_FLOW_MREG_HTABLE_SZ,
+						      0, 0,
+						      NULL, NULL, NULL);
 		if (!priv->mreg_cp_tbl) {
 			err = ENOMEM;
 			goto error;
@@ -1483,7 +1488,7 @@ err_secondary:
 error:
 	if (priv) {
 		if (priv->mreg_cp_tbl)
-			mlx5_hlist_destroy(priv->mreg_cp_tbl, NULL, NULL);
+			mlx5_hlist_destroy(priv->mreg_cp_tbl);
 		if (priv->sh)
 			mlx5_os_free_shared_dr(priv);
 		if (priv->nl_socket_route >= 0)

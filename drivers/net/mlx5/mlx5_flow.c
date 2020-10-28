@@ -3747,7 +3747,7 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 	cp_mreg.src = ret;
 	/* Check if already registered. */
 	MLX5_ASSERT(priv->mreg_cp_tbl);
-	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl, mark_id);
+	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl, mark_id, NULL);
 	if (mcp_res) {
 		/* For non-default rule. */
 		if (mark_id != MLX5_DEFAULT_COPY_ID)
@@ -3824,8 +3824,7 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 		goto error;
 	mcp_res->refcnt++;
 	mcp_res->hlist_ent.key = mark_id;
-	ret = mlx5_hlist_insert(priv->mreg_cp_tbl,
-				&mcp_res->hlist_ent);
+	ret = !mlx5_hlist_insert(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
 	MLX5_ASSERT(!ret);
 	if (ret)
 		goto error;
@@ -3975,7 +3974,7 @@ flow_mreg_del_default_copy_action(struct rte_eth_dev *dev)
 	if (!priv->mreg_cp_tbl)
 		return;
 	mcp_res = (void *)mlx5_hlist_lookup(priv->mreg_cp_tbl,
-					    MLX5_DEFAULT_COPY_ID);
+					    MLX5_DEFAULT_COPY_ID, NULL);
 	if (!mcp_res)
 		return;
 	MLX5_ASSERT(mcp_res->rix_flow);
@@ -7562,7 +7561,7 @@ tunnel_mark_decode(struct rte_eth_dev *dev, uint32_t mark)
 			.direction = 0,
 		}
 	};
-	he = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
+	he = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64, NULL);
 	return he ?
 	       container_of(he, struct mlx5_flow_tbl_data_entry, entry) : NULL;
 }
@@ -7584,7 +7583,7 @@ tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 	struct mlx5_hlist *group_hash;
 
 	group_hash = tunnel ? tunnel->groups : thub->groups;
-	he = mlx5_hlist_lookup(group_hash, key.val);
+	he = mlx5_hlist_lookup(group_hash, key.val, NULL);
 	if (!he) {
 		tte = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO,
 				  sizeof(*tte), 0,
@@ -8091,7 +8090,7 @@ mlx5_flow_tunnel_free(struct rte_eth_dev *dev,
 	LIST_REMOVE(tunnel, chain);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TUNNEL_ID],
 			tunnel->tunnel_id);
-	mlx5_hlist_destroy(tunnel->groups, NULL, NULL);
+	mlx5_hlist_destroy(tunnel->groups);
 	mlx5_free(tunnel);
 }
 
@@ -8139,7 +8138,8 @@ mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
 		return NULL;
 	}
-	tunnel->groups = mlx5_hlist_create("tunnel groups", 1024);
+	tunnel->groups = mlx5_hlist_create("tunnel groups", 1024, 0, 0,
+					   NULL, NULL, NULL);
 	if (!tunnel->groups) {
 		mlx5_ipool_free(priv->sh->ipool
 				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
@@ -8204,7 +8204,7 @@ void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id)
 		return;
 	if (!LIST_EMPTY(&thub->tunnels))
 		DRV_LOG(WARNING, "port %u tunnels present\n", port_id);
-	mlx5_hlist_destroy(thub->groups, NULL, NULL);
+	mlx5_hlist_destroy(thub->groups);
 	mlx5_free(thub);
 }
 
@@ -8218,7 +8218,8 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 	if (!thub)
 		return -ENOMEM;
 	LIST_INIT(&thub->tunnels);
-	thub->groups = mlx5_hlist_create("flow groups", MLX5_MAX_TABLES);
+	thub->groups = mlx5_hlist_create("flow groups", MLX5_MAX_TABLES, 0,
+					 0, NULL, NULL, NULL);
 	if (!thub->groups) {
 		err = -rte_errno;
 		goto err;
@@ -8229,7 +8230,7 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 
 err:
 	if (thub->groups)
-		mlx5_hlist_destroy(thub->groups, NULL, NULL);
+		mlx5_hlist_destroy(thub->groups);
 	if (thub)
 		mlx5_free(thub);
 	return err;
