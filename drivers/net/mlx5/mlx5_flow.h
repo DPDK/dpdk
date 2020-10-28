@@ -945,6 +945,7 @@ struct mlx5_flow_tunnel {
 /** PMD tunnel related context */
 struct mlx5_flow_tunnel_hub {
 	LIST_HEAD(, mlx5_flow_tunnel) tunnels;
+	rte_spinlock_t sl;			/* Tunnel list spinlock. */
 	struct mlx5_hlist *groups;		/** non tunnel groups */
 };
 

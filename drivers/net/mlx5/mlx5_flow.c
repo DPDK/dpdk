@@ -669,10 +669,14 @@ mlx5_flow_item_release(struct rte_eth_dev *dev,
 	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
 	struct mlx5_flow_tunnel *tun;
 
+	rte_spinlock_lock(&thub->sl);
 	LIST_FOREACH(tun, &thub->tunnels, chain) {
-		if (&tun->item == pmd_items)
+		if (&tun->item == pmd_items) {
+			LIST_REMOVE(tun, chain);
 			break;
+		}
 	}
+	rte_spinlock_unlock(&thub->sl);
 	if (!tun || num_items != 1)
 		return rte_flow_error_set(err, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -690,10 +694,14 @@ mlx5_flow_action_release(struct rte_eth_dev *dev,
 	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
 	struct mlx5_flow_tunnel *tun;
 
+	rte_spinlock_lock(&thub->sl);
 	LIST_FOREACH(tun, &thub->tunnels, chain) {
-		if (&tun->action == pmd_actions)
+		if (&tun->action == pmd_actions) {
+			LIST_REMOVE(tun, chain);
 			break;
+		}
 	}
+	rte_spinlock_unlock(&thub->sl);
 	if (!tun || num_actions != 1)
 		return rte_flow_error_set(err, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -5880,8 +5888,12 @@ flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], flow_idx);
 	if (flow->tunnel) {
 		struct mlx5_flow_tunnel *tunnel;
+
+		rte_spinlock_lock(&mlx5_tunnel_hub(dev)->sl);
 		tunnel = mlx5_find_tunnel_id(dev, flow->tunnel_id);
 		RTE_VERIFY(tunnel);
+		LIST_REMOVE(tunnel, chain);
+		rte_spinlock_unlock(&mlx5_tunnel_hub(dev)->sl);
 		if (!__atomic_sub_fetch(&tunnel->refctn, 1, __ATOMIC_RELAXED))
 			mlx5_flow_tunnel_free(dev, tunnel);
 	}
@@ -7940,7 +7952,6 @@ mlx5_flow_tunnel_free(struct rte_eth_dev *dev,
 	DRV_LOG(DEBUG, "port %u release pmd tunnel id=0x%x",
 		dev->data->port_id, tunnel->tunnel_id);
 	RTE_VERIFY(!__atomic_load_n(&tunnel->refctn, __ATOMIC_RELAXED));
-	LIST_REMOVE(tunnel, chain);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TUNNEL_ID],
 			tunnel->tunnel_id);
 	mlx5_hlist_destroy(tunnel->groups);
@@ -8029,6 +8040,7 @@ mlx5_get_flow_tunnel(struct rte_eth_dev *dev,
 	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
 	struct mlx5_flow_tunnel *tun;
 
+	rte_spinlock_lock(&thub->sl);
 	LIST_FOREACH(tun, &thub->tunnels, chain) {
 		if (!memcmp(app_tunnel, &tun->app_tunnel,
 			    sizeof(*app_tunnel))) {
@@ -8046,6 +8058,7 @@ mlx5_get_flow_tunnel(struct rte_eth_dev *dev,
 			ret = -ENOMEM;
 		}
 	}
+	rte_spinlock_unlock(&thub->sl);
 	if (tun)
 		__atomic_add_fetch(&tun->refctn, 1, __ATOMIC_RELAXED);
 
@@ -8074,6 +8087,7 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 	if (!thub)
 		return -ENOMEM;
 	LIST_INIT(&thub->tunnels);
+	rte_spinlock_init(&thub->sl);
 	thub->groups = mlx5_hlist_create("flow groups", MLX5_MAX_TABLES, 0,
 					 0, mlx5_flow_tunnel_grp2tbl_create_cb,
 					 NULL,
