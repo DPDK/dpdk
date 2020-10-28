@@ -170,44 +170,6 @@ done:
 	return entry;
 }
 
-struct mlx5_hlist_entry *
-mlx5_hlist_lookup_ex(struct mlx5_hlist *h, uint64_t key,
-		     mlx5_hlist_match_callback_fn cb, void *ctx)
-{
-	uint32_t idx;
-	struct mlx5_hlist_head *first;
-	struct mlx5_hlist_entry *node;
-
-	MLX5_ASSERT(h && cb && ctx);
-	idx = rte_hash_crc_8byte(key, 0) & h->mask;
-	first = &h->heads[idx];
-	LIST_FOREACH(node, first, next) {
-		if (!cb(node, ctx))
-			return node;
-	}
-	return NULL;
-}
-
-int
-mlx5_hlist_insert_ex(struct mlx5_hlist *h, struct mlx5_hlist_entry *entry,
-		     mlx5_hlist_match_callback_fn cb, void *ctx)
-{
-	uint32_t idx;
-	struct mlx5_hlist_head *first;
-	struct mlx5_hlist_entry *node;
-
-	MLX5_ASSERT(h && entry && cb && ctx);
-	idx = rte_hash_crc_8byte(entry->key, 0) & h->mask;
-	first = &h->heads[idx];
-	/* No need to reuse the lookup function. */
-	LIST_FOREACH(node, first, next) {
-		if (!cb(node, ctx))
-			return -EEXIST;
-	}
-	LIST_INSERT_HEAD(first, entry, next);
-	return 0;
-}
-
 int
 mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_hlist_entry *entry)
 {
