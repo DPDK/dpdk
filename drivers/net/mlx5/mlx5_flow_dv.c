@@ -8102,15 +8102,8 @@ flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 					tbl_data->tunnel->groups :
 					thub->groups;
 		he = mlx5_hlist_lookup(tunnel_grp_hash, tunnel_key.val, NULL);
-		if (he) {
-			struct tunnel_tbl_entry *tte;
-			tte = container_of(he, typeof(*tte), hash);
-			MLX5_ASSERT(tte->flow_table == table_id);
-			mlx5_hlist_remove(tunnel_grp_hash, he);
-			mlx5_free(tte);
-		}
-		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
-				tunnel_flow_tbl_to_id(table_id));
+		if (he)
+			mlx5_hlist_unregister(tunnel_grp_hash, he);
 		DRV_LOG(DEBUG,
 			"Table_id %#x tunnel %u group %u released.",
 			table_id,

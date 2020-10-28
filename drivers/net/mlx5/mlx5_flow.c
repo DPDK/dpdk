@@ -7399,13 +7399,56 @@ tunnel_mark_decode(struct rte_eth_dev *dev, uint32_t mark)
 	       container_of(he, struct mlx5_flow_tbl_data_entry, entry) : NULL;
 }
 
+static void
+mlx5_flow_tunnel_grp2tbl_remove_cb(struct mlx5_hlist *list,
+				   struct mlx5_hlist_entry *entry)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct tunnel_tbl_entry *tte = container_of(entry, typeof(*tte), hash);
+
+	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
+			tunnel_flow_tbl_to_id(tte->flow_table));
+	mlx5_free(tte);
+}
+
+static struct mlx5_hlist_entry *
+mlx5_flow_tunnel_grp2tbl_create_cb(struct mlx5_hlist *list,
+				   uint64_t key __rte_unused,
+				   void *ctx __rte_unused)
+{
+	struct mlx5_dev_ctx_shared *sh = list->ctx;
+	struct tunnel_tbl_entry *tte;
+
+	tte = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO,
+			  sizeof(*tte), 0,
+			  SOCKET_ID_ANY);
+	if (!tte)
+		goto err;
+	mlx5_ipool_malloc(sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
+			  &tte->flow_table);
+	if (tte->flow_table >= MLX5_MAX_TABLES) {
+		DRV_LOG(ERR, "Tunnel TBL ID %d exceed max limit.",
+			tte->flow_table);
+		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
+				tte->flow_table);
+		goto err;
+	} else if (!tte->flow_table) {
+		goto err;
+	}
+	tte->flow_table = tunnel_id_to_flow_tbl(tte->flow_table);
+	return &tte->hash;
+err:
+	if (tte)
+		mlx5_free(tte);
+	return NULL;
+}
+
 static uint32_t
 tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 				const struct mlx5_flow_tunnel *tunnel,
 				uint32_t group, uint32_t *table,
 				struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hlist_entry *he;
 	struct tunnel_tbl_entry *tte;
 	union tunnel_tbl_key key = {
@@ -7416,40 +7459,17 @@ tunnel_flow_group_to_flow_table(struct rte_eth_dev *dev,
 	struct mlx5_hlist *group_hash;
 
 	group_hash = tunnel ? tunnel->groups : thub->groups;
-	he = mlx5_hlist_lookup(group_hash, key.val, NULL);
-	if (!he) {
-		tte = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO,
-				  sizeof(*tte), 0,
-				  SOCKET_ID_ANY);
-		if (!tte)
-			goto err;
-		tte->hash.key = key.val;
-		mlx5_ipool_malloc(priv->sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
-				  &tte->flow_table);
-		if (tte->flow_table >= MLX5_MAX_TABLES) {
-			DRV_LOG(ERR, "Tunnel TBL ID %d exceed max limit.",
-				tte->flow_table);
-			mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TNL_TBL_ID],
-					tte->flow_table);
-			goto err;
-		} else if (!tte->flow_table) {
-			goto err;
-		}
-		tte->flow_table = tunnel_id_to_flow_tbl(tte->flow_table);
-		mlx5_hlist_insert(group_hash, &tte->hash);
-	} else {
-		tte = container_of(he, typeof(*tte), hash);
-	}
+	he = mlx5_hlist_register(group_hash, key.val, NULL);
+	if (!he)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+					  NULL,
+					  "tunnel group index not supported");
+	tte = container_of(he, typeof(*tte), hash);
 	*table = tte->flow_table;
 	DRV_LOG(DEBUG, "port %u tunnel %u group=%#x table=%#x",
 		dev->data->port_id, key.tunnel_id, group, *table);
 	return 0;
-
-err:
-	if (tte)
-		mlx5_free(tte);
-	return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
-				  NULL, "tunnel group index not supported");
 }
 
 static int
@@ -7972,13 +7992,16 @@ mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 		return NULL;
 	}
 	tunnel->groups = mlx5_hlist_create("tunnel groups", 1024, 0, 0,
-					   NULL, NULL, NULL);
+					   mlx5_flow_tunnel_grp2tbl_create_cb,
+					   NULL,
+					   mlx5_flow_tunnel_grp2tbl_remove_cb);
 	if (!tunnel->groups) {
 		mlx5_ipool_free(priv->sh->ipool
 				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
 		mlx5_free(tunnel);
 		return NULL;
 	}
+	tunnel->groups->ctx = priv->sh;
 	/* initiate new PMD tunnel */
 	memcpy(&tunnel->app_tunnel, app_tunnel, sizeof(*app_tunnel));
 	tunnel->tunnel_id = id;
@@ -8052,11 +8075,14 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 		return -ENOMEM;
 	LIST_INIT(&thub->tunnels);
 	thub->groups = mlx5_hlist_create("flow groups", MLX5_MAX_TABLES, 0,
-					 0, NULL, NULL, NULL);
+					 0, mlx5_flow_tunnel_grp2tbl_create_cb,
+					 NULL,
+					 mlx5_flow_tunnel_grp2tbl_remove_cb);
 	if (!thub->groups) {
 		err = -rte_errno;
 		goto err;
 	}
+	thub->groups->ctx = sh;
 	sh->tunnel_hub = thub;
 
 	return 0;
