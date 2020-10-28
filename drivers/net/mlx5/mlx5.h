@@ -660,7 +660,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_hlist *modify_cmds;
 	struct mlx5_hlist *tag_table;
 	struct mlx5_cache_list port_id_action_list; /* Port ID action cache. */
-	uint32_t push_vlan_action_list; /* List of push VLAN actions. */
+	struct mlx5_cache_list push_vlan_action_list; /* Push VLAN actions. */
 	uint32_t sample_action_list; /* List of sample actions. */
 	uint32_t dest_array_list; /* List of destination array actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
