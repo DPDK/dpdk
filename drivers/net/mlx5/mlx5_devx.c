@@ -1057,17 +1057,25 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 static void
 mlx5_txq_release_devx_sq_resources(struct mlx5_txq_obj *txq_obj)
 {
-	if (txq_obj->sq_devx)
+	if (txq_obj->sq_devx) {
 		claim_zero(mlx5_devx_cmd_destroy(txq_obj->sq_devx));
-	if (txq_obj->sq_umem)
+		txq_obj->sq_devx = NULL;
+	}
+	if (txq_obj->sq_umem) {
 		claim_zero(mlx5_glue->devx_umem_dereg(txq_obj->sq_umem));
-	if (txq_obj->sq_buf)
+		txq_obj->sq_umem = NULL;
+	}
+	if (txq_obj->sq_buf) {
 		mlx5_free(txq_obj->sq_buf);
-	if (txq_obj->sq_dbrec_page)
+		txq_obj->sq_buf = NULL;
+	}
+	if (txq_obj->sq_dbrec_page) {
 		claim_zero(mlx5_release_dbr(&txq_obj->txq_ctrl->priv->dbrpgs,
 					    mlx5_os_get_umem_id
 						 (txq_obj->sq_dbrec_page->umem),
 					    txq_obj->sq_dbrec_offset));
+		txq_obj->sq_dbrec_page = NULL;
+	}
 }
 
 /**
