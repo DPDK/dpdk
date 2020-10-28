@@ -302,8 +302,6 @@ eth_ark_recv_pkts(void *rx_queue,
 				mbuf->pkt_len = 63;
 				meta->pkt_len = 63;
 			}
-			/* seqn is only set under debug */
-			mbuf->seqn = cons_index;
 		}
 
 		if (unlikely(meta->pkt_len > ARK_RX_MAX_NOCHAIN))
@@ -360,8 +358,6 @@ eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 		mbuf_prev = mbuf;
 		mbuf->data_len = data_len;
 		mbuf->data_off = 0;
-		if (ARK_DEBUG_CORE)
-			mbuf->seqn = cons_index;	/* for debug only */
 
 		cons_index += 1;
 	}
@@ -667,8 +663,8 @@ dump_mbuf_data(struct rte_mbuf *mbuf, uint16_t lo, uint16_t hi)
 {
 	uint16_t i, j;
 
-	ARK_PMD_LOG(DEBUG, " MBUF: %p len %d, off: %d, seq: %" PRIU32 "\n",
-		    mbuf, mbuf->pkt_len, mbuf->data_off, mbuf->seqn);
+	ARK_PMD_LOG(DEBUG, " MBUF: %p len %d, off: %d\n",
+		    mbuf, mbuf->pkt_len, mbuf->data_off);
 	for (i = lo; i < hi; i += 16) {
 		uint8_t *dp = RTE_PTR_ADD(mbuf->buf_addr, i);
 
