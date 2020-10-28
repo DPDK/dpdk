@@ -7986,6 +7986,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 	tbl_data->tunnel = tunnel;
 	tbl_data->group_id = group_id;
 	tbl_data->external = external;
+	tbl_data->tunnel_offload = is_tunnel_offload_active(dev);
 	tbl = &tbl_data->tbl;
 	pos = &tbl_data->entry;
 	if (transfer)
@@ -8061,7 +8062,7 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 
 		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
 		tbl->obj = NULL;
-		if (is_tunnel_offload_active(dev) && tbl_data->external) {
+		if (tbl_data->tunnel_offload && tbl_data->external) {
 			struct mlx5_hlist_entry *he;
 			struct mlx5_hlist *tunnel_grp_hash;
 			struct mlx5_flow_tunnel_hub *thub =

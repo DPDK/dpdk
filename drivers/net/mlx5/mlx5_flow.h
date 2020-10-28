@@ -538,6 +538,7 @@ struct mlx5_flow_tbl_data_entry {
 	const struct mlx5_flow_tunnel *tunnel;
 	uint32_t group_id;
 	bool external;
+	bool tunnel_offload; /* Tunnel offlod table or not. */
 };
 
 /* Sub rdma-core actions list. */
