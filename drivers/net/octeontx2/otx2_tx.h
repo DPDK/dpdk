@@ -440,13 +440,17 @@ otx2_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 		sg_u = sg_u | ((uint64_t)m->data_len << (i << 4));
 		*slist = rte_mbuf_data_iova(m);
 		/* Set invert df if buffer is not to be freed by H/W */
-		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F)
+		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
 			sg_u |=	(otx2_nix_prefree_seg(m) << (i + 55));
-		/* Mark mempool object as "put" since it is freed by NIX */
-		if (!(sg_u & (1ULL << (i + 55)))) {
-			m->next = NULL;
-			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+			/* Commit changes to mbuf */
+			rte_io_wmb();
 		}
+		/* Mark mempool object as "put" since it is freed by NIX */
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		if (!(sg_u & (1ULL << (i + 55))))
+			__mempool_check_cookies(m->pool, (void **)&m, 1, 0);
+		rte_io_wmb();
+#endif
 		slist++;
 		i++;
 		nb_segs--;

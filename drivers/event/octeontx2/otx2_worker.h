@@ -288,18 +288,12 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
 
 	/* Perform header writes before barrier for TSO */
 	otx2_nix_xmit_prepare_tso(m, flags);
-	/* Lets commit any changes in the packet here in case of single seg as
-	 * no further changes to mbuf will be done.
-	 * While for multi seg all mbufs used are set to NULL in
-	 * otx2_nix_prepare_mseg() after preparing the sg list and these changes
-	 * should be committed before LMTST.
-	 * Also in no fast free case some mbuf fields are updated in
-	 * otx2_nix_prefree_seg
-	 * Hence otx2_nix_xmit_submit_lmt_release/otx2_nix_xmit_mseg_one_release
-	 * has store barrier for multiseg.
+	/* Lets commit any changes in the packet here in case when
+	 * fast free is set as no further changes will be made to mbuf.
+	 * In case of fast free is not set, both otx2_nix_prepare_mseg()
+	 * and otx2_nix_xmit_prepare() has a barrier after refcnt update.
 	 */
-	if (!(flags & NIX_TX_MULTI_SEG_F) &&
-	    !(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
 		rte_io_wmb();
 	txq = otx2_ssogws_xtract_meta(m, txq_data);
 	otx2_ssogws_prepare_pkt(txq, m, cmd, flags);
@@ -311,12 +305,12 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
 		if (!ev->sched_type) {
 			otx2_nix_xmit_mseg_prep_lmt(cmd, txq->lmt_addr, segdw);
 			otx2_ssogws_head_wait(ws);
-			if (otx2_nix_xmit_submit_lmt_release(txq->io_addr) == 0)
+			if (otx2_nix_xmit_submit_lmt(txq->io_addr) == 0)
 				otx2_nix_xmit_mseg_one(cmd, txq->lmt_addr,
 						       txq->io_addr, segdw);
 		} else {
-			otx2_nix_xmit_mseg_one_release(cmd, txq->lmt_addr,
-						       txq->io_addr, segdw);
+			otx2_nix_xmit_mseg_one(cmd, txq->lmt_addr,
+					       txq->io_addr, segdw);
 		}
 	} else {
 		/* Passing no of segdw as 4: HDR + EXT + SG + SMEM */

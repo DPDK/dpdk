@@ -77,11 +77,15 @@ nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 			otx2_nix_xmit_prepare_tso(tx_pkts[i], flags);
 	}
 
+	/* Lets commit any changes in the packet here as no further changes
+	 * to the packet will be done unless no fast free is enabled.
+	 */
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+		rte_io_wmb();
+
 	for (i = 0; i < pkts; i++) {
 		otx2_nix_xmit_prepare(tx_pkts[i], cmd, flags);
 		segdw = otx2_nix_prepare_mseg(tx_pkts[i], cmd, flags);
-		/* Lets commit any changes in the packet */
-		rte_io_wmb();
 		otx2_nix_xmit_prepare_tstamp(cmd, &txq->cmd[0],
 					     tx_pkts[i]->ol_flags, segdw,
 					     flags);
