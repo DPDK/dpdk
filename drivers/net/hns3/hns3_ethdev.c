@@ -6096,6 +6096,7 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 
 	hns3_set_rxtx_function(eth_dev);
 	eth_dev->dev_ops = &hns3_eth_dev_ops;
+	eth_dev->rx_queue_count = hns3_rx_queue_count;
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		ret = hns3_mp_init_secondary();
 		if (ret) {

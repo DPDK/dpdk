@@ -3823,3 +3823,28 @@ hns3_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	return 0;
 }
+
+uint32_t
+hns3_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	/*
+	 * Number of BDs that have been processed by the driver
+	 * but have not been notified to the hardware.
+	 */
+	uint32_t driver_hold_bd_num;
+	struct hns3_rx_queue *rxq;
+	uint32_t fbd_num;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	fbd_num = hns3_read_dev(rxq, HNS3_RING_RX_FBDNUM_REG);
+	if (dev->rx_pkt_burst == hns3_recv_pkts_vec ||
+	    dev->rx_pkt_burst == hns3_recv_pkts_vec_sve)
+		driver_hold_bd_num = rxq->rx_rearm_nb;
+	else
+		driver_hold_bd_num = rxq->rx_free_hold;
+
+	if (fbd_num <= driver_hold_bd_num)
+		return 0;
+	else
+		return fbd_num - driver_hold_bd_num;
+}
