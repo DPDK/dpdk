@@ -11,6 +11,8 @@
 #include <rte_mempool.h>
 #include <rte_ethdev_driver.h>
 
+extern uint64_t ark_timestamp_rx_dynflag;
+extern int ark_timestamp_dynfield_offset;
 
 int eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			       uint16_t queue_idx,
