@@ -586,12 +586,11 @@ struct rte_mbuf {
 
 	uint16_t buf_len;         /**< Length of segment buffer. */
 
-	uint64_t dynfield0[1]; /**< Reserved for dynamic fields. */
+	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 
 	/* second cache line - fields only used in slow path or on TX */
 	RTE_MARKER cacheline1 __rte_cache_min_aligned;
 
-	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 	struct rte_mbuf *next;    /**< Next segment of scattered packet. */
 
 	/* fields to support TX offloads */
@@ -645,7 +644,7 @@ struct rte_mbuf {
 	/** Timesync flags for use with IEEE1588. */
 	uint16_t timesync;
 
-	uint32_t dynfield1[7]; /**< Reserved for dynamic fields. */
+	uint32_t dynfield1[9]; /**< Reserved for dynamic fields. */
 } __rte_cache_aligned;
 
 /**

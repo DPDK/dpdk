@@ -125,7 +125,6 @@ init_shared_mem(void)
 		 * rte_mbuf_dynfield_copy().
 		 */
 		memset(shm, 0, sizeof(*shm));
-		mark_free(dynfield0);
 		mark_free(dynfield1);
 
 		/* init free_flags */
