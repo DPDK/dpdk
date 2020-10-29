@@ -369,7 +369,6 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	rxq->stats.ipackets += mcqe_n;
 	rxq->stats.ibytes += rcvd_byte;
 #endif
-	rxq->cq_ci += mcqe_n;
 	return mcqe_n;
 }
 
