@@ -271,7 +271,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
 	uint32x4_t pinfo, cv_flags;
 	uint32x4_t ol_flags =
 		vdupq_n_u32(rxq->rss_hash * PKT_RX_RSS_HASH |
-			    rxq->hw_timestamp * PKT_RX_TIMESTAMP);
+			    rxq->hw_timestamp * rxq->timestamp_rx_flag);
 	const uint32x4_t ptype_ol_mask = { 0x106, 0x106, 0x106, 0x106 };
 	const uint8x16_t cv_flag_sel = {
 		0,
@@ -697,6 +697,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		rxq_cq_to_ptype_oflags_v(rxq, ptype_info, flow_tag,
 					 opcode, &elts[pos]);
 		if (rxq->hw_timestamp) {
+			int offset = rxq->timestamp_offset;
 			if (rxq->rt_timestamp) {
 				struct mlx5_dev_ctx_shared *sh = rxq->sh;
 				uint64_t ts;
@@ -704,36 +705,36 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 				ts = rte_be_to_cpu_64
 					(container_of(p0, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				elts[pos]->timestamp =
-					mlx5_txpp_convert_rx_ts(sh, ts);
+				mlx5_timestamp_set(elts[pos], offset,
+					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p1, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				elts[pos + 1]->timestamp =
-					mlx5_txpp_convert_rx_ts(sh, ts);
+				mlx5_timestamp_set(elts[pos + 1], offset,
+					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p2, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				elts[pos + 2]->timestamp =
-					mlx5_txpp_convert_rx_ts(sh, ts);
+				mlx5_timestamp_set(elts[pos + 2], offset,
+					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p3, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				elts[pos + 3]->timestamp =
-					mlx5_txpp_convert_rx_ts(sh, ts);
+				mlx5_timestamp_set(elts[pos + 3], offset,
+					mlx5_txpp_convert_rx_ts(sh, ts));
 			} else {
-				elts[pos]->timestamp = rte_be_to_cpu_64
-					(container_of(p0, struct mlx5_cqe,
-						      pkt_info)->timestamp);
-				elts[pos + 1]->timestamp = rte_be_to_cpu_64
-					(container_of(p1, struct mlx5_cqe,
-						      pkt_info)->timestamp);
-				elts[pos + 2]->timestamp = rte_be_to_cpu_64
-					(container_of(p2, struct mlx5_cqe,
-						      pkt_info)->timestamp);
-				elts[pos + 3]->timestamp = rte_be_to_cpu_64
-					(container_of(p3, struct mlx5_cqe,
-						      pkt_info)->timestamp);
+				mlx5_timestamp_set(elts[pos], offset,
+					rte_be_to_cpu_64(container_of(p0,
+					struct mlx5_cqe, pkt_info)->timestamp));
+				mlx5_timestamp_set(elts[pos + 1], offset,
+					rte_be_to_cpu_64(container_of(p1,
+					struct mlx5_cqe, pkt_info)->timestamp));
+				mlx5_timestamp_set(elts[pos + 2], offset,
+					rte_be_to_cpu_64(container_of(p2,
+					struct mlx5_cqe, pkt_info)->timestamp));
+				mlx5_timestamp_set(elts[pos + 3], offset,
+					rte_be_to_cpu_64(container_of(p3,
+					struct mlx5_cqe, pkt_info)->timestamp));
 			}
 		}
 		if (rxq->dynf_meta) {

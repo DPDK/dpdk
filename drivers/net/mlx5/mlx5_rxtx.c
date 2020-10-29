@@ -1287,8 +1287,8 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 
 		if (rxq->rt_timestamp)
 			ts = mlx5_txpp_convert_rx_ts(rxq->sh, ts);
-		pkt->timestamp = ts;
-		pkt->ol_flags |= PKT_RX_TIMESTAMP;
+		mlx5_timestamp_set(pkt, rxq->timestamp_offset, ts);
+		pkt->ol_flags |= rxq->timestamp_rx_flag;
 	}
 }
 

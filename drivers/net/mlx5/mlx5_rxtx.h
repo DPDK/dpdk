@@ -151,6 +151,8 @@ struct mlx5_rxq_data {
 	/* CQ (UAR) access lock required for 32bit implementations */
 #endif
 	uint32_t tunnel; /* Tunnel information. */
+	int timestamp_offset; /* Dynamic mbuf field for timestamp. */
+	uint64_t timestamp_rx_flag; /* Dynamic mbuf flag for timestamp. */
 	uint64_t flow_meta_mask;
 	int32_t flow_meta_offset;
 } __rte_cache_aligned;
@@ -679,6 +681,23 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	ci += mts;
 	ci >>= 64 - MLX5_CQ_INDEX_WIDTH;
 	return ci;
+}
+
+/**
+ * Set timestamp in mbuf dynamic field.
+ *
+ * @param mbuf
+ *   Structure to write into.
+ * @param offset
+ *   Dynamic field offset in mbuf structure.
+ * @param timestamp
+ *   Value to write.
+ */
+static __rte_always_inline void
+mlx5_timestamp_set(struct rte_mbuf *mbuf, int offset,
+		rte_mbuf_timestamp_t timestamp)
+{
+	*RTE_MBUF_DYNFIELD(mbuf, offset, rte_mbuf_timestamp_t *) = timestamp;
 }
 
 #endif /* RTE_PMD_MLX5_RXTX_H_ */

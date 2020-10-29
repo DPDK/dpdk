@@ -251,7 +251,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 	__m128i pinfo0, pinfo1;
 	__m128i pinfo, ptype;
 	__m128i ol_flags = _mm_set1_epi32(rxq->rss_hash * PKT_RX_RSS_HASH |
-					  rxq->hw_timestamp * PKT_RX_TIMESTAMP);
+					  rxq->hw_timestamp * rxq->timestamp_rx_flag);
 	__m128i cv_flags;
 	const __m128i zero = _mm_setzero_si128();
 	const __m128i ptype_mask =
@@ -656,31 +656,32 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		/* D.5 fill in mbuf - rearm_data and packet_type. */
 		rxq_cq_to_ptype_oflags_v(rxq, cqes, opcode, &pkts[pos]);
 		if (rxq->hw_timestamp) {
+			int offset = rxq->timestamp_offset;
 			if (rxq->rt_timestamp) {
 				struct mlx5_dev_ctx_shared *sh = rxq->sh;
 				uint64_t ts;
 
 				ts = rte_be_to_cpu_64(cq[pos].timestamp);
-				pkts[pos]->timestamp =
-					mlx5_txpp_convert_rx_ts(sh, ts);
+				mlx5_timestamp_set(pkts[pos], offset,
+					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64(cq[pos + p1].timestamp);
-				pkts[pos + 1]->timestamp =
-					mlx5_txpp_convert_rx_ts(sh, ts);
+				mlx5_timestamp_set(pkts[pos + 1], offset,
+					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64(cq[pos + p2].timestamp);
-				pkts[pos + 2]->timestamp =
-					mlx5_txpp_convert_rx_ts(sh, ts);
+				mlx5_timestamp_set(pkts[pos + 2], offset,
+					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64(cq[pos + p3].timestamp);
-				pkts[pos + 3]->timestamp =
-					mlx5_txpp_convert_rx_ts(sh, ts);
+				mlx5_timestamp_set(pkts[pos + 3], offset,
+					mlx5_txpp_convert_rx_ts(sh, ts));
 			} else {
-				pkts[pos]->timestamp = rte_be_to_cpu_64
-						(cq[pos].timestamp);
-				pkts[pos + 1]->timestamp = rte_be_to_cpu_64
-						(cq[pos + p1].timestamp);
-				pkts[pos + 2]->timestamp = rte_be_to_cpu_64
-						(cq[pos + p2].timestamp);
-				pkts[pos + 3]->timestamp = rte_be_to_cpu_64
-						(cq[pos + p3].timestamp);
+				mlx5_timestamp_set(pkts[pos], offset,
+					rte_be_to_cpu_64(cq[pos].timestamp));
+				mlx5_timestamp_set(pkts[pos + 1], offset,
+					rte_be_to_cpu_64(cq[pos + p1].timestamp));
+				mlx5_timestamp_set(pkts[pos + 2], offset,
+					rte_be_to_cpu_64(cq[pos + p2].timestamp));
+				mlx5_timestamp_set(pkts[pos + 3], offset,
+					rte_be_to_cpu_64(cq[pos + p3].timestamp));
 			}
 		}
 		if (rxq->dynf_meta) {

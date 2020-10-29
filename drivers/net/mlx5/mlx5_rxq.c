@@ -1492,7 +1492,15 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	mlx5_max_lro_msg_size_adjust(dev, idx, max_lro_size);
 	/* Toggle RX checksum offload if hardware supports it. */
 	tmpl->rxq.csum = !!(offloads & DEV_RX_OFFLOAD_CHECKSUM);
+	/* Configure Rx timestamp. */
 	tmpl->rxq.hw_timestamp = !!(offloads & DEV_RX_OFFLOAD_TIMESTAMP);
+	tmpl->rxq.timestamp_rx_flag = 0;
+	if (tmpl->rxq.hw_timestamp && rte_mbuf_dyn_rx_timestamp_register(
+			&tmpl->rxq.timestamp_offset,
+			&tmpl->rxq.timestamp_rx_flag) != 0) {
+		DRV_LOG(ERR, "Cannot register Rx timestamp field/flag");
+		goto error;
+	}
 	/* Configure VLAN stripping. */
 	tmpl->rxq.vlan_strip = !!(offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 	/* By default, FCS (CRC) is stripped by hardware. */
