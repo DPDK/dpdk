@@ -3204,7 +3204,9 @@ static const struct token token_list[] = {
 	[ITEM_ECPRI_MSG_IQ_DATA_PCID] = {
 		.name = "pc_id",
 		.help = "Physical Channel ID",
-		.next = NEXT(item_ecpri, NEXT_ENTRY(UNSIGNED), item_param),
+		.next = NEXT(NEXT_ENTRY(ITEM_ECPRI_MSG_IQ_DATA_PCID,
+				ITEM_ECPRI_COMMON, ITEM_NEXT),
+				NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ecpri,
 				hdr.type0.pc_id)),
 	},
@@ -3218,7 +3220,9 @@ static const struct token token_list[] = {
 	[ITEM_ECPRI_MSG_RTC_CTRL_RTCID] = {
 		.name = "rtc_id",
 		.help = "Real-Time Control Data ID",
-		.next = NEXT(item_ecpri, NEXT_ENTRY(UNSIGNED), item_param),
+		.next = NEXT(NEXT_ENTRY(ITEM_ECPRI_MSG_RTC_CTRL_RTCID,
+				ITEM_ECPRI_COMMON, ITEM_NEXT),
+				NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ecpri,
 				hdr.type2.rtc_id)),
 	},
@@ -3232,7 +3236,9 @@ static const struct token token_list[] = {
 	[ITEM_ECPRI_MSG_DLY_MSR_MSRID] = {
 		.name = "msr_id",
 		.help = "Measurement ID",
-		.next = NEXT(item_ecpri, NEXT_ENTRY(UNSIGNED), item_param),
+		.next = NEXT(NEXT_ENTRY(ITEM_ECPRI_MSG_DLY_MSR_MSRID,
+				ITEM_ECPRI_COMMON, ITEM_NEXT),
+				NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ecpri,
 				hdr.type5.msr_id)),
 	},
