@@ -19,6 +19,15 @@
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
 
+static int hwts_dynfield_offset = -1;
+
+static inline rte_mbuf_timestamp_t *
+hwts_field(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+			hwts_dynfield_offset, rte_mbuf_timestamp_t *);
+}
+
 typedef uint64_t tsc_t;
 static int tsc_dynfield_offset = -1;
 
@@ -77,7 +86,7 @@ calc_latency(uint16_t port, uint16_t qidx __rte_unused,
 	for (i = 0; i < nb_pkts; i++) {
 		cycles += now - *tsc_field(pkts[i]);
 		if (hw_timestamping)
-			queue_ticks += ticks - pkts[i]->timestamp;
+			queue_ticks += ticks - *hwts_field(pkts[i]);
 	}
 
 	latency_numbers.total_cycles += cycles;
@@ -141,6 +150,11 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 			return -1;
 		}
 		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+		rte_mbuf_dyn_rx_timestamp_register(&hwts_dynfield_offset, NULL);
+		if (hwts_dynfield_offset < 0) {
+			printf("ERROR: Failed to register timestamp field\n");
+			return -rte_errno;
+		}
 	}
 
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
