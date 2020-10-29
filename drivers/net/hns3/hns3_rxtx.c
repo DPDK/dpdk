@@ -3805,6 +3805,19 @@ hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return ret;
 }
 
+static void
+hns3_reset_sw_rxq(struct hns3_rx_queue *rxq)
+{
+	rxq->next_to_use = 0;
+	rxq->rx_rearm_start = 0;
+	rxq->rx_free_hold = 0;
+	rxq->rx_rearm_nb = 0;
+	rxq->pkt_first_seg = NULL;
+	rxq->pkt_last_seg = NULL;
+	memset(&rxq->rx_ring[0], 0, rxq->nb_rx_desc * sizeof(struct hns3_desc));
+	hns3_rxq_vec_setup(rxq);
+}
+
 int
 hns3_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
@@ -3815,7 +3828,10 @@ hns3_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -ENOTSUP;
 
 	hns3_enable_rxq(rxq, false);
+
 	hns3_rx_queue_release_mbufs(rxq);
+
+	hns3_reset_sw_rxq(rxq);
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
