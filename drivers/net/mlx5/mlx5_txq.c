@@ -1305,7 +1305,7 @@ mlx5_txq_dynf_timestamp_set(struct rte_eth_dev *dev)
 				(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
 	off = rte_mbuf_dynfield_lookup
 				(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL);
-	if (nbit > 0 && off >= 0 && sh->txpp.refcnt)
+	if (nbit >= 0 && off >= 0 && sh->txpp.refcnt)
 		mask = 1ULL << nbit;
 	for (i = 0; i != priv->txqs_n; ++i) {
 		data = (*priv->txqs)[i];

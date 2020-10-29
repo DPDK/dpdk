@@ -302,7 +302,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	DRV_LOG(DEBUG, "port %u starting device", dev->data->port_id);
 	fine_inline = rte_mbuf_dynflag_lookup
 		(RTE_PMD_MLX5_FINE_GRANULARITY_INLINE, NULL);
-	if (fine_inline > 0)
+	if (fine_inline >= 0)
 		rte_net_mlx5_dynf_inline_mask = 1UL << fine_inline;
 	else
 		rte_net_mlx5_dynf_inline_mask = 0;

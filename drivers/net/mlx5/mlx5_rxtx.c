@@ -5661,9 +5661,9 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 	}
 	if (tx_offloads & DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP &&
 	    rte_mbuf_dynflag_lookup
-			(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL) > 0 &&
+			(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL) >= 0 &&
 	    rte_mbuf_dynfield_lookup
-			(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL) > 0) {
+			(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL) >= 0) {
 		/* Offload configured, dynamic entities registered. */
 		olx |= MLX5_TXOFF_CONFIG_TXPP;
 	}
