@@ -11147,8 +11147,8 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 	feature_flags = dev_info.feature_flags;
 
-	if ((!(feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) &&
-			(!(feature_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT)) &&
+	if ((!(feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) ||
+			(!(feature_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT)) ||
 			(!(feature_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)))
 		return -ENOTSUP;
 
