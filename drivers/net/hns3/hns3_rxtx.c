@@ -1839,6 +1839,19 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_TUNNEL_GRE,
+		RTE_PTYPE_INNER_L2_ETHER,
+		RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		RTE_PTYPE_INNER_L2_ETHER_QINQ,
+		RTE_PTYPE_INNER_L3_IPV4,
+		RTE_PTYPE_INNER_L3_IPV6,
+		RTE_PTYPE_INNER_L3_IPV4_EXT,
+		RTE_PTYPE_INNER_L3_IPV6_EXT,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_SCTP,
+		RTE_PTYPE_INNER_L4_ICMP,
+		RTE_PTYPE_TUNNEL_VXLAN,
+		RTE_PTYPE_TUNNEL_NVGRE,
 		RTE_PTYPE_UNKNOWN
 	};
 
@@ -1851,6 +1864,84 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+static void
+hns3_init_non_tunnel_ptype_tbl(struct hns3_ptype_table *tbl)
+{
+	tbl->l2l3table[0][0] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4;
+	tbl->l2l3table[0][1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6;
+	tbl->l2l3table[0][2] = RTE_PTYPE_L2_ETHER_ARP;
+	tbl->l2l3table[0][3] = RTE_PTYPE_L2_ETHER;
+	tbl->l2l3table[0][4] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT;
+	tbl->l2l3table[0][5] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT;
+	tbl->l2l3table[0][6] = RTE_PTYPE_L2_ETHER_LLDP;
+	tbl->l2l3table[0][15] = RTE_PTYPE_L2_ETHER;
+
+	tbl->l2l3table[1][0] = RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV4;
+	tbl->l2l3table[1][1] = RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV6;
+	tbl->l2l3table[1][2] = RTE_PTYPE_L2_ETHER_ARP;
+	tbl->l2l3table[1][3] = RTE_PTYPE_L2_ETHER_VLAN;
+	tbl->l2l3table[1][4] = RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV4_EXT;
+	tbl->l2l3table[1][5] = RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV6_EXT;
+	tbl->l2l3table[1][6] = RTE_PTYPE_L2_ETHER_LLDP;
+	tbl->l2l3table[1][15] = RTE_PTYPE_L2_ETHER_VLAN;
+
+	tbl->l2l3table[2][0] = RTE_PTYPE_L2_ETHER_QINQ | RTE_PTYPE_L3_IPV4;
+	tbl->l2l3table[2][1] = RTE_PTYPE_L2_ETHER_QINQ | RTE_PTYPE_L3_IPV6;
+	tbl->l2l3table[2][2] = RTE_PTYPE_L2_ETHER_ARP;
+	tbl->l2l3table[2][3] = RTE_PTYPE_L2_ETHER_QINQ;
+	tbl->l2l3table[2][4] = RTE_PTYPE_L2_ETHER_QINQ | RTE_PTYPE_L3_IPV4_EXT;
+	tbl->l2l3table[2][5] = RTE_PTYPE_L2_ETHER_QINQ | RTE_PTYPE_L3_IPV6_EXT;
+	tbl->l2l3table[2][6] = RTE_PTYPE_L2_ETHER_LLDP;
+	tbl->l2l3table[2][15] = RTE_PTYPE_L2_ETHER_QINQ;
+
+	tbl->l4table[0] = RTE_PTYPE_L4_UDP;
+	tbl->l4table[1] = RTE_PTYPE_L4_TCP;
+	tbl->l4table[2] = RTE_PTYPE_TUNNEL_GRE;
+	tbl->l4table[3] = RTE_PTYPE_L4_SCTP;
+	tbl->l4table[4] = RTE_PTYPE_L4_IGMP;
+	tbl->l4table[5] = RTE_PTYPE_L4_ICMP;
+}
+
+static void
+hns3_init_tunnel_ptype_tbl(struct hns3_ptype_table *tbl)
+{
+	tbl->inner_l2table[0] = RTE_PTYPE_INNER_L2_ETHER;
+	tbl->inner_l2table[1] = RTE_PTYPE_INNER_L2_ETHER_VLAN;
+	tbl->inner_l2table[2] = RTE_PTYPE_INNER_L2_ETHER_QINQ;
+
+	tbl->inner_l3table[0] = RTE_PTYPE_INNER_L3_IPV4;
+	tbl->inner_l3table[1] = RTE_PTYPE_INNER_L3_IPV6;
+	/* There is not a ptype for inner ARP/RARP */
+	tbl->inner_l3table[2] = RTE_PTYPE_UNKNOWN;
+	tbl->inner_l3table[3] = RTE_PTYPE_UNKNOWN;
+	tbl->inner_l3table[4] = RTE_PTYPE_INNER_L3_IPV4_EXT;
+	tbl->inner_l3table[5] = RTE_PTYPE_INNER_L3_IPV6_EXT;
+
+	tbl->inner_l4table[0] = RTE_PTYPE_INNER_L4_UDP;
+	tbl->inner_l4table[1] = RTE_PTYPE_INNER_L4_TCP;
+	/* There is not a ptype for inner GRE */
+	tbl->inner_l4table[2] = RTE_PTYPE_UNKNOWN;
+	tbl->inner_l4table[3] = RTE_PTYPE_INNER_L4_SCTP;
+	/* There is not a ptype for inner IGMP */
+	tbl->inner_l4table[4] = RTE_PTYPE_UNKNOWN;
+	tbl->inner_l4table[5] = RTE_PTYPE_INNER_L4_ICMP;
+
+	tbl->ol2table[0] = RTE_PTYPE_L2_ETHER;
+	tbl->ol2table[1] = RTE_PTYPE_L2_ETHER_VLAN;
+	tbl->ol2table[2] = RTE_PTYPE_L2_ETHER_QINQ;
+
+	tbl->ol3table[0] = RTE_PTYPE_L3_IPV4;
+	tbl->ol3table[1] = RTE_PTYPE_L3_IPV6;
+	tbl->ol3table[2] = RTE_PTYPE_UNKNOWN;
+	tbl->ol3table[3] = RTE_PTYPE_UNKNOWN;
+	tbl->ol3table[4] = RTE_PTYPE_L3_IPV4_EXT;
+	tbl->ol3table[5] = RTE_PTYPE_L3_IPV6_EXT;
+
+	tbl->ol4table[0] = RTE_PTYPE_UNKNOWN;
+	tbl->ol4table[1] = RTE_PTYPE_TUNNEL_VXLAN;
+	tbl->ol4table[2] = RTE_PTYPE_TUNNEL_NVGRE;
+}
+
 void
 hns3_init_rx_ptype_tble(struct rte_eth_dev *dev)
 {
@@ -1859,54 +1950,8 @@ hns3_init_rx_ptype_tble(struct rte_eth_dev *dev)
 
 	memset(tbl, 0, sizeof(*tbl));
 
-	tbl->l2table[0] = RTE_PTYPE_L2_ETHER;
-	tbl->l2table[1] = RTE_PTYPE_L2_ETHER_QINQ;
-	tbl->l2table[2] = RTE_PTYPE_L2_ETHER_VLAN;
-	tbl->l2table[3] = RTE_PTYPE_L2_ETHER_VLAN;
-
-	tbl->l3table[0] = RTE_PTYPE_L3_IPV4;
-	tbl->l3table[1] = RTE_PTYPE_L3_IPV6;
-	tbl->l3table[2] = RTE_PTYPE_L2_ETHER_ARP;
-	tbl->l3table[3] = RTE_PTYPE_L2_ETHER;
-	tbl->l3table[4] = RTE_PTYPE_L3_IPV4_EXT;
-	tbl->l3table[5] = RTE_PTYPE_L3_IPV6_EXT;
-	tbl->l3table[6] = RTE_PTYPE_L2_ETHER_LLDP;
-
-	tbl->l4table[0] = RTE_PTYPE_L4_UDP;
-	tbl->l4table[1] = RTE_PTYPE_L4_TCP;
-	tbl->l4table[2] = RTE_PTYPE_TUNNEL_GRE;
-	tbl->l4table[3] = RTE_PTYPE_L4_SCTP;
-	tbl->l4table[4] = RTE_PTYPE_L4_IGMP;
-	tbl->l4table[5] = RTE_PTYPE_L4_ICMP;
-
-	tbl->inner_l2table[0] = RTE_PTYPE_INNER_L2_ETHER;
-	tbl->inner_l2table[1] = RTE_PTYPE_INNER_L2_ETHER_VLAN;
-	tbl->inner_l2table[2] = RTE_PTYPE_INNER_L2_ETHER_QINQ;
-
-	tbl->inner_l3table[0] = RTE_PTYPE_INNER_L3_IPV4;
-	tbl->inner_l3table[1] = RTE_PTYPE_INNER_L3_IPV6;
-	tbl->inner_l3table[2] = 0;
-	tbl->inner_l3table[3] = RTE_PTYPE_INNER_L2_ETHER;
-	tbl->inner_l3table[4] = RTE_PTYPE_INNER_L3_IPV4_EXT;
-	tbl->inner_l3table[5] = RTE_PTYPE_INNER_L3_IPV6_EXT;
-
-	tbl->inner_l4table[0] = RTE_PTYPE_INNER_L4_UDP;
-	tbl->inner_l4table[1] = RTE_PTYPE_INNER_L4_TCP;
-	tbl->inner_l4table[2] = RTE_PTYPE_TUNNEL_GRE;
-	tbl->inner_l4table[3] = RTE_PTYPE_INNER_L4_SCTP;
-	tbl->inner_l4table[4] = RTE_PTYPE_L4_IGMP;
-	tbl->inner_l4table[5] = RTE_PTYPE_INNER_L4_ICMP;
-
-	tbl->ol3table[0] = RTE_PTYPE_L3_IPV4;
-	tbl->ol3table[1] = RTE_PTYPE_L3_IPV6;
-	tbl->ol3table[2] = 0;
-	tbl->ol3table[3] = 0;
-	tbl->ol3table[4] = RTE_PTYPE_L3_IPV4_EXT;
-	tbl->ol3table[5] = RTE_PTYPE_L3_IPV6_EXT;
-
-	tbl->ol4table[0] = 0;
-	tbl->ol4table[1] = RTE_PTYPE_TUNNEL_VXLAN;
-	tbl->ol4table[2] = RTE_PTYPE_TUNNEL_NVGRE;
+	hns3_init_non_tunnel_ptype_tbl(tbl);
+	hns3_init_tunnel_ptype_tbl(tbl);
 }
 
 static inline void
