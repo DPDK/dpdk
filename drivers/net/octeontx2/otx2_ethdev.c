@@ -2225,6 +2225,16 @@ otx2_nix_dev_start(struct rte_eth_dev *eth_dev)
 	if (otx2_ethdev_is_ptp_en(dev) && otx2_dev_is_vf(dev))
 		otx2_nix_ptp_enable_vf(eth_dev);
 
+	if (dev->rx_offload_flags & NIX_RX_OFFLOAD_TSTAMP_F) {
+		rc = rte_mbuf_dyn_rx_timestamp_register(
+				&dev->tstamp.tstamp_dynfield_offset,
+				&dev->tstamp.rx_tstamp_dynflag);
+		if (rc != 0) {
+			otx2_err("Failed to register Rx timestamp field/flag");
+			return -rte_errno;
+		}
+	}
+
 	rc = npc_rx_enable(dev);
 	if (rc) {
 		otx2_err("Failed to enable NPC rx %d", rc);

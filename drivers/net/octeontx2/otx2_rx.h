@@ -49,6 +49,8 @@ struct otx2_timesync_info {
 	uint64_t	rx_tstamp;
 	rte_iova_t	tx_tstamp_iova;
 	uint64_t	*tx_tstamp;
+	uint64_t	rx_tstamp_dynflag;
+	int		tstamp_dynfield_offset;
 	uint8_t		tx_ready;
 	uint8_t		rx_ready;
 } __rte_cache_aligned;
@@ -62,6 +64,14 @@ union mbuf_initializer {
 	} fields;
 	uint64_t value;
 };
+
+static inline rte_mbuf_timestamp_t *
+otx2_timestamp_dynfield(struct rte_mbuf *mbuf,
+		struct otx2_timesync_info *info)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+		info->tstamp_dynfield_offset, rte_mbuf_timestamp_t *);
+}
 
 static __rte_always_inline void
 otx2_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
@@ -77,15 +87,18 @@ otx2_nix_mbuf_to_tstamp(struct rte_mbuf *mbuf,
 		/* Reading the rx timestamp inserted by CGX, viz at
 		 * starting of the packet data.
 		 */
-		mbuf->timestamp = rte_be_to_cpu_64(*tstamp_ptr);
+		*otx2_timestamp_dynfield(mbuf, tstamp) =
+				rte_be_to_cpu_64(*tstamp_ptr);
 		/* PKT_RX_IEEE1588_TMST flag needs to be set only in case
 		 * PTP packets are received.
 		 */
 		if (mbuf->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC) {
-			tstamp->rx_tstamp = mbuf->timestamp;
+			tstamp->rx_tstamp =
+					*otx2_timestamp_dynfield(mbuf, tstamp);
 			tstamp->rx_ready = 1;
 			mbuf->ol_flags |= PKT_RX_IEEE1588_PTP |
-				PKT_RX_IEEE1588_TMST | PKT_RX_TIMESTAMP;
+				PKT_RX_IEEE1588_TMST |
+				tstamp->rx_tstamp_dynflag;
 		}
 	}
 }
