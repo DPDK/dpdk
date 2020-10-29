@@ -4077,7 +4077,7 @@ ecore_iov_execute_vf_flr_cleanup(struct ecore_hwfn *p_hwfn,
 		rc = ecore_iov_enable_vf_access(p_hwfn, p_ptt, p_vf);
 		if (rc) {
 			/* TODO - again, a mess... */
-			DP_ERR(p_hwfn, "Failed to re-enable VF[%d] acces\n",
+			DP_ERR(p_hwfn, "Failed to re-enable VF[%d] access\n",
 			       vfid);
 			return rc;
 		}

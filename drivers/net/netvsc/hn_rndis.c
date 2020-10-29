@@ -276,7 +276,7 @@ static int hn_nvs_send_rndis_ctrl(struct vmbus_channel *chan,
 	sg.len  = reqlen;
 
 	if (sg.ofs + reqlen >  PAGE_SIZE) {
-		PMD_DRV_LOG(ERR, "RNDIS request crosses page bounary");
+		PMD_DRV_LOG(ERR, "RNDIS request crosses page boundary");
 		return -EINVAL;
 	}
 

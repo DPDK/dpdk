@@ -260,7 +260,7 @@ i40evf_read_pfmsg(struct rte_eth_dev *dev, struct i40evf_arq_msg_info *data)
 		case VIRTCHNL_EVENT_RESET_IMPENDING:
 			vf->vf_reset = true;
 			vf->pend_msg |= PFMSG_RESET_IMPENDING;
-			PMD_DRV_LOG(INFO, "vf is reseting");
+			PMD_DRV_LOG(INFO, "VF is resetting");
 			break;
 		case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 			vf->dev_closed = true;
