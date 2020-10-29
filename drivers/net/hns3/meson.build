@@ -31,8 +31,7 @@ deps += ['hash']
 
 if arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
 	sources += files('hns3_rxtx_vec.c')
-	if (dpdk_conf.has('RTE_MACHINE_CPUFLAG_SVE'))
-		dpdk_conf.set('RTE_LIBRTE_HNS3_INC_VECTOR_SVE', 1)
+	if cc.get_define('__ARM_FEATURE_SVE', args: machine_args) != ''
 		cflags = ['-DCC_SVE_SUPPORT']
 		sources += files('hns3_rxtx_vec_sve.c')
 	endif
