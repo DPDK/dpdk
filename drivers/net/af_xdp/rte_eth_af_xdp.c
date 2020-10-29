@@ -968,7 +968,8 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 
 		umem->mb_pool = mb_pool;
 		base_addr = (void *)get_base_addr(mb_pool, &align);
-		umem_size = mb_pool->populated_size * usr_config.frame_size +
+		umem_size = (uint64_t)mb_pool->populated_size *
+				(uint64_t)usr_config.frame_size +
 				align;
 
 		ret = xsk_umem__create(&umem->umem, base_addr, umem_size,
