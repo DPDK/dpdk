@@ -65,6 +65,8 @@ static uint64_t dev_tx_offloads_nodis =
 
 /* enable timestamp in mbuf */
 bool dpaa2_enable_ts[RTE_MAX_ETHPORTS];
+uint64_t dpaa2_timestamp_rx_dynflag;
+int dpaa2_timestamp_dynfield_offset = -1;
 
 struct rte_dpaa2_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -587,7 +589,16 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 #if !defined(RTE_LIBRTE_IEEE1588)
 	if (rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP)
 #endif
+	{
+		ret = rte_mbuf_dyn_rx_timestamp_register(
+				&dpaa2_timestamp_dynfield_offset,
+				&dpaa2_timestamp_rx_dynflag);
+		if (ret != 0) {
+			DPAA2_PMD_ERR("Error to register timestamp field/flag");
+			return -rte_errno;
+		}
 		dpaa2_enable_ts[dev->data->port_id] = true;
+	}
 
 	if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
 		tx_l3_csum_offload = true;

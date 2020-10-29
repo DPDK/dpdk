@@ -92,6 +92,8 @@
 
 /* enable timestamp in mbuf*/
 extern bool dpaa2_enable_ts[];
+extern uint64_t dpaa2_timestamp_rx_dynflag;
+extern int dpaa2_timestamp_dynfield_offset;
 
 #define DPAA2_QOS_TABLE_RECONFIGURE	1
 #define DPAA2_FS_TABLE_RECONFIGURE	2

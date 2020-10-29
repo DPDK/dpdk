@@ -31,6 +31,13 @@ dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 
 static void enable_tx_tstamp(struct qbman_fd *fd) __rte_unused;
 
+static inline rte_mbuf_timestamp_t *
+dpaa2_timestamp_dynfield(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+		dpaa2_timestamp_dynfield_offset, rte_mbuf_timestamp_t *);
+}
+
 #define DPAA2_MBUF_TO_CONTIG_FD(_mbuf, _fd, _bpid)  do { \
 	DPAA2_SET_FD_ADDR(_fd, DPAA2_MBUF_VADDR_TO_IOVA(_mbuf)); \
 	DPAA2_SET_FD_LEN(_fd, _mbuf->data_len); \
@@ -109,9 +116,10 @@ dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd,
 	m->ol_flags |= PKT_RX_RSS_HASH;
 
 	if (dpaa2_enable_ts[m->port]) {
-		m->timestamp = annotation->word2;
-		m->ol_flags |= PKT_RX_TIMESTAMP;
-		DPAA2_PMD_DP_DEBUG("pkt timestamp:0x%" PRIx64 "", m->timestamp);
+		*dpaa2_timestamp_dynfield(m) = annotation->word2;
+		m->ol_flags |= dpaa2_timestamp_rx_dynflag;
+		DPAA2_PMD_DP_DEBUG("pkt timestamp:0x%" PRIx64 "",
+				*dpaa2_timestamp_dynfield(m));
 	}
 
 	DPAA2_PMD_DP_DEBUG("HW frc = 0x%x\t packet type =0x%x "
@@ -223,9 +231,12 @@ dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 	else if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L4CE))
 		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 
-	mbuf->ol_flags |= PKT_RX_TIMESTAMP;
-	mbuf->timestamp = annotation->word2;
-	DPAA2_PMD_DP_DEBUG("pkt timestamp: 0x%" PRIx64 "", mbuf->timestamp);
+	if (dpaa2_enable_ts[mbuf->port]) {
+		*dpaa2_timestamp_dynfield(mbuf) = annotation->word2;
+		mbuf->ol_flags |= dpaa2_timestamp_rx_dynflag;
+		DPAA2_PMD_DP_DEBUG("pkt timestamp: 0x%" PRIx64 "",
+				*dpaa2_timestamp_dynfield(mbuf));
+	}
 
 	/* Check detailed parsing requirement */
 	if (annotation->word3 & 0x7FFFFC3FFFF)
@@ -629,7 +640,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		else
 			bufs[num_rx] = eth_fd_to_mbuf(fd, eth_data->port_id);
 #if defined(RTE_LIBRTE_IEEE1588)
-		priv->rx_timestamp = bufs[num_rx]->timestamp;
+		priv->rx_timestamp = *dpaa2_timestamp_dynfield(bufs[num_rx]);
 #endif
 
 		if (eth_data->dev_conf.rxmode.offloads &
