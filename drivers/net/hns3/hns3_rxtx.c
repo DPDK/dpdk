@@ -1378,7 +1378,7 @@ hns3_fake_rx_queue_config(struct hns3_hw *hw, uint16_t nb_queues)
 {
 	uint16_t old_nb_queues = hw->fkq_data.nb_fake_rx_queues;
 	void **rxq;
-	uint8_t i;
+	uint16_t i;
 
 	if (hw->fkq_data.rx_queues == NULL && nb_queues != 0) {
 		/* first time configuration */
@@ -1425,7 +1425,7 @@ hns3_fake_tx_queue_config(struct hns3_hw *hw, uint16_t nb_queues)
 {
 	uint16_t old_nb_queues = hw->fkq_data.nb_fake_tx_queues;
 	void **txq;
-	uint8_t i;
+	uint16_t i;
 
 	if (hw->fkq_data.tx_queues == NULL && nb_queues != 0) {
 		/* first time configuration */
