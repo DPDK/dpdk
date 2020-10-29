@@ -510,7 +510,7 @@ hns3_dev_rss_reta_update(struct rte_eth_dev *dev,
 	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint16_t i, indir_size = HNS3_RSS_IND_TBL_SIZE; /* Table size is 512 */
 	uint16_t indirection_tbl[HNS3_RSS_IND_TBL_SIZE];
-	uint16_t idx, shift, allow_rss_queues;
+	uint16_t idx, shift;
 	int ret;
 
 	if (reta_size != indir_size || reta_size > ETH_RSS_RETA_SIZE_512) {
@@ -522,16 +522,15 @@ hns3_dev_rss_reta_update(struct rte_eth_dev *dev,
 	rte_spinlock_lock(&hw->lock);
 	memcpy(indirection_tbl, rss_cfg->rss_indirection_tbl,
 	       sizeof(rss_cfg->rss_indirection_tbl));
-	allow_rss_queues = RTE_MIN(dev->data->nb_rx_queues, hw->rss_size_max);
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		shift = i % RTE_RETA_GROUP_SIZE;
-		if (reta_conf[idx].reta[shift] >= allow_rss_queues) {
+		if (reta_conf[idx].reta[shift] >= hw->alloc_rss_size) {
 			rte_spinlock_unlock(&hw->lock);
-			hns3_err(hw, "Invalid queue id(%u) to be set in "
-				 "redirection table, max number of rss "
-				 "queues: %u", reta_conf[idx].reta[shift],
-				 allow_rss_queues);
+			hns3_err(hw, "queue id(%u) set to redirection table "
+				 "exceeds queue number(%u) allocated to a TC",
+				 reta_conf[idx].reta[shift],
+				 hw->alloc_rss_size);
 			return -EINVAL;
 		}
 
