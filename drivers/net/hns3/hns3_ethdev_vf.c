@@ -2619,7 +2619,7 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 	if (hw->reset.level == HNS3_VF_FULL_RESET) {
 		rte_intr_disable(&pci_dev->intr_handle);
 		ret = hns3vf_set_bus_master(pci_dev, true);
-		if (ret) {
+		if (ret < 0) {
 			hns3_err(hw, "failed to set pci bus, ret = %d", ret);
 			return ret;
 		}
