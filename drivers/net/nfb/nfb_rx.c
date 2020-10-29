@@ -9,6 +9,9 @@
 #include "nfb_rx.h"
 #include "nfb.h"
 
+uint64_t nfb_timestamp_rx_dynflag;
+int nfb_timestamp_dynfield_offset = -1;
+
 static int
 timestamp_check_handler(__rte_unused const char *key,
 	const char *value, __rte_unused void *opaque)
@@ -24,6 +27,7 @@ static int
 nfb_check_timestamp(struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvlist;
+	int ret;
 
 	if (devargs == NULL)
 		return 0;
@@ -38,6 +42,7 @@ nfb_check_timestamp(struct rte_devargs *devargs)
 	}
 	/* Timestamps are enabled when there is
 	 * key-value pair: enable_timestamp=1
+	 * TODO: timestamp should be enabled with DEV_RX_OFFLOAD_TIMESTAMP
 	 */
 	if (rte_kvargs_process(kvlist, TIMESTAMP_ARG,
 		timestamp_check_handler, NULL) < 0) {
@@ -45,6 +50,14 @@ nfb_check_timestamp(struct rte_devargs *devargs)
 		return 0;
 	}
 	rte_kvargs_free(kvlist);
+
+	ret = rte_mbuf_dyn_rx_timestamp_register(
+			&nfb_timestamp_dynfield_offset,
+			&nfb_timestamp_rx_dynflag);
+	if (ret != 0) {
+		RTE_LOG(ERR, PMD, "Cannot register Rx timestamp field/flag\n");
+		return -rte_errno;
+	}
 
 	return 1;
 }
@@ -125,7 +138,7 @@ nfb_eth_rx_queue_setup(struct rte_eth_dev *dev,
 	else
 		rte_free(rxq);
 
-	if (nfb_check_timestamp(dev->device->devargs))
+	if (nfb_check_timestamp(dev->device->devargs) > 0)
 		rxq->flags |= NFB_TIMESTAMP_FLAG;
 
 	return ret;

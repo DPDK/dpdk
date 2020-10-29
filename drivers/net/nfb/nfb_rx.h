@@ -15,6 +15,16 @@
 
 #define NFB_TIMESTAMP_FLAG (1 << 0)
 
+extern uint64_t nfb_timestamp_rx_dynflag;
+extern int nfb_timestamp_dynfield_offset;
+
+static inline rte_mbuf_timestamp_t *
+nfb_timestamp_dynfield(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+		nfb_timestamp_dynfield_offset, rte_mbuf_timestamp_t *);
+}
+
 struct ndp_rx_queue {
 	struct nfb_device *nfb;	     /* nfb dev structure */
 	struct ndp_queue *queue;     /* rx queue */
@@ -190,16 +200,19 @@ nfb_eth_ndp_rx(void *queue,
 			mbuf->ol_flags = 0;
 
 			if (timestamping_enabled) {
+				rte_mbuf_timestamp_t timestamp;
+
 				/* nanoseconds */
-				mbuf->timestamp =
+				timestamp =
 					rte_le_to_cpu_32(*((uint32_t *)
 					(packets[i].header + 4)));
-				mbuf->timestamp <<= 32;
+				timestamp <<= 32;
 				/* seconds */
-				mbuf->timestamp |=
+				timestamp |=
 					rte_le_to_cpu_32(*((uint32_t *)
 					(packets[i].header + 8)));
-				mbuf->ol_flags |= PKT_RX_TIMESTAMP;
+				*nfb_timestamp_dynfield(mbuf) = timestamp;
+				mbuf->ol_flags |= nfb_timestamp_rx_dynflag;
 			}
 
 			bufs[num_rx++] = mbuf;
