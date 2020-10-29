@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 
+#include <rte_bitops.h>
 #include <rte_net.h>
 #include <rte_mbuf.h>
 #include <rte_ether.h>
@@ -20,6 +21,39 @@ print_ether_addr(const char *what, const struct rte_ether_addr *eth_addr)
 	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", what, buf);
+}
+
+static inline bool
+is_timestamp_enabled(const struct rte_mbuf *mbuf)
+{
+	static uint64_t timestamp_rx_dynflag;
+	int timestamp_rx_dynflag_offset;
+
+	if (timestamp_rx_dynflag == 0) {
+		timestamp_rx_dynflag_offset = rte_mbuf_dynflag_lookup(
+				RTE_MBUF_DYNFLAG_RX_TIMESTAMP_NAME, NULL);
+		if (timestamp_rx_dynflag_offset < 0)
+			return false;
+		timestamp_rx_dynflag = RTE_BIT64(timestamp_rx_dynflag_offset);
+	}
+
+	return (mbuf->ol_flags & timestamp_rx_dynflag) != 0;
+}
+
+static inline rte_mbuf_timestamp_t
+get_timestamp(const struct rte_mbuf *mbuf)
+{
+	static int timestamp_dynfield_offset = -1;
+
+	if (timestamp_dynfield_offset < 0) {
+		timestamp_dynfield_offset = rte_mbuf_dynfield_lookup(
+				RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL);
+		if (timestamp_dynfield_offset < 0)
+			return 0;
+	}
+
+	return *RTE_MBUF_DYNFIELD(mbuf,
+			timestamp_dynfield_offset, rte_mbuf_timestamp_t *);
 }
 
 static inline void
@@ -107,8 +141,8 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 				printf("hash=0x%x ID=0x%x ",
 				       mb->hash.fdir.hash, mb->hash.fdir.id);
 		}
-		if (ol_flags & PKT_RX_TIMESTAMP)
-			printf(" - timestamp %"PRIu64" ", mb->timestamp);
+		if (is_timestamp_enabled(mb))
+			printf(" - timestamp %"PRIu64" ", get_timestamp(mb));
 		if (ol_flags & PKT_RX_QINQ)
 			printf(" - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
 			       mb->vlan_tci, mb->vlan_tci_outer);
