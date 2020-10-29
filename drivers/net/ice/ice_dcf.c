@@ -899,6 +899,7 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 			return -EINVAL;
 		}
 #endif
+		ice_select_rxd_to_pkt_fields_handler(rxq[i], vc_qp->rxq.rxdid);
 	}
 
 	memset(&args, 0, sizeof(args));

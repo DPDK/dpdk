@@ -44,6 +44,28 @@ ice_proto_xtr_type_to_rxdid(uint8_t xtr_type)
 }
 
 static inline void
+ice_rxd_to_pkt_fields_by_comms_generic(__rte_unused struct ice_rx_queue *rxq,
+				       struct rte_mbuf *mb,
+				       volatile union ice_rx_flex_desc *rxdp)
+{
+	volatile struct ice_32b_rx_flex_desc_comms *desc =
+			(volatile struct ice_32b_rx_flex_desc_comms *)rxdp;
+	uint16_t stat_err = rte_le_to_cpu_16(desc->status_error0);
+
+	if (likely(stat_err & (1 << ICE_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
+
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	if (desc->flow_id != 0xFFFFFFFF) {
+		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
+	}
+#endif
+}
+
+static inline void
 ice_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct ice_rx_queue *rxq,
 				   struct rte_mbuf *mb,
 				   volatile union ice_rx_flex_desc *rxdp)
@@ -148,7 +170,7 @@ ice_rxd_to_pkt_fields_by_comms_aux_v2(struct ice_rx_queue *rxq,
 #endif
 }
 
-static void
+void
 ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
 {
 	switch (rxdid) {
@@ -180,6 +202,10 @@ ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
 	case ICE_RXDID_COMMS_AUX_IP_OFFSET:
 		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
 		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v2;
+		break;
+
+	case ICE_RXDID_COMMS_GENERIC:
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_generic;
 		break;
 
 	case ICE_RXDID_COMMS_OVS:
