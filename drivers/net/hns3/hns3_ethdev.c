@@ -4752,7 +4752,13 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 
 err_config_mac_mode:
 	hns3_dev_release_mbufs(hns);
-	hns3_reset_all_tqps(hns);
+	/*
+	 * Here is exception handling, hns3_reset_all_tqps will have the
+	 * corresponding error message if it is handled incorrectly, so it is
+	 * not necessary to check hns3_reset_all_tqps return value, here keep
+	 * ret as the error code causing the exception.
+	 */
+	(void)hns3_reset_all_tqps(hns);
 	return ret;
 }
 
