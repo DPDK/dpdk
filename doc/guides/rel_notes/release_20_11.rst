@@ -169,6 +169,10 @@ New Features
   Added the FEC PMD which provides functions for query FEC capabilities and
   current FEC mode from device. Also, PMD for configuring FEC mode is also provided.
 
+* **Updated Intel iavf driver.**
+
+  * Added support of AVX512 instructions in Rx path.
+
 * **Updated Intel ice driver.**
 
   * Used write combining stores.
