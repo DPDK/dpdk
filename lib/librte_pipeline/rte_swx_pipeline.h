@@ -382,7 +382,7 @@ rte_swx_pipeline_packet_metadata_register(struct rte_swx_pipeline *p,
  *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
  *<pre>| T   | Table action data field   | t.header.field   | NO  | YES |</pre>
  *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
- *<pre>| I   | Immediate value (32-bit)  | h.header.field   | NO  | YES |</pre>
+ *<pre>| I   | Immediate value (64-bit)  | h.header.field   | NO  | YES |</pre>
  *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
  *
  * Instruction set:
