@@ -2923,6 +2923,16 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	struct ice_vsi *vsi = pf->main_vsi;
 	int ret;
 
+#define ICE_RSS_HF_ALL ( \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV4_SCTP | \
+	ETH_RSS_NONFRAG_IPV6_SCTP)
+
 	/* Configure RSS for IPv4 with src/dst addr as input set */
 	if (rss_hf & ETH_RSS_IPV4) {
 		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, ICE_FLOW_HASH_IPV4,
@@ -3216,6 +3226,8 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 			PMD_DRV_LOG(ERR, "%s GTPU_EH_IPV6_SCTP rss flow fail %d",
 				    __func__, ret);
 	}
+
+	pf->rss_hf = rss_hf & ICE_RSS_HF_ALL;
 }
 
 static int ice_init_rss(struct ice_pf *pf)
@@ -4439,8 +4451,7 @@ ice_rss_hash_conf_get(struct rte_eth_dev *dev,
 	ice_get_rss_key(vsi, rss_conf->rss_key,
 			&rss_conf->rss_key_len);
 
-	/* TODO: default set to 0 as hf config is not supported now */
-	rss_conf->rss_hf = 0;
+	rss_conf->rss_hf = pf->rss_hf;
 	return 0;
 }
 

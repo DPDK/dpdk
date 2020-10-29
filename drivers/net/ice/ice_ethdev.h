@@ -457,6 +457,7 @@ struct ice_pf {
 	uint64_t old_rx_bytes;
 	uint64_t old_tx_bytes;
 	uint64_t supported_rxdid; /* bitmap for supported RXDID */
+	uint64_t rss_hf;
 };
 
 #define ICE_MAX_QUEUE_NUM  2048
