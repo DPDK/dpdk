@@ -122,6 +122,10 @@ struct iavf_tx_entry {
 	uint16_t last_id;
 };
 
+struct iavf_tx_vec_entry {
+	struct rte_mbuf *mbuf;
+};
+
 /* Structure associated with each TX queue. */
 struct iavf_tx_queue {
 	const struct rte_memzone *mz;  /* memzone for Tx ring */
@@ -449,6 +453,9 @@ uint16_t iavf_recv_scattered_pkts_vec_avx512(void *rx_queue,
 uint16_t iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
 						      struct rte_mbuf **rx_pkts,
 						      uint16_t nb_pkts);
+uint16_t iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
+				   uint16_t nb_pkts);
+int iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq);
 
 const uint32_t *iavf_get_default_ptype_table(void);
 

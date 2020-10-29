@@ -749,7 +749,8 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_GRE_TNL_TSO |
 		DEV_TX_OFFLOAD_IPIP_TNL_TSO |
 		DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-		DEV_TX_OFFLOAD_MULTI_SEGS;
+		DEV_TX_OFFLOAD_MULTI_SEGS |
+		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = IAVF_DEFAULT_RX_FREE_THRESH,

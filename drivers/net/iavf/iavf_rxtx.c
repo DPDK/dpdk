@@ -2229,20 +2229,22 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 	struct iavf_tx_queue *txq;
 	int i;
 	bool use_avx2 = false;
+#ifdef CC_AVX512_SUPPORT
+	bool use_avx512 = false;
+#endif
 
 	if (!iavf_tx_vec_dev_check(dev) &&
 			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		for (i = 0; i < dev->data->nb_tx_queues; i++) {
-			txq = dev->data->tx_queues[i];
-			if (!txq)
-				continue;
-			iavf_txq_vec_setup(txq);
-		}
-
 		if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
 		     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 			use_avx2 = true;
+#ifdef CC_AVX512_SUPPORT
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
+		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1 &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
+			use_avx512 = true;
+#endif
 
 		PMD_DRV_LOG(DEBUG, "Using %sVector Tx (port %d).",
 			    use_avx2 ? "avx2 " : "",
@@ -2250,7 +2252,25 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 		dev->tx_pkt_burst = use_avx2 ?
 				    iavf_xmit_pkts_vec_avx2 :
 				    iavf_xmit_pkts_vec;
+#ifdef CC_AVX512_SUPPORT
+		if (use_avx512)
+			dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx512;
+#endif
 		dev->tx_pkt_prepare = NULL;
+
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			txq = dev->data->tx_queues[i];
+			if (!txq)
+				continue;
+#ifdef CC_AVX512_SUPPORT
+			if (use_avx512)
+				iavf_txq_vec_setup_avx512(txq);
+			else
+				iavf_txq_vec_setup(txq);
+#else
+			iavf_txq_vec_setup(txq);
+#endif
+		}
 
 		return;
 	}

@@ -1396,3 +1396,307 @@ iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
 	return retval + iavf_recv_scattered_burst_vec_avx512_flex_rxd(rx_queue,
 				rx_pkts + retval, nb_pkts);
 }
+
+static __rte_always_inline int
+iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
+{
+	struct iavf_tx_vec_entry *txep;
+	uint32_t n;
+	uint32_t i;
+	int nb_free = 0;
+	struct rte_mbuf *m, *free[IAVF_VPMD_TX_MAX_FREE_BUF];
+
+	/* check DD bits on threshold descriptor */
+	if ((txq->tx_ring[txq->next_dd].cmd_type_offset_bsz &
+	     rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) !=
+	    rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE))
+		return 0;
+
+	n = txq->rs_thresh;
+
+	 /* first buffer to free from S/W ring is at index
+	  * tx_next_dd - (tx_rs_thresh-1)
+	  */
+	txep = (void *)txq->sw_ring;
+	txep += txq->next_dd - (n - 1);
+
+	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE && (n & 31) == 0) {
+		struct rte_mempool *mp = txep[0].mbuf->pool;
+		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp,
+								rte_lcore_id());
+		void **cache_objs = &cache->objs[cache->len];
+
+		if (n > RTE_MEMPOOL_CACHE_MAX_SIZE) {
+			rte_mempool_ops_enqueue_bulk(mp, (void *)txep, n);
+			goto done;
+		}
+
+		/* The cache follows the following algorithm
+		 *   1. Add the objects to the cache
+		 *   2. Anything greater than the cache min value (if it crosses the
+		 *   cache flush threshold) is flushed to the ring.
+		 */
+		/* Add elements back into the cache */
+		uint32_t copied = 0;
+		/* n is multiple of 32 */
+		while (copied < n) {
+			const __m512i a = _mm512_loadu_si512(&txep[copied]);
+			const __m512i b = _mm512_loadu_si512(&txep[copied + 8]);
+			const __m512i c = _mm512_loadu_si512(&txep[copied + 16]);
+			const __m512i d = _mm512_loadu_si512(&txep[copied + 24]);
+
+			_mm512_storeu_si512(&cache_objs[copied], a);
+			_mm512_storeu_si512(&cache_objs[copied + 8], b);
+			_mm512_storeu_si512(&cache_objs[copied + 16], c);
+			_mm512_storeu_si512(&cache_objs[copied + 24], d);
+			copied += 32;
+		}
+		cache->len += n;
+
+		if (cache->len >= cache->flushthresh) {
+			rte_mempool_ops_enqueue_bulk(mp,
+						     &cache->objs[cache->size],
+						     cache->len - cache->size);
+			cache->len = cache->size;
+		}
+		goto done;
+	}
+
+	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
+	if (likely(m)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (likely(m)) {
+				if (likely(m->pool == free[0]->pool)) {
+					free[nb_free++] = m;
+				} else {
+					rte_mempool_put_bulk(free[0]->pool,
+							     (void *)free,
+							     nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (m)
+				rte_mempool_put(m->pool, m);
+		}
+	}
+
+done:
+	/* buffers were freed, update counters */
+	txq->nb_free = (uint16_t)(txq->nb_free + txq->rs_thresh);
+	txq->next_dd = (uint16_t)(txq->next_dd + txq->rs_thresh);
+	if (txq->next_dd >= txq->nb_tx_desc)
+		txq->next_dd = (uint16_t)(txq->rs_thresh - 1);
+
+	return txq->rs_thresh;
+}
+
+static __rte_always_inline void
+tx_backlog_entry_avx512(struct iavf_tx_vec_entry *txep,
+			struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	int i;
+
+	for (i = 0; i < (int)nb_pkts; ++i)
+		txep[i].mbuf = tx_pkts[i];
+}
+
+static inline void
+iavf_vtx1(volatile struct iavf_tx_desc *txdp,
+	  struct rte_mbuf *pkt, uint64_t flags)
+{
+	uint64_t high_qw =
+		(IAVF_TX_DESC_DTYPE_DATA |
+		 ((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT) |
+		 ((uint64_t)pkt->data_len << IAVF_TXD_QW1_TX_BUF_SZ_SHIFT));
+
+	__m128i descriptor = _mm_set_epi64x(high_qw,
+					    pkt->buf_iova + pkt->data_off);
+	_mm_storeu_si128((__m128i *)txdp, descriptor);
+}
+
+#define IAVF_TX_LEN_MASK 0xAA
+#define IAVF_TX_OFF_MASK 0x55
+static inline void
+iavf_vtx(volatile struct iavf_tx_desc *txdp,
+	 struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
+{
+	const uint64_t hi_qw_tmpl = (IAVF_TX_DESC_DTYPE_DATA |
+			((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT));
+
+	/* if unaligned on 32-bit boundary, do one to align */
+	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
+		iavf_vtx1(txdp, *pkt, flags);
+		nb_pkts--, txdp++, pkt++;
+	}
+
+	/* do 4 at a time while possible, in bursts */
+	for (; nb_pkts > 3; txdp += 4, pkt += 4, nb_pkts -= 4) {
+		__m512i desc4 =
+			_mm512_set_epi64
+				((uint64_t)pkt[3]->data_len,
+				 pkt[3]->buf_iova,
+				 (uint64_t)pkt[2]->data_len,
+				 pkt[2]->buf_iova,
+				 (uint64_t)pkt[1]->data_len,
+				 pkt[1]->buf_iova,
+				 (uint64_t)pkt[0]->data_len,
+				 pkt[0]->buf_iova);
+		__m512i hi_qw_tmpl_4 = _mm512_set1_epi64(hi_qw_tmpl);
+		__m512i data_off_4 =
+			_mm512_set_epi64
+				(0,
+				 pkt[3]->data_off,
+				 0,
+				 pkt[2]->data_off,
+				 0,
+				 pkt[1]->data_off,
+				 0,
+				 pkt[0]->data_off);
+
+		desc4 = _mm512_mask_slli_epi64(desc4, IAVF_TX_LEN_MASK, desc4,
+					       IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		desc4 = _mm512_mask_or_epi64(desc4, IAVF_TX_LEN_MASK, desc4,
+					     hi_qw_tmpl_4);
+		desc4 = _mm512_mask_add_epi64(desc4, IAVF_TX_OFF_MASK, desc4,
+					      data_off_4);
+		_mm512_storeu_si512((void *)txdp, desc4);
+	}
+
+	/* do any last ones */
+	while (nb_pkts) {
+		iavf_vtx1(txdp, *pkt, flags);
+		txdp++, pkt++, nb_pkts--;
+	}
+}
+
+static inline uint16_t
+iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
+				 uint16_t nb_pkts)
+{
+	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+	volatile struct iavf_tx_desc *txdp;
+	struct iavf_tx_vec_entry *txep;
+	uint16_t n, nb_commit, tx_id;
+	/* bit2 is reserved and must be set to 1 according to Spec */
+	uint64_t flags = IAVF_TX_DESC_CMD_EOP | IAVF_TX_DESC_CMD_ICRC;
+	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;
+
+	/* cross rx_thresh boundary is not allowed */
+	nb_pkts = RTE_MIN(nb_pkts, txq->rs_thresh);
+
+	if (txq->nb_free < txq->free_thresh)
+		iavf_tx_free_bufs_avx512(txq);
+
+	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_free, nb_pkts);
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	tx_id = txq->tx_tail;
+	txdp = &txq->tx_ring[tx_id];
+	txep = (void *)txq->sw_ring;
+	txep += tx_id;
+
+	txq->nb_free = (uint16_t)(txq->nb_free - nb_pkts);
+
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+	if (nb_commit >= n) {
+		tx_backlog_entry_avx512(txep, tx_pkts, n);
+
+		iavf_vtx(txdp, tx_pkts, n - 1, flags);
+		tx_pkts += (n - 1);
+		txdp += (n - 1);
+
+		iavf_vtx1(txdp, *tx_pkts++, rs);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		tx_id = 0;
+		txq->next_rs = (uint16_t)(txq->rs_thresh - 1);
+
+		/* avoid reach the end of ring */
+		txdp = &txq->tx_ring[tx_id];
+		txep = (void *)txq->sw_ring;
+		txep += tx_id;
+	}
+
+	tx_backlog_entry_avx512(txep, tx_pkts, nb_commit);
+
+	iavf_vtx(txdp, tx_pkts, nb_commit, flags);
+
+	tx_id = (uint16_t)(tx_id + nb_commit);
+	if (tx_id > txq->next_rs) {
+		txq->tx_ring[txq->next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)IAVF_TX_DESC_CMD_RS) <<
+					 IAVF_TXD_QW1_CMD_SHIFT);
+		txq->next_rs =
+			(uint16_t)(txq->next_rs + txq->rs_thresh);
+	}
+
+	txq->tx_tail = tx_id;
+
+	IAVF_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+
+	return nb_pkts;
+}
+
+uint16_t
+iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
+			  uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
+		ret = iavf_xmit_fixed_burst_vec_avx512(tx_queue, &tx_pkts[nb_tx],
+						       num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+
+static inline void
+iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq)
+{
+	unsigned int i;
+	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
+	struct iavf_tx_vec_entry *swr = (void *)txq->sw_ring;
+
+	if (!txq->sw_ring || txq->nb_free == max_desc)
+		return;
+
+	i = txq->next_dd - txq->rs_thresh + 1;
+	if (txq->tx_tail < i) {
+		for (; i < txq->nb_tx_desc; i++) {
+			rte_pktmbuf_free_seg(swr[i].mbuf);
+			swr[i].mbuf = NULL;
+		}
+		i = 0;
+	}
+}
+
+static const struct iavf_txq_ops avx512_vec_txq_ops = {
+	.release_mbufs = iavf_tx_queue_release_mbufs_avx512,
+};
+
+int __rte_cold
+iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq)
+{
+	txq->ops = &avx512_vec_txq_ops;
+	return 0;
+}

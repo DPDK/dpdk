@@ -171,7 +171,7 @@ New Features
 
 * **Updated Intel iavf driver.**
 
-  * Added support of AVX512 instructions in Rx path.
+  * Added support of AVX512 instructions in Rx and Tx path.
 
 * **Updated Intel ice driver.**
 
