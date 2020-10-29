@@ -440,9 +440,15 @@ int iavf_rxq_vec_setup(struct iavf_rx_queue *rxq);
 int iavf_txq_vec_setup(struct iavf_tx_queue *txq);
 uint16_t iavf_recv_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts);
+uint16_t iavf_recv_pkts_vec_avx512_flex_rxd(void *rx_queue,
+					    struct rte_mbuf **rx_pkts,
+					    uint16_t nb_pkts);
 uint16_t iavf_recv_scattered_pkts_vec_avx512(void *rx_queue,
 					     struct rte_mbuf **rx_pkts,
 					     uint16_t nb_pkts);
+uint16_t iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
+						      struct rte_mbuf **rx_pkts,
+						      uint16_t nb_pkts);
 
 const uint32_t *iavf_get_default_ptype_table(void);
 
