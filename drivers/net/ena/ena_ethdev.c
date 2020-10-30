@@ -296,21 +296,23 @@ static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 	else if (ena_rx_ctx->l4_proto == ENA_ETH_IO_L4_PROTO_UDP)
 		packet_type |= RTE_PTYPE_L4_UDP;
 
-	if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV4)
+	if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV4) {
 		packet_type |= RTE_PTYPE_L3_IPV4;
-	else if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV6)
+		if (unlikely(ena_rx_ctx->l3_csum_err))
+			ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		else
+			ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+	} else if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV6) {
 		packet_type |= RTE_PTYPE_L3_IPV6;
+	}
 
-	if (!ena_rx_ctx->l4_csum_checked)
+	if (!ena_rx_ctx->l4_csum_checked || ena_rx_ctx->frag)
 		ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
 	else
-		if (unlikely(ena_rx_ctx->l4_csum_err) && !ena_rx_ctx->frag)
+		if (unlikely(ena_rx_ctx->l4_csum_err))
 			ol_flags |= PKT_RX_L4_CKSUM_BAD;
 		else
-			ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
-
-	if (unlikely(ena_rx_ctx->l3_csum_err))
-		ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			ol_flags |= PKT_RX_L4_CKSUM_GOOD;
 
 	mbuf->ol_flags = ol_flags;
 	mbuf->packet_type = packet_type;
