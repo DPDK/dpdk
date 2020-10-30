@@ -30,7 +30,7 @@ static LIST_HEAD(alarm_list, alarm_entry) alarm_list = LIST_HEAD_INITIALIZER();
 
 static rte_spinlock_t alarm_lock = RTE_SPINLOCK_INITIALIZER;
 
-static int intr_thread_exec(void (*func)(void *arg), void *arg);
+static int intr_thread_exec_sync(void (*func)(void *arg), void *arg);
 
 static void
 alarm_remove_unsafe(struct alarm_entry *ap)
@@ -57,6 +57,18 @@ alarm_callback(void *arg, DWORD low __rte_unused, DWORD high __rte_unused)
 	rte_spinlock_unlock(&alarm_lock);
 }
 
+static int
+alarm_set(struct alarm_entry *entry, LARGE_INTEGER deadline)
+{
+	BOOL ret = SetWaitableTimer(
+		entry->timer, &deadline, 0, alarm_callback, entry, FALSE);
+	if (!ret) {
+		RTE_LOG_WIN32_ERR("SetWaitableTimer");
+		return -1;
+	}
+	return 0;
+}
+
 struct alarm_task {
 	struct alarm_entry *entry;
 	LARGE_INTEGER deadline;
@@ -64,14 +76,10 @@ struct alarm_task {
 };
 
 static void
-alarm_set(void *arg)
+alarm_task_exec(void *arg)
 {
 	struct alarm_task *task = arg;
-
-	BOOL ret = SetWaitableTimer(
-		task->entry->timer, &task->deadline,
-		0, alarm_callback, task->entry, FALSE);
-	task->ret = ret ? 0 : (-1);
+	task->ret = alarm_set(task->entry, task->deadline);
 }
 
 int
@@ -80,14 +88,14 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	struct alarm_entry *ap;
 	HANDLE timer;
 	FILETIME ft;
-	struct alarm_task task;
+	LARGE_INTEGER deadline;
 	int ret;
 
 	/* Calculate deadline ASAP, unit of measure = 100ns. */
 	GetSystemTimePreciseAsFileTime(&ft);
-	task.deadline.LowPart = ft.dwLowDateTime;
-	task.deadline.HighPart = ft.dwHighDateTime;
-	task.deadline.QuadPart += 10 * us;
+	deadline.LowPart = ft.dwLowDateTime;
+	deadline.HighPart = ft.dwHighDateTime;
+	deadline.QuadPart += 10 * us;
 
 	ap = calloc(1, sizeof(*ap));
 	if (ap == NULL) {
@@ -106,21 +114,37 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	ap->timer = timer;
 	ap->cb_fn = cb_fn;
 	ap->cb_arg = cb_arg;
-	task.entry = ap;
 
 	/* Waitable timer must be set in the same thread that will
 	 * do an alertable wait for the alarm to trigger, that is,
-	 * in the interrupt thread. Setting can fail, so do it synchronously.
+	 * in the interrupt thread.
 	 */
-	ret = intr_thread_exec(alarm_set, &task);
-	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Cannot setup alarm in interrupt thread\n");
-		goto fail;
-	}
+	if (rte_thread_is_intr()) {
+		/* Directly schedule callback execution. */
+		ret = alarm_set(ap, deadline);
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "Cannot setup alarm\n");
+			goto fail;
+		}
+	} else {
+		/* Dispatch a task to set alarm into the interrupt thread.
+		 * Execute it synchronously, because it can fail.
+		 */
+		struct alarm_task task = {
+			.entry = ap,
+			.deadline = deadline,
+		};
 
-	ret = task.ret;
-	if (ret < 0)
-		goto fail;
+		ret = intr_thread_exec_sync(alarm_task_exec, &task);
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "Cannot setup alarm in interrupt thread\n");
+			goto fail;
+		}
+
+		ret = task.ret;
+		if (ret < 0)
+			goto fail;
+	}
 
 	rte_spinlock_lock(&alarm_lock);
 	LIST_INSERT_HEAD(&alarm_list, ap, next);
@@ -196,7 +220,7 @@ intr_thread_entry(void *arg)
 }
 
 static int
-intr_thread_exec(void (*func)(void *arg), void *arg)
+intr_thread_exec_sync(void (*func)(void *arg), void *arg)
 {
 	struct intr_task task;
 	int ret;
