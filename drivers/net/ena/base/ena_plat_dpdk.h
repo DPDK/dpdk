@@ -172,7 +172,8 @@ do {                                                                   \
  */
 extern rte_atomic32_t ena_alloc_cnt;
 
-#define ENA_MEM_ALLOC_COHERENT(dmadev, size, virt, phys, handle)	\
+#define ENA_MEM_ALLOC_COHERENT_ALIGNED(					\
+	dmadev, size, virt, phys, handle, alignment)			\
 	do {								\
 		const struct rte_memzone *mz = NULL;			\
 		ENA_TOUCH(dmadev); ENA_TOUCH(handle);			\
@@ -181,9 +182,10 @@ extern rte_atomic32_t ena_alloc_cnt;
 			snprintf(z_name, sizeof(z_name),		\
 			 "ena_alloc_%d",				\
 			 rte_atomic32_add_return(&ena_alloc_cnt, 1));	\
-			mz = rte_memzone_reserve(z_name, size,		\
+			mz = rte_memzone_reserve_aligned(z_name, size,	\
 					SOCKET_ID_ANY,			\
-					RTE_MEMZONE_IOVA_CONTIG);	\
+					RTE_MEMZONE_IOVA_CONTIG,	\
+					alignment);			\
 			handle = mz;					\
 		}							\
 		if (mz == NULL) {					\
@@ -195,13 +197,21 @@ extern rte_atomic32_t ena_alloc_cnt;
 			phys = mz->iova;				\
 		}							\
 	} while (0)
+#define ENA_MEM_ALLOC_COHERENT(dmadev, size, virt, phys, handle)	\
+		ENA_MEM_ALLOC_COHERENT_ALIGNED(				\
+			dmadev,						\
+			size,						\
+			virt,						\
+			phys,						\
+			handle,						\
+			RTE_CACHE_LINE_SIZE)
 #define ENA_MEM_FREE_COHERENT(dmadev, size, virt, phys, handle) 	\
 		({ ENA_TOUCH(size); ENA_TOUCH(phys);			\
 		   ENA_TOUCH(dmadev);					\
 		   rte_memzone_free(handle); })
 
-#define ENA_MEM_ALLOC_COHERENT_NODE(					\
-	dmadev, size, virt, phys, mem_handle, node, dev_node)		\
+#define ENA_MEM_ALLOC_COHERENT_NODE_ALIGNED(				\
+	dmadev, size, virt, phys, mem_handle, node, dev_node, alignment) \
 	do {								\
 		const struct rte_memzone *mz = NULL;			\
 		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			\
@@ -210,8 +220,8 @@ extern rte_atomic32_t ena_alloc_cnt;
 			snprintf(z_name, sizeof(z_name),		\
 			 "ena_alloc_%d",				\
 			 rte_atomic32_add_return(&ena_alloc_cnt, 1));   \
-			mz = rte_memzone_reserve(z_name, size, node,	\
-				RTE_MEMZONE_IOVA_CONTIG);		\
+			mz = rte_memzone_reserve_aligned(z_name, size, node, \
+				RTE_MEMZONE_IOVA_CONTIG, alignment);	\
 			mem_handle = mz;				\
 		}							\
 		if (mz == NULL) {					\
@@ -223,7 +233,17 @@ extern rte_atomic32_t ena_alloc_cnt;
 			phys = mz->iova;				\
 		}							\
 	} while (0)
-
+#define ENA_MEM_ALLOC_COHERENT_NODE(					\
+	dmadev, size, virt, phys, mem_handle, node, dev_node)		\
+		ENA_MEM_ALLOC_COHERENT_NODE_ALIGNED(			\
+			dmadev,						\
+			size,						\
+			virt,						\
+			phys,						\
+			mem_handle,					\
+			node,						\
+			dev_node,					\
+			RTE_CACHE_LINE_SIZE)
 #define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node, dev_node) \
 	do {								\
 		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			\
