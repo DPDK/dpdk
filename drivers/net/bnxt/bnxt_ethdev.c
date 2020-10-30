@@ -1346,8 +1346,14 @@ static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 
 static void bnxt_free_switch_domain(struct bnxt *bp)
 {
-	if (bp->switch_domain_id)
-		rte_eth_switch_domain_free(bp->switch_domain_id);
+	int rc = 0;
+
+	if (bp->switch_domain_id) {
+		rc = rte_eth_switch_domain_free(bp->switch_domain_id);
+		if (rc)
+			PMD_DRV_LOG(ERR, "free switch domain:%d fail: %d\n",
+				    bp->switch_domain_id, rc);
+	}
 }
 
 /* Unload the driver, release resources */
