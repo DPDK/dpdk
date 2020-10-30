@@ -1520,7 +1520,9 @@ fips_mct_aes_test(void)
 				return ret;
 			}
 
-			get_writeback_data(&val);
+			ret = get_writeback_data(&val);
+			if (ret < 0)
+				return ret;
 
 			if (info.op == FIPS_TEST_DEC_AUTH_VERIF)
 				memcpy(prev_in, vec.ct.val, AES_BLOCK_SIZE);
@@ -1649,7 +1651,9 @@ fips_mct_sha_test(void)
 				return ret;
 			}
 
-			get_writeback_data(&val);
+			ret = get_writeback_data(&val);
+			if (ret < 0)
+				return ret;
 
 			memcpy(md[0].val, md[1].val, md[1].len);
 			md[0].len = md[1].len;
