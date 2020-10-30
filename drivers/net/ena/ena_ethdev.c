@@ -140,8 +140,8 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 /** Vendor ID used by Amazon devices */
 #define PCI_VENDOR_ID_AMAZON 0x1D0F
 /** Amazon devices */
-#define PCI_DEVICE_ID_ENA_VF	0xEC20
-#define PCI_DEVICE_ID_ENA_LLQ_VF	0xEC21
+#define PCI_DEVICE_ID_ENA_VF		0xEC20
+#define PCI_DEVICE_ID_ENA_VF_RSERV0	0xEC21
 
 #define	ENA_TX_OFFLOAD_MASK	(\
 	PKT_TX_L4_MASK |         \
@@ -155,7 +155,7 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 
 static const struct rte_pci_id pci_id_ena_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF) },
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_LLQ_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF_RSERV0) },
 	{ .device_id = 0 },
 };
 

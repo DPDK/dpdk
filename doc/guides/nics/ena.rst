@@ -118,7 +118,7 @@ Supported ENA adapters
 Current ENA PMD supports the following ENA adapters including:
 
 * ``1d0f:ec20`` - ENA VF
-* ``1d0f:ec21`` - ENA VF with LLQ support
+* ``1d0f:ec21`` - ENA VF RSERV0
 
 Supported Operating Systems
 ---------------------------
