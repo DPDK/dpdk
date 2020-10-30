@@ -786,7 +786,7 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 	int file_fd;
 	int ret = 0;
 	ssize_t buffer_size;
-	void *buffer;
+	void *buffer, *buf_to_free;
 	u64 pr_error;
 
 	if (!file_name)
@@ -818,6 +818,7 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 		ret = -ENOMEM;
 		goto close_fd;
 	}
+	buf_to_free = buffer;
 
 	/*read the raw data*/
 	if (buffer_size != read(file_fd, (void *)buffer, buffer_size)) {
@@ -835,8 +836,8 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 	}
 
 free_buffer:
-	if (buffer)
-		rte_free(buffer);
+	if (buf_to_free)
+		rte_free(buf_to_free);
 close_fd:
 	close(file_fd);
 	file_fd = 0;
