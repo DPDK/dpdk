@@ -2724,7 +2724,7 @@ static int ena_xstats_get(struct rte_eth_dev *dev,
 		return 0;
 
 	for (stat = 0; stat < ENA_STATS_ARRAY_GLOBAL; stat++, count++) {
-		stat_offset = ena_stats_rx_strings[stat].stat_offset;
+		stat_offset = ena_stats_global_strings[stat].stat_offset;
 		stats_begin = &adapter->dev_stats;
 
 		xstats[count].id = count;
