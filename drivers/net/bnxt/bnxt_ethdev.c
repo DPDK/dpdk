@@ -5505,7 +5505,7 @@ static int bnxt_init_rep_info(struct bnxt *bp)
 }
 
 static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
-			       struct rte_eth_devargs eth_da,
+			       struct rte_eth_devargs *eth_da,
 			       struct rte_eth_dev *backing_eth_dev,
 			       const char *dev_args)
 {
@@ -5516,7 +5516,7 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 	int i, ret = 0;
 	struct rte_kvargs *kvlist = NULL;
 
-	num_rep = eth_da.nb_representor_ports;
+	num_rep = eth_da->nb_representor_ports;
 	if (num_rep > BNXT_MAX_VF_REPS) {
 		PMD_DRV_LOG(ERR, "nb_representor_ports = %d > %d MAX VF REPS\n",
 			    num_rep, BNXT_MAX_VF_REPS);
@@ -5546,7 +5546,7 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 
 	for (i = 0; i < num_rep; i++) {
 		struct bnxt_representor representor = {
-			.vf_id = eth_da.representor_ports[i],
+			.vf_id = eth_da->representor_ports[i],
 			.switch_domain_id = backing_bp->switch_domain_id,
 			.parent_dev = backing_eth_dev
 		};
@@ -5559,7 +5559,7 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 
 		/* representor port net_bdf_port */
 		snprintf(name, sizeof(name), "net_%s_representor_%d",
-			 pci_dev->device.name, eth_da.representor_ports[i]);
+			 pci_dev->device.name, eth_da->representor_ports[i]);
 
 		kvlist = rte_kvargs_parse(dev_args, bnxt_dev_args);
 		if (kvlist) {
@@ -5722,7 +5722,7 @@ static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return ret;
 
 	/* probe representor ports now */
-	ret = bnxt_rep_port_probe(pci_dev, eth_da, backing_eth_dev,
+	ret = bnxt_rep_port_probe(pci_dev, &eth_da, backing_eth_dev,
 				  pci_dev->device.devargs->args);
 
 	return ret;
