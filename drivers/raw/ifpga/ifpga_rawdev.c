@@ -230,8 +230,9 @@ static int ifpga_rawdev_fill_info(struct ifpga_rawdev *ifpga_dev,
 	memset(link, 0, sizeof(link));
 	memset(link1, 0, sizeof(link1));
 	ret = readlink(path, link, (sizeof(link)-1));
-	if (ret == -1)
+	if ((ret < 0) || ((unsigned int)ret > (sizeof(link)-1)))
 		return -1;
+	link[ret] = 0;   /* terminate string with null character */
 	strlcpy(link1, link, sizeof(link1));
 	memset(ifpga_dev->parent_bdf, 0, 16);
 	point = strlen(link);
