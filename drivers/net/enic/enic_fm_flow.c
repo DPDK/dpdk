@@ -368,8 +368,8 @@ enic_fm_copy_item_eth(struct copy_item_args *arg)
 	fm_mask = &entry->ftm_mask.fk_hdrset[lvl];
 	fm_data->fk_header_select |= FKH_ETHER;
 	fm_mask->fk_header_select |= FKH_ETHER;
-	memcpy(&fm_data->l2.eth, spec, sizeof(*spec));
-	memcpy(&fm_mask->l2.eth, mask, sizeof(*mask));
+	memcpy(&fm_data->l2.eth, spec, sizeof(struct rte_ether_hdr));
+	memcpy(&fm_mask->l2.eth, mask, sizeof(struct rte_ether_hdr));
 	return 0;
 }
 
@@ -479,8 +479,8 @@ enic_fm_copy_item_ipv6(struct copy_item_args *arg)
 
 	fm_data->fk_header_select |= FKH_IPV6;
 	fm_mask->fk_header_select |= FKH_IPV6;
-	memcpy(&fm_data->l3.ip6, spec, sizeof(*spec));
-	memcpy(&fm_mask->l3.ip6, mask, sizeof(*mask));
+	memcpy(&fm_data->l3.ip6, spec, sizeof(struct rte_ipv6_hdr));
+	memcpy(&fm_mask->l3.ip6, mask, sizeof(struct rte_ipv6_hdr));
 	return 0;
 }
 
@@ -1047,7 +1047,7 @@ enic_fm_copy_vxlan_encap(struct enic_flowman *fm,
 	eth = (struct rte_ether_hdr *)template;
 	ethertype = &eth->ether_type;
 	append_template(&template, &off, item->spec,
-			sizeof(struct rte_flow_item_eth));
+			sizeof(struct rte_ether_hdr));
 	item++;
 	flow_item_skip_void(&item);
 	/* Optional VLAN */
