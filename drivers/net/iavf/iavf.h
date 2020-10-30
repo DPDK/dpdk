@@ -133,7 +133,7 @@ struct iavf_info {
 	struct virtchnl_vf_resource *vf_res; /* VF resource */
 	struct virtchnl_vsi_resource *vsi_res; /* LAN VSI */
 	uint64_t supported_rxdid;
-
+	uint8_t *proto_xtr; /* proto xtr type for all queues */
 	volatile enum virtchnl_ops pend_cmd; /* pending command not finished */
 	uint32_t cmd_retval; /* return value of the cmd response from PF */
 	uint8_t *aq_resp; /* buffer to store the adminq response from PF */
@@ -169,6 +169,27 @@ struct iavf_info {
 
 #define IAVF_MAX_PKT_TYPE 1024
 
+#define IAVF_MAX_QUEUE_NUM  2048
+
+enum iavf_proto_xtr_type {
+	IAVF_PROTO_XTR_NONE,
+	IAVF_PROTO_XTR_VLAN,
+	IAVF_PROTO_XTR_IPV4,
+	IAVF_PROTO_XTR_IPV6,
+	IAVF_PROTO_XTR_IPV6_FLOW,
+	IAVF_PROTO_XTR_TCP,
+	IAVF_PROTO_XTR_IP_OFFSET,
+	IAVF_PROTO_XTR_MAX,
+};
+
+/**
+ * Cache devargs parse result.
+ */
+struct iavf_devargs {
+	uint8_t proto_xtr_dflt;
+	uint8_t proto_xtr[IAVF_MAX_QUEUE_NUM];
+};
+
 /* Structure to store private data for each VF instance. */
 struct iavf_adapter {
 	struct iavf_hw hw;
@@ -182,6 +203,7 @@ struct iavf_adapter {
 	const uint32_t *ptype_tbl;
 	bool stopped;
 	uint16_t fdir_ref_cnt;
+	struct iavf_devargs devargs;
 };
 
 /* IAVF_DEV_PRIVATE_TO */

@@ -88,6 +88,10 @@ For more detail on SR-IOV, please refer to the following documents:
     assignment in hypervisor. Take qemu for example, the device assignment should carry the IAVF device id (0x1889) like
     ``-device vfio-pci,x-pci-device-id=0x1889,host=03:0a.0``.
 
+    When IAVF is backed by an Intel® E810 device, the "Protocol Extraction" feature which is supported by ice PMD is also
+    available for IAVF PMD. The same devargs with the same parameters can be applied to IAVF PMD, for detail please reference
+    the section ``Protocol extraction for per queue`` of ice.rst.
+
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

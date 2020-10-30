@@ -174,6 +174,9 @@ New Features
 
 * **Updated Intel iavf driver.**
 
+  Updated iavf PMD with new features and improvements, including:
+
+  * Added support for flexible descriptor metadata extraction.
   * Added support of AVX512 instructions in Rx and Tx path.
 
 * **Updated Intel ice driver.**

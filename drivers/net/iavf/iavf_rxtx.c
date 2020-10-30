@@ -27,6 +27,35 @@
 
 #include "iavf.h"
 #include "iavf_rxtx.h"
+#include "rte_pmd_iavf.h"
+
+/* Offset of mbuf dynamic field for protocol extraction's metadata */
+int rte_pmd_ifd_dynfield_proto_xtr_metadata_offs = -1;
+
+/* Mask of mbuf dynamic flags for protocol extraction's type */
+uint64_t rte_pmd_ifd_dynflag_proto_xtr_vlan_mask;
+uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipv4_mask;
+uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipv6_mask;
+uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipv6_flow_mask;
+uint64_t rte_pmd_ifd_dynflag_proto_xtr_tcp_mask;
+uint64_t rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask;
+
+uint8_t
+iavf_proto_xtr_type_to_rxdid(uint8_t flex_type)
+{
+	static uint8_t rxdid_map[] = {
+		[IAVF_PROTO_XTR_NONE]      = IAVF_RXDID_COMMS_OVS_1,
+		[IAVF_PROTO_XTR_VLAN]      = IAVF_RXDID_COMMS_AUX_VLAN,
+		[IAVF_PROTO_XTR_IPV4]      = IAVF_RXDID_COMMS_AUX_IPV4,
+		[IAVF_PROTO_XTR_IPV6]      = IAVF_RXDID_COMMS_AUX_IPV6,
+		[IAVF_PROTO_XTR_IPV6_FLOW] = IAVF_RXDID_COMMS_AUX_IPV6_FLOW,
+		[IAVF_PROTO_XTR_TCP]       = IAVF_RXDID_COMMS_AUX_TCP,
+		[IAVF_PROTO_XTR_IP_OFFSET] = IAVF_RXDID_COMMS_AUX_IP_OFFSET,
+	};
+
+	return flex_type < RTE_DIM(rxdid_map) ?
+				rxdid_map[flex_type] : IAVF_RXDID_COMMS_OVS_1;
+}
 
 static inline int
 check_rx_thresh(uint16_t nb_desc, uint16_t thresh)
@@ -295,6 +324,160 @@ static const struct iavf_txq_ops def_txq_ops = {
 	.release_mbufs = release_txq_mbufs,
 };
 
+static inline void
+iavf_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct iavf_rx_queue *rxq,
+				    struct rte_mbuf *mb,
+				    volatile union iavf_rx_flex_desc *rxdp)
+{
+	volatile struct iavf_32b_rx_flex_desc_comms_ovs *desc =
+			(volatile struct iavf_32b_rx_flex_desc_comms_ovs *)rxdp;
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	uint16_t stat_err;
+#endif
+
+	if (desc->flow_id != 0xFFFFFFFF) {
+		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
+	}
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	stat_err = rte_le_to_cpu_16(desc->status_error0);
+	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
+#endif
+}
+
+static inline void
+iavf_rxd_to_pkt_fields_by_comms_aux_v1(struct iavf_rx_queue *rxq,
+				       struct rte_mbuf *mb,
+				       volatile union iavf_rx_flex_desc *rxdp)
+{
+	volatile struct iavf_32b_rx_flex_desc_comms *desc =
+			(volatile struct iavf_32b_rx_flex_desc_comms *)rxdp;
+	uint16_t stat_err;
+
+	stat_err = rte_le_to_cpu_16(desc->status_error0);
+	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	if (desc->flow_id != 0xFFFFFFFF) {
+		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
+	}
+
+	if (rxq->xtr_ol_flag) {
+		uint32_t metadata = 0;
+
+		stat_err = rte_le_to_cpu_16(desc->status_error1);
+
+		if (stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS1_XTRMD4_VALID_S))
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux0);
+
+		if (stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS1_XTRMD5_VALID_S))
+			metadata |=
+				rte_le_to_cpu_16(desc->flex_ts.flex.aux1) << 16;
+
+		if (metadata) {
+			mb->ol_flags |= rxq->xtr_ol_flag;
+
+			*RTE_PMD_IFD_DYNF_PROTO_XTR_METADATA(mb) = metadata;
+		}
+	}
+#endif
+}
+
+static inline void
+iavf_rxd_to_pkt_fields_by_comms_aux_v2(struct iavf_rx_queue *rxq,
+				       struct rte_mbuf *mb,
+				       volatile union iavf_rx_flex_desc *rxdp)
+{
+	volatile struct iavf_32b_rx_flex_desc_comms *desc =
+			(volatile struct iavf_32b_rx_flex_desc_comms *)rxdp;
+	uint16_t stat_err;
+
+	stat_err = rte_le_to_cpu_16(desc->status_error0);
+	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	if (desc->flow_id != 0xFFFFFFFF) {
+		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
+	}
+
+	if (rxq->xtr_ol_flag) {
+		uint32_t metadata = 0;
+
+		if (desc->flex_ts.flex.aux0 != 0xFFFF)
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux0);
+		else if (desc->flex_ts.flex.aux1 != 0xFFFF)
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux1);
+
+		if (metadata) {
+			mb->ol_flags |= rxq->xtr_ol_flag;
+
+			*RTE_PMD_IFD_DYNF_PROTO_XTR_METADATA(mb) = metadata;
+		}
+	}
+#endif
+}
+
+static void
+iavf_select_rxd_to_pkt_fields_handler(struct iavf_rx_queue *rxq, uint32_t rxdid)
+{
+	switch (rxdid) {
+	case IAVF_RXDID_COMMS_AUX_VLAN:
+		rxq->xtr_ol_flag = rte_pmd_ifd_dynflag_proto_xtr_vlan_mask;
+		rxq->rxd_to_pkt_fields =
+			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+	case IAVF_RXDID_COMMS_AUX_IPV4:
+		rxq->xtr_ol_flag = rte_pmd_ifd_dynflag_proto_xtr_ipv4_mask;
+		rxq->rxd_to_pkt_fields =
+			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+	case IAVF_RXDID_COMMS_AUX_IPV6:
+		rxq->xtr_ol_flag = rte_pmd_ifd_dynflag_proto_xtr_ipv6_mask;
+		rxq->rxd_to_pkt_fields =
+			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+	case IAVF_RXDID_COMMS_AUX_IPV6_FLOW:
+		rxq->xtr_ol_flag =
+			rte_pmd_ifd_dynflag_proto_xtr_ipv6_flow_mask;
+		rxq->rxd_to_pkt_fields =
+			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+	case IAVF_RXDID_COMMS_AUX_TCP:
+		rxq->xtr_ol_flag = rte_pmd_ifd_dynflag_proto_xtr_tcp_mask;
+		rxq->rxd_to_pkt_fields =
+			iavf_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+	case IAVF_RXDID_COMMS_AUX_IP_OFFSET:
+		rxq->xtr_ol_flag =
+			rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask;
+		rxq->rxd_to_pkt_fields =
+			iavf_rxd_to_pkt_fields_by_comms_aux_v2;
+		break;
+	case IAVF_RXDID_COMMS_OVS_1:
+		rxq->rxd_to_pkt_fields = iavf_rxd_to_pkt_fields_by_comms_ovs;
+		break;
+	default:
+		/* update this according to the RXDID for FLEX_DESC_NONE */
+		rxq->rxd_to_pkt_fields = iavf_rxd_to_pkt_fields_by_comms_ovs;
+		break;
+	}
+
+	if (!rte_pmd_ifd_dynf_proto_xtr_metadata_avail())
+		rxq->xtr_ol_flag = 0;
+}
+
 int
 iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		       uint16_t nb_desc, unsigned int socket_id,
@@ -310,6 +493,7 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	struct iavf_rx_queue *rxq;
 	const struct rte_memzone *mz;
 	uint32_t ring_size;
+	uint8_t proto_xtr;
 	uint16_t len;
 	uint16_t rx_free_thresh;
 
@@ -347,13 +531,17 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return -ENOMEM;
 	}
 
-	if (vf->vf_res->vf_cap_flags &
-	    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
-	    vf->supported_rxdid & BIT(IAVF_RXDID_COMMS_OVS_1)) {
-		rxq->rxdid = IAVF_RXDID_COMMS_OVS_1;
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
+		proto_xtr = vf->proto_xtr ? vf->proto_xtr[queue_idx] :
+				IAVF_PROTO_XTR_NONE;
+		rxq->rxdid = iavf_proto_xtr_type_to_rxdid(proto_xtr);
+		rxq->proto_xtr = proto_xtr;
 	} else {
 		rxq->rxdid = IAVF_RXDID_LEGACY_1;
+		rxq->proto_xtr = IAVF_PROTO_XTR_NONE;
 	}
+
+	iavf_select_rxd_to_pkt_fields_handler(rxq, rxq->rxdid);
 
 	rxq->mp = mp;
 	rxq->nb_rx_desc = nb_desc;
@@ -735,6 +923,14 @@ iavf_stop_queues(struct rte_eth_dev *dev)
 	}
 }
 
+#define IAVF_RX_FLEX_ERR0_BITS	\
+	((1 << IAVF_RX_FLEX_DESC_STATUS0_HBO_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_IPE_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_L4E_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EUDPE_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_RXE_S))
+
 static inline void
 iavf_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union iavf_rx_desc *rxdp)
 {
@@ -760,6 +956,21 @@ iavf_flex_rxd_to_vlan_tci(struct rte_mbuf *mb,
 	} else {
 		mb->vlan_tci = 0;
 	}
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	if (rte_le_to_cpu_16(rxdp->wb.status_error1) &
+	    (1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S)) {
+		mb->ol_flags |= PKT_RX_QINQ_STRIPPED | PKT_RX_QINQ |
+				PKT_RX_VLAN_STRIPPED | PKT_RX_VLAN;
+		mb->vlan_tci_outer = mb->vlan_tci;
+		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd);
+		PMD_RX_LOG(DEBUG, "Descriptor l2tag2_1: %u, l2tag2_2: %u",
+			   rte_le_to_cpu_16(rxdp->wb.l2tag2_1st),
+			   rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd));
+	} else {
+		mb->vlan_tci_outer = 0;
+	}
+#endif
 }
 
 /* Translate the rx descriptor status and error fields to pkt flags */
@@ -822,30 +1033,6 @@ iavf_rxd_build_fdir(volatile union iavf_rx_desc *rxdp, struct rte_mbuf *mb)
 	flags |= PKT_RX_FDIR_ID;
 #endif
 	return flags;
-}
-
-
-/* Translate the rx flex descriptor status to pkt flags */
-static inline void
-iavf_rxd_to_pkt_fields(struct rte_mbuf *mb,
-		       volatile union iavf_rx_flex_desc *rxdp)
-{
-	volatile struct iavf_32b_rx_flex_desc_comms_ovs *desc =
-			(volatile struct iavf_32b_rx_flex_desc_comms_ovs *)rxdp;
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
-	uint16_t stat_err;
-
-	stat_err = rte_le_to_cpu_16(desc->status_error0);
-	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
-		mb->ol_flags |= PKT_RX_RSS_HASH;
-		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
-	}
-#endif
-
-	if (desc->flow_id != 0xFFFFFFFF) {
-		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
-		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
-	}
 }
 
 #define IAVF_RX_FLEX_ERR0_BITS	\
@@ -1102,7 +1289,7 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		rxm->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		iavf_flex_rxd_to_vlan_tci(rxm, &rxd);
-		iavf_rxd_to_pkt_fields(rxm, &rxd);
+		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 		rxm->ol_flags |= pkt_flags;
 
@@ -1243,7 +1430,7 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd);
-		iavf_rxd_to_pkt_fields(first_seg, &rxd);
+		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
 		first_seg->ol_flags |= pkt_flags;
@@ -1480,7 +1667,7 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
 			mb->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j]);
-			iavf_rxd_to_pkt_fields(mb, &rxdp[j]);
+			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
 			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
 
@@ -1672,7 +1859,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (rxq->rx_nb_avail)
 		return iavf_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
 
-	if (rxq->rxdid == IAVF_RXDID_COMMS_OVS_1)
+	if (rxq->rxdid >= IAVF_RXDID_FLEX_NIC && rxq->rxdid <= IAVF_RXDID_LAST)
 		nb_rx = (uint16_t)iavf_rx_scan_hw_ring_flex_rxd(rxq);
 	else
 		nb_rx = (uint16_t)iavf_rx_scan_hw_ring(rxq);
@@ -2119,6 +2306,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
 #ifdef RTE_ARCH_X86
 	struct iavf_rx_queue *rxq;
 	int i;

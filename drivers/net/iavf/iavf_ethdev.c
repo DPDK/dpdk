@@ -28,6 +28,49 @@
 #include "iavf.h"
 #include "iavf_rxtx.h"
 #include "iavf_generic_flow.h"
+#include "rte_pmd_iavf.h"
+
+/* devargs */
+#define IAVF_PROTO_XTR_ARG         "proto_xtr"
+
+static const char * const iavf_valid_args[] = {
+	IAVF_PROTO_XTR_ARG,
+	NULL
+};
+
+static const struct rte_mbuf_dynfield iavf_proto_xtr_metadata_param = {
+	.name = "intel_pmd_dynfield_proto_xtr_metadata",
+	.size = sizeof(uint32_t),
+	.align = __alignof__(uint32_t),
+	.flags = 0,
+};
+
+struct iavf_proto_xtr_ol {
+	const struct rte_mbuf_dynflag param;
+	uint64_t *ol_flag;
+	bool required;
+};
+
+static struct iavf_proto_xtr_ol iavf_proto_xtr_params[] = {
+	[IAVF_PROTO_XTR_VLAN] = {
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_vlan" },
+		.ol_flag = &rte_pmd_ifd_dynflag_proto_xtr_vlan_mask },
+	[IAVF_PROTO_XTR_IPV4] = {
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv4" },
+		.ol_flag = &rte_pmd_ifd_dynflag_proto_xtr_ipv4_mask },
+	[IAVF_PROTO_XTR_IPV6] = {
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv6" },
+		.ol_flag = &rte_pmd_ifd_dynflag_proto_xtr_ipv6_mask },
+	[IAVF_PROTO_XTR_IPV6_FLOW] = {
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ipv6_flow" },
+		.ol_flag = &rte_pmd_ifd_dynflag_proto_xtr_ipv6_flow_mask },
+	[IAVF_PROTO_XTR_TCP] = {
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_tcp" },
+		.ol_flag = &rte_pmd_ifd_dynflag_proto_xtr_tcp_mask },
+	[IAVF_PROTO_XTR_IP_OFFSET] = {
+		.param = { .name = "intel_pmd_dynflag_proto_xtr_ip_offset" },
+		.ol_flag = &rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask },
+};
 
 static int iavf_dev_configure(struct rte_eth_dev *dev);
 static int iavf_dev_start(struct rte_eth_dev *dev);
@@ -1395,6 +1438,349 @@ iavf_check_vf_reset_done(struct iavf_hw *hw)
 }
 
 static int
+iavf_lookup_proto_xtr_type(const char *flex_name)
+{
+	static struct {
+		const char *name;
+		enum iavf_proto_xtr_type type;
+	} xtr_type_map[] = {
+		{ "vlan",      IAVF_PROTO_XTR_VLAN      },
+		{ "ipv4",      IAVF_PROTO_XTR_IPV4      },
+		{ "ipv6",      IAVF_PROTO_XTR_IPV6      },
+		{ "ipv6_flow", IAVF_PROTO_XTR_IPV6_FLOW },
+		{ "tcp",       IAVF_PROTO_XTR_TCP       },
+		{ "ip_offset", IAVF_PROTO_XTR_IP_OFFSET },
+	};
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(xtr_type_map); i++) {
+		if (strcmp(flex_name, xtr_type_map[i].name) == 0)
+			return xtr_type_map[i].type;
+	}
+
+	PMD_DRV_LOG(ERR, "wrong proto_xtr type, "
+		    "it should be: vlan|ipv4|ipv6|ipv6_flow|tcp|ip_offset");
+
+	return -1;
+}
+
+/**
+ * Parse elem, the elem could be single number/range or '(' ')' group
+ * 1) A single number elem, it's just a simple digit. e.g. 9
+ * 2) A single range elem, two digits with a '-' between. e.g. 2-6
+ * 3) A group elem, combines multiple 1) or 2) with '( )'. e.g (0,2-4,6)
+ *    Within group elem, '-' used for a range separator;
+ *                       ',' used for a single number.
+ */
+static int
+iavf_parse_queue_set(const char *input, int xtr_type,
+		     struct iavf_devargs *devargs)
+{
+	const char *str = input;
+	char *end = NULL;
+	uint32_t min, max;
+	uint32_t idx;
+
+	while (isblank(*str))
+		str++;
+
+	if (!isdigit(*str) && *str != '(')
+		return -1;
+
+	/* process single number or single range of number */
+	if (*str != '(') {
+		errno = 0;
+		idx = strtoul(str, &end, 10);
+		if (errno || !end || idx >= IAVF_MAX_QUEUE_NUM)
+			return -1;
+
+		while (isblank(*end))
+			end++;
+
+		min = idx;
+		max = idx;
+
+		/* process single <number>-<number> */
+		if (*end == '-') {
+			end++;
+			while (isblank(*end))
+				end++;
+			if (!isdigit(*end))
+				return -1;
+
+			errno = 0;
+			idx = strtoul(end, &end, 10);
+			if (errno || !end || idx >= IAVF_MAX_QUEUE_NUM)
+				return -1;
+
+			max = idx;
+			while (isblank(*end))
+				end++;
+		}
+
+		if (*end != ':')
+			return -1;
+
+		for (idx = RTE_MIN(min, max);
+		     idx <= RTE_MAX(min, max); idx++)
+			devargs->proto_xtr[idx] = xtr_type;
+
+		return 0;
+	}
+
+	/* process set within bracket */
+	str++;
+	while (isblank(*str))
+		str++;
+	if (*str == '\0')
+		return -1;
+
+	min = IAVF_MAX_QUEUE_NUM;
+	do {
+		/* go ahead to the first digit */
+		while (isblank(*str))
+			str++;
+		if (!isdigit(*str))
+			return -1;
+
+		/* get the digit value */
+		errno = 0;
+		idx = strtoul(str, &end, 10);
+		if (errno || !end || idx >= IAVF_MAX_QUEUE_NUM)
+			return -1;
+
+		/* go ahead to separator '-',',' and ')' */
+		while (isblank(*end))
+			end++;
+		if (*end == '-') {
+			if (min == IAVF_MAX_QUEUE_NUM)
+				min = idx;
+			else /* avoid continuous '-' */
+				return -1;
+		} else if (*end == ',' || *end == ')') {
+			max = idx;
+			if (min == IAVF_MAX_QUEUE_NUM)
+				min = idx;
+
+			for (idx = RTE_MIN(min, max);
+			     idx <= RTE_MAX(min, max); idx++)
+				devargs->proto_xtr[idx] = xtr_type;
+
+			min = IAVF_MAX_QUEUE_NUM;
+		} else {
+			return -1;
+		}
+
+		str = end + 1;
+	} while (*end != ')' && *end != '\0');
+
+	return 0;
+}
+
+static int
+iavf_parse_queue_proto_xtr(const char *queues, struct iavf_devargs *devargs)
+{
+	const char *queue_start;
+	uint32_t idx;
+	int xtr_type;
+	char flex_name[32];
+
+	while (isblank(*queues))
+		queues++;
+
+	if (*queues != '[') {
+		xtr_type = iavf_lookup_proto_xtr_type(queues);
+		if (xtr_type < 0)
+			return -1;
+
+		devargs->proto_xtr_dflt = xtr_type;
+
+		return 0;
+	}
+
+	queues++;
+	do {
+		while (isblank(*queues))
+			queues++;
+		if (*queues == '\0')
+			return -1;
+
+		queue_start = queues;
+
+		/* go across a complete bracket */
+		if (*queue_start == '(') {
+			queues += strcspn(queues, ")");
+			if (*queues != ')')
+				return -1;
+		}
+
+		/* scan the separator ':' */
+		queues += strcspn(queues, ":");
+		if (*queues++ != ':')
+			return -1;
+		while (isblank(*queues))
+			queues++;
+
+		for (idx = 0; ; idx++) {
+			if (isblank(queues[idx]) ||
+			    queues[idx] == ',' ||
+			    queues[idx] == ']' ||
+			    queues[idx] == '\0')
+				break;
+
+			if (idx > sizeof(flex_name) - 2)
+				return -1;
+
+			flex_name[idx] = queues[idx];
+		}
+		flex_name[idx] = '\0';
+		xtr_type = iavf_lookup_proto_xtr_type(flex_name);
+		if (xtr_type < 0)
+			return -1;
+
+		queues += idx;
+
+		while (isblank(*queues) || *queues == ',' || *queues == ']')
+			queues++;
+
+		if (iavf_parse_queue_set(queue_start, xtr_type, devargs) < 0)
+			return -1;
+	} while (*queues != '\0');
+
+	return 0;
+}
+
+static int
+iavf_handle_proto_xtr_arg(__rte_unused const char *key, const char *value,
+			  void *extra_args)
+{
+	struct iavf_devargs *devargs = extra_args;
+
+	if (!value || !extra_args)
+		return -EINVAL;
+
+	if (iavf_parse_queue_proto_xtr(value, devargs) < 0) {
+		PMD_DRV_LOG(ERR, "the proto_xtr's parameter is wrong : '%s'",
+			    value);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int iavf_parse_devargs(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *ad =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct rte_devargs *devargs = dev->device->devargs;
+	struct rte_kvargs *kvlist;
+	int ret;
+
+	if (!devargs)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, iavf_valid_args);
+	if (!kvlist) {
+		PMD_INIT_LOG(ERR, "invalid kvargs key\n");
+		return -EINVAL;
+	}
+
+	ad->devargs.proto_xtr_dflt = IAVF_PROTO_XTR_NONE;
+	memset(ad->devargs.proto_xtr, IAVF_PROTO_XTR_NONE,
+	       sizeof(ad->devargs.proto_xtr));
+
+	ret = rte_kvargs_process(kvlist, IAVF_PROTO_XTR_ARG,
+				 &iavf_handle_proto_xtr_arg, &ad->devargs);
+	if (ret)
+		goto bail;
+
+bail:
+	rte_kvargs_free(kvlist);
+	return ret;
+}
+
+static void
+iavf_init_proto_xtr(struct rte_eth_dev *dev)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_adapter *ad =
+			IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	const struct iavf_proto_xtr_ol *xtr_ol;
+	bool proto_xtr_enable = false;
+	int offset;
+	uint16_t i;
+
+	vf->proto_xtr = rte_zmalloc("vf proto xtr",
+				    vf->vsi_res->num_queue_pairs, 0);
+	if (unlikely(!(vf->proto_xtr))) {
+		PMD_DRV_LOG(ERR, "no memory for setting up proto_xtr's table");
+		return;
+	}
+
+	for (i = 0; i < vf->vsi_res->num_queue_pairs; i++) {
+		vf->proto_xtr[i] = ad->devargs.proto_xtr[i] !=
+					IAVF_PROTO_XTR_NONE ?
+					ad->devargs.proto_xtr[i] :
+					ad->devargs.proto_xtr_dflt;
+
+		if (vf->proto_xtr[i] != IAVF_PROTO_XTR_NONE) {
+			uint8_t type = vf->proto_xtr[i];
+
+			iavf_proto_xtr_params[type].required = true;
+			proto_xtr_enable = true;
+		}
+	}
+
+	if (likely(!proto_xtr_enable))
+		return;
+
+	offset = rte_mbuf_dynfield_register(&iavf_proto_xtr_metadata_param);
+	if (unlikely(offset == -1)) {
+		PMD_DRV_LOG(ERR,
+			    "failed to extract protocol metadata, error %d",
+			    -rte_errno);
+		return;
+	}
+
+	PMD_DRV_LOG(DEBUG,
+		    "proto_xtr metadata offset in mbuf is : %d",
+		    offset);
+	rte_pmd_ifd_dynfield_proto_xtr_metadata_offs = offset;
+
+	for (i = 0; i < RTE_DIM(iavf_proto_xtr_params); i++) {
+		xtr_ol = &iavf_proto_xtr_params[i];
+
+		uint8_t rxdid = iavf_proto_xtr_type_to_rxdid((uint8_t)i);
+
+		if (!xtr_ol->required)
+			continue;
+
+		if (!(vf->supported_rxdid & BIT(rxdid))) {
+			PMD_DRV_LOG(ERR,
+				    "rxdid[%u] is not supported in hardware",
+				    rxdid);
+			rte_pmd_ifd_dynfield_proto_xtr_metadata_offs = -1;
+			break;
+		}
+
+		offset = rte_mbuf_dynflag_register(&xtr_ol->param);
+		if (unlikely(offset == -1)) {
+			PMD_DRV_LOG(ERR,
+				    "failed to register proto_xtr offload '%s', error %d",
+				    xtr_ol->param.name, -rte_errno);
+
+			rte_pmd_ifd_dynfield_proto_xtr_metadata_offs = -1;
+			break;
+		}
+
+		PMD_DRV_LOG(DEBUG,
+			    "proto_xtr offload '%s' offset in mbuf is : %d",
+			    xtr_ol->param.name, offset);
+		*xtr_ol->ol_flag = 1ULL << offset;
+	}
+}
+
+static int
 iavf_init_vf(struct rte_eth_dev *dev)
 {
 	int err, bufsz;
@@ -1402,6 +1788,12 @@ iavf_init_vf(struct rte_eth_dev *dev)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	err = iavf_parse_devargs(dev);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Failed to parse devargs");
+		goto err;
+	}
 
 	err = iavf_set_mac_type(hw);
 	if (err) {
@@ -1465,6 +1857,8 @@ iavf_init_vf(struct rte_eth_dev *dev)
 			goto err_rss;
 		}
 	}
+
+	iavf_init_proto_xtr(dev);
 
 	return 0;
 err_rss:

@@ -57,115 +57,8 @@
 #define IAVF_TX_OFFLOAD_NOTSUP_MASK \
 		(PKT_TX_OFFLOAD_MASK ^ IAVF_TX_OFFLOAD_MASK)
 
-/* HW desc structure, both 16-byte and 32-byte types are supported */
-#ifdef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
-#define iavf_rx_desc iavf_16byte_rx_desc
-#define iavf_rx_flex_desc iavf_16b_rx_flex_desc
-#else
-#define iavf_rx_desc iavf_32byte_rx_desc
-#define iavf_rx_flex_desc iavf_32b_rx_flex_desc
-#endif
-
-struct iavf_rxq_ops {
-	void (*release_mbufs)(struct iavf_rx_queue *rxq);
-};
-
-struct iavf_txq_ops {
-	void (*release_mbufs)(struct iavf_tx_queue *txq);
-};
-
-/* Structure associated with each Rx queue. */
-struct iavf_rx_queue {
-	struct rte_mempool *mp;       /* mbuf pool to populate Rx ring */
-	const struct rte_memzone *mz; /* memzone for Rx ring */
-	volatile union iavf_rx_desc *rx_ring; /* Rx ring virtual address */
-	uint64_t rx_ring_phys_addr;   /* Rx ring DMA address */
-	struct rte_mbuf **sw_ring;     /* address of SW ring */
-	uint16_t nb_rx_desc;          /* ring length */
-	uint16_t rx_tail;             /* current value of tail */
-	volatile uint8_t *qrx_tail;   /* register address of tail */
-	uint16_t rx_free_thresh;      /* max free RX desc to hold */
-	uint16_t nb_rx_hold;          /* number of held free RX desc */
-	struct rte_mbuf *pkt_first_seg; /* first segment of current packet */
-	struct rte_mbuf *pkt_last_seg;  /* last segment of current packet */
-	struct rte_mbuf fake_mbuf;      /* dummy mbuf */
-	uint8_t rxdid;
-
-	/* used for VPMD */
-	uint16_t rxrearm_nb;       /* number of remaining to be re-armed */
-	uint16_t rxrearm_start;    /* the idx we start the re-arming from */
-	uint64_t mbuf_initializer; /* value to init mbufs */
-
-	/* for rx bulk */
-	uint16_t rx_nb_avail;      /* number of staged packets ready */
-	uint16_t rx_next_avail;    /* index of next staged packets */
-	uint16_t rx_free_trigger;  /* triggers rx buffer allocation */
-	struct rte_mbuf *rx_stage[IAVF_RX_MAX_BURST * 2]; /* store mbuf */
-
-	uint16_t port_id;        /* device port ID */
-	uint8_t crc_len;        /* 0 if CRC stripped, 4 otherwise */
-	uint8_t fdir_enabled;   /* 0 if FDIR disabled, 1 when enabled */
-	uint16_t queue_id;      /* Rx queue index */
-	uint16_t rx_buf_len;    /* The packet buffer size */
-	uint16_t rx_hdr_len;    /* The header buffer size */
-	uint16_t max_pkt_len;   /* Maximum packet length */
-	struct iavf_vsi *vsi; /**< the VSI this queue belongs to */
-
-	bool q_set;             /* if rx queue has been configured */
-	bool rx_deferred_start; /* don't start this queue in dev start */
-	const struct iavf_rxq_ops *ops;
-};
-
-struct iavf_tx_entry {
-	struct rte_mbuf *mbuf;
-	uint16_t next_id;
-	uint16_t last_id;
-};
-
-struct iavf_tx_vec_entry {
-	struct rte_mbuf *mbuf;
-};
-
-/* Structure associated with each TX queue. */
-struct iavf_tx_queue {
-	const struct rte_memzone *mz;  /* memzone for Tx ring */
-	volatile struct iavf_tx_desc *tx_ring; /* Tx ring virtual address */
-	uint64_t tx_ring_phys_addr;    /* Tx ring DMA address */
-	struct iavf_tx_entry *sw_ring;  /* address array of SW ring */
-	uint16_t nb_tx_desc;           /* ring length */
-	uint16_t tx_tail;              /* current value of tail */
-	volatile uint8_t *qtx_tail;    /* register address of tail */
-	/* number of used desc since RS bit set */
-	uint16_t nb_used;
-	uint16_t nb_free;
-	uint16_t last_desc_cleaned;    /* last desc have been cleaned*/
-	uint16_t free_thresh;
-	uint16_t rs_thresh;
-
-	uint16_t port_id;
-	uint16_t queue_id;
-	uint64_t offloads;
-	uint16_t next_dd;              /* next to set RS, for VPMD */
-	uint16_t next_rs;              /* next to check DD,  for VPMD */
-
-	bool q_set;                    /* if rx queue has been configured */
-	bool tx_deferred_start;        /* don't start this queue in dev start */
-	const struct iavf_txq_ops *ops;
-};
-
-/* Offload features */
-union iavf_tx_offload {
-	uint64_t data;
-	struct {
-		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
-		uint64_t l3_len:9; /* L3 (IP) Header Length. */
-		uint64_t l4_len:8; /* L4 Header Length. */
-		uint64_t tso_segsz:16; /* TCP TSO segment size */
-		/* uint64_t unused : 24; */
-	};
-};
-
-/* Rx Flex Descriptors
+/**
+ * Rx Flex Descriptors
  * These descriptors are used instead of the legacy version descriptors
  */
 union iavf_16b_rx_flex_desc {
@@ -234,6 +127,123 @@ union iavf_32b_rx_flex_desc {
 			__le32 ts_high;
 		} flex_ts;
 	} wb; /* writeback */
+};
+
+/* HW desc structure, both 16-byte and 32-byte types are supported */
+#ifdef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+#define iavf_rx_desc iavf_16byte_rx_desc
+#define iavf_rx_flex_desc iavf_16b_rx_flex_desc
+#else
+#define iavf_rx_desc iavf_32byte_rx_desc
+#define iavf_rx_flex_desc iavf_32b_rx_flex_desc
+#endif
+
+typedef void (*iavf_rxd_to_pkt_fields_t)(struct iavf_rx_queue *rxq,
+				struct rte_mbuf *mb,
+				volatile union iavf_rx_flex_desc *rxdp);
+
+struct iavf_rxq_ops {
+	void (*release_mbufs)(struct iavf_rx_queue *rxq);
+};
+
+struct iavf_txq_ops {
+	void (*release_mbufs)(struct iavf_tx_queue *txq);
+};
+
+/* Structure associated with each Rx queue. */
+struct iavf_rx_queue {
+	struct rte_mempool *mp;       /* mbuf pool to populate Rx ring */
+	const struct rte_memzone *mz; /* memzone for Rx ring */
+	volatile union iavf_rx_desc *rx_ring; /* Rx ring virtual address */
+	uint64_t rx_ring_phys_addr;   /* Rx ring DMA address */
+	struct rte_mbuf **sw_ring;     /* address of SW ring */
+	uint16_t nb_rx_desc;          /* ring length */
+	uint16_t rx_tail;             /* current value of tail */
+	volatile uint8_t *qrx_tail;   /* register address of tail */
+	uint16_t rx_free_thresh;      /* max free RX desc to hold */
+	uint16_t nb_rx_hold;          /* number of held free RX desc */
+	struct rte_mbuf *pkt_first_seg; /* first segment of current packet */
+	struct rte_mbuf *pkt_last_seg;  /* last segment of current packet */
+	struct rte_mbuf fake_mbuf;      /* dummy mbuf */
+	uint8_t rxdid;
+
+	/* used for VPMD */
+	uint16_t rxrearm_nb;       /* number of remaining to be re-armed */
+	uint16_t rxrearm_start;    /* the idx we start the re-arming from */
+	uint64_t mbuf_initializer; /* value to init mbufs */
+
+	/* for rx bulk */
+	uint16_t rx_nb_avail;      /* number of staged packets ready */
+	uint16_t rx_next_avail;    /* index of next staged packets */
+	uint16_t rx_free_trigger;  /* triggers rx buffer allocation */
+	struct rte_mbuf *rx_stage[IAVF_RX_MAX_BURST * 2]; /* store mbuf */
+
+	uint16_t port_id;        /* device port ID */
+	uint8_t crc_len;        /* 0 if CRC stripped, 4 otherwise */
+	uint8_t fdir_enabled;   /* 0 if FDIR disabled, 1 when enabled */
+	uint16_t queue_id;      /* Rx queue index */
+	uint16_t rx_buf_len;    /* The packet buffer size */
+	uint16_t rx_hdr_len;    /* The header buffer size */
+	uint16_t max_pkt_len;   /* Maximum packet length */
+	struct iavf_vsi *vsi; /**< the VSI this queue belongs to */
+
+	bool q_set;             /* if rx queue has been configured */
+	bool rx_deferred_start; /* don't start this queue in dev start */
+	const struct iavf_rxq_ops *ops;
+	uint8_t proto_xtr; /* protocol extraction type */
+	uint64_t xtr_ol_flag;
+		/* flexible descriptor metadata extraction offload flag */
+	iavf_rxd_to_pkt_fields_t rxd_to_pkt_fields;
+				/* handle flexible descriptor by RXDID */
+};
+
+struct iavf_tx_entry {
+	struct rte_mbuf *mbuf;
+	uint16_t next_id;
+	uint16_t last_id;
+};
+
+struct iavf_tx_vec_entry {
+	struct rte_mbuf *mbuf;
+};
+
+/* Structure associated with each TX queue. */
+struct iavf_tx_queue {
+	const struct rte_memzone *mz;  /* memzone for Tx ring */
+	volatile struct iavf_tx_desc *tx_ring; /* Tx ring virtual address */
+	uint64_t tx_ring_phys_addr;    /* Tx ring DMA address */
+	struct iavf_tx_entry *sw_ring;  /* address array of SW ring */
+	uint16_t nb_tx_desc;           /* ring length */
+	uint16_t tx_tail;              /* current value of tail */
+	volatile uint8_t *qtx_tail;    /* register address of tail */
+	/* number of used desc since RS bit set */
+	uint16_t nb_used;
+	uint16_t nb_free;
+	uint16_t last_desc_cleaned;    /* last desc have been cleaned*/
+	uint16_t free_thresh;
+	uint16_t rs_thresh;
+
+	uint16_t port_id;
+	uint16_t queue_id;
+	uint64_t offloads;
+	uint16_t next_dd;              /* next to set RS, for VPMD */
+	uint16_t next_rs;              /* next to check DD,  for VPMD */
+
+	bool q_set;                    /* if rx queue has been configured */
+	bool tx_deferred_start;        /* don't start this queue in dev start */
+	const struct iavf_txq_ops *ops;
+};
+
+/* Offload features */
+union iavf_tx_offload {
+	uint64_t data;
+	struct {
+		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
+		uint64_t l3_len:9; /* L3 (IP) Header Length. */
+		uint64_t l4_len:8; /* L4 Header Length. */
+		uint64_t tso_segsz:16; /* TCP TSO segment size */
+		/* uint64_t unused : 24; */
+	};
 };
 
 /* Rx Flex Descriptor
@@ -335,6 +345,7 @@ enum iavf_rxdid {
 	IAVF_RXDID_COMMS_AUX_TCP	= 21,
 	IAVF_RXDID_COMMS_OVS_1		= 22,
 	IAVF_RXDID_COMMS_OVS_2		= 23,
+	IAVF_RXDID_COMMS_AUX_IP_OFFSET	= 25,
 	IAVF_RXDID_LAST			= 63,
 };
 
@@ -357,6 +368,20 @@ enum iavf_rx_flex_desc_status_error_0_bits {
 	IAVF_RX_FLEX_DESC_STATUS0_XTRMD0_VALID_S,
 	IAVF_RX_FLEX_DESC_STATUS0_XTRMD1_VALID_S,
 	IAVF_RX_FLEX_DESC_STATUS0_LAST /* this entry must be last!!! */
+};
+
+enum iavf_rx_flex_desc_status_error_1_bits {
+	/* Note: These are predefined bit offsets */
+	IAVF_RX_FLEX_DESC_STATUS1_CPM_S = 0, /* 4 bits */
+	IAVF_RX_FLEX_DESC_STATUS1_NAT_S = 4,
+	IAVF_RX_FLEX_DESC_STATUS1_CRYPTO_S = 5,
+	/* [10:6] reserved */
+	IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S = 11,
+	IAVF_RX_FLEX_DESC_STATUS1_XTRMD2_VALID_S = 12,
+	IAVF_RX_FLEX_DESC_STATUS1_XTRMD3_VALID_S = 13,
+	IAVF_RX_FLEX_DESC_STATUS1_XTRMD4_VALID_S = 14,
+	IAVF_RX_FLEX_DESC_STATUS1_XTRMD5_VALID_S = 15,
+	IAVF_RX_FLEX_DESC_STATUS1_LAST /* this entry must be last!!! */
 };
 
 /* for iavf_32b_rx_flex_desc.ptype_flex_flags0 member */
@@ -456,6 +481,8 @@ uint16_t iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
 uint16_t iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);
 int iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq);
+
+uint8_t iavf_proto_xtr_type_to_rxdid(uint8_t xtr_type);
 
 const uint32_t *iavf_get_default_ptype_table(void);
 

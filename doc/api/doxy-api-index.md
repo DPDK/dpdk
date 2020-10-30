@@ -45,6 +45,7 @@ The public API headers are grouped by topics:
   [ixgbe]              (@ref rte_pmd_ixgbe.h),
   [i40e]               (@ref rte_pmd_i40e.h),
   [ice]                (@ref rte_pmd_ice.h),
+  [iavf]               (@ref rte_pmd_iavf.h),
   [ioat]               (@ref rte_ioat_rawdev.h),
   [bnxt]               (@ref rte_pmd_bnxt.h),
   [dpaa]               (@ref rte_pmd_dpaa.h),
