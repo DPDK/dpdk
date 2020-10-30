@@ -1128,6 +1128,7 @@ get_writeback_data(struct fips_val *val)
 
 	if (data_len) {
 		RTE_LOG(ERR, USER1, "Error -1: write back data\n");
+		free(wb_data);
 		return -1;
 	}
 
