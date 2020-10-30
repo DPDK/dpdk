@@ -148,6 +148,12 @@ New Features
   Hairpin Tx part flow rules can be inserted explicitly.
   New API is added to get the hairpin peer ports list.
 
+* **Updated the Amazon ena driver.**
+
+  Updated the ena PMD with new features and improvements, including:
+
+  * Added network interface metrics which can be read using xstats.
+
 * **Updated Broadcom bnxt driver.**
 
   Updated the Broadcom bnxt driver with new features and improvements, including:
