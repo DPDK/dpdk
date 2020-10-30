@@ -7838,7 +7838,7 @@ cmdline_parse_token_string_t cmd_show_set_raw_cmd_what =
 			cmd_what, "raw_encap#raw_decap");
 cmdline_parse_token_num_t cmd_show_set_raw_cmd_index =
 	TOKEN_NUM_INITIALIZER(struct cmd_show_set_raw_result,
-			cmd_index, UINT16);
+			cmd_index, RTE_UINT16);
 cmdline_parse_token_string_t cmd_show_set_raw_cmd_all =
 	TOKEN_STRING_INITIALIZER(struct cmd_show_set_raw_result,
 			cmd_all, "all");

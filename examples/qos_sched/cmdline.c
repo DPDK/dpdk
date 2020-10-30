@@ -113,7 +113,7 @@ cmdline_parse_token_string_t cmd_setqavg_param_string =
                                 "period#n");
 cmdline_parse_token_num_t cmd_setqavg_number =
         TOKEN_NUM_INITIALIZER(struct cmd_setqavg_result, number,
-                                UINT32);
+				RTE_UINT32);
 
 cmdline_parse_inst_t cmd_setqavg = {
         .f = cmd_setqavg_parsed,
@@ -188,10 +188,10 @@ cmdline_parse_token_string_t cmd_subportstats_subport_string =
                                 "subport");
 cmdline_parse_token_num_t cmd_subportstats_subport_number =
         TOKEN_NUM_INITIALIZER(struct cmd_subportstats_result, subport_number,
-                                UINT32);
+				RTE_UINT32);
 cmdline_parse_token_num_t cmd_subportstats_port_number =
         TOKEN_NUM_INITIALIZER(struct cmd_subportstats_result, port_number,
-			       UINT16);
+				RTE_UINT16);
 
 cmdline_parse_inst_t cmd_subportstats = {
         .f = cmd_subportstats_parsed,
@@ -236,19 +236,19 @@ cmdline_parse_token_string_t cmd_pipestats_port_string =
                                 "port");
 cmdline_parse_token_num_t cmd_pipestats_port_number =
         TOKEN_NUM_INITIALIZER(struct cmd_pipestats_result, port_number,
-			       UINT16);
+				RTE_UINT16);
 cmdline_parse_token_string_t cmd_pipestats_subport_string =
         TOKEN_STRING_INITIALIZER(struct cmd_pipestats_result, subport_string,
                                 "subport");
 cmdline_parse_token_num_t cmd_pipestats_subport_number =
         TOKEN_NUM_INITIALIZER(struct cmd_pipestats_result, subport_number,
-                                UINT32);
+				RTE_UINT32);
 cmdline_parse_token_string_t cmd_pipestats_pipe_string =
         TOKEN_STRING_INITIALIZER(struct cmd_pipestats_result, pipe_string,
                                 "pipe");
 cmdline_parse_token_num_t cmd_pipestats_pipe_number =
         TOKEN_NUM_INITIALIZER(struct cmd_pipestats_result, pipe_number,
-                                UINT32);
+				RTE_UINT32);
 
 cmdline_parse_inst_t cmd_pipestats = {
         .f = cmd_pipestats_parsed,
@@ -299,31 +299,31 @@ cmdline_parse_token_string_t cmd_avg_q_port_string =
                                 "port");
 cmdline_parse_token_num_t cmd_avg_q_port_number =
 	TOKEN_NUM_INITIALIZER(struct cmd_avg_q_result, port_number,
-			       UINT16);
+				RTE_UINT16);
 cmdline_parse_token_string_t cmd_avg_q_subport_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_q_result, subport_string,
                                 "subport");
 cmdline_parse_token_num_t cmd_avg_q_subport_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_q_result, subport_number,
-                                UINT32);
+				RTE_UINT32);
 cmdline_parse_token_string_t cmd_avg_q_pipe_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_q_result, pipe_string,
                                 "pipe");
 cmdline_parse_token_num_t cmd_avg_q_pipe_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_q_result, pipe_number,
-                                UINT32);
+				RTE_UINT32);
 cmdline_parse_token_string_t cmd_avg_q_tc_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_q_result, tc_string,
                                 "tc");
 cmdline_parse_token_num_t cmd_avg_q_tc_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_q_result, tc_number,
-                                UINT8);
+				RTE_UINT8);
 cmdline_parse_token_string_t cmd_avg_q_q_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_q_result, q_string,
                                 "q");
 cmdline_parse_token_num_t cmd_avg_q_q_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_q_result, q_number,
-                                UINT8);
+				RTE_UINT8);
 
 cmdline_parse_inst_t cmd_avg_q = {
         .f = cmd_avg_q_parsed,
@@ -376,25 +376,25 @@ cmdline_parse_token_string_t cmd_avg_tcpipe_port_string =
                                 "port");
 cmdline_parse_token_num_t cmd_avg_tcpipe_port_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_tcpipe_result, port_number,
-			       UINT16);
+				RTE_UINT16);
 cmdline_parse_token_string_t cmd_avg_tcpipe_subport_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_tcpipe_result, subport_string,
                                 "subport");
 cmdline_parse_token_num_t cmd_avg_tcpipe_subport_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_tcpipe_result, subport_number,
-                                UINT32);
+				RTE_UINT32);
 cmdline_parse_token_string_t cmd_avg_tcpipe_pipe_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_tcpipe_result, pipe_string,
                                 "pipe");
 cmdline_parse_token_num_t cmd_avg_tcpipe_pipe_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_tcpipe_result, pipe_number,
-                                UINT32);
+				RTE_UINT32);
 cmdline_parse_token_string_t cmd_avg_tcpipe_tc_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_tcpipe_result, tc_string,
                                 "tc");
 cmdline_parse_token_num_t cmd_avg_tcpipe_tc_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_tcpipe_result, tc_number,
-                                UINT8);
+				RTE_UINT8);
 
 cmdline_parse_inst_t cmd_avg_tcpipe = {
         .f = cmd_avg_tcpipe_parsed,
@@ -443,19 +443,19 @@ cmdline_parse_token_string_t cmd_avg_pipe_port_string =
                                 "port");
 cmdline_parse_token_num_t cmd_avg_pipe_port_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_pipe_result, port_number,
-			       UINT16);
+				RTE_UINT16);
 cmdline_parse_token_string_t cmd_avg_pipe_subport_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_pipe_result, subport_string,
                                 "subport");
 cmdline_parse_token_num_t cmd_avg_pipe_subport_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_pipe_result, subport_number,
-                                UINT32);
+				RTE_UINT32);
 cmdline_parse_token_string_t cmd_avg_pipe_pipe_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_pipe_result, pipe_string,
                                 "pipe");
 cmdline_parse_token_num_t cmd_avg_pipe_pipe_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_pipe_result, pipe_number,
-                                UINT32);
+				RTE_UINT32);
 
 cmdline_parse_inst_t cmd_avg_pipe = {
         .f = cmd_avg_pipe_parsed,
@@ -502,19 +502,19 @@ cmdline_parse_token_string_t cmd_avg_tcsubport_port_string =
                                 "port");
 cmdline_parse_token_num_t cmd_avg_tcsubport_port_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_tcsubport_result, port_number,
-			       UINT16);
+				RTE_UINT16);
 cmdline_parse_token_string_t cmd_avg_tcsubport_subport_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_tcsubport_result, subport_string,
                                 "subport");
 cmdline_parse_token_num_t cmd_avg_tcsubport_subport_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_tcsubport_result, subport_number,
-                                UINT32);
+				RTE_UINT32);
 cmdline_parse_token_string_t cmd_avg_tcsubport_tc_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_tcsubport_result, tc_string,
                                 "tc");
 cmdline_parse_token_num_t cmd_avg_tcsubport_tc_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_tcsubport_result, tc_number,
-                                UINT8);
+				RTE_UINT8);
 
 cmdline_parse_inst_t cmd_avg_tcsubport = {
         .f = cmd_avg_tcsubport_parsed,
@@ -559,13 +559,13 @@ cmdline_parse_token_string_t cmd_avg_subport_port_string =
                                 "port");
 cmdline_parse_token_num_t cmd_avg_subport_port_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_subport_result, port_number,
-			       UINT16);
+				RTE_UINT16);
 cmdline_parse_token_string_t cmd_avg_subport_subport_string =
         TOKEN_STRING_INITIALIZER(struct cmd_avg_subport_result, subport_string,
                                 "subport");
 cmdline_parse_token_num_t cmd_avg_subport_subport_number =
         TOKEN_NUM_INITIALIZER(struct cmd_avg_subport_result, subport_number,
-                                UINT32);
+				RTE_UINT32);
 
 cmdline_parse_inst_t cmd_avg_subport = {
         .f = cmd_avg_subport_parsed,

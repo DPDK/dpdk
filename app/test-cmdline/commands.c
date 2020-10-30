@@ -193,7 +193,7 @@ cmd_num_parsed(void *parsed_result,
 }
 
 cmdline_parse_token_num_t cmd_num_tok =
-	TOKEN_NUM_INITIALIZER(struct cmd_num_result, num, UINT32);
+	TOKEN_NUM_INITIALIZER(struct cmd_num_result, num, RTE_UINT32);
 
 cmdline_parse_inst_t cmd_num = {
 	.f = cmd_num_parsed,  /* function to call */

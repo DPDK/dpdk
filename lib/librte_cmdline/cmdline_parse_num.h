@@ -14,14 +14,14 @@ extern "C" {
 #endif
 
 enum cmdline_numtype {
-	UINT8 = 0,
-	UINT16,
-	UINT32,
-	UINT64,
-	INT8,
-	INT16,
-	INT32,
-	INT64
+	RTE_UINT8 = 0,
+	RTE_UINT16,
+	RTE_UINT32,
+	RTE_UINT64,
+	RTE_INT8,
+	RTE_INT16,
+	RTE_INT32,
+	RTE_INT64
 };
 
 struct cmdline_token_num_data {

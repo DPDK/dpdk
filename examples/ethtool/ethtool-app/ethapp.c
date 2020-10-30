@@ -70,7 +70,7 @@ cmdline_parse_token_string_t pcmd_rxmode_token_cmd =
 cmdline_parse_token_string_t pcmd_portstats_token_cmd =
 	TOKEN_STRING_INITIALIZER(struct pcmd_int_params, cmd, "portstats");
 cmdline_parse_token_num_t pcmd_int_token_port =
-	TOKEN_NUM_INITIALIZER(struct pcmd_int_params, port, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_int_params, port, RTE_UINT16);
 
 /* Commands taking port id and string */
 cmdline_parse_token_string_t pcmd_eeprom_token_cmd =
@@ -84,7 +84,7 @@ cmdline_parse_token_string_t pcmd_regs_token_cmd =
 	TOKEN_STRING_INITIALIZER(struct pcmd_intstr_params, cmd, "regs");
 
 cmdline_parse_token_num_t pcmd_intstr_token_port =
-	TOKEN_NUM_INITIALIZER(struct pcmd_intstr_params, port, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_intstr_params, port, RTE_UINT16);
 cmdline_parse_token_string_t pcmd_intstr_token_opt =
 	TOKEN_STRING_INITIALIZER(struct pcmd_intstr_params, opt, NULL);
 
@@ -92,7 +92,7 @@ cmdline_parse_token_string_t pcmd_intstr_token_opt =
 cmdline_parse_token_string_t pcmd_macaddr_token_cmd =
 	TOKEN_STRING_INITIALIZER(struct pcmd_intmac_params, cmd, "macaddr");
 cmdline_parse_token_num_t pcmd_intmac_token_port =
-	TOKEN_NUM_INITIALIZER(struct pcmd_intmac_params, port, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_intmac_params, port, RTE_UINT16);
 cmdline_parse_token_etheraddr_t pcmd_intmac_token_mac =
 	TOKEN_ETHERADDR_INITIALIZER(struct pcmd_intmac_params, mac);
 
@@ -106,18 +106,19 @@ cmdline_parse_token_string_t pcmd_ringparam_token_cmd =
 	TOKEN_STRING_INITIALIZER(struct pcmd_intintint_params, cmd,
 		"ringparam");
 cmdline_parse_token_num_t pcmd_intintint_token_port =
-	TOKEN_NUM_INITIALIZER(struct pcmd_intintint_params, port, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_intintint_params, port,
+		RTE_UINT16);
 cmdline_parse_token_num_t pcmd_intintint_token_tx =
-	TOKEN_NUM_INITIALIZER(struct pcmd_intintint_params, tx, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_intintint_params, tx, RTE_UINT16);
 cmdline_parse_token_num_t pcmd_intintint_token_rx =
-	TOKEN_NUM_INITIALIZER(struct pcmd_intintint_params, rx, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_intintint_params, rx, RTE_UINT16);
 
 
 /* Pause commands */
 cmdline_parse_token_string_t pcmd_pause_token_cmd =
 	TOKEN_STRING_INITIALIZER(struct pcmd_intstr_params, cmd, "pause");
 cmdline_parse_token_num_t pcmd_pause_token_port =
-	TOKEN_NUM_INITIALIZER(struct pcmd_intstr_params, port, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_intstr_params, port, RTE_UINT16);
 cmdline_parse_token_string_t pcmd_pause_token_opt =
 	TOKEN_STRING_INITIALIZER(struct pcmd_intstr_params,
 		opt, "all#tx#rx#none");
@@ -126,11 +127,11 @@ cmdline_parse_token_string_t pcmd_pause_token_opt =
 cmdline_parse_token_string_t pcmd_vlan_token_cmd =
 	TOKEN_STRING_INITIALIZER(struct pcmd_vlan_params, cmd, "vlan");
 cmdline_parse_token_num_t pcmd_vlan_token_port =
-	TOKEN_NUM_INITIALIZER(struct pcmd_vlan_params, port, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_vlan_params, port, RTE_UINT16);
 cmdline_parse_token_string_t pcmd_vlan_token_mode =
 	TOKEN_STRING_INITIALIZER(struct pcmd_vlan_params, mode, "add#del");
 cmdline_parse_token_num_t pcmd_vlan_token_vid =
-	TOKEN_NUM_INITIALIZER(struct pcmd_vlan_params, vid, UINT16);
+	TOKEN_NUM_INITIALIZER(struct pcmd_vlan_params, vid, RTE_UINT16);
 
 
 static void

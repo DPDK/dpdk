@@ -397,7 +397,7 @@ cmdline_parse_token_string_t cfg_add_neigh_start =
 cmdline_parse_token_string_t cfg_add_neigh_pstr =
 	TOKEN_STRING_INITIALIZER(struct cfg_neigh_add_item, pstr, "port");
 cmdline_parse_token_num_t cfg_add_neigh_port =
-	TOKEN_NUM_INITIALIZER(struct cfg_neigh_add_item, port, UINT16);
+	TOKEN_NUM_INITIALIZER(struct cfg_neigh_add_item, port, RTE_UINT16);
 cmdline_parse_token_string_t cfg_add_neigh_mac =
 	TOKEN_STRING_INITIALIZER(struct cfg_neigh_add_item, mac, NULL);
 

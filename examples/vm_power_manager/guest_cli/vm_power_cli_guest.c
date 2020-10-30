@@ -448,7 +448,7 @@ cmdline_parse_token_string_t cmd_set_cpu_freq =
 			set_cpu_freq, "set_cpu_freq");
 cmdline_parse_token_num_t cmd_set_cpu_freq_core_num =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_cpu_freq_result,
-			lcore_id, UINT8);
+			lcore_id, RTE_UINT8);
 cmdline_parse_token_string_t cmd_set_cpu_freq_cmd_cmd =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_cpu_freq_result,
 			cmd, "up#down#min#max#enable_turbo#disable_turbo");

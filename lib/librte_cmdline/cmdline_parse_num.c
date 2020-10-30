@@ -57,9 +57,8 @@ static inline int
 add_to_res(unsigned int c, uint64_t *res, unsigned int base)
 {
 	/* overflow */
-	if ( (UINT64_MAX - c) / base < *res ) {
+	if ((UINT64_MAX - c) / base < *res)
 		return -1;
-	}
 
 	*res = (uint64_t) (*res * base + c);
 	return 0;
@@ -69,23 +68,23 @@ static int
 check_res_size(struct cmdline_token_num_data *nd, unsigned ressize)
 {
 	switch (nd->type) {
-	case INT8:
-	case UINT8:
+	case RTE_INT8:
+	case RTE_UINT8:
 		if (ressize < sizeof(int8_t))
 			return -1;
 		break;
-	case INT16:
-	case UINT16:
+	case RTE_INT16:
+	case RTE_UINT16:
 		if (ressize < sizeof(int16_t))
 			return -1;
 		break;
-	case INT32:
-	case UINT32:
+	case RTE_INT32:
+	case RTE_UINT32:
 		if (ressize < sizeof(int32_t))
 			return -1;
 		break;
-	case INT64:
-	case UINT64:
+	case RTE_INT64:
+	case RTE_UINT64:
 		if (ressize < sizeof(int64_t))
 			return -1;
 		break;
@@ -123,7 +122,7 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res,
 			return -1;
 	}
 
-	while ( st != ERROR && c && ! cmdline_isendoftoken(c) ) {
+	while (st != ERROR && c && !cmdline_isendoftoken(c)) {
 		debug_printf("%c %x -> ", c, c);
 		switch (st) {
 		case START:
@@ -259,61 +258,53 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res,
 	case HEX_OK:
 	case OCTAL_OK:
 	case BIN_OK:
-		if ( nd.type == INT8 && res1 <= INT8_MAX ) {
+		if (nd.type == RTE_INT8 && res1 <= INT8_MAX) {
 			if (res) *(int8_t *)res = (int8_t) res1;
 			return buf-srcbuf;
-		}
-		else if ( nd.type == INT16 && res1 <= INT16_MAX ) {
+		} else if (nd.type == RTE_INT16 && res1 <= INT16_MAX) {
 			if (res) *(int16_t *)res = (int16_t) res1;
 			return buf-srcbuf;
-		}
-		else if ( nd.type == INT32 && res1 <= INT32_MAX ) {
+		} else if (nd.type == RTE_INT32 && res1 <= INT32_MAX) {
 			if (res) *(int32_t *)res = (int32_t) res1;
 			return buf-srcbuf;
-		}
-		else if ( nd.type == INT64 && res1 <= INT64_MAX ) {
+		} else if (nd.type == RTE_INT64 && res1 <= INT64_MAX) {
 			if (res) *(int64_t *)res = (int64_t) res1;
 			return buf-srcbuf;
-		}
-		else if ( nd.type == UINT8 && res1 <= UINT8_MAX ) {
+		} else if (nd.type == RTE_UINT8 && res1 <= UINT8_MAX) {
 			if (res) *(uint8_t *)res = (uint8_t) res1;
 			return buf-srcbuf;
-		}
-		else if (nd.type == UINT16  && res1 <= UINT16_MAX ) {
+		} else if (nd.type == RTE_UINT16  && res1 <= UINT16_MAX) {
 			if (res) *(uint16_t *)res = (uint16_t) res1;
 			return buf-srcbuf;
-		}
-		else if ( nd.type == UINT32 && res1 <= UINT32_MAX ) {
+		} else if (nd.type == RTE_UINT32 && res1 <= UINT32_MAX) {
 			if (res) *(uint32_t *)res = (uint32_t) res1;
 			return buf-srcbuf;
-		}
-		else if ( nd.type == UINT64 ) {
+		} else if (nd.type == RTE_UINT64) {
 			if (res) *(uint64_t *)res = res1;
 			return buf-srcbuf;
-		}
-		else {
+		} else {
 			return -1;
 		}
 		break;
 
 	case DEC_NEG_OK:
-		if ( nd.type == INT8 && res1 <= INT8_MAX + 1 ) {
+		if (nd.type == RTE_INT8 &&
+				res1 <= INT8_MAX + 1) {
 			if (res) *(int8_t *)res = (int8_t) (-res1);
 			return buf-srcbuf;
-		}
-		else if ( nd.type == INT16 && res1 <= (uint16_t)INT16_MAX + 1 ) {
+		} else if (nd.type == RTE_INT16 &&
+				res1 <= (uint16_t)INT16_MAX + 1) {
 			if (res) *(int16_t *)res = (int16_t) (-res1);
 			return buf-srcbuf;
-		}
-		else if ( nd.type == INT32 && res1 <= (uint32_t)INT32_MAX + 1 ) {
+		} else if (nd.type == RTE_INT32 &&
+				res1 <= (uint32_t)INT32_MAX + 1) {
 			if (res) *(int32_t *)res = (int32_t) (-res1);
 			return buf-srcbuf;
-		}
-		else if ( nd.type == INT64 && res1 <= (uint64_t)INT64_MAX + 1 ) {
+		} else if (nd.type == RTE_INT64 &&
+				res1 <= (uint64_t)INT64_MAX + 1) {
 			if (res) *(int64_t *)res = (int64_t) (-res1);
 			return buf-srcbuf;
-		}
-		else {
+		} else {
 			return -1;
 		}
 		break;
