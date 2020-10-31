@@ -26,6 +26,8 @@
 #define HN_TXCOPY_THRESHOLD	512
 #define HN_RXCOPY_THRESHOLD	256
 
+#define HN_RX_EXTMBUF_ENABLE	0
+
 /* Buffers need to be aligned */
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
@@ -120,6 +122,7 @@ struct hn_data {
 	struct rte_mem_resource *rxbuf_res;	/* UIO resource for Rx */
 	uint32_t	rxbuf_section_cnt;	/* # of Rx sections */
 	uint32_t	rx_copybreak;
+	uint32_t	rx_extmbuf_enable;
 	uint16_t	max_queues;		/* Max available queues */
 	uint16_t	num_queues;
 	uint64_t	rss_offloads;

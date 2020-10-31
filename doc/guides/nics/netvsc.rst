@@ -133,3 +133,11 @@ The user can specify below argument in devargs.
     set larger than the MTU, then all packets smaller than the chunk size
     of the VMBus send buffer will be copied; larger packets always have to
     go as a single direct request. The default value is 512 (bytes).
+
+#.  ``rx_extmbuf_enable``:
+    The rx_extmbuf_enable is used to control if netvsc should use external
+    mbuf for receiving packets. The default value is 0. (netvsc doesn't use
+    external mbuf, it always allocates mbuf and copy received data to mbuf)
+    A non-zero value tells netvsc to attach external buffers to mbuf on
+    receiving packets, thus avoid copying memory. Use of external buffers
+    requires the application is able to read data from external mbuf.

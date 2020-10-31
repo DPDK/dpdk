@@ -570,7 +570,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 	 * For large packets, avoid copy if possible but need to keep
 	 * some space available in receive area for later packets.
 	 */
-	if (dlen > hv->rx_copybreak &&
+	if (hv->rx_extmbuf_enable && dlen > hv->rx_copybreak &&
 	    (uint32_t)rte_atomic32_read(&rxq->rxbuf_outstanding) <
 			hv->rxbuf_section_cnt / 2) {
 		struct rte_mbuf_ext_shared_info *shinfo;
