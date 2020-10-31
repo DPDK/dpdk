@@ -57,9 +57,11 @@ eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
 # driver .so files often depend upon the bus drivers for their connect bus,
 # e.g. ixgbe depends on librte_bus_pci. This means that the bus drivers need
 # to be in the library path, so symlink the drivers from the main lib directory.
-meson.add_install_script('../buildtools/symlink-drivers-solibs.sh',
-		get_option('libdir'),
-		pmd_subdir_opt)
+if not is_windows
+	meson.add_install_script('../buildtools/symlink-drivers-solibs.sh',
+			get_option('libdir'),
+			pmd_subdir_opt)
+endif
 
 # set the machine type and cflags for it
 if meson.is_cross_build()
