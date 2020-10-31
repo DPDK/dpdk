@@ -779,26 +779,25 @@ static inline void hinic_analyze_tx_info(struct rte_mbuf *mbuf,
 {
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_vlan_hdr *vlan_hdr;
-	struct rte_ipv4_hdr *ip4h;
-	u16 pkt_type;
-	u8 *hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	u16 eth_type;
 
-	hdr = (u8 *)rte_pktmbuf_mtod(mbuf, u8*);
-	eth_hdr = (struct rte_ether_hdr *)hdr;
-	pkt_type = rte_be_to_cpu_16(eth_hdr->ether_type);
+	eth_hdr = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
+	eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 
-	if (pkt_type == RTE_ETHER_TYPE_VLAN) {
+	if (eth_type == RTE_ETHER_TYPE_VLAN) {
 		off_info->outer_l2_len = ETHER_LEN_WITH_VLAN;
-		vlan_hdr = (struct rte_vlan_hdr *)(hdr + 1);
-		pkt_type = rte_be_to_cpu_16(vlan_hdr->eth_proto);
+		vlan_hdr = (struct rte_vlan_hdr *)(eth_hdr + 1);
+		eth_type = rte_be_to_cpu_16(vlan_hdr->eth_proto);
 	} else {
 		off_info->outer_l2_len = ETHER_LEN_NO_VLAN;
 	}
 
-	if (pkt_type == RTE_ETHER_TYPE_IPV4) {
-		ip4h = (struct rte_ipv4_hdr *)(hdr + off_info->outer_l2_len);
-		off_info->outer_l3_len = rte_ipv4_hdr_len(ip4h);
-	} else if (pkt_type == RTE_ETHER_TYPE_IPV6) {
+	if (eth_type == RTE_ETHER_TYPE_IPV4) {
+		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv4_hdr *,
+						   off_info->outer_l2_len);
+		off_info->outer_l3_len = rte_ipv4_hdr_len(ipv4_hdr);
+	} else if (eth_type == RTE_ETHER_TYPE_IPV6) {
 		/* not support ipv6 extension header */
 		off_info->outer_l3_len = sizeof(struct rte_ipv6_hdr);
 	}
