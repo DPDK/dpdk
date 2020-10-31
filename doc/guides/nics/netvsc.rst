@@ -116,3 +116,20 @@ The user can specify below argument in devargs.
     values save CPU cycles. This parameter is in microseconds.
     If the value is too large or too small it will be
     ignored by the host. (Default: 50)
+
+#.  ``rx_copybreak``:
+
+    The rx_copybreak sets the threshold where the driver uses an external
+    mbuf to avoid having to copy data. Setting 0 for copybreak will cause
+    driver to always create an external mbuf. Setting a value greater than
+    the MTU would prevent it from ever making an external mbuf and always
+    copy. The default value is 256 (bytes).
+
+#.  ``tx_copybreak``:
+
+    The tx_copybreak sets the threshold where the driver aggregates
+    multiple small packets into one request. If tx_copybreak is 0 then
+    each packet goes as a VMBus request (no copying). If tx_copybreak is
+    set larger than the MTU, then all packets smaller than the chunk size
+    of the VMBus send buffer will be copied; larger packets always have to
+    go as a single direct request. The default value is 512 (bytes).

@@ -40,9 +40,6 @@
 	(sizeof(struct vmbus_chanpkt_hdr) + sizeof(struct hn_nvs_rndis))
 
 #define HN_TXD_CACHE_SIZE	32 /* per cpu tx_descriptor pool cache */
-#define HN_TXCOPY_THRESHOLD	512
-
-#define HN_RXCOPY_THRESHOLD	256
 #define HN_RXQ_EVENT_DEFAULT	2048
 
 struct hn_rxinfo {
@@ -573,7 +570,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 	 * For large packets, avoid copy if possible but need to keep
 	 * some space available in receive area for later packets.
 	 */
-	if (dlen >= HN_RXCOPY_THRESHOLD &&
+	if (dlen > hv->rx_copybreak &&
 	    (uint32_t)rte_atomic32_read(&rxq->rxbuf_outstanding) <
 			hv->rxbuf_section_cnt / 2) {
 		struct rte_mbuf_ext_shared_info *shinfo;
@@ -1517,7 +1514,8 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			break;
 
 		/* For small packets aggregate them in chimney buffer */
-		if (m->pkt_len < HN_TXCOPY_THRESHOLD && pkt_size <= txq->agg_szmax) {
+		if (m->pkt_len <= hv->tx_copybreak &&
+		    pkt_size <= txq->agg_szmax) {
 			/* If this packet will not fit, then flush  */
 			if (txq->agg_pktleft == 0 ||
 			    RTE_ALIGN(pkt_size, txq->agg_align) > txq->agg_szleft) {

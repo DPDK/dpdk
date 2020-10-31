@@ -45,6 +45,10 @@
 			    DEV_RX_OFFLOAD_VLAN_STRIP | \
 			    DEV_RX_OFFLOAD_RSS_HASH)
 
+#define NETVSC_ARG_LATENCY "latency"
+#define NETVSC_ARG_RXBREAK "rx_copybreak"
+#define NETVSC_ARG_TXBREAK "tx_copybreak"
+
 struct hn_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned int offset;
@@ -136,24 +140,32 @@ eth_dev_vmbus_release(struct rte_eth_dev *eth_dev)
 	eth_dev->intr_handle = NULL;
 }
 
-/* handle "latency=X" from devargs */
-static int hn_set_latency(const char *key, const char *value, void *opaque)
+static int hn_set_parameter(const char *key, const char *value, void *opaque)
 {
 	struct hn_data *hv = opaque;
 	char *endp = NULL;
-	unsigned long lat;
+	unsigned long v;
 
-	errno = 0;
-	lat = strtoul(value, &endp, 0);
-
+	v = strtoul(value, &endp, 0);
 	if (*value == '\0' || *endp != '\0') {
 		PMD_DRV_LOG(ERR, "invalid parameter %s=%s", key, value);
 		return -EINVAL;
 	}
 
-	PMD_DRV_LOG(DEBUG, "set latency %lu usec", lat);
+	if (!strcmp(key, NETVSC_ARG_LATENCY)) {
+		/* usec to nsec */
+		hv->latency = v * 1000;
+		PMD_DRV_LOG(DEBUG, "set latency %u usec", hv->latency);
+	} else if (!strcmp(key, NETVSC_ARG_RXBREAK)) {
+		hv->rx_copybreak = v;
+		PMD_DRV_LOG(DEBUG, "rx copy break set to %u",
+			    hv->rx_copybreak);
+	} else if (!strcmp(key, NETVSC_ARG_TXBREAK)) {
+		hv->tx_copybreak = v;
+		PMD_DRV_LOG(DEBUG, "tx copy break set to %u",
+			    hv->tx_copybreak);
+	}
 
-	hv->latency = lat * 1000;	/* usec to nsec */
 	return 0;
 }
 
@@ -163,7 +175,9 @@ static int hn_parse_args(const struct rte_eth_dev *dev)
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_devargs *devargs = dev->device->devargs;
 	static const char * const valid_keys[] = {
-		"latency",
+		NETVSC_ARG_LATENCY,
+		NETVSC_ARG_RXBREAK,
+		NETVSC_ARG_TXBREAK,
 		NULL
 	};
 	struct rte_kvargs *kvlist;
@@ -177,15 +191,13 @@ static int hn_parse_args(const struct rte_eth_dev *dev)
 
 	kvlist = rte_kvargs_parse(devargs->args, valid_keys);
 	if (!kvlist) {
-		PMD_DRV_LOG(NOTICE, "invalid parameters");
+		PMD_DRV_LOG(ERR, "invalid parameters");
 		return -EINVAL;
 	}
 
-	ret = rte_kvargs_process(kvlist, "latency", hn_set_latency, hv);
-	if (ret)
-		PMD_DRV_LOG(ERR, "Unable to process latency arg\n");
-
+	ret = rte_kvargs_process(kvlist, NULL, hn_set_parameter, hv);
 	rte_kvargs_free(kvlist);
+
 	return ret;
 }
 
@@ -966,7 +978,10 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->chim_res  = &vmbus->resource[HV_SEND_BUF_MAP];
 	hv->port_id = eth_dev->data->port_id;
 	hv->latency = HN_CHAN_LATENCY_NS;
+	hv->rx_copybreak = HN_RXCOPY_THRESHOLD;
+	hv->tx_copybreak = HN_TXCOPY_THRESHOLD;
 	hv->max_queues = 1;
+
 	rte_rwlock_init(&hv->vf_lock);
 	hv->vf_port = HN_INVALID_PORT;
 
@@ -1122,3 +1137,7 @@ RTE_PMD_REGISTER_VMBUS(net_netvsc, rte_netvsc_pmd);
 RTE_PMD_REGISTER_KMOD_DEP(net_netvsc, "* uio_hv_generic");
 RTE_LOG_REGISTER(hn_logtype_init, pmd.net.netvsc.init, NOTICE);
 RTE_LOG_REGISTER(hn_logtype_driver, pmd.net.netvsc.driver, NOTICE);
+RTE_PMD_REGISTER_PARAM_STRING(net_netvsc,
+			      NETVSC_ARG_LATENCY "=<uint32> "
+			      NETVSC_ARG_RXBREAK "=<uint32> "
+			      NETVSC_ARG_TXBREAK "=<uint32>");

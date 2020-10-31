@@ -23,6 +23,9 @@
 /* Host monitor interval */
 #define HN_CHAN_LATENCY_NS	50000
 
+#define HN_TXCOPY_THRESHOLD	512
+#define HN_RXCOPY_THRESHOLD	256
+
 /* Buffers need to be aligned */
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
@@ -116,6 +119,7 @@ struct hn_data {
 
 	struct rte_mem_resource *rxbuf_res;	/* UIO resource for Rx */
 	uint32_t	rxbuf_section_cnt;	/* # of Rx sections */
+	uint32_t	rx_copybreak;
 	uint16_t	max_queues;		/* Max available queues */
 	uint16_t	num_queues;
 	uint64_t	rss_offloads;
@@ -124,6 +128,7 @@ struct hn_data {
 	struct rte_mem_resource *chim_res;	/* UIO resource for Tx */
 	struct rte_bitmap *chim_bmap;		/* Send buffer map */
 	void		*chim_bmem;
+	uint32_t	tx_copybreak;
 	uint32_t	chim_szmax;		/* Max size per buffer */
 	uint32_t	chim_cnt;		/* Max packets per buffer */
 
