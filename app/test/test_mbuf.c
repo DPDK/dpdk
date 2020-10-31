@@ -2608,9 +2608,13 @@ test_mbuf_dyn(struct rte_mempool *pktmbuf_pool)
 
 	offset3 = rte_mbuf_dynfield_register_offset(&dynfield3,
 				offsetof(struct rte_mbuf, dynfield1[1]));
-	if (offset3 != offsetof(struct rte_mbuf, dynfield1[1]))
-		GOTO_FAIL("failed to register dynamic field 3, offset=%d: %s",
-			offset3, strerror(errno));
+	if (offset3 != offsetof(struct rte_mbuf, dynfield1[1])) {
+		if (rte_errno == EBUSY)
+			printf("mbuf test error skipped: dynfield is busy\n");
+		else
+			GOTO_FAIL("failed to register dynamic field 3, offset="
+				"%d: %s", offset3, strerror(errno));
+	}
 
 	printf("dynfield: offset=%d, offset2=%d, offset3=%d\n",
 		offset, offset2, offset3);
