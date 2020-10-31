@@ -767,7 +767,8 @@ static inline void hinic_get_pld_offset(struct rte_mbuf *m,
 {
 	uint64_t ol_flags = m->ol_flags;
 
-	if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM)
+	if (((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM) ||
+	    ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_SCTP_CKSUM))
 		off_info->payload_offset = m->l2_len + m->l3_len;
 	else if ((ol_flags & PKT_TX_TCP_CKSUM) || (ol_flags & PKT_TX_TCP_SEG))
 		off_info->payload_offset = m->l2_len + m->l3_len +
