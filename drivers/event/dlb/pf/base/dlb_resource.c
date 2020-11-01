@@ -6813,3 +6813,92 @@ int dlb_hw_start_domain(struct dlb_hw *hw,
 
 	return 0;
 }
+
+static void dlb_log_get_dir_queue_depth(struct dlb_hw *hw,
+					u32 domain_id,
+					u32 queue_id)
+{
+	DLB_HW_INFO(hw, "DLB get directed queue depth:\n");
+	DLB_HW_INFO(hw, "\tDomain ID: %d\n", domain_id);
+	DLB_HW_INFO(hw, "\tQueue ID: %d\n", queue_id);
+}
+
+int dlb_hw_get_dir_queue_depth(struct dlb_hw *hw,
+			       u32 domain_id,
+			       struct dlb_get_dir_queue_depth_args *args,
+			       struct dlb_cmd_response *resp)
+{
+	struct dlb_dir_pq_pair *queue;
+	struct dlb_domain *domain;
+	int id;
+
+	id = domain_id;
+
+	dlb_log_get_dir_queue_depth(hw, domain_id, args->queue_id);
+
+	domain = dlb_get_domain_from_id(hw, id);
+	if (domain == NULL) {
+		resp->status = DLB_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	id = args->queue_id;
+
+	queue = dlb_get_domain_used_dir_pq(args->queue_id, domain);
+	if (queue == NULL) {
+		resp->status = DLB_ST_INVALID_QID;
+		return -EINVAL;
+	}
+
+	resp->id = dlb_dir_queue_depth(hw, queue);
+
+	return 0;
+}
+
+static void dlb_log_get_ldb_queue_depth(struct dlb_hw *hw,
+					u32 domain_id,
+					u32 queue_id)
+{
+	DLB_HW_INFO(hw, "DLB get load-balanced queue depth:\n");
+	DLB_HW_INFO(hw, "\tDomain ID: %d\n", domain_id);
+	DLB_HW_INFO(hw, "\tQueue ID: %d\n", queue_id);
+}
+
+int dlb_hw_get_ldb_queue_depth(struct dlb_hw *hw,
+			       u32 domain_id,
+			       struct dlb_get_ldb_queue_depth_args *args,
+			       struct dlb_cmd_response *resp)
+{
+	union dlb_lsp_qid_aqed_active_cnt r0;
+	union dlb_lsp_qid_atq_enqueue_cnt r1;
+	union dlb_lsp_qid_ldb_enqueue_cnt r2;
+	struct dlb_ldb_queue *queue;
+	struct dlb_domain *domain;
+
+	dlb_log_get_ldb_queue_depth(hw, domain_id, args->queue_id);
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+	if (domain == NULL) {
+		resp->status = DLB_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	queue = dlb_get_domain_ldb_queue(args->queue_id, domain);
+	if (queue == NULL) {
+		resp->status = DLB_ST_INVALID_QID;
+		return -EINVAL;
+	}
+
+	r0.val = DLB_CSR_RD(hw,
+			    DLB_LSP_QID_AQED_ACTIVE_CNT(queue->id));
+
+	r1.val = DLB_CSR_RD(hw,
+			    DLB_LSP_QID_ATQ_ENQUEUE_CNT(queue->id));
+
+	r2.val = DLB_CSR_RD(hw,
+			    DLB_LSP_QID_LDB_ENQUEUE_CNT(queue->id));
+
+	resp->id = r0.val + r1.val + r2.val;
+
+	return 0;
+}

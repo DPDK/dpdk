@@ -71,3 +71,9 @@ int (*dlb_iface_set_sn_allocation)(struct dlb_hw_dev *handle,
 int (*dlb_iface_get_sn_occupancy)(struct dlb_hw_dev *handle,
 				  struct dlb_get_sn_occupancy_args *args);
 
+int (*dlb_iface_get_ldb_queue_depth)(struct dlb_hw_dev *handle,
+				     struct dlb_get_ldb_queue_depth_args *args);
+
+int (*dlb_iface_get_dir_queue_depth)(struct dlb_hw_dev *handle,
+				     struct dlb_get_dir_queue_depth_args *args);
+

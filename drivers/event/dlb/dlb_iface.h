@@ -73,4 +73,10 @@ extern int (*dlb_iface_set_sn_allocation)(struct dlb_hw_dev *handle,
 extern int (*dlb_iface_get_sn_occupancy)(struct dlb_hw_dev *handle,
 				  struct dlb_get_sn_occupancy_args *args);
 
+extern int (*dlb_iface_get_ldb_queue_depth)(struct dlb_hw_dev *handle,
+				    struct dlb_get_ldb_queue_depth_args *args);
+
+extern int (*dlb_iface_get_dir_queue_depth)(struct dlb_hw_dev *handle,
+				    struct dlb_get_dir_queue_depth_args *args);
+
 #endif /* _DLB_IFACE_H */
