@@ -228,6 +228,184 @@ dlb2_pf_set_sn_allocation(struct dlb2_hw_dev *handle,
 	return ret;
 }
 
+static void *
+dlb2_alloc_coherent_aligned(const struct rte_memzone **mz, uintptr_t *phys,
+			    size_t size, int align)
+{
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	uint32_t core_id = rte_lcore_id();
+	unsigned int socket_id;
+
+	snprintf(mz_name, sizeof(mz_name) - 1, "event_dlb2_pf_%lx",
+		 (unsigned long)rte_get_timer_cycles());
+	if (core_id == (unsigned int)LCORE_ID_ANY)
+		core_id = rte_get_main_lcore();
+	socket_id = rte_lcore_to_socket_id(core_id);
+	*mz = rte_memzone_reserve_aligned(mz_name, size, socket_id,
+					 RTE_MEMZONE_IOVA_CONTIG, align);
+	if (*mz == NULL) {
+		DLB2_LOG_DBG("Unable to allocate DMA memory of size %zu bytes - %s\n",
+			     size, rte_strerror(rte_errno));
+		*phys = 0;
+		return NULL;
+	}
+	*phys = (*mz)->iova;
+	return (*mz)->addr;
+}
+
+static int
+dlb2_pf_ldb_port_create(struct dlb2_hw_dev *handle,
+			struct dlb2_create_ldb_port_args *cfg,
+			enum dlb2_cq_poll_modes poll_mode)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	struct dlb2_port_memory port_memory;
+	int ret, cq_alloc_depth;
+	uint8_t *port_base;
+	const struct rte_memzone *mz;
+	int alloc_sz, qe_sz;
+	phys_addr_t cq_base;
+	phys_addr_t pp_base;
+	int is_dir = false;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	if (poll_mode == DLB2_CQ_POLL_MODE_STD)
+		qe_sz = sizeof(struct dlb2_dequeue_qe);
+	else
+		qe_sz = RTE_CACHE_LINE_SIZE;
+
+	/* Calculate the port memory required, and round up to the nearest
+	 * cache line.
+	 */
+	cq_alloc_depth = RTE_MAX(cfg->cq_depth, DLB2_MIN_HARDWARE_CQ_DEPTH);
+	alloc_sz = cq_alloc_depth * qe_sz;
+	alloc_sz = RTE_CACHE_LINE_ROUNDUP(alloc_sz);
+
+	port_base = dlb2_alloc_coherent_aligned(&mz, &cq_base, alloc_sz,
+						PAGE_SIZE);
+	if (port_base == NULL)
+		return -ENOMEM;
+
+	/* Lock the page in memory */
+	ret = rte_mem_lock_page(port_base);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2 pf pmd could not lock page for device i/o\n");
+		goto create_port_err;
+	}
+
+	memset(port_base, 0, alloc_sz);
+
+	ret = dlb2_pf_create_ldb_port(&dlb2_dev->hw,
+				      handle->domain_id,
+				      cfg,
+				      cq_base,
+				      &response);
+	if (ret)
+		goto create_port_err;
+
+	pp_base = (uintptr_t)dlb2_dev->hw.func_kva + PP_BASE(is_dir);
+	dlb2_port[response.id][DLB2_LDB_PORT].pp_addr =
+		(void *)(pp_base + (PAGE_SIZE * response.id));
+
+	dlb2_port[response.id][DLB2_LDB_PORT].cq_base = (void *)(port_base);
+	memset(&port_memory, 0, sizeof(port_memory));
+
+	dlb2_port[response.id][DLB2_LDB_PORT].mz = mz;
+
+	dlb2_list_init_head(&port_memory.list);
+
+	cfg->response = response;
+
+	return 0;
+
+create_port_err:
+
+	rte_memzone_free(mz);
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d\n",
+		  __func__, ret);
+	return ret;
+}
+
+static int
+dlb2_pf_dir_port_create(struct dlb2_hw_dev *handle,
+			struct dlb2_create_dir_port_args *cfg,
+			enum dlb2_cq_poll_modes poll_mode)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	struct dlb2_port_memory port_memory;
+	int ret;
+	uint8_t *port_base;
+	const struct rte_memzone *mz;
+	int alloc_sz, qe_sz;
+	phys_addr_t cq_base;
+	phys_addr_t pp_base;
+	int is_dir = true;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	if (poll_mode == DLB2_CQ_POLL_MODE_STD)
+		qe_sz = sizeof(struct dlb2_dequeue_qe);
+	else
+		qe_sz = RTE_CACHE_LINE_SIZE;
+
+	/* Calculate the port memory required, and round up to the nearest
+	 * cache line.
+	 */
+	alloc_sz = cfg->cq_depth * qe_sz;
+	alloc_sz = RTE_CACHE_LINE_ROUNDUP(alloc_sz);
+
+	port_base = dlb2_alloc_coherent_aligned(&mz, &cq_base, alloc_sz,
+						PAGE_SIZE);
+	if (port_base == NULL)
+		return -ENOMEM;
+
+	/* Lock the page in memory */
+	ret = rte_mem_lock_page(port_base);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2 pf pmd could not lock page for device i/o\n");
+		goto create_port_err;
+	}
+
+	memset(port_base, 0, alloc_sz);
+
+	ret = dlb2_pf_create_dir_port(&dlb2_dev->hw,
+				      handle->domain_id,
+				      cfg,
+				      cq_base,
+				      &response);
+	if (ret)
+		goto create_port_err;
+
+	pp_base = (uintptr_t)dlb2_dev->hw.func_kva + PP_BASE(is_dir);
+	dlb2_port[response.id][DLB2_DIR_PORT].pp_addr =
+		(void *)(pp_base + (PAGE_SIZE * response.id));
+
+	dlb2_port[response.id][DLB2_DIR_PORT].cq_base =
+		(void *)(port_base);
+	memset(&port_memory, 0, sizeof(port_memory));
+
+	dlb2_port[response.id][DLB2_DIR_PORT].mz = mz;
+
+	dlb2_list_init_head(&port_memory.list);
+
+	cfg->response = response;
+
+	return 0;
+
+create_port_err:
+
+	rte_memzone_free(mz);
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d\n",
+		  __func__, ret);
+
+	return ret;
+}
+
 static void
 dlb2_pf_iface_fn_ptrs_init(void)
 {
@@ -240,6 +418,8 @@ dlb2_pf_iface_fn_ptrs_init(void)
 	dlb2_iface_get_cq_poll_mode = dlb2_pf_get_cq_poll_mode;
 	dlb2_iface_sched_domain_create = dlb2_pf_sched_domain_create;
 	dlb2_iface_ldb_queue_create = dlb2_pf_ldb_queue_create;
+	dlb2_iface_ldb_port_create = dlb2_pf_ldb_port_create;
+	dlb2_iface_dir_port_create = dlb2_pf_dir_port_create;
 	dlb2_iface_get_sn_allocation = dlb2_pf_get_sn_allocation;
 	dlb2_iface_set_sn_allocation = dlb2_pf_set_sn_allocation;
 	dlb2_iface_get_sn_occupancy = dlb2_pf_get_sn_occupancy;

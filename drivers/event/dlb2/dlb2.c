@@ -999,6 +999,503 @@ dlb2_eventdev_queue_setup(struct rte_eventdev *dev,
 	return ret;
 }
 
+static int
+dlb2_init_consume_qe(struct dlb2_port *qm_port, char *mz_name)
+{
+	struct dlb2_cq_pop_qe *qe;
+
+	qe = rte_zmalloc(mz_name,
+			DLB2_NUM_QES_PER_CACHE_LINE *
+				sizeof(struct dlb2_cq_pop_qe),
+			RTE_CACHE_LINE_SIZE);
+
+	if (qe == NULL)	{
+		DLB2_LOG_ERR("dlb2: no memory for consume_qe\n");
+		return -ENOMEM;
+	}
+	qm_port->consume_qe = qe;
+
+	qe->qe_valid = 0;
+	qe->qe_frag = 0;
+	qe->qe_comp = 0;
+	qe->cq_token = 1;
+	/* Tokens value is 0-based; i.e. '0' returns 1 token, '1' returns 2,
+	 * and so on.
+	 */
+	qe->tokens = 0;	/* set at run time */
+	qe->meas_lat = 0;
+	qe->no_dec = 0;
+	/* Completion IDs are disabled */
+	qe->cmp_id = 0;
+
+	return 0;
+}
+
+static int
+dlb2_init_int_arm_qe(struct dlb2_port *qm_port, char *mz_name)
+{
+	struct dlb2_enqueue_qe *qe;
+
+	qe = rte_zmalloc(mz_name,
+			DLB2_NUM_QES_PER_CACHE_LINE *
+				sizeof(struct dlb2_enqueue_qe),
+			RTE_CACHE_LINE_SIZE);
+
+	if (qe == NULL) {
+		DLB2_LOG_ERR("dlb2: no memory for complete_qe\n");
+		return -ENOMEM;
+	}
+	qm_port->int_arm_qe = qe;
+
+	/* V2 - INT ARM is CQ_TOKEN + FRAG */
+	qe->qe_valid = 0;
+	qe->qe_frag = 1;
+	qe->qe_comp = 0;
+	qe->cq_token = 1;
+	qe->meas_lat = 0;
+	qe->no_dec = 0;
+	/* Completion IDs are disabled */
+	qe->cmp_id = 0;
+
+	return 0;
+}
+
+static int
+dlb2_init_qe_mem(struct dlb2_port *qm_port, char *mz_name)
+{
+	int ret, sz;
+
+	sz = DLB2_NUM_QES_PER_CACHE_LINE * sizeof(struct dlb2_enqueue_qe);
+
+	qm_port->qe4 = rte_zmalloc(mz_name, sz, RTE_CACHE_LINE_SIZE);
+
+	if (qm_port->qe4 == NULL) {
+		DLB2_LOG_ERR("dlb2: no qe4 memory\n");
+		ret = -ENOMEM;
+		goto error_exit;
+	}
+
+	ret = dlb2_init_int_arm_qe(qm_port, mz_name);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: dlb2_init_int_arm_qe ret=%d\n", ret);
+		goto error_exit;
+	}
+
+	ret = dlb2_init_consume_qe(qm_port, mz_name);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: dlb2_init_consume_qe ret=%d\n", ret);
+		goto error_exit;
+	}
+
+	return 0;
+
+error_exit:
+
+	dlb2_free_qe_mem(qm_port);
+
+	return ret;
+}
+
+static int
+dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
+			struct dlb2_eventdev_port *ev_port,
+			uint32_t dequeue_depth,
+			uint32_t enqueue_depth)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_create_ldb_port_args cfg = { {0} };
+	int ret;
+	struct dlb2_port *qm_port = NULL;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	uint32_t qm_port_id;
+	uint16_t ldb_credit_high_watermark;
+	uint16_t dir_credit_high_watermark;
+
+	if (handle == NULL)
+		return -EINVAL;
+
+	if (dequeue_depth < DLB2_MIN_CQ_DEPTH) {
+		DLB2_LOG_ERR("dlb2: invalid enqueue_depth, must be at least %d\n",
+			     DLB2_MIN_CQ_DEPTH);
+		return -EINVAL;
+	}
+
+	if (enqueue_depth < DLB2_MIN_ENQUEUE_DEPTH) {
+		DLB2_LOG_ERR("dlb2: invalid enqueue_depth, must be at least %d\n",
+			     DLB2_MIN_ENQUEUE_DEPTH);
+		return -EINVAL;
+	}
+
+	rte_spinlock_lock(&handle->resource_lock);
+
+	/* We round up to the next power of 2 if necessary */
+	cfg.cq_depth = rte_align32pow2(dequeue_depth);
+	cfg.cq_depth_threshold = 1;
+
+	cfg.cq_history_list_size = DLB2_NUM_HIST_LIST_ENTRIES_PER_LDB_PORT;
+
+	if (handle->cos_id == DLB2_COS_DEFAULT)
+		cfg.cos_id = 0;
+	else
+		cfg.cos_id = handle->cos_id;
+
+	cfg.cos_strict = 0;
+
+	/* User controls the LDB high watermark via enqueue depth. The DIR high
+	 * watermark is equal, unless the directed credit pool is too small.
+	 */
+	ldb_credit_high_watermark = enqueue_depth;
+
+	/* If there are no directed ports, the kernel driver will ignore this
+	 * port's directed credit settings. Don't use enqueue_depth if it would
+	 * require more directed credits than are available.
+	 */
+	dir_credit_high_watermark =
+		RTE_MIN(enqueue_depth,
+			handle->cfg.num_dir_credits / dlb2->num_ports);
+
+	/* Per QM values */
+
+	ret = dlb2_iface_ldb_port_create(handle, &cfg,  dlb2->poll_mode);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: dlb2_ldb_port_create error, ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		goto error_exit;
+	}
+
+	qm_port_id = cfg.response.id;
+
+	DLB2_LOG_DBG("dlb2: ev_port %d uses qm LB port %d <<<<<\n",
+		     ev_port->id, qm_port_id);
+
+	qm_port = &ev_port->qm_port;
+	qm_port->ev_port = ev_port; /* back ptr */
+	qm_port->dlb2 = dlb2; /* back ptr */
+	/*
+	 * Allocate and init local qe struct(s).
+	 * Note: MOVDIR64 requires the enqueue QE (qe4) to be aligned.
+	 */
+
+	snprintf(mz_name, sizeof(mz_name), "dlb2_ldb_port%d",
+		 ev_port->id);
+
+	ret = dlb2_init_qe_mem(qm_port, mz_name);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: init_qe_mem failed, ret=%d\n", ret);
+		goto error_exit;
+	}
+
+	qm_port->id = qm_port_id;
+
+	qm_port->cached_ldb_credits = 0;
+	qm_port->cached_dir_credits = 0;
+	/* CQs with depth < 8 use an 8-entry queue, but withhold credits so
+	 * the effective depth is smaller.
+	 */
+	qm_port->cq_depth = cfg.cq_depth <= 8 ? 8 : cfg.cq_depth;
+	qm_port->cq_idx = 0;
+	qm_port->cq_idx_unmasked = 0;
+
+	if (dlb2->poll_mode == DLB2_CQ_POLL_MODE_SPARSE)
+		qm_port->cq_depth_mask = (qm_port->cq_depth * 4) - 1;
+	else
+		qm_port->cq_depth_mask = qm_port->cq_depth - 1;
+
+	qm_port->gen_bit_shift = __builtin_popcount(qm_port->cq_depth_mask);
+	/* starting value of gen bit - it toggles at wrap time */
+	qm_port->gen_bit = 1;
+
+	qm_port->int_armed = false;
+
+	/* Save off for later use in info and lookup APIs. */
+	qm_port->qid_mappings = &dlb2->qm_ldb_to_ev_queue_id[0];
+
+	qm_port->dequeue_depth = dequeue_depth;
+
+	qm_port->owed_tokens = 0;
+	qm_port->issued_releases = 0;
+
+	/* Save config message too. */
+	rte_memcpy(&qm_port->cfg.ldb, &cfg, sizeof(qm_port->cfg.ldb));
+
+	/* update state */
+	qm_port->state = PORT_STARTED; /* enabled at create time */
+	qm_port->config_state = DLB2_CONFIGURED;
+
+	qm_port->dir_credits = dir_credit_high_watermark;
+	qm_port->ldb_credits = ldb_credit_high_watermark;
+	qm_port->credit_pool[DLB2_DIR_QUEUE] = &dlb2->dir_credit_pool;
+	qm_port->credit_pool[DLB2_LDB_QUEUE] = &dlb2->ldb_credit_pool;
+
+	DLB2_LOG_DBG("dlb2: created ldb port %d, depth = %d, ldb credits=%d, dir credits=%d\n",
+		     qm_port_id,
+		     dequeue_depth,
+		     qm_port->ldb_credits,
+		     qm_port->dir_credits);
+
+	rte_spinlock_unlock(&handle->resource_lock);
+
+	return 0;
+
+error_exit:
+
+	if (qm_port)
+		dlb2_free_qe_mem(qm_port);
+
+	rte_spinlock_unlock(&handle->resource_lock);
+
+	DLB2_LOG_ERR("dlb2: create ldb port failed!\n");
+
+	return ret;
+}
+
+static void
+dlb2_port_link_teardown(struct dlb2_eventdev *dlb2,
+			struct dlb2_eventdev_port *ev_port)
+{
+	struct dlb2_eventdev_queue *ev_queue;
+	int i;
+
+	for (i = 0; i < DLB2_MAX_NUM_QIDS_PER_LDB_CQ; i++) {
+		if (!ev_port->link[i].valid)
+			continue;
+
+		ev_queue = &dlb2->ev_queues[ev_port->link[i].queue_id];
+
+		ev_port->link[i].valid = false;
+		ev_port->num_links--;
+		ev_queue->num_links--;
+	}
+}
+
+static int
+dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
+			struct dlb2_eventdev_port *ev_port,
+			uint32_t dequeue_depth,
+			uint32_t enqueue_depth)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_create_dir_port_args cfg = { {0} };
+	int ret;
+	struct dlb2_port *qm_port = NULL;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	uint32_t qm_port_id;
+	uint16_t ldb_credit_high_watermark;
+	uint16_t dir_credit_high_watermark;
+
+	if (dlb2 == NULL || handle == NULL)
+		return -EINVAL;
+
+	if (dequeue_depth < DLB2_MIN_CQ_DEPTH) {
+		DLB2_LOG_ERR("dlb2: invalid dequeue_depth, must be %d-%d\n",
+			     DLB2_MIN_CQ_DEPTH, DLB2_MAX_INPUT_QUEUE_DEPTH);
+		return -EINVAL;
+	}
+
+	if (enqueue_depth < DLB2_MIN_ENQUEUE_DEPTH) {
+		DLB2_LOG_ERR("dlb2: invalid enqueue_depth, must be at least %d\n",
+			     DLB2_MIN_ENQUEUE_DEPTH);
+		return -EINVAL;
+	}
+
+	rte_spinlock_lock(&handle->resource_lock);
+
+	/* Directed queues are configured at link time. */
+	cfg.queue_id = -1;
+
+	/* We round up to the next power of 2 if necessary */
+	cfg.cq_depth = rte_align32pow2(dequeue_depth);
+	cfg.cq_depth_threshold = 1;
+
+	/* User controls the LDB high watermark via enqueue depth. The DIR high
+	 * watermark is equal, unless the directed credit pool is too small.
+	 */
+	ldb_credit_high_watermark = enqueue_depth;
+
+	/* Don't use enqueue_depth if it would require more directed credits
+	 * than are available.
+	 */
+	dir_credit_high_watermark =
+		RTE_MIN(enqueue_depth,
+			handle->cfg.num_dir_credits / dlb2->num_ports);
+
+	/* Per QM values */
+
+	ret = dlb2_iface_dir_port_create(handle, &cfg,  dlb2->poll_mode);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: dlb2_dir_port_create error, ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		goto error_exit;
+	}
+
+	qm_port_id = cfg.response.id;
+
+	DLB2_LOG_DBG("dlb2: ev_port %d uses qm DIR port %d <<<<<\n",
+		     ev_port->id, qm_port_id);
+
+	qm_port = &ev_port->qm_port;
+	qm_port->ev_port = ev_port; /* back ptr */
+	qm_port->dlb2 = dlb2;  /* back ptr */
+
+	/*
+	 * Init local qe struct(s).
+	 * Note: MOVDIR64 requires the enqueue QE to be aligned
+	 */
+
+	snprintf(mz_name, sizeof(mz_name), "dlb2_dir_port%d",
+		 ev_port->id);
+
+	ret = dlb2_init_qe_mem(qm_port, mz_name);
+
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: init_qe_mem failed, ret=%d\n", ret);
+		goto error_exit;
+	}
+
+	qm_port->id = qm_port_id;
+
+	qm_port->cached_ldb_credits = 0;
+	qm_port->cached_dir_credits = 0;
+	/* CQs with depth < 8 use an 8-entry queue, but withhold credits so
+	 * the effective depth is smaller.
+	 */
+	qm_port->cq_depth = cfg.cq_depth <= 8 ? 8 : cfg.cq_depth;
+	qm_port->cq_idx = 0;
+	qm_port->cq_idx_unmasked = 0;
+
+	if (dlb2->poll_mode == DLB2_CQ_POLL_MODE_SPARSE)
+		qm_port->cq_depth_mask = (cfg.cq_depth * 4) - 1;
+	else
+		qm_port->cq_depth_mask = cfg.cq_depth - 1;
+
+	qm_port->gen_bit_shift = __builtin_popcount(qm_port->cq_depth_mask);
+	/* starting value of gen bit - it toggles at wrap time */
+	qm_port->gen_bit = 1;
+
+	qm_port->int_armed = false;
+
+	/* Save off for later use in info and lookup APIs. */
+	qm_port->qid_mappings = &dlb2->qm_dir_to_ev_queue_id[0];
+
+	qm_port->dequeue_depth = dequeue_depth;
+
+	qm_port->owed_tokens = 0;
+	qm_port->issued_releases = 0;
+
+	/* Save config message too. */
+	rte_memcpy(&qm_port->cfg.dir, &cfg, sizeof(qm_port->cfg.dir));
+
+	/* update state */
+	qm_port->state = PORT_STARTED; /* enabled at create time */
+	qm_port->config_state = DLB2_CONFIGURED;
+
+	qm_port->dir_credits = dir_credit_high_watermark;
+	qm_port->ldb_credits = ldb_credit_high_watermark;
+	qm_port->credit_pool[DLB2_DIR_QUEUE] = &dlb2->dir_credit_pool;
+	qm_port->credit_pool[DLB2_LDB_QUEUE] = &dlb2->ldb_credit_pool;
+
+	DLB2_LOG_DBG("dlb2: created dir port %d, depth = %d cr=%d,%d\n",
+		     qm_port_id,
+		     dequeue_depth,
+		     dir_credit_high_watermark,
+		     ldb_credit_high_watermark);
+
+	rte_spinlock_unlock(&handle->resource_lock);
+
+	return 0;
+
+error_exit:
+
+	if (qm_port)
+		dlb2_free_qe_mem(qm_port);
+
+	rte_spinlock_unlock(&handle->resource_lock);
+
+	DLB2_LOG_ERR("dlb2: create dir port failed!\n");
+
+	return ret;
+}
+
+static int
+dlb2_eventdev_port_setup(struct rte_eventdev *dev,
+			 uint8_t ev_port_id,
+			 const struct rte_event_port_conf *port_conf)
+{
+	struct dlb2_eventdev *dlb2;
+	struct dlb2_eventdev_port *ev_port;
+	int ret;
+
+	if (dev == NULL || port_conf == NULL) {
+		DLB2_LOG_ERR("Null parameter\n");
+		return -EINVAL;
+	}
+
+	dlb2 = dlb2_pmd_priv(dev);
+
+	if (ev_port_id >= DLB2_MAX_NUM_PORTS)
+		return -EINVAL;
+
+	if (port_conf->dequeue_depth >
+		evdev_dlb2_default_info.max_event_port_dequeue_depth ||
+	    port_conf->enqueue_depth >
+		evdev_dlb2_default_info.max_event_port_enqueue_depth)
+		return -EINVAL;
+
+	ev_port = &dlb2->ev_ports[ev_port_id];
+	/* configured? */
+	if (ev_port->setup_done) {
+		DLB2_LOG_ERR("evport %d is already configured\n", ev_port_id);
+		return -EINVAL;
+	}
+
+	ev_port->qm_port.is_directed = port_conf->event_port_cfg &
+		RTE_EVENT_PORT_CFG_SINGLE_LINK;
+
+	if (!ev_port->qm_port.is_directed) {
+		ret = dlb2_hw_create_ldb_port(dlb2,
+					      ev_port,
+					      port_conf->dequeue_depth,
+					      port_conf->enqueue_depth);
+		if (ret < 0) {
+			DLB2_LOG_ERR("Failed to create the lB port ve portId=%d\n",
+				     ev_port_id);
+
+			return ret;
+		}
+	} else {
+		ret = dlb2_hw_create_dir_port(dlb2,
+					      ev_port,
+					      port_conf->dequeue_depth,
+					      port_conf->enqueue_depth);
+		if (ret < 0) {
+			DLB2_LOG_ERR("Failed to create the DIR port\n");
+			return ret;
+		}
+	}
+
+	/* Save off port config for reconfig */
+	ev_port->conf = *port_conf;
+
+	ev_port->id = ev_port_id;
+	ev_port->enq_configured = true;
+	ev_port->setup_done = true;
+	ev_port->inflight_max = port_conf->new_event_threshold;
+	ev_port->implicit_release = !(port_conf->event_port_cfg &
+		  RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
+	ev_port->outstanding_releases = 0;
+	ev_port->inflight_credits = 0;
+	ev_port->credit_update_quanta = RTE_LIBRTE_PMD_DLB2_SW_CREDIT_QUANTA;
+	ev_port->dlb2 = dlb2; /* reverse link */
+
+	/* Tear down pre-existing port->queue links */
+	if (dlb2->run_state == DLB2_RUN_STATE_STOPPED)
+		dlb2_port_link_teardown(dlb2, &dlb2->ev_ports[ev_port_id]);
+
+	dev->data->ports[ev_port_id] = &dlb2->ev_ports[ev_port_id];
+
+	return 0;
+}
+
 static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
@@ -1009,6 +1506,7 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 		.queue_def_conf   = dlb2_eventdev_queue_default_conf_get,
 		.queue_setup      = dlb2_eventdev_queue_setup,
 		.port_def_conf    = dlb2_eventdev_port_default_conf_get,
+		.port_setup       = dlb2_eventdev_port_setup,
 		.dump             = dlb2_eventdev_dump,
 		.xstats_get       = dlb2_eventdev_xstats_get,
 		.xstats_get_names = dlb2_eventdev_xstats_get_names,

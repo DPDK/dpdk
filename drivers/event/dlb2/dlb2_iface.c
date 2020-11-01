@@ -43,3 +43,11 @@ int (*dlb2_iface_set_sn_allocation)(struct dlb2_hw_dev *handle,
 
 int (*dlb2_iface_get_sn_occupancy)(struct dlb2_hw_dev *handle,
 				   struct dlb2_get_sn_occupancy_args *args);
+
+int (*dlb2_iface_ldb_port_create)(struct dlb2_hw_dev *handle,
+				  struct dlb2_create_ldb_port_args *cfg,
+				  enum dlb2_cq_poll_modes poll_mode);
+
+int (*dlb2_iface_dir_port_create)(struct dlb2_hw_dev *handle,
+				  struct dlb2_create_dir_port_args *cfg,
+				  enum dlb2_cq_poll_modes poll_mode);

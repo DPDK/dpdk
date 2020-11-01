@@ -623,3 +623,31 @@ dlb2_pf_create_ldb_queue(struct dlb2_hw *hw,
 	return dlb2_hw_create_ldb_queue(hw, id, args, resp, NOT_VF_REQ,
 					PF_ID_ZERO);
 }
+
+int
+dlb2_pf_create_ldb_port(struct dlb2_hw *hw,
+			u32 id,
+			struct dlb2_create_ldb_port_args *args,
+			uintptr_t cq_dma_base,
+			struct dlb2_cmd_response *resp)
+{
+	return dlb2_hw_create_ldb_port(hw, id, args,
+				       cq_dma_base,
+				       resp,
+				       NOT_VF_REQ,
+				       PF_ID_ZERO);
+}
+
+int
+dlb2_pf_create_dir_port(struct dlb2_hw *hw,
+			u32 id,
+			struct dlb2_create_dir_port_args *args,
+			uintptr_t cq_dma_base,
+			struct dlb2_cmd_response *resp)
+{
+	return dlb2_hw_create_dir_port(hw, id, args,
+				       cq_dma_base,
+				       resp,
+				       NOT_VF_REQ,
+				       PF_ID_ZERO);
+}
