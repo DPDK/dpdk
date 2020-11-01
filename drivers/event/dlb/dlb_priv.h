@@ -505,4 +505,6 @@ int dlb_parse_params(const char *params,
 		     const char *name,
 		     struct dlb_devargs *dlb_args);
 
+void dlb_entry_points_init(struct rte_eventdev *dev);
+
 #endif	/* _DLB_PRIV_H_ */
