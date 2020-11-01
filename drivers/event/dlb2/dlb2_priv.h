@@ -12,6 +12,7 @@
 #include <rte_config.h>
 #include "dlb2_user.h"
 #include "dlb2_log.h"
+#include "rte_pmd_dlb2.h"
 
 #ifndef RTE_LIBRTE_PMD_DLB2_QUELL_STATS
 #define DLB2_INC_STAT(_stat, _incr_val) ((_stat) += _incr_val)
@@ -290,6 +291,7 @@ struct dlb2_port {
 	bool gen_bit;
 	uint16_t dir_credits;
 	uint32_t dequeue_depth;
+	enum dlb2_token_pop_mode token_pop_mode;
 	union dlb2_port_config cfg;
 	uint32_t *credit_pool[DLB2_NUM_QUEUE_TYPES]; /* use __atomic builtins */
 	uint16_t cached_ldb_credits;
@@ -298,6 +300,7 @@ struct dlb2_port {
 	bool int_armed;
 	uint16_t owed_tokens;
 	int16_t issued_releases;
+	int16_t token_pop_thresh;
 	int cq_depth;
 	uint16_t cq_idx;
 	uint16_t cq_idx_unmasked;

@@ -1,3 +1,4 @@
+
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2019-2020 Intel Corporation
 
@@ -12,9 +13,10 @@ sources = files('dlb2.c',
 		'dlb2_xstats.c',
 		'pf/dlb2_main.c',
 		'pf/dlb2_pf.c',
-		'pf/base/dlb2_resource.c'
+		'pf/base/dlb2_resource.c',
+		'rte_pmd_dlb2.c'
 )
 
-headers = files()
+headers = files('rte_pmd_dlb2.h')
 
 deps += ['mbuf', 'mempool', 'ring', 'pci', 'bus_pci']
