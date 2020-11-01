@@ -221,6 +221,213 @@ dlb_pf_ldb_queue_create(struct dlb_hw_dev *handle,
 }
 
 static int
+dlb_pf_dir_queue_create(struct dlb_hw_dev *handle,
+			struct dlb_create_dir_queue_args *cfg)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	ret = dlb_hw_create_dir_queue(&dlb_dev->hw,
+				      handle->domain_id,
+				      cfg,
+				      &response);
+
+	*(struct dlb_cmd_response *)cfg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+	return ret;
+}
+
+static void *
+dlb_alloc_coherent_aligned(const struct rte_memzone **mz, rte_iova_t *phys,
+			   size_t size, int align)
+{
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	uint32_t core_id = rte_lcore_id();
+	unsigned int socket_id;
+
+	snprintf(mz_name, sizeof(mz_name) - 1, "event_dlb_port_mem_%lx",
+		 (unsigned long)rte_get_timer_cycles());
+	if (core_id == (unsigned int)LCORE_ID_ANY)
+		core_id = rte_get_main_lcore();
+	socket_id = rte_lcore_to_socket_id(core_id);
+	*mz = rte_memzone_reserve_aligned(mz_name, size, socket_id,
+					 RTE_MEMZONE_IOVA_CONTIG, align);
+	if (*mz == NULL) {
+		DLB_LOG_ERR("Unable to allocate DMA memory of size %zu bytes\n",
+			    size);
+		*phys = 0;
+		return NULL;
+	}
+	*phys = (*mz)->iova;
+	return (*mz)->addr;
+}
+
+static int
+dlb_pf_ldb_port_create(struct dlb_hw_dev *handle,
+		       struct dlb_create_ldb_port_args *cfg,
+		       enum dlb_cq_poll_modes poll_mode)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+	uint8_t *port_base;
+	const struct rte_memzone *mz;
+	int alloc_sz, qe_sz, cq_alloc_depth;
+	rte_iova_t pp_dma_base;
+	rte_iova_t pc_dma_base;
+	rte_iova_t cq_dma_base;
+	int is_dir = false;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	if (poll_mode == DLB_CQ_POLL_MODE_STD)
+		qe_sz = sizeof(struct dlb_dequeue_qe);
+	else
+		qe_sz = RTE_CACHE_LINE_SIZE;
+
+	/* The hardware always uses a CQ depth of at least
+	 * DLB_MIN_HARDWARE_CQ_DEPTH, even though from the user
+	 * perspective we support a depth as low as 1 for LDB ports.
+	 */
+	cq_alloc_depth = RTE_MAX(cfg->cq_depth, DLB_MIN_HARDWARE_CQ_DEPTH);
+
+	/* Calculate the port memory required, including two cache lines for
+	 * credit pop counts. Round up to the nearest cache line.
+	 */
+	alloc_sz = 2 * RTE_CACHE_LINE_SIZE + cq_alloc_depth * qe_sz;
+	alloc_sz = RTE_CACHE_LINE_ROUNDUP(alloc_sz);
+
+	port_base = dlb_alloc_coherent_aligned(&mz, &pc_dma_base,
+					       alloc_sz, PAGE_SIZE);
+	if (port_base == NULL)
+		return -ENOMEM;
+
+	/* Lock the page in memory */
+	ret = rte_mem_lock_page(port_base);
+	if (ret < 0) {
+		DLB_LOG_ERR("dlb pf pmd could not lock page for device i/o\n");
+		goto create_port_err;
+	}
+
+	memset(port_base, 0, alloc_sz);
+	cq_dma_base = (uintptr_t)(pc_dma_base + (2 * RTE_CACHE_LINE_SIZE));
+
+	ret = dlb_hw_create_ldb_port(&dlb_dev->hw,
+				     handle->domain_id,
+				     cfg,
+				     pc_dma_base,
+				     cq_dma_base,
+				     &response);
+	if (ret)
+		goto create_port_err;
+
+	pp_dma_base = (uintptr_t)dlb_dev->hw.func_kva + PP_BASE(is_dir);
+	dlb_port[response.id][DLB_LDB].pp_addr =
+		(void *)(uintptr_t)(pp_dma_base + (PAGE_SIZE * response.id));
+
+	dlb_port[response.id][DLB_LDB].cq_base =
+		(void *)(uintptr_t)(port_base + (2 * RTE_CACHE_LINE_SIZE));
+
+	dlb_port[response.id][DLB_LDB].ldb_popcount =
+		(void *)(uintptr_t)port_base;
+	dlb_port[response.id][DLB_LDB].dir_popcount = (void *)(uintptr_t)
+		(port_base + RTE_CACHE_LINE_SIZE);
+	dlb_port[response.id][DLB_LDB].mz = mz;
+
+	*(struct dlb_cmd_response *)cfg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+create_port_err:
+
+	rte_memzone_free(mz);
+
+	return ret;
+}
+
+static int
+dlb_pf_dir_port_create(struct dlb_hw_dev *handle,
+		       struct dlb_create_dir_port_args *cfg,
+		       enum dlb_cq_poll_modes poll_mode)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+	uint8_t *port_base;
+	const struct rte_memzone *mz;
+	int alloc_sz, qe_sz;
+	rte_iova_t pp_dma_base;
+	rte_iova_t pc_dma_base;
+	rte_iova_t cq_dma_base;
+	int is_dir = true;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	if (poll_mode == DLB_CQ_POLL_MODE_STD)
+		qe_sz = sizeof(struct dlb_dequeue_qe);
+	else
+		qe_sz = RTE_CACHE_LINE_SIZE;
+
+	/* Calculate the port memory required, including two cache lines for
+	 * credit pop counts. Round up to the nearest cache line.
+	 */
+	alloc_sz = 2 * RTE_CACHE_LINE_SIZE + cfg->cq_depth * qe_sz;
+	alloc_sz = RTE_CACHE_LINE_ROUNDUP(alloc_sz);
+
+	port_base = dlb_alloc_coherent_aligned(&mz, &pc_dma_base,
+					       alloc_sz, PAGE_SIZE);
+	if (port_base == NULL)
+		return -ENOMEM;
+
+	/* Lock the page in memory */
+	ret = rte_mem_lock_page(port_base);
+	if (ret < 0) {
+		DLB_LOG_ERR("dlb pf pmd could not lock page for device i/o\n");
+		goto create_port_err;
+	}
+
+	memset(port_base, 0, alloc_sz);
+	cq_dma_base = (uintptr_t)(pc_dma_base + (2 * RTE_CACHE_LINE_SIZE));
+
+	ret = dlb_hw_create_dir_port(&dlb_dev->hw,
+				     handle->domain_id,
+				     cfg,
+				     pc_dma_base,
+				     cq_dma_base,
+				     &response);
+	if (ret)
+		goto create_port_err;
+
+	pp_dma_base = (uintptr_t)dlb_dev->hw.func_kva + PP_BASE(is_dir);
+	dlb_port[response.id][DLB_DIR].pp_addr =
+		(void *)(uintptr_t)(pp_dma_base + (PAGE_SIZE * response.id));
+
+	dlb_port[response.id][DLB_DIR].cq_base =
+		(void *)(uintptr_t)(port_base + (2 * RTE_CACHE_LINE_SIZE));
+
+	dlb_port[response.id][DLB_DIR].ldb_popcount =
+		(void *)(uintptr_t)port_base;
+	dlb_port[response.id][DLB_DIR].dir_popcount = (void *)(uintptr_t)
+		(port_base + RTE_CACHE_LINE_SIZE);
+	dlb_port[response.id][DLB_DIR].mz = mz;
+
+	*(struct dlb_cmd_response *)cfg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+create_port_err:
+
+	rte_memzone_free(mz);
+
+	return ret;
+}
+
+static int
 dlb_pf_get_sn_allocation(struct dlb_hw_dev *handle,
 			 struct dlb_get_sn_allocation_args *args)
 {
@@ -287,6 +494,9 @@ dlb_pf_iface_fn_ptrs_init(void)
 	dlb_iface_ldb_credit_pool_create = dlb_pf_ldb_credit_pool_create;
 	dlb_iface_dir_credit_pool_create = dlb_pf_dir_credit_pool_create;
 	dlb_iface_ldb_queue_create = dlb_pf_ldb_queue_create;
+	dlb_iface_dir_queue_create = dlb_pf_dir_queue_create;
+	dlb_iface_ldb_port_create = dlb_pf_ldb_port_create;
+	dlb_iface_dir_port_create = dlb_pf_dir_port_create;
 	dlb_iface_get_cq_poll_mode = dlb_pf_get_cq_poll_mode;
 	dlb_iface_get_sn_allocation = dlb_pf_get_sn_allocation;
 	dlb_iface_set_sn_allocation = dlb_pf_set_sn_allocation;

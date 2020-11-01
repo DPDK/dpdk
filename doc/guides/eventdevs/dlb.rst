@@ -117,3 +117,43 @@ The queue's ``nb_atomic_flows`` parameter is ignored by the DLB PMD, because
 the DLB does not limit the number of flows a queue can track. In the DLB, all
 load-balanced queues can use the full 16-bit flow ID range.
 
+Load-balanced and Directed Ports
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+DLB ports come in two flavors: load-balanced and directed. The eventdev API
+does not have the same concept, but it has a similar one: ports and queues that
+are singly-linked (i.e. linked to a single queue or port, respectively).
+
+The ``rte_event_dev_info_get()`` function reports the number of available
+event ports and queues (among other things). For the DLB PMD, max_event_ports
+and max_event_queues report the number of available load-balanced ports and
+queues, and max_single_link_event_port_queue_pairs reports the number of
+available directed ports and queues.
+
+When a scheduling domain is created in ``rte_event_dev_configure()``, the user
+specifies ``nb_event_ports`` and ``nb_single_link_event_port_queues``, which
+control the total number of ports (load-balanced and directed) and the number
+of directed ports. Hence, the number of requested load-balanced ports is
+``nb_event_ports - nb_single_link_event_ports``. The ``nb_event_queues`` field
+specifies the total number of queues (load-balanced and directed). The number
+of directed queues comes from ``nb_single_link_event_port_queues``, since
+directed ports and queues come in pairs.
+
+When a port is setup, the ``RTE_EVENT_PORT_CFG_SINGLE_LINK`` flag determines
+whether it should be configured as a directed (the flag is set) or a
+load-balanced (the flag is unset) port. Similarly, the
+``RTE_EVENT_QUEUE_CFG_SINGLE_LINK`` queue configuration flag controls
+whether it is a directed or load-balanced queue.
+
+Load-balanced ports can only be linked to load-balanced queues, and directed
+ports can only be linked to directed queues. Furthermore, directed ports can
+only be linked to a single directed queue (and vice versa), and that link
+cannot change after the eventdev is started.
+
+The eventdev API does not have a directed scheduling type. To support directed
+traffic, the dlb PMD detects when an event is being sent to a directed queue
+and overrides its scheduling type. Note that the originally selected scheduling
+type (atomic, ordered, or parallel) is not preserved, and an event's sched_type
+will be set to ``RTE_SCHED_TYPE_ATOMIC`` when it is dequeued from a directed
+port.
+

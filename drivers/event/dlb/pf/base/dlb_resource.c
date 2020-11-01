@@ -4455,7 +4455,7 @@ dlb_verify_create_ldb_queue_args(struct dlb_hw *hw,
 
 	domain = dlb_get_domain_from_id(hw, domain_id);
 
-	if (!domain) {
+	if (domain == NULL) {
 		resp->status = DLB_ST_INVALID_DOMAIN_ID;
 		return -1;
 	}
@@ -4557,7 +4557,7 @@ int dlb_hw_create_ldb_queue(struct dlb_hw *hw,
 		return -EINVAL;
 
 	domain = dlb_get_domain_from_id(hw, domain_id);
-	if (!domain) {
+	if (domain == NULL) {
 		DLB_HW_ERR(hw,
 			   "[%s():%d] Internal error: domain not found\n",
 			   __func__, __LINE__);
@@ -4567,7 +4567,7 @@ int dlb_hw_create_ldb_queue(struct dlb_hw *hw,
 	queue = DLB_DOM_LIST_HEAD(domain->avail_ldb_queues, typeof(*queue));
 
 	/* Verification should catch this. */
-	if (!queue) {
+	if (queue == NULL) {
 		DLB_HW_ERR(hw,
 			   "[%s():%d] Internal error: no available ldb queues\n",
 			   __func__, __LINE__);
@@ -4600,3 +4600,1433 @@ int dlb_hw_create_ldb_queue(struct dlb_hw *hw,
 
 	return 0;
 }
+
+
+static void
+dlb_log_create_dir_queue_args(struct dlb_hw *hw,
+			      u32 domain_id,
+			      struct dlb_create_dir_queue_args *args)
+{
+	DLB_HW_INFO(hw, "DLB create directed queue arguments:\n");
+	DLB_HW_INFO(hw, "\tDomain ID: %d\n", domain_id);
+	DLB_HW_INFO(hw, "\tPort ID:   %d\n", args->port_id);
+}
+
+static struct dlb_dir_pq_pair *
+dlb_get_domain_used_dir_pq(u32 id, struct dlb_domain *domain)
+{
+	struct dlb_list_entry *iter;
+	struct dlb_dir_pq_pair *port;
+	RTE_SET_USED(iter);
+
+	if (id >= DLB_MAX_NUM_DIR_PORTS)
+		return NULL;
+
+	DLB_DOM_LIST_FOR(domain->used_dir_pq_pairs, port, iter)
+		if (port->id == id)
+			return port;
+
+	return NULL;
+}
+
+static int
+dlb_verify_create_dir_queue_args(struct dlb_hw *hw,
+				 u32 domain_id,
+				 struct dlb_create_dir_queue_args *args,
+				 struct dlb_cmd_response *resp)
+{
+	struct dlb_domain *domain;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+
+	if (domain == NULL) {
+		resp->status = DLB_ST_INVALID_DOMAIN_ID;
+		return -1;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB_ST_DOMAIN_NOT_CONFIGURED;
+		return -1;
+	}
+
+	if (domain->started) {
+		resp->status = DLB_ST_DOMAIN_STARTED;
+		return -1;
+	}
+
+	/* If the user claims the port is already configured, validate the port
+	 * ID, its domain, and whether the port is configured.
+	 */
+	if (args->port_id != -1) {
+		struct dlb_dir_pq_pair *port;
+
+		port = dlb_get_domain_used_dir_pq(args->port_id, domain);
+
+		if (port  == NULL || port->domain_id != domain->id ||
+		    !port->port_configured) {
+			resp->status = DLB_ST_INVALID_PORT_ID;
+			return -1;
+		}
+	}
+
+	/* If the queue's port is not configured, validate that a free
+	 * port-queue pair is available.
+	 */
+	if (args->port_id == -1 &&
+	    dlb_list_empty(&domain->avail_dir_pq_pairs)) {
+		resp->status = DLB_ST_DIR_QUEUES_UNAVAILABLE;
+		return -1;
+	}
+
+	return 0;
+}
+
+static void dlb_configure_dir_queue(struct dlb_hw *hw,
+				    struct dlb_domain *domain,
+				    struct dlb_dir_pq_pair *queue)
+{
+	union dlb_sys_dir_vasqid_v r0 = { {0} };
+	union dlb_sys_dir_qid_v r1 = { {0} };
+	unsigned int offs;
+
+	/* QID write permissions are turned on when the domain is started */
+	r0.field.vasqid_v = 0;
+
+	offs = (domain->id * DLB_MAX_NUM_DIR_PORTS) + queue->id;
+
+	DLB_CSR_WR(hw, DLB_SYS_DIR_VASQID_V(offs), r0.val);
+
+	r1.field.qid_v = 1;
+
+	DLB_CSR_WR(hw, DLB_SYS_DIR_QID_V(queue->id), r1.val);
+
+	queue->queue_configured = true;
+}
+
+/**
+ * dlb_hw_create_dir_queue() - Allocate and initialize a DLB DIR queue.
+ * @hw:	  Contains the current state of the DLB hardware.
+ * @args: User-provided arguments.
+ * @resp: Response to user.
+ *
+ * Return: returns < 0 on error, 0 otherwise. If the driver is unable to
+ * satisfy a request, resp->status will be set accordingly.
+ */
+int dlb_hw_create_dir_queue(struct dlb_hw *hw,
+			    u32 domain_id,
+			    struct dlb_create_dir_queue_args *args,
+			    struct dlb_cmd_response *resp)
+{
+	struct dlb_dir_pq_pair *queue;
+	struct dlb_domain *domain;
+
+	dlb_log_create_dir_queue_args(hw, domain_id, args);
+
+	/* Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	if (dlb_verify_create_dir_queue_args(hw, domain_id, args, resp))
+		return -EINVAL;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+	if (domain == NULL) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: domain not found\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	if (args->port_id != -1)
+		queue = dlb_get_domain_used_dir_pq(args->port_id, domain);
+	else
+		queue = DLB_DOM_LIST_HEAD(domain->avail_dir_pq_pairs,
+					  typeof(*queue));
+
+	/* Verification should catch this. */
+	if (queue == NULL) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: no available dir queues\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	dlb_configure_dir_queue(hw, domain, queue);
+
+	/* Configuration succeeded, so move the resource from the 'avail' to
+	 * the 'used' list (if it's not already there).
+	 */
+	if (args->port_id == -1) {
+		dlb_list_del(&domain->avail_dir_pq_pairs, &queue->domain_list);
+
+		dlb_list_add(&domain->used_dir_pq_pairs, &queue->domain_list);
+	}
+
+	resp->status = 0;
+
+	resp->id = queue->id;
+
+	return 0;
+}
+
+static void dlb_log_create_ldb_port_args(struct dlb_hw *hw,
+					 u32 domain_id,
+					 u64 pop_count_dma_base,
+					 u64 cq_dma_base,
+					 struct dlb_create_ldb_port_args *args)
+{
+	DLB_HW_INFO(hw, "DLB create load-balanced port arguments:\n");
+	DLB_HW_INFO(hw, "\tDomain ID:                 %d\n",
+		    domain_id);
+	DLB_HW_INFO(hw, "\tLDB credit pool ID:        %d\n",
+		    args->ldb_credit_pool_id);
+	DLB_HW_INFO(hw, "\tLDB credit high watermark: %d\n",
+		    args->ldb_credit_high_watermark);
+	DLB_HW_INFO(hw, "\tLDB credit low watermark:  %d\n",
+		    args->ldb_credit_low_watermark);
+	DLB_HW_INFO(hw, "\tLDB credit quantum:        %d\n",
+		    args->ldb_credit_quantum);
+	DLB_HW_INFO(hw, "\tDIR credit pool ID:        %d\n",
+		    args->dir_credit_pool_id);
+	DLB_HW_INFO(hw, "\tDIR credit high watermark: %d\n",
+		    args->dir_credit_high_watermark);
+	DLB_HW_INFO(hw, "\tDIR credit low watermark:  %d\n",
+		    args->dir_credit_low_watermark);
+	DLB_HW_INFO(hw, "\tDIR credit quantum:        %d\n",
+		    args->dir_credit_quantum);
+	DLB_HW_INFO(hw, "\tpop_count_address:         0x%"PRIx64"\n",
+		    pop_count_dma_base);
+	DLB_HW_INFO(hw, "\tCQ depth:                  %d\n",
+		    args->cq_depth);
+	DLB_HW_INFO(hw, "\tCQ hist list size:         %d\n",
+		    args->cq_history_list_size);
+	DLB_HW_INFO(hw, "\tCQ base address:           0x%"PRIx64"\n",
+		    cq_dma_base);
+}
+
+static struct dlb_credit_pool *
+dlb_get_domain_ldb_pool(u32 id, struct dlb_domain *domain)
+{
+	struct dlb_list_entry *iter;
+	struct dlb_credit_pool *pool;
+	RTE_SET_USED(iter);
+
+	if (id >= DLB_MAX_NUM_LDB_CREDIT_POOLS)
+		return NULL;
+
+	DLB_DOM_LIST_FOR(domain->used_ldb_credit_pools, pool, iter)
+		if (pool->id == id)
+			return pool;
+
+	return NULL;
+}
+
+static struct dlb_credit_pool *
+dlb_get_domain_dir_pool(u32 id, struct dlb_domain *domain)
+{
+	struct dlb_list_entry *iter;
+	struct dlb_credit_pool *pool;
+	RTE_SET_USED(iter);
+
+	if (id >= DLB_MAX_NUM_DIR_CREDIT_POOLS)
+		return NULL;
+
+	DLB_DOM_LIST_FOR(domain->used_dir_credit_pools, pool, iter)
+		if (pool->id == id)
+			return pool;
+
+	return NULL;
+}
+
+static int
+dlb_verify_create_ldb_port_args(struct dlb_hw *hw,
+				u32 domain_id,
+				u64 pop_count_dma_base,
+				u64 cq_dma_base,
+				struct dlb_create_ldb_port_args *args,
+				struct dlb_cmd_response *resp)
+{
+	struct dlb_domain *domain;
+	struct dlb_credit_pool *pool;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+
+	if (domain == NULL) {
+		resp->status = DLB_ST_INVALID_DOMAIN_ID;
+		return -1;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB_ST_DOMAIN_NOT_CONFIGURED;
+		return -1;
+	}
+
+	if (domain->started) {
+		resp->status = DLB_ST_DOMAIN_STARTED;
+		return -1;
+	}
+
+	if (dlb_list_empty(&domain->avail_ldb_ports)) {
+		resp->status = DLB_ST_LDB_PORTS_UNAVAILABLE;
+		return -1;
+	}
+
+	/* If the scheduling domain has no LDB queues, we configure the
+	 * hardware to not supply the port with any LDB credits. In that
+	 * case, ignore the LDB credit arguments.
+	 */
+	if (!dlb_list_empty(&domain->used_ldb_queues) ||
+	    !dlb_list_empty(&domain->avail_ldb_queues)) {
+		pool = dlb_get_domain_ldb_pool(args->ldb_credit_pool_id,
+					       domain);
+
+		if (pool  == NULL || !pool->configured ||
+		    pool->domain_id != domain->id) {
+			resp->status = DLB_ST_INVALID_LDB_CREDIT_POOL_ID;
+			return -1;
+		}
+
+		if (args->ldb_credit_high_watermark > pool->avail_credits) {
+			resp->status = DLB_ST_LDB_CREDITS_UNAVAILABLE;
+			return -1;
+		}
+
+		if (args->ldb_credit_low_watermark >=
+		    args->ldb_credit_high_watermark) {
+			resp->status = DLB_ST_INVALID_LDB_CREDIT_LOW_WATERMARK;
+			return -1;
+		}
+
+		if (args->ldb_credit_quantum >=
+		    args->ldb_credit_high_watermark) {
+			resp->status = DLB_ST_INVALID_LDB_CREDIT_QUANTUM;
+			return -1;
+		}
+
+		if (args->ldb_credit_quantum > DLB_MAX_PORT_CREDIT_QUANTUM) {
+			resp->status = DLB_ST_INVALID_LDB_CREDIT_QUANTUM;
+			return -1;
+		}
+	}
+
+	/* Likewise, if the scheduling domain has no DIR queues, we configure
+	 * the hardware to not supply the port with any DIR credits. In that
+	 * case, ignore the DIR credit arguments.
+	 */
+	if (!dlb_list_empty(&domain->used_dir_pq_pairs) ||
+	    !dlb_list_empty(&domain->avail_dir_pq_pairs)) {
+		pool = dlb_get_domain_dir_pool(args->dir_credit_pool_id,
+					       domain);
+
+		if (pool  == NULL || !pool->configured ||
+		    pool->domain_id != domain->id) {
+			resp->status = DLB_ST_INVALID_DIR_CREDIT_POOL_ID;
+			return -1;
+		}
+
+		if (args->dir_credit_high_watermark > pool->avail_credits) {
+			resp->status = DLB_ST_DIR_CREDITS_UNAVAILABLE;
+			return -1;
+		}
+
+		if (args->dir_credit_low_watermark >=
+		    args->dir_credit_high_watermark) {
+			resp->status = DLB_ST_INVALID_DIR_CREDIT_LOW_WATERMARK;
+			return -1;
+		}
+
+		if (args->dir_credit_quantum >=
+		    args->dir_credit_high_watermark) {
+			resp->status = DLB_ST_INVALID_DIR_CREDIT_QUANTUM;
+			return -1;
+		}
+
+		if (args->dir_credit_quantum > DLB_MAX_PORT_CREDIT_QUANTUM) {
+			resp->status = DLB_ST_INVALID_DIR_CREDIT_QUANTUM;
+			return -1;
+		}
+	}
+
+	/* Check cache-line alignment */
+	if ((pop_count_dma_base & 0x3F) != 0) {
+		resp->status = DLB_ST_INVALID_POP_COUNT_VIRT_ADDR;
+		return -1;
+	}
+
+	if ((cq_dma_base & 0x3F) != 0) {
+		resp->status = DLB_ST_INVALID_CQ_VIRT_ADDR;
+		return -1;
+	}
+
+	if (args->cq_depth != 1 &&
+	    args->cq_depth != 2 &&
+	    args->cq_depth != 4 &&
+	    args->cq_depth != 8 &&
+	    args->cq_depth != 16 &&
+	    args->cq_depth != 32 &&
+	    args->cq_depth != 64 &&
+	    args->cq_depth != 128 &&
+	    args->cq_depth != 256 &&
+	    args->cq_depth != 512 &&
+	    args->cq_depth != 1024) {
+		resp->status = DLB_ST_INVALID_CQ_DEPTH;
+		return -1;
+	}
+
+	/* The history list size must be >= 1 */
+	if (!args->cq_history_list_size) {
+		resp->status = DLB_ST_INVALID_HIST_LIST_DEPTH;
+		return -1;
+	}
+
+	if (args->cq_history_list_size > domain->avail_hist_list_entries) {
+		resp->status = DLB_ST_HIST_LIST_ENTRIES_UNAVAILABLE;
+		return -1;
+	}
+
+	return 0;
+}
+
+static void dlb_ldb_pool_update_credit_count(struct dlb_hw *hw,
+					     u32 pool_id,
+					     u32 count)
+{
+	hw->rsrcs.ldb_credit_pools[pool_id].avail_credits -= count;
+}
+
+static void dlb_dir_pool_update_credit_count(struct dlb_hw *hw,
+					     u32 pool_id,
+					     u32 count)
+{
+	hw->rsrcs.dir_credit_pools[pool_id].avail_credits -= count;
+}
+
+static int dlb_ldb_port_configure_pp(struct dlb_hw *hw,
+				     struct dlb_domain *domain,
+				     struct dlb_ldb_port *port,
+				     struct dlb_create_ldb_port_args *args)
+{
+	union dlb_sys_ldb_pp2ldbpool r0 = { {0} };
+	union dlb_sys_ldb_pp2dirpool r1 = { {0} };
+	union dlb_sys_ldb_pp2vf_pf r2 = { {0} };
+	union dlb_sys_ldb_pp2vas r3 = { {0} };
+	union dlb_sys_ldb_pp_v r4 = { {0} };
+	union dlb_chp_ldb_pp_ldb_crd_hwm r6 = { {0} };
+	union dlb_chp_ldb_pp_dir_crd_hwm r7 = { {0} };
+	union dlb_chp_ldb_pp_ldb_crd_lwm r8 = { {0} };
+	union dlb_chp_ldb_pp_dir_crd_lwm r9 = { {0} };
+	union dlb_chp_ldb_pp_ldb_min_crd_qnt r10 = { {0} };
+	union dlb_chp_ldb_pp_dir_min_crd_qnt r11 = { {0} };
+	union dlb_chp_ldb_pp_ldb_crd_cnt r12 = { {0} };
+	union dlb_chp_ldb_pp_dir_crd_cnt r13 = { {0} };
+	union dlb_chp_ldb_ldb_pp2pool r14 = { {0} };
+	union dlb_chp_ldb_dir_pp2pool r15 = { {0} };
+	union dlb_chp_ldb_pp_crd_req_state r16 = { {0} };
+	union dlb_chp_ldb_pp_ldb_push_ptr r17 = { {0} };
+	union dlb_chp_ldb_pp_dir_push_ptr r18 = { {0} };
+
+	struct dlb_credit_pool *ldb_pool = NULL;
+	struct dlb_credit_pool *dir_pool = NULL;
+
+	if (port->ldb_pool_used) {
+		ldb_pool = dlb_get_domain_ldb_pool(args->ldb_credit_pool_id,
+						   domain);
+		if (ldb_pool == NULL) {
+			DLB_HW_ERR(hw,
+				   "[%s()] Internal error: port validation failed\n",
+				   __func__);
+			return -EFAULT;
+		}
+	}
+
+	if (port->dir_pool_used) {
+		dir_pool = dlb_get_domain_dir_pool(args->dir_credit_pool_id,
+						   domain);
+		if (dir_pool == NULL) {
+			DLB_HW_ERR(hw,
+				   "[%s()] Internal error: port validation failed\n",
+				   __func__);
+			return -EFAULT;
+		}
+	}
+
+	r0.field.ldbpool = (port->ldb_pool_used) ? ldb_pool->id : 0;
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_PP2LDBPOOL(port->id), r0.val);
+
+	r1.field.dirpool = (port->dir_pool_used) ? dir_pool->id : 0;
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_PP2DIRPOOL(port->id), r1.val);
+
+	r2.field.is_pf = 1;
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_PP2VF_PF(port->id), r2.val);
+
+	r3.field.vas = domain->id;
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_PP2VAS(port->id), r3.val);
+
+	r6.field.hwm = args->ldb_credit_high_watermark;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_LDB_CRD_HWM(port->id), r6.val);
+
+	r7.field.hwm = args->dir_credit_high_watermark;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_DIR_CRD_HWM(port->id), r7.val);
+
+	r8.field.lwm = args->ldb_credit_low_watermark;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_LDB_CRD_LWM(port->id), r8.val);
+
+	r9.field.lwm = args->dir_credit_low_watermark;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_DIR_CRD_LWM(port->id), r9.val);
+
+	r10.field.quanta = args->ldb_credit_quantum;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_LDB_PP_LDB_MIN_CRD_QNT(port->id),
+		   r10.val);
+
+	r11.field.quanta = args->dir_credit_quantum;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_LDB_PP_DIR_MIN_CRD_QNT(port->id),
+		   r11.val);
+
+	r12.field.count = args->ldb_credit_high_watermark;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_LDB_CRD_CNT(port->id), r12.val);
+
+	r13.field.count = args->dir_credit_high_watermark;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_DIR_CRD_CNT(port->id), r13.val);
+
+	r14.field.pool = (port->ldb_pool_used) ? ldb_pool->id : 0;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_LDB_PP2POOL(port->id), r14.val);
+
+	r15.field.pool = (port->dir_pool_used) ? dir_pool->id : 0;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_DIR_PP2POOL(port->id), r15.val);
+
+	r16.field.no_pp_credit_update = 0;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_CRD_REQ_STATE(port->id), r16.val);
+
+	r17.field.push_pointer = 0;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_LDB_PUSH_PTR(port->id), r17.val);
+
+	r18.field.push_pointer = 0;
+
+	DLB_CSR_WR(hw, DLB_CHP_LDB_PP_DIR_PUSH_PTR(port->id), r18.val);
+
+	r4.field.pp_v = 1;
+
+	DLB_CSR_WR(hw,
+		   DLB_SYS_LDB_PP_V(port->id),
+		   r4.val);
+
+	return 0;
+}
+
+static int dlb_ldb_port_configure_cq(struct dlb_hw *hw,
+				     struct dlb_ldb_port *port,
+				     u64 pop_count_dma_base,
+				     u64 cq_dma_base,
+				     struct dlb_create_ldb_port_args *args)
+{
+	int i;
+
+	union dlb_sys_ldb_cq_addr_l r0 = { {0} };
+	union dlb_sys_ldb_cq_addr_u r1 = { {0} };
+	union dlb_sys_ldb_cq2vf_pf r2 = { {0} };
+	union dlb_chp_ldb_cq_tkn_depth_sel r3 = { {0} };
+	union dlb_chp_hist_list_lim r4 = { {0} };
+	union dlb_chp_hist_list_base r5 = { {0} };
+	union dlb_lsp_cq_ldb_infl_lim r6 = { {0} };
+	union dlb_lsp_cq2priov r7 = { {0} };
+	union dlb_chp_hist_list_push_ptr r8 = { {0} };
+	union dlb_chp_hist_list_pop_ptr r9 = { {0} };
+	union dlb_lsp_cq_ldb_tkn_depth_sel r10 = { {0} };
+	union dlb_sys_ldb_pp_addr_l r11 = { {0} };
+	union dlb_sys_ldb_pp_addr_u r12 = { {0} };
+
+	/* The CQ address is 64B-aligned, and the DLB only wants bits [63:6] */
+	r0.field.addr_l = cq_dma_base >> 6;
+
+	DLB_CSR_WR(hw,
+		   DLB_SYS_LDB_CQ_ADDR_L(port->id),
+		   r0.val);
+
+	r1.field.addr_u = cq_dma_base >> 32;
+
+	DLB_CSR_WR(hw,
+		   DLB_SYS_LDB_CQ_ADDR_U(port->id),
+		   r1.val);
+
+	r2.field.is_pf = 1;
+
+	DLB_CSR_WR(hw,
+		   DLB_SYS_LDB_CQ2VF_PF(port->id),
+		   r2.val);
+
+	if (args->cq_depth <= 8) {
+		r3.field.token_depth_select = 1;
+	} else if (args->cq_depth == 16) {
+		r3.field.token_depth_select = 2;
+	} else if (args->cq_depth == 32) {
+		r3.field.token_depth_select = 3;
+	} else if (args->cq_depth == 64) {
+		r3.field.token_depth_select = 4;
+	} else if (args->cq_depth == 128) {
+		r3.field.token_depth_select = 5;
+	} else if (args->cq_depth == 256) {
+		r3.field.token_depth_select = 6;
+	} else if (args->cq_depth == 512) {
+		r3.field.token_depth_select = 7;
+	} else if (args->cq_depth == 1024) {
+		r3.field.token_depth_select = 8;
+	} else {
+		DLB_HW_ERR(hw, "[%s():%d] Internal error: invalid CQ depth\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_LDB_CQ_TKN_DEPTH_SEL(port->id),
+		   r3.val);
+
+	r10.field.token_depth_select = r3.field.token_depth_select;
+	r10.field.ignore_depth = 0;
+	/* TDT algorithm: DLB must be able to write CQs with depth < 4 */
+	r10.field.enab_shallow_cq = 1;
+
+	DLB_CSR_WR(hw,
+		   DLB_LSP_CQ_LDB_TKN_DEPTH_SEL(port->id),
+		   r10.val);
+
+	/* To support CQs with depth less than 8, program the token count
+	 * register with a non-zero initial value. Operations such as domain
+	 * reset must take this initial value into account when quiescing the
+	 * CQ.
+	 */
+	port->init_tkn_cnt = 0;
+
+	if (args->cq_depth < 8) {
+		union dlb_lsp_cq_ldb_tkn_cnt r12 = { {0} };
+
+		port->init_tkn_cnt = 8 - args->cq_depth;
+
+		r12.field.token_count = port->init_tkn_cnt;
+
+		DLB_CSR_WR(hw,
+			   DLB_LSP_CQ_LDB_TKN_CNT(port->id),
+			   r12.val);
+	}
+
+	r4.field.limit = port->hist_list_entry_limit - 1;
+
+	DLB_CSR_WR(hw, DLB_CHP_HIST_LIST_LIM(port->id), r4.val);
+
+	r5.field.base = port->hist_list_entry_base;
+
+	DLB_CSR_WR(hw, DLB_CHP_HIST_LIST_BASE(port->id), r5.val);
+
+	r8.field.push_ptr = r5.field.base;
+	r8.field.generation = 0;
+
+	DLB_CSR_WR(hw, DLB_CHP_HIST_LIST_PUSH_PTR(port->id), r8.val);
+
+	r9.field.pop_ptr = r5.field.base;
+	r9.field.generation = 0;
+
+	DLB_CSR_WR(hw, DLB_CHP_HIST_LIST_POP_PTR(port->id), r9.val);
+
+	/* The inflight limit sets a cap on the number of QEs for which this CQ
+	 * can owe completions at one time.
+	 */
+	r6.field.limit = args->cq_history_list_size;
+
+	DLB_CSR_WR(hw, DLB_LSP_CQ_LDB_INFL_LIM(port->id), r6.val);
+
+	/* Disable the port's QID mappings */
+	r7.field.v = 0;
+
+	DLB_CSR_WR(hw, DLB_LSP_CQ2PRIOV(port->id), r7.val);
+
+	/* Two cache lines (128B) are dedicated for the port's pop counts */
+	r11.field.addr_l = pop_count_dma_base >> 7;
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_PP_ADDR_L(port->id), r11.val);
+
+	r12.field.addr_u = pop_count_dma_base >> 32;
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_PP_ADDR_U(port->id), r12.val);
+
+	for (i = 0; i < DLB_MAX_NUM_QIDS_PER_LDB_CQ; i++)
+		port->qid_map[i].state = DLB_QUEUE_UNMAPPED;
+
+	return 0;
+}
+
+static void dlb_update_ldb_arb_threshold(struct dlb_hw *hw)
+{
+	union dlb_lsp_ctrl_config_0 r0 = { {0} };
+
+	/* From the hardware spec:
+	 * "The optimal value for ldb_arb_threshold is in the region of {8 *
+	 * #CQs}. It is expected therefore that the PF will change this value
+	 * dynamically as the number of active ports changes."
+	 */
+	r0.val = DLB_CSR_RD(hw, DLB_LSP_CTRL_CONFIG_0);
+
+	r0.field.ldb_arb_threshold = hw->pf.num_enabled_ldb_ports * 8;
+	r0.field.ldb_arb_ignore_empty = 1;
+	r0.field.ldb_arb_mode = 1;
+
+	DLB_CSR_WR(hw, DLB_LSP_CTRL_CONFIG_0, r0.val);
+
+	dlb_flush_csr(hw);
+}
+
+static int dlb_configure_ldb_port(struct dlb_hw *hw,
+				  struct dlb_domain *domain,
+				  struct dlb_ldb_port *port,
+				  u64 pop_count_dma_base,
+				  u64 cq_dma_base,
+				  struct dlb_create_ldb_port_args *args)
+{
+	struct dlb_credit_pool *ldb_pool, *dir_pool;
+	int ret;
+
+	port->hist_list_entry_base = domain->hist_list_entry_base +
+				     domain->hist_list_entry_offset;
+	port->hist_list_entry_limit = port->hist_list_entry_base +
+				      args->cq_history_list_size;
+
+	domain->hist_list_entry_offset += args->cq_history_list_size;
+	domain->avail_hist_list_entries -= args->cq_history_list_size;
+
+	port->ldb_pool_used = !dlb_list_empty(&domain->used_ldb_queues) ||
+			      !dlb_list_empty(&domain->avail_ldb_queues);
+	port->dir_pool_used = !dlb_list_empty(&domain->used_dir_pq_pairs) ||
+			      !dlb_list_empty(&domain->avail_dir_pq_pairs);
+
+	if (port->ldb_pool_used) {
+		u32 cnt = args->ldb_credit_high_watermark;
+
+		ldb_pool = dlb_get_domain_ldb_pool(args->ldb_credit_pool_id,
+						   domain);
+		if (ldb_pool == NULL) {
+			DLB_HW_ERR(hw,
+				   "[%s()] Internal error: port validation failed\n",
+				   __func__);
+			return -EFAULT;
+		}
+
+		dlb_ldb_pool_update_credit_count(hw, ldb_pool->id, cnt);
+	} else {
+		args->ldb_credit_high_watermark = 0;
+		args->ldb_credit_low_watermark = 0;
+		args->ldb_credit_quantum = 0;
+	}
+
+	if (port->dir_pool_used) {
+		u32 cnt = args->dir_credit_high_watermark;
+
+		dir_pool = dlb_get_domain_dir_pool(args->dir_credit_pool_id,
+						   domain);
+		if (dir_pool == NULL) {
+			DLB_HW_ERR(hw,
+				   "[%s()] Internal error: port validation failed\n",
+				   __func__);
+			return -EFAULT;
+		}
+
+		dlb_dir_pool_update_credit_count(hw, dir_pool->id, cnt);
+	} else {
+		args->dir_credit_high_watermark = 0;
+		args->dir_credit_low_watermark = 0;
+		args->dir_credit_quantum = 0;
+	}
+
+	ret = dlb_ldb_port_configure_cq(hw,
+					port,
+					pop_count_dma_base,
+					cq_dma_base,
+					args);
+	if (ret < 0)
+		return ret;
+
+	ret = dlb_ldb_port_configure_pp(hw, domain, port, args);
+	if (ret < 0)
+		return ret;
+
+	dlb_ldb_port_cq_enable(hw, port);
+
+	port->num_mappings = 0;
+
+	port->enabled = true;
+
+	hw->pf.num_enabled_ldb_ports++;
+
+	dlb_update_ldb_arb_threshold(hw);
+
+	port->configured = true;
+
+	return 0;
+}
+
+/**
+ * dlb_hw_create_ldb_port() - Allocate and initialize a load-balanced port and
+ *	its resources.
+ * @hw:	  Contains the current state of the DLB hardware.
+ * @args: User-provided arguments.
+ * @resp: Response to user.
+ *
+ * Return: returns < 0 on error, 0 otherwise. If the driver is unable to
+ * satisfy a request, resp->status will be set accordingly.
+ */
+int dlb_hw_create_ldb_port(struct dlb_hw *hw,
+			   u32 domain_id,
+			   struct dlb_create_ldb_port_args *args,
+			   u64 pop_count_dma_base,
+			   u64 cq_dma_base,
+			   struct dlb_cmd_response *resp)
+{
+	struct dlb_ldb_port *port;
+	struct dlb_domain *domain;
+	int ret;
+
+	dlb_log_create_ldb_port_args(hw,
+				     domain_id,
+				     pop_count_dma_base,
+				     cq_dma_base,
+				     args);
+
+	/* Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	if (dlb_verify_create_ldb_port_args(hw,
+					    domain_id,
+					    pop_count_dma_base,
+					    cq_dma_base,
+					    args,
+					    resp))
+		return -EINVAL;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+	if (domain == NULL) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: domain not found\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	port = DLB_DOM_LIST_HEAD(domain->avail_ldb_ports, typeof(*port));
+
+	/* Verification should catch this. */
+	if (port == NULL) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: no available ldb ports\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	if (port->configured) {
+		DLB_HW_ERR(hw,
+			   "[%s()] Internal error: avail_ldb_ports contains configured ports.\n",
+			   __func__);
+		return -EFAULT;
+	}
+
+	ret = dlb_configure_ldb_port(hw,
+				     domain,
+				     port,
+				     pop_count_dma_base,
+				     cq_dma_base,
+				     args);
+	if (ret < 0)
+		return ret;
+
+	/* Configuration succeeded, so move the resource from the 'avail' to
+	 * the 'used' list.
+	 */
+	dlb_list_del(&domain->avail_ldb_ports, &port->domain_list);
+
+	dlb_list_add(&domain->used_ldb_ports, &port->domain_list);
+
+	resp->status = 0;
+	resp->id = port->id;
+
+	return 0;
+}
+
+static void dlb_log_create_dir_port_args(struct dlb_hw *hw,
+					 u32 domain_id,
+					 u64 pop_count_dma_base,
+					 u64 cq_dma_base,
+					 struct dlb_create_dir_port_args *args)
+{
+	DLB_HW_INFO(hw, "DLB create directed port arguments:\n");
+	DLB_HW_INFO(hw, "\tDomain ID:                 %d\n",
+		    domain_id);
+	DLB_HW_INFO(hw, "\tLDB credit pool ID:        %d\n",
+		    args->ldb_credit_pool_id);
+	DLB_HW_INFO(hw, "\tLDB credit high watermark: %d\n",
+		    args->ldb_credit_high_watermark);
+	DLB_HW_INFO(hw, "\tLDB credit low watermark:  %d\n",
+		    args->ldb_credit_low_watermark);
+	DLB_HW_INFO(hw, "\tLDB credit quantum:        %d\n",
+		    args->ldb_credit_quantum);
+	DLB_HW_INFO(hw, "\tDIR credit pool ID:        %d\n",
+		    args->dir_credit_pool_id);
+	DLB_HW_INFO(hw, "\tDIR credit high watermark: %d\n",
+		    args->dir_credit_high_watermark);
+	DLB_HW_INFO(hw, "\tDIR credit low watermark:  %d\n",
+		    args->dir_credit_low_watermark);
+	DLB_HW_INFO(hw, "\tDIR credit quantum:        %d\n",
+		    args->dir_credit_quantum);
+	DLB_HW_INFO(hw, "\tpop_count_address:         0x%"PRIx64"\n",
+		    pop_count_dma_base);
+	DLB_HW_INFO(hw, "\tCQ depth:                  %d\n",
+		    args->cq_depth);
+	DLB_HW_INFO(hw, "\tCQ base address:           0x%"PRIx64"\n",
+		    cq_dma_base);
+}
+
+static int
+dlb_verify_create_dir_port_args(struct dlb_hw *hw,
+				u32 domain_id,
+				u64 pop_count_dma_base,
+				u64 cq_dma_base,
+				struct dlb_create_dir_port_args *args,
+				struct dlb_cmd_response *resp)
+{
+	struct dlb_domain *domain;
+	struct dlb_credit_pool *pool;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+
+	if (domain == NULL) {
+		resp->status = DLB_ST_INVALID_DOMAIN_ID;
+		return -1;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB_ST_DOMAIN_NOT_CONFIGURED;
+		return -1;
+	}
+
+	if (domain->started) {
+		resp->status = DLB_ST_DOMAIN_STARTED;
+		return -1;
+	}
+
+	/* If the user claims the queue is already configured, validate
+	 * the queue ID, its domain, and whether the queue is configured.
+	 */
+	if (args->queue_id != -1) {
+		struct dlb_dir_pq_pair *queue;
+
+		queue = dlb_get_domain_used_dir_pq(args->queue_id,
+						   domain);
+
+		if (queue  == NULL || queue->domain_id != domain->id ||
+		    !queue->queue_configured) {
+			resp->status = DLB_ST_INVALID_DIR_QUEUE_ID;
+			return -1;
+		}
+	}
+
+	/* If the port's queue is not configured, validate that a free
+	 * port-queue pair is available.
+	 */
+	if (args->queue_id == -1 &&
+	    dlb_list_empty(&domain->avail_dir_pq_pairs)) {
+		resp->status = DLB_ST_DIR_PORTS_UNAVAILABLE;
+		return -1;
+	}
+
+	/* If the scheduling domain has no LDB queues, we configure the
+	 * hardware to not supply the port with any LDB credits. In that
+	 * case, ignore the LDB credit arguments.
+	 */
+	if (!dlb_list_empty(&domain->used_ldb_queues) ||
+	    !dlb_list_empty(&domain->avail_ldb_queues)) {
+		pool = dlb_get_domain_ldb_pool(args->ldb_credit_pool_id,
+					       domain);
+
+		if (pool  == NULL || !pool->configured ||
+		    pool->domain_id != domain->id) {
+			resp->status = DLB_ST_INVALID_LDB_CREDIT_POOL_ID;
+			return -1;
+		}
+
+		if (args->ldb_credit_high_watermark > pool->avail_credits) {
+			resp->status = DLB_ST_LDB_CREDITS_UNAVAILABLE;
+			return -1;
+		}
+
+		if (args->ldb_credit_low_watermark >=
+		    args->ldb_credit_high_watermark) {
+			resp->status = DLB_ST_INVALID_LDB_CREDIT_LOW_WATERMARK;
+			return -1;
+		}
+
+		if (args->ldb_credit_quantum >=
+		    args->ldb_credit_high_watermark) {
+			resp->status = DLB_ST_INVALID_LDB_CREDIT_QUANTUM;
+			return -1;
+		}
+
+		if (args->ldb_credit_quantum > DLB_MAX_PORT_CREDIT_QUANTUM) {
+			resp->status = DLB_ST_INVALID_LDB_CREDIT_QUANTUM;
+			return -1;
+		}
+	}
+
+	pool = dlb_get_domain_dir_pool(args->dir_credit_pool_id,
+				       domain);
+
+	if (pool  == NULL || !pool->configured ||
+	    pool->domain_id != domain->id) {
+		resp->status = DLB_ST_INVALID_DIR_CREDIT_POOL_ID;
+		return -1;
+	}
+
+	if (args->dir_credit_high_watermark > pool->avail_credits) {
+		resp->status = DLB_ST_DIR_CREDITS_UNAVAILABLE;
+		return -1;
+	}
+
+	if (args->dir_credit_low_watermark >= args->dir_credit_high_watermark) {
+		resp->status = DLB_ST_INVALID_DIR_CREDIT_LOW_WATERMARK;
+		return -1;
+	}
+
+	if (args->dir_credit_quantum >= args->dir_credit_high_watermark) {
+		resp->status = DLB_ST_INVALID_DIR_CREDIT_QUANTUM;
+		return -1;
+	}
+
+	if (args->dir_credit_quantum > DLB_MAX_PORT_CREDIT_QUANTUM) {
+		resp->status = DLB_ST_INVALID_DIR_CREDIT_QUANTUM;
+		return -1;
+	}
+
+	/* Check cache-line alignment */
+	if ((pop_count_dma_base & 0x3F) != 0) {
+		resp->status = DLB_ST_INVALID_POP_COUNT_VIRT_ADDR;
+		return -1;
+	}
+
+	if ((cq_dma_base & 0x3F) != 0) {
+		resp->status = DLB_ST_INVALID_CQ_VIRT_ADDR;
+		return -1;
+	}
+
+	if (args->cq_depth != 8 &&
+	    args->cq_depth != 16 &&
+	    args->cq_depth != 32 &&
+	    args->cq_depth != 64 &&
+	    args->cq_depth != 128 &&
+	    args->cq_depth != 256 &&
+	    args->cq_depth != 512 &&
+	    args->cq_depth != 1024) {
+		resp->status = DLB_ST_INVALID_CQ_DEPTH;
+		return -1;
+	}
+
+	return 0;
+}
+
+static int dlb_dir_port_configure_pp(struct dlb_hw *hw,
+				     struct dlb_domain *domain,
+				     struct dlb_dir_pq_pair *port,
+				     struct dlb_create_dir_port_args *args)
+{
+	union dlb_sys_dir_pp2ldbpool r0 = { {0} };
+	union dlb_sys_dir_pp2dirpool r1 = { {0} };
+	union dlb_sys_dir_pp2vf_pf r2 = { {0} };
+	union dlb_sys_dir_pp2vas r3 = { {0} };
+	union dlb_sys_dir_pp_v r4 = { {0} };
+	union dlb_chp_dir_pp_ldb_crd_hwm r6 = { {0} };
+	union dlb_chp_dir_pp_dir_crd_hwm r7 = { {0} };
+	union dlb_chp_dir_pp_ldb_crd_lwm r8 = { {0} };
+	union dlb_chp_dir_pp_dir_crd_lwm r9 = { {0} };
+	union dlb_chp_dir_pp_ldb_min_crd_qnt r10 = { {0} };
+	union dlb_chp_dir_pp_dir_min_crd_qnt r11 = { {0} };
+	union dlb_chp_dir_pp_ldb_crd_cnt r12 = { {0} };
+	union dlb_chp_dir_pp_dir_crd_cnt r13 = { {0} };
+	union dlb_chp_dir_ldb_pp2pool r14 = { {0} };
+	union dlb_chp_dir_dir_pp2pool r15 = { {0} };
+	union dlb_chp_dir_pp_crd_req_state r16 = { {0} };
+	union dlb_chp_dir_pp_ldb_push_ptr r17 = { {0} };
+	union dlb_chp_dir_pp_dir_push_ptr r18 = { {0} };
+
+	struct dlb_credit_pool *ldb_pool = NULL;
+	struct dlb_credit_pool *dir_pool = NULL;
+
+	if (port->ldb_pool_used) {
+		ldb_pool = dlb_get_domain_ldb_pool(args->ldb_credit_pool_id,
+						   domain);
+		if (ldb_pool == NULL) {
+			DLB_HW_ERR(hw,
+				   "[%s()] Internal error: port validation failed\n",
+				   __func__);
+			return -EFAULT;
+		}
+	}
+
+	if (port->dir_pool_used) {
+		dir_pool = dlb_get_domain_dir_pool(args->dir_credit_pool_id,
+						   domain);
+		if (dir_pool == NULL) {
+			DLB_HW_ERR(hw,
+				   "[%s()] Internal error: port validation failed\n",
+				   __func__);
+			return -EFAULT;
+		}
+	}
+
+	r0.field.ldbpool = (port->ldb_pool_used) ? ldb_pool->id : 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_SYS_DIR_PP2LDBPOOL(port->id),
+		   r0.val);
+
+	r1.field.dirpool = (port->dir_pool_used) ? dir_pool->id : 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_SYS_DIR_PP2DIRPOOL(port->id),
+		   r1.val);
+
+	r2.field.is_pf = 1;
+	r2.field.is_hw_dsi = 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_SYS_DIR_PP2VF_PF(port->id),
+		   r2.val);
+
+	r3.field.vas = domain->id;
+
+	DLB_CSR_WR(hw,
+		   DLB_SYS_DIR_PP2VAS(port->id),
+		   r3.val);
+
+	r6.field.hwm = args->ldb_credit_high_watermark;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_LDB_CRD_HWM(port->id),
+		   r6.val);
+
+	r7.field.hwm = args->dir_credit_high_watermark;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_DIR_CRD_HWM(port->id),
+		   r7.val);
+
+	r8.field.lwm = args->ldb_credit_low_watermark;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_LDB_CRD_LWM(port->id),
+		   r8.val);
+
+	r9.field.lwm = args->dir_credit_low_watermark;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_DIR_CRD_LWM(port->id),
+		   r9.val);
+
+	r10.field.quanta = args->ldb_credit_quantum;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_LDB_MIN_CRD_QNT(port->id),
+		   r10.val);
+
+	r11.field.quanta = args->dir_credit_quantum;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_DIR_MIN_CRD_QNT(port->id),
+		   r11.val);
+
+	r12.field.count = args->ldb_credit_high_watermark;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_LDB_CRD_CNT(port->id),
+		   r12.val);
+
+	r13.field.count = args->dir_credit_high_watermark;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_DIR_CRD_CNT(port->id),
+		   r13.val);
+
+	r14.field.pool = (port->ldb_pool_used) ? ldb_pool->id : 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_LDB_PP2POOL(port->id),
+		   r14.val);
+
+	r15.field.pool = (port->dir_pool_used) ? dir_pool->id : 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_DIR_PP2POOL(port->id),
+		   r15.val);
+
+	r16.field.no_pp_credit_update = 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_CRD_REQ_STATE(port->id),
+		   r16.val);
+
+	r17.field.push_pointer = 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_LDB_PUSH_PTR(port->id),
+		   r17.val);
+
+	r18.field.push_pointer = 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_PP_DIR_PUSH_PTR(port->id),
+		   r18.val);
+
+	r4.field.pp_v = 1;
+	r4.field.mb_dm = 0;
+
+	DLB_CSR_WR(hw, DLB_SYS_DIR_PP_V(port->id), r4.val);
+
+	return 0;
+}
+
+static int dlb_dir_port_configure_cq(struct dlb_hw *hw,
+				     struct dlb_dir_pq_pair *port,
+				     u64 pop_count_dma_base,
+				     u64 cq_dma_base,
+				     struct dlb_create_dir_port_args *args)
+{
+	union dlb_sys_dir_cq_addr_l r0 = { {0} };
+	union dlb_sys_dir_cq_addr_u r1 = { {0} };
+	union dlb_sys_dir_cq2vf_pf r2 = { {0} };
+	union dlb_chp_dir_cq_tkn_depth_sel r3 = { {0} };
+	union dlb_lsp_cq_dir_tkn_depth_sel_dsi r4 = { {0} };
+	union dlb_sys_dir_pp_addr_l r5 = { {0} };
+	union dlb_sys_dir_pp_addr_u r6 = { {0} };
+
+	/* The CQ address is 64B-aligned, and the DLB only wants bits [63:6] */
+	r0.field.addr_l = cq_dma_base >> 6;
+
+	DLB_CSR_WR(hw, DLB_SYS_DIR_CQ_ADDR_L(port->id), r0.val);
+
+	r1.field.addr_u = cq_dma_base >> 32;
+
+	DLB_CSR_WR(hw, DLB_SYS_DIR_CQ_ADDR_U(port->id), r1.val);
+
+	r2.field.is_pf = 1;
+
+	DLB_CSR_WR(hw, DLB_SYS_DIR_CQ2VF_PF(port->id), r2.val);
+
+	if (args->cq_depth == 8) {
+		r3.field.token_depth_select = 1;
+	} else if (args->cq_depth == 16) {
+		r3.field.token_depth_select = 2;
+	} else if (args->cq_depth == 32) {
+		r3.field.token_depth_select = 3;
+	} else if (args->cq_depth == 64) {
+		r3.field.token_depth_select = 4;
+	} else if (args->cq_depth == 128) {
+		r3.field.token_depth_select = 5;
+	} else if (args->cq_depth == 256) {
+		r3.field.token_depth_select = 6;
+	} else if (args->cq_depth == 512) {
+		r3.field.token_depth_select = 7;
+	} else if (args->cq_depth == 1024) {
+		r3.field.token_depth_select = 8;
+	} else {
+		DLB_HW_ERR(hw, "[%s():%d] Internal error: invalid CQ depth\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_CQ_TKN_DEPTH_SEL(port->id),
+		   r3.val);
+
+	r4.field.token_depth_select = r3.field.token_depth_select;
+	r4.field.disable_wb_opt = 0;
+
+	DLB_CSR_WR(hw,
+		   DLB_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI(port->id),
+		   r4.val);
+
+	/* Two cache lines (128B) are dedicated for the port's pop counts */
+	r5.field.addr_l = pop_count_dma_base >> 7;
+
+	DLB_CSR_WR(hw, DLB_SYS_DIR_PP_ADDR_L(port->id), r5.val);
+
+	r6.field.addr_u = pop_count_dma_base >> 32;
+
+	DLB_CSR_WR(hw, DLB_SYS_DIR_PP_ADDR_U(port->id), r6.val);
+
+	return 0;
+}
+
+static int dlb_configure_dir_port(struct dlb_hw *hw,
+				  struct dlb_domain *domain,
+				  struct dlb_dir_pq_pair *port,
+				  u64 pop_count_dma_base,
+				  u64 cq_dma_base,
+				  struct dlb_create_dir_port_args *args)
+{
+	struct dlb_credit_pool *ldb_pool, *dir_pool;
+	int ret;
+
+	port->ldb_pool_used = !dlb_list_empty(&domain->used_ldb_queues) ||
+			      !dlb_list_empty(&domain->avail_ldb_queues);
+
+	/* Each directed port has a directed queue, hence this port requires
+	 * directed credits.
+	 */
+	port->dir_pool_used = true;
+
+	if (port->ldb_pool_used) {
+		u32 cnt = args->ldb_credit_high_watermark;
+
+		ldb_pool = dlb_get_domain_ldb_pool(args->ldb_credit_pool_id,
+						   domain);
+		if (ldb_pool == NULL) {
+			DLB_HW_ERR(hw,
+				   "[%s()] Internal error: port validation failed\n",
+				   __func__);
+			return -EFAULT;
+		}
+
+		dlb_ldb_pool_update_credit_count(hw, ldb_pool->id, cnt);
+	} else {
+		args->ldb_credit_high_watermark = 0;
+		args->ldb_credit_low_watermark = 0;
+		args->ldb_credit_quantum = 0;
+	}
+
+	dir_pool = dlb_get_domain_dir_pool(args->dir_credit_pool_id, domain);
+	if (dir_pool == NULL) {
+		DLB_HW_ERR(hw,
+			   "[%s()] Internal error: port validation failed\n",
+			   __func__);
+		return -EFAULT;
+	}
+
+	dlb_dir_pool_update_credit_count(hw,
+					 dir_pool->id,
+					 args->dir_credit_high_watermark);
+
+	ret = dlb_dir_port_configure_cq(hw,
+					port,
+					pop_count_dma_base,
+					cq_dma_base,
+					args);
+
+	if (ret < 0)
+		return ret;
+
+	ret = dlb_dir_port_configure_pp(hw, domain, port, args);
+	if (ret < 0)
+		return ret;
+
+	dlb_dir_port_cq_enable(hw, port);
+
+	port->enabled = true;
+
+	port->port_configured = true;
+
+	return 0;
+}
+
+/**
+ * dlb_hw_create_dir_port() - Allocate and initialize a DLB directed port and
+ *	queue. The port/queue pair have the same ID and name.
+ * @hw:	  Contains the current state of the DLB hardware.
+ * @args: User-provided arguments.
+ * @resp: Response to user.
+ *
+ * Return: returns < 0 on error, 0 otherwise. If the driver is unable to
+ * satisfy a request, resp->status will be set accordingly.
+ */
+int dlb_hw_create_dir_port(struct dlb_hw *hw,
+			   u32 domain_id,
+			   struct dlb_create_dir_port_args *args,
+			   u64 pop_count_dma_base,
+			   u64 cq_dma_base,
+			   struct dlb_cmd_response *resp)
+{
+	struct dlb_dir_pq_pair *port;
+	struct dlb_domain *domain;
+	int ret;
+
+	dlb_log_create_dir_port_args(hw,
+				     domain_id,
+				     pop_count_dma_base,
+				     cq_dma_base,
+				     args);
+
+	/* Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	if (dlb_verify_create_dir_port_args(hw,
+					    domain_id,
+					    pop_count_dma_base,
+					    cq_dma_base,
+					    args,
+					    resp))
+		return -EINVAL;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+	if (domain == NULL) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: domain not found\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	if (args->queue_id != -1)
+		port = dlb_get_domain_used_dir_pq(args->queue_id,
+						  domain);
+	else
+		port = DLB_DOM_LIST_HEAD(domain->avail_dir_pq_pairs,
+					 typeof(*port));
+
+	/* Verification should catch this. */
+	if (port == NULL) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: no available dir ports\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	ret = dlb_configure_dir_port(hw,
+				     domain,
+				     port,
+				     pop_count_dma_base,
+				     cq_dma_base,
+				     args);
+	if (ret < 0)
+		return ret;
+
+	/* Configuration succeeded, so move the resource from the 'avail' to
+	 * the 'used' list (if it's not already there).
+	 */
+	if (args->queue_id == -1) {
+		dlb_list_del(&domain->avail_dir_pq_pairs, &port->domain_list);
+
+		dlb_list_add(&domain->used_dir_pq_pairs, &port->domain_list);
+	}
+
+	resp->status = 0;
+	resp->id = port->id;
+
+	return 0;
+}
+
