@@ -630,6 +630,33 @@ dlb_eventdev_configure(const struct rte_eventdev *dev)
 	return 0;
 }
 
+static void
+dlb_eventdev_port_default_conf_get(struct rte_eventdev *dev,
+				   uint8_t port_id,
+				   struct rte_event_port_conf *port_conf)
+{
+	RTE_SET_USED(port_id);
+	struct dlb_eventdev *dlb = dlb_pmd_priv(dev);
+
+	port_conf->new_event_threshold = dlb->new_event_limit;
+	port_conf->dequeue_depth = 32;
+	port_conf->enqueue_depth = DLB_MAX_ENQUEUE_DEPTH;
+	port_conf->event_port_cfg = 0;
+}
+
+static void
+dlb_eventdev_queue_default_conf_get(struct rte_eventdev *dev,
+				    uint8_t queue_id,
+				    struct rte_event_queue_conf *queue_conf)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+	queue_conf->nb_atomic_flows = 1024;
+	queue_conf->nb_atomic_order_sequences = 32;
+	queue_conf->event_queue_cfg = 0;
+	queue_conf->priority = 0;
+}
+
 static int
 set_dev_id(const char *key __rte_unused,
 	   const char *value,
@@ -706,6 +733,8 @@ dlb_entry_points_init(struct rte_eventdev *dev)
 	static struct rte_eventdev_ops dlb_eventdev_entry_ops = {
 		.dev_infos_get    = dlb_eventdev_info_get,
 		.dev_configure    = dlb_eventdev_configure,
+		.queue_def_conf   = dlb_eventdev_queue_default_conf_get,
+		.port_def_conf    = dlb_eventdev_port_default_conf_get,
 		.dump             = dlb_eventdev_dump,
 		.xstats_get       = dlb_eventdev_xstats_get,
 		.xstats_get_names = dlb_eventdev_xstats_get_names,
