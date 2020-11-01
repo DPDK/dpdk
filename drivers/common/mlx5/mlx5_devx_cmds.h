@@ -486,4 +486,8 @@ __rte_internal
 int mlx5_devx_cmd_query_virtio_q_counters(struct mlx5_devx_obj *couners_obj,
 				  struct mlx5_devx_virtio_q_couners_attr *attr);
 
+__rte_internal
+struct mlx5_devx_obj *mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx,
+							    uint32_t pd);
+
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */

@@ -1998,3 +1998,48 @@ mlx5_devx_cmd_query_virtio_q_counters(struct mlx5_devx_obj *couners_obj,
 					invalid_buffer);
 	return ret;
 }
+
+/**
+ * Create general object of type FLOW_HIT_ASO using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param [in] pd
+ *   PD value to associate the FLOW_HIT_ASO object with.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx, uint32_t pd)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_flow_hit_aso_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	struct mlx5_devx_obj *flow_hit_aso_obj = NULL;
+	void *ptr = NULL;
+
+	flow_hit_aso_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*flow_hit_aso_obj),
+				       0, SOCKET_ID_ANY);
+	if (!flow_hit_aso_obj) {
+		DRV_LOG(ERR, "Failed to allocate FLOW_HIT_ASO object data");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	ptr = MLX5_ADDR_OF(create_flow_hit_aso_in, in, hdr);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, ptr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_FLOW_HIT_ASO);
+	ptr = MLX5_ADDR_OF(create_flow_hit_aso_in, in, flow_hit_aso);
+	MLX5_SET(flow_hit_aso, ptr, access_pd, pd);
+	flow_hit_aso_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+							   out, sizeof(out));
+	if (!flow_hit_aso_obj->obj) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create FLOW_HIT_ASO obj using DevX.");
+		mlx5_free(flow_hit_aso_obj);
+		return NULL;
+	}
+	flow_hit_aso_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return flow_hit_aso_obj;
+}

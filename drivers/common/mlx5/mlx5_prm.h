@@ -2217,6 +2217,7 @@ enum {
 	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
 	MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS = 0x001c,
 	MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH = 0x0022,
+	MLX5_GENERAL_OBJ_TYPE_FLOW_HIT_ASO = 0x0025,
 };
 
 struct mlx5_ifc_general_obj_in_cmd_hdr_bits {
@@ -2334,6 +2335,19 @@ struct mlx5_ifc_create_virtq_in_bits {
 struct mlx5_ifc_query_virtq_out_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_virtio_net_q_bits virtq;
+};
+
+struct mlx5_ifc_flow_hit_aso_bits {
+	u8 modify_field_select[0x40];
+	u8 reserved_at_40[0x48];
+	u8 access_pd[0x18];
+	u8 reserved_at_a0[0x160];
+	u8 flag[0x200];
+};
+
+struct mlx5_ifc_create_flow_hit_aso_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_flow_hit_aso_bits flow_hit_aso;
 };
 
 enum {
