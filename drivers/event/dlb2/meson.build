@@ -14,7 +14,8 @@ sources = files('dlb2.c',
 		'pf/dlb2_main.c',
 		'pf/dlb2_pf.c',
 		'pf/base/dlb2_resource.c',
-		'rte_pmd_dlb2.c'
+		'rte_pmd_dlb2.c',
+		'dlb2_selftest.c'
 )
 
 headers = files('rte_pmd_dlb2.h')
