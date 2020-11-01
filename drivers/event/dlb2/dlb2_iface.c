@@ -66,3 +66,9 @@ int (*dlb2_iface_pending_port_unmaps)(struct dlb2_hw_dev *handle,
 
 int (*dlb2_iface_sched_domain_start)(struct dlb2_hw_dev *handle,
 				     struct dlb2_start_domain_args *cfg);
+
+int (*dlb2_iface_get_ldb_queue_depth)(struct dlb2_hw_dev *handle,
+				struct dlb2_get_ldb_queue_depth_args *args);
+
+int (*dlb2_iface_get_dir_queue_depth)(struct dlb2_hw_dev *handle,
+				struct dlb2_get_dir_queue_depth_args *args);

@@ -527,6 +527,56 @@ dlb2_pf_sched_domain_start(struct dlb2_hw_dev *handle,
 	return ret;
 }
 
+static int
+dlb2_pf_get_ldb_queue_depth(struct dlb2_hw_dev *handle,
+			    struct dlb2_get_ldb_queue_depth_args *args)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	ret = dlb2_hw_get_ldb_queue_depth(&dlb2_dev->hw,
+					  handle->domain_id,
+					  args,
+					  &response,
+					  false,
+					  0);
+
+	args->response = response;
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d\n",
+		  __func__, ret);
+
+	return ret;
+}
+
+static int
+dlb2_pf_get_dir_queue_depth(struct dlb2_hw_dev *handle,
+			    struct dlb2_get_dir_queue_depth_args *args)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret = 0;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	ret = dlb2_hw_get_dir_queue_depth(&dlb2_dev->hw,
+					  handle->domain_id,
+					  args,
+					  &response,
+					  false,
+					  0);
+
+	args->response = response;
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d\n",
+		  __func__, ret);
+
+	return ret;
+}
+
 static void
 dlb2_pf_iface_fn_ptrs_init(void)
 {
@@ -544,6 +594,8 @@ dlb2_pf_iface_fn_ptrs_init(void)
 	dlb2_iface_dir_port_create = dlb2_pf_dir_port_create;
 	dlb2_iface_map_qid = dlb2_pf_map_qid;
 	dlb2_iface_unmap_qid = dlb2_pf_unmap_qid;
+	dlb2_iface_get_ldb_queue_depth = dlb2_pf_get_ldb_queue_depth;
+	dlb2_iface_get_dir_queue_depth = dlb2_pf_get_dir_queue_depth;
 	dlb2_iface_sched_domain_start = dlb2_pf_sched_domain_start;
 	dlb2_iface_pending_port_unmaps = dlb2_pf_pending_port_unmaps;
 	dlb2_iface_get_sn_allocation = dlb2_pf_get_sn_allocation;

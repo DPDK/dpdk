@@ -71,21 +71,6 @@ static struct rte_event_dev_info evdev_dlb2_default_info = {
 struct process_local_port_data
 dlb2_port[DLB2_MAX_NUM_PORTS][DLB2_NUM_PORT_TYPES];
 
-/*
- * DUMMY - added so that xstats path will compile/link.
- * Will be replaced by real version in a subsequent
- * patch.
- */
-uint32_t
-dlb2_get_queue_depth(struct dlb2_eventdev *dlb2,
-		     struct dlb2_eventdev_queue *queue)
-{
-	RTE_SET_USED(dlb2);
-	RTE_SET_USED(queue);
-
-	return 0;
-}
-
 static void
 dlb2_free_qe_mem(struct dlb2_port *qm_port)
 {
@@ -1878,7 +1863,6 @@ dlb2_eventdev_port_unlink(struct rte_eventdev *dev, void *event_port,
 		return 0; /* Ignore and return success */
 	}
 
-	/* FIXME: How to handle unlink on a directed port? */
 	if (ev_port->qm_port.is_directed) {
 		DLB2_LOG_DBG("dlb2: ignore unlink from dir port %d\n",
 			     ev_port->id);
@@ -3396,6 +3380,245 @@ dlb2_event_dequeue_sparse(void *event_port, struct rte_event *ev,
 }
 
 static void
+dlb2_flush_port(struct rte_eventdev *dev, int port_id)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+	eventdev_stop_flush_t flush;
+	struct rte_event ev;
+	uint8_t dev_id;
+	void *arg;
+	int i;
+
+	flush = dev->dev_ops->dev_stop_flush;
+	dev_id = dev->data->dev_id;
+	arg = dev->data->dev_stop_flush_arg;
+
+	while (rte_event_dequeue_burst(dev_id, port_id, &ev, 1, 0)) {
+		if (flush)
+			flush(dev_id, ev, arg);
+
+		if (dlb2->ev_ports[port_id].qm_port.is_directed)
+			continue;
+
+		ev.op = RTE_EVENT_OP_RELEASE;
+
+		rte_event_enqueue_burst(dev_id, port_id, &ev, 1);
+	}
+
+	/* Enqueue any additional outstanding releases */
+	ev.op = RTE_EVENT_OP_RELEASE;
+
+	for (i = dlb2->ev_ports[port_id].outstanding_releases; i > 0; i--)
+		rte_event_enqueue_burst(dev_id, port_id, &ev, 1);
+}
+
+static uint32_t
+dlb2_get_ldb_queue_depth(struct dlb2_eventdev *dlb2,
+			 struct dlb2_eventdev_queue *queue)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_get_ldb_queue_depth_args cfg;
+	int ret;
+
+	cfg.queue_id = queue->qm_queue.id;
+
+	ret = dlb2_iface_get_ldb_queue_depth(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: get_ldb_queue_depth ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return ret;
+	}
+
+	return cfg.response.id;
+}
+
+static uint32_t
+dlb2_get_dir_queue_depth(struct dlb2_eventdev *dlb2,
+			 struct dlb2_eventdev_queue *queue)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_get_dir_queue_depth_args cfg;
+	int ret;
+
+	cfg.queue_id = queue->qm_queue.id;
+
+	ret = dlb2_iface_get_dir_queue_depth(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: get_dir_queue_depth ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return ret;
+	}
+
+	return cfg.response.id;
+}
+
+uint32_t
+dlb2_get_queue_depth(struct dlb2_eventdev *dlb2,
+		     struct dlb2_eventdev_queue *queue)
+{
+	if (queue->qm_queue.is_directed)
+		return dlb2_get_dir_queue_depth(dlb2, queue);
+	else
+		return dlb2_get_ldb_queue_depth(dlb2, queue);
+}
+
+static bool
+dlb2_queue_is_empty(struct dlb2_eventdev *dlb2,
+		    struct dlb2_eventdev_queue *queue)
+{
+	return dlb2_get_queue_depth(dlb2, queue) == 0;
+}
+
+static bool
+dlb2_linked_queues_empty(struct dlb2_eventdev *dlb2)
+{
+	int i;
+
+	for (i = 0; i < dlb2->num_queues; i++) {
+		if (dlb2->ev_queues[i].num_links == 0)
+			continue;
+		if (!dlb2_queue_is_empty(dlb2, &dlb2->ev_queues[i]))
+			return false;
+	}
+
+	return true;
+}
+
+static bool
+dlb2_queues_empty(struct dlb2_eventdev *dlb2)
+{
+	int i;
+
+	for (i = 0; i < dlb2->num_queues; i++) {
+		if (!dlb2_queue_is_empty(dlb2, &dlb2->ev_queues[i]))
+			return false;
+	}
+
+	return true;
+}
+
+static void
+dlb2_drain(struct rte_eventdev *dev)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+	struct dlb2_eventdev_port *ev_port = NULL;
+	uint8_t dev_id;
+	int i;
+
+	dev_id = dev->data->dev_id;
+
+	while (!dlb2_linked_queues_empty(dlb2)) {
+		/* Flush all the ev_ports, which will drain all their connected
+		 * queues.
+		 */
+		for (i = 0; i < dlb2->num_ports; i++)
+			dlb2_flush_port(dev, i);
+	}
+
+	/* The queues are empty, but there may be events left in the ports. */
+	for (i = 0; i < dlb2->num_ports; i++)
+		dlb2_flush_port(dev, i);
+
+	/* If the domain's queues are empty, we're done. */
+	if (dlb2_queues_empty(dlb2))
+		return;
+
+	/* Else, there must be at least one unlinked load-balanced queue.
+	 * Select a load-balanced port with which to drain the unlinked
+	 * queue(s).
+	 */
+	for (i = 0; i < dlb2->num_ports; i++) {
+		ev_port = &dlb2->ev_ports[i];
+
+		if (!ev_port->qm_port.is_directed)
+			break;
+	}
+
+	if (i == dlb2->num_ports) {
+		DLB2_LOG_ERR("internal error: no LDB ev_ports\n");
+		return;
+	}
+
+	rte_errno = 0;
+	rte_event_port_unlink(dev_id, ev_port->id, NULL, 0);
+
+	if (rte_errno) {
+		DLB2_LOG_ERR("internal error: failed to unlink ev_port %d\n",
+			     ev_port->id);
+		return;
+	}
+
+	for (i = 0; i < dlb2->num_queues; i++) {
+		uint8_t qid, prio;
+		int ret;
+
+		if (dlb2_queue_is_empty(dlb2, &dlb2->ev_queues[i]))
+			continue;
+
+		qid = i;
+		prio = 0;
+
+		/* Link the ev_port to the queue */
+		ret = rte_event_port_link(dev_id, ev_port->id, &qid, &prio, 1);
+		if (ret != 1) {
+			DLB2_LOG_ERR("internal error: failed to link ev_port %d to queue %d\n",
+				     ev_port->id, qid);
+			return;
+		}
+
+		/* Flush the queue */
+		while (!dlb2_queue_is_empty(dlb2, &dlb2->ev_queues[i]))
+			dlb2_flush_port(dev, ev_port->id);
+
+		/* Drain any extant events in the ev_port. */
+		dlb2_flush_port(dev, ev_port->id);
+
+		/* Unlink the ev_port from the queue */
+		ret = rte_event_port_unlink(dev_id, ev_port->id, &qid, 1);
+		if (ret != 1) {
+			DLB2_LOG_ERR("internal error: failed to unlink ev_port %d to queue %d\n",
+				     ev_port->id, qid);
+			return;
+		}
+	}
+}
+
+static void
+dlb2_eventdev_stop(struct rte_eventdev *dev)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+
+	rte_spinlock_lock(&dlb2->qm_instance.resource_lock);
+
+	if (dlb2->run_state == DLB2_RUN_STATE_STOPPED) {
+		DLB2_LOG_DBG("Internal error: already stopped\n");
+		rte_spinlock_unlock(&dlb2->qm_instance.resource_lock);
+		return;
+	} else if (dlb2->run_state != DLB2_RUN_STATE_STARTED) {
+		DLB2_LOG_ERR("Internal error: bad state %d for dev_stop\n",
+			     (int)dlb2->run_state);
+		rte_spinlock_unlock(&dlb2->qm_instance.resource_lock);
+		return;
+	}
+
+	dlb2->run_state = DLB2_RUN_STATE_STOPPING;
+
+	rte_spinlock_unlock(&dlb2->qm_instance.resource_lock);
+
+	dlb2_drain(dev);
+
+	dlb2->run_state = DLB2_RUN_STATE_STOPPED;
+}
+
+static int
+dlb2_eventdev_close(struct rte_eventdev *dev)
+{
+	dlb2_hw_reset_sched_domain(dev, false);
+
+	return 0;
+}
+
+static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
 	struct dlb2_eventdev *dlb2;
@@ -3405,6 +3628,8 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 		.dev_infos_get    = dlb2_eventdev_info_get,
 		.dev_configure    = dlb2_eventdev_configure,
 		.dev_start        = dlb2_eventdev_start,
+		.dev_stop         = dlb2_eventdev_stop,
+		.dev_close        = dlb2_eventdev_close,
 		.queue_def_conf   = dlb2_eventdev_queue_default_conf_get,
 		.queue_setup      = dlb2_eventdev_queue_setup,
 		.port_def_conf    = dlb2_eventdev_port_default_conf_get,
