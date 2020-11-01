@@ -33,6 +33,7 @@
 #include <rte_eventdev_pmd.h>
 
 #include "dlb_priv.h"
+#include "dlb_iface.h"
 #include "dlb_inline_fns.h"
 
 /*

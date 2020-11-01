@@ -27,6 +27,7 @@
 #include <rte_string_fns.h>
 
 #include "../dlb_priv.h"
+#include "../dlb_iface.h"
 #include "../dlb_inline_fns.h"
 #include "dlb_main.h"
 #include "base/dlb_hw_types.h"

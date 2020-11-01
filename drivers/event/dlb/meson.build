@@ -8,6 +8,7 @@ if not is_linux or not dpdk_conf.has('RTE_ARCH_X86_64')
 endif
 
 sources = files('dlb.c',
+		'dlb_iface.c',
 		'pf/dlb_main.c',
 		'pf/dlb_pf.c'
 )
