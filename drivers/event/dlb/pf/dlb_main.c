@@ -223,12 +223,18 @@ dlb_probe(struct rte_pci_device *pdev)
 	if (ret)
 		goto init_driver_state_fail;
 
+	ret = dlb_resource_init(&dlb_dev->hw);
+	if (ret)
+		goto resource_init_fail;
+
 	dlb_dev->revision = os_get_dev_revision(&dlb_dev->hw);
 
 	dlb_pf_init_hardware(dlb_dev);
 
 	return dlb_dev;
 
+resource_init_fail:
+	dlb_resource_free(&dlb_dev->hw);
 init_driver_state_fail:
 mask_ur_err_fail:
 dlb_reset_fail:
@@ -564,5 +570,17 @@ dlb_pf_init_driver_state(struct dlb_dev *dlb_dev)
 void
 dlb_pf_init_hardware(struct dlb_dev *dlb_dev)
 {
-	RTE_SET_USED(dlb_dev);
+	dlb_disable_dp_vasr_feature(&dlb_dev->hw);
+
+	dlb_enable_excess_tokens_alarm(&dlb_dev->hw);
+
+	if (dlb_dev->revision >= DLB_REV_B0) {
+		dlb_hw_enable_sparse_ldb_cq_mode(&dlb_dev->hw);
+		dlb_hw_enable_sparse_dir_cq_mode(&dlb_dev->hw);
+	}
+
+	if (dlb_dev->revision >= DLB_REV_B0) {
+		dlb_hw_disable_pf_to_vf_isr_pend_err(&dlb_dev->hw);
+		dlb_hw_disable_vf_to_pf_isr_pend_err(&dlb_dev->hw);
+	}
 }

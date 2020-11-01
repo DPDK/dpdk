@@ -42,9 +42,91 @@
 #if (RTE_EVENT_MAX_QUEUES_PER_DEV > UINT8_MAX)
 #error "RTE_EVENT_MAX_QUEUES_PER_DEV cannot fit in member max_event_queues"
 #endif
+static struct rte_event_dev_info evdev_dlb_default_info = {
+	.driver_name = "", /* probe will set */
+	.min_dequeue_timeout_ns = DLB_MIN_DEQUEUE_TIMEOUT_NS,
+	.max_dequeue_timeout_ns = DLB_MAX_DEQUEUE_TIMEOUT_NS,
+#if (RTE_EVENT_MAX_QUEUES_PER_DEV < DLB_MAX_NUM_LDB_QUEUES)
+	.max_event_queues = RTE_EVENT_MAX_QUEUES_PER_DEV,
+#else
+	.max_event_queues = DLB_MAX_NUM_LDB_QUEUES,
+#endif
+	.max_event_queue_flows = DLB_MAX_NUM_FLOWS,
+	.max_event_queue_priority_levels = DLB_QID_PRIORITIES,
+	.max_event_priority_levels = DLB_QID_PRIORITIES,
+	.max_event_ports = DLB_MAX_NUM_LDB_PORTS,
+	.max_event_port_dequeue_depth = DLB_MAX_CQ_DEPTH,
+	.max_event_port_enqueue_depth = DLB_MAX_ENQUEUE_DEPTH,
+	.max_event_port_links = DLB_MAX_NUM_QIDS_PER_LDB_CQ,
+	.max_num_events = DLB_MAX_NUM_LDB_CREDITS,
+	.max_single_link_event_port_queue_pairs = DLB_MAX_NUM_DIR_PORTS,
+	.event_dev_cap = (RTE_EVENT_DEV_CAP_QUEUE_QOS |
+			  RTE_EVENT_DEV_CAP_EVENT_QOS |
+			  RTE_EVENT_DEV_CAP_BURST_MODE |
+			  RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
+			  RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE |
+			  RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES),
+};
 
 struct process_local_port_data
 dlb_port[DLB_MAX_NUM_PORTS][NUM_DLB_PORT_TYPES];
+
+static int
+dlb_hw_query_resources(struct dlb_eventdev *dlb)
+{
+	struct dlb_hw_dev *handle = &dlb->qm_instance;
+	struct dlb_hw_resource_info *dlb_info = &handle->info;
+	int ret;
+
+	ret = dlb_iface_get_num_resources(handle,
+					  &dlb->hw_rsrc_query_results);
+	if (ret) {
+		DLB_LOG_ERR("get dlb num resources, err=%d\n", ret);
+		return ret;
+	}
+
+	/* Complete filling in device resource info returned to evdev app,
+	 * overriding any default values.
+	 * The capabilities (CAPs) were set at compile time.
+	 */
+
+	evdev_dlb_default_info.max_event_queues =
+		dlb->hw_rsrc_query_results.num_ldb_queues;
+
+	evdev_dlb_default_info.max_event_ports =
+		dlb->hw_rsrc_query_results.num_ldb_ports;
+
+	evdev_dlb_default_info.max_num_events =
+		dlb->hw_rsrc_query_results.max_contiguous_ldb_credits;
+
+	/* Save off values used when creating the scheduling domain. */
+
+	handle->info.num_sched_domains =
+		dlb->hw_rsrc_query_results.num_sched_domains;
+
+	handle->info.hw_rsrc_max.nb_events_limit =
+		dlb->hw_rsrc_query_results.max_contiguous_ldb_credits;
+
+	handle->info.hw_rsrc_max.num_queues =
+		dlb->hw_rsrc_query_results.num_ldb_queues +
+		dlb->hw_rsrc_query_results.num_dir_ports;
+
+	handle->info.hw_rsrc_max.num_ldb_queues =
+		dlb->hw_rsrc_query_results.num_ldb_queues;
+
+	handle->info.hw_rsrc_max.num_ldb_ports =
+		dlb->hw_rsrc_query_results.num_ldb_ports;
+
+	handle->info.hw_rsrc_max.num_dir_ports =
+		dlb->hw_rsrc_query_results.num_dir_ports;
+
+	handle->info.hw_rsrc_max.reorder_window_size =
+		dlb->hw_rsrc_query_results.num_hist_list_entries;
+
+	rte_memcpy(dlb_info, &handle->info.hw_rsrc_max, sizeof(*dlb_info));
+
+	return 0;
+}
 
 /* Wrapper for string to int conversion. Substituted for atoi(...), which is
  * unsafe.
@@ -227,9 +309,54 @@ dlb_primary_eventdev_probe(struct rte_eventdev *dev,
 			   const char *name,
 			   struct dlb_devargs *dlb_args)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(name);
-	RTE_SET_USED(dlb_args);
+	struct dlb_eventdev *dlb;
+	int err;
+
+	dlb = dev->data->dev_private;
+
+	dlb->event_dev = dev; /* backlink */
+
+	evdev_dlb_default_info.driver_name = name;
+
+	dlb->max_num_events_override = dlb_args->max_num_events;
+	dlb->num_dir_credits_override = dlb_args->num_dir_credits_override;
+	dlb->defer_sched = dlb_args->defer_sched;
+	dlb->num_atm_inflights_per_queue = dlb_args->num_atm_inflights;
+
+	/* Open the interface.
+	 * For vdev mode, this means open the dlb kernel module.
+	 */
+	err = dlb_iface_open(&dlb->qm_instance, name);
+	if (err < 0) {
+		DLB_LOG_ERR("could not open event hardware device, err=%d\n",
+			    err);
+		return err;
+	}
+
+	err = dlb_iface_get_device_version(&dlb->qm_instance, &dlb->revision);
+	if (err < 0) {
+		DLB_LOG_ERR("dlb: failed to get the device version, err=%d\n",
+			    err);
+		return err;
+	}
+
+	err = dlb_hw_query_resources(dlb);
+	if (err) {
+		DLB_LOG_ERR("get resources err=%d for %s\n", err, name);
+		return err;
+	}
+
+	err = dlb_iface_get_cq_poll_mode(&dlb->qm_instance, &dlb->poll_mode);
+	if (err < 0) {
+		DLB_LOG_ERR("dlb: failed to get the poll mode, err=%d\n", err);
+		return err;
+	}
+
+	rte_spinlock_init(&dlb->qm_instance.resource_lock);
+
+	dlb_iface_low_level_io_init(dlb);
+
+	dlb_entry_points_init(dev);
 
 	return 0;
 }
@@ -238,8 +365,29 @@ int
 dlb_secondary_eventdev_probe(struct rte_eventdev *dev,
 			     const char *name)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(name);
+	struct dlb_eventdev *dlb;
+	int err;
+
+	dlb = dev->data->dev_private;
+
+	evdev_dlb_default_info.driver_name = name;
+
+	err = dlb_iface_open(&dlb->qm_instance, name);
+	if (err < 0) {
+		DLB_LOG_ERR("could not open event hardware device, err=%d\n",
+			    err);
+		return err;
+	}
+
+	err = dlb_hw_query_resources(dlb);
+	if (err) {
+		DLB_LOG_ERR("get resources err=%d for %s\n", err, name);
+		return err;
+	}
+
+	dlb_iface_low_level_io_init(dlb);
+
+	dlb_entry_points_init(dev);
 
 	return 0;
 }

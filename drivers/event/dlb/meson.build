@@ -10,7 +10,8 @@ endif
 sources = files('dlb.c',
 		'dlb_iface.c',
 		'pf/dlb_main.c',
-		'pf/dlb_pf.c'
+		'pf/dlb_pf.c',
+		'pf/base/dlb_resource.c'
 )
 
 headers = files()

@@ -35,9 +35,93 @@
 #include "base/dlb_resource.h"
 
 static void
+dlb_pf_low_level_io_init(struct dlb_eventdev *dlb __rte_unused)
+{
+	int i;
+
+	/* Addresses will be initialized at port create */
+	for (i = 0; i < DLB_MAX_NUM_PORTS; i++) {
+		/* First directed ports */
+
+		/* producer port */
+		dlb_port[i][DLB_DIR].pp_addr = NULL;
+
+		/* popcount */
+		dlb_port[i][DLB_DIR].ldb_popcount = NULL;
+		dlb_port[i][DLB_DIR].dir_popcount = NULL;
+
+		/* consumer queue */
+		dlb_port[i][DLB_DIR].cq_base = NULL;
+		dlb_port[i][DLB_DIR].mmaped = true;
+
+		/* Now load balanced ports */
+
+		/* producer port */
+		dlb_port[i][DLB_LDB].pp_addr = NULL;
+
+		/* popcount */
+		dlb_port[i][DLB_LDB].ldb_popcount = NULL;
+		dlb_port[i][DLB_LDB].dir_popcount = NULL;
+
+		/* consumer queue */
+		dlb_port[i][DLB_LDB].cq_base = NULL;
+		dlb_port[i][DLB_LDB].mmaped = true;
+	}
+}
+
+static int
+dlb_pf_open(struct dlb_hw_dev *handle, const char *name)
+{
+	RTE_SET_USED(handle);
+	RTE_SET_USED(name);
+
+	return 0;
+}
+
+static int
+dlb_pf_get_device_version(struct dlb_hw_dev *handle,
+			  uint8_t *revision)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+
+	*revision = dlb_dev->revision;
+
+	return 0;
+}
+
+static int
+dlb_pf_get_num_resources(struct dlb_hw_dev *handle,
+			 struct dlb_get_num_resources_args *rsrcs)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+
+	dlb_hw_get_num_resources(&dlb_dev->hw, rsrcs);
+
+	return 0;
+}
+
+static int
+dlb_pf_get_cq_poll_mode(struct dlb_hw_dev *handle,
+			enum dlb_cq_poll_modes *mode)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+
+	if (dlb_dev->revision >= DLB_REV_B0)
+		*mode = DLB_CQ_POLL_MODE_SPARSE;
+	else
+		*mode = DLB_CQ_POLL_MODE_STD;
+
+	return 0;
+}
+
+static void
 dlb_pf_iface_fn_ptrs_init(void)
 {
-
+	dlb_iface_low_level_io_init = dlb_pf_low_level_io_init;
+	dlb_iface_open = dlb_pf_open;
+	dlb_iface_get_device_version = dlb_pf_get_device_version;
+	dlb_iface_get_num_resources = dlb_pf_get_num_resources;
+	dlb_iface_get_cq_poll_mode = dlb_pf_get_cq_poll_mode;
 }
 
 /* PCI DEV HOOKS */
