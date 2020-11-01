@@ -624,11 +624,10 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 		pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 	} else if (params.resource_sub_type ==
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT_ACC) {
-		/* Get the stats from the parent child table */
-		ulp_flow_db_parent_flow_count_get(ctxt,
-						  flow_id,
-						  &count->hits,
-						  &count->bytes);
+		/* Get stats from the parent child table */
+		ulp_flow_db_parent_flow_count_get(ctxt, flow_id,
+						  &count->hits, &count->bytes,
+						  count->reset);
 		count->hits_set = 1;
 		count->bytes_set = 1;
 	} else {

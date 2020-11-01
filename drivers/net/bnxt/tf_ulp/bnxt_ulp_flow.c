@@ -175,6 +175,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	params.fid = fid;
 	params.func_id = func_id;
 	params.priority = attr->priority;
+	params.port_id = bnxt_get_phy_port_id(dev->data->port_id);
 	/* Perform the rte flow post process */
 	ret = bnxt_ulp_rte_parser_post_process(&params);
 	if (ret == BNXT_TF_RC_ERROR)

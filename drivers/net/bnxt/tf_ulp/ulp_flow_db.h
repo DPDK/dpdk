@@ -390,7 +390,8 @@ int32_t
 ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
 				  uint32_t parent_fid,
 				  uint64_t *packet_count,
-				  uint64_t *byte_count);
+				  uint64_t *byte_count,
+				  uint8_t count_reset);
 
 /*
  * reset the parent accumulation counters

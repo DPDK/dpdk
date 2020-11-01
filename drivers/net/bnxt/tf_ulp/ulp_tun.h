@@ -70,8 +70,13 @@ enum bnxt_ulp_tun_flow_state {
 	BNXT_ULP_FLOW_STATE_TUN_I_CACHED
 };
 
-struct bnxt_tun_cache_entry {
+struct ulp_per_port_flow_info {
 	enum bnxt_ulp_tun_flow_state	state;
+	uint32_t			first_tun_i_fid;
+	struct ulp_rte_parser_params	first_inner_tun_params;
+};
+
+struct bnxt_tun_cache_entry {
 	bool				valid;
 	bool				t_dst_ip_valid;
 	uint8_t				t_dmac[RTE_ETHER_ADDR_LEN];
@@ -80,13 +85,15 @@ struct bnxt_tun_cache_entry {
 		uint8_t			t_dst_ip6[16];
 	};
 	uint32_t			outer_tun_flow_id;
-	uint32_t			first_inner_tun_flow_id;
 	uint16_t			outer_tun_rej_cnt;
 	uint16_t			inner_tun_rej_cnt;
-	struct ulp_rte_parser_params	first_inner_tun_params;
+	struct ulp_per_port_flow_info	tun_flow_info[RTE_MAX_ETHPORTS];
 };
 
 void
 ulp_clear_tun_entry(struct bnxt_tun_cache_entry *tun_tbl, uint8_t tun_idx);
+
+void
+ulp_clear_tun_inner_entry(struct bnxt_tun_cache_entry *tun_tbl, uint32_t fid);
 
 #endif

@@ -1012,6 +1012,13 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
 
+	/* Some of the PMD applications may set the protocol field
+	 * in the IPv4 spec but don't set the mask. So, consider
+	 * the mask in the proto value calculation.
+	 */
+	if (ipv4_mask)
+		proto &= ipv4_mask->hdr.next_proto_id;
+
 	/* Update the field protocol hdr bitmap */
 	ulp_rte_l3_proto_type_update(params, proto, inner_flag);
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_HDR_CNT, ++cnt);
@@ -1149,6 +1156,13 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
+
+	/* Some of the PMD applications may set the protocol field
+	 * in the IPv6 spec but don't set the mask. So, consider
+	 * the mask in proto value calculation.
+	 */
+	if (ipv6_mask)
+		proto &= ipv6_mask->hdr.proto;
 
 	/* Update the field protocol hdr bitmap */
 	ulp_rte_l3_proto_type_update(params, proto, inner_flag);

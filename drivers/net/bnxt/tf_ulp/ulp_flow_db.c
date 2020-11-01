@@ -868,8 +868,9 @@ ulp_flow_db_fid_free(struct bnxt_ulp_context *ulp_ctxt,
 		     enum bnxt_ulp_fdb_type flow_type,
 		     uint32_t fid)
 {
-	struct bnxt_ulp_flow_db *flow_db;
+	struct bnxt_tun_cache_entry *tun_tbl;
 	struct bnxt_ulp_flow_tbl *flow_tbl;
+	struct bnxt_ulp_flow_db *flow_db;
 
 	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
 	if (!flow_db) {
@@ -907,6 +908,12 @@ ulp_flow_db_fid_free(struct bnxt_ulp_context *ulp_ctxt,
 
 	if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
 		ulp_flow_db_func_id_set(flow_db, fid, 0);
+
+	tun_tbl = bnxt_ulp_cntxt_ptr2_tun_tbl_get(ulp_ctxt);
+	if (!tun_tbl)
+		return -EINVAL;
+
+	ulp_clear_tun_inner_entry(tun_tbl, fid);
 
 	/* all good, return success */
 	return 0;
@@ -1812,9 +1819,8 @@ ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
-				  uint32_t parent_fid,
-				  uint64_t *packet_count,
-				  uint64_t *byte_count)
+				  uint32_t parent_fid, uint64_t *packet_count,
+				  uint64_t *byte_count, uint8_t count_reset)
 {
 	struct bnxt_ulp_flow_db *flow_db;
 	struct ulp_fdb_parent_child_db *p_pdb;
@@ -1835,6 +1841,10 @@ ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
 					p_pdb->parent_flow_tbl[idx].pkt_count;
 				*byte_count =
 					p_pdb->parent_flow_tbl[idx].byte_count;
+				if (count_reset) {
+					p_pdb->parent_flow_tbl[idx].pkt_count = 0;
+					p_pdb->parent_flow_tbl[idx].byte_count = 0;
+				}
 			}
 			return 0;
 		}

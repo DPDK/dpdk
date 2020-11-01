@@ -55,7 +55,8 @@ ulp_install_outer_tun_flow(struct ulp_rte_parser_params *params,
 	       RTE_ETHER_ADDR_LEN);
 
 	tun_entry->valid = true;
-	tun_entry->state = BNXT_ULP_FLOW_STATE_TUN_O_OFFLD;
+	tun_entry->tun_flow_info[params->port_id].state =
+				BNXT_ULP_FLOW_STATE_TUN_O_OFFLD;
 	tun_entry->outer_tun_flow_id = params->fid;
 
 	/* F1 and it's related F2s are correlated based on
@@ -83,20 +84,23 @@ err:
 
 /* This function programs the inner tunnel flow in the hardware. */
 static void
-ulp_install_inner_tun_flow(struct bnxt_tun_cache_entry *tun_entry)
+ulp_install_inner_tun_flow(struct bnxt_tun_cache_entry *tun_entry,
+			   struct ulp_rte_parser_params *tun_o_params)
 {
 	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct ulp_per_port_flow_info *flow_info;
 	struct ulp_rte_parser_params *params;
 	int ret;
 
 	/* F2 doesn't have tunnel dmac, use the tunnel dmac that was
 	 * stored during F1 programming.
 	 */
-	params = &tun_entry->first_inner_tun_params;
+	flow_info = &tun_entry->tun_flow_info[tun_o_params->port_id];
+	params = &flow_info->first_inner_tun_params;
 	memcpy(&params->hdr_field[ULP_TUN_O_DMAC_HDR_FIELD_INDEX],
 	       tun_entry->t_dmac, RTE_ETHER_ADDR_LEN);
 	params->parent_fid = tun_entry->outer_tun_flow_id;
-	params->fid = tun_entry->first_inner_tun_flow_id;
+	params->fid = flow_info->first_tun_i_fid;
 
 	bnxt_ulp_init_mapper_params(&mparms, params,
 				    BNXT_ULP_FDB_TYPE_REGULAR);
@@ -117,18 +121,20 @@ ulp_post_process_outer_tun_flow(struct ulp_rte_parser_params *params,
 	enum bnxt_ulp_tun_flow_state flow_state;
 	int ret;
 
-	flow_state = tun_entry->state;
+	flow_state = tun_entry->tun_flow_info[params->port_id].state;
 	ret = ulp_install_outer_tun_flow(params, tun_entry, tun_idx);
-	if (ret)
+	if (ret == BNXT_TF_RC_ERROR) {
+		PMD_DRV_LOG(ERR, "Failed to create outer tunnel flow.");
 		return ret;
+	}
 
 	/* If flow_state == BNXT_ULP_FLOW_STATE_NORMAL before installing
 	 * F1, that means F2 is not deferred. Hence, no need to install F2.
 	 */
 	if (flow_state != BNXT_ULP_FLOW_STATE_NORMAL)
-		ulp_install_inner_tun_flow(tun_entry);
+		ulp_install_inner_tun_flow(tun_entry, params);
 
-	return 0;
+	return BNXT_TF_RC_FID;
 }
 
 /* This function will be called if inner tunnel flow request comes before
@@ -138,6 +144,7 @@ static int32_t
 ulp_post_process_first_inner_tun_flow(struct ulp_rte_parser_params *params,
 				      struct bnxt_tun_cache_entry *tun_entry)
 {
+	struct ulp_per_port_flow_info *flow_info;
 	int ret;
 
 	ret = ulp_matcher_pattern_match(params, &params->class_id);
@@ -153,11 +160,12 @@ ulp_post_process_first_inner_tun_flow(struct ulp_rte_parser_params *params,
 	 * So, just cache the F2 information and program it in the context
 	 * of F1 flow installation.
 	 */
-	memcpy(&tun_entry->first_inner_tun_params, params,
+	flow_info = &tun_entry->tun_flow_info[params->port_id];
+	memcpy(&flow_info->first_inner_tun_params, params,
 	       sizeof(struct ulp_rte_parser_params));
 
-	tun_entry->first_inner_tun_flow_id = params->fid;
-	tun_entry->state = BNXT_ULP_FLOW_STATE_TUN_I_CACHED;
+	flow_info->first_tun_i_fid = params->fid;
+	flow_info->state = BNXT_ULP_FLOW_STATE_TUN_I_CACHED;
 
 	/* F1 and it's related F2s are correlated based on
 	 * Tunnel Destination IP Address. It could be already set, if
@@ -259,7 +267,7 @@ ulp_post_process_tun_flow(struct ulp_rte_parser_params *params)
 	if (rc == BNXT_TF_RC_ERROR)
 		return rc;
 
-	flow_state = tun_entry->state;
+	flow_state = tun_entry->tun_flow_info[params->port_id].state;
 	/* Outer tunnel flow validation */
 	outer_tun_sig = BNXT_OUTER_TUN_SIGNATURE(l3_tun, params);
 	outer_tun_flow = BNXT_OUTER_TUN_FLOW(outer_tun_sig);
@@ -307,4 +315,27 @@ ulp_clear_tun_entry(struct bnxt_tun_cache_entry *tun_tbl, uint8_t tun_idx)
 {
 	memset(&tun_tbl[tun_idx], 0,
 		sizeof(struct bnxt_tun_cache_entry));
+}
+
+/* When a dpdk application offloads the same tunnel inner flow
+ * on all the uplink ports, a tunnel inner flow entry is cached
+ * even if it is not for the right uplink port. Such tunnel
+ * inner flows will eventually get aged out as there won't be
+ * any traffic on these ports. When such a flow destroy is
+ * called, cleanup the tunnel inner flow entry.
+ */
+void
+ulp_clear_tun_inner_entry(struct bnxt_tun_cache_entry *tun_tbl, uint32_t fid)
+{
+	struct ulp_per_port_flow_info *flow_info;
+	int i, j;
+
+	for (i = 0; i < BNXT_ULP_MAX_TUN_CACHE_ENTRIES ; i++) {
+		for (j = 0; j < RTE_MAX_ETHPORTS; j++) {
+			flow_info = &tun_tbl[i].tun_flow_info[j];
+			if (flow_info->first_tun_i_fid == fid &&
+			    flow_info->state == BNXT_ULP_FLOW_STATE_TUN_I_CACHED)
+				memset(flow_info, 0, sizeof(*flow_info));
+		}
+	}
 }

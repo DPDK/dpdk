@@ -77,6 +77,7 @@ struct ulp_rte_parser_params {
 	uint32_t			parent_flow;
 	uint32_t			parent_fid;
 	uint16_t			func_id;
+	uint16_t			port_id;
 	uint32_t			class_id;
 	uint32_t			act_tmpl;
 	struct bnxt_ulp_context		*ulp_ctx;
