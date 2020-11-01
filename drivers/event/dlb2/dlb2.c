@@ -3689,6 +3689,18 @@ dlb2_eventdev_port_release(void *port)
 	}
 }
 
+static int
+dlb2_eventdev_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
+			    uint64_t *timeout_ticks)
+{
+	RTE_SET_USED(dev);
+	uint64_t cycles_per_ns = rte_get_timer_hz() / 1E9;
+
+	*timeout_ticks = ns * cycles_per_ns;
+
+	return 0;
+}
+
 static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
@@ -3711,6 +3723,7 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 		.port_unlink      = dlb2_eventdev_port_unlink,
 		.port_unlinks_in_progress =
 				    dlb2_eventdev_port_unlinks_in_progress,
+		.timeout_ticks    = dlb2_eventdev_timeout_ticks,
 		.dump             = dlb2_eventdev_dump,
 		.xstats_get       = dlb2_eventdev_xstats_get,
 		.xstats_get_names = dlb2_eventdev_xstats_get_names,
