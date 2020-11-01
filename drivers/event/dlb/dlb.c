@@ -3828,6 +3828,7 @@ dlb_entry_points_init(struct rte_eventdev *dev)
 		.xstats_get_names = dlb_eventdev_xstats_get_names,
 		.xstats_get_by_name = dlb_eventdev_xstats_get_by_name,
 		.xstats_reset	    = dlb_eventdev_xstats_reset,
+		.dev_selftest     = test_dlb_eventdev,
 	};
 
 	/* Expose PMD's eventdev interface */
