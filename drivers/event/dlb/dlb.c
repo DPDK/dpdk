@@ -1626,6 +1626,47 @@ dlb_eventdev_port_setup(struct rte_eventdev *dev,
 }
 
 static int
+dlb_eventdev_reapply_configuration(struct rte_eventdev *dev)
+{
+	struct dlb_eventdev *dlb = dlb_pmd_priv(dev);
+	int ret, i;
+
+	/* If an event queue or port was previously configured, but hasn't been
+	 * reconfigured, reapply its original configuration.
+	 */
+	for (i = 0; i < dlb->num_queues; i++) {
+		struct dlb_eventdev_queue *ev_queue;
+
+		ev_queue = &dlb->ev_queues[i];
+
+		if (ev_queue->qm_queue.config_state != DLB_PREV_CONFIGURED)
+			continue;
+
+		ret = dlb_eventdev_queue_setup(dev, i, &ev_queue->conf);
+		if (ret < 0) {
+			DLB_LOG_ERR("dlb: failed to reconfigure queue %d", i);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < dlb->num_ports; i++) {
+		struct dlb_eventdev_port *ev_port = &dlb->ev_ports[i];
+
+		if (ev_port->qm_port.config_state != DLB_PREV_CONFIGURED)
+			continue;
+
+		ret = dlb_eventdev_port_setup(dev, i, &ev_port->conf);
+		if (ret < 0) {
+			DLB_LOG_ERR("dlb: failed to reconfigure ev_port %d",
+				    i);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
 set_dev_id(const char *key __rte_unused,
 	   const char *value,
 	   void *opaque)
@@ -1761,6 +1802,50 @@ dlb_validate_port_link(struct dlb_eventdev_port *ev_port,
 	return 0;
 }
 
+static int32_t
+dlb_hw_create_dir_queue(struct dlb_eventdev *dlb, int32_t qm_port_id)
+{
+	struct dlb_hw_dev *handle = &dlb->qm_instance;
+	struct dlb_create_dir_queue_args cfg;
+	struct dlb_cmd_response response;
+	int32_t ret;
+
+	cfg.response = (uintptr_t)&response;
+
+	/* The directed port is always configured before its queue */
+	cfg.port_id = qm_port_id;
+
+	ret = dlb_iface_dir_queue_create(handle, &cfg);
+	if (ret < 0) {
+		DLB_LOG_ERR("dlb: create DIR event queue error, ret=%d (driver status: %s)\n",
+			    ret, dlb_error_strings[response.status]);
+		return -EINVAL;
+	}
+
+	return response.id;
+}
+
+static int
+dlb_eventdev_dir_queue_setup(struct dlb_eventdev *dlb,
+			     struct dlb_eventdev_queue *ev_queue,
+			     struct dlb_eventdev_port *ev_port)
+{
+	int32_t qm_qid;
+
+	qm_qid = dlb_hw_create_dir_queue(dlb, ev_port->qm_port.id);
+
+	if (qm_qid < 0) {
+		DLB_LOG_ERR("Failed to create the DIR queue\n");
+		return qm_qid;
+	}
+
+	dlb->qm_dir_to_ev_queue_id[qm_qid] = ev_queue->id;
+
+	ev_queue->qm_queue.id = qm_qid;
+
+	return 0;
+}
+
 static int16_t
 dlb_hw_map_ldb_qid_to_port(struct dlb_hw_dev *handle,
 			   uint32_t qm_port_id,
@@ -1836,50 +1921,6 @@ dlb_event_queue_join_ldb(struct dlb_eventdev *dlb,
 	return ret;
 }
 
-static int32_t
-dlb_hw_create_dir_queue(struct dlb_eventdev *dlb, int32_t qm_port_id)
-{
-	struct dlb_hw_dev *handle = &dlb->qm_instance;
-	struct dlb_create_dir_queue_args cfg;
-	struct dlb_cmd_response response;
-	int32_t ret;
-
-	cfg.response = (uintptr_t)&response;
-
-	/* The directed port is always configured before its queue */
-	cfg.port_id = qm_port_id;
-
-	ret = dlb_iface_dir_queue_create(handle, &cfg);
-	if (ret < 0) {
-		DLB_LOG_ERR("dlb: create DIR event queue error, ret=%d (driver status: %s)\n",
-			    ret, dlb_error_strings[response.status]);
-		return -EINVAL;
-	}
-
-	return response.id;
-}
-
-static int
-dlb_eventdev_dir_queue_setup(struct dlb_eventdev *dlb,
-			     struct dlb_eventdev_queue *ev_queue,
-			     struct dlb_eventdev_port *ev_port)
-{
-	int32_t qm_qid;
-
-	qm_qid = dlb_hw_create_dir_queue(dlb, ev_port->qm_port.id);
-
-	if (qm_qid < 0) {
-		DLB_LOG_ERR("Failed to create the DIR queue\n");
-		return qm_qid;
-	}
-
-	dlb->qm_dir_to_ev_queue_id[qm_qid] = ev_queue->id;
-
-	ev_queue->qm_queue.id = qm_qid;
-
-	return 0;
-}
-
 static int
 dlb_do_port_link(struct rte_eventdev *dev,
 		 struct dlb_eventdev_queue *ev_queue,
@@ -1905,6 +1946,40 @@ dlb_do_port_link(struct rte_eventdev *dev,
 
 		rte_errno = err;
 		return -1;
+	}
+
+	return 0;
+}
+
+static int
+dlb_eventdev_apply_port_links(struct rte_eventdev *dev)
+{
+	struct dlb_eventdev *dlb = dlb_pmd_priv(dev);
+	int i;
+
+	/* Perform requested port->queue links */
+	for (i = 0; i < dlb->num_ports; i++) {
+		struct dlb_eventdev_port *ev_port = &dlb->ev_ports[i];
+		int j;
+
+		for (j = 0; j < DLB_MAX_NUM_QIDS_PER_LDB_CQ; j++) {
+			struct dlb_eventdev_queue *ev_queue;
+			uint8_t prio, queue_id;
+
+			if (!ev_port->link[j].valid)
+				continue;
+
+			prio = ev_port->link[j].priority;
+			queue_id = ev_port->link[j].queue_id;
+
+			if (dlb_validate_port_link(ev_port, queue_id, true, j))
+				return -EINVAL;
+
+			ev_queue = &dlb->ev_queues[queue_id];
+
+			if (dlb_do_port_link(dev, ev_queue, ev_port, prio))
+				return -EINVAL;
+		}
 	}
 
 	return 0;
@@ -2000,12 +2075,73 @@ dlb_eventdev_port_link(struct rte_eventdev *dev, void *event_port,
 	return i;
 }
 
+static int
+dlb_eventdev_start(struct rte_eventdev *dev)
+{
+	struct dlb_eventdev *dlb = dlb_pmd_priv(dev);
+	struct dlb_hw_dev *handle = &dlb->qm_instance;
+	struct dlb_start_domain_args cfg;
+	struct dlb_cmd_response response;
+	int ret, i;
+
+	rte_spinlock_lock(&dlb->qm_instance.resource_lock);
+	if (dlb->run_state != DLB_RUN_STATE_STOPPED) {
+		DLB_LOG_ERR("bad state %d for dev_start\n",
+			    (int)dlb->run_state);
+		rte_spinlock_unlock(&dlb->qm_instance.resource_lock);
+		return -EINVAL;
+	}
+	dlb->run_state	= DLB_RUN_STATE_STARTING;
+	rte_spinlock_unlock(&dlb->qm_instance.resource_lock);
+
+	/* If the device was configured more than once, some event ports and/or
+	 * queues may need to be reconfigured.
+	 */
+	ret = dlb_eventdev_reapply_configuration(dev);
+	if (ret)
+		return ret;
+
+	/* The DLB PMD delays port links until the device is started. */
+	ret = dlb_eventdev_apply_port_links(dev);
+	if (ret)
+		return ret;
+
+	cfg.response = (uintptr_t)&response;
+
+	for (i = 0; i < dlb->num_ports; i++) {
+		if (!dlb->ev_ports[i].setup_done) {
+			DLB_LOG_ERR("dlb: port %d not setup", i);
+			return -ESTALE;
+		}
+	}
+
+	for (i = 0; i < dlb->num_queues; i++) {
+		if (dlb->ev_queues[i].num_links == 0) {
+			DLB_LOG_ERR("dlb: queue %d is not linked", i);
+			return -ENOLINK;
+		}
+	}
+
+	ret = dlb_iface_sched_domain_start(handle, &cfg);
+	if (ret < 0) {
+		DLB_LOG_ERR("dlb: sched_domain_start ret=%d (driver status: %s)\n",
+			    ret, dlb_error_strings[response.status]);
+		return ret;
+	}
+
+	dlb->run_state = DLB_RUN_STATE_STARTED;
+	DLB_LOG_DBG("dlb: sched_domain_start completed OK\n");
+
+	return 0;
+}
+
 void
 dlb_entry_points_init(struct rte_eventdev *dev)
 {
 	static struct rte_eventdev_ops dlb_eventdev_entry_ops = {
 		.dev_infos_get    = dlb_eventdev_info_get,
 		.dev_configure    = dlb_eventdev_configure,
+		.dev_start        = dlb_eventdev_start,
 		.queue_def_conf   = dlb_eventdev_queue_default_conf_get,
 		.port_def_conf    = dlb_eventdev_port_default_conf_get,
 		.queue_setup      = dlb_eventdev_queue_setup,

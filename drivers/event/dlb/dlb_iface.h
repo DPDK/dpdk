@@ -55,6 +55,9 @@ extern int (*dlb_iface_map_qid)(struct dlb_hw_dev *handle,
 extern int (*dlb_iface_unmap_qid)(struct dlb_hw_dev *handle,
 				  struct dlb_unmap_qid_args *cfg);
 
+extern int (*dlb_iface_sched_domain_start)(struct dlb_hw_dev *handle,
+				    struct dlb_start_domain_args *cfg);
+
 extern int (*dlb_iface_pending_port_unmaps)(struct dlb_hw_dev *handle,
 				struct dlb_pending_port_unmaps_args *args);
 

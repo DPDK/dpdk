@@ -6410,6 +6410,32 @@ static int dlb_verify_map_qid_args(struct dlb_hw *hw,
 	return 0;
 }
 
+static int dlb_verify_start_domain_args(struct dlb_hw *hw,
+					u32 domain_id,
+					struct dlb_cmd_response *resp)
+{
+	struct dlb_domain *domain;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+
+	if (domain == NULL) {
+		resp->status = DLB_ST_INVALID_DOMAIN_ID;
+		return -1;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB_ST_DOMAIN_NOT_CONFIGURED;
+		return -1;
+	}
+
+	if (domain->started) {
+		resp->status = DLB_ST_DOMAIN_STARTED;
+		return -1;
+	}
+
+	return 0;
+}
+
 static int dlb_verify_map_qid_slot_available(struct dlb_ldb_port *port,
 					     struct dlb_ldb_queue *queue,
 					     struct dlb_cmd_response *resp)
@@ -6671,3 +6697,119 @@ map_qid_done:
 	return 0;
 }
 
+static void dlb_log_start_domain(struct dlb_hw *hw, u32 domain_id)
+{
+	DLB_HW_INFO(hw, "DLB start domain arguments:\n");
+	DLB_HW_INFO(hw, "\tDomain ID: %d\n", domain_id);
+}
+
+static void dlb_ldb_pool_write_credit_count_reg(struct dlb_hw *hw,
+						u32 pool_id)
+{
+	union dlb_chp_ldb_pool_crd_cnt r0 = { {0} };
+	struct dlb_credit_pool *pool;
+
+	pool = &hw->rsrcs.ldb_credit_pools[pool_id];
+
+	r0.field.count = pool->avail_credits;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_LDB_POOL_CRD_CNT(pool->id),
+		   r0.val);
+}
+
+static void dlb_dir_pool_write_credit_count_reg(struct dlb_hw *hw,
+						u32 pool_id)
+{
+	union dlb_chp_dir_pool_crd_cnt r0 = { {0} };
+	struct dlb_credit_pool *pool;
+
+	pool = &hw->rsrcs.dir_credit_pools[pool_id];
+
+	r0.field.count = pool->avail_credits;
+
+	DLB_CSR_WR(hw,
+		   DLB_CHP_DIR_POOL_CRD_CNT(pool->id),
+		   r0.val);
+}
+
+/**
+ * dlb_hw_start_domain() - Lock the domain configuration
+ * @hw:	  Contains the current state of the DLB hardware.
+ * @args: User-provided arguments.
+ * @resp: Response to user.
+ *
+ * Return: returns < 0 on error, 0 otherwise. If the driver is unable to
+ * satisfy a request, resp->status will be set accordingly.
+ */
+int dlb_hw_start_domain(struct dlb_hw *hw,
+			u32 domain_id,
+			struct dlb_start_domain_args *arg,
+			struct dlb_cmd_response *resp)
+{
+	struct dlb_list_entry *iter;
+	struct dlb_dir_pq_pair *dir_queue;
+	struct dlb_ldb_queue *ldb_queue;
+	struct dlb_credit_pool *pool;
+	struct dlb_domain *domain;
+	RTE_SET_USED(arg);
+	RTE_SET_USED(iter);
+
+	dlb_log_start_domain(hw, domain_id);
+
+	if (dlb_verify_start_domain_args(hw, domain_id, resp))
+		return -EINVAL;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+	if (domain == NULL) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: domain not found\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	/* Write the domain's pool credit counts, which have been updated
+	 * during port configuration. The sum of the pool credit count plus
+	 * each producer port's credit count must equal the pool's credit
+	 * allocation *before* traffic is sent.
+	 */
+	DLB_DOM_LIST_FOR(domain->used_ldb_credit_pools, pool, iter)
+		dlb_ldb_pool_write_credit_count_reg(hw, pool->id);
+
+	DLB_DOM_LIST_FOR(domain->used_dir_credit_pools, pool, iter)
+		dlb_dir_pool_write_credit_count_reg(hw, pool->id);
+
+	/* Enable load-balanced and directed queue write permissions for the
+	 * queues this domain owns. Without this, the DLB will drop all
+	 * incoming traffic to those queues.
+	 */
+	DLB_DOM_LIST_FOR(domain->used_ldb_queues, ldb_queue, iter) {
+		union dlb_sys_ldb_vasqid_v r0 = { {0} };
+		unsigned int offs;
+
+		r0.field.vasqid_v = 1;
+
+		offs = domain->id * DLB_MAX_NUM_LDB_QUEUES + ldb_queue->id;
+
+		DLB_CSR_WR(hw, DLB_SYS_LDB_VASQID_V(offs), r0.val);
+	}
+
+	DLB_DOM_LIST_FOR(domain->used_dir_pq_pairs, dir_queue, iter) {
+		union dlb_sys_dir_vasqid_v r0 = { {0} };
+		unsigned int offs;
+
+		r0.field.vasqid_v = 1;
+
+		offs = domain->id * DLB_MAX_NUM_DIR_PORTS + dir_queue->id;
+
+		DLB_CSR_WR(hw, DLB_SYS_DIR_VASQID_V(offs), r0.val);
+	}
+
+	dlb_flush_csr(hw);
+
+	domain->started = true;
+
+	resp->status = 0;
+
+	return 0;
+}
