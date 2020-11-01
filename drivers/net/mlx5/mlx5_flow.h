@@ -1027,6 +1027,7 @@ struct rte_flow {
 	/**< Index to metadata register copy table resource. */
 	uint32_t counter; /**< Holds flow counter. */
 	uint32_t tunnel_id;  /**< Tunnel id */
+	uint32_t age; /**< Holds ASO age bit index. */
 } __rte_packed;
 
 /*

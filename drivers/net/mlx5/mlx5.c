@@ -345,6 +345,72 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 #define MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE 4096
 
 /**
+ * Initialize the ASO aging management structure.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_dev_ctx_shared object to free
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh)
+{
+	int err;
+
+	if (sh->aso_age_mng)
+		return 0;
+	sh->aso_age_mng = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*sh->aso_age_mng),
+				      RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (!sh->aso_age_mng) {
+		DRV_LOG(ERR, "aso_age_mng allocation was failed.");
+		rte_errno = ENOMEM;
+		return -ENOMEM;
+	}
+	err = mlx5_aso_queue_init(sh);
+	if (err) {
+		mlx5_free(sh->aso_age_mng);
+		return -1;
+	}
+	rte_spinlock_init(&sh->aso_age_mng->resize_sl);
+	rte_spinlock_init(&sh->aso_age_mng->free_sl);
+	LIST_INIT(&sh->aso_age_mng->free);
+	return 0;
+}
+
+/**
+ * Close and release all the resources of the ASO aging management structure.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_dev_ctx_shared object to free.
+ */
+static void
+mlx5_flow_aso_age_mng_close(struct mlx5_dev_ctx_shared *sh)
+{
+	int i, j;
+
+	mlx5_aso_queue_stop(sh);
+	mlx5_aso_queue_uninit(sh);
+	if (sh->aso_age_mng->pools) {
+		struct mlx5_aso_age_pool *pool;
+
+		for (i = 0; i < sh->aso_age_mng->next; ++i) {
+			pool = sh->aso_age_mng->pools[i];
+			claim_zero(mlx5_devx_cmd_destroy
+						(pool->flow_hit_aso_obj));
+			for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j)
+				if (pool->actions[j].dr_action)
+					claim_zero
+						(mlx5_glue->destroy_flow_action
+						  (pool->actions[j].dr_action));
+			mlx5_free(pool);
+		}
+		mlx5_free(sh->aso_age_mng->pools);
+	}
+	memset(&sh->aso_age_mng, 0, sizeof(sh->aso_age_mng));
+}
+
+/**
  * Initialize the shared aging list information per port.
  *
  * @param[in] sh
@@ -459,6 +525,25 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 		mng = LIST_FIRST(&sh->cmng.mem_mngs);
 	}
 	memset(&sh->cmng, 0, sizeof(sh->cmng));
+}
+
+/* Send FLOW_AGED event if needed. */
+void
+mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_age_info *age_info;
+	uint32_t i;
+
+	for (i = 0; i < sh->max_port; i++) {
+		age_info = &sh->port[i].age_info;
+		if (!MLX5_AGE_GET(age_info, MLX5_AGE_EVENT_NEW))
+			continue;
+		if (MLX5_AGE_GET(age_info, MLX5_AGE_TRIGGER))
+			rte_eth_dev_callback_process
+				(&rte_eth_devices[sh->port[i].devx_ih_port_id],
+				RTE_ETH_EVENT_FLOW_AGED, NULL);
+		age_info->flags = 0;
+	}
 }
 
 /**
@@ -984,6 +1069,10 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	 *  Only primary process handles async device events.
 	 **/
 	mlx5_flow_counters_mng_close(sh);
+	if (sh->aso_age_mng) {
+		mlx5_flow_aso_age_mng_close(sh);
+		sh->aso_age_mng = NULL;
+	}
 	mlx5_flow_ipool_destroy(sh);
 	mlx5_os_dev_shared_handler_uninstall(sh);
 	if (sh->cnt_id_tbl) {

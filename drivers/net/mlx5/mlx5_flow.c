@@ -6816,16 +6816,7 @@ mlx5_flow_aging_check(struct mlx5_dev_ctx_shared *sh,
 		}
 		rte_spinlock_unlock(&age_info->aged_sl);
 	}
-	for (i = 0; i < sh->max_port; i++) {
-		age_info = &sh->port[i].age_info;
-		if (!MLX5_AGE_GET(age_info, MLX5_AGE_EVENT_NEW))
-			continue;
-		if (MLX5_AGE_GET(age_info, MLX5_AGE_TRIGGER))
-			rte_eth_dev_callback_process
-				(&rte_eth_devices[sh->port[i].devx_ih_port_id],
-				RTE_ETH_EVENT_FLOW_AGED, NULL);
-		age_info->flags = 0;
-	}
+	mlx5_age_event_prepare(sh);
 }
 
 /**

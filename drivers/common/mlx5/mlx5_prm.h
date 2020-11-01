@@ -2367,11 +2367,16 @@ enum mlx5_access_aso_op_mod {
 	ASO_OP_MOD_FLOW_HIT = 0x4,
 };
 
+#define ASO_CSEG_DATA_MASK_MODE_OFFSET	30
+
 enum mlx5_aso_data_mask_mode {
 	BITWISE_64BIT = 0x0,
 	BYTEWISE_64BYTE = 0x1,
 	CALCULATED_64BYTE = 0x2,
 };
+
+#define ASO_CSEG_COND_0_OPER_OFFSET	20
+#define ASO_CSEG_COND_1_OPER_OFFSET	16
 
 enum mlx5_aso_pre_cond_op {
 	ASO_OP_ALWAYS_FALSE = 0x0,
@@ -2386,6 +2391,8 @@ enum mlx5_aso_pre_cond_op {
 	ASO_OP_CYCLIC_LESSER = 0x9,
 };
 
+#define ASO_CSEG_COND_OPER_OFFSET	6
+
 enum mlx5_aso_op {
 	ASO_OPER_LOGICAL_AND = 0x0,
 	ASO_OPER_LOGICAL_OR = 0x1,
@@ -2394,7 +2401,7 @@ enum mlx5_aso_op {
 /* ASO WQE CTRL segment. */
 struct mlx5_aso_cseg {
 	uint32_t va_h;
-	uint32_t va_l_ro;
+	uint32_t va_l_r;
 	uint32_t lkey;
 	uint32_t operand_masks;
 	uint32_t condition_0_data;

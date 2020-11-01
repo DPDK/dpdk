@@ -1129,6 +1129,17 @@ err_secondary:
 			err = -err;
 			goto error;
 		}
+#ifdef HAVE_MLX5DV_DR_ACTION_FLOW_HIT
+		if (config->hca_attr.flow_hit_aso) {
+			sh->flow_hit_aso_en = 1;
+			err = mlx5_flow_aso_age_mng_init(sh);
+			if (err) {
+				err = -err;
+				goto error;
+			}
+			DRV_LOG(DEBUG, "Flow Hit ASO is supported.");
+		}
+#endif /* HAVE_MLX5DV_DR_ACTION_FLOW_HIT */
 		/* Check relax ordering support. */
 		if (config->hca_attr.relaxed_ordering_write &&
 		    config->hca_attr.relaxed_ordering_read  &&

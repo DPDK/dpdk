@@ -4127,7 +4127,8 @@ flow_dv_validate_action_age(uint64_t action_flags,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_age *age = action->conf;
 
-	if (!priv->config.devx || priv->sh->cmng.counter_fallback)
+	if (!priv->config.devx || (priv->sh->cmng.counter_fallback &&
+	    !priv->sh->aso_age_mng))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
@@ -8400,6 +8401,7 @@ flow_dv_translate_create_counter(struct rte_eth_dev *dev,
 	__atomic_store_n(&age_param->state, AGE_CANDIDATE, __ATOMIC_RELAXED);
 	return counter;
 }
+
 /**
  * Add Tx queue matcher
  *
@@ -9239,6 +9241,251 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 }
 
 /**
+ * Get ASO age action by index.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] age_idx
+ *   Index to the ASO age action.
+ *
+ * @return
+ *   The specified ASO age action.
+ */
+static struct mlx5_aso_age_action*
+flow_dv_aso_age_get_by_idx(struct rte_eth_dev *dev, uint32_t age_idx)
+{
+	uint16_t pool_idx = age_idx & UINT16_MAX;
+	uint16_t offset = (age_idx >> 16) & UINT16_MAX;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
+	struct mlx5_aso_age_pool *pool = mng->pools[pool_idx];
+
+	return &pool->actions[offset - 1];
+}
+
+/**
+ * Remove an ASO age action from age actions list.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] age
+ *   Pointer to the aso age action handler.
+ */
+static void
+flow_dv_aso_age_remove_from_age(struct rte_eth_dev *dev,
+				struct mlx5_aso_age_action *age)
+{
+	struct mlx5_age_info *age_info;
+	struct mlx5_age_param *age_param = &age->age_params;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint16_t expected = AGE_CANDIDATE;
+
+	age_info = GET_PORT_AGE_INFO(priv);
+	if (!__atomic_compare_exchange_n(&age_param->state, &expected,
+					 AGE_FREE, false, __ATOMIC_RELAXED,
+					 __ATOMIC_RELAXED)) {
+		/**
+		 * We need the lock even it is age timeout,
+		 * since age action may still in process.
+		 */
+		rte_spinlock_lock(&age_info->aged_sl);
+		LIST_REMOVE(age, next);
+		rte_spinlock_unlock(&age_info->aged_sl);
+		__atomic_store_n(&age_param->state, AGE_FREE, __ATOMIC_RELAXED);
+	}
+}
+
+static void
+flow_dv_aso_age_release(struct rte_eth_dev *dev, uint32_t age_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
+	struct mlx5_aso_age_action *age = flow_dv_aso_age_get_by_idx(dev,
+								     age_idx);
+
+	flow_dv_aso_age_remove_from_age(dev, age);
+	rte_spinlock_lock(&mng->free_sl);
+	LIST_INSERT_HEAD(&mng->free, age, next);
+	rte_spinlock_unlock(&mng->free_sl);
+}
+
+/**
+ * Resize the ASO age pools array by MLX5_CNT_CONTAINER_RESIZE pools.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value and rte_errno is set.
+ */
+static int
+flow_dv_aso_age_pools_resize(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
+	void *old_pools = mng->pools;
+	uint32_t resize = mng->n + MLX5_CNT_CONTAINER_RESIZE;
+	uint32_t mem_size = sizeof(struct mlx5_aso_age_pool *) * resize;
+	void *pools = mlx5_malloc(MLX5_MEM_ZERO, mem_size, 0, SOCKET_ID_ANY);
+
+	if (!pools) {
+		rte_errno = ENOMEM;
+		return -ENOMEM;
+	}
+	if (old_pools) {
+		memcpy(pools, old_pools,
+		       mng->n * sizeof(struct mlx5_flow_counter_pool *));
+		mlx5_free(old_pools);
+	} else {
+		/* First ASO flow hit allocation - starting ASO data-path. */
+		int ret = mlx5_aso_queue_start(priv->sh);
+
+		if (ret)
+			return ret;
+	}
+	mng->n = resize;
+	mng->pools = pools;
+	return 0;
+}
+
+/**
+ * Create and initialize a new ASO aging pool.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[out] age_free
+ *   Where to put the pointer of a new age action.
+ *
+ * @return
+ *   The age actions pool pointer and @p age_free is set on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_aso_age_pool *
+flow_dv_age_pool_create(struct rte_eth_dev *dev,
+			struct mlx5_aso_age_action **age_free)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
+	struct mlx5_aso_age_pool *pool = NULL;
+	struct mlx5_devx_obj *obj = NULL;
+	uint32_t i;
+
+	obj = mlx5_devx_cmd_create_flow_hit_aso_obj(priv->sh->ctx,
+						    priv->sh->pdn);
+	if (!obj) {
+		rte_errno = ENODATA;
+		DRV_LOG(ERR, "Failed to create flow_hit_aso_obj using DevX.");
+		return NULL;
+	}
+	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool), 0, SOCKET_ID_ANY);
+	if (!pool) {
+		claim_zero(mlx5_devx_cmd_destroy(obj));
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	pool->flow_hit_aso_obj = obj;
+	pool->time_of_last_age_check = MLX5_CURR_TIME_SEC;
+	rte_spinlock_lock(&mng->resize_sl);
+	pool->index = mng->next;
+	/* Resize pools array if there is no room for the new pool in it. */
+	if (pool->index == mng->n && flow_dv_aso_age_pools_resize(dev)) {
+		claim_zero(mlx5_devx_cmd_destroy(obj));
+		mlx5_free(pool);
+		rte_spinlock_unlock(&mng->resize_sl);
+		return NULL;
+	}
+	mng->pools[pool->index] = pool;
+	mng->next++;
+	rte_spinlock_unlock(&mng->resize_sl);
+	/* Assign the first action in the new pool, the rest go to free list. */
+	*age_free = &pool->actions[0];
+	for (i = 1; i < MLX5_ASO_AGE_ACTIONS_PER_POOL; i++) {
+		pool->actions[i].offset = i;
+		LIST_INSERT_HEAD(&mng->free, &pool->actions[i], next);
+	}
+	return pool;
+}
+
+/**
+ * Allocate a ASO aging bit.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   Index to ASO age action on success, 0 otherwise and rte_errno is set.
+ */
+static uint32_t
+flow_dv_aso_age_alloc(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct mlx5_aso_age_pool *pool;
+	struct mlx5_aso_age_action *age_free = NULL;
+	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
+
+	MLX5_ASSERT(mng);
+	/* Try to get the next free age action bit. */
+	rte_spinlock_lock(&mng->free_sl);
+	age_free = LIST_FIRST(&mng->free);
+	if (age_free) {
+		LIST_REMOVE(age_free, next);
+	} else if (!flow_dv_age_pool_create(dev, &age_free)) {
+		rte_spinlock_unlock(&mng->free_sl);
+		return 0; /* 0 is an error.*/
+	}
+	rte_spinlock_unlock(&mng->free_sl);
+	pool = container_of
+	  ((const struct mlx5_aso_age_action (*)[MLX5_ASO_AGE_ACTIONS_PER_POOL])
+		  (age_free - age_free->offset), const struct mlx5_aso_age_pool,
+								       actions);
+	if (!age_free->dr_action) {
+		age_free->dr_action = mlx5_glue->dr_action_create_flow_hit
+						(pool->flow_hit_aso_obj->obj,
+						 age_free->offset, REG_C_5);
+		if (!age_free->dr_action) {
+			rte_errno = errno;
+			rte_spinlock_lock(&mng->free_sl);
+			LIST_INSERT_HEAD(&mng->free, age_free, next);
+			rte_spinlock_unlock(&mng->free_sl);
+			return 0; /* 0 is an error.*/
+		}
+	}
+	return pool->index | ((age_free->offset + 1) << 16);
+}
+
+/**
+ * Create a age action using ASO mechanism.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] age
+ *   Pointer to the aging action configuration.
+ *
+ * @return
+ *   Index to flow counter on success, 0 otherwise.
+ */
+static uint32_t
+flow_dv_translate_create_aso_age(struct rte_eth_dev *dev,
+				 const struct rte_flow_action_age *age)
+{
+	uint32_t age_idx = 0;
+	struct mlx5_aso_age_action *aso_age = NULL;
+
+	age_idx = flow_dv_aso_age_alloc(dev);
+	if (!age_idx)
+		return 0;
+	aso_age = flow_dv_aso_age_get_by_idx(dev, age_idx);
+	aso_age->age_params.context = age->context;
+	aso_age->age_params.timeout = age->timeout;
+	aso_age->age_params.port_id = dev->data->port_id;
+	__atomic_store_n(&aso_age->age_params.sec_since_last_hit, 0,
+			 __ATOMIC_RELAXED);
+	__atomic_store_n(&aso_age->age_params.state, AGE_CANDIDATE,
+			 __ATOMIC_RELAXED);
+	return age_idx;
+}
+
+/**
  * Fill the flow with DV spec, lock free
  * (mutex should be acquired by caller).
  *
@@ -9528,6 +9775,22 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
+			if (priv->sh->flow_hit_aso_en) {
+				flow->age = flow_dv_translate_create_aso_age
+						(dev, action->conf);
+				if (!flow->age)
+					return rte_flow_error_set
+						(error, rte_errno,
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 NULL,
+						 "can't create age action");
+				dev_flow->dv.actions[actions_n++] =
+					  (flow_dv_aso_age_get_by_idx
+						(dev, flow->age))->dr_action;
+				action_flags |= MLX5_FLOW_ACTION_AGE;
+				break;
+			}
+			/* Fall-through */
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			if (!dev_conf->devx) {
 				return rte_flow_error_set
@@ -10859,6 +11122,8 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 			mlx5_flow_meter_detach(fm);
 		flow->meter = 0;
 	}
+	if (flow->age)
+		flow_dv_aso_age_release(dev, flow->age);
 	while (flow->dev_handles) {
 		uint32_t tmp_idx = flow->dev_handles;
 
@@ -11391,30 +11656,33 @@ flow_dv_query_age(struct rte_eth_dev *dev, struct rte_flow *flow,
 		  void *data, struct rte_flow_error *error)
 {
 	struct rte_flow_query_age *resp = data;
+	struct mlx5_age_param *age_param;
 
-	if (flow->counter) {
-		struct mlx5_age_param *age_param =
-				flow_dv_counter_idx_get_age(dev, flow->counter);
+	if (flow->age) {
+		struct mlx5_aso_age_action *act =
+				     flow_dv_aso_age_get_by_idx(dev, flow->age);
+
+		age_param = &act->age_params;
+	} else if (flow->counter) {
+		age_param = flow_dv_counter_idx_get_age(dev, flow->counter);
 
 		if (!age_param || !age_param->timeout)
 			return rte_flow_error_set
 					(error, EINVAL,
 					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					 NULL, "cannot read age data");
-		resp->aged = __atomic_load_n(&age_param->state,
-					     __ATOMIC_RELAXED) ==
-							AGE_TMOUT ? 1 : 0;
-		resp->sec_since_last_hit_valid = !resp->aged;
-		if (resp->sec_since_last_hit_valid)
-			resp->sec_since_last_hit =
-				__atomic_load_n(&age_param->sec_since_last_hit,
-						__ATOMIC_RELAXED);
-		return 0;
+	} else {
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "age data not available");
 	}
-	return rte_flow_error_set(error, EINVAL,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				  NULL,
-				  "age data not available");
+	resp->aged = __atomic_load_n(&age_param->state, __ATOMIC_RELAXED) ==
+				     AGE_TMOUT ? 1 : 0;
+	resp->sec_since_last_hit_valid = !resp->aged;
+	if (resp->sec_since_last_hit_valid)
+		resp->sec_since_last_hit = __atomic_load_n
+			     (&age_param->sec_since_last_hit, __ATOMIC_RELAXED);
+	return 0;
 }
 
 /**
@@ -12038,25 +12306,35 @@ flow_get_aged_flows(struct rte_eth_dev *dev,
 	struct mlx5_age_info *age_info;
 	struct mlx5_age_param *age_param;
 	struct mlx5_flow_counter *counter;
+	struct mlx5_aso_age_action *act;
 	int nb_flows = 0;
 
 	if (nb_contexts && !context)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  "Should assign at least one flow or"
-					  " context to get if nb_contexts != 0");
+					  NULL, "empty context");
 	age_info = GET_PORT_AGE_INFO(priv);
 	rte_spinlock_lock(&age_info->aged_sl);
-	TAILQ_FOREACH(counter, &age_info->aged_counters, next) {
-		nb_flows++;
-		if (nb_contexts) {
-			age_param = MLX5_CNT_TO_AGE(counter);
-			context[nb_flows - 1] = age_param->context;
-			if (!(--nb_contexts))
-				break;
+	if (priv->sh->flow_hit_aso_en)
+		LIST_FOREACH(act, &age_info->aged_aso, next) {
+			nb_flows++;
+			if (nb_contexts) {
+				context[nb_flows - 1] =
+							act->age_params.context;
+				if (!(--nb_contexts))
+					break;
+			}
 		}
-	}
+	else
+		TAILQ_FOREACH(counter, &age_info->aged_counters, next) {
+			nb_flows++;
+			if (nb_contexts) {
+				age_param = MLX5_CNT_TO_AGE(counter);
+				context[nb_flows - 1] = age_param->context;
+				if (!(--nb_contexts))
+					break;
+			}
+		}
 	rte_spinlock_unlock(&age_info->aged_sl);
 	MLX5_AGE_SET(age_info, MLX5_AGE_TRIGGER);
 	return nb_flows;

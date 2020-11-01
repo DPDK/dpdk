@@ -472,6 +472,84 @@ struct mlx5_flow_counter_mng {
 	LIST_HEAD(stat_raws, mlx5_counter_stats_raw) free_stat_raws;
 };
 
+/* ASO structures. */
+#define MLX5_ASO_QUEUE_LOG_DESC 10
+
+struct mlx5_aso_cq {
+	uint16_t log_desc_n;
+	uint32_t cq_ci:24;
+	struct mlx5_devx_obj *cq;
+	struct mlx5dv_devx_umem *umem_obj;
+	union {
+		volatile void *umem_buf;
+		volatile struct mlx5_cqe *cqes;
+	};
+	volatile uint32_t *db_rec;
+	uint64_t errors;
+};
+
+struct mlx5_aso_devx_mr {
+	void *buf;
+	uint64_t length;
+	struct mlx5dv_devx_umem *umem;
+	struct mlx5_devx_obj *mkey;
+	bool is_indirect;
+};
+
+struct mlx5_aso_sq_elem {
+	struct mlx5_aso_age_pool *pool;
+	uint16_t burst_size;
+};
+
+struct mlx5_aso_sq {
+	uint16_t log_desc_n;
+	struct mlx5_aso_cq cq;
+	struct mlx5_devx_obj *sq;
+	struct mlx5dv_devx_umem *wqe_umem; /* SQ buffer umem. */
+	union {
+		volatile void *umem_buf;
+		volatile struct mlx5_aso_wqe *wqes;
+	};
+	volatile uint32_t *db_rec;
+	struct mlx5dv_devx_uar *uar_obj;
+	volatile uint64_t *uar_addr;
+	struct mlx5_aso_devx_mr mr;
+	uint16_t pi;
+	uint16_t ci;
+	uint32_t sqn;
+	struct mlx5_aso_sq_elem elts[1 << MLX5_ASO_QUEUE_LOG_DESC];
+	uint16_t next; /* Pool index of the next pool to query. */
+};
+
+struct mlx5_aso_age_action {
+	LIST_ENTRY(mlx5_aso_age_action) next;
+	void *dr_action;
+	/* Following fields relevant only when action is active. */
+	uint16_t offset; /* Offset of ASO Flow Hit flag in DevX object. */
+	struct mlx5_age_param age_params;
+};
+
+#define MLX5_ASO_AGE_ACTIONS_PER_POOL 512
+
+struct mlx5_aso_age_pool {
+	struct mlx5_devx_obj *flow_hit_aso_obj;
+	uint16_t index; /* Pool index in pools array. */
+	uint64_t time_of_last_age_check; /* In seconds. */
+	struct mlx5_aso_age_action actions[MLX5_ASO_AGE_ACTIONS_PER_POOL];
+};
+
+LIST_HEAD(aso_age_list, mlx5_aso_age_action);
+
+struct mlx5_aso_age_mng {
+	struct mlx5_aso_age_pool **pools;
+	uint16_t n; /* Total number of pools. */
+	uint16_t next; /* Number of pools in use, index of next free pool. */
+	rte_spinlock_t resize_sl; /* Lock for resize objects. */
+	rte_spinlock_t free_sl; /* Lock for free list access. */
+	struct aso_age_list free; /* Free age actions list - ready to use. */
+	struct mlx5_aso_sq aso_sq; /* ASO queue objects. */
+};
+
 #define MLX5_AGE_EVENT_NEW		1
 #define MLX5_AGE_TRIGGER		2
 #define MLX5_AGE_SET(age_info, BIT) \
@@ -486,8 +564,11 @@ struct mlx5_flow_counter_mng {
 /* Aging information for per port. */
 struct mlx5_age_info {
 	uint8_t flags; /* Indicate if is new event or need to be triggered. */
-	struct mlx5_counters aged_counters; /* Aged flow counter list. */
-	rte_spinlock_t aged_sl; /* Aged flow counter list lock. */
+	union {
+		struct mlx5_counters aged_counters; /* Aged counter list. */
+		struct aso_age_list aged_aso; /* Aged ASO actions list. */
+	};
+	rte_spinlock_t aged_sl; /* Aged flow list lock. */
 };
 
 /* Per port data of shared IB device. */
@@ -624,6 +705,7 @@ struct mlx5_dev_ctx_shared {
 	LIST_ENTRY(mlx5_dev_ctx_shared) next;
 	uint32_t refcnt;
 	uint32_t devx:1; /* Opened with DV. */
+	uint32_t flow_hit_aso_en:1; /* Flow Hit ASO is supported. */
 	uint32_t eqn; /* Event Queue number. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	void *ctx; /* Verbs/DV/DevX context. */
@@ -679,6 +761,8 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_flex_parser_profiles fp[MLX5_FLEX_PARSER_MAX];
 	/* Flex parser profiles information. */
 	void *devx_rx_uar; /* DevX UAR for Rx. */
+	struct mlx5_aso_age_mng *aso_age_mng;
+	/* Management data for aging mechanism using ASO Flow Hit. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -936,6 +1020,7 @@ int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
 uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev);
 int mlx5_dev_close(struct rte_eth_dev *dev);
+void mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh);
 
 /* Macro to iterate over all valid ports for mlx5 driver. */
 #define MLX5_ETH_FOREACH_DEV(port_id, pci_dev) \
@@ -962,6 +1047,7 @@ int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
 			 struct rte_eth_hairpin_cap *cap);
 bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
+int mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh);
 
 /* mlx5_ethdev.c */
 
@@ -1219,5 +1305,12 @@ void mlx5_txpp_interrupt_handler(void *cb_arg);
 /* mlx5_rxtx.c */
 
 eth_tx_burst_t mlx5_select_tx_function(struct rte_eth_dev *dev);
+
+/* mlx5_flow_age.c */
+
+int mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh);
+int mlx5_aso_queue_start(struct mlx5_dev_ctx_shared *sh);
+int mlx5_aso_queue_stop(struct mlx5_dev_ctx_shared *sh);
+void mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh);
 
 #endif /* RTE_PMD_MLX5_H_ */
