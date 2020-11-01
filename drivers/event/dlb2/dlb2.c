@@ -1957,6 +1957,138 @@ dlb2_eventdev_port_unlinks_in_progress(struct rte_eventdev *dev,
 	return cfg.response.id;
 }
 
+static int
+dlb2_eventdev_reapply_configuration(struct rte_eventdev *dev)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+	int ret, i;
+
+	/* If an event queue or port was previously configured, but hasn't been
+	 * reconfigured, reapply its original configuration.
+	 */
+	for (i = 0; i < dlb2->num_queues; i++) {
+		struct dlb2_eventdev_queue *ev_queue;
+
+		ev_queue = &dlb2->ev_queues[i];
+
+		if (ev_queue->qm_queue.config_state != DLB2_PREV_CONFIGURED)
+			continue;
+
+		ret = dlb2_eventdev_queue_setup(dev, i, &ev_queue->conf);
+		if (ret < 0) {
+			DLB2_LOG_ERR("dlb2: failed to reconfigure queue %d", i);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < dlb2->num_ports; i++) {
+		struct dlb2_eventdev_port *ev_port = &dlb2->ev_ports[i];
+
+		if (ev_port->qm_port.config_state != DLB2_PREV_CONFIGURED)
+			continue;
+
+		ret = dlb2_eventdev_port_setup(dev, i, &ev_port->conf);
+		if (ret < 0) {
+			DLB2_LOG_ERR("dlb2: failed to reconfigure ev_port %d",
+				     i);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+dlb2_eventdev_apply_port_links(struct rte_eventdev *dev)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+	int i;
+
+	/* Perform requested port->queue links */
+	for (i = 0; i < dlb2->num_ports; i++) {
+		struct dlb2_eventdev_port *ev_port = &dlb2->ev_ports[i];
+		int j;
+
+		for (j = 0; j < DLB2_MAX_NUM_QIDS_PER_LDB_CQ; j++) {
+			struct dlb2_eventdev_queue *ev_queue;
+			uint8_t prio, queue_id;
+
+			if (!ev_port->link[j].valid)
+				continue;
+
+			prio = ev_port->link[j].priority;
+			queue_id = ev_port->link[j].queue_id;
+
+			if (dlb2_validate_port_link(ev_port, queue_id, true, j))
+				return -EINVAL;
+
+			ev_queue = &dlb2->ev_queues[queue_id];
+
+			if (dlb2_do_port_link(dev, ev_queue, ev_port, prio))
+				return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static int
+dlb2_eventdev_start(struct rte_eventdev *dev)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_start_domain_args cfg;
+	int ret, i;
+
+	rte_spinlock_lock(&dlb2->qm_instance.resource_lock);
+	if (dlb2->run_state != DLB2_RUN_STATE_STOPPED) {
+		DLB2_LOG_ERR("bad state %d for dev_start\n",
+			     (int)dlb2->run_state);
+		rte_spinlock_unlock(&dlb2->qm_instance.resource_lock);
+		return -EINVAL;
+	}
+	dlb2->run_state = DLB2_RUN_STATE_STARTING;
+	rte_spinlock_unlock(&dlb2->qm_instance.resource_lock);
+
+	/* If the device was configured more than once, some event ports and/or
+	 * queues may need to be reconfigured.
+	 */
+	ret = dlb2_eventdev_reapply_configuration(dev);
+	if (ret)
+		return ret;
+
+	/* The DLB PMD delays port links until the device is started. */
+	ret = dlb2_eventdev_apply_port_links(dev);
+	if (ret)
+		return ret;
+
+	for (i = 0; i < dlb2->num_ports; i++) {
+		if (!dlb2->ev_ports[i].setup_done) {
+			DLB2_LOG_ERR("dlb2: port %d not setup", i);
+			return -ESTALE;
+		}
+	}
+
+	for (i = 0; i < dlb2->num_queues; i++) {
+		if (dlb2->ev_queues[i].num_links == 0) {
+			DLB2_LOG_ERR("dlb2: queue %d is not linked", i);
+			return -ENOLINK;
+		}
+	}
+
+	ret = dlb2_iface_sched_domain_start(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: sched_domain_start ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return ret;
+	}
+
+	dlb2->run_state = DLB2_RUN_STATE_STARTED;
+	DLB2_LOG_DBG("dlb2: sched_domain_start completed OK\n");
+
+	return 0;
+}
+
 static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
@@ -1964,6 +2096,7 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 	static struct rte_eventdev_ops dlb2_eventdev_entry_ops = {
 		.dev_infos_get    = dlb2_eventdev_info_get,
 		.dev_configure    = dlb2_eventdev_configure,
+		.dev_start        = dlb2_eventdev_start,
 		.queue_def_conf   = dlb2_eventdev_queue_default_conf_get,
 		.queue_setup      = dlb2_eventdev_queue_setup,
 		.port_def_conf    = dlb2_eventdev_port_default_conf_get,

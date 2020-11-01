@@ -5811,3 +5811,126 @@ int dlb2_hw_pending_port_unmaps(struct dlb2_hw *hw,
 
 	return 0;
 }
+
+static int dlb2_verify_start_domain_args(struct dlb2_hw *hw,
+					 u32 domain_id,
+					 struct dlb2_cmd_response *resp,
+					 bool vdev_req,
+					 unsigned int vdev_id)
+{
+	struct dlb2_hw_domain *domain;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+
+	if (domain == NULL) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB2_ST_DOMAIN_NOT_CONFIGURED;
+		return -EINVAL;
+	}
+
+	if (domain->started) {
+		resp->status = DLB2_ST_DOMAIN_STARTED;
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void dlb2_log_start_domain(struct dlb2_hw *hw,
+				  u32 domain_id,
+				  bool vdev_req,
+				  unsigned int vdev_id)
+{
+	DLB2_HW_DBG(hw, "DLB2 start domain arguments:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from vdev %d)\n", vdev_id);
+	DLB2_HW_DBG(hw, "\tDomain ID: %d\n", domain_id);
+}
+
+/**
+ * dlb2_hw_start_domain() - Lock the domain configuration
+ * @hw:	Contains the current state of the DLB2 hardware.
+ * @domain_id: Domain ID
+ * @arg: User-provided arguments (unused, here for ioctl callback template).
+ * @resp: Response to user.
+ * @vdev_req: Request came from a virtual device.
+ * @vdev_id: If vdev_req is true, this contains the virtual device's ID.
+ *
+ * Return: returns < 0 on error, 0 otherwise. If the driver is unable to
+ * satisfy a request, resp->status will be set accordingly.
+ */
+int
+dlb2_hw_start_domain(struct dlb2_hw *hw,
+		     u32 domain_id,
+		     __attribute((unused)) struct dlb2_start_domain_args *arg,
+		     struct dlb2_cmd_response *resp,
+		     bool vdev_req,
+		     unsigned int vdev_id)
+{
+	struct dlb2_list_entry *iter;
+	struct dlb2_dir_pq_pair *dir_queue;
+	struct dlb2_ldb_queue *ldb_queue;
+	struct dlb2_hw_domain *domain;
+	int ret;
+	RTE_SET_USED(arg);
+	RTE_SET_USED(iter);
+
+	dlb2_log_start_domain(hw, domain_id, vdev_req, vdev_id);
+
+	ret = dlb2_verify_start_domain_args(hw,
+					    domain_id,
+					    resp,
+					    vdev_req,
+					    vdev_id);
+	if (ret)
+		return ret;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+	if (domain == NULL) {
+		DLB2_HW_ERR(hw,
+			    "[%s():%d] Internal error: domain not found\n",
+			    __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	/*
+	 * Enable load-balanced and directed queue write permissions for the
+	 * queues this domain owns. Without this, the DLB2 will drop all
+	 * incoming traffic to those queues.
+	 */
+	DLB2_DOM_LIST_FOR(domain->used_ldb_queues, ldb_queue, iter) {
+		union dlb2_sys_ldb_vasqid_v r0 = { {0} };
+		unsigned int offs;
+
+		r0.field.vasqid_v = 1;
+
+		offs = domain->id.phys_id * DLB2_MAX_NUM_LDB_QUEUES +
+			ldb_queue->id.phys_id;
+
+		DLB2_CSR_WR(hw, DLB2_SYS_LDB_VASQID_V(offs), r0.val);
+	}
+
+	DLB2_DOM_LIST_FOR(domain->used_dir_pq_pairs, dir_queue, iter) {
+		union dlb2_sys_dir_vasqid_v r0 = { {0} };
+		unsigned int offs;
+
+		r0.field.vasqid_v = 1;
+
+		offs = domain->id.phys_id * DLB2_MAX_NUM_DIR_PORTS +
+			dir_queue->id.phys_id;
+
+		DLB2_CSR_WR(hw, DLB2_SYS_DIR_VASQID_V(offs), r0.val);
+	}
+
+	dlb2_flush_csr(hw);
+
+	domain->started = true;
+
+	resp->status = 0;
+
+	return 0;
+}

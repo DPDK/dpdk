@@ -62,4 +62,7 @@ extern int (*dlb2_iface_unmap_qid)(struct dlb2_hw_dev *handle,
 
 extern int (*dlb2_iface_pending_port_unmaps)(struct dlb2_hw_dev *handle,
 				struct dlb2_pending_port_unmaps_args *args);
+
+extern int (*dlb2_iface_sched_domain_start)(struct dlb2_hw_dev *handle,
+				struct dlb2_start_domain_args *cfg);
 #endif /* _DLB2_IFACE_H_ */
