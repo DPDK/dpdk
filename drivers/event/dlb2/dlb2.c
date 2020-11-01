@@ -1496,6 +1496,307 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 	return 0;
 }
 
+static int16_t
+dlb2_hw_map_ldb_qid_to_port(struct dlb2_hw_dev *handle,
+			    uint32_t qm_port_id,
+			    uint16_t qm_qid,
+			    uint8_t priority)
+{
+	struct dlb2_map_qid_args cfg;
+	int32_t ret;
+
+	if (handle == NULL)
+		return -EINVAL;
+
+	/* Build message */
+	cfg.port_id = qm_port_id;
+	cfg.qid = qm_qid;
+	cfg.priority = EV_TO_DLB2_PRIO(priority);
+
+	ret = dlb2_iface_map_qid(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: map qid error, ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		DLB2_LOG_ERR("dlb2: grp=%d, qm_port=%d, qm_qid=%d prio=%d\n",
+			     handle->domain_id, cfg.port_id,
+			     cfg.qid,
+			     cfg.priority);
+	} else {
+		DLB2_LOG_DBG("dlb2: mapped queue %d to qm_port %d\n",
+			     qm_qid, qm_port_id);
+	}
+
+	return ret;
+}
+
+static int
+dlb2_event_queue_join_ldb(struct dlb2_eventdev *dlb2,
+			  struct dlb2_eventdev_port *ev_port,
+			  struct dlb2_eventdev_queue *ev_queue,
+			  uint8_t priority)
+{
+	int first_avail = -1;
+	int ret, i;
+
+	for (i = 0; i < DLB2_MAX_NUM_QIDS_PER_LDB_CQ; i++) {
+		if (ev_port->link[i].valid) {
+			if (ev_port->link[i].queue_id == ev_queue->id &&
+			    ev_port->link[i].priority == priority) {
+				if (ev_port->link[i].mapped)
+					return 0; /* already mapped */
+				first_avail = i;
+			}
+		} else if (first_avail == -1)
+			first_avail = i;
+	}
+	if (first_avail == -1) {
+		DLB2_LOG_ERR("dlb2: qm_port %d has no available QID slots.\n",
+			     ev_port->qm_port.id);
+		return -EINVAL;
+	}
+
+	ret = dlb2_hw_map_ldb_qid_to_port(&dlb2->qm_instance,
+					  ev_port->qm_port.id,
+					  ev_queue->qm_queue.id,
+					  priority);
+
+	if (!ret)
+		ev_port->link[first_avail].mapped = true;
+
+	return ret;
+}
+
+static int32_t
+dlb2_hw_create_dir_queue(struct dlb2_eventdev *dlb2,
+			 struct dlb2_eventdev_queue *ev_queue,
+			 int32_t qm_port_id)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_create_dir_queue_args cfg;
+	int32_t ret;
+
+	/* The directed port is always configured before its queue */
+	cfg.port_id = qm_port_id;
+
+	if (ev_queue->depth_threshold == 0) {
+		cfg.depth_threshold = RTE_PMD_DLB2_DEFAULT_DEPTH_THRESH;
+		ev_queue->depth_threshold = RTE_PMD_DLB2_DEFAULT_DEPTH_THRESH;
+	} else
+		cfg.depth_threshold = ev_queue->depth_threshold;
+
+	ret = dlb2_iface_dir_queue_create(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: create DIR event queue error, ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return -EINVAL;
+	}
+
+	return cfg.response.id;
+}
+
+static int
+dlb2_eventdev_dir_queue_setup(struct dlb2_eventdev *dlb2,
+			      struct dlb2_eventdev_queue *ev_queue,
+			      struct dlb2_eventdev_port *ev_port)
+{
+	int32_t qm_qid;
+
+	qm_qid = dlb2_hw_create_dir_queue(dlb2, ev_queue, ev_port->qm_port.id);
+
+	if (qm_qid < 0) {
+		DLB2_LOG_ERR("Failed to create the DIR queue\n");
+		return qm_qid;
+	}
+
+	dlb2->qm_dir_to_ev_queue_id[qm_qid] = ev_queue->id;
+
+	ev_queue->qm_queue.id = qm_qid;
+
+	return 0;
+}
+
+static int
+dlb2_do_port_link(struct rte_eventdev *dev,
+		  struct dlb2_eventdev_queue *ev_queue,
+		  struct dlb2_eventdev_port *ev_port,
+		  uint8_t prio)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+	int err;
+
+	/* Don't link until start time. */
+	if (dlb2->run_state == DLB2_RUN_STATE_STOPPED)
+		return 0;
+
+	if (ev_queue->qm_queue.is_directed)
+		err = dlb2_eventdev_dir_queue_setup(dlb2, ev_queue, ev_port);
+	else
+		err = dlb2_event_queue_join_ldb(dlb2, ev_port, ev_queue, prio);
+
+	if (err) {
+		DLB2_LOG_ERR("port link failure for %s ev_q %d, ev_port %d\n",
+			     ev_queue->qm_queue.is_directed ? "DIR" : "LDB",
+			     ev_queue->id, ev_port->id);
+
+		rte_errno = err;
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+dlb2_validate_port_link(struct dlb2_eventdev_port *ev_port,
+			uint8_t queue_id,
+			bool link_exists,
+			int index)
+{
+	struct dlb2_eventdev *dlb2 = ev_port->dlb2;
+	struct dlb2_eventdev_queue *ev_queue;
+	bool port_is_dir, queue_is_dir;
+
+	if (queue_id > dlb2->num_queues) {
+		rte_errno = -EINVAL;
+		return -1;
+	}
+
+	ev_queue = &dlb2->ev_queues[queue_id];
+
+	if (!ev_queue->setup_done &&
+	    ev_queue->qm_queue.config_state != DLB2_PREV_CONFIGURED) {
+		rte_errno = -EINVAL;
+		return -1;
+	}
+
+	port_is_dir = ev_port->qm_port.is_directed;
+	queue_is_dir = ev_queue->qm_queue.is_directed;
+
+	if (port_is_dir != queue_is_dir) {
+		DLB2_LOG_ERR("%s queue %u can't link to %s port %u\n",
+			     queue_is_dir ? "DIR" : "LDB", ev_queue->id,
+			     port_is_dir ? "DIR" : "LDB", ev_port->id);
+
+		rte_errno = -EINVAL;
+		return -1;
+	}
+
+	/* Check if there is space for the requested link */
+	if (!link_exists && index == -1) {
+		DLB2_LOG_ERR("no space for new link\n");
+		rte_errno = -ENOSPC;
+		return -1;
+	}
+
+	/* Check if the directed port is already linked */
+	if (ev_port->qm_port.is_directed && ev_port->num_links > 0 &&
+	    !link_exists) {
+		DLB2_LOG_ERR("Can't link DIR port %d to >1 queues\n",
+			     ev_port->id);
+		rte_errno = -EINVAL;
+		return -1;
+	}
+
+	/* Check if the directed queue is already linked */
+	if (ev_queue->qm_queue.is_directed && ev_queue->num_links > 0 &&
+	    !link_exists) {
+		DLB2_LOG_ERR("Can't link DIR queue %d to >1 ports\n",
+			     ev_queue->id);
+		rte_errno = -EINVAL;
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+dlb2_eventdev_port_link(struct rte_eventdev *dev, void *event_port,
+			const uint8_t queues[], const uint8_t priorities[],
+			uint16_t nb_links)
+
+{
+	struct dlb2_eventdev_port *ev_port = event_port;
+	struct dlb2_eventdev *dlb2;
+	int i, j;
+
+	RTE_SET_USED(dev);
+
+	if (ev_port == NULL) {
+		DLB2_LOG_ERR("dlb2: evport not setup\n");
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	if (!ev_port->setup_done &&
+	    ev_port->qm_port.config_state != DLB2_PREV_CONFIGURED) {
+		DLB2_LOG_ERR("dlb2: evport not setup\n");
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	/* Note: rte_event_port_link() ensures the PMD won't receive a NULL
+	 * queues pointer.
+	 */
+	if (nb_links == 0) {
+		DLB2_LOG_DBG("dlb2: nb_links is 0\n");
+		return 0; /* Ignore and return success */
+	}
+
+	dlb2 = ev_port->dlb2;
+
+	DLB2_LOG_DBG("Linking %u queues to %s port %d\n",
+		     nb_links,
+		     ev_port->qm_port.is_directed ? "DIR" : "LDB",
+		     ev_port->id);
+
+	for (i = 0; i < nb_links; i++) {
+		struct dlb2_eventdev_queue *ev_queue;
+		uint8_t queue_id, prio;
+		bool found = false;
+		int index = -1;
+
+		queue_id = queues[i];
+		prio = priorities[i];
+
+		/* Check if the link already exists. */
+		for (j = 0; j < DLB2_MAX_NUM_QIDS_PER_LDB_CQ; j++)
+			if (ev_port->link[j].valid) {
+				if (ev_port->link[j].queue_id == queue_id) {
+					found = true;
+					index = j;
+					break;
+				}
+			} else if (index == -1) {
+				index = j;
+			}
+
+		/* could not link */
+		if (index == -1)
+			break;
+
+		/* Check if already linked at the requested priority */
+		if (found && ev_port->link[j].priority == prio)
+			continue;
+
+		if (dlb2_validate_port_link(ev_port, queue_id, found, index))
+			break; /* return index of offending queue */
+
+		ev_queue = &dlb2->ev_queues[queue_id];
+
+		if (dlb2_do_port_link(dev, ev_queue, ev_port, prio))
+			break; /* return index of offending queue */
+
+		ev_queue->num_links++;
+
+		ev_port->link[index].queue_id = queue_id;
+		ev_port->link[index].priority = prio;
+		ev_port->link[index].valid = true;
+		/* Entry already exists?  If so, then must be prio change */
+		if (!found)
+			ev_port->num_links++;
+	}
+	return i;
+}
+
 static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
@@ -1507,6 +1808,7 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 		.queue_setup      = dlb2_eventdev_queue_setup,
 		.port_def_conf    = dlb2_eventdev_port_default_conf_get,
 		.port_setup       = dlb2_eventdev_port_setup,
+		.port_link        = dlb2_eventdev_port_link,
 		.dump             = dlb2_eventdev_dump,
 		.xstats_get       = dlb2_eventdev_xstats_get,
 		.xstats_get_names = dlb2_eventdev_xstats_get_names,

@@ -51,3 +51,9 @@ int (*dlb2_iface_ldb_port_create)(struct dlb2_hw_dev *handle,
 int (*dlb2_iface_dir_port_create)(struct dlb2_hw_dev *handle,
 				  struct dlb2_create_dir_port_args *cfg,
 				  enum dlb2_cq_poll_modes poll_mode);
+
+int (*dlb2_iface_dir_queue_create)(struct dlb2_hw_dev *handle,
+				   struct dlb2_create_dir_queue_args *cfg);
+
+int (*dlb2_iface_map_qid)(struct dlb2_hw_dev *handle,
+			  struct dlb2_map_qid_args *cfg);

@@ -651,3 +651,13 @@ dlb2_pf_create_dir_port(struct dlb2_hw *hw,
 				       NOT_VF_REQ,
 				       PF_ID_ZERO);
 }
+
+int
+dlb2_pf_create_dir_queue(struct dlb2_hw *hw,
+			 u32 id,
+			 struct dlb2_create_dir_queue_args *args,
+			 struct dlb2_cmd_response *resp)
+{
+	return dlb2_hw_create_dir_queue(hw, id, args, resp, NOT_VF_REQ,
+					PF_ID_ZERO);
+}
