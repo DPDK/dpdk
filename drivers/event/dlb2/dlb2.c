@@ -70,6 +70,21 @@ static struct rte_event_dev_info evdev_dlb2_default_info = {
 struct process_local_port_data
 dlb2_port[DLB2_MAX_NUM_PORTS][DLB2_NUM_PORT_TYPES];
 
+/*
+ * DUMMY - added so that xstats path will compile/link.
+ * Will be replaced by real version in a subsequent
+ * patch.
+ */
+uint32_t
+dlb2_get_queue_depth(struct dlb2_eventdev *dlb2,
+		     struct dlb2_eventdev_queue *queue)
+{
+	RTE_SET_USED(dlb2);
+	RTE_SET_USED(queue);
+
+	return 0;
+}
+
 /* override defaults with value(s) provided on command line */
 static void
 dlb2_init_queue_depth_thresholds(struct dlb2_eventdev *dlb2,
@@ -337,9 +352,16 @@ set_qid_depth_thresh(const char *key __rte_unused,
 static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
-	RTE_SET_USED(dev);
+	/* Expose PMD's eventdev interface */
+	static struct rte_eventdev_ops dlb2_eventdev_entry_ops = {
+		.dump             = dlb2_eventdev_dump,
+		.xstats_get       = dlb2_eventdev_xstats_get,
+		.xstats_get_names = dlb2_eventdev_xstats_get_names,
+		.xstats_get_by_name = dlb2_eventdev_xstats_get_by_name,
+		.xstats_reset	    = dlb2_eventdev_xstats_reset,
+	};
 
-	/* Eventdev PMD entry points */
+	dev->dev_ops = &dlb2_eventdev_entry_ops;
 }
 
 int
@@ -388,6 +410,13 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 	if (err < 0) {
 		DLB2_LOG_ERR("dlb2: failed to get the poll mode, err=%d\n",
 			     err);
+		return err;
+	}
+
+	/* Complete xtstats runtime initialization */
+	err = dlb2_xstats_init(dlb2);
+	if (err) {
+		DLB2_LOG_ERR("dlb2: failed to init xstats, err=%d\n", err);
 		return err;
 	}
 

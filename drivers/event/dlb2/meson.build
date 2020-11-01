@@ -9,6 +9,7 @@ endif
 
 sources = files('dlb2.c',
 		'dlb2_iface.c',
+		'dlb2_xstats.c',
 		'pf/dlb2_main.c',
 		'pf/dlb2_pf.c',
 		'pf/base/dlb2_resource.c'
