@@ -47,45 +47,40 @@ setup argument and the per-port ``new_event_threshold`` argument apply as
 defined in the eventdev header file. The limit is applied to all enqueues,
 regardless of whether it will consume a directed or load-balanced credit.
 
-Load-balanced and Directed Ports
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Load-Balanced Queues
+~~~~~~~~~~~~~~~~~~~~
 
-DLB2 ports come in two flavors: load-balanced and directed. The eventdev API
-does not have the same concept, but it has a similar one: ports and queues that
-are singly-linked (i.e. linked to a single queue or port, respectively).
+A load-balanced queue can support atomic and ordered scheduling, or atomic and
+unordered scheduling, but not atomic and unordered and ordered scheduling. A
+queue's scheduling types are controlled by the event queue configuration.
 
-The ``rte_event_dev_info_get()`` function reports the number of available
-event ports and queues (among other things). For the DLB2 PMD, max_event_ports
-and max_event_queues report the number of available load-balanced ports and
-queues, and max_single_link_event_port_queue_pairs reports the number of
-available directed ports and queues.
+If the user sets the ``RTE_EVENT_QUEUE_CFG_ALL_TYPES`` flag, the
+``nb_atomic_order_sequences`` determines the supported scheduling types.
+With non-zero ``nb_atomic_order_sequences``, the queue is configured for atomic
+and ordered scheduling. In this case, ``RTE_SCHED_TYPE_PARALLEL`` scheduling is
+supported by scheduling those events as ordered events.  Note that when the
+event is dequeued, its sched_type will be ``RTE_SCHED_TYPE_ORDERED``. Else if
+``nb_atomic_order_sequences`` is zero, the queue is configured for atomic and
+unordered scheduling. In this case, ``RTE_SCHED_TYPE_ORDERED`` is unsupported.
 
-When a scheduling domain is created in ``rte_event_dev_configure()``, the user
-specifies ``nb_event_ports`` and ``nb_single_link_event_port_queues``, which
-control the total number of ports (load-balanced and directed) and the number
-of directed ports. Hence, the number of requested load-balanced ports is
-``nb_event_ports - nb_single_link_event_ports``. The ``nb_event_queues`` field
-specifies the total number of queues (load-balanced and directed). The number
-of directed queues comes from ``nb_single_link_event_port_queues``, since
-directed ports and queues come in pairs.
+If the ``RTE_EVENT_QUEUE_CFG_ALL_TYPES`` flag is not set, schedule_type
+dictates the queue's scheduling type.
 
-When a port is setup, the ``RTE_EVENT_PORT_CFG_SINGLE_LINK`` flag determines
-whether it should be configured as a directed (the flag is set) or a
-load-balanced (the flag is unset) port. Similarly, the
-``RTE_EVENT_QUEUE_CFG_SINGLE_LINK`` queue configuration flag controls
-whether it is a directed or load-balanced queue.
+The ``nb_atomic_order_sequences`` queue configuration field sets the ordered
+queue's reorder buffer size.  DLB2 has 4 groups of ordered queues, where each
+group is configured to contain either 1 queue with 1024 reorder entries, 2
+queues with 512 reorder entries, and so on down to 32 queues with 32 entries.
 
-Load-balanced ports can only be linked to load-balanced queues, and directed
-ports can only be linked to directed queues. Furthermore, directed ports can
-only be linked to a single directed queue (and vice versa), and that link
-cannot change after the eventdev is started.
+When a load-balanced queue is created, the PMD will configure a new sequence
+number group on-demand if num_sequence_numbers does not match a pre-existing
+group with available reorder buffer entries. If all sequence number groups are
+in use, no new group will be created and queue configuration will fail. (Note
+that when the PMD is used with a virtual DLB2 device, it cannot change the
+sequence number configuration.)
 
-The eventdev API does not have a directed scheduling type. To support directed
-traffic, the dlb PMD detects when an event is being sent to a directed queue
-and overrides its scheduling type. Note that the originally selected scheduling
-type (atomic, ordered, or parallel) is not preserved, and an event's sched_type
-will be set to ``RTE_SCHED_TYPE_ATOMIC`` when it is dequeued from a directed
-port.
+The queue's ``nb_atomic_flows`` parameter is ignored by the DLB2 PMD, because
+the DLB2 does not limit the number of flows a queue can track. In the DLB2, all
+load-balanced queues can use the full 16-bit flow ID range.
 
 Flow ID
 ~~~~~~~

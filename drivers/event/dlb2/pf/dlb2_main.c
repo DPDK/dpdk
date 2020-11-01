@@ -613,3 +613,13 @@ dlb2_pf_reset_domain(struct dlb2_hw *hw, u32 id)
 {
 	return dlb2_reset_domain(hw, id, NOT_VF_REQ, PF_ID_ZERO);
 }
+
+int
+dlb2_pf_create_ldb_queue(struct dlb2_hw *hw,
+			 u32 id,
+			 struct dlb2_create_ldb_queue_args *args,
+			 struct dlb2_cmd_response *resp)
+{
+	return dlb2_hw_create_ldb_queue(hw, id, args, resp, NOT_VF_REQ,
+					PF_ID_ZERO);
+}

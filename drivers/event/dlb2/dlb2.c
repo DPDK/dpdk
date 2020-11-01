@@ -688,6 +688,317 @@ dlb2_eventdev_queue_default_conf_get(struct rte_eventdev *dev,
 	queue_conf->priority = 0;
 }
 
+static int32_t
+dlb2_get_sn_allocation(struct dlb2_eventdev *dlb2, int group)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_get_sn_allocation_args cfg;
+	int ret;
+
+	cfg.group = group;
+
+	ret = dlb2_iface_get_sn_allocation(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: get_sn_allocation ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return ret;
+	}
+
+	return cfg.response.id;
+}
+
+static int
+dlb2_set_sn_allocation(struct dlb2_eventdev *dlb2, int group, int num)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_set_sn_allocation_args cfg;
+	int ret;
+
+	cfg.num = num;
+	cfg.group = group;
+
+	ret = dlb2_iface_set_sn_allocation(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: set_sn_allocation ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return ret;
+	}
+
+	return ret;
+}
+
+static int32_t
+dlb2_get_sn_occupancy(struct dlb2_eventdev *dlb2, int group)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_get_sn_occupancy_args cfg;
+	int ret;
+
+	cfg.group = group;
+
+	ret = dlb2_iface_get_sn_occupancy(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: get_sn_occupancy ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return ret;
+	}
+
+	return cfg.response.id;
+}
+
+/* Query the current sequence number allocations and, if they conflict with the
+ * requested LDB queue configuration, attempt to re-allocate sequence numbers.
+ * This is best-effort; if it fails, the PMD will attempt to configure the
+ * load-balanced queue and return an error.
+ */
+static void
+dlb2_program_sn_allocation(struct dlb2_eventdev *dlb2,
+			   const struct rte_event_queue_conf *queue_conf)
+{
+	int grp_occupancy[DLB2_NUM_SN_GROUPS];
+	int grp_alloc[DLB2_NUM_SN_GROUPS];
+	int i, sequence_numbers;
+
+	sequence_numbers = (int)queue_conf->nb_atomic_order_sequences;
+
+	for (i = 0; i < DLB2_NUM_SN_GROUPS; i++) {
+		int total_slots;
+
+		grp_alloc[i] = dlb2_get_sn_allocation(dlb2, i);
+		if (grp_alloc[i] < 0)
+			return;
+
+		total_slots = DLB2_MAX_LDB_SN_ALLOC / grp_alloc[i];
+
+		grp_occupancy[i] = dlb2_get_sn_occupancy(dlb2, i);
+		if (grp_occupancy[i] < 0)
+			return;
+
+		/* DLB has at least one available slot for the requested
+		 * sequence numbers, so no further configuration required.
+		 */
+		if (grp_alloc[i] == sequence_numbers &&
+		    grp_occupancy[i] < total_slots)
+			return;
+	}
+
+	/* None of the sequence number groups are configured for the requested
+	 * sequence numbers, so we have to reconfigure one of them. This is
+	 * only possible if a group is not in use.
+	 */
+	for (i = 0; i < DLB2_NUM_SN_GROUPS; i++) {
+		if (grp_occupancy[i] == 0)
+			break;
+	}
+
+	if (i == DLB2_NUM_SN_GROUPS) {
+		DLB2_LOG_ERR("[%s()] No groups with %d sequence_numbers are available or have free slots\n",
+		       __func__, sequence_numbers);
+		return;
+	}
+
+	/* Attempt to configure slot i with the requested number of sequence
+	 * numbers. Ignore the return value -- if this fails, the error will be
+	 * caught during subsequent queue configuration.
+	 */
+	dlb2_set_sn_allocation(dlb2, i, sequence_numbers);
+}
+
+static int32_t
+dlb2_hw_create_ldb_queue(struct dlb2_eventdev *dlb2,
+			 struct dlb2_eventdev_queue *ev_queue,
+			 const struct rte_event_queue_conf *evq_conf)
+{
+	struct dlb2_hw_dev *handle = &dlb2->qm_instance;
+	struct dlb2_queue *queue = &ev_queue->qm_queue;
+	struct dlb2_create_ldb_queue_args cfg;
+	int32_t ret;
+	uint32_t qm_qid;
+	int sched_type = -1;
+
+	if (evq_conf == NULL)
+		return -EINVAL;
+
+	if (evq_conf->event_queue_cfg & RTE_EVENT_QUEUE_CFG_ALL_TYPES) {
+		if (evq_conf->nb_atomic_order_sequences != 0)
+			sched_type = RTE_SCHED_TYPE_ORDERED;
+		else
+			sched_type = RTE_SCHED_TYPE_PARALLEL;
+	} else
+		sched_type = evq_conf->schedule_type;
+
+	cfg.num_atomic_inflights = DLB2_NUM_ATOMIC_INFLIGHTS_PER_QUEUE;
+	cfg.num_sequence_numbers = evq_conf->nb_atomic_order_sequences;
+	cfg.num_qid_inflights = evq_conf->nb_atomic_order_sequences;
+
+	if (sched_type != RTE_SCHED_TYPE_ORDERED) {
+		cfg.num_sequence_numbers = 0;
+		cfg.num_qid_inflights = 2048;
+	}
+
+	/* App should set this to the number of hardware flows they want, not
+	 * the overall number of flows they're going to use. E.g. if app is
+	 * using 64 flows and sets compression to 64, best-case they'll get
+	 * 64 unique hashed flows in hardware.
+	 */
+	switch (evq_conf->nb_atomic_flows) {
+	/* Valid DLB2 compression levels */
+	case 64:
+	case 128:
+	case 256:
+	case 512:
+	case (1 * 1024): /* 1K */
+	case (2 * 1024): /* 2K */
+	case (4 * 1024): /* 4K */
+	case (64 * 1024): /* 64K */
+		cfg.lock_id_comp_level = evq_conf->nb_atomic_flows;
+		break;
+	default:
+		/* Invalid compression level */
+		cfg.lock_id_comp_level = 0; /* no compression */
+	}
+
+	if (ev_queue->depth_threshold == 0) {
+		cfg.depth_threshold = RTE_PMD_DLB2_DEFAULT_DEPTH_THRESH;
+		ev_queue->depth_threshold = RTE_PMD_DLB2_DEFAULT_DEPTH_THRESH;
+	} else
+		cfg.depth_threshold = ev_queue->depth_threshold;
+
+	ret = dlb2_iface_ldb_queue_create(handle, &cfg);
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: create LB event queue error, ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return -EINVAL;
+	}
+
+	qm_qid = cfg.response.id;
+
+	/* Save off queue config for debug, resource lookups, and reconfig */
+	queue->num_qid_inflights = cfg.num_qid_inflights;
+	queue->num_atm_inflights = cfg.num_atomic_inflights;
+
+	queue->sched_type = sched_type;
+	queue->config_state = DLB2_CONFIGURED;
+
+	DLB2_LOG_DBG("Created LB event queue %d, nb_inflights=%d, nb_seq=%d, qid inflights=%d\n",
+		     qm_qid,
+		     cfg.num_atomic_inflights,
+		     cfg.num_sequence_numbers,
+		     cfg.num_qid_inflights);
+
+	return qm_qid;
+}
+
+static int
+dlb2_eventdev_ldb_queue_setup(struct rte_eventdev *dev,
+			      struct dlb2_eventdev_queue *ev_queue,
+			      const struct rte_event_queue_conf *queue_conf)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+	int32_t qm_qid;
+
+	if (queue_conf->nb_atomic_order_sequences)
+		dlb2_program_sn_allocation(dlb2, queue_conf);
+
+	qm_qid = dlb2_hw_create_ldb_queue(dlb2, ev_queue, queue_conf);
+	if (qm_qid < 0) {
+		DLB2_LOG_ERR("Failed to create the load-balanced queue\n");
+
+		return qm_qid;
+	}
+
+	dlb2->qm_ldb_to_ev_queue_id[qm_qid] = ev_queue->id;
+
+	ev_queue->qm_queue.id = qm_qid;
+
+	return 0;
+}
+
+static int dlb2_num_dir_queues_setup(struct dlb2_eventdev *dlb2)
+{
+	int i, num = 0;
+
+	for (i = 0; i < dlb2->num_queues; i++) {
+		if (dlb2->ev_queues[i].setup_done &&
+		    dlb2->ev_queues[i].qm_queue.is_directed)
+			num++;
+	}
+
+	return num;
+}
+
+static void
+dlb2_queue_link_teardown(struct dlb2_eventdev *dlb2,
+			 struct dlb2_eventdev_queue *ev_queue)
+{
+	struct dlb2_eventdev_port *ev_port;
+	int i, j;
+
+	for (i = 0; i < dlb2->num_ports; i++) {
+		ev_port = &dlb2->ev_ports[i];
+
+		for (j = 0; j < DLB2_MAX_NUM_QIDS_PER_LDB_CQ; j++) {
+			if (!ev_port->link[j].valid ||
+			    ev_port->link[j].queue_id != ev_queue->id)
+				continue;
+
+			ev_port->link[j].valid = false;
+			ev_port->num_links--;
+		}
+	}
+
+	ev_queue->num_links = 0;
+}
+
+static int
+dlb2_eventdev_queue_setup(struct rte_eventdev *dev,
+			  uint8_t ev_qid,
+			  const struct rte_event_queue_conf *queue_conf)
+{
+	struct dlb2_eventdev *dlb2 = dlb2_pmd_priv(dev);
+	struct dlb2_eventdev_queue *ev_queue;
+	int ret;
+
+	if (queue_conf == NULL)
+		return -EINVAL;
+
+	if (ev_qid >= dlb2->num_queues)
+		return -EINVAL;
+
+	ev_queue = &dlb2->ev_queues[ev_qid];
+
+	ev_queue->qm_queue.is_directed = queue_conf->event_queue_cfg &
+		RTE_EVENT_QUEUE_CFG_SINGLE_LINK;
+	ev_queue->id = ev_qid;
+	ev_queue->conf = *queue_conf;
+
+	if (!ev_queue->qm_queue.is_directed) {
+		ret = dlb2_eventdev_ldb_queue_setup(dev, ev_queue, queue_conf);
+	} else {
+		/* The directed queue isn't setup until link time, at which
+		 * point we know its directed port ID. Directed queue setup
+		 * will only fail if this queue is already setup or there are
+		 * no directed queues left to configure.
+		 */
+		ret = 0;
+
+		ev_queue->qm_queue.config_state = DLB2_NOT_CONFIGURED;
+
+		if (ev_queue->setup_done ||
+		    dlb2_num_dir_queues_setup(dlb2) == dlb2->num_dir_queues)
+			ret = -EINVAL;
+	}
+
+	/* Tear down pre-existing port->queue links */
+	if (!ret && dlb2->run_state == DLB2_RUN_STATE_STOPPED)
+		dlb2_queue_link_teardown(dlb2, ev_queue);
+
+	if (!ret)
+		ev_queue->setup_done = true;
+
+	return ret;
+}
+
 static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
@@ -696,6 +1007,7 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 		.dev_infos_get    = dlb2_eventdev_info_get,
 		.dev_configure    = dlb2_eventdev_configure,
 		.queue_def_conf   = dlb2_eventdev_queue_default_conf_get,
+		.queue_setup      = dlb2_eventdev_queue_setup,
 		.port_def_conf    = dlb2_eventdev_port_default_conf_get,
 		.dump             = dlb2_eventdev_dump,
 		.xstats_get       = dlb2_eventdev_xstats_get,

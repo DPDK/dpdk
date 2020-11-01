@@ -30,4 +30,16 @@ extern int (*dlb2_iface_sched_domain_create)(struct dlb2_hw_dev *handle,
 				 struct dlb2_create_sched_domain_args *args);
 
 extern void (*dlb2_iface_domain_reset)(struct dlb2_eventdev *dlb2);
+
+extern int (*dlb2_iface_ldb_queue_create)(struct dlb2_hw_dev *handle,
+				  struct dlb2_create_ldb_queue_args *cfg);
+
+extern int (*dlb2_iface_get_sn_allocation)(struct dlb2_hw_dev *handle,
+				   struct dlb2_get_sn_allocation_args *args);
+
+extern int (*dlb2_iface_set_sn_allocation)(struct dlb2_hw_dev *handle,
+				   struct dlb2_set_sn_allocation_args *args);
+
+extern int (*dlb2_iface_get_sn_occupancy)(struct dlb2_hw_dev *handle,
+				  struct dlb2_get_sn_occupancy_args *args);
 #endif /* _DLB2_IFACE_H_ */

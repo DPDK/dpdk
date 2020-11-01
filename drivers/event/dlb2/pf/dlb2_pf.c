@@ -150,6 +150,84 @@ dlb2_pf_domain_reset(struct dlb2_eventdev *dlb2)
 		DLB2_LOG_ERR("dlb2_pf_reset_domain err %d", ret);
 }
 
+static int
+dlb2_pf_ldb_queue_create(struct dlb2_hw_dev *handle,
+			 struct dlb2_create_ldb_queue_args *cfg)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	ret = dlb2_pf_create_ldb_queue(&dlb2_dev->hw,
+				       handle->domain_id,
+				       cfg,
+				       &response);
+
+	cfg->response = response;
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d\n",
+		  __func__, ret);
+
+	return ret;
+}
+
+static int
+dlb2_pf_get_sn_occupancy(struct dlb2_hw_dev *handle,
+			 struct dlb2_get_sn_occupancy_args *args)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret;
+
+	ret = dlb2_get_group_sequence_number_occupancy(&dlb2_dev->hw,
+						       args->group);
+
+	response.id = ret;
+	response.status = 0;
+
+	args->response = response;
+
+	return ret;
+}
+
+static int
+dlb2_pf_get_sn_allocation(struct dlb2_hw_dev *handle,
+			  struct dlb2_get_sn_allocation_args *args)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret;
+
+	ret = dlb2_get_group_sequence_numbers(&dlb2_dev->hw, args->group);
+
+	response.id = ret;
+	response.status = 0;
+
+	args->response = response;
+
+	return ret;
+}
+
+static int
+dlb2_pf_set_sn_allocation(struct dlb2_hw_dev *handle,
+			  struct dlb2_set_sn_allocation_args *args)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret;
+
+	ret = dlb2_set_group_sequence_numbers(&dlb2_dev->hw, args->group,
+					      args->num);
+
+	response.status = 0;
+
+	args->response = response;
+
+	return ret;
+}
+
 static void
 dlb2_pf_iface_fn_ptrs_init(void)
 {
@@ -161,6 +239,10 @@ dlb2_pf_iface_fn_ptrs_init(void)
 	dlb2_iface_get_num_resources = dlb2_pf_get_num_resources;
 	dlb2_iface_get_cq_poll_mode = dlb2_pf_get_cq_poll_mode;
 	dlb2_iface_sched_domain_create = dlb2_pf_sched_domain_create;
+	dlb2_iface_ldb_queue_create = dlb2_pf_ldb_queue_create;
+	dlb2_iface_get_sn_allocation = dlb2_pf_get_sn_allocation;
+	dlb2_iface_set_sn_allocation = dlb2_pf_set_sn_allocation;
+	dlb2_iface_get_sn_occupancy = dlb2_pf_get_sn_occupancy;
 }
 
 /* PCI DEV HOOKS */
