@@ -34,3 +34,51 @@ detailed understanding of the hardware, but these details are important when
 writing high-performance code. This section describes the places where the
 eventdev API and DLB misalign.
 
+Scheduling Domain Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are 32 scheduling domainis the DLB.
+When one is configured, it allocates load-balanced and
+directed queues, ports, credits, and other hardware resources. Some
+resource allocations are user-controlled -- the number of queues, for example
+-- and others, like credit pools (one directed and one load-balanced pool per
+scheduling domain), are not.
+
+The DLB is a closed system eventdev, and as such the ``nb_events_limit`` device
+setup argument and the per-port ``new_event_threshold`` argument apply as
+defined in the eventdev header file. The limit is applied to all enqueues,
+regardless of whether it will consume a directed or load-balanced credit.
+
+Reconfiguration
+~~~~~~~~~~~~~~~
+
+The Eventdev API allows one to reconfigure a device, its ports, and its queues
+by first stopping the device, calling the configuration function(s), then
+restarting the device. The DLB does not support configuring an individual queue
+or port without first reconfiguring the entire device, however, so there are
+certain reconfiguration sequences that are valid in the eventdev API but not
+supported by the PMD.
+
+Specifically, the PMD supports the following configuration sequence:
+1. Configure and start the device
+2. Stop the device
+3. (Optional) Reconfigure the device
+4. (Optional) If step 3 is run:
+
+   a. Setup queue(s). The reconfigured queue(s) lose their previous port links.
+   b. The reconfigured port(s) lose their previous queue links.
+
+5. (Optional, only if steps 4a and 4b are run) Link port(s) to queue(s)
+6. Restart the device. If the device is reconfigured in step 3 but one or more
+   of its ports or queues are not, the PMD will apply their previous
+   configuration (including port->queue links) at this time.
+
+The PMD does not support the following configuration sequences:
+1. Configure and start the device
+2. Stop the device
+3. Setup queue or setup port
+4. Start the device
+
+This sequence is not supported because the event device must be reconfigured
+before its ports or queues can be.
+

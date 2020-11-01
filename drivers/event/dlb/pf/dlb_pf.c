@@ -78,6 +78,17 @@ dlb_pf_open(struct dlb_hw_dev *handle, const char *name)
 	return 0;
 }
 
+static void
+dlb_pf_domain_close(struct dlb_eventdev *dlb)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)dlb->qm_instance.pf_dev;
+	int ret;
+
+	ret = dlb_reset_domain(&dlb_dev->hw, dlb->qm_instance.domain_id);
+	if (ret)
+		DLB_LOG_ERR("dlb_pf_reset_domain err %d", ret);
+}
+
 static int
 dlb_pf_get_device_version(struct dlb_hw_dev *handle,
 			  uint8_t *revision)
@@ -101,6 +112,79 @@ dlb_pf_get_num_resources(struct dlb_hw_dev *handle,
 }
 
 static int
+dlb_pf_sched_domain_create(struct dlb_hw_dev *handle,
+			   struct dlb_create_sched_domain_args *arg)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	if (dlb_dev->domain_reset_failed) {
+		response.status = DLB_ST_DOMAIN_RESET_FAILED;
+		ret = -EINVAL;
+		goto done;
+	}
+
+	ret = dlb_hw_create_sched_domain(&dlb_dev->hw, arg, &response);
+	if (ret)
+		goto done;
+
+done:
+
+	*(struct dlb_cmd_response *)arg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+	return ret;
+}
+
+static int
+dlb_pf_ldb_credit_pool_create(struct dlb_hw_dev *handle,
+			      struct dlb_create_ldb_pool_args *cfg)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	ret = dlb_hw_create_ldb_pool(&dlb_dev->hw,
+				     handle->domain_id,
+				     cfg,
+				     &response);
+
+	*(struct dlb_cmd_response *)cfg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+	return ret;
+}
+
+static int
+dlb_pf_dir_credit_pool_create(struct dlb_hw_dev *handle,
+			      struct dlb_create_dir_pool_args *cfg)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	ret = dlb_hw_create_dir_pool(&dlb_dev->hw,
+				     handle->domain_id,
+				     cfg,
+				     &response);
+
+	*(struct dlb_cmd_response *)cfg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+	return ret;
+}
+
+static int
 dlb_pf_get_cq_poll_mode(struct dlb_hw_dev *handle,
 			enum dlb_cq_poll_modes *mode)
 {
@@ -119,8 +203,12 @@ dlb_pf_iface_fn_ptrs_init(void)
 {
 	dlb_iface_low_level_io_init = dlb_pf_low_level_io_init;
 	dlb_iface_open = dlb_pf_open;
+	dlb_iface_domain_close = dlb_pf_domain_close;
 	dlb_iface_get_device_version = dlb_pf_get_device_version;
 	dlb_iface_get_num_resources = dlb_pf_get_num_resources;
+	dlb_iface_sched_domain_create = dlb_pf_sched_domain_create;
+	dlb_iface_ldb_credit_pool_create = dlb_pf_ldb_credit_pool_create;
+	dlb_iface_dir_credit_pool_create = dlb_pf_dir_credit_pool_create;
 	dlb_iface_get_cq_poll_mode = dlb_pf_get_cq_poll_mode;
 }
 
