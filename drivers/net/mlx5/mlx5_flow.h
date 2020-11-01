@@ -35,8 +35,13 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_MARK,
 	MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 	MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
-	MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS,
 	MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET,
+};
+
+#define MLX5_SHARED_ACTION_TYPE_OFFSET 30
+
+enum {
+	MLX5_SHARED_ACTION_TYPE_RSS,
 };
 
 /* Matches on selected register. */
@@ -1017,7 +1022,7 @@ flow_items_to_tunnel(const struct rte_flow_item items[])
 /* Flow structure. */
 struct rte_flow {
 	ILIST_ENTRY(uint32_t)next; /**< Index to the next flow structure. */
-	struct mlx5_shared_action_rss *shared_rss; /** < Shred RSS action. */
+	uint32_t shared_rss; /** < Shared RSS action ID. */
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
 	uint32_t drv_type:2; /**< Driver type. */
@@ -1061,10 +1066,10 @@ static const uint64_t mlx5_rss_hash_fields[] = {
 	MLX5_RSS_HASH_NONE,
 };
 
-#define MLX5_RSS_HASH_FIELDS_LEN RTE_DIM(mlx5_rss_hash_fields)
-
 /* Shared RSS action structure */
 struct mlx5_shared_action_rss {
+	ILIST_ENTRY(uint32_t)next; /**< Index to the next RSS structure. */
+	uint32_t refcnt; /**< Atomically accessed refcnt. */
 	struct rte_flow_action_rss origin; /**< Original rte RSS action. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t *queue; /**< Queue indices to use. */
@@ -1075,15 +1080,7 @@ struct mlx5_shared_action_rss {
 };
 
 struct rte_flow_shared_action {
-	LIST_ENTRY(rte_flow_shared_action) next;
-		/**< Pointer to the next element. */
-	uint32_t refcnt; /**< Atomically accessed refcnt. */
-	uint64_t type;
-		/**< Shared action type (see MLX5_FLOW_ACTION_SHARED_*). */
-	union {
-		struct mlx5_shared_action_rss rss;
-			/**< Shared RSS action. */
-	};
+	uint32_t id;
 };
 
 /* Thread specific flow workspace intermediate data. */
@@ -1383,7 +1380,6 @@ int mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
 int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
-struct rte_flow_shared_action *mlx5_flow_get_shared_rss(struct rte_flow *flow);
 int mlx5_shared_action_flush(struct rte_eth_dev *dev);
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
 int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh);

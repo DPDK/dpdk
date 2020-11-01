@@ -53,6 +53,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_RSS_EXPANTION_FLOW_ID, /* Pool for Queue/RSS flow ID. */
 	MLX5_IPOOL_TUNNEL_ID, /* Pool for flow tunnel ID. */
 	MLX5_IPOOL_TNL_TBL_ID, /* Pool for tunnel table ID. */
+	MLX5_IPOOL_RSS_SHARED_ACTIONS, /* Pool for RSS shared actions. */
 	MLX5_IPOOL_MAX,
 };
 
@@ -921,6 +922,8 @@ struct mlx5_obj_ops {
 	void (*txq_obj_release)(struct mlx5_txq_obj *txq_obj);
 };
 
+#define MLX5_RSS_HASH_FIELDS_LEN RTE_DIM(mlx5_rss_hash_fields)
+
 struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared device context. */
@@ -997,8 +1000,7 @@ struct mlx5_priv {
 	struct mlx5_mp_id mp_id; /* ID of a multi-process process */
 	LIST_HEAD(fdir, mlx5_fdir_flow) fdir_flows; /* fdir flows. */
 	rte_spinlock_t shared_act_sl; /* Shared actions spinlock. */
-	LIST_HEAD(shared_action, rte_flow_shared_action) shared_actions;
-	/* shared actions */
+	uint32_t rss_shared_actions; /* RSS shared actions. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

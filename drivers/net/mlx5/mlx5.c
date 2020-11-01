@@ -336,6 +336,18 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.need_lock = 1,
 		.type = "mlx5_flow_tnl_tbl_ipool",
 	},
+	{
+		.size = sizeof(struct mlx5_shared_action_rss),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 1,
+		.release_mem_en = 1,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.type = "mlx5_shared_action_rss",
+	},
+
 };
 
 

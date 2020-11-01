@@ -3280,6 +3280,8 @@ struct mlx5_translated_shared_action {
  * action handling should be preformed on *shared* actions list returned
  * from this call.
  *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  * @param[in] actions
  *   List of actions to translate.
  * @param[out] shared
@@ -3297,12 +3299,14 @@ struct mlx5_translated_shared_action {
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_shared_actions_translate(const struct rte_flow_action actions[],
-	struct mlx5_translated_shared_action *shared,
-	int *shared_n,
-	struct rte_flow_action **translated_actions,
-	struct rte_flow_error *error)
+flow_shared_actions_translate(struct rte_eth_dev *dev,
+			      const struct rte_flow_action actions[],
+			      struct mlx5_translated_shared_action *shared,
+			      int *shared_n,
+			      struct rte_flow_action **translated_actions,
+			      struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_action *translated = NULL;
 	size_t actions_size;
 	int n;
@@ -3334,15 +3338,20 @@ flow_shared_actions_translate(const struct rte_flow_action actions[],
 	}
 	memcpy(translated, actions, actions_size);
 	for (shared_end = shared + copied_n; shared < shared_end; shared++) {
-		const struct rte_flow_shared_action *shared_action;
+		struct mlx5_shared_action_rss *shared_rss;
+		uint32_t act_idx = (uint32_t)(uintptr_t)shared->action;
+		uint32_t type = act_idx >> MLX5_SHARED_ACTION_TYPE_OFFSET;
+		uint32_t idx = act_idx & ((1u << MLX5_SHARED_ACTION_TYPE_OFFSET)
+									   - 1);
 
-		shared_action = shared->action;
-		switch (shared_action->type) {
-		case MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS:
+		switch (type) {
+		case MLX5_SHARED_ACTION_TYPE_RSS:
+			shared_rss = mlx5_ipool_get
+			  (priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
 			translated[shared->index].type =
 				RTE_FLOW_ACTION_TYPE_RSS;
 			translated[shared->index].conf =
-				&shared_action->rss.origin;
+				&shared_rss->origin;
 			break;
 		default:
 			mlx5_free(translated);
@@ -3358,44 +3367,44 @@ flow_shared_actions_translate(const struct rte_flow_action actions[],
 /**
  * Get Shared RSS action from the action list.
  *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
  * @param[in] shared
  *   Pointer to the list of actions.
  * @param[in] shared_n
  *   Actions list length.
  *
  * @return
- *   Pointer to the MLX5 RSS action if exists, otherwise return NULL.
+ *   The MLX5 RSS action ID if exists, otherwise return 0.
  */
-static struct mlx5_shared_action_rss *
-flow_get_shared_rss_action(struct mlx5_translated_shared_action *shared,
+static uint32_t
+flow_get_shared_rss_action(struct rte_eth_dev *dev,
+			   struct mlx5_translated_shared_action *shared,
 			   int shared_n)
 {
 	struct mlx5_translated_shared_action *shared_end;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_shared_action_rss *shared_rss;
+
 
 	for (shared_end = shared + shared_n; shared < shared_end; shared++) {
-		struct rte_flow_shared_action *shared_action;
-
-		shared_action = shared->action;
-		switch (shared_action->type) {
-		case MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS:
-			__atomic_add_fetch(&shared_action->refcnt, 1,
+		uint32_t act_idx = (uint32_t)(uintptr_t)shared->action;
+		uint32_t type = act_idx >> MLX5_SHARED_ACTION_TYPE_OFFSET;
+		uint32_t idx = act_idx &
+				   ((1u << MLX5_SHARED_ACTION_TYPE_OFFSET) - 1);
+		switch (type) {
+		case MLX5_SHARED_ACTION_TYPE_RSS:
+			shared_rss = mlx5_ipool_get
+				(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
+									   idx);
+			__atomic_add_fetch(&shared_rss->refcnt, 1,
 					   __ATOMIC_RELAXED);
-			return &shared_action->rss;
+			return idx;
 		default:
 			break;
 		}
 	}
-	return NULL;
-}
-
-struct rte_flow_shared_action *
-mlx5_flow_get_shared_rss(struct rte_flow *flow)
-{
-	if (flow->shared_rss)
-		return container_of(flow->shared_rss,
-				    struct rte_flow_shared_action, rss);
-	else
-		return NULL;
+	return 0;
 }
 
 static unsigned int
@@ -5512,7 +5521,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 
 	MLX5_ASSERT(wks);
 	rss_desc = &wks->rss_desc[fidx];
-	ret = flow_shared_actions_translate(original_actions,
+	ret = flow_shared_actions_translate(dev, original_actions,
 					    shared_actions,
 					    &shared_actions_n,
 					    &translated_actions, error);
@@ -5573,7 +5582,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		buf->entries = 1;
 		buf->entry[0].pattern = (void *)(uintptr_t)items;
 	}
-	flow->shared_rss = flow_get_shared_rss_action(shared_actions,
+	flow->shared_rss = flow_get_shared_rss_action(dev, shared_actions,
 						      shared_actions_n);
 	/*
 	 * Record the start index when there is a nested call. All sub-flows
@@ -5761,7 +5770,7 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 	int shared_actions_n = MLX5_MAX_SHARED_ACTIONS;
 	const struct rte_flow_action *actions;
 	struct rte_flow_action *translated_actions = NULL;
-	int ret = flow_shared_actions_translate(original_actions,
+	int ret = flow_shared_actions_translate(dev, original_actions,
 						shared_actions,
 						&shared_actions_n,
 						&translated_actions, error);
@@ -7331,25 +7340,11 @@ mlx5_shared_action_update(struct rte_eth_dev *dev,
 			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
 	int ret;
 
-	switch (shared_action->type) {
-	case MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS:
-		if (action->type != RTE_FLOW_ACTION_TYPE_RSS) {
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  NULL,
-						  "update action type invalid");
-		}
-		ret = flow_drv_action_validate(dev, NULL, action, fops, error);
-		if (ret)
-			return ret;
-		return flow_drv_action_update(dev, shared_action, action->conf,
-					      fops, error);
-	default:
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
-					  NULL,
-					  "action type not supported");
-	}
+	ret = flow_drv_action_validate(dev, NULL, action, fops, error);
+	if (ret)
+		return ret;
+	return flow_drv_action_update(dev, shared_action, action->conf, fops,
+				      error);
 }
 
 /**
@@ -7381,17 +7376,10 @@ mlx5_shared_action_query(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error)
 {
 	(void)dev;
-	switch (action->type) {
-	case MLX5_RTE_FLOW_ACTION_TYPE_SHARED_RSS:
-		__atomic_load(&action->refcnt, (uint32_t *)data,
-			      __ATOMIC_RELAXED);
-		return 0;
-	default:
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
-					  NULL,
-					  "action type not supported");
-	}
+	(void)action;
+	(void)data;
+	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				  NULL, "action type query not supported");
 }
 
 /**
@@ -7408,12 +7396,14 @@ mlx5_shared_action_flush(struct rte_eth_dev *dev)
 {
 	struct rte_flow_error error;
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow_shared_action *action;
+	struct mlx5_shared_action_rss *action;
 	int ret = 0;
+	uint32_t idx;
 
-	while (!LIST_EMPTY(&priv->shared_actions)) {
-		action = LIST_FIRST(&priv->shared_actions);
-		ret = mlx5_shared_action_destroy(dev, action, &error);
+	ILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
+		      priv->rss_shared_actions, idx, action, next) {
+		ret |= mlx5_shared_action_destroy(dev,
+		       (struct rte_flow_shared_action *)(uintptr_t)idx, &error);
 	}
 	return ret;
 }
