@@ -179,6 +179,8 @@ has_sym_args = [
 	[ 'HAVE_MLX5_DR_CREATE_ACTION_DEST_ARRAY', 'infiniband/mlx5dv.h',
 	'mlx5dv_dr_action_create_dest_array'],
 	[ 'HAVE_DEVLINK', 'linux/devlink.h', 'DEVLINK_GENL_NAME' ],
+        [ 'HAVE_MLX5DV_DR_ACTION_FLOW_HIT', 'infiniband/mlx5dv.h',
+        'mlx5dv_dr_action_create_flow_hit'],
 ]
 config = configuration_data()
 foreach arg:has_sym_args

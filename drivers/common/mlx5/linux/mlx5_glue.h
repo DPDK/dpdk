@@ -344,6 +344,9 @@ struct mlx5_glue {
 			(void *domain,
 			 size_t num_dest,
 			 struct mlx5dv_dr_action_dest_attr *dests[]);
+	void *(*dr_action_create_flow_hit)(struct mlx5dv_devx_obj *devx_obj,
+					   uint32_t offset,
+					   uint8_t reg_c_index);
 };
 
 extern const struct mlx5_glue *mlx5_glue;

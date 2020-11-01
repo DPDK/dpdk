@@ -1281,6 +1281,21 @@ mlx5_glue_dv_free_pp(struct mlx5dv_pp *pp)
 #endif
 }
 
+static void *
+mlx5_glue_dr_action_create_flow_hit(struct mlx5dv_devx_obj *devx_obj,
+				    uint32_t offset, uint8_t reg_c_index)
+{
+#ifdef HAVE_MLX5DV_DR_ACTION_FLOW_HIT
+	return mlx5dv_dr_action_create_flow_hit(devx_obj, offset, reg_c_index);
+#else
+	(void)(devx_obj);
+	(void)(offset);
+	(void)(reg_c_index);
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
 __rte_cache_aligned
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.version = MLX5_GLUE_VERSION,
@@ -1400,4 +1415,5 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dv_free_var = mlx5_glue_dv_free_var,
 	.dv_alloc_pp = mlx5_glue_dv_alloc_pp,
 	.dv_free_pp = mlx5_glue_dv_free_pp,
+	.dr_action_create_flow_hit = mlx5_glue_dr_action_create_flow_hit,
 };
