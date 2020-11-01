@@ -3829,6 +3829,18 @@ dlb_eventdev_queue_release(struct rte_eventdev *dev, uint8_t id)
 	/* This function intentionally left blank. */
 }
 
+static int
+dlb_eventdev_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
+			   uint64_t *timeout_ticks)
+{
+	RTE_SET_USED(dev);
+	uint64_t cycles_per_ns = rte_get_timer_hz() / 1E9;
+
+	*timeout_ticks = ns * cycles_per_ns;
+
+	return 0;
+}
+
 void
 dlb_entry_points_init(struct rte_eventdev *dev)
 {
@@ -3850,6 +3862,7 @@ dlb_entry_points_init(struct rte_eventdev *dev)
 		.port_unlink      = dlb_eventdev_port_unlink,
 		.port_unlinks_in_progress =
 				    dlb_eventdev_port_unlinks_in_progress,
+		.timeout_ticks    = dlb_eventdev_timeout_ticks,
 		.dump             = dlb_eventdev_dump,
 		.xstats_get       = dlb_eventdev_xstats_get,
 		.xstats_get_names = dlb_eventdev_xstats_get_names,
