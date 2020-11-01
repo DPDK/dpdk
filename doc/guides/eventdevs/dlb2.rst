@@ -163,6 +163,124 @@ Flow ID
 The flow ID field is preserved in the event when it is scheduled in the
 DLB2.
 
+Hardware Credits
+~~~~~~~~~~~~~~~~
+
+DLB2 uses a hardware credit scheme to prevent software from overflowing hardware
+event storage, with each unit of storage represented by a credit. A port spends
+a credit to enqueue an event, and hardware refills the ports with credits as the
+events are scheduled to ports. Refills come from credit pools, and each port is
+a member of a load-balanced credit pool and a directed credit pool. The
+load-balanced credits are used to enqueue to load-balanced queues, and directed
+credits are used for directed queues.
+
+A DLB2 eventdev contains one load-balanced and one directed credit pool. These
+pools' sizes are controlled by the nb_events_limit field in struct
+rte_event_dev_config. The load-balanced pool is sized to contain
+nb_events_limit credits, and the directed pool is sized to contain
+nb_events_limit/4 credits. The directed pool size can be overridden with the
+num_dir_credits vdev argument, like so:
+
+    .. code-block:: console
+
+       --vdev=dlb1_event,num_dir_credits=<value>
+
+This can be used if the default allocation is too low or too high for the
+specific application needs. The PMD also supports a vdev arg that limits the
+max_num_events reported by rte_event_dev_info_get():
+
+    .. code-block:: console
+
+       --vdev=dlb1_event,max_num_events=<value>
+
+By default, max_num_events is reported as the total available load-balanced
+credits. If multiple DLB2-based applications are being used, it may be desirable
+to control how many load-balanced credits each application uses, particularly
+when application(s) are written to configure nb_events_limit equal to the
+reported max_num_events.
+
+Each port is a member of both credit pools. A port's credit allocation is
+defined by its low watermark, high watermark, and refill quanta. These three
+parameters are calculated by the dlb PMD like so:
+
+- The load-balanced high watermark is set to the port's enqueue_depth.
+  The directed high watermark is set to the minimum of the enqueue_depth and
+  the directed pool size divided by the total number of ports.
+- The refill quanta is set to half the high watermark.
+- The low watermark is set to the minimum of 16 and the refill quanta.
+
+When the eventdev is started, each port is pre-allocated a high watermark's
+worth of credits. For example, if an eventdev contains four ports with enqueue
+depths of 32 and a load-balanced credit pool size of 4096, each port will start
+with 32 load-balanced credits, and there will be 3968 credits available to
+replenish the ports. Thus, a single port is not capable of enqueueing up to the
+nb_events_limit (without any events being dequeued), since the other ports are
+retaining their initial credit allocation; in short, all ports must enqueue in
+order to reach the limit.
+
+If a port attempts to enqueue and has no credits available, the enqueue
+operation will fail and the application must retry the enqueue. Credits are
+replenished asynchronously by the DLB2 hardware.
+
+Software Credits
+~~~~~~~~~~~~~~~~
+
+The DLB2 is a "closed system" event dev, and the DLB2 PMD layers a software
+credit scheme on top of the hardware credit scheme in order to comply with
+the per-port backpressure described in the eventdev API.
+
+The DLB2's hardware scheme is local to a queue/pipeline stage: a port spends a
+credit when it enqueues to a queue, and credits are later replenished after the
+events are dequeued and released.
+
+In the software credit scheme, a credit is consumed when a new (.op =
+RTE_EVENT_OP_NEW) event is injected into the system, and the credit is
+replenished when the event is released from the system (either explicitly with
+RTE_EVENT_OP_RELEASE or implicitly in dequeue_burst()).
+
+In this model, an event is "in the system" from its first enqueue into eventdev
+until it is last dequeued. If the event goes through multiple event queues, it
+is still considered "in the system" while a worker thread is processing it.
+
+A port will fail to enqueue if the number of events in the system exceeds its
+``new_event_threshold`` (specified at port setup time). A port will also fail
+to enqueue if it lacks enough hardware credits to enqueue; load-balanced
+credits are used to enqueue to a load-balanced queue, and directed credits are
+used to enqueue to a directed queue.
+
+The out-of-credit situations are typically transient, and an eventdev
+application using the DLB2 ought to retry its enqueues if they fail.
+If enqueue fails, DLB2 PMD sets rte_errno as follows:
+
+- -ENOSPC: Credit exhaustion (either hardware or software)
+- -EINVAL: Invalid argument, such as port ID, queue ID, or sched_type.
+
+Depending on the pipeline the application has constructed, it's possible to
+enter a credit deadlock scenario wherein the worker thread lacks the credit
+to enqueue an event, and it must dequeue an event before it can recover the
+credit. If the worker thread retries its enqueue indefinitely, it will not
+make forward progress. Such deadlock is possible if the application has event
+"loops", in which an event in dequeued from queue A and later enqueued back to
+queue A.
+
+Due to this, workers should stop retrying after a time, release the events it
+is attempting to enqueue, and dequeue more events. It is important that the
+worker release the events and don't simply set them aside to retry the enqueue
+again later, because the port has limited history list size (by default, twice
+the port's dequeue_depth).
+
+Priority
+~~~~~~~~
+
+The DLB2 supports event priority and per-port queue service priority, as
+described in the eventdev header file. The DLB2 does not support 'global' event
+queue priority established at queue creation time.
+
+DLB2 supports 8 event and queue service priority levels. For both priority
+types, the PMD uses the upper three bits of the priority field to determine the
+DLB2 priority, discarding the 5 least significant bits. The 5 least significant
+event priority bits are not preserved when an event is enqueued.
+
 Reconfiguration
 ~~~~~~~~~~~~~~~
 
