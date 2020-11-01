@@ -104,7 +104,8 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			      0,
 			      rxq->crc_present * RTE_ETHER_CRC_LEN,
 			      0, 0);
-	const uint32_t flow_tag = t_pkt->hash.fdir.hi;
+	__m128i ol_flags = _mm_setzero_si128();
+	__m128i ol_flags_mask = _mm_setzero_si128();
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	const __m128i zero = _mm_setzero_si128();
 	const __m128i ones = _mm_cmpeq_epi32(zero, zero);
@@ -175,19 +176,152 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 					      (mcqe_n - pos) *
 					      sizeof(uint16_t) * 8);
 		invalid_mask = _mm_sll_epi64(ones, invalid_mask);
-		mcqe1 = _mm_srli_si128(mcqe1, 4);
-		byte_cnt = _mm_blend_epi16(mcqe1, mcqe2, 0xcc);
+		byte_cnt = _mm_blend_epi16(_mm_srli_si128(mcqe1, 4),
+					   mcqe2, 0xcc);
 		byte_cnt = _mm_shuffle_epi8(byte_cnt, len_shuf_mask);
 		byte_cnt = _mm_andnot_si128(invalid_mask, byte_cnt);
 		byte_cnt = _mm_hadd_epi16(byte_cnt, zero);
 		rcvd_byte += _mm_cvtsi128_si64(_mm_hadd_epi16(byte_cnt, zero));
 #endif
 		if (rxq->mark) {
-			/* E.1 store flow tag (rte_flow mark). */
-			elts[pos]->hash.fdir.hi = flow_tag;
-			elts[pos + 1]->hash.fdir.hi = flow_tag;
-			elts[pos + 2]->hash.fdir.hi = flow_tag;
-			elts[pos + 3]->hash.fdir.hi = flow_tag;
+			if (rxq->mcqe_format !=
+				MLX5_CQE_RESP_FORMAT_FTAG_STRIDX) {
+				const uint32_t flow_tag = t_pkt->hash.fdir.hi;
+
+				/* E.1 store flow tag (rte_flow mark). */
+				elts[pos]->hash.fdir.hi = flow_tag;
+				elts[pos + 1]->hash.fdir.hi = flow_tag;
+				elts[pos + 2]->hash.fdir.hi = flow_tag;
+				elts[pos + 3]->hash.fdir.hi = flow_tag;
+			} else {
+				const __m128i flow_mark_adj =
+					_mm_set_epi32(-1, -1, -1, -1);
+				const __m128i flow_mark_shuf =
+					_mm_set_epi8(-1,  1,  0,  4,
+						     -1,  9,  8, 12,
+						     -1, -1, -1, -1,
+						     -1, -1, -1, -1);
+				const __m128i ft_mask =
+					_mm_set1_epi32(0xffffff00);
+				const __m128i fdir_flags =
+					_mm_set1_epi32(PKT_RX_FDIR);
+				const __m128i fdir_all_flags =
+					_mm_set1_epi32(PKT_RX_FDIR |
+						       PKT_RX_FDIR_ID);
+				__m128i fdir_id_flags =
+					_mm_set1_epi32(PKT_RX_FDIR_ID);
+
+				/* Extract flow_tag field. */
+				__m128i ftag0 =
+					_mm_shuffle_epi8(mcqe1, flow_mark_shuf);
+				__m128i ftag1 =
+					_mm_shuffle_epi8(mcqe2, flow_mark_shuf);
+				__m128i ftag =
+					_mm_unpackhi_epi64(ftag0, ftag1);
+				__m128i invalid_mask =
+					_mm_cmpeq_epi32(ftag, zero);
+
+				ol_flags_mask = _mm_or_si128(ol_flags_mask,
+							     fdir_all_flags);
+				/* Set PKT_RX_FDIR if flow tag is non-zero. */
+				ol_flags = _mm_or_si128(ol_flags,
+					_mm_andnot_si128(invalid_mask,
+							 fdir_flags));
+				/* Mask out invalid entries. */
+				fdir_id_flags = _mm_andnot_si128(invalid_mask,
+								 fdir_id_flags);
+				/* Check if flow tag MLX5_FLOW_MARK_DEFAULT. */
+				ol_flags = _mm_or_si128(ol_flags,
+					_mm_andnot_si128(_mm_cmpeq_epi32(ftag,
+							 ft_mask),
+					fdir_id_flags));
+				ftag = _mm_add_epi32(ftag, flow_mark_adj);
+				elts[pos]->hash.fdir.hi =
+						_mm_extract_epi32(ftag, 0);
+				elts[pos + 1]->hash.fdir.hi =
+						_mm_extract_epi32(ftag, 1);
+				elts[pos + 2]->hash.fdir.hi =
+						_mm_extract_epi32(ftag, 2);
+				elts[pos + 3]->hash.fdir.hi =
+						_mm_extract_epi32(ftag, 3);
+			}
+		}
+		if (unlikely(rxq->mcqe_format != MLX5_CQE_RESP_FORMAT_HASH)) {
+			if (rxq->mcqe_format ==
+			    MLX5_CQE_RESP_FORMAT_L34H_STRIDX) {
+				const uint8_t pkt_info =
+					(cq->pkt_info & 0x3) << 6;
+				const uint8_t pkt_hdr0 =
+					_mm_extract_epi8(mcqe1, 0);
+				const uint8_t pkt_hdr1 =
+					_mm_extract_epi8(mcqe1, 8);
+				const uint8_t pkt_hdr2 =
+					_mm_extract_epi8(mcqe2, 0);
+				const uint8_t pkt_hdr3 =
+					_mm_extract_epi8(mcqe2, 8);
+				const __m128i vlan_mask =
+					_mm_set1_epi32(PKT_RX_VLAN |
+						       PKT_RX_VLAN_STRIPPED);
+				const __m128i cv_mask =
+					_mm_set1_epi32(MLX5_CQE_VLAN_STRIPPED);
+				const __m128i pkt_cv =
+					_mm_set_epi32(pkt_hdr0 & 0x1,
+						      pkt_hdr1 & 0x1,
+						      pkt_hdr2 & 0x1,
+						      pkt_hdr3 & 0x1);
+
+				ol_flags_mask = _mm_or_si128(ol_flags_mask,
+							     vlan_mask);
+				ol_flags = _mm_or_si128(ol_flags,
+					_mm_and_si128(_mm_cmpeq_epi32(pkt_cv,
+					cv_mask), vlan_mask));
+				elts[pos]->packet_type =
+					mlx5_ptype_table[(pkt_hdr0 >> 2) |
+							 pkt_info];
+				elts[pos + 1]->packet_type =
+					mlx5_ptype_table[(pkt_hdr1 >> 2) |
+							 pkt_info];
+				elts[pos + 2]->packet_type =
+					mlx5_ptype_table[(pkt_hdr2 >> 2) |
+							 pkt_info];
+				elts[pos + 3]->packet_type =
+					mlx5_ptype_table[(pkt_hdr3 >> 2) |
+							 pkt_info];
+				if (rxq->tunnel) {
+					elts[pos]->packet_type |=
+						!!(((pkt_hdr0 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 1]->packet_type |=
+						!!(((pkt_hdr1 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 2]->packet_type |=
+						!!(((pkt_hdr2 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 3]->packet_type |=
+						!!(((pkt_hdr3 >> 2) |
+						pkt_info) & (1 << 6));
+				}
+			}
+			const __m128i hash_flags =
+				_mm_set1_epi32(PKT_RX_RSS_HASH);
+			const __m128i rearm_flags =
+				_mm_set1_epi32((uint32_t)t_pkt->ol_flags);
+
+			ol_flags_mask = _mm_or_si128(ol_flags_mask, hash_flags);
+			ol_flags = _mm_or_si128(ol_flags,
+				_mm_andnot_si128(ol_flags_mask, rearm_flags));
+			elts[pos]->ol_flags =
+				_mm_extract_epi32(ol_flags, 0);
+			elts[pos + 1]->ol_flags =
+				_mm_extract_epi32(ol_flags, 1);
+			elts[pos + 2]->ol_flags =
+				_mm_extract_epi32(ol_flags, 2);
+			elts[pos + 3]->ol_flags =
+				_mm_extract_epi32(ol_flags, 3);
+			elts[pos]->hash.rss = 0;
+			elts[pos + 1]->hash.rss = 0;
+			elts[pos + 2]->hash.rss = 0;
+			elts[pos + 3]->hash.rss = 0;
 		}
 		if (rxq->dynf_meta) {
 			int32_t offs = rxq->flow_meta_offset;
@@ -251,12 +385,9 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 					  rxq->hw_timestamp * rxq->timestamp_rx_flag);
 	__m128i cv_flags;
 	const __m128i zero = _mm_setzero_si128();
-	const __m128i ptype_mask =
-		_mm_set_epi32(0xfd06, 0xfd06, 0xfd06, 0xfd06);
-	const __m128i ptype_ol_mask =
-		_mm_set_epi32(0x106, 0x106, 0x106, 0x106);
-	const __m128i pinfo_mask =
-		_mm_set_epi32(0x3, 0x3, 0x3, 0x3);
+	const __m128i ptype_mask = _mm_set1_epi32(0xfd06);
+	const __m128i ptype_ol_mask = _mm_set1_epi32(0x106);
+	const __m128i pinfo_mask = _mm_set1_epi32(0x3);
 	const __m128i cv_flag_sel =
 		_mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0,
 			     (uint8_t)((PKT_RX_IP_CKSUM_GOOD |
@@ -268,13 +399,7 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
 			     (uint8_t)(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
 			     0);
 	const __m128i cv_mask =
-		_mm_set_epi32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-			      PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-			      PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
-			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-			      PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
+		_mm_set1_epi32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD |
 			      PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
 	const __m128i mbuf_init =
 		_mm_load_si128((__m128i *)&rxq->mbuf_initializer);

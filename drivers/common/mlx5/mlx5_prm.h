@@ -239,6 +239,9 @@
 /* Default mark mask for metadata legacy mode. */
 #define MLX5_FLOW_MARK_MASK 0xffffff
 
+/* Byte length mask when mark is enable in miniCQE */
+#define MLX5_LEN_WITH_MARK_MASK 0xffffff00
+
 /* Maximum number of DS in WQE. Limited by 6-bit field. */
 #define MLX5_DSEG_MAX 63
 
@@ -2152,11 +2155,14 @@ struct mlx5_ifc_cqc_bits {
 	u8 cqe_comp_en[0x1];
 	u8 mini_cqe_res_format[0x2];
 	u8 st[0x4];
-	u8 reserved_at_18[0x8];
+	u8 reserved_at_18[0x1];
+	u8 cqe_comp_layout[0x7];
 	u8 dbr_umem_id[0x20];
 	u8 reserved_at_40[0x14];
 	u8 page_offset[0x6];
-	u8 reserved_at_5a[0x6];
+	u8 reserved_at_5a[0x2];
+	u8 mini_cqe_res_format_ext[0x2];
+	u8 cq_timestamp_format[0x2];
 	u8 reserved_at_60[0x3];
 	u8 log_cq_size[0x5];
 	u8 uar_page[0x18];
@@ -2918,7 +2924,14 @@ struct mlx5_mini_cqe8 {
 	union {
 		uint32_t rx_hash_result;
 		struct {
-			uint16_t checksum;
+			union {
+				uint16_t checksum;
+				uint16_t flow_tag_high;
+				struct {
+					uint8_t reserved;
+					uint8_t hdr_type;
+				};
+			};
 			uint16_t stride_idx;
 		};
 		struct {
@@ -2927,15 +2940,19 @@ struct mlx5_mini_cqe8 {
 			uint8_t  reserved;
 		} s_wqe_info;
 	};
-	uint32_t byte_cnt;
+	union {
+		uint32_t byte_cnt_flow;
+		uint32_t byte_cnt;
+	};
 };
 
 /* Mini CQE responder format. */
 enum {
 	MLX5_CQE_RESP_FORMAT_HASH = 0x0,
 	MLX5_CQE_RESP_FORMAT_CSUM = 0x1,
-	MLX5_CQE_RESP_FORMAT_CSUM_FLOW_TAG = 0x2,
+	MLX5_CQE_RESP_FORMAT_FTAG_STRIDX = 0x2,
 	MLX5_CQE_RESP_FORMAT_CSUM_STRIDX = 0x3,
+	MLX5_CQE_RESP_FORMAT_L34H_STRIDX = 0x4,
 };
 
 /* srTCM PRM flow meter parameters. */

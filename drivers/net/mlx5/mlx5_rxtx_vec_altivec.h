@@ -108,7 +108,8 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	const vector unsigned short rxdf_sel_mask =
 		(vector unsigned short){
 			0xffff, 0xffff, 0, 0, 0, 0xffff, 0, 0};
-	const uint32_t flow_tag = t_pkt->hash.fdir.hi;
+	vector unsigned char ol_flags = (vector unsigned char){0};
+	vector unsigned char ol_flags_mask = (vector unsigned char){0};
 	unsigned int pos;
 	unsigned int i;
 	unsigned int inv = 0;
@@ -231,11 +232,10 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			vec_sel((vector unsigned long)shmask,
 			(vector unsigned long)invalid_mask, shmask);
 
-		mcqe1 = (vector unsigned char)
+		byte_cnt = (vector unsigned char)
+			vec_sel((vector unsigned short)
 			vec_sro((vector unsigned short)mcqe1,
 			(vector unsigned char){32}),
-		byte_cnt = (vector unsigned char)
-			vec_sel((vector unsigned short)mcqe1,
 			(vector unsigned short)mcqe2, mcqe_sel_mask);
 		byte_cnt = vec_perm(byte_cnt, zero, len_shuf_mask);
 		byte_cnt = (vector unsigned char)
@@ -255,11 +255,216 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 #endif
 
 		if (rxq->mark) {
-			/* E.1 store flow tag (rte_flow mark). */
-			elts[pos]->hash.fdir.hi = flow_tag;
-			elts[pos + 1]->hash.fdir.hi = flow_tag;
-			elts[pos + 2]->hash.fdir.hi = flow_tag;
-			elts[pos + 3]->hash.fdir.hi = flow_tag;
+			if (rxq->mcqe_format !=
+			    MLX5_CQE_RESP_FORMAT_FTAG_STRIDX) {
+				const uint32_t flow_tag = t_pkt->hash.fdir.hi;
+
+				/* E.1 store flow tag (rte_flow mark). */
+				elts[pos]->hash.fdir.hi = flow_tag;
+				elts[pos + 1]->hash.fdir.hi = flow_tag;
+				elts[pos + 2]->hash.fdir.hi = flow_tag;
+				elts[pos + 3]->hash.fdir.hi = flow_tag;
+			} else {
+				const vector unsigned char flow_mark_adj =
+					(vector unsigned char)
+					(vector unsigned int){
+					-1, -1, -1, -1};
+				const vector unsigned char flow_mark_shuf =
+					(vector unsigned char){
+					-1, -1, -1, -1,
+					-1, -1, -1, -1,
+					12,  8,  9, -1,
+					 4,  0,  1,  -1};
+				const vector unsigned char ft_mask =
+					(vector unsigned char)
+					(vector unsigned int){
+					0xffffff00, 0xffffff00,
+					0xffffff00, 0xffffff00};
+				const vector unsigned char fdir_flags =
+					(vector unsigned char)
+					(vector unsigned int){
+					PKT_RX_FDIR, PKT_RX_FDIR,
+					PKT_RX_FDIR, PKT_RX_FDIR};
+				const vector unsigned char fdir_all_flags =
+					(vector unsigned char)
+					(vector unsigned int){
+					PKT_RX_FDIR | PKT_RX_FDIR_ID,
+					PKT_RX_FDIR | PKT_RX_FDIR_ID,
+					PKT_RX_FDIR | PKT_RX_FDIR_ID,
+					PKT_RX_FDIR | PKT_RX_FDIR_ID};
+				vector unsigned char fdir_id_flags =
+					(vector unsigned char)
+					(vector unsigned int){
+					PKT_RX_FDIR_ID, PKT_RX_FDIR_ID,
+					PKT_RX_FDIR_ID, PKT_RX_FDIR_ID};
+				/* Extract flow_tag field. */
+				vector unsigned char ftag0 = vec_perm(mcqe1,
+							zero, flow_mark_shuf);
+				vector unsigned char ftag1 = vec_perm(mcqe2,
+							zero, flow_mark_shuf);
+				vector unsigned char ftag =
+					(vector unsigned char)
+					vec_mergel((vector unsigned int)ftag0,
+					(vector unsigned int)ftag1);
+				vector unsigned char invalid_mask =
+					(vector unsigned char)
+					vec_cmpeq((vector unsigned int)ftag,
+					(vector unsigned int)zero);
+
+				ol_flags_mask = (vector unsigned char)
+					vec_or((vector unsigned long)
+					ol_flags_mask,
+					(vector unsigned long)fdir_all_flags);
+
+				/* Set PKT_RX_FDIR if flow tag is non-zero. */
+				invalid_mask = (vector unsigned char)
+					vec_cmpeq((vector unsigned int)ftag,
+					(vector unsigned int)zero);
+				ol_flags = (vector unsigned char)
+					vec_or((vector unsigned long)ol_flags,
+					(vector unsigned long)
+					vec_andc((vector unsigned long)
+					fdir_flags,
+					(vector unsigned long)invalid_mask));
+				ol_flags_mask = (vector unsigned char)
+					vec_or((vector unsigned long)
+					ol_flags_mask,
+					(vector unsigned long)fdir_flags);
+
+				/* Mask out invalid entries. */
+				fdir_id_flags = (vector unsigned char)
+					vec_andc((vector unsigned long)
+					fdir_id_flags,
+					(vector unsigned long)invalid_mask);
+
+				/* Check if flow tag MLX5_FLOW_MARK_DEFAULT. */
+				ol_flags = (vector unsigned char)
+					vec_or((vector unsigned long)ol_flags,
+					(vector unsigned long)
+					vec_andc((vector unsigned long)
+					fdir_id_flags,
+					(vector unsigned long)
+					vec_cmpeq((vector unsigned int)ftag,
+					(vector unsigned int)ft_mask)));
+
+				ftag = (vector unsigned char)
+					((vector unsigned int)ftag +
+					(vector unsigned int)flow_mark_adj);
+				elts[pos]->hash.fdir.hi =
+					((vector unsigned int)ftag)[0];
+				elts[pos + 1]->hash.fdir.hi =
+					((vector unsigned int)ftag)[1];
+				elts[pos + 2]->hash.fdir.hi =
+					((vector unsigned int)ftag)[2];
+				elts[pos + 3]->hash.fdir.hi =
+					((vector unsigned int)ftag)[3];
+			}
+		}
+		if (unlikely(rxq->mcqe_format != MLX5_CQE_RESP_FORMAT_HASH)) {
+			if (rxq->mcqe_format ==
+			    MLX5_CQE_RESP_FORMAT_L34H_STRIDX) {
+				const uint8_t pkt_info =
+					(cq->pkt_info & 0x3) << 6;
+				const uint8_t pkt_hdr0 =
+					mcq[pos % 8].hdr_type;
+				const uint8_t pkt_hdr1 =
+					mcq[pos % 8 + 1].hdr_type;
+				const uint8_t pkt_hdr2 =
+					mcq[pos % 8 + 2].hdr_type;
+				const uint8_t pkt_hdr3 =
+					mcq[pos % 8 + 3].hdr_type;
+				const vector unsigned char vlan_mask =
+					(vector unsigned char)
+					(vector unsigned int) {
+					(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
+					(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
+					(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED),
+					(PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED)};
+				const vector unsigned char cv_mask =
+					(vector unsigned char)
+					(vector unsigned int) {
+					MLX5_CQE_VLAN_STRIPPED,
+					MLX5_CQE_VLAN_STRIPPED,
+					MLX5_CQE_VLAN_STRIPPED,
+					MLX5_CQE_VLAN_STRIPPED};
+				vector unsigned char pkt_cv =
+					(vector unsigned char)
+					(vector unsigned int) {
+					pkt_hdr0 & 0x1, pkt_hdr1 & 0x1,
+					pkt_hdr2 & 0x1, pkt_hdr3 & 0x1};
+
+				ol_flags_mask = (vector unsigned char)
+					vec_or((vector unsigned long)
+					ol_flags_mask,
+					(vector unsigned long)vlan_mask);
+				ol_flags = (vector unsigned char)
+					vec_or((vector unsigned long)ol_flags,
+					(vector unsigned long)
+					vec_and((vector unsigned long)vlan_mask,
+					(vector unsigned long)
+					vec_cmpeq((vector unsigned int)pkt_cv,
+					(vector unsigned int)cv_mask)));
+				elts[pos]->packet_type =
+					mlx5_ptype_table[(pkt_hdr0 >> 2) |
+							 pkt_info];
+				elts[pos + 1]->packet_type =
+					mlx5_ptype_table[(pkt_hdr1 >> 2) |
+							 pkt_info];
+				elts[pos + 2]->packet_type =
+					mlx5_ptype_table[(pkt_hdr2 >> 2) |
+							 pkt_info];
+				elts[pos + 3]->packet_type =
+					mlx5_ptype_table[(pkt_hdr3 >> 2) |
+							 pkt_info];
+				if (rxq->tunnel) {
+					elts[pos]->packet_type |=
+						!!(((pkt_hdr0 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 1]->packet_type |=
+						!!(((pkt_hdr1 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 2]->packet_type |=
+						!!(((pkt_hdr2 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 3]->packet_type |=
+						!!(((pkt_hdr3 >> 2) |
+						pkt_info) & (1 << 6));
+				}
+			}
+			const vector unsigned char hash_mask =
+				(vector unsigned char)(vector unsigned int) {
+					PKT_RX_RSS_HASH,
+					PKT_RX_RSS_HASH,
+					PKT_RX_RSS_HASH,
+					PKT_RX_RSS_HASH};
+			const vector unsigned char rearm_flags =
+				(vector unsigned char)(vector unsigned int) {
+				(uint32_t)t_pkt->ol_flags,
+				(uint32_t)t_pkt->ol_flags,
+				(uint32_t)t_pkt->ol_flags,
+				(uint32_t)t_pkt->ol_flags};
+
+			ol_flags_mask = (vector unsigned char)
+				vec_or((vector unsigned long)ol_flags_mask,
+				(vector unsigned long)hash_mask);
+			ol_flags = (vector unsigned char)
+				vec_or((vector unsigned long)ol_flags,
+				(vector unsigned long)
+				vec_andc((vector unsigned long)rearm_flags,
+				(vector unsigned long)ol_flags_mask));
+
+			elts[pos]->ol_flags =
+				((vector unsigned int)ol_flags)[0];
+			elts[pos + 1]->ol_flags =
+				((vector unsigned int)ol_flags)[1];
+			elts[pos + 2]->ol_flags =
+				((vector unsigned int)ol_flags)[2];
+			elts[pos + 3]->ol_flags =
+				((vector unsigned int)ol_flags)[3];
+			elts[pos]->hash.rss = 0;
+			elts[pos + 1]->hash.rss = 0;
+			elts[pos + 2]->hash.rss = 0;
+			elts[pos + 3]->hash.rss = 0;
 		}
 		if (rxq->dynf_meta) {
 			int32_t offs = rxq->flow_meta_offset;

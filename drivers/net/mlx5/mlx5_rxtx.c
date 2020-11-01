@@ -80,7 +80,8 @@ static uint16_t mlx5_tx_burst_##func(void *txq, \
 #define MLX5_TXOFF_INFO(func, olx) {mlx5_tx_burst_##func, olx},
 
 static __rte_always_inline uint32_t
-rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe);
+rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
+				   volatile struct mlx5_mini_cqe8 *mcqe);
 
 static __rte_always_inline int
 mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
@@ -91,7 +92,8 @@ rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe);
 
 static __rte_always_inline void
 rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
-	       volatile struct mlx5_cqe *cqe, uint32_t rss_hash_res);
+	       volatile struct mlx5_cqe *cqe,
+	       volatile struct mlx5_mini_cqe8 *mcqe);
 
 static int
 mlx5_queue_state_modify(struct rte_eth_dev *dev,
@@ -100,12 +102,13 @@ mlx5_queue_state_modify(struct rte_eth_dev *dev,
 static inline void
 mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *__rte_restrict tcp,
 			volatile struct mlx5_cqe *__rte_restrict cqe,
-			uint32_t phcsum);
+			uint32_t phcsum, uint8_t l4_type);
 
 static inline void
 mlx5_lro_update_hdr(uint8_t *__rte_restrict padd,
 		    volatile struct mlx5_cqe *__rte_restrict cqe,
-		    uint32_t len);
+			volatile struct mlx5_mini_cqe8 *mcqe,
+		    struct mlx5_rxq_data *rxq, uint32_t len);
 
 uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
 	[0xff] = RTE_PTYPE_ALL_MASK, /* Last entry for errored packet. */
@@ -813,12 +816,19 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
  *   Packet type for struct rte_mbuf.
  */
 static inline uint32_t
-rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
+rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
+				   volatile struct mlx5_mini_cqe8 *mcqe)
 {
 	uint8_t idx;
-	uint8_t pinfo = cqe->pkt_info;
-	uint16_t ptype = cqe->hdr_type_etc;
+	uint8_t ptype;
+	uint8_t pinfo = (cqe->pkt_info & 0x3) << 6;
 
+	/* Get l3/l4 header from mini-CQE in case L3/L4 format*/
+	if (mcqe == NULL ||
+	    rxq->mcqe_format != MLX5_CQE_RESP_FORMAT_L34H_STRIDX)
+		ptype = (cqe->hdr_type_etc & 0xfc00) >> 10;
+	else
+		ptype = mcqe->hdr_type >> 2;
 	/*
 	 * The index to the array should have:
 	 * bit[1:0] = l3_hdr_type
@@ -827,7 +837,7 @@ rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
 	 * bit[6] = tunneled
 	 * bit[7] = outer_l3_type
 	 */
-	idx = ((pinfo & 0x3) << 6) | ((ptype & 0xfc00) >> 10);
+	idx = pinfo | ptype;
 	return mlx5_ptype_table[idx] | rxq->tunnel * !!(idx & (1 << 6));
 }
 
@@ -1131,8 +1141,8 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 				(volatile struct mlx5_mini_cqe8 (*)[8])
 				(uintptr_t)(&(*rxq->cqes)[zip->ca &
 							  cqe_cnt].pkt_info);
-
-			len = rte_be_to_cpu_32((*mc)[zip->ai & 7].byte_cnt);
+			len = rte_be_to_cpu_32((*mc)[zip->ai & 7].byte_cnt &
+					       rxq->byte_mask);
 			*mcqe = &(*mc)[zip->ai & 7];
 			if ((++zip->ai & 7) == 0) {
 				/* Invalidate consumed CQEs */
@@ -1210,7 +1220,8 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 				--rxq->cq_ci;
 				zip->cq_ci = rxq->cq_ci + zip->cqe_cnt;
 				/* Get packet size to return. */
-				len = rte_be_to_cpu_32((*mc)[0].byte_cnt);
+				len = rte_be_to_cpu_32((*mc)[0].byte_cnt &
+						       rxq->byte_mask);
 				*mcqe = &(*mc)[0];
 				zip->ai = 1;
 				/* Prefetch all to be invalidated */
@@ -1274,22 +1285,42 @@ rxq_cq_to_ol_flags(volatile struct mlx5_cqe *cqe)
  */
 static inline void
 rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
-	       volatile struct mlx5_cqe *cqe, uint32_t rss_hash_res)
+	       volatile struct mlx5_cqe *cqe,
+	       volatile struct mlx5_mini_cqe8 *mcqe)
 {
 	/* Update packet information. */
-	pkt->packet_type = rxq_cq_to_pkt_type(rxq, cqe);
-	if (rss_hash_res && rxq->rss_hash) {
-		pkt->hash.rss = rss_hash_res;
-		pkt->ol_flags |= PKT_RX_RSS_HASH;
-	}
-	if (rxq->mark && MLX5_FLOW_MARK_IS_VALID(cqe->sop_drop_qpn)) {
-		pkt->ol_flags |= PKT_RX_FDIR;
-		if (cqe->sop_drop_qpn !=
-		    rte_cpu_to_be_32(MLX5_FLOW_MARK_DEFAULT)) {
-			uint32_t mark = cqe->sop_drop_qpn;
+	pkt->packet_type = rxq_cq_to_pkt_type(rxq, cqe, mcqe);
 
-			pkt->ol_flags |= PKT_RX_FDIR_ID;
-			pkt->hash.fdir.hi = mlx5_flow_mark_get(mark);
+	if (rxq->rss_hash) {
+		uint32_t rss_hash_res = 0;
+
+		/* If compressed, take hash result from mini-CQE. */
+		if (mcqe == NULL ||
+		    rxq->mcqe_format != MLX5_CQE_RESP_FORMAT_HASH)
+			rss_hash_res = rte_be_to_cpu_32(cqe->rx_hash_res);
+		else
+			rss_hash_res = rte_be_to_cpu_32(mcqe->rx_hash_result);
+		if (rss_hash_res) {
+			pkt->hash.rss = rss_hash_res;
+			pkt->ol_flags |= PKT_RX_RSS_HASH;
+		}
+	}
+	if (rxq->mark) {
+		uint32_t mark = 0;
+
+		/* If compressed, take flow tag from mini-CQE. */
+		if (mcqe == NULL ||
+		    rxq->mcqe_format != MLX5_CQE_RESP_FORMAT_FTAG_STRIDX)
+			mark = cqe->sop_drop_qpn;
+		else
+			mark = ((mcqe->byte_cnt_flow & 0xff) << 8) |
+				(mcqe->flow_tag_high << 16);
+		if (MLX5_FLOW_MARK_IS_VALID(mark)) {
+			pkt->ol_flags |= PKT_RX_FDIR;
+			if (mark != RTE_BE32(MLX5_FLOW_MARK_DEFAULT)) {
+				pkt->ol_flags |= PKT_RX_FDIR_ID;
+				pkt->hash.fdir.hi = mlx5_flow_mark_get(mark);
+			}
 		}
 	}
 	if (rxq->dynf_meta && cqe->flow_table_metadata) {
@@ -1299,10 +1330,20 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 	}
 	if (rxq->csum)
 		pkt->ol_flags |= rxq_cq_to_ol_flags(cqe);
-	if (rxq->vlan_strip &&
-	    (cqe->hdr_type_etc & rte_cpu_to_be_16(MLX5_CQE_VLAN_STRIPPED))) {
-		pkt->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
-		pkt->vlan_tci = rte_be_to_cpu_16(cqe->vlan_info);
+	if (rxq->vlan_strip) {
+		bool vlan_strip;
+
+		if (mcqe == NULL ||
+		    rxq->mcqe_format != MLX5_CQE_RESP_FORMAT_L34H_STRIDX)
+			vlan_strip = cqe->hdr_type_etc &
+				     RTE_BE16(MLX5_CQE_VLAN_STRIPPED);
+		else
+			vlan_strip = mcqe->hdr_type &
+				     RTE_BE16(MLX5_CQE_VLAN_STRIPPED);
+		if (vlan_strip) {
+			pkt->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+			pkt->vlan_tci = rte_be_to_cpu_16(cqe->vlan_info);
+		}
 	}
 	if (rxq->hw_timestamp) {
 		uint64_t ts = rte_be_to_cpu_64(cqe->timestamp);
@@ -1348,7 +1389,6 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			&((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[idx];
 		struct rte_mbuf *rep = (*rxq->elts)[idx];
 		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
-		uint32_t rss_hash_res;
 
 		if (pkt)
 			NEXT(seg) = rep;
@@ -1387,18 +1427,14 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			pkt = seg;
 			MLX5_ASSERT(len >= (rxq->crc_present << 2));
 			pkt->ol_flags &= EXT_ATTACHED_MBUF;
-			/* If compressed, take hash result from mini-CQE. */
-			rss_hash_res = rte_be_to_cpu_32(mcqe == NULL ?
-							cqe->rx_hash_res :
-							mcqe->rx_hash_result);
-			rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
+			rxq_cq_to_mbuf(rxq, pkt, cqe, mcqe);
 			if (rxq->crc_present)
 				len -= RTE_ETHER_CRC_LEN;
 			PKT_LEN(pkt) = len;
 			if (cqe->lro_num_seg > 1) {
 				mlx5_lro_update_hdr
 					(rte_pktmbuf_mtod(pkt, uint8_t *), cqe,
-					 len);
+					 mcqe, rxq, len);
 				pkt->ol_flags |= PKT_RX_LRO;
 				pkt->tso_segsz = len / cqe->lro_num_seg;
 			}
@@ -1468,10 +1504,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 static inline void
 mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *__rte_restrict tcp,
 			volatile struct mlx5_cqe *__rte_restrict cqe,
-			uint32_t phcsum)
+			uint32_t phcsum, uint8_t l4_type)
 {
-	uint8_t l4_type = (rte_be_to_cpu_16(cqe->hdr_type_etc) &
-			   MLX5_CQE_L4_TYPE_MASK) >> MLX5_CQE_L4_TYPE_SHIFT;
 	/*
 	 * The HW calculates only the TCP payload checksum, need to complete
 	 * the TCP header checksum and the L3 pseudo-header checksum.
@@ -1510,7 +1544,8 @@ mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *__rte_restrict tcp,
 static inline void
 mlx5_lro_update_hdr(uint8_t *__rte_restrict padd,
 		    volatile struct mlx5_cqe *__rte_restrict cqe,
-		    uint32_t len)
+		    volatile struct mlx5_mini_cqe8 *mcqe,
+		    struct mlx5_rxq_data *rxq, uint32_t len)
 {
 	union {
 		struct rte_ether_hdr *eth;
@@ -1524,6 +1559,7 @@ mlx5_lro_update_hdr(uint8_t *__rte_restrict padd,
 	};
 	uint16_t proto = h.eth->ether_type;
 	uint32_t phcsum;
+	uint8_t l4_type;
 
 	h.eth++;
 	while (proto == RTE_BE16(RTE_ETHER_TYPE_VLAN) ||
@@ -1545,7 +1581,14 @@ mlx5_lro_update_hdr(uint8_t *__rte_restrict padd,
 		phcsum = rte_ipv6_phdr_cksum(h.ipv6, 0);
 		h.ipv6++;
 	}
-	mlx5_lro_update_tcp_hdr(h.tcp, cqe, phcsum);
+	if (mcqe == NULL ||
+	    rxq->mcqe_format != MLX5_CQE_RESP_FORMAT_L34H_STRIDX)
+		l4_type = (rte_be_to_cpu_16(cqe->hdr_type_etc) &
+			   MLX5_CQE_L4_TYPE_MASK) >> MLX5_CQE_L4_TYPE_SHIFT;
+	else
+		l4_type = (rte_be_to_cpu_16(mcqe->hdr_type) &
+			   MLX5_CQE_L4_TYPE_MASK) >> MLX5_CQE_L4_TYPE_SHIFT;
+	mlx5_lro_update_tcp_hdr(h.tcp, cqe, phcsum, l4_type);
 }
 
 void
@@ -1586,6 +1629,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct mlx5_rxq_data *rxq = dpdk_rxq;
 	const uint32_t strd_n = 1 << rxq->strd_num_n;
+	const uint32_t strd_sz = 1 << rxq->strd_sz_n;
 	const uint32_t cq_mask = (1 << rxq->cqe_n) - 1;
 	const uint32_t wq_mask = (1 << rxq->elts_n) - 1;
 	volatile struct mlx5_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];
@@ -1602,7 +1646,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint16_t strd_idx;
 		uint32_t byte_cnt;
 		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
-		uint32_t rss_hash_res = 0;
 		enum mlx5_rqx_code rxq_code;
 
 		if (consumed_strd == strd_n) {
@@ -1618,19 +1661,23 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (!ret)
 			break;
 		byte_cnt = ret;
-		strd_cnt = (byte_cnt & MLX5_MPRQ_STRIDE_NUM_MASK) >>
-			   MLX5_MPRQ_STRIDE_NUM_SHIFT;
+		len = (byte_cnt & MLX5_MPRQ_LEN_MASK) >> MLX5_MPRQ_LEN_SHIFT;
+		MLX5_ASSERT((int)len >= (rxq->crc_present << 2));
+		if (rxq->crc_present)
+			len -= RTE_ETHER_CRC_LEN;
+		if (mcqe &&
+		    rxq->mcqe_format == MLX5_CQE_RESP_FORMAT_FTAG_STRIDX)
+			strd_cnt = (len / strd_sz) + !!(len % strd_sz);
+		else
+			strd_cnt = (byte_cnt & MLX5_MPRQ_STRIDE_NUM_MASK) >>
+				   MLX5_MPRQ_STRIDE_NUM_SHIFT;
 		MLX5_ASSERT(strd_cnt);
 		consumed_strd += strd_cnt;
 		if (byte_cnt & MLX5_MPRQ_FILLER_MASK)
 			continue;
-		if (mcqe == NULL) {
-			rss_hash_res = rte_be_to_cpu_32(cqe->rx_hash_res);
-			strd_idx = rte_be_to_cpu_16(cqe->wqe_counter);
-		} else {
-			/* mini-CQE for MPRQ doesn't have hash result. */
-			strd_idx = rte_be_to_cpu_16(mcqe->stride_idx);
-		}
+		strd_idx = rte_be_to_cpu_16(mcqe == NULL ?
+					cqe->wqe_counter :
+					mcqe->stride_idx);
 		MLX5_ASSERT(strd_idx < strd_n);
 		MLX5_ASSERT(!((rte_be_to_cpu_16(cqe->wqe_id) ^ rq_ci) &
 			    wq_mask));
@@ -1656,10 +1703,10 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				break;
 			}
 		}
-		rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
+		rxq_cq_to_mbuf(rxq, pkt, cqe, mcqe);
 		if (cqe->lro_num_seg > 1) {
 			mlx5_lro_update_hdr(rte_pktmbuf_mtod(pkt, uint8_t *),
-					    cqe, len);
+					    cqe, mcqe, rxq, len);
 			pkt->ol_flags |= PKT_RX_LRO;
 			pkt->tso_segsz = len / cqe->lro_num_seg;
 		}

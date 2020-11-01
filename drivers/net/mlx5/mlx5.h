@@ -205,6 +205,7 @@ struct mlx5_dev_config {
 	/* Whether tunnel stateless offloads are supported. */
 	unsigned int mpls_en:1; /* MPLS over GRE/UDP is enabled. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
+	unsigned int cqe_comp_fmt:3; /* CQE compression format. */
 	unsigned int cqe_pad:1; /* CQE padding is enabled. */
 	unsigned int tso:1; /* Whether TSO is supported. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */

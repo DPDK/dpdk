@@ -111,7 +111,8 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		rxq->crc_present * RTE_ETHER_CRC_LEN, 0,
 		0, 0
 	};
-	const uint32_t flow_tag = t_pkt->hash.fdir.hi;
+	uint32x4_t ol_flags = {0, 0, 0, 0};
+	uint32x4_t ol_flags_mask = {0, 0, 0, 0};
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	uint32_t rcvd_byte = 0;
 #endif
@@ -198,11 +199,139 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		rcvd_byte += vget_lane_u64(vpaddl_u32(vpaddl_u16(byte_cnt)), 0);
 #endif
 		if (rxq->mark) {
-			/* E.1 store flow tag (rte_flow mark). */
-			elts[pos]->hash.fdir.hi = flow_tag;
-			elts[pos + 1]->hash.fdir.hi = flow_tag;
-			elts[pos + 2]->hash.fdir.hi = flow_tag;
-			elts[pos + 3]->hash.fdir.hi = flow_tag;
+			if (rxq->mcqe_format !=
+			    MLX5_CQE_RESP_FORMAT_FTAG_STRIDX) {
+				const uint32_t flow_tag = t_pkt->hash.fdir.hi;
+
+				/* E.1 store flow tag (rte_flow mark). */
+				elts[pos]->hash.fdir.hi = flow_tag;
+				elts[pos + 1]->hash.fdir.hi = flow_tag;
+				elts[pos + 2]->hash.fdir.hi = flow_tag;
+				elts[pos + 3]->hash.fdir.hi = flow_tag;
+			}  else {
+				const uint32x4_t flow_mark_adj = {
+					-1, -1, -1, -1 };
+				const uint8x16_t flow_mark_shuf = {
+					28, 24, 25, -1,
+					20, 16, 17, -1,
+					12,  8,  9, -1,
+					 4,  0,  1, -1};
+				/* Extract flow_tag field. */
+				const uint32x4_t ft_mask =
+					vdupq_n_u32(MLX5_FLOW_MARK_DEFAULT);
+				const uint32x4_t fdir_flags =
+					vdupq_n_u32(PKT_RX_FDIR);
+				const uint32x4_t fdir_all_flags =
+					vdupq_n_u32(PKT_RX_FDIR |
+						    PKT_RX_FDIR_ID);
+				uint32x4_t fdir_id_flags =
+					vdupq_n_u32(PKT_RX_FDIR_ID);
+				uint32x4_t invalid_mask, ftag;
+
+				__asm__ volatile
+				/* A.1 load mCQEs into a 128bit register. */
+				("ld1 {v16.16b - v17.16b}, [%[mcq]]\n\t"
+				/* Extract flow_tag. */
+				 "tbl %[ftag].16b, {v16.16b - v17.16b}, %[flow_mark_shuf].16b\n\t"
+				: [ftag]"=&w"(ftag)
+				: [mcq]"r"(p),
+				  [flow_mark_shuf]"w"(flow_mark_shuf)
+				: "memory", "v16", "v17");
+				invalid_mask = vceqzq_u32(ftag);
+				ol_flags_mask = vorrq_u32(ol_flags_mask,
+							  fdir_all_flags);
+				/* Set PKT_RX_FDIR if flow tag is non-zero. */
+				ol_flags = vorrq_u32(ol_flags,
+					vbicq_u32(fdir_flags, invalid_mask));
+				/* Mask out invalid entries. */
+				fdir_id_flags = vbicq_u32(fdir_id_flags,
+							  invalid_mask);
+				/* Check if flow tag MLX5_FLOW_MARK_DEFAULT. */
+				ol_flags = vorrq_u32(ol_flags,
+					vbicq_u32(fdir_id_flags,
+						  vceqq_u32(ftag, ft_mask)));
+				ftag = vaddq_u32(ftag, flow_mark_adj);
+				elts[pos]->hash.fdir.hi =
+					vgetq_lane_u32(ftag, 3);
+				elts[pos + 1]->hash.fdir.hi =
+					vgetq_lane_u32(ftag, 2);
+				elts[pos + 2]->hash.fdir.hi =
+					vgetq_lane_u32(ftag, 1);
+				elts[pos + 3]->hash.fdir.hi =
+					vgetq_lane_u32(ftag, 0);
+				}
+		}
+		if (unlikely(rxq->mcqe_format !=
+			     MLX5_CQE_RESP_FORMAT_HASH)) {
+			if (rxq->mcqe_format ==
+			    MLX5_CQE_RESP_FORMAT_L34H_STRIDX) {
+				const uint8_t pkt_info =
+					(cq->pkt_info & 0x3) << 6;
+				const uint8_t pkt_hdr0 =
+					mcq[pos % 8].hdr_type;
+				const uint8_t pkt_hdr1 =
+					mcq[pos % 8 + 1].hdr_type;
+				const uint8_t pkt_hdr2 =
+					mcq[pos % 8 + 2].hdr_type;
+				const uint8_t pkt_hdr3 =
+					mcq[pos % 8 + 3].hdr_type;
+				const uint32x4_t vlan_mask =
+					vdupq_n_u32(PKT_RX_VLAN |
+						    PKT_RX_VLAN_STRIPPED);
+				const uint32x4_t cv_mask =
+					vdupq_n_u32(MLX5_CQE_VLAN_STRIPPED);
+				const uint32x4_t pkt_cv = {
+					pkt_hdr0 & 0x1, pkt_hdr1 & 0x1,
+					pkt_hdr2 & 0x1, pkt_hdr3 & 0x1};
+
+				ol_flags_mask = vorrq_u32(ol_flags_mask,
+							  vlan_mask);
+				ol_flags = vorrq_u32(ol_flags,
+						vandq_u32(vlan_mask,
+						vceqq_u32(pkt_cv, cv_mask)));
+				elts[pos]->packet_type =
+					mlx5_ptype_table[(pkt_hdr0 >> 2) |
+							 pkt_info];
+				elts[pos + 1]->packet_type =
+					mlx5_ptype_table[(pkt_hdr1 >> 2) |
+							 pkt_info];
+				elts[pos + 2]->packet_type =
+					mlx5_ptype_table[(pkt_hdr2 >> 2) |
+							 pkt_info];
+				elts[pos + 3]->packet_type =
+					mlx5_ptype_table[(pkt_hdr3 >> 2) |
+							 pkt_info];
+				if (rxq->tunnel) {
+					elts[pos]->packet_type |=
+						!!(((pkt_hdr0 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 1]->packet_type |=
+						!!(((pkt_hdr1 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 2]->packet_type |=
+						!!(((pkt_hdr2 >> 2) |
+						pkt_info) & (1 << 6));
+					elts[pos + 3]->packet_type |=
+						!!(((pkt_hdr3 >> 2) |
+						pkt_info) & (1 << 6));
+				}
+			}
+			const uint32x4_t hash_flags =
+				vdupq_n_u32(PKT_RX_RSS_HASH);
+			const uint32x4_t rearm_flags =
+				vdupq_n_u32((uint32_t)t_pkt->ol_flags);
+
+			ol_flags_mask = vorrq_u32(ol_flags_mask, hash_flags);
+			ol_flags = vorrq_u32(ol_flags,
+					vbicq_u32(rearm_flags, ol_flags_mask));
+			elts[pos]->ol_flags = vgetq_lane_u32(ol_flags, 3);
+			elts[pos + 1]->ol_flags = vgetq_lane_u32(ol_flags, 2);
+			elts[pos + 2]->ol_flags = vgetq_lane_u32(ol_flags, 1);
+			elts[pos + 3]->ol_flags = vgetq_lane_u32(ol_flags, 0);
+			elts[pos]->hash.rss = 0;
+			elts[pos + 1]->hash.rss = 0;
+			elts[pos + 2]->hash.rss = 0;
+			elts[pos + 3]->hash.rss = 0;
 		}
 		if (rxq->dynf_meta) {
 			int32_t offs = rxq->flow_meta_offset;

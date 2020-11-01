@@ -126,6 +126,7 @@ struct mlx5_rxq_data {
 	unsigned int strd_scatter_en:1; /* Scattered packets from a stride. */
 	unsigned int lro:1; /* Enable LRO. */
 	unsigned int dynf_meta:1; /* Dynamic metadata is configured. */
+	unsigned int mcqe_format:3; /* Dynamic metadata is configured. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
@@ -135,6 +136,7 @@ struct mlx5_rxq_data {
 	uint32_t rq_pi;
 	uint32_t cq_ci;
 	uint16_t rq_repl_thresh; /* Threshold for buffer replenishment. */
+	uint32_t byte_mask;
 	union {
 		struct rxq_zip zip; /* Compressed context. */
 		uint16_t decompressed;

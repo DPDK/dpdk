@@ -1361,7 +1361,14 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	}
 	mod = tmp >= 0 ? tmp : -tmp;
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
+		if (tmp > MLX5_CQE_RESP_FORMAT_L34H_STRIDX) {
+			DRV_LOG(ERR, "invalid CQE compression "
+				     "format parameter");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
 		config->cqe_comp = !!tmp;
+		config->cqe_comp_fmt = tmp;
 	} else if (strcmp(MLX5_RXQ_CQE_PAD_EN, key) == 0) {
 		config->cqe_pad = !!tmp;
 	} else if (strcmp(MLX5_RXQ_PKT_PAD_EN, key) == 0) {

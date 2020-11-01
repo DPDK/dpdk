@@ -437,17 +437,39 @@ mlx5_rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	if (priv->config.cqe_comp && !rxq_data->hw_timestamp &&
 	    !rxq_data->lro) {
 		cq_attr.cqe_comp_en = 1u;
-		/*
-		 * Select CSUM miniCQE format only for non-vectorized MPRQ
-		 * Rx burst, use HASH miniCQE format for everything else.
-		 */
-		if (mlx5_rxq_check_vec_support(rxq_data) < 0 &&
-			mlx5_rxq_mprq_enabled(rxq_data))
-			cq_attr.mini_cqe_res_format =
-				MLX5_CQE_RESP_FORMAT_CSUM_STRIDX;
-		else
-			cq_attr.mini_cqe_res_format =
-				MLX5_CQE_RESP_FORMAT_HASH;
+		rxq_data->mcqe_format = priv->config.cqe_comp_fmt;
+		rxq_data->byte_mask = UINT32_MAX;
+		switch (priv->config.cqe_comp_fmt) {
+		case MLX5_CQE_RESP_FORMAT_HASH:
+			/* fallthrough */
+		case MLX5_CQE_RESP_FORMAT_CSUM:
+			/*
+			 * Select CSUM miniCQE format only for non-vectorized
+			 * MPRQ Rx burst, use HASH miniCQE format for others.
+			 */
+			if (mlx5_rxq_check_vec_support(rxq_data) < 0 &&
+			    mlx5_rxq_mprq_enabled(rxq_data))
+				cq_attr.mini_cqe_res_format =
+					MLX5_CQE_RESP_FORMAT_CSUM_STRIDX;
+			else
+				cq_attr.mini_cqe_res_format =
+					MLX5_CQE_RESP_FORMAT_HASH;
+			rxq_data->mcqe_format = cq_attr.mini_cqe_res_format;
+			break;
+		case MLX5_CQE_RESP_FORMAT_FTAG_STRIDX:
+			rxq_data->byte_mask = MLX5_LEN_WITH_MARK_MASK;
+			/* fallthrough */
+		case MLX5_CQE_RESP_FORMAT_CSUM_STRIDX:
+			cq_attr.mini_cqe_res_format = priv->config.cqe_comp_fmt;
+			break;
+		case MLX5_CQE_RESP_FORMAT_L34H_STRIDX:
+			cq_attr.mini_cqe_res_format = 0;
+			cq_attr.mini_cqe_res_format_ext = 1;
+			break;
+		}
+		DRV_LOG(DEBUG,
+			"Port %u Rx CQE compression is enabled, format %d.",
+			dev->data->port_id, priv->config.cqe_comp_fmt);
 		/*
 		 * For vectorized Rx, it must not be doubled in order to
 		 * make cq_ci and rq_ci aligned.
