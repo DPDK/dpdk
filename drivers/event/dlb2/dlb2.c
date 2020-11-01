@@ -1797,6 +1797,166 @@ dlb2_eventdev_port_link(struct rte_eventdev *dev, void *event_port,
 	return i;
 }
 
+static int16_t
+dlb2_hw_unmap_ldb_qid_from_port(struct dlb2_hw_dev *handle,
+				uint32_t qm_port_id,
+				uint16_t qm_qid)
+{
+	struct dlb2_unmap_qid_args cfg;
+	int32_t ret;
+
+	if (handle == NULL)
+		return -EINVAL;
+
+	cfg.port_id = qm_port_id;
+	cfg.qid = qm_qid;
+
+	ret = dlb2_iface_unmap_qid(handle, &cfg);
+	if (ret < 0)
+		DLB2_LOG_ERR("dlb2: unmap qid error, ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+
+	return ret;
+}
+
+static int
+dlb2_event_queue_detach_ldb(struct dlb2_eventdev *dlb2,
+			    struct dlb2_eventdev_port *ev_port,
+			    struct dlb2_eventdev_queue *ev_queue)
+{
+	int ret, i;
+
+	/* Don't unlink until start time. */
+	if (dlb2->run_state == DLB2_RUN_STATE_STOPPED)
+		return 0;
+
+	for (i = 0; i < DLB2_MAX_NUM_QIDS_PER_LDB_CQ; i++) {
+		if (ev_port->link[i].valid &&
+		    ev_port->link[i].queue_id == ev_queue->id)
+			break; /* found */
+	}
+
+	/* This is expected with eventdev API!
+	 * It blindly attemmpts to unmap all queues.
+	 */
+	if (i == DLB2_MAX_NUM_QIDS_PER_LDB_CQ) {
+		DLB2_LOG_DBG("dlb2: ignoring LB QID %d not mapped for qm_port %d.\n",
+			     ev_queue->qm_queue.id,
+			     ev_port->qm_port.id);
+		return 0;
+	}
+
+	ret = dlb2_hw_unmap_ldb_qid_from_port(&dlb2->qm_instance,
+					      ev_port->qm_port.id,
+					      ev_queue->qm_queue.id);
+	if (!ret)
+		ev_port->link[i].mapped = false;
+
+	return ret;
+}
+
+static int
+dlb2_eventdev_port_unlink(struct rte_eventdev *dev, void *event_port,
+			  uint8_t queues[], uint16_t nb_unlinks)
+{
+	struct dlb2_eventdev_port *ev_port = event_port;
+	struct dlb2_eventdev *dlb2;
+	int i;
+
+	RTE_SET_USED(dev);
+
+	if (!ev_port->setup_done) {
+		DLB2_LOG_ERR("dlb2: evport %d is not configured\n",
+			     ev_port->id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	if (queues == NULL || nb_unlinks == 0) {
+		DLB2_LOG_DBG("dlb2: queues is NULL or nb_unlinks is 0\n");
+		return 0; /* Ignore and return success */
+	}
+
+	/* FIXME: How to handle unlink on a directed port? */
+	if (ev_port->qm_port.is_directed) {
+		DLB2_LOG_DBG("dlb2: ignore unlink from dir port %d\n",
+			     ev_port->id);
+		rte_errno = 0;
+		return nb_unlinks; /* as if success */
+	}
+
+	dlb2 = ev_port->dlb2;
+
+	for (i = 0; i < nb_unlinks; i++) {
+		struct dlb2_eventdev_queue *ev_queue;
+		int ret, j;
+
+		if (queues[i] >= dlb2->num_queues) {
+			DLB2_LOG_ERR("dlb2: invalid queue id %d\n", queues[i]);
+			rte_errno = -EINVAL;
+			return i; /* return index of offending queue */
+		}
+
+		ev_queue = &dlb2->ev_queues[queues[i]];
+
+		/* Does a link exist? */
+		for (j = 0; j < DLB2_MAX_NUM_QIDS_PER_LDB_CQ; j++)
+			if (ev_port->link[j].queue_id == queues[i] &&
+			    ev_port->link[j].valid)
+				break;
+
+		if (j == DLB2_MAX_NUM_QIDS_PER_LDB_CQ)
+			continue;
+
+		ret = dlb2_event_queue_detach_ldb(dlb2, ev_port, ev_queue);
+		if (ret) {
+			DLB2_LOG_ERR("unlink err=%d for port %d queue %d\n",
+				     ret, ev_port->id, queues[i]);
+			rte_errno = -ENOENT;
+			return i; /* return index of offending queue */
+		}
+
+		ev_port->link[j].valid = false;
+		ev_port->num_links--;
+		ev_queue->num_links--;
+	}
+
+	return nb_unlinks;
+}
+
+static int
+dlb2_eventdev_port_unlinks_in_progress(struct rte_eventdev *dev,
+				       void *event_port)
+{
+	struct dlb2_eventdev_port *ev_port = event_port;
+	struct dlb2_eventdev *dlb2;
+	struct dlb2_hw_dev *handle;
+	struct dlb2_pending_port_unmaps_args cfg;
+	int ret;
+
+	RTE_SET_USED(dev);
+
+	if (!ev_port->setup_done) {
+		DLB2_LOG_ERR("dlb2: evport %d is not configured\n",
+			     ev_port->id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	cfg.port_id = ev_port->qm_port.id;
+	dlb2 = ev_port->dlb2;
+	handle = &dlb2->qm_instance;
+	ret = dlb2_iface_pending_port_unmaps(handle, &cfg);
+
+	if (ret < 0) {
+		DLB2_LOG_ERR("dlb2: num_unlinks_in_progress ret=%d (driver status: %s)\n",
+			     ret, dlb2_error_strings[cfg.response.status]);
+		return ret;
+	}
+
+	return cfg.response.id;
+}
+
 static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
@@ -1809,6 +1969,9 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 		.port_def_conf    = dlb2_eventdev_port_default_conf_get,
 		.port_setup       = dlb2_eventdev_port_setup,
 		.port_link        = dlb2_eventdev_port_link,
+		.port_unlink      = dlb2_eventdev_port_unlink,
+		.port_unlinks_in_progress =
+				    dlb2_eventdev_port_unlinks_in_progress,
 		.dump             = dlb2_eventdev_dump,
 		.xstats_get       = dlb2_eventdev_xstats_get,
 		.xstats_get_names = dlb2_eventdev_xstats_get_names,
