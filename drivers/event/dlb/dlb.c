@@ -71,6 +71,17 @@ static struct rte_event_dev_info evdev_dlb_default_info = {
 struct process_local_port_data
 dlb_port[DLB_MAX_NUM_PORTS][NUM_DLB_PORT_TYPES];
 
+uint32_t
+dlb_get_queue_depth(struct dlb_eventdev *dlb,
+		    struct dlb_eventdev_queue *queue)
+{
+	/* DUMMY FOR NOW So "xstats" patch compiles */
+	RTE_SET_USED(dlb);
+	RTE_SET_USED(queue);
+
+	return 0;
+}
+
 static int
 dlb_hw_query_resources(struct dlb_eventdev *dlb)
 {
@@ -298,6 +309,11 @@ void
 dlb_entry_points_init(struct rte_eventdev *dev)
 {
 	static struct rte_eventdev_ops dlb_eventdev_entry_ops = {
+		.dump             = dlb_eventdev_dump,
+		.xstats_get       = dlb_eventdev_xstats_get,
+		.xstats_get_names = dlb_eventdev_xstats_get_names,
+		.xstats_get_by_name = dlb_eventdev_xstats_get_by_name,
+		.xstats_reset	    = dlb_eventdev_xstats_reset,
 	};
 
 	/* Expose PMD's eventdev interface */
@@ -349,6 +365,13 @@ dlb_primary_eventdev_probe(struct rte_eventdev *dev,
 	err = dlb_iface_get_cq_poll_mode(&dlb->qm_instance, &dlb->poll_mode);
 	if (err < 0) {
 		DLB_LOG_ERR("dlb: failed to get the poll mode, err=%d\n", err);
+		return err;
+	}
+
+	/* Complete xtstats runtime initialization */
+	err = dlb_xstats_init(dlb);
+	if (err) {
+		DLB_LOG_ERR("dlb: failed to init xstats, err=%d\n", err);
 		return err;
 	}
 
