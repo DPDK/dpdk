@@ -16,6 +16,7 @@
 
 #include "dlb_user.h"
 #include "dlb_log.h"
+#include "rte_pmd_dlb.h"
 
 #ifndef RTE_LIBRTE_PMD_DLB_QUELL_STATS
 #define DLB_INC_STAT(_stat, _incr_val) ((_stat) += _incr_val)
@@ -262,6 +263,7 @@ struct dlb_port {
 	bool gen_bit;
 	uint16_t dir_credits;
 	uint32_t dequeue_depth;
+	enum dlb_token_pop_mode token_pop_mode;
 	int pp_mmio_base;
 	uint16_t cached_ldb_credits;
 	uint16_t ldb_pushcount_at_credit_expiry;
@@ -273,6 +275,7 @@ struct dlb_port {
 	uint8_t cq_rsvd_token_deficit;
 	uint16_t owed_tokens;
 	int16_t issued_releases;
+	int16_t token_pop_thresh;
 	int cq_depth;
 	uint16_t cq_idx;
 	uint16_t cq_idx_unmasked;

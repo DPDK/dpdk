@@ -72,6 +72,25 @@ static struct rte_event_dev_info evdev_dlb_default_info = {
 struct process_local_port_data
 dlb_port[DLB_MAX_NUM_PORTS][NUM_DLB_PORT_TYPES];
 
+static inline uint16_t
+dlb_event_enqueue_delayed(void *event_port,
+			  const struct rte_event events[]);
+
+static inline uint16_t
+dlb_event_enqueue_burst_delayed(void *event_port,
+				const struct rte_event events[],
+				uint16_t num);
+
+static inline uint16_t
+dlb_event_enqueue_new_burst_delayed(void *event_port,
+				    const struct rte_event events[],
+				    uint16_t num);
+
+static inline uint16_t
+dlb_event_enqueue_forward_burst_delayed(void *event_port,
+					const struct rte_event events[],
+					uint16_t num);
+
 static int
 dlb_hw_query_resources(struct dlb_eventdev *dlb)
 {
@@ -1003,6 +1022,33 @@ dlb_hw_create_ldb_port(struct dlb_eventdev *dlb,
 
 	qm_port->dequeue_depth = dequeue_depth;
 
+	/* When using the reserved token scheme, token_pop_thresh is
+	 * initially 2 * dequeue_depth. Once the tokens are reserved,
+	 * the enqueue code re-assigns it to dequeue_depth.
+	 */
+	qm_port->token_pop_thresh = cq_depth;
+
+	/* When the deferred scheduling vdev arg is selected, use deferred pop
+	 * for all single-entry CQs.
+	 */
+	if (cfg.cq_depth == 1 || (cfg.cq_depth == 2 && use_rsvd_token_scheme)) {
+		if (dlb->defer_sched)
+			qm_port->token_pop_mode = DEFERRED_POP;
+	}
+
+	/* The default enqueue functions do not include delayed-pop support for
+	 * performance reasons.
+	 */
+	if (qm_port->token_pop_mode == DELAYED_POP) {
+		dlb->event_dev->enqueue = dlb_event_enqueue_delayed;
+		dlb->event_dev->enqueue_burst =
+			dlb_event_enqueue_burst_delayed;
+		dlb->event_dev->enqueue_new_burst =
+			dlb_event_enqueue_new_burst_delayed;
+		dlb->event_dev->enqueue_forward_burst =
+			dlb_event_enqueue_forward_burst_delayed;
+	}
+
 	qm_port->owed_tokens = 0;
 	qm_port->issued_releases = 0;
 
@@ -1163,6 +1209,8 @@ dlb_hw_create_dir_port(struct dlb_eventdev *dlb,
 
 	qm_port->dequeue_depth = dequeue_depth;
 
+	/* Directed ports are auto-pop, by default. */
+	qm_port->token_pop_mode = AUTO_POP;
 	qm_port->owed_tokens = 0;
 	qm_port->issued_releases = 0;
 
@@ -2572,6 +2620,30 @@ dlb_event_build_hcws(struct dlb_port *qm_port,
 	}
 }
 
+static inline void
+dlb_construct_token_pop_qe(struct dlb_port *qm_port, int idx)
+{
+	struct dlb_cq_pop_qe *qe = (void *)qm_port->qe4;
+	int num = qm_port->owed_tokens;
+
+	if (qm_port->use_rsvd_token_scheme) {
+		/* Check if there's a deficit of reserved tokens, and return
+		 * early if there are no (unreserved) tokens to consume.
+		 */
+		if (num <= qm_port->cq_rsvd_token_deficit) {
+			qm_port->cq_rsvd_token_deficit -= num;
+			qm_port->owed_tokens = 0;
+			return;
+		}
+		num -= qm_port->cq_rsvd_token_deficit;
+		qm_port->cq_rsvd_token_deficit = 0;
+	}
+
+	qe[idx].cmd_byte = DLB_POP_CMD_BYTE;
+	qe[idx].tokens = num - 1;
+	qm_port->owed_tokens = 0;
+}
+
 static __rte_always_inline void
 dlb_pp_write(struct dlb_enqueue_qe *qe4,
 	     struct process_local_port_data *port_data)
@@ -2638,7 +2710,8 @@ dlb_consume_qe_immediate(struct dlb_port *qm_port, int num)
 static inline uint16_t
 __dlb_event_enqueue_burst(void *event_port,
 			  const struct rte_event events[],
-			  uint16_t num)
+			  uint16_t num,
+			  bool use_delayed)
 {
 	struct dlb_eventdev_port *ev_port = event_port;
 	struct dlb_port *qm_port = &ev_port->qm_port;
@@ -2666,6 +2739,35 @@ __dlb_event_enqueue_burst(void *event_port,
 
 		for (; j < DLB_NUM_QES_PER_CACHE_LINE && (i + j) < num; j++) {
 			const struct rte_event *ev = &events[i + j];
+			int16_t thresh = qm_port->token_pop_thresh;
+
+			if (use_delayed &&
+			    qm_port->token_pop_mode == DELAYED_POP &&
+			    (ev->op == RTE_EVENT_OP_FORWARD ||
+			     ev->op == RTE_EVENT_OP_RELEASE) &&
+			    qm_port->issued_releases >= thresh - 1) {
+				/* Insert the token pop QE and break out. This
+				 * may result in a partial HCW, but that is
+				 * simpler than supporting arbitrary QE
+				 * insertion.
+				 */
+				dlb_construct_token_pop_qe(qm_port, j);
+
+				/* Reset the releases for the next QE batch */
+				qm_port->issued_releases -= thresh;
+
+				/* When using delayed token pop mode, the
+				 * initial token threshold is the full CQ
+				 * depth. After the first token pop, we need to
+				 * reset it to the dequeue_depth.
+				 */
+				qm_port->token_pop_thresh =
+					qm_port->dequeue_depth;
+
+				pop_offs = 1;
+				j++;
+				break;
+			}
 
 			if (dlb_event_enqueue_prep(ev_port, qm_port, ev,
 						   port_data, &sched_types[j],
@@ -2701,14 +2803,29 @@ dlb_event_enqueue_burst(void *event_port,
 			const struct rte_event events[],
 			uint16_t num)
 {
-	return __dlb_event_enqueue_burst(event_port, events, num);
+	return __dlb_event_enqueue_burst(event_port, events, num, false);
+}
+
+static inline uint16_t
+dlb_event_enqueue_burst_delayed(void *event_port,
+				const struct rte_event events[],
+				uint16_t num)
+{
+	return __dlb_event_enqueue_burst(event_port, events, num, true);
 }
 
 static inline uint16_t
 dlb_event_enqueue(void *event_port,
 		  const struct rte_event events[])
 {
-	return __dlb_event_enqueue_burst(event_port, events, 1);
+	return __dlb_event_enqueue_burst(event_port, events, 1, false);
+}
+
+static inline uint16_t
+dlb_event_enqueue_delayed(void *event_port,
+			  const struct rte_event events[])
+{
+	return __dlb_event_enqueue_burst(event_port, events, 1, true);
 }
 
 static uint16_t
@@ -2716,7 +2833,15 @@ dlb_event_enqueue_new_burst(void *event_port,
 			    const struct rte_event events[],
 			    uint16_t num)
 {
-	return __dlb_event_enqueue_burst(event_port, events, num);
+	return __dlb_event_enqueue_burst(event_port, events, num, false);
+}
+
+static uint16_t
+dlb_event_enqueue_new_burst_delayed(void *event_port,
+				    const struct rte_event events[],
+				    uint16_t num)
+{
+	return __dlb_event_enqueue_burst(event_port, events, num, true);
 }
 
 static uint16_t
@@ -2724,7 +2849,15 @@ dlb_event_enqueue_forward_burst(void *event_port,
 				const struct rte_event events[],
 				uint16_t num)
 {
-	return __dlb_event_enqueue_burst(event_port, events, num);
+	return __dlb_event_enqueue_burst(event_port, events, num, false);
+}
+
+static uint16_t
+dlb_event_enqueue_forward_burst_delayed(void *event_port,
+					const struct rte_event events[],
+					uint16_t num)
+{
+	return __dlb_event_enqueue_burst(event_port, events, num, true);
 }
 
 static __rte_always_inline int
@@ -3124,7 +3257,8 @@ dlb_hw_dequeue(struct dlb_eventdev *dlb,
 
 	qm_port->owed_tokens += num;
 
-	dlb_consume_qe_immediate(qm_port, num);
+	if (num && qm_port->token_pop_mode == AUTO_POP)
+		dlb_consume_qe_immediate(qm_port, num);
 
 	ev_port->outstanding_releases += num;
 
@@ -3249,7 +3383,8 @@ dlb_hw_dequeue_sparse(struct dlb_eventdev *dlb,
 
 	qm_port->owed_tokens += num;
 
-	dlb_consume_qe_immediate(qm_port, num);
+	if (num && qm_port->token_pop_mode == AUTO_POP)
+		dlb_consume_qe_immediate(qm_port, num);
 
 	ev_port->outstanding_releases += num;
 
@@ -3293,6 +3428,28 @@ dlb_event_release(struct dlb_eventdev *dlb, uint8_t port_id, int n)
 		qm_port->qe4[3].cmd_byte = 0;
 
 		for (; j < DLB_NUM_QES_PER_CACHE_LINE && (i + j) < n; j++) {
+			int16_t thresh = qm_port->token_pop_thresh;
+
+			if (qm_port->token_pop_mode == DELAYED_POP &&
+			    qm_port->issued_releases >= thresh - 1) {
+				/* Insert the token pop QE */
+				dlb_construct_token_pop_qe(qm_port, j);
+
+				/* Reset the releases for the next QE batch */
+				qm_port->issued_releases -= thresh;
+
+				/* When using delayed token pop mode, the
+				 * initial token threshold is the full CQ
+				 * depth. After the first token pop, we need to
+				 * reset it to the dequeue_depth.
+				 */
+				qm_port->token_pop_thresh =
+					qm_port->dequeue_depth;
+
+				pop_offs = 1;
+				j++;
+				break;
+			}
 
 			qm_port->qe4[j].cmd_byte = DLB_COMP_CMD_BYTE;
 			qm_port->issued_releases++;
@@ -3325,6 +3482,7 @@ dlb_event_dequeue_burst(void *event_port, struct rte_event *ev, uint16_t num,
 			uint64_t wait)
 {
 	struct dlb_eventdev_port *ev_port = event_port;
+	struct dlb_port *qm_port = &ev_port->qm_port;
 	struct dlb_eventdev *dlb = ev_port->dlb;
 	uint16_t cnt;
 	int ret;
@@ -3343,6 +3501,10 @@ dlb_event_dequeue_burst(void *event_port, struct rte_event *ev, uint16_t num,
 
 		DLB_INC_STAT(ev_port->stats.tx_implicit_rel, out_rels);
 	}
+
+	if (qm_port->token_pop_mode == DEFERRED_POP &&
+			qm_port->owed_tokens)
+		dlb_consume_qe_immediate(qm_port, qm_port->owed_tokens);
 
 	cnt = dlb_hw_dequeue(dlb, ev_port, ev, num, wait);
 
@@ -3362,6 +3524,7 @@ dlb_event_dequeue_burst_sparse(void *event_port, struct rte_event *ev,
 			       uint16_t num, uint64_t wait)
 {
 	struct dlb_eventdev_port *ev_port = event_port;
+	struct dlb_port *qm_port = &ev_port->qm_port;
 	struct dlb_eventdev *dlb = ev_port->dlb;
 	uint16_t cnt;
 	int ret;
@@ -3380,6 +3543,10 @@ dlb_event_dequeue_burst_sparse(void *event_port, struct rte_event *ev,
 
 		DLB_INC_STAT(ev_port->stats.tx_implicit_rel, out_rels);
 	}
+
+	if (qm_port->token_pop_mode == DEFERRED_POP &&
+	    qm_port->owed_tokens)
+		dlb_consume_qe_immediate(qm_port, qm_port->owed_tokens);
 
 	cnt = dlb_hw_dequeue_sparse(dlb, ev_port, ev, num, wait);
 
@@ -3687,7 +3854,7 @@ dlb_primary_eventdev_probe(struct rte_eventdev *dev,
 			   struct dlb_devargs *dlb_args)
 {
 	struct dlb_eventdev *dlb;
-	int err;
+	int err, i;
 
 	dlb = dev->data->dev_private;
 
@@ -3735,6 +3902,10 @@ dlb_primary_eventdev_probe(struct rte_eventdev *dev,
 		DLB_LOG_ERR("dlb: failed to init xstats, err=%d\n", err);
 		return err;
 	}
+
+	/* Initialize each port's token pop mode */
+	for (i = 0; i < DLB_MAX_NUM_PORTS; i++)
+		dlb->ev_ports[i].qm_port.token_pop_mode = AUTO_POP;
 
 	rte_spinlock_init(&dlb->qm_instance.resource_lock);
 

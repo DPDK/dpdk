@@ -12,9 +12,10 @@ sources = files('dlb.c',
 		'dlb_xstats.c',
 		'pf/dlb_main.c',
 		'pf/dlb_pf.c',
-		'pf/base/dlb_resource.c'
+		'pf/base/dlb_resource.c',
+		'rte_pmd_dlb.c',
 )
 
-headers = files()
+headers = files('rte_pmd_dlb.h')
 
 deps += ['mbuf', 'mempool', 'ring', 'pci', 'bus_pci']
