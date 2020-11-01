@@ -3668,6 +3668,28 @@ dlb2_eventdev_close(struct rte_eventdev *dev)
 }
 
 static void
+dlb2_eventdev_queue_release(struct rte_eventdev *dev, uint8_t id)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(id);
+
+	/* This function intentionally left blank. */
+}
+
+static void
+dlb2_eventdev_port_release(void *port)
+{
+	struct dlb2_eventdev_port *ev_port = port;
+	struct dlb2_port *qm_port;
+
+	if (ev_port) {
+		qm_port = &ev_port->qm_port;
+		if (qm_port->config_state == DLB2_CONFIGURED)
+			dlb2_free_qe_mem(qm_port);
+	}
+}
+
+static void
 dlb2_entry_points_init(struct rte_eventdev *dev)
 {
 	struct dlb2_eventdev *dlb2;
@@ -3681,8 +3703,10 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 		.dev_close        = dlb2_eventdev_close,
 		.queue_def_conf   = dlb2_eventdev_queue_default_conf_get,
 		.queue_setup      = dlb2_eventdev_queue_setup,
+		.queue_release    = dlb2_eventdev_queue_release,
 		.port_def_conf    = dlb2_eventdev_port_default_conf_get,
 		.port_setup       = dlb2_eventdev_port_setup,
+		.port_release     = dlb2_eventdev_port_release,
 		.port_link        = dlb2_eventdev_port_link,
 		.port_unlink      = dlb2_eventdev_port_unlink,
 		.port_unlinks_in_progress =
