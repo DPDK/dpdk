@@ -197,7 +197,7 @@
 #define MLX5_HAIRPIN_JUMBO_LOG_SIZE (14 + 2)
 
 /* Maximum number of shared actions supported by rte_flow */
-#define MLX5_MAX_SHARED_ACTIONS 1
+#define MLX5_MAX_SHARED_ACTIONS 2
 
 /* Definition of static_assert found in /usr/include/assert.h */
 #ifndef HAVE_STATIC_ASSERT

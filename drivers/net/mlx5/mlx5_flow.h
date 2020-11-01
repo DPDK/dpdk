@@ -36,12 +36,14 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 	MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
 	MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET,
+	MLX5_RTE_FLOW_ACTION_TYPE_AGE,
 };
 
 #define MLX5_SHARED_ACTION_TYPE_OFFSET 30
 
 enum {
 	MLX5_SHARED_ACTION_TYPE_RSS,
+	MLX5_SHARED_ACTION_TYPE_AGE,
 };
 
 /* Matches on selected register. */
@@ -1165,10 +1167,16 @@ typedef int (*mlx5_flow_action_update_t)
 			 struct rte_flow_shared_action *action,
 			 const void *action_conf,
 			 struct rte_flow_error *error);
+typedef int (*mlx5_flow_action_query_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_shared_action *action,
+			 void *data,
+			 struct rte_flow_error *error);
 typedef int (*mlx5_flow_sync_domain_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t domains,
 			 uint32_t flags);
+
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
@@ -1189,6 +1197,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_action_create_t action_create;
 	mlx5_flow_action_destroy_t action_destroy;
 	mlx5_flow_action_update_t action_update;
+	mlx5_flow_action_query_t action_query;
 	mlx5_flow_sync_domain_t sync_domain;
 };
 
@@ -1457,4 +1466,6 @@ struct mlx5_cache_entry *flow_dv_dest_array_create_cb
 				 struct mlx5_cache_entry *entry, void *cb_ctx);
 void flow_dv_dest_array_remove_cb(struct mlx5_cache_list *list,
 				  struct mlx5_cache_entry *entry);
+struct mlx5_aso_age_action *flow_aso_age_get_by_idx(struct rte_eth_dev *dev,
+						    uint32_t age_idx);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

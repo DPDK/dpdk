@@ -525,6 +525,7 @@ struct mlx5_aso_sq {
 struct mlx5_aso_age_action {
 	LIST_ENTRY(mlx5_aso_age_action) next;
 	void *dr_action;
+	uint32_t refcnt;
 	/* Following fields relevant only when action is active. */
 	uint16_t offset; /* Offset of ASO Flow Hit flag in DevX object. */
 	struct mlx5_age_param age_params;

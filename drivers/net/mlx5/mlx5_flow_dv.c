@@ -5926,6 +5926,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			/* Meter action will add one more TAG action. */
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
+			action_flags |= MLX5_FLOW_ACTION_AGE;
+			++actions_n;
+			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
 			ret = flow_dv_validate_action_age(action_flags,
 							  actions, dev,
@@ -9241,29 +9245,6 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 }
 
 /**
- * Get ASO age action by index.
- *
- * @param[in] dev
- *   Pointer to the Ethernet device structure.
- * @param[in] age_idx
- *   Index to the ASO age action.
- *
- * @return
- *   The specified ASO age action.
- */
-static struct mlx5_aso_age_action*
-flow_dv_aso_age_get_by_idx(struct rte_eth_dev *dev, uint32_t age_idx)
-{
-	uint16_t pool_idx = age_idx & UINT16_MAX;
-	uint16_t offset = (age_idx >> 16) & UINT16_MAX;
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
-	struct mlx5_aso_age_pool *pool = mng->pools[pool_idx];
-
-	return &pool->actions[offset - 1];
-}
-
-/**
  * Remove an ASO age action from age actions list.
  *
  * @param[in] dev
@@ -9295,18 +9276,35 @@ flow_dv_aso_age_remove_from_age(struct rte_eth_dev *dev,
 	}
 }
 
-static void
+/**
+ * Release an ASO age action.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] age_idx
+ *   Index of ASO age action to release.
+ * @param[in] flow
+ *   True if the release operation is during flow destroy operation.
+ *   False if the release operation is during action destroy operation.
+ *
+ * @return
+ *   0 when age action was removed, otherwise the number of references.
+ */
+static int
 flow_dv_aso_age_release(struct rte_eth_dev *dev, uint32_t age_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
-	struct mlx5_aso_age_action *age = flow_dv_aso_age_get_by_idx(dev,
-								     age_idx);
+	struct mlx5_aso_age_action *age = flow_aso_age_get_by_idx(dev, age_idx);
+	uint32_t ret = __atomic_sub_fetch(&age->refcnt, 1, __ATOMIC_RELAXED);
 
-	flow_dv_aso_age_remove_from_age(dev, age);
-	rte_spinlock_lock(&mng->free_sl);
-	LIST_INSERT_HEAD(&mng->free, age, next);
-	rte_spinlock_unlock(&mng->free_sl);
+	if (!ret) {
+		flow_dv_aso_age_remove_from_age(dev, age);
+		rte_spinlock_lock(&mng->free_sl);
+		LIST_INSERT_HEAD(&mng->free, age, next);
+		rte_spinlock_unlock(&mng->free_sl);
+	}
+	return ret;
 }
 
 /**
@@ -9450,6 +9448,7 @@ flow_dv_aso_age_alloc(struct rte_eth_dev *dev)
 			return 0; /* 0 is an error.*/
 		}
 	}
+	__atomic_store_n(&age_free->refcnt, 1, __ATOMIC_RELAXED);
 	return pool->index | ((age_free->offset + 1) << 16);
 }
 
@@ -9469,12 +9468,12 @@ flow_dv_translate_create_aso_age(struct rte_eth_dev *dev,
 				 const struct rte_flow_action_age *age)
 {
 	uint32_t age_idx = 0;
-	struct mlx5_aso_age_action *aso_age = NULL;
+	struct mlx5_aso_age_action *aso_age;
 
 	age_idx = flow_dv_aso_age_alloc(dev);
 	if (!age_idx)
 		return 0;
-	aso_age = flow_dv_aso_age_get_by_idx(dev, age_idx);
+	aso_age = flow_aso_age_get_by_idx(dev, age_idx);
 	aso_age->age_params.context = age->context;
 	aso_age->age_params.timeout = age->timeout;
 	aso_age->age_params.port_id = dev->data->port_id;
@@ -9638,6 +9637,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		const uint8_t *rss_key;
 		const struct rte_flow_action_meter *mtr;
 		struct mlx5_flow_tbl_resource *tbl;
+		struct mlx5_aso_age_action *age_act;
 		uint32_t port_id = 0;
 		struct mlx5_flow_dv_port_id_action_resource port_id_resource;
 		int action_type = actions->type;
@@ -9774,6 +9774,14 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
+			flow->age = (uint32_t)(uintptr_t)(action->conf);
+			age_act = flow_aso_age_get_by_idx(dev, flow->age);
+			__atomic_fetch_add(&age_act->refcnt, 1,
+					   __ATOMIC_RELAXED);
+			dev_flow->dv.actions[actions_n++] = age_act->dr_action;
+			action_flags |= MLX5_FLOW_ACTION_AGE;
+			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
 			if (priv->sh->flow_hit_aso_en) {
 				flow->age = flow_dv_translate_create_aso_age
@@ -9785,7 +9793,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						 NULL,
 						 "can't create age action");
 				dev_flow->dv.actions[actions_n++] =
-					  (flow_dv_aso_age_get_by_idx
+					  (flow_aso_age_get_by_idx
 						(dev, flow->age))->dr_action;
 				action_flags |= MLX5_FLOW_ACTION_AGE;
 				break;
@@ -11441,6 +11449,19 @@ flow_dv_action_create(struct rte_eth_dev *dev,
 		idx = (MLX5_SHARED_ACTION_TYPE_RSS <<
 		       MLX5_SHARED_ACTION_TYPE_OFFSET) | ret;
 		break;
+	case RTE_FLOW_ACTION_TYPE_AGE:
+		ret = flow_dv_translate_create_aso_age(dev, action->conf);
+		idx = (MLX5_SHARED_ACTION_TYPE_AGE <<
+		       MLX5_SHARED_ACTION_TYPE_OFFSET) | ret;
+		if (ret) {
+			struct mlx5_aso_age_action *aso_age =
+					      flow_aso_age_get_by_idx(dev, ret);
+
+			if (!aso_age->age_params.context)
+				aso_age->age_params.context =
+							 (void *)(uintptr_t)idx;
+		}
+		break;
 	default:
 		rte_flow_error_set(err, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 				   NULL, "action type not supported");
@@ -11478,17 +11499,23 @@ flow_dv_action_destroy(struct rte_eth_dev *dev,
 
 	switch (type) {
 	case MLX5_SHARED_ACTION_TYPE_RSS:
-		ret = __flow_dv_action_rss_release(dev, idx, error);
-		break;
+		return __flow_dv_action_rss_release(dev, idx, error);
+	case MLX5_SHARED_ACTION_TYPE_AGE:
+		ret = flow_dv_aso_age_release(dev, idx);
+		if (ret)
+			/*
+			 * In this case, the last flow has a reference will
+			 * actually release the age action.
+			 */
+			DRV_LOG(DEBUG, "Shared age action %" PRIu32 " was"
+				" released with references %d.", idx, ret);
+		return 0;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "action type not supported");
 	}
-	if (ret)
-		return ret;
-	return 0;
 }
 
 /**
@@ -11609,9 +11636,41 @@ flow_dv_action_update(struct rte_eth_dev *dev,
 		return rte_flow_error_set(err, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
-					  "action type not supported");
+					  "action type update not supported");
 	}
 }
+
+static int
+flow_dv_action_query(struct rte_eth_dev *dev,
+		     const struct rte_flow_shared_action *action, void *data,
+		     struct rte_flow_error *error)
+{
+	struct mlx5_age_param *age_param;
+	struct rte_flow_query_age *resp;
+	uint32_t act_idx = (uint32_t)(uintptr_t)action;
+	uint32_t type = act_idx >> MLX5_SHARED_ACTION_TYPE_OFFSET;
+	uint32_t idx = act_idx & ((1u << MLX5_SHARED_ACTION_TYPE_OFFSET) - 1);
+
+	switch (type) {
+	case MLX5_SHARED_ACTION_TYPE_AGE:
+		age_param = &flow_aso_age_get_by_idx(dev, idx)->age_params;
+		resp = data;
+		resp->aged = __atomic_load_n(&age_param->state,
+					      __ATOMIC_RELAXED) == AGE_TMOUT ?
+									  1 : 0;
+		resp->sec_since_last_hit_valid = !resp->aged;
+		if (resp->sec_since_last_hit_valid)
+			resp->sec_since_last_hit = __atomic_load_n
+			     (&age_param->sec_since_last_hit, __ATOMIC_RELAXED);
+		return 0;
+	default:
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "action type query not supported");
+	}
+}
+
 /**
  * Query a dv flow  rule for its statistics via devx.
  *
@@ -11692,7 +11751,7 @@ flow_dv_query_age(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 	if (flow->age) {
 		struct mlx5_aso_age_action *act =
-				     flow_dv_aso_age_get_by_idx(dev, flow->age);
+				     flow_aso_age_get_by_idx(dev, flow->age);
 
 		age_param = &act->age_params;
 	} else if (flow->counter) {
@@ -12402,14 +12461,23 @@ static int
 flow_dv_action_validate(struct rte_eth_dev *dev,
 			const struct rte_flow_shared_action_conf *conf,
 			const struct rte_flow_action *action,
-			struct rte_flow_error *error)
+			struct rte_flow_error *err)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+
 	RTE_SET_USED(conf);
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_RSS:
-		return mlx5_validate_action_rss(dev, action, error);
+		return mlx5_validate_action_rss(dev, action, err);
+	case RTE_FLOW_ACTION_TYPE_AGE:
+		if (!priv->sh->aso_age_mng)
+			return rte_flow_error_set(err, ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						NULL,
+					     "shared age action not supported");
+		return flow_dv_validate_action_age(0, action, dev, err);
 	default:
-		return rte_flow_error_set(error, ENOTSUP,
+		return rte_flow_error_set(err, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "action type not supported");
@@ -12461,6 +12529,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.action_create = flow_dv_action_create,
 	.action_destroy = flow_dv_action_destroy,
 	.action_update = flow_dv_action_update,
+	.action_query = flow_dv_action_query,
 	.sync_domain = flow_dv_sync_domain,
 };
 

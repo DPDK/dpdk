@@ -3266,6 +3266,29 @@ flow_get_rss_action(const struct rte_flow_action actions[])
 	return NULL;
 }
 
+/**
+ * Get ASO age action by index.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] age_idx
+ *   Index to the ASO age action.
+ *
+ * @return
+ *   The specified ASO age action.
+ */
+struct mlx5_aso_age_action*
+flow_aso_age_get_by_idx(struct rte_eth_dev *dev, uint32_t age_idx)
+{
+	uint16_t pool_idx = age_idx & UINT16_MAX;
+	uint16_t offset = (age_idx >> 16) & UINT16_MAX;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
+	struct mlx5_aso_age_pool *pool = mng->pools[pool_idx];
+
+	return &pool->actions[offset - 1];
+}
+
 /* maps shared action to translated non shared in some actions array */
 struct mlx5_translated_shared_action {
 	struct rte_flow_shared_action *action; /**< Shared action */
@@ -3353,6 +3376,16 @@ flow_shared_actions_translate(struct rte_eth_dev *dev,
 			translated[shared->index].conf =
 				&shared_rss->origin;
 			break;
+		case MLX5_SHARED_ACTION_TYPE_AGE:
+			if (priv->sh->flow_hit_aso_en) {
+				translated[shared->index].type =
+					(enum rte_flow_action_type)
+					MLX5_RTE_FLOW_ACTION_TYPE_AGE;
+				translated[shared->index].conf =
+							 (void *)(uintptr_t)idx;
+				break;
+			}
+			/* Fall-through */
 		default:
 			mlx5_free(translated);
 			return rte_flow_error_set
@@ -7273,6 +7306,25 @@ flow_drv_action_update(struct rte_eth_dev *dev,
 	return fops->action_update(dev, action, action_conf, error);
 }
 
+/* Wrapper for driver action_destroy op callback */
+static int
+flow_drv_action_query(struct rte_eth_dev *dev,
+		      const struct rte_flow_shared_action *action,
+		      void *data,
+		      const struct mlx5_flow_driver_ops *fops,
+		      struct rte_flow_error *error)
+{
+	static const char err_msg[] = "shared action query unsupported";
+
+	if (!fops->action_query) {
+		DRV_LOG(ERR, "port %u %s.", dev->data->port_id, err_msg);
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, err_msg);
+		return -rte_errno;
+	}
+	return fops->action_query(dev, action, data, error);
+}
+
 /**
  * Create shared action for reuse in multiple flow rules.
  *
@@ -7375,11 +7427,11 @@ mlx5_shared_action_query(struct rte_eth_dev *dev,
 			 void *data,
 			 struct rte_flow_error *error)
 {
-	(void)dev;
-	(void)action;
-	(void)data;
-	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
-				  NULL, "action type query not supported");
+	struct rte_flow_attr attr = { .transfer = 0 };
+	const struct mlx5_flow_driver_ops *fops =
+			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
+
+	return flow_drv_action_query(dev, action, data, fops, error);
 }
 
 /**
