@@ -295,6 +295,11 @@ New Features
   Added performance tuning arguments to allow tuning the scheduler for
   better throughtput in high core count use cases.
 
+* **Added a new driver for the Intel Dynamic Load Balancer v2.0 device.**
+
+  Added the new ``dlb2`` eventdev driver for the Intel DLB V2.0 device. See the
+  :doc:`../eventdevs/dlb2` eventdev guide for more details on this new driver.
+
 * **Updated ioat rawdev driver**
 
   The ioat rawdev driver has been updated and enhanced. Changes include:

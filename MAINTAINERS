@@ -1176,6 +1176,11 @@ Cavium OCTEON TX timvf
 M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 F: drivers/event/octeontx/timvf_*
 
+Intel DLB2
+M: Timothy McDaniel <timothy.mcdaniel@intel.com>
+F: drivers/event/dlb2/
+F: doc/guides/eventdevs/dlb2.rst
+
 Marvell OCTEON TX2
 M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 M: Jerin Jacob <jerinj@marvell.com>

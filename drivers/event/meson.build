@@ -5,7 +5,8 @@ if is_windows
 	subdir_done()
 endif
 
-drivers = ['dpaa', 'dpaa2', 'octeontx2', 'opdl', 'skeleton', 'sw', 'dsw']
+drivers = ['dlb2', 'dpaa', 'dpaa2', 'octeontx2', 'opdl', 'skeleton', 'sw',
+	   'dsw']
 if not (toolchain == 'gcc' and cc.version().version_compare('<4.8.6') and
 	dpdk_conf.has('RTE_ARCH_ARM64'))
 	drivers += 'octeontx'
