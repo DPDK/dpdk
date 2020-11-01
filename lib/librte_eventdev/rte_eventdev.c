@@ -1153,6 +1153,8 @@ rte_event_dev_dump(uint8_t dev_id, FILE *f)
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dump, -ENOTSUP);
+	if (f == NULL)
+		return -EINVAL;
 
 	(*dev->dev_ops->dump)(dev, f);
 	return 0;
