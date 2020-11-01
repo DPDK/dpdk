@@ -33,6 +33,18 @@ int (*dlb_iface_ldb_credit_pool_create)(struct dlb_hw_dev *handle,
 int (*dlb_iface_dir_credit_pool_create)(struct dlb_hw_dev *handle,
 					struct dlb_create_dir_pool_args *cfg);
 
+int (*dlb_iface_ldb_queue_create)(struct dlb_hw_dev *handle,
+				  struct dlb_create_ldb_queue_args *cfg);
+
 int (*dlb_iface_get_cq_poll_mode)(struct dlb_hw_dev *handle,
 				  enum dlb_cq_poll_modes *mode);
+
+int (*dlb_iface_get_sn_allocation)(struct dlb_hw_dev *handle,
+				   struct dlb_get_sn_allocation_args *args);
+
+int (*dlb_iface_set_sn_allocation)(struct dlb_hw_dev *handle,
+				   struct dlb_set_sn_allocation_args *args);
+
+int (*dlb_iface_get_sn_occupancy)(struct dlb_hw_dev *handle,
+				  struct dlb_get_sn_occupancy_args *args);
 

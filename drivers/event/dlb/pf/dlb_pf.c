@@ -198,6 +198,83 @@ dlb_pf_get_cq_poll_mode(struct dlb_hw_dev *handle,
 	return 0;
 }
 
+static int
+dlb_pf_ldb_queue_create(struct dlb_hw_dev *handle,
+			struct dlb_create_ldb_queue_args *cfg)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	ret = dlb_hw_create_ldb_queue(&dlb_dev->hw,
+				      handle->domain_id,
+				      cfg,
+				      &response);
+
+	*(struct dlb_cmd_response *)cfg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+	return ret;
+}
+
+static int
+dlb_pf_get_sn_allocation(struct dlb_hw_dev *handle,
+			 struct dlb_get_sn_allocation_args *args)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	ret = dlb_get_group_sequence_numbers(&dlb_dev->hw, args->group);
+
+	response.id = ret;
+	response.status = 0;
+
+	*(struct dlb_cmd_response *)args->response = response;
+
+	return ret;
+}
+
+static int
+dlb_pf_set_sn_allocation(struct dlb_hw_dev *handle,
+			 struct dlb_set_sn_allocation_args *args)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	ret = dlb_set_group_sequence_numbers(&dlb_dev->hw, args->group,
+					     args->num);
+
+	response.status = 0;
+
+	*(struct dlb_cmd_response *)args->response = response;
+
+	return ret;
+}
+
+static int
+dlb_pf_get_sn_occupancy(struct dlb_hw_dev *handle,
+			struct dlb_get_sn_occupancy_args *args)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	ret = dlb_get_group_sequence_number_occupancy(&dlb_dev->hw,
+						      args->group);
+
+	response.id = ret;
+	response.status = 0;
+
+	*(struct dlb_cmd_response *)args->response = response;
+
+	return ret;
+}
+
 static void
 dlb_pf_iface_fn_ptrs_init(void)
 {
@@ -209,7 +286,11 @@ dlb_pf_iface_fn_ptrs_init(void)
 	dlb_iface_sched_domain_create = dlb_pf_sched_domain_create;
 	dlb_iface_ldb_credit_pool_create = dlb_pf_ldb_credit_pool_create;
 	dlb_iface_dir_credit_pool_create = dlb_pf_dir_credit_pool_create;
+	dlb_iface_ldb_queue_create = dlb_pf_ldb_queue_create;
 	dlb_iface_get_cq_poll_mode = dlb_pf_get_cq_poll_mode;
+	dlb_iface_get_sn_allocation = dlb_pf_get_sn_allocation;
+	dlb_iface_set_sn_allocation = dlb_pf_set_sn_allocation;
+	dlb_iface_get_sn_occupancy = dlb_pf_get_sn_occupancy;
 }
 
 /* PCI DEV HOOKS */

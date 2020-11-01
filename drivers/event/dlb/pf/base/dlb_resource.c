@@ -4214,3 +4214,389 @@ void dlb_hw_disable_vf_to_pf_isr_pend_err(struct dlb_hw *hw)
 
 	DLB_CSR_WR(hw, DLB_SYS_SYS_ALARM_INT_ENABLE, r0.val);
 }
+
+static void dlb_configure_ldb_queue(struct dlb_hw *hw,
+				    struct dlb_domain *domain,
+				    struct dlb_ldb_queue *queue,
+				    struct dlb_create_ldb_queue_args *args)
+{
+	union dlb_sys_ldb_vasqid_v r0 = { {0} };
+	union dlb_lsp_qid_ldb_infl_lim r1 = { {0} };
+	union dlb_lsp_qid_aqed_active_lim r2 = { {0} };
+	union dlb_aqed_pipe_fl_lim r3 = { {0} };
+	union dlb_aqed_pipe_fl_base r4 = { {0} };
+	union dlb_chp_ord_qid_sn_map r7 = { {0} };
+	union dlb_sys_ldb_qid_cfg_v r10 = { {0} };
+	union dlb_sys_ldb_qid_v r11 = { {0} };
+	union dlb_aqed_pipe_fl_push_ptr r5 = { {0} };
+	union dlb_aqed_pipe_fl_pop_ptr r6 = { {0} };
+	union dlb_aqed_pipe_qid_fid_lim r8 = { {0} };
+	union dlb_ro_pipe_qid2grpslt r9 = { {0} };
+	struct dlb_sn_group *sn_group;
+	unsigned int offs;
+
+	/* QID write permissions are turned on when the domain is started */
+	r0.field.vasqid_v = 0;
+
+	offs = domain->id * DLB_MAX_NUM_LDB_QUEUES + queue->id;
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_VASQID_V(offs), r0.val);
+
+	/*
+	 * Unordered QIDs get 4K inflights, ordered get as many as the number
+	 * of sequence numbers.
+	 */
+	r1.field.limit = args->num_qid_inflights;
+
+	DLB_CSR_WR(hw, DLB_LSP_QID_LDB_INFL_LIM(queue->id), r1.val);
+
+	r2.field.limit = queue->aqed_freelist.bound -
+			 queue->aqed_freelist.base;
+
+	if (r2.field.limit > DLB_MAX_NUM_AQOS_ENTRIES)
+		r2.field.limit = DLB_MAX_NUM_AQOS_ENTRIES;
+
+	/* AQOS */
+	DLB_CSR_WR(hw, DLB_LSP_QID_AQED_ACTIVE_LIM(queue->id), r2.val);
+
+	r3.field.freelist_disable = 0;
+	r3.field.limit = queue->aqed_freelist.bound - 1;
+
+	DLB_CSR_WR(hw, DLB_AQED_PIPE_FL_LIM(queue->id), r3.val);
+
+	r4.field.base = queue->aqed_freelist.base;
+
+	DLB_CSR_WR(hw, DLB_AQED_PIPE_FL_BASE(queue->id), r4.val);
+
+	r5.field.push_ptr = r4.field.base;
+	r5.field.generation = 1;
+
+	DLB_CSR_WR(hw, DLB_AQED_PIPE_FL_PUSH_PTR(queue->id), r5.val);
+
+	r6.field.pop_ptr = r4.field.base;
+	r6.field.generation = 0;
+
+	DLB_CSR_WR(hw, DLB_AQED_PIPE_FL_POP_PTR(queue->id), r6.val);
+
+	/* Configure SNs */
+	sn_group = &hw->rsrcs.sn_groups[queue->sn_group];
+	r7.field.mode = sn_group->mode;
+	r7.field.slot = queue->sn_slot;
+	r7.field.grp  = sn_group->id;
+
+	DLB_CSR_WR(hw, DLB_CHP_ORD_QID_SN_MAP(queue->id), r7.val);
+
+	/*
+	 * This register limits the number of inflight flows a queue can have
+	 * at one time.  It has an upper bound of 2048, but can be
+	 * over-subscribed. 512 is chosen so that a single queue doesn't use
+	 * the entire atomic storage, but can use a substantial portion if
+	 * needed.
+	 */
+	r8.field.qid_fid_limit = 512;
+
+	DLB_CSR_WR(hw, DLB_AQED_PIPE_QID_FID_LIM(queue->id), r8.val);
+
+	r9.field.group = sn_group->id;
+	r9.field.slot = queue->sn_slot;
+
+	DLB_CSR_WR(hw, DLB_RO_PIPE_QID2GRPSLT(queue->id), r9.val);
+
+	r10.field.sn_cfg_v = (args->num_sequence_numbers != 0);
+	r10.field.fid_cfg_v = (args->num_atomic_inflights != 0);
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_QID_CFG_V(queue->id), r10.val);
+
+	r11.field.qid_v = 1;
+
+	DLB_CSR_WR(hw, DLB_SYS_LDB_QID_V(queue->id), r11.val);
+}
+
+int dlb_get_group_sequence_numbers(struct dlb_hw *hw, unsigned int group_id)
+{
+	if (group_id >= DLB_MAX_NUM_SEQUENCE_NUMBER_GROUPS)
+		return -EINVAL;
+
+	return hw->rsrcs.sn_groups[group_id].sequence_numbers_per_queue;
+}
+
+int dlb_get_group_sequence_number_occupancy(struct dlb_hw *hw,
+					    unsigned int group_id)
+{
+	if (group_id >= DLB_MAX_NUM_SEQUENCE_NUMBER_GROUPS)
+		return -EINVAL;
+
+	return dlb_sn_group_used_slots(&hw->rsrcs.sn_groups[group_id]);
+}
+
+static void dlb_log_set_group_sequence_numbers(struct dlb_hw *hw,
+					       unsigned int group_id,
+					       unsigned long val)
+{
+	DLB_HW_INFO(hw, "DLB set group sequence numbers:\n");
+	DLB_HW_INFO(hw, "\tGroup ID: %u\n", group_id);
+	DLB_HW_INFO(hw, "\tValue:    %lu\n", val);
+}
+
+int dlb_set_group_sequence_numbers(struct dlb_hw *hw,
+				   unsigned int group_id,
+				   unsigned long val)
+{
+	u32 valid_allocations[6] = {32, 64, 128, 256, 512, 1024};
+	union dlb_ro_pipe_grp_sn_mode r0 = { {0} };
+	struct dlb_sn_group *group;
+	int mode;
+
+	if (group_id >= DLB_MAX_NUM_SEQUENCE_NUMBER_GROUPS)
+		return -EINVAL;
+
+	group = &hw->rsrcs.sn_groups[group_id];
+
+	/* Once the first load-balanced queue using an SN group is configured,
+	 * the group cannot be changed.
+	 */
+	if (group->slot_use_bitmap != 0)
+		return -EPERM;
+
+	for (mode = 0; mode < DLB_MAX_NUM_SEQUENCE_NUMBER_MODES; mode++)
+		if (val == valid_allocations[mode])
+			break;
+
+	if (mode == DLB_MAX_NUM_SEQUENCE_NUMBER_MODES)
+		return -EINVAL;
+
+	group->mode = mode;
+	group->sequence_numbers_per_queue = val;
+
+	r0.field.sn_mode_0 = hw->rsrcs.sn_groups[0].mode;
+	r0.field.sn_mode_1 = hw->rsrcs.sn_groups[1].mode;
+	r0.field.sn_mode_2 = hw->rsrcs.sn_groups[2].mode;
+	r0.field.sn_mode_3 = hw->rsrcs.sn_groups[3].mode;
+
+	DLB_CSR_WR(hw, DLB_RO_PIPE_GRP_SN_MODE, r0.val);
+
+	dlb_log_set_group_sequence_numbers(hw, group_id, val);
+
+	return 0;
+}
+
+static int
+dlb_ldb_queue_attach_to_sn_group(struct dlb_hw *hw,
+				 struct dlb_ldb_queue *queue,
+				 struct dlb_create_ldb_queue_args *args)
+{
+	int slot = -1;
+	int i;
+
+	queue->sn_cfg_valid = false;
+
+	if (args->num_sequence_numbers == 0)
+		return 0;
+
+	for (i = 0; i < DLB_MAX_NUM_SEQUENCE_NUMBER_GROUPS; i++) {
+		struct dlb_sn_group *group = &hw->rsrcs.sn_groups[i];
+
+		if (group->sequence_numbers_per_queue ==
+		    args->num_sequence_numbers &&
+		    !dlb_sn_group_full(group)) {
+			slot = dlb_sn_group_alloc_slot(group);
+			if (slot >= 0)
+				break;
+		}
+	}
+
+	if (slot == -1) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: no sequence number slots available\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	queue->sn_cfg_valid = true;
+	queue->sn_group = i;
+	queue->sn_slot = slot;
+	return 0;
+}
+
+static int
+dlb_ldb_queue_attach_resources(struct dlb_hw *hw,
+			       struct dlb_domain *domain,
+			       struct dlb_ldb_queue *queue,
+			       struct dlb_create_ldb_queue_args *args)
+{
+	int ret;
+
+	ret = dlb_ldb_queue_attach_to_sn_group(hw, queue, args);
+	if (ret)
+		return ret;
+
+	/* Attach QID inflights */
+	queue->num_qid_inflights = args->num_qid_inflights;
+
+	/* Attach atomic inflights */
+	queue->aqed_freelist.base = domain->aqed_freelist.base +
+				    domain->aqed_freelist.offset;
+	queue->aqed_freelist.bound = queue->aqed_freelist.base +
+				     args->num_atomic_inflights;
+	domain->aqed_freelist.offset += args->num_atomic_inflights;
+
+	return 0;
+}
+
+static int
+dlb_verify_create_ldb_queue_args(struct dlb_hw *hw,
+				 u32 domain_id,
+				 struct dlb_create_ldb_queue_args *args,
+				 struct dlb_cmd_response *resp)
+{
+	struct dlb_freelist *aqed_freelist;
+	struct dlb_domain *domain;
+	int i;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+
+	if (!domain) {
+		resp->status = DLB_ST_INVALID_DOMAIN_ID;
+		return -1;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB_ST_DOMAIN_NOT_CONFIGURED;
+		return -1;
+	}
+
+	if (domain->started) {
+		resp->status = DLB_ST_DOMAIN_STARTED;
+		return -1;
+	}
+
+	if (dlb_list_empty(&domain->avail_ldb_queues)) {
+		resp->status = DLB_ST_LDB_QUEUES_UNAVAILABLE;
+		return -1;
+	}
+
+	if (args->num_sequence_numbers) {
+		for (i = 0; i < DLB_MAX_NUM_SEQUENCE_NUMBER_GROUPS; i++) {
+			struct dlb_sn_group *group = &hw->rsrcs.sn_groups[i];
+
+			if (group->sequence_numbers_per_queue ==
+			    args->num_sequence_numbers &&
+			    !dlb_sn_group_full(group))
+				break;
+		}
+
+		if (i == DLB_MAX_NUM_SEQUENCE_NUMBER_GROUPS) {
+			resp->status = DLB_ST_SEQUENCE_NUMBERS_UNAVAILABLE;
+			return -1;
+		}
+	}
+
+	if (args->num_qid_inflights > 4096) {
+		resp->status = DLB_ST_INVALID_QID_INFLIGHT_ALLOCATION;
+		return -1;
+	}
+
+	/* Inflights must be <= number of sequence numbers if ordered */
+	if (args->num_sequence_numbers != 0 &&
+	    args->num_qid_inflights > args->num_sequence_numbers) {
+		resp->status = DLB_ST_INVALID_QID_INFLIGHT_ALLOCATION;
+		return -1;
+	}
+
+	aqed_freelist = &domain->aqed_freelist;
+
+	if (dlb_freelist_count(aqed_freelist) < args->num_atomic_inflights) {
+		resp->status = DLB_ST_ATOMIC_INFLIGHTS_UNAVAILABLE;
+		return -1;
+	}
+
+	return 0;
+}
+
+static void
+dlb_log_create_ldb_queue_args(struct dlb_hw *hw,
+			      u32 domain_id,
+			      struct dlb_create_ldb_queue_args *args)
+{
+	DLB_HW_INFO(hw, "DLB create load-balanced queue arguments:\n");
+	DLB_HW_INFO(hw, "\tDomain ID:                  %d\n",
+		    domain_id);
+	DLB_HW_INFO(hw, "\tNumber of sequence numbers: %d\n",
+		    args->num_sequence_numbers);
+	DLB_HW_INFO(hw, "\tNumber of QID inflights:    %d\n",
+		    args->num_qid_inflights);
+	DLB_HW_INFO(hw, "\tNumber of ATM inflights:    %d\n",
+		    args->num_atomic_inflights);
+}
+
+/**
+ * dlb_hw_create_ldb_queue() - Allocate and initialize a DLB LDB queue.
+ * @hw:	  Contains the current state of the DLB hardware.
+ * @args: User-provided arguments.
+ * @resp: Response to user.
+ *
+ * Return: returns < 0 on error, 0 otherwise. If the driver is unable to
+ * satisfy a request, resp->status will be set accordingly.
+ */
+int dlb_hw_create_ldb_queue(struct dlb_hw *hw,
+			    u32 domain_id,
+			    struct dlb_create_ldb_queue_args *args,
+			    struct dlb_cmd_response *resp)
+{
+	struct dlb_ldb_queue *queue;
+	struct dlb_domain *domain;
+	int ret;
+
+	dlb_log_create_ldb_queue_args(hw, domain_id, args);
+
+	/* Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	/* At least one available queue */
+	if (dlb_verify_create_ldb_queue_args(hw, domain_id, args, resp))
+		return -EINVAL;
+
+	domain = dlb_get_domain_from_id(hw, domain_id);
+	if (!domain) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: domain not found\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	queue = DLB_DOM_LIST_HEAD(domain->avail_ldb_queues, typeof(*queue));
+
+	/* Verification should catch this. */
+	if (!queue) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: no available ldb queues\n",
+			   __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	ret = dlb_ldb_queue_attach_resources(hw, domain, queue, args);
+	if (ret < 0) {
+		DLB_HW_ERR(hw,
+			   "[%s():%d] Internal error: failed to attach the ldb queue resources\n",
+			   __func__, __LINE__);
+		return ret;
+	}
+
+	dlb_configure_ldb_queue(hw, domain, queue, args);
+
+	queue->num_mappings = 0;
+
+	queue->configured = true;
+
+	/* Configuration succeeded, so move the resource from the 'avail' to
+	 * the 'used' list.
+	 */
+	dlb_list_del(&domain->avail_ldb_queues, &queue->domain_list);
+
+	dlb_list_add(&domain->used_ldb_queues, &queue->domain_list);
+
+	resp->status = 0;
+	resp->id = queue->id;
+
+	return 0;
+}

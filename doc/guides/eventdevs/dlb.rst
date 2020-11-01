@@ -82,3 +82,38 @@ The PMD does not support the following configuration sequences:
 This sequence is not supported because the event device must be reconfigured
 before its ports or queues can be.
 
+Load-Balanced Queues
+~~~~~~~~~~~~~~~~~~~~
+
+A load-balanced queue can support atomic and ordered scheduling, or atomic and
+unordered scheduling, but not atomic and unordered and ordered scheduling. A
+queue's scheduling types are controlled by the event queue configuration.
+
+If the user sets the ``RTE_EVENT_QUEUE_CFG_ALL_TYPES`` flag, the
+``nb_atomic_order_sequences`` determines the supported scheduling types.
+With non-zero ``nb_atomic_order_sequences``, the queue is configured for atomic
+and ordered scheduling. In this case, ``RTE_SCHED_TYPE_PARALLEL`` scheduling is
+supported by scheduling those events as ordered events.  Note that when the
+event is dequeued, its sched_type will be ``RTE_SCHED_TYPE_ORDERED``. Else if
+``nb_atomic_order_sequences`` is zero, the queue is configured for atomic and
+unordered scheduling. In this case, ``RTE_SCHED_TYPE_ORDERED`` is unsupported.
+
+If the ``RTE_EVENT_QUEUE_CFG_ALL_TYPES`` flag is not set, schedule_type
+dictates the queue's scheduling type.
+
+The ``nb_atomic_order_sequences`` queue configuration field sets the ordered
+queue's reorder buffer size.  DLB has 4 groups of ordered queues, where each
+group is configured to contain either 1 queue with 1024 reorder entries, 2
+queues with 512 reorder entries, and so on down to 32 queues with 32 entries.
+
+When a load-balanced queue is created, the PMD will configure a new sequence
+number group on-demand if num_sequence_numbers does not match a pre-existing
+group with available reorder buffer entries. If all sequence number groups are
+in use, no new group will be created and queue configuration will fail. (Note
+that when the PMD is used with a virtual DLB device, it cannot change the
+sequence number configuration.)
+
+The queue's ``nb_atomic_flows`` parameter is ignored by the DLB PMD, because
+the DLB does not limit the number of flows a queue can track. In the DLB, all
+load-balanced queues can use the full 16-bit flow ID range.
+
