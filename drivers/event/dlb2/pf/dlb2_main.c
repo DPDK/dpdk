@@ -598,3 +598,18 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 
 	return 0;
 }
+
+int
+dlb2_pf_create_sched_domain(struct dlb2_hw *hw,
+			    struct dlb2_create_sched_domain_args *args,
+			    struct dlb2_cmd_response *resp)
+{
+	return dlb2_hw_create_sched_domain(hw, args, resp, NOT_VF_REQ,
+					   PF_ID_ZERO);
+}
+
+int
+dlb2_pf_reset_domain(struct dlb2_hw *hw, u32 id)
+{
+	return dlb2_reset_domain(hw, id, NOT_VF_REQ, PF_ID_ZERO);
+}

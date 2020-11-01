@@ -26,4 +26,8 @@ extern int (*dlb2_iface_get_cq_poll_mode)(struct dlb2_hw_dev *handle,
 extern int (*dlb2_iface_get_num_resources)(struct dlb2_hw_dev *handle,
 				struct dlb2_get_num_resources_args *rsrcs);
 
+extern int (*dlb2_iface_sched_domain_create)(struct dlb2_hw_dev *handle,
+				 struct dlb2_create_sched_domain_args *args);
+
+extern void (*dlb2_iface_domain_reset)(struct dlb2_eventdev *dlb2);
 #endif /* _DLB2_IFACE_H_ */

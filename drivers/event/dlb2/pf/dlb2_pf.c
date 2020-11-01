@@ -108,15 +108,59 @@ dlb2_pf_get_cq_poll_mode(struct dlb2_hw_dev *handle,
 	return 0;
 }
 
+static int
+dlb2_pf_sched_domain_create(struct dlb2_hw_dev *handle,
+			    struct dlb2_create_sched_domain_args *arg)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	if (dlb2_dev->domain_reset_failed) {
+		response.status = DLB2_ST_DOMAIN_RESET_FAILED;
+		ret = -EINVAL;
+		goto done;
+	}
+
+	ret = dlb2_pf_create_sched_domain(&dlb2_dev->hw, arg, &response);
+	if (ret)
+		goto done;
+
+done:
+
+	arg->response = response;
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d\n",
+		  __func__, ret);
+
+	return ret;
+}
+
+static void
+dlb2_pf_domain_reset(struct dlb2_eventdev *dlb2)
+{
+	struct dlb2_dev *dlb2_dev;
+	int ret;
+
+	dlb2_dev = (struct dlb2_dev *)dlb2->qm_instance.pf_dev;
+	ret = dlb2_pf_reset_domain(&dlb2_dev->hw, dlb2->qm_instance.domain_id);
+	if (ret)
+		DLB2_LOG_ERR("dlb2_pf_reset_domain err %d", ret);
+}
+
 static void
 dlb2_pf_iface_fn_ptrs_init(void)
 {
 	dlb2_iface_low_level_io_init = dlb2_pf_low_level_io_init;
 	dlb2_iface_open = dlb2_pf_open;
+	dlb2_iface_domain_reset = dlb2_pf_domain_reset;
 	dlb2_iface_get_device_version = dlb2_pf_get_device_version;
 	dlb2_iface_hardware_init = dlb2_pf_hardware_init;
 	dlb2_iface_get_num_resources = dlb2_pf_get_num_resources;
 	dlb2_iface_get_cq_poll_mode = dlb2_pf_get_cq_poll_mode;
+	dlb2_iface_sched_domain_create = dlb2_pf_sched_domain_create;
 }
 
 /* PCI DEV HOOKS */
