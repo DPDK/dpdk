@@ -38,7 +38,6 @@ struct dlb2_dev {
 	 * hardware registers.
 	 */
 	rte_spinlock_t resource_mutex;
-	rte_spinlock_t measurement_lock;
 	bool worker_launched;
 	u8 revision;
 };

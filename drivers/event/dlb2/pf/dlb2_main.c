@@ -19,6 +19,7 @@
 #include "dlb2_main.h"
 #include "../dlb2_user.h"
 #include "../dlb2_priv.h"
+#include "../dlb2_iface.h"
 #include "../dlb2_inline_fns.h"
 
 #define PF_ID_ZERO 0	/* PF ONLY! */
@@ -71,27 +72,6 @@
 #define DLB2_PCI_ACS_CR                  0x8
 #define DLB2_PCI_ACS_UF                  0x10
 #define DLB2_PCI_ACS_EC                  0x20
-
-/* Stubs: Allow building partial probe patch */
-void dlb2_resource_free(struct dlb2_hw *hw)
-{
-	RTE_SET_USED(hw);
-}
-
-int dlb2_resource_init(struct dlb2_hw *hw)
-{
-	int ret = 0;
-	RTE_SET_USED(hw);
-
-	return ret;
-}
-
-void dlb2_clr_pmcsr_disable(struct dlb2_hw *hw)
-{
-	RTE_SET_USED(hw);
-}
-
-/* End stubs */
 
 static int
 dlb2_pci_find_ext_capability(struct rte_pci_device *pdev, uint32_t id)
@@ -149,7 +129,6 @@ static int
 dlb2_pf_init_driver_state(struct dlb2_dev *dlb2_dev)
 {
 	rte_spinlock_init(&dlb2_dev->resource_mutex);
-	rte_spinlock_init(&dlb2_dev->measurement_lock);
 
 	return 0;
 }

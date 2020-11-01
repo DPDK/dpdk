@@ -32,6 +32,7 @@
 #include <rte_string_fns.h>
 
 #include "../dlb2_priv.h"
+#include "../dlb2_iface.h"
 #include "../dlb2_inline_fns.h"
 #include "dlb2_main.h"
 #include "base/dlb2_hw_types.h"
@@ -40,35 +41,82 @@
 
 static const char *event_dlb2_pf_name = RTE_STR(EVDEV_DLB2_NAME_PMD);
 
-/* Stubs: Allow building partial probe patch */
-int dlb2_hw_get_num_resources(struct dlb2_hw *hw,
-			      struct dlb2_get_num_resources_args *arg,
-			      bool vdev_req,
-			      unsigned int vdev_id)
+static void
+dlb2_pf_low_level_io_init(void)
 {
-	RTE_SET_USED(hw);
-	RTE_SET_USED(arg);
-	RTE_SET_USED(vdev_req);
-	RTE_SET_USED(vdev_id);
+	int i;
+	/* Addresses will be initialized at port create */
+	for (i = 0; i < DLB2_MAX_NUM_PORTS; i++) {
+		/* First directed ports */
+		dlb2_port[i][DLB2_DIR_PORT].pp_addr = NULL;
+		dlb2_port[i][DLB2_DIR_PORT].cq_base = NULL;
+		dlb2_port[i][DLB2_DIR_PORT].mmaped = true;
+
+		/* Now load balanced ports */
+		dlb2_port[i][DLB2_LDB_PORT].pp_addr = NULL;
+		dlb2_port[i][DLB2_LDB_PORT].cq_base = NULL;
+		dlb2_port[i][DLB2_LDB_PORT].mmaped = true;
+	}
+}
+
+static int
+dlb2_pf_open(struct dlb2_hw_dev *handle, const char *name)
+{
+	RTE_SET_USED(handle);
+	RTE_SET_USED(name);
 
 	return 0;
 }
 
-void dlb2_hw_enable_sparse_ldb_cq_mode(struct dlb2_hw *hw)
+static int
+dlb2_pf_get_device_version(struct dlb2_hw_dev *handle,
+			   uint8_t *revision)
 {
-	RTE_SET_USED(hw);
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+
+	*revision = dlb2_dev->revision;
+
+	return 0;
 }
 
-void dlb2_hw_enable_sparse_dir_cq_mode(struct dlb2_hw *hw)
+static void
+dlb2_pf_hardware_init(struct dlb2_hw_dev *handle)
 {
-	RTE_SET_USED(hw);
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+
+	dlb2_hw_enable_sparse_ldb_cq_mode(&dlb2_dev->hw);
+	dlb2_hw_enable_sparse_dir_cq_mode(&dlb2_dev->hw);
 }
-/* End stubs */
+
+static int
+dlb2_pf_get_num_resources(struct dlb2_hw_dev *handle,
+			  struct dlb2_get_num_resources_args *rsrcs)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+
+	return dlb2_hw_get_num_resources(&dlb2_dev->hw, rsrcs, false, 0);
+}
+
+static int
+dlb2_pf_get_cq_poll_mode(struct dlb2_hw_dev *handle,
+			 enum dlb2_cq_poll_modes *mode)
+{
+	RTE_SET_USED(handle);
+
+	*mode = DLB2_CQ_POLL_MODE_SPARSE;
+
+	return 0;
+}
 
 static void
 dlb2_pf_iface_fn_ptrs_init(void)
 {
-/* flexible iface fn ptr assignments will go here */
+	dlb2_iface_low_level_io_init = dlb2_pf_low_level_io_init;
+	dlb2_iface_open = dlb2_pf_open;
+	dlb2_iface_get_device_version = dlb2_pf_get_device_version;
+	dlb2_iface_hardware_init = dlb2_pf_hardware_init;
+	dlb2_iface_get_num_resources = dlb2_pf_get_num_resources;
+	dlb2_iface_get_cq_poll_mode = dlb2_pf_get_cq_poll_mode;
 }
 
 /* PCI DEV HOOKS */
