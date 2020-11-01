@@ -47,6 +47,15 @@ int (*dlb_iface_dir_port_create)(struct dlb_hw_dev *handle,
 				 struct dlb_create_dir_port_args *cfg,
 				 enum dlb_cq_poll_modes poll_mode);
 
+int (*dlb_iface_map_qid)(struct dlb_hw_dev *handle,
+			 struct dlb_map_qid_args *cfg);
+
+int (*dlb_iface_unmap_qid)(struct dlb_hw_dev *handle,
+			   struct dlb_unmap_qid_args *cfg);
+
+int (*dlb_iface_pending_port_unmaps)(struct dlb_hw_dev *handle,
+				     struct dlb_pending_port_unmaps_args *args);
+
 int (*dlb_iface_get_cq_poll_mode)(struct dlb_hw_dev *handle,
 				  enum dlb_cq_poll_modes *mode);
 

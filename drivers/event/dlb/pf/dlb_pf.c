@@ -482,6 +482,72 @@ dlb_pf_get_sn_occupancy(struct dlb_hw_dev *handle,
 	return ret;
 }
 
+static int
+dlb_pf_pending_port_unmaps(struct dlb_hw_dev *handle,
+			   struct dlb_pending_port_unmaps_args *args)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	ret = dlb_hw_pending_port_unmaps(&dlb_dev->hw,
+					 handle->domain_id,
+					 args,
+					 &response);
+
+	*(struct dlb_cmd_response *)args->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+	return ret;
+}
+
+static int
+dlb_pf_map_qid(struct dlb_hw_dev *handle,
+	       struct dlb_map_qid_args *cfg)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	ret = dlb_hw_map_qid(&dlb_dev->hw,
+			     handle->domain_id,
+			     cfg,
+			     &response);
+
+	*(struct dlb_cmd_response *)cfg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+	return ret;
+}
+
+static int
+dlb_pf_unmap_qid(struct dlb_hw_dev *handle,
+		 struct dlb_unmap_qid_args *cfg)
+{
+	struct dlb_dev *dlb_dev = (struct dlb_dev *)handle->pf_dev;
+	struct dlb_cmd_response response = {0};
+	int ret;
+
+	DLB_INFO(dev->dlb_device, "Entering %s()\n", __func__);
+
+	ret = dlb_hw_unmap_qid(&dlb_dev->hw,
+			       handle->domain_id,
+			       cfg,
+			       &response);
+
+	*(struct dlb_cmd_response *)cfg->response = response;
+
+	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+
+	return ret;
+}
+
 static void
 dlb_pf_iface_fn_ptrs_init(void)
 {
@@ -497,6 +563,9 @@ dlb_pf_iface_fn_ptrs_init(void)
 	dlb_iface_dir_queue_create = dlb_pf_dir_queue_create;
 	dlb_iface_ldb_port_create = dlb_pf_ldb_port_create;
 	dlb_iface_dir_port_create = dlb_pf_dir_port_create;
+	dlb_iface_map_qid = dlb_pf_map_qid;
+	dlb_iface_unmap_qid = dlb_pf_unmap_qid;
+	dlb_iface_pending_port_unmaps = dlb_pf_pending_port_unmaps;
 	dlb_iface_get_cq_poll_mode = dlb_pf_get_cq_poll_mode;
 	dlb_iface_get_sn_allocation = dlb_pf_get_sn_allocation;
 	dlb_iface_set_sn_allocation = dlb_pf_set_sn_allocation;
