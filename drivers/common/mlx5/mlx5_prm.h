@@ -120,7 +120,7 @@
 				  MLX5_WQE_DSEG_SIZE + \
 				  MLX5_ESEG_MIN_INLINE_SIZE)
 
-/* Missed in mlv5dv.h, should define here. */
+/* Missed in mlx5dv.h, should define here. */
 #ifndef HAVE_MLX5_OPCODE_ENHANCED_MPSW
 #define MLX5_OPCODE_ENHANCED_MPSW 0x29u
 #endif
@@ -131,6 +131,10 @@
 
 #ifndef HAVE_MLX5_OPCODE_WAIT
 #define MLX5_OPCODE_WAIT 0x0fu
+#endif
+
+#ifndef HAVE_MLX5_OPCODE_ACCESS_ASO
+#define MLX5_OPCODE_ACCESS_ASO 0x2du
 #endif
 
 /* CQE value to inform that VLAN is stripped. */
@@ -2354,6 +2358,66 @@ struct mlx5_ifc_create_flow_hit_aso_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_flow_hit_aso_bits flow_hit_aso;
 };
+
+enum mlx5_access_aso_op_mod {
+	ASO_OP_MOD_IPSEC = 0x0,
+	ASO_OP_MOD_CONNECTION_TRACKING = 0x1,
+	ASO_OP_MOD_POLICER = 0x2,
+	ASO_OP_MOD_RACE_AVOIDANCE = 0x3,
+	ASO_OP_MOD_FLOW_HIT = 0x4,
+};
+
+enum mlx5_aso_data_mask_mode {
+	BITWISE_64BIT = 0x0,
+	BYTEWISE_64BYTE = 0x1,
+	CALCULATED_64BYTE = 0x2,
+};
+
+enum mlx5_aso_pre_cond_op {
+	ASO_OP_ALWAYS_FALSE = 0x0,
+	ASO_OP_ALWAYS_TRUE = 0x1,
+	ASO_OP_EQUAL = 0x2,
+	ASO_OP_NOT_EQUAL = 0x3,
+	ASO_OP_GREATER_OR_EQUAL = 0x4,
+	ASO_OP_LESSER_OR_EQUAL = 0x5,
+	ASO_OP_LESSER = 0x6,
+	ASO_OP_GREATER = 0x7,
+	ASO_OP_CYCLIC_GREATER = 0x8,
+	ASO_OP_CYCLIC_LESSER = 0x9,
+};
+
+enum mlx5_aso_op {
+	ASO_OPER_LOGICAL_AND = 0x0,
+	ASO_OPER_LOGICAL_OR = 0x1,
+};
+
+/* ASO WQE CTRL segment. */
+struct mlx5_aso_cseg {
+	uint32_t va_h;
+	uint32_t va_l_ro;
+	uint32_t lkey;
+	uint32_t operand_masks;
+	uint32_t condition_0_data;
+	uint32_t condition_0_mask;
+	uint32_t condition_1_data;
+	uint32_t condition_1_mask;
+	uint64_t bitwise_data;
+	uint64_t data_mask;
+} __rte_packed;
+
+#define MLX5_ASO_WQE_DSEG_SIZE	0x40
+
+/* ASO WQE Data segment. */
+struct mlx5_aso_dseg {
+	uint8_t data[MLX5_ASO_WQE_DSEG_SIZE];
+} __rte_packed;
+
+/* ASO WQE. */
+struct mlx5_aso_wqe {
+	struct mlx5_wqe_cseg general_cseg;
+	struct mlx5_aso_cseg aso_cseg;
+	struct mlx5_aso_dseg aso_dseg;
+} __rte_packed;
 
 enum {
 	MLX5_EVENT_TYPE_OBJECT_CHANGE = 0x27,

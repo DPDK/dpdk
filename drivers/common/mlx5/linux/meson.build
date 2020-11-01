@@ -126,6 +126,8 @@ has_sym_args = [
 	'MLX5_OPCODE_SEND_EN' ],
 	[ 'HAVE_MLX5_OPCODE_WAIT', 'infiniband/mlx5dv.h',
 	'MLX5_OPCODE_WAIT' ],
+        [ 'HAVE_MLX5_OPCODE_ACCESS_ASO', 'infiniband/mlx5dv.h',
+        'MLX5_OPCODE_ACCESS_ASO' ],
 	[ 'HAVE_SUPPORTED_40000baseKR4_Full', 'linux/ethtool.h',
 	'SUPPORTED_40000baseKR4_Full' ],
 	[ 'HAVE_SUPPORTED_40000baseCR4_Full', 'linux/ethtool.h',
