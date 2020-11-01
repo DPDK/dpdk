@@ -566,10 +566,8 @@ struct mlx5_aso_age_mng {
 /* Aging information for per port. */
 struct mlx5_age_info {
 	uint8_t flags; /* Indicate if is new event or need to be triggered. */
-	union {
-		struct mlx5_counters aged_counters; /* Aged counter list. */
-		struct aso_age_list aged_aso; /* Aged ASO actions list. */
-	};
+	struct mlx5_counters aged_counters; /* Aged counter list. */
+	struct aso_age_list aged_aso; /* Aged ASO actions list. */
 	rte_spinlock_t aged_sl; /* Aged flow list lock. */
 };
 

@@ -5927,6 +5927,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
+			if (!attr->group)
+				return rte_flow_error_set(error, ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+									   NULL,
+			  "Shared ASO age action is not supported for group 0");
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			++actions_n;
 			break;
@@ -9783,7 +9788,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
-			if (priv->sh->flow_hit_aso_en) {
+			if (priv->sh->flow_hit_aso_en && attr->group) {
 				flow->age = flow_dv_translate_create_aso_age
 						(dev, action->conf);
 				if (!flow->age)
@@ -9791,7 +9796,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						(error, rte_errno,
 						 RTE_FLOW_ERROR_TYPE_ACTION,
 						 NULL,
-						 "can't create age action");
+						 "can't create ASO age action");
 				dev_flow->dv.actions[actions_n++] =
 					  (flow_aso_age_get_by_idx
 						(dev, flow->age))->dr_action;
@@ -12406,26 +12411,24 @@ flow_get_aged_flows(struct rte_eth_dev *dev,
 					  NULL, "empty context");
 	age_info = GET_PORT_AGE_INFO(priv);
 	rte_spinlock_lock(&age_info->aged_sl);
-	if (priv->sh->flow_hit_aso_en)
-		LIST_FOREACH(act, &age_info->aged_aso, next) {
-			nb_flows++;
-			if (nb_contexts) {
-				context[nb_flows - 1] =
-							act->age_params.context;
-				if (!(--nb_contexts))
-					break;
-			}
+	LIST_FOREACH(act, &age_info->aged_aso, next) {
+		nb_flows++;
+		if (nb_contexts) {
+			context[nb_flows - 1] =
+						act->age_params.context;
+			if (!(--nb_contexts))
+				break;
 		}
-	else
-		TAILQ_FOREACH(counter, &age_info->aged_counters, next) {
-			nb_flows++;
-			if (nb_contexts) {
-				age_param = MLX5_CNT_TO_AGE(counter);
-				context[nb_flows - 1] = age_param->context;
-				if (!(--nb_contexts))
-					break;
-			}
+	}
+	TAILQ_FOREACH(counter, &age_info->aged_counters, next) {
+		nb_flows++;
+		if (nb_contexts) {
+			age_param = MLX5_CNT_TO_AGE(counter);
+			context[nb_flows - 1] = age_param->context;
+			if (!(--nb_contexts))
+				break;
 		}
+	}
 	rte_spinlock_unlock(&age_info->aged_sl);
 	MLX5_AGE_SET(age_info, MLX5_AGE_TRIGGER);
 	return nb_flows;

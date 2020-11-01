@@ -438,6 +438,7 @@ mlx5_flow_aging_init(struct mlx5_dev_ctx_shared *sh)
 		age_info = &sh->port[i].age_info;
 		age_info->flags = 0;
 		TAILQ_INIT(&age_info->aged_counters);
+		LIST_INIT(&age_info->aged_aso);
 		rte_spinlock_init(&age_info->aged_sl);
 		MLX5_AGE_SET(age_info, MLX5_AGE_TRIGGER);
 	}
