@@ -178,7 +178,7 @@ KNI Creation and Deletion
 -------------------------
 
 Before any KNI interfaces can be created, the ``rte_kni`` kernel module must
-be loaded into the kernel and configured withe ``rte_kni_init()`` function.
+be loaded into the kernel and configured with the ``rte_kni_init()`` function.
 
 The KNI interfaces are created by a DPDK application dynamically via the
 ``rte_kni_alloc()`` function.
