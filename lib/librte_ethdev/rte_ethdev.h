@@ -1344,6 +1344,11 @@ struct rte_eth_conf {
 #define DEV_RX_OFFLOAD_VLAN_EXTEND	0x00000400
 #define DEV_RX_OFFLOAD_JUMBO_FRAME	0x00000800
 #define DEV_RX_OFFLOAD_SCATTER		0x00002000
+/**
+ * Timestamp is set by the driver in RTE_MBUF_DYNFIELD_TIMESTAMP_NAME
+ * and RTE_MBUF_DYNFLAG_RX_TIMESTAMP_NAME is set in ol_flags.
+ * The mbuf field and flag are registered when the offload is configured.
+ */
 #define DEV_RX_OFFLOAD_TIMESTAMP	0x00004000
 #define DEV_RX_OFFLOAD_SECURITY         0x00008000
 #define DEV_RX_OFFLOAD_KEEP_CRC		0x00010000
@@ -4646,7 +4651,7 @@ int rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *time);
  * rte_eth_read_clock(port, base_clock);
  *
  * Then, convert the raw mbuf timestamp with:
- * base_time_sec + (double)(mbuf->timestamp - base_clock) / freq;
+ * base_time_sec + (double)(*timestamp_dynfield(mbuf) - base_clock) / freq;
  *
  * This simple example will not provide a very good accuracy. One must
  * at least measure multiple times the frequency and do a regression.
