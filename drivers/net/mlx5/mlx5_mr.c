@@ -404,7 +404,7 @@ mlx5_dma_unmap(struct rte_pci_device *pdev, void *addr,
 		return -1;
 	}
 	LIST_REMOVE(mr, mr);
-	LIST_INSERT_HEAD(&sh->share_cache.mr_free_list, mr, mr);
+	mlx5_mr_free(mr, sh->share_cache.dereg_mr_cb);
 	DEBUG("port %u remove MR(%p) from list", dev->data->port_id,
 	      (void *)mr);
 	mlx5_mr_rebuild_cache(&sh->share_cache);

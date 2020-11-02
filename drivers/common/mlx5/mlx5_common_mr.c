@@ -436,8 +436,8 @@ mlx5_mr_lookup_cache(struct mlx5_mr_share_cache *share_cache,
  * @param mr
  *   Pointer to MR to free.
  */
-static void
-mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb)
+void
+mlx5_mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb)
 {
 	if (mr == NULL)
 		return;
@@ -492,7 +492,7 @@ mlx5_mr_garbage_collect(struct mlx5_mr_share_cache *share_cache)
 		struct mlx5_mr *mr = mr_next;
 
 		mr_next = LIST_NEXT(mr, mr);
-		mr_free(mr, share_cache->dereg_mr_cb);
+		mlx5_mr_free(mr, share_cache->dereg_mr_cb);
 	}
 }
 
@@ -702,7 +702,7 @@ alloc_resources:
 		data.start = RTE_ALIGN_FLOOR(addr, msl->page_sz);
 		data.end = data.start + msl->page_sz;
 		rte_mcfg_mem_read_unlock();
-		mr_free(mr, share_cache->dereg_mr_cb);
+		mlx5_mr_free(mr, share_cache->dereg_mr_cb);
 		goto alloc_resources;
 	}
 	MLX5_ASSERT(data.msl == data_re.msl);
@@ -725,7 +725,7 @@ alloc_resources:
 		 * Must be unlocked before calling rte_free() because
 		 * mlx5_mr_mem_event_free_cb() can be called inside.
 		 */
-		mr_free(mr, share_cache->dereg_mr_cb);
+		mlx5_mr_free(mr, share_cache->dereg_mr_cb);
 		return entry->lkey;
 	}
 	/*
@@ -801,7 +801,7 @@ err_nolock:
 	 * calling rte_free() because mlx5_mr_mem_event_free_cb() can be called
 	 * inside.
 	 */
-	mr_free(mr, share_cache->dereg_mr_cb);
+	mlx5_mr_free(mr, share_cache->dereg_mr_cb);
 	return UINT32_MAX;
 }
 

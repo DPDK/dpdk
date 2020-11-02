@@ -171,4 +171,8 @@ mlx5_common_verbs_reg_mr(void *pd, void *addr, size_t length,
 __rte_internal
 void
 mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr);
+
+__rte_internal
+void
+mlx5_mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb);
 #endif /* RTE_PMD_MLX5_COMMON_MR_H_ */
