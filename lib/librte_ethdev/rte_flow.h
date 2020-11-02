@@ -3487,6 +3487,14 @@ struct rte_flow_shared_action_conf {
 	/**< Action valid for rules applied to ingress traffic. */
 	uint32_t egress:1;
 	/**< Action valid for rules applied to egress traffic. */
+
+	/**
+	 * When set to 1, indicates that the action is valid for
+	 * transfer traffic; otherwise, for non-transfer traffic.
+	 *
+	 * See struct rte_flow_attr.
+	 */
+	uint32_t transfer:1;
 };
 
 /**
