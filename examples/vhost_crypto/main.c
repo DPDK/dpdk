@@ -195,7 +195,7 @@ vhost_crypto_usage(const char *prgname)
 {
 	printf("%s [EAL options] --\n"
 		"  --%s <lcore>,SOCKET-FILE-PATH\n"
-		"  --%s (lcore,cdev_id,queue_id)[,(lcore,cdev_id,queue_id)]"
+		"  --%s (lcore,cdev_id,queue_id)[,(lcore,cdev_id,queue_id)]\n"
 		"  --%s: zero copy\n"
 		"  --%s: guest polling\n",
 		prgname, SOCKET_FILE_KEYWORD, CONFIG_KEYWORD,
