@@ -114,6 +114,7 @@ enum index {
 	SHARED_ACTION_CREATE_ID,
 	SHARED_ACTION_INGRESS,
 	SHARED_ACTION_EGRESS,
+	SHARED_ACTION_TRANSFER,
 	SHARED_ACTION_SPEC,
 
 	/* Shared action destroy arguments */
@@ -782,6 +783,7 @@ static const enum index next_sa_create_attr[] = {
 	SHARED_ACTION_CREATE_ID,
 	SHARED_ACTION_INGRESS,
 	SHARED_ACTION_EGRESS,
+	SHARED_ACTION_TRANSFER,
 	SHARED_ACTION_SPEC,
 	ZERO,
 };
@@ -4286,6 +4288,12 @@ static const struct token token_list[] = {
 		.next = NEXT(next_sa_create_attr),
 		.call = parse_sa,
 	},
+	[SHARED_ACTION_TRANSFER] = {
+		.name = "transfer",
+		.help = "affect rule to transfer",
+		.next = NEXT(next_sa_create_attr),
+		.call = parse_sa,
+	},
 	[SHARED_ACTION_SPEC] = {
 		.name = "action",
 		.help = "specify action to share",
@@ -4520,6 +4528,9 @@ parse_sa(struct context *ctx, const struct token *token,
 		return len;
 	case SHARED_ACTION_INGRESS:
 		out->args.vc.attr.ingress = 1;
+		return len;
+	case SHARED_ACTION_TRANSFER:
+		out->args.vc.attr.transfer = 1;
 		return len;
 	default:
 		return -1;
@@ -7273,6 +7284,7 @@ cmd_flow_parsed(const struct buffer *in)
 				&((const struct rte_flow_shared_action_conf) {
 					.ingress = in->args.vc.attr.ingress,
 					.egress = in->args.vc.attr.egress,
+					.transfer = in->args.vc.attr.transfer,
 				}),
 				in->args.vc.actions);
 		break;

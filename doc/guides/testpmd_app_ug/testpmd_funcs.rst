@@ -4318,7 +4318,7 @@ Creating shared actions
 shared action ID. It is bound to ``rte_flow_shared_action_create()``::
 
    flow shared_action {port_id} create [action_id {shared_action_id}]
-      [ingress] [egress] action {action} / end
+      [ingress] [egress] [transfer] action {action} / end
 
 If successful, it will show::
 
