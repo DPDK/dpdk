@@ -41,6 +41,9 @@
 #define HNS3_SW_SHIFT_AND_DISCARD_MODE		0
 #define HNS3_HW_SHIFT_AND_DISCARD_MODE		1
 
+#define HNS3_UNLIMIT_PROMISC_MODE       0
+#define HNS3_LIMIT_PROMISC_MODE         1
+
 #define HNS3_UC_MACADDR_NUM		128
 #define HNS3_VF_UC_MACADDR_NUM		48
 #define HNS3_MC_MACADDR_NUM		128
@@ -528,6 +531,24 @@ struct hns3_hw {
 	 *     is enabled.
 	 */
 	uint8_t vlan_mode;
+	/*
+	 * promisc mode.
+	 * value range:
+	 *      HNS3_UNLIMIT_PROMISC_MODE/HNS3_LIMIT_PROMISC_MODE
+	 *
+	 *  - HNS3_UNLIMIT_PROMISC_MODE
+	 *     In this mode, TX unicast promisc will be configured when promisc
+	 *     is set, driver can receive all the ingress and outgoing traffic.
+	 *     In the words, all the ingress packets, all the packets sent from
+	 *     the PF and other VFs on the same physical port.
+	 *
+	 *  - HNS3_LIMIT_PROMISC_MODE
+	 *     In this mode, TX unicast promisc is shutdown when promisc mode
+	 *     is set. So, driver will only receive all the ingress traffic.
+	 *     The packets sent from the PF and other VFs on the same physical
+	 *     port won't be copied to the function which has set promisc mode.
+	 */
+	uint8_t promisc_mode;
 	uint8_t max_non_tso_bd_num; /* max BD number of one non-TSO packet */
 
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;

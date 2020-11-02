@@ -610,6 +610,7 @@ hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc,
 	req->msg[1] = en_bc_pmc ? 1 : 0;
 	req->msg[2] = en_uc_pmc ? 1 : 0;
 	req->msg[3] = en_mc_pmc ? 1 : 0;
+	req->msg[4] = hw->promisc_mode == HNS3_LIMIT_PROMISC_MODE ? 1 : 0;
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
@@ -1214,6 +1215,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 		hw->tso_mode = HNS3_TSO_SW_CAL_PSEUDO_H_CSUM;
 		hw->min_tx_pkt_len = HNS3_HIP08_MIN_TX_PKT_LEN;
 		hw->rss_info.ipv6_sctp_offload_supported = false;
+		hw->promisc_mode = HNS3_UNLIMIT_PROMISC_MODE;
 		return 0;
 	}
 
@@ -1231,6 +1233,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 	hw->tso_mode = HNS3_TSO_HW_CAL_PSEUDO_H_CSUM;
 	hw->min_tx_pkt_len = HNS3_HIP09_MIN_TX_PKT_LEN;
 	hw->rss_info.ipv6_sctp_offload_supported = true;
+	hw->promisc_mode = HNS3_LIMIT_PROMISC_MODE;
 
 	return 0;
 }
