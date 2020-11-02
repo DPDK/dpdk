@@ -336,7 +336,7 @@ hns3_dcb_get_shapping_para(uint8_t ir_b, uint8_t ir_u, uint8_t ir_s,
 	return shapping_para;
 }
 
-static int
+int
 hns3_dcb_port_shaper_cfg(struct hns3_hw *hw)
 {
 	struct hns3_port_shapping_cmd *shap_cfg_cmd;

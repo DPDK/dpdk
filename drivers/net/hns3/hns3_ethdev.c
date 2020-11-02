@@ -4332,6 +4332,7 @@ static int
 hns3_cfg_mac_speed_dup(struct hns3_hw *hw, uint32_t speed, uint8_t duplex)
 {
 	struct hns3_mac *mac = &hw->mac;
+	uint32_t cur_speed = mac->link_speed;
 	int ret;
 
 	duplex = hns3_check_speed_dup(duplex, speed);
@@ -4343,6 +4344,13 @@ hns3_cfg_mac_speed_dup(struct hns3_hw *hw, uint32_t speed, uint8_t duplex)
 		return ret;
 
 	mac->link_speed = speed;
+	ret = hns3_dcb_port_shaper_cfg(hw);
+	if (ret) {
+		hns3_err(hw, "failed to configure port shaper, ret = %d.", ret);
+		mac->link_speed = cur_speed;
+		return ret;
+	}
+
 	mac->link_duplex = duplex;
 
 	return 0;
