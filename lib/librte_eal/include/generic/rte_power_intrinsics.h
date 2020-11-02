@@ -33,7 +33,7 @@
  * optimized power state may be aborted.
  *
  * @warning It is responsibility of the user to check if this function is
- *   supported at runtime using `rte_cpu_get_features()` API call.
+ *   supported at runtime using `rte_cpu_get_intrinsics_support()` API call.
  *   Failing to do so may result in an illegal CPU instruction error.
  *
  * @param p
@@ -74,7 +74,7 @@ static inline void rte_power_monitor(const volatile void *p,
  * waking up the CPU.
  *
  * @warning It is responsibility of the user to check if this function is
- *   supported at runtime using `rte_cpu_get_features()` API call.
+ *   supported at runtime using `rte_cpu_get_intrinsics_support()` API call.
  *   Failing to do so may result in an illegal CPU instruction error.
  *
  * @param p
@@ -110,7 +110,7 @@ static inline void rte_power_monitor_sync(const volatile void *p,
  * timestamp is reached.
  *
  * @warning It is responsibility of the user to check if this function is
- *   supported at runtime using `rte_cpu_get_features()` API call.
+ *   supported at runtime using `rte_cpu_get_intrinsics_support()` API call.
  *   Failing to do so may result in an illegal CPU instruction error.
  *
  * @param tsc_timestamp
