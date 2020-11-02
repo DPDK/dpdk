@@ -613,3 +613,10 @@ rte_mbuf_dyn_rx_timestamp_register(int *field_offset, uint64_t *rx_flag)
 	return rte_mbuf_dyn_timestamp_register(field_offset, rx_flag,
 			"Rx", RTE_MBUF_DYNFLAG_RX_TIMESTAMP_NAME);
 }
+
+int
+rte_mbuf_dyn_tx_timestamp_register(int *field_offset, uint64_t *tx_flag)
+{
+	return rte_mbuf_dyn_timestamp_register(field_offset, tx_flag,
+			"Tx", RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME);
+}

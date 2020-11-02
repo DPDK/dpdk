@@ -304,4 +304,26 @@ int rte_mbuf_dyn_rx_timestamp_register(int *field_offset, uint64_t *rx_flag);
  */
 #define RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME "rte_dynflag_tx_timestamp"
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Register dynamic mbuf field and flag for Tx timestamp.
+ *
+ * @param field_offset
+ *   Pointer to the offset of the registered mbuf field, can be NULL.
+ *   The same field is shared for Rx and Tx timestamp.
+ * @param tx_flag
+ *   Pointer to the mask of the registered offload flag, can be NULL.
+ * @return
+ *   0 on success, -1 otherwise.
+ *   Possible values for rte_errno:
+ *   - EEXIST: already registered with different parameters.
+ *   - EPERM: called from a secondary process.
+ *   - ENOENT: no more field or flag available.
+ *   - ENOMEM: allocation failure.
+ */
+__rte_experimental
+int rte_mbuf_dyn_tx_timestamp_register(int *field_offset, uint64_t *tx_flag);
+
 #endif
