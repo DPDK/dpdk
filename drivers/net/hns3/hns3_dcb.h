@@ -5,6 +5,10 @@
 #ifndef _HNS3_DCB_H_
 #define _HNS3_DCB_H_
 
+#include <stdint.h>
+
+#include "hns3_cmd.h"
+
 #define HNS3_ETHER_MAX_RATE		100000
 
 /* MAC Pause */

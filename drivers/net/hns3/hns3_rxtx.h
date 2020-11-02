@@ -5,6 +5,9 @@
 #ifndef _HNS3_RXTX_H_
 #define _HNS3_RXTX_H_
 
+#include <stdint.h>
+#include <rte_mbuf_core.h>
+
 #define	HNS3_MIN_RING_DESC	64
 #define	HNS3_MAX_RING_DESC	32768
 #define HNS3_DEFAULT_RING_DESC  1024

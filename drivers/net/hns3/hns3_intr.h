@@ -5,6 +5,10 @@
 #ifndef _HNS3_INTR_H_
 #define _HNS3_INTR_H_
 
+#include <stdint.h>
+
+#include "hns3_ethdev.h"
+
 #define HNS3_PPP_MPF_ECC_ERR_INT0_EN		0xFFFFFFFF
 #define HNS3_PPP_MPF_ECC_ERR_INT0_EN_MASK	0xFFFFFFFF
 #define HNS3_PPP_MPF_ECC_ERR_INT1_EN		0xFFFFFFFF

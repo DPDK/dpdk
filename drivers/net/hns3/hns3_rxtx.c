@@ -2,27 +2,14 @@
  * Copyright(c) 2018-2019 Hisilicon Limited.
  */
 
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <inttypes.h>
 #include <rte_bus_pci.h>
-#include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
-#include <rte_dev.h>
-#include <rte_eal.h>
-#include <rte_ether.h>
 #include <rte_vxlan.h>
 #include <rte_ethdev_driver.h>
 #include <rte_io.h>
-#include <rte_ip.h>
-#include <rte_gre.h>
 #include <rte_net.h>
 #include <rte_malloc.h>
-#include <rte_pci.h>
 #if defined(RTE_ARCH_ARM64) && defined(CC_SVE_SUPPORT)
 #include <rte_cpuflags.h>
 #endif

@@ -5,6 +5,8 @@
 #ifndef _HNS3_CMD_H_
 #define _HNS3_CMD_H_
 
+#include <stdint.h>
+
 #define HNS3_CMDQ_TX_TIMEOUT		30000
 #define HNS3_CMDQ_RX_INVLD_B		0
 #define HNS3_CMDQ_RX_OUTVLD_B		1

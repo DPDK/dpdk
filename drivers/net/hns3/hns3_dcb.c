@@ -2,17 +2,10 @@
  * Copyright(c) 2018-2019 Hisilicon Limited.
  */
 
-#include <errno.h>
-#include <inttypes.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
 #include <rte_io.h>
-#include <rte_common.h>
 #include <rte_ethdev.h>
 
 #include "hns3_logs.h"
-#include "hns3_regs.h"
 #include "hns3_ethdev.h"
 #include "hns3_dcb.h"
 

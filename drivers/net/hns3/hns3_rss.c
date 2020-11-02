@@ -2,12 +2,9 @@
  * Copyright(c) 2018-2019 Hisilicon Limited.
  */
 
-#include <stdbool.h>
 #include <rte_ethdev.h>
 #include <rte_io.h>
 #include <rte_malloc.h>
-#include <rte_memcpy.h>
-#include <rte_spinlock.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"

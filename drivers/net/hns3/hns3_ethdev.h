@@ -6,7 +6,6 @@
 #define _HNS3_ETHDEV_H_
 
 #include <sys/time.h>
-#include <rte_alarm.h>
 #include <rte_ethdev_driver.h>
 
 #include "hns3_cmd.h"
@@ -792,12 +791,8 @@ struct hns3_adapter {
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)adapter)->hw)
-#define HNS3_DEV_PRIVATE_TO_ADAPTER(adapter) \
-	((struct hns3_adapter *)adapter)
 #define HNS3_DEV_PRIVATE_TO_PF(adapter) \
 	(&((struct hns3_adapter *)adapter)->pf)
-#define HNS3VF_DEV_PRIVATE_TO_VF(adapter) \
-	(&((struct hns3_adapter *)adapter)->vf)
 #define HNS3_DEV_HW_TO_ADAPTER(hw) \
 	container_of(hw, struct hns3_adapter, hw)
 

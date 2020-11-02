@@ -2,15 +2,11 @@
  * Copyright(c) 2018-2019 Hisilicon Limited.
  */
 
-#include <stdbool.h>
-#include <rte_atomic.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
 #include <rte_io.h>
 #include <rte_malloc.h>
-#include <rte_pci.h>
-#include <rte_bus_pci.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"

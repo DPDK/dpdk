@@ -2,8 +2,6 @@
  * Copyright(c) 2018-2019 Hisilicon Limited.
  */
 
-#include <stdbool.h>
-#include <sys/queue.h>
 #include <rte_flow_driver.h>
 #include <rte_io.h>
 #include <rte_malloc.h>

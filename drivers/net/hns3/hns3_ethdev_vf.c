@@ -2,29 +2,10 @@
  * Copyright(c) 2018-2019 Hisilicon Limited.
  */
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include <inttypes.h>
-#include <unistd.h>
-#include <arpa/inet.h>
 #include <linux/pci_regs.h>
-
 #include <rte_alarm.h>
-#include <rte_atomic.h>
-#include <rte_bus_pci.h>
-#include <rte_byteorder.h>
-#include <rte_common.h>
-#include <rte_cycles.h>
-#include <rte_dev.h>
-#include <rte_eal.h>
-#include <rte_ether.h>
-#include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
-#include <rte_interrupts.h>
 #include <rte_io.h>
-#include <rte_log.h>
 #include <rte_pci.h>
 #include <rte_vfio.h>
 
@@ -2887,7 +2868,7 @@ eth_hns3vf_pci_remove(struct rte_pci_device *pci_dev)
 static const struct rte_pci_id pci_id_hns3vf_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HNS3_DEV_ID_100G_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HNS3_DEV_ID_100G_RDMA_PFC_VF) },
-	{ .vendor_id = 0, /* sentinel */ },
+	{ .vendor_id = 0, }, /* sentinel */
 };
 
 static struct rte_pci_driver rte_hns3vf_pmd = {
