@@ -827,6 +827,8 @@ struct hns3_adapter {
 #define hns3_get_bit(origin, shift) \
 	hns3_get_field((origin), (0x1UL << (shift)), (shift))
 
+#define hns3_gen_field_val(mask, shift, val) (((val) << (shift)) & (mask))
+
 /*
  * upper_32_bits - return bits 32-63 of a number
  * A basic shift-right of a 64- or 32-bit quantity. Use this to suppress

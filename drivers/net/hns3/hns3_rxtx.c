@@ -2641,44 +2641,6 @@ hns3_tx_free_useless_buffer(struct hns3_tx_queue *txq)
 	txq->tx_bd_ready   = tx_bd_ready;
 }
 
-static int
-hns3_tso_proc_tunnel(struct hns3_desc *desc, uint64_t ol_flags,
-		     struct rte_mbuf *rxm, uint8_t *l2_len)
-{
-	uint64_t tun_flags;
-	uint8_t ol4_len;
-	uint32_t otmp;
-
-	tun_flags = ol_flags & PKT_TX_TUNNEL_MASK;
-	if (tun_flags == 0)
-		return 0;
-
-	otmp = rte_le_to_cpu_32(desc->tx.ol_type_vlan_len_msec);
-	switch (tun_flags) {
-	case PKT_TX_TUNNEL_GENEVE:
-	case PKT_TX_TUNNEL_VXLAN:
-		*l2_len = rxm->l2_len - RTE_ETHER_VXLAN_HLEN;
-		break;
-	case PKT_TX_TUNNEL_GRE:
-		/*
-		 * OL4 header size, defined in 4 Bytes, it contains outer
-		 * L4(GRE) length and tunneling length.
-		 */
-		ol4_len = hns3_get_field(otmp, HNS3_TXD_L4LEN_M,
-					 HNS3_TXD_L4LEN_S);
-		*l2_len = rxm->l2_len - (ol4_len << HNS3_L4_LEN_UNIT);
-		break;
-	default:
-		/* For non UDP / GRE tunneling, drop the tunnel packet */
-		return -EINVAL;
-	}
-	hns3_set_field(otmp, HNS3_TXD_L2LEN_M, HNS3_TXD_L2LEN_S,
-		       rxm->outer_l2_len >> HNS3_L2_LEN_UNIT);
-	desc->tx.ol_type_vlan_len_msec = rte_cpu_to_le_32(otmp);
-
-	return 0;
-}
-
 int
 hns3_config_gro(struct hns3_hw *hw, bool en)
 {
@@ -2723,31 +2685,15 @@ hns3_pkt_is_tso(struct rte_mbuf *m)
 }
 
 static void
-hns3_set_tso(struct hns3_desc *desc, uint64_t ol_flags,
-		uint32_t paylen, struct rte_mbuf *rxm)
+hns3_set_tso(struct hns3_desc *desc, uint32_t paylen, struct rte_mbuf *rxm)
 {
-	uint8_t l2_len = rxm->l2_len;
-	uint32_t tmp;
-
 	if (!hns3_pkt_is_tso(rxm))
-		return;
-
-	if (hns3_tso_proc_tunnel(desc, ol_flags, rxm, &l2_len))
 		return;
 
 	if (paylen <= rxm->tso_segsz)
 		return;
 
-	tmp = rte_le_to_cpu_32(desc->tx.type_cs_vlan_tso_len);
-	hns3_set_bit(tmp, HNS3_TXD_TSO_B, 1);
-	hns3_set_bit(tmp, HNS3_TXD_L3CS_B, 1);
-	hns3_set_field(tmp, HNS3_TXD_L4T_M, HNS3_TXD_L4T_S, HNS3_L4T_TCP);
-	hns3_set_bit(tmp, HNS3_TXD_L4CS_B, 1);
-	hns3_set_field(tmp, HNS3_TXD_L4LEN_M, HNS3_TXD_L4LEN_S,
-		       sizeof(struct rte_tcp_hdr) >> HNS3_L4_LEN_UNIT);
-	hns3_set_field(tmp, HNS3_TXD_L2LEN_M, HNS3_TXD_L2LEN_S,
-		       l2_len >> HNS3_L2_LEN_UNIT);
-	desc->tx.type_cs_vlan_tso_len = rte_cpu_to_le_32(tmp);
+	desc->tx.type_cs_vlan_tso_len |= rte_cpu_to_le_32(BIT(HNS3_TXD_TSO_B));
 	desc->tx.mss = rte_cpu_to_le_16(rxm->tso_segsz);
 }
 
@@ -2772,7 +2718,7 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 			   rxm->outer_l2_len + rxm->outer_l3_len : 0;
 	paylen = rxm->pkt_len - hdr_len;
 	desc->tx.paylen = rte_cpu_to_le_32(paylen);
-	hns3_set_tso(desc, ol_flags, paylen, rxm);
+	hns3_set_tso(desc, paylen, rxm);
 
 	/*
 	 * Currently, hardware doesn't support more than two layers VLAN offload
@@ -2917,180 +2863,212 @@ hns3_reassemble_tx_pkts(struct rte_mbuf *tx_pkt, struct rte_mbuf **new_pkt,
 }
 
 static void
-hns3_parse_outer_params(uint64_t ol_flags, uint32_t *ol_type_vlan_len_msec)
+hns3_parse_outer_params(struct rte_mbuf *m, uint32_t *ol_type_vlan_len_msec)
 {
 	uint32_t tmp = *ol_type_vlan_len_msec;
+	uint64_t ol_flags = m->ol_flags;
 
 	/* (outer) IP header type */
 	if (ol_flags & PKT_TX_OUTER_IPV4) {
-		/* OL3 header size, defined in 4 bytes */
-		hns3_set_field(tmp, HNS3_TXD_L3LEN_M, HNS3_TXD_L3LEN_S,
-			       sizeof(struct rte_ipv4_hdr) >> HNS3_L3_LEN_UNIT);
 		if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
-			hns3_set_field(tmp, HNS3_TXD_OL3T_M,
-				       HNS3_TXD_OL3T_S, HNS3_OL3T_IPV4_CSUM);
+			tmp |= hns3_gen_field_val(HNS3_TXD_OL3T_M,
+					HNS3_TXD_OL3T_S, HNS3_OL3T_IPV4_CSUM);
 		else
-			hns3_set_field(tmp, HNS3_TXD_OL3T_M, HNS3_TXD_OL3T_S,
-				       HNS3_OL3T_IPV4_NO_CSUM);
+			tmp |= hns3_gen_field_val(HNS3_TXD_OL3T_M,
+				HNS3_TXD_OL3T_S, HNS3_OL3T_IPV4_NO_CSUM);
 	} else if (ol_flags & PKT_TX_OUTER_IPV6) {
-		hns3_set_field(tmp, HNS3_TXD_OL3T_M, HNS3_TXD_OL3T_S,
-			       HNS3_OL3T_IPV6);
-		/* OL3 header size, defined in 4 bytes */
-		hns3_set_field(tmp, HNS3_TXD_L3LEN_M, HNS3_TXD_L3LEN_S,
-			       sizeof(struct rte_ipv6_hdr) >> HNS3_L3_LEN_UNIT);
+		tmp |= hns3_gen_field_val(HNS3_TXD_OL3T_M, HNS3_TXD_OL3T_S,
+					HNS3_OL3T_IPV6);
 	}
-
+	/* OL3 header size, defined in 4 bytes */
+	tmp |= hns3_gen_field_val(HNS3_TXD_L3LEN_M, HNS3_TXD_L3LEN_S,
+				m->outer_l3_len >> HNS3_L3_LEN_UNIT);
 	*ol_type_vlan_len_msec = tmp;
 }
 
 static int
-hns3_parse_inner_params(uint64_t ol_flags, uint32_t *ol_type_vlan_len_msec,
-			struct rte_net_hdr_lens *hdr_lens)
+hns3_parse_inner_params(struct rte_mbuf *m, uint32_t *ol_type_vlan_len_msec,
+			uint32_t *type_cs_vlan_tso_len)
 {
-	uint32_t tmp = *ol_type_vlan_len_msec;
-	uint8_t l4_len;
+#define HNS3_NVGRE_HLEN 8
+	uint32_t tmp_outer = *ol_type_vlan_len_msec;
+	uint32_t tmp_inner = *type_cs_vlan_tso_len;
+	uint64_t ol_flags = m->ol_flags;
+	uint16_t inner_l2_len;
 
-	/* OL2 header size, defined in 2 bytes */
-	hns3_set_field(tmp, HNS3_TXD_L2LEN_M, HNS3_TXD_L2LEN_S,
-		       sizeof(struct rte_ether_hdr) >> HNS3_L2_LEN_UNIT);
-
-	/* L4TUNT: L4 Tunneling Type */
 	switch (ol_flags & PKT_TX_TUNNEL_MASK) {
 	case PKT_TX_TUNNEL_GENEVE:
 	case PKT_TX_TUNNEL_VXLAN:
-		/* MAC in UDP tunnelling packet, include VxLAN */
-		hns3_set_field(tmp, HNS3_TXD_TUNTYPE_M, HNS3_TXD_TUNTYPE_S,
-			       HNS3_TUN_MAC_IN_UDP);
+		/* MAC in UDP tunnelling packet, include VxLAN and GENEVE */
+		tmp_outer |= hns3_gen_field_val(HNS3_TXD_TUNTYPE_M,
+				HNS3_TXD_TUNTYPE_S, HNS3_TUN_MAC_IN_UDP);
 		/*
-		 * OL4 header size, defined in 4 Bytes, it contains outer
-		 * L4(UDP) length and tunneling length.
+		 * The inner l2 length of mbuf is the sum of outer l4 length,
+		 * tunneling header length and inner l2 length for a tunnel
+		 * packect. But in hns3 tx descriptor, the tunneling header
+		 * length is contained in the field of outer L4 length.
+		 * Therefore, driver need to calculate the outer L4 length and
+		 * inner L2 length.
 		 */
-		hns3_set_field(tmp, HNS3_TXD_L4LEN_M, HNS3_TXD_L4LEN_S,
-			       (uint8_t)RTE_ETHER_VXLAN_HLEN >>
-			       HNS3_L4_LEN_UNIT);
+		tmp_outer |= hns3_gen_field_val(HNS3_TXD_L4LEN_M,
+						HNS3_TXD_L4LEN_S,
+						(uint8_t)RTE_ETHER_VXLAN_HLEN >>
+						HNS3_L4_LEN_UNIT);
+
+		inner_l2_len = m->l2_len - RTE_ETHER_VXLAN_HLEN;
 		break;
 	case PKT_TX_TUNNEL_GRE:
-		hns3_set_field(tmp, HNS3_TXD_TUNTYPE_M, HNS3_TXD_TUNTYPE_S,
-			       HNS3_TUN_NVGRE);
+		tmp_outer |= hns3_gen_field_val(HNS3_TXD_TUNTYPE_M,
+					HNS3_TXD_TUNTYPE_S, HNS3_TUN_NVGRE);
 		/*
-		 * OL4 header size, defined in 4 Bytes, it contains outer
-		 * L4(GRE) length and tunneling length.
+		 * For NVGRE tunnel packect, the outer L4 is empty. So only
+		 * fill the NVGRE header length to the outer L4 field.
 		 */
-		l4_len = hdr_lens->l4_len + hdr_lens->tunnel_len;
-		hns3_set_field(tmp, HNS3_TXD_L4LEN_M, HNS3_TXD_L4LEN_S,
-			       l4_len >> HNS3_L4_LEN_UNIT);
+		tmp_outer |= hns3_gen_field_val(HNS3_TXD_L4LEN_M,
+				HNS3_TXD_L4LEN_S,
+				(uint8_t)HNS3_NVGRE_HLEN >> HNS3_L4_LEN_UNIT);
+
+		inner_l2_len = m->l2_len - HNS3_NVGRE_HLEN;
 		break;
 	default:
 		/* For non UDP / GRE tunneling, drop the tunnel packet */
 		return -EINVAL;
 	}
 
-	*ol_type_vlan_len_msec = tmp;
+	tmp_inner |= hns3_gen_field_val(HNS3_TXD_L2LEN_M, HNS3_TXD_L2LEN_S,
+					inner_l2_len >> HNS3_L2_LEN_UNIT);
+	/* OL2 header size, defined in 2 bytes */
+	tmp_outer |= hns3_gen_field_val(HNS3_TXD_L2LEN_M, HNS3_TXD_L2LEN_S,
+					m->outer_l2_len >> HNS3_L2_LEN_UNIT);
+
+	*type_cs_vlan_tso_len = tmp_inner;
+	*ol_type_vlan_len_msec = tmp_outer;
 
 	return 0;
 }
 
 static int
-hns3_parse_tunneling_params(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
-			    uint64_t ol_flags,
-			    struct rte_net_hdr_lens *hdr_lens)
+hns3_parse_tunneling_params(struct hns3_tx_queue *txq, struct rte_mbuf *m,
+			    uint16_t tx_desc_id)
 {
 	struct hns3_desc *tx_ring = txq->tx_ring;
 	struct hns3_desc *desc = &tx_ring[tx_desc_id];
-	uint32_t value = 0;
+	uint32_t tmp_outer = 0;
+	uint32_t tmp_inner = 0;
 	int ret;
 
-	hns3_parse_outer_params(ol_flags, &value);
-	ret = hns3_parse_inner_params(ol_flags, &value, hdr_lens);
-	if (ret)
-		return -EINVAL;
+	/*
+	 * The tunnel header is contained in the inner L2 header field of the
+	 * mbuf, but for hns3 descriptor, it is contained in the outer L4. So,
+	 * there is a need that switching between them. To avoid multiple
+	 * calculations, the length of the L2 header include the outer and
+	 * inner, will be filled during the parsing of tunnel packects.
+	 */
+	if (!(m->ol_flags & PKT_TX_TUNNEL_MASK)) {
+		/*
+		 * For non tunnel type the tunnel type id is 0, so no need to
+		 * assign a value to it. Only the inner(normal) L2 header length
+		 * is assigned.
+		 */
+		tmp_inner |= hns3_gen_field_val(HNS3_TXD_L2LEN_M,
+			       HNS3_TXD_L2LEN_S, m->l2_len >> HNS3_L2_LEN_UNIT);
+	} else {
+		/*
+		 * If outer csum is not offload, the outer length may be filled
+		 * with 0. And the length of the outer header is added to the
+		 * inner l2_len. It would lead a cksum error. So driver has to
+		 * calculate the header length.
+		 */
+		if (unlikely(!(m->ol_flags & PKT_TX_OUTER_IP_CKSUM) &&
+					m->outer_l2_len == 0)) {
+			struct rte_net_hdr_lens hdr_len;
+			(void)rte_net_get_ptype(m, &hdr_len,
+					RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK);
+			m->outer_l3_len = hdr_len.l3_len;
+			m->outer_l2_len = hdr_len.l2_len;
+			m->l2_len = m->l2_len - hdr_len.l2_len - hdr_len.l3_len;
+		}
+		hns3_parse_outer_params(m, &tmp_outer);
+		ret = hns3_parse_inner_params(m, &tmp_outer, &tmp_inner);
+		if (ret)
+			return -EINVAL;
+	}
 
-	desc->tx.ol_type_vlan_len_msec |= rte_cpu_to_le_32(value);
+	desc->tx.ol_type_vlan_len_msec = rte_cpu_to_le_32(tmp_outer);
+	desc->tx.type_cs_vlan_tso_len = rte_cpu_to_le_32(tmp_inner);
 
 	return 0;
 }
 
 static void
-hns3_parse_l3_cksum_params(uint64_t ol_flags, uint32_t *type_cs_vlan_tso_len)
+hns3_parse_l3_cksum_params(struct rte_mbuf *m, uint32_t *type_cs_vlan_tso_len)
 {
+	uint64_t ol_flags = m->ol_flags;
+	uint32_t l3_type;
 	uint32_t tmp;
 
+	tmp = *type_cs_vlan_tso_len;
+	if (ol_flags & PKT_TX_IPV4)
+		l3_type = HNS3_L3T_IPV4;
+	else if (ol_flags & PKT_TX_IPV6)
+		l3_type = HNS3_L3T_IPV6;
+	else
+		l3_type = HNS3_L3T_NONE;
+
+	/* inner(/normal) L3 header size, defined in 4 bytes */
+	tmp |= hns3_gen_field_val(HNS3_TXD_L3LEN_M, HNS3_TXD_L3LEN_S,
+					m->l3_len >> HNS3_L3_LEN_UNIT);
+
+	tmp |= hns3_gen_field_val(HNS3_TXD_L3T_M, HNS3_TXD_L3T_S, l3_type);
+
 	/* Enable L3 checksum offloads */
-	if (ol_flags & PKT_TX_IPV4) {
-		tmp = *type_cs_vlan_tso_len;
-		hns3_set_field(tmp, HNS3_TXD_L3T_M, HNS3_TXD_L3T_S,
-			       HNS3_L3T_IPV4);
-		/* inner(/normal) L3 header size, defined in 4 bytes */
-		hns3_set_field(tmp, HNS3_TXD_L3LEN_M, HNS3_TXD_L3LEN_S,
-			       sizeof(struct rte_ipv4_hdr) >> HNS3_L3_LEN_UNIT);
-		if (ol_flags & PKT_TX_IP_CKSUM)
-			hns3_set_bit(tmp, HNS3_TXD_L3CS_B, 1);
-		*type_cs_vlan_tso_len = tmp;
-	} else if (ol_flags & PKT_TX_IPV6) {
-		tmp = *type_cs_vlan_tso_len;
-		/* L3T, IPv6 don't do checksum */
-		hns3_set_field(tmp, HNS3_TXD_L3T_M, HNS3_TXD_L3T_S,
-			       HNS3_L3T_IPV6);
-		/* inner(/normal) L3 header size, defined in 4 bytes */
-		hns3_set_field(tmp, HNS3_TXD_L3LEN_M, HNS3_TXD_L3LEN_S,
-			       sizeof(struct rte_ipv6_hdr) >> HNS3_L3_LEN_UNIT);
-		*type_cs_vlan_tso_len = tmp;
-	}
+	if (ol_flags & PKT_TX_IP_CKSUM)
+		tmp |= BIT(HNS3_TXD_L3CS_B);
+	*type_cs_vlan_tso_len = tmp;
 }
 
 static void
-hns3_parse_l4_cksum_params(uint64_t ol_flags, uint32_t *type_cs_vlan_tso_len)
+hns3_parse_l4_cksum_params(struct rte_mbuf *m, uint32_t *type_cs_vlan_tso_len)
 {
+	uint64_t ol_flags = m->ol_flags;
 	uint32_t tmp;
-
 	/* Enable L4 checksum offloads */
-	switch (ol_flags & PKT_TX_L4_MASK) {
+	switch (ol_flags & (PKT_TX_L4_MASK | PKT_TX_TCP_SEG)) {
 	case PKT_TX_TCP_CKSUM:
+	case PKT_TX_TCP_SEG:
 		tmp = *type_cs_vlan_tso_len;
-		hns3_set_field(tmp, HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
-			       HNS3_L4T_TCP);
-		hns3_set_bit(tmp, HNS3_TXD_L4CS_B, 1);
-		hns3_set_field(tmp, HNS3_TXD_L4LEN_M, HNS3_TXD_L4LEN_S,
-			       sizeof(struct rte_tcp_hdr) >> HNS3_L4_LEN_UNIT);
-		*type_cs_vlan_tso_len = tmp;
+		tmp |= hns3_gen_field_val(HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
+					HNS3_L4T_TCP);
 		break;
 	case PKT_TX_UDP_CKSUM:
 		tmp = *type_cs_vlan_tso_len;
-		hns3_set_field(tmp, HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
-			       HNS3_L4T_UDP);
-		hns3_set_bit(tmp, HNS3_TXD_L4CS_B, 1);
-		hns3_set_field(tmp, HNS3_TXD_L4LEN_M, HNS3_TXD_L4LEN_S,
-			       sizeof(struct rte_udp_hdr) >> HNS3_L4_LEN_UNIT);
-		*type_cs_vlan_tso_len = tmp;
+		tmp |= hns3_gen_field_val(HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
+					HNS3_L4T_UDP);
 		break;
 	case PKT_TX_SCTP_CKSUM:
 		tmp = *type_cs_vlan_tso_len;
-		hns3_set_field(tmp, HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
-			       HNS3_L4T_SCTP);
-		hns3_set_bit(tmp, HNS3_TXD_L4CS_B, 1);
-		hns3_set_field(tmp, HNS3_TXD_L4LEN_M, HNS3_TXD_L4LEN_S,
-			       sizeof(struct rte_sctp_hdr) >> HNS3_L4_LEN_UNIT);
-		*type_cs_vlan_tso_len = tmp;
+		tmp |= hns3_gen_field_val(HNS3_TXD_L4T_M, HNS3_TXD_L4T_S,
+					HNS3_L4T_SCTP);
 		break;
 	default:
-		break;
+		return;
 	}
+	tmp |= BIT(HNS3_TXD_L4CS_B);
+	tmp |= hns3_gen_field_val(HNS3_TXD_L4LEN_M, HNS3_TXD_L4LEN_S,
+					m->l4_len >> HNS3_L4_LEN_UNIT);
+	*type_cs_vlan_tso_len = tmp;
 }
 
 static void
-hns3_txd_enable_checksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
-			 uint64_t ol_flags)
+hns3_txd_enable_checksum(struct hns3_tx_queue *txq, struct rte_mbuf *m,
+			 uint16_t tx_desc_id)
 {
 	struct hns3_desc *tx_ring = txq->tx_ring;
 	struct hns3_desc *desc = &tx_ring[tx_desc_id];
 	uint32_t value = 0;
 
-	/* inner(/normal) L2 header size, defined in 2 bytes */
-	hns3_set_field(value, HNS3_TXD_L2LEN_M, HNS3_TXD_L2LEN_S,
-		       sizeof(struct rte_ether_hdr) >> HNS3_L2_LEN_UNIT);
-
-	hns3_parse_l3_cksum_params(ol_flags, &value);
-	hns3_parse_l4_cksum_params(ol_flags, &value);
+	hns3_parse_l3_cksum_params(m, &value);
+	hns3_parse_l4_cksum_params(m, &value);
 
 	desc->tx.type_cs_vlan_tso_len |= rte_cpu_to_le_32(value);
 }
@@ -3332,20 +3310,25 @@ hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 
 static int
 hns3_parse_cksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
-		 const struct rte_mbuf *m, struct rte_net_hdr_lens *hdr_lens)
+		 struct rte_mbuf *m)
 {
-	/* Fill in tunneling parameters if necessary */
-	if (m->ol_flags & PKT_TX_TUNNEL_MASK) {
-		(void)rte_net_get_ptype(m, hdr_lens, RTE_PTYPE_ALL_MASK);
-		if (hns3_parse_tunneling_params(txq, tx_desc_id, m->ol_flags,
-						hdr_lens)) {
-			txq->unsupported_tunnel_pkt_cnt++;
-			return -EINVAL;
-		}
-	}
+	struct hns3_desc *tx_ring = txq->tx_ring;
+	struct hns3_desc *desc = &tx_ring[tx_desc_id];
+
 	/* Enable checksum offloading */
-	if (m->ol_flags & HNS3_TX_CKSUM_OFFLOAD_MASK)
-		hns3_txd_enable_checksum(txq, tx_desc_id, m->ol_flags);
+	if (m->ol_flags & HNS3_TX_CKSUM_OFFLOAD_MASK) {
+		/* Fill in tunneling parameters if necessary */
+		if (hns3_parse_tunneling_params(txq, m, tx_desc_id)) {
+			txq->unsupported_tunnel_pkt_cnt++;
+				return -EINVAL;
+		}
+
+		hns3_txd_enable_checksum(txq, m, tx_desc_id);
+	} else {
+		/* clear the control bit */
+		desc->tx.type_cs_vlan_tso_len  = 0;
+		desc->tx.ol_type_vlan_len_msec = 0;
+	}
 
 	return 0;
 }
@@ -3536,7 +3519,6 @@ hns3_xmit_pkts_simple(void *tx_queue,
 uint16_t
 hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	struct rte_net_hdr_lens hdr_lens = {0};
 	struct hns3_tx_queue *txq = tx_queue;
 	struct hns3_entry *tx_bak_pkt;
 	struct hns3_desc *tx_ring;
@@ -3600,7 +3582,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (hns3_check_non_tso_pkt(nb_buf, &m_seg, tx_pkt, txq))
 			goto end_of_tx;
 
-		if (hns3_parse_cksum(txq, tx_next_use, m_seg, &hdr_lens))
+		if (hns3_parse_cksum(txq, tx_next_use, m_seg))
 			goto end_of_tx;
 
 		i = 0;
