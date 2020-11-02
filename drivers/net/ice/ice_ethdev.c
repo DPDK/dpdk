@@ -2909,6 +2909,7 @@ ice_add_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
 static void
 ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 {
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_vsi *vsi = pf->main_vsi;
 	struct ice_rss_hash_cfg cfg;
 	int ret;
@@ -2922,6 +2923,11 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 	ETH_RSS_NONFRAG_IPV6_TCP | \
 	ETH_RSS_NONFRAG_IPV4_SCTP | \
 	ETH_RSS_NONFRAG_IPV6_SCTP)
+
+	ret = ice_rem_vsi_rss_cfg(hw, vsi->idx);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s Remove rss vsi fail %d",
+			    __func__, ret);
 
 	cfg.symm = 0;
 	cfg.hdr_type = ICE_RSS_ANY_HEADERS;
@@ -3152,40 +3158,6 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
 		if (ret)
 			PMD_DRV_LOG(ERR, "%s PPPoE_IPV6_TCP rss flow fail %d",
-				    __func__, ret);
-	}
-
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) {
-		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_SCTP |
-				ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER;
-		cfg.hash_flds = ICE_FLOW_HASH_IPV4;
-		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
-		if (ret)
-			PMD_DRV_LOG(ERR, "%s GTPU_IPV4_SCTP rss flow fail %d",
-				    __func__, ret);
-
-		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_SCTP |
-				ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER;
-		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
-		if (ret)
-			PMD_DRV_LOG(ERR, "%s GTPU_EH_IPV4_SCTP rss flow fail %d",
-				    __func__, ret);
-	}
-
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) {
-		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_SCTP |
-				ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER;
-		cfg.hash_flds = ICE_FLOW_HASH_IPV6;
-		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
-		if (ret)
-			PMD_DRV_LOG(ERR, "%s GTPU_IPV6_SCTP rss flow fail %d",
-				    __func__, ret);
-
-		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_SCTP |
-				ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER;
-		ret = ice_add_rss_cfg_wrap(pf, vsi->idx, &cfg);
-		if (ret)
-			PMD_DRV_LOG(ERR, "%s GTPU_EH_IPV6_SCTP rss flow fail %d",
 				    __func__, ret);
 	}
 
