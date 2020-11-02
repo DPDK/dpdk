@@ -848,6 +848,10 @@ uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 	uint32_t link_speed = bp->link_info->support_speeds;
 	uint32_t speed_capa = 0;
 
+	/* If PAM4 is configured, use PAM4 supported speed */
+	if (link_speed == 0 && bp->link_info->support_pam4_speeds > 0)
+		link_speed = bp->link_info->support_pam4_speeds;
+
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB)
 		speed_capa |= ETH_LINK_SPEED_100M;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100MBHD)
