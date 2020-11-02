@@ -725,7 +725,6 @@ test_ring_burst_bulk_tests2(unsigned int test_idx)
 		ret = test_ring_enq_impl(r, cur_src, esize[i], MAX_BULK,
 						test_idx);
 		TEST_RING_VERIFY(ret == MAX_BULK, r, goto fail);
-		cur_src = test_ring_inc_ptr(cur_src, esize[i], MAX_BULK);
 
 		printf("dequeue 1 obj\n");
 		ret = test_ring_deq_impl(r, cur_dst, esize[i], 1, test_idx);
@@ -1050,7 +1049,6 @@ test_ring_basic_ex(void)
 		ret = test_ring_enqueue(rp, cur_src, esize[i], 2,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_BULK);
 		TEST_RING_VERIFY(ret == 2, rp, goto fail_test);
-		cur_src = test_ring_inc_ptr(cur_src, esize[i], 2);
 
 		ret = test_ring_dequeue(rp, cur_dst, esize[i], 2,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_BULK);
@@ -1157,7 +1155,6 @@ test_ring_with_exact_size(void)
 		ret = test_ring_enqueue(exact_sz_r, cur_src, esize[i], 1,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE);
 		TEST_RING_VERIFY(ret != -ENOBUFS, exact_sz_r, goto test_fail);
-		cur_src = test_ring_inc_ptr(cur_src, esize[i], 1);
 
 		/* check that dequeue returns the expected number of elements */
 		ret = test_ring_dequeue(exact_sz_r, cur_dst, esize[i], ring_sz,
