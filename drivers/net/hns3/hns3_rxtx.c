@@ -2897,6 +2897,7 @@ hns3_parse_inner_params(struct rte_mbuf *m, uint32_t *ol_type_vlan_len_msec,
 	uint16_t inner_l2_len;
 
 	switch (ol_flags & PKT_TX_TUNNEL_MASK) {
+	case PKT_TX_TUNNEL_VXLAN_GPE:
 	case PKT_TX_TUNNEL_GENEVE:
 	case PKT_TX_TUNNEL_VXLAN:
 		/* MAC in UDP tunnelling packet, include VxLAN and GENEVE */
