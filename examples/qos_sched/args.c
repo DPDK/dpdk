@@ -39,7 +39,7 @@ static const char usage[] =
 	"           multiple pfc can be configured in command line                      \n"
 	"                                                                               \n"
 	"Application optional parameters:                                               \n"
-        "    --i     : run in interactive mode (default value is %u)                    \n"
+	"    -i      : run in interactive mode (default value is %u)                    \n"
 	"    --mnc I : main core index (default value is %u)                            \n"
 	"    --rsz \"A, B, C\" :   Ring sizes                                           \n"
 	"           A = Size (in number of buffer descriptors) of each of the NIC RX    \n"
