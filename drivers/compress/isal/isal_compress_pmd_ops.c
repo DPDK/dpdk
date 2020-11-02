@@ -249,16 +249,27 @@ isal_comp_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	qp->stream = rte_zmalloc_socket("Isa-l compression stream ",
 			sizeof(struct isal_zstream),  RTE_CACHE_LINE_SIZE,
 			socket_id);
-
+	if (qp->stream == NULL) {
+		ISAL_PMD_LOG(ERR, "Failed to allocate compression stream memory");
+		goto qp_setup_cleanup;
+	}
 	/* Initialize memory for compression level buffer */
 	qp->stream->level_buf = rte_zmalloc_socket("Isa-l compression lev_buf",
 			ISAL_DEF_LVL3_DEFAULT, RTE_CACHE_LINE_SIZE,
 			socket_id);
+	if (qp->stream->level_buf == NULL) {
+		ISAL_PMD_LOG(ERR, "Failed to allocate compression level_buf memory");
+		goto qp_setup_cleanup;
+	}
 
 	/* Initialize memory for decompression state structure */
 	qp->state = rte_zmalloc_socket("Isa-l decompression state",
 			sizeof(struct inflate_state), RTE_CACHE_LINE_SIZE,
 			socket_id);
+	if (qp->state == NULL) {
+		ISAL_PMD_LOG(ERR, "Failed to allocate decompression state memory");
+		goto qp_setup_cleanup;
+	}
 
 	qp->id = qp_id;
 	dev->data->queue_pairs[qp_id] = qp;
@@ -284,8 +295,11 @@ isal_comp_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	return 0;
 
 qp_setup_cleanup:
-	if (qp)
-		rte_free(qp);
+	if (qp->stream)
+		rte_free(qp->stream->level_buf);
+	rte_free(qp->stream);
+	rte_free(qp->state);
+	rte_free(qp);
 
 	return -1;
 }
