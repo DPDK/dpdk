@@ -1413,8 +1413,11 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_IP_TNL_TSO       0x00080000
 /** Device supports outer UDP checksum */
 #define DEV_TX_OFFLOAD_OUTER_UDP_CKSUM  0x00100000
-
-/** Device supports send on timestamp */
+/**
+ * Device sends on time read from RTE_MBUF_DYNFIELD_TIMESTAMP_NAME
+ * if RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME is set in ol_flags.
+ * The mbuf field and flag are registered when the offload is configured.
+ */
 #define DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP 0x00200000
 
 

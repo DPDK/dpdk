@@ -237,9 +237,8 @@ Limitations
   ``txq_inline_max`` and ``txq_inline_mpw`` devargs keys.
 
 - To provide the packet send scheduling on mbuf timestamps the ``tx_pp``
-  parameter should be specified, RTE_MBUF_DYNFIELD_TIMESTAMP_NAME and
-  RTE_MBUF_DYNFLAG_TIMESTAMP_NAME should be registered by application.
-  When PMD sees the RTE_MBUF_DYNFLAG_TIMESTAMP_NAME set on the packet
+  parameter should be specified.
+  When PMD sees the RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME set on the packet
   being sent it tries to synchronize the time of packet appearing on
   the wire with the specified packet timestamp. It the specified one
   is in the past it should be ignored, if one is in the distant future

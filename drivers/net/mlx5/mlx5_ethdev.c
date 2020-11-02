@@ -88,7 +88,13 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
-
+	if ((dev->data->dev_conf.txmode.offloads &
+			DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP) &&
+			rte_mbuf_dyn_tx_timestamp_register(NULL, NULL) != 0) {
+		DRV_LOG(ERR, "port %u cannot register Tx timestamp field/flag",
+			dev->data->port_id);
+		return -rte_errno;
+	}
 	memcpy(priv->rss_conf.rss_key,
 	       use_app_rss_key ?
 	       dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key :
