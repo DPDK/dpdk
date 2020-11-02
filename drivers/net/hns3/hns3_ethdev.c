@@ -2291,6 +2291,10 @@ hns3_init_ring_with_vector(struct hns3_hw *hw)
 		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_TX,
 				       HNS3_TQP_INTR_GL_DEFAULT);
 		hns3_set_queue_intr_rl(hw, i, HNS3_TQP_INTR_RL_DEFAULT);
+		/*
+		 * QL(quantity limiter) is not used currently, just set 0 to
+		 * close it.
+		 */
 		hns3_set_queue_intr_ql(hw, i, HNS3_TQP_INTR_QL_DEFAULT);
 
 		ret = hns3_bind_ring_with_vector(hw, vec, false,
@@ -2952,6 +2956,7 @@ hns3_set_default_dev_specifications(struct hns3_hw *hw)
 	hw->rss_ind_tbl_size = HNS3_RSS_IND_TBL_SIZE;
 	hw->rss_key_size = HNS3_RSS_KEY_SIZE;
 	hw->max_tm_rate = HNS3_ETHER_MAX_RATE;
+	hw->intr.int_ql_max = HNS3_INTR_QL_NONE;
 }
 
 static void
@@ -2965,6 +2970,7 @@ hns3_parse_dev_specifications(struct hns3_hw *hw, struct hns3_cmd_desc *desc)
 	hw->rss_ind_tbl_size = rte_le_to_cpu_16(req0->rss_ind_tbl_size);
 	hw->rss_key_size = rte_le_to_cpu_16(req0->rss_key_size);
 	hw->max_tm_rate = rte_le_to_cpu_32(req0->max_tm_rate);
+	hw->intr.int_ql_max = rte_le_to_cpu_16(req0->intr_ql_max);
 }
 
 static int
@@ -3031,7 +3037,6 @@ hns3_get_capability(struct hns3_hw *hw)
 	if (revision < PCI_REVISION_ID_HIP09_A) {
 		hns3_set_default_dev_specifications(hw);
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
-		hw->intr.coalesce_mode = HNS3_INTR_COALESCE_NON_QL;
 		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
 		hw->tso_mode = HNS3_TSO_SW_CAL_PSEUDO_H_CSUM;
 		hw->vlan_mode = HNS3_SW_SHIFT_AND_DISCARD_MODE;
@@ -3050,7 +3055,6 @@ hns3_get_capability(struct hns3_hw *hw)
 	}
 
 	hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_ALL;
-	hw->intr.coalesce_mode = HNS3_INTR_COALESCE_QL;
 	hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_1US;
 	hw->tso_mode = HNS3_TSO_HW_CAL_PSEUDO_H_CSUM;
 	hw->vlan_mode = HNS3_HW_SHIFT_AND_DISCARD_MODE;

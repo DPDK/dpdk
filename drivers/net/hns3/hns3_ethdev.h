@@ -379,11 +379,10 @@ struct hns3_reset_data {
 #define HNS3_INTR_MAPPING_VEC_RSV_ONE		0
 #define HNS3_INTR_MAPPING_VEC_ALL		1
 
-#define HNS3_INTR_COALESCE_NON_QL		0
-#define HNS3_INTR_COALESCE_QL			1
-
 #define HNS3_INTR_COALESCE_GL_UINT_2US		0
 #define HNS3_INTR_COALESCE_GL_UINT_1US		1
+
+#define HNS3_INTR_QL_NONE			0
 
 struct hns3_queue_intr {
 	/*
@@ -406,27 +405,14 @@ struct hns3_queue_intr {
 	 */
 	uint8_t mapping_mode;
 	/*
-	 * interrupt coalesce mode.
-	 * value range:
-	 *      HNS3_INTR_COALESCE_NON_QL/HNS3_INTR_COALESCE_QL
-	 *
-	 *  - HNS3_INTR_COALESCE_NON_QL
-	 *     For some versions of hardware network engine, hardware doesn't
-	 *     support QL(quanity limiter) algorithm for interrupt coalesce
-	 *     of queue's interrupt.
-	 *
-	 *  - HNS3_INTR_COALESCE_QL
-	 *     In this mode, hardware support QL(quanity limiter) algorithm for
-	 *     interrupt coalesce of queue's interrupt.
-	 */
-	uint8_t coalesce_mode;
-	/*
 	 * The unit of GL(gap limiter) configuration for interrupt coalesce of
 	 * queue's interrupt.
 	 * value range:
 	 *      HNS3_INTR_COALESCE_GL_UINT_2US/HNS3_INTR_COALESCE_GL_UINT_1US
 	 */
 	uint8_t gl_unit;
+	/* The max QL(quantity limiter) value */
+	uint16_t int_ql_max;
 };
 
 #define HNS3_TSO_SW_CAL_PSEUDO_H_CSUM		0

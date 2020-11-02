@@ -851,7 +851,12 @@ hns3_set_queue_intr_ql(struct hns3_hw *hw, uint16_t queue_id, uint16_t ql_value)
 {
 	uint32_t addr;
 
-	if (hw->intr.coalesce_mode == HNS3_INTR_COALESCE_NON_QL)
+	/*
+	 * int_ql_max == 0 means the hardware does not support QL,
+	 * QL regs config is not permitted if QL is not supported,
+	 * here just return.
+	 */
+	if (hw->intr.int_ql_max == HNS3_INTR_QL_NONE)
 		return;
 
 	addr = HNS3_TQP_INTR_TX_QL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;

@@ -757,6 +757,10 @@ hns3vf_init_ring_with_vector(struct hns3_hw *hw)
 		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_TX,
 				       HNS3_TQP_INTR_GL_DEFAULT);
 		hns3_set_queue_intr_rl(hw, i, HNS3_TQP_INTR_RL_DEFAULT);
+		/*
+		 * QL(quantity limiter) is not used currently, just set 0 to
+		 * close it.
+		 */
 		hns3_set_queue_intr_ql(hw, i, HNS3_TQP_INTR_QL_DEFAULT);
 
 		ret = hns3vf_bind_ring_with_vector(hw, vec, false,
@@ -1149,6 +1153,7 @@ hns3vf_set_default_dev_specifications(struct hns3_hw *hw)
 	hw->max_non_tso_bd_num = HNS3_MAX_NON_TSO_BD_PER_PKT;
 	hw->rss_ind_tbl_size = HNS3_RSS_IND_TBL_SIZE;
 	hw->rss_key_size = HNS3_RSS_KEY_SIZE;
+	hw->intr.int_ql_max = HNS3_INTR_QL_NONE;
 }
 
 static void
@@ -1161,6 +1166,7 @@ hns3vf_parse_dev_specifications(struct hns3_hw *hw, struct hns3_cmd_desc *desc)
 	hw->max_non_tso_bd_num = req0->max_non_tso_bd_num;
 	hw->rss_ind_tbl_size = rte_le_to_cpu_16(req0->rss_ind_tbl_size);
 	hw->rss_key_size = rte_le_to_cpu_16(req0->rss_key_size);
+	hw->intr.int_ql_max = rte_le_to_cpu_16(req0->intr_ql_max);
 }
 
 static int
@@ -1210,7 +1216,6 @@ hns3vf_get_capability(struct hns3_hw *hw)
 	if (revision < PCI_REVISION_ID_HIP09_A) {
 		hns3vf_set_default_dev_specifications(hw);
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
-		hw->intr.coalesce_mode = HNS3_INTR_COALESCE_NON_QL;
 		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
 		hw->tso_mode = HNS3_TSO_SW_CAL_PSEUDO_H_CSUM;
 		hw->min_tx_pkt_len = HNS3_HIP08_MIN_TX_PKT_LEN;
@@ -1228,7 +1233,6 @@ hns3vf_get_capability(struct hns3_hw *hw)
 	}
 
 	hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_ALL;
-	hw->intr.coalesce_mode = HNS3_INTR_COALESCE_QL;
 	hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_1US;
 	hw->tso_mode = HNS3_TSO_HW_CAL_PSEUDO_H_CSUM;
 	hw->min_tx_pkt_len = HNS3_HIP09_MIN_TX_PKT_LEN;
