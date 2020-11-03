@@ -24,6 +24,10 @@
 #include <rte_flow.h>
 #include <rte_hexdump.h>
 #include <rte_vxlan.h>
+#include <rte_gre.h>
+#include <rte_mpls.h>
+#include <rte_gtp.h>
+#include <rte_geneve.h>
 
 #include "testpmd.h"
 
@@ -7373,42 +7377,42 @@ cmdline_parse_inst_t cmd_flow = {
 static void
 update_fields(uint8_t *buf, struct rte_flow_item *item, uint16_t next_proto)
 {
-	struct rte_flow_item_ipv4 *ipv4;
-	struct rte_flow_item_eth *eth;
-	struct rte_flow_item_ipv6 *ipv6;
-	struct rte_flow_item_vxlan *vxlan;
-	struct rte_flow_item_vxlan_gpe *gpe;
+	struct rte_ipv4_hdr *ipv4;
+	struct rte_ether_hdr *eth;
+	struct rte_ipv6_hdr *ipv6;
+	struct rte_vxlan_hdr *vxlan;
+	struct rte_vxlan_gpe_hdr *gpe;
 	struct rte_flow_item_nvgre *nvgre;
 	uint32_t ipv6_vtc_flow;
 
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_ETH:
-		eth = (struct rte_flow_item_eth *)buf;
+		eth = (struct rte_ether_hdr *)buf;
 		if (next_proto)
-			eth->type = rte_cpu_to_be_16(next_proto);
+			eth->ether_type = rte_cpu_to_be_16(next_proto);
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV4:
-		ipv4 = (struct rte_flow_item_ipv4 *)buf;
-		ipv4->hdr.version_ihl = 0x45;
-		if (next_proto && ipv4->hdr.next_proto_id == 0)
-			ipv4->hdr.next_proto_id = (uint8_t)next_proto;
+		ipv4 = (struct rte_ipv4_hdr *)buf;
+		ipv4->version_ihl = 0x45;
+		if (next_proto && ipv4->next_proto_id == 0)
+			ipv4->next_proto_id = (uint8_t)next_proto;
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV6:
-		ipv6 = (struct rte_flow_item_ipv6 *)buf;
-		if (next_proto && ipv6->hdr.proto == 0)
-			ipv6->hdr.proto = (uint8_t)next_proto;
-		ipv6_vtc_flow = rte_be_to_cpu_32(ipv6->hdr.vtc_flow);
+		ipv6 = (struct rte_ipv6_hdr *)buf;
+		if (next_proto && ipv6->proto == 0)
+			ipv6->proto = (uint8_t)next_proto;
+		ipv6_vtc_flow = rte_be_to_cpu_32(ipv6->vtc_flow);
 		ipv6_vtc_flow &= 0x0FFFFFFF; /*< reset version bits. */
 		ipv6_vtc_flow |= 0x60000000; /*< set ipv6 version. */
-		ipv6->hdr.vtc_flow = rte_cpu_to_be_32(ipv6_vtc_flow);
+		ipv6->vtc_flow = rte_cpu_to_be_32(ipv6_vtc_flow);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
-		vxlan = (struct rte_flow_item_vxlan *)buf;
-		vxlan->flags = 0x08;
+		vxlan = (struct rte_vxlan_hdr *)buf;
+		vxlan->vx_flags = 0x08;
 		break;
 	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-		gpe = (struct rte_flow_item_vxlan_gpe *)buf;
-		gpe->flags = 0x0C;
+		gpe = (struct rte_vxlan_gpe_hdr *)buf;
+		gpe->vx_flags = 0x0C;
 		break;
 	case RTE_FLOW_ITEM_TYPE_NVGRE:
 		nvgre = (struct rte_flow_item_nvgre *)buf;
@@ -7617,36 +7621,36 @@ cmd_set_raw_parsed(const struct buffer *in)
 			item->spec = flow_item_default_mask(item);
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			size = sizeof(struct rte_flow_item_eth);
+			size = sizeof(struct rte_ether_hdr);
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			size = sizeof(struct rte_flow_item_vlan);
+			size = sizeof(struct rte_vlan_hdr);
 			proto = RTE_ETHER_TYPE_VLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			size = sizeof(struct rte_flow_item_ipv4);
+			size = sizeof(struct rte_ipv4_hdr);
 			proto = RTE_ETHER_TYPE_IPV4;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			size = sizeof(struct rte_flow_item_ipv6);
+			size = sizeof(struct rte_ipv6_hdr);
 			proto = RTE_ETHER_TYPE_IPV6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			size = sizeof(struct rte_flow_item_udp);
+			size = sizeof(struct rte_udp_hdr);
 			proto = 0x11;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			size = sizeof(struct rte_flow_item_tcp);
+			size = sizeof(struct rte_tcp_hdr);
 			proto = 0x06;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			size = sizeof(struct rte_flow_item_vxlan);
+			size = sizeof(struct rte_vxlan_hdr);
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-			size = sizeof(struct rte_flow_item_vxlan_gpe);
+			size = sizeof(struct rte_vxlan_gpe_hdr);
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
-			size = sizeof(struct rte_flow_item_gre);
+			size = sizeof(struct rte_gre_hdr);
 			proto = 0x2F;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
@@ -7654,7 +7658,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 			proto = 0x0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
-			size = sizeof(struct rte_flow_item_mpls);
+			size = sizeof(struct rte_mpls_hdr);
 			proto = 0x0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
@@ -7662,14 +7666,14 @@ cmd_set_raw_parsed(const struct buffer *in)
 			proto = 0x2F;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
-			size = sizeof(struct rte_flow_item_geneve);
+			size = sizeof(struct rte_geneve_hdr);
 			break;
 		case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
-			size = sizeof(struct rte_flow_item_l2tpv3oip);
+			size = sizeof(rte_be32_t);
 			proto = 0x73;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ESP:
-			size = sizeof(struct rte_flow_item_esp);
+			size = sizeof(struct rte_esp_hdr);
 			proto = 0x32;
 			break;
 		case RTE_FLOW_ITEM_TYPE_AH:
@@ -7677,7 +7681,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 			proto = 0x33;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTP:
-			size = sizeof(struct rte_flow_item_gtp);
+			size = sizeof(struct rte_gtp_hdr);
 			break;
 		case RTE_FLOW_ITEM_TYPE_PFCP:
 			size = sizeof(struct rte_flow_item_pfcp);
