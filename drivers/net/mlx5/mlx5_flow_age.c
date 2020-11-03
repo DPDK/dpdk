@@ -320,8 +320,9 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 		rte_errno  = ENOMEM;
 		goto error;
 	}
-	sq->ci = 0;
 	sq->pi = 0;
+	sq->head = 0;
+	sq->tail = 0;
 	sq->sqn = sq->sq->id;
 	sq->db_rec = RTE_PTR_ADD(sq->umem_buf, (uintptr_t)(wq_attr->dbr_addr));
 	sq->uar_addr = (volatile uint64_t *)((uint8_t *)uar->base_addr + 0x800);
@@ -381,20 +382,20 @@ mlx5_aso_sq_enqueue_burst(struct mlx5_aso_age_mng *mng, uint16_t n)
 	uint16_t size = 1 << sq->log_desc_n;
 	uint16_t mask = size - 1;
 	uint16_t max;
-	uint16_t start_pi = sq->pi;
+	uint16_t start_head = sq->head;
 
-	max = RTE_MIN(size - (uint16_t)(sq->pi - sq->ci), n - sq->next);
+	max = RTE_MIN(size - (uint16_t)(sq->head - sq->tail), n - sq->next);
 	if (unlikely(!max))
 		return 0;
-	sq->elts[start_pi & mask].burst_size = max;
+	sq->elts[start_head & mask].burst_size = max;
 	do {
-		wqe = &sq->wqes[sq->pi & mask];
-		rte_prefetch0(&sq->wqes[(sq->pi + 1) & mask]);
+		wqe = &sq->wqes[sq->head & mask];
+		rte_prefetch0(&sq->wqes[(sq->head + 1) & mask]);
 		/* Fill next WQE. */
 		rte_spinlock_lock(&mng->resize_sl);
 		pool = mng->pools[sq->next];
 		rte_spinlock_unlock(&mng->resize_sl);
-		sq->elts[sq->pi & mask].pool = pool;
+		sq->elts[sq->head & mask].pool = pool;
 		wqe->general_cseg.misc =
 				rte_cpu_to_be_32(((struct mlx5_devx_obj *)
 						 (pool->flow_hit_aso_obj))->id);
@@ -402,20 +403,23 @@ mlx5_aso_sq_enqueue_burst(struct mlx5_aso_age_mng *mng, uint16_t n)
 							 MLX5_COMP_MODE_OFFSET);
 		wqe->general_cseg.opcode = rte_cpu_to_be_32
 						(MLX5_OPCODE_ACCESS_ASO |
-						 ASO_OP_MOD_FLOW_HIT << 24 |
-						 sq->pi << 9);
-		sq->pi++;
+						 (ASO_OPC_MOD_FLOW_HIT <<
+						  WQE_CSEG_OPC_MOD_OFFSET) |
+						 (sq->pi <<
+						  WQE_CSEG_WQE_INDEX_OFFSET));
+		sq->pi += 2; /* Each WQE contains 2 WQEBB's. */
+		sq->head++;
 		sq->next++;
 		max--;
 	} while (max);
 	wqe->general_cseg.flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 							 MLX5_COMP_MODE_OFFSET);
 	rte_io_wmb();
-	sq->db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(sq->pi << 1);
+	sq->db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(sq->pi);
 	rte_wmb();
 	*sq->uar_addr = *(volatile uint64_t *)wqe; /* Assume 64 bit ARCH.*/
 	rte_wmb();
-	return sq->elts[start_pi & mask].burst_size;
+	return sq->elts[start_head & mask].burst_size;
 }
 
 /**
@@ -482,7 +486,7 @@ mlx5_aso_age_action_update(struct mlx5_dev_ctx_shared *sh, uint16_t n)
 	uint16_t i;
 
 	for (i = 0; i < n; ++i) {
-		uint16_t idx = (sq->ci + i) & mask;
+		uint16_t idx = (sq->tail + i) & mask;
 		struct mlx5_aso_age_pool *pool = sq->elts[idx].pool;
 		uint64_t diff = curr - pool->time_of_last_age_check;
 		uint64_t *addr = sq->mr.buf;
@@ -558,7 +562,7 @@ mlx5_aso_completion_handle(struct mlx5_dev_ctx_shared *sh)
 	const unsigned int mask = cq_size - 1;
 	uint32_t idx;
 	uint32_t next_idx = cq->cq_ci & mask;
-	const uint16_t max = (uint16_t)(sq->pi - sq->ci);
+	const uint16_t max = (uint16_t)(sq->head - sq->tail);
 	uint16_t i = 0;
 	int ret;
 	if (unlikely(!max))
@@ -579,13 +583,13 @@ mlx5_aso_completion_handle(struct mlx5_dev_ctx_shared *sh)
 				break;
 			mlx5_aso_cqe_err_handle(sq);
 		} else {
-			i += sq->elts[(sq->ci + i) & mask].burst_size;
+			i += sq->elts[(sq->tail + i) & mask].burst_size;
 		}
 		cq->cq_ci++;
 	} while (1);
 	if (likely(i)) {
 		mlx5_aso_age_action_update(sh, i);
-		sq->ci += i;
+		sq->tail += i;
 		rte_io_wmb();
 		cq->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
 	}

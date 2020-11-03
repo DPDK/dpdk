@@ -516,7 +516,8 @@ struct mlx5_aso_sq {
 	volatile uint64_t *uar_addr;
 	struct mlx5_aso_devx_mr mr;
 	uint16_t pi;
-	uint16_t ci;
+	uint32_t head;
+	uint32_t tail;
 	uint32_t sqn;
 	struct mlx5_aso_sq_elem elts[1 << MLX5_ASO_QUEUE_LOG_DESC];
 	uint16_t next; /* Pool index of the next pool to query. */

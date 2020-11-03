@@ -293,6 +293,15 @@ struct mlx5_wqe_cseg {
 	uint32_t misc;
 } __rte_packed __rte_aligned(MLX5_WSEG_SIZE);
 
+/*
+ * WQE CSEG opcode field size is 32 bits, divided:
+ * Bits 31:24 OPC_MOD
+ * Bits 23:8 wqe_index
+ * Bits 7:0 OPCODE
+ */
+#define WQE_CSEG_OPC_MOD_OFFSET		24
+#define WQE_CSEG_WQE_INDEX_OFFSET	 8
+
 /* Header of data segment. Minimal size Data Segment */
 struct mlx5_wqe_dseg {
 	uint32_t bcount;
@@ -2359,12 +2368,12 @@ struct mlx5_ifc_create_flow_hit_aso_in_bits {
 	struct mlx5_ifc_flow_hit_aso_bits flow_hit_aso;
 };
 
-enum mlx5_access_aso_op_mod {
-	ASO_OP_MOD_IPSEC = 0x0,
-	ASO_OP_MOD_CONNECTION_TRACKING = 0x1,
-	ASO_OP_MOD_POLICER = 0x2,
-	ASO_OP_MOD_RACE_AVOIDANCE = 0x3,
-	ASO_OP_MOD_FLOW_HIT = 0x4,
+enum mlx5_access_aso_opc_mod {
+	ASO_OPC_MOD_IPSEC = 0x0,
+	ASO_OPC_MOD_CONNECTION_TRACKING = 0x1,
+	ASO_OPC_MOD_POLICER = 0x2,
+	ASO_OPC_MOD_RACE_AVOIDANCE = 0x3,
+	ASO_OPC_MOD_FLOW_HIT = 0x4,
 };
 
 #define ASO_CSEG_DATA_MASK_MODE_OFFSET	30
