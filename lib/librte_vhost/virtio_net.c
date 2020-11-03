@@ -1567,7 +1567,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 			src_it = it_pool;
 			dst_it = it_pool + 1;
 			segs_await = 0;
-			vq->async_pkts_inflight_n += n_pkts;
+			vq->async_pkts_inflight_n += pkt_burst_idx;
 
 			if (unlikely(n_pkts < (int)pkt_burst_idx)) {
 				/*
@@ -1587,7 +1587,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	if (pkt_burst_idx) {
 		n_pkts = vq->async_ops.transfer_data(dev->vid,
 				queue_id, tdes, 0, pkt_burst_idx);
-		vq->async_pkts_inflight_n += n_pkts;
+		vq->async_pkts_inflight_n += pkt_burst_idx;
 
 		if (unlikely(n_pkts < (int)pkt_burst_idx))
 			pkt_err = pkt_burst_idx - n_pkts;
