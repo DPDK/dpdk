@@ -528,7 +528,7 @@ cpt_digest_gen_prep(uint32_t flags,
 	if (ctx->hmac) {
 		vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_HMAC | CPT_DMA_MODE;
 		vq_cmd_w0.s.param1 = key_len;
-		vq_cmd_w0.s.dlen = data_len + ROUNDUP8(key_len);
+		vq_cmd_w0.s.dlen = data_len + RTE_ALIGN_CEIL(key_len, 8);
 	} else {
 		vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_HASH | CPT_DMA_MODE;
 		vq_cmd_w0.s.param1 = 0;
@@ -564,7 +564,8 @@ cpt_digest_gen_prep(uint32_t flags,
 		uint64_t k_dma = params->ctx_buf.dma_addr +
 			offsetof(struct cpt_ctx, auth_key);
 		/* Key */
-		i = fill_sg_comp(gather_comp, i, k_dma, ROUNDUP8(key_len));
+		i = fill_sg_comp(gather_comp, i, k_dma,
+				 RTE_ALIGN_CEIL(key_len, 8));
 	}
 
 	/* input data */
@@ -762,10 +763,12 @@ cpt_enc_hmac_prep(uint32_t flags,
 	enc_dlen = encr_data_len + encr_offset;
 	if (unlikely(encr_data_len & 0xf)) {
 		if ((cipher_type == DES3_CBC) || (cipher_type == DES3_ECB))
-			enc_dlen = ROUNDUP8(encr_data_len) + encr_offset;
+			enc_dlen = RTE_ALIGN_CEIL(encr_data_len, 8) +
+					encr_offset;
 		else if (likely((cipher_type == AES_CBC) ||
 				(cipher_type == AES_ECB)))
-			enc_dlen = ROUNDUP16(encr_data_len) + encr_offset;
+			enc_dlen = RTE_ALIGN_CEIL(encr_data_len, 8) +
+					encr_offset;
 	}
 
 	if (unlikely(auth_dlen > enc_dlen)) {

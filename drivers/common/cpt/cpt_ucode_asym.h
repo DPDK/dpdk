@@ -623,10 +623,10 @@ cpt_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	/* Truncate input length to curve prime length */
 	if (message_len > prime_len)
 		message_len = prime_len;
-	m_align = ROUNDUP8(message_len);
+	m_align = RTE_ALIGN_CEIL(message_len, 8);
 
-	p_align = ROUNDUP8(prime_len);
-	k_align = ROUNDUP8(k_len);
+	p_align = RTE_ALIGN_CEIL(prime_len, 8);
+	k_align = RTE_ALIGN_CEIL(k_len, 8);
 
 	/* Set write offset for order and private key */
 	o_offset = prime_len - order_len;
@@ -723,8 +723,8 @@ cpt_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	if (message_len > prime_len)
 		message_len = prime_len;
 
-	m_align = ROUNDUP8(message_len);
-	p_align = ROUNDUP8(prime_len);
+	m_align = RTE_ALIGN_CEIL(message_len, 8);
+	p_align = RTE_ALIGN_CEIL(prime_len, 8);
 
 	/* Set write offset for sign, order and public key coordinates */
 	o_offset = prime_len - order_len;
@@ -841,8 +841,8 @@ cpt_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	/* Input buffer */
 	dptr = RTE_PTR_ADD(req, sizeof(struct cpt_request_info));
 
-	p_align = ROUNDUP8(prime_len);
-	scalar_align = ROUNDUP8(ecpm->scalar.length);
+	p_align = RTE_ALIGN_CEIL(prime_len, 8);
+	scalar_align = RTE_ALIGN_CEIL(ecpm->scalar.length, 8);
 
 	/*
 	 * Set dlen = sum(ROUNDUP8(input point(x and y coordinates), prime,

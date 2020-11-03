@@ -738,7 +738,8 @@ otx_cpt_asym_dequeue_ecdsa_op(struct rte_crypto_ecdsa_op_param *ecdsa,
 
 	/* Separate out sign r and s components */
 	memcpy(ecdsa->r.data, req->rptr, prime_len);
-	memcpy(ecdsa->s.data, req->rptr + ROUNDUP8(prime_len), prime_len);
+	memcpy(ecdsa->s.data, req->rptr + RTE_ALIGN_CEIL(prime_len, 8),
+	       prime_len);
 	ecdsa->r.length = prime_len;
 	ecdsa->s.length = prime_len;
 }
@@ -751,7 +752,8 @@ otx_cpt_asym_dequeue_ecpm_op(struct rte_crypto_ecpm_op_param *ecpm,
 	int prime_len = ec_grp[ec->curveid].prime.length;
 
 	memcpy(ecpm->r.x.data, req->rptr, prime_len);
-	memcpy(ecpm->r.y.data, req->rptr + ROUNDUP8(prime_len), prime_len);
+	memcpy(ecpm->r.y.data, req->rptr + RTE_ALIGN_CEIL(prime_len, 8),
+	       prime_len);
 	ecpm->r.x.length = prime_len;
 	ecpm->r.y.length = prime_len;
 }

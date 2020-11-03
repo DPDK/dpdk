@@ -19,18 +19,6 @@
 #define CPT_COUNT_THOLD		32
 #define CPT_TIMER_THOLD		0x3F
 
-#ifndef ROUNDUP4
-#define ROUNDUP4(val)	(((val) + 3) & 0xfffffffc)
-#endif
-
-#ifndef ROUNDUP8
-#define ROUNDUP8(val)	(((val) + 7) & 0xfffffff8)
-#endif
-
-#ifndef ROUNDUP16
-#define ROUNDUP16(val)	(((val) + 15) & 0xfffffff0)
-#endif
-
 #define MOD_INC(i, l)   ((i) == (l - 1) ? (i) = 0 : (i)++)
 
 struct cpt_qp_meta_info {
