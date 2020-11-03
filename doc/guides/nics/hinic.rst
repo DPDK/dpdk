@@ -5,7 +5,7 @@
 HINIC Poll Mode Driver
 ======================
 
-The hinic PMD (librte_pmd_hinic) provides poll mode driver support
+The hinic PMD (**librte_net_hinic**) provides poll mode driver support
 for 25Gbps Huawei Intelligent PCIE Network Adapters based on the
 Huawei Ethernet Controller Hi1822.
 

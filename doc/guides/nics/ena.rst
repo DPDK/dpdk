@@ -226,7 +226,7 @@ Usage example
 
 Follow instructions available in the document
 :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` to launch
-**testpmd** with Amazon ENA devices managed by librte_pmd_ena.
+**testpmd** with Amazon ENA devices managed by librte_net_ena.
 
 Example output:
 

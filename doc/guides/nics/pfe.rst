@@ -4,7 +4,7 @@
 PFE Poll Mode Driver
 ======================
 
-The PFE NIC PMD (**librte_pmd_pfe**) provides poll mode driver
+The PFE NIC PMD (**librte_net_pfe**) provides poll mode driver
 support for the inbuilt NIC found in the **NXP LS1012** SoC.
 
 More information can be found at `NXP Official Website

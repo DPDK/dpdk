@@ -7,7 +7,7 @@
 MLX5 poll mode driver
 =====================
 
-The MLX5 poll mode driver library (**librte_pmd_mlx5**) provides support
+The MLX5 poll mode driver library (**librte_net_mlx5**) provides support
 for **Mellanox ConnectX-4**, **Mellanox ConnectX-4 Lx** , **Mellanox
 ConnectX-5**, **Mellanox ConnectX-6**, **Mellanox ConnectX-6 Dx** and
 **Mellanox BlueField** families of 10/25/40/50/100/200 Gb/s adapters
@@ -25,7 +25,7 @@ Design
 ------
 
 Besides its dependency on libibverbs (that implies libmlx5 and associated
-kernel support), librte_pmd_mlx5 relies heavily on system calls for control
+kernel support), librte_net_mlx5 relies heavily on system calls for control
 operations such as querying/updating the MTU and flow control parameters.
 
 For security reasons and robustness, this driver only deals with virtual
@@ -51,7 +51,7 @@ to get the best performances:
 - DevX allows to access firmware objects
 - Direct Rules manages flow steering at low-level hardware layer
 
-Enabling librte_pmd_mlx5 causes DPDK applications to be linked against
+Enabling librte_net_mlx5 causes DPDK applications to be linked against
 libibverbs.
 
 Features
@@ -369,7 +369,7 @@ Environment variables
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
-- librte_pmd_mlx5 brings kernel network interfaces up during initialization
+- librte_net_mlx5 brings kernel network interfaces up during initialization
   because it is affected by their state. Forcing them down prevents packets
   reception.
 
@@ -999,7 +999,7 @@ DPDK and must be installed separately:
 
 - **libibverbs**
 
-  User space Verbs framework used by librte_pmd_mlx5. This library provides
+  User space Verbs framework used by librte_net_mlx5. This library provides
   a generic interface between the kernel and low-level user space drivers
   such as libmlx5.
 
@@ -1443,13 +1443,13 @@ The application should re-create the flows as required after the port restart.
 Notes for testpmd
 -----------------
 
-Compared to librte_pmd_mlx4 that implements a single RSS configuration per
-port, librte_pmd_mlx5 supports per-protocol RSS configuration.
+Compared to librte_net_mlx4 that implements a single RSS configuration per
+port, librte_net_mlx5 supports per-protocol RSS configuration.
 
 Since ``testpmd`` defaults to IP RSS mode and there is currently no
 command-line parameter to enable additional protocols (UDP and TCP as well
 as IP), the following commands must be entered from its CLI to get the same
-behavior as librte_pmd_mlx4::
+behavior as librte_net_mlx4::
 
    > port stop all
    > port config all rss all
@@ -1459,7 +1459,7 @@ Usage example
 -------------
 
 This section demonstrates how to launch **testpmd** with Mellanox
-ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices managed by librte_pmd_mlx5.
+ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices managed by librte_net_mlx5.
 
 #. Load the kernel modules::
 
@@ -1516,41 +1516,41 @@ ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices managed by librte_pmd_mlx5.
 
       [...]
       EAL: PCI device 0000:05:00.0 on NUMA socket 0
-      EAL:   probe driver: 15b3:1013 librte_pmd_mlx5
-      PMD: librte_pmd_mlx5: PCI information matches, using device "mlx5_0" (VF: false)
-      PMD: librte_pmd_mlx5: 1 port(s) detected
-      PMD: librte_pmd_mlx5: port 1 MAC address is e4:1d:2d:e7:0c:fe
+      EAL:   probe driver: 15b3:1013 librte_net_mlx5
+      PMD: librte_net_mlx5: PCI information matches, using device "mlx5_0" (VF: false)
+      PMD: librte_net_mlx5: 1 port(s) detected
+      PMD: librte_net_mlx5: port 1 MAC address is e4:1d:2d:e7:0c:fe
       EAL: PCI device 0000:05:00.1 on NUMA socket 0
-      EAL:   probe driver: 15b3:1013 librte_pmd_mlx5
-      PMD: librte_pmd_mlx5: PCI information matches, using device "mlx5_1" (VF: false)
-      PMD: librte_pmd_mlx5: 1 port(s) detected
-      PMD: librte_pmd_mlx5: port 1 MAC address is e4:1d:2d:e7:0c:ff
+      EAL:   probe driver: 15b3:1013 librte_net_mlx5
+      PMD: librte_net_mlx5: PCI information matches, using device "mlx5_1" (VF: false)
+      PMD: librte_net_mlx5: 1 port(s) detected
+      PMD: librte_net_mlx5: port 1 MAC address is e4:1d:2d:e7:0c:ff
       EAL: PCI device 0000:06:00.0 on NUMA socket 0
-      EAL:   probe driver: 15b3:1013 librte_pmd_mlx5
-      PMD: librte_pmd_mlx5: PCI information matches, using device "mlx5_2" (VF: false)
-      PMD: librte_pmd_mlx5: 1 port(s) detected
-      PMD: librte_pmd_mlx5: port 1 MAC address is e4:1d:2d:e7:0c:fa
+      EAL:   probe driver: 15b3:1013 librte_net_mlx5
+      PMD: librte_net_mlx5: PCI information matches, using device "mlx5_2" (VF: false)
+      PMD: librte_net_mlx5: 1 port(s) detected
+      PMD: librte_net_mlx5: port 1 MAC address is e4:1d:2d:e7:0c:fa
       EAL: PCI device 0000:06:00.1 on NUMA socket 0
-      EAL:   probe driver: 15b3:1013 librte_pmd_mlx5
-      PMD: librte_pmd_mlx5: PCI information matches, using device "mlx5_3" (VF: false)
-      PMD: librte_pmd_mlx5: 1 port(s) detected
-      PMD: librte_pmd_mlx5: port 1 MAC address is e4:1d:2d:e7:0c:fb
+      EAL:   probe driver: 15b3:1013 librte_net_mlx5
+      PMD: librte_net_mlx5: PCI information matches, using device "mlx5_3" (VF: false)
+      PMD: librte_net_mlx5: 1 port(s) detected
+      PMD: librte_net_mlx5: port 1 MAC address is e4:1d:2d:e7:0c:fb
       Interactive-mode selected
       Configuring Port 0 (socket 0)
-      PMD: librte_pmd_mlx5: 0x8cba80: TX queues number update: 0 -> 2
-      PMD: librte_pmd_mlx5: 0x8cba80: RX queues number update: 0 -> 2
+      PMD: librte_net_mlx5: 0x8cba80: TX queues number update: 0 -> 2
+      PMD: librte_net_mlx5: 0x8cba80: RX queues number update: 0 -> 2
       Port 0: E4:1D:2D:E7:0C:FE
       Configuring Port 1 (socket 0)
-      PMD: librte_pmd_mlx5: 0x8ccac8: TX queues number update: 0 -> 2
-      PMD: librte_pmd_mlx5: 0x8ccac8: RX queues number update: 0 -> 2
+      PMD: librte_net_mlx5: 0x8ccac8: TX queues number update: 0 -> 2
+      PMD: librte_net_mlx5: 0x8ccac8: RX queues number update: 0 -> 2
       Port 1: E4:1D:2D:E7:0C:FF
       Configuring Port 2 (socket 0)
-      PMD: librte_pmd_mlx5: 0x8cdb10: TX queues number update: 0 -> 2
-      PMD: librte_pmd_mlx5: 0x8cdb10: RX queues number update: 0 -> 2
+      PMD: librte_net_mlx5: 0x8cdb10: TX queues number update: 0 -> 2
+      PMD: librte_net_mlx5: 0x8cdb10: RX queues number update: 0 -> 2
       Port 2: E4:1D:2D:E7:0C:FA
       Configuring Port 3 (socket 0)
-      PMD: librte_pmd_mlx5: 0x8ceb58: TX queues number update: 0 -> 2
-      PMD: librte_pmd_mlx5: 0x8ceb58: RX queues number update: 0 -> 2
+      PMD: librte_net_mlx5: 0x8ceb58: TX queues number update: 0 -> 2
+      PMD: librte_net_mlx5: 0x8ceb58: RX queues number update: 0 -> 2
       Port 3: E4:1D:2D:E7:0C:FB
       Checking link statuses...
       Port 0 Link Up - speed 40000 Mbps - full-duplex

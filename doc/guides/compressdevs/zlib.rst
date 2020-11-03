@@ -4,7 +4,7 @@
 ZLIB Compression Poll Mode Driver
 ==================================
 
-The ZLIB PMD (**librte_pmd_zlib**) provides poll mode compression &
+The ZLIB PMD (**librte_compress_zlib**) provides poll mode compression &
 decompression driver based on SW zlib library,
 
 Features

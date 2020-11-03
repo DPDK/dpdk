@@ -5,7 +5,7 @@ AMD CCP Poll Mode Driver
 ========================
 
 This code provides the initial implementation of the ccp poll mode driver.
-The CCP poll mode driver library (librte_pmd_ccp) implements support for
+The CCP poll mode driver library (**librte_crypto_ccp**) implements support for
 AMD’s cryptographic co-processor (CCP). The CCP PMD is a virtual crypto
 poll mode driver which schedules crypto operations to one or more available
 CCP hardware engines on the platform. The CCP PMD provides poll mode crypto

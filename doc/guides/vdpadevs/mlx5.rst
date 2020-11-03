@@ -7,7 +7,7 @@ MLX5 vDPA driver
 ================
 
 The MLX5 vDPA (vhost data path acceleration) driver library
-(**librte_pmd_mlx5_vdpa**) provides support for **Mellanox ConnectX-6**,
+(**librte_vdpa_mlx5**) provides support for **Mellanox ConnectX-6**,
 **Mellanox ConnectX-6 Dx** and **Mellanox BlueField** families of
 10/25/40/50/100/200 Gb/s adapters as well as their virtual functions (VF) in
 SR-IOV context.
@@ -37,7 +37,7 @@ to get the best performances:
 - DevX allows to access firmware objects
 - Direct Rules manages flow steering at low-level hardware layer
 
-Enabling librte_pmd_mlx5_vdpa causes DPDK applications to be linked against
+Enabling librte_vdpa_mlx5 causes DPDK applications to be linked against
 libibverbs.
 
 A Mellanox mlx5 PCI device can be probed by either net/mlx5 driver or vdpa/mlx5

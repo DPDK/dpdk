@@ -4,7 +4,7 @@
 Fail-safe poll mode driver library
 ==================================
 
-The Fail-safe poll mode driver library (**librte_pmd_failsafe**) implements a
+The Fail-safe poll mode driver library (**librte_net_failsafe**) implements a
 virtual device that allows using device supporting hotplug, without modifying
 other components relying on such device (application, other PMDs).
 In this context, hotplug support is meant as plugging or removing a device

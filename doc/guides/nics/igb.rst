@@ -4,7 +4,7 @@
 IGB Poll Mode Driver
 ====================
 
-The IGB PMD (``librte_pmd_e1000``) provides poll mode driver
+The IGB PMD (**librte_net_e1000**) provides poll mode driver
 support for Intel 1GbE nics.
 
 Features

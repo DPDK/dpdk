@@ -4,7 +4,7 @@
 LiquidIO VF Poll Mode Driver
 ============================
 
-The LiquidIO VF PMD library (librte_pmd_lio) provides poll mode driver support for
+The LiquidIO VF PMD library (**librte_net_liquidio**) provides poll mode driver support for
 Cavium LiquidIO® II server adapter VFs. PF management and VF creation can be
 done using kernel driver.
 

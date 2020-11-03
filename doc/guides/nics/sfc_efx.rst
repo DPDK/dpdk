@@ -8,7 +8,7 @@
 Solarflare libefx-based Poll Mode Driver
 ========================================
 
-The SFC EFX PMD (**librte_pmd_sfc_efx**) provides poll mode driver support
+The SFC EFX PMD (**librte_net_sfc_efx**) provides poll mode driver support
 for **Solarflare SFN7xxx and SFN8xxx** family of 10/40 Gbps adapters,
 **Solarflare XtremeScale X2xxx** family of 10/25/40/50/100 Gbps adapters and
 **Alveo SN1000 SmartNICs** family of 10/25/40/50/100 Gbps adapters.

@@ -4,7 +4,7 @@
 BNX2X Poll Mode Driver
 ======================
 
-The BNX2X poll mode driver library (**librte_pmd_bnx2x**) implements support
+The BNX2X poll mode driver library (**librte_net_bnx2x**) implements support
 for **QLogic 578xx** 10/20 Gbps family of adapters as well as their virtual
 functions (VF) in SR-IOV context. It is supported on several standard Linux
 distros like RHEL and SLES. It is compile-tested under FreeBSD OS.

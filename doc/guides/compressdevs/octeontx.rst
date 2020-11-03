@@ -4,7 +4,7 @@
 OCTEON TX ZIP Compression Poll Mode Driver
 ==========================================
 
-The OCTEON TX ZIP PMD (**librte_pmd_octeontx_zip**) provides poll mode
+The OCTEON TX ZIP PMD (**librte_compress_octeontx**) provides poll mode
 compression & decompression driver for ZIP HW offload device, found in
 **Cavium OCTEON TX** SoC family.
 

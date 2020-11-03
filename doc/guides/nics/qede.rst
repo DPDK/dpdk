@@ -5,7 +5,7 @@
 QEDE Poll Mode Driver
 ======================
 
-The QEDE poll mode driver library (**librte_pmd_qede**) implements support
+The QEDE poll mode driver library (**librte_net_qede**) implements support
 for **QLogic FastLinQ QL4xxxx 10G/25G/40G/50G/100G Intelligent Ethernet Adapters (IEA) and Converged Network Adapters (CNA)** family of adapters as well as SR-IOV virtual functions (VF). It is supported on
 several standard Linux distros like RHEL, SLES, Ubuntu etc.
 It is compile-tested under FreeBSD OS.
@@ -190,7 +190,7 @@ SR-IOV: Prerequisites and Sample Application Notes
 
 This section provides instructions to configure SR-IOV with Linux OS.
 
-**Note**: librte_pmd_qede will be used to bind to SR-IOV VF device and Linux native kernel driver (qede) will function as SR-IOV PF driver. Requires PF driver to be 8.20.x.x or higher.
+**Note**: librte_net_qede will be used to bind to SR-IOV VF device and Linux native kernel driver (qede) will function as SR-IOV PF driver. Requires PF driver to be 8.20.x.x or higher.
 
 #. Verify SR-IOV and ARI capability is enabled on the adapter using ``lspci``:
 

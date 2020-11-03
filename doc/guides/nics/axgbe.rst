@@ -4,7 +4,7 @@
 AXGBE Poll Mode Driver
 ======================
 
-The AXGBE poll mode driver library (**librte_pmd_axgbe**) implements support
+The AXGBE poll mode driver library (**librte_net_axgbe**) implements support
 for AMD 10 Gbps family of adapters. It is compiled and tested in standard linux distro like Ubuntu.
 
 Detailed information about SoCs that use these devices can be found here:

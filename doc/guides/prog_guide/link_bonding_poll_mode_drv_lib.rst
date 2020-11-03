@@ -13,7 +13,7 @@ allows physical PMDs to be bonded together to create a single logical PMD.
    Bonded PMDs
 
 
-The Link Bonding PMD library(librte_pmd_bond) supports bonding of groups of
+The Link Bonding PMD library(librte_net_bond) supports bonding of groups of
 ``rte_eth_dev`` ports of the same speed and duplex to provide similar
 capabilities to that found in Linux bonding driver to allow the aggregation
 of multiple (slave) NICs into a single logical interface between a server
@@ -21,7 +21,7 @@ and a switch. The new bonded PMD will then process these interfaces based on
 the mode of operation specified to provide support for features such as
 redundant links, fault tolerance and/or load balancing.
 
-The librte_pmd_bond library exports a C API which provides an API for the
+The librte_net_bond library exports a C API which provides an API for the
 creation of bonded devices as well as the configuration and management of the
 bonded device and its slave devices.
 
@@ -133,7 +133,7 @@ Currently the Link Bonding PMD library supports following modes of operation:
 Implementation Details
 ----------------------
 
-The librte_pmd_bond bonded device are compatible with the Ethernet device API
+The librte_net_bond bonded device are compatible with the Ethernet device API
 exported by the Ethernet PMDs described in the *DPDK API Reference*.
 
 The Link Bonding Library supports the creation of bonded devices at application
@@ -329,7 +329,7 @@ and UDP protocols for load balancing.
 Using Link Bonding Devices
 --------------------------
 
-The librte_pmd_bond library supports two modes of device creation, the libraries
+The librte_net_bond library supports two modes of device creation, the libraries
 export full C API or using the EAL command line to statically configure link
 bonding devices at application startup. Using the EAL option it is possible to
 use link bonding functionality transparently without specific knowledge of the
@@ -340,7 +340,7 @@ the link bonding C API.
 Using the Poll Mode Driver from an Application
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Using the librte_pmd_bond libraries API it is possible to dynamically create
+Using the librte_net_bond libraries API it is possible to dynamically create
 and manage link bonding device from within any application. Link bonding
 devices are created using the ``rte_eth_bond_create`` API which requires a
 unique device name, the link bonding mode to initial the device in and finally

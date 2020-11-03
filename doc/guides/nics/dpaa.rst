@@ -5,7 +5,7 @@
 DPAA Poll Mode Driver
 =====================
 
-The DPAA NIC PMD (**librte_pmd_dpaa**) provides poll mode driver
+The DPAA NIC PMD (**librte_net_dpaa**) provides poll mode driver
 support for the inbuilt NIC found in the **NXP DPAA** SoC family.
 
 More information can be found at `NXP Official Website

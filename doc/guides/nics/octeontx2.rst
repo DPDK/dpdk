@@ -4,7 +4,7 @@
 OCTEON TX2 Poll Mode driver
 ===========================
 
-The OCTEON TX2 ETHDEV PMD (**librte_pmd_octeontx2**) provides poll mode ethdev
+The OCTEON TX2 ETHDEV PMD (**librte_net_octeontx2**) provides poll mode ethdev
 driver support for the inbuilt network device found in **Marvell OCTEON TX2**
 SoC family as well as for their virtual functions (VF) in SR-IOV context.
 

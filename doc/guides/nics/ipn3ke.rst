@@ -4,7 +4,7 @@
 IPN3KE Poll Mode Driver
 =======================
 
-The ipn3ke PMD (librte_pmd_ipn3ke) provides poll mode driver support
+The ipn3ke PMD (**librte_net_ipn3ke**) provides poll mode driver support
 for Intel® FPGA PAC(Programmable Acceleration Card) N3000 based on
 the Intel Ethernet Controller X710/XXV710 and Intel Arria 10 FPGA.
 

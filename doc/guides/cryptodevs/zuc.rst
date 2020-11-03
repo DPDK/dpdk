@@ -4,7 +4,7 @@
 ZUC Crypto Poll Mode Driver
 ===========================
 
-The ZUC PMD (**librte_pmd_zuc**) provides poll mode crypto driver support for
+The ZUC PMD (**librte_crypto_zuc**) provides poll mode crypto driver support for
 utilizing `Intel IPSec Multi-buffer library <https://github.com/01org/intel-ipsec-mb>`_
 which implements F8 and F9 functions for ZUC EEA3 cipher and EIA3 hash algorithms.
 

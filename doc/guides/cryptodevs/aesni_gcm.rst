@@ -5,7 +5,7 @@ AES-NI GCM Crypto Poll Mode Driver
 ==================================
 
 
-The AES-NI GCM PMD (**librte_pmd_aesni_gcm**) provides poll mode crypto driver
+The AES-NI GCM PMD (**librte_crypto_aesni_gcm**) provides poll mode crypto driver
 support for utilizing Intel multi buffer library (see AES-NI Multi-buffer PMD documentation
 to learn more about it, including installation).
 

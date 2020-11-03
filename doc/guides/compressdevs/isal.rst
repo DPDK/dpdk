@@ -4,7 +4,7 @@
 ISA-L Compression Poll Mode Driver
 ==================================
 
-The ISA-L PMD (**librte_pmd_isal_comp**) provides poll mode compression &
+The ISA-L PMD (**librte_compress_isal**) provides poll mode compression &
 decompression driver support for utilizing Intel ISA-L library,
 which implements the deflate algorithm for both Deflate(compression) and Inflate(decompression).
 

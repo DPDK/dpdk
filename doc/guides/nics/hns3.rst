@@ -4,7 +4,7 @@
 HNS3 Poll Mode Driver
 ===============================
 
-The hns3 PMD (librte_pmd_hns3) provides poll mode driver support
+The hns3 PMD (**librte_net_hns3**) provides poll mode driver support
 for the inbuilt Hisilicon Network Subsystem(HNS) network engine
 found in the Hisilicon Kunpeng 920 SoC.
 

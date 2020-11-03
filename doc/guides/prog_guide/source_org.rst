@@ -21,7 +21,8 @@ Drivers
 Drivers are special libraries which provide poll-mode driver implementations for
 devices: either hardware devices or pseudo/virtual devices. They are contained
 in the *drivers* subdirectory, classified by type, and each compiles to a
-library with the format ``librte_pmd_X.a`` where ``X`` is the driver name.
+library with the format ``librte_X_Y.a`` where ``X`` is the device class
+name and ``Y`` is the driver name.
 
 .. note::
 

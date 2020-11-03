@@ -4,7 +4,7 @@
 ENETC Poll Mode Driver
 ======================
 
-The ENETC NIC PMD (**librte_pmd_enetc**) provides poll mode driver
+The ENETC NIC PMD (**librte_net_enetc**) provides poll mode driver
 support for the inbuilt NIC found in the **NXP LS1028** SoC.
 
 More information can be found at `NXP Official Website

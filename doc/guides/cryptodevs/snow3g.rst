@@ -4,7 +4,7 @@
 SNOW 3G Crypto Poll Mode Driver
 ===============================
 
-The SNOW3G PMD (**librte_snow3g_zuc**) provides poll mode crypto driver support for
+The SNOW3G PMD (**librte_crypto_snow3g**) provides poll mode crypto driver support for
 utilizing `Intel IPSec Multi-buffer library <https://github.com/01org/intel-ipsec-mb>`_
 which implements F8 and F8 functions for SNOW 3G UEA2 cipher and UIA2 hash algorithms.
 

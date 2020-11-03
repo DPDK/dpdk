@@ -5,7 +5,7 @@
 MVSAM Crypto Poll Mode Driver
 =============================
 
-The MVSAM CRYPTO PMD (**librte_crypto_mvsam_pmd**) provides poll mode crypto driver
+The MVSAM CRYPTO PMD (**librte_crypto_mvsam**) provides poll mode crypto driver
 support by utilizing MUSDK library, which provides cryptographic operations
 acceleration by using Security Acceleration Engine (EIP197) directly from
 user-space with minimum overhead and high performance.

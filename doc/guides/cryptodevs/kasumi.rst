@@ -4,7 +4,7 @@
 KASUMI Crypto Poll Mode Driver
 ===============================
 
-The KASUMI PMD (**librte_pmd_kasumi**) provides poll mode crypto driver support for
+The KASUMI PMD (**librte_crypto_kasumi**) provides poll mode crypto driver support for
 utilizing `Intel IPSec Multi-buffer library <https://github.com/01org/intel-ipsec-mb>`_
 which implements F8 and F9 functions for KASUMI UEA1 cipher and UIA1 hash algorithms.
 

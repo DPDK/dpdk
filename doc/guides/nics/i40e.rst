@@ -4,7 +4,7 @@
 I40E Poll Mode Driver
 ======================
 
-The i40e PMD (librte_pmd_i40e) provides poll mode driver support for
+The i40e PMD (**librte_net_i40e**) provides poll mode driver support for
 10/25/40 Gbps Intel® Ethernet 700 Series Network Adapters based on
 the Intel Ethernet Controller X710/XL710/XXV710 and Intel Ethernet
 Connection X722 (only support part of features).

@@ -4,7 +4,7 @@
 Null Crypto Poll Mode Driver
 ============================
 
-The Null Crypto PMD (**librte_pmd_null_crypto**) provides a crypto poll mode
+The Null Crypto PMD (**librte_crypto_null**) provides a crypto poll mode
 driver which provides a minimal implementation for a software crypto device. As
 a null device it does not modify the data in the mbuf on which the crypto
 operation is to operate and it only has support for a single cipher and

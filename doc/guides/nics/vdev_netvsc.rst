@@ -5,7 +5,7 @@
 VDEV_NETVSC driver
 ==================
 
-The VDEV_NETVSC driver (librte_pmd_vdev_netvsc) provides support for NetVSC
+The VDEV_NETVSC driver (**librte_net_vdev_netvsc**) provides support for NetVSC
 interfaces and associated SR-IOV virtual function (VF) devices found in
 Linux virtual machines running on Microsoft Hyper-V_ (including Azure)
 platforms.

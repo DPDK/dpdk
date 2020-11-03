@@ -5,7 +5,7 @@
 CXGBE Poll Mode Driver
 ======================
 
-The CXGBE PMD (**librte_pmd_cxgbe**) provides poll mode driver support
+The CXGBE PMD (**librte_net_cxgbe**) provides poll mode driver support
 for **Chelsio Terminator** 10/25/40/100 Gbps family of adapters. CXGBE PMD
 has support for the latest Linux and FreeBSD operating systems.
 
@@ -36,7 +36,7 @@ Limitations
 -----------
 
 The Chelsio Terminator series of devices provide two/four ports but
-expose a single PCI bus address, thus, librte_pmd_cxgbe registers
+expose a single PCI bus address, thus, librte_net_cxgbe registers
 itself as a PCI driver that allocates one Ethernet device per detected
 port.
 
@@ -410,7 +410,7 @@ Running testpmd
 ~~~~~~~~~~~~~~~
 
 This section demonstrates how to launch **testpmd** with Chelsio
-devices managed by librte_pmd_cxgbe in Linux operating system.
+devices managed by librte_net_cxgbe in Linux operating system.
 
 #. Load the kernel module:
 
@@ -660,7 +660,7 @@ Running testpmd
 ~~~~~~~~~~~~~~~
 
 This section demonstrates how to launch **testpmd** with Chelsio
-devices managed by librte_pmd_cxgbe in FreeBSD operating system.
+devices managed by librte_net_cxgbe in FreeBSD operating system.
 
 #. Change to DPDK source directory where the target has been compiled in
    section :ref:`driver-compilation`:

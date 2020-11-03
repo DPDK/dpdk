@@ -4,7 +4,7 @@
 OCTEON TX2 SSO Eventdev Driver
 ===============================
 
-The OCTEON TX2 SSO PMD (**librte_pmd_octeontx2_event**) provides poll mode
+The OCTEON TX2 SSO PMD (**librte_event_octeontx2**) provides poll mode
 eventdev driver support for the inbuilt event device found in the **Marvell OCTEON TX2**
 SoC family.
 

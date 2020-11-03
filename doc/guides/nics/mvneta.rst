@@ -6,7 +6,7 @@
 MVNETA Poll Mode Driver
 =======================
 
-The MVNETA PMD (librte_pmd_mvneta) provides poll mode driver support
+The MVNETA PMD (**librte_net_mvneta**) provides poll mode driver support
 for the Marvell NETA 1/2.5 Gbps adapter.
 
 Detailed information about SoCs that use PPv2 can be obtained here:

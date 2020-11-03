@@ -7,7 +7,7 @@
 MVPP2 Poll Mode Driver
 ======================
 
-The MVPP2 PMD (librte_pmd_mvpp2) provides poll mode driver support
+The MVPP2 PMD (**librte_net_mvpp2**) provides poll mode driver support
 for the Marvell PPv2 (Packet Processor v2) 1/10 Gbps adapter.
 
 Detailed information about SoCs that use PPv2 can be obtained here:

@@ -5,7 +5,7 @@
 MLX4 poll mode driver library
 =============================
 
-The MLX4 poll mode driver library (**librte_pmd_mlx4**) implements support
+The MLX4 poll mode driver library (**librte_net_mlx4**) implements support
 for **Mellanox ConnectX-3** and **Mellanox ConnectX-3 Pro** 10/40 Gbps adapters
 as well as their virtual functions (VF) in SR-IOV context.
 
@@ -21,14 +21,14 @@ Implementation details
 ----------------------
 
 Most Mellanox ConnectX-3 devices provide two ports but expose a single PCI
-bus address, thus unlike most drivers, librte_pmd_mlx4 registers itself as a
+bus address, thus unlike most drivers, librte_net_mlx4 registers itself as a
 PCI driver that allocates one Ethernet device per detected port.
 
 For this reason, one cannot white/blacklist a single port without also
 white/blacklisting the others on the same device.
 
 Besides its dependency on libibverbs (that implies libmlx4 and associated
-kernel support), librte_pmd_mlx4 relies heavily on system calls for control
+kernel support), librte_net_mlx4 relies heavily on system calls for control
 operations such as querying/updating the MTU and flow control parameters.
 
 For security reasons and robustness, this driver only deals with virtual
@@ -43,7 +43,7 @@ long as they share the same MAC address.
 
 The :ref:`flow_isolated_mode` is supported.
 
-Compiling librte_pmd_mlx4 causes DPDK to be linked against libibverbs.
+Compiling librte_net_mlx4 causes DPDK to be linked against libibverbs.
 
 Configuration
 -------------
@@ -77,7 +77,7 @@ Environment variables
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 
-- librte_pmd_mlx4 brings kernel network interfaces up during initialization
+- librte_net_mlx4 brings kernel network interfaces up during initialization
   because it is affected by their state. Forcing them down prevents packets
   reception.
 
@@ -104,7 +104,7 @@ Kernel module parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 The **mlx4_core** kernel module has several parameters that affect the
-behavior and/or the performance of librte_pmd_mlx4. Some of them are described
+behavior and/or the performance of librte_net_mlx4. Some of them are described
 below.
 
 - **num_vfs** (integer or triplet, optionally prefixed by device address
@@ -151,7 +151,7 @@ DPDK and must be installed separately:
 
 - **libibverbs** (provided by rdma-core package)
 
-  User space verbs framework used by librte_pmd_mlx4. This library provides
+  User space verbs framework used by librte_net_mlx4. This library provides
   a generic interface between the kernel and low-level user space drivers
   such as libmlx4.
 
@@ -353,7 +353,7 @@ Usage example
 -------------
 
 This section demonstrates how to launch **testpmd** with Mellanox ConnectX-3
-devices managed by librte_pmd_mlx4.
+devices managed by librte_net_mlx4.
 
 #. Load the kernel modules::
 
@@ -415,33 +415,33 @@ devices managed by librte_pmd_mlx4.
 
       [...]
       EAL: PCI device 0000:83:00.0 on NUMA socket 1
-      EAL:   probe driver: 15b3:1007 librte_pmd_mlx4
-      PMD: librte_pmd_mlx4: PCI information matches, using device "mlx4_0" (VF: false)
-      PMD: librte_pmd_mlx4: 2 port(s) detected
-      PMD: librte_pmd_mlx4: port 1 MAC address is 00:02:c9:b5:b7:50
-      PMD: librte_pmd_mlx4: port 2 MAC address is 00:02:c9:b5:b7:51
+      EAL:   probe driver: 15b3:1007 librte_net_mlx4
+      PMD: librte_net_mlx4: PCI information matches, using device "mlx4_0" (VF: false)
+      PMD: librte_net_mlx4: 2 port(s) detected
+      PMD: librte_net_mlx4: port 1 MAC address is 00:02:c9:b5:b7:50
+      PMD: librte_net_mlx4: port 2 MAC address is 00:02:c9:b5:b7:51
       EAL: PCI device 0000:84:00.0 on NUMA socket 1
-      EAL:   probe driver: 15b3:1007 librte_pmd_mlx4
-      PMD: librte_pmd_mlx4: PCI information matches, using device "mlx4_1" (VF: false)
-      PMD: librte_pmd_mlx4: 2 port(s) detected
-      PMD: librte_pmd_mlx4: port 1 MAC address is 00:02:c9:b5:ba:b0
-      PMD: librte_pmd_mlx4: port 2 MAC address is 00:02:c9:b5:ba:b1
+      EAL:   probe driver: 15b3:1007 librte_net_mlx4
+      PMD: librte_net_mlx4: PCI information matches, using device "mlx4_1" (VF: false)
+      PMD: librte_net_mlx4: 2 port(s) detected
+      PMD: librte_net_mlx4: port 1 MAC address is 00:02:c9:b5:ba:b0
+      PMD: librte_net_mlx4: port 2 MAC address is 00:02:c9:b5:ba:b1
       Interactive-mode selected
       Configuring Port 0 (socket 0)
-      PMD: librte_pmd_mlx4: 0x867d60: TX queues number update: 0 -> 2
-      PMD: librte_pmd_mlx4: 0x867d60: RX queues number update: 0 -> 2
+      PMD: librte_net_mlx4: 0x867d60: TX queues number update: 0 -> 2
+      PMD: librte_net_mlx4: 0x867d60: RX queues number update: 0 -> 2
       Port 0: 00:02:C9:B5:B7:50
       Configuring Port 1 (socket 0)
-      PMD: librte_pmd_mlx4: 0x867da0: TX queues number update: 0 -> 2
-      PMD: librte_pmd_mlx4: 0x867da0: RX queues number update: 0 -> 2
+      PMD: librte_net_mlx4: 0x867da0: TX queues number update: 0 -> 2
+      PMD: librte_net_mlx4: 0x867da0: RX queues number update: 0 -> 2
       Port 1: 00:02:C9:B5:B7:51
       Configuring Port 2 (socket 0)
-      PMD: librte_pmd_mlx4: 0x867de0: TX queues number update: 0 -> 2
-      PMD: librte_pmd_mlx4: 0x867de0: RX queues number update: 0 -> 2
+      PMD: librte_net_mlx4: 0x867de0: TX queues number update: 0 -> 2
+      PMD: librte_net_mlx4: 0x867de0: RX queues number update: 0 -> 2
       Port 2: 00:02:C9:B5:BA:B0
       Configuring Port 3 (socket 0)
-      PMD: librte_pmd_mlx4: 0x867e20: TX queues number update: 0 -> 2
-      PMD: librte_pmd_mlx4: 0x867e20: RX queues number update: 0 -> 2
+      PMD: librte_net_mlx4: 0x867e20: TX queues number update: 0 -> 2
+      PMD: librte_net_mlx4: 0x867e20: RX queues number update: 0 -> 2
       Port 3: 00:02:C9:B5:BA:B1
       Checking link statuses...
       Port 0 Link Up - speed 10000 Mbps - full-duplex

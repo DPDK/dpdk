@@ -4,7 +4,7 @@
 OCTEON TX SSOVF Eventdev Driver
 ===============================
 
-The OCTEON TX SSOVF PMD (**librte_pmd_octeontx_ssovf**) provides poll mode
+The OCTEON TX SSOVF PMD (**librte_event_octeontx**) provides poll mode
 eventdev driver support for the inbuilt event device found in the **Cavium OCTEON TX**
 SoC family as well as their virtual functions (VF) in SR-IOV context.
 

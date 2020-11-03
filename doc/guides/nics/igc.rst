@@ -4,7 +4,7 @@
 IGC Poll Mode Driver
 ======================
 
-The IGC PMD (librte_pmd_igc) provides poll mode driver support for Foxville
+The IGC PMD (**librte_net_igc**) provides poll mode driver support for Foxville
 I225 Series Network Adapters.
 
 - For information about I225, please refer to:

@@ -4,7 +4,7 @@
 ThunderX NICVF Poll Mode Driver
 ===============================
 
-The ThunderX NICVF PMD (**librte_pmd_thunderx_nicvf**) provides poll mode driver
+The ThunderX NICVF PMD (**librte_net_thunderx**) provides poll mode driver
 support for the inbuilt NIC found in the **Cavium ThunderX** SoC family
 as well as their virtual functions (VF) in SR-IOV context.
 
@@ -163,7 +163,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
       ...
 
-      PMD: rte_nicvf_pmd_init(): librte_pmd_thunderx nicvf version 1.0
+      PMD: rte_nicvf_pmd_init(): librte_net_thunderx nicvf version 1.0
 
       ...
       EAL:   probe driver: 177d:11 rte_nicvf_pmd

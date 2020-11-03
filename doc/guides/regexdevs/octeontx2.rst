@@ -4,7 +4,7 @@
 OCTEON TX2 REE Regexdev Driver
 ==============================
 
-The OCTEON TX2 REE PMD (**librte_pmd_octeontx2_regex**) provides poll mode
+The OCTEON TX2 REE PMD (**librte_regex_octeontx2**) provides poll mode
 regexdev driver support for the inbuilt regex device found in the **Marvell OCTEON TX2**
 SoC family.
 
