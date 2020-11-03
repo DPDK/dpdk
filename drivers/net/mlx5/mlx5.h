@@ -467,7 +467,8 @@ struct mlx5_flow_counter_mng {
 	uint8_t pending_queries;
 	uint16_t pool_index;
 	uint8_t query_thread_on;
-	bool relaxed_ordering;
+	bool relaxed_ordering_read;
+	bool relaxed_ordering_write;
 	bool counter_fallback; /* Use counter fallback management. */
 	LIST_HEAD(mem_mngs, mlx5_counter_stats_mem_mng) mem_mngs;
 	LIST_HEAD(stat_raws, mlx5_counter_stats_raw) free_stat_raws;

@@ -156,7 +156,8 @@ mlx5_aso_devx_reg_mr(void *ctx, size_t length, struct mlx5_aso_devx_mr *mr,
 	mkey_attr.pg_access = 1;
 	mkey_attr.klm_array = NULL;
 	mkey_attr.klm_num = 0;
-	mkey_attr.relaxed_ordering = 0;
+	mkey_attr.relaxed_ordering_read = 0;
+	mkey_attr.relaxed_ordering_write = 0;
 	mr->mkey = mlx5_devx_cmd_mkey_create(ctx, &mkey_attr);
 	if (!mr->mkey) {
 		DRV_LOG(ERR, "Failed to create direct Mkey.");

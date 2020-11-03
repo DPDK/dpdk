@@ -267,10 +267,10 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	MLX5_SET(mkc, mkc, pd, attr->pd);
 	MLX5_SET(mkc, mkc, mkey_7_0, attr->umem_id & 0xFF);
 	MLX5_SET(mkc, mkc, translations_octword_size, translation_size);
-	if (attr->relaxed_ordering == 1) {
-		MLX5_SET(mkc, mkc, relaxed_ordering_write, 0x1);
-		MLX5_SET(mkc, mkc, relaxed_ordering_read, 0x1);
-	}
+	MLX5_SET(mkc, mkc, relaxed_ordering_write,
+		attr->relaxed_ordering_write);
+	MLX5_SET(mkc, mkc, relaxed_ordering_read,
+		attr->relaxed_ordering_read);
 	MLX5_SET64(mkc, mkc, start_addr, attr->addr);
 	MLX5_SET64(mkc, mkc, len, attr->size);
 	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, in_size_dw * 4, out,

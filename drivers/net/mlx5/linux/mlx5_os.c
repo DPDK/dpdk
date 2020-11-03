@@ -1141,10 +1141,15 @@ err_secondary:
 		}
 #endif /* HAVE_MLX5DV_DR_ACTION_FLOW_HIT */
 		/* Check relax ordering support. */
-		if (config->hca_attr.relaxed_ordering_write &&
-		    config->hca_attr.relaxed_ordering_read  &&
-		    !haswell_broadwell_cpu)
-			sh->cmng.relaxed_ordering = 1;
+		if (!haswell_broadwell_cpu) {
+			sh->cmng.relaxed_ordering_write =
+				config->hca_attr.relaxed_ordering_write;
+			sh->cmng.relaxed_ordering_read =
+				config->hca_attr.relaxed_ordering_read;
+		} else {
+			sh->cmng.relaxed_ordering_read = 0;
+			sh->cmng.relaxed_ordering_write = 0;
+		}
 		/* Check for LRO support. */
 		if (config->dest_tir && config->hca_attr.lro_cap &&
 		    config->dv_flow_en) {

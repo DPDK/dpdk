@@ -223,7 +223,8 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 		mkey_attr.pg_access = 1;
 		mkey_attr.klm_array = NULL;
 		mkey_attr.klm_num = 0;
-		mkey_attr.relaxed_ordering = 0;
+		mkey_attr.relaxed_ordering_read = 0;
+		mkey_attr.relaxed_ordering_write = 0;
 		entry->mkey = mlx5_devx_cmd_mkey_create(priv->ctx, &mkey_attr);
 		if (!entry->mkey) {
 			DRV_LOG(ERR, "Failed to create direct Mkey.");
