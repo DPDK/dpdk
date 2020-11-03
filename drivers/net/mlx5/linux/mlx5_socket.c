@@ -20,15 +20,10 @@
 
 /* PMD socket service for tools. */
 
+#define MLX5_SOCKET_PATH "/var/tmp/dpdk_net_mlx5_%d"
+
 int server_socket; /* Unix socket for primary process. */
 struct rte_intr_handle server_intr_handle; /* Interrupt handler. */
-
-static void
-mlx5_pmd_make_path(struct sockaddr_un *addr, int pid)
-{
-	snprintf(addr->sun_path, sizeof(addr->sun_path), "/var/tmp/dpdk_%s_%d",
-		 MLX5_DRIVER_NAME, pid);
-}
 
 /**
  * Handle server pmd socket interrupts.
@@ -186,7 +181,8 @@ mlx5_pmd_socket_init(void)
 	ret = fcntl(server_socket, F_SETFL, flags | O_NONBLOCK);
 	if (ret < 0)
 		goto error;
-	mlx5_pmd_make_path(&sun, getpid());
+	snprintf(sun.sun_path, sizeof(sun.sun_path), MLX5_SOCKET_PATH,
+		 getpid());
 	remove(sun.sun_path);
 	ret = bind(server_socket, (const struct sockaddr *)&sun, sizeof(sun));
 	if (ret < 0) {
@@ -225,6 +221,6 @@ RTE_FINI(mlx5_pmd_socket_uninit)
 	mlx5_pmd_interrupt_handler_uninstall();
 	claim_zero(close(server_socket));
 	server_socket = 0;
-	MKSTR(path, "/var/tmp/dpdk_%s_%d", MLX5_DRIVER_NAME, getpid());
+	MKSTR(path, MLX5_SOCKET_PATH, getpid());
 	claim_zero(remove(path));
 }
