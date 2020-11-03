@@ -210,7 +210,7 @@ get_cpt_inst(struct command_queue *cqueue)
 }
 
 static __rte_always_inline void
-fill_cpt_inst(struct cpt_instance *instance, void *req)
+fill_cpt_inst(struct cpt_instance *instance, void *req, uint64_t ucmd_w3)
 {
 	struct command_queue *cqueue;
 	cpt_inst_s_t *cpt_ist_p;
@@ -237,7 +237,7 @@ fill_cpt_inst(struct cpt_instance *instance, void *req)
 	/* MC EI2 */
 	cpt_ist_p->s8x.ei2 = user_req->ist.ei2;
 	/* MC EI3 */
-	cpt_ist_p->s8x.ei3 = user_req->ist.ei3;
+	cpt_ist_p->s8x.ei3 = ucmd_w3;
 }
 
 static __rte_always_inline void

@@ -69,7 +69,6 @@ struct cpt_request_info {
 		uint64_t ei0;
 		uint64_t ei1;
 		uint64_t ei2;
-		uint64_t ei3;
 	} ist;
 	uint8_t *rptr;
 	const struct otx2_cpt_qp *qp;

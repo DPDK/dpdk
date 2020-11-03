@@ -123,7 +123,6 @@ process_outb_sa(struct rte_crypto_op *cop,
 	req->ist.ei0 = word0.u64;
 	req->ist.ei1 = rte_pktmbuf_iova(m_src);
 	req->ist.ei2 = req->ist.ei1;
-	req->ist.ei3 = sess->ucmd_w3;
 
 	hdr->seq = rte_cpu_to_be_32(sess->seq_lo);
 	hdr->ip_id = rte_cpu_to_be_32(sess->ip_id);
@@ -170,7 +169,6 @@ process_inb_sa(struct rte_crypto_op *cop,
 	req->ist.ei0 = word0.u64;
 	req->ist.ei1 = rte_pktmbuf_iova(m_src);
 	req->ist.ei2 = req->ist.ei1;
-	req->ist.ei3 = sess->ucmd_w3;
 
 exit:
 	*prep_req = req;

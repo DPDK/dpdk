@@ -323,7 +323,7 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	inst.egrp = OTX2_CPT_EGRP_SE;
 	inst.cptr = rte_mempool_virt2iova(sa);
 
-	lp->ucmd_w3 = inst.u64[7];
+	lp->cpt_inst_w7 = inst.u64[7];
 	lp->ucmd_opcode = (lp->ctx_len << 8) |
 				(OTX2_IPSEC_PO_PROCESS_IPSEC_OUTB);
 
@@ -407,7 +407,7 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	inst.egrp = OTX2_CPT_EGRP_SE;
 	inst.cptr = rte_mempool_virt2iova(sa);
 
-	lp->ucmd_w3 = inst.u64[7];
+	lp->cpt_inst_w7 = inst.u64[7];
 	lp->ucmd_opcode = (lp->ctx_len << 8) |
 				(OTX2_IPSEC_PO_PROCESS_IPSEC_INB);
 

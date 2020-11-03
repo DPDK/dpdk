@@ -241,6 +241,7 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 {
 	struct rte_crypto_sym_xform *temp_xform = xform;
 	struct cpt_sess_misc *misc;
+	vq_cmd_word3_t vq_cmd_w3;
 	void *priv;
 	int ret;
 
@@ -254,7 +255,7 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 	}
 
 	memset(priv, 0, sizeof(struct cpt_sess_misc) +
-			offsetof(struct cpt_ctx, fctx));
+			offsetof(struct cpt_ctx, mc_ctx));
 
 	misc = priv;
 
@@ -291,6 +292,13 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 
 	misc->ctx_dma_addr = rte_mempool_virt2iova(misc) +
 			     sizeof(struct cpt_sess_misc);
+
+	vq_cmd_w3.u64 = 0;
+	vq_cmd_w3.s.grp = 0;
+	vq_cmd_w3.s.cptr = misc->ctx_dma_addr + offsetof(struct cpt_ctx,
+							 mc_ctx);
+
+	misc->cpt_inst_w7 = vq_cmd_w3.u64;
 
 	return 0;
 
@@ -372,6 +380,8 @@ otx_cpt_asym_session_cfg(struct rte_cryptodev *dev,
 		return ret;
 	}
 
+	priv->cpt_inst_w7 = 0;
+
 	set_asym_session_private_data(sess, dev->driver_id, priv);
 	return 0;
 }
@@ -401,14 +411,14 @@ otx_cpt_asym_session_clear(struct rte_cryptodev *dev,
 static __rte_always_inline int32_t __rte_hot
 otx_cpt_request_enqueue(struct cpt_instance *instance,
 			struct pending_queue *pqueue,
-			void *req)
+			void *req, uint64_t cpt_inst_w7)
 {
 	struct cpt_request_info *user_req = (struct cpt_request_info *)req;
 
 	if (unlikely(pqueue->pending_count >= DEFAULT_CMD_QLEN))
 		return -EAGAIN;
 
-	fill_cpt_inst(instance, req);
+	fill_cpt_inst(instance, req, cpt_inst_w7);
 
 	CPT_LOG_DP_DEBUG("req: %p op: %p ", req, user_req->op);
 
@@ -496,7 +506,8 @@ otx_cpt_enq_single_asym(struct cpt_instance *instance,
 		goto req_fail;
 	}
 
-	ret = otx_cpt_request_enqueue(instance, pqueue, params.req);
+	ret = otx_cpt_request_enqueue(instance, pqueue, params.req,
+				      sess->cpt_inst_w7);
 
 	if (unlikely(ret)) {
 		CPT_LOG_DP_ERR("Could not enqueue crypto req");
@@ -518,7 +529,8 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 {
 	struct cpt_sess_misc *sess;
 	struct rte_crypto_sym_op *sym_op = op->sym;
-	void *prep_req, *mdata = NULL;
+	struct cpt_request_info *prep_req;
+	void *mdata = NULL;
 	int ret = 0;
 	uint64_t cpt_op;
 
@@ -530,10 +542,10 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 
 	if (likely(cpt_op & CPT_OP_CIPHER_MASK))
 		ret = fill_fc_params(op, sess, &instance->meta_info, &mdata,
-				     &prep_req);
+				     (void **)&prep_req);
 	else
 		ret = fill_digest_params(op, sess, &instance->meta_info,
-					 &mdata, &prep_req);
+					 &mdata, (void **)&prep_req);
 
 	if (unlikely(ret)) {
 		CPT_LOG_DP_ERR("prep cryto req : op %p, cpt_op 0x%x "
@@ -542,7 +554,8 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 	}
 
 	/* Enqueue prepared instruction to h/w */
-	ret = otx_cpt_request_enqueue(instance, pqueue, prep_req);
+	ret = otx_cpt_request_enqueue(instance, pqueue, prep_req,
+				      sess->cpt_inst_w7);
 
 	if (unlikely(ret)) {
 		/* Buffer allocated for request preparation need to be freed */

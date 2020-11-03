@@ -356,6 +356,7 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 {
 	struct rte_crypto_sym_xform *temp_xform = xform;
 	struct cpt_sess_misc *misc;
+	vq_cmd_word3_t vq_cmd_w3;
 	void *priv;
 	int ret;
 
@@ -369,7 +370,7 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 	}
 
 	memset(priv, 0, sizeof(struct cpt_sess_misc) +
-			offsetof(struct cpt_ctx, fctx));
+			offsetof(struct cpt_ctx, mc_ctx));
 
 	misc = priv;
 
@@ -407,15 +408,21 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 	misc->ctx_dma_addr = rte_mempool_virt2iova(misc) +
 			     sizeof(struct cpt_sess_misc);
 
+	vq_cmd_w3.u64 = 0;
+	vq_cmd_w3.s.cptr = misc->ctx_dma_addr + offsetof(struct cpt_ctx,
+							 mc_ctx);
+
 	/*
 	 * IE engines support IPsec operations
 	 * SE engines support IPsec operations, Chacha-Poly and
 	 * Air-Crypto operations
 	 */
 	if (misc->zsk_flag || misc->chacha_poly)
-		misc->egrp = OTX2_CPT_EGRP_SE;
+		vq_cmd_w3.s.grp = OTX2_CPT_EGRP_SE;
 	else
-		misc->egrp = OTX2_CPT_EGRP_SE_IE;
+		vq_cmd_w3.s.grp = OTX2_CPT_EGRP_SE_IE;
+
+	misc->cpt_inst_w7 = vq_cmd_w3.u64;
 
 	return 0;
 
@@ -428,7 +435,8 @@ priv_put:
 static __rte_always_inline void __rte_hot
 otx2_ca_enqueue_req(const struct otx2_cpt_qp *qp,
 		    struct cpt_request_info *req,
-		    void *lmtline)
+		    void *lmtline,
+		    uint64_t cpt_inst_w7)
 {
 	union cpt_inst_s inst;
 	uint64_t lmt_status;
@@ -441,7 +449,7 @@ otx2_ca_enqueue_req(const struct otx2_cpt_qp *qp,
 	inst.s9x.ei0 = req->ist.ei0;
 	inst.s9x.ei1 = req->ist.ei1;
 	inst.s9x.ei2 = req->ist.ei2;
-	inst.s9x.ei3 = req->ist.ei3;
+	inst.s9x.ei3 = cpt_inst_w7;
 
 	inst.s9x.qord = 1;
 	inst.s9x.grp = qp->ev.queue_id;
@@ -470,14 +478,15 @@ otx2_ca_enqueue_req(const struct otx2_cpt_qp *qp,
 static __rte_always_inline int32_t __rte_hot
 otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 		     struct pending_queue *pend_q,
-		     struct cpt_request_info *req)
+		     struct cpt_request_info *req,
+		     uint64_t cpt_inst_w7)
 {
 	void *lmtline = qp->lmtline;
 	union cpt_inst_s inst;
 	uint64_t lmt_status;
 
 	if (qp->ca_enable) {
-		otx2_ca_enqueue_req(qp, req, lmtline);
+		otx2_ca_enqueue_req(qp, req, lmtline, cpt_inst_w7);
 		return 0;
 	}
 
@@ -492,7 +501,7 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 	inst.s9x.ei0 = req->ist.ei0;
 	inst.s9x.ei1 = req->ist.ei1;
 	inst.s9x.ei2 = req->ist.ei2;
-	inst.s9x.ei3 = req->ist.ei3;
+	inst.s9x.ei3 = cpt_inst_w7;
 
 	req->time_out = rte_get_timer_cycles() +
 			DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
@@ -529,7 +538,6 @@ otx2_cpt_enqueue_asym(struct otx2_cpt_qp *qp,
 	struct rte_crypto_asym_op *asym_op = op->asym;
 	struct asym_op_params params = {0};
 	struct cpt_asym_sess_misc *sess;
-	vq_cmd_word3_t *w3;
 	uintptr_t *cop;
 	void *mdata;
 	int ret;
@@ -584,11 +592,7 @@ otx2_cpt_enqueue_asym(struct otx2_cpt_qp *qp,
 		goto req_fail;
 	}
 
-	/* Set engine group of AE */
-	w3 = (vq_cmd_word3_t *)&params.req->ist.ei3;
-	w3->s.grp = OTX2_CPT_EGRP_AE;
-
-	ret = otx2_cpt_enqueue_req(qp, pend_q, params.req);
+	ret = otx2_cpt_enqueue_req(qp, pend_q, params.req, sess->cpt_inst_w7);
 
 	if (unlikely(ret)) {
 		CPT_LOG_DP_ERR("Could not enqueue crypto req");
@@ -610,7 +614,6 @@ otx2_cpt_enqueue_sym(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	struct cpt_request_info *req;
 	struct cpt_sess_misc *sess;
-	vq_cmd_word3_t *w3;
 	uint64_t cpt_op;
 	void *mdata;
 	int ret;
@@ -633,10 +636,7 @@ otx2_cpt_enqueue_sym(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 		return ret;
 	}
 
-	w3 = ((vq_cmd_word3_t *)(&req->ist.ei3));
-	w3->s.grp = sess->egrp;
-
-	ret = otx2_cpt_enqueue_req(qp, pend_q, req);
+	ret = otx2_cpt_enqueue_req(qp, pend_q, req, sess->cpt_inst_w7);
 
 	if (unlikely(ret)) {
 		/* Free buffer allocated by fill params routines */
@@ -671,7 +671,7 @@ otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 		return ret;
 	}
 
-	ret = otx2_cpt_enqueue_req(qp, pend_q, req);
+	ret = otx2_cpt_enqueue_req(qp, pend_q, req, sess->cpt_inst_w7);
 
 	return ret;
 }
@@ -1266,6 +1266,7 @@ otx2_cpt_asym_session_cfg(struct rte_cryptodev *dev,
 			  struct rte_mempool *pool)
 {
 	struct cpt_asym_sess_misc *priv;
+	vq_cmd_word3_t vq_cmd_w3;
 	int ret;
 
 	CPT_PMD_INIT_FUNC_TRACE();
@@ -1286,7 +1287,12 @@ otx2_cpt_asym_session_cfg(struct rte_cryptodev *dev,
 		return ret;
 	}
 
+	vq_cmd_w3.u64 = 0;
+	vq_cmd_w3.s.grp = OTX2_CPT_EGRP_AE;
+	priv->cpt_inst_w7 = vq_cmd_w3.u64;
+
 	set_asym_session_private_data(sess, dev->driver_id, priv);
+
 	return 0;
 }
 

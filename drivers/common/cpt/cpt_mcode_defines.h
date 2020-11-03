@@ -245,8 +245,8 @@ struct cpt_sess_misc {
 	uint16_t is_null:1;
 	/** Flag for GMAC */
 	uint16_t is_gmac:1;
-	/** Engine group */
-	uint16_t egrp:3;
+	/** Unused field */
+	uint16_t rsvd1:3;
 	/** AAD length */
 	uint16_t aad_length;
 	/** MAC len in bytes */
@@ -255,14 +255,16 @@ struct cpt_sess_misc {
 	uint8_t iv_length;
 	/** Auth IV length in bytes */
 	uint8_t auth_iv_length;
-	/** Reserved field */
-	uint8_t rsvd1;
+	/** Unused field */
+	uint8_t rsvd2;
 	/** IV offset in bytes */
 	uint16_t iv_offset;
 	/** Auth IV offset in bytes */
 	uint16_t auth_iv_offset;
 	/** Salt */
 	uint32_t salt;
+	/** CPT inst word 7 */
+	uint64_t cpt_inst_w7;
 	/** Context DMA address */
 	phys_addr_t ctx_dma_addr;
 };
@@ -319,7 +321,7 @@ struct cpt_ctx {
 		mc_fc_context_t fctx;
 		mc_zuc_snow3g_ctx_t zs_ctx;
 		mc_kasumi_ctx_t k_ctx;
-	};
+	} mc_ctx;
 	uint8_t  auth_key[1024];
 };
 
@@ -350,6 +352,7 @@ struct cpt_asym_sess_misc {
 		struct rte_crypto_modex_xform mod_ctx;
 		struct cpt_asym_ec_ctx ec_ctx;
 	};
+	uint64_t cpt_inst_w7;
 };
 
 /* Buffer pointer */

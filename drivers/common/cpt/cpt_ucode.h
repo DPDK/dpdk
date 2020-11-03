@@ -77,11 +77,11 @@ cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
 }
 
 static __rte_always_inline void
-cpt_fc_salt_update(void *ctx,
+cpt_fc_salt_update(struct cpt_ctx *cpt_ctx,
 		   uint8_t *salt)
 {
-	struct cpt_ctx *cpt_ctx = ctx;
-	memcpy(&cpt_ctx->fctx.enc.encr_iv, salt, 4);
+	mc_fc_context_t *fctx = &cpt_ctx->mc_ctx.fctx;
+	memcpy(fctx->enc.encr_iv, salt, 4);
 }
 
 static __rte_always_inline int
@@ -190,10 +190,12 @@ static __rte_always_inline void
 cpt_fc_ciph_set_key_snow3g_uea2(struct cpt_ctx *cpt_ctx, const uint8_t *key,
 		uint16_t key_len)
 {
+	mc_zuc_snow3g_ctx_t *zs_ctx = &cpt_ctx->mc_ctx.zs_ctx;
 	uint32_t keyx[4];
+
 	cpt_ctx->snow3g = 1;
 	gen_key_snow3g(key, keyx);
-	memcpy(cpt_ctx->zs_ctx.ci_key, keyx, key_len);
+	memcpy(zs_ctx->ci_key, keyx, key_len);
 	cpt_ctx->zsk_flags = 0;
 }
 
@@ -201,9 +203,11 @@ static __rte_always_inline void
 cpt_fc_ciph_set_key_zuc_eea3(struct cpt_ctx *cpt_ctx, const uint8_t *key,
 		uint16_t key_len)
 {
+	mc_zuc_snow3g_ctx_t *zs_ctx = &cpt_ctx->mc_ctx.zs_ctx;
+
 	cpt_ctx->snow3g = 0;
-	memcpy(cpt_ctx->zs_ctx.ci_key, key, key_len);
-	memcpy(cpt_ctx->zs_ctx.zuc_const, zuc_d, 32);
+	memcpy(zs_ctx->ci_key, key, key_len);
+	memcpy(zs_ctx->zuc_const, zuc_d, 32);
 	cpt_ctx->zsk_flags = 0;
 }
 
@@ -211,8 +215,10 @@ static __rte_always_inline void
 cpt_fc_ciph_set_key_kasumi_f8_ecb(struct cpt_ctx *cpt_ctx, const uint8_t *key,
 		uint16_t key_len)
 {
+	mc_kasumi_ctx_t *k_ctx = &cpt_ctx->mc_ctx.k_ctx;
+
 	cpt_ctx->k_ecb = 1;
-	memcpy(cpt_ctx->k_ctx.ci_key, key, key_len);
+	memcpy(k_ctx->ci_key, key, key_len);
 	cpt_ctx->zsk_flags = 0;
 }
 
@@ -220,16 +226,17 @@ static __rte_always_inline void
 cpt_fc_ciph_set_key_kasumi_f8_cbc(struct cpt_ctx *cpt_ctx, const uint8_t *key,
 		uint16_t key_len)
 {
-	memcpy(cpt_ctx->k_ctx.ci_key, key, key_len);
+	mc_kasumi_ctx_t *k_ctx = &cpt_ctx->mc_ctx.k_ctx;
+
+	memcpy(k_ctx->ci_key, key, key_len);
 	cpt_ctx->zsk_flags = 0;
 }
 
 static __rte_always_inline int
-cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
-		    uint16_t key_len, uint8_t *salt)
+cpt_fc_ciph_set_key(struct cpt_ctx *cpt_ctx, cipher_type_t type,
+		    const uint8_t *key, uint16_t key_len, uint8_t *salt)
 {
-	struct cpt_ctx *cpt_ctx = ctx;
-	mc_fc_context_t *fctx = &cpt_ctx->fctx;
+	mc_fc_context_t *fctx = &cpt_ctx->mc_ctx.fctx;
 	int ret;
 
 	ret = cpt_fc_ciph_set_type(type, cpt_ctx, key_len);
@@ -480,7 +487,6 @@ cpt_digest_gen_prep(uint32_t flags,
 	uint32_t g_size_bytes, s_size_bytes;
 	uint64_t dptr_dma, rptr_dma;
 	vq_cmd_word0_t vq_cmd_w0;
-	vq_cmd_word3_t vq_cmd_w3;
 	void *c_vaddr, *m_vaddr;
 	uint64_t c_dma, m_dma;
 	opcode_info_t opcode;
@@ -633,9 +639,6 @@ cpt_digest_gen_prep(uint32_t flags,
 	req->ist.ei1 = dptr_dma;
 	req->ist.ei2 = rptr_dma;
 
-	/* vq command w3 */
-	vq_cmd_w3.u64 = 0;
-
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -643,7 +646,6 @@ cpt_digest_gen_prep(uint32_t flags,
 
 	/* Fill microcode part of instruction */
 	req->ist.ei0 = vq_cmd_w0.u64;
-	req->ist.ei3 = vq_cmd_w3.u64;
 
 	req->op = op;
 
@@ -671,9 +673,8 @@ cpt_enc_hmac_prep(uint32_t flags,
 	uint32_t encr_data_len, auth_data_len, aad_len = 0;
 	uint32_t passthrough_len = 0;
 	void *m_vaddr, *offset_vaddr;
-	uint64_t m_dma, offset_dma, ctx_dma;
+	uint64_t m_dma, offset_dma;
 	vq_cmd_word0_t vq_cmd_w0;
-	vq_cmd_word3_t vq_cmd_w3;
 	void *c_vaddr;
 	uint64_t c_dma;
 	opcode_info_t opcode;
@@ -1003,13 +1004,6 @@ cpt_enc_hmac_prep(uint32_t flags,
 		req->ist.ei2 = rptr_dma;
 	}
 
-	ctx_dma = fc_params->ctx_buf.dma_addr +
-		offsetof(struct cpt_ctx, fctx);
-	/* vq command w3 */
-	vq_cmd_w3.u64 = 0;
-	vq_cmd_w3.s.grp = 0;
-	vq_cmd_w3.s.cptr = ctx_dma;
-
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -1017,7 +1011,6 @@ cpt_enc_hmac_prep(uint32_t flags,
 
 	/* Fill microcode part of instruction */
 	req->ist.ei0 = vq_cmd_w0.u64;
-	req->ist.ei3 = vq_cmd_w3.u64;
 
 	req->op  = op;
 
@@ -1044,10 +1037,9 @@ cpt_dec_hmac_prep(uint32_t flags,
 	uint32_t encr_data_len, auth_data_len, aad_len = 0;
 	uint32_t passthrough_len = 0;
 	void *m_vaddr, *offset_vaddr;
-	uint64_t m_dma, offset_dma, ctx_dma;
+	uint64_t m_dma, offset_dma;
 	opcode_info_t opcode;
 	vq_cmd_word0_t vq_cmd_w0;
-	vq_cmd_word3_t vq_cmd_w3;
 	void *c_vaddr;
 	uint64_t c_dma;
 
@@ -1388,13 +1380,6 @@ cpt_dec_hmac_prep(uint32_t flags,
 		req->ist.ei2 = rptr_dma;
 	}
 
-	ctx_dma = fc_params->ctx_buf.dma_addr +
-		offsetof(struct cpt_ctx, fctx);
-	/* vq command w3 */
-	vq_cmd_w3.u64 = 0;
-	vq_cmd_w3.s.grp = 0;
-	vq_cmd_w3.s.cptr = ctx_dma;
-
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -1402,7 +1387,6 @@ cpt_dec_hmac_prep(uint32_t flags,
 
 	/* Fill microcode part of instruction */
 	req->ist.ei0 = vq_cmd_w0.u64;
-	req->ist.ei3 = vq_cmd_w3.u64;
 
 	req->op = op;
 
@@ -1433,7 +1417,6 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 	uint64_t *offset_vaddr, offset_dma;
 	uint32_t *iv_s, iv[4];
 	vq_cmd_word0_t vq_cmd_w0;
-	vq_cmd_word3_t vq_cmd_w3;
 	opcode_info_t opcode;
 
 	buf_p = &params->meta_buf;
@@ -1710,12 +1693,6 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 		req->ist.ei2 = rptr_dma;
 	}
 
-	/* vq command w3 */
-	vq_cmd_w3.u64 = 0;
-	vq_cmd_w3.s.grp = 0;
-	vq_cmd_w3.s.cptr = params->ctx_buf.dma_addr +
-		offsetof(struct cpt_ctx, zs_ctx);
-
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -1723,7 +1700,6 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 
 	/* Fill microcode part of instruction */
 	req->ist.ei0 = vq_cmd_w0.u64;
-	req->ist.ei3 = vq_cmd_w3.u64;
 
 	req->op = op;
 
@@ -1753,7 +1729,6 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 	uint64_t *offset_vaddr, offset_dma;
 	uint32_t *iv_s, iv[4], j;
 	vq_cmd_word0_t vq_cmd_w0;
-	vq_cmd_word3_t vq_cmd_w3;
 	opcode_info_t opcode;
 
 	buf_p = &params->meta_buf;
@@ -1974,12 +1949,6 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 		req->ist.ei2 = rptr_dma;
 	}
 
-	/* vq command w3 */
-	vq_cmd_w3.u64 = 0;
-	vq_cmd_w3.s.grp = 0;
-	vq_cmd_w3.s.cptr = params->ctx_buf.dma_addr +
-		offsetof(struct cpt_ctx, zs_ctx);
-
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -1987,7 +1956,6 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 
 	/* Fill microcode part of instruction */
 	req->ist.ei0 = vq_cmd_w0.u64;
-	req->ist.ei3 = vq_cmd_w3.u64;
 
 	req->op = op;
 
@@ -2019,7 +1987,6 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 	uint64_t m_dma, c_dma;
 	uint64_t *offset_vaddr, offset_dma;
 	vq_cmd_word0_t vq_cmd_w0;
-	vq_cmd_word3_t vq_cmd_w3;
 	opcode_info_t opcode;
 	uint8_t *in_buffer;
 	uint32_t g_size_bytes, s_size_bytes;
@@ -2221,12 +2188,6 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 	req->ist.ei1 = dptr_dma;
 	req->ist.ei2 = rptr_dma;
 
-	/* vq command w3 */
-	vq_cmd_w3.u64 = 0;
-	vq_cmd_w3.s.grp = 0;
-	vq_cmd_w3.s.cptr = params->ctx_buf.dma_addr +
-		offsetof(struct cpt_ctx, k_ctx);
-
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -2234,7 +2195,6 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 
 	/* Fill microcode part of instruction */
 	req->ist.ei0 = vq_cmd_w0.u64;
-	req->ist.ei3 = vq_cmd_w3.u64;
 
 	req->op = op;
 
@@ -2263,7 +2223,6 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 	uint64_t m_dma, c_dma;
 	uint64_t *offset_vaddr, offset_dma;
 	vq_cmd_word0_t vq_cmd_w0;
-	vq_cmd_word3_t vq_cmd_w3;
 	opcode_info_t opcode;
 	uint8_t *in_buffer;
 	uint32_t g_size_bytes, s_size_bytes;
@@ -2411,12 +2370,6 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 	req->ist.ei1 = dptr_dma;
 	req->ist.ei2 = rptr_dma;
 
-	/* vq command w3 */
-	vq_cmd_w3.u64 = 0;
-	vq_cmd_w3.s.grp = 0;
-	vq_cmd_w3.s.cptr = params->ctx_buf.dma_addr +
-		offsetof(struct cpt_ctx, k_ctx);
-
 	/* 16 byte aligned cpt res address */
 	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
 	*req->completion_addr = COMPLETION_CODE_INIT;
@@ -2424,7 +2377,6 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 
 	/* Fill microcode part of instruction */
 	req->ist.ei0 = vq_cmd_w0.u64;
-	req->ist.ei3 = vq_cmd_w3.u64;
 
 	req->op = op;
 
@@ -2492,11 +2444,12 @@ cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 }
 
 static __rte_always_inline int
-cpt_fc_auth_set_key(void *ctx, auth_type_t type, const uint8_t *key,
-		    uint16_t key_len, uint16_t mac_len)
+cpt_fc_auth_set_key(struct cpt_ctx *cpt_ctx, auth_type_t type,
+		    const uint8_t *key, uint16_t key_len, uint16_t mac_len)
 {
-	struct cpt_ctx *cpt_ctx = ctx;
-	mc_fc_context_t *fctx = &cpt_ctx->fctx;
+	mc_fc_context_t *fctx = &cpt_ctx->mc_ctx.fctx;
+	mc_zuc_snow3g_ctx_t *zs_ctx = &cpt_ctx->mc_ctx.zs_ctx;
+	mc_kasumi_ctx_t *k_ctx = &cpt_ctx->mc_ctx.k_ctx;
 
 	if ((type >= ZUC_EIA3) && (type <= KASUMI_F9_ECB)) {
 		uint32_t keyx[4];
@@ -2511,26 +2464,26 @@ cpt_fc_auth_set_key(void *ctx, auth_type_t type, const uint8_t *key,
 		case SNOW3G_UIA2:
 			cpt_ctx->snow3g = 1;
 			gen_key_snow3g(key, keyx);
-			memcpy(cpt_ctx->zs_ctx.ci_key, keyx, key_len);
+			memcpy(zs_ctx->ci_key, keyx, key_len);
 			cpt_ctx->fc_type = ZUC_SNOW3G;
 			cpt_ctx->zsk_flags = 0x1;
 			break;
 		case ZUC_EIA3:
 			cpt_ctx->snow3g = 0;
-			memcpy(cpt_ctx->zs_ctx.ci_key, key, key_len);
-			memcpy(cpt_ctx->zs_ctx.zuc_const, zuc_d, 32);
+			memcpy(zs_ctx->ci_key, key, key_len);
+			memcpy(zs_ctx->zuc_const, zuc_d, 32);
 			cpt_ctx->fc_type = ZUC_SNOW3G;
 			cpt_ctx->zsk_flags = 0x1;
 			break;
 		case KASUMI_F9_ECB:
 			/* Kasumi ECB mode */
 			cpt_ctx->k_ecb = 1;
-			memcpy(cpt_ctx->k_ctx.ci_key, key, key_len);
+			memcpy(k_ctx->ci_key, key, key_len);
 			cpt_ctx->fc_type = KASUMI;
 			cpt_ctx->zsk_flags = 0x1;
 			break;
 		case KASUMI_F9_CBC:
-			memcpy(cpt_ctx->k_ctx.ci_key, key, key_len);
+			memcpy(k_ctx->ci_key, key, key_len);
 			cpt_ctx->fc_type = KASUMI;
 			cpt_ctx->zsk_flags = 0x1;
 			break;
