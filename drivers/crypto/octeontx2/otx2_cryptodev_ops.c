@@ -192,7 +192,7 @@ otx2_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 	size_div40 = (iq_len + 40 - 1) / 40 + 1;
 
 	/* For pending queue */
-	len = iq_len * RTE_ALIGN(sizeof(struct rid), 8);
+	len = iq_len * sizeof(uintptr_t);
 
 	/* Space for instruction group memory */
 	len += size_div40 * 16;
@@ -229,12 +229,12 @@ otx2_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 	}
 
 	/* Initialize pending queue */
-	qp->pend_q.rid_queue = (struct rid *)va;
+	qp->pend_q.req_queue = (uintptr_t *)va;
 	qp->pend_q.enq_tail = 0;
 	qp->pend_q.deq_head = 0;
 	qp->pend_q.pending_count = 0;
 
-	used_len = iq_len * RTE_ALIGN(sizeof(struct rid), 8);
+	used_len = iq_len * sizeof(uintptr_t);
 	used_len += size_div40 * 16;
 	used_len = RTE_ALIGN(used_len, pg_sz);
 	iova += used_len;
@@ -520,7 +520,7 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 		lmt_status = otx2_lmt_submit(qp->lf_nq_reg);
 	} while (lmt_status == 0);
 
-	pend_q->rid_queue[pend_q->enq_tail].rid = (uintptr_t)req;
+	pend_q->req_queue[pend_q->enq_tail] = (uintptr_t)req;
 
 	/* We will use soft queue length here to limit requests */
 	MOD_INC(pend_q->enq_tail, OTX2_CPT_DEFAULT_CMD_QLEN);
@@ -977,7 +977,6 @@ otx2_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct cpt_request_info *req;
 	struct rte_crypto_op *cop;
 	uint8_t cc[nb_ops];
-	struct rid *rid;
 	uintptr_t *rsp;
 	void *metabuf;
 
@@ -989,8 +988,8 @@ otx2_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 		nb_ops = nb_pending;
 
 	for (i = 0; i < nb_ops; i++) {
-		rid = &pend_q->rid_queue[pend_q->deq_head];
-		req = (struct cpt_request_info *)(rid->rid);
+		req = (struct cpt_request_info *)
+				pend_q->req_queue[pend_q->deq_head];
 
 		cc[i] = otx2_cpt_compcode_get(req);
 

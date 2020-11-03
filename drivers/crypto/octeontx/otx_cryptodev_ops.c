@@ -430,7 +430,7 @@ otx_cpt_request_enqueue(struct cpt_instance *instance,
 	/* Default mode of software queue */
 	mark_cpt_inst(instance);
 
-	pqueue->rid_queue[pqueue->enq_tail].rid = (uintptr_t)user_req;
+	pqueue->req_queue[pqueue->enq_tail] = (uintptr_t)user_req;
 
 	/* We will use soft queue length here to limit requests */
 	MOD_INC(pqueue->enq_tail, DEFAULT_CMD_QLEN);
@@ -823,7 +823,6 @@ otx_cpt_pkt_dequeue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops,
 	struct cpt_instance *instance = (struct cpt_instance *)qptr;
 	struct cpt_request_info *user_req;
 	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
-	struct rid *rid_e;
 	uint8_t cc[nb_ops];
 	int i, count, pcount;
 	uint8_t ret;
@@ -837,11 +836,13 @@ otx_cpt_pkt_dequeue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops,
 	count = (nb_ops > pcount) ? pcount : nb_ops;
 
 	for (i = 0; i < count; i++) {
-		rid_e = &pqueue->rid_queue[pqueue->deq_head];
-		user_req = (struct cpt_request_info *)(rid_e->rid);
+		user_req = (struct cpt_request_info *)
+				pqueue->req_queue[pqueue->deq_head];
 
-		if (likely((i+1) < count))
-			rte_prefetch_non_temporal((void *)rid_e[1].rid);
+		if (likely((i+1) < count)) {
+			rte_prefetch_non_temporal(
+				(void *)pqueue->req_queue[i+1]);
+		}
 
 		ret = check_nb_command_id(user_req, instance);
 

@@ -27,11 +27,6 @@ struct cpt_qp_meta_info {
 	int lb_mlen;
 };
 
-struct rid {
-	/** Request id of a crypto operation */
-	uintptr_t rid;
-};
-
 /*
  * Pending queue structure
  *
@@ -40,7 +35,7 @@ struct pending_queue {
 	/** Pending requests count */
 	uint64_t pending_count;
 	/** Array of pending requests */
-	struct rid *rid_queue;
+	uintptr_t *req_queue;
 	/** Tail of queue to be used for enqueue */
 	uint16_t enq_tail;
 	/** Head of queue to be used for dequeue */
