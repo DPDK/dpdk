@@ -388,7 +388,6 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	DRV_LOG(DEBUG, "port %u adding Tx queue %u to list",
 		dev->data->port_id, idx);
 	(*priv->txqs)[idx] = &txq_ctrl->txq;
-	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 }
 
@@ -1249,8 +1248,8 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 			txq_ctrl->txq.fcqs = NULL;
 		}
 		txq_free_elts(txq_ctrl);
+		dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
-	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	if (!__atomic_load_n(&txq_ctrl->refcnt, __ATOMIC_RELAXED)) {
 		if (txq_ctrl->type == MLX5_TXQ_TYPE_STANDARD)
 			mlx5_mr_btree_free(&txq_ctrl->txq.mr_ctrl.cache_bh);

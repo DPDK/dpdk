@@ -1784,8 +1784,10 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 		mlx5_free(rxq_ctrl->obj);
 		rxq_ctrl->obj = NULL;
 	}
-	if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
+	if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD) {
 		rxq_free_elts(rxq_ctrl);
+		dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
 	if (!__atomic_load_n(&rxq_ctrl->refcnt, __ATOMIC_RELAXED)) {
 		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
 			mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);

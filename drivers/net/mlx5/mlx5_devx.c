@@ -1435,6 +1435,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_ctrl->uar_mmap_offset =
 				mlx5_os_get_devx_uar_mmap_offset(sh->tx_uar);
 	txq_uar_init(txq_ctrl);
+	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */

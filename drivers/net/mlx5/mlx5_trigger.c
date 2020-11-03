@@ -77,6 +77,7 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 		}
 		if (txq_ctrl->type == MLX5_TXQ_TYPE_STANDARD) {
 			size_t size = txq_data->cqe_s * sizeof(*txq_data->fcqs);
+
 			txq_data->fcqs = mlx5_malloc(flags, size,
 						     RTE_CACHE_LINE_SIZE,
 						     txq_ctrl->socket);

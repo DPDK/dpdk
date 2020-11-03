@@ -1038,6 +1038,7 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	txq_uar_init(txq_ctrl);
+	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return 0;
 error:
