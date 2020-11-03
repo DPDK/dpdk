@@ -7808,6 +7808,7 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_item_ecpri *ecpri_m = item->mask;
 	const struct rte_flow_item_ecpri *ecpri_v = item->spec;
+	struct rte_ecpri_common_hdr common;
 	void *misc4_m = MLX5_ADDR_OF(fte_match_param, matcher,
 				     misc_parameters_4);
 	void *misc4_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_4);
@@ -7848,7 +7849,8 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 	 * Some wildcard rules only matching type field should be supported.
 	 */
 	if (ecpri_m->hdr.dummy[0]) {
-		switch (ecpri_v->hdr.common.type) {
+		common.u32 = rte_be_to_cpu_32(ecpri_v->hdr.common.u32);
+		switch (common.type) {
 		case RTE_ECPRI_MSG_TYPE_IQ_DATA:
 		case RTE_ECPRI_MSG_TYPE_RTC_CTRL:
 		case RTE_ECPRI_MSG_TYPE_DLY_MSR:
