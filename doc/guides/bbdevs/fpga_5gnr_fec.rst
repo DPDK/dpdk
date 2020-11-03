@@ -286,3 +286,22 @@ Test Vectors
 In addition to the simple LDPC decoder and LDPC encoder tests, bbdev also provides
 a range of additional tests under the test_vectors folder, which may be useful. The results
 of these tests will depend on the FPGA 5GNR FEC capabilities.
+
+
+Alternate Baseband Device configuration tool
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On top of the embedded configuration feature supported in test-bbdev using "- -init-device"
+option, there is also a tool available to perform that device configuration using a companion
+application.
+The ``pf_bb_config`` application notably enables then to run bbdev-test from the VF
+and not only limited to the PF as captured above.
+
+See for more details: https://github.com/intel/pf-bb-config
+
+Specifically for the BBDEV FPGA 5GNR FEC PMD, the command below can be used:
+
+.. code-block:: console
+
+  ./pf_bb_config FPGA_5GNR -c fpga_5gnr/fpga_5gnr_config_vf.cfg
+  ./test-bbdev.py -e="-c 0xff0 -w${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data
