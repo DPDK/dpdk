@@ -75,6 +75,10 @@ Deprecation Notices
   as deprecated in DPDK 20.11, along with the associated macros ``ETH_MIRROR_*``.
   This API will be fully removed in DPDK 21.11.
 
+* ethdev: Attribute ``shared`` of the ``struct rte_flow_action_count``
+  is deprecated and will be removed in DPDK 21.11. Shared counters should
+  be managed using shared actions API (``rte_flow_shared_action_create`` etc).
+
 * ethdev: Queue specific stats fields will be removed from ``struct rte_eth_stats``.
   Mentioned fields are: ``q_ipackets``, ``q_opackets``, ``q_ibytes``, ``q_obytes``,
   ``q_errors``.

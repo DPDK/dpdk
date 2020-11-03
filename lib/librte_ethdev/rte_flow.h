@@ -2287,6 +2287,9 @@ struct rte_flow_query_age {
  * Counters can be retrieved and reset through ``rte_flow_query()``, see
  * ``struct rte_flow_query_count``.
  *
+ * @deprecated Shared attribute is deprecated, use generic
+ * RTE_FLOW_ACTION_TYPE_SHARED action.
+ *
  * The shared flag indicates whether the counter is unique to the flow rule the
  * action is specified with, or whether it is a shared counter.
  *
@@ -2299,7 +2302,8 @@ struct rte_flow_query_age {
  * to all ports within that switch domain.
  */
 struct rte_flow_action_count {
-	uint32_t shared:1; /**< Share counter ID with other flow rules. */
+	/** @deprecated Share counter ID with other flow rules. */
+	uint32_t shared:1;
 	uint32_t reserved:31; /**< Reserved, must be zero. */
 	uint32_t id; /**< Counter ID. */
 };

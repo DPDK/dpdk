@@ -1724,17 +1724,20 @@ that counter.
 For ports within the same switch domain then the counter id namespace extends
 to all ports within that switch domain.
 
+The shared flag is DEPRECATED and ``SHARED`` ``COUNT`` action should be used
+to make shared counters.
+
 .. _table_rte_flow_action_count:
 
 .. table:: COUNT
 
-   +------------+---------------------+
-   | Field      | Value               |
-   +============+=====================+
-   | ``shared`` | shared counter flag |
-   +------------+---------------------+
-   | ``id``     | counter id          |
-   +------------+---------------------+
+   +------------+---------------------------------+
+   | Field      | Value                           |
+   +============+=================================+
+   | ``shared`` | DEPRECATED, shared counter flag |
+   +------------+---------------------------------+
+   | ``id``     | counter id                      |
+   +------------+---------------------------------+
 
 Query structure to retrieve and reset flow rule counters:
 
