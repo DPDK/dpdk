@@ -369,14 +369,6 @@ typedef struct{
 	buf_ptr_t bufs[0];
 } iov_ptr_t;
 
-typedef union opcode_info {
-	uint16_t flags;
-	struct {
-		uint8_t major;
-		uint8_t minor;
-	} s;
-} opcode_info_t;
-
 typedef struct fc_params {
 	/* 0th cache line */
 	union {

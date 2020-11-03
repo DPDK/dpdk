@@ -889,7 +889,7 @@ otx2_cpt_sec_post_process(struct rte_crypto_op *cop, uintptr_t *rsp)
 	mdata_len = (int)rsp[3];
 	rte_pktmbuf_trim(m, mdata_len);
 
-	if ((word0->s.opcode & 0xff) == OTX2_IPSEC_PO_PROCESS_IPSEC_INB) {
+	if (word0->s.opcode.major == OTX2_IPSEC_PO_PROCESS_IPSEC_INB) {
 		data = rte_pktmbuf_mtod(m, char *);
 
 		if (rsp[4] == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {

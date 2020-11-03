@@ -234,7 +234,6 @@ cpt_modex_prep(struct asym_op_params *modex_params,
 	struct rte_crypto_op **op;
 	vq_cmd_word0_t vq_cmd_w0;
 	uint64_t total_key_len;
-	opcode_info_t opcode;
 	uint32_t dlen, rlen;
 	uint32_t base_len;
 	buf_ptr_t caddr;
@@ -265,9 +264,8 @@ cpt_modex_prep(struct asym_op_params *modex_params,
 	rlen = mod_len;
 
 	/* Setup opcodes */
-	opcode.s.major = CPT_MAJOR_OP_MODEX;
-	opcode.s.minor = CPT_MINOR_OP_MODEX;
-	vq_cmd_w0.s.opcode = opcode.flags;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_MODEX;
+	vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_MODEX;
 
 	/* GP op header */
 	vq_cmd_w0.s.param1 = mod_len;
@@ -307,7 +305,6 @@ cpt_rsa_prep(struct asym_op_params *rsa_params,
 	struct rte_crypto_op **op;
 	vq_cmd_word0_t vq_cmd_w0;
 	uint64_t total_key_len;
-	opcode_info_t opcode;
 	uint32_t dlen, rlen;
 	uint32_t in_size;
 	buf_ptr_t caddr;
@@ -334,16 +331,16 @@ cpt_rsa_prep(struct asym_op_params *rsa_params,
 
 	if (rsa_op.pad == RTE_CRYPTO_RSA_PADDING_NONE) {
 		/* Use mod_exp operation for no_padding type */
-		opcode.s.minor = CPT_MINOR_OP_MODEX;
+		vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_MODEX;
 		vq_cmd_w0.s.param2 = exp_len;
 	} else {
 		if (rsa_op.op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
-			opcode.s.minor = CPT_MINOR_OP_PKCS_ENC;
+			vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_PKCS_ENC;
 			/* Public key encrypt, use BT2*/
 			vq_cmd_w0.s.param2 = CPT_BLOCK_TYPE2 |
 					((uint16_t)(exp_len) << 1);
 		} else if (rsa_op.op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
-			opcode.s.minor = CPT_MINOR_OP_PKCS_DEC;
+			vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_PKCS_DEC;
 			/* Public key decrypt, use BT1 */
 			vq_cmd_w0.s.param2 = CPT_BLOCK_TYPE1;
 			/* + 2 for decrypted len */
@@ -351,9 +348,7 @@ cpt_rsa_prep(struct asym_op_params *rsa_params,
 		}
 	}
 
-	/* Setup opcodes */
-	opcode.s.major = CPT_MAJOR_OP_MODEX;
-	vq_cmd_w0.s.opcode = opcode.flags;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_MODEX;
 
 	/* GP op header */
 	vq_cmd_w0.s.param1 = mod_len;
@@ -395,7 +390,6 @@ cpt_rsa_crt_prep(struct asym_op_params *rsa_params,
 	struct rte_crypto_op **op;
 	vq_cmd_word0_t vq_cmd_w0;
 	uint64_t total_key_len;
-	opcode_info_t opcode;
 	uint32_t dlen, rlen;
 	uint32_t in_size;
 	buf_ptr_t caddr;
@@ -422,14 +416,14 @@ cpt_rsa_crt_prep(struct asym_op_params *rsa_params,
 
 	if (rsa_op.pad == RTE_CRYPTO_RSA_PADDING_NONE) {
 		/*Use mod_exp operation for no_padding type */
-		opcode.s.minor = CPT_MINOR_OP_MODEX_CRT;
+		vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_MODEX_CRT;
 	} else {
 		if (rsa_op.op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
-			opcode.s.minor = CPT_MINOR_OP_PKCS_ENC_CRT;
+			vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_PKCS_ENC_CRT;
 			/* Private encrypt, use BT1 */
 			vq_cmd_w0.s.param2 = CPT_BLOCK_TYPE1;
 		} else if (rsa_op.op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
-			opcode.s.minor = CPT_MINOR_OP_PKCS_DEC_CRT;
+			vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_PKCS_DEC_CRT;
 			/* Private decrypt, use BT2 */
 			vq_cmd_w0.s.param2 = CPT_BLOCK_TYPE2;
 			/* + 2 for decrypted len */
@@ -437,9 +431,7 @@ cpt_rsa_crt_prep(struct asym_op_params *rsa_params,
 		}
 	}
 
-	/* Setup opcodes */
-	opcode.s.major = CPT_MAJOR_OP_MODEX;
-	vq_cmd_w0.s.opcode = opcode.flags;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_MODEX;
 
 	/* GP op header */
 	vq_cmd_w0.s.param1 = mod_len;
@@ -621,7 +613,6 @@ cpt_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	uint16_t order_len, prime_len;
 	uint16_t o_offset, pk_offset;
 	vq_cmd_word0_t vq_cmd_w0;
-	opcode_info_t opcode;
 	uint16_t rlen, dlen;
 	buf_ptr_t caddr;
 	uint8_t *dptr;
@@ -676,9 +667,8 @@ cpt_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	rlen = 2 * p_align;
 
 	/* Setup opcodes */
-	opcode.s.major = CPT_MAJOR_OP_ECDSA;
-	opcode.s.minor = CPT_MINOR_OP_ECDSA_SIGN;
-	vq_cmd_w0.s.opcode = opcode.flags;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_ECDSA;
+	vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_ECDSA_SIGN;
 
 	/* GP op header */
 	vq_cmd_w0.s.param1 = curveid | (message_len << 8);
@@ -722,7 +712,6 @@ cpt_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	uint16_t qx_offset, qy_offset;
 	uint16_t p_align, m_align;
 	vq_cmd_word0_t vq_cmd_w0;
-	opcode_info_t opcode;
 	buf_ptr_t caddr;
 	uint16_t dlen;
 	uint8_t *dptr;
@@ -783,9 +772,8 @@ cpt_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	dptr += p_align;
 
 	/* Setup opcodes */
-	opcode.s.major = CPT_MAJOR_OP_ECDSA;
-	opcode.s.minor = CPT_MINOR_OP_ECDSA_VERIFY;
-	vq_cmd_w0.s.opcode = opcode.flags;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_ECDSA;
+	vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_ECDSA_VERIFY;
 
 	/* GP op header */
 	vq_cmd_w0.s.param1 = curveid | (message_len << 8);
@@ -845,7 +833,6 @@ cpt_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	uint16_t dlen, rlen, prime_len;
 	uint16_t x1_offset, y1_offset;
 	vq_cmd_word0_t vq_cmd_w0;
-	opcode_info_t opcode;
 	buf_ptr_t caddr;
 	uint8_t *dptr;
 
@@ -880,11 +867,10 @@ cpt_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	dptr += p_align;
 
 	/* Setup opcodes */
-	opcode.s.major = CPT_MAJOR_OP_ECC;
-	opcode.s.minor = CPT_MINOR_OP_ECC_UMP;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_ECC;
+	vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_ECC_UMP;
 
 	/* GP op header */
-	vq_cmd_w0.s.opcode = opcode.flags;
 	vq_cmd_w0.s.param1 = curveid;
 	vq_cmd_w0.s.param2 = ecpm->scalar.length;
 	vq_cmd_w0.s.dlen = dlen;

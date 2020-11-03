@@ -489,7 +489,6 @@ cpt_digest_gen_prep(uint32_t flags,
 	vq_cmd_word0_t vq_cmd_w0;
 	void *c_vaddr, *m_vaddr;
 	uint64_t c_dma, m_dma;
-	opcode_info_t opcode;
 
 	ctx = params->ctx_buf.vaddr;
 	meta_p = &params->meta_buf;
@@ -524,30 +523,26 @@ cpt_digest_gen_prep(uint32_t flags,
 	data_len = AUTH_DLEN(d_lens);
 
 	/*GP op header */
-	vq_cmd_w0.u64 = 0;
+	vq_cmd_w0.s.opcode.minor = 0;
 	vq_cmd_w0.s.param2 = ((uint16_t)hash_type << 8);
 	if (ctx->hmac) {
-		opcode.s.major = CPT_MAJOR_OP_HMAC | CPT_DMA_MODE;
+		vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_HMAC | CPT_DMA_MODE;
 		vq_cmd_w0.s.param1 = key_len;
 		vq_cmd_w0.s.dlen = data_len + ROUNDUP8(key_len);
 	} else {
-		opcode.s.major = CPT_MAJOR_OP_HASH | CPT_DMA_MODE;
+		vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_HASH | CPT_DMA_MODE;
 		vq_cmd_w0.s.param1 = 0;
 		vq_cmd_w0.s.dlen = data_len;
 	}
 
-	opcode.s.minor = 0;
-
 	/* Null auth only case enters the if */
 	if (unlikely(!hash_type && !ctx->enc_cipher)) {
-		opcode.s.major = CPT_MAJOR_OP_MISC;
+		vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_MISC;
 		/* Minor op is passthrough */
-		opcode.s.minor = 0x03;
+		vq_cmd_w0.s.opcode.minor = 0x03;
 		/* Send out completion code only */
 		vq_cmd_w0.s.param2 = 0x1;
 	}
-
-	vq_cmd_w0.s.opcode = opcode.flags;
 
 	/* DPTR has SG list */
 	in_buffer = m_vaddr;
@@ -677,7 +672,6 @@ cpt_enc_hmac_prep(uint32_t flags,
 	vq_cmd_word0_t vq_cmd_w0;
 	void *c_vaddr;
 	uint64_t c_dma;
-	opcode_info_t opcode;
 
 	meta_p = &fc_params->meta_buf;
 	m_vaddr = meta_p->vaddr;
@@ -756,8 +750,8 @@ cpt_enc_hmac_prep(uint32_t flags,
 	}
 
 	/* Encryption */
-	opcode.s.major = CPT_MAJOR_OP_FC;
-	opcode.s.minor = 0;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_FC;
+	vq_cmd_w0.s.opcode.minor = 0;
 
 	if (hash_type == GMAC_TYPE) {
 		encr_offset = 0;
@@ -783,7 +777,6 @@ cpt_enc_hmac_prep(uint32_t flags,
 	}
 
 	/* GP op header */
-	vq_cmd_w0.u64 = 0;
 	vq_cmd_w0.s.param1 = encr_data_len;
 	vq_cmd_w0.s.param2 = auth_data_len;
 	/*
@@ -814,8 +807,6 @@ cpt_enc_hmac_prep(uint32_t flags,
 
 		vq_cmd_w0.s.dlen = inputlen + OFF_CTRL_LEN;
 
-		vq_cmd_w0.s.opcode = opcode.flags;
-
 		if (likely(iv_len)) {
 			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr
 						      + OFF_CTRL_LEN);
@@ -844,9 +835,7 @@ cpt_enc_hmac_prep(uint32_t flags,
 		m_vaddr = (uint8_t *)m_vaddr + size;
 		m_dma += size;
 
-		opcode.s.major |= CPT_DMA_MODE;
-
-		vq_cmd_w0.s.opcode = opcode.flags;
+		vq_cmd_w0.s.opcode.major |= CPT_DMA_MODE;
 
 		if (likely(iv_len)) {
 			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr
@@ -1038,7 +1027,6 @@ cpt_dec_hmac_prep(uint32_t flags,
 	uint32_t passthrough_len = 0;
 	void *m_vaddr, *offset_vaddr;
 	uint64_t m_dma, offset_dma;
-	opcode_info_t opcode;
 	vq_cmd_word0_t vq_cmd_w0;
 	void *c_vaddr;
 	uint64_t c_dma;
@@ -1120,8 +1108,8 @@ cpt_dec_hmac_prep(uint32_t flags,
 	m_dma += size;
 
 	/* Decryption */
-	opcode.s.major = CPT_MAJOR_OP_FC;
-	opcode.s.minor = 1;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_FC;
+	vq_cmd_w0.s.opcode.minor = 1;
 
 	if (hash_type == GMAC_TYPE) {
 		encr_offset = 0;
@@ -1139,7 +1127,6 @@ cpt_dec_hmac_prep(uint32_t flags,
 		outputlen = enc_dlen;
 	}
 
-	vq_cmd_w0.u64 = 0;
 	vq_cmd_w0.s.param1 = encr_data_len;
 	vq_cmd_w0.s.param2 = auth_data_len;
 
@@ -1176,8 +1163,6 @@ cpt_dec_hmac_prep(uint32_t flags,
 
 		vq_cmd_w0.s.dlen = inputlen + OFF_CTRL_LEN;
 
-		vq_cmd_w0.s.opcode = opcode.flags;
-
 		if (likely(iv_len)) {
 			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr +
 						      OFF_CTRL_LEN);
@@ -1207,9 +1192,7 @@ cpt_dec_hmac_prep(uint32_t flags,
 		m_vaddr = (uint8_t *)m_vaddr + size;
 		m_dma += size;
 
-		opcode.s.major |= CPT_DMA_MODE;
-
-		vq_cmd_w0.s.opcode = opcode.flags;
+		vq_cmd_w0.s.opcode.major |= CPT_DMA_MODE;
 
 		if (likely(iv_len)) {
 			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr +
@@ -1417,7 +1400,6 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 	uint64_t *offset_vaddr, offset_dma;
 	uint32_t *iv_s, iv[4];
 	vq_cmd_word0_t vq_cmd_w0;
-	opcode_info_t opcode;
 
 	buf_p = &params->meta_buf;
 	m_vaddr = buf_p->vaddr;
@@ -1451,11 +1433,11 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 	m_vaddr = (uint8_t *)m_vaddr + size;
 	m_dma += size;
 
-	opcode.s.major = CPT_MAJOR_OP_ZUC_SNOW3G;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_ZUC_SNOW3G;
 
 	/* indicates CPTR ctx, operation type, KEY & IV mode from DPTR */
 
-	opcode.s.minor = ((1 << 7) | (snow3g << 5) | (0 << 4) |
+	vq_cmd_w0.s.opcode.minor = ((1 << 7) | (snow3g << 5) | (0 << 4) |
 			  (0 << 3) | (flags & 0x7));
 
 	if (flags == 0x1) {
@@ -1518,7 +1500,6 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 	/*
 	 * GP op header, lengths are expected in bits.
 	 */
-	vq_cmd_w0.u64 = 0;
 	vq_cmd_w0.s.param1 = encr_data_len;
 	vq_cmd_w0.s.param2 = auth_data_len;
 
@@ -1551,8 +1532,6 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 
 		vq_cmd_w0.s.dlen = inputlen + OFF_CTRL_LEN;
 
-		vq_cmd_w0.s.opcode = opcode.flags;
-
 		if (likely(iv_len)) {
 			uint32_t *iv_d = (uint32_t *)((uint8_t *)offset_vaddr
 						      + OFF_CTRL_LEN);
@@ -1575,9 +1554,7 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 		m_vaddr = (uint8_t *)m_vaddr + OFF_CTRL_LEN + iv_len;
 		m_dma += OFF_CTRL_LEN + iv_len;
 
-		opcode.s.major |= CPT_DMA_MODE;
-
-		vq_cmd_w0.s.opcode = opcode.flags;
+		vq_cmd_w0.s.opcode.major |= CPT_DMA_MODE;
 
 		/* DPTR has SG list */
 		in_buffer = m_vaddr;
@@ -1729,7 +1706,6 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 	uint64_t *offset_vaddr, offset_dma;
 	uint32_t *iv_s, iv[4], j;
 	vq_cmd_word0_t vq_cmd_w0;
-	opcode_info_t opcode;
 
 	buf_p = &params->meta_buf;
 	m_vaddr = buf_p->vaddr;
@@ -1768,11 +1744,12 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 	m_vaddr = (uint8_t *)m_vaddr + size;
 	m_dma += size;
 
-	opcode.s.major = CPT_MAJOR_OP_ZUC_SNOW3G;
+	vq_cmd_w0.u64 = 0;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_ZUC_SNOW3G;
 
 	/* indicates CPTR ctx, operation type, KEY & IV mode from DPTR */
 
-	opcode.s.minor = ((1 << 7) | (snow3g << 5) | (0 << 4) |
+	vq_cmd_w0.s.opcode.minor = ((1 << 7) | (snow3g << 5) | (0 << 4) |
 			  (0 << 3) | (flags & 0x7));
 
 	/* consider iv len */
@@ -1801,7 +1778,6 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 	/*
 	 * GP op header, lengths are expected in bits.
 	 */
-	vq_cmd_w0.u64 = 0;
 	vq_cmd_w0.s.param1 = encr_data_len;
 
 	/*
@@ -1833,8 +1809,6 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 
 		vq_cmd_w0.s.dlen = inputlen + OFF_CTRL_LEN;
 
-		vq_cmd_w0.s.opcode = opcode.flags;
-
 		if (likely(iv_len)) {
 			uint32_t *iv_d = (uint32_t *)((uint8_t *)offset_vaddr
 						      + OFF_CTRL_LEN);
@@ -1858,9 +1832,7 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 		m_vaddr = (uint8_t *)m_vaddr + OFF_CTRL_LEN + iv_len;
 		m_dma += OFF_CTRL_LEN + iv_len;
 
-		opcode.s.major |= CPT_DMA_MODE;
-
-		vq_cmd_w0.s.opcode = opcode.flags;
+		vq_cmd_w0.s.opcode.major |= CPT_DMA_MODE;
 
 		/* DPTR has SG list */
 		in_buffer = m_vaddr;
@@ -1987,7 +1959,6 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 	uint64_t m_dma, c_dma;
 	uint64_t *offset_vaddr, offset_dma;
 	vq_cmd_word0_t vq_cmd_w0;
-	opcode_info_t opcode;
 	uint8_t *in_buffer;
 	uint32_t g_size_bytes, s_size_bytes;
 	uint64_t dptr_dma, rptr_dma;
@@ -2037,19 +2008,17 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 	m_vaddr = (uint8_t *)m_vaddr + size;
 	m_dma += size;
 
-	opcode.s.major = CPT_MAJOR_OP_KASUMI | CPT_DMA_MODE;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_KASUMI | CPT_DMA_MODE;
 
 	/* indicates ECB/CBC, direction, ctx from cptr, iv from dptr */
-	opcode.s.minor = ((1 << 6) | (cpt_ctx->k_ecb << 5) |
+	vq_cmd_w0.s.opcode.minor = ((1 << 6) | (cpt_ctx->k_ecb << 5) |
 			  (dir << 4) | (0 << 3) | (flags & 0x7));
 
 	/*
 	 * GP op header, lengths are expected in bits.
 	 */
-	vq_cmd_w0.u64 = 0;
 	vq_cmd_w0.s.param1 = encr_data_len;
 	vq_cmd_w0.s.param2 = auth_data_len;
-	vq_cmd_w0.s.opcode = opcode.flags;
 
 	/* consider iv len */
 	if (flags == 0x0) {
@@ -2223,7 +2192,6 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 	uint64_t m_dma, c_dma;
 	uint64_t *offset_vaddr, offset_dma;
 	vq_cmd_word0_t vq_cmd_w0;
-	opcode_info_t opcode;
 	uint8_t *in_buffer;
 	uint32_t g_size_bytes, s_size_bytes;
 	uint64_t dptr_dma, rptr_dma;
@@ -2262,18 +2230,17 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 	m_vaddr = (uint8_t *)m_vaddr + size;
 	m_dma += size;
 
-	opcode.s.major = CPT_MAJOR_OP_KASUMI | CPT_DMA_MODE;
+	vq_cmd_w0.u64 = 0;
+	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_KASUMI | CPT_DMA_MODE;
 
 	/* indicates ECB/CBC, direction, ctx from cptr, iv from dptr */
-	opcode.s.minor = ((1 << 6) | (cpt_ctx->k_ecb << 5) |
+	vq_cmd_w0.s.opcode.minor = ((1 << 6) | (cpt_ctx->k_ecb << 5) |
 			  (dir << 4) | (0 << 3) | (flags & 0x7));
 
 	/*
 	 * GP op header, lengths are expected in bits.
 	 */
-	vq_cmd_w0.u64 = 0;
 	vq_cmd_w0.s.param1 = encr_data_len;
-	vq_cmd_w0.s.opcode = opcode.flags;
 
 	/* consider iv len */
 	encr_offset += iv_len;
