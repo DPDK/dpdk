@@ -1235,7 +1235,7 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->txqs)[idx])
 		return 0;
 	txq_ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	if (__atomic_sub_fetch(&txq_ctrl->refcnt, 1, __ATOMIC_RELAXED) != 0)
+	if (__atomic_sub_fetch(&txq_ctrl->refcnt, 1, __ATOMIC_RELAXED) > 1)
 		return 1;
 	if (txq_ctrl->obj) {
 		priv->obj_ops.txq_obj_release(txq_ctrl->obj);
