@@ -556,11 +556,10 @@ test_lpm_rcu_perf_multi_writer(void)
 		__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED)
 		/ TOTAL_WRITES);
 
-	/* Wait and check return value from reader threads */
 	writer_done = 1;
+	/* Wait until all readers have exited */
 	for (i = 2; i < num_cores; i++)
-		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
-			goto error;
+		rte_eal_wait_lcore(enabled_core_ids[i]);
 
 	rte_lpm_free(lpm);
 	rte_free(rv);
@@ -605,10 +604,9 @@ test_lpm_rcu_perf_multi_writer(void)
 		/ TOTAL_WRITES);
 
 	writer_done = 1;
-	/* Wait and check return value from reader threads */
+	/* Wait until all readers have exited */
 	for (i = 2; i < num_cores; i++)
-		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
-			goto error;
+		rte_eal_wait_lcore(enabled_core_ids[i]);
 
 	rte_lpm_free(lpm);
 
@@ -712,10 +710,9 @@ test_lpm_rcu_perf(void)
 		(double)total_cycles / TOTAL_WRITES);
 
 	writer_done = 1;
-	/* Wait and check return value from reader threads */
+	/* Wait until all readers have exited */
 	for (i = 0; i < num_cores; i++)
-		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
-			goto error;
+		rte_eal_wait_lcore(enabled_core_ids[i]);
 
 	rte_lpm_free(lpm);
 	rte_free(rv);
@@ -771,11 +768,9 @@ test_lpm_rcu_perf(void)
 		(double)total_cycles / TOTAL_WRITES);
 
 	writer_done = 1;
-	/* Wait and check return value from reader threads */
+	/* Wait until all readers have exited */
 	for (i = 0; i < num_cores; i++)
-		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
-			printf("Warning: lcore %u not finished.\n",
-				enabled_core_ids[i]);
+		rte_eal_wait_lcore(enabled_core_ids[i]);
 
 	rte_lpm_free(lpm);
 
