@@ -23,6 +23,7 @@ static struct rte_rcu_qsbr *rv;
 static volatile uint8_t writer_done;
 static volatile uint32_t thr_id;
 static uint64_t gwrite_cycles;
+static uint32_t num_writers;
 /* LPM APIs are not thread safe, use mutex to provide thread safety */
 static pthread_mutex_t lpm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -430,24 +431,19 @@ test_lpm_rcu_qsbr_writer(void *arg)
 {
 	unsigned int i, j, si, ei;
 	uint64_t begin, total_cycles;
-	uint8_t core_id = (uint8_t)((uintptr_t)arg);
 	uint32_t next_hop_add = 0xAA;
+	uint8_t pos_core = (uint8_t)((uintptr_t)arg);
 
-	/* 2 writer threads are used */
-	if (core_id % 2 == 0) {
-		si = 0;
-		ei = NUM_LDEPTH_ROUTE_ENTRIES / 2;
-	} else {
-		si = NUM_LDEPTH_ROUTE_ENTRIES / 2;
-		ei = NUM_LDEPTH_ROUTE_ENTRIES;
-	}
+	si = (pos_core * NUM_LDEPTH_ROUTE_ENTRIES) / num_writers;
+	ei = ((pos_core + 1) * NUM_LDEPTH_ROUTE_ENTRIES) / num_writers;
 
 	/* Measure add/delete. */
 	begin = rte_rdtsc_precise();
 	for (i = 0; i < RCU_ITERATIONS; i++) {
 		/* Add all the entries */
 		for (j = si; j < ei; j++) {
-			pthread_mutex_lock(&lpm_mutex);
+			if (num_writers > 1)
+				pthread_mutex_lock(&lpm_mutex);
 			if (rte_lpm_add(lpm, large_ldepth_route_table[j].ip,
 					large_ldepth_route_table[j].depth,
 					next_hop_add) != 0) {
@@ -455,19 +451,22 @@ test_lpm_rcu_qsbr_writer(void *arg)
 					i, j);
 				goto error;
 			}
-			pthread_mutex_unlock(&lpm_mutex);
+			if (num_writers > 1)
+				pthread_mutex_unlock(&lpm_mutex);
 		}
 
 		/* Delete all the entries */
 		for (j = si; j < ei; j++) {
-			pthread_mutex_lock(&lpm_mutex);
+			if (num_writers > 1)
+				pthread_mutex_lock(&lpm_mutex);
 			if (rte_lpm_delete(lpm, large_ldepth_route_table[j].ip,
 				large_ldepth_route_table[j].depth) != 0) {
 				printf("Failed to delete iteration %d, route# %d\n",
 					i, j);
 				goto error;
 			}
-			pthread_mutex_unlock(&lpm_mutex);
+			if (num_writers > 1)
+				pthread_mutex_unlock(&lpm_mutex);
 		}
 	}
 
@@ -478,22 +477,24 @@ test_lpm_rcu_qsbr_writer(void *arg)
 	return 0;
 
 error:
-	pthread_mutex_unlock(&lpm_mutex);
+	if (num_writers > 1)
+		pthread_mutex_unlock(&lpm_mutex);
 	return -1;
 }
 
 /*
  * Functional test:
- * 2 writers, rest are readers
+ * 1/2 writers, rest are readers
  */
 static int
-test_lpm_rcu_perf_multi_writer(void)
+test_lpm_rcu_perf_multi_writer(uint8_t use_rcu)
 {
 	struct rte_lpm_config config;
 	size_t sz;
-	unsigned int i;
+	unsigned int i, j;
 	uint16_t core_id;
 	struct rte_lpm_rcu_config rcu_cfg = {0};
+	int (*reader_f)(void *arg) = NULL;
 
 	if (rte_lcore_count() < 3) {
 		printf("Not enough cores for lpm_rcu_perf_autotest, expecting at least 3\n");
@@ -506,273 +507,78 @@ test_lpm_rcu_perf_multi_writer(void)
 		num_cores++;
 	}
 
-	printf("\nPerf test: 2 writers, %d readers, RCU integration enabled\n",
-		num_cores - 2);
+	for (j = 1; j < 3; j++) {
+		if (use_rcu)
+			printf("\nPerf test: %d writer(s), %d reader(s),"
+			       " RCU integration enabled\n", j, num_cores - j);
+		else
+			printf("\nPerf test: %d writer(s), %d reader(s),"
+			       " RCU integration disabled\n", j, num_cores - j);
 
-	/* Create LPM table */
-	config.max_rules = NUM_LDEPTH_ROUTE_ENTRIES;
-	config.number_tbl8s = NUM_LDEPTH_ROUTE_ENTRIES;
-	config.flags = 0;
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
-	TEST_LPM_ASSERT(lpm != NULL);
+		num_writers = j;
 
-	/* Init RCU variable */
-	sz = rte_rcu_qsbr_get_memsize(num_cores);
-	rv = (struct rte_rcu_qsbr *)rte_zmalloc("rcu0", sz,
-						RTE_CACHE_LINE_SIZE);
-	rte_rcu_qsbr_init(rv, num_cores);
+		/* Create LPM table */
+		config.max_rules = NUM_LDEPTH_ROUTE_ENTRIES;
+		config.number_tbl8s = NUM_LDEPTH_ROUTE_ENTRIES;
+		config.flags = 0;
+		lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
+		TEST_LPM_ASSERT(lpm != NULL);
 
-	rcu_cfg.v = rv;
-	/* Assign the RCU variable to LPM */
-	if (rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg) != 0) {
-		printf("RCU variable assignment failed\n");
-		goto error;
-	}
+		/* Init RCU variable */
+		if (use_rcu) {
+			sz = rte_rcu_qsbr_get_memsize(num_cores);
+			rv = (struct rte_rcu_qsbr *)rte_zmalloc("rcu0", sz,
+							RTE_CACHE_LINE_SIZE);
+			rte_rcu_qsbr_init(rv, num_cores);
 
-	writer_done = 0;
-	__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
-
-	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
-
-	/* Launch reader threads */
-	for (i = 2; i < num_cores; i++)
-		rte_eal_remote_launch(test_lpm_rcu_qsbr_reader, NULL,
-					enabled_core_ids[i]);
-
-	/* Launch writer threads */
-	for (i = 0; i < 2; i++)
-		rte_eal_remote_launch(test_lpm_rcu_qsbr_writer,
-					(void *)(uintptr_t)i,
-					enabled_core_ids[i]);
-
-	/* Wait for writer threads */
-	for (i = 0; i < 2; i++)
-		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
-			goto error;
-
-	printf("Total LPM Adds: %d\n", TOTAL_WRITES);
-	printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
-	printf("Average LPM Add/Del: %"PRIu64" cycles\n",
-		__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED)
-		/ TOTAL_WRITES);
-
-	writer_done = 1;
-	/* Wait until all readers have exited */
-	for (i = 2; i < num_cores; i++)
-		rte_eal_wait_lcore(enabled_core_ids[i]);
-
-	rte_lpm_free(lpm);
-	rte_free(rv);
-	lpm = NULL;
-	rv = NULL;
-
-	/* Test without RCU integration */
-	printf("\nPerf test: 2 writers, %d readers, RCU integration disabled\n",
-		num_cores - 2);
-
-	/* Create LPM table */
-	config.max_rules = NUM_LDEPTH_ROUTE_ENTRIES;
-	config.number_tbl8s = NUM_LDEPTH_ROUTE_ENTRIES;
-	config.flags = 0;
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
-	TEST_LPM_ASSERT(lpm != NULL);
-
-	writer_done = 0;
-	__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
-
-	/* Launch reader threads */
-	for (i = 2; i < num_cores; i++)
-		rte_eal_remote_launch(test_lpm_reader, NULL,
-					enabled_core_ids[i]);
-
-	/* Launch writer threads */
-	for (i = 0; i < 2; i++)
-		rte_eal_remote_launch(test_lpm_rcu_qsbr_writer,
-					(void *)(uintptr_t)i,
-					enabled_core_ids[i]);
-
-	/* Wait for writer threads */
-	for (i = 0; i < 2; i++)
-		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
-			goto error;
-
-	printf("Total LPM Adds: %d\n", TOTAL_WRITES);
-	printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
-	printf("Average LPM Add/Del: %"PRIu64" cycles\n",
-		__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED)
-		/ TOTAL_WRITES);
-
-	writer_done = 1;
-	/* Wait until all readers have exited */
-	for (i = 2; i < num_cores; i++)
-		rte_eal_wait_lcore(enabled_core_ids[i]);
-
-	rte_lpm_free(lpm);
-
-	return 0;
-
-error:
-	writer_done = 1;
-	/* Wait until all readers have exited */
-	rte_eal_mp_wait_lcore();
-
-	rte_lpm_free(lpm);
-	rte_free(rv);
-
-	return -1;
-}
-
-/*
- * Functional test:
- * Single writer, rest are readers
- */
-static int
-test_lpm_rcu_perf(void)
-{
-	struct rte_lpm_config config;
-	uint64_t begin, total_cycles;
-	size_t sz;
-	unsigned int i, j;
-	uint16_t core_id;
-	uint32_t next_hop_add = 0xAA;
-	struct rte_lpm_rcu_config rcu_cfg = {0};
-
-	if (rte_lcore_count() < 2) {
-		printf("Not enough cores for lpm_rcu_perf_autotest, expecting at least 2\n");
-		return TEST_SKIPPED;
-	}
-
-	num_cores = 0;
-	RTE_LCORE_FOREACH_WORKER(core_id) {
-		enabled_core_ids[num_cores] = core_id;
-		num_cores++;
-	}
-
-	printf("\nPerf test: 1 writer, %d readers, RCU integration enabled\n",
-		num_cores);
-
-	/* Create LPM table */
-	config.max_rules = NUM_LDEPTH_ROUTE_ENTRIES;
-	config.number_tbl8s = NUM_LDEPTH_ROUTE_ENTRIES;
-	config.flags = 0;
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
-	TEST_LPM_ASSERT(lpm != NULL);
-
-	/* Init RCU variable */
-	sz = rte_rcu_qsbr_get_memsize(num_cores);
-	rv = (struct rte_rcu_qsbr *)rte_zmalloc("rcu0", sz,
-						RTE_CACHE_LINE_SIZE);
-	rte_rcu_qsbr_init(rv, num_cores);
-
-	rcu_cfg.v = rv;
-	/* Assign the RCU variable to LPM */
-	if (rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg) != 0) {
-		printf("RCU variable assignment failed\n");
-		goto error;
-	}
-
-	writer_done = 0;
-	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
-
-	/* Launch reader threads */
-	for (i = 0; i < num_cores; i++)
-		rte_eal_remote_launch(test_lpm_rcu_qsbr_reader, NULL,
-					enabled_core_ids[i]);
-
-	/* Measure add/delete. */
-	begin = rte_rdtsc_precise();
-	for (i = 0; i < RCU_ITERATIONS; i++) {
-		/* Add all the entries */
-		for (j = 0; j < NUM_LDEPTH_ROUTE_ENTRIES; j++)
-			if (rte_lpm_add(lpm, large_ldepth_route_table[j].ip,
-					large_ldepth_route_table[j].depth,
-					next_hop_add) != 0) {
-				printf("Failed to add iteration %d, route# %d\n",
-					i, j);
+			rcu_cfg.v = rv;
+			/* Assign the RCU variable to LPM */
+			if (rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg) != 0) {
+				printf("RCU variable assignment failed\n");
 				goto error;
 			}
 
-		/* Delete all the entries */
-		for (j = 0; j < NUM_LDEPTH_ROUTE_ENTRIES; j++)
-			if (rte_lpm_delete(lpm, large_ldepth_route_table[j].ip,
-				large_ldepth_route_table[j].depth) != 0) {
-				printf("Failed to delete iteration %d, route# %d\n",
-					i, j);
+			reader_f = test_lpm_rcu_qsbr_reader;
+		} else
+			reader_f = test_lpm_reader;
+
+		writer_done = 0;
+		__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
+
+		__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
+
+		/* Launch reader threads */
+		for (i = j; i < num_cores; i++)
+			rte_eal_remote_launch(reader_f, NULL,
+						enabled_core_ids[i]);
+
+		/* Launch writer threads */
+		for (i = 0; i < j; i++)
+			rte_eal_remote_launch(test_lpm_rcu_qsbr_writer,
+						(void *)(uintptr_t)i,
+						enabled_core_ids[i]);
+
+		/* Wait for writer threads */
+		for (i = 0; i < j; i++)
+			if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 				goto error;
-			}
+
+		printf("Total LPM Adds: %d\n", TOTAL_WRITES);
+		printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
+		printf("Average LPM Add/Del: %"PRIu64" cycles\n",
+			__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED)
+			/ TOTAL_WRITES);
+
+		writer_done = 1;
+		/* Wait until all readers have exited */
+		for (i = j; i < num_cores; i++)
+			rte_eal_wait_lcore(enabled_core_ids[i]);
+
+		rte_lpm_free(lpm);
+		rte_free(rv);
+		lpm = NULL;
+		rv = NULL;
 	}
-	total_cycles = rte_rdtsc_precise() - begin;
-
-	printf("Total LPM Adds: %d\n", TOTAL_WRITES);
-	printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
-	printf("Average LPM Add/Del: %g cycles\n",
-		(double)total_cycles / TOTAL_WRITES);
-
-	writer_done = 1;
-	/* Wait until all readers have exited */
-	for (i = 0; i < num_cores; i++)
-		rte_eal_wait_lcore(enabled_core_ids[i]);
-
-	rte_lpm_free(lpm);
-	rte_free(rv);
-	lpm = NULL;
-	rv = NULL;
-
-	/* Test without RCU integration */
-	printf("\nPerf test: 1 writer, %d readers, RCU integration disabled\n",
-		num_cores);
-
-	/* Create LPM table */
-	config.max_rules = NUM_LDEPTH_ROUTE_ENTRIES;
-	config.number_tbl8s = NUM_LDEPTH_ROUTE_ENTRIES;
-	config.flags = 0;
-	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
-	TEST_LPM_ASSERT(lpm != NULL);
-
-	writer_done = 0;
-	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
-
-	/* Launch reader threads */
-	for (i = 0; i < num_cores; i++)
-		rte_eal_remote_launch(test_lpm_reader, NULL,
-					enabled_core_ids[i]);
-
-	/* Measure add/delete. */
-	begin = rte_rdtsc_precise();
-	for (i = 0; i < RCU_ITERATIONS; i++) {
-		/* Add all the entries */
-		for (j = 0; j < NUM_LDEPTH_ROUTE_ENTRIES; j++)
-			if (rte_lpm_add(lpm, large_ldepth_route_table[j].ip,
-					large_ldepth_route_table[j].depth,
-					next_hop_add) != 0) {
-				printf("Failed to add iteration %d, route# %d\n",
-					i, j);
-				goto error;
-			}
-
-		/* Delete all the entries */
-		for (j = 0; j < NUM_LDEPTH_ROUTE_ENTRIES; j++)
-			if (rte_lpm_delete(lpm, large_ldepth_route_table[j].ip,
-				large_ldepth_route_table[j].depth) != 0) {
-				printf("Failed to delete iteration %d, route# %d\n",
-					i, j);
-				goto error;
-			}
-	}
-	total_cycles = rte_rdtsc_precise() - begin;
-
-	printf("Total LPM Adds: %d\n", TOTAL_WRITES);
-	printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
-	printf("Average LPM Add/Del: %g cycles\n",
-		(double)total_cycles / TOTAL_WRITES);
-
-	writer_done = 1;
-	/* Wait until all readers have exited */
-	for (i = 0; i < num_cores; i++)
-		rte_eal_wait_lcore(enabled_core_ids[i]);
-
-	rte_lpm_free(lpm);
 
 	return 0;
 
@@ -948,10 +754,10 @@ test_lpm_perf(void)
 	rte_lpm_delete_all(lpm);
 	rte_lpm_free(lpm);
 
-	if (test_lpm_rcu_perf() < 0)
+	if (test_lpm_rcu_perf_multi_writer(0) < 0)
 		return -1;
 
-	if (test_lpm_rcu_perf_multi_writer() < 0)
+	if (test_lpm_rcu_perf_multi_writer(1) < 0)
 		return -1;
 
 	return 0;
