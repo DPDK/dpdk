@@ -1424,8 +1424,11 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	const struct rte_eth_rxseg_split *qs_seg = rx_seg;
 	unsigned int tail_len;
 
-	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl) +
-			   desc_n * sizeof(struct rte_mbuf *), 0, socket);
+	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+		sizeof(*tmpl) + desc_n * sizeof(struct rte_mbuf *) +
+		(!!mprq_en) *
+		(desc >> mprq_stride_nums) * sizeof(struct mlx5_mprq_buf *),
+		0, socket);
 	if (!tmpl) {
 		rte_errno = ENOMEM;
 		return NULL;
