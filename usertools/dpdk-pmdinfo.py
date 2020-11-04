@@ -375,7 +375,7 @@ class ReadElf(object):
                                       ":/usr/lib64:/lib64:/usr/lib:/lib")
                 if library is None:
                     return (None, None)
-                if raw_output is False:
+                if not raw_output:
                     print("Scanning for autoload path in %s" % library)
                 scanfile = open(library, 'rb')
                 scanelf = ReadElf(scanfile, sys.stdout)
@@ -478,7 +478,7 @@ def force_bytes(s):
 def scan_autoload_path(autoload_path):
     global raw_output
 
-    if os.path.exists(autoload_path) is False:
+    if not os.path.exists(autoload_path):
         return
 
     try:
@@ -502,7 +502,7 @@ def scan_autoload_path(autoload_path):
                 # No permission to read the file, skip it
                 continue
 
-            if raw_output is False:
+            if not raw_output:
                 print("Hw Support for library %s" % d)
             readelf.display_pmd_info_strings(".rodata")
             file.close()
@@ -515,8 +515,8 @@ def scan_for_autoload_pmds(dpdk_path):
     """
     global raw_output
 
-    if os.path.isfile(dpdk_path) is False:
-        if raw_output is False:
+    if not os.path.isfile(dpdk_path):
+        if not raw_output:
             print("Must specify a file name")
         return
 
@@ -524,22 +524,22 @@ def scan_for_autoload_pmds(dpdk_path):
     try:
         readelf = ReadElf(file, sys.stdout)
     except ElfError:
-        if raw_output is False:
+        if not raw_output:
             print("Unable to parse %s" % file)
         return
 
     (autoload_path, scannedfile) = readelf.search_for_autoload_path()
     if not autoload_path:
-        if raw_output is False:
+        if not raw_output:
             print("No autoload path configured in %s" % dpdk_path)
         return
-    if raw_output is False:
+    if not raw_output:
         if scannedfile is None:
             scannedfile = dpdk_path
         print("Found autoload path %s in %s" % (autoload_path, scannedfile))
 
     file.close()
-    if raw_output is False:
+    if not raw_output:
         print("Discovered Autoload HW Support:")
     scan_autoload_path(autoload_path)
     return
@@ -598,14 +598,14 @@ def main(stream=None):
         optparser.print_usage()
         exit(1)
 
-    if options.pdir is True:
+    if options.pdir:
         exit(scan_for_autoload_pmds(args[0]))
 
     ldlibpath = os.environ.get('LD_LIBRARY_PATH')
     if ldlibpath is None:
         ldlibpath = ""
 
-    if os.path.exists(args[0]) is True:
+    if os.path.exists(args[0]):
         myelffile = args[0]
     else:
         myelffile = search_file(
