@@ -109,8 +109,7 @@ class Device:
         except:
             if (subven == "ffff" and subdev == "ffff"):
                 return SubDevice("ffff", "ffff", "(All Subdevices)")
-            else:
-                return SubDevice(subven, subdev, "(Unknown Subdevice)")
+            return SubDevice(subven, subdev, "(Unknown Subdevice)")
 
 
 class SubDevice:
@@ -261,8 +260,7 @@ class ReadElf(object):
             num = int(spec)
             if num < self.elffile.num_sections():
                 return self.elffile.get_section(num)
-            else:
-                return None
+            return None
         except ValueError:
             # Not a number. Must be a name then
             section = self.elffile.get_section_by_name(force_unicode(spec))
@@ -308,7 +306,7 @@ class ReadElf(object):
             except KeyError:
                 continue
 
-        if (len(pmdinfo["pci_ids"]) != 0):
+        if len(pmdinfo["pci_ids"]) != 0:
             print("PMD HW SUPPORT:")
             if pcidb is not None:
                 self.pretty_print_pmdinfo(pmdinfo)
@@ -333,7 +331,7 @@ class ReadElf(object):
 
         while dataptr < len(data):
             while (dataptr < len(data) and
-                    not (32 <= byte2int(data[dataptr]) <= 127)):
+                    not 32 <= byte2int(data[dataptr]) <= 127):
                 dataptr += 1
 
             if dataptr >= len(data):
@@ -346,7 +344,7 @@ class ReadElf(object):
             # pyelftools may return byte-strings, force decode them
             mystring = force_unicode(data[dataptr:endptr])
             rc = mystring.find("PMD_INFO_STRING")
-            if (rc != -1):
+            if rc != -1:
                 self.parse_pmd_info_string(mystring)
 
             dataptr = endptr
@@ -399,7 +397,7 @@ class ReadElf(object):
 
         while dataptr < len(data):
             while (dataptr < len(data) and
-                    not (32 <= byte2int(data[dataptr]) <= 127)):
+                    not 32 <= byte2int(data[dataptr]) <= 127):
                 dataptr += 1
 
             if dataptr >= len(data):
@@ -412,7 +410,7 @@ class ReadElf(object):
             # pyelftools may return byte-strings, force decode them
             mystring = force_unicode(data[dataptr:endptr])
             rc = mystring.find("DPDK_PLUGIN_PATH")
-            if (rc != -1):
+            if rc != -1:
                 rc = mystring.find("=")
                 return (mystring[rc + 1:], library)
 
@@ -517,7 +515,7 @@ def scan_for_autoload_pmds(dpdk_path):
     """
     global raw_output
 
-    if (os.path.isfile(dpdk_path) is False):
+    if os.path.isfile(dpdk_path) is False:
         if raw_output is False:
             print("Must specify a file name")
         return
@@ -532,16 +530,16 @@ def scan_for_autoload_pmds(dpdk_path):
 
     (autoload_path, scannedfile) = readelf.search_for_autoload_path()
     if not autoload_path:
-        if (raw_output is False):
+        if raw_output is False:
             print("No autoload path configured in %s" % dpdk_path)
         return
-    if (raw_output is False):
-        if (scannedfile is None):
+    if raw_output is False:
+        if scannedfile is None:
             scannedfile = dpdk_path
         print("Found autoload path %s in %s" % (autoload_path, scannedfile))
 
     file.close()
-    if (raw_output is False):
+    if raw_output is False:
         print("Discovered Autoload HW Support:")
     scan_autoload_path(autoload_path)
     return
@@ -596,7 +594,7 @@ def main(stream=None):
         options.pcifile = None
         pcidb = None
 
-    if (len(args) == 0):
+    if len(args) == 0:
         optparser.print_usage()
         exit(1)
 
@@ -604,16 +602,16 @@ def main(stream=None):
         exit(scan_for_autoload_pmds(args[0]))
 
     ldlibpath = os.environ.get('LD_LIBRARY_PATH')
-    if (ldlibpath is None):
+    if ldlibpath is None:
         ldlibpath = ""
 
-    if (os.path.exists(args[0]) is True):
+    if os.path.exists(args[0]) is True:
         myelffile = args[0]
     else:
         myelffile = search_file(
             args[0], ldlibpath + ":/usr/lib64:/lib64:/usr/lib:/lib")
 
-    if (myelffile is None):
+    if myelffile is None:
         print("File not found")
         sys.exit(1)
 

@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     sleep_time = 1
     file_path = ""
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         file_path = sys.argv[1]
     else:
         print("Warning - No filepath passed, using default (" + DEFAULT_FP + ").")

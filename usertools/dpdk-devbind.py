@@ -348,13 +348,13 @@ def dev_id_from_dev_name(dev_name):
     if dev_name in devices:
         return dev_name
     # check if it's an index just missing the domain part
-    elif "0000:" + dev_name in devices:
+    if "0000:" + dev_name in devices:
         return "0000:" + dev_name
-    else:
-        # check if it's an interface name, e.g. eth1
-        for d in devices.keys():
-            if dev_name in devices[d]["Interface"].split(","):
-                return devices[d]["Slot"]
+
+    # check if it's an interface name, e.g. eth1
+    for d in devices.keys():
+        if dev_name in devices[d]["Interface"].split(","):
+            return devices[d]["Slot"]
     # if nothing else matches - error
     raise ValueError("Unknown device: %s. "
                      "Please specify device in \"bus:slot.func\" format" % dev_name)
@@ -403,10 +403,9 @@ def bind_one(dev_id, driver, force):
             print("Notice: %s already bound to driver %s, skipping" %
                   (dev_id, driver), file=sys.stderr)
             return
-        else:
-            saved_driver = dev["Driver_str"]
-            unbind_one(dev_id, force)
-            dev["Driver_str"] = ""  # clear driver string
+        saved_driver = dev["Driver_str"]
+        unbind_one(dev_id, force)
+        dev["Driver_str"] = ""  # clear driver string
 
     # For kernels >= 3.15 driver_override can be used to specify the driver
     # for a device rather than relying on the driver to provide a positive
