@@ -557,28 +557,28 @@ def show_status():
     Displays to the user what devices are bound to the igb_uio driver, the
     kernel driver or to no driver'''
 
-    if status_dev == "net" or status_dev == "all":
+    if status_dev in ["net", "all"]:
         show_device_status(network_devices, "Network", if_field=True)
 
-    if status_dev == "baseband" or status_dev == "all":
+    if status_dev in ["baseband", "all"]:
         show_device_status(baseband_devices, "Baseband")
 
-    if status_dev == "crypto" or status_dev == "all":
+    if status_dev in ["crypto", "all"]:
         show_device_status(crypto_devices, "Crypto")
 
-    if status_dev == "event" or status_dev == "all":
+    if status_dev in ["event", "all"]:
         show_device_status(eventdev_devices, "Eventdev")
 
-    if status_dev == "mempool" or status_dev == "all":
+    if status_dev in ["mempool", "all"]:
         show_device_status(mempool_devices, "Mempool")
 
-    if status_dev == "compress" or status_dev == "all":
+    if status_dev in ["compress", "all"]:
         show_device_status(compress_devices, "Compress")
 
-    if status_dev == "misc" or status_dev == "all":
+    if status_dev in ["misc", "all"]:
         show_device_status(misc_devices, "Misc (rawdev)")
 
-    if status_dev == "regex" or status_dev == "all":
+    if status_dev in ["regex", "all"]:
         show_device_status(regex_devices, "Regex")
 
 
@@ -703,7 +703,7 @@ def do_arg_actions():
     global force_flag
     global args
 
-    if b_flag == "none" or b_flag == "None":
+    if b_flag in ["none", "None"]:
         unbind_all(args, force_flag)
     elif b_flag is not None:
         bind_all(args, b_flag, force_flag)
