@@ -629,7 +629,7 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 
 		if (!kvlist) {
 			PMD_LOG(INFO,
-				"Ignoring unsupported parameters when creatingrings-backed ethernet device");
+				"Ignoring unsupported parameters when creating rings-backed ethernet device");
 			ret = eth_dev_ring_create(name, dev, rte_socket_id(),
 						  DEV_CREATE, &eth_dev);
 			if (ret == -1) {
