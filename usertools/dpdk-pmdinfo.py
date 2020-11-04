@@ -434,7 +434,6 @@ class ReadElf(object):
         """ Look to see if there are any DT_NEEDED entries in the binary
             And process those if there are
         """
-        global raw_output
         runpath = ""
         ldlibpath = os.environ.get('LD_LIBRARY_PATH')
         if ldlibpath is None:
@@ -450,13 +449,11 @@ class ReadElf(object):
         for tag in dynsec.iter_tags():
             # pyelftools may return byte-strings, force decode them
             if force_unicode(tag.entry.d_tag) == 'DT_NEEDED':
-                if 'librte_pmd' in force_unicode(tag.needed):
+                if 'librte_' in force_unicode(tag.needed):
                     library = search_file(force_unicode(tag.needed),
                                           runpath + ":" + ldlibpath +
                                           ":/usr/lib64:/lib64:/usr/lib:/lib")
                     if library is not None:
-                        if raw_output is False:
-                            print("Scanning %s for pmd information" % library)
                         with io.open(library, 'rb') as file:
                             try:
                                 libelf = ReadElf(file, sys.stdout)
