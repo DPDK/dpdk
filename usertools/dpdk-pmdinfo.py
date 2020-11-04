@@ -8,7 +8,6 @@
 #
 # -------------------------------------------------------------------------
 import json
-import io
 import os
 import platform
 import sys
@@ -211,7 +210,7 @@ class PCIIds:
         """
         Reads the local file
         """
-        with io.open(filename, 'r', encoding='utf-8') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             self.contents = f.readlines()
         self.date = self.findDate(self.contents)
 
@@ -380,7 +379,7 @@ class ReadElf(object):
                     return (None, None)
                 if raw_output is False:
                     print("Scanning for autoload path in %s" % library)
-                scanfile = io.open(library, 'rb')
+                scanfile = open(library, 'rb')
                 scanelf = ReadElf(scanfile, sys.stdout)
         except AttributeError:
             # Not a dynamic binary
@@ -453,7 +452,7 @@ class ReadElf(object):
                                           runpath + ":" + ldlibpath +
                                           ":/usr/lib64:/lib64:/usr/lib:/lib")
                     if library is not None:
-                        with io.open(library, 'rb') as file:
+                        with open(library, 'rb') as file:
                             try:
                                 libelf = ReadElf(file, sys.stdout)
                             except ELFError:
@@ -496,7 +495,7 @@ def scan_autoload_path(autoload_path):
             scan_autoload_path(dpath)
         if os.path.isfile(dpath):
             try:
-                file = io.open(dpath, 'rb')
+                file = open(dpath, 'rb')
                 readelf = ReadElf(file, sys.stdout)
             except ELFError:
                 # this is likely not an elf file, skip it
@@ -523,7 +522,7 @@ def scan_for_autoload_pmds(dpdk_path):
             print("Must specify a file name")
         return
 
-    file = io.open(dpdk_path, 'rb')
+    file = open(dpdk_path, 'rb')
     try:
         readelf = ReadElf(file, sys.stdout)
     except ElfError:
@@ -618,7 +617,7 @@ def main(stream=None):
         print("File not found")
         sys.exit(1)
 
-    with io.open(myelffile, 'rb') as file:
+    with open(myelffile, 'rb') as file:
         try:
             readelf = ReadElf(file, sys.stdout)
             readelf.process_dt_needed_entries()
