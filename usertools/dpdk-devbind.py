@@ -143,7 +143,7 @@ def get_pci_device_details(dev_id, probe_lspci):
         extra_info = subprocess.check_output(["lspci", "-vmmks", dev_id]).splitlines()
         # parse lspci details
         for line in extra_info:
-            if len(line) == 0:
+            if not line:
                 continue
             name, value = line.decode("utf8").split("\t", 1)
             name = name.strip(":") + "_str"
@@ -178,7 +178,7 @@ def get_device_details(devices_type):
     dev = {}
     dev_lines = subprocess.check_output(["lspci", "-Dvmmnnk"]).splitlines()
     for dev_line in dev_lines:
-        if len(dev_line) == 0:
+        if not dev_line:
             if device_type_match(dev, devices_type):
                 # Replace "Driver" with "Driver_str" to have consistency of
                 # of dictionary key names
@@ -193,7 +193,7 @@ def get_device_details(devices_type):
         else:
             name, value = dev_line.decode("utf8").split("\t", 1)
             value_list = value.rsplit(' ', 1)
-            if len(value_list) > 1:
+            if value_list:
                 # String stored in <name>_str
                 dev[name.rstrip(":") + '_str'] = value_list[0]
             # Numeric IDs
@@ -495,7 +495,7 @@ def display_devices(title, dev_list, extra_params=None):
     strings = []  # this holds the strings to print. We sort before printing
     print("\n%s" % title)
     print("="*len(title))
-    if len(dev_list) == 0:
+    if not dev_list:
         strings.append("<none>")
     else:
         for dev in dev_list:
@@ -538,17 +538,17 @@ def show_device_status(devices_type, device_name, if_field=False):
         return
 
     # print each category separately, so we can clearly see what's used by DPDK
-    if len(dpdk_drv) != 0:
+    if dpdk_drv:
         display_devices("%s devices using DPDK-compatible driver" % device_name,
                         dpdk_drv, "drv=%(Driver_str)s unused=%(Module_str)s")
-    if len(kernel_drv) != 0:
+    if kernel_drv:
         if_text = ""
         if if_field:
             if_text = "if=%(Interface)s "
         display_devices("%s devices using kernel driver" % device_name, kernel_drv,
                         if_text + "drv=%(Driver_str)s "
                         "unused=%(Module_str)s %(Active)s")
-    if len(no_drv) != 0:
+    if no_drv:
         display_devices("Other %s devices" % device_name, no_drv,
                         "unused=%(Module_str)s")
 

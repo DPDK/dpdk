@@ -185,7 +185,7 @@ class PCIIds:
         return None
 
     def parse(self):
-        if len(self.contents) < 1:
+        if not self.contents:
             print("data/%s-pci.ids not found" % self.date)
         else:
             vendorID = ""
@@ -193,7 +193,7 @@ class PCIIds:
             for l in self.contents:
                 if l[0] == "#":
                     continue
-                elif len(l.strip()) == 0:
+                elif not l.strip():
                     continue
                 else:
                     if l.find("\t\t") == 0:
@@ -307,7 +307,7 @@ class ReadElf(object):
             except KeyError:
                 continue
 
-        if len(pmdinfo["pci_ids"]) != 0:
+        if pmdinfo["pci_ids"]:
             print("PMD HW SUPPORT:")
             if pcidb is not None:
                 self.pretty_print_pmdinfo(pmdinfo)
