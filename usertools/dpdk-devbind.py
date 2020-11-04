@@ -13,15 +13,15 @@ from os.path import join as path_join
 
 # The PCI base class for all devices
 network_class = {'Class': '02', 'Vendor': None, 'Device': None,
-                    'SVendor': None, 'SDevice': None}
+                 'SVendor': None, 'SDevice': None}
 acceleration_class = {'Class': '12', 'Vendor': None, 'Device': None,
                       'SVendor': None, 'SDevice': None}
 ifpga_class = {'Class': '12', 'Vendor': '8086', 'Device': '0b30',
-                    'SVendor': None, 'SDevice': None}
+               'SVendor': None, 'SDevice': None}
 encryption_class = {'Class': '10', 'Vendor': None, 'Device': None,
-                   'SVendor': None, 'SDevice': None}
+                    'SVendor': None, 'SDevice': None}
 intel_processor_class = {'Class': '0b', 'Vendor': '8086', 'Device': None,
-                   'SVendor': None, 'SDevice': None}
+                         'SVendor': None, 'SDevice': None}
 cavium_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a04b,a04d',
               'SVendor': None, 'SDevice': None}
 cavium_fpa = {'Class': '08', 'Vendor': '177d', 'Device': 'a053',
@@ -33,29 +33,30 @@ cavium_tim = {'Class': '08', 'Vendor': '177d', 'Device': 'a051',
 cavium_zip = {'Class': '12', 'Vendor': '177d', 'Device': 'a037',
               'SVendor': None, 'SDevice': None}
 avp_vnic = {'Class': '05', 'Vendor': '1af4', 'Device': '1110',
-              'SVendor': None, 'SDevice': None}
+            'SVendor': None, 'SDevice': None}
 
 octeontx2_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f9,a0fa',
-              'SVendor': None, 'SDevice': None}
+                 'SVendor': None, 'SDevice': None}
 octeontx2_npa = {'Class': '08', 'Vendor': '177d', 'Device': 'a0fb,a0fc',
-              'SVendor': None, 'SDevice': None}
+                 'SVendor': None, 'SDevice': None}
 octeontx2_dma = {'Class': '08', 'Vendor': '177d', 'Device': 'a081',
-              'SVendor': None, 'SDevice': None}
+                 'SVendor': None, 'SDevice': None}
 octeontx2_ree = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f4',
-              'SVendor': None, 'SDevice': None}
+                 'SVendor': None, 'SDevice': None}
 
-intel_ioat_bdw = {'Class': '08', 'Vendor': '8086', 'Device': '6f20,6f21,6f22,6f23,6f24,6f25,6f26,6f27,6f2e,6f2f',
-              'SVendor': None, 'SDevice': None}
+intel_ioat_bdw = {'Class': '08', 'Vendor': '8086',
+                  'Device': '6f20,6f21,6f22,6f23,6f24,6f25,6f26,6f27,6f2e,6f2f',
+                  'SVendor': None, 'SDevice': None}
 intel_ioat_skx = {'Class': '08', 'Vendor': '8086', 'Device': '2021',
-              'SVendor': None, 'SDevice': None}
+                  'SVendor': None, 'SDevice': None}
 intel_ioat_icx = {'Class': '08', 'Vendor': '8086', 'Device': '0b00',
-              'SVendor': None, 'SDevice': None}
+                  'SVendor': None, 'SDevice': None}
 intel_idxd_spr = {'Class': '08', 'Vendor': '8086', 'Device': '0b25',
-              'SVendor': None, 'SDevice': None}
+                  'SVendor': None, 'SDevice': None}
 intel_ntb_skx = {'Class': '06', 'Vendor': '8086', 'Device': '201c',
-              'SVendor': None, 'SDevice': None}
+                 'SVendor': None, 'SDevice': None}
 intel_ntb_icx = {'Class': '06', 'Vendor': '8086', 'Device': '347e',
-              'SVendor': None, 'SDevice': None}
+                 'SVendor': None, 'SDevice': None}
 
 network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
 baseband_devices = [acceleration_class]
@@ -281,7 +282,7 @@ def get_device_details(devices_type):
         route = subprocess.check_output(["ip", "-o", "route"])
         # filter out all lines for 169.254 routes
         route = "\n".join(filter(lambda ln: not ln.startswith("169.254"),
-                             route.decode().splitlines()))
+                                 route.decode().splitlines()))
         rt_info = route.split()
         for i in range(len(rt_info) - 1):
             if rt_info[i] == "dev":
@@ -440,8 +441,8 @@ def bind_one(dev_id, driver, force):
                 return
             try:
                 # Convert Device and Vendor Id to int to write to new_id
-                f.write("%04x %04x" % (int(dev["Vendor"],16),
-                        int(dev["Device"], 16)))
+                f.write("%04x %04x" % (int(dev["Vendor"], 16),
+                                       int(dev["Device"], 16)))
                 f.close()
             except:
                 print("Error: bind failed for %s - Cannot write new PCI ID to "
@@ -483,13 +484,13 @@ def bind_one(dev_id, driver, force):
             f = open(filename, "w")
         except:
             sys.exit("Error: unbind failed for %s - Cannot open %s"
-                  % (dev_id, filename))
+                     % (dev_id, filename))
         try:
             f.write("\00")
             f.close()
         except:
             sys.exit("Error: unbind failed for %s - Cannot open %s"
-                  % (dev_id, filename))
+                     % (dev_id, filename))
 
 
 def unbind_all(dev_list, force=False):
@@ -530,7 +531,7 @@ def bind_all(dev_list, driver, force=False):
         pass
 
     # check if we're attempting to bind to a driver that isn't loaded
-    if not module_is_loaded(driver.replace('-','_')):
+    if not module_is_loaded(driver.replace('-', '_')):
         sys.exit("Error: Driver '%s' is not loaded." % driver)
 
     try:
@@ -575,9 +576,9 @@ def display_devices(title, dev_list, extra_params=None):
         for dev in dev_list:
             if extra_params is not None:
                 strings.append("%s '%s %s' %s" % (dev["Slot"],
-                                               dev["Device_str"],
-                                               dev["Device"],
-                                               extra_params % dev))
+                                                  dev["Device_str"],
+                                                  dev["Device"],
+                                                  extra_params % dev))
             else:
                 strings.append("%s '%s'" % (dev["Slot"], dev["Device_str"]))
     # sort before printing, so that the entries appear in PCI order
@@ -647,7 +648,7 @@ def show_status():
         show_device_status(mempool_devices, "Mempool")
 
     if status_dev == "compress" or status_dev == "all":
-        show_device_status(compress_devices , "Compress")
+        show_device_status(compress_devices, "Compress")
 
     if status_dev == "misc" or status_dev == "all":
         show_device_status(misc_devices, "Misc (rawdev)")

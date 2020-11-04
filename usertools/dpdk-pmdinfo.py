@@ -331,7 +331,7 @@ class ReadElf(object):
 
         while dataptr < len(data):
             while (dataptr < len(data) and
-                    not 32 <= byte2int(data[dataptr]) <= 127):
+                   not 32 <= byte2int(data[dataptr]) <= 127):
                 dataptr += 1
 
             if dataptr >= len(data):
@@ -397,7 +397,7 @@ class ReadElf(object):
 
         while dataptr < len(data):
             while (dataptr < len(data) and
-                    not 32 <= byte2int(data[dataptr]) <= 127):
+                   not 32 <= byte2int(data[dataptr]) <= 127):
                 dataptr += 1
 
             if dataptr >= len(data):
