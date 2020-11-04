@@ -9,6 +9,10 @@
 
 #define HINIC_AEQN_START		0
 #define HINIC_MAX_AEQS			4
+#define HINIC_MIN_AEQS			2
+#define HINIC_AEQN_0			0
+#define HINIC_AEQN_1			1
+#define HINIC_AEQN_2			2
 
 #define HINIC_EQ_MAX_PAGES		8
 

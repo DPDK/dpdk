@@ -470,10 +470,10 @@ int hinic_comm_aeqs_init(struct hinic_hwdev *hwdev)
 	struct irq_info aeq_irqs[HINIC_MAX_AEQS];
 
 	num_aeqs = HINIC_HWIF_NUM_AEQS(hwdev->hwif);
-	if (num_aeqs < HINIC_MAX_AEQS) {
-		PMD_DRV_LOG(ERR, "Warning: PMD need %d AEQs, Chip have %d",
-			HINIC_MAX_AEQS, num_aeqs);
-		return HINIC_ERROR;
+	if (num_aeqs < HINIC_MIN_AEQS) {
+		PMD_DRV_LOG(ERR, "PMD need %d AEQs, Chip has %d\n",
+				HINIC_MIN_AEQS, num_aeqs);
+		return -EINVAL;
 	}
 
 	memset(aeq_irqs, 0, sizeof(aeq_irqs));

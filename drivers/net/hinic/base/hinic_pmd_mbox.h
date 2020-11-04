@@ -5,9 +5,6 @@
 #ifndef _HINIC_PMD_MBOX_H_
 #define _HINIC_PMD_MBOX_H_
 
-#define HINIC_MBOX_RECV_AEQN		0
-#define HINIC_MBOX_RSP_AEQN		2
-
 #define HINIC_MBOX_PF_SEND_ERR		0x1
 #define HINIC_MBOX_PF_BUSY_ACTIVE_FW	0x2
 #define HINIC_MBOX_VF_CMD_ERROR		0x3
@@ -69,7 +66,7 @@ struct hinic_mbox_func_to_func {
 	struct hinic_recv_mbox mbox_resp[HINIC_MAX_FUNCTIONS];
 	struct hinic_recv_mbox mbox_send[HINIC_MAX_FUNCTIONS];
 
-	struct hinic_eq *rsp_aeq;
+	struct hinic_eq *ack_aeq;
 	struct hinic_eq *recv_aeq;
 
 	u8 send_msg_id;
