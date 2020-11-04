@@ -338,14 +338,22 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			 * representors (more than 4K) or PFs (more than 15)
 			 * this approach must be reconsidered.
 			 */
-			if ((info->switch_info.port_id >>
-				MLX5_PORT_ID_BONDING_PF_SHIFT) ||
+			/* Switch port ID for VF representors: 0 - 0xFFE */
+			if ((info->switch_info.port_id != 0xffff &&
+				info->switch_info.port_id >=
+				((1 << MLX5_PORT_ID_BONDING_PF_SHIFT) - 1)) ||
 			    priv->pf_bond > MLX5_PORT_ID_BONDING_PF_MASK) {
 				DRV_LOG(ERR, "can't update switch port ID"
 					     " for bonding device");
 				MLX5_ASSERT(false);
 				return -ENODEV;
 			}
+			/*
+			 * Switch port ID for Host PF representor
+			 * (representor_id is -1) , set to 0xFFF
+			 */
+			if (info->switch_info.port_id == 0xffff)
+				info->switch_info.port_id = 0xfff;
 			info->switch_info.port_id |=
 				priv->pf_bond << MLX5_PORT_ID_BONDING_PF_SHIFT;
 		}
