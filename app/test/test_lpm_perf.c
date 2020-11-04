@@ -453,6 +453,7 @@ test_lpm_rcu_qsbr_writer(void *arg)
 					next_hop_add) != 0) {
 				printf("Failed to add iteration %d, route# %d\n",
 					i, j);
+				goto error;
 			}
 			pthread_mutex_unlock(&lpm_mutex);
 		}
@@ -464,6 +465,7 @@ test_lpm_rcu_qsbr_writer(void *arg)
 				large_ldepth_route_table[j].depth) != 0) {
 				printf("Failed to delete iteration %d, route# %d\n",
 					i, j);
+				goto error;
 			}
 			pthread_mutex_unlock(&lpm_mutex);
 		}
@@ -474,6 +476,10 @@ test_lpm_rcu_qsbr_writer(void *arg)
 	__atomic_fetch_add(&gwrite_cycles, total_cycles, __ATOMIC_RELAXED);
 
 	return 0;
+
+error:
+	pthread_mutex_unlock(&lpm_mutex);
+	return -1;
 }
 
 /*
@@ -947,9 +953,11 @@ test_lpm_perf(void)
 	rte_lpm_delete_all(lpm);
 	rte_lpm_free(lpm);
 
-	test_lpm_rcu_perf();
+	if (test_lpm_rcu_perf() < 0)
+		return -1;
 
-	test_lpm_rcu_perf_multi_writer();
+	if (test_lpm_rcu_perf_multi_writer() < 0)
+		return -1;
 
 	return 0;
 }
