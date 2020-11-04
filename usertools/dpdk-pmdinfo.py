@@ -11,7 +11,6 @@ import json
 import io
 import os
 import platform
-import string
 import sys
 from elftools.common.exceptions import ELFError
 from elftools.common.py3compat import byte2int
@@ -229,7 +228,7 @@ class PCIIds:
 
 def search_file(filename, search_path):
     """ Given a search path, find file with requested name """
-    for path in string.split(search_path, ":"):
+    for path in search_path.split(':'):
         candidate = os.path.join(path, filename)
         if os.path.exists(candidate):
             return os.path.abspath(candidate)
