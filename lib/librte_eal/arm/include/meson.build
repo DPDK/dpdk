@@ -14,6 +14,7 @@ arch_headers = files(
 	'rte_cycles.h',
 	'rte_io_64.h',
 	'rte_io.h',
+	'rte_mcslock.h',
 	'rte_memcpy_32.h',
 	'rte_memcpy_64.h',
 	'rte_memcpy.h',
@@ -26,6 +27,7 @@ arch_headers = files(
 	'rte_prefetch.h',
 	'rte_rwlock.h',
 	'rte_spinlock.h',
+	'rte_ticketlock.h',
 	'rte_vect.h',
 )
 install_headers(arch_headers, subdir: get_option('include_subdir_arch'))
