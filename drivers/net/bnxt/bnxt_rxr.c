@@ -306,7 +306,6 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	mbuf = tpa_info->mbuf;
 	RTE_ASSERT(mbuf != NULL);
 
-	rte_prefetch0(mbuf);
 	if (agg_bufs) {
 		bnxt_rx_pages(rxq, mbuf, raw_cp_cons, agg_bufs, tpa_info);
 	}
@@ -734,8 +733,6 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (mbuf == NULL)
 		return -EBUSY;
 
-	rte_prefetch0(mbuf);
-
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 	mbuf->nb_segs = 1;
 	mbuf->next = NULL;
@@ -867,7 +864,6 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	/* Handle RX burst request */
 	while (1) {
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
-		rte_prefetch0(&cpr->cp_desc_ring[cons]);
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
 
 		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
