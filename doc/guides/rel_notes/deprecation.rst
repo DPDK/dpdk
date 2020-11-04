@@ -127,11 +127,6 @@ Deprecation Notices
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
 
-* power: ``rte_power_set_env`` function will no longer return 0 on attempt
-  to set new power environment if power environment was already initialized.
-  In this case the function will return -1 unless the environment is unset first
-  (using ``rte_power_unset_env``). Other function usage scenarios will not change.
-
 * cmdline: ``cmdline`` structure will be made opaque to hide platform-specific
   content. On Linux and FreeBSD, supported prior to DPDK 20.11,
   original structure will be kept until DPDK 21.11.
