@@ -23,7 +23,6 @@ static struct rte_rcu_qsbr *rv;
 static volatile uint8_t writer_done;
 static volatile uint32_t thr_id;
 static uint64_t gwrite_cycles;
-static uint64_t gwrites;
 /* LPM APIs are not thread safe, use mutex to provide thread safety */
 static pthread_mutex_t lpm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -59,6 +58,8 @@ static uint32_t num_route_entries;
 static uint32_t num_ldepth_route_entries;
 #define NUM_ROUTE_ENTRIES num_route_entries
 #define NUM_LDEPTH_ROUTE_ENTRIES num_ldepth_route_entries
+
+#define TOTAL_WRITES (RCU_ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES)
 
 enum {
 	IP_CLASS_A,
@@ -432,7 +433,6 @@ test_lpm_rcu_qsbr_writer(void *arg)
 	uint8_t core_id = (uint8_t)((uintptr_t)arg);
 	uint32_t next_hop_add = 0xAA;
 
-	RTE_SET_USED(arg);
 	/* 2 writer threads are used */
 	if (core_id % 2 == 0) {
 		si = 0;
@@ -472,9 +472,6 @@ test_lpm_rcu_qsbr_writer(void *arg)
 	total_cycles = rte_rdtsc_precise() - begin;
 
 	__atomic_fetch_add(&gwrite_cycles, total_cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&gwrites,
-			2 * NUM_LDEPTH_ROUTE_ENTRIES * RCU_ITERATIONS,
-			__ATOMIC_RELAXED);
 
 	return 0;
 }
@@ -528,7 +525,6 @@ test_lpm_rcu_perf_multi_writer(void)
 
 	writer_done = 0;
 	__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&gwrites, 0, __ATOMIC_RELAXED);
 
 	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
 
@@ -548,14 +544,11 @@ test_lpm_rcu_perf_multi_writer(void)
 		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
 
-	printf("Total LPM Adds: %d\n",
-		2 * ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES);
-	printf("Total LPM Deletes: %d\n",
-		2 * ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES);
+	printf("Total LPM Adds: %d\n", TOTAL_WRITES);
+	printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
 	printf("Average LPM Add/Del: %"PRIu64" cycles\n",
-		__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED) /
-			__atomic_load_n(&gwrites, __ATOMIC_RELAXED)
-		);
+		__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED)
+		/ TOTAL_WRITES);
 
 	/* Wait and check return value from reader threads */
 	writer_done = 1;
@@ -581,7 +574,6 @@ test_lpm_rcu_perf_multi_writer(void)
 
 	writer_done = 0;
 	__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&gwrites, 0, __ATOMIC_RELAXED);
 	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
 
 	/* Launch reader threads */
@@ -600,14 +592,11 @@ test_lpm_rcu_perf_multi_writer(void)
 		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
 
-	printf("Total LPM Adds: %d\n",
-		2 * ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES);
-	printf("Total LPM Deletes: %d\n",
-		2 * ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES);
+	printf("Total LPM Adds: %d\n", TOTAL_WRITES);
+	printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
 	printf("Average LPM Add/Del: %"PRIu64" cycles\n",
-		__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED) /
-			__atomic_load_n(&gwrites, __ATOMIC_RELAXED)
-		);
+		__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED)
+		/ TOTAL_WRITES);
 
 	writer_done = 1;
 	/* Wait and check return value from reader threads */
@@ -711,11 +700,10 @@ test_lpm_rcu_perf(void)
 	}
 	total_cycles = rte_rdtsc_precise() - begin;
 
-	printf("Total LPM Adds: %d\n", ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES);
-	printf("Total LPM Deletes: %d\n",
-		ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES);
+	printf("Total LPM Adds: %d\n", TOTAL_WRITES);
+	printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
 	printf("Average LPM Add/Del: %g cycles\n",
-		(double)total_cycles / (NUM_LDEPTH_ROUTE_ENTRIES * ITERATIONS));
+		(double)total_cycles / TOTAL_WRITES);
 
 	writer_done = 1;
 	/* Wait and check return value from reader threads */
@@ -771,11 +759,10 @@ test_lpm_rcu_perf(void)
 	}
 	total_cycles = rte_rdtsc_precise() - begin;
 
-	printf("Total LPM Adds: %d\n", ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES);
-	printf("Total LPM Deletes: %d\n",
-		ITERATIONS * NUM_LDEPTH_ROUTE_ENTRIES);
+	printf("Total LPM Adds: %d\n", TOTAL_WRITES);
+	printf("Total LPM Deletes: %d\n", TOTAL_WRITES);
 	printf("Average LPM Add/Del: %g cycles\n",
-		(double)total_cycles / (NUM_LDEPTH_ROUTE_ENTRIES * ITERATIONS));
+		(double)total_cycles / TOTAL_WRITES);
 
 	writer_done = 1;
 	/* Wait and check return value from reader threads */
