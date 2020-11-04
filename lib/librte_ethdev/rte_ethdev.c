@@ -411,7 +411,9 @@ eth_dev_is_allocated(const struct rte_eth_dev *ethdev)
 static struct rte_eth_dev *
 eth_dev_allocated(const char *name)
 {
-	unsigned i;
+	uint16_t i;
+
+	RTE_BUILD_BUG_ON(RTE_MAX_ETHPORTS >= UINT16_MAX);
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (rte_eth_devices[i].data != NULL &&
@@ -440,7 +442,7 @@ rte_eth_dev_allocated(const char *name)
 static uint16_t
 eth_dev_find_free_port(void)
 {
-	unsigned i;
+	uint16_t i;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		/* Using shared name field to find a free port. */
@@ -816,7 +818,7 @@ rte_eth_dev_get_name_by_port(uint16_t port_id, char *name)
 int
 rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id)
 {
-	uint32_t pid;
+	uint16_t pid;
 
 	if (name == NULL) {
 		RTE_ETHDEV_LOG(ERR, "Null pointer is specified\n");
@@ -4293,7 +4295,7 @@ rte_eth_mirror_rule_reset(uint16_t port_id, uint8_t rule_id)
 
 RTE_INIT(eth_dev_init_cb_lists)
 {
-	int i;
+	uint16_t i;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
 		TAILQ_INIT(&rte_eth_devices[i].link_intr_cbs);
@@ -4306,7 +4308,7 @@ rte_eth_dev_callback_register(uint16_t port_id,
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_callback *user_cb;
-	uint32_t next_port; /* size is 32-bit to prevent loop wrap-around */
+	uint16_t next_port;
 	uint16_t last_port;
 
 	if (!cb_fn)
@@ -4369,7 +4371,7 @@ rte_eth_dev_callback_unregister(uint16_t port_id,
 	int ret;
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_callback *cb, *next;
-	uint32_t next_port; /* size is 32-bit to prevent loop wrap-around */
+	uint16_t next_port;
 	uint16_t last_port;
 
 	if (!cb_fn)
@@ -5426,7 +5428,7 @@ static struct rte_eth_dev_switch {
 int
 rte_eth_switch_domain_alloc(uint16_t *domain_id)
 {
-	unsigned int i;
+	uint16_t i;
 
 	*domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
 
