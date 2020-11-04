@@ -9,7 +9,7 @@ import subprocess
 import argparse
 
 from glob import glob
-from os.path import exists, abspath, dirname, basename
+from os.path import exists, basename
 from os.path import join as path_join
 
 # The PCI base class for all devices
@@ -341,7 +341,7 @@ def bind_one(dev_id, driver, force):
     # of unbinding those devices
     if driver in dpdk_drivers:
         filename = "/sys/bus/pci/devices/%s/driver_override" % dev_id
-        if os.path.exists(filename):
+        if exists(filename):
             try:
                 f = open(filename, "w")
             except:
@@ -404,7 +404,7 @@ def bind_one(dev_id, driver, force):
     # Before unbinding it, overwrite driver_override with empty string so that
     # the device can be bound to any other driver
     filename = "/sys/bus/pci/devices/%s/driver_override" % dev_id
-    if os.path.exists(filename):
+    if exists(filename):
         try:
             f = open(filename, "w")
         except:
@@ -472,7 +472,7 @@ def bind_all(dev_list, driver, force=False):
     # that are not bound to any other driver could be bound even if no one has
     # asked them to. hence, we check the list of drivers again, and see if
     # some of the previously-unbound devices were erroneously bound.
-    if not os.path.exists("/sys/bus/pci/devices/%s/driver_override" % d):
+    if not exists("/sys/bus/pci/devices/%s/driver_override" % d):
         for d in devices.keys():
             # skip devices that were already bound or that we know should be bound
             if "Driver_str" in devices[d] or d in dev_list:
