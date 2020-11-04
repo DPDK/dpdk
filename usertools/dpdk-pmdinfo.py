@@ -11,10 +11,11 @@ import json
 import os
 import platform
 import sys
+import argparse
 from elftools.common.exceptions import ELFError
 from elftools.common.py3compat import byte2int
 from elftools.elf.elffile import ELFFile
-from optparse import OptionParser
+
 
 # For running from development directory. It should take precedence over the
 # installed pyelftools.
@@ -560,56 +561,49 @@ def main(stream=None):
         if not os.path.exists(pcifile_default):
             pcifile_default = "/usr/share/misc/pci_vendors"
 
-    optparser = OptionParser(
-        usage='usage: %prog [-hrtp] [-d <pci id file] <elf-file>',
-        description="Dump pmd hardware support info",
-        add_help_option=True)
-    optparser.add_option('-r', '--raw',
-                         action='store_true', dest='raw_output',
-                         help='Dump raw json strings')
-    optparser.add_option("-d", "--pcidb", dest="pcifile",
-                         help="specify a pci database "
-                              "to get vendor names from",
-                         default=pcifile_default, metavar="FILE")
-    optparser.add_option("-t", "--table", dest="tblout",
-                         help="output information on hw support as a "
-                              "hex table",
-                         action='store_true')
-    optparser.add_option("-p", "--plugindir", dest="pdir",
-                         help="scan dpdk for autoload plugins",
-                         action='store_true')
+    parser = argparse.ArgumentParser(
+        usage='usage: %(prog)s [-hrtp] [-d <pci id file>] elf_file',
+        description="Dump pmd hardware support info")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-r', '--raw',
+                       action='store_true', dest='raw_output',
+                       help='dump raw json strings')
+    group.add_argument("-t", "--table", dest="tblout",
+                       help="output information on hw support as a hex table",
+                       action='store_true')
+    parser.add_argument("-d", "--pcidb", dest="pcifile",
+                        help="specify a pci database to get vendor names from",
+                        default=pcifile_default, metavar="FILE")
+    parser.add_argument("-p", "--plugindir", dest="pdir",
+                        help="scan dpdk for autoload plugins",
+                        action='store_true')
+    parser.add_argument("elf_file", help="driver shared object file")
+    args = parser.parse_args()
 
-    options, args = optparser.parse_args()
-
-    if options.raw_output:
+    if args.raw_output:
         raw_output = True
 
-    if options.pcifile:
-        pcidb = PCIIds(options.pcifile)
+    if args.tblout:
+        args.pcifile = None
+
+    if args.pcifile:
+        pcidb = PCIIds(args.pcifile)
         if pcidb is None:
             print("Pci DB file not found")
             exit(1)
 
-    if options.tblout:
-        options.pcifile = None
-        pcidb = None
-
-    if len(args) == 0:
-        optparser.print_usage()
-        exit(1)
-
-    if options.pdir:
+    if args.pdir:
         exit(scan_for_autoload_pmds(args[0]))
 
     ldlibpath = os.environ.get('LD_LIBRARY_PATH')
     if ldlibpath is None:
         ldlibpath = ""
 
-    if os.path.exists(args[0]):
-        myelffile = args[0]
+    if os.path.exists(args.elf_file):
+        myelffile = args.elf_file
     else:
-        myelffile = search_file(
-            args[0], ldlibpath + ":/usr/lib64:/lib64:/usr/lib:/lib")
+        myelffile = search_file(args.elf_file,
+                                ldlibpath + ":/usr/lib64:/lib64:/usr/lib:/lib")
 
     if myelffile is None:
         print("File not found")

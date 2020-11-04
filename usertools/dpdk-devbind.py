@@ -5,8 +5,9 @@
 
 import sys
 import os
-import getopt
 import subprocess
+import argparse
+
 from glob import glob
 from os.path import exists, abspath, dirname, basename
 from os.path import join as path_join
@@ -82,82 +83,6 @@ b_flag = None
 status_flag = False
 force_flag = False
 args = []
-
-
-def usage():
-    '''Print usage information for the program'''
-    argv0 = basename(sys.argv[0])
-    print("""
-Usage:
-------
-
-     %(argv0)s [options] DEVICE1 DEVICE2 ....
-
-where DEVICE1, DEVICE2 etc, are specified via PCI "domain:bus:slot.func" syntax
-or "bus:slot.func" syntax. For devices bound to Linux kernel drivers, they may
-also be referred to by Linux interface name e.g. eth0, eth1, em0, em1, etc.
-If devices are specified using PCI <domain:>bus:device:func format, then
-shell wildcards and ranges may be used, e.g. 80:04.*, 80:04.[0-3]
-
-Options:
-    --help, --usage:
-        Display usage information and quit
-
-    -s, --status:
-        Print the current status of all known network, crypto, event
-        and mempool devices.
-        For each device, it displays the PCI domain, bus, slot and function,
-        along with a text description of the device. Depending upon whether the
-        device is being used by a kernel driver, the igb_uio driver, or no
-        driver, other relevant information will be displayed:
-        * the Linux interface name e.g. if=eth0
-        * the driver being used e.g. drv=igb_uio
-        * any suitable drivers not currently using that device
-            e.g. unused=igb_uio
-        NOTE: if this flag is passed along with a bind/unbind option, the
-        status display will always occur after the other operations have taken
-        place.
-
-    --status-dev:
-        Print the status of given device group. Supported device groups are:
-        "net", "baseband", "crypto", "event", "mempool" and "compress"
-
-    -b driver, --bind=driver:
-        Select the driver to use or \"none\" to unbind the device
-
-    -u, --unbind:
-        Unbind a device (Equivalent to \"-b none\")
-
-    --force:
-        By default, network devices which are used by Linux - as indicated by
-        having routes in the routing table - cannot be modified. Using the
-        --force flag overrides this behavior, allowing active links to be
-        forcibly unbound.
-        WARNING: This can lead to loss of network connection and should be used
-        with caution.
-
-Examples:
----------
-
-To display current device status:
-        %(argv0)s --status
-
-To display current network device status:
-        %(argv0)s --status-dev net
-
-To bind eth1 from the current driver and move to use igb_uio
-        %(argv0)s --bind=igb_uio eth1
-
-To unbind 0000:01:00.0 from using any driver
-        %(argv0)s -u 0000:01:00.0
-
-To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
-        %(argv0)s -b ixgbe 02:00.0 02:00.1
-
-To bind all functions on device 0000:02:00 to ixgbe kernel driver
-        %(argv0)s -b ixgbe 02:00.*
-
-    """ % locals())  # replace items from local variables
 
 # check if a specific kernel module is loaded
 def module_is_loaded(module):
@@ -677,38 +602,93 @@ def parse_args():
     global status_dev
     global force_flag
     global args
-    if len(sys.argv) <= 1:
-        usage()
-        sys.exit(0)
 
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "b:us",
-                                   ["help", "usage", "status", "status-dev=",
-                                    "force", "bind=", "unbind", ])
-    except getopt.GetoptError as error:
-        print(str(error))
-        print("Run '%s --usage' for further information" % sys.argv[0])
+    parser = argparse.ArgumentParser(
+        description='Utility to bind and unbind devices from Linux kernel',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+---------
+
+To display current device status:
+        %(prog)s --status
+
+To display current network device status:
+        %(prog)s --status-dev net
+
+To bind eth1 from the current driver and move to use vfio-pci
+        %(prog)s --bind=vfio-pci eth1
+
+To unbind 0000:01:00.0 from using any driver
+        %(prog)s -u 0000:01:00.0
+
+To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
+        %(prog)s -b ixgbe 02:00.0 02:00.1
+""")
+
+    parser.add_argument(
+        '-s',
+        '--status',
+        action='store_true',
+        help="Print the current status of all known devices.")
+    parser.add_argument(
+        '--status-dev',
+        help="Print the status of given device group.",
+        choices=['net', 'baseband', 'crypto', 'event', 'mempool', 'compress'])
+    bind_group = parser.add_mutually_exclusive_group()
+    bind_group.add_argument(
+        '-b',
+        '--bind',
+        metavar='DRIVER',
+        help="Select the driver to use or \"none\" to unbind the device")
+    bind_group.add_argument(
+        '-u',
+        '--unbind',
+        action='store_true',
+        help="Unbind a device (equivalent to \"-b none\")")
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help="""
+Override restriction on binding devices in use by Linux"
+WARNING: This can lead to loss of network connection and should be used with caution.
+""")
+    parser.add_argument(
+        'devices',
+        metavar='DEVICE',
+        nargs='*',
+        help="""
+Device specified as PCI "domain:bus:slot.func" syntax or "bus:slot.func" syntax.
+For devices bound to Linux kernel drivers, they may be referred to by interface name.
+""")
+
+    opt = parser.parse_args()
+
+    if opt.status_dev:
+        status_flag = True
+        status_dev = opt.status_dev
+    if opt.status:
+        status_flag = True
+        status_dev = "all"
+    if opt.force:
+        force_flag = True
+    if opt.bind:
+        b_flag = opt.bind
+    elif opt.unbind:
+        b_flag = "none"
+    args = opt.devices
+
+    if not b_flag and not status_flag:
+        print("Error: No action specified for devices. "
+              "Please give a --bind, --ubind or --status option",
+              file=sys.stderr)
+        parser.print_usage()
         sys.exit(1)
 
-    for opt, arg in opts:
-        if opt == "--help" or opt == "--usage":
-            usage()
-            sys.exit(0)
-        if opt == "--status-dev":
-            status_flag = True
-            status_dev = arg
-        if opt == "--status" or opt == "-s":
-            status_flag = True
-            status_dev = "all"
-        if opt == "--force":
-            force_flag = True
-        if opt == "-b" or opt == "-u" or opt == "--bind" or opt == "--unbind":
-            if b_flag is not None:
-                sys.exit("Error: binding and unbinding are mutually exclusive")
-            if opt == "-u" or opt == "--unbind":
-                b_flag = "none"
-            else:
-                b_flag = arg
+    if b_flag and not args:
+        print("Error: No devices specified.", file=sys.stderr)
+        parser.print_usage()
+        sys.exit(1)
 
     # resolve any PCI globs in the args
     new_args = []
@@ -722,17 +702,6 @@ def do_arg_actions():
     global status_flag
     global force_flag
     global args
-
-    if b_flag is None and not status_flag:
-        print("Error: No action specified for devices. "
-              "Please give a -b or -u option", file=sys.stderr)
-        usage()
-        sys.exit(1)
-
-    if b_flag is not None and len(args) == 0:
-        print("Error: No devices specified.", file=sys.stderr)
-        usage()
-        sys.exit(1)
 
     if b_flag == "none" or b_flag == "None":
         unbind_all(args, force_flag)
