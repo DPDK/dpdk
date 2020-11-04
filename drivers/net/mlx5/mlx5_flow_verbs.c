@@ -1247,7 +1247,6 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 	uint64_t last_item = 0;
 	uint8_t next_protocol = 0xff;
 	uint16_t ether_type = 0;
-	char errstr[32];
 
 	if (items == NULL)
 		return -1;
@@ -1398,12 +1397,16 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 				return ret;
 			last_item = MLX5_FLOW_LAYER_MPLS;
 			break;
-		default:
-			snprintf(errstr, sizeof(errstr), "item type %d not supported",
-				 items->type);
+		case RTE_FLOW_ITEM_TYPE_ICMP:
+		case RTE_FLOW_ITEM_TYPE_ICMP6:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  NULL, errstr);
+						  NULL, "ICMP/ICMP6 "
+						  "item not supported");
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "item not supported");
 		}
 		item_flags |= last_item;
 	}
@@ -1698,7 +1701,6 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 	struct mlx5_flow_rss_desc *rss_desc;
-	char errstr[32];
 
 	MLX5_ASSERT(wks);
 	rss_desc = &wks->rss_desc[!!wks->flow_nested_idx];
@@ -1846,11 +1848,9 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			item_flags |= MLX5_FLOW_LAYER_MPLS;
 			break;
 		default:
-			snprintf(errstr, sizeof(errstr), "item type %d not supported",
-				 items->type);
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  NULL, errstr);
+						  NULL, "item not supported");
 		}
 	}
 	dev_flow->handle->layers = item_flags;
