@@ -9568,6 +9568,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		.external = !!dev_flow->external,
 		.transfer = !!attr->transfer,
 		.fdb_def_rule = !!priv->fdb_def_rule,
+		.skip_scale = !!dev_flow->skip_scale,
 	};
 
 	MLX5_ASSERT(wks);
@@ -9929,6 +9930,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			jump_group = ((const struct rte_flow_action_jump *)
 							action->conf)->group;
 			grp_info.std_tbl_fix = 0;
+			grp_info.skip_scale = 0;
 			ret = mlx5_flow_group_to_table(dev, tunnel,
 						       jump_group,
 						       &table,

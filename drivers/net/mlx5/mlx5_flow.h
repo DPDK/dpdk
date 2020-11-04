@@ -761,6 +761,7 @@ struct mlx5_flow_verbs_workspace {
 #define MLX5_NUM_MAX_DEV_FLOWS 32
 
 /** Device flow structure. */
+__extension__
 struct mlx5_flow {
 	struct rte_flow *flow; /**< Pointer to the main flow. */
 	uint32_t flow_idx; /**< The memory pool index to the main flow. */
@@ -768,7 +769,9 @@ struct mlx5_flow {
 	uint64_t act_flags;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	bool external; /**< true if the flow is created external to PMD. */
-	uint8_t ingress; /**< 1 if the flow is ingress. */
+	uint8_t ingress:1; /**< 1 if the flow is ingress. */
+	uint8_t skip_scale:1;
+	/**< 1 if skip the scale the table with factor. */
 	union {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		struct mlx5_flow_dv_workspace dv;
@@ -1094,6 +1097,15 @@ struct mlx5_flow_workspace {
 	int flow_nested_idx; /* Intermediate device flow index, nested. */
 };
 
+struct mlx5_flow_split_info {
+	bool external;
+	/**< True if flow is created by request external to PMD. */
+	uint8_t skip_scale; /**< Skip the scale the table with factor. */
+	uint32_t flow_idx; /**< This memory pool index to the flow. */
+	uint32_t prefix_mark; /**< Prefix subflow mark flag. */
+	uint64_t prefix_layers; /**< Prefix subflow layers. */
+};
+
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    const struct rte_flow_item items[],
@@ -1211,6 +1223,7 @@ struct flow_grp_info {
 	uint64_t fdb_def_rule:1;
 	/* force standard group translation */
 	uint64_t std_tbl_fix:1;
+	uint64_t skip_scale:1;
 };
 
 static inline bool

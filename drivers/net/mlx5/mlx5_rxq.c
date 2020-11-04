@@ -2322,6 +2322,8 @@ int mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hrxq_idx)
 	struct mlx5_hrxq *hrxq;
 
 	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
+	if (!hrxq)
+		return 0;
 	if (!hrxq->standalone)
 		return mlx5_cache_unregister(&priv->hrxqs, &hrxq->entry);
 	__mlx5_hrxq_remove(dev, hrxq);

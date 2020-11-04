@@ -4304,20 +4304,14 @@ flow_tunnel_add_default_miss(struct rte_eth_dev *dev,
  *   Parent flow structure pointer.
  * @param[in, out] sub_flow
  *   Pointer to return the created subflow, may be NULL.
- * @param[in] prefix_layers
- *   Prefix subflow layers, may be 0.
- * @param[in] prefix_mark
- *   Prefix subflow mark flag, may be 0.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
  *   Pattern specification (list terminated by the END pattern item).
  * @param[in] actions
  *   Associated actions (list terminated by the END action).
- * @param[in] external
- *   This flow rule is created by request external to PMD.
- * @param[in] flow_idx
- *   This memory pool index to the flow.
+ * @param[in] flow_split_info
+ *   Pointer to flow split info structure.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -4327,22 +4321,21 @@ static int
 flow_create_split_inner(struct rte_eth_dev *dev,
 			struct rte_flow *flow,
 			struct mlx5_flow **sub_flow,
-			uint64_t prefix_layers,
-			uint32_t prefix_mark,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item items[],
 			const struct rte_flow_action actions[],
-			bool external, uint32_t flow_idx,
+			struct mlx5_flow_split_info *flow_split_info,
 			struct rte_flow_error *error)
 {
 	struct mlx5_flow *dev_flow;
 
 	dev_flow = flow_drv_prepare(dev, flow, attr, items, actions,
-		flow_idx, error);
+				    flow_split_info->flow_idx, error);
 	if (!dev_flow)
 		return -rte_errno;
 	dev_flow->flow = flow;
-	dev_flow->external = external;
+	dev_flow->external = flow_split_info->external;
+	dev_flow->skip_scale = flow_split_info->skip_scale;
 	/* Subflow object was created, we must include one in the list. */
 	SILIST_INSERT(&flow->dev_handles, dev_flow->handle_idx,
 		      dev_flow->handle, next);
@@ -4351,9 +4344,9 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 	 * flow may need some user defined item layer flags, and pass the
 	 * Metadate rxq mark flag to suffix flow as well.
 	 */
-	if (prefix_layers)
-		dev_flow->handle->layers = prefix_layers;
-	if (prefix_mark)
+	if (flow_split_info->prefix_layers)
+		dev_flow->handle->layers = flow_split_info->prefix_layers;
+	if (flow_split_info->prefix_mark)
 		dev_flow->handle->mark = 1;
 	if (sub_flow)
 		*sub_flow = dev_flow;
@@ -4907,20 +4900,14 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
  *   Pointer to Ethernet device.
  * @param[in] flow
  *   Parent flow structure pointer.
- * @param[in] prefix_layers
- *   Prefix flow layer flags.
- * @param[in] prefix_mark
- *   Prefix subflow mark flag, may be 0.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
  *   Pattern specification (list terminated by the END pattern item).
  * @param[in] actions
  *   Associated actions (list terminated by the END action).
- * @param[in] external
- *   This flow rule is created by request external to PMD.
- * @param[in] flow_idx
- *   This memory pool index to the flow.
+ * @param[in] flow_split_info
+ *   Pointer to flow split info structure.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -4929,12 +4916,10 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 static int
 flow_create_split_metadata(struct rte_eth_dev *dev,
 			   struct rte_flow *flow,
-			   uint64_t prefix_layers,
-			   uint32_t prefix_mark,
 			   const struct rte_flow_attr *attr,
 			   const struct rte_flow_item items[],
 			   const struct rte_flow_action actions[],
-			   bool external, uint32_t flow_idx,
+			   struct mlx5_flow_split_info *flow_split_info,
 			   struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -4953,10 +4938,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	if (!config->dv_flow_en ||
 	    config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
 	    !mlx5_flow_ext_mreg_supported(dev))
-		return flow_create_split_inner(dev, flow, NULL, prefix_layers,
-					       prefix_mark, attr, items,
-					       actions, external, flow_idx,
-					       error);
+		return flow_create_split_inner(dev, flow, NULL, attr, items,
+					       actions, flow_split_info, error);
 	actions_n = flow_parse_metadata_split_actions_info(actions, &qrss,
 							   &encap_idx);
 	if (qrss) {
@@ -5041,10 +5024,9 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			goto exit;
 	}
 	/* Add the unmodified original or prefix subflow. */
-	ret = flow_create_split_inner(dev, flow, &dev_flow, prefix_layers,
-				      prefix_mark, attr,
+	ret = flow_create_split_inner(dev, flow, &dev_flow, attr,
 				      items, ext_actions ? ext_actions :
-				      actions, external, flow_idx, error);
+				      actions, flow_split_info, error);
 	if (ret < 0)
 		goto exit;
 	MLX5_ASSERT(dev_flow);
@@ -5105,10 +5087,12 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		}
 		dev_flow = NULL;
 		/* Add suffix subflow to execute Q/RSS. */
-		ret = flow_create_split_inner(dev, flow, &dev_flow, layers, 0,
+		flow_split_info->prefix_layers = layers;
+		flow_split_info->prefix_mark = 0;
+		ret = flow_create_split_inner(dev, flow, &dev_flow,
 					      &q_attr, mtr_sfx ? items :
 					      q_items, q_actions,
-					      external, flow_idx, error);
+					      flow_split_info, error);
 		if (ret < 0)
 			goto exit;
 		/* qrss ID should be freed if failed. */
@@ -5142,20 +5126,14 @@ exit:
  *   Pointer to Ethernet device.
  * @param[in] flow
  *   Parent flow structure pointer.
- * @param[in] prefix_layers
- *   Prefix subflow layers, may be 0.
- * @param[in] prefix_mark
- *   Prefix subflow mark flag, may be 0.
  * @param[in] attr
  *   Flow rule attributes.
  * @param[in] items
  *   Pattern specification (list terminated by the END pattern item).
  * @param[in] actions
  *   Associated actions (list terminated by the END action).
- * @param[in] external
- *   This flow rule is created by request external to PMD.
- * @param[in] flow_idx
- *   This memory pool index to the flow.
+ * @param[in] flow_split_info
+ *   Pointer to flow split info structure.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -5164,12 +5142,10 @@ exit:
 static int
 flow_create_split_meter(struct rte_eth_dev *dev,
 			struct rte_flow *flow,
-			uint64_t prefix_layers,
-			uint32_t prefix_mark,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item items[],
 			const struct rte_flow_action actions[],
-			bool external, uint32_t flow_idx,
+			struct mlx5_flow_split_info *flow_split_info,
 			struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5213,11 +5189,10 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			goto exit;
 		}
 		/* Add the prefix subflow. */
+		flow_split_info->prefix_mark = 0;
 		ret = flow_create_split_inner(dev, flow, &dev_flow,
-					      prefix_layers, 0,
-					      attr, items,
-					      pre_actions, external,
-					      flow_idx, error);
+					      attr, items, pre_actions,
+					      flow_split_info, error);
 		if (ret) {
 			ret = -rte_errno;
 			goto exit;
@@ -5227,16 +5202,16 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		sfx_attr.group = sfx_attr.transfer ?
 				(MLX5_FLOW_TABLE_LEVEL_SUFFIX - 1) :
 				 MLX5_FLOW_TABLE_LEVEL_SUFFIX;
+		flow_split_info->prefix_layers =
+				flow_get_prefix_layer_flags(dev_flow);
+		flow_split_info->prefix_mark = dev_flow->handle->mark;
 	}
 	/* Add the prefix subflow. */
-	ret = flow_create_split_metadata(dev, flow, dev_flow ?
-					 flow_get_prefix_layer_flags(dev_flow) :
-					 prefix_layers, dev_flow ?
-					 dev_flow->handle->mark : prefix_mark,
+	ret = flow_create_split_metadata(dev, flow,
 					 &sfx_attr, sfx_items ?
 					 sfx_items : items,
 					 sfx_actions ? sfx_actions : actions,
-					 external, flow_idx, error);
+					 flow_split_info, error);
 exit:
 	if (sfx_actions)
 		mlx5_free(sfx_actions);
@@ -5268,10 +5243,8 @@ exit:
  *   Pattern specification (list terminated by the END pattern item).
  * @param[in] actions
  *   Associated actions (list terminated by the END action).
- * @param[in] external
- *   This flow rule is created by request external to PMD.
- * @param[in] flow_idx
- *   This memory pool index to the flow.
+ * @param[in] flow_split_info
+ *   Pointer to flow split info structure.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -5283,7 +5256,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 			 const struct rte_flow_attr *attr,
 			 const struct rte_flow_item items[],
 			 const struct rte_flow_action actions[],
-			 bool external, uint32_t flow_idx,
+			 struct mlx5_flow_split_info *flow_split_info,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5340,9 +5313,9 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 			goto exit;
 		}
 		/* Add the prefix subflow. */
-		ret = flow_create_split_inner(dev, flow, &dev_flow, 0, 0, attr,
-					      items, pre_actions, external,
-					      flow_idx, error);
+		ret = flow_create_split_inner(dev, flow, &dev_flow, attr,
+					      items, pre_actions,
+					      flow_split_info, error);
 		if (ret) {
 			ret = -rte_errno;
 			goto exit;
@@ -5360,15 +5333,20 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 		sfx_attr.group = sfx_attr.transfer ?
 					(sfx_table_key.table_id - 1) :
 					 sfx_table_key.table_id;
+		flow_split_info->prefix_layers =
+				flow_get_prefix_layer_flags(dev_flow);
+		flow_split_info->prefix_mark = dev_flow->handle->mark;
+		/* Suffix group level already be scaled with factor, set
+		 * skip_scale to 1 to avoid scale again in translation.
+		 */
+		flow_split_info->skip_scale = 1;
 #endif
 	}
 	/* Add the suffix subflow. */
-	ret = flow_create_split_meter(dev, flow, dev_flow ?
-				 flow_get_prefix_layer_flags(dev_flow) : 0,
-				 dev_flow ? dev_flow->handle->mark : 0,
-				 &sfx_attr, sfx_items ? sfx_items : items,
-				 sfx_actions ? sfx_actions : actions,
-				 external, flow_idx, error);
+	ret = flow_create_split_meter(dev, flow, &sfx_attr,
+				      sfx_items ? sfx_items : items,
+				      sfx_actions ? sfx_actions : actions,
+				      flow_split_info, error);
 exit:
 	if (sfx_actions)
 		mlx5_free(sfx_actions);
@@ -5403,10 +5381,8 @@ exit:
  *   Pattern specification (list terminated by the END pattern item).
  * @param[in] actions
  *   Associated actions (list terminated by the END action).
- * @param[in] external
- *   This flow rule is created by request external to PMD.
- * @param[in] flow_idx
- *   This memory pool index to the flow.
+ * @param[in] flow_split_info
+ *   Pointer to flow split info structure.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -5418,13 +5394,13 @@ flow_create_split_outer(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item items[],
 			const struct rte_flow_action actions[],
-			bool external, uint32_t flow_idx,
+			struct mlx5_flow_split_info *flow_split_info,
 			struct rte_flow_error *error)
 {
 	int ret;
 
 	ret = flow_create_split_sample(dev, flow, attr, items,
-				       actions, external, flow_idx, error);
+				       actions, flow_split_info, error);
 	MLX5_ASSERT(ret <= 0);
 	return ret;
 }
@@ -5543,11 +5519,17 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	uint32_t idx = 0;
 	int hairpin_flow;
 	struct rte_flow_attr attr_tx = { .priority = 0 };
-	struct rte_flow_attr attr_factor = {0};
 	const struct rte_flow_action *actions;
 	struct rte_flow_action *translated_actions = NULL;
 	struct mlx5_flow_tunnel *tunnel;
 	struct tunnel_default_miss_ctx default_miss_ctx = { 0, };
+	struct mlx5_flow_split_info flow_split_info = {
+		.external = !!external,
+		.skip_scale = 0,
+		.flow_idx = 0,
+		.prefix_mark = 0,
+		.prefix_layers = 0
+	};
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 	bool fidx = !!wks->flow_idx;
 	int ret;
@@ -5563,10 +5545,9 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		return 0;
 	}
 	actions = translated_actions ? translated_actions : original_actions;
-	memcpy((void *)&attr_factor, (const void *)attr, sizeof(*attr));
 	p_actions_rx = actions;
-	hairpin_flow = flow_check_hairpin_split(dev, &attr_factor, actions);
-	ret = flow_drv_validate(dev, &attr_factor, items, p_actions_rx,
+	hairpin_flow = flow_check_hairpin_split(dev, attr, actions);
+	ret = flow_drv_validate(dev, attr, items, p_actions_rx,
 				external, hairpin_flow, error);
 	if (ret < 0)
 		goto error_before_hairpin_split;
@@ -5585,7 +5566,8 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 				   idx);
 		p_actions_rx = actions_rx.actions;
 	}
-	flow->drv_type = flow_get_drv_type(dev, &attr_factor);
+	flow_split_info.flow_idx = idx;
+	flow->drv_type = flow_get_drv_type(dev, attr);
 	MLX5_ASSERT(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
 		    flow->drv_type < MLX5_FLOW_TYPE_MAX);
 	memset(rss_desc, 0, offsetof(struct mlx5_flow_rss_desc, queue));
@@ -5627,14 +5609,18 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		wks->flow_nested_idx = fidx;
 	}
 	for (i = 0; i < buf->entries; ++i) {
+		/* Initialize flow split data. */
+		flow_split_info.prefix_layers = 0;
+		flow_split_info.prefix_mark = 0;
+		flow_split_info.skip_scale = 0;
 		/*
 		 * The splitter may create multiple dev_flows,
 		 * depending on configuration. In the simplest
 		 * case it just creates unmodified original flow.
 		 */
-		ret = flow_create_split_outer(dev, flow, &attr_factor,
+		ret = flow_create_split_outer(dev, flow, attr,
 					      buf->entry[i].pattern,
-					      p_actions_rx, external, idx,
+					      p_actions_rx, &flow_split_info,
 					      error);
 		if (ret < 0)
 			goto error;
@@ -5682,8 +5668,8 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	 * the egress Flows belong to the different device and
 	 * copy table should be updated in peer NIC Rx domain.
 	 */
-	if (attr_factor.ingress &&
-	    (external || attr_factor.group != MLX5_FLOW_MREG_CP_TABLE_GROUP)) {
+	if (attr->ingress &&
+	    (external || attr->group != MLX5_FLOW_MREG_CP_TABLE_GROUP)) {
 		ret = flow_mreg_update_copy_table(dev, flow, actions, error);
 		if (ret)
 			goto error;
@@ -7069,7 +7055,8 @@ mlx5_flow_group_to_table(struct rte_eth_dev *dev,
 	int ret;
 	bool standard_translation;
 
-	if (grp_info.external && group < MLX5_MAX_TABLES_EXTERNAL)
+	if (!grp_info.skip_scale && grp_info.external &&
+	    group < MLX5_MAX_TABLES_EXTERNAL)
 		group *= MLX5_FLOW_TABLE_FACTOR;
 	if (is_tunnel_offload_active(dev)) {
 		standard_translation = !grp_info.external ||
