@@ -614,16 +614,18 @@ static int recv_mgmt_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 	u8 *dest_msg;
 	u8 seq_id, seq_len;
 	u32 msg_buf_max = MAX_PF_MGMT_BUF_SIZE;
+	u8 front_id;
 
 	seq_id = HINIC_MSG_HEADER_GET(msg_header, SEQID);
 	seq_len = HINIC_MSG_HEADER_GET(msg_header, SEG_LEN);
+	front_id = recv_msg->sed_id;
 
 	if (!check_mgmt_seq_id_and_seg_len(recv_msg, seq_id, seq_len)) {
 		PMD_DRV_LOG(ERR,
 			"Mgmt msg sequence and segment check failed, "
 			"func id: 0x%x, front id: 0x%x, current id: 0x%x, seg len: 0x%x",
 			hinic_global_func_id(pf_to_mgmt->hwdev),
-			recv_msg->sed_id, seq_id, seq_len);
+			front_id, seq_id, seq_len);
 		return HINIC_ERROR;
 	}
 
