@@ -622,25 +622,30 @@ efx_mae_match_spec_field_set(
 	__in_bcount(mask_size)		const uint8_t *mask)
 {
 	const efx_mae_mv_desc_t *descp;
+	unsigned int desc_set_nentries;
 	uint8_t *mvp;
 	efx_rc_t rc;
 
-	if (field_id >= EFX_MAE_FIELD_NIDS) {
-		rc = EINVAL;
-		goto fail1;
-	}
-
 	switch (spec->emms_type) {
 	case EFX_MAE_RULE_OUTER:
+		desc_set_nentries =
+		    EFX_ARRAY_SIZE(__efx_mae_outer_rule_mv_desc_set);
 		descp = &__efx_mae_outer_rule_mv_desc_set[field_id];
 		mvp = spec->emms_mask_value_pairs.outer;
 		break;
 	case EFX_MAE_RULE_ACTION:
+		desc_set_nentries =
+		    EFX_ARRAY_SIZE(__efx_mae_action_rule_mv_desc_set);
 		descp = &__efx_mae_action_rule_mv_desc_set[field_id];
 		mvp = spec->emms_mask_value_pairs.action;
 		break;
 	default:
 		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (field_id >= desc_set_nentries) {
+		rc = EINVAL;
 		goto fail2;
 	}
 
