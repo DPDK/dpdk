@@ -47,7 +47,8 @@ idxd_pci_dev_command(struct idxd_rawdev *idxd, enum rte_idxd_cmds command)
 static uint32_t *
 idxd_get_wq_cfg(struct idxd_pci_common *pci, uint8_t wq_idx)
 {
-	return RTE_PTR_ADD(pci->wq_regs_base, wq_idx << (5 + pci->wq_cfg_sz));
+	return RTE_PTR_ADD(pci->wq_regs_base,
+			(uintptr_t)wq_idx << (5 + pci->wq_cfg_sz));
 }
 
 static int
