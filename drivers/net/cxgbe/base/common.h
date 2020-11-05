@@ -201,15 +201,15 @@ struct rss_params {
 	unsigned int mode;			/* RSS mode */
 	union {
 		struct {
-			uint synmapen:1;	/* SYN Map Enable */
-			uint syn4tupenipv6:1;	/* en 4-tuple IPv6 SYNs hash */
-			uint syn2tupenipv6:1;	/* en 2-tuple IPv6 SYNs hash */
-			uint syn4tupenipv4:1;	/* en 4-tuple IPv4 SYNs hash */
-			uint syn2tupenipv4:1;	/* en 2-tuple IPv4 SYNs hash */
-			uint ofdmapen:1;	/* Offload Map Enable */
-			uint tnlmapen:1;	/* Tunnel Map Enable */
-			uint tnlalllookup:1;	/* Tunnel All Lookup */
-			uint hashtoeplitz:1;	/* use Toeplitz hash */
+			unsigned int synmapen:1;      /* SYN Map Enable */
+			unsigned int syn4tupenipv6:1; /* en 4-tuple IPv6 SYNs hash */
+			unsigned int syn2tupenipv6:1; /* en 2-tuple IPv6 SYNs hash */
+			unsigned int syn4tupenipv4:1; /* en 4-tuple IPv4 SYNs hash */
+			unsigned int syn2tupenipv4:1; /* en 2-tuple IPv4 SYNs hash */
+			unsigned int ofdmapen:1;      /* Offload Map Enable */
+			unsigned int tnlmapen:1;      /* Tunnel Map Enable */
+			unsigned int tnlalllookup:1;  /* Tunnel All Lookup */
+			unsigned int hashtoeplitz:1;  /* use Toeplitz hash */
 		} basicvirtual;
 	} u;
 };
