@@ -1000,7 +1000,6 @@ dlb_hw_create_ldb_port(struct dlb_eventdev *dlb,
 	/* The credit window is one high water mark of QEs */
 	qm_port->dir_pushcount_at_credit_expiry = 0;
 	qm_port->cached_dir_credits = cfg.dir_credit_high_watermark;
-	qm_port->cq_depth = cfg.cq_depth;
 	/* CQs with depth < 8 use an 8-entry queue, but withhold credits so
 	 * the effective depth is smaller.
 	 */
