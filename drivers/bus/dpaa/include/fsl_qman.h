@@ -16,7 +16,7 @@ extern "C" {
 #include <rte_eventdev.h>
 
 /* FQ lookups (turn this on for 64bit user-space) */
-#if (__WORDSIZE == 64)
+#ifdef RTE_ARCH_64
 #define CONFIG_FSL_QMAN_FQ_LOOKUP
 /* if FQ lookups are supported, this controls the number of initialised,
  * s/w-consumed FQs that can be supported at any one time.
