@@ -6771,9 +6771,6 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 		return -ENOTSUP;
 	}
 
-	if (op_mode == OUT_OF_PLACE)
-		return -ENOTSUP;
-
 	/* Create the session */
 	if (verify)
 		retval = create_wireless_algo_cipher_auth_session(
