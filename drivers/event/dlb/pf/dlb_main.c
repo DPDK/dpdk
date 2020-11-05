@@ -250,13 +250,13 @@ dlb_pf_reset(struct dlb_dev *dlb_dev)
 {
 	int msix_cap_offset, err_cap_offset, acs_cap_offset, wait_count;
 	uint16_t dev_ctl_word, dev_ctl2_word, lnk_word, lnk_word2;
-	uint16_t rt_ctl_word, pri_reqs_dword,  pri_ctrl_word;
+	uint16_t rt_ctl_word, pri_ctrl_word;
 	struct rte_pci_device *pdev = dlb_dev->pdev;
 	uint16_t devsta_busy_word, devctl_word;
 	int pcie_cap_offset, pri_cap_offset;
 	uint16_t slt_word, slt_word2, cmd;
 	int ret = 0, i = 0;
-	uint32_t dword[16];
+	uint32_t dword[16], pri_reqs_dword;
 	off_t off;
 
 	/* Save PCI config state */
