@@ -363,3 +363,49 @@ increase a vdev's per-queue atomic-inflight allocation to (for example) 64:
 
        --vdev=dlb1_event,atm_inflights=64
 
+QID Depth Threshold
+~~~~~~~~~~~~~~~~~~~
+
+DLB2 supports setting and tracking queue depth thresholds. Hardware uses
+the thresholds to track how full a queue is compared to its threshold.
+Four buckets are used
+
+- Less than or equal to 50% of queue depth threshold
+- Greater than 50%, but less than or equal to 75% of depth threshold
+- Greater than 75%, but less than or equal to 100% of depth threshold
+- Greater than 100% of depth thresholds
+
+Per queue threshold metrics are tracked in the DLB2 xstats, and are also
+returned in the impl_opaque field of each received event.
+
+The per qid threshold can be specified as part of the device args, and
+can be applied to all queue, a range of queues, or a single queue, as
+shown below.
+
+    .. code-block:: console
+
+       --vdev=dlb2_event,qid_depth_thresh=all:<threshold_value>
+       --vdev=dlb2_event,qid_depth_thresh=qidA-qidB:<threshold_value>
+       --vdev=dlb2_event,qid_depth_thresh=qid:<threshold_value>
+
+Class of service
+~~~~~~~~~~~~~~~~
+
+DLB2 supports provisioning the DLB2 bandwidth into 4 classes of service.
+
+- Class 4 corresponds to 40% of the DLB2 hardware bandwidth
+- Class 3 corresponds to 30% of the DLB2 hardware bandwidth
+- Class 2 corresponds to 20% of the DLB2 hardware bandwidth
+- Class 1 corresponds to 10% of the DLB2 hardware bandwidth
+- Class 0 corresponds to don't care
+
+The classes are applied globally to the set of ports contained in this
+scheduling domain, which is more appropriate for the bifurcated
+PMD than for the PF PMD, since the PF PMD supports just 1 scheduling
+domain.
+
+Class of service can be specified in the devargs, as follows
+
+    .. code-block:: console
+
+       --vdev=dlb2_event,cos=<0..4>
