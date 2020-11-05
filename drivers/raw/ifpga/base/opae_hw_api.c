@@ -605,10 +605,12 @@ int opae_adapter_enumerate(struct opae_adapter *adapter)
  */
 void opae_adapter_destroy(struct opae_adapter *adapter)
 {
-	if (adapter && adapter->ops && adapter->ops->destroy)
-		adapter->ops->destroy(adapter);
-	opae_adapter_shm_free(adapter);
-	opae_adapter_mutex_close(adapter);
+	if (adapter) {
+		if (adapter->ops && adapter->ops->destroy)
+			adapter->ops->destroy(adapter);
+		opae_adapter_shm_free(adapter);
+		opae_adapter_mutex_close(adapter);
+	}
 }
 
 /**
