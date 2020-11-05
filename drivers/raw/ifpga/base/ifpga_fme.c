@@ -1115,6 +1115,8 @@ static int fme_nios_spi_init(struct ifpga_feature *feature)
 	ret = nios_spi_wait_init_done(spi_master);
 	if (ret != 0) {
 		dev_err(fme, "FME NIOS_SPI init fail\n");
+		if (spi_master->mutex)
+			pthread_mutex_unlock(spi_master->mutex);
 		goto release_dev;
 	}
 
