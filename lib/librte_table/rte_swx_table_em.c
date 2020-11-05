@@ -720,19 +720,19 @@ table_lookup(void *table,
 		uint32_t bkt_key_id;
 
 		bkt_sig0 = input_sig ^ bkt->sig[0];
-		if (bkt_sig0)
+		if (!bkt_sig0)
 			mask0 = 1 << 0;
 
 		bkt_sig1 = input_sig ^ bkt->sig[1];
-		if (bkt_sig1)
+		if (!bkt_sig1)
 			mask1 = 1 << 1;
 
 		bkt_sig2 = input_sig ^ bkt->sig[2];
-		if (bkt_sig2)
+		if (!bkt_sig2)
 			mask2 = 1 << 2;
 
 		bkt_sig3 = input_sig ^ bkt->sig[3];
-		if (bkt_sig3)
+		if (!bkt_sig3)
 			mask3 = 1 << 3;
 
 		mask_all = (mask0 | mask1) | (mask2 | mask3);
