@@ -43,6 +43,12 @@ default_cppflags=$CPPFLAGS
 default_cflags=$CFLAGS
 default_ldflags=$LDFLAGS
 
+check_cc_flags () # <flag to check> <flag2> ...
+{
+	echo 'int main(void) { return 0; }' |
+		cc $@ -x c - -o /dev/null 2> /dev/null
+}
+
 load_env () # <target compiler>
 {
 	targetcc=$1
@@ -52,11 +58,14 @@ load_env () # <target compiler>
 	export CFLAGS=$default_cflags
 	export LDFLAGS=$default_ldflags
 	unset DPDK_MESON_OPTIONS
-	if command -v $targetcc >/dev/null 2>&1 ; then
+	if [ -n "$target_override" ] ; then
+		DPDK_TARGET=$target_override
+	elif command -v $targetcc >/dev/null 2>&1 ; then
 		DPDK_TARGET=$($targetcc -v 2>&1 | sed -n 's,^Target: ,,p')
 	else # toolchain not yet in PATH: its name should be enough
 		DPDK_TARGET=$targetcc
 	fi
+	echo "Using DPDK_TARGET $DPDK_TARGET"
 	# config input: $DPDK_TARGET
 	. $srcdir/devtools/load-devel-config
 	# config output: $DPDK_MESON_OPTIONS, $PATH, $PKG_CONFIG_PATH, etc
@@ -200,11 +209,28 @@ done
 # Set the install path for libraries to "lib" explicitly to prevent problems
 # with pkg-config prefixes if installed in "lib/x86_64-linux-gnu" later.
 default_machine='nehalem'
-ok=$(cc -march=$default_machine -E - < /dev/null > /dev/null 2>&1 || echo false)
-if [ "$ok" = "false" ] ; then
+if ! check_cc_flags "-march=$default_machine" ; then
 	default_machine='corei7'
 fi
 build build-x86-default cc -Dlibdir=lib -Dmachine=$default_machine $use_shared
+
+# 32-bit with default compiler
+if check_cc_flags '-m32' ; then
+	if [ -d '/usr/lib/i386-linux-gnu' ] ; then
+		# 32-bit pkgconfig on Debian/Ubuntu
+		export PKG_CONFIG_LIBDIR='/usr/lib/i386-linux-gnu/pkgconfig'
+	elif [ -d '/usr/lib32' ] ; then
+		# 32-bit pkgconfig on Arch
+		export PKG_CONFIG_LIBDIR='/usr/lib32/pkgconfig'
+	else
+		# 32-bit pkgconfig on RHEL/Fedora (lib vs lib64)
+		export PKG_CONFIG_LIBDIR='/usr/lib/pkgconfig'
+	fi
+	target_override='i386-pc-linux-gnu'
+	build build-32b cc -Dc_args='-m32' -Dc_link_args='-m32'
+	target_override=
+	unset PKG_CONFIG_LIBDIR
+fi
 
 # x86 MinGW
 build build-x86-mingw $srcdir/config/x86/cross-mingw -Dexamples=helloworld
