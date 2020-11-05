@@ -9,6 +9,8 @@
 #include <process.h>
 #include "qman_priv.h"
 #include <sys/ioctl.h>
+#include <err.h>
+
 #include <rte_branch_prediction.h>
 
 /* Global variable containing revision id (even on non-control plane systems
@@ -50,7 +52,8 @@ static int fsl_qman_portal_init(uint32_t index, int is_shared)
 	map.index = index;
 	ret = process_portal_map(&map);
 	if (ret) {
-		error(0, ret, "process_portal_map()");
+		errno = ret;
+		err(0, "process_portal_map()");
 		return ret;
 	}
 	qpcfg.channel = map.channel;
@@ -96,8 +99,10 @@ static int fsl_qman_portal_finish(void)
 	cfg = qman_destroy_affine_portal(NULL);
 	DPAA_BUG_ON(cfg != &qpcfg);
 	ret = process_portal_unmap(&map.addr);
-	if (ret)
-		error(0, ret, "process_portal_unmap()");
+	if (ret) {
+		errno = ret;
+		err(0, "process_portal_unmap()");
+	}
 	return ret;
 }
 
@@ -146,7 +151,8 @@ struct qman_portal *fsl_qman_fq_portal_create(int *fd)
 
 	q_pcfg = kzalloc((sizeof(struct qm_portal_config)), 0);
 	if (!q_pcfg) {
-		error(0, -1, "q_pcfg kzalloc failed");
+		/* kzalloc sets errno */
+		err(0, "q_pcfg kzalloc failed");
 		return NULL;
 	}
 
@@ -155,7 +161,8 @@ struct qman_portal *fsl_qman_fq_portal_create(int *fd)
 	q_map.index = QBMAN_ANY_PORTAL_IDX;
 	ret = process_portal_map(&q_map);
 	if (ret) {
-		error(0, ret, "process_portal_map()");
+		errno = ret;
+		err(0, "process_portal_map()");
 		kfree(q_pcfg);
 		return NULL;
 	}

@@ -30,7 +30,6 @@
 #include <assert.h>
 #include <dirent.h>
 #include <inttypes.h>
-#include <error.h>
 #include <rte_byteorder.h>
 #include <rte_atomic.h>
 #include <rte_spinlock.h>
