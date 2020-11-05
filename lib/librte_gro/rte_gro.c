@@ -32,32 +32,38 @@ static gro_tbl_pkt_count_fn tbl_pkt_count_fn[RTE_GRO_TYPE_MAX_NUM] = {
 			NULL};
 
 #define IS_IPV4_TCP_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
-		((ptype & RTE_PTYPE_L4_TCP) == RTE_PTYPE_L4_TCP))
+		((ptype & RTE_PTYPE_L4_TCP) == RTE_PTYPE_L4_TCP) && \
+		(RTE_ETH_IS_TUNNEL_PKT(ptype) == 0))
 
 #define IS_IPV4_UDP_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
-		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP))
+		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
+		(RTE_ETH_IS_TUNNEL_PKT(ptype) == 0))
 
 #define IS_IPV4_VXLAN_TCP4_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
 		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
 		((ptype & RTE_PTYPE_TUNNEL_VXLAN) == \
 		 RTE_PTYPE_TUNNEL_VXLAN) && \
-		 ((ptype & RTE_PTYPE_INNER_L4_TCP) == \
-		  RTE_PTYPE_INNER_L4_TCP) && \
-		  (((ptype & RTE_PTYPE_INNER_L3_MASK) & \
-		    (RTE_PTYPE_INNER_L3_IPV4 | \
-		     RTE_PTYPE_INNER_L3_IPV4_EXT | \
-		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)) != 0))
+		((ptype & RTE_PTYPE_INNER_L4_TCP) == \
+		 RTE_PTYPE_INNER_L4_TCP) && \
+		(((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		  RTE_PTYPE_INNER_L3_IPV4) || \
+		 ((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		  RTE_PTYPE_INNER_L3_IPV4_EXT) || \
+		 ((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		  RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)))
 
 #define IS_IPV4_VXLAN_UDP4_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
 		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
 		((ptype & RTE_PTYPE_TUNNEL_VXLAN) == \
 		 RTE_PTYPE_TUNNEL_VXLAN) && \
-		 ((ptype & RTE_PTYPE_INNER_L4_UDP) == \
-		  RTE_PTYPE_INNER_L4_UDP) && \
-		  (((ptype & RTE_PTYPE_INNER_L3_MASK) & \
-		    (RTE_PTYPE_INNER_L3_IPV4 | \
-		     RTE_PTYPE_INNER_L3_IPV4_EXT | \
-		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)) != 0))
+		((ptype & RTE_PTYPE_INNER_L4_UDP) == \
+		 RTE_PTYPE_INNER_L4_UDP) && \
+		(((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		  RTE_PTYPE_INNER_L3_IPV4) || \
+		 ((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		  RTE_PTYPE_INNER_L3_IPV4_EXT) || \
+		 ((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		  RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)))
 
 /*
  * GRO context structure. It keeps the table structures, which are
