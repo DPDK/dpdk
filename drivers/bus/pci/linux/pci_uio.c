@@ -526,13 +526,18 @@ error:
 #endif
 
 #if defined(RTE_ARCH_X86)
+
 static inline uint8_t ioread8(void *addr)
 {
 	uint8_t val;
 
 	val = (uint64_t)(uintptr_t)addr >= PIO_MAX ?
 		*(volatile uint8_t *)addr :
+#ifdef __GLIBC__
 		inb_p((unsigned long)addr);
+#else
+		inb((unsigned long)addr);
+#endif
 
 	return val;
 }
@@ -543,7 +548,11 @@ static inline uint16_t ioread16(void *addr)
 
 	val = (uint64_t)(uintptr_t)addr >= PIO_MAX ?
 		*(volatile uint16_t *)addr :
+#ifdef __GLIBC__
 		inw_p((unsigned long)addr);
+#else
+		inw((unsigned long)addr);
+#endif
 
 	return val;
 }
@@ -554,7 +563,11 @@ static inline uint32_t ioread32(void *addr)
 
 	val = (uint64_t)(uintptr_t)addr >= PIO_MAX ?
 		*(volatile uint32_t *)addr :
+#ifdef __GLIBC__
 		inl_p((unsigned long)addr);
+#else
+		inl((unsigned long)addr);
+#endif
 
 	return val;
 }
@@ -563,23 +576,37 @@ static inline void iowrite8(uint8_t val, void *addr)
 {
 	(uint64_t)(uintptr_t)addr >= PIO_MAX ?
 		*(volatile uint8_t *)addr = val :
+#ifdef __GLIBC__
 		outb_p(val, (unsigned long)addr);
+#else
+		outb(val, (unsigned long)addr);
+#endif
 }
 
 static inline void iowrite16(uint16_t val, void *addr)
 {
 	(uint64_t)(uintptr_t)addr >= PIO_MAX ?
 		*(volatile uint16_t *)addr = val :
+#ifdef __GLIBC__
 		outw_p(val, (unsigned long)addr);
+#else
+		outw(val, (unsigned long)addr);
+#endif
 }
 
 static inline void iowrite32(uint32_t val, void *addr)
 {
 	(uint64_t)(uintptr_t)addr >= PIO_MAX ?
 		*(volatile uint32_t *)addr = val :
+#ifdef __GLIBC__
 		outl_p(val, (unsigned long)addr);
-}
 #else
+		outl(val, (unsigned long)addr);
+#endif
+}
+
+#else /* !RTE_ARCH_X86 */
+
 static inline uint8_t ioread8(void *addr)
 {
 	return *(volatile uint8_t *)addr;
@@ -609,7 +636,8 @@ static inline void iowrite32(uint32_t val, void *addr)
 {
 	*(volatile uint32_t *)addr = val;
 }
-#endif
+
+#endif /* !RTE_ARCH_X86 */
 
 void
 pci_uio_ioport_read(struct rte_pci_ioport *p,
