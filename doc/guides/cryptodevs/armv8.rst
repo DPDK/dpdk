@@ -37,11 +37,17 @@ To build DPDK with this virtual crypto PMD, the user is required to:
 
    make
 
-* Build DPDK with meson option ``-Darmv8_crypto_dir=<path_to_AArch64cryptolib>``:
+* Add path to `libAArch64crypto.pc` in `PKG_CONFIG_PATH` environment variable:
 
 .. code-block:: console
 
-   meson -Darmv8_crypto_dir=<path_to_AArch64cryptolib> build
+   export PKG_CONFIG_PATH=<path_to_AArch64cryptolib>/pkgconfig/:$PKG_CONFIG_PATH
+
+* Build DPDK:
+
+.. code-block:: console
+
+   meson build
    ninja -C build
 
 The corresponding device can be created only if the following features
