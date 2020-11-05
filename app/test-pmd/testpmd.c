@@ -1421,7 +1421,6 @@ init_config(void)
 	struct rte_gro_param gro_param;
 	uint32_t gso_types;
 	uint16_t data_size;
-	uint16_t overhead_len;
 	bool warning = 0;
 	int k;
 	int ret;
@@ -1457,28 +1456,6 @@ init_config(void)
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE,
 				 "rte_eth_dev_info_get() failed\n");
-
-		/* Update the max_rx_pkt_len to have MTU as RTE_ETHER_MTU */
-		if (port->dev_info.max_rx_pktlen && port->dev_info.max_mtu)
-			overhead_len = port->dev_info.max_rx_pktlen -
-				port->dev_info.max_mtu;
-		else
-			overhead_len = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
-
-		port->dev_conf.rxmode.max_rx_pkt_len =
-						RTE_ETHER_MTU + overhead_len;
-
-		/*
-		 * This is workaround to avoid resize max rx packet len.
-		 * Ethdev assumes jumbo frame size must be greater than
-		 * RTE_ETHER_MAX_LEN, and will resize 'max_rx_pkt_len' to
-		 * default value when it is greater than RTE_ETHER_MAX_LEN
-		 * for normal frame.
-		 */
-		if (port->dev_conf.rxmode.max_rx_pkt_len > RTE_ETHER_MAX_LEN) {
-			port->dev_conf.rxmode.offloads |=
-						DEV_RX_OFFLOAD_JUMBO_FRAME;
-		}
 
 		if (!(port->dev_info.tx_offload_capa &
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
