@@ -1145,7 +1145,7 @@ txgbe_rx_scan_hw_ring(struct txgbe_rx_queue *rxq)
 		for (j = 0; j < LOOK_AHEAD; j++)
 			s[j] = rte_le_to_cpu_32(rxdp[j].qw1.lo.status);
 
-		rte_smp_rmb();
+		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
 
 		/* Compute how many status bits were set */
 		for (nb_dd = 0; nb_dd < LOOK_AHEAD &&

@@ -27,7 +27,7 @@
 
 #define ASSERT(x) do {			\
 	if (!(x))			\
-		rte_panic("TXGBE: x");	\
+		PMD_DRV_LOG(ERR, "TXGBE: %d", x);	\
 } while (0)
 
 #define usec_delay(x) rte_delay_us(x)
