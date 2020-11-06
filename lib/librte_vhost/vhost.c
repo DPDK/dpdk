@@ -605,7 +605,7 @@ alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 		}
 
 		dev->virtqueue[i] = vq;
-		init_vring_queue(dev, vring_idx);
+		init_vring_queue(dev, i);
 		rte_spinlock_init(&vq->access_lock);
 		vq->avail_wrap_counter = 1;
 		vq->used_wrap_counter = 1;
