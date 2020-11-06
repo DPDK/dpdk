@@ -15,8 +15,6 @@ for cpu in range(max_cpus + 1):
         fd = open("{}/cpu{}/topology/core_id".format(base_path, cpu))
     except IOError:
         continue
-    except:
-        break
     core = int(fd.read())
     fd.close()
     fd = open("{}/cpu{}/topology/physical_package_id".format(base_path, cpu))
@@ -59,7 +57,7 @@ print(output)
 for c in cores:
     output = "Core %s" % str(c).ljust(max_core_id_len)
     for s in sockets:
-        if (s,c) in core_map:
+        if (s, c) in core_map:
             output += " " + str(core_map[(s, c)]).ljust(max_core_map_len)
         else:
             output += " " * (max_core_map_len + 1)
