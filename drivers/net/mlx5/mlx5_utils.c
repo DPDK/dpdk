@@ -132,7 +132,7 @@ mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 	struct mlx5_hlist_entry *entry;
 	uint32_t prev_gen_cnt = 0;
 
-	MLX5_ASSERT(h && entry);
+	MLX5_ASSERT(h);
 	/* Use write lock directly for write-most list. */
 	if (!h->write_most) {
 		prev_gen_cnt = __atomic_load_n(&h->gen_cnt, __ATOMIC_ACQUIRE);
