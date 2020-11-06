@@ -634,6 +634,12 @@ us_vhost_parse_args(int argc, char **argv)
 
 			if (!strncmp(long_option[option_index].name,
 						"dma-type", MAX_LONG_OPT_SZ)) {
+				if (strlen(optarg) >= MAX_LONG_OPT_SZ) {
+					RTE_LOG(INFO, VHOST_CONFIG,
+						"Wrong DMA type\n");
+					us_vhost_usage(prgname);
+					return -1;
+				}
 				strcpy(dma_type, optarg);
 			}
 
