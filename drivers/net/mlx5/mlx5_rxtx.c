@@ -1181,6 +1181,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 		} else {
 			int ret;
 			int8_t op_own;
+			uint32_t cq_ci;
 
 			ret = check_cqe(cqe, cqe_n, rxq->cq_ci);
 			if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
@@ -1194,14 +1195,19 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 					return 0;
 				}
 			}
-			++rxq->cq_ci;
+			/*
+			 * Introduce the local variable to have queue cq_ci
+			 * index in queue structure always consistent with
+			 * actual CQE boundary (not pointing to the middle
+			 * of compressed CQE session).
+			 */
+			cq_ci = rxq->cq_ci + 1;
 			op_own = cqe->op_own;
 			if (MLX5_CQE_FORMAT(op_own) == MLX5_COMPRESSED) {
 				volatile struct mlx5_mini_cqe8 (*mc)[8] =
 					(volatile struct mlx5_mini_cqe8 (*)[8])
 					(uintptr_t)(&(*rxq->cqes)
-						[rxq->cq_ci &
-						 cqe_cnt].pkt_info);
+						[cq_ci & cqe_cnt].pkt_info);
 
 				/* Fix endianness. */
 				zip->cqe_cnt = rte_be_to_cpu_32(cqe->byte_cnt);
@@ -1214,10 +1220,9 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 				 * 7 CQEs after the initial CQE instead of 8
 				 * for subsequent ones.
 				 */
-				zip->ca = rxq->cq_ci;
+				zip->ca = cq_ci;
 				zip->na = zip->ca + 7;
 				/* Compute the next non compressed CQE. */
-				--rxq->cq_ci;
 				zip->cq_ci = rxq->cq_ci + zip->cqe_cnt;
 				/* Get packet size to return. */
 				len = rte_be_to_cpu_32((*mc)[0].byte_cnt &
@@ -1233,6 +1238,7 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 					++idx;
 				}
 			} else {
+				rxq->cq_ci = cq_ci;
 				len = rte_be_to_cpu_32(cqe->byte_cnt);
 			}
 		}

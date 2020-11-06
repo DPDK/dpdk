@@ -622,7 +622,7 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 	rte_io_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	rte_io_wmb();
-	/* Reset RQ consumer before moving queue ro READY state. */
+	/* Reset RQ consumer before moving queue to READY state. */
 	*rxq->rq_db = rte_cpu_to_be_32(0);
 	rte_io_wmb();
 	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, MLX5_RXQ_MOD_RST2RDY);
