@@ -154,6 +154,7 @@ txq_sync_cq(struct mlx5_txq_data *txq)
 	/* Resync CQE and WQE (WQ in reset state). */
 	rte_io_wmb();
 	*txq->cq_db = rte_cpu_to_be_32(txq->cq_ci);
+	txq->cq_pi = txq->cq_ci;
 	rte_io_wmb();
 }
 
