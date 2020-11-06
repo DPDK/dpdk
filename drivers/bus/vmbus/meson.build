@@ -20,5 +20,5 @@ if is_linux
 	includes += include_directories('linux')
 else
 	build = false
-	reason = 'only supported on linux'
+	reason = 'only supported on Linux'
 endif

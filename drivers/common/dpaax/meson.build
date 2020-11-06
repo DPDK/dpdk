@@ -3,7 +3,7 @@
 
 if not is_linux
 	build = false
-	reason = 'only supported on linux'
+	reason = 'only supported on Linux'
 endif
 
 sources = files('dpaax_iova_table.c', 'dpaa_of.c', 'caamflib.c')

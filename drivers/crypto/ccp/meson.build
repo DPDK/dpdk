@@ -3,7 +3,7 @@
 
 if not is_linux
 	build = false
-	reason = 'only supported on linux'
+	reason = 'only supported on Linux'
 endif
 dep = dependency('libcrypto', required: false)
 if not dep.found()

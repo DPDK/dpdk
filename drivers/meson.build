@@ -77,7 +77,7 @@ foreach subpath:subdirs
 
 		if disabled_drivers.contains(drv_path)
 			build = false
-			reason = 'Explicitly disabled via build config'
+			reason = 'explicitly disabled via build config'
 		else
 			# pull in driver directory which should update all the local variables
 			subdir(drv_path)
@@ -90,7 +90,7 @@ foreach subpath:subdirs
 			foreach d:deps
 				if not is_variable('shared_rte_' + d)
 					build = false
-					reason = 'Missing internal dependency, "@0@"'.format(d)
+					reason = 'missing internal dependency, "@0@"'.format(d)
 					message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
 							.format(d, name, 'drivers/' + drv_path))
 				else

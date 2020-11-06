@@ -3,7 +3,7 @@
 
 if not is_linux
 	build = false
-	reason = 'only supported on linux'
+	reason = 'only supported on Linux'
 endif
 sources = files('rte_power.c', 'power_acpi_cpufreq.c',
 		'power_kvm_vm.c', 'guest_channel.c',
