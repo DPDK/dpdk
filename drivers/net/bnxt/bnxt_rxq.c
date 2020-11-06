@@ -557,12 +557,12 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rc = bnxt_vnic_rss_configure(bp, vnic);
 	}
 
-	if (BNXT_CHIP_THOR(bp)) {
-		/* Compute current number of active receive queues. */
-		for (i = vnic->start_grp_id; i < vnic->end_grp_id; i++)
-			if (bp->rx_queues[i]->rx_started)
-				active_queue_cnt++;
+	/* Compute current number of active receive queues. */
+	for (i = vnic->start_grp_id; i < vnic->end_grp_id; i++)
+		if (bp->rx_queues[i]->rx_started)
+			active_queue_cnt++;
 
+	if (BNXT_CHIP_THOR(bp)) {
 		/*
 		 * For Thor, we need to ensure that the VNIC default receive
 		 * ring corresponds to an active receive queue. When no queue
@@ -581,6 +581,22 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		} else {
 			/* Reconfigure default receive ring. */
 			bnxt_hwrm_vnic_cfg(bp, vnic);
+		}
+	} else if (active_queue_cnt) {
+		/*
+		 * If the queue being stopped is the current default queue and
+		 * there are other active queues, pick one of them as the
+		 * default and reconfigure the vnic.
+		 */
+		if (vnic->dflt_ring_grp == bp->grp_info[rx_queue_id].fw_grp_id) {
+			for (i = vnic->start_grp_id; i < vnic->end_grp_id; i++) {
+				if (bp->rx_queues[i]->rx_started) {
+					vnic->dflt_ring_grp =
+						bp->grp_info[i].fw_grp_id;
+					bnxt_hwrm_vnic_cfg(bp, vnic);
+					break;
+				}
+			}
 		}
 	}
 
