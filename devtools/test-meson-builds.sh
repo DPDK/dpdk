@@ -67,7 +67,7 @@ load_env () # <target compiler>
 	else # toolchain not yet in PATH: its name should be enough
 		DPDK_TARGET=$targetcc
 	fi
-	echo "Using DPDK_TARGET $DPDK_TARGET"
+	echo "Using DPDK_TARGET $DPDK_TARGET" >&$verbose
 	# config input: $DPDK_TARGET
 	. $srcdir/devtools/load-devel-config
 	# config output: $DPDK_MESON_OPTIONS, $PATH, $PKG_CONFIG_PATH, etc
@@ -101,7 +101,7 @@ config () # <dir> <builddir> <meson options>
 		options="$options -D$option"
 	done
 	options="$options $*"
-	echo "$MESON $options $dir $builddir"
+	echo "$MESON $options $dir $builddir" >&$verbose
 	$MESON $options $dir $builddir
 }
 
@@ -117,7 +117,6 @@ compile () # <builddir>
 		echo "$ninja_cmd -C $builddir | cat"
 		$ninja_cmd -C $builddir | cat
 	else
-		echo "$ninja_cmd -C $builddir"
 		$ninja_cmd -C $builddir
 	fi
 }
@@ -125,13 +124,8 @@ compile () # <builddir>
 install_target () # <builddir> <installdir>
 {
 	rm -rf $2
-	if [ -n "$TEST_MESON_BUILD_VERY_VERBOSE$TEST_MESON_BUILD_VERBOSE" ]; then
-		echo "DESTDIR=$2 $ninja_cmd -C $1 install"
-		DESTDIR=$2 $ninja_cmd -C $1 install
-	else
-		echo "DESTDIR=$2 $ninja_cmd -C $1 install >/dev/null"
-		DESTDIR=$2 $ninja_cmd -C $1 install >/dev/null
-	fi
+	echo "DESTDIR=$2 $ninja_cmd -C $1 install" >&$verbose
+	DESTDIR=$2 $ninja_cmd -C $1 install >&$veryverbose
 }
 
 build () # <directory> <target compiler | cross file> <meson options>
@@ -188,6 +182,7 @@ build () # <directory> <target compiler | cross file> <meson options>
 
 if [ "$1" = "-vv" ] ; then
 	TEST_MESON_BUILD_VERY_VERBOSE=1
+	TEST_MESON_BUILD_VERBOSE=1
 elif [ "$1" = "-v" ] ; then
 	TEST_MESON_BUILD_VERBOSE=1
 fi
@@ -196,6 +191,10 @@ if [ -z "$PIPEFAIL" -a -n "$TEST_MESON_BUILD_VERBOSE" ] ; then
 	echo "# Missing pipefail shell option, changing VERBOSE to VERY_VERBOSE"
 	TEST_MESON_BUILD_VERY_VERBOSE=1
 fi
+[ -n "$TEST_MESON_BUILD_VERBOSE" ] && exec 8>&1 || exec 8>/dev/null
+verbose=8
+[ -n "$TEST_MESON_BUILD_VERY_VERBOSE" ] && exec 9>&1 || exec 9>/dev/null
+veryverbose=9
 
 # shared and static linked builds with gcc and clang
 for c in gcc clang ; do
@@ -272,6 +271,7 @@ if pkg-config --define-prefix libdpdk >/dev/null 2>&1; then
 	export PKGCONF="pkg-config --define-prefix"
 	for example in cmdline helloworld l2fwd l3fwd skeleton timer; do
 		echo "## Building $example"
-		$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example clean shared static
+		$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example \
+			clean shared static >&$veryverbose
 	done
 fi
