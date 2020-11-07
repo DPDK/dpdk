@@ -14,6 +14,10 @@
  *
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <rte_compat.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
@@ -1129,5 +1133,9 @@ rte_pmd_i40e_set_gre_key_len(uint16_t port, uint8_t len);
 __rte_experimental
 int
 rte_pmd_i40e_set_switch_dev(uint16_t port_id, struct rte_eth_dev *switch_dev);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _PMD_I40E_H_ */
