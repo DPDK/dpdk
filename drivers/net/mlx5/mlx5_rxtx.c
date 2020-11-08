@@ -548,7 +548,7 @@ mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 
 	if (!rxq)
 		return;
-	qinfo->mp = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
+	qinfo->mp = mlx5_rxq_mprq_enabled(rxq) ?
 					rxq->mprq_mp : rxq->mp;
 	qinfo->conf.rx_thresh.pthresh = 0;
 	qinfo->conf.rx_thresh.hthresh = 0;
@@ -558,7 +558,9 @@ mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	qinfo->conf.rx_deferred_start = rxq_ctrl ? 0 : 1;
 	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
 	qinfo->scattered_rx = dev->data->scattered_rx;
-	qinfo->nb_desc = 1 << rxq->elts_n;
+	qinfo->nb_desc = mlx5_rxq_mprq_enabled(rxq) ?
+		(1 << rxq->elts_n) * (1 << rxq->strd_num_n) :
+		(1 << rxq->elts_n);
 }
 
 /**
