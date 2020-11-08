@@ -145,16 +145,17 @@ mlx5_rx_mprq_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq)
 	const uint32_t strd_n = 1 << rxq->strd_num_n;
 	const uint32_t elts_n = wqe_n * strd_n;
 	const uint32_t wqe_mask = elts_n - 1;
-	uint32_t n = elts_n - (rxq->elts_ci - rxq->rq_pi);
+	uint32_t n = rxq->elts_ci - rxq->rq_pi;
 	uint32_t elts_idx = rxq->elts_ci & wqe_mask;
 	struct rte_mbuf **elts = &(*rxq->elts)[elts_idx];
 
-	/* Not to cross queue end. */
-	if (n >= rxq->rq_repl_thresh) {
-		MLX5_ASSERT(n >= MLX5_VPMD_RXQ_RPLNSH_THRESH(elts_n));
+	if (n <= rxq->rq_repl_thresh) {
+		MLX5_ASSERT(n + MLX5_VPMD_RX_MAX_BURST >=
+			    MLX5_VPMD_RXQ_RPLNSH_THRESH(elts_n));
 		MLX5_ASSERT(MLX5_VPMD_RXQ_RPLNSH_THRESH(elts_n) >
 			     MLX5_VPMD_DESCS_PER_LOOP);
-		n = RTE_MIN(n, elts_n - elts_idx);
+		/* Not to cross queue end. */
+		n = RTE_MIN(n + MLX5_VPMD_RX_MAX_BURST, elts_n - elts_idx);
 		if (rte_mempool_get_bulk(rxq->mp, (void *)elts, n) < 0) {
 			rxq->stats.rx_nombuf += n;
 			return;
