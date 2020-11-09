@@ -833,20 +833,24 @@ iavf_configure_queues(struct iavf_adapter *adapter,
 	     i++, vc_qp++) {
 		vc_qp->txq.vsi_id = vf->vsi_res->vsi_id;
 		vc_qp->txq.queue_id = i;
-		/* Virtchnnl configure queues by pairs */
+
+		/* Virtchnnl configure tx queues by pairs */
 		if (i < adapter->eth_dev->data->nb_tx_queues) {
 			vc_qp->txq.ring_len = txq[i]->nb_tx_desc;
 			vc_qp->txq.dma_ring_addr = txq[i]->tx_ring_phys_addr;
 		}
+
 		vc_qp->rxq.vsi_id = vf->vsi_res->vsi_id;
 		vc_qp->rxq.queue_id = i;
 		vc_qp->rxq.max_pkt_size = vf->max_pkt_len;
-		/* Virtchnnl configure queues by pairs */
-		if (i < adapter->eth_dev->data->nb_rx_queues) {
-			vc_qp->rxq.ring_len = rxq[i]->nb_rx_desc;
-			vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;
-			vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
-		}
+
+		if (i >= adapter->eth_dev->data->nb_rx_queues)
+			continue;
+
+		/* Virtchnnl configure rx queues by pairs */
+		vc_qp->rxq.ring_len = rxq[i]->nb_rx_desc;
+		vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;
+		vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
 
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		if (vf->vf_res->vf_cap_flags &
