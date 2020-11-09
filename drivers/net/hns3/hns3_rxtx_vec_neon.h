@@ -93,9 +93,10 @@ hns3_desc_parse_field(struct hns3_rx_queue *rxq,
 	struct rte_mbuf *pkt;
 	uint32_t retcode = 0;
 	uint32_t cksum_err;
-	int ret, i;
+	uint32_t i;
+	int ret;
 
-	for (i = 0; i < (int)bd_vld_num; i++) {
+	for (i = 0; i < bd_vld_num; i++) {
 		pkt = sw_ring[i].mbuf;
 
 		/* init rte_mbuf.rearm_data last 64-bit */
@@ -131,7 +132,8 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 	struct hns3_desc *rxdp = &rxq->rx_ring[rx_id];
 	uint32_t bd_valid_num, parse_retcode;
 	uint16_t nb_rx = 0;
-	int pos, offset;
+	uint32_t pos;
+	int offset;
 
 	/* mask to shuffle from desc to mbuf's rx_descriptor_fields1 */
 	uint8x16_t shuf_desc_fields_msk = {

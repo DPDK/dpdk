@@ -1335,7 +1335,7 @@ hns3vf_get_tc_info(struct hns3_hw *hw)
 {
 	uint8_t resp_msg;
 	int ret;
-	int i;
+	uint32_t i;
 
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_TCINFO, 0, NULL, 0,
 				true, &resp_msg, sizeof(resp_msg));
