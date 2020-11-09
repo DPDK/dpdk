@@ -964,15 +964,17 @@ efx_mcdi_ev_death(
 	__checkReturn		efx_rc_t
 efx_mcdi_get_version(
 	__in			efx_nic_t *enp,
-	__in			uint32_t flags_req,
+	__in			uint32_t flags,
 	__out			efx_mcdi_version_t *verp)
 {
 	efx_nic_board_info_t *board_infop = &verp->emv_board_info;
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_GET_VERSION_EXT_IN_LEN,
 	    MC_CMD_GET_VERSION_V2_OUT_LEN);
-	size_t min_resp_len_required;
+	efx_word_t *ver_words;
+	uint16_t version[4];
 	efx_mcdi_req_t req;
+	uint32_t firmware;
 	efx_rc_t rc;
 
 	EFX_STATIC_ASSERT(sizeof (verp->emv_version) ==
@@ -996,18 +998,14 @@ efx_mcdi_get_version(
 	req.emr_in_buf = payload;
 	req.emr_out_buf = payload;
 
-	if (flags_req != 0) {
+	if ((flags & EFX_MCDI_VERSION_BOARD_INFO) != 0) {
 		/* Request basic + extended version information. */
 		req.emr_in_length = MC_CMD_GET_VERSION_EXT_IN_LEN;
 		req.emr_out_length = MC_CMD_GET_VERSION_V2_OUT_LEN;
-
-		min_resp_len_required = MC_CMD_GET_VERSION_V2_OUT_LEN;
 	} else {
 		/* Request only basic version information. */
 		req.emr_in_length = MC_CMD_GET_VERSION_IN_LEN;
 		req.emr_out_length = MC_CMD_GET_VERSION_OUT_LEN;
-
-		min_resp_len_required = MC_CMD_GET_VERSION_V0_OUT_LEN;
 	}
 
 	efx_mcdi_execute(enp, &req);
@@ -1017,33 +1015,36 @@ efx_mcdi_get_version(
 		goto fail1;
 	}
 
-	if (req.emr_out_length_used < min_resp_len_required) {
+	/* bootrom support */
+	if (req.emr_out_length_used == MC_CMD_GET_VERSION_V0_OUT_LEN) {
+		version[0] = version[1] = version[2] = version[3] = 0;
+		firmware = MCDI_OUT_DWORD(req, GET_VERSION_OUT_FIRMWARE);
+		goto out;
+	}
+
+	if (req.emr_out_length_used < req.emr_out_length) {
 		rc = EMSGSIZE;
 		goto fail2;
 	}
 
+	ver_words = MCDI_OUT2(req, efx_word_t, GET_VERSION_OUT_VERSION);
+	version[0] = EFX_WORD_FIELD(ver_words[0], EFX_WORD_0);
+	version[1] = EFX_WORD_FIELD(ver_words[1], EFX_WORD_0);
+	version[2] = EFX_WORD_FIELD(ver_words[2], EFX_WORD_0);
+	version[3] = EFX_WORD_FIELD(ver_words[3], EFX_WORD_0);
+	firmware = MCDI_OUT_DWORD(req, GET_VERSION_OUT_FIRMWARE);
+
+out:
 	memset(verp, 0, sizeof (*verp));
 
-	if (req.emr_out_length_used > min_resp_len_required) {
-		efx_word_t *ver_words;
-
-		if (req.emr_out_length_used < MC_CMD_GET_VERSION_OUT_LEN) {
-			rc = EMSGSIZE;
-			goto fail3;
-		}
-
-		ver_words = MCDI_OUT2(req, efx_word_t, GET_VERSION_OUT_VERSION);
-
-		verp->emv_version[0] = EFX_WORD_FIELD(ver_words[0], EFX_WORD_0);
-		verp->emv_version[1] = EFX_WORD_FIELD(ver_words[1], EFX_WORD_0);
-		verp->emv_version[2] = EFX_WORD_FIELD(ver_words[2], EFX_WORD_0);
-		verp->emv_version[3] = EFX_WORD_FIELD(ver_words[3], EFX_WORD_0);
-	}
-
-	verp->emv_firmware = MCDI_OUT_DWORD(req, GET_VERSION_OUT_FIRMWARE);
+	verp->emv_version[0] = version[0];
+	verp->emv_version[1] = version[1];
+	verp->emv_version[2] = version[2];
+	verp->emv_version[3] = version[3];
+	verp->emv_firmware = firmware;
 
 	verp->emv_flags = MCDI_OUT_DWORD(req, GET_VERSION_V2_OUT_FLAGS);
-	verp->emv_flags &= flags_req;
+	verp->emv_flags &= flags;
 
 	if ((verp->emv_flags & EFX_MCDI_VERSION_BOARD_INFO) != 0) {
 		memcpy(board_infop->enbi_serial,
@@ -1058,8 +1059,6 @@ efx_mcdi_get_version(
 
 	return (0);
 
-fail3:
-	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
@@ -1088,6 +1087,12 @@ efx_mcdi_get_boot_status(
 	req.emr_out_length = MC_CMD_GET_BOOT_STATUS_OUT_LEN;
 
 	efx_mcdi_execute_quiet(enp, &req);
+
+	/*
+	 * NOTE: Unprivileged functions cannot access boot status,
+	 *       so the MCDI request will return EACCES. This is
+	 *       also checked in efx_mcdi_version.
+	 */
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
