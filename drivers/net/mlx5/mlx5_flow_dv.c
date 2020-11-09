@@ -8983,7 +8983,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 	uint64_t action_flags = 0;
 
 	MLX5_ASSERT(wks);
-	rss_desc = &wks->rss_desc[!!wks->flow_nested_idx];
+	rss_desc = &wks->rss_desc;
 	sample_act = &res->sample_act;
 	sample_idx = &res->sample_idx;
 	sample_action = (const struct rte_flow_action_sample *)action->conf;
@@ -9195,7 +9195,7 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 	uint32_t hrxq_idx;
 
 	MLX5_ASSERT(wks);
-	rss_desc = &wks->rss_desc[!!wks->flow_nested_idx];
+	rss_desc = &wks->rss_desc;
 	if (num_of_dest > 1) {
 		if (sample_act->action_flags & MLX5_FLOW_ACTION_QUEUE) {
 			/* Handle QP action for mirroring */
@@ -9573,8 +9573,12 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		.skip_scale = !!dev_flow->skip_scale,
 	};
 
-	MLX5_ASSERT(wks);
-	rss_desc = &wks->rss_desc[!!wks->flow_nested_idx];
+	if (!wks)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "failed to push flow workspace");
+	rss_desc = &wks->rss_desc;
 	memset(&mdest_res, 0, sizeof(struct mlx5_flow_dv_dest_array_resource));
 	memset(&sample_res, 0, sizeof(struct mlx5_flow_dv_sample_resource));
 	mhdr_res->ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
@@ -10640,8 +10644,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	int err;
 	int idx;
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
-	struct mlx5_flow_rss_desc *rss_desc =
-				&wks->rss_desc[!!wks->flow_nested_idx];
+	struct mlx5_flow_rss_desc *rss_desc = &wks->rss_desc;
 
 	MLX5_ASSERT(wks);
 	if (rss_desc->shared_rss) {
@@ -10649,7 +10652,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		MLX5_ASSERT(dh->fate_action == MLX5_FLOW_FATE_SHARED_RSS);
 		dh->rix_srss = rss_desc->shared_rss;
 	}
-	for (idx = wks->flow_idx - 1; idx >= wks->flow_nested_idx; idx--) {
+	for (idx = wks->flow_idx - 1; idx >= 0; idx--) {
 		dev_flow = &wks->flows[idx];
 		dv = &dev_flow->dv;
 		dh = dev_flow->handle;

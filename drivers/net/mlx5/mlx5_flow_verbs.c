@@ -1703,7 +1703,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	struct mlx5_flow_rss_desc *rss_desc;
 
 	MLX5_ASSERT(wks);
-	rss_desc = &wks->rss_desc[!!wks->flow_nested_idx];
+	rss_desc = &wks->rss_desc;
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
@@ -1956,7 +1956,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
 	MLX5_ASSERT(wks);
-	for (idx = wks->flow_idx - 1; idx >= wks->flow_nested_idx; idx--) {
+	for (idx = wks->flow_idx - 1; idx >= 0; idx--) {
 		dev_flow = &wks->flows[idx];
 		handle = dev_flow->handle;
 		if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
@@ -1964,8 +1964,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			hrxq = priv->drop_queue.hrxq;
 		} else {
 			uint32_t hrxq_idx;
-			struct mlx5_flow_rss_desc *rss_desc =
-				&wks->rss_desc[!!wks->flow_nested_idx];
+			struct mlx5_flow_rss_desc *rss_desc = &wks->rss_desc;
 
 			MLX5_ASSERT(rss_desc->queue_num);
 			rss_desc->key_len = MLX5_RSS_HASH_KEY_LEN;

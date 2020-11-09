@@ -1092,11 +1092,14 @@ struct rte_flow_shared_action {
 
 /* Thread specific flow workspace intermediate data. */
 struct mlx5_flow_workspace {
+	/* If creating another flow in same thread, push new as stack. */
+	struct mlx5_flow_workspace *prev;
+	struct mlx5_flow_workspace *next;
+	uint32_t inuse; /* can't create new flow with current. */
 	struct mlx5_flow flows[MLX5_NUM_MAX_DEV_FLOWS];
-	struct mlx5_flow_rss_desc rss_desc[2];
-	uint32_t rssq_num[2]; /* Allocated queue num in rss_desc. */
+	struct mlx5_flow_rss_desc rss_desc;
+	uint32_t rssq_num; /* Allocated queue num in rss_desc. */
 	int flow_idx; /* Intermediate device flow index. */
-	int flow_nested_idx; /* Intermediate device flow index, nested. */
 };
 
 struct mlx5_flow_split_info {
