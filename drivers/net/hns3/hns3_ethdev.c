@@ -5571,6 +5571,11 @@ hns3_start_service(struct hns3_adapter *hns)
 		/* Enable interrupt of all rx queues before enabling queues */
 		hns3_dev_all_rx_queue_intr_enable(hw, true);
 		/*
+		 * Enable state of each rxq and txq will be recovered after
+		 * reset, so we need to restore them before enable all tqps;
+		 */
+		hns3_restore_tqp_enable_state(hw);
+		/*
 		 * When finished the initialization, enable queues to receive
 		 * and transmit packets.
 		 */

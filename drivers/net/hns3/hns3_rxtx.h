@@ -677,5 +677,6 @@ uint32_t hns3_get_tqp_reg_offset(uint16_t idx);
 int hns3_start_all_txqs(struct rte_eth_dev *dev);
 int hns3_start_all_rxqs(struct rte_eth_dev *dev);
 void hns3_stop_all_txqs(struct rte_eth_dev *dev);
+void hns3_restore_tqp_enable_state(struct hns3_hw *hw);
 
 #endif /* _HNS3_RXTX_H_ */

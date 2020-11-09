@@ -503,6 +503,26 @@ start_rxqs_fail:
 }
 
 void
+hns3_restore_tqp_enable_state(struct hns3_hw *hw)
+{
+	struct hns3_rx_queue *rxq;
+	struct hns3_tx_queue *txq;
+	uint16_t i;
+
+	for (i = 0; i < hw->data->nb_rx_queues; i++) {
+		rxq = hw->data->rx_queues[i];
+		if (rxq != NULL)
+			hns3_enable_rxq(rxq, rxq->enabled);
+	}
+
+	for (i = 0; i < hw->data->nb_tx_queues; i++) {
+		txq = hw->data->tx_queues[i];
+		if (txq != NULL)
+			hns3_enable_txq(txq, txq->enabled);
+	}
+}
+
+void
 hns3_stop_all_txqs(struct rte_eth_dev *dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
