@@ -7,7 +7,7 @@
 
 #ifdef TUP
 #elif defined(__GNUC__)
-#define TUP(x) x##_unused __attribute__((unused))
+#define TUP(x) x##_unused txgbe_unused
 #elif defined(__LCLINT__)
 #define TUP(x) x /*@unused@*/
 #else

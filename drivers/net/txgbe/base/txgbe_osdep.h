@@ -30,6 +30,8 @@
 		PMD_DRV_LOG(ERR, "TXGBE: %d", x);	\
 } while (0)
 
+#define txgbe_unused __rte_unused
+
 #define usec_delay(x) rte_delay_us(x)
 #define msec_delay(x) rte_delay_ms(x)
 #define usleep(x)     rte_delay_us(x)
@@ -147,10 +149,6 @@ static inline u64 REVERT_BIT_MASK64(u64 mask)
 	return ((mask & 0x00000000FFFFFFFF) << 32) |
 	       ((mask & 0xFFFFFFFF00000000) >> 32);
 }
-
-#ifndef __rte_weak
-#define __rte_weak __attribute__((__weak__))
-#endif
 
 #define IOMEM
 
