@@ -1301,5 +1301,6 @@ bool
 sfc_hw_switch_ids_equal(const struct sfc_hw_switch_id *left,
 			const struct sfc_hw_switch_id *right)
 {
-	return strcmp(left->board_sn, right->board_sn) == 0;
+	return strncmp(left->board_sn, right->board_sn,
+		       sizeof(left->board_sn)) == 0;
 }
