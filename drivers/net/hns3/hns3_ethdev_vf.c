@@ -425,7 +425,7 @@ hns3vf_set_mc_addr_chk_param(struct hns3_hw *hw,
 	uint32_t j;
 
 	if (nb_mc_addr > HNS3_MC_MACADDR_NUM) {
-		hns3_err(hw, "failed to set mc mac addr, nb_mc_addr(%d) "
+		hns3_err(hw, "failed to set mc mac addr, nb_mc_addr(%u) "
 			 "invalid. valid range: 0~%d",
 			 nb_mc_addr, HNS3_MC_MACADDR_NUM);
 		return -EINVAL;
@@ -702,7 +702,7 @@ hns3vf_bind_ring_with_vector(struct hns3_hw *hw, uint8_t vector_id,
 	ret = hns3_send_mbx_msg(hw, code, 0, (uint8_t *)&bind_msg,
 				sizeof(bind_msg), false, NULL, 0);
 	if (ret)
-		hns3_err(hw, "%s TQP %d fail, vector_id is %d, ret is %d.",
+		hns3_err(hw, "%s TQP %u fail, vector_id is %u, ret is %d.",
 			 op_str, queue_id, bind_msg.vector_id, ret);
 
 	return ret;
@@ -748,7 +748,7 @@ hns3vf_init_ring_with_vector(struct hns3_hw *hw)
 						   HNS3_RING_TYPE_TX, i);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "VF fail to unbind TX ring(%d) with "
-					  "vector: %d, ret=%d", i, vec, ret);
+					  "vector: %u, ret=%d", i, vec, ret);
 			return ret;
 		}
 
@@ -756,7 +756,7 @@ hns3vf_init_ring_with_vector(struct hns3_hw *hw)
 						   HNS3_RING_TYPE_RX, i);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "VF fail to unbind RX ring(%d) with "
-					  "vector: %d, ret=%d", i, vec, ret);
+					  "vector: %u, ret=%d", i, vec, ret);
 			return ret;
 		}
 	}
@@ -1414,13 +1414,13 @@ hns3vf_set_tc_queue_mapping(struct hns3_adapter *hns, uint16_t nb_rx_q,
 	struct hns3_hw *hw = &hns->hw;
 
 	if (nb_rx_q < hw->num_tc) {
-		hns3_err(hw, "number of Rx queues(%d) is less than tcs(%d).",
+		hns3_err(hw, "number of Rx queues(%u) is less than tcs(%u).",
 			 nb_rx_q, hw->num_tc);
 		return -EINVAL;
 	}
 
 	if (nb_tx_q < hw->num_tc) {
-		hns3_err(hw, "number of Tx queues(%d) is less than tcs(%d).",
+		hns3_err(hw, "number of Tx queues(%u) is less than tcs(%u).",
 			 nb_tx_q, hw->num_tc);
 		return -EINVAL;
 	}
@@ -1992,7 +1992,7 @@ hns3vf_dev_close(struct rte_eth_dev *eth_dev)
 	rte_free(eth_dev->process_private);
 	eth_dev->process_private = NULL;
 	hns3_mp_uninit_primary();
-	hns3_warn(hw, "Close port %d finished", hw->data->port_id);
+	hns3_warn(hw, "Close port %u finished", hw->data->port_id);
 
 	return ret;
 }
@@ -2107,7 +2107,7 @@ hns3vf_map_rx_interrupt(struct rte_eth_dev *dev)
 			rte_zmalloc("intr_vec",
 				    hw->used_rx_queues * sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
-			hns3_err(hw, "Failed to allocate %d rx_queues"
+			hns3_err(hw, "Failed to allocate %u rx_queues"
 				     " intr_vec", hw->used_rx_queues);
 			ret = -ENOMEM;
 			goto vf_alloc_intr_vec_error;

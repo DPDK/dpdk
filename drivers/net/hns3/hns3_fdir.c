@@ -320,7 +320,7 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 		hns3_warn(hw, "Unsupported tunnel filter in 4K*200Bit");
 		break;
 	default:
-		hns3_err(hw, "Unsupported flow director mode %d",
+		hns3_err(hw, "Unsupported flow director mode %u",
 			    pf->fdir.fd_cfg.fd_mode);
 		return -EOPNOTSUPP;
 	}
@@ -617,7 +617,7 @@ static bool hns3_fd_convert_tuple(struct hns3_hw *hw,
 		       key_conf->mask.ip_proto);
 		break;
 	default:
-		hns3_warn(hw, "not support tuple of (%d)", tuple);
+		hns3_warn(hw, "not support tuple of (%u)", tuple);
 		break;
 	}
 	return true;
@@ -744,14 +744,14 @@ static int hns3_config_key(struct hns3_adapter *hns,
 
 	ret = hns3_fd_tcam_config(hw, false, rule->location, key_y, true);
 	if (ret) {
-		hns3_err(hw, "Config fd key_y fail, loc=%d, ret=%d",
+		hns3_err(hw, "Config fd key_y fail, loc=%u, ret=%d",
 			    rule->queue_id, ret);
 		return ret;
 	}
 
 	ret = hns3_fd_tcam_config(hw, true, rule->location, key_x, true);
 	if (ret)
-		hns3_err(hw, "Config fd key_x fail, loc=%d, ret=%d",
+		hns3_err(hw, "Config fd key_x fail, loc=%u, ret=%d",
 			    rule->queue_id, ret);
 	return ret;
 }
@@ -965,8 +965,8 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 		ret = hns3_fd_tcam_config(hw, true, rule->location, NULL,
 					  false);
 		if (ret)
-			hns3_err(hw, "Failed to delete fdir: %d src_ip:%x "
-				 "dst_ip:%x src_port:%d dst_port:%d ret = %d",
+			hns3_err(hw, "Failed to delete fdir: %u src_ip:%x "
+				 "dst_ip:%x src_port:%u dst_port:%u ret = %d",
 				 rule->location,
 				 rule->key_conf.spec.src_ip[IP_ADDR_KEY_ID],
 				 rule->key_conf.spec.dst_ip[IP_ADDR_KEY_ID],
@@ -1006,8 +1006,8 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 		ret = hns3_config_key(hns, rule);
 	rte_spinlock_unlock(&fdir_info->flows_lock);
 	if (ret) {
-		hns3_err(hw, "Failed to config fdir: %d src_ip:%x dst_ip:%x "
-			 "src_port:%d dst_port:%d ret = %d",
+		hns3_err(hw, "Failed to config fdir: %u src_ip:%x dst_ip:%x "
+			 "src_port:%u dst_port:%u ret = %d",
 			 rule->location,
 			 rule->key_conf.spec.src_ip[IP_ADDR_KEY_ID],
 			 rule->key_conf.spec.dst_ip[IP_ADDR_KEY_ID],

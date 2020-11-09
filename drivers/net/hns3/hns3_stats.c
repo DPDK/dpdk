@@ -457,7 +457,7 @@ hns3_update_tqp_stats(struct hns3_hw *hw)
 		desc.data[0] = rte_cpu_to_le_32((uint32_t)i);
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
-			hns3_err(hw, "Failed to query RX No.%d queue stat: %d",
+			hns3_err(hw, "Failed to query RX No.%u queue stat: %d",
 				 i, ret);
 			return ret;
 		}
@@ -471,7 +471,7 @@ hns3_update_tqp_stats(struct hns3_hw *hw)
 		desc.data[0] = rte_cpu_to_le_32((uint32_t)i);
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
-			hns3_err(hw, "Failed to query TX No.%d queue stat: %d",
+			hns3_err(hw, "Failed to query TX No.%u queue stat: %d",
 				 i, ret);
 			return ret;
 		}
@@ -565,7 +565,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		desc_reset.data[0] = rte_cpu_to_le_32((uint32_t)i);
 		ret = hns3_cmd_send(hw, &desc_reset, 1);
 		if (ret) {
-			hns3_err(hw, "Failed to reset RX No.%d queue stat: %d",
+			hns3_err(hw, "Failed to reset RX No.%u queue stat: %d",
 				 i, ret);
 			return ret;
 		}
@@ -575,7 +575,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		desc_reset.data[0] = rte_cpu_to_le_32((uint32_t)i);
 		ret = hns3_cmd_send(hw, &desc_reset, 1);
 		if (ret) {
-			hns3_err(hw, "Failed to reset TX No.%d queue stat: %d",
+			hns3_err(hw, "Failed to reset TX No.%u queue stat: %d",
 				 i, ret);
 			return ret;
 		}
@@ -960,7 +960,7 @@ hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 
 	for (i = 0; i < size; i++) {
 		if (ids[i] >= cnt_stats) {
-			hns3_err(hw, "ids[%d] (%" PRIx64 ") is invalid, "
+			hns3_err(hw, "ids[%u] (%" PRIx64 ") is invalid, "
 				     "should < %u", i, ids[i], cnt_stats);
 			rte_free(values_copy);
 			return -EINVAL;
@@ -1021,7 +1021,7 @@ hns3_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 
 	for (i = 0; i < size; i++) {
 		if (ids[i] >= cnt_stats) {
-			hns3_err(hw, "ids[%d] (%" PRIx64 ") is invalid, "
+			hns3_err(hw, "ids[%u] (%" PRIx64 ") is invalid, "
 				     "should < %u", i, ids[i], cnt_stats);
 			rte_free(names_copy);
 			return -EINVAL;

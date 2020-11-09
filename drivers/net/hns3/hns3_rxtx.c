@@ -256,7 +256,7 @@ hns3_alloc_rx_queue_mbufs(struct hns3_hw *hw, struct hns3_rx_queue *rxq)
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
 		mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(mbuf == NULL)) {
-			hns3_err(hw, "Failed to allocate RXD[%d] for rx queue!",
+			hns3_err(hw, "Failed to allocate RXD[%u] for rx queue!",
 				 i);
 			hns3_rx_queue_release_mbufs(rxq);
 			return -ENOMEM;
@@ -1192,7 +1192,7 @@ hns3_alloc_rxq_and_dma_zone(struct rte_eth_dev *dev,
 	rxq = rte_zmalloc_socket(q_info->type, sizeof(struct hns3_rx_queue),
 				 RTE_CACHE_LINE_SIZE, q_info->socket_id);
 	if (rxq == NULL) {
-		hns3_err(hw, "Failed to allocate memory for No.%d rx ring!",
+		hns3_err(hw, "Failed to allocate memory for No.%u rx ring!",
 			 q_info->idx);
 		return NULL;
 	}
@@ -1211,7 +1211,7 @@ hns3_alloc_rxq_and_dma_zone(struct rte_eth_dev *dev,
 					 rx_desc, HNS3_RING_BASE_ALIGN,
 					 q_info->socket_id);
 	if (rx_mz == NULL) {
-		hns3_err(hw, "Failed to reserve DMA memory for No.%d rx ring!",
+		hns3_err(hw, "Failed to reserve DMA memory for No.%u rx ring!",
 			 q_info->idx);
 		hns3_rx_queue_release(rxq);
 		return NULL;
@@ -1220,7 +1220,7 @@ hns3_alloc_rxq_and_dma_zone(struct rte_eth_dev *dev,
 	rxq->rx_ring = (struct hns3_desc *)rx_mz->addr;
 	rxq->rx_ring_phys_addr = rx_mz->iova;
 
-	hns3_dbg(hw, "No.%d rx descriptors iova 0x%" PRIx64, q_info->idx,
+	hns3_dbg(hw, "No.%u rx descriptors iova 0x%" PRIx64, q_info->idx,
 		 rxq->rx_ring_phys_addr);
 
 	return rxq;
@@ -1248,7 +1248,7 @@ hns3_fake_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 	q_info.ring_name = "rx_fake_ring";
 	rxq = hns3_alloc_rxq_and_dma_zone(dev, &q_info);
 	if (rxq == NULL) {
-		hns3_err(hw, "Failed to setup No.%d fake rx ring.", idx);
+		hns3_err(hw, "Failed to setup No.%u fake rx ring.", idx);
 		return -ENOMEM;
 	}
 
@@ -1285,7 +1285,7 @@ hns3_alloc_txq_and_dma_zone(struct rte_eth_dev *dev,
 	txq = rte_zmalloc_socket(q_info->type, sizeof(struct hns3_tx_queue),
 				 RTE_CACHE_LINE_SIZE, q_info->socket_id);
 	if (txq == NULL) {
-		hns3_err(hw, "Failed to allocate memory for No.%d tx ring!",
+		hns3_err(hw, "Failed to allocate memory for No.%u tx ring!",
 			 q_info->idx);
 		return NULL;
 	}
@@ -1298,7 +1298,7 @@ hns3_alloc_txq_and_dma_zone(struct rte_eth_dev *dev,
 					 tx_desc, HNS3_RING_BASE_ALIGN,
 					 q_info->socket_id);
 	if (tx_mz == NULL) {
-		hns3_err(hw, "Failed to reserve DMA memory for No.%d tx ring!",
+		hns3_err(hw, "Failed to reserve DMA memory for No.%u tx ring!",
 			 q_info->idx);
 		hns3_tx_queue_release(txq);
 		return NULL;
@@ -1307,7 +1307,7 @@ hns3_alloc_txq_and_dma_zone(struct rte_eth_dev *dev,
 	txq->tx_ring = (struct hns3_desc *)tx_mz->addr;
 	txq->tx_ring_phys_addr = tx_mz->iova;
 
-	hns3_dbg(hw, "No.%d tx descriptors iova 0x%" PRIx64, q_info->idx,
+	hns3_dbg(hw, "No.%u tx descriptors iova 0x%" PRIx64, q_info->idx,
 		 txq->tx_ring_phys_addr);
 
 	/* Clear tx bd */
@@ -1342,7 +1342,7 @@ hns3_fake_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 	q_info.ring_name = "tx_fake_ring";
 	txq = hns3_alloc_txq_and_dma_zone(dev, &q_info);
 	if (txq == NULL) {
-		hns3_err(hw, "Failed to setup No.%d fake tx ring.", idx);
+		hns3_err(hw, "Failed to setup No.%u fake tx ring.", idx);
 		return -ENOMEM;
 	}
 
@@ -2475,8 +2475,8 @@ hns3_tx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_txconf *conf,
 	if (rs_thresh + free_thresh > nb_desc || nb_desc % rs_thresh ||
 	    rs_thresh >= nb_desc - HNS3_TX_RS_FREE_THRESH_GAP ||
 	    free_thresh >= nb_desc - HNS3_TX_RS_FREE_THRESH_GAP) {
-		hns3_err(hw, "tx_rs_thresh (%d) tx_free_thresh (%d) nb_desc "
-			 "(%d) of tx descriptors for port=%d queue=%d check "
+		hns3_err(hw, "tx_rs_thresh (%u) tx_free_thresh (%u) nb_desc "
+			 "(%u) of tx descriptors for port=%u queue=%u check "
 			 "fail!",
 			 rs_thresh, free_thresh, nb_desc, hw->data->port_id,
 			 idx);

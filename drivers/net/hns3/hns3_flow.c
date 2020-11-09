@@ -267,8 +267,8 @@ hns3_handle_action_queue(struct rte_eth_dev *dev,
 
 	queue = (const struct rte_flow_action_queue *)action->conf;
 	if (queue->index >= hw->used_rx_queues) {
-		hns3_err(hw, "queue ID(%d) is greater than number of "
-			  "available queue (%d) in driver.",
+		hns3_err(hw, "queue ID(%u) is greater than number of "
+			  "available queue (%u) in driver.",
 			  queue->index, hw->used_rx_queues);
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,

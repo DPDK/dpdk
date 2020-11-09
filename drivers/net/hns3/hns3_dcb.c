@@ -50,13 +50,13 @@ hns3_shaper_para_calc(struct hns3_hw *hw, uint32_t ir, uint8_t shaper_level,
 	/* Calc tick */
 	if (shaper_level >= HNS3_SHAPER_LVL_CNT) {
 		hns3_err(hw,
-			 "shaper_level(%d) is greater than HNS3_SHAPER_LVL_CNT(%d)",
+			 "shaper_level(%u) is greater than HNS3_SHAPER_LVL_CNT(%d)",
 			 shaper_level, HNS3_SHAPER_LVL_CNT);
 		return -EINVAL;
 	}
 
 	if (ir > hw->max_tm_rate) {
-		hns3_err(hw, "rate(%d) exceeds the max rate(%d) driver "
+		hns3_err(hw, "rate(%u) exceeds the max rate(%u) driver "
 			 "supported.", ir, hw->max_tm_rate);
 		return -EINVAL;
 	}
@@ -1138,7 +1138,7 @@ hns3_pause_param_setup_hw(struct hns3_hw *hw, uint16_t pause_time)
 		 pause_time <= PAUSE_TIME_DIV_BY * HNS3_DEFAULT_PAUSE_TRANS_GAP)
 		pause_trans_gap = pause_time / PAUSE_TIME_DIV_BY - 1;
 	else {
-		hns3_warn(hw, "pause_time(%d) is adjusted to 4", pause_time);
+		hns3_warn(hw, "pause_time(%u) is adjusted to 4", pause_time);
 		pause_time = PAUSE_TIME_MIN_VALUE;
 		pause_trans_gap = pause_time / PAUSE_TIME_DIV_BY - 1;
 	}
@@ -1449,13 +1449,13 @@ hns3_dcb_info_update(struct hns3_adapter *hns, uint8_t num_tc)
 		return -EINVAL;
 
 	if (nb_rx_q < num_tc) {
-		hns3_err(hw, "number of Rx queues(%d) is less than tcs(%d).",
+		hns3_err(hw, "number of Rx queues(%u) is less than tcs(%u).",
 			 nb_rx_q, num_tc);
 		return -EINVAL;
 	}
 
 	if (nb_tx_q < num_tc) {
-		hns3_err(hw, "number of Tx queues(%d) is less than tcs(%d).",
+		hns3_err(hw, "number of Tx queues(%u) is less than tcs(%u).",
 			 nb_tx_q, num_tc);
 		return -EINVAL;
 	}

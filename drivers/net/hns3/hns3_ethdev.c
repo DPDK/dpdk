@@ -1100,8 +1100,8 @@ hns3_dev_configure_vlan(struct rte_eth_dev *dev)
 		hns3_warn(hw,
 			  "hw_vlan_reject_tagged or hw_vlan_reject_untagged "
 			  "configuration is not supported! Ignore these two "
-			  "parameters: hw_vlan_reject_tagged(%d), "
-			  "hw_vlan_reject_untagged(%d)",
+			  "parameters: hw_vlan_reject_tagged(%u), "
+			  "hw_vlan_reject_untagged(%u)",
 			  txmode->hw_vlan_reject_tagged,
 			  txmode->hw_vlan_reject_untagged);
 
@@ -1125,7 +1125,7 @@ hns3_dev_configure_vlan(struct rte_eth_dev *dev)
 	ret = hns3_vlan_pvid_set(dev, txmode->pvid,
 				 txmode->hw_vlan_insert_pvid);
 	if (ret)
-		hns3_err(hw, "dev config vlan pvid(%d) failed, ret = %d",
+		hns3_err(hw, "dev config vlan pvid(%u) failed, ret = %d",
 			 txmode->pvid, ret);
 
 	return ret;
@@ -1890,7 +1890,7 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 	uint32_t j;
 
 	if (nb_mc_addr > HNS3_MC_MACADDR_NUM) {
-		hns3_err(hw, "failed to set mc mac addr, nb_mc_addr(%d) "
+		hns3_err(hw, "failed to set mc mac addr, nb_mc_addr(%u) "
 			 "invalid. valid range: 0~%d",
 			 nb_mc_addr, HNS3_MC_MACADDR_NUM);
 		return -EINVAL;
@@ -2164,7 +2164,7 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 
 		for (i = 0; i < HNS3_MAX_USER_PRIO; i++) {
 			if (dcb_rx_conf->dcb_tc[i] != dcb_tx_conf->dcb_tc[i]) {
-				hns3_err(hw, "dcb_tc[%d] = %d in rx direction, "
+				hns3_err(hw, "dcb_tc[%d] = %u in rx direction, "
 					 "is not equal to one in tx direction.",
 					 i, dcb_rx_conf->dcb_tc[i]);
 				return -EINVAL;
@@ -2238,7 +2238,7 @@ hns3_bind_ring_with_vector(struct hns3_hw *hw, uint8_t vector_id, bool mmap,
 	op_str = mmap ? "Map" : "Unmap";
 	status = hns3_cmd_send(hw, &desc, 1);
 	if (status) {
-		hns3_err(hw, "%s TQP %d fail, vector_id is %d, status is %d.",
+		hns3_err(hw, "%s TQP %u fail, vector_id is %u, status is %d.",
 			 op_str, queue_id, req->int_vector_id, status);
 		return status;
 	}
@@ -2286,7 +2286,7 @@ hns3_init_ring_with_vector(struct hns3_hw *hw)
 						 HNS3_RING_TYPE_TX, i);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "PF fail to unbind TX ring(%d) with "
-					  "vector: %d, ret=%d", i, vec, ret);
+					  "vector: %u, ret=%d", i, vec, ret);
 			return ret;
 		}
 
@@ -2294,7 +2294,7 @@ hns3_init_ring_with_vector(struct hns3_hw *hw)
 						 HNS3_RING_TYPE_RX, i);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "PF fail to unbind RX ring(%d) with "
-					  "vector: %d, ret=%d", i, vec, ret);
+					  "vector: %u, ret=%d", i, vec, ret);
 			return ret;
 		}
 	}
@@ -3083,7 +3083,7 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 
 	ret = hns3_parse_speed(cfg.default_speed, &hw->mac.link_speed);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Get wrong speed %d, ret = %d",
+		PMD_INIT_LOG(ERR, "Get wrong speed %u, ret = %d",
 			     cfg.default_speed, ret);
 		return ret;
 	}
@@ -3928,7 +3928,7 @@ hns3_get_mac_ethertype_cmd_status(uint16_t cmdq_resp, uint8_t resp_code)
 
 	if (cmdq_resp) {
 		PMD_INIT_LOG(ERR,
-			     "cmdq execute failed for get_mac_ethertype_cmd_status, status=%d.\n",
+			     "cmdq execute failed for get_mac_ethertype_cmd_status, status=%u.\n",
 			     cmdq_resp);
 		return -EIO;
 	}
@@ -3949,7 +3949,7 @@ hns3_get_mac_ethertype_cmd_status(uint16_t cmdq_resp, uint8_t resp_code)
 		break;
 	default:
 		PMD_INIT_LOG(ERR,
-			     "add mac ethertype failed for undefined, code=%d.",
+			     "add mac ethertype failed for undefined, code=%u.",
 			     resp_code);
 		return_status = -EIO;
 		break;
@@ -4107,7 +4107,7 @@ hns3_promisc_init(struct hns3_hw *hw)
 		hns3_promisc_param_init(&param, false, false, false, func_id);
 		ret = hns3_cmd_set_promisc_mode(hw, &param);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "failed to clear vf:%d promisc mode,"
+			PMD_INIT_LOG(ERR, "failed to clear vf:%u promisc mode,"
 					" ret = %d", func_id, ret);
 			return ret;
 		}
@@ -4790,7 +4790,7 @@ hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 			rte_zmalloc("intr_vec",
 				    hw->used_rx_queues * sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
-			hns3_err(hw, "Failed to allocate %d rx_queues"
+			hns3_err(hw, "Failed to allocate %u rx_queues"
 				     " intr_vec", hw->used_rx_queues);
 			ret = -ENOMEM;
 			goto alloc_intr_vec_error;
@@ -5056,7 +5056,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	rte_free(eth_dev->process_private);
 	eth_dev->process_private = NULL;
 	hns3_mp_uninit_primary();
-	hns3_warn(hw, "Close port %d finished", hw->data->port_id);
+	hns3_warn(hw, "Close port %u finished", hw->data->port_id);
 
 	return ret;
 }
@@ -5134,7 +5134,7 @@ hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return -EINVAL;
 	}
 	if (!fc_conf->pause_time) {
-		hns3_err(hw, "Invalid pause time %d setting.",
+		hns3_err(hw, "Invalid pause time %u setting.",
 			 fc_conf->pause_time);
 		return -EINVAL;
 	}
@@ -5187,7 +5187,7 @@ hns3_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 	if (pfc_conf->fc.pause_time == 0) {
-		hns3_err(hw, "Invalid pause time %d setting.",
+		hns3_err(hw, "Invalid pause time %u setting.",
 			 pfc_conf->fc.pause_time);
 		return -EINVAL;
 	}
