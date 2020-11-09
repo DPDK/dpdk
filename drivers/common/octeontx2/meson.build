@@ -2,24 +2,18 @@
 # Copyright(C) 2019 Marvell International Ltd.
 #
 
+if not dpdk_conf.get('RTE_ARCH_64')
+	build = false
+	reason = 'only supported on 64-bit'
+	subdir_done()
+endif
+
 sources= files('otx2_dev.c',
 		'otx2_irq.c',
 		'otx2_mbox.c',
 		'otx2_common.c',
 		'otx2_sec_idev.c',
 	       )
-
-extra_flags = []
-# This integrated controller runs only on a arm64 machine, remove 32bit warnings
-if not dpdk_conf.get('RTE_ARCH_64')
-	extra_flags += ['-Wno-int-to-pointer-cast', '-Wno-pointer-to-int-cast']
-endif
-
-foreach flag: extra_flags
-	if cc.has_argument(flag)
-		cflags += flag
-	endif
-endforeach
 
 deps = ['eal', 'pci', 'ethdev', 'kvargs']
 includes += include_directories('../../common/octeontx2',

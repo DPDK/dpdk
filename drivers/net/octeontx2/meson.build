@@ -2,6 +2,12 @@
 # Copyright(C) 2019 Marvell International Ltd.
 #
 
+if not dpdk_conf.get('RTE_ARCH_64')
+	build = false
+	reason = 'only supported on 64-bit'
+	subdir_done()
+endif
+
 sources = files('otx2_rx.c',
 		'otx2_tx.c',
 		'otx2_tm.c',
@@ -29,11 +35,6 @@ deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']
 deps += ['common_octeontx2', 'mempool_octeontx2']
 
 extra_flags = ['-flax-vector-conversions']
-# This integrated controller runs only on a arm64 machine, remove 32bit warnings
-if not dpdk_conf.get('RTE_ARCH_64')
-	extra_flags += ['-Wno-int-to-pointer-cast', '-Wno-pointer-to-int-cast']
-endif
-
 foreach flag: extra_flags
 	if cc.has_argument(flag)
 		cflags += flag

@@ -2,9 +2,10 @@
 # Copyright(C) 2020 Marvell International Ltd.
 #
 
-if not is_linux
+if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 	build = false
-	reason = 'only supported on Linux'
+	reason = 'only supported on 64-bit Linux'
+	subdir_done()
 endif
 
 lib = cc.find_library('librxp_compiler', required: false)
@@ -20,23 +21,6 @@ sources = files('otx2_regexdev.c',
 		'otx2_regexdev_mbox.c',
 		'otx2_regexdev_compiler.c'
 		)
-
-extra_flags = []
-# This integrated controller runs only on a arm64 machine, remove 32bit warnings
-if not dpdk_conf.get('RTE_ARCH_64')
-	extra_flags += ['-Wno-int-to-pointer-cast', '-Wno-pointer-to-int-cast']
-endif
-
-# for clang 32-bit compiles we need libatomic for 64-bit atomic ops
-if cc.get_id() == 'clang' and dpdk_conf.get('RTE_ARCH_64') == false
-	ext_deps += cc.find_library('atomic')
-endif
-
-foreach flag: extra_flags
-	if cc.has_argument(flag)
-		cflags += flag
-	endif
-endforeach
 
 fmt_name = 'octeontx2_regex'
 deps += ['bus_pci', 'common_octeontx2', 'regexdev']

@@ -5,6 +5,12 @@
 if is_windows
 	build = false
 	reason = 'not supported on Windows'
+	subdir_done()
+endif
+if not dpdk_conf.get('RTE_ARCH_64')
+	build = false
+	reason = 'only supported on 64-bit'
+	subdir_done()
 endif
 
 sources = files('otx2_mempool_ops.c',
@@ -12,17 +18,5 @@ sources = files('otx2_mempool_ops.c',
 		'otx2_mempool_irq.c',
 		'otx2_mempool_debug.c'
 		)
-
-extra_flags = []
-# This integrated controller runs only on a arm64 machine, remove 32bit warnings
-if not dpdk_conf.get('RTE_ARCH_64')
-	extra_flags += ['-Wno-int-to-pointer-cast', '-Wno-pointer-to-int-cast']
-endif
-
-foreach flag: extra_flags
-	if cc.has_argument(flag)
-		cflags += flag
-	endif
-endforeach
 
 deps += ['eal', 'mbuf', 'kvargs', 'bus_pci', 'common_octeontx2', 'mempool']
