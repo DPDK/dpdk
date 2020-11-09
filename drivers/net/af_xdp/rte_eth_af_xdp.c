@@ -910,13 +910,13 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 }
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-static inline uint64_t get_base_addr(struct rte_mempool *mp, uint64_t *align)
+static inline uintptr_t get_base_addr(struct rte_mempool *mp, uint64_t *align)
 {
 	struct rte_mempool_memhdr *memhdr;
-	uint64_t memhdr_addr, aligned_addr;
+	uintptr_t memhdr_addr, aligned_addr;
 
 	memhdr = STAILQ_FIRST(&mp->mem_list);
-	memhdr_addr = (uint64_t)memhdr->addr;
+	memhdr_addr = (uintptr_t)memhdr->addr;
 	aligned_addr = memhdr_addr & ~(getpagesize() - 1);
 	*align = memhdr_addr - aligned_addr;
 
