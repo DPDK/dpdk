@@ -238,7 +238,6 @@ hns3_interrupt_handler(void *param)
 	hns3_pf_disable_irq0(hw);
 
 	event_cause = hns3_check_event_cause(hns, &clearval);
-
 	/* vector 0 interrupt is shared with reset and mailbox source events. */
 	if (event_cause == HNS3_VECTOR0_EVENT_ERR) {
 		hns3_warn(hw, "Received err interrupt");
@@ -3556,9 +3555,7 @@ hns3_drop_pfc_buf_till_fit(struct hns3_hw *hw,
 	for (i = HNS3_MAX_TC_NUM - 1; i >= 0; i--) {
 		priv = &buf_alloc->priv_buf[i];
 		mask = BIT((uint8_t)i);
-
-		if (hw->hw_tc_map & mask &&
-		    hw->dcb_info.hw_pfc_map & mask) {
+		if (hw->hw_tc_map & mask && hw->dcb_info.hw_pfc_map & mask) {
 			/* Reduce the number of pfc TC with private buffer */
 			priv->wl.low = 0;
 			priv->enable = 0;
@@ -3612,7 +3609,6 @@ hns3_only_alloc_priv_buff(struct hns3_hw *hw,
 
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		priv = &buf_alloc->priv_buf[i];
-
 		priv->enable = 0;
 		priv->wl.low = 0;
 		priv->wl.high = 0;

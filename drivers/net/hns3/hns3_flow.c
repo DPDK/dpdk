@@ -209,8 +209,7 @@ hns3_counter_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 	ret = hns3_get_count(&hns->hw, flow->counter_id, &value);
 	if (ret) {
-		rte_flow_error_set(error, -ret,
-				   RTE_FLOW_ERROR_TYPE_HANDLE,
+		rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "Read counter fail.");
 		return ret;
 	}
@@ -547,7 +546,6 @@ hns3_parse_ipv4(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (item->mask) {
 		ipv4_mask = item->mask;
-
 		if (ipv4_mask->hdr.total_length ||
 		    ipv4_mask->hdr.packet_id ||
 		    ipv4_mask->hdr.fragment_offset ||
@@ -616,8 +614,8 @@ hns3_parse_ipv6(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (item->mask) {
 		ipv6_mask = item->mask;
-		if (ipv6_mask->hdr.vtc_flow ||
-		    ipv6_mask->hdr.payload_len || ipv6_mask->hdr.hop_limits) {
+		if (ipv6_mask->hdr.vtc_flow || ipv6_mask->hdr.payload_len ||
+		    ipv6_mask->hdr.hop_limits) {
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
@@ -672,12 +670,10 @@ hns3_parse_tcp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (item->mask) {
 		tcp_mask = item->mask;
-		if (tcp_mask->hdr.sent_seq ||
-		    tcp_mask->hdr.recv_ack ||
-		    tcp_mask->hdr.data_off ||
-		    tcp_mask->hdr.tcp_flags ||
-		    tcp_mask->hdr.rx_win ||
-		    tcp_mask->hdr.cksum || tcp_mask->hdr.tcp_urp) {
+		if (tcp_mask->hdr.sent_seq || tcp_mask->hdr.recv_ack ||
+		    tcp_mask->hdr.data_off || tcp_mask->hdr.tcp_flags ||
+		    tcp_mask->hdr.rx_win || tcp_mask->hdr.cksum ||
+		    tcp_mask->hdr.tcp_urp) {
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
@@ -776,7 +772,6 @@ hns3_parse_sctp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
 						  "Only support src & dst port in SCTP");
-
 		if (sctp_mask->hdr.src_port) {
 			hns3_set_bit(rule->input_set, INNER_SRC_PORT, 1);
 			rule->key_conf.mask.src_port =
@@ -1069,8 +1064,7 @@ hns3_parse_tunnel(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 }
 
 static int
-hns3_parse_normal(const struct rte_flow_item *item,
-		  struct hns3_fdir_rule *rule,
+hns3_parse_normal(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		  struct items_step_mngr *step_mngr,
 		  struct rte_flow_error *error)
 {
@@ -1331,9 +1325,8 @@ hns3_rss_conf_copy(struct hns3_rss_conf *out,
 		.key_len = in->key_len,
 		.queue_num = in->queue_num,
 	};
-	out->conf.queue =
-		memcpy(out->queue, in->queue,
-		       sizeof(*in->queue) * in->queue_num);
+	out->conf.queue = memcpy(out->queue, in->queue,
+				sizeof(*in->queue) * in->queue_num);
 	if (in->key)
 		out->conf.key = memcpy(out->key, in->key, in->key_len);
 
@@ -1783,17 +1776,15 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 
 	flow = rte_zmalloc("hns3 flow", sizeof(struct rte_flow), 0);
 	if (flow == NULL) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to allocate flow memory");
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "Failed to allocate flow memory");
 		return NULL;
 	}
 	flow_node = rte_zmalloc("hns3 flow node",
 				sizeof(struct hns3_flow_mem), 0);
 	if (flow_node == NULL) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to allocate flow list memory");
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "Failed to allocate flow list memory");
 		rte_free(flow);
 		return NULL;
 	}

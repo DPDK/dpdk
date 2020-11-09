@@ -1584,7 +1584,6 @@ hns3_rx_buf_len_calc(struct rte_mempool *mp, uint16_t *rx_buf_len)
 
 	vld_buf_size = (uint16_t)(rte_pktmbuf_data_room_size(mp) -
 			RTE_PKTMBUF_HEADROOM);
-
 	if (vld_buf_size < HNS3_MIN_BD_BUF_SIZE)
 		return -EINVAL;
 
