@@ -438,7 +438,7 @@ next:
  * Return -1:
  *   if there is error mapping with VFIO/UIO.
  *   if port map error when driver type is KDRV_NONE.
- *   if whitelisted but driver type is KDRV_UNKNOWN.
+ *   if marked as allowed but driver type is KDRV_UNKNOWN.
  * Return 1 if kernel driver is managing the device.
  * Return 0 on success.
  */

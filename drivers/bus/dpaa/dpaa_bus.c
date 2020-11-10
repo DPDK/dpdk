@@ -584,7 +584,7 @@ rte_dpaa_bus_probe(void)
 	struct rte_dpaa_driver *drv;
 	FILE *svr_file = NULL;
 	unsigned int svr_ver;
-	int probe_all = rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_WHITELIST;
+	int probe_all = rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_ALLOWLIST;
 	static int process_once;
 
 	/* If DPAA bus is not present nothing needs to be done */
@@ -646,13 +646,12 @@ rte_dpaa_bus_probe(void)
 
 			if (!drv->probe ||
 			    (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLACKLISTED))
+			     dev->device.devargs->policy == RTE_DEV_BLOCKED))
 				continue;
 
 			if (probe_all ||
 			    (dev->device.devargs &&
-			    dev->device.devargs->policy ==
-			    RTE_DEV_WHITELISTED)) {
+			     dev->device.devargs->policy == RTE_DEV_ALLOWED)) {
 				ret = drv->probe(drv, dev);
 				if (ret) {
 					DPAA_BUS_ERR("unable to probe:%s",

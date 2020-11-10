@@ -812,13 +812,13 @@ fslmc_vfio_process_group(void)
 		if (dev->dev_type == DPAA2_MPORTAL) {
 			dpmcp_count++;
 			if (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLACKLISTED)
+			    dev->device.devargs->policy == RTE_DEV_BLOCKED)
 				is_dpmcp_in_blocklist = true;
 		}
 		if (dev->dev_type == DPAA2_IO) {
 			dpio_count++;
 			if (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLACKLISTED)
+			    dev->device.devargs->policy == RTE_DEV_BLOCKED)
 				is_dpio_in_blocklist = true;
 		}
 	}
@@ -829,8 +829,8 @@ fslmc_vfio_process_group(void)
 		if (dev->dev_type == DPAA2_MPORTAL) {
 			current_device++;
 			if (dev->device.devargs &&
-			    dev->device.devargs->policy == RTE_DEV_BLACKLISTED) {
-				DPAA2_BUS_LOG(DEBUG, "%s Blacklisted, skipping",
+			    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+				DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping",
 					      dev->device.name);
 				TAILQ_REMOVE(&rte_fslmc_bus.device_list,
 						dev, next);
@@ -876,8 +876,8 @@ fslmc_vfio_process_group(void)
 		if (dev->dev_type == DPAA2_IO)
 			current_device++;
 		if (dev->device.devargs &&
-		    dev->device.devargs->policy == RTE_DEV_BLACKLISTED) {
-			DPAA2_BUS_LOG(DEBUG, "%s Blacklisted, skipping",
+		    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+			DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping",
 				      dev->device.name);
 			TAILQ_REMOVE(&rte_fslmc_bus.device_list, dev, next);
 			continue;

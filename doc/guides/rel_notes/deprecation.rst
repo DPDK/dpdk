@@ -30,19 +30,7 @@ Deprecation Notices
 
 * eal: The terms blacklist and whitelist to describe devices used
   by DPDK will be replaced in the 20.11 relase.
-  This will apply to command line arguments as well as macros.
-
-  The macro ``RTE_DEV_BLACKLISTED`` will be replaced with ``RTE_DEV_EXCLUDED``
-  and ``RTE_DEV_WHITELISTED`` will be replaced with ``RTE_DEV_INCLUDED``
-  ``RTE_BUS_SCAN_BLACKLIST`` and ``RTE_BUS_SCAN_WHITELIST`` will be
-  replaced with ``RTE_BUS_SCAN_EXCLUDED`` and ``RTE_BUS_SCAN_INCLUDED``
-  respectively. Likewise ``RTE_DEVTYPE_BLACKLISTED_PCI`` and
-  ``RTE_DEVTYPE_WHITELISTED_PCI`` will be replaced with
-  ``RTE_DEVTYPE_EXCLUDED`` and ``RTE_DEVTYPE_INCLUDED``.
-
-  The old macros will be marked as deprecated in 20.11 and any
-  usage will cause a compile warning. They will be removed in
-  a future release.
+  This will apply to command line arguments.
 
   The command line arguments to ``rte_eal_init`` will change from
   ``-b, --pci-blacklist`` to ``-x, --exclude`` and

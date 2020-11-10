@@ -67,9 +67,8 @@ pci_name_set(struct rte_pci_device *dev)
 			dev->name, sizeof(dev->name));
 	devargs = pci_devargs_lookup(&dev->addr);
 	dev->device.devargs = devargs;
-	/* In blacklist mode, if the device is not blacklisted, no
-	 * rte_devargs exists for it.
-	 */
+
+	/* If the device is blocked, no rte_devargs exists for it. */
 	if (devargs != NULL)
 		/* If an rte_devargs exists, the generic rte_device uses the
 		 * given name as its name.
@@ -172,7 +171,7 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 
 	loc = &dev->addr;
 
-	/* The device is not blacklisted; Check if driver supports it */
+	/* The device is not blocked; Check if driver supports it */
 	if (!rte_pci_match(dr, dev))
 		/* Match of device and driver failed */
 		return 1;
@@ -181,12 +180,10 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 			loc->domain, loc->bus, loc->devid, loc->function,
 			dev->device.numa_node);
 
-	/* no initialization when blacklisted, return without error */
+	/* no initialization when marked as blocked, return without error */
 	if (dev->device.devargs != NULL &&
-		dev->device.devargs->policy ==
-			RTE_DEV_BLACKLISTED) {
-		RTE_LOG(INFO, EAL, "  Device is blacklisted, not"
-			" initializing\n");
+		dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+		RTE_LOG(INFO, EAL, "  Device is blocked, not initializing\n");
 		return 1;
 	}
 
@@ -629,14 +626,13 @@ rte_pci_ignore_device(const struct rte_pci_addr *pci_addr)
 	struct rte_devargs *devargs = pci_devargs_lookup(pci_addr);
 
 	switch (rte_pci_bus.bus.conf.scan_mode) {
-	case RTE_BUS_SCAN_WHITELIST:
-		if (devargs && devargs->policy == RTE_DEV_WHITELISTED)
+	case RTE_BUS_SCAN_ALLOWLIST:
+		if (devargs && devargs->policy == RTE_DEV_ALLOWED)
 			return false;
 		break;
 	case RTE_BUS_SCAN_UNDEFINED:
-	case RTE_BUS_SCAN_BLACKLIST:
-		if (devargs == NULL ||
-		    devargs->policy != RTE_DEV_BLACKLISTED)
+	case RTE_BUS_SCAN_BLOCKLIST:
+		if (devargs == NULL || devargs->policy != RTE_DEV_BLOCKED)
 			return false;
 		break;
 	}

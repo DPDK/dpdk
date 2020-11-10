@@ -420,7 +420,7 @@ rte_fslmc_probe(void)
 		return 0;
 	}
 
-	probe_all = rte_fslmc_bus.bus.conf.scan_mode != RTE_BUS_SCAN_WHITELIST;
+	probe_all = rte_fslmc_bus.bus.conf.scan_mode != RTE_BUS_SCAN_ALLOWLIST;
 
 	/* In case of PA, the FD addresses returned by qbman APIs are physical
 	 * addresses, which need conversion into equivalent VA address for
@@ -451,16 +451,15 @@ rte_fslmc_probe(void)
 				continue;
 
 			if (dev->device.devargs &&
-			  dev->device.devargs->policy == RTE_DEV_BLACKLISTED) {
-				DPAA2_BUS_LOG(DEBUG, "%s Blacklisted, skipping",
+			    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+				DPAA2_BUS_LOG(DEBUG, "%s Blocked, skipping",
 					      dev->device.name);
 				continue;
 			}
 
 			if (probe_all ||
 			   (dev->device.devargs &&
-			   dev->device.devargs->policy ==
-			   RTE_DEV_WHITELISTED)) {
+			    dev->device.devargs->policy == RTE_DEV_ALLOWED)) {
 				ret = drv->probe(drv, dev);
 				if (ret) {
 					DPAA2_BUS_ERR("Unable to probe");

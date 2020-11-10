@@ -1455,7 +1455,7 @@ eal_parse_common_option(int opt, const char *optarg,
 	case 'b':
 		if (w_used)
 			goto bw_used;
-		if (eal_option_device_add(RTE_DEVTYPE_BLACKLISTED_PCI,
+		if (eal_option_device_add(RTE_DEVTYPE_BLOCKED,
 				optarg) < 0) {
 			return -1;
 		}
@@ -1465,7 +1465,7 @@ eal_parse_common_option(int opt, const char *optarg,
 	case 'w':
 		if (b_used)
 			goto bw_used;
-		if (eal_option_device_add(RTE_DEVTYPE_WHITELISTED_PCI,
+		if (eal_option_device_add(RTE_DEVTYPE_ALLOWED,
 				optarg) < 0) {
 			return -1;
 		}
