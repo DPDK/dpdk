@@ -41,7 +41,7 @@ Runtime Config Options
   In pipeline mode, a flow can be set at one specific stage by setting parameter
   ``priority``. Currently, we support two stages: priority = 0 or !0. Flows with
   priority 0 located at the first pipeline stage which typically be used as a firewall
-  to drop the packet on a blacklist(we called it permission stage). At this stage,
+  to drop the packet on a blocklist(we called it permission stage). At this stage,
   flow rules are created for the device's exact match engine: switch. Flows with priority
   !0 located at the second stage, typically packets are classified here and be steered to
   specific queue or queue group (we called it distribution stage), At this stage, flow

@@ -180,7 +180,7 @@ or ``vfio`` in non-IOMMU mode.
 
 In the VM, the kernel enic driver may be automatically bound to the VF during
 boot. Unbinding it currently hangs due to a known issue with the driver. To
-work around the issue, blacklist the enic module as follows.
+work around the issue, block the enic module as follows.
 Please see :ref:`Limitations <enic_limitations>` for limitations in
 the use of SR-IOV.
 
@@ -430,7 +430,7 @@ PKT_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
   - VF devices are not usable directly from the host. They can  only be used
     as assigned devices on VM instances.
   - Currently, unbind of the ENIC kernel mode driver 'enic.ko' on the VM
-    instance may hang. As a workaround, enic.ko should be blacklisted or removed
+    instance may hang. As a workaround, enic.ko should be blocked or removed
     from the boot process.
   - pci_generic cannot be used as the uio module in the VM. igb_uio or
     vfio in non-IOMMU mode can be used.

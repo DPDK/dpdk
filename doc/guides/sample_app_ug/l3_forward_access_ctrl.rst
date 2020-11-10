@@ -18,7 +18,7 @@ The application loads two types of rules at initialization:
 
 *   Route information rules, which are used for L3 forwarding
 
-*   Access Control List (ACL) rules that blacklist (or block) packets with a specific characteristic
+*   Access Control List (ACL) rules that block packets with a specific characteristic
 
 When packets are received from a port,
 the application extracts the necessary information from the TCP/IP header of the received packet and
