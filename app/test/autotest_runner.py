@@ -188,14 +188,14 @@ class AutotestRunner:
     n_tests = 0
     fails = 0
     log_buffers = []
-    blacklist = []
-    whitelist = []
+    blocklist = []
+    allowlist = []
 
-    def __init__(self, cmdline, target, blacklist, whitelist, n_processes):
+    def __init__(self, cmdline, target, blocklist, allowlist, n_processes):
         self.cmdline = cmdline
         self.target = target
-        self.blacklist = blacklist
-        self.whitelist = whitelist
+        self.blocklist = blocklist
+        self.allowlist = allowlist
         self.skipped = []
         self.parallel_tests = []
         self.non_parallel_tests = []
@@ -269,7 +269,7 @@ class AutotestRunner:
         self.csvwriter.writerow([test_name, test_result, result_str])
 
     # this function checks individual test and decides if this test should be in
-    # the group by comparing it against  whitelist/blacklist. it also checks if
+    # the group by comparing it against allowlist/blocklist. it also checks if
     # the test is compiled into the binary, and marks it as skipped if necessary
     def __filter_test(self, test):
         test_cmd = test["Command"]
@@ -279,10 +279,10 @@ class AutotestRunner:
         if "_autotest" in test_id:
             test_id = test_id[:-len("_autotest")]
 
-        # filter out blacklisted/whitelisted tests
-        if self.blacklist and test_id in self.blacklist:
+        # filter out blocked/allowed tests
+        if self.blocklist and test_id in self.blocklist:
             return False
-        if self.whitelist and test_id not in self.whitelist:
+        if self.allowlist and test_id not in self.allowlist:
             return False
 
         # if test wasn't compiled in, remove it as well
