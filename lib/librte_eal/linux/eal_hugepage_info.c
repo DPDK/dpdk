@@ -84,7 +84,7 @@ static int get_hp_sysfs_value(const char *subdir, const char *file, unsigned lon
 /* this function is only called from eal_hugepage_info_init which itself
  * is only called from a primary process */
 static uint32_t
-get_num_hugepages(const char *subdir)
+get_num_hugepages(const char *subdir, size_t sz)
 {
 	unsigned long resv_pages, num_pages, over_pages, surplus_pages;
 	const char *nr_hp_file = "free_hugepages";
@@ -117,8 +117,8 @@ get_num_hugepages(const char *subdir)
 		over_pages = 0;
 
 	if (num_pages == 0 && over_pages == 0)
-		RTE_LOG(WARNING, EAL, "No available hugepages reported in %s\n",
-				subdir);
+		RTE_LOG(WARNING, EAL, "No available %zu kB hugepages reported\n",
+				sz >> 10);
 
 	num_pages += over_pages;
 	if (num_pages < over_pages) /* overflow */
@@ -133,7 +133,7 @@ get_num_hugepages(const char *subdir)
 }
 
 static uint32_t
-get_num_hugepages_on_node(const char *subdir, unsigned int socket)
+get_num_hugepages_on_node(const char *subdir, unsigned int socket, size_t sz)
 {
 	char path[PATH_MAX], socketpath[PATH_MAX];
 	DIR *socketdir;
@@ -158,8 +158,8 @@ get_num_hugepages_on_node(const char *subdir, unsigned int socket)
 		return 0;
 
 	if (num_pages == 0)
-		RTE_LOG(WARNING, EAL, "No free hugepages reported in %s\n",
-				subdir);
+		RTE_LOG(WARNING, EAL, "No free %zu kB hugepages reported on node %u\n",
+				sz >> 10, socket);
 
 	/*
 	 * we want to return a uint32_t and more than this looks suspicious
@@ -361,7 +361,8 @@ calc_num_pages(struct hugepage_info *hpi, struct dirent *dirent)
 			int socket = rte_socket_id_by_idx(i);
 			unsigned int num_pages =
 					get_num_hugepages_on_node(
-						dirent->d_name, socket);
+						dirent->d_name, socket,
+						hpi->hugepage_sz);
 			hpi->num_pages[socket] = num_pages;
 			total_pages += num_pages;
 		}
@@ -370,7 +371,8 @@ calc_num_pages(struct hugepage_info *hpi, struct dirent *dirent)
 	 * back to old way
 	 */
 	if (total_pages == 0) {
-		hpi->num_pages[0] = get_num_hugepages(dirent->d_name);
+		hpi->num_pages[0] = get_num_hugepages(dirent->d_name,
+				hpi->hugepage_sz);
 
 #ifndef RTE_ARCH_64
 		/* for 32-bit systems, limit number of hugepages to
@@ -418,7 +420,8 @@ hugepage_info_init(void)
 			hpi->hugedir, sizeof(hpi->hugedir)) < 0) {
 			uint32_t num_pages;
 
-			num_pages = get_num_hugepages(dirent->d_name);
+			num_pages = get_num_hugepages(dirent->d_name,
+					hpi->hugepage_sz);
 			if (num_pages > 0)
 				RTE_LOG(NOTICE, EAL,
 					"%" PRIu32 " hugepages of size "
