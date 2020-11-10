@@ -2,6 +2,8 @@
  * Copyright(c) 2001-2020 Intel Corporation
  */
 
+#include <inttypes.h>
+
 #include "i40e_prototype.h"
 
 /**
@@ -77,7 +79,7 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 
 	if (ret_code)
 		i40e_debug(hw, I40E_DEBUG_NVM,
-			   "NVM acquire type %d failed time_left=%llu ret=%d aq_err=%d\n",
+			   "NVM acquire type %d failed time_left=%" PRIu64 " ret=%d aq_err=%d\n",
 			   access, time_left, ret_code, hw->aq.asq_last_status);
 
 	if (ret_code && time_left) {
@@ -99,7 +101,7 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 		if (ret_code != I40E_SUCCESS) {
 			hw->nvm.hw_semaphore_timeout = 0;
 			i40e_debug(hw, I40E_DEBUG_NVM,
-				   "NVM acquire timed out, wait %llu ms before trying again. status=%d aq_err=%d\n",
+				   "NVM acquire timed out, wait %" PRIu64 " ms before trying again. status=%d aq_err=%d\n",
 				   time_left, ret_code, hw->aq.asq_last_status);
 		}
 	}
@@ -1300,7 +1302,7 @@ retry:
 		gtime = rd32(hw, I40E_GLVFGEN_TIMER);
 		if (gtime >= hw->nvm.hw_semaphore_timeout) {
 			i40e_debug(hw, I40E_DEBUG_ALL,
-				   "NVMUPD: write semaphore expired (%d >= %lld), retrying\n",
+				   "NVMUPD: write semaphore expired (%d >= %" PRIu64 "), retrying\n",
 				   gtime, hw->nvm.hw_semaphore_timeout);
 			i40e_release_nvm(hw);
 			status = i40e_acquire_nvm(hw, I40E_RESOURCE_WRITE);

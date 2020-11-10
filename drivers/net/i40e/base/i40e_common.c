@@ -2,6 +2,8 @@
  * Copyright(c) 2001-2020 Intel Corporation
  */
 
+#include <inttypes.h>
+
 #include "i40e_type.h"
 #include "i40e_adminq.h"
 #include "i40e_prototype.h"
@@ -4098,7 +4100,7 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 			p->wr_csr_prot = (u64)number;
 			p->wr_csr_prot |= (u64)logical_id << 32;
 			i40e_debug(hw, I40E_DEBUG_INIT,
-				   "HW Capability: wr_csr_prot = 0x%llX\n\n",
+				   "HW Capability: wr_csr_prot = 0x%" PRIX64 "\n\n",
 				   (p->wr_csr_prot & 0xffff));
 			break;
 		case I40E_AQ_CAP_ID_DIS_UNUSED_PORTS:
