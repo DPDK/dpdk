@@ -513,7 +513,6 @@ struct mlx5_aso_sq {
 		volatile struct mlx5_aso_wqe *wqes;
 	};
 	volatile uint32_t *db_rec;
-	struct mlx5dv_devx_uar *uar_obj;
 	volatile uint64_t *uar_addr;
 	struct mlx5_aso_devx_mr mr;
 	uint16_t pi;

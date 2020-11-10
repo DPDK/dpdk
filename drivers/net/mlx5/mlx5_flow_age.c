@@ -196,8 +196,6 @@ mlx5_aso_destroy_sq(struct mlx5_aso_sq *sq)
 	}
 	if (sq->cq.cq)
 		mlx5_aso_cq_destroy(&sq->cq);
-	if (sq->uar_obj)
-		mlx5_glue->devx_free_uar(sq->uar_obj);
 	mlx5_aso_devx_dereg_mr(&sq->mr);
 	memset(sq, 0, sizeof(*sq));
 }
@@ -244,6 +242,8 @@ mlx5_aso_init_sq(struct mlx5_aso_sq *sq)
  *   Pointer to SQ to create.
  * @param[in] socket
  *   Socket to use for allocation.
+ * @param[in] uar
+ *   User Access Region object.
  * @param[in] pdn
  *   Protection Domain number to use.
  * @param[in] eqn
@@ -256,7 +256,8 @@ mlx5_aso_init_sq(struct mlx5_aso_sq *sq)
  */
 static int
 mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
-		   uint32_t pdn, uint32_t eqn,  uint16_t log_desc_n)
+		   struct mlx5dv_devx_uar *uar, uint32_t pdn,
+		   uint32_t eqn,  uint16_t log_desc_n)
 {
 	struct mlx5_devx_create_sq_attr attr = { 0 };
 	struct mlx5_devx_modify_sq_attr modify_attr = { 0 };
@@ -269,11 +270,8 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 	if (mlx5_aso_devx_reg_mr(ctx, (MLX5_ASO_AGE_ACTIONS_PER_POOL / 8) *
 				 sq_desc_n, &sq->mr, socket, pdn))
 		return -1;
-	sq->uar_obj = mlx5_glue->devx_alloc_uar(ctx, 0);
-	if (!sq->uar_obj)
-		goto error;
 	if (mlx5_aso_cq_create(ctx, &sq->cq, log_desc_n, socket,
-				mlx5_os_get_devx_uar_page_id(sq->uar_obj), eqn))
+				mlx5_os_get_devx_uar_page_id(uar), eqn))
 		goto error;
 	sq->log_desc_n = log_desc_n;
 	sq->umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, wq_size +
@@ -297,7 +295,7 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 	attr.tis_num = 0;
 	attr.user_index = 0xFFFF;
 	attr.cqn = sq->cq.cq->id;
-	wq_attr->uar_page = mlx5_os_get_devx_uar_page_id(sq->uar_obj);
+	wq_attr->uar_page = mlx5_os_get_devx_uar_page_id(uar);
 	wq_attr->pd = pdn;
 	wq_attr->wq_type = MLX5_WQ_TYPE_CYCLIC;
 	wq_attr->log_wq_pg_sz = rte_log2_u32(pgsize);
@@ -326,8 +324,7 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 	sq->pi = 0;
 	sq->sqn = sq->sq->id;
 	sq->db_rec = RTE_PTR_ADD(sq->umem_buf, (uintptr_t)(wq_attr->dbr_addr));
-	sq->uar_addr = (volatile uint64_t *)((uint8_t *)sq->uar_obj->base_addr +
-									 0x800);
+	sq->uar_addr = (volatile uint64_t *)((uint8_t *)uar->base_addr + 0x800);
 	mlx5_aso_init_sq(sq);
 	return 0;
 error:
@@ -347,8 +344,9 @@ error:
 int
 mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh)
 {
-	return mlx5_aso_sq_create(sh->ctx, &sh->aso_age_mng->aso_sq, 0, sh->pdn,
-				  sh->eqn, MLX5_ASO_QUEUE_LOG_DESC);
+	return mlx5_aso_sq_create(sh->ctx, &sh->aso_age_mng->aso_sq, 0,
+				  sh->tx_uar, sh->pdn, sh->eqn,
+				  MLX5_ASO_QUEUE_LOG_DESC);
 }
 
 /**
