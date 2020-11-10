@@ -26,6 +26,9 @@
 #define IONIC_DEV_ID_ETH_VF		0x1003
 #define IONIC_DEV_ID_ETH_MGMT		0x1004
 
+/* Devargs */
+#define IONIC_CMB_SUPPORT		"ionic_cmb"
+
 enum ionic_mac_type {
 	IONIC_MAC_UNKNOWN = 0,
 	IONIC_MAC_CAPRI,
@@ -64,9 +67,11 @@ struct ionic_adapter {
 	uint32_t link_speed;
 	uint32_t nintrs;
 	bool intrs[IONIC_INTR_CTRL_REGS_MAX];
+	bool q_in_cmb;
 	bool link_up;
 	char fw_version[IONIC_DEVINFO_FWVERS_BUFLEN];
 	void *bus_dev;
+	uint64_t cmb_offset;
 };
 
 /** ionic_admin_ctx - Admin command context.

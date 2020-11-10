@@ -8,6 +8,7 @@
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <ethdev_pci.h>
+#include <rte_kvargs.h>
 
 #include "ionic_logs.h"
 #include "ionic.h"
@@ -1060,6 +1061,70 @@ eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+const char *ionic_devargs_arr[] = {
+	IONIC_CMB_SUPPORT,
+	NULL,
+};
+
+static int
+ionic_devarg_parse(const char *key, const char *val,
+	struct ionic_adapter *adapter)
+{
+	if (!strcmp(key, IONIC_CMB_SUPPORT)) {
+#ifndef RTE_LIBRTE_IONIC_PMD_EMBEDDED
+		if (!strcmp(val, "1")) {
+			IONIC_PRINT(NOTICE, "%s enabled", IONIC_CMB_SUPPORT);
+			adapter->q_in_cmb = true;
+		} else if (!strcmp(val, "0")) {
+			IONIC_PRINT(DEBUG, "%s disabled (default)",
+				IONIC_CMB_SUPPORT);
+		} else {
+			IONIC_PRINT(ERR, "%s '%s' invalid, use '1' or '0'",
+				IONIC_CMB_SUPPORT, val);
+			return -ERANGE;
+		}
+#else
+		RTE_SET_USED(val);
+		RTE_SET_USED(adapter);
+		IONIC_PRINT(ERR, "%s only supported on host configs",
+			IONIC_CMB_SUPPORT);
+		return -ENOTSUP;
+#endif
+	} else {
+		IONIC_PRINT(WARNING, "Unknown parameter '%s'", key);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int
+ionic_devargs(struct rte_devargs *devargs, struct ionic_adapter *adapter)
+{
+	struct rte_kvargs *kvlist;
+	int err = 0;
+	int i;
+
+	if (!devargs)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, ionic_devargs_arr);
+	if (!kvlist) {
+		IONIC_PRINT(ERR, "Couldn't parse args '%s'", devargs->args);
+		return -EINVAL;
+	}
+
+	for (i = 0; ionic_devargs_arr[i]; i++) {
+		err = rte_kvargs_process(kvlist, ionic_devargs_arr[i],
+				(int (*)(const char *, const char *, void *))
+				ionic_devarg_parse, adapter);
+		if (err)
+			break;
+	}
+
+	rte_kvargs_free(kvlist);
+	return err;
+}
+
 int
 eth_ionic_dev_probe(void *bus_dev, struct rte_device *rte_dev,
 	struct ionic_bars *bars, const struct ionic_dev_intf *intf,
@@ -1114,6 +1179,13 @@ eth_ionic_dev_probe(void *bus_dev, struct rte_device *rte_dev,
 	}
 
 	adapter->intf = intf;
+
+	/* Parse device arguments */
+	err = ionic_devargs(rte_dev->devargs, adapter);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot parse device arguments");
+		goto err_free_adapter;
+	}
 
 	/* Discover ionic dev resources */
 	err = ionic_setup(adapter);

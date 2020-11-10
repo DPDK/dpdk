@@ -572,7 +572,12 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 #ifdef IONIC_PREFETCH
 	struct ionic_txq_desc *desc_base = q->base;
+#ifdef RTE_LIBRTE_IONIC_PMD_EMBEDDED
 	rte_prefetch0(&desc_base[q->head_idx]);
+#else
+	if (!(txq->flags & IONIC_QCQ_F_CMB))
+		rte_prefetch0(&desc_base[q->head_idx]);
+#endif
 	rte_prefetch0(IONIC_INFO_PTR(q, q->head_idx));
 
 	if (tx_pkts) {
@@ -593,7 +598,12 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	while (nb_tx < nb_pkts) {
 #ifdef IONIC_PREFETCH
 		uint16_t next_idx = Q_NEXT_TO_POST(q, 1);
+#ifdef RTE_LIBRTE_IONIC_PMD_EMBEDDED
 		rte_prefetch0(&desc_base[next_idx]);
+#else
+		if (!(txq->flags & IONIC_QCQ_F_CMB))
+			rte_prefetch0(&desc_base[next_idx]);
+#endif
 		rte_prefetch0(IONIC_INFO_PTR(q, next_idx));
 
 		if (nb_tx + 1 < nb_pkts) {
@@ -1200,7 +1210,12 @@ ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 		/* Prefetch 4 x 16B comp */
 		rte_prefetch0(&cq_desc_base[Q_NEXT_TO_SRVC(cq, 4)]);
 		/* Prefetch 4 x 16B descriptors */
+#ifdef RTE_LIBRTE_IONIC_PMD_EMBEDDED
 		rte_prefetch0(&q_desc_base[Q_NEXT_TO_POST(q, 4)]);
+#else
+		if (!(rxq->flags & IONIC_QCQ_F_CMB))
+			rte_prefetch0(&q_desc_base[Q_NEXT_TO_POST(q, 4)]);
+#endif
 #endif
 
 		ionic_rx_clean_one(rxq, cq_desc, rx_svc);

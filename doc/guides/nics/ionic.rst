@@ -32,6 +32,18 @@ The ionic PMD requires firmware which supports 16 segment transmit SGLs.
 This support was added prior to version 1.0. For help upgrading older versions,
 please contact Pensando support.
 
+Runtime Configuration
+---------------------
+
+- ``Queue in CMB support`` (default ``0``)
+
+  Queue memory can be allocated from the Controller Memory Buffer (CMB) using
+  the ``ionic_cmb`` ``devargs`` parameter.
+
+  For example::
+
+    -a 0000:b5:00.0,ionic_cmb=1
+
 Building DPDK
 -------------
 
