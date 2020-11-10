@@ -244,3 +244,102 @@ mlx5_release_dbr(struct mlx5_dbr_page_list *head, uint32_t umem_id,
 	}
 	return ret;
 }
+
+/**
+ * Allocate the User Access Region with DevX on specified device.
+ *
+ * @param [in] ctx
+ *   Infiniband device context to perform allocation on.
+ * @param [in] mapping
+ *   MLX5DV_UAR_ALLOC_TYPE_BF - allocate as cached memory with write-combining
+ *				attributes (if supported by the host), the
+ *				writes to the UAR registers must be followed
+ *				by write memory barrier.
+ *   MLX5DV_UAR_ALLOC_TYPE_NC - allocate as non-cached nenory, all writes are
+ *				promoted to the registers immediately, no
+ *				memory barriers needed.
+ *   mapping < 0 - the first attempt is performed with MLX5DV_UAR_ALLOC_TYPE_BF,
+ *		   if this fails the next attempt with MLX5DV_UAR_ALLOC_TYPE_NC
+ *		   is performed. The drivers specifying negative values should
+ *		   always provide the write memory barrier operation after UAR
+ *		   register writings.
+ * If there is no definitions for the MLX5DV_UAR_ALLOC_TYPE_xx (older rdma
+ * library headers), the caller can specify 0.
+ *
+ * @return
+ *   UAR object pointer on success, NULL otherwise and rte_errno is set.
+ */
+void *
+mlx5_devx_alloc_uar(void *ctx, int mapping)
+{
+	void *uar;
+	uint32_t retry, uar_mapping;
+	void *base_addr;
+
+	for (retry = 0; retry < MLX5_ALLOC_UAR_RETRY; ++retry) {
+#ifdef MLX5DV_UAR_ALLOC_TYPE_NC
+		/* Control the mapping type according to the settings. */
+		uar_mapping = (mapping < 0) ?
+			      MLX5DV_UAR_ALLOC_TYPE_NC : mapping;
+#else
+		/*
+		 * It seems we have no way to control the memory mapping type
+		 * for the UAR, the default "Write-Combining" type is supposed.
+		 */
+		uar_mapping = 0;
+		RTE_SET_USED(mapping);
+#endif
+		uar = mlx5_glue->devx_alloc_uar(ctx, uar_mapping);
+#ifdef MLX5DV_UAR_ALLOC_TYPE_NC
+		if (!uar &&
+		    mapping < 0 &&
+		    uar_mapping == MLX5DV_UAR_ALLOC_TYPE_BF) {
+			/*
+			 * In some environments like virtual machine the
+			 * Write Combining mapped might be not supported and
+			 * UAR allocation fails. We tried "Non-Cached" mapping
+			 * for the case.
+			 */
+			DRV_LOG(WARNING, "Failed to allocate DevX UAR (BF)");
+			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_NC;
+			uar = mlx5_glue->devx_alloc_uar(ctx, uar_mapping);
+		} else if (!uar &&
+			   mapping < 0 &&
+			   uar_mapping == MLX5DV_UAR_ALLOC_TYPE_NC) {
+			/*
+			 * If Verbs/kernel does not support "Non-Cached"
+			 * try the "Write-Combining".
+			 */
+			DRV_LOG(WARNING, "Failed to allocate DevX UAR (NC)");
+			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_BF;
+			uar = mlx5_glue->devx_alloc_uar(ctx, uar_mapping);
+		}
+#endif
+		if (!uar) {
+			DRV_LOG(ERR, "Failed to allocate DevX UAR (BF/NC)");
+			rte_errno = ENOMEM;
+			goto exit;
+		}
+		base_addr = mlx5_os_get_devx_uar_base_addr(uar);
+		if (base_addr)
+			break;
+		/*
+		 * The UARs are allocated by rdma_core within the
+		 * IB device context, on context closure all UARs
+		 * will be freed, should be no memory/object leakage.
+		 */
+		DRV_LOG(WARNING, "Retrying to allocate DevX UAR");
+		uar = NULL;
+	}
+	/* Check whether we finally succeeded with valid UAR allocation. */
+	if (!uar) {
+		DRV_LOG(ERR, "Failed to allocate DevX UAR (NULL base)");
+		rte_errno = ENOMEM;
+	}
+	/*
+	 * Return void * instead of struct mlx5dv_devx_uar *
+	 * is for compatibility with older rdma-core library headers.
+	 */
+exit:
+	return uar;
+}

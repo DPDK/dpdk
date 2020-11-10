@@ -204,13 +204,4 @@
 #define static_assert _Static_assert
 #endif
 
-/*
- * Defines the amount of retries to allocate the first UAR in the page.
- * OFED 5.0.x and Upstream rdma_core before v29 returned the NULL as
- * UAR base address if UAR was not the first object in the UAR page.
- * It caused the PMD failure and we should try to get another UAR
- * till we get the first one with non-NULL base address returned.
- */
-#define MLX5_ALLOC_UAR_RETRY 32
-
 #endif /* RTE_PMD_MLX5_DEFS_H_ */

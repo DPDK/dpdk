@@ -261,6 +261,8 @@ int64_t mlx5_get_dbr(void *ctx,  struct mlx5_dbr_page_list *head,
 __rte_internal
 int32_t mlx5_release_dbr(struct mlx5_dbr_page_list *head, uint32_t umem_id,
 			 uint64_t offset);
+__rte_internal
+void *mlx5_devx_alloc_uar(void *ctx, int mapping);
 extern uint8_t haswell_broadwell_cpu;
 
 __rte_internal

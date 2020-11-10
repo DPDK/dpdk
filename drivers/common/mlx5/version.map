@@ -40,6 +40,7 @@ INTERNAL {
 	mlx5_devx_cmd_query_virtq;
 	mlx5_devx_cmd_register_read;
 	mlx5_devx_get_out_command_status;
+	mlx5_devx_alloc_uar;
 
 	mlx5_get_ifname_sysfs;
 	mlx5_get_dbr;
