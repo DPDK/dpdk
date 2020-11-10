@@ -77,7 +77,12 @@ mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(ERR, "Failed to change event channel FD.");
 		goto error;
 	}
-	priv->uar = mlx5_glue->devx_alloc_uar(priv->ctx, 0);
+	/*
+	 * This PMD always claims the write memory barrier on UAR
+	 * registers writings, it is safe to allocate UAR with any
+	 * memory mapping type.
+	 */
+	priv->uar = mlx5_devx_alloc_uar(priv->ctx, -1);
 	if (!priv->uar) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to allocate UAR.");
