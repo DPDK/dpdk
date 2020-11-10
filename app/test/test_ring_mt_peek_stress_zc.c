@@ -14,8 +14,7 @@ _st_ring_dequeue_bulk(struct rte_ring *r, void **obj, uint32_t n,
 	struct rte_ring_zc_data zcd;
 
 	m = rte_ring_dequeue_zc_bulk_start(r, n, &zcd, avail);
-	n = (m == n) ? n : 0;
-	if (n != 0) {
+	if (m != 0) {
 		/* Copy the data from the ring */
 		test_ring_copy_from(&zcd, obj, -1, n);
 		rte_ring_dequeue_zc_finish(r, n);
@@ -32,8 +31,7 @@ _st_ring_enqueue_bulk(struct rte_ring *r, void * const *obj, uint32_t n,
 	struct rte_ring_zc_data zcd;
 
 	m = rte_ring_enqueue_zc_bulk_start(r, n, &zcd, free);
-	n = (m == n) ? n : 0;
-	if (n != 0) {
+	if (m != 0) {
 		/* Copy the data from the ring */
 		test_ring_copy_to(&zcd, obj, -1, n);
 		rte_ring_enqueue_zc_finish(r, n);
