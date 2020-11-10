@@ -143,13 +143,23 @@ struct fwd_stream {
 	struct pkt_burst_stats tx_burst_stats;
 };
 
+/**
+ * Age action context types, must be included inside the age action
+ * context structure.
+ */
+enum age_action_context_type {
+	ACTION_AGE_CONTEXT_TYPE_FLOW,
+	ACTION_AGE_CONTEXT_TYPE_SHARED_ACTION,
+};
+
 /** Descriptor for a single flow. */
 struct port_flow {
 	struct port_flow *next; /**< Next flow in list. */
 	struct port_flow *tmp; /**< Temporary linking. */
 	uint32_t id; /**< Flow rule ID. */
 	struct rte_flow *flow; /**< Opaque flow object returned by PMD. */
-	struct rte_flow_conv_rule rule; /* Saved flow rule description. */
+	struct rte_flow_conv_rule rule; /**< Saved flow rule description. */
+	enum age_action_context_type age_type; /**< Age action context type. */
 	uint8_t data[]; /**< Storage for flow rule description */
 };
 
@@ -159,6 +169,7 @@ struct port_shared_action {
 	uint32_t id; /**< Shared action ID. */
 	enum rte_flow_action_type type; /**< Action type. */
 	struct rte_flow_shared_action *action;	/**< Shared action handle. */
+	enum age_action_context_type age_type; /**< Age action context type. */
 };
 
 struct port_flow_tunnel {

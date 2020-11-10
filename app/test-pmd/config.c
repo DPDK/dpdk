@@ -1849,6 +1849,13 @@ port_shared_action_create(portid_t port_id, uint32_t id,
 	ret = action_alloc(port_id, id, &psa);
 	if (ret)
 		return ret;
+	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
+		struct rte_flow_action_age *age =
+			(struct rte_flow_action_age *)(uintptr_t)(action->conf);
+
+		psa->age_type = ACTION_AGE_CONTEXT_TYPE_SHARED_ACTION;
+		age->context = &psa->age_type;
+	}
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x22, sizeof(error));
 	psa->action = rte_flow_shared_action_create(port_id, conf, action,
@@ -1900,8 +1907,8 @@ port_shared_action_destroy(portid_t port_id,
 				continue;
 			}
 			*tmp = psa->next;
-			free(psa);
 			printf("Shared action #%u destroyed\n", psa->id);
+			free(psa);
 			break;
 		}
 		if (i == n)
@@ -2113,24 +2120,20 @@ port_flow_validate(portid_t port_id,
 	return 0;
 }
 
-/** Update age action context by port_flow pointer. */
-void
-update_age_action_context(const struct rte_flow_action *actions,
-			struct port_flow *pf)
+/** Return age action structure if exists, otherwise NULL. */
+static struct rte_flow_action_age *
+age_action_get(const struct rte_flow_action *actions)
 {
-	struct rte_flow_action_age *age = NULL;
-
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_AGE:
-			age = (struct rte_flow_action_age *)
+			return (struct rte_flow_action_age *)
 				(uintptr_t)actions->conf;
-			age->context = pf;
-			return;
 		default:
 			break;
 		}
 	}
+	return NULL;
 }
 
 /** Create flow rule. */
@@ -2147,6 +2150,7 @@ port_flow_create(portid_t port_id,
 	uint32_t id = 0;
 	struct rte_flow_error error;
 	struct port_flow_tunnel *pft = NULL;
+	struct rte_flow_action_age *age = age_action_get(actions);
 
 	port = &ports[port_id];
 	if (port->flow_list) {
@@ -2170,7 +2174,10 @@ port_flow_create(portid_t port_id,
 	pf = port_flow_new(attr, pattern, actions, &error);
 	if (!pf)
 		return port_flow_complain(&error);
-	update_age_action_context(actions, pf);
+	if (age) {
+		pf->age_type = ACTION_AGE_CONTEXT_TYPE_FLOW;
+		age->context = &pf->age_type;
+	}
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x22, sizeof(error));
 	flow = rte_flow_create(port_id, attr, pattern, actions, &error);
@@ -2379,7 +2386,11 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 	void **contexts;
 	int nb_context, total = 0, idx;
 	struct rte_flow_error error;
-	struct port_flow *pf;
+	enum age_action_context_type *type;
+	union {
+		struct port_flow *pf;
+		struct port_shared_action *psa;
+	} ctx;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 	    port_id == (portid_t)RTE_PORT_ALL)
@@ -2397,7 +2408,7 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 		printf("Cannot allocate contexts for aged flow\n");
 		return;
 	}
-	printf("ID\tGroup\tPrio\tAttr\n");
+	printf("%-20s\tID\tGroup\tPrio\tAttr\n", "Type");
 	nb_context = rte_flow_get_aged_flows(port_id, contexts, total, &error);
 	if (nb_context != total) {
 		printf("Port:%d get aged flows count(%d) != total(%d)\n",
@@ -2405,37 +2416,41 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 		free(contexts);
 		return;
 	}
+	total = 0;
 	for (idx = 0; idx < nb_context; idx++) {
-		pf = (struct port_flow *)contexts[idx];
-		if (!pf) {
+		if (!contexts[idx]) {
 			printf("Error: get Null context in port %u\n", port_id);
 			continue;
 		}
-		printf("%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t%c%c%c\t\n",
-		       pf->id,
-		       pf->rule.attr->group,
-		       pf->rule.attr->priority,
-		       pf->rule.attr->ingress ? 'i' : '-',
-		       pf->rule.attr->egress ? 'e' : '-',
-		       pf->rule.attr->transfer ? 't' : '-');
-	}
-	if (destroy) {
-		int ret;
-		uint32_t flow_id;
-
-		total = 0;
-		printf("\n");
-		for (idx = 0; idx < nb_context; idx++) {
-			pf = (struct port_flow *)contexts[idx];
-			if (!pf)
-				continue;
-			flow_id = pf->id;
-			ret = port_flow_destroy(port_id, 1, &flow_id);
-			if (!ret)
+		type = (enum age_action_context_type *)contexts[idx];
+		switch (*type) {
+		case ACTION_AGE_CONTEXT_TYPE_FLOW:
+			ctx.pf = container_of(type, struct port_flow, age_type);
+			printf("%-20s\t%" PRIu32 "\t%" PRIu32 "\t%" PRIu32
+								 "\t%c%c%c\t\n",
+			       "Flow",
+			       ctx.pf->id,
+			       ctx.pf->rule.attr->group,
+			       ctx.pf->rule.attr->priority,
+			       ctx.pf->rule.attr->ingress ? 'i' : '-',
+			       ctx.pf->rule.attr->egress ? 'e' : '-',
+			       ctx.pf->rule.attr->transfer ? 't' : '-');
+			if (destroy && !port_flow_destroy(port_id, 1,
+							  &ctx.pf->id))
 				total++;
+			break;
+		case ACTION_AGE_CONTEXT_TYPE_SHARED_ACTION:
+			ctx.psa = container_of(type, struct port_shared_action,
+					       age_type);
+			printf("%-20s\t%" PRIu32 "\n", "Shared action",
+			       ctx.psa->id);
+			break;
+		default:
+			printf("Error: invalid context type %u\n", port_id);
+			break;
 		}
-		printf("%d flows be destroyed\n", total);
 	}
+	printf("\n%d flows destroyed\n", total);
 	free(contexts);
 }
 
