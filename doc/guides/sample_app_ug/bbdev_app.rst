@@ -61,19 +61,19 @@ This means that HW baseband device/s must be bound to a DPDK driver or
 a SW baseband device/s (virtual BBdev) must be created (using --vdev).
 
 To run the application in linux environment with the turbo_sw baseband device
-using the whitelisted port running on 1 encoding lcore and 1 decoding lcore
+using the allow option for pci device running on 1 encoding lcore and 1 decoding lcore
 issue the command:
 
 .. code-block:: console
 
-    $ ./<build_dir>/examples/dpdk-bbdev --vdev='baseband_turbo_sw' -w <NIC0PCIADDR> \
+    $ ./<build_dir>/examples/dpdk-bbdev --vdev='baseband_turbo_sw' -a <NIC0PCIADDR> \
     -c 0x38 --socket-mem=2,2 --file-prefix=bbdev -- -e 0x10 -d 0x20
 
 where, NIC0PCIADDR is the PCI address of the Rx port
 
 This command creates one virtual bbdev devices ``baseband_turbo_sw`` where the
-device gets linked to a corresponding ethernet port as whitelisted by
-the parameter -w.
+device gets linked to a corresponding ethernet port as allowed by
+the parameter -a.
 3 cores are allocated to the application, and assigned as:
 
  - core 3 is the main and used to print the stats live on screen,
@@ -93,20 +93,20 @@ Using Packet Generator with baseband device sample application
 To allow the bbdev sample app to do the loopback, an influx of traffic is required.
 This can be done by using DPDK Pktgen to burst traffic on two ethernet ports, and
 it will print the transmitted along with the looped-back traffic on Rx ports.
-Executing the command below will generate traffic on the two whitelisted ethernet
+Executing the command below will generate traffic on the two allowed ethernet
 ports.
 
 .. code-block:: console
 
     $ ./pktgen-3.4.0/app/x86_64-native-linux-gcc/pktgen -c 0x3 \
-    --socket-mem=1,1 --file-prefix=pg -w <NIC1PCIADDR> -- -m 1.0 -P
+    --socket-mem=1,1 --file-prefix=pg -a <NIC1PCIADDR> -- -m 1.0 -P
 
 where:
 
 * ``-c COREMASK``: A hexadecimal bitmask of cores to run on
 * ``--socket-mem``: Memory to allocate on specific sockets (use comma separated values)
 * ``--file-prefix``: Prefix for hugepage filenames
-* ``-w <NIC1PCIADDR>``: Add a PCI device in white list. The argument format is <[domain:]bus:devid.func>.
+* ``-a <NIC1PCIADDR>``: Add a PCI device in allow list. The argument format is <[domain:]bus:devid.func>.
 * ``-m <string>``: Matrix for mapping ports to logical cores.
 * ``-P``: PROMISCUOUS mode
 

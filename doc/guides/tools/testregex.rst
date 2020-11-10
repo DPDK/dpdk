@@ -70,4 +70,4 @@ The data file, will be used as a source data for the RegEx to work on.
 
 The tool has a number of command line options. Here is the sample command line::
 
-   ./dpdk-test-regex -w 83:00.0 -- --rules rule_file.rof2 --data data_file.txt --job 100
+   ./dpdk-test-regex -a 83:00.0 -- --rules rule_file.rof2 --data data_file.txt --job 100

@@ -163,10 +163,10 @@ Manager.
   this pool.
 
 
-Whitelisting & Blacklisting
----------------------------
+Allowing & Blocking
+-------------------
 
-For blacklisting a DPAA device, following commands can be used.
+For blocking a DPAA device, following commands can be used.
 
  .. code-block:: console
 

@@ -407,12 +407,12 @@ device having emitted a Device Removal Event. In such case, calling
 callback. Care must be taken not to close the device from the interrupt handler
 context. It is necessary to reschedule such closing operation.
 
-Blacklisting
-~~~~~~~~~~~~
+Block list
+~~~~~~~~~~
 
-The EAL PCI device blacklist functionality can be used to mark certain NIC ports as blacklisted,
+The EAL PCI device block list functionality can be used to mark certain NIC ports as unavailable,
 so they are ignored by the DPDK.
-The ports to be blacklisted are identified using the PCIe* description (Domain:Bus:Device.Function).
+The ports to be blocked are identified using the PCIe* description (Domain:Bus:Device.Function).
 
 Misc Functions
 ~~~~~~~~~~~~~~

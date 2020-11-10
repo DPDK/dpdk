@@ -176,7 +176,7 @@ Runtime Config Options
 
   The number of reserved queue per VF is determined by its host PF. If the
   PCI address of an i40e PF is aaaa:bb.cc, the number of reserved queues per
-  VF can be configured with EAL parameter like -w aaaa:bb.cc,queue-num-per-vf=n.
+  VF can be configured with EAL parameter like -a aaaa:bb.cc,queue-num-per-vf=n.
   The value n can be 1, 2, 4, 8 or 16. If no such parameter is configured, the
   number of reserved queues per VF is 4 by default. If VF request more than
   reserved queues per VF, PF will able to allocate max to 16 queues after a VF
@@ -189,7 +189,7 @@ Runtime Config Options
   Adapter with both Linux kernel and DPDK PMD. To fix this issue, ``devargs``
   parameter ``support-multi-driver`` is introduced, for example::
 
-    -w 84:00.0,support-multi-driver=1
+    -a 84:00.0,support-multi-driver=1
 
   With the above configuration, DPDK PMD will not change global registers, and
   will switch PF interrupt from IntN to Int0 to avoid interrupt conflict between
@@ -204,7 +204,7 @@ Runtime Config Options
   port representors for on initialization of the PF PMD by passing the VF IDs of
   the VFs which are required.::
 
-  -w DBDF,representor=[0,1,4]
+  -a DBDF,representor=[0,1,4]
 
   Currently hot-plugging of representor ports is not supported so all required
   representors must be specified on the creation of the PF.
@@ -216,7 +216,7 @@ Runtime Config Options
   since it can get better perf in some real work loading cases. So ``devargs`` param
   ``use-latest-supported-vec`` is introduced, for example::
 
-  -w 84:00.0,use-latest-supported-vec=1
+  -a 84:00.0,use-latest-supported-vec=1
 
 - ``Enable validation for VF message`` (default ``not enabled``)
 
@@ -226,7 +226,7 @@ Runtime Config Options
   Format -- "maximal-message@period-seconds:ignore-seconds"
   For example::
 
-  -w 84:00.0,vf_msg_cfg=80@120:180
+  -a 84:00.0,vf_msg_cfg=80@120:180
 
 Vector RX Pre-conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -456,7 +456,7 @@ no physical uplink on the associated NIC port.
 To enable this feature, the user should pass a ``devargs`` parameter to the
 EAL, for example::
 
-    -w 84:00.0,enable_floating_veb=1
+    -a 84:00.0,enable_floating_veb=1
 
 In this configuration the PMD will use the floating VEB feature for all the
 VFs created by this PF device.
@@ -464,7 +464,7 @@ VFs created by this PF device.
 Alternatively, the user can specify which VFs need to connect to this floating
 VEB using the ``floating_veb_list`` argument::
 
-    -w 84:00.0,enable_floating_veb=1,floating_veb_list=1;3-4
+    -a 84:00.0,enable_floating_veb=1,floating_veb_list=1;3-4
 
 In this example ``VF1``, ``VF3`` and ``VF4`` connect to the floating VEB,
 while other VFs connect to the normal VEB.
@@ -800,7 +800,7 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
 
 7. The command line of running l3fwd would be something like the following::
 
-      ./dpdk-l3fwd -l 18-21 -n 4 -w 82:00.0 -w 85:00.0 \
+      ./dpdk-l3fwd -l 18-21 -n 4 -a 82:00.0 -a 85:00.0 \
               -- -p 0x3 --config '(0,0,18),(0,1,19),(1,0,20),(1,1,21)'
 
    This means that the application uses core 18 for port 0, queue pair 0 forwarding, core 19 for port 0, queue pair 1 forwarding,

@@ -24,8 +24,8 @@ Most Mellanox ConnectX-3 devices provide two ports but expose a single PCI
 bus address, thus unlike most drivers, librte_net_mlx4 registers itself as a
 PCI driver that allocates one Ethernet device per detected port.
 
-For this reason, one cannot white/blacklist a single port without also
-white/blacklisting the others on the same device.
+For this reason, one cannot block (or allow) a single port without also
+blocking (or allowing) the others on the same device.
 
 Besides its dependency on libibverbs (that implies libmlx4 and associated
 kernel support), librte_net_mlx4 relies heavily on system calls for control
@@ -381,7 +381,7 @@ devices managed by librte_net_mlx4.
       eth4
       eth5
 
-#. Optionally, retrieve their PCI bus addresses for whitelisting::
+#. Optionally, retrieve their PCI bus addresses to be used with the allow argument::
 
       {
           for intf in eth2 eth3 eth4 eth5;
@@ -389,14 +389,14 @@ devices managed by librte_net_mlx4.
               (cd "/sys/class/net/${intf}/device/" && pwd -P);
           done;
       } |
-      sed -n 's,.*/\(.*\),-w \1,p'
+      sed -n 's,.*/\(.*\),-a \1,p'
 
    Example output::
 
-      -w 0000:83:00.0
-      -w 0000:83:00.0
-      -w 0000:84:00.0
-      -w 0000:84:00.0
+      -a 0000:83:00.0
+      -a 0000:83:00.0
+      -a 0000:84:00.0
+      -a 0000:84:00.0
 
    .. note::
 
@@ -409,7 +409,7 @@ devices managed by librte_net_mlx4.
 
 #. Start testpmd with basic parameters::
 
-      testpmd -l 8-15 -n 4 -w 0000:83:00.0 -w 0000:84:00.0 -- --rxq=2 --txq=2 -i
+      testpmd -l 8-15 -n 4 -a 0000:83:00.0 -a 0000:84:00.0 -- --rxq=2 --txq=2 -i
 
    Example output::
 

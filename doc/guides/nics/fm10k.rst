@@ -19,7 +19,7 @@ resource tag) information, rather than the mac and vlan table. Currently this
 feature works only on PF.
 
 To enable this feature, the user should pass a devargs parameter to the eal
-like "-w 84:00.0,enable_ftag=1", and the application should make sure an
+like "-a 84:00.0,enable_ftag=1", and the application should make sure an
 appropriate FTAG is inserted for every frame on TX side.
 
 Vector PMD for FM10K

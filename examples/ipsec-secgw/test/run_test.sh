@@ -8,10 +8,10 @@
 #  SGW_PATH	- path to the ipsec-secgw binary to test
 #  REMOTE_HOST	- ip/hostname of the DUT
 #  REMOTE_IFACE	- iface name for the test-port on DUT
-#  ETH_DEV	- ethernet device to be used on SUT by DPDK ('-w <pci-id>')
+#  ETH_DEV	- ethernet device to be used on SUT by DPDK ('-a <pci-id>')
 # Also user can optionally setup:
 #  SGW_LCORE	- lcore to run ipsec-secgw on (default value is 0)
-#  CRYPTO_DEV	- crypto device to be used ('-w <pci-id>')
+#  CRYPTO_DEV	- crypto device to be used ('-a <pci-id>')
 #	       if none specified appropriate vdevs will be created by the script
 #  SGW_MULTI_SEG - ipsec-secgw option to enable reassembly support and
 #		specify size of reassembly table (i.e. SGW_MULTI_SEG=128)

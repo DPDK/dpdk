@@ -127,7 +127,7 @@ Limitations
   optimisations in the GEN3 device. And if a GCM session is initialised on a
   GEN3 device, then attached to an op sent to a GEN1/GEN2 device, it will not be
   enqueued to the device and will be marked as failed. The simplest way to
-  mitigate this is to use the bdf whitelist to avoid mixing devices of different
+  mitigate this is to use the PCI allowlist to avoid mixing devices of different
   generations in the same process if planning to use for GCM.
 * The mixed algo feature on GEN2 is not supported by all kernel drivers. Check
   the notes under the Available Kernel Drivers table below for specific details.
@@ -237,7 +237,7 @@ adjusted to the number of VFs which the QAT common code will need to handle.
         QAT VF may expose two crypto devices, sym and asym, it may happen that the
         number of devices will be bigger than MAX_DEVS and the process will show an error
         during PMD initialisation. To avoid this problem RTE_CRYPTO_MAX_DEVS may be
-        increased or -w, pci-whitelist domain:bus:devid:func option may be used.
+        increased or -a, allow domain:bus:devid:func option may be used.
 
 
 QAT compression PMD needs intermediate buffers to support Deflate compression
@@ -275,7 +275,7 @@ return 0 (thereby avoiding an MMIO) if the device is congested and number of pac
 possible to enqueue is smaller.
 To use this feature the user must set the parameter on process start as a device additional parameter::
 
-  -w 03:01.1,qat_sym_enq_threshold=32,qat_comp_enq_threshold=16
+  -a 03:01.1,qat_sym_enq_threshold=32,qat_comp_enq_threshold=16
 
 All parameters can be used with the same device regardless of order. Parameters are separated
 by comma. When the same parameter is used more than once first occurrence of the parameter
@@ -638,19 +638,19 @@ Testing
 QAT SYM crypto PMD can be tested by running the test application::
 
     cd ./<build_dir>/app/test
-    ./dpdk-test -l1 -n1 -w <your qat bdf>
+    ./dpdk-test -l1 -n1 -a <your qat bdf>
     RTE>>cryptodev_qat_autotest
 
 QAT ASYM crypto PMD can be tested by running the test application::
 
     cd ./<build_dir>/app/test
-    ./dpdk-test -l1 -n1 -w <your qat bdf>
+    ./dpdk-test -l1 -n1 -a <your qat bdf>
     RTE>>cryptodev_qat_asym_autotest
 
 QAT compression PMD can be tested by running the test application::
 
     cd ./<build_dir>/app/test
-    ./dpdk-test -l1 -n1 -w <your qat bdf>
+    ./dpdk-test -l1 -n1 -a <your qat bdf>
     RTE>>compressdev_autotest
 
 

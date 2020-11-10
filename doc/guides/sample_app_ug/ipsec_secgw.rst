@@ -323,15 +323,15 @@ This means that if the application is using a single core and both hardware
 and software crypto devices are detected, hardware devices will be used.
 
 A way to achieve the case where you want to force the use of virtual crypto
-devices is to whitelist the Ethernet devices needed and therefore implicitly
-blacklisting all hardware crypto devices.
+devices is to only use the Ethernet devices needed (via the allow flag)
+and therefore implicitly blocking all hardware crypto devices.
 
 For example, something like the following command line:
 
 .. code-block:: console
 
     ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048 \
-            -w 81:00.0 -w 81:00.1 -w 81:00.2 -w 81:00.3 \
+            -a 81:00.0 -a 81:00.1 -a 81:00.2 -a 81:00.3 \
             --vdev "crypto_aesni_mb" --vdev "crypto_null" \
 	    -- \
             -p 0xf -P -u 0x3 --config="(0,0,20),(1,0,20),(2,0,21),(3,0,21)" \
@@ -929,13 +929,13 @@ The user must setup the following environment variables:
 
 *   ``REMOTE_IFACE``: interface name for the test-port on the DUT.
 
-*   ``ETH_DEV``: ethernet device to be used on the SUT by DPDK ('-w <pci-id>')
+*   ``ETH_DEV``: ethernet device to be used on the SUT by DPDK ('-a <pci-id>')
 
 Also the user can optionally setup:
 
 *   ``SGW_LCORE``: lcore to run ipsec-secgw on (default value is 0)
 
-*   ``CRYPTO_DEV``: crypto device to be used ('-w <pci-id>'). If none specified
+*   ``CRYPTO_DEV``: crypto device to be used ('-a <pci-id>'). If none specified
     appropriate vdevs will be created by the script
 
 Scripts can be used for multiple test scenarios. To check all available

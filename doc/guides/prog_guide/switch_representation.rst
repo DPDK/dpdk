@@ -59,9 +59,9 @@ which can be thought as a software "patch panel" front-end for applications.
 
 ::
 
-   -w pci:dbdf,representor=0
-   -w pci:dbdf,representor=[0-3]
-   -w pci:dbdf,representor=[0,5-11]
+   -a pci:dbdf,representor=0
+   -a pci:dbdf,representor=[0-3]
+   -a pci:dbdf,representor=[0,5-11]
 
 - As virtual devices, they may be more limited than their physical
   counterparts, for instance by exposing only a subset of device

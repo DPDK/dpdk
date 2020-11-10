@@ -305,7 +305,7 @@ enables overlay offload, it prints the following message on the console.
 By default, PMD enables overlay offload if hardware supports it. To disable
 it, set ``devargs`` parameter ``disable-overlay=1``. For example::
 
-    -w 12:00.0,disable-overlay=1
+    -a 12:00.0,disable-overlay=1
 
 By default, the NIC uses 4789 as the VXLAN port. The user may change
 it through ``rte_eth_dev_udp_tunnel_port_{add,delete}``. However, as
@@ -371,7 +371,7 @@ vectorized handler, take the following steps.
   PMD consider the vectorized handler when selecting the receive handler.
   For example::
 
-    -w 12:00.0,enable-avx2-rx=1
+    -a 12:00.0,enable-avx2-rx=1
 
   As the current implementation is intended for field trials, by default, the
   vectorized handler is not considered (``enable-avx2-rx=0``).
@@ -420,7 +420,7 @@ DPDK as untagged packets. In this case mbuf->vlan_tci and the PKT_RX_VLAN and
 PKT_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
 ``devargs`` parameter ``ig-vlan-rewrite=untag``. For example::
 
-    -w 12:00.0,ig-vlan-rewrite=untag
+    -a 12:00.0,ig-vlan-rewrite=untag
 
 - **SR-IOV**
 

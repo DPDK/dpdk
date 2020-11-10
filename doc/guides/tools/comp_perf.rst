@@ -53,9 +53,9 @@ See the DPDK Getting Started Guides for more information on these options.
 	One lcore is needed for process admin, tests are run on all other cores.
 	To run tests on two lcores, three lcores must be passed to the tool.
 
-*   ``-w <PCI>``
+*   ``-a <PCI>``
 
-	Add a PCI device in white list.
+	Add a PCI device in allow list.
 
 *   ``--vdev <driver><id>``
 

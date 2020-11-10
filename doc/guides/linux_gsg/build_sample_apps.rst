@@ -53,7 +53,7 @@ The EAL options are as follows:
   Number of memory channels per processor socket.
 
 * ``-b <domain:bus:devid.func>``:
-  Blacklisting of ports; prevent EAL from using specified PCI device
+  Blocklisting of ports; prevent EAL from using specified PCI device
   (multiple ``-b`` options are allowed).
 
 * ``--use-device``:

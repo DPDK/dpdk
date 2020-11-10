@@ -30,7 +30,7 @@ Physical RegEx devices are discovered during the PCI probe/enumeration of the
 EAL function which is executed at DPDK initialization, based on
 their PCI device identifier, each unique PCI BDF (bus/bridge, device,
 function). Specific physical ReEx devices, like other physical devices in DPDK
-can be white-listed or black-listed using the EAL command line options.
+can be listed using the EAL command line options.
 
 
 Device Identification

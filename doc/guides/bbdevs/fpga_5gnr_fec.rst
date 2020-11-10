@@ -304,4 +304,4 @@ Specifically for the BBDEV FPGA 5GNR FEC PMD, the command below can be used:
 .. code-block:: console
 
   ./pf_bb_config FPGA_5GNR -c fpga_5gnr/fpga_5gnr_config_vf.cfg
-  ./test-bbdev.py -e="-c 0xff0 -w${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data
+  ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data

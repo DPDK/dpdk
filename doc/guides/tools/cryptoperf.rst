@@ -65,9 +65,9 @@ See the DPDK Getting Started Guides for more information on these options.
         Set the hexadecimal bitmask of the cores to run on. The corelist is a
         list cores to use.
 
-*   ``-w <PCI>``
+*   ``-a <PCI>``
 
-        Add a PCI device in white list.
+        Add a PCI device in allow list.
 
 *   ``--vdev <driver><id>``
 
@@ -394,7 +394,7 @@ Call application for performance throughput test of single Aesni MB PMD
 for cipher encryption aes-cbc and auth generation sha1-hmac,
 one million operations, burst size 32, packet size 64::
 
-   dpdk-test-crypto-perf -l 6-7 --vdev crypto_aesni_mb -w 0000:00:00.0 --
+   dpdk-test-crypto-perf -l 6-7 --vdev crypto_aesni_mb -a 0000:00:00.0 --
    --ptest throughput --devtype crypto_aesni_mb --optype cipher-then-auth
    --cipher-algo aes-cbc --cipher-op encrypt --cipher-key-sz 16 --auth-algo
    sha1-hmac --auth-op generate --auth-key-sz 64 --digest-sz 12
@@ -404,7 +404,7 @@ Call application for performance latency test of two Aesni MB PMD executed
 on two cores for cipher encryption aes-cbc, ten operations in silent mode::
 
    dpdk-test-crypto-perf -l 4-7 --vdev crypto_aesni_mb1
-   --vdev crypto_aesni_mb2 -w 0000:00:00.0 -- --devtype crypto_aesni_mb
+   --vdev crypto_aesni_mb2 -a 0000:00:00.0 -- --devtype crypto_aesni_mb
    --cipher-algo aes-cbc --cipher-key-sz 16 --cipher-iv-sz 16
    --cipher-op encrypt --optype cipher-only --silent
    --ptest latency --total-ops 10
@@ -414,7 +414,7 @@ for cipher encryption aes-gcm and auth generation aes-gcm,ten operations
 in silent mode, test vector provide in file "test_aes_gcm.data"
 with packet verification::
 
-   dpdk-test-crypto-perf -l 4-7 --vdev crypto_openssl -w 0000:00:00.0 --
+   dpdk-test-crypto-perf -l 4-7 --vdev crypto_openssl -a 0000:00:00.0 --
    --devtype crypto_openssl --aead-algo aes-gcm --aead-key-sz 16
    --aead-iv-sz 16 --aead-op encrypt --aead-aad-sz 16 --digest-sz 16
    --optype aead --silent --ptest verify --total-ops 10

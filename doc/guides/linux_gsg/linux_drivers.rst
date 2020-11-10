@@ -93,11 +93,11 @@ parameter ``--vfio-vf-token``.
     3. echo 2 > /sys/bus/pci/devices/0000:86:00.0/sriov_numvfs
 
     4. Start the PF:
-        <build_dir>/app/dpdk-testpmd -l 22-25 -n 4 -w 86:00.0 \
+        <build_dir>/app/dpdk-testpmd -l 22-25 -n 4 -a 86:00.0 \
          --vfio-vf-token=14d63f20-8445-11ea-8900-1f9ce7d5650d --file-prefix=pf -- -i
 
     5. Start the VF:
-        <build_dir>/app/dpdk-testpmd -l 26-29 -n 4 -w 86:02.0 \
+        <build_dir>/app/dpdk-testpmd -l 26-29 -n 4 -a 86:02.0 \
          --vfio-vf-token=14d63f20-8445-11ea-8900-1f9ce7d5650d --file-prefix=vf0 -- -i
 
 Also, to use VFIO, both kernel and BIOS must support and be configured to use IO virtualization (such as Intel® VT-d).

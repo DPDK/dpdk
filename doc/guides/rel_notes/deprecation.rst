@@ -28,17 +28,6 @@ Deprecation Notices
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
-* eal: The terms blacklist and whitelist to describe devices used
-  by DPDK will be replaced in the 20.11 relase.
-  This will apply to command line arguments.
-
-  The command line arguments to ``rte_eal_init`` will change from
-  ``-b, --pci-blacklist`` to ``-x, --exclude`` and
-  ``-w, --pci-whitelist`` to ``-i, --include``.
-  The old command line arguments will continue to be accepted in 20.11
-  but will cause a runtime warning message. The old arguments will
-  be removed in a future release.
-
 * eal: The function ``rte_eal_remote_launch`` will return new error codes
   after read or write error on the pipe, instead of calling ``rte_panic``.
 

@@ -191,7 +191,7 @@ following::
 
 .. Note:
 
-   Change the ``-b`` options to blacklist all of your physical ports. The
+   Change the ``-b`` options to exclude all of your physical ports. The
    following command line is all one line.
 
    Also, ``-f themes/black-yellow.theme`` is optional if the default colors

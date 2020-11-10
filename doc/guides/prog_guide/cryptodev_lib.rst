@@ -32,7 +32,7 @@ Physical Crypto devices are discovered during the PCI probe/enumeration of the
 EAL function which is executed at DPDK initialization, based on
 their PCI device identifier, each unique PCI BDF (bus/bridge, device,
 function). Specific physical Crypto devices, like other physical devices in DPDK
-can be white-listed or black-listed using the EAL command line options.
+can be listed using the EAL command line options.
 
 Virtual devices can be created by two mechanisms, either using the EAL command
 line options or from within the application using an EAL API directly.

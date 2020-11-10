@@ -206,7 +206,7 @@ vmbus_parse(const char *name, void *addr)
 /*
  * scan for matching device args on command line
  * example:
- *	-w 'vmbus:635a7ae3-091e-4410-ad59-667c4f8c04c3,latency=20'
+ *	-a 'vmbus:635a7ae3-091e-4410-ad59-667c4f8c04c3,latency=20'
  */
 struct rte_devargs *
 vmbus_devargs_lookup(struct rte_vmbus_device *dev)

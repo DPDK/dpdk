@@ -475,6 +475,12 @@ API Changes
   ``RTE_LCORE_FOREACH_SLAVE`` is replaced with
   ``RTE_LCORE_FOREACH_WORKER``.
 
+* eal: The definitions related to including and excluding devices
+  has been changed from blacklist/whitelist to block/allow list.
+  There are compatibility macros and command line mapping to accept
+  the old values but applications and scripts are strongly encouraged
+  to migrate to the new names.
+
 * eal: The ``rte_logs`` struct and global symbol was made private
   and is no longer part of the API.
 

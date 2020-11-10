@@ -19,7 +19,7 @@ Physical compression devices are discovered during the bus probe of the EAL func
 which is executed at DPDK initialization, based on their unique device identifier.
 For e.g. PCI devices can be identified using PCI BDF (bus/bridge, device, function).
 Specific physical compression devices, like other physical devices in DPDK can be
-white-listed or black-listed using the EAL command line options.
+listed using the EAL command line options.
 
 Virtual devices can be created by two mechanisms, either using the EAL command
 line options or from within the application using an EAL API directly.

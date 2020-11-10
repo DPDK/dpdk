@@ -503,10 +503,10 @@ which are lower than logging ``level``.
 Using ``pmd.net.dpaa2`` as log matching criteria, all PMD logs can be enabled
 which are lower than logging ``level``.
 
-Whitelisting & Blacklisting
----------------------------
+Allowing & Blocking
+-------------------
 
-For blacklisting a DPAA2 device, following commands can be used.
+For blocking a DPAA2 device, following commands can be used.
 
  .. code-block:: console
 
@@ -514,18 +514,18 @@ For blacklisting a DPAA2 device, following commands can be used.
 
 Where x is the device object id as configured in resource container.
 
-Running secondary debug app without blacklist
+Running secondary debug app without blocklist
 ---------------------------------------------
 
 dpaa2 hardware imposes limits on some H/W access devices like Management
 Control Port and H/W portal. This causes issue in their shared usages in
 case of multi-process applications. It can overcome by using
-whitelist/blacklist in primary and secondary applications.
+allowlist/blocklist in primary and secondary applications.
 
 In order to ease usage of standard debugging apps like dpdk-procinfo, dpaa2
 driver reserves extra Management Control Port and H/W portal which can be
 used by debug application to debug any existing application without
-blacklisting these devices in primary process.
+blocking these devices in primary process.
 
 Limitations
 -----------

@@ -134,10 +134,10 @@ Supported DPAA2 SoCs
 * LS2088A/LS2048A
 * LS1088A/LS1048A
 
-Whitelisting & Blacklisting
----------------------------
+Allowing & Blocking
+-------------------
 
-For blacklisting a DPAA2 SEC device, following commands can be used.
+The DPAA2 SEC device can be blocked with the following:
 
  .. code-block:: console
 

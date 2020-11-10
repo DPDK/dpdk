@@ -350,7 +350,7 @@ Per-Device Parameters
 ~~~~~~~~~~~~~~~~~~~~~
 
 The following per-device parameters can be passed via EAL PCI device
-whitelist option like "-w 02:00.0,arg1=value1,...".
+allow option like "-a 02:00.0,arg1=value1,...".
 
 Case-insensitive 1/y/yes/on or 0/n/no/off may be used to specify
 boolean parameters value.

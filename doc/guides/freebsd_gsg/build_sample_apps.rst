@@ -67,7 +67,7 @@ DPDK application. Some of the EAL options for FreeBSD are as follows:
     is a list of cores to use instead of a core mask.
 
 *   ``-b <domain:bus:devid.func>``:
-    Blacklisting of ports; prevent EAL from using specified PCI device
+    Blocklisting of ports; prevent EAL from using specified PCI device
     (multiple ``-b`` options are allowed).
 
 *   ``--use-device``:

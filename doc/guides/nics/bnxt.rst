@@ -683,7 +683,7 @@ The feature uses a newly implemented control-plane firmware interface which
 optimizes flow insertions and deletions.
 
 This is a tech preview feature, and is disabled by default. It can be enabled
-using bnxt devargs. For ex: "-w 0000:0d:00.0,host-based-truflow=1”.
+using bnxt devargs. For ex: "-a 0000:0d:00.0,host-based-truflow=1”.
 
 Notes
 -----
@@ -745,7 +745,7 @@ when the PMD is initialized on a PF or trusted-VF. The user can specify the list
 of VF IDs of the VFs for which the representors are needed by using the
 ``devargs`` option ``representor``.::
 
-  -w DBDF,representor=[0,1,4]
+  -a DBDF,representor=[0,1,4]
 
 Note that currently hot-plugging of representor ports is not supported so all
 the required representors must be specified on the creation of the PF or the
@@ -770,12 +770,12 @@ same host domain, additional dev args have been added to the PMD.
 
 The sample command line with the new ``devargs`` looks like this::
 
-  -w 0000:06:02.0,host-based-truflow=1,representor=[1],rep-based-pf=8,\
+  -a 0000:06:02.0,host-based-truflow=1,representor=[1],rep-based-pf=8,\
 	rep-is-pf=1,rep-q-r2f=1,rep-fc-r2f=0,rep-q-f2r=1,rep-fc-f2r=1
 
 .. code-block:: console
 
-	testpmd -l1-4 -n2 -w 0008:01:00.0,host-based-truflow=1,\
+	testpmd -l1-4 -n2 -a 0008:01:00.0,host-based-truflow=1,\
 	representor=[0], rep-based-pf=8,rep-is-pf=0,rep-q-r2f=1,rep-fc-r2f=1,\
 	rep-q-f2r=0,rep-fc-f2r=1 --log-level="pmd.*",8 -- -i --rxq=3 --txq=3
 
