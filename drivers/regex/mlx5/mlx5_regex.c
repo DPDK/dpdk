@@ -176,7 +176,12 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	priv->uar = mlx5_glue->devx_alloc_uar(ctx, 0);
+	/*
+	 * This PMD always claims the write memory barrier on UAR
+	 * registers writings, it is safe to allocate UAR with any
+	 * memory mapping type.
+	 */
+	priv->uar = mlx5_devx_alloc_uar(ctx, -1);
 	if (!priv->uar) {
 		DRV_LOG(ERR, "can't allocate uar.");
 		rte_errno = ENOMEM;
