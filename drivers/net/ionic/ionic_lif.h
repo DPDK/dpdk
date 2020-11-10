@@ -81,6 +81,7 @@ struct ionic_rx_qcq {
 
 	/* cacheline2 */
 	struct rte_mempool *mb_pool;
+	uint16_t buf_size;	/* Total length of all segments together */
 	uint16_t flags;
 
 	/* cacheline3 (inside stats) */
@@ -123,6 +124,7 @@ struct ionic_lif {
 	struct ionic_adapter *adapter;
 	struct rte_eth_dev *eth_dev;
 	uint16_t port_id;  /**< Device port identifier */
+	uint16_t rx_buf_size;
 	uint32_t hw_index;
 	uint32_t state;
 	uint32_t ntxqcqs;
@@ -174,6 +176,7 @@ void ionic_lif_stop(struct ionic_lif *lif);
 
 void ionic_lif_configure(struct ionic_lif *lif);
 void ionic_lif_configure_vlan_offload(struct ionic_lif *lif, int mask);
+void ionic_lif_set_rx_buf_size(struct ionic_lif *lif);
 void ionic_lif_reset(struct ionic_lif *lif);
 
 int ionic_intr_alloc(struct ionic_lif *lif, struct ionic_intr_info *intr);

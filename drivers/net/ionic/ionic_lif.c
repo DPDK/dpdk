@@ -723,6 +723,21 @@ ionic_qcq_free(struct ionic_qcq *qcq)
 	rte_free(qcq);
 }
 
+void
+ionic_lif_set_rx_buf_size(struct ionic_lif *lif)
+{
+	struct rte_eth_conf *dev_conf = &lif->eth_dev->data->dev_conf;
+
+	/*
+	 * Adjust the size of the LIF's rx buffers based on the
+	 * current ethdev config.
+	 * NB: Our buffers are smaller since they do not include the CRC.
+	 */
+	lif->rx_buf_size = dev_conf->rxmode.max_rx_pkt_len - RTE_ETHER_CRC_LEN;
+	IONIC_PRINT(DEBUG, "max_rx_pkt_len %u -> rx_buf_size %u\n",
+		dev_conf->rxmode.max_rx_pkt_len, lif->rx_buf_size);
+}
+
 int
 ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t nrxq_descs, struct ionic_rx_qcq **rxq_out)
@@ -732,6 +747,10 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 	int err;
 
 	flags = IONIC_QCQ_F_SG;
+
+	/* This must be run before we can calculate buf sizes */
+	ionic_lif_set_rx_buf_size(lif);
+
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_RXQ,
 		sizeof(struct ionic_rx_qcq),
@@ -748,6 +767,7 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		return err;
 
 	rxq->flags = flags;
+	rxq->buf_size = lif->rx_buf_size;
 
 	lif->rxqcqs[index] = rxq;
 	*rxq_out = rxq;

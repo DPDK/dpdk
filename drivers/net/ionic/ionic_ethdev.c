@@ -346,15 +346,18 @@ ionic_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	int err;
 
 	IONIC_PRINT_CALL();
+	IONIC_PRINT(INFO, "Setting mtu %u\n", mtu);
 
-	/*
-	 * Note: mtu check against IONIC_MIN_MTU, IONIC_MAX_MTU
-	 * is done by the API.
-	 */
-
+	/* Note: mtu check against min/max is done by the API */
 	err = ionic_lif_change_mtu(lif, mtu);
 	if (err)
 		return err;
+
+	/* Update max frame size */
+	max_frame_size = mtu + RTE_ETHER_HDR_LEN;
+	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame_size;
+
+	ionic_lif_set_rx_buf_size(lif);
 
 	return 0;
 }
@@ -376,12 +379,14 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 		rte_le_to_cpu_32(cfg->queue_count[IONIC_QTYPE_TXQ]);
 
 	/* Also add ETHER_CRC_LEN if the adapter is able to keep CRC */
-	dev_info->min_rx_bufsize = IONIC_MIN_MTU + RTE_ETHER_HDR_LEN;
-	dev_info->max_rx_pktlen = IONIC_MAX_MTU + RTE_ETHER_HDR_LEN;
-	dev_info->max_mac_addrs = adapter->max_mac_addrs;
-	dev_info->min_mtu = IONIC_MIN_MTU;
-	dev_info->max_mtu = IONIC_MAX_MTU;
+	dev_info->min_mtu = RTE_MAX((uint32_t)IONIC_MIN_MTU,
+			rte_le_to_cpu_32(ident->lif.eth.min_frame_size));
+	dev_info->max_mtu = RTE_MIN((uint32_t)IONIC_MAX_MTU,
+			rte_le_to_cpu_32(ident->lif.eth.max_frame_size));
+	dev_info->min_rx_bufsize = dev_info->min_mtu + RTE_ETHER_HDR_LEN;
+	dev_info->max_rx_pktlen = dev_info->max_mtu + RTE_ETHER_HDR_LEN;
 
+	dev_info->max_mac_addrs = adapter->max_mac_addrs;
 	dev_info->hash_key_size = IONIC_RSS_HASH_KEY_SIZE;
 	dev_info->reta_size = rte_le_to_cpu_16(ident->lif.eth.rss_ind_tbl_sz);
 	dev_info->flow_type_rss_offloads = IONIC_ETH_RSS_OFFLOAD_ALL;
