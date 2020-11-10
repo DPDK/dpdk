@@ -17,9 +17,16 @@
 
 #define IONIC_ETH_DEV_TO_LIF(eth_dev) ((struct ionic_lif *) \
 	(eth_dev)->data->dev_private)
-#define IONIC_ETH_DEV_TO_ADAPTER(eth_dev) \
-	(IONIC_ETH_DEV_TO_LIF(eth_dev)->adapter)
 
+struct ionic_bars;
+struct ionic_dev_intf;
+
+int eth_ionic_dev_probe(void *bus_dev, struct rte_device *rte_dev,
+	struct ionic_bars *bars, const struct ionic_dev_intf *intf,
+	uint16_t device_id, uint16_t vendor_id);
+int eth_ionic_dev_remove(struct rte_device *rte_dev);
+
+void ionic_dev_interrupt_handler(void *param);
 int ionic_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
 
 #endif /* _IONIC_ETHDEV_H_ */

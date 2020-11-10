@@ -172,13 +172,22 @@ struct ionic_cq {
 struct ionic_lif;
 struct ionic_adapter;
 struct ionic_qcq;
+struct rte_mempool;
+struct rte_eth_dev;
+
+struct ionic_dev_intf {
+	int  (*setup)(struct ionic_adapter *adapter);
+	void (*copy_bus_info)(struct ionic_adapter *adapter,
+			struct rte_eth_dev *eth_dev);
+	int  (*configure_intr)(struct ionic_adapter *adapter);
+	void (*unconfigure_intr)(struct ionic_adapter *adapter);
+	void (*unmap_bars)(struct ionic_adapter *adapter);
+};
 
 void ionic_intr_init(struct ionic_dev *idev, struct ionic_intr_info *intr,
 	unsigned long index);
 
 const char *ionic_opcode_to_str(enum ionic_cmd_opcode opcode);
-
-int ionic_dev_setup(struct ionic_adapter *adapter);
 
 void ionic_dev_cmd_go(struct ionic_dev *idev, union ionic_dev_cmd *cmd);
 uint8_t ionic_dev_cmd_status(struct ionic_dev *idev);
@@ -243,7 +252,11 @@ ionic_q_flush(struct ionic_queue *q)
 {
 	uint64_t val = IONIC_DBELL_QID(q->hw_index) | q->head_idx;
 
+#if defined(RTE_ARCH_ARM64)
+	rte_write64_relaxed(rte_cpu_to_le_64(val), q->db);
+#else
 	rte_write64(rte_cpu_to_le_64(val), q->db);
+#endif
 }
 
 #endif /* _IONIC_DEV_H_ */

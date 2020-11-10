@@ -875,11 +875,7 @@ ionic_notify_qcq_alloc(struct ionic_lif *lif)
 static void *
 ionic_bus_map_dbpage(struct ionic_adapter *adapter, int page_num)
 {
-	char *vaddr = adapter->bars[IONIC_PCI_BAR_DBELL].vaddr;
-
-	if (adapter->num_bars <= IONIC_PCI_BAR_DBELL)
-		return NULL;
-
+	uint8_t *vaddr = (uint8_t *)adapter->idev.db_pages;
 	return (void *)&vaddr[page_num << PAGE_SHIFT];
 }
 
@@ -910,6 +906,17 @@ ionic_lif_queue_identify(struct ionic_lif *lif)
 
 		memset(qti, 0, sizeof(*qti));
 
+#ifdef RTE_LIBRTE_IONIC_PMD_EMBEDDED
+		/* When embedded, the FW will always match the driver */
+		qti->version = ionic_qtype_vers[qtype];
+
+		RTE_SET_USED(nwords);
+		RTE_SET_USED(i);
+		RTE_SET_USED(err);
+		RTE_SET_USED(q_words);
+		RTE_SET_USED(cmd_words);
+#else
+		/* On the host, query the FW for info */
 		ionic_dev_cmd_queue_identify(idev, IONIC_LIF_TYPE_CLASSIC,
 			qtype, ionic_qtype_vers[qtype]);
 		err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
@@ -938,6 +945,7 @@ ionic_lif_queue_identify(struct ionic_lif *lif)
 		qti->max_sg_elems = rte_le_to_cpu_16(q_ident->max_sg_elems);
 		qti->sg_desc_stride =
 			rte_le_to_cpu_16(q_ident->sg_desc_stride);
+#endif
 
 		IONIC_PRINT(DEBUG, " qtype[%d].version = %d",
 			qtype, qti->version);

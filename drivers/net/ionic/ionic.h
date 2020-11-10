@@ -16,7 +16,7 @@
 
 #define IONIC_DRV_NAME			"ionic"
 #define IONIC_DRV_DESCRIPTION		"Pensando Ethernet NIC Driver"
-#define IONIC_DRV_VERSION		"0.11.0-49"
+#define IONIC_DRV_VERSION		"1.17.0-65"
 
 /* Vendor ID */
 #define IONIC_PENSANDO_VENDOR_ID	0x1dd8
@@ -42,6 +42,11 @@ struct ionic_hw {
 	uint16_t vendor_id;
 };
 
+struct ionic_bars {
+	struct ionic_dev_bar bar[IONIC_BARS_MAX];
+	uint32_t num_bars;
+};
+
 /*
  * Structure to store private data for each driver instance (for each adapter).
  */
@@ -49,10 +54,10 @@ struct ionic_adapter {
 	struct ionic_hw hw;
 	struct ionic_dev idev;
 	const char *name;
-	struct ionic_dev_bar bars[IONIC_BARS_MAX];
+	struct ionic_bars bars;
+	const struct ionic_dev_intf *intf;
 	struct ionic_identity	ident;
 	struct ionic_lif *lif;
-	uint32_t num_bars;
 	uint32_t max_ntxqs_per_lif;
 	uint32_t max_nrxqs_per_lif;
 	uint32_t max_mac_addrs;
@@ -61,8 +66,7 @@ struct ionic_adapter {
 	bool intrs[IONIC_INTR_CTRL_REGS_MAX];
 	bool link_up;
 	char fw_version[IONIC_DEVINFO_FWVERS_BUFLEN];
-	struct rte_pci_device *pci_dev;
-	LIST_ENTRY(ionic_adapter) pci_adapters;
+	void *bus_dev;
 };
 
 /** ionic_admin_ctx - Admin command context.
