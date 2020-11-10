@@ -610,11 +610,22 @@ enum i40e_fdir_ip_type {
 	I40E_FDIR_IPTYPE_IPV6,
 };
 
+/**
+ * Structure to store flex pit for flow diretor.
+ */
+struct i40e_fdir_flex_pit {
+	uint8_t src_offset; /* offset in words from the beginning of payload */
+	uint8_t size;       /* size in words */
+	uint8_t dst_offset; /* offset in words of flexible payload */
+};
+
 /* A structure used to contain extend input of flow */
 struct i40e_fdir_flow_ext {
 	uint16_t vlan_tci;
 	uint8_t flexbytes[RTE_ETH_FDIR_MAX_FLEXLEN];
 	/* It is filled by the flexible payload to match. */
+	uint8_t flex_mask[I40E_FDIR_MAX_FLEX_LEN];
+	uint8_t raw_id;
 	uint8_t is_vf;   /* 1 for VF, 0 for port dev */
 	uint16_t dst_id; /* VF ID, available when is_vf is 1*/
 	bool inner_ip;   /* If there is inner ip */
@@ -623,6 +634,8 @@ struct i40e_fdir_flow_ext {
 	bool customized_pctype; /* If customized pctype is used */
 	bool pkt_template; /* If raw packet template is used */
 	bool is_udp; /* ipv4|ipv6 udp flow */
+	enum i40e_flxpld_layer_idx layer_idx;
+	struct i40e_fdir_flex_pit flex_pit[I40E_MAX_FLXPLD_LAYER * I40E_MAX_FLXPLD_FIED];
 };
 
 /* A structure used to define the input for a flow director filter entry */
@@ -671,15 +684,6 @@ struct i40e_fdir_filter_conf {
 	/* ID, an unique value is required when deal with FDIR entry */
 	struct i40e_fdir_input input;    /* Input set */
 	struct i40e_fdir_action action;  /* Action taken when match */
-};
-
-/*
- * Structure to store flex pit for flow diretor.
- */
-struct i40e_fdir_flex_pit {
-	uint8_t src_offset;    /* offset in words from the beginning of payload */
-	uint8_t size;          /* size in words */
-	uint8_t dst_offset;    /* offset in words of flexible payload */
 };
 
 struct i40e_fdir_flex_mask {
