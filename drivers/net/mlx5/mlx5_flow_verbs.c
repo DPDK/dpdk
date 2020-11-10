@@ -1972,7 +1972,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			rss_desc->hash_fields = dev_flow->hash_fields;
 			rss_desc->tunnel = !!(handle->layers &
 					      MLX5_FLOW_LAYER_TUNNEL);
-			rss_desc->standalone = false;
+			rss_desc->shared_rss = 0;
 			hrxq_idx = mlx5_hrxq_get(dev, rss_desc);
 			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 					      hrxq_idx);

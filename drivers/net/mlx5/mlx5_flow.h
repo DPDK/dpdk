@@ -388,6 +388,7 @@ enum mlx5_flow_fate_type {
 	MLX5_FLOW_FATE_PORT_ID,
 	MLX5_FLOW_FATE_DROP,
 	MLX5_FLOW_FATE_DEFAULT_MISS,
+	MLX5_FLOW_FATE_SHARED_RSS,
 	MLX5_FLOW_FATE_MAX,
 };
 
@@ -651,6 +652,8 @@ struct mlx5_flow_handle {
 		/**< Generic value indicates the fate action. */
 		uint32_t rix_default_fate;
 		/**< Indicates default miss fate action. */
+		uint32_t rix_srss;
+		/**< Indicates shared RSS fate action. */
 	};
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_flow_handle_dv dvh;
@@ -1027,7 +1030,6 @@ flow_items_to_tunnel(const struct rte_flow_item items[])
 /* Flow structure. */
 struct rte_flow {
 	ILIST_ENTRY(uint32_t)next; /**< Index to the next flow structure. */
-	uint32_t shared_rss; /** < Shared RSS action ID. */
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
 	uint32_t drv_type:2; /**< Driver type. */

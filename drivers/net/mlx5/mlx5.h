@@ -789,11 +789,11 @@ struct mlx5_flow_rss_desc {
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint32_t key_len; /**< RSS hash key len. */
 	uint32_t tunnel; /**< Queue in tunnel. */
+	uint32_t shared_rss; /**< Shared RSS index. */
 	union {
 		uint16_t *queue; /**< Destination queues. */
 		const uint16_t *const_q; /**< Const pointer convert. */
 	};
-	bool standalone; /**< Queue is standalone or not. */
 };
 
 #define MLX5_PROC_PRIV(port_id) \
@@ -836,7 +836,6 @@ struct mlx5_ind_table_obj {
 __extension__
 struct mlx5_hrxq {
 	struct mlx5_cache_entry entry; /* Cache entry. */
-	uint32_t refcnt; /* Reference counter. */
 	uint32_t standalone:1; /* This object used in shared action. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
 	RTE_STD_C11

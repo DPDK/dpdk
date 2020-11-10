@@ -2211,8 +2211,9 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const uint8_t *rss_key = rss_desc->key;
 	uint32_t rss_key_len =  rss_desc->key_len;
+	bool standalone = !!rss_desc->shared_rss;
 	const uint16_t *queues =
-		rss_desc->standalone ? rss_desc->const_q : rss_desc->queue;
+		standalone ? rss_desc->const_q : rss_desc->queue;
 	uint32_t queues_n = rss_desc->queue_num;
 	struct mlx5_hrxq *hrxq = NULL;
 	uint32_t hrxq_idx = 0;
@@ -2220,16 +2221,17 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 	int ret;
 
 	queues_n = rss_desc->hash_fields ? queues_n : 1;
-	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
+	ind_tbl = standalone ? NULL :
+		  mlx5_ind_table_obj_get(dev, queues, queues_n);
 	if (!ind_tbl)
 		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n,
-						 rss_desc->standalone);
+						 standalone);
 	if (!ind_tbl)
 		return NULL;
 	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
 	if (!hrxq)
 		goto error;
-	hrxq->standalone = rss_desc->standalone;
+	hrxq->standalone = standalone;
 	hrxq->idx = hrxq_idx;
 	hrxq->ind_table = ind_tbl;
 	hrxq->rss_key_len = rss_key_len;
@@ -2240,7 +2242,7 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 		goto error;
 	return hrxq;
 error:
-	mlx5_ind_table_obj_release(dev, ind_tbl, rss_desc->standalone);
+	mlx5_ind_table_obj_release(dev, ind_tbl, standalone);
 	if (hrxq)
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
 	return NULL;
@@ -2294,7 +2296,7 @@ uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
 		.data = rss_desc,
 	};
 
-	if (rss_desc->standalone) {
+	if (rss_desc->shared_rss) {
 		hrxq = __mlx5_hrxq_create(dev, rss_desc);
 	} else {
 		entry = mlx5_cache_register(&priv->hrxqs, &ctx);
@@ -2346,11 +2348,8 @@ mlx5_drop_action_create(struct rte_eth_dev *dev)
 	struct mlx5_hrxq *hrxq = NULL;
 	int ret;
 
-	if (priv->drop_queue.hrxq) {
-		__atomic_fetch_add(&priv->drop_queue.hrxq->refcnt, 1,
-				   __ATOMIC_RELAXED);
+	if (priv->drop_queue.hrxq)
 		return priv->drop_queue.hrxq;
-	}
 	hrxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hrxq), 0, SOCKET_ID_ANY);
 	if (!hrxq) {
 		DRV_LOG(WARNING,
@@ -2369,7 +2368,6 @@ mlx5_drop_action_create(struct rte_eth_dev *dev)
 	ret = priv->obj_ops.drop_action_create(dev);
 	if (ret < 0)
 		goto error;
-	__atomic_store_n(&hrxq->refcnt, 1, __ATOMIC_RELAXED);
 	return hrxq;
 error:
 	if (hrxq) {
@@ -2393,14 +2391,14 @@ mlx5_drop_action_destroy(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
 
-	if (__atomic_sub_fetch(&hrxq->refcnt, 1, __ATOMIC_RELAXED) == 0) {
-		priv->obj_ops.drop_action_destroy(dev);
-		mlx5_free(priv->drop_queue.rxq);
-		mlx5_free(hrxq->ind_table);
-		mlx5_free(hrxq);
-		priv->drop_queue.rxq = NULL;
-		priv->drop_queue.hrxq = NULL;
-	}
+	if (!priv->drop_queue.hrxq)
+		return;
+	priv->obj_ops.drop_action_destroy(dev);
+	mlx5_free(priv->drop_queue.rxq);
+	mlx5_free(hrxq->ind_table);
+	mlx5_free(hrxq);
+	priv->drop_queue.rxq = NULL;
+	priv->drop_queue.hrxq = NULL;
 }
 
 /**

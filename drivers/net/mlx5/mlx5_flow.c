@@ -5597,7 +5597,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		buf->entries = 1;
 		buf->entry[0].pattern = (void *)(uintptr_t)items;
 	}
-	flow->shared_rss = flow_get_shared_rss_action(dev, shared_actions,
+	rss_desc->shared_rss = flow_get_shared_rss_action(dev, shared_actions,
 						      shared_actions_n);
 	/*
 	 * Record the start index when there is a nested call. All sub-flows
@@ -5708,6 +5708,11 @@ error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
 	flow_mreg_del_copy_action(dev, flow);
 	flow_drv_destroy(dev, flow);
+	if (rss_desc->shared_rss)
+		__atomic_sub_fetch(&((struct mlx5_shared_action_rss *)
+			mlx5_ipool_get
+			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
+			rss_desc->shared_rss))->refcnt, 1, __ATOMIC_RELAXED);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], idx);
 	rte_errno = ret; /* Restore rte_errno. */
 	ret = rte_errno;

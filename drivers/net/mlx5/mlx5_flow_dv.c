@@ -81,6 +81,8 @@ flow_dv_encap_decap_resource_release(struct rte_eth_dev *dev,
 static int
 flow_dv_port_id_action_resource_release(struct rte_eth_dev *dev,
 					uint32_t port_id);
+static void
+flow_dv_shared_rss_action_release(struct rte_eth_dev *dev, uint32_t srss);
 
 /**
  * Initialize flow attributes structure according to flow items' types.
@@ -8558,7 +8560,7 @@ flow_dv_hrxq_prepare(struct rte_eth_dev *dev,
 	rss_desc->key_len = MLX5_RSS_HASH_KEY_LEN;
 	rss_desc->hash_fields = dev_flow->hash_fields;
 	rss_desc->tunnel = !!(dh->layers & MLX5_FLOW_LAYER_TUNNEL);
-	rss_desc->standalone = false;
+	rss_desc->shared_rss = 0;
 	*hrxq_idx = mlx5_hrxq_get(dev, rss_desc);
 	if (!*hrxq_idx)
 		return NULL;
@@ -9780,7 +9782,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			 * when expanding items for RSS.
 			 */
 			action_flags |= MLX5_FLOW_ACTION_RSS;
-			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
+			dev_flow->handle->fate_action = rss_desc->shared_rss ?
+				MLX5_FLOW_FATE_SHARED_RSS :
+				MLX5_FLOW_FATE_QUEUE;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
 			flow->age = (uint32_t)(uintptr_t)(action->conf);
@@ -10574,10 +10578,10 @@ __flow_dv_action_rss_hrxq_lookup(struct rte_eth_dev *dev, uint32_t idx,
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
- * @param[in] flow
- *   Shred RSS action holding hash RX queue objects.
  * @param[in] dev_flow
  *   Pointer to the sub flow.
+ * @param[in] rss_desc
+ *   Pointer to the RSS descriptor.
  * @param[out] hrxq
  *   Pointer to retrieved hash RX queue object.
  *
@@ -10585,29 +10589,23 @@ __flow_dv_action_rss_hrxq_lookup(struct rte_eth_dev *dev, uint32_t idx,
  *   Valid hash RX queue index, otherwise 0 and rte_errno is set.
  */
 static uint32_t
-__flow_dv_rss_get_hrxq(struct rte_eth_dev *dev, struct rte_flow *flow,
-			   struct mlx5_flow *dev_flow,
-			   struct mlx5_hrxq **hrxq)
+__flow_dv_rss_get_hrxq(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
+		       struct mlx5_flow_rss_desc *rss_desc,
+		       struct mlx5_hrxq **hrxq)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 	uint32_t hrxq_idx;
 
-	if (flow->shared_rss) {
+	if (rss_desc->shared_rss) {
 		hrxq_idx = __flow_dv_action_rss_hrxq_lookup
-				(dev, flow->shared_rss, dev_flow->hash_fields,
+				(dev, rss_desc->shared_rss,
+				 dev_flow->hash_fields,
 				 !!(dev_flow->handle->layers &
 				    MLX5_FLOW_LAYER_TUNNEL));
-		if (hrxq_idx) {
+		if (hrxq_idx)
 			*hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 					       hrxq_idx);
-			__atomic_fetch_add(&(*hrxq)->refcnt, 1,
-					   __ATOMIC_RELAXED);
-		}
 	} else {
-		struct mlx5_flow_rss_desc *rss_desc =
-				&wks->rss_desc[!!wks->flow_nested_idx];
-
 		*hrxq = flow_dv_hrxq_prepare(dev, dev_flow, rss_desc,
 					     &hrxq_idx);
 	}
@@ -10642,8 +10640,15 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	int err;
 	int idx;
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
+	struct mlx5_flow_rss_desc *rss_desc =
+				&wks->rss_desc[!!wks->flow_nested_idx];
 
 	MLX5_ASSERT(wks);
+	if (rss_desc->shared_rss) {
+		dh = wks->flows[wks->flow_idx - 1].handle;
+		MLX5_ASSERT(dh->fate_action == MLX5_FLOW_FATE_SHARED_RSS);
+		dh->rix_srss = rss_desc->shared_rss;
+	}
 	for (idx = wks->flow_idx - 1; idx >= wks->flow_nested_idx; idx--) {
 		dev_flow = &wks->flows[idx];
 		dv = &dev_flow->dv;
@@ -10658,11 +10663,12 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				dv->actions[n++] =
 						priv->drop_queue.hrxq->action;
 			}
-		} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE &&
-			   !dv_h->rix_sample && !dv_h->rix_dest_array) {
+		} else if ((dh->fate_action == MLX5_FLOW_FATE_QUEUE &&
+			   !dv_h->rix_sample && !dv_h->rix_dest_array) ||
+			    (dh->fate_action == MLX5_FLOW_FATE_SHARED_RSS)) {
 			struct mlx5_hrxq *hrxq = NULL;
 			uint32_t hrxq_idx = __flow_dv_rss_get_hrxq
-						(dev, flow, dev_flow, &hrxq);
+					(dev, dev_flow, rss_desc, &hrxq);
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,
@@ -10670,7 +10676,8 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get hash queue");
 				goto error;
 			}
-			dh->rix_hrxq = hrxq_idx;
+			if (dh->fate_action == MLX5_FLOW_FATE_QUEUE)
+				dh->rix_hrxq = hrxq_idx;
 			dv->actions[n++] = hrxq->action;
 		} else if (dh->fate_action == MLX5_FLOW_FATE_DEFAULT_MISS) {
 			if (!priv->sh->default_miss_action) {
@@ -10716,6 +10723,8 @@ error:
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);
 	}
+	if (rss_desc->shared_rss)
+		wks->flows[wks->flow_idx - 1].handle->rix_srss = 0;
 	rte_errno = err; /* Restore rte_errno. */
 	return -rte_errno;
 }
@@ -10900,6 +10909,25 @@ flow_dv_port_id_action_resource_release(struct rte_eth_dev *dev,
 				     &cache->entry);
 }
 
+/**
+ * Release shared RSS action resource.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param srss
+ *   Shared RSS action index.
+ */
+static void
+flow_dv_shared_rss_action_release(struct rte_eth_dev *dev, uint32_t srss)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_shared_action_rss *shared_rss;
+
+	shared_rss = mlx5_ipool_get
+			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], srss);
+	__atomic_sub_fetch(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
+}
+
 void
 flow_dv_push_vlan_remove_cb(struct mlx5_cache_list *list,
 			    struct mlx5_cache_entry *entry)
@@ -10963,6 +10991,9 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 	case MLX5_FLOW_FATE_PORT_ID:
 		flow_dv_port_id_action_resource_release(dev,
 				handle->rix_port_id_action);
+		break;
+	case MLX5_FLOW_FATE_SHARED_RSS:
+		flow_dv_shared_rss_action_release(dev, handle->rix_srss);
 		break;
 	default:
 		DRV_LOG(DEBUG, "Incorrect fate action:%d", handle->fate_action);
@@ -11130,13 +11161,6 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	if (!flow)
 		return;
 	flow_dv_remove(dev, flow);
-	if (flow->shared_rss) {
-		struct mlx5_shared_action_rss *shared_rss = mlx5_ipool_get
-				(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
-							      flow->shared_rss);
-
-		__atomic_sub_fetch(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
-	}
 	if (flow->counter) {
 		flow_dv_counter_free(dev, flow->counter);
 		flow->counter = 0;
@@ -11241,6 +11265,8 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
+ * @param[in] action_idx
+ *   Shared RSS action ipool index.
  * @param[in, out] action
  *   Partially initialized shared RSS action.
  * @param[out] error
@@ -11252,6 +11278,7 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  */
 static int
 __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
+			uint32_t action_idx,
 			struct mlx5_shared_action_rss *action,
 			struct rte_flow_error *error)
 {
@@ -11263,7 +11290,8 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 	rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
 	rss_desc.const_q = action->origin.queue;
 	rss_desc.queue_num = action->origin.queue_num;
-	rss_desc.standalone = true;
+	/* Set non-zero value to indicate a shared RSS. */
+	rss_desc.shared_rss = action_idx;
 	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
 		uint32_t hrxq_idx;
 		uint64_t hash_fields = mlx5_rss_hash_fields[i];
@@ -11355,7 +11383,7 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 	memcpy(shared_action->queue, rss->queue, queue_size);
 	origin->queue = shared_action->queue;
 	origin->queue_num = rss->queue_num;
-	if (__flow_dv_action_rss_setup(dev, shared_action, error))
+	if (__flow_dv_action_rss_setup(dev, idx, shared_action, error))
 		goto error_rss_init;
 	__atomic_add_fetch(&shared_action->refcnt, 1, __ATOMIC_RELAXED);
 	rte_spinlock_lock(&priv->shared_act_sl);
