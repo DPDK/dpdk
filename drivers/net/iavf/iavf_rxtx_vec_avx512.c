@@ -1424,7 +1424,12 @@ iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
 		struct rte_mempool *mp = txep[0].mbuf->pool;
 		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp,
 								rte_lcore_id());
-		void **cache_objs = &cache->objs[cache->len];
+		void **cache_objs;
+
+		if (!cache || cache->len == 0)
+			goto normal;
+
+		cache_objs = &cache->objs[cache->len];
 
 		if (n > RTE_MEMPOOL_CACHE_MAX_SIZE) {
 			rte_mempool_ops_enqueue_bulk(mp, (void *)txep, n);
@@ -1462,6 +1467,7 @@ iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
 		goto done;
 	}
 
+normal:
 	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
 	if (likely(m)) {
 		free[0] = m;
