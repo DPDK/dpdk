@@ -982,6 +982,7 @@ eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params)
 
 	eth_dev->rx_descriptor_done = ionic_dev_rx_descriptor_done;
 	eth_dev->rx_descriptor_status = ionic_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = ionic_dev_tx_descriptor_status;
 
 	/* Multi-process not supported, primary does initialization anyway */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
