@@ -54,7 +54,7 @@ BEGIN {
 	}
 	for (i in deny_folders) {
 		re = "^\\+\\+\\+ b/" deny_folders[i];
-		if ($0 ~ deny_folders[i]) {
+		if ($0 ~ re) {
 			in_file = 1
 			last_file = $0
 		}
