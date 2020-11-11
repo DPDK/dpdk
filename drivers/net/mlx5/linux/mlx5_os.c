@@ -1942,6 +1942,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 						(list[ns].ifindex,
 						 &list[ns].info);
 			}
+#ifdef HAVE_MLX5DV_DR_DEVX_PORT
 			if (!ret && bd >= 0) {
 				switch (list[ns].info.name_type) {
 				case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
@@ -1959,6 +1960,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				}
 				continue;
 			}
+#endif
 			if (!ret && (list[ns].info.representor ^
 				     list[ns].info.master))
 				ns++;
