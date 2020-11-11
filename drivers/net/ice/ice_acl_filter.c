@@ -664,6 +664,14 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 			eth_mask = item->mask;
 
 			if (eth_spec && eth_mask) {
+				if (rte_is_broadcast_ether_addr(&eth_mask->src) ||
+				    rte_is_broadcast_ether_addr(&eth_mask->dst)) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item, "Invalid mac addr mask");
+					return -rte_errno;
+				}
+
 				if (!rte_is_zero_ether_addr(&eth_spec->src) &&
 				    !rte_is_zero_ether_addr(&eth_mask->src)) {
 					input_set |= ICE_INSET_SMAC;
@@ -703,6 +711,15 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 				    ipv4_mask->hdr.packet_id ||
 				    ipv4_mask->hdr.fragment_offset ||
 				    ipv4_mask->hdr.hdr_checksum) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid IPv4 mask.");
+					return -rte_errno;
+				}
+
+				if (ipv4_mask->hdr.src_addr == UINT32_MAX ||
+				    ipv4_mask->hdr.dst_addr == UINT32_MAX) {
 					rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ITEM,
 						item,
@@ -754,6 +771,15 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 					return -rte_errno;
 				}
 
+				if (tcp_mask->hdr.src_port == UINT16_MAX ||
+				    tcp_mask->hdr.dst_port == UINT16_MAX) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid TCP mask");
+					return -rte_errno;
+				}
+
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4 &&
 				    tcp_mask->hdr.src_port) {
 					input_set |= ICE_INSET_TCP_SRC_PORT;
@@ -791,6 +817,15 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 					return -rte_errno;
 				}
 
+				if (udp_mask->hdr.src_port == UINT16_MAX ||
+				    udp_mask->hdr.dst_port == UINT16_MAX) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid UDP mask");
+					return -rte_errno;
+				}
+
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4 &&
 				    udp_mask->hdr.src_port) {
 					input_set |= ICE_INSET_UDP_SRC_PORT;
@@ -818,6 +853,15 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 				flow_type = ICE_FLTR_PTYPE_NONF_IPV4_SCTP;
 
 			if (sctp_spec && sctp_mask) {
+				if (sctp_mask->hdr.src_port == UINT16_MAX ||
+				    sctp_mask->hdr.dst_port == UINT16_MAX) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid SCTP mask");
+					return -rte_errno;
+				}
+
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4 &&
 				    sctp_mask->hdr.src_port) {
 					input_set |= ICE_INSET_SCTP_SRC_PORT;
