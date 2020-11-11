@@ -256,6 +256,7 @@ iavf_fdir_parse_action_qregion(struct iavf_adapter *ad,
 			const struct rte_flow_action *act,
 			struct virtchnl_filter_action *filter_action)
 {
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
 	const struct rte_flow_action_rss *rss = act->conf;
 	uint32_t i;
 
@@ -297,6 +298,13 @@ iavf_fdir_parse_action_qregion(struct iavf_adapter *ad,
 				"The region size should be any of the following values:"
 				"1, 2, 4, 8, 16, 32, 64, 128 as long as the total number "
 				"of queues do not exceed the VSI allocation.");
+		return -rte_errno;
+	}
+
+	if (rss->queue_num > vf->max_rss_qregion) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, act,
+				"The region size cannot be large than the supported max RSS queue region");
 		return -rte_errno;
 	}
 
