@@ -530,15 +530,13 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 	void *sample = MLX5_ADDR_OF(parse_graph_flex, flex, sample_table);
 	void *in_arc = MLX5_ADDR_OF(parse_graph_flex, flex, input_arc);
 	void *out_arc = MLX5_ADDR_OF(parse_graph_flex, flex, output_arc);
-	struct mlx5_devx_obj *parse_flex_obj = NULL;
+	struct mlx5_devx_obj *parse_flex_obj = mlx5_malloc
+		     (MLX5_MEM_ZERO, sizeof(*parse_flex_obj), 0, SOCKET_ID_ANY);
 	uint32_t i;
 
-	parse_flex_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*parse_flex_obj), 0,
-				     SOCKET_ID_ANY);
 	if (!parse_flex_obj) {
-		DRV_LOG(ERR, "Failed to allocate flex parser data");
+		DRV_LOG(ERR, "Failed to allocate flex parser data.");
 		rte_errno = ENOMEM;
-		mlx5_free(in);
 		return NULL;
 	}
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
