@@ -23,17 +23,12 @@
 
 unsigned int dlb_unregister_timeout_s = DLB_DEFAULT_UNREGISTER_TIMEOUT_S;
 
-#define DLB_PCI_CFG_SPACE_SIZE 256
 #define DLB_PCI_CAP_POINTER 0x34
 #define DLB_PCI_CAP_NEXT(hdr) (((hdr) >> 8) & 0xFC)
 #define DLB_PCI_CAP_ID(hdr) ((hdr) & 0xFF)
-#define DLB_PCI_EXT_CAP_NEXT(hdr) (((hdr) >> 20) & 0xFFC)
-#define DLB_PCI_EXT_CAP_ID(hdr) ((hdr) & 0xFFFF)
-#define DLB_PCI_EXT_CAP_ID_ERR 1
 #define DLB_PCI_ERR_UNCOR_MASK 8
 #define DLB_PCI_ERR_UNC_UNSUP  0x00100000
 
-#define DLB_PCI_EXP_DEVCTL 8
 #define DLB_PCI_LNKCTL 16
 #define DLB_PCI_SLTCTL 24
 #define DLB_PCI_RTCTL 28
@@ -41,22 +36,15 @@ unsigned int dlb_unregister_timeout_s = DLB_DEFAULT_UNREGISTER_TIMEOUT_S;
 #define DLB_PCI_LNKCTL2 48
 #define DLB_PCI_SLTCTL2 56
 #define DLB_PCI_CMD 4
-#define DLB_PCI_X_CMD 2
 #define DLB_PCI_EXP_DEVSTA 10
 #define DLB_PCI_EXP_DEVSTA_TRPND 0x20
 #define DLB_PCI_EXP_DEVCTL_BCR_FLR 0x8000
-#define DLB_PCI_PASID_CTRL 6
-#define DLB_PCI_PASID_CAP 4
 
 #define DLB_PCI_CAP_ID_EXP       0x10
 #define DLB_PCI_CAP_ID_MSIX      0x11
-#define DLB_PCI_EXT_CAP_ID_PAS   0x1B
 #define DLB_PCI_EXT_CAP_ID_PRI   0x13
 #define DLB_PCI_EXT_CAP_ID_ACS   0xD
 
-#define DLB_PCI_PASID_CAP_EXEC          0x2
-#define DLB_PCI_PASID_CAP_PRIV          0x4
-#define DLB_PCI_PASID_CTRL_ENABLE       0x1
 #define DLB_PCI_PRI_CTRL_ENABLE         0x1
 #define DLB_PCI_PRI_ALLOC_REQ           0xC
 #define DLB_PCI_PRI_CTRL                0x4
@@ -74,28 +62,6 @@ unsigned int dlb_unregister_timeout_s = DLB_DEFAULT_UNREGISTER_TIMEOUT_S;
 #define DLB_PCI_ACS_CR                  0x8
 #define DLB_PCI_ACS_UF                  0x10
 #define DLB_PCI_ACS_EC                  0x20
-
-static int dlb_pci_find_ext_capability(struct rte_pci_device *pdev, uint32_t id)
-{
-	uint32_t hdr;
-	size_t sz;
-	int pos;
-
-	pos = DLB_PCI_CFG_SPACE_SIZE;
-	sz = sizeof(hdr);
-
-	while (pos > 0xFF) {
-		if (rte_pci_read_config(pdev, &hdr, sz, pos) != (int)sz)
-			return -1;
-
-		if (DLB_PCI_EXT_CAP_ID(hdr) == id)
-			return pos;
-
-		pos = DLB_PCI_EXT_CAP_NEXT(hdr);
-	}
-
-	return -1;
-}
 
 static int dlb_pci_find_capability(struct rte_pci_device *pdev, uint32_t id)
 {
@@ -130,7 +96,7 @@ static int dlb_mask_ur_err(struct rte_pci_device *pdev)
 {
 	uint32_t mask;
 	size_t sz = sizeof(mask);
-	int pos = dlb_pci_find_ext_capability(pdev, DLB_PCI_EXT_CAP_ID_ERR);
+	int pos = rte_pci_find_ext_capability(pdev, RTE_PCI_EXT_CAP_ID_ERR);
 
 	if (pos < 0) {
 		DLB_LOG_ERR("[%s()] failed to find the aer capability\n",
@@ -274,7 +240,7 @@ dlb_pf_reset(struct dlb_dev *dlb_dev)
 		return pcie_cap_offset;
 	}
 
-	off = pcie_cap_offset + DLB_PCI_EXP_DEVCTL;
+	off = pcie_cap_offset + RTE_PCI_EXP_DEVCTL;
 	if (rte_pci_read_config(pdev, &dev_ctl_word, 2, off) != 2)
 		dev_ctl_word = 0;
 
@@ -302,7 +268,7 @@ dlb_pf_reset(struct dlb_dev *dlb_dev)
 	if (rte_pci_read_config(pdev, &slt_word2, 2, off) != 2)
 		slt_word2 = 0;
 
-	pri_cap_offset = dlb_pci_find_ext_capability(pdev,
+	pri_cap_offset = rte_pci_find_ext_capability(pdev,
 						     DLB_PCI_EXT_CAP_ID_PRI);
 	if (pri_cap_offset >= 0) {
 		off = pri_cap_offset + DLB_PCI_PRI_ALLOC_REQ;
@@ -345,7 +311,7 @@ dlb_pf_reset(struct dlb_dev *dlb_dev)
 		return -1;
 	}
 
-	off = pcie_cap_offset + DLB_PCI_EXP_DEVCTL;
+	off = pcie_cap_offset + RTE_PCI_EXP_DEVCTL;
 	ret = rte_pci_read_config(pdev, &devctl_word, 2, off);
 	if (ret != 2) {
 		DLB_LOG_ERR("[%s()] failed to read the pcie device control\n",
@@ -366,7 +332,7 @@ dlb_pf_reset(struct dlb_dev *dlb_dev)
 	/* Restore PCI config state */
 
 	if (pcie_cap_offset >= 0) {
-		off = pcie_cap_offset + DLB_PCI_EXP_DEVCTL;
+		off = pcie_cap_offset + RTE_PCI_EXP_DEVCTL;
 		if (rte_pci_write_config(pdev, &dev_ctl_word, 2, off) != 2) {
 			DLB_LOG_ERR("[%s()] failed to write the pcie device control at offset %d\n",
 			       __func__, (int)off);
@@ -434,8 +400,8 @@ dlb_pf_reset(struct dlb_dev *dlb_dev)
 		}
 	}
 
-	err_cap_offset = dlb_pci_find_ext_capability(pdev,
-						     DLB_PCI_EXT_CAP_ID_ERR);
+	err_cap_offset = rte_pci_find_ext_capability(pdev,
+						     RTE_PCI_EXT_CAP_ID_ERR);
 	if (err_cap_offset >= 0) {
 		uint32_t tmp;
 
@@ -513,7 +479,7 @@ dlb_pf_reset(struct dlb_dev *dlb_dev)
 		}
 	}
 
-	acs_cap_offset = dlb_pci_find_ext_capability(pdev,
+	acs_cap_offset = rte_pci_find_ext_capability(pdev,
 						     DLB_PCI_EXT_CAP_ID_ACS);
 	if (acs_cap_offset >= 0) {
 		uint16_t acs_cap, acs_ctrl, acs_mask;
