@@ -1320,7 +1320,7 @@ test_delayed_pop(void)
 		}
 	}
 
-	/* Dequeue dequeue_depth events but only release dequeue_depth - 2.
+	/* Dequeue dequeue_depth events but only release dequeue_depth - 1.
 	 * Delayed pop won't perform the pop and no more events will be
 	 * scheduled.
 	 */
@@ -1336,7 +1336,7 @@ test_delayed_pop(void)
 
 	ev.op = RTE_EVENT_OP_RELEASE;
 
-	for (i = 0; i < port_conf.dequeue_depth - 2; i++) {
+	for (i = 0; i < port_conf.dequeue_depth - 1; i++) {
 		if (rte_event_enqueue_burst(evdev, 0, &ev, 1) != 1) {
 			printf("%d: RELEASE enqueue expected to succeed\n",
 			       __LINE__);
