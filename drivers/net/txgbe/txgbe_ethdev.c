@@ -2140,9 +2140,8 @@ txgbe_get_offset_by_id(uint32_t id, uint32_t *offset)
 			nb * (TXGBE_NB_QP_STATS * sizeof(uint64_t));
 		return 0;
 	}
-	id -= TXGBE_NB_QP_STATS * TXGBE_MAX_QP;
 
-	return -(int)(id + 1);
+	return -1;
 }
 
 static int txgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
