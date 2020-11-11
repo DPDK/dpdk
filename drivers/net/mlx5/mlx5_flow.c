@@ -379,8 +379,6 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 				   user_pattern_size);
 			addr = (void *)(((uintptr_t)addr) + user_pattern_size);
 			rte_memcpy(addr, flow_items, elt * sizeof(*item));
-			addr = (void *)(((uintptr_t)addr) +
-					elt * sizeof(*item));
 		}
 	}
 	return lsize;
