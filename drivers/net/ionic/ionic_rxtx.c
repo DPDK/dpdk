@@ -825,6 +825,35 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+/* RTE_PTYPE_UNKNOWN is 0x0 */
+static const uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK]
+		__rte_cache_aligned = {
+	[IONIC_PKT_TYPE_NON_IP]   = RTE_PTYPE_UNKNOWN,
+	[IONIC_PKT_TYPE_IPV4]     = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4,
+	[IONIC_PKT_TYPE_IPV4_TCP] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
+	[IONIC_PKT_TYPE_IPV4_UDP] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
+	[IONIC_PKT_TYPE_IPV6]     = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6,
+	[IONIC_PKT_TYPE_IPV6_TCP] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
+	[IONIC_PKT_TYPE_IPV6_UDP] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+	[IONIC_PKT_TYPE_ENCAP_NON_IP] = RTE_PTYPE_UNKNOWN,
+	[IONIC_PKT_TYPE_ENCAP_IPV4] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT,
+	[IONIC_PKT_TYPE_ENCAP_IPV4_TCP] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_TCP,
+	[IONIC_PKT_TYPE_ENCAP_IPV4_UDP] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_UDP,
+	[IONIC_PKT_TYPE_ENCAP_IPV6] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT,
+	[IONIC_PKT_TYPE_ENCAP_IPV6_TCP] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_TCP,
+	[IONIC_PKT_TYPE_ENCAP_IPV6_UDP] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_UDP,
+};
+
 /*
  * Cleans one descriptor. Connects the filled mbufs into a chain.
  * Does not advance the tail index.
@@ -840,6 +869,7 @@ ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
 	uint64_t pkt_flags = 0;
 	uint32_t pkt_type;
 	uint32_t left, i;
+	uint8_t ptype;
 	void **info;
 
 	assert(q_desc_index == cq_desc->comp_index);
@@ -915,41 +945,19 @@ ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
 	rxm->ol_flags = pkt_flags;
 
 	/* Packet Type */
-	switch (cq_desc->pkt_type_color & IONIC_RXQ_COMP_PKT_TYPE_MASK) {
-	case IONIC_PKT_TYPE_IPV4:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4;
-		break;
-	case IONIC_PKT_TYPE_IPV6:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6;
-		break;
-	case IONIC_PKT_TYPE_IPV4_TCP:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 |
-			RTE_PTYPE_L4_TCP;
-		break;
-	case IONIC_PKT_TYPE_IPV6_TCP:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 |
-			RTE_PTYPE_L4_TCP;
-		break;
-	case IONIC_PKT_TYPE_IPV4_UDP:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 |
-			RTE_PTYPE_L4_UDP;
-		break;
-	case IONIC_PKT_TYPE_IPV6_UDP:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 |
-			RTE_PTYPE_L4_UDP;
-		break;
-	default:
-		{
-			struct rte_ether_hdr *eth_h = rte_pktmbuf_mtod(rxm,
+	ptype = cq_desc->pkt_type_color & IONIC_RXQ_COMP_PKT_TYPE_MASK;
+	pkt_type = ionic_ptype_table[ptype];
+	if (unlikely(pkt_type == RTE_PTYPE_UNKNOWN)) {
+		struct rte_ether_hdr *eth_h = rte_pktmbuf_mtod(rxm,
 				struct rte_ether_hdr *);
-			uint16_t ether_type = eth_h->ether_type;
-			if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP))
-				pkt_type = RTE_PTYPE_L2_ETHER_ARP;
-			else
-				pkt_type = RTE_PTYPE_UNKNOWN;
-			stats->mtods++;
-			break;
-		}
+		uint16_t ether_type = eth_h->ether_type;
+		if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP))
+			pkt_type = RTE_PTYPE_L2_ETHER_ARP;
+		else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_LLDP))
+			pkt_type = RTE_PTYPE_L2_ETHER_LLDP;
+		else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_1588))
+			pkt_type = RTE_PTYPE_L2_ETHER_TIMESYNC;
+		stats->mtods++;
 	}
 
 	rxm->packet_type = pkt_type;
