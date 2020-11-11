@@ -1506,7 +1506,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			dev->data->port_id, idx, mb_len, max_rx_pkt_len,
 			RTE_PKTMBUF_HEADROOM);
 		rte_errno = ENOSPC;
-		return NULL;
+		goto error;
 	}
 	tmpl->type = MLX5_RXQ_TYPE_STANDARD;
 	if (mlx5_mr_btree_init(&tmpl->rxq.mr_ctrl.cache_bh,
