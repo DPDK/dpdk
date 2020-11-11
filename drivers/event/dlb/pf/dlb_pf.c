@@ -342,6 +342,7 @@ dlb_pf_ldb_port_create(struct dlb_hw_dev *handle,
 	*(struct dlb_cmd_response *)cfg->response = response;
 
 	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+	return 0;
 
 create_port_err:
 
@@ -419,6 +420,7 @@ dlb_pf_dir_port_create(struct dlb_hw_dev *handle,
 	*(struct dlb_cmd_response *)cfg->response = response;
 
 	DLB_INFO(dev->dlb_device, "Exiting %s() with ret=%d\n", __func__, ret);
+	return 0;
 
 create_port_err:
 
