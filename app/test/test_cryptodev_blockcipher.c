@@ -103,7 +103,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS) {
 		if (!(feat_flags & RTE_CRYPTODEV_FF_SYM_SESSIONLESS)) {
-			printf("Device doesn't support sesionless operations "
+			printf("Device doesn't support sessionless operations "
 				"Test Skipped.\n");
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
 				"SKIPPED");
