@@ -39,7 +39,7 @@ struct hinic_recv_mbox {
 	void *buf_out;
 	enum hinic_mbox_ack_type ack_type;
 	struct mbox_msg_info msg_info;
-	u8 sed_id;
+	u8 seq_id;
 };
 
 struct hinic_send_mbox {

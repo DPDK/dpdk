@@ -69,7 +69,7 @@ struct hinic_recv_msg {
 	u8			cmd;
 	u16			msg_id;
 	int			async_mgmt_to_pf;
-	u8			sed_id;
+	u8			seq_id;
 };
 
 #define HINIC_COMM_SELF_CMD_MAX 8

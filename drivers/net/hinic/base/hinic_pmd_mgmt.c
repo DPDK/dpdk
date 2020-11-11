@@ -529,19 +529,21 @@ int hinic_msg_to_mgmt_no_ack(void *hwdev, enum hinic_mod_type mod, u8 cmd,
 }
 
 static bool check_mgmt_seq_id_and_seg_len(struct hinic_recv_msg *recv_msg,
-					  u8 seq_id, u8 seg_len)
+					  u8 seq_id, u8 seg_len, u16 msg_id)
 {
 	if (seq_id > HINIC_SEQ_ID_MAX_VAL || seg_len > HINIC_MSG_SEG_LEN)
 		return false;
 
 	if (seq_id == 0) {
-		recv_msg->sed_id = seq_id;
+		recv_msg->seq_id = seq_id;
+		recv_msg->msg_id = msg_id;
 	} else {
-		if (seq_id != recv_msg->sed_id + 1) {
-			recv_msg->sed_id = 0;
+		if ((seq_id != recv_msg->seq_id + 1) ||
+			msg_id != recv_msg->msg_id) {
+			recv_msg->seq_id = 0;
 			return false;
 		}
-		recv_msg->sed_id = seq_id;
+		recv_msg->seq_id = seq_id;
 	}
 
 	return true;
@@ -615,17 +617,20 @@ static int recv_mgmt_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 	u8 seq_id, seq_len;
 	u32 msg_buf_max = MAX_PF_MGMT_BUF_SIZE;
 	u8 front_id;
+	u16 msg_id;
 
 	seq_id = HINIC_MSG_HEADER_GET(msg_header, SEQID);
 	seq_len = HINIC_MSG_HEADER_GET(msg_header, SEG_LEN);
-	front_id = recv_msg->sed_id;
+	front_id = recv_msg->seq_id;
+	msg_id = HINIC_MSG_HEADER_GET(msg_header, MSG_ID);
 
-	if (!check_mgmt_seq_id_and_seg_len(recv_msg, seq_id, seq_len)) {
+	if (!check_mgmt_seq_id_and_seg_len(recv_msg, seq_id, seq_len, msg_id)) {
 		PMD_DRV_LOG(ERR,
 			"Mgmt msg sequence and segment check failed, "
-			"func id: 0x%x, front id: 0x%x, current id: 0x%x, seg len: 0x%x",
+			"func id: 0x%x, front id: 0x%x, current id: 0x%x, seg len: 0x%x "
+			"front msg_id: %d, cur msg_id: %d",
 			hinic_global_func_id(pf_to_mgmt->hwdev),
-			front_id, seq_id, seq_len);
+			front_id, seq_id, seq_len, recv_msg->msg_id, msg_id);
 		return HINIC_ERROR;
 	}
 

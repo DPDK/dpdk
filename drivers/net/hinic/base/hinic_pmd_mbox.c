@@ -240,20 +240,22 @@ static void recv_func_mbox_handler(struct hinic_mbox_func_to_func *func_to_func,
 }
 
 static bool check_mbox_seq_id_and_seg_len(struct hinic_recv_mbox *recv_mbox,
-					  u8 seq_id, u8 seg_len)
+					  u8 seq_id, u8 seg_len, u8 msg_id)
 {
 	if (seq_id > HINIC_SEQ_ID_MAX_VAL || seg_len > HINIC_MSG_SEG_LEN)
 		return false;
 
 	if (seq_id == 0) {
-		recv_mbox->sed_id = seq_id;
+		recv_mbox->seq_id = seq_id;
+		recv_mbox->msg_info.msg_id = msg_id;
 	} else {
-		if (seq_id != recv_mbox->sed_id + 1) {
-			recv_mbox->sed_id = 0;
+		if ((seq_id != recv_mbox->seq_id + 1) ||
+			msg_id != recv_mbox->msg_info.msg_id) {
+			recv_mbox->seq_id = 0;
 			return false;
 		}
 
-		recv_mbox->sed_id = seq_id;
+		recv_mbox->seq_id = seq_id;
 	}
 
 	return true;
@@ -477,16 +479,24 @@ static int recv_mbox_handler(struct hinic_mbox_func_to_func *func_to_func,
 	u16 src_func_idx;
 	enum hinic_hwif_direction_type direction;
 	u8 seq_id, seg_len;
+	u8 msg_id;
+	u8 front_id;
 
 	seq_id = HINIC_MBOX_HEADER_GET(mbox_header, SEQID);
 	seg_len = HINIC_MBOX_HEADER_GET(mbox_header, SEG_LEN);
 	direction = HINIC_MBOX_HEADER_GET(mbox_header, DIRECTION);
 	src_func_idx = HINIC_MBOX_HEADER_GET(mbox_header, SRC_GLB_FUNC_IDX);
+	msg_id = HINIC_MBOX_HEADER_GET(mbox_header, MSG_ID);
+	front_id = recv_mbox->seq_id;
 
-	if (!check_mbox_seq_id_and_seg_len(recv_mbox, seq_id, seg_len)) {
+	if (!check_mbox_seq_id_and_seg_len(recv_mbox, seq_id, seg_len,
+		msg_id)) {
 		PMD_DRV_LOG(ERR,
-			"Mailbox sequence and segment check failed, src func id: 0x%x, front id: 0x%x, current id: 0x%x, seg len: 0x%x\n",
-			src_func_idx, recv_mbox->sed_id, seq_id, seg_len);
+			"Mailbox sequence and segment check failed, src func id: 0x%x, "
+			"front id: 0x%x, current id: 0x%x, seg len: 0x%x "
+			"front msg_id: %d, cur msg_id: %d",
+			src_func_idx, front_id, seq_id, seg_len,
+			recv_mbox->msg_info.msg_id, msg_id);
 		return HINIC_ERROR;
 	}
 
@@ -496,7 +506,7 @@ static int recv_mbox_handler(struct hinic_mbox_func_to_func *func_to_func,
 	if (!HINIC_MBOX_HEADER_GET(mbox_header, LAST))
 		return HINIC_ERROR;
 
-	recv_mbox->sed_id = 0;
+	recv_mbox->seq_id = 0;
 	recv_mbox->cmd = HINIC_MBOX_HEADER_GET(mbox_header, CMD);
 	recv_mbox->mod = HINIC_MBOX_HEADER_GET(mbox_header, MODULE);
 	recv_mbox->mbox_len = HINIC_MBOX_HEADER_GET(mbox_header, MSG_LEN);
