@@ -9347,8 +9347,10 @@ flow_dv_aso_age_pools_resize(struct rte_eth_dev *dev)
 		/* First ASO flow hit allocation - starting ASO data-path. */
 		int ret = mlx5_aso_queue_start(priv->sh);
 
-		if (ret)
+		if (ret) {
+			mlx5_free(pools);
 			return ret;
+		}
 	}
 	mng->n = resize;
 	mng->pools = pools;
