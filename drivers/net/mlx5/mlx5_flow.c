@@ -2870,17 +2870,20 @@ mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
 					MLX5_FLOW_LAYER_OUTER_VLAN);
 	struct rte_flow_item_ecpri mask_lo;
 
+	if (!(last_item & outer_l2_vlan) &&
+	    last_item != MLX5_FLOW_LAYER_OUTER_L4_UDP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "eCPRI can only follow L2/VLAN layer or UDP layer");
 	if ((last_item & outer_l2_vlan) && ether_type &&
 	    ether_type != RTE_ETHER_TYPE_ECPRI)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "eCPRI cannot follow L2/VLAN layer "
-					  "which ether type is not 0xAEFE.");
+					  "eCPRI cannot follow L2/VLAN layer which ether type is not 0xAEFE");
 	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "eCPRI with tunnel is not supported "
-					  "right now.");
+					  "eCPRI with tunnel is not supported right now");
 	if (item_flags & MLX5_FLOW_LAYER_OUTER_L3)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -2888,13 +2891,12 @@ mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
 	else if (item_flags & MLX5_FLOW_LAYER_OUTER_L4_TCP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "eCPRI cannot follow a TCP layer.");
+					  "eCPRI cannot coexist with a TCP layer");
 	/* In specification, eCPRI could be over UDP layer. */
 	else if (item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "eCPRI over UDP layer is not yet "
-					  "supported right now.");
+					  "eCPRI over UDP layer is not yet supported right now");
 	/* Mask for type field in common header could be zero. */
 	if (!mask)
 		mask = &rte_flow_item_ecpri_mask;
@@ -2903,13 +2905,11 @@ mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
 	if (mask_lo.hdr.common.type != 0 && mask_lo.hdr.common.type != 0xff)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
-					  "partial mask is not supported "
-					  "for protocol");
+					  "partial mask is not supported for protocol");
 	else if (mask_lo.hdr.common.type == 0 && mask->hdr.dummy[0] != 0)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
-					  "message header mask must be after "
-					  "a type mask");
+					  "message header mask must be after a type mask");
 	return mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					 acc_mask ? (const uint8_t *)acc_mask
 						  : (const uint8_t *)&nic_mask,
