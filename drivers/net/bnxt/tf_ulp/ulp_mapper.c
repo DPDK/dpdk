@@ -2522,7 +2522,7 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 	tbls = ulp_mapper_tbl_list_get(parms, tid, &num_tbls);
 	if (!tbls || !num_tbls) {
 		BNXT_TF_DBG(ERR, "No %s tables for %d:%d\n",
-			    (parms->tmpl_type = BNXT_ULP_TEMPLATE_TYPE_CLASS) ?
+			    (parms->tmpl_type == BNXT_ULP_TEMPLATE_TYPE_CLASS) ?
 			    "class" : "action", parms->dev_id, tid);
 		return -EINVAL;
 	}
@@ -2569,7 +2569,7 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, uint32_t tid)
 	return rc;
 error:
 	BNXT_TF_DBG(ERR, "%s tables failed creation for %d:%d\n",
-		    (parms->tmpl_type = BNXT_ULP_TEMPLATE_TYPE_CLASS) ?
+		    (parms->tmpl_type == BNXT_ULP_TEMPLATE_TYPE_CLASS) ?
 		    "class" : "action", parms->dev_id, tid);
 	return rc;
 }
