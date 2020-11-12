@@ -5796,6 +5796,9 @@ instr_pattern_emit_many_tx_detect(struct instruction *instr,
 	if (instr[i].type != INSTR_TX)
 		return 0;
 
+	if (data[i].n_users)
+		return 0;
+
 	i++;
 
 	*n_pattern_instr = i;
