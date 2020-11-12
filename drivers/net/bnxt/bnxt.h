@@ -818,7 +818,6 @@ struct bnxt {
 	struct bnxt_dmabuf_info dmabuf;
 	struct bnxt_ulp_context	*ulp_ctx;
 	struct bnxt_flow_stat_info *flow_stat;
-	uint8_t			flow_xstat;
 	uint16_t		max_num_kflows;
 	uint16_t		tx_cfa_action;
 };
