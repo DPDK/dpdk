@@ -133,7 +133,6 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 	for (i = 0; i < lif->nrxqcqs; i++) {
 		struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats;
 		stats->imissed +=
-			rx_stats->no_cb_arg +
 			rx_stats->bad_cq_status +
 			rx_stats->no_room +
 			rx_stats->bad_len;
@@ -156,7 +155,6 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 		stats->q_ipackets[i] = rx_stats->packets;
 		stats->q_ibytes[i] = rx_stats->bytes;
 		stats->q_errors[i] =
-			rx_stats->no_cb_arg +
 			rx_stats->bad_cq_status +
 			rx_stats->no_room +
 			rx_stats->bad_len;

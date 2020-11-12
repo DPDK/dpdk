@@ -39,7 +39,6 @@ struct ionic_tx_stats {
 struct ionic_rx_stats {
 	uint64_t packets;
 	uint64_t bytes;
-	uint64_t no_cb_arg;
 	uint64_t bad_cq_status;
 	uint64_t no_room;
 	uint64_t bad_len;

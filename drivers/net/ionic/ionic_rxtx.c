@@ -784,17 +784,6 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 
 	rxm = info[0];
 
-	if (!rx_svc) {
-		stats->no_cb_arg++;
-		/* Flush */
-		rte_pktmbuf_free(rxm);
-		/*
-		 * Note: rte_mempool_put is faster with no segs
-		 * rte_mempool_put(rxq->mb_pool, rxm);
-		 */
-		return;
-	}
-
 	if (cq_desc->status) {
 		stats->bad_cq_status++;
 		ionic_rx_recycle(q, q_desc_index, rxm);
@@ -1092,6 +1081,8 @@ ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 	}
 }
 
+#define IONIC_RX_FLUSH_PKTS	16
+
 /*
  * Stop Receive Units for specified queue.
  */
@@ -1099,6 +1090,9 @@ int __rte_cold
 ionic_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
 	struct ionic_rx_qcq *rxq;
+	struct ionic_rx_service rx_svc;
+	struct rte_mbuf *rx_pkts[IONIC_RX_FLUSH_PKTS];
+	uint32_t flushed = 0;
 
 	IONIC_PRINT(DEBUG, "Stopping RX queue %u", rx_queue_id);
 
@@ -1109,8 +1103,22 @@ ionic_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 
 	ionic_qcq_disable(&rxq->qcq);
 
+	rx_svc.rx_pkts = rx_pkts;
+	rx_svc.nb_pkts = IONIC_RX_FLUSH_PKTS;
+	rx_svc.nb_rx = 0;
+
 	/* Flush */
-	ionic_rxq_service(rxq, -1, NULL);
+	do {
+		ionic_rxq_service(rxq, IONIC_RX_FLUSH_PKTS, &rx_svc);
+
+		if (rx_svc.nb_rx) {
+			rte_pktmbuf_free_bulk(rx_pkts, rx_svc.nb_rx);
+			flushed += rx_svc.nb_rx;
+			rx_svc.nb_rx = 0;
+		}
+	} while (rx_svc.nb_rx > 0);
+
+	IONIC_PRINT(DEBUG, "Flushed %u packets", flushed);
 
 	return 0;
 }
