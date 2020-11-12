@@ -1843,8 +1843,8 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 		}
 	}
 
-	bnxt_hwrm_vnic_rss_cfg(bp, vnic);
-	return 0;
+	rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+	return rc;
 }
 
 static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
@@ -1949,8 +1949,8 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	memcpy(vnic->rss_hash_key, rss_conf->rss_key, rss_conf->rss_key_len);
 
 rss_config:
-	bnxt_hwrm_vnic_rss_cfg(bp, vnic);
-	return 0;
+	rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+	return rc;
 }
 
 static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
