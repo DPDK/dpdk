@@ -197,6 +197,10 @@ evt_parse_nb_timer_adptrs(struct evt_options *opt, const char *arg)
 	int ret;
 
 	ret = parser_read_uint8(&(opt->nb_timer_adptrs), arg);
+	if (opt->nb_timer_adptrs <= 0) {
+		evt_err("Number of timer adapters cannot be <= 0");
+		return -EINVAL;
+	}
 
 	return ret;
 }
