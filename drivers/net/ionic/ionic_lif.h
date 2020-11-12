@@ -81,6 +81,8 @@ struct ionic_rx_qcq {
 	/* cacheline2 */
 	struct rte_mempool *mb_pool;
 	uint16_t buf_size;	/* Total length of all segments together */
+	uint16_t hdr_seg_size;	/* Length of first segment of RX chain */
+	uint16_t seg_size;	/* Length of all subsequent segments */
 	uint16_t flags;
 
 	/* cacheline3 (inside stats) */
@@ -200,7 +202,7 @@ int ionic_dev_allmulticast_enable(struct rte_eth_dev *dev);
 int ionic_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
 int ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id,
-	uint32_t index, uint16_t nrxq_descs,
+	uint32_t index, uint16_t nrxq_descs, struct rte_mempool *mp,
 	struct ionic_rx_qcq **qcq_out);
 int ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id,
 	uint32_t index, uint16_t ntxq_descs,

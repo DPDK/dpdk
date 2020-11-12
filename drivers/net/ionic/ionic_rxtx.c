@@ -731,7 +731,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	eth_dev->data->rx_queue_state[rx_queue_id] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 
-	err = ionic_rx_qcq_alloc(lif, socket_id, rx_queue_id, nb_desc,
+	err = ionic_rx_qcq_alloc(lif, socket_id, rx_queue_id, nb_desc, mp,
 			&rxq);
 	if (err) {
 		IONIC_PRINT(ERR, "Queue %d allocation failure", rx_queue_id);
@@ -772,9 +772,6 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 	uint64_t pkt_flags = 0;
 	uint32_t pkt_type;
 	struct ionic_rx_stats *stats = &rxq->stats;
-	uint32_t buf_size = (uint16_t)
-		(rte_pktmbuf_data_room_size(rxq->mb_pool) -
-		RTE_PKTMBUF_HEADROOM);
 	uint32_t left;
 	void **info;
 
@@ -810,12 +807,12 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 
 	left = cq_desc->len;
 
-	rxm->data_len = RTE_MIN(buf_size, left);
-	left -= rxm->data_len;
+	rxm->data_len = RTE_MIN(rxq->hdr_seg_size, cq_desc->len);
+	left = cq_desc->len - rxm->data_len;
 
 	rxm_seg = rxm->next;
 	while (rxm_seg && left) {
-		rxm_seg->data_len = RTE_MIN(buf_size, left);
+		rxm_seg->data_len = RTE_MIN(rxq->seg_size, left);
 		left -= rxm_seg->data_len;
 
 		rxm_seg = rxm_seg->next;
@@ -925,10 +922,7 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq)
 	struct ionic_rxq_sg_elem *elem;
 	void **info;
 	rte_iova_t dma_addr;
-	uint32_t i, j, nsegs, buf_size, size;
-
-	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
-		RTE_PKTMBUF_HEADROOM);
+	uint32_t i, j;
 
 	/* Initialize software ring entries */
 	for (i = ionic_q_space_avail(q); i; i--) {
@@ -942,21 +936,18 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq)
 
 		info = IONIC_INFO_PTR(q, q->head_idx);
 
-		nsegs = (rxq->buf_size + buf_size - 1) / buf_size;
-
 		desc = &desc_base[q->head_idx];
 		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(rxm));
 		desc->addr = dma_addr;
-		desc->len = buf_size;
-		size = buf_size;
-		desc->opcode = (nsegs > 1) ? IONIC_RXQ_DESC_OPCODE_SG :
+		desc->len = rxq->hdr_seg_size;
+		desc->opcode = (q->num_segs > 1) ? IONIC_RXQ_DESC_OPCODE_SG :
 			IONIC_RXQ_DESC_OPCODE_SIMPLE;
 		rxm->next = NULL;
 
 		prev_rxm_seg = rxm;
 		sg_desc = &sg_desc_base[q->head_idx];
 		elem = sg_desc->elems;
-		for (j = 0; j < nsegs - 1 && j < IONIC_RX_MAX_SG_ELEMS; j++) {
+		for (j = 0; j < q->num_segs - 1u; j++) {
 			struct rte_mbuf *rxm_seg;
 			rte_iova_t data_iova;
 
@@ -966,20 +957,17 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq)
 				return -ENOMEM;
 			}
 
+			rxm_seg->data_off = 0;
 			data_iova = rte_mbuf_data_iova(rxm_seg);
 			dma_addr = rte_cpu_to_le_64(data_iova);
 			elem->addr = dma_addr;
-			elem->len = buf_size;
-			size += buf_size;
+			elem->len = rxq->seg_size;
 			elem++;
+
 			rxm_seg->next = NULL;
 			prev_rxm_seg->next = rxm_seg;
 			prev_rxm_seg = rxm_seg;
 		}
-
-		if (size < rxq->buf_size)
-			IONIC_PRINT(ERR, "Rx SG size is not sufficient (%d < %d)",
-				size, rxq->buf_size);
 
 		info[0] = rxm;
 

@@ -136,6 +136,7 @@ struct ionic_dev {
 
 struct ionic_queue {
 	uint16_t num_descs;
+	uint16_t num_segs;
 	uint16_t head_idx;
 	uint16_t tail_idx;
 	uint16_t size_mask;
