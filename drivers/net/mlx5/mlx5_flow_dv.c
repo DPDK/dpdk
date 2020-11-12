@@ -12294,18 +12294,14 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 		.match_mask = (void *)&mask,
 	};
 	void *actions[2] = { 0 };
-	struct mlx5_flow_tbl_resource *tbl = NULL, *dest_tbl = NULL;
+	struct mlx5_flow_tbl_resource *tbl = NULL;
 	struct mlx5_devx_obj *dcs = NULL;
 	void *matcher = NULL;
 	void *flow = NULL;
-	int i, ret = -1;
+	int ret = -1;
 
 	tbl = flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL, 0, 0, NULL);
 	if (!tbl)
-		goto err;
-	dest_tbl = flow_dv_tbl_resource_get(dev, 1, 0, 0, false,
-					    NULL, 0, 0, NULL);
-	if (!dest_tbl)
 		goto err;
 	dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0x4);
 	if (!dcs)
@@ -12314,10 +12310,7 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 						    &actions[0]);
 	if (ret)
 		goto err;
-	ret = mlx5_flow_os_create_flow_action_dest_flow_tbl
-				(dest_tbl->obj, &actions[1]);
-	if (ret)
-		goto err;
+	actions[1] = priv->drop_queue.hrxq->action;
 	dv_attr.match_criteria_enable = flow_dv_matcher_enable(mask.buf);
 	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj,
 					       &matcher);
@@ -12346,17 +12339,12 @@ err:
 				     "support detection");
 		ret = 0;
 	}
-	for (i = 0; i < 2; i++) {
-		if (actions[i])
-			claim_zero(mlx5_flow_os_destroy_flow_action
-				   (actions[i]));
-	}
+	if (actions[0])
+		claim_zero(mlx5_flow_os_destroy_flow_action(actions[0]));
 	if (matcher)
 		claim_zero(mlx5_flow_os_destroy_flow_matcher(matcher));
 	if (tbl)
 		flow_dv_tbl_resource_release(MLX5_SH(dev), tbl);
-	if (dest_tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev), dest_tbl);
 	if (dcs)
 		claim_zero(mlx5_devx_cmd_destroy(dcs));
 	return ret;
