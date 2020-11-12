@@ -207,12 +207,15 @@ int is_bnxt_in_error(struct bnxt *bp)
 
 static uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
 {
+	unsigned int num_rss_rings = RTE_MIN(bp->rx_nr_rings,
+					     BNXT_RSS_TBL_SIZE_THOR);
+
 	if (!BNXT_CHIP_THOR(bp))
 		return 1;
 
-	return RTE_ALIGN_MUL_CEIL(bp->rx_nr_rings,
+	return RTE_ALIGN_MUL_CEIL(num_rss_rings,
 				  BNXT_RSS_ENTRIES_PER_CTX_THOR) /
-				    BNXT_RSS_ENTRIES_PER_CTX_THOR;
+				  BNXT_RSS_ENTRIES_PER_CTX_THOR;
 }
 
 uint16_t bnxt_rss_hash_tbl_size(const struct bnxt *bp)
@@ -423,6 +426,14 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	/* Alloc RSS context only if RSS mode is enabled */
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) {
 		int j, nr_ctxs = bnxt_rss_ctxts(bp);
+
+		if (bp->rx_nr_rings > BNXT_RSS_TBL_SIZE_THOR) {
+			PMD_DRV_LOG(ERR, "RxQ cnt %d > reta_size %d\n",
+				    bp->rx_nr_rings, BNXT_RSS_TBL_SIZE_THOR);
+			PMD_DRV_LOG(ERR,
+				    "Only queues 0-%d will be in RSS table\n",
+				    BNXT_RSS_TBL_SIZE_THOR - 1);
+		}
 
 		rc = 0;
 		for (j = 0; j < nr_ctxs; j++) {
