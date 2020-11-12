@@ -8,7 +8,9 @@
 
 if not is_linux
 	build = false
+	subdir_done()
 endif
+
 deps += 'vhost'
 allow_experimental_apis = true
 sources = files(

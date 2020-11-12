@@ -8,6 +8,9 @@
 
 # require the power library
 build = dpdk_conf.has('RTE_LIB_POWER')
+if not build
+	subdir_done()
+endif
 
 allow_experimental_apis = true
 deps += ['distributor', 'power']

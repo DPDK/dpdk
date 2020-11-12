@@ -7,6 +7,10 @@
 # DPDK instance, use 'make'
 
 build = is_linux
+if not build
+	subdir_done()
+endif
+
 sources = files('lib/rte_ethtool.c',
 	'ethtool-app/ethapp.c',
 	'ethtool-app/main.c')
