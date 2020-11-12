@@ -99,8 +99,15 @@ close_msg_fds(struct VhostUserMsg *msg)
 {
 	int i;
 
-	for (i = 0; i < msg->fd_num; i++)
-		close(msg->fds[i]);
+	for (i = 0; i < msg->fd_num; i++) {
+		int fd = msg->fds[i];
+
+		if (fd == -1)
+			continue;
+
+		msg->fds[i] = -1;
+		close(fd);
+	}
 }
 
 /*
@@ -1004,7 +1011,6 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	uint64_t alignment;
 	uint32_t i;
 	int populate;
-	int fd;
 
 	if (validate_msg_fds(msg, memory->nregions) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
@@ -1012,7 +1018,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	if (memory->nregions > VHOST_MEMORY_MAX_NREGIONS) {
 		VHOST_LOG_CONFIG(ERR,
 			"too many memory regions (%u)\n", memory->nregions);
-		return RTE_VHOST_MSG_RESULT_ERR;
+		goto close_msg_fds;
 	}
 
 	if (dev->mem && !vhost_memory_changed(memory, dev->mem)) {
@@ -1054,7 +1060,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 				"(%d) failed to allocate memory "
 				"for dev->guest_pages\n",
 				dev->vid);
-			return RTE_VHOST_MSG_RESULT_ERR;
+			goto close_msg_fds;
 		}
 	}
 
@@ -1064,18 +1070,23 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		VHOST_LOG_CONFIG(ERR,
 			"(%d) failed to allocate memory for dev->mem\n",
 			dev->vid);
-		return RTE_VHOST_MSG_RESULT_ERR;
+		goto free_guest_pages;
 	}
 	dev->mem->nregions = memory->nregions;
 
 	for (i = 0; i < memory->nregions; i++) {
-		fd  = msg->fds[i];
 		reg = &dev->mem->regions[i];
 
 		reg->guest_phys_addr = memory->regions[i].guest_phys_addr;
 		reg->guest_user_addr = memory->regions[i].userspace_addr;
 		reg->size            = memory->regions[i].memory_size;
-		reg->fd              = fd;
+		reg->fd              = msg->fds[i];
+
+		/*
+		 * Assign invalid file descriptor value to avoid double
+		 * closing on error path.
+		 */
+		msg->fds[i] = -1;
 
 		mmap_offset = memory->regions[i].mmap_offset;
 
@@ -1085,7 +1096,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 				"mmap_offset (%#"PRIx64") and memory_size "
 				"(%#"PRIx64") overflow\n",
 				mmap_offset, reg->size);
-			goto err_mmap;
+			goto free_mem_table;
 		}
 
 		mmap_size = reg->size + mmap_offset;
@@ -1098,11 +1109,11 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		 * to avoid failure, make sure in caller to keep length
 		 * aligned.
 		 */
-		alignment = get_blk_size(fd);
+		alignment = get_blk_size(reg->fd);
 		if (alignment == (uint64_t)-1) {
 			VHOST_LOG_CONFIG(ERR,
 				"couldn't get hugepage size through fstat\n");
-			goto err_mmap;
+			goto free_mem_table;
 		}
 		mmap_size = RTE_ALIGN_CEIL(mmap_size, alignment);
 		if (mmap_size == 0) {
@@ -1118,17 +1129,17 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			VHOST_LOG_CONFIG(ERR, "mmap size (0x%" PRIx64 ") "
 					"or alignment (0x%" PRIx64 ") is invalid\n",
 					reg->size + mmap_offset, alignment);
-			goto err_mmap;
+			goto free_mem_table;
 		}
 
 		populate = dev->async_copy ? MAP_POPULATE : 0;
 		mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
-				 MAP_SHARED | populate, fd, 0);
+				 MAP_SHARED | populate, reg->fd, 0);
 
 		if (mmap_addr == MAP_FAILED) {
 			VHOST_LOG_CONFIG(ERR,
 				"mmap region %u failed.\n", i);
-			goto err_mmap;
+			goto free_mem_table;
 		}
 
 		reg->mmap_addr = mmap_addr;
@@ -1141,7 +1152,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 				VHOST_LOG_CONFIG(ERR,
 					"adding guest pages to region %u failed.\n",
 					i);
-				goto err_mmap;
+				goto free_mem_table;
 			}
 
 		VHOST_LOG_CONFIG(INFO,
@@ -1184,17 +1195,17 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		if (read_vhost_message(main_fd, &ack_msg) <= 0) {
 			VHOST_LOG_CONFIG(ERR,
 				"Failed to read qemu ack on postcopy set-mem-table\n");
-			goto err_mmap;
+			goto free_mem_table;
 		}
 
 		if (validate_msg_fds(&ack_msg, 0) != 0)
-			goto err_mmap;
+			goto free_mem_table;
 
 		if (ack_msg.request.master != VHOST_USER_SET_MEM_TABLE) {
 			VHOST_LOG_CONFIG(ERR,
 				"Bad qemu ack on postcopy set-mem-table (%d)\n",
 				ack_msg.request.master);
-			goto err_mmap;
+			goto free_mem_table;
 		}
 
 		/* Now userfault register and we can use the memory */
@@ -1218,7 +1229,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 					"Failed to register ufd for region %d: (ufd = %d) %s\n",
 					i, dev->postcopy_ufd,
 					strerror(errno));
-				goto err_mmap;
+				goto free_mem_table;
 			}
 			VHOST_LOG_CONFIG(INFO,
 				"\t userfaultfd registered for range : "
@@ -1227,7 +1238,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 				(uint64_t)reg_struct.range.start +
 				(uint64_t)reg_struct.range.len - 1);
 #else
-			goto err_mmap;
+			goto free_mem_table;
 #endif
 		}
 	}
@@ -1249,7 +1260,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			dev = translate_ring_addresses(dev, i);
 			if (!dev) {
 				dev = *pdev;
-				goto err_mmap;
+				goto free_mem_table;
 			}
 
 			*pdev = dev;
@@ -1260,10 +1271,15 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 
 	return RTE_VHOST_MSG_RESULT_OK;
 
-err_mmap:
+free_mem_table:
 	free_mem_region(dev);
 	rte_free(dev->mem);
 	dev->mem = NULL;
+free_guest_pages:
+	rte_free(dev->guest_pages);
+	dev->guest_pages = NULL;
+close_msg_fds:
+	close_msg_fds(msg);
 	return RTE_VHOST_MSG_RESULT_ERR;
 }
 
