@@ -762,7 +762,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 static __rte_always_inline void
 ionic_rx_clean(struct ionic_rx_qcq *rxq,
 		uint32_t q_desc_index, uint32_t cq_desc_index,
-		void *service_cb_arg)
+		struct ionic_rx_service *rx_svc)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
 	struct ionic_cq *cq = &rxq->qcq.cq;
@@ -772,8 +772,6 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 	uint64_t pkt_flags = 0;
 	uint32_t pkt_type;
 	struct ionic_rx_stats *stats = &rxq->stats;
-	struct ionic_rx_service *recv_args = (struct ionic_rx_service *)
-		service_cb_arg;
 	uint32_t buf_size = (uint16_t)
 		(rte_pktmbuf_data_room_size(rxq->mb_pool) -
 		RTE_PKTMBUF_HEADROOM);
@@ -786,7 +784,7 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 
 	rxm = info[0];
 
-	if (!recv_args) {
+	if (!rx_svc) {
 		stats->no_cb_arg++;
 		/* Flush */
 		rte_pktmbuf_free(rxm);
@@ -803,7 +801,7 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 		return;
 	}
 
-	if (recv_args->nb_rx >= recv_args->nb_pkts) {
+	if (rx_svc->nb_rx >= rx_svc->nb_pkts) {
 		stats->no_room++;
 		ionic_rx_recycle(q, q_desc_index, rxm);
 		return;
@@ -904,8 +902,8 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 
 	rxm->packet_type = pkt_type;
 
-	recv_args->rx_pkts[recv_args->nb_rx] = rxm;
-	recv_args->nb_rx++;
+	rx_svc->rx_pkts[rx_svc->nb_rx] = rxm;
+	rx_svc->nb_rx++;
 
 	stats->packets++;
 	stats->bytes += rxm->pkt_len;
@@ -1047,7 +1045,7 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 
 static __rte_always_inline void
 ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
-		void *service_cb_arg)
+		struct ionic_rx_service *rx_svc)
 {
 	struct ionic_cq *cq = &rxq->qcq.cq;
 	struct ionic_queue *q = &rxq->qcq.q;
@@ -1083,7 +1081,7 @@ ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 				rte_prefetch0(&q->info[q->tail_idx]);
 
 			ionic_rx_clean(rxq, curr_q_tail_idx, curr_cq_tail_idx,
-				service_cb_arg);
+				rx_svc);
 
 		} while (more);
 
@@ -1122,15 +1120,15 @@ ionic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
 	struct ionic_rx_qcq *rxq = rx_queue;
-	struct ionic_rx_service service_cb_arg;
+	struct ionic_rx_service rx_svc;
 
-	service_cb_arg.rx_pkts = rx_pkts;
-	service_cb_arg.nb_pkts = nb_pkts;
-	service_cb_arg.nb_rx = 0;
+	rx_svc.rx_pkts = rx_pkts;
+	rx_svc.nb_pkts = nb_pkts;
+	rx_svc.nb_rx = 0;
 
-	ionic_rxq_service(rxq, nb_pkts, &service_cb_arg);
+	ionic_rxq_service(rxq, nb_pkts, &rx_svc);
 
 	ionic_rx_fill(rxq);
 
-	return service_cb_arg.nb_rx;
+	return rx_svc.nb_rx;
 }
