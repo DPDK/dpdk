@@ -284,6 +284,7 @@ New Features
 
 * **Updated the aesni_mb crypto PMD.**
 
+  * Added support for intel-ipsec-mb version 0.55.
   * Added support for AES-ECB 128, 192 and 256.
   * Added support for ZUC-EEA3/EIA3 algorithms.
   * Added support for SNOW3G-UEA2/UIA2 algorithms.
