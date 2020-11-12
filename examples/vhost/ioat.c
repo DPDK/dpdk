@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2020 Intel Corporation
  */
+
+#include <sys/uio.h>
+#ifdef RTE_RAW_IOAT
 #include <rte_rawdev.h>
 #include <rte_ioat_rawdev.h>
-#include <sys/uio.h>
 
 #include "ioat.h"
 #include "main.h"
@@ -208,3 +210,5 @@ ioat_check_completed_copies_cb(int vid, uint16_t queue_id,
 	/* Opaque data is not supported */
 	return -1;
 }
+
+#endif /* RTE_RAW_IOAT */

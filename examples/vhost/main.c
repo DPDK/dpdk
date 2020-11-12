@@ -1300,13 +1300,6 @@ new_device(int vid)
 	int lcore, core_add = 0;
 	uint32_t device_num_min = num_devices;
 	struct vhost_dev *vdev;
-
-	struct rte_vhost_async_channel_ops channel_ops = {
-		.transfer_data = ioat_transfer_data_cb,
-		.check_completed_copies = ioat_check_completed_copies_cb
-	};
-	struct rte_vhost_async_features f;
-
 	vdev = rte_zmalloc("vhost device", sizeof(*vdev), RTE_CACHE_LINE_SIZE);
 	if (vdev == NULL) {
 		RTE_LOG(INFO, VHOST_DATA,
@@ -1348,10 +1341,17 @@ new_device(int vid)
 		vid, vdev->coreid);
 
 	if (async_vhost_driver) {
-		f.async_inorder = 1;
-		f.async_threshold = 256;
-		return rte_vhost_async_channel_register(vid, VIRTIO_RXQ,
-			f.intval, &channel_ops);
+		struct rte_vhost_async_features f;
+		struct rte_vhost_async_channel_ops channel_ops;
+		if (strncmp(dma_type, "ioat", 4) == 0) {
+			channel_ops.transfer_data = ioat_transfer_data_cb;
+			channel_ops.check_completed_copies =
+				ioat_check_completed_copies_cb;
+			f.async_inorder = 1;
+			f.async_threshold = 256;
+			return rte_vhost_async_channel_register(vid, VIRTIO_RXQ,
+				f.intval, &channel_ops);
+		}
 	}
 
 	return 0;
