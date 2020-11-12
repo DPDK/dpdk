@@ -1858,8 +1858,12 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *msg,
 
 	/* Interpret ring addresses only when ring is started. */
 	dev = translate_ring_addresses(dev, file.index);
-	if (!dev)
+	if (!dev) {
+		if (file.fd != VIRTIO_INVALID_EVENTFD)
+			close(file.fd);
+
 		return RTE_VHOST_MSG_RESULT_ERR;
+	}
 
 	*pdev = dev;
 
