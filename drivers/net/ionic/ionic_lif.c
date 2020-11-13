@@ -114,7 +114,7 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 
 	for (i = 0; i < lif->nrxqcqs; i++) {
 		struct ionic_rx_stats *rx_stats = &lif->rxqcqs[i]->stats;
-		stats->imissed +=
+		stats->ierrors +=
 			rx_stats->bad_cq_status +
 			rx_stats->bad_len;
 	}
@@ -122,12 +122,12 @@ ionic_lif_get_abs_stats(const struct ionic_lif *lif, struct rte_eth_stats *stats
 	stats->imissed +=
 		ls->rx_ucast_drop_packets +
 		ls->rx_mcast_drop_packets +
-		ls->rx_bcast_drop_packets;
-
-	stats->imissed +=
+		ls->rx_bcast_drop_packets +
 		ls->rx_queue_empty +
+		ls->rx_queue_disabled;
+
+	stats->ierrors +=
 		ls->rx_dma_error +
-		ls->rx_queue_disabled +
 		ls->rx_desc_fetch_error +
 		ls->rx_desc_data_error;
 
