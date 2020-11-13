@@ -684,7 +684,7 @@ ionic_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct ionic_rx_qcq *rxq = dev->data->rx_queues[queue_id];
 	struct ionic_queue *q = &rxq->qcq.q;
 
-	qinfo->mp = rxq->mb_pool;
+	qinfo->mp = rxq->mb_hdr_pool;
 	qinfo->scattered_rx = dev->data->scattered_rx;
 	qinfo->nb_desc = q->num_descs;
 	qinfo->conf.rx_deferred_start = rxq->flags & IONIC_QCQ_F_DEFERRED;
@@ -717,6 +717,13 @@ ionic_rx_empty(struct ionic_rx_qcq *rxq)
 	 */
 	ionic_rx_empty_array(q->info, q->num_descs * q->num_segs, 0);
 
+	ionic_rx_empty_array((void **)rxq->hdrs,
+			IONIC_MBUF_BULK_ALLOC, rxq->hdr_idx);
+	rxq->hdr_idx = IONIC_MBUF_BULK_ALLOC;
+
+	ionic_rx_empty_array((void **)rxq->segs,
+			IONIC_MBUF_BULK_ALLOC, rxq->seg_idx);
+	rxq->seg_idx = IONIC_MBUF_BULK_ALLOC;
 }
 
 void __rte_cold
@@ -796,7 +803,8 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-	rxq->mb_pool = mp;
+	rxq->mb_hdr_pool = mp;
+	rxq->mb_seg_pool = mp;
 
 	/*
 	 * Note: the interface does not currently support
@@ -966,6 +974,7 @@ ionic_rx_fill_one(struct ionic_rx_qcq *rxq)
 	rte_iova_t data_iova;
 	uint32_t i;
 	void **info;
+	int ret;
 
 	info = IONIC_INFO_PTR(q, q->head_idx);
 	desc = &desc_base[q->head_idx];
@@ -975,10 +984,17 @@ ionic_rx_fill_one(struct ionic_rx_qcq *rxq)
 	if (unlikely(info[0]))
 		return 0;
 
-	rxm = rte_mbuf_raw_alloc(rxq->mb_pool);
-	if (unlikely(rxm == NULL))
-		return -ENOMEM;
+	if (unlikely(rxq->hdr_idx == 0)) {
+		ret = rte_mempool_get_bulk(rxq->mb_hdr_pool,
+					(void **)rxq->hdrs,
+					IONIC_MBUF_BULK_ALLOC);
+		if (unlikely(ret))
+			return -ENOMEM;
 
+		rxq->hdr_idx = IONIC_MBUF_BULK_ALLOC;
+	}
+
+	rxm = rxq->hdrs[--rxq->hdr_idx];
 	info[0] = rxm;
 
 	data_iova = rte_mbuf_data_iova_default(rxm);
@@ -989,10 +1005,17 @@ ionic_rx_fill_one(struct ionic_rx_qcq *rxq)
 		if (info[i])
 			return 0;
 
-		rxm_seg = rte_mbuf_raw_alloc(rxq->mb_pool);
-		if (unlikely(rxm_seg == NULL))
-			return -ENOMEM;
+		if (unlikely(rxq->seg_idx == 0)) {
+			ret = rte_mempool_get_bulk(rxq->mb_seg_pool,
+					(void **)rxq->segs,
+					IONIC_MBUF_BULK_ALLOC);
+			if (unlikely(ret))
+				return -ENOMEM;
 
+			rxq->seg_idx = IONIC_MBUF_BULK_ALLOC;
+		}
+
+		rxm_seg = rxq->segs[--rxq->seg_idx];
 		info[i] = rxm_seg;
 
 		/* The data_off does not get set to 0 until later */
