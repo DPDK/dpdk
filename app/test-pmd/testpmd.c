@@ -2537,6 +2537,8 @@ start_port(portid_t pid)
 		}
 
 		if (port->need_reconfig > 0) {
+			uint16_t mtu = RTE_ETHER_MTU;
+
 			port->need_reconfig = 0;
 
 			if (flow_isolate_all) {
@@ -2570,6 +2572,23 @@ start_port(portid_t pid)
 				port->need_reconfig = 1;
 				return -1;
 			}
+
+			/*
+			 * Workaround for rte_eth_dev_configure(), max_rx_pkt_len
+			 * set MTU wrong for the PMDs that have frame overhead
+			 * bigger than RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN.
+			 * For a PMD that has 26 bytes overhead, rte_eth_dev_configure()
+			 * can set MTU to max 1492, not to expected 1500 bytes.
+			 * Using rte_eth_dev_set_mtu() to be able to set MTU correctly,
+			 * default MTU value is 1500.
+			 */
+			diag = rte_eth_dev_get_mtu(pi, &mtu);
+			if (diag)
+				printf("Failed to get MTU for port %d\n", pi);
+			diag = rte_eth_dev_set_mtu(pi, mtu);
+			if (diag != 0 && diag != -ENOTSUP)
+				printf("Failed to set MTU to %u for port %d\n",
+						mtu, pi);
 		}
 		if (port->need_reconfig_queues > 0) {
 			port->need_reconfig_queues = 0;
