@@ -533,6 +533,7 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ionic_tx_qcq *txq = tx_queue;
 	struct ionic_queue *q = &txq->qcq.q;
 	struct ionic_tx_stats *stats = &txq->stats;
+	struct rte_mbuf *mbuf;
 	uint32_t next_q_head_idx;
 	uint32_t bytes_tx = 0;
 	uint16_t nb_avail, nb_tx = 0;
@@ -555,16 +556,18 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			rte_prefetch0(&q->info[next_q_head_idx]);
 		}
 
-		if (tx_pkts[nb_tx]->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
-			err = ionic_tx_tso(txq, tx_pkts[nb_tx]);
+		mbuf = tx_pkts[nb_tx];
+
+		if (mbuf->ol_flags & PKT_TX_TCP_SEG)
+			err = ionic_tx_tso(txq, mbuf);
 		else
-			err = ionic_tx(txq, tx_pkts[nb_tx]);
+			err = ionic_tx(txq, mbuf);
 		if (err) {
 			stats->drop += nb_pkts - nb_tx;
 			break;
 		}
 
-		bytes_tx += tx_pkts[nb_tx]->pkt_len;
+		bytes_tx += mbuf->pkt_len;
 		nb_tx++;
 	}
 
