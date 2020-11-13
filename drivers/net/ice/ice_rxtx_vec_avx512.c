@@ -128,6 +128,25 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 	ICE_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
 }
 
+static inline __m256i
+ice_flex_rxd_to_fdir_flags_vec_avx512(const __m256i fdir_id0_7)
+{
+#define FDID_MIS_MAGIC 0xFFFFFFFF
+	RTE_BUILD_BUG_ON(PKT_RX_FDIR != (1 << 2));
+	RTE_BUILD_BUG_ON(PKT_RX_FDIR_ID != (1 << 13));
+	const __m256i pkt_fdir_bit = _mm256_set1_epi32(PKT_RX_FDIR |
+			PKT_RX_FDIR_ID);
+	/* desc->flow_id field == 0xFFFFFFFF means fdir mismatch */
+	const __m256i fdir_mis_mask = _mm256_set1_epi32(FDID_MIS_MAGIC);
+	__m256i fdir_mask = _mm256_cmpeq_epi32(fdir_id0_7,
+			fdir_mis_mask);
+	/* this XOR op results to bit-reverse the fdir_mask */
+	fdir_mask = _mm256_xor_si256(fdir_mask, fdir_mis_mask);
+	const __m256i fdir_flags = _mm256_and_si256(fdir_mask, pkt_fdir_bit);
+
+	return fdir_flags;
+}
+
 static inline uint16_t
 _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 			      struct rte_mbuf **rx_pkts,
@@ -441,8 +460,51 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 					    rss_vlan_flag_bits);
 
 		/* merge flags */
-		const __m256i mbuf_flags = _mm256_or_si256(l3_l4_flags,
-				rss_vlan_flags);
+		__m256i mbuf_flags = _mm256_or_si256(l3_l4_flags,
+						     rss_vlan_flags);
+
+		if (rxq->fdir_enabled) {
+			const __m256i fdir_id4_7 =
+				_mm256_unpackhi_epi32(raw_desc6_7, raw_desc4_5);
+
+			const __m256i fdir_id0_3 =
+				_mm256_unpackhi_epi32(raw_desc2_3, raw_desc0_1);
+
+			const __m256i fdir_id0_7 =
+				_mm256_unpackhi_epi64(fdir_id4_7, fdir_id0_3);
+
+			const __m256i fdir_flags =
+				ice_flex_rxd_to_fdir_flags_vec_avx512
+					(fdir_id0_7);
+
+			/* merge with fdir_flags */
+			mbuf_flags = _mm256_or_si256(mbuf_flags, fdir_flags);
+
+			/* write to mbuf: have to use scalar store here */
+			rx_pkts[i + 0]->hash.fdir.hi =
+				_mm256_extract_epi32(fdir_id0_7, 3);
+
+			rx_pkts[i + 1]->hash.fdir.hi =
+				_mm256_extract_epi32(fdir_id0_7, 7);
+
+			rx_pkts[i + 2]->hash.fdir.hi =
+				_mm256_extract_epi32(fdir_id0_7, 2);
+
+			rx_pkts[i + 3]->hash.fdir.hi =
+				_mm256_extract_epi32(fdir_id0_7, 6);
+
+			rx_pkts[i + 4]->hash.fdir.hi =
+				_mm256_extract_epi32(fdir_id0_7, 1);
+
+			rx_pkts[i + 5]->hash.fdir.hi =
+				_mm256_extract_epi32(fdir_id0_7, 5);
+
+			rx_pkts[i + 6]->hash.fdir.hi =
+				_mm256_extract_epi32(fdir_id0_7, 0);
+
+			rx_pkts[i + 7]->hash.fdir.hi =
+				_mm256_extract_epi32(fdir_id0_7, 4);
+		} /* if() on fdir_enabled */
 
 #ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 		/**
