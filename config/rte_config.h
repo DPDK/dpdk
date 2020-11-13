@@ -103,6 +103,9 @@
 
 /****** driver defines ********/
 
+/* Packet prefetching in PMDs */
+#define RTE_PMD_PACKET_PREFETCH 1
+
 /* QuickAssist device */
 /* Max. number of QuickAssist devices which can be attached */
 #define RTE_PMD_QAT_MAX_PCI_DEVICES 48
