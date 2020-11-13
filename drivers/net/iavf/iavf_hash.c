@@ -1093,6 +1093,12 @@ iavf_hash_uninit(struct iavf_adapter *ad)
 	if (vf->vf_reset)
 		return;
 
+	if (!vf->vf_res)
+		return;
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF))
+		return;
+
 	if (iavf_hash_default_set(ad, false))
 		PMD_DRV_LOG(ERR, "fail to delete default RSS");
 
