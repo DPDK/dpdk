@@ -934,7 +934,7 @@ mlx5_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port)
 				return ret;
 		}
 	else
-		ret = mlx5_hairpin_bind_single_port(dev, rx_port);
+		ret = mlx5_hairpin_unbind_single_port(dev, rx_port);
 	return ret;
 }
 
