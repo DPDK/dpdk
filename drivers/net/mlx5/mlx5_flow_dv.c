@@ -7596,13 +7596,16 @@ flow_dv_translate_item_source_vport(void *matcher, void *key,
  *   Flow matcher value.
  * @param[in] item
  *   Flow pattern to translate.
+ * @param[in]
+ *   Flow attributes.
  *
  * @return
  *   0 on success, a negative errno value otherwise.
  */
 static int
 flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
-			       void *key, const struct rte_flow_item *item)
+			       void *key, const struct rte_flow_item *item,
+			       const struct rte_flow_attr *attr)
 {
 	const struct rte_flow_item_port_id *pid_m = item ? item->mask : NULL;
 	const struct rte_flow_item_port_id *pid_v = item ? item->spec : NULL;
@@ -7614,14 +7617,30 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 	priv = mlx5_port_to_eswitch_info(id, item == NULL);
 	if (!priv)
 		return -rte_errno;
-	/* Translate to vport field or to metadata, depending on mode. */
-	if (priv->vport_meta_mask)
-		flow_dv_translate_item_meta_vport(matcher, key,
-						  priv->vport_meta_tag,
-						  priv->vport_meta_mask);
-	else
+	/*
+	 * Translate to vport field or to metadata, depending on mode.
+	 * Kernel can use either misc.source_port or half of C0 metadata
+	 * register.
+	 */
+	if (priv->vport_meta_mask) {
+		/*
+		 * Provide the hint for SW steering library
+		 * to insert the flow into ingress domain and
+		 * save the extra vport match.
+		 */
+		if (mask == 0xffff && priv->vport_id == 0xffff &&
+		    priv->pf_bond < 0 && attr->transfer)
+			flow_dv_translate_item_source_vport
+				(matcher, key, priv->vport_id, mask);
+		else
+			flow_dv_translate_item_meta_vport
+				(matcher, key,
+				 priv->vport_meta_tag,
+				 priv->vport_meta_mask);
+	} else {
 		flow_dv_translate_item_source_vport(matcher, key,
 						    priv->vport_id, mask);
+	}
 	return 0;
 }
 
@@ -10224,8 +10243,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						  NULL, "item not supported");
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
-			flow_dv_translate_item_port_id(dev, match_mask,
-						       match_value, items);
+			flow_dv_translate_item_port_id
+				(dev, match_mask, match_value, items, attr);
 			last_item = MLX5_FLOW_ITEM_PORT_ID;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
@@ -10451,7 +10470,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	if (!(item_flags & MLX5_FLOW_ITEM_PORT_ID) &&
 	    (priv->representor || priv->master)) {
 		if (flow_dv_translate_item_port_id(dev, match_mask,
-						   match_value, NULL))
+						   match_value, NULL, attr))
 			return -rte_errno;
 	}
 #ifdef RTE_LIBRTE_MLX5_DEBUG
