@@ -942,9 +942,6 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq)
 		desc = &desc_base[q->head_idx];
 		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(rxm));
 		desc->addr = dma_addr;
-		desc->len = rxq->hdr_seg_size;
-		desc->opcode = (q->num_segs > 1) ? IONIC_RXQ_DESC_OPCODE_SG :
-			IONIC_RXQ_DESC_OPCODE_SIMPLE;
 		rxm->next = NULL;
 
 		prev_rxm_seg = rxm;
@@ -964,7 +961,6 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq)
 			data_iova = rte_mbuf_data_iova(rxm_seg);
 			dma_addr = rte_cpu_to_le_64(data_iova);
 			elem->addr = dma_addr;
-			elem->len = rxq->seg_size;
 			elem++;
 
 			rxm_seg->next = NULL;
@@ -980,6 +976,33 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq)
 	ionic_q_flush(q);
 
 	return 0;
+}
+
+/*
+ * Perform one-time initialization of descriptor fields
+ * which will not change for the life of the queue.
+ */
+static void __rte_cold
+ionic_rx_init_descriptors(struct ionic_rx_qcq *rxq)
+{
+	struct ionic_queue *q = &rxq->qcq.q;
+	struct ionic_rxq_desc *desc, *desc_base = q->base;
+	struct ionic_rxq_sg_desc *sg_desc, *sg_desc_base = q->sg_base;
+	uint32_t i, j;
+	uint8_t opcode;
+
+	opcode = (q->num_segs > 1) ?
+		IONIC_RXQ_DESC_OPCODE_SG : IONIC_RXQ_DESC_OPCODE_SIMPLE;
+
+	for (i = 0; i < q->num_descs; i++) {
+		desc = &desc_base[i];
+		desc->len = rxq->hdr_seg_size;
+		desc->opcode = opcode;
+
+		sg_desc = &sg_desc_base[i];
+		for (j = 0; j < q->num_segs - 1u; j++)
+			sg_desc->elems[j].len = rxq->seg_size;
+	}
 }
 
 /*
@@ -1004,6 +1027,8 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 		rx_queue_id, rxq->qcq.q.num_descs, rxq->buf_size);
 
 	if (!(rxq->flags & IONIC_QCQ_F_INITED)) {
+		ionic_rx_init_descriptors(rxq);
+
 		err = ionic_lif_rxq_init(rxq);
 		if (err)
 			return err;
