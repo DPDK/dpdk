@@ -131,7 +131,7 @@ struct ionic_dev {
 #define Q_NEXT_TO_POST(_q, _n)	(((_q)->head_idx + (_n)) & ((_q)->size_mask))
 #define Q_NEXT_TO_SRVC(_q, _n)	(((_q)->tail_idx + (_n)) & ((_q)->size_mask))
 
-#define IONIC_INFO_IDX(_q, _i)	(_i)
+#define IONIC_INFO_IDX(_q, _i)	((_i) * (_q)->num_segs)
 #define IONIC_INFO_PTR(_q, _i)	(&(_q)->info[IONIC_INFO_IDX((_q), _i)])
 
 struct ionic_queue {

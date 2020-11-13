@@ -10,7 +10,6 @@
 struct ionic_rx_service {
 	/* cb in */
 	struct rte_mbuf **rx_pkts;
-	uint16_t nb_pkts;
 	/* cb out */
 	uint16_t nb_rx;
 };
