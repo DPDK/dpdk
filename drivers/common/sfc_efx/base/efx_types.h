@@ -447,7 +447,7 @@ extern int fix_lint;
 	EFX_EXTRACT64((_xword).ex_u64[3], FIX_LINT(192), FIX_LINT(255),	\
 	    _low, _high))
 
-#define	EFX_EXTRACT_XWORD32(_oword, _low, _high)			\
+#define	EFX_EXTRACT_XWORD32(_xword, _low, _high)			\
 	(EFX_EXTRACT32((_xword).ex_u32[0], FIX_LINT(0), FIX_LINT(31),	\
 	    _low, _high) |						\
 	EFX_EXTRACT32((_xword).ex_u32[1], FIX_LINT(32), FIX_LINT(63),	\
