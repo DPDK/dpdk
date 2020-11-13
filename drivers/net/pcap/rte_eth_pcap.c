@@ -661,15 +661,6 @@ status_down:
 static int
 eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 {
-	int ret;
-
-	ret = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
-			&timestamp_rx_dynflag);
-	if (ret != 0) {
-		PMD_LOG(ERR, "Failed to register Rx timestamp field/flag");
-		return -rte_errno;
-	}
-
 	return 0;
 }
 
@@ -1386,6 +1377,13 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	gettimeofday(&start_time, NULL);
 	start_cycles = rte_get_timer_cycles();
 	hz = rte_get_timer_hz();
+
+	ret = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
+			&timestamp_rx_dynflag);
+	if (ret != 0) {
+		PMD_LOG(ERR, "Failed to register Rx timestamp field/flag");
+		return -1;
+	}
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
