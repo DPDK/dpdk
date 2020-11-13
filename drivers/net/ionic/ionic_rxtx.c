@@ -84,7 +84,7 @@ ionic_tx_flush(struct ionic_tx_qcq *txq)
 		if ((cq->tail_idx & 0x3) == 0)
 			rte_prefetch0(&cq_desc_base[cq->tail_idx]);
 
-		if (cq->tail_idx == 0)
+		if (unlikely(cq->tail_idx == 0))
 			cq->done_color = !cq->done_color;
 
 		comp_index = cq_desc->comp_index;
@@ -562,7 +562,7 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			err = ionic_tx_tso(txq, mbuf);
 		else
 			err = ionic_tx(txq, mbuf);
-		if (err) {
+		if (unlikely(err)) {
 			stats->drop += nb_pkts - nb_tx;
 			break;
 		}
@@ -609,14 +609,14 @@ ionic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	for (i = 0; i < nb_pkts; i++) {
 		txm = tx_pkts[i];
 
-		if (txm->nb_segs > txq->num_segs_fw) {
+		if (unlikely(txm->nb_segs > txq->num_segs_fw)) {
 			rte_errno = -EINVAL;
 			break;
 		}
 
 		offloads = txm->ol_flags;
 
-		if (offloads & IONIC_TX_OFFLOAD_NOTSUP_MASK) {
+		if (unlikely(offloads & IONIC_TX_OFFLOAD_NOTSUP_MASK)) {
 			rte_errno = -ENOTSUP;
 			break;
 		}
@@ -784,7 +784,7 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 
 	rxm = info[0];
 
-	if (cq_desc->status) {
+	if (unlikely(cq_desc->status)) {
 		stats->bad_cq_status++;
 		ionic_rx_recycle(q, q_desc_index, rxm);
 		return;
@@ -932,7 +932,7 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq)
 		struct rte_mbuf *rxm = rte_mbuf_raw_alloc(rxq->mb_pool);
 		struct rte_mbuf *prev_rxm_seg;
 
-		if (rxm == NULL) {
+		if (unlikely(rxm == NULL)) {
 			IONIC_PRINT(ERR, "RX mbuf alloc failed");
 			return -ENOMEM;
 		}
@@ -955,7 +955,7 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq)
 			rte_iova_t data_iova;
 
 			rxm_seg = rte_mbuf_raw_alloc(rxq->mb_pool);
-			if (rxm_seg == NULL) {
+			if (unlikely(rxm_seg == NULL)) {
 				IONIC_PRINT(ERR, "RX mbuf alloc failed");
 				return -ENOMEM;
 			}
@@ -1041,8 +1041,7 @@ ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 	while (color_match(cq_desc->pkt_type_color, cq->done_color)) {
 		curr_cq_tail_idx = cq->tail_idx;
 		cq->tail_idx = Q_NEXT_TO_SRVC(cq, 1);
-
-		if (cq->tail_idx == 0)
+		if (unlikely(cq->tail_idx == 0))
 			cq->done_color = !cq->done_color;
 
 		/* Prefetch the next 4 descriptors */
@@ -1065,7 +1064,7 @@ ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 
 		} while (more);
 
-		if (++work_done == work_to_do)
+		if (unlikely(++work_done == work_to_do))
 			break;
 
 		cq_desc = &cq_desc_base[cq->tail_idx];
