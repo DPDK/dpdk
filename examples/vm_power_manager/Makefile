@@ -32,6 +32,8 @@ CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 ifneq ($(shell $(PKGCONF) --atleast-version=0.9.3 libvirt; echo $$?), 0)
 $(error vm_power_manager requires libvirt >= 0.9.3)
 endif
