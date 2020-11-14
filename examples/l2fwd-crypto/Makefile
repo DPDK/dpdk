@@ -26,6 +26,12 @@ CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+CONFIG_DEFINES = $(shell $(CC) $(CFLAGS) -dM -E - < /dev/null)
+ifneq ($(findstring RTE_CRYPTO_SCHEDULER,$(CONFIG_DEFINES)),)
+LDFLAGS_SHARED += -lrte_crypto_scheduler
+endif
+
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
