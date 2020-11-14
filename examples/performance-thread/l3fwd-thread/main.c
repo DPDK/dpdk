@@ -2,6 +2,10 @@
  * Copyright(c) 2010-2016 Intel Corporation
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -12,6 +16,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <getopt.h>
+#include <sched.h>
 
 #include <rte_common.h>
 #include <rte_vect.h>
