@@ -294,7 +294,7 @@ static void
 mlx5_devx_wq_attr_fill(struct mlx5_priv *priv, struct mlx5_rxq_ctrl *rxq_ctrl,
 		       struct mlx5_devx_wq_attr *wq_attr)
 {
-	wq_attr->end_padding_mode = priv->config.cqe_pad ?
+	wq_attr->end_padding_mode = priv->config.hw_padding ?
 					MLX5_WQ_END_PAD_MODE_ALIGN :
 					MLX5_WQ_END_PAD_MODE_NONE;
 	wq_attr->pd = priv->sh->pdn;
