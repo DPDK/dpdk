@@ -950,8 +950,12 @@ struct mlx5_flow_tunnel {
 
 /** PMD tunnel related context */
 struct mlx5_flow_tunnel_hub {
+	/* Tunnels list
+	 * Access to the list MUST be MT protected
+	 */
 	LIST_HEAD(, mlx5_flow_tunnel) tunnels;
-	rte_spinlock_t sl;			/* Tunnel list spinlock. */
+	 /* protect access to the tunnels list */
+	rte_spinlock_t sl;
 	struct mlx5_hlist *groups;		/** non tunnel groups */
 };
 

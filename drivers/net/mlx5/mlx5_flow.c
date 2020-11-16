@@ -5613,11 +5613,8 @@ flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
 	if (flow->tunnel) {
 		struct mlx5_flow_tunnel *tunnel;
 
-		rte_spinlock_lock(&mlx5_tunnel_hub(dev)->sl);
 		tunnel = mlx5_find_tunnel_id(dev, flow->tunnel_id);
 		RTE_VERIFY(tunnel);
-		LIST_REMOVE(tunnel, chain);
-		rte_spinlock_unlock(&mlx5_tunnel_hub(dev)->sl);
 		if (!__atomic_sub_fetch(&tunnel->refctn, 1, __ATOMIC_RELAXED))
 			mlx5_flow_tunnel_free(dev, tunnel);
 	}
@@ -7194,6 +7191,15 @@ union tunnel_offload_mark {
 	};
 };
 
+static bool
+mlx5_access_tunnel_offload_db
+	(struct rte_eth_dev *dev,
+	 bool (*match)(struct rte_eth_dev *,
+		       struct mlx5_flow_tunnel *, const void *),
+	 void (*hit)(struct rte_eth_dev *, struct mlx5_flow_tunnel *, void *),
+	 void (*miss)(struct rte_eth_dev *, void *),
+	 void *ctx, bool lock_op);
+
 static int
 flow_tunnel_add_default_miss(struct rte_eth_dev *dev,
 			     struct rte_flow *flow,
@@ -7415,18 +7421,72 @@ mlx5_flow_tunnel_free(struct rte_eth_dev *dev,
 	mlx5_ipool_free(ipool, tunnel->tunnel_id);
 }
 
+static bool
+mlx5_access_tunnel_offload_db
+	(struct rte_eth_dev *dev,
+	 bool (*match)(struct rte_eth_dev *,
+		       struct mlx5_flow_tunnel *, const void *),
+	 void (*hit)(struct rte_eth_dev *, struct mlx5_flow_tunnel *, void *),
+	 void (*miss)(struct rte_eth_dev *, void *),
+	 void *ctx, bool lock_op)
+{
+	bool verdict = false;
+	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
+	struct mlx5_flow_tunnel *tunnel;
+
+	rte_spinlock_lock(&thub->sl);
+	LIST_FOREACH(tunnel, &thub->tunnels, chain) {
+		verdict = match(dev, tunnel, (const void *)ctx);
+		if (verdict)
+			break;
+	}
+	if (!lock_op)
+		rte_spinlock_unlock(&thub->sl);
+	if (verdict && hit)
+		hit(dev, tunnel, ctx);
+	if (!verdict && miss)
+		miss(dev, ctx);
+	if (lock_op)
+		rte_spinlock_unlock(&thub->sl);
+
+	return verdict;
+}
+
+struct tunnel_db_find_tunnel_id_ctx {
+	uint32_t tunnel_id;
+	struct mlx5_flow_tunnel *tunnel;
+};
+
+static bool
+find_tunnel_id_match(struct rte_eth_dev *dev,
+		     struct mlx5_flow_tunnel *tunnel, const void *x)
+{
+	const struct tunnel_db_find_tunnel_id_ctx *ctx = x;
+
+	RTE_SET_USED(dev);
+	return tunnel->tunnel_id == ctx->tunnel_id;
+}
+
+static void
+find_tunnel_id_hit(struct rte_eth_dev *dev,
+		   struct mlx5_flow_tunnel *tunnel, void *x)
+{
+	struct tunnel_db_find_tunnel_id_ctx *ctx = x;
+	RTE_SET_USED(dev);
+	ctx->tunnel = tunnel;
+}
+
 static struct mlx5_flow_tunnel *
 mlx5_find_tunnel_id(struct rte_eth_dev *dev, uint32_t id)
 {
-	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
-	struct mlx5_flow_tunnel *tun;
+	struct tunnel_db_find_tunnel_id_ctx ctx = {
+		.tunnel_id = id,
+	};
 
-	LIST_FOREACH(tun, &thub->tunnels, chain) {
-		if (tun->tunnel_id == id)
-			break;
-	}
+	mlx5_access_tunnel_offload_db(dev, find_tunnel_id_match,
+				      find_tunnel_id_hit, NULL, &ctx, true);
 
-	return tun;
+	return ctx.tunnel;
 }
 
 static struct mlx5_flow_tunnel *
@@ -7474,38 +7534,60 @@ mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 	return tunnel;
 }
 
+struct tunnel_db_get_tunnel_ctx {
+	const struct rte_flow_tunnel *app_tunnel;
+	struct mlx5_flow_tunnel *tunnel;
+};
+
+static bool get_tunnel_match(struct rte_eth_dev *dev,
+			     struct mlx5_flow_tunnel *tunnel, const void *x)
+{
+	const struct tunnel_db_get_tunnel_ctx *ctx = x;
+
+	RTE_SET_USED(dev);
+	return !memcmp(ctx->app_tunnel, &tunnel->app_tunnel,
+		       sizeof(*ctx->app_tunnel));
+}
+
+static void get_tunnel_hit(struct rte_eth_dev *dev,
+			   struct mlx5_flow_tunnel *tunnel, void *x)
+{
+	/* called under tunnel spinlock protection */
+	struct tunnel_db_get_tunnel_ctx *ctx = x;
+
+	RTE_SET_USED(dev);
+	tunnel->refctn++;
+	ctx->tunnel = tunnel;
+}
+
+static void get_tunnel_miss(struct rte_eth_dev *dev, void *x)
+{
+	/* called under tunnel spinlock protection */
+	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
+	struct tunnel_db_get_tunnel_ctx *ctx = x;
+
+	rte_spinlock_unlock(&thub->sl);
+	ctx->tunnel = mlx5_flow_tunnel_allocate(dev, ctx->app_tunnel);
+	ctx->tunnel->refctn = 1;
+	rte_spinlock_lock(&thub->sl);
+	if (ctx->tunnel)
+		LIST_INSERT_HEAD(&thub->tunnels, ctx->tunnel, chain);
+}
+
+
 static int
 mlx5_get_flow_tunnel(struct rte_eth_dev *dev,
 		     const struct rte_flow_tunnel *app_tunnel,
 		     struct mlx5_flow_tunnel **tunnel)
 {
-	int ret;
-	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
-	struct mlx5_flow_tunnel *tun;
+	struct tunnel_db_get_tunnel_ctx ctx = {
+		.app_tunnel = app_tunnel,
+	};
 
-	rte_spinlock_lock(&thub->sl);
-	LIST_FOREACH(tun, &thub->tunnels, chain) {
-		if (!memcmp(app_tunnel, &tun->app_tunnel,
-			    sizeof(*app_tunnel))) {
-			*tunnel = tun;
-			ret = 0;
-			break;
-		}
-	}
-	if (!tun) {
-		tun = mlx5_flow_tunnel_allocate(dev, app_tunnel);
-		if (tun) {
-			LIST_INSERT_HEAD(&thub->tunnels, tun, chain);
-			*tunnel = tun;
-		} else {
-			ret = -ENOMEM;
-		}
-	}
-	rte_spinlock_unlock(&thub->sl);
-	if (tun)
-		__atomic_add_fetch(&tun->refctn, 1, __ATOMIC_RELAXED);
-
-	return ret;
+	mlx5_access_tunnel_offload_db(dev, get_tunnel_match, get_tunnel_hit,
+				      get_tunnel_miss, &ctx, true);
+	*tunnel = ctx.tunnel;
+	return ctx.tunnel ? 0 : -ENOMEM;
 }
 
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id)
@@ -7631,56 +7713,88 @@ mlx5_flow_tunnel_match(struct rte_eth_dev *dev,
 	*num_of_items = 1;
 	return 0;
 }
+
+struct tunnel_db_element_release_ctx {
+	struct rte_flow_item *items;
+	struct rte_flow_action *actions;
+	uint32_t num_elements;
+	struct rte_flow_error *error;
+	int ret;
+};
+
+static bool
+tunnel_element_release_match(struct rte_eth_dev *dev,
+			     struct mlx5_flow_tunnel *tunnel, const void *x)
+{
+	const struct tunnel_db_element_release_ctx *ctx = x;
+
+	RTE_SET_USED(dev);
+	if (ctx->num_elements != 1)
+		return false;
+	else if (ctx->items)
+		return ctx->items == &tunnel->item;
+	else if (ctx->actions)
+		return ctx->actions == &tunnel->action;
+
+	return false;
+}
+
+static void
+tunnel_element_release_hit(struct rte_eth_dev *dev,
+			   struct mlx5_flow_tunnel *tunnel, void *x)
+{
+	struct tunnel_db_element_release_ctx *ctx = x;
+	ctx->ret = 0;
+	if (!__atomic_sub_fetch(&tunnel->refctn, 1, __ATOMIC_RELAXED))
+		mlx5_flow_tunnel_free(dev, tunnel);
+}
+
+static void
+tunnel_element_release_miss(struct rte_eth_dev *dev, void *x)
+{
+	struct tunnel_db_element_release_ctx *ctx = x;
+	RTE_SET_USED(dev);
+	ctx->ret = rte_flow_error_set(ctx->error, EINVAL,
+				      RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				      "invalid argument");
+}
+
 static int
 mlx5_flow_tunnel_item_release(struct rte_eth_dev *dev,
-			      struct rte_flow_item *pmd_items,
-			      uint32_t num_items, struct rte_flow_error *err)
+		       struct rte_flow_item *pmd_items,
+		       uint32_t num_items, struct rte_flow_error *err)
 {
-	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
-	struct mlx5_flow_tunnel *tun;
+	struct tunnel_db_element_release_ctx ctx = {
+		.items = pmd_items,
+		.actions = NULL,
+		.num_elements = num_items,
+		.error = err,
+	};
 
-	rte_spinlock_lock(&thub->sl);
-	LIST_FOREACH(tun, &thub->tunnels, chain) {
-		if (&tun->item == pmd_items) {
-			LIST_REMOVE(tun, chain);
-			break;
-		}
-	}
-	rte_spinlock_unlock(&thub->sl);
-	if (!tun || num_items != 1)
-		return rte_flow_error_set(err, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-					  "invalid argument");
-	if (!__atomic_sub_fetch(&tun->refctn, 1, __ATOMIC_RELAXED))
-		mlx5_flow_tunnel_free(dev, tun);
-	return 0;
+	mlx5_access_tunnel_offload_db(dev, tunnel_element_release_match,
+				      tunnel_element_release_hit,
+				      tunnel_element_release_miss, &ctx, false);
+
+	return ctx.ret;
 }
 
 static int
 mlx5_flow_tunnel_action_release(struct rte_eth_dev *dev,
-				struct rte_flow_action *pmd_actions,
-				uint32_t num_actions,
-				struct rte_flow_error *err)
+			 struct rte_flow_action *pmd_actions,
+			 uint32_t num_actions, struct rte_flow_error *err)
 {
-	struct mlx5_flow_tunnel_hub *thub = mlx5_tunnel_hub(dev);
-	struct mlx5_flow_tunnel *tun;
+	struct tunnel_db_element_release_ctx ctx = {
+		.items = NULL,
+		.actions = pmd_actions,
+		.num_elements = num_actions,
+		.error = err,
+	};
 
-	rte_spinlock_lock(&thub->sl);
-	LIST_FOREACH(tun, &thub->tunnels, chain) {
-		if (&tun->action == pmd_actions) {
-			LIST_REMOVE(tun, chain);
-			break;
-		}
-	}
-	rte_spinlock_unlock(&thub->sl);
-	if (!tun || num_actions != 1)
-		return rte_flow_error_set(err, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-					  "invalid argument");
-	if (!__atomic_sub_fetch(&tun->refctn, 1, __ATOMIC_RELAXED))
-		mlx5_flow_tunnel_free(dev, tun);
+	mlx5_access_tunnel_offload_db(dev, tunnel_element_release_match,
+				      tunnel_element_release_hit,
+				      tunnel_element_release_miss, &ctx, false);
 
-	return 0;
+	return ctx.ret;
 }
 
 static int
