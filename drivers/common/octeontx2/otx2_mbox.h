@@ -90,7 +90,7 @@ struct mbox_msghdr {
 #define OTX2_MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __otx2_io sig;
-#define OTX2_MBOX_VERSION (0x0009)
+#define OTX2_MBOX_VERSION (0x000a)
 	/* Version of msg's structure for this ID */
 	uint16_t __otx2_io ver;
 	/* Offset of next msg within mailbox region */
@@ -454,17 +454,17 @@ struct msix_offset_rsp {
 	struct mbox_msghdr hdr;
 	uint16_t __otx2_io npa_msixoff;
 	uint16_t __otx2_io nix_msixoff;
-	uint8_t __otx2_io sso;
-	uint8_t __otx2_io ssow;
-	uint8_t __otx2_io timlfs;
-	uint8_t __otx2_io cptlfs;
+	uint16_t __otx2_io sso;
+	uint16_t __otx2_io ssow;
+	uint16_t __otx2_io timlfs;
+	uint16_t __otx2_io cptlfs;
 	uint16_t __otx2_io sso_msixoff[MAX_RVU_BLKLF_CNT];
 	uint16_t __otx2_io ssow_msixoff[MAX_RVU_BLKLF_CNT];
 	uint16_t __otx2_io timlf_msixoff[MAX_RVU_BLKLF_CNT];
 	uint16_t __otx2_io cptlf_msixoff[MAX_RVU_BLKLF_CNT];
-	uint8_t __otx2_io cpt1_lfs;
-	uint8_t __otx2_io ree0_lfs;
-	uint8_t __otx2_io ree1_lfs;
+	uint16_t __otx2_io cpt1_lfs;
+	uint16_t __otx2_io ree0_lfs;
+	uint16_t __otx2_io ree1_lfs;
 	uint16_t __otx2_io cpt1_lf_msixoff[MAX_RVU_BLKLF_CNT];
 	uint16_t __otx2_io ree0_lf_msixoff[MAX_RVU_BLKLF_CNT];
 	uint16_t __otx2_io ree1_lf_msixoff[MAX_RVU_BLKLF_CNT];
