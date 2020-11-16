@@ -12,6 +12,8 @@
 #include <rte_ethdev.h>
 #include <rte_vxlan.h>
 #include <rte_gtp.h>
+#include <rte_gre.h>
+#include <rte_geneve.h>
 
 #include "actions_gen.h"
 #include "flow_gen.h"
@@ -533,27 +535,27 @@ static void
 add_ether_header(uint8_t **header, uint64_t data,
 	__rte_unused struct additional_para para)
 {
-	struct rte_flow_item_eth eth_item;
+	struct rte_ether_hdr eth_hdr;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ETH)))
 		return;
 
-	memset(&eth_item, 0, sizeof(struct rte_flow_item_eth));
+	memset(&eth_hdr, 0, sizeof(struct rte_ether_hdr));
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VLAN))
-		eth_item.type = RTE_BE16(RTE_ETHER_TYPE_VLAN);
+		eth_hdr.ether_type = RTE_BE16(RTE_ETHER_TYPE_VLAN);
 	else if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4))
-		eth_item.type = RTE_BE16(RTE_ETHER_TYPE_IPV4);
+		eth_hdr.ether_type = RTE_BE16(RTE_ETHER_TYPE_IPV4);
 	else if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6))
-		eth_item.type = RTE_BE16(RTE_ETHER_TYPE_IPV6);
-	memcpy(*header, &eth_item, sizeof(eth_item));
-	*header += sizeof(eth_item);
+		eth_hdr.ether_type = RTE_BE16(RTE_ETHER_TYPE_IPV6);
+	memcpy(*header, &eth_hdr, sizeof(eth_hdr));
+	*header += sizeof(eth_hdr);
 }
 
 static void
 add_vlan_header(uint8_t **header, uint64_t data,
 	__rte_unused struct additional_para para)
 {
-	struct rte_flow_item_vlan vlan_item;
+	struct rte_vlan_hdr vlan_hdr;
 	uint16_t vlan_value;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VLAN)))
@@ -561,22 +563,22 @@ add_vlan_header(uint8_t **header, uint64_t data,
 
 	vlan_value = VLAN_VALUE;
 
-	memset(&vlan_item, 0, sizeof(struct rte_flow_item_vlan));
-	vlan_item.tci = RTE_BE16(vlan_value);
+	memset(&vlan_hdr, 0, sizeof(struct rte_vlan_hdr));
+	vlan_hdr.vlan_tci = RTE_BE16(vlan_value);
 
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4))
-		vlan_item.inner_type = RTE_BE16(RTE_ETHER_TYPE_IPV4);
+		vlan_hdr.eth_proto = RTE_BE16(RTE_ETHER_TYPE_IPV4);
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6))
-		vlan_item.inner_type = RTE_BE16(RTE_ETHER_TYPE_IPV6);
-	memcpy(*header, &vlan_item, sizeof(vlan_item));
-	*header += sizeof(vlan_item);
+		vlan_hdr.eth_proto = RTE_BE16(RTE_ETHER_TYPE_IPV6);
+	memcpy(*header, &vlan_hdr, sizeof(vlan_hdr));
+	*header += sizeof(vlan_hdr);
 }
 
 static void
 add_ipv4_header(uint8_t **header, uint64_t data,
 	struct additional_para para)
 {
-	struct rte_flow_item_ipv4 ipv4_item;
+	struct rte_ipv4_hdr ipv4_hdr;
 	uint32_t ip_dst = para.counter;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4)))
@@ -586,65 +588,64 @@ add_ipv4_header(uint8_t **header, uint64_t data,
 	if (FIXED_VALUES)
 		ip_dst = 1;
 
-	memset(&ipv4_item, 0, sizeof(struct rte_flow_item_ipv4));
-	ipv4_item.hdr.src_addr = RTE_IPV4(127, 0, 0, 1);
-	ipv4_item.hdr.dst_addr = RTE_BE32(ip_dst);
-	ipv4_item.hdr.version_ihl = RTE_IPV4_VHL_DEF;
+	memset(&ipv4_hdr, 0, sizeof(struct rte_ipv4_hdr));
+	ipv4_hdr.src_addr = RTE_IPV4(127, 0, 0, 1);
+	ipv4_hdr.dst_addr = RTE_BE32(ip_dst);
+	ipv4_hdr.version_ihl = RTE_IPV4_VHL_DEF;
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP))
-		ipv4_item.hdr.next_proto_id = RTE_IP_TYPE_UDP;
+		ipv4_hdr.next_proto_id = RTE_IP_TYPE_UDP;
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE))
-		ipv4_item.hdr.next_proto_id = RTE_IP_TYPE_GRE;
-	memcpy(*header, &ipv4_item, sizeof(ipv4_item));
-	*header += sizeof(ipv4_item);
+		ipv4_hdr.next_proto_id = RTE_IP_TYPE_GRE;
+	memcpy(*header, &ipv4_hdr, sizeof(ipv4_hdr));
+	*header += sizeof(ipv4_hdr);
 }
 
 static void
 add_ipv6_header(uint8_t **header, uint64_t data,
 	__rte_unused struct additional_para para)
 {
-	struct rte_flow_item_ipv6 ipv6_item;
+	struct rte_ipv6_hdr ipv6_hdr;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6)))
 		return;
 
-	memset(&ipv6_item, 0, sizeof(struct rte_flow_item_ipv6));
+	memset(&ipv6_hdr, 0, sizeof(struct rte_ipv6_hdr));
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP))
-		ipv6_item.hdr.proto = RTE_IP_TYPE_UDP;
+		ipv6_hdr.proto = RTE_IP_TYPE_UDP;
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE))
-		ipv6_item.hdr.proto = RTE_IP_TYPE_GRE;
-	memcpy(*header, &ipv6_item, sizeof(ipv6_item));
-	*header += sizeof(ipv6_item);
+		ipv6_hdr.proto = RTE_IP_TYPE_GRE;
+	memcpy(*header, &ipv6_hdr, sizeof(ipv6_hdr));
+	*header += sizeof(ipv6_hdr);
 }
 
 static void
 add_udp_header(uint8_t **header, uint64_t data,
 	__rte_unused struct additional_para para)
 {
-	struct rte_flow_item_udp udp_item;
+	struct rte_udp_hdr udp_hdr;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP)))
 		return;
 
-	memset(&udp_item, 0, sizeof(struct rte_flow_item_udp));
+	memset(&udp_hdr, 0, sizeof(struct rte_flow_item_udp));
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN))
-		udp_item.hdr.dst_port = RTE_BE16(RTE_VXLAN_DEFAULT_PORT);
+		udp_hdr.dst_port = RTE_BE16(RTE_VXLAN_DEFAULT_PORT);
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN_GPE))
-		udp_item.hdr.dst_port = RTE_BE16(RTE_VXLAN_GPE_UDP_PORT);
+		udp_hdr.dst_port = RTE_BE16(RTE_VXLAN_GPE_UDP_PORT);
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GENEVE))
-		udp_item.hdr.dst_port = RTE_BE16(RTE_GENEVE_UDP_PORT);
+		udp_hdr.dst_port = RTE_BE16(RTE_GENEVE_UDP_PORT);
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GTP))
-		udp_item.hdr.dst_port = RTE_BE16(RTE_GTPU_UDP_PORT);
-	 memcpy(*header, &udp_item, sizeof(udp_item));
-	 *header += sizeof(udp_item);
+		udp_hdr.dst_port = RTE_BE16(RTE_GTPU_UDP_PORT);
+	 memcpy(*header, &udp_hdr, sizeof(udp_hdr));
+	 *header += sizeof(udp_hdr);
 }
 
 static void
 add_vxlan_header(uint8_t **header, uint64_t data,
 	struct additional_para para)
 {
-	struct rte_flow_item_vxlan vxlan_item;
+	struct rte_vxlan_hdr vxlan_hdr;
 	uint32_t vni_value = para.counter;
-	uint8_t i;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN)))
 		return;
@@ -653,23 +654,21 @@ add_vxlan_header(uint8_t **header, uint64_t data,
 	if (FIXED_VALUES)
 		vni_value = 1;
 
-	memset(&vxlan_item, 0, sizeof(struct rte_flow_item_vxlan));
+	memset(&vxlan_hdr, 0, sizeof(struct rte_vxlan_hdr));
 
-	for (i = 0; i < 3; i++)
-		vxlan_item.vni[2 - i] = vni_value >> (i * 8);
-	vxlan_item.flags = 0x8;
+	vxlan_hdr.vx_vni = (RTE_BE32(vni_value)) >> 16;
+	vxlan_hdr.vx_flags = 0x8;
 
-	memcpy(*header, &vxlan_item, sizeof(vxlan_item));
-	*header += sizeof(vxlan_item);
+	memcpy(*header, &vxlan_hdr, sizeof(vxlan_hdr));
+	*header += sizeof(vxlan_hdr);
 }
 
 static void
 add_vxlan_gpe_header(uint8_t **header, uint64_t data,
 	struct additional_para para)
 {
-	struct rte_flow_item_vxlan_gpe vxlan_gpe_item;
+	struct rte_vxlan_gpe_hdr vxlan_gpe_hdr;
 	uint32_t vni_value = para.counter;
-	uint8_t i;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN_GPE)))
 		return;
@@ -678,38 +677,37 @@ add_vxlan_gpe_header(uint8_t **header, uint64_t data,
 	if (FIXED_VALUES)
 		vni_value = 1;
 
-	memset(&vxlan_gpe_item, 0, sizeof(struct rte_flow_item_vxlan_gpe));
+	memset(&vxlan_gpe_hdr, 0, sizeof(struct rte_vxlan_gpe_hdr));
 
-	for (i = 0; i < 3; i++)
-		vxlan_gpe_item.vni[2 - i] = vni_value >> (i * 8);
-	vxlan_gpe_item.flags = 0x0c;
+	vxlan_gpe_hdr.vx_vni = (RTE_BE32(vni_value)) >> 16;
+	vxlan_gpe_hdr.vx_flags = 0x0c;
 
-	memcpy(*header, &vxlan_gpe_item, sizeof(vxlan_gpe_item));
-	*header += sizeof(vxlan_gpe_item);
+	memcpy(*header, &vxlan_gpe_hdr, sizeof(vxlan_gpe_hdr));
+	*header += sizeof(vxlan_gpe_hdr);
 }
 
 static void
 add_gre_header(uint8_t **header, uint64_t data,
 	__rte_unused struct additional_para para)
 {
-	struct rte_flow_item_gre gre_item;
+	struct rte_gre_hdr gre_hdr;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE)))
 		return;
 
-	memset(&gre_item, 0, sizeof(struct rte_flow_item_gre));
+	memset(&gre_hdr, 0, sizeof(struct rte_gre_hdr));
 
-	gre_item.protocol = RTE_BE16(RTE_ETHER_TYPE_TEB);
+	gre_hdr.proto = RTE_BE16(RTE_ETHER_TYPE_TEB);
 
-	memcpy(*header, &gre_item, sizeof(gre_item));
-	*header += sizeof(gre_item);
+	memcpy(*header, &gre_hdr, sizeof(gre_hdr));
+	*header += sizeof(gre_hdr);
 }
 
 static void
 add_geneve_header(uint8_t **header, uint64_t data,
 	struct additional_para para)
 {
-	struct rte_flow_item_geneve geneve_item;
+	struct rte_geneve_hdr geneve_hdr;
 	uint32_t vni_value = para.counter;
 	uint8_t i;
 
@@ -720,20 +718,20 @@ add_geneve_header(uint8_t **header, uint64_t data,
 	if (FIXED_VALUES)
 		vni_value = 1;
 
-	memset(&geneve_item, 0, sizeof(struct rte_flow_item_geneve));
+	memset(&geneve_hdr, 0, sizeof(struct rte_geneve_hdr));
 
 	for (i = 0; i < 3; i++)
-		geneve_item.vni[2 - i] = vni_value >> (i * 8);
+		geneve_hdr.vni[2 - i] = vni_value >> (i * 8);
 
-	memcpy(*header, &geneve_item, sizeof(geneve_item));
-	*header += sizeof(geneve_item);
+	memcpy(*header, &geneve_hdr, sizeof(geneve_hdr));
+	*header += sizeof(geneve_hdr);
 }
 
 static void
 add_gtp_header(uint8_t **header, uint64_t data,
 	struct additional_para para)
 {
-	struct rte_flow_item_gtp gtp_item;
+	struct rte_gtp_hdr gtp_hdr;
 	uint32_t teid_value = para.counter;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GTP)))
@@ -743,13 +741,13 @@ add_gtp_header(uint8_t **header, uint64_t data,
 	if (FIXED_VALUES)
 		teid_value = 1;
 
-	memset(&gtp_item, 0, sizeof(struct rte_flow_item_gtp));
+	memset(&gtp_hdr, 0, sizeof(struct rte_flow_item_gtp));
 
-	gtp_item.teid = RTE_BE32(teid_value);
-	gtp_item.msg_type = 255;
+	gtp_hdr.teid = RTE_BE32(teid_value);
+	gtp_hdr.msg_type = 255;
 
-	memcpy(*header, &gtp_item, sizeof(gtp_item));
-	*header += sizeof(gtp_item);
+	memcpy(*header, &gtp_hdr, sizeof(gtp_hdr));
+	*header += sizeof(gtp_hdr);
 }
 
 static const struct encap_decap_headers {
