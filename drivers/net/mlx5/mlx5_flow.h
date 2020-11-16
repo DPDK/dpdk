@@ -1273,8 +1273,8 @@ tunnel_use_standard_attr_group_translate
 int mlx5_flow_group_to_table(struct rte_eth_dev *dev,
 			     const struct mlx5_flow_tunnel *tunnel,
 			     uint32_t group, uint32_t *table,
-			     struct flow_grp_info flags,
-				 struct rte_flow_error *error);
+			     const struct flow_grp_info *flags,
+			     struct rte_flow_error *error);
 uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow_rss_desc *rss_desc,
 				     int tunnel, uint64_t layer_types,
 				     uint64_t hash_fields);

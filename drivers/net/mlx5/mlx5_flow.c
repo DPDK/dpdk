@@ -6699,9 +6699,11 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 
 static int
 flow_group_to_table(uint32_t port_id, uint32_t group, uint32_t *table,
-		    struct flow_grp_info grp_info, struct rte_flow_error *error)
+		    const struct flow_grp_info *grp_info,
+		    struct rte_flow_error *error)
 {
-	if (grp_info.transfer && grp_info.external && grp_info.fdb_def_rule) {
+	if (grp_info->transfer && grp_info->external &&
+	    grp_info->fdb_def_rule) {
 		if (group == UINT32_MAX)
 			return rte_flow_error_set
 						(error, EINVAL,
@@ -6758,25 +6760,25 @@ int
 mlx5_flow_group_to_table(struct rte_eth_dev *dev,
 			 const struct mlx5_flow_tunnel *tunnel,
 			 uint32_t group, uint32_t *table,
-			 struct flow_grp_info grp_info,
+			 const struct flow_grp_info *grp_info,
 			 struct rte_flow_error *error)
 {
 	int ret;
 	bool standard_translation;
 
-	if (!grp_info.skip_scale && grp_info.external &&
+	if (!grp_info->skip_scale && grp_info->external &&
 	    group < MLX5_MAX_TABLES_EXTERNAL)
 		group *= MLX5_FLOW_TABLE_FACTOR;
 	if (is_tunnel_offload_active(dev)) {
-		standard_translation = !grp_info.external ||
-					grp_info.std_tbl_fix;
+		standard_translation = !grp_info->external ||
+					grp_info->std_tbl_fix;
 	} else {
 		standard_translation = true;
 	}
 	DRV_LOG(DEBUG,
 		"port %u group=%#x transfer=%d external=%d fdb_def_rule=%d translate=%s",
-		dev->data->port_id, group, grp_info.transfer,
-		grp_info.external, grp_info.fdb_def_rule,
+		dev->data->port_id, group, grp_info->transfer,
+		grp_info->external, grp_info->fdb_def_rule,
 		standard_translation ? "STANDARD" : "TUNNEL");
 	if (standard_translation)
 		ret = flow_group_to_table(dev->data->port_id, group, table,
@@ -7273,7 +7275,7 @@ flow_tunnel_add_default_miss(struct rte_eth_dev *dev,
 	miss_attr.priority = MLX5_TNL_MISS_RULE_PRIORITY;
 	miss_attr.group = jump_data->group;
 	ret = mlx5_flow_group_to_table(dev, tunnel, jump_data->group,
-				       &flow_table, grp_info, error);
+				       &flow_table, &grp_info, error);
 	if (ret)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,

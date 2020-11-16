@@ -3935,7 +3935,7 @@ flow_dv_validate_action_jump(struct rte_eth_dev *dev,
 	target_group =
 		((const struct rte_flow_action_jump *)action->conf)->group;
 	ret = mlx5_flow_group_to_table(dev, tunnel, target_group, &table,
-				       grp_info, error);
+				       &grp_info, error);
 	if (ret)
 		return ret;
 	if (attributes->group == target_group &&
@@ -5103,7 +5103,7 @@ static int
 flow_dv_validate_attributes(struct rte_eth_dev *dev,
 			    const struct mlx5_flow_tunnel *tunnel,
 			    const struct rte_flow_attr *attributes,
-			    struct flow_grp_info grp_info,
+			    const struct flow_grp_info *grp_info,
 			    struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5258,7 +5258,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	}
 	grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
 				(dev, tunnel, attr, items, actions);
-	ret = flow_dv_validate_attributes(dev, tunnel, attr, grp_info, error);
+	ret = flow_dv_validate_attributes(dev, tunnel, attr, &grp_info, error);
 	if (ret < 0)
 		return ret;
 	is_root = (uint64_t)ret;
@@ -9597,7 +9597,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
 				(dev, tunnel, attr, items, actions);
 	ret = mlx5_flow_group_to_table(dev, tunnel, attr->group, &table,
-				       grp_info, error);
+				       &grp_info, error);
 	if (ret)
 		return ret;
 	dev_flow->dv.group = table;
@@ -9944,7 +9944,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			ret = mlx5_flow_group_to_table(dev, tunnel,
 						       jump_group,
 						       &table,
-						       grp_info, error);
+						       &grp_info, error);
 			if (ret)
 				return ret;
 			tbl = flow_dv_tbl_resource_get(dev, table, attr->egress,
