@@ -541,7 +541,7 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 				VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, ETH, ETHERTYPE);
 
 				rte_memcpy(hdr->buffer,
-					eth_spec, sizeof(*eth_spec));
+					eth_spec, sizeof(struct rte_ether_hdr));
 			}
 
 			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
