@@ -202,7 +202,12 @@ test_stop_flush(struct test *t) /* test to check we can properly flush events */
 		goto err;
 	}
 
-	count = rte_mempool_avail_count(t->mbuf_pool);
+	if (t->mbuf_pool)
+		count = rte_mempool_avail_count(t->mbuf_pool);
+	else {
+		printf("%d: mbuf_pool is NULL\n", __LINE__);
+		goto err;
+	}
 
 	if (rte_event_port_attr_get(evdev,
 				    0,
