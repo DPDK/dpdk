@@ -1607,6 +1607,9 @@ sfc_mae_rule_process_outer(struct sfc_adapter *sa,
 		}
 	}
 
+	/* The spec has now been tracked by the outer rule entry. */
+	ctx->match_spec_outer = NULL;
+
 	/*
 	 * Depending on whether we reuse an existing outer rule or create a
 	 * new one (see above), outer rule ID is either a valid value or
@@ -1717,7 +1720,8 @@ sfc_mae_rule_encap_parse_fini(struct sfc_adapter *sa,
 	if (ctx->encap_type == EFX_TUNNEL_PROTOCOL_NONE)
 		return;
 
-	efx_mae_match_spec_fini(sa->nic, ctx->match_spec_outer);
+	if (ctx->match_spec_outer != NULL)
+		efx_mae_match_spec_fini(sa->nic, ctx->match_spec_outer);
 }
 
 int
