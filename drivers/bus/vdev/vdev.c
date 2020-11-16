@@ -498,7 +498,7 @@ scan:
 			 * by calling rte_devargs_insert() with
 			 *     devargs.bus = rte_bus_find_by_name("vdev");
 			 *     devargs.type = RTE_DEVTYPE_VIRTUAL;
-			 *     devargs.policy = RTE_DEV_WHITELISTED;
+			 *     devargs.policy = RTE_DEV_ALLOWED;
 			 */
 			custom_scan->callback(custom_scan->user_arg);
 	}
