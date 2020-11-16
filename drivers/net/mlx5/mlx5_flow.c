@@ -7406,14 +7406,13 @@ mlx5_flow_tunnel_free(struct rte_eth_dev *dev,
 		      struct mlx5_flow_tunnel *tunnel)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_indexed_pool *ipool;
 
 	DRV_LOG(DEBUG, "port %u release pmd tunnel id=0x%x",
 		dev->data->port_id, tunnel->tunnel_id);
-	RTE_VERIFY(!__atomic_load_n(&tunnel->refctn, __ATOMIC_RELAXED));
-	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TUNNEL_ID],
-			tunnel->tunnel_id);
 	mlx5_hlist_destroy(tunnel->groups);
-	mlx5_free(tunnel);
+	ipool = priv->sh->ipool[MLX5_IPOOL_TUNNEL_ID];
+	mlx5_ipool_free(ipool, tunnel->tunnel_id);
 }
 
 static struct mlx5_flow_tunnel *
@@ -7435,29 +7434,17 @@ mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 			  const struct rte_flow_tunnel *app_tunnel)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_indexed_pool *ipool;
 	struct mlx5_flow_tunnel *tunnel;
 	uint32_t id;
 
-	mlx5_ipool_malloc(priv->sh->ipool[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID],
-			  &id);
+	ipool = priv->sh->ipool[MLX5_IPOOL_TUNNEL_ID];
+	tunnel = mlx5_ipool_zmalloc(ipool, &id);
+	if (!tunnel)
+		return NULL;
 	if (id >= MLX5_MAX_TUNNELS) {
-		mlx5_ipool_free(priv->sh->ipool
-				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
+		mlx5_ipool_free(ipool, id);
 		DRV_LOG(ERR, "Tunnel ID %d exceed max limit.", id);
-		return NULL;
-	} else if (!id) {
-		return NULL;
-	}
-	/**
-	 * mlx5 flow tunnel is an auxlilary data structure
-	 * It's not part of IO. No need to allocate it from
-	 * huge pages pools dedicated for IO
-	 */
-	tunnel = mlx5_malloc(MLX5_MEM_SYS | MLX5_MEM_ZERO, sizeof(*tunnel),
-			     0, SOCKET_ID_ANY);
-	if (!tunnel) {
-		mlx5_ipool_free(priv->sh->ipool
-				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
 		return NULL;
 	}
 	tunnel->groups = mlx5_hlist_create("tunnel groups", 1024, 0, 0,
@@ -7465,9 +7452,7 @@ mlx5_flow_tunnel_allocate(struct rte_eth_dev *dev,
 					   NULL,
 					   mlx5_flow_tunnel_grp2tbl_remove_cb);
 	if (!tunnel->groups) {
-		mlx5_ipool_free(priv->sh->ipool
-				[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], id);
-		mlx5_free(tunnel);
+		mlx5_ipool_free(ipool, id);
 		return NULL;
 	}
 	tunnel->groups->ctx = priv->sh;

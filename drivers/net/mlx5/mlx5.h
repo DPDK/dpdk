@@ -44,6 +44,8 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_JUMP, /* Pool for jump resource. */
 	MLX5_IPOOL_SAMPLE, /* Pool for sample resource. */
 	MLX5_IPOOL_DEST_ARRAY, /* Pool for destination array resource. */
+	MLX5_IPOOL_TUNNEL_ID, /* Pool for tunnel offload context */
+	MLX5_IPOOL_TNL_TBL_ID, /* Pool for tunnel table ID. */
 #endif
 	MLX5_IPOOL_MTR, /* Pool for meter resource. */
 	MLX5_IPOOL_MCP, /* Pool for metadata resource. */
@@ -51,8 +53,6 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_MLX5_FLOW, /* Pool for mlx5 flow handle. */
 	MLX5_IPOOL_RTE_FLOW, /* Pool for rte_flow. */
 	MLX5_IPOOL_RSS_EXPANTION_FLOW_ID, /* Pool for Queue/RSS flow ID. */
-	MLX5_IPOOL_TUNNEL_ID, /* Pool for flow tunnel ID. */
-	MLX5_IPOOL_TNL_TBL_ID, /* Pool for tunnel table ID. */
 	MLX5_IPOOL_RSS_SHARED_ACTIONS, /* Pool for RSS shared actions. */
 	MLX5_IPOOL_MAX,
 };
