@@ -68,7 +68,9 @@ pci_name_set(struct rte_pci_device *dev)
 	devargs = pci_devargs_lookup(&dev->addr);
 	dev->device.devargs = devargs;
 
-	/* If the device is blocked, no rte_devargs exists for it. */
+	/* When using a blocklist, only blocked devices will have
+	 * an rte_devargs. Allowed devices won't have one.
+	 */
 	if (devargs != NULL)
 		/* If an rte_devargs exists, the generic rte_device uses the
 		 * given name as its name.
