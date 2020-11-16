@@ -246,6 +246,8 @@ Validating flow rules depends on the firmware variant.
 
 The :ref:`flow_isolated_mode` is supported.
 
+The implementation is natively thread-safe.
+
 Ethernet destination individual/group match
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

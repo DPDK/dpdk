@@ -220,6 +220,7 @@ New Features
   * Added Alveo SN1000 SmartNICs (EF100 architecture) support including
     flow API transfer rules for switch HW offload
   * Added ARMv8 support
+  * Claimed flow API native thread safety
 
 * **Added Wangxun txgbe PMD.**
 
