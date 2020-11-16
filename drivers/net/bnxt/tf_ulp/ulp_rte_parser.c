@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 
+#include <rte_vxlan.h>
 #include "bnxt.h"
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
@@ -1548,7 +1549,7 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG];
 		ulp_encap_buffer_copy(buff,
 				      item->spec,
-				      sizeof(struct rte_flow_item_vlan),
+				      sizeof(struct rte_vlan_hdr),
 				      ULP_BUFFER_ALIGN_8_BYTE);
 
 		if (!ulp_rte_item_skip_void(&item, 1))
@@ -1559,15 +1560,15 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
 		vlan_num++;
 		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG +
-		       sizeof(struct rte_flow_item_vlan)],
+		       sizeof(struct rte_vlan_hdr)],
 		       item->spec,
-		       sizeof(struct rte_flow_item_vlan));
+		       sizeof(struct rte_vlan_hdr));
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;
 	}
 	/* Update the vlan count and size of more than one */
 	if (vlan_num) {
-		vlan_size = vlan_num * sizeof(struct rte_flow_item_vlan);
+		vlan_size = vlan_num * sizeof(struct rte_vlan_hdr);
 		vlan_num = tfp_cpu_to_be_32(vlan_num);
 		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG_NUM],
 		       &vlan_num,
@@ -1726,7 +1727,7 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		BNXT_TF_DBG(ERR, "vxlan encap does not have vni\n");
 		return BNXT_TF_RC_ERROR;
 	}
-	vxlan_size = sizeof(struct rte_flow_item_vxlan);
+	vxlan_size = sizeof(struct rte_vxlan_hdr);
 	/* copy the vxlan details */
 	memcpy(&vxlan_spec, item->spec, vxlan_size);
 	vxlan_spec.flags = 0x08;
