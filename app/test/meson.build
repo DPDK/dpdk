@@ -195,7 +195,7 @@ fast_tests = [
         ['eal_flags_n_opt_autotest', false],
         ['eal_flags_hpet_autotest', false],
         ['eal_flags_no_huge_autotest', false],
-        ['eal_flags_w_opt_autotest', false],
+        ['eal_flags_a_opt_autotest', false],
         ['eal_flags_b_opt_autotest', false],
         ['eal_flags_vdev_opt_autotest', false],
         ['eal_flags_r_opt_autotest', false],

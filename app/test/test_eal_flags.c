@@ -1546,7 +1546,6 @@ REGISTER_TEST_COMMAND(eal_flags_main_opt_autotest, test_main_lcore_flag);
 REGISTER_TEST_COMMAND(eal_flags_n_opt_autotest, test_invalid_n_flag);
 REGISTER_TEST_COMMAND(eal_flags_hpet_autotest, test_no_hpet_flag);
 REGISTER_TEST_COMMAND(eal_flags_no_huge_autotest, test_no_huge_flag);
-REGISTER_TEST_COMMAND(eal_flags_w_opt_autotest, test_allow_flag); /* for legacy CI */
 REGISTER_TEST_COMMAND(eal_flags_a_opt_autotest, test_allow_flag);
 REGISTER_TEST_COMMAND(eal_flags_b_opt_autotest, test_invalid_b_flag);
 REGISTER_TEST_COMMAND(eal_flags_vdev_opt_autotest, test_invalid_vdev_flag);
