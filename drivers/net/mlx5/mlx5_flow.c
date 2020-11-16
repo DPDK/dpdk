@@ -6773,7 +6773,7 @@ mlx5_flow_group_to_table(struct rte_eth_dev *dev,
 		standard_translation = true;
 	}
 	DRV_LOG(DEBUG,
-		"port %u group=%#x transfer=%d external=%d fdb_def_rule=%d translate=%s",
+		"port %u group=%u transfer=%d external=%d fdb_def_rule=%d translate=%s",
 		dev->data->port_id, group, grp_info->transfer,
 		grp_info->external, grp_info->fdb_def_rule,
 		standard_translation ? "STANDARD" : "TUNNEL");

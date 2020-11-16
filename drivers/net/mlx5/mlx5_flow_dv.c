@@ -8042,6 +8042,8 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 				   "cannot get table");
 		return NULL;
 	}
+	DRV_LOG(DEBUG, "Table_id %u tunnel %u group %u registered.",
+		table_id, tunnel ? tunnel->tunnel_id : 0, group_id);
 	tbl_data = container_of(entry, struct mlx5_flow_tbl_data_entry, entry);
 	return &tbl_data->tbl;
 }
@@ -8080,7 +8082,7 @@ flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 		if (he)
 			mlx5_hlist_unregister(tunnel_grp_hash, he);
 		DRV_LOG(DEBUG,
-			"Table_id %#x tunnel %u group %u released.",
+			"Table_id %u tunnel %u group %u released.",
 			table_id,
 			tbl_data->tunnel ?
 			tbl_data->tunnel->tunnel_id : 0,
@@ -8192,6 +8194,8 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 			 struct mlx5_flow_dv_matcher *ref,
 			 union mlx5_flow_tbl_key *key,
 			 struct mlx5_flow *dev_flow,
+			 const struct mlx5_flow_tunnel *tunnel,
+			 uint32_t group_id,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_cache_entry *entry;
@@ -8203,8 +8207,14 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		.data = ref,
 	};
 
-	tbl = flow_dv_tbl_resource_get(dev, key->table_id, key->direction,
-				       key->domain, false, NULL, 0, 0, error);
+	/**
+	 * tunnel offload API requires this registration for cases when
+	 * tunnel match rule was inserted before tunnel set rule.
+	 */
+	tbl = flow_dv_tbl_resource_get(dev, key->table_id,
+				       key->direction, key->domain,
+				       dev_flow->external, tunnel,
+				       group_id, 0, error);
 	if (!tbl)
 		return -rte_errno;	/* No need to refill the error info */
 	tbl_data = container_of(tbl, struct mlx5_flow_tbl_data_entry, tbl);
@@ -9611,10 +9621,14 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		/*
 		 * do not add decap action if match rule drops packet
 		 * HW rejects rules with decap & drop
+		 *
+		 * if tunnel match rule was inserted before matching tunnel set
+		 * rule flow table used in the match rule must be registered.
+		 * current implementation handles that in the
+		 * flow_dv_match_register() at the function end.
 		 */
 		bool add_decap = true;
 		const struct rte_flow_action *ptr = actions;
-		struct mlx5_flow_tbl_resource *tbl;
 
 		for (; ptr->type != RTE_FLOW_ACTION_TYPE_END; ptr++) {
 			if (ptr->type == RTE_FLOW_ACTION_TYPE_DROP) {
@@ -9631,20 +9645,6 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					dev_flow->dv.encap_decap->action;
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
 		}
-		/*
-		 * bind table_id with <group, table> for tunnel match rule.
-		 * Tunnel set rule establishes that bind in JUMP action handler.
-		 * Required for scenario when application creates tunnel match
-		 * rule before tunnel set rule.
-		 */
-		tbl = flow_dv_tbl_resource_get(dev, table, attr->egress,
-					       attr->transfer,
-					       !!dev_flow->external, tunnel,
-					       attr->group, 0, error);
-		if (!tbl)
-			return rte_flow_error_set
-			       (error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-			       actions, "cannot register tunnel group");
 	}
 	for (; !actions_end ; actions++) {
 		const struct rte_flow_action_queue *queue;
@@ -10474,7 +10474,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	tbl_key.domain = attr->transfer;
 	tbl_key.direction = attr->egress;
 	tbl_key.table_id = dev_flow->dv.group;
-	if (flow_dv_matcher_register(dev, &matcher, &tbl_key, dev_flow, error))
+	if (flow_dv_matcher_register(dev, &matcher, &tbl_key, dev_flow,
+				     tunnel, attr->group, error))
 		return -rte_errno;
 	return 0;
 }
