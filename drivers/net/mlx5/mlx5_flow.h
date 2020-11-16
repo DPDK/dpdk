@@ -991,8 +991,13 @@ mlx5_tunnel_hub(struct rte_eth_dev *dev)
 static inline bool
 is_tunnel_offload_active(struct rte_eth_dev *dev)
 {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_priv *priv = dev->data->dev_private;
 	return !!priv->config.dv_miss_info;
+#else
+	RTE_SET_USED(dev);
+	return false;
+#endif
 }
 
 static inline bool
