@@ -2113,8 +2113,10 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
 		}
 		/* Normal transmit completion. */
 		MLX5_ASSERT(txq->cq_ci != txq->cq_pi);
+#ifdef RTE_LIBRTE_MLX5_DEBUG
 		MLX5_ASSERT((txq->fcqs[txq->cq_ci & txq->cqe_m] >> 16) ==
 			    cqe->wqe_counter);
+#endif
 		ring_doorbell = true;
 		++txq->cq_ci;
 		last_cqe = cqe;
