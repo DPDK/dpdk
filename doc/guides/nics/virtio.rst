@@ -483,11 +483,11 @@ according to below configuration:
 #. Packed virtqueue in-order non-mergeable path: If in-order feature is negotiated and
    Rx mergeable is not negotiated, this path will be selected.
 #. Packed virtqueue vectorized Rx path: If building and running environment support
-   AVX512 && in-order feature is negotiated && Rx mergeable is not negotiated &&
-   TCP_LRO Rx offloading is disabled && vectorized option enabled,
+   (AVX512 || NEON) && in-order feature is negotiated && Rx mergeable
+   is not negotiated && TCP_LRO Rx offloading is disabled && vectorized option enabled,
    this path will be selected.
 #. Packed virtqueue vectorized Tx path: If building and running environment support
-   AVX512 && in-order feature is negotiated && vectorized option enabled,
+   (AVX512 || NEON)  && in-order feature is negotiated && vectorized option enabled,
    this path will be selected.
 
 Rx/Tx callbacks of each Virtio path

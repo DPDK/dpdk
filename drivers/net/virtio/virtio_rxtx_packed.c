@@ -18,6 +18,8 @@
 
 #ifdef CC_AVX512_SUPPORT
 #include "virtio_rxtx_packed_avx.h"
+#elif defined(RTE_ARCH_ARM)
+#include "virtio_rxtx_packed_neon.h"
 #endif
 
 uint16_t

@@ -856,7 +856,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 
 	if (vectorized) {
 		if (packed_vq) {
-#if defined(CC_AVX512_SUPPORT)
+#if defined(CC_AVX512_SUPPORT) || defined(RTE_ARCH_ARM)
 			hw->use_vec_rx = 1;
 			hw->use_vec_tx = 1;
 #else
