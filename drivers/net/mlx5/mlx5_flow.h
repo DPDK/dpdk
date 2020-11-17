@@ -1108,7 +1108,7 @@ struct mlx5_flow_workspace {
 	struct mlx5_flow flows[MLX5_NUM_MAX_DEV_FLOWS];
 	struct mlx5_flow_rss_desc rss_desc;
 	uint32_t rssq_num; /* Allocated queue num in rss_desc. */
-	int flow_idx; /* Intermediate device flow index. */
+	uint32_t flow_idx; /* Intermediate device flow index. */
 };
 
 struct mlx5_flow_split_info {
