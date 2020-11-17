@@ -28,6 +28,8 @@
 /* flag bits offset in packed ring desc from ID */
 #define FLAGS_BITS_OFFSET ((offsetof(struct vring_packed_desc, flags) - \
 	offsetof(struct vring_packed_desc, id)) * BYTE_SIZE)
+#define FLAGS_LEN_BITS_OFFSET ((offsetof(struct vring_packed_desc, flags) - \
+	offsetof(struct vring_packed_desc, len)) * BYTE_SIZE)
 #endif
 
 #define PACKED_FLAGS_MASK ((0ULL | VRING_PACKED_DESC_F_AVAIL_USED) << \
@@ -36,13 +38,15 @@
 /* reference count offset in mbuf rearm data */
 #define REFCNT_BITS_OFFSET ((offsetof(struct rte_mbuf, refcnt) - \
 	offsetof(struct rte_mbuf, rearm_data)) * BYTE_SIZE)
+
+#ifdef CC_AVX512_SUPPORT
 /* segment number offset in mbuf rearm data */
 #define SEG_NUM_BITS_OFFSET ((offsetof(struct rte_mbuf, nb_segs) - \
 	offsetof(struct rte_mbuf, rearm_data)) * BYTE_SIZE)
-
 /* default rearm data */
 #define DEFAULT_REARM_DATA (1ULL << SEG_NUM_BITS_OFFSET | \
 	1ULL << REFCNT_BITS_OFFSET)
+#endif
 
 /* id bits offset in packed ring desc higher 64bits */
 #define ID_BITS_OFFSET ((offsetof(struct vring_packed_desc, id) - \

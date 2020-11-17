@@ -17,6 +17,149 @@
 #include "virtqueue.h"
 
 static inline int
+virtqueue_enqueue_batch_packed_vec(struct virtnet_tx *txvq,
+				   struct rte_mbuf **tx_pkts)
+{
+	struct virtqueue *vq = txvq->vq;
+	uint16_t head_size = vq->hw->vtnet_hdr_size;
+	uint16_t idx = vq->vq_avail_idx;
+	struct virtio_net_hdr *hdr;
+	struct vq_desc_extra *dxp;
+	struct vring_packed_desc *p_desc;
+	uint16_t i;
+
+	if (idx & PACKED_BATCH_MASK)
+		return -1;
+
+	if (unlikely((idx + PACKED_BATCH_SIZE) > vq->vq_nentries))
+		return -1;
+
+	/* Map four refcnt and nb_segs from mbufs to one NEON register. */
+	uint8x16_t ref_seg_msk = {
+		2, 3, 4, 5,
+		10, 11, 12, 13,
+		18, 19, 20, 21,
+		26, 27, 28, 29
+	};
+
+	/* Map four data_off from mbufs to one NEON register. */
+	uint8x8_t data_msk = {
+		0, 1,
+		8, 9,
+		16, 17,
+		24, 25
+	};
+
+	uint16x8_t net_hdr_msk = {
+		0xFFFF, 0xFFFF,
+		0, 0, 0, 0
+	};
+
+	uint16x4_t pkts[PACKED_BATCH_SIZE];
+	uint8x16x2_t mbuf;
+	/* Load four mbufs rearm data. */
+	RTE_BUILD_BUG_ON(REFCNT_BITS_OFFSET >= 64);
+	pkts[0] = vld1_u16((uint16_t *)&tx_pkts[0]->rearm_data);
+	pkts[1] = vld1_u16((uint16_t *)&tx_pkts[1]->rearm_data);
+	pkts[2] = vld1_u16((uint16_t *)&tx_pkts[2]->rearm_data);
+	pkts[3] = vld1_u16((uint16_t *)&tx_pkts[3]->rearm_data);
+
+	mbuf.val[0] = vreinterpretq_u8_u16(vcombine_u16(pkts[0], pkts[1]));
+	mbuf.val[1] = vreinterpretq_u8_u16(vcombine_u16(pkts[2], pkts[3]));
+
+	/* refcnt = 1 and nb_segs = 1 */
+	uint32x4_t def_ref_seg = vdupq_n_u32(0x10001);
+	/* Check refcnt and nb_segs. */
+	uint32x4_t ref_seg = vreinterpretq_u32_u8(vqtbl2q_u8(mbuf, ref_seg_msk));
+	poly128_t cmp1 = vreinterpretq_p128_u32(~vceqq_u32(ref_seg, def_ref_seg));
+	if (unlikely(cmp1))
+		return -1;
+
+	/* Check headroom is enough. */
+	uint16x4_t head_rooms = vdup_n_u16(head_size);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) !=
+			 offsetof(struct rte_mbuf, rearm_data));
+	uint16x4_t data_offset = vreinterpret_u16_u8(vqtbl2_u8(mbuf, data_msk));
+	uint64x1_t cmp2 = vreinterpret_u64_u16(vclt_u16(data_offset, head_rooms));
+	if (unlikely(vget_lane_u64(cmp2, 0)))
+		return -1;
+
+	virtio_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		dxp = &vq->vq_descx[idx + i];
+		dxp->ndescs = 1;
+		dxp->cookie = tx_pkts[i];
+	}
+
+	virtio_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		tx_pkts[i]->data_off -= head_size;
+		tx_pkts[i]->data_len += head_size;
+	}
+
+	uint64x2x2_t desc[PACKED_BATCH_SIZE / 2];
+	uint64x2_t base_addr0 = {
+		VIRTIO_MBUF_ADDR(tx_pkts[0], vq) + tx_pkts[0]->data_off,
+		VIRTIO_MBUF_ADDR(tx_pkts[1], vq) + tx_pkts[1]->data_off
+	};
+	uint64x2_t base_addr1 = {
+		VIRTIO_MBUF_ADDR(tx_pkts[2], vq) + tx_pkts[2]->data_off,
+		VIRTIO_MBUF_ADDR(tx_pkts[3], vq) + tx_pkts[3]->data_off
+	};
+
+	desc[0].val[0] = base_addr0;
+	desc[1].val[0] = base_addr1;
+
+	uint64_t flags = (uint64_t)vq->vq_packed.cached_flags << FLAGS_LEN_BITS_OFFSET;
+	uint64x2_t tx_desc0 = {
+		flags | (uint64_t)idx << ID_BITS_OFFSET | tx_pkts[0]->data_len,
+		flags | (uint64_t)(idx + 1) << ID_BITS_OFFSET | tx_pkts[1]->data_len
+	};
+
+	uint64x2_t tx_desc1 = {
+		flags | (uint64_t)(idx + 2) << ID_BITS_OFFSET | tx_pkts[2]->data_len,
+		flags | (uint64_t)(idx + 3) << ID_BITS_OFFSET | tx_pkts[3]->data_len
+	};
+
+	desc[0].val[1] = tx_desc0;
+	desc[1].val[1] = tx_desc1;
+
+	if (!vq->hw->has_tx_offload) {
+		virtio_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+			hdr = rte_pktmbuf_mtod_offset(tx_pkts[i],
+					struct virtio_net_hdr *, -head_size);
+			/* Clear net hdr. */
+			uint16x8_t v_hdr = vld1q_u16((void *)hdr);
+			vst1q_u16((void *)hdr, vandq_u16(v_hdr, net_hdr_msk));
+		}
+	} else {
+		virtio_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+			hdr = rte_pktmbuf_mtod_offset(tx_pkts[i],
+					struct virtio_net_hdr *, -head_size);
+			virtqueue_xmit_offload(hdr, tx_pkts[i], true);
+		}
+	}
+
+	/* Enqueue packet buffers. */
+	p_desc = &vq->vq_packed.ring.desc[idx];
+	vst2q_u64((uint64_t *)p_desc, desc[0]);
+	vst2q_u64((uint64_t *)(p_desc + 2), desc[1]);
+
+	virtio_update_batch_stats(&txvq->stats, tx_pkts[0]->pkt_len,
+			tx_pkts[1]->pkt_len, tx_pkts[2]->pkt_len,
+			tx_pkts[3]->pkt_len);
+
+	vq->vq_avail_idx += PACKED_BATCH_SIZE;
+	vq->vq_free_cnt -= PACKED_BATCH_SIZE;
+
+	if (vq->vq_avail_idx >= vq->vq_nentries) {
+		vq->vq_avail_idx -= vq->vq_nentries;
+		vq->vq_packed.cached_flags ^=
+			VRING_PACKED_DESC_F_AVAIL_USED;
+	}
+
+	return 0;
+}
+
+static inline int
 virtqueue_dequeue_batch_packed_vec(struct virtnet_rx *rxvq,
 				   struct rte_mbuf **rx_pkts)
 {
