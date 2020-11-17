@@ -915,6 +915,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		goto error;
 	}
 	sh->refcnt = 1;
+	sh->bond_dev = UINT16_MAX;
 	sh->max_port = spawn->max_port;
 	strncpy(sh->ibdev_name, mlx5_os_get_ctx_device_name(sh->ctx),
 		sizeof(sh->ibdev_name) - 1);
