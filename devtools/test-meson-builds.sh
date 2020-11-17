@@ -43,6 +43,24 @@ default_cflags=$CFLAGS
 default_ldflags=$LDFLAGS
 default_meson_options=$DPDK_MESON_OPTIONS
 
+opt_verbose=
+opt_vverbose=
+if [ "$1" = "-v" ] ; then
+	opt_verbose=y
+elif [ "$1" = "-vv" ] ; then
+	opt_verbose=y
+	opt_vverbose=y
+fi
+# we can't use plain verbose when we don't have pipefail option so up-level
+if [ -z "$PIPEFAIL" -a -n "$opt_verbose" ] ; then
+	echo "# Missing pipefail shell option, changing VERBOSE to VERY_VERBOSE"
+	opt_vverbose=y
+fi
+[ -n "$opt_verbose" ] && exec 8>&1 || exec 8>/dev/null
+verbose=8
+[ -n "$opt_vverbose" ] && exec 9>&1 || exec 9>/dev/null
+veryverbose=9
+
 check_cc_flags () # <flag to check> <flag2> ...
 {
 	echo 'int main(void) { return 0; }' |
@@ -108,11 +126,11 @@ config () # <dir> <builddir> <meson options>
 compile () # <builddir>
 {
 	builddir=$1
-	if [ -n "$TEST_MESON_BUILD_VERY_VERBOSE" ] ; then
+	if [ -n "$opt_vverbose" ] ; then
 		# for full output from ninja use "-v"
 		echo "$ninja_cmd -v -C $builddir"
 		$ninja_cmd -v -C $builddir
-	elif [ -n "$TEST_MESON_BUILD_VERBOSE" ] ; then
+	elif [ -n "$opt_verbose" ] ; then
 		# for keeping the history of short cmds, pipe through cat
 		echo "$ninja_cmd -C $builddir | cat"
 		$ninja_cmd -C $builddir | cat
@@ -179,22 +197,6 @@ build () # <directory> <target compiler | cross file> <meson options>
 			$(readlink -f $builds_dir/$targetdir/install)
 	fi
 }
-
-if [ "$1" = "-vv" ] ; then
-	TEST_MESON_BUILD_VERY_VERBOSE=1
-	TEST_MESON_BUILD_VERBOSE=1
-elif [ "$1" = "-v" ] ; then
-	TEST_MESON_BUILD_VERBOSE=1
-fi
-# we can't use plain verbose when we don't have pipefail option so up-level
-if [ -z "$PIPEFAIL" -a -n "$TEST_MESON_BUILD_VERBOSE" ] ; then
-	echo "# Missing pipefail shell option, changing VERBOSE to VERY_VERBOSE"
-	TEST_MESON_BUILD_VERY_VERBOSE=1
-fi
-[ -n "$TEST_MESON_BUILD_VERBOSE" ] && exec 8>&1 || exec 8>/dev/null
-verbose=8
-[ -n "$TEST_MESON_BUILD_VERY_VERBOSE" ] && exec 9>&1 || exec 9>/dev/null
-veryverbose=9
 
 # shared and static linked builds with gcc and clang
 for c in gcc clang ; do
