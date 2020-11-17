@@ -463,6 +463,9 @@ rx_queue_count(struct mlx5_rxq_data *rxq)
 	struct rxq_zip *zip = &rxq->zip;
 	volatile struct mlx5_cqe *cqe;
 	const unsigned int cqe_n = (1 << rxq->cqe_n);
+	const unsigned int sges_n = (1 << rxq->sges_n);
+	const unsigned int elts_n = (1 << rxq->elts_n);
+	const unsigned int strd_n = (1 << rxq->strd_num_n);
 	const unsigned int cqe_cnt = cqe_n - 1;
 	unsigned int cq_ci, used;
 
@@ -488,7 +491,7 @@ rx_queue_count(struct mlx5_rxq_data *rxq)
 		used += n;
 		cqe = &(*rxq->cqes)[cq_ci & cqe_cnt];
 	}
-	used = RTE_MIN(used, cqe_n);
+	used = RTE_MIN(used * sges_n, elts_n * strd_n);
 	return used;
 }
 
