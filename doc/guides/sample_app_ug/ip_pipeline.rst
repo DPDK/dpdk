@@ -253,11 +253,6 @@ Traffic manager
    <tc5_rate> <tc6_rate> <tc7_rate> <tc8_rate>
    <tc9_rate> <tc10_rate> <tc11_rate> <tc12_rate>
    <tc_period>
-   pps <n_pipes_per_subport>
-   qsize <qsize_tc0> <qsize_tc1> <qsize_tc2>
-   <qsize_tc3> <qsize_tc4> <qsize_tc5> <qsize_tc6>
-   <qsize_tc7> <qsize_tc8> <qsize_tc9> <qsize_tc10>
-   <qsize_tc11> <qsize_tc12>
 
  Add traffic manager pipe profile ::
 
@@ -275,6 +270,7 @@ Traffic manager
   tmgr <tmgr_name>
    rate <rate>
    spp <n_subports_per_port>
+   pps <n_pipes_per_subport>
    fo <frame_overhead>
    mtu <mtu>
    cpu <cpu_id>
