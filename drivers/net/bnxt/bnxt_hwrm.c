@@ -718,6 +718,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 			    sizeof(bp->pf->vf_info[0]) * new_max_vfs, 0);
 			if (bp->pf->vf_info == NULL) {
 				PMD_DRV_LOG(ERR, "Alloc vf info fail\n");
+				HWRM_UNLOCK();
 				return -ENOMEM;
 			}
 			bp->pf->max_vfs = new_max_vfs;
