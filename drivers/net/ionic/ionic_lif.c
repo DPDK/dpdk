@@ -623,7 +623,8 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 		total_size += rte_mem_page_size();
 	}
 
-	new = rte_zmalloc("ionic", struct_size, 0);
+	new = rte_zmalloc_socket("ionic", struct_size,
+				RTE_CACHE_LINE_SIZE, socket_id);
 	if (!new) {
 		IONIC_PRINT(ERR, "Cannot allocate queue structure");
 		return -ENOMEM;
@@ -1092,17 +1093,19 @@ ionic_lif_alloc(struct ionic_lif *lif)
 		return -ENOMEM;
 	}
 
-	lif->txqcqs = rte_zmalloc("ionic", sizeof(*lif->txqcqs) *
-		adapter->max_ntxqs_per_lif, 0);
-
+	lif->txqcqs = rte_calloc_socket("ionic",
+				adapter->max_ntxqs_per_lif,
+				sizeof(*lif->txqcqs),
+				RTE_CACHE_LINE_SIZE, socket_id);
 	if (!lif->txqcqs) {
 		IONIC_PRINT(ERR, "Cannot allocate tx queues array");
 		return -ENOMEM;
 	}
 
-	lif->rxqcqs = rte_zmalloc("ionic", sizeof(*lif->rxqcqs) *
-		adapter->max_nrxqs_per_lif, 0);
-
+	lif->rxqcqs = rte_calloc_socket("ionic",
+				adapter->max_nrxqs_per_lif,
+				sizeof(*lif->rxqcqs),
+				RTE_CACHE_LINE_SIZE, socket_id);
 	if (!lif->rxqcqs) {
 		IONIC_PRINT(ERR, "Cannot allocate rx queues array");
 		return -ENOMEM;
