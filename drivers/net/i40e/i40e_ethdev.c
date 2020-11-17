@@ -6620,9 +6620,13 @@ i40e_stat_update_48(struct i40e_hw *hw,
 {
 	uint64_t new_data;
 
-	new_data = (uint64_t)I40E_READ_REG(hw, loreg);
-	new_data |= ((uint64_t)(I40E_READ_REG(hw, hireg) &
-			I40E_16_BIT_MASK)) << I40E_32_BIT_WIDTH;
+	if (hw->device_id == I40E_DEV_ID_QEMU) {
+		new_data = (uint64_t)I40E_READ_REG(hw, loreg);
+		new_data |= ((uint64_t)(I40E_READ_REG(hw, hireg) &
+				I40E_16_BIT_MASK)) << I40E_32_BIT_WIDTH;
+	} else {
+		new_data = I40E_READ_REG64(hw, loreg);
+	}
 
 	if (!offset_loaded)
 		*offset = new_data;
