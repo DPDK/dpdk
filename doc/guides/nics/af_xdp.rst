@@ -50,6 +50,7 @@ This is a Linux-specific PMD, thus the following prerequisites apply:
 *  For PMD zero copy, it requires kernel version later than v5.4-rc1;
 *  For shared_umem, it requires kernel version v5.10 or later and libbpf version
    v0.2.0 or later.
+*  For 32-bit OS, a kernel with version 5.4 or later is required.
 
 Set up an af_xdp interface
 -----------------------------
