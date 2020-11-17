@@ -19,9 +19,16 @@
 #include "virtqueue.h"
 
 #define BYTE_SIZE 8
+
+#ifdef CC_AVX512_SUPPORT
 /* flag bits offset in packed ring desc higher 64bits */
 #define FLAGS_BITS_OFFSET ((offsetof(struct vring_packed_desc, flags) - \
 	offsetof(struct vring_packed_desc, len)) * BYTE_SIZE)
+#elif defined(RTE_ARCH_ARM)
+/* flag bits offset in packed ring desc from ID */
+#define FLAGS_BITS_OFFSET ((offsetof(struct vring_packed_desc, flags) - \
+	offsetof(struct vring_packed_desc, id)) * BYTE_SIZE)
+#endif
 
 #define PACKED_FLAGS_MASK ((0ULL | VRING_PACKED_DESC_F_AVAIL_USED) << \
 	FLAGS_BITS_OFFSET)
@@ -44,8 +51,16 @@
 /* net hdr short size mask */
 #define NET_HDR_MASK 0x3F
 
+#ifdef RTE_ARCH_ARM
+/* The cache line size on different Arm platforms are different, so
+ * put a four batch size here to match with the minimum cache line
+ * size and accommodate NEON register size.
+ */
+#define PACKED_BATCH_SIZE 4
+#else
 #define PACKED_BATCH_SIZE (RTE_CACHE_LINE_SIZE / \
 	sizeof(struct vring_packed_desc))
+#endif
 #define PACKED_BATCH_MASK (PACKED_BATCH_SIZE - 1)
 
 #ifdef VIRTIO_GCC_UNROLL_PRAGMA
