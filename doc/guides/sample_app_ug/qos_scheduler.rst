@@ -135,6 +135,10 @@ The profile file has the following format:
     [subport 0]
     number of pipes per subport = 4096
     queue sizes = 64 64 64 64 64 64 64 64 64 64 64 64 64
+
+    subport 0-8 = 0     ; These subports are configured with subport profile 0
+
+    [subport profile 0]
     tb rate = 1250000000; Bytes per second
     tb size = 1000000; Bytes
     tc 0 rate = 1250000000;     Bytes per second
