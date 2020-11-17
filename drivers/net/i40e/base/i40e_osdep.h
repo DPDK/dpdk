@@ -133,6 +133,14 @@ static inline uint32_t i40e_read_addr(volatile void *addr)
 	return rte_le_to_cpu_32(I40E_PCI_REG(addr));
 }
 
+#define I40E_PCI_REG64(reg)		rte_read64(reg)
+#define I40E_PCI_REG64_ADDR(a, reg) \
+	((volatile uint64_t *)((char *)(a)->hw_addr + (reg)))
+static inline uint64_t i40e_read64_addr(volatile void *addr)
+{
+	return rte_le_to_cpu_64(I40E_PCI_REG64(addr));
+}
+
 #define I40E_PCI_REG_WRITE(reg, value)		\
 	rte_write32((rte_cpu_to_le_32(value)), reg)
 #define I40E_PCI_REG_WRITE_RELAXED(reg, value)	\
@@ -149,6 +157,8 @@ static inline uint32_t i40e_read_addr(volatile void *addr)
 #define I40E_READ_REG(hw, reg) i40e_read_addr(I40E_PCI_REG_ADDR((hw), (reg)))
 #define I40E_WRITE_REG(hw, reg, value) \
 	I40E_PCI_REG_WRITE(I40E_PCI_REG_ADDR((hw), (reg)), (value))
+
+#define I40E_READ_REG64(hw, reg) i40e_read64_addr(I40E_PCI_REG64_ADDR((hw), (reg)))
 
 #define rd32(a, reg) i40e_read_addr(I40E_PCI_REG_ADDR((a), (reg)))
 #define wr32(a, reg, value) \
