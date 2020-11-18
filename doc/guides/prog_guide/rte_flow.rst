@@ -3229,10 +3229,12 @@ Caveats
   temporarily replacing the burst function pointers), an appropriate error
   code must be returned (``EBUSY``).
 
-- PMDs, not applications, are responsible for maintaining flow rules
-  configuration when stopping and restarting a port or performing other
-  actions which may affect them. They can only be destroyed explicitly by
-  applications.
+- Applications, not PMDs, are responsible for maintaining flow rules
+  configuration when closing, stopping or restarting a port or performing other
+  actions which may affect them.
+  Applications must assume that after port close, stop or restart all flows
+  related to that port are not valid, hardware rules are destroyed and relevant
+  PMD resources are released.
 
 For devices exposing multiple ports sharing global settings affected by flow
 rules:
