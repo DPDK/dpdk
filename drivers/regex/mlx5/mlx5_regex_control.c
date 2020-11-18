@@ -336,6 +336,7 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 	struct mlx5_regex_priv *priv = dev->data->dev_private;
 	struct mlx5_regex_qp *qp;
 	int i;
+	int nb_sq_config = 0;
 	int ret;
 	uint16_t log_desc;
 
@@ -364,8 +365,9 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 		ret = regex_ctrl_create_sq(priv, qp, i, log_desc);
 		if (ret) {
 			DRV_LOG(ERR, "Can't create sq.");
-			goto err_sq;
+			goto err_btree;
 		}
+		nb_sq_config++;
 	}
 
 	ret = mlx5_mr_btree_init(&qp->mr_ctrl.cache_bh, MLX5_MR_BTREE_CACHE_N,
@@ -385,9 +387,8 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 err_fp:
 	mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
 err_btree:
-	for (i = 0; i < qp->nb_obj; i++)
+	for (i = 0; i < nb_sq_config; i++)
 		regex_ctrl_destroy_sq(priv, qp, i);
-err_sq:
 	regex_ctrl_destroy_cq(priv, &qp->cq);
 err_cq:
 	rte_free(qp->sqs);
