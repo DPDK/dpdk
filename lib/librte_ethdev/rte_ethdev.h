@@ -525,6 +525,7 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_L2TPV3             (1ULL << 29)
 #define ETH_RSS_PFCP               (1ULL << 30)
 #define ETH_RSS_PPPOE		   (1ULL << 31)
+#define ETH_RSS_ECPRI		   (1ULL << 32)
 
 /*
  * We use the following macros to combine with above ETH_RSS_* for
