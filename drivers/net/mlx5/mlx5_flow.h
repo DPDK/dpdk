@@ -345,8 +345,8 @@ enum mlx5_feature_name {
 #define MLX5_GENEVE_OPT_LEN_0 14
 #define MLX5_GENEVE_OPT_LEN_1 63
 
-#define MLX5_ENCAPSULATION_DECISION_SIZE (sizeof(struct rte_flow_item_eth) + \
-					  sizeof(struct rte_flow_item_ipv4))
+#define MLX5_ENCAPSULATION_DECISION_SIZE (sizeof(struct rte_ether_hdr) + \
+					  sizeof(struct rte_ipv4_hdr))
 
 /* IPv4 fragment_offset field contains relevant data in bits 2 to 15. */
 #define MLX5_IPV4_FRAG_OFFSET_MASK \
