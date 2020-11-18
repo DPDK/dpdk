@@ -7819,6 +7819,11 @@ mlx5_flow_tunnel_get_restore_info(struct rte_eth_dev *dev,
 	const struct mlx5_flow_tbl_data_entry *tble;
 	const uint64_t mask = PKT_RX_FDIR | PKT_RX_FDIR_ID;
 
+	if (!is_tunnel_offload_active(dev)) {
+		info->flags = 0;
+		return 0;
+	}
+
 	if ((ol_flags & mask) != mask)
 		goto err;
 	tble = tunnel_mark_decode(dev, m->hash.fdir.hi);
