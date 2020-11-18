@@ -194,6 +194,10 @@ rxp_flush_rules(struct ibv_context *ctx, struct mlx5_rxp_rof_entry *rules,
 	val |= MLX5_RXP_RTRU_CSR_CTRL_GO;
 	ret = mlx5_devx_regex_register_write(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
 					     val);
+	if (ret) {
+		DRV_LOG(ERR, "CSR write failed!");
+		return -1;
+	}
 	ret = rxp_poll_csr_for_value(ctx, &val, MLX5_RXP_RTRU_CSR_STATUS,
 				     MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
 				     MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
@@ -554,6 +558,8 @@ rxp_init_eng(struct mlx5_regex_priv *priv, uint8_t id)
 		return ret;
 	ctrl &= ~MLX5_RXP_CSR_CTRL_INIT;
 	ret = mlx5_devx_regex_register_write(ctx, id, MLX5_RXP_CSR_CTRL, ctrl);
+	if (ret)
+		return ret;
 	rte_delay_us(20000);
 	ret = rxp_poll_csr_for_value(ctx, &ctrl, MLX5_RXP_CSR_STATUS,
 				     MLX5_RXP_CSR_STATUS_INIT_DONE,
