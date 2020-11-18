@@ -777,6 +777,7 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 			return priv->mtr_color_reg != REG_C_2 ? REG_C_2 :
 			       REG_C_3;
 	case MLX5_MTR_COLOR:
+	case MLX5_ASO_FLOW_HIT: /* Both features use the same REG_C. */
 		MLX5_ASSERT(priv->mtr_color_reg != REG_NON);
 		return priv->mtr_color_reg;
 	case MLX5_COPY_MARK:

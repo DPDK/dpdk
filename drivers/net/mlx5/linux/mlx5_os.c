@@ -1133,17 +1133,6 @@ err_secondary:
 			err = -err;
 			goto error;
 		}
-#ifdef HAVE_MLX5DV_DR_ACTION_FLOW_HIT
-		if (config->hca_attr.flow_hit_aso) {
-			sh->flow_hit_aso_en = 1;
-			err = mlx5_flow_aso_age_mng_init(sh);
-			if (err) {
-				err = -err;
-				goto error;
-			}
-			DRV_LOG(DEBUG, "Flow Hit ASO is supported.");
-		}
-#endif /* HAVE_MLX5DV_DR_ACTION_FLOW_HIT */
 		/* Check relax ordering support. */
 		if (!haswell_broadwell_cpu) {
 			sh->cmng.relaxed_ordering_write =
@@ -1190,8 +1179,17 @@ err_secondary:
 				DRV_LOG(WARNING, "No available register for"
 					" meter.");
 			} else {
-				priv->mtr_color_reg = ffs(reg_c_mask) - 1 +
-						      REG_C_0;
+				/*
+				 * The meter color register is used by the
+				 * flow-hit feature as well.
+				 * The flow-hit feature must use REG_C_3
+				 * Prefer REG_C_3 if it is available.
+				 */
+				if (reg_c_mask & (1 << (REG_C_3 - REG_C_0)))
+					priv->mtr_color_reg = REG_C_3;
+				else
+					priv->mtr_color_reg = ffs(reg_c_mask)
+							      - 1 + REG_C_0;
 				priv->mtr_en = 1;
 				priv->mtr_reg_share =
 				      config->hca_attr.qos.flow_meter_reg_share;
@@ -1200,6 +1198,18 @@ err_secondary:
 			}
 		}
 #endif
+#ifdef HAVE_MLX5DV_DR_ACTION_FLOW_HIT
+		if (config->hca_attr.flow_hit_aso &&
+		    priv->mtr_color_reg == REG_C_3) {
+			sh->flow_hit_aso_en = 1;
+			err = mlx5_flow_aso_age_mng_init(sh);
+			if (err) {
+				err = -err;
+				goto error;
+			}
+			DRV_LOG(DEBUG, "Flow Hit ASO is supported.");
+		}
+#endif /* HAVE_MLX5DV_DR_ACTION_FLOW_HIT */
 #if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE)
 		if (config->hca_attr.log_max_ft_sampler_num > 0  &&
 		    config->dv_flow_en) {

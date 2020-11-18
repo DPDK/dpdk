@@ -9469,12 +9469,14 @@ flow_dv_age_pool_create(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
+ * @param[out] error
+ *   Pointer to the error structure.
  *
  * @return
  *   Index to ASO age action on success, 0 otherwise and rte_errno is set.
  */
 static uint32_t
-flow_dv_aso_age_alloc(struct rte_eth_dev *dev)
+flow_dv_aso_age_alloc(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct mlx5_aso_age_pool *pool;
@@ -9489,7 +9491,9 @@ flow_dv_aso_age_alloc(struct rte_eth_dev *dev)
 		LIST_REMOVE(age_free, next);
 	} else if (!flow_dv_age_pool_create(dev, &age_free)) {
 		rte_spinlock_unlock(&mng->free_sl);
-		return 0; /* 0 is an error.*/
+		rte_flow_error_set(error, rte_errno, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, "failed to create ASO age pool");
+		return 0; /* 0 is an error. */
 	}
 	rte_spinlock_unlock(&mng->free_sl);
 	pool = container_of
@@ -9497,15 +9501,30 @@ flow_dv_aso_age_alloc(struct rte_eth_dev *dev)
 		  (age_free - age_free->offset), const struct mlx5_aso_age_pool,
 								       actions);
 	if (!age_free->dr_action) {
+		int reg_c = mlx5_flow_get_reg_id(dev, MLX5_ASO_FLOW_HIT, 0,
+						 error);
+
+		if (reg_c < 0) {
+			rte_flow_error_set(error, rte_errno,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   NULL, "failed to get reg_c "
+					   "for ASO flow hit");
+			return 0; /* 0 is an error. */
+		}
 		age_free->dr_action = mlx5_glue->dr_action_create_flow_hit
 						(pool->flow_hit_aso_obj->obj,
-						 age_free->offset, REG_C_5);
+						 age_free->offset,
+						 (reg_c - REG_C_0));
 		if (!age_free->dr_action) {
 			rte_errno = errno;
 			rte_spinlock_lock(&mng->free_sl);
 			LIST_INSERT_HEAD(&mng->free, age_free, next);
 			rte_spinlock_unlock(&mng->free_sl);
-			return 0; /* 0 is an error.*/
+			rte_flow_error_set(error, rte_errno,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   NULL, "failed to create ASO "
+					   "flow hit action");
+			return 0; /* 0 is an error. */
 		}
 	}
 	__atomic_store_n(&age_free->refcnt, 1, __ATOMIC_RELAXED);
@@ -9519,18 +9538,21 @@ flow_dv_aso_age_alloc(struct rte_eth_dev *dev)
  *   Pointer to rte_eth_dev structure.
  * @param[in] age
  *   Pointer to the aging action configuration.
+ * @param[out] error
+ *   Pointer to the error structure.
  *
  * @return
  *   Index to flow counter on success, 0 otherwise.
  */
 static uint32_t
 flow_dv_translate_create_aso_age(struct rte_eth_dev *dev,
-				 const struct rte_flow_action_age *age)
+				 const struct rte_flow_action_age *age,
+				 struct rte_flow_error *error)
 {
 	uint32_t age_idx = 0;
 	struct mlx5_aso_age_action *aso_age;
 
-	age_idx = flow_dv_aso_age_alloc(dev);
+	age_idx = flow_dv_aso_age_alloc(dev, error);
 	if (!age_idx)
 		return 0;
 	aso_age = flow_aso_age_get_by_idx(dev, age_idx);
@@ -9842,7 +9864,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_AGE:
 			if (priv->sh->flow_hit_aso_en && attr->group) {
 				flow->age = flow_dv_translate_create_aso_age
-						(dev, action->conf);
+						(dev, action->conf, error);
 				if (!flow->age)
 					return rte_flow_error_set
 						(error, rte_errno,
@@ -11532,7 +11554,7 @@ flow_dv_action_create(struct rte_eth_dev *dev,
 		       MLX5_SHARED_ACTION_TYPE_OFFSET) | ret;
 		break;
 	case RTE_FLOW_ACTION_TYPE_AGE:
-		ret = flow_dv_translate_create_aso_age(dev, action->conf);
+		ret = flow_dv_translate_create_aso_age(dev, action->conf, err);
 		idx = (MLX5_SHARED_ACTION_TYPE_AGE <<
 		       MLX5_SHARED_ACTION_TYPE_OFFSET) | ret;
 		if (ret) {

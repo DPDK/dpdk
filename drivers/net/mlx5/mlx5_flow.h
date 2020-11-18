@@ -80,6 +80,7 @@ enum mlx5_feature_name {
 	MLX5_COPY_MARK,
 	MLX5_MTR_COLOR,
 	MLX5_MTR_SFX,
+	MLX5_ASO_FLOW_HIT,
 };
 
 /* Default queue number. */
