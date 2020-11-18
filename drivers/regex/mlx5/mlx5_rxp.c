@@ -921,7 +921,7 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 {
 	struct mlx5_regex_priv *priv = dev->data->dev_private;
 	struct mlx5_rxp_ctl_rules_pgm *rules = NULL;
-	uint8_t id;
+	uint32_t id;
 	int ret;
 
 	if (priv->prog_mode == MLX5_RXP_MODE_NOT_DEFINED) {
