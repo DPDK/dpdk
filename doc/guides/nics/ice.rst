@@ -5,9 +5,8 @@ ICE Poll Mode Driver
 ======================
 
 The ice PMD (**librte_net_ice**) provides poll mode driver support for
-10/25/50/100 Gbps Intel® Ethernet 810 Series Network Adapters based on
-the Intel Ethernet Controller E810.
-
+10/25/50/100 Gbps Intel® Ethernet 800 Series Network Adapters based on
+the Intel Ethernet Controller E810 and Intel Ethernet Connection E822/E823.
 
 Prerequisites
 -------------
@@ -16,6 +15,30 @@ Prerequisites
 
 - To get better performance on Intel platforms, please follow the "How to get best performance with NICs on Intel platforms"
   section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
+
+- Please follow the matching list to download specific kernel driver, firmware and DDP package from
+  `https://www.intel.com/content/www/us/en/search.html?ws=text#q=e810&t=Downloads&layout=table`.
+
+- To understand what is DDP package and how it works, please review `Intel® Ethernet Controller E810 Dynamic
+  Device Personalization (DDP) for Telecommunications Technology Guide <https://cdrdv2.intel.com/v1/dl/getContent/617015>`_.
+
+- To understand DDP for COMMs usage with DPDK, please review `Intel® Ethernet 800 Series Telecommunication (Comms)
+  Dynamic Device Personalization (DDP) Package <https://cdrdv2.intel.com/v1/dl/getContent/618651>`_.
+
+
+Recommended Matching List
+-------------------------
+
+It is highly recommended to upgrade the ice kernel driver, firmware and DDP package
+to avoid the compatibility issues with ice PMD.
+Here is the suggested matching list which has been tested and verified.
+The detailed information can refer to chapter Tested Platforms/Tested NICs in release notes.
+
+   +-----------+---------------+-----------------+-----------+-----------+
+   |    DPDK   | Kernel Driver | OS Default DDP  | COMMS DDP | Firmware  |
+   +===========+===============+=================+===========+===========+
+   |    20.11  |     1.3.0     |      1.3.20     |  1.3.24   |    2.3    |
+   +-----------+---------------+-----------------+-----------+-----------+
 
 Pre-Installation Configuration
 ------------------------------
