@@ -225,7 +225,7 @@ rxp_poll_csr_for_value(struct ibv_context *ctx, uint32_t *value,
 		       uint32_t expected_mask, uint32_t timeout_ms, uint8_t id)
 {
 	unsigned int i;
-	int ret = 0;
+	int ret;
 
 	ret = -EBUSY;
 	for (i = 0; i < timeout_ms; i++) {
@@ -276,7 +276,7 @@ rxp_init_rtru(struct ibv_context *ctx, uint8_t id, uint32_t init_bits)
 	uint32_t poll_value;
 	uint32_t expected_value;
 	uint32_t expected_mask;
-	int ret = 0;
+	int ret;
 
 	/* Read the rtru ctrl CSR. */
 	ret = mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
