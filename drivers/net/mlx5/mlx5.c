@@ -419,7 +419,7 @@ mlx5_flow_aso_age_mng_close(struct mlx5_dev_ctx_shared *sh)
 		}
 		mlx5_free(sh->aso_age_mng->pools);
 	}
-	memset(&sh->aso_age_mng, 0, sizeof(sh->aso_age_mng));
+	mlx5_free(sh->aso_age_mng);
 }
 
 /**
