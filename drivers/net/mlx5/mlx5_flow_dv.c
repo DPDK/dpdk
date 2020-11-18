@@ -9511,10 +9511,13 @@ flow_dv_aso_age_alloc(struct rte_eth_dev *dev, struct rte_flow_error *error)
 					   "for ASO flow hit");
 			return 0; /* 0 is an error. */
 		}
-		age_free->dr_action = mlx5_glue->dr_action_create_flow_hit
-						(pool->flow_hit_aso_obj->obj,
-						 age_free->offset,
-						 (reg_c - REG_C_0));
+#ifdef HAVE_MLX5_DR_CREATE_ACTION_ASO
+		age_free->dr_action = mlx5_glue->dv_create_flow_action_aso
+				(priv->sh->rx_domain,
+				 pool->flow_hit_aso_obj->obj, age_free->offset,
+				 MLX5DV_DR_ACTION_FLAGS_ASO_FIRST_HIT_SET,
+				 (reg_c - REG_C_0));
+#endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO */
 		if (!age_free->dr_action) {
 			rte_errno = errno;
 			rte_spinlock_lock(&mng->free_sl);

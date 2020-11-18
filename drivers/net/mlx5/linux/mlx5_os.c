@@ -1198,7 +1198,7 @@ err_secondary:
 			}
 		}
 #endif
-#ifdef HAVE_MLX5DV_DR_ACTION_FLOW_HIT
+#ifdef HAVE_MLX5_DR_CREATE_ACTION_ASO
 		if (config->hca_attr.flow_hit_aso &&
 		    priv->mtr_color_reg == REG_C_3) {
 			sh->flow_hit_aso_en = 1;
@@ -1209,7 +1209,7 @@ err_secondary:
 			}
 			DRV_LOG(DEBUG, "Flow Hit ASO is supported.");
 		}
-#endif /* HAVE_MLX5DV_DR_ACTION_FLOW_HIT */
+#endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO */
 #if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE)
 		if (config->hca_attr.log_max_ft_sampler_num > 0  &&
 		    config->dv_flow_en) {

@@ -812,6 +812,27 @@ mlx5_glue_dv_modify_flow_action_meter(void *action,
 }
 
 static void *
+mlx5_glue_dv_create_flow_action_aso(struct mlx5dv_dr_domain *domain,
+				    void *aso_obj,
+				    uint32_t offset,
+				    uint32_t flags,
+				    uint8_t return_reg_c)
+{
+#if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_ASO)
+	return mlx5dv_dr_action_create_aso(domain, aso_obj, offset,
+					   flags, return_reg_c);
+#else
+	(void)domain;
+	(void)aso_obj;
+	(void)offset;
+	(void)flags;
+	(void)return_reg_c;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void *
 mlx5_glue_dr_create_flow_action_default_miss(void)
 {
 #if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_DEFAULT_MISS)
@@ -1281,21 +1302,6 @@ mlx5_glue_dv_free_pp(struct mlx5dv_pp *pp)
 #endif
 }
 
-static void *
-mlx5_glue_dr_action_create_flow_hit(struct mlx5dv_devx_obj *devx_obj,
-				    uint32_t offset, uint8_t reg_c_index)
-{
-#ifdef HAVE_MLX5DV_DR_ACTION_FLOW_HIT
-	return mlx5dv_dr_action_create_flow_hit(devx_obj, offset, reg_c_index);
-#else
-	(void)(devx_obj);
-	(void)(offset);
-	(void)(reg_c_index);
-	errno = ENOTSUP;
-	return NULL;
-#endif
-}
-
 __rte_cache_aligned
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.version = MLX5_GLUE_VERSION,
@@ -1379,6 +1385,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dv_create_flow_action_tag =  mlx5_glue_dv_create_flow_action_tag,
 	.dv_create_flow_action_meter = mlx5_glue_dv_create_flow_action_meter,
 	.dv_modify_flow_action_meter = mlx5_glue_dv_modify_flow_action_meter,
+	.dv_create_flow_action_aso = mlx5_glue_dv_create_flow_action_aso,
 	.dr_create_flow_action_default_miss =
 		mlx5_glue_dr_create_flow_action_default_miss,
 	.dv_destroy_flow = mlx5_glue_dv_destroy_flow,
@@ -1415,5 +1422,4 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dv_free_var = mlx5_glue_dv_free_var,
 	.dv_alloc_pp = mlx5_glue_dv_alloc_pp,
 	.dv_free_pp = mlx5_glue_dv_free_pp,
-	.dr_action_create_flow_hit = mlx5_glue_dr_action_create_flow_hit,
 };
