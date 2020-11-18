@@ -413,18 +413,6 @@ struct mlx5_flow_dv_matcher {
 
 #define MLX5_ENCAP_MAX_LEN 132
 
-/* Encap/decap resource key of the hash organization. */
-union mlx5_flow_encap_decap_key {
-	struct {
-		uint32_t ft_type:8;	/**< Flow table type, Rx or Tx. */
-		uint32_t refmt_type:8;	/**< Header reformat type. */
-		uint32_t buf_size:8;	/**< Encap buf size. */
-		uint32_t table_level:8;	/**< Root table or not. */
-		uint32_t cksum;		/**< Encap buf check sum. */
-	};
-	uint64_t v64;			/**< full 64bits value of key */
-};
-
 /* Encap/decap resource structure. */
 struct mlx5_flow_dv_encap_decap_resource {
 	struct mlx5_hlist_entry entry;
