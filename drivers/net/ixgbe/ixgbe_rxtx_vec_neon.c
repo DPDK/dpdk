@@ -87,6 +87,8 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 {
 	uint8x16_t ptype;
 	uint8x16_t vtag;
+	uint8x16_t temp_csum;
+	uint32x4_t csum = {0, 0, 0, 0};
 
 	union {
 		uint8_t e[4];
@@ -105,26 +107,51 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 			PKT_RX_RSS_HASH, 0, 0, 0,
 			0, 0, 0, PKT_RX_FDIR};
 
-	const uint8x16_t vlan_msk = {
+	/* mask everything except vlan present and l4/ip csum error */
+	const uint8x16_t vlan_csum_msk = {
 			IXGBE_RXD_STAT_VP, IXGBE_RXD_STAT_VP,
 			IXGBE_RXD_STAT_VP, IXGBE_RXD_STAT_VP,
 			0, 0, 0, 0,
 			0, 0, 0, 0,
-			0, 0, 0, 0};
+			(IXGBE_RXDADV_ERR_TCPE | IXGBE_RXDADV_ERR_IPE) >> 24,
+			(IXGBE_RXDADV_ERR_TCPE | IXGBE_RXDADV_ERR_IPE) >> 24,
+			(IXGBE_RXDADV_ERR_TCPE | IXGBE_RXDADV_ERR_IPE) >> 24,
+			(IXGBE_RXDADV_ERR_TCPE | IXGBE_RXDADV_ERR_IPE) >> 24};
 
-	const uint8x16_t vlan_map = {
+	/* map vlan present (0x8), IPE (0x2), L4E (0x1) to ol_flags */
+	const uint8x16_t vlan_csum_map = {
+			0,
+			PKT_RX_L4_CKSUM_BAD,
+			PKT_RX_IP_CKSUM_BAD,
+			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
 			0, 0, 0, 0,
-			0, 0, 0, 0,
-			vlan_flags, 0, 0, 0,
+			vlan_flags,
+			vlan_flags | PKT_RX_L4_CKSUM_BAD,
+			vlan_flags | PKT_RX_IP_CKSUM_BAD,
+			vlan_flags | PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
 			0, 0, 0, 0};
 
 	ptype = vzipq_u8(sterr_tmp1.val[0], sterr_tmp2.val[0]).val[0];
 	ptype = vandq_u8(ptype, rsstype_msk);
 	ptype = vqtbl1q_u8(rss_flags, ptype);
 
-	/* extract vlan_flags from IXGBE_RXD_STAT_VP bits of staterr */
-	vtag = vandq_u8(staterr, vlan_msk);
-	vtag = vqtbl1q_u8(vlan_map, vtag);
+	/* extract vlan_flags and csum_error from staterr */
+	vtag = vandq_u8(staterr, vlan_csum_msk);
+
+	/* csum bits are in the most significant, to use shuffle we need to
+	 * shift them. Change mask from 0xc0 to 0x03.
+	 */
+	temp_csum = vshrq_n_u8(vtag, 6);
+
+	/* 'OR' the most significant 32 bits containing the checksum
+	 * flags with the vlan present flags
+	 * Then bits layout of each lane(8bits) will be 'xxxx,VP,x,IPE,L4E'
+	 */
+	csum = vsetq_lane_u32(vgetq_lane_u32(vreinterpretq_u32_u8(temp_csum), 3), csum, 0);
+	vtag = vorrq_u8(vreinterpretq_u8_u32(csum), vtag);
+
+	/* convert VP, IPE, L4E to ol_flags */
+	vtag = vqtbl1q_u8(vlan_csum_map, vtag);
 	vtag = vorrq_u8(ptype, vtag);
 
 	vol.word = vgetq_lane_u32(vreinterpretq_u32_u8(vtag), 0);
@@ -391,7 +418,6 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
  * Notice:
  * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
  * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
- * - don't support ol_flags for rss and csum err
  */
 uint16_t
 ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -404,7 +430,6 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
  * vPMD receive routine that reassembles scattered packets
  *
  * Notice:
- * - don't support ol_flags for rss and csum err
  * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
  * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
  */
