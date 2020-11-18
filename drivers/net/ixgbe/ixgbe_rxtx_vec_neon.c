@@ -86,13 +86,13 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 		  uint8x16_t staterr, uint8_t vlan_flags, struct rte_mbuf **rx_pkts)
 {
 	uint8x16_t ptype;
-	uint8x16_t vtag;
+	uint8x16_t vtag_lo, vtag_hi, vtag;
 	uint8x16_t temp_csum;
 	uint32x4_t csum = {0, 0, 0, 0};
 
 	union {
-		uint8_t e[4];
-		uint32_t word;
+		uint16_t e[4];
+		uint64_t word;
 	} vol;
 
 	const uint8x16_t rsstype_msk = {
@@ -119,16 +119,24 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 			(IXGBE_RXDADV_ERR_TCPE | IXGBE_RXDADV_ERR_IPE) >> 24};
 
 	/* map vlan present (0x8), IPE (0x2), L4E (0x1) to ol_flags */
-	const uint8x16_t vlan_csum_map = {
-			0,
-			PKT_RX_L4_CKSUM_BAD,
+	const uint8x16_t vlan_csum_map_lo = {
+			PKT_RX_IP_CKSUM_GOOD,
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
 			PKT_RX_IP_CKSUM_BAD,
 			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
 			0, 0, 0, 0,
-			vlan_flags,
-			vlan_flags | PKT_RX_L4_CKSUM_BAD,
+			vlan_flags | PKT_RX_IP_CKSUM_GOOD,
+			vlan_flags | PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
 			vlan_flags | PKT_RX_IP_CKSUM_BAD,
 			vlan_flags | PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
+			0, 0, 0, 0};
+
+	const uint8x16_t vlan_csum_map_hi = {
+			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+			0, 0, 0, 0,
+			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
+			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
 			0, 0, 0, 0};
 
 	ptype = vzipq_u8(sterr_tmp1.val[0], sterr_tmp2.val[0]).val[0];
@@ -150,11 +158,16 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 	csum = vsetq_lane_u32(vgetq_lane_u32(vreinterpretq_u32_u8(temp_csum), 3), csum, 0);
 	vtag = vorrq_u8(vreinterpretq_u8_u32(csum), vtag);
 
-	/* convert VP, IPE, L4E to ol_flags */
-	vtag = vqtbl1q_u8(vlan_csum_map, vtag);
-	vtag = vorrq_u8(ptype, vtag);
+	/* convert L4 checksum correct type to vtag_hi */
+	vtag_hi = vqtbl1q_u8(vlan_csum_map_hi, vtag);
+	vtag_hi = vshrq_n_u8(vtag_hi, 7);
 
-	vol.word = vgetq_lane_u32(vreinterpretq_u32_u8(vtag), 0);
+	/* convert VP, IPE, L4E to vtag_lo */
+	vtag_lo = vqtbl1q_u8(vlan_csum_map_lo, vtag);
+	vtag_lo = vorrq_u8(ptype, vtag_lo);
+
+	vtag = vzipq_u8(vtag_lo, vtag_hi).val[0];
+	vol.word = vgetq_lane_u64(vreinterpretq_u64_u8(vtag), 0);
 
 	rx_pkts[0]->ol_flags = vol.e[0];
 	rx_pkts[1]->ol_flags = vol.e[1];
