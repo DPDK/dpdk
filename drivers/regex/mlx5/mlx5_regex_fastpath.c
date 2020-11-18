@@ -3,6 +3,8 @@
  */
 
 #include <unistd.h>
+#include <strings.h>
+#include <stdint.h>
 #include <sys/mman.h>
 
 #include <rte_malloc.h>
@@ -17,15 +19,14 @@
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
 #include <mlx5_prm.h>
-#include <strings.h>
 
 #include "mlx5_regex_utils.h"
 #include "mlx5_rxp.h"
 #include "mlx5_regex.h"
 
 #define MLX5_REGEX_MAX_WQE_INDEX 0xffff
-#define MLX5_REGEX_METADATA_SIZE 64
-#define MLX5_REGEX_MAX_OUTPUT (1 << 11)
+#define MLX5_REGEX_METADATA_SIZE UINT32_C(64)
+#define MLX5_REGEX_MAX_OUTPUT RTE_BIT32(11)
 #define MLX5_REGEX_WQE_CTRL_OFFSET 12
 #define MLX5_REGEX_WQE_METADATA_OFFSET 16
 #define MLX5_REGEX_WQE_GATHER_OFFSET 32
