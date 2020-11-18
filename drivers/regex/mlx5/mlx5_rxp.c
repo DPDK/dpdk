@@ -179,12 +179,14 @@ rxp_flush_rules(struct ibv_context *ctx, struct mlx5_rxp_rof_entry *rules,
 				     count, ~0,
 				     MLX5_RXP_POLL_CSR_FOR_VALUE_TIMEOUT, id);
 	if (ret < 0) {
-		DRV_LOG(ERR, "Rules not rx by RXP: credit: %d, depth: %d", val,
-			fifo_depth);
+		if (ret == -EBUSY)
+			DRV_LOG(ERR, "Rules not rx by RXP: credit: %d, depth:"
+				" %d", val, fifo_depth);
+		else
+			DRV_LOG(ERR, "CSR poll failed, can't read value!");
 		return ret;
 	}
 	DRV_LOG(DEBUG, "RTRU FIFO depth: 0x%x", fifo_depth);
-	DRV_LOG(DEBUG, "Rules flush took %d cycles.", ret);
 	ret = mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
 					    &val);
 	if (ret) {
@@ -203,10 +205,12 @@ rxp_flush_rules(struct ibv_context *ctx, struct mlx5_rxp_rof_entry *rules,
 				     MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
 				     MLX5_RXP_POLL_CSR_FOR_VALUE_TIMEOUT, id);
 	if (ret < 0) {
-		DRV_LOG(ERR, "Rules update timeout: 0x%08X", val);
+		if (ret == -EBUSY)
+			DRV_LOG(ERR, "Rules update timeout: 0x%08X", val);
+		else
+			DRV_LOG(ERR, "CSR poll failed, can't read value!");
 		return ret;
 	}
-	DRV_LOG(DEBUG, "Rules update took %d cycles", ret);
 	if (mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
 					  &val)) {
 		DRV_LOG(ERR, "CSR read failed!");
@@ -215,7 +219,7 @@ rxp_flush_rules(struct ibv_context *ctx, struct mlx5_rxp_rof_entry *rules,
 	val &= ~(MLX5_RXP_RTRU_CSR_CTRL_GO);
 	if (mlx5_devx_regex_register_write(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
 					   val)) {
-		DRV_LOG(ERR, "CSR write write failed!");
+		DRV_LOG(ERR, "CSR write failed!");
 		return -1;
 	}
 
