@@ -290,3 +290,49 @@ To restore device ``82:00.0`` to its original kernel binding:
 .. code-block:: console
 
     ./usertools/dpdk-devbind.py --bind=ixgbe 82:00.0
+
+Troubleshooting VFIO
+--------------------
+
+In certain situations, using ``dpdk-devbind.py`` script
+to bind a device to VFIO driver may fail.
+The first place to check is the kernel messages:
+
+.. code-block:: console
+
+   dmesg | tail
+   ...
+   [ 1297.875090] vfio-pci: probe of 0000:31:00.0 failed with error -22
+   ...
+
+In most cases, the ``error -22`` indicates that the VFIO subsystem
+could not be enabled because there is no IOMMU support.
+
+To check whether the kernel has been booted with correct parameters,
+one can check the kernel command-line:
+
+.. code-block:: console
+
+   cat /proc/cmdline
+
+Please refer to earlier sections on how to configure kernel parameters
+correctly for your system.
+
+If the kernel is configured correctly, one also has to make sure that
+the BIOS configuration has virtualization features (such as Intel® VT-d).
+There is no standard way to check if the platform is configured correctly,
+so please check with your platform documentation to see if it has such features,
+and how to enable them.
+
+In certain distributions, default kernel configuration is such that
+the no-IOMMU mode is disabled altogether at compile time.
+This can be checked in the boot configuration of your system:
+
+.. code-block:: console
+
+   cat /boot/config-$(uname -r) | grep NOIOMMU
+   # CONFIG_VFIO_NOIOMMU is not set
+
+If ``CONFIG_VFIO_NOIOMMU`` is not enabled in the kernel configuration,
+VFIO driver will not support the no-IOMMU mode,
+and other alternatives (such as UIO drivers) will have to be used.
