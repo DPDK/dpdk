@@ -45,8 +45,8 @@ Limitations
 
  - TCP
  - UDP
- - VxLAN
- - GRE
+ - VXLAN
+ - GRE TCP
 
   See `Supported GSO Packet Types`_ for further details.
 
@@ -157,14 +157,14 @@ does not modify it during segmentation. Therefore, after UDP GSO, only the
 first output packet has the original UDP header, and others just have l2
 and l3 headers.
 
-VxLAN GSO
-~~~~~~~~~
-VxLAN packets GSO supports segmentation of suitably large VxLAN packets,
-which contain an outer IPv4 header, inner TCP/IPv4 headers, and optional
-inner and/or outer VLAN tag(s).
+VXLAN IPv4 GSO
+~~~~~~~~~~~~~~
+VXLAN packets GSO supports segmentation of suitably large VXLAN packets,
+which contain an outer IPv4 header, inner TCP/IPv4 or UDP/IPv4 headers, and
+optional inner and/or outer VLAN tag(s).
 
-GRE GSO
-~~~~~~~
+GRE TCP/IPv4 GSO
+~~~~~~~~~~~~~~~~
 GRE GSO supports segmentation of suitably large GRE packets, which contain
 an outer IPv4 header, inner TCP/IPv4 headers, and an optional VLAN tag.
 

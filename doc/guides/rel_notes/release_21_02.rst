@@ -67,6 +67,10 @@ New Features
 
   * Introduced basic support on Windows.
 
+* **Updated GSO support.**
+
+  * Added inner UDP/IPv4 support for VXLAN IPv4 GSO.
+
 
 Removed Items
 -------------
