@@ -1207,7 +1207,6 @@ show_crypto(void)
 
 		display_crypto_feature_info(dev_info.feature_flags);
 
-		memset(&stats, 0, sizeof(0));
 		if (rte_cryptodev_stats_get(i, &stats) == 0) {
 			printf("\t  -- stats\n");
 			printf("\t\t  + enqueue count (%"PRIu64")"
