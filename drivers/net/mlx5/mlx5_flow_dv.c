@@ -7875,7 +7875,7 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 			    prog_sample_field_value_0);
 	/* Already big endian (network order) in the header. */
 	*(uint32_t *)dw_m = ecpri_m->hdr.common.u32;
-	*(uint32_t *)dw_v = ecpri_v->hdr.common.u32;
+	*(uint32_t *)dw_v = ecpri_v->hdr.common.u32 & ecpri_m->hdr.common.u32;
 	/* Sample#0, used for matching type, offset 0. */
 	MLX5_SET(fte_match_set_misc4, misc4_m,
 		 prog_sample_field_id_0, samples[0]);
@@ -7897,7 +7897,8 @@ flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
 			dw_v = MLX5_ADDR_OF(fte_match_set_misc4, misc4_v,
 					    prog_sample_field_value_1);
 			*(uint32_t *)dw_m = ecpri_m->hdr.dummy[0];
-			*(uint32_t *)dw_v = ecpri_v->hdr.dummy[0];
+			*(uint32_t *)dw_v = ecpri_v->hdr.dummy[0] &
+					    ecpri_m->hdr.dummy[0];
 			/* Sample#1, to match message body, offset 4. */
 			MLX5_SET(fte_match_set_misc4, misc4_m,
 				 prog_sample_field_id_1, samples[1]);
