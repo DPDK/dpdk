@@ -563,6 +563,7 @@ struct mlx5_flow_dv_sample_resource {
 		void *verbs_action; /**< Verbs sample action object. */
 		void **sub_actions; /**< Sample sub-action array. */
 	};
+	struct rte_eth_dev *dev; /**< Device registers the action. */
 	uint32_t idx; /** Sample object index. */
 	uint8_t ft_type; /** Flow Table Type */
 	uint32_t ft_id; /** Flow Table Level */
@@ -584,6 +585,7 @@ struct mlx5_flow_dv_dest_array_resource {
 	uint32_t idx; /** Destination array action object index. */
 	uint8_t ft_type; /** Flow Table Type */
 	uint8_t num_of_dest; /**< Number of destination actions. */
+	struct rte_eth_dev *dev; /**< Device registers the action. */
 	void *action; /**< Pointer to the rdma core action. */
 	struct mlx5_flow_sub_actions_idx sample_idx[MLX5_MAX_DEST_NUM];
 	/**< Action index resources. */

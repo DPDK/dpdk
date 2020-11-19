@@ -250,15 +250,13 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 			     flow_dv_push_vlan_remove_cb);
 	/* Init sample action cache list. */
 	snprintf(s, sizeof(s), "%s_sample_action_cache", sh->ibdev_name);
-	mlx5_cache_list_init(&sh->sample_action_list, s, 0,
-			     &rte_eth_devices[priv->dev_data->port_id],
+	mlx5_cache_list_init(&sh->sample_action_list, s, 0, sh,
 			     flow_dv_sample_create_cb,
 			     flow_dv_sample_match_cb,
 			     flow_dv_sample_remove_cb);
 	/* Init dest array action cache list. */
 	snprintf(s, sizeof(s), "%s_dest_array_cache", sh->ibdev_name);
-	mlx5_cache_list_init(&sh->dest_array_list, s, 0,
-			     &rte_eth_devices[priv->dev_data->port_id],
+	mlx5_cache_list_init(&sh->dest_array_list, s, 0, sh,
 			     flow_dv_dest_array_create_cb,
 			     flow_dv_dest_array_match_cb,
 			     flow_dv_dest_array_remove_cb);

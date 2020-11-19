@@ -8757,6 +8757,7 @@ flow_dv_sample_create_cb(struct mlx5_cache_list *list __rte_unused,
 		goto error;
 	}
 	cache_resource->idx = idx;
+	cache_resource->dev = dev;
 	return &cache_resource->entry;
 error:
 	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB &&
@@ -8919,6 +8920,7 @@ flow_dv_dest_array_create_cb(struct mlx5_cache_list *list __rte_unused,
 		goto error;
 	}
 	cache_resource->idx = res_idx;
+	cache_resource->dev = dev;
 	for (idx = 0; idx < resource->num_of_dest; idx++)
 		mlx5_free(dest_attr[idx]);
 	return &cache_resource->entry;
@@ -11045,13 +11047,13 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_sample_remove_cb(struct mlx5_cache_list *list,
+flow_dv_sample_remove_cb(struct mlx5_cache_list *list __rte_unused,
 			 struct mlx5_cache_entry *entry)
 {
-	struct rte_eth_dev *dev = list->ctx;
-	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_sample_resource *cache_resource =
 			container_of(entry, typeof(*cache_resource), entry);
+	struct rte_eth_dev *dev = cache_resource->dev;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (cache_resource->verbs_action)
 		claim_zero(mlx5_glue->destroy_flow_action
@@ -11100,13 +11102,13 @@ flow_dv_sample_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_dest_array_remove_cb(struct mlx5_cache_list *list,
+flow_dv_dest_array_remove_cb(struct mlx5_cache_list *list __rte_unused,
 			     struct mlx5_cache_entry *entry)
 {
-	struct rte_eth_dev *dev = list->ctx;
-	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_dest_array_resource *cache_resource =
 			container_of(entry, typeof(*cache_resource), entry);
+	struct rte_eth_dev *dev = cache_resource->dev;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t i = 0;
 
 	MLX5_ASSERT(cache_resource->action);
