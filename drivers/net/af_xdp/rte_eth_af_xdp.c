@@ -840,7 +840,6 @@ xdp_umem_destroy(struct xsk_umem_info *umem)
 #endif
 
 	rte_free(umem);
-	umem = NULL;
 }
 
 static int
