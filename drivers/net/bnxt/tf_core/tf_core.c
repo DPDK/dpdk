@@ -44,7 +44,7 @@ tf_open_session(struct tf *tfp,
 
 	/* Verify control channel and build the beginning of session_id */
 	rc = sscanf(parms->ctrl_chan_name,
-		    "%x:%x:%x.%d",
+		    "%x:%x:%x.%u",
 		    &domain,
 		    &bus,
 		    &slot,
@@ -57,7 +57,7 @@ tf_open_session(struct tf *tfp,
 
 		/* Check parsing of bus/slot/device */
 		rc = sscanf(parms->ctrl_chan_name,
-			    "%x:%x.%d",
+			    "%x:%x.%u",
 			    &bus,
 			    &slot,
 			    &device);
@@ -102,7 +102,7 @@ tf_attach_session(struct tf *tfp,
 
 	/* Verify control channel */
 	rc = sscanf(parms->ctrl_chan_name,
-		    "%x:%x:%x.%d",
+		    "%x:%x:%x.%u",
 		    &domain,
 		    &bus,
 		    &slot,
@@ -115,7 +115,7 @@ tf_attach_session(struct tf *tfp,
 
 	/* Verify 'attach' channel */
 	rc = sscanf(parms->attach_chan_name,
-		    "%x:%x:%x.%d",
+		    "%x:%x:%x.%u",
 		    &domain,
 		    &bus,
 		    &slot,
