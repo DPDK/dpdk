@@ -59,6 +59,8 @@ The application can then determine what action to take, if any, if the HPET is n
     These generic APIs can work with either TSC or HPET time sources, depending on what is requested by an application call to ``rte_eal_hpet_init()``,
     if any, and on what is available on the system at runtime.
 
+.. _Running_Without_Root_Privileges:
+
 Running DPDK Applications Without Root Privileges
 -------------------------------------------------
 
