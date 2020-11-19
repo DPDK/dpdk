@@ -194,6 +194,7 @@ warning_flags = [
 	# additional warnings in alphabetical order
 	'-Wcast-qual',
 	'-Wdeprecated',
+	'-Wformat',
 	'-Wformat-nonliteral',
 	'-Wformat-security',
 	'-Wmissing-declarations',
@@ -220,7 +221,7 @@ if not dpdk_conf.get('RTE_ARCH_64')
 	warning_flags += '-Wno-pointer-to-int-cast'
 endif
 if cc.get_id() == 'intel'
-	warning_ids = [188, 2203, 2279, 2557, 3179, 3656]
+	warning_ids = [181, 188, 2203, 2279, 2557, 3179, 3656]
 	foreach i:warning_ids
 		warning_flags += '-diag-disable=@0@'.format(i)
 	endforeach
