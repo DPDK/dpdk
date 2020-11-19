@@ -710,8 +710,7 @@ ssovf_close(struct rte_eventdev *dev)
 }
 
 static int
-ssovf_selftest(const char *key __rte_unused, const char *value,
-		void *opaque)
+ssovf_parsekv(const char *key __rte_unused, const char *value, void *opaque)
 {
 	int *flag = opaque;
 	*flag = !!atoi(value);
@@ -775,10 +774,8 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 	const char *name;
 	const char *params;
 	int ret;
-	int selftest = 0;
 
 	static const char *const args[] = {
-		SSOVF_SELFTEST_ARG,
 		TIMVF_ENABLE_STATS_ARG,
 		NULL
 	};
@@ -799,18 +796,9 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 				"Ignoring unsupported params supplied '%s'",
 				name);
 		} else {
-			int ret = rte_kvargs_process(kvlist,
-					SSOVF_SELFTEST_ARG,
-					ssovf_selftest, &selftest);
-			if (ret != 0) {
-				ssovf_log_err("%s: Error in selftest", name);
-				rte_kvargs_free(kvlist);
-				return ret;
-			}
-
-			ret = rte_kvargs_process(kvlist,
-					TIMVF_ENABLE_STATS_ARG,
-					ssovf_selftest, &timvf_enable_stats);
+			ret = rte_kvargs_process(kvlist, TIMVF_ENABLE_STATS_ARG,
+						 ssovf_parsekv,
+						 &timvf_enable_stats);
 			if (ret != 0) {
 				ssovf_log_err("%s: Error in timvf stats", name);
 				rte_kvargs_free(kvlist);
@@ -877,8 +865,6 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 			edev->max_event_ports);
 
 	ssovf_init_once = 1;
-	if (selftest)
-		test_eventdev_octeontx();
 	return 0;
 
 error:

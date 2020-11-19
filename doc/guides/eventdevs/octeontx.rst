@@ -63,18 +63,6 @@ Example:
     ./your_eventdev_application --vdev="event_octeontx"
 
 
-Selftest
---------
-
-The functionality of OCTEON TX eventdev can be verified using this option,
-various unit and functional tests are run to verify the sanity.
-The tests are run once the vdev creation is successfully complete.
-
-.. code-block:: console
-
-    --vdev="event_octeontx,selftest=1"
-
-
 Enable TIMvf stats
 ------------------
 TIMvf stats can be enabled by using this option, by default the stats are

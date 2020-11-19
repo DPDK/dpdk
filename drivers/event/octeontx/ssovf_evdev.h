@@ -86,8 +86,6 @@
 #define SSO_GRP_GET_PRIORITY              0x7
 #define SSO_GRP_SET_PRIORITY              0x8
 
-#define SSOVF_SELFTEST_ARG               ("selftest")
-
 /*
  * In Cavium OCTEON TX SoC, all accesses to the device registers are
  * implictly strongly ordered. So, The relaxed version of IO operation is
