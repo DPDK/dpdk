@@ -36,7 +36,7 @@ html_add_permalinks = ""
 html_show_copyright = False
 highlight_language = 'none'
 
-release = environ['DPDK_VERSION']
+release = environ.setdefault('DPDK_VERSION', "None")
 version = release
 
 master_doc = 'index'
