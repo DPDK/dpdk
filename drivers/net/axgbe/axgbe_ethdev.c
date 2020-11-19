@@ -16,6 +16,7 @@ static int  axgbe_dev_start(struct rte_eth_dev *dev);
 static int  axgbe_dev_stop(struct rte_eth_dev *dev);
 static void axgbe_dev_interrupt_handler(void *param);
 static int axgbe_dev_close(struct rte_eth_dev *dev);
+static int axgbe_dev_reset(struct rte_eth_dev *dev);
 static int axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static int axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
@@ -215,6 +216,7 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.dev_start            = axgbe_dev_start,
 	.dev_stop             = axgbe_dev_stop,
 	.dev_close            = axgbe_dev_close,
+	.dev_reset            = axgbe_dev_reset,
 	.promiscuous_enable   = axgbe_dev_promiscuous_enable,
 	.promiscuous_disable  = axgbe_dev_promiscuous_disable,
 	.allmulticast_enable  = axgbe_dev_allmulticast_enable,
@@ -616,6 +618,20 @@ axgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_conf->rss_key_len = AXGBE_RSS_HASH_KEY_SIZE;
 	rss_conf->rss_hf = pdata->rss_hf;
 	return 0;
+}
+
+static int
+axgbe_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret = 0;
+
+	ret = axgbe_dev_close(dev);
+	if (ret)
+		return ret;
+
+	ret = eth_axgbe_dev_init(dev);
+
+	return ret;
 }
 
 static void
@@ -1104,22 +1120,33 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
-		stats->q_ipackets[i] = rxq->pkts;
-		stats->ipackets += rxq->pkts;
-		stats->q_ibytes[i] = rxq->bytes;
-		stats->ibytes += rxq->bytes;
-		stats->rx_nombuf += rxq->rx_mbuf_alloc_failed;
-		stats->q_errors[i] = rxq->errors + rxq->rx_mbuf_alloc_failed;
-		stats->ierrors += rxq->errors;
+		if (rxq) {
+			stats->q_ipackets[i] = rxq->pkts;
+			stats->ipackets += rxq->pkts;
+			stats->q_ibytes[i] = rxq->bytes;
+			stats->ibytes += rxq->bytes;
+			stats->rx_nombuf += rxq->rx_mbuf_alloc_failed;
+			stats->q_errors[i] = rxq->errors
+				+ rxq->rx_mbuf_alloc_failed;
+			stats->ierrors += rxq->errors;
+		} else {
+			PMD_DRV_LOG(DEBUG, "Rx queue not setup for port %d\n",
+					dev->data->port_id);
+		}
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		stats->q_opackets[i] = txq->pkts;
-		stats->opackets += txq->pkts;
-		stats->q_obytes[i] = txq->bytes;
-		stats->obytes += txq->bytes;
-		stats->oerrors += txq->errors;
+		if (txq) {
+			stats->q_opackets[i] = txq->pkts;
+			stats->opackets += txq->pkts;
+			stats->q_obytes[i] = txq->bytes;
+			stats->obytes += txq->bytes;
+			stats->oerrors += txq->errors;
+		} else {
+			PMD_DRV_LOG(DEBUG, "Tx queue not setup for port %d\n",
+					dev->data->port_id);
+		}
 	}
 
 	return 0;
@@ -1134,16 +1161,26 @@ axgbe_dev_stats_reset(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
-		rxq->pkts = 0;
-		rxq->bytes = 0;
-		rxq->errors = 0;
-		rxq->rx_mbuf_alloc_failed = 0;
+		if (rxq) {
+			rxq->pkts = 0;
+			rxq->bytes = 0;
+			rxq->errors = 0;
+			rxq->rx_mbuf_alloc_failed = 0;
+		} else {
+			PMD_DRV_LOG(DEBUG, "Rx queue not setup for port %d\n",
+					dev->data->port_id);
+		}
 	}
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		txq->pkts = 0;
-		txq->bytes = 0;
-		txq->errors = 0;
+		if (txq) {
+			txq->pkts = 0;
+			txq->bytes = 0;
+			txq->errors = 0;
+		} else {
+			PMD_DRV_LOG(DEBUG, "Tx queue not setup for port %d\n",
+					dev->data->port_id);
+		}
 	}
 
 	return 0;
