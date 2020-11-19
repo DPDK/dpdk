@@ -453,15 +453,20 @@ sso_add_tx_queue_data(const struct rte_eventdev *event_dev,
 			struct otx2_ssogws_dual *dws;
 
 			old_dws = event_dev->data->ports[i];
-			dws = rte_realloc_socket(old_dws,
+			dws = rte_realloc_socket(ssogws_get_cookie(old_dws),
 						 sizeof(struct otx2_ssogws_dual)
-						 + (sizeof(uint64_t) *
+						 + RTE_CACHE_LINE_SIZE +
+						 (sizeof(uint64_t) *
 						    (dev->max_port_id + 1) *
 						    RTE_MAX_QUEUES_PER_PORT),
 						 RTE_CACHE_LINE_SIZE,
 						 event_dev->data->socket_id);
 			if (dws == NULL)
 				return -ENOMEM;
+
+			/* First cache line is reserved for cookie */
+			dws = (struct otx2_ssogws_dual *)
+				((uint8_t *)dws + RTE_CACHE_LINE_SIZE);
 
 			((uint64_t (*)[RTE_MAX_QUEUES_PER_PORT]
 			 )&dws->tx_adptr_data)[eth_port_id][tx_queue_id] =
@@ -472,15 +477,20 @@ sso_add_tx_queue_data(const struct rte_eventdev *event_dev,
 			struct otx2_ssogws *ws;
 
 			old_ws = event_dev->data->ports[i];
-			ws = rte_realloc_socket(old_ws,
-						sizeof(struct otx2_ssogws_dual)
-						+ (sizeof(uint64_t) *
-						   (dev->max_port_id + 1) *
-						   RTE_MAX_QUEUES_PER_PORT),
+			ws = rte_realloc_socket(ssogws_get_cookie(old_ws),
+						sizeof(struct otx2_ssogws) +
+						RTE_CACHE_LINE_SIZE +
+						(sizeof(uint64_t) *
+						 (dev->max_port_id + 1) *
+						 RTE_MAX_QUEUES_PER_PORT),
 						RTE_CACHE_LINE_SIZE,
 						event_dev->data->socket_id);
 			if (ws == NULL)
 				return -ENOMEM;
+
+			/* First cache line is reserved for cookie */
+			ws = (struct otx2_ssogws *)
+				((uint8_t *)ws + RTE_CACHE_LINE_SIZE);
 
 			((uint64_t (*)[RTE_MAX_QUEUES_PER_PORT]
 			 )&ws->tx_adptr_data)[eth_port_id][tx_queue_id] =

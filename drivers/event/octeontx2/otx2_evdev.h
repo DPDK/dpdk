@@ -217,6 +217,18 @@ sso_pmd_priv(const struct rte_eventdev *event_dev)
 	return event_dev->data->dev_private;
 }
 
+struct otx2_ssogws_cookie {
+	const struct rte_eventdev *event_dev;
+	bool configured;
+};
+
+static inline struct otx2_ssogws_cookie *
+ssogws_get_cookie(void *ws)
+{
+	return (struct otx2_ssogws_cookie *)
+		((uint8_t *)ws - RTE_CACHE_LINE_SIZE);
+}
+
 static const union mbuf_initializer mbuf_init = {
 	.fields = {
 		.data_off = RTE_PKTMBUF_HEADROOM,

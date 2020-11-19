@@ -689,7 +689,36 @@ sso_lf_cfg(struct otx2_sso_evdev *dev, struct otx2_mbox *mbox,
 static void
 otx2_sso_port_release(void *port)
 {
-	rte_free(port);
+	struct otx2_ssogws_cookie *gws_cookie = ssogws_get_cookie(port);
+	struct otx2_sso_evdev *dev;
+	int i;
+
+	if (!gws_cookie->configured)
+		goto free;
+
+	dev = sso_pmd_priv(gws_cookie->event_dev);
+	if (dev->dual_ws) {
+		struct otx2_ssogws_dual *ws = port;
+
+		for (i = 0; i < dev->nb_event_queues; i++) {
+			sso_port_link_modify((struct otx2_ssogws *)
+					     &ws->ws_state[0], i, false);
+			sso_port_link_modify((struct otx2_ssogws *)
+					     &ws->ws_state[1], i, false);
+		}
+		memset(ws, 0, sizeof(*ws));
+	} else {
+		struct otx2_ssogws *ws = port;
+
+		for (i = 0; i < dev->nb_event_queues; i++)
+			sso_port_link_modify(ws, i, false);
+		memset(ws, 0, sizeof(*ws));
+	}
+
+	memset(gws_cookie, 0, sizeof(*gws_cookie));
+
+free:
+	rte_free(gws_cookie);
 }
 
 static void
@@ -697,33 +726,6 @@ otx2_sso_queue_release(struct rte_eventdev *event_dev, uint8_t queue_id)
 {
 	RTE_SET_USED(event_dev);
 	RTE_SET_USED(queue_id);
-}
-
-static void
-sso_clr_links(const struct rte_eventdev *event_dev)
-{
-	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
-	int i, j;
-
-	for (i = 0; i < dev->nb_event_ports; i++) {
-		if (dev->dual_ws) {
-			struct otx2_ssogws_dual *ws;
-
-			ws = event_dev->data->ports[i];
-			for (j = 0; j < dev->nb_event_queues; j++) {
-				sso_port_link_modify((struct otx2_ssogws *)
-						&ws->ws_state[0], j, false);
-				sso_port_link_modify((struct otx2_ssogws *)
-						&ws->ws_state[1], j, false);
-			}
-		} else {
-			struct otx2_ssogws *ws;
-
-			ws = event_dev->data->ports[i];
-			for (j = 0; j < dev->nb_event_queues; j++)
-				sso_port_link_modify(ws, j, false);
-		}
-	}
 }
 
 static void
@@ -803,6 +805,7 @@ sso_configure_dual_ports(const struct rte_eventdev *event_dev)
 	}
 
 	for (i = 0; i < dev->nb_event_ports; i++) {
+		struct otx2_ssogws_cookie *gws_cookie;
 		struct otx2_ssogws_dual *ws;
 		uintptr_t base;
 
@@ -811,14 +814,20 @@ sso_configure_dual_ports(const struct rte_eventdev *event_dev)
 		} else {
 			/* Allocate event port memory */
 			ws = rte_zmalloc_socket("otx2_sso_ws",
-					sizeof(struct otx2_ssogws_dual),
+					sizeof(struct otx2_ssogws_dual) +
+					RTE_CACHE_LINE_SIZE,
 					RTE_CACHE_LINE_SIZE,
 					event_dev->data->socket_id);
-		}
-		if (ws == NULL) {
-			otx2_err("Failed to alloc memory for port=%d", i);
-			rc = -ENOMEM;
-			break;
+			if (ws == NULL) {
+				otx2_err("Failed to alloc memory for port=%d",
+					 i);
+				rc = -ENOMEM;
+				break;
+			}
+
+			/* First cache line is reserved for cookie */
+			ws = (struct otx2_ssogws_dual *)
+				((uint8_t *)ws + RTE_CACHE_LINE_SIZE);
 		}
 
 		ws->port = i;
@@ -829,6 +838,10 @@ sso_configure_dual_ports(const struct rte_eventdev *event_dev)
 		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | vws << 12);
 		sso_set_port_ops((struct otx2_ssogws *)&ws->ws_state[1], base);
 		vws++;
+
+		gws_cookie = ssogws_get_cookie(ws);
+		gws_cookie->event_dev = event_dev;
+		gws_cookie->configured = 1;
 
 		event_dev->data->ports[i] = ws;
 	}
@@ -866,19 +879,21 @@ sso_configure_ports(const struct rte_eventdev *event_dev)
 	}
 
 	for (i = 0; i < nb_lf; i++) {
+		struct otx2_ssogws_cookie *gws_cookie;
 		struct otx2_ssogws *ws;
 		uintptr_t base;
 
 		/* Free memory prior to re-allocation if needed */
 		if (event_dev->data->ports[i] != NULL) {
 			ws = event_dev->data->ports[i];
-			rte_free(ws);
+			rte_free(ssogws_get_cookie(ws));
 			ws = NULL;
 		}
 
 		/* Allocate event port memory */
 		ws = rte_zmalloc_socket("otx2_sso_ws",
-					sizeof(struct otx2_ssogws),
+					sizeof(struct otx2_ssogws) +
+					RTE_CACHE_LINE_SIZE,
 					RTE_CACHE_LINE_SIZE,
 					event_dev->data->socket_id);
 		if (ws == NULL) {
@@ -887,9 +902,17 @@ sso_configure_ports(const struct rte_eventdev *event_dev)
 			break;
 		}
 
+		/* First cache line is reserved for cookie */
+		ws = (struct otx2_ssogws *)
+			((uint8_t *)ws + RTE_CACHE_LINE_SIZE);
+
 		ws->port = i;
 		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | i << 12);
 		sso_set_port_ops(ws, base);
+
+		gws_cookie = ssogws_get_cookie(ws);
+		gws_cookie->event_dev = event_dev;
+		gws_cookie->configured = 1;
 
 		event_dev->data->ports[i] = ws;
 	}
@@ -1099,11 +1122,8 @@ otx2_sso_configure(const struct rte_eventdev *event_dev)
 		return -EINVAL;
 	}
 
-	if (dev->configured) {
+	if (dev->configured)
 		sso_unregister_irqs(event_dev);
-		/* Clear any prior port-queue mapping. */
-		sso_clr_links(event_dev);
-	}
 
 	if (dev->nb_event_queues) {
 		/* Finit any previous queues. */
