@@ -1264,8 +1264,6 @@ show_ring(char *name)
 static void
 show_mempool(char *name)
 {
-	uint64_t flags = 0;
-
 	snprintf(bdr_str, MAX_STRING_LEN, " show - MEMPOOL ");
 	STATS_BDR_STR(10, bdr_str);
 
@@ -1273,8 +1271,8 @@ show_mempool(char *name)
 		struct rte_mempool *ptr = rte_mempool_lookup(name);
 		if (ptr != NULL) {
 			struct rte_mempool_ops *ops;
+			uint64_t flags = ptr->flags;
 
-			flags = ptr->flags;
 			ops = rte_mempool_get_ops(ptr->ops_index);
 			printf("  - Name: %s on socket %d\n"
 				"  - flags:\n"
