@@ -346,7 +346,7 @@ class ReadElf(object):
             mystring = force_unicode(data[dataptr:endptr])
             rc = mystring.find("PMD_INFO_STRING")
             if rc != -1:
-                self.parse_pmd_info_string(mystring)
+                self.parse_pmd_info_string(mystring[rc:])
 
             dataptr = endptr
 
