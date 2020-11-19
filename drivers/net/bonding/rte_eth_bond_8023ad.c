@@ -1334,8 +1334,7 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
 		rte_eth_macaddr_get(slave_id, &m_hdr->eth_hdr.s_addr);
 
 		if (internals->mode4.dedicated_queues.enabled == 0) {
-			int retval = rte_ring_enqueue(port->tx_ring, pkt);
-			if (retval != 0) {
+			if (rte_ring_enqueue(port->tx_ring, pkt) != 0) {
 				/* reset timer */
 				port->rx_marker_timer = 0;
 				wrn = WRN_TX_QUEUE_FULL;
@@ -1355,8 +1354,7 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
 		}
 	} else if (likely(subtype == SLOW_SUBTYPE_LACP)) {
 		if (internals->mode4.dedicated_queues.enabled == 0) {
-			int retval = rte_ring_enqueue(port->rx_ring, pkt);
-			if (retval != 0) {
+			if (rte_ring_enqueue(port->rx_ring, pkt) != 0) {
 				/* If RX fing full free lacpdu message and drop packet */
 				wrn = WRN_RX_QUEUE_FULL;
 				goto free_out;
