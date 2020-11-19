@@ -19,14 +19,14 @@
 #include "mlx5_common_os.h"
 
 static const char * const mlx5_txpp_stat_names[] = {
-	"txpp_err_miss_int", /* Missed service interrupt. */
-	"txpp_err_rearm_queue",	/* Rearm Queue errors. */
-	"txpp_err_clock_queue", /* Clock Queue errors. */
-	"txpp_err_ts_past", /* Timestamp in the past. */
-	"txpp_err_ts_future", /* Timestamp in the distant future. */
-	"txpp_jitter", /* Timestamp jitter (one Clock Queue completion). */
-	"txpp_wander", /* Timestamp jitter (half of Clock Queue completions). */
-	"txpp_sync_lost", /* Scheduling synchronization lost. */
+	"tx_pp_missed_interrupt_errors", /* Missed service interrupt. */
+	"tx_pp_rearm_queue_errors", /* Rearm Queue errors. */
+	"tx_pp_clock_queue_errors", /* Clock Queue errors. */
+	"tx_pp_timestamp_past_errors", /* Timestamp in the past. */
+	"tx_pp_timestamp_future_errors", /* Timestamp in the distant future. */
+	"tx_pp_jitter", /* Timestamp jitter (one Clock Queue completion). */
+	"tx_pp_wander", /* Timestamp wander (half of Clock Queue CQEs). */
+	"tx_pp_sync_lost", /* Scheduling synchronization lost. */
 };
 
 /* Destroy Event Queue Notification Channel. */
