@@ -812,26 +812,6 @@ static const enum index next_vc_attr[] = {
 	ZERO,
 };
 
-static const enum index tunnel_create_attr[] = {
-	TUNNEL_CREATE,
-	TUNNEL_CREATE_TYPE,
-	END,
-	ZERO,
-};
-
-static const enum index tunnel_destroy_attr[] = {
-	TUNNEL_DESTROY,
-	TUNNEL_DESTROY_ID,
-	END,
-	ZERO,
-};
-
-static const enum index tunnel_list_attr[] = {
-	TUNNEL_LIST,
-	END,
-	ZERO,
-};
-
 static const enum index next_destroy_attr[] = {
 	DESTROY_RULE,
 	END,
@@ -2009,35 +1989,37 @@ static const struct token token_list[] = {
 	[TUNNEL_CREATE] = {
 		.name = "create",
 		.help = "create new tunnel object",
-		.next = NEXT(tunnel_create_attr, NEXT_ENTRY(PORT_ID)),
+		.next = NEXT(NEXT_ENTRY(TUNNEL_CREATE_TYPE),
+			     NEXT_ENTRY(PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_tunnel,
 	},
 	[TUNNEL_CREATE_TYPE] = {
 		.name = "type",
 		.help = "create new tunnel",
-		.next = NEXT(tunnel_create_attr, NEXT_ENTRY(FILE_PATH)),
+		.next = NEXT(NEXT_ENTRY(FILE_PATH)),
 		.args = ARGS(ARGS_ENTRY(struct tunnel_ops, type)),
 		.call = parse_tunnel,
 	},
 	[TUNNEL_DESTROY] = {
 		.name = "destroy",
 		.help = "destroy tunel",
-		.next = NEXT(tunnel_destroy_attr, NEXT_ENTRY(PORT_ID)),
+		.next = NEXT(NEXT_ENTRY(TUNNEL_DESTROY_ID),
+			     NEXT_ENTRY(PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_tunnel,
 	},
 	[TUNNEL_DESTROY_ID] = {
 		.name = "id",
 		.help = "tunnel identifier to testroy",
-		.next = NEXT(tunnel_destroy_attr, NEXT_ENTRY(UNSIGNED)),
+		.next = NEXT(NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct tunnel_ops, id)),
 		.call = parse_tunnel,
 	},
 	[TUNNEL_LIST] = {
 		.name = "list",
 		.help = "list existing tunnels",
-		.next = NEXT(tunnel_list_attr, NEXT_ENTRY(PORT_ID)),
+		.next = NEXT(NEXT_ENTRY(PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_tunnel,
 	},
