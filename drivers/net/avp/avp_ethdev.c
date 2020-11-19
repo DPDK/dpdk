@@ -267,7 +267,7 @@ avp_dev_process_request(struct avp_dev *avp, struct rte_avp_request *request)
 			break;
 		}
 
-		if ((count < 1) && (retry == 0)) {
+		if (retry == 0) {
 			PMD_DRV_LOG(ERR, "Timeout while waiting for a response for %u\n",
 				    request->req_id);
 			ret = -ETIME;
