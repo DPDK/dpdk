@@ -420,11 +420,9 @@ static void collectd_resolve_cnt_type(char *cnt_type, size_t cnt_type_len,
 	} else if ((type_end != NULL) &&
 		   (strncmp(cnt_name, "flow_", strlen("flow_"))) == 0) {
 		if (strncmp(type_end, "_filters", strlen("_filters")) == 0)
-			strlcpy(cnt_type, "operations", cnt_type_len);
+			strlcpy(cnt_type, "filter_result", cnt_type_len);
 		else if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
 			strlcpy(cnt_type, "errors", cnt_type_len);
-		else if (strncmp(type_end, "_filters", strlen("_filters")) == 0)
-			strlcpy(cnt_type, "filter_result", cnt_type_len);
 	} else if ((type_end != NULL) &&
 		   (strncmp(cnt_name, "mac_", strlen("mac_"))) == 0) {
 		if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
