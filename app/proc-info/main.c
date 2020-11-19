@@ -301,14 +301,13 @@ proc_info_parse_args(int argc, char **argv)
 			} else if (!strncmp(long_option[option_index].name,
 					"xstats-ids",
 					MAX_LONG_OPT_SZ))	{
-				nb_xstats_ids = parse_xstats_ids(optarg,
+				int ret = parse_xstats_ids(optarg,
 						xstats_ids, MAX_NB_XSTATS_IDS);
-
-				if (nb_xstats_ids <= 0) {
+				if (ret <= 0) {
 					printf("xstats-id list parse error.\n");
 					return -1;
 				}
-
+				nb_xstats_ids = ret;
 			}
 			break;
 		default:
