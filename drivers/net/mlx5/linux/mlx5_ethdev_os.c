@@ -1315,71 +1315,71 @@ mlx5_os_get_stats_n(struct rte_eth_dev *dev)
 
 static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 	{
-		.dpdk_name = "rx_port_unicast_bytes",
+		.dpdk_name = "rx_unicast_bytes",
 		.ctr_name = "rx_vport_unicast_bytes",
 	},
 	{
-		.dpdk_name = "rx_port_multicast_bytes",
+		.dpdk_name = "rx_multicast_bytes",
 		.ctr_name = "rx_vport_multicast_bytes",
 	},
 	{
-		.dpdk_name = "rx_port_broadcast_bytes",
+		.dpdk_name = "rx_broadcast_bytes",
 		.ctr_name = "rx_vport_broadcast_bytes",
 	},
 	{
-		.dpdk_name = "rx_port_unicast_packets",
+		.dpdk_name = "rx_unicast_packets",
 		.ctr_name = "rx_vport_unicast_packets",
 	},
 	{
-		.dpdk_name = "rx_port_multicast_packets",
+		.dpdk_name = "rx_multicast_packets",
 		.ctr_name = "rx_vport_multicast_packets",
 	},
 	{
-		.dpdk_name = "rx_port_broadcast_packets",
+		.dpdk_name = "rx_broadcast_packets",
 		.ctr_name = "rx_vport_broadcast_packets",
 	},
 	{
-		.dpdk_name = "tx_port_unicast_bytes",
+		.dpdk_name = "tx_unicast_bytes",
 		.ctr_name = "tx_vport_unicast_bytes",
 	},
 	{
-		.dpdk_name = "tx_port_multicast_bytes",
+		.dpdk_name = "tx_multicast_bytes",
 		.ctr_name = "tx_vport_multicast_bytes",
 	},
 	{
-		.dpdk_name = "tx_port_broadcast_bytes",
+		.dpdk_name = "tx_broadcast_bytes",
 		.ctr_name = "tx_vport_broadcast_bytes",
 	},
 	{
-		.dpdk_name = "tx_port_unicast_packets",
+		.dpdk_name = "tx_unicast_packets",
 		.ctr_name = "tx_vport_unicast_packets",
 	},
 	{
-		.dpdk_name = "tx_port_multicast_packets",
+		.dpdk_name = "tx_multicast_packets",
 		.ctr_name = "tx_vport_multicast_packets",
 	},
 	{
-		.dpdk_name = "tx_port_broadcast_packets",
+		.dpdk_name = "tx_broadcast_packets",
 		.ctr_name = "tx_vport_broadcast_packets",
 	},
 	{
-		.dpdk_name = "rx_wqe_err",
+		.dpdk_name = "rx_wqe_errors",
 		.ctr_name = "rx_wqe_err",
 	},
 	{
-		.dpdk_name = "rx_crc_errors_phy",
+		.dpdk_name = "rx_phy_crc_errors",
 		.ctr_name = "rx_crc_errors_phy",
 	},
 	{
-		.dpdk_name = "rx_in_range_len_errors_phy",
+		.dpdk_name = "rx_phy_in_range_len_errors",
 		.ctr_name = "rx_in_range_len_errors_phy",
 	},
 	{
-		.dpdk_name = "rx_symbol_err_phy",
+		.dpdk_name = "rx_phy_symbol_errors",
 		.ctr_name = "rx_symbol_err_phy",
 	},
 	{
-		.dpdk_name = "tx_errors_phy",
+		.dpdk_name = "tx_phy_errors",
 		.ctr_name = "tx_errors_phy",
 	},
 	{
@@ -1388,44 +1388,44 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 		.dev = 1,
 	},
 	{
-		.dpdk_name = "tx_packets_phy",
+		.dpdk_name = "tx_phy_packets",
 		.ctr_name = "tx_packets_phy",
 	},
 	{
-		.dpdk_name = "rx_packets_phy",
+		.dpdk_name = "rx_phy_packets",
 		.ctr_name = "rx_packets_phy",
 	},
 	{
-		.dpdk_name = "tx_discards_phy",
+		.dpdk_name = "tx_phy_discard_packets",
 		.ctr_name = "tx_discards_phy",
 	},
 	{
-		.dpdk_name = "rx_discards_phy",
+		.dpdk_name = "rx_phy_discard_packets",
 		.ctr_name = "rx_discards_phy",
 	},
 	{
-		.dpdk_name = "tx_bytes_phy",
+		.dpdk_name = "tx_phy_bytes",
 		.ctr_name = "tx_bytes_phy",
 	},
 	{
-		.dpdk_name = "rx_bytes_phy",
+		.dpdk_name = "rx_phy_bytes",
 		.ctr_name = "rx_bytes_phy",
 	},
 	/* Representor only */
 	{
-		.dpdk_name = "rx_packets",
+		.dpdk_name = "rx_vport_packets",
 		.ctr_name = "vport_rx_packets",
 	},
 	{
-		.dpdk_name = "rx_bytes",
+		.dpdk_name = "rx_vport_bytes",
 		.ctr_name = "vport_rx_bytes",
 	},
 	{
-		.dpdk_name = "tx_packets",
+		.dpdk_name = "tx_vport_packets",
 		.ctr_name = "vport_tx_packets",
 	},
 	{
-		.dpdk_name = "tx_bytes",
+		.dpdk_name = "tx_vport_bytes",
 		.ctr_name = "vport_tx_bytes",
 	},
 };
