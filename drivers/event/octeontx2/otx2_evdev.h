@@ -147,7 +147,6 @@ struct otx2_sso_evdev {
 	uint64_t *timer_adptr_sz;
 	/* Dev args */
 	uint8_t dual_ws;
-	uint8_t selftest;
 	uint32_t xae_cnt;
 	uint8_t qos_queue_cnt;
 	struct otx2_sso_qos *qos_parse_data;

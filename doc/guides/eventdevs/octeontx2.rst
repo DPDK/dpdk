@@ -80,15 +80,6 @@ Runtime Config Options
 
     -a 0002:0e:00.0,qos=[1-50-50-50]
 
-- ``Selftest``
-
-  The functionality of OCTEON TX2 eventdev can be verified using this option,
-  various unit and functional tests are run to verify the sanity.
-  The tests are run once the vdev creation is successfully complete.
-  For example::
-
-    -a 0002:0e:00.0,selftest=1
-
 - ``TIM disable NPA``
 
   By default chunks are allocated from NPA then TIM can automatically free

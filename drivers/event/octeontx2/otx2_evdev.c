@@ -1606,7 +1606,6 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 #define OTX2_SSO_XAE_CNT	"xae_cnt"
 #define OTX2_SSO_SINGLE_WS	"single_ws"
 #define OTX2_SSO_GGRP_QOS	"qos"
-#define OTX2_SSO_SELFTEST	"selftest"
 
 static void
 parse_queue_param(char *value, void *opaque)
@@ -1696,8 +1695,6 @@ sso_parse_devargs(struct otx2_sso_evdev *dev, struct rte_devargs *devargs)
 	if (kvlist == NULL)
 		return;
 
-	rte_kvargs_process(kvlist, OTX2_SSO_SELFTEST, &parse_kvargs_flag,
-			   &dev->selftest);
 	rte_kvargs_process(kvlist, OTX2_SSO_XAE_CNT, &parse_kvargs_value,
 			   &dev->xae_cnt);
 	rte_kvargs_process(kvlist, OTX2_SSO_SINGLE_WS, &parse_kvargs_flag,
@@ -1813,10 +1810,6 @@ otx2_sso_init(struct rte_eventdev *event_dev)
 	otx2_sso_dbg("Initializing %s max_queues=%d max_ports=%d",
 		     event_dev->data->name, dev->max_event_queues,
 		     dev->max_event_ports);
-	if (dev->selftest) {
-		event_dev->dev->driver = &pci_sso.driver;
-		event_dev->dev_ops->dev_selftest();
-	}
 
 	otx2_tim_init(pci_dev, (struct otx2_dev *)dev);
 
@@ -1866,5 +1859,4 @@ RTE_PMD_REGISTER_KMOD_DEP(event_octeontx2, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(event_octeontx2, OTX2_SSO_XAE_CNT "=<int>"
 			      OTX2_SSO_SINGLE_WS "=1"
 			      OTX2_SSO_GGRP_QOS "=<string>"
-			      OTX2_SSO_SELFTEST "=1"
 			      OTX2_NPA_LOCK_MASK "=<1-65535>");
