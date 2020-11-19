@@ -51,8 +51,6 @@ extern "C" {
 /* as in <windows.h> */
 typedef long long ssize_t;
 
-#define ETOOMANYREFS 10059 /* WSAETOOMANYREFS */
-
 #ifndef RTE_TOOLCHAIN_GCC
 
 static inline int
