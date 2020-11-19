@@ -102,10 +102,33 @@ to use IO virtualization (such as Intel® VT-d).
 For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
 For more information, please refer to :ref:`Running_Without_Root_Privileges`.
 
+VFIO no-IOMMU mode
+------------------
+
+If there is no IOMMU available on the system, VFIO can still be used,
+but it has to be loaded with an additional module parameter:
+
+.. code-block:: console
+
+   modprobe vfio enable_unsafe_noiommu_mode=1
+
+Alternatively, one can also enable this option in an already loaded kernel module:
+
+.. code-block:: console
+
+   echo 1 > /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
+
+After that, VFIO can be used with hardware devices as usual.
+
 .. note::
 
-   VFIO can be used without IOMMU.
-   While this is unsafe, it does make it possible for the user
+   It may be required to unload all VFIO related-modules before probing
+   the module again with ``enable_unsafe_noiommu_mode=1`` parameter.
+
+.. warning::
+
+   Since no-IOMMU mode forgoes IOMMU protection, it is inherently unsafe.
+   That said, it does make it possible for the user
    to keep the degree of device access and programming that VFIO has,
    in situations where IOMMU is not available.
 
