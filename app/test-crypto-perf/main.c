@@ -390,7 +390,7 @@ cperf_check_test_vector(struct cperf_options *opts,
 		if (opts->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
 			if (test_vec->plaintext.data == NULL)
 				return -1;
-		} else if (opts->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+		} else {
 			if (test_vec->plaintext.data == NULL)
 				return -1;
 			if (test_vec->plaintext.length < opts->max_buffer_size)
@@ -440,7 +440,7 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->plaintext.length < opts->max_buffer_size)
 				return -1;
-		} else if (opts->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+		} else {
 			if (test_vec->plaintext.data == NULL)
 				return -1;
 			if (test_vec->plaintext.length < opts->max_buffer_size)
