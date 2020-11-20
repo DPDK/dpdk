@@ -353,6 +353,19 @@ hns3_update_all_queues_pvid_proc_en(struct hns3_hw *hw)
 	}
 }
 
+static void
+hns3_stop_unused_queue(void *tqp_base, enum hns3_ring_type queue_type)
+{
+	uint32_t reg_offset;
+	uint32_t reg;
+
+	reg_offset = queue_type == HNS3_RING_TYPE_TX ?
+				   HNS3_RING_TX_EN_REG : HNS3_RING_RX_EN_REG;
+	reg = hns3_read_reg(tqp_base, reg_offset);
+	reg &= ~BIT(HNS3_RING_EN_B);
+	hns3_write_reg(tqp_base, reg_offset, reg);
+}
+
 void
 hns3_enable_all_queues(struct hns3_hw *hw, bool en)
 {
@@ -368,16 +381,22 @@ hns3_enable_all_queues(struct hns3_hw *hw, bool en)
 		if (hns3_dev_indep_txrx_supported(hw)) {
 			rxq = i < nb_rx_q ? hw->data->rx_queues[i] : NULL;
 			txq = i < nb_tx_q ? hw->data->tx_queues[i] : NULL;
+
+			tqp_base = (void *)((char *)hw->io_base +
+					hns3_get_tqp_reg_offset(i));
 			/*
-			 * After initialization, rxq and txq won't be NULL at
-			 * the same time.
+			 * If queue struct is not initialized, it means the
+			 * related HW ring has not been initialized yet.
+			 * So, these queues should be disabled before enable
+			 * the tqps to avoid a HW exception since the queues
+			 * are enabled by default.
 			 */
-			if (rxq != NULL)
-				tqp_base = rxq->io_base;
-			else if (txq != NULL)
-				tqp_base = txq->io_base;
-			else
-				return;
+			if (rxq == NULL)
+				hns3_stop_unused_queue(tqp_base,
+							HNS3_RING_TYPE_RX);
+			if (txq == NULL)
+				hns3_stop_unused_queue(tqp_base,
+							HNS3_RING_TYPE_TX);
 		} else {
 			rxq = i < nb_rx_q ? hw->data->rx_queues[i] :
 			      hw->fkq_data.rx_queues[i - nb_rx_q];
