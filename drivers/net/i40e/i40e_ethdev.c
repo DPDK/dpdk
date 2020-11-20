@@ -763,6 +763,21 @@ static inline void i40e_config_automask(struct i40e_pf *pf)
 	I40E_WRITE_REG(hw, I40E_GLINT_CTL, val);
 }
 
+static inline void i40e_clear_automask(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint32_t val;
+
+	val = I40E_READ_REG(hw, I40E_GLINT_CTL);
+	val &= ~(I40E_GLINT_CTL_DIS_AUTOMASK_PF0_MASK |
+		 I40E_GLINT_CTL_DIS_AUTOMASK_VF0_MASK);
+
+	if (!pf->support_multi_driver)
+		val &= ~I40E_GLINT_CTL_DIS_AUTOMASK_N_MASK;
+
+	I40E_WRITE_REG(hw, I40E_GLINT_CTL, val);
+}
+
 #define I40E_FLOW_CONTROL_ETHERTYPE  0x8808
 
 /*
@@ -2740,6 +2755,8 @@ i40e_dev_close(struct rte_eth_dev *dev)
 
 	/* Remove all Traffic Manager configuration */
 	i40e_tm_conf_uninit(dev);
+
+	i40e_clear_automask(pf);
 
 	hw->adapter_closed = 1;
 	return ret;
