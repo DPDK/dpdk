@@ -198,6 +198,10 @@ otx2_ssogws_swtag_untag(struct otx2_ssogws *ws)
 static __rte_always_inline void
 otx2_ssogws_swtag_flush(struct otx2_ssogws *ws)
 {
+	if (OTX2_SSOW_TT_FROM_TAG(otx2_read64(ws->tag_op)) == SSO_TT_EMPTY) {
+		ws->cur_tt = SSO_SYNC_EMPTY;
+		return;
+	}
 	otx2_write64(0, ws->swtag_flush_op);
 	ws->cur_tt = SSO_SYNC_EMPTY;
 }
@@ -272,13 +276,14 @@ otx2_ssogws_prepare_pkt(const struct otx2_eth_txq *txq, struct rte_mbuf *m,
 }
 
 static __rte_always_inline uint16_t
-otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
-		     uint64_t *cmd, const uint64_t
-		     txq_data[][RTE_MAX_QUEUES_PER_PORT],
+otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event *ev,
+		     uint64_t *cmd,
+		     const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
 		     const uint32_t flags)
 {
-	struct rte_mbuf *m = ev[0].mbuf;
+	struct rte_mbuf *m = ev->mbuf;
 	const struct otx2_eth_txq *txq;
+	uint16_t ref_cnt = m->refcnt;
 
 	if ((flags & NIX_TX_OFFLOAD_SECURITY_F) &&
 	    (m->ol_flags & PKT_TX_SEC_OFFLOAD)) {
@@ -329,7 +334,12 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
 		}
 	}
 
-	otx2_write64(0, ws->swtag_flush_op);
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+		if (ref_cnt > 1)
+			return 1;
+	}
+
+	otx2_ssogws_swtag_flush(ws);
 
 	return 1;
 }

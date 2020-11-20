@@ -274,12 +274,14 @@ otx2_ssogws_tx_adptr_enq_ ## name(void *port, struct rte_event ev[],	\
 {									\
 	struct otx2_ssogws *ws = port;					\
 	uint64_t cmd[sz];						\
+	int i;								\
 									\
-	RTE_SET_USED(nb_events);					\
-	return otx2_ssogws_event_tx(ws, ev, cmd, (const uint64_t	\
+	for (i = 0; i < nb_events; i++)					\
+		otx2_ssogws_event_tx(ws, &ev[i], cmd, (const uint64_t	\
 				    (*)[RTE_MAX_QUEUES_PER_PORT])	\
 				    &ws->tx_adptr_data,			\
 				    flags);				\
+	return nb_events;						\
 }
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T
@@ -289,14 +291,16 @@ uint16_t __rte_hot							\
 otx2_ssogws_tx_adptr_enq_seg_ ## name(void *port, struct rte_event ev[],\
 				      uint16_t nb_events)		\
 {									\
-	struct otx2_ssogws *ws = port;					\
 	uint64_t cmd[(sz) + NIX_TX_MSEG_SG_DWORDS - 2];			\
+	struct otx2_ssogws *ws = port;					\
+	int i;								\
 									\
-	RTE_SET_USED(nb_events);					\
-	return otx2_ssogws_event_tx(ws, ev, cmd, (const uint64_t	\
+	for (i = 0; i < nb_events; i++)					\
+		otx2_ssogws_event_tx(ws, &ev[i], cmd, (const uint64_t	\
 				    (*)[RTE_MAX_QUEUES_PER_PORT])	\
 				    &ws->tx_adptr_data,			\
 				    (flags) | NIX_TX_MULTI_SEG_F);	\
+	return nb_events;						\
 }
 SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 #undef T

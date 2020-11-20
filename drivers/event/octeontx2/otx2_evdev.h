@@ -79,6 +79,7 @@
 #define SSOW_LF_GWS_OP_GWC_INVAL            (0xe00ull)
 
 #define OTX2_SSOW_GET_BASE_ADDR(_GW)        ((_GW) - SSOW_LF_GWS_OP_GET_WORK)
+#define OTX2_SSOW_TT_FROM_TAG(x)	    (((x) >> 32) & SSO_TT_EMPTY)
 
 #define NSEC2USEC(__ns)			((__ns) / 1E3)
 #define USEC2NSEC(__us)                 ((__us) * 1E3)
