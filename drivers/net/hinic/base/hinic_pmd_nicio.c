@@ -664,7 +664,6 @@ err_init_nic_hwdev:
 static void hinic_free_nic_hwdev(struct hinic_hwdev *hwdev)
 {
 	hinic_vf_func_free(hwdev);
-	hwdev->nic_io = NULL;
 }
 
 int hinic_rx_tx_flush(struct hinic_hwdev *hwdev)

@@ -1268,6 +1268,8 @@ static void hinic_disable_interrupt(struct rte_eth_dev *dev)
 	if (retries == HINIC_INTR_CB_UNREG_MAX_RETRIES)
 		PMD_DRV_LOG(ERR, "Unregister intr callback failed after %d retries",
 			    retries);
+
+	rte_bit_relaxed_clear32(HINIC_DEV_INIT, &nic_dev->dev_status);
 }
 
 static int hinic_set_dev_promiscuous(struct hinic_nic_dev *nic_dev, bool enable)
@@ -1540,6 +1542,9 @@ static void hinic_deinit_mac_addr(struct rte_eth_dev *eth_dev)
 
 	/* delete multicast mac addrs */
 	hinic_delete_mc_addr_list(nic_dev);
+
+	rte_free(nic_dev->mc_list);
+
 }
 
 static int hinic_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
@@ -3006,6 +3011,9 @@ static int hinic_dev_close(struct rte_eth_dev *dev)
 	/* disable hardware and uio interrupt */
 	hinic_disable_interrupt(dev);
 
+	/* destroy rx mode mutex */
+	hinic_mutex_destroy(&nic_dev->rx_mode_mutex);
+
 	/* deinit nic hardware device */
 	hinic_nic_dev_destroy(dev);
 
@@ -3246,19 +3254,10 @@ static int hinic_dev_init(struct rte_eth_dev *eth_dev)
 
 static int hinic_dev_uninit(struct rte_eth_dev *dev)
 {
-	struct hinic_nic_dev *nic_dev;
-
-	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
-	rte_bit_relaxed_clear32(HINIC_DEV_INIT, &nic_dev->dev_status);
-
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	hinic_mutex_destroy(&nic_dev->rx_mode_mutex);
-
 	hinic_dev_close(dev);
-
-	rte_free(nic_dev->mc_list);
 
 	return HINIC_OK;
 }
