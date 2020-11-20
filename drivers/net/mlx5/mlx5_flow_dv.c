@@ -1217,6 +1217,7 @@ flow_dv_convert_action_set_meta
 
 	if (reg < 0)
 		return reg;
+	MLX5_ASSERT(reg != REG_NON);
 	/*
 	 * In datapath code there is no endianness
 	 * coversions for perfromance reasons, all
@@ -1438,6 +1439,10 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 		reg = flow_dv_get_metadata_reg(dev, attr, error);
 		if (reg < 0)
 			return reg;
+		if (reg == REG_NON)
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ITEM, item,
+					"unavalable extended metadata register");
 		if (reg == REG_B)
 			return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -2446,6 +2451,10 @@ flow_dv_validate_action_set_meta(struct rte_eth_dev *dev,
 	reg = flow_dv_get_metadata_reg(dev, attr, error);
 	if (reg < 0)
 		return reg;
+	if (reg == REG_NON)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "unavalable extended metadata register");
 	if (reg != REG_A && reg != REG_B) {
 		struct mlx5_priv *priv = dev->data->dev_private;
 
@@ -7471,6 +7480,7 @@ flow_dv_translate_item_meta(struct rte_eth_dev *dev,
 		reg = flow_dv_get_metadata_reg(dev, attr, NULL);
 		if (reg < 0)
 			return;
+		MLX5_ASSERT(reg != REG_NON);
 		/*
 		 * In datapath code there is no endianness
 		 * coversions for perfromance reasons, all
