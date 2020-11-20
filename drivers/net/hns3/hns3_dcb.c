@@ -1351,6 +1351,8 @@ hns3_dcb_cfg_validate(struct hns3_adapter *hns, uint8_t *tc, bool *changed)
 {
 	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
 	struct hns3_hw *hw = &hns->hw;
+	uint16_t nb_rx_q = hw->data->nb_rx_queues;
+	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	uint8_t max_tc = 0;
 	uint8_t pfc_en;
 	int i;
@@ -1375,6 +1377,10 @@ hns3_dcb_cfg_validate(struct hns3_adapter *hns, uint8_t *tc, bool *changed)
 		*changed = true;
 	pfc_en = RTE_LEN2MASK((uint8_t)dcb_rx_conf->nb_tcs, uint8_t);
 	if (hw->dcb_info.pfc_en != pfc_en)
+		*changed = true;
+
+	/* tx/rx queue number is reconfigured. */
+	if (nb_rx_q != hw->used_rx_queues || nb_tx_q != hw->used_tx_queues)
 		*changed = true;
 }
 
