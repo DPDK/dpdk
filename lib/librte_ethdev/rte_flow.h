@@ -3549,8 +3549,7 @@ rte_flow_shared_action_create(uint16_t port_id,
  *   - (-ENOSYS) if underlying device does not support this functionality.
  *   - (-EIO) if underlying device is removed.
  *   - (-ENOENT) if action pointed by *action* handle was not found.
- *   - (-ETOOMANYREFS) if action pointed by *action* handle still used by one or
- *     more rules
+ *   - (-EBUSY) if action pointed by *action* handle still used by some rules
  *   rte_errno is also set.
  */
 __rte_experimental
