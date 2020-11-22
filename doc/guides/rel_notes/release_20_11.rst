@@ -207,6 +207,7 @@ New Features
     by rte_flow API.
   * Added support of Age action query.
   * Added support of multi-ports hairpin.
+  * Allow unknown link speed.
 
   Updated Mellanox mlx5 vDPA driver:
 

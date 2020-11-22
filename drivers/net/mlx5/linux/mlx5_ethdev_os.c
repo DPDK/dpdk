@@ -405,7 +405,7 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 	}
 	link_speed = ethtool_cmd_speed(&edata);
 	if (link_speed == -1)
-		dev_link.link_speed = ETH_SPEED_NUM_NONE;
+		dev_link.link_speed = ETH_SPEED_NUM_UNKNOWN;
 	else
 		dev_link.link_speed = link_speed;
 	priv->link_speed_capa = 0;
@@ -425,11 +425,6 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 			ETH_LINK_SPEED_FIXED);
-	if (((dev_link.link_speed && !dev_link.link_status) ||
-	     (!dev_link.link_speed && dev_link.link_status))) {
-		rte_errno = EAGAIN;
-		return -rte_errno;
-	}
 	*link = dev_link;
 	return 0;
 }
@@ -517,8 +512,8 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 			dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
-	dev_link.link_speed = (ecmd->speed == UINT32_MAX) ? ETH_SPEED_NUM_NONE :
-							    ecmd->speed;
+	dev_link.link_speed = (ecmd->speed == UINT32_MAX) ?
+				ETH_SPEED_NUM_UNKNOWN : ecmd->speed;
 	sc = ecmd->link_mode_masks[0] |
 		((uint64_t)ecmd->link_mode_masks[1] << 32);
 	priv->link_speed_capa = 0;
@@ -571,11 +566,6 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 				  ETH_LINK_SPEED_FIXED);
-	if (((dev_link.link_speed && !dev_link.link_status) ||
-	     (!dev_link.link_speed && dev_link.link_status))) {
-		rte_errno = EAGAIN;
-		return -rte_errno;
-	}
 	*link = dev_link;
 	return 0;
 }
