@@ -791,6 +791,8 @@ struct mlx5_flow_rss_desc {
 	uint32_t key_len; /**< RSS hash key len. */
 	uint32_t tunnel; /**< Queue in tunnel. */
 	uint32_t shared_rss; /**< Shared RSS index. */
+	struct mlx5_ind_table_obj *ind_tbl;
+	/**< Indirection table for shared RSS hash RX queues. */
 	union {
 		uint16_t *queue; /**< Destination queues. */
 		const uint16_t *const_q; /**< Const pointer convert. */
@@ -830,7 +832,7 @@ struct mlx5_ind_table_obj {
 		struct mlx5_devx_obj *rqt; /* DevX RQT object. */
 	};
 	uint32_t queues_n; /**< Number of queues in the list. */
-	uint16_t queues[]; /**< Queue list. */
+	uint16_t *queues; /**< Queue list. */
 };
 
 /* Hash Rx queue. */
@@ -906,6 +908,10 @@ struct mlx5_obj_ops {
 	void (*rxq_obj_release)(struct mlx5_rxq_obj *rxq_obj);
 	int (*ind_table_new)(struct rte_eth_dev *dev, const unsigned int log_n,
 			     struct mlx5_ind_table_obj *ind_tbl);
+	int (*ind_table_modify)(struct rte_eth_dev *dev,
+				const unsigned int log_n,
+				const uint16_t *queues, const uint32_t queues_n,
+				struct mlx5_ind_table_obj *ind_tbl);
 	void (*ind_table_destroy)(struct mlx5_ind_table_obj *ind_tbl);
 	int (*hrxq_new)(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 			int tunnel __rte_unused);

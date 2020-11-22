@@ -1995,6 +1995,50 @@ mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
 }
 
 /**
+ * Setup an indirection table structure fields.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param ind_table
+ *   Indirection table to modify.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_ind_table_obj_setup(struct rte_eth_dev *dev,
+			 struct mlx5_ind_table_obj *ind_tbl)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t queues_n = ind_tbl->queues_n;
+	uint16_t *queues = ind_tbl->queues;
+	unsigned int i, j;
+	int ret = 0, err;
+	const unsigned int n = rte_is_power_of_2(queues_n) ?
+			       log2above(queues_n) :
+			       log2above(priv->config.ind_table_max_size);
+
+	for (i = 0; i != queues_n; ++i) {
+		if (!mlx5_rxq_get(dev, queues[i])) {
+			ret = -rte_errno;
+			goto error;
+		}
+	}
+	ret = priv->obj_ops.ind_table_new(dev, n, ind_tbl);
+	if (ret)
+		goto error;
+	__atomic_fetch_add(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
+	return 0;
+error:
+	err = rte_errno;
+	for (j = 0; j < i; j++)
+		mlx5_rxq_release(dev, ind_tbl->queues[j]);
+	rte_errno = err;
+	DEBUG("Port %u cannot setup indirection table.", dev->data->port_id);
+	return ret;
+}
+
+/**
  * Create an indirection table.
  *
  * @param dev
@@ -2015,10 +2059,6 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ind_table_obj *ind_tbl;
-	const unsigned int n = rte_is_power_of_2(queues_n) ?
-			       log2above(queues_n) :
-			       log2above(priv->config.ind_table_max_size);
-	unsigned int i, j;
 	int ret;
 
 	ind_tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ind_tbl) +
@@ -2028,27 +2068,83 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		return NULL;
 	}
 	ind_tbl->queues_n = queues_n;
-	for (i = 0; i != queues_n; ++i) {
-		struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev, queues[i]);
-		if (!rxq)
-			goto error;
-		ind_tbl->queues[i] = queues[i];
+	ind_tbl->queues = (uint16_t *)(ind_tbl + 1);
+	memcpy(ind_tbl->queues, queues, queues_n * sizeof(*queues));
+	ret = mlx5_ind_table_obj_setup(dev, ind_tbl);
+	if (ret < 0) {
+		mlx5_free(ind_tbl);
+		return NULL;
 	}
-	ret = priv->obj_ops.ind_table_new(dev, n, ind_tbl);
-	if (ret < 0)
-		goto error;
-	__atomic_fetch_add(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
 	if (!standalone)
 		LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
 	return ind_tbl;
+}
+
+/**
+ * Modify an indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param ind_table
+ *   Indirection table to modify.
+ * @param queues
+ *   Queues replacement for the indirection table.
+ * @param queues_n
+ *   Number of queues in the array.
+ * @param standalone
+ *   Indirection table for Standalone queue.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_ind_table_obj_modify(struct rte_eth_dev *dev,
+			  struct mlx5_ind_table_obj *ind_tbl,
+			  uint16_t *queues, const uint32_t queues_n,
+			  bool standalone)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i, j;
+	int ret = 0, err;
+	const unsigned int n = rte_is_power_of_2(queues_n) ?
+			       log2above(queues_n) :
+			       log2above(priv->config.ind_table_max_size);
+
+	MLX5_ASSERT(standalone);
+	RTE_SET_USED(standalone);
+	if (__atomic_load_n(&ind_tbl->refcnt, __ATOMIC_RELAXED) > 1) {
+		/*
+		 * Modification of indirection ntables having more than 1
+		 * reference unsupported. Intended for standalone indirection
+		 * tables only.
+		 */
+		DEBUG("Port %u cannot modify indirection table (refcnt> 1).",
+		      dev->data->port_id);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	for (i = 0; i != queues_n; ++i) {
+		if (!mlx5_rxq_get(dev, queues[i])) {
+			ret = -rte_errno;
+			goto error;
+		}
+	}
+	MLX5_ASSERT(priv->obj_ops.ind_table_modify);
+	ret = priv->obj_ops.ind_table_modify(dev, n, queues, queues_n, ind_tbl);
+	if (ret)
+		goto error;
+	for (j = 0; j < ind_tbl->queues_n; j++)
+		mlx5_rxq_release(dev, ind_tbl->queues[j]);
+	ind_tbl->queues_n = queues_n;
+	ind_tbl->queues = queues;
+	return 0;
 error:
-	ret = rte_errno;
+	err = rte_errno;
 	for (j = 0; j < i; j++)
 		mlx5_rxq_release(dev, ind_tbl->queues[j]);
-	rte_errno = ret;
-	mlx5_free(ind_tbl);
-	DEBUG("Port %u cannot create indirection table.", dev->data->port_id);
-	return NULL;
+	rte_errno = err;
+	DEBUG("Port %u cannot setup indirection table.", dev->data->port_id);
+	return ret;
 }
 
 /**
@@ -2136,6 +2232,14 @@ mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
 					    queues, queues_n)) {
 		ind_tbl = hrxq->ind_table;
 	} else {
+		if (hrxq->standalone) {
+			/*
+			 * Replacement of indirection table unsupported for
+			 * stanalone hrxq objects (used by shared RSS).
+			 */
+			rte_errno = ENOTSUP;
+			return -rte_errno;
+		}
 		ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
 		if (!ind_tbl)
 			ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n,
@@ -2153,6 +2257,7 @@ mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
 		goto error;
 	}
 	if (ind_tbl != hrxq->ind_table) {
+		MLX5_ASSERT(!hrxq->standalone);
 		mlx5_ind_table_obj_release(dev, hrxq->ind_table,
 					   hrxq->standalone);
 		hrxq->ind_table = ind_tbl;
@@ -2162,8 +2267,10 @@ mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hrxq_idx,
 	return 0;
 error:
 	err = rte_errno;
-	if (ind_tbl != hrxq->ind_table)
+	if (ind_tbl != hrxq->ind_table) {
+		MLX5_ASSERT(!hrxq->standalone);
 		mlx5_ind_table_obj_release(dev, ind_tbl, hrxq->standalone);
+	}
 	rte_errno = err;
 	return -rte_errno;
 }
@@ -2177,7 +2284,10 @@ __mlx5_hrxq_remove(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 	mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
 	priv->obj_ops.hrxq_destroy(hrxq);
-	mlx5_ind_table_obj_release(dev, hrxq->ind_table, hrxq->standalone);
+	if (!hrxq->standalone) {
+		mlx5_ind_table_obj_release(dev, hrxq->ind_table,
+					   hrxq->standalone);
+	}
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq->idx);
 }
 
@@ -2217,12 +2327,12 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 	uint32_t queues_n = rss_desc->queue_num;
 	struct mlx5_hrxq *hrxq = NULL;
 	uint32_t hrxq_idx = 0;
-	struct mlx5_ind_table_obj *ind_tbl;
+	struct mlx5_ind_table_obj *ind_tbl = rss_desc->ind_tbl;
 	int ret;
 
 	queues_n = rss_desc->hash_fields ? queues_n : 1;
-	ind_tbl = standalone ? NULL :
-		  mlx5_ind_table_obj_get(dev, queues, queues_n);
+	if (!ind_tbl)
+		ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
 	if (!ind_tbl)
 		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n,
 						 standalone);
@@ -2242,7 +2352,8 @@ __mlx5_hrxq_create(struct rte_eth_dev *dev,
 		goto error;
 	return hrxq;
 error:
-	mlx5_ind_table_obj_release(dev, ind_tbl, standalone);
+	if (!rss_desc->ind_tbl)
+		mlx5_ind_table_obj_release(dev, ind_tbl, standalone);
 	if (hrxq)
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
 	return NULL;

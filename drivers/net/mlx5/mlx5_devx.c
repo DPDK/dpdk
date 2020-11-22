@@ -694,6 +694,53 @@ error:
 }
 
 /**
+ * Prepare RQT attribute structure for DevX RQT API.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param log_n
+ *   Log of number of queues in the array.
+ * @param ind_tbl
+ *   DevX indirection table object.
+ *
+ * @return
+ *   The RQT attr object initialized, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_devx_rqt_attr *
+mlx5_devx_ind_table_create_rqt_attr(struct rte_eth_dev *dev,
+				     const unsigned int log_n,
+				     const uint16_t *queues,
+				     const uint32_t queues_n)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_devx_rqt_attr *rqt_attr = NULL;
+	const unsigned int rqt_n = 1 << log_n;
+	unsigned int i, j;
+
+	rqt_attr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rqt_attr) +
+			      rqt_n * sizeof(uint32_t), 0, SOCKET_ID_ANY);
+	if (!rqt_attr) {
+		DRV_LOG(ERR, "Port %u cannot allocate RQT resources.",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	rqt_attr->rqt_max_size = priv->config.ind_table_max_size;
+	rqt_attr->rqt_actual_size = rqt_n;
+	for (i = 0; i != queues_n; ++i) {
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[queues[i]];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+				container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+
+		rqt_attr->rq_list[i] = rxq_ctrl->obj->rq->id;
+	}
+	MLX5_ASSERT(i > 0);
+	for (j = 0; i != rqt_n; ++j, ++i)
+		rqt_attr->rq_list[i] = rqt_attr->rq_list[j];
+	return rqt_attr;
+}
+
+/**
  * Create RQT using DevX API as a filed of indirection table.
  *
  * @param dev
@@ -712,30 +759,13 @@ mlx5_devx_ind_table_new(struct rte_eth_dev *dev, const unsigned int log_n,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_devx_rqt_attr *rqt_attr = NULL;
-	const unsigned int rqt_n = 1 << log_n;
-	unsigned int i, j;
 
 	MLX5_ASSERT(ind_tbl);
-	rqt_attr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rqt_attr) +
-			      rqt_n * sizeof(uint32_t), 0, SOCKET_ID_ANY);
-	if (!rqt_attr) {
-		DRV_LOG(ERR, "Port %u cannot allocate RQT resources.",
-			dev->data->port_id);
-		rte_errno = ENOMEM;
+	rqt_attr = mlx5_devx_ind_table_create_rqt_attr(dev, log_n,
+							ind_tbl->queues,
+							ind_tbl->queues_n);
+	if (!rqt_attr)
 		return -rte_errno;
-	}
-	rqt_attr->rqt_max_size = priv->config.ind_table_max_size;
-	rqt_attr->rqt_actual_size = rqt_n;
-	for (i = 0; i != ind_tbl->queues_n; ++i) {
-		struct mlx5_rxq_data *rxq = (*priv->rxqs)[ind_tbl->queues[i]];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-				container_of(rxq, struct mlx5_rxq_ctrl, rxq);
-
-		rqt_attr->rq_list[i] = rxq_ctrl->obj->rq->id;
-	}
-	MLX5_ASSERT(i > 0);
-	for (j = 0; i != rqt_n; ++j, ++i)
-		rqt_attr->rq_list[i] = rqt_attr->rq_list[j];
 	ind_tbl->rqt = mlx5_devx_cmd_create_rqt(priv->sh->ctx, rqt_attr);
 	mlx5_free(rqt_attr);
 	if (!ind_tbl->rqt) {
@@ -745,6 +775,41 @@ mlx5_devx_ind_table_new(struct rte_eth_dev *dev, const unsigned int log_n,
 		return -rte_errno;
 	}
 	return 0;
+}
+
+/**
+ * Modify RQT using DevX API as a filed of indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param log_n
+ *   Log of number of queues in the array.
+ * @param ind_tbl
+ *   DevX indirection table object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_devx_ind_table_modify(struct rte_eth_dev *dev, const unsigned int log_n,
+			   const uint16_t *queues, const uint32_t queues_n,
+			   struct mlx5_ind_table_obj *ind_tbl)
+{
+	int ret = 0;
+	struct mlx5_devx_rqt_attr *rqt_attr = NULL;
+
+	MLX5_ASSERT(ind_tbl);
+	rqt_attr = mlx5_devx_ind_table_create_rqt_attr(dev, log_n,
+							queues,
+							queues_n);
+	if (!rqt_attr)
+		return -rte_errno;
+	ret = mlx5_devx_cmd_modify_rqt(ind_tbl->rqt, rqt_attr);
+	mlx5_free(rqt_attr);
+	if (ret)
+		DRV_LOG(ERR, "Port %u cannot modify DevX RQT.",
+			dev->data->port_id);
+	return ret;
 }
 
 /**
@@ -1472,6 +1537,7 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.rxq_obj_modify = mlx5_devx_modify_rq,
 	.rxq_obj_release = mlx5_rxq_devx_obj_release,
 	.ind_table_new = mlx5_devx_ind_table_new,
+	.ind_table_modify = mlx5_devx_ind_table_modify,
 	.ind_table_destroy = mlx5_devx_ind_table_destroy,
 	.hrxq_new = mlx5_devx_hrxq_new,
 	.hrxq_destroy = mlx5_devx_tir_destroy,

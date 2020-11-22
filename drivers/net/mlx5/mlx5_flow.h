@@ -1079,11 +1079,13 @@ struct mlx5_shared_action_rss {
 	uint32_t refcnt; /**< Atomically accessed refcnt. */
 	struct rte_flow_action_rss origin; /**< Original rte RSS action. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
-	uint16_t *queue; /**< Queue indices to use. */
+	struct mlx5_ind_table_obj *ind_tbl;
+	/**< Hash RX queues (hrxq, hrxq_tunnel fields) indirection table. */
 	uint32_t hrxq[MLX5_RSS_HASH_FIELDS_LEN];
 	/**< Hash RX queue indexes mapped to mlx5_rss_hash_fields */
 	uint32_t hrxq_tunnel[MLX5_RSS_HASH_FIELDS_LEN];
 	/**< Hash RX queue indexes for tunneled RSS */
+	rte_spinlock_t action_rss_sl; /**< Shared RSS action spinlock. */
 };
 
 struct rte_flow_shared_action {

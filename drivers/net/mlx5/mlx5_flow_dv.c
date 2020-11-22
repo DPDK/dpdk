@@ -11358,20 +11358,26 @@ __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
  */
 static int
 __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
-			uint32_t action_idx,
-			struct mlx5_shared_action_rss *action,
-			struct rte_flow_error *error)
+			   uint32_t action_idx,
+			   struct mlx5_shared_action_rss *action,
+			   struct rte_flow_error *error)
 {
 	struct mlx5_flow_rss_desc rss_desc = { 0 };
 	size_t i;
 	int err;
 
+	if (mlx5_ind_table_obj_setup(dev, action->ind_tbl)) {
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot setup indirection table");
+	}
 	memcpy(rss_desc.key, action->origin.key, MLX5_RSS_HASH_KEY_LEN);
 	rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
 	rss_desc.const_q = action->origin.queue;
 	rss_desc.queue_num = action->origin.queue_num;
 	/* Set non-zero value to indicate a shared RSS. */
 	rss_desc.shared_rss = action_idx;
+	rss_desc.ind_tbl = action->ind_tbl;
 	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
 		uint32_t hrxq_idx;
 		uint64_t hash_fields = mlx5_rss_hash_fields[i];
@@ -11397,6 +11403,8 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 error_hrxq_new:
 	err = rte_errno;
 	__flow_dv_action_rss_hrxqs_release(dev, action);
+	if (!mlx5_ind_table_obj_release(dev, action->ind_tbl, true))
+		action->ind_tbl = NULL;
 	rte_errno = err;
 	return -rte_errno;
 }
@@ -11449,7 +11457,18 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 				   "rss action number out of range");
 		goto error_rss_init;
 	}
-	shared_action->queue = queue;
+	shared_action->ind_tbl = mlx5_malloc(MLX5_MEM_ZERO,
+					     sizeof(*shared_action->ind_tbl),
+					     0, SOCKET_ID_ANY);
+	if (!shared_action->ind_tbl) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "cannot allocate resource memory");
+		goto error_rss_init;
+	}
+	memcpy(queue, rss->queue, queue_size);
+	shared_action->ind_tbl->queues = queue;
+	shared_action->ind_tbl->queues_n = rss->queue_num;
 	origin = &shared_action->origin;
 	origin->func = rss->func;
 	origin->level = rss->level;
@@ -11460,11 +11479,11 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 	memcpy(shared_action->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 	origin->key = &shared_action->key[0];
 	origin->key_len = MLX5_RSS_HASH_KEY_LEN;
-	memcpy(shared_action->queue, rss->queue, queue_size);
-	origin->queue = shared_action->queue;
+	origin->queue = queue;
 	origin->queue_num = rss->queue_num;
 	if (__flow_dv_action_rss_setup(dev, idx, shared_action, error))
 		goto error_rss_init;
+	rte_spinlock_init(&shared_action->action_rss_sl);
 	__atomic_add_fetch(&shared_action->refcnt, 1, __ATOMIC_RELAXED);
 	rte_spinlock_lock(&priv->shared_act_sl);
 	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
@@ -11472,9 +11491,12 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 	rte_spinlock_unlock(&priv->shared_act_sl);
 	return idx;
 error_rss_init:
-	if (shared_action)
+	if (shared_action) {
+		if (shared_action->ind_tbl)
+			mlx5_free(shared_action->ind_tbl);
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 				idx);
+	}
 	if (queue)
 		mlx5_free(queue);
 	return 0;
@@ -11504,6 +11526,7 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 	    mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
 	uint32_t old_refcnt = 1;
 	int remaining;
+	uint16_t *queue = NULL;
 
 	if (!shared_rss)
 		return rte_flow_error_set(error, EINVAL,
@@ -11515,6 +11538,14 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "shared rss hrxq has references");
+	queue = shared_rss->ind_tbl->queues;
+	remaining = mlx5_ind_table_obj_release(dev, shared_rss->ind_tbl, true);
+	if (remaining)
+		return rte_flow_error_set(error, ETOOMANYREFS,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "shared rss indirection table has"
+					  " references");
 	if (!__atomic_compare_exchange_n(&shared_rss->refcnt, &old_refcnt,
 					 0, 0, __ATOMIC_ACQUIRE,
 					 __ATOMIC_RELAXED))
@@ -11522,7 +11553,7 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
 					  "shared rss has references");
-	rte_free(shared_rss->queue);
+	mlx5_free(queue);
 	rte_spinlock_lock(&priv->shared_act_sl);
 	ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 		     &priv->rss_shared_actions, idx, shared_rss, next);
@@ -11660,11 +11691,9 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev, uint32_t idx,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_shared_action_rss *shared_rss =
 	    mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
-	size_t i;
-	int ret;
+	int ret = 0;
 	void *queue = NULL;
-	const uint8_t *rss_key;
-	uint32_t rss_key_len;
+	uint16_t *queue_old = NULL;
 	uint32_t queue_size = action_conf->queue_num * sizeof(uint16_t);
 
 	if (!shared_rss)
@@ -11679,42 +11708,24 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev, uint32_t idx,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "cannot allocate resource memory");
-	if (action_conf->key) {
-		rss_key = action_conf->key;
-		rss_key_len = action_conf->key_len;
+	memcpy(queue, action_conf->queue, queue_size);
+	MLX5_ASSERT(shared_rss->ind_tbl);
+	rte_spinlock_lock(&shared_rss->action_rss_sl);
+	queue_old = shared_rss->ind_tbl->queues;
+	ret = mlx5_ind_table_obj_modify(dev, shared_rss->ind_tbl,
+					queue, action_conf->queue_num, true);
+	if (ret) {
+		mlx5_free(queue);
+		ret = rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "cannot update indirection table");
 	} else {
-		rss_key = rss_hash_default_key;
-		rss_key_len = MLX5_RSS_HASH_KEY_LEN;
+		mlx5_free(queue_old);
+		shared_rss->origin.queue = queue;
+		shared_rss->origin.queue_num = action_conf->queue_num;
 	}
-	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
-		uint32_t hrxq_idx;
-		uint64_t hash_fields = mlx5_rss_hash_fields[i];
-		int tunnel;
-
-		for (tunnel = 0; tunnel < 2; tunnel++) {
-			hrxq_idx = __flow_dv_action_rss_hrxq_lookup
-					(dev, idx, hash_fields, tunnel);
-			MLX5_ASSERT(hrxq_idx);
-			ret = mlx5_hrxq_modify
-				(dev, hrxq_idx,
-				 rss_key, rss_key_len,
-				 hash_fields,
-				 action_conf->queue, action_conf->queue_num);
-			if (ret) {
-				mlx5_free(queue);
-				return rte_flow_error_set
-					(error, rte_errno,
-					 RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					 "cannot update hash queue");
-			}
-		}
-	}
-	mlx5_free(shared_rss->queue);
-	shared_rss->queue = queue;
-	memcpy(shared_rss->queue, action_conf->queue, queue_size);
-	shared_rss->origin.queue = shared_rss->queue;
-	shared_rss->origin.queue_num = action_conf->queue_num;
-	return 0;
+	rte_spinlock_unlock(&shared_rss->action_rss_sl);
+	return ret;
 }
 
 /**
