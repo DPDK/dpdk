@@ -1375,15 +1375,16 @@ Supported hardware offloads
 
 .. table:: Minimal SW/HW versions for queue offloads
 
-   ============== ===== ===== ========= ===== ========== ==========
+   ============== ===== ===== ========= ===== ========== =============
    Offload        DPDK  Linux rdma-core OFED   firmware   hardware
-   ============== ===== ===== ========= ===== ========== ==========
+   ============== ===== ===== ========= ===== ========== =============
    common base    17.11  4.14    16     4.2-1 12.21.1000 ConnectX-4
    checksums      17.11  4.14    16     4.2-1 12.21.1000 ConnectX-4
    Rx timestamp   17.11  4.14    16     4.2-1 12.21.1000 ConnectX-4
    TSO            17.11  4.14    16     4.2-1 12.21.1000 ConnectX-4
    LRO            19.08  N/A     N/A    4.6-4 16.25.6406 ConnectX-5
-   ============== ===== ===== ========= ===== ========== ==========
+   Buffer Split   20.11  N/A     N/A    5.1-2 22.28.2006 ConnectX-6 Dx
+   ============== ===== ===== ========= ===== ========== =============
 
 .. table:: Minimal SW/HW versions for rte_flow offloads
 
@@ -1405,6 +1406,17 @@ Supported hardware offloads
    |                       | |               | | rdma-core 23  |
    |                       | |               | | ConnectX-4    |
    +-----------------------+-----------------+-----------------+
+   | RSS shared action     | |               | | DPDK 20.11    |
+   |                       | |     N/A       | | OFED 5.2      |
+   |                       | |               | | rdma-core 33  |
+   |                       | |               | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
+   | | VLAN                | | DPDK 19.11    | | DPDK 19.11    |
+   | | (of_pop_vlan /      | | OFED 4.7-1    | | OFED 4.7-1    |
+   | | of_push_vlan /      | | ConnectX-5    | | ConnectX-5    |
+   | | of_set_vlan_pcp /   | |               | |               |
+   | | of_set_vlan_vid)    | |               | |               |
+   +-----------------------+-----------------+-----------------+
    | Encapsulation         | | DPDK 19.05    | | DPDK 19.02    |
    | (VXLAN / NVGRE / RAW) | | OFED 4.7-1    | | OFED 4.6      |
    |                       | | rdma-core 24  | | rdma-core 23  |
@@ -1414,6 +1426,11 @@ Supported hardware offloads
    | GENEVE                | | OFED 4.7-3    | | OFED 4.7-3    |
    |                       | | rdma-core 27  | | rdma-core 27  |
    |                       | | ConnectX-5    | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
+   | Tunnel Offload        | |  DPDK 20.11   | | DPDK 20.11    |
+   |                       | |  OFED 5.1-2   | | OFED 5.1-2    |
+   |                       | |  rdma-core 32 | | N/A           |
+   |                       | |  ConnectX-5   | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
    | | Header rewrite      | | DPDK 19.05    | | DPDK 19.02    |
    | | (set_ipv4_src /     | | OFED 4.7-1    | | OFED 4.7-1    |
@@ -1442,26 +1459,25 @@ Supported hardware offloads
    |                       | | rdma-core 24  | | rdma-core 23  |
    |                       | | ConnectX-5    | | ConnectX-4    |
    +-----------------------+-----------------+-----------------+
+   | Meta data             | |  DPDK 19.11   | | DPDK 19.11    |
+   |                       | |  OFED 4.7-3   | | OFED 4.7-3    |
+   |                       | |  rdma-core 26 | | rdma-core 26  |
+   |                       | |  ConnectX-5   | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
    | Port ID               | | DPDK 19.05    |     | N/A       |
    |                       | | OFED 4.7-1    |     | N/A       |
    |                       | | rdma-core 24  |     | N/A       |
    |                       | | ConnectX-5    |     | N/A       |
-   +-----------------------+-----------------+-----------------+
-   | | VLAN                | | DPDK 19.11    | | DPDK 19.11    |
-   | | (of_pop_vlan /      | | OFED 4.7-1    | | OFED 4.7-1    |
-   | | of_push_vlan /      | | ConnectX-5    | | ConnectX-5    |
-   | | of_set_vlan_pcp /   | |               | |               |
-   | | of_set_vlan_vid)    | |               | |               |
    +-----------------------+-----------------+-----------------+
    | Hairpin               | |               | | DPDK 19.11    |
    |                       | |     N/A       | | OFED 4.7-3    |
    |                       | |               | | rdma-core 26  |
    |                       | |               | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
-   | Meta data             | |  DPDK 19.11   | | DPDK 19.11    |
-   |                       | |  OFED 4.7-3   | | OFED 4.7-3    |
-   |                       | |  rdma-core 26 | | rdma-core 26  |
-   |                       | |  ConnectX-5   | | ConnectX-5    |
+   | 2-port Hairpin        | |               | | DPDK 20.11    |
+   |                       | |     N/A       | | OFED 5.1-2    |
+   |                       | |               | | N/A           |
+   |                       | |               | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
    | Metering              | |  DPDK 19.11   | | DPDK 19.11    |
    |                       | |  OFED 4.7-3   | | OFED 4.7-3    |
@@ -1469,9 +1485,14 @@ Supported hardware offloads
    |                       | |  ConnectX-5   | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
    | Sampling              | |  DPDK 20.11   | | DPDK 20.11    |
+   |                       | |  OFED 5.1-2   | | OFED 5.1-2    |
+   |                       | |  rdma-core 32 | | N/A           |
+   |                       | |  ConnectX-5   | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
+   | Age shared action     | |  DPDK 20.11   | | DPDK 20.11    |
    |                       | |  OFED 5.2     | | OFED 5.2      |
    |                       | |  rdma-core 32 | | rdma-core 32  |
-   |                       | |  ConnectX-5   | | ConnectX-5    |
+   |                       | |  ConnectX-6 Dx| | ConnectX-6 Dx |
    +-----------------------+-----------------+-----------------+
 
 Notes for metadata
