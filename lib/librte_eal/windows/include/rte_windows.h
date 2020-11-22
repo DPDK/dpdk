@@ -25,13 +25,13 @@
 #include <psapi.h>
 #include <setupapi.h>
 #include <winioctl.h>
-#include <devguid.h>
 
 /* Have GUIDs defined. */
 #ifndef INITGUID
 #define INITGUID
 #endif
 #include <initguid.h>
+#include <devguid.h>
 #include <rte_log.h>
 
 /**
