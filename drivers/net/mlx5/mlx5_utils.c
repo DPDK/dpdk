@@ -156,7 +156,7 @@ mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 	entry = h->cb_create(h, key, ctx);
 	if (!entry) {
 		rte_errno = ENOMEM;
-		DRV_LOG(ERR, "Can't allocate hash list %s entry.", h->name);
+		DRV_LOG(DEBUG, "Can't allocate hash list %s entry.", h->name);
 		goto done;
 	}
 	entry->key = key;
