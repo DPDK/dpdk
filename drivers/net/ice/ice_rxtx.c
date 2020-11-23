@@ -2319,8 +2319,11 @@ ice_parse_tunneling_params(uint64_t ol_flags,
 	*cd_tunneling |= (tx_offload.l2_len >> 1) <<
 		ICE_TXD_CTX_QW0_NATLEN_S;
 
-	if ((ol_flags & PKT_TX_OUTER_UDP_CKSUM) &&
-	    (ol_flags & PKT_TX_OUTER_IP_CKSUM) &&
+	/**
+	 * Calculate the tunneling UDP checksum.
+	 * Shall be set only if L4TUNT = 01b and EIPT is not zero
+	 */
+	if (!(*cd_tunneling & ICE_TX_CTX_EIPT_NONE) &&
 	    (*cd_tunneling & ICE_TXD_CTX_UDP_TUNNELING))
 		*cd_tunneling |= ICE_TXD_CTX_QW0_L4T_CS_M;
 }
