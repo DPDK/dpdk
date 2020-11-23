@@ -7,6 +7,7 @@ import sys
 import os
 import subprocess
 import argparse
+import platform
 
 from glob import glob
 from os.path import exists, basename
@@ -107,7 +108,17 @@ def module_is_loaded(module):
 
     loaded_modules = sysfs_mods
 
-    return module in sysfs_mods
+    # add built-in modules as loaded
+    release = platform.uname().release
+    filename = os.path.join("/lib/modules/", release, "modules.builtin")
+    if os.path.exists(filename):
+        try:
+            with open(filename) as f:
+                loaded_modules += [os.path.splitext(os.path.basename(mod))[0] for mod in f]
+        except IOError:
+            print("Warning: cannot read list of built-in kernel modules")
+
+    return module in loaded_modules
 
 
 def check_modules():
