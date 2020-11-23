@@ -48,6 +48,7 @@ Sample Applications User Guides
     vdpa
     ip_pipeline
     test_pipeline
+    pipeline
     eventdev_pipeline
     dist_app
     vm_power_management
