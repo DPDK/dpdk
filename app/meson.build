@@ -8,6 +8,10 @@ endif
 apps = [
 	'pdump',
 	'proc-info',
+]
+
+if get_option('tests')
+apps += [
 	'test-acl',
 	'test-bbdev',
 	'test-cmdline',
@@ -19,7 +23,9 @@ apps = [
 	'test-pipeline',
 	'test-pmd',
 	'test-regex',
-	'test-sad']
+	'test-sad',
+]
+endif
 
 # for BSD only
 lib_execinfo = cc.find_library('execinfo', required: false)
