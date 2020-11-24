@@ -1345,6 +1345,29 @@ Performance tuning
    - Configure per-lcore cache when creating Mempools for packet buffer.
    - Refrain from dynamically allocating/freeing memory in run-time.
 
+Rx burst functions
+------------------
+
+There are multiple Rx burst functions with different advantages and limitations.
+
+.. table:: Rx burst functions
+
+   +-------------------+------------------------+---------+-----------------+------+-------+
+   || Function Name    || Enabler               || Scatter|| Error Recovery || CQE || Large|
+   |                   |                        |         |                 || comp|| MTU  |
+   +===================+========================+=========+=================+======+=======+
+   | rx_burst          | rx_vec_en=0            |   Yes   | Yes             |  Yes |  Yes  |
+   +-------------------+------------------------+---------+-----------------+------+-------+
+   | rx_burst_vec      | rx_vec_en=1 (default)  |   No    | if CQE comp off |  Yes |  No   |
+   +-------------------+------------------------+---------+-----------------+------+-------+
+   | rx_burst_mprq     || mprq_en=1             |   No    | Yes             |  Yes |  Yes  |
+   |                   || RxQs >= rxqs_min_mprq |         |                 |      |       |
+   +-------------------+------------------------+---------+-----------------+------+-------+
+   | rx_burst_mprq_vec || rx_vec_en=1 (default) |   No    | if CQE comp off |  Yes |  Yes  |
+   |                   || mprq_en=1             |         |                 |      |       |
+   |                   || RxQs >= rxqs_min_mprq |         |                 |      |       |
+   +-------------------+------------------------+---------+-----------------+------+-------+
+
 .. _mlx5_offloads_support:
 
 Supported hardware offloads
