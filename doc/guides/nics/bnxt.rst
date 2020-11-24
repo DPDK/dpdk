@@ -25,30 +25,6 @@ device memory to userspace, registering interrupts, etc.
 VFIO is more secure than UIO, relying on IOMMU protection.
 UIO requires the IOMMU disabled or configured to pass-through mode.
 
-Operating Systems supported:
-
-* Red Hat Enterprise Linux release 8.1 (Ootpa)
-* Red Hat Enterprise Linux release 8.0 (Ootpa)
-* Red Hat Enterprise Linux Server release 7.7 (Maipo)
-* Red Hat Enterprise Linux Server release 7.6 (Maipo)
-* Red Hat Enterprise Linux Server release 7.5 (Maipo)
-* Red Hat Enterprise Linux Server release 7.4 (Maipo)
-* Red Hat Enterprise Linux Server release 7.3 (Maipo)
-* Red Hat Enterprise Linux Server release 7.2 (Maipo)
-* CentOS Linux release 8.0
-* CentOS Linux release 7.7
-* CentOS Linux release 7.6.1810
-* CentOS Linux release 7.5.1804
-* CentOS Linux release 7.4.1708
-* Fedora 31
-* FreeBSD 12.1
-* Suse 15SP1
-* Ubuntu 19.04
-* Ubuntu 18.04
-* Ubuntu 16.10
-* Ubuntu 16.04
-* Ubuntu 14.04
-
 The BNXT PMD supports operating with:
 
 * Linux vfio-pci
