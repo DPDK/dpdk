@@ -10097,6 +10097,30 @@ cmdline_parse_inst_t cmd_show_queue_region_info_all = {
 
 /* *** Filters Control *** */
 
+#define IPV4_ADDR_TO_UINT(ip_addr, ip) \
+do { \
+	if ((ip_addr).family == AF_INET) \
+		(ip) = (ip_addr).addr.ipv4.s_addr; \
+	else { \
+		printf("invalid parameter.\n"); \
+		return; \
+	} \
+} while (0)
+
+#define IPV6_ADDR_TO_ARRAY(ip_addr, ip) \
+do { \
+	if ((ip_addr).family == AF_INET6) \
+		rte_memcpy(&(ip), \
+				 &((ip_addr).addr.ipv6), \
+				 sizeof(struct in6_addr)); \
+	else { \
+		printf("invalid parameter.\n"); \
+		return; \
+	} \
+} while (0)
+
+#ifdef RTE_NET_I40E
+
 static uint16_t
 str2flowtype(char *string)
 {
@@ -10131,30 +10155,6 @@ str2flowtype(char *string)
 
 	return RTE_ETH_FLOW_UNKNOWN;
 }
-
-#define IPV4_ADDR_TO_UINT(ip_addr, ip) \
-do { \
-	if ((ip_addr).family == AF_INET) \
-		(ip) = (ip_addr).addr.ipv4.s_addr; \
-	else { \
-		printf("invalid parameter.\n"); \
-		return; \
-	} \
-} while (0)
-
-#define IPV6_ADDR_TO_ARRAY(ip_addr, ip) \
-do { \
-	if ((ip_addr).family == AF_INET6) \
-		rte_memcpy(&(ip), \
-				 &((ip_addr).addr.ipv6), \
-				 sizeof(struct in6_addr)); \
-	else { \
-		printf("invalid parameter.\n"); \
-		return; \
-	} \
-} while (0)
-
-#ifdef RTE_NET_I40E
 
 /* *** deal with flow director filter *** */
 struct cmd_flow_director_result {
