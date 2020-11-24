@@ -5955,7 +5955,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_AGE:
-			if (!attr->group)
+			if (!attr->transfer && !attr->group)
 				return rte_flow_error_set(error, ENOTSUP,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 									   NULL,
