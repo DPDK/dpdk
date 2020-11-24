@@ -402,8 +402,10 @@ eal_plugindir_init(const char *path)
 		struct stat sb;
 		int nlen = strnlen(dent->d_name, sizeof(dent->d_name));
 
-		/* check if name ends in .so */
-		if (strcmp(&dent->d_name[nlen - 3], ".so") != 0)
+		/* check if name ends in .so or .so.ABI_VERSION */
+		if (strcmp(&dent->d_name[nlen - 3], ".so") != 0 &&
+		    strcmp(&dent->d_name[nlen - 4 - strlen(ABI_VERSION)],
+			   ".so."ABI_VERSION) != 0)
 			continue;
 
 		snprintf(sopath, sizeof(sopath), "%s/%s", path, dent->d_name);
