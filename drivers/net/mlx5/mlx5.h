@@ -258,28 +258,10 @@ struct mlx5_dev_config {
 };
 
 
-/**
- * Type of object being allocated.
- */
-enum mlx5_verbs_alloc_type {
-	MLX5_VERBS_ALLOC_TYPE_NONE,
-	MLX5_VERBS_ALLOC_TYPE_TX_QUEUE,
-	MLX5_VERBS_ALLOC_TYPE_RX_QUEUE,
-};
-
 /* Structure for VF VLAN workaround. */
 struct mlx5_vf_vlan {
 	uint32_t tag:12;
 	uint32_t created:1;
-};
-
-/**
- * Verbs allocator needs a context to know in the callback which kind of
- * resources it is allocating.
- */
-struct mlx5_verbs_alloc_ctx {
-	enum mlx5_verbs_alloc_type type; /* Kind of object being allocated. */
-	const void *obj; /* Pointer to the DPDK object. */
 };
 
 /* Flow drop context necessary due to Verbs API. */
@@ -989,7 +971,6 @@ struct mlx5_priv {
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	struct mlx5_stats_ctrl stats_ctrl; /* Stats control. */
 	struct mlx5_dev_config config; /* Device configuration. */
-	struct mlx5_verbs_alloc_ctx verbs_alloc_ctx;
 	/* Context for Verbs allocator. */
 	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
