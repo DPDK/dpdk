@@ -13,6 +13,8 @@ sources = files(
 	'ionic_mac_api.c',
 	'ionic_rx_filter.c',
 	'ionic_rxtx.c',
+	'ionic_rxtx_simple.c',
+	'ionic_rxtx_sg.c',
 	'ionic_dev.c',
 	'ionic_dev_pci.c',
 	'ionic_dev_vdev.c',
