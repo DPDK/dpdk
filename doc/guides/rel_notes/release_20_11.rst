@@ -59,7 +59,7 @@ New Features
 
   Added ``rte_write32_wc`` and ``rte_write32_wc_relaxed`` APIs
   that enable write combining stores (depending on architecture).
-  The functions are provided as a generic stubs and
+  The functions are provided as a generic stub and
   x86 specific implementation.
 
 * **Added prefetch with intention to write APIs.**
@@ -108,45 +108,50 @@ New Features
 * **Added the FEC API, for a generic FEC query and config.**
 
   Added the FEC API which provides functions for query FEC capabilities and
-  current FEC mode from device. Also, API for configuring FEC mode is also provided.
+  current FEC mode from device. An API for configuring FEC mode is also provided.
 
 * **Added thread safety to rte_flow functions.**
 
-  Added ``RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE`` device flag to indicate
-  whether PMD supports thread safe operations. If PMD doesn't set the flag,
-  rte_flow API level functions will protect the flow operations with mutex.
+  Added the ``RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE`` device flag to indicate
+  whether a PMD supports thread safe operations. If the PMD doesn't set the flag,
+  the rte_flow API level functions will protect the flow operations with a mutex.
 
 * **Added flow-based traffic sampling support.**
 
-  Added new action: ``RTE_FLOW_ACTION_TYPE_SAMPLE`` to duplicate the matching
-  packets with specified ratio, and apply with own set of actions with a fate
-  action. When the ratio is set to 1 then the packets will be 100% mirrored.
+  Added a new action ``RTE_FLOW_ACTION_TYPE_SAMPLE`` that will sample the
+  incoming traffic and send a duplicated traffic with the specified ratio to
+  the application, while the original packet will continue to the target
+  destination.
+
+  The packets sampling is '1/ratio'. A ratio value set to 1 means that the
+  packets will be completely mirrored. The sample packet can be assigned with
+  a different set of actions than the original packet.
 
 * **Added support of shared action in flow API.**
 
-  Added shared action support to utilize single flow action in multiple flow
-  rules. An update of shared action configuration alters the behavior of all
+  Added shared action support to use single flow actions in multiple flow
+  rules. An update to the shared action configuration alters the behavior of all
   flow rules using it.
 
-  * Added new action: ``RTE_FLOW_ACTION_TYPE_SHARED`` to use shared action
-    as flow action.
-  * Added new flow APIs to create/update/destroy/query shared action.
+  * Added a new action: ``RTE_FLOW_ACTION_TYPE_SHARED`` to use shared action
+    as a flow action.
+  * Added new flow APIs to create/update/destroy/query shared actions.
 
-* **Flow rules allowed to use private PMD items / actions.**
+* **Added support to flow rules to allow private PMD items/actions.**
 
-  * Flow rule verification was updated to accept private PMD
+  * Flow rule verification has been  updated to accept private PMD
     items and actions.
 
-* **Added generic API to offload tunneled traffic and restore missed packet.**
+* **Added a generic API to offload tunneled traffic and restore missed packets.**
 
-  * Added a new hardware independent helper to flow API that
+  * Added a new hardware independent helper to the flow API that
     offloads tunneled traffic and restores missed packets.
 
 * **Updated the ethdev library to support hairpin between two ports.**
 
-  New APIs are introduced to support binding / unbinding 2 ports hairpin.
-  Hairpin Tx part flow rules can be inserted explicitly.
-  New API is added to get the hairpin peer ports list.
+  New APIs have been introduced to support binding / unbinding of 2 ports in a
+  hairpin configuration. The hairpin Tx part flow rules can be inserted
+  explicitly. A new API has been added to get the hairpin peer ports list.
 
 * **Updated the Amazon ena driver.**
 
@@ -175,26 +180,34 @@ New Features
 
 * **Added hns3 FEC PMD, for supporting query and config FEC mode.**
 
-  Added the FEC PMD which provides functions for query FEC capabilities and
-  current FEC mode from device. Also, PMD for configuring FEC mode is also provided.
+  Added the FEC PMD which provides functions for querying FEC capabilities and
+  current FEC mode from a device. A PMD for configuring FEC mode is also provided.
 
-* **Updated Intel iavf driver.**
+* **Updated the Intel iavf driver.**
 
-  Updated iavf PMD with new features and improvements, including:
+  Updated the iavf PMD with new features and improvements, including:
 
   * Added support for flexible descriptor metadata extraction.
   * Added support for outer IP hash of GTPC and GTPU.
   * Added support of AVX512 instructions in Rx and Tx path.
   * Added support for up to 256 queue pairs per VF.
 
+* **Updated Intel ixgbe driver.**
+
+  Updated the Intel ixgbe driver to use write combining stores.
+
+* **Updated Intel i40e driver.**
+
+  Updated the Intel i40e driver to use write combining stores.
+
 * **Updated Intel ice driver.**
 
-  * Used write combining stores.
-  * Added ACL filter support for Intel DCF.
+  * Added support for write combining stores.
+  * Added ACL filter support for the Intel DCF.
 
 * **Updated Mellanox mlx5 driver.**
 
-  Updated Mellanox mlx5 driver with new features and improvements, including:
+  Updated the Mellanox mlx5 driver with new features and improvements, including:
 
   * Added vectorized Multi-Packet Rx Queue burst.
   * Added support for 2 new miniCQE formats: Flow Tag and L3/L4 header.
@@ -204,9 +217,9 @@ New Features
   * Added support for the new VLAN fields ``has_vlan`` in the Ethernet item
     and ``has_more_vlan`` in the VLAN item.
   * Updated the supported timeout for Age action to the maximal value supported
-    by rte_flow API.
-  * Added support of Age action query.
-  * Added support of multi-ports hairpin.
+    by the rte_flow API.
+  * Added support for Age action query.
+  * Added support for multi-ports hairpin.
   * Allow unknown link speed.
 
   Updated Mellanox mlx5 vDPA driver:
@@ -231,58 +244,42 @@ New Features
 
 * **Updated Virtio driver.**
 
-  * Added support for Vhost-vDPA backend to Virtio-user PMD.
+  * Added support for Vhost-vDPA backend to the Virtio-user PMD.
   * Changed default link speed to unknown.
-  * Added support for 200G link speed.
-
-* **Updated Intel i40e driver.**
-
-  Updated the Intel i40e driver to use write combining stores.
-
-* **Updated Intel ixgbe driver.**
-
-  Updated the Intel ixgbe driver to use write combining stores.
-
-* **Updated Intel qat driver.**
-
-  Updated the Intel qat driver to use write combining stores.
+  * Added support for the 200G link speed.
 
 * **Updated Memif PMD.**
 
-  * Added support for abstract socket address.
+  * Added support for abstract socket addresses.
   * Changed default socket address type to abstract.
-
-* **Added Ice Lake (Gen4) support for Intel NTB.**
-
-  Added NTB device support (4th generation) for Intel Ice Lake platform.
 
 * **Added UDP/IPv4 GRO support for VxLAN and non-VxLAN packets.**
 
   For VxLAN packets, added inner UDP/IPv4 support.
   For non-VxLAN packets, added UDP/IPv4 support.
 
-* **Extended flow-perf application.**
+* **Extended the flow-perf application.**
 
-  * Started supporting user order instead of bit mask:
+  * Added support for user order instead of bit mask.
     Now the user can create any structure of rte_flow
-    using flow performance application with any order,
-    moreover the app also now starts to support inner
+    using the flow performance application with any order.
+    Moreover the app also now starts to support inner
     items matching as well.
   * Added header modify actions.
   * Added flag action.
   * Added raw encap/decap actions.
   * Added VXLAN encap/decap actions.
-  * Added ICMP(code/type/identifier/sequence number) and ICMP6(code/type) matching items.
+  * Added ICMP (code/type/identifier/sequence number) and ICMP6 (code/type) matching items.
   * Added option to set port mask for insertion/deletion:
     ``--portmask=N``
-    where N represents the hexadecimal bitmask of ports used.
+    where N represents the hexadecimal bitmask of the ports used.
 
 * **Added raw data-path APIs for cryptodev library.**
 
-  Cryptodev is added with raw data-path APIs to accelerate external
-  libraries or applications which need to avail fast cryptodev
-  enqueue/dequeue operations but does not necessarily depends on
-  mbufs and cryptodev operation mempools.
+  Added raw data-path APIs to Cryptodev to help accelerate external libraries
+  or applications which need to avail of fast cryptodev enqueue/dequeue
+  operations but which do not necessarily need to depend on mbufs and
+  cryptodev operation mempools.
 
 * **Updated the aesni_mb crypto PMD.**
 
@@ -303,7 +300,7 @@ New Features
   Added a symmetric crypto PMD for Broadcom FlexSparc crypto units.
   See :doc:`../cryptodevs/bcmfs` guide for more details on this new PMD.
 
-* **Updated DPAA2_SEC crypto PMD.**
+* **Updated NXP DPAA2_SEC crypto PMD.**
 
   * Added DES-CBC support for cipher_only, chain and ipsec protocol.
   * Added support for non-HMAC auth algorithms
@@ -314,14 +311,15 @@ New Features
   * Added AES-GCM support.
   * Added cipher only offload support.
 
-* **Updated the OCTEON TX2 crypto PMD.**
+* **Updated Marvell OCTEON TX2 crypto PMD.**
 
   * Updated the OCTEON TX2 crypto PMD lookaside protocol offload for IPsec with
     IPv6 support.
 
-* **Updated QAT crypto PMD.**
+* **Updated Intel QAT PMD.**
 
   * Added Raw Data-path APIs support.
+  * Added support for write combining stores.
 
 * **Added Intel ACC100 bbdev PMD.**
 
@@ -332,18 +330,18 @@ New Features
 * **Updated rte_security library to support SDAP.**
 
   ``rte_security_pdcp_xform`` in ``rte_security`` lib is updated to enable
-  5G NR processing of SDAP header in PMDs.
+  5G NR processing of SDAP headers in PMDs.
 
 * **Added Marvell OCTEON TX2 regex PMD.**
 
-  Added a new PMD driver for hardware regex offload block for OCTEON TX2 SoC.
+  Added a new PMD driver for the hardware regex offload block for OCTEON TX2 SoC.
 
   See the :doc:`../regexdevs/octeontx2` for more details.
 
 * **Updated Software Eventdev driver.**
 
   Added performance tuning arguments to allow tuning the scheduler for
-  better throughtput in high core count use cases.
+  better throughput in high core count use cases.
 
 * **Added a new driver for the Intel Dynamic Load Balancer v1.0 device.**
 
@@ -355,12 +353,18 @@ New Features
   Added the new ``dlb2`` eventdev driver for the Intel DLB V2.0 device. See the
   :doc:`../eventdevs/dlb2` eventdev guide for more details on this new driver.
 
-* **Updated ioat rawdev driver**
+* **Added Ice Lake (Gen4) support for Intel NTB.**
+
+  Added NTB device support (4th generation) for the Intel Ice Lake platform.
+
+* **Updated ioat rawdev driver.**
 
   The ioat rawdev driver has been updated and enhanced. Changes include:
 
-  * Added support for Intel\ |reg| Data Streaming Accelerator hardware.
-    For more information, see https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator
+  * Added support for Intel\ |reg| Data Streaming Accelerator hardware.  For
+    more information, see `Introducing the Intel Data Streaming Accelerator
+    (Intel DSA)
+    <https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator>`_.
   * Added support for the fill operation via the API ``rte_ioat_enqueue_fill()``,
     where the hardware fills an area of memory with a repeating pattern.
   * Added a per-device configuration flag to disable management
@@ -369,7 +373,7 @@ New Features
     and renamed the ``rte_ioat_completed_copies()`` API to ``rte_ioat_completed_ops()``
     to better reflect the APIs' purposes, and remove the implication that
     they are limited to copy operations only.
-    [Note: The old API is still provided but marked as deprecated in the code]
+    Note: The old API is still provided but marked as deprecated in the code.
   * Added a new API ``rte_ioat_fence()`` to add a fence between operations.
     This API replaces the ``fence`` flag parameter in the ``rte_ioat_enqueue_copies()`` function,
     and is clearer as there is no ambiguity as to whether the flag should be
@@ -377,16 +381,17 @@ New Features
 
 * **Updated the pipeline library for alignment with the P4 language.**
 
-  Added new Software Switch (SWX) pipeline type that provides more
-  flexibility through API and feature alignment with the P4 language.
+  Added a new Software Switch (SWX) pipeline type that provides more
+  flexibility through APIs and feature alignment with the P4 language.
+  Some enhancements are:
 
   * The packet headers, meta-data, actions, tables and pipelines are
-    dynamically defined instead of selected from pre-defined set.
+    dynamically defined instead of selected from a pre-defined set.
   * The actions and the pipeline are defined with instructions.
   * Extern objects and functions can be plugged into the pipeline.
   * Transaction-oriented table updates.
 
-* **Add new AVX512 specific classify algorithms for ACL library.**
+* **Added new AVX512 specific classify algorithms for ACL library.**
 
   * Added new ``RTE_ACL_CLASSIFY_AVX512X16`` vector implementation,
     which can process up to 16 flows in parallel. Requires AVX512 support.
@@ -401,9 +406,9 @@ New Features
 * **Added support to update subport bandwidth dynamically.**
 
    * Added new API ``rte_sched_port_subport_profile_add`` to add new
-     subport bandwidth profile to subport porfile table at runtime.
+     subport bandwidth profiles to the subport profile table at runtime.
 
-   * Added support to update subport rate dynamically.
+   * Added support to update the subport rate dynamically.
 
 * **Updated FIPS validation sample application.**
 
@@ -420,8 +425,8 @@ New Features
 
 * **Updated vhost sample application.**
 
-  Added vhost asynchronous APIs support, which demonstrated how the application
-  leverage IOAT DMA channel with vhost asynchronous APIs.
+  Added vhost asynchronous APIs support, which demonstrates how the application
+  can leverage IOAT DMA channels with vhost asynchronous APIs.
   See the :doc:`../sample_app_ug/vhost` for more details.
 
 
@@ -437,16 +442,18 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
-* build: Support for the Make build system was removed for compiling DPDK,
+* build: Support for the Make build system has been removed from DPDK.
   Meson is now the primary build system.
   Sample applications can still be built with Make standalone, using pkg-config.
 
 * vhost: Dequeue zero-copy support has been removed.
 
 * kernel: The module ``igb_uio`` has been moved to the git repository
-  ``dpdk-kmods`` in a new directory ``linux/igb_uio``.
+  `dpdk-kmods <https://git.dpdk.org/dpdk-kmods/>`_ in a new directory
+  ``linux/igb_uio``.
 
-* Removed Python 2 support since it was EOL'd in January 2020.
+* Removed Python 2 support since it was sunsetted in January 2020. See
+  `Sunsetting Python 2 <https://www.python.org/doc/sunset-python-2/>`_
 
 * Removed TEP termination sample application.
 
@@ -466,11 +473,11 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
-* build macros: The macros defining ``RTE_MACHINE_CPUFLAG_*`` are removed.
-  The information provided by these macros is available through standard
+* build macros: The macros defining ``RTE_MACHINE_CPUFLAG_*`` have been removed.
+  The information provided by these macros is now available through standard
   compiler macros.
 
-* eal: Replaced the function ``rte_get_master_lcore()`` to
+* eal: Replaced the function ``rte_get_master_lcore()`` with
   ``rte_get_main_lcore()``. The old function is deprecated.
 
   The iterator for worker lcores is also changed:
@@ -478,7 +485,7 @@ API Changes
   ``RTE_LCORE_FOREACH_WORKER``.
 
 * eal: The definitions related to including and excluding devices
-  has been changed from blacklist/whitelist to block/allow list.
+  have been changed from blacklist/whitelist to block/allow list.
   There are compatibility macros and command line mapping to accept
   the old values but applications and scripts are strongly encouraged
   to migrate to the new names.
@@ -494,11 +501,11 @@ API Changes
 
 * mem: Removed the unioned field ``phys_addr`` from
   the structures ``rte_memseg`` and ``rte_memzone``.
-  The field ``iova`` is remaining from the old unions.
+  The field ``iova`` remains from the old unions.
 
 * mempool: Removed the unioned fields ``phys_addr`` and ``physaddr`` from
   the structures ``rte_mempool_memhdr`` and ``rte_mempool_objhdr``.
-  The field ``iova`` is remaining from the old unions.
+  The field ``iova`` remains from the old unions.
   The flag name ``MEMPOOL_F_NO_PHYS_CONTIG`` is removed,
   while the aliased flag ``MEMPOOL_F_NO_IOVA_CONTIG`` is kept.
 
@@ -508,11 +515,11 @@ API Changes
   having ``iova`` in their names instead of ``dma_addr`` or ``mtophys``.
 
 * mbuf: Removed the unioned field ``buf_physaddr`` from ``rte_mbuf``.
-  The field ``buf_iova`` is remaining from the old union.
+  The field ``buf_iova`` remains from the old union.
 
 * mbuf: Removed the unioned field ``refcnt_atomic`` from
   the structures ``rte_mbuf`` and ``rte_mbuf_ext_shared_info``.
-  The field ``refcnt`` is remaining from the old unions.
+  The field ``refcnt`` remains from the old unions.
 
 * mbuf: Removed the unioned fields ``userdata`` and ``udata64``
   from the structure ``rte_mbuf``. It is replaced with dynamic fields.
@@ -558,7 +565,7 @@ API Changes
 
 * ethdev: Modified field type of ``base`` and ``nb_queue`` in struct
   ``rte_eth_dcb_tc_queue_mapping`` from ``uint8_t`` to ``uint16_t``.
-  As the data of ``uint8_t`` will be truncated when queue number under
+  As the data of ``uint8_t`` will be truncated when queue number in
   a TC is greater than 256.
 
 * ethdev: Removed the legacy filter API, including
@@ -574,7 +581,7 @@ API Changes
   instead of ``rte_vhost_driver_start`` by crypto applications.
 
 * cryptodev: The structure ``rte_crypto_sym_vec`` is updated to support both
-  cpu_crypto synchrounous operation and asynchronous raw data-path APIs.
+  cpu_crypto synchronous operations and asynchronous raw data-path APIs.
 
 * cryptodev: ``RTE_CRYPTO_AEAD_LIST_END`` from ``enum rte_crypto_aead_algorithm``,
   ``RTE_CRYPTO_CIPHER_LIST_END`` from ``enum rte_crypto_cipher_algorithm`` and
@@ -592,12 +599,12 @@ API Changes
   ``RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES`` to
   ``RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS``.
 
-* security: ``hfn_ovrd`` field in ``rte_security_pdcp_xform`` is changed from
+* security: The ``hfn_ovrd`` field in ``rte_security_pdcp_xform`` is changed from
   ``uint32_t`` to ``uint8_t`` so that a new field ``sdap_enabled`` can be added
   to support SDAP.
 
 * security: The API ``rte_security_session_create`` is updated to take two
-  mempool objects one for session and other for session private data.
+  mempool objects: one for session and other for session private data.
   So the application need to create two mempools and get the size of session
   private data using API ``rte_security_session_get_size`` for private session
   mempool.
@@ -645,10 +652,10 @@ API Changes
   * ``pkt`` is not freed, no matter whether it is GSOed, leaving to the caller.
 
 * acl: ``RTE_ACL_CLASSIFY_NUM`` enum value has been removed.
-  This enum value was not used inside DPDK, while it prevented to add new
+  This enum value was not used inside DPDK, while it prevented the addition of new
   classify algorithms without causing an ABI breakage.
 
-* sched: Added ``subport_profile_id`` as argument
+* sched: Added ``subport_profile_id`` as an argument
   to function ``rte_sched_subport_config``.
 
 * sched: Removed ``tb_rate``, ``tc_rate``, ``tc_period`` and ``tb_size``
@@ -670,11 +677,11 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
-* eal: Removed the not implemented function ``rte_dump_registers()``.
+* eal: Removed the unimplemented function ``rte_dump_registers()``.
 
 * ``ethdev`` changes
 
-  * Following device operation function pointers moved
+  * The following device operation function pointers moved
     from ``struct eth_dev_ops`` to ``struct rte_eth_dev``:
 
     * ``eth_rx_queue_count_t       rx_queue_count;``
@@ -682,8 +689,8 @@ ABI Changes
     * ``eth_rx_descriptor_status_t rx_descriptor_status;``
     * ``eth_tx_descriptor_status_t tx_descriptor_status;``
 
-  * ``struct eth_dev_ops`` is no more accessible by applications,
-    which was already internal data structure.
+  * ``struct eth_dev_ops`` is no longer accessible by applications,
+    which was already an internal data structure.
 
   * ``ethdev`` internal functions are marked with ``__rte_internal`` tag.
 
@@ -704,11 +711,11 @@ ABI Changes
   * Added new field ``has_vlan`` to structure ``rte_flow_item_eth``,
     indicating that packet header contains at least one VLAN.
 
-  * Added new field ``has_more_vlan`` to structure
+  * Added new field ``has_more_vlan`` to the structure
     ``rte_flow_item_vlan``, indicating that packet header contains
     at least one more VLAN, after this VLAN.
 
-* eventdev: Following structures are modified to support DLB/DLB2 PMDs
+* eventdev: The following structures are modified to support DLB/DLB2 PMDs
   and future extensions:
 
   * ``rte_event_dev_info``
@@ -719,21 +726,6 @@ ABI Changes
 
 * lpm: Removed fields other than ``tbl24`` and ``tbl8`` from the struct
   ``rte_lpm``. The removed fields were made internal.
-
-
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 
 Tested Platforms
