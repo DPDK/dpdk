@@ -79,6 +79,16 @@ Deprecation Notices
   is deprecated and will be removed in DPDK 21.11. Shared counters should
   be managed using shared actions API (``rte_flow_shared_action_create`` etc).
 
+* ethdev: The flow API matching pattern structures, ``struct rte_flow_item_*``,
+  should start with relevant protocol header.
+  Some matching pattern structures implements this by duplicating protocol header
+  fields in the struct. To clarify the intention and to be sure protocol header
+  is intact, will replace those fields with relevant protocol header struct.
+  In v21.02 both individual protocol header fields and the protocol header struct
+  will be added as union, target is switch usage to the protocol header by time.
+  In v21.11 LTS, protocol header fields will be cleaned and only protocol header
+  struct will remain.
+
 * ethdev: Queue specific stats fields will be removed from ``struct rte_eth_stats``.
   Mentioned fields are: ``q_ipackets``, ``q_opackets``, ``q_ibytes``, ``q_obytes``,
   ``q_errors``.
