@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright(c) 2018-2019 Pensando Systems, Inc. All rights reserved.
+ * Copyright(c) 2018-2020 Pensando Systems, Inc. All rights reserved.
  */
 
 #include <sys/queue.h>
@@ -41,8 +41,8 @@
 #include <rte_ip.h>
 #include <rte_net.h>
 
+#include "ionic.h"
 #include "ionic_logs.h"
-#include "ionic_mac_api.h"
 #include "ionic_ethdev.h"
 #include "ionic_lif.h"
 #include "ionic_rxtx.h"
@@ -63,58 +63,6 @@ ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->nb_desc = q->num_descs;
 	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
 	qinfo->conf.tx_deferred_start = txq->flags & IONIC_QCQ_F_DEFERRED;
-}
-
-static __rte_always_inline void
-ionic_tx_flush(struct ionic_tx_qcq *txq)
-{
-	struct ionic_cq *cq = &txq->qcq.cq;
-	struct ionic_queue *q = &txq->qcq.q;
-	struct rte_mbuf *txm, *next;
-	struct ionic_txq_comp *cq_desc_base = cq->base;
-	struct ionic_txq_comp *cq_desc;
-	void **info;
-	u_int32_t comp_index = (u_int32_t)-1;
-
-	cq_desc = &cq_desc_base[cq->tail_idx];
-	while (color_match(cq_desc->color, cq->done_color)) {
-		cq->tail_idx = Q_NEXT_TO_SRVC(cq, 1);
-
-		/* Prefetch the next 4 descriptors (not really useful here) */
-		if ((cq->tail_idx & 0x3) == 0)
-			rte_prefetch0(&cq_desc_base[cq->tail_idx]);
-
-		if (cq->tail_idx == 0)
-			cq->done_color = !cq->done_color;
-
-		comp_index = cq_desc->comp_index;
-
-		cq_desc = &cq_desc_base[cq->tail_idx];
-	}
-
-	if (comp_index != (u_int32_t)-1) {
-		while (q->tail_idx != comp_index) {
-			info = IONIC_INFO_PTR(q, q->tail_idx);
-
-			q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
-
-			/* Prefetch the next 4 descriptors */
-			if ((q->tail_idx & 0x3) == 0)
-				/* q desc info */
-				rte_prefetch0(&q->info[q->tail_idx]);
-
-			/*
-			 * Note: you can just use rte_pktmbuf_free,
-			 * but this loop is faster
-			 */
-			txm = info[0];
-			while (txm != NULL) {
-				next = txm->next;
-				rte_pktmbuf_free_seg(txm);
-				txm = next;
-			}
-		}
-	}
 }
 
 void __rte_cold
@@ -152,7 +100,10 @@ ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 
 	ionic_qcq_disable(&txq->qcq);
 
-	ionic_tx_flush(txq);
+	if (txq->flags & IONIC_QCQ_F_SG)
+		ionic_tx_flush_all_sg(txq);
+	else
+		ionic_tx_flush_all(txq);
 
 	return 0;
 }
@@ -345,7 +296,7 @@ ionic_tx_tso_next(struct ionic_tx_qcq *txq, struct ionic_txq_sg_elem **elem)
 	return desc;
 }
 
-static int
+int
 ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 {
 	struct ionic_queue *q = &txq->qcq.q;
@@ -356,7 +307,7 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	rte_iova_t data_iova;
 	uint64_t desc_addr = 0, next_addr;
 	uint16_t desc_len = 0;
-	uint8_t desc_nsge;
+	uint8_t desc_nsge = 0;
 	uint32_t hdrlen;
 	uint32_t mss = txm->tso_segsz;
 	uint32_t frag_left = 0;
@@ -366,7 +317,8 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	uint32_t offset = 0;
 	bool start, done;
 	bool encap;
-	bool has_vlan = !!(txm->ol_flags & RTE_MBUF_F_TX_VLAN);
+	bool has_vlan = !!(txm->ol_flags & PKT_TX_VLAN_PKT);
+	bool use_sgl = !!(txq->flags & IONIC_QCQ_F_SG);
 	uint16_t vlan_tci = txm->vlan_tci;
 	uint64_t ol_flags = txm->ol_flags;
 
@@ -389,48 +341,22 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 		hdrlen = txm->l2_len + txm->l3_len + txm->l4_len;
 	}
 
-	seglen = hdrlen + mss;
-	left = txm->data_len;
-	data_iova = rte_mbuf_data_iova(txm);
-
 	desc = ionic_tx_tso_next(txq, &elem);
+	txm_seg = txm;
 	start = true;
+	seglen = hdrlen + mss;
 
-	/* Chop data up into desc segments */
-
-	while (left > 0) {
-		len = RTE_MIN(seglen, left);
-		frag_left = seglen - len;
-		desc_addr = rte_cpu_to_le_64(data_iova + offset);
-		desc_len = len;
-		desc_nsge = 0;
-		left -= len;
-		offset += len;
-		if (txm->nb_segs > 1 && frag_left > 0)
-			continue;
-		done = (txm->nb_segs == 1 && left == 0);
-		ionic_tx_tso_post(q, desc, txm,
-			desc_addr, desc_nsge, desc_len,
-			hdrlen, mss,
-			encap,
-			vlan_tci, has_vlan,
-			start, done);
-		desc = ionic_tx_tso_next(txq, &elem);
-		start = false;
-		seglen = mss;
-	}
-
-	/* Chop frags into desc segments */
-
-	txm_seg = txm->next;
+	/* Walk the chain of mbufs */
 	while (txm_seg != NULL) {
 		offset = 0;
 		data_iova = rte_mbuf_data_iova(txm_seg);
 		left = txm_seg->data_len;
 
+		/* Split the mbuf data up into multiple descriptors */
 		while (left > 0) {
 			next_addr = rte_cpu_to_le_64(data_iova + offset);
-			if (frag_left > 0) {
+			if (frag_left > 0 && use_sgl) {
+				/* Fill previous descriptor's SGE */
 				len = RTE_MIN(frag_left, left);
 				frag_left -= len;
 				elem->addr = next_addr;
@@ -438,16 +364,19 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 				elem++;
 				desc_nsge++;
 			} else {
-				len = RTE_MIN(mss, left);
-				frag_left = mss - len;
+				/* Fill new descriptor's data field */
+				len = RTE_MIN(seglen, left);
+				frag_left = seglen - len;
 				desc_addr = next_addr;
 				desc_len = len;
 				desc_nsge = 0;
 			}
 			left -= len;
 			offset += len;
-			if (txm_seg->next != NULL && frag_left > 0)
-				continue;
+
+			/* Pack the next mbuf's data into the descriptor */
+			if (txm_seg->next != NULL && frag_left > 0 && use_sgl)
+				break;
 
 			done = (txm_seg->next == NULL && left == 0);
 			ionic_tx_tso_post(q, desc, txm_seg,
@@ -458,6 +387,7 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 				start, done);
 			desc = ionic_tx_tso_next(txq, &elem);
 			start = false;
+			seglen = mss;
 		}
 
 		txm_seg = txm_seg->next;
@@ -466,146 +396,6 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	stats->tso++;
 
 	return 0;
-}
-
-static __rte_always_inline int
-ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
-{
-	struct ionic_queue *q = &txq->qcq.q;
-	struct ionic_txq_desc *desc, *desc_base = q->base;
-	struct ionic_txq_sg_desc_v1 *sg_desc_base = q->sg_base;
-	struct ionic_txq_sg_elem *elem;
-	struct ionic_tx_stats *stats = &txq->stats;
-	struct rte_mbuf *txm_seg;
-	void **info;
-	bool encap;
-	bool has_vlan;
-	uint64_t ol_flags = txm->ol_flags;
-	uint64_t addr;
-	uint8_t opcode = IONIC_TXQ_DESC_OPCODE_CSUM_NONE;
-	uint8_t flags = 0;
-
-	desc = &desc_base[q->head_idx];
-	info = IONIC_INFO_PTR(q, q->head_idx);
-
-	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) &&
-	    (txq->flags & IONIC_QCQ_F_CSUM_L3)) {
-		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
-		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L3;
-	}
-
-	if (((ol_flags & RTE_MBUF_F_TX_TCP_CKSUM) &&
-	     (txq->flags & IONIC_QCQ_F_CSUM_TCP)) ||
-	    ((ol_flags & RTE_MBUF_F_TX_UDP_CKSUM) &&
-	     (txq->flags & IONIC_QCQ_F_CSUM_UDP))) {
-		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
-		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L4;
-	}
-
-	if (opcode == IONIC_TXQ_DESC_OPCODE_CSUM_NONE)
-		stats->no_csum++;
-
-	has_vlan = (ol_flags & RTE_MBUF_F_TX_VLAN);
-	encap = ((ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM) ||
-			(ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM)) &&
-			((ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) ||
-			 (ol_flags & RTE_MBUF_F_TX_OUTER_IPV6));
-
-	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
-	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
-
-	addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm));
-
-	desc->cmd = encode_txq_desc_cmd(opcode, flags, txm->nb_segs - 1, addr);
-	desc->len = txm->data_len;
-	desc->vlan_tci = txm->vlan_tci;
-
-	info[0] = txm;
-
-	elem = sg_desc_base[q->head_idx].elems;
-
-	txm_seg = txm->next;
-	while (txm_seg != NULL) {
-		elem->len = txm_seg->data_len;
-		elem->addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm_seg));
-		elem++;
-		txm_seg = txm_seg->next;
-	}
-
-	q->head_idx = Q_NEXT_TO_POST(q, 1);
-
-	return 0;
-}
-
-uint16_t
-ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
-		uint16_t nb_pkts)
-{
-	struct ionic_tx_qcq *txq = tx_queue;
-	struct ionic_queue *q = &txq->qcq.q;
-	struct ionic_tx_stats *stats = &txq->stats;
-	uint32_t next_q_head_idx;
-	uint32_t bytes_tx = 0;
-	uint16_t nb_avail, nb_tx = 0;
-	int err;
-
-#ifdef IONIC_PREFETCH
-	struct ionic_txq_desc *desc_base = q->base;
-#ifdef IONIC_EMBEDDED
-	rte_prefetch0(&desc_base[q->head_idx]);
-#else
-	if (!(txq->flags & IONIC_QCQ_F_CMB))
-		rte_prefetch0(&desc_base[q->head_idx]);
-#endif
-	rte_prefetch0(IONIC_INFO_PTR(q, q->head_idx));
-
-	if (tx_pkts) {
-		rte_mbuf_prefetch_part1(tx_pkts[0]);
-		rte_mbuf_prefetch_part2(tx_pkts[0]);
-	}
-#endif
-
-	if (unlikely(ionic_q_space_avail(q) < txq->free_thresh)) {
-		/* Cleaning old buffers */
-		ionic_tx_flush(txq);
-	}
-
-	nb_avail = ionic_q_space_avail(q);
-	if (unlikely(nb_avail < nb_pkts)) {
-		stats->stop += nb_pkts - nb_avail;
-		nb_pkts = nb_avail;
-	}
-
-	while (nb_tx < nb_pkts) {
-		next_q_head_idx = Q_NEXT_TO_POST(q, 1);
-		if ((next_q_head_idx & 0x3) == 0) {
-			struct ionic_txq_desc *desc_base = q->base;
-			rte_prefetch0(&desc_base[next_q_head_idx]);
-			rte_prefetch0(&q->info[next_q_head_idx]);
-		}
-
-		if (tx_pkts[nb_tx]->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
-			err = ionic_tx_tso(txq, tx_pkts[nb_tx]);
-		else
-			err = ionic_tx(txq, tx_pkts[nb_tx]);
-		if (err) {
-			stats->drop += nb_pkts - nb_tx;
-			break;
-		}
-
-		bytes_tx += tx_pkts[nb_tx]->pkt_len;
-		nb_tx++;
-	}
-
-	if (nb_tx > 0) {
-		rte_wmb();
-		ionic_q_flush(q);
-	}
-
-	stats->packets += nb_tx;
-	stats->bytes += bytes_tx;
-
-	return nb_tx;
 }
 
 /*********************************************************************
@@ -788,252 +578,117 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static __rte_always_inline void
-ionic_rx_clean(struct ionic_rx_qcq *rxq,
-		uint32_t q_desc_index, uint32_t cq_desc_index,
-		void *service_cb_arg)
+#define IONIC_CSUM_FLAG_MASK (IONIC_RXQ_COMP_CSUM_F_VLAN - 1)
+const uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK]
+		__rte_cache_aligned = {
+	/* IP_BAD set */
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD] = PKT_RX_IP_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_TCP_OK] =
+			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_TCP_BAD] =
+			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_UDP_OK] =
+			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_UDP_BAD] =
+			PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
+	/* IP_OK set */
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK] = PKT_RX_IP_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_TCP_OK] =
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_TCP_BAD] =
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_UDP_OK] =
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_IP_OK | IONIC_RXQ_COMP_CSUM_F_UDP_BAD] =
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD,
+	/* No IP flag set */
+	[IONIC_RXQ_COMP_CSUM_F_TCP_OK] = PKT_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_TCP_BAD] = PKT_RX_L4_CKSUM_BAD,
+	[IONIC_RXQ_COMP_CSUM_F_UDP_OK] = PKT_RX_L4_CKSUM_GOOD,
+	[IONIC_RXQ_COMP_CSUM_F_UDP_BAD] = PKT_RX_L4_CKSUM_BAD,
+};
+
+/* RTE_PTYPE_UNKNOWN is 0x0 */
+const uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK]
+		__rte_cache_aligned = {
+	[IONIC_PKT_TYPE_NON_IP]   = RTE_PTYPE_UNKNOWN,
+	[IONIC_PKT_TYPE_IPV4]     =
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+	[IONIC_PKT_TYPE_IPV4_TCP] =
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_TCP,
+	[IONIC_PKT_TYPE_IPV4_UDP] =
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_L4_UDP,
+	[IONIC_PKT_TYPE_IPV6]     =
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+	[IONIC_PKT_TYPE_IPV6_TCP] =
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_TCP,
+	[IONIC_PKT_TYPE_IPV6_UDP] =
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_L4_UDP,
+	[IONIC_PKT_TYPE_ENCAP_NON_IP] = RTE_PTYPE_UNKNOWN,
+	[IONIC_PKT_TYPE_ENCAP_IPV4] =
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+	[IONIC_PKT_TYPE_ENCAP_IPV4_TCP] =
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_TCP,
+	[IONIC_PKT_TYPE_ENCAP_IPV4_UDP] =
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_UDP,
+	[IONIC_PKT_TYPE_ENCAP_IPV6] =
+		RTE_PTYPE_L2_ETHER | RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+	[IONIC_PKT_TYPE_ENCAP_IPV6_TCP] =
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_TCP,
+	[IONIC_PKT_TYPE_ENCAP_IPV6_UDP] =
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_UDP,
+};
+
+const uint32_t *
+ionic_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 {
-	struct ionic_queue *q = &rxq->qcq.q;
-	struct ionic_cq *cq = &rxq->qcq.cq;
-	struct ionic_rxq_comp *cq_desc_base = cq->base;
-	struct ionic_rxq_comp *cq_desc = &cq_desc_base[cq_desc_index];
-	struct rte_mbuf *rxm, *rxm_seg;
-	uint32_t max_frame_size =
-		rxq->qcq.lif->eth_dev->data->mtu + RTE_ETHER_HDR_LEN;
-	uint64_t pkt_flags = 0;
-	uint32_t pkt_type;
-	struct ionic_rx_stats *stats = &rxq->stats;
-	struct ionic_rx_service *recv_args = (struct ionic_rx_service *)
-		service_cb_arg;
-	uint32_t buf_size = (uint16_t)
-		(rte_pktmbuf_data_room_size(rxq->mb_pool) -
-		RTE_PKTMBUF_HEADROOM);
-	uint32_t left;
-	void **info;
+	/* See ionic_ptype_table[] */
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_TIMESYNC,
+		RTE_PTYPE_L2_ETHER_LLDP,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
 
-	assert(q_desc_index == cq_desc->comp_index);
-
-	info = IONIC_INFO_PTR(q, cq_desc->comp_index);
-
-	rxm = info[0];
-
-	if (!recv_args) {
-		stats->no_cb_arg++;
-		/* Flush */
-		rte_pktmbuf_free(rxm);
-		/*
-		 * Note: rte_mempool_put is faster with no segs
-		 * rte_mempool_put(rxq->mb_pool, rxm);
-		 */
-		return;
-	}
-
-	if (cq_desc->status) {
-		stats->bad_cq_status++;
-		ionic_rx_recycle(q, q_desc_index, rxm);
-		return;
-	}
-
-	if (recv_args->nb_rx >= recv_args->nb_pkts) {
-		stats->no_room++;
-		ionic_rx_recycle(q, q_desc_index, rxm);
-		return;
-	}
-
-	if (cq_desc->len > max_frame_size ||
-			cq_desc->len == 0) {
-		stats->bad_len++;
-		ionic_rx_recycle(q, q_desc_index, rxm);
-		return;
-	}
-
-	rxm->data_off = RTE_PKTMBUF_HEADROOM;
-	rte_prefetch1((char *)rxm->buf_addr + rxm->data_off);
-	rxm->nb_segs = 1; /* cq_desc->num_sg_elems */
-	rxm->pkt_len = cq_desc->len;
-	rxm->port = rxq->qcq.lif->port_id;
-
-	left = cq_desc->len;
-
-	rxm->data_len = RTE_MIN(buf_size, left);
-	left -= rxm->data_len;
-
-	rxm_seg = rxm->next;
-	while (rxm_seg && left) {
-		rxm_seg->data_len = RTE_MIN(buf_size, left);
-		left -= rxm_seg->data_len;
-
-		rxm_seg = rxm_seg->next;
-		rxm->nb_segs++;
-	}
-
-	/* RSS */
-	pkt_flags |= RTE_MBUF_F_RX_RSS_HASH;
-	rxm->hash.rss = cq_desc->rss_hash;
-
-	/* Vlan Strip */
-	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_VLAN) {
-		pkt_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
-		rxm->vlan_tci = cq_desc->vlan_tci;
-	}
-
-	/* Checksum */
-	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_CALC) {
-		if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_IP_OK)
-			pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
-		else if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_IP_BAD)
-			pkt_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
-
-		if ((cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_TCP_OK) ||
-			(cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_UDP_OK))
-			pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
-		else if ((cq_desc->csum_flags &
-				IONIC_RXQ_COMP_CSUM_F_TCP_BAD) ||
-				(cq_desc->csum_flags &
-				IONIC_RXQ_COMP_CSUM_F_UDP_BAD))
-			pkt_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
-	}
-
-	rxm->ol_flags = pkt_flags;
-
-	/* Packet Type */
-	switch (cq_desc->pkt_type_color & IONIC_RXQ_COMP_PKT_TYPE_MASK) {
-	case IONIC_PKT_TYPE_IPV4:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4;
-		break;
-	case IONIC_PKT_TYPE_IPV6:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6;
-		break;
-	case IONIC_PKT_TYPE_IPV4_TCP:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 |
-			RTE_PTYPE_L4_TCP;
-		break;
-	case IONIC_PKT_TYPE_IPV6_TCP:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 |
-			RTE_PTYPE_L4_TCP;
-		break;
-	case IONIC_PKT_TYPE_IPV4_UDP:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4 |
-			RTE_PTYPE_L4_UDP;
-		break;
-	case IONIC_PKT_TYPE_IPV6_UDP:
-		pkt_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6 |
-			RTE_PTYPE_L4_UDP;
-		break;
-	default:
-		{
-			struct rte_ether_hdr *eth_h = rte_pktmbuf_mtod(rxm,
-				struct rte_ether_hdr *);
-			uint16_t ether_type = eth_h->ether_type;
-			if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP))
-				pkt_type = RTE_PTYPE_L2_ETHER_ARP;
-			else
-				pkt_type = RTE_PTYPE_UNKNOWN;
-			stats->mtods++;
-			break;
-		}
-	}
-
-	rxm->packet_type = pkt_type;
-
-	recv_args->rx_pkts[recv_args->nb_rx] = rxm;
-	recv_args->nb_rx++;
-
-	stats->packets++;
-	stats->bytes += rxm->pkt_len;
+	return ptypes;
 }
 
-static void
-ionic_rx_recycle(struct ionic_queue *q, uint32_t q_desc_index,
-		 struct rte_mbuf *mbuf)
-{
-	struct ionic_rxq_desc *desc_base = q->base;
-	struct ionic_rxq_desc *old = &desc_base[q_desc_index];
-	struct ionic_rxq_desc *new = &desc_base[q->head_idx];
-
-	new->addr = old->addr;
-	new->len = old->len;
-
-	q->info[q->head_idx] = mbuf;
-
-	q->head_idx = Q_NEXT_TO_POST(q, 1);
-
-	ionic_q_flush(q);
-}
-
-static __rte_always_inline int
-ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
+/*
+ * Perform one-time initialization of descriptor fields
+ * which will not change for the life of the queue.
+ */
+static void __rte_cold
+ionic_rx_init_descriptors(struct ionic_rx_qcq *rxq)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
 	struct ionic_rxq_desc *desc, *desc_base = q->base;
 	struct ionic_rxq_sg_desc *sg_desc, *sg_desc_base = q->sg_base;
-	struct ionic_rxq_sg_elem *elem;
-	void **info;
-	rte_iova_t dma_addr;
-	uint32_t i, j, nsegs, buf_size, size;
+	uint32_t i, j;
+	uint8_t opcode;
 
-	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
-		RTE_PKTMBUF_HEADROOM);
+	opcode = (q->num_segs > 1) ?
+		IONIC_RXQ_DESC_OPCODE_SG : IONIC_RXQ_DESC_OPCODE_SIMPLE;
 
-	/* Initialize software ring entries */
-	for (i = ionic_q_space_avail(q); i; i--) {
-		struct rte_mbuf *rxm = rte_mbuf_raw_alloc(rxq->mb_pool);
-		struct rte_mbuf *prev_rxm_seg;
+	for (i = 0; i < q->num_descs; i++) {
+		desc = &desc_base[i];
+		desc->len = rte_cpu_to_le_16(rxq->hdr_seg_size);
+		desc->opcode = opcode;
 
-		if (rxm == NULL) {
-			IONIC_PRINT(ERR, "RX mbuf alloc failed");
-			return -ENOMEM;
-		}
-
-		info = IONIC_INFO_PTR(q, q->head_idx);
-
-		nsegs = (len + buf_size - 1) / buf_size;
-
-		desc = &desc_base[q->head_idx];
-		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(rxm));
-		desc->addr = dma_addr;
-		desc->len = buf_size;
-		size = buf_size;
-		desc->opcode = (nsegs > 1) ? IONIC_RXQ_DESC_OPCODE_SG :
-			IONIC_RXQ_DESC_OPCODE_SIMPLE;
-		rxm->next = NULL;
-
-		prev_rxm_seg = rxm;
-		sg_desc = &sg_desc_base[q->head_idx];
-		elem = sg_desc->elems;
-		for (j = 0; j < nsegs - 1 && j < IONIC_RX_MAX_SG_ELEMS; j++) {
-			struct rte_mbuf *rxm_seg;
-			rte_iova_t data_iova;
-
-			rxm_seg = rte_mbuf_raw_alloc(rxq->mb_pool);
-			if (rxm_seg == NULL) {
-				IONIC_PRINT(ERR, "RX mbuf alloc failed");
-				return -ENOMEM;
-			}
-
-			data_iova = rte_mbuf_data_iova(rxm_seg);
-			dma_addr = rte_cpu_to_le_64(data_iova);
-			elem->addr = dma_addr;
-			elem->len = buf_size;
-			size += buf_size;
-			elem++;
-			rxm_seg->next = NULL;
-			prev_rxm_seg->next = rxm_seg;
-			prev_rxm_seg = rxm_seg;
-		}
-
-		if (size < len)
-			IONIC_PRINT(ERR, "Rx SG size is not sufficient (%d < %d)",
-				size, len);
-
-		info[0] = rxm;
-
-		q->head_idx = Q_NEXT_TO_POST(q, 1);
+		sg_desc = &sg_desc_base[i];
+		for (j = 0; j < q->num_segs - 1u; j++)
+			sg_desc->elems[j].len =
+				rte_cpu_to_le_16(rxq->seg_size);
 	}
-
-	ionic_q_flush(q);
-
-	return 0;
 }
 
 /*
@@ -1066,65 +721,19 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 		ionic_qcq_enable(&rxq->qcq);
 	}
 
-	/* Allocate buffers for descriptor rings */
-	if (ionic_rx_fill(rxq, frame_size) != 0) {
-		IONIC_PRINT(ERR, "Could not alloc mbuf for queue:%d",
-			rx_queue_id);
+	/* Allocate buffers for descriptor ring */
+	if (rxq->flags & IONIC_QCQ_F_SG)
+		err = ionic_rx_fill_sg(rxq);
+	else
+		err = ionic_rx_fill(rxq);
+	if (err != 0) {
+		IONIC_PRINT(ERR, "Could not fill queue %d", rx_queue_id);
 		return -1;
 	}
 
 	rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
-}
-
-static __rte_always_inline void
-ionic_rxq_service(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
-		void *service_cb_arg)
-{
-	struct ionic_cq *cq = &rxq->qcq.cq;
-	struct ionic_queue *q = &rxq->qcq.q;
-	struct ionic_rxq_comp *cq_desc, *cq_desc_base = cq->base;
-	bool more;
-	uint32_t curr_q_tail_idx, curr_cq_tail_idx;
-	uint32_t work_done = 0;
-
-	if (work_to_do == 0)
-		return;
-
-	cq_desc = &cq_desc_base[cq->tail_idx];
-	while (color_match(cq_desc->pkt_type_color, cq->done_color)) {
-		curr_cq_tail_idx = cq->tail_idx;
-		cq->tail_idx = Q_NEXT_TO_SRVC(cq, 1);
-
-		if (cq->tail_idx == 0)
-			cq->done_color = !cq->done_color;
-
-		/* Prefetch the next 4 descriptors */
-		if ((cq->tail_idx & 0x3) == 0)
-			rte_prefetch0(&cq_desc_base[cq->tail_idx]);
-
-		do {
-			more = (q->tail_idx != cq_desc->comp_index);
-
-			curr_q_tail_idx = q->tail_idx;
-			q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
-
-			/* Prefetch the next 4 descriptors */
-			if ((q->tail_idx & 0x3) == 0)
-				/* q desc info */
-				rte_prefetch0(&q->info[q->tail_idx]);
-
-			ionic_rx_clean(rxq, curr_q_tail_idx, curr_cq_tail_idx,
-				service_cb_arg);
-
-		} while (more);
-
-		if (++work_done == work_to_do)
-			break;
-
-		cq_desc = &cq_desc_base[cq->tail_idx];
-	}
 }
 
 /*
@@ -1144,24 +753,29 @@ ionic_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 
 	ionic_qcq_disable(&rxq->qcq);
 
-	/* Flush */
-	ionic_rxq_service(rxq, -1, NULL);
+	if (rxq->flags & IONIC_QCQ_F_SG)
+		ionic_rx_flush_all_sg(rxq);
+	else
+		ionic_rx_flush_all(rxq);
 
 	return 0;
 }
 
-uint16_t
-ionic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-		uint16_t nb_pkts)
+int
+ionic_dev_rx_descriptor_done(void *rx_queue, uint16_t offset)
+{
+	return ionic_dev_rx_descriptor_status(rx_queue, offset) ==
+		RTE_ETH_RX_DESC_DONE;
+}
+
+int
+ionic_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
 	struct ionic_rx_qcq *rxq = rx_queue;
-	uint32_t frame_size =
-		rxq->qcq.lif->eth_dev->data->mtu + RTE_ETHER_HDR_LEN;
-	struct ionic_rx_service service_cb_arg;
-
-	service_cb_arg.rx_pkts = rx_pkts;
-	service_cb_arg.nb_pkts = nb_pkts;
-	service_cb_arg.nb_rx = 0;
+	struct ionic_qcq *qcq = &rxq->qcq;
+	struct ionic_rxq_comp *cq_desc;
+	uint16_t mask, head, tail, pos;
+	bool done_color;
 
 	ionic_rxq_service(rxq, nb_pkts, &service_cb_arg);
 

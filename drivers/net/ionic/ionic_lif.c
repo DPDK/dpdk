@@ -728,10 +728,34 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t nrxq_descs, struct ionic_rx_qcq **rxq_out)
 {
 	struct ionic_rx_qcq *rxq;
-	uint16_t flags;
+	uint16_t flags = 0, seg_size, hdr_seg_size, num_segs, num_segs_fw = 1;
 	int err;
 
-	flags = IONIC_QCQ_F_SG;
+	if (lif->features & IONIC_ETH_HW_RX_SG) {
+		flags |= IONIC_QCQ_F_SG;
+		num_segs_fw = IONIC_RX_MAX_SG_ELEMS + 1;
+	}
+	if (lif->state & IONIC_LIF_F_Q_IN_CMB)
+		flags |= IONIC_QCQ_F_CMB;
+
+	/* This must be run before we can calculate buf sizes */
+	ionic_lif_set_rx_buf_size(lif);
+
+	/* Calculate how many fragment pointers will be stored in queue */
+	seg_size = rte_pktmbuf_data_room_size(mb_pool);
+	hdr_seg_size = seg_size - RTE_PKTMBUF_HEADROOM;
+
+	num_segs = (lif->rx_buf_size + RTE_PKTMBUF_HEADROOM - 1) /
+				seg_size + 1;
+
+	IONIC_PRINT(DEBUG, "rxq %u rx_buf_size %u seg_size %u num_segs %u",
+		index, lif->rx_buf_size, seg_size, num_segs);
+	if (num_segs > num_segs_fw) {
+		IONIC_PRINT(ERR, "Rx mbuf size insufficient (%d > %d avail)",
+			num_segs, num_segs_fw);
+		return -EINVAL;
+	}
+
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_RXQ,
 		sizeof(struct ionic_rx_qcq),
@@ -760,12 +784,17 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t ntxq_descs, struct ionic_tx_qcq **txq_out)
 {
 	struct ionic_tx_qcq *txq;
-	uint16_t flags, num_segs_fw;
+	uint16_t flags = 0, num_segs_fw = 1;
 	int err;
 
-	flags = IONIC_QCQ_F_SG;
+	if (lif->features & IONIC_ETH_HW_TX_SG) {
+		flags |= IONIC_QCQ_F_SG;
+		num_segs_fw = IONIC_TX_MAX_SG_ELEMS_V1 + 1;
+	}
+	if (lif->state & IONIC_LIF_F_Q_IN_CMB)
+		flags |= IONIC_QCQ_F_CMB;
 
-	num_segs_fw = IONIC_TX_MAX_SG_ELEMS_V1 + 1;
+	IONIC_PRINT(DEBUG, "txq %u num_segs %u", index, num_segs_fw);
 
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_TXQ,
@@ -1482,8 +1511,7 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 			.type = q->type,
 			.ver = lif->qtype_info[q->type].version,
 			.index = rte_cpu_to_le_32(q->index),
-			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_SG |
-						IONIC_QINIT_F_ENA),
+			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_ENA),
 			.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
 			.ring_size = rte_log2_u32(q->num_descs),
 			.ring_base = rte_cpu_to_le_64(q->base_pa),
@@ -1492,6 +1520,11 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 		},
 	};
 	int err;
+
+	if (txq->flags & IONIC_QCQ_F_SG)
+		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_SG);
+	if (txq->flags & IONIC_QCQ_F_CMB)
+		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_CMB);
 
 	IONIC_PRINT(DEBUG, "txq_init.index %d", q->index);
 	IONIC_PRINT(DEBUG, "txq_init.ring_base 0x%" PRIx64 "", q->base_pa);
@@ -1530,8 +1563,7 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 			.type = q->type,
 			.ver = lif->qtype_info[q->type].version,
 			.index = rte_cpu_to_le_32(q->index),
-			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_SG |
-						IONIC_QINIT_F_ENA),
+			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_ENA),
 			.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
 			.ring_size = rte_log2_u32(q->num_descs),
 			.ring_base = rte_cpu_to_le_64(q->base_pa),
@@ -1540,6 +1572,11 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 		},
 	};
 	int err;
+
+	if (rxq->flags & IONIC_QCQ_F_SG)
+		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_SG);
+	if (rxq->flags & IONIC_QCQ_F_CMB)
+		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_CMB);
 
 	IONIC_PRINT(DEBUG, "rxq_init.index %d", q->index);
 	IONIC_PRINT(DEBUG, "rxq_init.ring_base 0x%" PRIx64 "", q->base_pa);
