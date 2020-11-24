@@ -168,9 +168,8 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
 static void *
 mlx5_alloc_verbs_buf(size_t size, void *data)
 {
-	struct mlx5_priv *priv = data;
+	struct mlx5_dev_ctx_shared *sh = data;
 	void *ret;
-	unsigned int socket = SOCKET_ID_ANY;
 	size_t alignment = rte_mem_page_size();
 	if (alignment == (size_t)-1) {
 		DRV_LOG(ERR, "Failed to get mem page size");
@@ -178,18 +177,8 @@ mlx5_alloc_verbs_buf(size_t size, void *data)
 		return NULL;
 	}
 
-	if (priv->verbs_alloc_ctx.type == MLX5_VERBS_ALLOC_TYPE_TX_QUEUE) {
-		const struct mlx5_txq_ctrl *ctrl = priv->verbs_alloc_ctx.obj;
-
-		socket = ctrl->socket;
-	} else if (priv->verbs_alloc_ctx.type ==
-		   MLX5_VERBS_ALLOC_TYPE_RX_QUEUE) {
-		const struct mlx5_rxq_ctrl *ctrl = priv->verbs_alloc_ctx.obj;
-
-		socket = ctrl->socket;
-	}
 	MLX5_ASSERT(data != NULL);
-	ret = mlx5_malloc(0, size, alignment, socket);
+	ret = mlx5_malloc(0, size, alignment, sh->numa_node);
 	if (!ret && size)
 		rte_errno = ENOMEM;
 	return ret;
@@ -1459,7 +1448,7 @@ err_secondary:
 			(void *)((uintptr_t)&(struct mlx5dv_ctx_allocators){
 				.alloc = &mlx5_alloc_verbs_buf,
 				.free = &mlx5_free_verbs_buf,
-				.data = priv,
+				.data = sh,
 			}));
 	/* Bring Ethernet device up. */
 	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up",
@@ -2323,6 +2312,16 @@ mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
 			return err;
 		DRV_LOG(DEBUG, "DevX is NOT supported");
 		err = 0;
+	}
+	if (!err && sh->ctx) {
+		/* Hint libmlx5 to use PMD allocator for data plane resources */
+		mlx5_glue->dv_set_context_attr(sh->ctx,
+			MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
+			(void *)((uintptr_t)&(struct mlx5dv_ctx_allocators){
+				.alloc = &mlx5_alloc_verbs_buf,
+				.free = &mlx5_free_verbs_buf,
+				.data = sh,
+			}));
 	}
 	return err;
 }
