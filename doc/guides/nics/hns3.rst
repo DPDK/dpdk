@@ -29,13 +29,14 @@ Features of the HNS3 PMD are:
 - QinQ inserting
 - DCB
 - Scattered and gather for TX and RX
-- Flow director
+- Vector Poll mode driver
 - Dump register
 - SR-IOV VF
 - Multi-process
 - MAC/VLAN filter
 - MTU update
 - NUMA support
+- Generic flow API
 
 Prerequisites
 -------------
