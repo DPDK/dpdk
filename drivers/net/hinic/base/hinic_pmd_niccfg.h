@@ -909,8 +909,6 @@ int hinic_set_link_status_follow(void *hwdev,
 
 int hinic_get_link_mode(void *hwdev, u32 *supported, u32 *advertised);
 
-int hinic_set_xsfp_tx_status(void *hwdev, bool enable);
-
 int hinic_flush_qp_res(void *hwdev);
 
 int hinic_init_function_table(void *hwdev, u16 rx_buf_sz);

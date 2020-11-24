@@ -939,13 +939,6 @@ static int hinic_dev_set_link_up(struct rte_eth_dev *dev)
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	int ret;
 
-	ret = hinic_set_xsfp_tx_status(nic_dev->hwdev, true);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "Enable port tx xsfp failed, dev_name: %s, port_id: %d",
-			    nic_dev->proc_dev_name, dev->data->port_id);
-		return ret;
-	}
-
 	/* link status follow phy port status, up will open pma */
 	ret = hinic_set_port_enable(nic_dev->hwdev, true);
 	if (ret)
@@ -968,13 +961,6 @@ static int hinic_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	int ret;
-
-	ret = hinic_set_xsfp_tx_status(nic_dev->hwdev, false);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "Disable port tx xsfp failed, dev_name: %s, port_id: %d",
-			    nic_dev->proc_dev_name, dev->data->port_id);
-		return ret;
-	}
 
 	/* link status follow phy port status, up will close pma */
 	ret = hinic_set_port_enable(nic_dev->hwdev, false);
