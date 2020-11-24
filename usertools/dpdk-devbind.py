@@ -634,7 +634,8 @@ To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
     parser.add_argument(
         '--status-dev',
         help="Print the status of given device group.",
-        choices=['net', 'baseband', 'crypto', 'event', 'mempool', 'compress'])
+        choices=['baseband', 'compress', 'crypto', 'event',
+                'mempool', 'misc', 'net', 'regex'])
     bind_group = parser.add_mutually_exclusive_group()
     bind_group.add_argument(
         '-b',
