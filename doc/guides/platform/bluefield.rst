@@ -11,15 +11,14 @@ and common offload HW drivers of **Mellanox BlueField** family SoC.
 Supported BlueField family SoCs
 -------------------------------
 
-- `BlueField <http://www.mellanox.com/page/products_dyn?product_family=256&mtag=soc_overview>`_
+- `BlueField <https://docs.mellanox.com/category/bluefieldsnic>`_
 
 
 Supported BlueField Platforms
 -----------------------------
 
-- `BlueField SmartNIC <http://www.mellanox.com/page/products_dyn?product_family=275&mtag=bluefield_smart_nic>`_
-- `BlueField Reference Platforms <http://www.mellanox.com/page/products_dyn?product_family=286&mtag=bluefield_platforms>`_
-- `BlueField Controller Card <http://www.mellanox.com/page/products_dyn?product_family=288&mtag=bluefield_controller_card>`_
+- `BlueField-1 <https://docs.mellanox.com/display/bluefieldsniceth/Introduction>`_
+- `BlueField-2 <https://docs.mellanox.com/display/BlueField2DPUENUG/Introduction>`_
 
 
 Common Offload HW Drivers
@@ -42,10 +41,11 @@ Common Offload HW Drivers
 Steps To Setup Platform
 -----------------------
 
-Toolchains, OS and drivers can be downloaded and installed individually from the
-Web. But it is recommended to follow instructions at
-`Mellanox BlueField Software Website
-<http://www.mellanox.com/page/products_dyn?product_family=279&mtag=bluefield_software>`_.
+Toolchains, OS and drivers can be downloaded and installed individually
+from the web, but it is recommended to follow instructions at:
+
+- `Mellanox BlueField-1 Software Website <https://docs.mellanox.com/display/BlueFieldSWv31011424/SmartNIC+Bring-Up+and+Driver+Installation>`_
+- `Mellanox BlueField-2 Software Website <https://docs.mellanox.com/display/NVIDIABlueField2DPUQSG#NVIDIABlueField2DPUSoftwareQuickStartGuide-Post-installationProcedurePost-installationProcedure>`_
 
 
 Compile DPDK
