@@ -503,7 +503,7 @@ eal_plugins_init(void)
 	 * (Using dlopen with NOLOAD flag on EAL, will return NULL if the EAL
 	 * shared library is not already loaded i.e. it's statically linked.)
 	 */
-	if (dlopen("librte_eal.so", RTLD_LAZY | RTLD_NOLOAD) != NULL &&
+	if (dlopen("librte_eal.so."ABI_VERSION, RTLD_LAZY | RTLD_NOLOAD) != NULL &&
 			*default_solib_dir != '\0' &&
 			stat(default_solib_dir, &sb) == 0 &&
 			S_ISDIR(sb.st_mode))

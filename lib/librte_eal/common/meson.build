@@ -3,6 +3,8 @@
 
 includes += include_directories('.')
 
+cflags += [ '-DABI_VERSION="@0@"'.format(abi_version) ]
+
 if is_windows
 	sources += files(
 		'eal_common_bus.c',
