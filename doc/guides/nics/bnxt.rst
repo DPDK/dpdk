@@ -661,6 +661,8 @@ optimizes flow insertions and deletions.
 This is a tech preview feature, and is disabled by default. It can be enabled
 using bnxt devargs. For ex: "-a 0000:0d:00.0,host-based-truflow=1”.
 
+This feature is currently supported on Whitney+ and Stingray devices.
+
 Notes
 -----
 
