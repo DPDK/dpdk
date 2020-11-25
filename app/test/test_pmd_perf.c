@@ -606,10 +606,10 @@ timeout:
 static int
 exec_burst(uint32_t flags, int lcore)
 {
-	unsigned i, portid, nb_tx = 0;
+	unsigned int portid, nb_tx = 0;
 	struct lcore_conf *conf;
 	uint32_t pkt_per_port;
-	int num, idx = 0;
+	int num, i, idx = 0;
 	int diff_tsc;
 
 	conf = &lcore_conf[lcore];
@@ -628,16 +628,14 @@ exec_burst(uint32_t flags, int lcore)
 		rte_atomic64_set(&start, 1);
 
 	/* start xmit */
+	i = 0;
 	while (num) {
 		nb_tx = RTE_MIN(MAX_PKT_BURST, num);
-		for (i = 0; i < conf->nb_ports; i++) {
-			portid = conf->portlist[i];
-			nb_tx = rte_eth_tx_burst(portid, 0,
-					 &tx_burst[idx], nb_tx);
-			idx += nb_tx;
-			num -= nb_tx;
-		}
-
+		portid = conf->portlist[i];
+		nb_tx = rte_eth_tx_burst(portid, 0, &tx_burst[idx], nb_tx);
+		idx += nb_tx;
+		num -= nb_tx;
+		i = (i >= conf->nb_ports - 1) ? 0 : (i + 1);
 	}
 
 	sleep(5);
