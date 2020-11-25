@@ -7423,6 +7423,7 @@ mlx5_flow_tunnel_free(struct rte_eth_dev *dev,
 
 	DRV_LOG(DEBUG, "port %u release pmd tunnel id=0x%x",
 		dev->data->port_id, tunnel->tunnel_id);
+	LIST_REMOVE(tunnel, chain);
 	mlx5_hlist_destroy(tunnel->groups);
 	ipool = priv->sh->ipool[MLX5_IPOOL_TUNNEL_ID];
 	mlx5_ipool_free(ipool, tunnel->tunnel_id);
