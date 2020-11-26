@@ -2734,6 +2734,9 @@ stop_port(portid_t pid)
 			}
 		}
 
+		if (port->flow_list)
+			port_flow_flush(pi);
+
 		if (rte_eth_dev_stop(pi) != 0)
 			RTE_LOG(ERR, EAL, "rte_eth_dev_stop failed for port %u\n",
 				pi);
