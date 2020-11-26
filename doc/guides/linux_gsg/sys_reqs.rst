@@ -92,6 +92,19 @@ found in that driver's documentation in the relevant DPDK guide document,
 e.g. :doc:`../nics/index`
 
 
+Building DPDK Applications
+--------------------------
+
+The tool pkg-config or pkgconf, integrated in most build systems,
+must be used to parse options and dependencies from libdpdk.pc.
+
+.. note::
+
+   pkg-config 0.27, supplied with RHEL-7,
+   does not process the Libs.private section correctly,
+   resulting in statically linked applications not being linked properly.
+
+
 Running DPDK Applications
 -------------------------
 
