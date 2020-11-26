@@ -145,12 +145,10 @@ add_set_meta(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static struct rte_flow_action_set_meta meta_action;
-
-	do {
-		meta_action.data = RTE_BE32(META_DATA);
-		meta_action.mask = RTE_BE32(0xffffffff);
-	} while (0);
+	static struct rte_flow_action_set_meta meta_action = {
+		.data = RTE_BE32(META_DATA),
+		.mask = RTE_BE32(0xffffffff),
+	};
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_SET_META;
 	actions[actions_counter].conf = &meta_action;
@@ -161,13 +159,11 @@ add_set_tag(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static struct rte_flow_action_set_tag tag_action;
-
-	do {
-		tag_action.data = RTE_BE32(META_DATA);
-		tag_action.mask = RTE_BE32(0xffffffff);
-		tag_action.index = TAG_INDEX;
-	} while (0);
+	static struct rte_flow_action_set_tag tag_action = {
+		.data = RTE_BE32(META_DATA),
+		.mask = RTE_BE32(0xffffffff),
+		.index = TAG_INDEX,
+	};
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_SET_TAG;
 	actions[actions_counter].conf = &tag_action;
@@ -178,11 +174,9 @@ add_port_id(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static struct rte_flow_action_port_id port_id;
-
-	do {
-		port_id.id = PORT_ID_DST;
-	} while (0);
+	static struct rte_flow_action_port_id port_id = {
+		.id = PORT_ID_DST,
+	};
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_PORT_ID;
 	actions[actions_counter].conf = &port_id;
