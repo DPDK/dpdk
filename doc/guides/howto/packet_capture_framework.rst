@@ -19,7 +19,7 @@ Introduction
 
 The :ref:`librte_pdump <pdump_library>` library provides the APIs required to
 allow users to initialize the packet capture framework and to enable or
-disable packet capture. The library works on a client/server model and its
+disable packet capture. The library works on a multi process communication model and its
 usage is recommended for debugging purposes.
 
 The :ref:`dpdk-pdump <pdump_tool>` tool is developed based on the
@@ -28,13 +28,13 @@ of enabling or disabling packet capture on DPDK ports. The ``dpdk-pdump`` tool
 provides command-line options with which users can request enabling or
 disabling of the packet capture on DPDK ports.
 
-The application which initializes the packet capture framework will act as a
-server and the application that enables or disables the packet capture will
-act as a client. The server sends the Rx and Tx packets from the DPDK ports
-to the client.
+The application which initializes the packet capture framework will be a primary process
+and the application that enables or disables the packet capture will
+be a secondary process. The primary process sends the Rx and Tx packets from the DPDK ports
+to the secondary process.
 
 In DPDK the ``testpmd`` application can be used to initialize the packet
-capture framework and act as a server, and the ``dpdk-pdump`` tool acts as a
+capture framework and acts as a server, and the ``dpdk-pdump`` tool acts as a
 client. To view Rx or Tx packets of ``testpmd``, the application should be
 launched first, and then the ``dpdk-pdump`` tool. Packets from ``testpmd``
 will be sent to the tool, which then sends them on to the Pcap PMD device and
