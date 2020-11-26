@@ -58,8 +58,6 @@ Compilation of the DPDK
 
     * ``libnuma-dev`` in Debian/Ubuntu;
 
-*   Linux kernel headers or sources required to build kernel modules.
-
 .. note::
 
    Please ensure that the latest patches are applied to third party libraries
