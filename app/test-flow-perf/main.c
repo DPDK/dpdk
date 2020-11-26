@@ -889,7 +889,7 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 
 	rules_count_per_core = rules_count / mc_pool.cores_count;
 
-	start_batch = clock();
+	start_batch = rte_rdtsc();
 	for (i = 0; i < (uint32_t) rules_count_per_core; i++) {
 		if (flows_list[i] == 0)
 			break;
@@ -907,12 +907,12 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 		 * for this batch.
 		 */
 		if (!((i + 1) % rules_batch)) {
-			end_batch = clock();
+			end_batch = rte_rdtsc();
 			delta = (double) (end_batch - start_batch);
 			rules_batch_idx = ((i + 1) / rules_batch) - 1;
-			cpu_time_per_batch[rules_batch_idx] = delta / CLOCKS_PER_SEC;
+			cpu_time_per_batch[rules_batch_idx] = delta / rte_get_tsc_hz();
 			cpu_time_used += cpu_time_per_batch[rules_batch_idx];
-			start_batch = clock();
+			start_batch = rte_rdtsc();
 		}
 	}
 
@@ -985,7 +985,7 @@ insert_flows(int port_id, uint8_t core_id)
 		flows_list[flow_index++] = flow;
 	}
 
-	start_batch = clock();
+	start_batch = rte_rdtsc();
 	for (counter = start_counter; counter < end_counter; counter++) {
 		flow = generate_flow(port_id, flow_group,
 			flow_attrs, flow_items, flow_actions,
@@ -1011,12 +1011,12 @@ insert_flows(int port_id, uint8_t core_id)
 		 * for this batch.
 		 */
 		if (!((counter + 1) % rules_batch)) {
-			end_batch = clock();
+			end_batch = rte_rdtsc();
 			delta = (double) (end_batch - start_batch);
 			rules_batch_idx = ((counter + 1) / rules_batch) - 1;
-			cpu_time_per_batch[rules_batch_idx] = delta / CLOCKS_PER_SEC;
+			cpu_time_per_batch[rules_batch_idx] = delta / rte_get_tsc_hz();
 			cpu_time_used += cpu_time_per_batch[rules_batch_idx];
-			start_batch = clock();
+			start_batch = rte_rdtsc();
 		}
 	}
 
