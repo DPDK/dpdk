@@ -25,15 +25,8 @@ computes an average time across all windows.
 The application also provides the ability to measure rte flow deletion rate,
 in addition to memory consumption before and after the flow rules' creation.
 
-The app supports single and multi core performance measurements.
-
-
-Known Limitations
------------------
-
-The current version has limitations which can be removed in future:
-
-* Single core insertion only.
+The app supports single and multiple core performance measurements, and
+support multiple cores insertion/deletion as well.
 
 
 Compiling the Application
@@ -103,6 +96,9 @@ The command line options are:
 *	``--portmask=N``
 	hexadecimal bitmask of ports to be used.
 
+*	``--cores=N``
+	Set the number of needed cores to insert/delete rte_flow rules.
+	Default cores count is 1.
 
 Attributes:
 

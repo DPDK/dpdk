@@ -45,6 +45,7 @@ generate_flow(uint16_t port_id,
 	uint16_t hairpinq,
 	uint64_t encap_data,
 	uint64_t decap_data,
+	uint8_t core_idx,
 	struct rte_flow_error *error)
 {
 	struct rte_flow_attr attr;
@@ -60,9 +61,9 @@ generate_flow(uint16_t port_id,
 
 	fill_actions(actions, flow_actions,
 		outer_ip_src, next_table, hairpinq,
-		encap_data, decap_data);
+		encap_data, decap_data, core_idx);
 
-	fill_items(items, flow_items, outer_ip_src);
+	fill_items(items, flow_items, outer_ip_src, core_idx);
 
 	flow = rte_flow_create(port_id, &attr, items, actions, error);
 	return flow;

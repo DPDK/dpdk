@@ -15,6 +15,7 @@
 #define MBUF_CACHE_SIZE 512
 #define NR_RXD  256
 #define NR_TXD  256
+#define MAX_PORTS 64
 
 /* This is used for encap/decap & header modify actions.
  * When it's 1: it means all actions have fixed values.
