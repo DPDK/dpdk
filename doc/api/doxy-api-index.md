@@ -107,14 +107,18 @@ The public API headers are grouped by topics:
   [IPsec SA]           (@ref rte_ipsec_sa.h),
   [IPsec SAD]          (@ref rte_ipsec_sad.h),
   [IP]                 (@ref rte_ip.h),
+  [frag/reass]         (@ref rte_ip_frag.h),
   [SCTP]               (@ref rte_sctp.h),
   [TCP]                (@ref rte_tcp.h),
   [UDP]                (@ref rte_udp.h),
   [GTP]                (@ref rte_gtp.h),
   [GRO]                (@ref rte_gro.h),
   [GSO]                (@ref rte_gso.h),
-  [frag/reass]         (@ref rte_ip_frag.h),
-  [VXLAN]              (@ref rte_vxlan.h)
+  [GRE]                (@ref rte_gre.h),
+  [MPLS]               (@ref rte_mpls.h),
+  [VXLAN]              (@ref rte_vxlan.h),
+  [Geneve]             (@ref rte_geneve.h),
+  [eCPRI]              (@ref rte_ecpri.h)
 
 - **QoS**:
   [metering]           (@ref rte_meter.h),

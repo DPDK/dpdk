@@ -5,6 +5,15 @@
 #ifndef _RTE_ECPRI_H_
 #define _RTE_ECPRI_H_
 
+/**
+ * @file
+ *
+ * eCPRI headers definition.
+ *
+ * eCPRI (Common Public Radio Interface) is used in internal interfaces
+ * of radio base station in a 5G infrastructure.
+ */
+
 #include <stdint.h>
 #include <rte_byteorder.h>
 

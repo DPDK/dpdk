@@ -8,6 +8,17 @@
 #include <stdint.h>
 #include <rte_byteorder.h>
 
+/**
+ * @file
+ *
+ * GRE headers definition.
+ *
+ * Generic Routing Encapsulation (GRE) is a tunneling protocol
+ * that can encapsulate a wide variety of network layer protocols
+ * inside virtual point-to-point links or point-to-multipoint links
+ * over an Internet Protocol network.
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
