@@ -18,5 +18,4 @@ Getting Started Guide for Linux
     build_sample_apps
     linux_eal_parameters
     enable_func
-    quick_start
     nic_perf_intel_platform

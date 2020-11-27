@@ -100,8 +100,3 @@ Deprecation Notices
 * cmdline: ``cmdline`` structure will be made opaque to hide platform-specific
   content. On Linux and FreeBSD, supported prior to DPDK 20.11,
   original structure will be kept until DPDK 21.11.
-
-* dpdk-setup.sh: This old script relies on deprecated stuff, and especially
-  ``make``. Given environments are too much variables for such a simple script,
-  it will be removed in DPDK 20.11.
-  Some useful parts may be converted into specific scripts.

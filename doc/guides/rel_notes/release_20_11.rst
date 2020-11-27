@@ -457,6 +457,8 @@ Removed Items
 
 * Removed TEP termination sample application.
 
+* Removed the deprecated ``dpdk-setup.sh`` script.
+
 
 API Changes
 -----------

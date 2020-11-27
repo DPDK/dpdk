@@ -6,11 +6,6 @@
 Compiling the DPDK Target from Source
 =====================================
 
-.. note::
-
-    Parts of this process can also be done using the setup script described in
-    the :ref:`linux_setup_script` section of this document.
-
 Uncompress DPDK and Browse Sources
 ----------------------------------
 

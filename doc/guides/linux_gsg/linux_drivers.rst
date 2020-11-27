@@ -107,7 +107,6 @@ Also, to use VFIO, both kernel and BIOS must support and be configured to use IO
     ``vfio-pci`` module doesn't support the creation of virtual functions before Linux version 5.7.
 
 For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
-This can be done by using the DPDK setup script (called dpdk-setup.sh and located in the usertools directory).
 
 .. note::
 

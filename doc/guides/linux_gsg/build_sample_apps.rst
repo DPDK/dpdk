@@ -7,11 +7,6 @@ Running Sample Applications
 The chapter describes how to compile and run applications in a DPDK environment.
 It also provides a pointer to where sample applications are stored.
 
-.. note::
-
-    Parts of this process can also be done using the setup script described the
-    :ref:`linux_setup_script` section of this document.
-
 Compiling a Sample Application
 ------------------------------
 
