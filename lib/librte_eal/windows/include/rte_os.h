@@ -25,22 +25,42 @@ extern "C" {
 #define PATH_MAX _MAX_PATH
 #endif
 
+#ifndef sleep
 #define sleep(x) Sleep(1000 * (x))
+#endif
 
+#ifndef strerror_r
 #define strerror_r(a, b, c) strerror_s(b, c, a)
+#endif
 
+#ifndef strdup
 /* strdup is deprecated in Microsoft libc and _strdup is preferred */
 #define strdup(str) _strdup(str)
+#endif
 
+#ifndef strtok_r
 #define strtok_r(str, delim, saveptr) strtok_s(str, delim, saveptr)
+#endif
 
+#ifndef index
 #define index(a, b)     strchr(a, b)
+#endif
+
+#ifndef rindex
 #define rindex(a, b)    strrchr(a, b)
+#endif
 
+#ifndef strncasecmp
 #define strncasecmp(s1, s2, count)        _strnicmp(s1, s2, count)
+#endif
 
+#ifndef close
 #define close _close
+#endif
+
+#ifndef unlink
 #define unlink _unlink
+#endif
 
 /* cpu_set macros implementation */
 #define RTE_CPU_AND(dst, src1, src2) CPU_AND(dst, src1, src2)
@@ -89,7 +109,9 @@ eal_strerror(int code)
 	return buffer;
 }
 
+#ifndef strerror
 #define strerror eal_strerror
+#endif
 
 #endif /* RTE_TOOLCHAIN_GCC */
 
