@@ -892,6 +892,9 @@ is stopped.
 Note that TX (or RX) vector mode can be enabled independently from RX (or TX)
 vector mode.
 
+Also vector mode is allowed when jumbo is enabled
+as long as the MTU setting does not require scattered Rx.
+
 Appendix
 --------
 
