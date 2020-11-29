@@ -287,6 +287,11 @@ if is_windows
 		add_project_arguments('-D__USE_MINGW_ANSI_STDIO', language: 'c')
 	endif
 
+	# Disable secure CRT deprecated warnings for clang
+	if cc.get_id() == 'clang'
+		add_project_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'c')
+	endif
+
 endif
 
 if get_option('b_lto')
