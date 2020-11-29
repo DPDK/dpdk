@@ -38,6 +38,7 @@ static struct cpu_map cpu_map = { 0 };
 
 /* eal_create_cpu_map() is called before logging is initialized */
 static void
+__rte_format_printf(1, 2)
 log_early(const char *format, ...)
 {
 	va_list va;
