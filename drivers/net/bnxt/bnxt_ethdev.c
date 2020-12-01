@@ -4738,8 +4738,10 @@ bnxt_init_locks(struct bnxt *bp)
 	}
 
 	err = pthread_mutex_init(&bp->def_cp_lock, NULL);
-	if (err)
+	if (err) {
 		PMD_DRV_LOG(ERR, "Unable to initialize def_cp_lock\n");
+		return err;
+	}
 
 	err = pthread_mutex_init(&bp->health_check_lock, NULL);
 	if (err)
