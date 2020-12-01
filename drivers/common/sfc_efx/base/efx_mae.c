@@ -760,7 +760,7 @@ efx_mae_match_specs_equal(
 	    ((_mask)[(_bit) / (_mask_page_nbits)] &			\
 		    (1ULL << ((_bit) & ((_mask_page_nbits) - 1))))
 
-static inline				boolean_t
+static					boolean_t
 efx_mask_is_prefix(
 	__in				size_t mask_nbytes,
 	__in_bcount(mask_nbytes)	const uint8_t *maskp)
@@ -780,7 +780,7 @@ efx_mask_is_prefix(
 	return B_TRUE;
 }
 
-static inline				boolean_t
+static					boolean_t
 efx_mask_is_all_ones(
 	__in				size_t mask_nbytes,
 	__in_bcount(mask_nbytes)	const uint8_t *maskp)
@@ -794,7 +794,7 @@ efx_mask_is_all_ones(
 	return (t == (uint8_t)(~0));
 }
 
-static inline				boolean_t
+static					boolean_t
 efx_mask_is_all_zeros(
 	__in				size_t mask_nbytes,
 	__in_bcount(mask_nbytes)	const uint8_t *maskp)
