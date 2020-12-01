@@ -313,6 +313,7 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 {
 	struct rte_mbuf *txm_seg;
 	void **info;
+	uint64_t cmd;
 	uint8_t flags = 0;
 	int i;
 
@@ -321,12 +322,13 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 	flags |= start ? IONIC_TXQ_DESC_FLAG_TSO_SOT : 0;
 	flags |= done ? IONIC_TXQ_DESC_FLAG_TSO_EOT : 0;
 
-	desc->cmd = encode_txq_desc_cmd(IONIC_TXQ_DESC_OPCODE_TSO,
+	cmd = encode_txq_desc_cmd(IONIC_TXQ_DESC_OPCODE_TSO,
 		flags, nsge, addr);
-	desc->len = len;
-	desc->vlan_tci = vlan_tci;
-	desc->hdr_len = hdrlen;
-	desc->mss = mss;
+	desc->cmd = rte_cpu_to_le_64(cmd);
+	desc->len = rte_cpu_to_le_16(len);
+	desc->vlan_tci = rte_cpu_to_le_16(vlan_tci);
+	desc->hdr_len = rte_cpu_to_le_16(hdrlen);
+	desc->mss = rte_cpu_to_le_16(mss);
 
 	if (done) {
 		info = IONIC_INFO_PTR(q, q->head_idx);
@@ -444,7 +446,7 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 				len = RTE_MIN(frag_left, left);
 				frag_left -= len;
 				elem->addr = next_addr;
-				elem->len = len;
+				elem->len = rte_cpu_to_le_16(len);
 				elem++;
 				desc_nsge++;
 			} else {
@@ -490,7 +492,7 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 	void **info;
 	rte_iova_t data_iova;
 	uint64_t ol_flags = txm->ol_flags;
-	uint64_t addr;
+	uint64_t addr, cmd;
 	uint8_t opcode = IONIC_TXQ_DESC_OPCODE_CSUM_NONE;
 	uint8_t flags = 0;
 
@@ -523,13 +525,14 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 
 	if (ol_flags & PKT_TX_VLAN_PKT) {
 		flags |= IONIC_TXQ_DESC_FLAG_VLAN;
-		desc->vlan_tci = txm->vlan_tci;
+		desc->vlan_tci = rte_cpu_to_le_16(txm->vlan_tci);
 	}
 
 	addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm));
 
-	desc->cmd = encode_txq_desc_cmd(opcode, flags, txm->nb_segs - 1, addr);
-	desc->len = txm->data_len;
+	cmd = encode_txq_desc_cmd(opcode, flags, txm->nb_segs - 1, addr);
+	desc->cmd = rte_cpu_to_le_64(cmd);
+	desc->len = rte_cpu_to_le_16(txm->data_len);
 
 	info[0] = txm;
 
@@ -545,7 +548,7 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 
 			/* Configure the SGE */
 			data_iova = rte_mbuf_data_iova(txm_seg);
-			elem->len = txm_seg->data_len;
+			elem->len = rte_cpu_to_le_16(txm_seg->data_len);
 			elem->addr = rte_cpu_to_le_64(data_iova);
 			elem++;
 
@@ -930,12 +933,15 @@ ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
 	uint64_t pkt_flags = 0;
 	uint32_t pkt_type;
 	uint32_t left, i;
+	uint16_t cq_desc_len;
 	uint8_t ptype, cflags;
 	void **info;
 
-	assert(q_desc_index == cq_desc->comp_index);
+	cq_desc_len = rte_le_to_cpu_16(cq_desc->len);
 
-	info = IONIC_INFO_PTR(q, cq_desc->comp_index);
+	assert(q->tail_idx == rte_le_to_cpu_16(cq_desc->comp_index));
+
+	info = IONIC_INFO_PTR(q, q->tail_idx);
 
 	rxm = info[0];
 
@@ -944,7 +950,7 @@ ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
 		return;
 	}
 
-	if (unlikely(cq_desc->len > rxq->buf_size || cq_desc->len == 0)) {
+	if (unlikely(cq_desc_len > rxq->buf_size || cq_desc_len == 0)) {
 		stats->bad_len++;
 		return;
 	}
@@ -953,9 +959,9 @@ ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
 
 	/* Set the mbuf metadata based on the cq entry */
 	rxm->rearm_data[0] = rxq->rearm_data;
-	rxm->pkt_len = cq_desc->len;
-	rxm->data_len = RTE_MIN(rxq->hdr_seg_size, cq_desc->len);
-	left = cq_desc->len - rxm->data_len;
+	rxm->pkt_len = cq_desc_len;
+	rxm->data_len = RTE_MIN(rxq->hdr_seg_size, cq_desc_len);
+	left = cq_desc_len - rxm->data_len;
 	rxm->nb_segs = cq_desc->num_sg_elems + 1;
 	prev_rxm = rxm;
 
@@ -977,13 +983,13 @@ ionic_rx_clean_one(struct ionic_rx_qcq *rxq,
 	prev_rxm->next = NULL;
 
 	/* RSS */
-	pkt_flags |= RTE_MBUF_F_RX_RSS_HASH;
-	rxm->hash.rss = cq_desc->rss_hash;
+	pkt_flags |= PKT_RX_RSS_HASH;
+	rxm->hash.rss = rte_le_to_cpu_32(cq_desc->rss_hash);
 
 	/* Vlan Strip */
 	if (cq_desc->csum_flags & IONIC_RXQ_COMP_CSUM_F_VLAN) {
-		pkt_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
-		rxm->vlan_tci = cq_desc->vlan_tci;
+		pkt_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		rxm->vlan_tci = rte_le_to_cpu_16(cq_desc->vlan_tci);
 	}
 
 	/* Checksum */
@@ -1128,12 +1134,13 @@ ionic_rx_init_descriptors(struct ionic_rx_qcq *rxq)
 
 	for (i = 0; i < q->num_descs; i++) {
 		desc = &desc_base[i];
-		desc->len = rxq->hdr_seg_size;
+		desc->len = rte_cpu_to_le_16(rxq->hdr_seg_size);
 		desc->opcode = opcode;
 
 		sg_desc = &sg_desc_base[i];
 		for (j = 0; j < q->num_segs - 1u; j++)
-			sg_desc->elems[j].len = rxq->seg_size;
+			sg_desc->elems[j].len =
+				rte_cpu_to_le_16(rxq->seg_size);
 	}
 }
 
