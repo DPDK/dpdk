@@ -110,6 +110,11 @@ axgbe_set_tstamp_time(struct axgbe_port *pdata, unsigned int sec,
 static void
 axgbe_update_tstamp_addend(struct axgbe_port *pdata,
 			unsigned int addend);
+static int
+	axgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vid, int on);
+static int axgbe_vlan_tpid_set(struct rte_eth_dev *dev,
+				enum rte_vlan_type vlan_type, uint16_t tpid);
+static int axgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 
 struct axgbe_xstats {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -252,6 +257,9 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.txq_info_get                 = axgbe_txq_info_get,
 	.dev_supported_ptypes_get     = axgbe_dev_supported_ptypes_get,
 	.mtu_set		= axgb_mtu_set,
+	.vlan_filter_set      = axgbe_vlan_filter_set,
+	.vlan_tpid_set        = axgbe_vlan_tpid_set,
+	.vlan_offload_set     = axgbe_vlan_offload_set,
 	.timesync_enable              = axgbe_timesync_enable,
 	.timesync_disable             = axgbe_timesync_disable,
 	.timesync_read_rx_timestamp   = axgbe_timesync_read_rx_timestamp,
@@ -1200,6 +1208,9 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->speed_capa =  ETH_LINK_SPEED_10G;
 
 	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_VLAN_FILTER |
+		DEV_RX_OFFLOAD_VLAN_EXTEND |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM  |
 		DEV_RX_OFFLOAD_TCP_CKSUM  |
@@ -1208,6 +1219,8 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_KEEP_CRC;
 
 	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_QINQ_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM  |
 		DEV_TX_OFFLOAD_UDP_CKSUM   |
 		DEV_TX_OFFLOAD_TCP_CKSUM;
@@ -1793,14 +1806,163 @@ axgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+axgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vid, int on)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	unsigned long vid_bit, vid_idx;
+
+	vid_bit = VLAN_TABLE_BIT(vid);
+	vid_idx = VLAN_TABLE_IDX(vid);
+
+	if (on) {
+		PMD_DRV_LOG(DEBUG, "Set VLAN vid=%d for device = %s\n",
+			    vid, pdata->eth_dev->device->name);
+		pdata->active_vlans[vid_idx] |= vid_bit;
+	} else {
+		PMD_DRV_LOG(DEBUG, "Reset VLAN vid=%d for device = %s\n",
+			    vid, pdata->eth_dev->device->name);
+		pdata->active_vlans[vid_idx] &= ~vid_bit;
+	}
+	pdata->hw_if.update_vlan_hash_table(pdata);
+	return 0;
+}
+
+static int
+axgbe_vlan_tpid_set(struct rte_eth_dev *dev,
+		    enum rte_vlan_type vlan_type,
+		    uint16_t tpid)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	uint32_t reg = 0;
+	uint32_t qinq = 0;
+
+	qinq = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, EDVLP);
+	PMD_DRV_LOG(DEBUG, "EDVLP: qinq = 0x%x\n", qinq);
+
+	switch (vlan_type) {
+	case ETH_VLAN_TYPE_INNER:
+		PMD_DRV_LOG(DEBUG, "ETH_VLAN_TYPE_INNER\n");
+		if (qinq) {
+			if (tpid != 0x8100 && tpid != 0x88a8)
+				PMD_DRV_LOG(ERR,
+					    "tag supported 0x8100/0x88A8\n");
+			PMD_DRV_LOG(DEBUG, "qinq with inner tag\n");
+
+			/*Enable Inner VLAN Tag */
+			AXGMAC_IOWRITE_BITS(pdata, MAC_VLANTR, ERIVLT, 1);
+			reg = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, ERIVLT);
+			PMD_DRV_LOG(DEBUG, "bit ERIVLT = 0x%x\n", reg);
+
+		} else {
+			PMD_DRV_LOG(ERR,
+				    "Inner type not supported in single tag\n");
+		}
+		break;
+	case ETH_VLAN_TYPE_OUTER:
+		PMD_DRV_LOG(DEBUG, "ETH_VLAN_TYPE_OUTER\n");
+		if (qinq) {
+			PMD_DRV_LOG(DEBUG, "double tagging is enabled\n");
+			/*Enable outer VLAN tag*/
+			AXGMAC_IOWRITE_BITS(pdata, MAC_VLANTR, ERIVLT, 0);
+			reg = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, ERIVLT);
+			PMD_DRV_LOG(DEBUG, "bit ERIVLT = 0x%x\n", reg);
+
+			AXGMAC_IOWRITE_BITS(pdata, MAC_VLANIR, CSVL, 1);
+			reg = AXGMAC_IOREAD_BITS(pdata, MAC_VLANIR, CSVL);
+			PMD_DRV_LOG(DEBUG, "bit CSVL = 0x%x\n", reg);
+		} else {
+			if (tpid != 0x8100 && tpid != 0x88a8)
+				PMD_DRV_LOG(ERR,
+					    "tag supported 0x8100/0x88A8\n");
+		}
+		break;
+	case ETH_VLAN_TYPE_MAX:
+		PMD_DRV_LOG(ERR, "ETH_VLAN_TYPE_MAX\n");
+		break;
+	case ETH_VLAN_TYPE_UNKNOWN:
+		PMD_DRV_LOG(ERR, "ETH_VLAN_TYPE_UNKNOWN\n");
+		break;
+	}
+	return 0;
+}
+
+static void axgbe_vlan_extend_enable(struct axgbe_port *pdata)
+{
+	int qinq = 0;
+
+	AXGMAC_IOWRITE_BITS(pdata, MAC_VLANTR, EDVLP, 1);
+	qinq = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, EDVLP);
+	PMD_DRV_LOG(DEBUG, "vlan double tag enabled EDVLP:qinq=0x%x\n", qinq);
+}
+
+static void axgbe_vlan_extend_disable(struct axgbe_port *pdata)
+{
+	int qinq = 0;
+
+	AXGMAC_IOWRITE_BITS(pdata, MAC_VLANTR, EDVLP, 0);
+	qinq = AXGMAC_IOREAD_BITS(pdata, MAC_VLANTR, EDVLP);
+	PMD_DRV_LOG(DEBUG, "vlan double tag disable EDVLP:qinq=0x%x\n", qinq);
+}
+
+static int
+axgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	/* Indicate that VLAN Tx CTAGs come from context descriptors */
+	AXGMAC_IOWRITE_BITS(pdata, MAC_VLANIR, CSVL, 0);
+	AXGMAC_IOWRITE_BITS(pdata, MAC_VLANIR, VLTI, 1);
+
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
+			PMD_DRV_LOG(DEBUG, "Strip ON for device = %s\n",
+				    pdata->eth_dev->device->name);
+			pdata->hw_if.enable_rx_vlan_stripping(pdata);
+		} else {
+			PMD_DRV_LOG(DEBUG, "Strip OFF for device = %s\n",
+				    pdata->eth_dev->device->name);
+			pdata->hw_if.disable_rx_vlan_stripping(pdata);
+		}
+	}
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+			PMD_DRV_LOG(DEBUG, "Filter ON for device = %s\n",
+				    pdata->eth_dev->device->name);
+			pdata->hw_if.enable_rx_vlan_filtering(pdata);
+		} else {
+			PMD_DRV_LOG(DEBUG, "Filter OFF for device = %s\n",
+				    pdata->eth_dev->device->name);
+			pdata->hw_if.disable_rx_vlan_filtering(pdata);
+		}
+	}
+	if (mask & ETH_VLAN_EXTEND_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND) {
+			PMD_DRV_LOG(DEBUG, "enabling vlan extended mode\n");
+			axgbe_vlan_extend_enable(pdata);
+			/* Set global registers with default ethertype*/
+			axgbe_vlan_tpid_set(dev, ETH_VLAN_TYPE_OUTER,
+					    RTE_ETHER_TYPE_VLAN);
+			axgbe_vlan_tpid_set(dev, ETH_VLAN_TYPE_INNER,
+					    RTE_ETHER_TYPE_VLAN);
+		} else {
+			PMD_DRV_LOG(DEBUG, "disabling vlan extended mode\n");
+			axgbe_vlan_extend_disable(pdata);
+		}
+	}
+	return 0;
+}
+
 static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
 {
-	unsigned int mac_hfr0, mac_hfr1, mac_hfr2;
+	unsigned int mac_hfr0, mac_hfr1, mac_hfr2, mac_hfr3;
 	struct axgbe_hw_features *hw_feat = &pdata->hw_feat;
 
 	mac_hfr0 = AXGMAC_IOREAD(pdata, MAC_HWF0R);
 	mac_hfr1 = AXGMAC_IOREAD(pdata, MAC_HWF1R);
 	mac_hfr2 = AXGMAC_IOREAD(pdata, MAC_HWF2R);
+	mac_hfr3 = AXGMAC_IOREAD(pdata, MAC_HWF3R);
 
 	memset(hw_feat, 0, sizeof(*hw_feat));
 
@@ -1850,6 +2012,12 @@ static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
 	hw_feat->pps_out_num  = AXGMAC_GET_BITS(mac_hfr2, MAC_HWF2R, PPSOUTNUM);
 	hw_feat->aux_snap_num = AXGMAC_GET_BITS(mac_hfr2, MAC_HWF2R,
 						AUXSNAPNUM);
+
+	/* Hardware feature register 3 */
+	hw_feat->tx_q_vlan_tag_ins  = AXGMAC_GET_BITS(mac_hfr3,
+						      MAC_HWF3R, CBTISEL);
+	hw_feat->no_of_vlan_extn    = AXGMAC_GET_BITS(mac_hfr3,
+						      MAC_HWF3R, NRVF);
 
 	/* Translate the Hash Table size into actual number */
 	switch (hw_feat->hash_table_size) {
