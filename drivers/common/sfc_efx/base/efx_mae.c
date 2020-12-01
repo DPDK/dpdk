@@ -644,7 +644,7 @@ efx_mae_match_spec_field_set(
 		goto fail1;
 	}
 
-	if (field_id >= desc_set_nentries) {
+	if ((unsigned int)field_id >= desc_set_nentries) {
 		rc = EINVAL;
 		goto fail2;
 	}
@@ -844,7 +844,8 @@ efx_mae_match_spec_is_valid(
 	if (field_caps == NULL)
 		return (B_FALSE);
 
-	for (field_id = 0; field_id < desc_set_nentries; ++field_id) {
+	for (field_id = 0; (unsigned int)field_id < desc_set_nentries;
+	     ++field_id) {
 		const efx_mae_mv_desc_t *descp = &desc_setp[field_id];
 		efx_mae_field_cap_id_t field_cap_id = descp->emmd_field_cap_id;
 		const uint8_t *m_buf = mvp + descp->emmd_mask_offset;
@@ -853,7 +854,7 @@ efx_mae_match_spec_is_valid(
 		if (m_size == 0)
 			continue; /* Skip array gap */
 
-		if (field_cap_id >= field_ncaps)
+		if ((unsigned int)field_cap_id >= field_ncaps)
 			break;
 
 		switch (field_caps[field_cap_id].emfc_support) {
@@ -1350,14 +1351,15 @@ efx_mae_match_specs_class_cmp(
 		return (0);
 	}
 
-	for (field_id = 0; field_id < desc_set_nentries; ++field_id) {
+	for (field_id = 0; (unsigned int)field_id < desc_set_nentries;
+	     ++field_id) {
 		const efx_mae_mv_desc_t *descp = &desc_setp[field_id];
 		efx_mae_field_cap_id_t field_cap_id = descp->emmd_field_cap_id;
 
 		if (descp->emmd_mask_size == 0)
 			continue; /* Skip array gap */
 
-		if (field_cap_id >= field_ncaps)
+		if ((unsigned int)field_cap_id >= field_ncaps)
 			break;
 
 		if (field_caps[field_cap_id].emfc_mask_affects_class) {
