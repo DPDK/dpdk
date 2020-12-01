@@ -17,7 +17,7 @@
 static inline uint16_t bnxt_tpa_start_agg_id(struct bnxt *bp,
 					     struct rx_tpa_start_cmpl *cmp)
 {
-	if (BNXT_CHIP_THOR(bp))
+	if (BNXT_CHIP_P5(bp))
 		return BNXT_TPA_START_AGG_ID_TH(cmp);
 	else
 		return BNXT_TPA_START_AGG_ID_PRE_TH(cmp);

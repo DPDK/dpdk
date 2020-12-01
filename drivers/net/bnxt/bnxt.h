@@ -112,11 +112,11 @@
 #define TPA_MAX_SEGS		5 /* 32 segments in log2 units */
 
 #define BNXT_TPA_MAX_AGGS(bp) \
-	(BNXT_CHIP_THOR(bp) ? TPA_MAX_AGGS_TH : \
+	(BNXT_CHIP_P5(bp) ? TPA_MAX_AGGS_TH : \
 			     TPA_MAX_AGGS)
 
 #define BNXT_TPA_MAX_SEGS(bp) \
-	(BNXT_CHIP_THOR(bp) ? TPA_MAX_SEGS_TH : \
+	(BNXT_CHIP_P5(bp) ? TPA_MAX_SEGS_TH : \
 			      TPA_MAX_SEGS)
 
 /*
@@ -389,10 +389,10 @@ struct bnxt_coal {
 #define DBR_TYPE_NQ				(0xaULL << 60)
 #define DBR_TYPE_NQ_ARM				(0xbULL << 60)
 
-#define BNXT_RSS_TBL_SIZE_THOR		512U
-#define BNXT_RSS_ENTRIES_PER_CTX_THOR	64
-#define BNXT_MAX_RSS_CTXTS_THOR \
-	(BNXT_RSS_TBL_SIZE_THOR / BNXT_RSS_ENTRIES_PER_CTX_THOR)
+#define BNXT_RSS_TBL_SIZE_P5		512U
+#define BNXT_RSS_ENTRIES_PER_CTX_P5	64
+#define BNXT_MAX_RSS_CTXTS_P5 \
+	(BNXT_RSS_TBL_SIZE_P5 / BNXT_RSS_ENTRIES_PER_CTX_P5)
 
 #define BNXT_MAX_TC    8
 #define BNXT_MAX_QUEUE 8
@@ -629,7 +629,7 @@ struct bnxt {
 #define BNXT_FLAG_KONG_MB_EN		BIT(10)
 #define BNXT_FLAG_TRUSTED_VF_EN		BIT(11)
 #define BNXT_FLAG_DFLT_VNIC_SET		BIT(12)
-#define BNXT_FLAG_THOR_CHIP		BIT(13)
+#define BNXT_FLAG_CHIP_P5		BIT(13)
 #define BNXT_FLAG_STINGRAY		BIT(14)
 #define BNXT_FLAG_FW_RESET		BIT(15)
 #define BNXT_FLAG_FATAL_ERROR		BIT(16)
@@ -653,10 +653,10 @@ struct bnxt {
 #define BNXT_USE_CHIMP_MB	0 //For non-CFA commands, everything uses Chimp.
 #define BNXT_USE_KONG(bp)	((bp)->flags & BNXT_FLAG_KONG_MB_EN)
 #define BNXT_VF_IS_TRUSTED(bp)	((bp)->flags & BNXT_FLAG_TRUSTED_VF_EN)
-#define BNXT_CHIP_THOR(bp)	((bp)->flags & BNXT_FLAG_THOR_CHIP)
+#define BNXT_CHIP_P5(bp)	((bp)->flags & BNXT_FLAG_CHIP_P5)
 #define BNXT_STINGRAY(bp)	((bp)->flags & BNXT_FLAG_STINGRAY)
-#define BNXT_HAS_NQ(bp)		BNXT_CHIP_THOR(bp)
-#define BNXT_HAS_RING_GRPS(bp)	(!BNXT_CHIP_THOR(bp))
+#define BNXT_HAS_NQ(bp)		BNXT_CHIP_P5(bp)
+#define BNXT_HAS_RING_GRPS(bp)	(!BNXT_CHIP_P5(bp))
 #define BNXT_FLOW_XSTATS_EN(bp)	((bp)->flags & BNXT_FLAG_FLOW_XSTATS_EN)
 #define BNXT_HAS_DFLT_MAC_SET(bp)      ((bp)->flags & BNXT_FLAG_DFLT_MAC_SET)
 #define BNXT_TRUFLOW_EN(bp)	((bp)->flags & BNXT_FLAG_TRUFLOW_EN)

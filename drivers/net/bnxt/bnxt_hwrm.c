@@ -635,7 +635,7 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
-	if (!BNXT_CHIP_THOR(bp) &&
+	if (!BNXT_CHIP_P5(bp) &&
 	    !(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_DIRECT_ACCESS))
 		return 0;
 
@@ -646,7 +646,7 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 	if (!ptp)
 		return -ENOMEM;
 
-	if (!BNXT_CHIP_THOR(bp)) {
+	if (!BNXT_CHIP_P5(bp)) {
 		ptp->rx_regs[BNXT_PTP_RX_TS_L] =
 			rte_le_to_cpu_32(resp->rx_ts_reg_off_lower);
 		ptp->rx_regs[BNXT_PTP_RX_TS_H] =
@@ -766,7 +766,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
 	bp->max_rx_em_flows = rte_le_to_cpu_16(resp->max_rx_em_flows);
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-	if (!BNXT_CHIP_THOR(bp) && !bp->pdev->max_vfs)
+	if (!BNXT_CHIP_P5(bp) && !bp->pdev->max_vfs)
 		bp->max_l2_ctx += bp->max_rx_em_flows;
 	/* TODO: For now, do not support VMDq/RFS on VFs. */
 	if (BNXT_PF(bp)) {
@@ -1056,7 +1056,7 @@ int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
 	 * So use the value provided by func_qcaps.
 	 */
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-	if (!BNXT_CHIP_THOR(bp) && !bp->pdev->max_vfs)
+	if (!BNXT_CHIP_P5(bp) && !bp->pdev->max_vfs)
 		bp->max_l2_ctx += bp->max_rx_em_flows;
 	bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
@@ -1557,7 +1557,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		req.ring_type = ring_type;
 		req.cmpl_ring_id = rte_cpu_to_le_16(cmpl_ring_id);
 		req.stat_ctx_id = rte_cpu_to_le_32(stats_ctx_id);
-		if (BNXT_CHIP_THOR(bp)) {
+		if (BNXT_CHIP_P5(bp)) {
 			mb_pool = bp->rx_queues[0]->mb_pool;
 			rx_buf_size = rte_pktmbuf_data_room_size(mb_pool) -
 				      RTE_PKTMBUF_HEADROOM;
@@ -1927,7 +1927,7 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	HWRM_PREP(&req, HWRM_VNIC_CFG, BNXT_USE_CHIMP_MB);
 
-	if (BNXT_CHIP_THOR(bp)) {
+	if (BNXT_CHIP_P5(bp)) {
 		int dflt_rxq = vnic->start_grp_id;
 		struct bnxt_rx_ring_info *rxr;
 		struct bnxt_cp_ring_info *cpr;
@@ -2117,7 +2117,7 @@ int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int rc = 0;
 
-	if (BNXT_CHIP_THOR(bp)) {
+	if (BNXT_CHIP_P5(bp)) {
 		int j;
 
 		for (j = 0; j < vnic->num_lb_ctxts; j++) {
@@ -2164,7 +2164,7 @@ int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 }
 
 static int
-bnxt_hwrm_vnic_rss_cfg_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+bnxt_hwrm_vnic_rss_cfg_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int i;
 	int rc = 0;
@@ -2208,8 +2208,8 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 	if (!vnic->rss_table)
 		return 0;
 
-	if (BNXT_CHIP_THOR(bp))
-		return bnxt_hwrm_vnic_rss_cfg_thor(bp, vnic);
+	if (BNXT_CHIP_P5(bp))
+		return bnxt_hwrm_vnic_rss_cfg_p5(bp, vnic);
 
 	HWRM_PREP(&req, HWRM_VNIC_RSS_CFG, BNXT_USE_CHIMP_MB);
 
@@ -2274,7 +2274,7 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 	struct hwrm_vnic_tpa_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_tpa_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 
-	if (BNXT_CHIP_THOR(bp) && !bp->max_tpa_v2) {
+	if (BNXT_CHIP_P5(bp) && !bp->max_tpa_v2) {
 		if (enable)
 			PMD_DRV_LOG(ERR, "No HW support for LRO\n");
 		return -ENOTSUP;
@@ -2566,7 +2566,7 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	ring = rxr->ag_ring_struct;
 	if (ring->fw_ring_id != INVALID_HW_RING_ID) {
 		bnxt_hwrm_ring_free(bp, ring,
-				    BNXT_CHIP_THOR(bp) ?
+				    BNXT_CHIP_P5(bp) ?
 				    HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG :
 				    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
 		if (BNXT_HAS_RING_GRPS(bp))
@@ -3068,7 +3068,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		goto port_phy_cfg;
 
 	autoneg = bnxt_check_eth_link_autoneg(dev_conf->link_speeds);
-	if (BNXT_CHIP_THOR(bp) &&
+	if (BNXT_CHIP_P5(bp) &&
 	    dev_conf->link_speeds == ETH_LINK_SPEED_40G) {
 		/* 40G is not supported as part of media auto detect.
 		 * The speed should be forced and autoneg disabled
@@ -3093,7 +3093,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	 * to 40G until link comes up at new speed.
 	 */
 	if (autoneg == 1 &&
-	    !(!BNXT_CHIP_THOR(bp) &&
+	    !(!BNXT_CHIP_P5(bp) &&
 	      (bp->link_info->auto_link_speed ||
 	       bp->link_info->force_link_speed))) {
 		link_req.phy_flags |=
@@ -4820,7 +4820,7 @@ int bnxt_hwrm_clear_ntuple_filter(struct bnxt *bp,
 }
 
 static int
-bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+bnxt_vnic_rss_configure_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	struct hwrm_vnic_rss_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint8_t *rx_queue_state = bp->eth_dev->data->rx_queue_state;
@@ -4844,7 +4844,7 @@ bnxt_vnic_rss_configure_thor(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 		req.ring_grp_tbl_addr =
 		    rte_cpu_to_le_64(vnic->rss_table_dma_addr +
-				     i * BNXT_RSS_ENTRIES_PER_CTX_THOR *
+				     i * BNXT_RSS_ENTRIES_PER_CTX_P5 *
 				     2 * sizeof(*ring_tbl));
 		req.hash_key_tbl_addr =
 		    rte_cpu_to_le_64(vnic->rss_hash_key_dma_addr);
@@ -4899,8 +4899,8 @@ int bnxt_vnic_rss_configure(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	if (!(vnic->rss_table && vnic->hash_type))
 		return 0;
 
-	if (BNXT_CHIP_THOR(bp))
-		return bnxt_vnic_rss_configure_thor(bp, vnic);
+	if (BNXT_CHIP_P5(bp))
+		return bnxt_vnic_rss_configure_p5(bp, vnic);
 
 	if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
 		return 0;
@@ -4959,7 +4959,7 @@ static void bnxt_hwrm_set_coal_params(struct bnxt_coal *hw_coal,
 	req->flags = rte_cpu_to_le_16(flags);
 }
 
-static int bnxt_hwrm_set_coal_params_thor(struct bnxt *bp,
+static int bnxt_hwrm_set_coal_params_p5(struct bnxt *bp,
 		struct hwrm_ring_cmpl_ring_cfg_aggint_params_input *agg_req)
 {
 	struct hwrm_ring_aggint_qcaps_input req = {0};
@@ -4996,8 +4996,8 @@ int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
 	int rc;
 
 	/* Set ring coalesce parameters only for 100G NICs */
-	if (BNXT_CHIP_THOR(bp)) {
-		if (bnxt_hwrm_set_coal_params_thor(bp, &req))
+	if (BNXT_CHIP_P5(bp)) {
+		if (bnxt_hwrm_set_coal_params_p5(bp, &req))
 			return -1;
 	} else if (bnxt_stratus_device(bp)) {
 		bnxt_hwrm_set_coal_params(coal, &req);
@@ -5026,7 +5026,7 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	int total_alloc_len;
 	int rc, i, tqm_rings;
 
-	if (!BNXT_CHIP_THOR(bp) ||
+	if (!BNXT_CHIP_P5(bp) ||
 	    bp->hwrm_spec_code < HWRM_VERSION_1_9_2 ||
 	    BNXT_VF(bp) ||
 	    bp->ctx)

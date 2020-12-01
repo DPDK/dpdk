@@ -129,8 +129,8 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	entry_length = HW_HASH_KEY_SIZE +
 		       BNXT_MAX_MC_ADDRS * RTE_ETHER_ADDR_LEN;
 
-	if (BNXT_CHIP_THOR(bp))
-		rss_table_size = BNXT_RSS_TBL_SIZE_THOR *
+	if (BNXT_CHIP_P5(bp))
+		rss_table_size = BNXT_RSS_TBL_SIZE_P5 *
 				 2 * sizeof(*vnic->rss_table);
 	else
 		rss_table_size = HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table);

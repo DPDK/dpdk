@@ -208,22 +208,22 @@ int is_bnxt_in_error(struct bnxt *bp)
 static uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
 {
 	unsigned int num_rss_rings = RTE_MIN(bp->rx_nr_rings,
-					     BNXT_RSS_TBL_SIZE_THOR);
+					     BNXT_RSS_TBL_SIZE_P5);
 
-	if (!BNXT_CHIP_THOR(bp))
+	if (!BNXT_CHIP_P5(bp))
 		return 1;
 
 	return RTE_ALIGN_MUL_CEIL(num_rss_rings,
-				  BNXT_RSS_ENTRIES_PER_CTX_THOR) /
-				  BNXT_RSS_ENTRIES_PER_CTX_THOR;
+				  BNXT_RSS_ENTRIES_PER_CTX_P5) /
+				  BNXT_RSS_ENTRIES_PER_CTX_P5;
 }
 
 uint16_t bnxt_rss_hash_tbl_size(const struct bnxt *bp)
 {
-	if (!BNXT_CHIP_THOR(bp))
+	if (!BNXT_CHIP_P5(bp))
 		return HW_HASH_INDEX_SIZE;
 
-	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_THOR;
+	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_P5;
 }
 
 static void bnxt_free_parent_info(struct bnxt *bp)
@@ -427,12 +427,12 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS) {
 		int j, nr_ctxs = bnxt_rss_ctxts(bp);
 
-		if (bp->rx_nr_rings > BNXT_RSS_TBL_SIZE_THOR) {
+		if (bp->rx_nr_rings > BNXT_RSS_TBL_SIZE_P5) {
 			PMD_DRV_LOG(ERR, "RxQ cnt %d > reta_size %d\n",
-				    bp->rx_nr_rings, BNXT_RSS_TBL_SIZE_THOR);
+				    bp->rx_nr_rings, BNXT_RSS_TBL_SIZE_P5);
 			PMD_DRV_LOG(ERR,
 				    "Only queues 0-%d will be in RSS table\n",
-				    BNXT_RSS_TBL_SIZE_THOR - 1);
+				    BNXT_RSS_TBL_SIZE_P5 - 1);
 		}
 
 		rc = 0;
@@ -712,8 +712,8 @@ static int bnxt_init_chip(struct bnxt *bp)
 	/* THOR does not support ring groups.
 	 * But we will use the array to save RSS context IDs.
 	 */
-	if (BNXT_CHIP_THOR(bp))
-		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_THOR;
+	if (BNXT_CHIP_P5(bp))
+		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_P5;
 
 	rc = bnxt_alloc_all_hwrm_stat_ctxs(bp);
 	if (rc) {
@@ -1832,7 +1832,7 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 			return -EINVAL;
 		}
 
-		if (BNXT_CHIP_THOR(bp)) {
+		if (BNXT_CHIP_P5(bp)) {
 			vnic->rss_table[i * 2] =
 				rxq->rx_ring->rx_ring_struct->fw_ring_id;
 			vnic->rss_table[i * 2 + 1] =
@@ -1881,7 +1881,7 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 		if (reta_conf[idx].mask & (1ULL << sft)) {
 			uint16_t qid;
 
-			if (BNXT_CHIP_THOR(bp))
+			if (BNXT_CHIP_P5(bp))
 				qid = bnxt_rss_to_qid(bp,
 						      vnic->rss_table[i * 2]);
 			else
@@ -3232,7 +3232,7 @@ bnxt_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 	if (!ptp)
 		return 0;
 
-	if (BNXT_CHIP_THOR(bp))
+	if (BNXT_CHIP_P5(bp))
 		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
 					     &systime_cycles);
 	else
@@ -3278,7 +3278,7 @@ bnxt_timesync_enable(struct rte_eth_dev *dev)
 	ptp->tx_tstamp_tc.cc_shift = shift;
 	ptp->tx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
 
-	if (!BNXT_CHIP_THOR(bp))
+	if (!BNXT_CHIP_P5(bp))
 		bnxt_map_ptp_regs(bp);
 
 	return 0;
@@ -3299,7 +3299,7 @@ bnxt_timesync_disable(struct rte_eth_dev *dev)
 
 	bnxt_hwrm_ptp_cfg(bp);
 
-	if (!BNXT_CHIP_THOR(bp))
+	if (!BNXT_CHIP_P5(bp))
 		bnxt_unmap_ptp_regs(bp);
 
 	return 0;
@@ -3318,7 +3318,7 @@ bnxt_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 	if (!ptp)
 		return 0;
 
-	if (BNXT_CHIP_THOR(bp))
+	if (BNXT_CHIP_P5(bp))
 		rx_tstamp_cycles = ptp->rx_timestamp;
 	else
 		bnxt_get_rx_ts(bp, &rx_tstamp_cycles);
@@ -3341,7 +3341,7 @@ bnxt_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	if (!ptp)
 		return 0;
 
-	if (BNXT_CHIP_THOR(bp))
+	if (BNXT_CHIP_P5(bp))
 		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_PATH_TX,
 					     &tx_tstamp_cycles);
 	else
@@ -4007,7 +4007,8 @@ static bool bnxt_vf_pciid(uint16_t device_id)
 	}
 }
 
-static bool bnxt_thor_device(uint16_t device_id)
+/* Phase 5 device */
+static bool bnxt_p5_device(uint16_t device_id)
 {
 	switch (device_id) {
 	case BROADCOM_DEV_ID_57508:
@@ -5240,8 +5241,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
 
-	if (bnxt_thor_device(pci_dev->id.device_id))
-		bp->flags |= BNXT_FLAG_THOR_CHIP;
+	if (bnxt_p5_device(pci_dev->id.device_id))
+		bp->flags |= BNXT_FLAG_CHIP_P5;
 
 	if (pci_dev->id.device_id == BROADCOM_DEV_ID_58802 ||
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_58804 ||

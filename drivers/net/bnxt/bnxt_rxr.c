@@ -225,13 +225,13 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 	uint16_t cp_cons, ag_cons;
 	struct rx_pkt_cmpl *rxcmp;
 	struct rte_mbuf *last = mbuf;
-	bool is_thor_tpa = tpa_info && BNXT_CHIP_THOR(rxq->bp);
+	bool is_p5_tpa = tpa_info && BNXT_CHIP_P5(rxq->bp);
 
 	for (i = 0; i < agg_buf; i++) {
 		struct rte_mbuf **ag_buf;
 		struct rte_mbuf *ag_mbuf;
 
-		if (is_thor_tpa) {
+		if (is_p5_tpa) {
 			rxcmp = (void *)&tpa_info->agg_arr[i];
 		} else {
 			*tmp_raw_cons = NEXT_RAW_CMP(*tmp_raw_cons);
@@ -285,7 +285,7 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	uint8_t payload_offset;
 	struct bnxt_tpa_info *tpa_info;
 
-	if (BNXT_CHIP_THOR(rxq->bp)) {
+	if (BNXT_CHIP_P5(rxq->bp)) {
 		struct rx_tpa_v2_end_cmpl *th_tpa_end;
 		struct rx_tpa_v2_end_cmpl_hi *th_tpa_end1;
 
@@ -497,11 +497,11 @@ bnxt_set_ol_flags(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1,
 
 #ifdef RTE_LIBRTE_IEEE1588
 static void
-bnxt_get_rx_ts_thor(struct bnxt *bp, uint32_t rx_ts_cmpl)
+bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 {
 	uint64_t systime_cycles = 0;
 
-	if (!BNXT_CHIP_THOR(bp))
+	if (!BNXT_CHIP_P5(bp))
 		return;
 
 	/* On Thor, Rx timestamps are provided directly in the
@@ -747,7 +747,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		      RX_PKT_CMPL_FLAGS_MASK) ==
 		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP)) {
 		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
-		bnxt_get_rx_ts_thor(rxq->bp, rxcmp1->reorder);
+		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
 	}
 #endif
 
