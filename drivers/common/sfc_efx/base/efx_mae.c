@@ -463,6 +463,10 @@ typedef enum efx_mae_field_endianness_e {
  * The information in it is meant to be used internally by
  * APIs for addressing a given field in a mask-value pairs
  * structure and for validation purposes.
+ *
+ * A field may have an alternative one. This structure
+ * has additional members to reference the alternative
+ * field's mask. See efx_mae_match_spec_is_valid().
  */
 typedef struct efx_mae_mv_desc_s {
 	efx_mae_field_cap_id_t		emmd_field_cap_id;
@@ -472,6 +476,14 @@ typedef struct efx_mae_mv_desc_s {
 	size_t				emmd_mask_size;
 	size_t				emmd_mask_offset;
 
+	/*
+	 * Having the alternative field's mask size set to 0
+	 * means that there's no alternative field specified.
+	 */
+	size_t				emmd_alt_mask_size;
+	size_t				emmd_alt_mask_offset;
+
+	/* Primary field and the alternative one are of the same endianness. */
 	efx_mae_field_endianness_t	emmd_endianness;
 } efx_mae_mv_desc_t;
 
@@ -485,6 +497,7 @@ static const efx_mae_mv_desc_t __efx_mae_action_rule_mv_desc_set[] = {
 		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_OFST,		\
 		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_MASK_LEN,		\
 		MAE_FIELD_MASK_VALUE_PAIRS_##_name##_MASK_OFST,		\
+		0, 0 /* no alternative field */,			\
 		_endianness						\
 	}
 
@@ -522,6 +535,21 @@ static const efx_mae_mv_desc_t __efx_mae_outer_rule_mv_desc_set[] = {
 		MAE_ENC_FIELD_PAIRS_##_name##_OFST,			\
 		MAE_ENC_FIELD_PAIRS_##_name##_MASK_LEN,			\
 		MAE_ENC_FIELD_PAIRS_##_name##_MASK_OFST,		\
+		0, 0 /* no alternative field */,			\
+		_endianness						\
+	}
+
+/* Same as EFX_MAE_MV_DESC(), but also indicates an alternative field. */
+#define	EFX_MAE_MV_DESC_ALT(_name, _alt_name, _endianness)		\
+	[EFX_MAE_FIELD_##_name] =					\
+	{								\
+		EFX_MAE_FIELD_ID_##_name,				\
+		MAE_ENC_FIELD_PAIRS_##_name##_LEN,			\
+		MAE_ENC_FIELD_PAIRS_##_name##_OFST,			\
+		MAE_ENC_FIELD_PAIRS_##_name##_MASK_LEN,			\
+		MAE_ENC_FIELD_PAIRS_##_name##_MASK_OFST,		\
+		MAE_ENC_FIELD_PAIRS_##_alt_name##_MASK_LEN,		\
+		MAE_ENC_FIELD_PAIRS_##_alt_name##_MASK_OFST,		\
 		_endianness						\
 	}
 
@@ -533,16 +561,17 @@ static const efx_mae_mv_desc_t __efx_mae_outer_rule_mv_desc_set[] = {
 	EFX_MAE_MV_DESC(ENC_VLAN0_PROTO_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_VLAN1_TCI_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_VLAN1_PROTO_BE, EFX_MAE_FIELD_BE),
-	EFX_MAE_MV_DESC(ENC_SRC_IP4_BE, EFX_MAE_FIELD_BE),
-	EFX_MAE_MV_DESC(ENC_DST_IP4_BE, EFX_MAE_FIELD_BE),
+	EFX_MAE_MV_DESC_ALT(ENC_SRC_IP4_BE, ENC_SRC_IP6_BE, EFX_MAE_FIELD_BE),
+	EFX_MAE_MV_DESC_ALT(ENC_DST_IP4_BE, ENC_DST_IP6_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_IP_PROTO, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_IP_TOS, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_IP_TTL, EFX_MAE_FIELD_BE),
-	EFX_MAE_MV_DESC(ENC_SRC_IP6_BE, EFX_MAE_FIELD_BE),
-	EFX_MAE_MV_DESC(ENC_DST_IP6_BE, EFX_MAE_FIELD_BE),
+	EFX_MAE_MV_DESC_ALT(ENC_SRC_IP6_BE, ENC_SRC_IP4_BE, EFX_MAE_FIELD_BE),
+	EFX_MAE_MV_DESC_ALT(ENC_DST_IP6_BE, ENC_DST_IP4_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_L4_SPORT_BE, EFX_MAE_FIELD_BE),
 	EFX_MAE_MV_DESC(ENC_L4_DPORT_BE, EFX_MAE_FIELD_BE),
 
+#undef EFX_MAE_MV_DESC_ALT
 #undef EFX_MAE_MV_DESC
 };
 
@@ -848,7 +877,9 @@ efx_mae_match_spec_is_valid(
 	     ++field_id) {
 		const efx_mae_mv_desc_t *descp = &desc_setp[field_id];
 		efx_mae_field_cap_id_t field_cap_id = descp->emmd_field_cap_id;
+		const uint8_t *alt_m_buf = mvp + descp->emmd_alt_mask_offset;
 		const uint8_t *m_buf = mvp + descp->emmd_mask_offset;
+		size_t alt_m_size = descp->emmd_alt_mask_size;
 		size_t m_size = descp->emmd_mask_size;
 
 		if (m_size == 0)
@@ -870,6 +901,19 @@ efx_mae_match_spec_is_valid(
 			break;
 		case MAE_FIELD_SUPPORTED_MATCH_ALWAYS:
 			is_valid = efx_mask_is_all_ones(m_size, m_buf);
+
+			if ((is_valid == B_FALSE) && (alt_m_size != 0)) {
+				/*
+				 * This field has an alternative one. The FW
+				 * reports ALWAYS for both implying that one
+				 * of them is required to have all-ones mask.
+				 *
+				 * The primary field's mask is incorrect; go
+				 * on to check that of the alternative field.
+				 */
+				is_valid = efx_mask_is_all_ones(alt_m_size,
+								alt_m_buf);
+			}
 			break;
 		case MAE_FIELD_SUPPORTED_MATCH_NEVER:
 		case MAE_FIELD_UNSUPPORTED:
