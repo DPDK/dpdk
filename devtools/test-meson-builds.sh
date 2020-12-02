@@ -146,12 +146,14 @@ install_target () # <builddir> <installdir>
 	DESTDIR=$2 $ninja_cmd -C $1 install >&$veryverbose
 }
 
-build () # <directory> <target compiler | cross file> <meson options>
+build () # <directory> <target cc | cross file> <ABI check> [meson options]
 {
 	targetdir=$1
 	shift
 	crossfile=
 	[ -r $1 ] && crossfile=$1 || targetcc=$1
+	shift
+	abicheck=$1
 	shift
 	# skip build if compiler not available
 	command -v ${CC##* } >/dev/null 2>&1 || return 0
@@ -165,7 +167,7 @@ build () # <directory> <target compiler | cross file> <meson options>
 	load_env $targetcc || return 0
 	config $srcdir $builds_dir/$targetdir $cross --werror $*
 	compile $builds_dir/$targetdir
-	if [ -n "$DPDK_ABI_REF_VERSION" ]; then
+	if [ -n "$DPDK_ABI_REF_VERSION" -a "$abicheck" = ABI ] ; then
 		abirefdir=${DPDK_ABI_REF_DIR:-reference}/$DPDK_ABI_REF_VERSION
 		if [ ! -d $abirefdir/$targetdir ]; then
 			# clone current sources
@@ -207,8 +209,13 @@ build () # <directory> <target compiler | cross file> <meson options>
 for c in gcc clang ; do
 	command -v $c >/dev/null 2>&1 || continue
 	for s in static shared ; do
+		if [ $s = shared ] ; then
+			abicheck=ABI
+		else
+			abicheck=skipABI # save time and disk space
+		fi
 		export CC="$CCACHE $c"
-		build build-$c-$s $c --default-library=$s
+		build build-$c-$s $c $abicheck --default-library=$s
 		unset CC
 	done
 done
@@ -220,7 +227,8 @@ default_machine='nehalem'
 if ! check_cc_flags "-march=$default_machine" ; then
 	default_machine='corei7'
 fi
-build build-x86-default cc -Dlibdir=lib -Dmachine=$default_machine $use_shared
+build build-x86-default cc skipABI \
+	-Dlibdir=lib -Dmachine=$default_machine $use_shared
 
 # 32-bit with default compiler
 if check_cc_flags '-m32' ; then
@@ -235,29 +243,32 @@ if check_cc_flags '-m32' ; then
 		export PKG_CONFIG_LIBDIR='/usr/lib/pkgconfig'
 	fi
 	target_override='i386-pc-linux-gnu'
-	build build-32b cc -Dc_args='-m32' -Dc_link_args='-m32'
+	build build-32b cc ABI -Dc_args='-m32' -Dc_link_args='-m32'
 	target_override=
 	unset PKG_CONFIG_LIBDIR
 fi
 
 # x86 MinGW
-build build-x86-mingw $srcdir/config/x86/cross-mingw -Dexamples=helloworld
+build build-x86-mingw $srcdir/config/x86/cross-mingw skipABI \
+	-Dexamples=helloworld
 
 # generic armv8a with clang as host compiler
 f=$srcdir/config/arm/arm64_armv8_linux_gcc
 export CC="clang"
-build build-arm64-host-clang $f $use_shared
+build build-arm64-host-clang $f ABI $use_shared
 unset CC
 # some gcc/arm configurations
 for f in $srcdir/config/arm/arm64_[bdo]*gcc ; do
 	export CC="$CCACHE gcc"
-	build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) $f $use_shared
+	targetdir=build-$(basename $f | tr '_' '-' | cut -d'-' -f-2)
+	build $targetdir $f skipABI $use_shared
 	unset CC
 done
 
 # ppc configurations
 for f in $srcdir/config/ppc/ppc* ; do
-	build build-$(basename $f | cut -d'-' -f-2) $f $use_shared
+	targetdir=build-$(basename $f | cut -d'-' -f-2)
+	build $targetdir $f ABI $use_shared
 done
 
 # Test installation of the x86-default target, to be used for checking
@@ -279,7 +290,8 @@ if pkg-config --define-prefix libdpdk >/dev/null 2>&1; then
 	export PKGCONF="pkg-config --define-prefix"
 	for example in $examples; do
 		echo "## Building $example"
+		[ $example = helloworld ] && static=static || static= # save disk space
 		$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example \
-			clean shared static >&$veryverbose
+			clean shared $static >&$veryverbose
 	done
 fi
