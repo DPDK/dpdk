@@ -266,7 +266,8 @@ mlx5_vdpa_timer_sleep(struct mlx5_vdpa_priv *priv, uint32_t max)
 			break;
 		}
 	}
-	usleep(priv->timer_delay_us);
+	if (priv->timer_delay_us)
+		usleep(priv->timer_delay_us);
 }
 
 static void *
