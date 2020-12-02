@@ -206,8 +206,6 @@ struct rte_port {
 	uint16_t                tunnel_tso_segsz; /**< Segmentation offload MSS for tunneled pkts. */
 	uint16_t                tx_vlan_id;/**< The tag ID */
 	uint16_t                tx_vlan_id_outer;/**< The outer tag ID */
-	uint8_t                 tx_queue_stats_mapping_enabled;
-	uint8_t                 rx_queue_stats_mapping_enabled;
 	volatile uint16_t        port_status;    /**< port started or not */
 	uint8_t                 need_setup;     /**< port just attached */
 	uint8_t                 need_reconfig;  /**< need reconfiguring port or not */
@@ -325,25 +323,6 @@ enum dcb_mode_enable
 	DCB_VT_ENABLED,
 	DCB_ENABLED
 };
-
-#define MAX_TX_QUEUE_STATS_MAPPINGS 1024 /* MAX_PORT of 32 @ 32 tx_queues/port */
-#define MAX_RX_QUEUE_STATS_MAPPINGS 4096 /* MAX_PORT of 32 @ 128 rx_queues/port */
-
-struct queue_stats_mappings {
-	portid_t port_id;
-	uint16_t queue_id;
-	uint8_t stats_counter_id;
-} __rte_cache_aligned;
-
-extern struct queue_stats_mappings tx_queue_stats_mappings_array[];
-extern struct queue_stats_mappings rx_queue_stats_mappings_array[];
-
-/* Assign both tx and rx queue stats mappings to the same default values */
-extern struct queue_stats_mappings *tx_queue_stats_mappings;
-extern struct queue_stats_mappings *rx_queue_stats_mappings;
-
-extern uint16_t nb_tx_queue_stats_mappings;
-extern uint16_t nb_rx_queue_stats_mappings;
 
 extern uint8_t xstats_hide_zero; /**< Hide zero values for xstats display */
 
@@ -790,7 +769,6 @@ void nic_stats_display(portid_t port_id);
 void nic_stats_clear(portid_t port_id);
 void nic_xstats_display(portid_t port_id);
 void nic_xstats_clear(portid_t port_id);
-void nic_stats_mapping_display(portid_t port_id);
 void device_infos_display(const char *identifier);
 void port_infos_display(portid_t port_id);
 void port_summary_display(portid_t port_id);
