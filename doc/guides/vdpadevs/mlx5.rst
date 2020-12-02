@@ -134,6 +134,11 @@ Driver options
   interrupts are configured to the device in order to notify traffic for the
   driver. Default value is 2s.
 
+- ``event_core`` parameter [int]
+
+  CPU core number to set polling thread affinity to, default to control plane
+  cpu.
+
 Error handling
 ^^^^^^^^^^^^^^
 

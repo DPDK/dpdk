@@ -612,6 +612,7 @@ mlx5_vdpa_args_check_handler(const char *key, const char *val, void *opaque)
 {
 	struct mlx5_vdpa_priv *priv = opaque;
 	unsigned long tmp;
+	int n_cores = sysconf(_SC_NPROCESSORS_ONLN);
 
 	if (strcmp(key, "class") == 0)
 		return 0;
@@ -630,6 +631,11 @@ mlx5_vdpa_args_check_handler(const char *key, const char *val, void *opaque)
 		priv->event_us = (uint32_t)tmp;
 	} else if (strcmp(key, "no_traffic_time") == 0) {
 		priv->no_traffic_time_s = (uint32_t)tmp;
+	} else if (strcmp(key, "event_core") == 0) {
+		if (tmp >= (unsigned long)n_cores)
+			DRV_LOG(WARNING, "Invalid event_core %s.", val);
+		else
+			priv->event_core = tmp;
 	} else {
 		DRV_LOG(WARNING, "Invalid key %s.", key);
 	}
@@ -643,6 +649,7 @@ mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
 
 	priv->event_mode = MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER;
 	priv->event_us = 0;
+	priv->event_core = -1;
 	priv->no_traffic_time_s = MLX5_VDPA_DEFAULT_NO_TRAFFIC_TIME_S;
 	if (devargs == NULL)
 		return;

@@ -533,6 +533,9 @@ int
 mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 {
 	int ret;
+	rte_cpuset_t cpuset;
+	pthread_attr_t attr;
+	char name[16];
 
 	if (!priv->eventc)
 		/* All virtqs are in poll mode. */
@@ -541,10 +544,28 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 		pthread_mutex_init(&priv->timer_lock, NULL);
 		pthread_cond_init(&priv->timer_cond, NULL);
 		priv->timer_on = 0;
-		ret = pthread_create(&priv->timer_tid, NULL,
+		pthread_attr_init(&attr);
+		CPU_ZERO(&cpuset);
+		if (priv->event_core != -1)
+			CPU_SET(priv->event_core, &cpuset);
+		else
+			cpuset = rte_lcore_cpuset(rte_get_main_lcore());
+		ret = pthread_attr_setaffinity_np(&attr, sizeof(cpuset),
+						  &cpuset);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to set thread affinity.");
+			return -1;
+		}
+		ret = pthread_create(&priv->timer_tid, &attr,
 				     mlx5_vdpa_poll_handle, (void *)priv);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create timer thread.");
+			return -1;
+		}
+		snprintf(name, sizeof(name), "vDPA-mlx5-%d", priv->vid);
+		ret = pthread_setname_np(priv->timer_tid, name);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to set timer thread name.");
 			return -1;
 		}
 	}

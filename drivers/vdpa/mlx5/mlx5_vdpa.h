@@ -131,6 +131,7 @@ struct mlx5_vdpa_priv {
 	pthread_cond_t timer_cond;
 	volatile uint8_t timer_on;
 	int event_mode;
+	int event_core; /* Event thread cpu affinity core. */
 	uint32_t event_us;
 	uint32_t timer_delay_us;
 	uint32_t no_traffic_time_s;
