@@ -33,6 +33,20 @@ Refer to the
 for details about application profiling.
 
 
+Profiling with VTune
+~~~~~~~~~~~~~~~~~~~~
+
+To allow VTune attaching to the DPDK application, reconfigure a DPDK build
+folder by passing ``-Dc_args=-DRTE_ETHDEV_PROFILE_WITH_VTUNE`` meson option
+and recompile the DPDK:
+
+.. code-block:: console
+
+   meson build
+   meson configure build -Dc_args=-DRTE_ETHDEV_PROFILE_WITH_VTUNE
+   ninja -C build
+
+
 Profiling on ARM64
 ------------------
 
