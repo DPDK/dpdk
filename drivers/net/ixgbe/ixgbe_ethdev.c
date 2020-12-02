@@ -6555,7 +6555,8 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	 * prior to 3.11.33 which contains the following change:
 	 * "ixgbe: Enable jumbo frames support w/ SR-IOV"
 	 */
-	ixgbevf_rlpml_set_vf(hw, max_frame);
+	if (ixgbevf_rlpml_set_vf(hw, max_frame))
+		return -EINVAL;
 
 	/* update max frame size */
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame;
