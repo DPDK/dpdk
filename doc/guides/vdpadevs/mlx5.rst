@@ -116,7 +116,7 @@ Driver options
   - 2, Completion queue scheduling will be managed by interrupts. Each CQ burst
     arms the CQ in order to get an interrupt event in the next traffic burst.
 
-  - Default mode is 0.
+  - Default mode is 1.
 
 - ``event_us`` parameter [int]
 

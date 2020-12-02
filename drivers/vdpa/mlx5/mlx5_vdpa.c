@@ -647,7 +647,7 @@ mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
 {
 	struct rte_kvargs *kvlist;
 
-	priv->event_mode = MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER;
+	priv->event_mode = MLX5_VDPA_EVENT_MODE_FIXED_TIMER;
 	priv->event_us = 0;
 	priv->event_core = -1;
 	priv->no_traffic_time_s = MLX5_VDPA_DEFAULT_NO_TRAFFIC_TIME_S;
