@@ -70,6 +70,8 @@ def show_numa_pages():
     for numa_path in glob.glob('/sys/devices/system/node/node*'):
         node = numa_path[29:]  # slice after /sys/devices/system/node/node
         path = numa_path + '/hugepages'
+        if not os.path.exists(path):
+            continue
         for hdir in os.listdir(path):
             pages = get_hugepages(path + '/' + hdir)
             if pages > 0:
