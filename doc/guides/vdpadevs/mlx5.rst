@@ -125,8 +125,7 @@ Driver options
   - 0, A nonzero value to set timer step in micro-seconds. The timer thread
     dynamic delay change steps according to this value. Default value is 1us.
 
-  - 1, A nonzero value to set fixed timer delay in micro-seconds. Default value
-    is 100us.
+  - 1, A value to set fixed timer delay in micro-seconds. Default value is 0us.
 
 - ``no_traffic_time`` parameter [int]
 

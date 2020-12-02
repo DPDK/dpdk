@@ -651,12 +651,9 @@ mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
 		return;
 	rte_kvargs_process(kvlist, NULL, mlx5_vdpa_args_check_handler, priv);
 	rte_kvargs_free(kvlist);
-	if (!priv->event_us) {
-		if (priv->event_mode == MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER)
-			priv->event_us = MLX5_VDPA_DEFAULT_TIMER_STEP_US;
-		else if (priv->event_mode == MLX5_VDPA_EVENT_MODE_FIXED_TIMER)
-			priv->event_us = MLX5_VDPA_DEFAULT_TIMER_DELAY_US;
-	}
+	if (!priv->event_us &&
+	    priv->event_mode == MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER)
+		priv->event_us = MLX5_VDPA_DEFAULT_TIMER_STEP_US;
 	DRV_LOG(DEBUG, "event mode is %d.", priv->event_mode);
 	DRV_LOG(DEBUG, "event_us is %u us.", priv->event_us);
 	DRV_LOG(DEBUG, "no traffic time is %u s.", priv->no_traffic_time_s);
