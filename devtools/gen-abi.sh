@@ -3,13 +3,13 @@
 # Copyright (c) 2019 Red Hat, Inc.
 
 if [ $# != 1 ]; then
-	echo "Usage: $0 installdir"
+	echo "Usage: $0 installdir" >&2
 	exit 1
 fi
 
 installdir=$1
 if [ ! -d $installdir ]; then
-	echo "Error: install directory '$installdir' does not exist."
+	echo "Error: install directory '$installdir' does not exist." >&2
 	exit 1
 fi
 

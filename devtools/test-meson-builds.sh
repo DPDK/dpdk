@@ -191,10 +191,15 @@ build () # <directory> <target compiler | cross file> <meson options>
 
 		install_target $builds_dir/$targetdir \
 			$(readlink -f $builds_dir/$targetdir/install)
+		echo "Checking ABI compatibility of $targetdir" >&$verbose
+		echo $srcdir/devtools/gen-abi.sh \
+			$(readlink -f $builds_dir/$targetdir/install) >&$veryverbose
 		$srcdir/devtools/gen-abi.sh \
-			$(readlink -f $builds_dir/$targetdir/install)
+			$(readlink -f $builds_dir/$targetdir/install) >&$veryverbose
+		echo $srcdir/devtools/check-abi.sh $abirefdir/$targetdir \
+			$(readlink -f $builds_dir/$targetdir/install) >&$veryverbose
 		$srcdir/devtools/check-abi.sh $abirefdir/$targetdir \
-			$(readlink -f $builds_dir/$targetdir/install)
+			$(readlink -f $builds_dir/$targetdir/install) >&$verbose
 	fi
 }
 
