@@ -476,15 +476,6 @@ struct rte_fdir_conf fdir_conf = {
 
 volatile int test_done = 1; /* stop packet forwarding when set to 1. */
 
-struct queue_stats_mappings tx_queue_stats_mappings_array[MAX_TX_QUEUE_STATS_MAPPINGS];
-struct queue_stats_mappings rx_queue_stats_mappings_array[MAX_RX_QUEUE_STATS_MAPPINGS];
-
-struct queue_stats_mappings *tx_queue_stats_mappings = tx_queue_stats_mappings_array;
-struct queue_stats_mappings *rx_queue_stats_mappings = rx_queue_stats_mappings_array;
-
-uint16_t nb_tx_queue_stats_mappings = 0;
-uint16_t nb_rx_queue_stats_mappings = 0;
-
 /*
  * Display zero values by default for xstats
  */
@@ -520,8 +511,6 @@ enum rte_eth_rx_mq_mode rx_mq_mode = ETH_MQ_RX_VMDQ_DCB_RSS;
 
 /* Forward function declarations */
 static void setup_attached_port(portid_t pi);
-static void map_port_queue_stats_mapping_registers(portid_t pi,
-						   struct rte_port *port);
 static void check_all_ports_link_status(uint32_t port_mask);
 static int eth_event_callback(portid_t port_id,
 			      enum rte_eth_event_type type,
@@ -1857,8 +1846,6 @@ fwd_stats_display(void)
 			fwd_cycles += fs->core_cycles;
 	}
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
-		uint8_t j;
-
 		pt_id = fwd_ports_ids[i];
 		port = &ports[pt_id];
 
@@ -1881,59 +1868,26 @@ fwd_stats_display(void)
 		printf("\n  %s Forward statistics for port %-2d %s\n",
 		       fwd_stats_border, pt_id, fwd_stats_border);
 
-		if (!port->rx_queue_stats_mapping_enabled &&
-		    !port->tx_queue_stats_mapping_enabled) {
-			printf("  RX-packets: %-14"PRIu64
-			       " RX-dropped: %-14"PRIu64
-			       "RX-total: %-"PRIu64"\n",
-			       stats.ipackets, stats.imissed,
-			       stats.ipackets + stats.imissed);
+		printf("  RX-packets: %-14"PRIu64" RX-dropped: %-14"PRIu64
+		       "RX-total: %-"PRIu64"\n", stats.ipackets, stats.imissed,
+		       stats.ipackets + stats.imissed);
 
-			if (cur_fwd_eng == &csum_fwd_engine)
-				printf("  Bad-ipcsum: %-14"PRIu64
-				       " Bad-l4csum: %-14"PRIu64
-				       "Bad-outer-l4csum: %-14"PRIu64"\n",
-				       ports_stats[pt_id].rx_bad_ip_csum,
-				       ports_stats[pt_id].rx_bad_l4_csum,
-				       ports_stats[pt_id].rx_bad_outer_l4_csum);
-			if (stats.ierrors + stats.rx_nombuf > 0) {
-				printf("  RX-error: %-"PRIu64"\n",
-				       stats.ierrors);
-				printf("  RX-nombufs: %-14"PRIu64"\n",
-				       stats.rx_nombuf);
-			}
-
-			printf("  TX-packets: %-14"PRIu64
-			       " TX-dropped: %-14"PRIu64
-			       "TX-total: %-"PRIu64"\n",
-			       stats.opackets, ports_stats[pt_id].tx_dropped,
-			       stats.opackets + ports_stats[pt_id].tx_dropped);
-		} else {
-			printf("  RX-packets:             %14"PRIu64
-			       "    RX-dropped:%14"PRIu64
-			       "    RX-total:%14"PRIu64"\n",
-			       stats.ipackets, stats.imissed,
-			       stats.ipackets + stats.imissed);
-
-			if (cur_fwd_eng == &csum_fwd_engine)
-				printf("  Bad-ipcsum:%14"PRIu64
-				       "    Bad-l4csum:%14"PRIu64
-				       "    Bad-outer-l4csum: %-14"PRIu64"\n",
-				       ports_stats[pt_id].rx_bad_ip_csum,
-				       ports_stats[pt_id].rx_bad_l4_csum,
-				       ports_stats[pt_id].rx_bad_outer_l4_csum);
-			if ((stats.ierrors + stats.rx_nombuf) > 0) {
-				printf("  RX-error:%"PRIu64"\n", stats.ierrors);
-				printf("  RX-nombufs:             %14"PRIu64"\n",
-				       stats.rx_nombuf);
-			}
-
-			printf("  TX-packets:             %14"PRIu64
-			       "    TX-dropped:%14"PRIu64
-			       "    TX-total:%14"PRIu64"\n",
-			       stats.opackets, ports_stats[pt_id].tx_dropped,
-			       stats.opackets + ports_stats[pt_id].tx_dropped);
+		if (cur_fwd_eng == &csum_fwd_engine)
+			printf("  Bad-ipcsum: %-14"PRIu64
+			       " Bad-l4csum: %-14"PRIu64
+			       "Bad-outer-l4csum: %-14"PRIu64"\n",
+			       ports_stats[pt_id].rx_bad_ip_csum,
+			       ports_stats[pt_id].rx_bad_l4_csum,
+			       ports_stats[pt_id].rx_bad_outer_l4_csum);
+		if (stats.ierrors + stats.rx_nombuf > 0) {
+			printf("  RX-error: %-"PRIu64"\n", stats.ierrors);
+			printf("  RX-nombufs: %-14"PRIu64"\n", stats.rx_nombuf);
 		}
+
+		printf("  TX-packets: %-14"PRIu64" TX-dropped: %-14"PRIu64
+		       "TX-total: %-"PRIu64"\n",
+		       stats.opackets, ports_stats[pt_id].tx_dropped,
+		       stats.opackets + ports_stats[pt_id].tx_dropped);
 
 		if (record_burst_stats) {
 			if (ports_stats[pt_id].rx_stream)
@@ -1941,28 +1895,7 @@ fwd_stats_display(void)
 					&ports_stats[pt_id].rx_stream->rx_burst_stats);
 			if (ports_stats[pt_id].tx_stream)
 				pkt_burst_stats_display("TX",
-					&ports_stats[pt_id].tx_stream->tx_burst_stats);
-		}
-
-		if (port->rx_queue_stats_mapping_enabled) {
-			printf("\n");
-			for (j = 0; j < RTE_ETHDEV_QUEUE_STAT_CNTRS; j++) {
-				printf("  Stats reg %2d RX-packets:%14"PRIu64
-				       "     RX-errors:%14"PRIu64
-				       "    RX-bytes:%14"PRIu64"\n",
-				       j, stats.q_ipackets[j],
-				       stats.q_errors[j], stats.q_ibytes[j]);
-			}
-			printf("\n");
-		}
-		if (port->tx_queue_stats_mapping_enabled) {
-			for (j = 0; j < RTE_ETHDEV_QUEUE_STAT_CNTRS; j++) {
-				printf("  Stats reg %2d TX-packets:%14"PRIu64
-				       "                                 TX-bytes:%14"
-				       PRIu64"\n",
-				       j, stats.q_opackets[j],
-				       stats.q_obytes[j]);
-			}
+				&ports_stats[pt_id].tx_stream->tx_burst_stats);
 		}
 
 		printf("  %s--------------------------------%s\n",
@@ -2236,11 +2169,6 @@ start_packet_forwarding(int with_tx_first)
 	rxtx_config_display();
 
 	fwd_stats_reset();
-	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
-		pt_id = fwd_ports_ids[i];
-		port = &ports[pt_id];
-		map_port_queue_stats_mapping_registers(pt_id, port);
-	}
 	if (with_tx_first) {
 		port_fwd_begin = tx_only_engine.port_fwd_begin;
 		if (port_fwd_begin != NULL) {
@@ -3352,84 +3280,6 @@ dev_event_callback(const char *device_name, enum rte_dev_event_type type,
 	}
 }
 
-static int
-set_tx_queue_stats_mapping_registers(portid_t port_id, struct rte_port *port)
-{
-	uint16_t i;
-	int diag;
-	uint8_t mapping_found = 0;
-
-	for (i = 0; i < nb_tx_queue_stats_mappings; i++) {
-		if ((tx_queue_stats_mappings[i].port_id == port_id) &&
-				(tx_queue_stats_mappings[i].queue_id < nb_txq )) {
-			diag = rte_eth_dev_set_tx_queue_stats_mapping(port_id,
-					tx_queue_stats_mappings[i].queue_id,
-					tx_queue_stats_mappings[i].stats_counter_id);
-			if (diag != 0)
-				return diag;
-			mapping_found = 1;
-		}
-	}
-	if (mapping_found)
-		port->tx_queue_stats_mapping_enabled = 1;
-	return 0;
-}
-
-static int
-set_rx_queue_stats_mapping_registers(portid_t port_id, struct rte_port *port)
-{
-	uint16_t i;
-	int diag;
-	uint8_t mapping_found = 0;
-
-	for (i = 0; i < nb_rx_queue_stats_mappings; i++) {
-		if ((rx_queue_stats_mappings[i].port_id == port_id) &&
-				(rx_queue_stats_mappings[i].queue_id < nb_rxq )) {
-			diag = rte_eth_dev_set_rx_queue_stats_mapping(port_id,
-					rx_queue_stats_mappings[i].queue_id,
-					rx_queue_stats_mappings[i].stats_counter_id);
-			if (diag != 0)
-				return diag;
-			mapping_found = 1;
-		}
-	}
-	if (mapping_found)
-		port->rx_queue_stats_mapping_enabled = 1;
-	return 0;
-}
-
-static void
-map_port_queue_stats_mapping_registers(portid_t pi, struct rte_port *port)
-{
-	int diag = 0;
-
-	diag = set_tx_queue_stats_mapping_registers(pi, port);
-	if (diag != 0) {
-		if (diag == -ENOTSUP) {
-			port->tx_queue_stats_mapping_enabled = 0;
-			printf("TX queue stats mapping not supported port id=%d\n", pi);
-		}
-		else
-			rte_exit(EXIT_FAILURE,
-					"set_tx_queue_stats_mapping_registers "
-					"failed for port id=%d diag=%d\n",
-					pi, diag);
-	}
-
-	diag = set_rx_queue_stats_mapping_registers(pi, port);
-	if (diag != 0) {
-		if (diag == -ENOTSUP) {
-			port->rx_queue_stats_mapping_enabled = 0;
-			printf("RX queue stats mapping not supported port id=%d\n", pi);
-		}
-		else
-			rte_exit(EXIT_FAILURE,
-					"set_rx_queue_stats_mapping_registers "
-					"failed for port id=%d diag=%d\n",
-					pi, diag);
-	}
-}
-
 static void
 rxtx_port_config(struct rte_port *port)
 {
@@ -3526,7 +3376,6 @@ init_port_config(void)
 		if (ret != 0)
 			return;
 
-		map_port_queue_stats_mapping_registers(pid, port);
 #if defined RTE_NET_IXGBE && defined RTE_LIBRTE_IXGBE_BYPASS
 		rte_pmd_ixgbe_bypass_init(pid);
 #endif
@@ -3736,8 +3585,6 @@ init_port_dcb_config(portid_t pid,
 	retval = eth_macaddr_get_print_err(pid, &rte_port->eth_addr);
 	if (retval != 0)
 		return retval;
-
-	map_port_queue_stats_mapping_registers(pid, rte_port);
 
 	rte_port->dcb_flag = 1;
 
