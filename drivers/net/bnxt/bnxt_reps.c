@@ -65,7 +65,7 @@ bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 		/* Representor Rx ring full, drop pkt */
 		vfr_bp->rx_drop_bytes[que] += mbuf->pkt_len;
 		vfr_bp->rx_drop_pkts[que]++;
-		rte_pktmbuf_free(mbuf);
+		rte_mbuf_raw_free(mbuf);
 	}
 
 	return 0;
