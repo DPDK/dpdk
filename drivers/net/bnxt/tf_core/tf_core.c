@@ -82,7 +82,7 @@ tf_open_session(struct tf *tfp,
 		return rc;
 
 	TFP_DRV_LOG(INFO,
-		    "domain:%d, bus:%d, device:%d\n",
+		    "domain:%d, bus:%d, device:%u\n",
 		    parms->session_id.internal.domain,
 		    parms->session_id.internal.bus,
 		    parms->session_id.internal.device);
