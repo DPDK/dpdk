@@ -1113,7 +1113,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	size = rte_pktmbuf_data_room_size(rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
 	size = RTE_MIN(BNXT_MAX_PKT_LEN, size);
 
-	type = RX_PROD_PKT_BD_TYPE_RX_PROD_PKT | RX_PROD_PKT_BD_FLAGS_EOP_PAD;
+	type = RX_PROD_PKT_BD_TYPE_RX_PROD_PKT;
 
 	rxr = rxq->rx_ring;
 	ring = rxr->rx_ring_struct;
