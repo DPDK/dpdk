@@ -1071,13 +1071,6 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 		}
 
 		pthread_mutex_unlock(&bp->def_cp_lock);
-	} else {
-		/* legacy driver needs to get updated values */
-		rc = bnxt_hwrm_func_qcaps(bp);
-		if (rc) {
-			PMD_DRV_LOG(ERR, "hwrm func qcaps fail:%d\n", rc);
-			return rc;
-		}
 	}
 
 	/* Inherit new configurations */
