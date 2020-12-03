@@ -2780,8 +2780,7 @@ flow_dv_encap_decap_match_cb(struct mlx5_hlist *list __rte_unused,
 	cache_resource = container_of(entry,
 				      struct mlx5_flow_dv_encap_decap_resource,
 				      entry);
-	if (resource->entry.key == cache_resource->entry.key &&
-	    resource->reformat_type == cache_resource->reformat_type &&
+	if (resource->reformat_type == cache_resource->reformat_type &&
 	    resource->ft_type == cache_resource->ft_type &&
 	    resource->flags == cache_resource->flags &&
 	    resource->size == cache_resource->size &&
@@ -2899,18 +2898,16 @@ flow_dv_encap_decap_resource_register
 		.error = error,
 		.data = resource,
 	};
+	uint64_t key64;
 
 	resource->flags = dev_flow->dv.group ? 0 : 1;
-	resource->entry.key =  __rte_raw_cksum(&encap_decap_key.v32,
-					       sizeof(encap_decap_key.v32), 0);
+	key64 =  __rte_raw_cksum(&encap_decap_key.v32,
+				 sizeof(encap_decap_key.v32), 0);
 	if (resource->reformat_type !=
 	    MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TUNNEL_TO_L2 &&
 	    resource->size)
-		resource->entry.key = __rte_raw_cksum(resource->buf,
-						      resource->size,
-						      resource->entry.key);
-	entry = mlx5_hlist_register(sh->encaps_decaps, resource->entry.key,
-				    &ctx);
+		key64 = __rte_raw_cksum(resource->buf, resource->size, key64);
+	entry = mlx5_hlist_register(sh->encaps_decaps, key64, &ctx);
 	if (!entry)
 		return -rte_errno;
 	resource = container_of(entry, typeof(*resource), entry);
@@ -4534,6 +4531,7 @@ flow_dv_modify_hdr_resource_register
 		.error = error,
 		.data = resource,
 	};
+	uint64_t key64;
 
 	resource->flags = dev_flow->dv.group ? 0 :
 			  MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
@@ -4542,8 +4540,8 @@ flow_dv_modify_hdr_resource_register
 		return rte_flow_error_set(error, EOVERFLOW,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "too many modify header items");
-	resource->entry.key = __rte_raw_cksum(&resource->ft_type, key_len, 0);
-	entry = mlx5_hlist_register(sh->modify_cmds, resource->entry.key, &ctx);
+	key64 = __rte_raw_cksum(&resource->ft_type, key_len, 0);
+	entry = mlx5_hlist_register(sh->modify_cmds, key64, &ctx);
 	if (!entry)
 		return -rte_errno;
 	resource = container_of(entry, typeof(*resource), entry);
@@ -7989,9 +7987,12 @@ flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 	tbl_data->idx = idx;
 	tbl_data->tunnel = tt_prm->tunnel;
 	tbl_data->group_id = tt_prm->group_id;
-	tbl_data->external = tt_prm->external;
+	tbl_data->external = !!tt_prm->external;
 	tbl_data->tunnel_offload = is_tunnel_offload_active(dev);
 	tbl_data->is_egress = !!key.direction;
+	tbl_data->is_transfer = !!key.domain;
+	tbl_data->dummy = !!key.dummy;
+	tbl_data->table_id = key.table_id;
 	tbl = &tbl_data->tbl;
 	if (key.dummy)
 		return &tbl_data->entry;
@@ -8030,6 +8031,21 @@ flow_dv_tbl_create_cb(struct mlx5_hlist *list, uint64_t key64, void *cb_ctx)
 			     flow_dv_matcher_match_cb,
 			     flow_dv_matcher_remove_cb);
 	return &tbl_data->entry;
+}
+
+int
+flow_dv_tbl_match_cb(struct mlx5_hlist *list __rte_unused,
+		     struct mlx5_hlist_entry *entry, uint64_t key64,
+		     void *cb_ctx __rte_unused)
+{
+	struct mlx5_flow_tbl_data_entry *tbl_data =
+		container_of(entry, struct mlx5_flow_tbl_data_entry, entry);
+	union mlx5_flow_tbl_key key = { .v64 = key64 };
+
+	return tbl_data->table_id != key.table_id ||
+	       tbl_data->dummy != key.dummy ||
+	       tbl_data->is_transfer != key.domain ||
+	       tbl_data->is_egress != key.direction;
 }
 
 /**
@@ -8117,10 +8133,7 @@ flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 					tbl_data->tunnel->tunnel_id : 0,
 			.group = tbl_data->group_id
 		};
-		union mlx5_flow_tbl_key table_key = {
-			.v64 = entry->key
-		};
-		uint32_t table_id = table_key.table_id;
+		uint32_t table_id = tbl_data->table_id;
 
 		tunnel_grp_hash = tbl_data->tunnel ?
 					tbl_data->tunnel->groups :
@@ -8295,6 +8308,7 @@ flow_dv_tag_create_cb(struct mlx5_hlist *list, uint64_t key, void *ctx)
 		return NULL;
 	}
 	entry->idx = idx;
+	entry->tag_id = key;
 	ret = mlx5_flow_os_create_flow_action_tag(key,
 						  &entry->action);
 	if (ret) {
@@ -8305,6 +8319,17 @@ flow_dv_tag_create_cb(struct mlx5_hlist *list, uint64_t key, void *ctx)
 		return NULL;
 	}
 	return &entry->entry;
+}
+
+int
+flow_dv_tag_match_cb(struct mlx5_hlist *list __rte_unused,
+		     struct mlx5_hlist_entry *entry, uint64_t key,
+		     void *cb_ctx __rte_unused)
+{
+	struct mlx5_flow_dv_tag_resource *tag =
+		container_of(entry, struct mlx5_flow_dv_tag_resource, entry);
+
+	return key != tag->tag_id;
 }
 
 /**

@@ -437,6 +437,7 @@ struct mlx5_flow_dv_tag_resource {
 	/**< Tag action object. */
 	uint32_t refcnt; /**< Reference counter. */
 	uint32_t idx; /**< Index for the index memory pool. */
+	uint32_t tag_id; /**< Tag ID. */
 };
 
 /*
@@ -509,6 +510,7 @@ struct mlx5_flow_mreg_copy_resource {
 	/* List entry for device flows. */
 	uint32_t idx;
 	uint32_t rix_flow; /* Built flow for copy. */
+	uint32_t mark_id;
 };
 
 /* Table tunnel parameter. */
@@ -532,9 +534,13 @@ struct mlx5_flow_tbl_data_entry {
 	/**< tunnel offload */
 	const struct mlx5_flow_tunnel *tunnel;
 	uint32_t group_id;
-	bool external;
-	bool tunnel_offload; /* Tunnel offlod table or not. */
-	bool is_egress; /**< Egress table. */
+	uint32_t external:1;
+	uint32_t tunnel_offload:1; /* Tunnel offlod table or not. */
+	uint32_t is_egress:1; /**< Egress table. */
+	uint32_t is_transfer:1; /**< Transfer table. */
+	uint32_t dummy:1; /**<  DR table. */
+	uint32_t reserve:27; /**< Reserved to future using. */
+	uint32_t table_id; /**< Table ID. */
 };
 
 /* Sub rdma-core actions list. */
@@ -954,6 +960,8 @@ struct mlx5_flow_tunnel_hub {
 struct tunnel_tbl_entry {
 	struct mlx5_hlist_entry hash;
 	uint32_t flow_table;
+	uint32_t tunnel_id;
+	uint32_t group;
 };
 
 static inline uint32_t
@@ -1416,6 +1424,9 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh);
 /* Hash list callbacks for flow tables: */
 struct mlx5_hlist_entry *flow_dv_tbl_create_cb(struct mlx5_hlist *list,
 					       uint64_t key, void *entry_ctx);
+int flow_dv_tbl_match_cb(struct mlx5_hlist *list,
+			 struct mlx5_hlist_entry *entry, uint64_t key,
+			 void *cb_ctx);
 void flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 			   struct mlx5_hlist_entry *entry);
 struct mlx5_flow_tbl_resource *flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
@@ -1425,6 +1436,9 @@ struct mlx5_flow_tbl_resource *flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 
 struct mlx5_hlist_entry *flow_dv_tag_create_cb(struct mlx5_hlist *list,
 					       uint64_t key, void *cb_ctx);
+int flow_dv_tag_match_cb(struct mlx5_hlist *list,
+			 struct mlx5_hlist_entry *entry, uint64_t key,
+			 void *cb_ctx);
 void flow_dv_tag_remove_cb(struct mlx5_hlist *list,
 			   struct mlx5_hlist_entry *entry);
 
@@ -1438,6 +1452,9 @@ void flow_dv_modify_remove_cb(struct mlx5_hlist *list,
 
 struct mlx5_hlist_entry *flow_dv_mreg_create_cb(struct mlx5_hlist *list,
 						uint64_t key, void *ctx);
+int flow_dv_mreg_match_cb(struct mlx5_hlist *list,
+			  struct mlx5_hlist_entry *entry, uint64_t key,
+			  void *cb_ctx);
 void flow_dv_mreg_remove_cb(struct mlx5_hlist *list,
 			    struct mlx5_hlist_entry *entry);
 

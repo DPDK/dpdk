@@ -274,7 +274,7 @@ struct mlx5_hlist;
  */
 struct mlx5_hlist_entry {
 	LIST_ENTRY(mlx5_hlist_entry) next; /* entry pointers in the list. */
-	uint64_t key; /* user defined 'key', could be the hash signature. */
+	uint32_t idx; /* Bucket index the entry belongs to. */
 	uint32_t ref_cnt; /* Reference count. */
 };
 

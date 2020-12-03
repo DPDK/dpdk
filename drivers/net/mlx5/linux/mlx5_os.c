@@ -253,7 +253,8 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
 	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE, 0,
 					  MLX5_HLIST_WRITE_MOST,
-					  flow_dv_tag_create_cb, NULL,
+					  flow_dv_tag_create_cb,
+					  flow_dv_tag_match_cb,
 					  flow_dv_tag_remove_cb);
 	if (!sh->tag_table) {
 		DRV_LOG(ERR, "tags with hash creation failed.");
@@ -1553,7 +1554,7 @@ err_secondary:
 						      MLX5_FLOW_MREG_HTABLE_SZ,
 						      0, 0,
 						      flow_dv_mreg_create_cb,
-						      NULL,
+						      flow_dv_mreg_match_cb,
 						      flow_dv_mreg_remove_cb);
 		if (!priv->mreg_cp_tbl) {
 			err = ENOMEM;

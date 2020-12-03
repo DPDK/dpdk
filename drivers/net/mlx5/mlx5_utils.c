@@ -25,14 +25,6 @@ mlx5_hlist_default_remove_cb(struct mlx5_hlist *h __rte_unused,
 	mlx5_free(entry);
 }
 
-static int
-mlx5_hlist_default_match_cb(struct mlx5_hlist *h __rte_unused,
-			    struct mlx5_hlist_entry *entry,
-			    uint64_t key, void *ctx __rte_unused)
-{
-	return entry->key != key;
-}
-
 struct mlx5_hlist *
 mlx5_hlist_create(const char *name, uint32_t size, uint32_t entry_size,
 		  uint32_t flags, mlx5_hlist_create_cb cb_create,
@@ -43,7 +35,7 @@ mlx5_hlist_create(const char *name, uint32_t size, uint32_t entry_size,
 	uint32_t alloc_size;
 	uint32_t i;
 
-	if (!size || (!cb_create ^ !cb_remove))
+	if (!size || !cb_match || (!cb_create ^ !cb_remove))
 		return NULL;
 	/* Align to the next power of 2, 32bits integer is enough now. */
 	if (!rte_is_power_of_2(size)) {
@@ -71,7 +63,7 @@ mlx5_hlist_create(const char *name, uint32_t size, uint32_t entry_size,
 	h->direct_key = !!(flags & MLX5_HLIST_DIRECT_KEY);
 	h->write_most = !!(flags & MLX5_HLIST_WRITE_MOST);
 	h->cb_create = cb_create ? cb_create : mlx5_hlist_default_create_cb;
-	h->cb_match = cb_match ? cb_match : mlx5_hlist_default_match_cb;
+	h->cb_match = cb_match;
 	h->cb_remove = cb_remove ? cb_remove : mlx5_hlist_default_remove_cb;
 	for (i = 0; i < act_size; i++)
 		rte_rwlock_init(&h->buckets[i].lock);
@@ -166,7 +158,7 @@ mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 		DRV_LOG(DEBUG, "Can't allocate hash list %s entry.", h->name);
 		goto done;
 	}
-	entry->key = key;
+	entry->idx = idx;
 	entry->ref_cnt = 1;
 	LIST_INSERT_HEAD(first, entry, next);
 	__atomic_add_fetch(&b->gen_cnt, 1, __ATOMIC_ACQ_REL);
@@ -180,12 +172,7 @@ done:
 int
 mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_hlist_entry *entry)
 {
-	uint32_t idx;
-
-	if (h->direct_key)
-		idx = (uint32_t)(entry->key & h->mask);
-	else
-		idx = rte_hash_crc_8byte(entry->key, 0) & h->mask;
+	uint32_t idx = entry->idx;
 
 	rte_rwlock_write_lock(&h->buckets[idx].lock);
 	MLX5_ASSERT(entry && entry->ref_cnt && entry->next.le_prev);

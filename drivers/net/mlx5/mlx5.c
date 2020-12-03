@@ -1152,7 +1152,8 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 	MLX5_ASSERT(sh);
 	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
 	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE,
-					  0, 0, flow_dv_tbl_create_cb, NULL,
+					  0, 0, flow_dv_tbl_create_cb,
+					  flow_dv_tbl_match_cb,
 					  flow_dv_tbl_remove_cb);
 	if (!sh->flow_tbls) {
 		DRV_LOG(ERR, "flow tables with hash creation failed.");
