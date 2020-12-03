@@ -328,6 +328,13 @@ typedef struct mlx5_hlist_entry *(*mlx5_hlist_create_cb)
 				  (struct mlx5_hlist *list,
 				   uint64_t key, void *ctx);
 
+/* Hash list bucket head. */
+struct mlx5_hlist_bucket {
+	struct mlx5_hlist_head head; /* List head. */
+	rte_rwlock_t lock; /* Bucket lock. */
+	uint32_t gen_cnt; /* List modification will update generation count. */
+} __rte_cache_aligned;
+
 /**
  * Hash list table structure
  *
@@ -344,15 +351,14 @@ struct mlx5_hlist {
 	uint32_t entry_sz; /**< Size of entry, used to allocate entry. */
 	/**< mask to get the index of the list heads. */
 	uint32_t mask;
-	rte_rwlock_t lock;
-	uint32_t gen_cnt; /* List modification will update generation count. */
 	bool direct_key; /* Use the new entry key directly as hash index. */
 	bool write_most; /* List mostly used for append new or destroy. */
 	void *ctx;
 	mlx5_hlist_create_cb cb_create; /**< entry create callback. */
 	mlx5_hlist_match_cb cb_match; /**< entry match callback. */
 	mlx5_hlist_remove_cb cb_remove; /**< entry remove callback. */
-	struct mlx5_hlist_head heads[];	/**< list head arrays. */
+	struct mlx5_hlist_bucket buckets[] __rte_cache_aligned;
+	/**< list bucket arrays. */
 };
 
 /**

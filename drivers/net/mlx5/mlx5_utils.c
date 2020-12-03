@@ -41,6 +41,7 @@ mlx5_hlist_create(const char *name, uint32_t size, uint32_t entry_size,
 	struct mlx5_hlist *h;
 	uint32_t act_size;
 	uint32_t alloc_size;
+	uint32_t i;
 
 	if (!size || (!cb_create ^ !cb_remove))
 		return NULL;
@@ -53,7 +54,7 @@ mlx5_hlist_create(const char *name, uint32_t size, uint32_t entry_size,
 		act_size = size;
 	}
 	alloc_size = sizeof(struct mlx5_hlist) +
-		     sizeof(struct mlx5_hlist_head) * act_size;
+		     sizeof(struct mlx5_hlist_bucket) * act_size;
 	/* Using zmalloc, then no need to initialize the heads. */
 	h = mlx5_malloc(MLX5_MEM_ZERO, alloc_size, RTE_CACHE_LINE_SIZE,
 			SOCKET_ID_ANY);
@@ -72,25 +73,22 @@ mlx5_hlist_create(const char *name, uint32_t size, uint32_t entry_size,
 	h->cb_create = cb_create ? cb_create : mlx5_hlist_default_create_cb;
 	h->cb_match = cb_match ? cb_match : mlx5_hlist_default_match_cb;
 	h->cb_remove = cb_remove ? cb_remove : mlx5_hlist_default_remove_cb;
-	rte_rwlock_init(&h->lock);
+	for (i = 0; i < act_size; i++)
+		rte_rwlock_init(&h->buckets[i].lock);
 	DRV_LOG(DEBUG, "Hash list with %s size 0x%" PRIX32 " is created.",
 		h->name, act_size);
 	return h;
 }
 
 static struct mlx5_hlist_entry *
-__hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx, bool reuse)
+__hlist_lookup(struct mlx5_hlist *h, uint64_t key, uint32_t idx,
+	       void *ctx, bool reuse)
 {
-	uint32_t idx;
 	struct mlx5_hlist_head *first;
 	struct mlx5_hlist_entry *node;
 
 	MLX5_ASSERT(h);
-	if (h->direct_key)
-		idx = (uint32_t)(key & h->mask);
-	else
-		idx = rte_hash_crc_8byte(key, 0) & h->mask;
-	first = &h->heads[idx];
+	first = &h->buckets[idx].head;
 	LIST_FOREACH(node, first, next) {
 		if (!h->cb_match(h, node, key, ctx)) {
 			if (reuse) {
@@ -107,21 +105,28 @@ __hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx, bool reuse)
 }
 
 static struct mlx5_hlist_entry *
-hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx, bool reuse)
+hlist_lookup(struct mlx5_hlist *h, uint64_t key, uint32_t idx,
+	     void *ctx, bool reuse)
 {
 	struct mlx5_hlist_entry *node;
 
 	MLX5_ASSERT(h);
-	rte_rwlock_read_lock(&h->lock);
-	node = __hlist_lookup(h, key, ctx, reuse);
-	rte_rwlock_read_unlock(&h->lock);
+	rte_rwlock_read_lock(&h->buckets[idx].lock);
+	node = __hlist_lookup(h, key, idx, ctx, reuse);
+	rte_rwlock_read_unlock(&h->buckets[idx].lock);
 	return node;
 }
 
 struct mlx5_hlist_entry *
 mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx)
 {
-	return hlist_lookup(h, key, ctx, false);
+	uint32_t idx;
+
+	if (h->direct_key)
+		idx = (uint32_t)(key & h->mask);
+	else
+		idx = rte_hash_crc_8byte(key, 0) & h->mask;
+	return hlist_lookup(h, key, idx, ctx, false);
 }
 
 struct mlx5_hlist_entry*
@@ -129,30 +134,32 @@ mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 {
 	uint32_t idx;
 	struct mlx5_hlist_head *first;
+	struct mlx5_hlist_bucket *b;
 	struct mlx5_hlist_entry *entry;
 	uint32_t prev_gen_cnt = 0;
 
-	MLX5_ASSERT(h);
-	/* Use write lock directly for write-most list. */
-	if (!h->write_most) {
-		prev_gen_cnt = __atomic_load_n(&h->gen_cnt, __ATOMIC_ACQUIRE);
-		entry = hlist_lookup(h, key, ctx, true);
-		if (entry)
-			return entry;
-	}
-	rte_rwlock_write_lock(&h->lock);
-	/* Check if the list changed by other threads. */
-	if (h->write_most ||
-	    prev_gen_cnt != __atomic_load_n(&h->gen_cnt, __ATOMIC_ACQUIRE)) {
-		entry = __hlist_lookup(h, key, ctx, true);
-		if (entry)
-			goto done;
-	}
 	if (h->direct_key)
 		idx = (uint32_t)(key & h->mask);
 	else
 		idx = rte_hash_crc_8byte(key, 0) & h->mask;
-	first = &h->heads[idx];
+	MLX5_ASSERT(h);
+	b = &h->buckets[idx];
+	/* Use write lock directly for write-most list. */
+	if (!h->write_most) {
+		prev_gen_cnt = __atomic_load_n(&b->gen_cnt, __ATOMIC_ACQUIRE);
+		entry = hlist_lookup(h, key, idx, ctx, true);
+		if (entry)
+			return entry;
+	}
+	rte_rwlock_write_lock(&b->lock);
+	/* Check if the list changed by other threads. */
+	if (h->write_most ||
+	    prev_gen_cnt != __atomic_load_n(&b->gen_cnt, __ATOMIC_ACQUIRE)) {
+		entry = __hlist_lookup(h, key, idx, ctx, true);
+		if (entry)
+			goto done;
+	}
+	first = &b->head;
 	entry = h->cb_create(h, key, ctx);
 	if (!entry) {
 		rte_errno = ENOMEM;
@@ -162,30 +169,37 @@ mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 	entry->key = key;
 	entry->ref_cnt = 1;
 	LIST_INSERT_HEAD(first, entry, next);
-	__atomic_add_fetch(&h->gen_cnt, 1, __ATOMIC_ACQ_REL);
+	__atomic_add_fetch(&b->gen_cnt, 1, __ATOMIC_ACQ_REL);
 	DRV_LOG(DEBUG, "Hash list %s entry %p new: %u.",
 		h->name, (void *)entry, entry->ref_cnt);
 done:
-	rte_rwlock_write_unlock(&h->lock);
+	rte_rwlock_write_unlock(&b->lock);
 	return entry;
 }
 
 int
 mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_hlist_entry *entry)
 {
-	rte_rwlock_write_lock(&h->lock);
+	uint32_t idx;
+
+	if (h->direct_key)
+		idx = (uint32_t)(entry->key & h->mask);
+	else
+		idx = rte_hash_crc_8byte(entry->key, 0) & h->mask;
+
+	rte_rwlock_write_lock(&h->buckets[idx].lock);
 	MLX5_ASSERT(entry && entry->ref_cnt && entry->next.le_prev);
 	DRV_LOG(DEBUG, "Hash list %s entry %p deref: %u.",
 		h->name, (void *)entry, entry->ref_cnt);
 	if (--entry->ref_cnt) {
-		rte_rwlock_write_unlock(&h->lock);
+		rte_rwlock_write_unlock(&h->buckets[idx].lock);
 		return 1;
 	}
 	LIST_REMOVE(entry, next);
 	/* Set to NULL to get rid of removing action for more than once. */
 	entry->next.le_prev = NULL;
 	h->cb_remove(h, entry);
-	rte_rwlock_write_unlock(&h->lock);
+	rte_rwlock_write_unlock(&h->buckets[idx].lock);
 	DRV_LOG(DEBUG, "Hash list %s entry %p removed.",
 		h->name, (void *)entry);
 	return 0;
@@ -200,8 +214,8 @@ mlx5_hlist_destroy(struct mlx5_hlist *h)
 	MLX5_ASSERT(h);
 	for (idx = 0; idx < h->table_sz; ++idx) {
 		/* No LIST_FOREACH_SAFE, using while instead. */
-		while (!LIST_EMPTY(&h->heads[idx])) {
-			entry = LIST_FIRST(&h->heads[idx]);
+		while (!LIST_EMPTY(&h->buckets[idx].head)) {
+			entry = LIST_FIRST(&h->buckets[idx].head);
 			LIST_REMOVE(entry, next);
 			/*
 			 * The owner of whole element which contains data entry
