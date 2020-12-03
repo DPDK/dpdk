@@ -254,16 +254,18 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, volatile union i40e_rx_desc *rxdp,
 
 	const __m128i l3_l4e_flags = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
 			/* shift right 1 bit to make sure it not exceed 255 */
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
 			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_EIP_CKSUM_BAD |
-			 PKT_RX_L4_CKSUM_BAD) >> 1,
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_EIP_CKSUM_BAD) >> 1,
-			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1,
-			PKT_RX_IP_CKSUM_BAD >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1);
+			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
+			 PKT_RX_IP_CKSUM_GOOD) >> 1,
+			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+			 PKT_RX_IP_CKSUM_BAD) >> 1,
+			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+			 PKT_RX_IP_CKSUM_GOOD) >> 1,
+			(PKT_RX_L4_CKSUM_BAD  | PKT_RX_IP_CKSUM_BAD) >> 1,
+			(PKT_RX_L4_CKSUM_BAD  | PKT_RX_IP_CKSUM_GOOD) >> 1,
+			(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD) >> 1,
+			(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_GOOD) >> 1);
 
 	/* Unpack "status" from quadword 1, bits 0:32 */
 	vlan0 = _mm_unpackhi_epi32(descs[0], descs[1]);
