@@ -2,6 +2,9 @@
 language: c
 cache:
   ccache: true
+  directories:
+    - libabigail
+    - reference
 
 dist: bionic
 
@@ -18,6 +21,9 @@ _aarch64_packages: &aarch64_packages
   - *required_packages
   - [gcc-aarch64-linux-gnu, libc6-dev-arm64-cross, pkg-config-aarch64-linux-gnu]
 
+_libabigail_build_packages: &libabigail_build_packages
+  - [autoconf, automake, libtool, pkg-config, libxml2-dev, libdw-dev]
+
 _build_32b_packages: &build_32b_packages
   - *required_packages
   - [gcc-multilib]
@@ -27,6 +33,11 @@ _doc_packages: &doc_packages
 
 before_install: ./.ci/${TRAVIS_OS_NAME}-setup.sh
 script: ./.ci/${TRAVIS_OS_NAME}-build.sh
+
+env:
+  global:
+    - LIBABIGAIL_VERSION=libabigail-1.8
+    - REF_GIT_TAG=v20.11
 
 jobs:
   include:
@@ -45,6 +56,14 @@ jobs:
         packages:
           - *required_packages
           - *doc_packages
+  - env: DEF_LIB="shared" ABI_CHECKS=true
+    arch: amd64
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *required_packages
+          - *libabigail_build_packages
   # x86_64 clang jobs
   - env: DEF_LIB="static"
     arch: amd64
@@ -104,6 +123,14 @@ jobs:
         packages:
           - *required_packages
           - *doc_packages
+  - env: DEF_LIB="shared" ABI_CHECKS=true
+    arch: arm64
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *required_packages
+          - *libabigail_build_packages
   # aarch64 clang jobs
   - env: DEF_LIB="static"
     arch: arm64
