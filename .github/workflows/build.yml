@@ -15,10 +15,13 @@ jobs:
     runs-on: ${{ matrix.config.os }}
     env:
       AARCH64: ${{ matrix.config.cross == 'aarch64' }}
+      ABI_CHECKS: ${{ contains(matrix.config.checks, 'abi') }}
       BUILD_32BIT: ${{ matrix.config.cross == 'i386' }}
       BUILD_DOCS: ${{ contains(matrix.config.checks, 'doc') }}
       CC: ccache ${{ matrix.config.compiler }}
       DEF_LIB: ${{ matrix.config.library }}
+      LIBABIGAIL_VERSION: libabigail-1.8
+      REF_GIT_TAG: v20.11
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
 
     strategy:
@@ -31,7 +34,7 @@ jobs:
           - os: ubuntu-18.04
             compiler: gcc
             library: shared
-            checks: doc+tests
+            checks: abi+doc+tests
           - os: ubuntu-18.04
             compiler: clang
             library: static
@@ -60,6 +63,10 @@ jobs:
       run: |
         echo -n '::set-output name=ccache::'
         echo 'ccache-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-'$(date -u +%Y-w%W)
+        echo -n '::set-output name=libabigail::'
+        echo 'libabigail-${{ matrix.config.os }}'
+        echo -n '::set-output name=abi::'
+        echo 'abi-${{ matrix.config.os }}-${{ matrix.config.compiler }}-${{ matrix.config.cross }}-${{ env.LIBABIGAIL_VERSION }}-${{ env.REF_GIT_TAG }}'
     - name: Retrieve ccache cache
       uses: actions/cache@v2
       with:
@@ -67,10 +74,27 @@ jobs:
         key: ${{ steps.get_ref_keys.outputs.ccache }}-${{ github.ref }}
         restore-keys: |
           ${{ steps.get_ref_keys.outputs.ccache }}-refs/heads/main
+    - name: Retrieve libabigail cache
+      id: libabigail-cache
+      uses: actions/cache@v2
+      if: env.ABI_CHECKS == 'true'
+      with:
+        path: libabigail
+        key: ${{ steps.get_ref_keys.outputs.libabigail }}
+    - name: Retrieve ABI reference cache
+      uses: actions/cache@v2
+      if: env.ABI_CHECKS == 'true'
+      with:
+        path: reference
+        key: ${{ steps.get_ref_keys.outputs.abi }}
     - name: Install packages
       run: sudo apt install -y ccache libnuma-dev python3-setuptools
         python3-wheel python3-pip ninja-build libbsd-dev libpcap-dev
         libibverbs-dev libcrypto++-dev libfdt-dev libjansson-dev
+    - name: Install libabigail build dependencies if no cache is available
+      if: env.ABI_CHECKS == 'true' && steps.libabigail-cache.outputs.cache-hit != 'true'
+      run: sudo apt install -y autoconf automake libtool pkg-config libxml2-dev
+          libdw-dev
     - name: Install i386 cross compiling packages
       if: env.BUILD_32BIT == 'true'
       run: sudo apt install -y gcc-multilib
