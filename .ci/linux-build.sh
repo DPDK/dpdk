@@ -12,7 +12,9 @@ on_error() {
         fi
     done
 }
-trap on_error EXIT
+# We capture the error logs as artifacts in Github Actions, no need to dump
+# them via a EXIT handler.
+[ -n "$GITHUB_WORKFLOW" ] || trap on_error EXIT
 
 install_libabigail() {
     version=$1
@@ -28,16 +30,16 @@ install_libabigail() {
     rm ${version}.tar.gz
 }
 
-if [ "$AARCH64" = "1" ]; then
+if [ "$AARCH64" = "true" ]; then
     # convert the arch specifier
     OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
 fi
 
-if [ "$BUILD_DOCS" = "1" ]; then
+if [ "$BUILD_DOCS" = "true" ]; then
     OPTS="$OPTS -Denable_docs=true"
 fi
 
-if [ "$BUILD_32BIT" = "1" ]; then
+if [ "$BUILD_32BIT" = "true" ]; then
     OPTS="$OPTS -Dc_args=-m32 -Dc_link_args=-m32"
     export PKG_CONFIG_LIBDIR="/usr/lib32/pkgconfig"
 fi
@@ -48,16 +50,17 @@ else
     OPTS="$OPTS -Dexamples=all"
 fi
 
+OPTS="$OPTS -Dmachine=default"
 OPTS="$OPTS --default-library=$DEF_LIB"
 OPTS="$OPTS --buildtype=debugoptimized"
 meson build --werror $OPTS
 ninja -C build
 
-if [ "$AARCH64" != "1" ]; then
+if [ "$AARCH64" != "true" ]; then
     devtools/test-null.sh
 fi
 
-if [ "$ABI_CHECKS" = "1" ]; then
+if [ "$ABI_CHECKS" = "true" ]; then
     LIBABIGAIL_VERSION=${LIBABIGAIL_VERSION:-libabigail-1.6}
 
     if [ "$(cat libabigail/VERSION 2>/dev/null)" != "$LIBABIGAIL_VERSION" ]; then
@@ -95,6 +98,6 @@ if [ "$ABI_CHECKS" = "1" ]; then
     devtools/check-abi.sh reference install ${ABI_CHECKS_WARN_ONLY:-}
 fi
 
-if [ "$RUN_TESTS" = "1" ]; then
+if [ "$RUN_TESTS" = "true" ]; then
     sudo meson test -C build --suite fast-tests -t 3
 fi
