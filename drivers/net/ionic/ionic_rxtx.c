@@ -183,6 +183,13 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 	if (!rte_is_power_of_2(nb_desc) || nb_desc < IONIC_MIN_RING_DESC)
 		return -EINVAL; /* or use IONIC_DEFAULT_RING_DESC */
 
+	if (tx_conf->tx_free_thresh > nb_desc) {
+		IONIC_PRINT(ERR,
+			"tx_free_thresh must be less than nb_desc (%u)",
+			nb_desc);
+		return -EINVAL;
+	}
+
 	/* Free memory prior to re-allocation if needed... */
 	if (eth_dev->data->tx_queues[tx_queue_id] != NULL) {
 		ionic_dev_tx_queue_release(eth_dev, tx_queue_id);
@@ -209,6 +216,10 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 		txq->flags |= IONIC_QCQ_F_CSUM_TCP;
 	if (offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM)
 		txq->flags |= IONIC_QCQ_F_CSUM_UDP;
+
+	txq->free_thresh =
+		tx_conf->tx_free_thresh ? tx_conf->tx_free_thresh :
+		nb_desc - IONIC_DEF_TXRX_BURST;
 
 	eth_dev->data->tx_queues[tx_queue_id] = txq;
 
@@ -538,8 +549,26 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_avail, nb_tx = 0;
 	int err;
 
-	/* Cleaning old buffers */
-	ionic_tx_flush(txq);
+#ifdef IONIC_PREFETCH
+	struct ionic_txq_desc *desc_base = q->base;
+#ifdef IONIC_EMBEDDED
+	rte_prefetch0(&desc_base[q->head_idx]);
+#else
+	if (!(txq->flags & IONIC_QCQ_F_CMB))
+		rte_prefetch0(&desc_base[q->head_idx]);
+#endif
+	rte_prefetch0(IONIC_INFO_PTR(q, q->head_idx));
+
+	if (tx_pkts) {
+		rte_mbuf_prefetch_part1(tx_pkts[0]);
+		rte_mbuf_prefetch_part2(tx_pkts[0]);
+	}
+#endif
+
+	if (unlikely(ionic_q_space_avail(q) < txq->free_thresh)) {
+		/* Cleaning old buffers */
+		ionic_tx_flush(txq);
+	}
 
 	nb_avail = ionic_q_space_avail(q);
 	if (unlikely(nb_avail < nb_pkts)) {
