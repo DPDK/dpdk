@@ -127,9 +127,9 @@
  */
 #ifdef RTE_EXEC_ENV_FREEBSD
 /* In FreeBSD OS, nic_uio driver does not support interrupts */
-#define BNXT_NUM_ASYNC_CPR(bp) 0
+#define BNXT_NUM_ASYNC_CPR(bp) 0U
 #else
-#define BNXT_NUM_ASYNC_CPR(bp) 1
+#define BNXT_NUM_ASYNC_CPR(bp) 1U
 #endif
 
 #define BNXT_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET

@@ -1264,11 +1264,10 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
-	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS)
 		PMD_DRV_LOG(ERR,
-			"RxQ cnt %d > RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
-			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	}
+			    "RxQ cnt %d > RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
+			    bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 
 	do {
 		rc = bnxt_hwrm_if_change(bp, true);
@@ -1622,7 +1621,7 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 out:
 	/* Timed out or success */
 	if (new.link_status != eth_dev->data->dev_link.link_status ||
-	new.link_speed != eth_dev->data->dev_link.link_speed) {
+	    new.link_speed != eth_dev->data->dev_link.link_speed) {
 		rte_eth_linkstatus_set(eth_dev, &new);
 
 		rte_eth_dev_callback_process(eth_dev,
