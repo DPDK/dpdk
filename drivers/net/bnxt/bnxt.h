@@ -724,7 +724,13 @@ struct bnxt {
 	void				*hwrm_short_cmd_req_addr;
 	rte_iova_t			hwrm_short_cmd_req_dma_addr;
 	rte_spinlock_t			hwrm_lock;
+	/* synchronize between dev_configure_op and int handler */
 	pthread_mutex_t			def_cp_lock;
+	/* synchronize between dev_start_op and async evt handler
+	 * Locking sequence in async evt handler will be
+	 * def_cp_lock
+	 * health_check_lock
+	 */
 	pthread_mutex_t			health_check_lock;
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;

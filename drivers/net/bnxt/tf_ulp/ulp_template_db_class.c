@@ -8,6 +8,11 @@
 #include "ulp_template_struct.h"
 #include "ulp_rte_parser.h"
 
+/* Define the template structures */
+/*
+ * Classification signature table:
+ * maps hash id to ulp_class_match_list[] index
+ */
 uint16_t ulp_class_sig_tbl[BNXT_ULP_CLASS_SIG_TBL_MAX_SZ] = {
 	[BNXT_ULP_CLASS_HID_0138] = 1,
 	[BNXT_ULP_CLASS_HID_03f0] = 2,
@@ -227,6 +232,7 @@ uint16_t ulp_class_sig_tbl[BNXT_ULP_CLASS_SIG_TBL_MAX_SZ] = {
 	[BNXT_ULP_CLASS_HID_01b4] = 216
 };
 
+/* Array for the proto matcher list */
 struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	[1] = {
 	.class_hid = BNXT_ULP_CLASS_HID_0138,
