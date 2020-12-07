@@ -277,8 +277,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 out:
 	if (nb_rx_pkts) {
-		rxr->rx_prod =
-			RING_ADV(rxr->rx_ring_struct, rxr->rx_prod, nb_rx_pkts);
+		rxr->rx_raw_prod = RING_ADV(rxr->rx_raw_prod, nb_rx_pkts);
 
 		rxq->rxrearm_nb += nb_rx_pkts;
 		cpr->cp_raw_cons += 2 * nb_rx_pkts;
@@ -351,11 +350,12 @@ bnxt_xmit_fixed_burst_vec(struct bnxt_tx_queue *txq, struct rte_mbuf **tx_pkts,
 			  uint16_t nb_pkts)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
-	uint16_t tx_prod = txr->tx_prod;
+	uint16_t tx_prod, tx_raw_prod = txr->tx_raw_prod;
 	struct tx_bd_long *txbd;
 	struct bnxt_sw_tx_bd *tx_buf;
 	uint16_t to_send;
 
+	tx_prod = RING_IDX(txr->tx_ring_struct, tx_raw_prod);
 	txbd = &txr->tx_desc_ring[tx_prod];
 	tx_buf = &txr->tx_buf_ring[tx_prod];
 
@@ -395,10 +395,10 @@ bnxt_xmit_fixed_burst_vec(struct bnxt_tx_queue *txq, struct rte_mbuf **tx_pkts,
 	txbd[-1].opaque = nb_pkts;
 	txbd[-1].flags_type &= ~TX_BD_LONG_FLAGS_NO_CMPL;
 
-	tx_prod = RING_ADV(txr->tx_ring_struct, tx_prod, nb_pkts);
-	bnxt_db_write(&txr->tx_db, tx_prod);
+	tx_raw_prod += nb_pkts;
+	bnxt_db_write(&txr->tx_db, tx_raw_prod);
 
-	txr->tx_prod = tx_prod;
+	txr->tx_raw_prod = tx_raw_prod;
 
 	return nb_pkts;
 }
@@ -435,8 +435,8 @@ bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * Ensure that a ring wrap does not occur within a call to
 		 * bnxt_xmit_fixed_burst_vec().
 		 */
-		num = RTE_MIN(num,
-			      ring_size - (txr->tx_prod & (ring_size - 1)));
+		num = RTE_MIN(num, ring_size -
+				   (txr->tx_raw_prod & (ring_size - 1)));
 		ret = bnxt_xmit_fixed_burst_vec(txq, &tx_pkts[nb_sent], num);
 		nb_sent += ret;
 		nb_pkts -= ret;

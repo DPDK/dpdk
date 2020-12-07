@@ -2601,8 +2601,8 @@ bnxt_free_all_hwrm_rings(struct bnxt *bp)
 			memset(txr->tx_buf_ring, 0,
 					txr->tx_ring_struct->ring_size *
 					sizeof(*txr->tx_buf_ring));
-			txr->tx_prod = 0;
-			txr->tx_cons = 0;
+			txr->tx_raw_prod = 0;
+			txr->tx_raw_cons = 0;
 		}
 		if (cpr->cp_ring_struct->fw_ring_id != INVALID_HW_RING_ID) {
 			bnxt_free_cp_ring(bp, cpr);

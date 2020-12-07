@@ -103,23 +103,23 @@ static inline void
 bnxt_tx_cmp_vec_fast(struct bnxt_tx_queue *txq, int nr_pkts)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
-	uint32_t ring_mask = txr->tx_ring_struct->ring_mask;
 	struct rte_mbuf **free = txq->free;
-	uint16_t cons = txr->tx_cons;
+	uint16_t cons, raw_cons = txr->tx_raw_cons;
 	unsigned int blk = 0;
+	uint32_t ring_mask = txr->tx_ring_struct->ring_mask;
 
 	while (nr_pkts--) {
 		struct bnxt_sw_tx_bd *tx_buf;
 
+		cons = raw_cons++ & ring_mask;
 		tx_buf = &txr->tx_buf_ring[cons];
-		cons = (cons + 1) & ring_mask;
 		free[blk++] = tx_buf->mbuf;
 		tx_buf->mbuf = NULL;
 	}
 	if (blk)
 		rte_mempool_put_bulk(free[0]->pool, (void **)free, blk);
 
-	txr->tx_cons = cons;
+	txr->tx_raw_cons = raw_cons;
 }
 
 static inline void
@@ -127,7 +127,7 @@ bnxt_tx_cmp_vec(struct bnxt_tx_queue *txq, int nr_pkts)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct rte_mbuf **free = txq->free;
-	uint16_t cons = txr->tx_cons;
+	uint16_t cons, raw_cons = txr->tx_raw_cons;
 	unsigned int blk = 0;
 	uint32_t ring_mask = txr->tx_ring_struct->ring_mask;
 
@@ -135,8 +135,8 @@ bnxt_tx_cmp_vec(struct bnxt_tx_queue *txq, int nr_pkts)
 		struct bnxt_sw_tx_bd *tx_buf;
 		struct rte_mbuf *mbuf;
 
+		cons = raw_cons++ & ring_mask;
 		tx_buf = &txr->tx_buf_ring[cons];
-		cons = (cons + 1) & ring_mask;
 		mbuf = rte_pktmbuf_prefree_seg(tx_buf->mbuf);
 		if (unlikely(mbuf == NULL))
 			continue;
@@ -151,6 +151,6 @@ bnxt_tx_cmp_vec(struct bnxt_tx_queue *txq, int nr_pkts)
 	if (blk)
 		rte_mempool_put_bulk(free[0]->pool, (void **)free, blk);
 
-	txr->tx_cons = cons;
+	txr->tx_raw_cons = raw_cons;
 }
 #endif /* _BNXT_RXTX_VEC_COMMON_H_ */

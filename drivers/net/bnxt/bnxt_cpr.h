@@ -45,7 +45,7 @@ struct bnxt_db_info;
 } while (0)
 #define B_CP_DB_REARM(cpr, raw_cons)					\
 	rte_write32((DB_CP_REARM_FLAGS |				\
-		    RING_CMP(((cpr)->cp_ring_struct), raw_cons)),	\
+		    DB_RING_IDX(&((cpr)->cp_db), raw_cons)),		\
 		    ((cpr)->cp_db.doorbell))
 
 #define B_CP_DB_ARM(cpr)	rte_write32((DB_KEY_CP),		\
@@ -65,8 +65,8 @@ struct bnxt_db_info;
 } while (0)
 #define B_CP_DIS_DB(cpr, raw_cons)					\
 	rte_write32_relaxed((DB_CP_FLAGS |				\
-			    RING_CMP(((cpr)->cp_ring_struct), raw_cons)), \
-			    ((cpr)->cp_db.doorbell))
+		    DB_RING_IDX(&((cpr)->cp_db), raw_cons)),		\
+		    ((cpr)->cp_db.doorbell))
 
 #define B_CP_DB(cpr, raw_cons, ring_mask)				\
 	rte_write32((DB_CP_FLAGS |					\
@@ -80,7 +80,10 @@ struct bnxt_db_info {
 		uint32_t        db_key32;
 	};
 	bool                    db_64;
+	uint32_t		db_ring_mask;
 };
+
+#define DB_RING_IDX(db, idx)	((idx) & (db)->db_ring_mask)
 
 struct bnxt_ring;
 struct bnxt_cp_ring_info {
@@ -95,7 +98,6 @@ struct bnxt_cp_ring_info {
 	uint32_t		hw_stats_ctx_id;
 
 	struct bnxt_ring	*cp_ring_struct;
-	uint16_t		cp_cons;
 	bool			valid;
 };
 

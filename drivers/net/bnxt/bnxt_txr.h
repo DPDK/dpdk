@@ -12,8 +12,8 @@
 #define BNXT_MIN_PKT_SIZE	52
 
 struct bnxt_tx_ring_info {
-	uint16_t		tx_prod;
-	uint16_t		tx_cons;
+	uint16_t		tx_raw_prod;
+	uint16_t		tx_raw_cons;
 	struct bnxt_db_info     tx_db;
 
 	struct tx_bd_long	*tx_desc_ring;
@@ -31,7 +31,7 @@ struct bnxt_sw_tx_bd {
 
 static inline uint32_t bnxt_tx_bds_in_hw(struct bnxt_tx_queue *txq)
 {
-	return ((txq->tx_ring->tx_prod - txq->tx_ring->tx_cons) &
+	return ((txq->tx_ring->tx_raw_prod - txq->tx_ring->tx_raw_cons) &
 		txq->tx_ring->tx_ring_struct->ring_mask);
 }
 

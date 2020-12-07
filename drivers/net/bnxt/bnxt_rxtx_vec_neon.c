@@ -295,8 +295,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 out:
 	if (nb_rx_pkts) {
-		rxr->rx_prod =
-			RING_ADV(rxr->rx_ring_struct, rxr->rx_prod, nb_rx_pkts);
+		rxr->rx_raw_prod = RING_ADV(rxr->rx_raw_prod, nb_rx_pkts);
 
 		rxq->rxrearm_nb += nb_rx_pkts;
 		cpr->cp_raw_cons += 2 * nb_rx_pkts;
@@ -353,7 +352,7 @@ bnxt_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct bnxt_tx_queue *txq = tx_queue;
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
-	uint16_t prod = txr->tx_prod;
+	uint16_t tx_prod, tx_raw_prod = txr->tx_raw_prod;
 	struct rte_mbuf *tx_mbuf;
 	struct tx_bd_long *txbd = NULL;
 	struct bnxt_sw_tx_bd *tx_buf;
@@ -370,16 +369,17 @@ bnxt_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_mbuf = *tx_pkts++;
 		rte_prefetch0(tx_mbuf);
 
-		tx_buf = &txr->tx_buf_ring[prod];
+		tx_prod = RING_IDX(txr->tx_ring_struct, tx_raw_prod);
+		tx_buf = &txr->tx_buf_ring[tx_prod];
 		tx_buf->mbuf = tx_mbuf;
 		tx_buf->nr_bds = 1;
 
-		txbd = &txr->tx_desc_ring[prod];
+		txbd = &txr->tx_desc_ring[tx_prod];
 		txbd->address = tx_mbuf->buf_iova + tx_mbuf->data_off;
 		txbd->len = tx_mbuf->data_len;
 		txbd->flags_type = bnxt_xmit_flags_len(tx_mbuf->data_len,
 						       TX_BD_FLAGS_NOCMPL);
-		prod = RING_NEXT(txr->tx_ring_struct, prod);
+		tx_raw_prod = RING_NEXT(tx_raw_prod);
 		to_send--;
 	}
 
@@ -390,9 +390,9 @@ bnxt_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	rte_compiler_barrier();
-	bnxt_db_write(&txr->tx_db, prod);
+	bnxt_db_write(&txr->tx_db, tx_raw_prod);
 
-	txr->tx_prod = prod;
+	txr->tx_raw_prod = tx_raw_prod;
 
 	return nb_pkts;
 }

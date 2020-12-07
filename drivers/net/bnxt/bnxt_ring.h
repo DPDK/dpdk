@@ -10,8 +10,9 @@
 
 #include <rte_memory.h>
 
-#define RING_ADV(ring, idx, n)		(((idx) + (n)) & (ring)->ring_mask)
-#define RING_NEXT(ring, idx)		RING_ADV(ring, idx, 1)
+#define RING_ADV(idx, n)		((idx) + (n))
+#define RING_NEXT(idx)			RING_ADV(idx, 1)
+#define RING_IDX(ring, idx)		((idx) & (ring)->ring_mask)
 
 #define DB_IDX_MASK						0xffffff
 #define DB_IDX_VALID						(0x1 << 26)
@@ -82,38 +83,51 @@ void bnxt_free_rxtx_nq_ring(struct bnxt *bp);
 
 static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
 {
-	if (db->db_64)
-		rte_write64(db->db_key64 | idx, db->doorbell);
-	else
-		rte_write32(db->db_key32 | idx, db->doorbell);
+	uint32_t db_idx = DB_RING_IDX(db, idx);
+	void *doorbell = db->doorbell;
+
+	if (db->db_64) {
+		uint64_t key_idx = db->db_key64 | db_idx;
+
+		rte_write64(key_idx, doorbell);
+	} else {
+		uint32_t key_idx = db->db_key32 | db_idx;
+
+		rte_write32(key_idx, doorbell);
+	}
 }
 
 /* Ring an NQ doorbell and disable interrupts for the ring. */
 static inline void bnxt_db_nq(struct bnxt_cp_ring_info *cpr)
 {
+	uint32_t db_idx = DB_RING_IDX(&cpr->cp_db, cpr->cp_raw_cons);
+	uint64_t key_idx = cpr->cp_db.db_key64 | DBR_TYPE_NQ | db_idx;
+	void *doorbell = cpr->cp_db.doorbell;
+
+
 	if (unlikely(!cpr->cp_db.db_64))
 		return;
 
-	rte_write64(cpr->cp_db.db_key64 | DBR_TYPE_NQ |
-		    RING_CMP(cpr->cp_ring_struct, cpr->cp_raw_cons),
-		    cpr->cp_db.doorbell);
+	rte_write64(key_idx, doorbell);
 }
 
 /* Ring an NQ doorbell and enable interrupts for the ring. */
 static inline void bnxt_db_nq_arm(struct bnxt_cp_ring_info *cpr)
 {
+	uint32_t db_idx = DB_RING_IDX(&cpr->cp_db, cpr->cp_raw_cons);
+	uint64_t key_idx = cpr->cp_db.db_key64 | DBR_TYPE_NQ_ARM | db_idx;
+	void *doorbell = cpr->cp_db.doorbell;
+
 	if (unlikely(!cpr->cp_db.db_64))
 		return;
 
-	rte_write64(cpr->cp_db.db_key64 | DBR_TYPE_NQ_ARM |
-		    RING_CMP(cpr->cp_ring_struct, cpr->cp_raw_cons),
-		    cpr->cp_db.doorbell);
+	rte_write64(key_idx, doorbell);
 }
 
 static inline void bnxt_db_cq(struct bnxt_cp_ring_info *cpr)
 {
 	struct bnxt_db_info *db = &cpr->cp_db;
-	uint32_t idx = RING_CMP(cpr->cp_ring_struct, cpr->cp_raw_cons);
+	uint32_t idx = DB_RING_IDX(&cpr->cp_db, cpr->cp_raw_cons);
 
 	if (db->db_64) {
 		uint64_t key_idx = db->db_key64 | idx;

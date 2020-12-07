@@ -110,12 +110,14 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				struct tx_bd_long **last_txbd)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	struct bnxt_ring *ring = txr->tx_ring_struct;
 	uint32_t outer_tpid_bd = 0;
 	struct tx_bd_long *txbd;
 	struct tx_bd_long_hi *txbd1 = NULL;
 	uint32_t vlan_tag_flags;
 	bool long_bd = false;
 	unsigned short nr_bds = 0;
+	uint16_t prod;
 	struct rte_mbuf *m_seg;
 	struct bnxt_sw_tx_bd *tx_buf;
 	static const uint32_t lhint_arr[4] = {
@@ -168,11 +170,12 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	/* Check non zero data_len */
 	RTE_VERIFY(tx_pkt->data_len);
 
-	tx_buf = &txr->tx_buf_ring[txr->tx_prod];
+	prod = RING_IDX(ring, txr->tx_raw_prod);
+	tx_buf = &txr->tx_buf_ring[prod];
 	tx_buf->mbuf = tx_pkt;
 	tx_buf->nr_bds = nr_bds;
 
-	txbd = &txr->tx_desc_ring[txr->tx_prod];
+	txbd = &txr->tx_desc_ring[prod];
 	txbd->opaque = *coal_pkts;
 	txbd->flags_type = nr_bds << TX_BD_LONG_FLAGS_BD_CNT_SFT;
 	txbd->flags_type |= TX_BD_SHORT_FLAGS_COAL_NOW;
@@ -210,10 +213,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 					TX_BD_LONG_CFA_META_VLAN_TPID_TPID8100;
 		}
 
-		txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
+		txr->tx_raw_prod = RING_NEXT(txr->tx_raw_prod);
 
-		txbd1 = (struct tx_bd_long_hi *)
-					&txr->tx_desc_ring[txr->tx_prod];
+		prod = RING_IDX(ring, txr->tx_raw_prod);
+		txbd1 = (struct tx_bd_long_hi *)&txr->tx_desc_ring[prod];
 		txbd1->lflags = 0;
 		txbd1->cfa_meta = vlan_tag_flags;
 		/* Legacy tx_bd_long_hi->mss =
@@ -318,11 +321,13 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	while (m_seg) {
 		/* Check non zero data_len */
 		RTE_VERIFY(m_seg->data_len);
-		txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
-		tx_buf = &txr->tx_buf_ring[txr->tx_prod];
+		txr->tx_raw_prod = RING_NEXT(txr->tx_raw_prod);
+
+		prod = RING_IDX(ring, txr->tx_raw_prod);
+		tx_buf = &txr->tx_buf_ring[prod];
 		tx_buf->mbuf = m_seg;
 
-		txbd = &txr->tx_desc_ring[txr->tx_prod];
+		txbd = &txr->tx_desc_ring[prod];
 		txbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova(m_seg));
 		txbd->flags_type = TX_BD_SHORT_TYPE_TX_BD_SHORT;
 		txbd->len = m_seg->data_len;
@@ -332,7 +337,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 	txbd->flags_type |= TX_BD_LONG_FLAGS_PACKET_END;
 
-	txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
+	txr->tx_raw_prod = RING_NEXT(txr->tx_raw_prod);
 
 	return 0;
 }
@@ -344,8 +349,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nr_pkts)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	struct bnxt_ring *ring = txr->tx_ring_struct;
 	struct rte_mbuf **free = txq->free;
-	uint16_t cons = txr->tx_cons;
+	uint16_t raw_cons = txr->tx_raw_cons;
 	unsigned int blk = 0;
 	int i, j;
 
@@ -353,7 +359,7 @@ static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nr_pkts)
 		struct bnxt_sw_tx_bd *tx_buf;
 		unsigned short nr_bds;
 
-		tx_buf = &txr->tx_buf_ring[cons];
+		tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
 		nr_bds = tx_buf->nr_bds;
 		for (j = 0; j < nr_bds; j++) {
 			if (tx_buf->mbuf) {
@@ -361,35 +367,38 @@ static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nr_pkts)
 				free[blk++] = tx_buf->mbuf;
 				tx_buf->mbuf = NULL;
 			}
-			cons = RING_NEXT(txr->tx_ring_struct, cons);
-			tx_buf = &txr->tx_buf_ring[cons];
+			raw_cons = RING_NEXT(raw_cons);
+			tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
 		}
 	}
 	if (blk)
 		rte_mempool_put_bulk(free[0]->pool, (void *)free, blk);
 
-	txr->tx_cons = cons;
+	txr->tx_raw_cons = raw_cons;
 }
 
 static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	struct bnxt_ring *ring = txr->tx_ring_struct;
 	struct rte_mempool *pool = NULL;
 	struct rte_mbuf **free = txq->free;
-	uint16_t cons = txr->tx_cons;
+	uint16_t raw_cons = txr->tx_raw_cons;
 	unsigned int blk = 0;
 	int i, j;
 
 	for (i = 0; i < nr_pkts; i++) {
 		struct rte_mbuf *mbuf;
-		struct bnxt_sw_tx_bd *tx_buf = &txr->tx_buf_ring[cons];
-		unsigned short nr_bds = tx_buf->nr_bds;
+		struct bnxt_sw_tx_bd *tx_buf;
+		unsigned short nr_bds;
 
+		tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
+		nr_bds = tx_buf->nr_bds;
 		for (j = 0; j < nr_bds; j++) {
 			mbuf = tx_buf->mbuf;
 			tx_buf->mbuf = NULL;
-			cons = RING_NEXT(txr->tx_ring_struct, cons);
-			tx_buf = &txr->tx_buf_ring[cons];
+			raw_cons = RING_NEXT(raw_cons);
+			tx_buf = &txr->tx_buf_ring[RING_IDX(ring, raw_cons)];
 			if (!mbuf)	/* long_bd's tx_buf ? */
 				continue;
 
@@ -422,7 +431,7 @@ static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
 	if (blk)
 		rte_mempool_put_bulk(pool, (void *)free, blk);
 
-	txr->tx_cons = cons;
+	txr->tx_raw_cons = raw_cons;
 }
 
 static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
@@ -504,7 +513,7 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (likely(nb_tx_pkts)) {
 		/* Request a completion on the last packet */
 		last_txbd->flags_type &= ~TX_BD_LONG_FLAGS_NO_CMPL;
-		bnxt_db_write(&txq->tx_ring->tx_db, txq->tx_ring->tx_prod);
+		bnxt_db_write(&txq->tx_ring->tx_db, txq->tx_ring->tx_raw_prod);
 	}
 
 	return nb_tx_pkts;

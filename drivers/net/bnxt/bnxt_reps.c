@@ -55,12 +55,12 @@ bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 	mask = rep_rxr->rx_ring_struct->ring_mask;
 
 	/* Put this mbuf on the RxQ of the Representor */
-	prod_rx_buf = &rep_rxr->rx_buf_ring[rep_rxr->rx_prod & mask];
+	prod_rx_buf = &rep_rxr->rx_buf_ring[rep_rxr->rx_raw_prod & mask];
 	if (*prod_rx_buf == NULL) {
 		*prod_rx_buf = mbuf;
 		vfr_bp->rx_bytes[que] += mbuf->pkt_len;
 		vfr_bp->rx_pkts[que]++;
-		rep_rxr->rx_prod++;
+		rep_rxr->rx_raw_prod++;
 	} else {
 		/* Representor Rx ring full, drop pkt */
 		vfr_bp->rx_drop_bytes[que] += mbuf->pkt_len;

@@ -39,12 +39,15 @@ static inline struct rte_mbuf *__bnxt_alloc_rx_data(struct rte_mempool *mb)
 
 static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 				     struct bnxt_rx_ring_info *rxr,
-				     uint16_t prod)
+				     uint16_t raw_prod)
 {
-	struct rx_prod_pkt_bd *rxbd = &rxr->rx_desc_ring[prod];
-	struct rte_mbuf **rx_buf = &rxr->rx_buf_ring[prod];
+	uint16_t prod = RING_IDX(rxr->rx_ring_struct, raw_prod);
+	struct rx_prod_pkt_bd *rxbd;
+	struct rte_mbuf **rx_buf;
 	struct rte_mbuf *mbuf;
 
+	rxbd = &rxr->rx_desc_ring[prod];
+	rx_buf = &rxr->rx_buf_ring[prod];
 	mbuf = __bnxt_alloc_rx_data(rxq->mb_pool);
 	if (!mbuf) {
 		rte_atomic64_inc(&rxq->rx_mbuf_alloc_fail);
@@ -61,12 +64,15 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 
 static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 				     struct bnxt_rx_ring_info *rxr,
-				     uint16_t prod)
+				     uint16_t raw_prod)
 {
-	struct rx_prod_pkt_bd *rxbd = &rxr->ag_desc_ring[prod];
-	struct rte_mbuf **rx_buf = &rxr->ag_buf_ring[prod];
+	uint16_t prod = RING_IDX(rxr->ag_ring_struct, raw_prod);
+	struct rx_prod_pkt_bd *rxbd;
+	struct rte_mbuf **rx_buf;
 	struct rte_mbuf *mbuf;
 
+	rxbd = &rxr->ag_desc_ring[prod];
+	rx_buf = &rxr->ag_buf_ring[prod];
 	if (rxbd == NULL) {
 		PMD_DRV_LOG(ERR, "Jumbo Frame. rxbd is NULL\n");
 		return -EINVAL;
@@ -94,10 +100,11 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 static inline void bnxt_reuse_rx_mbuf(struct bnxt_rx_ring_info *rxr,
 			       struct rte_mbuf *mbuf)
 {
-	uint16_t prod = RING_NEXT(rxr->rx_ring_struct, rxr->rx_prod);
+	uint16_t prod, raw_prod = RING_NEXT(rxr->rx_raw_prod);
 	struct rte_mbuf **prod_rx_buf;
 	struct rx_prod_pkt_bd *prod_bd;
 
+	prod = RING_IDX(rxr->rx_ring_struct, raw_prod);
 	prod_rx_buf = &rxr->rx_buf_ring[prod];
 
 	RTE_ASSERT(*prod_rx_buf == NULL);
@@ -109,7 +116,7 @@ static inline void bnxt_reuse_rx_mbuf(struct bnxt_rx_ring_info *rxr,
 
 	prod_bd->address = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 
-	rxr->rx_prod = prod;
+	rxr->rx_raw_prod = raw_prod;
 }
 
 static inline
@@ -119,7 +126,7 @@ struct rte_mbuf *bnxt_consume_rx_buf(struct bnxt_rx_ring_info *rxr,
 	struct rte_mbuf **cons_rx_buf;
 	struct rte_mbuf *mbuf;
 
-	cons_rx_buf = &rxr->rx_buf_ring[cons];
+	cons_rx_buf = &rxr->rx_buf_ring[RING_IDX(rxr->rx_ring_struct, cons)];
 	RTE_ASSERT(*cons_rx_buf != NULL);
 	mbuf = *cons_rx_buf;
 	*cons_rx_buf = NULL;
@@ -175,7 +182,7 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 		mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
 
 	/* recycle next mbuf */
-	data_cons = RING_NEXT(rxr->rx_ring_struct, data_cons);
+	data_cons = RING_NEXT(data_cons);
 	bnxt_reuse_rx_mbuf(rxr, bnxt_consume_rx_buf(rxr, data_cons));
 }
 
@@ -198,18 +205,20 @@ static int bnxt_agg_bufs_valid(struct bnxt_cp_ring_info *cpr,
 static int bnxt_prod_ag_mbuf(struct bnxt_rx_queue *rxq)
 {
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint16_t next = RING_NEXT(rxr->ag_ring_struct, rxr->ag_prod);
+	uint16_t raw_next = RING_NEXT(rxr->ag_raw_prod);
+	uint16_t bmap_next = RING_IDX(rxr->ag_ring_struct, raw_next);
 
 	/* TODO batch allocation for better performance */
-	while (rte_bitmap_get(rxr->ag_bitmap, next)) {
-		if (unlikely(bnxt_alloc_ag_data(rxq, rxr, next))) {
-			PMD_DRV_LOG(ERR,
-				"agg mbuf alloc failed: prod=0x%x\n", next);
+	while (rte_bitmap_get(rxr->ag_bitmap, bmap_next)) {
+		if (unlikely(bnxt_alloc_ag_data(rxq, rxr, raw_next))) {
+			PMD_DRV_LOG(ERR, "agg mbuf alloc failed: prod=0x%x\n",
+				    raw_next);
 			break;
 		}
-		rte_bitmap_clear(rxr->ag_bitmap, next);
-		rxr->ag_prod = next;
-		next = RING_NEXT(rxr->ag_ring_struct, next);
+		rte_bitmap_clear(rxr->ag_bitmap, bmap_next);
+		rxr->ag_raw_prod = raw_next;
+		raw_next = RING_NEXT(raw_next);
+		bmap_next = RING_IDX(rxr->ag_ring_struct, raw_next);
 	}
 
 	return 0;
@@ -666,7 +675,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	struct rx_pkt_cmpl *rxcmp;
 	struct rx_pkt_cmpl_hi *rxcmp1;
 	uint32_t tmp_raw_cons = *raw_cons;
-	uint16_t cons, prod, cp_cons =
+	uint16_t cons, raw_prod, cp_cons =
 	    RING_CMP(cpr->cp_ring_struct, tmp_raw_cons);
 	struct rte_mbuf *mbuf;
 	int rc = 0;
@@ -726,7 +735,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (agg_buf && !bnxt_agg_bufs_valid(cpr, agg_buf, tmp_raw_cons))
 		return -EBUSY;
 
-	prod = rxr->rx_prod;
+	raw_prod = rxr->rx_raw_prod;
 
 	cons = rxcmp->opaque;
 	mbuf = bnxt_consume_rx_buf(rxr, cons);
@@ -786,13 +795,14 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	 * calls in favour of a tight loop with the same function being called
 	 * in it.
 	 */
-	prod = RING_NEXT(rxr->rx_ring_struct, prod);
-	if (bnxt_alloc_rx_data(rxq, rxr, prod)) {
-		PMD_DRV_LOG(ERR, "mbuf alloc failed with prod=0x%x\n", prod);
+	raw_prod = RING_NEXT(raw_prod);
+	if (bnxt_alloc_rx_data(rxq, rxr, raw_prod)) {
+		PMD_DRV_LOG(ERR, "mbuf alloc failed with prod=0x%x\n",
+			    raw_prod);
 		rc = -ENOMEM;
 		goto rx;
 	}
-	rxr->rx_prod = prod;
+	rxr->rx_raw_prod = raw_prod;
 
 	if (BNXT_TRUFLOW_EN(bp) && (BNXT_VF_IS_TRUSTED(bp) || BNXT_PF(bp)) &&
 	    vfr_flag) {
@@ -826,13 +836,13 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct bnxt_rx_queue *rxq = rx_queue;
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	uint16_t rx_raw_prod = rxr->rx_raw_prod;
+	uint16_t ag_raw_prod = rxr->ag_raw_prod;
 	uint32_t raw_cons = cpr->cp_raw_cons;
 	uint32_t cons;
 	int nb_rx_pkts = 0;
 	int nb_rep_rx_pkts = 0;
 	struct rx_pkt_cmpl *rxcmp;
-	uint16_t prod = rxr->rx_prod;
-	uint16_t ag_prod = rxr->ag_prod;
 	int rc = 0;
 	bool evt = false;
 
@@ -850,8 +860,8 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 */
 	while (unlikely(rxq->rxrearm_nb)) {
 		if (!bnxt_alloc_rx_data(rxq, rxr, rxq->rxrearm_start)) {
-			rxr->rx_prod = rxq->rxrearm_start;
-			bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
+			rxr->rx_raw_prod = rxq->rxrearm_start;
+			bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 			rxq->rxrearm_start++;
 			rxq->rxrearm_nb--;
 		} else {
@@ -895,7 +905,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 		/* Post some Rx buf early in case of larger burst processing */
 		if (nb_rx_pkts == BNXT_RX_POST_THRESH)
-			bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
+			bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 	}
 
 	cpr->cp_raw_cons = raw_cons;
@@ -907,23 +917,27 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		goto done;
 	}
 
-	if (prod != rxr->rx_prod)
-		bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
+	rte_compiler_barrier();
+	if (rx_raw_prod != rxr->rx_raw_prod)
+		bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 
+	rte_compiler_barrier();
 	/* Ring the AGG ring DB */
-	if (ag_prod != rxr->ag_prod)
-		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
+	if (ag_raw_prod != rxr->ag_raw_prod)
+		bnxt_db_write(&rxr->ag_db, rxr->ag_raw_prod);
 
 	bnxt_db_cq(cpr);
 
 	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
 	if (rc == -ENOMEM) {
-		int i = RING_NEXT(rxr->rx_ring_struct, prod);
+		int i = RING_NEXT(rx_raw_prod);
 		int cnt = nb_rx_pkts;
 
-		for (; cnt;
-			i = RING_NEXT(rxr->rx_ring_struct, i), cnt--) {
-			struct rte_mbuf **rx_buf = &rxr->rx_buf_ring[i];
+		for (; nb_rx_pkts; i = RING_NEXT(i), cnt--) {
+			struct rte_mbuf **rx_buf;
+			uint16_t rx_raw_prod = RING_IDX(rxr->rx_ring_struct, i);
+
+			rx_buf = &rxr->rx_buf_ring[rx_raw_prod];
 
 			/* Buffer already allocated for this index. */
 			if (*rx_buf != NULL && *rx_buf != &rxq->fake_mbuf)
@@ -931,8 +945,8 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 			/* This slot is empty. Alloc buffer for Rx */
 			if (!bnxt_alloc_rx_data(rxq, rxr, i)) {
-				rxr->rx_prod = i;
-				bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
+				rxr->rx_raw_prod = i;
+				bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 			} else {
 				PMD_DRV_LOG(ERR, "Alloc  mbuf failed\n");
 				break;
@@ -1100,7 +1114,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 {
 	struct bnxt_rx_ring_info *rxr;
 	struct bnxt_ring *ring;
-	uint32_t prod, type;
+	uint32_t raw_prod, type;
 	unsigned int i;
 	uint16_t size;
 
@@ -1119,18 +1133,18 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	ring = rxr->rx_ring_struct;
 	bnxt_init_rxbds(ring, type, size);
 
-	prod = rxr->rx_prod;
+	raw_prod = rxr->rx_raw_prod;
 	for (i = 0; i < ring->ring_size; i++) {
 		if (unlikely(!rxr->rx_buf_ring[i])) {
-			if (bnxt_alloc_rx_data(rxq, rxr, prod) != 0) {
+			if (bnxt_alloc_rx_data(rxq, rxr, raw_prod) != 0) {
 				PMD_DRV_LOG(WARNING,
 					    "init'ed rx ring %d with %d/%d mbufs only\n",
 					    rxq->queue_id, i, ring->ring_size);
 				break;
 			}
 		}
-		rxr->rx_prod = prod;
-		prod = RING_NEXT(rxr->rx_ring_struct, prod);
+		rxr->rx_raw_prod = raw_prod;
+		raw_prod = RING_NEXT(raw_prod);
 	}
 
 	/* Initialize dummy mbuf pointers for vector mode rx. */
@@ -1142,19 +1156,19 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	ring = rxr->ag_ring_struct;
 	type = RX_PROD_AGG_BD_TYPE_RX_PROD_AGG;
 	bnxt_init_rxbds(ring, type, size);
-	prod = rxr->ag_prod;
+	raw_prod = rxr->ag_raw_prod;
 
 	for (i = 0; i < ring->ring_size; i++) {
 		if (unlikely(!rxr->ag_buf_ring[i])) {
-			if (bnxt_alloc_ag_data(rxq, rxr, prod) != 0) {
+			if (bnxt_alloc_ag_data(rxq, rxr, raw_prod) != 0) {
 				PMD_DRV_LOG(WARNING,
 					    "init'ed AG ring %d with %d/%d mbufs only\n",
 					    rxq->queue_id, i, ring->ring_size);
 				break;
 			}
 		}
-		rxr->ag_prod = prod;
-		prod = RING_NEXT(rxr->ag_ring_struct, prod);
+		rxr->ag_raw_prod = raw_prod;
+		raw_prod = RING_NEXT(raw_prod);
 	}
 	PMD_DRV_LOG(DEBUG, "AGG Done!\n");
 
