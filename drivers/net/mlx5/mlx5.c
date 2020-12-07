@@ -265,6 +265,7 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 	},
 	[MLX5_IPOOL_TUNNEL_ID] = {
 		.size = sizeof(struct mlx5_flow_tunnel),
+		.trunk_size = MLX5_MAX_TUNNELS,
 		.need_lock = 1,
 		.release_mem_en = 1,
 		.type = "mlx5_tunnel_offload",
