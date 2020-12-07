@@ -872,7 +872,17 @@ mvneta_rx_queue_flush(struct mvneta_rxq *rxq)
 	int ret, i;
 
 	descs = rte_malloc("rxdesc", MRVL_NETA_RXD_MAX * sizeof(*descs), 0);
+	if (descs == NULL) {
+		MVNETA_LOG(ERR, "Failed to allocate descs.");
+		return;
+	}
+
 	bufs = rte_malloc("buffs", MRVL_NETA_RXD_MAX * sizeof(*bufs), 0);
+	if (bufs == NULL) {
+		MVNETA_LOG(ERR, "Failed to allocate bufs.");
+		rte_free(descs);
+		return;
+	}
 
 	do {
 		num = MRVL_NETA_RXD_MAX;
