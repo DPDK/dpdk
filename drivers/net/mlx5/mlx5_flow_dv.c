@@ -6230,8 +6230,9 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 				   "not enough memory to create flow handle");
 		return NULL;
 	}
-	MLX5_ASSERT(wks->flow_idx + 1 < RTE_DIM(wks->flows));
+	MLX5_ASSERT(wks->flow_idx < RTE_DIM(wks->flows));
 	dev_flow = &wks->flows[wks->flow_idx++];
+	memset(dev_flow, 0, sizeof(*dev_flow));
 	dev_flow->handle = dev_handle;
 	dev_flow->handle_idx = handle_idx;
 	/*
@@ -6243,12 +6244,6 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 	 */
 	dev_flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param) -
 				  MLX5_ST_SZ_BYTES(fte_match_set_misc4);
-	/*
-	 * The matching value needs to be cleared to 0 before using. In the
-	 * past, it will be automatically cleared when using rte_*alloc
-	 * API. The time consumption will be almost the same as before.
-	 */
-	memset(dev_flow->dv.value.buf, 0, MLX5_ST_SZ_BYTES(fte_match_param));
 	dev_flow->ingress = attr->ingress;
 	dev_flow->dv.transfer = attr->transfer;
 	return dev_flow;
