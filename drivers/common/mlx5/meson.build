@@ -7,7 +7,6 @@ if not (is_linux or (is_windows and is_ms_linker))
 	subdir_done()
 endif
 
-config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
 deps += ['hash', 'pci', 'bus_pci', 'net', 'eal', 'kvargs']
 sources += files(
 	'mlx5_devx_cmds.c',

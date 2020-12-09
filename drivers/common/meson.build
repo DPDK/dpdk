@@ -7,4 +7,3 @@ endif
 
 std_deps = ['eal']
 drivers = ['cpt', 'dpaax', 'iavf', 'mvep', 'octeontx', 'octeontx2', 'sfc_efx']
-config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'

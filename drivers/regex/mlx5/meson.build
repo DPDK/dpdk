@@ -7,7 +7,6 @@ if not is_linux
 	subdir_done()
 endif
 
-fmt_name = 'mlx5_regex'
 deps += ['common_mlx5', 'eal', 'regexdev']
 sources = files(
 	'mlx5_regex.c',

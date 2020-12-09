@@ -7,7 +7,6 @@ if not is_linux
 	subdir_done()
 endif
 
-fmt_name = 'mlx5_vdpa'
 deps += ['hash', 'common_mlx5', 'vhost', 'pci', 'eal', 'sched']
 sources = files(
 	'mlx5_vdpa.c',

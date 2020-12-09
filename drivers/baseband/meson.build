@@ -6,5 +6,3 @@ if is_windows
 endif
 
 drivers = ['null', 'turbo_sw', 'fpga_lte_fec', 'fpga_5gnr_fec', 'acc100']
-
-config_flag_fmt = 'RTE_LIBRTE_PMD_BBDEV_@0@'

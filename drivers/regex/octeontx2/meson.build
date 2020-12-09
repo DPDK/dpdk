@@ -22,7 +22,6 @@ sources = files('otx2_regexdev.c',
 		'otx2_regexdev_compiler.c'
 		)
 
-fmt_name = 'octeontx2_regex'
 deps += ['bus_pci', 'common_octeontx2', 'regexdev']
 
 includes += include_directories('../../common/octeontx2')

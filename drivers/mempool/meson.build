@@ -3,4 +3,3 @@
 
 drivers = ['bucket', 'dpaa', 'dpaa2', 'octeontx', 'octeontx2', 'ring', 'stack']
 std_deps = ['mempool']
-config_flag_fmt = 'RTE_LIBRTE_@0@_MEMPOOL'

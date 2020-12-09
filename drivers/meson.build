@@ -32,7 +32,6 @@ endif
 foreach subpath:subdirs
 	drivers = []
 	std_deps = []
-	config_flag_fmt = '' # format string used to set the value in dpdk_conf
 
 	# subpath can be either "class" or "class/driver"
 	if subpath.contains('/')
@@ -58,7 +57,6 @@ foreach subpath:subdirs
 		build = true # set to false to disable, e.g. missing deps
 		reason = '<unknown reason>' # set if build == false to explain
 		name = drv
-		fmt_name = ''
 		sources = []
 		headers = []
 		objs = []
@@ -113,27 +111,6 @@ foreach subpath:subdirs
 			enabled_drivers += name
 			lib_name = '_'.join(['rte', class, name])
 			dpdk_conf.set(lib_name.to_upper(), 1)
-
-			if fmt_name == ''
-				fmt_name = name
-			endif
-
-			dpdk_conf.set(config_flag_fmt.format(fmt_name.to_upper()),1) #old-style macro
-			# for driver compatibility, since we changed the
-			# default to match that of make. Remove in future release
-			# after following deprecation process
-			if config_flag_fmt.contains('_PMD_@0@') and (class == 'crypto'
-					or class == 'compress'
-					or class == 'event')
-				alt_flag_fmt = '_@0@_PMD'.join(
-						config_flag_fmt.split('_PMD_@0@'))
-				if config_flag_fmt.contains('EVENTDEV')
-					alt_flag_fmt = '_@0@_EVENTDEV_PMD'.join(
-						config_flag_fmt.split('_PMD_@0@_EVENTDEV'))
-				endif
-				dpdk_conf.set(alt_flag_fmt.format(
-						fmt_name.to_upper()), 1)
-			endif
 
 			dpdk_extra_ldflags += pkgconfig_extra_libs
 

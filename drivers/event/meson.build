@@ -12,4 +12,3 @@ if not (toolchain == 'gcc' and cc.version().version_compare('<4.8.6') and
 	drivers += 'octeontx'
 endif
 std_deps = ['eventdev', 'kvargs']
-config_flag_fmt = 'RTE_LIBRTE_PMD_@0@_EVENTDEV'

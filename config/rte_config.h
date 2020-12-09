@@ -13,7 +13,6 @@
 #define _RTE_CONFIG_H_
 
 #include <rte_build_config.h>
-#include "rte_compatibility_defines.h"
 
 /* legacy defines */
 #ifdef RTE_EXEC_ENV_LINUX

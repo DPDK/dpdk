@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2018 Intel Corporation
 
-config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
-
 qat_crypto = true
 qat_crypto_path = 'crypto/qat'
 qat_crypto_relpath = '../../' + qat_crypto_path

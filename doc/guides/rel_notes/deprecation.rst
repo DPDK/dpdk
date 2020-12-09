@@ -11,14 +11,6 @@ here.
 Deprecation Notices
 -------------------
 
-* build: The macros defined to indicate which DPDK libraries and drivers
-  are included in the meson build are changing to a standardized format of
-  ``RTE_LIB_<NAME>`` and ``RTE_<CLASS>_<NAME>``, where ``NAME`` is the
-  upper-case component name, e.g. EAL, ETHDEV, IXGBE, and ``CLASS`` is the
-  upper-case name of the device class to which a driver belongs e.g.
-  ``NET``, ``CRYPTO``, ``VDPA``. The old macros are deprecated and will be
-  removed in a future release.
-
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 

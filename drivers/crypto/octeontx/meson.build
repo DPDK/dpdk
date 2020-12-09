@@ -7,7 +7,6 @@ endif
 
 deps += ['bus_pci']
 deps += ['common_cpt']
-fmt_name = 'octeontx_crypto'
 
 sources = files('otx_cryptodev.c',
 		'otx_cryptodev_capabilities.c',
