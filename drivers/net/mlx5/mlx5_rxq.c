@@ -346,7 +346,9 @@ rxq_free_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 		(1 << rxq->elts_n) * (1 << rxq->strd_num_n) :
 		(1 << rxq->elts_n);
 	const uint16_t q_mask = q_n - 1;
-	uint16_t used = q_n - (rxq->rq_ci - rxq->rq_pi);
+	uint16_t elts_ci = mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq) ?
+		rxq->elts_ci : rxq->rq_ci;
+	uint16_t used = q_n - (elts_ci - rxq->rq_pi);
 	uint16_t i;
 
 	DRV_LOG(DEBUG, "port %u Rx queue %u freeing %d WRs",
@@ -359,8 +361,8 @@ rxq_free_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 	 */
 	if (mlx5_rxq_check_vec_support(rxq) > 0) {
 		for (i = 0; i < used; ++i)
-			(*rxq->elts)[(rxq->rq_ci + i) & q_mask] = NULL;
-		rxq->rq_pi = rxq->rq_ci;
+			(*rxq->elts)[(elts_ci + i) & q_mask] = NULL;
+		rxq->rq_pi = elts_ci;
 	}
 	for (i = 0; i != q_n; ++i) {
 		if ((*rxq->elts)[i] != NULL)
