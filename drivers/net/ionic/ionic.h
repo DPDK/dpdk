@@ -48,6 +48,7 @@ struct ionic_hw {
 struct ionic_adapter {
 	struct ionic_hw hw;
 	struct ionic_dev idev;
+	const char *name;
 	struct ionic_dev_bar bars[IONIC_BARS_MAX];
 	struct ionic_identity	ident;
 	struct ionic_lif *lifs[IONIC_LIFS_MAX];
