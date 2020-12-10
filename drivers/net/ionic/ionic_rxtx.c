@@ -64,7 +64,7 @@ ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->nb_desc = q->num_descs;
 	qinfo->conf.offloads = txq->offloads;
-	qinfo->conf.tx_deferred_start = txq->deferred_start;
+	qinfo->conf.tx_deferred_start = txq->flags & IONIC_QCQ_F_DEFERRED;
 }
 
 static inline void __rte_cold
@@ -196,7 +196,8 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 	}
 
 	/* Do not start queue with rte_eth_dev_start() */
-	txq->deferred_start = tx_conf->tx_deferred_start;
+	if (tx_conf->tx_deferred_start)
+		txq->flags |= IONIC_QCQ_F_DEFERRED;
 
 	txq->offloads = offloads;
 
@@ -605,7 +606,7 @@ ionic_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->mp = rxq->mb_pool;
 	qinfo->scattered_rx = dev->data->scattered_rx;
 	qinfo->nb_desc = q->num_descs;
-	qinfo->conf.rx_deferred_start = rxq->deferred_start;
+	qinfo->conf.rx_deferred_start = rxq->flags & IONIC_QCQ_F_DEFERRED;
 	qinfo->conf.offloads = rxq->offloads;
 }
 
@@ -703,7 +704,8 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	 */
 
 	/* Do not start queue with rte_eth_dev_start() */
-	rxq->deferred_start = rx_conf->rx_deferred_start;
+	if (rx_conf->rx_deferred_start)
+		rxq->flags |= IONIC_QCQ_F_DEFERRED;
 
 	rxq->offloads = offloads;
 

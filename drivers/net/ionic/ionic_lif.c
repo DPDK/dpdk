@@ -1590,7 +1590,7 @@ ionic_lif_start(struct ionic_lif *lif)
 
 	for (i = 0; i < lif->nrxqcqs; i++) {
 		struct ionic_qcq *rxq = lif->rxqcqs[i];
-		if (!rxq->deferred_start) {
+		if (!(rxq->flags & IONIC_QCQ_F_DEFERRED)) {
 			err = ionic_dev_rx_queue_start(lif->eth_dev, i);
 
 			if (err)
@@ -1600,7 +1600,7 @@ ionic_lif_start(struct ionic_lif *lif)
 
 	for (i = 0; i < lif->ntxqcqs; i++) {
 		struct ionic_qcq *txq = lif->txqcqs[i];
-		if (!txq->deferred_start) {
+		if (!(txq->flags & IONIC_QCQ_F_DEFERRED)) {
 			err = ionic_dev_tx_queue_start(lif->eth_dev, i);
 
 			if (err)

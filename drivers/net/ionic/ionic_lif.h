@@ -50,6 +50,7 @@ struct ionic_rx_stats {
 #define IONIC_QCQ_F_SG		BIT(1)
 #define IONIC_QCQ_F_INTR	BIT(2)
 #define IONIC_QCQ_F_NOTIFYQ	BIT(3)
+#define IONIC_QCQ_F_DEFERRED	BIT(4)
 
 /* Queue / Completion Queue */
 struct ionic_qcq {
@@ -68,7 +69,6 @@ struct ionic_qcq {
 	uint32_t total_size;
 	uint32_t flags;
 	struct ionic_intr_info intr;
-	bool deferred_start;
 };
 
 #define IONIC_Q_TO_QCQ(q)	container_of(q, struct ionic_qcq, q)
