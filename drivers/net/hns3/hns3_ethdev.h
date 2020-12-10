@@ -935,6 +935,8 @@ int hns3_dev_filter_ctrl(struct rte_eth_dev *dev,
 bool hns3_is_reset_pending(struct hns3_adapter *hns);
 bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
 void hns3_update_link_status(struct hns3_hw *hw);
+void hns3_ether_format_addr(char *buf, uint16_t size,
+			const struct rte_ether_addr *ether_addr);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)
