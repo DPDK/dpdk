@@ -100,7 +100,7 @@ static int hns3_add_mc_addr(struct hns3_hw *hw,
 static int hns3_remove_mc_addr(struct hns3_hw *hw,
 			    struct rte_ether_addr *mac_addr);
 static int hns3_restore_fec(struct hns3_hw *hw);
-static int hns3_query_dev_fec_info(struct rte_eth_dev *dev);
+static int hns3_query_dev_fec_info(struct hns3_hw *hw);
 
 static void
 hns3_pf_disable_irq0(struct hns3_hw *hw)
@@ -3001,13 +3001,6 @@ hns3_get_capability(struct hns3_hw *hw)
 	    device_id == HNS3_DEV_ID_200G_RDMA)
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
 
-	ret = hns3_query_dev_fec_info(eth_dev);
-	if (ret) {
-		PMD_INIT_LOG(ERR,
-			     "failed to query FEC information, ret = %d", ret);
-		return ret;
-	}
-
 	/* Get PCI revision id */
 	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
 				  HNS3_PCI_REVISION_ID);
@@ -3139,8 +3132,15 @@ hns3_get_configuration(struct hns3_hw *hw)
 	}
 
 	ret = hns3_get_board_configuration(hw);
-	if (ret)
+	if (ret) {
 		PMD_INIT_LOG(ERR, "failed to get board configuration: %d", ret);
+		return ret;
+	}
+
+	ret = hns3_query_dev_fec_info(hw);
+	if (ret)
+		PMD_INIT_LOG(ERR,
+			     "failed to query FEC information, ret = %d", ret);
 
 	return ret;
 }
@@ -5788,6 +5788,16 @@ get_current_fec_auto_state(struct hns3_hw *hw, uint8_t *state)
 	struct hns3_cmd_desc desc;
 	int ret;
 
+	/*
+	 * CMD(HNS3_OPC_CONFIG_FEC_MODE) read is not supported
+	 * in device of link speed
+	 * below 10 Gbps.
+	 */
+	if (hw->mac.link_speed < ETH_SPEED_NUM_10G) {
+		*state = 0;
+		return 0;
+	}
+
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_CONFIG_FEC_MODE, true);
 	req = (struct hns3_config_fec_cmd *)desc.data;
 	ret = hns3_cmd_send(hw, &desc, 1);
@@ -5994,14 +6004,14 @@ hns3_restore_fec(struct hns3_hw *hw)
 }
 
 static int
-hns3_query_dev_fec_info(struct rte_eth_dev *dev)
+hns3_query_dev_fec_info(struct hns3_hw *hw)
 {
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
-	struct hns3_pf *pf = &hns->pf;
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(hns);
+	struct rte_eth_dev *eth_dev = hns->eth_dev;
 	int ret;
 
-	ret = hns3_fec_get(dev, &pf->fec_mode);
+	ret = hns3_fec_get(eth_dev, &pf->fec_mode);
 	if (ret)
 		hns3_err(hw, "query device FEC info failed, ret = %d", ret);
 
@@ -6086,6 +6096,8 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	hns->eth_dev = eth_dev;
 
 	eth_dev->process_private = (struct hns3_process_private *)
 	    rte_zmalloc_socket("hns3_filter_list",
