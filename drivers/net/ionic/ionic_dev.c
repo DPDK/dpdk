@@ -65,7 +65,6 @@ ionic_dev_setup(struct ionic_adapter *adapter)
 	}
 
 	idev->db_pages = bar->vaddr;
-	idev->phy_db_pages = bar->bus_addr;
 
 	return 0;
 }
@@ -343,7 +342,6 @@ ionic_dev_cmd_adminq_init(struct ionic_dev *idev,
 		.q_init.type = q->type,
 		.q_init.index = q->index,
 		.q_init.flags = IONIC_QINIT_F_ENA,
-		.q_init.pid = q->pid,
 		.q_init.intr_index = intr_index,
 		.q_init.ring_size = rte_log2_u32(q->num_descs),
 		.q_init.ring_base = q->base_pa,
@@ -419,7 +417,7 @@ ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 int
 ionic_q_init(struct ionic_lif *lif, struct ionic_dev *idev,
 	     struct ionic_queue *q, uint32_t index, uint32_t num_descs,
-	     size_t desc_size, size_t sg_desc_size, uint32_t pid)
+	     size_t desc_size, size_t sg_desc_size)
 {
 	uint32_t ring_size;
 
@@ -439,7 +437,6 @@ ionic_q_init(struct ionic_lif *lif, struct ionic_dev *idev,
 	q->sg_desc_size = sg_desc_size;
 	q->head_idx = 0;
 	q->tail_idx = 0;
-	q->pid = pid;
 
 	return 0;
 }

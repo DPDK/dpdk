@@ -130,10 +130,4 @@ enum ionic_dbell_bits {
 	IONIC_DBELL_INDEX_MASK		= 0xffff,
 };
 
-static inline void
-ionic_dbell_ring(u64 __iomem *db_page, int qtype, u64 val)
-{
-	writeq(val, &db_page[qtype]);
-}
-
 #endif /* _IONIC_REGS_H_ */

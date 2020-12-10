@@ -84,13 +84,11 @@ struct ionic_lif {
 	struct ionic_adapter *adapter;
 	struct rte_eth_dev *eth_dev;
 	uint16_t port_id;  /**< Device port identifier */
-	uint16_t mtu;
 	uint32_t index;
 	uint32_t hw_index;
 	uint32_t state;
 	uint32_t ntxqcqs;
 	uint32_t nrxqcqs;
-	uint32_t kern_pid;
 	rte_spinlock_t adminq_lock;
 	rte_spinlock_t adminq_service_lock;
 	struct ionic_qcq *adminqcq;
