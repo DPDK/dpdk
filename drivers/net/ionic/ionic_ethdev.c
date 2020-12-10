@@ -571,7 +571,7 @@ ionic_dev_rss_reta_update(struct rte_eth_dev *eth_dev,
 
 	if (reta_size != ident->lif.eth.rss_ind_tbl_sz) {
 		IONIC_PRINT(ERR, "The size of hash lookup table configured "
-			"(%d) doesn't match the number hardware can supported "
+			"(%d) does not match the number hardware can support "
 			"(%d)",
 			reta_size, ident->lif.eth.rss_ind_tbl_sz);
 		return -EINVAL;
@@ -605,7 +605,7 @@ ionic_dev_rss_reta_query(struct rte_eth_dev *eth_dev,
 
 	if (reta_size != ident->lif.eth.rss_ind_tbl_sz) {
 		IONIC_PRINT(ERR, "The size of hash lookup table configured "
-			"(%d) doesn't match the number hardware can supported "
+			"(%d) does not match the number hardware can support "
 			"(%d)",
 			reta_size, ident->lif.eth.rss_ind_tbl_sz);
 		return -EINVAL;

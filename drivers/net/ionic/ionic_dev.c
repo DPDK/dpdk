@@ -103,6 +103,9 @@ ionic_dev_cmd_go(struct ionic_dev *idev, union ionic_dev_cmd *cmd)
 	uint32_t cmd_size = sizeof(cmd->words) /
 		sizeof(cmd->words[0]);
 
+	IONIC_PRINT(DEBUG, "Sending %s (%d) via dev_cmd",
+		    ionic_opcode_to_str(cmd->cmd.opcode), cmd->cmd.opcode);
+
 	for (i = 0; i < cmd_size; i++)
 		iowrite32(cmd->words[i], &idev->dev_cmd->cmd.words[i]);
 
@@ -349,6 +352,8 @@ ionic_dev_cmd_adminq_init(struct ionic_dev *idev,
 		.q_init.ring_base = q->base_pa,
 		.q_init.cq_ring_base = cq->base_pa,
 	};
+
+	IONIC_PRINT(DEBUG, "adminq.q_init.ver %u", cmd.q_init.ver);
 
 	ionic_dev_cmd_go(idev, &cmd);
 }

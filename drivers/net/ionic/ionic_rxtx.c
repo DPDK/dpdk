@@ -133,7 +133,7 @@ ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
 	struct ionic_qcq *txq;
 
-	IONIC_PRINT_CALL();
+	IONIC_PRINT(DEBUG, "Stopping TX queue %u", tx_queue_id);
 
 	txq = eth_dev->data->tx_queues[tx_queue_id];
 
@@ -156,18 +156,13 @@ ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 
 int __rte_cold
 ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
-		uint16_t nb_desc, uint32_t socket_id __rte_unused,
+		uint16_t nb_desc, uint32_t socket_id,
 		const struct rte_eth_txconf *tx_conf)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
 	struct ionic_qcq *txq;
 	uint64_t offloads;
 	int err;
-
-	IONIC_PRINT_CALL();
-
-	IONIC_PRINT(DEBUG, "Configuring TX queue %u with %u buffers",
-		tx_queue_id, nb_desc);
 
 	if (tx_queue_id >= lif->ntxqcqs) {
 		IONIC_PRINT(DEBUG, "Queue index %u not available "
@@ -177,6 +172,9 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 	}
 
 	offloads = tx_conf->offloads | eth_dev->data->dev_conf.txmode.offloads;
+	IONIC_PRINT(DEBUG,
+		"Configuring skt %u TX queue %u with %u buffers, offloads %jx",
+		socket_id, tx_queue_id, nb_desc, offloads);
 
 	/* Validate number of receive descriptors */
 	if (!rte_is_power_of_2(nb_desc) || nb_desc < IONIC_MIN_RING_DESC)
@@ -214,9 +212,10 @@ ionic_dev_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 	struct ionic_qcq *txq;
 	int err;
 
-	IONIC_PRINT_CALL();
-
 	txq = eth_dev->data->tx_queues[tx_queue_id];
+
+	IONIC_PRINT(DEBUG, "Starting TX queue %u, %u descs",
+		tx_queue_id, txq->q.num_descs);
 
 	err = ionic_lif_txq_init(txq);
 	if (err)
@@ -641,7 +640,7 @@ int __rte_cold
 ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		uint16_t rx_queue_id,
 		uint16_t nb_desc,
-		uint32_t socket_id __rte_unused,
+		uint32_t socket_id,
 		const struct rte_eth_rxconf *rx_conf,
 		struct rte_mempool *mp)
 {
@@ -649,11 +648,6 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	struct ionic_qcq *rxq;
 	uint64_t offloads;
 	int err;
-
-	IONIC_PRINT_CALL();
-
-	IONIC_PRINT(DEBUG, "Configuring RX queue %u with %u buffers",
-		rx_queue_id, nb_desc);
 
 	if (rx_queue_id >= lif->nrxqcqs) {
 		IONIC_PRINT(ERR,
@@ -663,13 +657,16 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	}
 
 	offloads = rx_conf->offloads | eth_dev->data->dev_conf.rxmode.offloads;
+	IONIC_PRINT(DEBUG,
+		"Configuring skt %u RX queue %u with %u buffers, offloads %jx",
+		socket_id, rx_queue_id, nb_desc, offloads);
 
 	/* Validate number of receive descriptors */
 	if (!rte_is_power_of_2(nb_desc) ||
 			nb_desc < IONIC_MIN_RING_DESC ||
 			nb_desc > IONIC_MAX_RING_DESC) {
 		IONIC_PRINT(ERR,
-			"Bad number of descriptors (%u) for queue %u (min: %u)",
+			"Bad descriptor count (%u) for queue %u (min: %u)",
 			nb_desc, rx_queue_id, IONIC_MIN_RING_DESC);
 		return -EINVAL; /* or use IONIC_DEFAULT_RING_DESC */
 	}
@@ -686,7 +683,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	err = ionic_rx_qcq_alloc(lif, rx_queue_id, nb_desc, &rxq);
 	if (err) {
-		IONIC_PRINT(ERR, "Queue allocation failure");
+		IONIC_PRINT(ERR, "Queue %d allocation failure", rx_queue_id);
 		return -EINVAL;
 	}
 
@@ -957,12 +954,10 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	struct ionic_qcq *rxq;
 	int err;
 
-	IONIC_PRINT_CALL();
-
-	IONIC_PRINT(DEBUG, "Allocating RX queue buffers (size: %u)",
-		frame_size);
-
 	rxq = eth_dev->data->rx_queues[rx_queue_id];
+
+	IONIC_PRINT(DEBUG, "Starting RX queue %u, %u descs (size: %u)",
+		rx_queue_id, rxq->q.num_descs, frame_size);
 
 	err = ionic_lif_rxq_init(rxq);
 	if (err)
@@ -1043,7 +1038,7 @@ ionic_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
 	struct ionic_qcq *rxq;
 
-	IONIC_PRINT_CALL();
+	IONIC_PRINT(DEBUG, "Stopping RX queue %u", rx_queue_id);
 
 	rxq = eth_dev->data->rx_queues[rx_queue_id];
 

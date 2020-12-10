@@ -208,6 +208,8 @@ struct ionic_qcq;
 void ionic_intr_init(struct ionic_dev *idev, struct ionic_intr_info *intr,
 	unsigned long index);
 
+const char *ionic_opcode_to_str(enum ionic_cmd_opcode opcode);
+
 int ionic_dev_setup(struct ionic_adapter *adapter);
 
 void ionic_dev_cmd_go(struct ionic_dev *idev, union ionic_dev_cmd *cmd);
