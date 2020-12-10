@@ -743,6 +743,8 @@ struct hns3_adapter {
 		struct hns3_vf vf;
 	};
 
+	struct rte_eth_dev *eth_dev;
+
 	bool rx_simple_allowed;
 	bool rx_vec_allowed;
 	bool tx_simple_allowed;
