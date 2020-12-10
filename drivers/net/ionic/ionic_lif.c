@@ -77,11 +77,14 @@ void
 ionic_lif_reset(struct ionic_lif *lif)
 {
 	struct ionic_dev *idev = &lif->adapter->idev;
+	int err;
 
 	IONIC_PRINT_CALL();
 
 	ionic_dev_cmd_lif_reset(idev, lif->index);
-	ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
+	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
+	if (err)
+		IONIC_PRINT(WARNING, "Failed to reset lif");
 }
 
 static void
@@ -305,10 +308,11 @@ ionic_dev_add_mac(struct rte_eth_dev *eth_dev,
 }
 
 void
-ionic_dev_remove_mac(struct rte_eth_dev *eth_dev, uint32_t index __rte_unused)
+ionic_dev_remove_mac(struct rte_eth_dev *eth_dev, uint32_t index)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
 	struct ionic_adapter *adapter = lif->adapter;
+	struct rte_ether_addr *mac_addr;
 
 	IONIC_PRINT_CALL();
 
@@ -319,11 +323,12 @@ ionic_dev_remove_mac(struct rte_eth_dev *eth_dev, uint32_t index __rte_unused)
 		return;
 	}
 
-	if (!rte_is_valid_assigned_ether_addr(&eth_dev->data->mac_addrs[index]))
+	mac_addr = &eth_dev->data->mac_addrs[index];
+
+	if (!rte_is_valid_assigned_ether_addr(mac_addr))
 		return;
 
-	ionic_lif_addr_del(lif, (const uint8_t *)
-		&eth_dev->data->mac_addrs[index]);
+	ionic_lif_addr_del(lif, (const uint8_t *)mac_addr);
 }
 
 int

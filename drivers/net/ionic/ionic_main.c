@@ -188,8 +188,7 @@ ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 	done = ionic_wait_ctx_for_completion(lif, qcq, ctx,
 		IONIC_DEVCMD_TIMEOUT);
 
-	err = ionic_adminq_check_err(ctx, !done /* timed out */);
-	return err;
+	return ionic_adminq_check_err(ctx, !done /* timed out */);
 }
 
 static int
@@ -241,10 +240,11 @@ ionic_dev_cmd_wait_check(struct ionic_dev *idev, unsigned long max_wait)
 	int err;
 
 	err = ionic_dev_cmd_wait(idev, max_wait);
-	if (err)
-		return err;
 
-	return ionic_dev_cmd_check_error(idev);
+	if (!err)
+		err = ionic_dev_cmd_check_error(idev);
+
+	return err;
 }
 
 int
@@ -299,22 +299,18 @@ int
 ionic_init(struct ionic_adapter *adapter)
 {
 	struct ionic_dev *idev = &adapter->idev;
-	int err;
 
 	ionic_dev_cmd_init(idev);
-	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
-	return err;
+	return ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
 }
 
 int
 ionic_reset(struct ionic_adapter *adapter)
 {
 	struct ionic_dev *idev = &adapter->idev;
-	int err;
 
 	ionic_dev_cmd_reset(idev);
-	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
-	return err;
+	return ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
 }
 
 int
