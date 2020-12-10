@@ -20,13 +20,8 @@
 
 #include "ionic_logs.h"
 
-#define DELAY(x) rte_delay_us(x)
-#define usec_delay(x) DELAY(x)
-#define msec_delay(x) DELAY(1000 * (x))
-
 #define BIT(nr)            (1UL << (nr))
 #define BIT_ULL(nr)        (1ULL << (nr))
-#define BITS_TO_LONGS(nr)  div_round_up(nr, 8 * sizeof(long))
 
 #ifndef PAGE_SHIFT
 #define PAGE_SHIFT      12
@@ -43,11 +38,6 @@ typedef uint64_t u64;
 typedef uint16_t __le16;
 typedef uint32_t __le32;
 typedef uint64_t __le64;
-
-static inline uint32_t div_round_up(uint32_t n, uint32_t d)
-{
-	return (n + d - 1) / d;
-}
 
 #define ioread8(reg)		rte_read8(reg)
 #define ioread32(reg)		rte_read32(reg)

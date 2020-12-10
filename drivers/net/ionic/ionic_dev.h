@@ -20,7 +20,9 @@
 
 #define IONIC_LIFS_MAX			1024
 
-#define IONIC_DEVCMD_TIMEOUT	30 /* devcmd_timeout */
+#define IONIC_DEVCMD_TIMEOUT		5	/* devcmd_timeout */
+#define IONIC_DEVCMD_CHECK_PERIOD_US	10	/* devcmd status chk period */
+
 #define	IONIC_ALIGN             4096
 
 struct ionic_adapter;

@@ -144,12 +144,12 @@ static int
 ionic_wait_ctx_for_completion(struct ionic_lif *lif, struct ionic_qcq *qcq,
 		struct ionic_admin_ctx *ctx, unsigned long max_wait)
 {
-	unsigned long step_msec = 1;
-	unsigned int max_wait_msec = max_wait * 1000;
-	unsigned long elapsed_msec = 0;
+	unsigned long step_usec = IONIC_DEVCMD_CHECK_PERIOD_US;
+	unsigned long max_wait_usec = max_wait * 1000000L;
+	unsigned long elapsed_usec = 0;
 	int budget = 8;
 
-	while (ctx->pending_work && elapsed_msec < max_wait_msec) {
+	while (ctx->pending_work && elapsed_usec < max_wait_usec) {
 		/*
 		 * Locking here as adminq is served inline (this could be called
 		 * from multiple places)
@@ -160,8 +160,8 @@ ionic_wait_ctx_for_completion(struct ionic_lif *lif, struct ionic_qcq *qcq,
 
 		rte_spinlock_unlock(&lif->adminq_service_lock);
 
-		msec_delay(step_msec);
-		elapsed_msec += step_msec;
+		rte_delay_us_block(step_usec);
+		elapsed_usec += step_usec;
 	}
 
 	return (!ctx->pending_work);
@@ -195,9 +195,9 @@ ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 static int
 ionic_dev_cmd_wait(struct ionic_dev *idev, unsigned long max_wait)
 {
-	unsigned long step_msec = 100;
-	unsigned int max_wait_msec = max_wait * 1000;
-	unsigned long elapsed_msec = 0;
+	unsigned long step_usec = IONIC_DEVCMD_CHECK_PERIOD_US;
+	unsigned long max_wait_usec = max_wait * 1000000L;
+	unsigned long elapsed_usec = 0;
 	int done;
 
 	/* Wait for dev cmd to complete.. but no more than max_wait sec */
@@ -205,20 +205,20 @@ ionic_dev_cmd_wait(struct ionic_dev *idev, unsigned long max_wait)
 	do {
 		done = ionic_dev_cmd_done(idev);
 		if (done) {
-			IONIC_PRINT(DEBUG, "DEVCMD %d done took %ld msecs",
-				idev->dev_cmd->cmd.cmd.opcode,
-				elapsed_msec);
+			IONIC_PRINT(DEBUG, "DEVCMD %d done took %ld usecs",
+				ioread8(&idev->dev_cmd->cmd.cmd.opcode),
+				elapsed_usec);
 			return 0;
 		}
 
-		msec_delay(step_msec);
+		rte_delay_us_block(step_usec);
 
-		elapsed_msec += step_msec;
-	} while (elapsed_msec < max_wait_msec);
+		elapsed_usec += step_usec;
+	} while (elapsed_usec < max_wait_usec);
 
-	IONIC_PRINT(DEBUG, "DEVCMD %d timeout after %ld msecs",
-		idev->dev_cmd->cmd.cmd.opcode,
-		elapsed_msec);
+	IONIC_PRINT(ERR, "DEVCMD %d timeout after %ld usecs",
+		ioread8(&idev->dev_cmd->cmd.cmd.opcode),
+		elapsed_usec);
 
 	return -ETIMEDOUT;
 }
