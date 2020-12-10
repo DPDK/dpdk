@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
-    Copyright(c) 2018-2019 Pensando Systems, Inc. All rights reserved.
+    Copyright(c) 2018-2020 Pensando Systems, Inc. All rights reserved.
 
 IONIC Driver
 ============
@@ -7,15 +7,16 @@ IONIC Driver
 The ionic driver provides support for Pensando server adapters.
 It currently supports the below models:
 
-- `Naples DSC-25 <https://pensando.io/assets/documents/Naples-25_ProductBrief_10-2019.pdf>`_
-- `Naples DSC-100 <https://pensando.io/assets/documents/Naples_100_ProductBrief-10-2019.pdf>`_
+- DSC-25 dual-port 25G Distributed Services Card `(pdf) <https://pensando.io/wp-content/uploads/2020/03/Pensando-DSC-25-Product-Brief.pdf>`__
+- DSC-100 dual-port 100G Distributed Services Card `(pdf) <https://pensando.io/wp-content/uploads/2020/03/Pensando-DSC-100-Product-Brief.pdf>`__
 
-Please visit https://pensando.io for more information.
+Please visit the Pensando web site at https://pensando.io for more information.
+The `Documents <https://pensando.io/documents/>`_ page contains Product Briefs and other product information.
 
 Identifying the Adapter
 -----------------------
 
-To find if one or more Pensando PCI Ethernet devices are installed
+To determine if one or more Pensando DSC Ethernet devices are installed
 on the host, check for the PCI devices:
 
    .. code-block:: console
@@ -28,6 +29,6 @@ on the host, check for the PCI devices:
 Building DPDK
 -------------
 
-The ionic PMD driver supports UIO and VFIO, please refer to the
+The ionic PMD supports UIO and VFIO. Please refer to the
 :ref:`DPDK documentation that comes with the DPDK suite <linux_gsg>`
 for instructions on how to build DPDK.
