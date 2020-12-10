@@ -919,6 +919,9 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
+	if (dev_conf->lpbk_mode)
+		IONIC_PRINT(WARNING, "Loopback mode not supported");
+
 	err = ionic_lif_start(lif);
 	if (err) {
 		IONIC_PRINT(ERR, "Cannot start LIF: %d", err);
