@@ -10,6 +10,7 @@
 #include "pci_netuio.h"
 
 #include <devpkey.h>
+#include <regstr.h>
 
 #if defined RTE_TOOLCHAIN_GCC && (__MINGW64_VERSION_MAJOR < 8)
 #include <devpropdef.h>
@@ -303,7 +304,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 {
 	struct rte_pci_device *dev;
 	int ret = -1;
-	char  pci_device_info[PATH_MAX];
+	char  pci_device_info[REGSTR_VAL_MAX_HCID_LEN];
 	struct rte_pci_addr addr;
 	struct rte_pci_id pci_id;
 
@@ -314,7 +315,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 	memset(dev, 0, sizeof(*dev));
 
 	ret = get_pci_hardware_id(dev_info, device_info_data,
-		pci_device_info, PATH_MAX);
+		pci_device_info, sizeof(pci_device_info));
 	if (ret != 0)
 		goto end;
 
