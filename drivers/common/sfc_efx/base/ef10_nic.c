@@ -1423,11 +1423,19 @@ ef10_get_datapath_caps(
 
 #if EFSYS_OPT_MAE
 	/*
-	 * Indicate support for MAE.
-	 * MAE is supported by Riverhead boards starting with R2,
-	 * and it is required that FW is built with MAE support, too.
+	 * Check support for EF100 Match Action Engine (MAE).
+	 * MAE hardware is present on Riverhead boards (from R2),
+	 * and on Keystone, and requires support in firmware.
+	 *
+	 * MAE control operations require MAE control privilege,
+	 * which is not available for VFs.
+	 *
+	 * Privileges can change dynamically at runtime: we assume
+	 * MAE support requires the privilege is granted initially,
+	 * and ignore later dynamic changes.
 	 */
-	if (CAP_FLAGS3(req, MAE_SUPPORTED))
+	if (CAP_FLAGS3(req, MAE_SUPPORTED) &&
+	    EFX_MCDI_HAVE_PRIVILEGE(encp->enc_privilege_mask, MAE))
 		encp->enc_mae_supported = B_TRUE;
 	else
 		encp->enc_mae_supported = B_FALSE;
@@ -1896,6 +1904,18 @@ efx_mcdi_nic_board_cfg(
 
 	EFX_MAC_ADDR_COPY(encp->enc_mac_addr, mac_addr);
 
+	/*
+	 * Get the current privilege mask. Note that this may be modified
+	 * dynamically, so for most cases the value is informational only.
+	 * If the privilege being discovered can't be granted dynamically,
+	 * it's fine to rely on the value. In all other cases, DO NOT use
+	 * the privilege mask to check for sufficient privileges, as that
+	 * can result in time-of-check/time-of-use bugs.
+	 */
+	if ((rc = ef10_get_privilege_mask(enp, &mask)) != 0)
+		goto fail6;
+	encp->enc_privilege_mask = mask;
+
 	/* Board configuration (legacy) */
 	rc = efx_mcdi_get_board_cfg(enp, &board_type, NULL, NULL);
 	if (rc != 0) {
@@ -1903,14 +1923,14 @@ efx_mcdi_nic_board_cfg(
 		if (rc == EACCES)
 			board_type = 0;
 		else
-			goto fail6;
+			goto fail7;
 	}
 
 	encp->enc_board_type = board_type;
 
 	/* Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI */
 	if ((rc = efx_mcdi_get_phy_cfg(enp)) != 0)
-		goto fail7;
+		goto fail8;
 
 	/*
 	 * Firmware with support for *_FEC capability bits does not
@@ -1929,18 +1949,18 @@ efx_mcdi_nic_board_cfg(
 
 	/* Obtain the default PHY advertised capabilities */
 	if ((rc = ef10_phy_get_link(enp, &els)) != 0)
-		goto fail8;
+		goto fail9;
 	epp->ep_default_adv_cap_mask = els.epls.epls_adv_cap_mask;
 	epp->ep_adv_cap_mask = els.epls.epls_adv_cap_mask;
 
 	/* Check capabilities of running datapath firmware */
 	if ((rc = ef10_get_datapath_caps(enp)) != 0)
-		goto fail9;
+		goto fail10;
 
 	/* Get interrupt vector limits */
 	if ((rc = efx_mcdi_get_vector_cfg(enp, &base, &nvec, NULL)) != 0) {
 		if (EFX_PCI_FUNCTION_IS_PF(encp))
-			goto fail10;
+			goto fail11;
 
 		/* Ignore error (cannot query vector limits from a VF). */
 		base = 0;
@@ -1948,16 +1968,6 @@ efx_mcdi_nic_board_cfg(
 	}
 	encp->enc_intr_vec_base = base;
 	encp->enc_intr_limit = nvec;
-
-	/*
-	 * Get the current privilege mask. Note that this may be modified
-	 * dynamically, so this value is informational only. DO NOT use
-	 * the privilege mask to check for sufficient privileges, as that
-	 * can result in time-of-check/time-of-use bugs.
-	 */
-	if ((rc = ef10_get_privilege_mask(enp, &mask)) != 0)
-		goto fail11;
-	encp->enc_privilege_mask = mask;
 
 	return (0);
 
