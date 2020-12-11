@@ -97,8 +97,13 @@ __hn_nvs_execute(struct hn_data *hv,
 	hdr = (struct hn_nvs_hdr *)buffer;
 
 	/* Silently drop received packets while waiting for response */
-	if (hdr->type == NVS_TYPE_RNDIS) {
+	switch (hdr->type) {
+	case NVS_TYPE_RNDIS:
 		hn_nvs_ack_rxbuf(chan, xactid);
+		/* fallthrough */
+
+	case NVS_TYPE_TXTBL_NOTE:
+		PMD_DRV_LOG(DEBUG, "discard packet type 0x%x", hdr->type);
 		goto retry;
 	}
 
