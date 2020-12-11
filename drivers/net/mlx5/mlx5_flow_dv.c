@@ -5282,6 +5282,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	} else {
 		tunnel = NULL;
 	}
+	if (tunnel && priv->representor)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "decap not supported "
+					  "for VF representor");
 	grp_info.std_tbl_fix = tunnel_use_standard_attr_group_translate
 				(dev, tunnel, attr, items, actions);
 	ret = flow_dv_validate_attributes(dev, tunnel, attr, &grp_info, error);
