@@ -276,6 +276,7 @@ virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 		}
 		kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 		if (kickfd < 0) {
+			close(callfd);
 			PMD_DRV_LOG(ERR, "kickfd error, %s", strerror(errno));
 			break;
 		}
@@ -284,7 +285,7 @@ virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 	}
 
 	if (i < VIRTIO_MAX_VIRTQUEUES) {
-		for (j = 0; j <= i; ++j) {
+		for (j = 0; j < i; ++j) {
 			close(dev->callfds[j]);
 			close(dev->kickfds[j]);
 		}
