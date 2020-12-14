@@ -907,14 +907,16 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		goto done;
 	}
 
+	/* Ring the completion queue doorbell. */
+	bnxt_db_cq(cpr);
+
+	/* Ring the receive descriptor doorbell. */
 	if (prod != rxr->rx_prod)
 		bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
 
 	/* Ring the AGG ring DB */
 	if (ag_prod != rxr->ag_prod)
 		bnxt_db_write(&rxr->ag_db, rxr->ag_prod);
-
-	bnxt_db_cq(cpr);
 
 	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
 	if (rc == -ENOMEM) {
