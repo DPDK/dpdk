@@ -152,6 +152,10 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 #define proto_hdr_gtpc { \
 	VIRTCHNL_PROTO_HDR_GTPC, 0, {BUFF_NOUSED} }
 
+#define proto_hdr_ecpri { \
+	VIRTCHNL_PROTO_HDR_ECPRI, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_ECPRI_PC_RTC_ID), {BUFF_NOUSED} }
+
 #define TUNNEL_LEVEL_OUTER		0
 #define TUNNEL_LEVEL_INNER		1
 
@@ -288,6 +292,14 @@ struct virtchnl_proto_hdrs ipv6_udp_gtpc_tmplt = {
 	TUNNEL_LEVEL_OUTER, 3, {proto_hdr_ipv6, proto_hdr_udp, proto_hdr_gtpc}
 };
 
+struct virtchnl_proto_hdrs eth_ecpri_tmplt = {
+	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_eth, proto_hdr_ecpri}
+};
+
+struct virtchnl_proto_hdrs ipv4_ecpri_tmplt = {
+	TUNNEL_LEVEL_OUTER, 3, {proto_hdr_ipv4, proto_hdr_udp, proto_hdr_ecpri}
+};
+
 /* rss type super set */
 
 /* IPv4 outer */
@@ -399,6 +411,8 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv4_l2tpv3,			IAVF_RSS_TYPE_IPV4_L2TPV3,	&ipv4_l2tpv3_tmplt},
 	{iavf_pattern_eth_ipv4_pfcp,			IAVF_RSS_TYPE_IPV4_PFCP,	&ipv4_pfcp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpc,			ETH_RSS_IPV4,			&ipv4_udp_gtpc_tmplt},
+	{iavf_pattern_eth_ecpri,			ETH_RSS_ECPRI,			&eth_ecpri_tmplt},
+	{iavf_pattern_eth_ipv4_ecpri,			ETH_RSS_ECPRI,			&ipv4_ecpri_tmplt},
 	/* IPv6 */
 	{iavf_pattern_eth_ipv6,				IAVF_RSS_TYPE_OUTER_IPV6,	&outer_ipv6_tmplt},
 	{iavf_pattern_eth_ipv6_udp,			IAVF_RSS_TYPE_OUTER_IPV6_UDP,	&outer_ipv6_udp_tmplt},
@@ -525,6 +539,8 @@ iavf_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 {
 	const struct rte_flow_item *item = pattern;
 	const struct rte_flow_item_gtp_psc *psc;
+	const struct rte_flow_item_ecpri *ecpri;
+	struct rte_ecpri_common_hdr ecpri_common;
 
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
@@ -555,6 +571,20 @@ iavf_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 				*phint |= IAVF_PHINT_GTPU_EH_UP;
 			else if (psc->pdu_type == IAVF_GTPU_EH_DWNLINK)
 				*phint |= IAVF_PHINT_GTPU_EH_DWN;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ECPRI:
+			ecpri = item->spec;
+			ecpri_common.u32 = rte_be_to_cpu_32(
+						ecpri->hdr.common.u32);
+			if (!ecpri)
+				break;
+			else if (ecpri_common.type !=
+				 RTE_ECPRI_MSG_TYPE_IQ_DATA) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM, item,
+					"Unsupported common type.");
+				return -rte_errno;
+			}
 			break;
 		default:
 			break;
@@ -709,6 +739,10 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			break;
 		case VIRTCHNL_PROTO_HDR_PFCP:
 			if (!(rss_type & ETH_RSS_PFCP))
+				hdr->field_selector = 0;
+			break;
+		case VIRTCHNL_PROTO_HDR_ECPRI:
+			if (!(rss_type & ETH_RSS_ECPRI))
 				hdr->field_selector = 0;
 			break;
 		default:
