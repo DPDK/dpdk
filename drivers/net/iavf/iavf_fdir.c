@@ -104,6 +104,9 @@
 #define IAVF_FDIR_INSET_PFCP (\
 	IAVF_INSET_PFCP_S_FIELD)
 
+#define IAVF_FDIR_INSET_ECPRI (\
+	IAVF_INSET_ECPRI)
+
 static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_ethertype,		IAVF_FDIR_INSET_ETH,			IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4,			IAVF_FDIR_INSET_ETH_IPV4,		IAVF_INSET_NONE},
@@ -128,6 +131,8 @@ static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_eth_ipv6_udp_esp,		IAVF_FDIR_INSET_IPV6_NATT_ESP,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_pfcp,		IAVF_FDIR_INSET_PFCP,			IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv6_pfcp,		IAVF_FDIR_INSET_PFCP,			IAVF_INSET_NONE},
+	{iavf_pattern_eth_ecpri,		IAVF_FDIR_INSET_ECPRI,			IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_ecpri,		IAVF_FDIR_INSET_ECPRI,			IAVF_INSET_NONE},
 };
 
 static struct iavf_flow_parser iavf_fdir_parser;
@@ -469,6 +474,8 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 	const struct rte_flow_item_esp *esp_spec, *esp_mask;
 	const struct rte_flow_item_ah *ah_spec, *ah_mask;
 	const struct rte_flow_item_pfcp *pfcp_spec, *pfcp_mask;
+	const struct rte_flow_item_ecpri *ecpri_spec, *ecpri_mask;
+	struct rte_ecpri_common_hdr ecpri_common;
 	uint64_t input_set = IAVF_INSET_NONE;
 
 	enum rte_flow_item_type next_type;
@@ -901,6 +908,31 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 
 				rte_memcpy(hdr->buffer, pfcp_spec,
 					sizeof(*pfcp_spec));
+			}
+
+			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_ECPRI:
+			ecpri_spec = item->spec;
+			ecpri_mask = item->mask;
+
+			ecpri_common.u32 = rte_be_to_cpu_32(ecpri_spec->hdr.common.u32);
+
+			hdr = &filter->add_fltr.rule_cfg.proto_hdrs.proto_hdr[layer];
+
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, ECPRI);
+
+			if (ecpri_spec && ecpri_mask) {
+				if (ecpri_common.type == RTE_ECPRI_MSG_TYPE_IQ_DATA &&
+						ecpri_mask->hdr.type0.pc_id == UINT16_MAX) {
+					input_set |= IAVF_ECPRI_PC_RTC_ID;
+					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, ECPRI,
+									 PC_RTC_ID);
+				}
+
+				rte_memcpy(hdr->buffer, ecpri_spec,
+					sizeof(*ecpri_spec));
 			}
 
 			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
