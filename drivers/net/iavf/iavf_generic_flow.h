@@ -262,6 +262,9 @@ extern enum rte_flow_item_type iavf_pattern_eth_ipv6_l2tpv3[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_pfcp[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv6_pfcp[];
 
+/* ECPRI */
+extern enum rte_flow_item_type iavf_pattern_eth_ecpri[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_ecpri[];
 
 extern const struct rte_flow_ops iavf_flow_ops;
 
