@@ -901,7 +901,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		raw_cons = NEXT_RAW_CMP(raw_cons);
-		if (nb_rx_pkts == nb_pkts || evt)
+		if (nb_rx_pkts == nb_pkts || nb_rep_rx_pkts == nb_pkts || evt)
 			break;
 		/* Post some Rx buf early in case of larger burst processing */
 		if (nb_rx_pkts == BNXT_RX_POST_THRESH)
