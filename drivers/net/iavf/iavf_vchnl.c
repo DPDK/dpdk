@@ -644,12 +644,12 @@ iavf_enable_queues_lv(struct iavf_adapter *adapter)
 	args.out_buffer = vf->aq_resp;
 	args.out_size = IAVF_AQ_BUF_SZ;
 	err = iavf_execute_vf_cmd(adapter, &args);
-	if (err) {
+	if (err)
 		PMD_DRV_LOG(ERR,
 			    "Failed to execute command of OP_ENABLE_QUEUES_V2");
-		return err;
-	}
-	return 0;
+
+	rte_free(queue_select);
+	return err;
 }
 
 int
@@ -688,12 +688,12 @@ iavf_disable_queues_lv(struct iavf_adapter *adapter)
 	args.out_buffer = vf->aq_resp;
 	args.out_size = IAVF_AQ_BUF_SZ;
 	err = iavf_execute_vf_cmd(adapter, &args);
-	if (err) {
+	if (err)
 		PMD_DRV_LOG(ERR,
 			    "Failed to execute command of OP_DISABLE_QUEUES_V2");
-		return err;
-	}
-	return 0;
+
+	rte_free(queue_select);
+	return err;
 }
 
 int
@@ -737,6 +737,8 @@ iavf_switch_queue_lv(struct iavf_adapter *adapter, uint16_t qid,
 	if (err)
 		PMD_DRV_LOG(ERR, "Failed to execute command of %s",
 			    on ? "OP_ENABLE_QUEUES_V2" : "OP_DISABLE_QUEUES_V2");
+
+	rte_free(queue_select);
 	return err;
 }
 
