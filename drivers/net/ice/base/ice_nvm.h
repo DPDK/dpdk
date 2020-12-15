@@ -119,4 +119,5 @@ enum ice_status ice_read_sr_word(struct ice_hw *hw, u16 offset, u16 *data);
 enum ice_status
 ice_read_sr_buf(struct ice_hw *hw, u16 offset, u16 *words, u16 *data);
 enum ice_status ice_nvm_validate_checksum(struct ice_hw *hw);
+enum ice_status ice_nvm_recalculate_checksum(struct ice_hw *hw);
 #endif /* _ICE_NVM_H_ */

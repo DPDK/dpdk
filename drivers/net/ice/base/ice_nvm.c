@@ -1078,6 +1078,34 @@ enum ice_status ice_nvm_validate_checksum(struct ice_hw *hw)
 }
 
 /**
+ * ice_nvm_recalculate_checksum
+ * @hw: pointer to the HW struct
+ *
+ * Recalculate NVM PFA checksum (0x0706)
+ */
+enum ice_status ice_nvm_recalculate_checksum(struct ice_hw *hw)
+{
+	struct ice_aqc_nvm_checksum *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+
+	status = ice_acquire_nvm(hw, ICE_RES_READ);
+	if (status)
+		return status;
+
+	cmd = &desc.params.nvm_checksum;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_nvm_checksum);
+	cmd->flags = ICE_AQC_NVM_CHECKSUM_RECALC;
+
+	status = ice_aq_send_cmd(hw, &desc, NULL, 0, NULL);
+
+	ice_release_nvm(hw);
+
+	return status;
+}
+
+/**
  * ice_nvm_access_get_features - Return the NVM access features structure
  * @cmd: NVM access command to process
  * @data: storage for the driver NVM features
