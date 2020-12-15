@@ -2163,7 +2163,7 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 	u16 count = 0;
 	u16 index;
 	u16 size;
-	u16 i;
+	u16 i, j;
 
 	ice_acquire_lock(&hw->tnl_lock);
 
@@ -2203,30 +2203,31 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 					  size);
 	if (!sect_rx)
 		goto ice_destroy_tunnel_err;
-	sect_rx->count = CPU_TO_LE16(1);
+	sect_rx->count = CPU_TO_LE16(count);
 
 	sect_tx = (struct ice_boost_tcam_section *)
 		ice_pkg_buf_alloc_section(bld, ICE_SID_TXPARSER_BOOST_TCAM,
 					  size);
 	if (!sect_tx)
 		goto ice_destroy_tunnel_err;
-	sect_tx->count = CPU_TO_LE16(1);
+	sect_tx->count = CPU_TO_LE16(count);
 
 	/* copy original boost entry to update package buffer, one copy to Rx
 	 * section, another copy to the Tx section
 	 */
-	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
+	for (i = 0, j = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
 		if (hw->tnl.tbl[i].valid && hw->tnl.tbl[i].in_use &&
 		    (all || hw->tnl.tbl[i].port == port)) {
-			ice_memcpy(sect_rx->tcam + i,
+			ice_memcpy(sect_rx->tcam + j,
 				   hw->tnl.tbl[i].boost_entry,
 				   sizeof(*sect_rx->tcam),
 				   ICE_NONDMA_TO_NONDMA);
-			ice_memcpy(sect_tx->tcam + i,
+			ice_memcpy(sect_tx->tcam + j,
 				   hw->tnl.tbl[i].boost_entry,
 				   sizeof(*sect_tx->tcam),
 				   ICE_NONDMA_TO_NONDMA);
 			hw->tnl.tbl[i].marked = true;
+			j++;
 		}
 
 	status = ice_update_pkg(hw, ice_pkg_buf(bld), 1);
