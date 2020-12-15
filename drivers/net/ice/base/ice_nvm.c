@@ -213,6 +213,74 @@ void ice_release_nvm(struct ice_hw *hw)
 }
 
 /**
+ * ice_get_flash_bank_offset - Get offset into requested flash bank
+ * @hw: pointer to the HW structure
+ * @bank: whether to read from the active or inactive flash bank
+ * @module: the module to read from
+ *
+ * Based on the module, lookup the module offset from the beginning of the
+ * flash.
+ *
+ * Returns the flash offset. Note that a value of zero is invalid and must be
+ * treated as an error.
+ */
+static u32 ice_get_flash_bank_offset(struct ice_hw *hw, enum ice_bank_select bank, u16 module)
+{
+	struct ice_bank_info *banks = &hw->flash.banks;
+	enum ice_flash_bank active_bank;
+	bool second_bank_active;
+	u32 offset, size;
+
+	switch (module) {
+	case ICE_SR_1ST_NVM_BANK_PTR:
+		offset = banks->nvm_ptr;
+		size = banks->nvm_size;
+		active_bank = banks->nvm_bank;
+		break;
+	case ICE_SR_1ST_OROM_BANK_PTR:
+		offset = banks->orom_ptr;
+		size = banks->orom_size;
+		active_bank = banks->orom_bank;
+		break;
+	case ICE_SR_NETLIST_BANK_PTR:
+		offset = banks->netlist_ptr;
+		size = banks->netlist_size;
+		active_bank = banks->netlist_bank;
+		break;
+	default:
+		ice_debug(hw, ICE_DBG_NVM, "Unexpected value for flash module: 0x%04x\n", module);
+		return 0;
+	}
+
+	switch (active_bank) {
+	case ICE_1ST_FLASH_BANK:
+		second_bank_active = false;
+		break;
+	case ICE_2ND_FLASH_BANK:
+		second_bank_active = true;
+		break;
+	default:
+		ice_debug(hw, ICE_DBG_NVM, "Unexpected value for active flash bank: %u\n",
+			  active_bank);
+		return 0;
+	}
+
+	/* The second flash bank is stored immediately following the first
+	 * bank. Based on whether the 1st or 2nd bank is active, and whether
+	 * we want the active or inactive bank, calculate the desired offset.
+	 */
+	switch (bank) {
+	case ICE_ACTIVE_FLASH_BANK:
+		return offset + (second_bank_active ? size : 0);
+	case ICE_INACTIVE_FLASH_BANK:
+		return offset + (second_bank_active ? 0 : size);
+	}
+
+	ice_debug(hw, ICE_DBG_NVM, "Unexpected value for flash bank selection: %u\n", bank);
+	return 0;
+}
+
+/**
  * ice_read_flash_module - Read a word from one of the main NVM modules
  * @hw: pointer to the HW structure
  * @bank: which bank of the module to read
@@ -220,49 +288,29 @@ void ice_release_nvm(struct ice_hw *hw)
  * @offset: the offset into the module in words
  * @data: storage for the word read from the flash
  *
- * Read a word from the specified bank of the module. The bank must be either
- * the 1st or 2nd bank. The word will be read using flat NVM access, and
- * relies on the hw->flash.banks data being setup by
- * ice_determine_active_flash_banks() during initialization.
+ * Read data from the specified flash module. The bank parameter indicates
+ * whether or not to read from the active bank or the inactive bank of that
+ * module.
+ *
+ * The word will be read using flat NVM access, and relies on the
+ * hw->flash.banks data being setup by ice_determine_active_flash_banks()
+ * during initialization.
  */
 static enum ice_status
-ice_read_flash_module(struct ice_hw *hw, enum ice_flash_bank bank, u16 module,
+ice_read_flash_module(struct ice_hw *hw, enum ice_bank_select bank, u16 module,
 		      u32 offset, u16 *data)
 {
-	struct ice_bank_info *banks = &hw->flash.banks;
 	u32 bytes = sizeof(u16);
 	enum ice_status status;
 	__le16 data_local;
-	bool second_bank;
 	u32 start;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
-	switch (bank) {
-	case ICE_1ST_FLASH_BANK:
-		second_bank = false;
-		break;
-	case ICE_2ND_FLASH_BANK:
-		second_bank = true;
-		break;
-	case ICE_INVALID_FLASH_BANK:
-	default:
-		ice_debug(hw, ICE_DBG_NVM, "Unexpected flash bank %u\n", bank);
-		return ICE_ERR_PARAM;
-	}
-
-	switch (module) {
-	case ICE_SR_1ST_NVM_BANK_PTR:
-		start = banks->nvm_ptr + (second_bank ? banks->nvm_size : 0);
-		break;
-	case ICE_SR_1ST_OROM_BANK_PTR:
-		start = banks->orom_ptr + (second_bank ? banks->orom_size : 0);
-		break;
-	case ICE_SR_NETLIST_BANK_PTR:
-		start = banks->netlist_ptr + (second_bank ? banks->netlist_size : 0);
-		break;
-	default:
-		ice_debug(hw, ICE_DBG_NVM, "Unexpected flash module 0x%04x\n", module);
+	start = ice_get_flash_bank_offset(hw, bank, module);
+	if (!start) {
+		ice_debug(hw, ICE_DBG_NVM, "Unable to calculate flash bank offset for module 0x%04x\n",
+			  module);
 		return ICE_ERR_PARAM;
 	}
 
@@ -292,7 +340,7 @@ ice_read_flash_module(struct ice_hw *hw, enum ice_flash_bank bank, u16 module,
 static enum ice_status
 ice_read_active_nvm_module(struct ice_hw *hw, u32 offset, u16 *data)
 {
-	return ice_read_flash_module(hw, hw->flash.banks.nvm_bank,
+	return ice_read_flash_module(hw, ICE_ACTIVE_FLASH_BANK,
 				     ICE_SR_1ST_NVM_BANK_PTR, offset, data);
 }
 
@@ -309,7 +357,7 @@ ice_read_active_nvm_module(struct ice_hw *hw, u32 offset, u16 *data)
 static enum ice_status
 ice_read_active_orom_module(struct ice_hw *hw, u32 offset, u16 *data)
 {
-	return ice_read_flash_module(hw, hw->flash.banks.orom_bank,
+	return ice_read_flash_module(hw, ICE_ACTIVE_FLASH_BANK,
 				     ICE_SR_1ST_OROM_BANK_PTR, offset, data);
 }
 
