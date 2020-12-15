@@ -1222,8 +1222,8 @@ struct ice_aqc_get_phy_caps {
 #define ICE_AQC_REPORT_MODE_S			1
 #define ICE_AQC_REPORT_MODE_M			(7 << ICE_AQC_REPORT_MODE_S)
 #define ICE_AQC_REPORT_TOPO_CAP_NO_MEDIA	0
-#define ICE_AQC_REPORT_TOPO_CAP			BIT(1)
-#define ICE_AQC_REPORT_SW_CFG			BIT(2)
+#define ICE_AQC_REPORT_TOPO_CAP_MEDIA		BIT(1)
+#define ICE_AQC_REPORT_ACTIVE_CFG		BIT(2)
 #define ICE_AQC_REPORT_DFLT_CFG			BIT(3)
 	__le32 reserved1;
 	__le32 addr_high;

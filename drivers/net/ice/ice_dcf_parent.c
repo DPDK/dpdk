@@ -202,7 +202,7 @@ ice_dcf_init_parent_hw(struct ice_hw *hw)
 
 	/* Initialize port_info struct with PHY capabilities */
 	status = ice_aq_get_phy_caps(hw->port_info, false,
-				     ICE_AQC_REPORT_TOPO_CAP, pcaps, NULL);
+				     ICE_AQC_REPORT_TOPO_CAP_MEDIA, pcaps, NULL);
 	ice_free(hw, pcaps);
 	if (status)
 		goto err_unroll_alloc;

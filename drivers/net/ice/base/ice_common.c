@@ -198,7 +198,7 @@ ice_aq_get_phy_caps(struct ice_port_info *pi, bool qual_mods, u8 report_mode,
 	ice_debug(hw, ICE_DBG_LINK, "   module_type[2] = 0x%x\n",
 		  pcaps->module_type[2]);
 
-	if (status == ICE_SUCCESS && report_mode == ICE_AQC_REPORT_TOPO_CAP) {
+	if (status == ICE_SUCCESS && report_mode == ICE_AQC_REPORT_TOPO_CAP_MEDIA) {
 		pi->phy.phy_type_low = LE64_TO_CPU(pcaps->phy_type_low);
 		pi->phy.phy_type_high = LE64_TO_CPU(pcaps->phy_type_high);
 		ice_memcpy(pi->phy.link_info.module_type, &pcaps->module_type,
@@ -783,7 +783,7 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 
 	/* Initialize port_info struct with PHY capabilities */
 	status = ice_aq_get_phy_caps(hw->port_info, false,
-				     ICE_AQC_REPORT_TOPO_CAP, pcaps, NULL);
+				     ICE_AQC_REPORT_TOPO_CAP_MEDIA, pcaps, NULL);
 	ice_free(hw, pcaps);
 	if (status)
 		ice_warn(hw, "Get PHY capabilities failed status = %d, continuing anyway\n",
@@ -2777,7 +2777,7 @@ enum ice_status ice_update_link_info(struct ice_port_info *pi)
 		if (!pcaps)
 			return ICE_ERR_NO_MEMORY;
 
-		status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP,
+		status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP_MEDIA,
 					     pcaps, NULL);
 
 		if (status == ICE_SUCCESS)
@@ -2900,7 +2900,7 @@ ice_cfg_phy_fc(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 		/* Query the value of FC that both the NIC and attached media
 		 * can do.
 		 */
-		status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP,
+		status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP_MEDIA,
 					     pcaps, NULL);
 		if (status) {
 			ice_free(pi->hw, pcaps);
@@ -2969,7 +2969,7 @@ ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
 		return ICE_ERR_NO_MEMORY;
 
 	/* Get the current PHY config */
-	status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_SW_CFG,
+	status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_ACTIVE_CFG,
 				     pcaps, NULL);
 
 	if (status) {
@@ -3128,7 +3128,7 @@ ice_cfg_phy_fec(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 	status = ice_aq_get_phy_caps(pi, false,
 				     (ice_fw_supports_report_dflt_cfg(hw) ?
 				      ICE_AQC_REPORT_DFLT_CFG :
-				      ICE_AQC_REPORT_TOPO_CAP), pcaps, NULL);
+				      ICE_AQC_REPORT_TOPO_CAP_MEDIA), pcaps, NULL);
 
 	if (status)
 		goto out;
