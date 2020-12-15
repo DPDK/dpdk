@@ -516,6 +516,7 @@ struct ice_pkg_enum {
 enum ice_tunnel_type {
 	TNL_VXLAN = 0,
 	TNL_GENEVE,
+	TNL_GTP,
 	TNL_LAST = 0xFF,
 	TNL_ALL = 0xFF,
 };
