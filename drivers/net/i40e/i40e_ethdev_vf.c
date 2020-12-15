@@ -1078,8 +1078,18 @@ i40evf_add_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	err = i40evf_execute_vf_cmd(dev, &args);
-	if (err)
+	if (err) {
 		PMD_DRV_LOG(ERR, "fail to execute command OP_ADD_VLAN");
+		return err;
+	}
+	/**
+	 * In linux kernel driver on receiving ADD_VLAN it enables
+	 * VLAN_STRIP by default. So reconfigure the vlan_offload
+	 * as it was done by the app earlier.
+	 */
+	err = i40evf_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to set vlan_strip");
 
 	return err;
 }
