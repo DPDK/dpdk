@@ -227,6 +227,27 @@ struct ice_aqc_get_sw_cfg_resp_elem {
 #define ICE_AQC_GET_SW_CONF_RESP_IS_VF		BIT(15)
 };
 
+/* Set Port parameters, (direct, 0x0203) */
+struct ice_aqc_set_port_params {
+	__le16 cmd_flags;
+#define ICE_AQC_SET_P_PARAMS_SAVE_BAD_PACKETS	BIT(0)
+#define ICE_AQC_SET_P_PARAMS_PAD_SHORT_PACKETS	BIT(1)
+#define ICE_AQC_SET_P_PARAMS_DOUBLE_VLAN_ENA	BIT(2)
+	__le16 bad_frame_vsi;
+#define ICE_AQC_SET_P_PARAMS_VSI_S	0
+#define ICE_AQC_SET_P_PARAMS_VSI_M	(0x3FF << ICE_AQC_SET_P_PARAMS_VSI_S)
+#define ICE_AQC_SET_P_PARAMS_VSI_VALID	BIT(15)
+	__le16 swid;
+#define ICE_AQC_SET_P_PARAMS_SWID_S	0
+#define ICE_AQC_SET_P_PARAMS_SWID_M	(0xFF << ICE_AQC_SET_P_PARAMS_SWID_S)
+#define ICE_AQC_SET_P_PARAMS_LOGI_PORT_ID_S	8
+#define ICE_AQC_SET_P_PARAMS_LOGI_PORT_ID_M	\
+				(0x3F << ICE_AQC_SET_P_PARAMS_LOGI_PORT_ID_S)
+#define ICE_AQC_SET_P_PARAMS_IS_LOGI_PORT	BIT(14)
+#define ICE_AQC_SET_P_PARAMS_SWID_VALID		BIT(15)
+	u8 reserved[10];
+};
+
 /* These resource type defines are used for all switch resource
  * commands where a resource type is required, such as:
  * Get Resource Allocation command (indirect 0x0204)
@@ -2709,6 +2730,7 @@ struct ice_aq_desc {
 		struct ice_aqc_sff_eeprom read_write_sff_param;
 		struct ice_aqc_set_port_id_led set_port_id_led;
 		struct ice_aqc_get_sw_cfg get_sw_conf;
+		struct ice_aqc_set_port_params set_port_params;
 		struct ice_aqc_sw_rules sw_rules;
 		struct ice_aqc_storm_cfg storm_conf;
 		struct ice_aqc_add_get_recipe add_get_recipe;
@@ -2872,6 +2894,7 @@ enum ice_adminq_opc {
 
 	/* internal switch commands */
 	ice_aqc_opc_get_sw_cfg				= 0x0200,
+	ice_aqc_opc_set_port_params			= 0x0203,
 
 	/* Alloc/Free/Get Resources */
 	ice_aqc_opc_get_res_alloc			= 0x0204,

@@ -1006,6 +1006,13 @@ ice_dwnld_cfg_bufs(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 			break;
 	}
 
+	if (!status) {
+		status = ice_set_vlan_mode(hw);
+		if (status)
+			ice_debug(hw, ICE_DBG_PKG, "Failed to set VLAN mode: err %d\n",
+				  status);
+	}
+
 	ice_release_global_cfg_lock(hw);
 
 	return status;

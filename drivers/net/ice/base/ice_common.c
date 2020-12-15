@@ -830,6 +830,9 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	if (status)
 		goto err_unroll_fltr_mgmt_struct;
 	ice_init_lock(&hw->tnl_lock);
+
+	ice_init_vlan_mode_ops(hw);
+
 	return ICE_SUCCESS;
 
 err_unroll_fltr_mgmt_struct:
@@ -2385,6 +2388,43 @@ void ice_clear_pxe_mode(struct ice_hw *hw)
 {
 	if (ice_check_sq_alive(hw, &hw->adminq))
 		ice_aq_clear_pxe_mode(hw);
+}
+
+/**
+ * ice_aq_set_port_params - set physical port parameters.
+ * @pi: pointer to the port info struct
+ * @bad_frame_vsi: defines the VSI to which bad frames are forwarded
+ * @save_bad_pac: if set packets with errors are forwarded to the bad frames VSI
+ * @pad_short_pac: if set transmit packets smaller than 60 bytes are padded
+ * @double_vlan: if set double VLAN is enabled
+ * @cd: pointer to command details structure or NULL
+ *
+ * Set Physical port parameters (0x0203)
+ */
+enum ice_status
+ice_aq_set_port_params(struct ice_port_info *pi, u16 bad_frame_vsi,
+		       bool save_bad_pac, bool pad_short_pac, bool double_vlan,
+		       struct ice_sq_cd *cd)
+
+{
+	struct ice_aqc_set_port_params *cmd;
+	struct ice_hw *hw = pi->hw;
+	struct ice_aq_desc desc;
+	u16 cmd_flags = 0;
+
+	cmd = &desc.params.set_port_params;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_port_params);
+	cmd->bad_frame_vsi = CPU_TO_LE16(bad_frame_vsi);
+	if (save_bad_pac)
+		cmd_flags |= ICE_AQC_SET_P_PARAMS_SAVE_BAD_PACKETS;
+	if (pad_short_pac)
+		cmd_flags |= ICE_AQC_SET_P_PARAMS_PAD_SHORT_PACKETS;
+	if (double_vlan)
+		cmd_flags |= ICE_AQC_SET_P_PARAMS_DOUBLE_VLAN_ENA;
+	cmd->cmd_flags = CPU_TO_LE16(cmd_flags);
+
+	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
 }
 
 /**

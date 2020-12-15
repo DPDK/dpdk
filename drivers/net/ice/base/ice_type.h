@@ -57,6 +57,7 @@
 #include "ice_lan_tx_rx.h"
 #include "ice_flex_type.h"
 #include "ice_protocol_type.h"
+#include "ice_vlan_mode.h"
 
 /**
  * ice_is_pow2 - check if integer value is a power of 2
@@ -990,6 +991,7 @@ struct ice_hw {
 	ice_declare_bitmap(fdir_perfect_fltr, ICE_FLTR_PTYPE_MAX);
 	struct ice_lock rss_locks;	/* protect RSS configuration */
 	struct LIST_HEAD_TYPE rss_list_head;
+	struct ice_vlan_mode_ops vlan_mode_ops;
 };
 
 /* Statistics collected by each port, VSI, VEB, and S-channel */

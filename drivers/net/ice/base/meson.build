@@ -13,6 +13,7 @@ sources = [
 	'ice_fdir.c',
 	'ice_acl.c',
 	'ice_acl_ctrl.c',
+	'ice_vlan_mode.c',
 ]
 
 error_cflags = ['-Wno-unused-value',
