@@ -285,8 +285,9 @@ static u32 ice_get_flash_bank_offset(struct ice_hw *hw, enum ice_bank_select ban
  * @hw: pointer to the HW structure
  * @bank: which bank of the module to read
  * @module: the module to read
- * @offset: the offset into the module in words
+ * @offset: the offset into the module in bytes
  * @data: storage for the word read from the flash
+ * @length: bytes of data to read
  *
  * Read data from the specified flash module. The bank parameter indicates
  * whether or not to read from the active bank or the inactive bank of that
@@ -298,11 +299,9 @@ static u32 ice_get_flash_bank_offset(struct ice_hw *hw, enum ice_bank_select ban
  */
 static enum ice_status
 ice_read_flash_module(struct ice_hw *hw, enum ice_bank_select bank, u16 module,
-		      u32 offset, u16 *data)
+		      u32 offset, u8 *data, u32 length)
 {
-	u32 bytes = sizeof(u16);
 	enum ice_status status;
-	__le16 data_local;
 	u32 start;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
@@ -318,10 +317,7 @@ ice_read_flash_module(struct ice_hw *hw, enum ice_bank_select bank, u16 module,
 	if (status)
 		return status;
 
-	status = ice_read_flat_nvm(hw, start + offset * sizeof(u16), &bytes,
-				   (_FORCE_ u8 *)&data_local, false);
-	if (!status)
-		*data = LE16_TO_CPU(data_local);
+	status = ice_read_flat_nvm(hw, start + offset, &length, data, false);
 
 	ice_release_nvm(hw);
 
@@ -341,7 +337,15 @@ ice_read_flash_module(struct ice_hw *hw, enum ice_bank_select bank, u16 module,
 static enum ice_status
 ice_read_nvm_module(struct ice_hw *hw, enum ice_bank_select bank, u32 offset, u16 *data)
 {
-	return ice_read_flash_module(hw, bank, ICE_SR_1ST_NVM_BANK_PTR, offset, data);
+	enum ice_status status;
+	__le16 data_local;
+
+	status = ice_read_flash_module(hw, bank, ICE_SR_1ST_NVM_BANK_PTR, offset * sizeof(u16),
+				       (_FORCE_ u8 *)&data_local, sizeof(u16));
+	if (!status)
+		*data = LE16_TO_CPU(data_local);
+
+	return status;
 }
 
 /**
@@ -358,7 +362,15 @@ ice_read_nvm_module(struct ice_hw *hw, enum ice_bank_select bank, u32 offset, u1
 static enum ice_status
 ice_read_orom_module(struct ice_hw *hw, enum ice_bank_select bank, u32 offset, u16 *data)
 {
-	return ice_read_flash_module(hw, bank, ICE_SR_1ST_OROM_BANK_PTR, offset, data);
+	enum ice_status status;
+	__le16 data_local;
+
+	status = ice_read_flash_module(hw, bank, ICE_SR_1ST_OROM_BANK_PTR, offset * sizeof(u16),
+				       (_FORCE_ u8 *)&data_local, sizeof(u16));
+	if (!status)
+		*data = LE16_TO_CPU(data_local);
+
+	return status;
 }
 
 /**
