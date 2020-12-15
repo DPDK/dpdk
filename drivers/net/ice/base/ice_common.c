@@ -161,6 +161,10 @@ ice_aq_get_phy_caps(struct ice_port_info *pi, bool qual_mods, u8 report_mode,
 		return ICE_ERR_PARAM;
 	hw = pi->hw;
 
+	if (report_mode == ICE_AQC_REPORT_DFLT_CFG &&
+	    !ice_fw_supports_report_dflt_cfg(hw))
+		return ICE_ERR_PARAM;
+
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_phy_caps);
 
 	if (qual_mods)
@@ -2965,8 +2969,9 @@ ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
 		return ICE_ERR_NO_MEMORY;
 
 	/* Get the current PHY config */
-	status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_SW_CFG, pcaps,
-				     NULL);
+	status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_SW_CFG,
+				     pcaps, NULL);
+
 	if (status) {
 		*aq_failures = ICE_SET_FC_AQ_FAIL_GET;
 		goto out;
@@ -3120,8 +3125,11 @@ ice_cfg_phy_fec(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 	if (!pcaps)
 		return ICE_ERR_NO_MEMORY;
 
-	status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP, pcaps,
-				     NULL);
+	status = ice_aq_get_phy_caps(pi, false,
+				     (ice_fw_supports_report_dflt_cfg(hw) ?
+				      ICE_AQC_REPORT_DFLT_CFG :
+				      ICE_AQC_REPORT_TOPO_CAP), pcaps, NULL);
+
 	if (status)
 		goto out;
 
@@ -4950,4 +4958,24 @@ ice_lldp_fltr_add_remove(struct ice_hw *hw, u16 vsi_num, bool add)
 	cmd->vsi_num = CPU_TO_LE16(vsi_num);
 
 	return ice_aq_send_cmd(hw, &desc, NULL, 0, NULL);
+}
+
+/**
+ * ice_fw_supports_report_dflt_cfg
+ * @hw: pointer to the hardware structure
+ *
+ * Checks if the firmware supports report default configuration
+ */
+bool ice_fw_supports_report_dflt_cfg(struct ice_hw *hw)
+{
+	if (hw->api_maj_ver == ICE_FW_API_REPORT_DFLT_CFG_MAJ) {
+		if (hw->api_min_ver > ICE_FW_API_REPORT_DFLT_CFG_MIN)
+			return true;
+		if (hw->api_min_ver == ICE_FW_API_REPORT_DFLT_CFG_MIN &&
+		    hw->api_patch >= ICE_FW_API_REPORT_DFLT_CFG_PATCH)
+			return true;
+	} else if (hw->api_maj_ver > ICE_FW_API_REPORT_DFLT_CFG_MAJ) {
+		return true;
+	}
+	return false;
 }
