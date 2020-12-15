@@ -183,6 +183,7 @@ enum ice_flow_seg_hdr {
 	ICE_FLOW_SEG_HDR_ETH_NON_IP	= 0x00800000,
 	ICE_FLOW_SEG_HDR_GTPU_NON_IP	= 0x01000000,
 	ICE_FLOW_SEG_HDR_VXLAN		= 0x02000000,
+	ICE_FLOW_SEG_HDR_ECPRI_TP0	= 0x04000000,
 	/* The following is an additive bit for ICE_FLOW_SEG_HDR_IPV4 and
 	 * ICE_FLOW_SEG_HDR_IPV6 which include the IPV4 other PTYPEs
 	 */
@@ -273,6 +274,8 @@ enum ice_flow_field {
 	ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI,
 	/* VXLAN VNI */
 	ICE_FLOW_FIELD_IDX_VXLAN_VNI,
+	/* ECPRI_TP0 */
+	ICE_FLOW_FIELD_IDX_ECPRI_TP0_PC_ID,
 	 /* The total number of enums must not exceed 64 */
 	ICE_FLOW_FIELD_IDX_MAX
 };

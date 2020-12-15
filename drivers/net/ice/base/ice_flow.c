@@ -31,6 +31,7 @@
 #define ICE_FLOW_FLD_SZ_AH_SPI	4
 #define ICE_FLOW_FLD_SZ_NAT_T_ESP_SPI	4
 #define ICE_FLOW_FLD_SZ_VXLAN_VNI	4
+#define ICE_FLOW_FLD_SZ_ECPRI_TP0_PC_ID	2
 
 /* Describe properties of a protocol header field */
 struct ice_flow_field_info {
@@ -193,6 +194,10 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* ICE_FLOW_FIELD_IDX_VXLAN_VNI */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_VXLAN, 12,
 			  ICE_FLOW_FLD_SZ_VXLAN_VNI),
+	/* ECPRI_TP0 */
+	/* ICE_FLOW_FIELD_IDX_ECPRI_TP0_PC_ID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ECPRI_TP0, 4,
+			  ICE_FLOW_FLD_SZ_ECPRI_TP0_PC_ID),
 };
 
 /* Bitmaps indicating relevant packet types for a particular protocol header
@@ -202,7 +207,7 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 static const u32 ice_ptypes_mac_ofos[] = {
 	0xFDC00846, 0xBFBF7F7E, 0xF70001DF, 0xFEFDFDFB,
 	0x0000077E, 0x000003FF, 0x00000000, 0x00000000,
-	0x00400000, 0x03FFF000, 0xFFFFFFE0, 0x00000307,
+	0x00400000, 0x03FFF000, 0xFFFFFFE0, 0x00000707,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -694,6 +699,17 @@ static const u32 ice_ptypes_gtpu_no_ip[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
+static const u32 ice_ptypes_ecpri_tp0[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000400,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
 /* Manage parameters and info. used during the creation of a flow profile */
 struct ice_flow_prof_params {
 	enum ice_block blk;
@@ -718,7 +734,8 @@ struct ice_flow_prof_params {
 	ICE_FLOW_SEG_HDR_GTPC_TEID | ICE_FLOW_SEG_HDR_GTPU | \
 	ICE_FLOW_SEG_HDR_PFCP_SESSION | ICE_FLOW_SEG_HDR_L2TPV3 | \
 	ICE_FLOW_SEG_HDR_ESP | ICE_FLOW_SEG_HDR_AH | \
-	ICE_FLOW_SEG_HDR_NAT_T_ESP | ICE_FLOW_SEG_HDR_GTPU_NON_IP)
+	ICE_FLOW_SEG_HDR_NAT_T_ESP | ICE_FLOW_SEG_HDR_GTPU_NON_IP | \
+	ICE_FLOW_SEG_HDR_ECPRI_TP0)
 
 #define ICE_FLOW_SEG_HDRS_L2_MASK	\
 	(ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
@@ -848,8 +865,8 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				       ICE_FLOW_PTYPE_MAX);
 		}
 
-		if (hdrs & ICE_FLOW_SEG_HDR_PPPOE) {
-			src = (const ice_bitmap_t *)ice_ptypes_pppoe;
+		if (hdrs & ICE_FLOW_SEG_HDR_ECPRI_TP0) {
+			src = (const ice_bitmap_t *)ice_ptypes_ecpri_tp0;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
 		}
@@ -1191,6 +1208,9 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		break;
 	case ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI:
 		prot_id = ICE_PROT_UDP_IL_OR_S;
+		break;
+	case ICE_FLOW_FIELD_IDX_ECPRI_TP0_PC_ID:
+		prot_id = ICE_PROT_ECPRI;
 		break;
 	case ICE_FLOW_FIELD_IDX_ARP_SIP:
 	case ICE_FLOW_FIELD_IDX_ARP_DIP:

@@ -56,6 +56,7 @@
 #define ICE_IPV4_NAT_T_ESP_SPI_OFFSET	42
 #define ICE_IPV6_NAT_T_ESP_SPI_OFFSET	62
 #define ICE_IPV4_VXLAN_VNI_OFFSET	45
+#define ICE_ECPRI_TP0_PC_ID_OFFSET	18
 
 #define ICE_FDIR_MAX_FLTRS		16384
 
@@ -168,6 +169,10 @@ struct ice_fdir_udp_vxlan {
 	__be32 vni; /* 8 bits reserved, always be zero */
 };
 
+struct ice_fdir_ecpri {
+	__be16 pc_id;
+};
+
 struct ice_fdir_extra {
 	u8 dst_mac[ETH_ALEN];	/* dest MAC address */
 	u8 src_mac[ETH_ALEN];	/* src MAC address */
@@ -203,6 +208,9 @@ struct ice_fdir_fltr {
 
 	struct ice_fdir_l2tpv3 l2tpv3_data;
 	struct ice_fdir_l2tpv3 l2tpv3_mask;
+
+	struct ice_fdir_ecpri ecpri_data;
+	struct ice_fdir_ecpri ecpri_mask;
 
 	struct ice_fdir_extra ext_data;
 	struct ice_fdir_extra ext_mask;
