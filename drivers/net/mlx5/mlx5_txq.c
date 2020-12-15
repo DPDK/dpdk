@@ -1146,6 +1146,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	LIST_INSERT_HEAD(&priv->txqsctrl, tmpl, next);
 	return tmpl;
 error:
+	mlx5_mr_btree_free(&tmpl->txq.mr_ctrl.cache_bh);
 	mlx5_free(tmpl);
 	return NULL;
 }
