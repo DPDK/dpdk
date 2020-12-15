@@ -782,7 +782,8 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 				     ICE_AQC_REPORT_TOPO_CAP, pcaps, NULL);
 	ice_free(hw, pcaps);
 	if (status)
-		ice_debug(hw, ICE_DBG_PHY, "Get PHY capabilities failed, continuing anyway\n");
+		ice_warn(hw, "Get PHY capabilities failed status = %d, continuing anyway\n",
+			 status);
 
 	/* Initialize port_info struct with link information */
 	status = ice_aq_get_link_info(hw->port_info, false, NULL, NULL);
