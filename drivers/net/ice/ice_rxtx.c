@@ -1451,6 +1451,11 @@ ice_rxd_error_to_pkt_flags(uint16_t stat_err0)
 	if (unlikely(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S)))
 		flags |= PKT_RX_EIP_CKSUM_BAD;
 
+	if (unlikely(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_XSUM_EUDPE_S)))
+		flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
+	else
+		flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
+
 	return flags;
 }
 
