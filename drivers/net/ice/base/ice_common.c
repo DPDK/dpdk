@@ -2652,6 +2652,11 @@ enum ice_status ice_update_link_info(struct ice_port_info *pi)
 		status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP,
 					     pcaps, NULL);
 
+		if (status == ICE_SUCCESS)
+			ice_memcpy(li->module_type, &pcaps->module_type,
+				   sizeof(li->module_type),
+				   ICE_NONDMA_TO_NONDMA);
+
 		ice_free(hw, pcaps);
 	}
 
