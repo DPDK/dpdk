@@ -808,6 +808,28 @@ ice_aq_download_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
 }
 
 /**
+ * ice_aq_upload_section
+ * @hw: pointer to the hardware structure
+ * @pkg_buf: the package buffer which will receive the section
+ * @buf_size: the size of the package buffer
+ * @cd: pointer to command details structure or NULL
+ *
+ * Upload Section (0x0C41)
+ */
+enum ice_status
+ice_aq_upload_section(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
+		      u16 buf_size, struct ice_sq_cd *cd)
+{
+	struct ice_aq_desc desc;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_upload_section);
+	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
+
+	return ice_aq_send_cmd(hw, &desc, pkg_buf, buf_size, cd);
+}
+
+/**
  * ice_aq_update_pkg
  * @hw: pointer to the hardware structure
  * @pkg_buf: the package cmd buffer
@@ -1800,7 +1822,7 @@ void ice_init_prof_result_bm(struct ice_hw *hw)
  *
  * Frees a package buffer
  */
-static void ice_pkg_buf_free(struct ice_hw *hw, struct ice_buf_build *bld)
+void ice_pkg_buf_free(struct ice_hw *hw, struct ice_buf_build *bld)
 {
 	ice_free(hw, bld);
 }
@@ -1900,6 +1922,43 @@ ice_pkg_buf_alloc_section(struct ice_buf_build *bld, u32 type, u16 size)
 }
 
 /**
+ * ice_pkg_buf_alloc_single_section
+ * @hw: pointer to the HW structure
+ * @type: the section type value
+ * @size: the size of the section to reserve (in bytes)
+ * @section: returns pointer to the section
+ *
+ * Allocates a package buffer with a single section.
+ * Note: all package contents must be in Little Endian form.
+ */
+struct ice_buf_build *
+ice_pkg_buf_alloc_single_section(struct ice_hw *hw, u32 type, u16 size,
+				 void **section)
+{
+	struct ice_buf_build *buf;
+
+	if (!section)
+		return NULL;
+
+	buf = ice_pkg_buf_alloc(hw);
+	if (!buf)
+		return NULL;
+
+	if (ice_pkg_buf_reserve_section(buf, 1))
+		goto ice_pkg_buf_alloc_single_section_err;
+
+	*section = ice_pkg_buf_alloc_section(buf, type, size);
+	if (!*section)
+		goto ice_pkg_buf_alloc_single_section_err;
+
+	return buf;
+
+ice_pkg_buf_alloc_single_section_err:
+	ice_pkg_buf_free(hw, buf);
+	return NULL;
+}
+
+/**
  * ice_pkg_buf_get_active_sections
  * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())
  *
@@ -1926,7 +1985,7 @@ static u16 ice_pkg_buf_get_active_sections(struct ice_buf_build *bld)
  *
  * Return a pointer to the buffer's header
  */
-static struct ice_buf *ice_pkg_buf(struct ice_buf_build *bld)
+struct ice_buf *ice_pkg_buf(struct ice_buf_build *bld)
 {
 	if (!bld)
 		return NULL;
