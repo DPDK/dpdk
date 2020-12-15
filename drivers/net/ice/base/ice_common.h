@@ -11,6 +11,9 @@
 #include "ice_switch.h"
 #include "ice_fdir.h"
 
+#define ICE_SQ_SEND_DELAY_TIME_MS	10
+#define ICE_SQ_SEND_MAX_EXECUTE		3
+
 enum ice_fw_modes {
 	ICE_FW_MODE_NORMAL,
 	ICE_FW_MODE_DBG,
