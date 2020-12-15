@@ -1008,7 +1008,8 @@ struct ice_aqc_txsched_move_grp_info_hdr {
 	__le32 src_parent_teid;
 	__le32 dest_parent_teid;
 	__le16 num_elems;
-	__le16 reserved;
+	u8 flags;
+	u8 reserved;
 };
 
 struct ice_aqc_move_elem {
