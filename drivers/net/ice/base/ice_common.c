@@ -1882,6 +1882,23 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 		ice_debug(hw, ICE_DBG_INIT, "%s: msix_vector_first_id = %d\n", prefix,
 			  caps->msix_vector_first_id);
 		break;
+	case ICE_AQC_CAPS_NVM_MGMT:
+		caps->sec_rev_disabled =
+			(number & ICE_NVM_MGMT_SEC_REV_DISABLED) ?
+			true : false;
+		ice_debug(hw, ICE_DBG_INIT, "%s: sec_rev_disabled = %d\n", prefix,
+			  caps->sec_rev_disabled);
+		caps->update_disabled =
+			(number & ICE_NVM_MGMT_UPDATE_DISABLED) ?
+			true : false;
+		ice_debug(hw, ICE_DBG_INIT, "%s: update_disabled = %d\n", prefix,
+			  caps->update_disabled);
+		caps->nvm_unified_update =
+			(number & ICE_NVM_MGMT_UNIFIED_UPD_SUPPORT) ?
+			true : false;
+		ice_debug(hw, ICE_DBG_INIT, "%s: nvm_unified_update = %d\n", prefix,
+			  caps->nvm_unified_update);
+		break;
 	case ICE_AQC_CAPS_MAX_MTU:
 		caps->max_mtu = number;
 		ice_debug(hw, ICE_DBG_INIT, "%s: max_mtu = %d\n",

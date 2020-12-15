@@ -419,7 +419,11 @@ struct ice_hw_common_caps {
 	u8 apm_wol_support;
 	u8 acpi_prog_mthd;
 	u8 proxy_support;
+	bool sec_rev_disabled;
+	bool update_disabled;
 	bool nvm_unified_update;
+#define ICE_NVM_MGMT_SEC_REV_DISABLED		BIT(0)
+#define ICE_NVM_MGMT_UPDATE_DISABLED		BIT(1)
 #define ICE_NVM_MGMT_UNIFIED_UPD_SUPPORT	BIT(3)
 };
 
