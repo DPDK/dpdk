@@ -503,8 +503,29 @@ ixgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
 				uint16_t offset)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw_fdir_info *fdir_info =
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	uint32_t fdirctrl;
 	int i;
+
+	if (fdir_info->flex_bytes_offset == offset)
+		return 0;
+
+	/**
+	 * 82599 adapters flow director init flow cannot be restarted,
+	 * Workaround 82599 silicon errata by performing the following steps
+	 * before re-writing the FDIRCTRL control register with the same value.
+	 * - write 1 to bit 8 of FDIRCMD register &
+	 * - write 0 to bit 8 of FDIRCMD register
+	 */
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRCMD,
+			(IXGBE_READ_REG(hw, IXGBE_FDIRCMD) |
+			 IXGBE_FDIRCMD_CLEARHT));
+	IXGBE_WRITE_FLUSH(hw);
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRCMD,
+			(IXGBE_READ_REG(hw, IXGBE_FDIRCMD) &
+			 ~IXGBE_FDIRCMD_CLEARHT));
+	IXGBE_WRITE_FLUSH(hw);
 
 	fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
 
@@ -520,6 +541,14 @@ ixgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
 			break;
 		msec_delay(1);
 	}
+
+	if (i >= IXGBE_FDIR_INIT_DONE_POLL) {
+		PMD_DRV_LOG(ERR, "Flow Director poll time exceeded!");
+		return -ETIMEDOUT;
+	}
+
+	fdir_info->flex_bytes_offset = offset;
+
 	return 0;
 }
 
