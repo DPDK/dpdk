@@ -312,6 +312,16 @@ static const u8 ice_fdir_ecpri_tp0_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const u8 ice_fdir_ipv4_udp_ecpri_tp0_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00,
+	0x00, 0x1C, 0x00, 0x00, 0x40, 0x00, 0x40, 0x11,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
 static const u8 ice_fdir_tcpv6_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x86, 0xDD, 0x60, 0x00,
@@ -645,6 +655,13 @@ static const struct ice_fdir_base_pkt ice_fdir_pkt[] = {
 		ICE_FLTR_PTYPE_NONF_ECPRI_TP0,
 		sizeof(ice_fdir_ecpri_tp0_pkt), ice_fdir_ecpri_tp0_pkt,
 		sizeof(ice_fdir_ecpri_tp0_pkt), ice_fdir_ecpri_tp0_pkt,
+	},
+	{
+		ICE_FLTR_PTYPE_NONF_IPV4_UDP_ECPRI_TP0,
+		sizeof(ice_fdir_ipv4_udp_ecpri_tp0_pkt),
+		ice_fdir_ipv4_udp_ecpri_tp0_pkt,
+		sizeof(ice_fdir_ipv4_udp_ecpri_tp0_pkt),
+		ice_fdir_ipv4_udp_ecpri_tp0_pkt,
 	},
 	{
 		ICE_FLTR_PTYPE_NONF_IPV6_TCP,
@@ -998,6 +1015,33 @@ static void ice_pkt_insert_mac_addr(u8 *pkt, u8 *addr)
 }
 
 /**
+ * ice_fdir_get_open_tunnel_port
+ * @hw: pointer to the hardware structure
+ * @flow: flow ptype
+ * @port: returns open port
+ *
+ * returns an open tunnel port specified for this flow type
+ */
+static enum ice_status
+ice_fdir_get_open_tunnel_port(struct ice_hw *hw, enum ice_fltr_ptype flow,
+			      u16 *port)
+{
+	switch (flow) {
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_ECPRI_TP0:
+		/* eCPRI tunnel */
+		if (!ice_get_open_tunnel_port(hw, TNL_ECPRI, port))
+			return ICE_ERR_DOES_NOT_EXIST;
+		break;
+	default:
+		if (!ice_get_open_tunnel_port(hw, TNL_VXLAN, port) &&
+		    !ice_get_open_tunnel_port(hw, TNL_GENEVE, port))
+			return ICE_ERR_DOES_NOT_EXIST;
+	}
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_fdir_get_gen_prgm_pkt - generate a training packet
  * @hw: pointer to the hardware structure
  * @input: flow director filter data structure
@@ -1058,8 +1102,12 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 			   ice_fdir_pkt[idx].pkt_len, ICE_NONDMA_TO_NONDMA);
 		loc = pkt;
 	} else {
-		if (!ice_get_open_tunnel_port(hw, TNL_ALL, &tnl_port))
-			return ICE_ERR_DOES_NOT_EXIST;
+		enum ice_status ret;
+
+		ret = ice_fdir_get_open_tunnel_port(hw, flow, &tnl_port);
+		if (ret)
+			return ret;
+
 		if (!ice_fdir_pkt[idx].tun_pkt)
 			return ICE_ERR_PARAM;
 		ice_memcpy(pkt, ice_fdir_pkt[idx].tun_pkt,
@@ -1252,6 +1300,11 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		break;
 	case ICE_FLTR_PTYPE_NONF_ECPRI_TP0:
 		ice_pkt_insert_u16(loc, ICE_ECPRI_TP0_PC_ID_OFFSET,
+				   input->ecpri_data.pc_id);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_ECPRI_TP0:
+		/* Use pkt instead of loc, since PC_ID is in outer part */
+		ice_pkt_insert_u16(pkt, ICE_IPV4_UDP_ECPRI_TP0_PC_ID_OFFSET,
 				   input->ecpri_data.pc_id);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_TCP:

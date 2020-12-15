@@ -13,6 +13,7 @@
 static const struct ice_tunnel_type_scan tnls[] = {
 	{ TNL_VXLAN,		"TNL_VXLAN_PF" },
 	{ TNL_GENEVE,		"TNL_GENEVE_PF" },
+	{ TNL_ECPRI,		"TNL_UDP_ECPRI_PF" },
 	{ TNL_LAST,		"" }
 };
 

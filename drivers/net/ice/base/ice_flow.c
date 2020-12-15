@@ -198,6 +198,10 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* ICE_FLOW_FIELD_IDX_ECPRI_TP0_PC_ID */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ECPRI_TP0, 4,
 			  ICE_FLOW_FLD_SZ_ECPRI_TP0_PC_ID),
+	/* UDP_ECPRI_TP0 */
+	/* ICE_FLOW_FIELD_IDX_UDP_ECPRI_TP0_PC_ID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_UDP_ECPRI_TP0, 12,
+			  ICE_FLOW_FLD_SZ_ECPRI_TP0_PC_ID),
 };
 
 /* Bitmaps indicating relevant packet types for a particular protocol header
@@ -207,7 +211,7 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 static const u32 ice_ptypes_mac_ofos[] = {
 	0xFDC00846, 0xBFBF7F7E, 0xF70001DF, 0xFEFDFDFB,
 	0x0000077E, 0x000003FF, 0x00000000, 0x00000000,
-	0x00400000, 0x03FFF000, 0xFFFFFFE0, 0x00000707,
+	0x00400000, 0x03FFF000, 0xFFFFFFE0, 0x00100707,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -233,7 +237,7 @@ static const u32 ice_ptypes_macvlan_il[] = {
 static const u32 ice_ptypes_ipv4_ofos[] = {
 	0x1DC00000, 0x24000800, 0x00000000, 0x00000000,
 	0x00000000, 0x00000155, 0x00000000, 0x00000000,
-	0x00000000, 0x000FC000, 0x000002A0, 0x00000000,
+	0x00000000, 0x000FC000, 0x000002A0, 0x00100000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -259,7 +263,7 @@ static const u32 ice_ptypes_ipv4_ofos_all[] = {
 static const u32 ice_ptypes_ipv4_il[] = {
 	0xE0000000, 0xB807700E, 0x80000003, 0xE01DC03B,
 	0x0000000E, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0x001FF800, 0x00000000,
+	0x00000000, 0x00000000, 0x001FF800, 0x00100000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -373,7 +377,7 @@ static const u32 ice_ptypes_arp_of[] = {
 static const u32 ice_ptypes_udp_il[] = {
 	0x81000000, 0x20204040, 0x04000010, 0x80810102,
 	0x00000040, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00410000, 0x908427E0, 0x00000007,
+	0x00000000, 0x00410000, 0x908427E0, 0x00100007,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -710,6 +714,17 @@ static const u32 ice_ptypes_ecpri_tp0[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
+static const u32 ice_ptypes_udp_ecpri_tp0[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00100000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
 /* Manage parameters and info. used during the creation of a flow profile */
 struct ice_flow_prof_params {
 	enum ice_block blk;
@@ -735,7 +750,7 @@ struct ice_flow_prof_params {
 	ICE_FLOW_SEG_HDR_PFCP_SESSION | ICE_FLOW_SEG_HDR_L2TPV3 | \
 	ICE_FLOW_SEG_HDR_ESP | ICE_FLOW_SEG_HDR_AH | \
 	ICE_FLOW_SEG_HDR_NAT_T_ESP | ICE_FLOW_SEG_HDR_GTPU_NON_IP | \
-	ICE_FLOW_SEG_HDR_ECPRI_TP0)
+	ICE_FLOW_SEG_HDR_ECPRI_TP0 | ICE_FLOW_SEG_HDR_UDP_ECPRI_TP0)
 
 #define ICE_FLOW_SEG_HDRS_L2_MASK	\
 	(ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
@@ -1011,6 +1026,10 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 			src = (const ice_bitmap_t *)ice_ptypes_vxlan_vni;
 			ice_and_bitmap(params->ptypes, params->ptypes,
 				       src, ICE_FLOW_PTYPE_MAX);
+		} else if (hdrs & ICE_FLOW_SEG_HDR_UDP_ECPRI_TP0) {
+			src = (const ice_bitmap_t *)ice_ptypes_udp_ecpri_tp0;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
 		}
 
 		if (hdrs & ICE_FLOW_SEG_HDR_PFCP) {
@@ -1211,6 +1230,9 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		break;
 	case ICE_FLOW_FIELD_IDX_ECPRI_TP0_PC_ID:
 		prot_id = ICE_PROT_ECPRI;
+		break;
+	case ICE_FLOW_FIELD_IDX_UDP_ECPRI_TP0_PC_ID:
+		prot_id = ICE_PROT_UDP_IL_OR_S;
 		break;
 	case ICE_FLOW_FIELD_IDX_ARP_SIP:
 	case ICE_FLOW_FIELD_IDX_ARP_DIP:
