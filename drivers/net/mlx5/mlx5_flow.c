@@ -1002,17 +1002,29 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const int mark = dev_handle->mark;
 	const int tunnel = !!(dev_handle->layers & MLX5_FLOW_LAYER_TUNNEL);
-	struct mlx5_hrxq *hrxq;
+	struct mlx5_ind_table_obj *ind_tbl = NULL;
 	unsigned int i;
 
-	if (dev_handle->fate_action != MLX5_FLOW_FATE_QUEUE)
-		return;
-	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+	if (dev_handle->fate_action == MLX5_FLOW_FATE_QUEUE) {
+		struct mlx5_hrxq *hrxq;
+
+		hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 			      dev_handle->rix_hrxq);
-	if (!hrxq)
+		if (hrxq)
+			ind_tbl = hrxq->ind_table;
+	} else if (dev_handle->fate_action == MLX5_FLOW_FATE_SHARED_RSS) {
+		struct mlx5_shared_action_rss *shared_rss;
+
+		shared_rss = mlx5_ipool_get
+			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
+			 dev_handle->rix_srss);
+		if (shared_rss)
+			ind_tbl = shared_rss->ind_tbl;
+	}
+	if (!ind_tbl)
 		return;
-	for (i = 0; i != hrxq->ind_table->queues_n; ++i) {
-		int idx = hrxq->ind_table->queues[i];
+	for (i = 0; i != ind_tbl->queues_n; ++i) {
+		int idx = ind_tbl->queues[i];
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of((*priv->rxqs)[idx],
 				     struct mlx5_rxq_ctrl, rxq);
@@ -1084,18 +1096,30 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const int mark = dev_handle->mark;
 	const int tunnel = !!(dev_handle->layers & MLX5_FLOW_LAYER_TUNNEL);
-	struct mlx5_hrxq *hrxq;
+	struct mlx5_ind_table_obj *ind_tbl = NULL;
 	unsigned int i;
 
-	if (dev_handle->fate_action != MLX5_FLOW_FATE_QUEUE)
-		return;
-	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+	if (dev_handle->fate_action == MLX5_FLOW_FATE_QUEUE) {
+		struct mlx5_hrxq *hrxq;
+
+		hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
 			      dev_handle->rix_hrxq);
-	if (!hrxq)
+		if (hrxq)
+			ind_tbl = hrxq->ind_table;
+	} else if (dev_handle->fate_action == MLX5_FLOW_FATE_SHARED_RSS) {
+		struct mlx5_shared_action_rss *shared_rss;
+
+		shared_rss = mlx5_ipool_get
+			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
+			 dev_handle->rix_srss);
+		if (shared_rss)
+			ind_tbl = shared_rss->ind_tbl;
+	}
+	if (!ind_tbl)
 		return;
 	MLX5_ASSERT(dev->data->dev_started);
-	for (i = 0; i != hrxq->ind_table->queues_n; ++i) {
-		int idx = hrxq->ind_table->queues[i];
+	for (i = 0; i != ind_tbl->queues_n; ++i) {
+		int idx = ind_tbl->queues[i];
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of((*priv->rxqs)[idx],
 				     struct mlx5_rxq_ctrl, rxq);
