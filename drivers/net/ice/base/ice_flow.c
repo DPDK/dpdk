@@ -30,6 +30,7 @@
 #define ICE_FLOW_FLD_SZ_ESP_SPI	4
 #define ICE_FLOW_FLD_SZ_AH_SPI	4
 #define ICE_FLOW_FLD_SZ_NAT_T_ESP_SPI	4
+#define ICE_FLOW_FLD_SZ_VXLAN_VNI	4
 
 /* Describe properties of a protocol header field */
 struct ice_flow_field_info {
@@ -189,6 +190,9 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_NAT_T_ESP, 8,
 			  ICE_FLOW_FLD_SZ_NAT_T_ESP_SPI),
+	/* ICE_FLOW_FIELD_IDX_VXLAN_VNI */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_VXLAN, 12,
+			  ICE_FLOW_FLD_SZ_VXLAN_VNI),
 };
 
 /* Bitmaps indicating relevant packet types for a particular protocol header
@@ -449,6 +453,18 @@ static const u32 ice_ptypes_gtpc[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x000001E0, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
+/* Packet types for VXLAN with VNI */
+static const u32 ice_ptypes_vxlan_vni[] = {
+	0x00000000, 0xBFBFF800, 0x00EFDFDF, 0xFEFDE000,
+	0x03BF7F7E, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -974,6 +990,10 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 			src = (const ice_bitmap_t *)ice_ptypes_nat_t_esp;
 			ice_and_bitmap(params->ptypes, params->ptypes,
 				       src, ICE_FLOW_PTYPE_MAX);
+		} else if (hdrs & ICE_FLOW_SEG_HDR_VXLAN) {
+			src = (const ice_bitmap_t *)ice_ptypes_vxlan_vni;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
 		}
 
 		if (hdrs & ICE_FLOW_SEG_HDR_PFCP) {
@@ -1144,6 +1164,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	case ICE_FLOW_FIELD_IDX_SCTP_DST_PORT:
 		prot_id = ICE_PROT_SCTP_IL;
 		break;
+	case ICE_FLOW_FIELD_IDX_VXLAN_VNI:
 	case ICE_FLOW_FIELD_IDX_GTPC_TEID:
 	case ICE_FLOW_FIELD_IDX_GTPU_IP_TEID:
 	case ICE_FLOW_FIELD_IDX_GTPU_UP_TEID:
