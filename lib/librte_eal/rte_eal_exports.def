@@ -56,6 +56,8 @@ EXPORTS
 	rte_eal_tailq_register
 	rte_eal_using_phys_addrs
 	rte_eal_wait_lcore
+	rte_epoll_ctl
+	rte_epoll_wait
 	rte_exit
 	rte_free
 	rte_get_main_lcore
@@ -63,7 +65,18 @@ EXPORTS
 	rte_get_tsc_hz
 	rte_hexdump
 	rte_hypervisor_get
+	rte_intr_allow_others
+	rte_intr_callback_register
+	rte_intr_callback_unregister
+	rte_intr_cap_multiple
+	rte_intr_disable
+	rte_intr_dp_is_en
+	rte_intr_efd_disable
+	rte_intr_efd_enable
+	rte_intr_enable
+	rte_intr_free_epoll_fd
 	rte_intr_rx_ctl
+	rte_intr_tls_epfd
 	rte_lcore_count
 	rte_lcore_has_role
 	rte_lcore_index
@@ -246,8 +259,10 @@ EXPORTS
 	rte_fbarray_find_biggest_used
 	rte_fbarray_find_rev_biggest_free
 	rte_fbarray_find_rev_biggest_used
+	rte_intr_callback_unregister_pending
 	rte_realloc_socket
 
+	rte_intr_ack
 	rte_lcore_cpuset
 	rte_lcore_to_cpu_id
 	rte_mcfg_timer_lock
@@ -303,6 +318,7 @@ EXPORTS
 	rte_thread_register
 	rte_thread_unregister
 
+	rte_epoll_wait_interruptible
 	rte_vect_get_max_simd_bitwidth
 	rte_vect_set_max_simd_bitwidth
 
