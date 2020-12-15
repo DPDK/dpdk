@@ -329,8 +329,9 @@ ice_read_flash_module(struct ice_hw *hw, enum ice_bank_select bank, u16 module,
 }
 
 /**
- * ice_read_active_nvm_module - Read from the active main NVM module
+ * ice_read_nvm_module - Read from the active main NVM module
  * @hw: pointer to the HW structure
+ * @bank: whether to read from active or inactive NVM module
  * @offset: offset into the NVM module to read, in words
  * @data: storage for returned word value
  *
@@ -338,15 +339,15 @@ ice_read_flash_module(struct ice_hw *hw, enum ice_bank_select bank, u16 module,
  * header at the start of the NVM module.
  */
 static enum ice_status
-ice_read_active_nvm_module(struct ice_hw *hw, u32 offset, u16 *data)
+ice_read_nvm_module(struct ice_hw *hw, enum ice_bank_select bank, u32 offset, u16 *data)
 {
-	return ice_read_flash_module(hw, ICE_ACTIVE_FLASH_BANK,
-				     ICE_SR_1ST_NVM_BANK_PTR, offset, data);
+	return ice_read_flash_module(hw, bank, ICE_SR_1ST_NVM_BANK_PTR, offset, data);
 }
 
 /**
- * ice_read_active_orom_module - Read from the active Option ROM module
+ * ice_read_orom_module - Read from the active Option ROM module
  * @hw: pointer to the HW structure
+ * @bank: whether to read from active or inactive OROM module
  * @offset: offset into the OROM module to read, in words
  * @data: storage for returned word value
  *
@@ -355,10 +356,9 @@ ice_read_active_nvm_module(struct ice_hw *hw, u32 offset, u16 *data)
  * module instead of at the beginning.
  */
 static enum ice_status
-ice_read_active_orom_module(struct ice_hw *hw, u32 offset, u16 *data)
+ice_read_orom_module(struct ice_hw *hw, enum ice_bank_select bank, u32 offset, u16 *data)
 {
-	return ice_read_flash_module(hw, ICE_ACTIVE_FLASH_BANK,
-				     ICE_SR_1ST_OROM_BANK_PTR, offset, data);
+	return ice_read_flash_module(hw, bank, ICE_SR_1ST_OROM_BANK_PTR, offset, data);
 }
 
 /**
@@ -510,21 +510,22 @@ ice_read_pba_string(struct ice_hw *hw, u8 *pba_num, u32 pba_num_size)
 /**
  * ice_get_nvm_srev - Read the security revision from the NVM CSS header
  * @hw: pointer to the HW struct
+ * @bank: whether to read from the active or inactive flash bank
  * @srev: storage for security revision
  *
  * Read the security revision out of the CSS header of the active NVM module
  * bank.
  */
-static enum ice_status ice_get_nvm_srev(struct ice_hw *hw, u32 *srev)
+static enum ice_status ice_get_nvm_srev(struct ice_hw *hw, enum ice_bank_select bank, u32 *srev)
 {
 	enum ice_status status;
 	u16 srev_l, srev_h;
 
-	status = ice_read_active_nvm_module(hw, ICE_NVM_CSS_SREV_L, &srev_l);
+	status = ice_read_nvm_module(hw, bank, ICE_NVM_CSS_SREV_L, &srev_l);
 	if (status)
 		return status;
 
-	status = ice_read_active_nvm_module(hw, ICE_NVM_CSS_SREV_H, &srev_h);
+	status = ice_read_nvm_module(hw, bank, ICE_NVM_CSS_SREV_H, &srev_h);
 	if (status)
 		return status;
 
@@ -568,7 +569,7 @@ ice_get_nvm_ver_info(struct ice_hw *hw, struct ice_nvm_info *nvm)
 
 	nvm->eetrack = (eetrack_hi << 16) | eetrack_lo;
 
-	status = ice_get_nvm_srev(hw, &nvm->srev);
+	status = ice_get_nvm_srev(hw, ICE_ACTIVE_FLASH_BANK, &nvm->srev);
 	if (status)
 		ice_debug(hw, ICE_DBG_NVM, "Failed to read NVM security revision.\n");
 
@@ -578,12 +579,13 @@ ice_get_nvm_ver_info(struct ice_hw *hw, struct ice_nvm_info *nvm)
 /**
  * ice_get_orom_srev - Read the security revision from the OROM CSS header
  * @hw: pointer to the HW struct
+ * @bank: whether to read from active or inactive flash module
  * @srev: storage for security revision
  *
  * Read the security revision out of the CSS header of the active OROM module
  * bank.
  */
-static enum ice_status ice_get_orom_srev(struct ice_hw *hw, u32 *srev)
+static enum ice_status ice_get_orom_srev(struct ice_hw *hw, enum ice_bank_select bank, u32 *srev)
 {
 	enum ice_status status;
 	u16 srev_l, srev_h;
@@ -596,16 +598,16 @@ static enum ice_status ice_get_orom_srev(struct ice_hw *hw, u32 *srev)
 	}
 
 	/* calculate how far into the Option ROM the CSS header starts. Note
-	 * that ice_read_active_orom_module takes a word offset so we need to
+	 * that ice_read_orom_module takes a word offset so we need to
 	 * divide by 2 here.
 	 */
 	css_start = (hw->flash.banks.orom_size - ICE_NVM_OROM_TRAILER_LENGTH) / 2;
 
-	status = ice_read_active_orom_module(hw, css_start + ICE_NVM_CSS_SREV_L, &srev_l);
+	status = ice_read_orom_module(hw, bank, css_start + ICE_NVM_CSS_SREV_L, &srev_l);
 	if (status)
 		return status;
 
-	status = ice_read_active_orom_module(hw, css_start + ICE_NVM_CSS_SREV_H, &srev_h);
+	status = ice_read_orom_module(hw, bank, css_start + ICE_NVM_CSS_SREV_H, &srev_h);
 	if (status)
 		return status;
 
@@ -666,7 +668,7 @@ ice_get_orom_ver_info(struct ice_hw *hw, struct ice_orom_info *orom)
 	orom->build = (u16)((combo_ver & ICE_OROM_VER_BUILD_MASK) >>
 			    ICE_OROM_VER_BUILD_SHIFT);
 
-	status = ice_get_orom_srev(hw, &orom->srev);
+	status = ice_get_orom_srev(hw, ICE_ACTIVE_FLASH_BANK, &orom->srev);
 	if (status)
 		ice_debug(hw, ICE_DBG_NVM, "Failed to read Option ROM security revision.\n");
 
