@@ -125,6 +125,8 @@ ionic_dev_tx_queue_release(void *tx_queue)
 
 	IONIC_PRINT_CALL();
 
+	ionic_lif_txq_deinit(txq);
+
 	ionic_qcq_free(txq);
 }
 
@@ -137,6 +139,9 @@ ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 
 	txq = eth_dev->data->tx_queues[tx_queue_id];
 
+	eth_dev->data->tx_queue_state[tx_queue_id] =
+		RTE_ETH_QUEUE_STATE_STOPPED;
+
 	/*
 	 * Note: we should better post NOP Tx desc and wait for its completion
 	 * before disabling Tx queue
@@ -145,11 +150,6 @@ ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 	ionic_qcq_disable(txq);
 
 	ionic_tx_flush(&txq->cq);
-
-	ionic_lif_txq_deinit(txq);
-
-	eth_dev->data->tx_queue_state[tx_queue_id] =
-		RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -187,6 +187,9 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 		eth_dev->data->tx_queues[tx_queue_id] = NULL;
 	}
 
+	eth_dev->data->tx_queue_state[tx_queue_id] =
+		RTE_ETH_QUEUE_STATE_STOPPED;
+
 	err = ionic_tx_qcq_alloc(lif, tx_queue_id, nb_desc, &txq);
 	if (err) {
 		IONIC_PRINT(DEBUG, "Queue allocation failure");
@@ -210,22 +213,30 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 int __rte_cold
 ionic_dev_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
+	uint8_t *tx_queue_state = eth_dev->data->tx_queue_state;
 	struct ionic_qcq *txq;
 	int err;
+
+	if (tx_queue_state[tx_queue_id] == RTE_ETH_QUEUE_STATE_STARTED) {
+		IONIC_PRINT(DEBUG, "TX queue %u already started",
+			tx_queue_id);
+		return 0;
+	}
 
 	txq = eth_dev->data->tx_queues[tx_queue_id];
 
 	IONIC_PRINT(DEBUG, "Starting TX queue %u, %u descs",
 		tx_queue_id, txq->q.num_descs);
 
-	err = ionic_lif_txq_init(txq);
-	if (err)
-		return err;
+	if (!(txq->flags & IONIC_QCQ_F_INITED)) {
+		err = ionic_lif_txq_init(txq);
+		if (err)
+			return err;
+	}
 
 	ionic_qcq_enable(txq);
 
-	eth_dev->data->tx_queue_state[tx_queue_id] =
-		RTE_ETH_QUEUE_STATE_STARTED;
+	tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
 }
@@ -634,6 +645,8 @@ ionic_dev_rx_queue_release(void *rx_queue)
 
 	ionic_rx_empty(&rxq->q);
 
+	ionic_lif_rxq_deinit(rxq);
+
 	ionic_qcq_free(rxq);
 }
 
@@ -681,6 +694,9 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		ionic_dev_rx_queue_release(rx_queue);
 		eth_dev->data->rx_queues[rx_queue_id] = NULL;
 	}
+
+	eth_dev->data->rx_queue_state[rx_queue_id] =
+		RTE_ETH_QUEUE_STATE_STOPPED;
 
 	err = ionic_rx_qcq_alloc(lif, rx_queue_id, nb_desc, &rxq);
 	if (err) {
@@ -953,17 +969,26 @@ int __rte_cold
 ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
 	uint32_t frame_size = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	uint8_t *rx_queue_state = eth_dev->data->rx_queue_state;
 	struct ionic_qcq *rxq;
 	int err;
+
+	if (rx_queue_state[rx_queue_id] == RTE_ETH_QUEUE_STATE_STARTED) {
+		IONIC_PRINT(DEBUG, "RX queue %u already started",
+			rx_queue_id);
+		return 0;
+	}
 
 	rxq = eth_dev->data->rx_queues[rx_queue_id];
 
 	IONIC_PRINT(DEBUG, "Starting RX queue %u, %u descs (size: %u)",
 		rx_queue_id, rxq->q.num_descs, frame_size);
 
-	err = ionic_lif_rxq_init(rxq);
-	if (err)
-		return err;
+	if (!(rxq->flags & IONIC_QCQ_F_INITED)) {
+		err = ionic_lif_rxq_init(rxq);
+		if (err)
+			return err;
+	}
 
 	/* Allocate buffers for descriptor rings */
 	if (ionic_rx_fill(rxq, frame_size) != 0) {
@@ -974,8 +999,7 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 
 	ionic_qcq_enable(rxq);
 
-	eth_dev->data->rx_queue_state[rx_queue_id] =
-		RTE_ETH_QUEUE_STATE_STARTED;
+	rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
 }
@@ -1044,15 +1068,13 @@ ionic_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 
 	rxq = eth_dev->data->rx_queues[rx_queue_id];
 
+	eth_dev->data->rx_queue_state[rx_queue_id] =
+		RTE_ETH_QUEUE_STATE_STOPPED;
+
 	ionic_qcq_disable(rxq);
 
 	/* Flush */
 	ionic_rxq_service(&rxq->cq, -1, NULL);
-
-	ionic_lif_rxq_deinit(rxq);
-
-	eth_dev->data->rx_queue_state[rx_queue_id] =
-		RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
