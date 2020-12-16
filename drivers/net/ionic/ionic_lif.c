@@ -25,7 +25,6 @@ ionic_qcq_enable(struct ionic_qcq *qcq)
 		.pending_work = true,
 		.cmd.q_control = {
 			.opcode = IONIC_CMD_Q_CONTROL,
-			.lif_index = lif->index,
 			.type = q->type,
 			.index = q->index,
 			.oper = IONIC_Q_ENABLE,
@@ -50,7 +49,6 @@ ionic_qcq_disable(struct ionic_qcq *qcq)
 		.pending_work = true,
 		.cmd.q_control = {
 			.opcode = IONIC_CMD_Q_CONTROL,
-			.lif_index = lif->index,
 			.type = q->type,
 			.index = q->index,
 			.oper = IONIC_Q_DISABLE,
@@ -81,7 +79,7 @@ ionic_lif_reset(struct ionic_lif *lif)
 
 	IONIC_PRINT_CALL();
 
-	ionic_dev_cmd_lif_reset(idev, lif->index);
+	ionic_dev_cmd_lif_reset(idev);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
 	if (err)
 		IONIC_PRINT(WARNING, "Failed to reset %s", lif->name);
@@ -438,7 +436,6 @@ ionic_lif_rx_mode(struct ionic_lif *lif, uint32_t rx_mode)
 		.pending_work = true,
 		.cmd.rx_mode_set = {
 			.opcode = IONIC_CMD_RX_MODE_SET,
-			.lif_index = lif->index,
 			.rx_mode = rx_mode,
 		},
 	};
@@ -530,7 +527,6 @@ ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu)
 		.pending_work = true,
 		.cmd.lif_setattr = {
 			.opcode = IONIC_CMD_LIF_SETATTR,
-			.index = lif->index,
 			.attr = IONIC_LIF_ATTR_MTU,
 			.mtu = new_mtu,
 		},
@@ -824,7 +820,6 @@ ionic_lif_alloc(struct ionic_lif *lif)
 {
 	struct ionic_adapter *adapter = lif->adapter;
 	uint32_t socket_id = rte_socket_id();
-	int dbpage_num;
 	int err;
 
 	/*
@@ -840,9 +835,7 @@ ionic_lif_alloc(struct ionic_lif *lif)
 	rte_spinlock_init(&lif->adminq_lock);
 	rte_spinlock_init(&lif->adminq_service_lock);
 
-	dbpage_num = ionic_db_page_num(lif, 0);
-
-	lif->kern_dbpage = ionic_bus_map_dbpage(adapter, dbpage_num);
+	lif->kern_dbpage = ionic_bus_map_dbpage(adapter, 0);
 	if (!lif->kern_dbpage) {
 		IONIC_PRINT(ERR, "Cannot map dbpage, aborting");
 		return -ENOMEM;
@@ -1174,7 +1167,7 @@ ionic_lif_adminq_init(struct ionic_lif *lif)
 	struct ionic_q_init_comp comp;
 	int err;
 
-	ionic_dev_cmd_adminq_init(idev, qcq, lif->index, qcq->intr.index);
+	ionic_dev_cmd_adminq_init(idev, qcq, qcq->intr.index);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
 	if (err)
 		return err;
@@ -1210,7 +1203,6 @@ ionic_lif_notifyq_init(struct ionic_lif *lif)
 		.pending_work = true,
 		.cmd.q_init = {
 			.opcode = IONIC_CMD_Q_INIT,
-			.lif_index = lif->index,
 			.type = q->type,
 			.index = q->index,
 			.flags = (IONIC_QINIT_F_IRQ | IONIC_QINIT_F_ENA),
@@ -1256,7 +1248,6 @@ ionic_lif_set_features(struct ionic_lif *lif)
 		.pending_work = true,
 		.cmd.lif_setattr = {
 			.opcode = IONIC_CMD_LIF_SETATTR,
-			.index = lif->index,
 			.attr = IONIC_LIF_ATTR_FEATURES,
 			.features = lif->features,
 		},
@@ -1318,7 +1309,6 @@ ionic_lif_txq_init(struct ionic_qcq *qcq)
 		.pending_work = true,
 		.cmd.q_init = {
 			.opcode = IONIC_CMD_Q_INIT,
-			.lif_index = lif->index,
 			.type = q->type,
 			.index = q->index,
 			.flags = IONIC_QINIT_F_SG,
@@ -1365,7 +1355,6 @@ ionic_lif_rxq_init(struct ionic_qcq *qcq)
 		.pending_work = true,
 		.cmd.q_init = {
 			.opcode = IONIC_CMD_Q_INIT,
-			.lif_index = lif->index,
 			.type = q->type,
 			.index = q->index,
 			.flags = IONIC_QINIT_F_SG,
@@ -1409,7 +1398,6 @@ ionic_station_set(struct ionic_lif *lif)
 		.pending_work = true,
 		.cmd.lif_getattr = {
 			.opcode = IONIC_CMD_LIF_GETATTR,
-			.index = lif->index,
 			.attr = IONIC_LIF_ATTR_MAC,
 		},
 	};
@@ -1449,7 +1437,6 @@ ionic_lif_set_name(struct ionic_lif *lif)
 		.pending_work = true,
 		.cmd.lif_setattr = {
 			.opcode = IONIC_CMD_LIF_SETATTR,
-			.index = lif->index,
 			.attr = IONIC_LIF_ATTR_NAME,
 		},
 	};
@@ -1469,7 +1456,7 @@ ionic_lif_init(struct ionic_lif *lif)
 
 	memset(&lif->stats_base, 0, sizeof(lif->stats_base));
 
-	ionic_dev_cmd_lif_init(idev, lif->index, lif->info_pa);
+	ionic_dev_cmd_lif_init(idev, lif->info_pa);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
 	ionic_dev_cmd_comp(idev, &comp);
 	if (err)
@@ -1672,7 +1659,6 @@ int
 ionic_lifs_size(struct ionic_adapter *adapter)
 {
 	struct ionic_identity *ident = &adapter->ident;
-	uint32_t nlifs = ident->dev.nlifs;
 	uint32_t nintrs, dev_nintrs = ident->dev.nintrs;
 
 	adapter->max_ntxqs_per_lif =
@@ -1680,7 +1666,7 @@ ionic_lifs_size(struct ionic_adapter *adapter)
 	adapter->max_nrxqs_per_lif =
 		ident->lif.eth.config.queue_count[IONIC_QTYPE_RXQ];
 
-	nintrs = nlifs * 1 /* notifyq */;
+	nintrs = 1 /* notifyq */;
 
 	if (nintrs > dev_nintrs) {
 		IONIC_PRINT(ERR,

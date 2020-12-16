@@ -339,14 +339,11 @@ static void
 ionic_dev_interrupt_handler(void *param)
 {
 	struct ionic_adapter *adapter = (struct ionic_adapter *)param;
-	uint32_t i;
 
 	IONIC_PRINT(DEBUG, "->");
 
-	for (i = 0; i < adapter->nlifs; i++) {
-		if (adapter->lifs[i])
-			ionic_notifyq_handler(adapter->lifs[i], -1);
-	}
+	if (adapter->lif)
+		ionic_notifyq_handler(adapter->lif, -1);
 }
 
 static int
@@ -1008,10 +1005,9 @@ eth_ionic_dev_init(struct rte_eth_dev *eth_dev, void *init_params)
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	lif->index = adapter->nlifs;
 	lif->eth_dev = eth_dev;
 	lif->adapter = adapter;
-	adapter->lifs[adapter->nlifs] = lif;
+	adapter->lif = lif;
 
 	IONIC_PRINT(DEBUG, "Up to %u MAC addresses supported",
 		adapter->max_mac_addrs);
@@ -1066,7 +1062,7 @@ eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	adapter->lifs[lif->index] = NULL;
+	adapter->lif = NULL;
 
 	ionic_lif_deinit(lif);
 	ionic_lif_free(lif);
@@ -1243,22 +1239,19 @@ eth_ionic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	adapter->max_mac_addrs = adapter->ident.lif.eth.max_ucast_filters;
 
-	adapter->nlifs = 0;
-	for (i = 0; i < adapter->ident.dev.nlifs; i++) {
-		snprintf(name, sizeof(name), "net_%s_lif_%lu",
-			pci_dev->device.name, i);
+	if (adapter->ident.dev.nlifs != 1) {
+		IONIC_PRINT(ERR, "Unexpected request for %d LIFs",
+			adapter->ident.dev.nlifs);
+		goto err_free_adapter;
+	}
 
-		err = rte_eth_dev_create(&pci_dev->device, name,
-			sizeof(struct ionic_lif),
-			NULL, NULL,
-			eth_ionic_dev_init, adapter);
-		if (err) {
-			IONIC_PRINT(ERR, "Cannot create eth device for "
-				"ionic lif %s", name);
-			break;
-		}
-
-		adapter->nlifs++;
+	snprintf(name, sizeof(name), "%s_lif", pci_dev->device.name);
+	err = rte_eth_dev_create(&pci_dev->device,
+			name, sizeof(struct ionic_lif),
+			NULL, NULL, eth_ionic_dev_init, adapter);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot create eth device for %s", name);
+		goto err_free_adapter;
 	}
 
 	err = ionic_configure_intr(adapter);
@@ -1283,11 +1276,9 @@ eth_ionic_pci_remove(struct rte_pci_device *pci_dev __rte_unused)
 	struct ionic_adapter *adapter = NULL;
 	struct rte_eth_dev *eth_dev;
 	struct ionic_lif *lif;
-	uint32_t i;
 
-	/* Adapter lookup is using (the first) eth_dev name */
-	snprintf(name, sizeof(name), "net_%s_lif_0",
-		pci_dev->device.name);
+	/* Adapter lookup is using the eth_dev name */
+	snprintf(name, sizeof(name), "%s_lif", pci_dev->device.name);
 
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev) {
@@ -1298,10 +1289,7 @@ eth_ionic_pci_remove(struct rte_pci_device *pci_dev __rte_unused)
 	if (adapter) {
 		ionic_unconfigure_intr(adapter);
 
-		for (i = 0; i < adapter->nlifs; i++) {
-			lif = adapter->lifs[i];
-			rte_eth_dev_destroy(lif->eth_dev, eth_ionic_dev_uninit);
-		}
+		rte_eth_dev_destroy(eth_dev, eth_ionic_dev_uninit);
 
 		rte_free(adapter);
 	}

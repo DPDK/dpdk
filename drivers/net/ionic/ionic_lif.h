@@ -84,7 +84,6 @@ struct ionic_lif {
 	struct ionic_adapter *adapter;
 	struct rte_eth_dev *eth_dev;
 	uint16_t port_id;  /**< Device port identifier */
-	uint32_t index;
 	uint32_t hw_index;
 	uint32_t state;
 	uint32_t ntxqcqs;

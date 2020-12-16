@@ -51,9 +51,8 @@ struct ionic_adapter {
 	const char *name;
 	struct ionic_dev_bar bars[IONIC_BARS_MAX];
 	struct ionic_identity	ident;
-	struct ionic_lif *lifs[IONIC_LIFS_MAX];
+	struct ionic_lif *lif;
 	uint32_t num_bars;
-	uint32_t nlifs;
 	uint32_t max_ntxqs_per_lif;
 	uint32_t max_nrxqs_per_lif;
 	uint32_t max_mac_addrs;

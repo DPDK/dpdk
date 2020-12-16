@@ -232,15 +232,13 @@ void ionic_dev_cmd_port_loopback(struct ionic_dev *idev,
 
 void ionic_dev_cmd_lif_identify(struct ionic_dev *idev, uint8_t type,
 	uint8_t ver);
-void ionic_dev_cmd_lif_init(struct ionic_dev *idev, uint16_t lif_index,
-	rte_iova_t addr);
-void ionic_dev_cmd_lif_reset(struct ionic_dev *idev, uint16_t lif_index);
+void ionic_dev_cmd_lif_init(struct ionic_dev *idev, rte_iova_t addr);
+void ionic_dev_cmd_lif_reset(struct ionic_dev *idev);
 void ionic_dev_cmd_adminq_init(struct ionic_dev *idev, struct ionic_qcq *qcq,
-	uint16_t lif_index, uint16_t intr_index);
+	uint16_t intr_index);
 
 struct ionic_doorbell __iomem *ionic_db_map(struct ionic_lif *lif,
 	struct ionic_queue *q);
-int ionic_db_page_num(struct ionic_lif *lif, int pid);
 
 int ionic_cq_init(struct ionic_lif *lif, struct ionic_cq *cq,
 	struct ionic_intr_info *intr, uint32_t num_descs,

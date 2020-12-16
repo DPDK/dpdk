@@ -288,12 +288,10 @@ ionic_dev_cmd_lif_identify(struct ionic_dev *idev, uint8_t type, uint8_t ver)
 }
 
 void
-ionic_dev_cmd_lif_init(struct ionic_dev *idev, uint16_t lif_index,
-		       rte_iova_t info_pa)
+ionic_dev_cmd_lif_init(struct ionic_dev *idev, rte_iova_t info_pa)
 {
 	union ionic_dev_cmd cmd = {
 		.lif_init.opcode = IONIC_CMD_LIF_INIT,
-		.lif_init.index = lif_index,
 		.lif_init.info_pa = info_pa,
 	};
 
@@ -301,11 +299,10 @@ ionic_dev_cmd_lif_init(struct ionic_dev *idev, uint16_t lif_index,
 }
 
 void
-ionic_dev_cmd_lif_reset(struct ionic_dev *idev, uint16_t lif_index)
+ionic_dev_cmd_lif_reset(struct ionic_dev *idev)
 {
 	union ionic_dev_cmd cmd = {
 		.lif_init.opcode = IONIC_CMD_LIF_RESET,
-		.lif_init.index = lif_index,
 	};
 
 	ionic_dev_cmd_go(idev, &cmd);
@@ -315,12 +312,6 @@ struct ionic_doorbell *
 ionic_db_map(struct ionic_lif *lif, struct ionic_queue *q)
 {
 	return lif->kern_dbpage + q->hw_type;
-}
-
-int
-ionic_db_page_num(struct ionic_lif *lif, int pid)
-{
-	return (lif->index * 0) + pid;
 }
 
 void
@@ -334,14 +325,13 @@ ionic_intr_init(struct ionic_dev *idev, struct ionic_intr_info *intr,
 void
 ionic_dev_cmd_adminq_init(struct ionic_dev *idev,
 		struct ionic_qcq *qcq,
-		uint16_t lif_index, uint16_t intr_index)
+		uint16_t intr_index)
 {
 	struct ionic_queue *q = &qcq->q;
 	struct ionic_cq *cq = &qcq->cq;
 
 	union ionic_dev_cmd cmd = {
 		.q_init.opcode = IONIC_CMD_Q_INIT,
-		.q_init.lif_index = lif_index,
 		.q_init.type = q->type,
 		.q_init.index = q->index,
 		.q_init.flags = IONIC_QINIT_F_ENA,
