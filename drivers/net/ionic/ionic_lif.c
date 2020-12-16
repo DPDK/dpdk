@@ -63,12 +63,12 @@ ionic_qcq_disable(struct ionic_qcq *qcq)
 	return ionic_adminq_post_wait(lif, &ctx);
 }
 
-int
-ionic_lif_stop(struct ionic_lif *lif __rte_unused)
+void
+ionic_lif_stop(struct ionic_lif *lif)
 {
-	/* Carrier OFF here */
+	IONIC_PRINT_CALL();
 
-	return 0;
+	lif->state &= ~IONIC_LIF_F_UP;
 }
 
 void
@@ -1098,14 +1098,32 @@ ionic_link_status_check(struct ionic_lif *lif)
 		return;
 
 	if (link_up) {
-		IONIC_PRINT(DEBUG, "Link up - %d Gbps",
-			lif->info->status.link_speed);
 		adapter->link_speed = lif->info->status.link_speed;
+		IONIC_PRINT(DEBUG, "Link up - %d Gbps",
+			adapter->link_speed);
 	} else {
 		IONIC_PRINT(DEBUG, "Link down");
 	}
 
 	adapter->link_up = link_up;
+	ionic_dev_link_update(lif->eth_dev, 0);
+}
+
+static void
+ionic_lif_handle_fw_down(struct ionic_lif *lif)
+{
+	if (lif->state & IONIC_LIF_F_FW_RESET)
+		return;
+
+	lif->state |= IONIC_LIF_F_FW_RESET;
+
+	if (lif->state & IONIC_LIF_F_UP) {
+		IONIC_PRINT(NOTICE,
+			"Surprise FW stop, stopping %s\n", lif->name);
+		ionic_lif_stop(lif);
+	}
+
+	IONIC_PRINT(NOTICE, "FW down, %s stopped", lif->name);
 }
 
 static bool
@@ -1127,14 +1145,27 @@ ionic_notifyq_cb(struct ionic_cq *cq, uint32_t cq_desc_index, void *cb_arg)
 	switch (cq_desc->event.ecode) {
 	case IONIC_EVENT_LINK_CHANGE:
 		IONIC_PRINT(DEBUG,
-			"Notifyq IONIC_EVENT_LINK_CHANGE eid=%jd link_status=%d link_speed=%d",
+			"Notifyq IONIC_EVENT_LINK_CHANGE %s "
+			"eid=%jd link_status=%d link_speed=%d",
+			lif->name,
 			cq_desc->event.eid,
 			cq_desc->link_change.link_status,
 			cq_desc->link_change.link_speed);
 
 		lif->state |= IONIC_LIF_F_LINK_CHECK_NEEDED;
-
 		break;
+
+	case IONIC_EVENT_RESET:
+		IONIC_PRINT(NOTICE,
+			"Notifyq IONIC_EVENT_RESET %s "
+			"eid=%jd, reset_code=%d state=%d",
+			lif->name,
+			cq_desc->event.eid,
+			cq_desc->reset.reset_code,
+			cq_desc->reset.state);
+		ionic_lif_handle_fw_down(lif);
+		break;
+
 	default:
 		IONIC_PRINT(WARNING, "Notifyq bad event ecode=%d eid=%jd",
 			cq_desc->event.ecode, cq_desc->event.eid);
@@ -1618,9 +1649,10 @@ ionic_lif_start(struct ionic_lif *lif)
 		}
 	}
 
-	ionic_link_status_check(lif);
-
 	/* Carrier ON here */
+	lif->state |= IONIC_LIF_F_UP;
+
+	ionic_link_status_check(lif);
 
 	return 0;
 }

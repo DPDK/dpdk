@@ -77,6 +77,8 @@ struct ionic_qcq {
 
 #define IONIC_LIF_F_INITED		BIT(0)
 #define IONIC_LIF_F_LINK_CHECK_NEEDED	BIT(1)
+#define IONIC_LIF_F_UP			BIT(2)
+#define IONIC_LIF_F_FW_RESET		BIT(3)
 
 #define IONIC_LIF_NAME_MAX_SZ		(32)
 
@@ -127,7 +129,7 @@ int ionic_lif_init(struct ionic_lif *lif);
 void ionic_lif_deinit(struct ionic_lif *lif);
 
 int ionic_lif_start(struct ionic_lif *lif);
-int ionic_lif_stop(struct ionic_lif *lif);
+void ionic_lif_stop(struct ionic_lif *lif);
 
 int ionic_lif_configure(struct ionic_lif *lif);
 void ionic_lif_reset(struct ionic_lif *lif);

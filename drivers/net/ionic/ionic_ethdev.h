@@ -5,6 +5,8 @@
 #ifndef _IONIC_ETHDEV_H_
 #define _IONIC_ETHDEV_H_
 
+#include <rte_ethdev.h>
+
 #define IONIC_ETH_RSS_OFFLOAD_ALL ( \
 	ETH_RSS_IPV4 | \
 	ETH_RSS_NONFRAG_IPV4_TCP | \
@@ -17,6 +19,8 @@
 	(eth_dev)->data->dev_private)
 #define IONIC_ETH_DEV_TO_ADAPTER(eth_dev) \
 	(IONIC_ETH_DEV_TO_LIF(eth_dev)->adapter)
+
+int ionic_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
 
 #endif /* _IONIC_ETHDEV_H_ */
 

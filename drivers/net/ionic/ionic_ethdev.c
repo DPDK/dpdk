@@ -28,8 +28,6 @@ static int  ionic_dev_stop(struct rte_eth_dev *dev);
 static int  ionic_dev_close(struct rte_eth_dev *dev);
 static int  ionic_dev_set_link_up(struct rte_eth_dev *dev);
 static int  ionic_dev_set_link_down(struct rte_eth_dev *dev);
-static int  ionic_dev_link_update(struct rte_eth_dev *eth_dev,
-	int wait_to_complete);
 static int  ionic_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 	struct rte_eth_fc_conf *fc_conf);
 static int  ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
@@ -236,21 +234,17 @@ static int
 ionic_dev_set_link_up(struct rte_eth_dev *eth_dev)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-	struct ionic_adapter *adapter = lif->adapter;
-	struct ionic_dev *idev = &adapter->idev;
 	int err;
 
 	IONIC_PRINT_CALL();
 
-	ionic_dev_cmd_port_state(idev, IONIC_PORT_ADMIN_STATE_UP);
+	err = ionic_lif_start(lif);
+	if (err)
+		IONIC_PRINT(ERR, "Could not start lif to set link up");
 
-	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
-	if (err) {
-		IONIC_PRINT(WARNING, "Failed to bring port UP");
-		return err;
-	}
+	ionic_dev_link_update(lif->eth_dev, 0);
 
-	return 0;
+	return err;
 }
 
 /*
@@ -260,24 +254,17 @@ static int
 ionic_dev_set_link_down(struct rte_eth_dev *eth_dev)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-	struct ionic_adapter *adapter = lif->adapter;
-	struct ionic_dev *idev = &adapter->idev;
-	int err;
 
 	IONIC_PRINT_CALL();
 
-	ionic_dev_cmd_port_state(idev, IONIC_PORT_ADMIN_STATE_DOWN);
+	ionic_lif_stop(lif);
 
-	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
-	if (err) {
-		IONIC_PRINT(WARNING, "Failed to bring port DOWN");
-		return err;
-	}
+	ionic_dev_link_update(lif->eth_dev, 0);
 
 	return 0;
 }
 
-static int
+int
 ionic_dev_link_update(struct rte_eth_dev *eth_dev,
 		int wait_to_complete __rte_unused)
 {
@@ -291,7 +278,8 @@ ionic_dev_link_update(struct rte_eth_dev *eth_dev,
 	memset(&link, 0, sizeof(link));
 	link.link_autoneg = ETH_LINK_AUTONEG;
 
-	if (!adapter->link_up) {
+	if (!adapter->link_up ||
+	    !(lif->state & IONIC_LIF_F_UP)) {
 		/* Interface is down */
 		link.link_status = ETH_LINK_DOWN;
 		link.link_duplex = ETH_LINK_HALF_DUPLEX;
@@ -944,15 +932,12 @@ static int
 ionic_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-	int err;
 
 	IONIC_PRINT_CALL();
 
-	err = ionic_lif_stop(lif);
-	if (err)
-		IONIC_PRINT(ERR, "Cannot stop LIF: %d", err);
+	ionic_lif_stop(lif);
 
-	return err;
+	return 0;
 }
 
 static void ionic_unconfigure_intr(struct ionic_adapter *adapter);
@@ -965,17 +950,12 @@ ionic_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
 	struct ionic_adapter *adapter = lif->adapter;
-	int err;
 
 	IONIC_PRINT_CALL();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	err = ionic_lif_stop(lif);
-	if (err) {
-		IONIC_PRINT(ERR, "Cannot stop LIF: %d", err);
-		return -1;
-	}
+	ionic_lif_stop(lif);
 
 	ionic_lif_free_queues(lif);
 
@@ -1075,6 +1055,9 @@ eth_ionic_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	ionic_lif_deinit(lif);
 	ionic_lif_free(lif);
+
+	if (!(lif->state & IONIC_LIF_F_FW_RESET))
+		ionic_lif_reset(lif);
 
 	return 0;
 }
