@@ -3,23 +3,14 @@
 # Copyright(c) 2018 Semihalf.
 # All rights reserved.
 
-path = get_option('lib_musdk_dir')
-lib_dir = path + '/lib'
-inc_dir = path + '/include'
-
-lib = cc.find_library('libmusdk', dirs : [lib_dir], required: false)
-if not lib.found()
+dep = dependency('libmusdk', required: false)
+if not dep.found()
 	build = false
 	reason = 'missing dependency, "libmusdk"'
-else
-	ext_deps += lib
-	includes += include_directories(inc_dir)
-	cflags += [
-	  '-DMVCONF_TYPES_PUBLIC',
-	  '-DMVCONF_DMA_PHYS_ADDR_T_PUBLIC',
-	  '-DMVCONF_DMA_PHYS_ADDR_T_SIZE=64'
-	]
+	subdir_done()
 endif
+
+ext_deps += dep
 
 sources = files(
 	'mvneta_ethdev.c',

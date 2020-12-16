@@ -56,7 +56,7 @@ Prerequisites
 
   .. code-block:: console
 
-     git clone https://github.com/MarvellEmbeddedProcessors/musdk-marvell.git -b musdk-armada-18.09
+     git clone https://github.com/MarvellEmbeddedProcessors/musdk-marvell.git -b musdk-release-SDK-10.3.5.0-PR2
 
   MUSDK is a light-weight library that provides direct access to Marvell's
   NETA. Alternatively prebuilt MUSDK library can be
@@ -94,8 +94,8 @@ be passed as part of EAL arguments.
     -c 3 -- -i --p 3 -a
 
 
-Building DPDK
--------------
+Building MUSDK
+--------------
 
 Driver needs precompiled MUSDK library during compilation.
 
@@ -109,12 +109,16 @@ Driver needs precompiled MUSDK library during compilation.
 MUSDK will be installed to `usr/local` under current directory.
 For the detailed build instructions please consult ``doc/musdk_get_started.txt``.
 
-The path to the MUSDK installation directory needs to set in meson, shown in the
-following command:
+Building DPDK
+-------------
+
+Add path to libmusdk.pc in PKG_CONFIG_PATH environment variable.
 
 .. code-block:: console
 
-   meson -Dlib_musdk_dir=/path/to/musdk build ninja -C build
+   export PKG_CONFIG_PATH=$<musdk_install_dir>/lib/pkgconfig/:$PKG_CONFIG_PATH
+   meson build --cross-file config/arm/arm64_armada_linux_gcc
+   ninja -C build
 
 
 Usage Example
