@@ -920,6 +920,21 @@ ionic_lif_free(struct ionic_lif *lif)
 	}
 }
 
+void
+ionic_lif_free_queues(struct ionic_lif *lif)
+{
+	uint32_t i;
+
+	for (i = 0; i < lif->ntxqcqs; i++) {
+		ionic_dev_tx_queue_release(lif->eth_dev->data->tx_queues[i]);
+		lif->eth_dev->data->tx_queues[i] = NULL;
+	}
+	for (i = 0; i < lif->nrxqcqs; i++) {
+		ionic_dev_rx_queue_release(lif->eth_dev->data->rx_queues[i]);
+		lif->eth_dev->data->rx_queues[i] = NULL;
+	}
+}
+
 int
 ionic_lif_rss_config(struct ionic_lif *lif,
 		const uint16_t types, const uint8_t *key, const uint32_t *indir)

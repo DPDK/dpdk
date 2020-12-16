@@ -955,6 +955,8 @@ ionic_dev_stop(struct rte_eth_dev *eth_dev)
 	return err;
 }
 
+static void ionic_unconfigure_intr(struct ionic_adapter *adapter);
+
 /*
  * Reset and stop device.
  */
@@ -962,6 +964,7 @@ static int
 ionic_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
+	struct ionic_adapter *adapter = lif->adapter;
 	int err;
 
 	IONIC_PRINT_CALL();
@@ -974,11 +977,17 @@ ionic_dev_close(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	err = eth_ionic_dev_uninit(eth_dev);
-	if (err) {
-		IONIC_PRINT(ERR, "Cannot destroy LIF: %d", err);
-		return -1;
-	}
+	ionic_lif_free_queues(lif);
+
+	IONIC_PRINT(NOTICE, "Removing device %s", eth_dev->device->name);
+	ionic_unconfigure_intr(adapter);
+
+	rte_eth_dev_destroy(eth_dev, eth_ionic_dev_uninit);
+
+	ionic_port_reset(adapter);
+	ionic_reset(adapter);
+
+	rte_free(adapter);
 
 	return 0;
 }
@@ -1270,29 +1279,20 @@ err:
 }
 
 static int
-eth_ionic_pci_remove(struct rte_pci_device *pci_dev __rte_unused)
+eth_ionic_pci_remove(struct rte_pci_device *pci_dev)
 {
 	char name[RTE_ETH_NAME_MAX_LEN];
-	struct ionic_adapter *adapter = NULL;
 	struct rte_eth_dev *eth_dev;
-	struct ionic_lif *lif;
 
 	/* Adapter lookup is using the eth_dev name */
 	snprintf(name, sizeof(name), "%s_lif", pci_dev->device.name);
 
 	eth_dev = rte_eth_dev_allocated(name);
-	if (eth_dev) {
-		lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-		adapter = lif->adapter;
-	}
-
-	if (adapter) {
-		ionic_unconfigure_intr(adapter);
-
-		rte_eth_dev_destroy(eth_dev, eth_ionic_dev_uninit);
-
-		rte_free(adapter);
-	}
+	if (eth_dev)
+		ionic_dev_close(eth_dev);
+	else
+		IONIC_PRINT(DEBUG, "Cannot find device %s",
+			pci_dev->device.name);
 
 	return 0;
 }

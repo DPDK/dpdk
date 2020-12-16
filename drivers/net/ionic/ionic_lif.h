@@ -121,6 +121,7 @@ int ionic_lifs_size(struct ionic_adapter *ionic);
 
 int ionic_lif_alloc(struct ionic_lif *lif);
 void ionic_lif_free(struct ionic_lif *lif);
+void ionic_lif_free_queues(struct ionic_lif *lif);
 
 int ionic_lif_init(struct ionic_lif *lif);
 void ionic_lif_deinit(struct ionic_lif *lif);

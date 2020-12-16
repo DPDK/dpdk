@@ -841,7 +841,7 @@ F: doc/guides/nics/pfe.rst
 F: drivers/net/pfe/
 F: doc/guides/nics/features/pfe.ini
 
-Pensando ionic - UNMAINTAINED
+Pensando ionic
 M: Andrew Boyer <aboyer@pensando.io>
 F: drivers/net/ionic/
 F: doc/guides/nics/ionic.rst
