@@ -839,6 +839,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t rx_raw_prod = rxr->rx_raw_prod;
 	uint16_t ag_raw_prod = rxr->ag_raw_prod;
 	uint32_t raw_cons = cpr->cp_raw_cons;
+	bool alloc_failed = false;
 	uint32_t cons;
 	int nb_rx_pkts = 0;
 	int nb_rep_rx_pkts = 0;
@@ -885,12 +886,16 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* TODO: Avoid magic numbers... */
 		if ((CMP_TYPE(rxcmp) & 0x30) == 0x10) {
 			rc = bnxt_rx_pkt(&rx_pkts[nb_rx_pkts], rxq, &raw_cons);
-			if (likely(!rc) || rc == -ENOMEM)
+			if (!rc)
 				nb_rx_pkts++;
-			if (rc == -EBUSY)	/* partial completion */
+			else if (rc == -EBUSY)	/* partial completion */
 				break;
-			if (rc == -ENODEV)	/* completion for representor */
+			else if (rc == -ENODEV)	/* completion for representor */
 				nb_rep_rx_pkts++;
+			else if (rc == -ENOMEM) {
+				nb_rx_pkts++;
+				alloc_failed = true;
+			}
 		} else if (!BNXT_NUM_ASYNC_CPR(rxq->bp)) {
 			evt =
 			bnxt_event_hwrm_resp_handler(rxq->bp,
@@ -929,23 +934,24 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		bnxt_db_write(&rxr->ag_db, rxr->ag_raw_prod);
 
 	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
-	if (rc == -ENOMEM) {
-		int i = RING_NEXT(rx_raw_prod);
-		int cnt = nb_rx_pkts;
+	if (alloc_failed) {
+		uint16_t cnt;
 
-		for (; nb_rx_pkts; i = RING_NEXT(i), cnt--) {
+		rx_raw_prod = RING_NEXT(rx_raw_prod);
+		for (cnt = 0; cnt < nb_rx_pkts + nb_rep_rx_pkts; cnt++) {
 			struct rte_mbuf **rx_buf;
-			uint16_t rx_raw_prod = RING_IDX(rxr->rx_ring_struct, i);
+			uint16_t ndx;
 
-			rx_buf = &rxr->rx_buf_ring[rx_raw_prod];
+			ndx = RING_IDX(rxr->rx_ring_struct, rx_raw_prod + cnt);
+			rx_buf = &rxr->rx_buf_ring[ndx];
 
 			/* Buffer already allocated for this index. */
 			if (*rx_buf != NULL && *rx_buf != &rxq->fake_mbuf)
 				continue;
 
 			/* This slot is empty. Alloc buffer for Rx */
-			if (!bnxt_alloc_rx_data(rxq, rxr, i)) {
-				rxr->rx_raw_prod = i;
+			if (!bnxt_alloc_rx_data(rxq, rxr, rx_raw_prod + cnt)) {
+				rxr->rx_raw_prod = rx_raw_prod + cnt;
 				bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 			} else {
 				PMD_DRV_LOG(ERR, "Alloc  mbuf failed\n");
