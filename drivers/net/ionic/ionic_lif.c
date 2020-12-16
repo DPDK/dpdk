@@ -66,9 +66,23 @@ ionic_qcq_disable(struct ionic_qcq *qcq)
 void
 ionic_lif_stop(struct ionic_lif *lif)
 {
+	uint32_t i;
+
 	IONIC_PRINT_CALL();
 
 	lif->state &= ~IONIC_LIF_F_UP;
+
+	for (i = 0; i < lif->nrxqcqs; i++) {
+		struct ionic_qcq *rxq = lif->rxqcqs[i];
+		if (rxq->flags & IONIC_QCQ_F_INITED)
+			(void)ionic_dev_rx_queue_stop(lif->eth_dev, i);
+	}
+
+	for (i = 0; i < lif->ntxqcqs; i++) {
+		struct ionic_qcq *txq = lif->txqcqs[i];
+		if (txq->flags & IONIC_QCQ_F_INITED)
+			(void)ionic_dev_tx_queue_stop(lif->eth_dev, i);
+	}
 }
 
 void
