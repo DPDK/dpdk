@@ -1573,7 +1573,7 @@ ionic_lif_configure(struct ionic_lif *lif)
 int
 ionic_lif_start(struct ionic_lif *lif)
 {
-	uint32_t rx_mode = 0;
+	uint32_t rx_mode;
 	uint32_t i;
 	int err;
 
@@ -1581,16 +1581,16 @@ ionic_lif_start(struct ionic_lif *lif)
 	if (err)
 		return err;
 
-	IONIC_PRINT(DEBUG, "Setting RX mode on port %u",
-		lif->port_id);
+	if (!lif->rx_mode) {
+		IONIC_PRINT(DEBUG, "Setting RX mode on %s",
+			lif->name);
 
-	rx_mode |= IONIC_RX_MODE_F_UNICAST;
-	rx_mode |= IONIC_RX_MODE_F_MULTICAST;
-	rx_mode |= IONIC_RX_MODE_F_BROADCAST;
+		rx_mode  = IONIC_RX_MODE_F_UNICAST;
+		rx_mode |= IONIC_RX_MODE_F_MULTICAST;
+		rx_mode |= IONIC_RX_MODE_F_BROADCAST;
 
-	lif->rx_mode = 0; /* set by ionic_set_rx_mode */
-
-	ionic_set_rx_mode(lif, rx_mode);
+		ionic_set_rx_mode(lif, rx_mode);
+	}
 
 	IONIC_PRINT(DEBUG, "Starting %u RX queues and %u TX queues "
 		"on port %u",
