@@ -962,8 +962,6 @@ ionic_lif_rss_config(struct ionic_lif *lif,
 static int
 ionic_lif_rss_setup(struct ionic_lif *lif)
 {
-	size_t tbl_size = sizeof(*lif->rss_ind_tbl) *
-		lif->adapter->ident.lif.eth.rss_ind_tbl_sz;
 	static const uint8_t toeplitz_symmetric_key[] = {
 		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
 		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
@@ -971,34 +969,35 @@ ionic_lif_rss_setup(struct ionic_lif *lif)
 		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
 		0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
 	};
-	uint32_t socket_id = rte_socket_id();
 	uint32_t i;
-	int err;
+	uint16_t tbl_sz = lif->adapter->ident.lif.eth.rss_ind_tbl_sz;
 
 	IONIC_PRINT_CALL();
 
-	lif->rss_ind_tbl_z = rte_eth_dma_zone_reserve(lif->eth_dev,
-		"rss_ind_tbl",
-		0 /* queue_idx*/, tbl_size, IONIC_ALIGN, socket_id);
-
 	if (!lif->rss_ind_tbl_z) {
-		IONIC_PRINT(ERR, "OOM");
-		return -ENOMEM;
+		lif->rss_ind_tbl_z = rte_eth_dma_zone_reserve(lif->eth_dev,
+					"rss_ind_tbl", 0 /* queue_idx */,
+					sizeof(*lif->rss_ind_tbl) * tbl_sz,
+					IONIC_ALIGN, rte_socket_id());
+		if (!lif->rss_ind_tbl_z) {
+			IONIC_PRINT(ERR, "OOM");
+			return -ENOMEM;
+		}
+
+		lif->rss_ind_tbl = lif->rss_ind_tbl_z->addr;
+		lif->rss_ind_tbl_pa = lif->rss_ind_tbl_z->iova;
 	}
 
-	lif->rss_ind_tbl = lif->rss_ind_tbl_z->addr;
-	lif->rss_ind_tbl_pa = lif->rss_ind_tbl_z->iova;
+	if (lif->rss_ind_tbl_nrxqcqs != lif->nrxqcqs) {
+		lif->rss_ind_tbl_nrxqcqs = lif->nrxqcqs;
 
-	/* Fill indirection table with 'default' values */
-	for (i = 0; i < lif->adapter->ident.lif.eth.rss_ind_tbl_sz; i++)
-		lif->rss_ind_tbl[i] = i % lif->nrxqcqs;
+		/* Fill indirection table with 'default' values */
+		for (i = 0; i < tbl_sz; i++)
+			lif->rss_ind_tbl[i] = i % lif->nrxqcqs;
+	}
 
-	err = ionic_lif_rss_config(lif, IONIC_RSS_OFFLOAD_ALL,
-		toeplitz_symmetric_key, NULL);
-	if (err)
-		return err;
-
-	return 0;
+	return ionic_lif_rss_config(lif, IONIC_RSS_OFFLOAD_ALL,
+			toeplitz_symmetric_key, NULL);
 }
 
 static void
@@ -1577,9 +1576,6 @@ ionic_lif_start(struct ionic_lif *lif)
 	uint32_t rx_mode = 0;
 	uint32_t i;
 	int err;
-
-	IONIC_PRINT(DEBUG, "Setting RSS configuration on port %u",
-		lif->port_id);
 
 	err = ionic_lif_rss_setup(lif);
 	if (err)

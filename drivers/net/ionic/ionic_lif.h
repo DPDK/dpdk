@@ -108,6 +108,7 @@ struct ionic_lif {
 	uint8_t *rss_ind_tbl;
 	rte_iova_t rss_ind_tbl_pa;
 	const struct rte_memzone *rss_ind_tbl_z;
+	uint32_t rss_ind_tbl_nrxqcqs;
 	uint32_t info_sz;
 	struct ionic_lif_info *info;
 	rte_iova_t info_pa;
