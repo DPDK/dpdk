@@ -211,9 +211,12 @@ are chosen based on 2 conditions.
 - ``CPU``
   On the X86 platform, the driver checks if the CPU supports AVX2.
   If it's supported, AVX2 paths will be chosen. If not, SSE is chosen.
+  If the CPU supports AVX512 and EAL argument ``--force-max-simd-bitwidth``
+  is set to 512, AVX512 paths will be chosen.
 
 - ``Offload features``
-  The supported HW offload features are described in the document ice_vec.ini.
+  The supported HW offload features are described in the document ice.ini,
+  A value "P" means the offload feature is not supported by vector path.
   If any not supported features are used, ICE vector PMD is disabled and the
   normal paths are chosen.
 
