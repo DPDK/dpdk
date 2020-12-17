@@ -7,7 +7,6 @@ sources = files(
 	'base/vnic_intr.c',
 	'base/vnic_rq.c',
 	'base/vnic_wq.c',
-	'enic_clsf.c',
 	'enic_ethdev.c',
 	'enic_flow.c',
 	'enic_fm_flow.c',

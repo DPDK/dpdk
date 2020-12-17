@@ -1314,6 +1314,8 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			const struct rte_flow_action_mark *mark =
 				actions->conf;
 
+			if (enic->use_noscatter_vec_rx_handler)
+				goto unsupported;
 			if (mark->id >= ENIC_MAGIC_FILTER_ID - 1)
 				return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1327,6 +1329,8 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_FLAG: {
+			if (enic->use_noscatter_vec_rx_handler)
+				goto unsupported;
 			/* ENIC_MAGIC_FILTER_ID is reserved for flagging */
 			memset(&fm_op, 0, sizeof(fm_op));
 			fm_op.fa_op = FMOP_MARK;

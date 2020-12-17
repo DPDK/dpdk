@@ -51,8 +51,6 @@
 /* Special Filter id for non-specific packet flagging. Don't change value */
 #define ENIC_MAGIC_FILTER_ID 0xffff
 
-#define ENICPMD_FDIR_MAX           64
-
 /*
  * Interrupt 0: LSC and errors
  * Interrupt 1: rx queue 0
@@ -61,23 +59,6 @@
  */
 #define ENICPMD_LSC_INTR_OFFSET 0
 #define ENICPMD_RXQ_INTR_OFFSET 1
-
-struct enic_fdir_node {
-	struct rte_eth_fdir_filter filter;
-	uint16_t fltr_id;
-	uint16_t rq_index;
-};
-
-struct enic_fdir {
-	struct rte_eth_fdir_stats stats;
-	struct rte_hash *hash;
-	struct enic_fdir_node *nodes[ENICPMD_FDIR_MAX];
-	uint32_t modes;
-	uint32_t types_mask;
-	void (*copy_fltr_fn)(struct filter_v2 *filt,
-			     const struct rte_eth_fdir_input *input,
-			     const struct rte_eth_fdir_masks *masks);
-};
 
 struct enic_soft_stats {
 	rte_atomic64_t rx_nombuf;
@@ -120,7 +101,6 @@ struct enic {
 	bool overlay_offload;
 	struct rte_eth_dev *rte_dev;
 	struct rte_eth_dev_data *dev_data;
-	struct enic_fdir fdir;
 	char bdf_name[ENICPMD_BDF_LENGTH];
 	int dev_fd;
 	int iommu_group_fd;
@@ -431,8 +411,6 @@ void enic_send_pkt(struct enic *enic, struct vnic_wq *wq,
 
 void enic_post_wq_index(struct vnic_wq *wq);
 int enic_probe(struct enic *enic);
-int enic_clsf_init(struct enic *enic);
-void enic_clsf_destroy(struct enic *enic);
 int enic_fm_init(struct enic *enic);
 void enic_fm_destroy(struct enic *enic);
 void *enic_alloc_consistent(void *priv, size_t size, dma_addr_t *dma_handle,
@@ -457,7 +435,6 @@ int enic_link_update(struct rte_eth_dev *eth_dev);
 bool enic_use_vector_rx_handler(struct rte_eth_dev *eth_dev);
 void enic_pick_rx_handler(struct rte_eth_dev *eth_dev);
 void enic_pick_tx_handler(struct rte_eth_dev *eth_dev);
-void enic_fdir_info(struct enic *enic);
 int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params);
 int enic_vf_representor_uninit(struct rte_eth_dev *ethdev);
 int enic_fm_allocate_switch_domain(struct enic *pf);

@@ -603,9 +603,6 @@ int enic_enable(struct enic *enic)
 	err = enic_rxq_intr_init(enic);
 	if (err)
 		return err;
-	if (enic_clsf_init(enic))
-		dev_warning(enic, "Init of hash table for clsf failed."\
-			"Flow director feature will not work\n");
 
 	/* Initialize flowman if not already initialized during probe */
 	if (enic->fm == NULL && enic_fm_init(enic))
@@ -1102,7 +1099,6 @@ int enic_disable(struct enic *enic)
 
 	vnic_dev_disable(enic->vdev);
 
-	enic_clsf_destroy(enic);
 	enic_fm_destroy(enic);
 
 	if (!enic_is_sriov_vf(enic))
@@ -1752,9 +1748,6 @@ static int enic_dev_init(struct enic *enic)
 		dev_err(enic, "failed to allocate vnic_wq, aborting.\n");
 		return -1;
 	}
-
-	/* Get the supported filters */
-	enic_fdir_info(enic);
 
 	eth_dev->data->mac_addrs = rte_zmalloc("enic_mac_addr",
 					sizeof(struct rte_ether_addr) *
