@@ -194,7 +194,10 @@ out:
 static inline void
 extract_result(struct rte_regex_ops *op, struct mlx5_regex_job *job)
 {
-	size_t j, offset;
+	size_t j;
+	size_t offset;
+	uint16_t status;
+
 	op->user_id = job->user_id;
 	op->nb_matches = MLX5_GET_VOLATILE(regexp_metadata, job->metadata +
 					   MLX5_REGEX_METADATA_OFF,
@@ -215,6 +218,24 @@ extract_result(struct rte_regex_ops *op, struct mlx5_regex_job *job)
 			MLX5_GET_VOLATILE(regexp_match_tuple,
 					  (job->output +  offset), length);
 	}
+	status = MLX5_GET_VOLATILE(regexp_metadata, job->metadata +
+				   MLX5_REGEX_METADATA_OFF,
+				   status);
+	op->rsp_flags = 0;
+	if (status & MLX5_RXP_RESP_STATUS_PMI_SOJ)
+		op->rsp_flags |= RTE_REGEX_OPS_RSP_PMI_SOJ_F;
+	if (status & MLX5_RXP_RESP_STATUS_PMI_EOJ)
+		op->rsp_flags |= RTE_REGEX_OPS_RSP_PMI_EOJ_F;
+	if (status & MLX5_RXP_RESP_STATUS_MAX_LATENCY)
+		op->rsp_flags |= RTE_REGEX_OPS_RSP_MAX_SCAN_TIMEOUT_F;
+	if (status & MLX5_RXP_RESP_STATUS_MAX_MATCH)
+		op->rsp_flags |= RTE_REGEX_OPS_RSP_MAX_MATCH_F;
+	if (status & MLX5_RXP_RESP_STATUS_MAX_PREFIX)
+		op->rsp_flags |= RTE_REGEX_OPS_RSP_MAX_PREFIX_F;
+	if (status & MLX5_RXP_RESP_STATUS_MAX_PRI_THREADS)
+		op->rsp_flags |= RTE_REGEX_OPS_RSP_RESOURCE_LIMIT_REACHED_F;
+	if (status & MLX5_RXP_RESP_STATUS_MAX_SEC_THREADS)
+		op->rsp_flags |= RTE_REGEX_OPS_RSP_RESOURCE_LIMIT_REACHED_F;
 }
 
 static inline volatile struct mlx5_cqe *
