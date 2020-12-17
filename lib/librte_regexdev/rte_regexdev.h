@@ -1333,6 +1333,11 @@ struct rte_regexdev_match {
  * @see RTE_REGEXDEV_ATTR_MAX_PREFIX
  */
 
+#define RTE_REGEX_OPS_RSP_RESOURCE_LIMIT_REACHED_F (1 << 4)
+/**< Indicates that the RegEx device has reached the max allowed resource
+ * allowed while scanning the given buffer.
+ */
+
 /**
  * The generic *rte_regex_ops* structure to hold the RegEx attributes
  * for enqueue and dequeue operation.
