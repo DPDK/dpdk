@@ -6,7 +6,7 @@ BNXT Poll Mode Driver
 
 The Broadcom BNXT PMD (**librte_net_bnxt**) implements support for adapters
 based on Ethernet controllers and SoCs belonging to the Broadcom
-BCM574XX/BCM575XX NetXtreme-E® Family of Ethernet Network Controllers,
+BCM5741X/BCM575XX NetXtreme-E® Family of Ethernet Network Controllers,
 the Broadcom BCM588XX Stingray Family of Smart NIC Adapters, and the Broadcom
 StrataGX® BCM5873X Series of Communications Processors.
 
