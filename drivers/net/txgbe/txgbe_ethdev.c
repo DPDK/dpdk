@@ -4550,6 +4550,219 @@ txgbe_e_tag_enable(struct txgbe_hw *hw)
 }
 
 static int
+txgbe_e_tag_filter_del(struct rte_eth_dev *dev,
+		       struct txgbe_l2_tunnel_conf  *l2_tunnel)
+{
+	int ret = 0;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t i, rar_entries;
+	uint32_t rar_low, rar_high;
+
+	rar_entries = hw->mac.num_rar_entries;
+
+	for (i = 1; i < rar_entries; i++) {
+		wr32(hw, TXGBE_ETHADDRIDX, i);
+		rar_high = rd32(hw, TXGBE_ETHADDRH);
+		rar_low  = rd32(hw, TXGBE_ETHADDRL);
+		if ((rar_high & TXGBE_ETHADDRH_VLD) &&
+		    (rar_high & TXGBE_ETHADDRH_ETAG) &&
+		    (TXGBE_ETHADDRL_ETAG(rar_low) ==
+		     l2_tunnel->tunnel_id)) {
+			wr32(hw, TXGBE_ETHADDRL, 0);
+			wr32(hw, TXGBE_ETHADDRH, 0);
+
+			txgbe_clear_vmdq(hw, i, BIT_MASK32);
+
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int
+txgbe_e_tag_filter_add(struct rte_eth_dev *dev,
+		       struct txgbe_l2_tunnel_conf *l2_tunnel)
+{
+	int ret = 0;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t i, rar_entries;
+	uint32_t rar_low, rar_high;
+
+	/* One entry for one tunnel. Try to remove potential existing entry. */
+	txgbe_e_tag_filter_del(dev, l2_tunnel);
+
+	rar_entries = hw->mac.num_rar_entries;
+
+	for (i = 1; i < rar_entries; i++) {
+		wr32(hw, TXGBE_ETHADDRIDX, i);
+		rar_high = rd32(hw, TXGBE_ETHADDRH);
+		if (rar_high & TXGBE_ETHADDRH_VLD) {
+			continue;
+		} else {
+			txgbe_set_vmdq(hw, i, l2_tunnel->pool);
+			rar_high = TXGBE_ETHADDRH_VLD | TXGBE_ETHADDRH_ETAG;
+			rar_low = l2_tunnel->tunnel_id;
+
+			wr32(hw, TXGBE_ETHADDRL, rar_low);
+			wr32(hw, TXGBE_ETHADDRH, rar_high);
+
+			return ret;
+		}
+	}
+
+	PMD_INIT_LOG(NOTICE, "The table of E-tag forwarding rule is full."
+		     " Please remove a rule before adding a new one.");
+	return -EINVAL;
+}
+
+static inline struct txgbe_l2_tn_filter *
+txgbe_l2_tn_filter_lookup(struct txgbe_l2_tn_info *l2_tn_info,
+			  struct txgbe_l2_tn_key *key)
+{
+	int ret;
+
+	ret = rte_hash_lookup(l2_tn_info->hash_handle, (const void *)key);
+	if (ret < 0)
+		return NULL;
+
+	return l2_tn_info->hash_map[ret];
+}
+
+static inline int
+txgbe_insert_l2_tn_filter(struct txgbe_l2_tn_info *l2_tn_info,
+			  struct txgbe_l2_tn_filter *l2_tn_filter)
+{
+	int ret;
+
+	ret = rte_hash_add_key(l2_tn_info->hash_handle,
+			       &l2_tn_filter->key);
+
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to insert L2 tunnel filter"
+			    " to hash table %d!",
+			    ret);
+		return ret;
+	}
+
+	l2_tn_info->hash_map[ret] = l2_tn_filter;
+
+	TAILQ_INSERT_TAIL(&l2_tn_info->l2_tn_list, l2_tn_filter, entries);
+
+	return 0;
+}
+
+static inline int
+txgbe_remove_l2_tn_filter(struct txgbe_l2_tn_info *l2_tn_info,
+			  struct txgbe_l2_tn_key *key)
+{
+	int ret;
+	struct txgbe_l2_tn_filter *l2_tn_filter;
+
+	ret = rte_hash_del_key(l2_tn_info->hash_handle, key);
+
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "No such L2 tunnel filter to delete %d!",
+			    ret);
+		return ret;
+	}
+
+	l2_tn_filter = l2_tn_info->hash_map[ret];
+	l2_tn_info->hash_map[ret] = NULL;
+
+	TAILQ_REMOVE(&l2_tn_info->l2_tn_list, l2_tn_filter, entries);
+	rte_free(l2_tn_filter);
+
+	return 0;
+}
+
+/* Add l2 tunnel filter */
+int
+txgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
+			       struct txgbe_l2_tunnel_conf *l2_tunnel,
+			       bool restore)
+{
+	int ret;
+	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(dev);
+	struct txgbe_l2_tn_key key;
+	struct txgbe_l2_tn_filter *node;
+
+	if (!restore) {
+		key.l2_tn_type = l2_tunnel->l2_tunnel_type;
+		key.tn_id = l2_tunnel->tunnel_id;
+
+		node = txgbe_l2_tn_filter_lookup(l2_tn_info, &key);
+
+		if (node) {
+			PMD_DRV_LOG(ERR,
+				    "The L2 tunnel filter already exists!");
+			return -EINVAL;
+		}
+
+		node = rte_zmalloc("txgbe_l2_tn",
+				   sizeof(struct txgbe_l2_tn_filter),
+				   0);
+		if (!node)
+			return -ENOMEM;
+
+		rte_memcpy(&node->key,
+				 &key,
+				 sizeof(struct txgbe_l2_tn_key));
+		node->pool = l2_tunnel->pool;
+		ret = txgbe_insert_l2_tn_filter(l2_tn_info, node);
+		if (ret < 0) {
+			rte_free(node);
+			return ret;
+		}
+	}
+
+	switch (l2_tunnel->l2_tunnel_type) {
+	case RTE_L2_TUNNEL_TYPE_E_TAG:
+		ret = txgbe_e_tag_filter_add(dev, l2_tunnel);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
+	}
+
+	if (!restore && ret < 0)
+		(void)txgbe_remove_l2_tn_filter(l2_tn_info, &key);
+
+	return ret;
+}
+
+/* Delete l2 tunnel filter */
+int
+txgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
+			       struct txgbe_l2_tunnel_conf *l2_tunnel)
+{
+	int ret;
+	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(dev);
+	struct txgbe_l2_tn_key key;
+
+	key.l2_tn_type = l2_tunnel->l2_tunnel_type;
+	key.tn_id = l2_tunnel->tunnel_id;
+	ret = txgbe_remove_l2_tn_filter(l2_tn_info, &key);
+	if (ret < 0)
+		return ret;
+
+	switch (l2_tunnel->l2_tunnel_type) {
+	case RTE_L2_TUNNEL_TYPE_E_TAG:
+		ret = txgbe_e_tag_filter_del(dev, l2_tunnel);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int
 txgbe_e_tag_forwarding_en_dis(struct rte_eth_dev *dev, bool en)
 {
 	int ret = 0;
@@ -4612,12 +4825,29 @@ txgbe_syn_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore L2 tunnel filter */
+static inline void
+txgbe_l2_tn_filter_restore(struct rte_eth_dev *dev)
+{
+	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(dev);
+	struct txgbe_l2_tn_filter *node;
+	struct txgbe_l2_tunnel_conf l2_tn_conf;
+
+	TAILQ_FOREACH(node, &l2_tn_info->l2_tn_list, entries) {
+		l2_tn_conf.l2_tunnel_type = node->key.l2_tn_type;
+		l2_tn_conf.tunnel_id      = node->key.tn_id;
+		l2_tn_conf.pool           = node->pool;
+		(void)txgbe_dev_l2_tunnel_filter_add(dev, &l2_tn_conf, TRUE);
+	}
+}
+
 static int
 txgbe_filter_restore(struct rte_eth_dev *dev)
 {
 	txgbe_ntuple_filter_restore(dev);
 	txgbe_ethertype_filter_restore(dev);
 	txgbe_syn_filter_restore(dev);
+	txgbe_l2_tn_filter_restore(dev);
 
 	return 0;
 }

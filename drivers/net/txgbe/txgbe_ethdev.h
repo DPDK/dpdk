@@ -360,6 +360,24 @@ int txgbe_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
 			bool add);
 
+/**
+ * l2 tunnel configuration.
+ */
+struct txgbe_l2_tunnel_conf {
+	enum rte_eth_tunnel_type l2_tunnel_type;
+	uint16_t ether_type; /* ether type in l2 header */
+	uint32_t tunnel_id; /* port tag id for e-tag */
+	uint16_t vf_id; /* VF id for tag insertion */
+	uint32_t pool; /* destination pool for tag based forwarding */
+};
+
+int
+txgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
+			       struct txgbe_l2_tunnel_conf *l2_tunnel,
+			       bool restore);
+int
+txgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
+			       struct txgbe_l2_tunnel_conf *l2_tunnel);
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 
