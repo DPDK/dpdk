@@ -4633,3 +4633,99 @@ txgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
 
+int
+txgbe_rss_conf_init(struct txgbe_rte_flow_rss_conf *out,
+		    const struct rte_flow_action_rss *in)
+{
+	if (in->key_len > RTE_DIM(out->key) ||
+	    in->queue_num > RTE_DIM(out->queue))
+		return -EINVAL;
+	out->conf = (struct rte_flow_action_rss){
+		.func = in->func,
+		.level = in->level,
+		.types = in->types,
+		.key_len = in->key_len,
+		.queue_num = in->queue_num,
+		.key = memcpy(out->key, in->key, in->key_len),
+		.queue = memcpy(out->queue, in->queue,
+				sizeof(*in->queue) * in->queue_num),
+	};
+	return 0;
+}
+
+int
+txgbe_action_rss_same(const struct rte_flow_action_rss *comp,
+		      const struct rte_flow_action_rss *with)
+{
+	return (comp->func == with->func &&
+		comp->level == with->level &&
+		comp->types == with->types &&
+		comp->key_len == with->key_len &&
+		comp->queue_num == with->queue_num &&
+		!memcmp(comp->key, with->key, with->key_len) &&
+		!memcmp(comp->queue, with->queue,
+			sizeof(*with->queue) * with->queue_num));
+}
+
+int
+txgbe_config_rss_filter(struct rte_eth_dev *dev,
+		struct txgbe_rte_flow_rss_conf *conf, bool add)
+{
+	struct txgbe_hw *hw;
+	uint32_t reta;
+	uint16_t i;
+	uint16_t j;
+	struct rte_eth_rss_conf rss_conf = {
+		.rss_key = conf->conf.key_len ?
+			(void *)(uintptr_t)conf->conf.key : NULL,
+		.rss_key_len = conf->conf.key_len,
+		.rss_hf = conf->conf.types,
+	};
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	hw = TXGBE_DEV_HW(dev);
+
+	if (!add) {
+		if (txgbe_action_rss_same(&filter_info->rss_info.conf,
+					  &conf->conf)) {
+			txgbe_rss_disable(dev);
+			memset(&filter_info->rss_info, 0,
+				sizeof(struct txgbe_rte_flow_rss_conf));
+			return 0;
+		}
+		return -EINVAL;
+	}
+
+	if (filter_info->rss_info.conf.queue_num)
+		return -EINVAL;
+	/* Fill in redirection table
+	 * The byte-swap is needed because NIC registers are in
+	 * little-endian order.
+	 */
+	reta = 0;
+	for (i = 0, j = 0; i < ETH_RSS_RETA_SIZE_128; i++, j++) {
+		if (j == conf->conf.queue_num)
+			j = 0;
+		reta = (reta >> 8) | LS32(conf->conf.queue[j], 24, 0xFF);
+		if ((i & 3) == 3)
+			wr32a(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
+	}
+
+	/* Configure the RSS key and the RSS protocols used to compute
+	 * the RSS hash of input packets.
+	 */
+	if ((rss_conf.rss_hf & TXGBE_RSS_OFFLOAD_ALL) == 0) {
+		txgbe_rss_disable(dev);
+		return 0;
+	}
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = rss_intel_key; /* Default hash key */
+	txgbe_dev_rss_hash_update(dev, &rss_conf);
+
+	if (txgbe_rss_conf_init(&filter_info->rss_info, &conf->conf))
+		return -EINVAL;
+
+	return 0;
+}
+

@@ -123,6 +123,12 @@ struct txgbe_hw_fdir_info {
 	bool mask_added; /* If already got mask from consistent filter */
 };
 
+struct txgbe_rte_flow_rss_conf {
+	struct rte_flow_action_rss conf; /**< RSS parameters. */
+	uint8_t key[TXGBE_HKEY_MAX_INDEX * sizeof(uint32_t)]; /* Hash key. */
+	uint16_t queue[TXGBE_MAX_RX_QUEUE_NUM]; /**< Queues indices to use. */
+};
+
 /* structure for interrupt relative data */
 struct txgbe_interrupt {
 	uint32_t flags;
@@ -233,6 +239,8 @@ struct txgbe_filter_info {
 	struct txgbe_5tuple_filter_list fivetuple_list;
 	/* store the SYN filter info */
 	uint32_t syn_info;
+	/* store the rss filter info */
+	struct txgbe_rte_flow_rss_conf rss_info;
 };
 
 struct txgbe_l2_tn_key {
@@ -481,6 +489,13 @@ int txgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 			    uint16_t tx_rate, uint64_t q_msk);
 int txgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
 			       uint16_t tx_rate);
+int txgbe_rss_conf_init(struct txgbe_rte_flow_rss_conf *out,
+			const struct rte_flow_action_rss *in);
+int txgbe_action_rss_same(const struct rte_flow_action_rss *comp,
+			  const struct rte_flow_action_rss *with);
+int txgbe_config_rss_filter(struct rte_eth_dev *dev,
+		struct txgbe_rte_flow_rss_conf *conf, bool add);
+
 static inline int
 txgbe_ethertype_filter_lookup(struct txgbe_filter_info *filter_info,
 			      uint16_t ethertype)
