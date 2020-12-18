@@ -547,6 +547,12 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* Unlock any pending hardware semaphore */
 	txgbe_swfw_lock_reset(hw);
 
+#ifdef RTE_LIB_SECURITY
+	/* Initialize security_ctx only for primary process*/
+	if (txgbe_ipsec_ctx_create(eth_dev))
+		return -ENOMEM;
+#endif
+
 	/* Initialize DCB configuration*/
 	memset(dcb_config, 0, sizeof(struct txgbe_dcb_config));
 	txgbe_dcb_init(hw, dcb_config);
@@ -1962,6 +1968,10 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	/* Remove all Traffic Manager configuration */
 	txgbe_tm_conf_uninit(dev);
+
+#ifdef RTE_LIB_SECURITY
+	rte_free(dev->security_ctx);
+#endif
 
 	return ret;
 }

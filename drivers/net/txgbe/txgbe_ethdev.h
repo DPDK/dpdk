@@ -632,6 +632,10 @@ txgbe_ethertype_filter_remove(struct txgbe_filter_info *filter_info,
 	return idx;
 }
 
+#ifdef RTE_LIB_SECURITY
+int txgbe_ipsec_ctx_create(struct rte_eth_dev *dev);
+#endif
+
 /* High threshold controlling when to start sending XOFF frames. */
 #define TXGBE_FC_XOFF_HITH              128 /*KB*/
 /* Low threshold controlling when to start sending XON frames. */

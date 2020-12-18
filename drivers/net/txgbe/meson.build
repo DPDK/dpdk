@@ -8,13 +8,14 @@ sources = files(
 	'txgbe_ethdev.c',
 	'txgbe_fdir.c',
 	'txgbe_flow.c',
+	'txgbe_ipsec.c',
 	'txgbe_ptypes.c',
 	'txgbe_pf.c',
 	'txgbe_rxtx.c',
 	'txgbe_tm.c',
 )
 
-deps += ['hash']
+deps += ['hash', 'security']
 
 includes += include_directories('base')
 
