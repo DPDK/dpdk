@@ -109,6 +109,8 @@ static void txgbe_dev_interrupt_handler(void *param);
 static void txgbe_dev_interrupt_delayed_handler(void *param);
 static void txgbe_configure_msix(struct rte_eth_dev *dev);
 
+static int txgbe_filter_restore(struct rte_eth_dev *dev);
+
 #define TXGBE_SET_HWSTRIP(h, q) do {\
 		uint32_t idx = (q) / (sizeof((h)->bitmap[0]) * NBBY); \
 		uint32_t bit = (q) % (sizeof((h)->bitmap[0]) * NBBY); \
@@ -1611,6 +1613,7 @@ skip_link_setup:
 
 	/* resume enabled intr since hw reset */
 	txgbe_enable_intr(dev);
+	txgbe_filter_restore(dev);
 
 	/*
 	 * Update link status right before return, because it may
@@ -3508,6 +3511,293 @@ txgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static inline enum txgbe_5tuple_protocol
+convert_protocol_type(uint8_t protocol_value)
+{
+	if (protocol_value == IPPROTO_TCP)
+		return TXGBE_5TF_PROT_TCP;
+	else if (protocol_value == IPPROTO_UDP)
+		return TXGBE_5TF_PROT_UDP;
+	else if (protocol_value == IPPROTO_SCTP)
+		return TXGBE_5TF_PROT_SCTP;
+	else
+		return TXGBE_5TF_PROT_NONE;
+}
+
+/* inject a 5-tuple filter to HW */
+static inline void
+txgbe_inject_5tuple_filter(struct rte_eth_dev *dev,
+			   struct txgbe_5tuple_filter *filter)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int i;
+	uint32_t ftqf, sdpqf;
+	uint32_t l34timir = 0;
+	uint32_t mask = TXGBE_5TFCTL0_MASK;
+
+	i = filter->index;
+	sdpqf = TXGBE_5TFPORT_DST(be_to_le16(filter->filter_info.dst_port));
+	sdpqf |= TXGBE_5TFPORT_SRC(be_to_le16(filter->filter_info.src_port));
+
+	ftqf = TXGBE_5TFCTL0_PROTO(filter->filter_info.proto);
+	ftqf |= TXGBE_5TFCTL0_PRI(filter->filter_info.priority);
+	if (filter->filter_info.src_ip_mask == 0) /* 0 means compare. */
+		mask &= ~TXGBE_5TFCTL0_MSADDR;
+	if (filter->filter_info.dst_ip_mask == 0)
+		mask &= ~TXGBE_5TFCTL0_MDADDR;
+	if (filter->filter_info.src_port_mask == 0)
+		mask &= ~TXGBE_5TFCTL0_MSPORT;
+	if (filter->filter_info.dst_port_mask == 0)
+		mask &= ~TXGBE_5TFCTL0_MDPORT;
+	if (filter->filter_info.proto_mask == 0)
+		mask &= ~TXGBE_5TFCTL0_MPROTO;
+	ftqf |= mask;
+	ftqf |= TXGBE_5TFCTL0_MPOOL;
+	ftqf |= TXGBE_5TFCTL0_ENA;
+
+	wr32(hw, TXGBE_5TFDADDR(i), be_to_le32(filter->filter_info.dst_ip));
+	wr32(hw, TXGBE_5TFSADDR(i), be_to_le32(filter->filter_info.src_ip));
+	wr32(hw, TXGBE_5TFPORT(i), sdpqf);
+	wr32(hw, TXGBE_5TFCTL0(i), ftqf);
+
+	l34timir |= TXGBE_5TFCTL1_QP(filter->queue);
+	wr32(hw, TXGBE_5TFCTL1(i), l34timir);
+}
+
+/*
+ * add a 5tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: pointer to the filter that will be added.
+ * rx_queue: the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+txgbe_add_5tuple_filter(struct rte_eth_dev *dev,
+			struct txgbe_5tuple_filter *filter)
+{
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	int i, idx, shift;
+
+	/*
+	 * look for an unused 5tuple filter index,
+	 * and insert the filter to list.
+	 */
+	for (i = 0; i < TXGBE_MAX_FTQF_FILTERS; i++) {
+		idx = i / (sizeof(uint32_t) * NBBY);
+		shift = i % (sizeof(uint32_t) * NBBY);
+		if (!(filter_info->fivetuple_mask[idx] & (1 << shift))) {
+			filter_info->fivetuple_mask[idx] |= 1 << shift;
+			filter->index = i;
+			TAILQ_INSERT_TAIL(&filter_info->fivetuple_list,
+					  filter,
+					  entries);
+			break;
+		}
+	}
+	if (i >= TXGBE_MAX_FTQF_FILTERS) {
+		PMD_DRV_LOG(ERR, "5tuple filters are full.");
+		return -ENOSYS;
+	}
+
+	txgbe_inject_5tuple_filter(dev, filter);
+
+	return 0;
+}
+
+/*
+ * remove a 5tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * filter: the pointer of the filter will be removed.
+ */
+static void
+txgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
+			struct txgbe_5tuple_filter *filter)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	uint16_t index = filter->index;
+
+	filter_info->fivetuple_mask[index / (sizeof(uint32_t) * NBBY)] &=
+				~(1 << (index % (sizeof(uint32_t) * NBBY)));
+	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
+	rte_free(filter);
+
+	wr32(hw, TXGBE_5TFDADDR(index), 0);
+	wr32(hw, TXGBE_5TFSADDR(index), 0);
+	wr32(hw, TXGBE_5TFPORT(index), 0);
+	wr32(hw, TXGBE_5TFCTL0(index), 0);
+	wr32(hw, TXGBE_5TFCTL1(index), 0);
+}
+
+static inline struct txgbe_5tuple_filter *
+txgbe_5tuple_filter_lookup(struct txgbe_5tuple_filter_list *filter_list,
+			struct txgbe_5tuple_filter_info *key)
+{
+	struct txgbe_5tuple_filter *it;
+
+	TAILQ_FOREACH(it, filter_list, entries) {
+		if (memcmp(key, &it->filter_info,
+			sizeof(struct txgbe_5tuple_filter_info)) == 0) {
+			return it;
+		}
+	}
+	return NULL;
+}
+
+/* translate elements in struct rte_eth_ntuple_filter
+ * to struct txgbe_5tuple_filter_info
+ */
+static inline int
+ntuple_filter_to_5tuple(struct rte_eth_ntuple_filter *filter,
+			struct txgbe_5tuple_filter_info *filter_info)
+{
+	if (filter->queue >= TXGBE_MAX_RX_QUEUE_NUM ||
+		filter->priority > TXGBE_5TUPLE_MAX_PRI ||
+		filter->priority < TXGBE_5TUPLE_MIN_PRI)
+		return -EINVAL;
+
+	switch (filter->dst_ip_mask) {
+	case UINT32_MAX:
+		filter_info->dst_ip_mask = 0;
+		filter_info->dst_ip = filter->dst_ip;
+		break;
+	case 0:
+		filter_info->dst_ip_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid dst_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->src_ip_mask) {
+	case UINT32_MAX:
+		filter_info->src_ip_mask = 0;
+		filter_info->src_ip = filter->src_ip;
+		break;
+	case 0:
+		filter_info->src_ip_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid src_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->dst_port_mask) {
+	case UINT16_MAX:
+		filter_info->dst_port_mask = 0;
+		filter_info->dst_port = filter->dst_port;
+		break;
+	case 0:
+		filter_info->dst_port_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid dst_port mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->src_port_mask) {
+	case UINT16_MAX:
+		filter_info->src_port_mask = 0;
+		filter_info->src_port = filter->src_port;
+		break;
+	case 0:
+		filter_info->src_port_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid src_port mask.");
+		return -EINVAL;
+	}
+
+	switch (filter->proto_mask) {
+	case UINT8_MAX:
+		filter_info->proto_mask = 0;
+		filter_info->proto =
+			convert_protocol_type(filter->proto);
+		break;
+	case 0:
+		filter_info->proto_mask = 1;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid protocol mask.");
+		return -EINVAL;
+	}
+
+	filter_info->priority = (uint8_t)filter->priority;
+	return 0;
+}
+
+/*
+ * add or delete a ntuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * ntuple_filter: Pointer to struct rte_eth_ntuple_filter
+ * add: if true, add filter, if false, remove filter
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+int
+txgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *ntuple_filter,
+			bool add)
+{
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	struct txgbe_5tuple_filter_info filter_5tuple;
+	struct txgbe_5tuple_filter *filter;
+	int ret;
+
+	if (ntuple_filter->flags != RTE_5TUPLE_FLAGS) {
+		PMD_DRV_LOG(ERR, "only 5tuple is supported.");
+		return -EINVAL;
+	}
+
+	memset(&filter_5tuple, 0, sizeof(struct txgbe_5tuple_filter_info));
+	ret = ntuple_filter_to_5tuple(ntuple_filter, &filter_5tuple);
+	if (ret < 0)
+		return ret;
+
+	filter = txgbe_5tuple_filter_lookup(&filter_info->fivetuple_list,
+					 &filter_5tuple);
+	if (filter != NULL && add) {
+		PMD_DRV_LOG(ERR, "filter exists.");
+		return -EEXIST;
+	}
+	if (filter == NULL && !add) {
+		PMD_DRV_LOG(ERR, "filter doesn't exist.");
+		return -ENOENT;
+	}
+
+	if (add) {
+		filter = rte_zmalloc("txgbe_5tuple_filter",
+				sizeof(struct txgbe_5tuple_filter), 0);
+		if (filter == NULL)
+			return -ENOMEM;
+		rte_memcpy(&filter->filter_info,
+				 &filter_5tuple,
+				 sizeof(struct txgbe_5tuple_filter_info));
+		filter->queue = ntuple_filter->queue;
+		ret = txgbe_add_5tuple_filter(dev, filter);
+		if (ret < 0) {
+			rte_free(filter);
+			return ret;
+		}
+	} else {
+		txgbe_remove_5tuple_filter(dev, filter);
+	}
+
+	return 0;
+}
+
 static int
 txgbe_dev_filter_ctrl(__rte_unused struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
@@ -4050,6 +4340,26 @@ txgbe_dev_get_dcb_info(struct rte_eth_dev *dev,
 		tc = &dcb_config->tc_config[i];
 		dcb_info->tc_bws[i] = tc->path[TXGBE_DCB_TX_CONFIG].bwg_percent;
 	}
+	return 0;
+}
+
+/* restore n-tuple filter */
+static inline void
+txgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
+{
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	struct txgbe_5tuple_filter *node;
+
+	TAILQ_FOREACH(node, &filter_info->fivetuple_list, entries) {
+		txgbe_inject_5tuple_filter(dev, node);
+	}
+}
+
+static int
+txgbe_filter_restore(struct rte_eth_dev *dev)
+{
+	txgbe_ntuple_filter_restore(dev);
+
 	return 0;
 }
 

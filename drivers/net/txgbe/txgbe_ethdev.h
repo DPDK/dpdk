@@ -42,6 +42,9 @@
 
 #define TXGBE_MAX_QUEUE_NUM_PER_VF  8
 
+#define TXGBE_5TUPLE_MAX_PRI            7
+#define TXGBE_5TUPLE_MIN_PRI            1
+
 #define TXGBE_RSS_OFFLOAD_ALL ( \
 	ETH_RSS_IPV4 | \
 	ETH_RSS_NONFRAG_IPV4_TCP | \
@@ -314,6 +317,9 @@ int txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 bool txgbe_rss_update_sp(enum txgbe_mac_type mac_type);
 
+int txgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ntuple_filter *filter,
+			bool add);
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 
