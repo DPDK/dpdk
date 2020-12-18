@@ -698,6 +698,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* initialize l2 tunnel filter list & hash */
 	txgbe_l2_tn_filter_init(eth_dev);
 
+	/* initialize flow filter lists */
+	txgbe_filterlist_init();
+
 	/* initialize bandwidth configuration info */
 	memset(bw_conf, 0, sizeof(struct txgbe_bw_conf));
 

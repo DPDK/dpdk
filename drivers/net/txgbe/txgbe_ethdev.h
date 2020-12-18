@@ -265,6 +265,11 @@ struct txgbe_l2_tn_info {
 	uint16_t e_tag_ether_type; /* ether type for e-tag */
 };
 
+struct rte_flow {
+	enum rte_filter_type filter_type;
+	void *rule;
+};
+
 /* The configuration of bandwidth */
 struct txgbe_bw_conf {
 	uint8_t tc_num; /* Number of TCs. */
@@ -450,6 +455,8 @@ txgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 int
 txgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 			       struct txgbe_l2_tunnel_conf *l2_tunnel);
+void txgbe_filterlist_init(void);
+
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 

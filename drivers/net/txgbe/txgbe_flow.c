@@ -4,6 +4,7 @@
 
 #include <sys/queue.h>
 #include <rte_bus_pci.h>
+#include <rte_malloc.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 
@@ -12,6 +13,58 @@
 #define TXGBE_MIN_N_TUPLE_PRIO 1
 #define TXGBE_MAX_N_TUPLE_PRIO 7
 #define TXGBE_MAX_FLX_SOURCE_OFF 62
+
+/* ntuple filter list structure */
+struct txgbe_ntuple_filter_ele {
+	TAILQ_ENTRY(txgbe_ntuple_filter_ele) entries;
+	struct rte_eth_ntuple_filter filter_info;
+};
+/* ethertype filter list structure */
+struct txgbe_ethertype_filter_ele {
+	TAILQ_ENTRY(txgbe_ethertype_filter_ele) entries;
+	struct rte_eth_ethertype_filter filter_info;
+};
+/* syn filter list structure */
+struct txgbe_eth_syn_filter_ele {
+	TAILQ_ENTRY(txgbe_eth_syn_filter_ele) entries;
+	struct rte_eth_syn_filter filter_info;
+};
+/* fdir filter list structure */
+struct txgbe_fdir_rule_ele {
+	TAILQ_ENTRY(txgbe_fdir_rule_ele) entries;
+	struct txgbe_fdir_rule filter_info;
+};
+/* l2_tunnel filter list structure */
+struct txgbe_eth_l2_tunnel_conf_ele {
+	TAILQ_ENTRY(txgbe_eth_l2_tunnel_conf_ele) entries;
+	struct txgbe_l2_tunnel_conf filter_info;
+};
+/* rss filter list structure */
+struct txgbe_rss_conf_ele {
+	TAILQ_ENTRY(txgbe_rss_conf_ele) entries;
+	struct txgbe_rte_flow_rss_conf filter_info;
+};
+/* txgbe_flow memory list structure */
+struct txgbe_flow_mem {
+	TAILQ_ENTRY(txgbe_flow_mem) entries;
+	struct rte_flow *flow;
+};
+
+TAILQ_HEAD(txgbe_ntuple_filter_list, txgbe_ntuple_filter_ele);
+TAILQ_HEAD(txgbe_ethertype_filter_list, txgbe_ethertype_filter_ele);
+TAILQ_HEAD(txgbe_syn_filter_list, txgbe_eth_syn_filter_ele);
+TAILQ_HEAD(txgbe_fdir_rule_filter_list, txgbe_fdir_rule_ele);
+TAILQ_HEAD(txgbe_l2_tunnel_filter_list, txgbe_eth_l2_tunnel_conf_ele);
+TAILQ_HEAD(txgbe_rss_filter_list, txgbe_rss_conf_ele);
+TAILQ_HEAD(txgbe_flow_mem_list, txgbe_flow_mem);
+
+static struct txgbe_ntuple_filter_list filter_ntuple_list;
+static struct txgbe_ethertype_filter_list filter_ethertype_list;
+static struct txgbe_syn_filter_list filter_syn_list;
+static struct txgbe_fdir_rule_filter_list filter_fdir_list;
+static struct txgbe_l2_tunnel_filter_list filter_l2_tunnel_list;
+static struct txgbe_rss_filter_list filter_rss_list;
+static struct txgbe_flow_mem_list txgbe_flow_list;
 
 /**
  * Endless loop will never happen with below assumption
@@ -2484,10 +2537,22 @@ txgbe_parse_rss_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
+void
+txgbe_filterlist_init(void)
+{
+	TAILQ_INIT(&filter_ntuple_list);
+	TAILQ_INIT(&filter_ethertype_list);
+	TAILQ_INIT(&filter_syn_list);
+	TAILQ_INIT(&filter_fdir_list);
+	TAILQ_INIT(&filter_l2_tunnel_list);
+	TAILQ_INIT(&filter_rss_list);
+	TAILQ_INIT(&txgbe_flow_list);
+}
+
 /**
  * Create or destroy a flow rule.
  * Theorically one rule can match more than one filters.
- * We will let it use the filter which it hitt first.
+ * We will let it use the filter which it hit first.
  * So, the sequence matters.
  */
 static struct rte_flow *
@@ -2497,8 +2562,247 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 		  const struct rte_flow_action actions[],
 		  struct rte_flow_error *error)
 {
+	int ret;
+	struct rte_eth_ntuple_filter ntuple_filter;
+	struct rte_eth_ethertype_filter ethertype_filter;
+	struct rte_eth_syn_filter syn_filter;
+	struct txgbe_fdir_rule fdir_rule;
+	struct txgbe_l2_tunnel_conf l2_tn_filter;
+	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(dev);
+	struct txgbe_rte_flow_rss_conf rss_conf;
 	struct rte_flow *flow = NULL;
-	return flow;
+	struct txgbe_ntuple_filter_ele *ntuple_filter_ptr;
+	struct txgbe_ethertype_filter_ele *ethertype_filter_ptr;
+	struct txgbe_eth_syn_filter_ele *syn_filter_ptr;
+	struct txgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
+	struct txgbe_fdir_rule_ele *fdir_rule_ptr;
+	struct txgbe_rss_conf_ele *rss_filter_ptr;
+	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
+	uint8_t first_mask = FALSE;
+
+	flow = rte_zmalloc("txgbe_rte_flow", sizeof(struct rte_flow), 0);
+	if (!flow) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		return (struct rte_flow *)flow;
+	}
+	txgbe_flow_mem_ptr = rte_zmalloc("txgbe_flow_mem",
+			sizeof(struct txgbe_flow_mem), 0);
+	if (!txgbe_flow_mem_ptr) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		rte_free(flow);
+		return NULL;
+	}
+	txgbe_flow_mem_ptr->flow = flow;
+	TAILQ_INSERT_TAIL(&txgbe_flow_list,
+				txgbe_flow_mem_ptr, entries);
+
+	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
+	ret = txgbe_parse_ntuple_filter(dev, attr, pattern,
+			actions, &ntuple_filter, error);
+
+	if (!ret) {
+		ret = txgbe_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
+		if (!ret) {
+			ntuple_filter_ptr = rte_zmalloc("txgbe_ntuple_filter",
+				sizeof(struct txgbe_ntuple_filter_ele), 0);
+			if (!ntuple_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+			rte_memcpy(&ntuple_filter_ptr->filter_info,
+				&ntuple_filter,
+				sizeof(struct rte_eth_ntuple_filter));
+			TAILQ_INSERT_TAIL(&filter_ntuple_list,
+				ntuple_filter_ptr, entries);
+			flow->rule = ntuple_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_NTUPLE;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
+	ret = txgbe_parse_ethertype_filter(dev, attr, pattern,
+				actions, &ethertype_filter, error);
+	if (!ret) {
+		ret = txgbe_add_del_ethertype_filter(dev,
+				&ethertype_filter, TRUE);
+		if (!ret) {
+			ethertype_filter_ptr =
+				rte_zmalloc("txgbe_ethertype_filter",
+				sizeof(struct txgbe_ethertype_filter_ele), 0);
+			if (!ethertype_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+			rte_memcpy(&ethertype_filter_ptr->filter_info,
+				&ethertype_filter,
+				sizeof(struct rte_eth_ethertype_filter));
+			TAILQ_INSERT_TAIL(&filter_ethertype_list,
+				ethertype_filter_ptr, entries);
+			flow->rule = ethertype_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&syn_filter, 0, sizeof(struct rte_eth_syn_filter));
+	ret = txgbe_parse_syn_filter(dev, attr, pattern,
+				actions, &syn_filter, error);
+	if (!ret) {
+		ret = txgbe_syn_filter_set(dev, &syn_filter, TRUE);
+		if (!ret) {
+			syn_filter_ptr = rte_zmalloc("txgbe_syn_filter",
+				sizeof(struct txgbe_eth_syn_filter_ele), 0);
+			if (!syn_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+			rte_memcpy(&syn_filter_ptr->filter_info,
+				&syn_filter,
+				sizeof(struct rte_eth_syn_filter));
+			TAILQ_INSERT_TAIL(&filter_syn_list,
+				syn_filter_ptr,
+				entries);
+			flow->rule = syn_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_SYN;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&fdir_rule, 0, sizeof(struct txgbe_fdir_rule));
+	ret = txgbe_parse_fdir_filter(dev, attr, pattern,
+				actions, &fdir_rule, error);
+	if (!ret) {
+		/* A mask cannot be deleted. */
+		if (fdir_rule.b_mask) {
+			if (!fdir_info->mask_added) {
+				/* It's the first time the mask is set. */
+				rte_memcpy(&fdir_info->mask,
+					&fdir_rule.mask,
+					sizeof(struct txgbe_hw_fdir_mask));
+				fdir_info->flex_bytes_offset =
+					fdir_rule.flex_bytes_offset;
+
+				if (fdir_rule.mask.flex_bytes_mask)
+					txgbe_fdir_set_flexbytes_offset(dev,
+						fdir_rule.flex_bytes_offset);
+
+				ret = txgbe_fdir_set_input_mask(dev);
+				if (ret)
+					goto out;
+
+				fdir_info->mask_added = TRUE;
+				first_mask = TRUE;
+			} else {
+				/**
+				 * Only support one global mask,
+				 * all the masks should be the same.
+				 */
+				ret = memcmp(&fdir_info->mask,
+					&fdir_rule.mask,
+					sizeof(struct txgbe_hw_fdir_mask));
+				if (ret)
+					goto out;
+
+				if (fdir_info->flex_bytes_offset !=
+						fdir_rule.flex_bytes_offset)
+					goto out;
+			}
+		}
+
+		if (fdir_rule.b_spec) {
+			ret = txgbe_fdir_filter_program(dev, &fdir_rule,
+					FALSE, FALSE);
+			if (!ret) {
+				fdir_rule_ptr = rte_zmalloc("txgbe_fdir_filter",
+					sizeof(struct txgbe_fdir_rule_ele), 0);
+				if (!fdir_rule_ptr) {
+					PMD_DRV_LOG(ERR,
+						"failed to allocate memory");
+					goto out;
+				}
+				rte_memcpy(&fdir_rule_ptr->filter_info,
+					&fdir_rule,
+					sizeof(struct txgbe_fdir_rule));
+				TAILQ_INSERT_TAIL(&filter_fdir_list,
+					fdir_rule_ptr, entries);
+				flow->rule = fdir_rule_ptr;
+				flow->filter_type = RTE_ETH_FILTER_FDIR;
+
+				return flow;
+			}
+
+			if (ret) {
+				/**
+				 * clean the mask_added flag if fail to
+				 * program
+				 **/
+				if (first_mask)
+					fdir_info->mask_added = FALSE;
+				goto out;
+			}
+		}
+
+		goto out;
+	}
+
+	memset(&l2_tn_filter, 0, sizeof(struct txgbe_l2_tunnel_conf));
+	ret = txgbe_parse_l2_tn_filter(dev, attr, pattern,
+					actions, &l2_tn_filter, error);
+	if (!ret) {
+		ret = txgbe_dev_l2_tunnel_filter_add(dev, &l2_tn_filter, FALSE);
+		if (!ret) {
+			l2_tn_filter_ptr = rte_zmalloc("txgbe_l2_tn_filter",
+				sizeof(struct txgbe_eth_l2_tunnel_conf_ele), 0);
+			if (!l2_tn_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+			rte_memcpy(&l2_tn_filter_ptr->filter_info,
+				&l2_tn_filter,
+				sizeof(struct txgbe_l2_tunnel_conf));
+			TAILQ_INSERT_TAIL(&filter_l2_tunnel_list,
+				l2_tn_filter_ptr, entries);
+			flow->rule = l2_tn_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
+			return flow;
+		}
+	}
+
+	memset(&rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
+	ret = txgbe_parse_rss_filter(dev, attr,
+					actions, &rss_conf, error);
+	if (!ret) {
+		ret = txgbe_config_rss_filter(dev, &rss_conf, TRUE);
+		if (!ret) {
+			rss_filter_ptr = rte_zmalloc("txgbe_rss_filter",
+				sizeof(struct txgbe_rss_conf_ele), 0);
+			if (!rss_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
+			txgbe_rss_conf_init(&rss_filter_ptr->filter_info,
+					    &rss_conf.conf);
+			TAILQ_INSERT_TAIL(&filter_rss_list,
+				rss_filter_ptr, entries);
+			flow->rule = rss_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_HASH;
+			return flow;
+		}
+	}
+
+out:
+	TAILQ_REMOVE(&txgbe_flow_list,
+		txgbe_flow_mem_ptr, entries);
+	rte_flow_error_set(error, -ret,
+			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to create flow.");
+	rte_free(txgbe_flow_mem_ptr);
+	rte_free(flow);
+	return NULL;
 }
 
 /**
