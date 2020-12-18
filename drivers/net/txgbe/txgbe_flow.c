@@ -2370,6 +2370,120 @@ step_next:
 	return ret;
 }
 
+static int
+txgbe_parse_rss_filter(struct rte_eth_dev *dev,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_action actions[],
+			struct txgbe_rte_flow_rss_conf *rss_conf,
+			struct rte_flow_error *error)
+{
+	const struct rte_flow_action *act;
+	const struct rte_flow_action_rss *rss;
+	uint16_t n;
+
+	/**
+	 * rss only supports forwarding,
+	 * check if the first not void action is RSS.
+	 */
+	act = next_no_void_action(actions, NULL);
+	if (act->type != RTE_FLOW_ACTION_TYPE_RSS) {
+		memset(rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	rss = (const struct rte_flow_action_rss *)act->conf;
+
+	if (!rss || !rss->queue_num) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act,
+			   "no valid queues");
+		return -rte_errno;
+	}
+
+	for (n = 0; n < rss->queue_num; n++) {
+		if (rss->queue[n] >= dev->data->nb_rx_queues) {
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act,
+				   "queue id > max number of queues");
+			return -rte_errno;
+		}
+	}
+
+	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "non-default RSS hash functions are not supported");
+	if (rss->level)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "a nonzero RSS encapsulation level is not supported");
+	if (rss->key_len && rss->key_len != RTE_DIM(rss_conf->key))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "RSS hash key must be exactly 40 bytes");
+	if (rss->queue_num > RTE_DIM(rss_conf->queue))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "too many queues for RSS context");
+	if (txgbe_rss_conf_init(rss_conf, rss))
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, act,
+			 "RSS context initialization failure");
+
+	/* check if the next not void item is END */
+	act = next_no_void_action(actions, act);
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		memset(rss_conf, 0, sizeof(struct rte_eth_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	/* parse attr */
+	/* must be input direction */
+	if (!attr->ingress) {
+		memset(rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+				   attr, "Only support ingress.");
+		return -rte_errno;
+	}
+
+	/* not supported */
+	if (attr->egress) {
+		memset(rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+				   attr, "Not support egress.");
+		return -rte_errno;
+	}
+
+	/* not supported */
+	if (attr->transfer) {
+		memset(rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				   attr, "No support for transfer.");
+		return -rte_errno;
+	}
+
+	if (attr->priority > 0xFFFF) {
+		memset(rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+				   attr, "Error priority.");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
 /**
  * Create or destroy a flow rule.
  * Theorically one rule can match more than one filters.
@@ -2404,6 +2518,7 @@ txgbe_flow_validate(struct rte_eth_dev *dev,
 	struct rte_eth_syn_filter syn_filter;
 	struct txgbe_l2_tunnel_conf l2_tn_filter;
 	struct txgbe_fdir_rule fdir_rule;
+	struct txgbe_rte_flow_rss_conf rss_conf;
 	int ret = 0;
 
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
@@ -2435,6 +2550,10 @@ txgbe_flow_validate(struct rte_eth_dev *dev,
 				actions, &l2_tn_filter, error);
 	if (!ret)
 		return 0;
+
+	memset(&rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
+	ret = txgbe_parse_rss_filter(dev, attr,
+					actions, &rss_conf, error);
 
 	return ret;
 }
