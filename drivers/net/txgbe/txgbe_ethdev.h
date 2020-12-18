@@ -286,6 +286,14 @@ struct txgbe_tm_shaper_profile {
 
 TAILQ_HEAD(txgbe_shaper_profile_list, txgbe_tm_shaper_profile);
 
+/* node type of Traffic Manager */
+enum txgbe_tm_node_type {
+	TXGBE_TM_NODE_TYPE_PORT,
+	TXGBE_TM_NODE_TYPE_TC,
+	TXGBE_TM_NODE_TYPE_QUEUE,
+	TXGBE_TM_NODE_TYPE_MAX,
+};
+
 /* Struct to store Traffic Manager node configuration. */
 struct txgbe_tm_node {
 	TAILQ_ENTRY(txgbe_tm_node) node;
@@ -559,6 +567,7 @@ int txgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev);
 
 int txgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 			    uint16_t tx_rate, uint64_t q_msk);
+int txgbe_tm_ops_get(struct rte_eth_dev *dev, void *ops);
 void txgbe_tm_conf_init(struct rte_eth_dev *dev);
 void txgbe_tm_conf_uninit(struct rte_eth_dev *dev);
 int txgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,

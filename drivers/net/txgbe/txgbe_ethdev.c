@@ -5215,6 +5215,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.timesync_write_time        = txgbe_timesync_write_time,
 	.udp_tunnel_port_add        = txgbe_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del        = txgbe_dev_udp_tunnel_port_del,
+	.tm_ops_get                 = txgbe_tm_ops_get,
 	.tx_done_cleanup            = txgbe_dev_tx_done_cleanup,
 };
 
