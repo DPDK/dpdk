@@ -320,6 +320,10 @@ bool txgbe_rss_update_sp(enum txgbe_mac_type mac_type);
 int txgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *filter,
 			bool add);
+int txgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter,
+			bool add);
+
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 
@@ -382,6 +386,20 @@ txgbe_ethertype_filter_insert(struct txgbe_filter_info *filter_info,
 		break;
 	}
 	return (i < TXGBE_ETF_ID_MAX ? i : -1);
+}
+
+static inline int
+txgbe_ethertype_filter_remove(struct txgbe_filter_info *filter_info,
+			      uint8_t idx)
+{
+	if (idx >= TXGBE_ETF_ID_MAX)
+		return -1;
+	filter_info->ethertype_mask &= ~(1 << idx);
+	filter_info->ethertype_filters[idx].ethertype = 0;
+	filter_info->ethertype_filters[idx].etqf = 0;
+	filter_info->ethertype_filters[idx].etqs = 0;
+	filter_info->ethertype_filters[idx].etqs = FALSE;
+	return idx;
 }
 
 /* High threshold controlling when to start sending XOFF frames. */

@@ -3798,6 +3798,77 @@ txgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
+int
+txgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
+			struct rte_eth_ethertype_filter *filter,
+			bool add)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	uint32_t etqf = 0;
+	uint32_t etqs = 0;
+	int ret;
+	struct txgbe_ethertype_filter ethertype_filter;
+
+	if (filter->queue >= TXGBE_MAX_RX_QUEUE_NUM)
+		return -EINVAL;
+
+	if (filter->ether_type == RTE_ETHER_TYPE_IPV4 ||
+	    filter->ether_type == RTE_ETHER_TYPE_IPV6) {
+		PMD_DRV_LOG(ERR, "unsupported ether_type(0x%04x) in"
+			" ethertype filter.", filter->ether_type);
+		return -EINVAL;
+	}
+
+	if (filter->flags & RTE_ETHTYPE_FLAGS_MAC) {
+		PMD_DRV_LOG(ERR, "mac compare is unsupported.");
+		return -EINVAL;
+	}
+	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP) {
+		PMD_DRV_LOG(ERR, "drop option is unsupported.");
+		return -EINVAL;
+	}
+
+	ret = txgbe_ethertype_filter_lookup(filter_info, filter->ether_type);
+	if (ret >= 0 && add) {
+		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter exists.",
+			    filter->ether_type);
+		return -EEXIST;
+	}
+	if (ret < 0 && !add) {
+		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter doesn't exist.",
+			    filter->ether_type);
+		return -ENOENT;
+	}
+
+	if (add) {
+		etqf = TXGBE_ETFLT_ENA;
+		etqf |= TXGBE_ETFLT_ETID(filter->ether_type);
+		etqs |= TXGBE_ETCLS_QPID(filter->queue);
+		etqs |= TXGBE_ETCLS_QENA;
+
+		ethertype_filter.ethertype = filter->ether_type;
+		ethertype_filter.etqf = etqf;
+		ethertype_filter.etqs = etqs;
+		ethertype_filter.conf = FALSE;
+		ret = txgbe_ethertype_filter_insert(filter_info,
+						    &ethertype_filter);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "ethertype filters are full.");
+			return -ENOSPC;
+		}
+	} else {
+		ret = txgbe_ethertype_filter_remove(filter_info, (uint8_t)ret);
+		if (ret < 0)
+			return -ENOSYS;
+	}
+	wr32(hw, TXGBE_ETFLT(ret), etqf);
+	wr32(hw, TXGBE_ETCLS(ret), etqs);
+	txgbe_flush(hw);
+
+	return 0;
+}
+
 static int
 txgbe_dev_filter_ctrl(__rte_unused struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
@@ -4355,10 +4426,30 @@ txgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore ethernet type filter */
+static inline void
+txgbe_ethertype_filter_restore(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	int i;
+
+	for (i = 0; i < TXGBE_ETF_ID_MAX; i++) {
+		if (filter_info->ethertype_mask & (1 << i)) {
+			wr32(hw, TXGBE_ETFLT(i),
+					filter_info->ethertype_filters[i].etqf);
+			wr32(hw, TXGBE_ETCLS(i),
+					filter_info->ethertype_filters[i].etqs);
+			txgbe_flush(hw);
+		}
+	}
+}
+
 static int
 txgbe_filter_restore(struct rte_eth_dev *dev)
 {
 	txgbe_ntuple_filter_restore(dev);
+	txgbe_ethertype_filter_restore(dev);
 
 	return 0;
 }
