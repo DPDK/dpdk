@@ -655,6 +655,36 @@ txgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 	return 0;
 }
 
+int
+txgbe_crypto_add_ingress_sa_from_flow(const void *sess,
+				      const void *ip_spec,
+				      uint8_t is_ipv6)
+{
+	struct txgbe_crypto_session *ic_session =
+			get_sec_session_private_data(sess);
+
+	if (ic_session->op == TXGBE_OP_AUTHENTICATED_DECRYPTION) {
+		if (is_ipv6) {
+			const struct rte_flow_item_ipv6 *ipv6 = ip_spec;
+			ic_session->src_ip.type = IPv6;
+			ic_session->dst_ip.type = IPv6;
+			rte_memcpy(ic_session->src_ip.ipv6,
+				   ipv6->hdr.src_addr, 16);
+			rte_memcpy(ic_session->dst_ip.ipv6,
+				   ipv6->hdr.dst_addr, 16);
+		} else {
+			const struct rte_flow_item_ipv4 *ipv4 = ip_spec;
+			ic_session->src_ip.type = IPv4;
+			ic_session->dst_ip.type = IPv4;
+			ic_session->src_ip.ipv4 = ipv4->hdr.src_addr;
+			ic_session->dst_ip.ipv4 = ipv4->hdr.dst_addr;
+		}
+		return txgbe_crypto_add_sa(ic_session);
+	}
+
+	return 0;
+}
+
 static struct rte_security_ops txgbe_security_ops = {
 	.session_create = txgbe_crypto_create_session,
 	.session_get_size = txgbe_crypto_session_get_size,

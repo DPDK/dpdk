@@ -90,5 +90,8 @@ struct txgbe_ipsec {
 };
 
 int txgbe_crypto_enable_ipsec(struct rte_eth_dev *dev);
+int txgbe_crypto_add_ingress_sa_from_flow(const void *sess,
+					  const void *ip_spec,
+					  uint8_t is_ipv6);
 
 #endif /*TXGBE_IPSEC_H_*/
