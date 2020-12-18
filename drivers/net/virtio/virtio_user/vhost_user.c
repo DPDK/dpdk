@@ -297,10 +297,15 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		if (has_reply_ack)
 			msg.flags |= VHOST_USER_NEED_REPLY_MASK;
 		/* Fallthrough */
-	case VHOST_USER_SET_FEATURES:
 	case VHOST_USER_SET_PROTOCOL_FEATURES:
 	case VHOST_USER_SET_LOG_BASE:
 		msg.payload.u64 = *((__u64 *)arg);
+		msg.size = sizeof(m.payload.u64);
+		break;
+
+	case VHOST_USER_SET_FEATURES:
+		msg.payload.u64 = *((__u64 *)arg) | (dev->device_features &
+			(1ULL << VHOST_USER_F_PROTOCOL_FEATURES));
 		msg.size = sizeof(m.payload.u64);
 		break;
 
