@@ -42,6 +42,9 @@ static inline uint16_t bnxt_tpa_start_agg_id(struct bnxt *bp,
 /* Number of descriptors to process per inner loop in vector mode. */
 #define RTE_BNXT_DESCS_PER_LOOP		4U
 
+#define BNXT_OL_FLAGS_TBL_DIM	32
+#define BNXT_OL_FLAGS_ERR_TBL_DIM 16
+
 struct bnxt_tpa_info {
 	struct rte_mbuf			*mbuf;
 	uint16_t			len;
@@ -73,6 +76,9 @@ struct bnxt_rx_ring_info {
 	struct rte_bitmap	*ag_bitmap;
 
 	struct bnxt_tpa_info *tpa_info;
+
+	uint32_t ol_flags_table[BNXT_OL_FLAGS_TBL_DIM];
+	uint32_t ol_flags_err_table[BNXT_OL_FLAGS_ERR_TBL_DIM];
 };
 
 uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -116,10 +122,4 @@ bnxt_cfa_code_dynfield(struct rte_mbuf *mbuf)
 
 #define BNXT_PTYPE_TBL_DIM	128
 extern uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM];
-
-#define BNXT_OL_FLAGS_TBL_DIM	32
-extern uint32_t bnxt_ol_flags_table[BNXT_OL_FLAGS_TBL_DIM];
-
-#define BNXT_OL_FLAGS_ERR_TBL_DIM 16
-extern uint32_t bnxt_ol_flags_err_table[BNXT_OL_FLAGS_ERR_TBL_DIM];
 #endif

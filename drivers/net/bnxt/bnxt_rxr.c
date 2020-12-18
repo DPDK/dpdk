@@ -415,24 +415,14 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 	return bnxt_ptype_table[index];
 }
 
-uint32_t
-bnxt_ol_flags_table[BNXT_OL_FLAGS_TBL_DIM] __rte_cache_aligned;
-
-uint32_t
-bnxt_ol_flags_err_table[BNXT_OL_FLAGS_ERR_TBL_DIM] __rte_cache_aligned;
-
 static void __rte_cold
-bnxt_init_ol_flags_tables(void)
+bnxt_init_ol_flags_tables(struct bnxt_rx_ring_info *rxr)
 {
-	static bool initialized;
 	uint32_t *pt;
 	int i;
 
-	if (initialized)
-		return;
-
 	/* Initialize ol_flags table. */
-	pt = bnxt_ol_flags_table;
+	pt = rxr->ol_flags_table;
 	for (i = 0; i < BNXT_OL_FLAGS_TBL_DIM; i++) {
 		pt[i] = 0;
 		if (i & RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN)
@@ -449,7 +439,7 @@ bnxt_init_ol_flags_tables(void)
 	}
 
 	/* Initialize checksum error table. */
-	pt = bnxt_ol_flags_err_table;
+	pt = rxr->ol_flags_err_table;
 	for (i = 0; i < BNXT_OL_FLAGS_ERR_TBL_DIM; i++) {
 		pt[i] = 0;
 		if (i & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR >> 4))
@@ -464,13 +454,11 @@ bnxt_init_ol_flags_tables(void)
 		if (i & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR >> 4))
 			pt[i] |= PKT_RX_OUTER_L4_CKSUM_BAD;
 	}
-
-	initialized = true;
 }
 
 static void
-bnxt_set_ol_flags(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1,
-		  struct rte_mbuf *mbuf)
+bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
+		  struct rx_pkt_cmpl_hi *rxcmp1, struct rte_mbuf *mbuf)
 {
 	uint16_t flags_type, errors, flags;
 	uint64_t ol_flags;
@@ -491,10 +479,10 @@ bnxt_set_ol_flags(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1,
 				 RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR);
 	errors = (errors >> 4) & flags;
 
-	ol_flags = bnxt_ol_flags_table[flags & ~errors];
+	ol_flags = rxr->ol_flags_table[flags & ~errors];
 
 	if (errors)
-		ol_flags |= bnxt_ol_flags_err_table[errors];
+		ol_flags |= rxr->ol_flags_err_table[errors];
 
 	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
 		mbuf->hash.rss = rte_le_to_cpu_32(rxcmp->rss_hash);
@@ -749,7 +737,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
 
-	bnxt_set_ol_flags(rxcmp, rxcmp1, mbuf);
+	bnxt_set_ol_flags(rxr, rxcmp, rxcmp1, mbuf);
 
 #ifdef RTE_LIBRTE_IEEE1588
 	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
@@ -1127,9 +1115,6 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	/* Initialize packet type table. */
 	bnxt_init_ptype_table();
 
-	/* Initialize offload flags parsing table. */
-	bnxt_init_ol_flags_tables();
-
 	size = rte_pktmbuf_data_room_size(rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
 	size = RTE_MIN(BNXT_MAX_PKT_LEN, size);
 
@@ -1138,6 +1123,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	rxr = rxq->rx_ring;
 	ring = rxr->rx_ring_struct;
 	bnxt_init_rxbds(ring, type, size);
+
+	/* Initialize offload flags parsing table. */
+	bnxt_init_ol_flags_tables(rxr);
 
 	raw_prod = rxr->rx_raw_prod;
 	for (i = 0; i < ring->ring_size; i++) {
