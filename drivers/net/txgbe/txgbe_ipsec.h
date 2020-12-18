@@ -17,6 +17,9 @@
 #define IPSEC_MAX_RX_IP_COUNT           128
 #define IPSEC_MAX_SA_COUNT              1024
 
+#define ESP_ICV_SIZE 16
+#define ESP_TRAILER_SIZE 2
+
 enum txgbe_operation {
 	TXGBE_OP_AUTHENTICATED_ENCRYPTION,
 	TXGBE_OP_AUTHENTICATED_DECRYPTION
@@ -66,6 +69,18 @@ struct txgbe_crypto_rx_sa_table {
 struct txgbe_crypto_tx_sa_table {
 	uint32_t spi;
 	uint8_t  used;
+};
+
+union txgbe_crypto_tx_desc_md {
+	uint64_t data;
+	struct {
+		/**< SA table index */
+		uint32_t sa_idx;
+		/**< ICV and ESP trailer length */
+		uint8_t pad_len;
+		/**< enable encryption */
+		uint8_t enc;
+	};
 };
 
 struct txgbe_ipsec {

@@ -197,6 +197,106 @@ txgbe_crypto_add_sa(struct txgbe_crypto_session *ic_session)
 }
 
 static int
+txgbe_crypto_remove_sa(struct rte_eth_dev *dev,
+		       struct txgbe_crypto_session *ic_session)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_ipsec *priv = TXGBE_DEV_IPSEC(dev);
+	uint32_t reg_val;
+	int sa_index = -1;
+
+	if (ic_session->op == TXGBE_OP_AUTHENTICATED_DECRYPTION) {
+		int i, ip_index = -1;
+
+		/* Find a match in the IP table*/
+		for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
+			if (CMP_IP(priv->rx_ip_tbl[i].ip, ic_session->dst_ip)) {
+				ip_index = i;
+				break;
+			}
+		}
+
+		/* Fail if no match*/
+		if (ip_index < 0) {
+			PMD_DRV_LOG(ERR,
+				    "Entry not found in the Rx IP table\n");
+			return -1;
+		}
+
+		/* Find a free entry in the SA table*/
+		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
+			if (priv->rx_sa_tbl[i].spi ==
+				  rte_cpu_to_be_32(ic_session->spi)) {
+				sa_index = i;
+				break;
+			}
+		}
+		/* Fail if no match*/
+		if (sa_index < 0) {
+			PMD_DRV_LOG(ERR,
+				    "Entry not found in the Rx SA table\n");
+			return -1;
+		}
+
+		/* Disable and clear Rx SPI and key table entryes*/
+		reg_val = TXGBE_IPSRXIDX_WRITE |
+			TXGBE_IPSRXIDX_TB_SPI | (sa_index << 3);
+		wr32(hw, TXGBE_IPSRXSPI, 0);
+		wr32(hw, TXGBE_IPSRXADDRIDX, 0);
+		wr32w(hw, TXGBE_IPSRXIDX, reg_val, TXGBE_IPSRXIDX_WRITE, 1000);
+		reg_val = TXGBE_IPSRXIDX_WRITE |
+			TXGBE_IPSRXIDX_TB_KEY | (sa_index << 3);
+		wr32(hw, TXGBE_IPSRXKEY(0), 0);
+		wr32(hw, TXGBE_IPSRXKEY(1), 0);
+		wr32(hw, TXGBE_IPSRXKEY(2), 0);
+		wr32(hw, TXGBE_IPSRXKEY(3), 0);
+		wr32(hw, TXGBE_IPSRXSALT, 0);
+		wr32(hw, TXGBE_IPSRXMODE, 0);
+		wr32w(hw, TXGBE_IPSRXIDX, reg_val, TXGBE_IPSRXIDX_WRITE, 1000);
+		priv->rx_sa_tbl[sa_index].used = 0;
+
+		/* If last used then clear the IP table entry*/
+		priv->rx_ip_tbl[ip_index].ref_count--;
+		if (priv->rx_ip_tbl[ip_index].ref_count == 0) {
+			reg_val = TXGBE_IPSRXIDX_WRITE | TXGBE_IPSRXIDX_TB_IP |
+					(ip_index << 3);
+			wr32(hw, TXGBE_IPSRXADDR(0), 0);
+			wr32(hw, TXGBE_IPSRXADDR(1), 0);
+			wr32(hw, TXGBE_IPSRXADDR(2), 0);
+			wr32(hw, TXGBE_IPSRXADDR(3), 0);
+		}
+	} else { /* session->dir == RTE_CRYPTO_OUTBOUND */
+		int i;
+
+		/* Find a match in the SA table*/
+		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
+			if (priv->tx_sa_tbl[i].spi ==
+				    rte_cpu_to_be_32(ic_session->spi)) {
+				sa_index = i;
+				break;
+			}
+		}
+		/* Fail if no match entries*/
+		if (sa_index < 0) {
+			PMD_DRV_LOG(ERR,
+				    "Entry not found in the Tx SA table\n");
+			return -1;
+		}
+		reg_val = TXGBE_IPSRXIDX_WRITE | (sa_index << 3);
+		wr32(hw, TXGBE_IPSTXKEY(0), 0);
+		wr32(hw, TXGBE_IPSTXKEY(1), 0);
+		wr32(hw, TXGBE_IPSTXKEY(2), 0);
+		wr32(hw, TXGBE_IPSTXKEY(3), 0);
+		wr32(hw, TXGBE_IPSTXSALT, 0);
+		wr32w(hw, TXGBE_IPSTXIDX, reg_val, TXGBE_IPSTXIDX_WRITE, 1000);
+
+		priv->tx_sa_tbl[sa_index].used = 0;
+	}
+
+	return 0;
+}
+
+static int
 txgbe_crypto_create_session(void *device,
 		struct rte_security_session_conf *conf,
 		struct rte_security_session *session,
@@ -256,6 +356,70 @@ txgbe_crypto_create_session(void *device,
 		}
 	}
 
+	return 0;
+}
+
+static unsigned int
+txgbe_crypto_session_get_size(__rte_unused void *device)
+{
+	return sizeof(struct txgbe_crypto_session);
+}
+
+static int
+txgbe_crypto_remove_session(void *device,
+		struct rte_security_session *session)
+{
+	struct rte_eth_dev *eth_dev = device;
+	struct txgbe_crypto_session *ic_session =
+		(struct txgbe_crypto_session *)
+		get_sec_session_private_data(session);
+	struct rte_mempool *mempool = rte_mempool_from_obj(ic_session);
+
+	if (eth_dev != ic_session->dev) {
+		PMD_DRV_LOG(ERR, "Session not bound to this device\n");
+		return -ENODEV;
+	}
+
+	if (txgbe_crypto_remove_sa(eth_dev, ic_session)) {
+		PMD_DRV_LOG(ERR, "Failed to remove session\n");
+		return -EFAULT;
+	}
+
+	rte_mempool_put(mempool, (void *)ic_session);
+
+	return 0;
+}
+
+static inline uint8_t
+txgbe_crypto_compute_pad_len(struct rte_mbuf *m)
+{
+	if (m->nb_segs == 1) {
+		/* 16 bytes ICV + 2 bytes ESP trailer + payload padding size
+		 * payload padding size is stored at <pkt_len - 18>
+		 */
+		uint8_t *esp_pad_len = rte_pktmbuf_mtod_offset(m, uint8_t *,
+					rte_pktmbuf_pkt_len(m) -
+					(ESP_TRAILER_SIZE + ESP_ICV_SIZE));
+		return *esp_pad_len + ESP_TRAILER_SIZE + ESP_ICV_SIZE;
+	}
+	return 0;
+}
+
+static int
+txgbe_crypto_update_mb(void *device __rte_unused,
+		struct rte_security_session *session,
+		       struct rte_mbuf *m, void *params __rte_unused)
+{
+	struct txgbe_crypto_session *ic_session =
+			get_sec_session_private_data(session);
+	if (ic_session->op == TXGBE_OP_AUTHENTICATED_ENCRYPTION) {
+		union txgbe_crypto_tx_desc_md *mdata =
+			(union txgbe_crypto_tx_desc_md *)
+				rte_security_dynfield(m);
+		mdata->enc = 1;
+		mdata->sa_idx = ic_session->sa_index;
+		mdata->pad_len = txgbe_crypto_compute_pad_len(m);
+	}
 	return 0;
 }
 
@@ -387,6 +551,9 @@ txgbe_crypto_capabilities_get(void *device __rte_unused)
 
 static struct rte_security_ops txgbe_security_ops = {
 	.session_create = txgbe_crypto_create_session,
+	.session_get_size = txgbe_crypto_session_get_size,
+	.session_destroy = txgbe_crypto_remove_session,
+	.set_pkt_metadata = txgbe_crypto_update_mb,
 	.capabilities_get = txgbe_crypto_capabilities_get
 };
 
