@@ -9,6 +9,9 @@
 
 #include "base/txgbe.h"
 #include "txgbe_ptypes.h"
+#ifdef RTE_LIB_SECURITY
+#include "txgbe_ipsec.h"
+#endif
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_time.h>
@@ -357,6 +360,9 @@ struct txgbe_adapter {
 	struct txgbe_filter_info    filter;
 	struct txgbe_l2_tn_info     l2_tn;
 	struct txgbe_bw_conf        bw_conf;
+#ifdef RTE_LIB_SECURITY
+	struct txgbe_ipsec          ipsec;
+#endif
 	bool rx_bulk_alloc_allowed;
 	struct rte_timecounter      systime_tc;
 	struct rte_timecounter      rx_tstamp_tc;
@@ -414,6 +420,9 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_TM_CONF(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->tm_conf)
+
+#define TXGBE_DEV_IPSEC(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->ipsec)
 
 /*
  * RX/TX function prototypes
