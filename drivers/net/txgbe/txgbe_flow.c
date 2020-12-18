@@ -2869,6 +2869,122 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	int ret = 0;
+	struct rte_flow *pmd_flow = flow;
+	enum rte_filter_type filter_type = pmd_flow->filter_type;
+	struct rte_eth_ntuple_filter ntuple_filter;
+	struct rte_eth_ethertype_filter ethertype_filter;
+	struct rte_eth_syn_filter syn_filter;
+	struct txgbe_fdir_rule fdir_rule;
+	struct txgbe_l2_tunnel_conf l2_tn_filter;
+	struct txgbe_ntuple_filter_ele *ntuple_filter_ptr;
+	struct txgbe_ethertype_filter_ele *ethertype_filter_ptr;
+	struct txgbe_eth_syn_filter_ele *syn_filter_ptr;
+	struct txgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
+	struct txgbe_fdir_rule_ele *fdir_rule_ptr;
+	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
+	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(dev);
+	struct txgbe_rss_conf_ele *rss_filter_ptr;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+		ntuple_filter_ptr = (struct txgbe_ntuple_filter_ele *)
+					pmd_flow->rule;
+		rte_memcpy(&ntuple_filter,
+			&ntuple_filter_ptr->filter_info,
+			sizeof(struct rte_eth_ntuple_filter));
+		ret = txgbe_add_del_ntuple_filter(dev, &ntuple_filter, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&filter_ntuple_list,
+			ntuple_filter_ptr, entries);
+			rte_free(ntuple_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ethertype_filter_ptr = (struct txgbe_ethertype_filter_ele *)
+					pmd_flow->rule;
+		rte_memcpy(&ethertype_filter,
+			&ethertype_filter_ptr->filter_info,
+			sizeof(struct rte_eth_ethertype_filter));
+		ret = txgbe_add_del_ethertype_filter(dev,
+				&ethertype_filter, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&filter_ethertype_list,
+				ethertype_filter_ptr, entries);
+			rte_free(ethertype_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_SYN:
+		syn_filter_ptr = (struct txgbe_eth_syn_filter_ele *)
+				pmd_flow->rule;
+		rte_memcpy(&syn_filter,
+			&syn_filter_ptr->filter_info,
+			sizeof(struct rte_eth_syn_filter));
+		ret = txgbe_syn_filter_set(dev, &syn_filter, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&filter_syn_list,
+				syn_filter_ptr, entries);
+			rte_free(syn_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_FDIR:
+		fdir_rule_ptr = (struct txgbe_fdir_rule_ele *)pmd_flow->rule;
+		rte_memcpy(&fdir_rule,
+			&fdir_rule_ptr->filter_info,
+			sizeof(struct txgbe_fdir_rule));
+		ret = txgbe_fdir_filter_program(dev, &fdir_rule, TRUE, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&filter_fdir_list,
+				fdir_rule_ptr, entries);
+			rte_free(fdir_rule_ptr);
+			if (TAILQ_EMPTY(&filter_fdir_list))
+				fdir_info->mask_added = false;
+		}
+		break;
+	case RTE_ETH_FILTER_L2_TUNNEL:
+		l2_tn_filter_ptr = (struct txgbe_eth_l2_tunnel_conf_ele *)
+				pmd_flow->rule;
+		rte_memcpy(&l2_tn_filter, &l2_tn_filter_ptr->filter_info,
+			sizeof(struct txgbe_l2_tunnel_conf));
+		ret = txgbe_dev_l2_tunnel_filter_del(dev, &l2_tn_filter);
+		if (!ret) {
+			TAILQ_REMOVE(&filter_l2_tunnel_list,
+				l2_tn_filter_ptr, entries);
+			rte_free(l2_tn_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_HASH:
+		rss_filter_ptr = (struct txgbe_rss_conf_ele *)
+				pmd_flow->rule;
+		ret = txgbe_config_rss_filter(dev,
+					&rss_filter_ptr->filter_info, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&filter_rss_list,
+				rss_filter_ptr, entries);
+			rte_free(rss_filter_ptr);
+		}
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+			    filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	if (ret) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Failed to destroy flow");
+		return ret;
+	}
+
+	TAILQ_FOREACH(txgbe_flow_mem_ptr, &txgbe_flow_list, entries) {
+		if (txgbe_flow_mem_ptr->flow == pmd_flow) {
+			TAILQ_REMOVE(&txgbe_flow_list,
+				txgbe_flow_mem_ptr, entries);
+			rte_free(txgbe_flow_mem_ptr);
+		}
+	}
+	rte_free(flow);
 
 	return ret;
 }
