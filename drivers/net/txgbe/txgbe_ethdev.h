@@ -13,6 +13,8 @@
 #include <rte_time.h>
 #include <rte_ethdev.h>
 #include <rte_ethdev_core.h>
+#include <rte_hash.h>
+#include <rte_hash_crc.h>
 
 /* need update link, bit flag */
 #define TXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -58,6 +60,8 @@
 
 #define TXGBE_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
 #define TXGBE_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
+
+#define TXGBE_MAX_L2_TN_FILTER_NUM      128
 
 /* structure for interrupt relative data */
 struct txgbe_interrupt {
@@ -171,6 +175,28 @@ struct txgbe_filter_info {
 	uint32_t syn_info;
 };
 
+struct txgbe_l2_tn_key {
+	enum rte_eth_tunnel_type          l2_tn_type;
+	uint32_t                          tn_id;
+};
+
+struct txgbe_l2_tn_filter {
+	TAILQ_ENTRY(txgbe_l2_tn_filter)    entries;
+	struct txgbe_l2_tn_key             key;
+	uint32_t                           pool;
+};
+
+TAILQ_HEAD(txgbe_l2_tn_filter_list, txgbe_l2_tn_filter);
+
+struct txgbe_l2_tn_info {
+	struct txgbe_l2_tn_filter_list      l2_tn_list;
+	struct txgbe_l2_tn_filter         **hash_map;
+	struct rte_hash                    *hash_handle;
+	bool e_tag_en; /* e-tag enabled */
+	bool e_tag_fwd_en; /* e-tag based forwarding enabled */
+	uint16_t e_tag_ether_type; /* ether type for e-tag */
+};
+
 /* The configuration of bandwidth */
 struct txgbe_bw_conf {
 	uint8_t tc_num; /* Number of TCs. */
@@ -191,6 +217,7 @@ struct txgbe_adapter {
 	struct txgbe_vf_info        *vfdata;
 	struct txgbe_uta_info       uta_info;
 	struct txgbe_filter_info    filter;
+	struct txgbe_l2_tn_info     l2_tn;
 	struct txgbe_bw_conf        bw_conf;
 	bool rx_bulk_alloc_allowed;
 	struct rte_timecounter      systime_tc;
@@ -236,6 +263,10 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_FILTER(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->filter)
+
+#define TXGBE_DEV_L2_TN(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->l2_tn)
+
 #define TXGBE_DEV_BW_CONF(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->bw_conf)
 

@@ -88,6 +88,8 @@ static const struct reg_info *txgbe_regs_others[] = {
 				txgbe_regs_diagnostic,
 				NULL};
 
+static int txgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev);
+static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev);
 static int  txgbe_dev_set_link_up(struct rte_eth_dev *dev);
 static int  txgbe_dev_set_link_down(struct rte_eth_dev *dev);
 static int txgbe_dev_close(struct rte_eth_dev *dev);
@@ -687,6 +689,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* initialize 5tuple filter list */
 	TAILQ_INIT(&filter_info->fivetuple_list);
 
+	/* initialize l2 tunnel filter list & hash */
+	txgbe_l2_tn_filter_init(eth_dev);
+
 	/* initialize bandwidth configuration info */
 	memset(bw_conf, 0, sizeof(struct txgbe_bw_conf));
 
@@ -719,6 +724,63 @@ static int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
 	}
 	memset(filter_info->fivetuple_mask, 0,
 	       sizeof(uint32_t) * TXGBE_5TUPLE_ARRAY_SIZE);
+
+	return 0;
+}
+
+static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(eth_dev);
+	struct txgbe_l2_tn_filter *l2_tn_filter;
+
+	if (l2_tn_info->hash_map)
+		rte_free(l2_tn_info->hash_map);
+	if (l2_tn_info->hash_handle)
+		rte_hash_free(l2_tn_info->hash_handle);
+
+	while ((l2_tn_filter = TAILQ_FIRST(&l2_tn_info->l2_tn_list))) {
+		TAILQ_REMOVE(&l2_tn_info->l2_tn_list,
+			     l2_tn_filter,
+			     entries);
+		rte_free(l2_tn_filter);
+	}
+
+	return 0;
+}
+
+static int txgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev)
+{
+	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(eth_dev);
+	char l2_tn_hash_name[RTE_HASH_NAMESIZE];
+	struct rte_hash_parameters l2_tn_hash_params = {
+		.name = l2_tn_hash_name,
+		.entries = TXGBE_MAX_L2_TN_FILTER_NUM,
+		.key_len = sizeof(struct txgbe_l2_tn_key),
+		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	TAILQ_INIT(&l2_tn_info->l2_tn_list);
+	snprintf(l2_tn_hash_name, RTE_HASH_NAMESIZE,
+		 "l2_tn_%s", TDEV_NAME(eth_dev));
+	l2_tn_info->hash_handle = rte_hash_create(&l2_tn_hash_params);
+	if (!l2_tn_info->hash_handle) {
+		PMD_INIT_LOG(ERR, "Failed to create L2 TN hash table!");
+		return -EINVAL;
+	}
+	l2_tn_info->hash_map = rte_zmalloc("txgbe",
+				   sizeof(struct txgbe_l2_tn_filter *) *
+				   TXGBE_MAX_L2_TN_FILTER_NUM,
+				   0);
+	if (!l2_tn_info->hash_map) {
+		PMD_INIT_LOG(ERR,
+			"Failed to allocate memory for L2 TN hash map!");
+		return -ENOMEM;
+	}
+	l2_tn_info->e_tag_en = FALSE;
+	l2_tn_info->e_tag_fwd_en = FALSE;
+	l2_tn_info->e_tag_ether_type = RTE_ETHER_TYPE_ETAG;
 
 	return 0;
 }
@@ -1801,6 +1863,9 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(dev->data->hash_mac_addrs);
 	dev->data->hash_mac_addrs = NULL;
+
+	/* remove all the L2 tunnel filters & hash */
+	txgbe_l2_tn_filter_uninit(dev);
 
 	/* Remove all ntuple filters of the device */
 	txgbe_ntuple_filter_uninit(dev);
