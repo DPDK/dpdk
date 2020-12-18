@@ -1633,6 +1633,12 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	txgbe_configure_port(dev);
 	txgbe_configure_dcb(dev);
 
+	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE) {
+		err = txgbe_fdir_configure(dev);
+		if (err)
+			goto error;
+	}
+
 	/* Restore vf rate limit */
 	if (vfinfo != NULL) {
 		for (vf = 0; vf < pci_dev->max_vfs; vf++)

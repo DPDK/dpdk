@@ -10,6 +10,7 @@
 #include "base/txgbe.h"
 #include "txgbe_ptypes.h"
 #include <rte_flow.h>
+#include <rte_flow_driver.h>
 #include <rte_time.h>
 #include <rte_ethdev.h>
 #include <rte_ethdev_core.h>
@@ -432,6 +433,13 @@ txgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 
+/*
+ * Flow director function prototypes
+ */
+int txgbe_fdir_configure(struct rte_eth_dev *dev);
+int txgbe_fdir_set_input_mask(struct rte_eth_dev *dev);
+int txgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
+				    uint16_t offset);
 void txgbe_configure_pb(struct rte_eth_dev *dev);
 void txgbe_configure_port(struct rte_eth_dev *dev);
 void txgbe_configure_dcb(struct rte_eth_dev *dev);

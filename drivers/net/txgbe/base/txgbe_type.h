@@ -21,6 +21,8 @@
 #define TXGBE_MAX_QP		(128)
 #define TXGBE_MAX_UTA		128
 
+#define TXGBE_FDIR_INIT_DONE_POLL		10
+
 #define TXGBE_ALIGN		128 /* as intel did */
 
 #include "txgbe_status.h"
@@ -64,6 +66,10 @@ enum {
 #define TXGBE_PHYSICAL_LAYER_1000BASE_SX	0x04000
 #define TXGBE_PHYSICAL_LAYER_10BASE_T		0x08000
 #define TXGBE_PHYSICAL_LAYER_2500BASE_KX	0x10000
+
+/* Software ATR hash keys */
+#define TXGBE_ATR_BUCKET_HASH_KEY		0x3DAD14E2
+#define TXGBE_ATR_SIGNATURE_HASH_KEY		0x174D3614
 
 #define TXGBE_ATR_HASH_MASK			0x7fff
 
