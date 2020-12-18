@@ -407,43 +407,91 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 }
 
 static void __rte_cold
-bnxt_init_ol_flags_tables(struct bnxt_rx_ring_info *rxr)
+bnxt_init_ol_flags_tables(struct bnxt_rx_queue *rxq)
 {
+	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	struct rte_eth_conf *dev_conf;
+	bool outer_cksum_enabled;
+	uint64_t offloads;
 	uint32_t *pt;
 	int i;
+
+	dev_conf = &rxq->bp->eth_dev->data->dev_conf;
+	offloads = dev_conf->rxmode.offloads;
+
+	outer_cksum_enabled = !!(offloads & (DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+					     DEV_RX_OFFLOAD_OUTER_UDP_CKSUM));
 
 	/* Initialize ol_flags table. */
 	pt = rxr->ol_flags_table;
 	for (i = 0; i < BNXT_OL_FLAGS_TBL_DIM; i++) {
 		pt[i] = 0;
+
 		if (i & RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN)
 			pt[i] |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 
-		if (i & RX_PKT_CMPL_FLAGS2_IP_CS_CALC)
-			pt[i] |= PKT_RX_IP_CKSUM_GOOD;
+		if (i & (RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC << 3)) {
+			/* Tunnel case. */
+			if (outer_cksum_enabled) {
+				if (i & RX_PKT_CMPL_FLAGS2_IP_CS_CALC)
+					pt[i] |= PKT_RX_IP_CKSUM_GOOD;
 
-		if (i & RX_PKT_CMPL_FLAGS2_L4_CS_CALC)
-			pt[i] |= PKT_RX_L4_CKSUM_GOOD;
+				if (i & RX_PKT_CMPL_FLAGS2_L4_CS_CALC)
+					pt[i] |= PKT_RX_L4_CKSUM_GOOD;
 
-		if (i & RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC)
-			pt[i] |= PKT_RX_OUTER_L4_CKSUM_GOOD;
+				if (i & RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC)
+					pt[i] |= PKT_RX_OUTER_L4_CKSUM_GOOD;
+			} else {
+				if (i & RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC)
+					pt[i] |= PKT_RX_IP_CKSUM_GOOD;
+
+				if (i & RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC)
+					pt[i] |= PKT_RX_L4_CKSUM_GOOD;
+			}
+		} else {
+			/* Non-tunnel case. */
+			if (i & RX_PKT_CMPL_FLAGS2_IP_CS_CALC)
+				pt[i] |= PKT_RX_IP_CKSUM_GOOD;
+
+			if (i & RX_PKT_CMPL_FLAGS2_L4_CS_CALC)
+				pt[i] |= PKT_RX_L4_CKSUM_GOOD;
+		}
 	}
 
 	/* Initialize checksum error table. */
 	pt = rxr->ol_flags_err_table;
 	for (i = 0; i < BNXT_OL_FLAGS_ERR_TBL_DIM; i++) {
 		pt[i] = 0;
-		if (i & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR >> 4))
-			pt[i] |= PKT_RX_IP_CKSUM_BAD;
 
-		if (i & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR >> 4))
-			pt[i] |= PKT_RX_L4_CKSUM_BAD;
+		if (i & (RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC << 2)) {
+			/* Tunnel case. */
+			if (outer_cksum_enabled) {
+				if (i & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR >> 4))
+					pt[i] |= PKT_RX_IP_CKSUM_BAD;
 
-		if (i & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR >> 4))
-			pt[i] |= PKT_RX_EIP_CKSUM_BAD;
+				if (i & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR >> 4))
+					pt[i] |= PKT_RX_EIP_CKSUM_BAD;
 
-		if (i & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR >> 4))
-			pt[i] |= PKT_RX_OUTER_L4_CKSUM_BAD;
+				if (i & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR >> 4))
+					pt[i] |= PKT_RX_L4_CKSUM_BAD;
+
+				if (i & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR >> 4))
+					pt[i] |= PKT_RX_OUTER_L4_CKSUM_BAD;
+			} else {
+				if (i & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR >> 4))
+					pt[i] |= PKT_RX_IP_CKSUM_BAD;
+
+				if (i & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR >> 4))
+					pt[i] |= PKT_RX_L4_CKSUM_BAD;
+			}
+		} else {
+			/* Non-tunnel case. */
+			if (i & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR >> 4))
+				pt[i] |= PKT_RX_IP_CKSUM_BAD;
+
+			if (i & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR >> 4))
+				pt[i] |= PKT_RX_L4_CKSUM_BAD;
+		}
 	}
 }
 
@@ -463,6 +511,7 @@ bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
 				 RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC |
 				 RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN);
 
+	flags |= (flags & RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC) << 3;
 	errors = rte_le_to_cpu_16(rxcmp1->errors_v2) &
 				(RX_PKT_CMPL_ERRORS_IP_CS_ERROR |
 				 RX_PKT_CMPL_ERRORS_L4_CS_ERROR |
@@ -472,8 +521,10 @@ bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
 
 	ol_flags = rxr->ol_flags_table[flags & ~errors];
 
-	if (errors)
+	if (unlikely(errors)) {
+		errors |= (flags & RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC) << 2;
 		ol_flags |= rxr->ol_flags_err_table[errors];
+	}
 
 	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
 		mbuf->hash.rss = rte_le_to_cpu_32(rxcmp->rss_hash);
@@ -1107,7 +1158,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	bnxt_init_rxbds(ring, type, size);
 
 	/* Initialize offload flags parsing table. */
-	bnxt_init_ol_flags_tables(rxr);
+	bnxt_init_ol_flags_tables(rxq);
 
 	prod = rxr->rx_prod;
 	for (i = 0; i < ring->ring_size; i++) {

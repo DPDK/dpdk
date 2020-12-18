@@ -42,8 +42,8 @@ static inline uint16_t bnxt_tpa_start_agg_id(struct bnxt *bp,
 /* Number of descriptors to process per inner loop in vector mode. */
 #define RTE_BNXT_DESCS_PER_LOOP		4U
 
-#define BNXT_OL_FLAGS_TBL_DIM	32
-#define BNXT_OL_FLAGS_ERR_TBL_DIM 16
+#define BNXT_OL_FLAGS_TBL_DIM	64
+#define BNXT_OL_FLAGS_ERR_TBL_DIM 32
 
 struct bnxt_tpa_info {
 	struct rte_mbuf			*mbuf;

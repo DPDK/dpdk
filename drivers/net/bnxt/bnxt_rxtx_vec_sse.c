@@ -73,7 +73,7 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	const __m128i rss_mask =
 		_mm_set1_epi32(RX_PKT_CMPL_FLAGS_RSS_VALID);
 	__m128i t0, t1, flags_type, flags2, index, errors, rss_flags;
-	__m128i ptype_idx;
+	__m128i ptype_idx, is_tunnel;
 	uint32_t ol_flags;
 
 	/* Compute packet type table indexes for four packets */
@@ -100,6 +100,8 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	t1 = _mm_unpackhi_epi32(mm_rxcmp1[2], mm_rxcmp1[3]);
 
 	/* Compute ol_flags and checksum error indexes for four packets. */
+	is_tunnel = _mm_and_si128(flags2, _mm_set1_epi32(4));
+	is_tunnel = _mm_slli_epi32(is_tunnel, 3);
 	flags2 = _mm_and_si128(flags2, _mm_set1_epi32(0x1F));
 
 	errors = _mm_srli_epi32(_mm_unpacklo_epi64(t0, t1), 4);
@@ -107,6 +109,8 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	errors = _mm_and_si128(errors, flags2);
 
 	index = _mm_andnot_si128(errors, flags2);
+	errors = _mm_or_si128(errors, _mm_srli_epi32(is_tunnel, 1));
+	index = _mm_or_si128(index, is_tunnel);
 
 	/* Update mbuf rearm_data for four packets. */
 	GET_OL_FLAGS(rss_flags, index, errors, 0, ol_flags);
