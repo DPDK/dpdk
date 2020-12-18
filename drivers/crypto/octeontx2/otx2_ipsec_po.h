@@ -161,6 +161,11 @@ struct otx2_ipsec_po_in_sa {
 		uint8_t hmac_key[48];
 		struct otx2_ipsec_po_traffic_selector selector;
 	} aes_gcm;
+	union {
+		struct otx2_ipsec_replay *replay;
+		uint64_t replay64;
+	};
+	uint32_t replay_win_sz;
 };
 
 struct otx2_ipsec_po_ip_template {

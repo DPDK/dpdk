@@ -124,6 +124,8 @@ process_outb_sa(struct rte_crypto_op *cop,
 	req->ist.ei1 = rte_pktmbuf_iova(m_src);
 	req->ist.ei2 = req->ist.ei1;
 
+	sa->esn_hi = sess->seq_hi;
+
 	hdr->seq = rte_cpu_to_be_32(sess->seq_lo);
 	hdr->ip_id = rte_cpu_to_be_32(sess->ip_id);
 

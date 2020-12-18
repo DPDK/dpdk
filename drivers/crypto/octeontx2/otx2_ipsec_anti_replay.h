@@ -204,4 +204,25 @@ cpt_ipsec_ip_antireplay_check(struct otx2_ipsec_fp_in_sa *sa, char *data)
 
 	return ret;
 }
+
+static inline uint32_t
+anti_replay_get_seqh(uint32_t winsz, uint32_t seql,
+			uint32_t esn_hi, uint32_t esn_low)
+{
+	uint32_t win_low = esn_low - winsz + 1;
+
+	if (esn_low > winsz - 1) {
+		/* Window is in one sequence number subspace */
+		if (seql > win_low)
+			return esn_hi;
+		else
+			return esn_hi + 1;
+	} else {
+		/* Window is split across two sequence number subspaces */
+		if (seql > win_low)
+			return esn_hi - 1;
+		else
+			return esn_hi;
+	}
+}
 #endif /* __OTX2_IPSEC_ANTI_REPLAY_H__ */

@@ -213,6 +213,7 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	int ret;
 
 	sess = get_sec_session_private_data(sec_sess);
+	sess->ipsec.dir = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	lp = &sess->ipsec.lp;
 
 	sa = &lp->out_sa;
@@ -351,6 +352,7 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	int ret;
 
 	sess = get_sec_session_private_data(sec_sess);
+	sess->ipsec.dir = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 	lp = &sess->ipsec.lp;
 
 	sa = &lp->in_sa;
@@ -362,6 +364,7 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	}
 
 	memset(sa, 0, sizeof(struct otx2_ipsec_po_in_sa));
+	sa->replay_win_sz = ipsec->replay_win_sz;
 
 	ret = ipsec_po_sa_ctl_set(ipsec, crypto_xform, ctl);
 	if (ret)
@@ -413,6 +416,24 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 
 	set_session_misc_attributes(lp, crypto_xform,
 				    auth_xform, cipher_xform);
+
+	if (sa->replay_win_sz) {
+		if (sa->replay_win_sz > OTX2_IPSEC_MAX_REPLAY_WIN_SZ) {
+			otx2_err("Replay window size is not supported");
+			return -ENOTSUP;
+		}
+		sa->replay = rte_zmalloc(NULL, sizeof(struct otx2_ipsec_replay),
+				0);
+		if (sa->replay == NULL)
+			return -ENOMEM;
+
+		/* Set window bottom to 1, base and top to size of window */
+		sa->replay->winb = 1;
+		sa->replay->wint = sa->replay_win_sz;
+		sa->replay->base = sa->replay_win_sz;
+		sa->esn_low = 0;
+		sa->esn_hi = 0;
+	}
 
 	return otx2_cpt_enq_sa_write(lp, crypto_dev->data->queue_pairs[0],
 				     OTX2_IPSEC_PO_WRITE_IPSEC_INB);

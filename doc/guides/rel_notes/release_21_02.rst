@@ -76,6 +76,11 @@ New Features
 
   * Added inner UDP/IPv4 support for VXLAN IPv4 GSO.
 
+* **Updated the OCTEON TX2 crypto PMD.**
+
+  * Updated the OCTEON TX2 crypto PMD lookaside protocol offload for IPsec with
+    ESN and anti-replay support.
+
 
 Removed Items
 -------------

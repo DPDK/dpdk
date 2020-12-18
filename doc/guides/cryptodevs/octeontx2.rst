@@ -175,4 +175,6 @@ Features supported
 * IPv6
 * ESP
 * Tunnel mode
+* ESN
+* Anti-replay
 * AES-128/192/256-GCM

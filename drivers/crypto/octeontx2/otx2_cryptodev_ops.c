@@ -14,6 +14,7 @@
 #include "otx2_cryptodev_mbox.h"
 #include "otx2_cryptodev_ops.h"
 #include "otx2_cryptodev_ops_helper.h"
+#include "otx2_ipsec_anti_replay.h"
 #include "otx2_ipsec_po_ops.h"
 #include "otx2_mbox.h"
 #include "otx2_sec_idev.h"
@@ -650,21 +651,55 @@ static __rte_always_inline int __rte_hot
 otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 		     struct pending_queue *pend_q)
 {
+	uint32_t winsz, esn_low = 0, esn_hi = 0, seql = 0, seqh = 0;
+	struct rte_mbuf *m_src = op->sym->m_src;
 	struct otx2_sec_session_ipsec_lp *sess;
 	struct otx2_ipsec_po_sa_ctl *ctl_wrd;
+	struct otx2_ipsec_po_in_sa *sa;
 	struct otx2_sec_session *priv;
 	struct cpt_request_info *req;
+	uint64_t seq_in_sa, seq = 0;
+	uint8_t esn;
 	int ret;
 
 	priv = get_sec_session_private_data(op->sym->sec_session);
 	sess = &priv->ipsec.lp;
+	sa = &sess->in_sa;
 
-	ctl_wrd = &sess->in_sa.ctl;
+	ctl_wrd = &sa->ctl;
+	esn = ctl_wrd->esn_en;
+	winsz = sa->replay_win_sz;
 
 	if (ctl_wrd->direction == OTX2_IPSEC_PO_SA_DIRECTION_OUTBOUND)
 		ret = process_outb_sa(op, sess, &qp->meta_info, (void **)&req);
-	else
+	else {
+		if (winsz) {
+			esn_low = rte_be_to_cpu_32(sa->esn_low);
+			esn_hi = rte_be_to_cpu_32(sa->esn_hi);
+			seql = *rte_pktmbuf_mtod_offset(m_src, uint32_t *,
+				sizeof(struct rte_ipv4_hdr) + 4);
+			seql = rte_be_to_cpu_32(seql);
+
+			if (!esn)
+				seq = (uint64_t)seql;
+			else {
+				seqh = anti_replay_get_seqh(winsz, seql, esn_hi,
+						esn_low);
+				seq = ((uint64_t)seqh << 32) | seql;
+			}
+
+			if (unlikely(seq == 0))
+				return IPSEC_ANTI_REPLAY_FAILED;
+
+			ret = anti_replay_check(sa->replay, seq, winsz);
+			if (unlikely(ret)) {
+				otx2_err("Anti replay check failed");
+				return IPSEC_ANTI_REPLAY_FAILED;
+			}
+		}
+
 		ret = process_inb_sa(op, sess, &qp->meta_info, (void **)&req);
+	}
 
 	if (unlikely(ret)) {
 		otx2_err("Crypto req : op %p, ret 0x%x", op, ret);
@@ -672,6 +707,14 @@ otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 	}
 
 	ret = otx2_cpt_enqueue_req(qp, pend_q, req, sess->cpt_inst_w7);
+
+	if (winsz && esn) {
+		seq_in_sa = ((uint64_t)esn_hi << 32) | esn_low;
+		if (seq > seq_in_sa) {
+			sa->esn_low = rte_cpu_to_be_32(seql);
+			sa->esn_hi = rte_cpu_to_be_32(seqh);
+		}
+	}
 
 	return ret;
 }
