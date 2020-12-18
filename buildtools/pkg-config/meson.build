@@ -47,7 +47,7 @@ This is required for a number of static inline functions in the public headers.'
 	                  # if libbsd is not enabled, then this is blank
 	libraries_private: ['-Wl,--whole-archive'] +
 			dpdk_drivers + dpdk_static_libraries +
-			['-Wl,--no-whole-archive']
+			['-Wl,--no-whole-archive', '-Wl,--export-dynamic']
 )
 
 # For static linking with dependencies as shared libraries,

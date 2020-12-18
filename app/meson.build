@@ -25,6 +25,10 @@ apps = [
 lib_execinfo = cc.find_library('execinfo', required: false)
 
 default_cflags = machine_args + ['-DALLOW_EXPERIMENTAL_API']
+default_ldflags = []
+if get_option('default_library') == 'static'
+	default_ldflags += ['-Wl,--export-dynamic']
+endif
 
 foreach app:apps
 	build = true
@@ -32,6 +36,7 @@ foreach app:apps
 	sources = []
 	includes = []
 	cflags = default_cflags
+	ldflags = default_ldflags
 	objs = [] # other object files to link against, used e.g. for
 	          # instruction-set optimized versions of code
 
@@ -58,6 +63,7 @@ foreach app:apps
 		executable('dpdk-' + name,
 				sources,
 				c_args: cflags,
+				link_args: ldflags,
 				link_whole: link_libs,
 				dependencies: dep_objs,
 				install_rpath: join_paths(get_option('prefix'),
