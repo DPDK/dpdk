@@ -4853,6 +4853,109 @@ txgbe_e_tag_forwarding_en_dis(struct rte_eth_dev *dev, bool en)
 	return ret;
 }
 
+/* Add UDP tunneling port */
+static int
+txgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+			      struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int ret = 0;
+
+	if (udp_tunnel == NULL)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		if (udp_tunnel->udp_port == 0) {
+			PMD_DRV_LOG(ERR, "Add VxLAN port 0 is not allowed.");
+			ret = -EINVAL;
+			break;
+		}
+		wr32(hw, TXGBE_VXLANPORT, udp_tunnel->udp_port);
+		wr32(hw, TXGBE_VXLANPORTGPE, udp_tunnel->udp_port);
+		break;
+	case RTE_TUNNEL_TYPE_GENEVE:
+		if (udp_tunnel->udp_port == 0) {
+			PMD_DRV_LOG(ERR, "Add Geneve port 0 is not allowed.");
+			ret = -EINVAL;
+			break;
+		}
+		wr32(hw, TXGBE_GENEVEPORT, udp_tunnel->udp_port);
+		break;
+	case RTE_TUNNEL_TYPE_TEREDO:
+		if (udp_tunnel->udp_port == 0) {
+			PMD_DRV_LOG(ERR, "Add Teredo port 0 is not allowed.");
+			ret = -EINVAL;
+			break;
+		}
+		wr32(hw, TXGBE_TEREDOPORT, udp_tunnel->udp_port);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
+	}
+
+	txgbe_flush(hw);
+
+	return ret;
+}
+
+/* Remove UDP tunneling port */
+static int
+txgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+			      struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int ret = 0;
+	uint16_t cur_port;
+
+	if (udp_tunnel == NULL)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		cur_port = (uint16_t)rd32(hw, TXGBE_VXLANPORT);
+		if (cur_port != udp_tunnel->udp_port) {
+			PMD_DRV_LOG(ERR, "Port %u does not exist.",
+					udp_tunnel->udp_port);
+			ret = -EINVAL;
+			break;
+		}
+		wr32(hw, TXGBE_VXLANPORT, 0);
+		wr32(hw, TXGBE_VXLANPORTGPE, 0);
+		break;
+	case RTE_TUNNEL_TYPE_GENEVE:
+		cur_port = (uint16_t)rd32(hw, TXGBE_GENEVEPORT);
+		if (cur_port != udp_tunnel->udp_port) {
+			PMD_DRV_LOG(ERR, "Port %u does not exist.",
+					udp_tunnel->udp_port);
+			ret = -EINVAL;
+			break;
+		}
+		wr32(hw, TXGBE_GENEVEPORT, 0);
+		break;
+	case RTE_TUNNEL_TYPE_TEREDO:
+		cur_port = (uint16_t)rd32(hw, TXGBE_TEREDOPORT);
+		if (cur_port != udp_tunnel->udp_port) {
+			PMD_DRV_LOG(ERR, "Port %u does not exist.",
+					udp_tunnel->udp_port);
+			ret = -EINVAL;
+			break;
+		}
+		wr32(hw, TXGBE_TEREDOPORT, 0);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
+	}
+
+	txgbe_flush(hw);
+
+	return ret;
+}
+
 /* restore n-tuple filter */
 static inline void
 txgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
@@ -5094,6 +5197,8 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.timesync_adjust_time       = txgbe_timesync_adjust_time,
 	.timesync_read_time         = txgbe_timesync_read_time,
 	.timesync_write_time        = txgbe_timesync_write_time,
+	.udp_tunnel_port_add        = txgbe_dev_udp_tunnel_port_add,
+	.udp_tunnel_port_del        = txgbe_dev_udp_tunnel_port_del,
 	.tx_done_cleanup            = txgbe_dev_tx_done_cleanup,
 };
 
