@@ -167,6 +167,8 @@ struct txgbe_filter_info {
 	/* Bit mask for every used 5tuple filter */
 	uint32_t fivetuple_mask[TXGBE_5TUPLE_ARRAY_SIZE];
 	struct txgbe_5tuple_filter_list fivetuple_list;
+	/* store the SYN filter info */
+	uint32_t syn_info;
 };
 
 /* The configuration of bandwidth */
@@ -322,6 +324,9 @@ int txgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
 			bool add);
 int txgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ethertype_filter *filter,
+			bool add);
+int txgbe_syn_filter_set(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter,
 			bool add);
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,

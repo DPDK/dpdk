@@ -3511,6 +3511,44 @@ txgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 	return 0;
 }
 
+int
+txgbe_syn_filter_set(struct rte_eth_dev *dev,
+			struct rte_eth_syn_filter *filter,
+			bool add)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	uint32_t syn_info;
+	uint32_t synqf;
+
+	if (filter->queue >= TXGBE_MAX_RX_QUEUE_NUM)
+		return -EINVAL;
+
+	syn_info = filter_info->syn_info;
+
+	if (add) {
+		if (syn_info & TXGBE_SYNCLS_ENA)
+			return -EINVAL;
+		synqf = (uint32_t)TXGBE_SYNCLS_QPID(filter->queue);
+		synqf |= TXGBE_SYNCLS_ENA;
+
+		if (filter->hig_pri)
+			synqf |= TXGBE_SYNCLS_HIPRIO;
+		else
+			synqf &= ~TXGBE_SYNCLS_HIPRIO;
+	} else {
+		synqf = rd32(hw, TXGBE_SYNCLS);
+		if (!(syn_info & TXGBE_SYNCLS_ENA))
+			return -ENOENT;
+		synqf &= ~(TXGBE_SYNCLS_QPID_MASK | TXGBE_SYNCLS_ENA);
+	}
+
+	filter_info->syn_info = synqf;
+	wr32(hw, TXGBE_SYNCLS, synqf);
+	txgbe_flush(hw);
+	return 0;
+}
+
 static inline enum txgbe_5tuple_protocol
 convert_protocol_type(uint8_t protocol_value)
 {
@@ -4445,11 +4483,28 @@ txgbe_ethertype_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore SYN filter */
+static inline void
+txgbe_syn_filter_restore(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	uint32_t synqf;
+
+	synqf = filter_info->syn_info;
+
+	if (synqf & TXGBE_SYNCLS_ENA) {
+		wr32(hw, TXGBE_SYNCLS, synqf);
+		txgbe_flush(hw);
+	}
+}
+
 static int
 txgbe_filter_restore(struct rte_eth_dev *dev)
 {
 	txgbe_ntuple_filter_restore(dev);
 	txgbe_ethertype_filter_restore(dev);
+	txgbe_syn_filter_restore(dev);
 
 	return 0;
 }
