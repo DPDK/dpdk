@@ -33,6 +33,9 @@ static int txgbe_node_capabilities_get(struct rte_eth_dev *dev,
 				       uint32_t node_id,
 				       struct rte_tm_node_capabilities *cap,
 				       struct rte_tm_error *error);
+static int txgbe_hierarchy_commit(struct rte_eth_dev *dev,
+				  int clear_on_fail,
+				  struct rte_tm_error *error);
 
 const struct rte_tm_ops txgbe_tm_ops = {
 	.capabilities_get = txgbe_tm_capabilities_get,
@@ -43,6 +46,7 @@ const struct rte_tm_ops txgbe_tm_ops = {
 	.node_type_get = txgbe_node_type_get,
 	.level_capabilities_get = txgbe_level_capabilities_get,
 	.node_capabilities_get = txgbe_node_capabilities_get,
+	.hierarchy_commit = txgbe_hierarchy_commit,
 };
 
 int
@@ -950,3 +954,69 @@ txgbe_node_capabilities_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+txgbe_hierarchy_commit(struct rte_eth_dev *dev,
+		       int clear_on_fail,
+		       struct rte_tm_error *error)
+{
+	struct txgbe_tm_conf *tm_conf = TXGBE_DEV_TM_CONF(dev);
+	struct txgbe_tm_node *tm_node;
+	uint64_t bw;
+	int ret;
+
+	if (!error)
+		return -EINVAL;
+
+	/* check the setting */
+	if (!tm_conf->root)
+		goto done;
+
+	/* not support port max bandwidth yet */
+	if (tm_conf->root->shaper_profile &&
+	    tm_conf->root->shaper_profile->profile.peak.rate) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+		error->message = "no port max bandwidth";
+		goto fail_clear;
+	}
+
+	/* HW not support TC max bandwidth */
+	TAILQ_FOREACH(tm_node, &tm_conf->tc_list, node) {
+		if (tm_node->shaper_profile &&
+		    tm_node->shaper_profile->profile.peak.rate) {
+			error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+			error->message = "no TC max bandwidth";
+			goto fail_clear;
+		}
+	}
+
+	/* queue max bandwidth */
+	TAILQ_FOREACH(tm_node, &tm_conf->queue_list, node) {
+		if (tm_node->shaper_profile)
+			bw = tm_node->shaper_profile->profile.peak.rate;
+		else
+			bw = 0;
+		if (bw) {
+			/* interpret Bps to Mbps */
+			bw = bw * 8 / 1000 / 1000;
+			ret = txgbe_set_queue_rate_limit(dev, tm_node->no, bw);
+			if (ret) {
+				error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+				error->message =
+					"failed to set queue max bandwidth";
+				goto fail_clear;
+			}
+		}
+	}
+
+done:
+	tm_conf->committed = true;
+	return 0;
+
+fail_clear:
+	/* clear all the traffic manager configuration */
+	if (clear_on_fail) {
+		txgbe_tm_conf_uninit(dev);
+		txgbe_tm_conf_init(dev);
+	}
+	return -EINVAL;
+}
