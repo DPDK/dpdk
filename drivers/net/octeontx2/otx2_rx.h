@@ -260,7 +260,7 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	data = rte_pktmbuf_mtod(m, char *);
 
 	if (sa->replay_win_sz) {
-		if (cpt_ipsec_antireplay_check(sa, data) < 0)
+		if (cpt_ipsec_ip_antireplay_check(sa, data) < 0)
 			return PKT_RX_SEC_OFFLOAD | PKT_RX_SEC_OFFLOAD_FAILED;
 	}
 

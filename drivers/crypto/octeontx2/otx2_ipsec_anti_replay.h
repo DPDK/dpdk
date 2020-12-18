@@ -16,11 +16,10 @@
 #define IPSEC_ANTI_REPLAY_FAILED	(-1)
 
 static inline int
-anti_replay_check(uint64_t seq, struct otx2_ipsec_fp_in_sa *sa)
+anti_replay_check(struct otx2_ipsec_replay *replay, uint64_t seq,
+			uint64_t winsz)
 {
-	struct otx2_ipsec_replay *replay = sa->replay;
 	uint64_t *window = &replay->window[0];
-	uint64_t winsz = sa->replay_win_sz;
 	uint64_t ex_winsz = winsz + WORD_SIZE;
 	uint64_t winwords = ex_winsz >> WORD_SHIFT;
 	uint64_t base = replay->base;
@@ -166,8 +165,8 @@ winupdate:
 	return 0;
 }
 
-static int
-cpt_ipsec_antireplay_check(struct otx2_ipsec_fp_in_sa *sa, char *data)
+static inline int
+cpt_ipsec_ip_antireplay_check(struct otx2_ipsec_fp_in_sa *sa, char *data)
 {
 	uint64_t seq_in_sa;
 	uint32_t seqh = 0;
@@ -192,7 +191,7 @@ cpt_ipsec_antireplay_check(struct otx2_ipsec_fp_in_sa *sa, char *data)
 		return IPSEC_ANTI_REPLAY_FAILED;
 
 	rte_spinlock_lock(&sa->replay->lock);
-	ret = anti_replay_check(seq, sa);
+	ret = anti_replay_check(sa->replay, seq, sa->replay_win_sz);
 	if (esn && (ret == 0)) {
 		seq_in_sa = ((uint64_t)rte_be_to_cpu_32(sa->esn_hi) << 32) |
 				rte_be_to_cpu_32(sa->esn_low);
