@@ -88,6 +88,8 @@ static const struct reg_info *txgbe_regs_others[] = {
 				txgbe_regs_diagnostic,
 				NULL};
 
+static int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
+static int txgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
 static int txgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev);
 static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev);
 static int  txgbe_dev_set_link_up(struct rte_eth_dev *dev);
@@ -690,6 +692,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* initialize 5tuple filter list */
 	TAILQ_INIT(&filter_info->fivetuple_list);
 
+	/* initialize flow director filter list & hash */
+	txgbe_fdir_filter_init(eth_dev);
+
 	/* initialize l2 tunnel filter list & hash */
 	txgbe_l2_tn_filter_init(eth_dev);
 
@@ -729,6 +734,26 @@ static int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int txgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(eth_dev);
+	struct txgbe_fdir_filter *fdir_filter;
+
+	if (fdir_info->hash_map)
+		rte_free(fdir_info->hash_map);
+	if (fdir_info->hash_handle)
+		rte_hash_free(fdir_info->hash_handle);
+
+	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
+		TAILQ_REMOVE(&fdir_info->fdir_list,
+			     fdir_filter,
+			     entries);
+		rte_free(fdir_filter);
+	}
+
+	return 0;
+}
+
 static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(eth_dev);
@@ -745,6 +770,41 @@ static int txgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev)
 			     entries);
 		rte_free(l2_tn_filter);
 	}
+
+	return 0;
+}
+
+static int txgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
+{
+	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(eth_dev);
+	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	struct rte_hash_parameters fdir_hash_params = {
+		.name = fdir_hash_name,
+		.entries = TXGBE_MAX_FDIR_FILTER_NUM,
+		.key_len = sizeof(struct txgbe_atr_input),
+		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	TAILQ_INIT(&fdir_info->fdir_list);
+	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
+		 "fdir_%s", TDEV_NAME(eth_dev));
+	fdir_info->hash_handle = rte_hash_create(&fdir_hash_params);
+	if (!fdir_info->hash_handle) {
+		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
+		return -EINVAL;
+	}
+	fdir_info->hash_map = rte_zmalloc("txgbe",
+					  sizeof(struct txgbe_fdir_filter *) *
+					  TXGBE_MAX_FDIR_FILTER_NUM,
+					  0);
+	if (!fdir_info->hash_map) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate memory for fdir hash map!");
+		return -ENOMEM;
+	}
+	fdir_info->mask_added = FALSE;
 
 	return 0;
 }
@@ -1865,6 +1925,9 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(dev->data->hash_mac_addrs);
 	dev->data->hash_mac_addrs = NULL;
+
+	/* remove all the fdir filters & hash */
+	txgbe_fdir_filter_uninit(dev);
 
 	/* remove all the L2 tunnel filters & hash */
 	txgbe_l2_tn_filter_uninit(dev);

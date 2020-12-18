@@ -67,6 +67,35 @@ enum {
 
 #define TXGBE_ATR_HASH_MASK			0x7fff
 
+/* Flow Director ATR input struct. */
+struct txgbe_atr_input {
+	/*
+	 * Byte layout in order, all values with MSB first:
+	 *
+	 * vm_pool	- 1 byte
+	 * flow_type	- 1 byte
+	 * vlan_id	- 2 bytes
+	 * src_ip	- 16 bytes
+	 * inner_mac	- 6 bytes
+	 * cloud_mode	- 2 bytes
+	 * tni_vni	- 4 bytes
+	 * dst_ip	- 16 bytes
+	 * src_port	- 2 bytes
+	 * dst_port	- 2 bytes
+	 * flex_bytes	- 2 bytes
+	 * bkt_hash	- 2 bytes
+	 */
+	u8 vm_pool;
+	u8 flow_type;
+	__be16 pkt_type;
+	__be32 dst_ip[4];
+	__be32 src_ip[4];
+	__be16 src_port;
+	__be16 dst_port;
+	__be16 flex_bytes;
+	__be16 bkt_hash;
+};
+
 enum txgbe_eeprom_type {
 	txgbe_eeprom_unknown = 0,
 	txgbe_eeprom_spi,

@@ -61,7 +61,54 @@
 #define TXGBE_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
 #define TXGBE_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
 
+#define TXGBE_MAX_FDIR_FILTER_NUM       (1024 * 32)
 #define TXGBE_MAX_L2_TN_FILTER_NUM      128
+
+/*
+ * Information about the fdir mode.
+ */
+struct txgbe_hw_fdir_mask {
+	uint16_t vlan_tci_mask;
+	uint32_t src_ipv4_mask;
+	uint32_t dst_ipv4_mask;
+	uint16_t src_ipv6_mask;
+	uint16_t dst_ipv6_mask;
+	uint16_t src_port_mask;
+	uint16_t dst_port_mask;
+	uint16_t flex_bytes_mask;
+	uint8_t  mac_addr_byte_mask;
+	uint32_t tunnel_id_mask;
+	uint8_t  tunnel_type_mask;
+};
+
+struct txgbe_fdir_filter {
+	TAILQ_ENTRY(txgbe_fdir_filter) entries;
+	struct txgbe_atr_input input; /* key of fdir filter*/
+	uint32_t fdirflags; /* drop or forward */
+	uint32_t fdirhash; /* hash value for fdir */
+	uint8_t queue; /* assigned rx queue */
+};
+
+/* list of fdir filters */
+TAILQ_HEAD(txgbe_fdir_filter_list, txgbe_fdir_filter);
+
+struct txgbe_hw_fdir_info {
+	struct txgbe_hw_fdir_mask mask;
+	uint8_t     flex_bytes_offset;
+	uint16_t    collision;
+	uint16_t    free;
+	uint16_t    maxhash;
+	uint8_t     maxlen;
+	uint64_t    add;
+	uint64_t    remove;
+	uint64_t    f_add;
+	uint64_t    f_remove;
+	struct txgbe_fdir_filter_list fdir_list; /* filter list*/
+	/* store the pointers of the filters, index is the hash value. */
+	struct txgbe_fdir_filter **hash_map;
+	struct rte_hash *hash_handle; /* cuckoo hash handler */
+	bool mask_added; /* If already got mask from consistent filter */
+};
 
 /* structure for interrupt relative data */
 struct txgbe_interrupt {
@@ -208,6 +255,7 @@ struct txgbe_bw_conf {
 struct txgbe_adapter {
 	struct txgbe_hw             hw;
 	struct txgbe_hw_stats       stats;
+	struct txgbe_hw_fdir_info   fdir;
 	struct txgbe_interrupt      intr;
 	struct txgbe_stat_mappings  stat_mappings;
 	struct txgbe_vfta           shadow_vfta;
@@ -239,6 +287,9 @@ struct txgbe_adapter {
 
 #define TXGBE_DEV_INTR(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->intr)
+
+#define TXGBE_DEV_FDIR(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->fdir)
 
 #define TXGBE_DEV_STAT_MAPPINGS(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->stat_mappings)
