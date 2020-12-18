@@ -15,6 +15,7 @@
 #define TXGBE_FRAME_SIZE_DFT	(1518) /* Default frame size, +FCS */
 #define TXGBE_NUM_POOL		(64)
 #define TXGBE_PBTXSIZE_MAX	0x00028000 /* 160KB Packet Buffer */
+#define TXGBE_MAX_FTQF_FILTERS	128
 #define TXGBE_TXPKT_SIZE_MAX	0xA /* Max Tx Packet size */
 #define TXGBE_MAX_UP		8
 #define TXGBE_MAX_QP		(128)

@@ -113,6 +113,36 @@ struct txgbe_vf_info {
 	uint16_t mac_count;
 };
 
+TAILQ_HEAD(txgbe_5tuple_filter_list, txgbe_5tuple_filter);
+
+struct txgbe_5tuple_filter_info {
+	uint32_t dst_ip;
+	uint32_t src_ip;
+	uint16_t dst_port;
+	uint16_t src_port;
+	enum txgbe_5tuple_protocol proto;        /* l4 protocol. */
+	uint8_t priority;        /* seven levels (001b-111b), 111b is highest,
+				  * used when more than one filter matches.
+				  */
+	uint8_t dst_ip_mask:1,   /* if mask is 1b, do not compare dst ip. */
+		src_ip_mask:1,   /* if mask is 1b, do not compare src ip. */
+		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
+		src_port_mask:1, /* if mask is 1b, do not compare src port. */
+		proto_mask:1;    /* if mask is 1b, do not compare protocol. */
+};
+
+/* 5tuple filter structure */
+struct txgbe_5tuple_filter {
+	TAILQ_ENTRY(txgbe_5tuple_filter) entries;
+	uint16_t index;       /* the index of 5tuple filter */
+	struct txgbe_5tuple_filter_info filter_info;
+	uint16_t queue;       /* rx queue assigned to */
+};
+
+#define TXGBE_5TUPLE_ARRAY_SIZE \
+	(RTE_ALIGN(TXGBE_MAX_FTQF_FILTERS, (sizeof(uint32_t) * NBBY)) / \
+	 (sizeof(uint32_t) * NBBY))
+
 struct txgbe_ethertype_filter {
 	uint16_t ethertype;
 	uint32_t etqf;
@@ -131,6 +161,9 @@ struct txgbe_filter_info {
 	uint8_t ethertype_mask;  /* Bit mask for every used ethertype filter */
 	/* store used ethertype filters*/
 	struct txgbe_ethertype_filter ethertype_filters[TXGBE_ETF_ID_MAX];
+	/* Bit mask for every used 5tuple filter */
+	uint32_t fivetuple_mask[TXGBE_5TUPLE_ARRAY_SIZE];
+	struct txgbe_5tuple_filter_list fivetuple_list;
 };
 
 /* The configuration of bandwidth */

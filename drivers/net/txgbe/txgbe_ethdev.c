@@ -470,6 +470,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(eth_dev);
 	struct txgbe_hwstrip *hwstrip = TXGBE_DEV_HWSTRIP(eth_dev);
 	struct txgbe_dcb_config *dcb_config = TXGBE_DEV_DCB_CONFIG(eth_dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(eth_dev);
 	struct txgbe_bw_conf *bw_conf = TXGBE_DEV_BW_CONF(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	const struct rte_memzone *mz;
@@ -677,6 +678,13 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* enable support intr */
 	txgbe_enable_intr(eth_dev);
 
+	/* initialize filter info */
+	memset(filter_info, 0,
+	       sizeof(struct txgbe_filter_info));
+
+	/* initialize 5tuple filter list */
+	TAILQ_INIT(&filter_info->fivetuple_list);
+
 	/* initialize bandwidth configuration info */
 	memset(bw_conf, 0, sizeof(struct txgbe_bw_conf));
 
@@ -692,6 +700,23 @@ eth_txgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	txgbe_dev_close(eth_dev);
+
+	return 0;
+}
+
+static int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(eth_dev);
+	struct txgbe_5tuple_filter *p_5tuple;
+
+	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list))) {
+		TAILQ_REMOVE(&filter_info->fivetuple_list,
+			     p_5tuple,
+			     entries);
+		rte_free(p_5tuple);
+	}
+	memset(filter_info->fivetuple_mask, 0,
+	       sizeof(uint32_t) * TXGBE_5TUPLE_ARRAY_SIZE);
 
 	return 0;
 }
@@ -1773,6 +1798,9 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(dev->data->hash_mac_addrs);
 	dev->data->hash_mac_addrs = NULL;
+
+	/* Remove all ntuple filters of the device */
+	txgbe_ntuple_filter_uninit(dev);
 
 	return ret;
 }
