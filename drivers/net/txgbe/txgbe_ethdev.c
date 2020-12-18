@@ -112,6 +112,7 @@ static void txgbe_dev_interrupt_delayed_handler(void *param);
 static void txgbe_configure_msix(struct rte_eth_dev *dev);
 
 static int txgbe_filter_restore(struct rte_eth_dev *dev);
+static void txgbe_l2_tunnel_conf(struct rte_eth_dev *dev);
 
 #define TXGBE_SET_HWSTRIP(h, q) do {\
 		uint32_t idx = (q) / (sizeof((h)->bitmap[0]) * NBBY); \
@@ -1675,6 +1676,7 @@ skip_link_setup:
 
 	/* resume enabled intr since hw reset */
 	txgbe_enable_intr(dev);
+	txgbe_l2_tunnel_conf(dev);
 	txgbe_filter_restore(dev);
 
 	/*
@@ -4517,6 +4519,52 @@ txgbe_dev_get_dcb_info(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* Update e-tag ether type */
+static int
+txgbe_update_e_tag_eth_type(struct txgbe_hw *hw,
+			    uint16_t ether_type)
+{
+	uint32_t etag_etype;
+
+	etag_etype = rd32(hw, TXGBE_EXTAG);
+	etag_etype &= ~TXGBE_EXTAG_ETAG_MASK;
+	etag_etype |= ether_type;
+	wr32(hw, TXGBE_EXTAG, etag_etype);
+	txgbe_flush(hw);
+
+	return 0;
+}
+
+/* Enable e-tag tunnel */
+static int
+txgbe_e_tag_enable(struct txgbe_hw *hw)
+{
+	uint32_t etag_etype;
+
+	etag_etype = rd32(hw, TXGBE_PORTCTL);
+	etag_etype |= TXGBE_PORTCTL_ETAG;
+	wr32(hw, TXGBE_PORTCTL, etag_etype);
+	txgbe_flush(hw);
+
+	return 0;
+}
+
+static int
+txgbe_e_tag_forwarding_en_dis(struct rte_eth_dev *dev, bool en)
+{
+	int ret = 0;
+	uint32_t ctrl;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	ctrl = rd32(hw, TXGBE_POOLCTL);
+	ctrl &= ~TXGBE_POOLCTL_MODE_MASK;
+	if (en)
+		ctrl |= TXGBE_PSRPOOL_MODE_ETAG;
+	wr32(hw, TXGBE_POOLCTL, ctrl);
+
+	return ret;
+}
+
 /* restore n-tuple filter */
 static inline void
 txgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
@@ -4572,6 +4620,21 @@ txgbe_filter_restore(struct rte_eth_dev *dev)
 	txgbe_syn_filter_restore(dev);
 
 	return 0;
+}
+
+static void
+txgbe_l2_tunnel_conf(struct rte_eth_dev *dev)
+{
+	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	if (l2_tn_info->e_tag_en)
+		(void)txgbe_e_tag_enable(hw);
+
+	if (l2_tn_info->e_tag_fwd_en)
+		(void)txgbe_e_tag_forwarding_en_dis(dev, 1);
+
+	(void)txgbe_update_e_tag_eth_type(hw, l2_tn_info->e_tag_ether_type);
 }
 
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
