@@ -293,6 +293,10 @@ struct txgbe_rx_queue {
 	uint16_t rx_nb_avail; /**< nr of staged pkts ready to ret to app */
 	uint16_t rx_next_avail; /**< idx of next staged pkt to ret to app */
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
+#ifdef RTE_LIB_SECURITY
+	uint8_t            using_ipsec;
+	/**< indicates that IPsec RX feature is in use */
+#endif
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id; /**< RX queue index. */
 	uint16_t            reg_idx;  /**< RX queue register index. */
@@ -336,6 +340,11 @@ union txgbe_tx_offload {
 		uint64_t outer_tun_len:8; /**< Outer TUN (Tunnel) Hdr Length. */
 		uint64_t outer_l2_len:8; /**< Outer L2 (MAC) Hdr Length. */
 		uint64_t outer_l3_len:16; /**< Outer L3 (IP) Hdr Length. */
+#ifdef RTE_LIB_SECURITY
+		/* inline ipsec related*/
+		uint64_t sa_idx:8;	/**< TX SA database entry index */
+		uint64_t sec_pad_len:4;	/**< padding length */
+#endif
 	};
 };
 
@@ -388,6 +397,10 @@ struct txgbe_tx_queue {
 	struct txgbe_ctx_info ctx_cache[TXGBE_CTX_NUM];
 	const struct txgbe_txq_ops *ops;       /**< txq ops */
 	uint8_t             tx_deferred_start; /**< not in global dev start. */
+#ifdef RTE_LIB_SECURITY
+	uint8_t		    using_ipsec;
+	/**< indicates that IPsec TX feature is in use */
+#endif
 };
 
 struct txgbe_txq_ops {

@@ -89,4 +89,6 @@ struct txgbe_ipsec {
 	struct txgbe_crypto_tx_sa_table tx_sa_tbl[IPSEC_MAX_SA_COUNT];
 };
 
+int txgbe_crypto_enable_ipsec(struct rte_eth_dev *dev);
+
 #endif /*TXGBE_IPSEC_H_*/
