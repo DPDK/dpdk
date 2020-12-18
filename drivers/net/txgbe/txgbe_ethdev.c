@@ -1944,6 +1944,9 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 	/* Remove all ntuple filters of the device */
 	txgbe_ntuple_filter_uninit(dev);
 
+	/* clear all the filters list */
+	txgbe_filterlist_flush();
+
 	return ret;
 }
 
@@ -4950,6 +4953,73 @@ txgbe_l2_tunnel_conf(struct rte_eth_dev *dev)
 		(void)txgbe_e_tag_forwarding_en_dis(dev, 1);
 
 	(void)txgbe_update_e_tag_eth_type(hw, l2_tn_info->e_tag_ether_type);
+}
+
+/* remove all the n-tuple filters */
+void
+txgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev)
+{
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	struct txgbe_5tuple_filter *p_5tuple;
+
+	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list)))
+		txgbe_remove_5tuple_filter(dev, p_5tuple);
+}
+
+/* remove all the ether type filters */
+void
+txgbe_clear_all_ethertype_filter(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+	int i;
+
+	for (i = 0; i < TXGBE_ETF_ID_MAX; i++) {
+		if (filter_info->ethertype_mask & (1 << i) &&
+		    !filter_info->ethertype_filters[i].conf) {
+			(void)txgbe_ethertype_filter_remove(filter_info,
+							    (uint8_t)i);
+			wr32(hw, TXGBE_ETFLT(i), 0);
+			wr32(hw, TXGBE_ETCLS(i), 0);
+			txgbe_flush(hw);
+		}
+	}
+}
+
+/* remove the SYN filter */
+void
+txgbe_clear_syn_filter(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+
+	if (filter_info->syn_info & TXGBE_SYNCLS_ENA) {
+		filter_info->syn_info = 0;
+
+		wr32(hw, TXGBE_SYNCLS, 0);
+		txgbe_flush(hw);
+	}
+}
+
+/* remove all the L2 tunnel filters */
+int
+txgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev)
+{
+	struct txgbe_l2_tn_info *l2_tn_info = TXGBE_DEV_L2_TN(dev);
+	struct txgbe_l2_tn_filter *l2_tn_filter;
+	struct txgbe_l2_tunnel_conf l2_tn_conf;
+	int ret = 0;
+
+	while ((l2_tn_filter = TAILQ_FIRST(&l2_tn_info->l2_tn_list))) {
+		l2_tn_conf.l2_tunnel_type = l2_tn_filter->key.l2_tn_type;
+		l2_tn_conf.tunnel_id      = l2_tn_filter->key.tn_id;
+		l2_tn_conf.pool           = l2_tn_filter->pool;
+		ret = txgbe_dev_l2_tunnel_filter_del(dev, &l2_tn_conf);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
 }
 
 static const struct eth_dev_ops txgbe_eth_dev_ops = {

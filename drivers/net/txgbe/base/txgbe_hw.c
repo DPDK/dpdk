@@ -3650,6 +3650,93 @@ mac_reset_top:
 }
 
 /**
+ * txgbe_fdir_check_cmd_complete - poll to check whether FDIRPICMD is complete
+ * @hw: pointer to hardware structure
+ * @fdircmd: current value of FDIRCMD register
+ */
+static s32 txgbe_fdir_check_cmd_complete(struct txgbe_hw *hw, u32 *fdircmd)
+{
+	int i;
+
+	for (i = 0; i < TXGBE_FDIRCMD_CMD_POLL; i++) {
+		*fdircmd = rd32(hw, TXGBE_FDIRPICMD);
+		if (!(*fdircmd & TXGBE_FDIRPICMD_OP_MASK))
+			return 0;
+		usec_delay(10);
+	}
+
+	return TXGBE_ERR_FDIR_CMD_INCOMPLETE;
+}
+
+/**
+ *  txgbe_reinit_fdir_tables - Reinitialize Flow Director tables.
+ *  @hw: pointer to hardware structure
+ **/
+s32 txgbe_reinit_fdir_tables(struct txgbe_hw *hw)
+{
+	s32 err;
+	int i;
+	u32 fdirctrl = rd32(hw, TXGBE_FDIRCTL);
+	u32 fdircmd;
+	fdirctrl &= ~TXGBE_FDIRCTL_INITDONE;
+
+	DEBUGFUNC("txgbe_reinit_fdir_tables");
+
+	/*
+	 * Before starting reinitialization process,
+	 * FDIRPICMD.OP must be zero.
+	 */
+	err = txgbe_fdir_check_cmd_complete(hw, &fdircmd);
+	if (err) {
+		DEBUGOUT("Flow Director previous command did not complete, aborting table re-initialization.\n");
+		return err;
+	}
+
+	wr32(hw, TXGBE_FDIRFREE, 0);
+	txgbe_flush(hw);
+	/*
+	 * adapters flow director init flow cannot be restarted,
+	 * Workaround silicon errata by performing the following steps
+	 * before re-writing the FDIRCTL control register with the same value.
+	 * - write 1 to bit 8 of FDIRPICMD register &
+	 * - write 0 to bit 8 of FDIRPICMD register
+	 */
+	wr32m(hw, TXGBE_FDIRPICMD, TXGBE_FDIRPICMD_CLR, TXGBE_FDIRPICMD_CLR);
+	txgbe_flush(hw);
+	wr32m(hw, TXGBE_FDIRPICMD, TXGBE_FDIRPICMD_CLR, 0);
+	txgbe_flush(hw);
+	/*
+	 * Clear FDIR Hash register to clear any leftover hashes
+	 * waiting to be programmed.
+	 */
+	wr32(hw, TXGBE_FDIRPIHASH, 0x00);
+	txgbe_flush(hw);
+
+	wr32(hw, TXGBE_FDIRCTL, fdirctrl);
+	txgbe_flush(hw);
+
+	/* Poll init-done after we write FDIRCTL register */
+	for (i = 0; i < TXGBE_FDIR_INIT_DONE_POLL; i++) {
+		if (rd32m(hw, TXGBE_FDIRCTL, TXGBE_FDIRCTL_INITDONE))
+			break;
+		msec_delay(1);
+	}
+	if (i >= TXGBE_FDIR_INIT_DONE_POLL) {
+		DEBUGOUT("Flow Director Signature poll time exceeded!\n");
+		return TXGBE_ERR_FDIR_REINIT_FAILED;
+	}
+
+	/* Clear FDIR statistics registers (read to clear) */
+	rd32(hw, TXGBE_FDIRUSED);
+	rd32(hw, TXGBE_FDIRFAIL);
+	rd32(hw, TXGBE_FDIRMATCH);
+	rd32(hw, TXGBE_FDIRMISS);
+	rd32(hw, TXGBE_FDIRLEN);
+
+	return 0;
+}
+
+/**
  *  txgbe_start_hw_raptor - Prepare hardware for Tx/Rx
  *  @hw: pointer to hardware structure
  *

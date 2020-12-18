@@ -2537,6 +2537,16 @@ txgbe_parse_rss_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* remove the rss filter */
+static void
+txgbe_clear_rss_filter(struct rte_eth_dev *dev)
+{
+	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
+
+	if (filter_info->rss_info.conf.queue_num)
+		txgbe_config_rss_filter(dev, &filter_info->rss_info, FALSE);
+}
+
 void
 txgbe_filterlist_init(void)
 {
@@ -2547,6 +2557,68 @@ txgbe_filterlist_init(void)
 	TAILQ_INIT(&filter_l2_tunnel_list);
 	TAILQ_INIT(&filter_rss_list);
 	TAILQ_INIT(&txgbe_flow_list);
+}
+
+void
+txgbe_filterlist_flush(void)
+{
+	struct txgbe_ntuple_filter_ele *ntuple_filter_ptr;
+	struct txgbe_ethertype_filter_ele *ethertype_filter_ptr;
+	struct txgbe_eth_syn_filter_ele *syn_filter_ptr;
+	struct txgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
+	struct txgbe_fdir_rule_ele *fdir_rule_ptr;
+	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
+	struct txgbe_rss_conf_ele *rss_filter_ptr;
+
+	while ((ntuple_filter_ptr = TAILQ_FIRST(&filter_ntuple_list))) {
+		TAILQ_REMOVE(&filter_ntuple_list,
+				 ntuple_filter_ptr,
+				 entries);
+		rte_free(ntuple_filter_ptr);
+	}
+
+	while ((ethertype_filter_ptr = TAILQ_FIRST(&filter_ethertype_list))) {
+		TAILQ_REMOVE(&filter_ethertype_list,
+				 ethertype_filter_ptr,
+				 entries);
+		rte_free(ethertype_filter_ptr);
+	}
+
+	while ((syn_filter_ptr = TAILQ_FIRST(&filter_syn_list))) {
+		TAILQ_REMOVE(&filter_syn_list,
+				 syn_filter_ptr,
+				 entries);
+		rte_free(syn_filter_ptr);
+	}
+
+	while ((l2_tn_filter_ptr = TAILQ_FIRST(&filter_l2_tunnel_list))) {
+		TAILQ_REMOVE(&filter_l2_tunnel_list,
+				 l2_tn_filter_ptr,
+				 entries);
+		rte_free(l2_tn_filter_ptr);
+	}
+
+	while ((fdir_rule_ptr = TAILQ_FIRST(&filter_fdir_list))) {
+		TAILQ_REMOVE(&filter_fdir_list,
+				 fdir_rule_ptr,
+				 entries);
+		rte_free(fdir_rule_ptr);
+	}
+
+	while ((rss_filter_ptr = TAILQ_FIRST(&filter_rss_list))) {
+		TAILQ_REMOVE(&filter_rss_list,
+				 rss_filter_ptr,
+				 entries);
+		rte_free(rss_filter_ptr);
+	}
+
+	while ((txgbe_flow_mem_ptr = TAILQ_FIRST(&txgbe_flow_list))) {
+		TAILQ_REMOVE(&txgbe_flow_list,
+				 txgbe_flow_mem_ptr,
+				 entries);
+		rte_free(txgbe_flow_mem_ptr->flow);
+		rte_free(txgbe_flow_mem_ptr);
+	}
 }
 
 /**
@@ -2996,7 +3068,29 @@ txgbe_flow_flush(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 
-	return ret;
+	txgbe_clear_all_ntuple_filter(dev);
+	txgbe_clear_all_ethertype_filter(dev);
+	txgbe_clear_syn_filter(dev);
+
+	ret = txgbe_clear_all_fdir_filter(dev);
+	if (ret < 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
+					NULL, "Failed to flush rule");
+		return ret;
+	}
+
+	ret = txgbe_clear_all_l2_tn_filter(dev);
+	if (ret < 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
+					NULL, "Failed to flush rule");
+		return ret;
+	}
+
+	txgbe_clear_rss_filter(dev);
+
+	txgbe_filterlist_flush();
+
+	return 0;
 }
 
 const struct rte_flow_ops txgbe_flow_ops = {

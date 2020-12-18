@@ -456,6 +456,7 @@ int
 txgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 			       struct txgbe_l2_tunnel_conf *l2_tunnel);
 void txgbe_filterlist_init(void);
+void txgbe_filterlist_flush(void);
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
@@ -489,8 +490,14 @@ int txgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 uint32_t txgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
 
 void txgbe_fdir_filter_restore(struct rte_eth_dev *dev);
+int txgbe_clear_all_fdir_filter(struct rte_eth_dev *dev);
 
 extern const struct rte_flow_ops txgbe_flow_ops;
+
+void txgbe_clear_all_ethertype_filter(struct rte_eth_dev *dev);
+void txgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev);
+void txgbe_clear_syn_filter(struct rte_eth_dev *dev);
+int txgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev);
 
 int txgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 			    uint16_t tx_rate, uint64_t q_msk);

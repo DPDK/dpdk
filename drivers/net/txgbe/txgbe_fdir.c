@@ -902,6 +902,27 @@ txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 	return err;
 }
 
+static int
+txgbe_fdir_flush(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_hw_fdir_info *info = TXGBE_DEV_FDIR(dev);
+	int ret;
+
+	ret = txgbe_reinit_fdir_tables(hw);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Failed to re-initialize FD table.");
+		return ret;
+	}
+
+	info->f_add = 0;
+	info->f_remove = 0;
+	info->add = 0;
+	info->remove = 0;
+
+	return ret;
+}
+
 /* restore flow director filter */
 void
 txgbe_fdir_filter_restore(struct rte_eth_dev *dev)
@@ -936,3 +957,29 @@ txgbe_fdir_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* remove all the flow director filters */
+int
+txgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(dev);
+	struct txgbe_fdir_filter *fdir_filter;
+	struct txgbe_fdir_filter *filter_flag;
+	int ret = 0;
+
+	/* flush flow director */
+	rte_hash_reset(fdir_info->hash_handle);
+	memset(fdir_info->hash_map, 0,
+	       sizeof(struct txgbe_fdir_filter *) * TXGBE_MAX_FDIR_FILTER_NUM);
+	filter_flag = TAILQ_FIRST(&fdir_info->fdir_list);
+	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
+		TAILQ_REMOVE(&fdir_info->fdir_list,
+			     fdir_filter,
+			     entries);
+		rte_free(fdir_filter);
+	}
+
+	if (filter_flag != NULL)
+		ret = txgbe_fdir_flush(dev);
+
+	return ret;
+}
