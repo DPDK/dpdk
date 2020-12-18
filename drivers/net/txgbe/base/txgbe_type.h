@@ -22,6 +22,7 @@
 #define TXGBE_MAX_UTA		128
 
 #define TXGBE_FDIR_INIT_DONE_POLL		10
+#define TXGBE_FDIRCMD_CMD_POLL			10
 
 #define TXGBE_ALIGN		128 /* as intel did */
 
@@ -71,7 +72,17 @@ enum {
 #define TXGBE_ATR_BUCKET_HASH_KEY		0x3DAD14E2
 #define TXGBE_ATR_SIGNATURE_HASH_KEY		0x174D3614
 
+/* Software ATR input stream values and masks */
 #define TXGBE_ATR_HASH_MASK			0x7fff
+#define TXGBE_ATR_L3TYPE_MASK			0x4
+#define TXGBE_ATR_L3TYPE_IPV4			0x0
+#define TXGBE_ATR_L3TYPE_IPV6			0x4
+#define TXGBE_ATR_L4TYPE_MASK			0x3
+#define TXGBE_ATR_L4TYPE_UDP			0x1
+#define TXGBE_ATR_L4TYPE_TCP			0x2
+#define TXGBE_ATR_L4TYPE_SCTP			0x3
+#define TXGBE_ATR_TUNNEL_MASK			0x10
+#define TXGBE_ATR_TUNNEL_ANY			0x10
 
 /* Flow Director ATR input struct. */
 struct txgbe_atr_input {

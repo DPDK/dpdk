@@ -4916,6 +4916,7 @@ txgbe_filter_restore(struct rte_eth_dev *dev)
 	txgbe_ntuple_filter_restore(dev);
 	txgbe_ethertype_filter_restore(dev);
 	txgbe_syn_filter_restore(dev);
+	txgbe_fdir_filter_restore(dev);
 	txgbe_l2_tn_filter_restore(dev);
 
 	return 0;

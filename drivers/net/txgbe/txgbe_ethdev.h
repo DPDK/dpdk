@@ -93,6 +93,18 @@ struct txgbe_fdir_filter {
 /* list of fdir filters */
 TAILQ_HEAD(txgbe_fdir_filter_list, txgbe_fdir_filter);
 
+struct txgbe_fdir_rule {
+	struct txgbe_hw_fdir_mask mask;
+	struct txgbe_atr_input input; /* key of fdir filter */
+	bool b_spec; /* If TRUE, input, fdirflags, queue have meaning. */
+	bool b_mask; /* If TRUE, mask has meaning. */
+	enum rte_fdir_mode mode; /* IP, MAC VLAN, Tunnel */
+	uint32_t fdirflags; /* drop or forward */
+	uint32_t soft_id; /* an unique value for this rule */
+	uint8_t queue; /* assigned rx queue */
+	uint8_t flex_bytes_offset;
+};
+
 struct txgbe_hw_fdir_info {
 	struct txgbe_hw_fdir_mask mask;
 	uint8_t     flex_bytes_offset;
@@ -440,6 +452,10 @@ int txgbe_fdir_configure(struct rte_eth_dev *dev);
 int txgbe_fdir_set_input_mask(struct rte_eth_dev *dev);
 int txgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
 				    uint16_t offset);
+int txgbe_fdir_filter_program(struct rte_eth_dev *dev,
+			      struct txgbe_fdir_rule *rule,
+			      bool del, bool update);
+
 void txgbe_configure_pb(struct rte_eth_dev *dev);
 void txgbe_configure_port(struct rte_eth_dev *dev);
 void txgbe_configure_dcb(struct rte_eth_dev *dev);
@@ -456,6 +472,8 @@ void txgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 int txgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
 uint32_t txgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
+
+void txgbe_fdir_filter_restore(struct rte_eth_dev *dev);
 
 extern const struct rte_flow_ops txgbe_flow_ops;
 
