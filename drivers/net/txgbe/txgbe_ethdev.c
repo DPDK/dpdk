@@ -704,6 +704,9 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	/* initialize bandwidth configuration info */
 	memset(bw_conf, 0, sizeof(struct txgbe_bw_conf));
 
+	/* initialize Traffic Manager configuration */
+	txgbe_tm_conf_init(eth_dev);
+
 	return 0;
 }
 
@@ -1545,6 +1548,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	int status;
 	uint16_t vf, idx;
 	uint32_t *link_speeds;
+	struct txgbe_tm_conf *tm_conf = TXGBE_DEV_TM_CONF(dev);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1748,6 +1752,11 @@ skip_link_setup:
 	txgbe_l2_tunnel_conf(dev);
 	txgbe_filter_restore(dev);
 
+	if (tm_conf->root && !tm_conf->committed)
+		PMD_DRV_LOG(WARNING,
+			    "please call hierarchy_commit() "
+			    "before starting the port");
+
 	/*
 	 * Update link status right before return, because it may
 	 * start link configuration process in a separate thread.
@@ -1780,6 +1789,7 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int vf;
+	struct txgbe_tm_conf *tm_conf = TXGBE_DEV_TM_CONF(dev);
 
 	if (hw->adapter_stopped)
 		return 0;
@@ -1831,6 +1841,9 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+
+	/* reset hierarchy commit */
+	tm_conf->committed = false;
 
 	adapter->rss_reta_updated = 0;
 	wr32m(hw, TXGBE_LEDCTL, 0xFFFFFFFF, TXGBE_LEDCTL_SEL_MASK);
@@ -1946,6 +1959,9 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	/* clear all the filters list */
 	txgbe_filterlist_flush();
+
+	/* Remove all Traffic Manager configuration */
+	txgbe_tm_conf_uninit(dev);
 
 	return ret;
 }

@@ -11,6 +11,7 @@ sources = files(
 	'txgbe_ptypes.c',
 	'txgbe_pf.c',
 	'txgbe_rxtx.c',
+	'txgbe_tm.c',
 )
 
 deps += ['hash']

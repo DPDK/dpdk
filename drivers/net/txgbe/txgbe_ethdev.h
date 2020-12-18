@@ -16,6 +16,7 @@
 #include <rte_ethdev_core.h>
 #include <rte_hash.h>
 #include <rte_hash_crc.h>
+#include <rte_tm_driver.h>
 
 /* need update link, bit flag */
 #define TXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -275,6 +276,60 @@ struct txgbe_bw_conf {
 	uint8_t tc_num; /* Number of TCs. */
 };
 
+/* Struct to store Traffic Manager shaper profile. */
+struct txgbe_tm_shaper_profile {
+	TAILQ_ENTRY(txgbe_tm_shaper_profile) node;
+	uint32_t shaper_profile_id;
+	uint32_t reference_count;
+	struct rte_tm_shaper_params profile;
+};
+
+TAILQ_HEAD(txgbe_shaper_profile_list, txgbe_tm_shaper_profile);
+
+/* Struct to store Traffic Manager node configuration. */
+struct txgbe_tm_node {
+	TAILQ_ENTRY(txgbe_tm_node) node;
+	uint32_t id;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t reference_count;
+	uint16_t no;
+	struct txgbe_tm_node *parent;
+	struct txgbe_tm_shaper_profile *shaper_profile;
+	struct rte_tm_node_params params;
+};
+
+TAILQ_HEAD(txgbe_tm_node_list, txgbe_tm_node);
+
+/* The configuration of Traffic Manager */
+struct txgbe_tm_conf {
+	struct txgbe_shaper_profile_list shaper_profile_list;
+	struct txgbe_tm_node *root; /* root node - port */
+	struct txgbe_tm_node_list tc_list; /* node list for all the TCs */
+	struct txgbe_tm_node_list queue_list; /* node list for all the queues */
+	/**
+	 * The number of added TC nodes.
+	 * It should be no more than the TC number of this port.
+	 */
+	uint32_t nb_tc_node;
+	/**
+	 * The number of added queue nodes.
+	 * It should be no more than the queue number of this port.
+	 */
+	uint32_t nb_queue_node;
+	/**
+	 * This flag is used to check if APP can change the TM node
+	 * configuration.
+	 * When it's true, means the configuration is applied to HW,
+	 * APP should not change the configuration.
+	 * As we don't support on-the-fly configuration, when starting
+	 * the port, APP should call the hierarchy_commit API to set this
+	 * flag to true. When stopping the port, this flag should be set
+	 * to false.
+	 */
+	bool committed;
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -297,6 +352,7 @@ struct txgbe_adapter {
 	struct rte_timecounter      systime_tc;
 	struct rte_timecounter      rx_tstamp_tc;
 	struct rte_timecounter      tx_tstamp_tc;
+	struct txgbe_tm_conf        tm_conf;
 
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
@@ -347,6 +403,8 @@ struct txgbe_adapter {
 #define TXGBE_DEV_BW_CONF(dev) \
 	(&((struct txgbe_adapter *)(dev)->data->dev_private)->bw_conf)
 
+#define TXGBE_DEV_TM_CONF(dev) \
+	(&((struct txgbe_adapter *)(dev)->data->dev_private)->tm_conf)
 
 /*
  * RX/TX function prototypes
@@ -501,6 +559,8 @@ int txgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev);
 
 int txgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 			    uint16_t tx_rate, uint64_t q_msk);
+void txgbe_tm_conf_init(struct rte_eth_dev *dev);
+void txgbe_tm_conf_uninit(struct rte_eth_dev *dev);
 int txgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
 			       uint16_t tx_rate);
 int txgbe_rss_conf_init(struct txgbe_rte_flow_rss_conf *out,
