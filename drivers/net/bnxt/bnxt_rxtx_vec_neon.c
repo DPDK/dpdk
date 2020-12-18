@@ -27,11 +27,11 @@
 	uint32_t tmp, of;						       \
 									       \
 	of = vgetq_lane_u32((rss_flags), (pi)) |			       \
-		   bnxt_ol_flags_table[vgetq_lane_u32((ol_idx), (pi))];	       \
+		   rxr->ol_flags_table[vgetq_lane_u32((ol_idx), (pi))];	       \
 									       \
 	tmp = vgetq_lane_u32((errors), (pi));				       \
 	if (tmp)							       \
-		of |= bnxt_ol_flags_err_table[tmp];			       \
+		of |= rxr->ol_flags_err_table[tmp];			       \
 	(ol_flags) = of;						       \
 }
 
@@ -58,7 +58,8 @@
 
 static void
 descs_to_mbufs(uint32x4_t mm_rxcmp[4], uint32x4_t mm_rxcmp1[4],
-	       uint64x2_t mb_init, struct rte_mbuf **mbuf)
+	       uint64x2_t mb_init, struct rte_mbuf **mbuf,
+	       struct bnxt_rx_ring_info *rxr)
 {
 	const uint8x16_t shuf_msk = {
 		0xFF, 0xFF, 0xFF, 0xFF,    /* pkt_type (zeroes) */
@@ -286,7 +287,8 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			goto out;
 		}
 
-		descs_to_mbufs(rxcmp, rxcmp1, mb_init, &rx_pkts[nb_rx_pkts]);
+		descs_to_mbufs(rxcmp, rxcmp1, mb_init, &rx_pkts[nb_rx_pkts],
+			       rxr);
 		nb_rx_pkts += num_valid;
 
 		if (num_valid < RTE_BNXT_DESCS_PER_LOOP)
