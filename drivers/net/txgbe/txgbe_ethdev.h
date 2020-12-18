@@ -9,7 +9,10 @@
 
 #include "base/txgbe.h"
 #include "txgbe_ptypes.h"
+#include <rte_flow.h>
 #include <rte_time.h>
+#include <rte_ethdev.h>
+#include <rte_ethdev_core.h>
 
 /* need update link, bit flag */
 #define TXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -297,6 +300,8 @@ void txgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 int txgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
 uint32_t txgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
+
+extern const struct rte_flow_ops txgbe_flow_ops;
 
 int txgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 			    uint16_t tx_rate, uint64_t q_msk);

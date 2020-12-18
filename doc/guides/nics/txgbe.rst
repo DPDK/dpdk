@@ -29,6 +29,7 @@ Features
 - IEEE 1588
 - FW version
 - LRO
+- Generic flow API
 
 Prerequisites
 -------------

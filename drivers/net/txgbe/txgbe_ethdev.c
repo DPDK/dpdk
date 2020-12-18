@@ -3480,6 +3480,30 @@ txgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+txgbe_dev_filter_ctrl(__rte_unused struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	int ret = 0;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &txgbe_flow_ops;
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+							filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 static u8 *
 txgbe_dev_addr_list_itr(__rte_unused struct txgbe_hw *hw,
 			u8 **mc_addr_ptr, u32 *vmdq)
@@ -4055,6 +4079,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.reta_query                 = txgbe_dev_rss_reta_query,
 	.rss_hash_update            = txgbe_dev_rss_hash_update,
 	.rss_hash_conf_get          = txgbe_dev_rss_hash_conf_get,
+	.filter_ctrl                = txgbe_dev_filter_ctrl,
 	.set_mc_addr_list           = txgbe_dev_set_mc_addr_list,
 	.rxq_info_get               = txgbe_rxq_info_get,
 	.txq_info_get               = txgbe_txq_info_get,
