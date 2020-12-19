@@ -74,6 +74,8 @@ ipsec_lp_len_precalc(struct rte_security_ipsec_xform *ipsec,
 
 	if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC)
 		lp->partial_len += OTX2_SEC_SHA1_HMAC_LEN;
+	else if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA256_HMAC)
+		lp->partial_len += OTX2_SEC_SHA2_HMAC_LEN;
 	else
 		return -EINVAL;
 
@@ -268,6 +270,18 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 						sa->sha1.template.ip4);
 				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
 				lp->ctx_len = ctx_len >> 3;
+			} else if (ctl->auth_type ==
+					OTX2_IPSEC_PO_SA_AUTH_SHA2_256) {
+				if (ipsec->options.udp_encap) {
+					sa->sha2.template.ip4.udp_src = 4500;
+					sa->sha2.template.ip4.udp_dst = 4500;
+				}
+				ip = &sa->sha2.template.ip4.ipv4_hdr;
+				ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
+						sha2.template) + sizeof(
+						sa->sha2.template.ip4);
+				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
+				lp->ctx_len = ctx_len >> 3;
 			}
 			ip->version_ihl = RTE_IPV4_VHL_DEF;
 			ip->next_proto_id = IPPROTO_ESP;
@@ -303,6 +317,18 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 				ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
 						sha1.template) + sizeof(
 						sa->sha1.template.ip6);
+				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
+				lp->ctx_len = ctx_len >> 3;
+			} else if (ctl->auth_type ==
+					OTX2_IPSEC_PO_SA_AUTH_SHA2_256) {
+				if (ipsec->options.udp_encap) {
+					sa->sha2.template.ip6.udp_src = 4500;
+					sa->sha2.template.ip6.udp_dst = 4500;
+				}
+				ip6 = &sa->sha2.template.ip6.ipv6_hdr;
+				ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
+						sha2.template) + sizeof(
+						sa->sha2.template.ip6);
 				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
 				lp->ctx_len = ctx_len >> 3;
 			}
@@ -348,6 +374,8 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 
 		if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC)
 			memcpy(sa->sha1.hmac_key, auth_key, auth_key_len);
+		else if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA256_HMAC)
+			memcpy(sa->sha2.hmac_key, auth_key, auth_key_len);
 	}
 
 	if (cipher_key_len != 0)
@@ -427,11 +455,16 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 		auth_key = auth_xform->auth.key.data;
 		auth_key_len = auth_xform->auth.key.length;
 
-		if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC)
+		if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC) {
 			memcpy(sa->aes_gcm.hmac_key, auth_key, auth_key_len);
-
-		lp->ctx_len = offsetof(struct otx2_ipsec_po_in_sa,
-					    aes_gcm.selector) >> 3;
+			lp->ctx_len = offsetof(struct otx2_ipsec_po_in_sa,
+						    aes_gcm.selector) >> 3;
+		} else if (auth_xform->auth.algo ==
+				RTE_CRYPTO_AUTH_SHA256_HMAC) {
+			memcpy(sa->sha2.hmac_key, auth_key, auth_key_len);
+			lp->ctx_len = offsetof(struct otx2_ipsec_po_in_sa,
+						    sha2.selector) >> 3;
+		}
 	}
 
 	if (cipher_key_len != 0)

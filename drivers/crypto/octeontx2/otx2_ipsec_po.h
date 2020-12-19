@@ -152,11 +152,18 @@ struct otx2_ipsec_po_in_sa {
 	/* w8 */
 	uint8_t udp_encap[8];
 
-	/* w9-w23 */
-	struct {
-		uint8_t hmac_key[48];
-		struct otx2_ipsec_po_traffic_selector selector;
-	} aes_gcm;
+	/* w9-w33 */
+	union {
+		struct {
+			uint8_t hmac_key[48];
+			struct otx2_ipsec_po_traffic_selector selector;
+		} aes_gcm;
+		struct {
+			uint8_t hmac_key[64];
+			uint8_t hmac_iv[64];
+			struct otx2_ipsec_po_traffic_selector selector;
+		} sha2;
+	};
 	union {
 		struct otx2_ipsec_replay *replay;
 		uint64_t replay64;
@@ -205,6 +212,11 @@ struct otx2_ipsec_po_out_sa {
 			uint8_t unused[24];
 			struct otx2_ipsec_po_ip_template template;
 		} sha1;
+		struct {
+			uint8_t hmac_key[64];
+			uint8_t hmac_iv[64];
+			struct otx2_ipsec_po_ip_template template;
+		} sha2;
 	};
 };
 
@@ -233,6 +245,9 @@ ipsec_po_xform_auth_verify(struct rte_crypto_sym_xform *xform)
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC) {
 		if (keylen >= 20 && keylen <= 64)
+			return 0;
+	} else if (xform->auth.algo == RTE_CRYPTO_AUTH_SHA256_HMAC) {
+		if (keylen >= 32 && keylen <= 64)
 			return 0;
 	}
 
