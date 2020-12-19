@@ -182,3 +182,4 @@ Features supported
 * ESN
 * Anti-replay
 * AES-128/192/256-GCM
+* AES-128/192/256-CBC-SHA1-HMAC

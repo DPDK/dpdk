@@ -10,10 +10,6 @@
 #include <rte_security.h>
 
 #define OTX2_IPSEC_PO_AES_GCM_INB_CTX_LEN    0x09
-#define OTX2_IPSEC_PO_AES_GCM_OUTB_CTX_LEN   0x28
-
-#define OTX2_IPSEC_PO_MAX_INB_CTX_LEN    0x22
-#define OTX2_IPSEC_PO_MAX_OUTB_CTX_LEN   0x38
 
 #define OTX2_IPSEC_PO_PER_PKT_IV  BIT(11)
 
@@ -171,9 +167,16 @@ struct otx2_ipsec_po_in_sa {
 struct otx2_ipsec_po_ip_template {
 	RTE_STD_C11
 	union {
-		uint8_t raw[252];
-		struct rte_ipv4_hdr ipv4_hdr;
-		struct rte_ipv6_hdr ipv6_hdr;
+		struct {
+			struct rte_ipv4_hdr ipv4_hdr;
+			uint16_t udp_src;
+			uint16_t udp_dst;
+		} ip4;
+		struct {
+			struct rte_ipv6_hdr ipv6_hdr;
+			uint16_t udp_src;
+			uint16_t udp_dst;
+		} ip6;
 	};
 };
 
@@ -191,10 +194,18 @@ struct otx2_ipsec_po_out_sa {
 	uint32_t esn_hi;
 	uint32_t esn_low;
 
-	/* w8-w39 */
-	struct otx2_ipsec_po_ip_template template;
-	uint16_t udp_src;
-	uint16_t udp_dst;
+	/* w8-w55 */
+	union {
+		uint8_t raw[384];
+		struct {
+			struct otx2_ipsec_po_ip_template template;
+		} aes_gcm;
+		struct {
+			uint8_t hmac_key[24];
+			uint8_t unused[24];
+			struct otx2_ipsec_po_ip_template template;
+		} sha1;
+	};
 };
 
 static inline int
@@ -348,8 +359,8 @@ ipsec_po_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 			return -ENOTSUP;
 		}
 	} else if (cipher_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
-		ctl->enc_type = OTX2_IPSEC_PO_SA_ENC_AES_CCM;
-		aes_key_len = xform->cipher.key.length;
+		ctl->enc_type = OTX2_IPSEC_PO_SA_ENC_AES_CBC;
+		aes_key_len = cipher_xform->cipher.key.length;
 	} else {
 		return -ENOTSUP;
 	}

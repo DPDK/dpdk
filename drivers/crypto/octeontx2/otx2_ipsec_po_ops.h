@@ -111,7 +111,7 @@ process_outb_sa(struct rte_crypto_op *cop,
 		memcpy(&hdr->iv[0], &sa->iv.gcm.nonce, 4);
 		memcpy(&hdr->iv[4], rte_crypto_op_ctod_offset(cop, uint8_t *,
 			sess->iv_offset), sess->iv_length);
-	} else if (ctl_wrd->auth_type == OTX2_IPSEC_FP_SA_ENC_AES_CBC) {
+	} else if (ctl_wrd->auth_type == OTX2_IPSEC_PO_SA_AUTH_SHA1) {
 		memcpy(&hdr->iv[0], rte_crypto_op_ctod_offset(cop, uint8_t *,
 			sess->iv_offset), sess->iv_length);
 	}

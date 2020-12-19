@@ -81,6 +81,8 @@ New Features
   * Updated the OCTEON TX2 crypto PMD lookaside protocol offload for IPsec with
     ESN and anti-replay support.
   * Updated the OCTEON TX2 crypto PMD with CN98xx support.
+  * Added support for aes-cbc sha1-hmac cipher combination in OCTEON TX2 crypto
+    PMD lookaside protocol offload for IPsec.
 
 
 Removed Items
