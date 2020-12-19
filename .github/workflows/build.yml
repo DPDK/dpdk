@@ -87,6 +87,8 @@ jobs:
       with:
         path: reference
         key: ${{ steps.get_ref_keys.outputs.abi }}
+    - name: Update APT cache
+      run: sudo apt update
     - name: Install packages
       run: sudo apt install -y ccache libnuma-dev python3-setuptools
         python3-wheel python3-pip ninja-build libbsd-dev libpcap-dev
