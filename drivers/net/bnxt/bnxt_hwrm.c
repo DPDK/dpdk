@@ -860,6 +860,9 @@ int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_OUTERMOST_RSS_CAP)
 		bp->vnic_cap_flags |= BNXT_VNIC_CAP_OUTER_RSS;
 
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RX_CMPL_V2_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_RX_CMPL_V2;
+
 	bp->max_tpa_v2 = rte_le_to_cpu_16(resp->max_aggs_supported);
 
 	HWRM_UNLOCK();
@@ -1961,6 +1964,11 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 			rte_cpu_to_le_16(cpr->cp_ring_struct->fw_ring_id);
 		enables = HWRM_VNIC_CFG_INPUT_ENABLES_DEFAULT_RX_RING_ID |
 			  HWRM_VNIC_CFG_INPUT_ENABLES_DEFAULT_CMPL_RING_ID;
+		if (bp->vnic_cap_flags & BNXT_VNIC_CAP_RX_CMPL_V2) {
+			enables |= HWRM_VNIC_CFG_INPUT_ENABLES_RX_CSUM_V2_MODE;
+			req.rx_csum_v2_mode =
+				HWRM_VNIC_CFG_INPUT_RX_CSUM_V2_MODE_ALL_OK;
+		}
 		goto config_mru;
 	}
 
