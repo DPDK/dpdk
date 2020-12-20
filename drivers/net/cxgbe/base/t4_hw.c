@@ -2811,81 +2811,6 @@ void t4_dump_version_info(struct adapter *adapter)
 
 #define ADVERT_MASK (V_FW_PORT_CAP32_SPEED(M_FW_PORT_CAP32_SPEED) | \
 		     FW_PORT_CAP32_ANEG)
-/**
- *     fwcaps16_to_caps32 - convert 16-bit Port Capabilities to 32-bits
- *     @caps16: a 16-bit Port Capabilities value
- *
- *     Returns the equivalent 32-bit Port Capabilities value.
- */
-fw_port_cap32_t fwcaps16_to_caps32(fw_port_cap16_t caps16)
-{
-	fw_port_cap32_t caps32 = 0;
-
-#define CAP16_TO_CAP32(__cap) \
-	do { \
-		if (caps16 & FW_PORT_CAP_##__cap) \
-			caps32 |= FW_PORT_CAP32_##__cap; \
-	} while (0)
-
-	CAP16_TO_CAP32(SPEED_100M);
-	CAP16_TO_CAP32(SPEED_1G);
-	CAP16_TO_CAP32(SPEED_25G);
-	CAP16_TO_CAP32(SPEED_10G);
-	CAP16_TO_CAP32(SPEED_40G);
-	CAP16_TO_CAP32(SPEED_100G);
-	CAP16_TO_CAP32(FC_RX);
-	CAP16_TO_CAP32(FC_TX);
-	CAP16_TO_CAP32(ANEG);
-	CAP16_TO_CAP32(MDIX);
-	CAP16_TO_CAP32(MDIAUTO);
-	CAP16_TO_CAP32(FEC_RS);
-	CAP16_TO_CAP32(FEC_BASER_RS);
-	CAP16_TO_CAP32(802_3_PAUSE);
-	CAP16_TO_CAP32(802_3_ASM_DIR);
-
-#undef CAP16_TO_CAP32
-
-	return caps32;
-}
-
-/**
- *     fwcaps32_to_caps16 - convert 32-bit Port Capabilities to 16-bits
- *     @caps32: a 32-bit Port Capabilities value
- *
- *     Returns the equivalent 16-bit Port Capabilities value.  Note that
- *     not all 32-bit Port Capabilities can be represented in the 16-bit
- *     Port Capabilities and some fields/values may not make it.
- */
-static fw_port_cap16_t fwcaps32_to_caps16(fw_port_cap32_t caps32)
-{
-	fw_port_cap16_t caps16 = 0;
-
-#define CAP32_TO_CAP16(__cap) \
-	do { \
-		if (caps32 & FW_PORT_CAP32_##__cap) \
-			caps16 |= FW_PORT_CAP_##__cap; \
-	} while (0)
-
-	CAP32_TO_CAP16(SPEED_100M);
-	CAP32_TO_CAP16(SPEED_1G);
-	CAP32_TO_CAP16(SPEED_10G);
-	CAP32_TO_CAP16(SPEED_25G);
-	CAP32_TO_CAP16(SPEED_40G);
-	CAP32_TO_CAP16(SPEED_100G);
-	CAP32_TO_CAP16(FC_RX);
-	CAP32_TO_CAP16(FC_TX);
-	CAP32_TO_CAP16(802_3_PAUSE);
-	CAP32_TO_CAP16(802_3_ASM_DIR);
-	CAP32_TO_CAP16(ANEG);
-	CAP32_TO_CAP16(MDIX);
-	CAP32_TO_CAP16(MDIAUTO);
-	CAP32_TO_CAP16(FEC_RS);
-	CAP32_TO_CAP16(FEC_BASER_RS);
-
-#undef CAP32_TO_CAP16
-
-	return caps16;
-}
 
 /* Translate Firmware Pause specification to Common Code */
 static inline enum cc_pause fwcap_to_cc_pause(fw_port_cap32_t fw_pause)
@@ -2957,7 +2882,6 @@ int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
 		  struct link_config *lc)
 {
 	unsigned int fw_mdi = V_FW_PORT_CAP32_MDI(FW_PORT_CAP32_MDI_AUTO);
-	unsigned int fw_caps = adap->params.fw_caps_support;
 	fw_port_cap32_t fw_fc, cc_fec, fw_fec, rcap;
 	struct fw_port_cmd cmd;
 
@@ -2999,15 +2923,10 @@ int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
 				       F_FW_CMD_REQUEST | F_FW_CMD_EXEC |
 				       V_FW_PORT_CMD_PORTID(port));
 	cmd.action_to_len16 =
-		cpu_to_be32(V_FW_PORT_CMD_ACTION(fw_caps == FW_CAPS16 ?
-						 FW_PORT_ACTION_L1_CFG :
-						 FW_PORT_ACTION_L1_CFG32) |
+		cpu_to_be32(V_FW_PORT_CMD_ACTION(FW_PORT_ACTION_L1_CFG32) |
 			    FW_LEN16(cmd));
 
-	if (fw_caps == FW_CAPS16)
-		cmd.u.l1cfg.rcap = cpu_to_be32(fwcaps32_to_caps16(rcap));
-	else
-		cmd.u.l1cfg32.rcap32 = cpu_to_be32(rcap);
+	cmd.u.l1cfg32.rcap32 = cpu_to_be32(rcap);
 
 	return t4_wr_mbox(adap, mbox, &cmd, sizeof(cmd), NULL);
 }
@@ -4539,72 +4458,30 @@ static unsigned int fwcap_to_speed(fw_port_cap32_t caps)
 static void t4_handle_get_port_info(struct port_info *pi, const __be64 *rpl)
 {
 	const struct fw_port_cmd *cmd = (const void *)rpl;
-	int action = G_FW_PORT_CMD_ACTION(be32_to_cpu(cmd->action_to_len16));
-	fw_port_cap32_t pcaps, acaps, linkattr;
+	u8 link_ok, link_down_rc, mod_type, port_type;
+	u32 action, pcaps, acaps, linkattr, lstatus;
 	struct link_config *lc = &pi->link_cfg;
 	struct adapter *adapter = pi->adapter;
-	enum fw_port_module_type mod_type;
-	enum fw_port_type port_type;
 	unsigned int speed, fc, fec;
-	int link_ok, linkdnrc;
 
 	/* Extract the various fields from the Port Information message.
 	 */
-	switch (action) {
-	case FW_PORT_ACTION_GET_PORT_INFO: {
-		u32 lstatus = be32_to_cpu(cmd->u.info.lstatus_to_modtype);
-
-		link_ok = (lstatus & F_FW_PORT_CMD_LSTATUS) != 0;
-		linkdnrc = G_FW_PORT_CMD_LINKDNRC(lstatus);
-		port_type = G_FW_PORT_CMD_PTYPE(lstatus);
-		mod_type = G_FW_PORT_CMD_MODTYPE(lstatus);
-		pcaps = fwcaps16_to_caps32(be16_to_cpu(cmd->u.info.pcap));
-		acaps = fwcaps16_to_caps32(be16_to_cpu(cmd->u.info.acap));
-
-		/* Unfortunately the format of the Link Status in the old
-		 * 16-bit Port Information message isn't the same as the
-		 * 16-bit Port Capabilities bitfield used everywhere else ...
-		 */
-		linkattr = 0;
-		if (lstatus & F_FW_PORT_CMD_RXPAUSE)
-			linkattr |= FW_PORT_CAP32_FC_RX;
-		if (lstatus & F_FW_PORT_CMD_TXPAUSE)
-			linkattr |= FW_PORT_CAP32_FC_TX;
-		if (lstatus & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_100M))
-			linkattr |= FW_PORT_CAP32_SPEED_100M;
-		if (lstatus & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_1G))
-			linkattr |= FW_PORT_CAP32_SPEED_1G;
-		if (lstatus & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_10G))
-			linkattr |= FW_PORT_CAP32_SPEED_10G;
-		if (lstatus & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_25G))
-			linkattr |= FW_PORT_CAP32_SPEED_25G;
-		if (lstatus & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_40G))
-			linkattr |= FW_PORT_CAP32_SPEED_40G;
-		if (lstatus & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_100G))
-			linkattr |= FW_PORT_CAP32_SPEED_100G;
-
-		break;
-		}
-
-	case FW_PORT_ACTION_GET_PORT_INFO32: {
-		u32 lstatus32 =
-			be32_to_cpu(cmd->u.info32.lstatus32_to_cbllen32);
-
-		link_ok = (lstatus32 & F_FW_PORT_CMD_LSTATUS32) != 0;
-		linkdnrc = G_FW_PORT_CMD_LINKDNRC32(lstatus32);
-		port_type = G_FW_PORT_CMD_PORTTYPE32(lstatus32);
-		mod_type = G_FW_PORT_CMD_MODTYPE32(lstatus32);
-		pcaps = be32_to_cpu(cmd->u.info32.pcaps32);
-		acaps = be32_to_cpu(cmd->u.info32.acaps32);
-		linkattr = be32_to_cpu(cmd->u.info32.linkattr32);
-		break;
-		}
-
-	default:
+	action = be32_to_cpu(cmd->action_to_len16);
+	if (G_FW_PORT_CMD_ACTION(action) != FW_PORT_ACTION_GET_PORT_INFO32) {
 		dev_warn(adapter, "Handle Port Information: Bad Command/Action %#x\n",
-			 be32_to_cpu(cmd->action_to_len16));
+			 action);
 		return;
 	}
+
+	lstatus = be32_to_cpu(cmd->u.info32.lstatus32_to_cbllen32);
+	link_ok = (lstatus & F_FW_PORT_CMD_LSTATUS32) ? 1 : 0;
+	link_down_rc = G_FW_PORT_CMD_LINKDNRC32(lstatus);
+	port_type = G_FW_PORT_CMD_PORTTYPE32(lstatus);
+	mod_type = G_FW_PORT_CMD_MODTYPE32(lstatus);
+
+	pcaps = be32_to_cpu(cmd->u.info32.pcaps32);
+	acaps = be32_to_cpu(cmd->u.info32.acaps32);
+	linkattr = be32_to_cpu(cmd->u.info32.linkattr32);
 
 	fec = fwcap_to_cc_fec(acaps);
 
@@ -4620,9 +4497,10 @@ static void t4_handle_get_port_info(struct port_info *pi, const __be64 *rpl)
 	if (link_ok != lc->link_ok || speed != lc->speed ||
 	    fc != lc->fc || fec != lc->fec) { /* something changed */
 		if (!link_ok && lc->link_ok) {
-			lc->link_down_rc = linkdnrc;
+			lc->link_down_rc = link_down_rc;
 			dev_warn(adap, "Port %d link down, reason: %s\n",
-				 pi->tx_chan, t4_link_down_rc_str(linkdnrc));
+				 pi->port_id,
+				 t4_link_down_rc_str(link_down_rc));
 		}
 		lc->link_ok = link_ok;
 		lc->speed = speed;
@@ -4691,9 +4569,7 @@ int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl)
 	unsigned int action =
 		G_FW_PORT_CMD_ACTION(be32_to_cpu(p->action_to_len16));
 
-	if (opcode == FW_PORT_CMD &&
-	    (action == FW_PORT_ACTION_GET_PORT_INFO ||
-	     action == FW_PORT_ACTION_GET_PORT_INFO32)) {
+	if (opcode == FW_PORT_CMD && action == FW_PORT_ACTION_GET_PORT_INFO32) {
 		/* link/module state change message */
 		int chan = G_FW_PORT_CMD_PORTID(be32_to_cpu(p->op_to_portid));
 		struct port_info *pi = NULL;
@@ -5395,81 +5271,54 @@ int t4_init_rss_mode(struct adapter *adap, int mbox)
 
 int t4_port_init(struct adapter *adap, int mbox, int pf, int vf)
 {
-	unsigned int fw_caps = adap->params.fw_caps_support;
 	fw_port_cap32_t pcaps, acaps;
 	enum fw_port_type port_type;
 	struct fw_port_cmd cmd;
 	u8 vivld = 0, vin = 0;
 	int ret, i, j = 0;
+	u32 param, val;
 	int mdio_addr;
-	u32 action;
 	u8 addr[6];
+
+	param = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_PFVF) |
+		 V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_PFVF_PORT_CAPS32));
+	val = 1;
+	ret = t4_set_params(adap, mbox, pf, vf, 1, &param, &val);
+	if (ret < 0)
+		return ret;
 
 	memset(&cmd, 0, sizeof(cmd));
 
 	for_each_port(adap, i) {
 		struct port_info *pi = adap2pinfo(adap, i);
 		unsigned int rss_size = 0;
+		u32 lstatus32;
 
 		while ((adap->params.portvec & (1 << j)) == 0)
 			j++;
-
-		/* If we haven't yet determined whether we're talking to
-		 * Firmware which knows the new 32-bit Port Capabilities, it's
-		 * time to find out now.  This will also tell new Firmware to
-		 * send us Port Status Updates using the new 32-bit Port
-		 * Capabilities version of the Port Information message.
-		 */
-		if (fw_caps == FW_CAPS_UNKNOWN) {
-			u32 param, val, caps;
-
-			caps = FW_PARAMS_PARAM_PFVF_PORT_CAPS32;
-			param = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_PFVF) |
-				 V_FW_PARAMS_PARAM_X(caps));
-			val = 1;
-			ret = t4_set_params(adap, mbox, pf, vf, 1, &param,
-					    &val);
-			fw_caps = ret == 0 ? FW_CAPS32 : FW_CAPS16;
-			adap->params.fw_caps_support = fw_caps;
-		}
 
 		memset(&cmd, 0, sizeof(cmd));
 		cmd.op_to_portid = cpu_to_be32(V_FW_CMD_OP(FW_PORT_CMD) |
 					       F_FW_CMD_REQUEST |
 					       F_FW_CMD_READ |
 					       V_FW_PORT_CMD_PORTID(j));
-		action = fw_caps == FW_CAPS16 ? FW_PORT_ACTION_GET_PORT_INFO :
-						FW_PORT_ACTION_GET_PORT_INFO32;
-		cmd.action_to_len16 = cpu_to_be32(V_FW_PORT_CMD_ACTION(action) |
+		val = FW_PORT_ACTION_GET_PORT_INFO32;
+		cmd.action_to_len16 = cpu_to_be32(V_FW_PORT_CMD_ACTION(val) |
 						  FW_LEN16(cmd));
 		ret = t4_wr_mbox(pi->adapter, mbox, &cmd, sizeof(cmd), &cmd);
 		if (ret)
 			return ret;
 
-		/* Extract the various fields from the Port Information message.
+		/* Extract the various fields from the Port Information
+		 * message.
 		 */
-		if (fw_caps == FW_CAPS16) {
-			u32 lstatus =
-				be32_to_cpu(cmd.u.info.lstatus_to_modtype);
+		lstatus32 = be32_to_cpu(cmd.u.info32.lstatus32_to_cbllen32);
 
-			port_type = G_FW_PORT_CMD_PTYPE(lstatus);
-			mdio_addr = (lstatus & F_FW_PORT_CMD_MDIOCAP) ?
-				    (int)G_FW_PORT_CMD_MDIOADDR(lstatus) : -1;
-			pcaps = be16_to_cpu(cmd.u.info.pcap);
-			acaps = be16_to_cpu(cmd.u.info.acap);
-			pcaps = fwcaps16_to_caps32(pcaps);
-			acaps = fwcaps16_to_caps32(acaps);
-		} else {
-			u32 lstatus32 =
-				be32_to_cpu(cmd.u.info32.lstatus32_to_cbllen32);
-
-			port_type = G_FW_PORT_CMD_PORTTYPE32(lstatus32);
-			mdio_addr = (lstatus32 & F_FW_PORT_CMD_MDIOCAP32) ?
-				    (int)G_FW_PORT_CMD_MDIOADDR32(lstatus32) :
-				    -1;
-			pcaps = be32_to_cpu(cmd.u.info32.pcaps32);
-			acaps = be32_to_cpu(cmd.u.info32.acaps32);
-		}
+		port_type = G_FW_PORT_CMD_PORTTYPE32(lstatus32);
+		mdio_addr = (lstatus32 & F_FW_PORT_CMD_MDIOCAP32) ?
+			    (int)G_FW_PORT_CMD_MDIOADDR32(lstatus32) : -1;
+		pcaps = be32_to_cpu(cmd.u.info32.pcaps32);
+		acaps = be32_to_cpu(cmd.u.info32.acaps32);
 
 		ret = t4_alloc_vi(adap, mbox, j, pf, vf, 1, addr, &rss_size,
 				  &vivld, &vin);
