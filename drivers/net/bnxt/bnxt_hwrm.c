@@ -64,6 +64,9 @@ static void bnxt_hwrm_set_pg_attr(struct bnxt_ring_mem_info *rmem,
 				  uint8_t *pg_attr,
 				  uint64_t *pg_dir)
 {
+	if (rmem->nr_pages == 0)
+		return;
+
 	if (rmem->nr_pages > 1) {
 		*pg_attr = 1;
 		*pg_dir = rte_cpu_to_le_64(rmem->pg_tbl_map);
