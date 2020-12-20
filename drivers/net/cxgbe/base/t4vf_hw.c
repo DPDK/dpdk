@@ -768,9 +768,8 @@ int t4vf_port_init(struct adapter *adapter)
 {
 	struct fw_port_cmd port_cmd, port_rpl, rpl;
 	struct fw_vi_cmd vi_cmd, vi_rpl;
-	fw_port_cap32_t pcaps, acaps;
+	u32 param, val, pcaps, acaps;
 	enum fw_port_type port_type;
-	u32 param, val;
 	int mdio_addr;
 	int ret, i;
 
@@ -844,10 +843,8 @@ int t4vf_port_init(struct adapter *adapter)
 		pcaps = be32_to_cpu(port_rpl.u.info32.pcaps32);
 		acaps = be32_to_cpu(port_rpl.u.info32.acaps32);
 
-		p->port_type = port_type;
-		p->mdio_addr = mdio_addr;
-		p->mod_type = FW_PORT_MOD_TYPE_NA;
-		init_link_config(&p->link_cfg, pcaps, acaps);
+		t4_init_link_config(p, pcaps, acaps, mdio_addr, port_type,
+				    FW_PORT_MOD_TYPE_NA);
 	}
 	return 0;
 }

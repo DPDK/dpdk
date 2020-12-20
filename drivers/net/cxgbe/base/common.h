@@ -38,18 +38,6 @@ enum dev_master { MASTER_CANT, MASTER_MAY, MASTER_MUST };
 
 enum dev_state { DEV_STATE_UNINIT, DEV_STATE_INIT, DEV_STATE_ERR };
 
-enum cc_pause {
-	PAUSE_RX      = 1 << 0,
-	PAUSE_TX      = 1 << 1,
-	PAUSE_AUTONEG = 1 << 2
-};
-
-enum cc_fec {
-	FEC_AUTO     = 1 << 0,    /* IEEE 802.3 "automatic" */
-	FEC_RS       = 1 << 1,    /* Reed-Solomon */
-	FEC_BASER_RS = 1 << 2,    /* BaseR/Reed-Solomon */
-};
-
 enum { MEM_EDC0, MEM_EDC1, MEM_MC, MEM_MC0 = MEM_MC, MEM_MC1 };
 
 struct port_stats {
@@ -281,28 +269,19 @@ struct adapter_params {
 
 /* Firmware Port Capabilities types.
  */
-typedef u32 fw_port_cap32_t;    /* 32-bit Port Capabilities integral value */
-
 struct link_config {
-	fw_port_cap32_t pcaps;          /* link capabilities */
-	fw_port_cap32_t acaps;          /* advertised capabilities */
+	u32 pcaps;         /* Physically supported link caps */
+	u32 acaps;         /* Advertised link caps */
 
-	u32 requested_speed;            /* speed (Mb/s) user has requested */
-	u32 speed;                      /* actual link speed (Mb/s) */
+	u32 link_caps;     /* Current link caps */
+	u32 admin_caps;    /* Admin configured link caps  */
 
-	enum cc_pause requested_fc;     /* flow control user has requested */
-	enum cc_pause fc;               /* actual link flow control */
+	u8 mdio_addr;      /* Address of the PHY */
+	u8 port_type;      /* Firmware port type */
+	u8 mod_type;       /* Firmware module type */
 
-	enum cc_fec auto_fec;           /* Forward Error Correction
-					 * "automatic" (IEEE 802.3)
-					 */
-	enum cc_fec requested_fec;      /* Forward Error Correction requested */
-	enum cc_fec fec;                /* Forward Error Correction actual */
-
-	unsigned char autoneg;          /* autonegotiating? */
-
-	unsigned char link_ok;          /* link up? */
-	unsigned char link_down_rc;     /* link down reason */
+	u8 link_ok;        /* Link up? */
+	u8 link_down_rc;   /* Link down reason */
 };
 
 #include "adapter.h"
@@ -338,8 +317,21 @@ void t4_tp_wr_bits_indirect(struct adapter *adap, unsigned int addr,
 			    unsigned int mask, unsigned int val);
 void t4_intr_enable(struct adapter *adapter);
 void t4_intr_disable(struct adapter *adapter);
-int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
-		  struct link_config *lc);
+int t4_link_l1cfg_core(struct port_info *pi, u32 caps, u8 sleep_ok);
+static inline int t4_link_l1cfg(struct port_info *pi, u32 caps)
+{
+	return t4_link_l1cfg_core(pi, caps, true);
+}
+
+static inline int t4_link_l1cfg_ns(struct port_info *pi, u32 caps)
+{
+	return t4_link_l1cfg_core(pi, caps, false);
+}
+
+int t4_set_link_speed(struct port_info *pi, u32 speed, u32 *new_caps);
+int t4_set_link_pause(struct port_info *pi, u8 autoneg, u8 pause_tx,
+		      u8 pause_rx, u32 *new_caps);
+unsigned int t4_fwcap_to_speed(u32 caps);
 void t4_load_mtus(struct adapter *adap, const unsigned short *mtus,
 		  const unsigned short *alpha, const unsigned short *beta);
 int t4_fw_hello(struct adapter *adap, unsigned int mbox, unsigned int evt_mbox,
@@ -496,8 +488,8 @@ void t4_get_port_stats_offset(struct adapter *adap, int idx,
 			      struct port_stats *stats,
 			      struct port_stats *offset);
 void t4_clr_port_stats(struct adapter *adap, int idx);
-void init_link_config(struct link_config *lc, fw_port_cap32_t pcaps,
-		      fw_port_cap32_t acaps);
+void t4_init_link_config(struct port_info *pi, u32 pcaps, u32 acaps,
+			 u8 mdio_addr, u8 port_type, u8 mod_type);
 void t4_reset_link_config(struct adapter *adap, int idx);
 int t4_get_version_info(struct adapter *adapter);
 void t4_dump_version_info(struct adapter *adapter);

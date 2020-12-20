@@ -732,7 +732,7 @@ void cxgbe_print_port_info(struct adapter *adap)
 			--bufp;
 		sprintf(bufp, "BASE-%s",
 			t4_get_port_type_description(
-					(enum fw_port_type)pi->port_type));
+				(enum fw_port_type)pi->link_cfg.port_type));
 
 		dev_info(adap,
 			 " " PCI_PRI_FMT " Chelsio rev %d %s %s\n",
@@ -1575,23 +1575,23 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 
 	const struct port_info *pi = adap2pinfo(adap, port_id);
 
-	if (pi->mod_type == FW_PORT_MOD_TYPE_NONE)
+	if (pi->link_cfg.mod_type == FW_PORT_MOD_TYPE_NONE)
 		dev_info(adap, "Port%d: port module unplugged\n", pi->port_id);
-	else if (pi->mod_type < ARRAY_SIZE(mod_str))
+	else if (pi->link_cfg.mod_type < ARRAY_SIZE(mod_str))
 		dev_info(adap, "Port%d: %s port module inserted\n", pi->port_id,
-			 mod_str[pi->mod_type]);
-	else if (pi->mod_type == FW_PORT_MOD_TYPE_NOTSUPPORTED)
+			 mod_str[pi->link_cfg.mod_type]);
+	else if (pi->link_cfg.mod_type == FW_PORT_MOD_TYPE_NOTSUPPORTED)
 		dev_info(adap, "Port%d: unsupported port module inserted\n",
 			 pi->port_id);
-	else if (pi->mod_type == FW_PORT_MOD_TYPE_UNKNOWN)
+	else if (pi->link_cfg.mod_type == FW_PORT_MOD_TYPE_UNKNOWN)
 		dev_info(adap, "Port%d: unknown port module inserted\n",
 			 pi->port_id);
-	else if (pi->mod_type == FW_PORT_MOD_TYPE_ERROR)
+	else if (pi->link_cfg.mod_type == FW_PORT_MOD_TYPE_ERROR)
 		dev_info(adap, "Port%d: transceiver module error\n",
 			 pi->port_id);
 	else
 		dev_info(adap, "Port%d: unknown module type %d inserted\n",
-			 pi->port_id, pi->mod_type);
+			 pi->port_id, pi->link_cfg.mod_type);
 }
 
 bool cxgbe_force_linkup(struct adapter *adap)
@@ -1636,8 +1636,7 @@ int cxgbe_link_start(struct port_info *pi)
 		}
 	}
 	if (ret == 0 && is_pf4(adapter))
-		ret = t4_link_l1cfg(adapter, adapter->mbox, pi->tx_chan,
-				    &pi->link_cfg);
+		ret = t4_link_l1cfg(pi, pi->link_cfg.admin_caps);
 	if (ret == 0) {
 		/*
 		 * Enabling a Virtual Interface can result in an interrupt
@@ -1905,7 +1904,7 @@ void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps)
 {
 	*speed_caps = 0;
 
-	fw_caps_to_speed_caps(pi->port_type, pi->link_cfg.pcaps,
+	fw_caps_to_speed_caps(pi->link_cfg.port_type, pi->link_cfg.pcaps,
 			      speed_caps);
 
 	if (!(pi->link_cfg.pcaps & FW_PORT_CAP32_ANEG))

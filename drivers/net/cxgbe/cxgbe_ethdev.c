@@ -193,11 +193,12 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 			  int wait_to_complete)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
-	struct adapter *adapter = pi->adapter;
-	struct sge *s = &adapter->sge;
-	struct rte_eth_link new_link = { 0 };
 	unsigned int i, work_done, budget = 32;
+	struct link_config *lc = &pi->link_cfg;
+	struct adapter *adapter = pi->adapter;
+	struct rte_eth_link new_link = { 0 };
 	u8 old_link = pi->link_cfg.link_ok;
+	struct sge *s = &adapter->sge;
 
 	for (i = 0; i < CXGBE_LINK_STATUS_POLL_CNT; i++) {
 		if (!s->fw_evtq.desc)
@@ -218,9 +219,9 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 
 	new_link.link_status = cxgbe_force_linkup(adapter) ?
 			       ETH_LINK_UP : pi->link_cfg.link_ok;
-	new_link.link_autoneg = pi->link_cfg.autoneg;
+	new_link.link_autoneg = (lc->link_caps & FW_PORT_CAP32_ANEG) ? 1 : 0;
 	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	new_link.link_speed = pi->link_cfg.speed;
+	new_link.link_speed = t4_fwcap_to_speed(lc->link_caps);
 
 	return rte_eth_linkstatus_set(eth_dev, &new_link);
 }
@@ -787,11 +788,17 @@ static int cxgbe_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct link_config *lc = &pi->link_cfg;
-	int rx_pause, tx_pause;
+	u8 rx_pause = 0, tx_pause = 0;
+	u32 caps = lc->link_caps;
 
-	fc_conf->autoneg = lc->fc & PAUSE_AUTONEG;
-	rx_pause = lc->fc & PAUSE_RX;
-	tx_pause = lc->fc & PAUSE_TX;
+	if (caps & FW_PORT_CAP32_ANEG)
+		fc_conf->autoneg = 1;
+
+	if (caps & FW_PORT_CAP32_FC_TX)
+		tx_pause = 1;
+
+	if (caps & FW_PORT_CAP32_FC_RX)
+		rx_pause = 1;
 
 	if (rx_pause && tx_pause)
 		fc_conf->mode = RTE_FC_FULL;
@@ -808,30 +815,39 @@ static int cxgbe_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 			       struct rte_eth_fc_conf *fc_conf)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
-	struct adapter *adapter = pi->adapter;
 	struct link_config *lc = &pi->link_cfg;
+	u32 new_caps = lc->admin_caps;
+	u8 tx_pause = 0, rx_pause = 0;
+	int ret;
 
-	if (lc->pcaps & FW_PORT_CAP32_ANEG) {
-		if (fc_conf->autoneg)
-			lc->requested_fc |= PAUSE_AUTONEG;
-		else
-			lc->requested_fc &= ~PAUSE_AUTONEG;
+	if (fc_conf->mode == RTE_FC_FULL) {
+		tx_pause = 1;
+		rx_pause = 1;
+	} else if (fc_conf->mode == RTE_FC_TX_PAUSE) {
+		tx_pause = 1;
+	} else if (fc_conf->mode == RTE_FC_RX_PAUSE) {
+		rx_pause = 1;
 	}
 
-	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
-	    (fc_conf->mode & RTE_FC_RX_PAUSE))
-		lc->requested_fc |= PAUSE_RX;
-	else
-		lc->requested_fc &= ~PAUSE_RX;
+	ret = t4_set_link_pause(pi, fc_conf->autoneg, tx_pause,
+				rx_pause, &new_caps);
+	if (ret != 0)
+		return ret;
 
-	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
-	    (fc_conf->mode & RTE_FC_TX_PAUSE))
-		lc->requested_fc |= PAUSE_TX;
-	else
-		lc->requested_fc &= ~PAUSE_TX;
+	if (!fc_conf->autoneg) {
+		if (lc->pcaps & FW_PORT_CAP32_FORCE_PAUSE)
+			new_caps |= FW_PORT_CAP32_FORCE_PAUSE;
+	} else {
+		new_caps &= ~FW_PORT_CAP32_FORCE_PAUSE;
+	}
 
-	return t4_link_l1cfg(adapter, adapter->mbox, pi->tx_chan,
-			     &pi->link_cfg);
+	if (new_caps != lc->admin_caps) {
+		ret = t4_link_l1cfg(pi, new_caps);
+		if (ret == 0)
+			lc->admin_caps = new_caps;
+	}
+
+	return ret;
 }
 
 const uint32_t *

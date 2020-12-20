@@ -39,9 +39,6 @@ struct port_info {
 	short int xact_addr_filt;       /* index of exact MAC address filter */
 
 	u16    viid;                    /* associated virtual interface id */
-	s8     mdio_addr;               /* address of the PHY */
-	u8     port_type;               /* firmware port type */
-	u8     mod_type;                /* firmware module type */
 	u8     port_id;                 /* physical port ID */
 	u8     pidx;			/* port index for this PF */
 	u8     tx_chan;                 /* associated channel */
@@ -62,12 +59,6 @@ struct port_info {
 	u8 vin;
 	u8 vivld;
 };
-
-/* Enable or disable autonegotiation.  If this is set to enable,
- * the forced link modes above are completely ignored.
- */
-#define AUTONEG_DISABLE         0x00
-#define AUTONEG_ENABLE          0x01
 
 enum {                                 /* adapter flags */
 	FULL_INIT_DONE     = (1 << 0),
@@ -801,7 +792,6 @@ void t4_free_mem(void *addr);
 #define t4_os_free(_ptr)       t4_free_mem((_ptr))
 
 void t4_os_portmod_changed(const struct adapter *adap, int port_id);
-void t4_os_link_changed(struct adapter *adap, int port_id, int link_stat);
 
 void reclaim_completed_tx(struct sge_txq *q);
 void t4_free_sge_resources(struct adapter *adap);
