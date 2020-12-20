@@ -134,6 +134,53 @@ struct rte_mbuf *bnxt_consume_rx_buf(struct bnxt_rx_ring_info *rxr,
 	return mbuf;
 }
 
+static void bnxt_tpa_get_metadata(struct bnxt *bp,
+				  struct bnxt_tpa_info *tpa_info,
+				  struct rx_tpa_start_cmpl *tpa_start,
+				  struct rx_tpa_start_cmpl_hi *tpa_start1)
+{
+	tpa_info->cfa_code_valid = 0;
+	tpa_info->vlan_valid = 0;
+	tpa_info->hash_valid = 0;
+	tpa_info->l4_csum_valid = 0;
+
+	if (likely(tpa_start->flags_type &
+		   rte_cpu_to_le_32(RX_TPA_START_CMPL_FLAGS_RSS_VALID))) {
+		tpa_info->hash_valid = 1;
+		tpa_info->rss_hash = rte_le_to_cpu_32(tpa_start->rss_hash);
+	}
+
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_RX_CMPL_V2) {
+		struct rx_tpa_start_v2_cmpl *v2_tpa_start = (void *)tpa_start;
+		struct rx_tpa_start_v2_cmpl_hi *v2_tpa_start1 =
+			(void *)tpa_start1;
+
+		if (v2_tpa_start->agg_id &
+		    RX_TPA_START_V2_CMPL_METADATA1_VALID) {
+			tpa_info->vlan_valid = 1;
+			tpa_info->vlan =
+				rte_le_to_cpu_16(v2_tpa_start1->metadata0);
+		}
+
+		if (v2_tpa_start1->flags2 & RX_CMP_FLAGS2_L4_CSUM_ALL_OK_MASK)
+			tpa_info->l4_csum_valid = 1;
+
+		return;
+	}
+
+	tpa_info->cfa_code_valid = 1;
+	tpa_info->cfa_code = rte_le_to_cpu_16(tpa_start1->cfa_code);
+	if (tpa_start1->flags2 &
+	    rte_cpu_to_le_32(RX_TPA_START_CMPL_FLAGS2_META_FORMAT_VLAN)) {
+		tpa_info->vlan_valid = 1;
+		tpa_info->vlan = rte_le_to_cpu_32(tpa_start1->metadata);
+	}
+
+	if (likely(tpa_start1->flags2 &
+		   rte_cpu_to_le_32(RX_TPA_START_CMPL_FLAGS2_L4_CS_CALC)))
+		tpa_info->l4_csum_valid = 1;
+}
+
 static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 			   struct rx_tpa_start_cmpl *tpa_start,
 			   struct rx_tpa_start_cmpl_hi *tpa_start1)
@@ -164,21 +211,23 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
 	mbuf->ol_flags = PKT_RX_LRO;
-	if (likely(tpa_start->flags_type &
-		   rte_cpu_to_le_32(RX_TPA_START_CMPL_FLAGS_RSS_VALID))) {
-		mbuf->hash.rss = rte_le_to_cpu_32(tpa_start->rss_hash);
+
+	bnxt_tpa_get_metadata(rxq->bp, tpa_info, tpa_start, tpa_start1);
+
+	if (likely(tpa_info->hash_valid)) {
+		mbuf->hash.rss = tpa_info->rss_hash;
 		mbuf->ol_flags |= PKT_RX_RSS_HASH;
-	} else {
-		mbuf->hash.fdir.id = rte_le_to_cpu_16(tpa_start1->cfa_code);
+	} else if (tpa_info->cfa_code_valid) {
+		mbuf->hash.fdir.id = tpa_info->cfa_code;
 		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 	}
-	if (tpa_start1->flags2 &
-	    rte_cpu_to_le_32(RX_TPA_START_CMPL_FLAGS2_META_FORMAT_VLAN)) {
-		mbuf->vlan_tci = rte_le_to_cpu_32(tpa_start1->metadata);
+
+	if (tpa_info->vlan_valid) {
+		mbuf->vlan_tci = tpa_info->vlan;
 		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 	}
-	if (likely(tpa_start1->flags2 &
-		   rte_cpu_to_le_32(RX_TPA_START_CMPL_FLAGS2_L4_CS_CALC)))
+
+	if (likely(tpa_info->l4_csum_valid))
 		mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
 
 	/* recycle next mbuf */
@@ -751,7 +800,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 				cpr->cp_ring_struct->ring_mask,
 				cpr->valid);
 
-	if (cmp_type == RX_TPA_START_CMPL_TYPE_RX_TPA_START) {
+	if (cmp_type == RX_TPA_START_CMPL_TYPE_RX_TPA_START ||
+	    cmp_type == RX_TPA_START_V2_CMPL_TYPE_RX_TPA_START_V2) {
 		bnxt_tpa_start(rxq, (struct rx_tpa_start_cmpl *)rxcmp,
 			       (struct rx_tpa_start_cmpl_hi *)rxcmp1);
 		rc = -EINVAL; /* Continue w/o new mbuf */

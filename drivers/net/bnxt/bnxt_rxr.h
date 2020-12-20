@@ -50,6 +50,14 @@ struct bnxt_tpa_info {
 	uint16_t			len;
 	uint32_t			agg_count;
 	struct rx_tpa_v2_abuf_cmpl	agg_arr[TPA_MAX_NUM_SEGS];
+
+	uint32_t                        rss_hash;
+	uint32_t                        vlan;
+	uint16_t                        cfa_code;
+	uint8_t                         hash_valid:1;
+	uint8_t                         vlan_valid:1;
+	uint8_t                         cfa_code_valid:1;
+	uint8_t                         l4_csum_valid:1;
 };
 
 struct bnxt_rx_ring_info {
@@ -122,4 +130,6 @@ bnxt_cfa_code_dynfield(struct rte_mbuf *mbuf)
 
 #define BNXT_PTYPE_TBL_DIM	128
 extern uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM];
-#endif
+
+#define RX_CMP_FLAGS2_L4_CSUM_ALL_OK_MASK	(0x1 << 14)
+#endif /*  _BNXT_RXR_H_ */
