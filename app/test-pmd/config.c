@@ -3701,7 +3701,7 @@ show_fec_capability(unsigned int num, struct rte_eth_fec_capa *speed_fec_capa)
 		printf("%s : ",
 			rte_eth_link_speed_to_str(speed_fec_capa[i].speed));
 
-		for (j = RTE_ETH_FEC_AUTO; j < RTE_DIM(fec_mode_name); j++) {
+		for (j = 0; j < RTE_DIM(fec_mode_name); j++) {
 			if (RTE_ETH_FEC_MODE_TO_CAPA(j) &
 						speed_fec_capa[i].capa)
 				printf("%s ", fec_mode_name[j].name);
