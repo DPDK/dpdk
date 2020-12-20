@@ -1159,6 +1159,12 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 
+	/* Disable vector mode RX for Stingray2 for now */
+	if (BNXT_CHIP_SR2(bp)) {
+		bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
+		return bnxt_recv_pkts;
+	}
+
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 #ifndef RTE_LIBRTE_IEEE1588
 	/*
@@ -1199,12 +1205,17 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 }
 
 static eth_tx_burst_t
-bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
+bnxt_transmit_function(struct rte_eth_dev *eth_dev)
 {
+	struct bnxt *bp = eth_dev->data->dev_private;
+
+	/* Disable vector mode TX for Stingray2 for now */
+	if (BNXT_CHIP_SR2(bp))
+		return bnxt_xmit_pkts;
+
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 #ifndef RTE_LIBRTE_IEEE1588
 	uint64_t offloads = eth_dev->data->dev_conf.txmode.offloads;
-	struct bnxt *bp = eth_dev->data->dev_private;
 
 	/*
 	 * Vector mode transmit can be enabled only if not using scatter rx

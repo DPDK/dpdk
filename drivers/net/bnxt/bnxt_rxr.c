@@ -814,7 +814,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 			return -EBUSY;
 		*rx_pkt = mbuf;
 		goto next_rx;
-	} else if (cmp_type != 0x11) {
+	} else if ((cmp_type != CMPL_BASE_TYPE_RX_L2) &&
+		   (cmp_type != CMPL_BASE_TYPE_RX_L2_V2)) {
 		rc = -EINVAL;
 		goto next_rx;
 	}
@@ -838,8 +839,6 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
 
-	bnxt_set_ol_flags(rxr, rxcmp, rxcmp1, mbuf);
-
 #ifdef RTE_LIBRTE_IEEE1588
 	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
 		      RX_PKT_CMPL_FLAGS_MASK) ==
@@ -849,16 +848,27 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	}
 #endif
 
+	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V2) {
+		bnxt_parse_csum_v2(mbuf, rxcmp1);
+		bnxt_parse_pkt_type_v2(mbuf, rxcmp, rxcmp1);
+		bnxt_rx_vlan_v2(mbuf, rxcmp, rxcmp1);
+		/* TODO Add support for cfa_code parsing */
+		goto reuse_rx_mbuf;
+	}
+
+	bnxt_set_ol_flags(rxr, rxcmp, rxcmp1, mbuf);
+
+	mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
+
 	if (BNXT_TRUFLOW_EN(bp))
 		mark_id = bnxt_ulp_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf,
 						    &vfr_flag);
 	else
 		bnxt_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf);
 
+reuse_rx_mbuf:
 	if (agg_buf)
 		bnxt_rx_pages(rxq, mbuf, &tmp_raw_cons, agg_buf, NULL);
-
-	mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
 
 #ifdef BNXT_DEBUG
 	if (rxcmp1->errors_v2 & RX_CMP_L2_ERRORS) {
@@ -972,8 +982,8 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 					cpr->cp_ring_struct->ring_mask,
 					cpr->valid);
 
-		/* TODO: Avoid magic numbers... */
-		if ((CMP_TYPE(rxcmp) & 0x30) == 0x10) {
+		if ((CMP_TYPE(rxcmp) >= CMPL_BASE_TYPE_RX_TPA_START_V2) &&
+		     (CMP_TYPE(rxcmp) <= RX_TPA_V2_ABUF_CMPL_TYPE_RX_TPA_AGG)) {
 			rc = bnxt_rx_pkt(&rx_pkts[nb_rx_pkts], rxq, &raw_cons);
 			if (!rc)
 				nb_rx_pkts++;
