@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Broadcom bnxt driver.**
+
+  Updated the Broadcom bnxt driver with fixes and improvements, including:
+
+  * Added support for Stingray2 device.
+
 
 Removed Items
 -------------

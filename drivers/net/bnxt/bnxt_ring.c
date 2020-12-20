@@ -346,10 +346,7 @@ static void bnxt_set_db(struct bnxt *bp,
 			uint32_t ring_mask)
 {
 	if (BNXT_CHIP_P5(bp)) {
-		if (BNXT_PF(bp))
-			db->doorbell = (char *)bp->doorbell_base + 0x10000;
-		else
-			db->doorbell = (char *)bp->doorbell_base + 0x4000;
+		int db_offset = DB_PF_OFFSET;
 		switch (ring_type) {
 		case HWRM_RING_ALLOC_INPUT_RING_TYPE_TX:
 			db->db_key64 = DBR_PATH_L2 | DBR_TYPE_SQ;
@@ -365,6 +362,14 @@ static void bnxt_set_db(struct bnxt *bp,
 			db->db_key64 = DBR_PATH_L2;
 			break;
 		}
+		if (BNXT_CHIP_SR2(bp)) {
+			db->db_key64 |= DBR_VALID;
+			db_offset = bp->legacy_db_size;
+		} else if (BNXT_VF(bp)) {
+			db_offset = DB_VF_OFFSET;
+		}
+
+		db->doorbell = (char *)bp->doorbell_base + db_offset;
 		db->db_key64 |= (uint64_t)fid << DBR_XID_SFT;
 		db->db_64 = true;
 	} else {
@@ -383,6 +388,12 @@ static void bnxt_set_db(struct bnxt *bp,
 		db->db_64 = false;
 	}
 	db->db_ring_mask = ring_mask;
+
+	if (BNXT_CHIP_SR2(bp)) {
+		db->db_epoch_mask = db->db_ring_mask + 1;
+		db->db_epoch_shift = DBR_EPOCH_SFT -
+					rte_log2_u32(db->db_epoch_mask);
+	}
 }
 
 static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,

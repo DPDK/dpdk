@@ -66,6 +66,10 @@
 #define BROADCOM_DEV_ID_58804		0xd804
 #define BROADCOM_DEV_ID_58808		0x16f0
 #define BROADCOM_DEV_ID_58802_VF	0xd800
+#define BROADCOM_DEV_ID_58812		0xd812
+#define BROADCOM_DEV_ID_58814		0xd814
+#define BROADCOM_DEV_ID_58818		0xd818
+#define BROADCOM_DEV_ID_58818_VF	0xd82e
 
 #define BROADCOM_DEV_957508_N2100	0x5208
 #define IS_BNXT_DEV_957508_N2100(bp)	\
@@ -367,13 +371,19 @@ struct bnxt_coal {
 };
 
 /* 64-bit doorbell */
+#define DBR_EPOCH_MASK				0x01000000UL
+#define DBR_EPOCH_SFT				24
 #define DBR_XID_SFT				32
 #define DBR_PATH_L2				(0x1ULL << 56)
+#define DBR_VALID				(0x1ULL << 58)
 #define DBR_TYPE_SQ				(0x0ULL << 60)
 #define DBR_TYPE_SRQ				(0x2ULL << 60)
 #define DBR_TYPE_CQ				(0x4ULL << 60)
 #define DBR_TYPE_NQ				(0xaULL << 60)
 #define DBR_TYPE_NQ_ARM				(0xbULL << 60)
+
+#define DB_PF_OFFSET			0x10000
+#define DB_VF_OFFSET			0x4000
 
 #define BNXT_RSS_TBL_SIZE_P5		512U
 #define BNXT_RSS_ENTRIES_PER_CTX_P5	64
@@ -601,6 +611,7 @@ struct bnxt {
 	struct rte_eth_dev		*eth_dev;
 	struct rte_pci_device		*pdev;
 	void				*doorbell_base;
+	int				legacy_db_size;
 
 	uint32_t		flags;
 #define BNXT_FLAG_REGISTERED		BIT(0)
@@ -648,6 +659,10 @@ struct bnxt {
 #define BNXT_HAS_DFLT_MAC_SET(bp)      ((bp)->flags & BNXT_FLAG_DFLT_MAC_SET)
 #define BNXT_TRUFLOW_EN(bp)	((bp)->flags & BNXT_FLAG_TRUFLOW_EN)
 #define BNXT_GFID_ENABLED(bp)	((bp)->flags & BNXT_FLAG_GFID_ENABLE)
+
+	uint16_t		chip_num;
+#define CHIP_NUM_58818		0xd818
+#define BNXT_CHIP_SR2(bp)	((bp)->chip_num == CHIP_NUM_58818)
 
 	uint32_t		fw_cap;
 #define BNXT_FW_CAP_HOT_RESET		BIT(0)

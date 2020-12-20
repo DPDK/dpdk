@@ -1129,6 +1129,9 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 		PMD_DRV_LOG(ERR, "Unsupported request length\n");
 		rc = -EINVAL;
 	}
+
+	bp->chip_num = rte_le_to_cpu_16(resp->chip_num);
+
 	bp->max_req_len = rte_le_to_cpu_16(resp->max_req_win_len);
 	bp->hwrm_max_ext_req_len = rte_le_to_cpu_16(resp->max_ext_req_len);
 	if (bp->hwrm_max_ext_req_len < HWRM_MAX_REQ_LEN)
@@ -3206,6 +3209,9 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 		bp->flags &= ~BNXT_FLAG_NPAR_PF;
 		break;
 	}
+
+	bp->legacy_db_size =
+		rte_le_to_cpu_16(resp->legacy_l2_db_size_kb) * 1024;
 
 	HWRM_UNLOCK();
 
