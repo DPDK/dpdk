@@ -55,8 +55,8 @@ struct hwrm_func_qstats_output;
 #define HWRM_PORT_PHY_CFG_IN_EN_AUTO_LINK_SPEED_MASK \
 	HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED_MASK
 
-#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_L2_HDR_SRC_FILTER_EN \
-HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_L2_HEADER_SOURCE_FIELDS_SUPPORTED
+#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_RFS_RING_TBL_IDX_V2_SUPPORTED \
+	HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_RFS_RING_TBL_IDX_V2_SUPPORTED
 
 #define HWRM_SPEC_CODE_1_8_4		0x10804
 #define HWRM_SPEC_CODE_1_9_0		0x10900
@@ -300,4 +300,5 @@ int bnxt_hwrm_first_vf_id_query(struct bnxt *bp, uint16_t fid,
 				uint16_t *first_vf_id);
 int bnxt_hwrm_cfa_pair_alloc(struct bnxt *bp, struct bnxt_representor *rep);
 int bnxt_hwrm_cfa_pair_free(struct bnxt *bp, struct bnxt_representor *rep);
+int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp);
 #endif

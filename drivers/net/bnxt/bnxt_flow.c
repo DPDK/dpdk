@@ -1056,6 +1056,13 @@ start:
 		}
 		PMD_DRV_LOG(DEBUG, "Queue index %d\n", act_q->index);
 
+		if (use_ntuple && !BNXT_RFS_NEEDS_VNIC(bp)) {
+			filter->flags =
+				HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DEST_RFS_RING_IDX;
+			filter->dst_id = act_q->index;
+			goto skip_vnic_alloc;
+		}
+
 		vnic_id = attr->group;
 		if (!vnic_id) {
 			PMD_DRV_LOG(DEBUG, "Group id is 0\n");
@@ -1127,7 +1134,7 @@ use_vnic:
 		PMD_DRV_LOG(DEBUG,
 			    "Setting vnic ff_idx %d\n", vnic->ff_pool_idx);
 		filter->dst_id = vnic->fw_vnic_id;
-
+skip_vnic_alloc:
 		/* For ntuple filter, create the L2 filter with default VNIC.
 		 * The user specified redirect queue will be set while creating
 		 * the ntuple filter in hardware.
@@ -1808,7 +1815,10 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 		}
 	}
 
-	vnic = find_matching_vnic(bp, filter);
+	if (BNXT_RFS_NEEDS_VNIC(bp))
+		vnic = find_matching_vnic(bp, filter);
+	else
+		vnic = BNXT_GET_DEFAULT_VNIC(bp);
 done:
 	if (!ret || update_flow) {
 		flow->filter = filter;

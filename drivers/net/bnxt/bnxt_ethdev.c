@@ -748,11 +748,17 @@ skip_cosq_cfg:
 		goto err_out;
 	}
 
+	/* default vnic 0 */
+	rc = bnxt_setup_one_vnic(bp, 0);
+	if (rc)
+		goto err_out;
 	/* VNIC configuration */
-	for (i = 0; i < bp->nr_vnics; i++) {
-		rc = bnxt_setup_one_vnic(bp, i);
-		if (rc)
-			goto err_out;
+	if (BNXT_RFS_NEEDS_VNIC(bp)) {
+		for (i = 1; i < bp->nr_vnics; i++) {
+			rc = bnxt_setup_one_vnic(bp, i);
+			if (rc)
+				goto err_out;
+		}
 	}
 
 	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0], 0, NULL);
@@ -4695,6 +4701,10 @@ static int bnxt_init_fw(struct bnxt *bp)
 		return rc;
 
 	rc = bnxt_hwrm_func_qcfg(bp, &mtu);
+	if (rc)
+		return rc;
+
+	rc = bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(bp);
 	if (rc)
 		return rc;
 
