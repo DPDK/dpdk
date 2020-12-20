@@ -1615,7 +1615,9 @@ struct fw_vi_stats_cmd {
 #define FW_PORT_CAP32_MDIAUTO           0x00400000UL
 #define FW_PORT_CAP32_FEC_RS            0x00800000UL
 #define FW_PORT_CAP32_FEC_BASER_RS      0x01000000UL
+#define FW_PORT_CAP32_FEC_NO_FEC        0x02000000UL
 #define FW_PORT_CAP32_FORCE_PAUSE       0x10000000UL
+#define FW_PORT_CAP32_FORCE_FEC         0x20000000UL
 
 #define S_FW_PORT_CAP32_SPEED           0
 #define M_FW_PORT_CAP32_SPEED           0xfff
@@ -1640,6 +1642,10 @@ enum fw_port_mdi32 {
 #define V_FW_PORT_CAP32_MDI(x) ((x) << S_FW_PORT_CAP32_MDI)
 #define G_FW_PORT_CAP32_MDI(x) \
 	(((x) >> S_FW_PORT_CAP32_MDI) & M_FW_PORT_CAP32_MDI)
+
+#define S_FW_PORT_CAP32_FEC     23
+#define M_FW_PORT_CAP32_FEC     0x1f
+#define V_FW_PORT_CAP32_FEC(x)  ((x) << S_FW_PORT_CAP32_FEC)
 
 enum fw_port_action {
 	FW_PORT_ACTION_L1_CFG32         = 0x0009,

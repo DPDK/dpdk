@@ -1193,6 +1193,125 @@ int cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 	return 0;
 }
 
+static int cxgbe_fec_get_capa_speed_to_fec(struct link_config *lc,
+					   struct rte_eth_fec_capa *capa_arr)
+{
+	int num = 0;
+
+	if (lc->pcaps & FW_PORT_CAP32_SPEED_100G) {
+		if (capa_arr) {
+			capa_arr[num].speed = ETH_SPEED_NUM_100G;
+			capa_arr[num].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+					     RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		}
+		num++;
+	}
+
+	if (lc->pcaps & FW_PORT_CAP32_SPEED_50G) {
+		if (capa_arr) {
+			capa_arr[num].speed = ETH_SPEED_NUM_50G;
+			capa_arr[num].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+					     RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+		}
+		num++;
+	}
+
+	if (lc->pcaps & FW_PORT_CAP32_SPEED_25G) {
+		if (capa_arr) {
+			capa_arr[num].speed = ETH_SPEED_NUM_25G;
+			capa_arr[num].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+					     RTE_ETH_FEC_MODE_CAPA_MASK(BASER) |
+					     RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		}
+		num++;
+	}
+
+	return num;
+}
+
+static int cxgbe_fec_get_capability(struct rte_eth_dev *dev,
+				    struct rte_eth_fec_capa *speed_fec_capa,
+				    unsigned int num)
+{
+	struct port_info *pi = dev->data->dev_private;
+	struct link_config *lc = &pi->link_cfg;
+	u8 num_entries;
+
+	if (!(lc->pcaps & V_FW_PORT_CAP32_FEC(M_FW_PORT_CAP32_FEC)))
+		return -EOPNOTSUPP;
+
+	num_entries = cxgbe_fec_get_capa_speed_to_fec(lc, NULL);
+	if (!speed_fec_capa || num < num_entries)
+		return num_entries;
+
+	return cxgbe_fec_get_capa_speed_to_fec(lc, speed_fec_capa);
+}
+
+static int cxgbe_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+{
+	struct port_info *pi = dev->data->dev_private;
+	struct link_config *lc = &pi->link_cfg;
+	u32 fec_caps = 0, caps = lc->link_caps;
+
+	if (!(lc->pcaps & V_FW_PORT_CAP32_FEC(M_FW_PORT_CAP32_FEC)))
+		return -EOPNOTSUPP;
+
+	if (caps & FW_PORT_CAP32_FEC_RS)
+		fec_caps = RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+	else if (caps & FW_PORT_CAP32_FEC_BASER_RS)
+		fec_caps = RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+	else
+		fec_caps = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+
+	*fec_capa = fec_caps;
+	return 0;
+}
+
+static int cxgbe_fec_set(struct rte_eth_dev *dev, uint32_t fec_capa)
+{
+	struct port_info *pi = dev->data->dev_private;
+	u8 fec_rs = 0, fec_baser = 0, fec_none = 0;
+	struct link_config *lc = &pi->link_cfg;
+	u32 new_caps = lc->admin_caps;
+	int ret;
+
+	if (!(lc->pcaps & V_FW_PORT_CAP32_FEC(M_FW_PORT_CAP32_FEC)))
+		return -EOPNOTSUPP;
+
+	if (!fec_capa)
+		return -EINVAL;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(AUTO))
+		goto set_fec;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC))
+		fec_none = 1;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(BASER))
+		fec_baser = 1;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(RS))
+		fec_rs = 1;
+
+set_fec:
+	ret = t4_set_link_fec(pi, fec_rs, fec_baser, fec_none, &new_caps);
+	if (ret != 0)
+		return ret;
+
+	if (lc->pcaps & FW_PORT_CAP32_FORCE_FEC)
+		new_caps |= FW_PORT_CAP32_FORCE_FEC;
+	else
+		new_caps &= ~FW_PORT_CAP32_FORCE_FEC;
+
+	if (new_caps != lc->admin_caps) {
+		ret = t4_link_l1cfg(pi, new_caps);
+		if (ret == 0)
+			lc->admin_caps = new_caps;
+	}
+
+	return ret;
+}
+
 static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.dev_start		= cxgbe_dev_start,
 	.dev_stop		= cxgbe_dev_stop,
@@ -1230,6 +1349,9 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.mac_addr_set		= cxgbe_mac_addr_set,
 	.reta_update            = cxgbe_dev_rss_reta_update,
 	.reta_query             = cxgbe_dev_rss_reta_query,
+	.fec_get_capability     = cxgbe_fec_get_capability,
+	.fec_get                = cxgbe_fec_get,
+	.fec_set                = cxgbe_fec_set,
 };
 
 /*

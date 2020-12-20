@@ -4473,6 +4473,76 @@ int t4_set_link_pause(struct port_info *pi, u8 autoneg, u8 pause_tx,
 	return 0;
 }
 
+int t4_set_link_fec(struct port_info *pi, u8 fec_rs, u8 fec_baser,
+		    u8 fec_none, u32 *new_caps)
+{
+	struct link_config *lc = &pi->link_cfg;
+	u32 max_speed, caps = *new_caps;
+
+	if (!(lc->pcaps & V_FW_PORT_CAP32_FEC(M_FW_PORT_CAP32_FEC)))
+		return -EOPNOTSUPP;
+
+	/* Link might be down. In that case consider the max
+	 * speed advertised
+	 */
+	max_speed = t4_fwcap_to_speed(lc->link_caps);
+	if (!max_speed)
+		max_speed = t4_fwcap_to_speed(lc->acaps);
+
+	caps &= ~V_FW_PORT_CAP32_FEC(M_FW_PORT_CAP32_FEC);
+	if (fec_rs) {
+		switch (max_speed) {
+		case 100000:
+		case 25000:
+			caps |= FW_PORT_CAP32_FEC_RS;
+			break;
+		default:
+			return -EOPNOTSUPP;
+		}
+	}
+
+	if (fec_baser) {
+		switch (max_speed) {
+		case 50000:
+		case 25000:
+			caps |= FW_PORT_CAP32_FEC_BASER_RS;
+			break;
+		default:
+			return -EOPNOTSUPP;
+		}
+	}
+
+	if (fec_none)
+		caps |= FW_PORT_CAP32_FEC_NO_FEC;
+
+	if (!(caps & V_FW_PORT_CAP32_FEC(M_FW_PORT_CAP32_FEC))) {
+		/* No explicit encoding is requested.
+		 * So, default back to AUTO.
+		 */
+		switch (max_speed) {
+		case 100000:
+			caps |= FW_PORT_CAP32_FEC_RS |
+				FW_PORT_CAP32_FEC_NO_FEC;
+			break;
+		case 50000:
+			caps |= FW_PORT_CAP32_FEC_BASER_RS |
+				FW_PORT_CAP32_FEC_NO_FEC;
+			break;
+		case 25000:
+			caps |= FW_PORT_CAP32_FEC_RS |
+				FW_PORT_CAP32_FEC_BASER_RS |
+				FW_PORT_CAP32_FEC_NO_FEC;
+			break;
+		default:
+			return -EOPNOTSUPP;
+		}
+	}
+
+	*new_caps = caps;
+
+	return 0;
+}
+
 /**
  * t4_handle_get_port_info - process a FW reply message
  * @pi: the port info
@@ -4630,6 +4700,7 @@ void t4_reset_link_config(struct adapter *adap, int idx)
 void t4_init_link_config(struct port_info *pi, u32 pcaps, u32 acaps,
 			 u8 mdio_addr, u8 port_type, u8 mod_type)
 {
+	u8 fec_rs = 0, fec_baser = 0, fec_none = 0;
 	struct link_config *lc = &pi->link_cfg;
 
 	lc->pcaps = pcaps;
@@ -4649,6 +4720,23 @@ void t4_init_link_config(struct port_info *pi, u32 pcaps, u32 acaps,
 	lc->admin_caps &= ~V_FW_PORT_CAP32_802_3(M_FW_PORT_CAP32_802_3);
 	if (lc->pcaps & FW_PORT_CAP32_FORCE_PAUSE)
 		lc->admin_caps &= ~FW_PORT_CAP32_FORCE_PAUSE;
+
+	/* Reset FEC caps to default values */
+	if (lc->pcaps & V_FW_PORT_CAP32_FEC(M_FW_PORT_CAP32_FEC)) {
+		if (lc->acaps & FW_PORT_CAP32_FEC_RS)
+			fec_rs = 1;
+		else if (lc->acaps & FW_PORT_CAP32_FEC_BASER_RS)
+			fec_baser = 1;
+		else
+			fec_none = 1;
+
+		lc->admin_caps &= ~V_FW_PORT_CAP32_FEC(M_FW_PORT_CAP32_FEC);
+		t4_set_link_fec(pi, fec_rs, fec_baser, fec_none,
+				&lc->admin_caps);
+	}
+
+	if (lc->pcaps & FW_PORT_CAP32_FORCE_FEC)
+		lc->admin_caps &= ~FW_PORT_CAP32_FORCE_FEC;
 
 	/* Reset MDI to AUTO */
 	if (lc->pcaps & FW_PORT_CAP32_MDIAUTO) {

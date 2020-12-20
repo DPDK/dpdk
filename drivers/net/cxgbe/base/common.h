@@ -331,6 +331,8 @@ static inline int t4_link_l1cfg_ns(struct port_info *pi, u32 caps)
 int t4_set_link_speed(struct port_info *pi, u32 speed, u32 *new_caps);
 int t4_set_link_pause(struct port_info *pi, u8 autoneg, u8 pause_tx,
 		      u8 pause_rx, u32 *new_caps);
+int t4_set_link_fec(struct port_info *pi, u8 fec_rs, u8 fec_baser,
+		    u8 fec_none, u32 *new_caps);
 unsigned int t4_fwcap_to_speed(u32 caps);
 void t4_load_mtus(struct adapter *adap, const unsigned short *mtus,
 		  const unsigned short *alpha, const unsigned short *beta);
