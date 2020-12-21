@@ -1690,7 +1690,7 @@ vhost_check_queue_inflights_split(struct virtio_net *dev,
 
 	if (inflight_split->used_idx != used->idx) {
 		inflight_split->desc[last_io].inflight = 0;
-		rte_smp_mb();
+		rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 		inflight_split->used_idx = used->idx;
 	}
 

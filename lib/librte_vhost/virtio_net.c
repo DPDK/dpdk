@@ -1663,7 +1663,7 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 			queue_id, 0, count - vq->async_last_pkts_n);
 	n_pkts_cpl += vq->async_last_pkts_n;
 
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
 	while (likely((n_pkts_put < count) && n_inflight)) {
 		uint16_t info_idx = (start_idx + n_pkts_put) & (vq_size - 1);

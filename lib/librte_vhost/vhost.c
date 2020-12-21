@@ -106,7 +106,7 @@ __vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len)
 		return;
 
 	/* To make sure guest memory updates are committed before logging */
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
 	page = addr / VHOST_LOG_PAGE;
 	while (page * VHOST_LOG_PAGE < addr + len) {
@@ -144,7 +144,7 @@ __vhost_log_cache_sync(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (unlikely(!dev->log_base))
 		return;
 
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
 	log_base = (unsigned long *)(uintptr_t)dev->log_base;
 
@@ -163,7 +163,7 @@ __vhost_log_cache_sync(struct virtio_net *dev, struct vhost_virtqueue *vq)
 #endif
 	}
 
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
 	vq->log_cache_nb_elem = 0;
 }
@@ -190,7 +190,7 @@ vhost_log_cache_page(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		 * No more room for a new log cache entry,
 		 * so write the dirty log map directly.
 		 */
-		rte_smp_wmb();
+		rte_atomic_thread_fence(__ATOMIC_RELEASE);
 		vhost_log_page((uint8_t *)(uintptr_t)dev->log_base, page);
 
 		return;
@@ -1097,11 +1097,11 @@ rte_vhost_clr_inflight_desc_split(int vid, uint16_t vring_idx,
 	if (unlikely(idx >= vq->size))
 		return -1;
 
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 	vq->inflight_split->desc[idx].inflight = 0;
 
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 	vq->inflight_split->used_idx = last_used_idx;
 	return 0;
@@ -1140,11 +1140,11 @@ rte_vhost_clr_inflight_desc_packed(int vid, uint16_t vring_idx,
 	if (unlikely(head >= vq->size))
 		return -1;
 
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 	inflight_info->desc[head].inflight = 0;
 
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 	inflight_info->old_free_head = inflight_info->free_head;
 	inflight_info->old_used_idx = inflight_info->used_idx;
@@ -1330,7 +1330,7 @@ vhost_enable_notify_packed(struct virtio_net *dev,
 			vq->avail_wrap_counter << 15;
 	}
 
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
 	vq->device_event->flags = flags;
 	return 0;

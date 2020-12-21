@@ -728,7 +728,7 @@ static __rte_always_inline void
 vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	/* Flush used->idx update before we read avail->flags. */
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 	/* Don't kick guest if we don't reach index specified by guest. */
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX)) {
@@ -770,7 +770,7 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	bool signalled_used_valid, kick = false;
 
 	/* Flush used desc update. */
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 	if (!(dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))) {
 		if (vq->driver_event->flags !=
@@ -796,7 +796,7 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		goto kick;
 	}
 
-	rte_smp_rmb();
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
 
 	off_wrap = vq->driver_event->off_wrap;
 	off = off_wrap & ~(1 << 15);
