@@ -209,11 +209,11 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 	virtio_wmb(vq->hw->weak_barriers);
 	virtqueue_notify(vq);
 
-	/* wait for used descriptors in virtqueue */
+	/* wait for used desc in virtqueue
+	 * desc_is_used has a load-acquire or rte_io_rmb inside
+	 */
 	while (!desc_is_used(&desc[head], vq))
 		usleep(100);
-
-	virtio_rmb(vq->hw->weak_barriers);
 
 	/* now get used descriptors */
 	vq->vq_free_cnt += nb_descs;
