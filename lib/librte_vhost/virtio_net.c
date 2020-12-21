@@ -1281,8 +1281,6 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 			return -1;
 	}
 
-	rte_smp_rmb();
-
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
 		lens[i] = descs[avail_idx + i].len;
 
@@ -1343,7 +1341,6 @@ virtio_dev_rx_single_packed(struct virtio_net *dev,
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 	uint16_t nr_descs = 0;
 
-	rte_smp_rmb();
 	if (unlikely(vhost_enqueue_single_packed(dev, vq, pkt, buf_vec,
 						 &nr_descs) < 0)) {
 		VHOST_LOG_DATA(DEBUG,
