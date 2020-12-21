@@ -23,8 +23,12 @@
 
 #include "eal_private.h"
 
-static struct rte_intr_handle intr_handle = {.fd = -1 };
-static bool monitor_started;
+static struct rte_intr_handle intr_handle = {
+	.type = RTE_INTR_HANDLE_DEV_EVENT,
+	.fd = -1,
+};
+static rte_rwlock_t monitor_lock = RTE_RWLOCK_INITIALIZER;
+static uint32_t monitor_refcount;
 static bool hotplug_handle;
 
 #define EAL_UEV_MSG_LEN 4096
@@ -298,50 +302,70 @@ failure_handle_err:
 int
 rte_dev_event_monitor_start(void)
 {
-	int ret;
+	int ret = 0;
 
-	if (monitor_started)
-		return 0;
+	rte_rwlock_write_lock(&monitor_lock);
+
+	if (monitor_refcount) {
+		monitor_refcount++;
+		goto exit;
+	}
 
 	ret = dev_uev_socket_fd_create();
 	if (ret) {
 		RTE_LOG(ERR, EAL, "error create device event fd.\n");
-		return -1;
+		goto exit;
 	}
 
-	intr_handle.type = RTE_INTR_HANDLE_DEV_EVENT;
 	ret = rte_intr_callback_register(&intr_handle, dev_uev_handler, NULL);
 
 	if (ret) {
 		RTE_LOG(ERR, EAL, "fail to register uevent callback.\n");
-		return -1;
+		close(intr_handle.fd);
+		intr_handle.fd = -1;
+		goto exit;
 	}
 
-	monitor_started = true;
+	monitor_refcount++;
 
-	return 0;
+exit:
+	rte_rwlock_write_unlock(&monitor_lock);
+	return ret;
 }
 
 int
 rte_dev_event_monitor_stop(void)
 {
-	int ret;
+	int ret = 0;
 
-	if (!monitor_started)
-		return 0;
+	rte_rwlock_write_lock(&monitor_lock);
+
+	if (!monitor_refcount) {
+		RTE_LOG(ERR, EAL, "device event monitor already stopped\n");
+		goto exit;
+	}
+
+	if (monitor_refcount > 1) {
+		monitor_refcount--;
+		goto exit;
+	}
 
 	ret = rte_intr_callback_unregister(&intr_handle, dev_uev_handler,
 					   (void *)-1);
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "fail to unregister uevent callback.\n");
-		return ret;
+		goto exit;
 	}
 
 	close(intr_handle.fd);
 	intr_handle.fd = -1;
-	monitor_started = false;
 
-	return 0;
+	monitor_refcount--;
+
+exit:
+	rte_rwlock_write_unlock(&monitor_lock);
+
+	return ret;
 }
 
 int
