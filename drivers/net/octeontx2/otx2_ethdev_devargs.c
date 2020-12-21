@@ -114,7 +114,11 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 		*(uint16_t *)extra_args = OTX2_PRIV_FLAGS_EDSA;
 
 	if (strcmp(value, "chlen90b") == 0)
-		*(uint16_t *)extra_args = OTX2_PRIV_FLAGS_LEN_90B;
+		*(uint16_t *)extra_args = OTX2_PRIV_FLAGS_CH_LEN_90B;
+
+	if (strcmp(value, "chlen24b") == 0)
+		*(uint16_t *)extra_args = OTX2_PRIV_FLAGS_CH_LEN_24B;
+
 	return 0;
 }
 
@@ -198,7 +202,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_octeontx2,
 			      OTX2_MAX_SQB_COUNT "=<8-512>"
 			      OTX2_FLOW_PREALLOC_SIZE "=<1-32>"
 			      OTX2_FLOW_MAX_PRIORITY "=<1-32>"
-			      OTX2_SWITCH_HEADER_TYPE "=<higig2|dsa|chlen90b>"
+			      OTX2_SWITCH_HEADER_TYPE "=<higig2|dsa|chlen90b|chlen24b>"
 			      OTX2_RSS_TAG_AS_XOR "=1"
 			      OTX2_NPA_LOCK_MASK "=<1-65535>"
 			      OTX2_LOCK_RX_CTX "=1"

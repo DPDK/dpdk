@@ -112,15 +112,18 @@ nix_lf_switch_header_type_enable(struct otx2_eth_dev *dev, bool enable)
 	if (dev->npc_flow.switch_header_type == 0)
 		return 0;
 
-	if (dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_LEN_90B &&
-	    !otx2_dev_is_sdp(dev)) {
-		otx2_err("chlen90b is not supported on non-SDP device");
-		return -EINVAL;
-	}
-
 	/* Notify AF about higig2 config */
 	req = otx2_mbox_alloc_msg_npc_set_pkind(mbox);
 	req->mode = dev->npc_flow.switch_header_type;
+	if (dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_CH_LEN_90B) {
+		req->mode = OTX2_PRIV_FLAGS_CUSTOM;
+		req->pkind = NPC_RX_CHLEN90B_PKIND;
+	} else if (dev->npc_flow.switch_header_type ==
+		   OTX2_PRIV_FLAGS_CH_LEN_24B) {
+		req->mode = OTX2_PRIV_FLAGS_CUSTOM;
+		req->pkind = NPC_RX_CHLEN24B_PKIND;
+	}
+
 	if (enable == 0)
 		req->mode = OTX2_PRIV_FLAGS_DEFAULT;
 	req->dir = PKIND_RX;
@@ -129,6 +132,10 @@ nix_lf_switch_header_type_enable(struct otx2_eth_dev *dev, bool enable)
 		return rc;
 	req = otx2_mbox_alloc_msg_npc_set_pkind(mbox);
 	req->mode = dev->npc_flow.switch_header_type;
+	if (dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_CH_LEN_90B ||
+	    dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_CH_LEN_24B)
+		req->mode = OTX2_PRIV_FLAGS_DEFAULT;
+
 	if (enable == 0)
 		req->mode = OTX2_PRIV_FLAGS_DEFAULT;
 	req->dir = PKIND_TX;

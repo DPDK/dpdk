@@ -234,7 +234,7 @@ otx2_rss_ethdev_to_nix(struct otx2_eth_dev *dev, uint64_t ethdev_rss,
 	dev->rss_info.nix_rss = ethdev_rss;
 
 	if (ethdev_rss & ETH_RSS_L2_PAYLOAD &&
-	    dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_LEN_90B) {
+	    dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_CH_LEN_90B) {
 		flowkey_cfg |= FLOW_KEY_TYPE_CH_LEN_90B;
 	}
 
