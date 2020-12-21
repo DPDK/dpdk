@@ -1494,13 +1494,10 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	struct async_inflight_info *pkts_info = vq->async_pkts_info;
 	int n_pkts = 0;
 
-	avail_head = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE);
-
 	/*
-	 * The ordering between avail index and
-	 * desc reads needs to be enforced.
+	 * The ordering between avail index and desc reads need to be enforced.
 	 */
-	rte_smp_rmb();
+	avail_head = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE);
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
