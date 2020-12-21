@@ -86,9 +86,9 @@ enqueue_task(struct vhost_blk_task *task)
 	 */
 	used->ring[used->idx & (vq->vring.size - 1)].id = task->req_idx;
 	used->ring[used->idx & (vq->vring.size - 1)].len = task->data_len;
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 	used->idx++;
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 	rte_vhost_clr_inflight_desc_split(task->ctrlr->vid,
 		vq->id, used->idx, task->req_idx);
@@ -112,12 +112,12 @@ enqueue_task_packed(struct vhost_blk_task *task)
 	desc->id = task->buffer_id;
 	desc->addr = 0;
 
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 	if (vq->used_wrap_counter)
 		desc->flags |= VIRTQ_DESC_F_AVAIL | VIRTQ_DESC_F_USED;
 	else
 		desc->flags &= ~(VIRTQ_DESC_F_AVAIL | VIRTQ_DESC_F_USED);
-	rte_smp_mb();
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 	rte_vhost_clr_inflight_desc_packed(task->ctrlr->vid, vq->id,
 					   task->inflight_idx);
