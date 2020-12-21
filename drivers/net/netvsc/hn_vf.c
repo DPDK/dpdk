@@ -24,6 +24,7 @@
 #include <rte_bus_pci.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
+#include <rte_alarm.h>
 
 #include "hn_logs.h"
 #include "hn_var.h"
@@ -52,73 +53,252 @@ static int hn_vf_match(const struct rte_eth_dev *dev)
 /*
  * Attach new PCI VF device and return the port_id
  */
-static int hn_vf_attach(struct hn_data *hv, uint16_t port_id)
+static int hn_vf_attach(struct rte_eth_dev *dev, struct hn_data *hv)
 {
 	struct rte_eth_dev_owner owner = { .id = RTE_ETH_DEV_NO_OWNER };
-	int ret;
+	int port, ret;
 
-	if (hn_vf_attached(hv)) {
+	if (hv->vf_ctx.vf_attached) {
 		PMD_DRV_LOG(ERR, "VF already attached");
-		return -EEXIST;
+		return 0;
 	}
 
-	ret = rte_eth_dev_owner_get(port_id, &owner);
+	port = hn_vf_match(dev);
+	if (port < 0) {
+		PMD_DRV_LOG(NOTICE, "Couldn't find port for VF");
+		return port;
+	}
+
+	PMD_DRV_LOG(NOTICE, "found matching VF port %d\n", port);
+	ret = rte_eth_dev_owner_get(port, &owner);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "Can not find owner for port %d", port_id);
+		PMD_DRV_LOG(ERR, "Can not find owner for port %d", port);
 		return ret;
 	}
 
 	if (owner.id != RTE_ETH_DEV_NO_OWNER) {
 		PMD_DRV_LOG(ERR, "Port %u already owned by other device %s",
-			    port_id, owner.name);
+			    port, owner.name);
 		return -EBUSY;
 	}
 
-	ret = rte_eth_dev_owner_set(port_id, &hv->owner);
+	ret = rte_eth_dev_owner_set(port, &hv->owner);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "Can set owner for port %d", port_id);
+		PMD_DRV_LOG(ERR, "Can set owner for port %d", port);
 		return ret;
 	}
 
-	PMD_DRV_LOG(DEBUG, "Attach VF device %u", port_id);
-	hv->vf_port = port_id;
+	PMD_DRV_LOG(DEBUG, "Attach VF device %u", port);
+	hv->vf_ctx.vf_attached = true;
+	hv->vf_ctx.vf_port = port;
 	return 0;
 }
+
+static void hn_vf_remove(struct hn_data *hv);
+
+static void hn_remove_delayed(void *args)
+{
+	struct hn_data *hv = args;
+	uint16_t port_id = hv->vf_ctx.vf_port;
+	struct rte_device *dev = rte_eth_devices[port_id].device;
+	int ret;
+
+	/* Tell VSP to switch data path to synthentic */
+	hn_vf_remove(hv);
+
+	PMD_DRV_LOG(NOTICE, "Start to remove port %d\n", port_id);
+	rte_rwlock_write_lock(&hv->vf_lock);
+
+	/* Give back ownership */
+	ret = rte_eth_dev_owner_unset(port_id, hv->owner.id);
+	if (ret)
+		PMD_DRV_LOG(ERR, "rte_eth_dev_owner_unset failed ret=%d\n",
+			    ret);
+	hv->vf_ctx.vf_attached = false;
+
+	ret = rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_INTR_RMV,
+					      hn_eth_rmv_event_callback, hv);
+	if (ret)
+		PMD_DRV_LOG(ERR,
+			    "rte_eth_dev_callback_unregister failed ret=%d\n",
+			    ret);
+
+	/* Detach and release port_id from system */
+	ret = rte_eth_dev_stop(port_id);
+	if (ret)
+		PMD_DRV_LOG(ERR, "rte_eth_dev_stop failed port_id=%u ret=%d\n",
+			    port_id, ret);
+
+	ret = rte_eth_dev_close(port_id);
+	if (ret)
+		PMD_DRV_LOG(ERR, "rte_eth_dev_close failed port_id=%u ret=%d\n",
+			    port_id, ret);
+
+	ret = rte_dev_remove(dev);
+	hv->vf_ctx.vf_state = vf_removed;
+
+	rte_rwlock_write_unlock(&hv->vf_lock);
+}
+
+int hn_eth_rmv_event_callback(uint16_t port_id,
+			      enum rte_eth_event_type event __rte_unused,
+			      void *cb_arg, void *out __rte_unused)
+{
+	struct hn_data *hv = cb_arg;
+
+	PMD_DRV_LOG(NOTICE, "Removing VF portid %d\n", port_id);
+	rte_eal_alarm_set(1, hn_remove_delayed, hv);
+
+	return 0;
+}
+
+static int hn_setup_vf_queues(int port, struct rte_eth_dev *dev)
+{
+	struct hn_rx_queue *rx_queue;
+	struct rte_eth_txq_info txinfo;
+	struct rte_eth_rxq_info rxinfo;
+	int i, ret = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		ret = rte_eth_tx_queue_info_get(dev->data->port_id, i, &txinfo);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				    "rte_eth_tx_queue_info_get failed ret=%d\n",
+				    ret);
+			return ret;
+		}
+
+		ret = rte_eth_tx_queue_setup(port, i, txinfo.nb_desc, 0,
+					     &txinfo.conf);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				    "rte_eth_tx_queue_setup failed ret=%d\n",
+				    ret);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		ret = rte_eth_rx_queue_info_get(dev->data->port_id, i, &rxinfo);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				    "rte_eth_rx_queue_info_get failed ret=%d\n",
+				    ret);
+			return ret;
+		}
+
+		rx_queue = dev->data->rx_queues[i];
+
+		ret = rte_eth_rx_queue_setup(port, i, rxinfo.nb_desc, 0,
+					     &rxinfo.conf, rx_queue->mb_pool);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				    "rte_eth_rx_queue_setup failed ret=%d\n",
+				    ret);
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv);
+
+static void hn_vf_add_retry(void *args)
+{
+	struct rte_eth_dev *dev = args;
+	struct hn_data *hv = dev->data->dev_private;
+
+	hn_vf_add(dev, hv);
+}
+
+int hn_vf_configure(struct rte_eth_dev *dev,
+		    const struct rte_eth_conf *dev_conf);
 
 /* Add new VF device to synthetic device */
 int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 {
-	int port, err;
+	int ret, port;
 
-	port = hn_vf_match(dev);
-	if (port < 0) {
-		PMD_DRV_LOG(NOTICE, "No matching MAC found");
-		return port;
+	if (!hv->vf_ctx.vf_vsp_reported || hv->vf_ctx.vf_vsc_switched)
+		return 0;
+
+	rte_rwlock_write_lock(&hv->vf_lock);
+
+	ret = hn_vf_attach(dev, hv);
+	if (ret) {
+		PMD_DRV_LOG(NOTICE,
+			    "RNDIS reports VF but device not found, retrying");
+		rte_eal_alarm_set(1000000, hn_vf_add_retry, dev);
+		goto exit;
 	}
 
-	err = hn_vf_attach(hv, port);
-	if (err == 0)
-		hn_nvs_set_datapath(hv, NVS_DATAPATH_VF);
+	port = hv->vf_ctx.vf_port;
 
-	return err;
+	/* If the primary device has started, this is a VF host add.
+	 * Configure and start VF device.
+	 */
+	if (dev->data->dev_started) {
+		if (rte_eth_devices[port].data->dev_started) {
+			PMD_DRV_LOG(ERR, "VF already started on hot add");
+			goto exit;
+		}
+
+		PMD_DRV_LOG(NOTICE, "configuring VF port %d\n", port);
+		ret = hn_vf_configure(dev, &dev->data->dev_conf);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to configure VF port %d\n",
+				    port);
+			goto exit;
+		}
+
+		ret = hn_setup_vf_queues(port, dev);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to configure VF queues port %d\n",
+				    port);
+			goto exit;
+		}
+
+		PMD_DRV_LOG(NOTICE, "Starting VF port %d\n", port);
+		ret = rte_eth_dev_start(port);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "rte_eth_dev_start failed ret=%d\n",
+				    ret);
+			goto exit;
+		}
+		hv->vf_ctx.vf_state = vf_started;
+	}
+
+	ret = hn_nvs_set_datapath(hv, NVS_DATAPATH_VF);
+	if (ret == 0)
+		hv->vf_ctx.vf_vsc_switched = true;
+
+exit:
+	rte_rwlock_write_unlock(&hv->vf_lock);
+	return ret;
 }
 
-/* Remove new VF device */
+/* Switch data path to VF device */
 static void hn_vf_remove(struct hn_data *hv)
 {
+	int ret;
 
-	if (!hn_vf_attached(hv)) {
+	if (!hv->vf_ctx.vf_vsc_switched) {
+		PMD_DRV_LOG(ERR, "VF path not active");
+		return;
+	}
+
+	rte_rwlock_write_lock(&hv->vf_lock);
+	if (!hv->vf_ctx.vf_vsc_switched) {
 		PMD_DRV_LOG(ERR, "VF path not active");
 	} else {
 		/* Stop incoming packets from arriving on VF */
-		hn_nvs_set_datapath(hv, NVS_DATAPATH_SYNTHETIC);
-
-		/* Give back ownership */
-		rte_eth_dev_owner_unset(hv->vf_port, hv->owner.id);
-
-		/* Stop transmission over VF */
-		hv->vf_port = HN_INVALID_PORT;
+		ret = hn_nvs_set_datapath(hv, NVS_DATAPATH_SYNTHETIC);
+		if (ret == 0)
+			hv->vf_ctx.vf_vsc_switched = false;
 	}
+	rte_rwlock_write_unlock(&hv->vf_lock);
 }
 
 /* Handle VF association message from host */
@@ -140,8 +320,7 @@ hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
 		    vf_assoc->allocated ? "add to" : "remove from",
 		    dev->data->port_id);
 
-	rte_rwlock_write_lock(&hv->vf_lock);
-	hv->vf_present = vf_assoc->allocated;
+	hv->vf_ctx.vf_vsp_reported = vf_assoc->allocated;
 
 	if (dev->state == RTE_ETH_DEV_ATTACHED) {
 		if (vf_assoc->allocated)
@@ -149,7 +328,6 @@ hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
 		else
 			hn_vf_remove(hv);
 	}
-	rte_rwlock_write_unlock(&hv->vf_lock);
 }
 
 static void
@@ -216,10 +394,6 @@ int hn_vf_info_get(struct hn_data *hv, struct rte_eth_dev_info *info)
 	return ret;
 }
 
-/*
- * Configure VF if present.
- * Force VF to have same number of queues as synthetic device
- */
 int hn_vf_configure(struct rte_eth_dev *dev,
 		    const struct rte_eth_conf *dev_conf)
 {
@@ -230,17 +404,56 @@ int hn_vf_configure(struct rte_eth_dev *dev,
 	/* link state interrupt does not matter here. */
 	vf_conf.intr_conf.lsc = 0;
 
-	rte_rwlock_read_lock(&hv->vf_lock);
-	if (hv->vf_port != HN_INVALID_PORT) {
-		ret = rte_eth_dev_configure(hv->vf_port,
+	/* need to monitor removal event */
+	vf_conf.intr_conf.rmv = 1;
+
+	if (hv->vf_ctx.vf_attached) {
+		ret = rte_eth_dev_callback_register(hv->vf_ctx.vf_port,
+						    RTE_ETH_EVENT_INTR_RMV,
+						    hn_eth_rmv_event_callback,
+						    hv);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				    "Registering callback failed for "
+				    "vf port %d ret %d\n",
+				    hv->vf_ctx.vf_port, ret);
+			return ret;
+		}
+
+		ret = rte_eth_dev_configure(hv->vf_ctx.vf_port,
 					    dev->data->nb_rx_queues,
 					    dev->data->nb_tx_queues,
 					    &vf_conf);
-		if (ret != 0)
-			PMD_DRV_LOG(ERR,
-				    "VF configuration failed: %d", ret);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "VF configuration failed: %d", ret);
+
+			rte_eth_dev_callback_unregister(hv->vf_ctx.vf_port,
+							RTE_ETH_EVENT_INTR_RMV,
+							hn_eth_rmv_event_callback,
+							hv);
+
+			return ret;
+		}
+
+		hv->vf_ctx.vf_state = vf_configured;
 	}
-	rte_rwlock_read_unlock(&hv->vf_lock);
+
+	return ret;
+}
+
+/* Configure VF if present.
+ * VF device will have the same number of queues as the synthetic device
+ */
+int hn_vf_configure_locked(struct rte_eth_dev *dev,
+			   const struct rte_eth_conf *dev_conf)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	int ret = 0;
+
+	rte_rwlock_write_lock(&hv->vf_lock);
+	ret = hn_vf_configure(dev, dev_conf);
+	rte_rwlock_write_unlock(&hv->vf_lock);
+
 	return ret;
 }
 
@@ -325,16 +538,21 @@ void hn_vf_reset(struct rte_eth_dev *dev)
 
 int hn_vf_close(struct rte_eth_dev *dev)
 {
-	struct hn_data *hv = dev->data->dev_private;
-	uint16_t vf_port;
 	int ret = 0;
+	struct hn_data *hv = dev->data->dev_private;
+
+	rte_eal_alarm_cancel(hn_vf_add_retry, dev);
 
 	rte_rwlock_read_lock(&hv->vf_lock);
-	vf_port = hv->vf_port;
-	if (vf_port != HN_INVALID_PORT)
-		ret = rte_eth_dev_close(vf_port);
-
-	hv->vf_port = HN_INVALID_PORT;
+	if (hv->vf_ctx.vf_attached) {
+		rte_eth_dev_callback_unregister(hv->vf_ctx.vf_port,
+						RTE_ETH_EVENT_INTR_RMV,
+						hn_eth_rmv_event_callback,
+						hv);
+		rte_eal_alarm_cancel(hn_remove_delayed, hv);
+		ret = rte_eth_dev_close(hv->vf_ctx.vf_port);
+		hv->vf_ctx.vf_attached = false;
+	}
 	rte_rwlock_read_unlock(&hv->vf_lock);
 
 	return ret;

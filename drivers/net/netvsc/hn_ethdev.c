@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <sys/ioctl.h>
 
 #include <rte_ethdev.h>
 #include <rte_memcpy.h>
@@ -27,6 +31,7 @@
 #include <rte_eal.h>
 #include <rte_dev.h>
 #include <rte_bus_vmbus.h>
+#include <rte_alarm.h>
 
 #include "hn_logs.h"
 #include "hn_var.h"
@@ -49,6 +54,9 @@
 #define NETVSC_ARG_RXBREAK "rx_copybreak"
 #define NETVSC_ARG_TXBREAK "tx_copybreak"
 #define NETVSC_ARG_RX_EXTMBUF_ENABLE "rx_extmbuf_enable"
+
+/* The max number of retry when hot adding a VF device */
+#define NETVSC_MAX_HOTADD_RETRY 10
 
 struct hn_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -542,6 +550,128 @@ static int hn_subchan_configure(struct hn_data *hv,
 	return err;
 }
 
+static void netvsc_hotplug_retry(void *args)
+{
+	int ret;
+	struct hn_data *hv = args;
+	struct rte_eth_dev *dev = &rte_eth_devices[hv->port_id];
+	struct rte_devargs *d = &hv->devargs;
+	char buf[256];
+
+	DIR *di;
+	struct dirent *dir;
+	struct ifreq req;
+	struct rte_ether_addr eth_addr;
+	int s;
+
+	PMD_DRV_LOG(DEBUG, "%s: retry count %d\n",
+		    __func__, hv->eal_hot_plug_retry);
+
+	if (hv->eal_hot_plug_retry++ > NETVSC_MAX_HOTADD_RETRY)
+		return;
+
+	snprintf(buf, sizeof(buf), "/sys/bus/pci/devices/%s/net", d->name);
+	di = opendir(buf);
+	if (!di) {
+		PMD_DRV_LOG(DEBUG, "%s: can't open directory %s, "
+			    "retrying in 1 second\n", __func__, buf);
+		goto retry;
+	}
+
+	while ((dir = readdir(di))) {
+		/* Skip . and .. directories */
+		if (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, ".."))
+			continue;
+
+		/* trying to get mac address if this is a network device*/
+		s = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+		if (s == -1) {
+			PMD_DRV_LOG(ERR, "Failed to create socket errno %d\n",
+				    errno);
+			break;
+		}
+		strlcpy(req.ifr_name, dir->d_name, sizeof(req.ifr_name));
+		ret = ioctl(s, SIOCGIFHWADDR, &req);
+		close(s);
+		if (ret == -1) {
+			PMD_DRV_LOG(ERR, "Failed to send SIOCGIFHWADDR for "
+				    "device %s\n", dir->d_name);
+			break;
+		}
+		if (req.ifr_hwaddr.sa_family != ARPHRD_ETHER) {
+			closedir(di);
+			return;
+		}
+		memcpy(eth_addr.addr_bytes, req.ifr_hwaddr.sa_data,
+		       RTE_DIM(eth_addr.addr_bytes));
+
+		if (rte_is_same_ether_addr(&eth_addr, dev->data->mac_addrs)) {
+			PMD_DRV_LOG(NOTICE, "Found matching MAC address, "
+				    "adding device %s network name %s\n",
+				    d->name, dir->d_name);
+			ret = rte_eal_hotplug_add(d->bus->name, d->name,
+						  d->args);
+			if (ret) {
+				PMD_DRV_LOG(ERR,
+					    "Failed to add PCI device %s\n",
+					    d->name);
+				break;
+			}
+		}
+		/* When the code reaches here, we either have already added
+		 * the device, or its MAC address did not match.
+		 */
+		closedir(di);
+		return;
+	}
+	closedir(di);
+retry:
+	/* The device is still being initialized, retry after 1 second */
+	rte_eal_alarm_set(1000000, netvsc_hotplug_retry, hv);
+}
+
+static void
+netvsc_hotadd_callback(const char *device_name, enum rte_dev_event_type type,
+		       void *arg)
+{
+	struct hn_data *hv = arg;
+	struct rte_devargs *d = &hv->devargs;
+	int ret;
+
+	PMD_DRV_LOG(INFO, "Device notification type=%d device_name=%s\n",
+		    type, device_name);
+
+	switch (type) {
+	case RTE_DEV_EVENT_ADD:
+		/* if we already has a VF, don't check on hot add */
+		if (hv->vf_ctx.vf_state > vf_removed)
+			break;
+
+		ret = rte_devargs_parse(d, device_name);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				    "devargs parsing failed ret=%d\n", ret);
+			return;
+		}
+
+		if (!strcmp(d->bus->name, "pci")) {
+			/* Start the process of figuring out if this
+			 * PCI device is a VF device
+			 */
+			hv->eal_hot_plug_retry = 0;
+			rte_eal_alarm_set(1000000, netvsc_hotplug_retry, hv);
+		}
+
+		/* We will switch to VF on RDNIS configure message
+		 * sent from VSP
+		 */
+
+		break;
+	default:
+		break;
+	}
+}
+
 static int hn_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
@@ -617,7 +747,7 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	return hn_vf_configure(dev, dev_conf);
+	return hn_vf_configure_locked(dev, dev_conf);
 }
 
 static int hn_dev_stats_get(struct rte_eth_dev *dev,
@@ -827,6 +957,14 @@ hn_dev_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	/* Register to monitor hot plug events */
+	error = rte_dev_event_callback_register(NULL, netvsc_hotadd_callback,
+						hv);
+	if (error) {
+		PMD_DRV_LOG(ERR, "failed to register device event callback\n");
+		return error;
+	}
+
 	error = hn_rndis_set_rxfilter(hv,
 				      NDIS_PACKET_TYPE_BROADCAST |
 				      NDIS_PACKET_TYPE_ALL_MULTICAST |
@@ -853,6 +991,7 @@ hn_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 	dev->data->dev_started = 0;
 
+	rte_dev_event_callback_unregister(NULL, netvsc_hotadd_callback, hv);
 	hn_rndis_set_rxfilter(hv, 0);
 	return hn_vf_stop(dev);
 }
@@ -861,10 +1000,13 @@ static int
 hn_dev_close(struct rte_eth_dev *dev)
 {
 	int ret;
+	struct hn_data *hv = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	rte_eal_alarm_cancel(netvsc_hotplug_retry, &hv->devargs);
 
 	ret = hn_vf_close(dev);
 	hn_dev_free_queues(dev);
@@ -990,7 +1132,10 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->max_queues = 1;
 
 	rte_rwlock_init(&hv->vf_lock);
-	hv->vf_port = HN_INVALID_PORT;
+	hv->vf_ctx.vf_vsc_switched = false;
+	hv->vf_ctx.vf_vsp_reported = false;
+	hv->vf_ctx.vf_attached = false;
+	hv->vf_ctx.vf_state = vf_unknown;
 
 	err = hn_parse_args(eth_dev);
 	if (err)
@@ -1044,12 +1189,10 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->max_queues = RTE_MIN(rxr_cnt, (unsigned int)max_chan);
 
 	/* If VF was reported but not added, do it now */
-	if (hv->vf_present && !hn_vf_attached(hv)) {
+	if (hv->vf_ctx.vf_vsp_reported && !hv->vf_ctx.vf_vsc_switched) {
 		PMD_INIT_LOG(DEBUG, "Adding VF device");
 
 		err = hn_vf_add(eth_dev, hv);
-		if (err)
-			hv->vf_present = 0;
 	}
 
 	return 0;
@@ -1095,15 +1238,23 @@ static int eth_hn_probe(struct rte_vmbus_driver *drv __rte_unused,
 
 	PMD_INIT_FUNC_TRACE();
 
+	ret = rte_dev_event_monitor_start();
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to start device event monitoring\n");
+		return ret;
+	}
+
 	eth_dev = eth_dev_vmbus_allocate(dev, sizeof(struct hn_data));
 	if (!eth_dev)
 		return -ENOMEM;
 
 	ret = eth_hn_dev_init(eth_dev);
-	if (ret)
+	if (ret) {
 		eth_dev_vmbus_release(eth_dev);
-	else
+		rte_dev_event_monitor_stop();
+	} else {
 		rte_eth_dev_probing_finish(eth_dev);
+	}
 
 	return ret;
 }
@@ -1124,6 +1275,7 @@ static int eth_hn_remove(struct rte_vmbus_device *dev)
 		return ret;
 
 	eth_dev_vmbus_release(eth_dev);
+	rte_dev_event_monitor_stop();
 	return 0;
 }
 

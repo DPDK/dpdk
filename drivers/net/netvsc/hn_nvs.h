@@ -212,7 +212,7 @@ int	hn_nvs_attach(struct hn_data *hv, unsigned int mtu);
 void	hn_nvs_detach(struct hn_data *hv);
 void	hn_nvs_ack_rxbuf(struct vmbus_channel *chan, uint64_t tid);
 int	hn_nvs_alloc_subchans(struct hn_data *hv, uint32_t *nsubch);
-void	hn_nvs_set_datapath(struct hn_data *hv, uint32_t path);
+int	hn_nvs_set_datapath(struct hn_data *hv, uint32_t path);
 void	hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
 			      const struct vmbus_chanpkt_hdr *hdr,
 			      const void *data);
