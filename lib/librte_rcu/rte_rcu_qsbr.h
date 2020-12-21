@@ -329,12 +329,7 @@ rte_rcu_qsbr_thread_online(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 * writer might not see that the reader is online, even though
 	 * the reader is referencing the shared data structure.
 	 */
-#ifdef RTE_ARCH_X86_64
-	/* rte_smp_mb() for x86 is lighter */
-	rte_smp_mb();
-#else
-	__atomic_thread_fence(__ATOMIC_SEQ_CST);
-#endif
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 }
 
 /**
