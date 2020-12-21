@@ -26,7 +26,7 @@ struct rte_mbuf;
 /*
  * Per virtio_ring.h in Linux.
  *     For virtio_pci on SMP, we don't need to order with respect to MMIO
- *     accesses through relaxed memory I/O windows, so smp_mb() et al are
+ *     accesses through relaxed memory I/O windows, so thread_fence is
  *     sufficient.
  *
  *     For using virtio to talk to real devices (eg. vDPA) we do need real
@@ -36,7 +36,7 @@ static inline void
 virtio_mb(uint8_t weak_barriers)
 {
 	if (weak_barriers)
-		rte_smp_mb();
+		rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 	else
 		rte_mb();
 }
@@ -45,7 +45,7 @@ static inline void
 virtio_rmb(uint8_t weak_barriers)
 {
 	if (weak_barriers)
-		rte_smp_rmb();
+		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
 	else
 		rte_io_rmb();
 }
@@ -54,7 +54,7 @@ static inline void
 virtio_wmb(uint8_t weak_barriers)
 {
 	if (weak_barriers)
-		rte_smp_wmb();
+		rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	else
 		rte_io_wmb();
 }
