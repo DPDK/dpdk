@@ -171,7 +171,8 @@ vhost_flush_enqueue_shadow_packed(struct virtio_net *dev,
 			used_idx -= vq->size;
 	}
 
-	rte_smp_wmb();
+	/* The ordering for storing desc flags needs to be enforced. */
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
 	for (i = 0; i < vq->shadow_used_idx; i++) {
 		uint16_t flags;
@@ -254,7 +255,7 @@ vhost_flush_enqueue_batch_packed(struct virtio_net *dev,
 		vq->desc_packed[vq->last_used_idx + i].len = lens[i];
 	}
 
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
 		vq->desc_packed[vq->last_used_idx + i].flags = flags;
@@ -313,7 +314,7 @@ vhost_shadow_dequeue_batch_packed(struct virtio_net *dev,
 		vq->desc_packed[vq->last_used_idx + i].len = 0;
 	}
 
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	vhost_for_each_try_unroll(i, begin, PACKED_BATCH_SIZE)
 		vq->desc_packed[vq->last_used_idx + i].flags = flags;
 
@@ -2246,7 +2247,7 @@ vhost_reserve_avail_batch_packed(struct virtio_net *dev,
 			return -1;
 	}
 
-	rte_smp_rmb();
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
 		lens[i] = descs[avail_idx + i].len;
