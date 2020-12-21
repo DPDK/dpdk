@@ -203,8 +203,8 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 		vq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
 	}
 
-	virtio_wmb(vq->hw->weak_barriers);
-	desc[head].flags = VRING_DESC_F_NEXT | flags;
+	virtqueue_store_flags_packed(&desc[head], VRING_DESC_F_NEXT | flags,
+			vq->hw->weak_barriers);
 
 	virtio_wmb(vq->hw->weak_barriers);
 	virtqueue_notify(vq);
