@@ -127,6 +127,7 @@ EXPORTS
 	rte_memzone_reserve_bounded
 	rte_memzone_walk
 	rte_openlog_stream
+	rte_rand
 	rte_realloc
 	rte_rtm_supported
 	rte_service_attr_get

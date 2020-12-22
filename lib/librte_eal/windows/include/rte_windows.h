@@ -18,6 +18,12 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+/* Override Windows SDK definition of _m_prefetchw to avoid conflicting types */
+#ifdef RTE_TOOLCHAIN_CLANG
+#undef _m_prefetchw
+#define _m_prefetchw __m_prefetchw
+#endif
+
 /* Must come first. */
 #include <windows.h>
 
