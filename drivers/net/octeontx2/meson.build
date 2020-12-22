@@ -2,6 +2,12 @@
 # Copyright(C) 2019 Marvell International Ltd.
 #
 
+if is_windows
+	build = false
+	reason = 'not supported on Windows'
+	subdir_done()
+endif
+
 if not dpdk_conf.get('RTE_ARCH_64')
 	build = false
 	reason = 'only supported on 64-bit'

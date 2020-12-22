@@ -20,6 +20,7 @@
 #include <rte_io.h>
 
 #include "../i40e_logs.h"
+#include "i40e_status.h"
 
 #define INLINE inline
 #define STATIC static
@@ -67,6 +68,15 @@ typedef enum i40e_status_code i40e_status;
 #define false           0
 #define true            1
 
+/* Avoid macro redefinition warning on Windows */
+#ifdef RTE_EXEC_ENV_WINDOWS
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+#endif
 #define min(a,b) RTE_MIN(a,b)
 #define max(a,b) RTE_MAX(a,b)
 

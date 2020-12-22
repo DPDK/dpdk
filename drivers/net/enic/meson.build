@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Cisco Systems, Inc.
 
+if is_windows
+	build = false
+	reason = 'not supported on Windows'
+	subdir_done()
+endif
+
 sources = files(
 	'base/vnic_cq.c',
 	'base/vnic_dev.c',

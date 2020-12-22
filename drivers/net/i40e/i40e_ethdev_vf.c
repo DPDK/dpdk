@@ -1505,7 +1505,8 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
 						       info.msg_len);
 			else {
 				/* read message and it's expected one */
-				if (msg_opc == vf->pend_cmd) {
+				if ((volatile uint32_t)msg_opc ==
+				    vf->pend_cmd) {
 					vf->cmd_retval = msg_ret;
 					/* prevent compiler reordering */
 					rte_compiler_barrier();

@@ -2,6 +2,12 @@
 # Copyright(c) 2018 Intel Corporation
 # Copyright(c) 2020 Broadcom
 
+if is_windows
+	build = false
+	reason = 'not supported on Windows'
+	subdir_done()
+endif
+
 headers = files('rte_pmd_bnxt.h')
 
 includes += include_directories('tf_ulp')

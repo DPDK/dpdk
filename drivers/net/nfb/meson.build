@@ -3,6 +3,12 @@
 # Copyright(c) 2019 Netcope Technologies, a.s. <info@netcope.com>
 # All rights reserved.
 
+if is_windows
+	build = false
+	reason = 'not supported on Windows'
+	subdir_done()
+endif
+
 dep = dependency('netcope-common', required: false)
 reason = 'missing dependency, "libnfb"'
 build = dep.found()

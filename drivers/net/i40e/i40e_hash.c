@@ -354,9 +354,10 @@ i40e_hash_get_pattern_type(const struct rte_flow_item pattern[],
 		}
 
 		/* Check the previous item allows this sub-item. */
-		if (prev_item_type >= RTE_DIM(pattern_next_allow_items) ||
+		if (prev_item_type >= (enum rte_flow_item_type)
+				RTE_DIM(pattern_next_allow_items) ||
 		    !(pattern_next_allow_items[prev_item_type] &
-		    BIT_ULL(pattern->type)))
+				BIT_ULL(pattern->type)))
 			goto not_sup;
 
 		/* For VLAN item, it does no matter about to pattern type
@@ -372,7 +373,8 @@ i40e_hash_get_pattern_type(const struct rte_flow_item pattern[],
 		}
 
 		prev_item_type = last_item_type;
-		assert(last_item_type < RTE_DIM(pattern_item_header));
+		assert(last_item_type < (enum rte_flow_item_type)
+				RTE_DIM(pattern_item_header));
 		item_hdr = pattern_item_header[last_item_type];
 		assert(item_hdr);
 
