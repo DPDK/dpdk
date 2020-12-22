@@ -10727,6 +10727,246 @@ test_null_burst_operation(void)
 	return TEST_SUCCESS;
 }
 
+static uint16_t
+test_enq_callback(uint16_t dev_id, uint16_t qp_id, struct rte_crypto_op **ops,
+		  uint16_t nb_ops, void *user_param)
+{
+	RTE_SET_USED(dev_id);
+	RTE_SET_USED(qp_id);
+	RTE_SET_USED(ops);
+	RTE_SET_USED(user_param);
+
+	printf("crypto enqueue callback called\n");
+	return nb_ops;
+}
+
+static uint16_t
+test_deq_callback(uint16_t dev_id, uint16_t qp_id, struct rte_crypto_op **ops,
+		  uint16_t nb_ops, void *user_param)
+{
+	RTE_SET_USED(dev_id);
+	RTE_SET_USED(qp_id);
+	RTE_SET_USED(ops);
+	RTE_SET_USED(user_param);
+
+	printf("crypto dequeue callback called\n");
+	return nb_ops;
+}
+
+/*
+ * Thread using enqueue/dequeue callback with RCU.
+ */
+static int
+test_enqdeq_callback_thread(void *arg)
+{
+	RTE_SET_USED(arg);
+	/* DP thread calls rte_cryptodev_enqueue_burst()/
+	 * rte_cryptodev_dequeue_burst() and invokes callback.
+	 */
+	test_null_burst_operation();
+	return 0;
+}
+
+static int
+test_enq_callback_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+	struct rte_cryptodev_qp_conf qp_conf = {
+		.nb_descriptors = MAX_NUM_OPS_INFLIGHT
+	};
+
+	struct rte_cryptodev_cb *cb;
+	uint16_t qp_id = 0;
+
+	/* Stop the device in case it's started so it can be configured */
+	rte_cryptodev_stop(ts_params->valid_devs[0]);
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
+			&ts_params->conf),
+			"Failed to configure cryptodev %u",
+			ts_params->valid_devs[0]);
+
+	qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
+	qp_conf.mp_session = ts_params->session_mpool;
+	qp_conf.mp_session_private = ts_params->session_priv_mpool;
+
+	TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
+			ts_params->valid_devs[0], qp_id, &qp_conf,
+			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
+			"Failed test for "
+			"rte_cryptodev_queue_pair_setup: num_inflights "
+			"%u on qp %u on cryptodev %u",
+			qp_conf.nb_descriptors, qp_id,
+			ts_params->valid_devs[0]);
+
+	/* Test with invalid crypto device */
+	cb = rte_cryptodev_add_enq_callback(RTE_CRYPTO_MAX_DEVS,
+			qp_id, test_enq_callback, NULL);
+	TEST_ASSERT_NULL(cb, "Add callback on qp %u on "
+			"cryptodev %u did not fail",
+			qp_id, RTE_CRYPTO_MAX_DEVS);
+
+	/* Test with invalid queue pair */
+	cb = rte_cryptodev_add_enq_callback(ts_params->valid_devs[0],
+			dev_info.max_nb_queue_pairs + 1,
+			test_enq_callback, NULL);
+	TEST_ASSERT_NULL(cb, "Add callback on qp %u on "
+			"cryptodev %u did not fail",
+			dev_info.max_nb_queue_pairs + 1,
+			ts_params->valid_devs[0]);
+
+	/* Test with NULL callback */
+	cb = rte_cryptodev_add_enq_callback(ts_params->valid_devs[0],
+			qp_id, NULL, NULL);
+	TEST_ASSERT_NULL(cb, "Add callback on qp %u on "
+			"cryptodev %u did not fail",
+			qp_id, ts_params->valid_devs[0]);
+
+	/* Test with valid configuration */
+	cb = rte_cryptodev_add_enq_callback(ts_params->valid_devs[0],
+			qp_id, test_enq_callback, NULL);
+	TEST_ASSERT_NOT_NULL(cb, "Failed test to add callback on "
+			"qp %u on cryptodev %u",
+			qp_id, ts_params->valid_devs[0]);
+
+	rte_cryptodev_start(ts_params->valid_devs[0]);
+
+	/* Launch a thread */
+	rte_eal_remote_launch(test_enqdeq_callback_thread, NULL,
+				rte_get_next_lcore(-1, 1, 0));
+
+	/* Wait until reader exited. */
+	rte_eal_mp_wait_lcore();
+
+	/* Test with invalid crypto device */
+	TEST_ASSERT_FAIL(rte_cryptodev_remove_enq_callback(
+			RTE_CRYPTO_MAX_DEVS, qp_id, cb),
+			"Expected call to fail as crypto device is invalid");
+
+	/* Test with invalid queue pair */
+	TEST_ASSERT_FAIL(rte_cryptodev_remove_enq_callback(
+			ts_params->valid_devs[0],
+			dev_info.max_nb_queue_pairs + 1, cb),
+			"Expected call to fail as queue pair is invalid");
+
+	/* Test with NULL callback */
+	TEST_ASSERT_FAIL(rte_cryptodev_remove_enq_callback(
+			ts_params->valid_devs[0], qp_id, NULL),
+			"Expected call to fail as callback is NULL");
+
+	/* Test with valid configuration */
+	TEST_ASSERT_SUCCESS(rte_cryptodev_remove_enq_callback(
+			ts_params->valid_devs[0], qp_id, cb),
+			"Failed test to remove callback on "
+			"qp %u on cryptodev %u",
+			qp_id, ts_params->valid_devs[0]);
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_deq_callback_setup(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+	struct rte_cryptodev_qp_conf qp_conf = {
+		.nb_descriptors = MAX_NUM_OPS_INFLIGHT
+	};
+
+	struct rte_cryptodev_cb *cb;
+	uint16_t qp_id = 0;
+
+	/* Stop the device in case it's started so it can be configured */
+	rte_cryptodev_stop(ts_params->valid_devs[0]);
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
+			&ts_params->conf),
+			"Failed to configure cryptodev %u",
+			ts_params->valid_devs[0]);
+
+	qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
+	qp_conf.mp_session = ts_params->session_mpool;
+	qp_conf.mp_session_private = ts_params->session_priv_mpool;
+
+	TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
+			ts_params->valid_devs[0], qp_id, &qp_conf,
+			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
+			"Failed test for "
+			"rte_cryptodev_queue_pair_setup: num_inflights "
+			"%u on qp %u on cryptodev %u",
+			qp_conf.nb_descriptors, qp_id,
+			ts_params->valid_devs[0]);
+
+	/* Test with invalid crypto device */
+	cb = rte_cryptodev_add_deq_callback(RTE_CRYPTO_MAX_DEVS,
+			qp_id, test_deq_callback, NULL);
+	TEST_ASSERT_NULL(cb, "Add callback on qp %u on "
+			"cryptodev %u did not fail",
+			qp_id, RTE_CRYPTO_MAX_DEVS);
+
+	/* Test with invalid queue pair */
+	cb = rte_cryptodev_add_deq_callback(ts_params->valid_devs[0],
+			dev_info.max_nb_queue_pairs + 1,
+			test_deq_callback, NULL);
+	TEST_ASSERT_NULL(cb, "Add callback on qp %u on "
+			"cryptodev %u did not fail",
+			dev_info.max_nb_queue_pairs + 1,
+			ts_params->valid_devs[0]);
+
+	/* Test with NULL callback */
+	cb = rte_cryptodev_add_deq_callback(ts_params->valid_devs[0],
+			qp_id, NULL, NULL);
+	TEST_ASSERT_NULL(cb, "Add callback on qp %u on "
+			"cryptodev %u did not fail",
+			qp_id, ts_params->valid_devs[0]);
+
+	/* Test with valid configuration */
+	cb = rte_cryptodev_add_deq_callback(ts_params->valid_devs[0],
+			qp_id, test_deq_callback, NULL);
+	TEST_ASSERT_NOT_NULL(cb, "Failed test to add callback on "
+			"qp %u on cryptodev %u",
+			qp_id, ts_params->valid_devs[0]);
+
+	rte_cryptodev_start(ts_params->valid_devs[0]);
+
+	/* Launch a thread */
+	rte_eal_remote_launch(test_enqdeq_callback_thread, NULL,
+				rte_get_next_lcore(-1, 1, 0));
+
+	/* Wait until reader exited. */
+	rte_eal_mp_wait_lcore();
+
+	/* Test with invalid crypto device */
+	TEST_ASSERT_FAIL(rte_cryptodev_remove_deq_callback(
+			RTE_CRYPTO_MAX_DEVS, qp_id, cb),
+			"Expected call to fail as crypto device is invalid");
+
+	/* Test with invalid queue pair */
+	TEST_ASSERT_FAIL(rte_cryptodev_remove_deq_callback(
+			ts_params->valid_devs[0],
+			dev_info.max_nb_queue_pairs + 1, cb),
+			"Expected call to fail as queue pair is invalid");
+
+	/* Test with NULL callback */
+	TEST_ASSERT_FAIL(rte_cryptodev_remove_deq_callback(
+			ts_params->valid_devs[0], qp_id, NULL),
+			"Expected call to fail as callback is NULL");
+
+	/* Test with valid configuration */
+	TEST_ASSERT_SUCCESS(rte_cryptodev_remove_deq_callback(
+			ts_params->valid_devs[0], qp_id, cb),
+			"Failed test to remove callback on "
+			"qp %u on cryptodev %u",
+			qp_id, ts_params->valid_devs[0]);
+
+	return TEST_SUCCESS;
+}
+
 static void
 generate_gmac_large_plaintext(uint8_t *data)
 {
@@ -13047,7 +13287,6 @@ static struct unit_test_suite cryptodev_testsuite  = {
 				test_queue_pair_descriptor_setup),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_queue_pair_ids),
-
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_multi_session),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -13056,7 +13295,6 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_null_invalid_operation),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_null_burst_operation),
-
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
@@ -13670,6 +13908,8 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup_security, ut_teardown,
 			test_DOCSIS_PROTO_all),
 #endif
+		TEST_CASE_ST(ut_setup, ut_teardown, test_enq_callback_setup),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_deq_callback_setup),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
