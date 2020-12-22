@@ -23,6 +23,7 @@ extern "C" {
 #include "rte_dev.h"
 #include <rte_common.h>
 #include <rte_config.h>
+#include <rte_rcu_qsbr.h>
 
 #include "rte_cryptodev_trace_fp.h"
 
@@ -523,6 +524,30 @@ struct rte_cryptodev_qp_conf {
 };
 
 /**
+ * Function type used for processing crypto ops when enqueue/dequeue burst is
+ * called.
+ *
+ * The callback function is called on enqueue/dequeue burst immediately.
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	qp_id		The index of the queue pair on which ops are
+ *				enqueued/dequeued. The value must be in the
+ *				range [0, nb_queue_pairs - 1] previously
+ *				supplied to *rte_cryptodev_configure*.
+ * @param	ops		The address of an array of *nb_ops* pointers
+ *				to *rte_crypto_op* structures which contain
+ *				the crypto operations to be processed.
+ * @param	nb_ops		The number of operations to process.
+ * @param	user_param	The arbitrary user parameter passed in by the
+ *				application when the callback was originally
+ *				registered.
+ * @return			The number of ops to be enqueued to the
+ *				crypto device.
+ */
+typedef uint16_t (*rte_cryptodev_callback_fn)(uint16_t dev_id, uint16_t qp_id,
+		struct rte_crypto_op **ops, uint16_t nb_ops, void *user_param);
+
+/**
  * Typedef for application callback function to be registered by application
  * software for notification of device events
  *
@@ -822,7 +847,6 @@ rte_cryptodev_callback_unregister(uint8_t dev_id,
 		enum rte_cryptodev_event_type event,
 		rte_cryptodev_cb_fn cb_fn, void *cb_arg);
 
-
 typedef uint16_t (*dequeue_pkt_burst_t)(void *qp,
 		struct rte_crypto_op **ops,	uint16_t nb_ops);
 /**< Dequeue processed packets from queue pair of a device. */
@@ -838,6 +862,30 @@ struct rte_cryptodev_callback;
 
 /** Structure to keep track of registered callbacks */
 TAILQ_HEAD(rte_cryptodev_cb_list, rte_cryptodev_callback);
+
+/**
+ * Structure used to hold information about the callbacks to be called for a
+ * queue pair on enqueue/dequeue.
+ */
+struct rte_cryptodev_cb {
+	struct rte_cryptodev_cb *next;
+	/**< Pointer to next callback */
+	rte_cryptodev_callback_fn fn;
+	/**< Pointer to callback function */
+	void *arg;
+	/**< Pointer to argument */
+};
+
+/**
+ * @internal
+ * Structure used to hold information about the RCU for a queue pair.
+ */
+struct rte_cryptodev_cb_rcu {
+	struct rte_cryptodev_cb *next;
+	/**< Pointer to next callback */
+	struct rte_rcu_qsbr *qsbr;
+	/**< RCU QSBR variable per queue pair */
+};
 
 /** The data structure associated with each crypto device. */
 struct rte_cryptodev {
@@ -867,6 +915,12 @@ struct rte_cryptodev {
 	__extension__
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
+
+	struct rte_cryptodev_cb_rcu *enq_cbs;
+	/**< User application callback for pre enqueue processing */
+
+	struct rte_cryptodev_cb_rcu *deq_cbs;
+	/**< User application callback for post dequeue processing */
 } __rte_cache_aligned;
 
 void *
@@ -945,10 +999,33 @@ rte_cryptodev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 {
 	struct rte_cryptodev *dev = &rte_cryptodevs[dev_id];
 
+	rte_cryptodev_trace_dequeue_burst(dev_id, qp_id, (void **)ops, nb_ops);
 	nb_ops = (*dev->dequeue_burst)
 			(dev->data->queue_pairs[qp_id], ops, nb_ops);
+#ifdef RTE_CRYPTO_CALLBACKS
+	if (unlikely(dev->deq_cbs != NULL)) {
+		struct rte_cryptodev_cb_rcu *list;
+		struct rte_cryptodev_cb *cb;
 
-	rte_cryptodev_trace_dequeue_burst(dev_id, qp_id, (void **)ops, nb_ops);
+		/* __ATOMIC_RELEASE memory order was used when the
+		 * call back was inserted into the list.
+		 * Since there is a clear dependency between loading
+		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * not required.
+		 */
+		list = &dev->deq_cbs[qp_id];
+		rte_rcu_qsbr_thread_online(list->qsbr, 0);
+		cb = __atomic_load_n(&list->next, __ATOMIC_RELAXED);
+
+		while (cb != NULL) {
+			nb_ops = cb->fn(dev_id, qp_id, ops, nb_ops,
+					cb->arg);
+			cb = cb->next;
+		};
+
+		rte_rcu_qsbr_thread_offline(list->qsbr, 0);
+	}
+#endif
 	return nb_ops;
 }
 
@@ -988,6 +1065,31 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct rte_cryptodev *dev = &rte_cryptodevs[dev_id];
+
+#ifdef RTE_CRYPTO_CALLBACKS
+	if (unlikely(dev->enq_cbs != NULL)) {
+		struct rte_cryptodev_cb_rcu *list;
+		struct rte_cryptodev_cb *cb;
+
+		/* __ATOMIC_RELEASE memory order was used when the
+		 * call back was inserted into the list.
+		 * Since there is a clear dependency between loading
+		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * not required.
+		 */
+		list = &dev->enq_cbs[qp_id];
+		rte_rcu_qsbr_thread_online(list->qsbr, 0);
+		cb = __atomic_load_n(&list->next, __ATOMIC_RELAXED);
+
+		while (cb != NULL) {
+			nb_ops = cb->fn(dev_id, qp_id, ops, nb_ops,
+					cb->arg);
+			cb = cb->next;
+		};
+
+		rte_rcu_qsbr_thread_offline(list->qsbr, 0);
+	}
+#endif
 
 	rte_cryptodev_trace_enqueue_burst(dev_id, qp_id, (void **)ops, nb_ops);
 	return (*dev->enqueue_burst)(
@@ -1729,6 +1831,144 @@ __rte_experimental
 int
 rte_cryptodev_raw_dequeue_done(struct rte_crypto_raw_dp_ctx *ctx,
 		uint32_t n);
+
+/**
+ * Add a user callback for a given crypto device and queue pair which will be
+ * called on crypto ops enqueue.
+ *
+ * This API configures a function to be called for each burst of crypto ops
+ * received on a given crypto device queue pair. The return value is a pointer
+ * that can be used later to remove the callback using
+ * rte_cryptodev_remove_enq_callback().
+ *
+ * Callbacks registered by application would not survive
+ * rte_cryptodev_configure() as it reinitializes the callback list.
+ * It is user responsibility to remove all installed callbacks before
+ * calling rte_cryptodev_configure() to avoid possible memory leakage.
+ * Application is expected to call add API after rte_cryptodev_configure().
+ *
+ * Multiple functions can be registered per queue pair & they are called
+ * in the order they were added. The API does not restrict on maximum number
+ * of callbacks.
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	qp_id		The index of the queue pair on which ops are
+ *				to be enqueued for processing. The value
+ *				must be in the range [0, nb_queue_pairs - 1]
+ *				previously supplied to
+ *				*rte_cryptodev_configure*.
+ * @param	cb_fn		The callback function
+ * @param	cb_arg		A generic pointer parameter which will be passed
+ *				to each invocation of the callback function on
+ *				this crypto device and queue pair.
+ *
+ * @return
+ *  - NULL on error & rte_errno will contain the error code.
+ *  - On success, a pointer value which can later be used to remove the
+ *    callback.
+ */
+
+__rte_experimental
+struct rte_cryptodev_cb *
+rte_cryptodev_add_enq_callback(uint8_t dev_id,
+			       uint16_t qp_id,
+			       rte_cryptodev_callback_fn cb_fn,
+			       void *cb_arg);
+
+/**
+ * Remove a user callback function for given crypto device and queue pair.
+ *
+ * This function is used to remove enqueue callbacks that were added to a
+ * crypto device queue pair using rte_cryptodev_add_enq_callback().
+ *
+ *
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	qp_id		The index of the queue pair on which ops are
+ *				to be enqueued. The value must be in the
+ *				range [0, nb_queue_pairs - 1] previously
+ *				supplied to *rte_cryptodev_configure*.
+ * @param	cb		Pointer to user supplied callback created via
+ *				rte_cryptodev_add_enq_callback().
+ *
+ * @return
+ *   -  0: Success. Callback was removed.
+ *   - <0: The dev_id or the qp_id is out of range, or the callback
+ *         is NULL or not found for the crypto device queue pair.
+ */
+
+__rte_experimental
+int rte_cryptodev_remove_enq_callback(uint8_t dev_id,
+				      uint16_t qp_id,
+				      struct rte_cryptodev_cb *cb);
+
+/**
+ * Add a user callback for a given crypto device and queue pair which will be
+ * called on crypto ops dequeue.
+ *
+ * This API configures a function to be called for each burst of crypto ops
+ * received on a given crypto device queue pair. The return value is a pointer
+ * that can be used later to remove the callback using
+ * rte_cryptodev_remove_deq_callback().
+ *
+ * Callbacks registered by application would not survive
+ * rte_cryptodev_configure() as it reinitializes the callback list.
+ * It is user responsibility to remove all installed callbacks before
+ * calling rte_cryptodev_configure() to avoid possible memory leakage.
+ * Application is expected to call add API after rte_cryptodev_configure().
+ *
+ * Multiple functions can be registered per queue pair & they are called
+ * in the order they were added. The API does not restrict on maximum number
+ * of callbacks.
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	qp_id		The index of the queue pair on which ops are
+ *				to be dequeued. The value must be in the
+ *				range [0, nb_queue_pairs - 1] previously
+ *				supplied to *rte_cryptodev_configure*.
+ * @param	cb_fn		The callback function
+ * @param	cb_arg		A generic pointer parameter which will be passed
+ *				to each invocation of the callback function on
+ *				this crypto device and queue pair.
+ *
+ * @return
+ *   - NULL on error & rte_errno will contain the error code.
+ *   - On success, a pointer value which can later be used to remove the
+ *     callback.
+ */
+
+__rte_experimental
+struct rte_cryptodev_cb *
+rte_cryptodev_add_deq_callback(uint8_t dev_id,
+			       uint16_t qp_id,
+			       rte_cryptodev_callback_fn cb_fn,
+			       void *cb_arg);
+
+/**
+ * Remove a user callback function for given crypto device and queue pair.
+ *
+ * This function is used to remove dequeue callbacks that were added to a
+ * crypto device queue pair using rte_cryptodev_add_deq_callback().
+ *
+ *
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	qp_id		The index of the queue pair on which ops are
+ *				to be dequeued. The value must be in the
+ *				range [0, nb_queue_pairs - 1] previously
+ *				supplied to *rte_cryptodev_configure*.
+ * @param	cb		Pointer to user supplied callback created via
+ *				rte_cryptodev_add_deq_callback().
+ *
+ * @return
+ *   -  0: Success. Callback was removed.
+ *   - <0: The dev_id or the qp_id is out of range, or the callback
+ *         is NULL or not found for the crypto device queue pair.
+ */
+__rte_experimental
+int rte_cryptodev_remove_deq_callback(uint8_t dev_id,
+				      uint16_t qp_id,
+				      struct rte_cryptodev_cb *cb);
 
 #ifdef __cplusplus
 }

@@ -11,3 +11,8 @@
 ; Explicit ignore for driver-only ABI
 [suppress_type]
         name = eth_dev_ops
+
+; Ignore fields inserted in cacheline boundary of rte_cryptodev
+[suppress_type]
+        name = rte_cryptodev
+        has_data_member_inserted_between = {0, 1023}

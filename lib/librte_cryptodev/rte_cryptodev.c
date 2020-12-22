@@ -448,6 +448,122 @@ rte_cryptodev_asym_xform_capability_check_modlen(
 	return 0;
 }
 
+/* spinlock for crypto device enq callbacks */
+static rte_spinlock_t rte_cryptodev_callback_lock = RTE_SPINLOCK_INITIALIZER;
+
+static void
+cryptodev_cb_cleanup(struct rte_cryptodev *dev)
+{
+	struct rte_cryptodev_cb_rcu *list;
+	struct rte_cryptodev_cb *cb, *next;
+	uint16_t qp_id;
+
+	if (dev->enq_cbs == NULL && dev->deq_cbs == NULL)
+		return;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		list = &dev->enq_cbs[qp_id];
+		cb = list->next;
+		while (cb != NULL) {
+			next = cb->next;
+			rte_free(cb);
+			cb = next;
+		}
+
+		rte_free(list->qsbr);
+	}
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		list = &dev->deq_cbs[qp_id];
+		cb = list->next;
+		while (cb != NULL) {
+			next = cb->next;
+			rte_free(cb);
+			cb = next;
+		}
+
+		rte_free(list->qsbr);
+	}
+
+	rte_free(dev->enq_cbs);
+	dev->enq_cbs = NULL;
+	rte_free(dev->deq_cbs);
+	dev->deq_cbs = NULL;
+}
+
+static int
+cryptodev_cb_init(struct rte_cryptodev *dev)
+{
+	struct rte_cryptodev_cb_rcu *list;
+	struct rte_rcu_qsbr *qsbr;
+	uint16_t qp_id;
+	size_t size;
+
+	/* Max thread set to 1, as one DP thread accessing a queue-pair */
+	const uint32_t max_threads = 1;
+
+	dev->enq_cbs = rte_zmalloc(NULL,
+				   sizeof(struct rte_cryptodev_cb_rcu) *
+				   dev->data->nb_queue_pairs, 0);
+	if (dev->enq_cbs == NULL) {
+		CDEV_LOG_ERR("Failed to allocate memory for enq callbacks");
+		return -ENOMEM;
+	}
+
+	dev->deq_cbs = rte_zmalloc(NULL,
+				   sizeof(struct rte_cryptodev_cb_rcu) *
+				   dev->data->nb_queue_pairs, 0);
+	if (dev->deq_cbs == NULL) {
+		CDEV_LOG_ERR("Failed to allocate memory for deq callbacks");
+		rte_free(dev->enq_cbs);
+		return -ENOMEM;
+	}
+
+	/* Create RCU QSBR variable */
+	size = rte_rcu_qsbr_get_memsize(max_threads);
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		list = &dev->enq_cbs[qp_id];
+		qsbr = rte_zmalloc(NULL, size, RTE_CACHE_LINE_SIZE);
+		if (qsbr == NULL) {
+			CDEV_LOG_ERR("Failed to allocate memory for RCU on "
+				"queue_pair_id=%d", qp_id);
+			goto cb_init_err;
+		}
+
+		if (rte_rcu_qsbr_init(qsbr, max_threads)) {
+			CDEV_LOG_ERR("Failed to initialize for RCU on "
+				"queue_pair_id=%d", qp_id);
+			goto cb_init_err;
+		}
+
+		list->qsbr = qsbr;
+	}
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		list = &dev->deq_cbs[qp_id];
+		qsbr = rte_zmalloc(NULL, size, RTE_CACHE_LINE_SIZE);
+		if (qsbr == NULL) {
+			CDEV_LOG_ERR("Failed to allocate memory for RCU on "
+				"queue_pair_id=%d", qp_id);
+			goto cb_init_err;
+		}
+
+		if (rte_rcu_qsbr_init(qsbr, max_threads)) {
+			CDEV_LOG_ERR("Failed to initialize for RCU on "
+				"queue_pair_id=%d", qp_id);
+			goto cb_init_err;
+		}
+
+		list->qsbr = qsbr;
+	}
+
+	return 0;
+
+cb_init_err:
+	cryptodev_cb_cleanup(dev);
+	return -ENOMEM;
+}
 
 const char *
 rte_cryptodev_get_feature_name(uint64_t flag)
@@ -927,6 +1043,10 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
 
+	rte_spinlock_lock(&rte_cryptodev_callback_lock);
+	cryptodev_cb_cleanup(dev);
+	rte_spinlock_unlock(&rte_cryptodev_callback_lock);
+
 	/* Setup new number of queue pairs and reconfigure device. */
 	diag = rte_cryptodev_queue_pairs_config(dev, config->nb_queue_pairs,
 			config->socket_id);
@@ -936,10 +1056,17 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 		return diag;
 	}
 
+	rte_spinlock_lock(&rte_cryptodev_callback_lock);
+	diag = cryptodev_cb_init(dev);
+	rte_spinlock_unlock(&rte_cryptodev_callback_lock);
+	if (diag) {
+		CDEV_LOG_ERR("Callback init failed for dev_id=%d", dev_id);
+		return diag;
+	}
+
 	rte_cryptodev_trace_configure(dev_id, config);
 	return (*dev->dev_ops->dev_configure)(dev, config);
 }
-
 
 int
 rte_cryptodev_start(uint8_t dev_id)
@@ -1136,6 +1263,275 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 			socket_id);
 }
 
+struct rte_cryptodev_cb *
+rte_cryptodev_add_enq_callback(uint8_t dev_id,
+			       uint16_t qp_id,
+			       rte_cryptodev_callback_fn cb_fn,
+			       void *cb_arg)
+{
+	struct rte_cryptodev *dev;
+	struct rte_cryptodev_cb_rcu *list;
+	struct rte_cryptodev_cb *cb, *tail;
+
+	if (!cb_fn) {
+		CDEV_LOG_ERR("Callback is NULL on dev_id=%d", dev_id);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+
+	dev = &rte_crypto_devices[dev_id];
+	if (qp_id >= dev->data->nb_queue_pairs) {
+		CDEV_LOG_ERR("Invalid queue_pair_id=%d", qp_id);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+
+	cb = rte_zmalloc(NULL, sizeof(*cb), 0);
+	if (cb == NULL) {
+		CDEV_LOG_ERR("Failed to allocate memory for callback on "
+			     "dev=%d, queue_pair_id=%d", dev_id, qp_id);
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	rte_spinlock_lock(&rte_cryptodev_callback_lock);
+
+	cb->fn = cb_fn;
+	cb->arg = cb_arg;
+
+	/* Add the callbacks in fifo order. */
+	list = &dev->enq_cbs[qp_id];
+	tail = list->next;
+
+	if (tail) {
+		while (tail->next)
+			tail = tail->next;
+		/* Stores to cb->fn and cb->param should complete before
+		 * cb is visible to data plane.
+		 */
+		__atomic_store_n(&tail->next, cb, __ATOMIC_RELEASE);
+	} else {
+		/* Stores to cb->fn and cb->param should complete before
+		 * cb is visible to data plane.
+		 */
+		__atomic_store_n(&list->next, cb, __ATOMIC_RELEASE);
+	}
+
+	rte_spinlock_unlock(&rte_cryptodev_callback_lock);
+
+	return cb;
+}
+
+int
+rte_cryptodev_remove_enq_callback(uint8_t dev_id,
+				  uint16_t qp_id,
+				  struct rte_cryptodev_cb *cb)
+{
+	struct rte_cryptodev *dev;
+	struct rte_cryptodev_cb **prev_cb, *curr_cb;
+	struct rte_cryptodev_cb_rcu *list;
+	int ret;
+
+	ret = -EINVAL;
+
+	if (!cb) {
+		CDEV_LOG_ERR("Callback is NULL");
+		return -EINVAL;
+	}
+
+	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_crypto_devices[dev_id];
+	if (qp_id >= dev->data->nb_queue_pairs) {
+		CDEV_LOG_ERR("Invalid queue_pair_id=%d", qp_id);
+		return -ENODEV;
+	}
+
+	rte_spinlock_lock(&rte_cryptodev_callback_lock);
+	if (dev->enq_cbs == NULL) {
+		CDEV_LOG_ERR("Callback not initialized");
+		goto cb_err;
+	}
+
+	list = &dev->enq_cbs[qp_id];
+	if (list == NULL) {
+		CDEV_LOG_ERR("Callback list is NULL");
+		goto cb_err;
+	}
+
+	if (list->qsbr == NULL) {
+		CDEV_LOG_ERR("Rcu qsbr is NULL");
+		goto cb_err;
+	}
+
+	prev_cb = &list->next;
+	for (; *prev_cb != NULL; prev_cb = &curr_cb->next) {
+		curr_cb = *prev_cb;
+		if (curr_cb == cb) {
+			/* Remove the user cb from the callback list. */
+			__atomic_store_n(prev_cb, curr_cb->next,
+				__ATOMIC_RELAXED);
+			ret = 0;
+			break;
+		}
+	}
+
+	if (!ret) {
+		/* Call sync with invalid thread id as this is part of
+		 * control plane API
+		 */
+		rte_rcu_qsbr_synchronize(list->qsbr, RTE_QSBR_THRID_INVALID);
+		rte_free(cb);
+	}
+
+cb_err:
+	rte_spinlock_unlock(&rte_cryptodev_callback_lock);
+	return ret;
+}
+
+struct rte_cryptodev_cb *
+rte_cryptodev_add_deq_callback(uint8_t dev_id,
+			       uint16_t qp_id,
+			       rte_cryptodev_callback_fn cb_fn,
+			       void *cb_arg)
+{
+	struct rte_cryptodev *dev;
+	struct rte_cryptodev_cb_rcu *list;
+	struct rte_cryptodev_cb *cb, *tail;
+
+	if (!cb_fn) {
+		CDEV_LOG_ERR("Callback is NULL on dev_id=%d", dev_id);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+
+	dev = &rte_crypto_devices[dev_id];
+	if (qp_id >= dev->data->nb_queue_pairs) {
+		CDEV_LOG_ERR("Invalid queue_pair_id=%d", qp_id);
+		rte_errno = ENODEV;
+		return NULL;
+	}
+
+	cb = rte_zmalloc(NULL, sizeof(*cb), 0);
+	if (cb == NULL) {
+		CDEV_LOG_ERR("Failed to allocate memory for callback on "
+			     "dev=%d, queue_pair_id=%d", dev_id, qp_id);
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	rte_spinlock_lock(&rte_cryptodev_callback_lock);
+
+	cb->fn = cb_fn;
+	cb->arg = cb_arg;
+
+	/* Add the callbacks in fifo order. */
+	list = &dev->deq_cbs[qp_id];
+	tail = list->next;
+
+	if (tail) {
+		while (tail->next)
+			tail = tail->next;
+		/* Stores to cb->fn and cb->param should complete before
+		 * cb is visible to data plane.
+		 */
+		__atomic_store_n(&tail->next, cb, __ATOMIC_RELEASE);
+	} else {
+		/* Stores to cb->fn and cb->param should complete before
+		 * cb is visible to data plane.
+		 */
+		__atomic_store_n(&list->next, cb, __ATOMIC_RELEASE);
+	}
+
+	rte_spinlock_unlock(&rte_cryptodev_callback_lock);
+
+	return cb;
+}
+
+int
+rte_cryptodev_remove_deq_callback(uint8_t dev_id,
+				  uint16_t qp_id,
+				  struct rte_cryptodev_cb *cb)
+{
+	struct rte_cryptodev *dev;
+	struct rte_cryptodev_cb **prev_cb, *curr_cb;
+	struct rte_cryptodev_cb_rcu *list;
+	int ret;
+
+	ret = -EINVAL;
+
+	if (!cb) {
+		CDEV_LOG_ERR("Callback is NULL");
+		return -EINVAL;
+	}
+
+	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%d", dev_id);
+		return -ENODEV;
+	}
+
+	dev = &rte_crypto_devices[dev_id];
+	if (qp_id >= dev->data->nb_queue_pairs) {
+		CDEV_LOG_ERR("Invalid queue_pair_id=%d", qp_id);
+		return -ENODEV;
+	}
+
+	rte_spinlock_lock(&rte_cryptodev_callback_lock);
+	if (dev->enq_cbs == NULL) {
+		CDEV_LOG_ERR("Callback not initialized");
+		goto cb_err;
+	}
+
+	list = &dev->deq_cbs[qp_id];
+	if (list == NULL) {
+		CDEV_LOG_ERR("Callback list is NULL");
+		goto cb_err;
+	}
+
+	if (list->qsbr == NULL) {
+		CDEV_LOG_ERR("Rcu qsbr is NULL");
+		goto cb_err;
+	}
+
+	prev_cb = &list->next;
+	for (; *prev_cb != NULL; prev_cb = &curr_cb->next) {
+		curr_cb = *prev_cb;
+		if (curr_cb == cb) {
+			/* Remove the user cb from the callback list. */
+			__atomic_store_n(prev_cb, curr_cb->next,
+				__ATOMIC_RELAXED);
+			ret = 0;
+			break;
+		}
+	}
+
+	if (!ret) {
+		/* Call sync with invalid thread id as this is part of
+		 * control plane API
+		 */
+		rte_rcu_qsbr_synchronize(list->qsbr, RTE_QSBR_THRID_INVALID);
+		rte_free(cb);
+	}
+
+cb_err:
+	rte_spinlock_unlock(&rte_cryptodev_callback_lock);
+	return ret;
+}
 
 int
 rte_cryptodev_stats_get(uint8_t dev_id, struct rte_cryptodev_stats *stats)

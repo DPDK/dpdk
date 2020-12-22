@@ -109,4 +109,11 @@ EXPERIMENTAL {
 	rte_cryptodev_raw_enqueue;
 	rte_cryptodev_raw_enqueue_burst;
 	rte_cryptodev_raw_enqueue_done;
+
+	# added in 21.02
+	rte_cryptodev_add_deq_callback;
+	rte_cryptodev_add_enq_callback;
+	rte_cryptodev_remove_deq_callback;
+	rte_cryptodev_remove_enq_callback;
+
 };

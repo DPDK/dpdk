@@ -9,4 +9,4 @@ headers = files('rte_cryptodev.h',
 	'rte_crypto.h',
 	'rte_crypto_sym.h',
 	'rte_crypto_asym.h')
-deps += ['kvargs', 'mbuf']
+deps += ['kvargs', 'mbuf', 'rcu']

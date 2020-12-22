@@ -76,6 +76,12 @@ New Features
 
   * Added inner UDP/IPv4 support for VXLAN IPv4 GSO.
 
+* **Added enqueue & dequeue callback APIs for cryptodev library.**
+
+  Cryptodev library is added with enqueue & dequeue callback APIs to
+  enable applications to add/remove user callbacks which gets called
+  for every enqueue/dequeue operation.
+
 * **Updated the OCTEON TX2 crypto PMD.**
 
   * Updated the OCTEON TX2 crypto PMD lookaside protocol offload for IPsec with
@@ -118,6 +124,9 @@ API Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* cryptodev: The structure ``rte_cryptodev`` has been updated with pointers
+  for adding enqueue and dequeue callbacks.
 
 
 ABI Changes
