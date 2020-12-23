@@ -1344,6 +1344,29 @@ iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 }
 
 int
+iavf_set_hena(struct iavf_adapter *adapter, uint64_t hena)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_rss_hena vrh;
+	struct iavf_cmd_info args;
+	int err;
+
+	vrh.hena = hena;
+	args.ops = VIRTCHNL_OP_SET_RSS_HENA;
+	args.in_args = (u8 *)&vrh;
+	args.in_args_size = sizeof(vrh);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_SET_RSS_HENA");
+
+	return err;
+}
+
+int
 iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num, bool add)

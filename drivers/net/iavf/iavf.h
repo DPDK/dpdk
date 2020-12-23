@@ -46,11 +46,18 @@
 	VIRTCHNL_VF_OFFLOAD_RX_POLLING)
 
 #define IAVF_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_IPV4 | \
 	ETH_RSS_FRAG_IPV4 |         \
 	ETH_RSS_NONFRAG_IPV4_TCP |  \
 	ETH_RSS_NONFRAG_IPV4_UDP |  \
 	ETH_RSS_NONFRAG_IPV4_SCTP | \
-	ETH_RSS_NONFRAG_IPV4_OTHER)
+	ETH_RSS_NONFRAG_IPV4_OTHER | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_FRAG_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_NONFRAG_IPV6_SCTP | \
+	ETH_RSS_NONFRAG_IPV6_OTHER)
 
 #define IAVF_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
 #define IAVF_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
@@ -153,6 +160,7 @@ struct iavf_info {
 
 	uint8_t *rss_lut;
 	uint8_t *rss_key;
+	uint64_t rss_hf;
 	uint16_t nb_msix;   /* number of MSI-X interrupts on Rx */
 	uint16_t msix_base; /* msix vector base from */
 	uint16_t max_rss_qregion; /* max RSS queue region supported by PF */
@@ -321,6 +329,8 @@ int iavf_fdir_check(struct iavf_adapter *adapter,
 		struct iavf_fdir_conf *filter);
 int iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 			 struct virtchnl_rss_cfg *rss_cfg, bool add);
+int iavf_set_hena(struct iavf_adapter *adapter, uint64_t hena);
+int iavf_rss_hash_set(struct iavf_adapter *ad, uint64_t rss_hf, bool add);
 int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num, bool add);

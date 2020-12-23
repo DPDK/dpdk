@@ -443,17 +443,6 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv6_gtpc,			ETH_RSS_IPV6,			&ipv6_udp_gtpc_tmplt},
 };
 
-struct virtchnl_proto_hdrs *iavf_hash_default_hdrs[] = {
-	&inner_ipv4_tmplt,
-	&inner_ipv4_udp_tmplt,
-	&inner_ipv4_tcp_tmplt,
-	&inner_ipv4_sctp_tmplt,
-	&inner_ipv6_tmplt,
-	&inner_ipv6_udp_tmplt,
-	&inner_ipv6_tcp_tmplt,
-	&inner_ipv6_sctp_tmplt,
-};
-
 static struct iavf_flow_engine iavf_hash_engine = {
 	.init = iavf_hash_init,
 	.create = iavf_hash_create,
@@ -472,24 +461,64 @@ static struct iavf_flow_parser iavf_hash_parser = {
 	.stage = IAVF_FLOW_STAGE_RSS,
 };
 
-static int
-iavf_hash_default_set(struct iavf_adapter *ad, bool add)
+int
+iavf_rss_hash_set(struct iavf_adapter *ad, uint64_t rss_hf, bool add)
 {
-	struct virtchnl_rss_cfg *rss_cfg;
-	uint16_t i;
+	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(ad);
+	struct virtchnl_rss_cfg rss_cfg;
 
-	rss_cfg = rte_zmalloc("iavf rss rule",
-			      sizeof(struct virtchnl_rss_cfg), 0);
-	if (!rss_cfg)
-		return -ENOMEM;
+#define IAVF_RSS_HF_ALL ( \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV4_SCTP | \
+	ETH_RSS_NONFRAG_IPV6_SCTP)
 
-	for (i = 0; i < RTE_DIM(iavf_hash_default_hdrs); i++) {
-		rss_cfg->proto_hdrs = *iavf_hash_default_hdrs[i];
-		rss_cfg->rss_algorithm = VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC;
-
-		iavf_add_del_rss_cfg(ad, rss_cfg, add);
+	rss_cfg.rss_algorithm = VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC;
+	if (rss_hf & ETH_RSS_IPV4) {
+		rss_cfg.proto_hdrs = inner_ipv4_tmplt;
+		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
 	}
 
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+		rss_cfg.proto_hdrs = inner_ipv4_udp_tmplt;
+		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+		rss_cfg.proto_hdrs = inner_ipv4_tcp_tmplt;
+		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) {
+		rss_cfg.proto_hdrs = inner_ipv4_sctp_tmplt;
+		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
+	}
+
+	if (rss_hf & ETH_RSS_IPV6) {
+		rss_cfg.proto_hdrs = inner_ipv6_tmplt;
+		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) {
+		rss_cfg.proto_hdrs = inner_ipv6_udp_tmplt;
+		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) {
+		rss_cfg.proto_hdrs = inner_ipv6_tcp_tmplt;
+		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) {
+		rss_cfg.proto_hdrs = inner_ipv6_sctp_tmplt;
+		iavf_add_del_rss_cfg(ad, &rss_cfg, add);
+	}
+
+	vf->rss_hf = rss_hf & IAVF_RSS_HF_ALL;
 	return 0;
 }
 
@@ -522,12 +551,6 @@ iavf_hash_init(struct iavf_adapter *ad)
 	if (ret) {
 		PMD_DRV_LOG(ERR, "fail to register hash parser");
 		return ret;
-	}
-
-	ret = iavf_hash_default_set(ad, true);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "fail to set default RSS");
-		iavf_unregister_parser(parser, ad);
 	}
 
 	return ret;
@@ -1123,6 +1146,7 @@ static void
 iavf_hash_uninit(struct iavf_adapter *ad)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
+	struct rte_eth_rss_conf *rss_conf;
 
 	if (vf->vf_reset)
 		return;
@@ -1133,7 +1157,8 @@ iavf_hash_uninit(struct iavf_adapter *ad)
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF))
 		return;
 
-	if (iavf_hash_default_set(ad, false))
+	rss_conf = &ad->eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
+	if (iavf_rss_hash_set(ad, rss_conf->rss_hf, false))
 		PMD_DRV_LOG(ERR, "fail to delete default RSS");
 
 	iavf_unregister_parser(&iavf_hash_parser, ad);

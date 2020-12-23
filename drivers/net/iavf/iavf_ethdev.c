@@ -267,10 +267,6 @@ iavf_init_rss(struct iavf_adapter *adapter)
 		return ret;
 	}
 
-	/* In IAVF, RSS enablement is set by PF driver. It is not supported
-	 * to set based on rss_conf->rss_hf.
-	 */
-
 	/* configure RSS key */
 	if (!rss_conf->rss_key) {
 		/* Calculate the default hash key */
@@ -294,6 +290,13 @@ iavf_init_rss(struct iavf_adapter *adapter)
 	ret = iavf_configure_rss_key(adapter);
 	if (ret)
 		return ret;
+
+	/* Set RSS hash configuration based on rss_conf->rss_hf. */
+	ret = iavf_rss_hash_set(adapter, rss_conf->rss_hf, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "fail to set default RSS");
+		return ret;
+	}
 
 	return 0;
 }
@@ -1102,31 +1105,64 @@ iavf_dev_rss_reta_query(struct rte_eth_dev *dev,
 }
 
 static int
+iavf_set_rss_key(struct iavf_adapter *adapter, uint8_t *key, uint8_t key_len)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+
+	/* HENA setting, it is enabled by default, no change */
+	if (!key || key_len == 0) {
+		PMD_DRV_LOG(DEBUG, "No key to be configured");
+		return 0;
+	} else if (key_len != vf->vf_res->rss_key_size) {
+		PMD_DRV_LOG(ERR, "The size of hash key configured "
+			"(%d) doesn't match the size of hardware can "
+			"support (%d)", key_len,
+			vf->vf_res->rss_key_size);
+		return -EINVAL;
+	}
+
+	rte_memcpy(vf->rss_key, key, key_len);
+
+	return iavf_configure_rss_key(adapter);
+}
+
+static int
 iavf_dev_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	int ret;
+
+	adapter->eth_dev->data->dev_conf.rx_adv_conf.rss_conf = *rss_conf;
 
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
 
-	/* HENA setting, it is enabled by default, no change */
-	if (!rss_conf->rss_key || rss_conf->rss_key_len == 0) {
-		PMD_DRV_LOG(DEBUG, "No key to be configured");
+	/* Set hash key. */
+	ret = iavf_set_rss_key(adapter, rss_conf->rss_key,
+			       rss_conf->rss_key_len);
+	if (ret)
+		return ret;
+
+	if (rss_conf->rss_hf == 0)
 		return 0;
-	} else if (rss_conf->rss_key_len != vf->vf_res->rss_key_size) {
-		PMD_DRV_LOG(ERR, "The size of hash key configured "
-			"(%d) doesn't match the size of hardware can "
-			"support (%d)", rss_conf->rss_key_len,
-			vf->vf_res->rss_key_size);
-		return -EINVAL;
+
+	/* Overwritten default RSS. */
+	ret = iavf_set_hena(adapter, 0);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s Remove rss vsi fail %d",
+			    __func__, ret);
+
+	/* Set new RSS configuration. */
+	ret = iavf_rss_hash_set(adapter, rss_conf->rss_hf, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "fail to set new RSS");
+		return ret;
 	}
 
-	rte_memcpy(vf->rss_key, rss_conf->rss_key, rss_conf->rss_key_len);
-
-	return iavf_configure_rss_key(adapter);
+	return 0;
 }
 
 static int
@@ -1140,8 +1176,7 @@ iavf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
 
-	 /* Just set it to default value now. */
-	rss_conf->rss_hf = IAVF_RSS_OFFLOAD_ALL;
+	rss_conf->rss_hf = vf->rss_hf;
 
 	if (!rss_conf->rss_key)
 		return 0;
@@ -2026,6 +2061,13 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	ret = iavf_flow_init(adapter);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to initialize flow");
+		return ret;
+	}
+
+	/* Set hena = 0 to ask PF to cleanup all existing RSS. */
+	ret = iavf_set_hena(adapter, 0);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "fail to disable default PF RSS");
 		return ret;
 	}
 
