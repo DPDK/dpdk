@@ -375,8 +375,10 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 	} else {
 		/* Check if large VF is already enabled. If so, disable and
 		 * release redundant queue resource.
+		 * Or check if enough queue pairs. If not, request them from PF.
 		 */
-		if (vf->lv_enabled) {
+		if (vf->lv_enabled ||
+		    num_queue_pairs > vf->vsi_res->num_queue_pairs) {
 			ret = iavf_queues_req_reset(dev, num_queue_pairs);
 			if (ret)
 				return ret;
