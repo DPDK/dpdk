@@ -1434,6 +1434,18 @@ static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static void
+bnxt_uninit_locks(struct bnxt *bp)
+{
+	pthread_mutex_destroy(&bp->flow_lock);
+	pthread_mutex_destroy(&bp->def_cp_lock);
+	pthread_mutex_destroy(&bp->health_check_lock);
+	if (bp->rep_info) {
+		pthread_mutex_destroy(&bp->rep_info->vfr_lock);
+		pthread_mutex_destroy(&bp->rep_info->vfr_start_lock);
+	}
+}
+
 static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -1459,6 +1471,7 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	bnxt_free_link_info(bp);
 	bnxt_free_pf_info(bp);
 	bnxt_free_parent_info(bp);
+	bnxt_uninit_locks(bp);
 
 	rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
 	bp->tx_mem_zone = NULL;
@@ -4804,10 +4817,6 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 		return rc;
 	}
 
-	rc = bnxt_init_locks(bp);
-	if (rc)
-		return rc;
-
 	return 0;
 }
 
@@ -5294,6 +5303,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	if (rc)
 		goto error_free;
 
+	rc = bnxt_init_locks(bp);
+	if (rc)
+		goto error_free;
+
 	rc = bnxt_init_resources(bp, false);
 	if (rc)
 		goto error_free;
@@ -5385,18 +5398,6 @@ bnxt_free_error_recovery_info(struct bnxt *bp)
 	bp->fw_cap &= ~BNXT_FW_CAP_ERROR_RECOVERY;
 }
 
-static void
-bnxt_uninit_locks(struct bnxt *bp)
-{
-	pthread_mutex_destroy(&bp->flow_lock);
-	pthread_mutex_destroy(&bp->def_cp_lock);
-	pthread_mutex_destroy(&bp->health_check_lock);
-	if (bp->rep_info) {
-		pthread_mutex_destroy(&bp->rep_info->vfr_lock);
-		pthread_mutex_destroy(&bp->rep_info->vfr_start_lock);
-	}
-}
-
 static int
 bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 {
@@ -5418,7 +5419,6 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 
 	bnxt_uninit_ctx_mem(bp);
 
-	bnxt_uninit_locks(bp);
 	bnxt_free_flow_stats_info(bp);
 	bnxt_free_rep_info(bp);
 	rte_free(bp->ptp_cfg);
