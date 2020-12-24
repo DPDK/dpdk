@@ -1260,80 +1260,6 @@ static int bnxt_handle_if_change_status(struct bnxt *bp)
 	return rc;
 }
 
-static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
-{
-	struct bnxt *bp = eth_dev->data->dev_private;
-	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
-	int vlan_mask = 0;
-	int rc, retry_cnt = BNXT_IF_CHANGE_RETRY_COUNT;
-
-	if (!eth_dev->data->nb_tx_queues || !eth_dev->data->nb_rx_queues) {
-		PMD_DRV_LOG(ERR, "Queues are not configured yet!\n");
-		return -EINVAL;
-	}
-
-	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS)
-		PMD_DRV_LOG(ERR,
-			    "RxQ cnt %d > RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
-			    bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
-
-	do {
-		rc = bnxt_hwrm_if_change(bp, true);
-		if (rc == 0 || rc != -EAGAIN)
-			break;
-
-		rte_delay_ms(BNXT_IF_CHANGE_RETRY_INTERVAL);
-	} while (retry_cnt--);
-
-	if (rc)
-		return rc;
-
-	if (bp->flags & BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE) {
-		rc = bnxt_handle_if_change_status(bp);
-		if (rc)
-			return rc;
-	}
-
-	bnxt_enable_int(bp);
-
-	rc = bnxt_init_chip(bp);
-	if (rc)
-		goto error;
-
-	eth_dev->data->scattered_rx = bnxt_scattered_rx(eth_dev);
-	eth_dev->data->dev_started = 1;
-
-	bnxt_link_update_op(eth_dev, 1);
-
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
-		vlan_mask |= ETH_VLAN_FILTER_MASK;
-	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-		vlan_mask |= ETH_VLAN_STRIP_MASK;
-	rc = bnxt_vlan_offload_set_op(eth_dev, vlan_mask);
-	if (rc)
-		goto error;
-
-	/* Initialize bnxt ULP port details */
-	rc = bnxt_ulp_port_init(bp);
-	if (rc)
-		goto error;
-
-	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
-	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
-
-	bnxt_schedule_fw_health_check(bp);
-
-	return 0;
-
-error:
-	bnxt_shutdown_nic(bp);
-	bnxt_free_tx_mbufs(bp);
-	bnxt_free_rx_mbufs(bp);
-	bnxt_hwrm_if_change(bp, false);
-	eth_dev->data->dev_started = 0;
-	return rc;
-}
-
 static int bnxt_dev_set_link_up_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -1438,6 +1364,76 @@ static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		bp->flow_stat->flow_count = 0;
 
 	return 0;
+}
+
+static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = eth_dev->data->dev_private;
+	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
+	int vlan_mask = 0;
+	int rc, retry_cnt = BNXT_IF_CHANGE_RETRY_COUNT;
+
+	if (!eth_dev->data->nb_tx_queues || !eth_dev->data->nb_rx_queues) {
+		PMD_DRV_LOG(ERR, "Queues are not configured yet!\n");
+		return -EINVAL;
+	}
+
+	if (bp->rx_cp_nr_rings > RTE_ETHDEV_QUEUE_STAT_CNTRS)
+		PMD_DRV_LOG(ERR,
+			    "RxQ cnt %d > RTE_ETHDEV_QUEUE_STAT_CNTRS %d\n",
+			    bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
+	do {
+		rc = bnxt_hwrm_if_change(bp, true);
+		if (rc == 0 || rc != -EAGAIN)
+			break;
+
+		rte_delay_ms(BNXT_IF_CHANGE_RETRY_INTERVAL);
+	} while (retry_cnt--);
+
+	if (rc)
+		return rc;
+
+	if (bp->flags & BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE) {
+		rc = bnxt_handle_if_change_status(bp);
+		if (rc)
+			return rc;
+	}
+
+	bnxt_enable_int(bp);
+
+	rc = bnxt_init_chip(bp);
+	if (rc)
+		goto error;
+
+	eth_dev->data->scattered_rx = bnxt_scattered_rx(eth_dev);
+	eth_dev->data->dev_started = 1;
+
+	bnxt_link_update_op(eth_dev, 1);
+
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+		vlan_mask |= ETH_VLAN_FILTER_MASK;
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		vlan_mask |= ETH_VLAN_STRIP_MASK;
+	rc = bnxt_vlan_offload_set_op(eth_dev, vlan_mask);
+	if (rc)
+		goto error;
+
+	/* Initialize bnxt ULP port details */
+	rc = bnxt_ulp_port_init(bp);
+	if (rc)
+		goto error;
+
+	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
+	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
+
+	bnxt_schedule_fw_health_check(bp);
+
+	return 0;
+
+error:
+	bnxt_dev_stop_op(eth_dev);
+	return rc;
 }
 
 static void
