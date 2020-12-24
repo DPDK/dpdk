@@ -16266,11 +16266,9 @@ cmd_show_fec_capability_parsed(void *parsed_result,
 		__rte_unused struct cmdline *cl,
 		__rte_unused void *data)
 {
-#define FEC_CAP_NUM 2
 	struct cmd_show_fec_capability_result *res = parsed_result;
-	struct rte_eth_fec_capa speed_fec_capa[FEC_CAP_NUM];
-	unsigned int num = FEC_CAP_NUM;
-	unsigned int ret_num;
+	struct rte_eth_fec_capa *speed_fec_capa;
+	unsigned int num;
 	int ret;
 
 	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
@@ -16278,17 +16276,31 @@ cmd_show_fec_capability_parsed(void *parsed_result,
 		return;
 	}
 
-	ret = rte_eth_fec_get_capability(res->cmd_pid, speed_fec_capa, num);
+	ret = rte_eth_fec_get_capability(res->cmd_pid, NULL, 0);
 	if (ret == -ENOTSUP) {
 		printf("Function not implemented\n");
 		return;
 	} else if (ret < 0) {
-		printf("Get FEC capability failed\n");
+		printf("Get FEC capability failed: %d\n", ret);
 		return;
 	}
 
-	ret_num = (unsigned int)ret;
-	show_fec_capability(ret_num, speed_fec_capa);
+	num = (unsigned int)ret;
+	speed_fec_capa = calloc(num, sizeof(*speed_fec_capa));
+	if (speed_fec_capa == NULL) {
+		printf("Failed to alloc FEC capability buffer\n");
+		return;
+	}
+
+	ret = rte_eth_fec_get_capability(res->cmd_pid, speed_fec_capa, num);
+	if (ret < 0) {
+		printf("Error getting FEC capability: %d\n", ret);
+		goto out;
+	}
+
+	show_fec_capability(num, speed_fec_capa);
+out:
+	free(speed_fec_capa);
 }
 
 cmdline_parse_token_string_t cmd_show_fec_capability_show =
