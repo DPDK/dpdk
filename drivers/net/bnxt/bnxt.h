@@ -738,6 +738,11 @@ struct bnxt {
 	 * health_check_lock
 	 */
 	pthread_mutex_t			health_check_lock;
+	/* synchronize between dev_stop/dev_close_op and
+	 * error recovery thread triggered as part of
+	 * HWRM_ASYNC_EVENT_CMPL_EVENT_ID_RESET_NOTIFY
+	 */
+	pthread_mutex_t			err_recovery_lock;
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;
 	uint16_t                        hwrm_max_ext_req_len;

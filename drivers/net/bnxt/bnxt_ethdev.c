@@ -1297,8 +1297,7 @@ static void bnxt_free_switch_domain(struct bnxt *bp)
 	}
 }
 
-/* Unload the driver, release resources */
-static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
+static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -1364,6 +1363,22 @@ static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		bp->flow_stat->flow_count = 0;
 
 	return 0;
+}
+
+/* Unload the driver, release resources */
+static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
+{
+	struct bnxt *bp = eth_dev->data->dev_private;
+
+	pthread_mutex_lock(&bp->err_recovery_lock);
+	if (bp->flags & BNXT_FLAG_FW_RESET) {
+		PMD_DRV_LOG(ERR,
+			    "Adapter recovering from error..Please retry\n");
+		return -EAGAIN;
+	}
+	pthread_mutex_unlock(&bp->err_recovery_lock);
+
+	return bnxt_dev_stop(eth_dev);
 }
 
 static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
@@ -1432,7 +1447,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	return 0;
 
 error:
-	bnxt_dev_stop_op(eth_dev);
+	bnxt_dev_stop(eth_dev);
 	return rc;
 }
 
@@ -1442,6 +1457,7 @@ bnxt_uninit_locks(struct bnxt *bp)
 	pthread_mutex_destroy(&bp->flow_lock);
 	pthread_mutex_destroy(&bp->def_cp_lock);
 	pthread_mutex_destroy(&bp->health_check_lock);
+	pthread_mutex_destroy(&bp->err_recovery_lock);
 	if (bp->rep_info) {
 		pthread_mutex_destroy(&bp->rep_info->vfr_lock);
 		pthread_mutex_destroy(&bp->rep_info->vfr_start_lock);
@@ -1456,13 +1472,21 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	pthread_mutex_lock(&bp->err_recovery_lock);
+	if (bp->flags & BNXT_FLAG_FW_RESET) {
+		PMD_DRV_LOG(ERR,
+			    "Adapter recovering from error...Please retry\n");
+		return -EAGAIN;
+	}
+	pthread_mutex_unlock(&bp->err_recovery_lock);
+
 	/* cancel the recovery handler before remove dev */
 	rte_eal_alarm_cancel(bnxt_dev_reset_and_resume, (void *)bp);
 	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);
 	bnxt_cancel_fc_thread(bp);
 
 	if (eth_dev->data->dev_started)
-		ret = bnxt_dev_stop_op(eth_dev);
+		ret = bnxt_dev_stop(eth_dev);
 
 	bnxt_free_switch_domain(bp);
 
@@ -3676,7 +3700,7 @@ static void bnxt_dev_cleanup(struct bnxt *bp)
 	bp->eth_dev->data->dev_link.link_status = 0;
 	bp->link_info->link_up = 0;
 	if (bp->eth_dev->data->dev_started)
-		bnxt_dev_stop_op(bp->eth_dev);
+		bnxt_dev_stop(bp->eth_dev);
 
 	bnxt_uninit_resources(bp, true);
 }
@@ -3777,6 +3801,7 @@ static void bnxt_dev_recover(void *arg)
 	int timeout = bp->fw_reset_max_msecs;
 	int rc = 0;
 
+	pthread_mutex_lock(&bp->err_recovery_lock);
 	/* Clear Error flag so that device re-init should happen */
 	bp->flags &= ~BNXT_FLAG_FATAL_ERROR;
 
@@ -3813,12 +3838,15 @@ static void bnxt_dev_recover(void *arg)
 		goto err_start;
 
 	PMD_DRV_LOG(INFO, "Recovered from FW reset\n");
+	pthread_mutex_unlock(&bp->err_recovery_lock);
+
 	return;
 err_start:
-	bnxt_dev_stop_op(bp->eth_dev);
+	bnxt_dev_stop(bp->eth_dev);
 err:
 	bp->flags |= BNXT_FLAG_FATAL_ERROR;
 	bnxt_uninit_resources(bp, false);
+	pthread_mutex_unlock(&bp->err_recovery_lock);
 	PMD_DRV_LOG(ERR, "Failed to recover from FW reset\n");
 }
 
@@ -4775,8 +4803,15 @@ bnxt_init_locks(struct bnxt *bp)
 	}
 
 	err = pthread_mutex_init(&bp->health_check_lock, NULL);
-	if (err)
+	if (err) {
 		PMD_DRV_LOG(ERR, "Unable to initialize health_check_lock\n");
+		return err;
+	}
+
+	err = pthread_mutex_init(&bp->err_recovery_lock, NULL);
+	if (err)
+		PMD_DRV_LOG(ERR, "Unable to initialize err_recovery_lock\n");
+
 	return err;
 }
 
