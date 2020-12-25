@@ -15,6 +15,7 @@
 static const char * const uio_module_names[] = {
 	"igb_uio",
 	"uio_pci_generic",
+	"vfio_pci"
 };
 
 int

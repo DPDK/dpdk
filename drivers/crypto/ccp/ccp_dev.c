@@ -23,6 +23,7 @@
 #include "ccp_pci.h"
 #include "ccp_pmd_private.h"
 
+int iommu_mode;
 struct ccp_list ccp_list = TAILQ_HEAD_INITIALIZER(ccp_list);
 static int ccp_dev_id;
 
@@ -512,7 +513,7 @@ ccp_add_device(struct ccp_device *dev, int type)
 
 		CCP_WRITE_REG(vaddr, CMD_CLK_GATE_CTL_OFFSET, 0x00108823);
 	}
-	CCP_WRITE_REG(vaddr, CMD_REQID_CONFIG_OFFSET, 0x00001249);
+	CCP_WRITE_REG(vaddr, CMD_REQID_CONFIG_OFFSET, 0x0);
 
 	/* Copy the private LSB mask to the public registers */
 	status_lo = CCP_READ_REG(vaddr, LSB_PRIVATE_MASK_LO_OFFSET);
@@ -657,9 +658,7 @@ ccp_probe_device(const char *dirname, uint16_t domain,
 	struct rte_pci_device *pci;
 	char filename[PATH_MAX];
 	unsigned long tmp;
-	int uio_fd = -1, i, uio_num;
-	char uio_devname[PATH_MAX];
-	void *map_addr;
+	int uio_fd = -1;
 
 	ccp_dev = rte_zmalloc("ccp_device", sizeof(*ccp_dev),
 			      RTE_CACHE_LINE_SIZE);
@@ -710,46 +709,14 @@ ccp_probe_device(const char *dirname, uint16_t domain,
 	snprintf(filename, sizeof(filename), "%s/resource", dirname);
 	if (ccp_pci_parse_sysfs_resource(filename, pci) < 0)
 		goto fail;
+	if (iommu_mode == 2)
+		pci->kdrv = RTE_PCI_KDRV_VFIO;
+	else if (iommu_mode == 0)
+		pci->kdrv = RTE_PCI_KDRV_IGB_UIO;
+	else if (iommu_mode == 1)
+		pci->kdrv = RTE_PCI_KDRV_UIO_GENERIC;
 
-	uio_num = ccp_find_uio_devname(dirname);
-	if (uio_num < 0) {
-		/*
-		 * It may take time for uio device to appear,
-		 * wait  here and try again
-		 */
-		usleep(100000);
-		uio_num = ccp_find_uio_devname(dirname);
-		if (uio_num < 0)
-			goto fail;
-	}
-	snprintf(uio_devname, sizeof(uio_devname), "/dev/uio%u", uio_num);
-
-	uio_fd = open(uio_devname, O_RDWR | O_NONBLOCK);
-	if (uio_fd < 0)
-		goto fail;
-	if (flock(uio_fd, LOCK_EX | LOCK_NB))
-		goto fail;
-
-	/* Map the PCI memory resource of device */
-	for (i = 0; i < PCI_MAX_RESOURCE; i++) {
-
-		char devname[PATH_MAX];
-		int res_fd;
-
-		if (pci->mem_resource[i].phys_addr == 0)
-			continue;
-		snprintf(devname, sizeof(devname), "%s/resource%d", dirname, i);
-		res_fd = open(devname, O_RDWR);
-		if (res_fd < 0)
-			goto fail;
-		map_addr = mmap(NULL, pci->mem_resource[i].len,
-				PROT_READ | PROT_WRITE,
-				MAP_SHARED, res_fd, 0);
-		if (map_addr == MAP_FAILED)
-			goto fail;
-
-		pci->mem_resource[i].addr = map_addr;
-	}
+	rte_pci_map_device(pci);
 
 	/* device is valid, add in list */
 	if (ccp_add_device(ccp_dev, ccp_type)) {
@@ -784,6 +751,7 @@ ccp_probe_devices(const struct rte_pci_id *ccp_id)
 	if (module_idx < 0)
 		return -1;
 
+	iommu_mode = module_idx;
 	TAILQ_INIT(&ccp_list);
 	dir = opendir(SYSFS_PCI_DEVICES);
 	if (dir == NULL)
