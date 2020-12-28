@@ -2217,6 +2217,49 @@ struct mlx5_ifc_cqc_bits {
 	u8 dbr_addr[0x40];
 };
 
+struct mlx5_ifc_health_buffer_bits {
+	u8         reserved_0[0x100];
+	u8         assert_existptr[0x20];
+	u8         assert_callra[0x20];
+	u8         reserved_1[0x40];
+	u8         fw_version[0x20];
+	u8         hw_id[0x20];
+	u8         reserved_2[0x20];
+	u8         irisc_index[0x8];
+	u8         synd[0x8];
+	u8         ext_synd[0x10];
+};
+
+struct mlx5_ifc_initial_seg_bits {
+	u8         fw_rev_minor[0x10];
+	u8         fw_rev_major[0x10];
+	u8         cmd_interface_rev[0x10];
+	u8         fw_rev_subminor[0x10];
+	u8         reserved_0[0x40];
+	u8         cmdq_phy_addr_63_32[0x20];
+	u8         cmdq_phy_addr_31_12[0x14];
+	u8         reserved_1[0x2];
+	u8         nic_interface[0x2];
+	u8         log_cmdq_size[0x4];
+	u8         log_cmdq_stride[0x4];
+	u8         command_doorbell_vector[0x20];
+	u8         reserved_2[0xf00];
+	u8         initializing[0x1];
+	u8         nic_interface_supported[0x7];
+	u8         reserved_4[0x18];
+	struct mlx5_ifc_health_buffer_bits health_buffer;
+	u8         no_dram_nic_offset[0x20];
+	u8         reserved_5[0x6de0];
+	u8         internal_timer_h[0x20];
+	u8         internal_timer_l[0x20];
+	u8         reserved_6[0x20];
+	u8         reserved_7[0x1f];
+	u8         clear_int[0x1];
+	u8         health_syndrome[0x8];
+	u8         health_counter[0x18];
+	u8         reserved_8[0x17fc0];
+};
+
 struct mlx5_ifc_create_cq_out_bits {
 	u8 status[0x8];
 	u8 reserved_at_8[0x18];
