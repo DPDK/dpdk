@@ -79,6 +79,56 @@ static uint16_t mlx5_tx_burst_##func(void *txq, \
 
 #define MLX5_TXOFF_INFO(func, olx) {mlx5_tx_burst_##func, olx},
 
+/* static asserts */
+static_assert(MLX5_CQE_STATUS_HW_OWN < 0, "Must be negative value");
+static_assert(MLX5_CQE_STATUS_SW_OWN < 0, "Must be negative value");
+static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
+		(sizeof(uint16_t) +
+		 sizeof(rte_v128u32_t)),
+		"invalid Ethernet Segment data size");
+static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
+		(sizeof(uint16_t) +
+		 sizeof(struct rte_vlan_hdr) +
+		 2 * RTE_ETHER_ADDR_LEN),
+		"invalid Ethernet Segment data size");
+static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
+		(sizeof(uint16_t) +
+		 sizeof(rte_v128u32_t)),
+		"invalid Ethernet Segment data size");
+static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
+		(sizeof(uint16_t) +
+		 sizeof(struct rte_vlan_hdr) +
+		 2 * RTE_ETHER_ADDR_LEN),
+		"invalid Ethernet Segment data size");
+static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
+		(sizeof(uint16_t) +
+		 sizeof(rte_v128u32_t)),
+		"invalid Ethernet Segment data size");
+static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
+		(sizeof(uint16_t) +
+		 sizeof(struct rte_vlan_hdr) +
+		 2 * RTE_ETHER_ADDR_LEN),
+		"invalid Ethernet Segment data size");
+static_assert(MLX5_DSEG_MIN_INLINE_SIZE ==
+		(2 * RTE_ETHER_ADDR_LEN),
+		"invalid Data Segment data size");
+static_assert(MLX5_EMPW_MIN_PACKETS >= 2, "invalid min size");
+static_assert(MLX5_EMPW_MIN_PACKETS >= 2, "invalid min size");
+static_assert((sizeof(struct rte_vlan_hdr) +
+			sizeof(struct rte_ether_hdr)) ==
+		MLX5_ESEG_MIN_INLINE_SIZE,
+		"invalid min inline data size");
+static_assert(MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE <=
+		MLX5_DSEG_MAX, "invalid WQE max size");
+static_assert(MLX5_WQE_CSEG_SIZE == MLX5_WSEG_SIZE,
+		"invalid WQE Control Segment size");
+static_assert(MLX5_WQE_ESEG_SIZE == MLX5_WSEG_SIZE,
+		"invalid WQE Ethernet Segment size");
+static_assert(MLX5_WQE_DSEG_SIZE == MLX5_WSEG_SIZE,
+		"invalid WQE Data Segment size");
+static_assert(MLX5_WQE_SIZE == 4 * MLX5_WSEG_SIZE,
+		"invalid WQE size");
+
 static __rte_always_inline uint32_t
 rxq_cq_to_pkt_type(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 				   volatile struct mlx5_mini_cqe8 *mcqe);
@@ -2070,8 +2120,6 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
 	bool ring_doorbell = false;
 	int ret;
 
-	static_assert(MLX5_CQE_STATUS_HW_OWN < 0, "Must be negative value");
-	static_assert(MLX5_CQE_STATUS_SW_OWN < 0, "Must be negative value");
 	do {
 		volatile struct mlx5_cqe *cqe;
 
@@ -2381,15 +2429,6 @@ mlx5_tx_eseg_dmin(struct mlx5_txq_data *__rte_restrict txq __rte_unused,
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
 		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
 		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
-	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
-				(sizeof(uint16_t) +
-				 sizeof(rte_v128u32_t)),
-		      "invalid Ethernet Segment data size");
-	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
-				(sizeof(uint16_t) +
-				 sizeof(struct rte_vlan_hdr) +
-				 2 * RTE_ETHER_ADDR_LEN),
-		      "invalid Ethernet Segment data size");
 	psrc = rte_pktmbuf_mtod(loc->mbuf, uint8_t *);
 	es->inline_hdr_sz = RTE_BE16(MLX5_ESEG_MIN_INLINE_SIZE);
 	es->inline_data = *(unaligned_uint16_t *)psrc;
@@ -2474,15 +2513,6 @@ mlx5_tx_eseg_data(struct mlx5_txq_data *__rte_restrict txq,
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
 		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
 		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
-	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
-				(sizeof(uint16_t) +
-				 sizeof(rte_v128u32_t)),
-		      "invalid Ethernet Segment data size");
-	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
-				(sizeof(uint16_t) +
-				 sizeof(struct rte_vlan_hdr) +
-				 2 * RTE_ETHER_ADDR_LEN),
-		      "invalid Ethernet Segment data size");
 	psrc = rte_pktmbuf_mtod(loc->mbuf, uint8_t *);
 	es->inline_hdr_sz = rte_cpu_to_be_16(inlen);
 	es->inline_data = *(unaligned_uint16_t *)psrc;
@@ -2697,15 +2727,6 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *__rte_restrict txq,
 	es->metadata = MLX5_TXOFF_CONFIG(METADATA) ?
 		       loc->mbuf->ol_flags & PKT_TX_DYNF_METADATA ?
 		       *RTE_FLOW_DYNF_METADATA(loc->mbuf) : 0 : 0;
-	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
-				(sizeof(uint16_t) +
-				 sizeof(rte_v128u32_t)),
-		      "invalid Ethernet Segment data size");
-	static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
-				(sizeof(uint16_t) +
-				 sizeof(struct rte_vlan_hdr) +
-				 2 * RTE_ETHER_ADDR_LEN),
-		      "invalid Ethernet Segment data size");
 	MLX5_ASSERT(inlen >= MLX5_ESEG_MIN_INLINE_SIZE);
 	pdst = (uint8_t *)&es->inline_data;
 	if (MLX5_TXOFF_CONFIG(VLAN) && vlan) {
@@ -2952,9 +2973,6 @@ mlx5_tx_dseg_vlan(struct mlx5_txq_data *__rte_restrict txq,
 	uint8_t *pdst;
 
 	MLX5_ASSERT(len > MLX5_ESEG_MIN_INLINE_SIZE);
-	static_assert(MLX5_DSEG_MIN_INLINE_SIZE ==
-				 (2 * RTE_ETHER_ADDR_LEN),
-		      "invalid Data Segment data size");
 	if (!MLX5_TXOFF_CONFIG(MPW)) {
 		/* Store the descriptor byte counter for eMPW sessions. */
 		dseg->bcount = rte_cpu_to_be_32
@@ -4070,7 +4088,6 @@ mlx5_tx_burst_empw_simple(struct mlx5_txq_data *__rte_restrict txq,
 	MLX5_ASSERT(MLX5_TXOFF_CONFIG(EMPW));
 	MLX5_ASSERT(loc->elts_free && loc->wqe_free);
 	MLX5_ASSERT(pkts_n > loc->pkts_sent);
-	static_assert(MLX5_EMPW_MIN_PACKETS >= 2, "invalid min size");
 	pkts += loc->pkts_sent + 1;
 	pkts_n -= loc->pkts_sent;
 	for (;;) {
@@ -4247,7 +4264,6 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *__rte_restrict txq,
 	MLX5_ASSERT(MLX5_TXOFF_CONFIG(EMPW));
 	MLX5_ASSERT(loc->elts_free && loc->wqe_free);
 	MLX5_ASSERT(pkts_n > loc->pkts_sent);
-	static_assert(MLX5_EMPW_MIN_PACKETS >= 2, "invalid min size");
 	pkts += loc->pkts_sent + 1;
 	pkts_n -= loc->pkts_sent;
 	for (;;) {
@@ -4561,10 +4577,6 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *__rte_restrict txq,
 			    loc->mbuf->ol_flags & PKT_TX_VLAN_PKT) {
 				vlan = sizeof(struct rte_vlan_hdr);
 				inlen += vlan;
-				static_assert((sizeof(struct rte_vlan_hdr) +
-					       sizeof(struct rte_ether_hdr)) ==
-					       MLX5_ESEG_MIN_INLINE_SIZE,
-					       "invalid min inline data size");
 			}
 			/*
 			 * If inlining is enabled at configuration time
@@ -5567,16 +5579,6 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 	unsigned int diff = 0, olx = 0, i, m;
 
-	static_assert(MLX5_WQE_SIZE_MAX / MLX5_WSEG_SIZE <=
-		      MLX5_DSEG_MAX, "invalid WQE max size");
-	static_assert(MLX5_WQE_CSEG_SIZE == MLX5_WSEG_SIZE,
-		      "invalid WQE Control Segment size");
-	static_assert(MLX5_WQE_ESEG_SIZE == MLX5_WSEG_SIZE,
-		      "invalid WQE Ethernet Segment size");
-	static_assert(MLX5_WQE_DSEG_SIZE == MLX5_WSEG_SIZE,
-		      "invalid WQE Data Segment size");
-	static_assert(MLX5_WQE_SIZE == 4 * MLX5_WSEG_SIZE,
-		      "invalid WQE size");
 	MLX5_ASSERT(priv);
 	if (tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS) {
 		/* We should support Multi-Segment Packets. */

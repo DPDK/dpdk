@@ -18,6 +18,9 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_common_os.h"
 
+static_assert(sizeof(struct mlx5_cqe_ts) == sizeof(rte_int128_t),
+		"Wrong timestamp CQE part size");
+
 static const char * const mlx5_txpp_stat_names[] = {
 	"tx_pp_missed_interrupt_errors", /* Missed service interrupt. */
 	"tx_pp_rearm_queue_errors", /* Rearm Queue errors. */
@@ -741,8 +744,6 @@ mlx5_txpp_update_timestamp(struct mlx5_dev_ctx_shared *sh)
 	uint64_t ts;
 	uint16_t ci;
 
-	static_assert(sizeof(struct mlx5_cqe_ts) == sizeof(rte_int128_t),
-		      "Wrong timestamp CQE part size");
 	mlx5_atomic_read_cqe((rte_int128_t *)&cqe->timestamp, &to.u128);
 	if (to.cts.op_own >> 4) {
 		DRV_LOG(DEBUG, "Clock Queue error sync lost.");
