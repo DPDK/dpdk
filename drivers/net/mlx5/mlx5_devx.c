@@ -941,7 +941,7 @@ mlx5_devx_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 		rte_errno = errno;
 		goto error;
 	}
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	if (mlx5_flow_os_create_flow_action_dest_devx_tir(hrxq->tir,
 							  &hrxq->action)) {
 		rte_errno = errno;
@@ -1111,7 +1111,7 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	return 0;
 }
 
-#ifdef HAVE_MLX5DV_DEVX_UAR_OFFSET
+#if defined(HAVE_MLX5DV_DEVX_UAR_OFFSET) || !defined(HAVE_INFINIBAND_VERBS_H)
 /**
  * Release DevX SQ resources.
  *
@@ -1421,7 +1421,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 
 	if (txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN)
 		return mlx5_txq_obj_hairpin_new(dev, idx);
-#ifndef HAVE_MLX5DV_DEVX_UAR_OFFSET
+#if !defined(HAVE_MLX5DV_DEVX_UAR_OFFSET) && defined(HAVE_INFINIBAND_VERBS_H)
 	DRV_LOG(ERR, "Port %u Tx queue %u cannot create with DevX, no UAR.",
 		     dev->data->port_id, idx);
 	rte_errno = ENOMEM;
@@ -1522,7 +1522,7 @@ mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj)
 	if (txq_obj->txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN) {
 		if (txq_obj->tis)
 			claim_zero(mlx5_devx_cmd_destroy(txq_obj->tis));
-#ifdef HAVE_MLX5DV_DEVX_UAR_OFFSET
+#if defined(HAVE_MLX5DV_DEVX_UAR_OFFSET) || !defined(HAVE_INFINIBAND_VERBS_H)
 	} else {
 		mlx5_txq_release_devx_resources(txq_obj);
 #endif

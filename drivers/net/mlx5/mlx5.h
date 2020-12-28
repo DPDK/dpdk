@@ -36,7 +36,7 @@
 #define MLX5_SH(dev) (((struct mlx5_priv *)(dev)->data->dev_private)->sh)
 
 enum mlx5_ipool_index {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
 	MLX5_IPOOL_PUSH_VLAN, /* Pool for push vlan resource. */
 	MLX5_IPOOL_TAG, /* Pool for tag resource. */
@@ -833,7 +833,7 @@ struct mlx5_hrxq {
 		void *qp; /* Verbs queue pair. */
 		struct mlx5_devx_obj *tir; /* DevX TIR object. */
 	};
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	void *action; /* DV QP action pointer. */
 #endif
 	uint64_t hash_fields; /* Verbs Hash fields. */

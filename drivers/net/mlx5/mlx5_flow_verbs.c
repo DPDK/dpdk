@@ -39,6 +39,12 @@ static const uint32_t priority_map_5[][MLX5_PRIORITY_MAP_MAX] = {
 	{ 9, 10, 11 }, { 12, 13, 14 },
 };
 
+/* Verbs specification header. */
+struct ibv_spec_header {
+	enum ibv_flow_spec_type type;
+	uint16_t size;
+};
+
 /**
  * Discover the maximum number of priority available.
  *

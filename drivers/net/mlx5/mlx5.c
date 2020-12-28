@@ -187,7 +187,7 @@ static LIST_HEAD(, mlx5_dev_ctx_shared) mlx5_dev_ctx_list =
 static pthread_mutex_t mlx5_dev_ctx_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	[MLX5_IPOOL_DECAP_ENCAP] = {
 		.size = sizeof(struct mlx5_flow_dv_encap_decap_resource),
 		.trunk_size = 64,
@@ -1148,7 +1148,7 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 {
 	int err = 0;
 	/* Tables are only used in DV and DR modes. */
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	char s[MLX5_HLIST_NAMESIZE];
 

@@ -35,7 +35,7 @@
 #include "mlx5_rxtx.h"
 #include "rte_pmd_mlx5.h"
 
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 
 #ifndef HAVE_IBV_FLOW_DEVX_COUNTERS
 #define MLX5DV_FLOW_ACTION_COUNTERS_DEVX 0

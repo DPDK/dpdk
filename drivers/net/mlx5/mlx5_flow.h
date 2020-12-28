@@ -600,12 +600,6 @@ struct mlx5_flow_dv_dest_array_resource {
 	/**< Action resources. */
 };
 
-/* Verbs specification header. */
-struct ibv_spec_header {
-	enum ibv_flow_spec_type type;
-	uint16_t size;
-};
-
 /* PMD flow priority for tunnel */
 #define MLX5_TUNNEL_PRIO_GET(rss_desc) \
 	((rss_desc)->level >= 2 ? MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4)
@@ -652,7 +646,7 @@ struct mlx5_flow_handle {
 		uint32_t rix_srss;
 		/**< Indicates shared RSS fate action. */
 	};
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	struct mlx5_flow_handle_dv dvh;
 #endif
 } __rte_packed;
@@ -662,7 +656,7 @@ struct mlx5_flow_handle {
  * structure in Verbs. No DV flows attributes will be accessed.
  * Macro offsetof() could also be used here.
  */
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 #define MLX5_FLOW_HANDLE_VERBS_SIZE \
 	(sizeof(struct mlx5_flow_handle) - sizeof(struct mlx5_flow_handle_dv))
 #else
@@ -700,6 +694,7 @@ struct mlx5_flow_dv_workspace {
 	/**< Pointer to the destination array resource. */
 };
 
+#ifdef HAVE_INFINIBAND_VERBS_H
 /*
  * Maximal Verbs flow specifications & actions size.
  * Some elements are mutually exclusive, but enough space should be allocated.
@@ -756,6 +751,7 @@ struct mlx5_flow_verbs_workspace {
 	uint8_t specs[MLX5_VERBS_MAX_SPEC_ACT_SIZE];
 	/**< Specifications & actions buffer of verbs flow. */
 };
+#endif /* HAVE_INFINIBAND_VERBS_H */
 
 /** Maximal number of device sub-flows supported. */
 #define MLX5_NUM_MAX_DEV_FLOWS 32
@@ -773,10 +769,12 @@ struct mlx5_flow {
 	uint8_t skip_scale:1;
 	/**< 1 if skip the scale the table with factor. */
 	union {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 		struct mlx5_flow_dv_workspace dv;
 #endif
+#ifdef HAVE_INFINIBAND_VERBS_H
 		struct mlx5_flow_verbs_workspace verbs;
+#endif
 	};
 	struct mlx5_flow_handle *handle;
 	uint32_t handle_idx; /* Index of the mlx5 flow handle memory. */
