@@ -48,4 +48,95 @@ mlx5_os_free(void *addr)
 {
 	_aligned_free(addr);
 }
+
+/**
+ * Get fd. Given a pointer to DevX channel object of type
+ * 'struct mlx5dv_devx_event_channel*' - return its fd.
+ * Under Windows it is a stub.
+ *
+ * @param[in] channel
+ *    Pointer to channel object.
+ *
+ * @return
+ *    0
+ */
+static inline int
+mlx5_os_get_devx_channel_fd(void *channel)
+{
+	if (!channel)
+		return 0;
+	return 0;
+}
+
+/**
+ * Get device name. Given a device pointer - return a
+ * pointer to the corresponding device name.
+ *
+ * @param[in] dev
+ *   Pointer to device.
+ *
+ * @return
+ *   Pointer to device name if dev is valid, NULL otherwise.
+ */
+static inline const char *
+mlx5_os_get_dev_device_name(void *dev)
+{
+	if (!dev)
+		return NULL;
+	return ((struct devx_device *)dev)->name;
+}
+
+/**
+ * Get device name. Given a context pointer - return a
+ * pointer to the corresponding device name.
+ *
+ * @param[in] ctx
+ *   Pointer to context.
+ *
+ * @return
+ *   Pointer to device name if ctx is valid, NULL otherwise.
+ */
+static inline const char *
+mlx5_os_get_ctx_device_name(void *ctx)
+{
+	if (!ctx)
+		return NULL;
+	return ((mlx5_context_st *)ctx)->mlx5_dev.name;
+}
+
+/**
+ * Get a device path name. Given acontext pointer - return a
+ * pointer to the corresponding device path name.
+ *
+ * @param[in] ctx
+ *   Pointer to context.
+ *
+ * @return
+ *   Pointer to device path name if ctx is valid, NULL otherwise.
+ */
+
+static inline const char *
+mlx5_os_get_ctx_device_path(void *ctx)
+{
+	if (!ctx)
+		return NULL;
+	return ((mlx5_context_st *)ctx)->mlx5_dev.dev_pnp_id;
+}
+
+/**
+ * Get umem id. Given a pointer to umem object of type return its id.
+ *
+ * @param[in] umem
+ *    Pointer to umem object.
+ *
+ * @return
+ *    The umem id if umem is valid, 0 otherwise.
+ */
+static inline uint32_t
+mlx5_os_get_umem_id(void *umem)
+{
+	if (!umem)
+		return 0;
+	return ((struct mlx5_devx_umem *)umem)->umem_id;
+}
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */
