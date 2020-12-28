@@ -871,6 +871,68 @@ mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
 }
 
 /**
+ * Detect if a devx_device_bdf object has identical DBDF values to the
+ * rte_pci_addr found in bus/pci probing
+ *
+ * @param[in] devx_bdf
+ *   Pointer to the devx_device_bdf structure.
+ * @param[in] addr
+ *   Pointer to the rte_pci_addr structure.
+ *
+ * @return
+ *   1 on Device match, 0 on mismatch.
+ */
+static int
+mlx5_match_devx_bdf_to_addr(struct devx_device_bdf *devx_bdf,
+			    struct rte_pci_addr *addr)
+{
+	if (addr->domain != (devx_bdf->bus_id >> 8) ||
+	    addr->bus != (devx_bdf->bus_id & 0xff) ||
+	    addr->devid != devx_bdf->dev_id ||
+	    addr->function != devx_bdf->fnc_id) {
+		return 0;
+	}
+	return 1;
+}
+
+/**
+ * Detect if a devx_device_bdf object matches the rte_pci_addr
+ * found in bus/pci probing
+ * Compare both the Native/PF BDF and the raw_bdf representing a VF BDF.
+ *
+ * @param[in] devx_bdf
+ *   Pointer to the devx_device_bdf structure.
+ * @param[in] addr
+ *   Pointer to the rte_pci_addr structure.
+ *
+ * @return
+ *   1 on Device match, 0 on mismatch, rte_errno code on failure.
+ */
+static int
+mlx5_match_devx_devices_to_addr(struct devx_device_bdf *devx_bdf,
+				struct rte_pci_addr *addr)
+{
+	int err;
+	struct devx_device mlx5_dev;
+
+	if (mlx5_match_devx_bdf_to_addr(devx_bdf, addr))
+		return 1;
+	/**
+	 * Didn't match on Native/PF BDF, could still
+	 * Match a VF BDF, check it next
+	 */
+	err = mlx5_glue->query_device(devx_bdf, &mlx5_dev);
+	if (err) {
+		DRV_LOG(ERR, "query_device failed");
+		rte_errno = err;
+		return rte_errno;
+	}
+	if (mlx5_match_devx_bdf_to_addr(&mlx5_dev.raw_bdf, addr))
+		return 1;
+	return 0;
+}
+
+/**
  * DPDK callback to register a PCI device.
  *
  * This function spawns Ethernet devices out of a given PCI device.
@@ -917,7 +979,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_dev_spawn_data *list = NULL;
 	struct mlx5_dev_config dev_config;
 	unsigned int dev_config_vf;
-	int ret;
+	int ret, err;
 	uint32_t restore;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
@@ -945,13 +1007,16 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct devx_device_bdf *devx_bdf_match[ret + 1];
 
 	while (ret-- > 0) {
-		if (pci_dev->addr.bus != devx_bdf_devs->bus_id ||
-		    pci_dev->addr.devid != devx_bdf_devs->dev_id ||
-		    pci_dev->addr.function != devx_bdf_devs->fnc_id) {
+		err = mlx5_match_devx_devices_to_addr(devx_bdf_devs,
+		    &pci_dev->addr);
+		if (!err) {
 			devx_bdf_devs++;
 			continue;
 		}
-
+		if (err != 1) {
+			ret = -err;
+			goto exit;
+		}
 		devx_bdf_match[nd++] = devx_bdf_devs;
 	}
 	devx_bdf_match[nd] = NULL;
