@@ -4,6 +4,7 @@
 #include <mlx5_prm.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
+#include <rte_eal_paging.h>
 
 #include <mlx5_malloc.h>
 #include <mlx5_common_os.h>
@@ -53,7 +54,7 @@ mlx5_aso_cq_create(void *ctx, struct mlx5_aso_cq *cq, uint16_t log_desc_n,
 		   int socket, int uar_page_id, uint32_t eqn)
 {
 	struct mlx5_devx_cq_attr attr = { 0 };
-	size_t pgsize = sysconf(_SC_PAGESIZE);
+	size_t pgsize = rte_mem_page_size();
 	uint32_t umem_size;
 	uint16_t cq_size = 1 << log_desc_n;
 
@@ -66,7 +67,7 @@ mlx5_aso_cq_create(void *ctx, struct mlx5_aso_cq *cq, uint16_t log_desc_n,
 		rte_errno = ENOMEM;
 		return -ENOMEM;
 	}
-	cq->umem_obj = mlx5_glue->devx_umem_reg(ctx,
+	cq->umem_obj = mlx5_os_umem_reg(ctx,
 						(void *)(uintptr_t)cq->umem_buf,
 						umem_size,
 						IBV_ACCESS_LOCAL_WRITE);
@@ -143,7 +144,7 @@ mlx5_aso_devx_reg_mr(void *ctx, size_t length, struct mlx5_aso_devx_mr *mr,
 		DRV_LOG(ERR, "Failed to create ASO bits mem for MR by Devx.");
 		return -1;
 	}
-	mr->umem = mlx5_glue->devx_umem_reg(ctx, mr->buf, length,
+	mr->umem = mlx5_os_umem_reg(ctx, mr->buf, length,
 						 IBV_ACCESS_LOCAL_WRITE);
 	if (!mr->umem) {
 		DRV_LOG(ERR, "Failed to register Umem for MR by Devx.");
@@ -256,12 +257,12 @@ mlx5_aso_init_sq(struct mlx5_aso_sq *sq)
  */
 static int
 mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
-		   struct mlx5dv_devx_uar *uar, uint32_t pdn,
+		   void *uar, uint32_t pdn,
 		   uint32_t eqn,  uint16_t log_desc_n)
 {
 	struct mlx5_devx_create_sq_attr attr = { 0 };
 	struct mlx5_devx_modify_sq_attr modify_attr = { 0 };
-	size_t pgsize = sysconf(_SC_PAGESIZE);
+	size_t pgsize = rte_mem_page_size();
 	struct mlx5_devx_wq_attr *wq_attr = &attr.wq_attr;
 	uint32_t sq_desc_n = 1 << log_desc_n;
 	uint32_t wq_size = sizeof(struct mlx5_aso_wqe) * sq_desc_n;
@@ -280,7 +281,7 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 		DRV_LOG(ERR, "Can't allocate wqe buffer.");
 		return -ENOMEM;
 	}
-	sq->wqe_umem = mlx5_glue->devx_umem_reg(ctx,
+	sq->wqe_umem = mlx5_os_umem_reg(ctx,
 						(void *)(uintptr_t)sq->umem_buf,
 						wq_size +
 						sizeof(*sq->db_rec) * 2,
@@ -325,7 +326,7 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 	sq->tail = 0;
 	sq->sqn = sq->sq->id;
 	sq->db_rec = RTE_PTR_ADD(sq->umem_buf, (uintptr_t)(wq_attr->dbr_addr));
-	sq->uar_addr = (volatile uint64_t *)((uint8_t *)uar->base_addr + 0x800);
+	sq->uar_addr = mlx5_os_get_devx_uar_reg_addr(uar);
 	mlx5_aso_init_sq(sq);
 	return 0;
 error:
