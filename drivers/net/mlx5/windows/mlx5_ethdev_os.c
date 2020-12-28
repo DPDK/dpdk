@@ -369,3 +369,23 @@ mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
 	*clock = *(uint64_t volatile *)mlx5_clock.p_iseg_internal_timer;
 	return 0;
 }
+
+/**
+ * Check if mlx5 device was removed.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   1 when device is removed, otherwise 0.
+ */
+int
+mlx5_is_removed(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	mlx5_context_st *context_obj = (mlx5_context_st *)priv->sh->ctx;
+
+	if (*context_obj->shutdown_event_obj.p_flag)
+		return 1;
+	return 0;
+}

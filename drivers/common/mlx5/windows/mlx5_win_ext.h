@@ -14,7 +14,7 @@ extern "C" {
 typedef struct mlx5_context {
 	devx_device_ctx        *devx_ctx;
 	struct devx_device mlx5_dev;
-
+	struct devx_shutdown_event shutdown_event_obj;
 } mlx5_context_st;
 
 typedef struct {

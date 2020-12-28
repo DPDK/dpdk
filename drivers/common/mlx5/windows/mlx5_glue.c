@@ -308,6 +308,26 @@ mlx5_glue_query_rt_values(void *ctx, void *devx_clock)
 	return 0;
 }
 
+static int
+mlx5_glue_devx_init_showdown_event(void *ctx)
+{
+	struct mlx5_context *mlx5_ctx;
+	int err;
+
+	if (!ctx) {
+		errno = EINVAL;
+		return errno;
+	}
+	mlx5_ctx = (struct mlx5_context *)ctx;
+	err = devx_query_shutdown_event(mlx5_ctx->devx_ctx,
+			&mlx5_ctx->shutdown_event_obj);
+	if (err) {
+		errno = err;
+		return errno;
+	}
+	return 0;
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -330,4 +350,5 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_fs_rule_del = mlx5_glue_devx_fs_rule_del,
 	.devx_query_eqn = mlx5_glue_devx_query_eqn,
 	.query_rt_values = mlx5_glue_query_rt_values,
+	.devx_init_showdown_event = mlx5_glue_devx_init_showdown_event,
 };
