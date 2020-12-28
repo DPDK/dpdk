@@ -367,6 +367,32 @@ mlx5_flow_os_create_flow_action_default_miss(void **action)
 }
 
 /**
+ * Create flow action: dest_devx_tir
+ *
+ * @param[in] tir
+ *   Pointer to DevX tir object
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_dest_devx_tir(struct mlx5_devx_obj *tir,
+					      void **action)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	*action = mlx5_glue->dv_create_flow_action_dest_devx_tir(tir->obj);
+	return (*action) ? 0 : -1;
+#else
+	/* If no DV support - skip the operation and return success */
+	RTE_SET_USED(tir);
+	*action = 0;
+	return 0;
+#endif
+}
+
+/**
  * Destroy flow action.
  *
  * @param[in] action
