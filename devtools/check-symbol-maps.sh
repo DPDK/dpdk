@@ -38,6 +38,9 @@ fi
 find_orphan_windows_symbols ()
 {
     for def in $(find lib drivers -name '*_exports.def') ; do
+        if echo $def | grep -q 'common_mlx5' ; then
+            continue # mlx5 exports different symbols per OS
+        fi
         map=$(dirname $def)/version.map
         for sym in $(grep -v ^EXPORTS $def); do
             grep -q $sym $map || echo $sym
