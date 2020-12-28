@@ -955,7 +955,7 @@ flow_dv_convert_action_set_reg
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "too many items to modify");
 	MLX5_ASSERT(conf->id != REG_NON);
-	MLX5_ASSERT(conf->id < RTE_DIM(reg_to_field));
+	MLX5_ASSERT(conf->id < (enum modify_reg)RTE_DIM(reg_to_field));
 	actions[i] = (struct mlx5_modification_cmd) {
 		.action_type = MLX5_MODIFICATION_TYPE_SET,
 		.field = reg_to_field[conf->id],
