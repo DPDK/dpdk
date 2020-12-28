@@ -57,11 +57,16 @@ mlx5_txpp_create_event_channel(struct mlx5_dev_ctx_shared *sh)
 static void
 mlx5_txpp_free_pp_index(struct mlx5_dev_ctx_shared *sh)
 {
+#ifdef HAVE_MLX5DV_PP_ALLOC
 	if (sh->txpp.pp) {
 		mlx5_glue->dv_free_pp(sh->txpp.pp);
 		sh->txpp.pp = NULL;
 		sh->txpp.pp_id = 0;
 	}
+#else
+	RTE_SET_USED(sh);
+	DRV_LOG(ERR, "Freeing pacing index is not supported.");
+#endif
 }
 
 /* Allocate Packet Pacing index from kernel via mlx5dv call. */
