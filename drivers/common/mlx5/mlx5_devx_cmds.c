@@ -2055,3 +2055,38 @@ mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx, uint32_t pd)
 	flow_hit_aso_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
 	return flow_hit_aso_obj;
 }
+
+/*
+ * Create PD using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_alloc_pd(void *ctx)
+{
+	struct mlx5_devx_obj *ppd =
+		mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ppd), 0, SOCKET_ID_ANY);
+	u32 in[MLX5_ST_SZ_DW(alloc_pd_in)] = {0};
+	u32 out[MLX5_ST_SZ_DW(alloc_pd_out)] = {0};
+
+	if (!ppd) {
+		DRV_LOG(ERR, "Failed to allocate PD data.");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(alloc_pd_in, in, opcode, MLX5_CMD_OP_ALLOC_PD);
+	ppd->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+				out, sizeof(out));
+	if (!ppd->obj) {
+		mlx5_free(ppd);
+		DRV_LOG(ERR, "Failed to allocate PD Obj using DevX.");
+		rte_errno = errno;
+		return NULL;
+	}
+	ppd->id = MLX5_GET(alloc_pd_out, out, pd);
+	return ppd;
+}

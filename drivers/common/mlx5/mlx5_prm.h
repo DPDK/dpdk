@@ -844,6 +844,8 @@ enum {
 	MLX5_CMD_OP_SUSPEND_QP = 0x50F,
 	MLX5_CMD_OP_RESUME_QP = 0x510,
 	MLX5_CMD_OP_QUERY_NIC_VPORT_CONTEXT = 0x754,
+	MLX5_CMD_OP_ALLOC_PD = 0x800,
+	MLX5_CMD_OP_DEALLOC_PD = 0x801,
 	MLX5_CMD_OP_ACCESS_REGISTER = 0x805,
 	MLX5_CMD_OP_ALLOC_TRANSPORT_DOMAIN = 0x816,
 	MLX5_CMD_OP_CREATE_TIR = 0x900,
@@ -2770,6 +2772,40 @@ struct mlx5_ifc_init2init_qp_in_bits {
 	u8 reserved_at_a0[0x20];
 	struct mlx5_ifc_qpc_bits qpc;
 	u8 reserved_at_800[0x80];
+};
+
+struct mlx5_ifc_dealloc_pd_out_bits {
+	u8 status[0x8];
+	u8 reserved_0[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_1[0x40];
+};
+
+struct mlx5_ifc_dealloc_pd_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_0[0x10];
+	u8 reserved_1[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_2[0x8];
+	u8 pd[0x18];
+	u8 reserved_3[0x20];
+};
+
+struct mlx5_ifc_alloc_pd_out_bits {
+	u8 status[0x8];
+	u8 reserved_0[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_1[0x8];
+	u8 pd[0x18];
+	u8 reserved_2[0x20];
+};
+
+struct mlx5_ifc_alloc_pd_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_0[0x10];
+	u8 reserved_1[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_2[0x40];
 };
 
 #ifdef PEDANTIC

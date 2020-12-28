@@ -10,6 +10,7 @@ INTERNAL {
 
 	mlx5_dev_to_pci_addr;
 
+	mlx5_devx_cmd_alloc_pd;
 	mlx5_devx_cmd_create_cq;
 	mlx5_devx_cmd_create_flex_parser;
 	mlx5_devx_cmd_create_qp;

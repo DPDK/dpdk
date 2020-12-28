@@ -5,6 +5,7 @@ EXPORTS
 
 	mlx5_create_mr_ext
 
+	mlx5_devx_cmd_alloc_pd
 	mlx5_devx_cmd_create_cq
 	mlx5_devx_cmd_create_flex_parser
 	mlx5_devx_cmd_create_qp
