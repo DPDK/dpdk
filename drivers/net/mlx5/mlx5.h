@@ -140,9 +140,9 @@ struct mlx5_local_data {
 extern struct mlx5_shared_data *mlx5_shared_data;
 
 /* Dev ops structs */
-extern const struct eth_dev_ops mlx5_os_dev_ops;
-extern const struct eth_dev_ops mlx5_os_dev_sec_ops;
-extern const struct eth_dev_ops mlx5_os_dev_ops_isolate;
+extern const struct eth_dev_ops mlx5_dev_ops;
+extern const struct eth_dev_ops mlx5_dev_sec_ops;
+extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
 struct mlx5_counter_ctrl {
 	/* Name of the counter. */
