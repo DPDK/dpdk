@@ -13,6 +13,8 @@
 #include "mlx5_devx_cmds.h"
 #include "mlx5_common_utils.h"
 #include "mlx5_common.h"
+#include "mlx5_common_os.h"
+#include "mlx5_malloc.h"
 
 /**
  * Initialization routine for run-time dependency on external lib
@@ -128,4 +130,80 @@ mlx5_os_umem_dereg(void *pumem)
 		err = mlx5_glue->devx_umem_dereg(umem->umem_hdl);
 	mlx5_free(umem);
 	return err;
+}
+
+/**
+ * Register mr. Given protection doamin pointer, pointer to addr and length
+ * register the memory region.
+ *
+ * @param[in] pd
+ *   Pointer to protection domain context (type mlx5_pd).
+ * @param[in] addr
+ *   Pointer to memory start address (type devx_device_ctx).
+ * @param[in] length
+ *   Lengtoh of the memory to register.
+ * @param[out] pmd_mr
+ *   pmd_mr struct set with lkey, address, length, pointer to mr object, mkey
+ *
+ * @return
+ *   0 on successful registration, -1 otherwise
+ */
+int
+mlx5_os_reg_mr(void *pd,
+	       void *addr, size_t length, struct mlx5_pmd_mr *pmd_mr)
+{
+	struct mlx5_devx_mkey_attr mkey_attr;
+	struct mlx5_pd *mlx5_pd = (struct mlx5_pd *)pd;
+	struct mlx5_hca_attr attr;
+
+	if (!pd || !addr) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	memset(pmd_mr, 0, sizeof(*pmd_mr));
+	if (mlx5_devx_cmd_query_hca_attr(mlx5_pd->devx_ctx, &attr))
+		return -1;
+	pmd_mr->addr = addr;
+	pmd_mr->len = length;
+	pmd_mr->obj = mlx5_os_umem_reg(mlx5_pd->devx_ctx, pmd_mr->addr,
+				       pmd_mr->len, IBV_ACCESS_LOCAL_WRITE);
+	if (!pmd_mr->obj)
+		return -1;
+	mkey_attr.addr = (uintptr_t)addr;
+	mkey_attr.size = length;
+	mkey_attr.umem_id = ((struct mlx5_devx_umem *)(pmd_mr->obj))->umem_id;
+	mkey_attr.pd = mlx5_pd->pdn;
+	mkey_attr.log_entity_size = 0;
+	mkey_attr.pg_access = 0;
+	mkey_attr.klm_array = NULL;
+	mkey_attr.klm_num = 0;
+	mkey_attr.relaxed_ordering_read = 0;
+	mkey_attr.relaxed_ordering_write = 0;
+	if (!haswell_broadwell_cpu) {
+		mkey_attr.relaxed_ordering_write = attr.relaxed_ordering_write;
+		mkey_attr.relaxed_ordering_read = attr.relaxed_ordering_read;
+	}
+	pmd_mr->mkey = mlx5_devx_cmd_mkey_create(mlx5_pd->devx_ctx, &mkey_attr);
+	if (!pmd_mr->mkey) {
+		claim_zero(mlx5_os_umem_dereg(pmd_mr->obj));
+		return -1;
+	}
+	pmd_mr->lkey = pmd_mr->mkey->id;
+	return 0;
+}
+
+/**
+ * De-register mr.
+ *
+ * @param[in] pmd_mr
+ *  Pointer to PMD mr object
+ */
+void
+mlx5_os_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
+{
+	if (pmd_mr && pmd_mr->mkey)
+		claim_zero(mlx5_glue->devx_obj_destroy(pmd_mr->mkey->obj));
+	if (pmd_mr && pmd_mr->obj)
+		claim_zero(mlx5_os_umem_dereg(pmd_mr->obj));
+	memset(pmd_mr, 0, sizeof(*pmd_mr));
 }

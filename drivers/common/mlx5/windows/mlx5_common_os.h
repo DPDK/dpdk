@@ -7,9 +7,13 @@
 
 #include <stdio.h>
 
+#include <rte_errno.h>
+
 #include "mlx5_autoconf.h"
 #include "mlx5_glue.h"
 #include "mlx5_malloc.h"
+#include "mlx5_common_mr.h"
+#include "mlx5_win_ext.h"
 
 /**
  * This API allocates aligned or non-aligned memory.  The free can be on either
@@ -144,4 +148,7 @@ void *mlx5_os_alloc_pd(void *ctx);
 int mlx5_os_dealloc_pd(void *pd);
 void *mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access);
 int mlx5_os_umem_dereg(void *pumem);
+int mlx5_os_reg_mr(void *pd,
+		   void *addr, size_t length, struct mlx5_pmd_mr *pmd_mr);
+void mlx5_os_dereg_mr(struct mlx5_pmd_mr *pmd_mr);
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */

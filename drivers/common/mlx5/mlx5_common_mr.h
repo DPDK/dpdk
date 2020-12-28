@@ -28,6 +28,7 @@ struct mlx5_pmd_mr {
 	void		     *addr;
 	size_t		     len;
 	void		     *obj;  /* verbs mr object or devx umem object. */
+	struct mlx5_devx_obj *mkey; /* devx mkey object. */
 };
 
 /**
