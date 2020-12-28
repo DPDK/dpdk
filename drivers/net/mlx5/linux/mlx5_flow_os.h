@@ -365,4 +365,24 @@ mlx5_flow_os_destroy_flow_action(void *action)
 	return mlx5_glue->destroy_flow_action(action);
 }
 
+/**
+ * OS wrapper over Verbs API.
+ * Adjust flow priority based on the highest layer and the request priority.
+ *
+ * @param[in] dev
+ *    Pointer to the Ethernet device structure.
+ * @param[in] priority
+ *    The rule base priority.
+ * @param[in] subpriority
+ *    The priority based on the items.
+ *
+ * @return
+ *    The new priority.
+ */
+static inline uint32_t
+mlx5_os_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
+			  uint32_t subpriority)
+{
+	return mlx5_flow_adjust_priority(dev, priority, subpriority);
+}
 #endif /* RTE_PMD_MLX5_FLOW_OS_H_ */

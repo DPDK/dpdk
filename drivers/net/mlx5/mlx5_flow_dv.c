@@ -10567,8 +10567,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	/* Register matcher. */
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);
-	matcher.priority = mlx5_flow_adjust_priority(dev, priority,
-						     matcher.priority);
+	matcher.priority = mlx5_os_flow_adjust_priority(dev,
+							priority,
+							matcher.priority);
 	/* reserved field no needs to be set to 0 here. */
 	tbl_key.domain = attr->transfer;
 	tbl_key.direction = attr->egress;
