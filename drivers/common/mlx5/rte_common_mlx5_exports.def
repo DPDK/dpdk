@@ -64,3 +64,5 @@ EXPORTS
 
 	mlx5_os_alloc_pd
 	mlx5_os_dealloc_pd
+	mlx5_os_umem_reg
+	mlx5_os_umem_dereg

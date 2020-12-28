@@ -69,3 +69,63 @@ mlx5_os_dealloc_pd(void *pd)
 	mlx5_free(pd);
 	return 0;
 }
+
+/**
+ * Register umem.
+ *
+ * @param[in] ctx
+ *   Pointer to context.
+ * @param[in] addr
+ *   Pointer to memory start address.
+ * @param[in] size
+ *   Size of the memory to register.
+ * @param[out] access
+ *   UMEM access type
+ *
+ * @return
+ *   umem on successful registration, NULL and errno otherwise
+ */
+void *
+mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access)
+{
+	struct mlx5_devx_umem *umem;
+
+	umem = mlx5_malloc(MLX5_MEM_ZERO,
+		(sizeof(*umem)), 0, SOCKET_ID_ANY);
+	if (!umem) {
+		errno = ENOMEM;
+		return NULL;
+	}
+	umem->umem_hdl = mlx5_glue->devx_umem_reg(ctx, addr, size, access,
+		&umem->umem_id);
+	if (!umem->umem_hdl) {
+		mlx5_free(umem);
+		return NULL;
+	}
+	umem->addr = addr;
+	return umem;
+}
+
+/**
+ * Deregister umem.
+ *
+ * @param[in] pumem
+ *   Pointer to umem.
+ *
+ * @return
+ *   0 on successful release, negative number otherwise
+ */
+int
+mlx5_os_umem_dereg(void *pumem)
+{
+	struct mlx5_devx_umem *umem;
+	int err = 0;
+
+	if (!pumem)
+		return err;
+	umem = pumem;
+	if (umem->umem_hdl)
+		err = mlx5_glue->devx_umem_dereg(umem->umem_hdl);
+	mlx5_free(umem);
+	return err;
+}

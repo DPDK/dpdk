@@ -142,4 +142,6 @@ mlx5_os_get_umem_id(void *umem)
 
 void *mlx5_os_alloc_pd(void *ctx);
 int mlx5_os_dealloc_pd(void *pd);
+void *mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access);
+int mlx5_os_umem_dereg(void *pumem);
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */
