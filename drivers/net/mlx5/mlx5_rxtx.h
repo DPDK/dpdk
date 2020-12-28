@@ -311,9 +311,6 @@ struct mlx5_txq_ctrl {
 
 extern uint8_t rss_hash_default_key[];
 
-int mlx5_check_mprq_support(struct rte_eth_dev *dev);
-int mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq);
-int mlx5_mprq_enabled(struct rte_eth_dev *dev);
 unsigned int mlx5_rxq_cqe_num(struct mlx5_rxq_data *rxq_data);
 int mlx5_mprq_free_mp(struct rte_eth_dev *dev);
 int mlx5_mprq_alloc_mp(struct rte_eth_dev *dev);
@@ -920,4 +917,74 @@ mprq_buf_to_pkt(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt, uint32_t len,
 	return MLX5_RXQ_CODE_EXIT;
 }
 
+/**
+ * Check whether Multi-Packet RQ can be enabled for the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   1 if supported, negative errno value if not.
+ */
+static __rte_always_inline int
+mlx5_check_mprq_support(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->config.mprq.enabled &&
+	    priv->rxqs_n >= priv->config.mprq.min_rxqs_num)
+		return 1;
+	return -ENOTSUP;
+}
+
+/**
+ * Check whether Multi-Packet RQ is enabled for the Rx queue.
+ *
+ *  @param rxq
+ *     Pointer to receive queue structure.
+ *
+ * @return
+ *   0 if disabled, otherwise enabled.
+ */
+static __rte_always_inline int
+mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq)
+{
+	return rxq->strd_num_n > 0;
+}
+
+/**
+ * Check whether Multi-Packet RQ is enabled for the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 if disabled, otherwise enabled.
+ */
+static __rte_always_inline int
+mlx5_mprq_enabled(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t i;
+	uint16_t n = 0;
+	uint16_t n_ibv = 0;
+
+	if (mlx5_check_mprq_support(dev) < 0)
+		return 0;
+	/* All the configured queues should be enabled. */
+	for (i = 0; i < priv->rxqs_n; ++i) {
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+		struct mlx5_rxq_ctrl *rxq_ctrl = container_of
+			(rxq, struct mlx5_rxq_ctrl, rxq);
+
+		if (rxq == NULL || rxq_ctrl->type != MLX5_RXQ_TYPE_STANDARD)
+			continue;
+		n_ibv++;
+		if (mlx5_rxq_mprq_enabled(rxq))
+			++n;
+	}
+	/* Multi-Packet RQ can't be partially configured. */
+	MLX5_ASSERT(n == 0 || n == n_ibv);
+	return n == n_ibv;
+}
 #endif /* RTE_PMD_MLX5_RXTX_H_ */
