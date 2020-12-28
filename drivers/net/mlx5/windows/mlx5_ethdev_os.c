@@ -171,6 +171,50 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 }
 
 /**
+ * DPDK callback to retrieve physical link information.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param wait_to_complete
+ *   Wait for request completion.
+ *
+ * @return
+ *   0 if link status was not updated, positive if it was, a negative errno
+ *   value otherwise and rte_errno is set.
+ */
+int
+mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	RTE_SET_USED(wait_to_complete);
+	struct mlx5_priv *priv;
+	mlx5_context_st *context_obj;
+	struct rte_eth_link dev_link;
+	int ret;
+
+	ret = 0;
+	if (!dev) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	priv = dev->data->dev_private;
+	context_obj = (mlx5_context_st *)priv->sh->ctx;
+	dev_link.link_speed = context_obj->mlx5_dev.link_speed / (1024 * 1024);
+	dev_link.link_status =
+	      (context_obj->mlx5_dev.link_state == 1 && !mlx5_is_removed(dev))
+	      ? 1 : 0;
+	dev_link.link_duplex = 1;
+	if (dev->data->dev_link.link_speed != dev_link.link_speed ||
+	    dev->data->dev_link.link_duplex != dev_link.link_duplex ||
+	    dev->data->dev_link.link_autoneg != dev_link.link_autoneg ||
+	    dev->data->dev_link.link_status != dev_link.link_status)
+		ret = 1;
+	else
+		ret = 0;
+	dev->data->dev_link = dev_link;
+	return ret;
+}
+
+/**
  * DPDK callback to bring the link DOWN.
  *
  * @param dev
