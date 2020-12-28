@@ -1316,8 +1316,12 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 				goto error;
 			ret = mlx5_ctrl_flow(dev, &ipv6_multi_spec,
 					     &ipv6_multi_mask);
-			if (ret)
-				goto error;
+			if (ret) {
+				/* Do not fail on IPv6 broadcast creation failure. */
+				DRV_LOG(WARNING,
+					"IPv6 broadcast is not supported");
+				ret = 0;
+			}
 		}
 	}
 	/* Add MAC address flows. */
