@@ -312,6 +312,27 @@ mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
 	*dereg_mr_cb = mlx5_os_dereg_mr;
 }
 
+/**
+ * Extract pdn of PD object using DevX
+ *
+ * @param[in] pd
+ *   Pointer to the DevX PD object.
+ * @param[out] pdn
+ *   Pointer to the PD object number variable.
+ *
+ * @return
+ *   0 on success, error value otherwise.
+ */
+int
+mlx5_os_get_pdn(void *pd, uint32_t *pdn)
+{
+	if (!pd)
+		return -EINVAL;
+
+	*pdn = ((struct mlx5_pd *)pd)->pdn;
+	return 0;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {0};
 
 const struct eth_dev_ops mlx5_os_dev_ops = {
