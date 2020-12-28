@@ -51,6 +51,7 @@ struct mlx5_glue {
 	void *(*devx_fs_rule_add)(void *ctx, void *in, uint32_t inlen);
 	int (*devx_fs_rule_del)(void *flow);
 	int (*devx_query_eqn)(void *context, uint32_t cpus, uint32_t *eqn);
+	int (*query_rt_values)(void *ctx, void *devx_clock);
 };
 
 extern const struct mlx5_glue *mlx5_glue;

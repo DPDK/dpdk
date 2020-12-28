@@ -283,6 +283,31 @@ mlx5_glue_devx_fs_rule_del(void *flow)
 	return devx_fs_rule_del(flow);
 }
 
+static int
+mlx5_glue_query_rt_values(void *ctx, void *devx_clock)
+{
+	struct mlx5_context *mlx5_ctx;
+	struct mlx5_devx_clock *clock;
+	int err;
+
+	if (!ctx) {
+		errno = EINVAL;
+		return errno;
+	}
+	mlx5_ctx = (struct mlx5_context *)ctx;
+	clock = (struct mlx5_devx_clock *)devx_clock;
+	err = devx_hca_clock_query(
+			mlx5_ctx->devx_ctx,
+			&clock->p_iseg_internal_timer,
+			&clock->clock_frequency_hz,
+			&clock->is_stable_clock_frequency);
+	if (err) {
+		errno = err;
+		return errno;
+	}
+	return 0;
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -304,4 +329,5 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.devx_fs_rule_add = mlx5_glue_devx_fs_rule_add,
 	.devx_fs_rule_del = mlx5_glue_devx_fs_rule_del,
 	.devx_query_eqn = mlx5_glue_devx_query_eqn,
+	.query_rt_values = mlx5_glue_query_rt_values,
 };

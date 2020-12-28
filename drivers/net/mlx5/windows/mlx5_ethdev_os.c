@@ -14,6 +14,7 @@
 #include <mlx5_win_ext.h>
 #include <mlx5_malloc.h>
 #include <mlx5.h>
+#include <mlx5_utils.h>
 
 /**
  * Get MAC address by querying netdevice.
@@ -283,4 +284,33 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 	RTE_SET_USED(dev);
 	RTE_SET_USED(info);
 	return -ENOTSUP;
+}
+
+/**
+ * Get device current raw clock counter
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] time
+ *   Current raw clock counter of the device.
+ *
+ * @return
+ *   0 if the clock has correctly been read
+ *   The value of errno in case of error
+ */
+int
+mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
+{
+	int err;
+	struct mlx5_devx_clock mlx5_clock;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	mlx5_context_st *context_obj = (mlx5_context_st *)priv->sh->ctx;
+
+	err = mlx5_glue->query_rt_values(context_obj, &mlx5_clock);
+	if (err != 0) {
+		DRV_LOG(WARNING, "Could not query the clock");
+		return err;
+	}
+	*clock = *(uint64_t volatile *)mlx5_clock.p_iseg_internal_timer;
+	return 0;
 }
