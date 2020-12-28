@@ -23,7 +23,7 @@
 #include "mlx5_utils.h"
 #include "mlx5_devx.h"
 #include "mlx5_flow.h"
-
+#include "mlx5_flow_os.h"
 
 /**
  * Modify RQ vlan stripping offload
@@ -942,9 +942,8 @@ mlx5_devx_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 		goto error;
 	}
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	hrxq->action = mlx5_glue->dv_create_flow_action_dest_devx_tir
-							       (hrxq->tir->obj);
-	if (!hrxq->action) {
+	if (mlx5_flow_os_create_flow_action_dest_devx_tir(hrxq->tir,
+							  &hrxq->action)) {
 		rte_errno = errno;
 		goto error;
 	}
