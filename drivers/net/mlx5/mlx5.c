@@ -482,7 +482,7 @@ mlx5_flow_destroy_counter_stat_mem_mng(struct mlx5_counter_stats_mem_mng *mng)
 
 	LIST_REMOVE(mng, next);
 	claim_zero(mlx5_devx_cmd_destroy(mng->dm));
-	claim_zero(mlx5_glue->devx_umem_dereg(mng->umem));
+	claim_zero(mlx5_os_umem_dereg(mng->umem));
 	mlx5_free(mem);
 }
 

@@ -131,13 +131,13 @@ mlx5_txpp_destroy_send_queue(struct mlx5_txpp_wq *wq)
 	if (wq->sq)
 		claim_zero(mlx5_devx_cmd_destroy(wq->sq));
 	if (wq->sq_umem)
-		claim_zero(mlx5_glue->devx_umem_dereg(wq->sq_umem));
+		claim_zero(mlx5_os_umem_dereg(wq->sq_umem));
 	if (wq->sq_buf)
 		mlx5_free((void *)(uintptr_t)wq->sq_buf);
 	if (wq->cq)
 		claim_zero(mlx5_devx_cmd_destroy(wq->cq));
 	if (wq->cq_umem)
-		claim_zero(mlx5_glue->devx_umem_dereg(wq->cq_umem));
+		claim_zero(mlx5_os_umem_dereg(wq->cq_umem));
 	if (wq->cq_buf)
 		mlx5_free((void *)(uintptr_t)wq->cq_buf);
 	memset(wq, 0, sizeof(*wq));
@@ -268,7 +268,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 		return -ENOMEM;
 	}
 	/* Register allocated buffer in user space with DevX. */
-	wq->cq_umem = mlx5_glue->devx_umem_reg(sh->ctx,
+	wq->cq_umem = mlx5_os_umem_reg(sh->ctx,
 					       (void *)(uintptr_t)wq->cq_buf,
 					       umem_size,
 					       IBV_ACCESS_LOCAL_WRITE);
@@ -318,7 +318,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 		goto error;
 	}
 	/* Register allocated buffer in user space with DevX. */
-	wq->sq_umem = mlx5_glue->devx_umem_reg(sh->ctx,
+	wq->sq_umem = mlx5_os_umem_reg(sh->ctx,
 					       (void *)(uintptr_t)wq->sq_buf,
 					       umem_size,
 					       IBV_ACCESS_LOCAL_WRITE);
@@ -506,7 +506,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 		return -ENOMEM;
 	}
 	/* Register allocated buffer in user space with DevX. */
-	wq->cq_umem = mlx5_glue->devx_umem_reg(sh->ctx,
+	wq->cq_umem = mlx5_os_umem_reg(sh->ctx,
 					       (void *)(uintptr_t)wq->cq_buf,
 					       umem_size,
 					       IBV_ACCESS_LOCAL_WRITE);
@@ -562,7 +562,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 		goto error;
 	}
 	/* Register allocated buffer in user space with DevX. */
-	wq->sq_umem = mlx5_glue->devx_umem_reg(sh->ctx,
+	wq->sq_umem = mlx5_os_umem_reg(sh->ctx,
 					       (void *)(uintptr_t)wq->sq_buf,
 					       umem_size,
 					       IBV_ACCESS_LOCAL_WRITE);

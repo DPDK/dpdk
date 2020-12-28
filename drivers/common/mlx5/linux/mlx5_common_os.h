@@ -212,4 +212,16 @@ mlx5_os_dealloc_pd(void *pd)
 {
 	return mlx5_glue->dealloc_pd(pd);
 }
+
+static inline void *
+mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access)
+{
+	return mlx5_glue->devx_umem_reg(ctx, addr, size, access);
+}
+
+static inline int
+mlx5_os_umem_dereg(void *pumem)
+{
+	return mlx5_glue->devx_umem_dereg(pumem);
+}
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */

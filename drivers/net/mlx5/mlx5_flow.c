@@ -6446,7 +6446,7 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 	}
 	mem_mng = (struct mlx5_counter_stats_mem_mng *)(mem + size) - 1;
 	size = sizeof(*raw_data) * MLX5_COUNTERS_PER_POOL * raws_n;
-	mem_mng->umem = mlx5_glue->devx_umem_reg(sh->ctx, mem, size,
+	mem_mng->umem = mlx5_os_umem_reg(sh->ctx, mem, size,
 						 IBV_ACCESS_LOCAL_WRITE);
 	if (!mem_mng->umem) {
 		rte_errno = errno;
@@ -6465,7 +6465,7 @@ mlx5_flow_create_counter_stat_mem_mng(struct mlx5_dev_ctx_shared *sh)
 	mkey_attr.relaxed_ordering_read = sh->cmng.relaxed_ordering_read;
 	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);
 	if (!mem_mng->dm) {
-		mlx5_glue->devx_umem_dereg(mem_mng->umem);
+		mlx5_os_umem_dereg(mem_mng->umem);
 		rte_errno = errno;
 		mlx5_free(mem);
 		return -rte_errno;

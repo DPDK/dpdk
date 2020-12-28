@@ -155,7 +155,7 @@ mlx5_rxq_release_devx_rq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
 	struct mlx5_devx_dbr_page *dbr_page = rxq_ctrl->rq_dbrec_page;
 
 	if (rxq_ctrl->wq_umem) {
-		mlx5_glue->devx_umem_dereg(rxq_ctrl->wq_umem);
+		mlx5_os_umem_dereg(rxq_ctrl->wq_umem);
 		rxq_ctrl->wq_umem = NULL;
 	}
 	if (rxq_ctrl->rxq.wqes) {
@@ -182,7 +182,7 @@ mlx5_rxq_release_devx_cq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
 	struct mlx5_devx_dbr_page *dbr_page = rxq_ctrl->cq_dbrec_page;
 
 	if (rxq_ctrl->cq_umem) {
-		mlx5_glue->devx_umem_dereg(rxq_ctrl->cq_umem);
+		mlx5_os_umem_dereg(rxq_ctrl->cq_umem);
 		rxq_ctrl->cq_umem = NULL;
 	}
 	if (rxq_ctrl->rxq.cqes) {
@@ -375,7 +375,7 @@ mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	if (!buf)
 		return NULL;
 	rxq_data->wqes = buf;
-	rxq_ctrl->wq_umem = mlx5_glue->devx_umem_reg(priv->sh->ctx,
+	rxq_ctrl->wq_umem = mlx5_os_umem_reg(priv->sh->ctx,
 						     buf, wq_size, 0);
 	if (!rxq_ctrl->wq_umem)
 		goto error;
@@ -497,7 +497,7 @@ mlx5_rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	rxq_data->cqes = (volatile struct mlx5_cqe (*)[])(uintptr_t)buf;
-	rxq_ctrl->cq_umem = mlx5_glue->devx_umem_reg(priv->sh->ctx, buf,
+	rxq_ctrl->cq_umem = mlx5_os_umem_reg(priv->sh->ctx, buf,
 						     cq_size,
 						     IBV_ACCESS_LOCAL_WRITE);
 	if (!rxq_ctrl->cq_umem) {
@@ -1127,7 +1127,7 @@ mlx5_txq_release_devx_sq_resources(struct mlx5_txq_obj *txq_obj)
 		txq_obj->sq_devx = NULL;
 	}
 	if (txq_obj->sq_umem) {
-		claim_zero(mlx5_glue->devx_umem_dereg(txq_obj->sq_umem));
+		claim_zero(mlx5_os_umem_dereg(txq_obj->sq_umem));
 		txq_obj->sq_umem = NULL;
 	}
 	if (txq_obj->sq_buf) {
@@ -1155,7 +1155,7 @@ mlx5_txq_release_devx_cq_resources(struct mlx5_txq_obj *txq_obj)
 	if (txq_obj->cq_devx)
 		claim_zero(mlx5_devx_cmd_destroy(txq_obj->cq_devx));
 	if (txq_obj->cq_umem)
-		claim_zero(mlx5_glue->devx_umem_dereg(txq_obj->cq_umem));
+		claim_zero(mlx5_os_umem_dereg(txq_obj->cq_umem));
 	if (txq_obj->cq_buf)
 		mlx5_free(txq_obj->cq_buf);
 	if (txq_obj->cq_dbrec_page)
@@ -1243,7 +1243,7 @@ mlx5_txq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 		return 0;
 	}
 	/* Register allocated buffer in user space with DevX. */
-	txq_obj->cq_umem = mlx5_glue->devx_umem_reg(priv->sh->ctx,
+	txq_obj->cq_umem = mlx5_os_umem_reg(priv->sh->ctx,
 						(void *)txq_obj->cq_buf,
 						cqe_n * sizeof(struct mlx5_cqe),
 						IBV_ACCESS_LOCAL_WRITE);
@@ -1342,7 +1342,7 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	/* Register allocated buffer in user space with DevX. */
-	txq_obj->sq_umem = mlx5_glue->devx_umem_reg
+	txq_obj->sq_umem = mlx5_os_umem_reg
 					(priv->sh->ctx,
 					 (void *)txq_obj->sq_buf,
 					 wqe_n * sizeof(struct mlx5_wqe),

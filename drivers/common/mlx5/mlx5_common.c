@@ -148,7 +148,7 @@ mlx5_alloc_dbr_page(void *ctx)
 		return NULL;
 	}
 	/* Register allocated memory. */
-	page->umem = mlx5_glue->devx_umem_reg(ctx, page->dbrs,
+	page->umem = mlx5_os_umem_reg(ctx, page->dbrs,
 					      MLX5_DBR_PAGE_SIZE, 0);
 	if (!page->umem) {
 		DRV_LOG(ERR, "cannot umem reg dbr page");
@@ -232,7 +232,7 @@ mlx5_release_dbr(struct mlx5_dbr_page_list *head, uint32_t umem_id,
 		/* Page not used, free it and remove from list. */
 		LIST_REMOVE(page, next);
 		if (page->umem)
-			ret = -mlx5_glue->devx_umem_dereg(page->umem);
+			ret = -mlx5_os_umem_dereg(page->umem);
 		mlx5_free(page);
 	} else {
 		/* Mark in bitmap that this door-bell is not in use. */
