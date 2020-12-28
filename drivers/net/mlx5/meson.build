@@ -15,7 +15,6 @@ sources = files(
 	'mlx5_flow.c',
 	'mlx5_flow_meter.c',
 	'mlx5_flow_dv.c',
-	'mlx5_flow_verbs.c',
         'mlx5_flow_age.c',
 	'mlx5_mac.c',
 	'mlx5_mr.c',
@@ -31,11 +30,18 @@ sources = files(
 	'mlx5_utils.c',
 	'mlx5_devx.c',
 )
-if (dpdk_conf.has('RTE_ARCH_X86_64')
-	or dpdk_conf.has('RTE_ARCH_ARM64')
-	or dpdk_conf.has('RTE_ARCH_PPC_64'))
-	sources += files('mlx5_rxtx_vec.c')
+
+if is_linux
+	sources += files(
+		'mlx5_flow_verbs.c',
+	)
+	if (dpdk_conf.has('RTE_ARCH_X86_64')
+		or dpdk_conf.has('RTE_ARCH_ARM64')
+		or dpdk_conf.has('RTE_ARCH_PPC_64'))
+		sources += files('mlx5_rxtx_vec.c')
+	endif
 endif
+
 cflags_options = [
 	'-std=c11',
 	'-Wno-strict-prototypes',
