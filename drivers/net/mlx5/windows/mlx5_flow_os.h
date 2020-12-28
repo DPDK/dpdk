@@ -345,6 +345,15 @@ mlx5_os_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 	return 0;
 }
 
+static inline int
+mlx5_os_flow_dr_sync_domain(void *domain, uint32_t flags)
+{
+	RTE_SET_USED(domain);
+	RTE_SET_USED(flags);
+	errno = ENOTSUP;
+	return errno;
+}
+
 int mlx5_flow_os_validate_flow_attributes(struct rte_eth_dev *dev,
 					const struct rte_flow_attr *attributes,
 					bool external,

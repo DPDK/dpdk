@@ -12633,18 +12633,18 @@ flow_dv_sync_domain(struct rte_eth_dev *dev, uint32_t domains, uint32_t flags)
 	int ret = 0;
 
 	if ((domains & MLX5_DOMAIN_BIT_NIC_RX) && priv->sh->rx_domain != NULL) {
-		ret = mlx5_glue->dr_sync_domain(priv->sh->rx_domain,
+		ret = mlx5_os_flow_dr_sync_domain(priv->sh->rx_domain,
 						flags);
 		if (ret != 0)
 			return ret;
 	}
 	if ((domains & MLX5_DOMAIN_BIT_NIC_TX) && priv->sh->tx_domain != NULL) {
-		ret = mlx5_glue->dr_sync_domain(priv->sh->tx_domain, flags);
+		ret = mlx5_os_flow_dr_sync_domain(priv->sh->tx_domain, flags);
 		if (ret != 0)
 			return ret;
 	}
 	if ((domains & MLX5_DOMAIN_BIT_FDB) && priv->sh->fdb_domain != NULL) {
-		ret = mlx5_glue->dr_sync_domain(priv->sh->fdb_domain, flags);
+		ret = mlx5_os_flow_dr_sync_domain(priv->sh->fdb_domain, flags);
 		if (ret != 0)
 			return ret;
 	}

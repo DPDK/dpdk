@@ -427,4 +427,10 @@ mlx5_os_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 {
 	return mlx5_flow_adjust_priority(dev, priority, subpriority);
 }
+
+static inline int
+mlx5_os_flow_dr_sync_domain(void *domain, uint32_t flags)
+{
+	return mlx5_glue->dr_sync_domain(domain, flags);
+}
 #endif /* RTE_PMD_MLX5_FLOW_OS_H_ */
