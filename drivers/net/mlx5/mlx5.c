@@ -184,8 +184,7 @@ int mlx5_logtype;
 
 static LIST_HEAD(, mlx5_dev_ctx_shared) mlx5_dev_ctx_list =
 						LIST_HEAD_INITIALIZER();
-static pthread_mutex_t mlx5_dev_ctx_list_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+static pthread_mutex_t mlx5_dev_ctx_list_mutex;
 static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	[MLX5_IPOOL_DECAP_ENCAP] = {
@@ -2235,6 +2234,7 @@ RTE_LOG_REGISTER(mlx5_logtype, pmd.net.mlx5, NOTICE)
  */
 RTE_INIT(rte_mlx5_pmd_init)
 {
+	pthread_mutex_init(&mlx5_dev_ctx_list_mutex, NULL);
 	mlx5_common_init();
 	/* Build the static tables for Verbs conversion. */
 	mlx5_set_ptype_table();
