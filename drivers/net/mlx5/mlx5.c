@@ -932,7 +932,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		sh->port[i].ih_port_id = RTE_MAX_ETHPORTS;
 		sh->port[i].devx_ih_port_id = RTE_MAX_ETHPORTS;
 	}
-	sh->pd = mlx5_glue->alloc_pd(sh->ctx);
+	sh->pd = mlx5_os_alloc_pd(sh->ctx);
 	if (sh->pd == NULL) {
 		DRV_LOG(ERR, "PD allocation failure");
 		err = ENOMEM;
@@ -1032,7 +1032,7 @@ error:
 	if (sh->tx_uar)
 		mlx5_glue->devx_free_uar(sh->tx_uar);
 	if (sh->pd)
-		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
+		claim_zero(mlx5_os_dealloc_pd(sh->pd));
 	if (sh->ctx)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
 	mlx5_free(sh);
@@ -1100,7 +1100,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		sh->tx_uar = NULL;
 	}
 	if (sh->pd)
-		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
+		claim_zero(mlx5_os_dealloc_pd(sh->pd));
 	if (sh->tis)
 		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
 	if (sh->td)
