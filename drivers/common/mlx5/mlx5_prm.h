@@ -825,6 +825,12 @@ struct mlx5_ifc_fte_match_param_bits {
 #endif
 };
 
+struct mlx5_ifc_dest_format_struct_bits {
+	u8 destination_type[0x8];
+	u8 destination_id[0x18];
+	u8 reserved_0[0x20];
+};
+
 enum {
 	MLX5_MATCH_CRITERIA_ENABLE_OUTER_BIT,
 	MLX5_MATCH_CRITERIA_ENABLE_MISC_BIT,

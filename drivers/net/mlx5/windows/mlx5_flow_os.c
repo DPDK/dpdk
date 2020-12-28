@@ -187,13 +187,41 @@ mlx5_flow_os_create_flow(void *matcher, void *match_value,
 			 size_t num_actions,
 			 void *actions[], void **flow)
 {
-	RTE_SET_USED(matcher);
-	RTE_SET_USED(match_value);
-	RTE_SET_USED(num_actions);
-	RTE_SET_USED(actions);
-	*flow = NULL;
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	struct mlx5_action *action;
+	int i;
+	struct mlx5_matcher *mlx5_matcher = matcher;
+	struct mlx5_flow_dv_match_params *mlx5_match_value = match_value;
+	uint32_t in[MLX5_ST_SZ_DW(devx_fs_rule_add_in)] = {0};
+	void *matcher_c = MLX5_ADDR_OF(devx_fs_rule_add_in, in,
+				       match_criteria);
+	void *matcher_v = MLX5_ADDR_OF(devx_fs_rule_add_in, in,
+				       match_value);
+
+	MLX5_ASSERT(mlx5_matcher->ctx);
+	memcpy(matcher_c, mlx5_matcher->match_buf,
+	       mlx5_match_value->size);
+	/* Use mlx5_match_value->size for match criteria */
+	memcpy(matcher_v, mlx5_match_value->buf,
+	       mlx5_match_value->size);
+	for (i = 0; i < num_actions; i++) {
+		action = actions[i];
+		switch (action->type) {
+		case MLX5_FLOW_CONTEXT_DEST_TYPE_TIR:
+			MLX5_SET(devx_fs_rule_add_in, in,
+				 dest.destination_type,
+				 MLX5_FLOW_CONTEXT_DEST_TYPE_TIR);
+			MLX5_SET(devx_fs_rule_add_in, in,
+				 dest.destination_id,
+				 action->dest_tir.id);
+			break;
+		default:
+			break;
+		}
+		MLX5_SET(devx_fs_rule_add_in, in, match_criteria_enable,
+			 MLX5_MATCH_OUTER_HEADERS);
+	}
+	*flow = mlx5_glue->devx_fs_rule_add(mlx5_matcher->ctx, in, sizeof(in));
+	return (*flow) ? 0 : -1;
 }
 
 /**
@@ -208,7 +236,5 @@ mlx5_flow_os_create_flow(void *matcher, void *match_value,
 int
 mlx5_flow_os_destroy_flow(void *drv_flow_ptr)
 {
-	RTE_SET_USED(dev_flow_ptr);
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	return mlx5_glue->devx_fs_rule_del(drv_flow_ptr);
 }
