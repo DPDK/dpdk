@@ -189,6 +189,42 @@ mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 }
 
 /**
+ * Adds a MAC address to the device
+ * Currently it has no support under Windows.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ * @param index
+ *   MAC address index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise
+ */
+int
+mlx5_os_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
+		     uint32_t index)
+{
+	(void)index;
+	struct rte_ether_addr lmac;
+
+	if (mlx5_get_mac(dev, &lmac.addr_bytes)) {
+		DRV_LOG(ERR,
+			"port %u cannot get MAC address, is mlx5_en"
+			" loaded? (errno: %s)",
+			dev->data->port_id, strerror(rte_errno));
+		return rte_errno;
+	}
+	if (!rte_is_same_ether_addr(&lmac, mac)) {
+		DRV_LOG(ERR,
+			"adding new mac address to device is unsupported");
+		return -ENOTSUP;
+	}
+	return 0;
+}
+
+/**
  * Modify a VF MAC address
  * Currently it has no support under Windows.
  *
