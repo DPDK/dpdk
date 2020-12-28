@@ -5,6 +5,7 @@ includes += include_directories('.')
 
 sources += files(
 	'mlx5_glue.c',
+	'mlx5_common_os.c',
 )
 
 res_lib = run_command(python3, '-c', 'import os; print(os.environ["DEVX_LIB_PATH"])')
