@@ -701,8 +701,8 @@ struct mlx5_dev_ctx_shared {
 	void *pd; /* Protection Domain. */
 	uint32_t pdn; /* Protection Domain number. */
 	uint32_t tdn; /* Transport Domain number. */
-	char ibdev_name[DEV_SYSFS_NAME_MAX]; /* SYSFS dev name. */
-	char ibdev_path[DEV_SYSFS_PATH_MAX]; /* SYSFS dev path for secondary */
+	char ibdev_name[MLX5_FS_NAME_MAX]; /* SYSFS dev name. */
+	char ibdev_path[MLX5_FS_PATH_MAX]; /* SYSFS dev path for secondary */
 	struct mlx5_dev_attr device_attr; /* Device properties. */
 	int numa_node; /* Numa node of backing physical device. */
 	LIST_ENTRY(mlx5_dev_ctx_shared) mem_event_cb;
