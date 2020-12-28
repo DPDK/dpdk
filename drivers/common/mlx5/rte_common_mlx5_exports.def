@@ -36,6 +36,7 @@ EXPORTS
 	mlx5_devx_cmd_create_flow_hit_aso_obj
 
 	mlx5_get_dbr
+	mlx5_glue
 
 	mlx5_malloc_mem_select
 	mlx5_mr_btree_init
