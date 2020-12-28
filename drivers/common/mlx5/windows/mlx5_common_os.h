@@ -6,6 +6,7 @@
 #define RTE_PMD_MLX5_COMMON_OS_H_
 
 #include <stdio.h>
+#include <sys/types.h>
 
 #include <rte_errno.h>
 
@@ -14,6 +15,8 @@
 #include "mlx5_malloc.h"
 #include "mlx5_common_mr.h"
 #include "mlx5_win_ext.h"
+
+#define MLX5_BF_OFFSET 0x800
 
 /**
  * This API allocates aligned or non-aligned memory.  The free can be on either
@@ -142,6 +145,78 @@ mlx5_os_get_umem_id(void *umem)
 	if (!umem)
 		return 0;
 	return ((struct mlx5_devx_umem *)umem)->umem_id;
+}
+
+/**
+ * Get mmap offset. Given a pointer to an DevX UAR object of type
+ * 'struct mlx5dv_devx_uar *' - return its mmap offset.
+ * In Windows, mmap_offset is unused.
+ *
+ * @param[in] uar
+ *    Pointer to UAR object.
+ *
+ * @return
+ *    0 as mmap_offset is unused
+ */
+static inline off_t
+mlx5_os_get_devx_uar_mmap_offset(void *uar)
+{
+	RTE_SET_USED(uar);
+	return 0;
+}
+
+/**
+ * Get base addr pointer. Given a pointer to an UAR object of type
+ * 'struct mlx5dv_devx_uar *' - return its base address.
+ *
+ * @param[in] uar
+ *    Pointer to an UAR object.
+ *
+ * @return
+ *    The base address if UAR is valid, NULL otherwise.
+ */
+static inline void *
+mlx5_os_get_devx_uar_base_addr(void *uar)
+{
+	if (!uar)
+		return NULL;
+	return ((devx_uar_handle *)uar)->uar_page;
+}
+
+/**
+ * Get reg addr pointer. Given a pointer to an UAR object of type
+ * 'struct mlx5dv_devx_uar *' - return its reg address.
+ *
+ * @param[in] uar
+ *    Pointer to an UAR object.
+ *
+ * @return
+ *    The reg address if UAR is valid, NULL otherwise.
+ */
+static inline void *
+mlx5_os_get_devx_uar_reg_addr(void *uar)
+{
+	if (!uar)
+		return NULL;
+	return ((char *)((devx_uar_handle *)uar)->uar_page) + MLX5_BF_OFFSET;
+}
+
+/**
+ * Get page id. Given a pointer to an UAR object of type
+ * 'struct mlx5dv_devx_uar *' - return its page id.
+ *
+ * @param[in] uar
+ *    Pointer to an UAR object.
+ *
+ * @return
+ *    The page id if UAR is valid, 0 otherwise.
+ */
+static inline uint32_t
+mlx5_os_get_devx_uar_page_id(void *uar)
+{
+	if (!uar)
+		return 0;
+	return ((devx_uar_handle *)uar)->uar_index;
 }
 
 void *mlx5_os_alloc_pd(void *ctx);
