@@ -104,6 +104,50 @@ mlx5_os_set_nonblock_channel_fd(int fd)
 }
 
 /**
+ * Function API open device under Windows
+ *
+ * This function calls the Windows glue APIs to open a device.
+ *
+ * @param[in] spawn
+ *   Pointer to the device attributes (name, port, etc).
+ * @param[out] config
+ *   Pointer to device configuration structure.
+ * @param[out] sh
+ *   Pointer to shared context structure.
+ *
+ * @return
+ *   0 on success, a positive error value otherwise.
+ */
+int
+mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
+		 const struct mlx5_dev_config *config,
+		 struct mlx5_dev_ctx_shared *sh)
+{
+	RTE_SET_USED(config);
+	int err = 0;
+	struct mlx5_context *mlx5_ctx;
+
+	pthread_mutex_init(&sh->txpp.mutex, NULL);
+	/* Set numa node from pci probe */
+	sh->numa_node = spawn->pci_dev->device.numa_node;
+
+	/* Try to open device with DevX */
+	rte_errno = 0;
+	sh->ctx = mlx5_glue->open_device(spawn->phys_dev);
+	if (!sh->ctx) {
+		DRV_LOG(ERR, "open_device failed");
+		err = errno;
+		return err;
+	}
+	sh->devx = 1;
+	mlx5_ctx = (struct mlx5_context *)sh->ctx;
+	err = mlx5_glue->query_device(spawn->phys_dev, &mlx5_ctx->mlx5_dev);
+	if (err)
+		DRV_LOG(ERR, "Failed to query device context fields.");
+	return err;
+}
+
+/**
  * This function should share events between multiple ports of single IB
  * device.  Currently it has no support under Windows.
  *
