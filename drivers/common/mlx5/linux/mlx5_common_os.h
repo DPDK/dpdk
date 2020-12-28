@@ -227,6 +227,28 @@ mlx5_os_umem_dereg(void *pumem)
 	return mlx5_glue->devx_umem_dereg(pumem);
 }
 
+static inline void *
+mlx5_os_devx_create_event_channel(void *ctx, int flags)
+{
+	return mlx5_glue->devx_create_event_channel(ctx, flags);
+}
+
+static inline void
+mlx5_os_devx_destroy_event_channel(void *eventc)
+{
+	mlx5_glue->devx_destroy_event_channel(eventc);
+}
+
+static inline int
+mlx5_os_devx_subscribe_devx_event(void *eventc,
+				  void *obj,
+				  uint16_t events_sz, uint16_t events_num[],
+				  uint64_t cookie)
+{
+	return mlx5_glue->devx_subscribe_devx_event(eventc, obj, events_sz,
+						    events_num, cookie);
+}
+
 /**
  * Memory allocation optionally with alignment.
  *

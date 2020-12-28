@@ -216,7 +216,7 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_obj *rxq_obj)
 		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
 		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->devx_cq));
 		if (rxq_obj->devx_channel)
-			mlx5_glue->devx_destroy_event_channel
+			mlx5_os_devx_destroy_event_channel
 							(rxq_obj->devx_channel);
 		mlx5_rxq_release_devx_rq_resources(rxq_obj->rxq_ctrl);
 		mlx5_rxq_release_devx_cq_resources(rxq_obj->rxq_ctrl);
@@ -533,7 +533,7 @@ mlx5_rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cqe_n = log_cqe_n;
 	rxq_data->cqn = cq_obj->id;
 	if (rxq_ctrl->obj->devx_channel) {
-		ret = mlx5_glue->devx_subscribe_devx_event
+		ret = mlx5_os_devx_subscribe_devx_event
 						(rxq_ctrl->obj->devx_channel,
 						 cq_obj->obj,
 						 sizeof(event_nums),
@@ -644,7 +644,7 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		int devx_ev_flag =
 			  MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA;
 
-		tmpl->devx_channel = mlx5_glue->devx_create_event_channel
+		tmpl->devx_channel = mlx5_os_devx_create_event_channel
 								(priv->sh->ctx,
 								 devx_ev_flag);
 		if (!tmpl->devx_channel) {
@@ -686,7 +686,7 @@ error:
 	if (tmpl->devx_cq)
 		claim_zero(mlx5_devx_cmd_destroy(tmpl->devx_cq));
 	if (tmpl->devx_channel)
-		mlx5_glue->devx_destroy_event_channel(tmpl->devx_channel);
+		mlx5_os_devx_destroy_event_channel(tmpl->devx_channel);
 	mlx5_rxq_release_devx_rq_resources(rxq_ctrl);
 	mlx5_rxq_release_devx_cq_resources(rxq_ctrl);
 	rte_errno = ret; /* Restore rte_errno. */

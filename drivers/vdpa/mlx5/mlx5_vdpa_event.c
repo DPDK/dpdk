@@ -15,6 +15,7 @@
 #include <rte_alarm.h>
 
 #include <mlx5_common.h>
+#include <mlx5_common_os.h>
 #include <mlx5_glue.h>
 
 #include "mlx5_vdpa_utils.h"
@@ -43,7 +44,7 @@ mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 		       sizeof(out.buf)) >=
 		       (ssize_t)sizeof(out.event_resp.cookie))
 			;
-		mlx5_glue->devx_destroy_event_channel(priv->eventc);
+		mlx5_os_devx_destroy_event_channel(priv->eventc);
 		priv->eventc = NULL;
 	}
 #endif
@@ -63,7 +64,7 @@ mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(ERR, "Failed to query EQ number %d.", rte_errno);
 		return -1;
 	}
-	priv->eventc = mlx5_glue->devx_create_event_channel(priv->ctx,
+	priv->eventc = mlx5_os_devx_create_event_channel(priv->ctx,
 			   MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA);
 	if (!priv->eventc) {
 		rte_errno = errno;
@@ -176,7 +177,7 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 	cq->cq_ci = 0;
 	rte_spinlock_init(&cq->sl);
 	/* Subscribe CQ event to the event channel controlled by the driver. */
-	ret = mlx5_glue->devx_subscribe_devx_event(priv->eventc, cq->cq->obj,
+	ret = mlx5_os_devx_subscribe_devx_event(priv->eventc, cq->cq->obj,
 						   sizeof(event_nums),
 						   event_nums,
 						   (uint64_t)(uintptr_t)cq);

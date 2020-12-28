@@ -37,7 +37,7 @@ static void
 mlx5_txpp_destroy_event_channel(struct mlx5_dev_ctx_shared *sh)
 {
 	if (sh->txpp.echan) {
-		mlx5_glue->devx_destroy_event_channel(sh->txpp.echan);
+		mlx5_os_devx_destroy_event_channel(sh->txpp.echan);
 		sh->txpp.echan = NULL;
 	}
 }
@@ -47,7 +47,7 @@ static int
 mlx5_txpp_create_event_channel(struct mlx5_dev_ctx_shared *sh)
 {
 	MLX5_ASSERT(!sh->txpp.echan);
-	sh->txpp.echan = mlx5_glue->devx_create_event_channel(sh->ctx,
+	sh->txpp.echan = mlx5_os_devx_create_event_channel(sh->ctx,
 			MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA);
 	if (!sh->txpp.echan) {
 		rte_errno = errno;
@@ -937,7 +937,7 @@ mlx5_txpp_start_service(struct mlx5_dev_ctx_shared *sh)
 		return -rte_errno;
 	}
 	/* Subscribe CQ event to the event channel controlled by the driver. */
-	ret = mlx5_glue->devx_subscribe_devx_event(sh->txpp.echan,
+	ret = mlx5_os_devx_subscribe_devx_event(sh->txpp.echan,
 						   sh->txpp.rearm_queue.cq->obj,
 						   sizeof(event_nums),
 						   event_nums, 0);
