@@ -7,6 +7,7 @@
 
 #include "mlx5_glue.h"
 #include "mlx5_prm.h"
+#include <rte_compat.h>
 
 /*
  * Defines the amount of retries to allocate the first UAR in the page.
