@@ -44,6 +44,33 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
 }
 
 /**
+ * Get device MTU.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] mtu
+ *   MTU value output buffer.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu)
+{
+	struct mlx5_priv *priv;
+	mlx5_context_st *context_obj;
+
+	if (!dev) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	priv = dev->data->dev_private;
+	context_obj = (mlx5_context_st *)priv->sh->ctx;
+	*mtu = context_obj->mlx5_dev.mtu_bytes;
+	return 0;
+}
+
+/**
  * Set device MTU.
  *
  * @param dev
