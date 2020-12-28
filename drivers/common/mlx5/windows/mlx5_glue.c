@@ -256,6 +256,9 @@ mlx5_glue_devx_free_uar(void *uar)
 	devx_free_uar((devx_uar_handle *)uar);
 }
 
+static_assert(MLX5_ST_SZ_BYTES(fte_match_param) == 0x200,
+	"PRM size of fte_match_param is broken! cannot compile Windows!");
+
 static void*
 mlx5_glue_devx_fs_rule_add(void *ctx, void *in, uint32_t inlen)
 

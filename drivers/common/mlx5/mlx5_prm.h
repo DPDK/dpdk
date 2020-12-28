@@ -815,6 +815,13 @@ struct mlx5_ifc_fte_match_param_bits {
 	struct mlx5_ifc_fte_match_set_misc2_bits misc_parameters_2;
 	struct mlx5_ifc_fte_match_set_misc3_bits misc_parameters_3;
 	struct mlx5_ifc_fte_match_set_misc4_bits misc_parameters_4;
+/*
+ * Add reserved bit to match the struct size with the size defined in PRM.
+ * This extension is not required in Linux.
+ */
+#ifndef HAVE_INFINIBAND_VERBS_H
+	u8 reserved_0[0x400];
+#endif
 };
 
 enum {
