@@ -22,4 +22,145 @@ enum {
 	MLX5_CQE_RESP_ERR	= 14,
 	MLX5_CQE_INVALID	= 15,
 };
+
+enum {
+	MLX5_OPCODE_NOP			= 0x00,
+	MLX5_OPCODE_SEND_INVAL		= 0x01,
+	MLX5_OPCODE_RDMA_WRITE		= 0x08,
+	MLX5_OPCODE_RDMA_WRITE_IMM	= 0x09,
+	MLX5_OPCODE_SEND		= 0x0a,
+	MLX5_OPCODE_SEND_IMM		= 0x0b,
+	MLX5_OPCODE_TSO			= 0x0e,
+	MLX5_OPCODE_RDMA_READ		= 0x10,
+	MLX5_OPCODE_ATOMIC_CS		= 0x11,
+	MLX5_OPCODE_ATOMIC_FA		= 0x12,
+	MLX5_OPCODE_ATOMIC_MASKED_CS	= 0x14,
+	MLX5_OPCODE_ATOMIC_MASKED_FA	= 0x15,
+	MLX5_OPCODE_FMR			= 0x19,
+	MLX5_OPCODE_LOCAL_INVAL		= 0x1b,
+	MLX5_OPCODE_CONFIG_CMD		= 0x1f,
+	MLX5_OPCODE_UMR			= 0x25,
+	MLX5_OPCODE_TAG_MATCHING	= 0x28
+};
+
+enum mlx5dv_cq_init_attr_mask {
+	MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE	= 1 << 0,
+	MLX5DV_CQ_INIT_ATTR_MASK_FLAGS		= 1 << 1,
+	MLX5DV_CQ_INIT_ATTR_MASK_CQE_SIZE = 1 << 2,
+};
+
+enum mlx5dv_cqe_comp_res_format {
+	MLX5DV_CQE_RES_FORMAT_HASH		= 1 << 0,
+	MLX5DV_CQE_RES_FORMAT_CSUM		= 1 << 1,
+	MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX	= 1 << 2,
+};
+
+enum ibv_access_flags {
+	IBV_ACCESS_LOCAL_WRITE		= 1,
+	IBV_ACCESS_REMOTE_WRITE		= 1 << 1,
+	IBV_ACCESS_REMOTE_READ		= 1 << 2,
+	IBV_ACCESS_REMOTE_ATOMIC	= 1 << 3,
+	IBV_ACCESS_MW_BIND		= 1 << 4,
+	IBV_ACCESS_ZERO_BASED		= 1 << 5,
+	IBV_ACCESS_ON_DEMAND		= 1 << 6,
+};
+
+enum mlx5_ib_uapi_devx_create_event_channel_flags {
+	MLX5_IB_UAPI_DEVX_CR_EV_CH_FLAGS_OMIT_DATA = 1 << 0,
+};
+
+#define MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA \
+	MLX5_IB_UAPI_DEVX_CR_EV_CH_FLAGS_OMIT_DATA
+
+enum {
+	MLX5_CQE_SYNDROME_LOCAL_LENGTH_ERR		= 0x01,
+	MLX5_CQE_SYNDROME_LOCAL_QP_OP_ERR		= 0x02,
+	MLX5_CQE_SYNDROME_LOCAL_PROT_ERR		= 0x04,
+	MLX5_CQE_SYNDROME_WR_FLUSH_ERR			= 0x05,
+	MLX5_CQE_SYNDROME_MW_BIND_ERR			= 0x06,
+	MLX5_CQE_SYNDROME_BAD_RESP_ERR			= 0x10,
+	MLX5_CQE_SYNDROME_LOCAL_ACCESS_ERR		= 0x11,
+	MLX5_CQE_SYNDROME_REMOTE_INVAL_REQ_ERR		= 0x12,
+	MLX5_CQE_SYNDROME_REMOTE_ACCESS_ERR		= 0x13,
+	MLX5_CQE_SYNDROME_REMOTE_OP_ERR			= 0x14,
+	MLX5_CQE_SYNDROME_TRANSPORT_RETRY_EXC_ERR	= 0x15,
+	MLX5_CQE_SYNDROME_RNR_RETRY_EXC_ERR		= 0x16,
+	MLX5_CQE_SYNDROME_REMOTE_ABORTED_ERR		= 0x22,
+};
+
+enum {
+	MLX5_ETH_WQE_L3_CSUM = (1 << 6),
+	MLX5_ETH_WQE_L4_CSUM = (1 << 7),
+};
+
+/*
+ * RX Hash fields enable to set which incoming packet's field should
+ * participates in RX Hash. Each flag represent certain packet's field,
+ * when the flag is set the field that is represented by the flag will
+ * participate in RX Hash calculation.
+ * Note: IPV4 and IPV6 flags can't be enabled together on the same QP,
+ * TCP and UDP flags can't be enabled together on the same QP.
+ */
+enum ibv_rx_hash_fields {
+	IBV_RX_HASH_SRC_IPV4	= 1 << 0,
+	IBV_RX_HASH_DST_IPV4	= 1 << 1,
+	IBV_RX_HASH_SRC_IPV6	= 1 << 2,
+	IBV_RX_HASH_DST_IPV6	= 1 << 3,
+	IBV_RX_HASH_SRC_PORT_TCP	= 1 << 4,
+	IBV_RX_HASH_DST_PORT_TCP	= 1 << 5,
+	IBV_RX_HASH_SRC_PORT_UDP	= 1 << 6,
+	IBV_RX_HASH_DST_PORT_UDP	= 1 << 7,
+	IBV_RX_HASH_IPSEC_SPI		= 1 << 8,
+	IBV_RX_HASH_INNER		= (1 << 31),
+};
+
+enum {
+	MLX5_RCV_DBR	= 0,
+	MLX5_SND_DBR	= 1,
+};
+
+#ifndef MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TUNNEL_TO_L2
+#define MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TUNNEL_TO_L2	0x0
+#endif
+#ifndef MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L2_TUNNEL
+#define MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L2_TUNNEL	0x1
+#endif
+#ifndef MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L3_TUNNEL_TO_L2
+#define MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L3_TUNNEL_TO_L2	0x2
+#endif
+#ifndef MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L3_TUNNEL
+#define MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L3_TUNNEL	0x3
+#endif
+
+struct mlx5_err_cqe {
+	uint8_t		rsvd0[32];
+	uint32_t	srqn;
+	uint8_t		rsvd1[18];
+	uint8_t		vendor_err_synd;
+	uint8_t		syndrome;
+	uint32_t	s_wqe_opcode_qpn;
+	uint16_t	wqe_counter;
+	uint8_t		signature;
+	uint8_t		op_own;
+};
+
+struct mlx5_wqe_srq_next_seg {
+	uint8_t			rsvd0[2];
+	rte_be16_t		next_wqe_index;
+	uint8_t			signature;
+	uint8_t			rsvd1[11];
+};
+
+enum ibv_wq_state {
+	IBV_WQS_RESET,
+	IBV_WQS_RDY,
+	IBV_WQS_ERR,
+	IBV_WQS_UNKNOWN
+};
+
+struct mlx5_wqe_data_seg {
+	rte_be32_t		byte_count;
+	rte_be32_t		lkey;
+	rte_be64_t		addr;
+};
 #endif /* __MLX5_WIN_DEFS_H__ */
