@@ -139,4 +139,7 @@ mlx5_os_get_umem_id(void *umem)
 		return 0;
 	return ((struct mlx5_devx_umem *)umem)->umem_id;
 }
+
+void *mlx5_os_alloc_pd(void *ctx);
+int mlx5_os_dealloc_pd(void *pd);
 #endif /* RTE_PMD_MLX5_COMMON_OS_H_ */

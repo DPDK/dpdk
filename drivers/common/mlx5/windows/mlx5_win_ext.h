@@ -28,6 +28,12 @@ struct mlx5_devx_umem {
 	uint32_t                umem_id;
 };
 
+struct mlx5_pd {
+	void                   *obj;
+	uint32_t                pdn;
+	devx_device_ctx        *devx_ctx;
+};
+
 #define GET_DEVX_CTX(ctx) (((mlx5_context_st *)ctx)->devx_ctx)
 #define GET_OBJ_CTX(obj)  (((mlx5_devx_obj_st *)obj)->devx_ctx)
 
