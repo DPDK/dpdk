@@ -769,15 +769,11 @@ mlx5_txpp_init_timestamp(struct mlx5_dev_ctx_shared *sh)
 	sh->txpp.ts_p = 0;
 	sh->txpp.ts_n = 0;
 	for (wait = 0; wait < MLX5_TXPP_WAIT_INIT_TS; wait++) {
-		struct timespec onems;
-
 		mlx5_txpp_update_timestamp(sh);
 		if (wq->sq_ci)
 			return;
 		/* Wait one millisecond and try again. */
-		onems.tv_sec = 0;
-		onems.tv_nsec = NS_PER_S / MS_PER_S;
-		nanosleep(&onems, 0);
+		rte_delay_us_sleep(US_PER_S / MS_PER_S);
 	}
 	DRV_LOG(ERR, "Unable to initialize timestamp.");
 	sh->txpp.sync_lost = 1;

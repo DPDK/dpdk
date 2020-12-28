@@ -21,6 +21,7 @@
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
 #include <rte_alarm.h>
+#include <rte_cycles.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -1330,7 +1331,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_flex_parser_ecpri_release(dev);
 	if (priv->rxqs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */
-		usleep(1000);
+		rte_delay_us_sleep(1000);
 		for (i = 0; (i != priv->rxqs_n); ++i)
 			mlx5_rxq_release(dev, i);
 		priv->rxqs_n = 0;
@@ -1338,7 +1339,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	}
 	if (priv->txqs != NULL) {
 		/* XXX race condition if mlx5_tx_burst() is still running. */
-		usleep(1000);
+		rte_delay_us_sleep(1000);
 		for (i = 0; (i != priv->txqs_n); ++i)
 			mlx5_txq_release(dev, i);
 		priv->txqs_n = 0;

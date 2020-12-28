@@ -9,6 +9,7 @@
 #include <rte_ethdev_driver.h>
 #include <rte_interrupts.h>
 #include <rte_alarm.h>
+#include <rte_cycles.h>
 
 #include <mlx5_malloc.h>
 
@@ -1171,7 +1172,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	rte_wmb();
 	/* Disable datapath on secondary process. */
 	mlx5_mp_os_req_stop_rxtx(dev);
-	usleep(1000 * priv->rxqs_n);
+	rte_delay_us_sleep(1000 * priv->rxqs_n);
 	DRV_LOG(DEBUG, "port %u stopping device", dev->data->port_id);
 	mlx5_flow_stop_default(dev);
 	/* Control flows for default traffic can be removed firstly. */
