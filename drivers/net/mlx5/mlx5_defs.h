@@ -199,8 +199,11 @@
 /* Maximum number of shared actions supported by rte_flow */
 #define MLX5_MAX_SHARED_ACTIONS 2
 
-/* Definition of static_assert found in /usr/include/assert.h */
-#ifndef HAVE_STATIC_ASSERT
+/*
+ * Linux definition of static_assert is found in /usr/include/assert.h.
+ * Windows does not require a redefinition.
+ */
+#if !defined(HAVE_STATIC_ASSERT) && !defined(RTE_EXEC_ENV_WINDOWS)
 #define static_assert _Static_assert
 #endif
 
