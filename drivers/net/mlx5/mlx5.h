@@ -939,7 +939,7 @@ struct mlx5_priv {
 	int32_t pf_bond; /* >=0 means PF index in bonding configuration. */
 	unsigned int if_index; /* Associated kernel network device index. */
 	uint32_t bond_ifindex; /**< Bond interface index. */
-	char bond_name[IF_NAMESIZE]; /**< Bond interface name. */
+	char bond_name[MLX5_NAMESIZE]; /**< Bond interface name. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
@@ -1056,6 +1056,8 @@ int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
 
 /* mlx5_ethdev_os.c */
 
+int mlx5_get_ifname(const struct rte_eth_dev *dev,
+			char (*ifname)[MLX5_NAMESIZE]);
 unsigned int mlx5_ifindex(const struct rte_eth_dev *dev);
 int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
