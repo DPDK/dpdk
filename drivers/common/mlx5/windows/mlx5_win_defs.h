@@ -132,6 +132,63 @@ enum {
 #define MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L3_TUNNEL	0x3
 #endif
 
+enum ibv_flow_flags {
+	IBV_FLOW_ATTR_FLAGS_ALLOW_LOOP_BACK = 1 << 0,
+	IBV_FLOW_ATTR_FLAGS_DONT_TRAP = 1 << 1,
+	IBV_FLOW_ATTR_FLAGS_EGRESS = 1 << 2,
+};
+
+enum ibv_flow_attr_type {
+	/* Steering according to rule specifications. */
+	IBV_FLOW_ATTR_NORMAL		= 0x0,
+	/*
+	 * Default unicast and multicast rule -
+	 * receive all Eth traffic which isn't steered to any QP.
+	 */
+	IBV_FLOW_ATTR_ALL_DEFAULT	= 0x1,
+	/*
+	 * Default multicast rule -
+	 * receive all Eth multicast traffic which isn't steered to any QP.
+	 */
+	IBV_FLOW_ATTR_MC_DEFAULT	= 0x2,
+	/* Sniffer rule - receive all port traffic. */
+	IBV_FLOW_ATTR_SNIFFER		= 0x3,
+};
+
+enum mlx5dv_flow_table_type {
+	MLX5_IB_UAPI_FLOW_TABLE_TYPE_NIC_RX     = 0x0,
+	MLX5_IB_UAPI_FLOW_TABLE_TYPE_NIC_TX	= 0x1,
+	MLX5_IB_UAPI_FLOW_TABLE_TYPE_FDB	= 0x2,
+	MLX5_IB_UAPI_FLOW_TABLE_TYPE_RDMA_RX	= 0x3,
+};
+
+#define MLX5DV_FLOW_TABLE_TYPE_NIC_RX	MLX5_IB_UAPI_FLOW_TABLE_TYPE_NIC_RX
+#define MLX5DV_FLOW_TABLE_TYPE_NIC_TX	MLX5_IB_UAPI_FLOW_TABLE_TYPE_NIC_TX
+#define MLX5DV_FLOW_TABLE_TYPE_FDB	MLX5_IB_UAPI_FLOW_TABLE_TYPE_FDB
+#define MLX5DV_FLOW_TABLE_TYPE_RDMA_RX	MLX5_IB_UAPI_FLOW_TABLE_TYPE_RDMA_RX
+
+struct mlx5dv_flow_match_parameters {
+	size_t match_sz;
+	uint64_t match_buf[]; /* Device spec format */
+};
+
+struct mlx5dv_flow_matcher_attr {
+	enum ibv_flow_attr_type type;
+	uint32_t flags; /* From enum ibv_flow_flags. */
+	uint16_t priority;
+	uint8_t match_criteria_enable; /* Device spec format. */
+	struct mlx5dv_flow_match_parameters *match_mask;
+	uint64_t comp_mask; /* Use mlx5dv_flow_matcher_attr_mask. */
+	enum mlx5dv_flow_table_type ft_type;
+};
+
+/* Windows specific mlx5_matcher. */
+struct mlx5_matcher {
+	void *ctx;
+	struct mlx5dv_flow_matcher_attr attr;
+	uint64_t match_buf[];
+};
+
 struct mlx5_err_cqe {
 	uint8_t		rsvd0[32];
 	uint32_t	srqn;

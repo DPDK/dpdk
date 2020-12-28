@@ -6,6 +6,7 @@
 #define RTE_PMD_MLX5_FLOW_OS_H_
 
 #include "mlx5_flow.h"
+#include "mlx5_malloc.h"
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 extern const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops;

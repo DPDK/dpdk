@@ -76,12 +76,31 @@ mlx5_flow_os_create_flow_matcher(void *ctx,
 				 void *table,
 				 void **matcher)
 {
-	RTE_SET_USED(ctx);
-	RTE_SET_USED(attr);
+	struct mlx5dv_flow_matcher_attr *mattr;
+
 	RTE_SET_USED(table);
 	*matcher = NULL;
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	mattr = attr;
+	if (mattr->type != IBV_FLOW_ATTR_NORMAL) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	struct mlx5_matcher *mlx5_matcher =
+		mlx5_malloc(MLX5_MEM_ZERO,
+		       sizeof(struct mlx5_matcher) +
+		       MLX5_ST_SZ_BYTES(fte_match_param),
+		       0, SOCKET_ID_ANY);
+	if (!mlx5_matcher) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	mlx5_matcher->ctx = ctx;
+	memcpy(&mlx5_matcher->attr, attr, sizeof(mlx5_matcher->attr));
+	memcpy(&mlx5_matcher->match_buf,
+	       mattr->match_mask->match_buf,
+	       MLX5_ST_SZ_BYTES(fte_match_param));
+	*matcher = mlx5_matcher;
+	return 0;
 }
 
 /**
@@ -96,9 +115,8 @@ mlx5_flow_os_create_flow_matcher(void *ctx,
 int
 mlx5_flow_os_destroy_flow_matcher(void *matcher)
 {
-	RTE_SET_USED(matcher);
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	mlx5_free(matcher);
+	return 0;
 }
 
 /**
