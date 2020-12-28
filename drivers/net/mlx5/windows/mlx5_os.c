@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include <rte_windows.h>
+#include <rte_ethdev_pci.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -25,6 +26,65 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_mr.h"
 #include "mlx5_flow.h"
+
+static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
+
+/* Spinlock for mlx5_shared_data allocation. */
+static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
+
+/**
+ * Initialize shared data between primary and secondary process.
+ *
+ * A memzone is reserved by primary process and secondary processes attach to
+ * the memzone.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_init_shared_data(void)
+{
+	const struct rte_memzone *mz;
+	int ret = 0;
+
+	rte_spinlock_lock(&mlx5_shared_data_lock);
+	if (mlx5_shared_data == NULL) {
+		/* Allocate shared memory. */
+		mz = rte_memzone_reserve(MZ_MLX5_PMD_SHARED_DATA,
+					 sizeof(*mlx5_shared_data),
+					 SOCKET_ID_ANY, 0);
+		if (mz == NULL) {
+			DRV_LOG(ERR,
+				"Cannot allocate mlx5 shared data");
+			ret = -rte_errno;
+			goto error;
+		}
+		mlx5_shared_data = mz->addr;
+		memset(mlx5_shared_data, 0, sizeof(*mlx5_shared_data));
+		rte_spinlock_init(&mlx5_shared_data->lock);
+	}
+error:
+	rte_spinlock_unlock(&mlx5_shared_data_lock);
+	return ret;
+}
+
+/**
+ * PMD global initialization.
+ *
+ * Independent from individual device, this function initializes global
+ * per-PMD data structures distinguishing primary and secondary processes.
+ * Hence, each initialization is called once per a process.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_init_once(void)
+{
+	if (mlx5_init_shared_data())
+		return -rte_errno;
+	return 0;
+}
 
 /**
  * Get mlx5 device attributes.
@@ -145,6 +205,31 @@ mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
 	if (err)
 		DRV_LOG(ERR, "Failed to query device context fields.");
 	return err;
+}
+
+/**
+ * Spawn an Ethernet device from Verbs information.
+ *
+ * @param dpdk_dev
+ *   Backing DPDK device.
+ * @param spawn
+ *   Verbs device parameters (name, port, switch_info) to spawn.
+ * @param config
+ *   Device configuration parameters.
+ *
+ * @return
+ *   NULL pointer. Operation is not supported and rte_errno is set to ENOTSUP.
+ */
+static struct rte_eth_dev *
+mlx5_dev_spawn(struct rte_device *dpdk_dev,
+	       struct mlx5_dev_spawn_data *spawn,
+	       struct mlx5_dev_config *config)
+{
+	(void)dpdk_dev;
+	(void)spawn;
+	(void)config;
+	rte_errno = -ENOTSUP;
+	return NULL;
 }
 
 /**
@@ -337,6 +422,188 @@ mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
 	(void)enable;
 	DRV_LOG(WARNING, "%s: is not supported", __func__);
 	return -ENOTSUP;
+}
+
+/**
+ * DPDK callback to register a PCI device.
+ *
+ * This function spawns Ethernet devices out of a given PCI device.
+ *
+ * @param[in] pci_drv
+ *   PCI driver structure (mlx5_driver).
+ * @param[in] pci_dev
+ *   PCI device information.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		  struct rte_pci_device *pci_dev)
+{
+	struct devx_device_bdf *devx_bdf_devs, *orig_devx_bdf_devs;
+	/*
+	 * Number of found IB Devices matching with requested PCI BDF.
+	 * nd != 1 means there are multiple IB devices over the same
+	 * PCI device and we have representors and master.
+	 */
+	unsigned int nd = 0;
+	/*
+	 * Number of found IB device Ports. nd = 1 and np = 1..n means
+	 * we have the single multiport IB device, and there may be
+	 * representors attached to some of found ports.
+	 * Currently not supported.
+	 * unsigned int np = 0;
+	 */
+
+	/*
+	 * Number of DPDK ethernet devices to Spawn - either over
+	 * multiple IB devices or multiple ports of single IB device.
+	 * Actually this is the number of iterations to spawn.
+	 */
+	unsigned int ns = 0;
+	/*
+	 * Bonding device
+	 *   < 0 - no bonding device (single one)
+	 *  >= 0 - bonding device (value is slave PF index)
+	 */
+	int bd = -1;
+	struct mlx5_dev_spawn_data *list = NULL;
+	struct mlx5_dev_config dev_config;
+	unsigned int dev_config_vf;
+	int ret;
+	uint32_t restore;
+
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		DRV_LOG(ERR, "Secondary process is not supported on Windows.");
+		return -ENOTSUP;
+	}
+	ret = mlx5_init_once();
+	if (ret) {
+		DRV_LOG(ERR, "unable to init PMD global data: %s",
+			strerror(rte_errno));
+		return -rte_errno;
+	}
+	errno = 0;
+	devx_bdf_devs = mlx5_glue->get_device_list(&ret);
+	orig_devx_bdf_devs = devx_bdf_devs;
+	if (!devx_bdf_devs) {
+		rte_errno = errno ? errno : ENOSYS;
+		DRV_LOG(ERR, "cannot list devices, is ib_uverbs loaded?");
+		return -rte_errno;
+	}
+	/*
+	 * First scan the list of all Infiniband devices to find
+	 * matching ones, gathering into the list.
+	 */
+	struct devx_device_bdf *devx_bdf_match[ret + 1];
+
+	while (ret-- > 0) {
+		if (pci_dev->addr.bus != devx_bdf_devs->bus_id ||
+		    pci_dev->addr.devid != devx_bdf_devs->dev_id ||
+		    pci_dev->addr.function != devx_bdf_devs->fnc_id) {
+			devx_bdf_devs++;
+			continue;
+		}
+
+		devx_bdf_match[nd++] = devx_bdf_devs;
+	}
+	devx_bdf_match[nd] = NULL;
+	if (!nd) {
+		/* No device matches, just complain and bail out. */
+		DRV_LOG(WARNING,
+			"no DevX device matches PCI device " PCI_PRI_FMT ","
+			" is DevX Configured?",
+			pci_dev->addr.domain, pci_dev->addr.bus,
+			pci_dev->addr.devid, pci_dev->addr.function);
+		rte_errno = ENOENT;
+		ret = -rte_errno;
+		goto exit;
+	}
+	/*
+	 * Now we can determine the maximal
+	 * amount of devices to be spawned.
+	 */
+	list = mlx5_malloc(MLX5_MEM_ZERO,
+			   sizeof(struct mlx5_dev_spawn_data),
+			   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (!list) {
+		DRV_LOG(ERR, "spawn data array allocation failure");
+		rte_errno = ENOMEM;
+		ret = -rte_errno;
+		goto exit;
+	}
+	memset(&list[ns].info, 0, sizeof(list[ns].info));
+	list[ns].max_port = 1;
+	list[ns].phys_port = 1;
+	list[ns].phys_dev = devx_bdf_match[ns];
+	list[ns].eth_dev = NULL;
+	list[ns].pci_dev = pci_dev;
+	list[ns].pf_bond = bd;
+	list[ns].ifindex = -1; /* Spawn will assign */
+	list[ns].info =
+		(struct mlx5_switch_info){
+			.master = 0,
+			.representor = 0,
+			.name_type = MLX5_PHYS_PORT_NAME_TYPE_UPLINK,
+			.port_name = 0,
+			.switch_id = 0,
+		};
+	/* Device specific configuration. */
+	switch (pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BFVF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX6VF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTXVF:
+		dev_config_vf = 1;
+		break;
+	default:
+		dev_config_vf = 0;
+		break;
+	}
+	/* Default configuration. */
+	memset(&dev_config, 0, sizeof(struct mlx5_dev_config));
+	dev_config.vf = dev_config_vf;
+	dev_config.mps = 0;
+	dev_config.dbnc = MLX5_ARG_UNSET;
+	dev_config.rx_vec_en = 1;
+	dev_config.txq_inline_max = MLX5_ARG_UNSET;
+	dev_config.txq_inline_min = MLX5_ARG_UNSET;
+	dev_config.txq_inline_mpw = MLX5_ARG_UNSET;
+	dev_config.txqs_inline = MLX5_ARG_UNSET;
+	dev_config.vf_nl_en = 0;
+	dev_config.mr_ext_memseg_en = 1;
+	dev_config.mprq.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN;
+	dev_config.mprq.min_rxqs_num = MLX5_MPRQ_MIN_RXQS;
+	dev_config.dv_esw_en = 0;
+	dev_config.dv_flow_en = 1;
+	dev_config.decap_en = 0;
+	dev_config.log_hp_size = MLX5_ARG_UNSET;
+	list[ns].eth_dev = mlx5_dev_spawn(&pci_dev->device,
+					  &list[ns],
+					  &dev_config);
+	if (!list[ns].eth_dev)
+		goto exit;
+	restore = list[ns].eth_dev->data->dev_flags;
+	rte_eth_copy_pci_info(list[ns].eth_dev, pci_dev);
+	/* Restore non-PCI flags cleared by the above call. */
+	list[ns].eth_dev->data->dev_flags |= restore;
+	rte_eth_dev_probing_finish(list[ns].eth_dev);
+	ret = 0;
+exit:
+	/*
+	 * Do the routine cleanup:
+	 * - free allocated spawn data array
+	 * - free the device list
+	 */
+	if (list)
+		mlx5_free(list);
+	MLX5_ASSERT(orig_devx_bdf_devs);
+	mlx5_glue->free_device_list(orig_devx_bdf_devs);
+	return ret;
 }
 
 /**
