@@ -44,6 +44,34 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
 }
 
 /**
+ * Get interface name from private structure.
+ *
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[out] ifname
+ *   Interface name output buffer.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
+{
+	struct mlx5_priv *priv;
+	mlx5_context_st *context_obj;
+
+	if (!dev) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	priv = dev->data->dev_private;
+	context_obj = (mlx5_context_st *)priv->sh->ctx;
+	strncpy(*ifname, context_obj->mlx5_dev.name, IF_NAMESIZE);
+	return 0;
+}
+
+/**
  * Get device MTU.
  *
  * @param dev
