@@ -37,6 +37,7 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_mr.h"
 #include "mlx5_flow.h"
+#include "mlx5_flow_os.h"
 #include "rte_pmd_mlx5.h"
 
 /* Device parameter to enable RX completion queue compression. */
@@ -413,8 +414,8 @@ mlx5_flow_aso_age_mng_close(struct mlx5_dev_ctx_shared *sh)
 			for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j)
 				if (pool->actions[j].dr_action)
 					claim_zero
-						(mlx5_glue->destroy_flow_action
-						  (pool->actions[j].dr_action));
+					    (mlx5_flow_os_destroy_flow_action
+					      (pool->actions[j].dr_action));
 			mlx5_free(pool);
 		}
 		mlx5_free(sh->aso_age_mng->pools);
@@ -521,7 +522,7 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 
 				if (cnt->action)
 					claim_zero
-					 (mlx5_glue->destroy_flow_action
+					 (mlx5_flow_os_destroy_flow_action
 					  (cnt->action));
 				if (fallback && MLX5_POOL_GET_CNT
 				    (pool, j)->dcs_when_free)
