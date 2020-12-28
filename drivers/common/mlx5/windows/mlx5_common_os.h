@@ -219,6 +219,35 @@ mlx5_os_get_devx_uar_page_id(void *uar)
 	return ((devx_uar_handle *)uar)->uar_index;
 }
 
+static inline void *
+mlx5_os_devx_create_event_channel(void *ctx, int flags)
+{
+	(void)ctx;
+	(void)flags;
+	errno = ENOTSUP;
+	return NULL;
+}
+
+static inline void
+mlx5_os_devx_destroy_event_channel(void *eventc)
+{
+	(void)eventc;
+}
+
+static inline int
+mlx5_os_devx_subscribe_devx_event(void *eventc,
+				    void *obj,
+				    uint16_t events_sz, uint16_t events_num[],
+				    uint64_t cookie)
+{
+	(void)eventc;
+	(void)obj;
+	(void)events_sz;
+	(void)events_num;
+	(void)cookie;
+	return -ENOTSUP;
+}
+
 void *mlx5_os_alloc_pd(void *ctx);
 int mlx5_os_dealloc_pd(void *pd);
 void *mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access);
