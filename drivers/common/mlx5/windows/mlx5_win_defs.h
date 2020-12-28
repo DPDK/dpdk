@@ -189,6 +189,17 @@ struct mlx5_matcher {
 	uint64_t match_buf[];
 };
 
+/*
+ * Windows mlx5_action. This struct is the
+ * equivalent of rdma-core struct mlx5dv_dr_action.
+ */
+struct mlx5_action {
+	int type;
+	struct {
+		uint32_t id;
+	} dest_tir;
+};
+
 struct mlx5_err_cqe {
 	uint8_t		rsvd0[32];
 	uint32_t	srqn;
@@ -232,5 +243,11 @@ enum {
 	MLX5_FLOW_CONTEXT_DEST_TYPE_FLOW_TABLE               = 0x1,
 	MLX5_FLOW_CONTEXT_DEST_TYPE_TIR                      = 0x2,
 	MLX5_FLOW_CONTEXT_DEST_TYPE_QP                       = 0x3,
+};
+
+enum {
+	MLX5_MATCH_OUTER_HEADERS        = 1 << 0,
+	MLX5_MATCH_MISC_PARAMETERS      = 1 << 1,
+	MLX5_MATCH_INNER_HEADERS        = 1 << 2,
 };
 #endif /* __MLX5_WIN_DEFS_H__ */

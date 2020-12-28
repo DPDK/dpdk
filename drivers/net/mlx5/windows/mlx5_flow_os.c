@@ -134,10 +134,19 @@ int
 mlx5_flow_os_create_flow_action_dest_devx_tir(struct mlx5_devx_obj *tir,
 					      void **action)
 {
-	RTE_SET_USED(tir);
-	*action = NULL;
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	struct mlx5_action *mlx5_action =
+		mlx5_malloc(MLX5_MEM_ZERO,
+		       sizeof(struct mlx5_action),
+		       0, SOCKET_ID_ANY);
+
+	if (!mlx5_action) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	mlx5_action->type = MLX5_FLOW_CONTEXT_DEST_TYPE_TIR;
+	mlx5_action->dest_tir.id = tir->id;
+	*action = mlx5_action;
+	return 0;
 }
 
 /**
@@ -152,9 +161,8 @@ mlx5_flow_os_create_flow_action_dest_devx_tir(struct mlx5_devx_obj *tir,
 int
 mlx5_flow_os_destroy_flow_action(void *action)
 {
-	RTE_SET_USED(action);
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	mlx5_free(action);
+	return 0;
 }
 
 /**
