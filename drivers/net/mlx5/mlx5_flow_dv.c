@@ -8762,11 +8762,13 @@ flow_dv_sample_create_cb(struct mlx5_cache_list *list __rte_unused,
 					  "for sample");
 		goto error;
 	}
+	int ret;
+
 	cache_resource->normal_path_tbl = tbl;
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
-		cache_resource->default_miss =
-				mlx5_glue->dr_create_flow_action_default_miss();
-		if (!cache_resource->default_miss) {
+		ret = mlx5_flow_os_create_flow_action_default_miss
+			(&cache_resource->default_miss);
+		if (!ret) {
 			rte_flow_error_set(error, ENOMEM,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 						NULL,

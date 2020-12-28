@@ -351,6 +351,22 @@ mlx5_flow_os_create_flow_action_drop(void **action)
 }
 
 /**
+ * Create flow action: default miss.
+ *
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_default_miss(void **action)
+{
+	*action = mlx5_glue->dr_create_flow_action_default_miss();
+	return (*action) ? 0 : -1;
+}
+
+/**
  * Destroy flow action.
  *
  * @param[in] action
