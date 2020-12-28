@@ -188,7 +188,7 @@ mlx5_flow_os_create_flow(void *matcher, void *match_value,
 			 void *actions[], void **flow)
 {
 	struct mlx5_action *action;
-	int i;
+	size_t i;
 	struct mlx5_matcher *mlx5_matcher = matcher;
 	struct mlx5_flow_dv_match_params *mlx5_match_value = match_value;
 	uint32_t in[MLX5_ST_SZ_DW(devx_fs_rule_add_in)] = {0};

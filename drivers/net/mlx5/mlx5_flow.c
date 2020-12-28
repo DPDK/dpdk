@@ -798,7 +798,7 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		start_reg = priv->mtr_color_reg != REG_C_2 ? REG_C_2 :
 			    (priv->mtr_reg_share ? REG_C_3 : REG_C_4);
 		skip_mtr_reg = !!(priv->mtr_en && start_reg == REG_C_2);
-		if (id > (REG_C_7 - start_reg))
+		if (id > (uint32_t)(REG_C_7 - start_reg))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "invalid tag id");
@@ -814,7 +814,7 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		 */
 		if (skip_mtr_reg && config->flow_mreg_c
 		    [id + start_reg - REG_C_0] >= priv->mtr_color_reg) {
-			if (id >= (REG_C_7 - start_reg))
+			if (id >= (uint32_t)(REG_C_7 - start_reg))
 				return rte_flow_error_set(error, EINVAL,
 						       RTE_FLOW_ERROR_TYPE_ITEM,
 							NULL, "invalid tag id");
