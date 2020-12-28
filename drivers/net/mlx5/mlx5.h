@@ -83,6 +83,11 @@ struct mlx5_dev_attr {
 	int		max_sge;
 	int		max_cq;
 	int		max_qp;
+	int		max_cqe;
+	uint32_t	max_pd;
+	uint32_t	max_mr;
+	uint32_t	max_srq;
+	uint32_t	max_srq_wr;
 	uint32_t	raw_packet_caps;
 	uint32_t	max_rwq_indirection_table_size;
 	uint32_t	max_tso;

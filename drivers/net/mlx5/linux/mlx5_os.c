@@ -116,7 +116,12 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
 	device_attr->max_qp_wr = attr_ex.orig_attr.max_qp_wr;
 	device_attr->max_sge = attr_ex.orig_attr.max_sge;
 	device_attr->max_cq = attr_ex.orig_attr.max_cq;
+	device_attr->max_cqe = attr_ex.orig_attr.max_cqe;
+	device_attr->max_mr = attr_ex.orig_attr.max_mr;
+	device_attr->max_pd = attr_ex.orig_attr.max_pd;
 	device_attr->max_qp = attr_ex.orig_attr.max_qp;
+	device_attr->max_srq = attr_ex.orig_attr.max_srq;
+	device_attr->max_srq_wr = attr_ex.orig_attr.max_srq_wr;
 	device_attr->raw_packet_caps = attr_ex.raw_packet_caps;
 	device_attr->max_rwq_indirection_table_size =
 		attr_ex.rss_caps.max_rwq_indirection_table_size;
