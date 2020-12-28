@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "mlx5_common_utils.h"
+#include "mlx5_common_os.h"
 #include "mlx5_malloc.h"
 
 struct mlx5_sys_mem {
@@ -148,14 +149,11 @@ static void *
 mlx5_alloc_align(size_t size, unsigned int align, unsigned int zero)
 {
 	void *buf;
-	int ret;
 
-	ret = posix_memalign(&buf, align, size);
-	if (ret) {
-		DRV_LOG(ERR,
-			"Couldn't allocate buf size=%zu align=%u. Err=%d\n",
-			size, align, ret);
-
+	buf = mlx5_os_malloc(align, size);
+	if (!buf) {
+		DRV_LOG(ERR, "Couldn't allocate buf size=%zu align=%u.",
+			size, align);
 		return NULL;
 	}
 	if (zero)
@@ -264,7 +262,7 @@ mlx5_free(void *addr)
 		__atomic_add_fetch(&mlx5_sys_mem.free_sys, 1,
 				   __ATOMIC_RELAXED);
 #endif
-		free(addr);
+		mlx5_os_free(addr);
 	} else {
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 		__atomic_add_fetch(&mlx5_sys_mem.free_rte, 1,
