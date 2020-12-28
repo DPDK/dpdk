@@ -169,4 +169,11 @@ struct mlx5_wqe_data_seg {
 #define IBV_RAW_PACKET_CAP_CVLAN_STRIPPING	(1 << 0)
 #define IBV_RAW_PACKET_CAP_SCATTER_FCS		(1 << 1)
 #define IBV_QPT_RAW_PACKET			8
+
+enum {
+	MLX5_FLOW_CONTEXT_DEST_TYPE_VPORT                    = 0x0,
+	MLX5_FLOW_CONTEXT_DEST_TYPE_FLOW_TABLE               = 0x1,
+	MLX5_FLOW_CONTEXT_DEST_TYPE_TIR                      = 0x2,
+	MLX5_FLOW_CONTEXT_DEST_TYPE_QP                       = 0x3,
+};
 #endif /* __MLX5_WIN_DEFS_H__ */
