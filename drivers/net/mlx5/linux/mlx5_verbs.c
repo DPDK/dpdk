@@ -62,7 +62,7 @@ mlx5_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
 }
 
 /* verbs operations. */
-const struct mlx5_verbs_ops mlx5_verbs_ops = {
+const struct mlx5_mr_ops mlx5_mr_verbs_ops = {
 	.reg_mr = mlx5_reg_mr,
 	.dereg_mr = mlx5_dereg_mr,
 };
