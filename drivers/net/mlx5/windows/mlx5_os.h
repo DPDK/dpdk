@@ -14,4 +14,6 @@ enum {
 
 #define PCI_DRV_FLAGS 0
 
+#define MLX5_NAMESIZE MLX5_FS_NAME_MAX
+
 #endif /* RTE_PMD_MLX5_OS_H_ */

@@ -1411,7 +1411,7 @@ err_secondary:
 		mac.addr_bytes[4], mac.addr_bytes[5]);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	{
-		char ifname[IF_NAMESIZE];
+		char ifname[MLX5_NAMESIZE];
 
 		if (mlx5_get_ifname(eth_dev, &ifname) == 0)
 			DRV_LOG(DEBUG, "port %u ifname is \"%s\"",
