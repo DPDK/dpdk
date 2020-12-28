@@ -26,6 +26,9 @@
 #include "mlx5_autoconf.h"
 #include "mlx5_mr.h"
 #include "mlx5_flow.h"
+#include "mlx5_devx.h"
+
+#define MLX5_TAGS_HLIST_ARRAY_SIZE 8192
 
 static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
 
@@ -143,6 +146,42 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
 }
 
 /**
+ * Initialize DR related data within private structure.
+ * Routine checks the reference counter and does actual
+ * resources creation/initialization only if counter is zero.
+ *
+ * @param[in] priv
+ *   Pointer to the private device data structure.
+ *
+ * @return
+ *   Zero on success, positive error code otherwise.
+ */
+static int
+mlx5_alloc_shared_dr(struct mlx5_priv *priv)
+{
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	int err = 0;
+
+	if (!sh->flow_tbls)
+		err = mlx5_alloc_table_hash_list(priv);
+	else
+		DRV_LOG(DEBUG, "sh->flow_tbls[%p] already created, reuse\n",
+			(void *)sh->flow_tbls);
+	return err;
+}
+/**
+ * Destroy DR related data within private structure.
+ *
+ * @param[in] priv
+ *   Pointer to the private device data structure.
+ */
+void
+mlx5_os_free_shared_dr(struct mlx5_priv *priv)
+{
+	mlx5_free_table_hash_list(priv);
+}
+
+/**
  * Set the completion channel file descriptor interrupt as non-blocking.
  * Currently it has no support under Windows.
  *
@@ -208,6 +247,45 @@ mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
 }
 
 /**
+ * DV flow counter mode detect and config.
+ *
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
+ *
+ */
+static void
+mlx5_flow_counter_mode_config(struct rte_eth_dev *dev __rte_unused)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	bool fallback;
+
+#ifndef HAVE_IBV_DEVX_ASYNC
+	fallback = true;
+#else
+	fallback = false;
+	if (!priv->config.devx || !priv->config.dv_flow_en ||
+	    !priv->config.hca_attr.flow_counters_dump ||
+	    !(priv->config.hca_attr.flow_counter_bulk_alloc_bitmap & 0x4) ||
+	    (mlx5_flow_dv_discover_counter_offset_support(dev) == -ENOTSUP))
+		fallback = true;
+#endif
+	if (fallback)
+		DRV_LOG(INFO, "Use fall-back DV counter management. Flow "
+			"counter dump:%d, bulk_alloc_bitmap:0x%hhx.",
+			priv->config.hca_attr.flow_counters_dump,
+			priv->config.hca_attr.flow_counter_bulk_alloc_bitmap);
+	/* Initialize fallback mode only on the port initializes sh. */
+	if (sh->refcnt == 1)
+		sh->cmng.counter_fallback = fallback;
+	else if (fallback != sh->cmng.counter_fallback)
+		DRV_LOG(WARNING, "Port %d in sh has different fallback mode "
+			"with others:%d.", PORT_ID(priv), fallback);
+#endif
+}
+
+/**
  * Spawn an Ethernet device from Verbs information.
  *
  * @param dpdk_dev
@@ -218,17 +296,385 @@ mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
  *   Device configuration parameters.
  *
  * @return
- *   NULL pointer. Operation is not supported and rte_errno is set to ENOTSUP.
+ *   A valid Ethernet device object on success, NULL otherwise and rte_errno
+ *   is set. The following errors are defined:
+ *
+ *   EEXIST: device is already spawned
  */
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	       struct mlx5_dev_spawn_data *spawn,
 	       struct mlx5_dev_config *config)
 {
-	(void)dpdk_dev;
-	(void)spawn;
-	(void)config;
-	rte_errno = -ENOTSUP;
+	const struct mlx5_switch_info *switch_info = &spawn->info;
+	struct mlx5_dev_ctx_shared *sh = NULL;
+	struct mlx5_dev_attr device_attr;
+	struct rte_eth_dev *eth_dev = NULL;
+	struct mlx5_priv *priv = NULL;
+	int err = 0;
+	unsigned int cqe_comp;
+	unsigned int cqe_pad = 0;
+	struct rte_ether_addr mac;
+	char name[RTE_ETH_NAME_MAX_LEN];
+	int own_domain_id = 0;
+	uint16_t port_id;
+
+	/* Build device name. */
+	strlcpy(name, dpdk_dev->name, sizeof(name));
+	/* check if the device is already spawned */
+	if (rte_eth_dev_get_port_by_name(name, &port_id) == 0) {
+		rte_errno = EEXIST;
+		return NULL;
+	}
+	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
+	/*
+	 * Some parameters are needed in advance to create device context. We
+	 * process the devargs here to get ones, and later process devargs
+	 * again to override some hardware settings.
+	 */
+	err = mlx5_args(config, dpdk_dev->devargs);
+	if (err) {
+		err = rte_errno;
+		DRV_LOG(ERR, "failed to process device arguments: %s",
+			strerror(rte_errno));
+		goto error;
+	}
+	mlx5_malloc_mem_select(config->sys_mem_en);
+	sh = mlx5_alloc_shared_dev_ctx(spawn, config);
+	if (!sh)
+		return NULL;
+	config->devx = sh->devx;
+	/* Initialize the shutdown event in mlx5_dev_spawn to
+	 * support mlx5_is_removed for Windows.
+	 */
+	err = mlx5_glue->devx_init_showdown_event(sh->ctx);
+	if (err) {
+		DRV_LOG(ERR, "failed to init showdown event: %s",
+			strerror(errno));
+		goto error;
+	}
+	DRV_LOG(DEBUG, "MPW isn't supported");
+	mlx5_os_get_dev_attr(sh->ctx, &device_attr);
+	config->swp = 0;
+	config->ind_table_max_size =
+		sh->device_attr.max_rwq_indirection_table_size;
+	if (RTE_CACHE_LINE_SIZE == 128 &&
+	    !(device_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP))
+		cqe_comp = 0;
+	else
+		cqe_comp = 1;
+	config->cqe_comp = cqe_comp;
+	DRV_LOG(DEBUG, "tunnel offloading is not supported");
+	config->tunnel_en = 0;
+	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is no supported");
+	config->mpls_en = 0;
+	/* Allocate private eth device data. */
+	priv = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+			   sizeof(*priv),
+			   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (priv == NULL) {
+		DRV_LOG(ERR, "priv allocation failure");
+		err = ENOMEM;
+		goto error;
+	}
+	priv->sh = sh;
+	priv->dev_port = spawn->phys_port;
+	priv->pci_dev = spawn->pci_dev;
+	priv->mtu = RTE_ETHER_MTU;
+	priv->mp_id.port_id = port_id;
+	strlcpy(priv->mp_id.name, MLX5_MP_NAME, RTE_MP_MAX_NAME_LEN);
+	priv->representor = !!switch_info->representor;
+	priv->master = !!switch_info->master;
+	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
+	priv->vport_meta_tag = 0;
+	priv->vport_meta_mask = 0;
+	priv->pf_bond = spawn->pf_bond;
+	priv->vport_id = -1;
+	/* representor_id field keeps the unmodified VF index. */
+	priv->representor_id = -1;
+	/*
+	 * Look for sibling devices in order to reuse their switch domain
+	 * if any, otherwise allocate one.
+	 */
+	MLX5_ETH_FOREACH_DEV(port_id, priv->pci_dev) {
+		const struct mlx5_priv *opriv =
+			rte_eth_devices[port_id].data->dev_private;
+
+		if (!opriv ||
+		    opriv->sh != priv->sh ||
+			opriv->domain_id ==
+			RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
+			continue;
+		priv->domain_id = opriv->domain_id;
+		break;
+	}
+	if (priv->domain_id == RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
+		err = rte_eth_switch_domain_alloc(&priv->domain_id);
+		if (err) {
+			err = rte_errno;
+			DRV_LOG(ERR, "unable to allocate switch domain: %s",
+				strerror(rte_errno));
+			goto error;
+		}
+		own_domain_id = 1;
+	}
+	/* Override some values set by hardware configuration. */
+	mlx5_args(config, dpdk_dev->devargs);
+	err = mlx5_dev_check_sibling_config(priv, config);
+	if (err)
+		goto error;
+	config->hw_csum = !!(sh->device_attr.device_cap_flags_ex &
+			    IBV_DEVICE_RAW_IP_CSUM);
+	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
+		(config->hw_csum ? "" : "not "));
+	DRV_LOG(DEBUG, "counters are not supported");
+	config->ind_table_max_size =
+		sh->device_attr.max_rwq_indirection_table_size;
+	/*
+	 * Remove this check once DPDK supports larger/variable
+	 * indirection tables.
+	 */
+	if (config->ind_table_max_size > (unsigned int)ETH_RSS_RETA_SIZE_512)
+		config->ind_table_max_size = ETH_RSS_RETA_SIZE_512;
+	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
+		config->ind_table_max_size);
+	config->hw_vlan_strip = !!(sh->device_attr.raw_packet_caps &
+				  IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
+	DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
+		(config->hw_vlan_strip ? "" : "not "));
+	config->hw_fcs_strip = !!(sh->device_attr.raw_packet_caps &
+				 IBV_RAW_PACKET_CAP_SCATTER_FCS);
+	if (config->hw_padding) {
+		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
+		config->hw_padding = 0;
+	}
+	config->tso = (sh->device_attr.max_tso > 0 &&
+		      (sh->device_attr.tso_supported_qpts &
+		       (1 << IBV_QPT_RAW_PACKET)));
+	if (config->tso)
+		config->tso_max_payload_sz = sh->device_attr.max_tso;
+	DRV_LOG(DEBUG, "%sMPS is %s.",
+		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
+		config->mps == MLX5_MPW ? "legacy " : "",
+		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
+	if (config->cqe_comp && !cqe_comp) {
+		DRV_LOG(WARNING, "Rx CQE compression isn't supported.");
+		config->cqe_comp = 0;
+	}
+	if (config->cqe_pad && !cqe_pad) {
+		DRV_LOG(WARNING, "Rx CQE padding isn't supported.");
+		config->cqe_pad = 0;
+	} else if (config->cqe_pad) {
+		DRV_LOG(INFO, "Rx CQE padding is enabled.");
+	}
+	if (config->devx) {
+		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config->hca_attr);
+		if (err) {
+			err = -err;
+			goto error;
+		}
+		/* Check relax ordering support. */
+		sh->cmng.relaxed_ordering_read = 0;
+		sh->cmng.relaxed_ordering_write = 0;
+		if (!haswell_broadwell_cpu) {
+			sh->cmng.relaxed_ordering_write =
+				config->hca_attr.relaxed_ordering_write;
+			sh->cmng.relaxed_ordering_read =
+				config->hca_attr.relaxed_ordering_read;
+		}
+	}
+	if (config->devx) {
+		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
+
+		err = config->hca_attr.access_register_user ?
+			mlx5_devx_cmd_register_read
+				(sh->ctx, MLX5_REGISTER_ID_MTUTC, 0,
+				reg, MLX5_ST_SZ_DW(register_mtutc)) : ENOTSUP;
+		if (!err) {
+			uint32_t ts_mode;
+
+			/* MTUTC register is read successfully. */
+			ts_mode = MLX5_GET(register_mtutc, reg,
+					   time_stamp_mode);
+			if (ts_mode == MLX5_MTUTC_TIMESTAMP_MODE_REAL_TIME)
+				config->rt_timestamp = 1;
+		} else {
+			/* Kernel does not support register reading. */
+			if (config->hca_attr.dev_freq_khz ==
+						 (NS_PER_S / MS_PER_S))
+				config->rt_timestamp = 1;
+		}
+	}
+	if (config->mprq.enabled) {
+		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
+		config->mprq.enabled = 0;
+	}
+	if (config->max_dump_files_num == 0)
+		config->max_dump_files_num = 128;
+	eth_dev = rte_eth_dev_allocate(name);
+	if (eth_dev == NULL) {
+		DRV_LOG(ERR, "can not allocate rte ethdev");
+		err = ENOMEM;
+		goto error;
+	}
+	if (priv->representor) {
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+		eth_dev->data->representor_id = priv->representor_id;
+	}
+	/*
+	 * Store associated network device interface index. This index
+	 * is permanent throughout the lifetime of device. So, we may store
+	 * the ifindex here and use the cached value further.
+	 */
+	MLX5_ASSERT(spawn->ifindex);
+	priv->if_index = spawn->ifindex;
+	eth_dev->data->dev_private = priv;
+	priv->dev_data = eth_dev->data;
+	eth_dev->data->mac_addrs = priv->mac;
+	eth_dev->device = dpdk_dev;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+	/* Configure the first MAC address by default. */
+	if (mlx5_get_mac(eth_dev, &mac.addr_bytes)) {
+		DRV_LOG(ERR,
+			"port %u cannot get MAC address, is mlx5_en"
+			" loaded? (errno: %s).",
+			eth_dev->data->port_id, strerror(rte_errno));
+		err = ENODEV;
+		goto error;
+	}
+	DRV_LOG(INFO,
+		"port %u MAC address is %02x:%02x:%02x:%02x:%02x:%02x",
+		eth_dev->data->port_id,
+		mac.addr_bytes[0], mac.addr_bytes[1],
+		mac.addr_bytes[2], mac.addr_bytes[3],
+		mac.addr_bytes[4], mac.addr_bytes[5]);
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+	{
+		char ifname[IF_NAMESIZE];
+
+		if (mlx5_get_ifname(eth_dev, &ifname) == 0)
+			DRV_LOG(DEBUG, "port %u ifname is \"%s\"",
+				eth_dev->data->port_id, ifname);
+		else
+			DRV_LOG(DEBUG, "port %u ifname is unknown.",
+				eth_dev->data->port_id);
+	}
+#endif
+	/* Get actual MTU if possible. */
+	err = mlx5_get_mtu(eth_dev, &priv->mtu);
+	if (err) {
+		err = rte_errno;
+		goto error;
+	}
+	DRV_LOG(DEBUG, "port %u MTU is %u.", eth_dev->data->port_id,
+		priv->mtu);
+	/* Initialize burst functions to prevent crashes before link-up. */
+	eth_dev->rx_pkt_burst = removed_rx_burst;
+	eth_dev->tx_pkt_burst = removed_tx_burst;
+	eth_dev->dev_ops = &mlx5_os_dev_ops;
+	eth_dev->rx_descriptor_status = mlx5_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = mlx5_tx_descriptor_status;
+	eth_dev->rx_queue_count = mlx5_rx_queue_count;
+	/* Register MAC address. */
+	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
+	priv->flows = 0;
+	priv->ctrl_flows = 0;
+	TAILQ_INIT(&priv->flow_meters);
+	TAILQ_INIT(&priv->flow_meter_profiles);
+	/* Bring Ethernet device up. */
+	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up.",
+		eth_dev->data->port_id);
+	/* nl calls are unsupported - set to -1 not to fail on release */
+	priv->nl_socket_rdma = -1;
+	priv->nl_socket_route = -1;
+	mlx5_set_link_up(eth_dev);
+	/*
+	 * Even though the interrupt handler is not installed yet,
+	 * interrupts will still trigger on the async_fd from
+	 * Verbs context returned by ibv_open_device().
+	 */
+	mlx5_link_update(eth_dev, 0);
+	config->dv_esw_en = 0;
+	/* Detect minimal data bytes to inline. */
+	mlx5_set_min_inline(spawn, config);
+	/* Store device configuration on private structure. */
+	priv->config = *config;
+	/* Create context for virtual machine VLAN workaround. */
+	priv->vmwa_context = NULL;
+	if (config->dv_flow_en) {
+		err = mlx5_alloc_shared_dr(priv);
+		if (err)
+			goto error;
+	}
+	/* No supported flow priority number detection. */
+	priv->config.flow_prio = -1;
+	if (!priv->config.dv_esw_en &&
+	    priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+		DRV_LOG(WARNING, "metadata mode %u is not supported "
+				 "(no E-Switch)", priv->config.dv_xmeta_en);
+		priv->config.dv_xmeta_en = MLX5_XMETA_MODE_LEGACY;
+	}
+	mlx5_set_metadata_mask(eth_dev);
+	if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	    !priv->sh->dv_regc0_mask) {
+		DRV_LOG(ERR, "metadata mode %u is not supported "
+			     "(no metadata reg_c[0] is available).",
+			     priv->config.dv_xmeta_en);
+			err = ENOTSUP;
+			goto error;
+	}
+	mlx5_cache_list_init(&priv->hrxqs, "hrxq", 0, eth_dev,
+			     mlx5_hrxq_create_cb,
+			     mlx5_hrxq_match_cb,
+			     mlx5_hrxq_remove_cb);
+	/* Query availability of metadata reg_c's. */
+	err = mlx5_flow_discover_mreg_c(eth_dev);
+	if (err < 0) {
+		err = -err;
+		goto error;
+	}
+	if (!mlx5_flow_ext_mreg_supported(eth_dev)) {
+		DRV_LOG(DEBUG,
+			"port %u extensive metadata register is not supported.",
+			eth_dev->data->port_id);
+		if (priv->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+			DRV_LOG(ERR, "metadata mode %u is not supported "
+				     "(no metadata registers available).",
+				     priv->config.dv_xmeta_en);
+			err = ENOTSUP;
+			goto error;
+		}
+	}
+	if (config->devx && config->dv_flow_en) {
+		priv->obj_ops = devx_obj_ops;
+	} else {
+		DRV_LOG(ERR, "Flow mode %u is not supported "
+				"(Windows flow must be DevX with DV flow enabled).",
+				priv->config.dv_flow_en);
+		err = ENOTSUP;
+		goto error;
+	}
+	mlx5_flow_counter_mode_config(eth_dev);
+	return eth_dev;
+error:
+	if (priv) {
+		if (own_domain_id)
+			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
+		mlx5_free(priv);
+		if (eth_dev != NULL)
+			eth_dev->data->dev_private = NULL;
+	}
+	if (eth_dev != NULL) {
+		/* mac_addrs must not be freed alone because part of
+		 * dev_private
+		 **/
+		eth_dev->data->mac_addrs = NULL;
+		rte_eth_dev_release_port(eth_dev);
+	}
+	if (sh)
+		mlx5_free_shared_dev_ctx(sh);
+	MLX5_ASSERT(err > 0);
+	rte_errno = err;
 	return NULL;
 }
 

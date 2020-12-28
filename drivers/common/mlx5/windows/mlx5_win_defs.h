@@ -163,4 +163,10 @@ struct mlx5_wqe_data_seg {
 	rte_be32_t		lkey;
 	rte_be64_t		addr;
 };
+
+#define MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP	(1 << 4)
+#define IBV_DEVICE_RAW_IP_CSUM			(1 << 26)
+#define IBV_RAW_PACKET_CAP_CVLAN_STRIPPING	(1 << 0)
+#define IBV_RAW_PACKET_CAP_SCATTER_FCS		(1 << 1)
+#define IBV_QPT_RAW_PACKET			8
 #endif /* __MLX5_WIN_DEFS_H__ */
