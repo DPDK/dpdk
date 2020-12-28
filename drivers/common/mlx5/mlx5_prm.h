@@ -665,6 +665,7 @@ typedef uint8_t u8;
 #define MLX5_GET64(typ, p, fld) rte_be_to_cpu_64(*((rte_be64_t *)(p) + \
 						   __mlx5_64_off(typ, fld)))
 #define MLX5_FLD_SZ_BYTES(typ, fld) (__mlx5_bit_sz(typ, fld) / 8)
+#define MLX5_UN_SZ_BYTES(typ) (sizeof(union mlx5_ifc_##typ##_bits) / 8)
 
 struct mlx5_ifc_fte_match_set_misc_bits {
 	u8 gre_c_present[0x1];

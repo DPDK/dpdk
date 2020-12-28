@@ -117,6 +117,15 @@ struct mlx5_hca_attr {
 	uint32_t log_max_ft_sampler_num:8;
 	struct mlx5_hca_qos_attr qos;
 	struct mlx5_hca_vdpa_attr vdpa;
+	int log_max_qp_sz;
+	int log_max_cq_sz;
+	int log_max_qp;
+	int log_max_cq;
+	uint32_t log_max_pd;
+	uint32_t log_max_mrw_sz;
+	uint32_t log_max_srq;
+	uint32_t log_max_srq_sz;
+	uint32_t rss_ind_tbl_cap;
 };
 
 struct mlx5_devx_wq_attr {
@@ -495,7 +504,6 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_virtio_q_counters(void *ctx);
 __rte_internal
 int mlx5_devx_cmd_query_virtio_q_counters(struct mlx5_devx_obj *couners_obj,
 				  struct mlx5_devx_virtio_q_couners_attr *attr);
-
 __rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx,
 							    uint32_t pd);

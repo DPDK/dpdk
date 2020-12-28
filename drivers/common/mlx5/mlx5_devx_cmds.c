@@ -720,6 +720,14 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->flow_hit_aso = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 					   general_obj_types) &
 				MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_HIT_ASO);
+	attr->log_max_cq = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq);
+	attr->log_max_qp = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp);
+	attr->log_max_cq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq_sz);
+	attr->log_max_qp_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp_sz);
+	attr->log_max_mrw_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_mrw_sz);
+	attr->log_max_pd = MLX5_GET(cmd_hca_cap, hcattr, log_max_pd);
+	attr->log_max_srq = MLX5_GET(cmd_hca_cap, hcattr, log_max_srq);
+	attr->log_max_srq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_srq_sz);
 	if (attr->qos.sup) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
 			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
@@ -834,6 +842,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->tunnel_stateless_gtp = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, tunnel_stateless_gtp);
+	attr->rss_ind_tbl_cap = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, rss_ind_tbl_cap);
 	if (attr->wqe_inline_mode != MLX5_CAP_INLINE_MODE_VPORT_CONTEXT)
 		return 0;
 	if (attr->eth_virt) {
