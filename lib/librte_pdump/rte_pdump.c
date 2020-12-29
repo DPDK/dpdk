@@ -71,7 +71,7 @@ tx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
 static inline void
 pdump_copy(struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
 {
-	unsigned i;
+	unsigned int i;
 	int ring_enq;
 	uint16_t d_pkts = 0;
 	struct rte_mbuf *dup_bufs[nb_pkts];
@@ -131,8 +131,7 @@ pdump_register_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 		if (cbs && operation == ENABLE) {
 			if (cbs->cb) {
 				PDUMP_LOG(ERR,
-					"failed to add rx callback for port=%d "
-					"and queue=%d, callback already exists\n",
+					"rx callback for port=%d queue=%d, already exists\n",
 					port, qid);
 				return -EEXIST;
 			}
@@ -152,8 +151,7 @@ pdump_register_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 
 			if (cbs->cb == NULL) {
 				PDUMP_LOG(ERR,
-					"failed to delete non existing rx "
-					"callback for port=%d and queue=%d\n",
+					"no existing rx callback for port=%d queue=%d\n",
 					port, qid);
 				return -EINVAL;
 			}
@@ -186,8 +184,7 @@ pdump_register_tx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 		if (cbs && operation == ENABLE) {
 			if (cbs->cb) {
 				PDUMP_LOG(ERR,
-					"failed to add tx callback for port=%d "
-					"and queue=%d, callback already exists\n",
+					"tx callback for port=%d queue=%d, already exists\n",
 					port, qid);
 				return -EEXIST;
 			}
@@ -207,8 +204,7 @@ pdump_register_tx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 
 			if (cbs->cb == NULL) {
 				PDUMP_LOG(ERR,
-					"failed to delete non existing tx "
-					"callback for port=%d and queue=%d\n",
+					"no existing tx callback for port=%d queue=%d\n",
 					port, qid);
 				return -EINVAL;
 			}
@@ -351,7 +347,9 @@ pdump_server(const struct rte_mp_msg *mp_msg, const void *peer)
 int
 rte_pdump_init(void)
 {
-	int ret = rte_mp_action_register(PDUMP_MP, pdump_server);
+	int ret;
+
+	ret = rte_mp_action_register(PDUMP_MP, pdump_server);
 	if (ret && rte_errno != ENOTSUP)
 		return -1;
 	return 0;
@@ -374,14 +372,16 @@ pdump_validate_ring_mp(struct rte_ring *ring, struct rte_mempool *mp)
 		return -1;
 	}
 	if (mp->flags & MEMPOOL_F_SP_PUT || mp->flags & MEMPOOL_F_SC_GET) {
-		PDUMP_LOG(ERR, "mempool with either SP or SC settings"
-		" is not valid for pdump, should have MP and MC settings\n");
+		PDUMP_LOG(ERR,
+			  "mempool with SP or SC set not valid for pdump,"
+			  "must have MP and MC set\n");
 		rte_errno = EINVAL;
 		return -1;
 	}
 	if (rte_ring_is_prod_single(ring) || rte_ring_is_cons_single(ring)) {
-		PDUMP_LOG(ERR, "ring with either SP or SC settings"
-		" is not valid for pdump, should have MP and MC settings\n");
+		PDUMP_LOG(ERR,
+			  "ring with SP or SC set is not valid for pdump,"
+			  "must have MP and MC set\n");
 		rte_errno = EINVAL;
 		return -1;
 	}
