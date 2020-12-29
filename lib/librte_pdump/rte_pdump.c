@@ -12,8 +12,6 @@
 
 #include "rte_pdump.h"
 
-#define DEVICE_ID_SIZE 64
-
 RTE_LOG_REGISTER(pdump_logtype, lib.pdump, NOTICE);
 
 /* Macro for printing using RTE_LOG */
@@ -39,14 +37,14 @@ struct pdump_request {
 	uint32_t flags;
 	union pdump_data {
 		struct enable_v1 {
-			char device[DEVICE_ID_SIZE];
+			char device[RTE_DEV_NAME_MAX_LEN];
 			uint16_t queue;
 			struct rte_ring *ring;
 			struct rte_mempool *mp;
 			void *filter;
 		} en_v1;
 		struct disable_v1 {
-			char device[DEVICE_ID_SIZE];
+			char device[RTE_DEV_NAME_MAX_LEN];
 			uint16_t queue;
 			struct rte_ring *ring;
 			struct rte_mempool *mp;
@@ -485,9 +483,8 @@ rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
 			struct rte_mempool *mp,
 			void *filter)
 {
-
-	int ret = 0;
-	char name[DEVICE_ID_SIZE];
+	int ret;
+	char name[RTE_DEV_NAME_MAX_LEN];
 
 	ret = pdump_validate_port(port, name);
 	if (ret < 0)
@@ -531,7 +528,7 @@ int
 rte_pdump_disable(uint16_t port, uint16_t queue, uint32_t flags)
 {
 	int ret = 0;
-	char name[DEVICE_ID_SIZE];
+	char name[RTE_DEV_NAME_MAX_LEN];
 
 	ret = pdump_validate_port(port, name);
 	if (ret < 0)
