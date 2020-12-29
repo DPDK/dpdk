@@ -477,10 +477,10 @@ pdump_rxtx(struct rte_ring *ring, uint16_t vdev_id, struct pdump_stats *stats)
 		stats->tx_pkts += nb_in_txd;
 
 		if (unlikely(nb_in_txd < nb_in_deq)) {
-			do {
-				rte_pktmbuf_free(rxtx_bufs[nb_in_txd]);
-				stats->freed_pkts++;
-			} while (++nb_in_txd < nb_in_deq);
+			unsigned int drops = nb_in_deq - nb_in_txd;
+
+			rte_pktmbuf_free_bulk(&rxtx_bufs[nb_in_txd], drops);
+			stats->freed_pkts += drops;
 		}
 	}
 }

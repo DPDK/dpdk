@@ -93,11 +93,11 @@ pdump_copy(struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
 
 	ring_enq = rte_ring_enqueue_burst(ring, (void *)dup_bufs, d_pkts, NULL);
 	if (unlikely(ring_enq < d_pkts)) {
+		unsigned int drops = d_pkts - ring_enq;
+
 		PDUMP_LOG(DEBUG,
 			"only %d of packets enqueued to ring\n", ring_enq);
-		do {
-			rte_pktmbuf_free(dup_bufs[ring_enq]);
-		} while (++ring_enq < d_pkts);
+		rte_pktmbuf_free_bulk(&dup_bufs[ring_enq], drops);
 	}
 }
 
