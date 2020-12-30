@@ -20,9 +20,9 @@
 #define IONIC_MAX_RING_DESC		32768
 #define IONIC_MIN_RING_DESC		16
 #define IONIC_DEF_TXRX_DESC		4096
-#define IONIC_DEF_TXRX_BURST		32
+#define IONIC_DEF_TXRX_BURST	32
 
-#define IONIC_LIFS_MAX			1024
+#define	IONIC_ALIGN             4096
 
 struct ionic_adapter;
 

@@ -578,6 +578,7 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 	rte_iova_t q_base_pa = 0;
 	rte_iova_t cq_base_pa = 0;
 	rte_iova_t sg_base_pa = 0;
+	size_t page_size = rte_mem_page_size();
 	int err;
 
 	*qcq = NULL;
@@ -586,18 +587,18 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 	cq_size = num_descs * cq_desc_size;
 	sg_size = num_descs * sg_desc_size;
 
-	total_size = RTE_ALIGN(q_size, rte_mem_page_size()) +
-			RTE_ALIGN(cq_size, rte_mem_page_size());
+	total_size = RTE_ALIGN(q_size, page_size) +
+		RTE_ALIGN(cq_size, page_size);
 	/*
 	 * Note: aligning q_size/cq_size is not enough due to cq_base address
 	 * aligning as q_base could be not aligned to the page.
-	 * Adding rte_mem_page_size().
+	 * Adding page_size.
 	 */
-	total_size += rte_mem_page_size();
+	total_size += page_size;
 
 	if (flags & IONIC_QCQ_F_SG) {
-		total_size += RTE_ALIGN(sg_size, rte_mem_page_size());
-		total_size += rte_mem_page_size();
+		total_size += RTE_ALIGN(sg_size, page_size);
+		total_size += page_size;
 	}
 
 	new = rte_zmalloc_socket("ionic", struct_size,
@@ -612,7 +613,7 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 	/* Most queue types will store 1 ptr per descriptor */
 	new->q.info = rte_calloc_socket("ionic",
 				num_descs * num_segs, sizeof(void *),
-				PAGE_SIZE, socket_id);
+				page_size, socket_id);
 	if (!new->q.info) {
 		IONIC_PRINT(ERR, "Cannot allocate queue info");
 		err = -ENOMEM;
@@ -650,16 +651,13 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 	q_base = new->base;
 	q_base_pa = new->base_pa;
 
-	cq_base = (void *)RTE_ALIGN((uintptr_t)q_base + q_size,
-			rte_mem_page_size());
-	cq_base_pa = RTE_ALIGN(q_base_pa + q_size,
-			rte_mem_page_size());
+	cq_base = (void *)RTE_ALIGN((uintptr_t)q_base + q_size, page_size);
+	cq_base_pa = RTE_ALIGN(q_base_pa + q_size, page_size);
 
 	if (flags & IONIC_QCQ_F_SG) {
 		sg_base = (void *)RTE_ALIGN((uintptr_t)cq_base + cq_size,
-				rte_mem_page_size());
-		sg_base_pa = RTE_ALIGN(cq_base_pa + cq_size,
-				rte_mem_page_size());
+			page_size);
+		sg_base_pa = RTE_ALIGN(cq_base_pa + cq_size, page_size);
 		ionic_q_sg_map(&new->q, sg_base, sg_base_pa);
 	}
 
@@ -932,13 +930,6 @@ ionic_notify_qcq_alloc(struct ionic_lif *lif)
 	return 0;
 }
 
-static void *
-ionic_bus_map_dbpage(struct ionic_adapter *adapter, int page_num)
-{
-	uint8_t *vaddr = (uint8_t *)adapter->idev.db_pages;
-	return (void *)&vaddr[page_num << PAGE_SHIFT];
-}
-
 static void
 ionic_lif_queue_identify(struct ionic_lif *lif)
 {
@@ -1066,7 +1057,7 @@ ionic_lif_alloc(struct ionic_lif *lif)
 	rte_spinlock_init(&lif->adminq_lock);
 	rte_spinlock_init(&lif->adminq_service_lock);
 
-	lif->kern_dbpage = ionic_bus_map_dbpage(adapter, 0);
+	lif->kern_dbpage = adapter->idev.db_pages;
 	if (!lif->kern_dbpage) {
 		IONIC_PRINT(ERR, "Cannot map dbpage, aborting");
 		return -ENOMEM;
