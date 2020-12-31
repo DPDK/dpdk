@@ -2612,6 +2612,10 @@ flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
  *   Pointer to the rte_eth_dev structure.
  * @param[in] action_flags
  *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the action structure.
+ * @param[in] item_flags
+ *   Holds the items detected.
  * @param[in] attr
  *   Pointer to flow attributes
  * @param[out] error
@@ -2623,6 +2627,8 @@ flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
 static int
 flow_dv_validate_action_decap(struct rte_eth_dev *dev,
 			      uint64_t action_flags,
+			      const struct rte_flow_action *action,
+			      const uint64_t item_flags,
 			      const struct rte_flow_attr *attr,
 			      struct rte_flow_error *error)
 {
@@ -2656,6 +2662,11 @@ flow_dv_validate_action_decap(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "decap action for VF representor "
 					  "not supported on NIC table");
+	if (action->type == RTE_FLOW_ACTION_TYPE_VXLAN_DECAP &&
+	    !(item_flags & MLX5_FLOW_LAYER_VXLAN))
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"VXLAN item should be present for VXLAN decap");
 	return 0;
 }
 
@@ -2676,6 +2687,10 @@ const struct rte_flow_action_raw_decap empty_decap = {.data = NULL, .size = 0,};
  *   Holds the actions detected until now.
  * @param[out] actions_n
  *   pointer to the number of actions counter.
+ * @param[in] action
+ *   Pointer to the action structure.
+ * @param[in] item_flags
+ *   Holds the items detected.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2688,7 +2703,8 @@ flow_dv_validate_action_raw_encap_decap
 	 const struct rte_flow_action_raw_decap *decap,
 	 const struct rte_flow_action_raw_encap *encap,
 	 const struct rte_flow_attr *attr, uint64_t *action_flags,
-	 int *actions_n, struct rte_flow_error *error)
+	 int *actions_n, const struct rte_flow_action *action,
+	 uint64_t item_flags, struct rte_flow_error *error)
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
@@ -2723,8 +2739,8 @@ flow_dv_validate_action_raw_encap_decap
 				"encap combination");
 	}
 	if (decap) {
-		ret = flow_dv_validate_action_decap(dev, *action_flags, attr,
-						    error);
+		ret = flow_dv_validate_action_decap(dev, *action_flags, action,
+						    item_flags, attr, error);
 		if (ret < 0)
 			return ret;
 		*action_flags |= MLX5_FLOW_ACTION_DECAP;
@@ -4329,6 +4345,8 @@ flow_dv_modify_create_cb(struct mlx5_hlist *list, uint64_t key __rte_unused,
  *   Pointer to the Ethernet device structure.
  * @param[in] attr
  *   Attributes of flow that includes this action.
+ * @param[in] item_flags
+ *   Holds the items detected.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -4340,6 +4358,7 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 			       const struct rte_flow_action *action,
 			       struct rte_eth_dev *dev,
 			       const struct rte_flow_attr *attr,
+			       const uint64_t item_flags,
 			       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -4433,7 +4452,7 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			ret = flow_dv_validate_action_raw_encap_decap
 				(dev, NULL, act->conf, attr, &sub_action_flags,
-				 &actions_n, error);
+				 &actions_n, action, item_flags, error);
 			if (ret < 0)
 				return ret;
 			++actions_n;
@@ -5766,6 +5785,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
 			ret = flow_dv_validate_action_decap(dev, action_flags,
+							    actions, item_flags,
 							    attr, error);
 			if (ret < 0)
 				return ret;
@@ -5775,7 +5795,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			ret = flow_dv_validate_action_raw_encap_decap
 				(dev, NULL, actions->conf, attr, &action_flags,
-				 &actions_n, error);
+				 &actions_n, actions, item_flags, error);
 			if (ret < 0)
 				return ret;
 			break;
@@ -5793,7 +5813,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					   (dev,
 					    decap ? decap : &empty_decap, encap,
 					    attr, &action_flags, &actions_n,
-					    error);
+					    actions, item_flags, error);
 			if (ret < 0)
 				return ret;
 			break;
@@ -6008,7 +6028,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_SAMPLE:
 			ret = flow_dv_validate_action_sample(action_flags,
 							     actions, dev,
-							     attr, error);
+							     attr, item_flags,
+							     error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_SAMPLE;
