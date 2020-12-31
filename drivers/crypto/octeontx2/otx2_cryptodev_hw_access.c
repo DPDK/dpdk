@@ -53,7 +53,7 @@ otx2_cpt_err_intr_unregister(const struct rte_cryptodev *dev)
 	uint32_t i;
 
 	for (i = 0; i < vf->nb_queues; i++) {
-		base = OTX2_CPT_LF_BAR2(vf, i);
+		base = OTX2_CPT_LF_BAR2(vf, vf->lf_blkaddr[i], i);
 		otx2_cpt_lf_err_intr_unregister(dev, vf->lf_msixoff[i], base);
 	}
 
@@ -99,7 +99,7 @@ otx2_cpt_err_intr_register(const struct rte_cryptodev *dev)
 	}
 
 	for (i = 0; i < vf->nb_queues; i++) {
-		base = OTX2_CPT_LF_BAR2(vf, i);
+		base = OTX2_CPT_LF_BAR2(vf, vf->lf_blkaddr[i], i);
 		ret = otx2_cpt_lf_err_intr_register(dev, vf->lf_msixoff[i],
 						   base);
 		if (ret)
@@ -112,7 +112,7 @@ otx2_cpt_err_intr_register(const struct rte_cryptodev *dev)
 intr_unregister:
 	/* Unregister the ones already registered */
 	for (j = 0; j < i; j++) {
-		base = OTX2_CPT_LF_BAR2(vf, j);
+		base = OTX2_CPT_LF_BAR2(vf, vf->lf_blkaddr[j], j);
 		otx2_cpt_lf_err_intr_unregister(dev, vf->lf_msixoff[j], base);
 	}
 
@@ -144,13 +144,13 @@ otx2_cpt_iq_enable(const struct rte_cryptodev *dev,
 	/* Set engine group mask and priority */
 
 	ret = otx2_cpt_af_reg_read(dev, OTX2_CPT_AF_LF_CTL(qp->id),
-				   &af_lf_ctl.u);
+				   qp->blkaddr, &af_lf_ctl.u);
 	if (ret)
 		return ret;
 	af_lf_ctl.s.grp = grp_mask;
 	af_lf_ctl.s.pri = pri ? 1 : 0;
 	ret = otx2_cpt_af_reg_write(dev, OTX2_CPT_AF_LF_CTL(qp->id),
-				    af_lf_ctl.u);
+				    qp->blkaddr, af_lf_ctl.u);
 	if (ret)
 		return ret;
 

@@ -15,6 +15,8 @@
 struct otx2_cpt_qp {
 	uint32_t id;
 	/**< Queue pair id */
+	uint8_t blkaddr;
+	/**<  CPT0/1 BLKADDR of LF */
 	uintptr_t base;
 	/**< Base address where BAR is mapped */
 	void *lmtline;

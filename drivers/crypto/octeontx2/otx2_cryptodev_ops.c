@@ -242,7 +242,8 @@ otx2_cpt_qp_create(const struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp->iq_dma_addr = iova;
 	qp->id = qp_id;
-	qp->base = OTX2_CPT_LF_BAR2(vf, qp_id);
+	qp->blkaddr = vf->lf_blkaddr[qp_id];
+	qp->base = OTX2_CPT_LF_BAR2(vf, qp->blkaddr, qp_id);
 
 	lmtline = vf->otx2_dev.bar2 +
 		  (RVU_BLOCK_ADDR_LMT << 20 | qp_id << 12) +

@@ -23,11 +23,11 @@ int otx2_cpt_msix_offsets_get(const struct rte_cryptodev *dev);
 
 __rte_internal
 int otx2_cpt_af_reg_read(const struct rte_cryptodev *dev, uint64_t reg,
-			 uint64_t *val);
+			 uint8_t blkaddr, uint64_t *val);
 
 __rte_internal
 int otx2_cpt_af_reg_write(const struct rte_cryptodev *dev, uint64_t reg,
-			  uint64_t val);
+			  uint8_t blkaddr, uint64_t val);
 
 int otx2_cpt_qp_ethdev_bind(const struct rte_cryptodev *dev,
 			    struct otx2_cpt_qp *qp, uint16_t port_id);

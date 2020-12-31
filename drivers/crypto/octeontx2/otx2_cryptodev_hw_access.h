@@ -44,9 +44,9 @@
 #define OTX2_CPT_AF_LF_CTL(a)		(0x27000ull | (uint64_t)(a) << 3)
 #define OTX2_CPT_AF_LF_CTL2(a)		(0x29000ull | (uint64_t)(a) << 3)
 
-#define OTX2_CPT_LF_BAR2(vf, q_id) \
+#define OTX2_CPT_LF_BAR2(vf, blk_addr, q_id) \
 		((vf)->otx2_dev.bar2 + \
-		 ((RVU_BLOCK_ADDR_CPT0 << 20) | ((q_id) << 12)))
+		 ((blk_addr << 20) | ((q_id) << 12)))
 
 #define OTX2_CPT_QUEUE_HI_PRIO 0x1
 

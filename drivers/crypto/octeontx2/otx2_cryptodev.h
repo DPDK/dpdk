@@ -13,9 +13,11 @@
 /* Marvell OCTEON TX2 Crypto PMD device name */
 #define CRYPTODEV_NAME_OCTEONTX2_PMD	crypto_octeontx2
 
-#define OTX2_CPT_MAX_LFS		64
+#define OTX2_CPT_MAX_LFS		128
 #define OTX2_CPT_MAX_QUEUES_PER_VF	64
+#define OTX2_CPT_MAX_BLKS		2
 #define OTX2_CPT_PMD_VERSION		3
+#define OTX2_CPT_REVISION_ID_3		3
 
 /**
  * Device private data
@@ -29,6 +31,10 @@ struct otx2_cpt_vf {
 	/**< Number of crypto queues attached */
 	uint16_t lf_msixoff[OTX2_CPT_MAX_LFS];
 	/**< MSI-X offsets */
+	uint8_t lf_blkaddr[OTX2_CPT_MAX_LFS];
+	/**<  CPT0/1 BLKADDR of LFs */
+	uint8_t cpt_revision;
+	/**<  CPT revision */
 	uint8_t err_intr_registered:1;
 	/**< Are error interrupts registered? */
 	union cpt_eng_caps hw_caps[CPT_MAX_ENG_TYPES];

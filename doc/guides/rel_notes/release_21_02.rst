@@ -80,6 +80,7 @@ New Features
 
   * Updated the OCTEON TX2 crypto PMD lookaside protocol offload for IPsec with
     ESN and anti-replay support.
+  * Updated the OCTEON TX2 crypto PMD with CN98xx support.
 
 
 Removed Items

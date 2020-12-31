@@ -36,6 +36,7 @@ otx2_cpt_hardware_caps_get(const struct rte_cryptodev *dev,
 		return -EPIPE;
 	}
 
+	vf->cpt_revision = rsp->cpt_revision;
 	memcpy(hw_caps, rsp->eng_caps,
 		sizeof(union cpt_eng_caps) * CPT_MAX_ENG_TYPES);
 
@@ -57,7 +58,7 @@ otx2_cpt_available_queues_get(const struct rte_cryptodev *dev,
 	if (ret)
 		return -EIO;
 
-	*nb_queues = rsp->cpt;
+	*nb_queues = rsp->cpt + rsp->cpt1;
 	return 0;
 }
 
@@ -66,20 +67,44 @@ otx2_cpt_queues_attach(const struct rte_cryptodev *dev, uint8_t nb_queues)
 {
 	struct otx2_cpt_vf *vf = dev->data->dev_private;
 	struct otx2_mbox *mbox = vf->otx2_dev.mbox;
+	int blkaddr[OTX2_CPT_MAX_BLKS];
 	struct rsrc_attach_req *req;
+	int blknum = 0;
+	int i, ret;
+
+	blkaddr[0] = RVU_BLOCK_ADDR_CPT0;
+	blkaddr[1] = RVU_BLOCK_ADDR_CPT1;
 
 	/* Ask AF to attach required LFs */
 
 	req = otx2_mbox_alloc_msg_attach_resources(mbox);
 
+	if ((vf->cpt_revision == OTX2_CPT_REVISION_ID_3) &&
+	    (vf->otx2_dev.pf_func & 0x1))
+		blknum = (blknum + 1) % OTX2_CPT_MAX_BLKS;
+
 	/* 1 LF = 1 queue */
 	req->cptlfs = nb_queues;
+	req->cpt_blkaddr = blkaddr[blknum];
 
-	if (otx2_mbox_process(mbox) < 0)
+	ret = otx2_mbox_process(mbox);
+	if (ret == -ENOSPC) {
+		if (vf->cpt_revision == OTX2_CPT_REVISION_ID_3) {
+			blknum = (blknum + 1) % OTX2_CPT_MAX_BLKS;
+			req->cpt_blkaddr = blkaddr[blknum];
+			if (otx2_mbox_process(mbox) < 0)
+				return -EIO;
+		} else {
+			return -EIO;
+		}
+	} else if (ret < 0) {
 		return -EIO;
+	}
 
 	/* Update number of attached queues */
 	vf->nb_queues = nb_queues;
+	for (i = 0; i < nb_queues; i++)
+		vf->lf_blkaddr[i] = req->cpt_blkaddr;
 
 	return 0;
 }
@@ -120,7 +145,8 @@ otx2_cpt_msix_offsets_get(const struct rte_cryptodev *dev)
 		return ret;
 
 	for (i = 0; i < vf->nb_queues; i++)
-		vf->lf_msixoff[i] = rsp->cptlf_msixoff[i];
+		vf->lf_msixoff[i] = (vf->lf_blkaddr[i] == RVU_BLOCK_ADDR_CPT1) ?
+			rsp->cpt1_lf_msixoff[i] : rsp->cptlf_msixoff[i];
 
 	return 0;
 }
@@ -144,7 +170,7 @@ otx2_cpt_send_mbox_msg(struct otx2_cpt_vf *vf)
 
 int
 otx2_cpt_af_reg_read(const struct rte_cryptodev *dev, uint64_t reg,
-		     uint64_t *val)
+		     uint8_t blkaddr, uint64_t *val)
 {
 	struct otx2_cpt_vf *vf = dev->data->dev_private;
 	struct otx2_mbox *mbox = vf->otx2_dev.mbox;
@@ -166,6 +192,7 @@ otx2_cpt_af_reg_read(const struct rte_cryptodev *dev, uint64_t reg,
 	msg->is_write = 0;
 	msg->reg_offset = reg;
 	msg->ret_val = val;
+	msg->blkaddr = blkaddr;
 
 	ret = otx2_cpt_send_mbox_msg(vf);
 	if (ret < 0)
@@ -182,7 +209,7 @@ otx2_cpt_af_reg_read(const struct rte_cryptodev *dev, uint64_t reg,
 
 int
 otx2_cpt_af_reg_write(const struct rte_cryptodev *dev, uint64_t reg,
-		      uint64_t val)
+		      uint8_t blkaddr, uint64_t val)
 {
 	struct otx2_cpt_vf *vf = dev->data->dev_private;
 	struct otx2_mbox *mbox = vf->otx2_dev.mbox;
@@ -202,6 +229,7 @@ otx2_cpt_af_reg_write(const struct rte_cryptodev *dev, uint64_t reg,
 	msg->is_write = 1;
 	msg->reg_offset = reg;
 	msg->val = val;
+	msg->blkaddr = blkaddr;
 
 	return otx2_cpt_send_mbox_msg(vf);
 }

@@ -117,11 +117,15 @@ Another way to bind the VF would be to use the ``dpdk-devbind.py`` script:
 
 .. note::
 
-    Ensure that sufficient huge pages are available for your application::
+    * For CN98xx SoC, it is recommended to use even and odd DBDF VFs to achieve
+      higher performance as even VF uses one crypto engine and odd one uses
+      another crypto engine.
 
-        echo 8 > /sys/kernel/mm/hugepages/hugepages-524288kB/nr_hugepages
+    * Ensure that sufficient huge pages are available for your application::
 
-    Refer to :ref:`linux_gsg_hugepages` for more details.
+         echo 8 > /sys/kernel/mm/hugepages/hugepages-524288kB/nr_hugepages
+
+      Refer to :ref:`linux_gsg_hugepages` for more details.
 
 Debugging Options
 -----------------

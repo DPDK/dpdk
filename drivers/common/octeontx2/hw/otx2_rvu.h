@@ -142,6 +142,7 @@
 #define RVU_BLOCK_ADDR_SSOW                 (0x8ull)
 #define RVU_BLOCK_ADDR_TIM                  (0x9ull)
 #define RVU_BLOCK_ADDR_CPT0                 (0xaull)
+#define RVU_BLOCK_ADDR_CPT1                 (0xbull)
 #define RVU_BLOCK_ADDR_NDC0                 (0xcull)
 #define RVU_BLOCK_ADDR_NDC1                 (0xdull)
 #define RVU_BLOCK_ADDR_NDC2                 (0xeull)
