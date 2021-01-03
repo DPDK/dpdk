@@ -988,6 +988,9 @@ static struct rte_pci_id pci_id_ree_table[] = {
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
 				PCI_DEVID_OCTEONTX2_RVU_REE_PF)
 	},
+	{
+		.vendor_id = 0,
+	}
 };
 
 static struct rte_pci_driver otx2_regexdev_pmd = {
