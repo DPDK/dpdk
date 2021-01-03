@@ -8807,9 +8807,8 @@ flow_dv_sample_create_cb(struct mlx5_cache_list *list __rte_unused,
 	sampler_attr.sample_actions = (struct mlx5dv_dr_action **)
 							&sample_dv_actions[0];
 	sampler_attr.action = cache_resource->set_action;
-	cache_resource->verbs_action =
-		mlx5_glue->dr_create_flow_action_sampler(&sampler_attr);
-	if (!cache_resource->verbs_action) {
+	if (mlx5_os_flow_dr_create_flow_action_sampler
+			(&sampler_attr, &cache_resource->verbs_action)) {
 		rte_flow_error_set(error, ENOMEM,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					NULL, "cannot create sample action");
@@ -8821,7 +8820,7 @@ flow_dv_sample_create_cb(struct mlx5_cache_list *list __rte_unused,
 error:
 	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB &&
 	    cache_resource->default_miss)
-		claim_zero(mlx5_glue->destroy_flow_action
+		claim_zero(mlx5_flow_os_destroy_flow_action
 				(cache_resource->default_miss));
 	else
 		flow_dv_sample_sub_actions_release(dev,
@@ -8919,6 +8918,7 @@ flow_dv_dest_array_create_cb(struct mlx5_cache_list *list __rte_unused,
 	struct mlx5dv_dr_domain *domain;
 	uint32_t idx = 0, res_idx = 0;
 	struct rte_flow_error *error = ctx->error;
+	int ret;
 
 	/* Register new destination array resource. */
 	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_DEST_ARRAY],
@@ -8967,11 +8967,12 @@ flow_dv_dest_array_create_cb(struct mlx5_cache_list *list __rte_unused,
 		}
 	}
 	/* create a dest array actioin */
-	cache_resource->action = mlx5_glue->dr_create_flow_action_dest_array
+	ret = mlx5_os_flow_dr_create_flow_action_dest_array
 						(domain,
 						 cache_resource->num_of_dest,
-						 dest_attr);
-	if (!cache_resource->action) {
+						 dest_attr,
+						 &cache_resource->action);
+	if (ret) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,

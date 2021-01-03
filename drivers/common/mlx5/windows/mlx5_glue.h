@@ -15,6 +15,40 @@
 #define MLX5_GLUE_VERSION ""
 #endif
 
+#ifndef HAVE_MLX5DV_DR
+enum  mlx5dv_dr_domain_type { unused, };
+struct mlx5dv_dr_domain;
+struct mlx5dv_dr_action;
+#endif
+
+#ifndef HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE
+struct mlx5dv_dr_flow_sampler_attr {
+	uint32_t sample_ratio;
+	void *default_next_table;
+	size_t num_sample_actions;
+	struct mlx5dv_dr_action **sample_actions;
+	uint64_t action;
+};
+#endif
+
+#ifndef HAVE_MLX5_DR_CREATE_ACTION_DEST_ARRAY
+enum mlx5dv_dr_action_dest_type {
+	MLX5DV_DR_ACTION_DEST,
+	MLX5DV_DR_ACTION_DEST_REFORMAT,
+};
+struct mlx5dv_dr_action_dest_reformat {
+	struct mlx5dv_dr_action *reformat;
+	struct mlx5dv_dr_action *dest;
+};
+struct mlx5dv_dr_action_dest_attr {
+	enum mlx5dv_dr_action_dest_type type;
+	union {
+		struct mlx5dv_dr_action *dest;
+		struct mlx5dv_dr_action_dest_reformat *dest_reformat;
+	};
+};
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;

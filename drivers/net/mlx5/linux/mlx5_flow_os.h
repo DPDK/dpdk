@@ -393,6 +393,53 @@ mlx5_flow_os_create_flow_action_dest_devx_tir(struct mlx5_devx_obj *tir,
 }
 
 /**
+ * Create flow action: sampler
+ *
+ * @param[in] attr
+ *   Pointer to sampler attribute
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_os_flow_dr_create_flow_action_sampler
+			(struct mlx5dv_dr_flow_sampler_attr *attr,
+			void **action)
+{
+	*action = mlx5_glue->dr_create_flow_action_sampler(attr);
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Create flow action: dest_array
+ *
+ * @param[in] domain
+ *   Pointer to relevant domain.
+ * @param[in] num_dest
+ *   Number of destinations array.
+ * @param[in] dests
+ *   Array of destination attributes.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_os_flow_dr_create_flow_action_dest_array
+			(void *domain,
+			 size_t num_dest,
+			 struct mlx5dv_dr_action_dest_attr *dests[],
+			 void **action)
+{
+	*action = mlx5_glue->dr_create_flow_action_dest_array(
+						domain, num_dest, dests);
+	return (*action) ? 0 : -1;
+}
+
+/**
  * Destroy flow action.
  *
  * @param[in] action
