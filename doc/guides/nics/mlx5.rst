@@ -102,6 +102,16 @@ Features
 Limitations
 -----------
 
+- Windows support:
+
+  On Windows, the features are limited:
+
+  - Promiscuous mode is not supported
+  - The following rules are supported:
+
+    - IPv4/UDP with CVLAN filtering
+    - Unicast MAC filtering
+
 - For secondary process:
 
   - Forked secondary process not supported.
@@ -1013,8 +1023,8 @@ Below are some firmware configurations listed.
    FLEX_PARSER_PROFILE_ENABLE=4
    PROG_PARSE_GRAPH=1
 
-Prerequisites
--------------
+Linux Prerequisites
+-------------------
 
 This driver relies on external libraries and kernel drivers for resources
 allocations and initialization. The following dependencies are not part of
@@ -1127,7 +1137,44 @@ required from that distribution.
 
    Several versions of Mellanox OFED/EN are available. Installing the version
    this DPDK release was developed and tested against is strongly
-   recommended. Please check the `prerequisites`_.
+   recommended. Please check the `linux prerequisites`_.
+
+Windows Prerequisites
+---------------------
+
+This driver relies on external libraries and kernel drivers for resources
+allocations and initialization. The dependencies in the following sub-sections
+are not part of DPDK, and must be installed separately.
+
+Compilation Prerequisites
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+DevX SDK installation
+^^^^^^^^^^^^^^^^^^^^^
+
+The DevX SDK must be installed on the machine building the Windows PMD.
+Additional information can be found at
+`How to Integrate Windows DevX in Your Development Environment
+<https://docs.mellanox.com/display/winof2v250/RShim+Drivers+and+Usage#RShimDriversandUsage-DevXInterface>`__.
+
+Runtime Prerequisites
+~~~~~~~~~~~~~~~~~~~~~
+
+WinOF2 version 2.60 or higher must be installed on the machine.
+
+WinOF2 installation
+^^^^^^^^^^^^^^^^^^^
+
+The driver can be downloaded from the following site:
+`WINOF2
+<https://www.mellanox.com/products/adapter-software/ethernet/windows/winof-2>`__
+
+DevX Enablement
+^^^^^^^^^^^^^^^
+
+DevX for Windows must be enabled in the Windows registry.
+The keys ``DevxEnabled`` and ``DevxFsRules`` must be set.
+Additional information can be found in the WinOF2 user manual.
 
 Supported NICs
 --------------
@@ -1176,7 +1223,7 @@ Below are detailed device names:
 Quick Start Guide on OFED/EN
 ----------------------------
 
-1. Download latest Mellanox OFED/EN. For more info check the  `prerequisites`_.
+1. Download latest Mellanox OFED/EN. For more info check the `linux prerequisites`_.
 
 
 2. Install the required libraries and kernel modules either by installing

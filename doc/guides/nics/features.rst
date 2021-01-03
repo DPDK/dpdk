@@ -819,6 +819,14 @@ Other kdrv
 Kernel module other than above ones supported.
 
 
+.. _nic_features_windows:
+
+Windows
+-------
+
+Support Windows.
+
+
 .. _nic_features_armv7:
 
 ARMv7
