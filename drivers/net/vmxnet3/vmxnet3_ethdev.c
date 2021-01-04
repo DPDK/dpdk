@@ -67,6 +67,7 @@ static int vmxnet3_dev_configure(struct rte_eth_dev *dev);
 static int vmxnet3_dev_start(struct rte_eth_dev *dev);
 static int vmxnet3_dev_stop(struct rte_eth_dev *dev);
 static int vmxnet3_dev_close(struct rte_eth_dev *dev);
+static int vmxnet3_dev_reset(struct rte_eth_dev *dev);
 static void vmxnet3_dev_set_rxmode(struct vmxnet3_hw *hw, uint32_t feature, int set);
 static int vmxnet3_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -112,6 +113,7 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.dev_start            = vmxnet3_dev_start,
 	.dev_stop             = vmxnet3_dev_stop,
 	.dev_close            = vmxnet3_dev_close,
+	.dev_reset            = vmxnet3_dev_reset,
 	.promiscuous_enable   = vmxnet3_dev_promiscuous_enable,
 	.promiscuous_disable  = vmxnet3_dev_promiscuous_disable,
 	.allmulticast_enable  = vmxnet3_dev_allmulticast_enable,
@@ -910,6 +912,18 @@ vmxnet3_dev_close(struct rte_eth_dev *dev)
 	ret = vmxnet3_dev_stop(dev);
 	vmxnet3_free_queues(dev);
 
+	return ret;
+}
+
+static int
+vmxnet3_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = eth_vmxnet3_dev_uninit(dev);
+	if (ret)
+		return ret;
+	ret = eth_vmxnet3_dev_init(dev);
 	return ret;
 }
 
