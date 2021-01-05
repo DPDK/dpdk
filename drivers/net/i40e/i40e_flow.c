@@ -3069,6 +3069,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			       &flex_pit, sizeof(struct i40e_fdir_flex_pit));
 			filter->input.flow_ext.layer_idx = layer_idx;
 			filter->input.flow_ext.raw_id = raw_id;
+			filter->input.flow_ext.is_flex_flow = true;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VF:
 			vf_spec = item->spec;
@@ -5514,6 +5515,9 @@ i40e_flow_flush_fdir_filter(struct i40e_pf *pf)
 			pf->fdir.inset_flag[pctype] = 0;
 			pf->fdir.flex_mask_flag[pctype] = 0;
 		}
+
+		for (i = 0; i < I40E_MAX_FLXPLD_LAYER; i++)
+			pf->fdir.flex_pit_flag[i] = 0;
 
 		/* Disable FDIR processing as all FDIR rules are now flushed */
 		i40e_fdir_rx_proc_enable(dev, 0);

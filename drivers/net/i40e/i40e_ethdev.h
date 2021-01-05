@@ -636,6 +636,7 @@ struct i40e_fdir_flow_ext {
 	bool is_udp; /* ipv4|ipv6 udp flow */
 	enum i40e_flxpld_layer_idx layer_idx;
 	struct i40e_fdir_flex_pit flex_pit[I40E_MAX_FLXPLD_LAYER * I40E_MAX_FLXPLD_FIED];
+	bool is_flex_flow;
 };
 
 /* A structure used to define the input for a flow director filter entry */
@@ -784,6 +785,8 @@ struct i40e_fdir_info {
 	bool flex_mask_flag[I40E_FILTER_PCTYPE_MAX];
 
 	bool inset_flag[I40E_FILTER_PCTYPE_MAX]; /* Mark if input set is set */
+
+	uint32_t flex_flow_count[I40E_MAX_FLXPLD_LAYER];
 };
 
 /* Ethertype filter number HW supports */
