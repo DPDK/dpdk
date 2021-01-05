@@ -45,6 +45,7 @@ if is_windows
 		'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci',
 		'cmdline',
 		'hash',
+		'cfgfile',
 	] # only supported libraries for windows
 endif
 
