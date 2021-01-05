@@ -998,6 +998,49 @@ vhost_memory_changed(struct VhostUserMemory *new,
 	return false;
 }
 
+#ifdef RTE_LIBRTE_VHOST_POSTCOPY
+static int
+vhost_user_postcopy_region_register(struct virtio_net *dev,
+		struct rte_vhost_mem_region *reg)
+{
+	struct uffdio_register reg_struct;
+
+	/*
+	 * Let's register all the mmap'ed area to ensure
+	 * alignment on page boundary.
+	 */
+	reg_struct.range.start = (uint64_t)(uintptr_t)reg->mmap_addr;
+	reg_struct.range.len = reg->mmap_size;
+	reg_struct.mode = UFFDIO_REGISTER_MODE_MISSING;
+
+	if (ioctl(dev->postcopy_ufd, UFFDIO_REGISTER,
+				&reg_struct)) {
+		VHOST_LOG_CONFIG(ERR, "Failed to register ufd for region "
+				"%" PRIx64 " - %" PRIx64 " (ufd = %d) %s\n",
+				(uint64_t)reg_struct.range.start,
+				(uint64_t)reg_struct.range.start +
+				(uint64_t)reg_struct.range.len - 1,
+				dev->postcopy_ufd,
+				strerror(errno));
+		return -1;
+	}
+
+	VHOST_LOG_CONFIG(INFO, "\t userfaultfd registered for range : %" PRIx64 " - %" PRIx64 "\n",
+			(uint64_t)reg_struct.range.start,
+			(uint64_t)reg_struct.range.start +
+			(uint64_t)reg_struct.range.len - 1);
+
+	return 0;
+}
+#else
+static int
+vhost_user_postcopy_region_register(struct virtio_net *dev __rte_unused,
+		struct rte_vhost_mem_region *reg __rte_unused)
+{
+	return -1;
+}
+#endif
+
 static int
 vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			int main_fd)
@@ -1209,38 +1252,10 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		}
 
 		/* Now userfault register and we can use the memory */
-		for (i = 0; i < memory->nregions; i++) {
-#ifdef RTE_LIBRTE_VHOST_POSTCOPY
-			reg = &dev->mem->regions[i];
-			struct uffdio_register reg_struct;
-
-			/*
-			 * Let's register all the mmap'ed area to ensure
-			 * alignment on page boundary.
-			 */
-			reg_struct.range.start =
-				(uint64_t)(uintptr_t)reg->mmap_addr;
-			reg_struct.range.len = reg->mmap_size;
-			reg_struct.mode = UFFDIO_REGISTER_MODE_MISSING;
-
-			if (ioctl(dev->postcopy_ufd, UFFDIO_REGISTER,
-						&reg_struct)) {
-				VHOST_LOG_CONFIG(ERR,
-					"Failed to register ufd for region %d: (ufd = %d) %s\n",
-					i, dev->postcopy_ufd,
-					strerror(errno));
+		for (i = 0; i < memory->nregions; i++)
+			if (vhost_user_postcopy_region_register(dev,
+						&dev->mem->regions[i]) < 0)
 				goto free_mem_table;
-			}
-			VHOST_LOG_CONFIG(INFO,
-				"\t userfaultfd registered for range : "
-				"%" PRIx64 " - %" PRIx64 "\n",
-				(uint64_t)reg_struct.range.start,
-				(uint64_t)reg_struct.range.start +
-				(uint64_t)reg_struct.range.len - 1);
-#else
-			goto free_mem_table;
-#endif
-		}
 	}
 
 	for (i = 0; i < dev->nr_vring; i++) {
