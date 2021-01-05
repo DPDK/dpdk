@@ -1042,6 +1042,62 @@ vhost_user_postcopy_region_register(struct virtio_net *dev __rte_unused,
 #endif
 
 static int
+vhost_user_postcopy_register(struct virtio_net *dev, int main_fd,
+		struct VhostUserMsg *msg)
+{
+	struct VhostUserMemory *memory;
+	struct rte_vhost_mem_region *reg;
+	VhostUserMsg ack_msg;
+	uint32_t i;
+
+	if (!dev->postcopy_listening)
+		return 0;
+
+	/*
+	 * We haven't a better way right now than sharing
+	 * DPDK's virtual address with Qemu, so that Qemu can
+	 * retrieve the region offset when handling userfaults.
+	 */
+	memory = &msg->payload.memory;
+	for (i = 0; i < memory->nregions; i++) {
+		reg = &dev->mem->regions[i];
+		memory->regions[i].userspace_addr = reg->host_user_addr;
+	}
+
+	/* Send the addresses back to qemu */
+	msg->fd_num = 0;
+	send_vhost_reply(main_fd, msg);
+
+	/* Wait for qemu to acknolwedge it's got the addresses
+	 * we've got to wait before we're allowed to generate faults.
+	 */
+	if (read_vhost_message(main_fd, &ack_msg) <= 0) {
+		VHOST_LOG_CONFIG(ERR,
+				"Failed to read qemu ack on postcopy set-mem-table\n");
+		return -1;
+	}
+
+	if (validate_msg_fds(&ack_msg, 0) != 0)
+		return -1;
+
+	if (ack_msg.request.master != VHOST_USER_SET_MEM_TABLE) {
+		VHOST_LOG_CONFIG(ERR,
+				"Bad qemu ack on postcopy set-mem-table (%d)\n",
+				ack_msg.request.master);
+		return -1;
+	}
+
+	/* Now userfault register and we can use the memory */
+	for (i = 0; i < memory->nregions; i++) {
+		reg = &dev->mem->regions[i];
+		if (vhost_user_postcopy_region_register(dev, reg) < 0)
+			return -1;
+	}
+
+	return 0;
+}
+
+static int
 vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			int main_fd)
 {
@@ -1215,48 +1271,10 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			mmap_size,
 			alignment,
 			mmap_offset);
-
-		if (dev->postcopy_listening) {
-			/*
-			 * We haven't a better way right now than sharing
-			 * DPDK's virtual address with Qemu, so that Qemu can
-			 * retrieve the region offset when handling userfaults.
-			 */
-			memory->regions[i].userspace_addr =
-				reg->host_user_addr;
-		}
 	}
-	if (dev->postcopy_listening) {
-		/* Send the addresses back to qemu */
-		msg->fd_num = 0;
-		send_vhost_reply(main_fd, msg);
 
-		/* Wait for qemu to acknolwedge it's got the addresses
-		 * we've got to wait before we're allowed to generate faults.
-		 */
-		VhostUserMsg ack_msg;
-		if (read_vhost_message(main_fd, &ack_msg) <= 0) {
-			VHOST_LOG_CONFIG(ERR,
-				"Failed to read qemu ack on postcopy set-mem-table\n");
-			goto free_mem_table;
-		}
-
-		if (validate_msg_fds(&ack_msg, 0) != 0)
-			goto free_mem_table;
-
-		if (ack_msg.request.master != VHOST_USER_SET_MEM_TABLE) {
-			VHOST_LOG_CONFIG(ERR,
-				"Bad qemu ack on postcopy set-mem-table (%d)\n",
-				ack_msg.request.master);
-			goto free_mem_table;
-		}
-
-		/* Now userfault register and we can use the memory */
-		for (i = 0; i < memory->nregions; i++)
-			if (vhost_user_postcopy_region_register(dev,
-						&dev->mem->regions[i]) < 0)
-				goto free_mem_table;
-	}
+	if (vhost_user_postcopy_register(dev, main_fd, msg) < 0)
+		goto free_mem_table;
 
 	for (i = 0; i < dev->nr_vring; i++) {
 		struct vhost_virtqueue *vq = dev->virtqueue[i];
