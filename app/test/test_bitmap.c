@@ -16,9 +16,10 @@
 static int
 test_bitmap_scan_operations(struct rte_bitmap *bmp)
 {
-	uint32_t pos = 0;
 	uint64_t slab1_magic = 0xBADC0FFEEBADF00D;
 	uint64_t slab2_magic = 0xFEEDDEADDEADF00D;
+	uint32_t pos = 0, start_pos;
+	int i, nb_clear, nb_set;
 	uint64_t out_slab = 0;
 
 	rte_bitmap_reset(bmp);
@@ -67,6 +68,37 @@ test_bitmap_scan_operations(struct rte_bitmap *bmp)
 
 	if (slab1_magic != out_slab) {
 		printf("Scan reset operation failed.\n");
+		return TEST_FAILED;
+	}
+
+	/* Test scan when a cline is half full */
+	rte_bitmap_reset(bmp);
+	for (i = 0; i < MAX_BITS; i++)
+		rte_bitmap_set(bmp, i);
+
+	nb_clear = RTE_MIN(RTE_BITMAP_CL_BIT_SIZE / 2, MAX_BITS);
+	for (i = 0; i < nb_clear; i++)
+		rte_bitmap_clear(bmp, i);
+
+	/* Find remaining bits set in bmp */
+	__rte_bitmap_scan_init(bmp);
+
+	if (rte_bitmap_scan(bmp, &pos, &out_slab) != 1) {
+		printf("Initial scan failed with half CL empty.\n");
+		return TEST_FAILED;
+	}
+
+	start_pos = pos;
+	nb_set = 0;
+	do {
+		nb_set += __builtin_popcountll(out_slab);
+		if (!rte_bitmap_scan(bmp, &pos, &out_slab))
+			break;
+	} while (pos != start_pos);
+
+	if ((nb_clear + nb_set) != MAX_BITS) {
+		printf("Scan failed to find all set bits. "
+		       "Expected %u, found %u.\n", MAX_BITS - nb_clear, nb_set);
 		return TEST_FAILED;
 	}
 
