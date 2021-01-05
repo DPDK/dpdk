@@ -93,6 +93,9 @@ vhost_vdpa_dma_map(struct virtio_user_dev *dev, void *addr,
 	msg.iotlb.size = len;
 	msg.iotlb.perm = VHOST_ACCESS_RW;
 
+	PMD_DRV_LOG(DEBUG, "%s: iova: 0x%" PRIx64 ", addr: %p, len: 0x%zx",
+			__func__, iova, addr, len);
+
 	if (write(dev->vhostfd, &msg, sizeof(msg)) != sizeof(msg)) {
 		PMD_DRV_LOG(ERR, "Failed to send IOTLB update (%s)",
 				strerror(errno));
@@ -112,6 +115,9 @@ vhost_vdpa_dma_unmap(struct virtio_user_dev *dev, __rte_unused void *addr,
 	msg.iotlb.type = VHOST_IOTLB_INVALIDATE;
 	msg.iotlb.iova = iova;
 	msg.iotlb.size = len;
+
+	PMD_DRV_LOG(DEBUG, "%s: iova: 0x%" PRIx64 ", len: 0x%zx",
+			__func__, iova, len);
 
 	if (write(dev->vhostfd, &msg, sizeof(msg)) != sizeof(msg)) {
 		PMD_DRV_LOG(ERR, "Failed to send IOTLB invalidate (%s)",
