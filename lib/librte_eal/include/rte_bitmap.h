@@ -417,6 +417,7 @@ rte_bitmap_set_slab(struct rte_bitmap *bmp, uint32_t pos, uint64_t slab)
 	*slab1 |= 1llu << offset1;
 }
 
+#if RTE_BITMAP_CL_SLAB_SIZE == 8
 static inline uint64_t
 __rte_bitmap_line_not_empty(uint64_t *slab2)
 {
@@ -431,6 +432,30 @@ __rte_bitmap_line_not_empty(uint64_t *slab2)
 
 	return v1 | v3;
 }
+
+#elif RTE_BITMAP_CL_SLAB_SIZE == 16
+static inline uint64_t
+__rte_bitmap_line_not_empty(uint64_t *slab2)
+{
+	uint64_t v1, v2, v3, v4, v5, v6, v7, v8;
+
+	v1 = slab2[0] | slab2[1];
+	v2 = slab2[2] | slab2[3];
+	v3 = slab2[4] | slab2[5];
+	v4 = slab2[6] | slab2[7];
+	v5 = slab2[8] | slab2[9];
+	v6 = slab2[10] | slab2[11];
+	v7 = slab2[12] | slab2[13];
+	v8 = slab2[14] | slab2[15];
+	v1 |= v2;
+	v3 |= v4;
+	v5 |= v6;
+	v7 |= v8;
+
+	return v1 | v3 | v5 | v7;
+}
+
+#endif /* RTE_BITMAP_CL_SLAB_SIZE */
 
 /**
  * Bitmap bit clear
