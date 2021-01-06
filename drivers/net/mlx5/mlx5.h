@@ -683,7 +683,6 @@ struct mlx5_dev_ctx_shared {
 	uint16_t bond_dev; /* Bond primary device id. */
 	uint32_t devx:1; /* Opened with DV. */
 	uint32_t flow_hit_aso_en:1; /* Flow Hit ASO is supported. */
-	uint32_t eqn; /* Event Queue number. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	void *ctx; /* Verbs/DV/DevX context. */
 	void *pd; /* Protection Domain. */
@@ -791,7 +790,7 @@ struct mlx5_rxq_obj {
 		};
 		struct {
 			struct mlx5_devx_obj *rq; /* DevX Rx Queue object. */
-			struct mlx5_devx_obj *devx_cq; /* DevX CQ object. */
+			struct mlx5_devx_cq cq_obj; /* DevX CQ object. */
 			void *devx_channel;
 		};
 	};

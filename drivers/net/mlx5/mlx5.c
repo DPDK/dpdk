@@ -936,14 +936,6 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		goto error;
 	}
 	if (sh->devx) {
-		/* Query the EQN for this core. */
-		err = mlx5_glue->devx_query_eqn(sh->ctx, 0, &sh->eqn);
-		if (err) {
-			rte_errno = errno;
-			DRV_LOG(ERR, "Failed to query event queue number %d.",
-				rte_errno);
-			goto error;
-		}
 		err = mlx5_os_get_pdn(sh->pd, &sh->pdn);
 		if (err) {
 			DRV_LOG(ERR, "Fail to extract pdn from PD");
