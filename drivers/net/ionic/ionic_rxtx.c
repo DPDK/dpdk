@@ -73,8 +73,11 @@ ionic_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	IONIC_PRINT_CALL();
 
-	IONIC_PRINT(DEBUG, "TX queue %u pkts %ju tso %ju",
-		txq->qcq.q.index, stats->packets, stats->tso);
+	IONIC_PRINT(DEBUG, "TX queue %u pkts %ju tso %ju stop %ju",
+		txq->qcq.q.index, stats->packets, stats->tso, stats->stop);
+	IONIC_PRINT(DEBUG, "TX queue %u comps %ju (%ju per)",
+		txq->qcq.q.index, stats->comps,
+		stats->comps ? stats->packets / stats->comps : 0);
 
 	ionic_lif_txq_deinit(txq);
 

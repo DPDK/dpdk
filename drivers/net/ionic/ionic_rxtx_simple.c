@@ -50,6 +50,7 @@ ionic_tx_flush(struct ionic_tx_qcq *txq)
 {
 	struct ionic_cq *cq = &txq->qcq.cq;
 	struct ionic_queue *q = &txq->qcq.q;
+	struct ionic_tx_stats *stats = &txq->stats;
 	struct rte_mbuf *txm;
 	struct ionic_txq_comp *cq_desc, *cq_desc_base = cq->base;
 	void **info;
@@ -95,6 +96,7 @@ ionic_tx_flush(struct ionic_tx_qcq *txq)
 		}
 
 		cq_desc = &cq_desc_base[cq->tail_idx];
+		stats->comps++;
 	}
 }
 
