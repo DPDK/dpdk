@@ -268,9 +268,8 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	MLX5_SET(mkc, mkc, mkey_7_0, attr->umem_id & 0xFF);
 	MLX5_SET(mkc, mkc, translations_octword_size, translation_size);
 	MLX5_SET(mkc, mkc, relaxed_ordering_write,
-		attr->relaxed_ordering_write);
-	MLX5_SET(mkc, mkc, relaxed_ordering_read,
-		attr->relaxed_ordering_read);
+		 attr->relaxed_ordering_write);
+	MLX5_SET(mkc, mkc, relaxed_ordering_read, attr->relaxed_ordering_read);
 	MLX5_SET64(mkc, mkc, start_addr, attr->addr);
 	MLX5_SET64(mkc, mkc, len, attr->size);
 	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, in_size_dw * 4, out,
@@ -308,7 +307,7 @@ mlx5_devx_get_out_command_status(void *out)
 	if (status) {
 		int syndrome = MLX5_GET(query_flow_counter_out, out, syndrome);
 
-		DRV_LOG(ERR, "Bad devX status %x, syndrome = %x", status,
+		DRV_LOG(ERR, "Bad DevX status %x, syndrome = %x", status,
 			syndrome);
 	}
 	return status;
@@ -374,8 +373,7 @@ mlx5_devx_cmd_query_nic_vport_context(void *ctx,
 	syndrome = MLX5_GET(query_nic_vport_context_out, out, syndrome);
 	if (status) {
 		DRV_LOG(DEBUG, "Failed to query NIC vport context, "
-			"status %x, syndrome = %x",
-			status, syndrome);
+			"status %x, syndrome = %x", status, syndrome);
 		return -1;
 	}
 	vctx = MLX5_ADDR_OF(query_nic_vport_context_out, out,
@@ -662,8 +660,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
 	if (status) {
 		DRV_LOG(DEBUG, "Failed to query devx HCA capabilities, "
-			"status %x, syndrome = %x",
-			status, syndrome);
+			"status %x, syndrome = %x", status, syndrome);
 		return -1;
 	}
 	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
@@ -683,11 +680,11 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		(cmd_hca_cap, hcattr, log_min_hairpin_wq_data_sz);
 	attr->vhca_id = MLX5_GET(cmd_hca_cap, hcattr, vhca_id);
 	attr->relaxed_ordering_write = MLX5_GET(cmd_hca_cap, hcattr,
-			relaxed_ordering_write);
+						relaxed_ordering_write);
 	attr->relaxed_ordering_read = MLX5_GET(cmd_hca_cap, hcattr,
-			relaxed_ordering_read);
+					       relaxed_ordering_read);
 	attr->access_register_user = MLX5_GET(cmd_hca_cap, hcattr,
-			access_register_user);
+					      access_register_user);
 	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,
 					  eth_net_offloads);
 	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);
@@ -738,8 +735,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			goto error;
 		if (status) {
 			DRV_LOG(DEBUG, "Failed to query devx QOS capabilities,"
-				" status %x, syndrome = %x",
-				status, syndrome);
+				" status %x, syndrome = %x", status, syndrome);
 			return -1;
 		}
 		hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
@@ -769,17 +765,14 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		 MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE |
 		 MLX5_HCA_CAP_OPMOD_GET_CUR);
 
-	rc = mlx5_glue->devx_general_cmd(ctx,
-					 in, sizeof(in),
-					 out, sizeof(out));
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
 	if (rc)
 		goto error;
 	status = MLX5_GET(query_hca_cap_out, out, status);
 	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
 	if (status) {
 		DRV_LOG(DEBUG, "Failed to query devx HCA capabilities, "
-			"status %x, syndrome = %x",
-			status, syndrome);
+			"status %x, syndrome = %x", status, syndrome);
 		attr->log_max_ft_sampler_num = 0;
 		return -1;
 	}
@@ -796,9 +789,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		 MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS |
 		 MLX5_HCA_CAP_OPMOD_GET_CUR);
 
-	rc = mlx5_glue->devx_general_cmd(ctx,
-					 in, sizeof(in),
-					 out, sizeof(out));
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
 	if (rc) {
 		attr->eth_net_offloads = 0;
 		goto error;
@@ -807,8 +798,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
 	if (status) {
 		DRV_LOG(DEBUG, "Failed to query devx HCA capabilities, "
-			"status %x, syndrome = %x",
-			status, syndrome);
+			"status %x, syndrome = %x", status, syndrome);
 		attr->eth_net_offloads = 0;
 		return -1;
 	}
@@ -927,7 +917,9 @@ devx_cmd_fill_wq_data(void *wq_ctx, struct mlx5_devx_wq_attr *wq_attr)
 	MLX5_SET(wq, wq_ctx, hw_counter, wq_attr->hw_counter);
 	MLX5_SET(wq, wq_ctx, sw_counter, wq_attr->sw_counter);
 	MLX5_SET(wq, wq_ctx, log_wq_stride, wq_attr->log_wq_stride);
-	MLX5_SET(wq, wq_ctx, log_wq_pg_sz, wq_attr->log_wq_pg_sz);
+	if (wq_attr->log_wq_pg_sz > MLX5_ADAPTER_PAGE_SHIFT)
+		MLX5_SET(wq, wq_ctx, log_wq_pg_sz,
+			 wq_attr->log_wq_pg_sz - MLX5_ADAPTER_PAGE_SHIFT);
 	MLX5_SET(wq, wq_ctx, log_wq_sz, wq_attr->log_wq_sz);
 	MLX5_SET(wq, wq_ctx, dbr_umem_valid, wq_attr->dbr_umem_valid);
 	MLX5_SET(wq, wq_ctx, wq_umem_valid, wq_attr->wq_umem_valid);
@@ -1574,13 +1566,13 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	MLX5_SET(cqc, cqctx, cc, attr->use_first_only);
 	MLX5_SET(cqc, cqctx, oi, attr->overrun_ignore);
 	MLX5_SET(cqc, cqctx, log_cq_size, attr->log_cq_size);
-	MLX5_SET(cqc, cqctx, log_page_size, attr->log_page_size -
-		 MLX5_ADAPTER_PAGE_SHIFT);
+	if (attr->log_page_size > MLX5_ADAPTER_PAGE_SHIFT)
+		MLX5_SET(cqc, cqctx, log_page_size,
+			 attr->log_page_size - MLX5_ADAPTER_PAGE_SHIFT);
 	MLX5_SET(cqc, cqctx, c_eqn, attr->eqn);
 	MLX5_SET(cqc, cqctx, uar_page, attr->uar_page_id);
 	MLX5_SET(cqc, cqctx, cqe_comp_en, !!attr->cqe_comp_en);
-	MLX5_SET(cqc, cqctx, mini_cqe_res_format,
-		 attr->mini_cqe_res_format);
+	MLX5_SET(cqc, cqctx, mini_cqe_res_format, attr->mini_cqe_res_format);
 	MLX5_SET(cqc, cqctx, mini_cqe_res_format_ext,
 		 attr->mini_cqe_res_format_ext);
 	if (attr->q_umem_valid) {
@@ -1812,8 +1804,9 @@ mlx5_devx_cmd_create_qp(void *ctx,
 	if (attr->uar_index) {
 		MLX5_SET(qpc, qpc, pm_state, MLX5_QP_PM_MIGRATED);
 		MLX5_SET(qpc, qpc, uar_page, attr->uar_index);
-		MLX5_SET(qpc, qpc, log_page_size, attr->log_page_size -
-			 MLX5_ADAPTER_PAGE_SHIFT);
+		if (attr->log_page_size > MLX5_ADAPTER_PAGE_SHIFT)
+			MLX5_SET(qpc, qpc, log_page_size,
+				 attr->log_page_size - MLX5_ADAPTER_PAGE_SHIFT);
 		if (attr->sq_size) {
 			MLX5_ASSERT(RTE_IS_POWER_OF_2(attr->sq_size));
 			MLX5_SET(qpc, qpc, cqn_snd, attr->cqn);
