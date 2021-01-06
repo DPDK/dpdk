@@ -278,7 +278,8 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 				   sizeof(*sq->db_rec) * 2, 4096, socket);
 	if (!sq->umem_buf) {
 		DRV_LOG(ERR, "Can't allocate wqe buffer.");
-		return -ENOMEM;
+		rte_errno = ENOMEM;
+		goto error;
 	}
 	sq->wqe_umem = mlx5_glue->devx_umem_reg(ctx,
 						(void *)(uintptr_t)sq->umem_buf,
