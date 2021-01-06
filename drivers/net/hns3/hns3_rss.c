@@ -633,15 +633,10 @@ hns3_set_rss_tc_mode(struct hns3_hw *hw)
 static void
 hns3_rss_tuple_uninit(struct hns3_hw *hw)
 {
-	struct hns3_rss_input_tuple_cmd *req;
 	struct hns3_cmd_desc desc;
 	int ret;
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_INPUT_TUPLE, false);
-
-	req = (struct hns3_rss_input_tuple_cmd *)desc.data;
-
-	memset(req, 0, sizeof(struct hns3_rss_tuple_cfg));
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
