@@ -37,6 +37,8 @@ EXPORTS
 
 	mlx5_devx_cq_create
 	mlx5_devx_cq_destroy
+	mlx5_devx_rq_create
+	mlx5_devx_rq_destroy
 	mlx5_devx_sq_create
 	mlx5_devx_sq_destroy
 

@@ -271,4 +271,117 @@ error:
 	return -rte_errno;
 }
 
+/**
+ * Destroy DevX Receive Queue.
+ *
+ * @param[in] rq
+ *   DevX RQ to destroy.
+ */
+void
+mlx5_devx_rq_destroy(struct mlx5_devx_rq *rq)
+{
+	if (rq->rq)
+		claim_zero(mlx5_devx_cmd_destroy(rq->rq));
+	if (rq->umem_obj)
+		claim_zero(mlx5_os_umem_dereg(rq->umem_obj));
+	if (rq->umem_buf)
+		mlx5_free((void *)(uintptr_t)rq->umem_buf);
+}
+
+/**
+ * Create Receive Queue using DevX API.
+ *
+ * Get a pointer to partially initialized attributes structure, and updates the
+ * following fields:
+ *   wq_umem_valid
+ *   wq_umem_id
+ *   wq_umem_offset
+ *   dbr_umem_valid
+ *   dbr_umem_id
+ *   dbr_addr
+ *   log_wq_pg_sz
+ * All other fields are updated by caller.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param[in/out] rq_obj
+ *   Pointer to RQ to create.
+ * @param[in] wqe_size
+ *   Size of WQE structure.
+ * @param[in] log_wqbb_n
+ *   Log of number of WQBBs in queue.
+ * @param[in] attr
+ *   Pointer to RQ attributes structure.
+ * @param[in] socket
+ *   Socket to use for allocation.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_rq_create(void *ctx, struct mlx5_devx_rq *rq_obj, uint32_t wqe_size,
+		    uint16_t log_wqbb_n,
+		    struct mlx5_devx_create_rq_attr *attr, int socket)
+{
+	struct mlx5_devx_obj *rq = NULL;
+	struct mlx5dv_devx_umem *umem_obj = NULL;
+	void *umem_buf = NULL;
+	size_t alignment = MLX5_WQE_BUF_ALIGNMENT;
+	uint32_t umem_size, umem_dbrec;
+	uint16_t rq_size = 1 << log_wqbb_n;
+	int ret;
+
+	if (alignment == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get WQE buf alignment.");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	/* Allocate memory buffer for WQEs and doorbell record. */
+	umem_size = wqe_size * rq_size;
+	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
+	umem_size += MLX5_DBR_SIZE;
+	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+			       alignment, socket);
+	if (!umem_buf) {
+		DRV_LOG(ERR, "Failed to allocate memory for RQ.");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	/* Register allocated buffer in user space with DevX. */
+	umem_obj = mlx5_os_umem_reg(ctx, (void *)(uintptr_t)umem_buf,
+				    umem_size, 0);
+	if (!umem_obj) {
+		DRV_LOG(ERR, "Failed to register umem for RQ.");
+		rte_errno = errno;
+		goto error;
+	}
+	/* Fill attributes for RQ object creation. */
+	attr->wq_attr.wq_umem_valid = 1;
+	attr->wq_attr.wq_umem_id = mlx5_os_get_umem_id(umem_obj);
+	attr->wq_attr.wq_umem_offset = 0;
+	attr->wq_attr.dbr_umem_valid = 1;
+	attr->wq_attr.dbr_umem_id = attr->wq_attr.wq_umem_id;
+	attr->wq_attr.dbr_addr = umem_dbrec;
+	attr->wq_attr.log_wq_pg_sz = MLX5_LOG_PAGE_SIZE;
+	/* Create receive queue object with DevX. */
+	rq = mlx5_devx_cmd_create_rq(ctx, attr, socket);
+	if (!rq) {
+		DRV_LOG(ERR, "Can't create DevX RQ object.");
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	rq_obj->umem_buf = umem_buf;
+	rq_obj->umem_obj = umem_obj;
+	rq_obj->rq = rq;
+	rq_obj->db_rec = RTE_PTR_ADD(rq_obj->umem_buf, umem_dbrec);
+	return 0;
+error:
+	ret = rte_errno;
+	if (umem_obj)
+		claim_zero(mlx5_os_umem_dereg(umem_obj));
+	if (umem_buf)
+		mlx5_free((void *)(uintptr_t)umem_buf);
+	rte_errno = ret;
+	return -rte_errno;
+}
 
