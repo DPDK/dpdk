@@ -1426,18 +1426,32 @@ efx_mae_match_specs_class_cmp(
 	     ++field_id) {
 		const efx_mae_mv_desc_t *descp = &desc_setp[field_id];
 		efx_mae_field_cap_id_t field_cap_id = descp->emmd_field_cap_id;
+		const uint8_t *lmaskp = mvpl + descp->emmd_mask_offset;
+		const uint8_t *rmaskp = mvpr + descp->emmd_mask_offset;
+		size_t mask_size = descp->emmd_mask_size;
+		const uint8_t *lvalp = mvpl + descp->emmd_value_offset;
+		const uint8_t *rvalp = mvpr + descp->emmd_value_offset;
+		size_t value_size = descp->emmd_value_size;
 
-		if (descp->emmd_mask_size == 0)
+		if (mask_size == 0)
 			continue; /* Skip array gap */
 
-		if ((unsigned int)field_cap_id >= field_ncaps)
-			break;
+		if ((unsigned int)field_cap_id >= field_ncaps) {
+			/*
+			 * The FW has not reported capability status for this
+			 * field. It's unknown whether any difference between
+			 * the two masks / values affects the class. The only
+			 * case when the class must be the same is when these
+			 * mask-value pairs match. Otherwise, report mismatch.
+			 */
+			if ((memcmp(lmaskp, rmaskp, mask_size) == 0) &&
+			    (memcmp(lvalp, rvalp, value_size) == 0))
+				continue;
+			else
+				break;
+		}
 
 		if (field_caps[field_cap_id].emfc_mask_affects_class) {
-			const uint8_t *lmaskp = mvpl + descp->emmd_mask_offset;
-			const uint8_t *rmaskp = mvpr + descp->emmd_mask_offset;
-			size_t mask_size = descp->emmd_mask_size;
-
 			if (memcmp(lmaskp, rmaskp, mask_size) != 0) {
 				have_same_class = B_FALSE;
 				break;
@@ -1445,10 +1459,6 @@ efx_mae_match_specs_class_cmp(
 		}
 
 		if (field_caps[field_cap_id].emfc_match_affects_class) {
-			const uint8_t *lvalp = mvpl + descp->emmd_value_offset;
-			const uint8_t *rvalp = mvpr + descp->emmd_value_offset;
-			size_t value_size = descp->emmd_value_size;
-
 			if (memcmp(lvalp, rvalp, value_size) != 0) {
 				have_same_class = B_FALSE;
 				break;
