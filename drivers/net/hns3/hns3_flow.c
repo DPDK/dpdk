@@ -1208,11 +1208,6 @@ hns3_parse_fdir_filter(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 					  "Fdir not supported in VF");
 
-	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_PERFECT)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-					  "fdir_conf.mode isn't perfect");
-
 	step_mngr.items = first_items;
 	step_mngr.count = ARRAY_SIZE(first_items);
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
