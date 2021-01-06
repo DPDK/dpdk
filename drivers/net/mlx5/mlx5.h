@@ -615,15 +615,9 @@ struct mlx5_txpp_wq {
 	uint32_t cq_ci:24;
 	uint32_t arm_sn:2;
 	/* Send Queue related data.*/
-	struct mlx5_devx_obj *sq;
-	void *sq_umem;
-	union {
-		volatile void *sq_buf;
-		volatile struct mlx5_wqe *wqes;
-	};
+	struct mlx5_devx_sq sq_obj;
 	uint16_t sq_size; /* Number of WQEs in the queue. */
 	uint16_t sq_ci; /* Next WQE to execute. */
-	volatile uint32_t *sq_dbrec;
 };
 
 /* Tx packet pacing internal timestamp. */
