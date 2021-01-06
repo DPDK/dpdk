@@ -613,6 +613,34 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
+int axgbe_dev_fw_version_get(struct rte_eth_dev *eth_dev,
+		char *fw_version, size_t fw_size)
+{
+	struct axgbe_port *pdata;
+	struct axgbe_hw_features *hw_feat;
+	int ret;
+
+	pdata = (struct axgbe_port *)eth_dev->data->dev_private;
+	hw_feat = &pdata->hw_feat;
+
+	if (fw_version == NULL)
+		return -EINVAL;
+
+	ret = snprintf(fw_version, fw_size, "%d.%d.%d",
+			AXGMAC_GET_BITS(hw_feat->version, MAC_VR, USERVER),
+			AXGMAC_GET_BITS(hw_feat->version, MAC_VR, DEVID),
+			AXGMAC_GET_BITS(hw_feat->version, MAC_VR, SNPSVER));
+	if (ret < 0)
+		return -EINVAL;
+
+	ret += 1; /* add the size of '\0' */
+
+	if (fw_size < (size_t)ret)
+		return ret;
+	else
+		return 0;
+}
+
 static void axgbe_txq_prepare_tx_stop(struct axgbe_port *pdata,
 				      unsigned int queue)
 {
