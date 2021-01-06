@@ -277,7 +277,6 @@ struct mlx5_devx_cq_attr {
 	uint32_t cqe_comp_en:1;
 	uint32_t mini_cqe_res_format:2;
 	uint32_t mini_cqe_res_format_ext:2;
-	uint32_t cqe_size:3;
 	uint32_t log_cq_size:5;
 	uint32_t log_page_size:5;
 	uint32_t uar_page_id;
