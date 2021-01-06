@@ -313,7 +313,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct mlx5_priv *priv = NULL;
 	int err = 0;
 	unsigned int cqe_comp;
-	unsigned int cqe_pad = 0;
 	struct rte_ether_addr mac;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int own_domain_id = 0;
@@ -460,12 +459,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	if (config->cqe_comp && !cqe_comp) {
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported.");
 		config->cqe_comp = 0;
-	}
-	if (config->cqe_pad && !cqe_pad) {
-		DRV_LOG(WARNING, "Rx CQE padding isn't supported.");
-		config->cqe_pad = 0;
-	} else if (config->cqe_pad) {
-		DRV_LOG(INFO, "Rx CQE padding is enabled.");
 	}
 	if (config->devx) {
 		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config->hca_attr);
