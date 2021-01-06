@@ -5821,10 +5821,9 @@ get_current_fec_auto_state(struct hns3_hw *hw, uint8_t *state)
 }
 
 static int
-hns3_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+hns3_fec_get_internal(struct hns3_hw *hw, uint32_t *fec_capa)
 {
 #define QUERY_ACTIVE_SPEED	1
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_sfp_speed_cmd *resp;
 	uint32_t tmp_fec_capa;
 	uint8_t auto_state;
@@ -5882,6 +5881,14 @@ hns3_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
 
 	*fec_capa = tmp_fec_capa;
 	return 0;
+}
+
+static int
+hns3_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	return hns3_fec_get_internal(hw, fec_capa);
 }
 
 static int
@@ -6017,10 +6024,9 @@ hns3_query_dev_fec_info(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(hns);
-	struct rte_eth_dev *eth_dev = hns->eth_dev;
 	int ret;
 
-	ret = hns3_fec_get(eth_dev, &pf->fec_mode);
+	ret = hns3_fec_get_internal(hw, &pf->fec_mode);
 	if (ret)
 		hns3_err(hw, "query device FEC info failed, ret = %d", ret);
 
@@ -6105,8 +6111,6 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-
-	hns->eth_dev = eth_dev;
 
 	eth_dev->process_private = (struct hns3_process_private *)
 	    rte_zmalloc_socket("hns3_filter_list",
