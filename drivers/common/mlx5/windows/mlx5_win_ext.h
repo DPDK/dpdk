@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#include "mlx5_prm.h"
 #include "mlx5devx.h"
 
 typedef struct mlx5_context {

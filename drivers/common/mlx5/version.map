@@ -43,6 +43,9 @@ INTERNAL {
 	mlx5_devx_get_out_command_status;
 	mlx5_devx_alloc_uar;
 
+	mlx5_devx_cq_create;
+	mlx5_devx_cq_destroy;
+
 	mlx5_get_ifname_sysfs;
 	mlx5_get_dbr;
 
