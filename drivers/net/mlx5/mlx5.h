@@ -467,13 +467,7 @@ struct mlx5_flow_counter_mng {
 struct mlx5_aso_cq {
 	uint16_t log_desc_n;
 	uint32_t cq_ci:24;
-	struct mlx5_devx_obj *cq;
-	struct mlx5dv_devx_umem *umem_obj;
-	union {
-		volatile void *umem_buf;
-		volatile struct mlx5_cqe *cqes;
-	};
-	volatile uint32_t *db_rec;
+	struct mlx5_devx_cq cq_obj;
 	uint64_t errors;
 };
 

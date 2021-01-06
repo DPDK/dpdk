@@ -8,9 +8,11 @@
 
 #include <mlx5_malloc.h>
 #include <mlx5_common_os.h>
+#include <mlx5_common_devx.h>
 
 #include "mlx5.h"
 #include "mlx5_flow.h"
+
 
 /**
  * Destroy Completion Queue used for ASO access.
@@ -21,12 +23,8 @@
 static void
 mlx5_aso_cq_destroy(struct mlx5_aso_cq *cq)
 {
-	if (cq->cq)
-		claim_zero(mlx5_devx_cmd_destroy(cq->cq));
-	if (cq->umem_obj)
-		claim_zero(mlx5_glue->devx_umem_dereg(cq->umem_obj));
-	if (cq->umem_buf)
-		mlx5_free((void *)(uintptr_t)cq->umem_buf);
+	if (cq->cq_obj.cq)
+		mlx5_devx_cq_destroy(&cq->cq_obj);
 	memset(cq, 0, sizeof(*cq));
 }
 
@@ -43,60 +41,21 @@ mlx5_aso_cq_destroy(struct mlx5_aso_cq *cq)
  *   Socket to use for allocation.
  * @param[in] uar_page_id
  *   UAR page ID to use.
- * @param[in] eqn
- *   EQ number.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_aso_cq_create(void *ctx, struct mlx5_aso_cq *cq, uint16_t log_desc_n,
-		   int socket, int uar_page_id, uint32_t eqn)
+		   int socket, int uar_page_id)
 {
-	struct mlx5_devx_cq_attr attr = { 0 };
-	size_t pgsize = rte_mem_page_size();
-	uint32_t umem_size;
-	uint16_t cq_size = 1 << log_desc_n;
+	struct mlx5_devx_cq_attr attr = {
+		.uar_page_id = uar_page_id,
+	};
 
 	cq->log_desc_n = log_desc_n;
-	umem_size = sizeof(struct mlx5_cqe) * cq_size + sizeof(*cq->db_rec) * 2;
-	cq->umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
-				   4096, socket);
-	if (!cq->umem_buf) {
-		DRV_LOG(ERR, "Failed to allocate memory for CQ.");
-		rte_errno = ENOMEM;
-		return -ENOMEM;
-	}
-	cq->umem_obj = mlx5_os_umem_reg(ctx,
-						(void *)(uintptr_t)cq->umem_buf,
-						umem_size,
-						IBV_ACCESS_LOCAL_WRITE);
-	if (!cq->umem_obj) {
-		DRV_LOG(ERR, "Failed to register umem for aso CQ.");
-		goto error;
-	}
-	attr.q_umem_valid = 1;
-	attr.db_umem_valid = 1;
-	attr.use_first_only = 0;
-	attr.overrun_ignore = 0;
-	attr.uar_page_id = uar_page_id;
-	attr.q_umem_id = mlx5_os_get_umem_id(cq->umem_obj);
-	attr.q_umem_offset = 0;
-	attr.db_umem_id = attr.q_umem_id;
-	attr.db_umem_offset = sizeof(struct mlx5_cqe) * cq_size;
-	attr.eqn = eqn;
-	attr.log_cq_size = log_desc_n;
-	attr.log_page_size = rte_log2_u32(pgsize);
-	cq->cq = mlx5_devx_cmd_create_cq(ctx, &attr);
-	if (!cq->cq)
-		goto error;
-	cq->db_rec = RTE_PTR_ADD(cq->umem_buf, (uintptr_t)attr.db_umem_offset);
 	cq->cq_ci = 0;
-	memset((void *)(uintptr_t)cq->umem_buf, 0xFF, attr.db_umem_offset);
-	return 0;
-error:
-	mlx5_aso_cq_destroy(cq);
-	return -1;
+	return mlx5_devx_cq_create(ctx, &cq->cq_obj, log_desc_n, &attr, socket);
 }
 
 /**
@@ -195,8 +154,7 @@ mlx5_aso_destroy_sq(struct mlx5_aso_sq *sq)
 		mlx5_devx_cmd_destroy(sq->sq);
 		sq->sq = NULL;
 	}
-	if (sq->cq.cq)
-		mlx5_aso_cq_destroy(&sq->cq);
+	mlx5_aso_cq_destroy(&sq->cq);
 	mlx5_aso_devx_dereg_mr(&sq->mr);
 	memset(sq, 0, sizeof(*sq));
 }
@@ -247,8 +205,6 @@ mlx5_aso_init_sq(struct mlx5_aso_sq *sq)
  *   User Access Region object.
  * @param[in] pdn
  *   Protection Domain number to use.
- * @param[in] eqn
- *   EQ number.
  * @param[in] log_desc_n
  *   Log of number of descriptors in queue.
  *
@@ -257,8 +213,7 @@ mlx5_aso_init_sq(struct mlx5_aso_sq *sq)
  */
 static int
 mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
-		   void *uar, uint32_t pdn,
-		   uint32_t eqn,  uint16_t log_desc_n)
+		   void *uar, uint32_t pdn,  uint16_t log_desc_n)
 {
 	struct mlx5_devx_create_sq_attr attr = { 0 };
 	struct mlx5_devx_modify_sq_attr modify_attr = { 0 };
@@ -272,7 +227,7 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 				 sq_desc_n, &sq->mr, socket, pdn))
 		return -1;
 	if (mlx5_aso_cq_create(ctx, &sq->cq, log_desc_n, socket,
-				mlx5_os_get_devx_uar_page_id(uar), eqn))
+			       mlx5_os_get_devx_uar_page_id(uar)))
 		goto error;
 	sq->log_desc_n = log_desc_n;
 	sq->umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, wq_size +
@@ -296,7 +251,7 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 	attr.tis_lst_sz = 0;
 	attr.tis_num = 0;
 	attr.user_index = 0xFFFF;
-	attr.cqn = sq->cq.cq->id;
+	attr.cqn = sq->cq.cq_obj.cq->id;
 	wq_attr->uar_page = mlx5_os_get_devx_uar_page_id(uar);
 	wq_attr->pd = pdn;
 	wq_attr->wq_type = MLX5_WQ_TYPE_CYCLIC;
@@ -348,8 +303,7 @@ int
 mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh)
 {
 	return mlx5_aso_sq_create(sh->ctx, &sh->aso_age_mng->aso_sq, 0,
-				  sh->tx_uar, sh->pdn, sh->eqn,
-				  MLX5_ASO_QUEUE_LOG_DESC);
+				  sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC);
 }
 
 /**
@@ -459,7 +413,7 @@ mlx5_aso_cqe_err_handle(struct mlx5_aso_sq *sq)
 	struct mlx5_aso_cq *cq = &sq->cq;
 	uint32_t idx = cq->cq_ci & ((1 << cq->log_desc_n) - 1);
 	volatile struct mlx5_err_cqe *cqe =
-				(volatile struct mlx5_err_cqe *)&cq->cqes[idx];
+			(volatile struct mlx5_err_cqe *)&cq->cq_obj.cqes[idx];
 
 	cq->errors++;
 	idx = rte_be_to_cpu_16(cqe->wqe_counter) & (1u << sq->log_desc_n);
@@ -572,8 +526,8 @@ mlx5_aso_completion_handle(struct mlx5_dev_ctx_shared *sh)
 	do {
 		idx = next_idx;
 		next_idx = (cq->cq_ci + 1) & mask;
-		rte_prefetch0(&cq->cqes[next_idx]);
-		cqe = &cq->cqes[idx];
+		rte_prefetch0(&cq->cq_obj.cqes[next_idx]);
+		cqe = &cq->cq_obj.cqes[idx];
 		ret = check_cqe(cqe, cq_size, cq->cq_ci);
 		/*
 		 * Be sure owner read is done before any other cookie field or
@@ -593,7 +547,7 @@ mlx5_aso_completion_handle(struct mlx5_dev_ctx_shared *sh)
 		mlx5_aso_age_action_update(sh, i);
 		sq->tail += i;
 		rte_io_wmb();
-		cq->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
+		cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
 	}
 	return i;
 }
