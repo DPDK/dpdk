@@ -15,6 +15,7 @@
 #include <rte_per_lcore.h>
 #include <rte_eal.h>
 #include <rte_launch.h>
+#include <rte_thread.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -356,27 +357,6 @@ rte_lcore_iterate(rte_lcore_iterate_cb cb, void *arg);
 __rte_experimental
 void
 rte_lcore_dump(FILE *f);
-
-/**
- * Set core affinity of the current thread.
- * Support both EAL and non-EAL thread and update TLS.
- *
- * @param cpusetp
- *   Point to cpu_set_t for setting current thread affinity.
- * @return
- *   On success, return 0; otherwise return -1;
- */
-int rte_thread_set_affinity(rte_cpuset_t *cpusetp);
-
-/**
- * Get core affinity of the current thread.
- *
- * @param cpusetp
- *   Point to cpu_set_t for getting current thread cpu affinity.
- *   It presumes input is not NULL, otherwise it causes panic.
- *
- */
-void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
 
 /**
  * Set thread names.
