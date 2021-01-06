@@ -327,6 +327,9 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	attr.tis_id = priv->tiss[(index / 2) % priv->num_lag_ports]->id;
 	attr.queue_index = index;
 	attr.pd = priv->pdn;
+	attr.hw_latency_mode = priv->hw_latency_mode;
+	attr.hw_max_latency_us = priv->hw_max_latency_us;
+	attr.hw_max_pending_comp = priv->hw_max_pending_comp;
 	virtq->virtq = mlx5_devx_cmd_create_virtq(priv->ctx, &attr);
 	virtq->priv = priv;
 	if (!virtq->virtq)
