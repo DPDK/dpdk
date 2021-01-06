@@ -897,8 +897,17 @@ efx_mae_match_spec_is_valid(
 		if (m_size == 0)
 			continue; /* Skip array gap */
 
-		if ((unsigned int)field_cap_id >= field_ncaps)
-			break;
+		if ((unsigned int)field_cap_id >= field_ncaps) {
+			/*
+			 * The FW has not reported capability status for
+			 * this field. Make sure that its mask is zeroed.
+			 */
+			is_valid = efx_mask_is_all_zeros(m_size, m_buf);
+			if (is_valid != B_FALSE)
+				continue;
+			else
+				break;
+		}
 
 		switch (field_caps[field_cap_id].emfc_support) {
 		case MAE_FIELD_SUPPORTED_MATCH_MASK:
