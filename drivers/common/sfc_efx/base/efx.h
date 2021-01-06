@@ -4283,6 +4283,11 @@ efx_mae_action_set_specs_equal(
  * Conduct a comparison to check whether two match specifications
  * of equal rule type (action / outer) and priority would map to
  * the very same rule class from the firmware's standpoint.
+ *
+ * For match specification fields that are not supported by firmware,
+ * the rule class only matches if the mask/value pairs for that field
+ * are equal. Clients should use efx_mae_match_spec_is_valid() before
+ * calling this API to detect usage of unsupported fields.
  */
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
