@@ -551,7 +551,6 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_cmd_desc desc_reset;
 	struct hns3_rx_queue *rxq;
-	struct hns3_tx_queue *txq;
 	uint16_t i;
 	int ret;
 
@@ -581,29 +580,15 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	/* Clear the Rx BD errors stats */
-	for (i = 0; i != eth_dev->data->nb_rx_queues; ++i) {
+	/*
+	 * Clear soft stats of rx error packet which will be dropped
+	 * in driver.
+	 */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; ++i) {
 		rxq = eth_dev->data->rx_queues[i];
 		if (rxq) {
 			rxq->pkt_len_errors = 0;
 			rxq->l2_errors = 0;
-			rxq->l3_csum_errors = 0;
-			rxq->l4_csum_errors = 0;
-			rxq->ol3_csum_errors = 0;
-			rxq->ol4_csum_errors = 0;
-		}
-	}
-
-	/* Clear the Tx errors stats */
-	for (i = 0; i != eth_dev->data->nb_tx_queues; ++i) {
-		txq = eth_dev->data->tx_queues[i];
-		if (txq) {
-			txq->over_length_pkt_cnt = 0;
-			txq->exceed_limit_bd_pkt_cnt = 0;
-			txq->exceed_limit_bd_reassem_fail = 0;
-			txq->unsupported_tunnel_pkt_cnt = 0;
-			txq->queue_full_cnt = 0;
-			txq->pkt_padding_fail_cnt = 0;
 		}
 	}
 
@@ -1053,6 +1038,38 @@ hns3_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 	return size;
 }
 
+static void
+hns3_tqp_dfx_stats_clear(struct rte_eth_dev *dev)
+{
+	struct hns3_rx_queue *rxq;
+	struct hns3_tx_queue *txq;
+	int i;
+
+	/* Clear Rx dfx stats */
+	for (i = 0; i < dev->data->nb_rx_queues; ++i) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq) {
+			rxq->l3_csum_errors = 0;
+			rxq->l4_csum_errors = 0;
+			rxq->ol3_csum_errors = 0;
+			rxq->ol4_csum_errors = 0;
+		}
+	}
+
+	/* Clear Tx dfx stats */
+	for (i = 0; i < dev->data->nb_tx_queues; ++i) {
+		txq = dev->data->tx_queues[i];
+		if (txq) {
+			txq->over_length_pkt_cnt = 0;
+			txq->exceed_limit_bd_pkt_cnt = 0;
+			txq->exceed_limit_bd_reassem_fail = 0;
+			txq->unsupported_tunnel_pkt_cnt = 0;
+			txq->queue_full_cnt = 0;
+			txq->pkt_padding_fail_cnt = 0;
+		}
+	}
+}
+
 int
 hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 {
@@ -1067,6 +1084,8 @@ hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 
 	/* Clear reset stats */
 	memset(&hns->hw.reset.stats, 0, sizeof(struct hns3_reset_stats));
+
+	hns3_tqp_dfx_stats_clear(dev);
 
 	if (hns->is_vf)
 		return 0;
