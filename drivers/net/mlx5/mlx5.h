@@ -487,13 +487,7 @@ struct mlx5_aso_sq_elem {
 struct mlx5_aso_sq {
 	uint16_t log_desc_n;
 	struct mlx5_aso_cq cq;
-	struct mlx5_devx_obj *sq;
-	struct mlx5dv_devx_umem *wqe_umem; /* SQ buffer umem. */
-	union {
-		volatile void *umem_buf;
-		volatile struct mlx5_aso_wqe *wqes;
-	};
-	volatile uint32_t *db_rec;
+	struct mlx5_devx_sq sq_obj;
 	volatile uint64_t *uar_addr;
 	struct mlx5_aso_devx_mr mr;
 	uint16_t pi;

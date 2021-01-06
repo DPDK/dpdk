@@ -28,6 +28,7 @@ struct mlx5_devx_sq {
 	union {
 		volatile void *umem_buf;
 		volatile struct mlx5_wqe *wqes; /* The SQ ring buffer. */
+		volatile struct mlx5_aso_wqe *aso_wqes;
 	};
 	volatile uint32_t *db_rec; /* The SQ doorbell record. */
 };
