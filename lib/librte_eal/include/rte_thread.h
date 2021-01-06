@@ -20,6 +20,11 @@ extern "C" {
 #endif
 
 /**
+ * TLS key type, an opaque pointer.
+ */
+typedef struct eal_tls_key *rte_tls_key;
+
+/**
  * Set core affinity of the current thread.
  * Support both EAL and non-EAL thread and update TLS.
  *
@@ -39,6 +44,66 @@ int rte_thread_set_affinity(rte_cpuset_t *cpusetp);
  *
  */
 void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
+
+/**
+ * Create a TLS data key visible to all threads in the process.
+ * the created key is later used to get/set a value.
+ * and optional destructor can be set to be called when a thread exits.
+ *
+ * @param key
+ *   Pointer to store the allocated key.
+ * @param destructor
+ *   The function to be called when the thread exits.
+ *   Ignored on Windows OS.
+ *
+ * @return
+ *   On success, zero.
+ *   On failure, a negative number.
+ */
+
+__rte_experimental
+int rte_thread_tls_key_create(rte_tls_key *key, void (*destructor)(void *));
+
+/**
+ * Delete a TLS data key visible to all threads in the process.
+ *
+ * @param key
+ *   The key allocated by rte_thread_tls_key_create().
+ *
+ * @return
+ *   On success, zero.
+ *   On failure, a negative number.
+ */
+__rte_experimental
+int rte_thread_tls_key_delete(rte_tls_key key);
+
+/**
+ * Set value bound to the TLS key on behalf of the calling thread.
+ *
+ * @param key
+ *   The key allocated by rte_thread_tls_key_create().
+ * @param value
+ *   The value bound to the rte_tls_key key for the calling thread.
+ *
+ * @return
+ *   On success, zero.
+ *   On failure, a negative number.
+ */
+__rte_experimental
+int rte_thread_tls_value_set(rte_tls_key key, const void *value);
+
+/**
+ * Get value bound to the TLS key on behalf of the calling thread.
+ *
+ * @param key
+ *   The key allocated by rte_thread_tls_key_create().
+ *
+ * @return
+ *   On success, value data pointer (can also be NULL).
+ *   On failure, NULL and an error number is set in rte_errno.
+ */
+__rte_experimental
+void *rte_thread_tls_value_get(rte_tls_key key);
 
 #ifdef __cplusplus
 }
