@@ -302,6 +302,9 @@ struct mlx5_devx_virtq_attr {
 	uint32_t rx_csum:1;
 	uint32_t event_mode:3;
 	uint32_t state:4;
+	uint32_t hw_latency_mode:2;
+	uint32_t hw_max_latency_us:12;
+	uint32_t hw_max_pending_comp:16;
 	uint32_t dirty_bitmap_dump_enable:1;
 	uint32_t dirty_bitmap_mkey;
 	uint32_t dirty_bitmap_size;

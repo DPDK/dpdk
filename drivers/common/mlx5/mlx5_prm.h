@@ -2379,7 +2379,11 @@ struct mlx5_ifc_virtio_q_bits {
 	u8 counter_set_id[0x20];
 	u8 reserved_at_320[0x8];
 	u8 pd[0x18];
-	u8 reserved_at_340[0xc0];
+	u8 reserved_at_340[0x2];
+	u8 queue_period_mode[0x2];
+	u8 queue_period_us[0xc];
+	u8 queue_max_count[0x10];
+	u8 reserved_at_360[0xa0];
 };
 
 struct mlx5_ifc_virtio_net_q_bits {

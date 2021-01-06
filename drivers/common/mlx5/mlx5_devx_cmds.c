@@ -1662,6 +1662,9 @@ mlx5_devx_cmd_create_virtq(void *ctx,
 	MLX5_SET64(virtio_q, virtctx, umem_3_offset, attr->umems[2].offset);
 	MLX5_SET(virtio_q, virtctx, counter_set_id, attr->counters_obj_id);
 	MLX5_SET(virtio_q, virtctx, pd, attr->pd);
+	MLX5_SET(virtio_q, virtctx, queue_period_mode, attr->hw_latency_mode);
+	MLX5_SET(virtio_q, virtctx, queue_period_us, attr->hw_max_latency_us);
+	MLX5_SET(virtio_q, virtctx, queue_max_count, attr->hw_max_pending_comp);
 	MLX5_SET(virtio_net_q, virtq, tisn_or_qpn, attr->tis_id);
 	virtq_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						    sizeof(out));
