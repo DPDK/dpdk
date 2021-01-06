@@ -61,7 +61,7 @@ Anatomy of Node:
 
 .. figure:: img/anatomy_of_a_node.*
 
-The :numref:`figure_anatomy_of_a_node` diagram depicts the anatomy of a node.
+   Anatomy of a node
 
 The node is the basic building block of the graph framework.
 
@@ -138,8 +138,7 @@ Link the Nodes to create the graph topology
 
 .. figure:: img/link_the_nodes.*
 
-The :numref:`figure_link_the_nodes` diagram shows a graph topology after
-linking the N nodes.
+   Topology after linking the nodes
 
 Once nodes are available to the program, Application or node public API
 functions can links them together to create a complex packet processing graph.
@@ -322,8 +321,9 @@ Graph object memory layout
 
 .. figure:: img/graph_mem_layout.*
 
-The :numref:`figure_graph_mem_layout` diagram shows ``rte_graph`` object memory
-layout. Understanding the memory layout helps to debug the graph library and
+   Memory layout
+
+Understanding the memory layout helps to debug the graph library and
 improve the performance if needed.
 
 Graph object consists of a header, circular buffer to store the pending
