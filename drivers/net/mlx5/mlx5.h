@@ -841,11 +841,9 @@ struct mlx5_txq_obj {
 		struct {
 			struct rte_eth_dev *dev;
 			struct mlx5_devx_cq cq_obj;
-			struct mlx5_devx_obj *sq_devx;
-			void *sq_umem;
-			void *sq_buf;
-			int64_t sq_dbrec_offset;
-			struct mlx5_devx_dbr_page *sq_dbrec_page;
+			/* DevX CQ object and its resources. */
+			struct mlx5_devx_sq sq_obj;
+			/* DevX SQ object and its resources. */
 		};
 	};
 };

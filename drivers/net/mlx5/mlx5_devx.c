@@ -115,7 +115,7 @@ mlx5_devx_modify_sq(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
 		else
 			msq_attr.sq_state = MLX5_SQC_STATE_RDY;
 		msq_attr.state = MLX5_SQC_STATE_RST;
-		ret = mlx5_devx_cmd_modify_sq(obj->sq_devx, &msq_attr);
+		ret = mlx5_devx_cmd_modify_sq(obj->sq_obj.sq, &msq_attr);
 		if (ret) {
 			DRV_LOG(ERR, "Cannot change the Tx SQ state to RESET"
 				" %s", strerror(errno));
@@ -127,7 +127,7 @@ mlx5_devx_modify_sq(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
 		/* Change queue state to ready. */
 		msq_attr.sq_state = MLX5_SQC_STATE_RST;
 		msq_attr.state = MLX5_SQC_STATE_RDY;
-		ret = mlx5_devx_cmd_modify_sq(obj->sq_devx, &msq_attr);
+		ret = mlx5_devx_cmd_modify_sq(obj->sq_obj.sq, &msq_attr);
 		if (ret) {
 			DRV_LOG(ERR, "Cannot change the Tx SQ state to READY"
 				" %s", strerror(errno));
@@ -1052,36 +1052,6 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 
 #if defined(HAVE_MLX5DV_DEVX_UAR_OFFSET) || !defined(HAVE_INFINIBAND_VERBS_H)
 /**
- * Release DevX SQ resources.
- *
- * @param txq_obj
- *   DevX Tx queue object.
- */
-static void
-mlx5_txq_release_devx_sq_resources(struct mlx5_txq_obj *txq_obj)
-{
-	if (txq_obj->sq_devx) {
-		claim_zero(mlx5_devx_cmd_destroy(txq_obj->sq_devx));
-		txq_obj->sq_devx = NULL;
-	}
-	if (txq_obj->sq_umem) {
-		claim_zero(mlx5_os_umem_dereg(txq_obj->sq_umem));
-		txq_obj->sq_umem = NULL;
-	}
-	if (txq_obj->sq_buf) {
-		mlx5_free(txq_obj->sq_buf);
-		txq_obj->sq_buf = NULL;
-	}
-	if (txq_obj->sq_dbrec_page) {
-		claim_zero(mlx5_release_dbr(&txq_obj->txq_ctrl->priv->dbrpgs,
-					    mlx5_os_get_umem_id
-						 (txq_obj->sq_dbrec_page->umem),
-					    txq_obj->sq_dbrec_offset));
-		txq_obj->sq_dbrec_page = NULL;
-	}
-}
-
-/**
  * Destroy the Tx queue DevX object.
  *
  * @param txq_obj
@@ -1090,7 +1060,8 @@ mlx5_txq_release_devx_sq_resources(struct mlx5_txq_obj *txq_obj)
 static void
 mlx5_txq_release_devx_resources(struct mlx5_txq_obj *txq_obj)
 {
-	mlx5_txq_release_devx_sq_resources(txq_obj);
+	mlx5_devx_sq_destroy(&txq_obj->sq_obj);
+	memset(&txq_obj->sq_obj, 0, sizeof(txq_obj->sq_obj));
 	mlx5_devx_cq_destroy(&txq_obj->cq_obj);
 	memset(&txq_obj->cq_obj, 0, sizeof(txq_obj->cq_obj));
 }
@@ -1102,100 +1073,39 @@ mlx5_txq_release_devx_resources(struct mlx5_txq_obj *txq_obj)
  *   Pointer to Ethernet device.
  * @param idx
  *   Queue index in DPDK Tx queue array.
+ * @param[in] log_desc_n
+ *   Log of number of descriptors in queue.
  *
  * @return
- *   Number of WQEs in SQ, 0 otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static uint32_t
-mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx)
+static int
+mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
+				  uint16_t log_desc_n)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
 	struct mlx5_txq_ctrl *txq_ctrl =
 			container_of(txq_data, struct mlx5_txq_ctrl, txq);
 	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
-	struct mlx5_devx_create_sq_attr sq_attr = { 0 };
-	size_t page_size;
-	uint32_t wqe_n;
-	int ret;
+	struct mlx5_devx_create_sq_attr sq_attr = {
+		.flush_in_error_en = 1,
+		.allow_multi_pkt_send_wqe = !!priv->config.mps,
+		.min_wqe_inline_mode = priv->config.hca_attr.vport_inline_mode,
+		.allow_swp = !!priv->config.swp,
+		.cqn = txq_obj->cq_obj.cq->id,
+		.tis_lst_sz = 1,
+		.tis_num = priv->sh->tis->id,
+		.wq_attr = (struct mlx5_devx_wq_attr){
+			.pd = priv->sh->pdn,
+			.uar_page =
+				 mlx5_os_get_devx_uar_page_id(priv->sh->tx_uar),
+		},
+	};
 
-	MLX5_ASSERT(txq_data);
-	MLX5_ASSERT(txq_obj);
-	page_size = rte_mem_page_size();
-	if (page_size == (size_t)-1) {
-		DRV_LOG(ERR, "Failed to get mem page size.");
-		rte_errno = ENOMEM;
-		return 0;
-	}
-	wqe_n = RTE_MIN(1UL << txq_data->elts_n,
-			(uint32_t)priv->sh->device_attr.max_qp_wr);
-	txq_obj->sq_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-				      wqe_n * sizeof(struct mlx5_wqe),
-				      page_size, priv->sh->numa_node);
-	if (!txq_obj->sq_buf) {
-		DRV_LOG(ERR,
-			"Port %u Tx queue %u cannot allocate memory (SQ).",
-			dev->data->port_id, txq_data->idx);
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	/* Register allocated buffer in user space with DevX. */
-	txq_obj->sq_umem = mlx5_os_umem_reg
-					(priv->sh->ctx,
-					 (void *)txq_obj->sq_buf,
-					 wqe_n * sizeof(struct mlx5_wqe),
-					 IBV_ACCESS_LOCAL_WRITE);
-	if (!txq_obj->sq_umem) {
-		rte_errno = errno;
-		DRV_LOG(ERR,
-			"Port %u Tx queue %u cannot register memory (SQ).",
-			dev->data->port_id, txq_data->idx);
-		goto error;
-	}
-	/* Allocate doorbell record for send queue. */
-	txq_obj->sq_dbrec_offset = mlx5_get_dbr(priv->sh->ctx,
-						&priv->dbrpgs,
-						&txq_obj->sq_dbrec_page);
-	if (txq_obj->sq_dbrec_offset < 0) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to allocate SQ door-bell.");
-		goto error;
-	}
-	sq_attr.tis_lst_sz = 1;
-	sq_attr.tis_num = priv->sh->tis->id;
-	sq_attr.state = MLX5_SQC_STATE_RST;
-	sq_attr.cqn = txq_obj->cq_obj.cq->id;
-	sq_attr.flush_in_error_en = 1;
-	sq_attr.allow_multi_pkt_send_wqe = !!priv->config.mps;
-	sq_attr.allow_swp = !!priv->config.swp;
-	sq_attr.min_wqe_inline_mode = priv->config.hca_attr.vport_inline_mode;
-	sq_attr.wq_attr.uar_page =
-				mlx5_os_get_devx_uar_page_id(priv->sh->tx_uar);
-	sq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
-	sq_attr.wq_attr.pd = priv->sh->pdn;
-	sq_attr.wq_attr.log_wq_stride = rte_log2_u32(MLX5_WQE_SIZE);
-	sq_attr.wq_attr.log_wq_sz = log2above(wqe_n);
-	sq_attr.wq_attr.dbr_umem_valid = 1;
-	sq_attr.wq_attr.dbr_addr = txq_obj->sq_dbrec_offset;
-	sq_attr.wq_attr.dbr_umem_id =
-			mlx5_os_get_umem_id(txq_obj->sq_dbrec_page->umem);
-	sq_attr.wq_attr.wq_umem_valid = 1;
-	sq_attr.wq_attr.wq_umem_id = mlx5_os_get_umem_id(txq_obj->sq_umem);
-	sq_attr.wq_attr.wq_umem_offset = (uintptr_t)txq_obj->sq_buf % page_size;
 	/* Create Send Queue object with DevX. */
-	txq_obj->sq_devx = mlx5_devx_cmd_create_sq(priv->sh->ctx, &sq_attr);
-	if (!txq_obj->sq_devx) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Port %u Tx queue %u SQ creation failure.",
-			dev->data->port_id, idx);
-		goto error;
-	}
-	return wqe_n;
-error:
-	ret = rte_errno;
-	mlx5_txq_release_devx_sq_resources(txq_obj);
-	rte_errno = ret;
-	return 0;
+	return mlx5_devx_sq_create(priv->sh->ctx, &txq_obj->sq_obj, log_desc_n,
+				   &sq_attr, priv->sh->numa_node);
 }
 #endif
 
@@ -1267,27 +1177,29 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->cq_db = txq_obj->cq_obj.db_rec;
 	*txq_data->cq_db = 0;
 	/* Create Send Queue object with DevX. */
-	wqe_n = mlx5_txq_create_devx_sq_resources(dev, idx);
-	if (!wqe_n) {
+	wqe_n = RTE_MIN(1UL << txq_data->elts_n,
+			(uint32_t)priv->sh->device_attr.max_qp_wr);
+	log_desc_n = log2above(wqe_n);
+	ret = mlx5_txq_create_devx_sq_resources(dev, idx, log_desc_n);
+	if (ret) {
+		DRV_LOG(ERR, "Port %u Tx queue %u SQ creation failure.",
+			dev->data->port_id, idx);
 		rte_errno = errno;
 		goto error;
 	}
 	/* Create the Work Queue. */
-	txq_data->wqe_n = log2above(wqe_n);
+	txq_data->wqe_n = log_desc_n;
 	txq_data->wqe_s = 1 << txq_data->wqe_n;
 	txq_data->wqe_m = txq_data->wqe_s - 1;
-	txq_data->wqes = (struct mlx5_wqe *)txq_obj->sq_buf;
+	txq_data->wqes = (struct mlx5_wqe *)(uintptr_t)txq_obj->sq_obj.wqes;
 	txq_data->wqes_end = txq_data->wqes + txq_data->wqe_s;
 	txq_data->wqe_ci = 0;
 	txq_data->wqe_pi = 0;
 	txq_data->wqe_comp = 0;
 	txq_data->wqe_thres = txq_data->wqe_s / MLX5_TX_COMP_THRESH_INLINE_DIV;
-	txq_data->qp_db = (volatile uint32_t *)
-					(txq_obj->sq_dbrec_page->dbrs +
-					 txq_obj->sq_dbrec_offset +
-					 MLX5_SND_DBR * sizeof(uint32_t));
+	txq_data->qp_db = txq_obj->sq_obj.db_rec;
 	*txq_data->qp_db = 0;
-	txq_data->qp_num_8s = txq_obj->sq_devx->id << 8;
+	txq_data->qp_num_8s = txq_obj->sq_obj.sq->id << 8;
 	/* Change Send Queue state to Ready-to-Send. */
 	ret = mlx5_devx_modify_sq(txq_obj, MLX5_TXQ_MOD_RST2RDY, 0);
 	if (ret) {
