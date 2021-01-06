@@ -51,7 +51,6 @@ INTERNAL {
 	mlx5_devx_sq_destroy;
 
 	mlx5_get_ifname_sysfs;
-	mlx5_get_dbr;
 
 	mlx5_mp_init_primary;
 	mlx5_mp_uninit_primary;
@@ -92,8 +91,6 @@ INTERNAL {
 	mlx5_nl_vf_mac_addr_modify;
 	mlx5_nl_vlan_vmwa_create;
 	mlx5_nl_vlan_vmwa_delete;
-
-	mlx5_release_dbr;
 
 	mlx5_translate_port_name;
 

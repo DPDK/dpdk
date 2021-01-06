@@ -42,7 +42,6 @@ EXPORTS
 	mlx5_devx_sq_create
 	mlx5_devx_sq_destroy
 
-	mlx5_get_dbr
 	mlx5_glue
 
 	mlx5_malloc_mem_select
@@ -62,8 +61,6 @@ EXPORTS
 	mlx5_mr_free
 
 	mlx5_pci_driver_register
-
-	mlx5_release_dbr
 
 	mlx5_malloc
 	mlx5_realloc
