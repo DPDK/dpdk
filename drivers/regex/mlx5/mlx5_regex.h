@@ -12,6 +12,7 @@
 
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>
+#include <mlx5_common_devx.h>
 
 #include "mlx5_rxp.h"
 
@@ -30,13 +31,8 @@ struct mlx5_regex_sq {
 
 struct mlx5_regex_cq {
 	uint32_t log_nb_desc; /* Log 2 number of desc for this object. */
-	struct mlx5_devx_obj *obj; /* The CQ DevX object. */
-	int64_t dbr_offset; /* Door bell record offset. */
-	uint32_t dbr_umem; /* Door bell record umem id. */
-	volatile struct mlx5_cqe *cqe; /* The CQ ring buffer. */
-	struct mlx5dv_devx_umem *cqe_umem; /* CQ buffer umem. */
+	struct mlx5_devx_cq cq_obj; /* The CQ DevX object. */
 	size_t ci;
-	uint32_t *dbr;
 };
 
 struct mlx5_regex_qp {
@@ -75,7 +71,6 @@ struct mlx5_regex_priv {
 	struct mlx5_regex_db db[MLX5_RXP_MAX_ENGINES +
 				MLX5_RXP_EM_COUNT];
 	uint32_t nb_engines; /* Number of RegEx engines. */
-	uint32_t eqn; /* EQ number. */
 	struct mlx5dv_devx_uar *uar; /* UAR object. */
 	struct ibv_pd *pd;
 	struct mlx5_dbr_page_list dbrpgs; /* Door-bell pages. */

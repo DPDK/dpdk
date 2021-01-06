@@ -170,12 +170,6 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		goto error;
 	}
-	ret = mlx5_glue->devx_query_eqn(ctx, 0, &priv->eqn);
-	if (ret) {
-		DRV_LOG(ERR, "can't query event queue number.");
-		rte_errno = ENOMEM;
-		goto error;
-	}
 	/*
 	 * This PMD always claims the write memory barrier on UAR
 	 * registers writings, it is safe to allocate UAR with any

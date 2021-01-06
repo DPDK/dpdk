@@ -245,7 +245,7 @@ poll_one(struct mlx5_regex_cq *cq)
 	size_t next_cqe_offset;
 
 	next_cqe_offset =  (cq->ci & (cq_size_get(cq) - 1));
-	cqe = (volatile struct mlx5_cqe *)(cq->cqe + next_cqe_offset);
+	cqe = (volatile struct mlx5_cqe *)(cq->cq_obj.cqes + next_cqe_offset);
 	rte_io_wmb();
 
 	int ret = check_cqe(cqe, cq_size_get(cq), cq->ci);
@@ -306,7 +306,7 @@ mlx5_regexdev_dequeue(struct rte_regexdev *dev, uint16_t qp_id,
 		}
 		cq->ci = (cq->ci + 1) & 0xffffff;
 		rte_wmb();
-		cq->dbr[0] = rte_cpu_to_be_32(cq->ci);
+		cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->ci);
 		queue->free_sqs |= (1 << sqid);
 	}
 

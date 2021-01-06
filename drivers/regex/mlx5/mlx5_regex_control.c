@@ -6,6 +6,7 @@
 
 #include <rte_log.h>
 #include <rte_errno.h>
+#include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_regexdev.h>
 #include <rte_regexdev_core.h>
@@ -17,6 +18,7 @@
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
 #include <mlx5_common_os.h>
+#include <mlx5_common_devx.h>
 
 #include "mlx5_regex.h"
 #include "mlx5_regex_utils.h"
@@ -44,8 +46,6 @@ regex_ctrl_get_nb_obj(uint16_t nb_desc)
 /**
  * destroy CQ.
  *
- * @param priv
- *   Pointer to the priv object.
  * @param cp
  *   Pointer to the CQ to be destroyed.
  *
@@ -53,24 +53,10 @@ regex_ctrl_get_nb_obj(uint16_t nb_desc)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-regex_ctrl_destroy_cq(struct mlx5_regex_priv *priv, struct mlx5_regex_cq *cq)
+regex_ctrl_destroy_cq(struct mlx5_regex_cq *cq)
 {
-	if (cq->cqe_umem) {
-		mlx5_glue->devx_umem_dereg(cq->cqe_umem);
-		cq->cqe_umem = NULL;
-	}
-	if (cq->cqe) {
-		rte_free((void *)(uintptr_t)cq->cqe);
-		cq->cqe = NULL;
-	}
-	if (cq->dbr_offset) {
-		mlx5_release_dbr(&priv->dbrpgs, cq->dbr_umem, cq->dbr_offset);
-		cq->dbr_offset = -1;
-	}
-	if (cq->obj) {
-		mlx5_devx_cmd_destroy(cq->obj);
-		cq->obj = NULL;
-	}
+	mlx5_devx_cq_destroy(&cq->cq_obj);
+	memset(cq, 0, sizeof(*cq));
 	return 0;
 }
 
@@ -89,65 +75,20 @@ static int
 regex_ctrl_create_cq(struct mlx5_regex_priv *priv, struct mlx5_regex_cq *cq)
 {
 	struct mlx5_devx_cq_attr attr = {
-		.q_umem_valid = 1,
-		.db_umem_valid = 1,
-		.eqn = priv->eqn,
+		.uar_page_id = priv->uar->page_id,
 	};
-	struct mlx5_devx_dbr_page *dbr_page = NULL;
-	void *buf = NULL;
-	size_t pgsize = sysconf(_SC_PAGESIZE);
-	uint32_t cq_size = 1 << cq->log_nb_desc;
-	uint32_t i;
+	int ret;
 
-	cq->dbr_offset = mlx5_get_dbr(priv->ctx, &priv->dbrpgs, &dbr_page);
-	if (cq->dbr_offset < 0) {
-		DRV_LOG(ERR, "Can't allocate cq door bell record.");
-		rte_errno  = ENOMEM;
-		goto error;
-	}
-	cq->dbr_umem = mlx5_os_get_umem_id(dbr_page->umem);
-	cq->dbr = (uint32_t *)((uintptr_t)dbr_page->dbrs +
-			       (uintptr_t)cq->dbr_offset);
-
-	buf = rte_calloc(NULL, 1, sizeof(struct mlx5_cqe) * cq_size, 4096);
-	if (!buf) {
-		DRV_LOG(ERR, "Can't allocate cqe buffer.");
-		rte_errno  = ENOMEM;
-		goto error;
-	}
-	cq->cqe = buf;
-	for (i = 0; i < cq_size; i++)
-		cq->cqe[i].op_own = 0xff;
-	cq->cqe_umem = mlx5_glue->devx_umem_reg(priv->ctx, buf,
-						sizeof(struct mlx5_cqe) *
-						cq_size, 7);
 	cq->ci = 0;
-	if (!cq->cqe_umem) {
-		DRV_LOG(ERR, "Can't register cqe mem.");
-		rte_errno  = ENOMEM;
-		goto error;
-	}
-	attr.db_umem_offset = cq->dbr_offset;
-	attr.db_umem_id = cq->dbr_umem;
-	attr.q_umem_id = mlx5_os_get_umem_id(cq->cqe_umem);
-	attr.log_cq_size = cq->log_nb_desc;
-	attr.uar_page_id = priv->uar->page_id;
-	attr.log_page_size = rte_log2_u32(pgsize);
-	cq->obj = mlx5_devx_cmd_create_cq(priv->ctx, &attr);
-	if (!cq->obj) {
-		DRV_LOG(ERR, "Can't create cq object.");
-		rte_errno  = ENOMEM;
-		goto error;
+	ret = mlx5_devx_cq_create(priv->ctx, &cq->cq_obj, cq->log_nb_desc,
+				  &attr, SOCKET_ID_ANY);
+	if (ret) {
+		DRV_LOG(ERR, "Can't create CQ object.");
+		memset(cq, 0, sizeof(*cq));
+		rte_errno = ENOMEM;
+		return -rte_errno;
 	}
 	return 0;
-error:
-	if (cq->cqe_umem)
-		mlx5_glue->devx_umem_dereg(cq->cqe_umem);
-	if (buf)
-		rte_free(buf);
-	if (cq->dbr_offset)
-		mlx5_release_dbr(&priv->dbrpgs, cq->dbr_umem, cq->dbr_offset);
-	return -rte_errno;
 }
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -232,7 +173,7 @@ regex_ctrl_create_sq(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	attr.tis_lst_sz = 0;
 	attr.tis_num = 0;
 	attr.user_index = q_ind;
-	attr.cqn = qp->cq.obj->id;
+	attr.cqn = qp->cq.cq_obj.cq->id;
 	wq_attr->uar_page = priv->uar->page_id;
 	regex_get_pdn(priv->pd, &pd_num);
 	wq_attr->pd = pd_num;
@@ -389,7 +330,7 @@ err_fp:
 err_btree:
 	for (i = 0; i < nb_sq_config; i++)
 		regex_ctrl_destroy_sq(priv, qp, i);
-	regex_ctrl_destroy_cq(priv, &qp->cq);
+	regex_ctrl_destroy_cq(&qp->cq);
 err_cq:
 	rte_free(qp->sqs);
 	return ret;
