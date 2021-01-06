@@ -776,8 +776,9 @@ struct mlx5_rxq_obj {
 			void *ibv_cq; /* Completion Queue. */
 			void *ibv_channel;
 		};
+		struct mlx5_devx_obj *rq; /* DevX RQ object for hairpin. */
 		struct {
-			struct mlx5_devx_obj *rq; /* DevX Rx Queue object. */
+			struct mlx5_devx_rq rq_obj; /* DevX RQ object. */
 			struct mlx5_devx_cq cq_obj; /* DevX CQ object. */
 			void *devx_channel;
 		};
@@ -954,7 +955,6 @@ struct mlx5_priv {
 	/* Context for Verbs allocator. */
 	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
-	struct mlx5_dbr_page_list dbrpgs; /* Door-bell pages. */
 	struct mlx5_nl_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
 	struct mlx5_hlist *mreg_cp_tbl;
 	/* Hash table of Rx metadata register copy table. */

@@ -193,10 +193,6 @@ struct mlx5_rxq_ctrl {
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
 	uint32_t wqn; /* WQ number. */
 	uint16_t dump_file_n; /* Number of dump files. */
-	struct mlx5_devx_dbr_page *rq_dbrec_page;
-	uint64_t rq_dbr_offset;
-	/* Storing RQ door-bell information, needed when freeing door-bell. */
-	void *wq_umem; /* WQ buffer registration info. */
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 	uint32_t hairpin_status; /* Hairpin binding status. */
 };
