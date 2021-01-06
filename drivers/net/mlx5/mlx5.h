@@ -26,6 +26,7 @@
 #include <mlx5_prm.h>
 #include <mlx5_common_mp.h>
 #include <mlx5_common_mr.h>
+#include <mlx5_common_devx.h>
 
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
@@ -616,13 +617,7 @@ struct mlx5_flow_id_pool {
 /* Tx pacing queue structure - for Clock and Rearm queues. */
 struct mlx5_txpp_wq {
 	/* Completion Queue related data.*/
-	struct mlx5_devx_obj *cq;
-	void *cq_umem;
-	union {
-		volatile void *cq_buf;
-		volatile struct mlx5_cqe *cqes;
-	};
-	volatile uint32_t *cq_dbrec;
+	struct mlx5_devx_cq cq_obj;
 	uint32_t cq_ci:24;
 	uint32_t arm_sn:2;
 	/* Send Queue related data.*/
