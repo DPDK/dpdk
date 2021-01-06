@@ -690,14 +690,20 @@ efx_mae_match_spec_field_set(
 		goto fail2;
 	}
 
-	if (value_size != descp->emmd_value_size) {
+	if (descp->emmd_mask_size == 0) {
+		/* The ID points to a gap in the array of field descriptors. */
 		rc = EINVAL;
 		goto fail3;
 	}
 
-	if (mask_size != descp->emmd_mask_size) {
+	if (value_size != descp->emmd_value_size) {
 		rc = EINVAL;
 		goto fail4;
+	}
+
+	if (mask_size != descp->emmd_mask_size) {
+		rc = EINVAL;
+		goto fail5;
 	}
 
 	if (descp->emmd_endianness == EFX_MAE_FIELD_BE) {
@@ -741,6 +747,8 @@ efx_mae_match_spec_field_set(
 
 	return (0);
 
+fail5:
+	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
