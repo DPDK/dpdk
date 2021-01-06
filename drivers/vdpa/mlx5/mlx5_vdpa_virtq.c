@@ -500,7 +500,7 @@ mlx5_vdpa_virtq_is_modified(struct mlx5_vdpa_priv *priv,
 		return -1;
 	if (vq.size != virtq->vq_size || vq.kickfd != virtq->intr_handle.fd)
 		return 1;
-	if (virtq->eqp.cq.cq) {
+	if (virtq->eqp.cq.cq_obj.cq) {
 		if (vq.callfd != virtq->eqp.cq.callfd)
 			return 1;
 	} else if (vq.callfd != -1) {

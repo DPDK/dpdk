@@ -22,6 +22,7 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
+#include <mlx5_common_devx.h>
 #include <mlx5_prm.h>
 
 
@@ -46,13 +47,7 @@ struct mlx5_vdpa_cq {
 	uint32_t armed:1;
 	int callfd;
 	rte_spinlock_t sl;
-	struct mlx5_devx_obj *cq;
-	struct mlx5dv_devx_umem *umem_obj;
-	union {
-		volatile void *umem_buf;
-		volatile struct mlx5_cqe *cqes;
-	};
-	volatile uint32_t *db_rec;
+	struct mlx5_devx_cq cq_obj;
 	uint64_t errors;
 };
 
@@ -148,7 +143,6 @@ struct mlx5_vdpa_priv {
 	uint32_t gpa_mkey_index;
 	struct ibv_mr *null_mr;
 	struct rte_vhost_memory *vmem;
-	uint32_t eqn;
 	struct mlx5dv_devx_event_channel *eventc;
 	struct mlx5dv_devx_event_channel *err_chnl;
 	struct mlx5dv_devx_uar *uar;
