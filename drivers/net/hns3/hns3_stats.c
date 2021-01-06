@@ -739,9 +739,9 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	if (!hns->is_vf) {
 		/* Update Mac stats */
 		ret = hns3_query_update_mac_stats(dev);
-		if (ret) {
+		if (ret < 0) {
 			hns3_err(hw, "Update Mac stats fail : %d", ret);
-			return 0;
+			return ret;
 		}
 
 		/* Get MAC stats from hw->hw_xstats.mac_stats struct */
