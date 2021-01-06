@@ -456,9 +456,59 @@ iavf_fdir_parse_action(struct iavf_adapter *ad,
 	return 0;
 }
 
+static bool
+iavf_fdir_refine_input_set(const uint64_t input_set,
+			   const uint64_t input_set_mask,
+			   struct iavf_fdir_conf *filter)
+{
+	struct virtchnl_proto_hdr *hdr, *hdr_last;
+	struct rte_flow_item_ipv4 ipv4_spec;
+	struct rte_flow_item_ipv6 ipv6_spec;
+	int last_layer;
+	uint8_t proto_id;
+
+	if (input_set & ~input_set_mask)
+		return false;
+	else if (input_set)
+		return true;
+
+	last_layer = filter->add_fltr.rule_cfg.proto_hdrs.count - 1;
+	/* Last layer of TCP/UDP pattern isn't less than 2. */
+	if (last_layer < 2)
+		return false;
+	hdr_last = &filter->add_fltr.rule_cfg.proto_hdrs.proto_hdr[last_layer];
+	if (hdr_last->type == VIRTCHNL_PROTO_HDR_TCP)
+		proto_id = 6;
+	else if (hdr_last->type == VIRTCHNL_PROTO_HDR_UDP)
+		proto_id = 17;
+	else
+		return false;
+
+	hdr = &filter->add_fltr.rule_cfg.proto_hdrs.proto_hdr[last_layer - 1];
+	switch (hdr->type) {
+	case VIRTCHNL_PROTO_HDR_IPV4:
+		VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, IPV4, PROT);
+		memset(&ipv4_spec, 0, sizeof(ipv4_spec));
+		ipv4_spec.hdr.next_proto_id = proto_id;
+		rte_memcpy(hdr->buffer, &ipv4_spec.hdr,
+			   sizeof(ipv4_spec.hdr));
+		return true;
+	case VIRTCHNL_PROTO_HDR_IPV6:
+		VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, IPV6, PROT);
+		memset(&ipv6_spec, 0, sizeof(ipv6_spec));
+		ipv6_spec.hdr.proto = proto_id;
+		rte_memcpy(hdr->buffer, &ipv6_spec.hdr,
+			   sizeof(ipv6_spec.hdr));
+		return true;
+	default:
+		return false;
+	}
+}
+
 static int
 iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 			const struct rte_flow_item pattern[],
+			const uint64_t input_set_mask,
 			struct rte_flow_error *error,
 			struct iavf_fdir_conf *filter)
 {
@@ -966,6 +1016,13 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 		return -rte_errno;
 	}
 
+	if (!iavf_fdir_refine_input_set(input_set, input_set_mask, filter)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC, pattern,
+				   "Invalid input set");
+		return -rte_errno;
+	}
+
 	filter->input_set = input_set;
 
 	return 0;
@@ -983,7 +1040,6 @@ iavf_fdir_parse(struct iavf_adapter *ad,
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
 	struct iavf_fdir_conf *filter = &vf->fdir.conf;
 	struct iavf_pattern_match_item *item = NULL;
-	uint64_t input_set;
 	int ret;
 
 	memset(filter, 0, sizeof(*filter));
@@ -992,18 +1048,10 @@ iavf_fdir_parse(struct iavf_adapter *ad,
 	if (!item)
 		return -rte_errno;
 
-	ret = iavf_fdir_parse_pattern(ad, pattern, error, filter);
+	ret = iavf_fdir_parse_pattern(ad, pattern, item->input_set_mask,
+				      error, filter);
 	if (ret)
 		goto error;
-
-	input_set = filter->input_set;
-	if (!input_set || input_set & ~item->input_set_mask) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM_SPEC, pattern,
-				"Invalid input set");
-		ret = -rte_errno;
-		goto error;
-	}
 
 	ret = iavf_fdir_parse_action(ad, actions, error, filter);
 	if (ret)
