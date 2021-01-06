@@ -1558,7 +1558,8 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	} else {
 		MLX5_SET64(cqc, cqctx, dbr_addr, attr->db_addr);
 	}
-	MLX5_SET(cqc, cqctx, cqe_sz, attr->cqe_size);
+	MLX5_SET(cqc, cqctx, cqe_sz, (RTE_CACHE_LINE_SIZE == 128) ?
+				     MLX5_CQE_SIZE_128B : MLX5_CQE_SIZE_64B);
 	MLX5_SET(cqc, cqctx, cc, attr->use_first_only);
 	MLX5_SET(cqc, cqctx, oi, attr->overrun_ignore);
 	MLX5_SET(cqc, cqctx, log_cq_size, attr->log_cq_size);
@@ -1571,7 +1572,6 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 		 attr->mini_cqe_res_format);
 	MLX5_SET(cqc, cqctx, mini_cqe_res_format_ext,
 		 attr->mini_cqe_res_format_ext);
-	MLX5_SET(cqc, cqctx, cqe_sz, attr->cqe_size);
 	if (attr->q_umem_valid) {
 		MLX5_SET(create_cq_in, in, cq_umem_valid, attr->q_umem_valid);
 		MLX5_SET(create_cq_in, in, cq_umem_id, attr->q_umem_id);

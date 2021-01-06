@@ -486,8 +486,6 @@ mlx5_rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 			"Port %u Rx CQE compression is disabled for LRO.",
 			dev->data->port_id);
 	}
-	if (priv->config.cqe_pad)
-		cq_attr.cqe_size = MLX5_CQE_SIZE_128B;
 	log_cqe_n = log2above(cqe_n);
 	cq_size = sizeof(struct mlx5_cqe) * (1 << log_cqe_n);
 	buf = rte_calloc_socket(__func__, 1, cq_size, page_size,
@@ -1262,8 +1260,6 @@ mlx5_txq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 		DRV_LOG(ERR, "Failed to allocate CQ door-bell.");
 		goto error;
 	}
-	cq_attr.cqe_size = (sizeof(struct mlx5_cqe) == 128) ?
-			    MLX5_CQE_SIZE_128B : MLX5_CQE_SIZE_64B;
 	cq_attr.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->sh->tx_uar);
 	cq_attr.eqn = priv->sh->eqn;
 	cq_attr.q_umem_valid = 1;
