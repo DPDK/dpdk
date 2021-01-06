@@ -448,24 +448,6 @@ Driver options
   - POWER9 and ARMv8 with ConnectX-4 Lx, ConnectX-5, ConnectX-6, ConnectX-6 Dx,
     ConnectX-6 Lx, BlueField and BlueField-2.
 
-- ``rxq_cqe_pad_en`` parameter [int]
-
-  A nonzero value enables 128B padding of CQE on RX side. The size of CQE
-  is aligned with the size of a cacheline of the core. If cacheline size is
-  128B, the CQE size is configured to be 128B even though the device writes
-  only 64B data on the cacheline. This is to avoid unnecessary cache
-  invalidation by device's two consecutive writes on to one cacheline.
-  However in some architecture, it is more beneficial to update entire
-  cacheline with padding the rest 64B rather than striding because
-  read-modify-write could drop performance a lot. On the other hand,
-  writing extra data will consume more PCIe bandwidth and could also drop
-  the maximum throughput. It is recommended to empirically set this
-  parameter. Disabled by default.
-
-  Supported on:
-
-  - CPU having 128B cacheline with ConnectX-5 and BlueField.
-
 - ``rxq_pkt_pad_en`` parameter [int]
 
   A nonzero value enables padding Rx packet to the size of cacheline on PCI

@@ -671,7 +671,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	unsigned int hw_padding = 0;
 	unsigned int mps;
 	unsigned int cqe_comp;
-	unsigned int cqe_pad = 0;
 	unsigned int tunnel_en = 0;
 	unsigned int mpls_en = 0;
 	unsigned int swp = 0;
@@ -869,11 +868,6 @@ err_secondary:
 	else
 		cqe_comp = 1;
 	config->cqe_comp = cqe_comp;
-#ifdef HAVE_IBV_MLX5_MOD_CQE_128B_PAD
-	/* Whether device supports 128B Rx CQE padding. */
-	cqe_pad = RTE_CACHE_LINE_SIZE == 128 &&
-		  (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_PAD);
-#endif
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
 		tunnel_en = ((dv_attr.tunnel_offloads_caps &
@@ -1109,12 +1103,6 @@ err_secondary:
 	if (config->cqe_comp && !cqe_comp) {
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported");
 		config->cqe_comp = 0;
-	}
-	if (config->cqe_pad && !cqe_pad) {
-		DRV_LOG(WARNING, "Rx CQE padding isn't supported");
-		config->cqe_pad = 0;
-	} else if (config->cqe_pad) {
-		DRV_LOG(INFO, "Rx CQE padding is enabled");
 	}
 	if (config->devx) {
 		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config->hca_attr);
