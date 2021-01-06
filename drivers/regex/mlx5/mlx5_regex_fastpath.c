@@ -110,12 +110,12 @@ prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 				  &priv->mr_scache, &qp->mr_ctrl,
 				  rte_pktmbuf_mtod(op->mbuf, uintptr_t),
 				  !!(op->mbuf->ol_flags & EXT_ATTACHED_MBUF));
-	uint8_t *wqe = (uint8_t *)sq->wqe + wqe_offset;
+	uint8_t *wqe = (uint8_t *)(uintptr_t)sq->sq_obj.wqes + wqe_offset;
 	int ds = 4; /*  ctrl + meta + input + output */
 
 	set_wqe_ctrl_seg((struct mlx5_wqe_ctrl_seg *)wqe, sq->pi,
-			 MLX5_OPCODE_MMO, MLX5_OPC_MOD_MMO_REGEX, sq->obj->id,
-			 0, ds, 0, 0);
+			 MLX5_OPCODE_MMO, MLX5_OPC_MOD_MMO_REGEX,
+			 sq->sq_obj.sq->id, 0, ds, 0, 0);
 	set_regex_ctrl_seg(wqe + 12, 0, op->group_id0, op->group_id1,
 			   op->group_id2,
 			   op->group_id3, 0);
@@ -137,12 +137,12 @@ send_doorbell(struct mlx5dv_devx_uar *uar, struct mlx5_regex_sq *sq)
 {
 	size_t wqe_offset = (sq->db_pi & (sq_size_get(sq) - 1)) *
 		MLX5_SEND_WQE_BB;
-	uint8_t *wqe = (uint8_t *)sq->wqe + wqe_offset;
+	uint8_t *wqe = (uint8_t *)(uintptr_t)sq->sq_obj.wqes + wqe_offset;
 	((struct mlx5_wqe_ctrl_seg *)wqe)->fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;
 	uint64_t *doorbell_addr =
 		(uint64_t *)((uint8_t *)uar->base_addr + 0x800);
 	rte_io_wmb();
-	sq->dbr[MLX5_SND_DBR] = rte_cpu_to_be_32((sq->db_pi + 1) &
+	sq->sq_obj.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32((sq->db_pi + 1) &
 						 MLX5_REGEX_MAX_WQE_INDEX);
 	rte_wmb();
 	*doorbell_addr = *(volatile uint64_t *)wqe;
@@ -322,7 +322,7 @@ setup_sqs(struct mlx5_regex_qp *queue)
 	uint32_t job_id;
 	for (sqid = 0; sqid < queue->nb_obj; sqid++) {
 		struct mlx5_regex_sq *sq = &queue->sqs[sqid];
-		uint8_t *wqe = (uint8_t *)sq->wqe;
+		uint8_t *wqe = (uint8_t *)(uintptr_t)sq->sq_obj.wqes;
 		for (entry = 0 ; entry < sq_size_get(sq); entry++) {
 			job_id = sqid * sq_size_get(sq) + entry;
 			struct mlx5_regex_job *job = &queue->jobs[job_id];
@@ -355,7 +355,7 @@ setup_buffers(struct mlx5_regex_qp *qp, struct ibv_pd *pd)
 		return -ENOMEM;
 
 	qp->metadata = mlx5_glue->reg_mr(pd, ptr,
-					 MLX5_REGEX_METADATA_SIZE*qp->nb_desc,
+					 MLX5_REGEX_METADATA_SIZE * qp->nb_desc,
 					 IBV_ACCESS_LOCAL_WRITE);
 	if (!qp->metadata) {
 		DRV_LOG(ERR, "Failed to register metadata");
