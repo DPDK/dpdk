@@ -105,7 +105,21 @@ prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 {
 	size_t wqe_offset = (sq->pi & (sq_size_get(sq) - 1)) * MLX5_SEND_WQE_BB;
 	uint32_t lkey;
+	uint16_t group0 = op->req_flags & RTE_REGEX_OPS_REQ_GROUP_ID0_VALID_F ?
+				op->group_id0 : 0;
+	uint16_t group1 = op->req_flags & RTE_REGEX_OPS_REQ_GROUP_ID1_VALID_F ?
+				op->group_id1 : 0;
+	uint16_t group2 = op->req_flags & RTE_REGEX_OPS_REQ_GROUP_ID2_VALID_F ?
+				op->group_id2 : 0;
+	uint16_t group3 = op->req_flags & RTE_REGEX_OPS_REQ_GROUP_ID3_VALID_F ?
+				op->group_id3 : 0;
 
+	/* For backward compatibility. */
+	if (!(op->req_flags & (RTE_REGEX_OPS_REQ_GROUP_ID0_VALID_F |
+			       RTE_REGEX_OPS_REQ_GROUP_ID1_VALID_F |
+			       RTE_REGEX_OPS_REQ_GROUP_ID2_VALID_F |
+			       RTE_REGEX_OPS_REQ_GROUP_ID3_VALID_F)))
+		group0 = op->group_id0;
 	lkey = mlx5_mr_addr2mr_bh(priv->pd, 0,
 				  &priv->mr_scache, &qp->mr_ctrl,
 				  rte_pktmbuf_mtod(op->mbuf, uintptr_t),
@@ -116,9 +130,8 @@ prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	set_wqe_ctrl_seg((struct mlx5_wqe_ctrl_seg *)wqe, sq->pi,
 			 MLX5_OPCODE_MMO, MLX5_OPC_MOD_MMO_REGEX, sq->obj->id,
 			 0, ds, 0, 0);
-	set_regex_ctrl_seg(wqe + 12, 0, op->group_id0, op->group_id1,
-			   op->group_id2,
-			   op->group_id3, 0);
+	set_regex_ctrl_seg(wqe + 12, 0, group0, group1, group2, group3,
+			   0);
 	struct mlx5_wqe_data_seg *input_seg =
 		(struct mlx5_wqe_data_seg *)(wqe +
 					     MLX5_REGEX_WQE_GATHER_OFFSET);
