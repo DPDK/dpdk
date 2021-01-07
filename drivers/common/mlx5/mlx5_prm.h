@@ -601,7 +601,7 @@ typedef uint8_t u8;
 
 #define __mlx5_nullp(typ) ((struct mlx5_ifc_##typ##_bits *)0)
 #define __mlx5_bit_sz(typ, fld) sizeof(__mlx5_nullp(typ)->fld)
-#define __mlx5_bit_off(typ, fld) ((unsigned int)(unsigned long) \
+#define __mlx5_bit_off(typ, fld) ((unsigned int)(uintptr_t) \
 				  (&(__mlx5_nullp(typ)->fld)))
 #define __mlx5_dw_bit_off(typ, fld) (32 - __mlx5_bit_sz(typ, fld) - \
 				    (__mlx5_bit_off(typ, fld) & 0x1f))
