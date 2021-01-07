@@ -67,6 +67,11 @@
  */
 
 #include <sys/types.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Maximum length of the dynamic field or flag string.
  */
@@ -326,4 +331,8 @@ int rte_mbuf_dyn_rx_timestamp_register(int *field_offset, uint64_t *rx_flag);
 __rte_experimental
 int rte_mbuf_dyn_tx_timestamp_register(int *field_offset, uint64_t *tx_flag);
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* _RTE_MBUF_DYN_H_ */
