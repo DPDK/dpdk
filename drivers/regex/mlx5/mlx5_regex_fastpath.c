@@ -113,6 +113,8 @@ prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 				op->group_id2 : 0;
 	uint16_t group3 = op->req_flags & RTE_REGEX_OPS_REQ_GROUP_ID3_VALID_F ?
 				op->group_id3 : 0;
+	uint8_t control = op->req_flags &
+				RTE_REGEX_OPS_REQ_MATCH_HIGH_PRIORITY_F ? 1 : 0;
 
 	/* For backward compatibility. */
 	if (!(op->req_flags & (RTE_REGEX_OPS_REQ_GROUP_ID0_VALID_F |
@@ -131,7 +133,7 @@ prep_one(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 			 MLX5_OPCODE_MMO, MLX5_OPC_MOD_MMO_REGEX,
 			 sq->sq_obj.sq->id, 0, ds, 0, 0);
 	set_regex_ctrl_seg(wqe + 12, 0, group0, group1, group2, group3,
-			   0);
+			   control);
 	struct mlx5_wqe_data_seg *input_seg =
 		(struct mlx5_wqe_data_seg *)(wqe +
 					     MLX5_REGEX_WQE_GATHER_OFFSET);
