@@ -119,6 +119,7 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_hca_attr attr;
 	char name[RTE_REGEXDEV_NAME_MAX_LEN];
 	int ret;
+	uint32_t val;
 
 	ibv = mlx5_regex_get_ib_device_match(&pci_dev->addr);
 	if (!ibv) {
@@ -161,6 +162,14 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	priv->ctx = ctx;
 	priv->nb_engines = 2; /* attr.regexp_num_of_engines */
+	ret = mlx5_devx_regex_register_read(priv->ctx, 0,
+					    MLX5_RXP_CSR_IDENTIFIER, &val);
+	if (ret) {
+		DRV_LOG(ERR, "CSR read failed!");
+		return -1;
+	}
+	if (val == MLX5_RXP_BF2_IDENTIFIER)
+		priv->is_bf2 = 1;
 	/* Default RXP programming mode to Shared. */
 	priv->prog_mode = MLX5_RXP_SHARED_PROG_MODE;
 	mlx5_regex_get_name(name, pci_dev);

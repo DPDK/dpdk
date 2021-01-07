@@ -8,6 +8,7 @@
 #include <rte_regexdev.h>
 #include <rte_regexdev_core.h>
 #include <rte_regexdev_driver.h>
+#include <sys/mman.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -24,6 +25,8 @@
 #define MLX5_REGEX_MAX_RULES_PER_GROUP UINT32_MAX
 #define MLX5_REGEX_MAX_GROUPS MLX5_RXP_MAX_SUBSETS
 
+#define MLX5_REGEX_RXP_ROF2_LINE_LEN 34
+
 /* Private Declarations */
 static int
 rxp_poll_csr_for_value(struct ibv_context *ctx, uint32_t *value,
@@ -36,29 +39,14 @@ mlnx_resume_database(struct mlx5_regex_priv *priv, uint8_t id);
 static int
 mlnx_update_database(struct mlx5_regex_priv *priv, uint8_t id);
 static int
-program_rxp_rules(struct mlx5_regex_priv *priv,
-		  struct mlx5_rxp_ctl_rules_pgm *rules, uint8_t id);
+program_rxp_rules(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
+		  uint8_t id);
 static int
 rxp_init_eng(struct mlx5_regex_priv *priv, uint8_t id);
-static int
-write_private_rules(struct mlx5_regex_priv *priv,
-		    struct mlx5_rxp_ctl_rules_pgm *rules,
-		    uint8_t id);
-static int
-write_shared_rules(struct mlx5_regex_priv *priv,
-		   struct mlx5_rxp_ctl_rules_pgm *rules, uint32_t count,
-		   uint8_t db_to_program);
 static int
 rxp_db_setup(struct mlx5_regex_priv *priv);
 static void
 rxp_dump_csrs(struct ibv_context *ctx, uint8_t id);
-static int
-rxp_write_rules_via_cp(struct ibv_context *ctx,
-		       struct mlx5_rxp_rof_entry *rules,
-		       int count, uint8_t id);
-static int
-rxp_flush_rules(struct ibv_context *ctx, struct mlx5_rxp_rof_entry *rules,
-		int count, uint8_t id);
 static int
 rxp_start_engine(struct ibv_context *ctx, uint8_t id);
 static int
@@ -123,110 +111,6 @@ mlx5_regex_info_get(struct rte_regexdev *dev __rte_unused,
 	return 0;
 }
 
-/**
- * Actual writing of RXP instructions to RXP via CSRs.
- */
-static int
-rxp_write_rules_via_cp(struct ibv_context *ctx,
-		       struct mlx5_rxp_rof_entry *rules,
-		       int count, uint8_t id)
-{
-	int i, ret = 0;
-	uint32_t tmp;
-
-	for (i = 0; i < count; i++) {
-		tmp = (uint32_t)rules[i].value;
-		ret |= mlx5_devx_regex_register_write(ctx, id,
-						      MLX5_RXP_RTRU_CSR_DATA_0,
-						      tmp);
-		tmp = (uint32_t)(rules[i].value >> 32);
-		ret |= mlx5_devx_regex_register_write(ctx, id,
-						      MLX5_RXP_RTRU_CSR_DATA_0 +
-						      MLX5_RXP_CSR_WIDTH, tmp);
-		tmp = rules[i].addr;
-		ret |= mlx5_devx_regex_register_write(ctx, id,
-						      MLX5_RXP_RTRU_CSR_ADDR,
-						      tmp);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to copy instructions to RXP.");
-			return -1;
-		}
-	}
-	DRV_LOG(DEBUG, "Written %d instructions", count);
-	return 0;
-}
-
-static int
-rxp_flush_rules(struct ibv_context *ctx, struct mlx5_rxp_rof_entry *rules,
-		int count, uint8_t id)
-{
-	uint32_t val, fifo_depth;
-	int ret;
-
-	ret = rxp_write_rules_via_cp(ctx, rules, count, id);
-	if (ret < 0) {
-		DRV_LOG(ERR, "Failed to write rules via CSRs.");
-		return -1;
-	}
-	ret = mlx5_devx_regex_register_read(ctx, id,
-					    MLX5_RXP_RTRU_CSR_CAPABILITY,
-					    &fifo_depth);
-	if (ret) {
-		DRV_LOG(ERR, "CSR read failed!");
-		return -1;
-	}
-	ret = rxp_poll_csr_for_value(ctx, &val, MLX5_RXP_RTRU_CSR_FIFO_STAT,
-				     count, ~0,
-				     MLX5_RXP_POLL_CSR_FOR_VALUE_TIMEOUT, id);
-	if (ret < 0) {
-		if (ret == -EBUSY)
-			DRV_LOG(ERR, "Rules not rx by RXP: credit: %d, depth:"
-				" %d", val, fifo_depth);
-		else
-			DRV_LOG(ERR, "CSR poll failed, can't read value!");
-		return ret;
-	}
-	DRV_LOG(DEBUG, "RTRU FIFO depth: 0x%x", fifo_depth);
-	ret = mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
-					    &val);
-	if (ret) {
-		DRV_LOG(ERR, "CSR read failed!");
-		return -1;
-	}
-	val |= MLX5_RXP_RTRU_CSR_CTRL_GO;
-	ret = mlx5_devx_regex_register_write(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
-					     val);
-	if (ret) {
-		DRV_LOG(ERR, "CSR write failed!");
-		return -1;
-	}
-	ret = rxp_poll_csr_for_value(ctx, &val, MLX5_RXP_RTRU_CSR_STATUS,
-				     MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
-				     MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
-				     MLX5_RXP_POLL_CSR_FOR_VALUE_TIMEOUT, id);
-	if (ret < 0) {
-		if (ret == -EBUSY)
-			DRV_LOG(ERR, "Rules update timeout: 0x%08X", val);
-		else
-			DRV_LOG(ERR, "CSR poll failed, can't read value!");
-		return ret;
-	}
-	if (mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
-					  &val)) {
-		DRV_LOG(ERR, "CSR read failed!");
-		return -1;
-	}
-	val &= ~(MLX5_RXP_RTRU_CSR_CTRL_GO);
-	if (mlx5_devx_regex_register_write(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
-					   val)) {
-		DRV_LOG(ERR, "CSR write failed!");
-		return -1;
-	}
-
-	DRV_LOG(DEBUG, "RXP Flush rules finished.");
-	return 0;
-}
-
 static int
 rxp_poll_csr_for_value(struct ibv_context *ctx, uint32_t *value,
 		       uint32_t address, uint32_t expected_value,
@@ -278,13 +162,14 @@ rxp_stop_engine(struct ibv_context *ctx, uint8_t id)
 }
 
 static int
-rxp_init_rtru(struct ibv_context *ctx, uint8_t id, uint32_t init_bits)
+rxp_init_rtru(struct mlx5_regex_priv *priv, uint8_t id, uint32_t init_bits)
 {
 	uint32_t ctrl_value;
 	uint32_t poll_value;
 	uint32_t expected_value;
 	uint32_t expected_mask;
-	int ret;
+	struct ibv_context *ctx = priv->ctx;
+	int ret = 0;
 
 	/* Read the rtru ctrl CSR. */
 	ret = mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
@@ -317,13 +202,15 @@ rxp_init_rtru(struct ibv_context *ctx, uint8_t id, uint32_t init_bits)
 	/* Check that the following bits are set in the RTRU_CSR. */
 	if (init_bits == MLX5_RXP_RTRU_CSR_CTRL_INIT_MODE_L1_L2) {
 		/* Must be incremental mode */
-		expected_value = MLX5_RXP_RTRU_CSR_STATUS_L1C_INIT_DONE |
-			MLX5_RXP_RTRU_CSR_STATUS_L2C_INIT_DONE;
+		expected_value = MLX5_RXP_RTRU_CSR_STATUS_L1C_INIT_DONE;
 	} else {
 		expected_value = MLX5_RXP_RTRU_CSR_STATUS_IM_INIT_DONE |
-			MLX5_RXP_RTRU_CSR_STATUS_L1C_INIT_DONE |
-			MLX5_RXP_RTRU_CSR_STATUS_L2C_INIT_DONE;
+			MLX5_RXP_RTRU_CSR_STATUS_L1C_INIT_DONE;
 	}
+	if (priv->is_bf2)
+		expected_value |= MLX5_RXP_RTRU_CSR_STATUS_L2C_INIT_DONE;
+
+
 	expected_mask = expected_value;
 	ret = rxp_poll_csr_for_value(ctx, &poll_value,
 				     MLX5_RXP_RTRU_CSR_STATUS,
@@ -340,69 +227,278 @@ rxp_init_rtru(struct ibv_context *ctx, uint8_t id, uint32_t init_bits)
 }
 
 static int
-rxp_parse_rof(const char *buf, uint32_t len,
-	      struct mlx5_rxp_ctl_rules_pgm **rules)
+rxp_parse_line(char *line, uint32_t *type, uint32_t *address, uint64_t *value)
+{
+	char *cur_pos;
+
+	if (*line == '\0' || *line == '#')
+		return  1;
+	*type = strtoul(line, &cur_pos, 10);
+	if (*cur_pos != ',' && *cur_pos != '\0')
+		return -1;
+	*address = strtoul(cur_pos+1, &cur_pos, 16);
+	if (*cur_pos != ',' && *cur_pos != '\0')
+		return -1;
+	*value = strtoul(cur_pos+1, &cur_pos, 16);
+	if (*cur_pos != ',' && *cur_pos != '\0')
+		return -1;
+	return 0;
+}
+
+static uint32_t
+rxp_get_reg_address(uint32_t address)
+{
+	uint32_t block;
+	uint32_t reg;
+
+	block = (address >> 16) & 0xFFFF;
+	if (block == 0)
+		reg = MLX5_RXP_CSR_BASE_ADDRESS;
+	else if (block == 1)
+		reg = MLX5_RXP_RTRU_CSR_BASE_ADDRESS;
+	else {
+		DRV_LOG(ERR, "Invalid ROF register 0x%08X!", address);
+			return UINT32_MAX;
+	}
+	reg += (address & 0xFFFF) * MLX5_RXP_CSR_WIDTH;
+	return reg;
+}
+
+#define MLX5_RXP_NUM_LINES_PER_BLOCK 8
+
+static int
+rxp_program_rof(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
+		uint8_t id)
 {
 	static const char del[] = "\n\r";
 	char *line;
 	char *tmp;
-	char *cur_pos;
-	uint32_t lines = 0;
-	uint32_t entries;
-	struct mlx5_rxp_rof_entry *curentry;
+	uint32_t type = 0;
+	uint32_t address;
+	uint64_t val;
+	uint32_t reg_val;
+	int ret;
+	int skip = -1;
+	int last = 0;
+	uint32_t temp;
+	uint32_t tmp_addr;
+	uint32_t rof_rule_addr;
+	uint64_t tmp_write_swap[4];
+	struct mlx5_rxp_rof_entry rules[8];
+	int i;
+	int db_free;
+	int j;
 
 	tmp = rte_malloc("", len, 0);
 	if (!tmp)
 		return -ENOMEM;
 	memcpy(tmp, buf, len);
-	line = strtok(tmp, del);
-	while (line) {
-		if (line[0] != '#' && line[0] != '\0')
-			lines++;
-		line = strtok(NULL, del);
-	}
-	*rules = rte_malloc("", lines * sizeof(*curentry) + sizeof(**rules), 0);
-	if (!(*rules)) {
+	db_free = mlnx_update_database(priv, id);
+	if (db_free < 0) {
+		DRV_LOG(ERR, "Failed to setup db memory!");
 		rte_free(tmp);
-		return -ENOMEM;
+		return db_free;
 	}
-	memset(*rules, 0, lines * sizeof(curentry) + sizeof(**rules));
-	curentry = (*rules)->rules;
-	(*rules)->hdr.cmd = MLX5_RXP_CTL_RULES_PGM;
-	entries = 0;
-	memcpy(tmp, buf, len);
-	line = strtok(tmp, del);
-	while (line) {
-		if (line[0] == '#' || line[0] == '\0') {
-			line = strtok(NULL, del);
+	for (line = strtok(tmp, del), j = 0; line; line = strtok(NULL, del),
+	     j++, last = type) {
+		ret = rxp_parse_line(line, &type, &address, &val);
+		if (ret != 0) {
+			if (ret < 0)
+				goto parse_error;
 			continue;
 		}
-		curentry->type = strtoul(line, &cur_pos, 10);
-		if (cur_pos == line || cur_pos[0] != ',')
-			goto parse_error;
-		cur_pos++;
-		curentry->addr = strtoul(cur_pos, &cur_pos, 16);
-		if (cur_pos[0] != ',')
-			goto parse_error;
-		cur_pos++;
-		curentry->value = strtoull(cur_pos, &cur_pos, 16);
-		if (cur_pos[0] != '\0' && cur_pos[0] != '\n')
-			goto parse_error;
-		curentry++;
-		entries++;
-		if (entries > lines)
-			goto parse_error;
-		line = strtok(NULL, del);
+		switch (type) {
+		case MLX5_RXP_ROF_ENTRY_EQ:
+			if (skip == 0 && address == 0)
+				skip = 1;
+			tmp_addr = rxp_get_reg_address(address);
+			if (tmp_addr == UINT32_MAX)
+				goto parse_error;
+			ret = mlx5_devx_regex_register_read(priv->ctx, id,
+							    tmp_addr, &reg_val);
+			if (ret)
+				goto parse_error;
+			if (skip == -1 && address == 0) {
+				if (val == reg_val) {
+					skip = 0;
+					continue;
+				}
+			} else if (skip == 0) {
+				if (val != reg_val) {
+					DRV_LOG(ERR,
+						"got %08X expected == %" PRIx64,
+						reg_val, val);
+					goto parse_error;
+				}
+			}
+			break;
+		case MLX5_RXP_ROF_ENTRY_GTE:
+			if (skip == 0 && address == 0)
+				skip = 1;
+			tmp_addr = rxp_get_reg_address(address);
+			if (tmp_addr == UINT32_MAX)
+				goto parse_error;
+			ret = mlx5_devx_regex_register_read(priv->ctx, id,
+							    tmp_addr, &reg_val);
+			if (ret)
+				goto parse_error;
+			if (skip == -1 && address == 0) {
+				if (reg_val >= val) {
+					skip = 0;
+					continue;
+				}
+			} else if (skip == 0) {
+				if (reg_val < val) {
+					DRV_LOG(ERR,
+						"got %08X expected >= %" PRIx64,
+						reg_val, val);
+					goto parse_error;
+				}
+			}
+			break;
+		case MLX5_RXP_ROF_ENTRY_LTE:
+			tmp_addr = rxp_get_reg_address(address);
+			if (tmp_addr == UINT32_MAX)
+				goto parse_error;
+			ret = mlx5_devx_regex_register_read(priv->ctx, id,
+							    tmp_addr, &reg_val);
+			if (ret)
+				goto parse_error;
+			if (skip == 0 && address == 0 &&
+			    last != MLX5_RXP_ROF_ENTRY_GTE) {
+				skip = 1;
+			} else if (skip == 0 && address == 0 &&
+				   last == MLX5_RXP_ROF_ENTRY_GTE) {
+				if (reg_val > val)
+					skip = -1;
+				continue;
+			}
+			if (skip == -1 && address == 0) {
+				if (reg_val <= val) {
+					skip = 0;
+					continue;
+				}
+			} else if (skip == 0) {
+				if (reg_val > val) {
+					DRV_LOG(ERR,
+						"got %08X expected <= %" PRIx64,
+						reg_val, val);
+					goto parse_error;
+				}
+			}
+			break;
+		case MLX5_RXP_ROF_ENTRY_CHECKSUM:
+			break;
+		case MLX5_RXP_ROF_ENTRY_CHECKSUM_EX_EM:
+			if (skip)
+				continue;
+			tmp_addr = rxp_get_reg_address(address);
+			if (tmp_addr == UINT32_MAX)
+				goto parse_error;
+
+			ret = mlx5_devx_regex_register_read(priv->ctx, id,
+							    tmp_addr, &reg_val);
+			if (ret) {
+				DRV_LOG(ERR, "RXP CSR read failed!");
+				return ret;
+			}
+			if (reg_val != val) {
+				DRV_LOG(ERR, "got %08X expected <= %" PRIx64,
+					reg_val, val);
+				goto parse_error;
+			}
+			break;
+		case MLX5_RXP_ROF_ENTRY_IM:
+			if (skip)
+				continue;
+			/*
+			 * NOTE: All rules written to RXP must be carried out in
+			 * triplets of: 2xData + 1xAddr.
+			 * No optimisation is currently allowed in this
+			 * sequence to perform less writes.
+			 */
+			temp = val;
+			ret |= mlx5_devx_regex_register_write
+					(priv->ctx, id,
+					 MLX5_RXP_RTRU_CSR_DATA_0, temp);
+			temp = (uint32_t)(val >> 32);
+			ret |= mlx5_devx_regex_register_write
+					(priv->ctx, id,
+					 MLX5_RXP_RTRU_CSR_DATA_0 +
+					 MLX5_RXP_CSR_WIDTH, temp);
+			temp = address;
+			ret |= mlx5_devx_regex_register_write
+					(priv->ctx, id, MLX5_RXP_RTRU_CSR_ADDR,
+					 temp);
+			if (ret) {
+				DRV_LOG(ERR,
+					"Failed to copy instructions to RXP.");
+				goto parse_error;
+			}
+			break;
+		case MLX5_RXP_ROF_ENTRY_EM:
+			if (skip)
+				continue;
+			for (i = 0; i < MLX5_RXP_NUM_LINES_PER_BLOCK; i++) {
+				ret = rxp_parse_line(line, &type,
+						     &rules[i].addr,
+						     &rules[i].value);
+				if (ret != 0)
+					goto parse_error;
+				if (i < (MLX5_RXP_NUM_LINES_PER_BLOCK - 1)) {
+					line = strtok(NULL, del);
+					if (!line)
+						goto parse_error;
+				}
+			}
+			if ((uint8_t *)((uint8_t *)
+					priv->db[id].ptr +
+					((rules[7].addr <<
+					 MLX5_RXP_INST_OFFSET))) >=
+					((uint8_t *)((uint8_t *)
+					priv->db[id].ptr + MLX5_MAX_DB_SIZE))) {
+				DRV_LOG(ERR, "DB exceeded memory!");
+				goto parse_error;
+			}
+			/*
+			 * Rule address Offset to align with RXP
+			 * external instruction offset.
+			 */
+			rof_rule_addr = (rules[0].addr << MLX5_RXP_INST_OFFSET);
+			/* 32 byte instruction swap (sw work around)! */
+			tmp_write_swap[0] = le64toh(rules[4].value);
+			tmp_write_swap[1] = le64toh(rules[5].value);
+			tmp_write_swap[2] = le64toh(rules[6].value);
+			tmp_write_swap[3] = le64toh(rules[7].value);
+			/* Write only 4 of the 8 instructions. */
+			memcpy((uint8_t *)((uint8_t *)
+				priv->db[id].ptr + rof_rule_addr),
+				&tmp_write_swap, (sizeof(uint64_t) * 4));
+			/* Write 1st 4 rules of block after last 4. */
+			rof_rule_addr = (rules[4].addr << MLX5_RXP_INST_OFFSET);
+			tmp_write_swap[0] = le64toh(rules[0].value);
+			tmp_write_swap[1] = le64toh(rules[1].value);
+			tmp_write_swap[2] = le64toh(rules[2].value);
+			tmp_write_swap[3] = le64toh(rules[3].value);
+			memcpy((uint8_t *)((uint8_t *)
+				priv->db[id].ptr + rof_rule_addr),
+				&tmp_write_swap, (sizeof(uint64_t) * 4));
+			break;
+		default:
+			break;
+		}
+
 	}
-	(*rules)->count = entries;
-	(*rules)->hdr.len = entries * sizeof(*curentry) + sizeof(**rules);
+	ret = mlnx_set_database(priv, id, db_free);
+	if (ret < 0) {
+		DRV_LOG(ERR, "Failed to register db memory!");
+		goto parse_error;
+	}
 	rte_free(tmp);
 	return 0;
 parse_error:
 	rte_free(tmp);
-	if (*rules)
-		rte_free(*rules);
-	return -EINVAL;
+	return ret;
 }
 
 static int
@@ -488,43 +584,85 @@ mlnx_update_database(struct mlx5_regex_priv *priv, uint8_t id)
  * Program RXP instruction db to RXP engine/s.
  */
 static int
-program_rxp_rules(struct mlx5_regex_priv *priv,
-		  struct mlx5_rxp_ctl_rules_pgm *rules, uint8_t id)
+program_rxp_rules(struct mlx5_regex_priv *priv, const char *buf, uint32_t len,
+		  uint8_t id)
 {
-	int ret, db_free;
-	uint32_t rule_cnt;
+	int ret;
+	uint32_t val;
 
-	rule_cnt = rules->count;
-	db_free = mlnx_update_database(priv, id);
-	if (db_free < 0) {
-		DRV_LOG(ERR, "Failed to setup db memory!");
-		return db_free;
-	}
-	if (priv->prog_mode == MLX5_RXP_PRIVATE_PROG_MODE) {
-		/* Register early to ensure RXP writes to EM use valid addr. */
-		ret = mlnx_set_database(priv, id, db_free);
-		if (ret < 0) {
-			DRV_LOG(ERR, "Failed to register db memory!");
-			return ret;
-		}
-	}
-	ret = write_private_rules(priv, rules, id);
-	if (ret < 0) {
-		DRV_LOG(ERR, "Failed to write rules!");
+	ret = rxp_init_eng(priv, id);
+	if (ret < 0)
 		return ret;
+	/* Confirm the RXP is initialised. */
+	if (mlx5_devx_regex_register_read(priv->ctx, id,
+					    MLX5_RXP_CSR_STATUS, &val)) {
+		DRV_LOG(ERR, "Failed to read from RXP!");
+		return -ENODEV;
 	}
-	if (priv->prog_mode == MLX5_RXP_SHARED_PROG_MODE) {
-		/* Write external rules directly to EM. */
-		rules->count = rule_cnt;
-	       /* Now write external instructions to EM. */
-		ret = write_shared_rules(priv, rules, rules->hdr.len, db_free);
+	if (!(val & MLX5_RXP_CSR_STATUS_INIT_DONE)) {
+		DRV_LOG(ERR, "RXP not initialised...");
+		return -EBUSY;
+	}
+	ret = mlx5_devx_regex_register_read(priv->ctx, id,
+					    MLX5_RXP_RTRU_CSR_CTRL, &val);
+	if (ret) {
+		DRV_LOG(ERR, "CSR read failed!");
+		return -1;
+	}
+	val |= MLX5_RXP_RTRU_CSR_CTRL_GO;
+	ret = mlx5_devx_regex_register_write(priv->ctx, id,
+					     MLX5_RXP_RTRU_CSR_CTRL, val);
+	if (ret) {
+		DRV_LOG(ERR, "Can't program rof file!");
+		return -1;
+	}
+	ret = rxp_program_rof(priv, buf, len, id);
+	if (ret) {
+		DRV_LOG(ERR, "Can't program rof file!");
+		return -1;
+	}
+	if (priv->is_bf2) {
+		ret = rxp_poll_csr_for_value
+			(priv->ctx, &val, MLX5_RXP_RTRU_CSR_STATUS,
+			 MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
+			 MLX5_RXP_RTRU_CSR_STATUS_UPDATE_DONE,
+			 MLX5_RXP_POLL_CSR_FOR_VALUE_TIMEOUT, id);
 		if (ret < 0) {
-			DRV_LOG(ERR, "Failed to write EM rules!");
+			DRV_LOG(ERR, "Rules update timeout: 0x%08X", val);
 			return ret;
 		}
-		ret = mlnx_set_database(priv, id, db_free);
-		if (ret < 0) {
-			DRV_LOG(ERR, "Failed to register db memory!");
+		DRV_LOG(DEBUG, "Rules update took %d cycles", ret);
+	}
+	if (mlx5_devx_regex_register_read(priv->ctx, id, MLX5_RXP_RTRU_CSR_CTRL,
+					  &val)) {
+		DRV_LOG(ERR, "CSR read failed!");
+		return -1;
+	}
+	val &= ~(MLX5_RXP_RTRU_CSR_CTRL_GO);
+	if (mlx5_devx_regex_register_write(priv->ctx, id,
+					   MLX5_RXP_RTRU_CSR_CTRL, val)) {
+		DRV_LOG(ERR, "CSR write failed!");
+		return -1;
+	}
+	ret = mlx5_devx_regex_register_read(priv->ctx, id, MLX5_RXP_CSR_CTRL,
+					    &val);
+	if (ret)
+		return ret;
+	val &= ~MLX5_RXP_CSR_CTRL_INIT;
+	ret = mlx5_devx_regex_register_write(priv->ctx, id, MLX5_RXP_CSR_CTRL,
+					     val);
+	if (ret)
+		return ret;
+	rxp_init_rtru(priv, id, MLX5_RXP_RTRU_CSR_CTRL_INIT_MODE_L1_L2);
+	if (priv->is_bf2) {
+		ret = rxp_poll_csr_for_value(priv->ctx, &val,
+					     MLX5_RXP_CSR_STATUS,
+					     MLX5_RXP_CSR_STATUS_INIT_DONE,
+					     MLX5_RXP_CSR_STATUS_INIT_DONE,
+					     MLX5_RXP_CSR_STATUS_TRIAL_TIMEOUT,
+					     id);
+		if (ret) {
+			DRV_LOG(ERR, "Device init failed!");
 			return ret;
 		}
 	}
@@ -533,9 +671,9 @@ program_rxp_rules(struct mlx5_regex_priv *priv,
 		DRV_LOG(ERR, "Failed to resume engine!");
 		return ret;
 	}
-	DRV_LOG(DEBUG, "Programmed RXP Engine %d\n", id);
-	rules->count = rule_cnt;
-	return 0;
+
+	return ret;
+
 }
 
 static int
@@ -579,7 +717,8 @@ rxp_init_eng(struct mlx5_regex_priv *priv, uint8_t id)
 					     ctrl);
 	if (ret)
 		return ret;
-	ret = rxp_init_rtru(ctx, id, MLX5_RXP_RTRU_CSR_CTRL_INIT_MODE_IM_L1_L2);
+	ret = rxp_init_rtru(priv, id,
+			    MLX5_RXP_RTRU_CSR_CTRL_INIT_MODE_IM_L1_L2);
 	if (ret)
 		return ret;
 	ret = mlx5_devx_regex_register_read(ctx, id, MLX5_RXP_CSR_CAPABILITY_5,
@@ -603,285 +742,6 @@ rxp_init_eng(struct mlx5_regex_priv *priv, uint8_t id)
 	ret |= mlx5_devx_regex_register_write(ctx, id,
 					      MLX5_RXP_CSR_MAX_PRI_THREAD, 0);
 	return ret;
-}
-
-static int
-write_private_rules(struct mlx5_regex_priv *priv,
-		    struct mlx5_rxp_ctl_rules_pgm *rules,
-		    uint8_t id)
-{
-	unsigned int pending;
-	uint32_t block, reg, val, rule_cnt, rule_offset, rtru_max_num_entries;
-	int ret = 1;
-
-	if (priv->prog_mode == MLX5_RXP_MODE_NOT_DEFINED)
-		return -EINVAL;
-	if (rules->hdr.len == 0 || rules->hdr.cmd < MLX5_RXP_CTL_RULES_PGM ||
-				   rules->hdr.cmd > MLX5_RXP_CTL_RULES_PGM_INCR)
-		return -EINVAL;
-	/* For a non-incremental rules program, re-init the RXP. */
-	if (rules->hdr.cmd == MLX5_RXP_CTL_RULES_PGM) {
-		ret = rxp_init_eng(priv, id);
-		if (ret < 0)
-			return ret;
-	} else if (rules->hdr.cmd == MLX5_RXP_CTL_RULES_PGM_INCR) {
-		/* Flush RXP L1 and L2 cache by using MODE_L1_L2. */
-		ret = rxp_init_rtru(priv->ctx, id,
-				    MLX5_RXP_RTRU_CSR_CTRL_INIT_MODE_L1_L2);
-		if (ret < 0)
-			return ret;
-	}
-	if (rules->count == 0)
-		return -EINVAL;
-	/* Confirm the RXP is initialised. */
-	if (mlx5_devx_regex_register_read(priv->ctx, id,
-					    MLX5_RXP_CSR_STATUS, &val)) {
-		DRV_LOG(ERR, "Failed to read from RXP!");
-		return -ENODEV;
-	}
-	if (!(val & MLX5_RXP_CSR_STATUS_INIT_DONE)) {
-		DRV_LOG(ERR, "RXP not initialised...");
-		return -EBUSY;
-	}
-	/* Get the RTRU maximum number of entries allowed. */
-	if (mlx5_devx_regex_register_read(priv->ctx, id,
-			MLX5_RXP_RTRU_CSR_CAPABILITY, &rtru_max_num_entries)) {
-		DRV_LOG(ERR, "Failed to read RTRU capability!");
-		return -ENODEV;
-	}
-	rtru_max_num_entries = (rtru_max_num_entries & 0x00FF);
-	rule_cnt = 0;
-	pending = 0;
-	while (rules->count > 0) {
-		if ((rules->rules[rule_cnt].type == MLX5_RXP_ROF_ENTRY_INST) ||
-		    (rules->rules[rule_cnt].type == MLX5_RXP_ROF_ENTRY_IM) ||
-		    (rules->rules[rule_cnt].type == MLX5_RXP_ROF_ENTRY_EM)) {
-			if ((rules->rules[rule_cnt].type ==
-			     MLX5_RXP_ROF_ENTRY_EM) &&
-			    (priv->prog_mode == MLX5_RXP_SHARED_PROG_MODE)) {
-				/* Skip EM rules programming. */
-				if (pending > 0) {
-					/* Flush any rules that are pending. */
-					rule_offset = (rule_cnt - pending);
-					ret = rxp_flush_rules(priv->ctx,
-						&rules->rules[rule_offset],
-						pending, id);
-					if (ret < 0) {
-						DRV_LOG(ERR, "Flushing rules.");
-						return -ENODEV;
-					}
-					pending = 0;
-				}
-				rule_cnt++;
-			} else {
-				pending++;
-				rule_cnt++;
-				/*
-				 * If parsing the last rule, or if reached the
-				 * maximum number of rules for this batch, then
-				 * flush the rules batch to the RXP.
-				 */
-				if ((rules->count == 1) ||
-				    (pending == rtru_max_num_entries)) {
-					rule_offset = (rule_cnt - pending);
-					ret = rxp_flush_rules(priv->ctx,
-						&rules->rules[rule_offset],
-						pending, id);
-					if (ret < 0) {
-						DRV_LOG(ERR, "Flushing rules.");
-						return -ENODEV;
-					}
-					pending = 0;
-				}
-			}
-		} else if ((rules->rules[rule_cnt].type ==
-				MLX5_RXP_ROF_ENTRY_EQ) ||
-			 (rules->rules[rule_cnt].type ==
-				MLX5_RXP_ROF_ENTRY_GTE) ||
-			 (rules->rules[rule_cnt].type ==
-				MLX5_RXP_ROF_ENTRY_LTE) ||
-			 (rules->rules[rule_cnt].type ==
-				MLX5_RXP_ROF_ENTRY_CHECKSUM) ||
-			 (rules->rules[rule_cnt].type ==
-				MLX5_RXP_ROF_ENTRY_CHECKSUM_EX_EM)) {
-			if (pending) {
-				/* Flush rules before checking reg values. */
-				rule_offset = (rule_cnt - pending);
-				ret = rxp_flush_rules(priv->ctx,
-					&rules->rules[rule_offset],
-					pending, id);
-				if (ret < 0) {
-					DRV_LOG(ERR, "Failed to flush rules.");
-					return -ENODEV;
-				}
-			}
-			block = (rules->rules[rule_cnt].addr >> 16) & 0xFFFF;
-			if (block == 0)
-				reg = MLX5_RXP_CSR_BASE_ADDRESS;
-			else if (block == 1)
-				reg = MLX5_RXP_RTRU_CSR_BASE_ADDRESS;
-			else {
-				DRV_LOG(ERR, "Invalid ROF register 0x%08X!",
-					rules->rules[rule_cnt].addr);
-				return -EINVAL;
-			}
-			reg += (rules->rules[rule_cnt].addr & 0xFFFF) *
-				MLX5_RXP_CSR_WIDTH;
-			ret = mlx5_devx_regex_register_read(priv->ctx, id,
-							    reg, &val);
-			if (ret) {
-				DRV_LOG(ERR, "RXP CSR read failed!");
-				return ret;
-			}
-			if ((priv->prog_mode == MLX5_RXP_SHARED_PROG_MODE) &&
-			    ((rules->rules[rule_cnt].type ==
-			    MLX5_RXP_ROF_ENTRY_CHECKSUM_EX_EM) &&
-			    (val != rules->rules[rule_cnt].value))) {
-				DRV_LOG(ERR, "Unexpected value for register:");
-				DRV_LOG(ERR, "reg %x" PRIu32 " got %x" PRIu32,
-					rules->rules[rule_cnt].addr, val);
-				DRV_LOG(ERR, "expected %" PRIx64 ".",
-					rules->rules[rule_cnt].value);
-					return -EINVAL;
-			} else if ((priv->prog_mode ==
-				 MLX5_RXP_PRIVATE_PROG_MODE) &&
-				 (rules->rules[rule_cnt].type ==
-				 MLX5_RXP_ROF_ENTRY_CHECKSUM) &&
-				 (val != rules->rules[rule_cnt].value)) {
-				DRV_LOG(ERR, "Unexpected value for register:");
-				DRV_LOG(ERR, "reg %x" PRIu32 " got %x" PRIu32,
-					rules->rules[rule_cnt].addr, val);
-				DRV_LOG(ERR, "expected %" PRIx64 ".",
-					rules->rules[rule_cnt].value);
-				return -EINVAL;
-			} else if ((rules->rules[rule_cnt].type ==
-					MLX5_RXP_ROF_ENTRY_EQ) &&
-				  (val != rules->rules[rule_cnt].value)) {
-				DRV_LOG(ERR, "Unexpected value for register:");
-				DRV_LOG(ERR, "reg %x" PRIu32 " got %x" PRIu32,
-					rules->rules[rule_cnt].addr, val);
-				DRV_LOG(ERR, "expected %" PRIx64 ".",
-					rules->rules[rule_cnt].value);
-					return -EINVAL;
-			} else if ((rules->rules[rule_cnt].type ==
-					MLX5_RXP_ROF_ENTRY_GTE) &&
-				 (val < rules->rules[rule_cnt].value)) {
-				DRV_LOG(ERR, "Unexpected value reg 0x%08X,",
-					rules->rules[rule_cnt].addr);
-				DRV_LOG(ERR, "got %X, expected >= %" PRIx64 ".",
-					val, rules->rules[rule_cnt].value);
-				return -EINVAL;
-			} else if ((rules->rules[rule_cnt].type ==
-					MLX5_RXP_ROF_ENTRY_LTE) &&
-				 (val > rules->rules[rule_cnt].value)) {
-				DRV_LOG(ERR, "Unexpected value reg 0x%08X,",
-					rules->rules[rule_cnt].addr);
-				DRV_LOG(ERR, "got %08X expected <= %" PRIx64,
-					val, rules->rules[rule_cnt].value);
-				return -EINVAL;
-			}
-			rule_cnt++;
-			pending = 0;
-		} else {
-			DRV_LOG(ERR, "Error: Invalid rule type %d!",
-				rules->rules[rule_cnt].type);
-			return -EINVAL;
-		}
-		rules->count--;
-	}
-	return ret;
-}
-
-/*
- * Shared memory programming mode, here all external db instructions are written
- * to EM via the host.
- */
-static int
-write_shared_rules(struct mlx5_regex_priv *priv,
-		   struct mlx5_rxp_ctl_rules_pgm *rules, uint32_t count,
-		   uint8_t db_to_program)
-{
-	uint32_t rule_cnt, rof_rule_addr;
-	uint64_t tmp_write_swap[4];
-
-	if (priv->prog_mode == MLX5_RXP_MODE_NOT_DEFINED)
-		return -EINVAL;
-	if ((rules->count == 0) || (count == 0))
-		return -EINVAL;
-	rule_cnt = 0;
-	/*
-	 * Note the following section of code carries out a 32byte swap of
-	 * instruction to coincide with HW 32byte swap. This may need removed
-	 * in new variants of this programming function!
-	 */
-	while (rule_cnt < rules->count) {
-		if ((rules->rules[rule_cnt].type == MLX5_RXP_ROF_ENTRY_EM) &&
-		    (priv->prog_mode == MLX5_RXP_SHARED_PROG_MODE)) {
-			/*
-			 * Note there are always blocks of 8 instructions for
-			 * 7's written sequentially. However there is no
-			 * guarantee that all blocks are sequential!
-			 */
-			if (count >= (rule_cnt + MLX5_RXP_INST_BLOCK_SIZE)) {
-				/*
-				 * Ensure memory write not exceeding boundary
-				 * Check essential to ensure 0x10000 offset
-				 * accounted for!
-				 */
-				if ((uint8_t *)((uint8_t *)
-				    priv->db[db_to_program].ptr +
-				    ((rules->rules[rule_cnt + 7].addr <<
-				    MLX5_RXP_INST_OFFSET))) >=
-				    ((uint8_t *)((uint8_t *)
-				    priv->db[db_to_program].ptr +
-				    MLX5_MAX_DB_SIZE))) {
-					DRV_LOG(ERR, "DB exceeded memory!");
-					return -ENODEV;
-				}
-				/*
-				 * Rule address Offset to align with RXP
-				 * external instruction offset.
-				 */
-				rof_rule_addr = (rules->rules[rule_cnt].addr <<
-						 MLX5_RXP_INST_OFFSET);
-				/* 32 byte instruction swap (sw work around)! */
-				tmp_write_swap[0] = le64toh(
-					rules->rules[(rule_cnt + 4)].value);
-				tmp_write_swap[1] = le64toh(
-					rules->rules[(rule_cnt + 5)].value);
-				tmp_write_swap[2] = le64toh(
-					rules->rules[(rule_cnt + 6)].value);
-				tmp_write_swap[3] = le64toh(
-					rules->rules[(rule_cnt + 7)].value);
-				/* Write only 4 of the 8 instructions. */
-				memcpy((uint8_t *)((uint8_t *)
-				       priv->db[db_to_program].ptr +
-				       rof_rule_addr), &tmp_write_swap,
-				       (sizeof(uint64_t) * 4));
-				/* Write 1st 4 rules of block after last 4. */
-				rof_rule_addr = (rules->rules[
-						 (rule_cnt + 4)].addr <<
-						 MLX5_RXP_INST_OFFSET);
-				tmp_write_swap[0] = le64toh(
-					rules->rules[(rule_cnt + 0)].value);
-				tmp_write_swap[1] = le64toh(
-					rules->rules[(rule_cnt + 1)].value);
-				tmp_write_swap[2] = le64toh(
-					rules->rules[(rule_cnt + 2)].value);
-				tmp_write_swap[3] = le64toh(
-					rules->rules[(rule_cnt + 3)].value);
-				memcpy((uint8_t *)((uint8_t *)
-				       priv->db[db_to_program].ptr +
-				       rof_rule_addr), &tmp_write_swap,
-				       (sizeof(uint64_t) * 4));
-			} else
-				return -1;
-			/* Fast forward as already handled block of 8. */
-			rule_cnt += MLX5_RXP_INST_BLOCK_SIZE;
-		} else
-			rule_cnt++; /* Must be something other than EM rule. */
-	}
-	return 0;
 }
 
 static int
@@ -933,6 +793,7 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 	struct mlx5_rxp_ctl_rules_pgm *rules = NULL;
 	uint32_t id;
 	int ret;
+	uint32_t ver;
 
 	if (priv->prog_mode == MLX5_RXP_MODE_NOT_DEFINED) {
 		DRV_LOG(ERR, "RXP programming mode not set!");
@@ -944,10 +805,10 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 	}
 	if (rule_db_len == 0)
 		return -EINVAL;
-	ret = rxp_parse_rof(rule_db, rule_db_len, &rules);
-	if (ret) {
-		DRV_LOG(ERR, "Can't parse ROF file.");
-		return ret;
+	if (mlx5_devx_regex_register_read(priv->ctx, 0,
+					  MLX5_RXP_CSR_BASE_ADDRESS, &ver)) {
+		DRV_LOG(ERR, "Failed to read Main CSRs Engine 0!");
+		return -1;
 	}
 	/* Need to ensure RXP not busy before stop! */
 	for (id = 0; id < priv->nb_engines; id++) {
@@ -957,7 +818,7 @@ mlx5_regex_rules_db_import(struct rte_regexdev *dev,
 			ret = -ENODEV;
 			goto tidyup_error;
 		}
-		ret = program_rxp_rules(priv, rules, id);
+		ret = program_rxp_rules(priv, rule_db, rule_db_len, id);
 		if (ret < 0) {
 			DRV_LOG(ERR, "Failed to program rxp rules.");
 			ret = -ENODEV;

@@ -69,6 +69,7 @@ struct mlx5_regex_priv {
 	struct mlx5dv_devx_uar *uar; /* UAR object. */
 	struct ibv_pd *pd;
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
+	uint8_t is_bf2; /* The device is BF2 device. */
 };
 
 /* mlx5_regex.c */
