@@ -892,7 +892,7 @@ rxp_db_setup(struct mlx5_regex_priv *priv)
 
 	/* Setup database memories for both RXP engines + reprogram memory. */
 	for (i = 0; i < (priv->nb_engines + MLX5_RXP_EM_COUNT); i++) {
-		priv->db[i].ptr = rte_malloc("", MLX5_MAX_DB_SIZE, 0);
+		priv->db[i].ptr = rte_malloc("", MLX5_MAX_DB_SIZE, 1 << 21);
 		if (!priv->db[i].ptr) {
 			DRV_LOG(ERR, "Failed to alloc db memory!");
 			ret = ENODEV;
