@@ -128,7 +128,8 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DISABLE_CHANNELS = 31,
 	VIRTCHNL_OP_ADD_CLOUD_FILTER = 32,
 	VIRTCHNL_OP_DEL_CLOUD_FILTER = 33,
-	/* opcodes 34, 35, 36, 37 and 38 are reserved */
+	/* opcodes 34, 35, 36, and 37 are reserved */
+	VIRTCHNL_OP_DCF_VLAN_OFFLOAD = 38,
 	VIRTCHNL_OP_DCF_CMD_DESC = 39,
 	VIRTCHNL_OP_DCF_CMD_BUFF = 40,
 	VIRTCHNL_OP_DCF_DISABLE = 41,
@@ -1217,6 +1218,38 @@ struct virtchnl_pkg_info {
 
 VIRTCHNL_CHECK_STRUCT_LEN(48, virtchnl_pkg_info);
 
+/* VIRTCHNL_OP_DCF_VLAN_OFFLOAD
+ * DCF negotiates the VIRTCHNL_VF_OFFLOAD_VLAN_V2 capability firstly to get
+ * the double VLAN configuration, then DCF sends this message to configure the
+ * outer or inner VLAN offloads (insertion and strip) for the target VF.
+ */
+struct virtchnl_dcf_vlan_offload {
+	u16 vf_id;
+	u16 tpid;
+	u16 vlan_flags;
+#define VIRTCHNL_DCF_VLAN_TYPE_S		0
+#define VIRTCHNL_DCF_VLAN_TYPE_M		\
+			(0x1 << VIRTCHNL_DCF_VLAN_TYPE_S)
+#define VIRTCHNL_DCF_VLAN_TYPE_INNER		0x0
+#define VIRTCHNL_DCF_VLAN_TYPE_OUTER		0x1
+#define VIRTCHNL_DCF_VLAN_INSERT_MODE_S		1
+#define VIRTCHNL_DCF_VLAN_INSERT_MODE_M	\
+			(0x7 << VIRTCHNL_DCF_VLAN_INSERT_MODE_S)
+#define VIRTCHNL_DCF_VLAN_INSERT_DISABLE	0x1
+#define VIRTCHNL_DCF_VLAN_INSERT_PORT_BASED	0x2
+#define VIRTCHNL_DCF_VLAN_INSERT_VIA_TX_DESC	0x3
+#define VIRTCHNL_DCF_VLAN_STRIP_MODE_S		4
+#define VIRTCHNL_DCF_VLAN_STRIP_MODE_M		\
+			(0x7 << VIRTCHNL_DCF_VLAN_STRIP_MODE_S)
+#define VIRTCHNL_DCF_VLAN_STRIP_DISABLE		0x1
+#define VIRTCHNL_DCF_VLAN_STRIP_ONLY		0x2
+#define VIRTCHNL_DCF_VLAN_STRIP_INTO_RX_DESC	0x3
+	u16 vlan_id;
+	u16 pad[4];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_dcf_vlan_offload);
+
 struct virtchnl_supported_rxdids {
 	u64 supported_rxdids;
 };
@@ -1931,6 +1964,9 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 	case VIRTCHNL_OP_ADD_CLOUD_FILTER:
 	case VIRTCHNL_OP_DEL_CLOUD_FILTER:
 		valid_len = sizeof(struct virtchnl_filter);
+		break;
+	case VIRTCHNL_OP_DCF_VLAN_OFFLOAD:
+		valid_len = sizeof(struct virtchnl_dcf_vlan_offload);
 		break;
 	case VIRTCHNL_OP_DCF_CMD_DESC:
 	case VIRTCHNL_OP_DCF_CMD_BUFF:
