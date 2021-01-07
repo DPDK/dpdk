@@ -1004,6 +1004,11 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		err = rte_errno;
 		goto error;
 	}
+	if (LIST_EMPTY(&mlx5_dev_ctx_list)) {
+		err = mlx5_flow_os_init_workspace_once();
+		if (err)
+			goto error;
+	}
 	mlx5_flow_aging_init(sh);
 	mlx5_flow_counters_mng_init(sh);
 	mlx5_flow_ipool_create(sh, config);
@@ -1079,6 +1084,9 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	mlx5_mr_release_cache(&sh->share_cache);
 	/* Remove context from the global device list. */
 	LIST_REMOVE(sh, next);
+	/* Release flow workspaces objects on the last device. */
+	if (LIST_EMPTY(&mlx5_dev_ctx_list))
+		mlx5_flow_os_release_workspace();
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	/*
 	 *  Ensure there is no async event handler installed.

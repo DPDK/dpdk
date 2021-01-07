@@ -5,6 +5,8 @@
 #include "mlx5_flow_os.h"
 #include "mlx5_win_ext.h"
 
+#include <rte_thread.h>
+
 /**
  * Verify the @p attributes will be correctly understood by the NIC and store
  * them in the @p flow if everything is correct.
@@ -237,4 +239,180 @@ int
 mlx5_flow_os_destroy_flow(void *drv_flow_ptr)
 {
 	return mlx5_glue->devx_fs_rule_del(drv_flow_ptr);
+}
+
+struct mlx5_workspace_thread {
+	HANDLE	thread_handle;
+	struct mlx5_flow_workspace *mlx5_ws;
+	struct mlx5_workspace_thread *next;
+};
+
+/**
+ * Static pointer array for multi thread support of mlx5_flow_workspace.
+ */
+static struct mlx5_workspace_thread *curr;
+static struct mlx5_workspace_thread *first;
+rte_tls_key ws_tls_index;
+static pthread_mutex_t lock_thread_list;
+
+static bool
+mlx5_is_thread_alive(HANDLE thread_handle)
+{
+	DWORD result = WaitForSingleObject(thread_handle, 0);
+
+	if (result == WAIT_OBJECT_0)
+		return false;
+	return false;
+}
+
+static int
+mlx5_get_current_thread(HANDLE *p_handle)
+{
+	BOOL ret = DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
+		GetCurrentProcess(), p_handle, 0, 0, DUPLICATE_SAME_ACCESS);
+
+	if (!ret) {
+		RTE_LOG_WIN32_ERR("DuplicateHandle()");
+		return -1;
+	}
+	return 0;
+}
+
+static void
+mlx5_clear_thread_list(void)
+{
+	struct mlx5_workspace_thread *temp = first;
+	struct mlx5_workspace_thread *next, *prev = NULL;
+	HANDLE curr_thread;
+
+	if (!temp)
+		return;
+	if (mlx5_get_current_thread(&curr_thread)) {
+		DRV_LOG(ERR, "Failed to get current thread "
+			"handle.");
+		return;
+	}
+	while (temp) {
+		next = temp->next;
+		if (temp->thread_handle != curr_thread &&
+		    !mlx5_is_thread_alive(temp->thread_handle)) {
+			if (temp == first) {
+				if (curr == temp)
+					curr = temp->next;
+				first = temp->next;
+			} else if (temp == curr) {
+				curr = prev;
+			}
+			flow_release_workspace(temp->mlx5_ws);
+			CloseHandle(temp->thread_handle);
+			free(temp);
+			if (prev)
+				prev->next = next;
+			temp = next;
+			continue;
+		}
+		prev = temp;
+		temp = temp->next;
+	}
+	CloseHandle(curr_thread);
+}
+
+/**
+ * Release workspaces before exit.
+ */
+void
+mlx5_flow_os_release_workspace(void)
+{
+	mlx5_clear_thread_list();
+	if (first) {
+		MLX5_ASSERT(!first->next);
+		flow_release_workspace(first->mlx5_ws);
+		free(first);
+	}
+	rte_thread_tls_key_delete(ws_tls_index);
+	pthread_mutex_destroy(&lock_thread_list);
+}
+
+static int
+mlx5_add_workspace_to_list(struct mlx5_flow_workspace *data)
+{
+	HANDLE curr_thread;
+	struct mlx5_workspace_thread *temp = calloc(1, sizeof(*temp));
+
+	if (!temp) {
+		DRV_LOG(ERR, "Failed to allocate thread workspace "
+			"memory.");
+		return -1;
+	}
+	if (mlx5_get_current_thread(&curr_thread)) {
+		DRV_LOG(ERR, "Failed to get current thread "
+			"handle.");
+		free(temp);
+		return -1;
+	}
+	temp->mlx5_ws = data;
+	temp->thread_handle = curr_thread;
+	pthread_mutex_lock(&lock_thread_list);
+	mlx5_clear_thread_list();
+	if (!first) {
+		first = temp;
+		curr = temp;
+	} else {
+		curr->next = temp;
+		curr = curr->next;
+	}
+	pthread_mutex_unlock(&lock_thread_list);
+	return 0;
+}
+
+int
+mlx5_flow_os_init_workspace_once(void)
+{
+	int err = rte_thread_tls_key_create(&ws_tls_index, NULL);
+
+	if (err) {
+		DRV_LOG(ERR, "Can't create flow workspace data thread key.");
+		return err;
+	}
+	pthread_mutex_init(&lock_thread_list, NULL);
+	return 0;
+}
+
+void *
+mlx5_flow_os_get_specific_workspace(void)
+{
+	return rte_thread_tls_value_get(ws_tls_index);
+}
+
+int
+mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data)
+{
+	int err = 0;
+	int old_err = rte_errno;
+
+	rte_errno = 0;
+	if (!rte_thread_tls_value_get(ws_tls_index)) {
+		if (rte_errno) {
+			DRV_LOG(ERR, "Failed checking specific workspace.");
+			rte_errno = old_err;
+			return -1;
+		}
+		/*
+		 * set_specific_workspace when current value is NULL
+		 * can happen only once per thread, mark this thread in
+		 * linked list to be able to release reasorces later on.
+		 */
+		err = mlx5_add_workspace_to_list(data);
+		if (err) {
+			DRV_LOG(ERR, "Failed adding workspace to list.");
+			rte_errno = old_err;
+			return -1;
+		}
+	}
+	if (rte_thread_tls_value_set(ws_tls_index, data)) {
+		DRV_LOG(ERR, "Failed setting specific workspace.");
+		err = -1;
+	}
+	rte_errno = old_err;
+	return err;
 }

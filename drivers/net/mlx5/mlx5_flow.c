@@ -696,11 +696,6 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 	},
 };
 
-/* Key of thread specific flow workspace data. */
-static pthread_key_t key_workspace;
-
-/* Thread specific flow workspace data once initialization data. */
-static pthread_once_t key_workspace_init;
 
 
 /**
@@ -5722,7 +5717,7 @@ mlx5_flow_start_default(struct rte_eth_dev *dev)
 /**
  * Release key of thread specific flow workspace data.
  */
-static void
+void
 flow_release_workspace(void *data)
 {
 	struct mlx5_flow_workspace *wks = data;
@@ -5737,16 +5732,6 @@ flow_release_workspace(void *data)
 }
 
 /**
- * Initialize key of thread specific flow workspace data.
- */
-static void
-flow_alloc_workspace(void)
-{
-	if (pthread_key_create(&key_workspace, flow_release_workspace))
-		DRV_LOG(ERR, "Can't create flow workspace data thread key.");
-}
-
-/**
  * Get thread specific current flow workspace.
  *
  * @return pointer to thread specific flow workspace data, NULL on error.
@@ -5756,7 +5741,7 @@ mlx5_flow_get_thread_workspace(void)
 {
 	struct mlx5_flow_workspace *data;
 
-	data = pthread_getspecific(key_workspace);
+	data = mlx5_flow_os_get_specific_workspace();
 	MLX5_ASSERT(data && data->inuse);
 	if (!data || !data->inuse)
 		DRV_LOG(ERR, "flow workspace not initialized.");
@@ -5804,11 +5789,7 @@ mlx5_flow_push_thread_workspace(void)
 	struct mlx5_flow_workspace *curr;
 	struct mlx5_flow_workspace *data;
 
-	if (pthread_once(&key_workspace_init, flow_alloc_workspace)) {
-		DRV_LOG(ERR, "Failed to init flow workspace data thread key.");
-		return NULL;
-	}
-	curr = pthread_getspecific(key_workspace);
+	curr = mlx5_flow_os_get_specific_workspace();
 	if (!curr) {
 		data = flow_alloc_thread_workspace();
 		if (!data)
@@ -5827,7 +5808,7 @@ mlx5_flow_push_thread_workspace(void)
 	data->inuse = 1;
 	data->flow_idx = 0;
 	/* Set as current workspace */
-	if (pthread_setspecific(key_workspace, data))
+	if (mlx5_flow_os_set_specific_workspace(data))
 		DRV_LOG(ERR, "Failed to set flow workspace to thread.");
 	return data;
 }
@@ -5853,7 +5834,7 @@ mlx5_flow_pop_thread_workspace(void)
 	data->inuse = 0;
 	if (!data->prev)
 		return;
-	if (pthread_setspecific(key_workspace, data->prev))
+	if (mlx5_flow_os_set_specific_workspace(data->prev))
 		DRV_LOG(ERR, "Failed to set flow workspace to thread.");
 }
 
