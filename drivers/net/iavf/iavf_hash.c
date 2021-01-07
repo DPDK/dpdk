@@ -806,7 +806,9 @@ static void iavf_refine_proto_hdrs(struct virtchnl_proto_hdrs *proto_hdrs,
 
 static uint64_t invalid_rss_comb[] = {
 	ETH_RSS_IPV4 | ETH_RSS_NONFRAG_IPV4_UDP,
+	ETH_RSS_IPV4 | ETH_RSS_NONFRAG_IPV4_TCP,
 	ETH_RSS_IPV6 | ETH_RSS_NONFRAG_IPV6_UDP,
+	ETH_RSS_IPV6 | ETH_RSS_NONFRAG_IPV6_TCP,
 	RTE_ETH_RSS_L3_PRE32 | RTE_ETH_RSS_L3_PRE40 |
 	RTE_ETH_RSS_L3_PRE48 | RTE_ETH_RSS_L3_PRE56 |
 	RTE_ETH_RSS_L3_PRE96
