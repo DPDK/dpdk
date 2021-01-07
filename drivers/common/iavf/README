@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2020 Intel Corporation
+ * Copyright(c) 2019-2021 Intel Corporation
  */
 
 Intel® IAVF driver
 =================
 
 This directory contains source code of FreeBSD IAVF driver of version
-cid-avf.2020.10.14.tar.gz released by the team which develops
+cid-avf.2021.01.12.tar.gz released by the team which develops
 basic drivers for any IAVF NIC. The directory of base/ contains the
 original source package.
 
