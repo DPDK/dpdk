@@ -103,11 +103,10 @@ mlx5_regex_info_get(struct rte_regexdev *dev __rte_unused,
 	info->max_payload_size = MLX5_REGEX_MAX_PAYLOAD_SIZE;
 	info->max_rules_per_group = MLX5_REGEX_MAX_RULES_PER_GROUP;
 	info->max_groups = MLX5_REGEX_MAX_GROUPS;
-	info->max_queue_pairs = 1;
 	info->regexdev_capa = RTE_REGEXDEV_SUPP_PCRE_GREEDY_F |
 			      RTE_REGEXDEV_CAPA_QUEUE_PAIR_OOS_F;
 	info->rule_flags = 0;
-	info->max_queue_pairs = 10;
+	info->max_queue_pairs = UINT16_MAX;
 	return 0;
 }
 
