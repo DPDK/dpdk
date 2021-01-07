@@ -42,9 +42,9 @@ enic_dummy_recv_pkts(__rte_unused void *rx_queue,
 	return 0;
 }
 
-uint16_t
-enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-	       uint16_t nb_pkts)
+static inline uint16_t
+enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
+		      uint16_t nb_pkts, const bool use_64b_desc)
 {
 	struct vnic_rq *sop_rq = rx_queue;
 	struct vnic_rq *data_rq;
@@ -62,10 +62,15 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t seg_length;
 	struct rte_mbuf *first_seg = sop_rq->pkt_first_seg;
 	struct rte_mbuf *last_seg = sop_rq->pkt_last_seg;
+	const int desc_size = use_64b_desc ?
+		sizeof(struct cq_enet_rq_desc_64) :
+		sizeof(struct cq_enet_rq_desc);
+	RTE_BUILD_BUG_ON(sizeof(struct cq_enet_rq_desc_64) != 64);
 
 	cq = &enic->cq[enic_cq_rq(enic, sop_rq->index)];
 	cq_idx = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
-	cqd_ptr = (struct cq_desc *)(cq->ring.descs) + cq_idx;
+	cqd_ptr = (struct cq_desc *)((uintptr_t)(cq->ring.descs) +
+				     cq_idx * desc_size);
 	color = cq->last_color;
 
 	data_rq = &enic->rq[sop_rq->data_queue_idx];
@@ -78,15 +83,26 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		struct cq_desc cqd;
 		uint8_t packet_error;
 		uint16_t ciflags;
+		uint8_t tc;
 
 		max_rx--;
 
+		tc = *(volatile uint8_t *)((uintptr_t)cqd_ptr + desc_size - 1);
 		/* Check for pkts available */
-		if ((cqd_ptr->type_color & CQ_DESC_COLOR_MASK_NOSHIFT) == color)
+		if ((tc & CQ_DESC_COLOR_MASK_NOSHIFT) == color)
 			break;
 
 		/* Get the cq descriptor and extract rq info from it */
 		cqd = *cqd_ptr;
+		/*
+		 * The first 16B of 64B descriptor is identical to the
+		 * 16B descriptor, except type_color. Copy type_color
+		 * from the 64B descriptor into the 16B descriptor's
+		 * field, so the code below can assume the 16B
+		 * descriptor format.
+		 */
+		if (use_64b_desc)
+			cqd.type_color = tc;
 		rq_num = cqd.q_number & CQ_DESC_Q_NUM_MASK;
 		rq_idx = cqd.completed_index & CQ_DESC_COMP_NDX_MASK;
 
@@ -109,7 +125,8 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		cq_idx++;
 
 		/* Prefetch next mbuf & desc while processing current one */
-		cqd_ptr = (struct cq_desc *)(cq->ring.descs) + cq_idx;
+		cqd_ptr = (struct cq_desc *)((uintptr_t)(cq->ring.descs) +
+					     cq_idx * desc_size);
 		rte_enic_prefetch(cqd_ptr);
 
 		ciflags = enic_cq_rx_desc_ciflags(
@@ -213,6 +230,18 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 
 	return nb_rx;
+}
+
+uint16_t
+enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	return enic_recv_pkts_common(rx_queue, rx_pkts, nb_pkts, false);
+}
+
+uint16_t
+enic_recv_pkts_64(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	return enic_recv_pkts_common(rx_queue, rx_pkts, nb_pkts, true);
 }
 
 uint16_t

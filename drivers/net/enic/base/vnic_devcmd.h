@@ -628,6 +628,24 @@ enum vnic_devcmd_cmd {
 	 * initialized to 0 to allow for better driver forward compatibility.
 	 */
 	CMD_FLOW_MANAGER_OP = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 88),
+
+	/*
+	 * Set extended CQ field in MREGS of RQ (or all RQs)
+	 * for given vNIC
+	 * in: (u64) a0 = RQ selection (VNIC_RQ_ALL for all RQs)
+	 *     (u32) a1 = CQ entry size
+	 *	   VNIC_RQ_CQ_ENTRY_SIZE_16 --> 16 bytes
+	 *	   VNIC_RQ_CQ_ENTRY_SIZE_32 --> 32 bytes
+	 *	   VNIC_RQ_CQ_ENTRY_SIZE_64 --> 64 bytes
+	 *
+	 * Capability query:
+	 * out: (u32) a0 = errno, 0:valid cmd
+	 *	(u32) a1 = value consisting of supported entries
+	 *	   bit 0: 16 bytes
+	 *	   bit 1: 32 bytes
+	 *	   bit 2: 64 bytes
+	 */
+	CMD_CQ_ENTRY_SIZE_SET = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 90),
 };
 
 /* Modes for exchanging advanced filter capabilities. The modes supported by
@@ -1162,5 +1180,18 @@ typedef enum {
 	GRPINTR_DISABLE,
 	GRPINTR_UPD_VECT,
 } grpintr_subcmd_t;
+
+/*
+ * Defines and Capabilities for CMD_CQ_ENTRY_SIZE_SET
+ */
+#define VNIC_RQ_ALL			(~0ULL)
+
+#define VNIC_RQ_CQ_ENTRY_SIZE_16	0
+#define VNIC_RQ_CQ_ENTRY_SIZE_32	1
+#define VNIC_RQ_CQ_ENTRY_SIZE_64	2
+
+#define VNIC_RQ_CQ_ENTRY_SIZE_16_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_16)
+#define VNIC_RQ_CQ_ENTRY_SIZE_32_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_32)
+#define VNIC_RQ_CQ_ENTRY_SIZE_64_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_64)
 
 #endif /* _VNIC_DEVCMD_H_ */

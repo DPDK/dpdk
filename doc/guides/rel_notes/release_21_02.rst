@@ -70,6 +70,10 @@ New Features
 
   * Added support for Stingray2 device.
 
+* **Updated Cisco enic driver.**
+
+  * Added support for 64B completion queue entries
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated the Mellanox mlx5 driver with new features and improvements, including:

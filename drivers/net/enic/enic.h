@@ -117,7 +117,10 @@ struct enic {
 	uint8_t adv_filters;
 	uint32_t flow_filter_mode;
 	uint8_t filter_actions; /* HW supported actions */
+	uint64_t cq_entry_sizes; /* supported CQ entry sizes */
 	bool vxlan;
+	bool cq64;            /* actually using 64B CQ entry */
+	bool cq64_request;    /* devargs cq64=1 */
 	bool disable_overlay; /* devargs disable_overlay=1 */
 	uint8_t enable_avx2_rx;  /* devargs enable-avx2-rx=1 */
 	uint8_t geneve_opt_avail;    /* Geneve with options offload available */
@@ -419,6 +422,8 @@ void enic_free_consistent(void *priv, size_t size, void *vaddr,
 			  dma_addr_t dma_handle);
 uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
+uint16_t enic_recv_pkts_64(void *rx_queue, struct rte_mbuf **rx_pkts,
+			   uint16_t nb_pkts);
 uint16_t enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts);
 uint16_t enic_dummy_recv_pkts(void *rx_queue,

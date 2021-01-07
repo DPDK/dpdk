@@ -388,6 +388,31 @@ vectorized handler is selected, enable debug logging
 
     enic_use_vector_rx_handler use the non-scatter avx2 Rx handler
 
+64B Completion Queue Entry
+--------------------------
+
+Recent VIC adapters support 64B completion queue entries, as well as
+16B entries that are available on all adapter models. ENIC PMD enables
+and uses 64B entries by default, if available. 64B entries generally
+lower CPU cycles per Rx packet, as they avoid partial DMA writes and
+reduce cache contention between DMA and polling CPU. The effect is
+most pronounced when multiple Rx queues are used on Intel platforms
+with Data Direct I/O Technology (DDIO).
+
+If 64B entries are not available, PMD uses 16B entries. The user may
+explicitly disable 64B entries and use 16B entries by setting
+``devarg`` parameter ``cq64=0``. For example::
+
+    -a 12:00.0,cq64=0
+
+To verify the selected entry size, enable debug logging
+(``--log-level=enic,debug``) and check the following messages.
+
+.. code-block:: console
+
+    PMD: rte_enic_pmd: Supported CQ entry sizes: 16 32
+    PMD: rte_enic_pmd: Using 16B CQ entry size
+
 .. _enic_limitations:
 
 Limitations

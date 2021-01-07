@@ -25,6 +25,7 @@ int enic_get_vnic_config(struct enic *enic)
 {
 	struct vnic_enet_config *c = &enic->config;
 	int err;
+	uint64_t sizes;
 
 	err = vnic_dev_get_mac_addr(enic->vdev, enic->mac_addr);
 	if (err) {
@@ -182,6 +183,18 @@ int enic_get_vnic_config(struct enic *enic)
 		dev_info(NULL, "Geneve with options offload available\n");
 		enic->geneve_opt_avail = 1;
 	}
+	/* Supported CQ entry sizes */
+	enic->cq_entry_sizes = vnic_dev_capable_cq_entry_size(enic->vdev);
+	sizes = enic->cq_entry_sizes;
+	dev_debug(NULL, "Supported CQ entry sizes:%s%s%s\n",
+		  (sizes & VNIC_RQ_CQ_ENTRY_SIZE_16_CAPABLE) ? " 16" : "",
+		  (sizes & VNIC_RQ_CQ_ENTRY_SIZE_32_CAPABLE) ? " 32" : "",
+		  (sizes & VNIC_RQ_CQ_ENTRY_SIZE_64_CAPABLE) ? " 64" : "");
+	/* Use 64B entry if requested and available */
+	enic->cq64 = enic->cq64_request &&
+		(sizes & VNIC_RQ_CQ_ENTRY_SIZE_64_CAPABLE);
+	dev_debug(NULL, "Using %sB CQ entry size\n", enic->cq64 ? "64" : "16");
+
 	/*
 	 * Default hardware capabilities. enic_dev_init() may add additional
 	 * flags if it enables overlay offloads.

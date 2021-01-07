@@ -64,6 +64,7 @@ static const struct vic_speed_capa {
 	{ 0, 0 }, /* End marker */
 };
 
+#define ENIC_DEVARG_CQ64 "cq64"
 #define ENIC_DEVARG_DISABLE_OVERLAY "disable-overlay"
 #define ENIC_DEVARG_ENABLE_AVX2_RX "enable-avx2-rx"
 #define ENIC_DEVARG_GENEVE_OPT "geneve-opt"
@@ -933,6 +934,8 @@ static int enicpmd_dev_rx_burst_mode_get(struct rte_eth_dev *dev,
 		info_str = "Scalar No Scatter";
 	else if (pkt_burst == enic_recv_pkts)
 		info_str = "Scalar";
+	else if (pkt_burst == enic_recv_pkts_64)
+		info_str = "Scalar 64B Completion";
 	if (info_str) {
 		strlcpy(mode->info, info_str, sizeof(mode->info));
 		ret = 0;
@@ -1145,6 +1148,8 @@ static int enic_parse_zero_one(const char *key,
 			": expected=0|1 given=%s\n", key, value);
 		return -EINVAL;
 	}
+	if (strcmp(key, ENIC_DEVARG_CQ64) == 0)
+		enic->cq64_request = b;
 	if (strcmp(key, ENIC_DEVARG_DISABLE_OVERLAY) == 0)
 		enic->disable_overlay = b;
 	if (strcmp(key, ENIC_DEVARG_ENABLE_AVX2_RX) == 0)
@@ -1190,6 +1195,7 @@ static int enic_parse_ig_vlan_rewrite(__rte_unused const char *key,
 static int enic_check_devargs(struct rte_eth_dev *dev)
 {
 	static const char *const valid_keys[] = {
+		ENIC_DEVARG_CQ64,
 		ENIC_DEVARG_DISABLE_OVERLAY,
 		ENIC_DEVARG_ENABLE_AVX2_RX,
 		ENIC_DEVARG_GENEVE_OPT,
@@ -1201,6 +1207,7 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 
 	ENICPMD_FUNC_TRACE();
 
+	enic->cq64_request = true; /* Use 64B entry if available */
 	enic->disable_overlay = false;
 	enic->enable_avx2_rx = false;
 	enic->geneve_opt_request = false;
@@ -1210,7 +1217,9 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	kvlist = rte_kvargs_parse(dev->device->devargs->args, valid_keys);
 	if (!kvlist)
 		return -EINVAL;
-	if (rte_kvargs_process(kvlist, ENIC_DEVARG_DISABLE_OVERLAY,
+	if (rte_kvargs_process(kvlist, ENIC_DEVARG_CQ64,
+			       enic_parse_zero_one, enic) < 0 ||
+	    rte_kvargs_process(kvlist, ENIC_DEVARG_DISABLE_OVERLAY,
 			       enic_parse_zero_one, enic) < 0 ||
 	    rte_kvargs_process(kvlist, ENIC_DEVARG_ENABLE_AVX2_RX,
 			       enic_parse_zero_one, enic) < 0 ||
@@ -1382,6 +1391,7 @@ RTE_PMD_REGISTER_PCI(net_enic, rte_enic_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enic, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_enic,
+	ENIC_DEVARG_CQ64 "=0|1"
 	ENIC_DEVARG_DISABLE_OVERLAY "=0|1 "
 	ENIC_DEVARG_ENABLE_AVX2_RX "=0|1 "
 	ENIC_DEVARG_GENEVE_OPT "=0|1 "
