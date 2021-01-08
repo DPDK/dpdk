@@ -472,6 +472,25 @@ struct ice_boost_tcam_section {
 	sizeof(struct ice_boost_tcam_entry), \
 	sizeof(struct ice_boost_tcam_entry))
 
+/* package Marker PType TCAM entry */
+struct ice_marker_ptype_tcam_entry {
+#define ICE_MARKER_PTYPE_TCAM_ADDR_MAX	1024
+	__le16 addr;
+	__le16 ptype;
+	u8 keys[20];
+};
+
+struct ice_marker_ptype_tcam_section {
+	__le16 count;
+	__le16 reserved;
+	struct ice_marker_ptype_tcam_entry tcam[STRUCT_HACK_VAR_LEN];
+};
+
+#define ICE_MAX_MARKER_PTYPE_TCAMS_IN_BUF ICE_MAX_ENTRIES_IN_BUF( \
+	ice_struct_size((struct ice_marker_ptype_tcam_section *)0, tcam, 1) - \
+	sizeof(struct ice_marker_ptype_tcam_entry), \
+	sizeof(struct ice_marker_ptype_tcam_entry))
+
 struct ice_xlt1_section {
 	__le16 count;
 	__le16 offset;
