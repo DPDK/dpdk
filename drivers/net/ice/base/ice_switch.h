@@ -182,7 +182,6 @@ struct ice_fltr_info {
 		 */
 		u16 q_id:11;
 		u16 hw_vsi_id:10;
-		u16 vsi_id:10;
 		u16 vsi_list_id:10;
 	} fwd_id;
 
