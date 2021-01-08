@@ -446,7 +446,8 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	 1ULL << VHOST_USER_PROTOCOL_F_STATUS)
 
 #define VHOST_VDPA_SUPPORTED_PROTOCOL_FEATURES		\
-	(1ULL << VHOST_BACKEND_F_IOTLB_MSG_V2)
+	(1ULL << VHOST_BACKEND_F_IOTLB_MSG_V2	|	\
+	1ULL << VHOST_BACKEND_F_IOTLB_BATCH)
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     int cq, int queue_size, const char *mac, char **ifname,
