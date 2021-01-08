@@ -134,6 +134,7 @@ F: lib/*/*.map
 Driver information
 M: Neil Horman <nhorman@tuxdriver.com>
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
+F: buildtools/coff.py
 F: buildtools/pmdinfogen.py
 F: usertools/dpdk-pmdinfo.py
 F: doc/guides/tools/pmdinfo.rst

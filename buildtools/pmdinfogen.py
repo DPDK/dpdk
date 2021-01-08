@@ -9,8 +9,13 @@ import json
 import sys
 import tempfile
 
-from elftools.elf.elffile import ELFFile
-from elftools.elf.sections import SymbolTableSection
+try:
+    from elftools.elf.elffile import ELFFile
+    from elftools.elf.sections import SymbolTableSection
+except ImportError:
+    pass
+
+import coff
 
 
 class ELFSymbol:
@@ -19,19 +24,16 @@ class ELFSymbol:
         self._symbol = symbol
 
     @property
-    def size(self):
-        return self._symbol["st_size"]
-
-    @property
-    def value(self):
-        data = self._image.get_section_data(self._symbol["st_shndx"])
-        base = self._symbol["st_value"]
-        return data[base:base + self.size]
-
-    @property
     def string_value(self):
-        value = self.value
+        size = self._symbol["st_size"]
+        value = self.get_value(0, size)
         return value[:-1].decode() if value else ""
+
+    def get_value(self, offset, size):
+        section = self._symbol["st_shndx"]
+        data = self._image.get_section(section).data()
+        base = self._symbol["st_value"] + offset
+        return data[base : base + size]
 
 
 class ELFImage:
@@ -45,18 +47,50 @@ class ELFImage:
     def is_big_endian(self):
         return not self._image.little_endian
 
-    def get_section_data(self, name):
-        return self._image.get_section(name).data()
-
     def find_by_name(self, name):
         symbol = self._symtab.get_symbol_by_name(name)
-        return ELFSymbol(self, symbol[0]) if symbol else None
+        return ELFSymbol(self._image, symbol[0]) if symbol else None
 
     def find_by_prefix(self, prefix):
         for i in range(self._symtab.num_symbols()):
             symbol = self._symtab.get_symbol(i)
             if symbol.name.startswith(prefix):
-                yield ELFSymbol(self, symbol)
+                yield ELFSymbol(self._image, symbol)
+
+
+class COFFSymbol:
+    def __init__(self, image, symbol):
+        self._image = image
+        self._symbol = symbol
+
+    def get_value(self, offset, size):
+        value = self._symbol.get_value(offset)
+        return value[:size] if value else value
+
+    @property
+    def string_value(self):
+        value = self._symbol.get_value(0)
+        return coff.decode_asciiz(value) if value else ''
+
+
+class COFFImage:
+    def __init__(self, data):
+        self._image = coff.Image(data)
+
+    @property
+    def is_big_endian(self):
+        return False
+
+    def find_by_prefix(self, prefix):
+        for symbol in self._image.symbols:
+            if symbol.name.startswith(prefix):
+                yield COFFSymbol(self._image, symbol)
+
+    def find_by_name(self, name):
+        for symbol in self._image.symbols:
+            if symbol.name == name:
+                return COFFSymbol(self._image, symbol)
+        return None
 
 
 def define_rte_pci_id(is_big_endian):
@@ -117,19 +151,24 @@ class Driver:
 
         rte_pci_id = define_rte_pci_id(image.is_big_endian)
 
-        pci_id_size = ctypes.sizeof(rte_pci_id)
-        pci_ids_desc = rte_pci_id * (table_symbol.size // pci_id_size)
-        pci_ids = pci_ids_desc.from_buffer_copy(table_symbol.value)
         result = []
-        for pci_id in pci_ids:
+        while True:
+            size = ctypes.sizeof(rte_pci_id)
+            offset = size * len(result)
+            data = table_symbol.get_value(offset, size)
+            if not data:
+                break
+            pci_id = rte_pci_id.from_buffer_copy(data)
             if not pci_id.device_id:
                 break
-            result.append([
-                pci_id.vendor_id,
-                pci_id.device_id,
-                pci_id.subsystem_vendor_id,
-                pci_id.subsystem_device_id,
-                ])
+            result.append(
+                [
+                    pci_id.vendor_id,
+                    pci_id.device_id,
+                    pci_id.subsystem_vendor_id,
+                    pci_id.subsystem_device_id,
+                ]
+            )
         return result
 
     def dump(self, file):
@@ -157,6 +196,7 @@ def dump_drivers(drivers, file):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("format", help="object file format, 'elf' or 'coff'")
     parser.add_argument("input", help="input object file path or '-' for stdin")
     parser.add_argument("output", help="output C file path or '-' for stdout")
     return parser.parse_args()
@@ -170,6 +210,21 @@ def open_input(path):
     return open(path, "rb")
 
 
+def read_input(path):
+    if path == "-":
+        return sys.stdin.buffer.read()
+    with open(path, "rb") as file:
+        return file.read()
+
+
+def load_image(fmt, path):
+    if fmt == "elf":
+        return ELFImage(open_input(path))
+    if fmt == "coff":
+        return COFFImage(read_input(path))
+    raise Exception("unsupported object file format")
+
+
 def open_output(path):
     if path == "-":
         return sys.stdout
@@ -178,8 +233,10 @@ def open_output(path):
 
 def main():
     args = parse_args()
-    infile = open_input(args.input)
-    image = ELFImage(infile)
+    if args.format == "elf" and "ELFFile" not in globals():
+        raise Exception("elftools module not found")
+
+    image = load_image(args.format, args.input)
     drivers = load_drivers(image)
     output = open_output(args.output)
     dump_drivers(drivers, output)

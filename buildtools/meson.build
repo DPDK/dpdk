@@ -17,7 +17,14 @@ else
 endif
 map_to_win_cmd = py3 + files('map_to_win.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
+
+# select object file format
 pmdinfogen = py3 + files('pmdinfogen.py')
+if host_machine.system() == 'windows'
+	pmdinfogen += 'coff'
+else
+	pmdinfogen += 'elf'
+endif
 
 # TODO: starting from Meson 0.51.0 use
 # 	python3 = import('python').find_installation('python',
