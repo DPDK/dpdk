@@ -1040,7 +1040,15 @@ ice_sched_add_nodes_to_layer(struct ice_port_info *pi,
 							 layer,	new_num_nodes,
 							 first_teid_ptr,
 							 &num_added);
-		*num_nodes_added += num_added;
+		if (status == ICE_SUCCESS)
+			*num_nodes_added += num_added;
+		/* added more nodes than requested ? */
+		if (*num_nodes_added > num_nodes) {
+			ice_debug(pi->hw, ICE_DBG_SCHED, "added extra nodes %d %d\n", num_nodes,
+				  *num_nodes_added);
+			status = ICE_ERR_CFG;
+			break;
+		}
 		/* break if all the nodes are added successfully */
 		if (status == ICE_SUCCESS && (*num_nodes_added == num_nodes))
 			break;
@@ -1063,7 +1071,7 @@ ice_sched_add_nodes_to_layer(struct ice_port_info *pi,
 			if (num_added)
 				first_teid_ptr = &temp;
 
-			new_num_nodes = num_nodes - num_added;
+			new_num_nodes = num_nodes - *num_nodes_added;
 		}
 	}
 	return status;
