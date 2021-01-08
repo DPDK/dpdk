@@ -99,7 +99,6 @@ F: meson.build
 F: meson_options.txt
 F: config/
 F: buildtools/call-sphinx-build.py
-F: buildtools/gen-pmdinfo-cfile.sh
 F: buildtools/list-dir-globs.py
 F: buildtools/pkg-config/
 F: buildtools/symlink-drivers-solibs.sh
@@ -135,6 +134,7 @@ Driver information
 M: Neil Horman <nhorman@tuxdriver.com>
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
 F: buildtools/coff.py
+F: buildtools/gen-pmdinfo-cfile.py
 F: buildtools/pmdinfogen.py
 F: usertools/dpdk-pmdinfo.py
 F: doc/guides/tools/pmdinfo.rst

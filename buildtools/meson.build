@@ -2,7 +2,6 @@
 # Copyright(c) 2017-2019 Intel Corporation
 
 pkgconf = find_program('pkg-config', 'pkgconf', required: false)
-pmdinfo = find_program('gen-pmdinfo-cfile.sh')
 list_dir_globs = find_program('list-dir-globs.py')
 check_symbols = find_program('check-symbols.sh')
 ldflags_ibverbs_static = find_program('options-ibverbs-static.sh')
@@ -18,11 +17,18 @@ endif
 map_to_win_cmd = py3 + files('map_to_win.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
 
-# select object file format
+# select library and object file format
+pmdinfo = py3 + files('gen-pmdinfo-cfile.py')
 pmdinfogen = py3 + files('pmdinfogen.py')
 if host_machine.system() == 'windows'
+	if cc.get_id() == 'gcc'
+		pmdinfo += 'ar'
+	else
+		pmdinfo += 'llvm-ar'
+	endif
 	pmdinfogen += 'coff'
 else
+	pmdinfo += 'ar'
 	pmdinfogen += 'elf'
 endif
 

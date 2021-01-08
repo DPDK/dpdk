@@ -233,6 +233,12 @@ def open_output(path):
     return open(path, "w")
 
 
+def write_header(output):
+    output.write(
+        "static __attribute__((unused)) const char *generator = \"%s\";\n" % sys.argv[0]
+    )
+
+
 def main():
     args = parse_args()
     if args.input.count('-') > 1:
@@ -241,6 +247,7 @@ def main():
         raise Exception("elftools module not found")
 
     output = open_output(args.output)
+    write_header(output)
     for path in args.input:
         image = load_image(args.format, path)
         drivers = load_drivers(image)
