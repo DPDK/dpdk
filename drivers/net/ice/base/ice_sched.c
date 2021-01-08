@@ -1345,7 +1345,7 @@ enum ice_status ice_sched_query_res_alloc(struct ice_hw *hw)
 			 ice_memdup(hw, buf->layer_props,
 				    (hw->num_tx_sched_layers *
 				     sizeof(*hw->layer_info)),
-				    ICE_DMA_TO_DMA);
+				    ICE_NONDMA_TO_NONDMA);
 	if (!hw->layer_info) {
 		status = ICE_ERR_NO_MEMORY;
 		goto sched_query_out;
