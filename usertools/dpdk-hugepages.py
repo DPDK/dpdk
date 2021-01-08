@@ -62,6 +62,8 @@ def set_hugepages(path, pages):
         filename = os.path.basename(path)
         size = filename[10:]
         sys.exit('{} is not a valid system huge page size'.format(size))
+    if get_hugepages(path) != pages:
+        sys.exit('Unable to reserve required pages.')
 
 
 def show_numa_pages():
