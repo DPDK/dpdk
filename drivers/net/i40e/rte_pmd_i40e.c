@@ -2366,6 +2366,9 @@ rte_pmd_i40e_add_vf_mac_addr(uint16_t port, uint16_t vf_id,
 	struct i40e_mac_filter_info mac_filter;
 	int ret;
 
+	if (mac_addr == NULL)
+		return -EINVAL;
+
 	if (i40e_validate_mac_addr((u8 *)mac_addr) != I40E_SUCCESS)
 		return -EINVAL;
 
@@ -3041,6 +3044,9 @@ int rte_pmd_i40e_flow_add_del_packet_template(
 	struct i40e_fdir_filter_conf filter_conf;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (conf == NULL)
+		return -EINVAL;
 
 	if (!is_i40e_supported(dev))
 		return -ENOTSUP;
