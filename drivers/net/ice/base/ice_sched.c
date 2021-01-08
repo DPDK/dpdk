@@ -4289,7 +4289,7 @@ ice_sched_set_node_bw_lmt(struct ice_port_info *pi, struct ice_sched_node *node,
 	ice_sched_rm_unused_rl_prof(hw);
 
 	layer_num = ice_sched_get_rl_prof_layer(pi, rl_type,
-		node->tx_sched_layer);
+						node->tx_sched_layer);
 	if (layer_num >= hw->num_tx_sched_layers)
 		return ICE_ERR_PARAM;
 

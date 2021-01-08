@@ -3533,9 +3533,9 @@ ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
  *	     3 for tunneled with outer ipv6
  */
 #define ICE_FLOW_GEN_PROFID(hash, hdr, encap) \
-	(u64)(((u64)(hash) & ICE_FLOW_PROF_HASH_M) | \
-	      (((u64)(hdr) << ICE_FLOW_PROF_HDR_S) & ICE_FLOW_PROF_HDR_M) | \
-	      (((u64)(encap) << ICE_FLOW_PROF_ENCAP_S) & ICE_FLOW_PROF_ENCAP_M))
+	((u64)(((u64)(hash) & ICE_FLOW_PROF_HASH_M) | \
+	       (((u64)(hdr) << ICE_FLOW_PROF_HDR_S) & ICE_FLOW_PROF_HDR_M) | \
+	       (((u64)(encap) << ICE_FLOW_PROF_ENCAP_S) & ICE_FLOW_PROF_ENCAP_M)))
 
 static void
 ice_rss_config_xor_word(struct ice_hw *hw, u8 prof_id, u8 src, u8 dst)
