@@ -120,20 +120,18 @@ foreach subpath:subdirs
 			# lib and then running pmdinfogen on the contents of
 			# that lib. The final lib reuses the object files and
 			# adds in the new source file.
-			if not is_windows
-				out_filename = lib_name + '.pmd.c'
-				tmp_lib = static_library('tmp_' + lib_name,
-						sources,
-						include_directories: includes,
-						dependencies: static_deps,
-						c_args: cflags)
-				objs += tmp_lib.extract_all_objects()
-				sources = custom_target(out_filename,
-						command: [pmdinfo, tmp_lib.full_path(),
-							'@OUTPUT@', pmdinfogen],
-						output: out_filename,
-						depends: [tmp_lib])
-			endif
+			out_filename = lib_name + '.pmd.c'
+			tmp_lib = static_library('tmp_' + lib_name,
+					sources,
+					include_directories: includes,
+					dependencies: static_deps,
+					c_args: cflags)
+			objs += tmp_lib.extract_all_objects()
+			sources = custom_target(out_filename,
+					command: [pmdinfo, tmp_lib.full_path(),
+						'@OUTPUT@', pmdinfogen],
+					output: out_filename,
+					depends: [tmp_lib])
 
 			# now build the static driver
 			static_lib = static_library(lib_name,
