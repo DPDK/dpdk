@@ -215,7 +215,22 @@ idxd_rawdev_create(const char *name, struct rte_device *dev,
 		goto cleanup;
 	}
 
+	/* Allocate memory for the primary process or else return the memory
+	 * of primary memzone for the secondary process.
+	 */
 	snprintf(mz_name, sizeof(mz_name), "rawdev%u_private", rawdev->dev_id);
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		mz = rte_memzone_lookup(mz_name);
+		if (mz == NULL) {
+			IOAT_PMD_ERR("Unable lookup memzone for private data\n");
+			ret = -ENOMEM;
+			goto cleanup;
+		}
+		rawdev->dev_private = mz->addr;
+		rawdev->dev_ops = ops;
+		rawdev->device = dev;
+		return 0;
+	}
 	mz = rte_memzone_reserve(mz_name, sizeof(struct idxd_rawdev),
 			dev->numa_node, RTE_MEMZONE_IOVA_CONTIG);
 	if (mz == NULL) {
