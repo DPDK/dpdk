@@ -266,6 +266,7 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 #define ICE_NO_VECTOR_FLAGS (				 \
 		DEV_TX_OFFLOAD_MULTI_SEGS |		 \
 		DEV_TX_OFFLOAD_VLAN_INSERT |		 \
+		DEV_TX_OFFLOAD_IPV4_CKSUM |		 \
 		DEV_TX_OFFLOAD_SCTP_CKSUM |		 \
 		DEV_TX_OFFLOAD_UDP_CKSUM |		 \
 		DEV_TX_OFFLOAD_TCP_TSO |		 \
