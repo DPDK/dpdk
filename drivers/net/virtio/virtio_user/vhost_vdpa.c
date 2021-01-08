@@ -35,6 +35,8 @@
 #define VHOST_VDPA_SET_STATUS _IOW(VHOST_VIRTIO, 0x72, __u8)
 #define VHOST_VDPA_SET_VRING_ENABLE	_IOW(VHOST_VIRTIO, 0x75, \
 					     struct vhost_vring_state)
+#define VHOST_SET_BACKEND_FEATURES _IOW(VHOST_VIRTIO, 0x25, __u64)
+#define VHOST_GET_BACKEND_FEATURES _IOR(VHOST_VIRTIO, 0x26, __u64)
 
 static uint64_t vhost_req_user_to_vdpa[] = {
 	[VHOST_USER_SET_OWNER] = VHOST_SET_OWNER,
@@ -51,6 +53,8 @@ static uint64_t vhost_req_user_to_vdpa[] = {
 	[VHOST_USER_SET_STATUS] = VHOST_VDPA_SET_STATUS,
 	[VHOST_USER_GET_STATUS] = VHOST_VDPA_GET_STATUS,
 	[VHOST_USER_SET_VRING_ENABLE] = VHOST_VDPA_SET_VRING_ENABLE,
+	[VHOST_USER_GET_PROTOCOL_FEATURES] = VHOST_GET_BACKEND_FEATURES,
+	[VHOST_USER_SET_PROTOCOL_FEATURES] = VHOST_SET_BACKEND_FEATURES,
 };
 
 /* no alignment requirement */
@@ -86,6 +90,11 @@ vhost_vdpa_dma_map(struct virtio_user_dev *dev, void *addr,
 {
 	struct vhost_msg msg = {};
 
+	if (!(dev->protocol_features & (1ULL << VHOST_BACKEND_F_IOTLB_MSG_V2))) {
+		PMD_DRV_LOG(ERR, "IOTLB_MSG_V2 not supported by the backend.");
+		return -1;
+	}
+
 	msg.type = VHOST_IOTLB_MSG_V2;
 	msg.iotlb.type = VHOST_IOTLB_UPDATE;
 	msg.iotlb.iova = iova;
@@ -110,6 +119,11 @@ vhost_vdpa_dma_unmap(struct virtio_user_dev *dev, __rte_unused void *addr,
 				  uint64_t iova, size_t len)
 {
 	struct vhost_msg msg = {};
+
+	if (!(dev->protocol_features & (1ULL << VHOST_BACKEND_F_IOTLB_MSG_V2))) {
+		PMD_DRV_LOG(ERR, "IOTLB_MSG_V2 not supported by the backend.");
+		return -1;
+	}
 
 	msg.type = VHOST_IOTLB_MSG_V2;
 	msg.iotlb.type = VHOST_IOTLB_INVALIDATE;
