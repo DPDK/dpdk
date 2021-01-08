@@ -197,7 +197,9 @@ def dump_drivers(drivers, file):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("format", help="object file format, 'elf' or 'coff'")
-    parser.add_argument("input", help="input object file path or '-' for stdin")
+    parser.add_argument(
+        "input", nargs='+', help="input object file path or '-' for stdin"
+    )
     parser.add_argument("output", help="output C file path or '-' for stdout")
     return parser.parse_args()
 
@@ -233,13 +235,16 @@ def open_output(path):
 
 def main():
     args = parse_args()
+    if args.input.count('-') > 1:
+        raise Exception("'-' input cannot be used multiple times")
     if args.format == "elf" and "ELFFile" not in globals():
         raise Exception("elftools module not found")
 
-    image = load_image(args.format, args.input)
-    drivers = load_drivers(image)
     output = open_output(args.output)
-    dump_drivers(drivers, output)
+    for path in args.input:
+        image = load_image(args.format, path)
+        drivers = load_drivers(image)
+        dump_drivers(drivers, output)
 
 
 if __name__ == "__main__":
