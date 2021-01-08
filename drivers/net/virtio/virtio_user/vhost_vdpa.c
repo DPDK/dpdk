@@ -70,6 +70,8 @@ struct vhost_iotlb_msg {
 #define VHOST_IOTLB_UPDATE         2
 #define VHOST_IOTLB_INVALIDATE     3
 #define VHOST_IOTLB_ACCESS_FAIL    4
+#define VHOST_IOTLB_BATCH_BEGIN    5
+#define VHOST_IOTLB_BATCH_END      6
 	uint8_t type;
 };
 
@@ -83,6 +85,56 @@ struct vhost_msg {
 		uint8_t padding[64];
 	};
 };
+
+static int
+vhost_vdpa_iotlb_batch_begin(struct virtio_user_dev *dev)
+{
+	struct vhost_msg msg = {};
+
+	if (!(dev->protocol_features & (1ULL << VHOST_BACKEND_F_IOTLB_BATCH)))
+		return 0;
+
+	if (!(dev->protocol_features & (1ULL << VHOST_BACKEND_F_IOTLB_MSG_V2))) {
+		PMD_DRV_LOG(ERR, "IOTLB_MSG_V2 not supported by the backend.");
+		return -1;
+	}
+
+	msg.type = VHOST_IOTLB_MSG_V2;
+	msg.iotlb.type = VHOST_IOTLB_BATCH_BEGIN;
+
+	if (write(dev->vhostfd, &msg, sizeof(msg)) != sizeof(msg)) {
+		PMD_DRV_LOG(ERR, "Failed to send IOTLB batch begin (%s)",
+				strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+vhost_vdpa_iotlb_batch_end(struct virtio_user_dev *dev)
+{
+	struct vhost_msg msg = {};
+
+	if (!(dev->protocol_features & (1ULL << VHOST_BACKEND_F_IOTLB_BATCH)))
+		return 0;
+
+	if (!(dev->protocol_features & (1ULL << VHOST_BACKEND_F_IOTLB_MSG_V2))) {
+		PMD_DRV_LOG(ERR, "IOTLB_MSG_V2 not supported by the backend.");
+		return -1;
+	}
+
+	msg.type = VHOST_IOTLB_MSG_V2;
+	msg.iotlb.type = VHOST_IOTLB_BATCH_END;
+
+	if (write(dev->vhostfd, &msg, sizeof(msg)) != sizeof(msg)) {
+		PMD_DRV_LOG(ERR, "Failed to send IOTLB batch end (%s)",
+				strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
 
 static int
 vhost_vdpa_dma_map(struct virtio_user_dev *dev, void *addr,
@@ -142,6 +194,39 @@ vhost_vdpa_dma_unmap(struct virtio_user_dev *dev, __rte_unused void *addr,
 	return 0;
 }
 
+static int
+vhost_vdpa_dma_map_batch(struct virtio_user_dev *dev, void *addr,
+				  uint64_t iova, size_t len)
+{
+	int ret;
+
+	if (vhost_vdpa_iotlb_batch_begin(dev) < 0)
+		return -1;
+
+	ret = vhost_vdpa_dma_map(dev, addr, iova, len);
+
+	if (vhost_vdpa_iotlb_batch_end(dev) < 0)
+		return -1;
+
+	return ret;
+}
+
+static int
+vhost_vdpa_dma_unmap_batch(struct virtio_user_dev *dev, void *addr,
+				  uint64_t iova, size_t len)
+{
+	int ret;
+
+	if (vhost_vdpa_iotlb_batch_begin(dev) < 0)
+		return -1;
+
+	ret = vhost_vdpa_dma_unmap(dev, addr, iova, len);
+
+	if (vhost_vdpa_iotlb_batch_end(dev) < 0)
+		return -1;
+
+	return ret;
+}
 
 static int
 vhost_vdpa_map_contig(const struct rte_memseg_list *msl,
@@ -179,21 +264,32 @@ vhost_vdpa_map(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 static int
 vhost_vdpa_dma_map_all(struct virtio_user_dev *dev)
 {
+	int ret;
+
+	if (vhost_vdpa_iotlb_batch_begin(dev) < 0)
+		return -1;
+
 	vhost_vdpa_dma_unmap(dev, NULL, 0, SIZE_MAX);
 
 	if (rte_eal_iova_mode() == RTE_IOVA_VA) {
 		/* with IOVA as VA mode, we can get away with mapping contiguous
 		 * chunks rather than going page-by-page.
 		 */
-		int ret = rte_memseg_contig_walk_thread_unsafe(
+		ret = rte_memseg_contig_walk_thread_unsafe(
 				vhost_vdpa_map_contig, dev);
 		if (ret)
-			return ret;
+			goto batch_end;
 		/* we have to continue the walk because we've skipped the
 		 * external segments during the config walk.
 		 */
 	}
-	return rte_memseg_walk_thread_unsafe(vhost_vdpa_map, dev);
+	ret = rte_memseg_walk_thread_unsafe(vhost_vdpa_map, dev);
+
+batch_end:
+	if (vhost_vdpa_iotlb_batch_end(dev) < 0)
+		return -1;
+
+	return ret;
 }
 
 /* with below features, vhost vdpa does not need to do the checksum and TSO,
@@ -313,6 +409,6 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.setup = vhost_vdpa_setup,
 	.send_request = vhost_vdpa_ioctl,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
-	.dma_map = vhost_vdpa_dma_map,
-	.dma_unmap = vhost_vdpa_dma_unmap,
+	.dma_map = vhost_vdpa_dma_map_batch,
+	.dma_unmap = vhost_vdpa_dma_unmap_batch,
 };
