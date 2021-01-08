@@ -562,9 +562,9 @@ Generic flow API
 - ``RSS Flow``
 
   RSS Flow supports to set hash input set, hash function, enable hash
-  and configure queue region.
+  and configure queues.
   For example:
-  Configure queue region as queue 0, 1, 2, 3.
+  Configure queues as queue 0, 1, 2, 3.
 
   .. code-block:: console
 
