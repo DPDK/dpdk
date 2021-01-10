@@ -1549,8 +1549,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 		PMD_INIT_LOG(ERR, "Failed to init adminq: %d", ret);
 		return -EIO;
 	}
-	/* Firmware of SFP x722 does not support adminq option */
-	if (hw->device_id == I40E_DEV_ID_SFP_X722)
+	/* Firmware of SFP x722 does not support 802.1ad frames ability */
+	if (hw->device_id == I40E_DEV_ID_SFP_X722 ||
+		hw->device_id == I40E_DEV_ID_SFP_I_X722)
 		hw->flags &= ~I40E_HW_FLAG_802_1AD_CAPABLE;
 
 	PMD_INIT_LOG(INFO, "FW %d.%d API %d.%d NVM %02d.%02d.%02d eetrack %04x",
