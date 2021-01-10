@@ -48,6 +48,8 @@ struct qp_params {
 	struct rte_regex_ops **ops;
 	struct job_ctx *jobs_ctx;
 	char *buf;
+	time_t start;
+	time_t end;
 };
 
 struct qps_per_lcore {
@@ -324,8 +326,6 @@ run_regex(void *args)
 	unsigned long d_ind = 0;
 	struct rte_mbuf_ext_shared_info shinfo;
 	int res = 0;
-	time_t start;
-	time_t end;
 	double time;
 	struct rte_mempool *mbuf_mp;
 	struct qp_params *qp;
@@ -418,9 +418,10 @@ run_regex(void *args)
 
 		qp->buf = buf;
 		qp->total_matches = 0;
+		qp->start = 0;
+		qp->end = 0;
 	}
 
-	start = clock();
 	for (i = 0; i < nb_iterations; i++) {
 		for (qp_id = 0; qp_id < nb_qps; qp_id++) {
 			qp = &qps[qp_id];
@@ -431,6 +432,8 @@ run_regex(void *args)
 			update = false;
 			for (qp_id = 0; qp_id < nb_qps; qp_id++) {
 				qp = &qps[qp_id];
+				if (!qp->start)
+					qp->start = clock();
 				if (qp->total_dequeue < actual_jobs) {
 					struct rte_regex_ops **
 						cur_ops_to_enqueue = qp->ops +
@@ -461,22 +464,31 @@ run_regex(void *args)
 							qp->total_enqueue -
 							qp->total_dequeue);
 					update = true;
+				} else {
+					if (!qp->end)
+						qp->end = clock();
 				}
+
 			}
 		} while (update);
 	}
-	end = clock();
-	time = ((double)end - start) / CLOCKS_PER_SEC;
-	printf("Job len = %ld Bytes\n",  job_len);
-	printf("Time = %lf sec\n",  time);
-	printf("Perf = %lf Gbps\n",
-	       (((double)actual_jobs * job_len * nb_iterations * 8) / time) /
-		1000000000.0);
+	for (qp_id = 0; qp_id < nb_qps; qp_id++) {
+		qp = &qps[qp_id];
+		time = ((double)qp->end - qp->start) / CLOCKS_PER_SEC;
+		printf("Core=%u QP=%u\n", rte_lcore_id(), qp_id + qp_id_base);
+		printf("Job len = %ld Bytes\n",  job_len);
+		printf("Time = %lf sec\n",  time);
+		printf("Perf = %lf Gbps\n\n",
+				(((double)actual_jobs * job_len *
+				nb_iterations * 8) / time) /
+				1000000000.0);
+	}
 
 	if (rgxc->perf_mode)
 		goto end;
 	for (qp_id = 0; qp_id < nb_qps; qp_id++) {
-		printf("\n############ QP id=%u ############\n", qp_id);
+		printf("\n############ Core=%u QP=%u ############\n",
+		       rte_lcore_id(), qp_id + qp_id_base);
 		qp = &qps[qp_id];
 		/* Log results per job. */
 		for (d_ind = 0; d_ind < qp->total_dequeue; d_ind++) {
