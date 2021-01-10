@@ -33,10 +33,20 @@ enum app_args {
 	ARG_NUM_OF_JOBS,
 	ARG_PERF_MODE,
 	ARG_NUM_OF_ITERATIONS,
+	ARG_NUM_OF_QPS,
 };
 
 struct job_ctx {
 	struct rte_mbuf *mbuf;
+};
+
+struct qp_params {
+	uint32_t total_enqueue;
+	uint32_t total_dequeue;
+	uint32_t total_matches;
+	struct rte_regex_ops **ops;
+	struct job_ctx *jobs_ctx;
+	char *buf;
 };
 
 static void
@@ -47,13 +57,15 @@ usage(const char *prog_name)
 		" --data NAME: data file to use\n"
 		" --nb_jobs: number of jobs to use\n"
 		" --perf N: only outputs the performance data\n"
-		" --nb_iter N: number of iteration to run\n",
+		" --nb_iter N: number of iteration to run\n"
+		" --nb_qps N: number of queues to use\n",
 		prog_name);
 }
 
 static void
 args_parse(int argc, char **argv, char *rules_file, char *data_file,
-	   uint32_t *nb_jobs, bool *perf_mode, uint32_t *nb_iterations)
+	   uint32_t *nb_jobs, bool *perf_mode, uint32_t *nb_iterations,
+	   uint32_t *nb_qps)
 {
 	char **argvopt;
 	int opt;
@@ -71,6 +83,8 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 		{ "perf", 0, 0, ARG_PERF_MODE},
 		/* Number of iterations to run with perf test */
 		{ "nb_iter", 1, 0, ARG_NUM_OF_ITERATIONS},
+		/* Number of QPs. */
+		{ "nb_qps", 1, 0, ARG_NUM_OF_QPS},
 		/* End of options */
 		{ 0, 0, 0, 0 }
 	};
@@ -103,6 +117,9 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 			break;
 		case ARG_NUM_OF_ITERATIONS:
 			*nb_iterations = atoi(optarg);
+			break;
+		case ARG_NUM_OF_QPS:
+			*nb_qps = atoi(optarg);
 			break;
 		case ARG_HELP:
 			usage("RegEx test app");
@@ -163,15 +180,17 @@ error:
 }
 
 static int
-init_port(uint16_t *nb_max_payload, char *rules_file, uint8_t *nb_max_matches)
+init_port(uint16_t *nb_max_payload, char *rules_file, uint8_t *nb_max_matches,
+	  uint32_t nb_qps)
 {
 	uint16_t id;
+	uint16_t qp_id;
 	uint16_t num_devs;
 	char *rules = NULL;
 	long rules_len;
 	struct rte_regexdev_info info;
 	struct rte_regexdev_config dev_conf = {
-		.nb_queue_pairs = 1,
+		.nb_queue_pairs = nb_qps,
 		.nb_groups = 1,
 	};
 	struct rte_regexdev_qp_conf qp_conf = {
@@ -203,7 +222,8 @@ init_port(uint16_t *nb_max_payload, char *rules_file, uint8_t *nb_max_matches)
 		*nb_max_matches = info.max_matches;
 		*nb_max_payload = info.max_payload_size;
 		if (info.regexdev_capa & RTE_REGEXDEV_SUPP_MATCH_AS_END_F)
-			dev_conf.dev_cfg_flags |= RTE_REGEXDEV_CFG_MATCH_AS_END_F;
+			dev_conf.dev_cfg_flags |=
+			RTE_REGEXDEV_CFG_MATCH_AS_END_F;
 		dev_conf.nb_max_matches = info.max_matches;
 		dev_conf.nb_rules_per_group = info.max_rules_per_group;
 		dev_conf.rule_db_len = rules_len;
@@ -214,12 +234,16 @@ init_port(uint16_t *nb_max_payload, char *rules_file, uint8_t *nb_max_matches)
 			goto error;
 		}
 		if (info.regexdev_capa & RTE_REGEXDEV_CAPA_QUEUE_PAIR_OOS_F)
-			qp_conf.qp_conf_flags |= RTE_REGEX_QUEUE_PAIR_CFG_OOS_F;
-		res = rte_regexdev_queue_pair_setup(id, 0, &qp_conf);
-		if (res < 0) {
-			printf("Error, can't setup queue pair for device %d.\n",
-			       id);
-			goto error;
+			qp_conf.qp_conf_flags |=
+			RTE_REGEX_QUEUE_PAIR_CFG_OOS_F;
+		for (qp_id = 0; qp_id < nb_qps; qp_id++) {
+			res = rte_regexdev_queue_pair_setup(id, qp_id,
+							    &qp_conf);
+			if (res < 0) {
+				printf("Error, can't setup queue pair %u for "
+				       "device %d.\n", qp_id, id);
+				goto error;
+			}
 		}
 		printf(":: initializing device: %d done\n", id);
 	}
@@ -239,122 +263,171 @@ extbuf_free_cb(void *addr __rte_unused, void *fcb_opaque __rte_unused)
 static int
 run_regex(uint32_t nb_jobs,
 	  uint16_t nb_max_payload, bool perf_mode, uint32_t nb_iterations,
-	  char *data_file, uint8_t nb_max_matches)
+	  char *data_file, uint8_t nb_max_matches, uint32_t nb_qps)
 {
 	char *buf = NULL;
-	long buf_len;
-	long job_len;
+	long buf_len = 0;
+	long job_len = 0;
 	uint32_t actual_jobs = 0;
 	uint32_t i;
-	struct rte_regex_ops **ops;
+	uint16_t qp_id;
 	uint16_t dev_id = 0;
-	uint16_t qp_id = 0;
 	uint8_t nb_matches;
 	struct rte_regexdev_match *match;
-	long pos = 0;
+	long pos;
 	unsigned long d_ind = 0;
 	struct rte_mbuf_ext_shared_info shinfo;
-	uint32_t total_enqueue = 0;
-	uint32_t total_dequeue = 0;
-	uint32_t total_matches = 0;
 	int res = 0;
 	time_t start;
 	time_t end;
 	double time;
-	struct job_ctx *jobs_ctx;
 	struct rte_mempool *mbuf_mp;
+	struct qp_params *qp;
+	struct qp_params *qps = NULL;
+	bool update;
+	uint16_t qps_used = 0;
 
 	shinfo.free_cb = extbuf_free_cb;
-
-	mbuf_mp = rte_pktmbuf_pool_create("mbuf_pool", nb_jobs, 0,
+	mbuf_mp = rte_pktmbuf_pool_create("mbuf_pool", nb_jobs * nb_qps, 0,
 			0, MBUF_SIZE, rte_socket_id());
 	if (mbuf_mp == NULL) {
 		printf("Error, can't create memory pool\n");
 		return -ENOMEM;
 	}
 
-	ops = rte_malloc(NULL, sizeof(*ops) * nb_jobs, 0);
-	if (!ops) {
-		printf("Error, can't allocate memory for ops.\n");
-		return -ENOMEM;
+	qps = rte_malloc(NULL, sizeof(*qps) * nb_qps, 0);
+	if (!qps) {
+		printf("Error, can't allocate memory for QPs\n");
+		res = -ENOMEM;
+		goto end;
 	}
 
-	jobs_ctx = rte_malloc(NULL, sizeof(struct job_ctx)*nb_jobs, 0);
-	if (!jobs_ctx) {
-		printf("Error, can't allocate memory for jobs_ctx.\n");
-		return -ENOMEM;
-	}
+	for (qp_id = 0; qp_id < nb_qps; qp_id++) {
+		struct rte_regex_ops **ops;
+		struct job_ctx *jobs_ctx;
 
-	/* Allocate the jobs and assign each job with an mbuf. */
-	for (i = 0; i < nb_jobs; i++) {
-		ops[i] = rte_malloc(NULL, sizeof(*ops[0]) + nb_max_matches *
-				    sizeof(struct rte_regexdev_match), 0);
-		if (!ops[i]) {
-			printf("Error, can't allocate memory for op.\n");
+		qps_used++;
+		qp = &qps[qp_id];
+		qp->jobs_ctx = NULL;
+		qp->buf = NULL;
+		qp->ops = ops = rte_malloc(NULL, sizeof(*ops) * nb_jobs, 0);
+		if (!ops) {
+			printf("Error, can't allocate memory for ops.\n");
 			res = -ENOMEM;
 			goto end;
 		}
-		ops[i]->mbuf = rte_pktmbuf_alloc(mbuf_mp);
-		if (!ops[i]->mbuf) {
-			printf("Error, can't attach mbuf.\n");
+
+		qp->jobs_ctx = jobs_ctx =
+			rte_malloc(NULL, sizeof(*jobs_ctx) * nb_jobs, 0);
+		if (!jobs_ctx) {
+			printf("Error, can't allocate memory for jobs_ctx.\n");
 			res = -ENOMEM;
 			goto end;
 		}
-	}
 
-	buf_len = read_file(data_file, &buf);
-	if (buf_len <= 0) {
-		printf("Error, can't read file, or file is empty.\n");
-		res = -EXIT_FAILURE;
-		goto end;
-	}
+		/* Allocate the jobs and assign each job with an mbuf. */
+		for (i = 0; i < nb_jobs; i++) {
+			ops[i] = rte_malloc(NULL, sizeof(*ops[0]) +
+					nb_max_matches *
+					sizeof(struct rte_regexdev_match), 0);
+			if (!ops[i]) {
+				printf("Error, can't allocate "
+				       "memory for op.\n");
+				res = -ENOMEM;
+				goto end;
+			}
+			ops[i]->mbuf = rte_pktmbuf_alloc(mbuf_mp);
+			if (!ops[i]->mbuf) {
+				printf("Error, can't attach mbuf.\n");
+				res = -ENOMEM;
+				goto end;
+			}
+		}
 
-	job_len = buf_len / nb_jobs;
-	if (job_len == 0) {
-		printf("Error, To many jobs, for the given input.\n");
-		res = -EXIT_FAILURE;
-		goto end;
-	}
+		buf_len = read_file(data_file, &buf);
+		if (buf_len <= 0) {
+			printf("Error, can't read file, or file is empty.\n");
+			res = -EXIT_FAILURE;
+			goto end;
+		}
 
-	if (job_len > nb_max_payload) {
-		printf("Error, not enough jobs to cover input.\n");
-		res = -EXIT_FAILURE;
-		goto end;
-	}
+		job_len = buf_len / nb_jobs;
+		if (job_len == 0) {
+			printf("Error, To many jobs, for the given input.\n");
+			res = -EXIT_FAILURE;
+			goto end;
+		}
 
-	/* Assign each mbuf with the data to handle. */
-	for (i = 0; (pos < buf_len) && (i < nb_jobs) ; i++) {
-		long act_job_len = RTE_MIN(job_len, buf_len - pos);
-		rte_pktmbuf_attach_extbuf(ops[i]->mbuf, &buf[pos], 0,
-					  act_job_len, &shinfo);
-		jobs_ctx[i].mbuf = ops[i]->mbuf;
-		ops[i]->mbuf->data_len = job_len;
-		ops[i]->mbuf->pkt_len = act_job_len;
-		ops[i]->user_id = i;
-		ops[i]->group_id0 = 1;
-		pos += act_job_len;
-		actual_jobs++;
+		if (job_len > nb_max_payload) {
+			printf("Error, not enough jobs to cover input.\n");
+			res = -EXIT_FAILURE;
+			goto end;
+		}
+
+		/* Assign each mbuf with the data to handle. */
+		actual_jobs = 0;
+		pos = 0;
+		for (i = 0; (pos < buf_len) && (i < nb_jobs) ; i++) {
+			long act_job_len = RTE_MIN(job_len, buf_len - pos);
+			rte_pktmbuf_attach_extbuf(ops[i]->mbuf, &buf[pos], 0,
+					act_job_len, &shinfo);
+			jobs_ctx[i].mbuf = ops[i]->mbuf;
+			ops[i]->mbuf->data_len = job_len;
+			ops[i]->mbuf->pkt_len = act_job_len;
+			ops[i]->user_id = i;
+			ops[i]->group_id0 = 1;
+			pos += act_job_len;
+			actual_jobs++;
+		}
+
+		qp->buf = buf;
+		qp->total_matches = 0;
 	}
 
 	start = clock();
 	for (i = 0; i < nb_iterations; i++) {
-		total_enqueue = 0;
-		total_dequeue = 0;
-		while (total_dequeue < actual_jobs) {
-			struct rte_regex_ops **cur_ops_to_enqueue = ops +
-				total_enqueue;
-			struct rte_regex_ops **cur_ops_to_dequeue = ops +
-				total_dequeue;
-
-			if (actual_jobs - total_enqueue)
-				total_enqueue += rte_regexdev_enqueue_burst
-					(dev_id, qp_id, cur_ops_to_enqueue,
-					 actual_jobs - total_enqueue);
-
-			total_dequeue += rte_regexdev_dequeue_burst
-				(dev_id, qp_id, cur_ops_to_dequeue,
-				 total_enqueue - total_dequeue);
+		for (qp_id = 0; qp_id < nb_qps; qp_id++) {
+			qp = &qps[qp_id];
+			qp->total_enqueue = 0;
+			qp->total_dequeue = 0;
 		}
+		do {
+			update = false;
+			for (qp_id = 0; qp_id < nb_qps; qp_id++) {
+				qp = &qps[qp_id];
+				if (qp->total_dequeue < actual_jobs) {
+					struct rte_regex_ops **
+						cur_ops_to_enqueue = qp->ops +
+						qp->total_enqueue;
+
+					if (actual_jobs - qp->total_enqueue)
+						qp->total_enqueue +=
+						rte_regexdev_enqueue_burst
+							(dev_id,
+							qp_id,
+							cur_ops_to_enqueue,
+							actual_jobs -
+							qp->total_enqueue);
+				}
+			}
+			for (qp_id = 0; qp_id < nb_qps; qp_id++) {
+				qp = &qps[qp_id];
+				if (qp->total_dequeue < actual_jobs) {
+					struct rte_regex_ops **
+						cur_ops_to_dequeue = qp->ops +
+						qp->total_dequeue;
+
+					qp->total_dequeue +=
+						rte_regexdev_dequeue_burst
+							(dev_id,
+							qp_id,
+							cur_ops_to_dequeue,
+							qp->total_enqueue -
+							qp->total_dequeue);
+					update = true;
+				}
+			}
+		} while (update);
 	}
 	end = clock();
 	time = ((double)end - start) / CLOCKS_PER_SEC;
@@ -364,51 +437,59 @@ run_regex(uint32_t nb_jobs,
 	       (((double)actual_jobs * job_len * nb_iterations * 8) / time) /
 		1000000000.0);
 
-	if (!perf_mode) {
+	if (perf_mode)
+		goto end;
+	for (qp_id = 0; qp_id < nb_qps; qp_id++) {
+		printf("\n############ QP id=%u ############\n", qp_id);
+		qp = &qps[qp_id];
 		/* Log results per job. */
-		for (d_ind = 0; d_ind < total_dequeue; d_ind++) {
-			nb_matches = ops[d_ind % actual_jobs]->nb_matches;
+		for (d_ind = 0; d_ind < qp->total_dequeue; d_ind++) {
+			nb_matches = qp->ops[d_ind % actual_jobs]->nb_matches;
 			printf("Job id %"PRIu64" number of matches = %d\n",
-			       ops[d_ind]->user_id, nb_matches);
-			total_matches += nb_matches;
-			match = ops[d_ind % actual_jobs]->matches;
+					qp->ops[d_ind]->user_id, nb_matches);
+			qp->total_matches += nb_matches;
+			match = qp->ops[d_ind % actual_jobs]->matches;
 			for (i = 0; i < nb_matches; i++) {
-				printf("match %d, rule = %d, start = %d,len = %d\n",
+				printf("match %d, rule = %d, "
+				       "start = %d,len = %d\n",
 				       i, match->rule_id, match->start_offset,
 				       match->len);
 				match++;
 			}
 		}
-		printf("Total matches = %d\n", total_matches);
+		printf("Total matches = %d\n", qp->total_matches);
 		printf("All Matches:\n");
-
 		/* Log absolute results. */
-		for (d_ind = 0; d_ind < total_dequeue; d_ind++) {
-			nb_matches = ops[d_ind % actual_jobs]->nb_matches;
-			total_matches += nb_matches;
-			match = ops[d_ind % actual_jobs]->matches;
+		for (d_ind = 0; d_ind < qp->total_dequeue; d_ind++) {
+			nb_matches = qp->ops[d_ind % actual_jobs]->nb_matches;
+			qp->total_matches += nb_matches;
+			match = qp->ops[d_ind % actual_jobs]->matches;
 			for (i = 0; i < nb_matches; i++) {
 				printf("start = %ld, len = %d, rule = %d\n",
-				       match->start_offset + d_ind * job_len,
-				       match->len, match->rule_id);
+						match->start_offset +
+						d_ind * job_len,
+						match->len, match->rule_id);
 				match++;
 			}
 		}
 	}
 end:
-	for (i = 0; i < actual_jobs; i++) {
-		if (ops[i])
-			rte_free(ops[i]);
-		if (jobs_ctx[i].mbuf)
-			rte_pktmbuf_free(jobs_ctx[i].mbuf);
+	for (qp_id = 0; qp_id < qps_used; qp_id++) {
+		qp = &qps[qp_id];
+		for (i = 0; i < actual_jobs && qp->ops; i++)
+			rte_free(qp->ops[i]);
+		rte_free(qp->ops);
+		qp->ops = NULL;
+		for (i = 0; i < actual_jobs && qp->jobs_ctx; i++)
+			rte_pktmbuf_free(qp->jobs_ctx[i].mbuf);
+		rte_free(qp->jobs_ctx);
+		qp->jobs_ctx = NULL;
+		rte_free(qp->buf);
+		qp->buf = NULL;
 	}
-	rte_free(ops);
-	rte_free(jobs_ctx);
-	if (buf)
-		rte_free(buf);
 	if (mbuf_mp)
 		rte_mempool_free(mbuf_mp);
-
+	rte_free(qps);
 	return res;
 }
 
@@ -418,12 +499,14 @@ main(int argc, char **argv)
 	char rules_file[MAX_FILE_NAME];
 	char data_file[MAX_FILE_NAME];
 	uint32_t nb_jobs = 0;
-	uint16_t nb_max_payload = 0;
 	bool perf_mode = 0;
 	uint32_t nb_iterations = 0;
-	uint8_t nb_max_matches = 0;
 	int ret;
+	uint16_t nb_max_payload = 0;
+	uint8_t nb_max_matches = 0;
+	uint32_t nb_qps = 1;
 
+	/* Init EAL. */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "EAL init failed\n");
@@ -431,13 +514,16 @@ main(int argc, char **argv)
 	argv += ret;
 	if (argc > 1)
 		args_parse(argc, argv, rules_file, data_file, &nb_jobs,
-			   &perf_mode, &nb_iterations);
+				&perf_mode, &nb_iterations, &nb_qps);
 
-	ret = init_port(&nb_max_payload, rules_file, &nb_max_matches);
+	if (nb_qps == 0)
+		rte_exit(EXIT_FAILURE, "Number of QPs must be greater than 0\n");
+	ret = init_port(&nb_max_payload, rules_file,
+			&nb_max_matches, nb_qps);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "init port failed\n");
 	ret = run_regex(nb_jobs, nb_max_payload, perf_mode,
-			nb_iterations, data_file, nb_max_matches);
+			nb_iterations, data_file, nb_max_matches, nb_qps);
 	if (ret < 0) {
 		rte_exit(EXIT_FAILURE, "RegEx function failed\n");
 	}
