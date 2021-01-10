@@ -3543,7 +3543,7 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 			if (queue == NULL)
 				return 0;
 			conf = mlx5_rxq_get_hairpin_conf(dev, queue->index);
-			if (conf != NULL && !!conf->tx_explicit)
+			if (conf == NULL || conf->tx_explicit != 0)
 				return 0;
 			queue_action = 1;
 			action_n++;
@@ -3553,7 +3553,7 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 			if (rss == NULL || rss->queue_num == 0)
 				return 0;
 			conf = mlx5_rxq_get_hairpin_conf(dev, rss->queue[0]);
-			if (conf != NULL && !!conf->tx_explicit)
+			if (conf == NULL || conf->tx_explicit != 0)
 				return 0;
 			queue_action = 1;
 			action_n++;
