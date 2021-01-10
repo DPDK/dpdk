@@ -163,8 +163,7 @@ error:
 }
 
 static int
-init_port(struct rte_mempool **mbuf_mp, uint32_t nb_jobs,
-	  uint16_t *nb_max_payload, char *rules_file, uint8_t *nb_max_matches)
+init_port(uint16_t *nb_max_payload, char *rules_file, uint8_t *nb_max_matches)
 {
 	uint16_t id;
 	uint16_t num_devs;
@@ -185,14 +184,6 @@ init_port(struct rte_mempool **mbuf_mp, uint32_t nb_jobs,
 	if (num_devs == 0) {
 		printf("Error, no devices detected.\n");
 		return -EINVAL;
-	}
-
-	*mbuf_mp = rte_pktmbuf_pool_create("mbuf_pool", nb_jobs, 0,
-					  0, MBUF_SIZE, rte_socket_id());
-	if (*mbuf_mp == NULL) {
-		printf("Error, can't create memory pool\n");
-		res = -ENOMEM;
-		goto error;
 	}
 
 	rules_len = read_file(rules_file, &rules);
@@ -237,8 +228,6 @@ init_port(struct rte_mempool **mbuf_mp, uint32_t nb_jobs,
 error:
 	if (rules)
 		rte_free(rules);
-	if (*mbuf_mp)
-		rte_mempool_free(*mbuf_mp);
 	return res;
 }
 
@@ -248,7 +237,7 @@ extbuf_free_cb(void *addr __rte_unused, void *fcb_opaque __rte_unused)
 }
 
 static int
-run_regex(struct rte_mempool *mbuf_mp, uint32_t nb_jobs,
+run_regex(uint32_t nb_jobs,
 	  uint16_t nb_max_payload, bool perf_mode, uint32_t nb_iterations,
 	  char *data_file, uint8_t nb_max_matches)
 {
@@ -273,8 +262,16 @@ run_regex(struct rte_mempool *mbuf_mp, uint32_t nb_jobs,
 	time_t end;
 	double time;
 	struct job_ctx *jobs_ctx;
+	struct rte_mempool *mbuf_mp;
 
 	shinfo.free_cb = extbuf_free_cb;
+
+	mbuf_mp = rte_pktmbuf_pool_create("mbuf_pool", nb_jobs, 0,
+			0, MBUF_SIZE, rte_socket_id());
+	if (mbuf_mp == NULL) {
+		printf("Error, can't create memory pool\n");
+		return -ENOMEM;
+	}
 
 	ops = rte_malloc(NULL, sizeof(*ops) * nb_jobs, 0);
 	if (!ops) {
@@ -409,6 +406,9 @@ end:
 	rte_free(jobs_ctx);
 	if (buf)
 		rte_free(buf);
+	if (mbuf_mp)
+		rte_mempool_free(mbuf_mp);
+
 	return res;
 }
 
@@ -417,7 +417,6 @@ main(int argc, char **argv)
 {
 	char rules_file[MAX_FILE_NAME];
 	char data_file[MAX_FILE_NAME];
-	struct rte_mempool *mbuf_mp = NULL;
 	uint32_t nb_jobs = 0;
 	uint16_t nb_max_payload = 0;
 	bool perf_mode = 0;
@@ -434,16 +433,13 @@ main(int argc, char **argv)
 		args_parse(argc, argv, rules_file, data_file, &nb_jobs,
 			   &perf_mode, &nb_iterations);
 
-	ret = init_port(&mbuf_mp, nb_jobs, &nb_max_payload, rules_file,
-			&nb_max_matches);
+	ret = init_port(&nb_max_payload, rules_file, &nb_max_matches);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "init port failed\n");
-	ret = run_regex(mbuf_mp, nb_jobs, nb_max_payload, perf_mode,
+	ret = run_regex(nb_jobs, nb_max_payload, perf_mode,
 			nb_iterations, data_file, nb_max_matches);
 	if (ret < 0) {
-		rte_mempool_free(mbuf_mp);
 		rte_exit(EXIT_FAILURE, "RegEx function failed\n");
 	}
-	rte_mempool_free(mbuf_mp);
 	return EXIT_SUCCESS;
 }
