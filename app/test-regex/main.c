@@ -34,6 +34,7 @@ enum app_args {
 	ARG_PERF_MODE,
 	ARG_NUM_OF_ITERATIONS,
 	ARG_NUM_OF_QPS,
+	ARG_NUM_OF_LCORES,
 };
 
 struct job_ctx {
@@ -49,6 +50,26 @@ struct qp_params {
 	char *buf;
 };
 
+struct qps_per_lcore {
+	unsigned int lcore_id;
+	int socket;
+	uint16_t qp_id_base;
+	uint16_t nb_qps;
+};
+
+struct regex_conf {
+	uint32_t nb_jobs;
+	bool perf_mode;
+	uint32_t nb_iterations;
+	char *data_file;
+	uint8_t nb_max_matches;
+	uint32_t nb_qps;
+	uint16_t qp_id_base;
+	char *data_buf;
+	long data_len;
+	long job_len;
+};
+
 static void
 usage(const char *prog_name)
 {
@@ -58,14 +79,15 @@ usage(const char *prog_name)
 		" --nb_jobs: number of jobs to use\n"
 		" --perf N: only outputs the performance data\n"
 		" --nb_iter N: number of iteration to run\n"
-		" --nb_qps N: number of queues to use\n",
+		" --nb_qps N: number of queues to use\n"
+		" --nb_lcores N: number of lcores to use\n",
 		prog_name);
 }
 
 static void
 args_parse(int argc, char **argv, char *rules_file, char *data_file,
 	   uint32_t *nb_jobs, bool *perf_mode, uint32_t *nb_iterations,
-	   uint32_t *nb_qps)
+	   uint32_t *nb_qps, uint32_t *nb_lcores)
 {
 	char **argvopt;
 	int opt;
@@ -85,6 +107,8 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 		{ "nb_iter", 1, 0, ARG_NUM_OF_ITERATIONS},
 		/* Number of QPs. */
 		{ "nb_qps", 1, 0, ARG_NUM_OF_QPS},
+		/* Number of lcores. */
+		{ "nb_lcores", 1, 0, ARG_NUM_OF_LCORES},
 		/* End of options */
 		{ 0, 0, 0, 0 }
 	};
@@ -120,6 +144,9 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 			break;
 		case ARG_NUM_OF_QPS:
 			*nb_qps = atoi(optarg);
+			break;
+		case ARG_NUM_OF_LCORES:
+			*nb_lcores = atoi(optarg);
 			break;
 		case ARG_HELP:
 			usage("RegEx test app");
@@ -274,11 +301,18 @@ extbuf_free_cb(void *addr __rte_unused, void *fcb_opaque __rte_unused)
 }
 
 static int
-run_regex(uint32_t nb_jobs,
-	  bool perf_mode, uint32_t nb_iterations,
-	  uint8_t nb_max_matches, uint32_t nb_qps,
-	  char *data_buf, long data_len, long job_len)
+run_regex(void *args)
 {
+	struct regex_conf *rgxc = args;
+	uint32_t nb_jobs = rgxc->nb_jobs;
+	uint32_t nb_iterations = rgxc->nb_iterations;
+	uint8_t nb_max_matches = rgxc->nb_max_matches;
+	uint32_t nb_qps = rgxc->nb_qps;
+	uint16_t qp_id_base  = rgxc->qp_id_base;
+	char *data_buf = rgxc->data_buf;
+	long data_len = rgxc->data_len;
+	long job_len = rgxc->job_len;
+
 	char *buf = NULL;
 	uint32_t actual_jobs = 0;
 	uint32_t i;
@@ -298,9 +332,13 @@ run_regex(uint32_t nb_jobs,
 	struct qp_params *qps = NULL;
 	bool update;
 	uint16_t qps_used = 0;
+	char mbuf_pool[16];
 
 	shinfo.free_cb = extbuf_free_cb;
-	mbuf_mp = rte_pktmbuf_pool_create("mbuf_pool", nb_jobs * nb_qps, 0,
+	snprintf(mbuf_pool,
+		 sizeof(mbuf_pool),
+		 "mbuf_pool_%2u", qp_id_base);
+	mbuf_mp = rte_pktmbuf_pool_create(mbuf_pool, nb_jobs * nb_qps, 0,
 			0, MBUF_SIZE, rte_socket_id());
 	if (mbuf_mp == NULL) {
 		printf("Error, can't create memory pool\n");
@@ -402,7 +440,7 @@ run_regex(uint32_t nb_jobs,
 						qp->total_enqueue +=
 						rte_regexdev_enqueue_burst
 							(dev_id,
-							qp_id,
+							qp_id_base + qp_id,
 							cur_ops_to_enqueue,
 							actual_jobs -
 							qp->total_enqueue);
@@ -418,7 +456,7 @@ run_regex(uint32_t nb_jobs,
 					qp->total_dequeue +=
 						rte_regexdev_dequeue_burst
 							(dev_id,
-							qp_id,
+							qp_id_base + qp_id,
 							cur_ops_to_dequeue,
 							qp->total_enqueue -
 							qp->total_dequeue);
@@ -435,7 +473,7 @@ run_regex(uint32_t nb_jobs,
 	       (((double)actual_jobs * job_len * nb_iterations * 8) / time) /
 		1000000000.0);
 
-	if (perf_mode)
+	if (rgxc->perf_mode)
 		goto end;
 	for (qp_id = 0; qp_id < nb_qps; qp_id++) {
 		printf("\n############ QP id=%u ############\n", qp_id);
@@ -491,6 +529,67 @@ end:
 	return res;
 }
 
+static int
+distribute_qps_to_lcores(uint32_t nb_cores, uint32_t nb_qps,
+			 struct qps_per_lcore **qpl)
+{
+	int socket;
+	unsigned lcore_id;
+	uint32_t i;
+	uint16_t min_qp_id;
+	uint16_t max_qp_id;
+	struct qps_per_lcore *qps_per_lcore;
+	uint32_t detected_lcores;
+
+	if (nb_qps < nb_cores) {
+		nb_cores = nb_qps;
+		printf("Reducing number of cores to number of QPs (%u)\n",
+		       nb_cores);
+	}
+	/* Allocate qps_per_lcore array */
+	qps_per_lcore =
+		rte_malloc(NULL, sizeof(*qps_per_lcore) * nb_cores, 0);
+	if (!qps_per_lcore)
+		rte_exit(EXIT_FAILURE, "Failed to create qps_per_lcore array\n");
+	*qpl = qps_per_lcore;
+	detected_lcores = 0;
+	min_qp_id = 0;
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		if (detected_lcores >= nb_cores)
+			break;
+		qps_per_lcore[detected_lcores].lcore_id = lcore_id;
+		socket = rte_lcore_to_socket_id(lcore_id);
+		if (socket == SOCKET_ID_ANY)
+			socket = 0;
+		qps_per_lcore[detected_lcores].socket = socket;
+		qps_per_lcore[detected_lcores].qp_id_base = min_qp_id;
+		max_qp_id = min_qp_id + nb_qps / nb_cores - 1;
+		if (nb_qps % nb_cores > detected_lcores)
+			max_qp_id++;
+		qps_per_lcore[detected_lcores].nb_qps = max_qp_id -
+							min_qp_id + 1;
+		min_qp_id = max_qp_id + 1;
+		detected_lcores++;
+	}
+	if (detected_lcores != nb_cores)
+		return -1;
+
+	for (i = 0; i < detected_lcores; i++) {
+		printf("===> Core %d: allocated queues: ",
+		       qps_per_lcore[i].lcore_id);
+		min_qp_id = qps_per_lcore[i].qp_id_base;
+		max_qp_id =
+			qps_per_lcore[i].qp_id_base + qps_per_lcore[i].nb_qps;
+		while (min_qp_id < max_qp_id) {
+			printf("%u ", min_qp_id);
+			min_qp_id++;
+		}
+		printf("\n");
+	}
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -506,6 +605,10 @@ main(int argc, char **argv)
 	char *data_buf;
 	long data_len;
 	long job_len;
+	uint32_t nb_lcores = 1;
+	struct regex_conf *rgxc;
+	uint32_t i;
+	struct qps_per_lcore *qps_per_lcore;
 
 	/* Init EAL. */
 	ret = rte_eal_init(argc, argv);
@@ -515,10 +618,15 @@ main(int argc, char **argv)
 	argv += ret;
 	if (argc > 1)
 		args_parse(argc, argv, rules_file, data_file, &nb_jobs,
-				&perf_mode, &nb_iterations, &nb_qps);
+				&perf_mode, &nb_iterations, &nb_qps,
+				&nb_lcores);
 
 	if (nb_qps == 0)
 		rte_exit(EXIT_FAILURE, "Number of QPs must be greater than 0\n");
+	if (nb_lcores == 0)
+		rte_exit(EXIT_FAILURE, "Number of lcores must be greater than 0\n");
+	if (distribute_qps_to_lcores(nb_lcores, nb_qps, &qps_per_lcore) < 0)
+		rte_exit(EXIT_FAILURE, "Failed to distribute queues to lcores!\n");
 	ret = init_port(&nb_max_payload, rules_file,
 			&nb_max_matches, nb_qps);
 	if (ret < 0)
@@ -535,12 +643,27 @@ main(int argc, char **argv)
 	if (job_len > nb_max_payload)
 		rte_exit(EXIT_FAILURE, "Error, not enough jobs to cover input.\n");
 
-	ret = run_regex(nb_jobs, perf_mode,
-			nb_iterations, nb_max_matches, nb_qps,
-			data_buf, data_len, job_len);
-	if (ret < 0) {
-		rte_exit(EXIT_FAILURE, "RegEx function failed\n");
+	rgxc = rte_malloc(NULL, sizeof(*rgxc) * nb_lcores, 0);
+	if (!rgxc)
+		rte_exit(EXIT_FAILURE, "Failed to create Regex Conf\n");
+	for (i = 0; i < nb_lcores; i++) {
+		rgxc[i] = (struct regex_conf){
+			.nb_jobs = nb_jobs,
+			.perf_mode = perf_mode,
+			.nb_iterations = nb_iterations,
+			.nb_max_matches = nb_max_matches,
+			.nb_qps = qps_per_lcore[i].nb_qps,
+			.qp_id_base = qps_per_lcore[i].qp_id_base,
+			.data_buf = data_buf,
+			.data_len = data_len,
+			.job_len = job_len,
+		};
+		rte_eal_remote_launch(run_regex, &rgxc[i],
+				      qps_per_lcore[i].lcore_id);
 	}
+	rte_eal_mp_wait_lcore();
 	rte_free(data_buf);
+	rte_free(rgxc);
+	rte_free(qps_per_lcore);
 	return EXIT_SUCCESS;
 }
