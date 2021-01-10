@@ -180,6 +180,19 @@ error:
 }
 
 static int
+clone_buf(char *data_buf, char **buf, long data_len)
+{
+	char *dest_buf;
+	dest_buf =
+		rte_malloc(NULL, sizeof(char) * (data_len + 1), 4096);
+	if (!dest_buf)
+		return -ENOMEM;
+	memcpy(dest_buf, data_buf, data_len + 1);
+	*buf = dest_buf;
+	return 0;
+}
+
+static int
 init_port(uint16_t *nb_max_payload, char *rules_file, uint8_t *nb_max_matches,
 	  uint32_t nb_qps)
 {
@@ -262,12 +275,11 @@ extbuf_free_cb(void *addr __rte_unused, void *fcb_opaque __rte_unused)
 
 static int
 run_regex(uint32_t nb_jobs,
-	  uint16_t nb_max_payload, bool perf_mode, uint32_t nb_iterations,
-	  char *data_file, uint8_t nb_max_matches, uint32_t nb_qps)
+	  bool perf_mode, uint32_t nb_iterations,
+	  uint8_t nb_max_matches, uint32_t nb_qps,
+	  char *data_buf, long data_len, long job_len)
 {
 	char *buf = NULL;
-	long buf_len = 0;
-	long job_len = 0;
 	uint32_t actual_jobs = 0;
 	uint32_t i;
 	uint16_t qp_id;
@@ -344,22 +356,8 @@ run_regex(uint32_t nb_jobs,
 			}
 		}
 
-		buf_len = read_file(data_file, &buf);
-		if (buf_len <= 0) {
-			printf("Error, can't read file, or file is empty.\n");
-			res = -EXIT_FAILURE;
-			goto end;
-		}
-
-		job_len = buf_len / nb_jobs;
-		if (job_len == 0) {
-			printf("Error, To many jobs, for the given input.\n");
-			res = -EXIT_FAILURE;
-			goto end;
-		}
-
-		if (job_len > nb_max_payload) {
-			printf("Error, not enough jobs to cover input.\n");
+		if (clone_buf(data_buf, &buf, data_len)) {
+			printf("Error, can't clone buf.\n");
 			res = -EXIT_FAILURE;
 			goto end;
 		}
@@ -367,8 +365,8 @@ run_regex(uint32_t nb_jobs,
 		/* Assign each mbuf with the data to handle. */
 		actual_jobs = 0;
 		pos = 0;
-		for (i = 0; (pos < buf_len) && (i < nb_jobs) ; i++) {
-			long act_job_len = RTE_MIN(job_len, buf_len - pos);
+		for (i = 0; (pos < data_len) && (i < nb_jobs) ; i++) {
+			long act_job_len = RTE_MIN(job_len, data_len - pos);
 			rte_pktmbuf_attach_extbuf(ops[i]->mbuf, &buf[pos], 0,
 					act_job_len, &shinfo);
 			jobs_ctx[i].mbuf = ops[i]->mbuf;
@@ -505,6 +503,9 @@ main(int argc, char **argv)
 	uint16_t nb_max_payload = 0;
 	uint8_t nb_max_matches = 0;
 	uint32_t nb_qps = 1;
+	char *data_buf;
+	long data_len;
+	long job_len;
 
 	/* Init EAL. */
 	ret = rte_eal_init(argc, argv);
@@ -522,10 +523,24 @@ main(int argc, char **argv)
 			&nb_max_matches, nb_qps);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "init port failed\n");
-	ret = run_regex(nb_jobs, nb_max_payload, perf_mode,
-			nb_iterations, data_file, nb_max_matches, nb_qps);
+
+	data_len = read_file(data_file, &data_buf);
+	if (data_len <= 0)
+		rte_exit(EXIT_FAILURE, "Error, can't read file, or file is empty.\n");
+
+	job_len = data_len / nb_jobs;
+	if (job_len == 0)
+		rte_exit(EXIT_FAILURE, "Error, To many jobs, for the given input.\n");
+
+	if (job_len > nb_max_payload)
+		rte_exit(EXIT_FAILURE, "Error, not enough jobs to cover input.\n");
+
+	ret = run_regex(nb_jobs, perf_mode,
+			nb_iterations, nb_max_matches, nb_qps,
+			data_buf, data_len, job_len);
 	if (ret < 0) {
 		rte_exit(EXIT_FAILURE, "RegEx function failed\n");
 	}
+	rte_free(data_buf);
 	return EXIT_SUCCESS;
 }
