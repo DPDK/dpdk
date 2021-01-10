@@ -48,8 +48,8 @@ struct qp_params {
 	struct rte_regex_ops **ops;
 	struct job_ctx *jobs_ctx;
 	char *buf;
-	time_t start;
-	time_t end;
+	uint64_t start;
+	uint64_t cycles;
 };
 
 struct qps_per_lcore {
@@ -326,7 +326,7 @@ run_regex(void *args)
 	unsigned long d_ind = 0;
 	struct rte_mbuf_ext_shared_info shinfo;
 	int res = 0;
-	double time;
+	long double time;
 	struct rte_mempool *mbuf_mp;
 	struct qp_params *qp;
 	struct qp_params *qps = NULL;
@@ -419,7 +419,7 @@ run_regex(void *args)
 		qp->buf = buf;
 		qp->total_matches = 0;
 		qp->start = 0;
-		qp->end = 0;
+		qp->cycles = 0;
 	}
 
 	for (i = 0; i < nb_iterations; i++) {
@@ -432,9 +432,8 @@ run_regex(void *args)
 			update = false;
 			for (qp_id = 0; qp_id < nb_qps; qp_id++) {
 				qp = &qps[qp_id];
-				if (!qp->start)
-					qp->start = clock();
 				if (qp->total_dequeue < actual_jobs) {
+					qp->start = rte_rdtsc_precise();
 					struct rte_regex_ops **
 						cur_ops_to_enqueue = qp->ops +
 						qp->total_enqueue;
@@ -463,25 +462,21 @@ run_regex(void *args)
 							cur_ops_to_dequeue,
 							qp->total_enqueue -
 							qp->total_dequeue);
+					qp->cycles +=
+					     (rte_rdtsc_precise() - qp->start);
 					update = true;
-				} else {
-					if (!qp->end)
-						qp->end = clock();
 				}
-
 			}
 		} while (update);
 	}
 	for (qp_id = 0; qp_id < nb_qps; qp_id++) {
 		qp = &qps[qp_id];
-		time = ((double)qp->end - qp->start) / CLOCKS_PER_SEC;
-		printf("Core=%u QP=%u\n", rte_lcore_id(), qp_id + qp_id_base);
-		printf("Job len = %ld Bytes\n",  job_len);
-		printf("Time = %lf sec\n",  time);
-		printf("Perf = %lf Gbps\n\n",
-				(((double)actual_jobs * job_len *
-				nb_iterations * 8) / time) /
-				1000000000.0);
+		time = (long double)qp->cycles / rte_get_timer_hz();
+		printf("Core=%u QP=%u Job=%ld Bytes Time=%Lf sec Perf=%Lf "
+		       "Gbps\n", rte_lcore_id(), qp_id + qp_id_base,
+		       job_len, time,
+		       (((double)actual_jobs * job_len * nb_iterations * 8)
+		       / time) / 1000000000.0);
 	}
 
 	if (rgxc->perf_mode)
