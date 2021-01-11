@@ -793,7 +793,12 @@ struct mlx5_ifc_fte_match_set_misc3_bits {
 	u8 gtpu_teid[0x20];
 	u8 gtpu_msg_type[0x08];
 	u8 gtpu_msg_flags[0x08];
-	u8 reserved_at_170[0x90];
+	u8 reserved_at_170[0x10];
+	u8 gtpu_dw_2[0x20];
+	u8 gtpu_first_ext_dw_0[0x20];
+	u8 gtpu_dw_0[0x20];
+	u8 reserved_at_240[0x20];
+
 };
 
 struct mlx5_ifc_fte_match_set_misc4_bits {
