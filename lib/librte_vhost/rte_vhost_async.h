@@ -112,7 +112,7 @@ struct rte_vhost_async_features {
 };
 
 /**
- * register a async channel for vhost
+ * register an async channel for vhost
  *
  * @param vid
  *  vhost device id async channel to be attached to
@@ -147,8 +147,8 @@ __rte_experimental
 int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id);
 
 /**
- * This function submit enqueue data to async engine. This function has
- * no guranttee to the transfer completion upon return. Applications
+ * This function submits enqueue data to async engine. This function has
+ * no guarantee to the transfer completion upon return. Applications
  * should poll transfer status by rte_vhost_poll_enqueue_completed()
  *
  * @param vid
@@ -167,7 +167,7 @@ uint16_t rte_vhost_submit_enqueue_burst(int vid, uint16_t queue_id,
 		struct rte_mbuf **pkts, uint16_t count);
 
 /**
- * This function check async completion status for a specific vhost
+ * This function checks async completion status for a specific vhost
  * device queue. Packets which finish copying (enqueue) operation
  * will be returned in an array.
  *

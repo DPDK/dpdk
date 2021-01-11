@@ -1130,8 +1130,12 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 
 out:
-	async_fill_iter(src_it, tlen, src_iovec, tvec_idx);
-	async_fill_iter(dst_it, tlen, dst_iovec, tvec_idx);
+	if (tlen) {
+		async_fill_iter(src_it, tlen, src_iovec, tvec_idx);
+		async_fill_iter(dst_it, tlen, dst_iovec, tvec_idx);
+	} else {
+		src_it->count = 0;
+	}
 
 	return error;
 }
@@ -1491,10 +1495,9 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 	struct rte_vhost_iov_iter *src_it = it_pool;
 	struct rte_vhost_iov_iter *dst_it = it_pool + 1;
 	uint16_t n_free_slot, slot_idx = 0;
-	uint16_t pkt_err = 0;
 	uint16_t segs_await = 0;
 	struct async_inflight_info *pkts_info = vq->async_pkts_info;
-	int n_pkts = 0;
+	uint32_t n_pkts = 0, pkt_err = 0;
 
 	/*
 	 * The ordering between avail index and desc reads need to be enforced.
@@ -1549,11 +1552,9 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 		/*
 		 * conditions to trigger async device transfer:
 		 * - buffered packet number reaches transfer threshold
-		 * - this is the last packet in the burst enqueue
 		 * - unused async iov number is less than max vhost vector
 		 */
 		if (pkt_burst_idx >= VHOST_ASYNC_BATCH_THRESHOLD ||
-			(pkt_idx == count - 1 && pkt_burst_idx) ||
 			(VHOST_MAX_ASYNC_VEC / 2 - segs_await <
 			BUF_VECTOR_MAX)) {
 			n_pkts = vq->async_ops.transfer_data(dev->vid,
@@ -1565,7 +1566,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 			segs_await = 0;
 			vq->async_pkts_inflight_n += pkt_burst_idx;
 
-			if (unlikely(n_pkts < (int)pkt_burst_idx)) {
+			if (unlikely(n_pkts < pkt_burst_idx)) {
 				/*
 				 * log error packets number here and do actual
 				 * error processing when applications poll
@@ -1585,7 +1586,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev,
 				queue_id, tdes, 0, pkt_burst_idx);
 		vq->async_pkts_inflight_n += pkt_burst_idx;
 
-		if (unlikely(n_pkts < (int)pkt_burst_idx))
+		if (unlikely(n_pkts < pkt_burst_idx))
 			pkt_err = pkt_burst_idx - n_pkts;
 	}
 
