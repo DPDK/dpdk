@@ -27,12 +27,39 @@ extern "C" {
  * 16-bit payload length after mandatory header, 32-bit TEID.
  * No optional fields and next extension header.
  */
+__extension__
 struct rte_gtp_hdr {
-	uint8_t gtp_hdr_info; /**< GTP header info */
+	union {
+		uint8_t gtp_hdr_info; /**< GTP header info */
+		struct {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+			uint8_t pn:1;   /**< N-PDU Number present bit */
+			uint8_t s:1;    /**< Sequence Number Present bit */
+			uint8_t e:1;    /**< Extension Present bit */
+			uint8_t res1:1; /**< Reserved */
+			uint8_t pt:1;   /**< Protocol Type bit */
+			uint8_t ver:3;  /**< Version Number */
+#elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+			uint8_t ver:3;  /**< Version Number */
+			uint8_t pt:1;   /**< Protocol Type bit */
+			uint8_t res1:1; /**< Reserved */
+			uint8_t e:1;    /**< Extension Present bit */
+			uint8_t s:1;    /**< Sequence Number Present bit */
+			uint8_t pn:1;   /**< N-PDU Number present bit */
+#endif
+		};
+	};
 	uint8_t msg_type;     /**< GTP message type */
-	uint16_t plen;        /**< Total payload length */
-	uint32_t teid;        /**< Tunnel endpoint ID */
+	rte_be16_t plen;      /**< Total payload length */
+	rte_be32_t teid;      /**< Tunnel endpoint ID */
 } __rte_packed;
+
+/* Optional word of GTP header, present if any of E, S, PN is set. */
+struct rte_gtp_hdr_ext_word {
+	rte_be16_t sqn;	      /**< Sequence Number. */
+	uint8_t npdu;	      /**< N-PDU number. */
+	uint8_t next_ext;     /**< Next Extension Header Type. */
+}  __rte_packed;
 
 /** GTP header length */
 #define RTE_ETHER_GTP_HLEN \
