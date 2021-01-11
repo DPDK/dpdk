@@ -7581,6 +7581,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 	uint16_t upper_layer = 0;
 	uint16_t proto = 0;
 	uint16_t idx = in->port; /* We borrow port field as index */
+	int gtp_psc = -1; /* GTP PSC option index. */
 
 	if (in->command == SET_SAMPLE_ACTIONS)
 		return cmd_set_raw_parsed_sample(in);
@@ -7598,6 +7599,8 @@ cmd_set_raw_parsed(const struct buffer *in)
 	/* process hdr from upper layer to low layer (L3/L4 -> L2). */
 	data_tail = data + ACTION_RAW_ENCAP_MAX_DATA;
 	for (i = n - 1 ; i >= 0; --i) {
+		const struct rte_flow_item_gtp *gtp;
+
 		item = in->args.vc.pattern + i;
 		if (item->spec == NULL)
 			item->spec = flow_item_default_mask(item);
@@ -7663,16 +7666,68 @@ cmd_set_raw_parsed(const struct buffer *in)
 			proto = 0x33;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTP:
+			if (gtp_psc < 0) {
+				size = sizeof(struct rte_gtp_hdr);
+				break;
+			}
+			if (gtp_psc != i + 1) {
+				printf("Error - GTP PSC does not follow GTP\n");
+				goto error;
+			}
+			gtp = item->spec;
+			if ((gtp->v_pt_rsv_flags & 0x07) != 0x04) {
+				/* Only E flag should be set. */
+				printf("Error - GTP unsupported flags\n");
+				goto error;
+			} else {
+				struct rte_gtp_hdr_ext_word ext_word = {
+					.next_ext = 0x85
+				};
+
+				/* We have to add GTP header extra word. */
+				*total_size += sizeof(ext_word);
+				rte_memcpy(data_tail - (*total_size),
+					   &ext_word, sizeof(ext_word));
+			}
 			size = sizeof(struct rte_gtp_hdr);
+			break;
+		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+			if (gtp_psc >= 0) {
+				printf("Error - Multiple GTP PSC items\n");
+				goto error;
+			} else {
+				const struct rte_flow_item_gtp_psc
+					*opt = item->spec;
+				struct {
+					uint8_t len;
+					uint8_t pdu_type;
+					uint8_t qfi;
+					uint8_t next;
+				} psc;
+
+				if (opt->pdu_type & 0x0F) {
+					/* Support the minimal option only. */
+					printf("Error - GTP PSC option with "
+					       "extra fields not supported\n");
+					goto error;
+				}
+				psc.len = sizeof(psc);
+				psc.pdu_type = opt->pdu_type;
+				psc.qfi = opt->qfi;
+				psc.next = 0;
+				*total_size += sizeof(psc);
+				rte_memcpy(data_tail - (*total_size),
+					   &psc, sizeof(psc));
+				gtp_psc = i;
+				size = 0;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_PFCP:
 			size = sizeof(struct rte_flow_item_pfcp);
 			break;
 		default:
 			printf("Error - Not supported item\n");
-			*total_size = 0;
-			memset(data, 0x00, ACTION_RAW_ENCAP_MAX_DATA);
-			return;
+			goto error;
 		}
 		*total_size += size;
 		rte_memcpy(data_tail - (*total_size), item->spec, size);
@@ -7685,6 +7740,11 @@ cmd_set_raw_parsed(const struct buffer *in)
 		printf("total data size is %zu\n", (*total_size));
 	RTE_ASSERT((*total_size) <= ACTION_RAW_ENCAP_MAX_DATA);
 	memmove(data, (data_tail - (*total_size)), *total_size);
+	return;
+
+error:
+	*total_size = 0;
+	memset(data, 0x00, ACTION_RAW_ENCAP_MAX_DATA);
 }
 
 /** Populate help strings for current token (cmdline API). */
