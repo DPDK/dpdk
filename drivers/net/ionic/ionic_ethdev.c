@@ -276,7 +276,10 @@ ionic_dev_link_update(struct rte_eth_dev *eth_dev,
 
 	/* Initialize */
 	memset(&link, 0, sizeof(link));
-	link.link_autoneg = ETH_LINK_AUTONEG;
+
+	if (adapter->idev.port_info->config.an_enable) {
+		link.link_autoneg = ETH_LINK_AUTONEG;
+	}
 
 	if (!adapter->link_up ||
 	    !(lif->state & IONIC_LIF_F_UP)) {
@@ -869,7 +872,8 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
 	struct ionic_adapter *adapter = lif->adapter;
 	struct ionic_dev *idev = &adapter->idev;
-	uint32_t allowed_speeds;
+	uint32_t speed = 0, allowed_speeds;
+	uint8_t an_enable;
 	int err;
 
 	IONIC_PRINT_CALL();
@@ -896,11 +900,23 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 		return err;
 	}
 
-	if (eth_dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED) {
-		uint32_t speed = ionic_parse_link_speeds(dev_conf->link_speeds);
+	/* Configure link */
+	an_enable = (dev_conf->link_speeds & ETH_LINK_SPEED_FIXED) == 0;
 
-		if (speed)
-			ionic_dev_cmd_port_speed(idev, speed);
+	ionic_dev_cmd_port_autoneg(idev, an_enable);
+	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
+	if (err)
+		IONIC_PRINT(WARNING, "Failed to %s autonegotiation",
+			an_enable ? "enable" : "disable");
+
+	if (!an_enable)
+		speed = ionic_parse_link_speeds(dev_conf->link_speeds);
+	if (speed) {
+		ionic_dev_cmd_port_speed(idev, speed);
+		err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
+		if (err)
+			IONIC_PRINT(WARNING, "Failed to set link speed %u",
+				speed);
 	}
 
 	ionic_dev_link_update(eth_dev, 0);
