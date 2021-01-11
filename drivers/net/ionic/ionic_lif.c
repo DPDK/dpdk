@@ -1469,23 +1469,7 @@ ionic_station_set(struct ionic_lif *lif)
 	if (err)
 		return err;
 
-	if (!rte_is_zero_ether_addr((struct rte_ether_addr *)
-			lif->mac_addr)) {
-		IONIC_PRINT(INFO, "deleting station MAC addr");
-
-		ionic_lif_addr_del(lif, lif->mac_addr);
-	}
-
 	memcpy(lif->mac_addr, ctx.comp.lif_getattr.mac, RTE_ETHER_ADDR_LEN);
-
-	if (rte_is_zero_ether_addr((struct rte_ether_addr *)lif->mac_addr)) {
-		IONIC_PRINT(NOTICE, "empty MAC addr (VF?)");
-		return 0;
-	}
-
-	IONIC_PRINT(DEBUG, "adding station MAC addr");
-
-	ionic_lif_addr_add(lif, lif->mac_addr);
 
 	return 0;
 }
