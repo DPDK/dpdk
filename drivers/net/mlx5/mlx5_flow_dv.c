@@ -7931,6 +7931,82 @@ flow_dv_translate_item_gtp(void *matcher, void *key,
 }
 
 /**
+ * Add GTP PSC item to matcher.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ */
+static int
+flow_dv_translate_item_gtp_psc(void *matcher, void *key,
+			       const struct rte_flow_item *item)
+{
+	const struct rte_flow_item_gtp_psc *gtp_psc_m = item->mask;
+	const struct rte_flow_item_gtp_psc *gtp_psc_v = item->spec;
+	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
+			misc_parameters_3);
+	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
+	union {
+		uint32_t w32;
+		struct {
+			uint16_t seq_num;
+			uint8_t npdu_num;
+			uint8_t next_ext_header_type;
+		};
+	} dw_2;
+	uint8_t gtp_flags;
+
+	/* Always set E-flag match on one, regardless of GTP item settings. */
+	gtp_flags = MLX5_GET(fte_match_set_misc3, misc3_m, gtpu_msg_flags);
+	gtp_flags |= MLX5_GTP_EXT_HEADER_FLAG;
+	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_msg_flags, gtp_flags);
+	gtp_flags = MLX5_GET(fte_match_set_misc3, misc3_v, gtpu_msg_flags);
+	gtp_flags |= MLX5_GTP_EXT_HEADER_FLAG;
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_flags, gtp_flags);
+	/*Set next extension header type. */
+	dw_2.seq_num = 0;
+	dw_2.npdu_num = 0;
+	dw_2.next_ext_header_type = 0xff;
+	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_dw_2,
+		 rte_cpu_to_be_32(dw_2.w32));
+	dw_2.seq_num = 0;
+	dw_2.npdu_num = 0;
+	dw_2.next_ext_header_type = 0x85;
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_dw_2,
+		 rte_cpu_to_be_32(dw_2.w32));
+	if (gtp_psc_v) {
+		union {
+			uint32_t w32;
+			struct {
+				uint8_t len;
+				uint8_t type_flags;
+				uint8_t qfi;
+				uint8_t reserved;
+			};
+		} dw_0;
+
+		/*Set extension header PDU type and Qos. */
+		if (!gtp_psc_m)
+			gtp_psc_m = &rte_flow_item_gtp_psc_mask;
+		dw_0.w32 = 0;
+		dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_m->pdu_type);
+		dw_0.qfi = gtp_psc_m->qfi;
+		MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_first_ext_dw_0,
+			 rte_cpu_to_be_32(dw_0.w32));
+		dw_0.w32 = 0;
+		dw_0.type_flags = MLX5_GTP_PDU_TYPE_SHIFT(gtp_psc_v->pdu_type &
+							gtp_psc_m->pdu_type);
+		dw_0.qfi = gtp_psc_v->qfi & gtp_psc_m->qfi;
+		MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_first_ext_dw_0,
+			 rte_cpu_to_be_32(dw_0.w32));
+	}
+	return 0;
+}
+
+/**
  * Add eCPRI item to matcher and to the value.
  *
  * @param[in] dev
@@ -10614,6 +10690,16 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						   items, tunnel);
 			matcher.priority = MLX5_TUNNEL_PRIO_GET(rss_desc);
 			last_item = MLX5_FLOW_LAYER_GTP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+			ret = flow_dv_translate_item_gtp_psc(match_mask,
+							  match_value,
+							  items);
+			if (ret)
+				return rte_flow_error_set(error, -ret,
+					RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					"cannot create GTP PSC item");
+			last_item = MLX5_FLOW_LAYER_GTP_PSC;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ECPRI:
 			if (!mlx5_flex_parser_ecpri_exist(dev)) {

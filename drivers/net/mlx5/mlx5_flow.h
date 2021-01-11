@@ -357,6 +357,9 @@ enum mlx5_feature_name {
 /* GTP extension header max PDU type value. */
 #define MLX5_GTP_EXT_MAX_PDU_TYPE 15
 
+/* GTP extension header PDU type shift. */
+#define MLX5_GTP_PDU_TYPE_SHIFT(a) ((a) << 4)
+
 /* IPv4 fragment_offset field contains relevant data in bits 2 to 15. */
 #define MLX5_IPV4_FRAG_OFFSET_MASK \
 		(RTE_IPV4_HDR_OFFSET_MASK | RTE_IPV4_HDR_MF_FLAG)

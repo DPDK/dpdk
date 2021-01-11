@@ -71,6 +71,7 @@ New Features
   Updated the Mellanox mlx5 driver with new features and improvements, including:
 
   * Introduced basic support on Windows.
+  * Added GTP PDU session container matching and raw encap/decap.
 
 * **Updated GSO support.**
 
