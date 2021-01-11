@@ -403,21 +403,13 @@ ionic_port_init(struct ionic_adapter *adapter)
 	for (i = 0; i < nwords; i++)
 		iowrite32(ident->port.config.words[i], &idev->dev_cmd->data[i]);
 
+	idev->port_info->config.state = IONIC_PORT_ADMIN_STATE_UP;
 	ionic_dev_cmd_port_init(idev);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
-	if (err) {
+	if (err)
 		IONIC_PRINT(ERR, "Failed to init port");
-		return err;
-	}
 
-	ionic_dev_cmd_port_state(idev, IONIC_PORT_ADMIN_STATE_UP);
-	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
-	if (err) {
-		IONIC_PRINT(WARNING, "Failed to bring port UP");
-		return err;
-	}
-
-	return 0;
+	return err;
 }
 
 int
