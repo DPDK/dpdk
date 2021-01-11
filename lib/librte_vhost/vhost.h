@@ -202,11 +202,13 @@ struct vhost_virtqueue {
 	struct iovec *vec_pool;
 
 	/* async data transfer status */
-	uintptr_t	**async_pkts_pending;
 	struct async_inflight_info *async_pkts_info;
 	uint16_t	async_pkts_idx;
 	uint16_t	async_pkts_inflight_n;
 	uint16_t	async_last_pkts_n;
+	struct vring_used_elem  *async_descs_split;
+	uint16_t async_desc_idx;
+	uint16_t last_async_desc_idx;
 
 	/* vq async features */
 	bool		async_inorder;
@@ -733,8 +735,7 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	/* Don't kick guest if we don't reach index specified by guest. */
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX)) {
 		uint16_t old = vq->signalled_used;
-		uint16_t new = vq->async_pkts_inflight_n ?
-					vq->used->idx:vq->last_used_idx;
+		uint16_t new = vq->last_used_idx;
 		bool signalled_used_valid = vq->signalled_used_valid;
 
 		vq->signalled_used = new;

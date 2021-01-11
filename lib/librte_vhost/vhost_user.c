@@ -2010,12 +2010,13 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 	} else {
 		rte_free(vq->shadow_used_split);
 		vq->shadow_used_split = NULL;
-		if (vq->async_pkts_pending)
-			rte_free(vq->async_pkts_pending);
+
 		if (vq->async_pkts_info)
 			rte_free(vq->async_pkts_info);
-		vq->async_pkts_pending = NULL;
+		if (vq->async_descs_split)
+			rte_free(vq->async_descs_split);
 		vq->async_pkts_info = NULL;
+		vq->async_descs_split = NULL;
 	}
 
 	rte_free(vq->batch_copy_elems);

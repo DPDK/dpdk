@@ -87,13 +87,8 @@ struct rte_vhost_async_channel_ops {
  * inflight async packet information
  */
 struct async_inflight_info {
-	union {
-		uint32_t info;
-		struct {
-			uint16_t descs; /* num of descs inflight */
-			uint16_t segs; /* iov segs inflight */
-		};
-	};
+	struct rte_mbuf *mbuf;
+	uint16_t descs; /* num of descs inflight */
 };
 
 /**
@@ -147,9 +142,13 @@ __rte_experimental
 int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id);
 
 /**
- * This function submits enqueue data to async engine. This function has
- * no guarantee to the transfer completion upon return. Applications
- * should poll transfer status by rte_vhost_poll_enqueue_completed()
+ * This function submits enqueue data to async engine. Successfully
+ * enqueued packets can be transfer completed or being occupied by DMA
+ * engines, when this API returns. Transfer completed packets are returned
+ * in comp_pkts, so users need to guarantee its size is greater than or
+ * equal to the size of pkts; for packets that are successfully enqueued
+ * but not transfer completed, users should poll transfer status by
+ * rte_vhost_poll_enqueue_completed().
  *
  * @param vid
  *  id of vhost device to enqueue data
@@ -159,12 +158,19 @@ int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id);
  *  array of packets to be enqueued
  * @param count
  *  packets num to be enqueued
+ * @param comp_pkts
+ *  empty array to get transfer completed packets. Users need to
+ *  guarantee its size is greater than or equal to that of pkts
+ * @param comp_count
+ *  num of packets that are transfer completed, when this API returns.
+ *  If no packets are transfer completed, its value is set to 0.
  * @return
- *  num of packets enqueued
+ *  num of packets enqueued, including in-flight and transfer completed
  */
 __rte_experimental
 uint16_t rte_vhost_submit_enqueue_burst(int vid, uint16_t queue_id,
-		struct rte_mbuf **pkts, uint16_t count);
+		struct rte_mbuf **pkts, uint16_t count,
+		struct rte_mbuf **comp_pkts, uint32_t *comp_count);
 
 /**
  * This function checks async completion status for a specific vhost

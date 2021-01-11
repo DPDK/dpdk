@@ -809,13 +809,16 @@ virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 	    struct rte_mbuf *m)
 {
 	uint16_t ret;
-	struct rte_mbuf *m_cpl[1];
+	struct rte_mbuf *m_cpl[1], *comp_pkt;
+	uint32_t nr_comp = 0;
 
 	if (builtin_net_driver) {
 		ret = vs_enqueue_pkts(dst_vdev, VIRTIO_RXQ, &m, 1);
 	} else if (async_vhost_driver) {
 		ret = rte_vhost_submit_enqueue_burst(dst_vdev->vid, VIRTIO_RXQ,
-						&m, 1);
+						&m, 1, &comp_pkt, &nr_comp);
+		if (nr_comp == 1)
+			goto done;
 
 		if (likely(ret))
 			dst_vdev->nr_async_pkts++;
@@ -829,6 +832,7 @@ virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 		ret = rte_vhost_enqueue_burst(dst_vdev->vid, VIRTIO_RXQ, &m, 1);
 	}
 
+done:
 	if (enable_stats) {
 		rte_atomic64_inc(&dst_vdev->stats.rx_total_atomic);
 		rte_atomic64_add(&dst_vdev->stats.rx_atomic, ret);
@@ -1090,7 +1094,8 @@ static __rte_always_inline void
 drain_eth_rx(struct vhost_dev *vdev)
 {
 	uint16_t rx_count, enqueue_count;
-	struct rte_mbuf *pkts[MAX_PKT_BURST];
+	struct rte_mbuf *pkts[MAX_PKT_BURST], *comp_pkts[MAX_PKT_BURST];
+	uint32_t nr_comp = 0;
 
 	rx_count = rte_eth_rx_burst(ports[0], vdev->vmdq_rx_q,
 				    pkts, MAX_PKT_BURST);
@@ -1124,7 +1129,12 @@ drain_eth_rx(struct vhost_dev *vdev)
 						pkts, rx_count);
 	} else if (async_vhost_driver) {
 		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
-					VIRTIO_RXQ, pkts, rx_count);
+					VIRTIO_RXQ, pkts, rx_count, comp_pkts,
+					&nr_comp);
+		if (nr_comp > 0) {
+			free_pkts(comp_pkts, nr_comp);
+			enqueue_count -= nr_comp;
+		}
 		vdev->nr_async_pkts += enqueue_count;
 	} else {
 		enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
