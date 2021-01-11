@@ -463,7 +463,8 @@ ionic_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 	struct ionic_dev *idev = &adapter->idev;
 
 	if (idev->port_info) {
-		fc_conf->autoneg = idev->port_info->config.an_enable;
+		/* Flow control autoneg not supported */
+		fc_conf->autoneg = 0;
 
 		if (idev->port_info->config.pause_type)
 			fc_conf->mode = RTE_FC_FULL;
@@ -482,7 +483,12 @@ ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 	struct ionic_adapter *adapter = lif->adapter;
 	struct ionic_dev *idev = &adapter->idev;
 	uint8_t pause_type = IONIC_PORT_PAUSE_TYPE_NONE;
-	uint8_t an_enable;
+	int err;
+
+	if (fc_conf->autoneg) {
+		IONIC_PRINT(WARNING, "Flow control autoneg not supported");
+		return -ENOTSUP;
+	}
 
 	switch (fc_conf->mode) {
 	case RTE_FC_NONE:
@@ -496,12 +502,12 @@ ionic_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 		return -ENOTSUP;
 	}
 
-	an_enable = fc_conf->autoneg;
-
 	ionic_dev_cmd_port_pause(idev, pause_type);
-	ionic_dev_cmd_port_autoneg(idev, an_enable);
+	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
+	if (err)
+		IONIC_PRINT(WARNING, "Failed to configure flow control");
 
-	return 0;
+	return err;
 }
 
 static int
