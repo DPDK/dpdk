@@ -330,3 +330,12 @@ if get_option('b_lto')
 		add_project_link_arguments('-Wno-lto-type-mismatch', language: 'c')
 	endif
 endif
+
+if get_option('default_library') == 'both'
+	error( '''
+    Unsupported value "both" for "default_library" option.
+
+    NOTE: DPDK always builds both shared and static libraries.  Please set
+    "default_library" to either "static" or "shared" to select default linkage
+    for apps and any examples.''')
+endif
