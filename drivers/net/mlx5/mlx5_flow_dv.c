@@ -1760,6 +1760,72 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate GTP PSC item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] last_item
+ *   Previous validated item in the pattern items.
+ * @param[in] gtp_item
+ *   Previous GTP item specification.
+ * @param[in] attr
+ *   Pointer to flow attributes.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_gtp_psc(const struct rte_flow_item *item,
+			      uint64_t last_item,
+			      const struct rte_flow_item *gtp_item,
+			      const struct rte_flow_attr *attr,
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_gtp *gtp_spec;
+	const struct rte_flow_item_gtp *gtp_mask;
+	const struct rte_flow_item_gtp_psc *spec;
+	const struct rte_flow_item_gtp_psc *mask;
+	const struct rte_flow_item_gtp_psc nic_mask = {
+		.pdu_type = 0xFF,
+		.qfi = 0xFF,
+	};
+
+	if (!gtp_item || !(last_item & MLX5_FLOW_LAYER_GTP))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "GTP PSC item must be preceded with GTP item");
+	gtp_spec = gtp_item->spec;
+	gtp_mask = gtp_item->mask ? gtp_item->mask : &rte_flow_item_gtp_mask;
+	/* GTP spec and E flag is requested to match zero. */
+	if (gtp_spec &&
+		(gtp_mask->v_pt_rsv_flags &
+		~gtp_spec->v_pt_rsv_flags & MLX5_GTP_EXT_HEADER_FLAG))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "GTP E flag must be 1 to match GTP PSC");
+	/* Check the flow is not created in group zero. */
+	if (!attr->transfer && !attr->group)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			 "GTP PSC is not supported for group 0");
+	/* GTP spec is here and E flag is requested to match zero. */
+	if (!item->spec)
+		return 0;
+	spec = item->spec;
+	mask = item->mask ? item->mask : &rte_flow_item_gtp_psc_mask;
+	if (spec->pdu_type > MLX5_GTP_EXT_MAX_PDU_TYPE)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "PDU type should be smaller than 16");
+	return mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+					 (const uint8_t *)&nic_mask,
+					 sizeof(struct rte_flow_item_gtp_psc),
+					 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
+}
+
+/**
  * Validate IPV4 item.
  * Use existing validation function mlx5_flow_validate_item_ipv4(), and
  * add specific validation of fragment_offset field,
@@ -5238,6 +5304,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	int actions_n = 0;
 	uint8_t item_ipv6_proto = 0;
 	const struct rte_flow_item *gre_item = NULL;
+	const struct rte_flow_item *gtp_item = NULL;
 	const struct rte_flow_action_raw_decap *decap;
 	const struct rte_flow_action_raw_encap *encap;
 	const struct rte_flow_action_rss *rss;
@@ -5575,7 +5642,16 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							error);
 			if (ret < 0)
 				return ret;
+			gtp_item = items;
 			last_item = MLX5_FLOW_LAYER_GTP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+			ret = flow_dv_validate_item_gtp_psc(items, last_item,
+							    gtp_item, attr,
+							    error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_LAYER_GTP_PSC;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ECPRI:
 			/* Capacity will be checked in the translate stage. */

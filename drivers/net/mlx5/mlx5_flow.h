@@ -138,6 +138,9 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV6_FRAG_EXT (1u << 30)
 #define MLX5_FLOW_LAYER_INNER_L3_IPV6_FRAG_EXT (1u << 31)
 
+/* Pattern tunnel Layer bits (continued). */
+#define MLX5_FLOW_LAYER_GTP_PSC (UINT64_C(1) << 33)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -348,6 +351,11 @@ enum mlx5_feature_name {
 
 #define MLX5_ENCAPSULATION_DECISION_SIZE (sizeof(struct rte_ether_hdr) + \
 					  sizeof(struct rte_ipv4_hdr))
+/* GTP extension header flag. */
+#define MLX5_GTP_EXT_HEADER_FLAG 4
+
+/* GTP extension header max PDU type value. */
+#define MLX5_GTP_EXT_MAX_PDU_TYPE 15
 
 /* IPv4 fragment_offset field contains relevant data in bits 2 to 15. */
 #define MLX5_IPV4_FRAG_OFFSET_MASK \
