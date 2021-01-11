@@ -675,6 +675,9 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		"Configuring skt %u RX queue %u with %u buffers, offloads %jx",
 		socket_id, rx_queue_id, nb_desc, offloads);
 
+	if (!rx_conf->rx_drop_en)
+		IONIC_PRINT(WARNING, "No-drop mode is not supported");
+
 	/* Validate number of receive descriptors */
 	if (!rte_is_power_of_2(nb_desc) ||
 			nb_desc < IONIC_MIN_RING_DESC ||
@@ -684,9 +687,6 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 			nb_desc, rx_queue_id, IONIC_MIN_RING_DESC);
 		return -EINVAL; /* or use IONIC_DEFAULT_RING_DESC */
 	}
-
-	if (rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER)
-		eth_dev->data->scattered_rx = 1;
 
 	/* Free memory prior to re-allocation if needed... */
 	if (eth_dev->data->rx_queues[rx_queue_id] != NULL) {

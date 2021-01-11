@@ -1532,18 +1532,11 @@ ionic_lif_init(struct ionic_lif *lif)
 	if (err)
 		goto err_out_adminq_deinit;
 
-	lif->features =
-		  IONIC_ETH_HW_VLAN_TX_TAG
-		| IONIC_ETH_HW_VLAN_RX_STRIP
-		| IONIC_ETH_HW_VLAN_RX_FILTER
-		| IONIC_ETH_HW_RX_HASH
-		| IONIC_ETH_HW_TX_SG
-		| IONIC_ETH_HW_RX_SG
-		| IONIC_ETH_HW_TX_CSUM
-		| IONIC_ETH_HW_RX_CSUM
-		| IONIC_ETH_HW_TSO
-		| IONIC_ETH_HW_TSO_IPV6
-		| IONIC_ETH_HW_TSO_ECN;
+	/*
+	 * Configure initial feature set
+	 * This will be updated later by the dev_configure() step
+	 */
+	lif->features = IONIC_ETH_HW_RX_HASH | IONIC_ETH_HW_VLAN_RX_FILTER;
 
 	err = ionic_lif_set_features(lif);
 	if (err)
@@ -1589,9 +1582,31 @@ ionic_lif_deinit(struct ionic_lif *lif)
 	lif->state &= ~IONIC_LIF_F_INITED;
 }
 
-int
+void
+ionic_lif_configure_vlan_offload(struct ionic_lif *lif, int mask)
+{
+	struct rte_eth_dev *eth_dev = lif->eth_dev;
+	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
+
+	/*
+	 * IONIC_ETH_HW_VLAN_RX_FILTER cannot be turned off, so
+	 * set DEV_RX_OFFLOAD_VLAN_FILTER and ignore ETH_VLAN_FILTER_MASK
+	 */
+	rxmode->offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			lif->features |= IONIC_ETH_HW_VLAN_RX_STRIP;
+		else
+			lif->features &= ~IONIC_ETH_HW_VLAN_RX_STRIP;
+	}
+}
+
+void
 ionic_lif_configure(struct ionic_lif *lif)
 {
+	struct rte_eth_rxmode *rxmode = &lif->eth_dev->data->dev_conf.rxmode;
+	struct rte_eth_txmode *txmode = &lif->eth_dev->data->dev_conf.txmode;
 	struct ionic_identity *ident = &lif->adapter->ident;
 	uint32_t ntxqs_per_lif =
 		ident->lif.eth.config.queue_count[IONIC_QTYPE_TXQ];
@@ -1614,7 +1629,64 @@ ionic_lif_configure(struct ionic_lif *lif)
 	lif->nrxqcqs = nrxqs_per_lif;
 	lif->ntxqcqs = ntxqs_per_lif;
 
-	return 0;
+	/* Update the LIF configuration based on the eth_dev */
+
+	/*
+	 * NB: While it is true that RSS_HASH is always enabled on ionic,
+	 *     setting this flag unconditionally causes problems in DTS.
+	 * rxmode->offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+	 */
+
+	/* RX per-port */
+
+	if (rxmode->offloads & DEV_RX_OFFLOAD_IPV4_CKSUM ||
+	    rxmode->offloads & DEV_RX_OFFLOAD_UDP_CKSUM ||
+	    rxmode->offloads & DEV_RX_OFFLOAD_TCP_CKSUM)
+		lif->features |= IONIC_ETH_HW_RX_CSUM;
+	else
+		lif->features &= ~IONIC_ETH_HW_RX_CSUM;
+
+	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER) {
+		lif->features |= IONIC_ETH_HW_RX_SG;
+		lif->eth_dev->data->scattered_rx = 1;
+	} else {
+		lif->features &= ~IONIC_ETH_HW_RX_SG;
+		lif->eth_dev->data->scattered_rx = 0;
+	}
+
+	/* Covers VLAN_STRIP */
+	ionic_lif_configure_vlan_offload(lif, ETH_VLAN_STRIP_MASK);
+
+	/* TX per-port */
+
+	if (txmode->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM ||
+	    txmode->offloads & DEV_TX_OFFLOAD_UDP_CKSUM ||
+	    txmode->offloads & DEV_TX_OFFLOAD_TCP_CKSUM ||
+	    txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
+	    txmode->offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+		lif->features |= IONIC_ETH_HW_TX_CSUM;
+	else
+		lif->features &= ~IONIC_ETH_HW_TX_CSUM;
+
+	if (txmode->offloads & DEV_TX_OFFLOAD_VLAN_INSERT)
+		lif->features |= IONIC_ETH_HW_VLAN_TX_TAG;
+	else
+		lif->features &= ~IONIC_ETH_HW_VLAN_TX_TAG;
+
+	if (txmode->offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+		lif->features |= IONIC_ETH_HW_TX_SG;
+	else
+		lif->features &= ~IONIC_ETH_HW_TX_SG;
+
+	if (txmode->offloads & DEV_TX_OFFLOAD_TCP_TSO) {
+		lif->features |= IONIC_ETH_HW_TSO;
+		lif->features |= IONIC_ETH_HW_TSO_IPV6;
+		lif->features |= IONIC_ETH_HW_TSO_ECN;
+	} else {
+		lif->features &= ~IONIC_ETH_HW_TSO;
+		lif->features &= ~IONIC_ETH_HW_TSO_IPV6;
+		lif->features &= ~IONIC_ETH_HW_TSO_ECN;
+	}
 }
 
 int

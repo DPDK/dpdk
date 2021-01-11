@@ -131,7 +131,8 @@ void ionic_lif_deinit(struct ionic_lif *lif);
 int ionic_lif_start(struct ionic_lif *lif);
 void ionic_lif_stop(struct ionic_lif *lif);
 
-int ionic_lif_configure(struct ionic_lif *lif);
+void ionic_lif_configure(struct ionic_lif *lif);
+void ionic_lif_configure_vlan_offload(struct ionic_lif *lif, int mask);
 void ionic_lif_reset(struct ionic_lif *lif);
 
 int ionic_intr_alloc(struct ionic_lif *lif, struct ionic_intr_info *intr);

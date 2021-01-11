@@ -397,25 +397,16 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 		ETH_LINK_SPEED_100G;
 
 	/*
-	 * Per-queue capabilities. Actually most of the offloads are enabled
-	 * by default on the port and can be used on selected queues (by adding
-	 * packet flags at runtime when required)
+	 * Per-queue capabilities
+	 * RTE does not support disabling a feature on a queue if it is
+	 * enabled globally on the device. Thus the driver does not advertise
+	 * capabilities like DEV_TX_OFFLOAD_IPV4_CKSUM as per-queue even
+	 * though the driver would be otherwise capable of disabling it on
+	 * a per-queue basis.
 	 */
 
-	dev_info->rx_queue_offload_capa =
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		0;
-
-	dev_info->tx_queue_offload_capa =
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |
-		0;
+	dev_info->rx_queue_offload_capa = 0;
+	dev_info->tx_queue_offload_capa = 0;
 
 	/*
 	 * Per-port capabilities
@@ -423,15 +414,25 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	 */
 
 	dev_info->rx_offload_capa = dev_info->rx_queue_offload_capa |
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
 		DEV_RX_OFFLOAD_JUMBO_FRAME |
 		DEV_RX_OFFLOAD_VLAN_FILTER |
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_SCATTER |
+		DEV_RX_OFFLOAD_RSS_HASH |
 		0;
 
 	dev_info->tx_offload_capa = dev_info->tx_queue_offload_capa |
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_OUTER_UDP_CKSUM |
 		DEV_TX_OFFLOAD_MULTI_SEGS |
 		DEV_TX_OFFLOAD_TCP_TSO |
+		DEV_TX_OFFLOAD_VLAN_INSERT |
 		0;
 
 	dev_info->rx_desc_lim = rx_desc_lim;
@@ -444,6 +445,11 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->default_txportconf.nb_queues = 1;
 	dev_info->default_rxportconf.ring_size = IONIC_DEF_TXRX_DESC;
 	dev_info->default_txportconf.ring_size = IONIC_DEF_TXRX_DESC;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		/* Packets are always dropped if no desc are available */
+		.rx_drop_en = 1,
+	};
 
 	return 0;
 }
@@ -502,34 +508,8 @@ static int
 ionic_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-	struct rte_eth_rxmode *rxmode;
-	rxmode = &eth_dev->data->dev_conf.rxmode;
-	int i;
 
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
-			for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
-				struct ionic_qcq *rxq =
-					eth_dev->data->rx_queues[i];
-				rxq->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
-			}
-			lif->features |= IONIC_ETH_HW_VLAN_RX_STRIP;
-		} else {
-			for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
-				struct ionic_qcq *rxq =
-					eth_dev->data->rx_queues[i];
-				rxq->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-			}
-			lif->features &= ~IONIC_ETH_HW_VLAN_RX_STRIP;
-		}
-	}
-
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
-			lif->features |= IONIC_ETH_HW_VLAN_RX_FILTER;
-		else
-			lif->features &= ~IONIC_ETH_HW_VLAN_RX_FILTER;
-	}
+	ionic_lif_configure_vlan_offload(lif, mask);
 
 	ionic_lif_set_features(lif);
 
@@ -845,15 +825,12 @@ static int
 ionic_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-	int err;
 
 	IONIC_PRINT_CALL();
 
-	err = ionic_lif_configure(lif);
-	if (err) {
-		IONIC_PRINT(ERR, "Cannot configure LIF: %d", err);
-		return err;
-	}
+	ionic_lif_configure(lif);
+
+	ionic_lif_set_features(lif);
 
 	return 0;
 }
