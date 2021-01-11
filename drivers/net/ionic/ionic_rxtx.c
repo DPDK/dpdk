@@ -232,9 +232,9 @@ ionic_dev_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 		err = ionic_lif_txq_init(txq);
 		if (err)
 			return err;
+	} else {
+		ionic_qcq_enable(txq);
 	}
-
-	ionic_qcq_enable(txq);
 
 	tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
@@ -988,6 +988,8 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 		err = ionic_lif_rxq_init(rxq);
 		if (err)
 			return err;
+	} else {
+		ionic_qcq_enable(rxq);
 	}
 
 	/* Allocate buffers for descriptor rings */
@@ -996,8 +998,6 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 			rx_queue_id);
 		return -1;
 	}
-
-	ionic_qcq_enable(rxq);
 
 	rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
