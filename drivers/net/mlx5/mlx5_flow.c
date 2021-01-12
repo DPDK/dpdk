@@ -5283,7 +5283,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 		/* Suffix group level already be scaled with factor, set
 		 * skip_scale to 1 to avoid scale again in translation.
 		 */
-		flow_split_info->skip_scale = 1;
+		flow_split_info->skip_scale = 1 << MLX5_SCALE_FLOW_GROUP_BIT;
 #endif
 	}
 	/* Add the suffix subflow. */

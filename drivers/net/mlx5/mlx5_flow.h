@@ -767,6 +767,9 @@ struct mlx5_flow_verbs_workspace {
 };
 #endif /* HAVE_INFINIBAND_VERBS_H */
 
+#define MLX5_SCALE_FLOW_GROUP_BIT 0
+#define MLX5_SCALE_JUMP_FLOW_GROUP_BIT 1
+
 /** Maximal number of device sub-flows supported. */
 #define MLX5_NUM_MAX_DEV_FLOWS 32
 
@@ -780,8 +783,20 @@ struct mlx5_flow {
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	bool external; /**< true if the flow is created external to PMD. */
 	uint8_t ingress:1; /**< 1 if the flow is ingress. */
-	uint8_t skip_scale:1;
-	/**< 1 if skip the scale the table with factor. */
+	uint8_t skip_scale:2;
+	/**
+	 * Each Bit be set to 1 if Skip the scale the flow group with factor.
+	 * If bit0 be set to 1, then skip the scale the original flow group;
+	 * If bit1 be set to 1, then skip the scale the jump flow group if
+	 * having jump action.
+	 * 00: Enable scale in a flow, default value.
+	 * 01: Skip scale the flow group with factor, enable scale the group
+	 * of jump action.
+	 * 10: Enable scale the group with factor, skip scale the group of
+	 * jump action.
+	 * 11: Skip scale the table with factor both for flow group and jump
+	 * group.
+	 */
 	union {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 		struct mlx5_flow_dv_workspace dv;
@@ -1251,7 +1266,7 @@ struct flow_grp_info {
 	uint64_t fdb_def_rule:1;
 	/* force standard group translation */
 	uint64_t std_tbl_fix:1;
-	uint64_t skip_scale:1;
+	uint64_t skip_scale:2;
 };
 
 static inline bool
