@@ -174,6 +174,7 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 	case VIRTCHNL_OP_VERSION:
 	case VIRTCHNL_OP_GET_VF_RESOURCES:
 	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
+	case VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS:
 		/* for init virtchnl ops, need to poll the response */
 		do {
 			result = iavf_read_msg_from_pf(adapter, args->out_size,
@@ -459,6 +460,7 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 		VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF |
 		VIRTCHNL_VF_OFFLOAD_REQ_QUEUES |
 		VIRTCHNL_VF_OFFLOAD_CRC |
+		VIRTCHNL_VF_OFFLOAD_VLAN_V2 |
 		VIRTCHNL_VF_LARGE_NUM_QPAIRS;
 
 	args.in_args = (uint8_t *)&caps;
@@ -518,6 +520,157 @@ iavf_get_supported_rxdid(struct iavf_adapter *adapter)
 
 	vf->supported_rxdid =
 		((struct virtchnl_supported_rxdids *)args.out_buffer)->supported_rxdids;
+
+	return 0;
+}
+
+int
+iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_vlan_supported_caps *supported_caps;
+	struct virtchnl_vlan_offload vlan_strip;
+	struct iavf_cmd_info args;
+	uint32_t stripping_caps;
+	uint32_t *vlan_setting;
+	int ret;
+
+	supported_caps = &vf->vlan_v2_caps.offloads.stripping_support;
+	if (supported_caps->outer) {
+		stripping_caps = supported_caps->outer;
+		vlan_setting = &vlan_strip.outer_ethertype_setting;
+	} else {
+		stripping_caps = supported_caps->inner;
+		vlan_setting = &vlan_strip.inner_ethertype_setting;
+	}
+
+	if (!(stripping_caps & VIRTCHNL_VLAN_ETHERTYPE_8100))
+		return -ENOTSUP;
+
+	memset(&vlan_strip, 0, sizeof(vlan_strip));
+	vlan_strip.vport_id = vf->vsi_res->vsi_id;
+	*vlan_setting = VIRTCHNL_VLAN_ETHERTYPE_8100;
+
+	args.ops = enable ? VIRTCHNL_OP_ENABLE_VLAN_STRIPPING_V2 :
+			    VIRTCHNL_OP_DISABLE_VLAN_STRIPPING_V2;
+	args.in_args = (uint8_t *)&vlan_strip;
+	args.in_args_size = sizeof(vlan_strip);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	ret = iavf_execute_vf_cmd(adapter, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    enable ? "VIRTCHNL_OP_ENABLE_VLAN_STRIPPING_V2" :
+				     "VIRTCHNL_OP_DISABLE_VLAN_STRIPPING_V2");
+
+	return ret;
+}
+
+int
+iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_vlan_supported_caps *supported_caps;
+	struct virtchnl_vlan_offload vlan_insert;
+	struct iavf_cmd_info args;
+	uint32_t insertion_caps;
+	uint32_t *vlan_setting;
+	int ret;
+
+	supported_caps = &vf->vlan_v2_caps.offloads.insertion_support;
+	if (supported_caps->outer) {
+		insertion_caps = supported_caps->outer;
+		vlan_setting = &vlan_insert.outer_ethertype_setting;
+	} else {
+		insertion_caps = supported_caps->inner;
+		vlan_setting = &vlan_insert.inner_ethertype_setting;
+	}
+
+	if (!(insertion_caps & VIRTCHNL_VLAN_ETHERTYPE_8100))
+		return -ENOTSUP;
+
+	memset(&vlan_insert, 0, sizeof(vlan_insert));
+	vlan_insert.vport_id = vf->vsi_res->vsi_id;
+	*vlan_setting = VIRTCHNL_VLAN_ETHERTYPE_8100;
+
+	args.ops = enable ? VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2 :
+			    VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2;
+	args.in_args = (uint8_t *)&vlan_insert;
+	args.in_args_size = sizeof(vlan_insert);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	ret = iavf_execute_vf_cmd(adapter, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    enable ? "VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2" :
+				     "VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2");
+
+	return ret;
+}
+
+int
+iavf_add_del_vlan_v2(struct iavf_adapter *adapter, uint16_t vlanid, bool add)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_vlan_supported_caps *supported_caps;
+	struct virtchnl_vlan_filter_list_v2 vlan_filter;
+	struct virtchnl_vlan *vlan_setting;
+	struct iavf_cmd_info args;
+	uint32_t filtering_caps;
+	int err;
+
+	supported_caps = &vf->vlan_v2_caps.filtering.filtering_support;
+	if (supported_caps->outer) {
+		filtering_caps = supported_caps->outer;
+		vlan_setting = &vlan_filter.filters[0].outer;
+	} else {
+		filtering_caps = supported_caps->inner;
+		vlan_setting = &vlan_filter.filters[0].inner;
+	}
+
+	if (!(filtering_caps & VIRTCHNL_VLAN_ETHERTYPE_8100))
+		return -ENOTSUP;
+
+	memset(&vlan_filter, 0, sizeof(vlan_filter));
+	vlan_filter.vport_id = vf->vsi_res->vsi_id;
+	vlan_filter.num_elements = 1;
+	vlan_setting->tpid = RTE_ETHER_TYPE_VLAN;
+	vlan_setting->tci = vlanid;
+
+	args.ops = add ? VIRTCHNL_OP_ADD_VLAN_V2 : VIRTCHNL_OP_DEL_VLAN_V2;
+	args.in_args = (uint8_t *)&vlan_filter;
+	args.in_args_size = sizeof(vlan_filter);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    add ? "OP_ADD_VLAN_V2" :  "OP_DEL_VLAN_V2");
+
+	return err;
+}
+
+int
+iavf_get_vlan_offload_caps_v2(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct iavf_cmd_info args;
+	int ret;
+
+	args.ops = VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS;
+	args.in_args = NULL;
+	args.in_args_size = 0;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	ret = iavf_execute_vf_cmd(adapter, &args);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS");
+		return ret;
+	}
+
+	rte_memcpy(&vf->vlan_v2_caps, vf->aq_resp, sizeof(vf->vlan_v2_caps));
 
 	return 0;
 }
