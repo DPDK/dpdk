@@ -10,7 +10,7 @@
 #include <rte_io.h>
 #include <rte_net.h>
 #include <rte_malloc.h>
-#if defined(RTE_ARCH_ARM64) && defined(CC_SVE_SUPPORT)
+#if defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_SVE)
 #include <rte_cpuflags.h>
 #endif
 
@@ -2467,7 +2467,7 @@ hns3_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 static bool
 hns3_check_sve_support(void)
 {
-#if defined(RTE_ARCH_ARM64) && defined(CC_SVE_SUPPORT)
+#if defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_SVE)
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SVE))
 		return true;
 #endif
