@@ -4653,7 +4653,6 @@ flow_check_match_action(const struct rte_flow_action actions[],
 {
 	const struct rte_flow_action_sample *sample;
 	int actions_n = 0;
-	int jump_flag = 0;
 	uint32_t ratio = 0;
 	int sub_type = 0;
 	int flag = 0;
@@ -4668,8 +4667,6 @@ flow_check_match_action(const struct rte_flow_action actions[],
 		if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE ||
 		    actions->type == RTE_FLOW_ACTION_TYPE_RSS)
 			*qrss_action_pos = actions_n;
-		if (actions->type == RTE_FLOW_ACTION_TYPE_JUMP)
-			jump_flag = 1;
 		if (actions->type == RTE_FLOW_ACTION_TYPE_SAMPLE) {
 			sample = actions->conf;
 			ratio = sample->ratio;
@@ -4680,10 +4677,10 @@ flow_check_match_action(const struct rte_flow_action actions[],
 	}
 	if (flag && action == RTE_FLOW_ACTION_TYPE_SAMPLE && attr->transfer) {
 		if (ratio == 1) {
-			/* JUMP Action not support for Mirroring;
-			 * Mirroring support multi-destination;
+			/* FDB mirroring uses the destination array to implement
+			 * instead of FLOW_SAMPLER object.
 			 */
-			if (!jump_flag && sub_type != RTE_FLOW_ACTION_TYPE_END)
+			if (sub_type != RTE_FLOW_ACTION_TYPE_END)
 				flag = 0;
 		}
 	}
@@ -4704,8 +4701,8 @@ flow_check_match_action(const struct rte_flow_action actions[],
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param[in] fdb_tx
- *   FDB egress flow flag.
+ * @param[in] add_tag
+ *   Add extra tag action flag.
  * @param[out] sfx_items
  *   Suffix flow match items (list terminated by the END pattern item).
  * @param[in] actions
@@ -4729,7 +4726,7 @@ flow_check_match_action(const struct rte_flow_action actions[],
  */
 static int
 flow_sample_split_prep(struct rte_eth_dev *dev,
-		       uint32_t fdb_tx,
+		       int add_tag,
 		       struct rte_flow_item sfx_items[],
 		       const struct rte_flow_action actions[],
 		       struct rte_flow_action actions_sfx[],
@@ -4752,7 +4749,11 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL, "invalid position of sample "
 					  "action in list");
-	if (!fdb_tx) {
+	/* For CX5, add an extra tag action for NIC-RX and E-Switch ingress.
+	 * For CX6DX and above, metadata registers Cx preserve their value,
+	 * add an extra tag action for NIC-RX and E-Switch ingress and egress.
+	 */
+	if (add_tag) {
 		/* Prepare the prefix tag action. */
 		set_tag = (void *)(actions_pre + actions_n + 1);
 		ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, 0, error);
@@ -4803,8 +4804,7 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 			memcpy(actions_pre, actions,
 			       sizeof(struct rte_flow_action) * index);
 	}
-	/* Add the extra tag action for NIC-RX and E-Switch ingress. */
-	if (!fdb_tx) {
+	if (add_tag) {
 		actions_pre[index++] =
 			(struct rte_flow_action){
 			.type = (enum rte_flow_action_type)
@@ -5217,6 +5217,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 	int actions_n = 0;
 	int sample_action_pos;
 	int qrss_action_pos;
+	int add_tag = 0;
 	int ret = 0;
 
 	if (priv->sampler_en)
@@ -5238,16 +5239,21 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 						  "sample flow");
 		/* The representor_id is -1 for uplink. */
 		fdb_tx = (attr->transfer && priv->representor_id != -1);
-		if (!fdb_tx)
+		/*
+		 * When reg_c_preserve is set, metadata registers Cx preserve
+		 * their value even through packet duplication.
+		 */
+		add_tag = (!fdb_tx || priv->config.hca_attr.reg_c_preserve);
+		if (add_tag)
 			sfx_items = (struct rte_flow_item *)((char *)sfx_actions
 					+ act_size);
 		pre_actions = sfx_actions + actions_n;
-		tag_id = flow_sample_split_prep(dev, fdb_tx, sfx_items,
+		tag_id = flow_sample_split_prep(dev, add_tag, sfx_items,
 						actions, sfx_actions,
 						pre_actions, actions_n,
 						sample_action_pos,
 						qrss_action_pos, error);
-		if (tag_id < 0 || (!fdb_tx && !tag_id)) {
+		if (tag_id < 0 || (add_tag && !tag_id)) {
 			ret = -rte_errno;
 			goto exit;
 		}

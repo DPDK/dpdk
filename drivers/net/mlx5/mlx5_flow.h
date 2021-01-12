@@ -564,6 +564,7 @@ struct mlx5_flow_sub_actions_list {
 	void *dr_cnt_action;
 	void *dr_port_id_action;
 	void *dr_encap_action;
+	void *dr_jump_action;
 };
 
 /* Sample sub-actions resource list. */
@@ -573,6 +574,7 @@ struct mlx5_flow_sub_actions_idx {
 	uint32_t cnt;
 	uint32_t rix_port_id_action; /**< Index to port ID action resource. */
 	uint32_t rix_encap_decap; /**< Index to encap/decap resource. */
+	uint32_t rix_jump; /**< Index to the jump action resource. */
 };
 
 /* Sample action resource structure. */

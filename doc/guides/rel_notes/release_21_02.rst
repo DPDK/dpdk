@@ -113,6 +113,7 @@ New Features
   * Introduced basic support on Windows.
   * Added GTP PDU session container matching and raw encap/decap.
   * Added support for RSS action in the sample sub-actions list.
+  * Added support for E-Switch mirroring and jump action in the same flow.
 
 * **Updated Wangxun txgbe driver.**
 

@@ -101,6 +101,7 @@ Features
 - Matching on GTP extension header with raw encap/decap action.
 - Matching on Geneve TLV option header with raw encap/decap action.
 - RSS support in sample action.
+- E-Switch mirroring and jump.
 
 Limitations
 -----------
