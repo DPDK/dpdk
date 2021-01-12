@@ -114,6 +114,8 @@ New Features
   * Added GTP PDU session container matching and raw encap/decap.
   * Added support for RSS action in the sample sub-actions list.
   * Added support for E-Switch mirroring and jump action in the same flow.
+  * Added support to handle modify action in correct order regarding the
+    mirroring action on E-Switch.
 
 * **Updated Wangxun txgbe driver.**
 

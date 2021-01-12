@@ -102,6 +102,7 @@ Features
 - Matching on Geneve TLV option header with raw encap/decap action.
 - RSS support in sample action.
 - E-Switch mirroring and jump.
+- E-Switch mirroring and modify.
 
 Limitations
 -----------

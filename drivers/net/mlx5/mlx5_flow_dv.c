@@ -3666,8 +3666,6 @@ flow_dv_create_action_push_vlan(struct rte_eth_dev *dev,
 					    (dev, &res, dev_flow, error);
 }
 
-static int fdb_mirror_limit;
-
 /**
  * Validate the modify-header actions.
  *
@@ -3695,12 +3693,6 @@ flow_dv_validate_action_modify_hdr(const uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have encap action before"
 					  " modify action");
-	if ((action_flags & MLX5_FLOW_ACTION_SAMPLE) && fdb_mirror_limit)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can't support sample action before"
-					  " modify action for E-Switch"
-					  " mirroring");
 	return 0;
 }
 
@@ -4437,7 +4429,6 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 	int actions_n = 0;
 	int ret;
 
-	fdb_mirror_limit = 0;
 	if (!sample)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -4577,7 +4568,6 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 						  "E-Switch doesn't support "
 						  "any optional action "
 						  "for sampling");
-		fdb_mirror_limit = 1;
 		if (sub_action_flags & MLX5_FLOW_ACTION_QUEUE)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
