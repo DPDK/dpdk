@@ -37,6 +37,10 @@ Use libdpdk.pc instead of this file to query DPDK compile/link arguments''',
 	libraries: ['-Wl,--as-needed'] + dpdk_libraries,
 	libraries_private: dpdk_extra_ldflags)
 
+platform_flags = []
+if not is_windows
+	platform_flags += ['-Wl,--export-dynamic'] # ELF only
+endif
 pkg.generate(name: 'DPDK', # main DPDK pkgconfig file
 	filebase: 'libdpdk',
 	version: meson.project_version(),
@@ -47,7 +51,7 @@ This is required for a number of static inline functions in the public headers.'
 	                  # if libbsd is not enabled, then this is blank
 	libraries_private: ['-Wl,--whole-archive'] +
 			dpdk_drivers + dpdk_static_libraries +
-			['-Wl,--no-whole-archive', '-Wl,--export-dynamic']
+			['-Wl,--no-whole-archive'] + platform_flags
 )
 
 # For static linking with dependencies as shared libraries,
