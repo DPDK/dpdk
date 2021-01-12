@@ -970,20 +970,97 @@ exit:
 	return ret;
 }
 
-static int eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
-			     struct rte_pci_device *pci_dev)
+static int
+eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
+		      struct rte_pci_device *pci_dev)
 {
+	struct rte_eth_devargs eth_da = { .nb_representor_ports = 0 };
+	struct ice_dcf_vf_repr_param repr_param;
+	char repr_name[RTE_ETH_NAME_MAX_LEN];
+	struct ice_dcf_adapter *dcf_adapter;
+	struct rte_eth_dev *dcf_ethdev;
+	uint16_t dcf_vsi_id;
+	int i, ret;
+
 	if (!ice_dcf_cap_selected(pci_dev->device.devargs))
 		return 1;
 
-	return rte_eth_dev_pci_generic_probe(pci_dev,
-					     sizeof(struct ice_dcf_adapter),
-					     ice_dcf_dev_init);
+	ret = rte_eth_devargs_parse(pci_dev->device.devargs->args, &eth_da);
+	if (ret)
+		return ret;
+
+	ret = rte_eth_dev_pci_generic_probe(pci_dev,
+					    sizeof(struct ice_dcf_adapter),
+					    ice_dcf_dev_init);
+	if (ret || !eth_da.nb_representor_ports)
+		return ret;
+
+	dcf_ethdev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (dcf_ethdev == NULL)
+		return -ENODEV;
+
+	dcf_adapter = dcf_ethdev->data->dev_private;
+
+	if (eth_da.nb_representor_ports > dcf_adapter->real_hw.num_vfs ||
+	    eth_da.nb_representor_ports >= RTE_MAX_ETHPORTS) {
+		PMD_DRV_LOG(ERR, "the number of port representors is too large: %u",
+			    eth_da.nb_representor_ports);
+		return -EINVAL;
+	}
+
+	dcf_vsi_id = dcf_adapter->real_hw.vsi_id | VIRTCHNL_DCF_VF_VSI_VALID;
+
+	repr_param.adapter = dcf_adapter;
+	repr_param.switch_domain_id = 0;
+
+	for (i = 0; i < eth_da.nb_representor_ports; i++) {
+		uint16_t vf_id = eth_da.representor_ports[i];
+
+		if (vf_id >= dcf_adapter->real_hw.num_vfs) {
+			PMD_DRV_LOG(ERR, "VF ID %u is out of range (0 ~ %u)",
+				    vf_id, dcf_adapter->real_hw.num_vfs - 1);
+			ret = -EINVAL;
+			break;
+		}
+
+		if (dcf_adapter->real_hw.vf_vsi_map[vf_id] == dcf_vsi_id) {
+			PMD_DRV_LOG(ERR, "VF ID %u is DCF's ID.\n", vf_id);
+			ret = -EINVAL;
+			break;
+		}
+
+		repr_param.vf_id = vf_id;
+		snprintf(repr_name, sizeof(repr_name), "net_%s_representor_%u",
+			 pci_dev->device.name, vf_id);
+		ret = rte_eth_dev_create(&pci_dev->device, repr_name,
+					 sizeof(struct ice_dcf_vf_repr),
+					 NULL, NULL, ice_dcf_vf_repr_init,
+					 &repr_param);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "failed to create DCF VF representor %s",
+				    repr_name);
+			break;
+		}
+	}
+
+	return ret;
 }
 
-static int eth_ice_dcf_pci_remove(struct rte_pci_device *pci_dev)
+static int
+eth_ice_dcf_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, ice_dcf_dev_uninit);
+	struct rte_eth_dev *eth_dev;
+
+	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (!eth_dev)
+		return 0;
+
+	if (eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+		return rte_eth_dev_pci_generic_remove(pci_dev,
+						      ice_dcf_vf_repr_uninit);
+	else
+		return rte_eth_dev_pci_generic_remove(pci_dev,
+						      ice_dcf_dev_uninit);
 }
 
 static const struct rte_pci_id pci_id_ice_dcf_map[] = {
