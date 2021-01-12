@@ -61,8 +61,6 @@ otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 	event.get_work0 = (event.get_work0 & (0x3ull << 32)) << 6 |
 		(event.get_work0 & (0x3FFull << 36)) << 4 |
 		(event.get_work0 & 0xffffffff);
-	ws->cur_tt = event.sched_type;
-	ws->cur_grp = event.queue_id;
 
 	if (event.sched_type != SSO_TT_EMPTY) {
 		if ((flags & NIX_RX_OFFLOAD_SECURITY_F) &&

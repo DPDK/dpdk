@@ -80,6 +80,7 @@
 
 #define OTX2_SSOW_GET_BASE_ADDR(_GW)        ((_GW) - SSOW_LF_GWS_OP_GET_WORK)
 #define OTX2_SSOW_TT_FROM_TAG(x)	    (((x) >> 32) & SSO_TT_EMPTY)
+#define OTX2_SSOW_GRP_FROM_TAG(x)	    (((x) >> 36) & 0x3ff)
 
 #define NSEC2USEC(__ns)			((__ns) / 1E3)
 #define USEC2NSEC(__us)                 ((__us) * 1E3)
@@ -169,25 +170,24 @@ struct otx2_sso_evdev {
 	uintptr_t wqp_op;                                                      \
 	uintptr_t swtag_flush_op;                                              \
 	uintptr_t swtag_norm_op;                                               \
-	uintptr_t swtag_desched_op;                                            \
-	uint8_t cur_tt;                                                        \
-	uint8_t cur_grp
+	uintptr_t swtag_desched_op;
 
 /* Event port aka GWS */
 struct otx2_ssogws {
 	/* Get Work Fastpath data */
 	OTX2_SSOGWS_OPS;
-	uint8_t swtag_req;
+	/* PTP timestamp */
+	struct otx2_timesync_info *tstamp;
 	void *lookup_mem;
+	uint8_t swtag_req;
 	uint8_t port;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
 	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP];
-	/* PTP timestamp */
-	struct otx2_timesync_info *tstamp;
 	/* Tx Fastpath data */
-	uint8_t tx_adptr_data[] __rte_cache_aligned;
+	uint64_t base __rte_cache_aligned;
+	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
 struct otx2_ssogws_state {
@@ -197,18 +197,19 @@ struct otx2_ssogws_state {
 struct otx2_ssogws_dual {
 	/* Get Work Fastpath data */
 	struct otx2_ssogws_state ws_state[2]; /* Ping and Pong */
+	/* PTP timestamp */
+	struct otx2_timesync_info *tstamp;
+	void *lookup_mem;
 	uint8_t swtag_req;
 	uint8_t vws; /* Ping pong bit */
-	void *lookup_mem;
 	uint8_t port;
 	/* Add Work Fastpath data */
 	uint64_t xaq_lmt __rte_cache_aligned;
 	uint64_t *fc_mem;
 	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP];
-	/* PTP timestamp */
-	struct otx2_timesync_info *tstamp;
 	/* Tx Fastpath data */
-	uint8_t tx_adptr_data[] __rte_cache_aligned;
+	uint64_t base[2] __rte_cache_aligned;
+	uint8_t tx_adptr_data[];
 } __rte_cache_aligned;
 
 static inline struct otx2_sso_evdev *

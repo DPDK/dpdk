@@ -64,8 +64,6 @@ otx2_ssogws_get_work(struct otx2_ssogws *ws, struct rte_event *ev,
 	event.get_work0 = (event.get_work0 & (0x3ull << 32)) << 6 |
 		(event.get_work0 & (0x3FFull << 36)) << 4 |
 		(event.get_work0 & 0xffffffff);
-	ws->cur_tt = event.sched_type;
-	ws->cur_grp = event.queue_id;
 
 	if (event.sched_type != SSO_TT_EMPTY) {
 		if ((flags & NIX_RX_OFFLOAD_SECURITY_F) &&
@@ -136,8 +134,6 @@ otx2_ssogws_get_work_empty(struct otx2_ssogws *ws, struct rte_event *ev,
 	event.get_work0 = (event.get_work0 & (0x3ull << 32)) << 6 |
 		(event.get_work0 & (0x3FFull << 36)) << 4 |
 		(event.get_work0 & 0xffffffff);
-	ws->cur_tt = event.sched_type;
-	ws->cur_grp = event.queue_id;
 
 	if (event.sched_type != SSO_TT_EMPTY &&
 	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
@@ -192,18 +188,14 @@ otx2_ssogws_swtag_untag(struct otx2_ssogws *ws)
 {
 	otx2_write64(0, OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op) +
 		     SSOW_LF_GWS_OP_SWTAG_UNTAG);
-	ws->cur_tt = SSO_SYNC_UNTAGGED;
 }
 
 static __rte_always_inline void
-otx2_ssogws_swtag_flush(struct otx2_ssogws *ws)
+otx2_ssogws_swtag_flush(uint64_t tag_op, uint64_t flush_op)
 {
-	if (OTX2_SSOW_TT_FROM_TAG(otx2_read64(ws->tag_op)) == SSO_TT_EMPTY) {
-		ws->cur_tt = SSO_SYNC_EMPTY;
+	if (OTX2_SSOW_TT_FROM_TAG(otx2_read64(tag_op)) == SSO_TT_EMPTY)
 		return;
-	}
-	otx2_write64(0, ws->swtag_flush_op);
-	ws->cur_tt = SSO_SYNC_EMPTY;
+	otx2_write64(0, flush_op);
 }
 
 static __rte_always_inline void
@@ -236,7 +228,7 @@ otx2_ssogws_swtag_wait(struct otx2_ssogws *ws)
 }
 
 static __rte_always_inline void
-otx2_ssogws_head_wait(struct otx2_ssogws *ws)
+otx2_ssogws_head_wait(uint64_t tag_op)
 {
 #ifdef RTE_ARCH_ARM64
 	uint64_t tag;
@@ -250,11 +242,11 @@ otx2_ssogws_head_wait(struct otx2_ssogws *ws)
 			"	tbz %[tag], 35, rty%=		\n"
 			"done%=:				\n"
 			: [tag] "=&r" (tag)
-			: [tag_op] "r" (ws->tag_op)
+			: [tag_op] "r" (tag_op)
 			);
 #else
 	/* Wait for the HEAD to be set */
-	while (!(otx2_read64(ws->tag_op) & BIT_ULL(35)))
+	while (!(otx2_read64(tag_op) & BIT_ULL(35)))
 		;
 #endif
 }
@@ -276,8 +268,7 @@ otx2_ssogws_prepare_pkt(const struct otx2_eth_txq *txq, struct rte_mbuf *m,
 }
 
 static __rte_always_inline uint16_t
-otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event *ev,
-		     uint64_t *cmd,
+otx2_ssogws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 		     const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT],
 		     const uint32_t flags)
 {
@@ -288,7 +279,7 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event *ev,
 	if ((flags & NIX_TX_OFFLOAD_SECURITY_F) &&
 	    (m->ol_flags & PKT_TX_SEC_OFFLOAD)) {
 		txq = otx2_ssogws_xtract_meta(m, txq_data);
-		return otx2_sec_event_tx(ws, ev, m, txq, flags);
+		return otx2_sec_event_tx(base, ev, m, txq, flags);
 	}
 
 	/* Perform header writes before barrier for TSO */
@@ -309,7 +300,7 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event *ev,
 					     m->ol_flags, segdw, flags);
 		if (!ev->sched_type) {
 			otx2_nix_xmit_mseg_prep_lmt(cmd, txq->lmt_addr, segdw);
-			otx2_ssogws_head_wait(ws);
+			otx2_ssogws_head_wait(base + SSOW_LF_GWS_TAG);
 			if (otx2_nix_xmit_submit_lmt(txq->io_addr) == 0)
 				otx2_nix_xmit_mseg_one(cmd, txq->lmt_addr,
 						       txq->io_addr, segdw);
@@ -324,7 +315,7 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event *ev,
 
 		if (!ev->sched_type) {
 			otx2_nix_xmit_prep_lmt(cmd, txq->lmt_addr, flags);
-			otx2_ssogws_head_wait(ws);
+			otx2_ssogws_head_wait(base + SSOW_LF_GWS_TAG);
 			if (otx2_nix_xmit_submit_lmt(txq->io_addr) == 0)
 				otx2_nix_xmit_one(cmd, txq->lmt_addr,
 						  txq->io_addr, flags);
@@ -339,7 +330,8 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event *ev,
 			return 1;
 	}
 
-	otx2_ssogws_swtag_flush(ws);
+	otx2_ssogws_swtag_flush(base + SSOW_LF_GWS_TAG,
+				base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
 
 	return 1;
 }

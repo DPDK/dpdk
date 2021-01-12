@@ -833,10 +833,12 @@ sso_configure_dual_ports(const struct rte_eventdev *event_dev)
 		ws->port = i;
 		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | vws << 12);
 		sso_set_port_ops((struct otx2_ssogws *)&ws->ws_state[0], base);
+		ws->base[0] = base;
 		vws++;
 
 		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | vws << 12);
 		sso_set_port_ops((struct otx2_ssogws *)&ws->ws_state[1], base);
+		ws->base[1] = base;
 		vws++;
 
 		gws_cookie = ssogws_get_cookie(ws);
@@ -909,6 +911,7 @@ sso_configure_ports(const struct rte_eventdev *event_dev)
 		ws->port = i;
 		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | i << 12);
 		sso_set_port_ops(ws, base);
+		ws->base = base;
 
 		gws_cookie = ssogws_get_cookie(ws);
 		gws_cookie->event_dev = event_dev;
@@ -1449,18 +1452,12 @@ sso_cleanup(struct rte_eventdev *event_dev, uint8_t enable)
 			ssogws_reset((struct otx2_ssogws *)&ws->ws_state[1]);
 			ws->swtag_req = 0;
 			ws->vws = 0;
-			ws->ws_state[0].cur_grp = 0;
-			ws->ws_state[0].cur_tt = SSO_SYNC_EMPTY;
-			ws->ws_state[1].cur_grp = 0;
-			ws->ws_state[1].cur_tt = SSO_SYNC_EMPTY;
 		} else {
 			struct otx2_ssogws *ws;
 
 			ws = event_dev->data->ports[i];
 			ssogws_reset(ws);
 			ws->swtag_req = 0;
-			ws->cur_grp = 0;
-			ws->cur_tt = SSO_SYNC_EMPTY;
 		}
 	}
 
@@ -1479,8 +1476,6 @@ sso_cleanup(struct rte_eventdev *event_dev, uint8_t enable)
 			otx2_write64(enable, ws->grps_base[i] +
 				     SSO_LF_GGRP_QCTL);
 		}
-		ws->ws_state[0].cur_grp = 0;
-		ws->ws_state[0].cur_tt = SSO_SYNC_EMPTY;
 	} else {
 		struct otx2_ssogws *ws = event_dev->data->ports[0];
 
@@ -1492,8 +1487,6 @@ sso_cleanup(struct rte_eventdev *event_dev, uint8_t enable)
 			otx2_write64(enable, ws->grps_base[i] +
 				     SSO_LF_GGRP_QCTL);
 		}
-		ws->cur_grp = 0;
-		ws->cur_tt = SSO_SYNC_EMPTY;
 	}
 
 	/* reset SSO GWS cache */
