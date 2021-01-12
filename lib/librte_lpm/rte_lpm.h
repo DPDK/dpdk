@@ -402,7 +402,11 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 	uint32_t defv);
 
 #if defined(RTE_ARCH_ARM)
+#ifdef __ARM_FEATURE_SVE
+#include "rte_lpm_sve.h"
+#else
 #include "rte_lpm_neon.h"
+#endif
 #elif defined(RTE_ARCH_PPC_64)
 #include "rte_lpm_altivec.h"
 #else

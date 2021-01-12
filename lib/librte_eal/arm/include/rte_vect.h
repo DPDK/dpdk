@@ -9,6 +9,9 @@
 #include "generic/rte_vect.h"
 #include "rte_debug.h"
 #include "arm_neon.h"
+#ifdef __ARM_FEATURE_SVE
+#include <arm_sve.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
