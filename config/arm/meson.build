@@ -89,6 +89,14 @@ flags_n1generic_extra = [
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
 	['RTE_LIBRTE_VHOST_NUMA', false]]
+flags_n2generic_extra = [
+	['RTE_MACHINE', '"neoverse-n2"'],
+	['RTE_MAX_LCORE', 64],
+	['RTE_CACHE_LINE_SIZE', 64],
+	['RTE_ARM_FEATURE_ATOMICS', true],
+	['RTE_USE_C11_MEM_MODEL', true],
+	['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
+	['RTE_LIBRTE_VHOST_NUMA', false]]
 
 machine_args_generic = [
 	['default', ['-march=armv8-a+crc', '-moutline-atomics']],
@@ -100,7 +108,8 @@ machine_args_generic = [
 	['0xd09', ['-mcpu=cortex-a73']],
 	['0xd0a', ['-mcpu=cortex-a75']],
 	['0xd0b', ['-mcpu=cortex-a76']],
-	['0xd0c', ['-march=armv8.2-a+crypto', '-mcpu=neoverse-n1'], flags_n1generic_extra]]
+	['0xd0c', ['-march=armv8.2-a+crypto', '-mcpu=neoverse-n1'], flags_n1generic_extra],
+	['0xd49', ['-march=armv8.5-a+crypto+sve2'], flags_n2generic_extra]]
 
 machine_args_cavium = [
 	['default', ['-march=armv8-a+crc+crypto','-mcpu=thunderx']],
