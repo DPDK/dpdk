@@ -52,6 +52,11 @@ do {							\
 #endif
 
 #if defined(RTE_ARCH_ARM64)
+#if defined(__ARM_FEATURE_SVE)
+#define __LSE_PREAMBLE " .cpu	generic+lse+sve\n"
+#else
+#define __LSE_PREAMBLE " .cpu	generic+lse\n"
+#endif
 /**
  * Perform an atomic fetch-and-add operation.
  */
@@ -61,7 +66,7 @@ octeontx_reg_ldadd_u64(void *addr, int64_t off)
 	uint64_t old_val;
 
 	__asm__ volatile(
-		" .cpu		generic+lse\n"
+		__LSE_PREAMBLE
 		" ldadd	%1, %0, [%2]\n"
 		: "=r" (old_val) : "r" (off), "r" (addr) : "memory");
 
@@ -98,12 +103,13 @@ octeontx_reg_lmtst(void *lmtline_va, void *ioreg_va, const uint64_t cmdbuf[],
 
 		/* LDEOR initiates atomic transfer to I/O device */
 		__asm__ volatile(
-			" .cpu		generic+lse\n"
+			__LSE_PREAMBLE
 			" ldeor	xzr, %0, [%1]\n"
 			: "=r" (result) : "r" (ioreg_va) : "memory");
 	} while (!result);
 }
 
+#undef __LSE_PREAMBLE
 #else
 
 static inline uint64_t
