@@ -64,7 +64,7 @@ if cc.has_argument('-Wno-format-truncation')
 	default_cflags += '-Wno-format-truncation'
 endif
 default_ldflags = dpdk_extra_ldflags
-if get_option('default_library') == 'static'
+if get_option('default_library') == 'static' and not is_windows
 	default_ldflags += ['-Wl,--export-dynamic']
 endif
 
