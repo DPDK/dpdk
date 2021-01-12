@@ -116,6 +116,8 @@ New Features
   * Added support for E-Switch mirroring and jump action in the same flow.
   * Added support to handle modify action in correct order regarding the
     mirroring action on E-Switch.
+  * Enlarged the number of flow priorities to 21844 (0 - 21843) for ingress or
+    egress flow groups greater than 0 and for any transfer flow group.
 
 * **Updated Wangxun txgbe driver.**
 

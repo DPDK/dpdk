@@ -270,8 +270,15 @@ enum mlx5_feature_name {
 /* UDP port numbers for GENEVE. */
 #define MLX5_UDP_PORT_GENEVE 6081
 
-/* Priority reserved for default flows. */
-#define MLX5_FLOW_PRIO_RSVD ((uint32_t)-1)
+/* Lowest priority indicator. */
+#define MLX5_FLOW_LOWEST_PRIO_INDICATOR ((uint32_t)-1)
+
+/*
+ * Max priority for ingress\egress flow groups
+ * greater than 0 and for any transfer flow group.
+ * From user configation: 0 - 21843.
+ */
+#define MLX5_NON_ROOT_FLOW_MAX_PRIO	(21843 + 1)
 
 /*
  * Number of sub priorities.
@@ -1314,6 +1321,11 @@ uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow_rss_desc *rss_desc,
 int mlx5_flow_discover_priorities(struct rte_eth_dev *dev);
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);
+uint32_t mlx5_get_lowest_priority(struct rte_eth_dev *dev,
+					const struct rte_flow_attr *attr);
+uint16_t mlx5_get_matcher_priority(struct rte_eth_dev *dev,
+				     const struct rte_flow_attr *attr,
+				     uint32_t subpriority);
 int mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 				     enum mlx5_feature_name feature,
 				     uint32_t id,

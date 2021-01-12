@@ -109,8 +109,11 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 			dev->data->port_id, priority);
 		return -rte_errno;
 	}
-	DRV_LOG(INFO, "port %u flow maximum priority: %d",
-		dev->data->port_id, priority);
+	DRV_LOG(INFO, "port %u supported flow priorities:"
+		" 0-%d for ingress or egress root table,"
+		" 0-%d for non-root table or transfer root table.",
+		dev->data->port_id, priority - 2,
+		MLX5_NON_ROOT_FLOW_MAX_PRIO - 1);
 	return priority;
 }
 
@@ -1710,7 +1713,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 
 	MLX5_ASSERT(wks);
 	rss_desc = &wks->rss_desc;
-	if (priority == MLX5_FLOW_PRIO_RSVD)
+	if (priority == MLX5_FLOW_LOWEST_PRIO_INDICATOR)
 		priority = priv->config.flow_prio - 1;
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		int ret;

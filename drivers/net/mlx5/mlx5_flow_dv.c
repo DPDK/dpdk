@@ -5238,7 +5238,7 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 			    struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t priority_max = priv->config.flow_prio - 1;
+	uint32_t lowest_priority = mlx5_get_lowest_priority(dev, attributes);
 	int ret = 0;
 
 #ifndef HAVE_MLX5DV_DR
@@ -5259,8 +5259,8 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 	if (!table)
 		ret = MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
 #endif
-	if (attributes->priority != MLX5_FLOW_PRIO_RSVD &&
-	    attributes->priority >= priority_max)
+	if (attributes->priority != MLX5_FLOW_LOWEST_PRIO_INDICATOR &&
+	    attributes->priority > lowest_priority)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 					  NULL,
@@ -10085,7 +10085,6 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	uint64_t item_flags = 0;
 	uint64_t last_item = 0;
 	uint64_t action_flags = 0;
-	uint64_t priority = attr->priority;
 	struct mlx5_flow_dv_matcher matcher = {
 		.mask = {
 			.size = sizeof(matcher.mask.buf) -
@@ -10158,8 +10157,6 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	dev_flow->dv.group = table;
 	if (attr->transfer)
 		mhdr_res->ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
-	if (priority == MLX5_FLOW_PRIO_RSVD)
-		priority = dev_conf->flow_prio - 1;
 	/* number of actions must be set to 0 in case of dirty stack. */
 	mhdr_res->actions_num = 0;
 	if (is_flow_tunnel_match_rule(dev, attr, items, actions)) {
@@ -11048,9 +11045,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	/* Register matcher. */
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);
-	matcher.priority = mlx5_os_flow_adjust_priority(dev,
-							priority,
-							matcher.priority);
+	matcher.priority = mlx5_get_matcher_priority(dev, attr,
+					matcher.priority);
 	/* reserved field no needs to be set to 0 here. */
 	tbl_key.domain = attr->transfer;
 	tbl_key.direction = attr->egress;
