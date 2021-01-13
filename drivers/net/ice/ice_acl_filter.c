@@ -914,7 +914,8 @@ ice_acl_parse(struct ice_adapter *ad,
 	int ret;
 
 	memset(filter, 0, sizeof(*filter));
-	item = ice_search_pattern_match_item(pattern, array, array_len, error);
+	item = ice_search_pattern_match_item(ad, pattern, array, array_len,
+					     error);
 	if (!item)
 		return -rte_errno;
 

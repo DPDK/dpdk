@@ -137,47 +137,11 @@ struct sw_meta {
 	struct ice_adv_rule_info rule_info;
 };
 
-static struct ice_flow_parser ice_switch_dist_parser_os;
-static struct ice_flow_parser ice_switch_dist_parser_comms;
-static struct ice_flow_parser ice_switch_perm_parser_os;
-static struct ice_flow_parser ice_switch_perm_parser_comms;
+static struct ice_flow_parser ice_switch_dist_parser;
+static struct ice_flow_parser ice_switch_perm_parser;
 
 static struct
-ice_pattern_match_item ice_switch_pattern_dist_os[] = {
-	{pattern_ethertype,
-			ICE_SW_INSET_ETHER, ICE_INSET_NONE},
-	{pattern_ethertype_vlan,
-			ICE_SW_INSET_MAC_VLAN, ICE_INSET_NONE},
-	{pattern_eth_arp,
-			ICE_INSET_NONE, ICE_INSET_NONE},
-	{pattern_eth_ipv4,
-			ICE_SW_INSET_MAC_IPV4, ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp,
-			ICE_SW_INSET_MAC_IPV4_UDP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_tcp,
-			ICE_SW_INSET_MAC_IPV4_TCP, ICE_INSET_NONE},
-	{pattern_eth_ipv6,
-			ICE_SW_INSET_MAC_IPV6, ICE_INSET_NONE},
-	{pattern_eth_ipv6_udp,
-			ICE_SW_INSET_MAC_IPV6_UDP, ICE_INSET_NONE},
-	{pattern_eth_ipv6_tcp,
-			ICE_SW_INSET_MAC_IPV6_TCP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4,
-			ICE_SW_INSET_DIST_VXLAN_IPV4, ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_udp,
-			ICE_SW_INSET_DIST_VXLAN_IPV4_UDP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_tcp,
-			ICE_SW_INSET_DIST_VXLAN_IPV4_TCP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_nvgre_eth_ipv4,
-			ICE_SW_INSET_DIST_NVGRE_IPV4, ICE_INSET_NONE},
-	{pattern_eth_ipv4_nvgre_eth_ipv4_udp,
-			ICE_SW_INSET_DIST_NVGRE_IPV4_UDP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_nvgre_eth_ipv4_tcp,
-			ICE_SW_INSET_DIST_NVGRE_IPV4_TCP, ICE_INSET_NONE},
-};
-
-static struct
-ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
+ice_pattern_match_item ice_switch_pattern_dist_list[] = {
 	{pattern_ethertype,
 			ICE_SW_INSET_ETHER, ICE_INSET_NONE},
 	{pattern_ethertype_vlan,
@@ -265,41 +229,7 @@ ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 };
 
 static struct
-ice_pattern_match_item ice_switch_pattern_perm_os[] = {
-	{pattern_ethertype,
-			ICE_SW_INSET_ETHER, ICE_INSET_NONE},
-	{pattern_ethertype_vlan,
-			ICE_SW_INSET_MAC_VLAN, ICE_INSET_NONE},
-	{pattern_eth_arp,
-			ICE_INSET_NONE, ICE_INSET_NONE},
-	{pattern_eth_ipv4,
-			ICE_SW_INSET_MAC_IPV4, ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp,
-			ICE_SW_INSET_MAC_IPV4_UDP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_tcp,
-			ICE_SW_INSET_MAC_IPV4_TCP, ICE_INSET_NONE},
-	{pattern_eth_ipv6,
-			ICE_SW_INSET_MAC_IPV6, ICE_INSET_NONE},
-	{pattern_eth_ipv6_udp,
-			ICE_SW_INSET_MAC_IPV6_UDP, ICE_INSET_NONE},
-	{pattern_eth_ipv6_tcp,
-			ICE_SW_INSET_MAC_IPV6_TCP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4,
-			ICE_SW_INSET_PERM_TUNNEL_IPV4, ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_udp,
-			ICE_SW_INSET_PERM_TUNNEL_IPV4_UDP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_tcp,
-			ICE_SW_INSET_PERM_TUNNEL_IPV4_TCP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_nvgre_eth_ipv4,
-			ICE_SW_INSET_PERM_TUNNEL_IPV4, ICE_INSET_NONE},
-	{pattern_eth_ipv4_nvgre_eth_ipv4_udp,
-			ICE_SW_INSET_PERM_TUNNEL_IPV4_UDP, ICE_INSET_NONE},
-	{pattern_eth_ipv4_nvgre_eth_ipv4_tcp,
-			ICE_SW_INSET_PERM_TUNNEL_IPV4_TCP, ICE_INSET_NONE},
-};
-
-static struct
-ice_pattern_match_item ice_switch_pattern_perm_comms[] = {
+ice_pattern_match_item ice_switch_pattern_perm_list[] = {
 	{pattern_ethertype,
 			ICE_SW_INSET_ETHER, ICE_INSET_NONE},
 	{pattern_ethertype_vlan,
@@ -1699,7 +1629,8 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	}
 
 	pattern_match_item =
-		ice_search_pattern_match_item(pattern, array, array_len, error);
+		ice_search_pattern_match_item(ad, pattern, array, array_len,
+					      error);
 	if (!pattern_match_item) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1859,21 +1790,11 @@ ice_switch_init(struct ice_adapter *ad)
 	struct ice_flow_parser *dist_parser;
 	struct ice_flow_parser *perm_parser;
 
-	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
-		dist_parser = &ice_switch_dist_parser_comms;
-	else if (ad->active_pkg_type == ICE_PKG_TYPE_OS_DEFAULT)
-		dist_parser = &ice_switch_dist_parser_os;
-	else
-		return -EINVAL;
-
 	if (ad->devargs.pipe_mode_support) {
-		if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
-			perm_parser = &ice_switch_perm_parser_comms;
-		else
-			perm_parser = &ice_switch_perm_parser_os;
-
+		perm_parser = &ice_switch_perm_parser;
 		ret = ice_register_parser(perm_parser, ad);
 	} else {
+		dist_parser = &ice_switch_dist_parser;
 		ret = ice_register_parser(dist_parser, ad);
 	}
 	return ret;
@@ -1885,21 +1806,11 @@ ice_switch_uninit(struct ice_adapter *ad)
 	struct ice_flow_parser *dist_parser;
 	struct ice_flow_parser *perm_parser;
 
-	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
-		dist_parser = &ice_switch_dist_parser_comms;
-	else if (ad->active_pkg_type == ICE_PKG_TYPE_OS_DEFAULT)
-		dist_parser = &ice_switch_dist_parser_os;
-	else
-		return;
-
 	if (ad->devargs.pipe_mode_support) {
-		if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
-			perm_parser = &ice_switch_perm_parser_comms;
-		else
-			perm_parser = &ice_switch_perm_parser_os;
-
+		perm_parser = &ice_switch_perm_parser;
 		ice_unregister_parser(perm_parser, ad);
 	} else {
+		dist_parser = &ice_switch_dist_parser;
 		ice_unregister_parser(dist_parser, ad);
 	}
 }
@@ -1917,37 +1828,19 @@ ice_flow_engine ice_switch_engine = {
 };
 
 static struct
-ice_flow_parser ice_switch_dist_parser_os = {
+ice_flow_parser ice_switch_dist_parser = {
 	.engine = &ice_switch_engine,
-	.array = ice_switch_pattern_dist_os,
-	.array_len = RTE_DIM(ice_switch_pattern_dist_os),
+	.array = ice_switch_pattern_dist_list,
+	.array_len = RTE_DIM(ice_switch_pattern_dist_list),
 	.parse_pattern_action = ice_switch_parse_pattern_action,
 	.stage = ICE_FLOW_STAGE_DISTRIBUTOR,
 };
 
 static struct
-ice_flow_parser ice_switch_dist_parser_comms = {
+ice_flow_parser ice_switch_perm_parser = {
 	.engine = &ice_switch_engine,
-	.array = ice_switch_pattern_dist_comms,
-	.array_len = RTE_DIM(ice_switch_pattern_dist_comms),
-	.parse_pattern_action = ice_switch_parse_pattern_action,
-	.stage = ICE_FLOW_STAGE_DISTRIBUTOR,
-};
-
-static struct
-ice_flow_parser ice_switch_perm_parser_os = {
-	.engine = &ice_switch_engine,
-	.array = ice_switch_pattern_perm_os,
-	.array_len = RTE_DIM(ice_switch_pattern_perm_os),
-	.parse_pattern_action = ice_switch_parse_pattern_action,
-	.stage = ICE_FLOW_STAGE_PERMISSION,
-};
-
-static struct
-ice_flow_parser ice_switch_perm_parser_comms = {
-	.engine = &ice_switch_engine,
-	.array = ice_switch_pattern_perm_comms,
-	.array_len = RTE_DIM(ice_switch_pattern_perm_comms),
+	.array = ice_switch_pattern_perm_list,
+	.array_len = RTE_DIM(ice_switch_pattern_perm_list),
 	.parse_pattern_action = ice_switch_parse_pattern_action,
 	.stage = ICE_FLOW_STAGE_PERMISSION,
 };

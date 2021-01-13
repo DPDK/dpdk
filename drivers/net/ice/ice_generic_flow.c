@@ -2046,17 +2046,127 @@ ice_match_pattern(enum rte_flow_item_type *item_array,
 		item->type == RTE_FLOW_ITEM_TYPE_END);
 }
 
-struct ice_pattern_match_item *
-ice_search_pattern_match_item(const struct rte_flow_item pattern[],
-		struct ice_pattern_match_item *array,
-		uint32_t array_len,
-		struct rte_flow_error *error)
+struct ice_ptype_match {
+	enum rte_flow_item_type *pattern_list;
+	uint16_t hw_ptype;
+};
+
+static struct ice_ptype_match ice_ptype_map[] = {
+	{pattern_eth_ipv4,				ICE_PTYPE_IPV4_PAY},
+	{pattern_eth_ipv4_udp,				ICE_PTYPE_IPV4_UDP_PAY},
+	{pattern_eth_ipv4_tcp,				ICE_PTYPE_IPV4_TCP_PAY},
+	{pattern_eth_ipv4_sctp,				ICE_PTYPE_IPV4_SCTP_PAY},
+	{pattern_eth_ipv4_gtpu,				ICE_MAC_IPV4_GTPU},
+	{pattern_eth_ipv4_gtpu_eh,			ICE_MAC_IPV4_GTPU},
+	{pattern_eth_ipv4_gtpu_ipv4,			ICE_MAC_IPV4_GTPU_IPV4_PAY},
+	{pattern_eth_ipv4_gtpu_ipv4_udp,		ICE_MAC_IPV4_GTPU_IPV4_UDP_PAY},
+	{pattern_eth_ipv4_gtpu_ipv4_tcp,		ICE_MAC_IPV4_GTPU_IPV4_TCP},
+	{pattern_eth_ipv4_gtpu_ipv6,			ICE_MAC_IPV4_GTPU_IPV6_PAY},
+	{pattern_eth_ipv4_gtpu_ipv6_udp,		ICE_MAC_IPV4_GTPU_IPV6_UDP_PAY},
+	{pattern_eth_ipv4_gtpu_ipv6_tcp,		ICE_MAC_IPV4_GTPU_IPV6_TCP},
+	{pattern_eth_ipv4_gtpu_eh_ipv4,			ICE_MAC_IPV4_GTPU_IPV4_PAY},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_udp,		ICE_MAC_IPV4_GTPU_IPV4_UDP_PAY},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp,		ICE_MAC_IPV4_GTPU_IPV4_TCP},
+	{pattern_eth_ipv4_gtpu_eh_ipv6,			ICE_MAC_IPV4_GTPU_IPV6_PAY},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_udp,		ICE_MAC_IPV4_GTPU_IPV6_UDP_PAY},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_tcp,		ICE_MAC_IPV4_GTPU_IPV6_TCP},
+	{pattern_eth_ipv4_esp,				ICE_MAC_IPV4_ESP},
+	{pattern_eth_ipv4_udp_esp,			ICE_MAC_IPV4_NAT_T_ESP},
+	{pattern_eth_ipv4_ah,				ICE_MAC_IPV4_AH},
+	{pattern_eth_ipv4_l2tp,				ICE_MAC_IPV4_L2TPV3},
+	{pattern_eth_ipv4_pfcp,				ICE_MAC_IPV4_PFCP_SESSION},
+	{pattern_eth_ipv6,				ICE_PTYPE_IPV6_PAY},
+	{pattern_eth_ipv6_udp,				ICE_PTYPE_IPV6_UDP_PAY},
+	{pattern_eth_ipv6_tcp,				ICE_PTYPE_IPV6_TCP_PAY},
+	{pattern_eth_ipv6_sctp,				ICE_PTYPE_IPV6_SCTP_PAY},
+	{pattern_eth_ipv6_gtpu,				ICE_MAC_IPV6_GTPU},
+	{pattern_eth_ipv6_gtpu_eh,			ICE_MAC_IPV6_GTPU},
+	{pattern_eth_ipv6_gtpu_ipv4,			ICE_MAC_IPV6_GTPU_IPV4_PAY},
+	{pattern_eth_ipv6_gtpu_ipv4_udp,		ICE_MAC_IPV6_GTPU_IPV4_UDP_PAY},
+	{pattern_eth_ipv6_gtpu_ipv4_tcp,		ICE_MAC_IPV6_GTPU_IPV4_TCP},
+	{pattern_eth_ipv6_gtpu_ipv6,			ICE_MAC_IPV6_GTPU_IPV6_PAY},
+	{pattern_eth_ipv6_gtpu_ipv6_udp,		ICE_MAC_IPV6_GTPU_IPV6_UDP_PAY},
+	{pattern_eth_ipv6_gtpu_ipv6_tcp,		ICE_MAC_IPV6_GTPU_IPV6_TCP},
+	{pattern_eth_ipv6_gtpu_eh_ipv4,			ICE_MAC_IPV6_GTPU_IPV4_PAY},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_udp,		ICE_MAC_IPV6_GTPU_IPV4_UDP_PAY},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_tcp,		ICE_MAC_IPV6_GTPU_IPV4_TCP},
+	{pattern_eth_ipv6_gtpu_eh_ipv6,			ICE_MAC_IPV6_GTPU_IPV6_PAY},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_udp,		ICE_MAC_IPV6_GTPU_IPV6_UDP_PAY},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_tcp,		ICE_MAC_IPV6_GTPU_IPV6_TCP},
+	{pattern_eth_ipv6_esp,				ICE_MAC_IPV6_ESP},
+	{pattern_eth_ipv6_udp_esp,			ICE_MAC_IPV6_NAT_T_ESP},
+	{pattern_eth_ipv6_ah,				ICE_MAC_IPV6_AH},
+	{pattern_eth_ipv6_l2tp,				ICE_MAC_IPV6_L2TPV3},
+	{pattern_eth_ipv6_pfcp,				ICE_MAC_IPV6_PFCP_SESSION},
+	{pattern_ethertype,				ICE_PTYPE_MAC_PAY},
+	{pattern_ethertype_vlan,			ICE_PTYPE_MAC_PAY},
+	{pattern_eth_arp,				ICE_PTYPE_MAC_PAY},
+	{pattern_eth_vlan_ipv4,				ICE_PTYPE_IPV4_PAY},
+	{pattern_eth_vlan_ipv4_udp,			ICE_PTYPE_IPV4_UDP_PAY},
+	{pattern_eth_vlan_ipv4_tcp,			ICE_PTYPE_IPV4_TCP_PAY},
+	{pattern_eth_vlan_ipv4_sctp,			ICE_PTYPE_IPV4_SCTP_PAY},
+	{pattern_eth_vlan_ipv6,				ICE_PTYPE_IPV6_PAY},
+	{pattern_eth_vlan_ipv6_udp,			ICE_PTYPE_IPV6_UDP_PAY},
+	{pattern_eth_vlan_ipv6_tcp,			ICE_PTYPE_IPV6_TCP_PAY},
+	{pattern_eth_vlan_ipv6_sctp,			ICE_PTYPE_IPV6_SCTP_PAY},
+	{pattern_eth_pppoes,				ICE_MAC_PPPOE_PAY},
+	{pattern_eth_vlan_pppoes,			ICE_MAC_PPPOE_PAY},
+	{pattern_eth_pppoes_proto,			ICE_MAC_PPPOE_PAY},
+	{pattern_eth_vlan_pppoes_proto,			ICE_MAC_PPPOE_PAY},
+	{pattern_eth_pppoes_ipv4,			ICE_MAC_PPPOE_IPV4_PAY},
+	{pattern_eth_pppoes_ipv4_udp,			ICE_MAC_PPPOE_IPV4_UDP_PAY},
+	{pattern_eth_pppoes_ipv4_tcp,			ICE_MAC_PPPOE_IPV4_TCP},
+	{pattern_eth_vlan_pppoes_ipv4,			ICE_MAC_PPPOE_IPV4_PAY},
+	{pattern_eth_vlan_pppoes_ipv4_tcp,		ICE_MAC_PPPOE_IPV4_TCP},
+	{pattern_eth_vlan_pppoes_ipv4_udp,		ICE_MAC_PPPOE_IPV4_UDP_PAY},
+	{pattern_eth_pppoes_ipv6,			ICE_MAC_PPPOE_IPV6_PAY},
+	{pattern_eth_pppoes_ipv6_udp,			ICE_MAC_PPPOE_IPV6_UDP_PAY},
+	{pattern_eth_pppoes_ipv6_tcp,			ICE_MAC_PPPOE_IPV6_TCP},
+	{pattern_eth_vlan_pppoes_ipv6,			ICE_MAC_PPPOE_IPV6_PAY},
+	{pattern_eth_vlan_pppoes_ipv6_tcp,		ICE_MAC_PPPOE_IPV6_TCP},
+	{pattern_eth_vlan_pppoes_ipv6_udp,		ICE_MAC_PPPOE_IPV6_UDP_PAY},
+	{pattern_eth_ipv4_udp_vxlan_ipv4,		ICE_MAC_IPV4_TUN_IPV4_PAY},
+	{pattern_eth_ipv4_udp_vxlan_ipv4_udp,		ICE_MAC_IPV4_TUN_IPV4_UDP_PAY},
+	{pattern_eth_ipv4_udp_vxlan_ipv4_tcp,		ICE_MAC_IPV4_TUN_IPV4_TCP},
+	{pattern_eth_ipv4_udp_vxlan_ipv4_sctp,		ICE_MAC_IPV4_TUN_IPV4_SCTP},
+	{pattern_eth_ipv4_udp_vxlan_eth_ipv4,		ICE_MAC_IPV4_TUN_IPV4_PAY},
+	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_udp,	ICE_MAC_IPV4_TUN_IPV4_UDP_PAY},
+	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_tcp,	ICE_MAC_IPV4_TUN_IPV4_TCP},
+	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_sctp,	ICE_MAC_IPV4_TUN_IPV4_SCTP},
+	{pattern_eth_ipv4_nvgre_eth_ipv4,		ICE_MAC_IPV4_TUN_IPV4_PAY},
+	{pattern_eth_ipv4_nvgre_eth_ipv4_udp,		ICE_MAC_IPV4_TUN_IPV4_UDP_PAY},
+	{pattern_eth_ipv4_nvgre_eth_ipv4_tcp,		ICE_MAC_IPV4_TUN_IPV4_TCP},
+};
+
+static bool
+ice_pattern_is_supported(__rte_unused struct ice_adapter *ad,
+			 const struct rte_flow_item *pattern)
 {
-	uint16_t i = 0;
+	uint16_t i;
+
+	for (i = 0; i < RTE_DIM(ice_ptype_map); i++) {
+		if (ice_match_pattern(ice_ptype_map[i].pattern_list,
+				      pattern)) {
+			return ice_hw_ptype_ena(&ad->hw,
+						ice_ptype_map[i].hw_ptype);
+		}
+	}
+
+	return false;
+}
+
+struct ice_pattern_match_item *
+ice_search_pattern_match_item(struct ice_adapter *ad,
+			      const struct rte_flow_item pattern[],
+			      struct ice_pattern_match_item *array,
+			      uint32_t array_len,
+			      struct rte_flow_error *error)
+{
 	struct ice_pattern_match_item *pattern_match_item;
 	/* need free by each filter */
 	struct rte_flow_item *items; /* used for pattern without VOID items */
 	uint32_t item_num = 0; /* non-void item number */
+	uint16_t i = 0;
 
 	/* Get the non-void item number of pattern */
 	while ((pattern + i)->type != RTE_FLOW_ITEM_TYPE_END) {
@@ -2078,14 +2188,18 @@ ice_search_pattern_match_item(const struct rte_flow_item pattern[],
 	if (!pattern_match_item) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "Failed to allocate memory.");
+		rte_free(items);
 		return NULL;
 	}
 
 	ice_pattern_skip_void_item(items, pattern);
 
-	for (i = 0; i < array_len; i++)
+	if (!ice_pattern_is_supported(ad, pattern))
+		goto unsupported;
+
+	for (i = 0; i < array_len; i++) {
 		if (ice_match_pattern(array[i].pattern_list,
-					items)) {
+				      items)) {
 			pattern_match_item->input_set_mask =
 				array[i].input_set_mask;
 			pattern_match_item->pattern_list =
@@ -2094,9 +2208,11 @@ ice_search_pattern_match_item(const struct rte_flow_item pattern[],
 			rte_free(items);
 			return pattern_match_item;
 		}
+	}
+
+unsupported:
 	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 			   pattern, "Unsupported pattern");
-
 	rte_free(items);
 	rte_free(pattern_match_item);
 	return NULL;

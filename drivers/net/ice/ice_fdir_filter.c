@@ -84,34 +84,7 @@
 	ICE_INSET_IPV6_SRC | ICE_INSET_IPV6_DST | \
 	ICE_INSET_GTPU_TEID | ICE_INSET_GTPU_QFI)
 
-static struct ice_pattern_match_item ice_fdir_pattern_os[] = {
-	{pattern_eth_ipv4,             ICE_FDIR_INSET_ETH_IPV4,              ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp,         ICE_FDIR_INSET_ETH_IPV4_UDP,          ICE_INSET_NONE},
-	{pattern_eth_ipv4_tcp,         ICE_FDIR_INSET_ETH_IPV4_TCP,          ICE_INSET_NONE},
-	{pattern_eth_ipv4_sctp,        ICE_FDIR_INSET_ETH_IPV4_SCTP,         ICE_INSET_NONE},
-	{pattern_eth_ipv6,             ICE_FDIR_INSET_ETH_IPV6,              ICE_INSET_NONE},
-	{pattern_eth_ipv6_udp,         ICE_FDIR_INSET_ETH_IPV6_UDP,          ICE_INSET_NONE},
-	{pattern_eth_ipv6_tcp,         ICE_FDIR_INSET_ETH_IPV6_TCP,          ICE_INSET_NONE},
-	{pattern_eth_ipv6_sctp,        ICE_FDIR_INSET_ETH_IPV6_SCTP,         ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_ipv4,
-				       ICE_FDIR_INSET_VXLAN_IPV4,            ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_ipv4_udp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_UDP,        ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_ipv4_tcp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_TCP,        ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_ipv4_sctp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_SCTP,       ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4,
-				       ICE_FDIR_INSET_VXLAN_IPV4,            ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_udp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_UDP,        ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_tcp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_TCP,        ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_sctp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_SCTP,       ICE_INSET_NONE},
-};
-
-static struct ice_pattern_match_item ice_fdir_pattern_comms[] = {
+static struct ice_pattern_match_item ice_fdir_pattern_list[] = {
 	{pattern_ethertype,	       ICE_FDIR_INSET_ETH,		     ICE_INSET_NONE},
 	{pattern_eth_ipv4,             ICE_FDIR_INSET_ETH_IPV4,              ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp,         ICE_FDIR_INSET_ETH_IPV4_UDP,          ICE_INSET_NONE},
@@ -143,8 +116,7 @@ static struct ice_pattern_match_item ice_fdir_pattern_comms[] = {
 	{pattern_eth_ipv6_gtpu_eh,     ICE_FDIR_INSET_IPV6_GTPU_EH,          ICE_INSET_NONE},
 };
 
-static struct ice_flow_parser ice_fdir_parser_os;
-static struct ice_flow_parser ice_fdir_parser_comms;
+static struct ice_flow_parser ice_fdir_parser;
 
 static int
 ice_fdir_is_tunnel_profile(enum ice_fdir_tunnel_type tunnel_type);
@@ -1111,12 +1083,7 @@ ice_fdir_init(struct ice_adapter *ad)
 	if (ret)
 		return ret;
 
-	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
-		parser = &ice_fdir_parser_comms;
-	else if (ad->active_pkg_type == ICE_PKG_TYPE_OS_DEFAULT)
-		parser = &ice_fdir_parser_os;
-	else
-		return -EINVAL;
+	parser = &ice_fdir_parser;
 
 	return ice_register_parser(parser, ad);
 }
@@ -1124,16 +1091,13 @@ ice_fdir_init(struct ice_adapter *ad)
 static void
 ice_fdir_uninit(struct ice_adapter *ad)
 {
-	struct ice_pf *pf = &ad->pf;
 	struct ice_flow_parser *parser;
+	struct ice_pf *pf = &ad->pf;
 
 	if (ad->hw.dcf_enabled)
 		return;
 
-	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
-		parser = &ice_fdir_parser_comms;
-	else
-		parser = &ice_fdir_parser_os;
+	parser = &ice_fdir_parser;
 
 	ice_unregister_parser(parser, ad);
 
@@ -2039,7 +2003,8 @@ ice_fdir_parse(struct ice_adapter *ad,
 	int ret;
 
 	memset(filter, 0, sizeof(*filter));
-	item = ice_search_pattern_match_item(pattern, array, array_len, error);
+	item = ice_search_pattern_match_item(ad, pattern, array, array_len,
+					     error);
 	if (!item)
 		return -rte_errno;
 
@@ -2067,18 +2032,10 @@ error:
 	return ret;
 }
 
-static struct ice_flow_parser ice_fdir_parser_os = {
+static struct ice_flow_parser ice_fdir_parser = {
 	.engine = &ice_fdir_engine,
-	.array = ice_fdir_pattern_os,
-	.array_len = RTE_DIM(ice_fdir_pattern_os),
-	.parse_pattern_action = ice_fdir_parse,
-	.stage = ICE_FLOW_STAGE_DISTRIBUTOR,
-};
-
-static struct ice_flow_parser ice_fdir_parser_comms = {
-	.engine = &ice_fdir_engine,
-	.array = ice_fdir_pattern_comms,
-	.array_len = RTE_DIM(ice_fdir_pattern_comms),
+	.array = ice_fdir_pattern_list,
+	.array_len = RTE_DIM(ice_fdir_pattern_list),
 	.parse_pattern_action = ice_fdir_parse,
 	.stage = ICE_FLOW_STAGE_DISTRIBUTOR,
 };

@@ -593,10 +593,11 @@ int ice_register_parser(struct ice_flow_parser *parser,
 void ice_unregister_parser(struct ice_flow_parser *parser,
 		struct ice_adapter *ad);
 struct ice_pattern_match_item *
-ice_search_pattern_match_item(const struct rte_flow_item pattern[],
-		struct ice_pattern_match_item *array,
-		uint32_t array_len,
-		struct rte_flow_error *error);
+ice_search_pattern_match_item(struct ice_adapter *ad,
+			      const struct rte_flow_item pattern[],
+			      struct ice_pattern_match_item *array,
+			      uint32_t array_len,
+			      struct rte_flow_error *error);
 int
 ice_flow_redirect(struct ice_adapter *ad,
 		  struct ice_flow_redirect *rd);
