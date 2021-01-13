@@ -32,9 +32,12 @@ The mailing list for DPDK development is `dev@dpdk.org <https://mails.dpdk.org/a
 Contributors will need to `register for the mailing list <https://mails.dpdk.org/listinfo/dev>`_ in order to submit patches.
 It is also worth registering for the DPDK `Patchwork <https://patches.dpdk.org/project/dpdk/list/>`_
 
-If you are using the GitHub service, you can link your repository to
-the ``travis-ci.org`` build service.  When you push patches to your GitHub
-repository, the travis service will automatically build your changes.
+If you are using the GitHub service, pushing to a branch will trigger GitHub
+Actions to automatically build your changes and run unit tests and ABI checks.
+
+Additionally, a Travis configuration is available in DPDK but Travis free usage
+is limited to a few builds.
+You can link your repository to the ``travis-ci.com`` build service.
 
 The development process requires some familiarity with the ``git`` version control system.
 Refer to the `Pro Git Book <http://www.git-scm.com/book/>`_ for further information.
