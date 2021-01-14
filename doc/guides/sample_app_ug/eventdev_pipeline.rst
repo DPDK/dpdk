@@ -34,6 +34,7 @@ options.
 An example eventdev pipeline running with the software eventdev PMD using
 these settings is shown below:
 
+ * ``-l 0,2,8-15``: lcore to use
  * ``-r1``: core mask 0x1 for RX
  * ``-t1``: core mask 0x1 for TX
  * ``-e4``: core mask 0x4 for the software scheduler
@@ -46,8 +47,8 @@ these settings is shown below:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-eventdev_pipeline --vdev event_sw0 -- -r1 -t1 \
-    -e4 -w FF00 -s4 -n0 -c32 -W1000 -D
+    ./<build_dir>/examples/dpdk-eventdev_pipeline -l 0,2,8-15 --vdev event_sw0 \
+    -- -r1 -t1 -e4 -w FF00 -s4 -n0 -c32 -W1000 -D
 
 The application has some sanity checking built-in, so if there is a function
 (e.g.; the RX core) which doesn't have a cpu core mask assigned, the application
