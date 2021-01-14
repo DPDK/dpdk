@@ -104,7 +104,6 @@ order_process_stage_1(struct test_order *const t,
 			flow, *order_mbuf_seqn(t, ev->mbuf),
 			expected_flow_seq[flow]);
 		t->err = true;
-		rte_smp_wmb();
 	}
 	/*
 	 * Events from an atomic flow of an event queue can be scheduled only to
@@ -123,7 +122,6 @@ order_process_stage_invalid(struct test_order *const t,
 {
 	evt_err("invalid queue %d", ev->queue_id);
 	t->err = true;
-	rte_smp_wmb();
 }
 
 #define ORDER_WORKER_INIT\
