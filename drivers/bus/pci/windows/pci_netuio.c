@@ -7,6 +7,12 @@
 #include <rte_log.h>
 #include <rte_eal.h>
 
+#ifdef __MINGW32__
+#include <ddk/ndisguid.h>
+#else
+#include <ndisguid.h>
+#endif
+
 #include "private.h"
 #include "pci_netuio.h"
 
