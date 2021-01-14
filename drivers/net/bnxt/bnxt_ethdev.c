@@ -1374,6 +1374,7 @@ static int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	if (bp->flags & BNXT_FLAG_FW_RESET) {
 		PMD_DRV_LOG(ERR,
 			    "Adapter recovering from error..Please retry\n");
+		pthread_mutex_unlock(&bp->err_recovery_lock);
 		return -EAGAIN;
 	}
 	pthread_mutex_unlock(&bp->err_recovery_lock);
@@ -1497,6 +1498,7 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	if (bp->flags & BNXT_FLAG_FW_RESET) {
 		PMD_DRV_LOG(ERR,
 			    "Adapter recovering from error...Please retry\n");
+		pthread_mutex_unlock(&bp->err_recovery_lock);
 		return -EAGAIN;
 	}
 	pthread_mutex_unlock(&bp->err_recovery_lock);
