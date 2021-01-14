@@ -2283,7 +2283,7 @@ dpaa_sec_detach_rxq(struct dpaa_sec_dev_private *qi, struct qman_fq *fq)
 	for (i = 0; i < RTE_DPAA_MAX_RX_QUEUE; i++) {
 		if (&qi->inq[i] == fq) {
 			if (qman_retire_fq(fq, NULL) != 0)
-				DPAA_SEC_WARN("Queue is not retired\n");
+				DPAA_SEC_DEBUG("Queue is not retired\n");
 			qman_oos_fq(fq);
 			qi->inq_attach[i] = 0;
 			return 0;
