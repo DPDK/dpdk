@@ -873,6 +873,115 @@ i40e_recv_scattered_pkts_vec_avx512(void *rx_queue,
 				rx_pkts + retval, nb_pkts);
 }
 
+static __rte_always_inline int
+i40e_tx_free_bufs_avx512(struct i40e_tx_queue *txq)
+{
+	struct i40e_vec_tx_entry *txep;
+	uint32_t n;
+	uint32_t i;
+	int nb_free = 0;
+	struct rte_mbuf *m, *free[RTE_I40E_TX_MAX_FREE_BUF_SZ];
+
+	/* check DD bits on threshold descriptor */
+	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
+			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
+		return 0;
+
+	n = txq->tx_rs_thresh;
+
+	 /* first buffer to free from S/W ring is at index
+	  * tx_next_dd - (tx_rs_thresh-1)
+	  */
+	txep = (void *)txq->sw_ring;
+	txep += txq->tx_next_dd - (n - 1);
+
+	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE && (n & 31) == 0) {
+		struct rte_mempool *mp = txep[0].mbuf->pool;
+		void **cache_objs;
+		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp,
+				rte_lcore_id());
+
+		if (!cache || cache->len == 0)
+			goto normal;
+
+		cache_objs = &cache->objs[cache->len];
+
+		if (n > RTE_MEMPOOL_CACHE_MAX_SIZE) {
+			rte_mempool_ops_enqueue_bulk(mp, (void *)txep, n);
+			goto done;
+		}
+
+		/* The cache follows the following algorithm
+		 *   1. Add the objects to the cache
+		 *   2. Anything greater than the cache min value (if it
+		 *   crosses the cache flush threshold) is flushed to the ring.
+		 */
+		/* Add elements back into the cache */
+		uint32_t copied = 0;
+		/* n is multiple of 32 */
+		while (copied < n) {
+			const __m512i a = _mm512_load_si512(&txep[copied]);
+			const __m512i b = _mm512_load_si512(&txep[copied + 8]);
+			const __m512i c = _mm512_load_si512(&txep[copied + 16]);
+			const __m512i d = _mm512_load_si512(&txep[copied + 24]);
+
+			_mm512_storeu_si512(&cache_objs[copied], a);
+			_mm512_storeu_si512(&cache_objs[copied + 8], b);
+			_mm512_storeu_si512(&cache_objs[copied + 16], c);
+			_mm512_storeu_si512(&cache_objs[copied + 24], d);
+			copied += 32;
+		}
+		cache->len += n;
+
+		if (cache->len >= cache->flushthresh) {
+			rte_mempool_ops_enqueue_bulk
+				(mp, &cache->objs[cache->size],
+				cache->len - cache->size);
+			cache->len = cache->size;
+		}
+		goto done;
+	}
+
+normal:
+	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
+	if (likely(m)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+			rte_prefetch0(&txep[i + 3].mbuf->cacheline1);
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (likely(m)) {
+				if (likely(m->pool == free[0]->pool)) {
+					free[nb_free++] = m;
+				} else {
+					rte_mempool_put_bulk(free[0]->pool,
+							     (void *)free,
+							     nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (m)
+				rte_mempool_put(m->pool, m);
+		}
+	}
+
+done:
+	/* buffers were freed, update counters */
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
+
+	return txq->tx_rs_thresh;
+}
+
 static inline void
 vtx1(volatile struct i40e_tx_desc *txdp, struct rte_mbuf *pkt, uint64_t flags)
 {
@@ -892,13 +1001,6 @@ vtx(volatile struct i40e_tx_desc *txdp,
 	const uint64_t hi_qw_tmpl = (I40E_TX_DESC_DTYPE_DATA |
 			((uint64_t)flags  << I40E_TXD_QW1_CMD_SHIFT));
 
-	/* if unaligned on 32-bit boundary, do one to align */
-	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
-		vtx1(txdp, *pkt, flags);
-		nb_pkts--, txdp++, pkt++;
-	}
-
-	/* do two at a time while possible, in bursts */
 	for (; nb_pkts > 3; txdp += 4, pkt += 4, nb_pkts -= 4) {
 		uint64_t hi_qw3 =
 			hi_qw_tmpl |
@@ -917,14 +1019,13 @@ vtx(volatile struct i40e_tx_desc *txdp,
 			((uint64_t)pkt[0]->data_len <<
 			 I40E_TXD_QW1_TX_BUF_SZ_SHIFT);
 
-		__m256i desc2_3 = _mm256_set_epi64x
+		__m512i desc0_3 =
+			_mm512_set_epi64
 			(hi_qw3, pkt[3]->buf_iova + pkt[3]->data_off,
-			hi_qw2, pkt[2]->buf_iova + pkt[2]->data_off);
-		__m256i desc0_1 = _mm256_set_epi64x
-			(hi_qw1, pkt[1]->buf_iova + pkt[1]->data_off,
+			hi_qw2, pkt[2]->buf_iova + pkt[2]->data_off,
+			hi_qw1, pkt[1]->buf_iova + pkt[1]->data_off,
 			hi_qw0, pkt[0]->buf_iova + pkt[0]->data_off);
-		_mm256_store_si256((void *)(txdp + 2), desc2_3);
-		_mm256_store_si256((void *)txdp, desc0_1);
+		_mm512_storeu_si512((void *)txdp, desc0_3);
 	}
 
 	/* do any last ones */
@@ -934,13 +1035,23 @@ vtx(volatile struct i40e_tx_desc *txdp,
 	}
 }
 
+static __rte_always_inline void
+tx_backlog_entry_avx512(struct i40e_vec_tx_entry *txep,
+			struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	int i;
+
+	for (i = 0; i < (int)nb_pkts; ++i)
+		txep[i].mbuf = tx_pkts[i];
+}
+
 static inline uint16_t
 i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 uint16_t nb_pkts)
 {
 	struct i40e_tx_queue *txq = (struct i40e_tx_queue *)tx_queue;
 	volatile struct i40e_tx_desc *txdp;
-	struct i40e_tx_entry *txep;
+	struct i40e_vec_tx_entry *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = I40E_TD_CMD;
 	uint64_t rs = I40E_TX_DESC_CMD_RS | I40E_TD_CMD;
@@ -949,7 +1060,7 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	nb_pkts = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
 
 	if (txq->nb_tx_free < txq->tx_free_thresh)
-		i40e_tx_free_bufs(txq);
+		i40e_tx_free_bufs_avx512(txq);
 
 	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
 	if (unlikely(nb_pkts == 0))
@@ -957,13 +1068,14 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = txq->tx_tail;
 	txdp = &txq->tx_ring[tx_id];
-	txep = &txq->sw_ring[tx_id];
+	txep = (void *)txq->sw_ring;
+	txep += tx_id;
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
 	n = (uint16_t)(txq->nb_tx_desc - tx_id);
 	if (nb_commit >= n) {
-		tx_backlog_entry(txep, tx_pkts, n);
+		tx_backlog_entry_avx512(txep, tx_pkts, n);
 
 		vtx(txdp, tx_pkts, n - 1, flags);
 		tx_pkts += (n - 1);
@@ -977,11 +1089,11 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		/* avoid reach the end of ring */
-		txdp = &txq->tx_ring[tx_id];
-		txep = &txq->sw_ring[tx_id];
+		txdp = txq->tx_ring;
+		txep = (void *)txq->sw_ring;
 	}
 
-	tx_backlog_entry(txep, tx_pkts, nb_commit);
+	tx_backlog_entry_avx512(txep, tx_pkts, nb_commit);
 
 	vtx(txdp, tx_pkts, nb_commit, flags);
 

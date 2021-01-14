@@ -2533,6 +2533,25 @@ i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
 	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
 	 *  so need to free remains more carefully.
 	 */
+#ifdef CC_AVX512_SUPPORT
+	if (dev->tx_pkt_burst == i40e_xmit_pkts_vec_avx512) {
+		struct i40e_vec_tx_entry *swr = (void *)txq->sw_ring;
+
+		i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
+		if (txq->tx_tail < i) {
+			for (; i < txq->nb_tx_desc; i++) {
+				rte_pktmbuf_free_seg(swr[i].mbuf);
+				swr[i].mbuf = NULL;
+			}
+			i = 0;
+		}
+		for (; i < txq->tx_tail; i++) {
+			rte_pktmbuf_free_seg(swr[i].mbuf);
+			swr[i].mbuf = NULL;
+		}
+		return;
+	}
+#endif
 	if (dev->tx_pkt_burst == i40e_xmit_pkts_vec_avx2 ||
 			dev->tx_pkt_burst == i40e_xmit_pkts_vec) {
 		i = txq->tx_next_dd - txq->tx_rs_thresh + 1;

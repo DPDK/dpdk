@@ -129,6 +129,10 @@ struct i40e_tx_entry {
 	uint16_t last_id;
 };
 
+struct i40e_vec_tx_entry {
+	struct rte_mbuf *mbuf;
+};
+
 /*
  * Structure associated with each TX queue.
  */
