@@ -197,8 +197,8 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 				const __m128i flow_mark_adj =
 					_mm_set_epi32(-1, -1, -1, -1);
 				const __m128i flow_mark_shuf =
-					_mm_set_epi8(-1,  1,  0,  4,
-						     -1,  9,  8, 12,
+					_mm_set_epi8(-1,  9,  8, 12,
+						     -1,  1,  0,  4,
 						     -1, -1, -1, -1,
 						     -1, -1, -1, -1);
 				const __m128i ft_mask =
