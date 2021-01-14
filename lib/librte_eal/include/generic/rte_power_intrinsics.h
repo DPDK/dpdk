@@ -34,7 +34,6 @@
  *
  * @warning It is responsibility of the user to check if this function is
  *   supported at runtime using `rte_cpu_get_intrinsics_support()` API call.
- *   Failing to do so may result in an illegal CPU instruction error.
  *
  * @param p
  *   Address to monitor for changes.
@@ -50,9 +49,14 @@
  *   Data size (in bytes) that will be used to compare expected value with the
  *   memory address. Can be 1, 2, 4 or 8. Supplying any other value will lead
  *   to undefined result.
+ *
+ * @return
+ *   0 on success
+ *   -EINVAL on invalid parameters
+ *   -ENOTSUP if unsupported
  */
 __rte_experimental
-void rte_power_monitor(const volatile void *p,
+int rte_power_monitor(const volatile void *p,
 		const uint64_t expected_value, const uint64_t value_mask,
 		const uint64_t tsc_timestamp, const uint8_t data_sz);
 
@@ -75,7 +79,6 @@ void rte_power_monitor(const volatile void *p,
  *
  * @warning It is responsibility of the user to check if this function is
  *   supported at runtime using `rte_cpu_get_intrinsics_support()` API call.
- *   Failing to do so may result in an illegal CPU instruction error.
  *
  * @param p
  *   Address to monitor for changes.
@@ -95,9 +98,14 @@ void rte_power_monitor(const volatile void *p,
  *   A spinlock that must be locked before entering the function, will be
  *   unlocked while the CPU is sleeping, and will be locked again once the CPU
  *   wakes up.
+ *
+ * @return
+ *   0 on success
+ *   -EINVAL on invalid parameters
+ *   -ENOTSUP if unsupported
  */
 __rte_experimental
-void rte_power_monitor_sync(const volatile void *p,
+int rte_power_monitor_sync(const volatile void *p,
 		const uint64_t expected_value, const uint64_t value_mask,
 		const uint64_t tsc_timestamp, const uint8_t data_sz,
 		rte_spinlock_t *lck);
@@ -111,13 +119,17 @@ void rte_power_monitor_sync(const volatile void *p,
  *
  * @warning It is responsibility of the user to check if this function is
  *   supported at runtime using `rte_cpu_get_intrinsics_support()` API call.
- *   Failing to do so may result in an illegal CPU instruction error.
  *
  * @param tsc_timestamp
  *   Maximum TSC timestamp to wait for. Note that the wait behavior is
  *   architecture-dependent.
+ *
+ * @return
+ *   0 on success
+ *   -EINVAL on invalid parameters
+ *   -ENOTSUP if unsupported
  */
 __rte_experimental
-void rte_power_pause(const uint64_t tsc_timestamp);
+int rte_power_pause(const uint64_t tsc_timestamp);
 
 #endif /* _RTE_POWER_INTRINSIC_H_ */

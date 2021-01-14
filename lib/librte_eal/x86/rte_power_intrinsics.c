@@ -4,6 +4,8 @@
 
 #include "rte_power_intrinsics.h"
 
+static bool wait_supported;
+
 static inline uint64_t
 __get_umwait_val(const volatile void *p, const uint8_t sz)
 {
@@ -17,9 +19,24 @@ __get_umwait_val(const volatile void *p, const uint8_t sz)
 	case sizeof(uint64_t):
 		return *(const volatile uint64_t *)p;
 	default:
-		/* this is an intrinsic, so we can't have any error handling */
+		/* shouldn't happen */
 		RTE_ASSERT(0);
 		return 0;
+	}
+}
+
+static inline int
+__check_val_size(const uint8_t sz)
+{
+	switch (sz) {
+	case sizeof(uint8_t):  /* fall-through */
+	case sizeof(uint16_t): /* fall-through */
+	case sizeof(uint32_t): /* fall-through */
+	case sizeof(uint64_t): /* fall-through */
+		return 0;
+	default:
+		/* unexpected size */
+		return -1;
 	}
 }
 
@@ -28,13 +45,21 @@ __get_umwait_val(const volatile void *p, const uint8_t sz)
  * For more information about usage of these instructions, please refer to
  * Intel(R) 64 and IA-32 Architectures Software Developer's Manual.
  */
-void
+int
 rte_power_monitor(const volatile void *p, const uint64_t expected_value,
 		const uint64_t value_mask, const uint64_t tsc_timestamp,
 		const uint8_t data_sz)
 {
 	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
 	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
+
+	/* prevent user from running this instruction if it's not supported */
+	if (!wait_supported)
+		return -ENOTSUP;
+
+	if (__check_val_size(data_sz) < 0)
+		return -EINVAL;
+
 	/*
 	 * we're using raw byte codes for now as only the newest compiler
 	 * versions support this instruction natively.
@@ -51,13 +76,15 @@ rte_power_monitor(const volatile void *p, const uint64_t expected_value,
 
 		/* if the masked value is already matching, abort */
 		if (masked == expected_value)
-			return;
+			return 0;
 	}
 	/* execute UMWAIT */
 	asm volatile(".byte 0xf2, 0x0f, 0xae, 0xf7;"
 			: /* ignore rflags */
 			: "D"(0), /* enter C0.2 */
 			  "a"(tsc_l), "d"(tsc_h));
+
+	return 0;
 }
 
 /**
@@ -65,13 +92,21 @@ rte_power_monitor(const volatile void *p, const uint64_t expected_value,
  * For more information about usage of these instructions, please refer to
  * Intel(R) 64 and IA-32 Architectures Software Developer's Manual.
  */
-void
+int
 rte_power_monitor_sync(const volatile void *p, const uint64_t expected_value,
 		const uint64_t value_mask, const uint64_t tsc_timestamp,
 		const uint8_t data_sz, rte_spinlock_t *lck)
 {
 	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
 	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
+
+	/* prevent user from running this instruction if it's not supported */
+	if (!wait_supported)
+		return -ENOTSUP;
+
+	if (__check_val_size(data_sz) < 0)
+		return -EINVAL;
+
 	/*
 	 * we're using raw byte codes for now as only the newest compiler
 	 * versions support this instruction natively.
@@ -88,7 +123,7 @@ rte_power_monitor_sync(const volatile void *p, const uint64_t expected_value,
 
 		/* if the masked value is already matching, abort */
 		if (masked == expected_value)
-			return;
+			return 0;
 	}
 	rte_spinlock_unlock(lck);
 
@@ -99,6 +134,8 @@ rte_power_monitor_sync(const volatile void *p, const uint64_t expected_value,
 			  "a"(tsc_l), "d"(tsc_h));
 
 	rte_spinlock_lock(lck);
+
+	return 0;
 }
 
 /**
@@ -106,15 +143,30 @@ rte_power_monitor_sync(const volatile void *p, const uint64_t expected_value,
  * information about usage of this instruction, please refer to Intel(R) 64 and
  * IA-32 Architectures Software Developer's Manual.
  */
-void
+int
 rte_power_pause(const uint64_t tsc_timestamp)
 {
 	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
 	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
+
+	/* prevent user from running this instruction if it's not supported */
+	if (!wait_supported)
+		return -ENOTSUP;
 
 	/* execute TPAUSE */
 	asm volatile(".byte 0x66, 0x0f, 0xae, 0xf7;"
 			: /* ignore rflags */
 			: "D"(0), /* enter C0.2 */
 			"a"(tsc_l), "d"(tsc_h));
+
+	return 0;
+}
+
+RTE_INIT(rte_power_intrinsics_init) {
+	struct rte_cpu_intrinsics i;
+
+	rte_cpu_get_intrinsics_support(&i);
+
+	if (i.power_monitor && i.power_pause)
+		wait_supported = 1;
 }
