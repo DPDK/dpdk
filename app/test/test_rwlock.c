@@ -46,6 +46,7 @@ enum {
 static struct {
 	rte_rwlock_t lock;
 	uint64_t tick;
+
 	volatile union {
 		uint8_t u8[RTE_CACHE_LINE_SIZE];
 		uint64_t u64[RTE_CACHE_LINE_SIZE / sizeof(uint64_t)];
@@ -182,7 +183,7 @@ rwlock_test1(void)
 	int i;
 
 	rte_rwlock_init(&sl);
-	for (i=0; i<RTE_MAX_LCORE; i++)
+	for (i = 0; i < RTE_MAX_LCORE; i++)
 		rte_rwlock_init(&sl_tab[i]);
 
 	rte_rwlock_write_lock(&sl);
@@ -252,7 +253,7 @@ try_write(uint32_t lc)
 	if (rc != 0)
 		return rc;
 
-	/* update by bytes in reverese order */
+	/* update by bytes in reverse order */
 	for (i = RTE_DIM(try_rwlock_data.data.u8); i-- != 0; ) {
 
 		/* race condition occurred, lock doesn't work properly */
@@ -269,7 +270,7 @@ try_write(uint32_t lc)
 		try_rwlock_data.data.u8[i] = v;
 	}
 
-	/* restore by bytes in reverese order */
+	/* restore by bytes in reverse order */
 	for (i = RTE_DIM(try_rwlock_data.data.u8); i-- != 0; ) {
 
 		/* race condition occurred, lock doesn't work properly */
@@ -461,7 +462,7 @@ try_rwlock_test_rda(void)
 {
 	try_test_reset();
 
-	/* start read test on all avaialble lcores */
+	/* start read test on all available lcores */
 	rte_eal_mp_remote_launch(try_read_lcore, NULL, CALL_MAIN);
 	rte_eal_mp_wait_lcore();
 
