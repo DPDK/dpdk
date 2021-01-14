@@ -66,6 +66,22 @@ int rte_power_monitor(const struct rte_power_monitor_cond *pmc,
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
+ * Wake up a specific lcore that is in a power optimized state and is monitoring
+ * an address.
+ *
+ * @note This function will *not* wake up a core that is in a power optimized
+ *   state due to calling `rte_power_pause`.
+ *
+ * @param lcore_id
+ *   Lcore ID of a sleeping thread.
+ */
+__rte_experimental
+int rte_power_monitor_wakeup(const unsigned int lcore_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Enter an architecture-defined optimized power state until a certain TSC
  * timestamp is reached.
  *

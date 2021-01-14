@@ -406,6 +406,7 @@ EXPERIMENTAL {
 
 	# added in 21.02
 	rte_power_monitor;
+	rte_power_monitor_wakeup;
 	rte_power_pause;
 	rte_thread_tls_key_create;
 	rte_thread_tls_key_delete;
