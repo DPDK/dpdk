@@ -8,15 +8,11 @@
  * This function is not supported on ARM.
  */
 int
-rte_power_monitor(const volatile void *p, const uint64_t expected_value,
-		const uint64_t value_mask, const uint64_t tsc_timestamp,
-		const uint8_t data_sz)
+rte_power_monitor(const struct rte_power_monitor_cond *pmc,
+		const uint64_t tsc_timestamp)
 {
-	RTE_SET_USED(p);
-	RTE_SET_USED(expected_value);
-	RTE_SET_USED(value_mask);
+	RTE_SET_USED(pmc);
 	RTE_SET_USED(tsc_timestamp);
-	RTE_SET_USED(data_sz);
 
 	return -ENOTSUP;
 }
@@ -25,16 +21,12 @@ rte_power_monitor(const volatile void *p, const uint64_t expected_value,
  * This function is not supported on ARM.
  */
 int
-rte_power_monitor_sync(const volatile void *p, const uint64_t expected_value,
-		const uint64_t value_mask, const uint64_t tsc_timestamp,
-		const uint8_t data_sz, rte_spinlock_t *lck)
+rte_power_monitor_sync(const struct rte_power_monitor_cond *pmc,
+		const uint64_t tsc_timestamp, rte_spinlock_t *lck)
 {
-	RTE_SET_USED(p);
-	RTE_SET_USED(expected_value);
-	RTE_SET_USED(value_mask);
+	RTE_SET_USED(pmc);
 	RTE_SET_USED(tsc_timestamp);
 	RTE_SET_USED(lck);
-	RTE_SET_USED(data_sz);
 
 	return -ENOTSUP;
 }

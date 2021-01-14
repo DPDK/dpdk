@@ -46,9 +46,8 @@ __check_val_size(const uint8_t sz)
  * Intel(R) 64 and IA-32 Architectures Software Developer's Manual.
  */
 int
-rte_power_monitor(const volatile void *p, const uint64_t expected_value,
-		const uint64_t value_mask, const uint64_t tsc_timestamp,
-		const uint8_t data_sz)
+rte_power_monitor(const struct rte_power_monitor_cond *pmc,
+		const uint64_t tsc_timestamp)
 {
 	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
 	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
@@ -57,7 +56,10 @@ rte_power_monitor(const volatile void *p, const uint64_t expected_value,
 	if (!wait_supported)
 		return -ENOTSUP;
 
-	if (__check_val_size(data_sz) < 0)
+	if (pmc == NULL)
+		return -EINVAL;
+
+	if (__check_val_size(pmc->data_sz) < 0)
 		return -EINVAL;
 
 	/*
@@ -68,14 +70,15 @@ rte_power_monitor(const volatile void *p, const uint64_t expected_value,
 	/* set address for UMONITOR */
 	asm volatile(".byte 0xf3, 0x0f, 0xae, 0xf7;"
 			:
-			: "D"(p));
+			: "D"(pmc->addr));
 
-	if (value_mask) {
-		const uint64_t cur_value = __get_umwait_val(p, data_sz);
-		const uint64_t masked = cur_value & value_mask;
+	if (pmc->mask) {
+		const uint64_t cur_value = __get_umwait_val(
+				pmc->addr, pmc->data_sz);
+		const uint64_t masked = cur_value & pmc->mask;
 
 		/* if the masked value is already matching, abort */
-		if (masked == expected_value)
+		if (masked == pmc->val)
 			return 0;
 	}
 	/* execute UMWAIT */
@@ -93,9 +96,8 @@ rte_power_monitor(const volatile void *p, const uint64_t expected_value,
  * Intel(R) 64 and IA-32 Architectures Software Developer's Manual.
  */
 int
-rte_power_monitor_sync(const volatile void *p, const uint64_t expected_value,
-		const uint64_t value_mask, const uint64_t tsc_timestamp,
-		const uint8_t data_sz, rte_spinlock_t *lck)
+rte_power_monitor_sync(const struct rte_power_monitor_cond *pmc,
+		const uint64_t tsc_timestamp, rte_spinlock_t *lck)
 {
 	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
 	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
@@ -104,7 +106,10 @@ rte_power_monitor_sync(const volatile void *p, const uint64_t expected_value,
 	if (!wait_supported)
 		return -ENOTSUP;
 
-	if (__check_val_size(data_sz) < 0)
+	if (pmc == NULL || lck == NULL)
+		return -EINVAL;
+
+	if (__check_val_size(pmc->data_sz) < 0)
 		return -EINVAL;
 
 	/*
@@ -115,14 +120,15 @@ rte_power_monitor_sync(const volatile void *p, const uint64_t expected_value,
 	/* set address for UMONITOR */
 	asm volatile(".byte 0xf3, 0x0f, 0xae, 0xf7;"
 			:
-			: "D"(p));
+			: "D"(pmc->addr));
 
-	if (value_mask) {
-		const uint64_t cur_value = __get_umwait_val(p, data_sz);
-		const uint64_t masked = cur_value & value_mask;
+	if (pmc->mask) {
+		const uint64_t cur_value = __get_umwait_val(
+				pmc->addr, pmc->data_sz);
+		const uint64_t masked = cur_value & pmc->mask;
 
 		/* if the masked value is already matching, abort */
-		if (masked == expected_value)
+		if (masked == pmc->val)
 			return 0;
 	}
 	rte_spinlock_unlock(lck);

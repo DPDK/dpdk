@@ -3161,6 +3161,7 @@ dlb_dequeue_wait(struct dlb_eventdev *dlb,
 		/* Interrupts not supported by PF PMD */
 		return 1;
 	} else if (dlb->umwait_allowed) {
+		struct rte_power_monitor_cond pmc;
 		volatile struct dlb_dequeue_qe *cq_base;
 		union {
 			uint64_t raw_qe[2];
@@ -3181,9 +3182,12 @@ dlb_dequeue_wait(struct dlb_eventdev *dlb,
 		else
 			expected_value = 0;
 
-		rte_power_monitor(monitor_addr, expected_value,
-				  qe_mask.raw_qe[1], timeout + start_ticks,
-				  sizeof(uint64_t));
+		pmc.addr = monitor_addr;
+		pmc.val = expected_value;
+		pmc.mask = qe_mask.raw_qe[1];
+		pmc.data_sz = sizeof(uint64_t);
+
+		rte_power_monitor(&pmc, timeout + start_ticks);
 
 		DLB_INC_STAT(ev_port->stats.traffic.rx_umonitor_umwait, 1);
 	} else {
