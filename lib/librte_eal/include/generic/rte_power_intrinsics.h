@@ -52,7 +52,7 @@
  *   to undefined result.
  */
 __rte_experimental
-static inline void rte_power_monitor(const volatile void *p,
+void rte_power_monitor(const volatile void *p,
 		const uint64_t expected_value, const uint64_t value_mask,
 		const uint64_t tsc_timestamp, const uint8_t data_sz);
 
@@ -97,7 +97,7 @@ static inline void rte_power_monitor(const volatile void *p,
  *   wakes up.
  */
 __rte_experimental
-static inline void rte_power_monitor_sync(const volatile void *p,
+void rte_power_monitor_sync(const volatile void *p,
 		const uint64_t expected_value, const uint64_t value_mask,
 		const uint64_t tsc_timestamp, const uint8_t data_sz,
 		rte_spinlock_t *lck);
@@ -118,6 +118,6 @@ static inline void rte_power_monitor_sync(const volatile void *p,
  *   architecture-dependent.
  */
 __rte_experimental
-static inline void rte_power_pause(const uint64_t tsc_timestamp);
+void rte_power_pause(const uint64_t tsc_timestamp);
 
 #endif /* _RTE_POWER_INTRINSIC_H_ */
