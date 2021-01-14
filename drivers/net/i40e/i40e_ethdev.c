@@ -510,6 +510,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.mtu_set                      = i40e_dev_mtu_set,
 	.tm_ops_get                   = i40e_tm_ops_get,
 	.tx_done_cleanup              = i40e_tx_done_cleanup,
+	.get_monitor_addr             = i40e_get_monitor_addr,
 };
 
 /* store statistics names and its offset in stats structure */
