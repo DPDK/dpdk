@@ -98,11 +98,11 @@ perf_process_last_stage(struct rte_mempool *const pool,
 {
 	bufs[count++] = ev->event_ptr;
 
-	/* wmb here ensures event_prt is stored before
-	 * updating the number of processed packets
-	 * for worker lcores
+	/* release fence here ensures event_prt is
+	 * stored before updating the number of
+	 * processed packets for worker lcores
 	 */
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	w->processed_pkts++;
 
 	if (unlikely(count == buf_sz)) {
@@ -122,11 +122,11 @@ perf_process_last_stage_latency(struct rte_mempool *const pool,
 
 	bufs[count++] = ev->event_ptr;
 
-	/* wmb here ensures event_prt is stored before
-	 * updating the number of processed packets
-	 * for worker lcores
+	/* release fence here ensures event_prt is
+	 * stored before updating the number of
+	 * processed packets for worker lcores
 	 */
-	rte_smp_wmb();
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	w->processed_pkts++;
 
 	if (unlikely(count == buf_sz)) {
