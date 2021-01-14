@@ -633,7 +633,7 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 	 * and configured directly to the hardware in the RESET_STAGE_RESTORE
 	 * stage of the reset process.
 	 */
-	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
 		for (i = 0; i < HNS3_RSS_IND_TBL_SIZE; i++)
 			rss_cfg->rss_indirection_tbl[i] =
 							i % hw->alloc_rss_size;
@@ -1562,7 +1562,8 @@ hns3_dcb_configure(struct hns3_adapter *hns)
 	int ret;
 
 	hns3_dcb_cfg_validate(hns, &num_tc, &map_changed);
-	if (map_changed || rte_atomic16_read(&hw->reset.resetting)) {
+	if (map_changed ||
+	    __atomic_load_n(&hw->reset.resetting,  __ATOMIC_RELAXED)) {
 		ret = hns3_dcb_info_update(hns, num_tc);
 		if (ret) {
 			hns3_err(hw, "dcb info update failed: %d", ret);

@@ -1761,7 +1761,7 @@ hns3_reset_init(struct hns3_hw *hw)
 	hw->reset.stage = RESET_STAGE_NONE;
 	hw->reset.request = 0;
 	hw->reset.pending = 0;
-	rte_atomic16_init(&hw->reset.resetting);
+	hw->reset.resetting = 0;
 	rte_atomic16_init(&hw->reset.disable_cmd);
 	hw->reset.wait_data = rte_zmalloc("wait_data",
 					  sizeof(struct hns3_wait_data), 0);
@@ -2011,7 +2011,7 @@ hns3_reset_pre(struct hns3_adapter *hns)
 	int ret;
 
 	if (hw->reset.stage == RESET_STAGE_NONE) {
-		rte_atomic16_set(&hns->hw.reset.resetting, 1);
+		__atomic_store_n(&hns->hw.reset.resetting, 1, __ATOMIC_RELAXED);
 		hw->reset.stage = RESET_STAGE_DOWN;
 		ret = hw->reset.ops->stop_service(hns);
 		gettimeofday(&tv, NULL);
@@ -2098,7 +2098,7 @@ hns3_reset_post(struct hns3_adapter *hns)
 		/* IMP will wait ready flag before reset */
 		hns3_notify_reset_ready(hw, false);
 		hns3_clear_reset_level(hw, &hw->reset.pending);
-		rte_atomic16_clear(&hns->hw.reset.resetting);
+		__atomic_store_n(&hns->hw.reset.resetting, 0, __ATOMIC_RELAXED);
 		hw->reset.attempts = 0;
 		hw->reset.stats.success_cnt++;
 		hw->reset.stage = RESET_STAGE_NONE;
@@ -2223,7 +2223,7 @@ err:
 			hw->reset.mbuf_deferred_free = false;
 		}
 		rte_spinlock_unlock(&hw->lock);
-		rte_atomic16_clear(&hns->hw.reset.resetting);
+		__atomic_store_n(&hns->hw.reset.resetting, 0, __ATOMIC_RELAXED);
 		hw->reset.stage = RESET_STAGE_NONE;
 		gettimeofday(&tv, NULL);
 		timersub(&tv, &hw->reset.start_time, &tv_delta);

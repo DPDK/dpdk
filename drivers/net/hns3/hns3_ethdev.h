@@ -350,7 +350,7 @@ struct hns3_reset_data {
 	enum hns3_reset_stage stage;
 	rte_atomic16_t schedule;
 	/* Reset flag, covering the entire reset process */
-	rte_atomic16_t resetting;
+	uint16_t resetting;
 	/* Used to disable sending cmds during reset */
 	rte_atomic16_t disable_cmd;
 	/* The reset level being processed */

@@ -1017,7 +1017,7 @@ hns3_init_vlan_config(struct hns3_adapter *hns)
 	 * ensure that the hardware configuration remains unchanged before and
 	 * after reset.
 	 */
-	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
 		hw->port_base_vlan_cfg.state = HNS3_PORT_BASE_VLAN_DISABLE;
 		hw->port_base_vlan_cfg.pvid = HNS3_INVALID_PVID;
 	}
@@ -1041,7 +1041,7 @@ hns3_init_vlan_config(struct hns3_adapter *hns)
 	 * we will restore configurations to hardware in hns3_restore_vlan_table
 	 * and hns3_restore_vlan_conf later.
 	 */
-	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
 		ret = hns3_vlan_pvid_configure(hns, HNS3_INVALID_PVID, 0);
 		if (ret) {
 			hns3_err(hw, "pvid set fail in pf, ret =%d", ret);
@@ -4872,7 +4872,7 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-	if (rte_atomic16_read(&hw->reset.resetting))
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED))
 		return -EBUSY;
 
 	rte_spinlock_lock(&hw->lock);
@@ -5018,7 +5018,7 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 	rte_delay_ms(hw->tqps_num);
 
 	rte_spinlock_lock(&hw->lock);
-	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
 		hns3_stop_tqps(hw);
 		hns3_do_stop(hns);
 		hns3_unmap_rx_interrupt(dev);

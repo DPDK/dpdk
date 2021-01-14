@@ -898,7 +898,7 @@ hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	 * MTU value issued by hns3 VF PMD driver must be less than or equal to
 	 * PF's MTU.
 	 */
-	if (rte_atomic16_read(&hw->reset.resetting)) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
 		hns3_err(hw, "Failed to set mtu during resetting");
 		return -EIO;
 	}
@@ -1438,7 +1438,7 @@ hns3vf_request_link_info(struct hns3_hw *hw)
 	uint8_t resp_msg;
 	int ret;
 
-	if (rte_atomic16_read(&hw->reset.resetting))
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED))
 		return;
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_LINK_STATUS, 0, NULL, 0, false,
 				&resp_msg, sizeof(resp_msg));
@@ -1471,7 +1471,7 @@ hns3vf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	if (rte_atomic16_read(&hw->reset.resetting)) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
 		hns3_err(hw,
 			 "vf set vlan id failed during resetting, vlan_id =%u",
 			 vlan_id);
@@ -1510,7 +1510,7 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	unsigned int tmp_mask;
 	int ret = 0;
 
-	if (rte_atomic16_read(&hw->reset.resetting)) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
 		hns3_err(hw, "vf set vlan offload failed during resetting, "
 			     "mask = 0x%x", mask);
 		return -EIO;
@@ -1957,7 +1957,7 @@ hns3vf_dev_stop(struct rte_eth_dev *dev)
 	rte_delay_ms(hw->tqps_num);
 
 	rte_spinlock_lock(&hw->lock);
-	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
 		hns3_stop_tqps(hw);
 		hns3vf_do_stop(hns);
 		hns3vf_unmap_rx_interrupt(dev);
@@ -2188,7 +2188,7 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-	if (rte_atomic16_read(&hw->reset.resetting))
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED))
 		return -EBUSY;
 
 	rte_spinlock_lock(&hw->lock);

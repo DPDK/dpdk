@@ -3744,7 +3744,7 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 	eth_tx_prep_t prep = NULL;
 
 	if (hns->hw.adapter_state == HNS3_NIC_STARTED &&
-	    rte_atomic16_read(&hns->hw.reset.resetting) == 0) {
+	    __atomic_load_n(&hns->hw.reset.resetting, __ATOMIC_RELAXED) == 0) {
 		eth_dev->rx_pkt_burst = hns3_get_rx_function(eth_dev);
 		eth_dev->tx_pkt_burst = hns3_get_tx_function(eth_dev, &prep);
 		eth_dev->tx_pkt_prepare = prep;
