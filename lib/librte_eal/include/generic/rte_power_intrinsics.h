@@ -61,44 +61,6 @@ struct rte_power_monitor_cond {
 __rte_experimental
 int rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 		const uint64_t tsc_timestamp);
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
- * Monitor specific address for changes. This will cause the CPU to enter an
- * architecture-defined optimized power state until either the specified
- * memory address is written to, a certain TSC timestamp is reached, or other
- * reasons cause the CPU to wake up.
- *
- * Additionally, an `expected` 64-bit value and 64-bit mask are provided. If
- * mask is non-zero, the current value pointed to by the `p` pointer will be
- * checked against the expected value, and if they match, the entering of
- * optimized power state may be aborted.
- *
- * This call will also lock a spinlock on entering sleep, and release it on
- * waking up the CPU.
- *
- * @warning It is responsibility of the user to check if this function is
- *   supported at runtime using `rte_cpu_get_intrinsics_support()` API call.
- *
- * @param pmc
- *   The monitoring condition structure.
- * @param tsc_timestamp
- *   Maximum TSC timestamp to wait for. Note that the wait behavior is
- *   architecture-dependent.
- * @param lck
- *   A spinlock that must be locked before entering the function, will be
- *   unlocked while the CPU is sleeping, and will be locked again once the CPU
- *   wakes up.
- *
- * @return
- *   0 on success
- *   -EINVAL on invalid parameters
- *   -ENOTSUP if unsupported
- */
-__rte_experimental
-int rte_power_monitor_sync(const struct rte_power_monitor_cond *pmc,
-		const uint64_t tsc_timestamp, rte_spinlock_t *lck);
 
 /**
  * @warning
