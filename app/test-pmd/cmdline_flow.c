@@ -582,6 +582,7 @@ struct rte_flow_action_queue sample_queue[RAW_SAMPLE_CONFS_MAX_NUM];
 struct rte_flow_action_count sample_count[RAW_SAMPLE_CONFS_MAX_NUM];
 struct rte_flow_action_port_id sample_port_id[RAW_SAMPLE_CONFS_MAX_NUM];
 struct rte_flow_action_raw_encap sample_encap[RAW_SAMPLE_CONFS_MAX_NUM];
+struct action_rss_data sample_rss_data[RAW_SAMPLE_CONFS_MAX_NUM];
 
 static const char *const modify_field_ops[] = {
 	"set", "add", "sub", NULL
@@ -1608,6 +1609,7 @@ static const enum index action_sample[] = {
 
 static const enum index next_action_sample[] = {
 	ACTION_QUEUE,
+	ACTION_RSS,
 	ACTION_MARK,
 	ACTION_COUNT,
 	ACTION_PORT_ID,
@@ -7846,6 +7848,7 @@ cmd_set_raw_parsed_sample(const struct buffer *in)
 	uint32_t i = 0;
 	struct rte_flow_action *action = NULL;
 	struct rte_flow_action *data = NULL;
+	const struct rte_flow_action_rss *rss = NULL;
 	size_t size = 0;
 	uint16_t idx = in->port; /* We borrow port field as index */
 	uint32_t max_size = sizeof(struct rte_flow_action) *
@@ -7876,6 +7879,29 @@ cmd_set_raw_parsed_sample(const struct buffer *in)
 			rte_memcpy(&sample_queue[idx],
 				(const void *)action->conf, size);
 			action->conf = &sample_queue[idx];
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			size = sizeof(struct rte_flow_action_rss);
+			rss = action->conf;
+			rte_memcpy(&sample_rss_data[idx].conf,
+				   (const void *)rss, size);
+			if (rss->key_len) {
+				sample_rss_data[idx].conf.key =
+						sample_rss_data[idx].key;
+				rte_memcpy((void *)((uintptr_t)
+					   sample_rss_data[idx].conf.key),
+					   (const void *)rss->key,
+					   sizeof(uint8_t) * rss->key_len);
+			}
+			if (rss->queue_num) {
+				sample_rss_data[idx].conf.queue =
+						sample_rss_data[idx].queue;
+				rte_memcpy((void *)((uintptr_t)
+					   sample_rss_data[idx].conf.queue),
+					   (const void *)rss->queue,
+					   sizeof(uint16_t) * rss->queue_num);
+			}
+			action->conf = &sample_rss_data[idx].conf;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			size = sizeof(struct rte_flow_action_raw_encap);
