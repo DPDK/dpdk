@@ -22,6 +22,32 @@ struct config_data cdata = {
 	.worker_cq_depth = 16
 };
 
+static void
+dump_core_info(unsigned int lcore_id, struct worker_data *data,
+		unsigned int worker_idx)
+{
+	if (fdata->rx_core[lcore_id])
+		printf(
+			"[%s()] lcore %d executing NIC Rx\n",
+			__func__, lcore_id);
+
+	if (fdata->tx_core[lcore_id])
+		printf(
+			"[%s()] lcore %d executing NIC Tx\n",
+			__func__, lcore_id);
+
+	if (fdata->sched_core[lcore_id])
+		printf(
+			"[%s()] lcore %d executing scheduler\n",
+			__func__, lcore_id);
+
+	if (fdata->worker_core[lcore_id])
+		printf(
+			"[%s()] lcore %d executing worker, using eventdev port %u\n",
+			__func__, lcore_id,
+			data[worker_idx].port_id);
+}
+
 static bool
 core_in_use(unsigned int lcore_id) {
 	return (fdata->rx_core[lcore_id] || fdata->sched_core[lcore_id] ||
@@ -413,25 +439,7 @@ main(int argc, char **argv)
 			!fdata->sched_core[lcore_id])
 			continue;
 
-		if (fdata->rx_core[lcore_id])
-			printf(
-				"[%s()] lcore %d executing NIC Rx\n",
-				__func__, lcore_id);
-
-		if (fdata->tx_core[lcore_id])
-			printf(
-				"[%s()] lcore %d executing NIC Tx\n",
-				__func__, lcore_id);
-
-		if (fdata->sched_core[lcore_id])
-			printf("[%s()] lcore %d executing scheduler\n",
-					__func__, lcore_id);
-
-		if (fdata->worker_core[lcore_id])
-			printf(
-				"[%s()] lcore %d executing worker, using eventdev port %u\n",
-				__func__, lcore_id,
-				worker_data[worker_idx].port_id);
+		dump_core_info(lcore_id, worker_data, worker_idx);
 
 		err = rte_eal_remote_launch(fdata->cap.worker,
 				&worker_data[worker_idx], lcore_id);
@@ -446,8 +454,13 @@ main(int argc, char **argv)
 
 	lcore_id = rte_lcore_id();
 
-	if (core_in_use(lcore_id))
-		fdata->cap.worker(&worker_data[worker_idx++]);
+	if (core_in_use(lcore_id)) {
+		dump_core_info(lcore_id, worker_data, worker_idx);
+		fdata->cap.worker(&worker_data[worker_idx]);
+
+		if (fdata->worker_core[lcore_id])
+			worker_idx++;
+	}
 
 	rte_eal_mp_wait_lcore();
 
