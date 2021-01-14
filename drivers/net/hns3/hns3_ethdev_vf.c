@@ -773,7 +773,6 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 	enum rte_eth_rx_mq_mode mq_mode = conf->rxmode.mq_mode;
 	uint16_t nb_rx_q = dev->data->nb_rx_queues;
@@ -816,11 +815,6 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 		conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 		hw->rss_dis_flag = false;
 		rss_conf = conf->rx_adv_conf.rss_conf;
-		if (rss_conf.rss_key == NULL) {
-			rss_conf.rss_key = rss_cfg->key;
-			rss_conf.rss_key_len = HNS3_RSS_KEY_SIZE;
-		}
-
 		ret = hns3_dev_rss_hash_update(dev, &rss_conf);
 		if (ret)
 			goto cfg_err;
