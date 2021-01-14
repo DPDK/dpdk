@@ -5116,6 +5116,34 @@ rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 }
 
 int
+rte_eth_get_monitor_addr(uint16_t port_id, uint16_t queue_id,
+		struct rte_power_monitor_cond *pmc)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_monitor_addr, -ENOTSUP);
+
+	if (queue_id >= dev->data->nb_rx_queues) {
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u\n", queue_id);
+		return -EINVAL;
+	}
+
+	if (pmc == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid power monitor condition=%p\n",
+				pmc);
+		return -EINVAL;
+	}
+
+	return eth_err(port_id,
+		dev->dev_ops->get_monitor_addr(dev->data->rx_queues[queue_id],
+			pmc));
+}
+
+int
 rte_eth_dev_set_mc_addr_list(uint16_t port_id,
 			     struct rte_ether_addr *mc_addr_set,
 			     uint32_t nb_mc_addr)

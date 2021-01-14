@@ -157,6 +157,7 @@ extern "C" {
 #include <rte_common.h>
 #include <rte_config.h>
 #include <rte_ether.h>
+#include <rte_power_intrinsics.h>
 
 #include "rte_ethdev_trace_fp.h"
 #include "rte_dev_info.h"
@@ -4333,6 +4334,30 @@ int rte_eth_rx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 __rte_experimental
 int rte_eth_tx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_burst_mode *mode);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Retrieve the monitor condition for a given receive queue.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The Rx queue on the Ethernet device for which information
+ *   will be retrieved.
+ * @param pmc
+ *   The pointer to power-optimized monitoring condition structure.
+ *
+ * @return
+ *   - 0: Success.
+ *   -ENOTSUP: Operation not supported.
+ *   -EINVAL: Invalid parameters.
+ *   -ENODEV: Invalid port ID.
+ */
+__rte_experimental
+int rte_eth_get_monitor_addr(uint16_t port_id, uint16_t queue_id,
+		struct rte_power_monitor_cond *pmc);
 
 /**
  * Retrieve device registers and register attributes (number of registers and

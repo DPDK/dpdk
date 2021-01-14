@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added new ethdev API for PMD power management.**
+
+  Added ``rte_eth_get_monitor_addr()``, to be used in conjunction with
+  ``rte_power_monitor()`` to enable automatic power management for PMDs.
+
 * **Updated Broadcom bnxt driver.**
 
   Updated the Broadcom bnxt driver with fixes and improvements, including:

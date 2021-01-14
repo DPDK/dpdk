@@ -240,6 +240,9 @@ EXPERIMENTAL {
 	rte_flow_get_restore_info;
 	rte_flow_tunnel_action_decap_release;
 	rte_flow_tunnel_item_release;
+
+	# added in 21.02
+	rte_eth_get_monitor_addr;
 };
 
 INTERNAL {

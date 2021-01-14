@@ -7,3 +7,7 @@
         symbol_version = INTERNAL
 [suppress_variable]
         symbol_version = INTERNAL
+
+; Explicit ignore for driver-only ABI
+[suppress_type]
+        name = eth_dev_ops
