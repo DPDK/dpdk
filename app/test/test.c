@@ -164,29 +164,38 @@ main(int argc, char **argv)
 
 
 #ifdef RTE_LIB_CMDLINE
-	cl = cmdline_stdin_new(main_ctx, "RTE>>");
-	if (cl == NULL) {
-		ret = -1;
-		goto out;
-	}
-
 	char *dpdk_test = getenv("DPDK_TEST");
 	if (dpdk_test && strlen(dpdk_test)) {
 		char buf[1024];
-		snprintf(buf, sizeof(buf), "%s\n", dpdk_test);
-		if (cmdline_in(cl, buf, strlen(buf)) < 0) {
-			printf("error on cmdline input\n");
+
+		cl = cmdline_new(main_ctx, "RTE>>", 0, 1);
+		if (cl == NULL) {
 			ret = -1;
 			goto out;
 		}
 
-		cmdline_stdin_exit(cl);
-		ret = last_test_result;
+		snprintf(buf, sizeof(buf), "%s\n", dpdk_test);
+		if (cmdline_in(cl, buf, strlen(buf)) < 0) {
+			printf("error on cmdline input\n");
+
+			ret = -1;
+		} else {
+			ret = last_test_result;
+		}
+		cmdline_free(cl);
 		goto out;
+	} else {
+		/* if no DPDK_TEST env variable, go interactive */
+		cl = cmdline_stdin_new(main_ctx, "RTE>>");
+		if (cl == NULL) {
+			ret = -1;
+			goto out;
+		}
+
+		cmdline_interact(cl);
+		cmdline_stdin_exit(cl);
+		cmdline_free(cl);
 	}
-	/* if no DPDK_TEST env variable, go interactive */
-	cmdline_interact(cl);
-	cmdline_stdin_exit(cl);
 #endif
 	ret = 0;
 
