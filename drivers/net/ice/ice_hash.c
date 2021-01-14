@@ -36,8 +36,8 @@
 #define ICE_GTPU_EH_DWNLINK	0
 #define ICE_GTPU_EH_UPLINK	1
 
-#define ICE_IPV4_PROT BIT_ULL(ICE_FLOW_FIELD_IDX_IPV4_PROT)
-#define ICE_IPV6_PROT BIT_ULL(ICE_FLOW_FIELD_IDX_IPV6_PROT)
+#define ICE_IPV4_PROT		BIT_ULL(ICE_FLOW_FIELD_IDX_IPV4_PROT)
+#define ICE_IPV6_PROT		BIT_ULL(ICE_FLOW_FIELD_IDX_IPV6_PROT)
 
 #define VALID_RSS_IPV4_L4	(ETH_RSS_NONFRAG_IPV4_UDP	| \
 				 ETH_RSS_NONFRAG_IPV4_TCP	| \
@@ -170,13 +170,13 @@ struct ice_rss_hash_cfg ipv6_sctp_tmplt = {
 	0
 };
 
-struct ice_rss_hash_cfg eth_inner_ipv4_tmplt = {
+struct ice_rss_hash_cfg outer_ipv4_inner_ipv4_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER,
 	ICE_FLOW_HASH_IPV4,
 	ICE_RSS_INNER_HEADERS_W_OUTER_IPV4,
 	0
 };
-struct ice_rss_hash_cfg eth_inner_ipv4_udp_tmplt = {
+struct ice_rss_hash_cfg outer_ipv4_inner_ipv4_udp_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
 	ICE_FLOW_SEG_HDR_UDP,
 	ICE_HASH_UDP_IPV4 | ICE_IPV4_PROT,
@@ -184,7 +184,7 @@ struct ice_rss_hash_cfg eth_inner_ipv4_udp_tmplt = {
 	0
 };
 
-struct ice_rss_hash_cfg eth_inner_ipv4_tcp_tmplt = {
+struct ice_rss_hash_cfg outer_ipv4_inner_ipv4_tcp_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
 	ICE_FLOW_SEG_HDR_TCP,
 	ICE_HASH_TCP_IPV4 | ICE_IPV4_PROT,
@@ -192,13 +192,57 @@ struct ice_rss_hash_cfg eth_inner_ipv4_tcp_tmplt = {
 	0
 };
 
-struct ice_rss_hash_cfg eth_inner_ipv6_tmplt = {
+struct ice_rss_hash_cfg outer_ipv6_inner_ipv4_tmplt = {
+	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ICE_FLOW_HASH_IPV4,
+	ICE_RSS_INNER_HEADERS_W_OUTER_IPV6,
+	0
+};
+struct ice_rss_hash_cfg outer_ipv6_inner_ipv4_udp_tmplt = {
+	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_UDP,
+	ICE_HASH_UDP_IPV4 | ICE_IPV4_PROT,
+	ICE_RSS_INNER_HEADERS_W_OUTER_IPV6,
+	0
+};
+
+struct ice_rss_hash_cfg outer_ipv6_inner_ipv4_tcp_tmplt = {
+	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_TCP,
+	ICE_HASH_TCP_IPV4 | ICE_IPV4_PROT,
+	ICE_RSS_INNER_HEADERS_W_OUTER_IPV6,
+	0
+};
+
+struct ice_rss_hash_cfg outer_ipv4_inner_ipv6_tmplt = {
+	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ICE_FLOW_HASH_IPV6,
+	ICE_RSS_INNER_HEADERS_W_OUTER_IPV4,
+	0
+};
+struct ice_rss_hash_cfg outer_ipv4_inner_ipv6_udp_tmplt = {
+	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_UDP,
+	ICE_HASH_UDP_IPV6 | ICE_IPV6_PROT,
+	ICE_RSS_INNER_HEADERS_W_OUTER_IPV4,
+	0
+};
+
+struct ice_rss_hash_cfg outer_ipv4_inner_ipv6_tcp_tmplt = {
+	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_TCP,
+	ICE_HASH_TCP_IPV6 | ICE_IPV6_PROT,
+	ICE_RSS_INNER_HEADERS_W_OUTER_IPV4,
+	0
+};
+
+struct ice_rss_hash_cfg outer_ipv6_inner_ipv6_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER,
 	ICE_FLOW_HASH_IPV6,
 	ICE_RSS_INNER_HEADERS_W_OUTER_IPV6,
 	0
 };
-struct ice_rss_hash_cfg eth_inner_ipv6_udp_tmplt = {
+struct ice_rss_hash_cfg outer_ipv6_inner_ipv6_udp_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
 	ICE_FLOW_SEG_HDR_UDP,
 	ICE_HASH_UDP_IPV6 | ICE_IPV6_PROT,
@@ -206,7 +250,7 @@ struct ice_rss_hash_cfg eth_inner_ipv6_udp_tmplt = {
 	0
 };
 
-struct ice_rss_hash_cfg eth_inner_ipv6_tcp_tmplt = {
+struct ice_rss_hash_cfg outer_ipv6_inner_ipv6_tcp_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
 	ICE_FLOW_SEG_HDR_TCP,
 	ICE_HASH_TCP_IPV6 | ICE_IPV6_PROT,
@@ -312,22 +356,22 @@ struct ice_rss_hash_cfg empty_tmplt = {
 /* Empty rss type to support simple_xor. */
 #define ICE_RSS_TYPE_EMPTY	0ULL
 
-/* IPv4 outer*/
+/* IPv4 outer */
 #define ICE_RSS_TYPE_OUTER_IPV4		(ETH_RSS_ETH | ETH_RSS_IPV4)
 #define ICE_RSS_TYPE_OUTER_IPV4_UDP	(ICE_RSS_TYPE_OUTER_IPV4 | \
-					ETH_RSS_NONFRAG_IPV4_UDP)
+					 ETH_RSS_NONFRAG_IPV4_UDP)
 #define ICE_RSS_TYPE_OUTER_IPV4_TCP	(ICE_RSS_TYPE_OUTER_IPV4 | \
-					ETH_RSS_NONFRAG_IPV4_TCP)
+					 ETH_RSS_NONFRAG_IPV4_TCP)
 #define ICE_RSS_TYPE_OUTER_IPV4_SCTP	(ICE_RSS_TYPE_OUTER_IPV4 | \
-					ETH_RSS_NONFRAG_IPV4_SCTP)
-/* IPv6 */
+					 ETH_RSS_NONFRAG_IPV4_SCTP)
+/* IPv6 outer */
 #define ICE_RSS_TYPE_OUTER_IPV6		(ETH_RSS_ETH | ETH_RSS_IPV6)
 #define ICE_RSS_TYPE_OUTER_IPV6_UDP	(ICE_RSS_TYPE_OUTER_IPV6 | \
-					ETH_RSS_NONFRAG_IPV6_UDP)
+					 ETH_RSS_NONFRAG_IPV6_UDP)
 #define ICE_RSS_TYPE_OUTER_IPV6_TCP	(ICE_RSS_TYPE_OUTER_IPV6 | \
-					ETH_RSS_NONFRAG_IPV6_TCP)
+					 ETH_RSS_NONFRAG_IPV6_TCP)
 #define ICE_RSS_TYPE_OUTER_IPV6_SCTP	(ICE_RSS_TYPE_OUTER_IPV6 | \
-					ETH_RSS_NONFRAG_IPV6_SCTP)
+					 ETH_RSS_NONFRAG_IPV6_SCTP)
 
 /* VLAN IPV4 */
 #define ICE_RSS_TYPE_VLAN_IPV4		(ICE_RSS_TYPE_OUTER_IPV4 | \
@@ -349,7 +393,7 @@ struct ice_rss_hash_cfg empty_tmplt = {
 					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
 
 /* IPv4 inner */
-#define ICE_RSS_TYPE_INNER_IPV4	ETH_RSS_IPV4
+#define ICE_RSS_TYPE_INNER_IPV4		ETH_RSS_IPV4
 #define ICE_RSS_TYPE_INNER_IPV4_UDP	(ETH_RSS_IPV4 | \
 					 ETH_RSS_NONFRAG_IPV4_UDP)
 #define ICE_RSS_TYPE_INNER_IPV4_TCP	(ETH_RSS_IPV4 | \
@@ -357,7 +401,7 @@ struct ice_rss_hash_cfg empty_tmplt = {
 #define ICE_RSS_TYPE_INNER_IPV4_SCTP	(ETH_RSS_IPV4 | \
 					 ETH_RSS_NONFRAG_IPV4_SCTP)
 /* IPv6 inner */
-#define ICE_RSS_TYPE_INNER_IPV6	ETH_RSS_IPV6
+#define ICE_RSS_TYPE_INNER_IPV6		ETH_RSS_IPV6
 #define ICE_RSS_TYPE_INNER_IPV6_UDP	(ETH_RSS_IPV6 | \
 					 ETH_RSS_NONFRAG_IPV6_UDP)
 #define ICE_RSS_TYPE_INNER_IPV6_TCP	(ETH_RSS_IPV6 | \
@@ -380,16 +424,34 @@ struct ice_rss_hash_cfg empty_tmplt = {
 #define ICE_RSS_TYPE_GTPU_IPV6_TCP	(ICE_RSS_TYPE_INNER_IPV6_TCP | \
 					 ETH_RSS_GTPU)
 
-/* ESP, AH, L2TPV3, PFCP and PPPOE */
+/* PPPOE IPv4 */
+#define ICE_RSS_TYPE_PPPOE_IPV4		(ICE_RSS_TYPE_INNER_IPV4 | \
+					 ETH_RSS_PPPOE)
+#define ICE_RSS_TYPE_PPPOE_IPV4_UDP	(ICE_RSS_TYPE_INNER_IPV4_UDP | \
+					 ETH_RSS_PPPOE)
+#define ICE_RSS_TYPE_PPPOE_IPV4_TCP	(ICE_RSS_TYPE_INNER_IPV4_TCP | \
+					 ETH_RSS_PPPOE)
+
+/* PPPOE IPv6 */
+#define ICE_RSS_TYPE_PPPOE_IPV6		(ICE_RSS_TYPE_INNER_IPV6 | \
+					 ETH_RSS_PPPOE)
+#define ICE_RSS_TYPE_PPPOE_IPV6_UDP	(ICE_RSS_TYPE_INNER_IPV6_UDP | \
+					 ETH_RSS_PPPOE)
+#define ICE_RSS_TYPE_PPPOE_IPV6_TCP	(ICE_RSS_TYPE_INNER_IPV6_TCP | \
+					 ETH_RSS_PPPOE)
+
+/* PPPOE*/
+#define ICE_RSS_TYPE_PPPOE		(ETH_RSS_ETH | ETH_RSS_PPPOE)
+
+/* ESP, AH, L2TPV3 and PFCP */
 #define ICE_RSS_TYPE_IPV4_ESP		(ETH_RSS_ESP | ETH_RSS_IPV4)
-#define ICE_RSS_TYPE_IPV4_AH		(ETH_RSS_AH | ETH_RSS_IPV4)
 #define ICE_RSS_TYPE_IPV6_ESP		(ETH_RSS_ESP | ETH_RSS_IPV6)
+#define ICE_RSS_TYPE_IPV4_AH		(ETH_RSS_AH | ETH_RSS_IPV4)
 #define ICE_RSS_TYPE_IPV6_AH		(ETH_RSS_AH | ETH_RSS_IPV6)
 #define ICE_RSS_TYPE_IPV4_L2TPV3	(ETH_RSS_L2TPV3 | ETH_RSS_IPV4)
 #define ICE_RSS_TYPE_IPV6_L2TPV3	(ETH_RSS_L2TPV3 | ETH_RSS_IPV6)
 #define ICE_RSS_TYPE_IPV4_PFCP		(ETH_RSS_PFCP | ETH_RSS_IPV4)
 #define ICE_RSS_TYPE_IPV6_PFCP		(ETH_RSS_PFCP | ETH_RSS_IPV6)
-#define ICE_RSS_TYPE_PPPOE		(ETH_RSS_ETH | ETH_RSS_PPPOE)
 
 /**
  * Supported pattern for hash.
@@ -407,21 +469,21 @@ static struct ice_pattern_match_item ice_hash_pattern_list[] = {
 	{pattern_eth_vlan_ipv4_udp,		ICE_RSS_TYPE_VLAN_IPV4_UDP,	&ipv4_udp_tmplt},
 	{pattern_eth_vlan_ipv4_tcp,		ICE_RSS_TYPE_VLAN_IPV4_TCP,	&ipv4_tcp_tmplt},
 	{pattern_eth_vlan_ipv4_sctp,		ICE_RSS_TYPE_VLAN_IPV4_SCTP,	&ipv4_sctp_tmplt},
-	{pattern_eth_ipv4_gtpu_ipv4,		ICE_RSS_TYPE_GTPU_IPV4,		&eth_inner_ipv4_tmplt},
-	{pattern_eth_ipv4_gtpu_ipv4_udp,	ICE_RSS_TYPE_GTPU_IPV4_UDP,	&eth_inner_ipv4_udp_tmplt},
-	{pattern_eth_ipv4_gtpu_ipv4_tcp,	ICE_RSS_TYPE_GTPU_IPV4_TCP,	&eth_inner_ipv4_tcp_tmplt},
-	{pattern_eth_ipv6_gtpu_ipv4,		ICE_RSS_TYPE_GTPU_IPV4,		&eth_inner_ipv4_tmplt},
-	{pattern_eth_ipv6_gtpu_ipv4_udp,	ICE_RSS_TYPE_GTPU_IPV4_UDP,	&eth_inner_ipv4_udp_tmplt},
-	{pattern_eth_ipv6_gtpu_ipv4_tcp,	ICE_RSS_TYPE_GTPU_IPV4_TCP,	&eth_inner_ipv4_tcp_tmplt},
-	{pattern_eth_ipv4_gtpu_eh_ipv4,		ICE_RSS_TYPE_GTPU_IPV4,		&eth_inner_ipv4_tmplt},
-	{pattern_eth_ipv4_gtpu_eh_ipv4_udp,	ICE_RSS_TYPE_GTPU_IPV4_UDP,	&eth_inner_ipv4_udp_tmplt},
-	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp,	ICE_RSS_TYPE_GTPU_IPV4_TCP,	&eth_inner_ipv4_tcp_tmplt},
-	{pattern_eth_ipv6_gtpu_eh_ipv4,		ICE_RSS_TYPE_GTPU_IPV4,		&eth_inner_ipv4_tmplt},
-	{pattern_eth_ipv6_gtpu_eh_ipv4_udp,	ICE_RSS_TYPE_GTPU_IPV4_UDP,	&eth_inner_ipv4_udp_tmplt},
-	{pattern_eth_ipv6_gtpu_eh_ipv4_tcp,	ICE_RSS_TYPE_GTPU_IPV4_TCP,	&eth_inner_ipv4_tcp_tmplt},
-	{pattern_eth_pppoes_ipv4,		ICE_RSS_TYPE_OUTER_IPV4,	&ipv4_tmplt},
-	{pattern_eth_pppoes_ipv4_udp,		ICE_RSS_TYPE_OUTER_IPV4_UDP,	&ipv4_udp_tmplt},
-	{pattern_eth_pppoes_ipv4_tcp,		ICE_RSS_TYPE_OUTER_IPV4_TCP,	&ipv4_tcp_tmplt},
+	{pattern_eth_ipv4_gtpu_ipv4,		ICE_RSS_TYPE_GTPU_IPV4,		&outer_ipv4_inner_ipv4_tmplt},
+	{pattern_eth_ipv4_gtpu_ipv4_udp,	ICE_RSS_TYPE_GTPU_IPV4_UDP,	&outer_ipv4_inner_ipv4_udp_tmplt},
+	{pattern_eth_ipv4_gtpu_ipv4_tcp,	ICE_RSS_TYPE_GTPU_IPV4_TCP,	&outer_ipv4_inner_ipv4_tcp_tmplt},
+	{pattern_eth_ipv6_gtpu_ipv4,		ICE_RSS_TYPE_GTPU_IPV4,		&outer_ipv6_inner_ipv4_tmplt},
+	{pattern_eth_ipv6_gtpu_ipv4_udp,	ICE_RSS_TYPE_GTPU_IPV4_UDP,	&outer_ipv6_inner_ipv4_udp_tmplt},
+	{pattern_eth_ipv6_gtpu_ipv4_tcp,	ICE_RSS_TYPE_GTPU_IPV4_TCP,	&outer_ipv6_inner_ipv4_tcp_tmplt},
+	{pattern_eth_ipv4_gtpu_eh_ipv4,		ICE_RSS_TYPE_GTPU_IPV4,		&outer_ipv4_inner_ipv4_tmplt},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_udp,	ICE_RSS_TYPE_GTPU_IPV4_UDP,	&outer_ipv4_inner_ipv4_udp_tmplt},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp,	ICE_RSS_TYPE_GTPU_IPV4_TCP,	&outer_ipv4_inner_ipv4_tcp_tmplt},
+	{pattern_eth_ipv6_gtpu_eh_ipv4,		ICE_RSS_TYPE_GTPU_IPV4,		&outer_ipv6_inner_ipv4_tmplt},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_udp,	ICE_RSS_TYPE_GTPU_IPV4_UDP,	&outer_ipv6_inner_ipv4_udp_tmplt},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_tcp,	ICE_RSS_TYPE_GTPU_IPV4_TCP,	&outer_ipv6_inner_ipv4_tcp_tmplt},
+	{pattern_eth_pppoes_ipv4,		ICE_RSS_TYPE_PPPOE_IPV4,	&ipv4_tmplt},
+	{pattern_eth_pppoes_ipv4_udp,		ICE_RSS_TYPE_PPPOE_IPV4_UDP,	&ipv4_udp_tmplt},
+	{pattern_eth_pppoes_ipv4_tcp,		ICE_RSS_TYPE_PPPOE_IPV4_TCP,	&ipv4_tcp_tmplt},
 	{pattern_eth_ipv4_esp,			ICE_RSS_TYPE_IPV4_ESP,		&eth_ipv4_esp_tmplt},
 	{pattern_eth_ipv4_udp_esp,		ICE_RSS_TYPE_IPV4_ESP,		&eth_ipv4_udp_esp_tmplt},
 	{pattern_eth_ipv4_ah,			ICE_RSS_TYPE_IPV4_AH,		&eth_ipv4_ah_tmplt},
@@ -436,21 +498,21 @@ static struct ice_pattern_match_item ice_hash_pattern_list[] = {
 	{pattern_eth_vlan_ipv6_udp,		ICE_RSS_TYPE_VLAN_IPV6_UDP,	&ipv6_udp_tmplt},
 	{pattern_eth_vlan_ipv6_tcp,		ICE_RSS_TYPE_VLAN_IPV6_TCP,	&ipv6_tcp_tmplt},
 	{pattern_eth_vlan_ipv6_sctp,		ICE_RSS_TYPE_VLAN_IPV6_SCTP,	&ipv6_sctp_tmplt},
-	{pattern_eth_ipv4_gtpu_ipv6,		ICE_RSS_TYPE_GTPU_IPV6,		&eth_inner_ipv6_tmplt},
-	{pattern_eth_ipv4_gtpu_ipv6_udp,	ICE_RSS_TYPE_GTPU_IPV6_UDP,	&eth_inner_ipv6_udp_tmplt},
-	{pattern_eth_ipv4_gtpu_ipv6_tcp,	ICE_RSS_TYPE_GTPU_IPV6_TCP,	&eth_inner_ipv6_tcp_tmplt},
-	{pattern_eth_ipv6_gtpu_ipv6,		ICE_RSS_TYPE_GTPU_IPV6,		&eth_inner_ipv6_tmplt},
-	{pattern_eth_ipv6_gtpu_ipv6_udp,	ICE_RSS_TYPE_GTPU_IPV6_UDP,	&eth_inner_ipv6_udp_tmplt},
-	{pattern_eth_ipv6_gtpu_ipv6_tcp,	ICE_RSS_TYPE_GTPU_IPV6_TCP,	&eth_inner_ipv6_tcp_tmplt},
-	{pattern_eth_ipv4_gtpu_eh_ipv6,		ICE_RSS_TYPE_GTPU_IPV6,		&eth_inner_ipv6_tmplt},
-	{pattern_eth_ipv4_gtpu_eh_ipv6_udp,	ICE_RSS_TYPE_GTPU_IPV6_UDP,	&eth_inner_ipv6_udp_tmplt},
-	{pattern_eth_ipv4_gtpu_eh_ipv6_tcp,	ICE_RSS_TYPE_GTPU_IPV6_TCP,	&eth_inner_ipv6_tcp_tmplt},
-	{pattern_eth_ipv6_gtpu_eh_ipv6,		ICE_RSS_TYPE_GTPU_IPV6,		&eth_inner_ipv6_tmplt},
-	{pattern_eth_ipv6_gtpu_eh_ipv6_udp,	ICE_RSS_TYPE_GTPU_IPV6_UDP,	&eth_inner_ipv6_udp_tmplt},
-	{pattern_eth_ipv6_gtpu_eh_ipv6_tcp,	ICE_RSS_TYPE_GTPU_IPV6_TCP,	&eth_inner_ipv6_tcp_tmplt},
-	{pattern_eth_pppoes_ipv6,		ICE_RSS_TYPE_OUTER_IPV6,	&ipv6_tmplt},
-	{pattern_eth_pppoes_ipv6_udp,		ICE_RSS_TYPE_OUTER_IPV6_UDP,	&ipv6_udp_tmplt},
-	{pattern_eth_pppoes_ipv6_tcp,		ICE_RSS_TYPE_OUTER_IPV6_TCP,	&ipv6_tcp_tmplt},
+	{pattern_eth_ipv4_gtpu_ipv6,		ICE_RSS_TYPE_GTPU_IPV6,		&outer_ipv4_inner_ipv6_tmplt},
+	{pattern_eth_ipv4_gtpu_ipv6_udp,	ICE_RSS_TYPE_GTPU_IPV6_UDP,	&outer_ipv4_inner_ipv6_udp_tmplt},
+	{pattern_eth_ipv4_gtpu_ipv6_tcp,	ICE_RSS_TYPE_GTPU_IPV6_TCP,	&outer_ipv4_inner_ipv6_tcp_tmplt},
+	{pattern_eth_ipv6_gtpu_ipv6,		ICE_RSS_TYPE_GTPU_IPV6,		&outer_ipv6_inner_ipv6_tmplt},
+	{pattern_eth_ipv6_gtpu_ipv6_udp,	ICE_RSS_TYPE_GTPU_IPV6_UDP,	&outer_ipv6_inner_ipv6_udp_tmplt},
+	{pattern_eth_ipv6_gtpu_ipv6_tcp,	ICE_RSS_TYPE_GTPU_IPV6_TCP,	&outer_ipv6_inner_ipv6_tcp_tmplt},
+	{pattern_eth_ipv4_gtpu_eh_ipv6,		ICE_RSS_TYPE_GTPU_IPV6,		&outer_ipv4_inner_ipv6_tmplt},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_udp,	ICE_RSS_TYPE_GTPU_IPV6_UDP,	&outer_ipv4_inner_ipv6_udp_tmplt},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_tcp,	ICE_RSS_TYPE_GTPU_IPV6_TCP,	&outer_ipv4_inner_ipv6_tcp_tmplt},
+	{pattern_eth_ipv6_gtpu_eh_ipv6,		ICE_RSS_TYPE_GTPU_IPV6,		&outer_ipv6_inner_ipv6_tmplt},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_udp,	ICE_RSS_TYPE_GTPU_IPV6_UDP,	&outer_ipv6_inner_ipv6_udp_tmplt},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_tcp,	ICE_RSS_TYPE_GTPU_IPV6_TCP,	&outer_ipv6_inner_ipv6_tcp_tmplt},
+	{pattern_eth_pppoes_ipv6,		ICE_RSS_TYPE_PPPOE_IPV6,	&ipv6_tmplt},
+	{pattern_eth_pppoes_ipv6_udp,		ICE_RSS_TYPE_PPPOE_IPV6_UDP,	&ipv6_udp_tmplt},
+	{pattern_eth_pppoes_ipv6_tcp,		ICE_RSS_TYPE_PPPOE_IPV6_TCP,	&ipv6_tcp_tmplt},
 	{pattern_eth_ipv6_esp,			ICE_RSS_TYPE_IPV6_ESP,		&eth_ipv6_esp_tmplt},
 	{pattern_eth_ipv6_udp_esp,		ICE_RSS_TYPE_IPV6_ESP,		&eth_ipv6_udp_esp_tmplt},
 	{pattern_eth_ipv6_ah,			ICE_RSS_TYPE_IPV6_AH,		&eth_ipv6_ah_tmplt},
@@ -899,7 +961,6 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 			rss_meta->cfg = *cfg;
 			ice_refine_hash_cfg(&rss_meta->cfg,
 					    rss_type, pattern_hint);
-
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			break;
