@@ -110,7 +110,7 @@ overlap(const struct mem_area *ma, const void *start, size_t len)
 	if (start >= ma_start && start < ma_end)
 		return 1;
 	/* end overlap? */
-	if (end >= ma_start && end < ma_end)
+	if (end > ma_start && end < ma_end)
 		return 1;
 	return 0;
 }
