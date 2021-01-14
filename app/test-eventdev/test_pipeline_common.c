@@ -44,7 +44,6 @@ processed_pkts(struct test_pipeline *t)
 	uint8_t i;
 	uint64_t total = 0;
 
-	rte_smp_rmb();
 	for (i = 0; i < t->nb_workers; i++)
 		total += t->worker[i].processed_pkts;
 
