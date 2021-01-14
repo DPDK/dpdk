@@ -104,6 +104,7 @@ hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	uint32_t cmdq_lines, common_lines, ring_lines, tqp_intr_lines;
 	uint32_t regs_num_32_bit, regs_num_64_bit;
+	uint32_t dfx_reg_lines;
 	uint32_t len;
 	int ret;
 
@@ -117,7 +118,7 @@ hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 	tqp_intr_lines = sizeof(tqp_intr_reg_addrs) / REG_LEN_PER_LINE + 1;
 
 	len = (cmdq_lines + common_lines + ring_lines * hw->tqps_num +
-	      tqp_intr_lines * hw->num_msi) * REG_LEN_PER_LINE;
+	      tqp_intr_lines * hw->num_msi) * REG_NUM_PER_LINE;
 
 	if (!hns->is_vf) {
 		ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
@@ -126,8 +127,11 @@ hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 				 ret);
 			return -ENOTSUP;
 		}
-		len += regs_num_32_bit * sizeof(uint32_t) +
-		       regs_num_64_bit * sizeof(uint64_t);
+		dfx_reg_lines = regs_num_32_bit * sizeof(uint32_t) /
+					REG_LEN_PER_LINE + 1;
+		dfx_reg_lines += regs_num_64_bit * sizeof(uint64_t) /
+					REG_LEN_PER_LINE + 1;
+		len += dfx_reg_lines * REG_NUM_PER_LINE;
 	}
 
 	*length = len;
