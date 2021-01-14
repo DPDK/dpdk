@@ -249,6 +249,15 @@ uint16_t i40e_recv_scattered_pkts_vec_avx2(void *rx_queue,
 uint16_t i40e_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts);
 int i40e_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
+uint16_t i40e_recv_pkts_vec_avx512(void *rx_queue,
+				   struct rte_mbuf **rx_pkts,
+				   uint16_t nb_pkts);
+uint16_t i40e_recv_scattered_pkts_vec_avx512(void *rx_queue,
+					     struct rte_mbuf **rx_pkts,
+					     uint16_t nb_pkts);
+uint16_t i40e_xmit_pkts_vec_avx512(void *tx_queue,
+				   struct rte_mbuf **tx_pkts,
+				   uint16_t nb_pkts);
 
 /* For each value it means, datasheet of hardware can tell more details
  *
