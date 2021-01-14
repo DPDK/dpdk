@@ -45,7 +45,6 @@
 #define ETH_I40E_FLOATING_VEB_LIST_ARG	"floating_veb_list"
 #define ETH_I40E_SUPPORT_MULTI_DRIVER	"support-multi-driver"
 #define ETH_I40E_QUEUE_NUM_PER_VF_ARG	"queue-num-per-vf"
-#define ETH_I40E_USE_LATEST_VEC	"use-latest-supported-vec"
 #define ETH_I40E_VF_MSG_CFG		"vf_msg_cfg"
 
 #define I40E_CLEAR_PXE_WAIT_MS     200
@@ -403,7 +402,6 @@ static const char *const valid_keys[] = {
 	ETH_I40E_FLOATING_VEB_LIST_ARG,
 	ETH_I40E_SUPPORT_MULTI_DRIVER,
 	ETH_I40E_QUEUE_NUM_PER_VF_ARG,
-	ETH_I40E_USE_LATEST_VEC,
 	ETH_I40E_VF_MSG_CFG,
 	NULL};
 
@@ -1318,62 +1316,6 @@ i40e_aq_debug_write_global_register(struct i40e_hw *hw,
 }
 
 static int
-i40e_parse_latest_vec_handler(__rte_unused const char *key,
-				const char *value,
-				void *opaque)
-{
-	struct i40e_adapter *ad = opaque;
-	int use_latest_vec;
-
-	use_latest_vec = atoi(value);
-
-	if (use_latest_vec != 0 && use_latest_vec != 1)
-		PMD_DRV_LOG(WARNING, "Value should be 0 or 1, set it as 1!");
-
-	ad->use_latest_vec = (uint8_t)use_latest_vec;
-
-	return 0;
-}
-
-static int
-i40e_use_latest_vec(struct rte_eth_dev *dev)
-{
-	struct i40e_adapter *ad =
-		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct rte_kvargs *kvlist;
-	int kvargs_count;
-
-	ad->use_latest_vec = false;
-
-	if (!dev->device->devargs)
-		return 0;
-
-	kvlist = rte_kvargs_parse(dev->device->devargs->args, valid_keys);
-	if (!kvlist)
-		return -EINVAL;
-
-	kvargs_count = rte_kvargs_count(kvlist, ETH_I40E_USE_LATEST_VEC);
-	if (!kvargs_count) {
-		rte_kvargs_free(kvlist);
-		return 0;
-	}
-
-	if (kvargs_count > 1)
-		PMD_DRV_LOG(WARNING, "More than one argument \"%s\" and only "
-			    "the first invalid or last valid one is used !",
-			    ETH_I40E_USE_LATEST_VEC);
-
-	if (rte_kvargs_process(kvlist, ETH_I40E_USE_LATEST_VEC,
-				i40e_parse_latest_vec_handler, ad) < 0) {
-		rte_kvargs_free(kvlist);
-		return -EINVAL;
-	}
-
-	rte_kvargs_free(kvlist);
-	return 0;
-}
-
-static int
 read_vf_msg_config(__rte_unused const char *key,
 			       const char *value,
 			       void *opaque)
@@ -1523,8 +1465,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	i40e_parse_vf_msg_config(dev, &pf->vf_msg_cfg);
 	/* Check if need to support multi-driver */
 	i40e_support_multi_driver(dev);
-	/* Check if users want the latest supported vec path */
-	i40e_use_latest_vec(dev);
 
 	/* Make sure all is clean before doing PF reset */
 	i40e_clear_hw(hw);
@@ -12447,5 +12387,4 @@ RTE_PMD_REGISTER_PARAM_STRING(net_i40e,
 			      ETH_I40E_FLOATING_VEB_ARG "=1"
 			      ETH_I40E_FLOATING_VEB_LIST_ARG "=<string>"
 			      ETH_I40E_QUEUE_NUM_PER_VF_ARG "=1|2|4|8|16"
-			      ETH_I40E_SUPPORT_MULTI_DRIVER "=1"
-			      ETH_I40E_USE_LATEST_VEC "=0|1");
+			      ETH_I40E_SUPPORT_MULTI_DRIVER "=1");
