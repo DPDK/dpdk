@@ -97,8 +97,13 @@ perf_process_last_stage(struct rte_mempool *const pool,
 		void *bufs[], int const buf_sz, uint8_t count)
 {
 	bufs[count++] = ev->event_ptr;
-	w->processed_pkts++;
+
+	/* wmb here ensures event_prt is stored before
+	 * updating the number of processed packets
+	 * for worker lcores
+	 */
 	rte_smp_wmb();
+	w->processed_pkts++;
 
 	if (unlikely(count == buf_sz)) {
 		count = 0;
@@ -116,6 +121,12 @@ perf_process_last_stage_latency(struct rte_mempool *const pool,
 	struct perf_elt *const m = ev->event_ptr;
 
 	bufs[count++] = ev->event_ptr;
+
+	/* wmb here ensures event_prt is stored before
+	 * updating the number of processed packets
+	 * for worker lcores
+	 */
+	rte_smp_wmb();
 	w->processed_pkts++;
 
 	if (unlikely(count == buf_sz)) {
@@ -127,7 +138,6 @@ perf_process_last_stage_latency(struct rte_mempool *const pool,
 	}
 
 	w->latency += latency;
-	rte_smp_wmb();
 	return count;
 }
 
