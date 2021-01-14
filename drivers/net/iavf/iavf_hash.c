@@ -597,11 +597,12 @@ iavf_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 			break;
 		case RTE_FLOW_ITEM_TYPE_ECPRI:
 			ecpri = item->spec;
-			ecpri_common.u32 = rte_be_to_cpu_32(
-						ecpri->hdr.common.u32);
 			if (!ecpri)
 				break;
-			else if (ecpri_common.type !=
+
+			ecpri_common.u32 = rte_be_to_cpu_32(ecpri->hdr.common.u32);
+
+			if (ecpri_common.type !=
 				 RTE_ECPRI_MSG_TYPE_IQ_DATA) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM, item,
