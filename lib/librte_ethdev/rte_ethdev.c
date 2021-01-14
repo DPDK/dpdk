@@ -5711,7 +5711,7 @@ eth_dev_handle_port_link_status(const char *cmd __rte_unused,
 	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
 
-	ret = rte_eth_link_get(port_id, &link);
+	ret = rte_eth_link_get_nowait(port_id, &link);
 	if (ret < 0)
 		return -1;
 
