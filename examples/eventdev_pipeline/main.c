@@ -239,8 +239,15 @@ parse_app_args(int argc, char **argv)
 
 		if (fdata->worker_core[i])
 			cdata.num_workers++;
-		if (core_in_use(i))
+		if (core_in_use(i)) {
+			if (!rte_lcore_is_enabled(i)) {
+				printf("lcore %d is not enabled in lcore list\n",
+					i);
+				rte_exit(EXIT_FAILURE,
+					"check lcore params failed\n");
+			}
 			cdata.active_cores++;
+		}
 	}
 }
 
