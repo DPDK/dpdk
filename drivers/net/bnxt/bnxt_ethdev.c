@@ -679,7 +679,7 @@ static int bnxt_update_phy_setting(struct bnxt *bp)
 	return rc;
 }
 
-static int bnxt_init_chip(struct bnxt *bp)
+static int bnxt_start_nic(struct bnxt *bp)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
@@ -1417,7 +1417,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	bnxt_enable_int(bp);
 
-	rc = bnxt_init_chip(bp);
+	rc = bnxt_start_nic(bp);
 	if (rc)
 		goto error;
 
@@ -1464,6 +1464,27 @@ bnxt_uninit_locks(struct bnxt *bp)
 	}
 }
 
+static void bnxt_drv_uninit(struct bnxt *bp)
+{
+	bnxt_free_switch_domain(bp);
+	bnxt_free_leds_info(bp);
+	bnxt_free_cos_queues(bp);
+	bnxt_free_link_info(bp);
+	bnxt_free_pf_info(bp);
+	bnxt_free_parent_info(bp);
+	bnxt_uninit_locks(bp);
+
+	rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
+	bp->tx_mem_zone = NULL;
+	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
+	bp->rx_mem_zone = NULL;
+
+	bnxt_hwrm_free_vf_info(bp);
+
+	rte_free(bp->grp_info);
+	bp->grp_info = NULL;
+}
+
 static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -1488,26 +1509,9 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->dev_started)
 		ret = bnxt_dev_stop(eth_dev);
 
-	bnxt_free_switch_domain(bp);
-
 	bnxt_uninit_resources(bp, false);
 
-	bnxt_free_leds_info(bp);
-	bnxt_free_cos_queues(bp);
-	bnxt_free_link_info(bp);
-	bnxt_free_pf_info(bp);
-	bnxt_free_parent_info(bp);
-	bnxt_uninit_locks(bp);
-
-	rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
-	bp->tx_mem_zone = NULL;
-	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
-	bp->rx_mem_zone = NULL;
-
-	bnxt_hwrm_free_vf_info(bp);
-
-	rte_free(bp->grp_info);
-	bp->grp_info = NULL;
+	bnxt_drv_uninit(bp);
 
 	return ret;
 }
@@ -4086,7 +4090,7 @@ bool bnxt_stratus_device(struct bnxt *bp)
 	}
 }
 
-static int bnxt_init_board(struct rte_eth_dev *eth_dev)
+static int bnxt_map_pci_bars(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -4723,7 +4727,11 @@ static int bnxt_map_hcomm_fw_status_reg(struct bnxt *bp)
 	return 0;
 }
 
-static int bnxt_init_fw(struct bnxt *bp)
+/* This function gets the FW version along with the
+ * capabilities(MAX and current) of the function, vnic,
+ * error recovery, phy and other chip related info
+ */
+static int bnxt_get_config(struct bnxt *bp)
 {
 	uint16_t mtu;
 	int rc = 0;
@@ -4819,7 +4827,7 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 {
 	int rc = 0;
 
-	rc = bnxt_init_fw(bp);
+	rc = bnxt_get_config(bp);
 	if (rc)
 		return rc;
 
@@ -5266,6 +5274,89 @@ static int bnxt_alloc_switch_domain(struct bnxt *bp)
 	return rc;
 }
 
+/* Allocate and initialize various fields in bnxt struct that
+ * need to be allocated/destroyed only once in the lifetime of the driver
+ */
+static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct bnxt *bp = eth_dev->data->dev_private;
+	int rc = 0;
+
+	bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
+
+	if (bnxt_vf_pciid(pci_dev->id.device_id))
+		bp->flags |= BNXT_FLAG_VF;
+
+	if (bnxt_p5_device(pci_dev->id.device_id))
+		bp->flags |= BNXT_FLAG_CHIP_P5;
+
+	if (pci_dev->id.device_id == BROADCOM_DEV_ID_58802 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_58804 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_58808 ||
+	    pci_dev->id.device_id == BROADCOM_DEV_ID_58802_VF)
+		bp->flags |= BNXT_FLAG_STINGRAY;
+
+	if (BNXT_TRUFLOW_EN(bp)) {
+		/* extra mbuf field is required to store CFA code from mark */
+		static const struct rte_mbuf_dynfield bnxt_cfa_code_dynfield_desc = {
+			.name = RTE_PMD_BNXT_CFA_CODE_DYNFIELD_NAME,
+			.size = sizeof(bnxt_cfa_code_dynfield_t),
+			.align = __alignof__(bnxt_cfa_code_dynfield_t),
+		};
+		bnxt_cfa_code_dynfield_offset =
+			rte_mbuf_dynfield_register(&bnxt_cfa_code_dynfield_desc);
+		if (bnxt_cfa_code_dynfield_offset < 0) {
+			PMD_DRV_LOG(ERR,
+			    "Failed to register mbuf field for TruFlow mark\n");
+			return -rte_errno;
+		}
+	}
+
+	rc = bnxt_map_pci_bars(eth_dev);
+	if (rc) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to initialize board rc: %x\n", rc);
+		return rc;
+	}
+
+	rc = bnxt_alloc_pf_info(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_alloc_link_info(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_alloc_parent_info(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_alloc_hwrm_resources(bp);
+	if (rc) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to allocate hwrm resource rc: %x\n", rc);
+		return rc;
+	}
+	rc = bnxt_alloc_leds_info(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_alloc_cos_queues(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_init_locks(bp);
+	if (rc)
+		return rc;
+
+	rc = bnxt_alloc_switch_domain(bp);
+	if (rc)
+		return rc;
+
+	return rc;
+}
+
 static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 {
@@ -5299,70 +5390,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	/* Parse dev arguments passed on when starting the DPDK application. */
 	bnxt_parse_dev_args(bp, pci_dev->device.devargs);
 
-	bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
-
-	if (bnxt_vf_pciid(pci_dev->id.device_id))
-		bp->flags |= BNXT_FLAG_VF;
-
-	if (bnxt_p5_device(pci_dev->id.device_id))
-		bp->flags |= BNXT_FLAG_CHIP_P5;
-
-	if (pci_dev->id.device_id == BROADCOM_DEV_ID_58802 ||
-	    pci_dev->id.device_id == BROADCOM_DEV_ID_58804 ||
-	    pci_dev->id.device_id == BROADCOM_DEV_ID_58808 ||
-	    pci_dev->id.device_id == BROADCOM_DEV_ID_58802_VF)
-		bp->flags |= BNXT_FLAG_STINGRAY;
-
-	if (BNXT_TRUFLOW_EN(bp)) {
-		/* extra mbuf field is required to store CFA code from mark */
-		static const struct rte_mbuf_dynfield bnxt_cfa_code_dynfield_desc = {
-			.name = RTE_PMD_BNXT_CFA_CODE_DYNFIELD_NAME,
-			.size = sizeof(bnxt_cfa_code_dynfield_t),
-			.align = __alignof__(bnxt_cfa_code_dynfield_t),
-		};
-		bnxt_cfa_code_dynfield_offset =
-			rte_mbuf_dynfield_register(&bnxt_cfa_code_dynfield_desc);
-		if (bnxt_cfa_code_dynfield_offset < 0) {
-			PMD_DRV_LOG(ERR,
-			    "Failed to register mbuf field for TruFlow mark\n");
-			return -rte_errno;
-		}
-	}
-
-	rc = bnxt_init_board(eth_dev);
-	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to initialize board rc: %x\n", rc);
-		return rc;
-	}
-
-	rc = bnxt_alloc_pf_info(bp);
-	if (rc)
-		goto error_free;
-
-	rc = bnxt_alloc_link_info(bp);
-	if (rc)
-		goto error_free;
-
-	rc = bnxt_alloc_parent_info(bp);
-	if (rc)
-		goto error_free;
-
-	rc = bnxt_alloc_hwrm_resources(bp);
-	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to allocate hwrm resource rc: %x\n", rc);
-		goto error_free;
-	}
-	rc = bnxt_alloc_leds_info(bp);
-	if (rc)
-		goto error_free;
-
-	rc = bnxt_alloc_cos_queues(bp);
-	if (rc)
-		goto error_free;
-
-	rc = bnxt_init_locks(bp);
+	rc = bnxt_drv_init(eth_dev);
 	if (rc)
 		goto error_free;
 
@@ -5373,8 +5401,6 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	rc = bnxt_alloc_stats_mem(bp);
 	if (rc)
 		goto error_free;
-
-	bnxt_alloc_switch_domain(bp);
 
 	PMD_DRV_LOG(INFO,
 		    DRV_MODULE_NAME "found at mem %" PRIX64 ", node addr %pM\n",
