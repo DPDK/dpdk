@@ -5,7 +5,6 @@
 #include <rte_alarm.h>
 #include <rte_bus_pci.h>
 #include <rte_ethdev_pci.h>
-#include <rte_io.h>
 #include <rte_pci.h>
 
 #include "hns3_ethdev.h"
@@ -2494,7 +2493,7 @@ hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
-static int
+int
 hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
@@ -4679,6 +4678,8 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_enable_intr;
 	}
 
+	hns3_tm_conf_init(eth_dev);
+
 	return 0;
 
 err_enable_intr:
@@ -4712,6 +4713,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	hns3_tm_conf_uninit(eth_dev);
 	hns3_enable_hw_error_intr(hns, false);
 	hns3_rss_uninit(hns);
 	(void)hns3_config_gro(hw, false);
@@ -4738,6 +4740,16 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 	ret = hns3_dcb_cfg_update(hns);
 	if (ret)
 		return ret;
+
+	/*
+	 * The hns3_dcb_cfg_update may configure TM module, so
+	 * hns3_tm_conf_update must called later.
+	 */
+	ret = hns3_tm_conf_update(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to update tm conf, ret = %d.", ret);
+		return ret;
+	}
 
 	ret = hns3_init_queues(hns, reset_queue);
 	if (ret) {
@@ -4936,6 +4948,8 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	 */
 	hns3_start_tqps(hw);
 
+	hns3_tm_dev_start_proc(hw);
+
 	hns3_info(hw, "hns3 dev start successful!");
 	return 0;
 }
@@ -5019,6 +5033,7 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 
 	rte_spinlock_lock(&hw->lock);
 	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
+		hns3_tm_dev_stop_proc(hw);
 		hns3_stop_tqps(hw);
 		hns3_do_stop(hns);
 		hns3_unmap_rx_interrupt(dev);
@@ -6089,6 +6104,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.fec_get_capability     = hns3_fec_get_capability,
 	.fec_get                = hns3_fec_get,
 	.fec_set                = hns3_fec_set,
+	.tm_ops_get             = hns3_tm_ops_get,
 };
 
 static const struct hns3_reset_ops hns3_reset_ops = {

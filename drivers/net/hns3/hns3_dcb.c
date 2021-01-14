@@ -76,16 +76,13 @@ hns3_shaper_para_calc(struct hns3_hw *hw, uint32_t ir, uint8_t shaper_level,
 		shaper_para->ir_b = SHAPER_DEFAULT_IR_B;
 	} else if (ir_calc > ir) {
 		/* Increasing the denominator to select ir_s value */
-		do {
+		while (ir_calc >= ir && ir) {
 			ir_s_calc++;
 			ir_calc = DIVISOR_IR_B_126 / (tick * (1 << ir_s_calc));
-		} while (ir_calc > ir);
+		}
 
-		if (ir_calc == ir)
-			shaper_para->ir_b = SHAPER_DEFAULT_IR_B;
-		else
-			shaper_para->ir_b = (ir * tick * (1 << ir_s_calc) +
-				 (DIVISOR_CLK >> 1)) / DIVISOR_CLK;
+		shaper_para->ir_b = (ir * tick * (1 << ir_s_calc) +
+				    (DIVISOR_CLK >> 1)) / DIVISOR_CLK;
 	} else {
 		/*
 		 * Increasing the numerator to select ir_u value. ir_u_calc will
@@ -320,6 +317,10 @@ hns3_dcb_get_shapping_para(uint8_t ir_b, uint8_t ir_u, uint8_t ir_s,
 {
 	uint32_t shapping_para = 0;
 
+	/* If ir_b is zero it means IR is 0Mbps, return zero of shapping_para */
+	if (ir_b == 0)
+		return shapping_para;
+
 	hns3_dcb_set_field(shapping_para, IR_B, ir_b);
 	hns3_dcb_set_field(shapping_para, IR_U, ir_u);
 	hns3_dcb_set_field(shapping_para, IR_S, ir_s);
@@ -402,14 +403,57 @@ hns3_dcb_pg_shapping_cfg(struct hns3_hw *hw, enum hns3_shap_bucket bucket,
 	return hns3_cmd_send(hw, &desc, 1);
 }
 
+int
+hns3_pg_shaper_rate_cfg(struct hns3_hw *hw, uint8_t pg_id, uint32_t rate)
+{
+	struct hns3_shaper_parameter shaper_parameter;
+	uint32_t ir_u, ir_b, ir_s;
+	uint32_t shaper_para;
+	int ret;
+
+	/* Calc shaper para */
+	ret = hns3_shaper_para_calc(hw, rate, HNS3_SHAPER_LVL_PG,
+				    &shaper_parameter);
+	if (ret) {
+		hns3_err(hw, "calculate shaper parameter fail, ret = %d.",
+			 ret);
+		return ret;
+	}
+
+	shaper_para = hns3_dcb_get_shapping_para(0, 0, 0,
+						 HNS3_SHAPER_BS_U_DEF,
+						 HNS3_SHAPER_BS_S_DEF);
+
+	ret = hns3_dcb_pg_shapping_cfg(hw, HNS3_DCB_SHAP_C_BUCKET, pg_id,
+				       shaper_para, rate);
+	if (ret) {
+		hns3_err(hw, "config PG CIR shaper parameter fail, ret = %d.",
+			 ret);
+		return ret;
+	}
+
+	ir_b = shaper_parameter.ir_b;
+	ir_u = shaper_parameter.ir_u;
+	ir_s = shaper_parameter.ir_s;
+	shaper_para = hns3_dcb_get_shapping_para(ir_b, ir_u, ir_s,
+						 HNS3_SHAPER_BS_U_DEF,
+						 HNS3_SHAPER_BS_S_DEF);
+
+	ret = hns3_dcb_pg_shapping_cfg(hw, HNS3_DCB_SHAP_P_BUCKET, pg_id,
+				       shaper_para, rate);
+	if (ret) {
+		hns3_err(hw, "config PG PIR shaper parameter fail, ret = %d.",
+			 ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int
 hns3_dcb_pg_shaper_cfg(struct hns3_hw *hw)
 {
-	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	struct hns3_shaper_parameter shaper_parameter;
-	struct hns3_pf *pf = &hns->pf;
-	uint32_t ir_u, ir_b, ir_s;
-	uint32_t shaper_para;
+	struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
 	uint32_t rate;
 	uint8_t i;
 	int ret;
@@ -421,44 +465,9 @@ hns3_dcb_pg_shaper_cfg(struct hns3_hw *hw)
 	/* Pg to pri */
 	for (i = 0; i < hw->dcb_info.num_pg; i++) {
 		rate = hw->dcb_info.pg_info[i].bw_limit;
-
-		/* Calc shaper para */
-		ret = hns3_shaper_para_calc(hw, rate, HNS3_SHAPER_LVL_PG,
-					    &shaper_parameter);
-		if (ret) {
-			hns3_err(hw, "calculate shaper parameter failed: %d",
-				 ret);
+		ret = hns3_pg_shaper_rate_cfg(hw, i, rate);
+		if (ret)
 			return ret;
-		}
-
-		shaper_para = hns3_dcb_get_shapping_para(0, 0, 0,
-							 HNS3_SHAPER_BS_U_DEF,
-							 HNS3_SHAPER_BS_S_DEF);
-
-		ret = hns3_dcb_pg_shapping_cfg(hw, HNS3_DCB_SHAP_C_BUCKET, i,
-					       shaper_para, rate);
-		if (ret) {
-			hns3_err(hw,
-				 "config PG CIR shaper parameter failed: %d",
-				 ret);
-			return ret;
-		}
-
-		ir_b = shaper_parameter.ir_b;
-		ir_u = shaper_parameter.ir_u;
-		ir_s = shaper_parameter.ir_s;
-		shaper_para = hns3_dcb_get_shapping_para(ir_b, ir_u, ir_s,
-							 HNS3_SHAPER_BS_U_DEF,
-							 HNS3_SHAPER_BS_S_DEF);
-
-		ret = hns3_dcb_pg_shapping_cfg(hw, HNS3_DCB_SHAP_P_BUCKET, i,
-					       shaper_para, rate);
-		if (ret) {
-			hns3_err(hw,
-				 "config PG PIR shaper parameter failed: %d",
-				 ret);
-			return ret;
-		}
 	}
 
 	return 0;
@@ -530,74 +539,75 @@ hns3_dcb_pri_shapping_cfg(struct hns3_hw *hw, enum hns3_shap_bucket bucket,
 	return hns3_cmd_send(hw, &desc, 1);
 }
 
-static int
-hns3_dcb_pri_tc_base_shaper_cfg(struct hns3_hw *hw)
+int
+hns3_pri_shaper_rate_cfg(struct hns3_hw *hw, uint8_t tc_no, uint32_t rate)
 {
 	struct hns3_shaper_parameter shaper_parameter;
 	uint32_t ir_u, ir_b, ir_s;
 	uint32_t shaper_para;
-	uint32_t rate;
-	int ret, i;
+	int ret;
 
-	for (i = 0; i < hw->dcb_info.num_tc; i++) {
-		rate = hw->dcb_info.tc_info[i].bw_limit;
-		ret = hns3_shaper_para_calc(hw, rate, HNS3_SHAPER_LVL_PRI,
-					    &shaper_parameter);
-		if (ret) {
-			hns3_err(hw, "calculate shaper parameter failed: %d",
-				 ret);
-			return ret;
-		}
+	ret = hns3_shaper_para_calc(hw, rate, HNS3_SHAPER_LVL_PRI,
+				    &shaper_parameter);
+	if (ret) {
+		hns3_err(hw, "calculate shaper parameter failed: %d.",
+			 ret);
+		return ret;
+	}
 
-		shaper_para = hns3_dcb_get_shapping_para(0, 0, 0,
-							 HNS3_SHAPER_BS_U_DEF,
-							 HNS3_SHAPER_BS_S_DEF);
+	shaper_para = hns3_dcb_get_shapping_para(0, 0, 0,
+						 HNS3_SHAPER_BS_U_DEF,
+						 HNS3_SHAPER_BS_S_DEF);
 
-		ret = hns3_dcb_pri_shapping_cfg(hw, HNS3_DCB_SHAP_C_BUCKET, i,
-						shaper_para, rate);
-		if (ret) {
-			hns3_err(hw,
-				 "config priority CIR shaper parameter failed: %d",
-				 ret);
-			return ret;
-		}
+	ret = hns3_dcb_pri_shapping_cfg(hw, HNS3_DCB_SHAP_C_BUCKET, tc_no,
+					shaper_para, rate);
+	if (ret) {
+		hns3_err(hw,
+			 "config priority CIR shaper parameter failed: %d.",
+			 ret);
+		return ret;
+	}
 
-		ir_b = shaper_parameter.ir_b;
-		ir_u = shaper_parameter.ir_u;
-		ir_s = shaper_parameter.ir_s;
-		shaper_para = hns3_dcb_get_shapping_para(ir_b, ir_u, ir_s,
-							 HNS3_SHAPER_BS_U_DEF,
-							 HNS3_SHAPER_BS_S_DEF);
+	ir_b = shaper_parameter.ir_b;
+	ir_u = shaper_parameter.ir_u;
+	ir_s = shaper_parameter.ir_s;
+	shaper_para = hns3_dcb_get_shapping_para(ir_b, ir_u, ir_s,
+						 HNS3_SHAPER_BS_U_DEF,
+						 HNS3_SHAPER_BS_S_DEF);
 
-		ret = hns3_dcb_pri_shapping_cfg(hw, HNS3_DCB_SHAP_P_BUCKET, i,
-						shaper_para, rate);
-		if (ret) {
-			hns3_err(hw,
-				 "config priority PIR shaper parameter failed: %d",
-				 ret);
-			return ret;
-		}
+	ret = hns3_dcb_pri_shapping_cfg(hw, HNS3_DCB_SHAP_P_BUCKET, tc_no,
+					shaper_para, rate);
+	if (ret) {
+		hns3_err(hw,
+			 "config priority PIR shaper parameter failed: %d.",
+			 ret);
+		return ret;
 	}
 
 	return 0;
 }
 
-
 static int
 hns3_dcb_pri_shaper_cfg(struct hns3_hw *hw)
 {
-	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	struct hns3_pf *pf = &hns->pf;
+	struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
+	uint32_t rate;
+	uint8_t i;
 	int ret;
 
 	if (pf->tx_sch_mode != HNS3_FLAG_TC_BASE_SCH_MODE)
 		return -EINVAL;
 
-	ret = hns3_dcb_pri_tc_base_shaper_cfg(hw);
-	if (ret)
-		hns3_err(hw, "config port shaper failed: %d", ret);
+	for (i = 0; i < hw->dcb_info.num_tc; i++) {
+		rate = hw->dcb_info.tc_info[i].bw_limit;
+		ret = hns3_pri_shaper_rate_cfg(hw, i, rate);
+		if (ret) {
+			hns3_err(hw, "config pri shaper failed: %d.", ret);
+			return ret;
+		}
+	}
 
-	return ret;
+	return 0;
 }
 
 static int
@@ -677,6 +687,26 @@ hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_tx_q)
 		}
 	}
 
+	return 0;
+}
+
+uint8_t
+hns3_txq_mapped_tc_get(struct hns3_hw *hw, uint16_t txq_no)
+{
+	struct hns3_tc_queue_info *tc_queue;
+	uint8_t i;
+
+	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
+		tc_queue = &hw->tc_queue[i];
+		if (!tc_queue->enable)
+			continue;
+
+		if (txq_no >= tc_queue->tqp_offset &&
+		    txq_no < tc_queue->tqp_offset + tc_queue->tqp_count)
+			return i;
+	}
+
+	/* return TC0 in default case */
 	return 0;
 }
 

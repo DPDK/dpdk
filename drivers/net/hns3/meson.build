@@ -25,7 +25,8 @@ sources = files('hns3_cmd.c',
 	'hns3_rss.c',
 	'hns3_rxtx.c',
 	'hns3_stats.c',
-	'hns3_mp.c')
+	'hns3_mp.c',
+	'hns3_tm.c')
 
 deps += ['hash']
 

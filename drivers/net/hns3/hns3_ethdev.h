@@ -7,12 +7,16 @@
 
 #include <sys/time.h>
 #include <rte_ethdev_driver.h>
+#include <rte_byteorder.h>
+#include <rte_io.h>
+#include <rte_spinlock.h>
 
 #include "hns3_cmd.h"
 #include "hns3_mbx.h"
 #include "hns3_rss.h"
 #include "hns3_fdir.h"
 #include "hns3_stats.h"
+#include "hns3_tm.h"
 
 /* Vendor ID */
 #define PCI_VENDOR_ID_HUAWEI			0x19e5
@@ -727,6 +731,8 @@ struct hns3_pf {
 
 	struct hns3_fdir_info fdir; /* flow director info */
 	LIST_HEAD(counters, hns3_flow_counter) flow_counters;
+
+	struct hns3_tm_conf tm_conf;
 };
 
 struct hns3_vf {
@@ -795,6 +801,12 @@ struct hns3_adapter {
 	(&((struct hns3_adapter *)adapter)->pf)
 #define HNS3_DEV_HW_TO_ADAPTER(hw) \
 	container_of(hw, struct hns3_adapter, hw)
+
+static inline struct hns3_pf *HNS3_DEV_HW_TO_PF(struct hns3_hw *hw)
+{
+	struct hns3_adapter *adapter = HNS3_DEV_HW_TO_ADAPTER(hw);
+	return &adapter->pf;
+}
 
 #define hns3_set_field(origin, mask, shift, val) \
 	do { \
@@ -937,6 +949,8 @@ bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
 void hns3_update_link_status(struct hns3_hw *hw);
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			const struct rte_ether_addr *ether_addr);
+int hns3_dev_infos_get(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_dev_info *info);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)
