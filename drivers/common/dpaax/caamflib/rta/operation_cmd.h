@@ -243,7 +243,11 @@ rta_operation(struct program *program, uint32_t cipher_algo,
 
 	for (i = 0; i < alg_table_sz[rta_sec_era]; i++) {
 		if (alg_table[i].chipher_algo == cipher_algo) {
-			opcode |= cipher_algo | alg_table[i].class;
+			if ((aai ==  OP_ALG_AAI_XCBC_MAC) ||
+					(aai == OP_ALG_AAI_CBC_XCBCMAC))
+				opcode |= cipher_algo | OP_TYPE_CLASS2_ALG;
+			else
+				opcode |= cipher_algo | alg_table[i].class;
 			/* nothing else to verify */
 			if (alg_table[i].aai_func == NULL) {
 				found = 1;

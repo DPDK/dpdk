@@ -873,4 +873,67 @@ cnstr_shdsc_gcm_decap(uint32_t *descbuf, bool ps, bool swap,
 	return PROGRAM_FINALIZE(p);
 }
 
+/**
+ * cnstr_shdsc_aes_xcbc_mac - AES_XCBC_MAC
+ * @descbuf: pointer to descriptor-under-construction buffer
+ * @ps: if 36/40bit addressing is desired, this parameter must be true
+ * @swap: must be true when core endianness doesn't match SEC endianness
+ * @share: sharing type of shared descriptor
+ * @authdata: pointer to authentication transform definitions;
+ *		   message digest algorithm: OP_ALG_ALGSEL_AES.
+ * @do_icv: 0 if ICV checking is not desired, any other value if ICV checking
+ *          is needed for all the packets processed by this shared descriptor
+ * @trunc_len: Length of the truncated ICV to be written in the output buffer,
+ *             0 if no truncation is needed
+ *
+ * Note: There's no support for keys longer than the block size of the
+ * underlying hash function, according to the selected algorithm.
+ *
+ * Return: size of descriptor written in words or negative number on error
+ */
+static inline int
+cnstr_shdsc_aes_xcbc_mac(uint32_t *descbuf, bool ps, bool swap,
+		enum rta_share_type share,
+		struct alginfo *authdata, uint8_t do_icv,
+		uint8_t trunc_len)
+{
+	struct program prg;
+	struct program *p = &prg;
+	uint8_t opicv, dir;
+
+	opicv = do_icv ? ICV_CHECK_ENABLE : ICV_CHECK_DISABLE;
+	dir = do_icv ? DIR_DEC : DIR_ENC;
+
+	PROGRAM_CNTXT_INIT(p, descbuf, 0);
+	if (swap)
+		PROGRAM_SET_BSWAP(p);
+	if (ps)
+		PROGRAM_SET_36BIT_ADDR(p);
+	SHR_HDR(p, share, 1, SC);
+
+	KEY(p, KEY2, authdata->key_enc_flags, authdata->key, authdata->keylen,
+		INLINE_KEY(authdata));
+
+	/* compute sequences */
+	if (opicv == ICV_CHECK_ENABLE)
+		MATHB(p, SEQINSZ, SUB, trunc_len, VSEQINSZ, 4, IMMED2);
+	else
+		MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
+
+	/* Do operation */
+	ALG_OPERATION(p, authdata->algtype, authdata->algmode,
+		OP_ALG_AS_INITFINAL, opicv, dir);
+
+	/* Do load (variable length) */
+	SEQFIFOLOAD(p, MSG2, 0, VLF | LAST2);
+
+	if (opicv == ICV_CHECK_ENABLE) {
+		LOAD(p, trunc_len, ICV2SZ, 0, 4, IMMED);
+		SEQFIFOLOAD(p, ICV2, trunc_len, LAST2);
+	} else
+		SEQSTORE(p, CONTEXT2, 0, trunc_len, 0);
+
+	return PROGRAM_FINALIZE(p);
+}
+
 #endif /* __DESC_ALGO_H__ */

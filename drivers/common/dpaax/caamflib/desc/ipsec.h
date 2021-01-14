@@ -865,6 +865,7 @@ cnstr_shdsc_ipsec_decap(uint32_t *descbuf, bool ps, bool swap,
  * cnstr_shdsc_ipsec_encap_des_aes_xcbc - IPSec DES-CBC/3DES-CBC and
  *     AES-XCBC-MAC-96 ESP encapsulation shared descriptor.
  * @descbuf: pointer to buffer used for descriptor construction
+ * @share: sharing type of shared descriptor
  * @pdb: pointer to the PDB to be used with this descriptor
  *       This structure will be copied inline to the descriptor under
  *       construction. No error checking will be made. Refer to the
@@ -893,6 +894,7 @@ cnstr_shdsc_ipsec_decap(uint32_t *descbuf, bool ps, bool swap,
  */
 static inline int
 cnstr_shdsc_ipsec_encap_des_aes_xcbc(uint32_t *descbuf,
+				     enum rta_share_type share,
 				     struct ipsec_encap_pdb *pdb,
 				     struct alginfo *cipherdata,
 				     struct alginfo *authdata)
@@ -914,7 +916,7 @@ cnstr_shdsc_ipsec_encap_des_aes_xcbc(uint32_t *descbuf,
 	REFERENCE(write_swapped_seqin_ptr);
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
-	phdr = SHR_HDR(p, SHR_SERIAL, hdr, 0);
+	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_encap_pdb(p, pdb, cipherdata->algtype);
 	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
 	SET_LABEL(p, hdr);
@@ -1001,6 +1003,7 @@ cnstr_shdsc_ipsec_encap_des_aes_xcbc(uint32_t *descbuf,
  * cnstr_shdsc_ipsec_decap_des_aes_xcbc - IPSec DES-CBC/3DES-CBC and
  *     AES-XCBC-MAC-96 ESP decapsulation shared descriptor.
  * @descbuf: pointer to buffer used for descriptor construction
+ * @share: sharing type of shared descriptor
  * @pdb: pointer to the PDB to be used with this descriptor
  *       This structure will be copied inline to the descriptor under
  *       construction. No error checking will be made. Refer to the
@@ -1030,6 +1033,7 @@ cnstr_shdsc_ipsec_encap_des_aes_xcbc(uint32_t *descbuf,
  */
 static inline int
 cnstr_shdsc_ipsec_decap_des_aes_xcbc(uint32_t *descbuf,
+				     enum rta_share_type share,
 				     struct ipsec_decap_pdb *pdb,
 				     struct alginfo *cipherdata,
 				     struct alginfo *authdata)
@@ -1057,7 +1061,7 @@ cnstr_shdsc_ipsec_decap_des_aes_xcbc(uint32_t *descbuf,
 	REFERENCE(write_swapped_seqout_ptr);
 
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
-	phdr = SHR_HDR(p, SHR_SERIAL, hdr, 0);
+	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_decap_pdb(p, pdb, cipherdata->algtype);
 	SET_LABEL(p, hdr);
 	pkeyjump = JUMP(p, keyjump, LOCAL_JUMP, ALL_TRUE, SHRD | SELF);
@@ -1557,7 +1561,7 @@ cnstr_shdsc_authenc(uint32_t *descbuf, bool ps, bool swap,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 
 	/* Do operation */
-	ALG_OPERATION(p, authdata->algtype, OP_ALG_AAI_HMAC,
+	ALG_OPERATION(p, authdata->algtype, authdata->algmode,
 		      OP_ALG_AS_INITFINAL,
 		      dir == DIR_ENC ? ICV_CHECK_DISABLE : ICV_CHECK_ENABLE,
 		      dir);
@@ -1569,7 +1573,13 @@ cnstr_shdsc_authenc(uint32_t *descbuf, bool ps, bool swap,
 
 	SET_LABEL(p, keyjmp);
 
-	ALG_OPERATION(p, authdata->algtype, OP_ALG_AAI_HMAC_PRECOMP,
+	if (authdata->algmode == OP_ALG_AAI_HMAC)
+		ALG_OPERATION(p, authdata->algtype, OP_ALG_AAI_HMAC_PRECOMP,
+		      OP_ALG_AS_INITFINAL,
+		      dir == DIR_ENC ? ICV_CHECK_DISABLE : ICV_CHECK_ENABLE,
+		      dir);
+	else
+		ALG_OPERATION(p, authdata->algtype, authdata->algmode,
 		      OP_ALG_AS_INITFINAL,
 		      dir == DIR_ENC ? ICV_CHECK_DISABLE : ICV_CHECK_ENABLE,
 		      dir);
