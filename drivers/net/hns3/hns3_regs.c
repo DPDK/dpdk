@@ -300,7 +300,7 @@ hns3_direct_access_regs(struct hns3_hw *hw, uint32_t *data)
 	}
 
 	reg_num = sizeof(tqp_intr_reg_addrs) / sizeof(uint32_t);
-	for (j = 0; j < hw->num_msi; j++) {
+	for (j = 0; j < hw->intr_tqps_num; j++) {
 		reg_offset = HNS3_TQP_INTR_REG_SIZE * j;
 		for (i = 0; i < reg_num; i++)
 			*data++ = hns3_read_dev(hw, tqp_intr_reg_addrs[i] +
