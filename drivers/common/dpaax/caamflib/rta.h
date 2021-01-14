@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
+ * Copyright 2016,2021 NXP
  *
  */
 
@@ -484,6 +484,9 @@ rta_get_sec_era(void)
  */
 #define ALG_OPERATION(program, cipher_alg, aai, algo_state, icv_check, enc) \
 	rta_operation(program, cipher_alg, aai, algo_state, icv_check, enc)
+
+#define ALG_OPERATION_NP(program, cipher_alg, aai, algo_state, icv_check, enc) \
+	rta_operation2(program, cipher_alg, aai, algo_state, icv_check, enc)
 
 /**
  * PROTOCOL - Configures PROTOCOL OPERATION command

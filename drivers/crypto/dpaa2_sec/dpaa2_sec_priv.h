@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016,2020 NXP
+ *   Copyright 2016,2020-2021 NXP
  *
  */
 
@@ -523,6 +523,27 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 				},
 				.aad_size = { 0 },
 				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* AES CMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_AES_CMAC,
+				.block_size = 16,
+				.key_size = {
+					.min = 1,
+					.max = 16,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 4,
+					.max = 16,
+					.increment = 4
+				},
+				.aad_size = { 0 }
 			}, }
 		}, }
 	},

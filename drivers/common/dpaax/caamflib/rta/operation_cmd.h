@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016,2019 NXP
+ * Copyright 2016,2019-2021 NXP
  */
 
 #ifndef __RTA_OPERATION_CMD_H__
@@ -245,6 +245,105 @@ rta_operation(struct program *program, uint32_t cipher_algo,
 		if (alg_table[i].chipher_algo == cipher_algo) {
 			if ((aai ==  OP_ALG_AAI_XCBC_MAC) ||
 					(aai == OP_ALG_AAI_CBC_XCBCMAC))
+				opcode |= cipher_algo | OP_TYPE_CLASS2_ALG;
+			else
+				opcode |= cipher_algo | alg_table[i].class;
+			/* nothing else to verify */
+			if (alg_table[i].aai_func == NULL) {
+				found = 1;
+				break;
+			}
+
+			aai &= OP_ALG_AAI_MASK;
+
+			ret = (*alg_table[i].aai_func)(aai);
+			if (ret < 0) {
+				pr_err("OPERATION: Bad AAI Type. SEC Program Line: %d\n",
+				       program->current_pc);
+				goto err;
+			}
+			opcode |= aai;
+			found = 1;
+			break;
+		}
+	}
+	if (!found) {
+		pr_err("OPERATION: Invalid Command. SEC Program Line: %d\n",
+		       program->current_pc);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	switch (algo_state) {
+	case OP_ALG_AS_UPDATE:
+	case OP_ALG_AS_INIT:
+	case OP_ALG_AS_FINALIZE:
+	case OP_ALG_AS_INITFINAL:
+		opcode |= algo_state;
+		break;
+	default:
+		pr_err("Invalid Operation Command\n");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	switch (icv_checking) {
+	case ICV_CHECK_DISABLE:
+		/*
+		 * opcode |= OP_ALG_ICV_OFF;
+		 * OP_ALG_ICV_OFF is 0
+		 */
+		break;
+	case ICV_CHECK_ENABLE:
+		opcode |= OP_ALG_ICV_ON;
+		break;
+	default:
+		pr_err("Invalid Operation Command\n");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	switch (enc) {
+	case DIR_DEC:
+		/*
+		 * opcode |= OP_ALG_DECRYPT;
+		 * OP_ALG_DECRYPT is 0
+		 */
+		break;
+	case DIR_ENC:
+		opcode |= OP_ALG_ENCRYPT;
+		break;
+	default:
+		pr_err("Invalid Operation Command\n");
+		ret = -EINVAL;
+		goto err;
+	}
+
+	__rta_out32(program, opcode);
+	program->current_instruction++;
+	return (int)start_pc;
+
+ err:
+	program->first_error_pc = start_pc;
+	return ret;
+}
+
+/* For non-proto offload CMAC, GMAC etc cases */
+static inline int
+rta_operation2(struct program *program, uint32_t cipher_algo,
+	      uint16_t aai, uint8_t algo_state,
+	      int icv_checking, int enc)
+{
+	uint32_t opcode = CMD_OPERATION;
+	unsigned int i, found = 0;
+	unsigned int start_pc = program->current_pc;
+	int ret;
+
+	for (i = 0; i < alg_table_sz[rta_sec_era]; i++) {
+		if (alg_table[i].chipher_algo == cipher_algo) {
+			if ((aai ==  OP_ALG_AAI_XCBC_MAC) ||
+					(aai == OP_ALG_AAI_CBC_XCBCMAC) ||
+					(aai == OP_ALG_AAI_CMAC))
 				opcode |= cipher_algo | OP_TYPE_CLASS2_ALG;
 			else
 				opcode |= cipher_algo | alg_table[i].class;

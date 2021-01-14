@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016,2019-2020 NXP
+ * Copyright 2016,2019-2021 NXP
  *
  */
 
@@ -874,7 +874,7 @@ cnstr_shdsc_gcm_decap(uint32_t *descbuf, bool ps, bool swap,
 }
 
 /**
- * cnstr_shdsc_aes_xcbc_mac - AES_XCBC_MAC
+ * cnstr_shdsc_aes_mac - AES_XCBC_MAC, CMAC cases
  * @descbuf: pointer to descriptor-under-construction buffer
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
@@ -892,7 +892,7 @@ cnstr_shdsc_gcm_decap(uint32_t *descbuf, bool ps, bool swap,
  * Return: size of descriptor written in words or negative number on error
  */
 static inline int
-cnstr_shdsc_aes_xcbc_mac(uint32_t *descbuf, bool ps, bool swap,
+cnstr_shdsc_aes_mac(uint32_t *descbuf, bool ps, bool swap,
 		enum rta_share_type share,
 		struct alginfo *authdata, uint8_t do_icv,
 		uint8_t trunc_len)
@@ -921,7 +921,7 @@ cnstr_shdsc_aes_xcbc_mac(uint32_t *descbuf, bool ps, bool swap,
 		MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
 
 	/* Do operation */
-	ALG_OPERATION(p, authdata->algtype, authdata->algmode,
+	ALG_OPERATION_NP(p, authdata->algtype, authdata->algmode,
 		OP_ALG_AS_INITFINAL, opicv, dir);
 
 	/* Do load (variable length) */
