@@ -993,7 +993,7 @@ test13(void)
 }
 
 /*
- * Fore TBL8 extension exhaustion. Add 256 rules that require a tbl8 extension.
+ * For TBL8 extension exhaustion. Add 512 rules that require a tbl8 extension.
  * No more tbl8 extensions will be allowed. Now add one more rule that required
  * a tbl8 extension and get fail.
  * */
@@ -1008,28 +1008,37 @@ test14(void)
 	struct rte_lpm_config config;
 
 	config.max_rules = 256 * 32;
-	config.number_tbl8s = NUMBER_TBL8S;
+	config.number_tbl8s = 512;
 	config.flags = 0;
-	uint32_t ip, next_hop_add, next_hop_return;
+	uint32_t ip, next_hop_base, next_hop_return;
 	uint8_t depth;
 	int32_t status = 0;
+	xmm_t ipx4;
+	uint32_t hop[4];
 
 	/* Add enough space for 256 rules for every depth */
 	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
 	depth = 32;
-	next_hop_add = 100;
+	next_hop_base = 100;
 	ip = RTE_IPV4(0, 0, 0, 0);
 
 	/* Add 256 rules that require a tbl8 extension */
-	for (; ip <= RTE_IPV4(0, 0, 255, 0); ip += 256) {
-		status = rte_lpm_add(lpm, ip, depth, next_hop_add);
+	for (; ip <= RTE_IPV4(0, 1, 255, 0); ip += 256) {
+		status = rte_lpm_add(lpm, ip, depth, next_hop_base + ip);
 		TEST_LPM_ASSERT(status == 0);
 
 		status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 		TEST_LPM_ASSERT((status == 0) &&
-				(next_hop_return == next_hop_add));
+				(next_hop_return == next_hop_base + ip));
+
+		ipx4 = vect_set_epi32(ip + 3, ip + 2, ip + 1, ip);
+		rte_lpm_lookupx4(lpm, ipx4, hop, UINT32_MAX);
+		TEST_LPM_ASSERT(hop[0] == next_hop_base + ip);
+		TEST_LPM_ASSERT(hop[1] == UINT32_MAX);
+		TEST_LPM_ASSERT(hop[2] == UINT32_MAX);
+		TEST_LPM_ASSERT(hop[3] == UINT32_MAX);
 	}
 
 	/* All tbl8 extensions have been used above. Try to add one more and
@@ -1037,7 +1046,7 @@ test14(void)
 	ip = RTE_IPV4(1, 0, 0, 0);
 	depth = 32;
 
-	status = rte_lpm_add(lpm, ip, depth, next_hop_add);
+	status = rte_lpm_add(lpm, ip, depth, next_hop_base + ip);
 	TEST_LPM_ASSERT(status < 0);
 
 	rte_lpm_free(lpm);
