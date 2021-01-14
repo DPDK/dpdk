@@ -1749,7 +1749,6 @@ hns3vf_init_hardware(struct hns3_adapter *hns)
 		goto err_init_hardware;
 	}
 
-	hns3vf_request_link_info(hw);
 	return 0;
 
 err_init_hardware:
@@ -2238,7 +2237,7 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	hns3_rx_scattered_calc(dev);
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
-	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler, dev);
+	hns3vf_service_handler(dev);
 
 	hns3vf_restore_filter(dev);
 
