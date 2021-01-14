@@ -5268,7 +5268,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = NULL;
 	struct mlx5_flow *dev_flow;
-	const struct rte_flow_action_rss *rss;
+	const struct rte_flow_action_rss *rss = NULL;
 	struct mlx5_translated_shared_action
 		shared_actions[MLX5_MAX_SHARED_ACTIONS];
 	int shared_actions_n = MLX5_MAX_SHARED_ACTIONS;
@@ -5346,7 +5346,9 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	MLX5_ASSERT(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
 		    flow->drv_type < MLX5_FLOW_TYPE_MAX);
 	memset(rss_desc, 0, offsetof(struct mlx5_flow_rss_desc, queue));
-	rss = flow_get_rss_action(p_actions_rx);
+	/* RSS Action only works on NIC RX domain */
+	if (attr->ingress && !attr->transfer)
+		rss = flow_get_rss_action(p_actions_rx);
 	if (rss) {
 		if (flow_rss_workspace_adjust(wks, rss_desc, rss->queue_num))
 			return 0;
