@@ -299,5 +299,6 @@ uint64_t ixgbe_get_tx_port_offloads(struct rte_eth_dev *dev);
 uint64_t ixgbe_get_rx_queue_offloads(struct rte_eth_dev *dev);
 uint64_t ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev);
 uint64_t ixgbe_get_tx_queue_offloads(struct rte_eth_dev *dev);
+int ixgbe_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
 
 #endif /* _IXGBE_RXTX_H_ */

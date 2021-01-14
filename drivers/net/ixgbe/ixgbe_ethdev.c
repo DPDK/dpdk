@@ -560,6 +560,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.udp_tunnel_port_del  = ixgbe_dev_udp_tunnel_port_del,
 	.tm_ops_get           = ixgbe_tm_ops_get,
 	.tx_done_cleanup      = ixgbe_dev_tx_done_cleanup,
+	.get_monitor_addr     = ixgbe_get_monitor_addr,
 };
 
 /*

@@ -1369,6 +1369,31 @@ const uint32_t
 		RTE_PTYPE_INNER_L3_IPV4_EXT | RTE_PTYPE_INNER_L4_UDP,
 };
 
+int
+ixgbe_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
+{
+	volatile union ixgbe_adv_rx_desc *rxdp;
+	struct ixgbe_rx_queue *rxq = rx_queue;
+	uint16_t desc;
+
+	desc = rxq->rx_tail;
+	rxdp = &rxq->rx_ring[desc];
+	/* watch for changes in status bit */
+	pmc->addr = &rxdp->wb.upper.status_error;
+
+	/*
+	 * we expect the DD bit to be set to 1 if this descriptor was already
+	 * written to.
+	 */
+	pmc->val = rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD);
+	pmc->mask = rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD);
+
+	/* the registers are 32-bit */
+	pmc->data_sz = sizeof(uint32_t);
+
+	return 0;
+}
+
 /* @note: fix ixgbe_dev_supported_ptypes_get() if any change here. */
 static inline uint32_t
 ixgbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptype_mask)
