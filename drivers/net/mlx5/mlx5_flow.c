@@ -3312,16 +3312,28 @@ flow_drv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 static const struct rte_flow_action_rss*
 flow_get_rss_action(const struct rte_flow_action actions[])
 {
+	const struct rte_flow_action_rss *rss = NULL;
+
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_RSS:
-			return (const struct rte_flow_action_rss *)
-			       actions->conf;
+			rss = actions->conf;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SAMPLE:
+		{
+			const struct rte_flow_action_sample *sample =
+								actions->conf;
+			const struct rte_flow_action *act = sample->actions;
+			for (; act->type != RTE_FLOW_ACTION_TYPE_END; act++)
+				if (act->type == RTE_FLOW_ACTION_TYPE_RSS)
+					rss = act->conf;
+			break;
+		}
 		default:
 			break;
 		}
 	}
-	return NULL;
+	return rss;
 }
 
 /**

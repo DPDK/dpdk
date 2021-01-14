@@ -4410,6 +4410,10 @@ flow_dv_modify_create_cb(struct mlx5_hlist *list, uint64_t key __rte_unused,
  *   Attributes of flow that includes this action.
  * @param[in] item_flags
  *   Holds the items detected.
+ * @param[in] rss
+ *   Pointer to the RSS action.
+ * @param[out] sample_rss
+ *   Pointer to the RSS action in sample action list.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -4421,7 +4425,9 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 			       const struct rte_flow_action *action,
 			       struct rte_eth_dev *dev,
 			       const struct rte_flow_attr *attr,
-			       const uint64_t item_flags,
+			       uint64_t item_flags,
+			       const struct rte_flow_action_rss *rss,
+			       const struct rte_flow_action_rss **sample_rss,
 			       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -4481,6 +4487,28 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 			sub_action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			++actions_n;
 			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			*sample_rss = act->conf;
+			ret = mlx5_flow_validate_action_rss(act,
+							    sub_action_flags,
+							    dev, attr,
+							    item_flags,
+							    error);
+			if (ret < 0)
+				return ret;
+			if (rss && *sample_rss &&
+			    ((*sample_rss)->level != rss->level ||
+			    (*sample_rss)->types != rss->types))
+				return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL,
+					"Can't use the different RSS types "
+					"or level in the same flow");
+			if (*sample_rss != NULL && (*sample_rss)->queue_num)
+				queue_index = (*sample_rss)->queue[0];
+			sub_action_flags |= MLX5_FLOW_ACTION_RSS;
+			++actions_n;
+			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			ret = flow_dv_validate_action_mark(dev, act,
 							   sub_action_flags,
@@ -4529,7 +4557,8 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 		}
 	}
 	if (attr->ingress && !attr->transfer) {
-		if (!(sub_action_flags & MLX5_FLOW_ACTION_QUEUE))
+		if (!(sub_action_flags & (MLX5_FLOW_ACTION_QUEUE |
+					  MLX5_FLOW_ACTION_RSS)))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
@@ -4552,6 +4581,11 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 						  "for sampling");
 		fdb_mirror = 1;
 		if (sub_action_flags & MLX5_FLOW_ACTION_QUEUE)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "unsupported action QUEUE");
+		if (sub_action_flags & MLX5_FLOW_ACTION_RSS)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
@@ -5308,7 +5342,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	const struct rte_flow_item *gtp_item = NULL;
 	const struct rte_flow_action_raw_decap *decap;
 	const struct rte_flow_action_raw_encap *encap;
-	const struct rte_flow_action_rss *rss;
+	const struct rte_flow_action_rss *rss = NULL;
+	const struct rte_flow_action_rss *sample_rss = NULL;
 	const struct rte_flow_item_tcp nic_tcp_mask = {
 		.hdr = {
 			.tcp_flags = 0xFF,
@@ -5797,6 +5832,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							    error);
 			if (ret < 0)
 				return ret;
+			if (rss && sample_rss &&
+			    (sample_rss->level != rss->level ||
+			    sample_rss->types != rss->types))
+				return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL,
+					"Can't use the different RSS types "
+					"or level in the same flow");
 			if (rss != NULL && rss->queue_num)
 				queue_index = rss->queue[0];
 			action_flags |= MLX5_FLOW_ACTION_RSS;
@@ -6115,6 +6158,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			ret = flow_dv_validate_action_sample(action_flags,
 							     actions, dev,
 							     attr, item_flags,
+							     rss, &sample_rss,
 							     error);
 			if (ret < 0)
 				return ret;
@@ -9375,7 +9419,7 @@ flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
  * @param[in] dev
  *   Pointer to rte_eth_dev structure.
  * @param[in] action
- *   Pointer to action structure.
+ *   Pointer to sample action structure.
  * @param[in, out] dev_flow
  *   Pointer to the mlx5_flow.
  * @param[in] attr
@@ -9394,7 +9438,7 @@ flow_dv_dest_array_resource_register(struct rte_eth_dev *dev,
  */
 static int
 flow_dv_translate_action_sample(struct rte_eth_dev *dev,
-				const struct rte_flow_action *action,
+				const struct rte_flow_action_sample *action,
 				struct mlx5_flow *dev_flow,
 				const struct rte_flow_attr *attr,
 				uint32_t *num_of_dest,
@@ -9403,9 +9447,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 				struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const struct rte_flow_action_sample *sample_action;
 	const struct rte_flow_action *sub_actions;
-	const struct rte_flow_action_queue *queue;
 	struct mlx5_flow_sub_actions_list *sample_act;
 	struct mlx5_flow_sub_actions_idx *sample_idx;
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
@@ -9416,9 +9458,8 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 	rss_desc = &wks->rss_desc;
 	sample_act = &res->sample_act;
 	sample_idx = &res->sample_idx;
-	sample_action = (const struct rte_flow_action_sample *)action->conf;
-	res->ratio = sample_action->ratio;
-	sub_actions = sample_action->actions;
+	res->ratio = action->ratio;
+	sub_actions = action->actions;
 	for (; sub_actions->type != RTE_FLOW_ACTION_TYPE_END; sub_actions++) {
 		int type = sub_actions->type;
 		uint32_t pre_rix = 0;
@@ -9426,6 +9467,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 		switch (type) {
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		{
+			const struct rte_flow_action_queue *queue;
 			struct mlx5_hrxq *hrxq;
 			uint32_t hrxq_idx;
 
@@ -9446,6 +9488,45 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 						hrxq->action;
 			(*num_of_dest)++;
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			if (action_flags & MLX5_FLOW_ACTION_MARK)
+				dev_flow->handle->rix_hrxq = hrxq_idx;
+			dev_flow->handle->fate_action =
+					MLX5_FLOW_FATE_QUEUE;
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_RSS:
+		{
+			struct mlx5_hrxq *hrxq;
+			uint32_t hrxq_idx;
+			const struct rte_flow_action_rss *rss;
+			const uint8_t *rss_key;
+
+			rss = sub_actions->conf;
+			memcpy(rss_desc->queue, rss->queue,
+			       rss->queue_num * sizeof(uint16_t));
+			rss_desc->queue_num = rss->queue_num;
+			/* NULL RSS key indicates default RSS key. */
+			rss_key = !rss->key ? rss_hash_default_key : rss->key;
+			memcpy(rss_desc->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+			/*
+			 * rss->level and rss.types should be set in advance
+			 * when expanding items for RSS.
+			 */
+			flow_dv_hashfields_set(dev_flow, rss_desc);
+			hrxq = flow_dv_hrxq_prepare(dev, dev_flow,
+						    rss_desc, &hrxq_idx);
+			if (!hrxq)
+				return rte_flow_error_set
+					(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_ACTION,
+					 NULL,
+					 "cannot create fate queue");
+			sample_act->dr_queue_action = hrxq->action;
+			sample_idx->rix_hrxq = hrxq_idx;
+			sample_actions[sample_act->actions_num++] =
+						hrxq->action;
+			(*num_of_dest)++;
+			action_flags |= MLX5_FLOW_ACTION_RSS;
 			if (action_flags & MLX5_FLOW_ACTION_MARK)
 				dev_flow->handle->rix_hrxq = hrxq_idx;
 			dev_flow->handle->fate_action =
@@ -10016,6 +10097,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	struct mlx5_flow_dv_dest_array_resource mdest_res;
 	struct mlx5_flow_dv_sample_resource sample_res;
 	void *sample_actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS] = {0};
+	const struct rte_flow_action_sample *sample = NULL;
 	struct mlx5_flow_sub_actions_list *sample_act;
 	uint32_t sample_act_pos = UINT32_MAX;
 	uint32_t num_of_dest = 0;
@@ -10557,15 +10639,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SAMPLE:
 			sample_act_pos = actions_n;
-			ret = flow_dv_translate_action_sample(dev,
-							      actions,
-							      dev_flow, attr,
-							      &num_of_dest,
-							      sample_actions,
-							      &sample_res,
-							      error);
-			if (ret < 0)
-				return ret;
+			sample = (const struct rte_flow_action_sample *)
+				 action->conf;
 			actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_SAMPLE;
 			/* put encap action into group if work with port id */
@@ -10601,30 +10676,6 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					  flow->counter, NULL))->action;
 				actions_n++;
 			}
-			if (action_flags & MLX5_FLOW_ACTION_SAMPLE) {
-				ret = flow_dv_create_action_sample(dev,
-							  dev_flow,
-							  num_of_dest,
-							  &sample_res,
-							  &mdest_res,
-							  sample_actions,
-							  action_flags,
-							  error);
-				if (ret < 0)
-					return rte_flow_error_set
-						(error, rte_errno,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL,
-						"cannot create sample action");
-				if (num_of_dest > 1) {
-					dev_flow->dv.actions[sample_act_pos] =
-					dev_flow->dv.dest_array_res->action;
-				} else {
-					dev_flow->dv.actions[sample_act_pos] =
-					dev_flow->dv.sample_res->verbs_action;
-				}
-			}
-			break;
 		default:
 			break;
 		}
@@ -10632,33 +10683,6 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		    modify_action_position == UINT32_MAX)
 			modify_action_position = actions_n++;
 	}
-	/*
-	 * For multiple destination (sample action with ratio=1), the encap
-	 * action and port id action will be combined into group action.
-	 * So need remove the original these actions in the flow and only
-	 * use the sample action instead of.
-	 */
-	if (num_of_dest > 1 && sample_act->dr_port_id_action) {
-		int i;
-		void *temp_actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS] = {0};
-
-		for (i = 0; i < actions_n; i++) {
-			if ((sample_act->dr_encap_action &&
-				sample_act->dr_encap_action ==
-				dev_flow->dv.actions[i]) ||
-				(sample_act->dr_port_id_action &&
-				sample_act->dr_port_id_action ==
-				dev_flow->dv.actions[i]))
-				continue;
-			temp_actions[tmp_actions_n++] = dev_flow->dv.actions[i];
-		}
-		memcpy((void *)dev_flow->dv.actions,
-				(void *)temp_actions,
-				tmp_actions_n * sizeof(void *));
-		actions_n = tmp_actions_n;
-	}
-	dev_flow->dv.actions_n = actions_n;
-	dev_flow->act_flags = action_flags;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int item_type = items->type;
@@ -10931,6 +10955,68 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	handle->layers |= item_flags;
 	if (action_flags & MLX5_FLOW_ACTION_RSS)
 		flow_dv_hashfields_set(dev_flow, rss_desc);
+	/* If has RSS action in the sample action, the Sample/Mirror resource
+	 * should be registered after the hash filed be update.
+	 */
+	if (action_flags & MLX5_FLOW_ACTION_SAMPLE) {
+		ret = flow_dv_translate_action_sample(dev,
+						      sample,
+						      dev_flow, attr,
+						      &num_of_dest,
+						      sample_actions,
+						      &sample_res,
+						      error);
+		if (ret < 0)
+			return ret;
+		ret = flow_dv_create_action_sample(dev,
+						   dev_flow,
+						   num_of_dest,
+						   &sample_res,
+						   &mdest_res,
+						   sample_actions,
+						   action_flags,
+						   error);
+		if (ret < 0)
+			return rte_flow_error_set
+						(error, rte_errno,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"cannot create sample action");
+		if (num_of_dest > 1) {
+			dev_flow->dv.actions[sample_act_pos] =
+			dev_flow->dv.dest_array_res->action;
+		} else {
+			dev_flow->dv.actions[sample_act_pos] =
+			dev_flow->dv.sample_res->verbs_action;
+		}
+	}
+	/*
+	 * For multiple destination (sample action with ratio=1), the encap
+	 * action and port id action will be combined into group action.
+	 * So need remove the original these actions in the flow and only
+	 * use the sample action instead of.
+	 */
+	if (num_of_dest > 1 && sample_act->dr_port_id_action) {
+		int i;
+		void *temp_actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS] = {0};
+
+		for (i = 0; i < actions_n; i++) {
+			if ((sample_act->dr_encap_action &&
+				sample_act->dr_encap_action ==
+				dev_flow->dv.actions[i]) ||
+				(sample_act->dr_port_id_action &&
+				sample_act->dr_port_id_action ==
+				dev_flow->dv.actions[i]))
+				continue;
+			temp_actions[tmp_actions_n++] = dev_flow->dv.actions[i];
+		}
+		memcpy((void *)dev_flow->dv.actions,
+				(void *)temp_actions,
+				tmp_actions_n * sizeof(void *));
+		actions_n = tmp_actions_n;
+	}
+	dev_flow->dv.actions_n = actions_n;
+	dev_flow->act_flags = action_flags;
 	/* Register matcher. */
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);

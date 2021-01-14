@@ -88,6 +88,7 @@ New Features
 
   * Introduced basic support on Windows.
   * Added GTP PDU session container matching and raw encap/decap.
+  * Added support for RSS action in the sample sub-actions list.
 
 * **Updated Wangxun txgbe driver.**
 
