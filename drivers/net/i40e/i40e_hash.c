@@ -903,10 +903,12 @@ i40e_hash_parse_key(const struct rte_flow_action_rss *rss_act,
 			PMD_DRV_LOG(WARNING,
 				    "RSS key length invalid, must be %u bytes, now set key to default",
 				    (uint32_t)sizeof(rss_conf->key));
-		key = (const uint8_t *)rss_key_default;
+
+		memcpy(rss_conf->key, rss_key_default, sizeof(rss_conf->key));
+	} else {
+		memcpy(rss_conf->key, key, sizeof(rss_conf->key));
 	}
 
-	memcpy(rss_conf->key, key, sizeof(rss_conf->key));
 	rss_conf->conf.key = rss_conf->key;
 	rss_conf->conf.key_len = sizeof(rss_conf->key);
 }
