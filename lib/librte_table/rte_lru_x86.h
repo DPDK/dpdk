@@ -12,6 +12,7 @@ extern "C" {
 #include <stdint.h>
 
 #include <rte_config.h>
+#include <rte_common.h>
 
 #ifndef RTE_TABLE_HASH_LRU_STRATEGY
 #define RTE_TABLE_HASH_LRU_STRATEGY                        2
