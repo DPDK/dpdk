@@ -30,25 +30,7 @@ static const uint8_t ionic_qtype_vers[IONIC_QTYPE_MAX] = {
 static int ionic_lif_addr_add(struct ionic_lif *lif, const uint8_t *addr);
 static int ionic_lif_addr_del(struct ionic_lif *lif, const uint8_t *addr);
 
-int
-ionic_qcq_enable(struct ionic_qcq *qcq)
-{
-	struct ionic_queue *q = &qcq->q;
-	struct ionic_lif *lif = qcq->lif;
-	struct ionic_admin_ctx ctx = {
-		.pending_work = true,
-		.cmd.q_control = {
-			.opcode = IONIC_CMD_Q_CONTROL,
-			.type = q->type,
-			.index = rte_cpu_to_le_32(q->index),
-			.oper = IONIC_Q_ENABLE,
-		},
-	};
-
-	return ionic_adminq_post_wait(lif, &ctx);
-}
-
-int
+static int
 ionic_qcq_disable(struct ionic_qcq *qcq)
 {
 	struct ionic_queue *q = &qcq->q;
@@ -538,23 +520,18 @@ ionic_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 }
 
 int
-ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu)
+ionic_lif_set_mtu(struct ionic_lif *lif, uint32_t mtu)
 {
 	struct ionic_admin_ctx ctx = {
 		.pending_work = true,
 		.cmd.lif_setattr = {
 			.opcode = IONIC_CMD_LIF_SETATTR,
 			.attr = IONIC_LIF_ATTR_MTU,
-			.mtu = rte_cpu_to_le_32(new_mtu),
+			.mtu = rte_cpu_to_le_32(mtu),
 		},
 	};
-	int err;
 
-	err = ionic_adminq_post_wait(lif, &ctx);
-	if (err)
-		return err;
-
-	return 0;
+	return ionic_adminq_post_wait(lif, &ctx);
 }
 
 int
@@ -723,38 +700,88 @@ ionic_qcq_free(struct ionic_qcq *qcq)
 	rte_free(qcq);
 }
 
+static uint64_t
+ionic_rx_rearm_data(struct ionic_lif *lif)
+{
+	struct rte_mbuf rxm;
+
+	memset(&rxm, 0, sizeof(rxm));
+
+	rte_mbuf_refcnt_set(&rxm, 1);
+	rxm.data_off = RTE_PKTMBUF_HEADROOM;
+	rxm.nb_segs = 1;
+	rxm.port = lif->port_id;
+
+	rte_compiler_barrier();
+
+	RTE_BUILD_BUG_ON(sizeof(rxm.rearm_data[0]) != sizeof(uint64_t));
+	return rxm.rearm_data[0];
+}
+
+static uint64_t
+ionic_rx_seg_rearm_data(struct ionic_lif *lif)
+{
+	struct rte_mbuf rxm;
+
+	memset(&rxm, 0, sizeof(rxm));
+
+	rte_mbuf_refcnt_set(&rxm, 1);
+	rxm.data_off = 0;  /* no headroom */
+	rxm.nb_segs = 1;
+	rxm.port = lif->port_id;
+
+	rte_compiler_barrier();
+
+	RTE_BUILD_BUG_ON(sizeof(rxm.rearm_data[0]) != sizeof(uint64_t));
+	return rxm.rearm_data[0];
+}
+
 int
 ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t nrxq_descs, struct ionic_rx_qcq **rxq_out)
 {
 	struct ionic_rx_qcq *rxq;
-	uint16_t flags = 0, seg_size, hdr_seg_size, num_segs, num_segs_fw = 1;
+	uint16_t flags = 0, seg_size, hdr_seg_size, max_segs, max_segs_fw = 1;
+	uint32_t max_frame;
 	int err;
+
+	seg_size = rte_pktmbuf_data_room_size(mb_pool);
+
+	/* The first mbuf needs to leave headroom */
+	hdr_seg_size = seg_size - RTE_PKTMBUF_HEADROOM;
+
+	/* If mbufs are too small to hold received packets, enable SG */
+	max_frame =
+		rte_le_to_cpu_32(lif->adapter->ident.lif.eth.max_frame_size);
+	if (max_frame > hdr_seg_size) {
+		IONIC_PRINT(NOTICE, "Enabling RX_OFFLOAD_SCATTER");
+		lif->eth_dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_SCATTER;
+	        ionic_lif_configure_rx_sg_offload(lif);
+	}
 
 	if (lif->features & IONIC_ETH_HW_RX_SG) {
 		flags |= IONIC_QCQ_F_SG;
-		num_segs_fw = IONIC_RX_MAX_SG_ELEMS + 1;
+		max_segs_fw = IONIC_RX_MAX_SG_ELEMS + 1;
 	}
-	if (lif->state & IONIC_LIF_F_Q_IN_CMB)
-		flags |= IONIC_QCQ_F_CMB;
 
-	/* This must be run before we can calculate buf sizes */
-	ionic_lif_set_rx_buf_size(lif);
+	/*
+	 * Calculate how many fragment pointers might be stored in queue.
+	 * This is the worst-case number, so that there's enough room in
+	 * the info array.
+	 */
+	max_segs = 1 + (max_frame + RTE_PKTMBUF_HEADROOM - 1) / seg_size;
 
-	/* Calculate how many fragment pointers will be stored in queue */
-	seg_size = rte_pktmbuf_data_room_size(mb_pool);
-	hdr_seg_size = seg_size - RTE_PKTMBUF_HEADROOM;
-
-	num_segs = (lif->rx_buf_size + RTE_PKTMBUF_HEADROOM - 1) /
-				seg_size + 1;
-
-	IONIC_PRINT(DEBUG, "rxq %u rx_buf_size %u seg_size %u num_segs %u",
-		index, lif->rx_buf_size, seg_size, num_segs);
-	if (num_segs > num_segs_fw) {
+	IONIC_PRINT(DEBUG, "rxq %u max_frame %u seg_size %u max_segs %u",
+		index, max_frame, seg_size, max_segs);
+	if (max_segs > max_segs_fw) {
 		IONIC_PRINT(ERR, "Rx mbuf size insufficient (%d > %d avail)",
-			num_segs, num_segs_fw);
+			max_segs, max_segs_fw);
 		return -EINVAL;
 	}
+
+	if (lif->state & IONIC_LIF_F_Q_IN_CMB)
+		flags |= IONIC_QCQ_F_CMB;
 
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_RXQ,
@@ -764,6 +791,7 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		"rx",
 		flags,
 		nrxq_descs,
+		max_segs,
 		sizeof(struct ionic_rxq_desc),
 		sizeof(struct ionic_rxq_comp),
 		sizeof(struct ionic_rxq_sg_desc),
@@ -772,6 +800,10 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		return err;
 
 	rxq->flags = flags;
+	rxq->seg_size = seg_size;
+	rxq->hdr_seg_size = hdr_seg_size;
+	rxq->rearm_data = ionic_rx_rearm_data(lif);
+	rxq->rearm_seg_data = ionic_rx_seg_rearm_data(lif);
 
 	lif->rxqcqs[index] = rxq;
 	*rxq_out = rxq;
@@ -1192,12 +1224,16 @@ ionic_lif_rss_teardown(struct ionic_lif *lif)
 void
 ionic_lif_txq_deinit(struct ionic_tx_qcq *txq)
 {
+	ionic_qcq_disable(&txq->qcq);
+
 	txq->flags &= ~IONIC_QCQ_F_INITED;
 }
 
 void
 ionic_lif_rxq_deinit(struct ionic_rx_qcq *rxq)
 {
+	ionic_qcq_disable(&rxq->qcq);
+
 	rxq->flags &= ~IONIC_QCQ_F_INITED;
 }
 
@@ -1532,6 +1568,9 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 		ctx.cmd.q_init.ring_size);
 	IONIC_PRINT(DEBUG, "txq_init.ver %u", ctx.cmd.q_init.ver);
 
+	ionic_q_reset(q);
+	ionic_cq_reset(cq);
+
 	err = ionic_adminq_post_wait(lif, &ctx);
 	if (err)
 		return err;
@@ -1583,6 +1622,9 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 	IONIC_PRINT(DEBUG, "rxq_init.ring_size %d",
 		ctx.cmd.q_init.ring_size);
 	IONIC_PRINT(DEBUG, "rxq_init.ver %u", ctx.cmd.q_init.ver);
+
+	ionic_q_reset(q);
+	ionic_cq_reset(cq);
 
 	err = ionic_adminq_post_wait(lif, &ctx);
 	if (err)
@@ -1738,6 +1780,20 @@ ionic_lif_configure_vlan_offload(struct ionic_lif *lif, int mask)
 }
 
 void
+ionic_lif_configure_rx_sg_offload(struct ionic_lif *lif)
+{
+	struct rte_eth_rxmode *rxmode = &lif->eth_dev->data->dev_conf.rxmode;
+
+	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER) {
+		lif->features |= IONIC_ETH_HW_RX_SG;
+		lif->eth_dev->data->scattered_rx = 1;
+	} else {
+		lif->features &= ~IONIC_ETH_HW_RX_SG;
+		lif->eth_dev->data->scattered_rx = 0;
+	}
+}
+
+void
 ionic_lif_configure(struct ionic_lif *lif)
 {
 	struct rte_eth_rxmode *rxmode = &lif->eth_dev->data->dev_conf.rxmode;
@@ -1782,13 +1838,11 @@ ionic_lif_configure(struct ionic_lif *lif)
 	else
 		lif->features &= ~IONIC_ETH_HW_RX_CSUM;
 
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
-		lif->features |= IONIC_ETH_HW_RX_SG;
-		lif->eth_dev->data->scattered_rx = 1;
-	} else {
-		lif->features &= ~IONIC_ETH_HW_RX_SG;
-		lif->eth_dev->data->scattered_rx = 0;
-	}
+	/*
+	 * NB: RX_SG may be enabled later during rx_queue_setup() if
+	 * required by the mbuf/mtu configuration
+	 */
+	ionic_lif_configure_rx_sg_offload(lif);
 
 	/* Covers VLAN_STRIP */
 	ionic_lif_configure_vlan_offload(lif, RTE_ETH_VLAN_STRIP_MASK);

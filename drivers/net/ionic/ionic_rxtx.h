@@ -19,7 +19,6 @@ struct ionic_rx_service {
 	uint16_t nb_rx;
 };
 
-#define IONIC_RX_FLUSH_PKTS	16
 #define IONIC_CSUM_FLAG_MASK	(IONIC_RXQ_COMP_CSUM_F_VLAN - 1)
 #define IONIC_PREFETCH
 
@@ -64,8 +63,6 @@ uint16_t ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts);
 
 int ionic_rx_fill(struct ionic_rx_qcq *rxq);
-void ionic_rx_flush_all(struct ionic_rx_qcq *rxq);
-void ionic_tx_flush_all(struct ionic_tx_qcq *txq);
 
 /* ionic_rxtx_sg.c */
 uint16_t ionic_recv_pkts_sg(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -74,7 +71,5 @@ uint16_t ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_pkts);
 
 int ionic_rx_fill_sg(struct ionic_rx_qcq *rxq);
-void ionic_rx_flush_all_sg(struct ionic_rx_qcq *rxq);
-void ionic_tx_flush_all_sg(struct ionic_tx_qcq *txq);
 
 #endif /* _IONIC_RXTX_H_ */

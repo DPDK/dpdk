@@ -11,8 +11,10 @@
 #include "ionic_if.h"
 #include "ionic_regs.h"
 
+#define VLAN_TAG_SIZE			4
+
 #define IONIC_MIN_MTU			RTE_ETHER_MIN_MTU
-#define IONIC_MAX_MTU			9750
+#define IONIC_MAX_MTU			9378
 #define IONIC_ETH_OVERHEAD		(RTE_ETHER_HDR_LEN + VLAN_TAG_SIZE)
 
 #define IONIC_MAX_RING_DESC		32768
@@ -217,6 +219,7 @@ struct ionic_doorbell __iomem *ionic_db_map(struct ionic_lif *lif,
 	struct ionic_queue *q);
 
 int ionic_cq_init(struct ionic_cq *cq, uint16_t num_descs);
+void ionic_cq_reset(struct ionic_cq *cq);
 void ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa);
 typedef bool (*ionic_cq_cb)(struct ionic_cq *cq, uint16_t cq_desc_index,
 		void *cb_arg);
@@ -224,6 +227,7 @@ uint32_t ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 	ionic_cq_cb cb, void *cb_arg);
 
 int ionic_q_init(struct ionic_queue *q, uint32_t index, uint16_t num_descs);
+void ionic_q_reset(struct ionic_queue *q);
 void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 
