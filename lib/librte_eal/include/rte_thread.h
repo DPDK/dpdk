@@ -3,6 +3,7 @@
  */
 
 #include <rte_os.h>
+#include <rte_compat.h>
 
 #ifndef _RTE_THREAD_H_
 #define _RTE_THREAD_H_
