@@ -15,7 +15,6 @@ sources = files(
 	'fm10k_rxtx.c',
 )
 if arch_subdir == 'x86'
-	dpdk_conf.set('RTE_LIBRTE_FM10K_INC_VECTOR', 1)
 	sources += files('fm10k_rxtx_vec.c')
 endif
 
