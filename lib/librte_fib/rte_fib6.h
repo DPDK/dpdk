@@ -19,6 +19,8 @@
  * for IPv6 Longest Prefix Match
  */
 
+#include <stdint.h>
+
 #include <rte_compat.h>
 
 #ifdef __cplusplus
