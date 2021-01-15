@@ -27,6 +27,8 @@
 
 #include <stdint.h>
 
+#include <rte_common.h>
+
 struct rte_reciprocal {
 	uint32_t m;
 	uint8_t sh1, sh2;
