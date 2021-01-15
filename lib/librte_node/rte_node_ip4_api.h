@@ -21,6 +21,7 @@ extern "C" {
 #endif
 
 #include <rte_common.h>
+#include <rte_compat.h>
 
 /**
  * IP4 lookup next nodes.
