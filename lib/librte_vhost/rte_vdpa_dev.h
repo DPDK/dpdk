@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include "rte_vhost.h"
+#include "rte_vdpa.h"
 
 #define RTE_VHOST_QUEUE_ALL UINT16_MAX
 

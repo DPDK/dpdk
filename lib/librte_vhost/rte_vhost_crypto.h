@@ -5,6 +5,14 @@
 #ifndef _VHOST_CRYPTO_H_
 #define _VHOST_CRYPTO_H_
 
+#include <stdint.h>
+
+#include <rte_compat.h>
+
+/* pre-declare structs to avoid including full headers */
+struct rte_mempool;
+struct rte_crypto_op;
+
 #define VHOST_CRYPTO_MBUF_POOL_SIZE		(8192)
 #define VHOST_CRYPTO_MAX_BURST_SIZE		(64)
 #define VHOST_CRYPTO_MAX_DATA_SIZE		(4096)

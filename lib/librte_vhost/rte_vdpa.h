@@ -11,6 +11,8 @@
  * Device specific vhost lib
  */
 
+#include <stdint.h>
+
 /** Maximum name length for statistics counters */
 #define RTE_VDPA_STATS_NAME_SIZE 64
 
