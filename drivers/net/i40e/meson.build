@@ -26,7 +26,6 @@ deps += ['hash']
 includes += include_directories('base')
 
 if arch_subdir == 'x86'
-	dpdk_conf.set('RTE_LIBRTE_I40E_INC_VECTOR', 1)
 	sources += files('i40e_rxtx_vec_sse.c')
 
 	# compile AVX2 version if either:
@@ -70,10 +69,8 @@ if arch_subdir == 'x86'
 		objs += i40e_avx512_lib.extract_objects('i40e_rxtx_vec_avx512.c')
 	endif
 elif arch_subdir == 'ppc'
-       dpdk_conf.set('RTE_LIBRTE_I40E_INC_VECTOR', 1)
        sources += files('i40e_rxtx_vec_altivec.c')
 elif arch_subdir == 'arm'
-       dpdk_conf.set('RTE_LIBRTE_I40E_INC_VECTOR', 1)
        sources += files('i40e_rxtx_vec_neon.c')
 endif
 
