@@ -6,6 +6,8 @@
 #ifndef _RTE_IPSEC_SAD_H_
 #define _RTE_IPSEC_SAD_H_
 
+#include <stdint.h>
+
 #include <rte_compat.h>
 
 /**
