@@ -70,6 +70,7 @@ static const struct vfio_iommu_type iommu_types[] = {
 	{
 		.type_id = RTE_VFIO_TYPE1,
 		.name = "Type 1",
+		.partial_unmap = false,
 		.dma_map_func = &vfio_type1_dma_map,
 		.dma_user_map_func = &vfio_type1_dma_mem_map
 	},
@@ -77,6 +78,7 @@ static const struct vfio_iommu_type iommu_types[] = {
 	{
 		.type_id = RTE_VFIO_SPAPR,
 		.name = "sPAPR",
+		.partial_unmap = true,
 		.dma_map_func = &vfio_spapr_dma_map,
 		.dma_user_map_func = &vfio_spapr_dma_mem_map
 	},
@@ -84,6 +86,7 @@ static const struct vfio_iommu_type iommu_types[] = {
 	{
 		.type_id = RTE_VFIO_NOIOMMU,
 		.name = "No-IOMMU",
+		.partial_unmap = true,
 		.dma_map_func = &vfio_noiommu_dma_map,
 		.dma_user_map_func = &vfio_noiommu_dma_mem_map
 	},
@@ -526,12 +529,19 @@ vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len,
 	/* for IOVA as VA mode, no need to care for IOVA addresses */
 	if (rte_eal_iova_mode() == RTE_IOVA_VA && msl->external == 0) {
 		uint64_t vfio_va = (uint64_t)(uintptr_t)addr;
-		if (type == RTE_MEM_EVENT_ALLOC)
-			vfio_dma_mem_map(default_vfio_cfg, vfio_va, vfio_va,
-					len, 1);
-		else
-			vfio_dma_mem_map(default_vfio_cfg, vfio_va, vfio_va,
-					len, 0);
+		uint64_t page_sz = msl->page_sz;
+
+		/* Maintain granularity of DMA map/unmap to memseg size */
+		for (; cur_len < len; cur_len += page_sz) {
+			if (type == RTE_MEM_EVENT_ALLOC)
+				vfio_dma_mem_map(default_vfio_cfg, vfio_va,
+						 vfio_va, page_sz, 1);
+			else
+				vfio_dma_mem_map(default_vfio_cfg, vfio_va,
+						 vfio_va, page_sz, 0);
+			vfio_va += page_sz;
+		}
+
 		return;
 	}
 
@@ -1348,6 +1358,12 @@ vfio_type1_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 			RTE_LOG(ERR, EAL, "  cannot clear DMA remapping, error %i (%s)\n",
 					errno, strerror(errno));
 			return -1;
+		} else if (dma_unmap.size != len) {
+			RTE_LOG(ERR, EAL, "  unexpected size %"PRIu64" of DMA "
+				"remapping cleared instead of %"PRIu64"\n",
+				(uint64_t)dma_unmap.size, len);
+			rte_errno = EIO;
+			return -1;
 		}
 	}
 
@@ -1823,6 +1839,12 @@ container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 		/* we're partially unmapping a previously mapped region, so we
 		 * need to split entry into two.
 		 */
+		if (!vfio_cfg->vfio_iommu_type->partial_unmap) {
+			RTE_LOG(DEBUG, EAL, "DMA partial unmap unsupported\n");
+			rte_errno = ENOTSUP;
+			ret = -1;
+			goto out;
+		}
 		if (user_mem_maps->n_maps == VFIO_MAX_USER_MEM_MAPS) {
 			RTE_LOG(ERR, EAL, "Not enough space to store partial mapping\n");
 			rte_errno = ENOMEM;
