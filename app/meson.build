@@ -66,6 +66,7 @@ foreach app:apps
 				link_args: ldflags,
 				link_whole: link_libs,
 				dependencies: dep_objs,
+				include_directories: includes,
 				install_rpath: join_paths(get_option('prefix'),
 						 driver_install_path),
 				install: true)
