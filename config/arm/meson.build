@@ -59,8 +59,6 @@ part_number_config_arm = {
 		'flags': [
 			['RTE_MACHINE', '"neoverse-n1"'],
 			['RTE_ARM_FEATURE_ATOMICS', true],
-			['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
-			['RTE_LIBRTE_VHOST_NUMA', false],
 			['RTE_MAX_MEM_MB', 1048576],
 			['RTE_MAX_LCORE', 80]
 		]
@@ -70,8 +68,6 @@ part_number_config_arm = {
 		'flags': [
 			['RTE_MACHINE', '"neoverse-n2"'],
 			['RTE_ARM_FEATURE_ATOMICS', true],
-			['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
-			['RTE_LIBRTE_VHOST_NUMA', false],
 			['RTE_MAX_LCORE', 64]
 		]
 	}

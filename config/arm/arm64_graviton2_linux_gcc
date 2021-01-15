@@ -17,3 +17,4 @@ implementor_id = '0x41'
 implementor_pn = '0xd0c'
 max_lcores = 64
 max_numa_nodes = 1
+numa = false

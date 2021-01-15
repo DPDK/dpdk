@@ -142,12 +142,19 @@ endif
 
 # check for libraries used in multiple places in DPDK
 has_libnuma = 0
-numa_dep = cc.find_library('numa', required: false)
-if numa_dep.found() and cc.has_header('numaif.h')
-	dpdk_conf.set10('RTE_HAS_LIBNUMA', true)
-	has_libnuma = 1
-	add_project_link_arguments('-lnuma', language: 'c')
-	dpdk_extra_ldflags += '-lnuma'
+find_libnuma = true
+if meson.is_cross_build() and not meson.get_cross_property('numa', true)
+	# don't look for libnuma if explicitly disabled in cross build
+	find_libnuma = false
+endif
+if find_libnuma
+	numa_dep = cc.find_library('numa', required: false)
+	if numa_dep.found() and cc.has_header('numaif.h')
+		dpdk_conf.set10('RTE_HAS_LIBNUMA', true)
+		has_libnuma = 1
+		add_project_link_arguments('-lnuma', language: 'c')
+		dpdk_extra_ldflags += '-lnuma'
+	endif
 endif
 
 has_libfdt = 0

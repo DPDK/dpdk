@@ -143,3 +143,7 @@ There are other options you may specify in a cross file to tailor the build::
    Supported extra configuration
       max_numa_nodes = n  # will set RTE_MAX_NUMA_NODES
       max_lcores = n      # will set RTE_MAX_LCORE
+
+      numa = false        # set to false to force building for a non-NUMA system
+         # if not set or set to true, the build system will build for a NUMA
+         # system only if libnuma is installed

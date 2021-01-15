@@ -17,3 +17,4 @@ implementer_id = '0x43'
 part_number = '0xb2'
 max_lcores = 36
 max_numa_nodes = 1
+numa = false
