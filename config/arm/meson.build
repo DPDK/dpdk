@@ -4,15 +4,16 @@
 
 arm_force_native_march = false
 
+# common flags to all aarch64 builds, with lowest priority
 flags_common = [
-	# Accelarate rte_memcpy. Be sure to run unit test (memcpy_perf_autotest)
+	# Accelerate rte_memcpy. Be sure to run unit test (memcpy_perf_autotest)
 	# to determine the best threshold in code. Refer to notes in source file
 	# (lib/librte_eal/arm/include/rte_memcpy_64.h) for more info.
 	['RTE_ARCH_ARM64_MEMCPY', false],
 	#	['RTE_ARM64_MEMCPY_ALIGNED_THRESHOLD', 2048],
 	#	['RTE_ARM64_MEMCPY_UNALIGNED_THRESHOLD', 512],
-	# Leave below RTE_ARM64_MEMCPY_xxx options commented out, unless there're
-	# strong reasons.
+	# Leave below RTE_ARM64_MEMCPY_xxx options commented out,
+	# unless there are strong reasons.
 	#	['RTE_ARM64_MEMCPY_SKIP_GCC_VER_CHECK', false],
 	#	['RTE_ARM64_MEMCPY_ALIGN_MASK', 0xF],
 	#	['RTE_ARM64_MEMCPY_STRICT_ALIGN', false],
@@ -22,77 +23,93 @@ flags_common = [
 
 	['RTE_SCHED_VECTOR', false],
 	['RTE_ARM_USE_WFE', false],
+	['RTE_ARCH_ARM64', true],
+	['RTE_CACHE_LINE_SIZE', 128]
 ]
 
+# implementer specific aarch64 flags, with middle priority
+# (will overwrite common flags)
 flags_implementer_generic = [
 	['RTE_MACHINE', '"armv8a"'],
-	['RTE_MAX_LCORE', 256],
 	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_CACHE_LINE_SIZE', 128]]
+	['RTE_MAX_LCORE', 256]
+]
 flags_implementer_arm = [
 	['RTE_MACHINE', '"armv8a"'],
-	['RTE_MAX_LCORE', 16],
-	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_CACHE_LINE_SIZE', 64]]
-flags_implementer_cavium = [
-	['RTE_CACHE_LINE_SIZE', 128],
-	['RTE_MAX_NUMA_NODES', 2],
-	['RTE_MAX_LCORE', 96],
-	['RTE_MAX_VFIO_GROUPS', 128]]
-flags_implementer_dpaa = [
-	['RTE_MACHINE', '"dpaa"'],
 	['RTE_USE_C11_MEM_MODEL', true],
 	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_NUMA_NODES', 1],
+	['RTE_MAX_LCORE', 16]
+]
+flags_implementer_cavium = [
+	['RTE_MAX_VFIO_GROUPS', 128],
+	['RTE_MAX_LCORE', 96],
+	['RTE_MAX_NUMA_NODES', 2]
+]
+flags_implementer_dpaa = [
+	['RTE_MACHINE', '"dpaa"'],
+	['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', false],
+	['RTE_USE_C11_MEM_MODEL', true],
+	['RTE_CACHE_LINE_SIZE', 64],
 	['RTE_MAX_LCORE', 16],
-	['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', false]]
+	['RTE_MAX_NUMA_NODES', 1]
+]
 flags_implementer_emag = [
 	['RTE_MACHINE', '"emag"'],
 	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_NUMA_NODES', 1],
-	['RTE_MAX_LCORE', 32]]
+	['RTE_MAX_LCORE', 32],
+	['RTE_MAX_NUMA_NODES', 1]
+]
 flags_implementer_armada = [
 	['RTE_MACHINE', '"armv8a"'],
 	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_NUMA_NODES', 1],
-	['RTE_MAX_LCORE', 16]]
+	['RTE_MAX_LCORE', 16],
+	['RTE_MAX_NUMA_NODES', 1]
+]
 
+# part number specific aarch64 flags, with highest priority
+# (will overwrite both common and implementer specific flags)
 flags_part_number_thunderx = [
 	['RTE_MACHINE', '"thunderx"'],
-	['RTE_USE_C11_MEM_MODEL', false]]
+	['RTE_USE_C11_MEM_MODEL', false]
+]
 flags_part_number_thunderx2 = [
 	['RTE_MACHINE', '"thunderx2"'],
-	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_NUMA_NODES', 2],
-	['RTE_MAX_LCORE', 256],
 	['RTE_ARM_FEATURE_ATOMICS', true],
-	['RTE_USE_C11_MEM_MODEL', true]]
+	['RTE_USE_C11_MEM_MODEL', true],
+	['RTE_CACHE_LINE_SIZE', 64],
+	['RTE_MAX_LCORE', 256],
+	['RTE_MAX_NUMA_NODES', 2]
+]
 flags_part_number_octeontx2 = [
 	['RTE_MACHINE', '"octeontx2"'],
-	['RTE_MAX_NUMA_NODES', 1],
-	['RTE_MAX_LCORE', 36],
 	['RTE_ARM_FEATURE_ATOMICS', true],
+	['RTE_USE_C11_MEM_MODEL', true],
 	['RTE_EAL_IGB_UIO', false],
-	['RTE_USE_C11_MEM_MODEL', true]]
+	['RTE_MAX_LCORE', 36],
+	['RTE_MAX_NUMA_NODES', 1]
+]
 flags_part_number_n1generic = [
 	['RTE_MACHINE', '"neoverse-n1"'],
-	['RTE_MAX_LCORE', 64],
-	['RTE_CACHE_LINE_SIZE', 64],
 	['RTE_ARM_FEATURE_ATOMICS', true],
 	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_MAX_MEM_MB', 1048576],
-	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
-	['RTE_LIBRTE_VHOST_NUMA', false]]
+	['RTE_LIBRTE_VHOST_NUMA', false],
+	['RTE_MAX_MEM_MB', 1048576],
+	['RTE_CACHE_LINE_SIZE', 64],
+	['RTE_MAX_LCORE', 64],
+	['RTE_MAX_NUMA_NODES', 1]
+]
 flags_part_number_n2generic = [
 	['RTE_MACHINE', '"neoverse-n2"'],
-	['RTE_MAX_LCORE', 64],
-	['RTE_CACHE_LINE_SIZE', 64],
 	['RTE_ARM_FEATURE_ATOMICS', true],
 	['RTE_USE_C11_MEM_MODEL', true],
 	['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
-	['RTE_LIBRTE_VHOST_NUMA', false]]
+	['RTE_LIBRTE_VHOST_NUMA', false],
+	['RTE_MAX_LCORE', 64],
+	['RTE_CACHE_LINE_SIZE', 64]
+]
 
+# arm config (implementer 0x41) is the default config
 part_number_config_arm = [
 	['generic', ['-march=armv8-a+crc', '-moutline-atomics']],
 	['native', ['-march=native']],
@@ -104,7 +121,8 @@ part_number_config_arm = [
 	['0xd0a', ['-mcpu=cortex-a75']],
 	['0xd0b', ['-mcpu=cortex-a76']],
 	['0xd0c', ['-march=armv8.2-a+crypto', '-mcpu=neoverse-n1'], flags_part_number_n1generic],
-	['0xd49', ['-march=armv8.5-a+crypto+sve2'], flags_part_number_n2generic]]
+	['0xd49', ['-march=armv8.5-a+crypto+sve2'], flags_part_number_n2generic]
+]
 
 part_number_config_cavium = [
 	['generic', ['-march=armv8-a+crc+crypto','-mcpu=thunderx']],
@@ -113,13 +131,14 @@ part_number_config_cavium = [
 	['0xa2', ['-mcpu=thunderxt81'], flags_part_number_thunderx],
 	['0xa3', ['-mcpu=thunderxt83'], flags_part_number_thunderx],
 	['0xaf', ['-march=armv8.1-a+crc+crypto','-mcpu=thunderx2t99'], flags_part_number_thunderx2],
-	['0xb2', ['-march=armv8.2-a+crc+crypto+lse','-mcpu=octeontx2'], flags_part_number_octeontx2]]
-
+	['0xb2', ['-march=armv8.2-a+crc+crypto+lse','-mcpu=octeontx2'], flags_part_number_octeontx2]
+]
 part_number_config_emag = [
 	['generic', ['-march=armv8-a+crc+crypto', '-mtune=emag']],
-	['native', ['-march=native']]]
+	['native', ['-march=native']]
+]
 
-## Arm implementer ID (ARM DDI 0487C.a, Section G7.2.106, Page G7-5321)
+## Arm implementer ID (MIDR in Arm Architecture Reference Manual)
 implementer_generic = ['Generic armv8', flags_implementer_generic, part_number_config_arm]
 implementer_0x41 = ['Arm', flags_implementer_arm, part_number_config_arm]
 implementer_0x43 = ['Cavium', flags_implementer_cavium, part_number_config_cavium]
@@ -131,21 +150,21 @@ dpdk_conf.set('RTE_ARCH_ARM', 1)
 dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
 if dpdk_conf.get('RTE_ARCH_32')
+	# armv7 build
 	dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
 	dpdk_conf.set('RTE_ARCH_ARMv7', 1)
 	# the minimum architecture supported, armv7-a, needs the following,
-	# mk/machine/armv7a/rte.vars.mk sets it too
 	machine_args += '-mfpu=neon'
 else
-	dpdk_conf.set('RTE_CACHE_LINE_SIZE', 128)
-	dpdk_conf.set('RTE_ARCH_ARM64', 1)
-
+	# aarch64 build
 	implementer_id = 'generic'
 	machine_args = [] # Clear previous machine args
 	if machine == 'default' and not meson.is_cross_build()
+		# default build
 		implementer_config = implementer_generic
 		part_number = 'generic'
 	elif not meson.is_cross_build()
+		# native build
 		# The script returns ['Implementer', 'Variant', 'Architecture',
 		# 'Primary Part number', 'Revision']
 		detect_vendor = find_program(join_paths(
@@ -166,6 +185,7 @@ else
 			part_number = 'native'
 		endif
 	else
+		# cross build
 		implementer_id = meson.get_cross_property('implementer_id', 'generic')
 		part_number = meson.get_cross_property('part_number', 'generic')
 		implementer_config = get_variable('implementer_' + implementer_id)
@@ -202,7 +222,7 @@ else
 		endif
 	endforeach
 endif
-message(machine_args)
+message('Using machine args: @0@'.format(machine_args))
 
 if (cc.get_define('__ARM_NEON', args: machine_args) != '' or
     cc.get_define('__aarch64__', args: machine_args) != '')

@@ -99,3 +99,37 @@ command::
 
 	meson arm64-build --cross-file config/arm/arm64_armv8_linux_gcc
 	ninja -C arm64-build
+
+Supported cross-compilation targets
+-----------------------------------
+
+If you wish to build for a target which is not among the current cross-files,
+you may use various combinations of implementer/part number::
+
+   Supported implementers:
+      'generic': Generic armv8
+      '0x41':    Arm
+      '0x43':    Cavium
+      '0x50':    Ampere Computing
+      '0x56':    Marvell ARMADA
+      'dpaa':    NXP DPAA
+
+   Supported part_numbers for generic, 0x41, 0x56, dpaa:
+      'generic': valid for all armv8-a architectures (default value)
+      '0xd03':   cortex-a53
+      '0xd04':   cortex-a35
+      '0xd09':   cortex-a73
+      '0xd0a':   cortex-a75
+      '0xd0b':   cortex-a76
+      '0xd0c':   neoverse-n1
+
+   Supported part_numbers for 0x43:
+      'generic': valid for all Cavium builds
+      '0xa1':    thunderxt88
+      '0xa2':    thunderxt81
+      '0xa3':    thunderxt83
+      '0xaf':    thunderx2t99
+      '0xb2':    octeontx2
+
+   Supported part_numbers for 0x50:
+      'generic': valid for all Ampere builds
