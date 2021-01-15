@@ -455,6 +455,9 @@ add_all_channels(const char *vm_name)
 					CHANNEL_MGR_SOCKET_PATH, dir->d_name);
 			continue;
 		}
+		if (rte_lcore_index(channel_num) == -1)
+			continue;
+
 		/* if channel has not been added previously */
 		if (channel_exists(vm_info, channel_num))
 			continue;
@@ -512,6 +515,8 @@ add_channels(const char *vm_name, unsigned *channel_list,
 	}
 
 	for (i = 0; i < len_channel_list; i++) {
+		if (rte_lcore_index(i) == -1)
+			continue;
 
 		if (channel_list[i] >= RTE_MAX_LCORE) {
 			RTE_LOG(INFO, CHANNEL_MANAGER, "Channel(%u) is out of range "
@@ -574,6 +579,9 @@ add_host_channels(void)
 	}
 
 	for (i = 0; i < ci->core_count; i++) {
+		if (rte_lcore_index(i) == -1)
+			continue;
+
 		if (ci->cd[i].global_enabled_cpus == 0)
 			continue;
 

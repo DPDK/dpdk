@@ -96,6 +96,9 @@ power_manager_init(void)
 		max_core_num = ci->core_count;
 
 	for (i = 0; i < max_core_num; i++) {
+		if (rte_lcore_index(i) == -1)
+			continue;
+
 		if (ci->cd[i].global_enabled_cpus) {
 			if (rte_power_init(i) < 0)
 				RTE_LOG(ERR, POWER_MANAGER,
@@ -170,6 +173,9 @@ power_manager_exit(void)
 		max_core_num = ci->core_count;
 
 	for (i = 0; i < max_core_num; i++) {
+		if (rte_lcore_index(i) == -1)
+			continue;
+
 		if (ci->cd[i].global_enabled_cpus) {
 			if (rte_power_exit(i) < 0) {
 				RTE_LOG(ERR, POWER_MANAGER, "Unable to shutdown power manager "
