@@ -4,7 +4,7 @@
 
 #include <rte_ether.h>
 #include <rte_mbuf.h>
-#ifdef __ARM64_NEON__
+#ifdef RTE_ARCH_ARM64
 #include <arm_neon.h>
 #endif
 
@@ -762,7 +762,7 @@ void hinic_free_all_rx_mbufs(struct hinic_rxq *rxq)
 static inline void hinic_rq_cqe_be_to_cpu32(void *dst_le32,
 					    volatile void *src_be32)
 {
-#if defined(__X86_64_SSE__)
+#if defined(RTE_ARCH_X86_64)
 	volatile __m128i *wqe_be = (volatile __m128i *)src_be32;
 	__m128i *wqe_le = (__m128i *)dst_le32;
 	__m128i shuf_mask =  _mm_set_epi8(12, 13, 14, 15, 8, 9, 10,
@@ -770,7 +770,7 @@ static inline void hinic_rq_cqe_be_to_cpu32(void *dst_le32,
 
 	/* l2nic just use first 128 bits */
 	wqe_le[0] = _mm_shuffle_epi8(wqe_be[0], shuf_mask);
-#elif defined(__ARM64_NEON__)
+#elif defined(RTE_ARCH_ARM64)
 	volatile uint8x16_t *wqe_be = (volatile uint8x16_t *)src_be32;
 	uint8x16_t *wqe_le = (uint8x16_t *)dst_le32;
 	const uint8x16_t shuf_mask = {3, 2, 1, 0, 7, 6, 5, 4, 11, 10,
