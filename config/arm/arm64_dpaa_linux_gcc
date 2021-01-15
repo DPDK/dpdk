@@ -14,4 +14,4 @@ cpu = 'armv8-a'
 endian = 'little'
 
 [properties]
-implementor_id = 'dpaa'
+implementer_id = 'dpaa'

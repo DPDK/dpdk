@@ -13,4 +13,4 @@ cpu = 'armv8-a'
 endian = 'little'
 
 [properties]
-implementor_id = '0x50'
+implementer_id = '0x50'

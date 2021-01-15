@@ -13,5 +13,5 @@ cpu = 'armv8-a'
 endian = 'little'
 
 [properties]
-implementor_id = '0x43'
-implementor_pn = '0xaf'
+implementer_id = '0x43'
+part_number = '0xaf'

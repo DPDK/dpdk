@@ -13,10 +13,10 @@ cpu = 'armv8-a'
 endian = 'little'
 
 [properties]
-implementor_id = 'generic'
+implementer_id = 'generic'
 
-# Valid options for Arm's implementor_pn:
-# 'default': valid for all armv8-a architectures (default value)
+# Valid options for Arm's part_number:
+# 'generic': valid for all armv8-a architectures (default value)
 # '0xd03':   cortex-a53
 # '0xd04':   cortex-a35
 # '0xd05':   cortex-a55
@@ -25,4 +25,4 @@ implementor_id = 'generic'
 # '0xd09':   cortex-a73
 # '0xd0a':   cortex-a75
 # '0xd0b':   cortex-a76
-implementor_pn = 'default'
+part_number = 'generic'
