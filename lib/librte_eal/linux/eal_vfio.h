@@ -113,6 +113,7 @@ typedef int (*vfio_dma_user_func_t)(int fd, uint64_t vaddr, uint64_t iova,
 struct vfio_iommu_type {
 	int type_id;
 	const char *name;
+	bool partial_unmap;
 	vfio_dma_user_func_t dma_user_map_func;
 	vfio_dma_func_t dma_map_func;
 };
