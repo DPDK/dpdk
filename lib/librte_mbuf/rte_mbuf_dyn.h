@@ -66,7 +66,11 @@
  * - any name that does not start with "rte_" in an application
  */
 
+#include <stdio.h>
+#include <stdint.h>
 #include <sys/types.h>
+
+#include <rte_compat.h>
 
 #ifdef __cplusplus
 extern "C" {
