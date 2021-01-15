@@ -87,7 +87,7 @@ struct ionic_rx_qcq {
 	struct rte_mempool *mb_seg_pool;
 	uint64_t rearm_data;
 	uint64_t rearm_seg_data;
-	uint16_t buf_size;	/* Total length of all segments together */
+	uint16_t frame_size;	/* Based on configured MTU */
 	uint16_t hdr_seg_size;	/* Length of first segment of RX chain */
 	uint16_t seg_size;	/* Length of all subsequent segments */
 	uint16_t flags;
@@ -140,7 +140,7 @@ struct ionic_lif {
 	struct ionic_adapter *adapter;
 	struct rte_eth_dev *eth_dev;
 	uint16_t port_id;  /**< Device port identifier */
-	uint16_t rx_buf_size;
+	uint16_t frame_size;
 	uint32_t hw_index;
 	uint32_t state;
 	uint32_t ntxqcqs;
@@ -192,6 +192,7 @@ void ionic_lif_stop(struct ionic_lif *lif);
 
 void ionic_lif_configure(struct ionic_lif *lif);
 void ionic_lif_configure_vlan_offload(struct ionic_lif *lif, int mask);
+void ionic_lif_configure_rx_sg_offload(struct ionic_lif *lif);
 void ionic_lif_set_rx_buf_size(struct ionic_lif *lif);
 void ionic_lif_reset(struct ionic_lif *lif);
 
@@ -200,7 +201,7 @@ int ionic_intr_alloc(struct ionic_lif *lif, struct ionic_intr_info *intr);
 int ionic_qcq_service(struct ionic_qcq *qcq, int budget, ionic_cq_cb cb,
 	void *cb_arg);
 
-int ionic_lif_change_mtu(struct ionic_lif *lif, int new_mtu);
+int ionic_lif_set_mtu(struct ionic_lif *lif, uint32_t mtu);
 
 int ionic_dev_add_mac(struct rte_eth_dev *eth_dev,
 	struct rte_ether_addr *mac_addr,
@@ -223,9 +224,6 @@ int ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id,
 	uint32_t index, uint16_t ntxq_descs,
 	struct ionic_tx_qcq **qcq_out);
 void ionic_qcq_free(struct ionic_qcq *qcq);
-
-int ionic_qcq_enable(struct ionic_qcq *qcq);
-int ionic_qcq_disable(struct ionic_qcq *qcq);
 
 int ionic_lif_rxq_init(struct ionic_rx_qcq *rxq);
 void ionic_lif_rxq_deinit(struct ionic_rx_qcq *rxq);

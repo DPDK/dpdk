@@ -105,12 +105,6 @@ ionic_tx_flush_sg(struct ionic_tx_qcq *txq)
 	}
 }
 
-void
-ionic_tx_flush_all_sg(struct ionic_tx_qcq *txq)
-{
-	ionic_tx_flush_sg(txq);
-}
-
 static __rte_always_inline int
 ionic_tx_sg(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 {
@@ -308,7 +302,7 @@ ionic_rx_clean_one_sg(struct ionic_rx_qcq *rxq,
 		return;
 	}
 
-	if (unlikely(cq_desc_len > rxq->buf_size || cq_desc_len == 0)) {
+	if (unlikely(cq_desc_len > rxq->frame_size || cq_desc_len == 0)) {
 		stats->bad_len++;
 		return;
 	}
@@ -529,7 +523,7 @@ ionic_recv_pkts_sg(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 /*
- * Fills all descriptors with mbufs. Resets the head and tail indices.
+ * Fills all descriptors with mbufs.
  */
 int __rte_cold
 ionic_rx_fill_sg(struct ionic_rx_qcq *rxq)
@@ -537,9 +531,6 @@ ionic_rx_fill_sg(struct ionic_rx_qcq *rxq)
 	struct ionic_queue *q = &rxq->qcq.q;
 	uint32_t i;
 	int err = 0;
-
-	q->head_idx = 0;
-	q->tail_idx = 0;
 
 	for (i = 0; i < q->num_descs - 1u; i++) {
 		err = ionic_rx_fill_one_sg(rxq);
@@ -552,30 +543,4 @@ ionic_rx_fill_sg(struct ionic_rx_qcq *rxq)
 	ionic_q_flush(q);
 
 	return err;
-}
-
-/*
- * Cleans and fills all descriptors. Drops all received pkts.
- */
-void
-ionic_rx_flush_all_sg(struct ionic_rx_qcq *rxq)
-{
-	struct ionic_rx_service rx_svc;
-	struct rte_mbuf *rx_pkts[IONIC_RX_FLUSH_PKTS];
-	uint32_t flushed = 0;
-
-	rx_svc.rx_pkts = rx_pkts;
-	rx_svc.nb_rx = 0;
-
-	do {
-		ionic_rxq_service_sg(rxq, IONIC_RX_FLUSH_PKTS, &rx_svc);
-
-		if (rx_svc.nb_rx) {
-			rte_pktmbuf_free_bulk(rx_pkts, rx_svc.nb_rx);
-			flushed += rx_svc.nb_rx;
-			rx_svc.nb_rx = 0;
-		}
-	} while (rx_svc.nb_rx > 0);
-
-	IONIC_PRINT(DEBUG, "Flushed %u packets", flushed);
 }

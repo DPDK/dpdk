@@ -337,22 +337,31 @@ ionic_dev_interrupt_handler(void *param)
 static int
 ionic_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
+	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
-	int err;
 
-	IONIC_PRINT_CALL();
-	IONIC_PRINT(INFO, "Setting mtu %u\n", mtu);
+	if (lif->state & IONIC_LIF_F_UP) {
+		IONIC_PRINT(ERR, "Stop %s before setting mtu", lif->name);
+		return -EBUSY;
+	}
 
 	/* Note: mtu check against min/max is done by the API */
-	err = ionic_lif_change_mtu(lif, mtu);
-	if (err)
-		return err;
+	IONIC_PRINT(INFO, "Setting mtu %u", mtu);
 
-	/* Update max frame size */
-	max_frame_size = mtu + RTE_ETHER_HDR_LEN;
-	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame_size;
+	/* Update the frame size used by the Rx path */
+	lif->frame_size = mtu + IONIC_ETH_OVERHEAD;
 
-	ionic_lif_set_rx_buf_size(lif);
+	/* Update the JUMBO_FRAME flag to match the provided MTU */
+	if (mtu > RTE_ETHER_MTU) {
+		IONIC_PRINT(DEBUG, "Set device mtu %u frame %u JUMBO",
+			mtu, lif->frame_size);
+		rxmode->max_rx_pkt_len = lif->frame_size;
+		rxmode->offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	} else {
+		IONIC_PRINT(DEBUG, "Set device mtu %u frame %u",
+			mtu, lif->frame_size);
+		rxmode->offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
+	}
 
 	return 0;
 }
@@ -378,8 +387,8 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 			rte_le_to_cpu_32(ident->lif.eth.min_frame_size));
 	dev_info->max_mtu = RTE_MIN((uint32_t)IONIC_MAX_MTU,
 			rte_le_to_cpu_32(ident->lif.eth.max_frame_size));
-	dev_info->min_rx_bufsize = dev_info->min_mtu + RTE_ETHER_HDR_LEN;
-	dev_info->max_rx_pktlen = dev_info->max_mtu + RTE_ETHER_HDR_LEN;
+	dev_info->min_rx_bufsize = dev_info->min_mtu + IONIC_ETH_OVERHEAD;
+	dev_info->max_rx_pktlen = dev_info->max_mtu + IONIC_ETH_OVERHEAD;
 
 	dev_info->max_mac_addrs = adapter->max_mac_addrs;
 	dev_info->hash_key_size = IONIC_RSS_HASH_KEY_SIZE;
@@ -834,7 +843,6 @@ ionic_dev_configure(struct rte_eth_dev *eth_dev)
 
 	ionic_lif_configure(lif);
 
-
 	return 0;
 }
 
@@ -867,6 +875,7 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 	struct ionic_adapter *adapter = lif->adapter;
 	struct ionic_dev *idev = &adapter->idev;
 	uint32_t speed = 0, allowed_speeds;
+	uint32_t mtu;
 	uint8_t an_enable;
 	int err;
 
@@ -888,11 +897,30 @@ ionic_dev_start(struct rte_eth_dev *eth_dev)
 	if (dev_conf->lpbk_mode)
 		IONIC_PRINT(WARNING, "Loopback mode not supported");
 
+	/* Re-set features in case SG flag was added in rx_queue_setup() */
 	err = ionic_lif_set_features(lif);
 	if (err) {
 		IONIC_PRINT(ERR, "Cannot set LIF features: %d", err);
 		return err;
 	}
+
+	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+		lif->frame_size = dev_conf->rxmode.max_rx_pkt_len;
+		mtu = lif->frame_size - IONIC_ETH_OVERHEAD;
+	} else {
+		mtu = RTE_MIN(eth_dev->data->mtu, RTE_ETHER_MTU);
+		lif->frame_size = mtu + IONIC_ETH_OVERHEAD;
+	}
+
+	err = ionic_lif_set_mtu(lif, mtu);
+	if (err) {
+		IONIC_PRINT(ERR, "Cannot set LIF frame size %u: %d",
+			lif->frame_size, err);
+		return err;
+	}
+
+	/* Keep external value in sync */
+	eth_dev->data->mtu = mtu;
 
 	err = ionic_lif_start(lif);
 	if (err) {
