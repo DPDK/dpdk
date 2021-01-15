@@ -34,8 +34,6 @@ struct telemetry_metrics_data {
 	int metrics_register_done;
 };
 
-struct telemetry_metrics_data tel_met_data;
-
 __rte_experimental
 int32_t rte_metrics_tel_reg_all_ethdev(int *metrics_register_done,
 		int *reg_index_list);

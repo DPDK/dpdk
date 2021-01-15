@@ -13,6 +13,8 @@
 #include "rte_metrics.h"
 #include "rte_metrics_telemetry.h"
 
+struct telemetry_metrics_data tel_met_data;
+
 int metrics_log_level;
 
 /* Logging Macros */
