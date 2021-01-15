@@ -2,11 +2,7 @@
 # Copyright(c) 2017 Intel Corporation.
 # Copyright(c) 2017 Cavium, Inc
 
-# for checking defines we need to use the correct compiler flags
-march_opt = '-march=@0@'.format(machine)
-
 arm_force_native_march = false
-arm_force_default_march = (machine == 'default')
 
 flags_common = [
 	# Accelarate rte_memcpy. Be sure to run unit test (memcpy_perf_autotest)
@@ -61,7 +57,6 @@ flags_implementer_armada = [
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_MAX_LCORE', 16]]
 
-flags_part_number_default = []
 flags_part_number_thunderx = [
 	['RTE_MACHINE', '"thunderx"'],
 	['RTE_USE_C11_MEM_MODEL', false]]
@@ -127,17 +122,9 @@ part_number_config_emag = [
 ## Arm implementer ID (ARM DDI 0487C.a, Section G7.2.106, Page G7-5321)
 implementer_generic = ['Generic armv8', flags_implementer_generic, part_number_config_arm]
 implementer_0x41 = ['Arm', flags_implementer_arm, part_number_config_arm]
-implementer_0x42 = ['Broadcom', flags_implementer_generic, part_number_config_arm]
 implementer_0x43 = ['Cavium', flags_implementer_cavium, part_number_config_cavium]
-implementer_0x44 = ['DEC', flags_implementer_generic, part_number_config_arm]
-implementer_0x49 = ['Infineon', flags_implementer_generic, part_number_config_arm]
-implementer_0x4d = ['Motorola', flags_implementer_generic, part_number_config_arm]
-implementer_0x4e = ['NVIDIA', flags_implementer_generic, part_number_config_arm]
 implementer_0x50 = ['Ampere Computing', flags_implementer_emag, part_number_config_emag]
-implementer_0x51 = ['Qualcomm', flags_implementer_generic, part_number_config_arm]
-implementer_0x53 = ['Samsung', flags_implementer_generic, part_number_config_arm]
 implementer_0x56 = ['Marvell ARMADA', flags_implementer_armada, part_number_config_arm]
-implementer_0x69 = ['Intel', flags_implementer_generic, part_number_config_arm]
 implementer_dpaa = ['NXP DPAA', flags_implementer_dpaa, part_number_config_arm]
 
 dpdk_conf.set('RTE_ARCH_ARM', 1)
@@ -153,11 +140,9 @@ else
 	dpdk_conf.set('RTE_CACHE_LINE_SIZE', 128)
 	dpdk_conf.set('RTE_ARCH_ARM64', 1)
 
-	implementer_config = []
-	cmd_generic = ['generic', '', '', 'generic', '']
-	cmd_output = cmd_generic # Set generic by default
+	implementer_id = 'generic'
 	machine_args = [] # Clear previous machine args
-	if arm_force_default_march and not meson.is_cross_build()
+	if machine == 'default' and not meson.is_cross_build()
 		implementer_config = implementer_generic
 		part_number = 'generic'
 	elif not meson.is_cross_build()
@@ -168,14 +153,15 @@ else
 		cmd = run_command(detect_vendor.path())
 		if cmd.returncode() == 0
 			cmd_output = cmd.stdout().to_lower().strip().split(' ')
+			implementer_id = cmd_output[0]
+			part_number = cmd_output[3]
 		endif
 		# Set to generic if variable is not found
-		implementer_config = get_variable('implementer_' + cmd_output[0], ['generic'])
+		implementer_config = get_variable('implementer_' + implementer_id, ['generic'])
 		if implementer_config[0] == 'generic'
 			implementer_config = implementer_generic
-			cmd_output = cmd_generic
+			part_number = 'generic'
 		endif
-		part_number = cmd_output[3]
 		if arm_force_native_march == true
 			part_number = 'native'
 		endif
@@ -208,7 +194,7 @@ else
 				endif
 			endforeach
 			# Apply any extra machine specific flags.
-			foreach flag: marg.get(2, flags_part_number_default)
+			foreach flag: marg.get(2, [])
 				if flag.length() > 0
 					dpdk_conf.set(flag[0], flag[1])
 				endif
