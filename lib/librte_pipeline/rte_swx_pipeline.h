@@ -15,6 +15,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include <rte_compat.h>
 
