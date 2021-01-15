@@ -15,3 +15,4 @@ endian = 'little'
 
 [properties]
 implementer_id = 'dpaa'
+part_number = '0xd08'

@@ -14,3 +14,4 @@ endian = 'little'
 
 [properties]
 implementer_id = '0x50'
+part_number = '0x0'

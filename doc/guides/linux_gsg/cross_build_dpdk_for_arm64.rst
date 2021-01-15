@@ -114,8 +114,10 @@ you may use various combinations of implementer/part number::
       '0x56':    Marvell ARMADA
       'dpaa':    NXP DPAA
 
-   Supported part_numbers for generic, 0x41, 0x56, dpaa:
-      'generic': valid for all armv8-a architectures (default value)
+   Supported part_numbers for generic:
+      'generic': valid for all armv8-a architectures (unoptimized portable build)
+
+   Supported part_numbers for 0x41, 0x56, dpaa:
       '0xd03':   cortex-a53
       '0xd04':   cortex-a35
       '0xd09':   cortex-a73
@@ -124,7 +126,6 @@ you may use various combinations of implementer/part number::
       '0xd0c':   neoverse-n1
 
    Supported part_numbers for 0x43:
-      'generic': valid for all Cavium builds
       '0xa1':    thunderxt88
       '0xa2':    thunderxt81
       '0xa3':    thunderxt83
@@ -132,4 +133,4 @@ you may use various combinations of implementer/part number::
       '0xb2':    octeontx2
 
    Supported part_numbers for 0x50:
-      'generic': valid for all Ampere builds
+      '0x0':     emag

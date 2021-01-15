@@ -46,8 +46,6 @@ implementer_generic = {
 }
 
 part_number_config_arm = {
-	'generic': {'machine_args':  ['-march=armv8-a+crc',
-				      '-moutline-atomics']},
 	'native': {'machine_args':  ['-march=native']},
 	'0xd03': {'machine_args':  ['-mcpu=cortex-a53']},
 	'0xd04': {'machine_args':  ['-mcpu=cortex-a35']},
@@ -103,8 +101,6 @@ implementer_cavium = {
 		['RTE_MAX_NUMA_NODES', 2]
 	],
 	'part_number_config': {
-		'generic': {'machine_args': ['-march=armv8-a+crc+crypto',
-					     '-mcpu=thunderx']},
 		'native': {'machine_args': ['-march=native']},
 		'0xa1': {
 			'machine_args': ['-mcpu=thunderxt88'],
@@ -154,8 +150,8 @@ implementer_ampere = {
 		['RTE_MAX_NUMA_NODES', 1]
 	],
 	'part_number_config': {
-		'generic': {'machine_args':  ['-march=armv8-a+crc+crypto',
-					      '-mtune=emag']},
+		'0x0': {'machine_args':  ['-march=armv8-a+crc+crypto',
+					  '-mtune=emag']},
 		'native': {'machine_args':  ['-march=native']}
 	}
 }
@@ -205,10 +201,9 @@ if dpdk_conf.get('RTE_ARCH_32')
 	machine_args += '-mfpu=neon'
 else
 	# aarch64 build
-	implementer_id = 'generic'
 	if machine == 'default' and not meson.is_cross_build()
 		# default build
-		implementer_config = implementer['generic']
+		implementer_id = 'generic'
 		part_number = 'generic'
 	elif not meson.is_cross_build()
 		# native build
@@ -221,21 +216,24 @@ else
 			cmd_output = cmd.stdout().to_lower().strip().split(' ')
 			implementer_id = cmd_output[0]
 			part_number = cmd_output[3]
-		endif
-		# Set to generic if variable is not found
-		implementer_config = implementers.get(implementer_id, ['generic'])
-		if implementer_config[0] == 'generic'
-			implementer_config = implementer['generic']
-			part_number = 'generic'
+		else
+			error('Error when getting Arm Implementer ID and part number.')
 		endif
 		if arm_force_native_march == true
 			part_number = 'native'
 		endif
 	else
 		# cross build
-		implementer_id = meson.get_cross_property('implementer_id', 'generic')
-		part_number = meson.get_cross_property('part_number', 'generic')
-		implementer_config = implementers.get(implementer_id)
+		implementer_id = meson.get_cross_property('implementer_id')
+		part_number = meson.get_cross_property('part_number')
+	endif
+
+	if implementers.has_key(implementer_id)
+		implementer_config = implementers[implementer_id]
+	else
+		error('Unsupported Arm implementer: @0@. '.format(implementer_id) +
+		      'Please add support for it or use the generic ' +
+		      '(-Dmachine=generic) build.')
 	endif
 
 	message('Arm implementer: ' + implementer_config['description'])
@@ -245,15 +243,12 @@ else
 	if part_number_config.has_key(part_number)
 		# use the specified part_number machine args if found
 		part_number_config = part_number_config[part_number]
-	elif not meson.is_cross_build()
-		# default to generic machine args if part_number is not found
-		# and not forcing native machine args
-		# but don't default in cross-builds; if part_number is specified
-		# incorrectly in a cross-file, it needs to be fixed there
-		part_number_config = part_number_config['generic']
 	else
-		# doing cross build and part number is not in part_number_config
-		error('Cross build part number 0@0 not found.'.format(part_number))
+		# unknown part number
+		error('Unsupported part number @0@ of implementer @1@. '
+		      .format(part_number, implementer_id) +
+		      'Please add support for it or use the generic ' +
+		      '(-Dmachine=generic) build.')
 	endif
 
 	# use default flags with implementer flags
