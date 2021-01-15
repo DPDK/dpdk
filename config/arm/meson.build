@@ -27,124 +27,172 @@ flags_common = [
 	['RTE_CACHE_LINE_SIZE', 128]
 ]
 
-# implementer specific aarch64 flags, with middle priority
-# (will overwrite common flags)
-flags_implementer_generic = [
-	['RTE_MACHINE', '"armv8a"'],
-	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_MAX_LCORE', 256]
-]
-flags_implementer_arm = [
-	['RTE_MACHINE', '"armv8a"'],
-	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_LCORE', 16]
-]
-flags_implementer_cavium = [
-	['RTE_MAX_VFIO_GROUPS', 128],
-	['RTE_MAX_LCORE', 96],
-	['RTE_MAX_NUMA_NODES', 2]
-]
-flags_implementer_dpaa = [
-	['RTE_MACHINE', '"dpaa"'],
-	['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', false],
-	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_LCORE', 16],
-	['RTE_MAX_NUMA_NODES', 1]
-]
-flags_implementer_emag = [
-	['RTE_MACHINE', '"emag"'],
-	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_LCORE', 32],
-	['RTE_MAX_NUMA_NODES', 1]
-]
-flags_implementer_armada = [
-	['RTE_MACHINE', '"armv8a"'],
-	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_LCORE', 16],
-	['RTE_MAX_NUMA_NODES', 1]
-]
+## Part numbers are specific to Arm implementers
+# implementer specific aarch64 flags have middle priority
+#     (will overwrite common flags)
+# part number specific aarch64 flags have the highest priority
+#     (will overwrite both common and implementer specific flags)
+implementer_generic = {
+	'description': 'Generic armv8',
+	'flags': [
+		['RTE_MACHINE', '"armv8a"'],
+		['RTE_USE_C11_MEM_MODEL', true],
+		['RTE_MAX_LCORE', 256]
+	],
+	'part_number_config': {
+		'generic': {'machine_args': ['-march=armv8-a+crc',
+					     '-moutline-atomics']}
+	}
+}
 
-# part number specific aarch64 flags, with highest priority
-# (will overwrite both common and implementer specific flags)
+part_number_config_arm = {
+	'generic': {'machine_args':  ['-march=armv8-a+crc',
+				      '-moutline-atomics']},
+	'native': {'machine_args':  ['-march=native']},
+	'0xd03': {'machine_args':  ['-mcpu=cortex-a53']},
+	'0xd04': {'machine_args':  ['-mcpu=cortex-a35']},
+	'0xd07': {'machine_args':  ['-mcpu=cortex-a57']},
+	'0xd08': {'machine_args':  ['-mcpu=cortex-a72']},
+	'0xd09': {'machine_args':  ['-mcpu=cortex-a73']},
+	'0xd0a': {'machine_args':  ['-mcpu=cortex-a75']},
+	'0xd0b': {'machine_args':  ['-mcpu=cortex-a76']},
+	'0xd0c': {
+		'machine_args':  ['-march=armv8.2-a+crypto',
+				  '-mcpu=neoverse-n1'],
+		'flags': [
+			['RTE_MACHINE', '"neoverse-n1"'],
+			['RTE_ARM_FEATURE_ATOMICS', true],
+			['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
+			['RTE_LIBRTE_VHOST_NUMA', false],
+			['RTE_MAX_MEM_MB', 1048576],
+			['RTE_MAX_LCORE', 80],
+			['RTE_MAX_NUMA_NODES', 1]
+		]
+	},
+	'0xd49': {
+		'machine_args':  ['-march=armv8.5-a+crypto+sve2'],
+		'flags': [
+			['RTE_MACHINE', '"neoverse-n2"'],
+			['RTE_ARM_FEATURE_ATOMICS', true],
+			['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
+			['RTE_LIBRTE_VHOST_NUMA', false],
+			['RTE_MAX_LCORE', 64]
+		]
+	}
+}
+implementer_arm = {
+	'description': 'Arm',
+	'flags': [
+		['RTE_MACHINE', '"armv8a"'],
+		['RTE_USE_C11_MEM_MODEL', true],
+		['RTE_CACHE_LINE_SIZE', 64],
+		['RTE_MAX_LCORE', 16]
+	],
+	'part_number_config': part_number_config_arm
+}
+
 flags_part_number_thunderx = [
 	['RTE_MACHINE', '"thunderx"'],
 	['RTE_USE_C11_MEM_MODEL', false]
 ]
-flags_part_number_thunderx2 = [
-	['RTE_MACHINE', '"thunderx2"'],
-	['RTE_ARM_FEATURE_ATOMICS', true],
-	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_LCORE', 256],
-	['RTE_MAX_NUMA_NODES', 2]
-]
-flags_part_number_octeontx2 = [
-	['RTE_MACHINE', '"octeontx2"'],
-	['RTE_ARM_FEATURE_ATOMICS', true],
-	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_EAL_IGB_UIO', false],
-	['RTE_MAX_LCORE', 36],
-	['RTE_MAX_NUMA_NODES', 1]
-]
-flags_part_number_n1generic = [
-	['RTE_MACHINE', '"neoverse-n1"'],
-	['RTE_ARM_FEATURE_ATOMICS', true],
-	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
-	['RTE_LIBRTE_VHOST_NUMA', false],
-	['RTE_MAX_MEM_MB', 1048576],
-	['RTE_CACHE_LINE_SIZE', 64],
-	['RTE_MAX_LCORE', 64],
-	['RTE_MAX_NUMA_NODES', 1]
-]
-flags_part_number_n2generic = [
-	['RTE_MACHINE', '"neoverse-n2"'],
-	['RTE_ARM_FEATURE_ATOMICS', true],
-	['RTE_USE_C11_MEM_MODEL', true],
-	['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
-	['RTE_LIBRTE_VHOST_NUMA', false],
-	['RTE_MAX_LCORE', 64],
-	['RTE_CACHE_LINE_SIZE', 64]
-]
+implementer_cavium = {
+	'description': 'Cavium',
+	'flags': [
+		['RTE_MAX_VFIO_GROUPS', 128],
+		['RTE_MAX_LCORE', 96],
+		['RTE_MAX_NUMA_NODES', 2]
+	],
+	'part_number_config': {
+		'generic': {'machine_args': ['-march=armv8-a+crc+crypto',
+					     '-mcpu=thunderx']},
+		'native': {'machine_args': ['-march=native']},
+		'0xa1': {
+			'machine_args': ['-mcpu=thunderxt88'],
+			'flags': flags_part_number_thunderx
+		},
+		'0xa2': {
+			'machine_args': ['-mcpu=thunderxt81'],
+			'flags': flags_part_number_thunderx
+		},
+		'0xa3': {
+			'machine_args': ['-mcpu=thunderxt83'],
+			'flags': flags_part_number_thunderx
+		},
+		'0xaf': {
+			'machine_args': ['-march=armv8.1-a+crc+crypto',
+					 '-mcpu=thunderx2t99'],
+			'flags': [
+				['RTE_MACHINE', '"thunderx2"'],
+				['RTE_ARM_FEATURE_ATOMICS', true],
+				['RTE_USE_C11_MEM_MODEL', true],
+				['RTE_CACHE_LINE_SIZE', 64],
+				['RTE_MAX_LCORE', 256],
+				['RTE_MAX_NUMA_NODES', 2]
+			]
+		},
+		'0xb2': {
+			'machine_args': ['-march=armv8.2-a+crc+crypto+lse',
+					 '-mcpu=octeontx2'],
+			'flags': [
+				['RTE_MACHINE', '"octeontx2"'],
+				['RTE_ARM_FEATURE_ATOMICS', true],
+				['RTE_USE_C11_MEM_MODEL', true],
+				['RTE_EAL_IGB_UIO', false],
+				['RTE_MAX_LCORE', 36],
+				['RTE_MAX_NUMA_NODES', 1]
+			]
+		}
+	}
+}
 
-# arm config (implementer 0x41) is the default config
-part_number_config_arm = [
-	['generic', ['-march=armv8-a+crc', '-moutline-atomics']],
-	['native', ['-march=native']],
-	['0xd03', ['-mcpu=cortex-a53']],
-	['0xd04', ['-mcpu=cortex-a35']],
-	['0xd07', ['-mcpu=cortex-a57']],
-	['0xd08', ['-mcpu=cortex-a72']],
-	['0xd09', ['-mcpu=cortex-a73']],
-	['0xd0a', ['-mcpu=cortex-a75']],
-	['0xd0b', ['-mcpu=cortex-a76']],
-	['0xd0c', ['-march=armv8.2-a+crypto', '-mcpu=neoverse-n1'], flags_part_number_n1generic],
-	['0xd49', ['-march=armv8.5-a+crypto+sve2'], flags_part_number_n2generic]
-]
+implementer_ampere = {
+	'description': 'Ampere Computing',
+	'flags': [
+		['RTE_MACHINE', '"emag"'],
+		['RTE_CACHE_LINE_SIZE', 64],
+		['RTE_MAX_LCORE', 32],
+		['RTE_MAX_NUMA_NODES', 1]
+	],
+	'part_number_config': {
+		'generic': {'machine_args':  ['-march=armv8-a+crc+crypto',
+					      '-mtune=emag']},
+		'native': {'machine_args':  ['-march=native']}
+	}
+}
 
-part_number_config_cavium = [
-	['generic', ['-march=armv8-a+crc+crypto','-mcpu=thunderx']],
-	['native', ['-march=native']],
-	['0xa1', ['-mcpu=thunderxt88'], flags_part_number_thunderx],
-	['0xa2', ['-mcpu=thunderxt81'], flags_part_number_thunderx],
-	['0xa3', ['-mcpu=thunderxt83'], flags_part_number_thunderx],
-	['0xaf', ['-march=armv8.1-a+crc+crypto','-mcpu=thunderx2t99'], flags_part_number_thunderx2],
-	['0xb2', ['-march=armv8.2-a+crc+crypto+lse','-mcpu=octeontx2'], flags_part_number_octeontx2]
-]
-part_number_config_emag = [
-	['generic', ['-march=armv8-a+crc+crypto', '-mtune=emag']],
-	['native', ['-march=native']]
-]
+implementer_marvell = {
+	'description': 'Marvell ARMADA',
+	'flags': [
+		['RTE_MACHINE', '"armv8a"'],
+		['RTE_CACHE_LINE_SIZE', 64],
+		['RTE_MAX_LCORE', 16],
+		['RTE_MAX_NUMA_NODES', 1]
+	],
+	'part_number_config': part_number_config_arm
+}
 
-## Arm implementer ID (MIDR in Arm Architecture Reference Manual)
-implementer_generic = ['Generic armv8', flags_implementer_generic, part_number_config_arm]
-implementer_0x41 = ['Arm', flags_implementer_arm, part_number_config_arm]
-implementer_0x43 = ['Cavium', flags_implementer_cavium, part_number_config_cavium]
-implementer_0x50 = ['Ampere Computing', flags_implementer_emag, part_number_config_emag]
-implementer_0x56 = ['Marvell ARMADA', flags_implementer_armada, part_number_config_arm]
-implementer_dpaa = ['NXP DPAA', flags_implementer_dpaa, part_number_config_arm]
+implementer_dpaa = {
+	'description': 'NXP DPAA',
+	'flags': [
+		['RTE_MACHINE', '"dpaa"'],
+		['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', false],
+		['RTE_USE_C11_MEM_MODEL', true],
+		['RTE_CACHE_LINE_SIZE', 64],
+		['RTE_MAX_LCORE', 16],
+		['RTE_MAX_NUMA_NODES', 1]
+	],
+	'part_number_config': part_number_config_arm
+}
+
+## Arm implementers (ID from MIDR in Arm Architecture Reference Manual)
+implementers = {
+	'generic': implementer_generic,
+	'0x41': implementer_arm,
+	'0x43': implementer_cavium,
+	'0x50': implementer_ampere,
+	'0x56': implementer_marvell,
+	'dpaa': implementer_dpaa
+}
 
 dpdk_conf.set('RTE_ARCH_ARM', 1)
 dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
@@ -160,7 +208,7 @@ else
 	implementer_id = 'generic'
 	if machine == 'default' and not meson.is_cross_build()
 		# default build
-		implementer_config = implementer_generic
+		implementer_config = implementer['generic']
 		part_number = 'generic'
 	elif not meson.is_cross_build()
 		# native build
@@ -175,9 +223,9 @@ else
 			part_number = cmd_output[3]
 		endif
 		# Set to generic if variable is not found
-		implementer_config = get_variable('implementer_' + implementer_id, ['generic'])
+		implementer_config = implementers.get(implementer_id, ['generic'])
 		if implementer_config[0] == 'generic'
-			implementer_config = implementer_generic
+			implementer_config = implementer['generic']
 			part_number = 'generic'
 		endif
 		if arm_force_native_march == true
@@ -187,28 +235,35 @@ else
 		# cross build
 		implementer_id = meson.get_cross_property('implementer_id', 'generic')
 		part_number = meson.get_cross_property('part_number', 'generic')
-		implementer_config = get_variable('implementer_' + implementer_id)
+		implementer_config = implementers.get(implementer_id)
 	endif
 
-	message('Arm implementer: ' + implementer_config[0])
+	message('Arm implementer: ' + implementer_config['description'])
 	message('Arm part number: ' + part_number)
 
-	# use default flags with implementer flags
-	dpdk_flags = flags_common + implementer_config[1]
+	part_number_config = implementer_config['part_number_config']
+	if part_number_config.has_key(part_number)
+		# use the specified part_number machine args if found
+		part_number_config = part_number_config[part_number]
+	elif not meson.is_cross_build()
+		# default to generic machine args if part_number is not found
+		# and not forcing native machine args
+		# but don't default in cross-builds; if part_number is specified
+		# incorrectly in a cross-file, it needs to be fixed there
+		part_number_config = part_number_config['generic']
+	else
+		# doing cross build and part number is not in part_number_config
+		error('Cross build part number 0@0 not found.'.format(part_number))
+	endif
 
+	# use default flags with implementer flags
+	dpdk_flags = flags_common + implementer_config['flags'] + part_number_config.get('flags', [])
+
+	# apply supported machine args
 	machine_args = [] # Clear previous machine args
-	foreach marg: implementer_config[2]
-		if marg[0] == part_number
-			# apply supported machine args
-			foreach flag: marg[1]
-				if cc.has_argument(flag)
-					machine_args += flag
-				endif
-			endforeach
-			if marg.length() > 2
-				# add extra flags for the part
-				dpdk_flags += marg[2]
-			endif
+	foreach flag: part_number_config['machine_args']
+		if cc.has_argument(flag)
+			machine_args += flag
 		endif
 	endforeach
 
