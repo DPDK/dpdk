@@ -73,6 +73,14 @@ New Features
   * Introduced basic support on Windows.
   * Added GTP PDU session container matching and raw encap/decap.
 
+* **Updated Wangxun txgbe driver.**
+
+  Updated the Wangxun txgbe driver with new features and improvements, including:
+
+  * Add support for generic flow API.
+  * Add support for traffic manager.
+  * Add support for IPsec.
+
 * **Updated GSO support.**
 
   * Added inner UDP/IPv4 support for VXLAN IPv4 GSO.

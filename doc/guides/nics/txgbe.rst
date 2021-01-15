@@ -86,6 +86,44 @@ Driver compilation and testing
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
 
+Sample Application Notes
+------------------------
+
+Generic flow API
+~~~~~~~~~~~~~~~~
+
+TXGBE PMD supports generic flow API which configures hardware to match specific
+ingress or egress traffic, alter its fate and query related counters according
+to any number of user-defined rules.
+
+A flow rule is the combination of attributes with a matching pattern and a list of
+actions. Theorically one rule can match more than one filters, which named for
+different patterns and actions. Like ethertype filter defines a rule in pattern:
+the first not void item can be ETH, and the next not void item must be END.
+
+For example, create a flow rule:
+
+.. code-block:: console
+
+	testpmd> flow create 0 ingress pattern eth type is 0x0806 / end actions queue index 2 / end
+
+For a detailed usage description please refer to "Flow rules management" section in DPDK :doc:`Testpmd Runtime Functions <../testpmd_app_ug/testpmd_funcs>`.
+
+Traffic Management API
+~~~~~~~~~~~~~~~~~~~~~~
+
+TXGBE PMD supports generic DPDK Traffic Management API which allows to
+configure the following features: hierarchical scheduling, traffic shaping,
+congestion management, packet marking.
+
+For example, add shaper profile
+
+.. code-block:: console
+
+	testpmd> add port tm node shaper profile 0 0 0 0 25000000 0 0
+
+For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`Testpmd Runtime Functions <../testpmd_app_ug/testpmd_funcs>`.
+
 Limitations or Known issues
 ---------------------------
 
