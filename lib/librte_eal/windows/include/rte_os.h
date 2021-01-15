@@ -86,7 +86,7 @@ asprintf(char **buffer, const char *format, ...)
 		return -1;
 	size++;
 
-	*buffer = malloc(size);
+	*buffer = (char *)malloc(size);
 	if (*buffer == NULL)
 		return -1;
 
