@@ -7,7 +7,7 @@
 #include <rte_sctp.h>
 #include <rte_udp.h>
 #include <rte_ip.h>
-#ifdef __ARM64_NEON__
+#ifdef RTE_ARCH_ARM64
 #include <arm_neon.h>
 #endif
 
@@ -203,7 +203,7 @@
 
 static inline void hinic_sq_wqe_cpu_to_be32(void *data, int nr_wqebb)
 {
-#if defined(__X86_64_SSE__)
+#if defined(RTE_ARCH_X86_64)
 	int i;
 	__m128i *wqe_line = (__m128i *)data;
 	__m128i shuf_mask = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10,
@@ -217,7 +217,7 @@ static inline void hinic_sq_wqe_cpu_to_be32(void *data, int nr_wqebb)
 		wqe_line[3] = _mm_shuffle_epi8(wqe_line[3], shuf_mask);
 		wqe_line += 4;
 	}
-#elif defined(__ARM64_NEON__)
+#elif defined(RTE_ARCH_ARM64)
 	int i;
 	uint8x16_t *wqe_line = (uint8x16_t *)data;
 	const uint8x16_t shuf_mask = {3, 2, 1, 0, 7, 6, 5, 4, 11, 10,
@@ -237,7 +237,7 @@ static inline void hinic_sq_wqe_cpu_to_be32(void *data, int nr_wqebb)
 
 static inline void hinic_sge_cpu_to_be32(void *data, int nr_sge)
 {
-#if defined(__X86_64_SSE__)
+#if defined(RTE_ARCH_X86_64)
 	int i;
 	__m128i *sge_line = (__m128i *)data;
 	__m128i shuf_mask = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10,
@@ -248,7 +248,7 @@ static inline void hinic_sge_cpu_to_be32(void *data, int nr_sge)
 		*sge_line = _mm_shuffle_epi8(*sge_line, shuf_mask);
 		sge_line++;
 	}
-#elif defined(__ARM64_NEON__)
+#elif defined(RTE_ARCH_ARM64)
 	int i;
 	uint8x16_t *sge_line = (uint8x16_t *)data;
 	const uint8x16_t shuf_mask = {3, 2, 1, 0, 7, 6, 5, 4, 11, 10,
