@@ -134,3 +134,12 @@ you may use various combinations of implementer/part number::
 
    Supported part_numbers for 0x50:
       '0x0':     emag
+
+Other cross file options
+------------------------
+
+There are other options you may specify in a cross file to tailor the build::
+
+   Supported extra configuration
+      max_numa_nodes = n  # will set RTE_MAX_NUMA_NODES
+      max_lcores = n      # will set RTE_MAX_LCORE

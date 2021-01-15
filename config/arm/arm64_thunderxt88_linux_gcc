@@ -15,3 +15,5 @@ endian = 'little'
 [properties]
 implementer_id = '0x43'
 part_number = '0xa1'
+max_lcores = 96
+max_numa_nodes = 1

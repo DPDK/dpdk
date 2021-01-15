@@ -253,6 +253,21 @@ compile_time_cpuflags = []
 subdir(arch_subdir)
 dpdk_conf.set('RTE_COMPILE_TIME_CPUFLAGS', ','.join(compile_time_cpuflags))
 
+# apply cross-specific options
+if meson.is_cross_build()
+	# configure RTE_MAX_LCORE and RTE_MAX_NUMA_NODES from cross file
+	cross_max_lcores = meson.get_cross_property('max_lcores', 0)
+	if cross_max_lcores != 0
+		message('Setting RTE_MAX_LCORE from cross file')
+		dpdk_conf.set('RTE_MAX_LCORE', cross_max_lcores)
+	endif
+	cross_max_numa_nodes = meson.get_cross_property('max_numa_nodes', 0)
+	if cross_max_numa_nodes != 0
+		message('Setting RTE_MAX_NUMA_NODES from cross file')
+		dpdk_conf.set('RTE_MAX_NUMA_NODES', cross_max_numa_nodes)
+	endif
+endif
+
 # set the install path for the drivers
 dpdk_conf.set_quoted('RTE_EAL_PMD_PATH', eal_pmd_path)
 

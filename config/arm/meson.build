@@ -36,7 +36,8 @@ implementer_generic = {
 	'flags': [
 		['RTE_MACHINE', '"armv8a"'],
 		['RTE_USE_C11_MEM_MODEL', true],
-		['RTE_MAX_LCORE', 256]
+		['RTE_MAX_LCORE', 256],
+		['RTE_MAX_NUMA_NODES', 4]
 	],
 	'part_number_config': {
 		'generic': {'machine_args': ['-march=armv8-a+crc',
@@ -61,8 +62,7 @@ part_number_config_arm = {
 			['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
 			['RTE_LIBRTE_VHOST_NUMA', false],
 			['RTE_MAX_MEM_MB', 1048576],
-			['RTE_MAX_LCORE', 80],
-			['RTE_MAX_NUMA_NODES', 1]
+			['RTE_MAX_LCORE', 80]
 		]
 	},
 	'0xd49': {
@@ -82,7 +82,8 @@ implementer_arm = {
 		['RTE_MACHINE', '"armv8a"'],
 		['RTE_USE_C11_MEM_MODEL', true],
 		['RTE_CACHE_LINE_SIZE', 64],
-		['RTE_MAX_LCORE', 16]
+		['RTE_MAX_LCORE', 16],
+		['RTE_MAX_NUMA_NODES', 1]
 	],
 	'part_number_config': part_number_config_arm
 }
@@ -119,8 +120,7 @@ implementer_cavium = {
 				['RTE_ARM_FEATURE_ATOMICS', true],
 				['RTE_USE_C11_MEM_MODEL', true],
 				['RTE_CACHE_LINE_SIZE', 64],
-				['RTE_MAX_LCORE', 256],
-				['RTE_MAX_NUMA_NODES', 2]
+				['RTE_MAX_LCORE', 256]
 			]
 		},
 		'0xb2': {
