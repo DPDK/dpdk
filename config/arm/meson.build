@@ -158,7 +158,6 @@ if dpdk_conf.get('RTE_ARCH_32')
 else
 	# aarch64 build
 	implementer_id = 'generic'
-	machine_args = [] # Clear previous machine args
 	if machine == 'default' and not meson.is_cross_build()
 		# default build
 		implementer_config = implementer_generic
@@ -191,34 +190,32 @@ else
 		implementer_config = get_variable('implementer_' + implementer_id)
 	endif
 
-	# Apply Common Defaults. These settings may be overwritten by machine
-	# settings later.
-	foreach flag: flags_common
-		if flag.length() > 0
-			dpdk_conf.set(flag[0], flag[1])
-		endif
-	endforeach
+	message('Arm implementer: ' + implementer_config[0])
+	message('Arm part number: ' + part_number)
 
-	message('Implementer : ' + implementer_config[0])
-	foreach flag: implementer_config[1]
-		if flag.length() > 0
-			dpdk_conf.set(flag[0], flag[1])
-		endif
-	endforeach
+	# use default flags with implementer flags
+	dpdk_flags = flags_common + implementer_config[1]
 
+	machine_args = [] # Clear previous machine args
 	foreach marg: implementer_config[2]
 		if marg[0] == part_number
+			# apply supported machine args
 			foreach flag: marg[1]
 				if cc.has_argument(flag)
 					machine_args += flag
 				endif
 			endforeach
-			# Apply any extra machine specific flags.
-			foreach flag: marg.get(2, [])
-				if flag.length() > 0
-					dpdk_conf.set(flag[0], flag[1])
-				endif
-			endforeach
+			if marg.length() > 2
+				# add extra flags for the part
+				dpdk_flags += marg[2]
+			endif
+		endif
+	endforeach
+
+	# apply flags
+	foreach flag: dpdk_flags
+		if flag.length() > 0
+			dpdk_conf.set(flag[0], flag[1])
 		endif
 	endforeach
 endif
