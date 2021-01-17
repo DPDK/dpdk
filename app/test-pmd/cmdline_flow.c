@@ -223,6 +223,7 @@ enum index {
 	ITEM_GENEVE,
 	ITEM_GENEVE_VNI,
 	ITEM_GENEVE_PROTO,
+	ITEM_GENEVE_OPTLEN,
 	ITEM_VXLAN_GPE,
 	ITEM_VXLAN_GPE_VNI,
 	ITEM_ARP_ETH_IPV4,
@@ -1101,6 +1102,7 @@ static const enum index item_gtp[] = {
 static const enum index item_geneve[] = {
 	ITEM_GENEVE_VNI,
 	ITEM_GENEVE_PROTO,
+	ITEM_GENEVE_OPTLEN,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2806,6 +2808,14 @@ static const struct token token_list[] = {
 		.next = NEXT(item_geneve, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_geneve,
 					     protocol)),
+	},
+	[ITEM_GENEVE_OPTLEN] = {
+		.name = "optlen",
+		.help = "GENEVE options length in dwords",
+		.next = NEXT(item_geneve, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_geneve,
+						  ver_opt_len_o_c_rsvd0,
+						  "\x3f\x00")),
 	},
 	[ITEM_VXLAN_GPE] = {
 		.name = "vxlan-gpe",
