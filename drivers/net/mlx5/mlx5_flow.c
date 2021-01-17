@@ -2623,6 +2623,149 @@ mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 }
 
 /**
+ * Validate Geneve TLV option item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] last_item
+ *   Previous validated item in the pattern items.
+ * @param[in] geneve_item
+ *   Previous GENEVE item specification.
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_geneve_opt(const struct rte_flow_item *item,
+				   uint64_t last_item,
+				   const struct rte_flow_item *geneve_item,
+				   struct rte_eth_dev *dev,
+				   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_geneve_tlv_option_resource *geneve_opt_resource;
+	struct mlx5_hca_attr *hca_attr = &priv->config.hca_attr;
+	uint8_t data_max_supported =
+			hca_attr->max_geneve_tlv_option_data_len * 4;
+	struct mlx5_dev_config *config = &priv->config;
+	const struct rte_flow_item_geneve *geneve_spec;
+	const struct rte_flow_item_geneve *geneve_mask;
+	const struct rte_flow_item_geneve_opt *spec = item->spec;
+	const struct rte_flow_item_geneve_opt *mask = item->mask;
+	unsigned int i;
+	unsigned int data_len;
+	uint8_t tlv_option_len;
+	uint16_t optlen_m, optlen_v;
+	const struct rte_flow_item_geneve_opt full_mask = {
+		.option_class = RTE_BE16(0xffff),
+		.option_type = 0xff,
+		.option_len = 0x1f,
+	};
+
+	if (!mask)
+		mask = &rte_flow_item_geneve_opt_mask;
+	if (!spec)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Geneve TLV opt class/type/length must be specified");
+	if ((uint32_t)spec->option_len > MLX5_GENEVE_OPTLEN_MASK)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Geneve TLV opt length exceeeds the limit (31)");
+	/* Check if class type and length masks are full. */
+	if (full_mask.option_class != mask->option_class ||
+	    full_mask.option_type != mask->option_type ||
+	    full_mask.option_len != (mask->option_len & full_mask.option_len))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Geneve TLV opt class/type/length masks must be full");
+	/* Check if length is supported */
+	if ((uint32_t)spec->option_len >
+			config->hca_attr.max_geneve_tlv_option_data_len)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Geneve TLV opt length not supported");
+	if (config->hca_attr.max_geneve_tlv_options > 1)
+		DRV_LOG(DEBUG,
+			"max_geneve_tlv_options supports more than 1 option");
+	/* Check GENEVE item preceding. */
+	if (!geneve_item || !(last_item & MLX5_FLOW_LAYER_GENEVE))
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Geneve opt item must be preceded with Geneve item");
+	geneve_spec = geneve_item->spec;
+	geneve_mask = geneve_item->mask ? geneve_item->mask :
+					  &rte_flow_item_geneve_mask;
+	/* Check if GENEVE TLV option size doesn't exceed option length */
+	if (geneve_spec && (geneve_mask->ver_opt_len_o_c_rsvd0 ||
+			    geneve_spec->ver_opt_len_o_c_rsvd0)) {
+		tlv_option_len = spec->option_len & mask->option_len;
+		optlen_v = rte_be_to_cpu_16(geneve_spec->ver_opt_len_o_c_rsvd0);
+		optlen_v = MLX5_GENEVE_OPTLEN_VAL(optlen_v);
+		optlen_m = rte_be_to_cpu_16(geneve_mask->ver_opt_len_o_c_rsvd0);
+		optlen_m = MLX5_GENEVE_OPTLEN_VAL(optlen_m);
+		if ((optlen_v & optlen_m) <= tlv_option_len)
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+				 "GENEVE TLV option length exceeds optlen");
+	}
+	/* Check if length is 0 or data is 0. */
+	if (spec->data == NULL || spec->option_len == 0)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Geneve TLV opt with zero data/length not supported");
+	/* Check not all data & mask are 0. */
+	data_len = spec->option_len * 4;
+	if (mask->data == NULL) {
+		for (i = 0; i < data_len; i++)
+			if (spec->data[i])
+				break;
+		if (i == data_len)
+			return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Can't match on Geneve option data 0");
+	} else {
+		for (i = 0; i < data_len; i++)
+			if (spec->data[i] & mask->data[i])
+				break;
+		if (i == data_len)
+			return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Can't match on Geneve option data and mask 0");
+		/* Check data mask supported. */
+		for (i = data_max_supported; i < data_len ; i++)
+			if (mask->data[i])
+				return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ITEM, item,
+					"Data mask is of unsupported size");
+	}
+	/* Check GENEVE option is supported in NIC. */
+	if (!config->hca_attr.geneve_tlv_opt)
+		return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Geneve TLV opt not supported");
+	/* Check if we already have geneve option with different type/class. */
+	rte_spinlock_lock(&sh->geneve_tlv_opt_sl);
+	geneve_opt_resource = sh->geneve_tlv_option_resource;
+	if (geneve_opt_resource != NULL)
+		if (geneve_opt_resource->option_class != spec->option_class ||
+		    geneve_opt_resource->option_type != spec->option_type ||
+		    geneve_opt_resource->length != spec->option_len) {
+			rte_spinlock_unlock(&sh->geneve_tlv_opt_sl);
+			return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Only one Geneve TLV option supported");
+		}
+	rte_spinlock_unlock(&sh->geneve_tlv_opt_sl);
+	return 0;
+}
+
+/**
  * Validate MPLS item.
  *
  * @param[in] dev

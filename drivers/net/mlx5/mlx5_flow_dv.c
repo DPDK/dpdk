@@ -5303,6 +5303,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	uint16_t ether_type = 0;
 	int actions_n = 0;
 	uint8_t item_ipv6_proto = 0;
+	const struct rte_flow_item *geneve_item = NULL;
 	const struct rte_flow_item *gre_item = NULL;
 	const struct rte_flow_item *gtp_item = NULL;
 	const struct rte_flow_action_raw_decap *decap;
@@ -5585,7 +5586,18 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							     error);
 			if (ret < 0)
 				return ret;
+			geneve_item = items;
 			last_item = MLX5_FLOW_LAYER_GENEVE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
+			ret = mlx5_flow_validate_item_geneve_opt(items,
+								 last_item,
+								 geneve_item,
+								 dev,
+								 error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_LAYER_GENEVE_OPT;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			ret = mlx5_flow_validate_item_mpls(dev, items,
