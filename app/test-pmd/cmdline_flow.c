@@ -283,6 +283,11 @@ enum index {
 	ITEM_ECPRI_MSG_IQ_DATA_PCID,
 	ITEM_ECPRI_MSG_RTC_CTRL_RTCID,
 	ITEM_ECPRI_MSG_DLY_MSR_MSRID,
+	ITEM_GENEVE_OPT,
+	ITEM_GENEVE_OPT_CLASS,
+	ITEM_GENEVE_OPT_TYPE,
+	ITEM_GENEVE_OPT_LENGTH,
+	ITEM_GENEVE_OPT_DATA,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -413,6 +418,9 @@ enum index {
 /** Maximum size for pattern in struct rte_flow_item_raw. */
 #define ITEM_RAW_PATTERN_SIZE 40
 
+/** Maximum size for GENEVE option data pattern in bytes. */
+#define ITEM_GENEVE_OPT_DATA_SIZE 124
+
 /** Storage size for struct rte_flow_item_raw including pattern. */
 #define ITEM_RAW_SIZE \
 	(sizeof(struct rte_flow_item_raw) + ITEM_RAW_PATTERN_SIZE)
@@ -428,7 +436,7 @@ struct action_rss_data {
 };
 
 /** Maximum data size in struct rte_flow_action_raw_encap. */
-#define ACTION_RAW_ENCAP_MAX_DATA 128
+#define ACTION_RAW_ENCAP_MAX_DATA 512
 #define RAW_ENCAP_CONFS_MAX_NUM 8
 
 /** Storage for struct rte_flow_action_raw_encap. */
@@ -656,6 +664,16 @@ struct token {
 	(&(const struct arg){ \
 		.size = sizeof(s), \
 		.mask = (const void *)&(const s){ .f = (1 << (b)) - 1 }, \
+	})
+
+/** Static initializer for ARGS() to target a field with limits. */
+#define ARGS_ENTRY_BOUNDED(s, f, i, a) \
+	(&(const struct arg){ \
+		.bounded = 1, \
+		.min = (i), \
+		.max = (a), \
+		.offset = offsetof(s, f), \
+		.size = sizeof(((s *)0)->f), \
 	})
 
 /** Static initializer for ARGS() to target an arbitrary bit-mask. */
@@ -903,6 +921,7 @@ static const enum index next_item[] = {
 	ITEM_AH,
 	ITEM_PFCP,
 	ITEM_ECPRI,
+	ITEM_GENEVE_OPT,
 	END_SET,
 	ZERO,
 };
@@ -1241,6 +1260,15 @@ static const enum index item_ecpri_common_type[] = {
 	ITEM_ECPRI_COMMON_TYPE_IQ_DATA,
 	ITEM_ECPRI_COMMON_TYPE_RTC_CTRL,
 	ITEM_ECPRI_COMMON_TYPE_DLY_MSR,
+	ZERO,
+};
+
+static const enum index item_geneve_opt[] = {
+	ITEM_GENEVE_OPT_CLASS,
+	ITEM_GENEVE_OPT_TYPE,
+	ITEM_GENEVE_OPT_LENGTH,
+	ITEM_GENEVE_OPT_DATA,
+	ITEM_NEXT,
 	ZERO,
 };
 
@@ -3229,6 +3257,47 @@ static const struct token token_list[] = {
 				NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ecpri,
 				hdr.type5.msr_id)),
+	},
+	[ITEM_GENEVE_OPT] = {
+		.name = "geneve-opt",
+		.help = "GENEVE header option",
+		.priv = PRIV_ITEM(GENEVE_OPT,
+				  sizeof(struct rte_flow_item_geneve_opt) +
+				  ITEM_GENEVE_OPT_DATA_SIZE),
+		.next = NEXT(item_geneve_opt),
+		.call = parse_vc,
+	},
+	[ITEM_GENEVE_OPT_CLASS]	= {
+		.name = "class",
+		.help = "GENEVE option class",
+		.next = NEXT(item_geneve_opt, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_geneve_opt,
+					     option_class)),
+	},
+	[ITEM_GENEVE_OPT_TYPE] = {
+		.name = "type",
+		.help = "GENEVE option type",
+		.next = NEXT(item_geneve_opt, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_geneve_opt,
+					option_type)),
+	},
+	[ITEM_GENEVE_OPT_LENGTH] = {
+		.name = "length",
+		.help = "GENEVE option data length (in 32b words)",
+		.next = NEXT(item_geneve_opt, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_BOUNDED(
+				struct rte_flow_item_geneve_opt, option_len,
+				0, 31)),
+	},
+	[ITEM_GENEVE_OPT_DATA] = {
+		.name = "data",
+		.help = "GENEVE option data pattern",
+		.next = NEXT(item_geneve_opt, NEXT_ENTRY(HEX), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_geneve_opt, data),
+			     ARGS_ENTRY_ARB(0, 0),
+			     ARGS_ENTRY_ARB
+				(sizeof(struct rte_flow_item_geneve_opt),
+				ITEM_GENEVE_OPT_DATA_SIZE)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -6482,11 +6551,14 @@ parse_hex(struct context *ctx, const struct token *token,
 	ret = snprintf(tmp, sizeof(tmp), "%u", hexlen);
 	if (ret < 0)
 		goto error;
-	push_args(ctx, arg_len);
-	ret = parse_int(ctx, token, tmp, ret, NULL, 0);
-	if (ret < 0) {
-		pop_args(ctx);
-		goto error;
+	/* Save length if requested. */
+	if (arg_len->size) {
+		push_args(ctx, arg_len);
+		ret = parse_int(ctx, token, tmp, ret, NULL, 0);
+		if (ret < 0) {
+			pop_args(ctx);
+			goto error;
+		}
 	}
 	buf = (uint8_t *)ctx->object + arg_data->offset;
 	/* Output buffer is not necessarily NUL-terminated. */
@@ -7486,6 +7558,9 @@ flow_item_default_mask(const struct rte_flow_item *item)
 	case RTE_FLOW_ITEM_TYPE_GENEVE:
 		mask = &rte_flow_item_geneve_mask;
 		break;
+	case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
+		mask = &rte_flow_item_geneve_opt_mask;
+		break;
 	case RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID:
 		mask = &rte_flow_item_pppoe_proto_id_mask;
 		break;
@@ -7600,6 +7675,7 @@ cmd_set_raw_parsed(const struct buffer *in)
 	data_tail = data + ACTION_RAW_ENCAP_MAX_DATA;
 	for (i = n - 1 ; i >= 0; --i) {
 		const struct rte_flow_item_gtp *gtp;
+		const struct rte_flow_item_geneve_opt *opt;
 
 		item = in->args.vc.pattern + i;
 		if (item->spec == NULL)
@@ -7652,6 +7728,18 @@ cmd_set_raw_parsed(const struct buffer *in)
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 			size = sizeof(struct rte_geneve_hdr);
+			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
+			opt = (const struct rte_flow_item_geneve_opt *)
+								item->spec;
+			size = offsetof(struct rte_flow_item_geneve_opt, data);
+			if (opt->option_len && opt->data) {
+				*total_size += opt->option_len *
+					       sizeof(uint32_t);
+				rte_memcpy(data_tail - (*total_size),
+					   opt->data,
+					   opt->option_len * sizeof(uint32_t));
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
 			size = sizeof(rte_be32_t);

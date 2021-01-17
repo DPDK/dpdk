@@ -3680,6 +3680,14 @@ This section lists supported pattern items and their attributes, if any.
   - ``vni {unsigned}``: virtual network identifier.
   - ``protocol {unsigned}``: protocol type.
 
+- ``geneve-opt``: match GENEVE header option.
+
+  - ``class {unsigned}``: GENEVE option class.
+  - ``type {unsigned}``: GENEVE option type.
+  - ``length {unsigned}``: GENEVE option length in 32-bit words.
+  - ``data {hex string}``: GENEVE option data, the length is defined by
+    ``length`` field.
+
 - ``vxlan-gpe``: match VXLAN-GPE header.
 
   - ``vni {unsigned}``: VXLAN-GPE identifier.
