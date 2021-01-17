@@ -1057,6 +1057,7 @@ struct rte_flow {
 	uint32_t counter; /**< Holds flow counter. */
 	uint32_t tunnel_id;  /**< Tunnel id */
 	uint32_t age; /**< Holds ASO age bit index. */
+	uint32_t geneve_tlv_option; /**< Holds Geneve TLV option id. > */
 } __rte_packed;
 
 /*
@@ -1514,11 +1515,15 @@ void flow_dv_dest_array_remove_cb(struct mlx5_cache_list *list,
 				  struct mlx5_cache_entry *entry);
 struct mlx5_aso_age_action *flow_aso_age_get_by_idx(struct rte_eth_dev *dev,
 						    uint32_t age_idx);
+int flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
+					     const struct rte_flow_item *item,
+					     struct rte_flow_error *error);
 
 void flow_release_workspace(void *data);
 int mlx5_flow_os_init_workspace_once(void);
 void *mlx5_flow_os_get_specific_workspace(void);
 int mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data);
 void mlx5_flow_os_release_workspace(void);
+
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

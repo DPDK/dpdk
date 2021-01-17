@@ -528,6 +528,16 @@ struct mlx5_aso_age_mng {
 	struct mlx5_aso_sq aso_sq; /* ASO queue objects. */
 };
 
+/* Management structure for geneve tlv option */
+struct mlx5_geneve_tlv_option_resource {
+	struct mlx5_devx_obj *obj; /* Pointer to the geneve tlv opt object. */
+	rte_be16_t option_class; /* geneve tlv opt class.*/
+	uint8_t option_type; /* geneve tlv opt type.*/
+	uint8_t length; /* geneve tlv opt length. */
+	uint32_t refcnt; /* geneve tlv object reference counter */
+};
+
+
 #define MLX5_AGE_EVENT_NEW		1
 #define MLX5_AGE_TRIGGER		2
 #define MLX5_AGE_SET(age_info, BIT) \
@@ -727,6 +737,9 @@ struct mlx5_dev_ctx_shared {
 	void *devx_rx_uar; /* DevX UAR for Rx. */
 	struct mlx5_aso_age_mng *aso_age_mng;
 	/* Management data for aging mechanism using ASO Flow Hit. */
+	struct mlx5_geneve_tlv_option_resource *geneve_tlv_option_resource;
+	/* Management structure for geneve tlv option */
+	rte_spinlock_t geneve_tlv_opt_sl; /* Lock for geneve tlv resource */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 

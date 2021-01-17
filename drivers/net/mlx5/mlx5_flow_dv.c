@@ -7321,6 +7321,90 @@ flow_dv_translate_item_geneve(void *matcher, void *key,
 }
 
 /**
+ * Create Geneve TLV option resource.
+ *
+ * @param dev[in, out]
+ *   Pointer to rte_eth_dev structure.
+ * @param[in, out] tag_be24
+ *   Tag value in big endian then R-shift 8.
+ * @parm[in, out] dev_flow
+ *   Pointer to the dev_flow.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+
+int
+flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
+					     const struct rte_flow_item *item,
+					     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_geneve_tlv_option_resource *geneve_opt_resource =
+			sh->geneve_tlv_option_resource;
+	struct mlx5_devx_obj *obj;
+	const struct rte_flow_item_geneve_opt *geneve_opt_v = item->spec;
+	int ret = 0;
+
+	if (!geneve_opt_v)
+		return -1;
+	rte_spinlock_lock(&sh->geneve_tlv_opt_sl);
+	if (geneve_opt_resource != NULL) {
+		if (geneve_opt_resource->option_class ==
+			geneve_opt_v->option_class &&
+			geneve_opt_resource->option_type ==
+			geneve_opt_v->option_type &&
+			geneve_opt_resource->length ==
+			geneve_opt_v->option_len) {
+			/* We already have GENVE TLV option obj allocated. */
+			__atomic_fetch_add(&geneve_opt_resource->refcnt, 1,
+					   __ATOMIC_RELAXED);
+		} else {
+			ret = rte_flow_error_set(error, ENOMEM,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"Only one GENEVE TLV option supported");
+			goto exit;
+		}
+	} else {
+		/* Create a GENEVE TLV object and resource. */
+		obj = mlx5_devx_cmd_create_geneve_tlv_option(sh->ctx,
+				geneve_opt_v->option_class,
+				geneve_opt_v->option_type,
+				geneve_opt_v->option_len);
+		if (!obj) {
+			ret = rte_flow_error_set(error, ENODATA,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"Failed to create GENEVE TLV Devx object");
+			goto exit;
+		}
+		sh->geneve_tlv_option_resource =
+				mlx5_malloc(MLX5_MEM_ZERO,
+						sizeof(*geneve_opt_resource),
+						0, SOCKET_ID_ANY);
+		if (!sh->geneve_tlv_option_resource) {
+			claim_zero(mlx5_devx_cmd_destroy(obj));
+			ret = rte_flow_error_set(error, ENOMEM,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"GENEVE TLV object memory allocation failed");
+			goto exit;
+		}
+		geneve_opt_resource = sh->geneve_tlv_option_resource;
+		geneve_opt_resource->obj = obj;
+		geneve_opt_resource->option_class = geneve_opt_v->option_class;
+		geneve_opt_resource->option_type = geneve_opt_v->option_type;
+		geneve_opt_resource->length = geneve_opt_v->option_len;
+		__atomic_store_n(&geneve_opt_resource->refcnt, 1,
+				__ATOMIC_RELAXED);
+	}
+exit:
+	rte_spinlock_unlock(&sh->geneve_tlv_opt_sl);
+	return ret;
+}
+
+/**
  * Add MPLS item to matcher and to the value.
  *
  * @param[in, out] matcher
@@ -11372,6 +11456,26 @@ flow_dv_dest_array_resource_release(struct rte_eth_dev *dev,
 				     &cache->entry);
 }
 
+static void
+flow_dv_geneve_tlv_option_resource_release(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_geneve_tlv_option_resource *geneve_opt_resource =
+				sh->geneve_tlv_option_resource;
+	rte_spinlock_lock(&sh->geneve_tlv_opt_sl);
+	if (geneve_opt_resource) {
+		if (!(__atomic_sub_fetch(&geneve_opt_resource->refcnt, 1,
+					 __ATOMIC_RELAXED))) {
+			claim_zero(mlx5_devx_cmd_destroy
+					(geneve_opt_resource->obj));
+			mlx5_free(sh->geneve_tlv_option_resource);
+			sh->geneve_tlv_option_resource = NULL;
+		}
+	}
+	rte_spinlock_unlock(&sh->geneve_tlv_opt_sl);
+}
+
 /**
  * Remove the flow from the NIC but keeps it in memory.
  * Lock free, (mutex should be acquired by caller).
@@ -11442,6 +11546,10 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	}
 	if (flow->age)
 		flow_dv_aso_age_release(dev, flow->age);
+	if (flow->geneve_tlv_option) {
+		flow_dv_geneve_tlv_option_resource_release(dev);
+		flow->geneve_tlv_option = 0;
+	}
 	while (flow->dev_handles) {
 		uint32_t tmp_idx = flow->dev_handles;
 

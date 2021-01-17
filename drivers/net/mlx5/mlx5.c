@@ -1008,6 +1008,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	/* Add context to the global device list. */
 	LIST_INSERT_HEAD(&mlx5_dev_ctx_list, sh, next);
+	rte_spinlock_init(&sh->geneve_tlv_opt_sl);
 exit:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	return sh;
@@ -1106,6 +1107,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
 	if (sh->ctx)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
+	MLX5_ASSERT(sh->geneve_tlv_option_resource == NULL);
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	mlx5_free(sh);
 	return;
