@@ -10681,17 +10681,22 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					handle->dvh.modify_hdr->action;
 			}
 			if (action_flags & MLX5_FLOW_ACTION_COUNT) {
-				flow->counter =
-					flow_dv_translate_create_counter(dev,
-						dev_flow, count, age);
-
-				if (!flow->counter)
-					return rte_flow_error_set
+				/*
+				 * Create one count action, to be used
+				 * by all sub-flows.
+				 */
+				if (!flow->counter) {
+					flow->counter =
+						flow_dv_translate_create_counter
+							(dev, dev_flow, count,
+							 age);
+					if (!flow->counter)
+						return rte_flow_error_set
 						(error, rte_errno,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL,
-						"cannot create counter"
-						" object.");
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 NULL, "cannot create counter"
+						 " object.");
+				}
 				dev_flow->dv.actions[actions_n] =
 					  (flow_dv_counter_get_by_idx(dev,
 					  flow->counter, NULL))->action;
