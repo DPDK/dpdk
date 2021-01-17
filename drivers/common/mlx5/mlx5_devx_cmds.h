@@ -97,6 +97,8 @@ struct mlx5_hca_attr {
 	uint32_t lro_timer_supported_periods[MLX5_LRO_NUM_SUPP_PERIODS];
 	uint16_t lro_min_mss_size;
 	uint32_t flex_parser_protocols;
+	uint32_t max_geneve_tlv_options;
+	uint32_t max_geneve_tlv_option_data_len;
 	uint32_t hairpin:1;
 	uint32_t log_max_hairpin_queues:5;
 	uint32_t log_max_hairpin_wq_data_sz:5;
@@ -116,6 +118,7 @@ struct mlx5_hca_attr {
 	uint32_t regex:1;
 	uint32_t regexp_num_of_engines;
 	uint32_t log_max_ft_sampler_num:8;
+	uint32_t geneve_tlv_opt;
 	struct mlx5_hca_qos_attr qos;
 	struct mlx5_hca_vdpa_attr vdpa;
 	int log_max_qp_sz;
@@ -481,6 +484,7 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_flex_parser(void *ctx,
 __rte_internal
 int mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id,
 				uint32_t arg, uint32_t *data, uint32_t dw_cnt);
+
 /**
  * Create virtio queue counters object DevX API.
  *

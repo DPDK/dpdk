@@ -690,6 +690,10 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);
 	attr->flex_parser_protocols = MLX5_GET(cmd_hca_cap, hcattr,
 					       flex_parser_protocols);
+	attr->max_geneve_tlv_options = MLX5_GET(cmd_hca_cap, hcattr,
+			max_geneve_tlv_options);
+	attr->max_geneve_tlv_option_data_len = MLX5_GET(cmd_hca_cap, hcattr,
+			max_geneve_tlv_option_data_len);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
 	attr->vdpa.valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 					 general_obj_types) &
@@ -717,6 +721,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->flow_hit_aso = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 					   general_obj_types) &
 				MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_HIT_ASO);
+	attr->geneve_tlv_opt = !!(MLX5_GET64(cmd_hca_cap, hcattr,
+					   general_obj_types) &
+				MLX5_GENERAL_OBJ_TYPES_CAP_GENEVE_TLV_OPT);
 	attr->log_max_cq = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq);
 	attr->log_max_qp = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp);
 	attr->log_max_cq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq_sz);

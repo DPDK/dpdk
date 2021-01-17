@@ -789,7 +789,7 @@ struct mlx5_ifc_fte_match_set_misc3_bits {
 	u8 icmp_code[0x8];
 	u8 icmpv6_type[0x8];
 	u8 icmpv6_code[0x8];
-	u8 reserved_at_120[0x20];
+	u8 geneve_tlv_option_0_data[0x20];
 	u8 gtpu_teid[0x20];
 	u8 gtpu_msg_type[0x08];
 	u8 gtpu_msg_flags[0x08];
@@ -1087,6 +1087,8 @@ enum {
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH)
 #define MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_HIT_ASO \
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_FLOW_HIT_ASO)
+#define MLX5_GENERAL_OBJ_TYPES_CAP_GENEVE_TLV_OPT \
+			(1ULL << MLX5_OBJ_TYPE_GENEVE_TLV_OPT)
 
 enum {
 	MLX5_HCA_CAP_OPMOD_GET_MAX   = 0,
@@ -1385,8 +1387,10 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_500[0x20];
 	u8 num_of_uars_per_page[0x20];
 	u8 flex_parser_protocols[0x20];
-	u8 reserved_at_560[0x20];
-	u8 reserved_at_580[0x3c];
+	u8 max_geneve_tlv_options[0x8];
+	u8 reserved_at_568[0x3];
+	u8 max_geneve_tlv_option_data_len[0x5];
+	u8 reserved_at_570[0x4c];
 	u8 mini_cqe_resp_stride_index[0x1];
 	u8 cqe_128_always[0x1];
 	u8 cqe_compression_128[0x1];
@@ -2297,6 +2301,7 @@ struct mlx5_ifc_create_cq_in_bits {
 };
 
 enum {
+	MLX5_OBJ_TYPE_GENEVE_TLV_OPT = 0x000b,
 	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
 	MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS = 0x001c,
 	MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH = 0x0022,
@@ -2331,6 +2336,17 @@ struct mlx5_ifc_virtio_q_counters_bits {
 	u8 reserved_at_180[0x50];
 };
 
+struct mlx5_ifc_geneve_tlv_option_bits {
+	u8 modify_field_select[0x40];
+	u8 reserved_at_40[0x18];
+	u8 geneve_option_fte_index[0x8];
+	u8 option_class[0x10];
+	u8 option_type[0x8];
+	u8 reserved_at_78[0x3];
+	u8 option_data_length[0x5];
+	u8 reserved_at_80[0x180];
+};
+
 struct mlx5_ifc_create_virtio_q_counters_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_virtio_q_counters_bits virtio_q_counters;
@@ -2340,6 +2356,12 @@ struct mlx5_ifc_query_virtio_q_counters_out_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_virtio_q_counters_bits virtio_q_counters;
 };
+
+struct mlx5_ifc_create_geneve_tlv_option_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_geneve_tlv_option_bits geneve_tlv_opt;
+};
+
 enum {
 	MLX5_VIRTQ_STATE_INIT = 0,
 	MLX5_VIRTQ_STATE_RDY = 1,
