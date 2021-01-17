@@ -34,6 +34,7 @@ EXPORTS
 	mlx5_devx_cmd_register_read
 	mlx5_devx_get_out_command_status
 	mlx5_devx_cmd_create_flow_hit_aso_obj
+	mlx5_devx_cmd_create_geneve_tlv_option
 
 	mlx5_devx_cq_create
 	mlx5_devx_cq_destroy

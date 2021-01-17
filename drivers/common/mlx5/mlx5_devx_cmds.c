@@ -2093,3 +2093,58 @@ mlx5_devx_cmd_alloc_pd(void *ctx)
 	ppd->id = MLX5_GET(alloc_pd_out, out, pd);
 	return ppd;
 }
+
+/**
+ * Create general object of type GENEVE TLV option using DevX API.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param [in] class
+ *   TLV option variable value of class
+ * @param [in] type
+ *   TLV option variable value of type
+ * @param [in] len
+ *   TLV option variable value of len
+ *
+ * @return
+ *   The DevX object created, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
+		uint16_t class, uint8_t type, uint8_t len)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_geneve_tlv_option_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	struct mlx5_devx_obj *geneve_tlv_opt_obj = mlx5_malloc(MLX5_MEM_ZERO,
+						   sizeof(*geneve_tlv_opt_obj),
+						   0, SOCKET_ID_ANY);
+
+	if (!geneve_tlv_opt_obj) {
+		DRV_LOG(ERR, "Failed to allocate geneve tlv option object.");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	void *hdr = MLX5_ADDR_OF(create_geneve_tlv_option_in, in, hdr);
+	void *opt = MLX5_ADDR_OF(create_geneve_tlv_option_in, in,
+			geneve_tlv_opt);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+			MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+			MLX5_OBJ_TYPE_GENEVE_TLV_OPT);
+	MLX5_SET(geneve_tlv_option, opt, option_class,
+			rte_be_to_cpu_16(class));
+	MLX5_SET(geneve_tlv_option, opt, option_type, type);
+	MLX5_SET(geneve_tlv_option, opt, option_data_length, len);
+	geneve_tlv_opt_obj->obj = mlx5_glue->devx_obj_create(ctx, in,
+					sizeof(in), out, sizeof(out));
+	if (!geneve_tlv_opt_obj->obj) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create Geneve tlv option "
+				"Obj using DevX.");
+		mlx5_free(geneve_tlv_opt_obj);
+		return NULL;
+	}
+	geneve_tlv_opt_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return geneve_tlv_opt_obj;
+}
+
