@@ -707,12 +707,32 @@ efx_mae_match_spec_field_set(
 	}
 
 	if (descp->emmd_endianness == EFX_MAE_FIELD_BE) {
+		unsigned int i;
+
 		/*
 		 * The mask/value are in network (big endian) order.
 		 * The MCDI request field is also big endian.
 		 */
-		memcpy(mvp + descp->emmd_value_offset, value, value_size);
-		memcpy(mvp + descp->emmd_mask_offset, mask, mask_size);
+
+		EFSYS_ASSERT3U(value_size, ==, mask_size);
+
+		for (i = 0; i < value_size; ++i) {
+			uint8_t *v_bytep = mvp + descp->emmd_value_offset + i;
+			uint8_t *m_bytep = mvp + descp->emmd_mask_offset + i;
+
+			/*
+			 * Apply the mask (which may be all-zeros) to the value.
+			 *
+			 * If this API is provided with some value to set for a
+			 * given field in one specification and with some other
+			 * value to set for this field in another specification,
+			 * then, if the two masks are all-zeros, the field will
+			 * avoid being counted as a mismatch when comparing the
+			 * specifications using efx_mae_match_specs_equal() API.
+			 */
+			*v_bytep = value[i] & mask[i];
+			*m_bytep = mask[i];
+		}
 	} else {
 		efx_dword_t dword;
 
