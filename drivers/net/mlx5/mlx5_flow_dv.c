@@ -9897,14 +9897,22 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
 			if (priv->sh->flow_hit_aso_en && attr->group) {
-				flow->age = flow_dv_translate_create_aso_age
-						(dev, action->conf, error);
-				if (!flow->age)
-					return rte_flow_error_set
+				/*
+				 * Create one shared age action, to be used
+				 * by all sub-flows.
+				 */
+				if (!flow->age) {
+					flow->age =
+						flow_dv_translate_create_aso_age
+							(dev, action->conf,
+							 error);
+					if (!flow->age)
+						return rte_flow_error_set
 						(error, rte_errno,
 						 RTE_FLOW_ERROR_TYPE_ACTION,
 						 NULL,
 						 "can't create ASO age action");
+				}
 				dev_flow->dv.actions[actions_n++] =
 					  (flow_aso_age_get_by_idx
 						(dev, flow->age))->dr_action;
