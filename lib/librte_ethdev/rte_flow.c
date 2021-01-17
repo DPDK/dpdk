@@ -97,6 +97,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(L2TPV3OIP, sizeof(struct rte_flow_item_l2tpv3oip)),
 	MK_FLOW_ITEM(PFCP, sizeof(struct rte_flow_item_pfcp)),
 	MK_FLOW_ITEM(ECPRI, sizeof(struct rte_flow_item_ecpri)),
+	MK_FLOW_ITEM(GENEVE_OPT, sizeof(struct rte_flow_item_geneve_opt)),
 };
 
 /** Generate flow_action[] entry. */

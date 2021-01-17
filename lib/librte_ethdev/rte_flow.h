@@ -543,6 +543,13 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_ipv6_frag_ext.
 	 */
 	RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
+
+	/**
+	 * Matches Geneve Variable Length Option
+	 *
+	 * See struct rte_flow_item_geneve_opt
+	 */
+	RTE_FLOW_ITEM_TYPE_GENEVE_OPT,
 };
 
 /**
@@ -1624,6 +1631,26 @@ static const struct rte_flow_item_ecpri rte_flow_item_ecpri_mask = {
 			.u32 = 0x0,
 		},
 	},
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_GENEVE_OPT
+ *
+ * Matches a GENEVE Variable Length Option
+ */
+struct rte_flow_item_geneve_opt {
+	rte_be16_t option_class;
+	uint8_t option_type;
+	uint8_t option_len;
+	uint32_t *data;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_GENEVE_OPT. */
+#ifndef __cplusplus
+static const struct rte_flow_item_geneve_opt
+rte_flow_item_geneve_opt_mask = {
+	.option_type = 0xff,
 };
 #endif
 

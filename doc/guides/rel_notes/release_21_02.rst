@@ -60,6 +60,10 @@ New Features
   Added ``rte_eth_get_monitor_addr()``, to be used in conjunction with
   ``rte_power_monitor()`` to enable automatic power management for PMDs.
 
+* **Added GENEVE TLV option in rte_flow.**
+
+  Added support for matching and raw encap/decap of GENEVE TLV option.
+
 * **Updated Broadcom bnxt driver.**
 
   Updated the Broadcom bnxt driver with fixes and improvements, including:
