@@ -67,7 +67,7 @@ ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_deferred_start = txq->deferred_start;
 }
 
-static inline void __rte_cold
+static __rte_always_inline void
 ionic_tx_flush(struct ionic_cq *cq)
 {
 	struct ionic_queue *q = cq->bound_q;
@@ -429,7 +429,7 @@ ionic_tx_tso(struct ionic_queue *q, struct rte_mbuf *txm,
 	return 0;
 }
 
-static int
+static __rte_always_inline int
 ionic_tx(struct ionic_queue *q, struct rte_mbuf *txm,
 		uint64_t offloads, bool not_xmit_more)
 {
@@ -713,7 +713,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static void
+static __rte_always_inline void
 ionic_rx_clean(struct ionic_queue *q,
 		uint32_t q_desc_index, uint32_t cq_desc_index,
 		void *cb_arg, void *service_cb_arg)
@@ -874,7 +874,7 @@ ionic_rx_recycle(struct ionic_queue *q, uint32_t q_desc_index,
 	ionic_q_post(q, true, ionic_rx_clean, mbuf);
 }
 
-static int __rte_cold
+static __rte_always_inline int
 ionic_rx_fill(struct ionic_qcq *rxq, uint32_t len)
 {
 	struct ionic_queue *q = &rxq->q;
@@ -982,7 +982,7 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	return 0;
 }
 
-static inline void __rte_cold
+static __rte_always_inline void
 ionic_rxq_service(struct ionic_cq *cq, uint32_t work_to_do,
 		void *service_cb_arg)
 {
