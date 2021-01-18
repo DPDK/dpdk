@@ -58,7 +58,7 @@ otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	if (rc)
 		return rc;
 
-	if (frame_size > RTE_ETHER_MAX_LEN)
+	if (frame_size > NIX_L2_MAX_LEN)
 		dev->rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
