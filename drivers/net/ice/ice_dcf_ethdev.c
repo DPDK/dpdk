@@ -601,6 +601,9 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 		return 0;
 	}
 
+	/* Stop the VF representors for this device */
+	ice_dcf_vf_repr_stop_all(dcf_ad);
+
 	ice_dcf_stop_queues(dev);
 
 	rte_intr_efd_disable(intr_handle);
@@ -849,6 +852,30 @@ ice_dcf_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+ice_dcf_free_repr_info(struct ice_dcf_adapter *dcf_adapter)
+{
+	if (dcf_adapter->repr_infos) {
+		rte_free(dcf_adapter->repr_infos);
+		dcf_adapter->repr_infos = NULL;
+	}
+}
+
+static int
+ice_dcf_init_repr_info(struct ice_dcf_adapter *dcf_adapter)
+{
+	dcf_adapter->repr_infos =
+			rte_calloc("ice_dcf_rep_info",
+				   dcf_adapter->real_hw.num_vfs,
+				   sizeof(dcf_adapter->repr_infos[0]), 0);
+	if (!dcf_adapter->repr_infos) {
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for VF representors\n");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
 static int
 ice_dcf_dev_close(struct rte_eth_dev *dev)
 {
@@ -857,6 +884,7 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	ice_dcf_free_repr_info(adapter);
 	ice_dcf_uninit_parent_adapter(dev);
 	ice_dcf_uninit_hw(dev, &adapter->real_hw);
 
@@ -1000,21 +1028,26 @@ eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 		return -ENODEV;
 
 	dcf_adapter = dcf_ethdev->data->dev_private;
+	ret = ice_dcf_init_repr_info(dcf_adapter);
+	if (ret)
+		return ret;
 
 	if (eth_da.nb_representor_ports > dcf_adapter->real_hw.num_vfs ||
 	    eth_da.nb_representor_ports >= RTE_MAX_ETHPORTS) {
 		PMD_DRV_LOG(ERR, "the number of port representors is too large: %u",
 			    eth_da.nb_representor_ports);
+		ice_dcf_free_repr_info(dcf_adapter);
 		return -EINVAL;
 	}
 
 	dcf_vsi_id = dcf_adapter->real_hw.vsi_id | VIRTCHNL_DCF_VF_VSI_VALID;
 
-	repr_param.adapter = dcf_adapter;
+	repr_param.dcf_eth_dev = dcf_ethdev;
 	repr_param.switch_domain_id = 0;
 
 	for (i = 0; i < eth_da.nb_representor_ports; i++) {
 		uint16_t vf_id = eth_da.representor_ports[i];
+		struct rte_eth_dev *vf_rep_eth_dev;
 
 		if (vf_id >= dcf_adapter->real_hw.num_vfs) {
 			PMD_DRV_LOG(ERR, "VF ID %u is out of range (0 ~ %u)",
@@ -1041,6 +1074,18 @@ eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 				    repr_name);
 			break;
 		}
+
+		vf_rep_eth_dev = rte_eth_dev_allocated(repr_name);
+		if (!vf_rep_eth_dev) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to find the ethdev for DCF VF representor: %s",
+				    repr_name);
+			ret = -ENODEV;
+			break;
+		}
+
+		dcf_adapter->repr_infos[vf_id].vf_rep_eth_dev = vf_rep_eth_dev;
+		dcf_adapter->num_reprs++;
 	}
 
 	return ret;

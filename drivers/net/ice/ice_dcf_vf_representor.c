@@ -27,8 +27,10 @@ ice_dcf_vf_repr_tx_burst(__rte_unused void *txq,
 }
 
 static int
-ice_dcf_vf_repr_dev_configure(__rte_unused struct rte_eth_dev *dev)
+ice_dcf_vf_repr_dev_configure(struct rte_eth_dev *dev)
 {
+	ice_dcf_vf_repr_init_vlan(dev);
+
 	return 0;
 }
 
@@ -106,13 +108,21 @@ ice_dcf_vf_repr_link_update(__rte_unused struct rte_eth_dev *ethdev,
 	return 0;
 }
 
+static __rte_always_inline struct ice_dcf_hw *
+ice_dcf_vf_repr_hw(struct ice_dcf_vf_repr *repr)
+{
+	struct ice_dcf_adapter *dcf_adapter =
+			repr->dcf_eth_dev->data->dev_private;
+
+	return &dcf_adapter->real_hw;
+}
+
 static int
 ice_dcf_vf_repr_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info)
 {
 	struct ice_dcf_vf_repr *repr = dev->data->dev_private;
-	struct ice_dcf_hw *dcf_hw =
-				&repr->dcf_adapter->real_hw;
+	struct ice_dcf_hw *dcf_hw = ice_dcf_vf_repr_hw(repr);
 
 	dev_info->device = dev->device;
 	dev_info->max_mac_addrs = 1;
@@ -190,25 +200,82 @@ ice_dcf_vf_repr_dev_info_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static __rte_always_inline bool
+ice_dcf_vlan_offload_ena(struct ice_dcf_vf_repr *repr)
+{
+	return !!(ice_dcf_vf_repr_hw(repr)->vf_res->vf_cap_flags &
+		  VIRTCHNL_VF_OFFLOAD_VLAN_V2);
+}
+
 static int
 ice_dcf_vlan_offload_config(struct ice_dcf_vf_repr *repr,
 			    struct virtchnl_dcf_vlan_offload *vlan_offload)
 {
 	struct dcf_virtchnl_cmd args;
+	int err;
 
 	memset(&args, 0, sizeof(args));
 	args.v_op = VIRTCHNL_OP_DCF_VLAN_OFFLOAD;
 	args.req_msg = (uint8_t *)vlan_offload;
 	args.req_msglen = sizeof(*vlan_offload);
 
-	return ice_dcf_execute_virtchnl_cmd(&repr->dcf_adapter->real_hw, &args);
+	err = ice_dcf_execute_virtchnl_cmd(ice_dcf_vf_repr_hw(repr), &args);
+	if (err)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of VIRTCHNL_OP_DCF_VLAN_OFFLOAD");
+
+	return err;
 }
 
-static __rte_always_inline bool
-ice_dcf_vlan_offload_ena(struct ice_dcf_vf_repr *repr)
+static int
+ice_dcf_vf_repr_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
-	return !!(repr->dcf_adapter->real_hw.vf_res->vf_cap_flags &
-		  VIRTCHNL_VF_OFFLOAD_VLAN_V2);
+	struct ice_dcf_vf_repr *repr = dev->data->dev_private;
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct virtchnl_dcf_vlan_offload vlan_offload;
+	int err;
+
+	if (!ice_dcf_vlan_offload_ena(repr))
+		return -ENOTSUP;
+
+	/* Vlan stripping setting */
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		bool enable = !!(dev_conf->rxmode.offloads &
+				 DEV_RX_OFFLOAD_VLAN_STRIP);
+
+		if (enable && repr->outer_vlan_info.port_vlan_ena) {
+			PMD_DRV_LOG(ERR,
+				    "Disable the port VLAN firstly\n");
+			return -EINVAL;
+		}
+
+		memset(&vlan_offload, 0, sizeof(vlan_offload));
+
+		if (enable)
+			vlan_offload.vlan_flags =
+					VIRTCHNL_DCF_VLAN_STRIP_INTO_RX_DESC <<
+					VIRTCHNL_DCF_VLAN_STRIP_MODE_S;
+		else if (repr->outer_vlan_info.stripping_ena && !enable)
+			vlan_offload.vlan_flags =
+					VIRTCHNL_DCF_VLAN_STRIP_DISABLE <<
+					VIRTCHNL_DCF_VLAN_STRIP_MODE_S;
+
+		if (vlan_offload.vlan_flags) {
+			vlan_offload.vf_id = repr->vf_id;
+			vlan_offload.tpid = repr->outer_vlan_info.tpid;
+			vlan_offload.vlan_flags |=
+					VIRTCHNL_DCF_VLAN_TYPE_OUTER <<
+					VIRTCHNL_DCF_VLAN_TYPE_S;
+
+			err = ice_dcf_vlan_offload_config(repr, &vlan_offload);
+			if (err)
+				return -EIO;
+
+			repr->outer_vlan_info.stripping_ena = enable;
+		}
+	}
+
+	return 0;
 }
 
 static int
@@ -222,26 +289,39 @@ ice_dcf_vf_repr_vlan_pvid_set(struct rte_eth_dev *dev,
 	if (!ice_dcf_vlan_offload_ena(repr))
 		return -ENOTSUP;
 
-	if (on && (pvid == 0 || pvid > RTE_ETHER_MAX_VLAN_ID))
+	if (repr->outer_vlan_info.stripping_ena) {
+		PMD_DRV_LOG(ERR,
+			    "Disable the VLAN stripping firstly\n");
+		return -EINVAL;
+	}
+
+	if (pvid > RTE_ETHER_MAX_VLAN_ID)
 		return -EINVAL;
 
 	memset(&vlan_offload, 0, sizeof(vlan_offload));
 
+	if (on)
+		vlan_offload.vlan_flags =
+				(VIRTCHNL_DCF_VLAN_INSERT_PORT_BASED <<
+				 VIRTCHNL_DCF_VLAN_INSERT_MODE_S);
+	else
+		vlan_offload.vlan_flags =
+				(VIRTCHNL_DCF_VLAN_INSERT_DISABLE <<
+				 VIRTCHNL_DCF_VLAN_INSERT_MODE_S);
+
 	vlan_offload.vf_id = repr->vf_id;
-	vlan_offload.tpid = repr->port_vlan_info.tpid;
-	vlan_offload.vlan_flags = (VIRTCHNL_DCF_VLAN_TYPE_OUTER <<
-				   VIRTCHNL_DCF_VLAN_TYPE_S) |
-				  (VIRTCHNL_DCF_VLAN_INSERT_PORT_BASED <<
-				   VIRTCHNL_DCF_VLAN_INSERT_MODE_S);
-	vlan_offload.vlan_id = on ? pvid : 0;
+	vlan_offload.tpid = repr->outer_vlan_info.tpid;
+	vlan_offload.vlan_flags |= (VIRTCHNL_DCF_VLAN_TYPE_OUTER <<
+				    VIRTCHNL_DCF_VLAN_TYPE_S);
+	vlan_offload.vlan_id = pvid;
 
 	err = ice_dcf_vlan_offload_config(repr, &vlan_offload);
 	if (!err) {
 		if (on) {
-			repr->port_vlan_ena = true;
-			repr->port_vlan_info.vid = pvid;
+			repr->outer_vlan_info.port_vlan_ena = true;
+			repr->outer_vlan_info.vid = pvid;
 		} else {
-			repr->port_vlan_ena = false;
+			repr->outer_vlan_info.port_vlan_ena = false;
 		}
 	}
 
@@ -272,13 +352,32 @@ ice_dcf_vf_repr_vlan_tpid_set(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	repr->port_vlan_info.tpid = tpid;
+	repr->outer_vlan_info.tpid = tpid;
 
-	if (repr->port_vlan_ena)
+	if (repr->outer_vlan_info.port_vlan_ena) {
 		err = ice_dcf_vf_repr_vlan_pvid_set(dev,
-						    repr->port_vlan_info.vid,
+						    repr->outer_vlan_info.vid,
 						    true);
-	return err;
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to reset port VLAN : %d\n",
+				    err);
+			return err;
+		}
+	}
+
+	if (repr->outer_vlan_info.stripping_ena) {
+		err = ice_dcf_vf_repr_vlan_offload_set(dev,
+						       ETH_VLAN_STRIP_MASK);
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to reset VLAN stripping : %d\n",
+				    err);
+			return err;
+		}
+	}
+
+	return 0;
 }
 
 static const struct eth_dev_ops ice_dcf_vf_repr_dev_ops = {
@@ -294,31 +393,33 @@ static const struct eth_dev_ops ice_dcf_vf_repr_dev_ops = {
 	.allmulticast_enable  = ice_dcf_vf_repr_allmulticast_enable,
 	.allmulticast_disable = ice_dcf_vf_repr_allmulticast_disable,
 	.link_update          = ice_dcf_vf_repr_link_update,
+	.vlan_offload_set     = ice_dcf_vf_repr_vlan_offload_set,
 	.vlan_pvid_set        = ice_dcf_vf_repr_vlan_pvid_set,
 	.vlan_tpid_set        = ice_dcf_vf_repr_vlan_tpid_set,
 };
 
 int
-ice_dcf_vf_repr_init(struct rte_eth_dev *ethdev, void *init_param)
+ice_dcf_vf_repr_init(struct rte_eth_dev *vf_rep_eth_dev, void *init_param)
 {
-	struct ice_dcf_vf_repr *repr = ethdev->data->dev_private;
+	struct ice_dcf_vf_repr *repr = vf_rep_eth_dev->data->dev_private;
 	struct ice_dcf_vf_repr_param *param = init_param;
 
-	repr->dcf_adapter = param->adapter;
+	repr->dcf_eth_dev = param->dcf_eth_dev;
 	repr->switch_domain_id = param->switch_domain_id;
 	repr->vf_id = param->vf_id;
-	repr->port_vlan_ena = false;
-	repr->port_vlan_info.tpid = RTE_ETHER_TYPE_VLAN;
+	repr->outer_vlan_info.port_vlan_ena = false;
+	repr->outer_vlan_info.stripping_ena = false;
+	repr->outer_vlan_info.tpid = RTE_ETHER_TYPE_VLAN;
 
-	ethdev->dev_ops = &ice_dcf_vf_repr_dev_ops;
+	vf_rep_eth_dev->dev_ops = &ice_dcf_vf_repr_dev_ops;
 
-	ethdev->rx_pkt_burst = ice_dcf_vf_repr_rx_burst;
-	ethdev->tx_pkt_burst = ice_dcf_vf_repr_tx_burst;
+	vf_rep_eth_dev->rx_pkt_burst = ice_dcf_vf_repr_rx_burst;
+	vf_rep_eth_dev->tx_pkt_burst = ice_dcf_vf_repr_tx_burst;
 
-	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
-	ethdev->data->representor_id = repr->vf_id;
+	vf_rep_eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+	vf_rep_eth_dev->data->representor_id = repr->vf_id;
 
-	ethdev->data->mac_addrs = &repr->mac_addr;
+	vf_rep_eth_dev->data->mac_addrs = &repr->mac_addr;
 
 	rte_eth_random_addr(repr->mac_addr.addr_bytes);
 
@@ -326,9 +427,56 @@ ice_dcf_vf_repr_init(struct rte_eth_dev *ethdev, void *init_param)
 }
 
 int
-ice_dcf_vf_repr_uninit(struct rte_eth_dev *ethdev)
+ice_dcf_vf_repr_uninit(struct rte_eth_dev *vf_rep_eth_dev)
 {
-	ethdev->data->mac_addrs = NULL;
+	vf_rep_eth_dev->data->mac_addrs = NULL;
 
 	return 0;
+}
+
+int
+ice_dcf_vf_repr_init_vlan(struct rte_eth_dev *vf_rep_eth_dev)
+{
+	struct ice_dcf_vf_repr *repr = vf_rep_eth_dev->data->dev_private;
+	int err;
+
+	err = ice_dcf_vf_repr_vlan_offload_set(vf_rep_eth_dev,
+					       ETH_VLAN_STRIP_MASK);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to set VLAN offload");
+		return err;
+	}
+
+	if (repr->outer_vlan_info.port_vlan_ena) {
+		err = ice_dcf_vf_repr_vlan_pvid_set(vf_rep_eth_dev,
+						    repr->outer_vlan_info.vid,
+						    true);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Failed to enable port VLAN");
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+void
+ice_dcf_vf_repr_stop_all(struct ice_dcf_adapter *dcf_adapter)
+{
+	uint16_t vf_id;
+	int ret;
+
+	if (!dcf_adapter->repr_infos)
+		return;
+
+	for (vf_id = 0; vf_id < dcf_adapter->real_hw.num_vfs; vf_id++) {
+		struct rte_eth_dev *vf_rep_eth_dev =
+				dcf_adapter->repr_infos[vf_id].vf_rep_eth_dev;
+		if (!vf_rep_eth_dev || vf_rep_eth_dev->data->dev_started == 0)
+			continue;
+
+		ret = ice_dcf_vf_repr_dev_stop(vf_rep_eth_dev);
+		if (!ret)
+			vf_rep_eth_dev->data->dev_started = 0;
+	}
 }
