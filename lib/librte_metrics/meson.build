@@ -4,7 +4,7 @@
 sources = files('rte_metrics.c')
 headers = files('rte_metrics.h')
 
-jansson = dependency('jansson', required: false)
+jansson = dependency('jansson', required: false, method: 'pkg-config')
 if jansson.found()
 	ext_deps += jansson
 	sources += files('rte_metrics_telemetry.c')

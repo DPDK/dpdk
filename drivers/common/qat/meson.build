@@ -23,7 +23,7 @@ if disabled_drivers.contains(qat_compress_path)
 			'Explicitly disabled via build config')
 endif
 
-libcrypto = dependency('libcrypto', required: false)
+libcrypto = dependency('libcrypto', required: false, method: 'pkg-config')
 if qat_crypto and not libcrypto.found()
 	qat_crypto = false
 	dpdk_drvs_disabled += qat_crypto_path

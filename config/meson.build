@@ -160,7 +160,7 @@ if fdt_dep.found() and cc.has_header('fdt.h')
 endif
 
 # check for libbsd
-libbsd = dependency('libbsd', required: false)
+libbsd = dependency('libbsd', required: false, method: 'pkg-config')
 if libbsd.found()
 	dpdk_conf.set('RTE_USE_LIBBSD', 1)
 endif

@@ -406,7 +406,7 @@ cflags += ['-DALLOW_INTERNAL_API']
 
 test_dep_objs = []
 if dpdk_conf.has('RTE_LIB_COMPRESSDEV')
-	compress_test_dep = dependency('zlib', required: false)
+	compress_test_dep = dependency('zlib', required: false, method: 'pkg-config')
 	if compress_test_dep.found()
 		test_dep_objs += compress_test_dep
 		test_sources += 'test_compressdev.c'

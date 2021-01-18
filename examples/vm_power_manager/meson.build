@@ -41,7 +41,7 @@ opt_dep = cc.find_library('virt', required : false)
 build = opt_dep.found()
 ext_deps += opt_dep
 
-opt_dep = dependency('jansson', required : false)
+opt_dep = dependency('jansson', required : false, method: 'pkg-config')
 if opt_dep.found()
 	ext_deps += opt_dep
 	cflags += '-DUSE_JANSSON'
