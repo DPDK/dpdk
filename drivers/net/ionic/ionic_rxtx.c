@@ -334,7 +334,8 @@ ionic_tx_tso(struct ionic_qcq *txq, struct rte_mbuf *txm,
 	struct ionic_txq_desc *desc;
 	struct ionic_txq_sg_elem *elem;
 	struct rte_mbuf *txm_seg;
-	uint64_t desc_addr = 0;
+	rte_iova_t data_iova;
+	uint64_t desc_addr = 0, next_addr;
 	uint16_t desc_len = 0;
 	uint8_t desc_nsge;
 	uint32_t hdrlen;
@@ -371,6 +372,7 @@ ionic_tx_tso(struct ionic_qcq *txq, struct rte_mbuf *txm,
 
 	seglen = hdrlen + mss;
 	left = txm->data_len;
+	data_iova = rte_mbuf_data_iova(txm);
 
 	desc = ionic_tx_tso_next(q, &elem);
 	start = true;
@@ -380,7 +382,7 @@ ionic_tx_tso(struct ionic_qcq *txq, struct rte_mbuf *txm,
 	while (left > 0) {
 		len = RTE_MIN(seglen, left);
 		frag_left = seglen - len;
-		desc_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(txm));
+		desc_addr = rte_cpu_to_le_64(data_iova + offset);
 		desc_len = len;
 		desc_nsge = 0;
 		left -= len;
@@ -404,24 +406,23 @@ ionic_tx_tso(struct ionic_qcq *txq, struct rte_mbuf *txm,
 	txm_seg = txm->next;
 	while (txm_seg != NULL) {
 		offset = 0;
+		data_iova = rte_mbuf_data_iova(txm_seg);
 		left = txm_seg->data_len;
 		stats->frags++;
 
 		while (left > 0) {
-			rte_iova_t data_iova;
-			data_iova = rte_mbuf_data_iova(txm_seg);
-			elem->addr = rte_cpu_to_le_64(data_iova) + offset;
+			next_addr = rte_cpu_to_le_64(data_iova + offset);
 			if (frag_left > 0) {
 				len = RTE_MIN(frag_left, left);
 				frag_left -= len;
+				elem->addr = next_addr;
 				elem->len = len;
 				elem++;
 				desc_nsge++;
 			} else {
 				len = RTE_MIN(mss, left);
 				frag_left = mss - len;
-				data_iova = rte_mbuf_data_iova(txm_seg);
-				desc_addr = rte_cpu_to_le_64(data_iova);
+				desc_addr = next_addr;
 				desc_len = len;
 				desc_nsge = 0;
 			}
@@ -429,6 +430,7 @@ ionic_tx_tso(struct ionic_qcq *txq, struct rte_mbuf *txm,
 			offset += len;
 			if (txm_seg->next != NULL && frag_left > 0)
 				continue;
+
 			done = (txm_seg->next == NULL && left == 0);
 			ionic_tx_tso_post(q, desc, txm_seg,
 				desc_addr, desc_nsge, desc_len,
@@ -463,7 +465,7 @@ ionic_tx(struct ionic_qcq *txq, struct rte_mbuf *txm,
 	bool encap;
 	bool has_vlan;
 	uint64_t ol_flags = txm->ol_flags;
-	uint64_t addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(txm));
+	uint64_t addr;
 	uint8_t opcode = IONIC_TXQ_DESC_OPCODE_CSUM_NONE;
 	uint8_t flags = 0;
 
@@ -492,6 +494,8 @@ ionic_tx(struct ionic_qcq *txq, struct rte_mbuf *txm,
 
 	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
 	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
+
+	addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm));
 
 	desc->cmd = encode_txq_desc_cmd(opcode, flags, txm->nb_segs - 1, addr);
 	desc->len = txm->data_len;
