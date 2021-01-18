@@ -2845,23 +2845,23 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 		RTE_MIN((uint32_t)(hw->func_caps.rx_buf_chain_len *
 			rxq->rx_buf_len), data->dev_conf.rxmode.max_rx_pkt_len);
 	if (data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		if (rxq->max_pkt_len <= RTE_ETHER_MAX_LEN ||
+		if (rxq->max_pkt_len <= I40E_ETH_MAX_LEN ||
 			rxq->max_pkt_len > I40E_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must "
 				    "be larger than %u and smaller than %u,"
 				    "as jumbo frame is enabled",
-				    (uint32_t)RTE_ETHER_MAX_LEN,
+				    (uint32_t)I40E_ETH_MAX_LEN,
 				    (uint32_t)I40E_FRAME_SIZE_MAX);
 			return I40E_ERR_CONFIG;
 		}
 	} else {
 		if (rxq->max_pkt_len < RTE_ETHER_MIN_LEN ||
-			rxq->max_pkt_len > RTE_ETHER_MAX_LEN) {
+			rxq->max_pkt_len > I40E_ETH_MAX_LEN) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
 				    "larger than %u and smaller than %u, "
 				    "as jumbo frame is disabled",
 				    (uint32_t)RTE_ETHER_MIN_LEN,
-				    (uint32_t)RTE_ETHER_MAX_LEN);
+				    (uint32_t)I40E_ETH_MAX_LEN);
 			return I40E_ERR_CONFIG;
 		}
 	}

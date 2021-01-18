@@ -11687,7 +11687,7 @@ i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > RTE_ETHER_MAX_LEN)
+	if (frame_size > I40E_ETH_MAX_LEN)
 		dev_data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else

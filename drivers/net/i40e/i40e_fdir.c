@@ -116,7 +116,7 @@ i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
 #endif
 	rx_ctx.dtype = i40e_header_split_none;
 	rx_ctx.hsplit_0 = I40E_HEADER_SPLIT_NONE;
-	rx_ctx.rxmax = RTE_ETHER_MAX_LEN;
+	rx_ctx.rxmax = I40E_ETH_MAX_LEN;
 	rx_ctx.tphrdesc_ena = 1;
 	rx_ctx.tphwdesc_ena = 1;
 	rx_ctx.tphdata_ena = 1;

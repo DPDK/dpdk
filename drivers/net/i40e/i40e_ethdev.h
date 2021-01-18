@@ -283,6 +283,7 @@ struct rte_flow {
  */
 #define I40E_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + I40E_VLAN_TAG_SIZE * 2)
+#define I40E_ETH_MAX_LEN (RTE_ETHER_MTU + I40E_ETH_OVERHEAD)
 
 #define I40E_RXTX_BYTES_H_16_BIT(bytes) ((bytes) & ~I40E_48_BIT_MASK)
 #define I40E_RXTX_BYTES_L_48_BIT(bytes) ((bytes) & I40E_48_BIT_MASK)
