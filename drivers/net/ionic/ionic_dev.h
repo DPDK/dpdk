@@ -277,7 +277,7 @@ ionic_q_flush(struct ionic_queue *q)
 {
 	uint64_t val = IONIC_DBELL_QID(q->hw_index) | q->head_idx;
 
-	rte_write64(val, q->db);
+	rte_write64(rte_cpu_to_le_64(val), q->db);
 }
 
 int ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);

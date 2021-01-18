@@ -40,8 +40,8 @@ typedef uint32_t __le32;
 typedef uint64_t __le64;
 
 #define ioread8(reg)		rte_read8(reg)
-#define ioread32(reg)		rte_read32(reg)
+#define ioread32(reg)		rte_read32(rte_le_to_cpu_32(reg))
 #define iowrite8(value, reg)	rte_write8(value, reg)
-#define iowrite32(value, reg)	rte_write32(value, reg)
+#define iowrite32(value, reg)	rte_write32(rte_cpu_to_le_32(value), reg)
 
 #endif
