@@ -64,6 +64,8 @@ ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->nb_desc = q->num_descs;
 	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
+	if (txq->flags & IONIC_QCQ_F_FAST_FREE)
+		qinfo->conf.offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	qinfo->conf.tx_deferred_start = txq->flags & IONIC_QCQ_F_DEFERRED;
 }
 
@@ -110,7 +112,10 @@ ionic_tx_flush(struct ionic_tx_qcq *txq)
 				if (!txm)
 					break;
 
-				rte_pktmbuf_free_seg(txm);
+				if (txq->flags & IONIC_QCQ_F_FAST_FREE)
+					rte_mempool_put(txm->pool, txm);
+				else
+					rte_pktmbuf_free_seg(txm);
 
 				info[i] = NULL;
 			}
@@ -214,6 +219,8 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 		txq->flags |= IONIC_QCQ_F_CSUM_TCP;
 	if (offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM)
 		txq->flags |= IONIC_QCQ_F_CSUM_UDP;
+	if (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		txq->flags |= IONIC_QCQ_F_FAST_FREE;
 
 	eth_dev->data->tx_queues[tx_queue_id] = txq;
 
