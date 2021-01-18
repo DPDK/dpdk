@@ -104,6 +104,9 @@
 /* The overhead from MTU to max frame size. */
 #define IXGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
+/* The max frame size with default MTU */
+#define IXGBE_ETH_MAX_LEN  (RTE_ETHER_MTU + IXGBE_ETH_OVERHEAD)
+
 /* bit of VXLAN tunnel type | 7 bits of zeros  | 8 bits of zeros*/
 #define IXGBE_FDIR_VXLAN_TUNNEL_TYPE    0x8000
 /* bit of NVGRE tunnel type | 7 bits of zeros  | 8 bits of zeros*/
