@@ -2467,7 +2467,7 @@ hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	rte_spinlock_lock(&hw->lock);
-	is_jumbo_frame = frame_size > RTE_ETHER_MAX_LEN ? true : false;
+	is_jumbo_frame = frame_size > HNS3_DEFAULT_FRAME_LEN ? true : false;
 	frame_size = RTE_MAX(frame_size, HNS3_DEFAULT_FRAME_LEN);
 
 	/*
