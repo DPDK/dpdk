@@ -75,6 +75,9 @@
 #define HINIC_PKTLEN_TO_MTU(pktlen)	\
 	((pktlen) - (ETH_HLEN + ETH_CRC_LEN))
 
+/* The max frame size with default MTU */
+#define HINIC_ETH_MAX_LEN (RTE_ETHER_MTU + ETH_HLEN + ETH_CRC_LEN)
+
 /* lro numer limit for one packet */
 #define HINIC_LRO_WQE_NUM_DEFAULT	8
 
@@ -1556,7 +1559,7 @@ static int hinic_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* update max frame size */
 	frame_size = HINIC_MTU_TO_PKTLEN(mtu);
-	if (frame_size > RTE_ETHER_MAX_LEN)
+	if (frame_size > HINIC_ETH_MAX_LEN)
 		dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
