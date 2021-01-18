@@ -2766,6 +2766,72 @@ The behaviour of the shared action defined by ``action`` argument of type
    | no properties |
    +---------------+
 
+Action: ``MODIFY_FIELD``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Modify ``dst`` field according to ``op`` selected (set, addition,
+subtraction) with ``width`` bits of data from ``src`` field.
+
+Any arbitrary header field (as well as mark, metadata or tag values)
+can be used as both source and destination fields as set by ``field``.
+The immediate value ``RTE_FLOW_FIELD_VALUE`` (or a pointer to it
+``RTE_FLOW_FIELD_POINTER``) is allowed as a source only.
+``RTE_FLOW_FIELD_START`` is used to point to the beginning of a packet.
+
+``op`` selects the operation to perform on a destination field.
+- ``set`` copies the data from ``src`` field to ``dst`` field.
+- ``add`` adds together ``dst`` and ``src`` and stores the result into ``dst``.
+- ``sub`` subtracts ``src`` from ``dst`` and stores the result into ``dst``
+
+``width`` defines a number of bits to use from ``src`` field.
+
+``level`` is used to access any packet field on any encapsulation level
+as well as any tag element in the tag array.
+- ``0`` means the default behaviour. Depending on the packet type, it can
+mean outermost, innermost or anything in between.
+- ``1`` requests access to the outermost packet encapsulation level.
+- ``2`` and subsequent values requests access to the specified packet
+encapsulation level, from outermost to innermost (lower to higher values).
+For the tag array (in case of multiple tags are supported and present)
+``level`` translates directly into the array index.
+
+``offset`` specifies the number of bits to skip from a field's start.
+That allows performing a partial copy of the needed part or to divide a big
+packet field into multiple smaller fields. Alternatively, ``offset`` allows
+going past the specified packet field boundary to copy a field to an
+arbitrary place in a packet, essentially providing a way to copy any part of
+a packet to any other part of it.
+
+``value`` sets an immediate value to be used as a source or points to a
+location of the value in memory. It is used instead of ``level`` and ``offset``
+for ``RTE_FLOW_FIELD_VALUE`` and ``RTE_FLOW_FIELD_POINTER`` respectively.
+
+.. _table_rte_flow_action_modify_field:
+
+.. table:: MODIFY_FIELD
+
+   +-----------------------------------------+
+   | Field         | Value                   |
+   +===============+=========================+
+   | ``op``        | operation to perform    |
+   | ``dst``       | destination field       |
+   | ``src``       | source field            |
+   | ``width``     | number of bits to use   |
+   +---------------+-------------------------+
+
+.. _table_rte_flow_action_modify_data:
+
+.. table:: destination/source field definition
+
+   +--------------------------------------------------------------------------+
+   | Field         | Value                                                    |
+   +===============+==========================================================+
+   | ``field``     | ID: packet field, mark, meta, tag, immediate, pointer    |
+   | ``level``     | encapsulation level of a packet field or tag array index |
+   | ``offset``    | number of bits to skip at the beginning                  |
+   | ``value``     | immediate value or a pointer to this value               |
+   +---------------+----------------------------------------------------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

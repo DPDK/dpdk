@@ -2225,6 +2225,17 @@ enum rte_flow_action_type {
 	 * struct rte_flow_shared_action).
 	 */
 	RTE_FLOW_ACTION_TYPE_SHARED,
+
+	/**
+	 * Modify a packet header field, tag, mark or metadata.
+	 *
+	 * Allow the modification of an arbitrary header field via
+	 * set, add and sub operations or copying its content into
+	 * tag, meta or mark for future processing.
+	 *
+	 * See struct rte_flow_action_modify_field.
+	 */
+	RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
 };
 
 /**
@@ -2804,7 +2815,6 @@ struct rte_flow_action_set_dscp {
 	uint8_t dscp;
 };
 
-
 /**
  * RTE_FLOW_ACTION_TYPE_SHARED
  *
@@ -2817,6 +2827,87 @@ struct rte_flow_action_set_dscp {
  * - destroy action
  */
 struct rte_flow_shared_action;
+
+/**
+ * Field IDs for MODIFY_FIELD action.
+ */
+enum rte_flow_field_id {
+	RTE_FLOW_FIELD_START = 0, /**< Start of a packet. */
+	RTE_FLOW_FIELD_MAC_DST,
+	RTE_FLOW_FIELD_MAC_SRC,
+	RTE_FLOW_FIELD_VLAN_TYPE,
+	RTE_FLOW_FIELD_VLAN_ID,
+	RTE_FLOW_FIELD_MAC_TYPE,
+	RTE_FLOW_FIELD_IPV4_DSCP,
+	RTE_FLOW_FIELD_IPV4_TTL,
+	RTE_FLOW_FIELD_IPV4_SRC,
+	RTE_FLOW_FIELD_IPV4_DST,
+	RTE_FLOW_FIELD_IPV6_HOPLIMIT,
+	RTE_FLOW_FIELD_IPV6_SRC,
+	RTE_FLOW_FIELD_IPV6_DST,
+	RTE_FLOW_FIELD_TCP_PORT_SRC,
+	RTE_FLOW_FIELD_TCP_PORT_DST,
+	RTE_FLOW_FIELD_TCP_SEQ_NUM,
+	RTE_FLOW_FIELD_TCP_ACK_NUM,
+	RTE_FLOW_FIELD_TCP_FLAGS,
+	RTE_FLOW_FIELD_UDP_PORT_SRC,
+	RTE_FLOW_FIELD_UDP_PORT_DST,
+	RTE_FLOW_FIELD_VXLAN_VNI,
+	RTE_FLOW_FIELD_GENEVE_VNI,
+	RTE_FLOW_FIELD_GTP_TEID,
+	RTE_FLOW_FIELD_TAG,
+	RTE_FLOW_FIELD_MARK,
+	RTE_FLOW_FIELD_META,
+	RTE_FLOW_FIELD_POINTER, /**< Memory pointer. */
+	RTE_FLOW_FIELD_VALUE,   /**< Immediate value. */
+};
+
+/**
+ * Field description for MODIFY_FIELD action.
+ */
+struct rte_flow_action_modify_data {
+	enum rte_flow_field_id field; /**< Field or memory type ID. */
+	RTE_STD_C11
+	union {
+		struct {
+			/**< Encapsulation level or tag index. */
+			uint32_t level;
+			/**< Number of bits to skip from a field. */
+			uint32_t offset;
+		};
+		/**
+		 * Immediate value for RTE_FLOW_FIELD_VALUE or
+		 * memory address for RTE_FLOW_FIELD_POINTER.
+		 */
+		uint64_t value;
+	};
+};
+
+/**
+ * Operation types for MODIFY_FIELD action.
+ */
+enum rte_flow_modify_op {
+	RTE_FLOW_MODIFY_SET = 0, /**< Set a new value. */
+	RTE_FLOW_MODIFY_ADD,     /**< Add a value to a field.  */
+	RTE_FLOW_MODIFY_SUB,     /**< Subtract a value from a field. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+ *
+ * Modify a destination header field according to the specified
+ * operation. Another packet field can be used as a source as well
+ * as tag, mark, metadata, immediate value or a pointer to it.
+ */
+struct rte_flow_action_modify_field {
+	enum rte_flow_modify_op operation; /**< Operation to perform. */
+	struct rte_flow_action_modify_data dst; /**< Destination field. */
+	struct rte_flow_action_modify_data src; /**< Source field. */
+	uint32_t width; /**< Number of bits to use from a source field. */
+};
 
 /* Mbuf dynamic field offset for metadata. */
 extern int32_t rte_flow_dynf_metadata_offs;

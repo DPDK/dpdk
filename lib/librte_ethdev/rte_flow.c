@@ -177,6 +177,8 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(SET_IPV6_DSCP, sizeof(struct rte_flow_action_set_dscp)),
 	MK_FLOW_ACTION(AGE, sizeof(struct rte_flow_action_age)),
 	MK_FLOW_ACTION(SAMPLE, sizeof(struct rte_flow_action_sample)),
+	MK_FLOW_ACTION(MODIFY_FIELD,
+		       sizeof(struct rte_flow_action_modify_field)),
 	/**
 	 * Shared action represented as handle of type
 	 * (struct rte_flow_shared action *) stored in conf field (see
