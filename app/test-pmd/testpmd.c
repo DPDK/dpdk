@@ -1410,6 +1410,7 @@ init_config(void)
 	struct rte_gro_param gro_param;
 	uint32_t gso_types;
 	uint16_t data_size;
+	uint16_t eth_overhead;
 	bool warning = 0;
 	int k;
 	int ret;
@@ -1445,6 +1446,23 @@ init_config(void)
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE,
 				 "rte_eth_dev_info_get() failed\n");
+
+		/* Update the max_rx_pkt_len to have MTU as RTE_ETHER_MTU */
+		if (port->dev_info.max_mtu != UINT16_MAX &&
+		    port->dev_info.max_rx_pktlen > port->dev_info.max_mtu)
+			eth_overhead = port->dev_info.max_rx_pktlen -
+				port->dev_info.max_mtu;
+		else
+			eth_overhead =
+				RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+		if (port->dev_conf.rxmode.max_rx_pkt_len <=
+			(uint32_t)(RTE_ETHER_MTU + eth_overhead))
+			port->dev_conf.rxmode.max_rx_pkt_len =
+					RTE_ETHER_MTU + eth_overhead;
+		else
+			port->dev_conf.rxmode.offloads |=
+					DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 		if (!(port->dev_info.tx_offload_capa &
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))

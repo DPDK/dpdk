@@ -1434,7 +1434,7 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 		 * device supports jumbo frame.
 		 */
 		eth_overhead = dev_info.max_rx_pktlen - dev_info.max_mtu;
-		if (mtu > RTE_ETHER_MAX_LEN - eth_overhead) {
+		if (mtu > RTE_ETHER_MTU) {
 			rte_port->dev_conf.rxmode.offloads |=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
 			rte_port->dev_conf.rxmode.max_rx_pkt_len =
