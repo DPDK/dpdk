@@ -43,6 +43,5 @@ typedef uint64_t __le64;
 #define ioread32(reg)		rte_read32(reg)
 #define iowrite8(value, reg)	rte_write8(value, reg)
 #define iowrite32(value, reg)	rte_write32(value, reg)
-#define writeq(value, reg)	rte_write64(value, reg)
 
 #endif

@@ -462,12 +462,6 @@ ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa)
 }
 
 void
-ionic_q_flush(struct ionic_queue *q)
-{
-	writeq(IONIC_DBELL_QID(q->hw_index) | q->head_idx, q->db);
-}
-
-void
 ionic_q_post(struct ionic_queue *q, bool ring_doorbell, desc_cb cb,
 	     void *cb_arg)
 {

@@ -254,13 +254,20 @@ int ionic_q_init(struct ionic_lif *lif, struct ionic_dev *idev,
 	size_t desc_size, size_t sg_desc_size);
 void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
-void ionic_q_flush(struct ionic_queue *q);
 void ionic_q_post(struct ionic_queue *q, bool ring_doorbell, desc_cb cb,
 	void *cb_arg);
 uint32_t ionic_q_space_avail(struct ionic_queue *q);
 bool ionic_q_has_space(struct ionic_queue *q, uint32_t want);
 void ionic_q_service(struct ionic_queue *q, uint32_t cq_desc_index,
 	uint32_t stop_index, void *service_cb_arg);
+
+static inline void
+ionic_q_flush(struct ionic_queue *q)
+{
+	uint64_t val = IONIC_DBELL_QID(q->hw_index) | q->head_idx;
+
+	rte_write64(val, q->db);
+}
 
 int ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
 
