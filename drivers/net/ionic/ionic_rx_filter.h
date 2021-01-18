@@ -15,6 +15,7 @@ struct ionic_rx_filter {
 	uint32_t flow_id;
 	uint32_t filter_id;
 	uint16_t rxq_index;
+	uint16_t match;
 	struct ionic_rx_filter_add_cmd cmd;
 	LIST_ENTRY(ionic_rx_filter) by_hash;
 	LIST_ENTRY(ionic_rx_filter) by_id;
