@@ -29,6 +29,10 @@
 /* maximum frame size supported */
 #define ENETC_MAC_MAXFRM_SIZE	9600
 
+/* The max frame size with default MTU */
+#define ENETC_ETH_MAX_LEN (RTE_ETHER_MTU + \
+		RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
+
 /*
  * upper_32_bits - return bits 32-63 of a number
  * @n: the number we're accessing
