@@ -575,7 +575,7 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 		   IXGBE_MHADD_MFS_MASK) >> IXGBE_MHADD_MFS_SHIFT;
 	if (max_frs < new_mtu) {
 		hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
-		if (new_mtu > RTE_ETHER_MAX_LEN) {
+		if (new_mtu > IXGBE_ETH_MAX_LEN) {
 			dev->data->dev_conf.rxmode.offloads |=
 				DEV_RX_OFFLOAD_JUMBO_FRAME;
 			hlreg0 |= IXGBE_HLREG0_JUMBOEN;
