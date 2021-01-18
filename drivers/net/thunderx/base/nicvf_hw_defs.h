@@ -176,6 +176,7 @@
 #define NIC_HW_MAX_MTU                  (9190)
 #define NIC_HW_MAX_FRS                  (NIC_HW_MAX_MTU + NIC_HW_L2_OVERHEAD)
 #define NIC_HW_MAX_SEGS                 (12)
+#define NIC_HW_L2_MAX_LEN		(RTE_ETHER_MTU + NIC_HW_L2_OVERHEAD)
 
 /* Descriptor alignments */
 #define NICVF_RBDR_BASE_ALIGN_BYTES     (128) /* 7 bits */
