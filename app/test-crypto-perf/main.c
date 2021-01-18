@@ -530,14 +530,14 @@ main(int argc, char **argv)
 
 	ret = cperf_options_parse(&opts, argc, argv);
 	if (ret) {
-		RTE_LOG(ERR, USER1, "Parsing on or more user options failed\n");
+		RTE_LOG(ERR, USER1, "Parsing one or more user options failed\n");
 		goto err;
 	}
 
 	ret = cperf_options_check(&opts);
 	if (ret) {
 		RTE_LOG(ERR, USER1,
-				"Checking on or more user options failed\n");
+				"Checking one or more user options failed\n");
 		goto err;
 	}
 
