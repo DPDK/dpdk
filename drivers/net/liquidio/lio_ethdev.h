@@ -13,6 +13,9 @@
 #define LIO_LSC_TIMEOUT		100000 /* 100000us (100ms) */
 #define LIO_MAX_CMD_TIMEOUT     10000 /* 10000ms (10s) */
 
+/* The max frame size with default MTU */
+#define LIO_ETH_MAX_LEN (RTE_ETHER_MTU + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
+
 #define LIO_DEV(_eth_dev)		((_eth_dev)->data->dev_private)
 
 /* LIO Response condition variable */
