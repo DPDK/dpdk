@@ -1490,7 +1490,7 @@ static int axgb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 				dev->data->port_id);
 		return -EBUSY;
 	}
-	if (frame_size > RTE_ETHER_MAX_LEN) {
+	if (frame_size > AXGBE_ETH_MAX_LEN) {
 		dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		val = 1;
