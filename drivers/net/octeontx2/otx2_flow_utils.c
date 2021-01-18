@@ -944,7 +944,7 @@ otx2_flow_mcam_alloc_and_write(struct rte_flow *flow, struct otx2_mbox *mbox,
 		req->entry_data.kw[0] |= flow_info->channel;
 		req->entry_data.kw_mask[0] |=  (BIT_ULL(12) - 1);
 	} else {
-		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
+		uint16_t pf_func = (flow->npc_action >> 48) & 0xffff;
 
 		pf_func = htons(pf_func);
 		req->entry_data.kw[0] |= ((uint64_t)pf_func << 32);

@@ -1090,7 +1090,10 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 
 set_pf_func:
 	/* Ideally AF must ensure that correct pf_func is set */
-	flow->npc_action |= (uint64_t)pf_func << 4;
+	if (attr->egress)
+		flow->npc_action |= (uint64_t)pf_func << 48;
+	else
+		flow->npc_action |= (uint64_t)pf_func << 4;
 
 	return 0;
 
