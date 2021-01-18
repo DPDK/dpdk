@@ -344,7 +344,7 @@ bnxt_init_ptype_table(void)
 
 		ip6 = i & (RX_PKT_CMPL_FLAGS2_IP_TYPE >> 7);
 		tun = i & (RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC >> 2);
-		type = (i & 0x38) << 9;
+		type = (i & 0x78) << 9;
 
 		if (!tun && !ip6)
 			l3 = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
