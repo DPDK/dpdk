@@ -256,10 +256,21 @@ void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_post(struct ionic_queue *q, bool ring_doorbell, desc_cb cb,
 	void *cb_arg);
-uint32_t ionic_q_space_avail(struct ionic_queue *q);
-bool ionic_q_has_space(struct ionic_queue *q, uint32_t want);
 void ionic_q_service(struct ionic_queue *q, uint32_t cq_desc_index,
 	uint32_t stop_index, void *service_cb_arg);
+
+static inline uint32_t
+ionic_q_space_avail(struct ionic_queue *q)
+{
+	uint32_t avail = q->tail_idx;
+
+	if (q->head_idx >= avail)
+		avail += q->num_descs - q->head_idx - 1;
+	else
+		avail -= q->head_idx + 1;
+
+	return avail;
+}
 
 static inline void
 ionic_q_flush(struct ionic_queue *q)

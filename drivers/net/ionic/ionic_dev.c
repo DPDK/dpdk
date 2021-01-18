@@ -476,25 +476,6 @@ ionic_q_post(struct ionic_queue *q, bool ring_doorbell, desc_cb cb,
 		ionic_q_flush(q);
 }
 
-uint32_t
-ionic_q_space_avail(struct ionic_queue *q)
-{
-	uint32_t avail = q->tail_idx;
-
-	if (q->head_idx >= avail)
-		avail += q->num_descs - q->head_idx - 1;
-	else
-		avail -= q->head_idx + 1;
-
-	return avail;
-}
-
-bool
-ionic_q_has_space(struct ionic_queue *q, uint32_t want)
-{
-	return ionic_q_space_avail(q) >= want;
-}
-
 void
 ionic_q_service(struct ionic_queue *q, uint32_t cq_desc_index,
 		uint32_t stop_index, void *service_cb_arg)
@@ -563,7 +544,7 @@ ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 
 	rte_spinlock_lock(&lif->adminq_lock);
 
-	if (!ionic_q_has_space(adminq, 1)) {
+	if (ionic_q_space_avail(adminq) < 1) {
 		err = -ENOSPC;
 		goto err_out;
 	}
