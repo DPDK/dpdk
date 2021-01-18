@@ -1886,7 +1886,6 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		struct rte_port *port = &ports[pid];
-		uint64_t rx_offloads = port->dev_conf.rxmode.offloads;
 
 		if (!strcmp(res->name, "max-pkt-len")) {
 			if (res->value < RTE_ETHER_MIN_LEN) {
@@ -1898,11 +1897,6 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 				return;
 
 			port->dev_conf.rxmode.max_rx_pkt_len = res->value;
-			if (res->value > RTE_ETHER_MAX_LEN)
-				rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-			else
-				rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
-			port->dev_conf.rxmode.offloads = rx_offloads;
 		} else {
 			printf("Unknown parameter\n");
 			return;
