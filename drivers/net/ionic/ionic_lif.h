@@ -48,8 +48,6 @@ struct ionic_rx_stats {
 
 #define IONIC_QCQ_F_INITED	BIT(0)
 #define IONIC_QCQ_F_SG		BIT(1)
-#define IONIC_QCQ_F_INTR	BIT(2)
-#define IONIC_QCQ_F_NOTIFYQ	BIT(3)
 #define IONIC_QCQ_F_DEFERRED	BIT(4)
 
 /* Queue / Completion Queue */

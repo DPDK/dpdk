@@ -165,11 +165,9 @@ struct ionic_queue {
 	struct ionic_doorbell __iomem *db;
 };
 
-#define IONIC_INTR_INDEX_NOT_ASSIGNED	(-1)
-#define IONIC_INTR_NAME_MAX_SZ		(32)
+#define IONIC_INTR_NONE		(-1)
 
 struct ionic_intr_info {
-	char name[IONIC_INTR_NAME_MAX_SZ];
 	int index;
 	uint32_t vector;
 	struct ionic_intr __iomem *ctrl;
@@ -184,7 +182,6 @@ struct ionic_cq {
 	bool done_color;
 	void *base;
 	rte_iova_t base_pa;
-	struct ionic_intr_info *bound_intr;
 };
 
 /** ionic_admin_ctx - Admin command context.
@@ -234,15 +231,14 @@ void ionic_dev_cmd_lif_identify(struct ionic_dev *idev, uint8_t type,
 	uint8_t ver);
 void ionic_dev_cmd_lif_init(struct ionic_dev *idev, rte_iova_t addr);
 void ionic_dev_cmd_lif_reset(struct ionic_dev *idev);
-void ionic_dev_cmd_adminq_init(struct ionic_dev *idev, struct ionic_qcq *qcq,
-	uint16_t intr_index);
+
+void ionic_dev_cmd_adminq_init(struct ionic_dev *idev, struct ionic_qcq *qcq);
 
 struct ionic_doorbell __iomem *ionic_db_map(struct ionic_lif *lif,
 	struct ionic_queue *q);
 
 int ionic_cq_init(struct ionic_lif *lif, struct ionic_cq *cq,
-	struct ionic_intr_info *intr, uint32_t num_descs,
-	size_t desc_size);
+	uint32_t num_descs, size_t desc_size);
 void ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa);
 void ionic_cq_bind(struct ionic_cq *cq, struct ionic_queue *q);
 typedef bool (*ionic_cq_cb)(struct ionic_cq *cq, uint32_t cq_desc_index,

@@ -323,9 +323,7 @@ ionic_intr_init(struct ionic_dev *idev, struct ionic_intr_info *intr,
 }
 
 void
-ionic_dev_cmd_adminq_init(struct ionic_dev *idev,
-		struct ionic_qcq *qcq,
-		uint16_t intr_index)
+ionic_dev_cmd_adminq_init(struct ionic_dev *idev, struct ionic_qcq *qcq)
 {
 	struct ionic_queue *q = &qcq->q;
 	struct ionic_cq *cq = &qcq->cq;
@@ -335,7 +333,7 @@ ionic_dev_cmd_adminq_init(struct ionic_dev *idev,
 		.q_init.type = q->type,
 		.q_init.index = q->index,
 		.q_init.flags = IONIC_QINIT_F_ENA,
-		.q_init.intr_index = intr_index,
+		.q_init.intr_index = IONIC_INTR_NONE,
 		.q_init.ring_size = rte_log2_u32(q->num_descs),
 		.q_init.ring_base = q->base_pa,
 		.q_init.cq_ring_base = cq->base_pa,
@@ -348,7 +346,6 @@ ionic_dev_cmd_adminq_init(struct ionic_dev *idev,
 
 int
 ionic_cq_init(struct ionic_lif *lif, struct ionic_cq *cq,
-		struct ionic_intr_info *intr,
 		uint32_t num_descs, size_t desc_size)
 {
 	if (desc_size == 0) {
@@ -365,7 +362,6 @@ ionic_cq_init(struct ionic_lif *lif, struct ionic_cq *cq,
 	}
 
 	cq->lif = lif;
-	cq->bound_intr = intr;
 	cq->num_descs = num_descs;
 	cq->desc_size = desc_size;
 	cq->tail_idx = 0;
