@@ -460,17 +460,21 @@ ionic_tx(struct ionic_queue *q, struct rte_mbuf *txm,
 	uint8_t flags = 0;
 
 	if ((ol_flags & PKT_TX_IP_CKSUM) &&
-			(offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)) {
+	    (offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)) {
 		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
 		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L3;
-		if (((ol_flags & PKT_TX_TCP_CKSUM) &&
-				(offloads & DEV_TX_OFFLOAD_TCP_CKSUM)) ||
-				((ol_flags & PKT_TX_UDP_CKSUM) &&
-				(offloads & DEV_TX_OFFLOAD_UDP_CKSUM)))
-			flags |= IONIC_TXQ_DESC_FLAG_CSUM_L4;
-	} else {
-		stats->no_csum++;
 	}
+
+	if (((ol_flags & PKT_TX_TCP_CKSUM) &&
+	     (offloads & DEV_TX_OFFLOAD_TCP_CKSUM)) ||
+	    ((ol_flags & PKT_TX_UDP_CKSUM) &&
+	     (offloads & DEV_TX_OFFLOAD_UDP_CKSUM))) {
+		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
+		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L4;
+	}
+
+	if (opcode == IONIC_TXQ_DESC_OPCODE_CSUM_NONE)
+		stats->no_csum++;
 
 	has_vlan = (ol_flags & PKT_TX_VLAN_PKT);
 	encap = ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
