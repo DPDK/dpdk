@@ -97,7 +97,7 @@
  */
 #define E1000_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + \
 				VLAN_TAG_SIZE)
-
+#define E1000_ETH_MAX_LEN (RTE_ETHER_MTU + E1000_ETH_OVERHEAD)
 /*
  * Maximum number of Ring Descriptors.
  *
