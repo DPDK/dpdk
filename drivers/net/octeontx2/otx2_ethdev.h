@@ -51,6 +51,8 @@
 /* ETH_HLEN+ETH_FCS+2*VLAN_HLEN */
 #define NIX_L2_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + 8)
+#define NIX_L2_MAX_LEN \
+	(RTE_ETHER_MTU + NIX_L2_OVERHEAD)
 
 /* HW config of frame size doesn't include FCS */
 #define NIX_MAX_HW_FRS			9212
