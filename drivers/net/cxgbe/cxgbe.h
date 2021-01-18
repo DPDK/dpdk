@@ -19,6 +19,10 @@
 #define CXGBE_MAX_RX_PKTLEN (9000 + RTE_ETHER_HDR_LEN + \
 				RTE_ETHER_CRC_LEN) /* max pkt */
 
+/* The max frame size with default MTU */
+#define CXGBE_ETH_MAX_LEN (RTE_ETHER_MTU + \
+		RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
+
 /* Max poll time is 100 * 100msec = 10 sec */
 #define CXGBE_LINK_STATUS_POLL_MS 100 /* 100ms */
 #define CXGBE_LINK_STATUS_POLL_CNT 100 /* Max number of times to poll */
