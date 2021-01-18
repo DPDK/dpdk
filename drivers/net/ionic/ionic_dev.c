@@ -165,7 +165,7 @@ ionic_dev_cmd_port_init(struct ionic_dev *idev)
 	union ionic_dev_cmd cmd = {
 		.port_init.opcode = IONIC_CMD_PORT_INIT,
 		.port_init.index = 0,
-		.port_init.info_pa = idev->port_info_pa,
+		.port_init.info_pa = rte_cpu_to_le_64(idev->port_info_pa),
 	};
 
 	ionic_dev_cmd_go(idev, &cmd);
@@ -202,7 +202,7 @@ ionic_dev_cmd_port_speed(struct ionic_dev *idev, uint32_t speed)
 		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
 		.port_setattr.index = 0,
 		.port_setattr.attr = IONIC_PORT_ATTR_SPEED,
-		.port_setattr.speed = speed,
+		.port_setattr.speed = rte_cpu_to_le_32(speed),
 	};
 
 	ionic_dev_cmd_go(idev, &cmd);
@@ -215,7 +215,7 @@ ionic_dev_cmd_port_mtu(struct ionic_dev *idev, uint32_t mtu)
 		.port_setattr.opcode = IONIC_CMD_PORT_SETATTR,
 		.port_setattr.index = 0,
 		.port_setattr.attr = IONIC_PORT_ATTR_MTU,
-		.port_setattr.mtu = mtu,
+		.port_setattr.mtu = rte_cpu_to_le_32(mtu),
 	};
 
 	ionic_dev_cmd_go(idev, &cmd);
@@ -292,7 +292,7 @@ ionic_dev_cmd_lif_init(struct ionic_dev *idev, rte_iova_t info_pa)
 {
 	union ionic_dev_cmd cmd = {
 		.lif_init.opcode = IONIC_CMD_LIF_INIT,
-		.lif_init.info_pa = info_pa,
+		.lif_init.info_pa = rte_cpu_to_le_64(info_pa),
 	};
 
 	ionic_dev_cmd_go(idev, &cmd);
@@ -331,12 +331,12 @@ ionic_dev_cmd_adminq_init(struct ionic_dev *idev, struct ionic_qcq *qcq)
 	union ionic_dev_cmd cmd = {
 		.q_init.opcode = IONIC_CMD_Q_INIT,
 		.q_init.type = q->type,
-		.q_init.index = q->index,
-		.q_init.flags = IONIC_QINIT_F_ENA,
-		.q_init.intr_index = IONIC_INTR_NONE,
+		.q_init.index = rte_cpu_to_le_32(q->index),
+		.q_init.flags = rte_cpu_to_le_16(IONIC_QINIT_F_ENA),
+		.q_init.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
 		.q_init.ring_size = rte_log2_u32(q->num_descs),
-		.q_init.ring_base = q->base_pa,
-		.q_init.cq_ring_base = cq->base_pa,
+		.q_init.ring_base = rte_cpu_to_le_64(q->base_pa),
+		.q_init.cq_ring_base = rte_cpu_to_le_64(cq->base_pa),
 	};
 
 	IONIC_PRINT(DEBUG, "adminq.q_init.ver %u", cmd.q_init.ver);
@@ -517,9 +517,14 @@ ionic_adminq_cb(struct ionic_queue *q,
 	struct ionic_admin_ctx *ctx = cb_arg;
 	struct ionic_admin_comp *cq_desc_base = q->bound_cq->base;
 	struct ionic_admin_comp *cq_desc = &cq_desc_base[cq_desc_index];
+	uint16_t comp_index;
 
-	if (unlikely(cq_desc->comp_index != q_desc_index)) {
-		IONIC_WARN_ON(cq_desc->comp_index != q_desc_index);
+	if (!ctx)
+		return;
+
+	comp_index = rte_le_to_cpu_16(cq_desc->comp_index);
+	if (unlikely(comp_index != q_desc_index)) {
+		IONIC_WARN_ON(comp_index != q_desc_index);
 		return;
 	}
 

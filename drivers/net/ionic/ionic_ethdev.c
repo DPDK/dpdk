@@ -374,13 +374,15 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
 	struct ionic_adapter *adapter = lif->adapter;
 	struct ionic_identity *ident = &adapter->ident;
+	union ionic_lif_config *cfg = &ident->lif.eth.config;
 
 	IONIC_PRINT_CALL();
 
 	dev_info->max_rx_queues = (uint16_t)
-		ident->lif.eth.config.queue_count[IONIC_QTYPE_RXQ];
+		rte_le_to_cpu_32(cfg->queue_count[IONIC_QTYPE_RXQ]);
 	dev_info->max_tx_queues = (uint16_t)
-		ident->lif.eth.config.queue_count[IONIC_QTYPE_TXQ];
+		rte_le_to_cpu_32(cfg->queue_count[IONIC_QTYPE_TXQ]);
+
 	/* Also add ETHER_CRC_LEN if the adapter is able to keep CRC */
 	dev_info->min_rx_bufsize = IONIC_MIN_MTU + RTE_ETHER_HDR_LEN;
 	dev_info->max_rx_pktlen = IONIC_MAX_MTU + RTE_ETHER_HDR_LEN;
@@ -389,7 +391,7 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->max_mtu = IONIC_MAX_MTU;
 
 	dev_info->hash_key_size = IONIC_RSS_HASH_KEY_SIZE;
-	dev_info->reta_size = ident->lif.eth.rss_ind_tbl_sz;
+	dev_info->reta_size = rte_le_to_cpu_16(ident->lif.eth.rss_ind_tbl_sz);
 	dev_info->flow_type_rss_offloads = IONIC_ETH_RSS_OFFLOAD_ALL;
 
 	dev_info->speed_capa =
@@ -534,6 +536,7 @@ ionic_dev_rss_reta_update(struct rte_eth_dev *eth_dev,
 	struct ionic_adapter *adapter = lif->adapter;
 	struct ionic_identity *ident = &adapter->ident;
 	uint32_t i, j, index, num;
+	uint16_t tbl_sz = rte_le_to_cpu_16(ident->lif.eth.rss_ind_tbl_sz);
 
 	IONIC_PRINT_CALL();
 
@@ -543,15 +546,15 @@ ionic_dev_rss_reta_update(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-	if (reta_size != ident->lif.eth.rss_ind_tbl_sz) {
+	if (reta_size != tbl_sz) {
 		IONIC_PRINT(ERR, "The size of hash lookup table configured "
 			"(%d) does not match the number hardware can support "
 			"(%d)",
-			reta_size, ident->lif.eth.rss_ind_tbl_sz);
+			reta_size, tbl_sz);
 		return -EINVAL;
 	}
 
-	num = lif->adapter->ident.lif.eth.rss_ind_tbl_sz / RTE_RETA_GROUP_SIZE;
+	num = tbl_sz / RTE_RETA_GROUP_SIZE;
 
 	for (i = 0; i < num; i++) {
 		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
@@ -574,14 +577,15 @@ ionic_dev_rss_reta_query(struct rte_eth_dev *eth_dev,
 	struct ionic_adapter *adapter = lif->adapter;
 	struct ionic_identity *ident = &adapter->ident;
 	int i, num;
+	uint16_t tbl_sz = rte_le_to_cpu_16(ident->lif.eth.rss_ind_tbl_sz);
 
 	IONIC_PRINT_CALL();
 
-	if (reta_size != ident->lif.eth.rss_ind_tbl_sz) {
+	if (reta_size != tbl_sz) {
 		IONIC_PRINT(ERR, "The size of hash lookup table configured "
 			"(%d) does not match the number hardware can support "
 			"(%d)",
-			reta_size, ident->lif.eth.rss_ind_tbl_sz);
+			reta_size, tbl_sz);
 		return -EINVAL;
 	}
 
@@ -1228,11 +1232,12 @@ eth_ionic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto err_free_adapter;
 	}
 
-	adapter->max_mac_addrs = adapter->ident.lif.eth.max_ucast_filters;
+	adapter->max_mac_addrs =
+		rte_le_to_cpu_32(adapter->ident.lif.eth.max_ucast_filters);
 
-	if (adapter->ident.dev.nlifs != 1) {
+	if (rte_le_to_cpu_32(adapter->ident.dev.nlifs) != 1) {
 		IONIC_PRINT(ERR, "Unexpected request for %d LIFs",
-			adapter->ident.dev.nlifs);
+			rte_le_to_cpu_32(adapter->ident.dev.nlifs));
 		goto err_free_adapter;
 	}
 

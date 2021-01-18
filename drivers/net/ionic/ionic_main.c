@@ -340,8 +340,10 @@ ionic_port_identify(struct ionic_adapter *adapter)
 				ioread32(&idev->dev_cmd->data[i]);
 	}
 
-	IONIC_PRINT(INFO, "speed %d", ident->port.config.speed);
-	IONIC_PRINT(INFO, "mtu %d", ident->port.config.mtu);
+	IONIC_PRINT(INFO, "speed %d",
+		rte_le_to_cpu_32(ident->port.config.speed));
+	IONIC_PRINT(INFO, "mtu %d",
+		rte_le_to_cpu_32(ident->port.config.mtu));
 	IONIC_PRINT(INFO, "state %d", ident->port.config.state);
 	IONIC_PRINT(INFO, "an_enable %d", ident->port.config.an_enable);
 	IONIC_PRINT(INFO, "fec_type %d", ident->port.config.fec_type);
