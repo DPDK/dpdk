@@ -426,6 +426,7 @@ extern enum rte_flow_item_type pattern_eth_pppoes_proto[];
 extern enum rte_flow_item_type pattern_eth_vlan_pppoes[];
 extern enum rte_flow_item_type pattern_eth_vlan_pppoes_proto[];
 extern enum rte_flow_item_type pattern_eth_qinq_pppoes[];
+extern enum rte_flow_item_type pattern_eth_qinq_pppoes_proto[];
 extern enum rte_flow_item_type pattern_eth_pppoes_ipv4[];
 extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv4[];
 extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv4[];

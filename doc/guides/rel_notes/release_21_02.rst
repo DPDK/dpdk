@@ -82,6 +82,10 @@ New Features
 
   * Added support for 64B completion queue entries
 
+* **Updated Intel ice driver.**
+
+  * Added Double VLAN support for DCF switch QinQ filtering.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated the Mellanox mlx5 driver with new features and improvements, including:
