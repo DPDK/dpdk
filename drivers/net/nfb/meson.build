@@ -9,7 +9,7 @@ if is_windows
 	subdir_done()
 endif
 
-dep = dependency('netcope-common', required: false)
+dep = dependency('netcope-common', required: false, method: 'pkg-config')
 reason = 'missing dependency, "libnfb"'
 build = dep.found()
 ext_deps += dep

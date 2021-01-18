@@ -7,7 +7,7 @@ if is_windows
 	subdir_done()
 endif
 
-dep = dependency('zlib', required: false)
+dep = dependency('zlib', required: false, method: 'pkg-config')
 build = dep.found()
 reason = 'missing dependency, "zlib"'
 ext_deps += dep

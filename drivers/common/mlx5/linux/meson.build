@@ -19,7 +19,8 @@ endif
 libnames = [ 'mlx5', 'ibverbs' ]
 libs = []
 foreach libname:libnames
-	lib = dependency('lib' + libname, static:static_ibverbs, required:false)
+	lib = dependency('lib' + libname, static:static_ibverbs,
+			required:false, method: 'pkg-config')
 	if not lib.found() and not static_ibverbs
 		lib = cc.find_library(libname, required:false)
 	endif

@@ -7,7 +7,7 @@ if is_windows
 	subdir_done()
 endif
 
-dep = dependency('libsze2', required: false)
+dep = dependency('libsze2', required: false, method: 'pkg-config')
 build = dep.found()
 reason = 'missing dependency, "libsze2"'
 ext_deps += dep

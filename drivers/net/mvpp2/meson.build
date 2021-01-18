@@ -9,7 +9,7 @@ if is_windows
 	subdir_done()
 endif
 
-dep = dependency('libmusdk', required: false)
+dep = dependency('libmusdk', required: false, method: 'pkg-config')
 if not dep.found()
 	build = false
 	reason = 'missing dependency, "libmusdk"'
