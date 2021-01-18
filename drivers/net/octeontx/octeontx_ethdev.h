@@ -44,6 +44,7 @@
 /* ETH_HLEN+ETH_FCS+2*VLAN_HLEN */
 #define OCCTX_L2_OVERHEAD	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + \
 				 OCCTX_MAX_VTAG_ACT_SIZE)
+#define OCCTX_L2_MAX_LEN	(RTE_ETHER_MTU + OCCTX_L2_OVERHEAD)
 
 /* Since HW FRS includes NPC VTAG insertion space, user has reduced FRS */
 #define OCCTX_MAX_FRS	\
