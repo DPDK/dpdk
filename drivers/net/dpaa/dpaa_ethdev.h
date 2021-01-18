@@ -51,6 +51,10 @@
 #define VLAN_TAG_SIZE   4 /** < Vlan Header Length */
 #endif
 
+#define DPAA_ETH_MAX_LEN (RTE_ETHER_MTU + \
+			  RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + \
+			  VLAN_TAG_SIZE)
+
 /* PCD frame queues */
 #define DPAA_DEFAULT_NUM_PCD_QUEUES	1
 #define DPAA_VSP_PROFILE_MAX_NUM	8
