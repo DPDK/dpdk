@@ -49,10 +49,12 @@ struct ionic_rx_stats {
 #define IONIC_QCQ_F_INITED	BIT(0)
 #define IONIC_QCQ_F_SG		BIT(1)
 #define IONIC_QCQ_F_DEFERRED	BIT(4)
+#define IONIC_QCQ_F_CSUM_L3	BIT(7)
+#define IONIC_QCQ_F_CSUM_UDP	BIT(8)
+#define IONIC_QCQ_F_CSUM_TCP	BIT(9)
 
 /* Queue / Completion Queue */
 struct ionic_qcq {
-	uint64_t offloads;
 	struct ionic_queue q;        /**< Queue */
 	struct ionic_cq cq;          /**< Completion Queue */
 	struct ionic_lif *lif;       /**< LIF */

@@ -63,7 +63,7 @@ ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct ionic_queue *q = &txq->q;
 
 	qinfo->nb_desc = q->num_descs;
-	qinfo->conf.offloads = txq->offloads;
+	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
 	qinfo->conf.tx_deferred_start = txq->flags & IONIC_QCQ_F_DEFERRED;
 }
 
@@ -200,7 +200,13 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 	if (tx_conf->tx_deferred_start)
 		txq->flags |= IONIC_QCQ_F_DEFERRED;
 
-	txq->offloads = offloads;
+	/* Convert the offload flags into queue flags */
+	if (offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+		txq->flags |= IONIC_QCQ_F_CSUM_L3;
+	if (offloads & DEV_TX_OFFLOAD_TCP_CKSUM)
+		txq->flags |= IONIC_QCQ_F_CSUM_TCP;
+	if (offloads & DEV_TX_OFFLOAD_UDP_CKSUM)
+		txq->flags |= IONIC_QCQ_F_CSUM_UDP;
 
 	eth_dev->data->tx_queues[tx_queue_id] = txq;
 
@@ -320,9 +326,10 @@ ionic_tx_tso_next(struct ionic_queue *q, struct ionic_txq_sg_elem **elem)
 }
 
 static int
-ionic_tx_tso(struct ionic_queue *q, struct rte_mbuf *txm,
-		uint64_t offloads __rte_unused, bool not_xmit_more)
+ionic_tx_tso(struct ionic_qcq *txq, struct rte_mbuf *txm,
+		bool not_xmit_more)
 {
+	struct ionic_queue *q = &txq->q;
 	struct ionic_tx_stats *stats = IONIC_Q_TO_TX_STATS(q);
 	struct ionic_txq_desc *desc;
 	struct ionic_txq_sg_elem *elem;
@@ -442,9 +449,10 @@ ionic_tx_tso(struct ionic_queue *q, struct rte_mbuf *txm,
 }
 
 static int
-ionic_tx(struct ionic_queue *q, struct rte_mbuf *txm,
-		uint64_t offloads, bool not_xmit_more)
+ionic_tx(struct ionic_qcq *txq, struct rte_mbuf *txm,
+		bool not_xmit_more)
 {
+	struct ionic_queue *q = &txq->q;
 	struct ionic_txq_desc *desc_base = q->base;
 	struct ionic_txq_sg_desc *sg_desc_base = q->sg_base;
 	struct ionic_txq_desc *desc = &desc_base[q->head_idx];
@@ -460,15 +468,15 @@ ionic_tx(struct ionic_queue *q, struct rte_mbuf *txm,
 	uint8_t flags = 0;
 
 	if ((ol_flags & PKT_TX_IP_CKSUM) &&
-	    (offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)) {
+	    (txq->flags & IONIC_QCQ_F_CSUM_L3)) {
 		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
 		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L3;
 	}
 
 	if (((ol_flags & PKT_TX_TCP_CKSUM) &&
-	     (offloads & DEV_TX_OFFLOAD_TCP_CKSUM)) ||
+	     (txq->flags & IONIC_QCQ_F_CSUM_TCP)) ||
 	    ((ol_flags & PKT_TX_UDP_CKSUM) &&
-	     (offloads & DEV_TX_OFFLOAD_UDP_CKSUM))) {
+	     (txq->flags & IONIC_QCQ_F_CSUM_UDP))) {
 		opcode = IONIC_TXQ_DESC_OPCODE_CSUM_HW;
 		flags |= IONIC_TXQ_DESC_FLAG_CSUM_L4;
 	}
@@ -536,10 +544,9 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 
 		if (tx_pkts[nb_tx]->ol_flags & PKT_TX_TCP_SEG)
-			err = ionic_tx_tso(q, tx_pkts[nb_tx], txq->offloads,
-				last);
+			err = ionic_tx_tso(txq, tx_pkts[nb_tx], last);
 		else
-			err = ionic_tx(q, tx_pkts[nb_tx], txq->offloads, last);
+			err = ionic_tx(txq, tx_pkts[nb_tx], last);
 		if (err) {
 			stats->drop += nb_pkts - nb_tx;
 			if (nb_tx > 0)
@@ -621,7 +628,7 @@ ionic_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->scattered_rx = dev->data->scattered_rx;
 	qinfo->nb_desc = q->num_descs;
 	qinfo->conf.rx_deferred_start = rxq->flags & IONIC_QCQ_F_DEFERRED;
-	qinfo->conf.offloads = rxq->offloads;
+	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
 }
 
 static void __rte_cold
@@ -723,8 +730,6 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	/* Do not start queue with rte_eth_dev_start() */
 	if (rx_conf->rx_deferred_start)
 		rxq->flags |= IONIC_QCQ_F_DEFERRED;
-
-	rxq->offloads = offloads;
 
 	eth_dev->data->rx_queues[rx_queue_id] = rxq;
 
