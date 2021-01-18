@@ -73,6 +73,17 @@ struct ionic_qcq {
 #define IONIC_Q_TO_TX_STATS(q)	(&IONIC_Q_TO_QCQ(q)->stats.tx)
 #define IONIC_Q_TO_RX_STATS(q)	(&IONIC_Q_TO_QCQ(q)->stats.rx)
 
+struct ionic_qtype_info {
+	uint8_t  version;
+	uint8_t  supported;
+	uint64_t features;
+	uint16_t desc_sz;
+	uint16_t comp_sz;
+	uint16_t sg_desc_sz;
+	uint16_t max_sg_elems;
+	uint16_t sg_desc_stride;
+};
+
 #define IONIC_LIF_F_INITED		BIT(0)
 #define IONIC_LIF_F_LINK_CHECK_NEEDED	BIT(1)
 #define IONIC_LIF_F_UP			BIT(2)
@@ -112,6 +123,10 @@ struct ionic_lif {
 	struct ionic_lif_info *info;
 	rte_iova_t info_pa;
 	const struct rte_memzone *info_z;
+
+	struct ionic_qtype_info qtype_info[IONIC_QTYPE_MAX];
+	uint8_t qtype_ver[IONIC_QTYPE_MAX];
+
 	struct rte_eth_stats stats_base;
 	struct ionic_lif_stats lif_stats_base;
 };

@@ -276,6 +276,20 @@ ionic_dev_cmd_port_loopback(struct ionic_dev *idev, uint8_t loopback_mode)
 /* LIF commands */
 
 void
+ionic_dev_cmd_queue_identify(struct ionic_dev *idev,
+		uint16_t lif_type, uint8_t qtype, uint8_t qver)
+{
+	union ionic_dev_cmd cmd = {
+		.q_identify.opcode = IONIC_CMD_Q_IDENTIFY,
+		.q_identify.lif_type = rte_cpu_to_le_16(lif_type),
+		.q_identify.type = qtype,
+		.q_identify.ver = qver,
+	};
+
+	ionic_dev_cmd_go(idev, &cmd);
+}
+
+void
 ionic_dev_cmd_lif_identify(struct ionic_dev *idev, uint8_t type, uint8_t ver)
 {
 	union ionic_dev_cmd cmd = {
@@ -331,6 +345,7 @@ ionic_dev_cmd_adminq_init(struct ionic_dev *idev, struct ionic_qcq *qcq)
 	union ionic_dev_cmd cmd = {
 		.q_init.opcode = IONIC_CMD_Q_INIT,
 		.q_init.type = q->type,
+		.q_init.ver = qcq->lif->qtype_info[q->type].version,
 		.q_init.index = rte_cpu_to_le_32(q->index),
 		.q_init.flags = rte_cpu_to_le_16(IONIC_QINIT_F_ENA),
 		.q_init.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),

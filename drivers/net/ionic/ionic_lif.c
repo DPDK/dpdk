@@ -12,6 +12,21 @@
 #include "ionic_rx_filter.h"
 #include "ionic_rxtx.h"
 
+/* queuetype support level */
+static const uint8_t ionic_qtype_vers[IONIC_QTYPE_MAX] = {
+	[IONIC_QTYPE_ADMINQ]  = 0,   /* 0 = Base version with CQ support */
+	[IONIC_QTYPE_NOTIFYQ] = 0,   /* 0 = Base version */
+	[IONIC_QTYPE_RXQ]     = 2,   /* 0 = Base version with CQ+SG support
+				      * 1 =       ... with EQ
+				      * 2 =       ... with CMB
+				      */
+	[IONIC_QTYPE_TXQ]     = 3,   /* 0 = Base version with CQ+SG support
+				      * 1 =   ... with Tx SG version 1
+				      * 2 =       ... with EQ
+				      * 3 =       ... with CMB
+				      */
+};
+
 static int ionic_lif_addr_add(struct ionic_lif *lif, const uint8_t *addr);
 static int ionic_lif_addr_del(struct ionic_lif *lif, const uint8_t *addr);
 
@@ -818,6 +833,81 @@ ionic_bus_map_dbpage(struct ionic_adapter *adapter, int page_num)
 	return (void *)&vaddr[page_num << PAGE_SHIFT];
 }
 
+static void
+ionic_lif_queue_identify(struct ionic_lif *lif)
+{
+	struct ionic_adapter *adapter = lif->adapter;
+	struct ionic_dev *idev = &adapter->idev;
+	union ionic_q_identity *q_ident = &adapter->ident.txq;
+	uint32_t q_words = RTE_DIM(q_ident->words);
+	uint32_t cmd_words = RTE_DIM(idev->dev_cmd->data);
+	uint32_t i, nwords, qtype;
+	int err;
+
+	for (qtype = 0; qtype < RTE_DIM(ionic_qtype_vers); qtype++) {
+		struct ionic_qtype_info *qti = &lif->qtype_info[qtype];
+
+		/* Filter out the types this driver knows about */
+		switch (qtype) {
+		case IONIC_QTYPE_ADMINQ:
+		case IONIC_QTYPE_NOTIFYQ:
+		case IONIC_QTYPE_RXQ:
+		case IONIC_QTYPE_TXQ:
+			break;
+		default:
+			continue;
+		}
+
+		memset(qti, 0, sizeof(*qti));
+
+		ionic_dev_cmd_queue_identify(idev, IONIC_LIF_TYPE_CLASSIC,
+			qtype, ionic_qtype_vers[qtype]);
+		err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
+		if (err == -EINVAL) {
+			IONIC_PRINT(ERR, "qtype %d not supported\n", qtype);
+			continue;
+		} else if (err == -EIO) {
+			IONIC_PRINT(ERR, "q_ident failed, older FW\n");
+			return;
+		} else if (err) {
+			IONIC_PRINT(ERR, "q_ident failed, qtype %d: %d\n",
+				qtype, err);
+			return;
+		}
+
+		nwords = RTE_MIN(q_words, cmd_words);
+		for (i = 0; i < nwords; i++)
+			q_ident->words[i] = ioread32(&idev->dev_cmd->data[i]);
+
+		qti->version   = q_ident->version;
+		qti->supported = q_ident->supported;
+		qti->features  = rte_le_to_cpu_64(q_ident->features);
+		qti->desc_sz   = rte_le_to_cpu_16(q_ident->desc_sz);
+		qti->comp_sz   = rte_le_to_cpu_16(q_ident->comp_sz);
+		qti->sg_desc_sz   = rte_le_to_cpu_16(q_ident->sg_desc_sz);
+		qti->max_sg_elems = rte_le_to_cpu_16(q_ident->max_sg_elems);
+		qti->sg_desc_stride =
+			rte_le_to_cpu_16(q_ident->sg_desc_stride);
+
+		IONIC_PRINT(DEBUG, " qtype[%d].version = %d",
+			qtype, qti->version);
+		IONIC_PRINT(DEBUG, " qtype[%d].supported = %#x",
+			qtype, qti->supported);
+		IONIC_PRINT(DEBUG, " qtype[%d].features = %#jx",
+			qtype, qti->features);
+		IONIC_PRINT(DEBUG, " qtype[%d].desc_sz = %d",
+			qtype, qti->desc_sz);
+		IONIC_PRINT(DEBUG, " qtype[%d].comp_sz = %d",
+			qtype, qti->comp_sz);
+		IONIC_PRINT(DEBUG, " qtype[%d].sg_desc_sz = %d",
+			qtype, qti->sg_desc_sz);
+		IONIC_PRINT(DEBUG, " qtype[%d].max_sg_elems = %d",
+			qtype, qti->max_sg_elems);
+		IONIC_PRINT(DEBUG, " qtype[%d].sg_desc_stride = %d",
+			qtype, qti->sg_desc_stride);
+	}
+}
+
 int
 ionic_lif_alloc(struct ionic_lif *lif)
 {
@@ -832,6 +922,8 @@ ionic_lif_alloc(struct ionic_lif *lif)
 	memcpy(lif->name, lif->eth_dev->data->name, sizeof(lif->name) - 1);
 
 	IONIC_PRINT(DEBUG, "LIF: %s", lif->name);
+
+	ionic_lif_queue_identify(lif);
 
 	IONIC_PRINT(DEBUG, "Allocating Lif Info");
 
@@ -1261,6 +1353,7 @@ ionic_lif_notifyq_init(struct ionic_lif *lif)
 		.cmd.q_init = {
 			.opcode = IONIC_CMD_Q_INIT,
 			.type = q->type,
+			.ver = lif->qtype_info[q->type].version,
 			.index = rte_cpu_to_le_32(q->index),
 			.intr_index = rte_cpu_to_le_16(qcq->intr.index),
 			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_IRQ |
@@ -1365,6 +1458,7 @@ ionic_lif_txq_init(struct ionic_qcq *qcq)
 		.cmd.q_init = {
 			.opcode = IONIC_CMD_Q_INIT,
 			.type = q->type,
+			.ver = lif->qtype_info[q->type].version,
 			.index = rte_cpu_to_le_32(q->index),
 			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_SG |
 						IONIC_QINIT_F_ENA),
@@ -1411,6 +1505,7 @@ ionic_lif_rxq_init(struct ionic_qcq *qcq)
 		.cmd.q_init = {
 			.opcode = IONIC_CMD_Q_INIT,
 			.type = q->type,
+			.ver = lif->qtype_info[q->type].version,
 			.index = rte_cpu_to_le_32(q->index),
 			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_SG |
 						IONIC_QINIT_F_ENA),
