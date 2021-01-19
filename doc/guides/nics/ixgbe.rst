@@ -252,6 +252,11 @@ Before binding ``vfio`` with legacy mode in X550 NICs, use ``modprobe vfio ``
 ``nointxmask=1`` to load ``vfio`` module if the intx is not shared with other
 devices.
 
+RSS isn't supported when QinQ is enabled
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Due to FW limitation, IXGBE doesn't support RSS when QinQ is enabled currently.
+
 Inline crypto processing support
 --------------------------------
 
