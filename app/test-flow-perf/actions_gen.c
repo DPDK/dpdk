@@ -891,6 +891,19 @@ add_vxlan_decap(struct rte_flow_action *actions,
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
 }
 
+static void
+add_meter(struct rte_flow_action *actions,
+	uint8_t actions_counter,
+	__rte_unused struct additional_para para)
+{
+	static struct rte_flow_action_meter
+		meters[RTE_MAX_LCORE] __rte_cache_aligned;
+
+	meters[para.core_idx].mtr_id = para.counter;
+	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_METER;
+	actions[actions_counter].conf = &meters[para.core_idx];
+}
+
 void
 fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	uint32_t counter, uint16_t next_table, uint16_t hairpinq,
@@ -1102,6 +1115,12 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 				RTE_FLOW_ACTION_TYPE_VXLAN_DECAP
 			),
 			.funct = add_vxlan_decap,
+		},
+		{
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_METER
+			),
+			.funct = add_meter,
 		},
 	};
 

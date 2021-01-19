@@ -345,3 +345,7 @@ Actions:
 
 *	``--vxlan-decap``
 	Add vxlan decap action to all flows actions.
+
+*       ``--meter``
+        Add meter action to all flows actions.
+        Currently, 1 meter profile -> N meter rules -> N rte flows.

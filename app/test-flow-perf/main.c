@@ -34,6 +34,7 @@
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_flow.h>
+#include <rte_mtr.h>
 
 #include "config.h"
 #include "flow_gen.h"
@@ -72,6 +73,8 @@ static uint32_t nb_lcores;
 #define LCORE_MODE_PKT    1
 #define LCORE_MODE_STATS  2
 #define MAX_STREAMS      64
+#define METER_CREATE	  1
+#define METER_DELETE	  2
 
 struct stream {
 	int tx_port;
@@ -200,6 +203,7 @@ usage(char *progname)
 	printf("  --set-ipv6-dscp: add set ipv6 dscp action to flow actions\n"
 		"ipv6 dscp value to be set is random each flow\n");
 	printf("  --flag: add flag action to flow actions\n");
+	printf("  --meter: add meter action to flow actions\n");
 	printf("  --raw-encap=<data>: add raw encap action to flow actions\n"
 		"Data is the data needed to be encaped\n"
 		"Example: raw-encap=ether,ipv4,udp,vxlan\n");
@@ -529,6 +533,14 @@ args_parse(int argc, char **argv)
 			.map_idx = &actions_idx
 		},
 		{
+			.str = "meter",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_METER
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
 			.str = "vxlan-encap",
 			.mask = FLOW_ACTION_MASK(
 				RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
@@ -607,6 +619,7 @@ args_parse(int argc, char **argv)
 		{ "set-ipv4-dscp",              0, 0, 0 },
 		{ "set-ipv6-dscp",              0, 0, 0 },
 		{ "flag",                       0, 0, 0 },
+		{ "meter",		        0, 0, 0 },
 		{ "raw-encap",                  1, 0, 0 },
 		{ "raw-decap",                  1, 0, 0 },
 		{ "vxlan-encap",                0, 0, 0 },
@@ -879,6 +892,185 @@ print_rules_batches(double *cpu_time_per_batch)
 	}
 }
 
+
+static inline int
+has_meter(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_ACTIONS_NUM; i++) {
+		if (flow_actions[i] == 0)
+			break;
+		if (flow_actions[i]
+				& FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_METER))
+			return 1;
+	}
+	return 0;
+}
+
+static void
+create_meter_rule(int port_id, uint32_t counter)
+{
+	int ret;
+	struct rte_mtr_params params;
+	uint32_t default_prof_id = 100;
+	struct rte_mtr_error error;
+
+	memset(&params, 0, sizeof(struct rte_mtr_params));
+	params.meter_enable = 1;
+	params.stats_mask = 0xffff;
+	params.use_prev_mtr_color = 0;
+	params.dscp_table = NULL;
+
+	/*create meter*/
+	params.meter_profile_id = default_prof_id;
+	params.action[RTE_COLOR_GREEN] =
+		MTR_POLICER_ACTION_COLOR_GREEN;
+	params.action[RTE_COLOR_YELLOW] =
+		MTR_POLICER_ACTION_COLOR_YELLOW;
+	params.action[RTE_COLOR_RED] =
+		MTR_POLICER_ACTION_DROP;
+
+	ret = rte_mtr_create(port_id, counter, &params, 1, &error);
+	if (ret != 0) {
+		printf("Port %u create meter idx(%d) error(%d) message: %s\n",
+			port_id, counter, error.type,
+			error.message ? error.message : "(no stated reason)");
+		rte_exit(EXIT_FAILURE, "error in creating meter");
+	}
+}
+
+static void
+destroy_meter_rule(int port_id, uint32_t counter)
+{
+	struct rte_mtr_error error;
+
+	if (rte_mtr_destroy(port_id, counter, &error)) {
+		printf("Port %u destroy meter(%d) error(%d) message: %s\n",
+			port_id, counter, error.type,
+			error.message ? error.message : "(no stated reason)");
+		rte_exit(EXIT_FAILURE, "Error in deleting meter rule");
+	}
+}
+
+static void
+meters_handler(int port_id, uint8_t core_id, uint8_t ops)
+{
+	uint64_t start_batch;
+	double cpu_time_used, insertion_rate;
+	int rules_count_per_core, rules_batch_idx;
+	uint32_t counter, start_counter = 0, end_counter;
+	double cpu_time_per_batch[MAX_BATCHES_COUNT] = { 0 };
+
+	rules_count_per_core = rules_count / mc_pool.cores_count;
+
+	if (core_id)
+		start_counter = core_id * rules_count_per_core;
+	end_counter = (core_id + 1) * rules_count_per_core;
+
+	cpu_time_used = 0;
+	start_batch = rte_rdtsc();
+	for (counter = start_counter; counter < end_counter; counter++) {
+		if (ops == METER_CREATE)
+			create_meter_rule(port_id, counter);
+		else
+			destroy_meter_rule(port_id, counter);
+		/*
+		 * Save the insertion rate for rules batch.
+		 * Check if the insertion reached the rules
+		 * patch counter, then save the insertion rate
+		 * for this batch.
+		 */
+		if (!((counter + 1) % rules_batch)) {
+			rules_batch_idx = ((counter + 1) / rules_batch) - 1;
+			cpu_time_per_batch[rules_batch_idx] =
+				((double)(rte_rdtsc() - start_batch))
+				/ rte_get_tsc_hz();
+			cpu_time_used += cpu_time_per_batch[rules_batch_idx];
+			start_batch = rte_rdtsc();
+		}
+	}
+
+	/* Print insertion rates for all batches */
+	if (dump_iterations)
+		print_rules_batches(cpu_time_per_batch);
+
+	insertion_rate =
+		((double) (rules_count_per_core / cpu_time_used) / 1000);
+
+	/* Insertion rate for all rules in one core */
+	printf(":: Port %d :: Core %d Meter %s :: start @[%d] - end @[%d],"
+		" use:%.02fs, rate:%.02fk Rule/Sec\n",
+		port_id, core_id, ops == METER_CREATE ? "create" : "delete",
+		start_counter, end_counter - 1,
+		cpu_time_used, insertion_rate);
+
+	if (ops == METER_CREATE)
+		mc_pool.create_meter.insertion[port_id][core_id]
+			= cpu_time_used;
+	else
+		mc_pool.create_meter.deletion[port_id][core_id]
+			= cpu_time_used;
+}
+
+static void
+destroy_meter_profile(void)
+{
+	struct rte_mtr_error error;
+	uint16_t nr_ports;
+	int port_id;
+
+	nr_ports = rte_eth_dev_count_avail();
+	for (port_id = 0; port_id < nr_ports; port_id++) {
+		/* If port outside portmask */
+		if (!((ports_mask >> port_id) & 0x1))
+			continue;
+
+		if (rte_mtr_meter_profile_delete
+			(port_id, DEFAULT_METER_PROF_ID, &error)) {
+			printf("Port %u del profile error(%d) message: %s\n",
+				port_id, error.type,
+				error.message ? error.message : "(no stated reason)");
+			rte_exit(EXIT_FAILURE, "Error: Destroy meter profile Failed!\n");
+		}
+	}
+}
+
+static void
+create_meter_profile(void)
+{
+	uint16_t nr_ports;
+	int ret, port_id;
+	struct rte_mtr_meter_profile mp;
+	struct rte_mtr_error error;
+
+	/*
+	 *currently , only create one meter file for one port
+	 *1 meter profile -> N meter rules -> N rte flows
+	 */
+	memset(&mp, 0, sizeof(struct rte_mtr_meter_profile));
+	nr_ports = rte_eth_dev_count_avail();
+	for (port_id = 0; port_id < nr_ports; port_id++) {
+		/* If port outside portmask */
+		if (!((ports_mask >> port_id) & 0x1))
+			continue;
+
+		mp.alg = RTE_MTR_SRTCM_RFC2697;
+		mp.srtcm_rfc2697.cir = METER_CIR;
+		mp.srtcm_rfc2697.cbs = METER_CIR / 8;
+		mp.srtcm_rfc2697.ebs = 0;
+
+		ret = rte_mtr_meter_profile_add
+			(port_id, DEFAULT_METER_PROF_ID, &mp, &error);
+		if (ret != 0) {
+			printf("Port %u create Profile error(%d) message: %s\n",
+				port_id, error.type,
+				error.message ? error.message : "(no stated reason)");
+			rte_exit(EXIT_FAILURE, "Error: Creation meter profile Failed!\n");
+		}
+	}
+}
+
 static inline void
 destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 {
@@ -893,6 +1085,9 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 	int rules_count_per_core;
 
 	rules_count_per_core = rules_count / mc_pool.cores_count;
+	/* If group > 0 , should add 1 flow which created in group 0 */
+	if (flow_group > 0 && core_id == 0)
+		rules_count_per_core++;
 
 	start_batch = rte_rdtsc();
 	for (i = 0; i < (uint32_t) rules_count_per_core; i++) {
@@ -1064,14 +1259,19 @@ flows_handler(uint8_t core_id)
 
 		/* Insertion part. */
 		mc_pool.last_alloc[core_id] = (int64_t)dump_socket_mem(stdout);
+		if (has_meter())
+			meters_handler(port_id, core_id, METER_CREATE);
 		flows_list = insert_flows(port_id, core_id);
 		if (flows_list == NULL)
 			rte_exit(EXIT_FAILURE, "Error: Insertion Failed!\n");
 		mc_pool.current_alloc[core_id] = (int64_t)dump_socket_mem(stdout);
 
 		/* Deletion part. */
-		if (delete_flag)
+		if (delete_flag) {
 			destroy_flows(port_id, core_id, flows_list);
+			if (has_meter())
+				meters_handler(port_id, core_id, METER_DELETE);
+		}
 	}
 }
 
@@ -1230,7 +1430,9 @@ run_rte_flow_handler_cores(void *data __rte_unused)
 	rte_eal_mp_wait_lcore();
 
 	RTE_ETH_FOREACH_DEV(port) {
-
+		if (has_meter())
+			dump_used_cpu_time("Meters:",
+				port, &mc_pool.create_meter);
 		dump_used_cpu_time("Flows:",
 			port, &mc_pool.create_flow);
 		dump_used_mem(port);
@@ -1679,12 +1881,16 @@ main(int argc, char **argv)
 
 	printf(":: Flows Count per port: %d\n\n", rules_count);
 
+	if (has_meter())
+		create_meter_profile();
 	rte_eal_mp_remote_launch(run_rte_flow_handler_cores, NULL, CALL_MAIN);
 
 	if (enable_fwd) {
 		init_lcore_info();
 		rte_eal_mp_remote_launch(start_forwarding, NULL, CALL_MAIN);
 	}
+	if (has_meter() && delete_flag)
+		destroy_meter_profile();
 
 	RTE_ETH_FOREACH_DEV(port) {
 		rte_flow_flush(port, &error);
