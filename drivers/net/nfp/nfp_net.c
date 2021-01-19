@@ -59,6 +59,7 @@ static int nfp_net_infos_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static int nfp_net_init(struct rte_eth_dev *eth_dev);
 static int nfp_pf_init(struct rte_eth_dev *eth_dev);
+static int nfp_pci_uninit(struct rte_eth_dev *eth_dev);
 static int nfp_init_phyports(struct nfp_pf_dev *pf_dev);
 static int nfp_net_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 static int nfp_net_promisc_enable(struct rte_eth_dev *dev);
@@ -909,8 +910,34 @@ nfp_net_close(struct rte_eth_dev *dev)
 			(struct nfp_net_rxq *)dev->data->rx_queues[i]);
 	}
 
+	/* Only free PF resources after all physical ports have been closed */
+	if (pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC ||
+	    pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC) {
+		struct nfp_pf_dev *pf_dev;
+		pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+		/* Mark this port as unused and free device priv resources*/
+		nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
+		pf_dev->ports[hw->idx] = NULL;
+		rte_eth_dev_release_port(dev);
+
+		for (i = 0; i < pf_dev->total_phyports; i++) {
+			/* Check to see if ports are still in use */
+			if (pf_dev->ports[i])
+				return 0;
+		}
+
+		/* Now it is safe to free all PF resources */
+		PMD_INIT_LOG(INFO, "Freeing PF resources");
+		nfp_cpp_area_free(pf_dev->ctrl_area);
+		nfp_cpp_area_free(pf_dev->hwqueues_area);
+		free(pf_dev->hwinfo);
+		free(pf_dev->sym_tbl);
+		nfp_cpp_free(pf_dev->cpp);
+		rte_free(pf_dev);
+	}
+
 	rte_intr_disable(&pci_dev->intr_handle);
-	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
 
 	/* unregister callback func from eal lib */
 	rte_intr_callback_unregister(&pci_dev->intr_handle,
@@ -3765,6 +3792,29 @@ static const struct rte_pci_id pci_id_nfp_vf_net_map[] = {
 	},
 };
 
+static int nfp_pci_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev;
+	uint16_t port_id;
+
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	if (pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC ||
+	    pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC) {
+		/* Free up all physical ports under PF */
+		RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device)
+			rte_eth_dev_close(port_id);
+		/*
+		 * Ports can be closed and freed but hotplugging is not
+		 * currently supported
+		 */
+		return -ENOTSUP;
+	}
+
+	/* VF cleanup, just free private port data */
+	return nfp_net_close(eth_dev);
+}
+
 static int eth_nfp_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
@@ -3774,16 +3824,7 @@ static int eth_nfp_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 {
-	struct rte_eth_dev *eth_dev;
-
-	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
-	if (eth_dev == NULL)
-		return 0; /* port already released */
-	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
-	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC))
-		return -ENOTSUP;
-
-	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+	return rte_eth_dev_pci_generic_remove(pci_dev, nfp_pci_uninit);
 }
 
 static struct rte_pci_driver rte_nfp_net_pf_pmd = {
