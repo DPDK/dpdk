@@ -58,6 +58,8 @@ static int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int nfp_net_infos_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static int nfp_net_init(struct rte_eth_dev *eth_dev);
+static int nfp_pf_init(struct rte_eth_dev *eth_dev);
+static int nfp_init_phyports(struct nfp_pf_dev *pf_dev);
 static int nfp_net_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 static int nfp_net_promisc_enable(struct rte_eth_dev *dev);
 static int nfp_net_promisc_disable(struct rte_eth_dev *dev);
@@ -94,6 +96,12 @@ static int nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf);
 static int nfp_set_mac_addr(struct rte_eth_dev *dev,
 			     struct rte_ether_addr *mac_addr);
+static int32_t nfp_cpp_bridge_service_func(void *args);
+static int nfp_fw_setup(struct rte_pci_device *dev,
+			struct nfp_cpp *cpp,
+			struct nfp_eth_table *nfp_eth_table,
+			struct nfp_hwinfo *hwinfo);
+
 
 /* The offset of the queue controller queues in the PCIe Target */
 #define NFP_PCIE_QUEUE(_q) (0x80000 + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & 0xff)))
@@ -486,16 +494,16 @@ nfp_eth_copy_mac(uint8_t *dst, const uint8_t *src)
 }
 
 static int
-nfp_net_pf_read_mac(struct nfp_net_hw *hw, int port)
+nfp_net_pf_read_mac(struct nfp_pf_dev *pf_dev, int port)
 {
 	struct nfp_eth_table *nfp_eth_table;
+	struct nfp_net_hw *hw = NULL;
 
-	nfp_eth_table = nfp_eth_read_ports(hw->cpp);
-	/*
-	 * hw points to port0 private data. We need hw now pointing to
-	 * right port.
-	 */
-	hw += port;
+	/* Grab a pointer to the correct physical port */
+	hw = pf_dev->ports[port];
+
+	nfp_eth_table = nfp_eth_read_ports(pf_dev->cpp);
+
 	nfp_eth_copy_mac((uint8_t *)&hw->mac_addr,
 			 (uint8_t *)&nfp_eth_table->ports[port].mac_addr);
 
@@ -674,12 +682,14 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
+	struct nfp_pf_dev *pf_dev;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
 	uint32_t intr_vector;
 	int ret;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 
 	PMD_INIT_LOG(DEBUG, "Start");
 
@@ -691,7 +701,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	/* check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
-		if (hw->pf_multiport_enabled) {
+		if (pf_dev->multiport) {
 			PMD_INIT_LOG(ERR, "PMD rx interrupt is not supported "
 					  "with NFP multiport PF");
 				return -EINVAL;
@@ -755,13 +765,13 @@ nfp_net_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-	if (hw->is_pf) {
+	if (hw->is_phyport) {
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 			/* Configure the physical port up */
-			nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 1);
+			nfp_eth_set_configured(hw->cpp, hw->idx, 1);
 		else
 			nfp_eth_set_configured(dev->process_private,
-					       hw->pf_port_idx, 1);
+					       hw->idx, 1);
 	}
 
 	hw->ctrl = new_ctrl;
@@ -811,13 +821,13 @@ nfp_net_stop(struct rte_eth_dev *dev)
 			(struct nfp_net_rxq *)dev->data->rx_queues[i]);
 	}
 
-	if (hw->is_pf) {
+	if (hw->is_phyport) {
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 			/* Configure the physical port down */
-			nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 0);
+			nfp_eth_set_configured(hw->cpp, hw->idx, 0);
 		else
 			nfp_eth_set_configured(dev->process_private,
-					       hw->pf_port_idx, 0);
+					       hw->idx, 0);
 	}
 
 	return 0;
@@ -833,15 +843,15 @@ nfp_net_set_link_up(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!hw->is_pf)
+	if (!hw->is_phyport)
 		return -ENOTSUP;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
-		return nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 1);
+		return nfp_eth_set_configured(hw->cpp, hw->idx, 1);
 	else
 		return nfp_eth_set_configured(dev->process_private,
-					      hw->pf_port_idx, 1);
+					      hw->idx, 1);
 }
 
 /* Set the link down. */
@@ -854,15 +864,15 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!hw->is_pf)
+	if (!hw->is_phyport)
 		return -ENOTSUP;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
-		return nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 0);
+		return nfp_eth_set_configured(hw->cpp, hw->idx, 0);
 	else
 		return nfp_eth_set_configured(dev->process_private,
-					      hw->pf_port_idx, 0);
+					      hw->idx, 0);
 }
 
 /* Reset and stop device. The device can not be restarted. */
@@ -2732,43 +2742,13 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 };
 
-/*
- * All eth_dev created got its private data, but before nfp_net_init, that
- * private data is referencing private data for all the PF ports. This is due
- * to how the vNIC bars are mapped based on first port, so all ports need info
- * about port 0 private data. Inside nfp_net_init the private data pointer is
- * changed to the right address for each port once the bars have been mapped.
- *
- * This functions helps to find out which port and therefore which offset
- * inside the private data array to use.
- */
-static int
-get_pf_port_number(char *name)
-{
-	char *pf_str = name;
-	int size = 0;
-
-	while ((*pf_str != '_') && (*pf_str != '\0') && (size++ < 30))
-		pf_str++;
-
-	if (size == 30)
-		/*
-		 * This should not happen at all and it would mean major
-		 * implementation fault.
-		 */
-		rte_panic("nfp_net: problem with pf device name\n");
-
-	/* Expecting _portX with X within [0,7] */
-	pf_str += 5;
-
-	return (int)strtol(pf_str, NULL, 10);
-}
 
 static int
 nfp_net_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
-	struct nfp_net_hw *hw, *hwport0;
+	struct nfp_pf_dev *pf_dev;
+	struct nfp_net_hw *hw;
 
 	uint64_t tx_bar_off = 0, rx_bar_off = 0;
 	uint32_t start_q;
@@ -2780,6 +2760,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
+	/* Use backpointer here to the PF of this eth_dev */
+	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(eth_dev->data->dev_private);
+
 	/* NFP can not handle DMA addresses requiring more than 40 bits */
 	if (rte_mem_check_dma_mask(40)) {
 		RTE_LOG(ERR, PMD, "device %s can not be used:",
@@ -2790,22 +2773,23 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
 	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
-		port = get_pf_port_number(eth_dev->data->name);
+		port = ((struct nfp_net_hw *)eth_dev->data->dev_private)->idx;
 		if (port < 0 || port > 7) {
 			PMD_DRV_LOG(ERR, "Port value is wrong");
 			return -ENODEV;
 		}
 
-		PMD_INIT_LOG(DEBUG, "Working with PF port value %d", port);
-
-		/* This points to port 0 private data */
-		hwport0 = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-
 		/* This points to the specific port private data */
-		hw = &hwport0[port];
+		PMD_INIT_LOG(DEBUG, "Working with physical port number %d",
+				    port);
+
+		/* Use PF array of physical ports to get pointer to
+		 * this specific port
+		 */
+		hw = pf_dev->ports[port];
+
 	} else {
 		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-		hwport0 = 0;
 	}
 
 	eth_dev->dev_ops = &nfp_net_eth_dev_ops;
@@ -2836,25 +2820,18 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return -ENODEV;
 	}
 
-	if (hw->is_pf && port == 0) {
-		hw->ctrl_bar = nfp_rtsym_map(hw->sym_tbl, "_pf0_net_bar0",
-					     hw->total_ports * 32768,
-					     &hw->ctrl_area);
-		if (!hw->ctrl_bar) {
-			printf("nfp_rtsym_map fails for _pf0_net_ctrl_bar");
-			return -EIO;
+	if (hw->is_phyport) {
+		if (port == 0) {
+			hw->ctrl_bar = pf_dev->ctrl_bar;
+		} else {
+			if (!pf_dev->ctrl_bar)
+				return -ENODEV;
+			/* Use port offset in pf ctrl_bar for this
+			 * ports control bar
+			 */
+			hw->ctrl_bar = pf_dev->ctrl_bar +
+				       (port * NFP_PF_CSR_SLICE_SIZE);
 		}
-
-		PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
-	}
-
-	if (port > 0) {
-		if (!hwport0->ctrl_bar)
-			return -ENODEV;
-
-		/* address based on port0 offset */
-		hw->ctrl_bar = hwport0->ctrl_bar +
-			       (port * NFP_PF_CSR_SLICE_SIZE);
 	}
 
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
@@ -2881,26 +2858,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "", tx_bar_off);
 	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "", rx_bar_off);
 
-	if (hw->is_pf && port == 0) {
-		/* configure access to tx/rx vNIC BARs */
-		hwport0->hw_queues = nfp_cpp_map_area(hw->cpp, 0, 0,
-						      NFP_PCIE_QUEUE(0),
-						      NFP_QCP_QUEUE_AREA_SZ,
-						      &hw->hwqueues_area);
-
-		if (!hwport0->hw_queues) {
-			printf("nfp_rtsym_map fails for net.qc");
-			err = -EIO;
-			goto dev_err_ctrl_map;
-		}
-
-		PMD_INIT_LOG(DEBUG, "tx/rx bar address: 0x%p",
-				    hwport0->hw_queues);
-	}
-
-	if (hw->is_pf) {
-		hw->tx_bar = hwport0->hw_queues + tx_bar_off;
-		hw->rx_bar = hwport0->hw_queues + rx_bar_off;
+	if (hw->is_phyport) {
+		hw->tx_bar = pf_dev->hw_queues + tx_bar_off;
+		hw->rx_bar = pf_dev->hw_queues + rx_bar_off;
 		eth_dev->data->dev_private = hw;
 	} else {
 		hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr +
@@ -2969,8 +2929,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		goto dev_err_queues_map;
 	}
 
-	if (hw->is_pf) {
-		nfp_net_pf_read_mac(hwport0, port);
+	if (hw->is_phyport) {
+		nfp_net_pf_read_mac(pf_dev, port);
 		nfp_net_write_mac(hw, (uint8_t *)&hw->mac_addr);
 	} else {
 		nfp_net_vf_read_mac(hw);
@@ -3369,122 +3329,6 @@ nfp_cpp_bridge_service_func(void *args)
 	return 0;
 }
 
-static int
-nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
-		  struct nfp_cpp *cpp, struct nfp_hwinfo *hwinfo,
-		  int phys_port, struct nfp_rtsym_table *sym_tbl, void **priv)
-{
-	struct rte_eth_dev *eth_dev;
-	struct nfp_net_hw *hw = NULL;
-	char *port_name;
-	struct rte_service_spec service;
-	int retval;
-
-	port_name = rte_zmalloc("nfp_pf_port_name", 100, 0);
-	if (!port_name)
-		return -ENOMEM;
-
-	if (ports > 1)
-		snprintf(port_name, 100, "%s_port%d", dev->device.name, port);
-	else
-		strlcat(port_name, dev->device.name, 100);
-
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		eth_dev = rte_eth_dev_allocate(port_name);
-		if (!eth_dev) {
-			rte_free(port_name);
-			return -ENODEV;
-		}
-		if (port == 0) {
-			*priv = rte_zmalloc(port_name,
-					    sizeof(struct nfp_net_adapter) *
-					    ports, RTE_CACHE_LINE_SIZE);
-			if (!*priv) {
-				rte_free(port_name);
-				rte_eth_dev_release_port(eth_dev);
-				return -ENOMEM;
-			}
-		}
-		eth_dev->data->dev_private = *priv;
-
-		/*
-		 * dev_private pointing to port0 dev_private because we need
-		 * to configure vNIC bars based on port0 at nfp_net_init.
-		 * Then dev_private is adjusted per port.
-		 */
-		hw = (struct nfp_net_hw *)(eth_dev->data->dev_private) + port;
-		hw->cpp = cpp;
-		hw->hwinfo = hwinfo;
-		hw->sym_tbl = sym_tbl;
-		hw->pf_port_idx = phys_port;
-		hw->is_pf = 1;
-		if (ports > 1)
-			hw->pf_multiport_enabled = 1;
-
-		hw->total_ports = ports;
-	} else {
-		eth_dev = rte_eth_dev_attach_secondary(port_name);
-		if (!eth_dev) {
-			RTE_LOG(ERR, EAL, "secondary process attach failed, "
-				"ethdev doesn't exist");
-			rte_free(port_name);
-			return -ENODEV;
-		}
-		eth_dev->process_private = cpp;
-	}
-
-	eth_dev->device = &dev->device;
-	rte_eth_copy_pci_info(eth_dev, dev);
-
-	retval = nfp_net_init(eth_dev);
-
-	if (retval) {
-		retval = -ENODEV;
-		goto probe_failed;
-	} else {
-		rte_eth_dev_probing_finish(eth_dev);
-	}
-
-	rte_free(port_name);
-
-	if (port == 0) {
-		/*
-		 * The rte_service needs to be created just once per PMD.
-		 * And the cpp handler needs to be linked to the service.
-		 * Secondary processes will be used for debugging DPDK apps
-		 * when requiring to use the CPP interface for accessing NFP
-		 * components. And the cpp handler for secondary processes is
-		 * available at this point.
-		 */
-		memset(&service, 0, sizeof(struct rte_service_spec));
-		snprintf(service.name, sizeof(service.name), "nfp_cpp_service");
-		service.callback = nfp_cpp_bridge_service_func;
-		service.callback_userdata = (void *)cpp;
-
-		hw = (struct nfp_net_hw *)(eth_dev->data->dev_private);
-
-		if (rte_service_component_register(&service,
-						   &hw->nfp_cpp_service_id))
-			RTE_LOG(ERR, PMD, "NFP CPP bridge service register() failed");
-		else
-			RTE_LOG(DEBUG, PMD, "NFP CPP bridge service registered");
-	}
-
-	return retval;
-
-probe_failed:
-	rte_free(port_name);
-	/* free ports private data if primary process */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		rte_free(eth_dev->data->dev_private);
-		eth_dev->data->dev_private = NULL;
-	}
-	rte_eth_dev_release_port(eth_dev);
-
-	return retval;
-}
-
 #define DEFAULT_FW_PATH       "/lib/firmware/netronome"
 
 static int
@@ -3618,20 +3462,120 @@ nfp_fw_setup(struct rte_pci_device *dev, struct nfp_cpp *cpp,
 	return err;
 }
 
-static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-			    struct rte_pci_device *dev)
+static int nfp_init_phyports(struct nfp_pf_dev *pf_dev)
 {
+	struct nfp_net_hw *hw;
+	struct rte_eth_dev *eth_dev;
+	int ret = 0;
+	int i;
+
+	/* Loop through all physical ports on PF */
+	for (i = 0; i < pf_dev->total_phyports; i++) {
+		const unsigned int numa_node = rte_socket_id();
+		char port_name[RTE_ETH_NAME_MAX_LEN];
+
+		snprintf(port_name, sizeof(port_name), "%s_port%d",
+			 pf_dev->pci_dev->device.name, i);
+
+		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+			eth_dev = rte_eth_dev_attach_secondary(port_name);
+			if (!eth_dev) {
+				RTE_LOG(ERR, EAL,
+				"secondary process attach failed, "
+				"ethdev doesn't exist");
+				ret = -ENODEV;
+				goto error;
+			}
+
+			eth_dev->process_private = pf_dev->cpp;
+			goto nfp_net_init;
+		}
+
+		/* First port has already been initialized */
+		if (i == 0) {
+			eth_dev = pf_dev->eth_dev;
+			goto skip_dev_alloc;
+		}
+
+		/* Allocate a eth_dev for remaining ports */
+		eth_dev = rte_eth_dev_allocate(port_name);
+		if (!eth_dev) {
+			ret = -ENODEV;
+			goto port_cleanup;
+		}
+
+		/* Allocate memory for remaining ports */
+		eth_dev->data->dev_private =
+			rte_zmalloc_socket(port_name, sizeof(struct nfp_net_hw),
+					   RTE_CACHE_LINE_SIZE, numa_node);
+		if (!eth_dev->data->dev_private) {
+			ret = -ENOMEM;
+			rte_eth_dev_release_port(eth_dev);
+			goto port_cleanup;
+		}
+
+skip_dev_alloc:
+		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+		/* Add this device to the PF's array of physical ports */
+		pf_dev->ports[i] = hw;
+
+		hw->pf_dev = pf_dev;
+		hw->cpp = pf_dev->cpp;
+		hw->eth_dev = eth_dev;
+		hw->idx = i;
+		hw->is_phyport = true;
+
+nfp_net_init:
+		eth_dev->device = &pf_dev->pci_dev->device;
+
+		/* ctrl/tx/rx BAR mappings and remaining init happens in
+		 * nfp_net_init
+		 */
+		ret = nfp_net_init(eth_dev);
+
+		if (ret) {
+			ret = -ENODEV;
+			goto port_cleanup;
+		}
+
+		rte_eth_dev_probing_finish(eth_dev);
+
+	} /* End loop, all ports on this PF */
+	return 0;
+
+port_cleanup:
+	for (i = 0; i < pf_dev->total_phyports; i++) {
+		if (pf_dev->ports[i] && pf_dev->ports[i]->eth_dev) {
+			struct rte_eth_dev *tmp_dev;
+			tmp_dev = pf_dev->ports[i]->eth_dev;
+			rte_eth_dev_release_port(tmp_dev);
+			pf_dev->ports[i] = NULL;
+		}
+	}
+error:
+	return ret;
+}
+
+static int nfp_pf_init(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw *hw = NULL;
+	struct nfp_pf_dev *pf_dev = NULL;
 	struct nfp_cpp *cpp;
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
 	struct nfp_eth_table *nfp_eth_table = NULL;
+	struct rte_service_spec service;
+	char name[RTE_ETH_NAME_MAX_LEN];
 	int total_ports;
-	void *priv = 0;
 	int ret = -ENODEV;
 	int err;
-	int i;
 
-	if (!dev)
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev);
+
+	if (!pci_dev)
 		return ret;
 
 	/*
@@ -3641,71 +3585,160 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * interface. Here we avoid this telling to the CPP init code to
 	 * use a lock file if UIO is being used.
 	 */
-	if (dev->kdrv == RTE_PCI_KDRV_VFIO)
-		cpp = nfp_cpp_from_device_name(dev, 0);
+	if (pci_dev->kdrv == RTE_PCI_KDRV_VFIO)
+		cpp = nfp_cpp_from_device_name(pci_dev, 0);
 	else
-		cpp = nfp_cpp_from_device_name(dev, 1);
+		cpp = nfp_cpp_from_device_name(pci_dev, 1);
 
 	if (!cpp) {
-		PMD_DRV_LOG(ERR, "A CPP handle can not be obtained");
+		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
 		ret = -EIO;
 		goto error;
 	}
 
 	hwinfo = nfp_hwinfo_read(cpp);
 	if (!hwinfo) {
-		PMD_DRV_LOG(ERR, "Error reading hwinfo table");
-		return -EIO;
+		PMD_INIT_LOG(ERR, "Error reading hwinfo table");
+		ret = -EIO;
+		goto error;
 	}
 
 	nfp_eth_table = nfp_eth_read_ports(cpp);
 	if (!nfp_eth_table) {
-		PMD_DRV_LOG(ERR, "Error reading NFP ethernet table");
-		return -EIO;
+		PMD_INIT_LOG(ERR, "Error reading NFP ethernet table");
+		ret = -EIO;
+		goto hwinfo_cleanup;
 	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		if (nfp_fw_setup(dev, cpp, nfp_eth_table, hwinfo)) {
-			PMD_DRV_LOG(INFO, "Error when uploading firmware");
+		if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo)) {
+			PMD_INIT_LOG(ERR, "Error when uploading firmware");
 			ret = -EIO;
-			goto error;
+			goto eth_table_cleanup;
 		}
 	}
 
 	/* Now the symbol table should be there */
 	sym_tbl = nfp_rtsym_table_read(cpp);
 	if (!sym_tbl) {
-		PMD_DRV_LOG(ERR, "Something is wrong with the firmware"
+		PMD_INIT_LOG(ERR, "Something is wrong with the firmware"
 				" symbol table");
 		ret = -EIO;
-		goto error;
+		goto eth_table_cleanup;
 	}
 
 	total_ports = nfp_rtsym_read_le(sym_tbl, "nfd_cfg_pf0_num_ports", &err);
 	if (total_ports != (int)nfp_eth_table->count) {
 		PMD_DRV_LOG(ERR, "Inconsistent number of ports");
 		ret = -EIO;
-		goto error;
+		goto sym_tbl_cleanup;
 	}
-	PMD_INIT_LOG(INFO, "Total pf ports: %d", total_ports);
+
+	PMD_INIT_LOG(INFO, "Total physical ports: %d", total_ports);
 
 	if (total_ports <= 0 || total_ports > 8) {
-		PMD_DRV_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
+		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
 		ret = -ENODEV;
-		goto error;
+		goto sym_tbl_cleanup;
+	}
+	/* Allocate memory for the PF "device" */
+	snprintf(name, sizeof(name), "nfp_pf%d", eth_dev->data->port_id);
+	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
+	if (!pf_dev) {
+		ret = -ENOMEM;
+		goto sym_tbl_cleanup;
 	}
 
-	for (i = 0; i < total_ports; i++) {
-		ret = nfp_pf_create_dev(dev, i, total_ports, cpp, hwinfo,
-					nfp_eth_table->ports[i].index,
-					sym_tbl, &priv);
-		if (ret)
-			break;
+	/* Populate the newly created PF device */
+	pf_dev->cpp = cpp;
+	pf_dev->hwinfo = hwinfo;
+	pf_dev->sym_tbl = sym_tbl;
+	pf_dev->total_phyports = total_ports;
+
+	if (total_ports > 1)
+		pf_dev->multiport = true;
+
+	pf_dev->pci_dev = pci_dev;
+
+	/* The first eth_dev is part of the PF struct */
+	pf_dev->eth_dev = eth_dev;
+
+	/* Map the symbol table */
+	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_bar0",
+				     pf_dev->total_phyports * 32768,
+				     &pf_dev->ctrl_area);
+	if (!pf_dev->ctrl_bar) {
+		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _pf0_net_ctrl_bar");
+		ret = -EIO;
+		goto pf_cleanup;
 	}
 
-error:
+	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", pf_dev->ctrl_bar);
+
+	/* configure access to tx/rx vNIC BARs */
+	pf_dev->hw_queues = nfp_cpp_map_area(pf_dev->cpp, 0, 0,
+					      NFP_PCIE_QUEUE(0),
+					      NFP_QCP_QUEUE_AREA_SZ,
+					      &pf_dev->hwqueues_area);
+	if (!pf_dev->hw_queues) {
+		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for net.qc");
+		ret = -EIO;
+		goto ctrl_area_cleanup;
+	}
+
+	PMD_INIT_LOG(DEBUG, "tx/rx bar address: 0x%p", pf_dev->hw_queues);
+
+	/* Initialize and prep physical ports now
+	 * This will loop through all physical ports
+	 */
+	ret = nfp_init_phyports(pf_dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Could not create physical ports");
+		goto hwqueues_cleanup;
+	}
+
+	/*
+	 * The rte_service needs to be created just once per PMD.
+	 * And the cpp handler needs to be linked to the service.
+	 * Secondary processes will be used for debugging DPDK apps
+	 * when requiring to use the CPP interface for accessing NFP
+	 * components. And the cpp handler for secondary processes is
+	 * available at this point.
+	 */
+	memset(&service, 0, sizeof(struct rte_service_spec));
+	snprintf(service.name, sizeof(service.name), "nfp_cpp_service");
+	service.callback = nfp_cpp_bridge_service_func;
+	service.callback_userdata = (void *)cpp;
+
+	if (rte_service_component_register(&service,
+					   &hw->nfp_cpp_service_id))
+		RTE_LOG(ERR, PMD, "NFP CPP bridge service register() failed");
+	else
+		RTE_LOG(DEBUG, PMD, "NFP CPP bridge service registered");
+
+	return 0;
+
+hwqueues_cleanup:
+	nfp_cpp_area_free(pf_dev->hwqueues_area);
+ctrl_area_cleanup:
+	nfp_cpp_area_free(pf_dev->ctrl_area);
+pf_cleanup:
+	rte_free(pf_dev);
+sym_tbl_cleanup:
+	free(sym_tbl);
+eth_table_cleanup:
 	free(nfp_eth_table);
+hwinfo_cleanup:
+	free(hwinfo);
+error:
 	return ret;
+}
+
+static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+			    struct rte_pci_device *dev)
+{
+	return rte_eth_dev_pci_generic_probe(dev,
+		sizeof(struct nfp_net_hw), nfp_pf_init);
 }
 
 static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {
@@ -3742,34 +3775,14 @@ static int eth_nfp_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 {
 	struct rte_eth_dev *eth_dev;
-	struct nfp_net_hw *hw, *hwport0;
-	int port = 0;
 
 	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (eth_dev == NULL)
 		return 0; /* port already released */
 	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
-	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
-		port = get_pf_port_number(eth_dev->data->name);
-		/*
-		 * hotplug is not possible with multiport PF although freeing
-		 * data structures can be done for first port.
-		 */
-		if (port != 0)
-			return -ENOTSUP;
-		hwport0 = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-		hw = &hwport0[port];
-		nfp_cpp_area_free(hw->ctrl_area);
-		nfp_cpp_area_free(hw->hwqueues_area);
-		free(hw->hwinfo);
-		free(hw->sym_tbl);
-		nfp_cpp_free(hw->cpp);
-	} else {
-		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-	}
-	/* hotplug is not possible with multiport PF */
-	if (hw->pf_multiport_enabled)
+	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC))
 		return -ENOTSUP;
+
 	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
 }
 
