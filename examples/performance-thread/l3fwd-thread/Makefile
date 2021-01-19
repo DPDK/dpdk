@@ -9,6 +9,14 @@ SRCS-y := main.c
 
 include ../common/common.mk
 
+ifeq ($(MAKECMDGOALS),static)
+# check for broken pkg-config
+ifeq ($(shell echo $(LDFLAGS_STATIC) | grep 'whole-archive.*l:lib.*no-whole-archive'),)
+$(warning "pkg-config output list does not contain drivers between 'whole-archive'/'no-whole-archive' flags.")
+$(error "Cannot generate statically-linked binaries with this version of pkg-config")
+endif
+endif
+
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # Build using pkg-config variables if possible
