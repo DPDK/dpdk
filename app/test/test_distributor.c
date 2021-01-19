@@ -217,6 +217,8 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 	clear_packet_count();
 	struct rte_mbuf *many_bufs[BIG_BATCH], *return_bufs[BIG_BATCH];
 	unsigned num_returned = 0;
+	unsigned int num_being_processed = 0;
+	unsigned int return_buffer_capacity = 127;/* RTE_DISTRIB_RETURNS_MASK */
 
 	/* flush out any remaining packets */
 	rte_distributor_flush(db);
@@ -233,16 +235,16 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 	for (i = 0; i < BIG_BATCH/BURST; i++) {
 		rte_distributor_process(db,
 				&many_bufs[i*BURST], BURST);
-		count = rte_distributor_returned_pkts(db,
-				&return_bufs[num_returned],
-				BIG_BATCH - num_returned);
-		num_returned += count;
+		num_being_processed += BURST;
+		do {
+			count = rte_distributor_returned_pkts(db,
+					&return_bufs[num_returned],
+					BIG_BATCH - num_returned);
+			num_being_processed -= count;
+			num_returned += count;
+			rte_distributor_flush(db);
+		} while (num_being_processed + BURST > return_buffer_capacity);
 	}
-	rte_distributor_flush(db);
-	count = rte_distributor_returned_pkts(db,
-		&return_bufs[num_returned],
-			BIG_BATCH - num_returned);
-	num_returned += count;
 	retries = 0;
 	do {
 		rte_distributor_flush(db);
