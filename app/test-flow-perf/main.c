@@ -93,11 +93,16 @@ struct lcore_info {
 
 static struct lcore_info lcore_infos[RTE_MAX_LCORE];
 
+struct used_cpu_time {
+	double insertion[MAX_PORTS][RTE_MAX_LCORE];
+	double deletion[MAX_PORTS][RTE_MAX_LCORE];
+};
+
 struct multi_cores_pool {
 	uint32_t cores_count;
 	uint32_t rules_count;
-	double cpu_time_used_insertion[MAX_PORTS][RTE_MAX_LCORE];
-	double cpu_time_used_deletion[MAX_PORTS][RTE_MAX_LCORE];
+	struct used_cpu_time create_meter;
+	struct used_cpu_time create_flow;
 	int64_t last_alloc[RTE_MAX_LCORE];
 	int64_t current_alloc[RTE_MAX_LCORE];
 } __rte_cache_aligned;
@@ -927,7 +932,7 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 	printf(":: Port %d :: Core %d :: The time for deleting %d rules is %f seconds\n",
 		port_id, core_id, rules_count_per_core, cpu_time_used);
 
-	mc_pool.cpu_time_used_deletion[port_id][core_id] = cpu_time_used;
+	mc_pool.create_flow.deletion[port_id][core_id] = cpu_time_used;
 }
 
 static struct rte_flow **
@@ -1034,7 +1039,7 @@ insert_flows(int port_id, uint8_t core_id)
 	printf(":: Port %d :: Core %d :: The time for creating %d in rules %f seconds\n",
 		port_id, core_id, rules_count_per_core, cpu_time_used);
 
-	mc_pool.cpu_time_used_insertion[port_id][core_id] = cpu_time_used;
+	mc_pool.create_flow.insertion[port_id][core_id] = cpu_time_used;
 	return flows_list;
 }
 
@@ -1070,10 +1075,11 @@ flows_handler(uint8_t core_id)
 	}
 }
 
-static int
-run_rte_flow_handler_cores(void *data __rte_unused)
+static void
+dump_used_cpu_time(const char *item,
+		uint16_t port, struct used_cpu_time *used_time)
 {
-	uint16_t port;
+	uint32_t i;
 	/* Latency: total count of rte rules divided
 	 * over max time used by thread between all
 	 * threads time.
@@ -1088,8 +1094,111 @@ run_rte_flow_handler_cores(void *data __rte_unused)
 	double deletion_throughput_time;
 	double insertion_latency, insertion_throughput;
 	double deletion_latency, deletion_throughput;
+
+	/* Save first insertion/deletion rates from first thread.
+	 * Start comparing with all threads, if any thread used
+	 * time more than current saved, replace it.
+	 *
+	 * Thus in the end we will have the max time used for
+	 * insertion/deletion by one thread.
+	 *
+	 * As for memory consumption, save the min of all threads
+	 * of last alloc, and save the max for all threads for
+	 * current alloc.
+	 */
+
+	insertion_latency_time = used_time->insertion[port][0];
+	deletion_latency_time = used_time->deletion[port][0];
+	insertion_throughput_time = used_time->insertion[port][0];
+	deletion_throughput_time = used_time->deletion[port][0];
+
+	i = mc_pool.cores_count;
+	while (i-- > 1) {
+		insertion_throughput_time += used_time->insertion[port][i];
+		deletion_throughput_time += used_time->deletion[port][i];
+		if (insertion_latency_time < used_time->insertion[port][i])
+			insertion_latency_time = used_time->insertion[port][i];
+		if (deletion_latency_time < used_time->deletion[port][i])
+			deletion_latency_time = used_time->deletion[port][i];
+	}
+
+	insertion_latency = ((double) (mc_pool.rules_count
+				/ insertion_latency_time) / 1000);
+	deletion_latency = ((double) (mc_pool.rules_count
+				/ deletion_latency_time) / 1000);
+
+	insertion_throughput_time /= mc_pool.cores_count;
+	deletion_throughput_time /= mc_pool.cores_count;
+	insertion_throughput = ((double) (mc_pool.rules_count
+				/ insertion_throughput_time) / 1000);
+	deletion_throughput = ((double) (mc_pool.rules_count
+				/ deletion_throughput_time) / 1000);
+
+	/* Latency stats */
+	printf("\n%s\n:: [Latency | Insertion] All Cores :: Port %d :: ",
+		item, port);
+	printf("Total flows insertion rate -> %f K Rules/Sec\n",
+		insertion_latency);
+	printf(":: [Latency | Insertion] All Cores :: Port %d :: ", port);
+	printf("The time for creating %d rules is %f seconds\n",
+		mc_pool.rules_count, insertion_latency_time);
+
+	/* Throughput stats */
+	printf(":: [Throughput | Insertion] All Cores :: Port %d :: ", port);
+	printf("Total flows insertion rate -> %f K Rules/Sec\n",
+		insertion_throughput);
+	printf(":: [Throughput | Insertion] All Cores :: Port %d :: ", port);
+	printf("The average time for creating %d rules is %f seconds\n",
+		mc_pool.rules_count, insertion_throughput_time);
+
+	if (delete_flag) {
+	/* Latency stats */
+		printf(":: [Latency | Deletion] All Cores :: Port %d :: Total "
+			"deletion rate -> %f K Rules/Sec\n",
+			port, deletion_latency);
+		printf(":: [Latency | Deletion] All Cores :: Port %d :: ",
+			port);
+		printf("The time for deleting %d rules is %f seconds\n",
+			mc_pool.rules_count, deletion_latency_time);
+
+		/* Throughput stats */
+		printf(":: [Throughput | Deletion] All Cores :: Port %d :: Total "
+			"deletion rate -> %f K Rules/Sec\n",
+			port, deletion_throughput);
+		printf(":: [Throughput | Deletion] All Cores :: Port %d :: ",
+			port);
+		printf("The average time for deleting %d rules is %f seconds\n",
+			mc_pool.rules_count, deletion_throughput_time);
+	}
+}
+
+static void
+dump_used_mem(uint16_t port)
+{
+	uint32_t i;
 	int64_t last_alloc, current_alloc;
 	int flow_size_in_bytes;
+
+	last_alloc = mc_pool.last_alloc[0];
+	current_alloc = mc_pool.current_alloc[0];
+
+	i = mc_pool.cores_count;
+	while (i-- > 1) {
+		if (last_alloc > mc_pool.last_alloc[i])
+			last_alloc = mc_pool.last_alloc[i];
+		if (current_alloc < mc_pool.current_alloc[i])
+			current_alloc = mc_pool.current_alloc[i];
+	}
+
+	flow_size_in_bytes = (current_alloc - last_alloc) / mc_pool.rules_count;
+	printf("\n:: Port %d :: rte_flow size in DPDK layer: %d Bytes\n",
+		port, flow_size_in_bytes);
+}
+
+static int
+run_rte_flow_handler_cores(void *data __rte_unused)
+{
+	uint16_t port;
 	int lcore_counter = 0;
 	int lcore_id = rte_lcore_id();
 	int i;
@@ -1120,83 +1229,11 @@ run_rte_flow_handler_cores(void *data __rte_unused)
 	/* Make sure all cores finished insertion/deletion process. */
 	rte_eal_mp_wait_lcore();
 
-	/* Save first insertion/deletion rates from first thread.
-	 * Start comparing with all threads, if any thread used
-	 * time more than current saved, replace it.
-	 *
-	 * Thus in the end we will have the max time used for
-	 * insertion/deletion by one thread.
-	 *
-	 * As for memory consumption, save the min of all threads
-	 * of last alloc, and save the max for all threads for
-	 * current alloc.
-	 */
 	RTE_ETH_FOREACH_DEV(port) {
-		last_alloc = mc_pool.last_alloc[0];
-		current_alloc = mc_pool.current_alloc[0];
 
-		insertion_latency_time = mc_pool.cpu_time_used_insertion[port][0];
-		deletion_latency_time = mc_pool.cpu_time_used_deletion[port][0];
-		insertion_throughput_time = mc_pool.cpu_time_used_insertion[port][0];
-		deletion_throughput_time = mc_pool.cpu_time_used_deletion[port][0];
-		i = mc_pool.cores_count;
-		while (i-- > 1) {
-			insertion_throughput_time += mc_pool.cpu_time_used_insertion[port][i];
-			deletion_throughput_time += mc_pool.cpu_time_used_deletion[port][i];
-			if (insertion_latency_time < mc_pool.cpu_time_used_insertion[port][i])
-				insertion_latency_time = mc_pool.cpu_time_used_insertion[port][i];
-			if (deletion_latency_time < mc_pool.cpu_time_used_deletion[port][i])
-				deletion_latency_time = mc_pool.cpu_time_used_deletion[port][i];
-			if (last_alloc > mc_pool.last_alloc[i])
-				last_alloc = mc_pool.last_alloc[i];
-			if (current_alloc < mc_pool.current_alloc[i])
-				current_alloc = mc_pool.current_alloc[i];
-		}
-
-		flow_size_in_bytes = (current_alloc - last_alloc) / mc_pool.rules_count;
-
-		insertion_latency = ((double) (mc_pool.rules_count / insertion_latency_time) / 1000);
-		deletion_latency = ((double) (mc_pool.rules_count / deletion_latency_time) / 1000);
-
-		insertion_throughput_time /= mc_pool.cores_count;
-		deletion_throughput_time /= mc_pool.cores_count;
-		insertion_throughput = ((double) (mc_pool.rules_count / insertion_throughput_time) / 1000);
-		deletion_throughput = ((double) (mc_pool.rules_count / deletion_throughput_time) / 1000);
-
-		/* Latency stats */
-		printf("\n:: [Latency | Insertion] All Cores :: Port %d :: ", port);
-		printf("Total flows insertion rate -> %f K Rules/Sec\n",
-			insertion_latency);
-		printf(":: [Latency | Insertion] All Cores :: Port %d :: ", port);
-		printf("The time for creating %d rules is %f seconds\n",
-			mc_pool.rules_count, insertion_latency_time);
-
-		/* Throughput stats */
-		printf(":: [Throughput | Insertion] All Cores :: Port %d :: ", port);
-		printf("Total flows insertion rate -> %f K Rules/Sec\n",
-			insertion_throughput);
-		printf(":: [Throughput | Insertion] All Cores :: Port %d :: ", port);
-		printf("The average time for creating %d rules is %f seconds\n",
-			mc_pool.rules_count, insertion_throughput_time);
-
-		if (delete_flag) {
-			/* Latency stats */
-			printf(":: [Latency | Deletion] All Cores :: Port %d :: Total flows "
-				"deletion rate -> %f K Rules/Sec\n",
-				port, deletion_latency);
-			printf(":: [Latency | Deletion] All Cores :: Port %d :: ", port);
-			printf("The time for deleting %d rules is %f seconds\n",
-			mc_pool.rules_count, deletion_latency_time);
-
-			/* Throughput stats */
-			printf(":: [Throughput | Deletion] All Cores :: Port %d :: Total flows "
-				"deletion rate -> %f K Rules/Sec\n", port, deletion_throughput);
-			printf(":: [Throughput | Deletion] All Cores :: Port %d :: ", port);
-			printf("The average time for deleting %d rules is %f seconds\n",
-			mc_pool.rules_count, deletion_throughput_time);
-		}
-		printf("\n:: Port %d :: rte_flow size in DPDK layer: %d Bytes\n",
-			port, flow_size_in_bytes);
+		dump_used_cpu_time("Flows:",
+			port, &mc_pool.create_flow);
+		dump_used_mem(port);
 	}
 
 	return 0;
