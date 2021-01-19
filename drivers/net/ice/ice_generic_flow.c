@@ -2151,6 +2151,7 @@ static struct ice_ptype_match ice_ptype_map[] = {
 	{pattern_eth_ipv4_nvgre_eth_ipv4,		ICE_MAC_IPV4_TUN_IPV4_PAY},
 	{pattern_eth_ipv4_nvgre_eth_ipv4_udp,		ICE_MAC_IPV4_TUN_IPV4_UDP_PAY},
 	{pattern_eth_ipv4_nvgre_eth_ipv4_tcp,		ICE_MAC_IPV4_TUN_IPV4_TCP},
+	{pattern_empty,					0},
 };
 
 static bool
