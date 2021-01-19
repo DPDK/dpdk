@@ -1256,6 +1256,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 	uint64_t last_item = 0;
 	uint8_t next_protocol = 0xff;
 	uint16_t ether_type = 0;
+	bool is_empty_vlan = false;
 
 	if (items == NULL)
 		return -1;
@@ -1283,6 +1284,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 				ether_type &=
 					((const struct rte_flow_item_eth *)
 					 items->mask)->type;
+				if (ether_type == RTE_BE16(RTE_ETHER_TYPE_VLAN))
+					is_empty_vlan = true;
 				ether_type = rte_be_to_cpu_16(ether_type);
 			} else {
 				ether_type = 0;
@@ -1308,6 +1311,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			} else {
 				ether_type = 0;
 			}
+			is_empty_vlan = false;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ret = mlx5_flow_validate_item_ipv4
@@ -1419,6 +1423,10 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		}
 		item_flags |= last_item;
 	}
+	if (is_empty_vlan)
+		return rte_flow_error_set(error, ENOTSUP,
+						 RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+		    "VLAN matching without vid specification is not supported");
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
