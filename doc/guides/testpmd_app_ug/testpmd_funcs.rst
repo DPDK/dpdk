@@ -4434,14 +4434,14 @@ Sample QinQ flow rules
 Before creating QinQ rule(s) the following commands should be issued to enable QinQ::
 
    testpmd> port stop 0
-   testpmd> vlan set qinq_strip on 0
+   testpmd> vlan set extend on 0
 
 The above command sets the inner and outer TPID's to 0x8100.
 
 To change the TPID's the following commands should be used::
 
-   testpmd> vlan set outer tpid 0xa100 0
-   testpmd> vlan set inner tpid 0x9100 0
+   testpmd> vlan set outer tpid 0x88A8 0
+   testpmd> vlan set inner tpid 0x8100 0
    testpmd> port start 0
 
 Validate and create a QinQ rule on port 0 to steer traffic to a VF queue in a VM.
