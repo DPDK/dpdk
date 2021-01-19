@@ -179,6 +179,7 @@ ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 		rawdev->dev_private = mz->addr;
 		rawdev->dev_ops = &ioat_rawdev_ops;
 		rawdev->device = &dev->device;
+		rawdev->driver_name = dev->device.driver->name;
 		return 0;
 	}
 	mz = rte_memzone_reserve(mz_name, sizeof(struct rte_ioat_rawdev),
