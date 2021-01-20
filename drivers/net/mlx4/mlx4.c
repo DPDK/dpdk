@@ -375,8 +375,10 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	struct mlx4_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		rte_eth_dev_release_port(dev);
 		return 0;
+	}
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
@@ -1123,6 +1125,36 @@ error:
 	return -err;
 }
 
+/**
+ * DPDK callback to remove a PCI device.
+ *
+ * This function removes all Ethernet devices belong to a given PCI device.
+ *
+ * @param[in] pci_dev
+ *   Pointer to the PCI device.
+ *
+ * @return
+ *   0 on success, the function cannot fail.
+ */
+static int
+mlx4_pci_remove(struct rte_pci_device *pci_dev)
+{
+	uint16_t port_id;
+	int ret = 0;
+
+	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device) {
+		/*
+		 * mlx4_dev_close() is not registered to secondary process,
+		 * call the close function explicitly for secondary process.
+		 */
+		if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+			ret |= mlx4_dev_close(&rte_eth_devices[port_id]);
+		else
+			ret |= rte_eth_dev_close(port_id);
+	}
+	return ret == 0 ? 0 : -EIO;
+}
+
 static const struct rte_pci_id mlx4_pci_id_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
@@ -1147,6 +1179,7 @@ static struct rte_pci_driver mlx4_driver = {
 	},
 	.id_table = mlx4_pci_id_map,
 	.probe = mlx4_pci_probe,
+	.remove = mlx4_pci_remove,
 	.drv_flags = RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV,
 };
 
