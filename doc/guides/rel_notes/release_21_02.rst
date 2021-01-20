@@ -99,6 +99,13 @@ New Features
   * Added Double VLAN support for DCF switch QinQ filtering.
   * Added support for UDP dynamic port assignment for eCPRI tunnel in DCF.
 
+* **Updated Intel iavf driver.**
+
+  Updated iavf PMD with new features and improvements, including:
+
+  * Added support for FDIR/RSS packet steering for eCPRI flow.
+  * Added support for FDIR TCP/UDP pattern without input set.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated the Mellanox mlx5 driver with new features and improvements, including:
