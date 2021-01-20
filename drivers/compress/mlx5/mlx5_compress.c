@@ -48,6 +48,7 @@ struct mlx5_compress_priv {
 	struct rte_compressdev_config dev_config;
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
 	rte_spinlock_t xform_sl;
+	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 };
 
 struct mlx5_compress_qp {
@@ -56,6 +57,7 @@ struct mlx5_compress_qp {
 	uint16_t pi;
 	uint16_t ci;
 	volatile uint64_t *uar_addr;
+	struct mlx5_mr_ctrl mr_ctrl;
 	int socket_id;
 	struct mlx5_devx_cq cq;
 	struct mlx5_devx_sq sq;
@@ -121,6 +123,7 @@ mlx5_compress_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 		if (opaq != NULL)
 			rte_free(opaq);
 	}
+	mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
 	rte_free(qp);
 	dev->data->queue_pairs[qp_id] = NULL;
 	return 0;
@@ -187,6 +190,13 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 			      sizeof(struct mlx5_gga_compress_opaque));
 	if (opaq_buf == NULL) {
 		DRV_LOG(ERR, "Failed to allocate opaque memory.");
+		rte_errno = ENOMEM;
+		goto err;
+	}
+	if (mlx5_mr_btree_init(&qp->mr_ctrl.cache_bh, MLX5_MR_BTREE_CACHE_N,
+			       priv->dev_config.socket_id)) {
+		DRV_LOG(ERR, "Cannot allocate MR Btree for qp %u.",
+			(uint32_t)qp_id);
 		rte_errno = ENOMEM;
 		goto err;
 	}
@@ -523,6 +533,17 @@ mlx5_compress_pci_probe(struct rte_pci_driver *pci_drv,
 		claim_zero(mlx5_glue->close_device(priv->ctx));
 		return -1;
 	}
+	if (mlx5_mr_btree_init(&priv->mr_scache.cache,
+			     MLX5_MR_BTREE_CACHE_N * 2, rte_socket_id()) != 0) {
+		DRV_LOG(ERR, "Failed to allocate shared cache MR memory.");
+		mlx5_compress_hw_global_release(priv);
+		rte_compressdev_pmd_destroy(priv->cdev);
+		claim_zero(mlx5_glue->close_device(priv->ctx));
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	priv->mr_scache.reg_mr_cb = mlx5_common_verbs_reg_mr;
+	priv->mr_scache.dereg_mr_cb = mlx5_common_verbs_dereg_mr;
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&mlx5_compress_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
@@ -553,6 +574,7 @@ mlx5_compress_pci_remove(struct rte_pci_device *pdev)
 		TAILQ_REMOVE(&mlx5_compress_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
 	if (priv) {
+		mlx5_mr_release_cache(&priv->mr_scache);
 		mlx5_compress_hw_global_release(priv);
 		rte_compressdev_pmd_destroy(priv->cdev);
 		claim_zero(mlx5_glue->close_device(priv->ctx));
