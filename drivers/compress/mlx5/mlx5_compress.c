@@ -6,6 +6,7 @@
 #include <rte_log.h>
 #include <rte_errno.h>
 #include <rte_pci.h>
+#include <rte_spinlock.h>
 #include <rte_comp.h>
 #include <rte_compressdev.h>
 #include <rte_compressdev_pmd.h>
@@ -24,6 +25,15 @@
 #define MLX5_COMPRESS_DRIVER_NAME mlx5_compress
 #define MLX5_COMPRESS_LOG_NAME    pmd.compress.mlx5
 #define MLX5_COMPRESS_MAX_QPS 1024
+#define MLX5_COMP_MAX_WIN_SIZE_CONF 6u
+
+struct mlx5_compress_xform {
+	LIST_ENTRY(mlx5_compress_xform) next;
+	enum rte_comp_xform_type type;
+	enum rte_comp_checksum_type csum_type;
+	uint32_t opcode;
+	uint32_t gga_ctrl1; /* BE. */
+};
 
 struct mlx5_compress_priv {
 	TAILQ_ENTRY(mlx5_compress_priv) next;
@@ -36,6 +46,8 @@ struct mlx5_compress_priv {
 	/* Minimum huffman block size supported by the device. */
 	struct ibv_pd *pd;
 	struct rte_compressdev_config dev_config;
+	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
+	rte_spinlock_t xform_sl;
 };
 
 struct mlx5_compress_qp {
@@ -221,6 +233,111 @@ err:
 	return -1;
 }
 
+static int
+mlx5_compress_xform_free(struct rte_compressdev *dev, void *xform)
+{
+	struct mlx5_compress_priv *priv = dev->data->dev_private;
+
+	rte_spinlock_lock(&priv->xform_sl);
+	LIST_REMOVE((struct mlx5_compress_xform *)xform, next);
+	rte_spinlock_unlock(&priv->xform_sl);
+	rte_free(xform);
+	return 0;
+}
+
+static int
+mlx5_compress_xform_create(struct rte_compressdev *dev,
+			   const struct rte_comp_xform *xform,
+			   void **private_xform)
+{
+	struct mlx5_compress_priv *priv = dev->data->dev_private;
+	struct mlx5_compress_xform *xfrm;
+	uint32_t size;
+
+	if (xform->type == RTE_COMP_COMPRESS && xform->compress.level ==
+							  RTE_COMP_LEVEL_NONE) {
+		DRV_LOG(ERR, "Non-compressed block is not supported.");
+		return -ENOTSUP;
+	}
+	if ((xform->type == RTE_COMP_COMPRESS && xform->compress.hash_algo !=
+	     RTE_COMP_HASH_ALGO_NONE) || (xform->type == RTE_COMP_DECOMPRESS &&
+		      xform->decompress.hash_algo != RTE_COMP_HASH_ALGO_NONE)) {
+		DRV_LOG(ERR, "SHA is not supported.");
+		return -ENOTSUP;
+	}
+	xfrm = rte_zmalloc_socket(__func__, sizeof(*xfrm), 0,
+						    priv->dev_config.socket_id);
+	if (xfrm == NULL)
+		return -ENOMEM;
+	xfrm->opcode = MLX5_OPCODE_MMO;
+	xfrm->type = xform->type;
+	switch (xform->type) {
+	case RTE_COMP_COMPRESS:
+		switch (xform->compress.algo) {
+		case RTE_COMP_ALGO_NULL:
+			xfrm->opcode += MLX5_OPC_MOD_MMO_DMA <<
+							WQE_CSEG_OPC_MOD_OFFSET;
+			break;
+		case RTE_COMP_ALGO_DEFLATE:
+			size = 1 << xform->compress.window_size;
+			size /= MLX5_GGA_COMP_WIN_SIZE_UNITS;
+			xfrm->gga_ctrl1 += RTE_MIN(rte_log2_u32(size),
+					 MLX5_COMP_MAX_WIN_SIZE_CONF) <<
+					   WQE_GGA_COMP_WIN_SIZE_OFFSET;
+			if (xform->compress.level == RTE_COMP_LEVEL_PMD_DEFAULT)
+				size = MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX;
+			else
+				size = priv->min_block_size - 1 +
+							  xform->compress.level;
+			xfrm->gga_ctrl1 += RTE_MIN(size,
+					    MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX) <<
+						 WQE_GGA_COMP_BLOCK_SIZE_OFFSET;
+			xfrm->opcode += MLX5_OPC_MOD_MMO_COMP <<
+							WQE_CSEG_OPC_MOD_OFFSET;
+			size = xform->compress.deflate.huffman ==
+						      RTE_COMP_HUFFMAN_DYNAMIC ?
+					    MLX5_GGA_COMP_LOG_DYNAMIC_SIZE_MAX :
+					     MLX5_GGA_COMP_LOG_DYNAMIC_SIZE_MIN;
+			xfrm->gga_ctrl1 += size <<
+					       WQE_GGA_COMP_DYNAMIC_SIZE_OFFSET;
+			break;
+		default:
+			goto err;
+		}
+		xfrm->csum_type = xform->compress.chksum;
+		break;
+	case RTE_COMP_DECOMPRESS:
+		switch (xform->decompress.algo) {
+		case RTE_COMP_ALGO_NULL:
+			xfrm->opcode += MLX5_OPC_MOD_MMO_DMA <<
+							WQE_CSEG_OPC_MOD_OFFSET;
+			break;
+		case RTE_COMP_ALGO_DEFLATE:
+			xfrm->opcode += MLX5_OPC_MOD_MMO_DECOMP <<
+							WQE_CSEG_OPC_MOD_OFFSET;
+			break;
+		default:
+			goto err;
+		}
+		xfrm->csum_type = xform->decompress.chksum;
+		break;
+	default:
+		DRV_LOG(ERR, "Algorithm %u is not supported.", xform->type);
+		goto err;
+	}
+	DRV_LOG(DEBUG, "New xform: gga ctrl1 = 0x%08X opcode = 0x%08X csum "
+		"type = %d.", xfrm->gga_ctrl1, xfrm->opcode, xfrm->csum_type);
+	xfrm->gga_ctrl1 = rte_cpu_to_be_32(xfrm->gga_ctrl1);
+	rte_spinlock_lock(&priv->xform_sl);
+	LIST_INSERT_HEAD(&priv->xform_list, xfrm, next);
+	rte_spinlock_unlock(&priv->xform_sl);
+	*private_xform = xfrm;
+	return 0;
+err:
+	rte_free(xfrm);
+	return -ENOTSUP;
+}
+
 static struct rte_compressdev_ops mlx5_compress_ops = {
 	.dev_configure		= mlx5_compress_dev_configure,
 	.dev_start		= NULL,
@@ -231,8 +348,8 @@ static struct rte_compressdev_ops mlx5_compress_ops = {
 	.stats_reset		= NULL,
 	.queue_pair_setup	= mlx5_compress_qp_setup,
 	.queue_pair_release	= mlx5_compress_qp_release,
-	.private_xform_create	= NULL,
-	.private_xform_free	= NULL,
+	.private_xform_create	= mlx5_compress_xform_create,
+	.private_xform_free	= mlx5_compress_xform_free,
 	.stream_create		= NULL,
 	.stream_free		= NULL,
 };
