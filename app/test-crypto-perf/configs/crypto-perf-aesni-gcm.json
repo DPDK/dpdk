@@ -1,0 +1,99 @@
+{
+	"throughput": {
+		"default": {
+			"eal": {
+				"l": "1,2",
+				"vdev": "crypto_aesni_gcm"
+			},
+			"app": {
+				"csv-friendly": true,
+				"buffer-sz": "64,128,256,512,768,1024,1408,2048",
+				"burst-sz": "1,4,8,16,32",
+				"ptest": "throughput",
+				"devtype": "crypto_aesni_gcm"
+			}
+		},
+		"AES-GCM-128 aead-op encrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "16",
+			"aead-iv-sz": "12",
+			"aead-op": "encrypt",
+			"aead-aad-sz": "16",
+			"digest-sz": "16",
+			"optype": "aead",
+			"total-ops": "10000000"
+		},
+		"AES-GCM-128 aead-op decrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "16",
+			"aead-op": "decrypt",
+			"aead-aad-sz": "16",
+			"aead-iv-sz": "12",
+			"digest-sz": "16",
+			"optype": "aead",
+			"total-ops": "10000000"
+		},
+		"AES-GCM-256 aead-op encrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "32",
+			"aead-op": "encrypt",
+			"aead-aad-sz": "32",
+			"aead-iv-sz": "12",
+			"digest-sz": "16",
+			"optype": "aead",
+			"total-ops": "10000000"
+		},
+		"AES-GCM-256 aead-op decrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "32",
+			"aead-op": "decrypt",
+			"aead-aad-sz": "32",
+			"aead-iv-sz": "12",
+			"digest-sz": "16",
+			"optype": "aead",
+			"total-ops": "10000000"
+		},
+		"AES-GMAC 128 auth-only generate": {
+			"auth-algo": "aes-gmac",
+			"auth-key-sz": "16",
+			"auth-iv-sz": "12",
+			"auth-op": "generate",
+			"digest-sz": "16",
+			"optype": "auth-only",
+			"total-ops": "10000000"
+		}
+	},
+	"latency": {
+		"default": {
+			"eal": {
+				"l": "1,2",
+				"vdev": "crypto_aesni_gcm"
+			},
+			"app": {
+				"csv-friendly": true,
+				"buffer-sz": "1024",
+				"burst-sz": "16",
+				"ptest": "latency",
+				"devtype": "crypto_aesni_gcm"
+			}
+		},
+		"AES-GCM-128 aead-op decrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "16",
+			"aead-op": "decrypt",
+			"aead-aad-sz": "16",
+			"aead-iv-sz": "12",
+			"digest-sz": "16",
+			"optype": "aead"
+		},
+		"AES-GCM-256 aead-op encrypt latency": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "32",
+			"aead-op": "encrypt",
+			"aead-aad-sz": "32",
+			"aead-iv-sz": "12",
+			"digest-sz": "16",
+			"optype": "aead"
+		}
+	}
+}

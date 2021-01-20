@@ -453,3 +453,146 @@ Test vector file for cipher algorithm aes cbc 256 with authorization sha::
    digest =
    0x1C, 0xB2, 0x3D, 0xD1, 0xF9, 0xC7, 0x6C, 0x49, 0x2E, 0xDA, 0x94, 0x8B, 0xF1, 0xCF, 0x96, 0x43,
    0x67, 0x50, 0x39, 0x76, 0xB5, 0xA1, 0xCE, 0xA1, 0xD7, 0x77, 0x10, 0x07, 0x43, 0x37, 0x05, 0xB4
+
+
+Graph Crypto Perf Results
+-------------------------
+
+The ``dpdk-graph-crypto-perf.py`` tool is a simple script to automate
+running crypto performance tests, and graphing the results.
+It can be found in the ``app/test-crypto-perf/`` directory.
+The output graphs include various grouped barcharts for throughput
+tests, and histogram and boxplot graphs for latency tests.
+These are output to PDF files, with one PDF per test suite graph type.
+
+
+Dependencies
+~~~~~~~~~~~~
+
+The following python modules must be installed to run the script:
+
+* img2pdf
+
+* plotly
+
+* pandas
+
+* glob
+
+
+Test Configuration
+~~~~~~~~~~~~~~~~~~
+
+The test cases run by the script are defined by a JSON config file.
+Some config files can be found in ``app/test-crypto-perf/configs/``,
+or the user may create a new one following the same format as the config files provided.
+
+An example of this format is shown below for one test suite in the ``crypto-perf-aesni-mb.json`` file.
+This shows the required default config for the test suite, and one test case.
+The test case has additional app config that will be combined with
+the default config when running the test case.
+
+.. code-block:: c
+
+   "throughput": {
+       "default": {
+           "eal": {
+               "l": "1,2",
+               "vdev": "crypto_aesni_mb"
+           },
+           "app": {
+               "csv-friendly": true,
+               "buffer-sz": "64,128,256,512,768,1024,1408,2048",
+               "burst-sz": "1,4,8,16,32",
+               "ptest": "throughput",
+               "devtype": "crypto_aesni_mb"
+           }
+        },
+       "AES-CBC-128 SHA1-HMAC auth-then-cipher decrypt": {
+               "cipher-algo": "aes-cbc",
+               "cipher-key-sz": "16",
+               "auth-algo": "sha1-hmac",
+               "optype": "auth-then-cipher",
+               "cipher-op": "decrypt"
+        }
+   }
+
+.. note::
+   The specific test cases only allow modification of app parameters,
+   and not EAL parameters.
+   The default case is required for each test suite in the config file,
+   to specify EAL parameters.
+
+Currently, crypto_qat, crypto_aesni_mb, and crypto_aesni_gcm devices for
+both throughput and latency ptests are supported.
+
+
+Usage
+~~~~~
+
+.. code-block:: console
+
+   ./dpdk-graph-crypto-perf <config_file>
+
+The ``config_file`` positional argument is required to run the script.
+This points to a valid JSON config file containing test suites.
+
+.. code-block:: console
+
+   ./dpdk-graph-crypto-perf configs/crypto-perf-aesni-mb.json
+
+The following are the application optional command-line options:
+
+* ``-h, --help``
+
+    Display usage information and quit
+
+
+* ``-f <file_path>, --file-path <file_path>``
+
+  Provide path to ``dpdk-test-crypto-perf`` application.
+  The script uses the installed app by default.
+
+  .. code-block:: console
+
+     ./dpdk-graph-crypto-perf -f <build_dir>/app/dpdk-test-crypto-perf
+
+
+* ``-t <test_suite_list>, --test-suites <test_suite_list>``
+
+  Specify test suites to run. All test suites are run by default.
+
+  To run crypto-perf-qat latency test suite only:
+
+  .. code-block:: console
+
+     ./dpdk-graph-crypto-perf configs/crypto-perf-qat -t latency
+
+  To run both crypto-perf-aesni-mb throughput and latency test suites
+
+  .. code-block:: console
+
+     ./dpdk-graph-crypto-perf configs/crypto-perf-aesni-mb -t throughput latency
+
+
+* ``-o <output_path>, --output-path <output_path>``
+
+  Specify directory to use for output files.
+  The default is to use the script's directory.
+
+  .. code-block:: console
+
+     ./dpdk-graph-crypto-perf <config_file> -o <output_dir>
+
+
+* ``-v, --verbose``
+
+  Enable verbose output. This displays ``dpdk-test-crypto-perf`` app output in real-time.
+
+  .. code-block:: console
+
+     ./dpdk-graph-crypto-perf <config_file> -v
+
+  .. warning::
+     Latency performance tests have a large amount of output.
+     It is not recommended to use the verbose option for latency tests.

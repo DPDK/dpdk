@@ -1587,6 +1587,7 @@ F: doc/guides/tools/comp_perf.rst
 
 Crypto performance test application
 M: Declan Doherty <declan.doherty@intel.com>
+M: Ciara Power <ciara.power@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: app/test-crypto-perf/
 F: doc/guides/tools/cryptoperf.rst

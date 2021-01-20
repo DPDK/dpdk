@@ -1,0 +1,108 @@
+{
+	"throughput": {
+		"default": {
+			"eal": {
+				"l": "1,2",
+				"vdev": "crypto_aesni_mb"
+			},
+			"app": {
+				"csv-friendly": true,
+				"buffer-sz": "64,128,256,512,768,1024,1408,2048",
+				"burst-sz": "1,4,8,16,32",
+				"ptest": "throughput",
+				"devtype": "crypto_aesni_mb"
+			}
+		},
+		"AES-CBC-128 SHA1-HMAC auth-then-cipher decrypt": {
+			"cipher-algo": "aes-cbc",
+			"cipher-key-sz": "16",
+			"auth-algo": "sha1-hmac",
+			"optype": "auth-then-cipher",
+			"cipher-op": "decrypt"
+		},
+		"AES-CBC-128 SHA1-HMAC cipher-then-auth encrypt": {
+			"cipher-algo": "aes-cbc",
+			"cipher-key-sz": "16",
+			"auth-algo": "sha1-hmac",
+			"auth-op": "generate",
+			"auth-key-sz": "64",
+			"digest-sz": "20",
+			"optype": "cipher-then-auth",
+			"cipher-op": "encrypt"
+		},
+		"AES-CBC-256 SHA2-256-HMAC auth-then-cipher decrypt": {
+			"cipher-algo": "aes-cbc",
+			"cipher-key-sz": "32",
+			"auth-algo": "sha2-256-hmac",
+			"optype": "auth-then-cipher",
+			"cipher-op": "decrypt"
+		},
+		"AES-CBC-256 SHA2-256-HMAC cipher-then-auth encrypt": {
+			"cipher-algo": "aes-cbc",
+			"cipher-key-sz": "32",
+			"auth-algo": "sha2-256-hmac",
+			"optype": "cipher-then-auth"
+		},
+		"AES-GCM-128 aead-op encrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "16",
+			"aead-iv-sz": "12",
+			"aead-op": "encrypt",
+			"aead-aad-sz": "16",
+			"digest-sz": "16",
+			"optype": "aead",
+			"total-ops": "10000000"
+		},
+		"AES-GCM-128 aead-op decrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "16",
+			"aead-op": "decrypt"
+		},
+		"AES-GCM-256 aead-op encrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "32",
+			"aead-op": "encrypt"
+		},
+		"AES-GCM-256 aead-op decrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "32",
+			"aead-op": "decrypt"
+		},
+		"AES-GMAC 128 auth-only generate": {
+			"auth-algo": "aes-gmac",
+			"auth-key-sz": "16",
+			"auth-iv-sz": "12",
+			"auth-op": "generate",
+			"digest-sz": "16",
+			"optype": "auth-only",
+			"total-ops": "10000000"
+		}
+	},
+	"latency": {
+		"default": {
+			"eal": {
+				"l": "1,2",
+				"vdev": "crypto_aesni_mb"
+			},
+			"app": {
+				"csv-friendly": true,
+				"buffer-sz": "1024",
+				"burst-sz": "16",
+				"ptest": "latency",
+				"devtype": "crypto_aesni_mb"
+			}
+		},
+		"AES-CBC-128 SHA1-HMAC auth-then-cipher decrypt": {
+			"cipher-algo": "aes-cbc",
+			"cipher-key-sz": "16",
+			"auth-algo": "sha1-hmac",
+			"optype": "auth-then-cipher",
+			"cipher-op": "decrypt"
+		},
+		"AES-GCM-256 aead-op encrypt": {
+			"aead-algo": "aes-gcm",
+			"aead-key-sz": "32",
+			"aead-op": "encrypt"
+		}
+	}
+}
