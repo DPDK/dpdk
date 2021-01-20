@@ -406,7 +406,7 @@ cperf_verify_test_runner(void *test_ctx)
 				"Burst Size,Enqueued,Dequeued,Failed Enq,"
 				"Failed Deq,Failed Ops\n");
 
-		printf("%10u;%10u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
+		printf("%10u,%10u,%u,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64","
 				"%"PRIu64"\n",
 				ctx->lcore_id,
 				ctx->options->max_buffer_size,
