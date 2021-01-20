@@ -6110,8 +6110,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	 * Validate the drop action mutual exclusion with other actions.
 	 * Drop action is mutually-exclusive with any other action, except for
 	 * Count action.
+	 * Drop action compatibility with tunnel offload was already validated.
 	 */
-	if ((action_flags & MLX5_FLOW_ACTION_DROP) &&
+	if (action_flags & (MLX5_FLOW_ACTION_TUNNEL_MATCH |
+			    MLX5_FLOW_ACTION_TUNNEL_MATCH));
+	else if ((action_flags & MLX5_FLOW_ACTION_DROP) &&
 	    (action_flags & ~(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_COUNT)))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
