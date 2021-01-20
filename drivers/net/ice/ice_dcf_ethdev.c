@@ -26,6 +26,13 @@
 #include "ice_dcf_ethdev.h"
 #include "ice_rxtx.h"
 
+static int
+ice_dcf_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+				struct rte_eth_udp_tunnel *udp_tunnel);
+static int
+ice_dcf_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+				struct rte_eth_udp_tunnel *udp_tunnel);
+
 static uint16_t
 ice_dcf_recv_pkts(__rte_unused void *rx_queue,
 		  __rte_unused struct rte_mbuf **bufs,
@@ -898,6 +905,64 @@ ice_dcf_link_update(__rte_unused struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* Add UDP tunneling port */
+static int
+ice_dcf_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
+				struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_adapter *parent_adapter = &adapter->parent;
+	struct ice_hw *parent_hw = &parent_adapter->hw;
+	int ret = 0;
+
+	if (!udp_tunnel)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		ret = ice_create_tunnel(parent_hw, TNL_VXLAN,
+					udp_tunnel->udp_port);
+		break;
+	case RTE_TUNNEL_TYPE_ECPRI:
+		ret = ice_create_tunnel(parent_hw, TNL_ECPRI,
+					udp_tunnel->udp_port);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+/* Delete UDP tunneling port */
+static int
+ice_dcf_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
+				struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_adapter *parent_adapter = &adapter->parent;
+	struct ice_hw *parent_hw = &parent_adapter->hw;
+	int ret = 0;
+
+	if (!udp_tunnel)
+		return -EINVAL;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+	case RTE_TUNNEL_TYPE_ECPRI:
+		ret = ice_destroy_tunnel(parent_hw, udp_tunnel->udp_port, 0);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Invalid tunnel type");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.dev_start               = ice_dcf_dev_start,
 	.dev_stop                = ice_dcf_dev_stop,
@@ -920,6 +985,8 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.allmulticast_enable     = ice_dcf_dev_allmulticast_enable,
 	.allmulticast_disable    = ice_dcf_dev_allmulticast_disable,
 	.filter_ctrl             = ice_dcf_dev_filter_ctrl,
+	.udp_tunnel_port_add	 = ice_dcf_dev_udp_tunnel_port_add,
+	.udp_tunnel_port_del	 = ice_dcf_dev_udp_tunnel_port_del,
 };
 
 static int

@@ -94,7 +94,10 @@ New Features
 
 * **Updated Intel ice driver.**
 
+  Updated the Intel ice driver with new features and improvements, including:
+
   * Added Double VLAN support for DCF switch QinQ filtering.
+  * Added support for UDP dynamic port assignment for eCPRI tunnel in DCF.
 
 * **Updated Mellanox mlx5 driver.**
 
