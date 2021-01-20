@@ -529,7 +529,7 @@ iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct virtchnl_vlan_supported_caps *supported_caps;
-	struct virtchnl_vlan_offload vlan_strip;
+	struct virtchnl_vlan_setting vlan_strip;
 	struct iavf_cmd_info args;
 	uint32_t stripping_caps;
 	uint32_t *vlan_setting;
@@ -571,7 +571,7 @@ iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct virtchnl_vlan_supported_caps *supported_caps;
-	struct virtchnl_vlan_offload vlan_insert;
+	struct virtchnl_vlan_setting vlan_insert;
 	struct iavf_cmd_info args;
 	uint32_t insertion_caps;
 	uint32_t *vlan_setting;

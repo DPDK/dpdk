@@ -149,6 +149,8 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DISABLE_VLAN_STRIPPING_V2 = 55,
 	VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2 = 56,
 	VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2 = 57,
+	VIRTCHNL_OP_ENABLE_VLAN_FILTERING_V2 = 58,
+	VIRTCHNL_OP_DISABLE_VLAN_FILTERING_V2 = 59,
 	VIRTCHNL_OP_ENABLE_QUEUES_V2 = 107,
 	VIRTCHNL_OP_DISABLE_QUEUES_V2 = 108,
 	VIRTCHNL_OP_MAP_QUEUE_VECTOR = 111,
@@ -258,6 +260,10 @@ static inline const char *virtchnl_op_str(enum virtchnl_ops v_opcode)
 		return "VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2";
 	case VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2:
 		return "VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2";
+	case VIRTCHNL_OP_ENABLE_VLAN_FILTERING_V2:
+		return "VIRTCHNL_OP_ENABLE_VLAN_FILTERING_V2";
+	case VIRTCHNL_OP_DISABLE_VLAN_FILTERING_V2:
+		return "VIRTCHNL_OP_DISABLE_VLAN_FILTERING_V2";
 	case VIRTCHNL_OP_MAX:
 		return "VIRTCHNL_OP_MAX";
 	default:
@@ -914,13 +920,13 @@ VIRTCHNL_CHECK_STRUCT_LEN(40, virtchnl_vlan_filter_list_v2);
  *
  * In order to enable inner (again note that in this case inner is the outer
  * most or single VLAN from the VF's perspective) VLAN stripping for 0x8100
- * VLANs, the VF would populate the virtchnl_vlan_offload structure in the
+ * VLANs, the VF would populate the virtchnl_vlan_setting structure in the
  * following manner and send the VIRTCHNL_OP_ENABLE_VLAN_STRIPPING_V2 message.
  *
- * virtchnl_vlan_offload.inner_ethertype_setting =
+ * virtchnl_vlan_setting.inner_ethertype_setting =
  *			VIRTCHNL_VLAN_ETHERTYPE_8100;
  *
- * virtchnl_vlan_offload.vport_id = vport_id or vsi_id assigned to the VF on
+ * virtchnl_vlan_setting.vport_id = vport_id or vsi_id assigned to the VF on
  * initialization.
  *
  * The reason that VLAN TPID(s) are not being used for the
@@ -952,11 +958,11 @@ VIRTCHNL_CHECK_STRUCT_LEN(40, virtchnl_vlan_filter_list_v2);
  * would populate the virthcnl_vlan_offload_structure in the following manner
  * and send the VIRTCHNL_OP_ENABLE_VLAN_STRIPPING_V2 message.
  *
- * virtchnl_vlan_offload.outer_ethertype_setting =
+ * virtchnl_vlan_setting.outer_ethertype_setting =
  *			VIRTHCNL_VLAN_ETHERTYPE_8100 |
  *			VIRTHCNL_VLAN_ETHERTYPE_88A8;
  *
- * virtchnl_vlan_offload.vport_id = vport_id or vsi_id assigned to the VF on
+ * virtchnl_vlan_setting.vport_id = vport_id or vsi_id assigned to the VF on
  * initialization.
  *
  * There is also the case where a PF and the underlying hardware can support
@@ -981,24 +987,61 @@ VIRTCHNL_CHECK_STRUCT_LEN(40, virtchnl_vlan_filter_list_v2);
  *			VIRTCHNL_ETHERTYPE_STRIPPING_MATCHES_INSERTION;
  *
  * In order to enable outer VLAN stripping for 0x88a8 VLANs, the VF would
- * populate the virtchnl_vlan_offload_structure in the following manner and send
+ * populate the virtchnl_vlan_setting structure in the following manner and send
  * the VIRTCHNL_OP_ENABLE_VLAN_STRIPPING_V2. Also, this will change the
  * ethertype for VLAN insertion if it's enabled. So, for completeness, a
  * VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2 with the same ethertype should be sent.
  *
- * virtchnl_vlan_offload.outer_ethertype_setting = VIRTHCNL_VLAN_ETHERTYPE_88A8;
+ * virtchnl_vlan_setting.outer_ethertype_setting = VIRTHCNL_VLAN_ETHERTYPE_88A8;
  *
- * virtchnl_vlan_offload.vport_id = vport_id or vsi_id assigned to the VF on
+ * virtchnl_vlan_setting.vport_id = vport_id or vsi_id assigned to the VF on
  * initialization.
+ *
+ * VIRTCHNL_OP_ENABLE_VLAN_FILTERING_V2
+ * VIRTCHNL_OP_DISABLE_VLAN_FILTERING_V2
+ *
+ * VF sends this message to enable or disable VLAN filtering. It also needs to
+ * specify an ethertype. The VF knows which VLAN ethertypes are allowed and
+ * whether or not it's allowed to enable/disable filtering via the
+ * VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS message. The VF needs to
+ * parse the virtchnl_vlan_caps.filtering fields to determine which, if any,
+ * filtering messages are allowed.
+ *
+ * For example, if the PF populates the virtchnl_vlan_caps.filtering in the
+ * following manner the VF will be allowed to enable/disable 0x8100 and 0x88a8
+ * outer VLAN filtering together. Note, that the VIRTCHNL_VLAN_ETHERTYPE_AND
+ * means that all filtering ethertypes will to be enabled and disabled together
+ * regardless of the request from the VF. This means that the underlying
+ * hardware only supports VLAN filtering for all VLAN the specified ethertypes
+ * or none of them.
+ *
+ * virtchnl_vlan_caps.filtering.filtering_support.outer =
+ *			VIRTCHNL_VLAN_TOGGLE |
+ *			VIRTCHNL_VLAN_ETHERTYPE_8100 |
+ *			VIRTHCNL_VLAN_ETHERTYPE_88A8 |
+ *			VIRTCHNL_VLAN_ETHERTYPE_9100 |
+ *			VIRTCHNL_VLAN_ETHERTYPE_AND;
+ *
+ * In order to enable outer VLAN filtering for 0x88a8 and 0x8100 VLANs (0x9100
+ * VLANs aren't supported by the VF driver), the VF would populate the
+ * virtchnl_vlan_setting structure in the following manner and send the
+ * VIRTCHNL_OP_ENABLE_VLAN_FILTERING_V2. The same message format would be used
+ * to disable outer VLAN filtering for 0x88a8 and 0x8100 VLANs, but the
+ * VIRTCHNL_OP_DISABLE_VLAN_FILTERING_V2 opcode is used.
+ *
+ * virtchnl_vlan_setting.outer_ethertype_setting =
+ *			VIRTCHNL_VLAN_ETHERTYPE_8100 |
+ *			VIRTCHNL_VLAN_ETHERTYPE_88A8;
+ *
  */
-struct virtchnl_vlan_offload {
+struct virtchnl_vlan_setting {
 	u32 outer_ethertype_setting;
 	u32 inner_ethertype_setting;
 	u16 vport_id;
 	u8 pad[6];
 };
 
-VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vlan_offload);
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vlan_setting);
 
 /* VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE
  * VF sends VSI id and flags.
@@ -2017,7 +2060,9 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 	case VIRTCHNL_OP_DISABLE_VLAN_STRIPPING_V2:
 	case VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2:
 	case VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2:
-		valid_len = sizeof(struct virtchnl_vlan_offload);
+	case VIRTCHNL_OP_ENABLE_VLAN_FILTERING_V2:
+	case VIRTCHNL_OP_DISABLE_VLAN_FILTERING_V2:
+		valid_len = sizeof(struct virtchnl_vlan_setting);
 		break;
 	case VIRTCHNL_OP_ENABLE_QUEUES_V2:
 	case VIRTCHNL_OP_DISABLE_QUEUES_V2:
