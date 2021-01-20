@@ -241,6 +241,9 @@ void rte_eth_iterator_cleanup(struct rte_dev_iterator *iter);
  * Not all statistics fields in struct rte_eth_stats are supported
  * by any type of network interface card (NIC). If any statistics
  * field is not supported, its value is 0.
+ * All byte-related statistics do not include Ethernet FCS regardless
+ * of whether these bytes have been delivered to the application
+ * (see DEV_RX_OFFLOAD_KEEP_CRC).
  */
 struct rte_eth_stats {
 	uint64_t ipackets;  /**< Total number of successfully received packets. */
