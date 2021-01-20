@@ -532,16 +532,16 @@ iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 	struct virtchnl_vlan_setting vlan_strip;
 	struct iavf_cmd_info args;
 	uint32_t stripping_caps;
-	uint32_t *vlan_setting;
+	uint32_t *ethertype;
 	int ret;
 
 	supported_caps = &vf->vlan_v2_caps.offloads.stripping_support;
 	if (supported_caps->outer) {
 		stripping_caps = supported_caps->outer;
-		vlan_setting = &vlan_strip.outer_ethertype_setting;
+		ethertype = &vlan_strip.outer_ethertype_setting;
 	} else {
 		stripping_caps = supported_caps->inner;
-		vlan_setting = &vlan_strip.inner_ethertype_setting;
+		ethertype = &vlan_strip.inner_ethertype_setting;
 	}
 
 	if (!(stripping_caps & VIRTCHNL_VLAN_ETHERTYPE_8100))
@@ -549,7 +549,7 @@ iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 
 	memset(&vlan_strip, 0, sizeof(vlan_strip));
 	vlan_strip.vport_id = vf->vsi_res->vsi_id;
-	*vlan_setting = VIRTCHNL_VLAN_ETHERTYPE_8100;
+	*ethertype = VIRTCHNL_VLAN_ETHERTYPE_8100;
 
 	args.ops = enable ? VIRTCHNL_OP_ENABLE_VLAN_STRIPPING_V2 :
 			    VIRTCHNL_OP_DISABLE_VLAN_STRIPPING_V2;
@@ -574,16 +574,16 @@ iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
 	struct virtchnl_vlan_setting vlan_insert;
 	struct iavf_cmd_info args;
 	uint32_t insertion_caps;
-	uint32_t *vlan_setting;
+	uint32_t *ethertype;
 	int ret;
 
 	supported_caps = &vf->vlan_v2_caps.offloads.insertion_support;
 	if (supported_caps->outer) {
 		insertion_caps = supported_caps->outer;
-		vlan_setting = &vlan_insert.outer_ethertype_setting;
+		ethertype = &vlan_insert.outer_ethertype_setting;
 	} else {
 		insertion_caps = supported_caps->inner;
-		vlan_setting = &vlan_insert.inner_ethertype_setting;
+		ethertype = &vlan_insert.inner_ethertype_setting;
 	}
 
 	if (!(insertion_caps & VIRTCHNL_VLAN_ETHERTYPE_8100))
@@ -591,7 +591,7 @@ iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
 
 	memset(&vlan_insert, 0, sizeof(vlan_insert));
 	vlan_insert.vport_id = vf->vsi_res->vsi_id;
-	*vlan_setting = VIRTCHNL_VLAN_ETHERTYPE_8100;
+	*ethertype = VIRTCHNL_VLAN_ETHERTYPE_8100;
 
 	args.ops = enable ? VIRTCHNL_OP_ENABLE_VLAN_INSERTION_V2 :
 			    VIRTCHNL_OP_DISABLE_VLAN_INSERTION_V2;
