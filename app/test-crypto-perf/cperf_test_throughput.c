@@ -299,8 +299,8 @@ cperf_throughput_test_runner(void *test_ctx)
 					"Failed Deq,Ops(Millions),Throughput(Gbps),"
 					"Cycles/Buf\n\n");
 
-			printf("%u;%u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
-					"%.3f;%.3f;%.3f\n",
+			printf("%u,%u,%u,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64","
+					"%.3f,%.3f,%.3f\n",
 					ctx->lcore_id,
 					ctx->options->test_buffer_size,
 					test_burst_size,

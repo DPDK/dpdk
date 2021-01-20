@@ -16,7 +16,7 @@
 #define PRETTY_HDR_FMT "%12s%12s%12s%12s%12s%12s%12s%12s%12s%12s\n\n"
 #define PRETTY_LINE_FMT "%12u%12u%12u%12u%12u%12u%12u%12.0f%12.0f%12.0f\n"
 #define CSV_HDR_FMT "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n"
-#define CSV_LINE_FMT "%10u;%10u;%u;%u;%u;%u;%u;%.3f;%.3f;%.3f\n"
+#define CSV_LINE_FMT "%10u,%10u,%u,%u,%u,%u,%u,%.3f,%.3f,%.3f\n"
 
 struct cperf_pmd_cyclecount_ctx {
 	uint8_t dev_id;
