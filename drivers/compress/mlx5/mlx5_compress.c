@@ -64,6 +64,7 @@ struct mlx5_compress_qp {
 	struct mlx5_pmd_mr opaque_mr;
 	struct rte_comp_op **ops;
 	struct mlx5_compress_priv *priv;
+	struct rte_compressdev_stats stats;
 };
 
 TAILQ_HEAD(mlx5_compress_privs, mlx5_compress_priv) mlx5_compress_priv_list =
@@ -361,14 +362,42 @@ mlx5_compress_dev_start(struct rte_compressdev *dev)
 	return 0;
 }
 
+static void
+mlx5_compress_stats_get(struct rte_compressdev *dev,
+		struct rte_compressdev_stats *stats)
+{
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct mlx5_compress_qp *qp = dev->data->queue_pairs[qp_id];
+
+		stats->enqueued_count += qp->stats.enqueued_count;
+		stats->dequeued_count += qp->stats.dequeued_count;
+		stats->enqueue_err_count += qp->stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->stats.dequeue_err_count;
+	}
+}
+
+static void
+mlx5_compress_stats_reset(struct rte_compressdev *dev)
+{
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct mlx5_compress_qp *qp = dev->data->queue_pairs[qp_id];
+
+		memset(&qp->stats, 0, sizeof(qp->stats));
+	}
+}
+
 static struct rte_compressdev_ops mlx5_compress_ops = {
 	.dev_configure		= mlx5_compress_dev_configure,
 	.dev_start		= mlx5_compress_dev_start,
 	.dev_stop		= mlx5_compress_dev_stop,
 	.dev_close		= mlx5_compress_dev_close,
 	.dev_infos_get		= mlx5_compress_dev_info_get,
-	.stats_get		= NULL,
-	.stats_reset		= NULL,
+	.stats_get		= mlx5_compress_stats_get,
+	.stats_reset		= mlx5_compress_stats_reset,
 	.queue_pair_setup	= mlx5_compress_qp_setup,
 	.queue_pair_release	= mlx5_compress_qp_release,
 	.private_xform_create	= mlx5_compress_xform_create,
@@ -452,6 +481,7 @@ mlx5_compress_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
 		qp->ops[idx] = op;
 		qp->pi++;
 	} while (--remain);
+	qp->stats.enqueued_count += nb_ops;
 	rte_io_wmb();
 	qp->sq.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->pi);
 	rte_wmb();
@@ -500,6 +530,7 @@ mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
 	mlx5_compress_dump_err_objs((volatile uint32_t *)cqe,
 				 (volatile uint32_t *)&wqes[idx],
 				 (volatile uint32_t *)&opaq[idx]);
+	qp->stats.dequeue_err_count++;
 }
 
 static uint16_t
@@ -570,6 +601,7 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 	if (likely(i != 0)) {
 		rte_io_wmb();
 		qp->cq.db_rec[0] = rte_cpu_to_be_32(qp->ci);
+		qp->stats.dequeued_count += i;
 	}
 	return i;
 }
