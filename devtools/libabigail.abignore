@@ -19,4 +19,4 @@
 ; Ignore fields inserted in cacheline boundary of rte_cryptodev
 [suppress_type]
         name = rte_cryptodev
-        has_data_member_inserted_between = {0, 1023}
+        has_data_member_inserted_between = {offset_after(attached), end}
