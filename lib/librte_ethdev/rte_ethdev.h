@@ -530,6 +530,7 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_PFCP               (1ULL << 30)
 #define ETH_RSS_PPPOE		   (1ULL << 31)
 #define ETH_RSS_ECPRI		   (1ULL << 32)
+#define ETH_RSS_MPLS		   (1ULL << 33)
 
 /*
  * We use the following macros to combine with above ETH_RSS_* for
@@ -761,7 +762,8 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 	ETH_RSS_PORT  | \
 	ETH_RSS_VXLAN | \
 	ETH_RSS_GENEVE | \
-	ETH_RSS_NVGRE)
+	ETH_RSS_NVGRE | \
+	ETH_RSS_MPLS)
 
 /*
  * Definitions used for redirection table entry size.

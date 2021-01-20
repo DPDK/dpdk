@@ -788,7 +788,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"receive buffers available.\n\n"
 
 			"port config all rss (all|default|ip|tcp|udp|sctp|"
-			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|ecpri|none|level-default|"
+			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|ecpri|mpls|none|level-default|"
 			"level-outer|level-inner|<flowtype_id>)\n"
 			"    Set the RSS mode.\n\n"
 
@@ -2220,6 +2220,8 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_GTPU;
 	else if (!strcmp(res->value, "ecpri"))
 		rss_conf.rss_hf = ETH_RSS_ECPRI;
+	else if (!strcmp(res->value, "mpls"))
+		rss_conf.rss_hf = ETH_RSS_MPLS;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
 	else if (!strcmp(res->value, "level-default")) {
@@ -2290,7 +2292,7 @@ cmdline_parse_inst_t cmd_config_rss = {
 	.data = NULL,
 	.help_str = "port config all rss "
 		"all|default|eth|vlan|ip|tcp|udp|sctp|ether|port|vxlan|geneve|"
-		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|none|level-default|"
+		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|ecpri|mpls|none|level-default|"
 		"level-outer|level-inner|<flowtype_id>",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
