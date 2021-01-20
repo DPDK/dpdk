@@ -2375,6 +2375,11 @@ flow_dv_validate_action_mark(struct rte_eth_dev *dev,
 	const struct rte_flow_action_mark *mark = action->conf;
 	int ret;
 
+	if (is_tunnel_offload_active(dev))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "no mark action "
+					  "if tunnel offload active");
 	/* Fall back if no extended metadata register support. */
 	if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY)
 		return mlx5_flow_validate_action_mark(action, action_flags,
