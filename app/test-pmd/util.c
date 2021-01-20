@@ -15,12 +15,23 @@
 
 #include "testpmd.h"
 
+#define MAX_STRING_LEN 8192
+
+#define MKDUMPSTR(buf, buf_size, cur_len, ...) \
+do { \
+	if (cur_len >= buf_size) \
+		break; \
+	cur_len += snprintf(buf + cur_len, buf_size - cur_len, __VA_ARGS__); \
+} while (0)
+
 static inline void
-print_ether_addr(const char *what, const struct rte_ether_addr *eth_addr)
+print_ether_addr(const char *what, const struct rte_ether_addr *eth_addr,
+		 char print_buf[], size_t buf_size, size_t *cur_len)
 {
 	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+
 	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
-	printf("%s%s", what, buf);
+	MKDUMPSTR(print_buf, buf_size, *cur_len, "%s%s", what, buf);
 }
 
 static inline bool
@@ -74,13 +85,15 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	uint32_t vx_vni;
 	const char *reason;
 	int dynf_index;
+	char print_buf[MAX_STRING_LEN];
+	size_t buf_size = MAX_STRING_LEN;
+	size_t cur_len = 0;
 
 	if (!nb_pkts)
 		return;
-	printf("port %u/queue %u: %s %u packets\n",
-		port_id, queue,
-	       is_rx ? "received" : "sent",
-	       (unsigned int) nb_pkts);
+	MKDUMPSTR(print_buf, buf_size, cur_len,
+		  "port %u/queue %u: %s %u packets\n", port_id, queue,
+		  is_rx ? "received" : "sent", (unsigned int) nb_pkts);
 	for (i = 0; i < nb_pkts; i++) {
 		int ret;
 		struct rte_flow_error error;
@@ -93,95 +106,128 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		is_encapsulation = RTE_ETH_IS_TUNNEL_PKT(packet_type);
 		ret = rte_flow_get_restore_info(port_id, mb, &info, &error);
 		if (!ret) {
-			printf("restore info:");
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  "restore info:");
 			if (info.flags & RTE_FLOW_RESTORE_INFO_TUNNEL) {
 				struct port_flow_tunnel *port_tunnel;
 
 				port_tunnel = port_flow_locate_tunnel
 					      (port_id, &info.tunnel);
-				printf(" - tunnel");
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " - tunnel");
 				if (port_tunnel)
-					printf(" #%u", port_tunnel->id);
+					MKDUMPSTR(print_buf, buf_size, cur_len,
+						  " #%u", port_tunnel->id);
 				else
-					printf(" %s", "-none-");
-				printf(" type %s",
-					port_flow_tunnel_type(&info.tunnel));
+					MKDUMPSTR(print_buf, buf_size, cur_len,
+						  " %s", "-none-");
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " type %s", port_flow_tunnel_type
+					  (&info.tunnel));
 			} else {
-				printf(" - no tunnel info");
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " - no tunnel info");
 			}
 			if (info.flags & RTE_FLOW_RESTORE_INFO_ENCAPSULATED)
-				printf(" - outer header present");
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " - outer header present");
 			else
-				printf(" - no outer header");
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " - no outer header");
 			if (info.flags & RTE_FLOW_RESTORE_INFO_GROUP_ID)
-				printf(" - miss group %u", info.group_id);
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " - miss group %u", info.group_id);
 			else
-				printf(" - no miss group");
-			printf("\n");
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " - no miss group");
+			MKDUMPSTR(print_buf, buf_size, cur_len, "\n");
 		}
-		print_ether_addr("  src=", &eth_hdr->s_addr);
-		print_ether_addr(" - dst=", &eth_hdr->d_addr);
-		printf(" - type=0x%04x - length=%u - nb_segs=%d",
-		       eth_type, (unsigned int) mb->pkt_len,
-		       (int)mb->nb_segs);
+		print_ether_addr("  src=", &eth_hdr->s_addr,
+				 print_buf, buf_size, &cur_len);
+		print_ether_addr(" - dst=", &eth_hdr->d_addr,
+				 print_buf, buf_size, &cur_len);
+		MKDUMPSTR(print_buf, buf_size, cur_len,
+			  " - type=0x%04x - length=%u - nb_segs=%d",
+			  eth_type, (unsigned int) mb->pkt_len,
+			  (int)mb->nb_segs);
 		ol_flags = mb->ol_flags;
 		if (ol_flags & PKT_RX_RSS_HASH) {
-			printf(" - RSS hash=0x%x", (unsigned int) mb->hash.rss);
-			printf(" - RSS queue=0x%x", (unsigned int) queue);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - RSS hash=0x%x",
+				  (unsigned int) mb->hash.rss);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - RSS queue=0x%x", (unsigned int) queue);
 		}
 		if (ol_flags & PKT_RX_FDIR) {
-			printf(" - FDIR matched ");
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - FDIR matched ");
 			if (ol_flags & PKT_RX_FDIR_ID)
-				printf("ID=0x%x",
-				       mb->hash.fdir.hi);
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  "ID=0x%x", mb->hash.fdir.hi);
 			else if (ol_flags & PKT_RX_FDIR_FLX)
-				printf("flex bytes=0x%08x %08x",
-				       mb->hash.fdir.hi, mb->hash.fdir.lo);
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  "flex bytes=0x%08x %08x",
+					  mb->hash.fdir.hi, mb->hash.fdir.lo);
 			else
-				printf("hash=0x%x ID=0x%x ",
-				       mb->hash.fdir.hash, mb->hash.fdir.id);
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  "hash=0x%x ID=0x%x ",
+					  mb->hash.fdir.hash, mb->hash.fdir.id);
 		}
 		if (is_timestamp_enabled(mb))
-			printf(" - timestamp %"PRIu64" ", get_timestamp(mb));
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - timestamp %"PRIu64" ", get_timestamp(mb));
 		if (ol_flags & PKT_RX_QINQ)
-			printf(" - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
-			       mb->vlan_tci, mb->vlan_tci_outer);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
+				  mb->vlan_tci, mb->vlan_tci_outer);
 		else if (ol_flags & PKT_RX_VLAN)
-			printf(" - VLAN tci=0x%x", mb->vlan_tci);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - VLAN tci=0x%x", mb->vlan_tci);
 		if (!is_rx && (ol_flags & PKT_TX_DYNF_METADATA))
-			printf(" - Tx metadata: 0x%x",
-			       *RTE_FLOW_DYNF_METADATA(mb));
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - Tx metadata: 0x%x",
+				  *RTE_FLOW_DYNF_METADATA(mb));
 		if (is_rx && (ol_flags & PKT_RX_DYNF_METADATA))
-			printf(" - Rx metadata: 0x%x",
-			       *RTE_FLOW_DYNF_METADATA(mb));
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - Rx metadata: 0x%x",
+				  *RTE_FLOW_DYNF_METADATA(mb));
 		for (dynf_index = 0; dynf_index < 64; dynf_index++) {
 			if (dynf_names[dynf_index][0] != '\0')
-				printf(" - dynf %s: %d",
-				       dynf_names[dynf_index],
-				       !!(ol_flags & (1UL << dynf_index)));
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " - dynf %s: %d",
+					  dynf_names[dynf_index],
+					  !!(ol_flags & (1UL << dynf_index)));
 		}
 		if (mb->packet_type) {
 			rte_get_ptype_name(mb->packet_type, buf, sizeof(buf));
-			printf(" - hw ptype: %s", buf);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - hw ptype: %s", buf);
 		}
 		sw_packet_type = rte_net_get_ptype(mb, &hdr_lens,
 					RTE_PTYPE_ALL_MASK);
 		rte_get_ptype_name(sw_packet_type, buf, sizeof(buf));
-		printf(" - sw ptype: %s", buf);
+		MKDUMPSTR(print_buf, buf_size, cur_len, " - sw ptype: %s", buf);
 		if (sw_packet_type & RTE_PTYPE_L2_MASK)
-			printf(" - l2_len=%d", hdr_lens.l2_len);
+			MKDUMPSTR(print_buf, buf_size, cur_len, " - l2_len=%d",
+				  hdr_lens.l2_len);
 		if (sw_packet_type & RTE_PTYPE_L3_MASK)
-			printf(" - l3_len=%d", hdr_lens.l3_len);
+			MKDUMPSTR(print_buf, buf_size, cur_len, " - l3_len=%d",
+				  hdr_lens.l3_len);
 		if (sw_packet_type & RTE_PTYPE_L4_MASK)
-			printf(" - l4_len=%d", hdr_lens.l4_len);
+			MKDUMPSTR(print_buf, buf_size, cur_len, " - l4_len=%d",
+				  hdr_lens.l4_len);
 		if (sw_packet_type & RTE_PTYPE_TUNNEL_MASK)
-			printf(" - tunnel_len=%d", hdr_lens.tunnel_len);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - tunnel_len=%d", hdr_lens.tunnel_len);
 		if (sw_packet_type & RTE_PTYPE_INNER_L2_MASK)
-			printf(" - inner_l2_len=%d", hdr_lens.inner_l2_len);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - inner_l2_len=%d", hdr_lens.inner_l2_len);
 		if (sw_packet_type & RTE_PTYPE_INNER_L3_MASK)
-			printf(" - inner_l3_len=%d", hdr_lens.inner_l3_len);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - inner_l3_len=%d", hdr_lens.inner_l3_len);
 		if (sw_packet_type & RTE_PTYPE_INNER_L4_MASK)
-			printf(" - inner_l4_len=%d", hdr_lens.inner_l4_len);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  " - inner_l4_len=%d", hdr_lens.inner_l4_len);
 		if (is_encapsulation) {
 			struct rte_ipv4_hdr *ipv4_hdr;
 			struct rte_ipv6_hdr *ipv6_hdr;
@@ -218,18 +264,27 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 				l2_len + l3_len + l4_len);
 				udp_port = RTE_BE_TO_CPU_16(udp_hdr->dst_port);
 				vx_vni = rte_be_to_cpu_32(vxlan_hdr->vx_vni);
-				printf(" - VXLAN packet: packet type =%d, "
-				       "Destination UDP port =%d, VNI = %d",
-				       packet_type, udp_port, vx_vni >> 8);
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					  " - VXLAN packet: packet type =%d, "
+					  "Destination UDP port =%d, VNI = %d",
+					  packet_type, udp_port, vx_vni >> 8);
 			}
 		}
-		printf(" - %s queue=0x%x", is_rx ? "Receive" : "Send",
-			(unsigned int) queue);
-		printf("\n");
+		MKDUMPSTR(print_buf, buf_size, cur_len,
+			  " - %s queue=0x%x", is_rx ? "Receive" : "Send",
+			  (unsigned int) queue);
+		MKDUMPSTR(print_buf, buf_size, cur_len, "\n");
 		rte_get_rx_ol_flag_list(mb->ol_flags, buf, sizeof(buf));
-		printf("  ol_flags: %s\n", buf);
+		MKDUMPSTR(print_buf, buf_size, cur_len,
+			  "  ol_flags: %s\n", buf);
 		if (rte_mbuf_check(mb, 1, &reason) < 0)
-			printf("INVALID mbuf: %s\n", reason);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				  "INVALID mbuf: %s\n", reason);
+		if (cur_len >= buf_size)
+			printf("%s ...\n", print_buf);
+		else
+			printf("%s", print_buf);
+		cur_len = 0;
 	}
 }
 
