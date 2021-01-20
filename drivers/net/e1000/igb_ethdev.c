@@ -3064,6 +3064,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	uint32_t rx_buf_size;
 	uint32_t max_high_water;
 	uint32_t rctl;
+	uint32_t ctrl;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if (fc_conf->autoneg != hw->mac.autoneg)
@@ -3101,6 +3102,39 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 			rctl &= ~E1000_RCTL_PMCF;
 
 		E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+
+		/*
+		 * check if we want to change flow control mode - driver doesn't have native
+		 * capability to do that, so we'll write the registers ourselves
+		 */
+		ctrl = E1000_READ_REG(hw, E1000_CTRL);
+
+		/*
+		 * set or clear E1000_CTRL_RFCE and E1000_CTRL_TFCE bits depending
+		 * on configuration
+		 */
+		switch (fc_conf->mode) {
+		case RTE_FC_NONE:
+			ctrl &= ~E1000_CTRL_RFCE & ~E1000_CTRL_TFCE;
+			break;
+		case RTE_FC_RX_PAUSE:
+			ctrl |= E1000_CTRL_RFCE;
+			ctrl &= ~E1000_CTRL_TFCE;
+			break;
+		case RTE_FC_TX_PAUSE:
+			ctrl |= E1000_CTRL_TFCE;
+			ctrl &= ~E1000_CTRL_RFCE;
+			break;
+		case RTE_FC_FULL:
+			ctrl |= E1000_CTRL_RFCE | E1000_CTRL_TFCE;
+			break;
+		default:
+			PMD_INIT_LOG(ERR, "invalid flow control mode");
+			return -EINVAL;
+		}
+
+		E1000_WRITE_REG(hw, E1000_CTRL, ctrl);
+
 		E1000_WRITE_FLUSH(hw);
 
 		return 0;
