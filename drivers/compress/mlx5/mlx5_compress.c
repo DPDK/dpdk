@@ -15,6 +15,8 @@
 #include <mlx5_common_pci.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_common_os.h>
+#include <mlx5_common_devx.h>
+#include <mlx5_common_mr.h>
 #include <mlx5_prm.h>
 
 #include "mlx5_compress_utils.h"
@@ -34,6 +36,20 @@ struct mlx5_compress_priv {
 	/* Minimum huffman block size supported by the device. */
 	struct ibv_pd *pd;
 	struct rte_compressdev_config dev_config;
+};
+
+struct mlx5_compress_qp {
+	uint16_t qp_id;
+	uint16_t entries_n;
+	uint16_t pi;
+	uint16_t ci;
+	volatile uint64_t *uar_addr;
+	int socket_id;
+	struct mlx5_devx_cq cq;
+	struct mlx5_devx_sq sq;
+	struct mlx5_pmd_mr opaque_mr;
+	struct rte_comp_op **ops;
+	struct mlx5_compress_priv *priv;
 };
 
 TAILQ_HEAD(mlx5_compress_privs, mlx5_compress_priv) mlx5_compress_priv_list =
@@ -77,6 +93,134 @@ mlx5_compress_dev_close(struct rte_compressdev *dev)
 	return 0;
 }
 
+static int
+mlx5_compress_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
+{
+	struct mlx5_compress_qp *qp = dev->data->queue_pairs[qp_id];
+
+	if (qp->sq.sq != NULL)
+		mlx5_devx_sq_destroy(&qp->sq);
+	if (qp->cq.cq != NULL)
+		mlx5_devx_cq_destroy(&qp->cq);
+	if (qp->opaque_mr.obj != NULL) {
+		void *opaq = qp->opaque_mr.addr;
+
+		mlx5_common_verbs_dereg_mr(&qp->opaque_mr);
+		if (opaq != NULL)
+			rte_free(opaq);
+	}
+	rte_free(qp);
+	dev->data->queue_pairs[qp_id] = NULL;
+	return 0;
+}
+
+static void
+mlx5_compress_init_sq(struct mlx5_compress_qp *qp)
+{
+	volatile struct mlx5_gga_wqe *restrict wqe =
+				    (volatile struct mlx5_gga_wqe *)qp->sq.wqes;
+	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+	const uint32_t sq_ds = rte_cpu_to_be_32((qp->sq.sq->id << 8) | 4u);
+	const uint32_t flags = RTE_BE32(MLX5_COMP_ALWAYS <<
+					MLX5_COMP_MODE_OFFSET);
+	const uint32_t opaq_lkey = rte_cpu_to_be_32(qp->opaque_mr.lkey);
+	int i;
+
+	/* All the next fields state should stay constant. */
+	for (i = 0; i < qp->entries_n; ++i, ++wqe) {
+		wqe->sq_ds = sq_ds;
+		wqe->flags = flags;
+		wqe->opaque_lkey = opaq_lkey;
+		wqe->opaque_vaddr = rte_cpu_to_be_64
+						((uint64_t)(uintptr_t)&opaq[i]);
+	}
+}
+
+static int
+mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
+		       uint32_t max_inflight_ops, int socket_id)
+{
+	struct mlx5_compress_priv *priv = dev->data->dev_private;
+	struct mlx5_compress_qp *qp;
+	struct mlx5_devx_cq_attr cq_attr = {
+		.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->uar),
+	};
+	struct mlx5_devx_create_sq_attr sq_attr = {
+		.user_index = qp_id,
+		.wq_attr = (struct mlx5_devx_wq_attr){
+			.pd = priv->pdn,
+			.uar_page = mlx5_os_get_devx_uar_page_id(priv->uar),
+		},
+	};
+	struct mlx5_devx_modify_sq_attr modify_attr = {
+		.state = MLX5_SQC_STATE_RDY,
+	};
+	uint32_t log_ops_n = rte_log2_u32(max_inflight_ops);
+	uint32_t alloc_size = sizeof(*qp);
+	void *opaq_buf;
+	int ret;
+
+	alloc_size = RTE_ALIGN(alloc_size, RTE_CACHE_LINE_SIZE);
+	alloc_size += sizeof(struct rte_comp_op *) * (1u << log_ops_n);
+	qp = rte_zmalloc_socket(__func__, alloc_size, RTE_CACHE_LINE_SIZE,
+				socket_id);
+	if (qp == NULL) {
+		DRV_LOG(ERR, "Failed to allocate qp memory.");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	dev->data->queue_pairs[qp_id] = qp;
+	opaq_buf = rte_calloc(__func__, 1u << log_ops_n,
+			      sizeof(struct mlx5_gga_compress_opaque),
+			      sizeof(struct mlx5_gga_compress_opaque));
+	if (opaq_buf == NULL) {
+		DRV_LOG(ERR, "Failed to allocate opaque memory.");
+		rte_errno = ENOMEM;
+		goto err;
+	}
+	qp->entries_n = 1 << log_ops_n;
+	qp->socket_id = socket_id;
+	qp->qp_id = qp_id;
+	qp->priv = priv;
+	qp->ops = (struct rte_comp_op **)RTE_ALIGN((uintptr_t)(qp + 1),
+						   RTE_CACHE_LINE_SIZE);
+	qp->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
+	MLX5_ASSERT(qp->uar_addr);
+	if (mlx5_common_verbs_reg_mr(priv->pd, opaq_buf, qp->entries_n *
+					sizeof(struct mlx5_gga_compress_opaque),
+							 &qp->opaque_mr) != 0) {
+		rte_free(opaq_buf);
+		DRV_LOG(ERR, "Failed to register opaque MR.");
+		rte_errno = ENOMEM;
+		goto err;
+	}
+	ret = mlx5_devx_cq_create(priv->ctx, &qp->cq, log_ops_n, &cq_attr,
+				  socket_id);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to create CQ.");
+		goto err;
+	}
+	sq_attr.cqn = qp->cq.cq->id;
+	ret = mlx5_devx_sq_create(priv->ctx, &qp->sq, log_ops_n, &sq_attr,
+				  socket_id);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Failed to create SQ.");
+		goto err;
+	}
+	mlx5_compress_init_sq(qp);
+	ret = mlx5_devx_cmd_modify_sq(qp->sq.sq, &modify_attr);
+	if (ret != 0) {
+		DRV_LOG(ERR, "Can't change SQ state to ready.");
+		goto err;
+	}
+	DRV_LOG(INFO, "QP %u: SQN=0x%X CQN=0x%X entries num = %u\n",
+		(uint32_t)qp_id, qp->sq.sq->id, qp->cq.cq->id, qp->entries_n);
+	return 0;
+err:
+	mlx5_compress_qp_release(dev, qp_id);
+	return -1;
+}
+
 static struct rte_compressdev_ops mlx5_compress_ops = {
 	.dev_configure		= mlx5_compress_dev_configure,
 	.dev_start		= NULL,
@@ -85,8 +229,8 @@ static struct rte_compressdev_ops mlx5_compress_ops = {
 	.dev_infos_get		= mlx5_compress_dev_info_get,
 	.stats_get		= NULL,
 	.stats_reset		= NULL,
-	.queue_pair_setup	= NULL,
-	.queue_pair_release	= NULL,
+	.queue_pair_setup	= mlx5_compress_qp_setup,
+	.queue_pair_release	= mlx5_compress_qp_release,
 	.private_xform_create	= NULL,
 	.private_xform_free	= NULL,
 	.stream_create		= NULL,
