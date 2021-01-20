@@ -412,16 +412,53 @@ struct mlx5_cqe_ts {
 	uint8_t op_own;
 };
 
+/* GGA */
 /* MMO metadata segment */
 
-#define	MLX5_OPCODE_MMO	0x2f
-#define	MLX5_OPC_MOD_MMO_REGEX 0x4
+#define	MLX5_OPCODE_MMO	0x2fu
+#define	MLX5_OPC_MOD_MMO_REGEX 0x4u
+#define	MLX5_OPC_MOD_MMO_COMP 0x2u
+#define	MLX5_OPC_MOD_MMO_DECOMP 0x3u
+#define	MLX5_OPC_MOD_MMO_DMA 0x1u
+
+#define WQE_GGA_COMP_WIN_SIZE_OFFSET 12u
+#define WQE_GGA_COMP_BLOCK_SIZE_OFFSET 16u
+#define WQE_GGA_COMP_DYNAMIC_SIZE_OFFSET 20u
+#define MLX5_GGA_COMP_WIN_SIZE_UNITS 1024u
+#define MLX5_GGA_COMP_WIN_SIZE_MAX (32u * MLX5_GGA_COMP_WIN_SIZE_UNITS)
+#define MLX5_GGA_COMP_LOG_BLOCK_SIZE_MAX 15u
+#define MLX5_GGA_COMP_LOG_DYNAMIC_SIZE_MAX 15u
+#define MLX5_GGA_COMP_LOG_DYNAMIC_SIZE_MIN 0u
 
 struct mlx5_wqe_metadata_seg {
 	uint32_t mmo_control_31_0; /* mmo_control_63_32 is in ctrl_seg.imm */
 	uint32_t lkey;
 	uint64_t addr;
 };
+
+struct mlx5_gga_wqe {
+	uint32_t opcode;
+	uint32_t sq_ds;
+	uint32_t flags;
+	uint32_t gga_ctrl1;  /* ws 12-15, bs 16-19, dyns 20-23. */
+	uint32_t gga_ctrl2;
+	uint32_t opaque_lkey;
+	uint64_t opaque_vaddr;
+	struct mlx5_wqe_dseg gather;
+	struct mlx5_wqe_dseg scatter;
+} __rte_packed;
+
+struct mlx5_gga_compress_opaque {
+	uint32_t syndrom;
+	uint32_t reserved0;
+	uint32_t scattered_length;
+	uint32_t gathered_length;
+	uint64_t scatter_crc;
+	uint64_t gather_crc;
+	uint32_t crc32;
+	uint32_t adler32;
+	uint8_t reserved1[216];
+} __rte_packed;
 
 struct mlx5_ifc_regexp_mmo_control_bits {
 	uint8_t reserved_at_31[0x2];
