@@ -130,6 +130,13 @@ struct mlx5_hca_attr {
 	uint32_t log_max_srq;
 	uint32_t log_max_srq_sz;
 	uint32_t rss_ind_tbl_cap;
+	uint32_t mmo_dma_en:1;
+	uint32_t mmo_compress_en:1;
+	uint32_t mmo_decompress_en:1;
+	uint32_t compress_min_block_size:4;
+	uint32_t log_max_mmo_dma:5;
+	uint32_t log_max_mmo_compress:5;
+	uint32_t log_max_mmo_decompress:5;
 };
 
 struct mlx5_devx_wq_attr {

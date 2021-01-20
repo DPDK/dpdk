@@ -1127,7 +1127,15 @@ enum {
 struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_0[0x30];
 	u8 vhca_id[0x10];
-	u8 reserved_at_40[0x40];
+	u8 reserved_at_40[0x20];
+	u8 reserved_at_60[0x3];
+	u8 log_regexp_scatter_gather_size[0x5];
+	u8 reserved_at_68[0x3];
+	u8 log_dma_mmo_size[0x5];
+	u8 reserved_at_70[0x3];
+	u8 log_compress_mmo_size[0x5];
+	u8 reserved_at_78[0x3];
+	u8 log_decompress_mmo_size[0x5];
 	u8 log_max_srq_sz[0x8];
 	u8 log_max_qp_sz[0x8];
 	u8 reserved_at_90[0x9];
@@ -1175,7 +1183,13 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 log_max_ra_res_dc[0x6];
 	u8 reserved_at_140[0xa];
 	u8 log_max_ra_req_qp[0x6];
-	u8 reserved_at_150[0xa];
+	u8 rtr2rts_qp_counters_set_id[0x1];
+	u8 rts2rts_udp_sport[0x1];
+	u8 rts2rts_lag_tx_port_affinity[0x1];
+	u8 dma_mmo[0x1];
+	u8 compress_min_block_size[0x4];
+	u8 compress[0x1];
+	u8 decompress[0x1];
 	u8 log_max_ra_res_qp[0x6];
 	u8 end_pad[0x1];
 	u8 cc_query_allowed[0x1];

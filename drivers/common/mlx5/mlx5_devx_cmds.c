@@ -732,6 +732,16 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->log_max_pd = MLX5_GET(cmd_hca_cap, hcattr, log_max_pd);
 	attr->log_max_srq = MLX5_GET(cmd_hca_cap, hcattr, log_max_srq);
 	attr->log_max_srq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_srq_sz);
+	attr->mmo_dma_en = MLX5_GET(cmd_hca_cap, hcattr, dma_mmo);
+	attr->mmo_compress_en = MLX5_GET(cmd_hca_cap, hcattr, compress);
+	attr->mmo_decompress_en = MLX5_GET(cmd_hca_cap, hcattr, decompress);
+	attr->compress_min_block_size = MLX5_GET(cmd_hca_cap, hcattr,
+						 compress_min_block_size);
+	attr->log_max_mmo_dma = MLX5_GET(cmd_hca_cap, hcattr, log_dma_mmo_size);
+	attr->log_max_mmo_compress = MLX5_GET(cmd_hca_cap, hcattr,
+					      log_compress_mmo_size);
+	attr->log_max_mmo_decompress = MLX5_GET(cmd_hca_cap, hcattr,
+						log_decompress_mmo_size);
 	if (attr->qos.sup) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
 			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
