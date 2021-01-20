@@ -49,6 +49,10 @@ struct mlx5_compress_priv {
 	LIST_HEAD(xform_list, mlx5_compress_xform) xform_list;
 	rte_spinlock_t xform_sl;
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
+	volatile uint64_t *uar_addr;
+#ifndef RTE_ARCH_64
+	rte_spinlock_t uar32_sl;
+#endif /* RTE_ARCH_64 */
 };
 
 struct mlx5_compress_qp {
@@ -56,7 +60,6 @@ struct mlx5_compress_qp {
 	uint16_t entries_n;
 	uint16_t pi;
 	uint16_t ci;
-	volatile uint64_t *uar_addr;
 	struct mlx5_mr_ctrl mr_ctrl;
 	int socket_id;
 	struct mlx5_devx_cq cq;
@@ -207,8 +210,6 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	qp->priv = priv;
 	qp->ops = (struct rte_comp_op **)RTE_ALIGN((uintptr_t)(qp + 1),
 						   RTE_CACHE_LINE_SIZE);
-	qp->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
-	MLX5_ASSERT(qp->uar_addr);
 	if (mlx5_common_verbs_reg_mr(priv->pd, opaq_buf, qp->entries_n *
 					sizeof(struct mlx5_gga_compress_opaque),
 							 &qp->opaque_mr) != 0) {
@@ -422,6 +423,24 @@ mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
 	return dseg->lkey;
 }
 
+/*
+ * Provide safe 64bit store operation to mlx5 UAR region for both 32bit and
+ * 64bit architectures.
+ */
+static __rte_always_inline void
+mlx5_compress_uar_write(uint64_t val, struct mlx5_compress_priv *priv)
+{
+#ifdef RTE_ARCH_64
+	*priv->uar_addr = val;
+#else /* !RTE_ARCH_64 */
+	rte_spinlock_lock(&priv->uar32_sl);
+	*(volatile uint32_t *)priv->uar_addr = val;
+	rte_io_wmb();
+	*((volatile uint32_t *)priv->uar_addr + 1) = val >> 32;
+	rte_spinlock_unlock(&priv->uar32_sl);
+#endif
+}
+
 static uint16_t
 mlx5_compress_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
 			    uint16_t nb_ops)
@@ -485,7 +504,7 @@ mlx5_compress_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
 	rte_io_wmb();
 	qp->sq.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->pi);
 	rte_wmb();
-	*qp->uar_addr = *(volatile uint64_t *)wqe; /* Assume 64 bit ARCH.*/
+	mlx5_compress_uar_write(*(volatile uint64_t *)wqe, qp->priv);
 	rte_wmb();
 	return nb_ops;
 }
@@ -691,6 +710,11 @@ mlx5_compress_hw_global_prepare(struct mlx5_compress_priv *priv)
 		DRV_LOG(ERR, "Failed to allocate UAR.");
 		return -1;
 	}
+	priv->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
+	MLX5_ASSERT(qp->uar_addr);
+#ifndef RTE_ARCH_64
+	rte_spinlock_init(&priv->uar32_sl);
+#endif /* RTE_ARCH_64 */
 	return 0;
 }
 
