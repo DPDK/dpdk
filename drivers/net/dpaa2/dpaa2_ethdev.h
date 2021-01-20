@@ -65,7 +65,8 @@
 	ETH_RSS_IP | \
 	ETH_RSS_UDP | \
 	ETH_RSS_TCP | \
-	ETH_RSS_SCTP)
+	ETH_RSS_SCTP | \
+	ETH_RSS_MPLS)
 
 /* LX2 FRC Parsed values (Little Endian) */
 #define DPAA2_PKT_TYPE_ETHER		0x0060

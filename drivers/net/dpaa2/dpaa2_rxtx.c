@@ -166,6 +166,10 @@ dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 		goto parse_done;
 	}
 
+	if (BIT_ISSET_AT_POS(annotation->word3, L2_MPLS_1_PRESENT |
+				L2_MPLS_N_PRESENT))
+		pkt_type |= RTE_PTYPE_L2_ETHER_MPLS;
+
 	if (BIT_ISSET_AT_POS(annotation->word4, L3_IPV4_1_PRESENT |
 			     L3_IPV4_N_PRESENT)) {
 		pkt_type |= RTE_PTYPE_L3_IPV4;

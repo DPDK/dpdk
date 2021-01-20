@@ -343,6 +343,11 @@
 /***************************  GTP fields  ************************************/
 #define NH_FLD_GTP_TEID                       (1)
 
+/***************************  MPLS fields  ************************************/
+#define NH_FLD_MPLS_MPLSL_1			(1)
+#define NH_FLD_MPLS_MPLSL_2			(NH_FLD_MPLS_MPLSL_1 << 1)
+#define NH_FLD_MPLS_MPLSL_N			(NH_FLD_MPLS_MPLSL_1 << 2)
+
 /* Protocol options */
 
 /* Ethernet options */

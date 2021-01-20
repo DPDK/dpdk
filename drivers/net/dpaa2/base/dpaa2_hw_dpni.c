@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2021 NXP
  *
  */
 
@@ -194,9 +194,11 @@ dpaa2_distset_to_dpkg_profile_cfg(
 		uint64_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg)
 {
-	uint32_t loop = 0, i = 0, dist_field = 0;
+	uint32_t loop = 0, i = 0;
+	uint64_t dist_field = 0;
 	int l2_configured = 0, l3_configured = 0;
 	int l4_configured = 0, sctp_configured = 0;
+	int mpls_configured = 0;
 
 	memset(kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
 	while (req_dist_set) {
@@ -219,6 +221,43 @@ dpaa2_distset_to_dpkg_profile_cfg(
 					DPKG_FULL_FIELD;
 				i++;
 			break;
+
+			case ETH_RSS_MPLS:
+
+				if (mpls_configured)
+					break;
+				mpls_configured = 1;
+
+				kg_cfg->extracts[i].extract.from_hdr.prot =
+					NET_PROT_MPLS;
+				kg_cfg->extracts[i].extract.from_hdr.field =
+					NH_FLD_MPLS_MPLSL_1;
+				kg_cfg->extracts[i].type =
+					DPKG_EXTRACT_FROM_HDR;
+				kg_cfg->extracts[i].extract.from_hdr.type =
+					DPKG_FULL_FIELD;
+				i++;
+
+				kg_cfg->extracts[i].extract.from_hdr.prot =
+					NET_PROT_MPLS;
+				kg_cfg->extracts[i].extract.from_hdr.field =
+					NH_FLD_MPLS_MPLSL_2;
+				kg_cfg->extracts[i].type =
+					DPKG_EXTRACT_FROM_HDR;
+				kg_cfg->extracts[i].extract.from_hdr.type =
+					DPKG_FULL_FIELD;
+				i++;
+
+				kg_cfg->extracts[i].extract.from_hdr.prot =
+					NET_PROT_MPLS;
+				kg_cfg->extracts[i].extract.from_hdr.field =
+					NH_FLD_MPLS_MPLSL_N;
+				kg_cfg->extracts[i].type =
+					DPKG_EXTRACT_FROM_HDR;
+				kg_cfg->extracts[i].extract.from_hdr.type =
+					DPKG_FULL_FIELD;
+				i++;
+				break;
 
 			case ETH_RSS_IPV4:
 			case ETH_RSS_FRAG_IPV4:
@@ -326,7 +365,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 
 			default:
 				DPAA2_PMD_WARN(
-					     "Unsupported flow dist option %x",
+				      "unsupported flow dist option 0x%" PRIx64,
 					     dist_field);
 				return -EINVAL;
 			}
