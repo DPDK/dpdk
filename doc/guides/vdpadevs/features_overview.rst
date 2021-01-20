@@ -99,14 +99,11 @@ proto pagefault
 queue statistics
   Support virtio queue statistics query.
 
-BSD nic_uio
-  BSD ``nic_uio`` module supported.
+FreeBSD
+  Support FreeBSD.
 
-Linux VFIO
-  Works with ``vfio-pci`` kernel module.
-
-Other kdrv
-  Kernel module other than above ones supported.
+Linux
+  Support Linux.
 
 ARMv7
   Support armv7 architecture.

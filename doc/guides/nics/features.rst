@@ -785,38 +785,20 @@ Multiprocess aware
 Driver can be used for primary-secondary process model.
 
 
-.. _nic_features_bsd_nic_uio:
+.. _nic_features_freebsd:
 
-BSD nic_uio
------------
+FreeBSD
+-------
 
-BSD ``nic_uio`` module supported.
+Supports running on FreeBSD.
 
 
-.. _nic_features_linux_uio:
+.. _nic_features_linux:
 
-Linux UIO
----------
+Linux
+-----
 
-Works with ``igb_uio`` kernel module.
-
-* **[provides] RTE_PMD_REGISTER_KMOD_DEP**: ``igb_uio``.
-
-.. _nic_features_linux_vfio:
-
-Linux VFIO
-----------
-
-Works with ``vfio-pci`` kernel module.
-
-* **[provides] RTE_PMD_REGISTER_KMOD_DEP**: ``vfio-pci``.
-
-.. _nic_features_other_kdrv:
-
-Other kdrv
-----------
-
-Kernel module other than above ones supported.
+Supports running on Linux.
 
 
 .. _nic_features_windows:
@@ -824,7 +806,7 @@ Kernel module other than above ones supported.
 Windows
 -------
 
-Support Windows.
+Supports running on Windows.
 
 
 .. _nic_features_armv7:
