@@ -1128,6 +1128,10 @@ F: drivers/compress/isal/
 F: doc/guides/compressdevs/isal.rst
 F: doc/guides/compressdevs/features/isal.ini
 
+Mellanox mlx5
+M: Matan Azrad <matan@nvidia.com>
+F: drivers/compress/mlx5/
+
 ZLIB
 M: Sunila Sahu <ssahu@marvell.com>
 F: drivers/compress/zlib/

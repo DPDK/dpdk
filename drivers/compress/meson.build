@@ -5,6 +5,6 @@ if is_windows
 	subdir_done()
 endif
 
-drivers = ['isal', 'octeontx', 'zlib']
+drivers = ['isal', 'mlx5', 'octeontx', 'zlib']
 
 std_deps = ['compressdev'] # compressdev pulls in all other needed deps

@@ -28,14 +28,21 @@ static const struct {
 	{ .name = "vdpa", .driver_class = MLX5_CLASS_VDPA },
 	{ .name = "net", .driver_class = MLX5_CLASS_NET },
 	{ .name = "regex", .driver_class = MLX5_CLASS_REGEX },
+	{ .name = "compress", .driver_class = MLX5_CLASS_COMPRESS },
 };
 
 static const unsigned int mlx5_class_combinations[] = {
 	MLX5_CLASS_NET,
 	MLX5_CLASS_VDPA,
 	MLX5_CLASS_REGEX,
+	MLX5_CLASS_COMPRESS,
 	MLX5_CLASS_NET | MLX5_CLASS_REGEX,
 	MLX5_CLASS_VDPA | MLX5_CLASS_REGEX,
+	MLX5_CLASS_NET | MLX5_CLASS_COMPRESS,
+	MLX5_CLASS_VDPA | MLX5_CLASS_COMPRESS,
+	MLX5_CLASS_REGEX | MLX5_CLASS_COMPRESS,
+	MLX5_CLASS_NET | MLX5_CLASS_REGEX | MLX5_CLASS_COMPRESS,
+	MLX5_CLASS_VDPA | MLX5_CLASS_REGEX | MLX5_CLASS_COMPRESS,
 	/* New class combination should be added here. */
 };
 

@@ -9,26 +9,26 @@
  * @file
  *
  * RTE Mellanox PCI Driver Interface
- * Mellanox ConnectX PCI device supports multiple class (net/vdpa/regex)
- * devices. This layer enables creating such multiple class of devices on a
- * single PCI device by allowing to bind multiple class specific device
+ * Mellanox ConnectX PCI device supports multiple class: net,vdpa,regex and
+ * compress devices. This layer enables creating such multiple class of devices
+ * on a single PCI device by allowing to bind multiple class specific device
  * driver to attach to mlx5_pci driver.
  *
- * -----------    ------------    -------------
- * |   mlx5  |    |   mlx5   |    |   mlx5    |
- * | net pmd |    | vdpa pmd |    | regex pmd |
- * -----------    ------------    -------------
- *      \              |                 /
- *       \             |                /
- *        \       --------------       /
- *         \______|   mlx5     |_____ /
- *                | pci common |
- *                --------------
- *                     |
- *                 -----------
- *                 |   mlx5  |
- *                 | pci dev |
- *                 -----------
+ * -----------    ------------    -------------    ----------------
+ * |   mlx5  |    |   mlx5   |    |   mlx5    |    |     mlx5     |
+ * | net pmd |    | vdpa pmd |    | regex pmd |    | compress pmd |
+ * -----------    ------------    -------------    ----------------
+ *      \              \                    /              /
+ *       \              \                  /              /
+ *        \              \_--------------_/              /
+ *         \_______________|   mlx5     |_______________/
+ *                         | pci common |
+ *                         --------------
+ *                               |
+ *                           -----------
+ *                           |   mlx5  |
+ *                           | pci dev |
+ *                           -----------
  *
  * - mlx5 pci driver binds to mlx5 PCI devices defined by PCI
  *   ID table of all related mlx5 PCI devices.
