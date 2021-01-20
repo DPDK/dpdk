@@ -310,7 +310,7 @@ cperf_latency_test_runner(void *arg)
 		if (ctx->options->csv) {
 			if (rte_atomic16_test_and_set(&display_once))
 				printf("\n# lcore, Buffer Size, Burst Size, Pakt Seq #, "
-						"Packet Size, cycles, time (us)");
+						"cycles, time (us)");
 
 			for (i = 0; i < ctx->options->total_ops; i++) {
 
