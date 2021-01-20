@@ -558,61 +558,60 @@ enqueue_one_chain_job(struct qat_sym_session *ctx,
 	case ICP_QAT_HW_AUTH_ALGO_KASUMI_F9:
 	case ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3:
 		auth_param->u1.aad_adr = auth_iv->iova;
-
-		if (unlikely(n_data_vecs > 1)) {
-			int auth_end_get = 0, i = n_data_vecs - 1;
-			struct rte_crypto_vec *cvec = &data[0];
-			uint32_t len;
-
-			len = data_len - ofs.ofs.auth.tail;
-
-			while (i >= 0 && len > 0) {
-				if (cvec->len >= len) {
-					auth_iova_end = cvec->iova +
-						(cvec->len - len);
-					len = 0;
-					auth_end_get = 1;
-					break;
-				}
-				len -= cvec->len;
-				i--;
-				cvec++;
-			}
-
-			if (unlikely(auth_end_get == 0))
-				return -1;
-		} else
-			auth_iova_end = data[0].iova + auth_param->auth_off +
-				auth_param->auth_len;
-
-		/* Then check if digest-encrypted conditions are met */
-		if ((auth_param->auth_off + auth_param->auth_len <
-			cipher_param->cipher_offset +
-			cipher_param->cipher_length) &&
-			(digest->iova == auth_iova_end)) {
-			/* Handle partial digest encryption */
-			if (cipher_param->cipher_offset +
-					cipher_param->cipher_length <
-					auth_param->auth_off +
-					auth_param->auth_len +
-					ctx->digest_length)
-				req->comn_mid.dst_length =
-					req->comn_mid.src_length =
-					auth_param->auth_off +
-					auth_param->auth_len +
-					ctx->digest_length;
-			struct icp_qat_fw_comn_req_hdr *header =
-				&req->comn_hdr;
-			ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
-				header->serv_specif_flags,
-				ICP_QAT_FW_LA_DIGEST_IN_BUFFER);
-		}
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
 		break;
 	default:
 		break;
+	}
+
+	if (unlikely(n_data_vecs > 1)) {
+		int auth_end_get = 0, i = n_data_vecs - 1;
+		struct rte_crypto_vec *cvec = &data[0];
+		uint32_t len;
+
+		len = data_len - ofs.ofs.auth.tail;
+
+		while (i >= 0 && len > 0) {
+			if (cvec->len >= len) {
+				auth_iova_end = cvec->iova + len;
+				len = 0;
+				auth_end_get = 1;
+				break;
+			}
+			len -= cvec->len;
+			i--;
+			cvec++;
+		}
+
+		if (unlikely(auth_end_get == 0))
+			return -1;
+	} else
+		auth_iova_end = data[0].iova + auth_param->auth_off +
+			auth_param->auth_len;
+
+	/* Then check if digest-encrypted conditions are met */
+	if ((auth_param->auth_off + auth_param->auth_len <
+		cipher_param->cipher_offset +
+		cipher_param->cipher_length) &&
+		(digest->iova == auth_iova_end)) {
+		/* Handle partial digest encryption */
+		if (cipher_param->cipher_offset +
+				cipher_param->cipher_length <
+				auth_param->auth_off +
+				auth_param->auth_len +
+				ctx->digest_length)
+			req->comn_mid.dst_length =
+				req->comn_mid.src_length =
+				auth_param->auth_off +
+				auth_param->auth_len +
+				ctx->digest_length;
+		struct icp_qat_fw_comn_req_hdr *header =
+			&req->comn_hdr;
+		ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
+			header->serv_specif_flags,
+			ICP_QAT_FW_LA_DIGEST_IN_BUFFER);
 	}
 
 	return 0;
