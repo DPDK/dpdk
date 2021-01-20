@@ -348,10 +348,23 @@ err:
 	return -ENOTSUP;
 }
 
+static void
+mlx5_compress_dev_stop(struct rte_compressdev *dev)
+{
+	RTE_SET_USED(dev);
+}
+
+static int
+mlx5_compress_dev_start(struct rte_compressdev *dev)
+{
+	RTE_SET_USED(dev);
+	return 0;
+}
+
 static struct rte_compressdev_ops mlx5_compress_ops = {
 	.dev_configure		= mlx5_compress_dev_configure,
-	.dev_start		= NULL,
-	.dev_stop		= NULL,
+	.dev_start		= mlx5_compress_dev_start,
+	.dev_stop		= mlx5_compress_dev_stop,
 	.dev_close		= mlx5_compress_dev_close,
 	.dev_infos_get		= mlx5_compress_dev_info_get,
 	.stats_get		= NULL,
@@ -363,6 +376,203 @@ static struct rte_compressdev_ops mlx5_compress_ops = {
 	.stream_create		= NULL,
 	.stream_free		= NULL,
 };
+
+static __rte_always_inline uint32_t
+mlx5_compress_dseg_set(struct mlx5_compress_qp *qp,
+		       volatile struct mlx5_wqe_dseg *restrict dseg,
+		       struct rte_mbuf *restrict mbuf,
+		       uint32_t offset, uint32_t len)
+{
+	uintptr_t addr = rte_pktmbuf_mtod_offset(mbuf, uintptr_t, offset);
+
+	dseg->bcount = rte_cpu_to_be_32(len);
+	dseg->lkey = mlx5_mr_addr2mr_bh(qp->priv->pd, 0, &qp->priv->mr_scache,
+					&qp->mr_ctrl, addr,
+					!!(mbuf->ol_flags & EXT_ATTACHED_MBUF));
+	dseg->pbuf = rte_cpu_to_be_64(addr);
+	return dseg->lkey;
+}
+
+static uint16_t
+mlx5_compress_enqueue_burst(void *queue_pair, struct rte_comp_op **ops,
+			    uint16_t nb_ops)
+{
+	struct mlx5_compress_qp *qp = queue_pair;
+	volatile struct mlx5_gga_wqe *wqes = (volatile struct mlx5_gga_wqe *)
+							      qp->sq.wqes, *wqe;
+	struct mlx5_compress_xform *xform;
+	struct rte_comp_op *op;
+	uint16_t mask = qp->entries_n - 1;
+	uint16_t remain = qp->entries_n - (qp->pi - qp->ci);
+	uint16_t idx;
+	bool invalid;
+
+	if (remain < nb_ops)
+		nb_ops = remain;
+	else
+		remain = nb_ops;
+	if (unlikely(remain == 0))
+		return 0;
+	do {
+		idx = qp->pi & mask;
+		wqe = &wqes[idx];
+		rte_prefetch0(&wqes[(qp->pi + 1) & mask]);
+		op = *ops++;
+		xform = op->private_xform;
+		/*
+		 * Check operation arguments and error cases:
+		 *   - Operation type must be state-less.
+		 *   - Compress operation flush flag must be FULL or FINAL.
+		 *   - Source and destination buffers must be mapped internally.
+		 */
+		invalid = op->op_type != RTE_COMP_OP_STATELESS ||
+					    (xform->type == RTE_COMP_COMPRESS &&
+					  op->flush_flag < RTE_COMP_FLUSH_FULL);
+		if (unlikely(invalid ||
+			     (mlx5_compress_dseg_set(qp, &wqe->gather,
+						     op->m_src,
+						     op->src.offset,
+						     op->src.length) ==
+								  UINT32_MAX) ||
+			     (mlx5_compress_dseg_set(qp, &wqe->scatter,
+						op->m_dst,
+						op->dst.offset,
+						rte_pktmbuf_pkt_len(op->m_dst) -
+							      op->dst.offset) ==
+								 UINT32_MAX))) {
+			op->status = invalid ? RTE_COMP_OP_STATUS_INVALID_ARGS :
+						       RTE_COMP_OP_STATUS_ERROR;
+			nb_ops -= remain;
+			if (unlikely(nb_ops == 0))
+				return 0;
+			break;
+		}
+		wqe->gga_ctrl1 = xform->gga_ctrl1;
+		wqe->opcode = rte_cpu_to_be_32(xform->opcode + (qp->pi << 8));
+		qp->ops[idx] = op;
+		qp->pi++;
+	} while (--remain);
+	rte_io_wmb();
+	qp->sq.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(qp->pi);
+	rte_wmb();
+	*qp->uar_addr = *(volatile uint64_t *)wqe; /* Assume 64 bit ARCH.*/
+	rte_wmb();
+	return nb_ops;
+}
+
+static void
+mlx5_compress_dump_err_objs(volatile uint32_t *cqe, volatile uint32_t *wqe,
+			     volatile uint32_t *opaq)
+{
+	size_t i;
+
+	DRV_LOG(ERR, "Error cqe:");
+	for (i = 0; i < sizeof(struct mlx5_err_cqe) >> 2; i += 4)
+		DRV_LOG(ERR, "%08X %08X %08X %08X", cqe[i], cqe[i + 1],
+			cqe[i + 2], cqe[i + 3]);
+	DRV_LOG(ERR, "\nError wqe:");
+	for (i = 0; i < sizeof(struct mlx5_gga_wqe) >> 2; i += 4)
+		DRV_LOG(ERR, "%08X %08X %08X %08X", wqe[i], wqe[i + 1],
+			wqe[i + 2], wqe[i + 3]);
+	DRV_LOG(ERR, "\nError opaq:");
+	for (i = 0; i < sizeof(struct mlx5_gga_compress_opaque) >> 2; i += 4)
+		DRV_LOG(ERR, "%08X %08X %08X %08X", opaq[i], opaq[i + 1],
+			opaq[i + 2], opaq[i + 3]);
+}
+
+static void
+mlx5_compress_cqe_err_handle(struct mlx5_compress_qp *qp,
+			     struct rte_comp_op *op)
+{
+	const uint32_t idx = qp->ci & (qp->entries_n - 1);
+	volatile struct mlx5_err_cqe *cqe = (volatile struct mlx5_err_cqe *)
+							      &qp->cq.cqes[idx];
+	volatile struct mlx5_gga_wqe *wqes = (volatile struct mlx5_gga_wqe *)
+								    qp->sq.wqes;
+	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+
+	op->status = RTE_COMP_OP_STATUS_ERROR;
+	op->consumed = 0;
+	op->produced = 0;
+	op->output_chksum = 0;
+	op->debug_status = rte_be_to_cpu_32(opaq[idx].syndrom) |
+			      ((uint64_t)rte_be_to_cpu_32(cqe->syndrome) << 32);
+	mlx5_compress_dump_err_objs((volatile uint32_t *)cqe,
+				 (volatile uint32_t *)&wqes[idx],
+				 (volatile uint32_t *)&opaq[idx]);
+}
+
+static uint16_t
+mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
+			    uint16_t nb_ops)
+{
+	struct mlx5_compress_qp *qp = queue_pair;
+	volatile struct mlx5_compress_xform *restrict xform;
+	volatile struct mlx5_cqe *restrict cqe;
+	volatile struct mlx5_gga_compress_opaque *opaq = qp->opaque_mr.addr;
+	struct rte_comp_op *restrict op;
+	const unsigned int cq_size = qp->entries_n;
+	const unsigned int mask = cq_size - 1;
+	uint32_t idx;
+	uint32_t next_idx = qp->ci & mask;
+	const uint16_t max = RTE_MIN((uint16_t)(qp->pi - qp->ci), nb_ops);
+	uint16_t i = 0;
+	int ret;
+
+	if (unlikely(max == 0))
+		return 0;
+	do {
+		idx = next_idx;
+		next_idx = (qp->ci + 1) & mask;
+		rte_prefetch0(&qp->cq.cqes[next_idx]);
+		rte_prefetch0(qp->ops[next_idx]);
+		op = qp->ops[idx];
+		cqe = &qp->cq.cqes[idx];
+		ret = check_cqe(cqe, cq_size, qp->ci);
+		/*
+		 * Be sure owner read is done before any other cookie field or
+		 * opaque field.
+		 */
+		rte_io_rmb();
+		if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
+			if (likely(ret == MLX5_CQE_STATUS_HW_OWN))
+				break;
+			mlx5_compress_cqe_err_handle(qp, op);
+		} else {
+			xform = op->private_xform;
+			op->status = RTE_COMP_OP_STATUS_SUCCESS;
+			op->consumed = op->src.length;
+			op->produced = rte_be_to_cpu_32(cqe->byte_cnt);
+			MLX5_ASSERT(cqe->byte_cnt ==
+				    qp->opaque_buf[idx].scattered_length);
+			switch (xform->csum_type) {
+			case RTE_COMP_CHECKSUM_CRC32:
+				op->output_chksum = (uint64_t)rte_be_to_cpu_32
+						    (opaq[idx].crc32);
+				break;
+			case RTE_COMP_CHECKSUM_ADLER32:
+				op->output_chksum = (uint64_t)rte_be_to_cpu_32
+					    (opaq[idx].adler32) << 32;
+				break;
+			case RTE_COMP_CHECKSUM_CRC32_ADLER32:
+				op->output_chksum = (uint64_t)rte_be_to_cpu_32
+							     (opaq[idx].crc32) |
+						     ((uint64_t)rte_be_to_cpu_32
+						     (opaq[idx].adler32) << 32);
+				break;
+			default:
+				break;
+			}
+		}
+		ops[i++] = op;
+		qp->ci++;
+	} while (i < max);
+	if (likely(i != 0)) {
+		rte_io_wmb();
+		qp->cq.db_rec[0] = rte_cpu_to_be_32(qp->ci);
+	}
+	return i;
+}
 
 static struct ibv_device *
 mlx5_compress_get_ib_device_match(struct rte_pci_addr *addr)
@@ -520,8 +730,8 @@ mlx5_compress_pci_probe(struct rte_pci_driver *pci_drv,
 	DRV_LOG(INFO,
 		"Compress device %s was created successfully.", ibv->name);
 	cdev->dev_ops = &mlx5_compress_ops;
-	cdev->dequeue_burst = NULL;
-	cdev->enqueue_burst = NULL;
+	cdev->dequeue_burst = mlx5_compress_dequeue_burst;
+	cdev->enqueue_burst = mlx5_compress_enqueue_burst;
 	cdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 	priv = cdev->data->dev_private;
 	priv->ctx = ctx;
