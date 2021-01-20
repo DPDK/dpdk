@@ -76,8 +76,28 @@ static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int mlx5_compress_logtype;
 
-const struct rte_compressdev_capabilities mlx5_caps[RTE_COMP_ALGO_LIST_END];
-
+static const struct rte_compressdev_capabilities mlx5_caps[] = {
+	{
+		.algo = RTE_COMP_ALGO_NULL,
+		.comp_feature_flags = RTE_COMP_FF_ADLER32_CHECKSUM |
+				      RTE_COMP_FF_CRC32_CHECKSUM |
+				      RTE_COMP_FF_CRC32_ADLER32_CHECKSUM |
+				      RTE_COMP_FF_SHAREABLE_PRIV_XFORM,
+	},
+	{
+		.algo = RTE_COMP_ALGO_DEFLATE,
+		.comp_feature_flags = RTE_COMP_FF_ADLER32_CHECKSUM |
+				      RTE_COMP_FF_CRC32_CHECKSUM |
+				      RTE_COMP_FF_CRC32_ADLER32_CHECKSUM |
+				      RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
+				      RTE_COMP_FF_HUFFMAN_FIXED |
+				      RTE_COMP_FF_HUFFMAN_DYNAMIC,
+		.window_size = {.min = 10, .max = 15, .increment = 1},
+	},
+	{
+		.algo = RTE_COMP_ALGO_LIST_END,
+	}
+};
 
 static void
 mlx5_compress_dev_info_get(struct rte_compressdev *dev,

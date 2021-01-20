@@ -132,6 +132,12 @@ New Features
   * Added support for aes-cbc sha256-128-hmac cipher combination in OCTEON TX2
     crypto PMD lookaside protocol offload for IPsec.
 
+* **Added mlx5 compress PMD.**
+
+  Added a new compress PMD driver for Bluefield 2 adapters.
+
+  See the :doc:`../compressdevs/mlx5` for more details.
+
 
 Removed Items
 -------------
