@@ -21,6 +21,7 @@
 
 #define MLX5_COMPRESS_DRIVER_NAME mlx5_compress
 #define MLX5_COMPRESS_LOG_NAME    pmd.compress.mlx5
+#define MLX5_COMPRESS_MAX_QPS 1024
 
 struct mlx5_compress_priv {
 	TAILQ_ENTRY(mlx5_compress_priv) next;
@@ -32,6 +33,7 @@ struct mlx5_compress_priv {
 	uint8_t min_block_size;
 	/* Minimum huffman block size supported by the device. */
 	struct ibv_pd *pd;
+	struct rte_compressdev_config dev_config;
 };
 
 TAILQ_HEAD(mlx5_compress_privs, mlx5_compress_priv) mlx5_compress_priv_list =
@@ -40,12 +42,47 @@ static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int mlx5_compress_logtype;
 
+const struct rte_compressdev_capabilities mlx5_caps[RTE_COMP_ALGO_LIST_END];
+
+
+static void
+mlx5_compress_dev_info_get(struct rte_compressdev *dev,
+			   struct rte_compressdev_info *info)
+{
+	RTE_SET_USED(dev);
+	if (info != NULL) {
+		info->max_nb_queue_pairs = MLX5_COMPRESS_MAX_QPS;
+		info->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
+		info->capabilities = mlx5_caps;
+	}
+}
+
+static int
+mlx5_compress_dev_configure(struct rte_compressdev *dev,
+			    struct rte_compressdev_config *config)
+{
+	struct mlx5_compress_priv *priv;
+
+	if (dev == NULL || config == NULL)
+		return -EINVAL;
+	priv = dev->data->dev_private;
+	priv->dev_config = *config;
+	return 0;
+}
+
+static int
+mlx5_compress_dev_close(struct rte_compressdev *dev)
+{
+	RTE_SET_USED(dev);
+	return 0;
+}
+
 static struct rte_compressdev_ops mlx5_compress_ops = {
-	.dev_configure		= NULL,
+	.dev_configure		= mlx5_compress_dev_configure,
 	.dev_start		= NULL,
 	.dev_stop		= NULL,
-	.dev_close		= NULL,
-	.dev_infos_get		= NULL,
+	.dev_close		= mlx5_compress_dev_close,
+	.dev_infos_get		= mlx5_compress_dev_info_get,
 	.stats_get		= NULL,
 	.stats_reset		= NULL,
 	.queue_pair_setup	= NULL,
