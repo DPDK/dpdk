@@ -127,12 +127,6 @@ typedef uint64_t
  * progress and it is passed as a parameter to the lookup operation. This allows
  * for multiple concurrent lookup operations into the same table.
  *
- * @param[in] params
- *   Table creation parameters.
- * @param[in] entries
- *   Entries to be added to the table at creation time.
- * @param[in] args
- *   Any additional table create arguments. It may be NULL.
  * @return
  *   Table memory footprint in bytes, on success, or zero, on error.
  */

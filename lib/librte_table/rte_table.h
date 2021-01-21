@@ -129,7 +129,7 @@ typedef int (*rte_table_op_entry_delete)(
  *
  * @param table
  *   Handle to lookup table instance
- * @param key
+ * @param keys
  *   Array containing lookup keys
  * @param entries
  *   Array containing data to be associated with each key. Every item in the
@@ -166,7 +166,7 @@ typedef int (*rte_table_op_entry_add_bulk)(
  *
  * @param table
  *   Handle to lookup table instance
- * @param key
+ * @param keys
  *   Array containing lookup keys
  * @param n_keys
  *   Number of keys to delete

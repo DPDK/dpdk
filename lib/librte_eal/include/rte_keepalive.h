@@ -52,7 +52,7 @@ typedef void (*rte_keepalive_failure_callback_t)(
  *  @param data Data pointer passed to rte_keepalive_register_relay_callback()
  *  @param id_core ID of the core for which state is being reported
  *  @param core_state The current state of the core
- *  @param Timestamp of when core was last seen alive
+ *  @param last_seen Timestamp of when core was last seen alive
  */
 typedef void (*rte_keepalive_relay_callback_t)(
 	void *data,

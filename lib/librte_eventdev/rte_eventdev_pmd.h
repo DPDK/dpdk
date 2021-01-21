@@ -297,7 +297,7 @@ typedef void (*eventdev_port_release_t)(void *port);
  *   Event device pointer
  * @param port
  *   Event port pointer
- * @param link
+ * @param queues
  *   Points to an array of *nb_links* event queues to be linked
  *   to the event port.
  * @param priorities
@@ -383,6 +383,10 @@ typedef void (*eventdev_dump_t)(struct rte_eventdev *dev, FILE *f);
  *
  * @param dev
  *   Event device pointer
+ * @param mode
+ *   Level (device, port or queue)
+ * @param queue_port_id
+ *   Queue or port number depending on mode
  * @param ids
  *   The stat ids to retrieve
  * @param values
@@ -410,8 +414,14 @@ typedef int (*eventdev_xstats_reset_t)(struct rte_eventdev *dev,
  *
  * @param dev
  *   Event device pointer
+ * @param mode
+ *   Level (device, port or queue)
+ * @param queue_port_id
+ *   Queue or port number depending on mode
  * @param xstats_names
  *   Array of name values to be filled in
+ * @param ids
+ *   The stat ids to retrieve
  * @param size
  *   Number of values in the xstats_names array
  * @return
