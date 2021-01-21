@@ -88,7 +88,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	unsigned pkt_size = tx_pkt_length - 4;	/* Adjust FCS */
 	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
 	struct rte_mempool *mbp;
-	struct rte_mbuf  *pkt;
+	struct rte_mbuf  *pkt = NULL;
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_ipv4_hdr *ip_hdr;
 	struct rte_udp_hdr *udp_hdr;
@@ -97,6 +97,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t nb_pkt;
+	uint16_t nb_clones = nb_pkt_flowgen_clones;
 	uint16_t i;
 	uint32_t retry;
 	uint64_t tx_offloads;
@@ -126,53 +127,63 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		ol_flags |= PKT_TX_MACSEC;
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
-		pkt = rte_mbuf_raw_alloc(mbp);
-		if (!pkt)
-			break;
+		if (!nb_pkt || !nb_clones) {
+			nb_clones = nb_pkt_flowgen_clones;
+			/* Logic limitation */
+			if (nb_clones > nb_pkt_per_burst)
+				nb_clones = nb_pkt_per_burst;
 
-		pkt->data_len = pkt_size;
-		pkt->next = NULL;
+			pkt = rte_mbuf_raw_alloc(mbp);
+			if (!pkt)
+				break;
 
-		/* Initialize Ethernet header. */
-		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-		rte_ether_addr_copy(&cfg_ether_dst, &eth_hdr->d_addr);
-		rte_ether_addr_copy(&cfg_ether_src, &eth_hdr->s_addr);
-		eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			pkt->data_len = pkt_size;
+			pkt->next = NULL;
 
-		/* Initialize IP header. */
-		ip_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
-		memset(ip_hdr, 0, sizeof(*ip_hdr));
-		ip_hdr->version_ihl	= RTE_IPV4_VHL_DEF;
-		ip_hdr->type_of_service	= 0;
-		ip_hdr->fragment_offset	= 0;
-		ip_hdr->time_to_live	= IP_DEFTTL;
-		ip_hdr->next_proto_id	= IPPROTO_UDP;
-		ip_hdr->packet_id	= 0;
-		ip_hdr->src_addr	= rte_cpu_to_be_32(cfg_ip_src);
-		ip_hdr->dst_addr	= rte_cpu_to_be_32(cfg_ip_dst +
-							   next_flow);
-		ip_hdr->total_length	= RTE_CPU_TO_BE_16(pkt_size -
-							   sizeof(*eth_hdr));
-		ip_hdr->hdr_checksum	= ip_sum((const alias_int16_t *)ip_hdr,
-						 sizeof(*ip_hdr));
+			/* Initialize Ethernet header. */
+			eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
+			rte_ether_addr_copy(&cfg_ether_dst, &eth_hdr->d_addr);
+			rte_ether_addr_copy(&cfg_ether_src, &eth_hdr->s_addr);
+			eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
-		/* Initialize UDP header. */
-		udp_hdr = (struct rte_udp_hdr *)(ip_hdr + 1);
-		udp_hdr->src_port	= rte_cpu_to_be_16(cfg_udp_src);
-		udp_hdr->dst_port	= rte_cpu_to_be_16(cfg_udp_dst);
-		udp_hdr->dgram_cksum	= 0; /* No UDP checksum. */
-		udp_hdr->dgram_len	= RTE_CPU_TO_BE_16(pkt_size -
-							   sizeof(*eth_hdr) -
-							   sizeof(*ip_hdr));
-		pkt->nb_segs		= 1;
-		pkt->pkt_len		= pkt_size;
-		pkt->ol_flags		&= EXT_ATTACHED_MBUF;
-		pkt->ol_flags		|= ol_flags;
-		pkt->vlan_tci		= vlan_tci;
-		pkt->vlan_tci_outer	= vlan_tci_outer;
-		pkt->l2_len		= sizeof(struct rte_ether_hdr);
-		pkt->l3_len		= sizeof(struct rte_ipv4_hdr);
-		pkts_burst[nb_pkt]	= pkt;
+			/* Initialize IP header. */
+			ip_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
+			memset(ip_hdr, 0, sizeof(*ip_hdr));
+			ip_hdr->version_ihl	= RTE_IPV4_VHL_DEF;
+			ip_hdr->type_of_service	= 0;
+			ip_hdr->fragment_offset	= 0;
+			ip_hdr->time_to_live	= IP_DEFTTL;
+			ip_hdr->next_proto_id	= IPPROTO_UDP;
+			ip_hdr->packet_id	= 0;
+			ip_hdr->src_addr	= rte_cpu_to_be_32(cfg_ip_src);
+			ip_hdr->dst_addr	= rte_cpu_to_be_32(cfg_ip_dst +
+								   next_flow);
+			ip_hdr->total_length	= RTE_CPU_TO_BE_16(pkt_size -
+								   sizeof(*eth_hdr));
+			ip_hdr->hdr_checksum	= ip_sum((const alias_int16_t *)ip_hdr,
+							 sizeof(*ip_hdr));
+
+			/* Initialize UDP header. */
+			udp_hdr = (struct rte_udp_hdr *)(ip_hdr + 1);
+			udp_hdr->src_port	= rte_cpu_to_be_16(cfg_udp_src);
+			udp_hdr->dst_port	= rte_cpu_to_be_16(cfg_udp_dst);
+			udp_hdr->dgram_cksum	= 0; /* No UDP checksum. */
+			udp_hdr->dgram_len	= RTE_CPU_TO_BE_16(pkt_size -
+								   sizeof(*eth_hdr) -
+								   sizeof(*ip_hdr));
+			pkt->nb_segs		= 1;
+			pkt->pkt_len		= pkt_size;
+			pkt->ol_flags		&= EXT_ATTACHED_MBUF;
+			pkt->ol_flags		|= ol_flags;
+			pkt->vlan_tci		= vlan_tci;
+			pkt->vlan_tci_outer	= vlan_tci_outer;
+			pkt->l2_len		= sizeof(struct rte_ether_hdr);
+			pkt->l3_len		= sizeof(struct rte_ipv4_hdr);
+		} else {
+			nb_clones--;
+			rte_mbuf_refcnt_update(pkt, 1);
+		}
+		pkts_burst[nb_pkt] = pkt;
 
 		next_flow = (next_flow + 1) % cfg_n_flows;
 	}

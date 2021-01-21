@@ -299,6 +299,13 @@ The command line options are:
     If set to 0, driver default is used if defined. Else, if driver
     default is not defined, default of 32 is used.
 
+*   ``--flowgen-clones=N``
+
+    Set the number of each packet clones to be sent in `flowgen` mode.
+    Sending clones reduces host CPU load on creating packets and may help
+    in testing extreme speeds or maxing out Tx packet performance.
+    N should be not zero, but less than 'burst' parameter.
+
 *   ``--mbcache=N``
 
     Set the cache of mbuf memory pools to N, where 0 <= N <= 512.

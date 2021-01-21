@@ -163,6 +163,7 @@ usage(char* progname)
 	printf("  --hairpinq=N: set the number of hairpin queues per port to "
 	       "N.\n");
 	printf("  --burst=N: set the number of packets per burst to N.\n");
+	printf("  --flowgen-clones=N: set the number of single packet clones to send in flowgen mode. Should be less than burst value.\n");
 	printf("  --mbcache=N: set the cache of mbuf memory pool to N.\n");
 	printf("  --rxpt=N: set prefetch threshold register of RX rings to N.\n");
 	printf("  --rxht=N: set the host threshold register of RX rings to N.\n");
@@ -561,6 +562,7 @@ launch_args_parse(int argc, char** argv)
 		{ "hairpinq",			1, 0, 0 },
 		{ "hairpin-mode",		1, 0, 0 },
 		{ "burst",			1, 0, 0 },
+		{ "flowgen-clones",		1, 0, 0 },
 		{ "mbcache",			1, 0, 0 },
 		{ "txpt",			1, 0, 0 },
 		{ "txht",			1, 0, 0 },
@@ -1085,6 +1087,14 @@ launch_args_parse(int argc, char** argv)
 						MAX_PKT_BURST);
 				else
 					nb_pkt_per_burst = (uint16_t) n;
+			}
+			if (!strcmp(lgopts[opt_idx].name, "flowgen-clones")) {
+				n = atoi(optarg);
+				if (n >= 0)
+					nb_pkt_flowgen_clones = (uint16_t) n;
+				else
+					rte_exit(EXIT_FAILURE,
+						 "clones must be >= 0 and <= current burst\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "mbcache")) {
 				n = atoi(optarg);

@@ -240,6 +240,7 @@ uint32_t tx_pkt_times_intra;
 /**< Timings for send scheduling in TXONLY mode, time between packets. */
 
 uint16_t nb_pkt_per_burst = DEF_PKT_BURST; /**< Number of packets per burst. */
+uint16_t nb_pkt_flowgen_clones; /**< Number of Tx packet clones to send in flowgen mode. */
 uint16_t mb_mempool_cache = DEF_MBUF_CACHE; /**< Size of mbuf mempool cache. */
 
 /* current configuration is in DCB or not,0 means it is not in DCB mode */
