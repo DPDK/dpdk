@@ -3541,7 +3541,10 @@ static const struct token token_list[] = {
 		.name = "key",
 		.help = "RSS hash key",
 		.next = NEXT(action_rss, NEXT_ENTRY(HEX)),
-		.args = ARGS(ARGS_ENTRY_ARB(0, 0),
+		.args = ARGS(ARGS_ENTRY_ARB
+			     (offsetof(struct action_rss_data, conf) +
+			      offsetof(struct rte_flow_action_rss, key),
+			      sizeof(((struct rte_flow_action_rss *)0)->key)),
 			     ARGS_ENTRY_ARB
 			     (offsetof(struct action_rss_data, conf) +
 			      offsetof(struct rte_flow_action_rss, key_len),
