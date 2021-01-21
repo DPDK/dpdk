@@ -5,8 +5,9 @@
 #ifndef CHANNEL_MONITOR_H_
 #define CHANNEL_MONITOR_H_
 
+#include <rte_power.h>
+
 #include "channel_manager.h"
-#include "rte_power_guest_channel.h"
 
 struct core_share {
 	unsigned int pcpu;

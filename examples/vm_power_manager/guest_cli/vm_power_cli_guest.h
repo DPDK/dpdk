@@ -9,8 +9,6 @@
 extern "C" {
 #endif
 
-#include "rte_power_guest_channel.h"
-
 struct rte_power_channel_packet *get_policy(void);
 
 int set_policy_mac(int port, int idx);
