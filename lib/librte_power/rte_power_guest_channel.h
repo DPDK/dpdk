@@ -116,6 +116,56 @@ struct channel_packet_caps_list {
 	uint8_t num_vcpu;
 };
 
+/**
+ * @internal
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Send a message contained in pkt over the Virtio-Serial to the host endpoint.
+ *
+ * @param pkt
+ *  Pointer to a populated struct channel_packet.
+ *
+ * @param lcore_id
+ *  Use channel specific to this lcore_id.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
+ */
+__rte_experimental
+int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
+			unsigned int lcore_id);
+
+/**
+ * @internal
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Receive a message contained in pkt over the Virtio-Serial
+ * from the host endpoint.
+ *
+ * @param pkt
+ *  Pointer to channel_packet or
+ *  channel_packet_freq_list struct.
+ *
+ * @param pkt_len
+ *  Size of expected data packet.
+ *
+ * @param lcore_id
+ *  Use channel specific to this lcore_id.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
+ */
+__rte_experimental
+int rte_power_guest_channel_receive_msg(void *pkt,
+		size_t pkt_len,
+		unsigned int lcore_id);
+
 
 #ifdef __cplusplus
 }
