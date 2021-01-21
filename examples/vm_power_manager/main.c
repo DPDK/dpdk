@@ -394,7 +394,7 @@ main(int argc, char **argv)
 					"Cannot init port %"PRIu8 "\n",
 					portid);
 
-			for (w = 0; w < MAX_VFS; w++) {
+			for (w = 0; w < RTE_POWER_MAX_VFS; w++) {
 				eth.addr_bytes[5] = w + 0xf0;
 
 				ret = -ENOTSUP;

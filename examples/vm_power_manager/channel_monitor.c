@@ -177,10 +177,10 @@ parse_json_to_pkt(json_t *element, struct rte_power_channel_packet *pkt,
 
 	pkt->nb_mac_to_monitor = 0;
 	pkt->t_boost_status.tbEnabled = false;
-	pkt->workload = LOW;
-	pkt->policy_to_use = TIME;
-	pkt->command = PKT_POLICY;
-	pkt->core_type = CORE_TYPE_PHYSICAL;
+	pkt->workload = RTE_POWER_WL_LOW;
+	pkt->policy_to_use = RTE_POWER_POLICY_TIME;
+	pkt->command = RTE_POWER_PKT_POLICY;
+	pkt->core_type = RTE_POWER_CORE_TYPE_PHYSICAL;
 
 	if (vm_name == NULL) {
 		RTE_LOG(ERR, CHANNEL_MONITOR,
@@ -203,11 +203,11 @@ parse_json_to_pkt(json_t *element, struct rte_power_channel_packet *pkt,
 			char command[32];
 			strlcpy(command, json_string_value(value), 32);
 			if (!strcmp(command, "power")) {
-				pkt->command = CPU_POWER;
+				pkt->command = RTE_POWER_CPU_POWER;
 			} else if (!strcmp(command, "create")) {
-				pkt->command = PKT_POLICY;
+				pkt->command = RTE_POWER_PKT_POLICY;
 			} else if (!strcmp(command, "destroy")) {
-				pkt->command = PKT_POLICY_REMOVE;
+				pkt->command = RTE_POWER_PKT_POLICY_REMOVE;
 			} else {
 				RTE_LOG(ERR, CHANNEL_MONITOR,
 					"Invalid command received in JSON\n");
@@ -217,13 +217,17 @@ parse_json_to_pkt(json_t *element, struct rte_power_channel_packet *pkt,
 			char command[32];
 			strlcpy(command, json_string_value(value), 32);
 			if (!strcmp(command, "TIME")) {
-				pkt->policy_to_use = TIME;
+				pkt->policy_to_use =
+						RTE_POWER_POLICY_TIME;
 			} else if (!strcmp(command, "TRAFFIC")) {
-				pkt->policy_to_use = TRAFFIC;
+				pkt->policy_to_use =
+						RTE_POWER_POLICY_TRAFFIC;
 			} else if (!strcmp(command, "WORKLOAD")) {
-				pkt->policy_to_use = WORKLOAD;
+				pkt->policy_to_use =
+						RTE_POWER_POLICY_WORKLOAD;
 			} else if (!strcmp(command, "BRANCH_RATIO")) {
-				pkt->policy_to_use = BRANCH_RATIO;
+				pkt->policy_to_use =
+						RTE_POWER_POLICY_BRANCH_RATIO;
 			} else {
 				RTE_LOG(ERR, CHANNEL_MONITOR,
 					"Wrong policy_type received in JSON\n");
@@ -233,11 +237,11 @@ parse_json_to_pkt(json_t *element, struct rte_power_channel_packet *pkt,
 			char command[32];
 			strlcpy(command, json_string_value(value), 32);
 			if (!strcmp(command, "HIGH")) {
-				pkt->workload = HIGH;
+				pkt->workload = RTE_POWER_WL_HIGH;
 			} else if (!strcmp(command, "MEDIUM")) {
-				pkt->workload = MEDIUM;
+				pkt->workload = RTE_POWER_WL_MEDIUM;
 			} else if (!strcmp(command, "LOW")) {
-				pkt->workload = LOW;
+				pkt->workload = RTE_POWER_WL_LOW;
 			} else {
 				RTE_LOG(ERR, CHANNEL_MONITOR,
 					"Wrong workload received in JSON\n");
@@ -283,17 +287,17 @@ parse_json_to_pkt(json_t *element, struct rte_power_channel_packet *pkt,
 			char unit[32];
 			strlcpy(unit, json_string_value(value), 32);
 			if (!strcmp(unit, "SCALE_UP")) {
-				pkt->unit = CPU_POWER_SCALE_UP;
+				pkt->unit = RTE_POWER_SCALE_UP;
 			} else if (!strcmp(unit, "SCALE_DOWN")) {
-				pkt->unit = CPU_POWER_SCALE_DOWN;
+				pkt->unit = RTE_POWER_SCALE_DOWN;
 			} else if (!strcmp(unit, "SCALE_MAX")) {
-				pkt->unit = CPU_POWER_SCALE_MAX;
+				pkt->unit = RTE_POWER_SCALE_MAX;
 			} else if (!strcmp(unit, "SCALE_MIN")) {
-				pkt->unit = CPU_POWER_SCALE_MIN;
+				pkt->unit = RTE_POWER_SCALE_MIN;
 			} else if (!strcmp(unit, "ENABLE_TURBO")) {
-				pkt->unit = CPU_POWER_ENABLE_TURBO;
+				pkt->unit = RTE_POWER_ENABLE_TURBO;
 			} else if (!strcmp(unit, "DISABLE_TURBO")) {
-				pkt->unit = CPU_POWER_DISABLE_TURBO;
+				pkt->unit = RTE_POWER_DISABLE_TURBO;
 			} else {
 				RTE_LOG(ERR, CHANNEL_MONITOR,
 					"Invalid command received in JSON\n");
@@ -312,7 +316,7 @@ parse_json_to_pkt(json_t *element, struct rte_power_channel_packet *pkt,
 				vm_name);
 			return -1;
 		}
-		strlcpy(pkt->vm_name, vm_name, VM_MAX_NAME_SZ);
+		strlcpy(pkt->vm_name, vm_name, RTE_POWER_VM_MAX_NAME_SZ);
 		pkt->resource_id = resource_id;
 	}
 	return 0;
@@ -367,7 +371,7 @@ pcpu_monitor(struct policy *pol, struct core_info *ci, int pcpu, int count)
 {
 	int ret = 0;
 
-	if (pol->pkt.policy_to_use == BRANCH_RATIO) {
+	if (pol->pkt.policy_to_use == RTE_POWER_POLICY_BRANCH_RATIO) {
 		ci->cd[pcpu].oob_enabled = 1;
 		ret = add_core_to_monitor(pcpu);
 		if (ret == 0)
@@ -407,7 +411,7 @@ get_pcpu_to_control(struct policy *pol)
 	 * differenciate between them when adding them to the branch monitor.
 	 * Virtual cores need to be converted to physical cores.
 	 */
-	if (pol->pkt.core_type == CORE_TYPE_VIRTUAL) {
+	if (pol->pkt.core_type == RTE_POWER_CORE_TYPE_VIRTUAL) {
 		/*
 		 * If the cores in the policy are virtual, we need to map them
 		 * to physical core. We look up the vm info and use that for
@@ -479,7 +483,8 @@ update_policy(struct rte_power_channel_packet *pkt)
 			policies[i].pkt = *pkt;
 			get_pcpu_to_control(&policies[i]);
 			/* Check Eth dev only for Traffic policy */
-			if (policies[i].pkt.policy_to_use == TRAFFIC) {
+			if (policies[i].pkt.policy_to_use ==
+					RTE_POWER_POLICY_TRAFFIC) {
 				if (get_pfid(&policies[i]) < 0) {
 					updated = 1;
 					break;
@@ -496,7 +501,8 @@ update_policy(struct rte_power_channel_packet *pkt)
 				policies[i].pkt = *pkt;
 				get_pcpu_to_control(&policies[i]);
 				/* Check Eth dev only for Traffic policy */
-				if (policies[i].pkt.policy_to_use == TRAFFIC) {
+				if (policies[i].pkt.policy_to_use ==
+						RTE_POWER_POLICY_TRAFFIC) {
 					if (get_pfid(&policies[i]) < 0) {
 						updated = 1;
 						break;
@@ -615,7 +621,7 @@ apply_time_profile(struct policy *pol)
 	/* Format the date and time, down to a single second. */
 	strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", ptm);
 
-	for (x = 0; x < HOURS; x++) {
+	for (x = 0; x < RTE_POWER_HOURS_PER_DAY; x++) {
 
 		if (ptm->tm_hour == pol->pkt.timer_policy.busy_hours[x]) {
 			for (count = 0; count < pol->pkt.num_vcpu; count++) {
@@ -648,19 +654,19 @@ apply_workload_profile(struct policy *pol)
 
 	int count;
 
-	if (pol->pkt.workload == HIGH) {
+	if (pol->pkt.workload == RTE_POWER_WL_HIGH) {
 		for (count = 0; count < pol->pkt.num_vcpu; count++) {
 			if (pol->core_share[count].status != 1)
 				power_manager_scale_core_max(
 						pol->core_share[count].pcpu);
 		}
-	} else if (pol->pkt.workload == MEDIUM) {
+	} else if (pol->pkt.workload == RTE_POWER_WL_MEDIUM) {
 		for (count = 0; count < pol->pkt.num_vcpu; count++) {
 			if (pol->core_share[count].status != 1)
 				power_manager_scale_core_med(
 						pol->core_share[count].pcpu);
 		}
-	} else if (pol->pkt.workload == LOW) {
+	} else if (pol->pkt.workload == RTE_POWER_WL_LOW) {
 		for (count = 0; count < pol->pkt.num_vcpu; count++) {
 			if (pol->core_share[count].status != 1)
 				power_manager_scale_core_min(
@@ -676,11 +682,11 @@ apply_policy(struct policy *pol)
 	struct rte_power_channel_packet *pkt = &pol->pkt;
 
 	/*Check policy to use*/
-	if (pkt->policy_to_use == TRAFFIC)
+	if (pkt->policy_to_use == RTE_POWER_POLICY_TRAFFIC)
 		apply_traffic_profile(pol);
-	else if (pkt->policy_to_use == TIME)
+	else if (pkt->policy_to_use == RTE_POWER_POLICY_TIME)
 		apply_time_profile(pol);
-	else if (pkt->policy_to_use == WORKLOAD)
+	else if (pkt->policy_to_use == RTE_POWER_POLICY_WORKLOAD)
 		apply_workload_profile(pol);
 }
 
@@ -726,13 +732,13 @@ send_freq(struct rte_power_channel_packet *pkt,
 	if (get_info_vm(pkt->vm_name, &info) != 0)
 		return -1;
 
-	if (!freq_list && vcore_id >= MAX_VCPU_PER_VM)
+	if (!freq_list && vcore_id >= RTE_POWER_MAX_VCPU_PER_VM)
 		return -1;
 
 	if (!info.allow_query)
 		return -1;
 
-	channel_pkt_freq_list.command = CPU_POWER_FREQ_LIST;
+	channel_pkt_freq_list.command = RTE_POWER_FREQ_LIST;
 	channel_pkt_freq_list.num_vcpu = info.num_vcpus;
 
 	if (freq_list) {
@@ -764,13 +770,13 @@ send_capabilities(struct rte_power_channel_packet *pkt,
 	if (get_info_vm(pkt->vm_name, &info) != 0)
 		return -1;
 
-	if (!list_requested && vcore_id >= MAX_VCPU_PER_VM)
+	if (!list_requested && vcore_id >= RTE_POWER_MAX_VCPU_PER_VM)
 		return -1;
 
 	if (!info.allow_query)
 		return -1;
 
-	channel_pkt_caps_list.command = CPU_POWER_CAPS_LIST;
+	channel_pkt_caps_list.command = RTE_POWER_CAPS_LIST;
 	channel_pkt_caps_list.num_vcpu = info.num_vcpus;
 
 	if (list_requested) {
@@ -828,10 +834,10 @@ process_request(struct rte_power_channel_packet *pkt,
 			CHANNEL_MGR_CHANNEL_PROCESSING) == 0)
 		return -1;
 
-	if (pkt->command == CPU_POWER) {
+	if (pkt->command == RTE_POWER_CPU_POWER) {
 		unsigned int core_num;
 
-		if (pkt->core_type == CORE_TYPE_VIRTUAL)
+		if (pkt->core_type == RTE_POWER_CORE_TYPE_VIRTUAL)
 			core_num = get_pcpu(chan_info, pkt->resource_id);
 		else
 			core_num = pkt->resource_id;
@@ -843,22 +849,22 @@ process_request(struct rte_power_channel_packet *pkt,
 		bool valid_unit = true;
 
 		switch (pkt->unit) {
-		case(CPU_POWER_SCALE_MIN):
+		case(RTE_POWER_SCALE_MIN):
 			scale_res = power_manager_scale_core_min(core_num);
 			break;
-		case(CPU_POWER_SCALE_MAX):
+		case(RTE_POWER_SCALE_MAX):
 			scale_res = power_manager_scale_core_max(core_num);
 			break;
-		case(CPU_POWER_SCALE_DOWN):
+		case(RTE_POWER_SCALE_DOWN):
 			scale_res = power_manager_scale_core_down(core_num);
 			break;
-		case(CPU_POWER_SCALE_UP):
+		case(RTE_POWER_SCALE_UP):
 			scale_res = power_manager_scale_core_up(core_num);
 			break;
-		case(CPU_POWER_ENABLE_TURBO):
+		case(RTE_POWER_ENABLE_TURBO):
 			scale_res = power_manager_enable_turbo_core(core_num);
 			break;
-		case(CPU_POWER_DISABLE_TURBO):
+		case(RTE_POWER_DISABLE_TURBO):
 			scale_res = power_manager_disable_turbo_core(core_num);
 			break;
 		default:
@@ -870,8 +876,8 @@ process_request(struct rte_power_channel_packet *pkt,
 			ret = send_ack_for_received_cmd(pkt,
 					chan_info,
 					scale_res >= 0 ?
-						CPU_POWER_CMD_ACK :
-						CPU_POWER_CMD_NACK);
+						RTE_POWER_CMD_ACK :
+						RTE_POWER_CMD_NACK);
 			if (ret < 0)
 				RTE_LOG(ERR, CHANNEL_MONITOR, "Error during sending ack command.\n");
 		} else
@@ -879,19 +885,19 @@ process_request(struct rte_power_channel_packet *pkt,
 
 	}
 
-	if (pkt->command == PKT_POLICY) {
+	if (pkt->command == RTE_POWER_PKT_POLICY) {
 		RTE_LOG(INFO, CHANNEL_MONITOR, "Processing policy request %s\n",
 				pkt->vm_name);
 		int ret = send_ack_for_received_cmd(pkt,
 				chan_info,
-				CPU_POWER_CMD_ACK);
+				RTE_POWER_CMD_ACK);
 		if (ret < 0)
 			RTE_LOG(ERR, CHANNEL_MONITOR, "Error during sending ack command.\n");
 		update_policy(pkt);
 		policy_is_set = 1;
 	}
 
-	if (pkt->command == PKT_POLICY_REMOVE) {
+	if (pkt->command == RTE_POWER_PKT_POLICY_REMOVE) {
 		ret = remove_policy(pkt);
 		if (ret == 0)
 			RTE_LOG(INFO, CHANNEL_MONITOR,
@@ -901,26 +907,26 @@ process_request(struct rte_power_channel_packet *pkt,
 				 "Policy %s does not exist\n", pkt->vm_name);
 	}
 
-	if (pkt->command == CPU_POWER_QUERY_FREQ_LIST ||
-		pkt->command == CPU_POWER_QUERY_FREQ) {
+	if (pkt->command == RTE_POWER_QUERY_FREQ_LIST ||
+		pkt->command == RTE_POWER_QUERY_FREQ) {
 
 		RTE_LOG(INFO, CHANNEL_MONITOR,
 			"Frequency for %s requested.\n", pkt->vm_name);
 		int ret = send_freq(pkt,
 				chan_info,
-				pkt->command == CPU_POWER_QUERY_FREQ_LIST);
+				pkt->command == RTE_POWER_QUERY_FREQ_LIST);
 		if (ret < 0)
 			RTE_LOG(ERR, CHANNEL_MONITOR, "Error during frequency sending.\n");
 	}
 
-	if (pkt->command == CPU_POWER_QUERY_CAPS_LIST ||
-		pkt->command == CPU_POWER_QUERY_CAPS) {
+	if (pkt->command == RTE_POWER_QUERY_CAPS_LIST ||
+		pkt->command == RTE_POWER_QUERY_CAPS) {
 
 		RTE_LOG(INFO, CHANNEL_MONITOR,
 			"Capabilities for %s requested.\n", pkt->vm_name);
 		int ret = send_capabilities(pkt,
 				chan_info,
-				pkt->command == CPU_POWER_QUERY_CAPS_LIST);
+				pkt->command == RTE_POWER_QUERY_CAPS_LIST);
 		if (ret < 0)
 			RTE_LOG(ERR, CHANNEL_MONITOR, "Error during sending capabilities.\n");
 	}

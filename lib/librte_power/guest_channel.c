@@ -100,7 +100,7 @@ guest_channel_host_connect(const char *path, unsigned int lcore_id)
 	/* Send a test packet, this command is ignored by the host, but a successful
 	 * send indicates that the host endpoint is monitoring.
 	 */
-	pkt.command = CPU_POWER_CONNECT;
+	pkt.command = RTE_POWER_CPU_POWER_CONNECT;
 	global_fds[lcore_id] = fd;
 	ret = guest_channel_send_msg(&pkt, lcore_id);
 	if (ret != 0) {
