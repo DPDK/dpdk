@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2021 Intel Corporation
  */
-
-#ifndef CHANNEL_COMMANDS_H_
-#define CHANNEL_COMMANDS_H_
+#ifndef RTE_POWER_GUEST_CHANNEL_H
+#define RTE_POWER_GUEST_CHANNEL_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -122,4 +121,4 @@ struct channel_packet_caps_list {
 }
 #endif
 
-#endif /* CHANNEL_COMMANDS_H_ */
+#endif /* RTE_POWER_GUEST_CHANNEL_H_ */

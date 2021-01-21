@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#include <channel_commands.h>
+#include <rte_power_guest_channel.h>
 
 /**
  * Check if any Virtio-Serial VM end-points exist in path.
