@@ -32,7 +32,11 @@ install_libabigail() {
 
 if [ "$AARCH64" = "true" ]; then
     # convert the arch specifier
-    OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
+    if [ "$CC_FOR_BUILD" = "gcc" ]; then
+    	OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
+    elif [ "$CC_FOR_BUILD" = "clang" ]; then
+    	OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_clang_ubuntu1804"
+    fi
 fi
 
 if [ "$BUILD_DOCS" = "true" ]; then
