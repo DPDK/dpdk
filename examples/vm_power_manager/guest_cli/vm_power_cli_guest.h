@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#include "channel_commands.h"
+#include "rte_power_guest_channel.h"
 
 struct channel_packet *get_policy(void);
 

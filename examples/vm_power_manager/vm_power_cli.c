@@ -21,7 +21,7 @@
 #include "channel_manager.h"
 #include "channel_monitor.h"
 #include "power_manager.h"
-#include "channel_commands.h"
+#include "rte_power_guest_channel.h"
 
 struct cmd_quit_result {
 	cmdline_fixed_string_t quit;
