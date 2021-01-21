@@ -55,7 +55,7 @@ int
 guest_channel_host_connect(const char *path, unsigned int lcore_id)
 {
 	int flags, ret;
-	struct channel_packet pkt;
+	struct rte_power_channel_packet pkt;
 	char fd_path[PATH_MAX];
 	int fd = -1;
 
@@ -119,7 +119,8 @@ error:
 }
 
 int
-guest_channel_send_msg(struct channel_packet *pkt, unsigned int lcore_id)
+guest_channel_send_msg(struct rte_power_channel_packet *pkt,
+		unsigned int lcore_id)
 {
 	int ret, buffer_len = sizeof(*pkt);
 	void *buffer = pkt;
@@ -149,7 +150,7 @@ guest_channel_send_msg(struct channel_packet *pkt, unsigned int lcore_id)
 	return 0;
 }
 
-int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
+int rte_power_guest_channel_send_msg(struct rte_power_channel_packet *pkt,
 			unsigned int lcore_id)
 {
 	return guest_channel_send_msg(pkt, lcore_id);

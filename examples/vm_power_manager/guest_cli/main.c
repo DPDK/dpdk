@@ -48,7 +48,7 @@ parse_args(int argc, char **argv)
 		{ "policy", required_argument, 0, 'o'},
 		{NULL, 0, 0, 0}
 	};
-	struct channel_packet *policy;
+	struct rte_power_channel_packet *policy;
 	unsigned short int hours[MAX_HOURS];
 	unsigned short int cores[MAX_VCPU_PER_VM];
 	unsigned short int ports[MAX_VCPU_PER_VM];

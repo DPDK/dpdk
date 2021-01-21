@@ -18,7 +18,7 @@ struct core_share {
 };
 
 struct policy {
-	struct channel_packet pkt;
+	struct rte_power_channel_packet pkt;
 	uint32_t pfid[MAX_VFS];
 	uint32_t port[MAX_VFS];
 	unsigned int enabled;
