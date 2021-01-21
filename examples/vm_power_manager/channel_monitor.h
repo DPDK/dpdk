@@ -19,10 +19,10 @@ struct core_share {
 
 struct policy {
 	struct rte_power_channel_packet pkt;
-	uint32_t pfid[MAX_VFS];
-	uint32_t port[MAX_VFS];
+	uint32_t pfid[RTE_POWER_MAX_VFS];
+	uint32_t port[RTE_POWER_MAX_VFS];
 	unsigned int enabled;
-	struct core_share core_share[MAX_VCPU_PER_VM];
+	struct core_share core_share[RTE_POWER_MAX_VCPU_PER_VM];
 };
 
 #ifdef __cplusplus

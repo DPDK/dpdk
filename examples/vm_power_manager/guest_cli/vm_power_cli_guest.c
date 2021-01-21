@@ -103,10 +103,10 @@ set_policy_defaults(struct rte_power_channel_packet *pkt)
 	pkt->timer_policy.hours_to_use_traffic_profile[0] = 8;
 	pkt->timer_policy.hours_to_use_traffic_profile[1] = 10;
 
-	pkt->core_type = CORE_TYPE_VIRTUAL;
-	pkt->workload = LOW;
-	pkt->policy_to_use = TIME;
-	pkt->command = PKT_POLICY;
+	pkt->core_type = RTE_POWER_CORE_TYPE_VIRTUAL;
+	pkt->workload = RTE_POWER_WL_LOW;
+	pkt->policy_to_use = RTE_POWER_POLICY_TIME;
+	pkt->command = RTE_POWER_PKT_POLICY;
 	strlcpy(pkt->vm_name, "ubuntu2", sizeof(pkt->vm_name));
 
 	return 0;
@@ -169,7 +169,7 @@ receive_freq_list(struct rte_power_channel_packet_freq_list *pkt_freq_list,
 		RTE_LOG(ERR, GUEST_CLI, "Error receiving message.\n");
 		return -1;
 	}
-	if (pkt_freq_list->command != CPU_POWER_FREQ_LIST) {
+	if (pkt_freq_list->command != RTE_POWER_FREQ_LIST) {
 		RTE_LOG(ERR, GUEST_CLI, "Unexpected message received.\n");
 		return -1;
 	}
@@ -203,18 +203,18 @@ cmd_query_freq_list_parsed(void *parsed_result,
 			return;
 		}
 
-		pkt.command = CPU_POWER_QUERY_FREQ_LIST;
+		pkt.command = RTE_POWER_QUERY_FREQ_LIST;
 		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
 		query_list = true;
 	} else {
 		errno = 0;
 		lcore_id = (unsigned int)strtol(res->cpu_num, &ep, 10);
-		if (errno != 0 || lcore_id >= MAX_VCPU_PER_VM ||
+		if (errno != 0 || lcore_id >= RTE_POWER_MAX_VCPU_PER_VM ||
 			ep == res->cpu_num) {
 			cmdline_printf(cl, "Invalid parameter provided.\n");
 			return;
 		}
-		pkt.command = CPU_POWER_QUERY_FREQ;
+		pkt.command = RTE_POWER_QUERY_FREQ;
 		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
 		pkt.resource_id = lcore_id;
 	}
@@ -279,7 +279,7 @@ receive_capabilities(struct rte_power_channel_packet_caps_list *pkt_caps_list,
 		RTE_LOG(ERR, GUEST_CLI, "Error receiving message.\n");
 		return -1;
 	}
-	if (pkt_caps_list->command != CPU_POWER_CAPS_LIST) {
+	if (pkt_caps_list->command != RTE_POWER_CAPS_LIST) {
 		RTE_LOG(ERR, GUEST_CLI, "Unexpected message received.\n");
 		return -1;
 	}
@@ -313,18 +313,18 @@ cmd_query_caps_list_parsed(void *parsed_result,
 			return;
 		}
 
-		pkt.command = CPU_POWER_QUERY_CAPS_LIST;
+		pkt.command = RTE_POWER_QUERY_CAPS_LIST;
 		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
 		query_list = true;
 	} else {
 		errno = 0;
 		lcore_id = (unsigned int)strtol(res->cpu_num, &ep, 10);
-		if (errno != 0 || lcore_id >= MAX_VCPU_PER_VM ||
+		if (errno != 0 || lcore_id >= RTE_POWER_MAX_VCPU_PER_VM ||
 			ep == res->cpu_num) {
 			cmdline_printf(cl, "Invalid parameter provided.\n");
 			return;
 		}
-		pkt.command = CPU_POWER_QUERY_CAPS;
+		pkt.command = RTE_POWER_QUERY_CAPS;
 		strlcpy(pkt.vm_name, policy.vm_name, sizeof(pkt.vm_name));
 		pkt.resource_id = lcore_id;
 	}
@@ -388,10 +388,10 @@ check_response_cmd(unsigned int lcore_id, int *result)
 		return -1;
 
 	switch (pkt.command) {
-	case(CPU_POWER_CMD_ACK):
+	case(RTE_POWER_CMD_ACK):
 		*result = 1;
 		break;
-	case(CPU_POWER_CMD_NACK):
+	case(RTE_POWER_CMD_NACK):
 		*result = 0;
 		break;
 	default:

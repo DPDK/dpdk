@@ -29,7 +29,7 @@ power_kvm_vm_init(unsigned int lcore_id)
 				lcore_id, RTE_MAX_LCORE-1);
 		return -1;
 	}
-	pkt[lcore_id].command = CPU_POWER;
+	pkt[lcore_id].command = RTE_POWER_CPU_POWER;
 	pkt[lcore_id].resource_id = lcore_id;
 	return guest_channel_host_connect(FD_PATH, lcore_id);
 }
@@ -90,25 +90,25 @@ send_msg(unsigned int lcore_id, uint32_t scale_direction)
 int
 power_kvm_vm_freq_up(unsigned int lcore_id)
 {
-	return send_msg(lcore_id, CPU_POWER_SCALE_UP);
+	return send_msg(lcore_id, RTE_POWER_SCALE_UP);
 }
 
 int
 power_kvm_vm_freq_down(unsigned int lcore_id)
 {
-	return send_msg(lcore_id, CPU_POWER_SCALE_DOWN);
+	return send_msg(lcore_id, RTE_POWER_SCALE_DOWN);
 }
 
 int
 power_kvm_vm_freq_max(unsigned int lcore_id)
 {
-	return send_msg(lcore_id, CPU_POWER_SCALE_MAX);
+	return send_msg(lcore_id, RTE_POWER_SCALE_MAX);
 }
 
 int
 power_kvm_vm_freq_min(unsigned int lcore_id)
 {
-	return send_msg(lcore_id, CPU_POWER_SCALE_MIN);
+	return send_msg(lcore_id, RTE_POWER_SCALE_MIN);
 }
 
 int
@@ -121,13 +121,13 @@ power_kvm_vm_turbo_status(__rte_unused unsigned int lcore_id)
 int
 power_kvm_vm_enable_turbo(unsigned int lcore_id)
 {
-	return send_msg(lcore_id, CPU_POWER_ENABLE_TURBO);
+	return send_msg(lcore_id, RTE_POWER_ENABLE_TURBO);
 }
 
 int
 power_kvm_vm_disable_turbo(unsigned int lcore_id)
 {
-	return send_msg(lcore_id, CPU_POWER_DISABLE_TURBO);
+	return send_msg(lcore_id, RTE_POWER_DISABLE_TURBO);
 }
 
 struct rte_power_core_capabilities;
