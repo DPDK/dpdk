@@ -11,13 +11,19 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
-/* --- Incoming messages --- */
+#define MAX_VFS 10
+#define VM_MAX_NAME_SZ 32
+#define MAX_VCPU_PER_VM         8
+#define HOURS 24
 
 /* Valid Commands */
 #define CPU_POWER               1
 #define CPU_POWER_CONNECT       2
 #define PKT_POLICY              3
 #define PKT_POLICY_REMOVE       4
+
+#define CORE_TYPE_VIRTUAL 0
+#define CORE_TYPE_PHYSICAL 1
 
 /* CPU Power Command Scaling */
 #define CPU_POWER_SCALE_UP      1
@@ -43,41 +49,32 @@ extern "C" {
 #define CPU_POWER_FREQ_LIST     3
 #define CPU_POWER_CAPS_LIST     4
 
-#define HOURS 24
-
-#define MAX_VFS 10
-#define VM_MAX_NAME_SZ 32
-
-#define MAX_VCPU_PER_VM         8
-
-struct t_boost_status {
-	bool tbEnabled;
-};
-
-struct timer_profile {
+struct rte_power_timer_profile {
 	int busy_hours[HOURS];
 	int quiet_hours[HOURS];
 	int hours_to_use_traffic_profile[HOURS];
 };
 
-enum workload {HIGH, MEDIUM, LOW};
-enum policy_to_use {
+enum rte_power_workload_level {HIGH, MEDIUM, LOW};
+
+enum rte_power_policy {
 	TRAFFIC,
 	TIME,
 	WORKLOAD,
 	BRANCH_RATIO
 };
 
-struct traffic {
+struct rte_power_traffic_policy {
 	uint32_t min_packet_thresh;
 	uint32_t avg_max_packet_thresh;
 	uint32_t max_max_packet_thresh;
 };
 
-#define CORE_TYPE_VIRTUAL 0
-#define CORE_TYPE_PHYSICAL 1
+struct rte_power_turbo_status {
+	bool tbEnabled;
+};
 
-struct channel_packet {
+struct rte_power_channel_packet {
 	uint64_t resource_id; /**< core_num, device */
 	uint32_t unit;        /**< scale down/up/min/max */
 	uint32_t command;     /**< Power, IO, etc */
@@ -85,17 +82,17 @@ struct channel_packet {
 
 	uint64_t vfid[MAX_VFS];
 	int nb_mac_to_monitor;
-	struct traffic traffic_policy;
+	struct rte_power_traffic_policy traffic_policy;
 	uint8_t vcpu_to_control[MAX_VCPU_PER_VM];
 	uint8_t num_vcpu;
-	struct timer_profile timer_policy;
+	struct rte_power_timer_profile timer_policy;
 	bool core_type;
-	enum workload workload;
-	enum policy_to_use policy_to_use;
-	struct t_boost_status t_boost_status;
+	enum rte_power_workload_level workload;
+	enum rte_power_policy policy_to_use;
+	struct rte_power_turbo_status t_boost_status;
 };
 
-struct channel_packet_freq_list {
+struct rte_power_channel_packet_freq_list {
 	uint64_t resource_id; /**< core_num, device */
 	uint32_t unit;        /**< scale down/up/min/max */
 	uint32_t command;     /**< Power, IO, etc */
@@ -105,7 +102,7 @@ struct channel_packet_freq_list {
 	uint8_t num_vcpu;
 };
 
-struct channel_packet_caps_list {
+struct rte_power_channel_packet_caps_list {
 	uint64_t resource_id; /**< core_num, device */
 	uint32_t unit;        /**< scale down/up/min/max */
 	uint32_t command;     /**< Power, IO, etc */
@@ -135,7 +132,7 @@ struct channel_packet_caps_list {
  *  - Negative on error.
  */
 __rte_experimental
-int rte_power_guest_channel_send_msg(struct channel_packet *pkt,
+int rte_power_guest_channel_send_msg(struct rte_power_channel_packet *pkt,
 			unsigned int lcore_id);
 
 /**

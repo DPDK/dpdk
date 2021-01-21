@@ -108,7 +108,7 @@ str_to_ether_addr(const char *a, struct rte_ether_addr *ether_addr)
 }
 
 static int
-set_policy_mac(struct channel_packet *pkt, int idx, char *mac)
+set_policy_mac(struct rte_power_channel_packet *pkt, int idx, char *mac)
 {
 	union PFID pfid;
 	int ret;
@@ -165,7 +165,7 @@ get_resource_id_from_vmname(const char *vm_name)
 }
 
 static int
-parse_json_to_pkt(json_t *element, struct channel_packet *pkt,
+parse_json_to_pkt(json_t *element, struct rte_power_channel_packet *pkt,
 					const char *vm_name)
 {
 	const char *key;
@@ -173,7 +173,7 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt,
 	int ret;
 	int resource_id;
 
-	memset(pkt, 0, sizeof(struct channel_packet));
+	memset(pkt, 0, sizeof(*pkt));
 
 	pkt->nb_mac_to_monitor = 0;
 	pkt->t_boost_status.tbEnabled = false;
@@ -463,7 +463,7 @@ get_pfid(struct policy *pol)
 }
 
 static int
-update_policy(struct channel_packet *pkt)
+update_policy(struct rte_power_channel_packet *pkt)
 {
 
 	unsigned int updated = 0;
@@ -512,7 +512,7 @@ update_policy(struct channel_packet *pkt)
 }
 
 static int
-remove_policy(struct channel_packet *pkt __rte_unused)
+remove_policy(struct rte_power_channel_packet *pkt __rte_unused)
 {
 	unsigned int i;
 
@@ -673,7 +673,7 @@ static void
 apply_policy(struct policy *pol)
 {
 
-	struct channel_packet *pkt = &pol->pkt;
+	struct rte_power_channel_packet *pkt = &pol->pkt;
 
 	/*Check policy to use*/
 	if (pkt->policy_to_use == TRAFFIC)
@@ -715,12 +715,12 @@ write_binary_packet(void *buffer,
 }
 
 static int
-send_freq(struct channel_packet *pkt,
+send_freq(struct rte_power_channel_packet *pkt,
 		struct channel_info *chan_info,
 		bool freq_list)
 {
 	unsigned int vcore_id = pkt->resource_id;
-	struct channel_packet_freq_list channel_pkt_freq_list;
+	struct rte_power_channel_packet_freq_list channel_pkt_freq_list;
 	struct vm_info info;
 
 	if (get_info_vm(pkt->vm_name, &info) != 0)
@@ -751,12 +751,12 @@ send_freq(struct channel_packet *pkt,
 }
 
 static int
-send_capabilities(struct channel_packet *pkt,
+send_capabilities(struct rte_power_channel_packet *pkt,
 		struct channel_info *chan_info,
 		bool list_requested)
 {
 	unsigned int vcore_id = pkt->resource_id;
-	struct channel_packet_caps_list channel_pkt_caps_list;
+	struct rte_power_channel_packet_caps_list channel_pkt_caps_list;
 	struct vm_info info;
 	struct rte_power_core_capabilities caps;
 	int ret;
@@ -805,18 +805,19 @@ send_capabilities(struct channel_packet *pkt,
 }
 
 static int
-send_ack_for_received_cmd(struct channel_packet *pkt,
+send_ack_for_received_cmd(struct rte_power_channel_packet *pkt,
 		struct channel_info *chan_info,
 		uint32_t command)
 {
 	pkt->command = command;
 	return write_binary_packet(pkt,
-			sizeof(struct channel_packet),
+			sizeof(*pkt),
 			chan_info);
 }
 
 static int
-process_request(struct channel_packet *pkt, struct channel_info *chan_info)
+process_request(struct rte_power_channel_packet *pkt,
+		struct channel_info *chan_info)
 {
 	int ret;
 
@@ -988,7 +989,7 @@ channel_monitor_init(void)
 static void
 read_binary_packet(struct channel_info *chan_info)
 {
-	struct channel_packet pkt;
+	struct rte_power_channel_packet pkt;
 	void *buffer = &pkt;
 	int buffer_len = sizeof(pkt);
 	int n_bytes, err = 0;
@@ -1019,7 +1020,7 @@ read_binary_packet(struct channel_info *chan_info)
 static void
 read_json_packet(struct channel_info *chan_info)
 {
-	struct channel_packet pkt;
+	struct rte_power_channel_packet pkt;
 	int n_bytes, ret;
 	json_t *root;
 	json_error_t error;
@@ -1063,7 +1064,7 @@ read_json_packet(struct channel_info *chan_info)
 			/*
 			 * Because our data is now in the json
 			 * object, we can overwrite the pkt
-			 * with a channel_packet struct, using
+			 * with a rte_power_channel_packet struct, using
 			 * parse_json_to_pkt()
 			 */
 			ret = parse_json_to_pkt(root, &pkt, resource_name);

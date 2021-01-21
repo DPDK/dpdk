@@ -38,9 +38,9 @@ union PFID {
 	uint64_t pfid;
 };
 
-static struct channel_packet policy;
+static struct rte_power_channel_packet policy;
 
-struct channel_packet *
+struct rte_power_channel_packet *
 get_policy(void)
 {
 	return &policy;
@@ -49,7 +49,7 @@ get_policy(void)
 int
 set_policy_mac(int port, int idx)
 {
-	struct channel_packet *policy;
+	struct rte_power_channel_packet *policy;
 	union PFID pfid;
 	int ret;
 
@@ -73,7 +73,7 @@ set_policy_mac(int port, int idx)
 }
 
 int
-set_policy_defaults(struct channel_packet *pkt)
+set_policy_defaults(struct rte_power_channel_packet *pkt)
 {
 	int ret;
 
@@ -145,7 +145,7 @@ struct cmd_freq_list_result {
 };
 
 static int
-query_data(struct channel_packet *pkt, unsigned int lcore_id)
+query_data(struct rte_power_channel_packet *pkt, unsigned int lcore_id)
 {
 	int ret;
 	ret = rte_power_guest_channel_send_msg(pkt, lcore_id);
@@ -157,13 +157,13 @@ query_data(struct channel_packet *pkt, unsigned int lcore_id)
 }
 
 static int
-receive_freq_list(struct channel_packet_freq_list *pkt_freq_list,
+receive_freq_list(struct rte_power_channel_packet_freq_list *pkt_freq_list,
 		unsigned int lcore_id)
 {
 	int ret;
 
 	ret = rte_power_guest_channel_receive_msg(pkt_freq_list,
-			sizeof(struct channel_packet_freq_list),
+			sizeof(*pkt_freq_list),
 			lcore_id);
 	if (ret < 0) {
 		RTE_LOG(ERR, GUEST_CLI, "Error receiving message.\n");
@@ -183,14 +183,14 @@ cmd_query_freq_list_parsed(void *parsed_result,
 {
 	struct cmd_freq_list_result *res = parsed_result;
 	unsigned int lcore_id;
-	struct channel_packet_freq_list pkt_freq_list;
-	struct channel_packet pkt;
+	struct rte_power_channel_packet_freq_list pkt_freq_list;
+	struct rte_power_channel_packet pkt;
 	bool query_list = false;
 	int ret;
 	char *ep;
 
-	memset(&pkt, 0, sizeof(struct channel_packet));
-	memset(&pkt_freq_list, 0, sizeof(struct channel_packet_freq_list));
+	memset(&pkt, 0, sizeof(pkt));
+	memset(&pkt_freq_list, 0, sizeof(pkt_freq_list));
 
 	if (!strcmp(res->cpu_num, "all")) {
 
@@ -267,13 +267,13 @@ struct cmd_query_caps_result {
 };
 
 static int
-receive_capabilities(struct channel_packet_caps_list *pkt_caps_list,
+receive_capabilities(struct rte_power_channel_packet_caps_list *pkt_caps_list,
 		unsigned int lcore_id)
 {
 	int ret;
 
 	ret = rte_power_guest_channel_receive_msg(pkt_caps_list,
-		sizeof(struct channel_packet_caps_list),
+		sizeof(*pkt_caps_list),
 		lcore_id);
 	if (ret < 0) {
 		RTE_LOG(ERR, GUEST_CLI, "Error receiving message.\n");
@@ -293,14 +293,14 @@ cmd_query_caps_list_parsed(void *parsed_result,
 {
 	struct cmd_query_caps_result *res = parsed_result;
 	unsigned int lcore_id;
-	struct channel_packet_caps_list pkt_caps_list;
-	struct channel_packet pkt;
+	struct rte_power_channel_packet_caps_list pkt_caps_list;
+	struct rte_power_channel_packet pkt;
 	bool query_list = false;
 	int ret;
 	char *ep;
 
-	memset(&pkt, 0, sizeof(struct channel_packet));
-	memset(&pkt_caps_list, 0, sizeof(struct channel_packet_caps_list));
+	memset(&pkt, 0, sizeof(pkt));
+	memset(&pkt_caps_list, 0, sizeof(pkt_caps_list));
 
 	if (!strcmp(res->cpu_num, "all")) {
 
@@ -380,7 +380,7 @@ cmdline_parse_inst_t cmd_query_caps_list = {
 static int
 check_response_cmd(unsigned int lcore_id, int *result)
 {
-	struct channel_packet pkt;
+	struct rte_power_channel_packet pkt;
 	int ret;
 
 	ret = rte_power_guest_channel_receive_msg(&pkt, sizeof pkt, lcore_id);
@@ -473,7 +473,7 @@ struct cmd_send_policy_result {
 };
 
 static inline int
-send_policy(struct channel_packet *pkt, struct cmdline *cl)
+send_policy(struct rte_power_channel_packet *pkt, struct cmdline *cl)
 {
 	int ret;
 

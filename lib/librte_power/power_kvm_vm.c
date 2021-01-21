@@ -13,7 +13,7 @@
 
 #define FD_PATH "/dev/virtio-ports/virtio.serial.port.poweragent"
 
-static struct channel_packet pkt[RTE_MAX_LCORE];
+static struct rte_power_channel_packet pkt[RTE_MAX_LCORE];
 
 int
 power_kvm_vm_check_supported(void)
