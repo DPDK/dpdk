@@ -28,6 +28,16 @@
 #define ICE_DEV_ID_E810_XXV_QSFP	0x159A
 /* Intel(R) Ethernet Controller E810-XXV for SFP */
 #define ICE_DEV_ID_E810_XXV_SFP		0x159B
+/* Intel(R) Ethernet Connection E823-C for backplane */
+#define ICE_DEV_ID_E823C_BACKPLANE	0x188A
+/* Intel(R) Ethernet Connection E823-C for QSFP */
+#define ICE_DEV_ID_E823C_QSFP		0x188B
+/* Intel(R) Ethernet Connection E823-C for SFP */
+#define ICE_DEV_ID_E823C_SFP		0x188C
+/* Intel(R) Ethernet Connection E823-C/X557-AT 10GBASE-T */
+#define ICE_DEV_ID_E823C_10G_BASE_T	0x188D
+/* Intel(R) Ethernet Connection E823-C 1GbE */
+#define ICE_DEV_ID_E823C_SGMII		0x188E
 /* Intel(R) Ethernet Connection E822-C for backplane */
 #define ICE_DEV_ID_E822C_BACKPLANE	0x1890
 /* Intel(R) Ethernet Connection E822-C for QSFP */
