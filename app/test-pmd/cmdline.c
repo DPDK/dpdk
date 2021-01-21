@@ -3789,6 +3789,7 @@ cmd_set_rxoffs_parsed(void *parsed_result,
 				  MAX_SEGS_BUFFER_SPLIT, seg_offsets, 0);
 	if (nb_segs > 0)
 		set_rx_pkt_offsets(seg_offsets, nb_segs);
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 0, 1);
 }
 
 cmdline_parse_token_string_t cmd_set_rxoffs_keyword =
@@ -3835,6 +3836,7 @@ cmd_set_rxpkts_parsed(void *parsed_result,
 				  MAX_SEGS_BUFFER_SPLIT, seg_lengths, 0);
 	if (nb_segs > 0)
 		set_rx_pkt_segments(seg_lengths, nb_segs);
+	cmd_reconfig_device_queue(RTE_PORT_ALL, 0, 1);
 }
 
 cmdline_parse_token_string_t cmd_set_rxpkts_keyword =
