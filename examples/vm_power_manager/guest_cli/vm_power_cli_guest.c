@@ -19,7 +19,6 @@
 #include <rte_ethdev.h>
 
 #include <rte_power.h>
-#include <guest_channel.h>
 
 #include "vm_power_cli_guest.h"
 

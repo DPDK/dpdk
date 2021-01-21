@@ -8,9 +8,6 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
-#include <stdbool.h>
-
 #define RTE_POWER_MAX_VFS 10
 #define RTE_POWER_VM_MAX_NAME_SZ 32
 #define RTE_POWER_MAX_VCPU_PER_VM 8

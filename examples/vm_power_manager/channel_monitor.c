@@ -35,7 +35,6 @@
 
 #include <libvirt/libvirt.h>
 #include "channel_monitor.h"
-#include "rte_power_guest_channel.h"
 #include "channel_manager.h"
 #include "power_manager.h"
 #include "oob_monitor.h"
