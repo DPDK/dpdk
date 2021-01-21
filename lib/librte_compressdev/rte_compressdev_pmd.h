@@ -138,6 +138,8 @@ typedef void (*compressdev_stats_reset_t)(struct rte_compressdev *dev);
  *
  * @param dev
  *   Compress device
+ * @param dev_info
+ *   Compress device information to populate
  */
 typedef void (*compressdev_info_get_t)(struct rte_compressdev *dev,
 				struct rte_compressdev_info *dev_info);

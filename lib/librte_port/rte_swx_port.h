@@ -50,7 +50,7 @@ typedef void *
 /**
  * Input port free
  *
- * @param[in] args
+ * @param[in] port
  *   Input port handle.
  */
 typedef void
@@ -129,7 +129,7 @@ typedef void *
 /**
  * Output port free
  *
- * @param[in] args
+ * @param[in] port
  *   Output port handle.
  */
 typedef void

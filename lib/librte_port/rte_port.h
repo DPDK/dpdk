@@ -186,7 +186,7 @@ typedef int (*rte_port_out_op_tx)(
  */
 typedef int (*rte_port_out_op_tx_bulk)(
 	void *port,
-	struct rte_mbuf **pkt,
+	struct rte_mbuf **pkts,
 	uint64_t pkts_mask);
 
 /**

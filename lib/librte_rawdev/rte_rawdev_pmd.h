@@ -155,6 +155,8 @@ typedef int (*rawdev_info_get_t)(struct rte_rawdev *dev,
  *   Raw device pointer
  * @param config
  *   Void object containing device specific configuration
+ * @param config_size
+ *   Size of the memory allocated for the configuration
  *
  * @return
  *   Returns 0 on success
@@ -214,6 +216,8 @@ typedef int (*rawdev_reset_t)(struct rte_rawdev *dev);
  *   Raw device queue index
  * @param[out] queue_conf
  *   Raw device queue configuration structure
+ * @param queue_conf_size
+ *   Size of the memory allocated for the configuration
  *
  * @return
  *   Returns 0 on success, negative errno on failure
@@ -232,6 +236,8 @@ typedef int (*rawdev_queue_conf_get_t)(struct rte_rawdev *dev,
  *   Rawqueue index
  * @param queue_conf
  *   Rawqueue configuration structure
+ * @param queue_conf_size
+ *   Size of the memory allocated for the configuration
  *
  * @return
  *   Returns 0 on success.
@@ -263,7 +269,7 @@ typedef int (*rawdev_queue_release_t)(struct rte_rawdev *dev,
  * This function helps in getting queue count supported, independently. It
  * can help in cases where iterator needs to be implemented.
  *
- * @param
+ * @param dev
  *   Raw device pointer
  * @return
  *   Number of queues; 0 is assumed to be a valid response.
@@ -279,7 +285,7 @@ typedef uint16_t (*rawdev_queue_count_t)(struct rte_rawdev *dev);
  *
  * @param dev
  *   Raw device pointer
- * @param bufs
+ * @param buffers
  *   array of buffers
  * @param count
  *   number of buffers passed
@@ -303,7 +309,7 @@ typedef int (*rawdev_enqueue_bufs_t)(struct rte_rawdev *dev,
  *
  * @param dev
  *   Raw device pointer
- * @param bufs
+ * @param buffers
  *   array of buffers
  * @param count
  *   Max buffers expected to be dequeued
@@ -444,7 +450,7 @@ typedef uint64_t (*rawdev_xstats_get_by_name_t)(const struct rte_rawdev *dev,
  *
  * @param dev
  *   Raw device pointer
- * @param status
+ * @param status_info
  *   void block containing device specific status information
  * @return
  *   0 for success,
@@ -472,8 +478,8 @@ typedef int (*rawdev_firmware_version_get_t)(struct rte_rawdev *dev,
  *
  * @param dev
  *   Raw device pointer
- * @param firmware_file
- *   file pointer to firmware area
+ * @param firmware_buf
+ *   Pointer to firmware image
  * @return
  *   >0, ~0: for successful load
  *   <0: for failure

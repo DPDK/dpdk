@@ -121,7 +121,7 @@ extern struct rte_cryptodev *rte_cryptodevs;
  *	Function used to configure device.
  *
  * @param	dev	Crypto device pointer
- *		config	Crypto device configurations
+ * @param	config	Crypto device configurations
  *
  * @return	Returns 0 on success
  */
@@ -176,7 +176,8 @@ typedef void (*cryptodev_stats_reset_t)(struct rte_cryptodev *dev);
 /**
  * Function used to get specific information of a device.
  *
- * @param	dev	Crypto device pointer
+ * @param	dev		Crypto device pointer
+ * @param	dev_info	Pointer to infos structure to populate
  */
 typedef void (*cryptodev_info_get_t)(struct rte_cryptodev *dev,
 				struct rte_cryptodev_info *dev_info);
@@ -213,7 +214,7 @@ typedef int (*cryptodev_queue_pair_release_t)(struct rte_cryptodev *dev,
  *
  * @param	dev		Crypto device pointer
  * @param	nb_objs		number of sessions objects in mempool
- * @param	obj_cache	l-core object cache size, see *rte_ring_create*
+ * @param	obj_cache_size	l-core object cache size, see *rte_ring_create*
  * @param	socket_id	Socket Id to allocate  mempool on.
  *
  * @return
@@ -253,7 +254,7 @@ typedef unsigned int (*cryptodev_asym_get_session_private_size_t)(
  *
  * @param	dev		Crypto device pointer
  * @param	xform		Single or chain of crypto xforms
- * @param	priv_sess	Pointer to cryptodev's private session structure
+ * @param	session		Pointer to cryptodev's private session structure
  * @param	mp		Mempool where the private session is allocated
  *
  * @return
@@ -271,7 +272,7 @@ typedef int (*cryptodev_sym_configure_session_t)(struct rte_cryptodev *dev,
  *
  * @param	dev		Crypto device pointer
  * @param	xform		Single or chain of crypto xforms
- * @param	priv_sess	Pointer to cryptodev's private session structure
+ * @param	session		Pointer to cryptodev's private session structure
  * @param	mp		Mempool where the private session is allocated
  *
  * @return
@@ -333,7 +334,6 @@ typedef int (*cryptodev_sym_get_raw_dp_ctx_size_t)(struct rte_cryptodev *dev);
  *
  * @param	dev		Crypto device pointer.
  * @param	qp_id		Crypto device queue pair index.
- * @param	service_type	Type of the service requested.
  * @param	ctx		The raw data-path context data.
  * @param	sess_type	session type.
  * @param	session_ctx	Session context data. If NULL the driver
