@@ -358,6 +358,40 @@ struct ice_aqc_get_allocd_res_desc {
 	__le32 addr_low;
 };
 
+/* Request buffer for Set VLAN Mode AQ command (indirect 0x020C) */
+struct ice_aqc_set_vlan_mode {
+	u8 reserved;
+	u8 l2tag_prio_tagging;
+#define ICE_AQ_VLAN_PRIO_TAG_S			0
+#define ICE_AQ_VLAN_PRIO_TAG_M			(0x7 << ICE_AQ_VLAN_PRIO_TAG_S)
+#define ICE_AQ_VLAN_PRIO_TAG_NOT_SUPPORTED	0x0
+#define ICE_AQ_VLAN_PRIO_TAG_STAG		0x1
+#define ICE_AQ_VLAN_PRIO_TAG_OUTER_CTAG		0x2
+#define ICE_AQ_VLAN_PRIO_TAG_OUTER_VLAN		0x3
+#define ICE_AQ_VLAN_PRIO_TAG_INNER_CTAG		0x4
+#define ICE_AQ_VLAN_PRIO_TAG_MAX		0x4
+#define ICE_AQ_VLAN_PRIO_TAG_ERROR		0x7
+	u8 l2tag_reserved[64];
+	u8 rdma_packet;
+#define ICE_AQ_VLAN_RDMA_TAG_S			0
+#define ICE_AQ_VLAN_RDMA_TAG_M			(0x3F << ICE_AQ_VLAN_RDMA_TAG_S)
+#define ICE_AQ_SVM_VLAN_RDMA_PKT_FLAG_SETTING	0x10
+#define ICE_AQ_DVM_VLAN_RDMA_PKT_FLAG_SETTING	0x1A
+	u8 rdma_reserved[2];
+	u8 mng_vlan_prot_id;
+#define ICE_AQ_VLAN_MNG_PROTOCOL_ID_OUTER	0x10
+#define ICE_AQ_VLAN_MNG_PROTOCOL_ID_INNER	0x11
+	u8 prot_id_reserved[30];
+};
+
+/* Response buffer for Get VLAN Mode AQ command (indirect 0x020D) */
+struct ice_aqc_get_vlan_mode {
+	u8 vlan_mode;
+#define ICE_AQ_VLAN_MODE_DVM_ENA	BIT(0)
+	u8 l2tag_prio_tagging;
+	u8 reserved[98];
+};
+
 /* Add VSI (indirect 0x0210)
  * Update VSI (indirect 0x0211)
  * Get VSI (indirect 0x0212)
@@ -2911,6 +2945,8 @@ enum ice_adminq_opc {
 	ice_aqc_opc_alloc_res				= 0x0208,
 	ice_aqc_opc_free_res				= 0x0209,
 	ice_aqc_opc_get_allocd_res_desc			= 0x020A,
+	ice_aqc_opc_set_vlan_mode_parameters		= 0x020C,
+	ice_aqc_opc_get_vlan_mode_parameters		= 0x020D,
 
 	/* VSI commands */
 	ice_aqc_opc_add_vsi				= 0x0210,

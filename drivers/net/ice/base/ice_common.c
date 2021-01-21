@@ -836,8 +836,6 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 		goto err_unroll_fltr_mgmt_struct;
 	ice_init_lock(&hw->tnl_lock);
 
-	ice_init_vlan_mode_ops(hw);
-
 	return ICE_SUCCESS;
 
 err_unroll_fltr_mgmt_struct:

@@ -1152,6 +1152,7 @@ static enum ice_status
 ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
 {
 	struct ice_buf_table *ice_buf_tbl;
+	enum ice_status status;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 	ice_debug(hw, ICE_DBG_PKG, "Segment format version: %d.%d.%d.%d\n",
@@ -1169,8 +1170,12 @@ ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
 	ice_debug(hw, ICE_DBG_PKG, "Seg buf count: %d\n",
 		  LE32_TO_CPU(ice_buf_tbl->buf_count));
 
-	return ice_dwnld_cfg_bufs(hw, ice_buf_tbl->buf_array,
-				  LE32_TO_CPU(ice_buf_tbl->buf_count));
+	status = ice_dwnld_cfg_bufs(hw, ice_buf_tbl->buf_array,
+				    LE32_TO_CPU(ice_buf_tbl->buf_count));
+
+	ice_cache_vlan_mode(hw);
+
+	return status;
 }
 
 /**

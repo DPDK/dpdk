@@ -3176,6 +3176,64 @@ ice_aq_get_recipe(struct ice_hw *hw,
 }
 
 /**
+ * ice_update_recipe_lkup_idx - update a default recipe based on the lkup_idx
+ * @hw: pointer to the HW struct
+ * @params: parameters used to update the default recipe
+ *
+ * This function only supports updating default recipes and it only supports
+ * updating a single recipe based on the lkup_idx at a time.
+ *
+ * This is done as a read-modify-write operation. First, get the current recipe
+ * contents based on the recipe's ID. Then modify the field vector index and
+ * mask if it's valid at the lkup_idx. Finally, use the add recipe AQ to update
+ * the pre-existing recipe with the modifications.
+ */
+enum ice_status
+ice_update_recipe_lkup_idx(struct ice_hw *hw,
+			   struct ice_update_recipe_lkup_idx_params *params)
+{
+	struct ice_aqc_recipe_data_elem *rcp_list;
+	u16 num_recps = ICE_MAX_NUM_RECIPES;
+	enum ice_status status;
+
+	rcp_list = (struct ice_aqc_recipe_data_elem *)ice_malloc(hw, num_recps * sizeof(*rcp_list));
+	if (!rcp_list)
+		return ICE_ERR_NO_MEMORY;
+
+	/* read current recipe list from firmware */
+	rcp_list->recipe_indx = params->rid;
+	status = ice_aq_get_recipe(hw, rcp_list, &num_recps, params->rid, NULL);
+	if (status) {
+		ice_debug(hw, ICE_DBG_SW, "Failed to get recipe %d, status %d\n",
+			  params->rid, status);
+		goto error_out;
+	}
+
+	/* only modify existing recipe's lkup_idx and mask if valid, while
+	 * leaving all other fields the same, then update the recipe firmware
+	 */
+	rcp_list->content.lkup_indx[params->lkup_idx] = params->fv_idx;
+	if (params->mask_valid)
+		rcp_list->content.mask[params->lkup_idx] =
+			CPU_TO_LE16(params->mask);
+
+	if (params->ignore_valid)
+		rcp_list->content.lkup_indx[params->lkup_idx] |=
+			ICE_AQ_RECIPE_LKUP_IGNORE;
+
+	status = ice_aq_add_recipe(hw, &rcp_list[0], 1, NULL);
+	if (status)
+		ice_debug(hw, ICE_DBG_SW, "Failed to update recipe %d lkup_idx %d fv_idx %d mask %d mask_valid %s, status %d\n",
+			  params->rid, params->lkup_idx, params->fv_idx,
+			  params->mask, params->mask_valid ? "true" : "false",
+			  status);
+
+error_out:
+	ice_free(hw, rcp_list);
+	return status;
+}
+
+/**
  * ice_aq_map_recipe_to_profile - Map recipe to packet profile
  * @hw: pointer to the HW struct
  * @profile_id: package profile ID to associate the recipe with

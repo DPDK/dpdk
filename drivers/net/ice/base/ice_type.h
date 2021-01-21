@@ -1012,8 +1012,8 @@ struct ice_hw {
 	ice_declare_bitmap(fdir_perfect_fltr, ICE_FLTR_PTYPE_MAX);
 	struct ice_lock rss_locks;	/* protect RSS configuration */
 	struct LIST_HEAD_TYPE rss_list_head;
-	struct ice_vlan_mode_ops vlan_mode_ops;
 	ice_declare_bitmap(hw_ptype, ICE_FLOW_PTYPE_MAX);
+	u8 dvm_ena;
 };
 
 /* Statistics collected by each port, VSI, VEB, and S-channel */
