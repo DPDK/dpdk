@@ -1092,6 +1092,9 @@ iavf_dev_vlan_offload_set_v2(struct rte_eth_dev *dev, int mask)
 		enable = !!(rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 
 		err = iavf_config_vlan_strip_v2(adapter, enable);
+		/* If not support, the stripping is already disabled by PF */
+		if (err == -ENOTSUP && !enable)
+			err = 0;
 		if (err)
 			return -EIO;
 	}
