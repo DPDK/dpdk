@@ -209,6 +209,7 @@ struct mlx5_txq_local {
 	uint16_t wqe_free; /* available wqe remain. */
 	uint16_t mbuf_off; /* data offset in current mbuf. */
 	uint16_t mbuf_nseg; /* number of remaining mbuf. */
+	uint16_t mbuf_free; /* number of inline mbufs to free. */
 };
 
 /* TX queue descriptor. */

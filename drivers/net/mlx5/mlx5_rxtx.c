@@ -1990,6 +1990,17 @@ mlx5_tx_free_mbuf(struct rte_mbuf **__rte_restrict pkts,
 		}
 	}
 }
+/*
+ * No inline version to free buffers for optimal call
+ * on the tx_burst completion.
+ */
+static __rte_noinline void
+__mlx5_tx_free_mbuf(struct rte_mbuf **__rte_restrict pkts,
+		    unsigned int pkts_n,
+		    unsigned int olx __rte_unused)
+{
+	mlx5_tx_free_mbuf(pkts, pkts_n, olx);
+}
 
 /**
  * Free the mbuf from the elts ring buffer till new tail.
@@ -4408,10 +4419,25 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *__rte_restrict txq,
 			MLX5_ASSERT(room >= tlen);
 			room -= tlen;
 			/*
-			 * Packet data are completely inlined,
-			 * free the packet immediately.
+			 * Packet data are completely inline,
+			 * we can try to free the packet.
 			 */
-			rte_pktmbuf_free_seg(loc->mbuf);
+			if (likely(loc->pkts_sent == loc->mbuf_free)) {
+				/*
+				 * All the packets from the burst beginning
+				 * are inline, we can free mbufs directly
+				 * from the origin array on tx_burst exit().
+				 */
+				loc->mbuf_free++;
+				goto next_mbuf;
+			}
+			/*
+			 * In order no to call rte_pktmbuf_free_seg() here,
+			 * in the most inner loop (that might be very
+			 * expensive) we just save the mbuf in elts.
+			 */
+			txq->elts[txq->elts_head++ & txq->elts_m] = loc->mbuf;
+			loc->elts_free--;
 			goto next_mbuf;
 pointer_empw:
 			/*
@@ -4433,6 +4459,7 @@ pointer_empw:
 			mlx5_tx_dseg_ptr(txq, loc, dseg, dptr, dlen, olx);
 			/* We have to store mbuf in elts.*/
 			txq->elts[txq->elts_head++ & txq->elts_m] = loc->mbuf;
+			loc->elts_free--;
 			room -= MLX5_WQE_DSEG_SIZE;
 			/* Ring buffer wraparound is checked at the loop end.*/
 			++dseg;
@@ -4442,7 +4469,6 @@ next_mbuf:
 			slen += dlen;
 #endif
 			loc->pkts_sent++;
-			loc->elts_free--;
 			pkts_n--;
 			if (unlikely(!pkts_n || !loc->elts_free)) {
 				/*
@@ -4892,6 +4918,8 @@ mlx5_tx_burst_tmpl(struct mlx5_txq_data *__rte_restrict txq,
 	MLX5_ASSERT(txq->wqe_s >= (uint16_t)(txq->wqe_ci - txq->wqe_pi));
 	if (unlikely(!pkts_n))
 		return 0;
+	if (MLX5_TXOFF_CONFIG(INLINE))
+		loc.mbuf_free = 0;
 	loc.pkts_sent = 0;
 	loc.pkts_copy = 0;
 	loc.wqe_last = NULL;
@@ -5155,6 +5183,8 @@ burst_exit:
 	/* Increment sent packets counter. */
 	txq->stats.opackets += loc.pkts_sent;
 #endif
+	if (MLX5_TXOFF_CONFIG(INLINE) && loc.mbuf_free)
+		__mlx5_tx_free_mbuf(pkts, loc.mbuf_free, olx);
 	return loc.pkts_sent;
 }
 
