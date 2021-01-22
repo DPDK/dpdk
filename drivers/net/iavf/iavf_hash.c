@@ -927,6 +927,13 @@ iavf_any_invalid_rss_type(enum rte_eth_hash_function rss_func,
 		if (rss_type & (ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY |
 		    ETH_RSS_L4_SRC_ONLY | ETH_RSS_L4_DST_ONLY))
 			return true;
+
+		if (!(rss_type &
+		   (ETH_RSS_IPV4 | ETH_RSS_IPV6 |
+		    ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP |
+		    ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV6_TCP |
+		    ETH_RSS_NONFRAG_IPV4_SCTP | ETH_RSS_NONFRAG_IPV6_SCTP)))
+			return true;
 	}
 
 	/* check invalid combination */
