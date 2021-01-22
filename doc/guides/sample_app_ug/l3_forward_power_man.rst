@@ -109,6 +109,8 @@ where,
 
 *   --telemetry:  Telemetry mode.
 
+*   --pmd-mgmt: PMD power management mode.
+
 See :doc:`l3_forward` for details.
 The L3fwd-power example reuses the L3fwd command line options.
 
@@ -456,3 +458,44 @@ reference cycles and accordingly busy rate is set  to either 0% or
 
 The new stats ``empty_poll`` , ``full_poll`` and ``busy_percent`` can be viewed by running the script
 ``/usertools/dpdk-telemetry-client.py`` and selecting the menu option ``Send for global Metrics``.
+
+PMD power management Mode
+-------------------------
+
+The PMD power management  mode support for ``l3fwd-power`` is a standalone mode.
+In this mode, ``l3fwd-power`` does simple l3fwding
+along with enabling the power saving scheme on specific port/queue/lcore.
+Main purpose for this mode is to demonstrate
+how to use the PMD power management API.
+
+.. code-block:: console
+
+        ./build/examples/dpdk-l3fwd-power -l 1-3 --  --pmd-mgmt -p 0x0f --config="(0,0,2),(0,1,3)"
+
+PMD Power Management Mode
+-------------------------
+
+There is also a traffic-aware operating mode that,
+instead of using explicit power management,
+will use automatic PMD power management.
+This mode is limited to one queue per core,
+and has three available power management schemes:
+
+``monitor``
+  This will use ``rte_power_monitor()`` function to enter
+  a power-optimized state (subject to platform support).
+
+``pause``
+  This will use ``rte_power_pause()`` or ``rte_pause()``
+  to avoid busy looping when there is no traffic.
+
+``scale``
+  This will use frequency scaling routines
+  available in the ``librte_power`` library.
+
+See :doc:`Power Management<../prog_guide/power_man>` chapter
+in the DPDK Programmer's Guide for more details on PMD power management.
+
+.. code-block:: console
+
+        ./<build_dir>/examples/dpdk-l3fwd-power -l 1-3 -- -p 0x0f --config="(0,0,2),(0,1,3)" --pmd-mgmt=scale
