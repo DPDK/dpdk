@@ -4782,27 +4782,28 @@ hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 	uint16_t q_id;
 	int ret;
 
-	if (dev->data->dev_conf.intr_conf.rxq == 0)
+	/*
+	 * hns3 needs a separate interrupt to be used as event interrupt which
+	 * could not be shared with task queue pair, so KERNEL drivers need
+	 * support multiple interrupt vectors.
+	 */
+	if (dev->data->dev_conf.intr_conf.rxq == 0 ||
+	    !rte_intr_cap_multiple(intr_handle))
 		return 0;
 
-	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
+	intr_vector = hw->used_rx_queues;
+	/* creates event fd for each intr vector when MSIX is used */
+	if (rte_intr_efd_enable(intr_handle, intr_vector))
+		return -EINVAL;
 
-	/* check and configure queue intr-vector mapping */
-	if (rte_intr_cap_multiple(intr_handle) ||
-	    !RTE_ETH_DEV_SRIOV(dev).active) {
-		intr_vector = hw->used_rx_queues;
-		/* creates event fd for each intr vector when MSIX is used */
-		if (rte_intr_efd_enable(intr_handle, intr_vector))
-			return -EINVAL;
-	}
-	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+	if (intr_handle->intr_vec == NULL) {
 		intr_handle->intr_vec =
 			rte_zmalloc("intr_vec",
 				    hw->used_rx_queues * sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
-			hns3_err(hw, "Failed to allocate %u rx_queues"
-				     " intr_vec", hw->used_rx_queues);
+			hns3_err(hw, "failed to allocate %u rx_queues intr_vec",
+					hw->used_rx_queues);
 			ret = -ENOMEM;
 			goto alloc_intr_vec_error;
 		}
@@ -4812,28 +4813,26 @@ hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 		vec = RTE_INTR_VEC_RXTX_OFFSET;
 		base = RTE_INTR_VEC_RXTX_OFFSET;
 	}
-	if (rte_intr_dp_is_en(intr_handle)) {
-		for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
-			ret = hns3_bind_ring_with_vector(hw, vec, true,
-							 HNS3_RING_TYPE_RX,
-							 q_id);
-			if (ret)
-				goto bind_vector_error;
-			intr_handle->intr_vec[q_id] = vec;
-			if (vec < base + intr_handle->nb_efd - 1)
-				vec++;
-		}
+
+	for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
+		ret = hns3_bind_ring_with_vector(hw, vec, true,
+						 HNS3_RING_TYPE_RX, q_id);
+		if (ret)
+			goto bind_vector_error;
+		intr_handle->intr_vec[q_id] = vec;
+		/*
+		 * If there are not enough efds (e.g. not enough interrupt),
+		 * remaining queues will be bond to the last interrupt.
+		 */
+		if (vec < base + intr_handle->nb_efd - 1)
+			vec++;
 	}
 	rte_intr_enable(intr_handle);
 	return 0;
 
 bind_vector_error:
-	rte_intr_efd_disable(intr_handle);
-	if (intr_handle->intr_vec) {
-		free(intr_handle->intr_vec);
-		intr_handle->intr_vec = NULL;
-	}
-	return ret;
+	rte_free(intr_handle->intr_vec);
+	intr_handle->intr_vec = NULL;
 alloc_intr_vec_error:
 	rte_intr_efd_disable(intr_handle);
 	return ret;
