@@ -325,6 +325,7 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 		 */
 		rte_bitmap_set(rxr->ag_bitmap, ag_cons);
 	}
+	last->next = NULL;
 	bnxt_prod_ag_mbuf(rxq);
 	return 0;
 }
