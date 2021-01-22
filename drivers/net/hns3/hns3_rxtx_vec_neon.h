@@ -42,7 +42,7 @@ hns3_xmit_fixed_burst_vec(void *__restrict tx_queue,
 
 	nb_commit = RTE_MIN(txq->tx_bd_ready, nb_pkts);
 	if (unlikely(nb_commit == 0)) {
-		txq->queue_full_cnt++;
+		txq->dfx_stats.queue_full_cnt++;
 		return 0;
 	}
 	nb_tx = nb_commit;

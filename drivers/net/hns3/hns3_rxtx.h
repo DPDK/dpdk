@@ -266,6 +266,18 @@ struct hns3_entry {
 	struct rte_mbuf *mbuf;
 };
 
+struct hns3_rx_dfx_stats {
+	uint64_t l3_csum_errors;
+	uint64_t l4_csum_errors;
+	uint64_t ol3_csum_errors;
+	uint64_t ol4_csum_errors;
+};
+
+struct hns3_rx_bd_errors_stats {
+	uint64_t l2_errors;
+	uint64_t pkt_len_errors;
+};
+
 struct hns3_rx_queue {
 	void *io_base;
 	volatile void *io_head_reg;
@@ -312,12 +324,10 @@ struct hns3_rx_queue {
 	bool pvid_sw_discard_en;
 	bool enabled;           /* indicate if Rx queue has been enabled */
 
-	uint64_t l2_errors;
-	uint64_t pkt_len_errors;
-	uint64_t l3_csum_errors;
-	uint64_t l4_csum_errors;
-	uint64_t ol3_csum_errors;
-	uint64_t ol4_csum_errors;
+	/* DFX statistics that driver does not need to discard packets */
+	struct hns3_rx_dfx_stats dfx_stats;
+	/* Error statistics that driver needs to discard packets */
+	struct hns3_rx_bd_errors_stats err_stats;
 
 	struct rte_mbuf *bulk_mbuf[HNS3_BULK_ALLOC_MBUF_NUM];
 	uint16_t bulk_mbuf_num;
@@ -326,6 +336,57 @@ struct hns3_rx_queue {
 	uint8_t offset_table[HNS3_VECTOR_RX_OFFSET_TABLE_LEN + 1];
 	uint64_t mbuf_initializer; /* value to init mbufs used with vector rx */
 	struct rte_mbuf fake_mbuf; /* fake mbuf used with vector rx */
+};
+
+/*
+ * The following items are used for the abnormal errors statistics in
+ * the Tx datapath. When upper level application calls the
+ * rte_eth_tx_burst API function to send multiple packets at a time with
+ * burst mode based on hns3 network engine, there are some abnormal
+ * conditions that cause the driver to fail to operate the hardware to
+ * send packets correctly.
+ * Note: When using burst mode to call the rte_eth_tx_burst API function
+ * to send multiple packets at a time. When the first abnormal error is
+ * detected, add one to the relevant error statistics item, and then
+ * exit the loop of sending multiple packets of the function. That is to
+ * say, even if there are multiple packets in which abnormal errors may
+ * be detected in the burst, the relevant error statistics in the driver
+ * will only be increased by one.
+ * The detail description of the Tx abnormal errors statistic items as
+ * below:
+ *  - over_length_pkt_cnt
+ *     Total number of greater than HNS3_MAX_FRAME_LEN the driver
+ *     supported.
+ *
+ * - exceed_limit_bd_pkt_cnt
+ *     Total number of exceeding the hardware limited bd which process
+ *     a packet needed bd numbers.
+ *
+ * - exceed_limit_bd_reassem_fail
+ *     Total number of exceeding the hardware limited bd fail which
+ *     process a packet needed bd numbers and reassemble fail.
+ *
+ * - unsupported_tunnel_pkt_cnt
+ *     Total number of unsupported tunnel packet. The unsupported tunnel
+ *     type: vxlan_gpe, gtp, ipip and MPLSINUDP, MPLSINUDP is a packet
+ *     with MPLS-in-UDP RFC 7510 header.
+ *
+ * - queue_full_cnt
+ *     Total count which the available bd numbers in current bd queue is
+ *     less than the bd numbers with the pkt process needed.
+ *
+ * - pkt_padding_fail_cnt
+ *     Total count which the packet length is less than minimum packet
+ *     length(struct hns3_tx_queue::min_tx_pkt_len) supported by
+ *     hardware in Tx direction and fail to be appended with 0.
+ */
+struct hns3_tx_dfx_stats {
+	uint64_t over_length_pkt_cnt;
+	uint64_t exceed_limit_bd_pkt_cnt;
+	uint64_t exceed_limit_bd_reassem_fail;
+	uint64_t unsupported_tunnel_pkt_cnt;
+	uint64_t queue_full_cnt;
+	uint64_t pkt_padding_fail_cnt;
 };
 
 struct hns3_tx_queue {
@@ -411,54 +472,7 @@ struct hns3_tx_queue {
 	bool pvid_sw_shift_en;
 	bool enabled;           /* indicate if Tx queue has been enabled */
 
-	/*
-	 * The following items are used for the abnormal errors statistics in
-	 * the Tx datapath. When upper level application calls the
-	 * rte_eth_tx_burst API function to send multiple packets at a time with
-	 * burst mode based on hns3 network engine, there are some abnormal
-	 * conditions that cause the driver to fail to operate the hardware to
-	 * send packets correctly.
-	 * Note: When using burst mode to call the rte_eth_tx_burst API function
-	 * to send multiple packets at a time. When the first abnormal error is
-	 * detected, add one to the relevant error statistics item, and then
-	 * exit the loop of sending multiple packets of the function. That is to
-	 * say, even if there are multiple packets in which abnormal errors may
-	 * be detected in the burst, the relevant error statistics in the driver
-	 * will only be increased by one.
-	 * The detail description of the Tx abnormal errors statistic items as
-	 * below:
-	 *  - over_length_pkt_cnt
-	 *     Total number of greater than HNS3_MAX_FRAME_LEN the driver
-	 *     supported.
-	 *
-	 * - exceed_limit_bd_pkt_cnt
-	 *     Total number of exceeding the hardware limited bd which process
-	 *     a packet needed bd numbers.
-	 *
-	 * - exceed_limit_bd_reassem_fail
-	 *     Total number of exceeding the hardware limited bd fail which
-	 *     process a packet needed bd numbers and reassemble fail.
-	 *
-	 * - unsupported_tunnel_pkt_cnt
-	 *     Total number of unsupported tunnel packet. The unsupported tunnel
-	 *     type: vxlan_gpe, gtp, ipip and MPLSINUDP, MPLSINUDP is a packet
-	 *     with MPLS-in-UDP RFC 7510 header.
-	 *
-	 * - queue_full_cnt
-	 *     Total count which the available bd numbers in current bd queue is
-	 *     less than the bd numbers with the pkt process needed.
-	 *
-	 * - pkt_padding_fail_cnt
-	 *     Total count which the packet length is less than minimum packet
-	 *     length(struct hns3_tx_queue::min_tx_pkt_len) supported by
-	 *     hardware in Tx direction and fail to be appended with 0.
-	 */
-	uint64_t over_length_pkt_cnt;
-	uint64_t exceed_limit_bd_pkt_cnt;
-	uint64_t exceed_limit_bd_reassem_fail;
-	uint64_t unsupported_tunnel_pkt_cnt;
-	uint64_t queue_full_cnt;
-	uint64_t pkt_padding_fail_cnt;
+	struct hns3_tx_dfx_stats dfx_stats;
 };
 
 #define HNS3_GET_TX_QUEUE_PEND_BD_NUM(txq) \
@@ -511,9 +525,9 @@ hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
 
 	if (unlikely((l234_info & L2E_TRUNC_ERR_FLAG) || rxm->pkt_len == 0)) {
 		if (l234_info & BIT(HNS3_RXD_L2E_B))
-			rxq->l2_errors++;
+			rxq->err_stats.l2_errors++;
 		else
-			rxq->pkt_len_errors++;
+			rxq->err_stats.pkt_len_errors++;
 		return -EINVAL;
 	}
 
@@ -525,24 +539,24 @@ hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
 
 		if (unlikely(l234_info & BIT(HNS3_RXD_L3E_B))) {
 			rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-			rxq->l3_csum_errors++;
+			rxq->dfx_stats.l3_csum_errors++;
 			tmp |= HNS3_L3_CKSUM_ERR;
 		}
 
 		if (unlikely(l234_info & BIT(HNS3_RXD_L4E_B))) {
 			rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-			rxq->l4_csum_errors++;
+			rxq->dfx_stats.l4_csum_errors++;
 			tmp |= HNS3_L4_CKSUM_ERR;
 		}
 
 		if (unlikely(l234_info & BIT(HNS3_RXD_OL3E_B))) {
-			rxq->ol3_csum_errors++;
+			rxq->dfx_stats.ol3_csum_errors++;
 			tmp |= HNS3_OUTER_L3_CKSUM_ERR;
 		}
 
 		if (unlikely(l234_info & BIT(HNS3_RXD_OL4E_B))) {
 			rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
-			rxq->ol4_csum_errors++;
+			rxq->dfx_stats.ol4_csum_errors++;
 			tmp |= HNS3_OUTER_L4_CKSUM_ERR;
 		}
 	}

@@ -1792,12 +1792,8 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->io_head_reg = (volatile void *)((char *)rxq->io_base +
 			   HNS3_RING_RX_HEAD_REG);
 	rxq->rx_buf_len = rx_buf_size;
-	rxq->l2_errors = 0;
-	rxq->pkt_len_errors = 0;
-	rxq->l3_csum_errors = 0;
-	rxq->l4_csum_errors = 0;
-	rxq->ol3_csum_errors = 0;
-	rxq->ol4_csum_errors = 0;
+	memset(&rxq->err_stats, 0, sizeof(struct hns3_rx_bd_errors_stats));
+	memset(&rxq->dfx_stats, 0, sizeof(struct hns3_rx_dfx_stats));
 
 	/* CRC len set here is used for amending packet length */
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
@@ -2622,12 +2618,8 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 					     HNS3_RING_TX_TAIL_REG);
 	txq->min_tx_pkt_len = hw->min_tx_pkt_len;
 	txq->tso_mode = hw->tso_mode;
-	txq->over_length_pkt_cnt = 0;
-	txq->exceed_limit_bd_pkt_cnt = 0;
-	txq->exceed_limit_bd_reassem_fail = 0;
-	txq->unsupported_tunnel_pkt_cnt = 0;
-	txq->queue_full_cnt = 0;
-	txq->pkt_padding_fail_cnt = 0;
+	memset(&txq->dfx_stats, 0, sizeof(struct hns3_tx_dfx_stats));
+
 	rte_spinlock_lock(&hw->lock);
 	dev->data->tx_queues[idx] = txq;
 	rte_spinlock_unlock(&hw->lock);
@@ -3350,7 +3342,7 @@ hns3_parse_cksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
 	if (m->ol_flags & HNS3_TX_CKSUM_OFFLOAD_MASK) {
 		/* Fill in tunneling parameters if necessary */
 		if (hns3_parse_tunneling_params(txq, m, tx_desc_id)) {
-			txq->unsupported_tunnel_pkt_cnt++;
+			txq->dfx_stats.unsupported_tunnel_pkt_cnt++;
 				return -EINVAL;
 		}
 
@@ -3380,17 +3372,17 @@ hns3_check_non_tso_pkt(uint16_t nb_buf, struct rte_mbuf **m_seg,
 	 * driver support, the packet will be ignored.
 	 */
 	if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) > HNS3_MAX_FRAME_LEN)) {
-		txq->over_length_pkt_cnt++;
+		txq->dfx_stats.over_length_pkt_cnt++;
 		return -EINVAL;
 	}
 
 	max_non_tso_bd_num = txq->max_non_tso_bd_num;
 	if (unlikely(nb_buf > max_non_tso_bd_num)) {
-		txq->exceed_limit_bd_pkt_cnt++;
+		txq->dfx_stats.exceed_limit_bd_pkt_cnt++;
 		ret = hns3_reassemble_tx_pkts(tx_pkt, &new_pkt,
 					      max_non_tso_bd_num);
 		if (ret) {
-			txq->exceed_limit_bd_reassem_fail++;
+			txq->dfx_stats.exceed_limit_bd_reassem_fail++;
 			return ret;
 		}
 		*m_seg = new_pkt;
@@ -3528,7 +3520,7 @@ hns3_xmit_pkts_simple(void *tx_queue,
 	nb_pkts = RTE_MIN(txq->tx_bd_ready, nb_pkts);
 	if (unlikely(nb_pkts == 0)) {
 		if (txq->tx_bd_ready == 0)
-			txq->queue_full_cnt++;
+			txq->dfx_stats.queue_full_cnt++;
 		return 0;
 	}
 
@@ -3580,7 +3572,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		nb_buf = tx_pkt->nb_segs;
 
 		if (nb_buf > txq->tx_bd_ready) {
-			txq->queue_full_cnt++;
+			txq->dfx_stats.queue_full_cnt++;
 			if (nb_tx == 0)
 				return 0;
 
@@ -3601,7 +3593,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					 rte_pktmbuf_pkt_len(tx_pkt);
 			appended = rte_pktmbuf_append(tx_pkt, add_len);
 			if (appended == NULL) {
-				txq->pkt_padding_fail_cnt++;
+				txq->dfx_stats.pkt_padding_fail_cnt++;
 				break;
 			}
 
