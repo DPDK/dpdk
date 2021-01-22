@@ -118,6 +118,7 @@ New Features
     mirroring action on E-Switch.
   * Enlarged the number of flow priorities to 21844 (0 - 21843) for ingress or
     egress flow groups greater than 0 and for any transfer flow group.
+  * Added support for the Tx mbuf fast free offload.
 
 * **Updated Wangxun txgbe driver.**
 

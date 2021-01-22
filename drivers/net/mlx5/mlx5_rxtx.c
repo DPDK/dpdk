@@ -1889,6 +1889,8 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev __rte_unused)
 /**
  * Free the mbufs from the linear array of pointers.
  *
+ * @param txq
+ *   Pointer to Tx queue structure.
  * @param pkts
  *   Pointer to array of packets to be free.
  * @param pkts_n
@@ -1898,7 +1900,8 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev __rte_unused)
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_free_mbuf(struct rte_mbuf **__rte_restrict pkts,
+mlx5_tx_free_mbuf(struct mlx5_txq_data *__rte_restrict txq,
+		  struct rte_mbuf **__rte_restrict pkts,
 		  unsigned int pkts_n,
 		  unsigned int olx __rte_unused)
 {
@@ -1914,6 +1917,16 @@ mlx5_tx_free_mbuf(struct rte_mbuf **__rte_restrict pkts,
 	 */
 	MLX5_ASSERT(pkts);
 	MLX5_ASSERT(pkts_n);
+	/*
+	 * Free mbufs directly to the pool in bulk
+	 * if fast free offload is engaged
+	 */
+	if (!MLX5_TXOFF_CONFIG(MULTI) && txq->fast_free) {
+		mbuf = *pkts;
+		pool = mbuf->pool;
+		rte_mempool_put_bulk(pool, (void *)pkts, pkts_n);
+		return;
+	}
 	for (;;) {
 		for (;;) {
 			/*
@@ -1995,11 +2008,12 @@ mlx5_tx_free_mbuf(struct rte_mbuf **__rte_restrict pkts,
  * on the tx_burst completion.
  */
 static __rte_noinline void
-__mlx5_tx_free_mbuf(struct rte_mbuf **__rte_restrict pkts,
+__mlx5_tx_free_mbuf(struct mlx5_txq_data *__rte_restrict txq,
+		    struct rte_mbuf **__rte_restrict pkts,
 		    unsigned int pkts_n,
 		    unsigned int olx __rte_unused)
 {
-	mlx5_tx_free_mbuf(pkts, pkts_n, olx);
+	mlx5_tx_free_mbuf(txq, pkts, pkts_n, olx);
 }
 
 /**
@@ -2033,7 +2047,8 @@ mlx5_tx_free_elts(struct mlx5_txq_data *__rte_restrict txq,
 		part = RTE_MIN(part, n_elts);
 		MLX5_ASSERT(part);
 		MLX5_ASSERT(part <= txq->elts_s);
-		mlx5_tx_free_mbuf(&txq->elts[txq->elts_tail & txq->elts_m],
+		mlx5_tx_free_mbuf(txq,
+				  &txq->elts[txq->elts_tail & txq->elts_m],
 				  part, olx);
 		txq->elts_tail += part;
 		n_elts -= part;
@@ -5184,7 +5199,7 @@ burst_exit:
 	txq->stats.opackets += loc.pkts_sent;
 #endif
 	if (MLX5_TXOFF_CONFIG(INLINE) && loc.mbuf_free)
-		__mlx5_tx_free_mbuf(pkts, loc.mbuf_free, olx);
+		__mlx5_tx_free_mbuf(txq, pkts, loc.mbuf_free, olx);
 	return loc.pkts_sent;
 }
 
@@ -5829,17 +5844,19 @@ mlx5_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 
 int
 mlx5_tx_burst_mode_get(struct rte_eth_dev *dev,
-		       uint16_t tx_queue_id __rte_unused,
+		       uint16_t tx_queue_id,
 		       struct rte_eth_burst_mode *mode)
 {
 	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_data *txq = (*priv->txqs)[tx_queue_id];
 	unsigned int i, olx;
 
 	for (i = 0; i < RTE_DIM(txoff_func); i++) {
 		if (pkt_burst == txoff_func[i].func) {
 			olx = txoff_func[i].olx;
 			snprintf(mode->info, sizeof(mode->info),
-				 "%s%s%s%s%s%s%s%s%s",
+				 "%s%s%s%s%s%s%s%s%s%s",
 				 (olx & MLX5_TXOFF_CONFIG_EMPW) ?
 				 ((olx & MLX5_TXOFF_CONFIG_MPW) ?
 				 "Legacy MPW" : "Enhanced MPW") : "No MPW",
@@ -5858,7 +5875,9 @@ mlx5_tx_burst_mode_get(struct rte_eth_dev *dev,
 				 (olx & MLX5_TXOFF_CONFIG_METADATA) ?
 				 " + METADATA" : "",
 				 (olx & MLX5_TXOFF_CONFIG_TXPP) ?
-				 " + TXPP" : "");
+				 " + TXPP" : "",
+				 (txq && txq->fast_free) ?
+				 " + Fast Free" : "");
 			return 0;
 		}
 	}

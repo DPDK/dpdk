@@ -74,6 +74,7 @@ Features
 - RX VLAN stripping.
 - TX VLAN insertion.
 - RX CRC stripping configuration.
+- TX mbuf fast free offload.
 - Promiscuous mode on PF and VF.
 - Multicast promiscuous mode on PF and VF.
 - Hardware checksum offloads.
@@ -352,6 +353,17 @@ Limitations
   - ``DEV_RX_OFFLOAD_KEEP_CRC`` cannot be supported with decapsulation
     for some NICs (such as ConnectX-6 Dx, ConnectX-6 Lx, and BlueField-2).
     The capability bit ``scatter_fcs_w_decap_disable`` shows NIC support.
+
+- TX mbuf fast free:
+
+  - fast free offload assumes the all mbufs being sent are originated from the
+    same memory pool and there is no any extra references to the mbufs (the
+    reference counter for each mbuf is equal 1 on tx_burst call). The latter
+    means there should be no any externally attached buffers in mbufs. It is
+    an application responsibility to provide the correct mbufs if the fast
+    free offload is engaged. The mlx5 PMD implicitly produces the mbufs with
+    externally attached buffers if MPRQ option is enabled, hence, the fast
+    free offload is neither supported nor advertised if there is MPRQ enabled.
 
 - Sample flow:
 

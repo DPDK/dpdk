@@ -243,6 +243,7 @@ struct mlx5_txq_data {
 	uint16_t vlan_en:1; /* VLAN insertion in WQE is supported. */
 	uint16_t db_nc:1; /* Doorbell mapped to non-cached region. */
 	uint16_t db_heu:1; /* Doorbell heuristic write barrier. */
+	uint16_t fast_free:1; /* mbuf fast free on Tx is enabled. */
 	uint16_t inlen_send; /* Ordinary send data inline size. */
 	uint16_t inlen_empw; /* eMPW max packet size to inline. */
 	uint16_t inlen_mode; /* Minimal data length to inline. */

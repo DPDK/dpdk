@@ -123,6 +123,8 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 				     DEV_TX_OFFLOAD_GRE_TNL_TSO |
 				     DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
 	}
+	if (!config->mprq.enabled)
+		offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	return offloads;
 }
 
@@ -805,6 +807,10 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
 	bool vlan_inline;
 	unsigned int temp;
 
+	txq_ctrl->txq.fast_free =
+		!!((txq_ctrl->txq.offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) &&
+		   !(txq_ctrl->txq.offloads & DEV_TX_OFFLOAD_MULTI_SEGS) &&
+		   !config->mprq.enabled);
 	if (config->txqs_inline == MLX5_ARG_UNSET)
 		txqs_inline =
 #if defined(RTE_ARCH_ARM64)
