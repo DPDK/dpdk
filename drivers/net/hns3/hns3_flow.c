@@ -700,6 +700,7 @@ hns3_parse_udp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	hns3_set_bit(rule->input_set, INNER_IP_PROTO, 1);
 	rule->key_conf.spec.ip_proto = IPPROTO_UDP;
 	rule->key_conf.mask.ip_proto = IPPROTO_MASK;
+
 	/* Only used to describe the protocol stack. */
 	if (item->spec == NULL && item->mask == NULL)
 		return 0;
@@ -1264,7 +1265,7 @@ hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 	if (comp->func == RTE_ETH_HASH_FUNCTION_MAX)
 		func_is_same = false;
 	else
-		func_is_same = (with->func ? (comp->func == with->func) : true);
+		func_is_same = with->func ? (comp->func == with->func) : true;
 
 	return (func_is_same &&
 		comp->types == (with->types & HNS3_ETH_RSS_SUPPORT) &&
@@ -1861,6 +1862,7 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_HANDLE,
 					  flow, "Flow is NULL");
+
 	filter_type = flow->filter_type;
 	switch (filter_type) {
 	case RTE_ETH_FILTER_FDIR:
