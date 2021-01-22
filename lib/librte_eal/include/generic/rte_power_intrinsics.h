@@ -20,14 +20,17 @@
 
 struct rte_power_monitor_cond {
 	volatile void *addr;  /**< Address to monitor for changes */
-	uint64_t val;         /**< Before attempting the monitoring, the address
-	                       *   may be read and compared against this value.
-	                       **/
-	uint64_t mask;   /**< 64-bit mask to extract current value from addr */
-	uint8_t data_sz; /**< Data size (in bytes) that will be used to compare
-	                  *   expected value with the memory address. Can be 1,
-	                  *   2, 4, or 8. Supplying any other value will lead to
-	                  *   undefined result. */
+	uint64_t val;         /**< If the `mask` is non-zero, location pointed
+	                       *   to by `addr` will be read and compared
+	                       *   against this value.
+	                       */
+	uint64_t mask;   /**< 64-bit mask to extract value read from `addr` */
+	uint8_t size;    /**< Data size (in bytes) that will be used to compare
+	                  *   expected value (`val`) with data read from the
+	                  *   monitored memory location (`addr`). Can be 1, 2,
+	                  *   4, or 8. Supplying any other value will result in
+	                  *   an error.
+	                  */
 };
 
 /**

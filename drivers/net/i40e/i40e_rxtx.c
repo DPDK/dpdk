@@ -92,7 +92,7 @@ i40e_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 	pmc->mask = rte_cpu_to_le_64(1 << I40E_RX_DESC_STATUS_DD_SHIFT);
 
 	/* registers are 64-bit */
-	pmc->data_sz = sizeof(uint64_t);
+	pmc->size = sizeof(uint64_t);
 
 	return 0;
 }

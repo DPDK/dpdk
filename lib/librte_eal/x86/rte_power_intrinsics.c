@@ -88,7 +88,7 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	if (pmc == NULL)
 		return -EINVAL;
 
-	if (__check_val_size(pmc->data_sz) < 0)
+	if (__check_val_size(pmc->size) < 0)
 		return -EINVAL;
 
 	s = &wait_status[lcore_id];
@@ -113,7 +113,7 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	/* if we have a comparison mask, we might not need to sleep at all */
 	if (pmc->mask) {
 		const uint64_t cur_value = __get_umwait_val(
-				pmc->addr, pmc->data_sz);
+				pmc->addr, pmc->size);
 		const uint64_t masked = cur_value & pmc->mask;
 
 		/* if the masked value is already matching, abort */

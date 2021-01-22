@@ -1389,7 +1389,7 @@ ixgbe_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 	pmc->mask = rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD);
 
 	/* the registers are 32-bit */
-	pmc->data_sz = sizeof(uint32_t);
+	pmc->size = sizeof(uint32_t);
 
 	return 0;
 }

@@ -3185,7 +3185,7 @@ dlb_dequeue_wait(struct dlb_eventdev *dlb,
 		pmc.addr = monitor_addr;
 		pmc.val = expected_value;
 		pmc.mask = qe_mask.raw_qe[1];
-		pmc.data_sz = sizeof(uint64_t);
+		pmc.size = sizeof(uint64_t);
 
 		rte_power_monitor(&pmc, timeout + start_ticks);
 
