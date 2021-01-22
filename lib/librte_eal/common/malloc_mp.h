@@ -30,7 +30,7 @@ enum malloc_req_result {
 };
 
 struct malloc_req_alloc {
-	struct malloc_heap *heap;
+	uint32_t malloc_heap_idx;
 	uint64_t page_sz;
 	size_t elt_size;
 	int socket;
@@ -46,7 +46,7 @@ struct malloc_req_free {
 		void *addr;
 		uint64_t addr_64;
 	};
-	uint64_t len;
+	size_t len;
 };
 
 struct malloc_mp_req {

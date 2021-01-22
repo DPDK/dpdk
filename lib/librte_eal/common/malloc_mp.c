@@ -11,6 +11,7 @@
 
 #include "eal_memalloc.h"
 #include "eal_memcfg.h"
+#include "eal_private.h"
 
 #include "malloc_elem.h"
 #include "malloc_mp.h"
@@ -176,9 +177,48 @@ handle_sync(const struct rte_mp_msg *msg, const void *peer)
 }
 
 static int
+handle_free_request(const struct malloc_mp_req *m)
+{
+	const struct rte_memseg_list *msl;
+	void *start, *end;
+	size_t len;
+
+	len = m->free_req.len;
+	start = m->free_req.addr;
+	end = RTE_PTR_ADD(start, len - 1);
+
+	/* check if the requested memory actually exists */
+	msl = rte_mem_virt2memseg_list(start);
+	if (msl == NULL) {
+		RTE_LOG(ERR, EAL, "Requested to free unknown memory\n");
+		return -1;
+	}
+
+	/* check if end is within the same memory region */
+	if (rte_mem_virt2memseg_list(end) != msl) {
+		RTE_LOG(ERR, EAL, "Requested to free memory spanning multiple regions\n");
+		return -1;
+	}
+
+	/* we're supposed to only free memory that's not external */
+	if (msl->external) {
+		RTE_LOG(ERR, EAL, "Requested to free external memory\n");
+		return -1;
+	}
+
+	/* now that we've validated the request, announce it */
+	eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
+			m->free_req.addr, m->free_req.len);
+
+	/* now, do the actual freeing */
+	return malloc_heap_free_pages(m->free_req.addr, m->free_req.len);
+}
+
+static int
 handle_alloc_request(const struct malloc_mp_req *m,
 		struct mp_request *req)
 {
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	const struct malloc_req_alloc *ar = &m->alloc_req;
 	struct malloc_heap *heap;
 	struct malloc_elem *elem;
@@ -187,17 +227,35 @@ handle_alloc_request(const struct malloc_mp_req *m,
 	int n_segs;
 	void *map_addr;
 
+	/* this is checked by the API, but we need to prevent divide by zero */
+	if (ar->page_sz == 0 || !rte_is_power_of_2(ar->page_sz)) {
+		RTE_LOG(ERR, EAL, "Attempting to allocate with invalid page size\n");
+		return -1;
+	}
+
+	/* heap idx is index into the heap array, not socket ID */
+	if (ar->malloc_heap_idx >= RTE_MAX_HEAPS) {
+		RTE_LOG(ERR, EAL, "Attempting to allocate from invalid heap\n");
+		return -1;
+	}
+
+	heap = &mcfg->malloc_heaps[ar->malloc_heap_idx];
+
+	/* for allocations, we must only use internal heaps */
+	if (rte_malloc_heap_socket_is_external(heap->socket_id)) {
+		RTE_LOG(ERR, EAL, "Attempting to allocate from external heap\n");
+		return -1;
+	}
+
 	alloc_sz = RTE_ALIGN_CEIL(ar->align + ar->elt_size +
 			MALLOC_ELEM_TRAILER_LEN, ar->page_sz);
 	n_segs = alloc_sz / ar->page_sz;
-
-	heap = ar->heap;
 
 	/* we can't know in advance how many pages we'll need, so we malloc */
 	ms = malloc(sizeof(*ms) * n_segs);
 	if (ms == NULL) {
 		RTE_LOG(ERR, EAL, "Couldn't allocate memory for request state\n");
-		goto fail;
+		return -1;
 	}
 	memset(ms, 0, sizeof(*ms) * n_segs);
 
@@ -261,11 +319,7 @@ handle_request(const struct rte_mp_msg *msg, const void *peer __rte_unused)
 	if (m->t == REQ_TYPE_ALLOC) {
 		ret = handle_alloc_request(m, entry);
 	} else if (m->t == REQ_TYPE_FREE) {
-		eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
-				m->free_req.addr, m->free_req.len);
-
-		ret = malloc_heap_free_pages(m->free_req.addr,
-				m->free_req.len);
+		ret = handle_free_request(m);
 	} else {
 		RTE_LOG(ERR, EAL, "Unexpected request from secondary\n");
 		goto fail;

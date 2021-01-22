@@ -460,6 +460,7 @@ try_expand_heap_secondary(struct malloc_heap *heap, uint64_t pg_sz,
 		size_t elt_size, int socket, unsigned int flags, size_t align,
 		size_t bound, bool contig)
 {
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct malloc_mp_req req;
 	int req_result;
 
@@ -473,7 +474,7 @@ try_expand_heap_secondary(struct malloc_heap *heap, uint64_t pg_sz,
 	req.alloc_req.elt_size = elt_size;
 	req.alloc_req.page_sz = pg_sz;
 	req.alloc_req.socket = socket;
-	req.alloc_req.heap = heap; /* it's in shared memory */
+	req.alloc_req.malloc_heap_idx = heap - mcfg->malloc_heaps;
 
 	req_result = request_to_primary(&req);
 
