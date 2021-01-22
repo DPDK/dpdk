@@ -83,16 +83,15 @@ pipeline_queue_worker_single_stage_burst_tx(void *arg)
 			rte_prefetch0(ev[i + 1].mbuf);
 			if (ev[i].sched_type == RTE_SCHED_TYPE_ATOMIC) {
 				pipeline_event_tx(dev, port, &ev[i]);
-				ev[i].op = RTE_EVENT_OP_RELEASE;
 				w->processed_pkts++;
 			} else {
 				ev[i].queue_id++;
 				pipeline_fwd_event(&ev[i],
 						RTE_SCHED_TYPE_ATOMIC);
+				pipeline_event_enqueue_burst(dev, port, ev,
+						nb_rx);
 			}
 		}
-
-		pipeline_event_enqueue_burst(dev, port, ev, nb_rx);
 	}
 
 	return 0;
@@ -213,7 +212,6 @@ pipeline_queue_worker_multi_stage_burst_tx(void *arg)
 
 			if (ev[i].queue_id == tx_queue[ev[i].mbuf->port]) {
 				pipeline_event_tx(dev, port, &ev[i]);
-				ev[i].op = RTE_EVENT_OP_RELEASE;
 				w->processed_pkts++;
 				continue;
 			}
@@ -222,9 +220,8 @@ pipeline_queue_worker_multi_stage_burst_tx(void *arg)
 			pipeline_fwd_event(&ev[i], cq_id != last_queue ?
 					sched_type_list[cq_id] :
 					RTE_SCHED_TYPE_ATOMIC);
+			pipeline_event_enqueue_burst(dev, port, ev, nb_rx);
 		}
-
-		pipeline_event_enqueue_burst(dev, port, ev, nb_rx);
 	}
 
 	return 0;
