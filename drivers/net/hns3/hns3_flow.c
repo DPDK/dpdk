@@ -525,6 +525,17 @@ hns3_parse_vlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	return 0;
 }
 
+static bool
+hns3_check_ipv4_mask_supported(const struct rte_flow_item_ipv4 *ipv4_mask)
+{
+	if (ipv4_mask->hdr.total_length || ipv4_mask->hdr.packet_id ||
+	    ipv4_mask->hdr.fragment_offset || ipv4_mask->hdr.time_to_live ||
+	    ipv4_mask->hdr.hdr_checksum)
+		return false;
+
+	return true;
+}
+
 static int
 hns3_parse_ipv4(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		struct rte_flow_error *error)
@@ -546,11 +557,7 @@ hns3_parse_ipv4(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (item->mask) {
 		ipv4_mask = item->mask;
-		if (ipv4_mask->hdr.total_length ||
-		    ipv4_mask->hdr.packet_id ||
-		    ipv4_mask->hdr.fragment_offset ||
-		    ipv4_mask->hdr.time_to_live ||
-		    ipv4_mask->hdr.hdr_checksum) {
+		if (!hns3_check_ipv4_mask_supported(ipv4_mask)) {
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
@@ -648,6 +655,18 @@ hns3_parse_ipv6(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	return 0;
 }
 
+static bool
+hns3_check_tcp_mask_supported(const struct rte_flow_item_tcp *tcp_mask)
+{
+	if (tcp_mask->hdr.sent_seq || tcp_mask->hdr.recv_ack ||
+	    tcp_mask->hdr.data_off || tcp_mask->hdr.tcp_flags ||
+	    tcp_mask->hdr.rx_win || tcp_mask->hdr.cksum ||
+	    tcp_mask->hdr.tcp_urp)
+		return false;
+
+	return true;
+}
+
 static int
 hns3_parse_tcp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	       struct rte_flow_error *error)
@@ -670,10 +689,7 @@ hns3_parse_tcp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (item->mask) {
 		tcp_mask = item->mask;
-		if (tcp_mask->hdr.sent_seq || tcp_mask->hdr.recv_ack ||
-		    tcp_mask->hdr.data_off || tcp_mask->hdr.tcp_flags ||
-		    tcp_mask->hdr.rx_win || tcp_mask->hdr.cksum ||
-		    tcp_mask->hdr.tcp_urp) {
+		if (!hns3_check_tcp_mask_supported(tcp_mask)) {
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
@@ -1328,6 +1344,28 @@ hns3_rss_conf_copy(struct hns3_rss_conf *out,
 	return 0;
 }
 
+static bool
+hns3_rss_input_tuple_supported(struct hns3_hw *hw,
+			       const struct rte_flow_action_rss *rss)
+{
+	/*
+	 * For IP packet, it is not supported to use src/dst port fields to RSS
+	 * hash for the following packet types.
+	 * - IPV4 FRAG | IPV4 NONFRAG | IPV6 FRAG | IPV6 NONFRAG
+	 * Besides, for Kunpeng920, the NIC HW is not supported to use src/dst
+	 * port fields to RSS hash for IPV6 SCTP packet type. However, the
+	 * Kunpeng930 and future kunpeng series support to use src/dst port
+	 * fields to RSS hash for IPv6 SCTP packet type.
+	 */
+	if (rss->types & (ETH_RSS_L4_DST_ONLY | ETH_RSS_L4_SRC_ONLY) &&
+	    (rss->types & ETH_RSS_IP ||
+	    (!hw->rss_info.ipv6_sctp_offload_supported &&
+	    rss->types & ETH_RSS_NONFRAG_IPV6_SCTP)))
+		return false;
+
+	return true;
+}
+
 /*
  * This function is used to parse rss action validatation.
  */
@@ -1386,18 +1424,7 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
 					  "RSS hash key must be exactly 40 bytes");
 
-	/*
-	 * For Kunpeng920 and Kunpeng930 NIC hardware, it is not supported to
-	 * use dst port/src port fields to RSS hash for the following packet
-	 * types.
-	 * - IPV4 FRAG | IPV4 NONFRAG | IPV6 FRAG | IPV6 NONFRAG
-	 * Besides, for Kunpeng920, The NIC hardware is not supported to use
-	 * src/dst port fields to RSS hash for IPV6 SCTP packet type.
-	 */
-	if (rss->types & (ETH_RSS_L4_DST_ONLY | ETH_RSS_L4_SRC_ONLY) &&
-	   (rss->types & ETH_RSS_IP ||
-	   (!hw->rss_info.ipv6_sctp_offload_supported &&
-	   rss->types & ETH_RSS_NONFRAG_IPV6_SCTP)))
+	if (!hns3_rss_input_tuple_supported(hw, rss))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->types,
