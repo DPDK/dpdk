@@ -91,9 +91,9 @@ net_addr_to_host(uint32_t *dst, const rte_be32_t *src, size_t len)
 /*
  * This function is used to find rss general action.
  * 1. As we know RSS is used to spread packets among several queues, the flow
- *    API provide the struct rte_flow_action_rss, user could config it's field
+ *    API provide the struct rte_flow_action_rss, user could config its field
  *    sush as: func/level/types/key/queue to control RSS function.
- * 2. The flow API also support queue region configuration for hns3. It was
+ * 2. The flow API also supports queue region configuration for hns3. It was
  *    implemented by FDIR + RSS in hns3 hardware, user can create one FDIR rule
  *    which action is RSS queues region.
  * 3. When action is RSS, we use the following rule to distinguish:
@@ -128,11 +128,11 @@ hns3_find_rss_general_action(const struct rte_flow_item pattern[],
 	rss = act->conf;
 	if (have_eth && rss->conf.queue_num) {
 		/*
-		 * Patter have ETH and action's queue_num > 0, indicate this is
+		 * Pattern have ETH and action's queue_num > 0, indicate this is
 		 * queue region configuration.
 		 * Because queue region is implemented by FDIR + RSS in hns3
-		 * hardware, it need enter FDIR process, so here return NULL to
-		 * avoid enter RSS process.
+		 * hardware, it needs to enter FDIR process, so here return NULL
+		 * to avoid enter RSS process.
 		 */
 		return NULL;
 	}
@@ -405,7 +405,6 @@ hns3_handle_actions(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/* Parse to get the attr and action info of flow director rule. */
 static int
 hns3_check_attr(const struct rte_flow_attr *attr, struct rte_flow_error *error)
 {
@@ -800,7 +799,7 @@ hns3_parse_sctp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 }
 
 /*
- * Check items before tunnel, save inner configs to outer configs,and clear
+ * Check items before tunnel, save inner configs to outer configs, and clear
  * inner configs.
  * The key consists of two parts: meta_data and tuple keys.
  * Meta data uses 15 bits, including vlan_num(2bit), des_port(12bit) and tunnel
@@ -1490,10 +1489,8 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 	if (ret)
 		return ret;
 
-	/* Update algorithm of hw */
 	hw->rss_info.conf.func = rss_config->func;
 
-	/* Set flow type supported */
 	tuple = &hw->rss_info.rss_tuple_sets;
 	ret = hns3_set_rss_tuple_by_rss_hf(hw, tuple, rss_config->types);
 	if (ret)
@@ -1578,7 +1575,7 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 		if (rss_flow_conf.queue_num) {
 			/*
 			 * Due the content of queue pointer have been reset to
-			 * 0, the rss_info->conf.queue should be set NULL
+			 * 0, the rss_info->conf.queue should be set to NULL
 			 */
 			rss_info->conf.queue = NULL;
 			rss_info->conf.queue_num = 0;
@@ -1744,7 +1741,7 @@ hns3_flow_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 /*
  * Create or destroy a flow rule.
  * Theorically one rule can match more than one filters.
- * We will let it use the filter which it hitt first.
+ * We will let it use the filter which it hit first.
  * So, the sequence matters.
  */
 static struct rte_flow *
