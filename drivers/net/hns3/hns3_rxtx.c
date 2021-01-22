@@ -834,6 +834,24 @@ queue_reset_fail:
 	return ret;
 }
 
+uint32_t
+hns3_get_tqp_intr_reg_offset(uint16_t tqp_intr_id)
+{
+	uint32_t reg_offset;
+
+	/* Need an extend offset to config queues > 64 */
+	if (tqp_intr_id < HNS3_MIN_EXT_TQP_INTR_ID)
+		reg_offset = HNS3_TQP_INTR_REG_BASE +
+			     tqp_intr_id * HNS3_TQP_INTR_LOW_ORDER_OFFSET;
+	else
+		reg_offset = HNS3_TQP_INTR_EXT_REG_BASE +
+			     tqp_intr_id / HNS3_MIN_EXT_TQP_INTR_ID *
+			     HNS3_TQP_INTR_HIGH_ORDER_OFFSET +
+			     tqp_intr_id % HNS3_MIN_EXT_TQP_INTR_ID *
+			     HNS3_TQP_INTR_LOW_ORDER_OFFSET;
+
+	return reg_offset;
+}
 
 void
 hns3_set_queue_intr_gl(struct hns3_hw *hw, uint16_t queue_id,
@@ -847,7 +865,7 @@ hns3_set_queue_intr_gl(struct hns3_hw *hw, uint16_t queue_id,
 	if (gl_idx >= RTE_DIM(offset) || gl_value > HNS3_TQP_INTR_GL_MAX)
 		return;
 
-	addr = offset[gl_idx] + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	addr = offset[gl_idx] + hns3_get_tqp_intr_reg_offset(queue_id);
 	if (hw->intr.gl_unit == HNS3_INTR_COALESCE_GL_UINT_1US)
 		value = gl_value | HNS3_TQP_INTR_GL_UNIT_1US;
 	else
@@ -864,7 +882,7 @@ hns3_set_queue_intr_rl(struct hns3_hw *hw, uint16_t queue_id, uint16_t rl_value)
 	if (rl_value > HNS3_TQP_INTR_RL_MAX)
 		return;
 
-	addr = HNS3_TQP_INTR_RL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	addr = HNS3_TQP_INTR_RL_REG + hns3_get_tqp_intr_reg_offset(queue_id);
 	value = HNS3_RL_USEC_TO_REG(rl_value);
 	if (value > 0)
 		value |= HNS3_TQP_INTR_RL_ENABLE_MASK;
@@ -885,10 +903,10 @@ hns3_set_queue_intr_ql(struct hns3_hw *hw, uint16_t queue_id, uint16_t ql_value)
 	if (hw->intr.int_ql_max == HNS3_INTR_QL_NONE)
 		return;
 
-	addr = HNS3_TQP_INTR_TX_QL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	addr = HNS3_TQP_INTR_TX_QL_REG + hns3_get_tqp_intr_reg_offset(queue_id);
 	hns3_write_dev(hw, addr, ql_value);
 
-	addr = HNS3_TQP_INTR_RX_QL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	addr = HNS3_TQP_INTR_RX_QL_REG + hns3_get_tqp_intr_reg_offset(queue_id);
 	hns3_write_dev(hw, addr, ql_value);
 }
 
@@ -897,7 +915,7 @@ hns3_queue_intr_enable(struct hns3_hw *hw, uint16_t queue_id, bool en)
 {
 	uint32_t addr, value;
 
-	addr = HNS3_TQP_INTR_CTRL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	addr = HNS3_TQP_INTR_CTRL_REG + hns3_get_tqp_intr_reg_offset(queue_id);
 	value = en ? 1 : 0;
 
 	hns3_write_dev(hw, addr, value);
