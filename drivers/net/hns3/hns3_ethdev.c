@@ -19,6 +19,7 @@
 #define HNS3_DEFAULT_PORT_CONF_QUEUES_NUM	1
 
 #define HNS3_SERVICE_INTERVAL		1000000 /* us */
+#define HNS3_SERVICE_QUICK_INTERVAL	10
 #define HNS3_INVALID_PVID		0xFFFF
 
 #define HNS3_FILTER_TYPE_VF		0
@@ -93,6 +94,7 @@ static int hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid,
 				    int on);
 static int hns3_update_speed_duplex(struct rte_eth_dev *eth_dev);
+static bool hns3_update_link_status(struct hns3_hw *hw);
 
 static int hns3_add_mc_addr(struct hns3_hw *hw,
 			    struct rte_ether_addr *mac_addr);
@@ -4458,7 +4460,7 @@ hns3_get_mac_link_status(struct hns3_hw *hw)
 	return !!link_status;
 }
 
-void
+static bool
 hns3_update_link_status(struct hns3_hw *hw)
 {
 	int state;
@@ -4467,7 +4469,36 @@ hns3_update_link_status(struct hns3_hw *hw)
 	if (state != hw->mac.link_status) {
 		hw->mac.link_status = state;
 		hns3_warn(hw, "Link status change to %s!", state ? "up" : "down");
+		return true;
 	}
+
+	return false;
+}
+
+/*
+ * Current, the PF driver get link status by two ways:
+ * 1) Periodic polling in the intr thread context, driver call
+ *    hns3_update_link_status to update link status.
+ * 2) Firmware report async interrupt, driver process the event in the intr
+ *    thread context, and call hns3_update_link_status to update link status.
+ *
+ * If detect link status changed, driver need report LSE. One method is add the
+ * report LSE logic in hns3_update_link_status.
+ *
+ * But the PF driver ops(link_update) also call hns3_update_link_status to
+ * update link status.
+ * If we report LSE in hns3_update_link_status, it may lead to deadlock in the
+ * bonding application.
+ *
+ * So add the one new API which used only in intr thread context.
+ */
+void
+hns3_update_link_status_and_event(struct hns3_hw *hw)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	bool changed = hns3_update_link_status(hw);
+	if (changed)
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 static void
@@ -4479,9 +4510,10 @@ hns3_service_handler(void *param)
 
 	if (!hns3_is_reset_pending(hns)) {
 		hns3_update_speed_duplex(eth_dev);
-		hns3_update_link_status(hw);
-	} else
+		hns3_update_link_status_and_event(hw);
+	} else {
 		hns3_warn(hw, "Cancel the query when reset is pending");
+	}
 
 	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, eth_dev);
 }
@@ -5557,8 +5589,10 @@ hns3_stop_service(struct hns3_adapter *hns)
 	struct rte_eth_dev *eth_dev;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
-	if (hw->adapter_state == HNS3_NIC_STARTED)
+	if (hw->adapter_state == HNS3_NIC_STARTED) {
 		rte_eal_alarm_cancel(hns3_service_handler, eth_dev);
+		hns3_update_link_status_and_event(hw);
+	}
 	hw->mac.link_status = ETH_LINK_DOWN;
 
 	hns3_set_rxtx_function(eth_dev);
@@ -5601,7 +5635,15 @@ hns3_start_service(struct hns3_adapter *hns)
 	hns3_set_rxtx_function(eth_dev);
 	hns3_mp_req_start_rxtx(eth_dev);
 	if (hw->adapter_state == HNS3_NIC_STARTED) {
-		hns3_service_handler(eth_dev);
+		/*
+		 * This API parent function already hold the hns3_hw.lock, the
+		 * hns3_service_handler may report lse, in bonding application
+		 * it will call driver's ops which may acquire the hns3_hw.lock
+		 * again, thus lead to deadlock.
+		 * We defer calls hns3_service_handler to avoid the deadlock.
+		 */
+		rte_eal_alarm_set(HNS3_SERVICE_QUICK_INTERVAL,
+				  hns3_service_handler, eth_dev);
 
 		/* Enable interrupt of all rx queues before enabling queues */
 		hns3_dev_all_rx_queue_intr_enable(hw, true);

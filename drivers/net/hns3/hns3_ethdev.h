@@ -946,11 +946,13 @@ int hns3_dev_filter_ctrl(struct rte_eth_dev *dev,
 			 enum rte_filter_op filter_op, void *arg);
 bool hns3_is_reset_pending(struct hns3_adapter *hns);
 bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
-void hns3_update_link_status(struct hns3_hw *hw);
+void hns3_update_link_status_and_event(struct hns3_hw *hw);
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			const struct rte_ether_addr *ether_addr);
 int hns3_dev_infos_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_dev_info *info);
+void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
+			  uint32_t link_speed, uint8_t link_duplex);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)

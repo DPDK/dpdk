@@ -203,8 +203,9 @@ hns3_cmd_crq_empty(struct hns3_hw *hw)
 static void
 hns3_mbx_handler(struct hns3_hw *hw)
 {
-	struct hns3_mac *mac = &hw->mac;
 	enum hns3_reset_level reset_level;
+	uint8_t link_status, link_duplex;
+	uint32_t link_speed;
 	uint16_t *msg_q;
 	uint8_t opcode;
 	uint32_t tail;
@@ -218,10 +219,11 @@ hns3_mbx_handler(struct hns3_hw *hw)
 		opcode = msg_q[0] & 0xff;
 		switch (opcode) {
 		case HNS3_MBX_LINK_STAT_CHANGE:
-			memcpy(&mac->link_speed, &msg_q[2],
-				   sizeof(mac->link_speed));
-			mac->link_status = rte_le_to_cpu_16(msg_q[1]);
-			mac->link_duplex = (uint8_t)rte_le_to_cpu_16(msg_q[4]);
+			memcpy(&link_speed, &msg_q[2], sizeof(link_speed));
+			link_status = rte_le_to_cpu_16(msg_q[1]);
+			link_duplex = (uint8_t)rte_le_to_cpu_16(msg_q[4]);
+			hns3vf_update_link_status(hw, link_status, link_speed,
+						  link_duplex);
 			break;
 		case HNS3_MBX_ASSERTING_RESET:
 			/* PF has asserted reset hence VF should go in pending
@@ -310,7 +312,7 @@ hns3_handle_link_change_event(struct hns3_hw *hw,
 	if (!req->msg[LINK_STATUS_OFFSET])
 		hns3_link_fail_parse(hw, req->msg[LINK_FAIL_CODE_OFFSET]);
 
-	hns3_update_link_status(hw);
+	hns3_update_link_status_and_event(hw);
 }
 
 static void

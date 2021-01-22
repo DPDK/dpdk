@@ -1440,6 +1440,41 @@ hns3vf_request_link_info(struct hns3_hw *hw)
 		hns3_err(hw, "Failed to fetch link status from PF: %d", ret);
 }
 
+void
+hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
+			  uint32_t link_speed, uint8_t link_duplex)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	struct hns3_mac *mac = &hw->mac;
+	bool report_lse;
+	bool changed;
+
+	changed = mac->link_status != link_status ||
+		  mac->link_speed != link_speed ||
+		  mac->link_duplex != link_duplex;
+	if (!changed)
+		return;
+
+	/*
+	 * VF's link status/speed/duplex were updated by polling from PF driver,
+	 * because the link status/speed/duplex may be changed in the polling
+	 * interval, so driver will report lse (lsc event) once any of the above
+	 * thress variables changed.
+	 * But if the PF's link status is down and driver saved link status is
+	 * also down, there are no need to report lse.
+	 */
+	report_lse = true;
+	if (link_status == ETH_LINK_DOWN && link_status == mac->link_status)
+		report_lse = false;
+
+	mac->link_status = link_status;
+	mac->link_speed = link_speed;
+	mac->link_duplex = link_duplex;
+
+	if (report_lse)
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+}
+
 static int
 hns3vf_vlan_filter_configure(struct hns3_adapter *hns, uint16_t vlan_id, int on)
 {
@@ -2373,8 +2408,11 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 	struct rte_eth_dev *eth_dev;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
-	if (hw->adapter_state == HNS3_NIC_STARTED)
+	if (hw->adapter_state == HNS3_NIC_STARTED) {
 		rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
+		hns3vf_update_link_status(hw, ETH_LINK_DOWN, hw->mac.link_speed,
+			hw->mac.link_duplex);
+	}
 	hw->mac.link_status = ETH_LINK_DOWN;
 
 	hns3_set_rxtx_function(eth_dev);
