@@ -1820,7 +1820,7 @@ rte_eth_dev_close(uint16_t port_id)
 	rte_ethdev_trace_close(port_id);
 	*lasterr = rte_eth_dev_release_port(dev);
 
-	return eth_err(port_id, firsterr);
+	return firsterr;
 }
 
 int
