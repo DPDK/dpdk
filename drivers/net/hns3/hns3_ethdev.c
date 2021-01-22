@@ -6226,8 +6226,11 @@ hns3_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		rte_free(eth_dev->process_private);
+		eth_dev->process_private = NULL;
+		return 0;
+	}
 
 	if (hw->adapter_state < HNS3_NIC_CLOSING)
 		hns3_dev_close(eth_dev);
