@@ -266,6 +266,12 @@ struct hns3_entry {
 	struct rte_mbuf *mbuf;
 };
 
+struct hns3_rx_basic_stats {
+	uint64_t packets;
+	uint64_t bytes;
+	uint64_t errors;
+};
+
 struct hns3_rx_dfx_stats {
 	uint64_t l3_csum_errors;
 	uint64_t l4_csum_errors;
@@ -324,6 +330,7 @@ struct hns3_rx_queue {
 	bool pvid_sw_discard_en;
 	bool enabled;           /* indicate if Rx queue has been enabled */
 
+	struct hns3_rx_basic_stats basic_stats;
 	/* DFX statistics that driver does not need to discard packets */
 	struct hns3_rx_dfx_stats dfx_stats;
 	/* Error statistics that driver needs to discard packets */
@@ -336,6 +343,11 @@ struct hns3_rx_queue {
 	uint8_t offset_table[HNS3_VECTOR_RX_OFFSET_TABLE_LEN + 1];
 	uint64_t mbuf_initializer; /* value to init mbufs used with vector rx */
 	struct rte_mbuf fake_mbuf; /* fake mbuf used with vector rx */
+};
+
+struct hns3_tx_basic_stats {
+	uint64_t packets;
+	uint64_t bytes;
 };
 
 /*
@@ -472,6 +484,7 @@ struct hns3_tx_queue {
 	bool pvid_sw_shift_en;
 	bool enabled;           /* indicate if Tx queue has been enabled */
 
+	struct hns3_tx_basic_stats basic_stats;
 	struct hns3_tx_dfx_stats dfx_stats;
 };
 

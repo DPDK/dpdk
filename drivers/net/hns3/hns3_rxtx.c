@@ -1792,6 +1792,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->io_head_reg = (volatile void *)((char *)rxq->io_base +
 			   HNS3_RING_RX_HEAD_REG);
 	rxq->rx_buf_len = rx_buf_size;
+	memset(&rxq->basic_stats, 0, sizeof(struct hns3_rx_basic_stats));
 	memset(&rxq->err_stats, 0, sizeof(struct hns3_rx_bd_errors_stats));
 	memset(&rxq->dfx_stats, 0, sizeof(struct hns3_rx_dfx_stats));
 
@@ -2618,6 +2619,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 					     HNS3_RING_TX_TAIL_REG);
 	txq->min_tx_pkt_len = hw->min_tx_pkt_len;
 	txq->tso_mode = hw->tso_mode;
+	memset(&txq->basic_stats, 0, sizeof(struct hns3_tx_basic_stats));
 	memset(&txq->dfx_stats, 0, sizeof(struct hns3_tx_dfx_stats));
 
 	rte_spinlock_lock(&hw->lock);

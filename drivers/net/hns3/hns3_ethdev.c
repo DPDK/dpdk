@@ -6148,8 +6148,6 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-
 	ret = hns3_mp_init_primary();
 	if (ret) {
 		PMD_INIT_LOG(ERR,
