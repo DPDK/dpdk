@@ -123,6 +123,47 @@ hns3_pf_enable_irq0(struct hns3_hw *hw)
 }
 
 static enum hns3_evt_cause
+hns3_proc_imp_reset_event(struct hns3_adapter *hns, bool is_delay,
+			  uint32_t *vec_val)
+{
+	struct hns3_hw *hw = &hns->hw;
+
+	rte_atomic16_set(&hw->reset.disable_cmd, 1);
+	hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
+	*vec_val = BIT(HNS3_VECTOR0_IMPRESET_INT_B);
+	if (!is_delay) {
+		hw->reset.stats.imp_cnt++;
+		hns3_warn(hw, "IMP reset detected, clear reset status");
+	} else {
+		hns3_schedule_delayed_reset(hns);
+		hns3_warn(hw, "IMP reset detected, don't clear reset status");
+	}
+
+	return HNS3_VECTOR0_EVENT_RST;
+}
+
+static enum hns3_evt_cause
+hns3_proc_global_reset_event(struct hns3_adapter *hns, bool is_delay,
+			     uint32_t *vec_val)
+{
+	struct hns3_hw *hw = &hns->hw;
+
+	rte_atomic16_set(&hw->reset.disable_cmd, 1);
+	hns3_atomic_set_bit(HNS3_GLOBAL_RESET, &hw->reset.pending);
+	*vec_val = BIT(HNS3_VECTOR0_GLOBALRESET_INT_B);
+	if (!is_delay) {
+		hw->reset.stats.global_cnt++;
+		hns3_warn(hw, "Global reset detected, clear reset status");
+	} else {
+		hns3_schedule_delayed_reset(hns);
+		hns3_warn(hw,
+			  "Global reset detected, don't clear reset status");
+	}
+
+	return HNS3_VECTOR0_EVENT_RST;
+}
+
+static enum hns3_evt_cause
 hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 {
 	struct hns3_hw *hw = &hns->hw;
@@ -131,12 +172,14 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 	uint32_t hw_err_src_reg;
 	uint32_t val;
 	enum hns3_evt_cause ret;
+	bool is_delay;
 
 	/* fetch the events from their corresponding regs */
 	vector0_int_stats = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
 	cmdq_src_val = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
 	hw_err_src_reg = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
 
+	is_delay = clearval == NULL ? true : false;
 	/*
 	 * Assumption: If by any chance reset and mailbox events are reported
 	 * together then we will only process reset event and defer the
@@ -145,35 +188,13 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 	 * from H/W just for the mailbox.
 	 */
 	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_int_stats) { /* IMP */
-		rte_atomic16_set(&hw->reset.disable_cmd, 1);
-		hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
-		val = BIT(HNS3_VECTOR0_IMPRESET_INT_B);
-		if (clearval) {
-			hw->reset.stats.imp_cnt++;
-			hns3_warn(hw, "IMP reset detected, clear reset status");
-		} else {
-			hns3_schedule_delayed_reset(hns);
-			hns3_warn(hw, "IMP reset detected, don't clear reset status");
-		}
-
-		ret = HNS3_VECTOR0_EVENT_RST;
+		ret = hns3_proc_imp_reset_event(hns, is_delay, &val);
 		goto out;
 	}
 
 	/* Global reset */
 	if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_int_stats) {
-		rte_atomic16_set(&hw->reset.disable_cmd, 1);
-		hns3_atomic_set_bit(HNS3_GLOBAL_RESET, &hw->reset.pending);
-		val = BIT(HNS3_VECTOR0_GLOBALRESET_INT_B);
-		if (clearval) {
-			hw->reset.stats.global_cnt++;
-			hns3_warn(hw, "Global reset detected, clear reset status");
-		} else {
-			hns3_schedule_delayed_reset(hns);
-			hns3_warn(hw, "Global reset detected, don't clear reset status");
-		}
-
-		ret = HNS3_VECTOR0_EVENT_RST;
+		ret = hns3_proc_global_reset_event(hns, is_delay, &val);
 		goto out;
 	}
 
