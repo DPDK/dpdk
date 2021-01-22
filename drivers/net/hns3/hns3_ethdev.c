@@ -2232,7 +2232,7 @@ hns3_check_dcb_cfg(struct rte_eth_dev *dev)
 }
 
 static int
-hns3_bind_ring_with_vector(struct hns3_hw *hw, uint8_t vector_id, bool mmap,
+hns3_bind_ring_with_vector(struct hns3_hw *hw, uint16_t vector_id, bool en,
 			   enum hns3_ring_type queue_type, uint16_t queue_id)
 {
 	struct hns3_cmd_desc desc;
@@ -2241,13 +2241,15 @@ hns3_bind_ring_with_vector(struct hns3_hw *hw, uint8_t vector_id, bool mmap,
 	enum hns3_cmd_status status;
 	enum hns3_opcode_type op;
 	uint16_t tqp_type_and_id = 0;
-	const char *op_str;
 	uint16_t type;
 	uint16_t gl;
 
-	op = mmap ? HNS3_OPC_ADD_RING_TO_VECTOR : HNS3_OPC_DEL_RING_TO_VECTOR;
+	op = en ? HNS3_OPC_ADD_RING_TO_VECTOR : HNS3_OPC_DEL_RING_TO_VECTOR;
 	hns3_cmd_setup_basic_desc(&desc, op, false);
-	req->int_vector_id = vector_id;
+	req->int_vector_id = hns3_get_field(vector_id, HNS3_TQP_INT_ID_L_M,
+					      HNS3_TQP_INT_ID_L_S);
+	req->int_vector_id_h = hns3_get_field(vector_id, HNS3_TQP_INT_ID_H_M,
+					      HNS3_TQP_INT_ID_H_S);
 
 	if (queue_type == HNS3_RING_TYPE_RX)
 		gl = HNS3_RING_GL_RX;
@@ -2263,11 +2265,10 @@ hns3_bind_ring_with_vector(struct hns3_hw *hw, uint8_t vector_id, bool mmap,
 		       gl);
 	req->tqp_type_and_id[0] = rte_cpu_to_le_16(tqp_type_and_id);
 	req->int_cause_num = 1;
-	op_str = mmap ? "Map" : "Unmap";
 	status = hns3_cmd_send(hw, &desc, 1);
 	if (status) {
 		hns3_err(hw, "%s TQP %u fail, vector_id is %u, status is %d.",
-			 op_str, queue_id, req->int_vector_id, status);
+			 en ? "Map" : "Unmap", queue_id, vector_id, status);
 		return status;
 	}
 
@@ -4797,8 +4798,8 @@ hns3_map_rx_interrupt(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint8_t base = RTE_INTR_VEC_ZERO_OFFSET;
-	uint8_t vec = RTE_INTR_VEC_ZERO_OFFSET;
+	uint16_t base = RTE_INTR_VEC_ZERO_OFFSET;
+	uint16_t vec = RTE_INTR_VEC_ZERO_OFFSET;
 	uint32_t intr_vector;
 	uint16_t q_id;
 	int ret;

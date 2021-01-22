@@ -776,12 +776,16 @@ enum hns3_int_gl_idx {
 #define HNS3_TQP_ID_M		GENMASK(12, 2)
 #define HNS3_INT_GL_IDX_S	13
 #define HNS3_INT_GL_IDX_M	GENMASK(14, 13)
+#define HNS3_TQP_INT_ID_L_S	0
+#define HNS3_TQP_INT_ID_L_M	GENMASK(7, 0)
+#define HNS3_TQP_INT_ID_H_S	8
+#define HNS3_TQP_INT_ID_H_M	GENMASK(15, 8)
 struct hns3_ctrl_vector_chain_cmd {
-	uint8_t int_vector_id;
+	uint8_t int_vector_id;    /* the low order of the interrupt id */
 	uint8_t int_cause_num;
 	uint16_t tqp_type_and_id[HNS3_VECTOR_ELEMENTS_PER_CMD];
 	uint8_t vfid;
-	uint8_t rsv;
+	uint8_t int_vector_id_h;  /* the high order of the interrupt id */
 };
 
 struct hns3_config_max_frm_size_cmd {
