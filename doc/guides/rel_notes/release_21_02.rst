@@ -60,6 +60,16 @@ New Features
   Added ``rte_eth_get_monitor_addr()``, to be used in conjunction with
   ``rte_power_monitor()`` to enable automatic power management for PMDs.
 
+* **Added Ethernet PMD power management helper API.**
+
+  A new helper API has been added to make using Ethernet PMD power management
+  easier for the user: ``rte_power_ethdev_pmgmt_queue_enable()``. Three power
+  management schemes are supported initially:
+
+  * Power saving based on UMWAIT instruction (x86 only)
+  * Power saving based on ``rte_pause()`` (generic) or TPAUSE instruction (x86 only)
+  * Power saving based on frequency scaling through the ``librte_power`` library
+
 * **Added GENEVE TLV option in rte_flow.**
 
   Added support for matching and raw encap/decap of GENEVE TLV option.

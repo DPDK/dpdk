@@ -192,6 +192,48 @@ User Cases
 ----------
 The mechanism can applied to any device which is based on polling. e.g. NIC, FPGA.
 
+Ethernet PMD Power Management API
+---------------------------------
+
+Abstract
+~~~~~~~~
+
+Existing power management mechanisms require developers
+to change application design or change code to make use of it.
+The PMD power management API provides a convenient alternative
+by utilizing Ethernet PMD RX callbacks,
+and triggering power saving whenever empty poll count reaches a certain number.
+
+Monitor
+   This power saving scheme will put the CPU into optimized power state
+   and use the ``rte_power_monitor()`` function
+   to monitor the Ethernet PMD RX descriptor address,
+   and wake the CPU up whenever there's new traffic.
+
+Pause
+   This power saving scheme will avoid busy polling
+   by either entering power-optimized sleep state
+   with ``rte_power_pause()`` function,
+   or, if it's not available, use ``rte_pause()``.
+
+Frequency scaling
+   This power saving scheme will use ``librte_power`` library
+   functionality to scale the core frequency up/down
+   depending on traffic volume.
+
+.. note::
+
+   Currently, this power management API is limited to mandatory mapping
+   of 1 queue to 1 core (multiple queues are supported,
+   but they must be polled from different cores).
+
+API Overview for Ethernet PMD Power Management
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* **Queue Enable**: Enable specific power scheme for certain queue/port/core.
+
+* **Queue Disable**: Disable power scheme for certain queue/port/core.
+
 References
 ----------
 
