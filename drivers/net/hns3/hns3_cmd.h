@@ -52,6 +52,7 @@ enum hns3_cmd_return_status {
 	HNS3_CMD_HILINK_ERR     = 9,
 	HNS3_CMD_QUEUE_ILLEGAL  = 10,
 	HNS3_CMD_INVALID        = 11,
+	HNS3_CMD_ROH_CHECK_FAIL = 12
 };
 
 enum hns3_cmd_status {

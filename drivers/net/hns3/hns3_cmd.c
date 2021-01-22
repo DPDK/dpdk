@@ -247,34 +247,32 @@ hns3_is_special_opcode(uint16_t opcode)
 static int
 hns3_cmd_convert_err_code(uint16_t desc_ret)
 {
-	switch (desc_ret) {
-	case HNS3_CMD_EXEC_SUCCESS:
-		return 0;
-	case HNS3_CMD_NO_AUTH:
-		return -EPERM;
-	case HNS3_CMD_NOT_SUPPORTED:
-		return -EOPNOTSUPP;
-	case HNS3_CMD_QUEUE_FULL:
-		return -EXFULL;
-	case HNS3_CMD_NEXT_ERR:
-		return -ENOSR;
-	case HNS3_CMD_UNEXE_ERR:
-		return -ENOTBLK;
-	case HNS3_CMD_PARA_ERR:
-		return -EINVAL;
-	case HNS3_CMD_RESULT_ERR:
-		return -ERANGE;
-	case HNS3_CMD_TIMEOUT:
-		return -ETIME;
-	case HNS3_CMD_HILINK_ERR:
-		return -ENOLINK;
-	case HNS3_CMD_QUEUE_ILLEGAL:
-		return -ENXIO;
-	case HNS3_CMD_INVALID:
-		return -EBADR;
-	default:
-		return -EREMOTEIO;
-	}
+	static const struct {
+		uint16_t imp_errcode;
+		int linux_errcode;
+	} hns3_cmdq_status[] = {
+		{HNS3_CMD_EXEC_SUCCESS, 0},
+		{HNS3_CMD_NO_AUTH, -EPERM},
+		{HNS3_CMD_NOT_SUPPORTED, -EOPNOTSUPP},
+		{HNS3_CMD_QUEUE_FULL, -EXFULL},
+		{HNS3_CMD_NEXT_ERR, -ENOSR},
+		{HNS3_CMD_UNEXE_ERR, -ENOTBLK},
+		{HNS3_CMD_PARA_ERR, -EINVAL},
+		{HNS3_CMD_RESULT_ERR, -ERANGE},
+		{HNS3_CMD_TIMEOUT, -ETIME},
+		{HNS3_CMD_HILINK_ERR, -ENOLINK},
+		{HNS3_CMD_QUEUE_ILLEGAL, -ENXIO},
+		{HNS3_CMD_INVALID, -EBADR},
+		{HNS3_CMD_ROH_CHECK_FAIL, -EINVAL}
+	};
+
+	uint32_t i;
+
+	for (i = 0; i < ARRAY_SIZE(hns3_cmdq_status); i++)
+		if (hns3_cmdq_status[i].imp_errcode == desc_ret)
+			return hns3_cmdq_status[i].linux_errcode;
+
+	return -EREMOTEIO;
 }
 
 static int
