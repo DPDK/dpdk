@@ -1463,7 +1463,7 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function *func,
 		*hash_algo = HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP;
 		break;
 	default:
-		hns3_err(hw, "Invalid RSS algorithm configuration(%u)",
+		hns3_err(hw, "Invalid RSS algorithm configuration(%d)",
 			 algo_func);
 		return -EINVAL;
 	}
