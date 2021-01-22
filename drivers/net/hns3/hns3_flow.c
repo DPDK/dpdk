@@ -433,16 +433,11 @@ hns3_check_attr(const struct rte_flow_attr *attr, struct rte_flow_error *error)
 }
 
 static int
-hns3_parse_eth(const struct rte_flow_item *item,
-		   struct hns3_fdir_rule *rule, struct rte_flow_error *error)
+hns3_parse_eth(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
+	       struct rte_flow_error *error __rte_unused)
 {
 	const struct rte_flow_item_eth *eth_spec;
 	const struct rte_flow_item_eth *eth_mask;
-
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
 
 	/* Only used to describe the protocol stack. */
 	if (item->spec == NULL && item->mask == NULL)
@@ -482,11 +477,6 @@ hns3_parse_vlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 {
 	const struct rte_flow_item_vlan *vlan_spec;
 	const struct rte_flow_item_vlan *vlan_mask;
-
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
 
 	rule->key_conf.vlan_num++;
 	if (rule->key_conf.vlan_num > VLAN_TAG_NUM_MAX)
@@ -543,14 +533,10 @@ hns3_parse_ipv4(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	const struct rte_flow_item_ipv4 *ipv4_spec;
 	const struct rte_flow_item_ipv4 *ipv4_mask;
 
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
-
 	hns3_set_bit(rule->input_set, INNER_ETH_TYPE, 1);
 	rule->key_conf.spec.ether_type = RTE_ETHER_TYPE_IPV4;
 	rule->key_conf.mask.ether_type = ETHER_TYPE_MASK;
+
 	/* Only used to describe the protocol stack. */
 	if (item->spec == NULL && item->mask == NULL)
 		return 0;
@@ -605,11 +591,6 @@ hns3_parse_ipv6(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 {
 	const struct rte_flow_item_ipv6 *ipv6_spec;
 	const struct rte_flow_item_ipv6 *ipv6_mask;
-
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
 
 	hns3_set_bit(rule->input_set, INNER_ETH_TYPE, 1);
 	rule->key_conf.spec.ether_type = RTE_ETHER_TYPE_IPV6;
@@ -674,11 +655,6 @@ hns3_parse_tcp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	const struct rte_flow_item_tcp *tcp_spec;
 	const struct rte_flow_item_tcp *tcp_mask;
 
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
-
 	hns3_set_bit(rule->input_set, INNER_IP_PROTO, 1);
 	rule->key_conf.spec.ip_proto = IPPROTO_TCP;
 	rule->key_conf.mask.ip_proto = IPPROTO_MASK;
@@ -722,11 +698,6 @@ hns3_parse_udp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	const struct rte_flow_item_udp *udp_spec;
 	const struct rte_flow_item_udp *udp_mask;
 
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
-
 	hns3_set_bit(rule->input_set, INNER_IP_PROTO, 1);
 	rule->key_conf.spec.ip_proto = IPPROTO_UDP;
 	rule->key_conf.mask.ip_proto = IPPROTO_MASK;
@@ -767,11 +738,6 @@ hns3_parse_sctp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 {
 	const struct rte_flow_item_sctp *sctp_spec;
 	const struct rte_flow_item_sctp *sctp_mask;
-
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
 
 	hns3_set_bit(rule->input_set, INNER_IP_PROTO, 1);
 	rule->key_conf.spec.ip_proto = IPPROTO_SCTP;
@@ -904,15 +870,6 @@ hns3_parse_vxlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	const struct rte_flow_item_vxlan *vxlan_spec;
 	const struct rte_flow_item_vxlan *vxlan_mask;
 
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
-	else if (item->spec && (item->mask == NULL))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Tunnel packets must configure with mask");
-
 	hns3_set_bit(rule->input_set, OUTER_DST_PORT, 1);
 	rule->key_conf.mask.tunnel_type = TUNNEL_TYPE_MASK;
 	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN)
@@ -954,15 +911,6 @@ hns3_parse_nvgre(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 {
 	const struct rte_flow_item_nvgre *nvgre_spec;
 	const struct rte_flow_item_nvgre *nvgre_mask;
-
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
-	else if (item->spec && (item->mask == NULL))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Tunnel packets must configure with mask");
 
 	hns3_set_bit(rule->input_set, OUTER_IP_PROTO, 1);
 	rule->key_conf.spec.outer_proto = IPPROTO_GRE;
@@ -1013,15 +961,6 @@ hns3_parse_geneve(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	const struct rte_flow_item_geneve *geneve_spec;
 	const struct rte_flow_item_geneve *geneve_mask;
 
-	if (item->spec == NULL && item->mask)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Can't configure FDIR with mask but without spec");
-	else if (item->spec && (item->mask == NULL))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "Tunnel packets must configure with mask");
-
 	hns3_set_bit(rule->input_set, OUTER_DST_PORT, 1);
 	rule->key_conf.spec.tunnel_type = HNS3_TUNNEL_TYPE_GENEVE;
 	rule->key_conf.mask.tunnel_type = TUNNEL_TYPE_MASK;
@@ -1058,6 +997,17 @@ hns3_parse_tunnel(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 {
 	int ret;
 
+	if (item->spec == NULL && item->mask)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "Can't configure FDIR with mask "
+					  "but without spec");
+	else if (item->spec && (item->mask == NULL))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "Tunnel packets must configure "
+					  "with mask");
+
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
 	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
@@ -1085,6 +1035,12 @@ hns3_parse_normal(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		  struct rte_flow_error *error)
 {
 	int ret;
+
+	if (item->spec == NULL && item->mask)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "Can't configure FDIR with mask "
+					  "but without spec");
 
 	switch (item->type) {
 	case RTE_FLOW_ITEM_TYPE_ETH:
