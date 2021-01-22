@@ -193,7 +193,7 @@ static const struct {
  * Used to set algorithm, key_offset and hash key of rss.
  */
 int
-hns3_set_rss_algo_key(struct hns3_hw *hw, const uint8_t *key)
+hns3_rss_set_algo_key(struct hns3_hw *hw, const uint8_t *key)
 {
 #define HNS3_KEY_OFFSET_MAX	3
 #define HNS3_SET_HASH_KEY_BYTE_FOUR	2
@@ -245,7 +245,7 @@ hns3_set_rss_algo_key(struct hns3_hw *hw, const uint8_t *key)
  * Used to configure the tuple selection for RSS hash input.
  */
 static int
-hns3_set_rss_input_tuple(struct hns3_hw *hw)
+hns3_rss_set_input_tuple(struct hns3_hw *hw)
 {
 	struct hns3_rss_conf *rss_config = &hw->rss_info;
 	struct hns3_rss_input_tuple_cmd *req;
@@ -443,7 +443,7 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 			ret = -EINVAL;
 			goto conf_err;
 		}
-		ret = hns3_set_rss_algo_key(hw, key);
+		ret = hns3_rss_set_algo_key(hw, key);
 		if (ret)
 			goto conf_err;
 	}
@@ -649,7 +649,7 @@ hns3_rss_tuple_uninit(struct hns3_hw *hw)
  * Set the default rss configuration in the init of driver.
  */
 void
-hns3_set_default_rss_args(struct hns3_hw *hw)
+hns3_rss_set_default_args(struct hns3_hw *hw)
 {
 	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint16_t queue_num = hw->alloc_rss_size;
@@ -696,12 +696,12 @@ hns3_config_rss(struct hns3_adapter *hns)
 		hns3_rss_uninit(hns);
 
 	/* Configure RSS hash algorithm and hash key offset */
-	ret = hns3_set_rss_algo_key(hw, hash_key);
+	ret = hns3_rss_set_algo_key(hw, hash_key);
 	if (ret)
 		return ret;
 
 	/* Configure the tuple selection for RSS hash input */
-	ret = hns3_set_rss_input_tuple(hw);
+	ret = hns3_rss_set_input_tuple(hw);
 	if (ret)
 		return ret;
 

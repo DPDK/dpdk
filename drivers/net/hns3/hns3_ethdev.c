@@ -4685,7 +4685,7 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_fdir;
 	}
 
-	hns3_set_default_rss_args(hw);
+	hns3_rss_set_default_args(hw);
 
 	ret = hns3_enable_hw_error_intr(hns, true);
 	if (ret) {

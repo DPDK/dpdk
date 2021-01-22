@@ -102,7 +102,7 @@ int hns3_dev_rss_reta_update(struct rte_eth_dev *dev,
 int hns3_dev_rss_reta_query(struct rte_eth_dev *dev,
 			    struct rte_eth_rss_reta_entry64 *reta_conf,
 			    uint16_t reta_size);
-void hns3_set_default_rss_args(struct hns3_hw *hw);
+void hns3_rss_set_default_args(struct hns3_hw *hw);
 int hns3_set_rss_indir_table(struct hns3_hw *hw, uint16_t *indir,
 			     uint16_t size);
 int hns3_rss_reset_indir_table(struct hns3_hw *hw);
@@ -111,7 +111,7 @@ void hns3_rss_uninit(struct hns3_adapter *hns);
 int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw,
 				 struct hns3_rss_tuple_cfg *tuple,
 				 uint64_t rss_hf);
-int hns3_set_rss_algo_key(struct hns3_hw *hw, const uint8_t *key);
+int hns3_rss_set_algo_key(struct hns3_hw *hw, const uint8_t *key);
 int hns3_restore_rss_filter(struct rte_eth_dev *dev);
 
 #endif /* _HNS3_RSS_H_ */

@@ -1469,7 +1469,7 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 	if (ret)
 		return ret;
 
-	ret = hns3_set_rss_algo_key(hw, rss_config->key);
+	ret = hns3_rss_set_algo_key(hw, rss_config->key);
 	if (ret)
 		return ret;
 
