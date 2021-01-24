@@ -197,6 +197,10 @@ struct mlx4_priv {
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
 #define ETH_DEV(priv) (&rte_eth_devices[PORT_ID(priv)])
 
+int mlx4_proc_priv_init(struct rte_eth_dev *dev);
+void mlx4_proc_priv_uninit(struct rte_eth_dev *dev);
+
+
 /* mlx4_ethdev.c */
 
 int mlx4_get_ifname(const struct mlx4_priv *priv, char (*ifname)[IF_NAMESIZE]);

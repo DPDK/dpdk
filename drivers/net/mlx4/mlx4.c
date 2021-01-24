@@ -195,7 +195,7 @@ mlx4_free_verbs_buf(void *ptr, void *data __rte_unused)
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 mlx4_proc_priv_init(struct rte_eth_dev *dev)
 {
 	struct mlx4_proc_priv *ppriv;
@@ -207,13 +207,13 @@ mlx4_proc_priv_init(struct rte_eth_dev *dev)
 	 */
 	ppriv_size = sizeof(struct mlx4_proc_priv) +
 		     dev->data->nb_tx_queues * sizeof(void *);
-	ppriv = rte_malloc_socket("mlx4_proc_priv", ppriv_size,
-				  RTE_CACHE_LINE_SIZE, dev->device->numa_node);
+	ppriv = rte_zmalloc_socket("mlx4_proc_priv", ppriv_size,
+				   RTE_CACHE_LINE_SIZE, dev->device->numa_node);
 	if (!ppriv) {
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	ppriv->uar_table_sz = ppriv_size;
+	ppriv->uar_table_sz = dev->data->nb_tx_queues;
 	dev->process_private = ppriv;
 	return 0;
 }
@@ -224,7 +224,7 @@ mlx4_proc_priv_init(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void
+void
 mlx4_proc_priv_uninit(struct rte_eth_dev *dev)
 {
 	if (!dev->process_private)
