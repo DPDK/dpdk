@@ -1268,7 +1268,7 @@ mlx5_proc_priv_init(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void
+void
 mlx5_proc_priv_uninit(struct rte_eth_dev *dev)
 {
 	if (!dev->process_private)

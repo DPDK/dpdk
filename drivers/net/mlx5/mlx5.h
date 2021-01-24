@@ -743,7 +743,10 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
-/* Per-process private structure. */
+/*
+ * Per-process private structure.
+ * Caution, secondary process may rebuild the struct during port start.
+ */
 struct mlx5_proc_priv {
 	size_t uar_table_sz;
 	/* Size of UAR register table. */
@@ -998,6 +1001,7 @@ struct rte_hairpin_peer_info {
 
 int mlx5_getenv_int(const char *);
 int mlx5_proc_priv_init(struct rte_eth_dev *dev);
+void mlx5_proc_priv_uninit(struct rte_eth_dev *dev);
 int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
 uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev);
