@@ -4,11 +4,11 @@
 
 arfile=$1
 output=$2
-pmdinfogen=$3
+shift 2
+pmdinfogen=$*
 
 # The generated file must not be empty if compiled in pedantic mode
 echo 'static __attribute__((unused)) const char *generator = "'$0'";' > $output
 for ofile in `ar t $arfile` ; do
-	ar p $arfile $ofile | $pmdinfogen - - >> $output 2> /dev/null
+	ar p $arfile $ofile | $pmdinfogen - - >> $output
 done
-exit 0

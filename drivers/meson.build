@@ -132,7 +132,7 @@ foreach subpath:subdirs
 						command: [pmdinfo, tmp_lib.full_path(),
 							'@OUTPUT@', pmdinfogen],
 						output: out_filename,
-						depends: [pmdinfogen, tmp_lib])
+						depends: [tmp_lib])
 			endif
 
 			# now build the static driver

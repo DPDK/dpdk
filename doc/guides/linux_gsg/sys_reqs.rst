@@ -52,6 +52,12 @@ Compilation of the DPDK
     * If the packaged version is below the minimum version, the latest versions
       can be installed from Python's "pip" repository: ``pip3 install meson ninja``
 
+*   ``pyelftools`` (version 0.22+)
+
+    * For RHEL/Fedora systems it can be installed using ``dnf install python-pyelftools``
+
+    * For Ubuntu/Debian it can be installed using ``apt install python3-pyelftools``
+
 *   Library for handling NUMA (Non Uniform Memory Access).
 
     * ``numactl-devel`` in RHEL/Fedora;

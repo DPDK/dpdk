@@ -45,7 +45,6 @@ subdir('buildtools')
 subdir('config')
 
 # build libs and drivers
-subdir('buildtools/pmdinfogen')
 subdir('lib')
 subdir('drivers')
 

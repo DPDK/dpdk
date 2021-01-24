@@ -14,7 +14,7 @@ addons:
   apt:
     update: true
     packages: &required_packages
-      - [libnuma-dev, python3-setuptools, python3-wheel, python3-pip, ninja-build]
+      - [libnuma-dev, python3-setuptools, python3-wheel, python3-pip, python3-pyelftools, ninja-build]
       - [libbsd-dev, libpcap-dev, libibverbs-dev, libcrypto++-dev, libfdt-dev, libjansson-dev]
 
 _aarch64_packages: &aarch64_packages

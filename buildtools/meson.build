@@ -17,3 +17,18 @@ else
 endif
 map_to_win_cmd = py3 + files('map_to_win.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
+pmdinfogen = py3 + files('pmdinfogen.py')
+
+# TODO: starting from Meson 0.51.0 use
+# 	python3 = import('python').find_installation('python',
+#		modules : python3_required_modules)
+python3_required_modules = []
+if host_machine.system() != 'windows'
+	python3_required_modules = ['elftools']
+endif
+foreach module : python3_required_modules
+	script = 'import importlib.util; import sys; exit(importlib.util.find_spec("@0@") is None)'
+	if run_command(py3, '-c', script.format(module)).returncode() != 0
+		error('missing python module: @0@'.format(module))
+	endif
+endforeach

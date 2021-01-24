@@ -8,6 +8,10 @@
 [suppress_variable]
         symbol_version = INTERNAL
 
+; Ignore generated PMD information strings
+[suppress_variable]
+        name_regexp = _pmd_info$
+
 ; Explicit ignore for driver-only ABI
 [suppress_type]
         name = eth_dev_ops
