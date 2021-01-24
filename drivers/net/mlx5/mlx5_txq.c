@@ -634,18 +634,23 @@ txq_uar_uninit_secondary(struct mlx5_txq_ctrl *txq_ctrl)
 void
 mlx5_tx_uar_uninit_secondary(struct rte_eth_dev *dev)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_txq_data *txq;
-	struct mlx5_txq_ctrl *txq_ctrl;
+	struct mlx5_proc_priv *ppriv = (struct mlx5_proc_priv *)
+					dev->process_private;
+	const size_t page_size = rte_mem_page_size();
+	void *addr;
 	unsigned int i;
 
+	if (page_size == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		return;
+	}
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
-	for (i = 0; i != priv->txqs_n; ++i) {
-		if (!(*priv->txqs)[i])
+	for (i = 0; i != ppriv->uar_table_sz; ++i) {
+		if (!ppriv->uar_table[i])
 			continue;
-		txq = (*priv->txqs)[i];
-		txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
-		txq_uar_uninit_secondary(txq_ctrl);
+		addr = ppriv->uar_table[i];
+		rte_mem_unmap(RTE_PTR_ALIGN_FLOOR(addr, page_size), page_size);
+
 	}
 }
 
