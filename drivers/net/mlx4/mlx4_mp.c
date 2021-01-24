@@ -111,6 +111,9 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	const struct mlx4_mp_param *param =
 		(const struct mlx4_mp_param *)mp_msg->param;
 	struct rte_eth_dev *dev;
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
+	struct mlx4_proc_priv *ppriv;
+#endif
 	int ret;
 
 	MLX4_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
@@ -126,6 +129,21 @@ mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		rte_mb();
 		dev->tx_pkt_burst = mlx4_tx_burst;
 		dev->rx_pkt_burst = mlx4_rx_burst;
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
+		ppriv = (struct mlx4_proc_priv *)dev->process_private;
+		if (ppriv->uar_table_sz != dev->data->nb_tx_queues) {
+			mlx4_tx_uar_uninit_secondary(dev);
+			mlx4_proc_priv_uninit(dev);
+			ret = mlx4_proc_priv_init(dev);
+			if (ret)
+				return -rte_errno;
+			ret = mlx4_tx_uar_init_secondary(dev, mp_msg->fds[0]);
+			if (ret) {
+				mlx4_proc_priv_uninit(dev);
+				return -rte_errno;
+			}
+		}
+#endif
 		mp_init_msg(dev, &mp_res, param->type);
 		res->result = 0;
 		ret = rte_mp_reply(&mp_res, peer);
@@ -163,6 +181,7 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum mlx4_mp_req_type type)
 	struct rte_mp_reply mp_rep;
 	struct mlx4_mp_param *res __rte_unused;
 	struct timespec ts = {.tv_sec = MLX4_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
+	struct mlx4_priv *priv;
 	int ret;
 	int i;
 
@@ -175,6 +194,11 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum mlx4_mp_req_type type)
 		return;
 	}
 	mp_init_msg(dev, &mp_req, type);
+	if (type == MLX4_MP_REQ_START_RXTX) {
+		priv = dev->data->dev_private;
+		mp_req.num_fds = 1;
+		mp_req.fds[0] = priv->ctx->cmd_fd;
+	}
 	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
 	if (ret) {
 		if (rte_errno != ENOTSUP)
