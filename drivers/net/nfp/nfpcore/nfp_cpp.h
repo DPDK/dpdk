@@ -170,7 +170,7 @@ void *nfp_cpp_priv(struct nfp_cpp *cpp);
  */
 void *nfp_cpp_area_priv(struct nfp_cpp_area *cpp_area);
 
-uint32_t __nfp_cpp_model_autodetect(struct nfp_cpp *cpp);
+uint32_t __nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model);
 
 /*
  * NFP CPP core interface for CPP clients.

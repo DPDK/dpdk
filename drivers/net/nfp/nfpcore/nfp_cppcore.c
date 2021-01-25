@@ -22,8 +22,9 @@
 
 #define NFP_PL_DEVICE_ID                        0x00000004
 #define NFP_PL_DEVICE_ID_MASK                   0xff
-
-#define NFP6000_ARM_GCSR_SOFTMODEL0             0x00400144
+#define NFP_PL_DEVICE_PART_MASK                 0xffff0000
+#define NFP_PL_DEVICE_MODEL_MASK               (NFP_PL_DEVICE_PART_MASK | \
+						NFP_PL_DEVICE_ID_MASK)
 
 void
 nfp_cpp_priv_set(struct nfp_cpp *cpp, void *priv)
@@ -46,13 +47,18 @@ nfp_cpp_model_set(struct nfp_cpp *cpp, uint32_t model)
 uint32_t
 nfp_cpp_model(struct nfp_cpp *cpp)
 {
+	int err;
+	uint32_t model;
+
 	if (!cpp)
 		return NFP_CPP_MODEL_INVALID;
 
-	if (cpp->model == 0)
-		cpp->model = __nfp_cpp_model_autodetect(cpp);
+	err = __nfp_cpp_model_autodetect(cpp, &model);
 
-	return cpp->model;
+	if (err < 0)
+		return err;
+
+	return model;
 }
 
 void
@@ -388,9 +394,6 @@ nfp_xpb_to_cpp(struct nfp_cpp *cpp, uint32_t *xpb_addr)
 {
 	uint32_t xpb;
 	int island;
-
-	if (!NFP_CPP_MODEL_IS_6000(cpp->model))
-		return 0;
 
 	xpb = NFP_CPP_ID(14, NFP_CPP_ACTION_RW, 0);
 
@@ -796,29 +799,21 @@ nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
  * as those are model-specific
  */
 uint32_t
-__nfp_cpp_model_autodetect(struct nfp_cpp *cpp)
+__nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model)
 {
-	uint32_t arm_id = NFP_CPP_ID(NFP_CPP_TARGET_ARM, 0, 0);
-	uint32_t model = 0;
+	uint32_t reg;
+	int err;
 
-	if (nfp_cpp_readl(cpp, arm_id, NFP6000_ARM_GCSR_SOFTMODEL0, &model))
-		return 0;
+	err = nfp_xpb_readl(cpp, NFP_XPB_DEVICE(1, 1, 16) + NFP_PL_DEVICE_ID,
+			    &reg);
+	if (err < 0)
+		return err;
 
-	if (NFP_CPP_MODEL_IS_6000(model)) {
-		uint32_t tmp;
+	*model = reg & NFP_PL_DEVICE_MODEL_MASK;
+	if (*model & NFP_PL_DEVICE_ID_MASK)
+		*model -= 0x10;
 
-		nfp_cpp_model_set(cpp, model);
-
-		/* The PL's PluDeviceID revision code is authoratative */
-		model &= ~0xff;
-		if (nfp_xpb_readl(cpp, NFP_XPB_DEVICE(1, 1, 16) +
-				   NFP_PL_DEVICE_ID, &tmp))
-			return 0;
-
-		model |= (NFP_PL_DEVICE_ID_MASK & tmp) - 0x10;
-	}
-
-	return model;
+	return 0;
 }
 
 /*
