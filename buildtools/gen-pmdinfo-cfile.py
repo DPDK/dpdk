@@ -11,7 +11,7 @@ _, ar, archive, output, *pmdinfogen = sys.argv
 with tempfile.TemporaryDirectory() as temp:
     proc = subprocess.run(
         # Don't use "ar p", because its output is corrupted on Windows.
-        [ar, "xv", os.path.abspath(archive)], capture_output=True, check=True, cwd=temp
+        [ar, "xv", os.path.abspath(archive)], stdout=subprocess.PIPE, check=True, cwd=temp
     )
     lines = proc.stdout.decode().splitlines()
     names = [line[len("x - ") :] for line in lines]
