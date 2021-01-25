@@ -4,6 +4,8 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -28,9 +30,14 @@ test_panic(void)
 
 	pid = fork();
 
-	if (pid == 0)
+	if (pid == 0) {
+		struct rlimit rl;
+
+		/* No need to generate a coredump when panicking. */
+		rl.rlim_cur = rl.rlim_max = 0;
+		setrlimit(RLIMIT_CORE, &rl);
 		rte_panic("Test Debug\n");
-	else if (pid < 0){
+	} else if (pid < 0) {
 		printf("Fork Failed\n");
 		return -1;
 	}

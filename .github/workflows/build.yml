@@ -104,6 +104,9 @@ jobs:
       if: env.AARCH64 == 'true'
       run: sudo apt install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
         pkg-config-aarch64-linux-gnu
+    - name: Install test tools packages
+      if: env.AARCH64 != 'true' || env.RUN_TESTS == 'true'
+      run: sudo apt install -y gdb
     - name: Install doc generation packages
       if: env.BUILD_DOCS == 'true'
       run: sudo apt install -y doxygen graphviz python3-sphinx
@@ -124,3 +127,4 @@ jobs:
           build/meson-logs/testlog.txt
           build/.ninja_log
           build/meson-logs/meson-log.txt
+          build/gdb.log
