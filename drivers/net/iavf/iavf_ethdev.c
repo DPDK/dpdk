@@ -429,10 +429,8 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	ret = iavf_dev_init_vlan(dev);
-	if (ret) {
+	if (ret)
 		PMD_DRV_LOG(ERR, "configure VLAN failed: %d", ret);
-		return -1;
-	}
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
 		if (iavf_init_rss(ad) != 0) {
