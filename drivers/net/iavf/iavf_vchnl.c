@@ -528,23 +528,21 @@ int
 iavf_config_vlan_strip_v2(struct iavf_adapter *adapter, bool enable)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	struct virtchnl_vlan_supported_caps *supported_caps;
+	struct virtchnl_vlan_supported_caps *stripping_caps;
 	struct virtchnl_vlan_setting vlan_strip;
 	struct iavf_cmd_info args;
-	uint32_t stripping_caps;
 	uint32_t *ethertype;
 	int ret;
 
-	supported_caps = &vf->vlan_v2_caps.offloads.stripping_support;
-	if (supported_caps->outer) {
-		stripping_caps = supported_caps->outer;
-		ethertype = &vlan_strip.outer_ethertype_setting;
-	} else {
-		stripping_caps = supported_caps->inner;
-		ethertype = &vlan_strip.inner_ethertype_setting;
-	}
+	stripping_caps = &vf->vlan_v2_caps.offloads.stripping_support;
 
-	if (!(stripping_caps & VIRTCHNL_VLAN_ETHERTYPE_8100))
+	if ((stripping_caps->outer & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+	    (stripping_caps->outer & VIRTCHNL_VLAN_TOGGLE))
+		ethertype = &vlan_strip.outer_ethertype_setting;
+	else if ((stripping_caps->inner & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+		 (stripping_caps->inner & VIRTCHNL_VLAN_TOGGLE))
+		ethertype = &vlan_strip.inner_ethertype_setting;
+	else
 		return -ENOTSUP;
 
 	memset(&vlan_strip, 0, sizeof(vlan_strip));
@@ -570,23 +568,21 @@ int
 iavf_config_vlan_insert_v2(struct iavf_adapter *adapter, bool enable)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	struct virtchnl_vlan_supported_caps *supported_caps;
+	struct virtchnl_vlan_supported_caps *insertion_caps;
 	struct virtchnl_vlan_setting vlan_insert;
 	struct iavf_cmd_info args;
-	uint32_t insertion_caps;
 	uint32_t *ethertype;
 	int ret;
 
-	supported_caps = &vf->vlan_v2_caps.offloads.insertion_support;
-	if (supported_caps->outer) {
-		insertion_caps = supported_caps->outer;
-		ethertype = &vlan_insert.outer_ethertype_setting;
-	} else {
-		insertion_caps = supported_caps->inner;
-		ethertype = &vlan_insert.inner_ethertype_setting;
-	}
+	insertion_caps = &vf->vlan_v2_caps.offloads.insertion_support;
 
-	if (!(insertion_caps & VIRTCHNL_VLAN_ETHERTYPE_8100))
+	if ((insertion_caps->outer & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+	    (insertion_caps->outer & VIRTCHNL_VLAN_TOGGLE))
+		ethertype = &vlan_insert.outer_ethertype_setting;
+	else if ((insertion_caps->inner & VIRTCHNL_VLAN_ETHERTYPE_8100) &&
+		 (insertion_caps->inner & VIRTCHNL_VLAN_TOGGLE))
+		ethertype = &vlan_insert.inner_ethertype_setting;
+	else
 		return -ENOTSUP;
 
 	memset(&vlan_insert, 0, sizeof(vlan_insert));
