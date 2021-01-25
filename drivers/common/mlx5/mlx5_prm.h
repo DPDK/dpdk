@@ -586,6 +586,7 @@ enum mlx5_modification_field {
 	MLX5_MODI_IN_TCP_SEQ_NUM,
 	MLX5_MODI_OUT_TCP_ACK_NUM,
 	MLX5_MODI_IN_TCP_ACK_NUM = 0x5C,
+	MLX5_MODI_GTP_TEID = 0x6E,
 };
 
 /* Total number of metadata reg_c's. */
