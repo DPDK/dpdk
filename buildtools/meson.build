@@ -18,7 +18,7 @@ map_to_win_cmd = py3 + files('map_to_win.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
 
 # select library and object file format
-pmdinfo = py3 + files('gen-pmdinfo-cfile.py')
+pmdinfo = py3 + files('gen-pmdinfo-cfile.py') + [meson.current_build_dir()]
 pmdinfogen = py3 + files('pmdinfogen.py')
 if host_machine.system() == 'windows'
 	if cc.get_id() == 'gcc'
