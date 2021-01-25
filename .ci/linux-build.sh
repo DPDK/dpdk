@@ -4,7 +4,10 @@ on_error() {
     if [ $? = 0 ]; then
         exit
     fi
-    FILES_TO_PRINT="build/meson-logs/testlog.txt build/.ninja_log build/meson-logs/meson-log.txt"
+    FILES_TO_PRINT="build/meson-logs/testlog.txt"
+    FILES_TO_PRINT="$FILES_TO_PRINT build/.ninja_log"
+    FILES_TO_PRINT="$FILES_TO_PRINT build/meson-logs/meson-log.txt"
+    FILES_TO_PRINT="$FILES_TO_PRINT build/gdb.log"
 
     for pr_file in $FILES_TO_PRINT; do
         if [ -e "$pr_file" ]; then
@@ -28,6 +31,26 @@ install_libabigail() {
     make -C $version/build all install
     rm -rf $version
     rm ${version}.tar.gz
+}
+
+configure_coredump() {
+    # No point in configuring coredump without gdb
+    which gdb >/dev/null || return 0
+    ulimit -c unlimited
+    sudo sysctl -w kernel.core_pattern=/tmp/dpdk-core.%e.%p
+}
+
+catch_coredump() {
+    ls /tmp/dpdk-core.*.* 2>/dev/null || return 0
+    for core in /tmp/dpdk-core.*.*; do
+        binary=$(sudo readelf -n $core |grep $(pwd)/build/ 2>/dev/null |head -n1)
+        [ -x $binary ] || binary=
+        sudo gdb $binary -c $core \
+            -ex 'info threads' \
+            -ex 'thread apply all bt full' \
+            -ex 'quit'
+    done |tee -a build/gdb.log
+    return 1
 }
 
 if [ "$AARCH64" = "true" ]; then
@@ -57,7 +80,11 @@ meson build --werror $OPTS
 ninja -C build
 
 if [ "$AARCH64" != "true" ]; then
-    devtools/test-null.sh
+    failed=
+    configure_coredump
+    devtools/test-null.sh || failed="true"
+    catch_coredump
+    [ "$failed" != "true" ]
 fi
 
 if [ "$ABI_CHECKS" = "true" ]; then
@@ -102,5 +129,9 @@ if [ "$ABI_CHECKS" = "true" ]; then
 fi
 
 if [ "$RUN_TESTS" = "true" ]; then
-    sudo meson test -C build --suite fast-tests -t 3
+    failed=
+    configure_coredump
+    sudo meson test -C build --suite fast-tests -t 3 || failed="true"
+    catch_coredump
+    [ "$failed" != "true" ]
 fi
