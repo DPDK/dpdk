@@ -10,6 +10,7 @@ import sys
 import tempfile
 
 try:
+    import elftools
     from elftools.elf.elffile import ELFFile
     from elftools.elf.sections import SymbolTableSection
 except ImportError:
@@ -38,8 +39,13 @@ class ELFSymbol:
 
 class ELFImage:
     def __init__(self, data):
+        version = tuple(int(c) for c in elftools.__version__.split("."))
+        self._legacy_elftools = version < (0, 24)
+
         self._image = ELFFile(data)
-        self._symtab = self._image.get_section_by_name(".symtab")
+
+        section = b".symtab" if self._legacy_elftools else ".symtab"
+        self._symtab = self._image.get_section_by_name(section)
         if not isinstance(self._symtab, SymbolTableSection):
             raise Exception(".symtab section is not a symbol table")
 
@@ -48,10 +54,20 @@ class ELFImage:
         return not self._image.little_endian
 
     def find_by_name(self, name):
-        symbol = self._symtab.get_symbol_by_name(name)
+        symbol = self._get_symbol_by_name(name)
         return ELFSymbol(self._image, symbol[0]) if symbol else None
 
+    def _get_symbol_by_name(self, name):
+        if not self._legacy_elftools:
+            return self._symtab.get_symbol_by_name(name)
+        name = name.encode("utf-8")
+        for symbol in self._symtab.iter_symbols():
+            if symbol.name == name:
+                return [symbol]
+        return None
+
     def find_by_prefix(self, prefix):
+        prefix = prefix.encode("utf-8") if self._legacy_elftools else prefix
         for i in range(self._symtab.num_symbols()):
             symbol = self._symtab.get_symbol(i)
             if symbol.name.startswith(prefix):
