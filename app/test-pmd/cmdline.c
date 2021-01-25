@@ -17131,6 +17131,7 @@ cmdline_read_from_file(const char *filename)
 void
 prompt(void)
 {
+	int ret;
 	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();
 	cmd_set_fwd_retry_mode_init();
@@ -17138,15 +17139,23 @@ prompt(void)
 	testpmd_cl = cmdline_stdin_new(main_ctx, "testpmd> ");
 	if (testpmd_cl == NULL)
 		return;
+
+	ret = atexit(prompt_exit);
+	if (ret != 0)
+		printf("Cannot set exit function for cmdline\n");
+
 	cmdline_interact(testpmd_cl);
-	cmdline_stdin_exit(testpmd_cl);
+	if (ret != 0)
+		cmdline_stdin_exit(testpmd_cl);
 }
 
 void
 prompt_exit(void)
 {
-	if (testpmd_cl != NULL)
+	if (testpmd_cl != NULL) {
 		cmdline_quit(testpmd_cl);
+		cmdline_stdin_exit(testpmd_cl);
+	}
 }
 
 static void
