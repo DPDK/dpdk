@@ -1842,7 +1842,7 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 	session->ctxt_type = DPAA2_SEC_CIPHER;
 	session->cipher_key.data = rte_zmalloc(NULL, xform->cipher.key.length,
 			RTE_CACHE_LINE_SIZE);
-	if (session->cipher_key.data == NULL) {
+	if (session->cipher_key.data == NULL && xform->cipher.key.length > 0) {
 		DPAA2_SEC_ERR("No Memory for cipher key");
 		rte_free(priv);
 		return -ENOMEM;
