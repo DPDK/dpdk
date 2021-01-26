@@ -492,7 +492,7 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	avail_addr = desc_addr + vq->vq_nentries * sizeof(struct vring_desc);
 	used_addr = RTE_ALIGN_CEIL(avail_addr + offsetof(struct vring_avail,
 							 ring[vq->vq_nentries]),
-				   VIRTIO_PCI_VRING_ALIGN);
+				   VIRTIO_VRING_ALIGN);
 
 	rte_write16(vq->vq_queue_index, &dev->common_cfg->queue_select);
 

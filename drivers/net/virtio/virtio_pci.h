@@ -122,9 +122,6 @@ struct virtio_pci_dev {
  */
 #define VIRTIO_PCI_QUEUE_ADDR_SHIFT 12
 
-/* The alignment to use between consumer and producer parts of vring. */
-#define VIRTIO_PCI_VRING_ALIGN 4096
-
 /*
  * Function declaration from virtio_pci.c
  */

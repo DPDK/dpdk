@@ -388,7 +388,7 @@ virtio_user_setup_queue_packed(struct virtqueue *vq,
 		sizeof(struct vring_packed_desc);
 	used_addr = RTE_ALIGN_CEIL(avail_addr +
 			   sizeof(struct vring_packed_desc_event),
-			   VIRTIO_PCI_VRING_ALIGN);
+			   VIRTIO_VRING_ALIGN);
 	vring->num = vq->vq_nentries;
 	vring->desc = (void *)(uintptr_t)desc_addr;
 	vring->driver = (void *)(uintptr_t)avail_addr;
@@ -410,7 +410,7 @@ virtio_user_setup_queue_split(struct virtqueue *vq, struct virtio_user_dev *dev)
 	avail_addr = desc_addr + vq->vq_nentries * sizeof(struct vring_desc);
 	used_addr = RTE_ALIGN_CEIL(avail_addr + offsetof(struct vring_avail,
 							 ring[vq->vq_nentries]),
-				   VIRTIO_PCI_VRING_ALIGN);
+				   VIRTIO_VRING_ALIGN);
 
 	dev->vrings[queue_idx].num = vq->vq_nentries;
 	dev->vrings[queue_idx].desc = (void *)(uintptr_t)desc_addr;

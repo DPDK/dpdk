@@ -131,6 +131,9 @@
 /* Vector value used to disable MSI for queue. */
 #define VIRTIO_MSI_NO_VECTOR 0xFFFF
 
+/* The alignment to use between consumer and producer parts of vring. */
+#define VIRTIO_VRING_ALIGN 4096
+
 /*
  * This structure is just a reference to read net device specific
  * config space; it is just a shadow structure.
