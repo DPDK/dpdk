@@ -471,6 +471,20 @@ vhost_vdpa_get_backend_features(uint64_t *features)
 	return 0;
 }
 
+static int
+vhost_vdpa_update_link_state(struct virtio_user_dev *dev __rte_unused)
+{
+	/* Nothing to update (for now?) */
+	return 0;
+}
+
+static int
+vhost_vdpa_get_intr_fd(struct virtio_user_dev *dev __rte_unused)
+{
+	/* No link state interrupt with Vhost-vDPA */
+	return -1;
+}
+
 struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.setup = vhost_vdpa_setup,
 	.destroy = vhost_vdpa_destroy,
@@ -490,4 +504,6 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,
 	.dma_unmap = vhost_vdpa_dma_unmap_batch,
+	.update_link_state = vhost_vdpa_update_link_state,
+	.get_intr_fd = vhost_vdpa_get_intr_fd,
 };

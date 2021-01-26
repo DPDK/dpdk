@@ -27,10 +27,10 @@ struct virtio_user_queue {
 struct virtio_user_dev {
 	struct virtio_hw hw;
 	enum virtio_user_backend_type backend_type;
-	/* for vhost_user backend */
-	int		vhostfd;
-	int		listenfd;   /* listening fd */
 	bool		is_server;  /* server or client mode */
+
+	/* for vhost_vdpa backend */
+	int		vhostfd;
 
 	/* for vhost_kernel backend */
 	char		*ifname;
@@ -85,5 +85,8 @@ void virtio_user_handle_cq_packed(struct virtio_user_dev *dev,
 uint8_t virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs);
 int virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status);
 int virtio_user_dev_update_status(struct virtio_user_dev *dev);
+int virtio_user_dev_update_link_state(struct virtio_user_dev *dev);
+void virtio_user_dev_delayed_handler(void *param);
+int virtio_user_dev_server_reconnect(struct virtio_user_dev *dev);
 extern const char * const virtio_user_backend_strings[];
 #endif

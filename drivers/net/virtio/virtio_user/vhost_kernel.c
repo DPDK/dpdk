@@ -459,6 +459,20 @@ vhost_kernel_get_backend_features(uint64_t *features)
 	return 0;
 }
 
+static int
+vhost_kernel_update_link_state(struct virtio_user_dev *dev __rte_unused)
+{
+	/* Nothing to update (Maybe get TAP interface link state?) */
+	return 0;
+}
+
+static int
+vhost_kernel_get_intr_fd(struct virtio_user_dev *dev __rte_unused)
+{
+	/* No link state interrupt with Vhost-kernel */
+	return -1;
+}
+
 struct virtio_user_backend_ops virtio_ops_kernel = {
 	.setup = vhost_kernel_setup,
 	.destroy = vhost_kernel_destroy,
@@ -475,5 +489,7 @@ struct virtio_user_backend_ops virtio_ops_kernel = {
 	.set_vring_addr = vhost_kernel_set_vring_addr,
 	.get_status = vhost_kernel_get_status,
 	.set_status = vhost_kernel_set_status,
-	.enable_qp = vhost_kernel_enable_queue_pair
+	.enable_qp = vhost_kernel_enable_queue_pair,
+	.update_link_state = vhost_kernel_update_link_state,
+	.get_intr_fd = vhost_kernel_get_intr_fd,
 };

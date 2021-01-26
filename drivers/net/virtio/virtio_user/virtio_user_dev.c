@@ -343,11 +343,7 @@ virtio_user_fill_intr_handle(struct virtio_user_dev *dev)
 	eth_dev->intr_handle->type = RTE_INTR_HANDLE_VDEV;
 	/* For virtio vdev, no need to read counter for clean */
 	eth_dev->intr_handle->efd_counter_size = 0;
-	eth_dev->intr_handle->fd = -1;
-	if (dev->vhostfd >= 0)
-		eth_dev->intr_handle->fd = dev->vhostfd;
-	else if (dev->is_server)
-		eth_dev->intr_handle->fd = dev->listenfd;
+	eth_dev->intr_handle->fd = dev->ops->get_intr_fd(dev);
 
 	return 0;
 }
@@ -404,7 +400,6 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 {
 	uint32_t q;
 
-	dev->vhostfd = -1;
 	dev->vhostfds = NULL;
 	dev->tapfds = NULL;
 
@@ -598,15 +593,6 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 		close(dev->callfds[i]);
 		close(dev->kickfds[i]);
 	}
-
-	if (dev->vhostfd >= 0)
-		close(dev->vhostfd);
-
-	if (dev->is_server && dev->listenfd >= 0) {
-		close(dev->listenfd);
-		dev->listenfd = -1;
-	}
-
 	if (dev->vhostfds) {
 		for (i = 0; i < dev->max_queue_pairs; ++i) {
 			close(dev->vhostfds[i]);
@@ -637,15 +623,11 @@ virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs)
 		return -1;
 	}
 
-	/* Server mode can't enable queue pairs if vhostfd is invalid,
-	 * always return 0 in this case.
-	 */
-	if (!dev->is_server || dev->vhostfd >= 0) {
-		for (i = 0; i < q_pairs; ++i)
-			ret |= dev->ops->enable_qp(dev, i, 1);
-		for (i = q_pairs; i < dev->max_queue_pairs; ++i)
-			ret |= dev->ops->enable_qp(dev, i, 0);
-	}
+	for (i = 0; i < q_pairs; ++i)
+		ret |= dev->ops->enable_qp(dev, i, 1);
+	for (i = q_pairs; i < dev->max_queue_pairs; ++i)
+		ret |= dev->ops->enable_qp(dev, i, 0);
+
 	dev->queue_pairs = q_pairs;
 
 	return ret;
@@ -859,4 +841,155 @@ virtio_user_dev_update_status(struct virtio_user_dev *dev)
 
 	pthread_mutex_unlock(&dev->mutex);
 	return ret;
+}
+
+int
+virtio_user_dev_update_link_state(struct virtio_user_dev *dev)
+{
+	if (dev->ops->update_link_state)
+		return dev->ops->update_link_state(dev);
+
+	return 0;
+}
+
+static void
+virtio_user_dev_reset_queues_packed(struct rte_eth_dev *eth_dev)
+{
+	struct virtio_user_dev *dev = eth_dev->data->dev_private;
+	struct virtio_hw *hw = &dev->hw;
+	struct virtnet_rx *rxvq;
+	struct virtnet_tx *txvq;
+	uint16_t i;
+
+	/* Add lock to avoid queue contention. */
+	rte_spinlock_lock(&hw->state_lock);
+	hw->started = 0;
+
+	/*
+	 * Waiting for datapath to complete before resetting queues.
+	 * 1 ms should be enough for the ongoing Tx/Rx function to finish.
+	 */
+	rte_delay_ms(1);
+
+	/* Vring reset for each Tx queue and Rx queue. */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rxvq = eth_dev->data->rx_queues[i];
+		virtqueue_rxvq_reset_packed(rxvq->vq);
+		virtio_dev_rx_queue_setup_finish(eth_dev, i);
+	}
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		txvq = eth_dev->data->tx_queues[i];
+		virtqueue_txvq_reset_packed(txvq->vq);
+	}
+
+	hw->started = 1;
+	rte_spinlock_unlock(&hw->state_lock);
+}
+
+void
+virtio_user_dev_delayed_handler(void *param)
+{
+	struct virtio_user_dev *dev = param;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
+
+	if (rte_intr_disable(eth_dev->intr_handle) < 0) {
+		PMD_DRV_LOG(ERR, "interrupt disable failed");
+		return;
+	}
+	rte_intr_callback_unregister(eth_dev->intr_handle,
+				     virtio_interrupt_handler, eth_dev);
+	if (dev->is_server) {
+		if (dev->ops->server_disconnect)
+			dev->ops->server_disconnect(dev);
+		eth_dev->intr_handle->fd = dev->ops->get_intr_fd(dev);
+		rte_intr_callback_register(eth_dev->intr_handle,
+					   virtio_interrupt_handler, eth_dev);
+		if (rte_intr_enable(eth_dev->intr_handle) < 0) {
+			PMD_DRV_LOG(ERR, "interrupt enable failed");
+			return;
+		}
+	}
+}
+
+int
+virtio_user_dev_server_reconnect(struct virtio_user_dev *dev)
+{
+	int ret, old_status;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
+	struct virtio_hw *hw = &dev->hw;
+
+	if (!dev->ops->server_reconnect) {
+		PMD_DRV_LOG(ERR, "(%s) Missing server reconnect callback", dev->path);
+		return -1;
+	}
+
+	if (dev->ops->server_reconnect(dev)) {
+		PMD_DRV_LOG(ERR, "(%s) Reconnect callback call failed", dev->path);
+		return -1;
+	}
+
+	old_status = dev->status;
+
+	virtio_reset(hw);
+
+	virtio_set_status(hw, VIRTIO_CONFIG_STATUS_ACK);
+
+	virtio_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
+
+	if (dev->ops->get_features(dev, &dev->device_features) < 0) {
+		PMD_INIT_LOG(ERR, "get_features failed: %s",
+			     strerror(errno));
+		return -1;
+	}
+
+	dev->device_features |= dev->frontend_features;
+
+	/* unmask vhost-user unsupported features */
+	dev->device_features &= ~(dev->unsupported_features);
+
+	dev->features &= dev->device_features;
+
+	/* For packed ring, resetting queues is required in reconnection. */
+	if (virtio_with_packed_queue(hw) &&
+	   (old_status & VIRTIO_CONFIG_STATUS_DRIVER_OK)) {
+		PMD_INIT_LOG(NOTICE, "Packets on the fly will be dropped"
+				" when packed ring reconnecting.");
+		virtio_user_dev_reset_queues_packed(eth_dev);
+	}
+
+	virtio_set_status(hw, VIRTIO_CONFIG_STATUS_FEATURES_OK);
+
+	/* Start the device */
+	virtio_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER_OK);
+	if (!dev->started)
+		return -1;
+
+	if (dev->queue_pairs > 1) {
+		ret = virtio_user_handle_mq(dev, dev->queue_pairs);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Fails to enable multi-queue pairs!");
+			return -1;
+		}
+	}
+	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
+		if (rte_intr_disable(eth_dev->intr_handle) < 0) {
+			PMD_DRV_LOG(ERR, "interrupt disable failed");
+			return -1;
+		}
+		rte_intr_callback_unregister(eth_dev->intr_handle,
+					     virtio_interrupt_handler,
+					     eth_dev);
+
+		eth_dev->intr_handle->fd = dev->ops->get_intr_fd(dev);
+		rte_intr_callback_register(eth_dev->intr_handle,
+					   virtio_interrupt_handler, eth_dev);
+
+		if (rte_intr_enable(eth_dev->intr_handle) < 0) {
+			PMD_DRV_LOG(ERR, "interrupt enable failed");
+			return -1;
+		}
+	}
+	PMD_INIT_LOG(NOTICE, "server mode virtio-user reconnection succeeds!");
+	return 0;
 }
