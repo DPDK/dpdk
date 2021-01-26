@@ -4923,15 +4923,11 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 	/* RFCTL configuration  */
 	rfctl = IXGBE_READ_REG(hw, IXGBE_RFCTL);
 	if ((rsc_capable) && (rx_conf->offloads & DEV_RX_OFFLOAD_TCP_LRO))
-		/*
-		 * Since NFS packets coalescing is not supported - clear
-		 * RFCTL.NFSW_DIS and RFCTL.NFSR_DIS when RSC is
-		 * enabled.
-		 */
-		rfctl &= ~(IXGBE_RFCTL_RSC_DIS | IXGBE_RFCTL_NFSW_DIS |
-			   IXGBE_RFCTL_NFSR_DIS);
+		rfctl &= ~IXGBE_RFCTL_RSC_DIS;
 	else
 		rfctl |= IXGBE_RFCTL_RSC_DIS;
+	/* disable NFS filtering */
+	rfctl |= IXGBE_RFCTL_NFSW_DIS | IXGBE_RFCTL_NFSR_DIS;
 	IXGBE_WRITE_REG(hw, IXGBE_RFCTL, rfctl);
 
 	/* If LRO hasn't been requested - we are done here. */
