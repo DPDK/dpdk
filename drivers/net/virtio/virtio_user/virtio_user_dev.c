@@ -480,24 +480,15 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	 1ULL << VIRTIO_NET_F_GUEST_TSO6	|	\
 	 1ULL << VIRTIO_F_IN_ORDER		|	\
 	 1ULL << VIRTIO_F_VERSION_1		|	\
-	 1ULL << VIRTIO_F_RING_PACKED		|	\
-	 1ULL << VHOST_USER_F_PROTOCOL_FEATURES)
+	 1ULL << VIRTIO_F_RING_PACKED)
 
-#define VHOST_USER_SUPPORTED_PROTOCOL_FEATURES		\
-	(1ULL << VHOST_USER_PROTOCOL_F_MQ |		\
-	 1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK |	\
-	 1ULL << VHOST_USER_PROTOCOL_F_STATUS)
-
-#define VHOST_VDPA_SUPPORTED_PROTOCOL_FEATURES		\
-	(1ULL << VHOST_BACKEND_F_IOTLB_MSG_V2	|	\
-	1ULL << VHOST_BACKEND_F_IOTLB_BATCH)
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     int cq, int queue_size, const char *mac, char **ifname,
 		     int server, int mrg_rxbuf, int in_order, int packed_vq,
 		     enum virtio_user_backend_type backend_type)
 {
-	uint64_t protocol_features = 0;
+	uint64_t backend_features;
 
 	pthread_mutex_init(&dev->mutex, NULL);
 	strlcpy(dev->path, path, PATH_MAX);
@@ -508,13 +499,8 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	dev->is_server = server;
 	dev->mac_specified = 0;
 	dev->frontend_features = 0;
-	dev->unsupported_features = ~VIRTIO_USER_SUPPORTED_FEATURES;
+	dev->unsupported_features = 0;
 	dev->backend_type = backend_type;
-
-	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER)
-		dev->protocol_features = VHOST_USER_SUPPORTED_PROTOCOL_FEATURES;
-	else if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA)
-		dev->protocol_features = VHOST_VDPA_SUPPORTED_PROTOCOL_FEATURES;
 
 	parse_mac(dev, mac);
 
@@ -528,38 +514,21 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		return -1;
 	}
 
-	if (dev->backend_type != VIRTIO_USER_BACKEND_VHOST_USER)
-		dev->unsupported_features |=
-			(1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
-
 	if (dev->ops->set_owner(dev) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to set backend owner", dev->path);
 		return -1;
 	}
 
-	if (dev->ops->get_features(dev, &dev->device_features) < 0) {
+	if (dev->ops->get_backend_features(&backend_features) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to get backend features", dev->path);
 		return -1;
 	}
 
-	if ((dev->device_features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
-			dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA) {
-		if (dev->ops->get_protocol_features(dev, &protocol_features)) {
-			PMD_INIT_LOG(ERR, "(%s) Failed to get backend protocol features",
-					dev->path);
-			return -1;
-		}
+	dev->unsupported_features = ~(VIRTIO_USER_SUPPORTED_FEATURES | backend_features);
 
-		dev->protocol_features &= protocol_features;
-
-		if (dev->ops->set_protocol_features(dev, dev->protocol_features)) {
-			PMD_INIT_LOG(ERR, "(%s) Failed to set backend protocol features",
-					dev->path);
-			return -1;
-		}
-
-		if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_MQ)))
-			dev->unsupported_features |= (1ull << VIRTIO_NET_F_MQ);
+	if (dev->ops->get_features(dev, &dev->device_features) < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to get device features", dev->path);
+		return -1;
 	}
 
 	if (!mrg_rxbuf)

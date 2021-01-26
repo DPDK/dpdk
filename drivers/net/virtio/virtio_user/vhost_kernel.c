@@ -445,8 +445,17 @@ set_backend:
 	return 0;
 }
 
+static int
+vhost_kernel_get_backend_features(uint64_t *features)
+{
+	*features = 0;
+
+	return 0;
+}
+
 struct virtio_user_backend_ops virtio_ops_kernel = {
 	.setup = vhost_kernel_setup,
+	.get_backend_features = vhost_kernel_get_backend_features,
 	.set_owner = vhost_kernel_set_owner,
 	.get_features = vhost_kernel_get_features,
 	.set_features = vhost_kernel_set_features,

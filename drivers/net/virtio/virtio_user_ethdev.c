@@ -70,7 +70,6 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 	int ret, connectfd, old_status;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
 	struct virtio_hw *hw = &dev->hw;
-	uint64_t protocol_features;
 
 	connectfd = accept(dev->listenfd, NULL, NULL);
 	if (connectfd < 0)
@@ -89,22 +88,6 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 		PMD_INIT_LOG(ERR, "get_features failed: %s",
 			     strerror(errno));
 		return -1;
-	}
-
-	if (dev->device_features &
-			(1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) {
-		if (dev->ops->get_protocol_features(dev, &protocol_features))
-			return -1;
-
-		/* Offer VHOST_USER_PROTOCOL_F_STATUS */
-		dev->protocol_features |= (1ULL << VHOST_USER_PROTOCOL_F_STATUS);
-		dev->protocol_features &= protocol_features;
-
-		if (dev->ops->set_protocol_features(dev, dev->protocol_features))
-			return -1;
-
-		if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_MQ)))
-			dev->unsupported_features |= (1ull << VIRTIO_NET_F_MQ);
 	}
 
 	dev->device_features |= dev->frontend_features;

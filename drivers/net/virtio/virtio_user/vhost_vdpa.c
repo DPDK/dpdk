@@ -13,6 +13,10 @@
 #include "vhost.h"
 #include "virtio_user_dev.h"
 
+#define VHOST_VDPA_SUPPORTED_BACKEND_FEATURES		\
+	(1ULL << VHOST_BACKEND_F_IOTLB_MSG_V2	|	\
+	1ULL << VHOST_BACKEND_F_IOTLB_BATCH)
+
 /* vhost kernel & vdpa ioctls */
 #define VHOST_VIRTIO 0xAF
 #define VHOST_GET_FEATURES _IOR(VHOST_VIRTIO, 0x00, __u64)
@@ -88,13 +92,13 @@ vhost_vdpa_set_owner(struct virtio_user_dev *dev)
 }
 
 static int
-vhost_vdpa_get_backend_features(struct virtio_user_dev *dev, uint64_t *features)
+vhost_vdpa_get_protocol_features(struct virtio_user_dev *dev, uint64_t *features)
 {
 	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_GET_BACKEND_FEATURES, features);
 }
 
 static int
-vhost_vdpa_set_backend_features(struct virtio_user_dev *dev, uint64_t features)
+vhost_vdpa_set_protocol_features(struct virtio_user_dev *dev, uint64_t features)
 {
 	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_SET_BACKEND_FEATURES, &features);
 }
@@ -112,6 +116,21 @@ vhost_vdpa_get_features(struct virtio_user_dev *dev, uint64_t *features)
 
 	/* Multiqueue not supported for now */
 	*features &= ~(1ULL << VIRTIO_NET_F_MQ);
+
+	/* Negotiated vDPA backend features */
+	ret = vhost_vdpa_get_protocol_features(dev, &dev->protocol_features);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to get backend features");
+		return -1;
+	}
+
+	dev->protocol_features &= VHOST_VDPA_SUPPORTED_BACKEND_FEATURES;
+
+	ret = vhost_vdpa_set_protocol_features(dev, dev->protocol_features);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to set backend features");
+		return -1;
+	}
 
 	return 0;
 }
@@ -438,13 +457,20 @@ vhost_vdpa_enable_queue_pair(struct virtio_user_dev *dev,
 	return 0;
 }
 
+static int
+vhost_vdpa_get_backend_features(uint64_t *features)
+{
+	*features = 0;
+
+	return 0;
+}
+
 struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.setup = vhost_vdpa_setup,
+	.get_backend_features = vhost_vdpa_get_backend_features,
 	.set_owner = vhost_vdpa_set_owner,
 	.get_features = vhost_vdpa_get_features,
 	.set_features = vhost_vdpa_set_features,
-	.get_protocol_features = vhost_vdpa_get_backend_features,
-	.set_protocol_features = vhost_vdpa_set_backend_features,
 	.set_memory_table = vhost_vdpa_set_memory_table,
 	.set_vring_num = vhost_vdpa_set_vring_num,
 	.set_vring_base = vhost_vdpa_set_vring_base,
