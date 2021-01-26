@@ -49,25 +49,6 @@ struct virtnet_ctl;
 /* Vector value used to disable MSI for queue. */
 #define VIRTIO_MSI_NO_VECTOR 0xFFFF
 
-/* VirtIO device IDs. */
-#define VIRTIO_ID_NETWORK  0x01
-#define VIRTIO_ID_BLOCK    0x02
-#define VIRTIO_ID_CONSOLE  0x03
-#define VIRTIO_ID_ENTROPY  0x04
-#define VIRTIO_ID_BALLOON  0x05
-#define VIRTIO_ID_IOMEMORY 0x06
-#define VIRTIO_ID_9P       0x09
-
-/* Status byte for guest to report progress. */
-#define VIRTIO_CONFIG_STATUS_RESET		0x00
-#define VIRTIO_CONFIG_STATUS_ACK		0x01
-#define VIRTIO_CONFIG_STATUS_DRIVER		0x02
-#define VIRTIO_CONFIG_STATUS_DRIVER_OK		0x04
-#define VIRTIO_CONFIG_STATUS_FEATURES_OK	0x08
-#define VIRTIO_CONFIG_STATUS_DEV_NEED_RESET	0x40
-#define VIRTIO_CONFIG_STATUS_FAILED		0x80
-
-
 /* Common configuration */
 #define VIRTIO_PCI_CAP_COMMON_CFG	1
 /* Notifications */
@@ -136,32 +117,6 @@ struct virtio_pci_dev {
 #define virtio_pci_get_dev(hwp) container_of(hwp, struct virtio_pci_dev, hw)
 
 /*
- * This structure is just a reference to read
- * net device specific config space; it just a chodu structure
- *
- */
-struct virtio_net_config {
-	/* The config defining mac address (if VIRTIO_NET_F_MAC) */
-	uint8_t    mac[RTE_ETHER_ADDR_LEN];
-	/* See VIRTIO_NET_F_STATUS and VIRTIO_NET_S_* above */
-	uint16_t   status;
-	uint16_t   max_virtqueue_pairs;
-	uint16_t   mtu;
-	/*
-	 * speed, in units of 1Mb. All values 0 to INT_MAX are legal.
-	 * Any other value stands for unknown.
-	 */
-	uint32_t speed;
-	/*
-	 * 0x00 - half duplex
-	 * 0x01 - full duplex
-	 * Any other value stands for unknown.
-	 */
-	uint8_t duplex;
-
-} __rte_packed;
-
-/*
  * How many bits to shift physical queue address written to QUEUE_PFN.
  * 12 is historical, and due to x86 page size.
  */
@@ -181,16 +136,6 @@ enum virtio_msix_status {
  * Function declaration from virtio_pci.c
  */
 int vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev);
-void vtpci_reset(struct virtio_hw *);
-
-void vtpci_reinit_complete(struct virtio_hw *);
-
-uint8_t vtpci_get_status(struct virtio_hw *);
-void vtpci_set_status(struct virtio_hw *, uint8_t);
-
-void vtpci_write_dev_config(struct virtio_hw *, size_t, const void *, int);
-
-void vtpci_read_dev_config(struct virtio_hw *, size_t, void *, int);
 
 uint8_t vtpci_isr(struct virtio_hw *);
 

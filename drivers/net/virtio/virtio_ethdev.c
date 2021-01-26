@@ -714,7 +714,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 		dev->intr_handle->intr_vec = NULL;
 	}
 
-	vtpci_reset(hw);
+	virtio_reset(hw);
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(hw);
 
@@ -1096,7 +1096,7 @@ virtio_dev_stats_reset(struct rte_eth_dev *dev)
 static void
 virtio_set_hwaddr(struct virtio_hw *hw)
 {
-	vtpci_write_dev_config(hw,
+	virtio_write_dev_config(hw,
 			offsetof(struct virtio_net_config, mac),
 			&hw->mac_addr, RTE_ETHER_ADDR_LEN);
 }
@@ -1105,7 +1105,7 @@ static void
 virtio_get_hwaddr(struct virtio_hw *hw)
 {
 	if (virtio_with_feature(hw, VIRTIO_NET_F_MAC)) {
-		vtpci_read_dev_config(hw,
+		virtio_read_dev_config(hw,
 			offsetof(struct virtio_net_config, mac),
 			&hw->mac_addr, RTE_ETHER_ADDR_LEN);
 	} else {
@@ -1313,7 +1313,7 @@ virtio_ethdev_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 	if (host_features & req_features & (1ULL << VIRTIO_NET_F_MTU)) {
 		struct virtio_net_config config;
 
-		vtpci_read_dev_config(hw,
+		virtio_read_dev_config(hw,
 			offsetof(struct virtio_net_config, mtu),
 			&config.mtu, sizeof(config.mtu));
 
@@ -1334,9 +1334,9 @@ virtio_ethdev_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 		return -1;
 
 	if (virtio_with_feature(hw, VIRTIO_F_VERSION_1)) {
-		vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_FEATURES_OK);
+		virtio_set_status(hw, VIRTIO_CONFIG_STATUS_FEATURES_OK);
 
-		if (!(vtpci_get_status(hw) & VIRTIO_CONFIG_STATUS_FEATURES_OK)) {
+		if (!(virtio_get_status(hw) & VIRTIO_CONFIG_STATUS_FEATURES_OK)) {
 			PMD_INIT_LOG(ERR, "Failed to set FEATURES_OK status!");
 			return -1;
 		}
@@ -1468,7 +1468,7 @@ virtio_interrupt_handler(void *param)
 						     NULL);
 
 		if (virtio_with_feature(hw, VIRTIO_NET_F_STATUS)) {
-			vtpci_read_dev_config(hw,
+			virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, status),
 				&status, sizeof(status));
 			if (status & VIRTIO_NET_S_ANNOUNCE) {
@@ -1650,7 +1650,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	int ret;
 
 	/* Reset the device although not necessary at startup */
-	vtpci_reset(hw);
+	virtio_reset(hw);
 
 	if (hw->vqs) {
 		virtio_dev_free_mbufs(eth_dev);
@@ -1658,10 +1658,10 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	}
 
 	/* Tell the host we've noticed this device. */
-	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_ACK);
+	virtio_set_status(hw, VIRTIO_CONFIG_STATUS_ACK);
 
 	/* Tell the host we've known how to drive the device. */
-	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
+	virtio_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
 	if (virtio_ethdev_negotiate_features(hw, req_features) < 0)
 		return -1;
 
@@ -1696,10 +1696,10 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	if (hw->speed == ETH_SPEED_NUM_UNKNOWN) {
 		if (virtio_with_feature(hw, VIRTIO_NET_F_SPEED_DUPLEX)) {
 			config = &local_config;
-			vtpci_read_dev_config(hw,
+			virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, speed),
 				&config->speed, sizeof(config->speed));
-			vtpci_read_dev_config(hw,
+			virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, duplex),
 				&config->duplex, sizeof(config->duplex));
 			hw->speed = config->speed;
@@ -1713,12 +1713,12 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	if (virtio_with_feature(hw, VIRTIO_NET_F_CTRL_VQ)) {
 		config = &local_config;
 
-		vtpci_read_dev_config(hw,
+		virtio_read_dev_config(hw,
 			offsetof(struct virtio_net_config, mac),
 			&config->mac, sizeof(config->mac));
 
 		if (virtio_with_feature(hw, VIRTIO_NET_F_STATUS)) {
-			vtpci_read_dev_config(hw,
+			virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, status),
 				&config->status, sizeof(config->status));
 		} else {
@@ -1728,7 +1728,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		}
 
 		if (virtio_with_feature(hw, VIRTIO_NET_F_MQ)) {
-			vtpci_read_dev_config(hw,
+			virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, max_virtqueue_pairs),
 				&config->max_virtqueue_pairs,
 				sizeof(config->max_virtqueue_pairs));
@@ -1741,7 +1741,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		hw->max_queue_pairs = config->max_virtqueue_pairs;
 
 		if (virtio_with_feature(hw, VIRTIO_NET_F_MTU)) {
-			vtpci_read_dev_config(hw,
+			virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, mtu),
 				&config->mtu,
 				sizeof(config->mtu));
@@ -1793,7 +1793,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		}
 	}
 
-	vtpci_reinit_complete(hw);
+	virtio_reinit_complete(hw);
 
 	return 0;
 }
@@ -2374,7 +2374,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 		link.link_speed = ETH_SPEED_NUM_NONE;
 	} else if (virtio_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 		PMD_INIT_LOG(DEBUG, "Get link status from hw");
-		vtpci_read_dev_config(hw,
+		virtio_read_dev_config(hw,
 				offsetof(struct virtio_net_config, status),
 				&status, sizeof(status));
 		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {

@@ -106,6 +106,50 @@
 #define VIRTIO_MAX_VIRTQUEUE_PAIRS 8
 #define VIRTIO_MAX_VIRTQUEUES (VIRTIO_MAX_VIRTQUEUE_PAIRS * 2 + 1)
 
+/* VirtIO device IDs. */
+#define VIRTIO_ID_NETWORK  0x01
+#define VIRTIO_ID_BLOCK    0x02
+#define VIRTIO_ID_CONSOLE  0x03
+#define VIRTIO_ID_ENTROPY  0x04
+#define VIRTIO_ID_BALLOON  0x05
+#define VIRTIO_ID_IOMEMORY 0x06
+#define VIRTIO_ID_9P       0x09
+
+/* Status byte for guest to report progress. */
+#define VIRTIO_CONFIG_STATUS_RESET		0x00
+#define VIRTIO_CONFIG_STATUS_ACK		0x01
+#define VIRTIO_CONFIG_STATUS_DRIVER		0x02
+#define VIRTIO_CONFIG_STATUS_DRIVER_OK		0x04
+#define VIRTIO_CONFIG_STATUS_FEATURES_OK	0x08
+#define VIRTIO_CONFIG_STATUS_DEV_NEED_RESET	0x40
+#define VIRTIO_CONFIG_STATUS_FAILED		0x80
+
+/*
+ * This structure is just a reference to read net device specific
+ * config space; it is just a shadow structure.
+ *
+ */
+struct virtio_net_config {
+	/* The config defining mac address (if VIRTIO_NET_F_MAC) */
+	uint8_t    mac[RTE_ETHER_ADDR_LEN];
+	/* See VIRTIO_NET_F_STATUS and VIRTIO_NET_S_* above */
+	uint16_t   status;
+	uint16_t   max_virtqueue_pairs;
+	uint16_t   mtu;
+	/*
+	 * speed, in units of 1Mb. All values 0 to INT_MAX are legal.
+	 * Any other value stands for unknown.
+	 */
+	uint32_t speed;
+	/*
+	 * 0x00 - half duplex
+	 * 0x01 - full duplex
+	 * Any other value stands for unknown.
+	 */
+	uint8_t duplex;
+
+} __rte_packed;
+
 struct virtio_hw {
 	struct virtqueue **vqs;
 	uint64_t guest_features;
@@ -182,5 +226,11 @@ virtio_with_packed_queue(struct virtio_hw *hw)
 }
 
 uint64_t virtio_negotiate_features(struct virtio_hw *hw, uint64_t host_features);
+uint8_t virtio_get_status(struct virtio_hw *hw);
+void virtio_set_status(struct virtio_hw *hw, uint8_t status);
+void virtio_write_dev_config(struct virtio_hw *hw, size_t offset, const void *src, int length);
+void virtio_read_dev_config(struct virtio_hw *hw, size_t offset, void *dst, int length);
+void virtio_reset(struct virtio_hw *hw);
+void virtio_reinit_complete(struct virtio_hw *hw);
 
 #endif /* _VIRTIO_H_ */

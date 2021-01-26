@@ -603,50 +603,6 @@ const struct virtio_ops modern_ops = {
 	.dev_close	= modern_dev_close,
 };
 
-
-void
-vtpci_read_dev_config(struct virtio_hw *hw, size_t offset,
-		      void *dst, int length)
-{
-	VIRTIO_OPS(hw)->read_dev_cfg(hw, offset, dst, length);
-}
-
-void
-vtpci_write_dev_config(struct virtio_hw *hw, size_t offset,
-		       const void *src, int length)
-{
-	VIRTIO_OPS(hw)->write_dev_cfg(hw, offset, src, length);
-}
-
-void
-vtpci_reset(struct virtio_hw *hw)
-{
-	VIRTIO_OPS(hw)->set_status(hw, VIRTIO_CONFIG_STATUS_RESET);
-	/* flush status write */
-	VIRTIO_OPS(hw)->get_status(hw);
-}
-
-void
-vtpci_reinit_complete(struct virtio_hw *hw)
-{
-	vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER_OK);
-}
-
-void
-vtpci_set_status(struct virtio_hw *hw, uint8_t status)
-{
-	if (status != VIRTIO_CONFIG_STATUS_RESET)
-		status |= VIRTIO_OPS(hw)->get_status(hw);
-
-	VIRTIO_OPS(hw)->set_status(hw, status);
-}
-
-uint8_t
-vtpci_get_status(struct virtio_hw *hw)
-{
-	return VIRTIO_OPS(hw)->get_status(hw);
-}
-
 uint8_t
 vtpci_isr(struct virtio_hw *hw)
 {
