@@ -34,6 +34,8 @@ struct rte_vdev_device {
 #define RTE_DEV_TO_VDEV_CONST(ptr) \
 	container_of(ptr, const struct rte_vdev_device, device)
 
+#define RTE_ETH_DEV_TO_VDEV(eth_dev)	RTE_DEV_TO_VDEV((eth_dev)->device)
+
 static inline const char *
 rte_vdev_device_name(const struct rte_vdev_device *dev)
 {
