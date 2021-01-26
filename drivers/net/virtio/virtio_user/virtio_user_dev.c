@@ -283,13 +283,7 @@ virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 	int callfd;
 	int kickfd;
 
-	for (i = 0; i < VIRTIO_MAX_VIRTQUEUES; ++i) {
-		if (i >= dev->max_queue_pairs * 2) {
-			dev->kickfds[i] = -1;
-			dev->callfds[i] = -1;
-			continue;
-		}
-
+	for (i = 0; i < dev->max_queue_pairs * 2; i++) {
 		/* May use invalid flag, but some backend uses kickfd and
 		 * callfd as criteria to judge if dev is alive. so finally we
 		 * use real event_fd.
@@ -297,28 +291,49 @@ virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 		callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 		if (callfd < 0) {
 			PMD_DRV_LOG(ERR, "(%s) callfd error, %s", dev->path, strerror(errno));
-			break;
+			goto err;
 		}
 		kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 		if (kickfd < 0) {
 			close(callfd);
 			PMD_DRV_LOG(ERR, "(%s) kickfd error, %s", dev->path, strerror(errno));
-			break;
+			goto err;
 		}
 		dev->callfds[i] = callfd;
 		dev->kickfds[i] = kickfd;
 	}
 
-	if (i < VIRTIO_MAX_VIRTQUEUES) {
-		for (j = 0; j < i; ++j) {
-			close(dev->callfds[j]);
+	return 0;
+err:
+	for (j = 0; j < i; j++) {
+		if (dev->kickfds[j] >= 0) {
 			close(dev->kickfds[j]);
+			dev->kickfds[j] = -1;
 		}
-
-		return -1;
+		if (dev->callfds[j] >= 0) {
+			close(dev->callfds[j]);
+			dev->callfds[j] = -1;
+		}
 	}
 
-	return 0;
+	return -1;
+}
+
+static void
+virtio_user_dev_uninit_notify(struct virtio_user_dev *dev)
+{
+	uint32_t i;
+
+	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
+		if (dev->kickfds[i] >= 0) {
+			close(dev->kickfds[i]);
+			dev->kickfds[i] = -1;
+		}
+		if (dev->callfds[i] >= 0) {
+			close(dev->callfds[i]);
+			dev->callfds[i] = -1;
+		}
+	}
 }
 
 static int
@@ -427,15 +442,22 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 
 	if (virtio_user_dev_init_notify(dev) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to init notifiers\n", dev->path);
-		return -1;
+		goto destroy;
 	}
 
 	if (virtio_user_fill_intr_handle(dev) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to init interrupt handler\n", dev->path);
-		return -1;
+		goto uninit;
 	}
 
 	return 0;
+
+uninit:
+	virtio_user_dev_uninit_notify(dev);
+destroy:
+	dev->ops->destroy(dev);
+
+	return -1;
 }
 
 /* Use below macro to filter features from vhost backend */
@@ -466,9 +488,16 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     enum virtio_user_backend_type backend_type)
 {
 	uint64_t backend_features;
+	int i;
 
 	pthread_mutex_init(&dev->mutex, NULL);
 	strlcpy(dev->path, path, PATH_MAX);
+
+	for (i = 0; i < VIRTIO_MAX_VIRTQUEUES; i++) {
+		dev->kickfds[i] = -1;
+		dev->callfds[i] = -1;
+	}
+
 	dev->started = 0;
 	dev->max_queue_pairs = queues;
 	dev->queue_pairs = 1; /* mq disabled by default */
@@ -565,16 +594,11 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 void
 virtio_user_dev_uninit(struct virtio_user_dev *dev)
 {
-	uint32_t i;
-
 	virtio_user_stop_device(dev);
 
 	rte_mem_event_callback_unregister(VIRTIO_USER_MEM_EVENT_CLB_NAME, dev);
 
-	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
-		close(dev->callfds[i]);
-		close(dev->kickfds[i]);
-	}
+	virtio_user_dev_uninit_notify(dev);
 
 	free(dev->ifname);
 
