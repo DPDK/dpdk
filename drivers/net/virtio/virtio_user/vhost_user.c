@@ -81,6 +81,9 @@ vhost_user_write(int fd, struct vhost_user_msg *msg, int *fds, int fd_num)
 		r = sendmsg(fd, &msgh, 0);
 	} while (r < 0 && errno == EINTR);
 
+	if (r < 0)
+		PMD_DRV_LOG(ERR, "Failed to send msg: %s", strerror(errno));
+
 	return r;
 }
 
@@ -123,6 +126,39 @@ vhost_user_read(int fd, struct vhost_user_msg *msg)
 
 fail:
 	return -1;
+}
+
+static int
+vhost_user_check_reply_ack(struct virtio_user_dev *dev, struct vhost_user_msg *msg)
+{
+	enum vhost_user_request req = msg->request;
+	int ret;
+
+	if (!(msg->flags & VHOST_USER_NEED_REPLY_MASK))
+		return 0;
+
+	ret = vhost_user_read(dev->vhostfd, msg);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to read reply-ack");
+		return -1;
+	}
+
+	if (req != msg->request) {
+		PMD_DRV_LOG(ERR, "Unexpected reply-ack request type (%d)", msg->request);
+		return -1;
+	}
+
+	if (msg->size != sizeof(msg->payload.u64)) {
+		PMD_DRV_LOG(ERR, "Unexpected reply-ack payload size (%u)", msg->size);
+		return -1;
+	}
+
+	if (msg->payload.u64) {
+		PMD_DRV_LOG(ERR, "Slave replied NACK to request type (%d)", msg->request);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int
@@ -338,25 +374,47 @@ update_memory_region(const struct rte_memseg_list *msl __rte_unused,
 }
 
 static int
-prepare_vhost_memory_user(struct vhost_user_msg *msg, int fds[])
+vhost_user_set_memory_table(struct virtio_user_dev *dev)
 {
 	struct walk_arg wa;
+	int fds[VHOST_MEMORY_MAX_NREGIONS];
+	int ret, fd_num;
+	struct vhost_user_msg msg = {
+		.request = VHOST_USER_SET_MEM_TABLE,
+		.flags = VHOST_USER_VERSION,
+	};
+
+	if (dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK))
+		msg.flags |= VHOST_USER_NEED_REPLY_MASK;
 
 	wa.region_nr = 0;
-	wa.vm = &msg->payload.memory;
+	wa.vm = &msg.payload.memory;
 	wa.fds = fds;
 
 	/*
 	 * The memory lock has already been taken by memory subsystem
 	 * or virtio_user_start_device().
 	 */
-	if (rte_memseg_walk_thread_unsafe(update_memory_region, &wa) < 0)
-		return -1;
+	ret = rte_memseg_walk_thread_unsafe(update_memory_region, &wa);
+	if (ret < 0)
+		goto err;
 
-	msg->payload.memory.nregions = wa.region_nr;
-	msg->payload.memory.padding = 0;
+	fd_num = wa.region_nr;
+	msg.payload.memory.nregions = wa.region_nr;
+	msg.payload.memory.padding = 0;
 
-	return 0;
+	msg.size = sizeof(msg.payload.memory.nregions);
+	msg.size += sizeof(msg.payload.memory.padding);
+	msg.size += fd_num * sizeof(struct vhost_memory_region);
+
+	ret = vhost_user_write(dev->vhostfd, &msg, fds, fd_num);
+	if (ret < 0)
+		goto err;
+
+	return vhost_user_check_reply_ack(dev, &msg);
+err:
+	PMD_DRV_LOG(ERR, "Failed to set memory table");
+	return -1;
 }
 
 static struct vhost_user_msg m;
@@ -369,7 +427,6 @@ const char * const vhost_msg_strings[] = {
 	[VHOST_USER_GET_VRING_BASE] = "VHOST_GET_VRING_BASE",
 	[VHOST_USER_SET_VRING_ADDR] = "VHOST_SET_VRING_ADDR",
 	[VHOST_USER_SET_VRING_KICK] = "VHOST_SET_VRING_KICK",
-	[VHOST_USER_SET_MEM_TABLE] = "VHOST_SET_MEM_TABLE",
 	[VHOST_USER_SET_VRING_ENABLE] = "VHOST_SET_VRING_ENABLE",
 	[VHOST_USER_SET_STATUS] = "VHOST_SET_STATUS",
 	[VHOST_USER_GET_STATUS] = "VHOST_GET_STATUS",
@@ -432,18 +489,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		break;
 
 	case VHOST_USER_RESET_OWNER:
-		break;
-
-	case VHOST_USER_SET_MEM_TABLE:
-		if (prepare_vhost_memory_user(&msg, fds) < 0)
-			return -1;
-		fd_num = msg.payload.memory.nregions;
-		msg.size = sizeof(m.payload.memory.nregions);
-		msg.size += sizeof(m.payload.memory.padding);
-		msg.size += fd_num * sizeof(struct vhost_memory_region);
-
-		if (has_reply_ack)
-			msg.flags |= VHOST_USER_NEED_REPLY_MASK;
 		break;
 
 	case VHOST_USER_SET_LOG_FD:
@@ -644,6 +689,7 @@ struct virtio_user_backend_ops virtio_ops_user = {
 	.set_features = vhost_user_set_features,
 	.get_protocol_features = vhost_user_get_protocol_features,
 	.set_protocol_features = vhost_user_set_protocol_features,
+	.set_memory_table = vhost_user_set_memory_table,
 	.send_request = vhost_user_sock,
 	.enable_qp = vhost_user_enable_queue_pair
 };

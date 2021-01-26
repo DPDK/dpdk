@@ -148,17 +148,6 @@ vhost_kernel_set_features(struct virtio_user_dev *dev, uint64_t features)
 	return vhost_kernel_ioctl(dev->vhostfds[0], VHOST_SET_FEATURES, &features);
 }
 
-static uint64_t vhost_req_user_to_kernel[] = {
-	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
-	[VHOST_USER_SET_VRING_CALL] = VHOST_SET_VRING_CALL,
-	[VHOST_USER_SET_VRING_NUM] = VHOST_SET_VRING_NUM,
-	[VHOST_USER_SET_VRING_BASE] = VHOST_SET_VRING_BASE,
-	[VHOST_USER_GET_VRING_BASE] = VHOST_GET_VRING_BASE,
-	[VHOST_USER_SET_VRING_ADDR] = VHOST_SET_VRING_ADDR,
-	[VHOST_USER_SET_VRING_KICK] = VHOST_SET_VRING_KICK,
-	[VHOST_USER_SET_MEM_TABLE] = VHOST_SET_MEM_TABLE,
-};
-
 static int
 add_memseg_list(const struct rte_memseg_list *msl, void *arg)
 {
@@ -193,16 +182,17 @@ add_memseg_list(const struct rte_memseg_list *msl, void *arg)
  * have much more memory regions. Below function will treat each
  * contiguous memory space reserved by DPDK as one region.
  */
-static struct vhost_memory_kernel *
-prepare_vhost_memory_kernel(void)
+static int
+vhost_kernel_set_memory_table(struct virtio_user_dev *dev)
 {
 	struct vhost_memory_kernel *vm;
+	int ret;
 
 	vm = malloc(sizeof(struct vhost_memory_kernel) +
 			max_regions *
 			sizeof(struct vhost_memory_region));
 	if (!vm)
-		return NULL;
+		goto err;
 
 	vm->nregions = 0;
 	vm->padding = 0;
@@ -211,13 +201,33 @@ prepare_vhost_memory_kernel(void)
 	 * The memory lock has already been taken by memory subsystem
 	 * or virtio_user_start_device().
 	 */
-	if (rte_memseg_list_walk_thread_unsafe(add_memseg_list, vm) < 0) {
-		free(vm);
-		return NULL;
-	}
+	ret = rte_memseg_list_walk_thread_unsafe(add_memseg_list, vm);
+	if (ret < 0)
+		goto err_free;
 
-	return vm;
+	ret = vhost_kernel_ioctl(dev->vhostfds[0], VHOST_SET_MEM_TABLE, vm);
+	if (ret < 0)
+		goto err_free;
+
+	free(vm);
+
+	return 0;
+err_free:
+	free(vm);
+err:
+	PMD_DRV_LOG(ERR, "Failed to set memory table");
+	return -1;
 }
+
+static uint64_t vhost_req_user_to_kernel[] = {
+	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
+	[VHOST_USER_SET_VRING_CALL] = VHOST_SET_VRING_CALL,
+	[VHOST_USER_SET_VRING_NUM] = VHOST_SET_VRING_NUM,
+	[VHOST_USER_SET_VRING_BASE] = VHOST_SET_VRING_BASE,
+	[VHOST_USER_GET_VRING_BASE] = VHOST_GET_VRING_BASE,
+	[VHOST_USER_SET_VRING_ADDR] = VHOST_SET_VRING_ADDR,
+	[VHOST_USER_SET_VRING_KICK] = VHOST_SET_VRING_KICK,
+};
 
 static int
 vhost_kernel_send_request(struct virtio_user_dev *dev,
@@ -227,20 +237,12 @@ vhost_kernel_send_request(struct virtio_user_dev *dev,
 	int ret = -1;
 	unsigned int i;
 	uint64_t req_kernel;
-	struct vhost_memory_kernel *vm = NULL;
 	int vhostfd;
 	unsigned int queue_sel;
 
 	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
 
 	req_kernel = vhost_req_user_to_kernel[req];
-
-	if (req_kernel == VHOST_SET_MEM_TABLE) {
-		vm = prepare_vhost_memory_kernel();
-		if (!vm)
-			return -1;
-		arg = (void *)vm;
-	}
 
 	switch (req_kernel) {
 	case VHOST_SET_VRING_NUM:
@@ -270,9 +272,6 @@ vhost_kernel_send_request(struct virtio_user_dev *dev,
 	} else {
 		ret = ioctl(vhostfd, req_kernel, arg);
 	}
-
-	if (vm)
-		free(vm);
 
 	if (ret < 0)
 		PMD_DRV_LOG(ERR, "%s failed: %s",
@@ -403,6 +402,7 @@ struct virtio_user_backend_ops virtio_ops_kernel = {
 	.set_owner = vhost_kernel_set_owner,
 	.get_features = vhost_kernel_get_features,
 	.set_features = vhost_kernel_set_features,
+	.set_memory_table = vhost_kernel_set_memory_table,
 	.send_request = vhost_kernel_send_request,
 	.enable_qp = vhost_kernel_enable_queue_pair
 };

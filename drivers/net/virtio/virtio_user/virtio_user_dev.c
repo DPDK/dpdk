@@ -177,7 +177,7 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 		goto error;
 
 	/* Step 2: share memory regions */
-	ret = dev->ops->send_request(dev, VHOST_USER_SET_MEM_TABLE, NULL);
+	ret = dev->ops->set_memory_table(dev);
 	if (ret < 0)
 		goto error;
 
@@ -352,7 +352,7 @@ virtio_user_mem_event_cb(enum rte_mem_event type __rte_unused,
 		dev->ops->enable_qp(dev, i, 0);
 
 	/* Step 2: update memory regions */
-	dev->ops->send_request(dev, VHOST_USER_SET_MEM_TABLE, NULL);
+	dev->ops->set_memory_table(dev);
 
 	/* Step 3: resume the active queues */
 	for (i = 0; i < dev->queue_pairs; i++)

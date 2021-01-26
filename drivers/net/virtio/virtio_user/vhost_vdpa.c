@@ -19,7 +19,6 @@
 #define VHOST_SET_FEATURES _IOW(VHOST_VIRTIO, 0x00, __u64)
 #define VHOST_SET_OWNER _IO(VHOST_VIRTIO, 0x01)
 #define VHOST_RESET_OWNER _IO(VHOST_VIRTIO, 0x02)
-#define VHOST_SET_MEM_TABLE _IOW(VHOST_VIRTIO, 0x03, void *)
 #define VHOST_SET_LOG_BASE _IOW(VHOST_VIRTIO, 0x04, __u64)
 #define VHOST_SET_LOG_FD _IOW(VHOST_VIRTIO, 0x07, int)
 #define VHOST_SET_VRING_NUM _IOW(VHOST_VIRTIO, 0x10, struct vhost_vring_state)
@@ -46,7 +45,6 @@ static uint64_t vhost_req_user_to_vdpa[] = {
 	[VHOST_USER_GET_VRING_BASE] = VHOST_GET_VRING_BASE,
 	[VHOST_USER_SET_VRING_ADDR] = VHOST_SET_VRING_ADDR,
 	[VHOST_USER_SET_VRING_KICK] = VHOST_SET_VRING_KICK,
-	[VHOST_USER_SET_MEM_TABLE] = VHOST_SET_MEM_TABLE,
 	[VHOST_USER_SET_STATUS] = VHOST_VDPA_SET_STATUS,
 	[VHOST_USER_GET_STATUS] = VHOST_VDPA_GET_STATUS,
 	[VHOST_USER_SET_VRING_ENABLE] = VHOST_VDPA_SET_VRING_ENABLE,
@@ -319,7 +317,7 @@ vhost_vdpa_map(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 }
 
 static int
-vhost_vdpa_dma_map_all(struct virtio_user_dev *dev)
+vhost_vdpa_set_memory_table(struct virtio_user_dev *dev)
 {
 	int ret;
 
@@ -375,9 +373,6 @@ vhost_vdpa_send_request(struct virtio_user_dev *dev,
 	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
 
 	req_vdpa = vhost_req_user_to_vdpa[req];
-
-	if (req_vdpa == VHOST_SET_MEM_TABLE)
-		return vhost_vdpa_dma_map_all(dev);
 
 	switch (req_vdpa) {
 	case VHOST_SET_VRING_NUM:
@@ -461,6 +456,7 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.set_features = vhost_vdpa_set_features,
 	.get_protocol_features = vhost_vdpa_get_backend_features,
 	.set_protocol_features = vhost_vdpa_set_backend_features,
+	.set_memory_table = vhost_vdpa_set_memory_table,
 	.send_request = vhost_vdpa_send_request,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,
