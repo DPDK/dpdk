@@ -1798,23 +1798,6 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	return 0;
 }
 
-
-static void
-virtio_set_vtpci_ops(struct virtio_hw *hw)
-{
-#ifdef RTE_VIRTIO_USER
-	if (hw->bus_type == VIRTIO_BUS_USER)
-		VTPCI_OPS(hw) = &virtio_user_ops;
-	else
-#endif
-	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN)
-		VTPCI_OPS(hw) = &modern_ops;
-	else if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY)
-		VTPCI_OPS(hw) = &legacy_ops;
-
-	return;
-}
-
 /*
  * This function is based on probe() function in virtio_pci.c
  * It returns 0 on success.
@@ -1840,7 +1823,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_descriptor_done = virtio_dev_rx_queue_done;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		virtio_set_vtpci_ops(hw);
 		set_rxtx_funcs(eth_dev);
 		return 0;
 	}

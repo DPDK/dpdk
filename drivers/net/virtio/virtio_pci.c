@@ -809,7 +809,6 @@ vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 	if (virtio_read_caps(pci_dev, hw) == 0) {
 		PMD_INIT_LOG(INFO, "modern virtio pci detected.");
 		virtio_hw_internal[hw->port_id].vtpci_ops = &modern_ops;
-		hw->bus_type = VIRTIO_BUS_PCI_MODERN;
 		dev->modern = true;
 		goto msix_detect;
 	}
@@ -829,7 +828,6 @@ vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 	}
 
 	virtio_hw_internal[hw->port_id].vtpci_ops = &legacy_ops;
-	hw->bus_type = VIRTIO_BUS_PCI_LEGACY;
 	dev->modern = false;
 
 msix_detect:

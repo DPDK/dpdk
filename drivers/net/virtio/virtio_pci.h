@@ -246,15 +246,7 @@ struct virtio_pci_ops {
 
 struct virtio_net_config;
 
-enum virtio_bus_type {
-	VIRTIO_BUS_UNKNOWN,
-	VIRTIO_BUS_PCI_LEGACY,
-	VIRTIO_BUS_PCI_MODERN,
-	VIRTIO_BUS_USER,
-};
-
 struct virtio_hw {
-	enum virtio_bus_type bus_type;
 	struct virtnet_ctl *cvq;
 	uint64_t    req_guest_features;
 	uint64_t    guest_features;

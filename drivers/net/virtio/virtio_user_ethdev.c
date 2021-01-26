@@ -641,7 +641,6 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	 * Here just pretend that we support msix.
 	 */
 	hw->use_msix = 1;
-	hw->bus_type = VIRTIO_BUS_USER;
 	hw->use_vec_rx = 0;
 	hw->use_vec_tx = 0;
 	hw->use_inorder_rx = 0;
@@ -690,6 +689,10 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 			PMD_INIT_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
+
+		dev = eth_dev->data->dev_private;
+		hw = &dev->hw;
+		VTPCI_OPS(hw) = &virtio_user_ops;
 
 		if (eth_virtio_dev_init(eth_dev) < 0) {
 			PMD_INIT_LOG(ERR, "eth_virtio_dev_init fails");

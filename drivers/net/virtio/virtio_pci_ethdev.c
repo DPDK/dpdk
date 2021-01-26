@@ -84,6 +84,11 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 			return -1;
 		}
 	} else {
+		if (dev->modern)
+			VTPCI_OPS(hw) = &modern_ops;
+		else
+			VTPCI_OPS(hw) = &legacy_ops;
+
 		ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "Failed to remap PCI device\n");
@@ -105,7 +110,7 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 
 err_unmap:
 	rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
-	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY)
+	if (!dev->modern)
 		rte_pci_ioport_unmap(VTPCI_IO(hw));
 
 	return ret;
