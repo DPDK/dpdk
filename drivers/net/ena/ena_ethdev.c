@@ -2519,6 +2519,7 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 			"llq tx max burst size of queue %d achieved, writing doorbell to send burst\n",
 			tx_ring->id);
 		ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
+		tx_ring->tx_stats.doorbells++;
 	}
 
 	/* prepare the packet's descriptors to dma engine */
