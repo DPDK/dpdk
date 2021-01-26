@@ -148,38 +148,43 @@ vhost_user_read(int fd, struct vhost_user_msg *msg)
 	int ret, sz_hdr = VHOST_USER_HDR_SIZE, sz_payload;
 
 	ret = recv(fd, (void *)msg, sz_hdr, 0);
-	if (ret < sz_hdr) {
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to recv msg header: %s", strerror(errno));
+		return -1;
+	} else if (ret < sz_hdr) {
 		PMD_DRV_LOG(ERR, "Failed to recv msg hdr: %d instead of %d.",
 			    ret, sz_hdr);
-		goto fail;
+		return -1;
 	}
 
 	/* validate msg flags */
 	if (msg->flags != (valid_flags)) {
-		PMD_DRV_LOG(ERR, "Failed to recv msg: flags %x instead of %x.",
+		PMD_DRV_LOG(ERR, "Failed to recv msg: flags 0x%x instead of 0x%x.",
 			    msg->flags, valid_flags);
-		goto fail;
+		return -1;
 	}
 
 	sz_payload = msg->size;
 
-	if ((size_t)sz_payload > sizeof(msg->payload))
-		goto fail;
+	if ((size_t)sz_payload > sizeof(msg->payload)) {
+		PMD_DRV_LOG(ERR, "Payload size overflow, header says %d but max %zu\n",
+				sz_payload, sizeof(msg->payload));
+		return -1;
+	}
 
 	if (sz_payload) {
 		ret = recv(fd, (void *)((char *)msg + sz_hdr), sz_payload, 0);
-		if (ret < sz_payload) {
-			PMD_DRV_LOG(ERR,
-				"Failed to recv msg payload: %d instead of %d.",
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to recv msg payload: %s", strerror(errno));
+			return -1;
+		} else if (ret < sz_payload) {
+			PMD_DRV_LOG(ERR, "Failed to recv msg payload: %d instead of %u.",
 				ret, msg->size);
-			goto fail;
+			return -1;
 		}
 	}
 
 	return 0;
-
-fail:
-	return -1;
 }
 
 static int
