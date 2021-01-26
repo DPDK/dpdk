@@ -106,6 +106,18 @@ vhost_vdpa_set_owner(struct virtio_user_dev *dev)
 }
 
 static int
+vhost_vdpa_get_backend_features(struct virtio_user_dev *dev, uint64_t *features)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_GET_BACKEND_FEATURES, features);
+}
+
+static int
+vhost_vdpa_set_backend_features(struct virtio_user_dev *dev, uint64_t features)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_SET_BACKEND_FEATURES, &features);
+}
+
+static int
 vhost_vdpa_get_features(struct virtio_user_dev *dev, uint64_t *features)
 {
 	int ret;
@@ -447,6 +459,8 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.set_owner = vhost_vdpa_set_owner,
 	.get_features = vhost_vdpa_get_features,
 	.set_features = vhost_vdpa_set_features,
+	.get_protocol_features = vhost_vdpa_get_backend_features,
+	.set_protocol_features = vhost_vdpa_set_backend_features,
 	.send_request = vhost_vdpa_send_request,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,
