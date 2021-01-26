@@ -100,6 +100,10 @@ struct ena_ring {
 
 	enum ena_ring_type type;
 	enum ena_admin_placement_policy_type tx_mem_queue_type;
+
+	/* Indicate there are Tx packets pushed to the device and wait for db */
+	bool pkts_without_db;
+
 	/* Holds the empty requests for TX/RX OOO completions */
 	union {
 		uint16_t *empty_tx_reqs;
