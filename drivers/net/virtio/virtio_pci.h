@@ -42,13 +42,6 @@ struct virtnet_ctl;
 #define VIRTIO_MSI_QUEUE_VECTOR	  22 /* vector for selected VQ notifications
 				      (16, RW) */
 
-/* The bit of the ISR which indicates a device has an interrupt. */
-#define VIRTIO_PCI_ISR_INTR   0x1
-/* The bit of the ISR which indicates a device configuration change. */
-#define VIRTIO_PCI_ISR_CONFIG 0x2
-/* Vector value used to disable MSI for queue. */
-#define VIRTIO_MSI_NO_VECTOR 0xFFFF
-
 /* Common configuration */
 #define VIRTIO_PCI_CAP_COMMON_CFG	1
 /* Notifications */
@@ -103,11 +96,18 @@ struct virtio_pci_common_cfg {
 	uint32_t queue_used_hi;		/* read-write */
 };
 
+enum virtio_msix_status {
+	VIRTIO_MSIX_NONE = 0,
+	VIRTIO_MSIX_DISABLED = 1,
+	VIRTIO_MSIX_ENABLED = 2
+};
+
 struct virtio_pci_dev {
 	struct virtio_hw hw;
 	struct rte_pci_device *pci_dev;
 	struct virtio_pci_common_cfg *common_cfg;
 	struct virtio_net_config *dev_cfg;
+	enum virtio_msix_status msix_status;
 	uint8_t *isr;
 	uint16_t *notify_base;
 	uint32_t notify_off_multiplier;
@@ -125,20 +125,10 @@ struct virtio_pci_dev {
 /* The alignment to use between consumer and producer parts of vring. */
 #define VIRTIO_PCI_VRING_ALIGN 4096
 
-enum virtio_msix_status {
-	VIRTIO_MSIX_NONE = 0,
-	VIRTIO_MSIX_DISABLED = 1,
-	VIRTIO_MSIX_ENABLED = 2
-};
-
-
 /*
  * Function declaration from virtio_pci.c
  */
 int vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev);
-
-uint8_t vtpci_isr(struct virtio_hw *);
-
 void vtpci_legacy_ioport_unmap(struct virtio_hw *hw);
 int vtpci_legacy_ioport_map(struct virtio_hw *hw);
 

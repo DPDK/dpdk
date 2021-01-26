@@ -124,6 +124,13 @@
 #define VIRTIO_CONFIG_STATUS_DEV_NEED_RESET	0x40
 #define VIRTIO_CONFIG_STATUS_FAILED		0x80
 
+/* The bit of the ISR which indicates a device has an interrupt. */
+#define VIRTIO_ISR_INTR   0x1
+/* The bit of the ISR which indicates a device configuration change. */
+#define VIRTIO_ISR_CONFIG 0x2
+/* Vector value used to disable MSI for queue. */
+#define VIRTIO_MSI_NO_VECTOR 0xFFFF
+
 /*
  * This structure is just a reference to read net device specific
  * config space; it is just a shadow structure.
@@ -168,7 +175,7 @@ struct virtio_hw {
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	uint32_t speed;  /* link speed in MB */
 	uint8_t duplex;
-	uint8_t use_msix;
+	uint8_t intr_lsc;
 	uint16_t max_mtu;
 	/*
 	 * App management thread and virtio interrupt handler thread
@@ -232,5 +239,5 @@ void virtio_write_dev_config(struct virtio_hw *hw, size_t offset, const void *sr
 void virtio_read_dev_config(struct virtio_hw *hw, size_t offset, void *dst, int length);
 void virtio_reset(struct virtio_hw *hw);
 void virtio_reinit_complete(struct virtio_hw *hw);
-
+uint8_t virtio_get_isr(struct virtio_hw *hw);
 #endif /* _VIRTIO_H_ */

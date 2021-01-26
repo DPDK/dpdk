@@ -63,3 +63,9 @@ virtio_get_status(struct virtio_hw *hw)
 {
 	return VIRTIO_OPS(hw)->get_status(hw);
 }
+
+uint8_t
+virtio_get_isr(struct virtio_hw *hw)
+{
+	return VIRTIO_OPS(hw)->get_isr(hw);
+}

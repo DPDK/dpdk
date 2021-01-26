@@ -339,7 +339,7 @@ virtio_user_get_isr(struct virtio_hw *hw __rte_unused)
 	/* rxq interrupts and config interrupt are separated in virtio-user,
 	 * here we only report config change.
 	 */
-	return VIRTIO_PCI_ISR_CONFIG;
+	return VIRTIO_ISR_CONFIG;
 }
 
 static uint16_t
@@ -636,11 +636,8 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	hw->port_id = data->port_id;
 	dev->port_id = data->port_id;
 	VIRTIO_OPS(hw) = &virtio_user_ops;
-	/*
-	 * MSIX is required to enable LSC (see virtio_init_device).
-	 * Here just pretend that we support msix.
-	 */
-	hw->use_msix = 1;
+
+	hw->intr_lsc = 1;
 	hw->use_vec_rx = 0;
 	hw->use_vec_tx = 0;
 	hw->use_inorder_rx = 0;

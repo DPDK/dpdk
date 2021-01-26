@@ -1455,13 +1455,13 @@ virtio_interrupt_handler(void *param)
 	uint16_t status;
 
 	/* Read interrupt status which clears interrupt */
-	isr = vtpci_isr(hw);
+	isr = virtio_get_isr(hw);
 	PMD_DRV_LOG(INFO, "interrupt status = %#x", isr);
 
 	if (virtio_intr_unmask(dev) < 0)
 		PMD_DRV_LOG(ERR, "interrupt enable failed");
 
-	if (isr & VIRTIO_PCI_ISR_CONFIG) {
+	if (isr & VIRTIO_ISR_CONFIG) {
 		if (virtio_dev_link_update(dev, 0) == 0)
 			rte_eth_dev_callback_process(dev,
 						     RTE_ETH_EVENT_INTR_LSC,
@@ -1668,8 +1668,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	hw->weak_barriers = !virtio_with_feature(hw, VIRTIO_F_ORDER_PLATFORM);
 
 	/* If host does not support both status and MSI-X then disable LSC */
-	if (virtio_with_feature(hw, VIRTIO_NET_F_STATUS) &&
-	    hw->use_msix != VIRTIO_MSIX_NONE)
+	if (virtio_with_feature(hw, VIRTIO_NET_F_STATUS) && hw->intr_lsc)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 	else
 		eth_dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
