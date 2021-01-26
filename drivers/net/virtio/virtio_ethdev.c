@@ -446,7 +446,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	 * Read the virtqueue size from the Queue Size field
 	 * Always power of 2 and if 0 virtqueue does not exist
 	 */
-	vq_size = VTPCI_OPS(hw)->get_queue_num(hw, vtpci_queue_idx);
+	vq_size = VIRTIO_OPS(hw)->get_queue_num(hw, vtpci_queue_idx);
 	PMD_INIT_LOG(DEBUG, "vq_size: %u", vq_size);
 	if (vq_size == 0) {
 		PMD_INIT_LOG(ERR, "virtqueue does not exist");
@@ -608,7 +608,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		}
 	}
 
-	if (VTPCI_OPS(hw)->setup_queue(hw, vq) < 0) {
+	if (VIRTIO_OPS(hw)->setup_queue(hw, vq) < 0) {
 		PMD_INIT_LOG(ERR, "setup_queue failed");
 		return -EINVAL;
 	}
@@ -703,7 +703,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 
 	/* reset the NIC */
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		VTPCI_OPS(hw)->set_config_irq(hw, VIRTIO_MSI_NO_VECTOR);
+		VIRTIO_OPS(hw)->set_config_irq(hw, VIRTIO_MSI_NO_VECTOR);
 	if (intr_conf->rxq)
 		virtio_queues_unbind_intr(dev);
 
@@ -718,7 +718,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(hw);
 
-	return VTPCI_OPS(hw)->dev_close(hw);
+	return VIRTIO_OPS(hw)->dev_close(hw);
 }
 
 static int
@@ -1261,8 +1261,8 @@ virtio_intr_unmask(struct rte_eth_dev *dev)
 	if (rte_intr_ack(dev->intr_handle) < 0)
 		return -1;
 
-	if (VTPCI_OPS(hw)->intr_detect)
-		VTPCI_OPS(hw)->intr_detect(hw);
+	if (VIRTIO_OPS(hw)->intr_detect)
+		VIRTIO_OPS(hw)->intr_detect(hw);
 
 	return 0;
 }
@@ -1275,8 +1275,8 @@ virtio_intr_enable(struct rte_eth_dev *dev)
 	if (rte_intr_enable(dev->intr_handle) < 0)
 		return -1;
 
-	if (VTPCI_OPS(hw)->intr_detect)
-		VTPCI_OPS(hw)->intr_detect(hw);
+	if (VIRTIO_OPS(hw)->intr_detect)
+		VIRTIO_OPS(hw)->intr_detect(hw);
 
 	return 0;
 }
@@ -1289,8 +1289,8 @@ virtio_intr_disable(struct rte_eth_dev *dev)
 	if (rte_intr_disable(dev->intr_handle) < 0)
 		return -1;
 
-	if (VTPCI_OPS(hw)->intr_detect)
-		VTPCI_OPS(hw)->intr_detect(hw);
+	if (VIRTIO_OPS(hw)->intr_detect)
+		VIRTIO_OPS(hw)->intr_detect(hw);
 
 	return 0;
 }
@@ -1305,7 +1305,7 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 		req_features);
 
 	/* Read device(host) feature bits */
-	host_features = VTPCI_OPS(hw)->get_features(hw);
+	host_features = VIRTIO_OPS(hw)->get_features(hw);
 	PMD_INIT_LOG(DEBUG, "host_features before negotiate = %" PRIx64,
 		host_features);
 
@@ -1330,7 +1330,7 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 	PMD_INIT_LOG(DEBUG, "features after negotiate = %" PRIx64,
 		hw->guest_features);
 
-	if (VTPCI_OPS(hw)->features_ok(hw) < 0)
+	if (VIRTIO_OPS(hw)->features_ok(hw) < 0)
 		return -1;
 
 	if (vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
@@ -1564,7 +1564,7 @@ virtio_queues_bind_intr(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(INFO, "queue/interrupt binding");
 	for (i = 0; i < dev->data->nb_rx_queues; ++i) {
 		dev->intr_handle->intr_vec[i] = i + 1;
-		if (VTPCI_OPS(hw)->set_queue_irq(hw, hw->vqs[i * 2], i + 1) ==
+		if (VIRTIO_OPS(hw)->set_queue_irq(hw, hw->vqs[i * 2], i + 1) ==
 						 VIRTIO_MSI_NO_VECTOR) {
 			PMD_DRV_LOG(ERR, "failed to set queue vector");
 			return -EBUSY;
@@ -1582,7 +1582,7 @@ virtio_queues_unbind_intr(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(INFO, "queue/interrupt unbinding");
 	for (i = 0; i < dev->data->nb_rx_queues; ++i)
-		VTPCI_OPS(hw)->set_queue_irq(hw,
+		VIRTIO_OPS(hw)->set_queue_irq(hw,
 					     hw->vqs[i * VTNET_CQ],
 					     VIRTIO_MSI_NO_VECTOR);
 }
@@ -2092,7 +2092,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		/* Enable vector (0) for Link State Intrerrupt */
-		if (VTPCI_OPS(hw)->set_config_irq(hw, 0) ==
+		if (VIRTIO_OPS(hw)->set_config_irq(hw, 0) ==
 				VIRTIO_MSI_NO_VECTOR) {
 			PMD_DRV_LOG(ERR, "failed to set config vector");
 			return -EBUSY;
@@ -2433,7 +2433,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen = VIRTIO_MAX_RX_PKTLEN;
 	dev_info->max_mac_addrs = VIRTIO_MAX_MAC_ADDRS;
 
-	host_features = VTPCI_OPS(hw)->get_features(hw);
+	host_features = VIRTIO_OPS(hw)->get_features(hw);
 	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
 	dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	if (host_features & (1ULL << VIRTIO_NET_F_GUEST_CSUM)) {

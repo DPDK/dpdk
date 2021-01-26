@@ -12,6 +12,8 @@
 #include <rte_bus_pci.h>
 #include <ethdev_driver.h>
 
+#include "virtio.h"
+
 struct virtqueue;
 struct virtnet_ctl;
 
@@ -214,70 +216,6 @@ struct virtio_pci_common_cfg {
 	uint32_t queue_used_hi;		/* read-write */
 };
 
-struct virtio_hw;
-
-struct virtio_pci_ops {
-	void (*read_dev_cfg)(struct virtio_hw *hw, size_t offset,
-			     void *dst, int len);
-	void (*write_dev_cfg)(struct virtio_hw *hw, size_t offset,
-			      const void *src, int len);
-
-	uint8_t (*get_status)(struct virtio_hw *hw);
-	void    (*set_status)(struct virtio_hw *hw, uint8_t status);
-
-	uint64_t (*get_features)(struct virtio_hw *hw);
-	void     (*set_features)(struct virtio_hw *hw, uint64_t features);
-	int      (*features_ok)(struct virtio_hw *hw);
-
-	uint8_t (*get_isr)(struct virtio_hw *hw);
-
-	uint16_t (*set_config_irq)(struct virtio_hw *hw, uint16_t vec);
-
-	uint16_t (*set_queue_irq)(struct virtio_hw *hw, struct virtqueue *vq,
-			uint16_t vec);
-
-	uint16_t (*get_queue_num)(struct virtio_hw *hw, uint16_t queue_id);
-	int (*setup_queue)(struct virtio_hw *hw, struct virtqueue *vq);
-	void (*del_queue)(struct virtio_hw *hw, struct virtqueue *vq);
-	void (*notify_queue)(struct virtio_hw *hw, struct virtqueue *vq);
-	void (*intr_detect)(struct virtio_hw *hw);
-	int (*dev_close)(struct virtio_hw *hw);
-};
-
-struct virtio_net_config;
-
-struct virtio_hw {
-	struct virtqueue **vqs;
-	uint64_t guest_features;
-	uint16_t vtnet_hdr_size;
-	uint8_t started;
-	uint8_t weak_barriers;
-	uint8_t vlan_strip;
-	uint8_t has_tx_offload;
-	uint8_t has_rx_offload;
-	uint8_t use_vec_rx;
-	uint8_t use_vec_tx;
-	uint8_t use_inorder_rx;
-	uint8_t use_inorder_tx;
-	uint8_t opened;
-	uint16_t port_id;
-	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
-	uint32_t speed;  /* link speed in MB */
-	uint8_t duplex;
-	uint8_t use_msix;
-	uint16_t max_mtu;
-	/*
-	 * App management thread and virtio interrupt handler thread
-	 * both can change device state, this lock is meant to avoid
-	 * such a contention.
-	 */
-	rte_spinlock_t state_lock;
-	struct rte_mbuf **inject_pkts;
-	uint16_t max_queue_pairs;
-	uint64_t req_guest_features;
-	struct virtnet_ctl *cvq;
-};
-
 struct virtio_pci_dev {
 	struct virtio_hw hw;
 	struct rte_pci_device *pci_dev;
@@ -290,19 +228,6 @@ struct virtio_pci_dev {
 };
 
 #define virtio_pci_get_dev(hwp) container_of(hwp, struct virtio_pci_dev, hw)
-
-/*
- * While virtio_hw is stored in shared memory, this structure stores
- * some infos that may vary in the multiple process model locally.
- * For example, the vtpci_ops pointer.
- */
-struct virtio_hw_internal {
-	const struct virtio_pci_ops *vtpci_ops;
-};
-
-#define VTPCI_OPS(hw)	(virtio_hw_internal[(hw)->port_id].vtpci_ops)
-
-extern struct virtio_hw_internal virtio_hw_internal[RTE_MAX_ETHPORTS];
 
 /*
  * This structure is just a reference to read
@@ -379,8 +304,7 @@ uint8_t vtpci_isr(struct virtio_hw *);
 void vtpci_legacy_ioport_unmap(struct virtio_hw *hw);
 int vtpci_legacy_ioport_map(struct virtio_hw *hw);
 
-extern const struct virtio_pci_ops legacy_ops;
-extern const struct virtio_pci_ops modern_ops;
-extern const struct virtio_pci_ops virtio_user_ops;
+extern const struct virtio_ops legacy_ops;
+extern const struct virtio_ops modern_ops;
 
 #endif /* _VIRTIO_PCI_H_ */

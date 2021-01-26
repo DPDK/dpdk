@@ -20,7 +20,7 @@
 
 #include "virtio_ethdev.h"
 #include "virtio_logs.h"
-#include "virtio_pci.h"
+#include "virtio.h"
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
 #include "virtio_user/virtio_user_dev.h"
@@ -478,7 +478,7 @@ virtio_user_dev_close(struct virtio_hw *hw)
 	return 0;
 }
 
-const struct virtio_pci_ops virtio_user_ops = {
+const struct virtio_ops virtio_user_ops = {
 	.read_dev_cfg	= virtio_user_read_dev_config,
 	.write_dev_cfg	= virtio_user_write_dev_config,
 	.get_status	= virtio_user_get_status,
@@ -635,7 +635,7 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 
 	hw->port_id = data->port_id;
 	dev->port_id = data->port_id;
-	virtio_hw_internal[hw->port_id].vtpci_ops = &virtio_user_ops;
+	VIRTIO_OPS(hw) = &virtio_user_ops;
 	/*
 	 * MSIX is required to enable LSC (see virtio_init_device).
 	 * Here just pretend that we support msix.
@@ -692,7 +692,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 
 		dev = eth_dev->data->dev_private;
 		hw = &dev->hw;
-		VTPCI_OPS(hw) = &virtio_user_ops;
+		VIRTIO_OPS(hw) = &virtio_user_ops;
 
 		if (eth_virtio_dev_init(eth_dev) < 0) {
 			PMD_INIT_LOG(ERR, "eth_virtio_dev_init fails");

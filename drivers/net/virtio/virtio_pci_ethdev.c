@@ -19,6 +19,7 @@
 #include <rte_dev.h>
 #include <rte_kvargs.h>
 
+#include "virtio.h"
 #include "virtio_ethdev.h"
 #include "virtio_pci.h"
 #include "virtio_logs.h"
@@ -83,9 +84,9 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 		}
 	} else {
 		if (dev->modern)
-			VTPCI_OPS(hw) = &modern_ops;
+			VIRTIO_OPS(hw) = &modern_ops;
 		else
-			VTPCI_OPS(hw) = &legacy_ops;
+			VIRTIO_OPS(hw) = &legacy_ops;
 
 		ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret < 0) {
