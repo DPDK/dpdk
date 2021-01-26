@@ -39,9 +39,11 @@ static const struct rte_pci_id pci_id_virtio_map[] = {
  * could have the PCI initiated correctly.
  */
 static int
-virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
+virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 {
-	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN) {
+	struct virtio_hw *hw = &dev->hw;
+
+	if (dev->modern) {
 		/*
 		 * We don't have to re-parse the PCI config space, since
 		 * rte_pci_map_device() makes sure the mapped address
@@ -57,7 +59,7 @@ virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 			PMD_INIT_LOG(DEBUG, "failed to map pci device!");
 			return -1;
 		}
-	} else if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY) {
+	} else {
 		if (rte_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0)
 			return -1;
 	}
@@ -76,13 +78,13 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 	VTPCI_DEV(hw) = pci_dev;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
+		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "Failed to init PCI device\n");
 			return -1;
 		}
 	} else {
-		ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
+		ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "Failed to remap PCI device\n");
 			return -1;
