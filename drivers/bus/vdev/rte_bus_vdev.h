@@ -113,7 +113,11 @@ struct rte_vdev_driver {
 	rte_vdev_remove_t *remove;       /**< Virtual device remove function. */
 	rte_vdev_dma_map_t *dma_map;     /**< Virtual device DMA map function. */
 	rte_vdev_dma_unmap_t *dma_unmap; /**< Virtual device DMA unmap function. */
+	uint32_t drv_flags;              /**< Flags RTE_VDEV_DRV_*. */
 };
+
+/** Device driver needs IOVA as VA and cannot work with IOVA as PA */
+#define RTE_VDEV_DRV_NEED_IOVA_AS_VA 0x0001
 
 /**
  * Register a virtual device driver.

@@ -15,6 +15,8 @@
 ; Explicit ignore for driver-only ABI
 [suppress_type]
         name = eth_dev_ops
+[suppress_function]
+        name_regexp = rte_vdev_(|un)register
 
 ; Ignore fields inserted in cacheline boundary of rte_cryptodev
 [suppress_type]
