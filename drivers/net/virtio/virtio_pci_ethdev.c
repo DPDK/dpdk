@@ -32,10 +32,79 @@ static const struct rte_pci_id pci_id_virtio_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+
+/*
+ * Remap the PCI device again (IO port map for legacy device and
+ * memory map for modern device), so that the secondary process
+ * could have the PCI initiated correctly.
+ */
+static int
+virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
+{
+	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN) {
+		/*
+		 * We don't have to re-parse the PCI config space, since
+		 * rte_pci_map_device() makes sure the mapped address
+		 * in secondary process would equal to the one mapped in
+		 * the primary process: error will be returned if that
+		 * requirement is not met.
+		 *
+		 * That said, we could simply reuse all cap pointers
+		 * (such as dev_cfg, common_cfg, etc.) parsed from the
+		 * primary process, which is stored in shared memory.
+		 */
+		if (rte_pci_map_device(pci_dev)) {
+			PMD_INIT_LOG(DEBUG, "failed to map pci device!");
+			return -1;
+		}
+	} else if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY) {
+		if (rte_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0)
+			return -1;
+	}
+
+	return 0;
+}
+
 static int
 eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 {
-	return eth_virtio_dev_init(eth_dev);
+	struct virtio_pci_dev *dev = eth_dev->data->dev_private;
+	struct virtio_hw *hw = &dev->hw;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	int ret;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to init PCI device\n");
+			return -1;
+		}
+	} else {
+		ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "Failed to remap PCI device\n");
+			return -1;
+		}
+	}
+
+	ret = eth_virtio_dev_init(eth_dev);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Failed to init virtio device\n");
+		goto err_unmap;
+	}
+
+	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
+		eth_dev->data->port_id, pci_dev->id.vendor_id,
+		pci_dev->id.device_id);
+
+	return 0;
+
+err_unmap:
+	rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
+	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY)
+		rte_pci_ioport_unmap(VTPCI_IO(hw));
+
+	return ret;
 }
 
 static int

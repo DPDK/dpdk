@@ -1676,7 +1676,6 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	struct virtio_net_config *config;
 	struct virtio_net_config local_config;
-	struct rte_pci_device *pci_dev = NULL;
 	int ret;
 
 	/* Reset the device although not necessary at startup */
@@ -1696,9 +1695,6 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		return -1;
 
 	hw->weak_barriers = !vtpci_with_feature(hw, VIRTIO_F_ORDER_PLATFORM);
-
-	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY || hw->bus_type == VIRTIO_BUS_PCI_MODERN)
-		pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	/* If host does not support both status and MSI-X then disable LSC */
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS) &&
@@ -1828,45 +1824,9 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 
 	vtpci_reinit_complete(hw);
 
-	if (pci_dev)
-		PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x",
-			eth_dev->data->port_id, pci_dev->id.vendor_id,
-			pci_dev->id.device_id);
-
 	return 0;
 }
 
-/*
- * Remap the PCI device again (IO port map for legacy device and
- * memory map for modern device), so that the secondary process
- * could have the PCI initiated correctly.
- */
-static int
-virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
-{
-	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN) {
-		/*
-		 * We don't have to re-parse the PCI config space, since
-		 * rte_pci_map_device() makes sure the mapped address
-		 * in secondary process would equal to the one mapped in
-		 * the primary process: error will be returned if that
-		 * requirement is not met.
-		 *
-		 * That said, we could simply reuse all cap pointers
-		 * (such as dev_cfg, common_cfg, etc.) parsed from the
-		 * primary process, which is stored in shared memory.
-		 */
-		if (rte_pci_map_device(pci_dev)) {
-			PMD_INIT_LOG(DEBUG, "failed to map pci device!");
-			return -1;
-		}
-	} else if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY) {
-		if (rte_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0)
-			return -1;
-	}
-
-	return 0;
-}
 
 static void
 virtio_set_vtpci_ops(struct virtio_hw *hw)
@@ -1909,17 +1869,11 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_descriptor_done = virtio_dev_rx_queue_done;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		if (hw->bus_type != VIRTIO_BUS_USER) {
-			ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
-			if (ret)
-				return ret;
-		}
-
 		virtio_set_vtpci_ops(hw);
 		set_rxtx_funcs(eth_dev);
-
 		return 0;
 	}
+
 	ret = virtio_dev_devargs_parse(eth_dev->device->devargs, &speed, &vectorized);
 	if (ret < 0)
 		return ret;
@@ -1936,15 +1890,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	hw->port_id = eth_dev->data->port_id;
-	/* For virtio_user case the hw->virtio_user_dev is populated by
-	 * virtio_user_eth_dev_alloc() before eth_virtio_dev_init() is called.
-	 */
-	if (hw->bus_type != VIRTIO_BUS_USER) {
-		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
-		if (ret)
-			goto err_vtpci_init;
-	}
-
 	rte_spinlock_init(&hw->state_lock);
 
 	/* reset device and negotiate default features */
@@ -1971,12 +1916,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 
 err_virtio_init:
-	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN || hw->bus_type == VIRTIO_BUS_PCI_LEGACY) {
-		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
-		if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY)
-			rte_pci_ioport_unmap(VTPCI_IO(hw));
-	}
-err_vtpci_init:
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 	return ret;
