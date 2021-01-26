@@ -271,13 +271,10 @@ virtqueue_enqueue_refill_inorder(struct virtqueue *vq,
 		dxp->cookie = (void *)cookies[i];
 		dxp->ndescs = 1;
 
-		start_dp[idx].addr =
-				VIRTIO_MBUF_ADDR(cookies[i], vq) +
-				RTE_PKTMBUF_HEADROOM - hw->vtnet_hdr_size;
-		start_dp[idx].len =
-				cookies[i]->buf_len -
-				RTE_PKTMBUF_HEADROOM +
-				hw->vtnet_hdr_size;
+		start_dp[idx].addr = cookies[i]->buf_iova +
+			RTE_PKTMBUF_HEADROOM - hw->vtnet_hdr_size;
+		start_dp[idx].len = cookies[i]->buf_len -
+			RTE_PKTMBUF_HEADROOM + hw->vtnet_hdr_size;
 		start_dp[idx].flags =  VRING_DESC_F_WRITE;
 
 		vq_update_avail_ring(vq, idx);
@@ -313,12 +310,10 @@ virtqueue_enqueue_recv_refill(struct virtqueue *vq, struct rte_mbuf **cookie,
 		dxp->cookie = (void *)cookie[i];
 		dxp->ndescs = 1;
 
-		start_dp[idx].addr =
-			VIRTIO_MBUF_ADDR(cookie[i], vq) +
+		start_dp[idx].addr = cookie[i]->buf_iova +
 			RTE_PKTMBUF_HEADROOM - hw->vtnet_hdr_size;
-		start_dp[idx].len =
-			cookie[i]->buf_len - RTE_PKTMBUF_HEADROOM +
-			hw->vtnet_hdr_size;
+		start_dp[idx].len = cookie[i]->buf_len -
+			RTE_PKTMBUF_HEADROOM + hw->vtnet_hdr_size;
 		start_dp[idx].flags = VRING_DESC_F_WRITE;
 		vq->vq_desc_head_idx = start_dp[idx].next;
 		vq_update_avail_ring(vq, idx);
@@ -355,10 +350,10 @@ virtqueue_enqueue_recv_refill_packed(struct virtqueue *vq,
 		dxp->cookie = (void *)cookie[i];
 		dxp->ndescs = 1;
 
-		start_dp[idx].addr = VIRTIO_MBUF_ADDR(cookie[i], vq) +
-				RTE_PKTMBUF_HEADROOM - hw->vtnet_hdr_size;
-		start_dp[idx].len = cookie[i]->buf_len - RTE_PKTMBUF_HEADROOM
-					+ hw->vtnet_hdr_size;
+		start_dp[idx].addr = cookie[i]->buf_iova +
+			RTE_PKTMBUF_HEADROOM - hw->vtnet_hdr_size;
+		start_dp[idx].len = cookie[i]->buf_len -
+			RTE_PKTMBUF_HEADROOM + hw->vtnet_hdr_size;
 
 		vq->vq_desc_head_idx = dxp->next;
 		if (vq->vq_desc_head_idx == VQ_RING_DESC_CHAIN_END)
@@ -455,8 +450,7 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 		else
 			virtqueue_xmit_offload(hdr, cookies[i], true);
 
-		start_dp[idx].addr  =
-			VIRTIO_MBUF_DATA_DMA_ADDR(cookies[i], vq) - head_size;
+		start_dp[idx].addr  = rte_mbuf_data_iova(cookies[i]) - head_size;
 		start_dp[idx].len   = cookies[i]->data_len + head_size;
 		start_dp[idx].flags = 0;
 
@@ -503,7 +497,7 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 	else
 		virtqueue_xmit_offload(hdr, cookie, true);
 
-	dp->addr = VIRTIO_MBUF_DATA_DMA_ADDR(cookie, vq) - head_size;
+	dp->addr = rte_mbuf_data_iova(cookie) - head_size;
 	dp->len  = cookie->data_len + head_size;
 	dp->id   = id;
 
@@ -590,7 +584,7 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	virtqueue_xmit_offload(hdr, cookie, vq->hw->has_tx_offload);
 
 	do {
-		start_dp[idx].addr  = VIRTIO_MBUF_DATA_DMA_ADDR(cookie, vq);
+		start_dp[idx].addr  = rte_mbuf_data_iova(cookie);
 		start_dp[idx].len   = cookie->data_len;
 		if (prepend_header) {
 			start_dp[idx].addr -= head_size;

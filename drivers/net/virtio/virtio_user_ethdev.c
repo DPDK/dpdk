@@ -953,6 +953,7 @@ static struct rte_vdev_driver virtio_user_driver = {
 	.remove = virtio_user_pmd_remove,
 	.dma_map = virtio_user_pmd_dma_map,
 	.dma_unmap = virtio_user_pmd_dma_unmap,
+	.drv_flags = RTE_VDEV_DRV_NEED_IOVA_AS_VA,
 };
 
 RTE_PMD_REGISTER_VDEV(net_virtio_user, virtio_user_driver);

@@ -576,21 +576,6 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		hw->cvq = cvq;
 	}
 
-	/* For virtio_user case (that is when hw->virtio_user_dev is not NULL),
-	 * we use virtual address. And we need properly set _offset_, please see
-	 * VIRTIO_MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
-	 */
-	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY || hw->bus_type == VIRTIO_BUS_PCI_MODERN) {
-		vq->offset = offsetof(struct rte_mbuf, buf_iova);
-	} else if (hw->bus_type == VIRTIO_BUS_USER) {
-		vq->vq_ring_mem = (uintptr_t)mz->addr;
-		vq->offset = offsetof(struct rte_mbuf, buf_addr);
-		if (queue_type == VTNET_TQ)
-			txvq->virtio_net_hdr_mem = (uintptr_t)hdr_mz->addr;
-		else if (queue_type == VTNET_CQ)
-			cvq->virtio_net_hdr_mem = (uintptr_t)hdr_mz->addr;
-	}
-
 	if (queue_type == VTNET_TQ) {
 		struct virtio_tx_region *txr;
 		unsigned int i;

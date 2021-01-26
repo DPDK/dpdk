@@ -113,29 +113,6 @@ virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 
 #define VIRTQUEUE_MAX_NAME_SZ 32
 
-#ifdef RTE_VIRTIO_USER
-/**
- * Return the physical address (or virtual address in case of
- * virtio-user) of mbuf data buffer.
- *
- * The address is firstly casted to the word size (sizeof(uintptr_t))
- * before casting it to uint64_t. This is to make it work with different
- * combination of word size (64 bit and 32 bit) and virtio device
- * (virtio-pci and virtio-user).
- */
-#define VIRTIO_MBUF_ADDR(mb, vq) \
-	((uint64_t)(*(uintptr_t *)((uintptr_t)(mb) + (vq)->offset)))
-#else
-#define VIRTIO_MBUF_ADDR(mb, vq) ((mb)->buf_iova)
-#endif
-
-/**
- * Return the physical address (or virtual address in case of
- * virtio-user) of mbuf data buffer, taking care of mbuf data offset
- */
-#define VIRTIO_MBUF_DATA_DMA_ADDR(mb, vq) \
-	(VIRTIO_MBUF_ADDR(mb, vq) + (mb)->data_off)
-
 #define VTNET_SQ_RQ_QUEUE_IDX 0
 #define VTNET_SQ_TQ_QUEUE_IDX 1
 #define VTNET_SQ_CQ_QUEUE_IDX 2
@@ -763,7 +740,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	do {
 		uint16_t flags;
 
-		start_dp[idx].addr = VIRTIO_MBUF_DATA_DMA_ADDR(cookie, vq);
+		start_dp[idx].addr = rte_mbuf_data_iova(cookie);
 		start_dp[idx].len  = cookie->data_len;
 		if (prepend_header) {
 			start_dp[idx].addr -= head_size;
