@@ -7888,7 +7888,7 @@ cmd_set_raw_parsed_sample(const struct buffer *in)
 			rss = action->conf;
 			rte_memcpy(&sample_rss_data[idx].conf,
 				   (const void *)rss, size);
-			if (rss->key_len) {
+			if (rss->key_len && rss->key) {
 				sample_rss_data[idx].conf.key =
 						sample_rss_data[idx].key;
 				rte_memcpy((void *)((uintptr_t)
@@ -7896,7 +7896,7 @@ cmd_set_raw_parsed_sample(const struct buffer *in)
 					   (const void *)rss->key,
 					   sizeof(uint8_t) * rss->key_len);
 			}
-			if (rss->queue_num) {
+			if (rss->queue_num && rss->queue) {
 				sample_rss_data[idx].conf.queue =
 						sample_rss_data[idx].queue;
 				rte_memcpy((void *)((uintptr_t)
