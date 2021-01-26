@@ -88,6 +88,24 @@
 #define VIRTIO_NET_S_LINK_UP	1	/* Link is up */
 #define VIRTIO_NET_S_ANNOUNCE	2	/* Announcement is needed */
 
+/*
+ * Each virtqueue indirect descriptor list must be physically contiguous.
+ * To allow us to malloc(9) each list individually, limit the number
+ * supported to what will fit in one page. With 4KB pages, this is a limit
+ * of 256 descriptors. If there is ever a need for more, we can switch to
+ * contigmalloc(9) for the larger allocations, similar to what
+ * bus_dmamem_alloc(9) does.
+ *
+ * Note the sizeof(struct vring_desc) is 16 bytes.
+ */
+#define VIRTIO_MAX_INDIRECT ((int)(PAGE_SIZE / 16))
+
+/*
+ * Maximum number of virtqueues per device.
+ */
+#define VIRTIO_MAX_VIRTQUEUE_PAIRS 8
+#define VIRTIO_MAX_VIRTQUEUES (VIRTIO_MAX_VIRTQUEUE_PAIRS * 2 + 1)
+
 struct virtio_hw {
 	struct virtqueue **vqs;
 	uint64_t guest_features;

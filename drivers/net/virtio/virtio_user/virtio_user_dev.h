@@ -7,7 +7,8 @@
 
 #include <limits.h>
 #include <stdbool.h>
-#include "../virtio_pci.h"
+
+#include "../virtio.h"
 #include "../virtio_ring.h"
 
 enum virtio_user_backend_type {
