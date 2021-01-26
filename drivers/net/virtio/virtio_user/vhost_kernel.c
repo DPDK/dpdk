@@ -328,48 +328,6 @@ vhost_kernel_set_status(struct virtio_user_dev *dev __rte_unused, uint8_t status
 	return -ENOTSUP;
 }
 
-static uint64_t vhost_req_user_to_kernel[] = {
-	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
-};
-
-static int
-vhost_kernel_send_request(struct virtio_user_dev *dev,
-		   enum vhost_user_request req,
-		   void *arg)
-{
-	int ret = -1;
-	unsigned int i;
-	uint64_t req_kernel;
-	int vhostfd;
-
-	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
-
-	req_kernel = vhost_req_user_to_kernel[req];
-
-	switch (req_kernel) {
-	default:
-		vhostfd = -1;
-	}
-	if (vhostfd == -1) {
-		for (i = 0; i < dev->max_queue_pairs; ++i) {
-			if (dev->vhostfds[i] < 0)
-				continue;
-
-			ret = ioctl(dev->vhostfds[i], req_kernel, arg);
-			if (ret < 0)
-				break;
-		}
-	} else {
-		ret = ioctl(vhostfd, req_kernel, arg);
-	}
-
-	if (ret < 0)
-		PMD_DRV_LOG(ERR, "%s failed: %s",
-			    vhost_msg_strings[req], strerror(errno));
-
-	return ret;
-}
-
 /**
  * Set up environment to talk with a vhost kernel backend.
  *
@@ -501,6 +459,5 @@ struct virtio_user_backend_ops virtio_ops_kernel = {
 	.set_vring_addr = vhost_kernel_set_vring_addr,
 	.get_status = vhost_kernel_get_status,
 	.set_status = vhost_kernel_set_status,
-	.send_request = vhost_kernel_send_request,
 	.enable_qp = vhost_kernel_enable_queue_pair
 };

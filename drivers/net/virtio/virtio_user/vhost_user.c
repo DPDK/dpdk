@@ -649,107 +649,6 @@ vhost_user_set_status(struct virtio_user_dev *dev, uint8_t status)
 	return vhost_user_check_reply_ack(dev, &msg);
 }
 
-static struct vhost_user_msg m;
-
-const char * const vhost_msg_strings[] = {
-	[VHOST_USER_RESET_OWNER] = "VHOST_RESET_OWNER",
-};
-
-static int
-vhost_user_sock(struct virtio_user_dev *dev,
-		enum vhost_user_request req,
-		void *arg)
-{
-	struct vhost_user_msg msg;
-	struct vhost_vring_file *file = 0;
-	int need_reply = 0;
-	int fds[VHOST_MEMORY_MAX_NREGIONS];
-	int fd_num = 0;
-	int vhostfd = dev->vhostfd;
-
-	RTE_SET_USED(m);
-
-	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
-
-	if (dev->is_server && vhostfd < 0)
-		return -1;
-
-	msg.request = req;
-	msg.flags = VHOST_USER_VERSION;
-	msg.size = 0;
-
-	switch (req) {
-	case VHOST_USER_SET_LOG_BASE:
-		msg.payload.u64 = *((__u64 *)arg);
-		msg.size = sizeof(m.payload.u64);
-		break;
-
-	case VHOST_USER_SET_FEATURES:
-		msg.payload.u64 = *((__u64 *)arg) | (dev->device_features &
-			(1ULL << VHOST_USER_F_PROTOCOL_FEATURES));
-		msg.size = sizeof(m.payload.u64);
-		break;
-
-	case VHOST_USER_RESET_OWNER:
-		break;
-
-	case VHOST_USER_SET_LOG_FD:
-		fds[fd_num++] = *((int *)arg);
-		break;
-
-	case VHOST_USER_SET_VRING_ERR:
-		file = arg;
-		msg.payload.u64 = file->index & VHOST_USER_VRING_IDX_MASK;
-		msg.size = sizeof(m.payload.u64);
-		if (file->fd > 0)
-			fds[fd_num++] = file->fd;
-		else
-			msg.payload.u64 |= VHOST_USER_VRING_NOFD_MASK;
-		break;
-
-	default:
-		PMD_DRV_LOG(ERR, "trying to send unhandled msg type");
-		return -1;
-	}
-
-	if (vhost_user_write(vhostfd, &msg, fds, fd_num) < 0) {
-		PMD_DRV_LOG(ERR, "%s failed: %s",
-			    vhost_msg_strings[req], strerror(errno));
-		return -1;
-	}
-
-	if (need_reply || msg.flags & VHOST_USER_NEED_REPLY_MASK) {
-		if (vhost_user_read(vhostfd, &msg) < 0) {
-			PMD_DRV_LOG(ERR, "Received msg failed: %s",
-				    strerror(errno));
-			return -1;
-		}
-
-		if (req != msg.request) {
-			PMD_DRV_LOG(ERR, "Received unexpected msg type");
-			return -1;
-		}
-
-		switch (req) {
-		default:
-			/* Reply-ack handling */
-			if (msg.size != sizeof(m.payload.u64)) {
-				PMD_DRV_LOG(ERR, "Received bad msg size");
-				return -1;
-			}
-
-			if (msg.payload.u64 != 0) {
-				PMD_DRV_LOG(ERR, "Slave replied NACK");
-				return -1;
-			}
-
-			break;
-		}
-	}
-
-	return 0;
-}
-
 #define MAX_VIRTIO_USER_BACKLOG 1
 static int
 virtio_user_start_server(struct virtio_user_dev *dev, struct sockaddr_un *un)
@@ -865,6 +764,5 @@ struct virtio_user_backend_ops virtio_ops_user = {
 	.set_vring_addr = vhost_user_set_vring_addr,
 	.get_status = vhost_user_get_status,
 	.set_status = vhost_user_set_status,
-	.send_request = vhost_user_sock,
 	.enable_qp = vhost_user_enable_queue_pair
 };

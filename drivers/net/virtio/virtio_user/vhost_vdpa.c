@@ -36,10 +36,6 @@
 #define VHOST_SET_BACKEND_FEATURES _IOW(VHOST_VIRTIO, 0x25, __u64)
 #define VHOST_GET_BACKEND_FEATURES _IOR(VHOST_VIRTIO, 0x26, __u64)
 
-static uint64_t vhost_req_user_to_vdpa[] = {
-	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
-};
-
 /* no alignment requirement */
 struct vhost_iotlb_msg {
 	uint64_t iova;
@@ -389,50 +385,6 @@ vhost_vdpa_set_status(struct virtio_user_dev *dev, uint8_t status)
 	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_VDPA_SET_STATUS, &status);
 }
 
-/* with below features, vhost vdpa does not need to do the checksum and TSO,
- * these info will be passed to virtio_user through virtio net header.
- */
-#define VHOST_VDPA_GUEST_OFFLOADS_MASK	\
-	((1ULL << VIRTIO_NET_F_GUEST_CSUM) |	\
-	 (1ULL << VIRTIO_NET_F_GUEST_TSO4) |	\
-	 (1ULL << VIRTIO_NET_F_GUEST_TSO6) |	\
-	 (1ULL << VIRTIO_NET_F_GUEST_ECN)  |	\
-	 (1ULL << VIRTIO_NET_F_GUEST_UFO))
-
-#define VHOST_VDPA_HOST_OFFLOADS_MASK		\
-	((1ULL << VIRTIO_NET_F_HOST_TSO4) |	\
-	 (1ULL << VIRTIO_NET_F_HOST_TSO6) |	\
-	 (1ULL << VIRTIO_NET_F_CSUM))
-
-static int
-vhost_vdpa_send_request(struct virtio_user_dev *dev,
-		   enum vhost_user_request req,
-		   void *arg)
-{
-	int ret = -1;
-	uint64_t req_vdpa;
-
-	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
-
-	req_vdpa = vhost_req_user_to_vdpa[req];
-
-	switch (req_vdpa) {
-	case VHOST_SET_VRING_ADDR:
-		PMD_DRV_LOG(DEBUG, "vhostfd=%d, index=%u",
-			    dev->vhostfd, *(unsigned int *)arg);
-		break;
-	default:
-		break;
-	}
-
-	ret = ioctl(dev->vhostfd, req_vdpa, arg);
-	if (ret < 0)
-		PMD_DRV_LOG(ERR, "%s failed: %s",
-			    vhost_msg_strings[req], strerror(errno));
-
-	return ret;
-}
-
 /**
  * Set up environment to talk with a vhost vdpa backend.
  *
@@ -502,7 +454,6 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.set_vring_addr = vhost_vdpa_set_vring_addr,
 	.get_status = vhost_vdpa_get_status,
 	.set_status = vhost_vdpa_set_status,
-	.send_request = vhost_vdpa_send_request,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,
 	.dma_unmap = vhost_vdpa_dma_unmap_batch,
