@@ -201,6 +201,12 @@ legacy_set_features(struct virtio_hw *hw, uint64_t features)
 		VIRTIO_PCI_GUEST_FEATURES);
 }
 
+static int
+legacy_features_ok(struct virtio_hw *hw __rte_unused)
+{
+	return 0;
+}
+
 static uint8_t
 legacy_get_status(struct virtio_hw *hw)
 {
@@ -315,6 +321,7 @@ const struct virtio_pci_ops legacy_ops = {
 	.set_status	= legacy_set_status,
 	.get_features	= legacy_get_features,
 	.set_features	= legacy_set_features,
+	.features_ok	= legacy_features_ok,
 	.get_isr	= legacy_get_isr,
 	.set_config_irq	= legacy_set_config_irq,
 	.set_queue_irq  = legacy_set_queue_irq,
@@ -387,6 +394,17 @@ modern_set_features(struct virtio_hw *hw, uint64_t features)
 	rte_write32(1, &hw->common_cfg->guest_feature_select);
 	rte_write32(features >> 32,
 		    &hw->common_cfg->guest_feature);
+}
+
+static int
+modern_features_ok(struct virtio_hw *hw)
+{
+	if (!vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
+		PMD_INIT_LOG(ERR, "Version 1+ required with modern devices\n");
+		return -1;
+	}
+
+	return 0;
 }
 
 static uint8_t
@@ -540,6 +558,7 @@ const struct virtio_pci_ops modern_ops = {
 	.set_status	= modern_set_status,
 	.get_features	= modern_get_features,
 	.set_features	= modern_set_features,
+	.features_ok	= modern_features_ok,
 	.get_isr	= modern_get_isr,
 	.set_config_irq	= modern_set_config_irq,
 	.set_queue_irq  = modern_set_queue_irq,

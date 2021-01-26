@@ -1330,17 +1330,14 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 	PMD_INIT_LOG(DEBUG, "features after negotiate = %" PRIx64,
 		hw->guest_features);
 
-	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN && !vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
-		PMD_INIT_LOG(ERR,
-			"VIRTIO_F_VERSION_1 features is not enabled.");
+	if (VTPCI_OPS(hw)->features_ok(hw) < 0)
 		return -1;
-	}
 
-	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN || hw->bus_type == VIRTIO_BUS_USER) {
+	if (vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
 		vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_FEATURES_OK);
+
 		if (!(vtpci_get_status(hw) & VIRTIO_CONFIG_STATUS_FEATURES_OK)) {
-			PMD_INIT_LOG(ERR,
-				"failed to set FEATURES_OK status!");
+			PMD_INIT_LOG(ERR, "Failed to set FEATURES_OK status!");
 			return -1;
 		}
 	}

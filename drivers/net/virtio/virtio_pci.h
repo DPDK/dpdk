@@ -227,6 +227,7 @@ struct virtio_pci_ops {
 
 	uint64_t (*get_features)(struct virtio_hw *hw);
 	void     (*set_features)(struct virtio_hw *hw, uint64_t features);
+	int      (*features_ok)(struct virtio_hw *hw);
 
 	uint8_t (*get_isr)(struct virtio_hw *hw);
 

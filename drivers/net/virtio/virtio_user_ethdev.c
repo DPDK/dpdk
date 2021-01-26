@@ -327,6 +327,12 @@ virtio_user_set_features(struct virtio_hw *hw, uint64_t features)
 	dev->features = features & dev->device_features;
 }
 
+static int
+virtio_user_features_ok(struct virtio_hw *hw __rte_unused)
+{
+	return 0;
+}
+
 static uint8_t
 virtio_user_get_isr(struct virtio_hw *hw __rte_unused)
 {
@@ -479,6 +485,7 @@ const struct virtio_pci_ops virtio_user_ops = {
 	.set_status	= virtio_user_set_status,
 	.get_features	= virtio_user_get_features,
 	.set_features	= virtio_user_set_features,
+	.features_ok	= virtio_user_features_ok,
 	.get_isr	= virtio_user_get_isr,
 	.set_config_irq	= virtio_user_set_config_irq,
 	.set_queue_irq	= virtio_user_set_queue_irq,
