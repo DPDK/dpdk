@@ -578,7 +578,6 @@ struct mlx5_flow_sub_actions_list {
 struct mlx5_flow_sub_actions_idx {
 	uint32_t rix_hrxq; /**< Hash Rx queue object index. */
 	uint32_t rix_tag; /**< Index to the tag action. */
-	uint32_t cnt;
 	uint32_t rix_port_id_action; /**< Index to port ID action resource. */
 	uint32_t rix_encap_decap; /**< Index to encap/decap resource. */
 	uint32_t rix_jump; /**< Index to the jump action resource. */
