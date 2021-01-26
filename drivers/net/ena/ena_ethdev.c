@@ -2359,8 +2359,8 @@ static void ena_update_hints(struct ena_adapter *adapter,
 	}
 }
 
-static int ena_check_and_linearize_mbuf(struct ena_ring *tx_ring,
-					struct rte_mbuf *mbuf)
+static int ena_check_space_and_linearize_mbuf(struct ena_ring *tx_ring,
+					      struct rte_mbuf *mbuf)
 {
 	struct ena_com_dev *ena_dev;
 	int num_segments, header_len, rc;
@@ -2370,13 +2370,21 @@ static int ena_check_and_linearize_mbuf(struct ena_ring *tx_ring,
 	header_len = mbuf->data_len;
 
 	if (likely(num_segments < tx_ring->sgl_size))
-		return 0;
+		goto checkspace;
 
 	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV &&
 	    (num_segments == tx_ring->sgl_size) &&
 	    (header_len < tx_ring->tx_max_header_size))
-		return 0;
+		goto checkspace;
 
+	/* Checking for space for 2 additional metadata descriptors due to
+	 * possible header split and metadata descriptor. Linearization will
+	 * be needed so we reduce the segments number from num_segments to 1
+	 */
+	if (!ena_com_sq_have_enough_space(tx_ring->ena_com_io_sq, 3)) {
+		PMD_DRV_LOG(DEBUG, "Not enough space in the tx queue\n");
+		return ENA_COM_NO_MEM;
+	}
 	++tx_ring->tx_stats.linearize;
 	rc = rte_pktmbuf_linearize(mbuf);
 	if (unlikely(rc)) {
@@ -2386,7 +2394,19 @@ static int ena_check_and_linearize_mbuf(struct ena_ring *tx_ring,
 		return rc;
 	}
 
-	return rc;
+	return 0;
+
+checkspace:
+	/* Checking for space for 2 additional metadata descriptors due to
+	 * possible header split and metadata descriptor
+	 */
+	if (!ena_com_sq_have_enough_space(tx_ring->ena_com_io_sq,
+					  num_segments + 2)) {
+		PMD_DRV_LOG(DEBUG, "Not enough space in the tx queue\n");
+		return ENA_COM_NO_MEM;
+	}
+
+	return 0;
 }
 
 static void ena_tx_map_mbuf(struct ena_ring *tx_ring,
@@ -2473,7 +2493,7 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	int nb_hw_desc;
 	int rc;
 
-	rc = ena_check_and_linearize_mbuf(tx_ring, mbuf);
+	rc = ena_check_space_and_linearize_mbuf(tx_ring, mbuf);
 	if (unlikely(rc))
 		return rc;
 
@@ -2579,9 +2599,6 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			"Trying to xmit pkts while device is NOT running\n");
 		return 0;
 	}
-
-	nb_pkts = RTE_MIN(ena_com_free_q_entries(tx_ring->ena_com_io_sq),
-		nb_pkts);
 
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		if (ena_xmit_mbuf(tx_ring, tx_pkts[sent_idx]))
