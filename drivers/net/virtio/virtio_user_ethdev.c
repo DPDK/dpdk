@@ -77,7 +77,7 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 		return -1;
 
 	dev->vhostfd = connectfd;
-	old_status = vtpci_get_status(hw);
+	old_status = dev->status;
 
 	vtpci_reset(hw);
 
