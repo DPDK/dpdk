@@ -678,10 +678,6 @@ i40e_hash_enable_pctype(struct i40e_hw *hw,
 {
 	uint32_t reg, reg_val, mask;
 
-	/* For X722, get translated pctype in fd pctype register */
-	if (hw->mac.type == I40E_MAC_X722)
-		pctype = i40e_read_rx_ctl(hw, I40E_GLQF_FD_PCTYPES(pctype));
-
 	if (pctype < 32) {
 		mask = BIT(pctype);
 		reg = I40E_PFQF_HENA(0);
