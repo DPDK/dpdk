@@ -65,6 +65,7 @@ struct virtio_user_dev;
 
 struct virtio_user_backend_ops {
 	int (*setup)(struct virtio_user_dev *dev);
+	int (*destroy)(struct virtio_user_dev *dev);
 	int (*get_backend_features)(uint64_t *features);
 	int (*set_owner)(struct virtio_user_dev *dev);
 	int (*get_features)(struct virtio_user_dev *dev, uint64_t *features);

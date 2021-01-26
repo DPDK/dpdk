@@ -433,6 +433,12 @@ vhost_vdpa_setup(struct virtio_user_dev *dev)
 }
 
 static int
+vhost_vdpa_destroy(struct virtio_user_dev *dev __rte_unused)
+{
+	return 0;
+}
+
+static int
 vhost_vdpa_enable_queue_pair(struct virtio_user_dev *dev,
 			       uint16_t pair_idx,
 			       int enable)
@@ -467,6 +473,7 @@ vhost_vdpa_get_backend_features(uint64_t *features)
 
 struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.setup = vhost_vdpa_setup,
+	.destroy = vhost_vdpa_destroy,
 	.get_backend_features = vhost_vdpa_get_backend_features,
 	.set_owner = vhost_vdpa_set_owner,
 	.get_features = vhost_vdpa_get_features,

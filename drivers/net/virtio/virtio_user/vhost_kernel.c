@@ -358,6 +358,12 @@ vhost_kernel_setup(struct virtio_user_dev *dev)
 }
 
 static int
+vhost_kernel_destroy(struct virtio_user_dev *dev __rte_unused)
+{
+	return 0;
+}
+
+static int
 vhost_kernel_set_backend(int vhostfd, int tapfd)
 {
 	struct vhost_vring_file f;
@@ -455,6 +461,7 @@ vhost_kernel_get_backend_features(uint64_t *features)
 
 struct virtio_user_backend_ops virtio_ops_kernel = {
 	.setup = vhost_kernel_setup,
+	.destroy = vhost_kernel_destroy,
 	.get_backend_features = vhost_kernel_get_backend_features,
 	.set_owner = vhost_kernel_set_owner,
 	.get_features = vhost_kernel_get_features,

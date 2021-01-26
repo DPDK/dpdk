@@ -621,6 +621,8 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 
 	if (dev->is_server)
 		unlink(dev->path);
+
+	dev->ops->destroy(dev);
 }
 
 uint8_t

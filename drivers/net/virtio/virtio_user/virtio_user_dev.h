@@ -66,6 +66,8 @@ struct virtio_user_dev {
 	struct virtio_user_backend_ops *ops;
 	pthread_mutex_t	mutex;
 	bool		started;
+
+	void *backend_data;
 };
 
 int virtio_user_dev_set_features(struct virtio_user_dev *dev);
