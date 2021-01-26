@@ -689,6 +689,8 @@ next:
 int
 vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 {
+	RTE_BUILD_BUG_ON(offsetof(struct virtio_pci_dev, hw) != 0);
+
 	/*
 	 * Try if we can succeed reading virtio pci caps, which exists
 	 * only on modern pci device. If failed, we fallback to legacy

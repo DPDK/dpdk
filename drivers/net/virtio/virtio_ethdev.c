@@ -2154,7 +2154,7 @@ static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (vdpa == 1)
 		return 1;
 
-	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct virtio_hw),
+	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct virtio_pci_dev),
 		eth_virtio_dev_init);
 }
 

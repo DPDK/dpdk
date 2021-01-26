@@ -289,6 +289,11 @@ struct virtio_hw {
 	struct virtqueue **vqs;
 };
 
+struct virtio_pci_dev {
+	struct virtio_hw hw;
+};
+
+#define virtio_pci_get_dev(hwp) container_of(hwp, struct virtio_pci_dev, hw)
 
 /*
  * While virtio_hw is stored in shared memory, this structure stores
