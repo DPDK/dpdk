@@ -51,6 +51,7 @@ typedef uint64_t dma_addr_t;
 #define ENA_COM_FAULT	-EFAULT
 #define ENA_COM_TRY_AGAIN	-EAGAIN
 #define ENA_COM_UNSUPPORTED    -EOPNOTSUPP
+#define ENA_COM_EIO    -EIO
 
 #define ____cacheline_aligned __rte_cache_aligned
 

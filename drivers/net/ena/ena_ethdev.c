@@ -28,7 +28,7 @@
 
 #define DRV_MODULE_VER_MAJOR	2
 #define DRV_MODULE_VER_MINOR	2
-#define DRV_MODULE_VER_SUBMINOR	0
+#define DRV_MODULE_VER_SUBMINOR	1
 
 #define ENA_IO_TXQ_IDX(q)	(2 * (q))
 #define ENA_IO_RXQ_IDX(q)	(2 * (q) + 1)
@@ -378,20 +378,6 @@ static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 	} else {
 		ena_tx_ctx->meta_valid = false;
 	}
-}
-
-static inline int validate_rx_req_id(struct ena_ring *rx_ring, uint16_t req_id)
-{
-	if (likely(req_id < rx_ring->ring_size))
-		return 0;
-
-	PMD_DRV_LOG(ERR, "Invalid rx req_id: %hu\n", req_id);
-
-	rx_ring->adapter->reset_reason = ENA_REGS_RESET_INV_RX_REQ_ID;
-	rx_ring->adapter->trigger_reset = true;
-	++rx_ring->rx_stats.bad_req_id;
-
-	return -EFAULT;
 }
 
 static int validate_tx_req_id(struct ena_ring *tx_ring, u16 req_id)
@@ -1486,10 +1472,6 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 			rte_prefetch0(mbufs[i + 4]);
 
 		req_id = rxq->empty_rx_reqs[next_to_use];
-		rc = validate_rx_req_id(rxq, req_id);
-		if (unlikely(rc))
-			break;
-
 		rx_info = &rxq->rx_buffer_info[req_id];
 
 		rc = ena_add_single_rx_desc(rxq->ena_com_io_sq, mbuf, req_id);
@@ -2114,8 +2096,6 @@ static struct rte_mbuf *ena_rx_mbuf(struct ena_ring *rx_ring,
 
 	len = ena_bufs[buf].len;
 	req_id = ena_bufs[buf].req_id;
-	if (unlikely(validate_rx_req_id(rx_ring, req_id)))
-		return NULL;
 
 	rx_info = &rx_ring->rx_buffer_info[req_id];
 
@@ -2139,10 +2119,6 @@ static struct rte_mbuf *ena_rx_mbuf(struct ena_ring *rx_ring,
 		++buf;
 		len = ena_bufs[buf].len;
 		req_id = ena_bufs[buf].req_id;
-		if (unlikely(validate_rx_req_id(rx_ring, req_id))) {
-			rte_mbuf_raw_free(mbuf_head);
-			return NULL;
-		}
 
 		rx_info = &rx_ring->rx_buffer_info[req_id];
 		RTE_ASSERT(rx_info->mbuf != NULL);
@@ -2230,10 +2206,16 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				    &ena_rx_ctx);
 		if (unlikely(rc)) {
 			PMD_DRV_LOG(ERR, "ena_com_rx_pkt error %d\n", rc);
-			rx_ring->adapter->reset_reason =
-				ENA_REGS_RESET_TOO_MANY_RX_DESCS;
+			if (rc == ENA_COM_NO_SPACE) {
+				++rx_ring->rx_stats.bad_desc_num;
+				rx_ring->adapter->reset_reason =
+					ENA_REGS_RESET_TOO_MANY_RX_DESCS;
+			} else {
+				++rx_ring->rx_stats.bad_req_id;
+				rx_ring->adapter->reset_reason =
+					ENA_REGS_RESET_INV_RX_REQ_ID;
+			}
 			rx_ring->adapter->trigger_reset = true;
-			++rx_ring->rx_stats.bad_desc_num;
 			return 0;
 		}
 
