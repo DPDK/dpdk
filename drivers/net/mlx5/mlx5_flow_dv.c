@@ -9149,22 +9149,18 @@ flow_dv_sample_create_cb(struct mlx5_cache_list *list __rte_unused,
 					  "for sample");
 		goto error;
 	}
-	int ret;
-
 	cache_resource->normal_path_tbl = tbl;
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
-		ret = mlx5_flow_os_create_flow_action_default_miss
-			(&cache_resource->default_miss);
-		if (ret) {
+		if (!sh->default_miss_action) {
 			rte_flow_error_set(error, ENOMEM,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 						NULL,
-						"cannot create default miss "
-						"action");
+						"default miss action was not "
+						"created");
 			goto error;
 		}
 		sample_dv_actions[resource->sample_act.actions_num++] =
-						cache_resource->default_miss;
+						sh->default_miss_action;
 	}
 	/* Create a DR sample action */
 	sampler_attr.sample_ratio = cache_resource->ratio;
@@ -9184,11 +9180,7 @@ flow_dv_sample_create_cb(struct mlx5_cache_list *list __rte_unused,
 	cache_resource->dev = dev;
 	return &cache_resource->entry;
 error:
-	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB &&
-	    cache_resource->default_miss)
-		claim_zero(mlx5_flow_os_destroy_flow_action
-				(cache_resource->default_miss));
-	else
+	if (cache_resource->ft_type != MLX5DV_FLOW_TABLE_TYPE_FDB)
 		flow_dv_sample_sub_actions_release(dev,
 						   &cache_resource->sample_idx);
 	if (cache_resource->normal_path_tbl)
@@ -11591,11 +11583,6 @@ flow_dv_sample_remove_cb(struct mlx5_cache_list *list __rte_unused,
 	if (cache_resource->verbs_action)
 		claim_zero(mlx5_flow_os_destroy_flow_action
 				(cache_resource->verbs_action));
-	if (cache_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
-		if (cache_resource->default_miss)
-			claim_zero(mlx5_flow_os_destroy_flow_action
-			  (cache_resource->default_miss));
-	}
 	if (cache_resource->normal_path_tbl)
 		flow_dv_tbl_resource_release(MLX5_SH(dev),
 			cache_resource->normal_path_tbl);

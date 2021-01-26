@@ -598,7 +598,6 @@ struct mlx5_flow_dv_sample_resource {
 	uint32_t ratio;   /** Sample Ratio */
 	uint64_t set_action; /** Restore reg_c0 value */
 	void *normal_path_tbl; /** Flow Table pointer */
-	void *default_miss; /** default_miss dr_action. */
 	struct mlx5_flow_sub_actions_idx sample_idx;
 	/**< Action index resources. */
 	struct mlx5_flow_sub_actions_list sample_act;
