@@ -38,8 +38,6 @@
 
 static uint64_t vhost_req_user_to_vdpa[] = {
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
-	[VHOST_USER_SET_STATUS] = VHOST_VDPA_SET_STATUS,
-	[VHOST_USER_GET_STATUS] = VHOST_VDPA_GET_STATUS,
 };
 
 /* no alignment requirement */
@@ -379,6 +377,18 @@ vhost_vdpa_set_vring_addr(struct virtio_user_dev *dev, struct vhost_vring_addr *
 	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_SET_VRING_ADDR, addr);
 }
 
+static int
+vhost_vdpa_get_status(struct virtio_user_dev *dev, uint8_t *status)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_VDPA_GET_STATUS, status);
+}
+
+static int
+vhost_vdpa_set_status(struct virtio_user_dev *dev, uint8_t status)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_VDPA_SET_STATUS, &status);
+}
+
 /* with below features, vhost vdpa does not need to do the checksum and TSO,
  * these info will be passed to virtio_user through virtio net header.
  */
@@ -490,6 +500,8 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.set_vring_call = vhost_vdpa_set_vring_call,
 	.set_vring_kick = vhost_vdpa_set_vring_kick,
 	.set_vring_addr = vhost_vdpa_set_vring_addr,
+	.get_status = vhost_vdpa_get_status,
+	.set_status = vhost_vdpa_set_status,
 	.send_request = vhost_vdpa_send_request,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,

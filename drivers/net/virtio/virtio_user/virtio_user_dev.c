@@ -814,21 +814,12 @@ int
 virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status)
 {
 	int ret;
-	uint64_t arg = status;
 
 	pthread_mutex_lock(&dev->mutex);
 	dev->status = status;
-	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER)
-		ret = dev->ops->send_request(dev,
-				VHOST_USER_SET_STATUS, &arg);
-	else if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA)
-		ret = dev->ops->send_request(dev,
-				VHOST_USER_SET_STATUS, &status);
-	else
-		ret = -ENOTSUP;
-
+	ret = dev->ops->set_status(dev, status);
 	if (ret && ret != -ENOTSUP) {
-		PMD_INIT_LOG(ERR, "VHOST_USER_SET_STATUS failed (%d): %s", ret,
+		PMD_INIT_LOG(ERR, "Virtio-user set status failed (%d): %s", ret,
 			     strerror(errno));
 	}
 
@@ -839,29 +830,13 @@ virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status)
 int
 virtio_user_dev_update_status(struct virtio_user_dev *dev)
 {
-	uint64_t ret;
+	int ret;
 	uint8_t status;
-	int err;
 
 	pthread_mutex_lock(&dev->mutex);
-	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER) {
-		err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS, &ret);
-		if (!err && ret > UINT8_MAX) {
-			PMD_INIT_LOG(ERR, "Invalid VHOST_USER_GET_STATUS "
-					"response 0x%" PRIx64 "\n", ret);
-			err = -1;
-			goto error;
-		}
 
-		status = ret;
-	} else if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA) {
-		err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS,
-				&status);
-	} else {
-		err = -ENOTSUP;
-	}
-
-	if (!err) {
+	ret = dev->ops->get_status(dev, &status);
+	if (!ret) {
 		dev->status = status;
 		PMD_INIT_LOG(DEBUG, "Updated Device Status(0x%08x):\n"
 			"\t-RESET: %u\n"
@@ -879,12 +854,11 @@ virtio_user_dev_update_status(struct virtio_user_dev *dev)
 			!!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK),
 			!!(dev->status & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET),
 			!!(dev->status & VIRTIO_CONFIG_STATUS_FAILED));
-	} else if (err != -ENOTSUP) {
-		PMD_INIT_LOG(ERR, "VHOST_USER_GET_STATUS failed (%d): %s", err,
+	} else if (ret != -ENOTSUP) {
+		PMD_INIT_LOG(ERR, "Virtio-user get status failed (%d): %s", ret,
 			     strerror(errno));
 	}
 
-error:
 	pthread_mutex_unlock(&dev->mutex);
-	return err;
+	return ret;
 }

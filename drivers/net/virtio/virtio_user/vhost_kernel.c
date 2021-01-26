@@ -316,6 +316,18 @@ vhost_kernel_set_vring_addr(struct virtio_user_dev *dev, struct vhost_vring_addr
 	return 0;
 }
 
+static int
+vhost_kernel_get_status(struct virtio_user_dev *dev __rte_unused, uint8_t *status __rte_unused)
+{
+	return -ENOTSUP;
+}
+
+static int
+vhost_kernel_set_status(struct virtio_user_dev *dev __rte_unused, uint8_t status __rte_unused)
+{
+	return -ENOTSUP;
+}
+
 static uint64_t vhost_req_user_to_kernel[] = {
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
 };
@@ -487,6 +499,8 @@ struct virtio_user_backend_ops virtio_ops_kernel = {
 	.set_vring_call = vhost_kernel_set_vring_call,
 	.set_vring_kick = vhost_kernel_set_vring_kick,
 	.set_vring_addr = vhost_kernel_set_vring_addr,
+	.get_status = vhost_kernel_get_status,
+	.set_status = vhost_kernel_set_status,
 	.send_request = vhost_kernel_send_request,
 	.enable_qp = vhost_kernel_enable_queue_pair
 };

@@ -559,13 +559,100 @@ vhost_user_set_vring_addr(struct virtio_user_dev *dev, struct vhost_vring_addr *
 	return 0;
 }
 
+static int
+vhost_user_get_status(struct virtio_user_dev *dev, uint8_t *status)
+{
+	int ret;
+	struct vhost_user_msg msg = {
+		.request = VHOST_USER_GET_STATUS,
+		.flags = VHOST_USER_VERSION,
+	};
+
+	/*
+	 * If features have not been negotiated, we don't know if the backend
+	 * supports protocol features
+	 */
+	if (!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK))
+		return -ENOTSUP;
+
+	/* Status protocol feature requires protocol features support */
+	if (!(dev->device_features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)))
+		return -ENOTSUP;
+
+	if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_STATUS)))
+		return -ENOTSUP;
+
+	ret = vhost_user_write(dev->vhostfd, &msg, NULL, 0);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to send request");
+		goto err;
+	}
+
+	ret = vhost_user_read(dev->vhostfd, &msg);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to recv request");
+		goto err;
+	}
+
+	if (msg.request != VHOST_USER_GET_STATUS) {
+		PMD_DRV_LOG(ERR, "Unexpected request type (%d)", msg.request);
+		goto err;
+	}
+
+	if (msg.size != sizeof(msg.payload.u64)) {
+		PMD_DRV_LOG(ERR, "Unexpected payload size (%u)", msg.size);
+		goto err;
+	}
+
+	*status = (uint8_t)msg.payload.u64;
+
+	return 0;
+err:
+	PMD_DRV_LOG(ERR, "Failed to get device status");
+	return -1;
+}
+
+static int
+vhost_user_set_status(struct virtio_user_dev *dev, uint8_t status)
+{
+	int ret;
+	struct vhost_user_msg msg = {
+		.request = VHOST_USER_SET_STATUS,
+		.flags = VHOST_USER_VERSION,
+		.size = sizeof(msg.payload.u64),
+		.payload.u64 = status,
+	};
+
+	/*
+	 * If features have not been negotiated, we don't know if the backend
+	 * supports protocol features
+	 */
+	if (!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK))
+		return -ENOTSUP;
+
+	/* Status protocol feature requires protocol features support */
+	if (!(dev->device_features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)))
+		return -ENOTSUP;
+
+	if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_STATUS)))
+		return -ENOTSUP;
+
+	if (dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK))
+		msg.flags |= VHOST_USER_NEED_REPLY_MASK;
+
+	ret = vhost_user_write(dev->vhostfd, &msg, NULL, 0);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to send get status request");
+		return -1;
+	}
+
+	return vhost_user_check_reply_ack(dev, &msg);
+}
 
 static struct vhost_user_msg m;
 
 const char * const vhost_msg_strings[] = {
 	[VHOST_USER_RESET_OWNER] = "VHOST_RESET_OWNER",
-	[VHOST_USER_SET_STATUS] = "VHOST_SET_STATUS",
-	[VHOST_USER_GET_STATUS] = "VHOST_GET_STATUS",
 };
 
 static int
@@ -576,7 +663,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 	struct vhost_user_msg msg;
 	struct vhost_vring_file *file = 0;
 	int need_reply = 0;
-	int has_reply_ack = 0;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num = 0;
 	int vhostfd = dev->vhostfd;
@@ -588,31 +674,11 @@ vhost_user_sock(struct virtio_user_dev *dev,
 	if (dev->is_server && vhostfd < 0)
 		return -1;
 
-	if (dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK))
-		has_reply_ack = 1;
-
 	msg.request = req;
 	msg.flags = VHOST_USER_VERSION;
 	msg.size = 0;
 
 	switch (req) {
-	case VHOST_USER_GET_STATUS:
-		if (!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK) ||
-		    (!(dev->protocol_features &
-				(1ULL << VHOST_USER_PROTOCOL_F_STATUS))))
-			return -ENOTSUP;
-		need_reply = 1;
-		break;
-
-	case VHOST_USER_SET_STATUS:
-		if (!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK) ||
-		    (!(dev->protocol_features &
-				(1ULL << VHOST_USER_PROTOCOL_F_STATUS))))
-			return -ENOTSUP;
-
-		if (has_reply_ack)
-			msg.flags |= VHOST_USER_NEED_REPLY_MASK;
-		/* Fallthrough */
 	case VHOST_USER_SET_LOG_BASE:
 		msg.payload.u64 = *((__u64 *)arg);
 		msg.size = sizeof(m.payload.u64);
@@ -665,13 +731,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		}
 
 		switch (req) {
-		case VHOST_USER_GET_STATUS:
-			if (msg.size != sizeof(m.payload.u64)) {
-				PMD_DRV_LOG(ERR, "Received bad msg size");
-				return -1;
-			}
-			*((__u64 *)arg) = msg.payload.u64;
-			break;
 		default:
 			/* Reply-ack handling */
 			if (msg.size != sizeof(m.payload.u64)) {
@@ -804,6 +863,8 @@ struct virtio_user_backend_ops virtio_ops_user = {
 	.set_vring_call = vhost_user_set_vring_call,
 	.set_vring_kick = vhost_user_set_vring_kick,
 	.set_vring_addr = vhost_user_set_vring_addr,
+	.get_status = vhost_user_get_status,
+	.set_status = vhost_user_set_status,
 	.send_request = vhost_user_sock,
 	.enable_qp = vhost_user_enable_queue_pair
 };

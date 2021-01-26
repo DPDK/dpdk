@@ -121,6 +121,8 @@ struct virtio_user_backend_ops {
 	int (*set_vring_call)(struct virtio_user_dev *dev, struct vhost_vring_file *file);
 	int (*set_vring_kick)(struct virtio_user_dev *dev, struct vhost_vring_file *file);
 	int (*set_vring_addr)(struct virtio_user_dev *dev, struct vhost_vring_addr *addr);
+	int (*get_status)(struct virtio_user_dev *dev, uint8_t *status);
+	int (*set_status)(struct virtio_user_dev *dev, uint8_t status);
 	int (*send_request)(struct virtio_user_dev *dev,
 			    enum vhost_user_request req,
 			    void *arg);
