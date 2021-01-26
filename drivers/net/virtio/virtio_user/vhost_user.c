@@ -51,7 +51,7 @@ struct vhost_user_msg {
 	(sizeof(struct vhost_user_msg) - VHOST_USER_HDR_SIZE)
 
 static int
-vhost_user_write(int fd, void *buf, int len, int *fds, int fd_num)
+vhost_user_write(int fd, struct vhost_user_msg *msg, int *fds, int fd_num)
 {
 	int r;
 	struct msghdr msgh;
@@ -63,8 +63,8 @@ vhost_user_write(int fd, void *buf, int len, int *fds, int fd_num)
 	memset(&msgh, 0, sizeof(msgh));
 	memset(control, 0, sizeof(control));
 
-	iov.iov_base = (uint8_t *)buf;
-	iov.iov_len = len;
+	iov.iov_base = (uint8_t *)msg;
+	iov.iov_len = VHOST_USER_HDR_SIZE + msg->size;
 
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
@@ -259,7 +259,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 	int has_reply_ack = 0;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num = 0;
-	int len;
 	int vhostfd = dev->vhostfd;
 
 	RTE_SET_USED(m);
@@ -364,8 +363,7 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		return -1;
 	}
 
-	len = VHOST_USER_HDR_SIZE + msg.size;
-	if (vhost_user_write(vhostfd, &msg, len, fds, fd_num) < 0) {
+	if (vhost_user_write(vhostfd, &msg, fds, fd_num) < 0) {
 		PMD_DRV_LOG(ERR, "%s failed: %s",
 			    vhost_msg_strings[req], strerror(errno));
 		return -1;
