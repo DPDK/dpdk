@@ -1246,6 +1246,10 @@ static int ena_queue_start(struct ena_ring *ring)
 		PMD_INIT_LOG(ERR, "Failed to populate rx ring !");
 		return ENA_COM_FAULT;
 	}
+	/* Flush per-core RX buffers pools cache as they can be used on other
+	 * cores as well.
+	 */
+	rte_mempool_cache_flush(NULL, ring->mb_pool);
 
 	return 0;
 }
