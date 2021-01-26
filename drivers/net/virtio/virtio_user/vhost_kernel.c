@@ -259,11 +259,44 @@ vhost_kernel_get_vring_base(struct virtio_user_dev *dev, struct vhost_vring_stat
 	return vhost_kernel_set_vring(dev, VHOST_GET_VRING_BASE, state);
 }
 
+static int
+vhost_kernel_set_vring_file(struct virtio_user_dev *dev, uint64_t req,
+		struct vhost_vring_file *file)
+{
+	int ret, fd;
+	unsigned int index = file->index;
+
+	/* Convert from queue index to queue-pair & offset */
+	fd = dev->vhostfds[file->index / 2];
+	file->index %= 2;
+
+	ret = vhost_kernel_ioctl(fd, req, file);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to set vring file (request %" PRIu64 ")", req);
+		return -1;
+	}
+
+	/* restore index back to queue index */
+	file->index = index;
+
+	return 0;
+}
+
+static int
+vhost_kernel_set_vring_kick(struct virtio_user_dev *dev, struct vhost_vring_file *file)
+{
+	return vhost_kernel_set_vring_file(dev, VHOST_SET_VRING_KICK, file);
+}
+
+static int
+vhost_kernel_set_vring_call(struct virtio_user_dev *dev, struct vhost_vring_file *file)
+{
+	return vhost_kernel_set_vring_file(dev, VHOST_SET_VRING_CALL, file);
+}
+
 static uint64_t vhost_req_user_to_kernel[] = {
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
-	[VHOST_USER_SET_VRING_CALL] = VHOST_SET_VRING_CALL,
 	[VHOST_USER_SET_VRING_ADDR] = VHOST_SET_VRING_ADDR,
-	[VHOST_USER_SET_VRING_KICK] = VHOST_SET_VRING_KICK,
 };
 
 static int
@@ -283,8 +316,6 @@ vhost_kernel_send_request(struct virtio_user_dev *dev,
 
 	switch (req_kernel) {
 	case VHOST_SET_VRING_ADDR:
-	case VHOST_SET_VRING_KICK:
-	case VHOST_SET_VRING_CALL:
 		queue_sel = *(unsigned int *)arg;
 		vhostfd = dev->vhostfds[queue_sel / 2];
 		*(unsigned int *)arg = queue_sel % 2;
@@ -440,6 +471,8 @@ struct virtio_user_backend_ops virtio_ops_kernel = {
 	.set_vring_num = vhost_kernel_set_vring_num,
 	.set_vring_base = vhost_kernel_set_vring_base,
 	.get_vring_base = vhost_kernel_get_vring_base,
+	.set_vring_call = vhost_kernel_set_vring_call,
+	.set_vring_kick = vhost_kernel_set_vring_kick,
 	.send_request = vhost_kernel_send_request,
 	.enable_qp = vhost_kernel_enable_queue_pair
 };

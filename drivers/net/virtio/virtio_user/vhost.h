@@ -118,6 +118,8 @@ struct virtio_user_backend_ops {
 	int (*set_vring_num)(struct virtio_user_dev *dev, struct vhost_vring_state *state);
 	int (*set_vring_base)(struct virtio_user_dev *dev, struct vhost_vring_state *state);
 	int (*get_vring_base)(struct virtio_user_dev *dev, struct vhost_vring_state *state);
+	int (*set_vring_call)(struct virtio_user_dev *dev, struct vhost_vring_file *file);
+	int (*set_vring_kick)(struct virtio_user_dev *dev, struct vhost_vring_file *file);
 	int (*send_request)(struct virtio_user_dev *dev,
 			    enum vhost_user_request req,
 			    void *arg);

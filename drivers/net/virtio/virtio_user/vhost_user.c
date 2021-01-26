@@ -498,13 +498,51 @@ err:
 	return -1;
 }
 
+static int
+vhost_user_set_vring_file(struct virtio_user_dev *dev, enum vhost_user_request req,
+		struct vhost_vring_file *file)
+{
+	int ret;
+	int fd = file->fd;
+	int num_fd = 0;
+	struct vhost_user_msg msg = {
+		.request = req,
+		.flags = VHOST_USER_VERSION,
+		.size = sizeof(msg.payload.u64),
+		.payload.u64 = file->index & VHOST_USER_VRING_IDX_MASK,
+	};
+
+	if (fd >= 0)
+		num_fd++;
+	else
+		msg.payload.u64 |= VHOST_USER_VRING_NOFD_MASK;
+
+	ret = vhost_user_write(dev->vhostfd, &msg, &fd, num_fd);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to set vring file (request %d)", req);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+vhost_user_set_vring_call(struct virtio_user_dev *dev, struct vhost_vring_file *file)
+{
+	return vhost_user_set_vring_file(dev, VHOST_USER_SET_VRING_CALL, file);
+}
+
+static int
+vhost_user_set_vring_kick(struct virtio_user_dev *dev, struct vhost_vring_file *file)
+{
+	return vhost_user_set_vring_file(dev, VHOST_USER_SET_VRING_KICK, file);
+}
+
 static struct vhost_user_msg m;
 
 const char * const vhost_msg_strings[] = {
 	[VHOST_USER_RESET_OWNER] = "VHOST_RESET_OWNER",
-	[VHOST_USER_SET_VRING_CALL] = "VHOST_SET_VRING_CALL",
 	[VHOST_USER_SET_VRING_ADDR] = "VHOST_SET_VRING_ADDR",
-	[VHOST_USER_SET_VRING_KICK] = "VHOST_SET_VRING_KICK",
 	[VHOST_USER_SET_STATUS] = "VHOST_SET_STATUS",
 	[VHOST_USER_GET_STATUS] = "VHOST_GET_STATUS",
 };
@@ -577,8 +615,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		msg.size = sizeof(m.payload.addr);
 		break;
 
-	case VHOST_USER_SET_VRING_KICK:
-	case VHOST_USER_SET_VRING_CALL:
 	case VHOST_USER_SET_VRING_ERR:
 		file = arg;
 		msg.payload.u64 = file->index & VHOST_USER_VRING_IDX_MASK;
@@ -749,6 +785,8 @@ struct virtio_user_backend_ops virtio_ops_user = {
 	.set_vring_num = vhost_user_set_vring_num,
 	.set_vring_base = vhost_user_set_vring_base,
 	.get_vring_base = vhost_user_get_vring_base,
+	.set_vring_call = vhost_user_set_vring_call,
+	.set_vring_kick = vhost_user_set_vring_kick,
 	.send_request = vhost_user_sock,
 	.enable_qp = vhost_user_enable_queue_pair
 };

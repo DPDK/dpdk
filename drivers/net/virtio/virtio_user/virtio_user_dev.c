@@ -40,7 +40,7 @@ virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 
 	file.index = queue_sel;
 	file.fd = dev->callfds[queue_sel];
-	dev->ops->send_request(dev, VHOST_USER_SET_VRING_CALL, &file);
+	dev->ops->set_vring_call(dev, &file);
 
 	return 0;
 }
@@ -89,7 +89,7 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	 */
 	file.index = queue_sel;
 	file.fd = dev->kickfds[queue_sel];
-	dev->ops->send_request(dev, VHOST_USER_SET_VRING_KICK, &file);
+	dev->ops->set_vring_kick(dev, &file);
 
 	return 0;
 }
