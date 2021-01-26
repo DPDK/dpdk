@@ -14,6 +14,11 @@
 #include "virtio_user_dev.h"
 #include "vhost_kernel_tap.h"
 
+struct vhost_kernel_data {
+	int *vhostfds;
+	int *tapfds;
+};
+
 struct vhost_memory_kernel {
 	uint32_t nregions;
 	uint32_t padding;
@@ -96,7 +101,9 @@ vhost_kernel_ioctl(int fd, uint64_t request, void *arg)
 static int
 vhost_kernel_set_owner(struct virtio_user_dev *dev)
 {
-	return vhost_kernel_ioctl(dev->vhostfds[0], VHOST_SET_OWNER, NULL);
+	struct vhost_kernel_data *data = dev->backend_data;
+
+	return vhost_kernel_ioctl(data->vhostfds[0], VHOST_SET_OWNER, NULL);
 }
 
 static int
@@ -104,8 +111,9 @@ vhost_kernel_get_features(struct virtio_user_dev *dev, uint64_t *features)
 {
 	int ret;
 	unsigned int tap_features;
+	struct vhost_kernel_data *data = dev->backend_data;
 
-	ret = vhost_kernel_ioctl(dev->vhostfds[0], VHOST_GET_FEATURES, features);
+	ret = vhost_kernel_ioctl(data->vhostfds[0], VHOST_GET_FEATURES, features);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to get features");
 		return -1;
@@ -138,6 +146,8 @@ vhost_kernel_get_features(struct virtio_user_dev *dev, uint64_t *features)
 static int
 vhost_kernel_set_features(struct virtio_user_dev *dev, uint64_t features)
 {
+	struct vhost_kernel_data *data = dev->backend_data;
+
 	/* We don't need memory protection here */
 	features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
 	/* VHOST kernel does not know about below flags */
@@ -145,7 +155,7 @@ vhost_kernel_set_features(struct virtio_user_dev *dev, uint64_t features)
 	features &= ~VHOST_KERNEL_HOST_OFFLOADS_MASK;
 	features &= ~(1ULL << VIRTIO_NET_F_MQ);
 
-	return vhost_kernel_ioctl(dev->vhostfds[0], VHOST_SET_FEATURES, &features);
+	return vhost_kernel_ioctl(data->vhostfds[0], VHOST_SET_FEATURES, &features);
 }
 
 static int
@@ -185,6 +195,7 @@ add_memseg_list(const struct rte_memseg_list *msl, void *arg)
 static int
 vhost_kernel_set_memory_table(struct virtio_user_dev *dev)
 {
+	struct vhost_kernel_data *data = dev->backend_data;
 	struct vhost_memory_kernel *vm;
 	int ret;
 
@@ -205,7 +216,7 @@ vhost_kernel_set_memory_table(struct virtio_user_dev *dev)
 	if (ret < 0)
 		goto err_free;
 
-	ret = vhost_kernel_ioctl(dev->vhostfds[0], VHOST_SET_MEM_TABLE, vm);
+	ret = vhost_kernel_ioctl(data->vhostfds[0], VHOST_SET_MEM_TABLE, vm);
 	if (ret < 0)
 		goto err_free;
 
@@ -224,9 +235,10 @@ vhost_kernel_set_vring(struct virtio_user_dev *dev, uint64_t req, struct vhost_v
 {
 	int ret, fd;
 	unsigned int index = state->index;
+	struct vhost_kernel_data *data = dev->backend_data;
 
 	/* Convert from queue index to queue-pair & offset */
-	fd = dev->vhostfds[state->index / 2];
+	fd = data->vhostfds[state->index / 2];
 	state->index %= 2;
 
 	ret = vhost_kernel_ioctl(fd, req, state);
@@ -265,9 +277,10 @@ vhost_kernel_set_vring_file(struct virtio_user_dev *dev, uint64_t req,
 {
 	int ret, fd;
 	unsigned int index = file->index;
+	struct vhost_kernel_data *data = dev->backend_data;
 
 	/* Convert from queue index to queue-pair & offset */
-	fd = dev->vhostfds[file->index / 2];
+	fd = data->vhostfds[file->index / 2];
 	file->index %= 2;
 
 	ret = vhost_kernel_ioctl(fd, req, file);
@@ -299,9 +312,10 @@ vhost_kernel_set_vring_addr(struct virtio_user_dev *dev, struct vhost_vring_addr
 {
 	int ret, fd;
 	unsigned int index = addr->index;
+	struct vhost_kernel_data *data = dev->backend_data;
 
 	/* Convert from queue index to queue-pair & offset */
-	fd = dev->vhostfds[addr->index / 2];
+	fd = data->vhostfds[addr->index / 2];
 	addr->index %= 2;
 
 	ret = vhost_kernel_ioctl(fd, VHOST_SET_VRING_ADDR, addr);
@@ -339,27 +353,82 @@ static int
 vhost_kernel_setup(struct virtio_user_dev *dev)
 {
 	int vhostfd;
-	uint32_t i;
+	uint32_t q, i;
+	struct vhost_kernel_data *data;
+
+	data = malloc(sizeof(*data));
+	if (!data) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to allocate Vhost-kernel data", dev->path);
+		return -1;
+	}
+
+	data->vhostfds = malloc(dev->max_queue_pairs * sizeof(int));
+	if (!data->vhostfds) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to allocate Vhost FDs", dev->path);
+		goto err_data;
+	}
+	data->tapfds = malloc(dev->max_queue_pairs * sizeof(int));
+	if (!data->tapfds) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to allocate TAP FDs", dev->path);
+		goto err_vhostfds;
+	}
+
+	for (q = 0; q < dev->max_queue_pairs; ++q) {
+		data->vhostfds[q] = -1;
+		data->tapfds[q] = -1;
+	}
 
 	get_vhost_kernel_max_regions();
 
 	for (i = 0; i < dev->max_queue_pairs; ++i) {
 		vhostfd = open(dev->path, O_RDWR);
 		if (vhostfd < 0) {
-			PMD_DRV_LOG(ERR, "fail to open %s, %s",
-				    dev->path, strerror(errno));
-			return -1;
+			PMD_DRV_LOG(ERR, "fail to open %s, %s", dev->path, strerror(errno));
+			goto err_tapfds;
 		}
 
-		dev->vhostfds[i] = vhostfd;
+		data->vhostfds[i] = vhostfd;
 	}
 
+	dev->backend_data = data;
+
 	return 0;
+
+err_tapfds:
+	for (i = 0; i < dev->max_queue_pairs; i++)
+		if (data->vhostfds[i] >= 0)
+			close(data->vhostfds[i]);
+
+	free(data->tapfds);
+err_vhostfds:
+	free(data->vhostfds);
+err_data:
+	free(data);
+
+	return -1;
 }
 
 static int
-vhost_kernel_destroy(struct virtio_user_dev *dev __rte_unused)
+vhost_kernel_destroy(struct virtio_user_dev *dev)
 {
+	struct vhost_kernel_data *data = dev->backend_data;
+	uint32_t i;
+
+	if (!data)
+		return 0;
+
+	for (i = 0; i < dev->max_queue_pairs; ++i) {
+		if (data->vhostfds[i] >= 0)
+			close(data->vhostfds[i]);
+		if (data->tapfds[i] >= 0)
+			close(data->tapfds[i]);
+	}
+
+	free(data->vhostfds);
+	free(data->tapfds);
+	free(data);
+	dev->backend_data = NULL;
+
 	return 0;
 }
 
@@ -395,14 +464,15 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 	int vhostfd;
 	int tapfd;
 	int req_mq = (dev->max_queue_pairs > 1);
+	struct vhost_kernel_data *data = dev->backend_data;
 
-	vhostfd = dev->vhostfds[pair_idx];
+	vhostfd = data->vhostfds[pair_idx];
 
 	if (dev->qp_enabled[pair_idx] == enable)
 		return 0;
 
 	if (!enable) {
-		tapfd = dev->tapfds[pair_idx];
+		tapfd = data->tapfds[pair_idx];
 		if (vhost_kernel_set_backend(vhostfd, -1) < 0) {
 			PMD_DRV_LOG(ERR, "fail to set backend for vhost kernel");
 			return -1;
@@ -415,8 +485,8 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 		return 0;
 	}
 
-	if (dev->tapfds[pair_idx] >= 0) {
-		tapfd = dev->tapfds[pair_idx];
+	if (data->tapfds[pair_idx] >= 0) {
+		tapfd = data->tapfds[pair_idx];
 		if (vhost_kernel_tap_set_offload(tapfd, dev->features) == -1)
 			return -1;
 		if (req_mq && vhost_kernel_tap_set_queue(tapfd, true) < 0) {
@@ -439,7 +509,7 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 		return -1;
 	}
 
-	dev->tapfds[pair_idx] = tapfd;
+	data->tapfds[pair_idx] = tapfd;
 
 set_backend:
 	if (vhost_kernel_set_backend(vhostfd, tapfd) < 0) {

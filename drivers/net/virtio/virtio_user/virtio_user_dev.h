@@ -32,11 +32,6 @@ struct virtio_user_dev {
 	/* for vhost_vdpa backend */
 	int		vhostfd;
 
-	/* for vhost_kernel backend */
-	char		*ifname;
-	int		*vhostfds;
-	int		*tapfds;
-
 	/* for both vhost_user and vhost_kernel */
 	int		callfds[VIRTIO_MAX_VIRTQUEUES];
 	int		kickfds[VIRTIO_MAX_VIRTQUEUES];
@@ -56,6 +51,8 @@ struct virtio_user_dev {
 	uint16_t	port_id;
 	uint8_t		mac_addr[RTE_ETHER_ADDR_LEN];
 	char		path[PATH_MAX];
+	char		*ifname;
+
 	union {
 		struct vring		vrings[VIRTIO_MAX_VIRTQUEUES];
 		struct vring_packed	packed_vrings[VIRTIO_MAX_VIRTQUEUES];

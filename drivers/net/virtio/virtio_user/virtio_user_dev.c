@@ -398,11 +398,6 @@ exit:
 static int
 virtio_user_dev_setup(struct virtio_user_dev *dev)
 {
-	uint32_t q;
-
-	dev->vhostfds = NULL;
-	dev->tapfds = NULL;
-
 	if (dev->is_server) {
 		if (dev->backend_type != VIRTIO_USER_BACKEND_VHOST_USER) {
 			PMD_DRV_LOG(ERR, "Server mode only supports vhost-user!");
@@ -410,33 +405,20 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 		}
 	}
 
-	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER) {
+	switch (dev->backend_type) {
+	case VIRTIO_USER_BACKEND_VHOST_USER:
 		dev->ops = &virtio_ops_user;
-	} else if (dev->backend_type ==
-			VIRTIO_USER_BACKEND_VHOST_KERNEL) {
+		break;
+	case VIRTIO_USER_BACKEND_VHOST_KERNEL:
 		dev->ops = &virtio_ops_kernel;
-
-		dev->vhostfds = malloc(dev->max_queue_pairs *
-				sizeof(int));
-		dev->tapfds = malloc(dev->max_queue_pairs *
-				sizeof(int));
-		if (!dev->vhostfds || !dev->tapfds) {
-			PMD_INIT_LOG(ERR, "(%s) Failed to allocate FDs", dev->path);
-			return -1;
-		}
-
-		for (q = 0; q < dev->max_queue_pairs; ++q) {
-			dev->vhostfds[q] = -1;
-			dev->tapfds[q] = -1;
-		}
-	} else if (dev->backend_type ==
-			VIRTIO_USER_BACKEND_VHOST_VDPA) {
+		break;
+	case VIRTIO_USER_BACKEND_VHOST_VDPA:
 		dev->ops = &virtio_ops_vdpa;
-	} else {
+		break;
+	default:
 		PMD_DRV_LOG(ERR, "(%s) Unknown backend type", dev->path);
 		return -1;
 	}
-
 
 	if (dev->ops->setup(dev) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to setup backend\n", dev->path);
@@ -592,15 +574,6 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
 		close(dev->callfds[i]);
 		close(dev->kickfds[i]);
-	}
-	if (dev->vhostfds) {
-		for (i = 0; i < dev->max_queue_pairs; ++i) {
-			close(dev->vhostfds[i]);
-			if (dev->tapfds[i] >= 0)
-				close(dev->tapfds[i]);
-		}
-		free(dev->vhostfds);
-		free(dev->tapfds);
 	}
 
 	free(dev->ifname);
