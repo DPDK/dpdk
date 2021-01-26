@@ -718,18 +718,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(hw);
 
-#ifdef RTE_VIRTIO_USER
-	if (hw->bus_type == VIRTIO_BUS_USER)
-		virtio_user_dev_uninit(dev->data->dev_private);
-	else
-#endif
-	if (dev->device) {
-		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(dev));
-		if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY)
-			rte_pci_ioport_unmap(VTPCI_IO(hw));
-	}
-
-	return 0;
+	return VTPCI_OPS(hw)->dev_close(hw);
 }
 
 static int

@@ -462,6 +462,16 @@ virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 			    strerror(errno));
 }
 
+static int
+virtio_user_dev_close(struct virtio_hw *hw)
+{
+	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
+
+	virtio_user_dev_uninit(dev);
+
+	return 0;
+}
+
 const struct virtio_pci_ops virtio_user_ops = {
 	.read_dev_cfg	= virtio_user_read_dev_config,
 	.write_dev_cfg	= virtio_user_write_dev_config,
@@ -476,6 +486,7 @@ const struct virtio_pci_ops virtio_user_ops = {
 	.setup_queue	= virtio_user_setup_queue,
 	.del_queue	= virtio_user_del_queue,
 	.notify_queue	= virtio_user_notify_queue,
+	.dev_close	= virtio_user_dev_close,
 };
 
 static const char *valid_args[] = {

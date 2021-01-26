@@ -44,8 +44,6 @@ elif arch_subdir == 'arm' and host_machine.cpu_family().startswith('aarch64')
 endif
 
 if is_linux
-	dpdk_conf.set('RTE_VIRTIO_USER', 1)
-
 	sources += files('virtio_user_ethdev.c',
 		'virtio_user/vhost_kernel.c',
 		'virtio_user/vhost_kernel_tap.c',

@@ -297,6 +297,17 @@ legacy_intr_detect(struct virtio_hw *hw)
 	hw->use_msix = vtpci_msix_detect(VTPCI_DEV(hw));
 }
 
+static int
+legacy_dev_close(struct virtio_hw *hw)
+{
+	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
+
+	rte_pci_unmap_device(dev->pci_dev);
+	rte_pci_ioport_unmap(VTPCI_IO(hw));
+
+	return 0;
+}
+
 const struct virtio_pci_ops legacy_ops = {
 	.read_dev_cfg	= legacy_read_dev_config,
 	.write_dev_cfg	= legacy_write_dev_config,
@@ -312,6 +323,7 @@ const struct virtio_pci_ops legacy_ops = {
 	.del_queue	= legacy_del_queue,
 	.notify_queue	= legacy_notify_queue,
 	.intr_detect	= legacy_intr_detect,
+	.dev_close	= legacy_dev_close,
 };
 
 static inline void
@@ -511,6 +523,16 @@ modern_intr_detect(struct virtio_hw *hw)
 	hw->use_msix = vtpci_msix_detect(VTPCI_DEV(hw));
 }
 
+static int
+modern_dev_close(struct virtio_hw *hw)
+{
+	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
+
+	rte_pci_unmap_device(dev->pci_dev);
+
+	return 0;
+}
+
 const struct virtio_pci_ops modern_ops = {
 	.read_dev_cfg	= modern_read_dev_config,
 	.write_dev_cfg	= modern_write_dev_config,
@@ -526,6 +548,7 @@ const struct virtio_pci_ops modern_ops = {
 	.del_queue	= modern_del_queue,
 	.notify_queue	= modern_notify_queue,
 	.intr_detect	= modern_intr_detect,
+	.dev_close	= modern_dev_close,
 };
 
 
@@ -756,6 +779,8 @@ vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 	struct virtio_hw *hw = &dev->hw;
 
 	RTE_BUILD_BUG_ON(offsetof(struct virtio_pci_dev, hw) != 0);
+
+	dev->pci_dev = pci_dev;
 
 	/*
 	 * Try if we can succeed reading virtio pci caps, which exists
