@@ -39,7 +39,6 @@
 #define VHOST_GET_BACKEND_FEATURES _IOR(VHOST_VIRTIO, 0x26, __u64)
 
 static uint64_t vhost_req_user_to_vdpa[] = {
-	[VHOST_USER_SET_OWNER] = VHOST_SET_OWNER,
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
 	[VHOST_USER_SET_FEATURES] = VHOST_SET_FEATURES,
 	[VHOST_USER_GET_FEATURES] = VHOST_GET_FEATURES,
@@ -85,6 +84,28 @@ struct vhost_msg {
 		uint8_t padding[64];
 	};
 };
+
+
+static int
+vhost_vdpa_ioctl(int fd, uint64_t request, void *arg)
+{
+	int ret;
+
+	ret = ioctl(fd, request, arg);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Vhost-vDPA ioctl %"PRIu64" failed (%s)",
+				request, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+vhost_vdpa_set_owner(struct virtio_user_dev *dev)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_SET_OWNER, NULL);
+}
 
 static int
 vhost_vdpa_iotlb_batch_begin(struct virtio_user_dev *dev)
@@ -308,7 +329,7 @@ batch_end:
 	 (1ULL << VIRTIO_NET_F_CSUM))
 
 static int
-vhost_vdpa_ioctl(struct virtio_user_dev *dev,
+vhost_vdpa_send_request(struct virtio_user_dev *dev,
 		   enum vhost_user_request req,
 		   void *arg)
 {
@@ -396,7 +417,7 @@ vhost_vdpa_enable_queue_pair(struct virtio_user_dev *dev,
 			.num   = enable,
 		};
 
-		if (vhost_vdpa_ioctl(dev, VHOST_USER_SET_VRING_ENABLE, &state))
+		if (vhost_vdpa_send_request(dev, VHOST_USER_SET_VRING_ENABLE, &state))
 			return -1;
 	}
 
@@ -407,7 +428,8 @@ vhost_vdpa_enable_queue_pair(struct virtio_user_dev *dev,
 
 struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.setup = vhost_vdpa_setup,
-	.send_request = vhost_vdpa_ioctl,
+	.set_owner = vhost_vdpa_set_owner,
+	.send_request = vhost_vdpa_send_request,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,
 	.dma_unmap = vhost_vdpa_dma_unmap_batch,

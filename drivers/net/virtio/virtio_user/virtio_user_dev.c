@@ -490,8 +490,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 			(1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
 
 	if (!dev->is_server) {
-		if (dev->ops->send_request(dev, VHOST_USER_SET_OWNER,
-					   NULL) < 0) {
+		if (dev->ops->set_owner(dev) < 0) {
 			PMD_INIT_LOG(ERR, "set_owner fails: %s",
 				     strerror(errno));
 			return -1;

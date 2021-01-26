@@ -125,6 +125,24 @@ fail:
 	return -1;
 }
 
+static int
+vhost_user_set_owner(struct virtio_user_dev *dev)
+{
+	int ret;
+	struct vhost_user_msg msg = {
+		.request = VHOST_USER_SET_OWNER,
+		.flags = VHOST_USER_VERSION,
+	};
+
+	ret = vhost_user_write(dev->vhostfd, &msg, NULL, 0);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to set owner");
+		return -1;
+	}
+
+	return 0;
+}
+
 struct walk_arg {
 	struct vhost_memory *vm;
 	int *fds;
@@ -230,7 +248,6 @@ prepare_vhost_memory_user(struct vhost_user_msg *msg, int fds[])
 static struct vhost_user_msg m;
 
 const char * const vhost_msg_strings[] = {
-	[VHOST_USER_SET_OWNER] = "VHOST_SET_OWNER",
 	[VHOST_USER_RESET_OWNER] = "VHOST_RESET_OWNER",
 	[VHOST_USER_SET_FEATURES] = "VHOST_SET_FEATURES",
 	[VHOST_USER_GET_FEATURES] = "VHOST_GET_FEATURES",
@@ -308,7 +325,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		msg.size = sizeof(m.payload.u64);
 		break;
 
-	case VHOST_USER_SET_OWNER:
 	case VHOST_USER_RESET_OWNER:
 		break;
 
@@ -519,6 +535,7 @@ vhost_user_enable_queue_pair(struct virtio_user_dev *dev,
 
 struct virtio_user_backend_ops virtio_ops_user = {
 	.setup = vhost_user_setup,
+	.set_owner = vhost_user_set_owner,
 	.send_request = vhost_user_sock,
 	.enable_qp = vhost_user_enable_queue_pair
 };

@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <rte_memory.h>
 
@@ -55,8 +56,28 @@ get_vhost_kernel_max_regions(void)
 	close(fd);
 }
 
+static int
+vhost_kernel_ioctl(int fd, uint64_t request, void *arg)
+{
+	int ret;
+
+	ret = ioctl(fd, request, arg);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Vhost-kernel ioctl %"PRIu64" failed (%s)",
+				request, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+vhost_kernel_set_owner(struct virtio_user_dev *dev)
+{
+	return vhost_kernel_ioctl(dev->vhostfds[0], VHOST_SET_OWNER, NULL);
+}
+
 static uint64_t vhost_req_user_to_kernel[] = {
-	[VHOST_USER_SET_OWNER] = VHOST_SET_OWNER,
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
 	[VHOST_USER_SET_FEATURES] = VHOST_SET_FEATURES,
 	[VHOST_USER_GET_FEATURES] = VHOST_GET_FEATURES,
@@ -175,7 +196,7 @@ tap_support_features(void)
 }
 
 static int
-vhost_kernel_ioctl(struct virtio_user_dev *dev,
+vhost_kernel_send_request(struct virtio_user_dev *dev,
 		   enum vhost_user_request req,
 		   void *arg)
 {
@@ -385,6 +406,7 @@ set_backend:
 
 struct virtio_user_backend_ops virtio_ops_kernel = {
 	.setup = vhost_kernel_setup,
-	.send_request = vhost_kernel_ioctl,
+	.set_owner = vhost_kernel_set_owner,
+	.send_request = vhost_kernel_send_request,
 	.enable_qp = vhost_kernel_enable_queue_pair
 };
