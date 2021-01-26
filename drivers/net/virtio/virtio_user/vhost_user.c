@@ -692,6 +692,14 @@ virtio_user_start_server(struct virtio_user_dev *dev, struct sockaddr_un *un)
 	if (ret < 0)
 		return -1;
 
+	PMD_DRV_LOG(NOTICE, "(%s) waiting for client connection...", dev->path);
+	dev->vhostfd = accept(fd, NULL, NULL);
+	if (dev->vhostfd < 0) {
+		PMD_DRV_LOG(ERR, "Failed to accept initial client connection (%s)",
+				strerror(errno));
+		return -1;
+	}
+
 	flag = fcntl(fd, F_GETFL);
 	if (fcntl(fd, F_SETFL, flag | O_NONBLOCK) < 0) {
 		PMD_DRV_LOG(ERR, "fcntl failed, %s", strerror(errno));
@@ -736,7 +744,6 @@ vhost_user_setup(struct virtio_user_dev *dev)
 			close(fd);
 			return -1;
 		}
-		dev->vhostfd = -1;
 	} else {
 		if (connect(fd, (struct sockaddr *)&un, sizeof(un)) < 0) {
 			PMD_DRV_LOG(ERR, "connect error, %s", strerror(errno));

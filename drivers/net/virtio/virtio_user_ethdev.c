@@ -174,11 +174,6 @@ virtio_user_delayed_handler(void *param)
 		if (dev->vhostfd >= 0) {
 			close(dev->vhostfd);
 			dev->vhostfd = -1;
-			/* Until the featuers are negotiated again, don't assume
-			 * the backend supports VHOST_USER_PROTOCOL_F_STATUS
-			 */
-			dev->protocol_features &=
-				~(1ULL << VHOST_USER_PROTOCOL_F_STATUS);
 		}
 		eth_dev->intr_handle->fd = dev->listenfd;
 		rte_intr_callback_register(eth_dev->intr_handle,

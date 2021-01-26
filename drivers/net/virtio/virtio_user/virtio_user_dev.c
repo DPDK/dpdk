@@ -144,10 +144,6 @@ virtio_user_dev_set_features(struct virtio_user_dev *dev)
 
 	pthread_mutex_lock(&dev->mutex);
 
-	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER &&
-			dev->vhostfd < 0)
-		goto error;
-
 	/* Step 0: tell vhost to create queues */
 	if (virtio_user_queue_setup(dev, virtio_user_create_queue) < 0)
 		goto error;
@@ -190,11 +186,6 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	rte_mcfg_mem_read_lock();
 	pthread_mutex_lock(&dev->mutex);
 
-	/* Vhost-user client not connected yet, will start later */
-	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER &&
-			dev->vhostfd < 0)
-		goto out;
-
 	/* Step 2: share memory regions */
 	ret = dev->ops->set_memory_table(dev);
 	if (ret < 0)
@@ -213,7 +204,7 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 		goto error;
 
 	dev->started = true;
-out:
+
 	pthread_mutex_unlock(&dev->mutex);
 	rte_mcfg_mem_read_unlock();
 
@@ -422,35 +413,35 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 			PMD_DRV_LOG(ERR, "Server mode only supports vhost-user!");
 			return -1;
 		}
+	}
+
+	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER) {
 		dev->ops = &virtio_ops_user;
-	} else {
-		if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER) {
-			dev->ops = &virtio_ops_user;
-		} else if (dev->backend_type ==
-					VIRTIO_USER_BACKEND_VHOST_KERNEL) {
-			dev->ops = &virtio_ops_kernel;
+	} else if (dev->backend_type ==
+			VIRTIO_USER_BACKEND_VHOST_KERNEL) {
+		dev->ops = &virtio_ops_kernel;
 
-			dev->vhostfds = malloc(dev->max_queue_pairs *
-					       sizeof(int));
-			dev->tapfds = malloc(dev->max_queue_pairs *
-					     sizeof(int));
-			if (!dev->vhostfds || !dev->tapfds) {
-				PMD_INIT_LOG(ERR, "(%s) Failed to allocate FDs", dev->path);
-				return -1;
-			}
-
-			for (q = 0; q < dev->max_queue_pairs; ++q) {
-				dev->vhostfds[q] = -1;
-				dev->tapfds[q] = -1;
-			}
-		} else if (dev->backend_type ==
-				VIRTIO_USER_BACKEND_VHOST_VDPA) {
-			dev->ops = &virtio_ops_vdpa;
-		} else {
-			PMD_DRV_LOG(ERR, "(%s) Unknown backend type", dev->path);
+		dev->vhostfds = malloc(dev->max_queue_pairs *
+				sizeof(int));
+		dev->tapfds = malloc(dev->max_queue_pairs *
+				sizeof(int));
+		if (!dev->vhostfds || !dev->tapfds) {
+			PMD_INIT_LOG(ERR, "(%s) Failed to allocate FDs", dev->path);
 			return -1;
 		}
+
+		for (q = 0; q < dev->max_queue_pairs; ++q) {
+			dev->vhostfds[q] = -1;
+			dev->tapfds[q] = -1;
+		}
+	} else if (dev->backend_type ==
+			VIRTIO_USER_BACKEND_VHOST_VDPA) {
+		dev->ops = &virtio_ops_vdpa;
+	} else {
+		PMD_DRV_LOG(ERR, "(%s) Unknown backend type", dev->path);
+		return -1;
 	}
+
 
 	if (dev->ops->setup(dev) < 0) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to setup backend\n", dev->path);
@@ -541,53 +532,35 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		dev->unsupported_features |=
 			(1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
 
-	if (!dev->is_server) {
-		if (dev->ops->set_owner(dev) < 0) {
-			PMD_INIT_LOG(ERR, "(%s) Failed to set backend owner", dev->path);
-			return -1;
-		}
-
-		if (dev->ops->get_features(dev, &dev->device_features) < 0) {
-			PMD_INIT_LOG(ERR, "(%s) Failed to get backend features", dev->path);
-			return -1;
-		}
-
-
-		if ((dev->device_features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
-				(dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA)) {
-			if (dev->ops->get_protocol_features(dev, &protocol_features)) {
-				PMD_INIT_LOG(ERR, "(%s) Failed to get backend protocol features",
-						dev->path);
-				return -1;
-			}
-
-			dev->protocol_features &= protocol_features;
-
-			if (dev->ops->set_protocol_features(dev, dev->protocol_features)) {
-				PMD_INIT_LOG(ERR, "(%s) Failed to set backend protocol features",
-						dev->path);
-				return -1;
-			}
-
-			if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_MQ)))
-				dev->unsupported_features |= (1ull << VIRTIO_NET_F_MQ);
-		}
-	} else {
-		/* We just pretend vhost-user can support all these features.
-		 * Note that this could be problematic that if some feature is
-		 * negotiated but not supported by the vhost-user which comes
-		 * later.
-		 */
-		dev->device_features = VIRTIO_USER_SUPPORTED_FEATURES;
-
-		/* We cannot assume VHOST_USER_PROTOCOL_F_STATUS is supported
-		 * until it's negotiated
-		 */
-		dev->protocol_features &=
-			~(1ULL << VHOST_USER_PROTOCOL_F_STATUS);
+	if (dev->ops->set_owner(dev) < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to set backend owner", dev->path);
+		return -1;
 	}
 
+	if (dev->ops->get_features(dev, &dev->device_features) < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to get backend features", dev->path);
+		return -1;
+	}
 
+	if ((dev->device_features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
+			dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA) {
+		if (dev->ops->get_protocol_features(dev, &protocol_features)) {
+			PMD_INIT_LOG(ERR, "(%s) Failed to get backend protocol features",
+					dev->path);
+			return -1;
+		}
+
+		dev->protocol_features &= protocol_features;
+
+		if (dev->ops->set_protocol_features(dev, dev->protocol_features)) {
+			PMD_INIT_LOG(ERR, "(%s) Failed to set backend protocol features",
+					dev->path);
+			return -1;
+		}
+
+		if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_MQ)))
+			dev->unsupported_features |= (1ull << VIRTIO_NET_F_MQ);
+	}
 
 	if (!mrg_rxbuf)
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MRG_RXBUF);
