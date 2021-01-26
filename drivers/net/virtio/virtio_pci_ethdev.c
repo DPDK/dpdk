@@ -73,6 +73,8 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	int ret;
 
+	VTPCI_DEV(hw) = pci_dev;
+
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
 		if (ret) {

@@ -47,6 +47,56 @@ check_vq_phys_addr_ok(struct virtqueue *vq)
 	return 1;
 }
 
+#define PCI_MSIX_ENABLE 0x8000
+
+static enum virtio_msix_status
+vtpci_msix_detect(struct rte_pci_device *dev)
+{
+	uint8_t pos;
+	int ret;
+
+	ret = rte_pci_read_config(dev, &pos, 1, PCI_CAPABILITY_LIST);
+	if (ret != 1) {
+		PMD_INIT_LOG(DEBUG,
+			     "failed to read pci capability list, ret %d", ret);
+		return VIRTIO_MSIX_NONE;
+	}
+
+	while (pos) {
+		uint8_t cap[2];
+
+		ret = rte_pci_read_config(dev, cap, sizeof(cap), pos);
+		if (ret != sizeof(cap)) {
+			PMD_INIT_LOG(DEBUG,
+				     "failed to read pci cap at pos: %x ret %d",
+				     pos, ret);
+			break;
+		}
+
+		if (cap[0] == PCI_CAP_ID_MSIX) {
+			uint16_t flags;
+
+			ret = rte_pci_read_config(dev, &flags, sizeof(flags),
+					pos + sizeof(cap));
+			if (ret != sizeof(flags)) {
+				PMD_INIT_LOG(DEBUG,
+					     "failed to read pci cap at pos:"
+					     " %x ret %d", pos + 2, ret);
+				break;
+			}
+
+			if (flags & PCI_MSIX_ENABLE)
+				return VIRTIO_MSIX_ENABLED;
+			else
+				return VIRTIO_MSIX_DISABLED;
+		}
+
+		pos = cap[1];
+	}
+
+	return VIRTIO_MSIX_NONE;
+}
+
 /*
  * Since we are in legacy mode:
  * http://ozlabs.org/~rusty/virtio-spec/virtio-0.9.5.pdf
@@ -241,6 +291,12 @@ legacy_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 		VIRTIO_PCI_QUEUE_NOTIFY);
 }
 
+static void
+legacy_intr_detect(struct virtio_hw *hw)
+{
+	hw->use_msix = vtpci_msix_detect(VTPCI_DEV(hw));
+}
+
 const struct virtio_pci_ops legacy_ops = {
 	.read_dev_cfg	= legacy_read_dev_config,
 	.write_dev_cfg	= legacy_write_dev_config,
@@ -255,6 +311,7 @@ const struct virtio_pci_ops legacy_ops = {
 	.setup_queue	= legacy_setup_queue,
 	.del_queue	= legacy_del_queue,
 	.notify_queue	= legacy_notify_queue,
+	.intr_detect	= legacy_intr_detect,
 };
 
 static inline void
@@ -446,6 +503,14 @@ modern_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	rte_write32(notify_data, vq->notify_addr);
 }
 
+
+
+static void
+modern_intr_detect(struct virtio_hw *hw)
+{
+	hw->use_msix = vtpci_msix_detect(VTPCI_DEV(hw));
+}
+
 const struct virtio_pci_ops modern_ops = {
 	.read_dev_cfg	= modern_read_dev_config,
 	.write_dev_cfg	= modern_write_dev_config,
@@ -460,6 +525,7 @@ const struct virtio_pci_ops modern_ops = {
 	.setup_queue	= modern_setup_queue,
 	.del_queue	= modern_del_queue,
 	.notify_queue	= modern_notify_queue,
+	.intr_detect	= modern_intr_detect,
 };
 
 
@@ -561,8 +627,6 @@ get_cfg_addr(struct rte_pci_device *dev, struct virtio_pci_cap *cap)
 
 	return base + offset;
 }
-
-#define PCI_MSIX_ENABLE 0x8000
 
 static int
 virtio_read_caps(struct rte_pci_device *dev, struct virtio_hw *hw)
@@ -700,7 +764,7 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 		PMD_INIT_LOG(INFO, "modern virtio pci detected.");
 		virtio_hw_internal[hw->port_id].vtpci_ops = &modern_ops;
 		hw->bus_type = VIRTIO_BUS_PCI_MODERN;
-		return 0;
+		goto msix_detect;
 	}
 
 	PMD_INIT_LOG(INFO, "trying with legacy virtio pci.");
@@ -720,53 +784,9 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 	virtio_hw_internal[hw->port_id].vtpci_ops = &legacy_ops;
 	hw->bus_type = VIRTIO_BUS_PCI_LEGACY;
 
+msix_detect:
+	VTPCI_OPS(hw)->intr_detect(hw);
+
 	return 0;
 }
 
-enum virtio_msix_status
-vtpci_msix_detect(struct rte_pci_device *dev)
-{
-	uint8_t pos;
-	int ret;
-
-	ret = rte_pci_read_config(dev, &pos, 1, PCI_CAPABILITY_LIST);
-	if (ret != 1) {
-		PMD_INIT_LOG(DEBUG,
-			     "failed to read pci capability list, ret %d", ret);
-		return VIRTIO_MSIX_NONE;
-	}
-
-	while (pos) {
-		uint8_t cap[2];
-
-		ret = rte_pci_read_config(dev, cap, sizeof(cap), pos);
-		if (ret != sizeof(cap)) {
-			PMD_INIT_LOG(DEBUG,
-				     "failed to read pci cap at pos: %x ret %d",
-				     pos, ret);
-			break;
-		}
-
-		if (cap[0] == PCI_CAP_ID_MSIX) {
-			uint16_t flags;
-
-			ret = rte_pci_read_config(dev, &flags, sizeof(flags),
-					pos + sizeof(cap));
-			if (ret != sizeof(flags)) {
-				PMD_INIT_LOG(DEBUG,
-					     "failed to read pci cap at pos:"
-					     " %x ret %d", pos + 2, ret);
-				break;
-			}
-
-			if (flags & PCI_MSIX_ENABLE)
-				return VIRTIO_MSIX_ENABLED;
-			else
-				return VIRTIO_MSIX_DISABLED;
-		}
-
-		pos = cap[1];
-	}
-
-	return VIRTIO_MSIX_NONE;
-}
