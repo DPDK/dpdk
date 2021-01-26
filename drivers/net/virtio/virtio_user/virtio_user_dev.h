@@ -29,10 +29,6 @@ struct virtio_user_dev {
 	enum virtio_user_backend_type backend_type;
 	bool		is_server;  /* server or client mode */
 
-	/* for vhost_vdpa backend */
-	int		vhostfd;
-
-	/* for both vhost_user and vhost_kernel */
 	int		callfds[VIRTIO_MAX_VIRTQUEUES];
 	int		kickfds[VIRTIO_MAX_VIRTQUEUES];
 	int		mac_specified;
@@ -45,7 +41,6 @@ struct virtio_user_dev {
 	uint64_t	device_features; /* supported features by device */
 	uint64_t	frontend_features; /* enabled frontend features */
 	uint64_t	unsupported_features; /* unsupported features mask */
-	uint64_t	protocol_features; /* negotiated protocol features */
 	uint8_t		status;
 	uint16_t	net_status;
 	uint16_t	port_id;
