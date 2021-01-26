@@ -37,10 +37,15 @@ virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	 * pair.
 	 */
 	struct vhost_vring_file file;
+	int ret;
 
 	file.index = queue_sel;
 	file.fd = dev->callfds[queue_sel];
-	dev->ops->set_vring_call(dev, &file);
+	ret = dev->ops->set_vring_call(dev, &file);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to create queue %u\n", dev->path, queue_sel);
+		return -1;
+	}
 
 	return 0;
 }
@@ -48,6 +53,7 @@ virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 static int
 virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 {
+	int ret;
 	struct vhost_vring_file file;
 	struct vhost_vring_state state;
 	struct vring *vring = &dev->vrings[queue_sel];
@@ -73,15 +79,21 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 
 	state.index = queue_sel;
 	state.num = vring->num;
-	dev->ops->set_vring_num(dev, &state);
+	ret = dev->ops->set_vring_num(dev, &state);
+	if (ret < 0)
+		goto err;
 
 	state.index = queue_sel;
 	state.num = 0; /* no reservation */
 	if (dev->features & (1ULL << VIRTIO_F_RING_PACKED))
 		state.num |= (1 << 15);
-	dev->ops->set_vring_base(dev, &state);
+	ret = dev->ops->set_vring_base(dev, &state);
+	if (ret < 0)
+		goto err;
 
-	dev->ops->set_vring_addr(dev, &addr);
+	ret = dev->ops->set_vring_addr(dev, &addr);
+	if (ret < 0)
+		goto err;
 
 	/* Of all per virtqueue MSGs, make sure VHOST_USER_SET_VRING_KICK comes
 	 * lastly because vhost depends on this msg to judge if
@@ -89,9 +101,15 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	 */
 	file.index = queue_sel;
 	file.fd = dev->kickfds[queue_sel];
-	dev->ops->set_vring_kick(dev, &file);
+	ret = dev->ops->set_vring_kick(dev, &file);
+	if (ret < 0)
+		goto err;
 
 	return 0;
+err:
+	PMD_INIT_LOG(ERR, "(%s) Failed to kick queue %u\n", dev->path, queue_sel);
+
+	return -1;
 }
 
 static int
@@ -103,14 +121,14 @@ virtio_user_queue_setup(struct virtio_user_dev *dev,
 	for (i = 0; i < dev->max_queue_pairs; ++i) {
 		queue_sel = 2 * i + VTNET_SQ_RQ_QUEUE_IDX;
 		if (fn(dev, queue_sel) < 0) {
-			PMD_DRV_LOG(INFO, "setup rx vq fails: %u", i);
+			PMD_DRV_LOG(ERR, "(%s) setup rx vq %u failed", dev->path, i);
 			return -1;
 		}
 	}
 	for (i = 0; i < dev->max_queue_pairs; ++i) {
 		queue_sel = 2 * i + VTNET_SQ_TQ_QUEUE_IDX;
 		if (fn(dev, queue_sel) < 0) {
-			PMD_DRV_LOG(INFO, "setup tx vq fails: %u", i);
+			PMD_DRV_LOG(INFO, "(%s) setup tx vq %u failed", dev->path, i);
 			return -1;
 		}
 	}
@@ -144,7 +162,7 @@ virtio_user_dev_set_features(struct virtio_user_dev *dev)
 	ret = dev->ops->set_features(dev, features);
 	if (ret < 0)
 		goto error;
-	PMD_DRV_LOG(INFO, "set features: %" PRIx64, features);
+	PMD_DRV_LOG(INFO, "(%s) set features: 0x%" PRIx64, dev->path, features);
 error:
 	pthread_mutex_unlock(&dev->mutex);
 
@@ -172,9 +190,10 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	rte_mcfg_mem_read_lock();
 	pthread_mutex_lock(&dev->mutex);
 
+	/* Vhost-user client not connected yet, will start later */
 	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER &&
 			dev->vhostfd < 0)
-		goto error;
+		goto out;
 
 	/* Step 2: share memory regions */
 	ret = dev->ops->set_memory_table(dev);
@@ -182,15 +201,19 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 		goto error;
 
 	/* Step 3: kick queues */
-	if (virtio_user_queue_setup(dev, virtio_user_kick_queue) < 0)
+	ret = virtio_user_queue_setup(dev, virtio_user_kick_queue);
+	if (ret < 0)
 		goto error;
 
 	/* Step 4: enable queues
 	 * we enable the 1st queue pair by default.
 	 */
-	dev->ops->enable_qp(dev, 0, 1);
+	ret = dev->ops->enable_qp(dev, 0, 1);
+	if (ret < 0)
+		goto error;
 
 	dev->started = true;
+out:
 	pthread_mutex_unlock(&dev->mutex);
 	rte_mcfg_mem_read_unlock();
 
@@ -198,6 +221,9 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 error:
 	pthread_mutex_unlock(&dev->mutex);
 	rte_mcfg_mem_read_unlock();
+
+	PMD_INIT_LOG(ERR, "(%s) Failed to start device\n", dev->path);
+
 	/* TODO: free resource here or caller to check */
 	return -1;
 }
@@ -206,31 +232,40 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 {
 	struct vhost_vring_state state;
 	uint32_t i;
-	int error = 0;
+	int ret;
 
 	pthread_mutex_lock(&dev->mutex);
 	if (!dev->started)
 		goto out;
 
-	for (i = 0; i < dev->max_queue_pairs; ++i)
-		dev->ops->enable_qp(dev, i, 0);
+	for (i = 0; i < dev->max_queue_pairs; ++i) {
+		ret = dev->ops->enable_qp(dev, i, 0);
+		if (ret < 0)
+			goto err;
+	}
 
 	/* Stop the backend. */
 	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
 		state.index = i;
-		if (dev->ops->get_vring_base(dev, &state) < 0) {
-			PMD_DRV_LOG(ERR, "get_vring_base failed, index=%u",
-				    i);
-			error = -1;
-			goto out;
+		ret = dev->ops->get_vring_base(dev, &state);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "(%s) get_vring_base failed, index=%u", dev->path, i);
+			goto err;
 		}
 	}
 
 	dev->started = false;
+
 out:
 	pthread_mutex_unlock(&dev->mutex);
 
-	return error;
+	return 0;
+err:
+	pthread_mutex_unlock(&dev->mutex);
+
+	PMD_INIT_LOG(ERR, "(%s) Failed to stop device\n", dev->path);
+
+	return -1;
 }
 
 static inline void
@@ -270,13 +305,13 @@ virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 		 */
 		callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 		if (callfd < 0) {
-			PMD_DRV_LOG(ERR, "callfd error, %s", strerror(errno));
+			PMD_DRV_LOG(ERR, "(%s) callfd error, %s", dev->path, strerror(errno));
 			break;
 		}
 		kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 		if (kickfd < 0) {
 			close(callfd);
-			PMD_DRV_LOG(ERR, "kickfd error, %s", strerror(errno));
+			PMD_DRV_LOG(ERR, "(%s) kickfd error, %s", dev->path, strerror(errno));
 			break;
 		}
 		dev->callfds[i] = callfd;
@@ -304,7 +339,7 @@ virtio_user_fill_intr_handle(struct virtio_user_dev *dev)
 	if (!eth_dev->intr_handle) {
 		eth_dev->intr_handle = malloc(sizeof(*eth_dev->intr_handle));
 		if (!eth_dev->intr_handle) {
-			PMD_DRV_LOG(ERR, "fail to allocate intr_handle");
+			PMD_DRV_LOG(ERR, "(%s) failed to allocate intr_handle", dev->path);
 			return -1;
 		}
 		memset(eth_dev->intr_handle, 0, sizeof(*eth_dev->intr_handle));
@@ -335,6 +370,7 @@ virtio_user_mem_event_cb(enum rte_mem_event type __rte_unused,
 	struct virtio_user_dev *dev = arg;
 	struct rte_memseg_list *msl;
 	uint16_t i;
+	int ret = 0;
 
 	/* ignore externally allocated memory */
 	msl = rte_mem_virt2memseg_list(addr);
@@ -347,18 +383,29 @@ virtio_user_mem_event_cb(enum rte_mem_event type __rte_unused,
 		goto exit;
 
 	/* Step 1: pause the active queues */
-	for (i = 0; i < dev->queue_pairs; i++)
-		dev->ops->enable_qp(dev, i, 0);
+	for (i = 0; i < dev->queue_pairs; i++) {
+		ret = dev->ops->enable_qp(dev, i, 0);
+		if (ret < 0)
+			goto exit;
+	}
 
 	/* Step 2: update memory regions */
-	dev->ops->set_memory_table(dev);
+	ret = dev->ops->set_memory_table(dev);
+	if (ret < 0)
+		goto exit;
 
 	/* Step 3: resume the active queues */
-	for (i = 0; i < dev->queue_pairs; i++)
-		dev->ops->enable_qp(dev, i, 1);
+	for (i = 0; i < dev->queue_pairs; i++) {
+		ret = dev->ops->enable_qp(dev, i, 1);
+		if (ret < 0)
+			goto exit;
+	}
 
 exit:
 	pthread_mutex_unlock(&dev->mutex);
+
+	if (ret < 0)
+		PMD_DRV_LOG(ERR, "(%s) Failed to update memory table\n", dev->path);
 }
 
 static int
@@ -388,7 +435,7 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 			dev->tapfds = malloc(dev->max_queue_pairs *
 					     sizeof(int));
 			if (!dev->vhostfds || !dev->tapfds) {
-				PMD_INIT_LOG(ERR, "Failed to malloc");
+				PMD_INIT_LOG(ERR, "(%s) Failed to allocate FDs", dev->path);
 				return -1;
 			}
 
@@ -400,19 +447,25 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 				VIRTIO_USER_BACKEND_VHOST_VDPA) {
 			dev->ops = &virtio_ops_vdpa;
 		} else {
-			PMD_DRV_LOG(ERR, "Unknown backend type");
+			PMD_DRV_LOG(ERR, "(%s) Unknown backend type", dev->path);
 			return -1;
 		}
 	}
 
-	if (dev->ops->setup(dev) < 0)
+	if (dev->ops->setup(dev) < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to setup backend\n", dev->path);
 		return -1;
+	}
 
-	if (virtio_user_dev_init_notify(dev) < 0)
+	if (virtio_user_dev_init_notify(dev) < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to init notifiers\n", dev->path);
 		return -1;
+	}
 
-	if (virtio_user_fill_intr_handle(dev) < 0)
+	if (virtio_user_fill_intr_handle(dev) < 0) {
+		PMD_INIT_LOG(ERR, "(%s) Failed to init interrupt handler\n", dev->path);
 		return -1;
+	}
 
 	return 0;
 }
@@ -480,7 +533,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	}
 
 	if (virtio_user_dev_setup(dev) < 0) {
-		PMD_INIT_LOG(ERR, "backend set up fails");
+		PMD_INIT_LOG(ERR, "(%s) backend set up fails", dev->path);
 		return -1;
 	}
 
@@ -490,27 +543,31 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 
 	if (!dev->is_server) {
 		if (dev->ops->set_owner(dev) < 0) {
-			PMD_INIT_LOG(ERR, "set_owner fails: %s",
-				     strerror(errno));
+			PMD_INIT_LOG(ERR, "(%s) Failed to set backend owner", dev->path);
 			return -1;
 		}
 
 		if (dev->ops->get_features(dev, &dev->device_features) < 0) {
-			PMD_INIT_LOG(ERR, "get_features failed: %s",
-				     strerror(errno));
+			PMD_INIT_LOG(ERR, "(%s) Failed to get backend features", dev->path);
 			return -1;
 		}
 
 
 		if ((dev->device_features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
 				(dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA)) {
-			if (dev->ops->get_protocol_features(dev, &protocol_features))
+			if (dev->ops->get_protocol_features(dev, &protocol_features)) {
+				PMD_INIT_LOG(ERR, "(%s) Failed to get backend protocol features",
+						dev->path);
 				return -1;
+			}
 
 			dev->protocol_features &= protocol_features;
 
-			if (dev->ops->set_protocol_features(dev, dev->protocol_features))
+			if (dev->ops->set_protocol_features(dev, dev->protocol_features)) {
+				PMD_INIT_LOG(ERR, "(%s) Failed to set backend protocol features",
+						dev->path);
 				return -1;
+			}
 
 			if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_MQ)))
 				dev->unsupported_features |= (1ull << VIRTIO_NET_F_MQ);
@@ -577,8 +634,8 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	if (rte_mem_event_callback_register(VIRTIO_USER_MEM_EVENT_CLB_NAME,
 				virtio_user_mem_event_cb, dev)) {
 		if (rte_errno != ENOTSUP) {
-			PMD_INIT_LOG(ERR, "Failed to register mem event"
-					" callback\n");
+			PMD_INIT_LOG(ERR, "(%s) Failed to register mem event callback\n",
+					dev->path);
 			return -1;
 		}
 	}
@@ -631,8 +688,8 @@ virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs)
 	uint8_t ret = 0;
 
 	if (q_pairs > dev->max_queue_pairs) {
-		PMD_INIT_LOG(ERR, "multi-q config %u, but only %u supported",
-			     q_pairs, dev->max_queue_pairs);
+		PMD_INIT_LOG(ERR, "(%s) multi-q config %u, but only %u supported",
+			     dev->path, q_pairs, dev->max_queue_pairs);
 		return -1;
 	}
 
@@ -818,10 +875,8 @@ virtio_user_dev_set_status(struct virtio_user_dev *dev, uint8_t status)
 	pthread_mutex_lock(&dev->mutex);
 	dev->status = status;
 	ret = dev->ops->set_status(dev, status);
-	if (ret && ret != -ENOTSUP) {
-		PMD_INIT_LOG(ERR, "Virtio-user set status failed (%d): %s", ret,
-			     strerror(errno));
-	}
+	if (ret && ret != -ENOTSUP)
+		PMD_INIT_LOG(ERR, "(%s) Failed to set backend status\n", dev->path);
 
 	pthread_mutex_unlock(&dev->mutex);
 	return ret;
@@ -855,8 +910,7 @@ virtio_user_dev_update_status(struct virtio_user_dev *dev)
 			!!(dev->status & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET),
 			!!(dev->status & VIRTIO_CONFIG_STATUS_FAILED));
 	} else if (ret != -ENOTSUP) {
-		PMD_INIT_LOG(ERR, "Virtio-user get status failed (%d): %s", ret,
-			     strerror(errno));
+		PMD_INIT_LOG(ERR, "(%s) Failed to get backend status\n", dev->path);
 	}
 
 	pthread_mutex_unlock(&dev->mutex);
