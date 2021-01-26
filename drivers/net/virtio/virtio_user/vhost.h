@@ -9,7 +9,9 @@
 #include <linux/types.h>
 #include <linux/ioctl.h>
 
-#include "../virtio_pci.h"
+#include <rte_errno.h>
+
+#include "../virtio.h"
 #include "../virtio_logs.h"
 #include "../virtqueue.h"
 

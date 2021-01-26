@@ -7,7 +7,7 @@
 
 #include "virtqueue.h"
 #include "virtio_logs.h"
-#include "virtio_pci.h"
+#include "virtio.h"
 #include "virtio_rxtx_simple.h"
 
 /*

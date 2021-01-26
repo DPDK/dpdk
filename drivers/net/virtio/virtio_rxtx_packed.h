@@ -15,7 +15,7 @@
 
 #include "virtio_logs.h"
 #include "virtio_ethdev.h"
-#include "virtio_pci.h"
+#include "virtio.h"
 #include "virtqueue.h"
 
 #define BYTE_SIZE 8

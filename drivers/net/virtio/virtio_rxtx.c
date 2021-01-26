@@ -27,7 +27,7 @@
 
 #include "virtio_logs.h"
 #include "virtio_ethdev.h"
-#include "virtio_pci.h"
+#include "virtio.h"
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
 #include "virtio_rxtx_simple.h"
@@ -628,9 +628,9 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
-	uint16_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
+	uint16_t vq_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
+	struct virtqueue *vq = hw->vqs[vq_idx];
 	struct virtnet_rx *rxvq;
 	uint16_t rx_free_thresh;
 
@@ -678,9 +678,9 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 int
 virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
-	uint16_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
+	uint16_t vq_idx = 2 * queue_idx + VTNET_SQ_RQ_QUEUE_IDX;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
+	struct virtqueue *vq = hw->vqs[vq_idx];
 	struct virtnet_rx *rxvq = &vq->rxq;
 	struct rte_mbuf *m;
 	uint16_t desc_idx;
@@ -779,9 +779,9 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			unsigned int socket_id __rte_unused,
 			const struct rte_eth_txconf *tx_conf)
 {
-	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
+	uint8_t vq_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
+	struct virtqueue *vq = hw->vqs[vq_idx];
 	struct virtnet_tx *txvq;
 	uint16_t tx_free_thresh;
 
@@ -823,9 +823,9 @@ int
 virtio_dev_tx_queue_setup_finish(struct rte_eth_dev *dev,
 				uint16_t queue_idx)
 {
-	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
+	uint8_t vq_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
+	struct virtqueue *vq = hw->vqs[vq_idx];
 
 	PMD_INIT_FUNC_TRACE();
 

@@ -9,14 +9,11 @@
 #include <unistd.h>
 
 #include <ethdev_driver.h>
-#include <ethdev_pci.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_branch_prediction.h>
-#include <rte_pci.h>
-#include <rte_bus_pci.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
 #include <rte_arp.h>
@@ -32,7 +29,7 @@
 #include <rte_kvargs.h>
 
 #include "virtio_ethdev.h"
-#include "virtio_pci.h"
+#include "virtio.h"
 #include "virtio_logs.h"
 #include "virtqueue.h"
 #include "virtio_rxtx.h"
@@ -422,7 +419,7 @@ virtio_init_vring(struct virtqueue *vq)
 }
 
 static int
-virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
+virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	char vq_name[VIRTQUEUE_MAX_NAME_SZ];
 	char vq_hdr_name[VIRTQUEUE_MAX_NAME_SZ];
@@ -435,18 +432,18 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	struct virtqueue *vq;
 	size_t sz_hdr_mz = 0;
 	void *sw_ring = NULL;
-	int queue_type = virtio_get_queue_type(hw, vtpci_queue_idx);
+	int queue_type = virtio_get_queue_type(hw, queue_idx);
 	int ret;
 	int numa_node = dev->device->numa_node;
 
 	PMD_INIT_LOG(INFO, "setting up queue: %u on NUMA node %d",
-			vtpci_queue_idx, numa_node);
+			queue_idx, numa_node);
 
 	/*
 	 * Read the virtqueue size from the Queue Size field
 	 * Always power of 2 and if 0 virtqueue does not exist
 	 */
-	vq_size = VIRTIO_OPS(hw)->get_queue_num(hw, vtpci_queue_idx);
+	vq_size = VIRTIO_OPS(hw)->get_queue_num(hw, queue_idx);
 	PMD_INIT_LOG(DEBUG, "vq_size: %u", vq_size);
 	if (vq_size == 0) {
 		PMD_INIT_LOG(ERR, "virtqueue does not exist");
@@ -459,7 +456,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	}
 
 	snprintf(vq_name, sizeof(vq_name), "port%d_vq%d",
-		 dev->data->port_id, vtpci_queue_idx);
+		 dev->data->port_id, queue_idx);
 
 	size = RTE_ALIGN_CEIL(sizeof(*vq) +
 				vq_size * sizeof(struct vq_desc_extra),
@@ -481,10 +478,10 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		PMD_INIT_LOG(ERR, "can not allocate vq");
 		return -ENOMEM;
 	}
-	hw->vqs[vtpci_queue_idx] = vq;
+	hw->vqs[queue_idx] = vq;
 
 	vq->hw = hw;
-	vq->vq_queue_index = vtpci_queue_idx;
+	vq->vq_queue_index = queue_idx;
 	vq->vq_nentries = vq_size;
 	if (virtio_with_packed_queue(hw)) {
 		vq->vq_packed.used_wrap_counter = 1;
@@ -527,7 +524,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 
 	if (sz_hdr_mz) {
 		snprintf(vq_hdr_name, sizeof(vq_hdr_name), "port%d_vq%d_hdr",
-			 dev->data->port_id, vtpci_queue_idx);
+			 dev->data->port_id, queue_idx);
 		hdr_mz = rte_memzone_reserve_aligned(vq_hdr_name, sz_hdr_mz,
 				numa_node, RTE_MEMZONE_IOVA_CONTIG,
 				RTE_CACHE_LINE_SIZE);

@@ -259,7 +259,7 @@ struct virtqueue {
 	 */
 	uint16_t  vq_desc_head_idx;
 	uint16_t  vq_desc_tail_idx;
-	uint16_t  vq_queue_index;   /**< PCI queue index */
+	uint16_t  vq_queue_index;
 	uint16_t offset; /**< relative offset to obtain addr in mbuf */
 	uint16_t  *notify_addr;
 	struct rte_mbuf **sw_ring;  /**< RX software ring. */
@@ -448,11 +448,11 @@ virtqueue_full(const struct virtqueue *vq)
 }
 
 static inline int
-virtio_get_queue_type(struct virtio_hw *hw, uint16_t vtpci_queue_idx)
+virtio_get_queue_type(struct virtio_hw *hw, uint16_t vq_idx)
 {
-	if (vtpci_queue_idx == hw->max_queue_pairs * 2)
+	if (vq_idx == hw->max_queue_pairs * 2)
 		return VTNET_CQ;
-	else if (vtpci_queue_idx % 2 == 0)
+	else if (vq_idx % 2 == 0)
 		return VTNET_RQ;
 	else
 		return VTNET_TQ;

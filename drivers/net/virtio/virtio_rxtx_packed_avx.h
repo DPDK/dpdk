@@ -12,7 +12,7 @@
 
 #include "virtio_logs.h"
 #include "virtio_ethdev.h"
-#include "virtio_pci.h"
+#include "virtio.h"
 #include "virtio_rxtx_packed.h"
 #include "virtqueue.h"
 
