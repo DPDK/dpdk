@@ -265,13 +265,8 @@ struct virtio_hw {
 	bool        has_rx_offload;
 	uint16_t    port_id;
 	uint8_t     mac_addr[RTE_ETHER_ADDR_LEN];
-	uint32_t    notify_off_multiplier;
 	uint32_t    speed;  /* link speed in MB */
 	uint8_t     duplex;
-	uint8_t     *isr;
-	uint16_t    *notify_base;
-	struct virtio_pci_common_cfg *common_cfg;
-	struct virtio_net_config *dev_cfg;
 	/*
 	 * App management thread and virtio interrupt handler thread
 	 * both can change device state, this lock is meant to avoid
@@ -287,6 +282,11 @@ struct virtio_hw {
 struct virtio_pci_dev {
 	struct virtio_hw hw;
 	struct rte_pci_device *pci_dev;
+	struct virtio_pci_common_cfg *common_cfg;
+	struct virtio_net_config *dev_cfg;
+	uint8_t *isr;
+	uint16_t *notify_base;
+	uint32_t notify_off_multiplier;
 	bool modern;
 };
 
