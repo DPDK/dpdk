@@ -24,6 +24,7 @@ struct virtio_user_queue {
 };
 
 struct virtio_user_dev {
+	struct virtio_hw hw;
 	enum virtio_user_backend_type backend_type;
 	/* for vhost_user backend */
 	int		vhostfd;

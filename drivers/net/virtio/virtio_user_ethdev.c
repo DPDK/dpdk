@@ -26,13 +26,13 @@
 #include "virtio_user/virtio_user_dev.h"
 #include "virtio_user/vhost.h"
 
-#define virtio_user_get_dev(hw) \
-	((struct virtio_user_dev *)(hw)->virtio_user_dev)
+#define virtio_user_get_dev(hwp) container_of(hwp, struct virtio_user_dev, hw)
 
 static void
-virtio_user_reset_queues_packed(struct rte_eth_dev *dev)
+virtio_user_reset_queues_packed(struct rte_eth_dev *eth_dev)
 {
-	struct virtio_hw *hw = dev->data->dev_private;
+	struct virtio_user_dev *dev = eth_dev->data->dev_private;
+	struct virtio_hw *hw = &dev->hw;
 	struct virtnet_rx *rxvq;
 	struct virtnet_tx *txvq;
 	uint16_t i;
@@ -48,14 +48,14 @@ virtio_user_reset_queues_packed(struct rte_eth_dev *dev)
 	rte_delay_ms(1);
 
 	/* Vring reset for each Tx queue and Rx queue. */
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxvq = dev->data->rx_queues[i];
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rxvq = eth_dev->data->rx_queues[i];
 		virtqueue_rxvq_reset_packed(rxvq->vq);
-		virtio_dev_rx_queue_setup_finish(dev, i);
+		virtio_dev_rx_queue_setup_finish(eth_dev, i);
 	}
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		txvq = dev->data->tx_queues[i];
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		txvq = eth_dev->data->tx_queues[i];
 		virtqueue_txvq_reset_packed(txvq->vq);
 	}
 
@@ -69,7 +69,7 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 {
 	int ret, connectfd, old_status;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
-	struct virtio_hw *hw = eth_dev->data->dev_private;
+	struct virtio_hw *hw = &dev->hw;
 	uint64_t protocol_features;
 
 	connectfd = accept(dev->listenfd, NULL, NULL);
@@ -605,21 +605,15 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	struct virtio_hw *hw;
 	struct virtio_user_dev *dev;
 
-	eth_dev = rte_eth_vdev_allocate(vdev, sizeof(*hw));
+	eth_dev = rte_eth_vdev_allocate(vdev, sizeof(*dev));
 	if (!eth_dev) {
 		PMD_INIT_LOG(ERR, "cannot alloc rte_eth_dev");
 		return NULL;
 	}
 
 	data = eth_dev->data;
-	hw = eth_dev->data->dev_private;
-
-	dev = rte_zmalloc(NULL, sizeof(*dev), 0);
-	if (!dev) {
-		PMD_INIT_LOG(ERR, "malloc virtio_user_dev failed");
-		rte_eth_dev_release_port(eth_dev);
-		return NULL;
-	}
+	dev = eth_dev->data->dev_private;
+	hw = &dev->hw;
 
 	hw->port_id = data->port_id;
 	dev->port_id = data->port_id;
@@ -634,17 +628,13 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	hw->use_vec_tx = 0;
 	hw->use_inorder_rx = 0;
 	hw->use_inorder_tx = 0;
-	hw->virtio_user_dev = dev;
+
 	return eth_dev;
 }
 
 static void
 virtio_user_eth_dev_free(struct rte_eth_dev *eth_dev)
 {
-	struct rte_eth_dev_data *data = eth_dev->data;
-	struct virtio_hw *hw = data->dev_private;
-
-	rte_free(hw->virtio_user_dev);
 	rte_eth_dev_release_port(eth_dev);
 }
 
@@ -653,11 +643,12 @@ virtio_user_eth_dev_free(struct rte_eth_dev *eth_dev)
  * Returns 0 on success.
  */
 static int
-virtio_user_pmd_probe(struct rte_vdev_device *dev)
+virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 {
 	struct rte_kvargs *kvlist = NULL;
 	struct rte_eth_dev *eth_dev;
 	struct virtio_hw *hw;
+	struct virtio_user_dev *dev;
 	enum virtio_user_backend_type backend_type = VIRTIO_USER_BACKEND_UNKNOWN;
 	uint64_t queues = VIRTIO_USER_DEF_Q_NUM;
 	uint64_t cq = VIRTIO_USER_DEF_CQ_EN;
@@ -672,8 +663,10 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 	char *mac_addr = NULL;
 	int ret = -1;
 
+	RTE_BUILD_BUG_ON(offsetof(struct virtio_user_dev, hw) != 0);
+
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		const char *name = rte_vdev_device_name(dev);
+		const char *name = rte_vdev_device_name(vdev);
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
 			PMD_INIT_LOG(ERR, "Failed to probe %s", name);
@@ -687,12 +680,12 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 		}
 
 		eth_dev->dev_ops = &virtio_user_secondary_eth_dev_ops;
-		eth_dev->device = &dev->device;
+		eth_dev->device = &vdev->device;
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
 
-	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_args);
+	kvlist = rte_kvargs_parse(rte_vdev_device_args(vdev), valid_args);
 	if (!kvlist) {
 		PMD_INIT_LOG(ERR, "error when parsing param");
 		goto end;
@@ -832,14 +825,15 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 		}
 	}
 
-	eth_dev = virtio_user_eth_dev_alloc(dev);
+	eth_dev = virtio_user_eth_dev_alloc(vdev);
 	if (!eth_dev) {
 		PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");
 		goto end;
 	}
 
-	hw = eth_dev->data->dev_private;
-	if (virtio_user_dev_init(hw->virtio_user_dev, path, queues, cq,
+	dev = eth_dev->data->dev_private;
+	hw = &dev->hw;
+	if (virtio_user_dev_init(dev, path, queues, cq,
 			 queue_size, mac_addr, &ifname, server_mode,
 			 mrg_rxbuf, in_order, packed_vq, backend_type) < 0) {
 		PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");
@@ -912,7 +906,6 @@ static int virtio_user_pmd_dma_map(struct rte_vdev_device *vdev, void *addr,
 	const char *name;
 	struct rte_eth_dev *eth_dev;
 	struct virtio_user_dev *dev;
-	struct virtio_hw *hw;
 
 	if (!vdev)
 		return -EINVAL;
@@ -923,8 +916,7 @@ static int virtio_user_pmd_dma_map(struct rte_vdev_device *vdev, void *addr,
 	if (!eth_dev)
 		return 0;
 
-	hw = (struct virtio_hw *)eth_dev->data->dev_private;
-	dev = hw->virtio_user_dev;
+	dev = eth_dev->data->dev_private;
 
 	if (dev->ops->dma_map)
 		return dev->ops->dma_map(dev, addr, iova, len);
@@ -938,7 +930,6 @@ static int virtio_user_pmd_dma_unmap(struct rte_vdev_device *vdev, void *addr,
 	const char *name;
 	struct rte_eth_dev *eth_dev;
 	struct virtio_user_dev *dev;
-	struct virtio_hw *hw;
 
 	if (!vdev)
 		return -EINVAL;
@@ -949,8 +940,7 @@ static int virtio_user_pmd_dma_unmap(struct rte_vdev_device *vdev, void *addr,
 	if (!eth_dev)
 		return 0;
 
-	hw = (struct virtio_hw *)eth_dev->data->dev_private;
-	dev = hw->virtio_user_dev;
+	dev = eth_dev->data->dev_private;
 
 	if (dev->ops->dma_unmap)
 		return dev->ops->dma_unmap(dev, addr, iova, len);

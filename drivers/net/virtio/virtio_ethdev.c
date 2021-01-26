@@ -747,7 +747,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 
 #ifdef RTE_VIRTIO_USER
 	if (hw->bus_type == VIRTIO_BUS_USER)
-		virtio_user_dev_uninit(hw->virtio_user_dev);
+		virtio_user_dev_uninit(dev->data->dev_private);
 	else
 #endif
 	if (dev->device) {
