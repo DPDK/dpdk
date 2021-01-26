@@ -38,17 +38,14 @@
 #include "virtio_rxtx.h"
 #include "virtio_user/virtio_user_dev.h"
 
-static int eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  virtio_dev_configure(struct rte_eth_dev *dev);
 static int  virtio_dev_start(struct rte_eth_dev *dev);
-static int  virtio_dev_stop(struct rte_eth_dev *dev);
 static int virtio_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int virtio_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static int virtio_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static int virtio_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static uint32_t virtio_dev_speed_capa_get(uint32_t speed);
 static int virtio_dev_devargs_parse(struct rte_devargs *devargs,
-	int *vdpa,
 	uint32_t *speed,
 	int *vectorized);
 static int virtio_dev_info_get(struct rte_eth_dev *dev,
@@ -88,15 +85,6 @@ static int virtio_dev_queue_stats_mapping_set(
 
 static void virtio_notify_peers(struct rte_eth_dev *dev);
 static void virtio_ack_link_announce(struct rte_eth_dev *dev);
-
-/*
- * The set of PCI devices this driver supports
- */
-static const struct rte_pci_id pci_id_virtio_map[] = {
-	{ RTE_PCI_DEVICE(VIRTIO_PCI_VENDORID, VIRTIO_PCI_LEGACY_DEVICEID_NET) },
-	{ RTE_PCI_DEVICE(VIRTIO_PCI_VENDORID, VIRTIO_PCI_MODERN_DEVICEID_NET) },
-	{ .vendor_id = 0, /* sentinel */ },
-};
 
 struct rte_virtio_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -714,7 +702,7 @@ virtio_alloc_queues(struct rte_eth_dev *dev)
 
 static void virtio_queues_unbind_intr(struct rte_eth_dev *dev);
 
-static int
+int
 virtio_dev_close(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
@@ -1932,8 +1920,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 		return 0;
 	}
-	ret = virtio_dev_devargs_parse(eth_dev->device->devargs,
-		 NULL, &speed, &vectorized);
+	ret = virtio_dev_devargs_parse(eth_dev->device->devargs, &speed, &vectorized);
 	if (ret < 0)
 		return ret;
 	hw->speed = speed;
@@ -1995,36 +1982,6 @@ err_vtpci_init:
 	return ret;
 }
 
-static int
-eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
-{
-	int ret;
-	PMD_INIT_FUNC_TRACE();
-
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-		return 0;
-
-	ret = virtio_dev_stop(eth_dev);
-	virtio_dev_close(eth_dev);
-
-	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
-
-	return ret;
-}
-
-
-static int vdpa_check_handler(__rte_unused const char *key,
-		const char *value, void *ret_val)
-{
-	if (strcmp(value, "1") == 0)
-		*(int *)ret_val = 1;
-	else
-		*(int *)ret_val = 0;
-
-	return 0;
-}
-
-
 static uint32_t
 virtio_dev_speed_capa_get(uint32_t speed)
 {
@@ -2062,9 +2019,7 @@ static int vectorized_check_handler(__rte_unused const char *key,
 }
 
 #define VIRTIO_ARG_SPEED      "speed"
-#define VIRTIO_ARG_VDPA       "vdpa"
 #define VIRTIO_ARG_VECTORIZED "vectorized"
-
 
 static int
 link_speed_handler(const char *key __rte_unused,
@@ -2084,8 +2039,7 @@ link_speed_handler(const char *key __rte_unused,
 
 
 static int
-virtio_dev_devargs_parse(struct rte_devargs *devargs, int *vdpa,
-	uint32_t *speed, int *vectorized)
+virtio_dev_devargs_parse(struct rte_devargs *devargs, uint32_t *speed, int *vectorized)
 {
 	struct rte_kvargs *kvlist;
 	int ret = 0;
@@ -2098,18 +2052,7 @@ virtio_dev_devargs_parse(struct rte_devargs *devargs, int *vdpa,
 		PMD_INIT_LOG(ERR, "error when parsing param");
 		return 0;
 	}
-	if (vdpa && rte_kvargs_count(kvlist, VIRTIO_ARG_VDPA) == 1) {
-		/* vdpa mode selected when there's a key-value pair:
-		 * vdpa=1
-		 */
-		ret = rte_kvargs_process(kvlist, VIRTIO_ARG_VDPA,
-				vdpa_check_handler, vdpa);
-		if (ret < 0) {
-			PMD_INIT_LOG(ERR, "Failed to parse %s",
-				VIRTIO_ARG_VDPA);
-			goto exit;
-		}
-	}
+
 	if (speed && rte_kvargs_count(kvlist, VIRTIO_ARG_SPEED) == 1) {
 		ret = rte_kvargs_process(kvlist,
 					VIRTIO_ARG_SPEED,
@@ -2136,53 +2079,6 @@ virtio_dev_devargs_parse(struct rte_devargs *devargs, int *vdpa,
 exit:
 	rte_kvargs_free(kvlist);
 	return ret;
-}
-
-static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	struct rte_pci_device *pci_dev)
-{
-	int vdpa = 0;
-	int ret = 0;
-
-	ret = virtio_dev_devargs_parse(pci_dev->device.devargs, &vdpa, NULL,
-		NULL);
-	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "devargs parsing is failed");
-		return ret;
-	}
-	/* virtio pmd skips probe if device needs to work in vdpa mode */
-	if (vdpa == 1)
-		return 1;
-
-	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct virtio_pci_dev),
-		eth_virtio_dev_init);
-}
-
-static int eth_virtio_pci_remove(struct rte_pci_device *pci_dev)
-{
-	int ret;
-
-	ret = rte_eth_dev_pci_generic_remove(pci_dev, eth_virtio_dev_uninit);
-	/* Port has already been released by close. */
-	if (ret == -ENODEV)
-		ret = 0;
-	return ret;
-}
-
-static struct rte_pci_driver rte_virtio_pmd = {
-	.driver = {
-		.name = "net_virtio",
-	},
-	.id_table = pci_id_virtio_map,
-	.drv_flags = 0,
-	.probe = eth_virtio_pci_probe,
-	.remove = eth_virtio_pci_remove,
-};
-
-RTE_INIT(rte_virtio_pmd_init)
-{
-	rte_eal_iopl_init();
-	rte_pci_register(&rte_virtio_pmd);
 }
 
 static bool
@@ -2535,7 +2431,7 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 /*
  * Stop device: disable interrupt and mark link down
  */
-static int
+int
 virtio_dev_stop(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
@@ -2686,8 +2582,5 @@ __rte_unused uint8_t is_rx)
 	return 0;
 }
 
-RTE_PMD_EXPORT_NAME(net_virtio, __COUNTER__);
-RTE_PMD_REGISTER_PCI_TABLE(net_virtio, pci_id_virtio_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_virtio, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_LOG_REGISTER(virtio_logtype_init, pmd.net.virtio.init, NOTICE);
 RTE_LOG_REGISTER(virtio_logtype_driver, pmd.net.virtio.driver, NOTICE);

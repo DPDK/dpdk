@@ -8,6 +8,7 @@ if is_windows
 endif
 
 sources += files('virtio_ethdev.c',
+	'virtio_pci_ethdev.c',
 	'virtio_pci.c',
 	'virtio_rxtx.c',
 	'virtio_rxtx_simple.c',
