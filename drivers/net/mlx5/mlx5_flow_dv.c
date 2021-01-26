@@ -9155,7 +9155,7 @@ flow_dv_sample_create_cb(struct mlx5_cache_list *list __rte_unused,
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB) {
 		ret = mlx5_flow_os_create_flow_action_default_miss
 			(&cache_resource->default_miss);
-		if (!ret) {
+		if (ret) {
 			rte_flow_error_set(error, ENOMEM,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 						NULL,
