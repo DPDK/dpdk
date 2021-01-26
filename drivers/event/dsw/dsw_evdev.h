@@ -219,9 +219,9 @@ struct dsw_port {
 	struct rte_ring *ctl_in_ring __rte_cache_aligned;
 
 	/* Estimate of current port load. */
-	rte_atomic16_t load __rte_cache_aligned;
+	int16_t load __rte_cache_aligned;
 	/* Estimate of flows currently migrating to this port. */
-	rte_atomic32_t immigration_load __rte_cache_aligned;
+	int32_t immigration_load __rte_cache_aligned;
 } __rte_cache_aligned;
 
 struct dsw_queue {
@@ -241,7 +241,7 @@ struct dsw_evdev {
 	uint8_t num_queues;
 	int32_t max_inflight;
 
-	rte_atomic32_t credits_on_loan __rte_cache_aligned;
+	int32_t credits_on_loan __rte_cache_aligned;
 };
 
 #define DSW_CTL_PAUS_REQ (0)

@@ -48,7 +48,7 @@ struct dsw_xstats_port {
 static uint64_t
 dsw_xstats_dev_credits_on_loan(struct dsw_evdev *dsw)
 {
-	return rte_atomic32_read(&dsw->credits_on_loan);
+	return __atomic_load_n(&dsw->credits_on_loan, __ATOMIC_RELAXED);
 }
 
 static struct dsw_xstat_dev dsw_dev_xstats[] = {
@@ -126,7 +126,7 @@ dsw_xstats_port_get_load(struct dsw_evdev *dsw, uint8_t port_id,
 {
 	int16_t load;
 
-	load = rte_atomic16_read(&dsw->ports[port_id].load);
+	load = __atomic_load_n(&dsw->ports[port_id].load, __ATOMIC_RELAXED);
 
 	return DSW_LOAD_TO_PERCENT(load);
 }
