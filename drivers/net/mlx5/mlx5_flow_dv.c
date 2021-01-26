@@ -2542,6 +2542,8 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to rte_eth_dev structure.
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2550,10 +2552,15 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
  */
 static int
 flow_dv_validate_action_count(struct rte_eth_dev *dev,
+			      uint64_t action_flags,
 			      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (action_flags & MLX5_FLOW_ACTION_COUNT)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "duplicate count actions set");
 	if (!priv->config.devx)
 		goto notsup_err;
 #ifdef HAVE_IBV_FLOW_DEVX_COUNTERS
@@ -4342,7 +4349,7 @@ flow_dv_modify_create_cb(struct mlx5_hlist *list, uint64_t key __rte_unused,
 /**
  * Validate the sample action.
  *
- * @param[in] action_flags
+ * @param[in, out] action_flags
  *   Holds the actions detected until now.
  * @param[in] action
  *   Pointer to the sample action.
@@ -4359,7 +4366,7 @@ flow_dv_modify_create_cb(struct mlx5_hlist *list, uint64_t key __rte_unused,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_validate_action_sample(uint64_t action_flags,
+flow_dv_validate_action_sample(uint64_t *action_flags,
 			       const struct rte_flow_action *action,
 			       struct rte_eth_dev *dev,
 			       const struct rte_flow_attr *attr,
@@ -4389,17 +4396,17 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "sample action not supported");
-	if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+	if (*action_flags & MLX5_FLOW_ACTION_SAMPLE)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Multiple sample actions not "
 					  "supported");
-	if (action_flags & MLX5_FLOW_ACTION_METER)
+	if (*action_flags & MLX5_FLOW_ACTION_METER)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "wrong action order, meter should "
 					  "be after sample action");
-	if (action_flags & MLX5_FLOW_ACTION_JUMP)
+	if (*action_flags & MLX5_FLOW_ACTION_JUMP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "wrong action order, jump should "
@@ -4437,10 +4444,18 @@ flow_dv_validate_action_sample(uint64_t action_flags,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = flow_dv_validate_action_count(dev, error);
+			if (*action_flags & MLX5_FLOW_ACTION_COUNT)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						action,
+						"duplicate count action set");
+			ret = flow_dv_validate_action_count(dev,
+							    sub_action_flags,
+							    error);
 			if (ret < 0)
 				return ret;
 			sub_action_flags |= MLX5_FLOW_ACTION_COUNT;
+			*action_flags |= MLX5_FLOW_ACTION_COUNT;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
@@ -5731,7 +5746,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = flow_dv_validate_action_count(dev, error);
+			ret = flow_dv_validate_action_count(dev, action_flags,
+							    error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
@@ -6031,7 +6047,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += MLX5_ACT_NUM_SET_DSCP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SAMPLE:
-			ret = flow_dv_validate_action_sample(action_flags,
+			ret = flow_dv_validate_action_sample(&action_flags,
 							     actions, dev,
 							     attr, item_flags,
 							     error);
@@ -8685,10 +8701,6 @@ flow_dv_sample_sub_actions_release(struct rte_eth_dev *dev,
 		flow_dv_tag_release(dev, act_res->rix_tag);
 		act_res->rix_tag = 0;
 	}
-	if (act_res->cnt) {
-		flow_dv_counter_free(dev, act_res->cnt);
-		act_res->cnt = 0;
-	}
 }
 
 int
@@ -9067,6 +9079,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 	struct mlx5_flow_sub_actions_list *sample_act;
 	struct mlx5_flow_sub_actions_idx *sample_idx;
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
+	struct rte_flow *flow = dev_flow->flow;
 	struct mlx5_flow_rss_desc *rss_desc;
 	uint64_t action_flags = 0;
 
@@ -9138,21 +9151,22 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 		}
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 		{
-			uint32_t counter;
-
-			counter = flow_dv_translate_create_counter(dev,
-					dev_flow, sub_actions->conf, 0);
-			if (!counter)
-				return rte_flow_error_set
+			if (!flow->counter) {
+				flow->counter =
+					flow_dv_translate_create_counter(dev,
+						dev_flow, sub_actions->conf,
+						0);
+				if (!flow->counter)
+					return rte_flow_error_set
 						(error, rte_errno,
-						 RTE_FLOW_ERROR_TYPE_ACTION,
-						 NULL,
-						 "cannot create counter"
-						 " object.");
-			sample_idx->cnt = counter;
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"cannot create counter"
+						" object.");
+			}
 			sample_act->dr_cnt_action =
 				  (flow_dv_counter_get_by_idx(dev,
-				  counter, NULL))->action;
+				  flow->counter, NULL))->action;
 			sample_actions[sample_act->actions_num++] =
 						sample_act->dr_cnt_action;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
