@@ -31,6 +31,15 @@
 #define VIRTIO_PCI_CONFIG(hw) \
 		(((hw)->use_msix == VIRTIO_MSIX_ENABLED) ? 24 : 20)
 
+
+struct virtio_pci_internal {
+	struct rte_pci_ioport io;
+};
+
+#define VTPCI_IO(hw) (&virtio_pci_internal[(hw)->port_id].io)
+
+struct virtio_pci_internal virtio_pci_internal[RTE_MAX_ETHPORTS];
+
 static inline int
 check_vq_phys_addr_ok(struct virtqueue *vq)
 {
@@ -300,7 +309,9 @@ legacy_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 static void
 legacy_intr_detect(struct virtio_hw *hw)
 {
-	hw->use_msix = vtpci_msix_detect(VTPCI_DEV(hw));
+	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
+
+	hw->use_msix = vtpci_msix_detect(dev->pci_dev);
 }
 
 static int
@@ -558,7 +569,9 @@ modern_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 static void
 modern_intr_detect(struct virtio_hw *hw)
 {
-	hw->use_msix = vtpci_msix_detect(VTPCI_DEV(hw));
+	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
+
+	hw->use_msix = vtpci_msix_detect(dev->pci_dev);
 }
 
 static int
@@ -857,3 +870,14 @@ msix_detect:
 	return 0;
 }
 
+void vtpci_legacy_ioport_unmap(struct virtio_hw *hw)
+{
+	rte_pci_ioport_unmap(VTPCI_IO(hw));
+}
+
+int vtpci_legacy_ioport_map(struct virtio_hw *hw)
+{
+	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
+
+	return rte_pci_ioport_map(dev->pci_dev, 0, VTPCI_IO(hw));
+}

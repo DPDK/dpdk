@@ -298,17 +298,11 @@ struct virtio_pci_dev {
  */
 struct virtio_hw_internal {
 	const struct virtio_pci_ops *vtpci_ops;
-	struct rte_pci_ioport io;
-	struct rte_pci_device *dev;
 };
 
 #define VTPCI_OPS(hw)	(virtio_hw_internal[(hw)->port_id].vtpci_ops)
-#define VTPCI_IO(hw)	(&virtio_hw_internal[(hw)->port_id].io)
-#define VTPCI_DEV(hw)	(virtio_hw_internal[(hw)->port_id].dev)
-
 
 extern struct virtio_hw_internal virtio_hw_internal[RTE_MAX_ETHPORTS];
-
 
 /*
  * This structure is just a reference to read
@@ -381,6 +375,9 @@ void vtpci_write_dev_config(struct virtio_hw *, size_t, const void *, int);
 void vtpci_read_dev_config(struct virtio_hw *, size_t, void *, int);
 
 uint8_t vtpci_isr(struct virtio_hw *);
+
+void vtpci_legacy_ioport_unmap(struct virtio_hw *hw);
+int vtpci_legacy_ioport_map(struct virtio_hw *hw);
 
 extern const struct virtio_pci_ops legacy_ops;
 extern const struct virtio_pci_ops modern_ops;

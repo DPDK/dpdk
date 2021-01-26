@@ -60,7 +60,7 @@ virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 			return -1;
 		}
 	} else {
-		if (rte_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0)
+		if (vtpci_legacy_ioport_map(hw) < 0)
 			return -1;
 	}
 
@@ -74,8 +74,6 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 	struct virtio_hw *hw = &dev->hw;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	int ret;
-
-	VTPCI_DEV(hw) = pci_dev;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
@@ -111,7 +109,7 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 err_unmap:
 	rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
 	if (!dev->modern)
-		rte_pci_ioport_unmap(VTPCI_IO(hw));
+		vtpci_legacy_ioport_unmap(hw);
 
 	return ret;
 }
