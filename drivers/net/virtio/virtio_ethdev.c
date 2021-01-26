@@ -592,9 +592,9 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	 * we use virtual address. And we need properly set _offset_, please see
 	 * VIRTIO_MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
 	 */
-	if (!hw->virtio_user_dev)
+	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY || hw->bus_type == VIRTIO_BUS_PCI_MODERN) {
 		vq->offset = offsetof(struct rte_mbuf, buf_iova);
-	else {
+	} else if (hw->bus_type == VIRTIO_BUS_USER) {
 		vq->vq_ring_mem = (uintptr_t)mz->addr;
 		vq->offset = offsetof(struct rte_mbuf, buf_addr);
 		if (queue_type == VTNET_TQ)
@@ -746,13 +746,13 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	virtio_free_queues(hw);
 
 #ifdef RTE_VIRTIO_USER
-	if (hw->virtio_user_dev)
+	if (hw->bus_type == VIRTIO_BUS_USER)
 		virtio_user_dev_uninit(hw->virtio_user_dev);
 	else
 #endif
 	if (dev->device) {
 		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(dev));
-		if (!hw->modern)
+		if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY)
 			rte_pci_ioport_unmap(VTPCI_IO(hw));
 	}
 
@@ -1299,7 +1299,7 @@ virtio_intr_unmask(struct rte_eth_dev *dev)
 	if (rte_intr_ack(dev->intr_handle) < 0)
 		return -1;
 
-	if (!hw->virtio_user_dev)
+	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY || hw->bus_type == VIRTIO_BUS_PCI_MODERN)
 		hw->use_msix = vtpci_msix_detect(RTE_ETH_DEV_TO_PCI(dev));
 
 	return 0;
@@ -1313,7 +1313,7 @@ virtio_intr_enable(struct rte_eth_dev *dev)
 	if (rte_intr_enable(dev->intr_handle) < 0)
 		return -1;
 
-	if (!hw->virtio_user_dev)
+	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY || hw->bus_type == VIRTIO_BUS_PCI_MODERN)
 		hw->use_msix = vtpci_msix_detect(RTE_ETH_DEV_TO_PCI(dev));
 
 	return 0;
@@ -1327,7 +1327,7 @@ virtio_intr_disable(struct rte_eth_dev *dev)
 	if (rte_intr_disable(dev->intr_handle) < 0)
 		return -1;
 
-	if (!hw->virtio_user_dev)
+	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY || hw->bus_type == VIRTIO_BUS_PCI_MODERN)
 		hw->use_msix = vtpci_msix_detect(RTE_ETH_DEV_TO_PCI(dev));
 
 	return 0;
@@ -1368,13 +1368,13 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 	PMD_INIT_LOG(DEBUG, "features after negotiate = %" PRIx64,
 		hw->guest_features);
 
-	if (hw->modern && !vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
+	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN && !vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
 		PMD_INIT_LOG(ERR,
 			"VIRTIO_F_VERSION_1 features is not enabled.");
 		return -1;
 	}
 
-	if (hw->modern || hw->virtio_user_dev) {
+	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN || hw->bus_type == VIRTIO_BUS_USER) {
 		vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_FEATURES_OK);
 		if (!(vtpci_get_status(hw) & VIRTIO_CONFIG_STATUS_FEATURES_OK)) {
 			PMD_INIT_LOG(ERR,
@@ -1709,7 +1709,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 
 	hw->weak_barriers = !vtpci_with_feature(hw, VIRTIO_F_ORDER_PLATFORM);
 
-	if (!hw->virtio_user_dev)
+	if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY || hw->bus_type == VIRTIO_BUS_PCI_MODERN)
 		pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	/* If host does not support both status and MSI-X then disable LSC */
@@ -1856,7 +1856,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 static int
 virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 {
-	if (hw->modern) {
+	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN) {
 		/*
 		 * We don't have to re-parse the PCI config space, since
 		 * rte_pci_map_device() makes sure the mapped address
@@ -1872,7 +1872,7 @@ virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 			PMD_INIT_LOG(DEBUG, "failed to map pci device!");
 			return -1;
 		}
-	} else {
+	} else if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY) {
 		if (rte_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0)
 			return -1;
 	}
@@ -1884,14 +1884,16 @@ static void
 virtio_set_vtpci_ops(struct virtio_hw *hw)
 {
 #ifdef RTE_VIRTIO_USER
-	if (hw->virtio_user_dev)
+	if (hw->bus_type == VIRTIO_BUS_USER)
 		VTPCI_OPS(hw) = &virtio_user_ops;
 	else
 #endif
-	if (hw->modern)
+	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN)
 		VTPCI_OPS(hw) = &modern_ops;
-	else
+	else if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY)
 		VTPCI_OPS(hw) = &legacy_ops;
+
+	return;
 }
 
 /*
@@ -1919,7 +1921,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_descriptor_done = virtio_dev_rx_queue_done;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		if (!hw->virtio_user_dev) {
+		if (hw->bus_type != VIRTIO_BUS_USER) {
 			ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
 			if (ret)
 				return ret;
@@ -1950,7 +1952,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	/* For virtio_user case the hw->virtio_user_dev is populated by
 	 * virtio_user_eth_dev_alloc() before eth_virtio_dev_init() is called.
 	 */
-	if (!hw->virtio_user_dev) {
+	if (hw->bus_type != VIRTIO_BUS_USER) {
 		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
 		if (ret)
 			goto err_vtpci_init;
@@ -1982,9 +1984,9 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 
 err_virtio_init:
-	if (!hw->virtio_user_dev) {
+	if (hw->bus_type == VIRTIO_BUS_PCI_MODERN || hw->bus_type == VIRTIO_BUS_PCI_LEGACY) {
 		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
-		if (!hw->modern)
+		if (hw->bus_type == VIRTIO_BUS_PCI_LEGACY)
 			rte_pci_ioport_unmap(VTPCI_IO(hw));
 	}
 err_vtpci_init:

@@ -629,7 +629,7 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	 * Here just pretend that we support msix.
 	 */
 	hw->use_msix = 1;
-	hw->modern   = 0;
+	hw->bus_type = VIRTIO_BUS_USER;
 	hw->use_vec_rx = 0;
 	hw->use_vec_tx = 0;
 	hw->use_inorder_rx = 0;
