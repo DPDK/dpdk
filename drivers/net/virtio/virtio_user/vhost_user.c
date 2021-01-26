@@ -143,6 +143,64 @@ vhost_user_set_owner(struct virtio_user_dev *dev)
 	return 0;
 }
 
+static int
+vhost_user_get_features(struct virtio_user_dev *dev, uint64_t *features)
+{
+	int ret;
+	struct vhost_user_msg msg = {
+		.request = VHOST_USER_GET_FEATURES,
+		.flags = VHOST_USER_VERSION,
+	};
+
+	ret = vhost_user_write(dev->vhostfd, &msg, NULL, 0);
+	if (ret < 0)
+		goto err;
+
+	ret = vhost_user_read(dev->vhostfd, &msg);
+	if (ret < 0)
+		goto err;
+
+	if (msg.request != VHOST_USER_GET_FEATURES) {
+		PMD_DRV_LOG(ERR, "Unexpected request type (%d)", msg.request);
+		goto err;
+	}
+
+	if (msg.size != sizeof(*features)) {
+		PMD_DRV_LOG(ERR, "Unexpected payload size (%u)", msg.size);
+		goto err;
+	}
+
+	*features = msg.payload.u64;
+
+	return 0;
+err:
+	PMD_DRV_LOG(ERR, "Failed to get backend features");
+
+	return -1;
+}
+
+static int
+vhost_user_set_features(struct virtio_user_dev *dev, uint64_t features)
+{
+	int ret;
+	struct vhost_user_msg msg = {
+		.request = VHOST_USER_SET_FEATURES,
+		.flags = VHOST_USER_VERSION,
+		.size = sizeof(features),
+		.payload.u64 = features,
+	};
+
+	msg.payload.u64 |= dev->device_features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
+
+	ret = vhost_user_write(dev->vhostfd, &msg, NULL, 0);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to set features");
+		return -1;
+	}
+
+	return 0;
+}
+
 struct walk_arg {
 	struct vhost_memory *vm;
 	int *fds;
@@ -249,8 +307,6 @@ static struct vhost_user_msg m;
 
 const char * const vhost_msg_strings[] = {
 	[VHOST_USER_RESET_OWNER] = "VHOST_RESET_OWNER",
-	[VHOST_USER_SET_FEATURES] = "VHOST_SET_FEATURES",
-	[VHOST_USER_GET_FEATURES] = "VHOST_GET_FEATURES",
 	[VHOST_USER_SET_VRING_CALL] = "VHOST_SET_VRING_CALL",
 	[VHOST_USER_SET_VRING_NUM] = "VHOST_SET_VRING_NUM",
 	[VHOST_USER_SET_VRING_BASE] = "VHOST_SET_VRING_BASE",
@@ -299,7 +355,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 				(1ULL << VHOST_USER_PROTOCOL_F_STATUS))))
 			return -ENOTSUP;
 		/* Fallthrough */
-	case VHOST_USER_GET_FEATURES:
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
 		need_reply = 1;
 		break;
@@ -398,7 +453,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		}
 
 		switch (req) {
-		case VHOST_USER_GET_FEATURES:
 		case VHOST_USER_GET_STATUS:
 		case VHOST_USER_GET_PROTOCOL_FEATURES:
 			if (msg.size != sizeof(m.payload.u64)) {
@@ -536,6 +590,8 @@ vhost_user_enable_queue_pair(struct virtio_user_dev *dev,
 struct virtio_user_backend_ops virtio_ops_user = {
 	.setup = vhost_user_setup,
 	.set_owner = vhost_user_set_owner,
+	.get_features = vhost_user_get_features,
+	.set_features = vhost_user_set_features,
 	.send_request = vhost_user_sock,
 	.enable_qp = vhost_user_enable_queue_pair
 };

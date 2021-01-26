@@ -110,6 +110,8 @@ struct virtio_user_dev;
 struct virtio_user_backend_ops {
 	int (*setup)(struct virtio_user_dev *dev);
 	int (*set_owner)(struct virtio_user_dev *dev);
+	int (*get_features)(struct virtio_user_dev *dev, uint64_t *features);
+	int (*set_features)(struct virtio_user_dev *dev, uint64_t features);
 	int (*send_request)(struct virtio_user_dev *dev,
 			    enum vhost_user_request req,
 			    void *arg);

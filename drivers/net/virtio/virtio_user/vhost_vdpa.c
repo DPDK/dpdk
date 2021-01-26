@@ -40,8 +40,6 @@
 
 static uint64_t vhost_req_user_to_vdpa[] = {
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
-	[VHOST_USER_SET_FEATURES] = VHOST_SET_FEATURES,
-	[VHOST_USER_GET_FEATURES] = VHOST_GET_FEATURES,
 	[VHOST_USER_SET_VRING_CALL] = VHOST_SET_VRING_CALL,
 	[VHOST_USER_SET_VRING_NUM] = VHOST_SET_VRING_NUM,
 	[VHOST_USER_SET_VRING_BASE] = VHOST_SET_VRING_BASE,
@@ -105,6 +103,32 @@ static int
 vhost_vdpa_set_owner(struct virtio_user_dev *dev)
 {
 	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_SET_OWNER, NULL);
+}
+
+static int
+vhost_vdpa_get_features(struct virtio_user_dev *dev, uint64_t *features)
+{
+	int ret;
+
+	ret = vhost_vdpa_ioctl(dev->vhostfd, VHOST_GET_FEATURES, features);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get features");
+		return -1;
+	}
+
+	/* Multiqueue not supported for now */
+	*features &= ~(1ULL << VIRTIO_NET_F_MQ);
+
+	return 0;
+}
+
+static int
+vhost_vdpa_set_features(struct virtio_user_dev *dev, uint64_t features)
+{
+	/* WORKAROUND */
+	features |= 1ULL << VIRTIO_F_IOMMU_PLATFORM;
+
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_SET_FEATURES, &features);
 }
 
 static int
@@ -343,14 +367,6 @@ vhost_vdpa_send_request(struct virtio_user_dev *dev,
 	if (req_vdpa == VHOST_SET_MEM_TABLE)
 		return vhost_vdpa_dma_map_all(dev);
 
-	if (req_vdpa == VHOST_SET_FEATURES) {
-		/* WORKAROUND */
-		*(uint64_t *)arg |= 1ULL << VIRTIO_F_IOMMU_PLATFORM;
-
-		/* Multiqueue not supported for now */
-		*(uint64_t *)arg &= ~(1ULL << VIRTIO_NET_F_MQ);
-	}
-
 	switch (req_vdpa) {
 	case VHOST_SET_VRING_NUM:
 	case VHOST_SET_VRING_ADDR:
@@ -429,6 +445,8 @@ vhost_vdpa_enable_queue_pair(struct virtio_user_dev *dev,
 struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.setup = vhost_vdpa_setup,
 	.set_owner = vhost_vdpa_set_owner,
+	.get_features = vhost_vdpa_get_features,
+	.set_features = vhost_vdpa_set_features,
 	.send_request = vhost_vdpa_send_request,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,

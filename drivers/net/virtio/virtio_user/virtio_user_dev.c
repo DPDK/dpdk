@@ -141,7 +141,7 @@ virtio_user_dev_set_features(struct virtio_user_dev *dev)
 	/* Strip VIRTIO_NET_F_CTRL_VQ, as devices do not really need to know */
 	features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
 	features &= ~(1ull << VIRTIO_NET_F_STATUS);
-	ret = dev->ops->send_request(dev, VHOST_USER_SET_FEATURES, &features);
+	ret = dev->ops->set_features(dev, features);
 	if (ret < 0)
 		goto error;
 	PMD_DRV_LOG(INFO, "set features: %" PRIx64, features);
@@ -496,8 +496,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 			return -1;
 		}
 
-		if (dev->ops->send_request(dev, VHOST_USER_GET_FEATURES,
-					   &dev->device_features) < 0) {
+		if (dev->ops->get_features(dev, &dev->device_features) < 0) {
 			PMD_INIT_LOG(ERR, "get_features failed: %s",
 				     strerror(errno));
 			return -1;

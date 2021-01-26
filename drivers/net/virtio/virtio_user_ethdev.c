@@ -85,8 +85,7 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 
 	virtio_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER);
 
-	if (dev->ops->send_request(dev, VHOST_USER_GET_FEATURES,
-				   &dev->device_features) < 0) {
+	if (dev->ops->get_features(dev, &dev->device_features) < 0) {
 		PMD_INIT_LOG(ERR, "get_features failed: %s",
 			     strerror(errno));
 		return -1;

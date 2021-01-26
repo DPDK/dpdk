@@ -38,6 +38,28 @@ struct vhost_memory_kernel {
 #define VHOST_SET_VRING_ERR _IOW(VHOST_VIRTIO, 0x22, struct vhost_vring_file)
 #define VHOST_NET_SET_BACKEND _IOW(VHOST_VIRTIO, 0x30, struct vhost_vring_file)
 
+/* with below features, vhost kernel does not need to do the checksum and TSO,
+ * these info will be passed to virtio_user through virtio net header.
+ */
+#define VHOST_KERNEL_GUEST_OFFLOADS_MASK	\
+	((1ULL << VIRTIO_NET_F_GUEST_CSUM) |	\
+	 (1ULL << VIRTIO_NET_F_GUEST_TSO4) |	\
+	 (1ULL << VIRTIO_NET_F_GUEST_TSO6) |	\
+	 (1ULL << VIRTIO_NET_F_GUEST_ECN)  |	\
+	 (1ULL << VIRTIO_NET_F_GUEST_UFO))
+
+/* with below features, when flows from virtio_user to vhost kernel
+ * (1) if flows goes up through the kernel networking stack, it does not need
+ * to verify checksum, which can save CPU cycles;
+ * (2) if flows goes through a Linux bridge and outside from an interface
+ * (kernel driver), checksum and TSO will be done by GSO in kernel or even
+ * offloaded into real physical device.
+ */
+#define VHOST_KERNEL_HOST_OFFLOADS_MASK		\
+	((1ULL << VIRTIO_NET_F_HOST_TSO4) |	\
+	 (1ULL << VIRTIO_NET_F_HOST_TSO6) |	\
+	 (1ULL << VIRTIO_NET_F_CSUM))
+
 static uint64_t max_regions = 64;
 
 static void
@@ -77,10 +99,57 @@ vhost_kernel_set_owner(struct virtio_user_dev *dev)
 	return vhost_kernel_ioctl(dev->vhostfds[0], VHOST_SET_OWNER, NULL);
 }
 
+static int
+vhost_kernel_get_features(struct virtio_user_dev *dev, uint64_t *features)
+{
+	int ret;
+	unsigned int tap_features;
+
+	ret = vhost_kernel_ioctl(dev->vhostfds[0], VHOST_GET_FEATURES, features);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to get features");
+		return -1;
+	}
+
+	ret = tap_support_features(&tap_features);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to get TAP features");
+		return -1;
+	}
+
+	/* with tap as the backend, all these features are supported
+	 * but not claimed by vhost-net, so we add them back when
+	 * reporting to upper layer.
+	 */
+	if (tap_features & IFF_VNET_HDR) {
+		*features |= VHOST_KERNEL_GUEST_OFFLOADS_MASK;
+		*features |= VHOST_KERNEL_HOST_OFFLOADS_MASK;
+	}
+
+	/* vhost_kernel will not declare this feature, but it does
+	 * support multi-queue.
+	 */
+	if (tap_features & IFF_MULTI_QUEUE)
+		*features |= (1ull << VIRTIO_NET_F_MQ);
+
+	return 0;
+}
+
+static int
+vhost_kernel_set_features(struct virtio_user_dev *dev, uint64_t features)
+{
+	/* We don't need memory protection here */
+	features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
+	/* VHOST kernel does not know about below flags */
+	features &= ~VHOST_KERNEL_GUEST_OFFLOADS_MASK;
+	features &= ~VHOST_KERNEL_HOST_OFFLOADS_MASK;
+	features &= ~(1ULL << VIRTIO_NET_F_MQ);
+
+	return vhost_kernel_ioctl(dev->vhostfds[0], VHOST_SET_FEATURES, &features);
+}
+
 static uint64_t vhost_req_user_to_kernel[] = {
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
-	[VHOST_USER_SET_FEATURES] = VHOST_SET_FEATURES,
-	[VHOST_USER_GET_FEATURES] = VHOST_GET_FEATURES,
 	[VHOST_USER_SET_VRING_CALL] = VHOST_SET_VRING_CALL,
 	[VHOST_USER_SET_VRING_NUM] = VHOST_SET_VRING_NUM,
 	[VHOST_USER_SET_VRING_BASE] = VHOST_SET_VRING_BASE,
@@ -150,51 +219,6 @@ prepare_vhost_memory_kernel(void)
 	return vm;
 }
 
-/* with below features, vhost kernel does not need to do the checksum and TSO,
- * these info will be passed to virtio_user through virtio net header.
- */
-#define VHOST_KERNEL_GUEST_OFFLOADS_MASK	\
-	((1ULL << VIRTIO_NET_F_GUEST_CSUM) |	\
-	 (1ULL << VIRTIO_NET_F_GUEST_TSO4) |	\
-	 (1ULL << VIRTIO_NET_F_GUEST_TSO6) |	\
-	 (1ULL << VIRTIO_NET_F_GUEST_ECN)  |	\
-	 (1ULL << VIRTIO_NET_F_GUEST_UFO))
-
-/* with below features, when flows from virtio_user to vhost kernel
- * (1) if flows goes up through the kernel networking stack, it does not need
- * to verify checksum, which can save CPU cycles;
- * (2) if flows goes through a Linux bridge and outside from an interface
- * (kernel driver), checksum and TSO will be done by GSO in kernel or even
- * offloaded into real physical device.
- */
-#define VHOST_KERNEL_HOST_OFFLOADS_MASK		\
-	((1ULL << VIRTIO_NET_F_HOST_TSO4) |	\
-	 (1ULL << VIRTIO_NET_F_HOST_TSO6) |	\
-	 (1ULL << VIRTIO_NET_F_CSUM))
-
-static unsigned int
-tap_support_features(void)
-{
-	int tapfd;
-	unsigned int tap_features;
-
-	tapfd = open(PATH_NET_TUN, O_RDWR);
-	if (tapfd < 0) {
-		PMD_DRV_LOG(ERR, "fail to open %s: %s",
-			    PATH_NET_TUN, strerror(errno));
-		return -1;
-	}
-
-	if (ioctl(tapfd, TUNGETFEATURES, &tap_features) == -1) {
-		PMD_DRV_LOG(ERR, "TUNGETFEATURES failed: %s", strerror(errno));
-		close(tapfd);
-		return -1;
-	}
-
-	close(tapfd);
-	return tap_features;
-}
-
 static int
 vhost_kernel_send_request(struct virtio_user_dev *dev,
 		   enum vhost_user_request req,
@@ -206,7 +230,6 @@ vhost_kernel_send_request(struct virtio_user_dev *dev,
 	struct vhost_memory_kernel *vm = NULL;
 	int vhostfd;
 	unsigned int queue_sel;
-	unsigned int features;
 
 	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
 
@@ -217,17 +240,6 @@ vhost_kernel_send_request(struct virtio_user_dev *dev,
 		if (!vm)
 			return -1;
 		arg = (void *)vm;
-	}
-
-	if (req_kernel == VHOST_SET_FEATURES) {
-		/* We don't need memory protection here */
-		*(uint64_t *)arg &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
-
-		/* VHOST kernel does not know about below flags */
-		*(uint64_t *)arg &= ~VHOST_KERNEL_GUEST_OFFLOADS_MASK;
-		*(uint64_t *)arg &= ~VHOST_KERNEL_HOST_OFFLOADS_MASK;
-
-		*(uint64_t *)arg &= ~(1ULL << VIRTIO_NET_F_MQ);
 	}
 
 	switch (req_kernel) {
@@ -257,24 +269,6 @@ vhost_kernel_send_request(struct virtio_user_dev *dev,
 		}
 	} else {
 		ret = ioctl(vhostfd, req_kernel, arg);
-	}
-
-	if (!ret && req_kernel == VHOST_GET_FEATURES) {
-		features = tap_support_features();
-		/* with tap as the backend, all these features are supported
-		 * but not claimed by vhost-net, so we add them back when
-		 * reporting to upper layer.
-		 */
-		if (features & IFF_VNET_HDR) {
-			*((uint64_t *)arg) |= VHOST_KERNEL_GUEST_OFFLOADS_MASK;
-			*((uint64_t *)arg) |= VHOST_KERNEL_HOST_OFFLOADS_MASK;
-		}
-
-		/* vhost_kernel will not declare this feature, but it does
-		 * support multi-queue.
-		 */
-		if (features & IFF_MULTI_QUEUE)
-			*(uint64_t *)arg |= (1ull << VIRTIO_NET_F_MQ);
 	}
 
 	if (vm)
@@ -407,6 +401,8 @@ set_backend:
 struct virtio_user_backend_ops virtio_ops_kernel = {
 	.setup = vhost_kernel_setup,
 	.set_owner = vhost_kernel_set_owner,
+	.get_features = vhost_kernel_get_features,
+	.set_features = vhost_kernel_set_features,
 	.send_request = vhost_kernel_send_request,
 	.enable_qp = vhost_kernel_enable_queue_pair
 };
