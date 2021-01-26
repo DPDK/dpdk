@@ -71,8 +71,8 @@ virtqueue_enqueue_batch_packed_vec(struct virtnet_tx *txvq,
 	uint32x4_t def_ref_seg = vdupq_n_u32(0x10001);
 	/* Check refcnt and nb_segs. */
 	uint32x4_t ref_seg = vreinterpretq_u32_u8(vqtbl2q_u8(mbuf, ref_seg_msk));
-	poly128_t cmp1 = vreinterpretq_p128_u32(~vceqq_u32(ref_seg, def_ref_seg));
-	if (unlikely(cmp1))
+	uint64x2_t cmp1 = vreinterpretq_u64_u32(~vceqq_u32(ref_seg, def_ref_seg));
+	if (unlikely(vgetq_lane_u64(cmp1, 0) || vgetq_lane_u64(cmp1, 1)))
 		return -1;
 
 	/* Check headroom is enough. */
@@ -225,10 +225,10 @@ virtqueue_dequeue_batch_packed_vec(struct virtnet_rx *rxvq,
 	if (vq->vq_packed.used_wrap_counter)
 		v_used_flag = vdupq_n_u32(PACKED_FLAGS_MASK);
 
-	poly128_t desc_stats = vreinterpretq_p128_u32(~vceqq_u32(v_flag, v_used_flag));
+	uint64x2_t desc_stats = vreinterpretq_u64_u32(~vceqq_u32(v_flag, v_used_flag));
 
 	/* Check all descs are used. */
-	if (desc_stats)
+	if (unlikely(vgetq_lane_u64(desc_stats, 0) || vgetq_lane_u64(desc_stats, 1)))
 		return -1;
 
 	/* Load 2 mbuf pointers per time. */
