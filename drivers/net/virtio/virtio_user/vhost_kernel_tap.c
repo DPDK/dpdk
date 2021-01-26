@@ -16,7 +16,7 @@
 
 #include "vhost_kernel_tap.h"
 #include "../virtio_logs.h"
-#include "../virtio_pci.h"
+#include "../virtio.h"
 
 int
 vhost_kernel_tap_set_offload(int fd, uint64_t features)

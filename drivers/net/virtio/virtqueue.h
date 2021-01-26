@@ -12,7 +12,7 @@
 #include <rte_mempool.h>
 #include <rte_net.h>
 
-#include "virtio_pci.h"
+#include "virtio.h"
 #include "virtio_ring.h"
 #include "virtio_logs.h"
 #include "virtio_rxtx.h"
@@ -385,7 +385,7 @@ virtqueue_disable_intr_split(struct virtqueue *vq)
 static inline void
 virtqueue_disable_intr(struct virtqueue *vq)
 {
-	if (vtpci_packed_queue(vq->hw))
+	if (virtio_with_packed_queue(vq->hw))
 		virtqueue_disable_intr_packed(vq);
 	else
 		virtqueue_disable_intr_split(vq);
@@ -419,7 +419,7 @@ virtqueue_enable_intr_split(struct virtqueue *vq)
 static inline void
 virtqueue_enable_intr(struct virtqueue *vq)
 {
-	if (vtpci_packed_queue(vq->hw))
+	if (virtio_with_packed_queue(vq->hw))
 		virtqueue_enable_intr_packed(vq);
 	else
 		virtqueue_enable_intr_split(vq);
@@ -572,7 +572,7 @@ virtqueue_notify(struct virtqueue *vq)
 	used_idx = __atomic_load_n(&(vq)->vq_split.ring.used->idx, \
 				   __ATOMIC_RELAXED); \
 	nused = (uint16_t)(used_idx - (vq)->vq_used_cons_idx); \
-	if (vtpci_packed_queue((vq)->hw)) { \
+	if (virtio_with_packed_queue((vq)->hw)) { \
 		PMD_INIT_LOG(DEBUG, \
 		"VQ: - size=%d; free=%d; used_cons_idx=%d; avail_idx=%d;" \
 		" cached_flags=0x%x; used_wrap_counter=%d", \

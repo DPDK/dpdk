@@ -32,7 +32,7 @@ virtqueue_detach_unused(struct virtqueue *vq)
 	end = (vq->vq_avail_idx + vq->vq_free_cnt) & (vq->vq_nentries - 1);
 
 	for (idx = 0; idx < vq->vq_nentries; idx++) {
-		if (hw->use_vec_rx && !vtpci_packed_queue(hw) &&
+		if (hw->use_vec_rx && !virtio_with_packed_queue(hw) &&
 		    type == VTNET_RQ) {
 			if (start <= end && idx >= start && idx < end)
 				continue;
@@ -137,7 +137,7 @@ virtqueue_rxvq_flush(struct virtqueue *vq)
 {
 	struct virtio_hw *hw = vq->hw;
 
-	if (vtpci_packed_queue(hw))
+	if (virtio_with_packed_queue(hw))
 		virtqueue_rxvq_flush_packed(vq);
 	else
 		virtqueue_rxvq_flush_split(vq);

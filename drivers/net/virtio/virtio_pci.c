@@ -415,7 +415,7 @@ modern_set_features(struct virtio_hw *hw, uint64_t features)
 static int
 modern_features_ok(struct virtio_hw *hw)
 {
-	if (!vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
+	if (!virtio_with_feature(hw, VIRTIO_F_VERSION_1)) {
 		PMD_INIT_LOG(ERR, "Version 1+ required with modern devices\n");
 		return -1;
 	}
@@ -538,12 +538,12 @@ modern_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
 	uint32_t notify_data;
 
-	if (!vtpci_with_feature(hw, VIRTIO_F_NOTIFICATION_DATA)) {
+	if (!virtio_with_feature(hw, VIRTIO_F_NOTIFICATION_DATA)) {
 		rte_write16(vq->vq_queue_index, vq->notify_addr);
 		return;
 	}
 
-	if (vtpci_with_feature(hw, VIRTIO_F_RING_PACKED)) {
+	if (virtio_with_packed_queue(hw)) {
 		/*
 		 * Bit[0:15]: vq queue index
 		 * Bit[16:30]: avail index
@@ -616,21 +616,6 @@ vtpci_write_dev_config(struct virtio_hw *hw, size_t offset,
 		       const void *src, int length)
 {
 	VIRTIO_OPS(hw)->write_dev_cfg(hw, offset, src, length);
-}
-
-uint64_t
-vtpci_negotiate_features(struct virtio_hw *hw, uint64_t host_features)
-{
-	uint64_t features;
-
-	/*
-	 * Limit negotiated features to what the driver, virtqueue, and
-	 * host all support.
-	 */
-	features = host_features & hw->guest_features;
-	VIRTIO_OPS(hw)->set_features(hw, features);
-
-	return features;
 }
 
 void

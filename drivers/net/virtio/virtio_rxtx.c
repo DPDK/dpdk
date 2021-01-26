@@ -685,14 +685,14 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 	struct rte_mbuf *m;
 	uint16_t desc_idx;
 	int error, nbufs, i;
-	bool in_order = vtpci_with_feature(hw, VIRTIO_F_IN_ORDER);
+	bool in_order = virtio_with_feature(hw, VIRTIO_F_IN_ORDER);
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* Allocate blank mbufs for the each rx descriptor */
 	nbufs = 0;
 
-	if (hw->use_vec_rx && !vtpci_packed_queue(hw)) {
+	if (hw->use_vec_rx && !virtio_with_packed_queue(hw)) {
 		for (desc_idx = 0; desc_idx < vq->vq_nentries;
 		     desc_idx++) {
 			vq->vq_split.ring.avail->ring[desc_idx] = desc_idx;
@@ -710,12 +710,12 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 			&rxvq->fake_mbuf;
 	}
 
-	if (hw->use_vec_rx && !vtpci_packed_queue(hw)) {
+	if (hw->use_vec_rx && !virtio_with_packed_queue(hw)) {
 		while (vq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {
 			virtio_rxq_rearm_vec(rxvq);
 			nbufs += RTE_VIRTIO_VPMD_RX_REARM_THRESH;
 		}
-	} else if (!vtpci_packed_queue(vq->hw) && in_order) {
+	} else if (!virtio_with_packed_queue(vq->hw) && in_order) {
 		if ((!virtqueue_full(vq))) {
 			uint16_t free_cnt = vq->vq_free_cnt;
 			struct rte_mbuf *pkts[free_cnt];
@@ -741,7 +741,7 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 				break;
 
 			/* Enqueue allocated buffers */
-			if (vtpci_packed_queue(vq->hw))
+			if (virtio_with_packed_queue(vq->hw))
 				error = virtqueue_enqueue_recv_refill_packed(vq,
 						&m, 1);
 			else
@@ -754,7 +754,7 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 			nbufs++;
 		}
 
-		if (!vtpci_packed_queue(vq->hw))
+		if (!virtio_with_packed_queue(vq->hw))
 			vq_update_avail_idx(vq);
 	}
 
@@ -829,8 +829,8 @@ virtio_dev_tx_queue_setup_finish(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (!vtpci_packed_queue(hw)) {
-		if (vtpci_with_feature(hw, VIRTIO_F_IN_ORDER))
+	if (!virtio_with_packed_queue(hw)) {
+		if (virtio_with_feature(hw, VIRTIO_F_IN_ORDER))
 			vq->vq_split.ring.desc[vq->vq_nentries - 1].next = 0;
 	}
 
@@ -847,7 +847,7 @@ virtio_discard_rxbuf(struct virtqueue *vq, struct rte_mbuf *m)
 	 * Requeue the discarded mbuf. This should always be
 	 * successful since it was just dequeued.
 	 */
-	if (vtpci_packed_queue(vq->hw))
+	if (virtio_with_packed_queue(vq->hw))
 		error = virtqueue_enqueue_recv_refill_packed(vq, &m, 1);
 	else
 		error = virtqueue_enqueue_recv_refill(vq, &m, 1);
@@ -1209,7 +1209,7 @@ virtio_recv_pkts_inorder(void *rx_queue,
 			 ((char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM
 			 - hdr_size);
 
-		if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+		if (virtio_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
 			seg_num = header->num_buffers;
 			if (seg_num == 0)
 				seg_num = 1;
@@ -1735,7 +1735,7 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct virtio_hw *hw = vq->hw;
 	uint16_t hdr_size = hw->vtnet_hdr_size;
 	uint16_t nb_tx = 0;
-	bool in_order = vtpci_with_feature(hw, VIRTIO_F_IN_ORDER);
+	bool in_order = virtio_with_feature(hw, VIRTIO_F_IN_ORDER);
 
 	if (unlikely(hw->started == 0 && tx_pkts != hw->inject_pkts))
 		return nb_tx;
@@ -1754,8 +1754,8 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 		int can_push = 0, use_indirect = 0, slots, need;
 
 		/* optimize ring usage */
-		if ((vtpci_with_feature(hw, VIRTIO_F_ANY_LAYOUT) ||
-		      vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) &&
+		if ((virtio_with_feature(hw, VIRTIO_F_ANY_LAYOUT) ||
+		      virtio_with_feature(hw, VIRTIO_F_VERSION_1)) &&
 		    rte_mbuf_refcnt_read(txm) == 1 &&
 		    RTE_MBUF_DIRECT(txm) &&
 		    txm->nb_segs == 1 &&
@@ -1763,7 +1763,7 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 		    rte_is_aligned(rte_pktmbuf_mtod(txm, char *),
 			   __alignof__(struct virtio_net_hdr_mrg_rxbuf)))
 			can_push = 1;
-		else if (vtpci_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
+		else if (virtio_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
 			 txm->nb_segs < VIRTIO_MAX_TX_INDIRECT)
 			use_indirect = 1;
 		/* How many main ring entries are needed to this Tx?
@@ -1835,8 +1835,8 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		int can_push = 0, use_indirect = 0, slots, need;
 
 		/* optimize ring usage */
-		if ((vtpci_with_feature(hw, VIRTIO_F_ANY_LAYOUT) ||
-		      vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) &&
+		if ((virtio_with_feature(hw, VIRTIO_F_ANY_LAYOUT) ||
+		      virtio_with_feature(hw, VIRTIO_F_VERSION_1)) &&
 		    rte_mbuf_refcnt_read(txm) == 1 &&
 		    RTE_MBUF_DIRECT(txm) &&
 		    txm->nb_segs == 1 &&
@@ -1844,7 +1844,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		    rte_is_aligned(rte_pktmbuf_mtod(txm, char *),
 				   __alignof__(struct virtio_net_hdr_mrg_rxbuf)))
 			can_push = 1;
-		else if (vtpci_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
+		else if (virtio_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
 			 txm->nb_segs < VIRTIO_MAX_TX_INDIRECT)
 			use_indirect = 1;
 
@@ -1937,8 +1937,8 @@ virtio_xmit_pkts_inorder(void *tx_queue,
 		int slots;
 
 		/* optimize ring usage */
-		if ((vtpci_with_feature(hw, VIRTIO_F_ANY_LAYOUT) ||
-		     vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) &&
+		if ((virtio_with_feature(hw, VIRTIO_F_ANY_LAYOUT) ||
+		     virtio_with_feature(hw, VIRTIO_F_VERSION_1)) &&
 		     rte_mbuf_refcnt_read(txm) == 1 &&
 		     RTE_MBUF_DIRECT(txm) &&
 		     txm->nb_segs == 1 &&

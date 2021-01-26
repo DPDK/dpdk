@@ -111,12 +111,12 @@ virtqueue_enqueue_single_packed_vec(struct virtnet_tx *txvq,
 	int16_t need;
 
 	/* optimize ring usage */
-	if ((vtpci_with_feature(hw, VIRTIO_F_ANY_LAYOUT) ||
-	     vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) &&
+	if ((virtio_with_feature(hw, VIRTIO_F_ANY_LAYOUT) ||
+	     virtio_with_feature(hw, VIRTIO_F_VERSION_1)) &&
 	     rte_mbuf_refcnt_read(txm) == 1 && RTE_MBUF_DIRECT(txm) &&
 	     txm->nb_segs == 1 && rte_pktmbuf_headroom(txm) >= hdr_size)
 		can_push = 1;
-	else if (vtpci_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
+	else if (virtio_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
 		 txm->nb_segs < VIRTIO_MAX_TX_INDIRECT)
 		use_indirect = 1;
 

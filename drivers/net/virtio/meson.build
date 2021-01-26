@@ -7,7 +7,8 @@ if is_windows
 	subdir_done()
 endif
 
-sources += files('virtio_ethdev.c',
+sources += files('virtio.c',
+	'virtio_ethdev.c',
 	'virtio_pci_ethdev.c',
 	'virtio_pci.c',
 	'virtio_rxtx.c',

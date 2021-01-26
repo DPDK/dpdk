@@ -122,7 +122,7 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 	dev->features &= dev->device_features;
 
 	/* For packed ring, resetting queues is required in reconnection. */
-	if (vtpci_packed_queue(hw) &&
+	if (virtio_with_packed_queue(hw) &&
 	   (old_status & VIRTIO_CONFIG_STATUS_DRIVER_OK)) {
 		PMD_INIT_LOG(NOTICE, "Packets on the fly will be dropped"
 				" when packed ring reconnecting.");
@@ -423,7 +423,7 @@ virtio_user_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
-	if (vtpci_packed_queue(hw))
+	if (virtio_with_packed_queue(hw))
 		virtio_user_setup_queue_packed(vq, dev);
 	else
 		virtio_user_setup_queue_split(vq, dev);
@@ -456,7 +456,7 @@ virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
 	if (hw->cvq && (hw->cvq->vq == vq)) {
-		if (vtpci_packed_queue(vq->hw))
+		if (virtio_with_packed_queue(vq->hw))
 			virtio_user_handle_cq_packed(dev, vq->vq_queue_index);
 		else
 			virtio_user_handle_cq(dev, vq->vq_queue_index);
