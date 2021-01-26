@@ -592,7 +592,7 @@ static const char *const modify_field_ids[] = {
 	"start", "mac_dst", "mac_src",
 	"vlan_type", "vlan_id", "mac_type",
 	"ipv4_dscp", "ipv4_ttl", "ipv4_src", "ipv4_dst",
-	"ipv6_hoplimit", "ipv6_src", "ipv6_dst",
+	"ipv6_dscp", "ipv6_hoplimit", "ipv6_src", "ipv6_dst",
 	"tcp_port_src", "tcp_port_dst",
 	"tcp_seq_num", "tcp_ack_num", "tcp_flags",
 	"udp_port_src", "udp_port_dst",
