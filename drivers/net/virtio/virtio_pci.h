@@ -247,26 +247,25 @@ struct virtio_pci_ops {
 struct virtio_net_config;
 
 struct virtio_hw {
-	struct virtnet_ctl *cvq;
-	uint64_t    req_guest_features;
-	uint64_t    guest_features;
-	uint32_t    max_queue_pairs;
-	bool        started;
-	uint16_t	max_mtu;
-	uint16_t    vtnet_hdr_size;
-	uint8_t	    vlan_strip;
-	uint8_t	    use_msix;
-	uint8_t     use_vec_rx;
-	uint8_t     use_vec_tx;
-	uint8_t     use_inorder_rx;
-	uint8_t     use_inorder_tx;
-	uint8_t     weak_barriers;
-	bool        has_tx_offload;
-	bool        has_rx_offload;
-	uint16_t    port_id;
-	uint8_t     mac_addr[RTE_ETHER_ADDR_LEN];
-	uint32_t    speed;  /* link speed in MB */
-	uint8_t     duplex;
+	struct virtqueue **vqs;
+	uint64_t guest_features;
+	uint16_t vtnet_hdr_size;
+	uint8_t started;
+	uint8_t weak_barriers;
+	uint8_t vlan_strip;
+	uint8_t has_tx_offload;
+	uint8_t has_rx_offload;
+	uint8_t use_vec_rx;
+	uint8_t use_vec_tx;
+	uint8_t use_inorder_rx;
+	uint8_t use_inorder_tx;
+	uint8_t opened;
+	uint16_t port_id;
+	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+	uint32_t speed;  /* link speed in MB */
+	uint8_t duplex;
+	uint8_t use_msix;
+	uint16_t max_mtu;
 	/*
 	 * App management thread and virtio interrupt handler thread
 	 * both can change device state, this lock is meant to avoid
@@ -274,9 +273,9 @@ struct virtio_hw {
 	 */
 	rte_spinlock_t state_lock;
 	struct rte_mbuf **inject_pkts;
-	bool        opened;
-
-	struct virtqueue **vqs;
+	uint16_t max_queue_pairs;
+	uint64_t req_guest_features;
+	struct virtnet_ctl *cvq;
 };
 
 struct virtio_pci_dev {

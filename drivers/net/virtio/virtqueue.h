@@ -615,7 +615,7 @@ virtqueue_notify(struct virtqueue *vq)
 static inline void
 virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 			struct rte_mbuf *cookie,
-			bool offload)
+			uint8_t offload)
 {
 	if (offload) {
 		if (cookie->ol_flags & PKT_TX_TCP_SEG)

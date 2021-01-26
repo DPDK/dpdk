@@ -699,7 +699,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 
 	if (!hw->opened)
 		return 0;
-	hw->opened = false;
+	hw->opened = 0;
 
 	/* reset the NIC */
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
@@ -1864,7 +1864,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	hw->opened = true;
+	hw->opened = 1;
 
 	return 0;
 
@@ -1973,7 +1973,7 @@ exit:
 	return ret;
 }
 
-static bool
+static uint8_t
 rx_offload_enabled(struct virtio_hw *hw)
 {
 	return vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM) ||
@@ -1981,7 +1981,7 @@ rx_offload_enabled(struct virtio_hw *hw)
 		vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO6);
 }
 
-static bool
+static uint8_t
 tx_offload_enabled(struct virtio_hw *hw)
 {
 	return vtpci_with_feature(hw, VIRTIO_NET_F_CSUM) ||
@@ -2267,7 +2267,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	}
 
 	set_rxtx_funcs(dev);
-	hw->started = true;
+	hw->started = 1;
 
 	/* Initialize Link state */
 	virtio_dev_link_update(dev, 0);
@@ -2336,7 +2336,7 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	rte_spinlock_lock(&hw->state_lock);
 	if (!hw->started)
 		goto out_unlock;
-	hw->started = false;
+	hw->started = 0;
 
 	if (intr_conf->lsc || intr_conf->rxq) {
 		virtio_intr_disable(dev);
