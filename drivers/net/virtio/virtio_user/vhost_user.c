@@ -538,11 +538,32 @@ vhost_user_set_vring_kick(struct virtio_user_dev *dev, struct vhost_vring_file *
 	return vhost_user_set_vring_file(dev, VHOST_USER_SET_VRING_KICK, file);
 }
 
+
+static int
+vhost_user_set_vring_addr(struct virtio_user_dev *dev, struct vhost_vring_addr *addr)
+{
+	int ret;
+	struct vhost_user_msg msg = {
+		.request = VHOST_USER_SET_VRING_ADDR,
+		.flags = VHOST_USER_VERSION,
+		.size = sizeof(*addr),
+		.payload.addr = *addr,
+	};
+
+	ret = vhost_user_write(dev->vhostfd, &msg, NULL, 0);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to send vring addresses");
+		return -1;
+	}
+
+	return 0;
+}
+
+
 static struct vhost_user_msg m;
 
 const char * const vhost_msg_strings[] = {
 	[VHOST_USER_RESET_OWNER] = "VHOST_RESET_OWNER",
-	[VHOST_USER_SET_VRING_ADDR] = "VHOST_SET_VRING_ADDR",
 	[VHOST_USER_SET_STATUS] = "VHOST_SET_STATUS",
 	[VHOST_USER_GET_STATUS] = "VHOST_GET_STATUS",
 };
@@ -608,11 +629,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 
 	case VHOST_USER_SET_LOG_FD:
 		fds[fd_num++] = *((int *)arg);
-		break;
-
-	case VHOST_USER_SET_VRING_ADDR:
-		memcpy(&msg.payload.addr, arg, sizeof(msg.payload.addr));
-		msg.size = sizeof(m.payload.addr);
 		break;
 
 	case VHOST_USER_SET_VRING_ERR:
@@ -787,6 +803,7 @@ struct virtio_user_backend_ops virtio_ops_user = {
 	.get_vring_base = vhost_user_get_vring_base,
 	.set_vring_call = vhost_user_set_vring_call,
 	.set_vring_kick = vhost_user_set_vring_kick,
+	.set_vring_addr = vhost_user_set_vring_addr,
 	.send_request = vhost_user_sock,
 	.enable_qp = vhost_user_enable_queue_pair
 };

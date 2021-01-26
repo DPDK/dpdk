@@ -81,7 +81,7 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 		state.num |= (1 << 15);
 	dev->ops->set_vring_base(dev, &state);
 
-	dev->ops->send_request(dev, VHOST_USER_SET_VRING_ADDR, &addr);
+	dev->ops->set_vring_addr(dev, &addr);
 
 	/* Of all per virtqueue MSGs, make sure VHOST_USER_SET_VRING_KICK comes
 	 * lastly because vhost depends on this msg to judge if
