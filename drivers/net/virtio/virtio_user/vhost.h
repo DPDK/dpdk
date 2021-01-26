@@ -115,6 +115,9 @@ struct virtio_user_backend_ops {
 	int (*get_protocol_features)(struct virtio_user_dev *dev, uint64_t *features);
 	int (*set_protocol_features)(struct virtio_user_dev *dev, uint64_t features);
 	int (*set_memory_table)(struct virtio_user_dev *dev);
+	int (*set_vring_num)(struct virtio_user_dev *dev, struct vhost_vring_state *state);
+	int (*set_vring_base)(struct virtio_user_dev *dev, struct vhost_vring_state *state);
+	int (*get_vring_base)(struct virtio_user_dev *dev, struct vhost_vring_state *state);
 	int (*send_request)(struct virtio_user_dev *dev,
 			    enum vhost_user_request req,
 			    void *arg);

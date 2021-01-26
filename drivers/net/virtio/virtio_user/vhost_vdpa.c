@@ -32,24 +32,17 @@
 #define VHOST_VDPA_GET_DEVICE_ID _IOR(VHOST_VIRTIO, 0x70, __u32)
 #define VHOST_VDPA_GET_STATUS _IOR(VHOST_VIRTIO, 0x71, __u8)
 #define VHOST_VDPA_SET_STATUS _IOW(VHOST_VIRTIO, 0x72, __u8)
-#define VHOST_VDPA_SET_VRING_ENABLE	_IOW(VHOST_VIRTIO, 0x75, \
-					     struct vhost_vring_state)
+#define VHOST_VDPA_SET_VRING_ENABLE _IOW(VHOST_VIRTIO, 0x75, struct vhost_vring_state)
 #define VHOST_SET_BACKEND_FEATURES _IOW(VHOST_VIRTIO, 0x25, __u64)
 #define VHOST_GET_BACKEND_FEATURES _IOR(VHOST_VIRTIO, 0x26, __u64)
 
 static uint64_t vhost_req_user_to_vdpa[] = {
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
 	[VHOST_USER_SET_VRING_CALL] = VHOST_SET_VRING_CALL,
-	[VHOST_USER_SET_VRING_NUM] = VHOST_SET_VRING_NUM,
-	[VHOST_USER_SET_VRING_BASE] = VHOST_SET_VRING_BASE,
-	[VHOST_USER_GET_VRING_BASE] = VHOST_GET_VRING_BASE,
 	[VHOST_USER_SET_VRING_ADDR] = VHOST_SET_VRING_ADDR,
 	[VHOST_USER_SET_VRING_KICK] = VHOST_SET_VRING_KICK,
 	[VHOST_USER_SET_STATUS] = VHOST_VDPA_SET_STATUS,
 	[VHOST_USER_GET_STATUS] = VHOST_VDPA_GET_STATUS,
-	[VHOST_USER_SET_VRING_ENABLE] = VHOST_VDPA_SET_VRING_ENABLE,
-	[VHOST_USER_GET_PROTOCOL_FEATURES] = VHOST_GET_BACKEND_FEATURES,
-	[VHOST_USER_SET_PROTOCOL_FEATURES] = VHOST_SET_BACKEND_FEATURES,
 };
 
 /* no alignment requirement */
@@ -347,6 +340,30 @@ batch_end:
 	return ret;
 }
 
+static int
+vhost_vdpa_set_vring_enable(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_VDPA_SET_VRING_ENABLE, state);
+}
+
+static int
+vhost_vdpa_set_vring_num(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_SET_VRING_NUM, state);
+}
+
+static int
+vhost_vdpa_set_vring_base(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_SET_VRING_BASE, state);
+}
+
+static int
+vhost_vdpa_get_vring_base(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_vdpa_ioctl(dev->vhostfd, VHOST_GET_VRING_BASE, state);
+}
+
 /* with below features, vhost vdpa does not need to do the checksum and TSO,
  * these info will be passed to virtio_user through virtio net header.
  */
@@ -375,10 +392,7 @@ vhost_vdpa_send_request(struct virtio_user_dev *dev,
 	req_vdpa = vhost_req_user_to_vdpa[req];
 
 	switch (req_vdpa) {
-	case VHOST_SET_VRING_NUM:
 	case VHOST_SET_VRING_ADDR:
-	case VHOST_SET_VRING_BASE:
-	case VHOST_GET_VRING_BASE:
 	case VHOST_SET_VRING_KICK:
 	case VHOST_SET_VRING_CALL:
 		PMD_DRV_LOG(DEBUG, "vhostfd=%d, index=%u",
@@ -440,7 +454,7 @@ vhost_vdpa_enable_queue_pair(struct virtio_user_dev *dev,
 			.num   = enable,
 		};
 
-		if (vhost_vdpa_send_request(dev, VHOST_USER_SET_VRING_ENABLE, &state))
+		if (vhost_vdpa_set_vring_enable(dev, &state))
 			return -1;
 	}
 
@@ -457,6 +471,9 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.get_protocol_features = vhost_vdpa_get_backend_features,
 	.set_protocol_features = vhost_vdpa_set_backend_features,
 	.set_memory_table = vhost_vdpa_set_memory_table,
+	.set_vring_num = vhost_vdpa_set_vring_num,
+	.set_vring_base = vhost_vdpa_set_vring_base,
+	.get_vring_base = vhost_vdpa_get_vring_base,
 	.send_request = vhost_vdpa_send_request,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,

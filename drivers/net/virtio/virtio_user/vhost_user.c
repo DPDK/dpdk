@@ -417,17 +417,94 @@ err:
 	return -1;
 }
 
+static int
+vhost_user_set_vring(struct virtio_user_dev *dev, enum vhost_user_request req,
+		struct vhost_vring_state *state)
+{
+	int ret;
+	struct vhost_user_msg msg = {
+		.request = req,
+		.flags = VHOST_USER_VERSION,
+		.size = sizeof(*state),
+		.payload.state = *state,
+	};
+
+	ret = vhost_user_write(dev->vhostfd, &msg, NULL, 0);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to set vring state (request %d)", req);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+vhost_user_set_vring_enable(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_user_set_vring(dev, VHOST_USER_SET_VRING_ENABLE, state);
+}
+
+static int
+vhost_user_set_vring_num(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_user_set_vring(dev, VHOST_USER_SET_VRING_NUM, state);
+}
+
+static int
+vhost_user_set_vring_base(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_user_set_vring(dev, VHOST_USER_SET_VRING_BASE, state);
+}
+
+static int
+vhost_user_get_vring_base(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	int ret;
+	struct vhost_user_msg msg;
+	unsigned int index = state->index;
+
+	ret = vhost_user_set_vring(dev, VHOST_USER_GET_VRING_BASE, state);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to send request");
+		goto err;
+	}
+
+	ret = vhost_user_read(dev->vhostfd, &msg);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to read reply");
+		goto err;
+	}
+
+	if (msg.request != VHOST_USER_GET_VRING_BASE) {
+		PMD_DRV_LOG(ERR, "Unexpected request type (%d)", msg.request);
+		goto err;
+	}
+
+	if (msg.size != sizeof(*state)) {
+		PMD_DRV_LOG(ERR, "Unexpected payload size (%u)", msg.size);
+		goto err;
+	}
+
+	if (msg.payload.state.index != index) {
+		PMD_DRV_LOG(ERR, "Unexpected ring index (%u)", state->index);
+		goto err;
+	}
+
+	*state = msg.payload.state;
+
+	return 0;
+err:
+	PMD_DRV_LOG(ERR, "Failed to get vring base");
+	return -1;
+}
+
 static struct vhost_user_msg m;
 
 const char * const vhost_msg_strings[] = {
 	[VHOST_USER_RESET_OWNER] = "VHOST_RESET_OWNER",
 	[VHOST_USER_SET_VRING_CALL] = "VHOST_SET_VRING_CALL",
-	[VHOST_USER_SET_VRING_NUM] = "VHOST_SET_VRING_NUM",
-	[VHOST_USER_SET_VRING_BASE] = "VHOST_SET_VRING_BASE",
-	[VHOST_USER_GET_VRING_BASE] = "VHOST_GET_VRING_BASE",
 	[VHOST_USER_SET_VRING_ADDR] = "VHOST_SET_VRING_ADDR",
 	[VHOST_USER_SET_VRING_KICK] = "VHOST_SET_VRING_KICK",
-	[VHOST_USER_SET_VRING_ENABLE] = "VHOST_SET_VRING_ENABLE",
 	[VHOST_USER_SET_STATUS] = "VHOST_SET_STATUS",
 	[VHOST_USER_GET_STATUS] = "VHOST_GET_STATUS",
 };
@@ -495,19 +572,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		fds[fd_num++] = *((int *)arg);
 		break;
 
-	case VHOST_USER_SET_VRING_NUM:
-	case VHOST_USER_SET_VRING_BASE:
-	case VHOST_USER_SET_VRING_ENABLE:
-		memcpy(&msg.payload.state, arg, sizeof(msg.payload.state));
-		msg.size = sizeof(m.payload.state);
-		break;
-
-	case VHOST_USER_GET_VRING_BASE:
-		memcpy(&msg.payload.state, arg, sizeof(msg.payload.state));
-		msg.size = sizeof(m.payload.state);
-		need_reply = 1;
-		break;
-
 	case VHOST_USER_SET_VRING_ADDR:
 		memcpy(&msg.payload.addr, arg, sizeof(msg.payload.addr));
 		msg.size = sizeof(m.payload.addr);
@@ -555,14 +619,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 				return -1;
 			}
 			*((__u64 *)arg) = msg.payload.u64;
-			break;
-		case VHOST_USER_GET_VRING_BASE:
-			if (msg.size != sizeof(m.payload.state)) {
-				PMD_DRV_LOG(ERR, "Received bad msg size");
-				return -1;
-			}
-			memcpy(arg, &msg.payload.state,
-			       sizeof(struct vhost_vring_state));
 			break;
 		default:
 			/* Reply-ack handling */
@@ -671,10 +727,10 @@ vhost_user_enable_queue_pair(struct virtio_user_dev *dev,
 	for (i = 0; i < 2; ++i) {
 		struct vhost_vring_state state = {
 			.index = pair_idx * 2 + i,
-			.num   = enable,
+			.num = enable,
 		};
 
-		if (vhost_user_sock(dev, VHOST_USER_SET_VRING_ENABLE, &state))
+		if (vhost_user_set_vring_enable(dev, &state))
 			return -1;
 	}
 
@@ -690,6 +746,9 @@ struct virtio_user_backend_ops virtio_ops_user = {
 	.get_protocol_features = vhost_user_get_protocol_features,
 	.set_protocol_features = vhost_user_set_protocol_features,
 	.set_memory_table = vhost_user_set_memory_table,
+	.set_vring_num = vhost_user_set_vring_num,
+	.set_vring_base = vhost_user_set_vring_base,
+	.get_vring_base = vhost_user_get_vring_base,
 	.send_request = vhost_user_sock,
 	.enable_qp = vhost_user_enable_queue_pair
 };

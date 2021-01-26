@@ -73,13 +73,13 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 
 	state.index = queue_sel;
 	state.num = vring->num;
-	dev->ops->send_request(dev, VHOST_USER_SET_VRING_NUM, &state);
+	dev->ops->set_vring_num(dev, &state);
 
 	state.index = queue_sel;
 	state.num = 0; /* no reservation */
 	if (dev->features & (1ULL << VIRTIO_F_RING_PACKED))
 		state.num |= (1 << 15);
-	dev->ops->send_request(dev, VHOST_USER_SET_VRING_BASE, &state);
+	dev->ops->set_vring_base(dev, &state);
 
 	dev->ops->send_request(dev, VHOST_USER_SET_VRING_ADDR, &addr);
 
@@ -218,9 +218,8 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 	/* Stop the backend. */
 	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
 		state.index = i;
-		if (dev->ops->send_request(dev, VHOST_USER_GET_VRING_BASE,
-					   &state) < 0) {
-			PMD_DRV_LOG(ERR, "get_vring_base failed, index=%u\n",
+		if (dev->ops->get_vring_base(dev, &state) < 0) {
+			PMD_DRV_LOG(ERR, "get_vring_base failed, index=%u",
 				    i);
 			error = -1;
 			goto out;

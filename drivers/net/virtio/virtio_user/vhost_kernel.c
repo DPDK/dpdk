@@ -219,12 +219,49 @@ err:
 	return -1;
 }
 
+static int
+vhost_kernel_set_vring(struct virtio_user_dev *dev, uint64_t req, struct vhost_vring_state *state)
+{
+	int ret, fd;
+	unsigned int index = state->index;
+
+	/* Convert from queue index to queue-pair & offset */
+	fd = dev->vhostfds[state->index / 2];
+	state->index %= 2;
+
+	ret = vhost_kernel_ioctl(fd, req, state);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to set vring (request %" PRIu64 ")", req);
+		return -1;
+	}
+
+	/* restore index back to queue index */
+	state->index = index;
+
+	return 0;
+}
+
+static int
+vhost_kernel_set_vring_num(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_kernel_set_vring(dev, VHOST_SET_VRING_NUM, state);
+}
+
+static int
+vhost_kernel_set_vring_base(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_kernel_set_vring(dev, VHOST_SET_VRING_BASE, state);
+}
+
+static int
+vhost_kernel_get_vring_base(struct virtio_user_dev *dev, struct vhost_vring_state *state)
+{
+	return vhost_kernel_set_vring(dev, VHOST_GET_VRING_BASE, state);
+}
+
 static uint64_t vhost_req_user_to_kernel[] = {
 	[VHOST_USER_RESET_OWNER] = VHOST_RESET_OWNER,
 	[VHOST_USER_SET_VRING_CALL] = VHOST_SET_VRING_CALL,
-	[VHOST_USER_SET_VRING_NUM] = VHOST_SET_VRING_NUM,
-	[VHOST_USER_SET_VRING_BASE] = VHOST_SET_VRING_BASE,
-	[VHOST_USER_GET_VRING_BASE] = VHOST_GET_VRING_BASE,
 	[VHOST_USER_SET_VRING_ADDR] = VHOST_SET_VRING_ADDR,
 	[VHOST_USER_SET_VRING_KICK] = VHOST_SET_VRING_KICK,
 };
@@ -245,10 +282,7 @@ vhost_kernel_send_request(struct virtio_user_dev *dev,
 	req_kernel = vhost_req_user_to_kernel[req];
 
 	switch (req_kernel) {
-	case VHOST_SET_VRING_NUM:
 	case VHOST_SET_VRING_ADDR:
-	case VHOST_SET_VRING_BASE:
-	case VHOST_GET_VRING_BASE:
 	case VHOST_SET_VRING_KICK:
 	case VHOST_SET_VRING_CALL:
 		queue_sel = *(unsigned int *)arg;
@@ -403,6 +437,9 @@ struct virtio_user_backend_ops virtio_ops_kernel = {
 	.get_features = vhost_kernel_get_features,
 	.set_features = vhost_kernel_set_features,
 	.set_memory_table = vhost_kernel_set_memory_table,
+	.set_vring_num = vhost_kernel_set_vring_num,
+	.set_vring_base = vhost_kernel_set_vring_base,
+	.get_vring_base = vhost_kernel_get_vring_base,
 	.send_request = vhost_kernel_send_request,
 	.enable_qp = vhost_kernel_enable_queue_pair
 };
