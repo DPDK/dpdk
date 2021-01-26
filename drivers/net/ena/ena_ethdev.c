@@ -1282,6 +1282,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->ring_size = nb_desc;
 	txq->size_mask = nb_desc - 1;
 	txq->numa_socket_id = socket_id;
+	txq->pkts_without_db = false;
 
 	txq->tx_buffer_info = rte_zmalloc("txq->tx_buffer_info",
 					  sizeof(struct ena_tx_buffer) *
@@ -2522,6 +2523,7 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 			tx_ring->id);
 		ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
 		tx_ring->tx_stats.doorbells++;
+		tx_ring->pkts_without_db = false;
 	}
 
 	/* prepare the packet's descriptors to dma engine */
@@ -2603,7 +2605,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		if (ena_xmit_mbuf(tx_ring, tx_pkts[sent_idx]))
 			break;
-
+		tx_ring->pkts_without_db = true;
 		rte_prefetch0(tx_pkts[ENA_IDX_ADD_MASKED(sent_idx, 4,
 			tx_ring->size_mask)]);
 	}
@@ -2612,10 +2614,11 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		ena_com_free_q_entries(tx_ring->ena_com_io_sq);
 
 	/* If there are ready packets to be xmitted... */
-	if (sent_idx > 0) {
+	if (likely(tx_ring->pkts_without_db)) {
 		/* ...let HW do its best :-) */
 		ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
 		tx_ring->tx_stats.doorbells++;
+		tx_ring->pkts_without_db = false;
 	}
 
 	ena_tx_cleanup(tx_ring);
