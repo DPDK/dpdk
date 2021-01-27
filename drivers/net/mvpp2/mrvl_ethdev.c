@@ -671,18 +671,6 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 		priv->uc_mc_flushed = 1;
 	}
 
-	if (!priv->vlan_flushed) {
-		ret = pp2_ppio_flush_vlan(priv->ppio);
-		if (ret) {
-			MRVL_LOG(ERR, "Failed to flush vlan list");
-			/*
-			 * TODO
-			 * once pp2_ppio_flush_vlan() is supported jump to out
-			 * goto out;
-			 */
-		}
-		priv->vlan_flushed = 1;
-	}
 	ret = mrvl_mtu_set(dev, dev->data->mtu);
 	if (ret)
 		MRVL_LOG(ERR, "Failed to set MTU to %d", dev->data->mtu);
