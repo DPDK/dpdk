@@ -689,6 +689,10 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	snprintf(match, sizeof(match), "ppio-%d:%d",
 		 priv->pp_id, priv->ppio_id);
 	priv->ppio_params.match = match;
+	priv->ppio_params.eth_start_hdr = PP2_PPIO_HDR_ETH;
+	if (mrvl_qos_cfg)
+		priv->ppio_params.eth_start_hdr =
+			mrvl_qos_cfg->port[dev->data->port_id].eth_start_hdr;
 
 	/*
 	 * Calculate the minimum bpool size for refill feature as follows:

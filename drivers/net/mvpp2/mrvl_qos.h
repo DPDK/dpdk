@@ -20,6 +20,7 @@
 /* QoS config. */
 struct mrvl_qos_cfg {
 	struct port_cfg {
+		enum pp2_ppio_eth_start_hdr eth_start_hdr;
 		int rate_limit_enable;
 		struct pp2_ppio_rate_limit_params rate_limit_params;
 		struct {

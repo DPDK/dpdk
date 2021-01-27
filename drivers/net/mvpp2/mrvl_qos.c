@@ -19,6 +19,10 @@
 
 /* Parsing tokens. Defined conveniently, so that any correction is easy. */
 #define MRVL_TOK_DEFAULT "default"
+#define MRVL_TOK_DSA_MODE "dsa_mode"
+#define MRVL_TOK_DSA_MODE_NONE "none"
+#define MRVL_TOK_DSA_MODE_DSA "dsa"
+#define MRVL_TOK_DSA_MODE_EXT_DSA "ext_dsa"
 #define MRVL_TOK_DEFAULT_TC "default_tc"
 #define MRVL_TOK_DSCP "dscp"
 #define MRVL_TOK_MAPPING_PRIORITY "mapping_priority"
@@ -494,16 +498,19 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 	const char *entry;
 	char sec_name[32];
 
-	if (file == NULL)
-		rte_exit(EXIT_FAILURE, "Cannot load configuration %s\n", path);
+	if (file == NULL) {
+		MRVL_LOG(ERR, "Cannot load configuration %s\n", path);
+		return -1;
+	}
 
 	/* Create configuration. This is never accessed on the fast path,
 	 * so we can ignore socket.
 	 */
 	*cfg = rte_zmalloc("mrvl_qos_cfg", sizeof(struct mrvl_qos_cfg), 0);
-	if (*cfg == NULL)
-		rte_exit(EXIT_FAILURE, "Cannot allocate configuration %s\n",
-			path);
+	if (*cfg == NULL) {
+		MRVL_LOG(ERR, "Cannot allocate configuration %s\n", path);
+		return -1;
+	}
 
 	n = rte_cfgfile_num_sections(file, MRVL_TOK_PORT,
 		sizeof(MRVL_TOK_PORT) - 1);
@@ -526,6 +533,31 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 		if (rte_cfgfile_num_sections(file, sec_name,
 				strlen(sec_name)) <= 0) {
 			continue;
+		}
+
+		entry = rte_cfgfile_get_entry(file, sec_name,
+				MRVL_TOK_DSA_MODE);
+		if (entry) {
+			if (!strncmp(entry, MRVL_TOK_DSA_MODE_NONE,
+				sizeof(MRVL_TOK_DSA_MODE_NONE)))
+				(*cfg)->port[n].eth_start_hdr =
+				PP2_PPIO_HDR_ETH;
+			else if (!strncmp(entry, MRVL_TOK_DSA_MODE_DSA,
+				sizeof(MRVL_TOK_DSA_MODE_DSA)))
+				(*cfg)->port[n].eth_start_hdr =
+				PP2_PPIO_HDR_ETH_DSA;
+			else if (!strncmp(entry, MRVL_TOK_DSA_MODE_EXT_DSA,
+				sizeof(MRVL_TOK_DSA_MODE_EXT_DSA))) {
+				(*cfg)->port[n].eth_start_hdr =
+				PP2_PPIO_HDR_ETH_EXT_DSA;
+			} else {
+				MRVL_LOG(ERR,
+					"Error in parsing %s value (%s)!\n",
+					MRVL_TOK_DSA_MODE, entry);
+				return -1;
+			}
+		} else {
+			(*cfg)->port[n].eth_start_hdr = PP2_PPIO_HDR_ETH;
 		}
 
 		/*
@@ -575,13 +607,15 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 				(*cfg)->port[n].mapping_priority =
 					PP2_CLS_QOS_TBL_IP_PRI;
 			else if (!strncmp(entry, MRVL_TOK_VLAN,
-				sizeof(MRVL_TOK_VLAN)))
+				sizeof(MRVL_TOK_VLAN))) {
 				(*cfg)->port[n].mapping_priority =
 					PP2_CLS_QOS_TBL_VLAN_PRI;
-			else
-				rte_exit(EXIT_FAILURE,
+			} else {
+				MRVL_LOG(ERR,
 					"Error in parsing %s value (%s)!\n",
 					MRVL_TOK_MAPPING_PRIORITY, entry);
+				return -1;
+			}
 		} else {
 			(*cfg)->port[n].mapping_priority =
 				PP2_CLS_QOS_TBL_VLAN_IP_PRI;
@@ -604,18 +638,22 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 
 		for (i = 0; i < MRVL_PP2_RXQ_MAX; ++i) {
 			ret = get_outq_cfg(file, n, i, *cfg);
-			if (ret < 0)
-				rte_exit(EXIT_FAILURE,
+			if (ret < 0) {
+				MRVL_LOG(ERR,
 					"Error %d parsing port %d outq %d!\n",
 					ret, n, i);
+				return -1;
+			}
 		}
 
 		for (i = 0; i < MRVL_PP2_TC_MAX; ++i) {
 			ret = parse_tc_cfg(file, n, i, *cfg);
-			if (ret < 0)
-				rte_exit(EXIT_FAILURE,
+			if (ret < 0) {
+				MRVL_LOG(ERR,
 					"Error %d parsing port %d tc %d!\n",
 					ret, n, i);
+				return -1;
+			}
 		}
 
 		entry = rte_cfgfile_get_entry(file, sec_name,
@@ -628,7 +666,8 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 		} else {
 			if ((*cfg)->port[n].use_global_defaults == 0) {
 				MRVL_LOG(ERR,
-					 "Default Traffic Class required in custom configuration!");
+					 "Default Traffic Class required in "
+					 "custom configuration!");
 				return -1;
 			}
 		}
