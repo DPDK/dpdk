@@ -1196,6 +1196,146 @@ out:
 	return -rte_errno;
 }
 
+static int
+mrvl_string_to_hex_values(const uint8_t *input_string,
+			  uint8_t *hex_key,
+			  uint8_t *length)
+{
+	char tmp_arr[3], tmp_string[MRVL_CLS_STR_SIZE_MAX], *string_iter;
+	int i;
+
+	strcpy(tmp_string, (const char *)input_string);
+	string_iter = tmp_string;
+
+	string_iter += 2; /* skip the '0x' */
+	*length = ((*length - 2) + 1) / 2;
+
+	for (i = 0; i < *length; i++) {
+		strncpy(tmp_arr, string_iter, 2);
+		tmp_arr[2] = '\0';
+		if (get_val_securely8(tmp_arr, 16,
+				      &hex_key[*length - 1 - i]) < 0)
+			return -1;
+		string_iter += 2;
+	}
+
+	return 0;
+}
+
+/**
+ * Parse raw flow item.
+ *
+ * @param item Pointer to the flow item.
+ * @param flow Pointer to the flow.
+ * @param error Pointer to the flow error.
+ * @returns 0 on success, negative value otherwise.
+ */
+static int
+mrvl_parse_raw(const struct rte_flow_item *item,
+	       struct rte_flow *flow,
+	       struct rte_flow_error *error)
+{
+	const struct rte_flow_item_raw *spec = NULL, *mask = NULL;
+	struct pp2_cls_rule_key_field *key_field;
+	struct mv_net_udf *udf_params;
+	uint8_t length;
+	int ret;
+
+	ret = mrvl_parse_init(item, (const void **)&spec, (const void **)&mask,
+			      &rte_flow_item_raw_mask,
+			      sizeof(struct rte_flow_item_raw), error);
+	if (ret)
+		return ret;
+
+	if (!spec->pattern) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   NULL, "pattern pointer MUST be given\n");
+		return -rte_errno;
+	}
+
+	/* Only hex string is supported; so, it must start with '0x' */
+	if (strncmp((const char *)spec->pattern, "0x", 2) != 0)  {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   NULL, "'pattern' string must start with '0x'\n");
+		return -rte_errno;
+	}
+
+	if (mask->pattern &&
+	    strncmp((const char *)mask->pattern, "0x", 2) != 0)  {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   NULL, "'mask-pattern' string must start with '0x'\n");
+		return -rte_errno;
+	}
+
+	if (mask->search && spec->search) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   NULL, "'search' option must be '0'\n");
+		return -rte_errno;
+	}
+
+	if (mask->offset && spec->offset != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   NULL, "'offset' option must be '0'\n");
+		return -rte_errno;
+	}
+
+	if (!mask->relative || !spec->relative) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   NULL, "'relative' option must be given and enabled\n");
+		return -rte_errno;
+	}
+
+	length = spec->length & mask->length;
+	if (!length) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   NULL, "'length' option must be given bigger than '0'\n");
+		return -rte_errno;
+	}
+
+	key_field = &flow->rule.fields[flow->rule.num_fields];
+	mrvl_alloc_key_mask(key_field);
+
+	/* pattern and length refer to string bytes. we need to convert it to
+	 * values.
+	 */
+	key_field->size = length;
+	ret = mrvl_string_to_hex_values(spec->pattern, key_field->key,
+					&key_field->size);
+	if (ret) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				   NULL,
+				   "can't convert pattern from string to hex\n");
+		return -rte_errno;
+	}
+	if (mask->pattern) {
+		ret = mrvl_string_to_hex_values(mask->pattern, key_field->mask,
+						&length);
+		if (ret) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					   NULL,
+					   "can't convert mask-pattern from string to hex\n");
+			return -rte_errno;
+		}
+	} else {
+		rte_free(key_field->mask);
+		key_field->mask = NULL;
+	}
+
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_UDF;
+	udf_params =
+		&flow->table_key.proto_field[flow->rule.num_fields].field.udf;
+	udf_params->id = flow->next_udf_id++;
+	udf_params->size = key_field->size;
+	flow->table_key.key_size += key_field->size;
+
+	flow->rule.num_fields += 1;
+
+	return 0;
+}
+
 /**
  * Structure used to map specific flow pattern to the pattern parse callback
  * which will iterate over each pattern item and extract relevant data.
@@ -1212,6 +1352,7 @@ static const struct {
 	{ RTE_FLOW_ITEM_TYPE_IPV6, mrvl_parse_ip6 },
 	{ RTE_FLOW_ITEM_TYPE_TCP, mrvl_parse_tcp },
 	{ RTE_FLOW_ITEM_TYPE_UDP, mrvl_parse_udp },
+	{ RTE_FLOW_ITEM_TYPE_RAW, mrvl_parse_raw },
 	{ RTE_FLOW_ITEM_TYPE_END, NULL }
 };
 

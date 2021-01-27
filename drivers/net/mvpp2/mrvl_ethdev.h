@@ -92,6 +92,7 @@ struct rte_flow {
 	struct pp2_cls_tbl_rule rule;
 	struct pp2_cls_cos_desc cos;
 	struct pp2_cls_tbl_action action;
+	uint8_t next_udf_id;
 };
 
 struct mrvl_mtr_profile {
