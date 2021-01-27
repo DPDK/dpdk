@@ -496,9 +496,17 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		dev->data->mtu = dev->data->dev_conf.rxmode.max_rx_pkt_len -
 				 MRVL_PP2_ETH_HDRS_LEN;
+		if (dev->data->mtu > priv->max_mtu) {
+			MRVL_LOG(ERR, "inherit MTU %u from max_rx_pkt_len %u is larger than max_mtu %u\n",
+				 dev->data->mtu,
+				 dev->data->dev_conf.rxmode.max_rx_pkt_len,
+				 priv->max_mtu);
+			return -EINVAL;
+		}
+	}
 
 	if (dev->data->dev_conf.txmode.offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
 		priv->multiseg = 1;
@@ -1679,9 +1687,11 @@ mrvl_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
  *   Info structure output buffer.
  */
 static int
-mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
+mrvl_dev_infos_get(struct rte_eth_dev *dev,
 		   struct rte_eth_dev_info *info)
 {
+	struct mrvl_priv *priv = dev->data->dev_private;
+
 	info->speed_capa = ETH_LINK_SPEED_10M |
 			   ETH_LINK_SPEED_100M |
 			   ETH_LINK_SPEED_1G |
@@ -1713,6 +1723,7 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	info->default_rxconf.rx_drop_en = 1;
 
 	info->max_rx_pktlen = MRVL_PKT_SIZE_MAX;
+	info->max_mtu = priv->max_mtu;
 
 	return 0;
 }
@@ -3020,6 +3031,7 @@ mrvl_priv_create(const char *dev_name)
 	struct pp2_bpool_params bpool_params;
 	char match[MRVL_MATCH_LEN];
 	struct mrvl_priv *priv;
+	uint16_t max_frame_size;
 	int ret, bpool_bit;
 
 	priv = rte_zmalloc_socket(dev_name, sizeof(*priv), 0, rte_socket_id());
@@ -3030,6 +3042,14 @@ mrvl_priv_create(const char *dev_name)
 				       &priv->pp_id, &priv->ppio_id);
 	if (ret)
 		goto out_free_priv;
+
+	ret = pp2_ppio_get_l4_cksum_max_frame_size(priv->pp_id, priv->ppio_id,
+						   &max_frame_size);
+	if (ret)
+		goto out_free_priv;
+
+	priv->max_mtu = max_frame_size + RTE_ETHER_CRC_LEN -
+		MRVL_PP2_ETH_HDRS_LEN;
 
 	bpool_bit = mrvl_reserve_bit(&used_bpools[priv->pp_id],
 				     PP2_BPOOL_NUM_POOLS);
