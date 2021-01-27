@@ -93,6 +93,9 @@ main(int argc, char **argv)
 {
 #ifdef RTE_LIB_CMDLINE
 	struct cmdline *cl;
+	char *tests[argc]; /* store an array of tests to run */
+	int test_count = 0;
+	int i;
 #endif
 	char *extra_args;
 	int ret;
@@ -135,6 +138,7 @@ main(int argc, char **argv)
 	}
 
 	argv += ret;
+	argc -= ret;
 
 	prgname = argv[0];
 
@@ -166,7 +170,25 @@ main(int argc, char **argv)
 
 #ifdef RTE_LIB_CMDLINE
 	char *dpdk_test = getenv("DPDK_TEST");
-	if (dpdk_test && strlen(dpdk_test)) {
+
+	if (dpdk_test && strlen(dpdk_test) == 0)
+		dpdk_test = NULL;
+
+	if (dpdk_test && !command_valid(dpdk_test)) {
+		RTE_LOG(WARNING, APP, "Invalid DPDK_TEST value '%s'\n", dpdk_test);
+		dpdk_test = NULL;
+	}
+
+	if (dpdk_test)
+		tests[test_count++] = dpdk_test;
+	for (i = 1; i < argc; i++) {
+		if (!command_valid(argv[i]))
+			RTE_LOG(WARNING, APP, "Invalid test requested: '%s'\n", argv[i]);
+		else
+			tests[test_count++] = argv[i];
+	}
+
+	if (test_count > 0) {
 		char buf[1024];
 
 		cl = cmdline_new(main_ctx, "RTE>>", 0, 1);
@@ -175,13 +197,17 @@ main(int argc, char **argv)
 			goto out;
 		}
 
-		snprintf(buf, sizeof(buf), "%s\n", dpdk_test);
-		if (cmdline_in(cl, buf, strlen(buf)) < 0) {
-			printf("error on cmdline input\n");
+		for (i = 0; i < test_count; i++) {
+			snprintf(buf, sizeof(buf), "%s\n", tests[i]);
+			if (cmdline_in(cl, buf, strlen(buf)) < 0) {
+				printf("error on cmdline input\n");
 
-			ret = -1;
-		} else {
-			ret = last_test_result;
+				ret = -1;
+			} else
+				ret = last_test_result;
+
+			if (ret != 0)
+				break;
 		}
 		cmdline_free(cl);
 		goto out;
