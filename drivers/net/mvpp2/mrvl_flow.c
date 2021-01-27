@@ -192,12 +192,14 @@ mrvl_parse_mac(const struct rte_flow_item_eth *spec,
 		k = spec->dst.addr_bytes;
 		m = mask->dst.addr_bytes;
 
-		flow->pattern |= F_DMAC;
+		flow->table_key.proto_field[flow->rule.num_fields].field.eth =
+			MV_NET_ETH_F_DA;
 	} else {
 		k = spec->src.addr_bytes;
 		m = mask->src.addr_bytes;
 
-		flow->pattern |= F_SMAC;
+		flow->table_key.proto_field[flow->rule.num_fields].field.eth =
+			MV_NET_ETH_F_SA;
 	}
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
@@ -211,6 +213,10 @@ mrvl_parse_mac(const struct rte_flow_item_eth *spec,
 	snprintf((char *)key_field->mask, MRVL_CLS_STR_SIZE_MAX,
 		 "%02x:%02x:%02x:%02x:%02x:%02x",
 		 m[0], m[1], m[2], m[3], m[4], m[5]);
+
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_ETH;
+	flow->table_key.key_size += key_field->size;
 
 	flow->rule.num_fields += 1;
 
@@ -272,7 +278,12 @@ mrvl_parse_type(const struct rte_flow_item_eth *spec,
 	k = rte_be_to_cpu_16(spec->type);
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 
-	flow->pattern |= F_TYPE;
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_ETH;
+	flow->table_key.proto_field[flow->rule.num_fields].field.eth =
+		MV_NET_ETH_F_TYPE;
+	flow->table_key.key_size += key_field->size;
+
 	flow->rule.num_fields += 1;
 
 	return 0;
@@ -303,7 +314,12 @@ mrvl_parse_vlan_id(const struct rte_flow_item_vlan *spec,
 	k = rte_be_to_cpu_16(spec->tci) & MRVL_VLAN_ID_MASK;
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 
-	flow->pattern |= F_VLAN_ID;
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_VLAN;
+	flow->table_key.proto_field[flow->rule.num_fields].field.vlan =
+		MV_NET_VLAN_F_ID;
+	flow->table_key.key_size += key_field->size;
+
 	flow->rule.num_fields += 1;
 
 	return 0;
@@ -334,7 +350,12 @@ mrvl_parse_vlan_pri(const struct rte_flow_item_vlan *spec,
 	k = (rte_be_to_cpu_16(spec->tci) & MRVL_VLAN_PRI_MASK) >> 13;
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 
-	flow->pattern |= F_VLAN_PRI;
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_VLAN;
+	flow->table_key.proto_field[flow->rule.num_fields].field.vlan =
+		MV_NET_VLAN_F_PRI;
+	flow->table_key.key_size += key_field->size;
+
 	flow->rule.num_fields += 1;
 
 	return 0;
@@ -367,7 +388,12 @@ mrvl_parse_ip4_dscp(const struct rte_flow_item_ipv4 *spec,
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 	snprintf((char *)key_field->mask, MRVL_CLS_STR_SIZE_MAX, "%u", m);
 
-	flow->pattern |= F_IP4_TOS;
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_IP4;
+	flow->table_key.proto_field[flow->rule.num_fields].field.ipv4 =
+		MV_NET_IP4_F_DSCP;
+	flow->table_key.key_size += key_field->size;
+
 	flow->rule.num_fields += 1;
 
 	return 0;
@@ -399,12 +425,14 @@ mrvl_parse_ip4_addr(const struct rte_flow_item_ipv4 *spec,
 		k.s_addr = spec->hdr.dst_addr;
 		m = rte_be_to_cpu_32(mask->hdr.dst_addr);
 
-		flow->pattern |= F_IP4_DIP;
+		flow->table_key.proto_field[flow->rule.num_fields].field.ipv4 =
+			MV_NET_IP4_F_DA;
 	} else {
 		k.s_addr = spec->hdr.src_addr;
 		m = rte_be_to_cpu_32(mask->hdr.src_addr);
 
-		flow->pattern |= F_IP4_SIP;
+		flow->table_key.proto_field[flow->rule.num_fields].field.ipv4 =
+			MV_NET_IP4_F_SA;
 	}
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
@@ -413,6 +441,10 @@ mrvl_parse_ip4_addr(const struct rte_flow_item_ipv4 *spec,
 
 	inet_ntop(AF_INET, &k, (char *)key_field->key, MRVL_CLS_STR_SIZE_MAX);
 	snprintf((char *)key_field->mask, MRVL_CLS_STR_SIZE_MAX, "0x%x", m);
+
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_IP4;
+	flow->table_key.key_size += key_field->size;
 
 	flow->rule.num_fields += 1;
 
@@ -475,7 +507,12 @@ mrvl_parse_ip4_proto(const struct rte_flow_item_ipv4 *spec,
 
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 
-	flow->pattern |= F_IP4_PROTO;
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_IP4;
+	flow->table_key.proto_field[flow->rule.num_fields].field.ipv4 =
+		MV_NET_IP4_F_PROTO;
+	flow->table_key.key_size += key_field->size;
+
 	flow->rule.num_fields += 1;
 
 	return 0;
@@ -507,12 +544,14 @@ mrvl_parse_ip6_addr(const struct rte_flow_item_ipv6 *spec,
 		memcpy(k.s6_addr, spec->hdr.dst_addr, size);
 		memcpy(m.s6_addr, mask->hdr.dst_addr, size);
 
-		flow->pattern |= F_IP6_DIP;
+		flow->table_key.proto_field[flow->rule.num_fields].field.ipv6 =
+			MV_NET_IP6_F_DA;
 	} else {
 		memcpy(k.s6_addr, spec->hdr.src_addr, size);
 		memcpy(m.s6_addr, mask->hdr.src_addr, size);
 
-		flow->pattern |= F_IP6_SIP;
+		flow->table_key.proto_field[flow->rule.num_fields].field.ipv6 =
+			MV_NET_IP6_F_SA;
 	}
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
@@ -521,6 +560,10 @@ mrvl_parse_ip6_addr(const struct rte_flow_item_ipv6 *spec,
 
 	inet_ntop(AF_INET6, &k, (char *)key_field->key, MRVL_CLS_STR_SIZE_MAX);
 	inet_ntop(AF_INET6, &m, (char *)key_field->mask, MRVL_CLS_STR_SIZE_MAX);
+
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_IP6;
+	flow->table_key.key_size += key_field->size;
 
 	flow->rule.num_fields += 1;
 
@@ -585,7 +628,12 @@ mrvl_parse_ip6_flow(const struct rte_flow_item_ipv6 *spec,
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 	snprintf((char *)key_field->mask, MRVL_CLS_STR_SIZE_MAX, "%u", m);
 
-	flow->pattern |= F_IP6_FLOW;
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_IP6;
+	flow->table_key.proto_field[flow->rule.num_fields].field.ipv6 =
+		MV_NET_IP6_F_FLOW;
+	flow->table_key.key_size += key_field->size;
+
 	flow->rule.num_fields += 1;
 
 	return 0;
@@ -615,7 +663,12 @@ mrvl_parse_ip6_next_hdr(const struct rte_flow_item_ipv6 *spec,
 
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
 
-	flow->pattern |= F_IP6_NEXT_HDR;
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_IP6;
+	flow->table_key.proto_field[flow->rule.num_fields].field.ipv6 =
+		MV_NET_IP6_F_NEXT_HDR;
+	flow->table_key.key_size += key_field->size;
+
 	flow->rule.num_fields += 1;
 
 	return 0;
@@ -648,14 +701,20 @@ mrvl_parse_tcp_port(const struct rte_flow_item_tcp *spec,
 	if (parse_dst) {
 		k = rte_be_to_cpu_16(spec->hdr.dst_port);
 
-		flow->pattern |= F_TCP_DPORT;
+		flow->table_key.proto_field[flow->rule.num_fields].field.tcp =
+			MV_NET_TCP_F_DP;
 	} else {
 		k = rte_be_to_cpu_16(spec->hdr.src_port);
 
-		flow->pattern |= F_TCP_SPORT;
+		flow->table_key.proto_field[flow->rule.num_fields].field.tcp =
+			MV_NET_TCP_F_SP;
 	}
 
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
+
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_TCP;
+	flow->table_key.key_size += key_field->size;
 
 	flow->rule.num_fields += 1;
 
@@ -721,14 +780,20 @@ mrvl_parse_udp_port(const struct rte_flow_item_udp *spec,
 	if (parse_dst) {
 		k = rte_be_to_cpu_16(spec->hdr.dst_port);
 
-		flow->pattern |= F_UDP_DPORT;
+		flow->table_key.proto_field[flow->rule.num_fields].field.udp =
+			MV_NET_UDP_F_DP;
 	} else {
 		k = rte_be_to_cpu_16(spec->hdr.src_port);
 
-		flow->pattern |= F_UDP_SPORT;
+		flow->table_key.proto_field[flow->rule.num_fields].field.udp =
+			MV_NET_UDP_F_SP;
 	}
 
 	snprintf((char *)key_field->key, MRVL_CLS_STR_SIZE_MAX, "%u", k);
+
+	flow->table_key.proto_field[flow->rule.num_fields].proto =
+		MV_NET_PROTO_UDP;
+	flow->table_key.key_size += key_field->size;
 
 	flow->rule.num_fields += 1;
 
@@ -832,7 +897,7 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_vlan *spec = NULL, *mask = NULL;
 	uint16_t m;
-	int ret;
+	int ret, i;
 
 	ret = mrvl_parse_init(item, (const void **)&spec, (const void **)&mask,
 			      &rte_flow_item_vlan_mask,
@@ -855,12 +920,6 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 			goto out;
 	}
 
-	if (flow->pattern & F_TYPE) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ITEM, item,
-				   "VLAN TPID matching is not supported");
-		return -rte_errno;
-	}
 	if (mask->inner_type) {
 		struct rte_flow_item_eth spec_eth = {
 			.type = spec->inner_type,
@@ -868,6 +927,21 @@ mrvl_parse_vlan(const struct rte_flow_item *item,
 		struct rte_flow_item_eth mask_eth = {
 			.type = mask->inner_type,
 		};
+
+		/* TPID is not supported so if ETH_TYPE was selected,
+		 * error is return. else, classify eth-type with the tpid value
+		 */
+		for (i = 0; i < flow->rule.num_fields; i++)
+			if (flow->table_key.proto_field[i].proto ==
+			    MV_NET_PROTO_ETH &&
+			    flow->table_key.proto_field[i].field.eth ==
+			    MV_NET_ETH_F_TYPE) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "VLAN TPID matching is not supported");
+				return -rte_errno;
+			}
 
 		MRVL_LOG(WARNING, "inner eth type mask is ignored");
 		ret = mrvl_parse_type(&spec_eth, &mask_eth, flow);
@@ -1250,6 +1324,8 @@ mrvl_flow_parse_pattern(struct mrvl_priv *priv __rte_unused,
 		}
 	}
 
+	flow->table_key.num_fields = flow->rule.num_fields;
+
 	return 0;
 }
 
@@ -1462,134 +1538,9 @@ mrvl_create_cls_table(struct rte_eth_dev *dev, struct rte_flow *first_flow)
 	priv->cls_tbl_params.max_num_rules = MRVL_CLS_MAX_NUM_RULES;
 	priv->cls_tbl_params.default_act.type = PP2_CLS_TBL_ACT_DONE;
 	priv->cls_tbl_params.default_act.cos = &first_flow->cos;
-
-	if (first_flow->pattern & F_DMAC) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_ETH;
-		key->proto_field[key->num_fields].field.eth = MV_NET_ETH_F_DA;
-		key->key_size += 6;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_SMAC) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_ETH;
-		key->proto_field[key->num_fields].field.eth = MV_NET_ETH_F_SA;
-		key->key_size += 6;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_TYPE) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_ETH;
-		key->proto_field[key->num_fields].field.eth = MV_NET_ETH_F_TYPE;
-		key->key_size += 2;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_VLAN_ID) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_VLAN;
-		key->proto_field[key->num_fields].field.vlan = MV_NET_VLAN_F_ID;
-		key->key_size += 2;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_VLAN_PRI) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_VLAN;
-		key->proto_field[key->num_fields].field.vlan =
-			MV_NET_VLAN_F_PRI;
-		key->key_size += 1;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_IP4_TOS) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP4;
-		key->proto_field[key->num_fields].field.ipv4 =
-							MV_NET_IP4_F_DSCP;
-		key->key_size += 1;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_IP4_SIP) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP4;
-		key->proto_field[key->num_fields].field.ipv4 = MV_NET_IP4_F_SA;
-		key->key_size += 4;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_IP4_DIP) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP4;
-		key->proto_field[key->num_fields].field.ipv4 = MV_NET_IP4_F_DA;
-		key->key_size += 4;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_IP4_PROTO) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP4;
-		key->proto_field[key->num_fields].field.ipv4 =
-			MV_NET_IP4_F_PROTO;
-		key->key_size += 1;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_IP6_SIP) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP6;
-		key->proto_field[key->num_fields].field.ipv6 = MV_NET_IP6_F_SA;
-		key->key_size += 16;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_IP6_DIP) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP6;
-		key->proto_field[key->num_fields].field.ipv6 = MV_NET_IP6_F_DA;
-		key->key_size += 16;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_IP6_FLOW) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP6;
-		key->proto_field[key->num_fields].field.ipv6 =
-			MV_NET_IP6_F_FLOW;
-		key->key_size += 3;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_IP6_NEXT_HDR) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP6;
-		key->proto_field[key->num_fields].field.ipv6 =
-			MV_NET_IP6_F_NEXT_HDR;
-		key->key_size += 1;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_TCP_SPORT) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_TCP;
-		key->proto_field[key->num_fields].field.tcp = MV_NET_TCP_F_SP;
-		key->key_size += 2;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_TCP_DPORT) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_TCP;
-		key->proto_field[key->num_fields].field.tcp = MV_NET_TCP_F_DP;
-		key->key_size += 2;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_UDP_SPORT) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_UDP;
-		key->proto_field[key->num_fields].field.udp = MV_NET_UDP_F_SP;
-		key->key_size += 2;
-		key->num_fields += 1;
-	}
-
-	if (first_flow->pattern & F_UDP_DPORT) {
-		key->proto_field[key->num_fields].proto = MV_NET_PROTO_UDP;
-		key->proto_field[key->num_fields].field.udp = MV_NET_UDP_F_DP;
-		key->key_size += 2;
-		key->num_fields += 1;
-	}
+	memcpy(key, &first_flow->table_key, sizeof(struct pp2_cls_tbl_key));
 
 	ret = pp2_cls_tbl_init(&priv->cls_tbl_params, &priv->cls_tbl);
-	if (!ret)
-		priv->cls_tbl_pattern = first_flow->pattern;
 
 	return ret;
 }
@@ -1604,8 +1555,10 @@ mrvl_create_cls_table(struct rte_eth_dev *dev, struct rte_flow *first_flow)
 static inline int
 mrvl_flow_can_be_added(struct mrvl_priv *priv, const struct rte_flow *flow)
 {
-	return flow->pattern == priv->cls_tbl_pattern &&
-	       mrvl_engine_type(flow) == priv->cls_tbl_params.type;
+	int same = memcmp(&flow->table_key, &priv->cls_tbl_params.key,
+			  sizeof(struct pp2_cls_tbl_key)) == 0;
+
+	return same && mrvl_engine_type(flow) == priv->cls_tbl_params.type;
 }
 
 /**
