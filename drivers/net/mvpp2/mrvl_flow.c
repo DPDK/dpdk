@@ -20,184 +20,11 @@
 /** Size of the classifier key and mask strings. */
 #define MRVL_CLS_STR_SIZE_MAX 40
 
-static const enum rte_flow_item_type pattern_eth[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_vlan[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_vlan_ip[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_vlan_ip6[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_ip4[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_ip4_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_ip4_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_ip6[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_ip6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_eth_ip6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_ETH,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_vlan[] = {
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_vlan_ip[] = {
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_vlan_ip_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_vlan_ip_udp[] = {
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_vlan_ip6[] = {
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_vlan_ip6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_vlan_ip6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_VLAN,
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_ip[] = {
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_ip6[] = {
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_ip_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_ip6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_ip_udp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_ip6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
-static const enum rte_flow_item_type pattern_udp[] = {
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END
-};
-
 #define MRVL_VLAN_ID_MASK 0x0fff
 #define MRVL_VLAN_PRI_MASK 0x7000
 #define MRVL_IPV4_DSCP_MASK 0xfc
 #define MRVL_IPV4_ADDR_MASK 0xffffffff
 #define MRVL_IPV6_FLOW_MASK 0x0fffff
-
-/**
- * Given a flow item, return the next non-void one.
- *
- * @param items Pointer to the item in the table.
- * @returns Next not-void item, NULL otherwise.
- */
-static const struct rte_flow_item *
-mrvl_next_item(const struct rte_flow_item *items)
-{
-	const struct rte_flow_item *item = items;
-
-	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
-		if (item->type != RTE_FLOW_ITEM_TYPE_VOID)
-			return item;
-	}
-
-	return NULL;
-}
 
 /**
  * Allocate memory for classifier rule key and mask fields.
@@ -361,9 +188,6 @@ mrvl_parse_mac(const struct rte_flow_item_eth *spec,
 	struct pp2_cls_rule_key_field *key_field;
 	const uint8_t *k, *m;
 
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
-
 	if (parse_dst) {
 		k = spec->dst.addr_bytes;
 		m = mask->dst.addr_bytes;
@@ -441,9 +265,6 @@ mrvl_parse_type(const struct rte_flow_item_eth *spec,
 	struct pp2_cls_rule_key_field *key_field;
 	uint16_t k;
 
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
-
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
 	key_field->size = 2;
@@ -474,9 +295,6 @@ mrvl_parse_vlan_id(const struct rte_flow_item_vlan *spec,
 {
 	struct pp2_cls_rule_key_field *key_field;
 	uint16_t k;
-
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
@@ -509,9 +327,6 @@ mrvl_parse_vlan_pri(const struct rte_flow_item_vlan *spec,
 	struct pp2_cls_rule_key_field *key_field;
 	uint16_t k;
 
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
-
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
 	key_field->size = 1;
@@ -542,9 +357,6 @@ mrvl_parse_ip4_dscp(const struct rte_flow_item_ipv4 *spec,
 {
 	struct pp2_cls_rule_key_field *key_field;
 	uint8_t k, m;
-
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
@@ -581,9 +393,6 @@ mrvl_parse_ip4_addr(const struct rte_flow_item_ipv4 *spec,
 	struct pp2_cls_rule_key_field *key_field;
 	struct in_addr k;
 	uint32_t m;
-
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
 
 	memset(&k, 0, sizeof(k));
 	if (parse_dst) {
@@ -660,9 +469,6 @@ mrvl_parse_ip4_proto(const struct rte_flow_item_ipv4 *spec,
 	struct pp2_cls_rule_key_field *key_field;
 	uint8_t k = spec->hdr.next_proto_id;
 
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
-
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
 	key_field->size = 1;
@@ -695,9 +501,6 @@ mrvl_parse_ip6_addr(const struct rte_flow_item_ipv6 *spec,
 	struct pp2_cls_rule_key_field *key_field;
 	int size = sizeof(spec->hdr.dst_addr);
 	struct in6_addr k, m;
-
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
 
 	memset(&k, 0, sizeof(k));
 	if (parse_dst) {
@@ -775,9 +578,6 @@ mrvl_parse_ip6_flow(const struct rte_flow_item_ipv6 *spec,
 	uint32_t k = rte_be_to_cpu_32(spec->hdr.vtc_flow) & MRVL_IPV6_FLOW_MASK,
 		 m = rte_be_to_cpu_32(mask->hdr.vtc_flow) & MRVL_IPV6_FLOW_MASK;
 
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
-
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
 	key_field->size = 3;
@@ -808,9 +608,6 @@ mrvl_parse_ip6_next_hdr(const struct rte_flow_item_ipv6 *spec,
 {
 	struct pp2_cls_rule_key_field *key_field;
 	uint8_t k = spec->hdr.proto;
-
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
@@ -843,9 +640,6 @@ mrvl_parse_tcp_port(const struct rte_flow_item_tcp *spec,
 {
 	struct pp2_cls_rule_key_field *key_field;
 	uint16_t k;
-
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
@@ -919,9 +713,6 @@ mrvl_parse_udp_port(const struct rte_flow_item_udp *spec,
 {
 	struct pp2_cls_rule_key_field *key_field;
 	uint16_t k;
-
-	if (flow->rule.num_fields >= PP2_CLS_TBL_MAX_NUM_FIELDS)
-		return -ENOSPC;
 
 	key_field = &flow->rule.fields[flow->rule.num_fields];
 	mrvl_alloc_key_mask(key_field);
@@ -1243,8 +1034,8 @@ mrvl_parse_tcp(const struct rte_flow_item *item,
 	int ret;
 
 	ret = mrvl_parse_init(item, (const void **)&spec, (const void **)&mask,
-			      &rte_flow_item_ipv4_mask,
-			      sizeof(struct rte_flow_item_ipv4), error);
+			      &rte_flow_item_tcp_mask,
+			      sizeof(struct rte_flow_item_tcp), error);
 	if (ret)
 		return ret;
 
@@ -1298,8 +1089,8 @@ mrvl_parse_udp(const struct rte_flow_item *item,
 	int ret;
 
 	ret = mrvl_parse_init(item, (const void **)&spec, (const void **)&mask,
-			      &rte_flow_item_ipv4_mask,
-			      sizeof(struct rte_flow_item_ipv4), error);
+			      &rte_flow_item_udp_mask,
+			      sizeof(struct rte_flow_item_udp), error);
 	if (ret)
 		return ret;
 
@@ -1332,768 +1123,23 @@ out:
 }
 
 /**
- * Parse flow pattern composed of the the eth item.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_eth(const struct rte_flow_item pattern[],
-		       struct rte_flow *flow,
-		       struct rte_flow_error *error)
-{
-	return mrvl_parse_eth(pattern, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the eth and vlan items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_eth_vlan(const struct rte_flow_item pattern[],
-			    struct rte_flow *flow,
-			    struct rte_flow_error *error)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = mrvl_parse_eth(item, flow, error);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-
-	return mrvl_parse_vlan(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the eth, vlan and ip4/ip6 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @param ip6 1 to parse ip6 item, 0 to parse ip4 item.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_eth_vlan_ip4_ip6(const struct rte_flow_item pattern[],
-				    struct rte_flow *flow,
-				    struct rte_flow_error *error, int ip6)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = mrvl_parse_eth(item, flow, error);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-	ret = mrvl_parse_vlan(item, flow, error);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-
-	return ip6 ? mrvl_parse_ip6(item, flow, error) :
-		     mrvl_parse_ip4(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the eth, vlan and ipv4 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_eth_vlan_ip4(const struct rte_flow_item pattern[],
-				struct rte_flow *flow,
-				struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_eth_vlan_ip4_ip6(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the eth, vlan and ipv6 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_eth_vlan_ip6(const struct rte_flow_item pattern[],
-				struct rte_flow *flow,
-				struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_eth_vlan_ip4_ip6(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the eth and ip4/ip6 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @param ip6 1 to parse ip6 item, 0 to parse ip4 item.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_eth_ip4_ip6(const struct rte_flow_item pattern[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error, int ip6)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = mrvl_parse_eth(item, flow, error);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-
-	return ip6 ? mrvl_parse_ip6(item, flow, error) :
-		     mrvl_parse_ip4(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the eth and ipv4 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_eth_ip4(const struct rte_flow_item pattern[],
-			   struct rte_flow *flow,
-			   struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_eth_ip4_ip6(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the eth and ipv6 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_eth_ip6(const struct rte_flow_item pattern[],
-			   struct rte_flow *flow,
-			   struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_eth_ip4_ip6(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the eth, ip4 and tcp/udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @param tcp 1 to parse tcp item, 0 to parse udp item.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_eth_ip4_tcp_udp(const struct rte_flow_item pattern[],
-				   struct rte_flow *flow,
-				   struct rte_flow_error *error, int tcp)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = mrvl_parse_pattern_eth_ip4_ip6(pattern, flow, error, 0);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-	item = mrvl_next_item(item + 1);
-
-	if (tcp)
-		return mrvl_parse_tcp(item, flow, error);
-
-	return mrvl_parse_udp(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the eth, ipv4 and tcp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_eth_ip4_tcp(const struct rte_flow_item pattern[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_eth_ip4_tcp_udp(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the eth, ipv4 and udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_eth_ip4_udp(const struct rte_flow_item pattern[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_eth_ip4_tcp_udp(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the eth, ipv6 and tcp/udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @param tcp 1 to parse tcp item, 0 to parse udp item.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_eth_ip6_tcp_udp(const struct rte_flow_item pattern[],
-				   struct rte_flow *flow,
-				   struct rte_flow_error *error, int tcp)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = mrvl_parse_pattern_eth_ip4_ip6(pattern, flow, error, 1);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-	item = mrvl_next_item(item + 1);
-
-	if (tcp)
-		return mrvl_parse_tcp(item, flow, error);
-
-	return mrvl_parse_udp(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the eth, ipv6 and tcp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_eth_ip6_tcp(const struct rte_flow_item pattern[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_eth_ip6_tcp_udp(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the eth, ipv6 and udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_eth_ip6_udp(const struct rte_flow_item pattern[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_eth_ip6_tcp_udp(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the vlan item.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_vlan(const struct rte_flow_item pattern[],
-			    struct rte_flow *flow,
-			    struct rte_flow_error *error)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-
-	return mrvl_parse_vlan(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the vlan and ip4/ip6 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @param ip6 1 to parse ip6 item, 0 to parse ip4 item.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_vlan_ip4_ip6(const struct rte_flow_item pattern[],
-				struct rte_flow *flow,
-				struct rte_flow_error *error, int ip6)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = mrvl_parse_vlan(item, flow, error);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-
-	return ip6 ? mrvl_parse_ip6(item, flow, error) :
-		     mrvl_parse_ip4(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the vlan and ipv4 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_vlan_ip4(const struct rte_flow_item pattern[],
-			    struct rte_flow *flow,
-			    struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_vlan_ip4_ip6(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the vlan, ipv4 and tcp/udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_vlan_ip_tcp_udp(const struct rte_flow_item pattern[],
-				   struct rte_flow *flow,
-				   struct rte_flow_error *error, int tcp)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = mrvl_parse_pattern_vlan_ip4_ip6(pattern, flow, error, 0);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-	item = mrvl_next_item(item + 1);
-
-	if (tcp)
-		return mrvl_parse_tcp(item, flow, error);
-
-	return mrvl_parse_udp(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the vlan, ipv4 and tcp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_vlan_ip_tcp(const struct rte_flow_item pattern[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_vlan_ip_tcp_udp(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the vlan, ipv4 and udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_vlan_ip_udp(const struct rte_flow_item pattern[],
-			       struct rte_flow *flow,
-			       struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_vlan_ip_tcp_udp(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the vlan and ipv6 items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_vlan_ip6(const struct rte_flow_item pattern[],
-			    struct rte_flow *flow,
-			    struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_vlan_ip4_ip6(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the vlan, ipv6 and tcp/udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_vlan_ip6_tcp_udp(const struct rte_flow_item pattern[],
-				    struct rte_flow *flow,
-				    struct rte_flow_error *error, int tcp)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = mrvl_parse_pattern_vlan_ip4_ip6(pattern, flow, error, 1);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-	item = mrvl_next_item(item + 1);
-
-	if (tcp)
-		return mrvl_parse_tcp(item, flow, error);
-
-	return mrvl_parse_udp(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the vlan, ipv6 and tcp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_vlan_ip6_tcp(const struct rte_flow_item pattern[],
-				struct rte_flow *flow,
-				struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_vlan_ip6_tcp_udp(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the vlan, ipv6 and udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_vlan_ip6_udp(const struct rte_flow_item pattern[],
-				struct rte_flow *flow,
-				struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_vlan_ip6_tcp_udp(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the ip4/ip6 item.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @param ip6 1 to parse ip6 item, 0 to parse ip4 item.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_ip4_ip6(const struct rte_flow_item pattern[],
-		       struct rte_flow *flow,
-		       struct rte_flow_error *error, int ip6)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-
-	return ip6 ? mrvl_parse_ip6(item, flow, error) :
-		     mrvl_parse_ip4(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the ipv4 item.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_ip4(const struct rte_flow_item pattern[],
-		       struct rte_flow *flow,
-		       struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_ip4_ip6(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the ipv6 item.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_ip6(const struct rte_flow_item pattern[],
-		       struct rte_flow *flow,
-		       struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_ip4_ip6(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the ip4/ip6 and tcp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @param ip6 1 to parse ip6 item, 0 to parse ip4 item.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_ip4_ip6_tcp(const struct rte_flow_item pattern[],
-			   struct rte_flow *flow,
-			   struct rte_flow_error *error, int ip6)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = ip6 ? mrvl_parse_ip6(item, flow, error) :
-		    mrvl_parse_ip4(item, flow, error);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-
-	return mrvl_parse_tcp(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the ipv4 and tcp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_ip4_tcp(const struct rte_flow_item pattern[],
-			   struct rte_flow *flow,
-			   struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_ip4_ip6_tcp(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the ipv6 and tcp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_ip6_tcp(const struct rte_flow_item pattern[],
-			   struct rte_flow *flow,
-			   struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_ip4_ip6_tcp(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the ipv4/ipv6 and udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @param ip6 1 to parse ip6 item, 0 to parse ip4 item.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_ip4_ip6_udp(const struct rte_flow_item pattern[],
-			   struct rte_flow *flow,
-			   struct rte_flow_error *error, int ip6)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-	int ret;
-
-	ret = ip6 ? mrvl_parse_ip6(item, flow, error) :
-		    mrvl_parse_ip4(item, flow, error);
-	if (ret)
-		return ret;
-
-	item = mrvl_next_item(item + 1);
-
-	return mrvl_parse_udp(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the ipv4 and udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_ip4_udp(const struct rte_flow_item pattern[],
-			   struct rte_flow *flow,
-			   struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_ip4_ip6_udp(pattern, flow, error, 0);
-}
-
-/**
- * Parse flow pattern composed of the ipv6 and udp items.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static inline int
-mrvl_parse_pattern_ip6_udp(const struct rte_flow_item pattern[],
-			   struct rte_flow *flow,
-			   struct rte_flow_error *error)
-{
-	return mrvl_parse_pattern_ip4_ip6_udp(pattern, flow, error, 1);
-}
-
-/**
- * Parse flow pattern composed of the tcp item.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_tcp(const struct rte_flow_item pattern[],
-		       struct rte_flow *flow,
-		       struct rte_flow_error *error)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-
-	return mrvl_parse_tcp(item, flow, error);
-}
-
-/**
- * Parse flow pattern composed of the udp item.
- *
- * @param pattern Pointer to the flow pattern table.
- * @param flow Pointer to the flow.
- * @param error Pointer to the flow error.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-mrvl_parse_pattern_udp(const struct rte_flow_item pattern[],
-		       struct rte_flow *flow,
-		       struct rte_flow_error *error)
-{
-	const struct rte_flow_item *item = mrvl_next_item(pattern);
-
-	return mrvl_parse_udp(item, flow, error);
-}
-
-/**
  * Structure used to map specific flow pattern to the pattern parse callback
  * which will iterate over each pattern item and extract relevant data.
  */
 static const struct {
-	const enum rte_flow_item_type *pattern;
-	int (*parse)(const struct rte_flow_item pattern[],
+	const enum rte_flow_item_type pattern_type;
+	int (*parse)(const struct rte_flow_item *pattern,
 		struct rte_flow *flow,
 		struct rte_flow_error *error);
 } mrvl_patterns[] = {
-	{ pattern_eth, mrvl_parse_pattern_eth },
-	{ pattern_eth_vlan, mrvl_parse_pattern_eth_vlan },
-	{ pattern_eth_vlan_ip, mrvl_parse_pattern_eth_vlan_ip4 },
-	{ pattern_eth_vlan_ip6, mrvl_parse_pattern_eth_vlan_ip6 },
-	{ pattern_eth_ip4, mrvl_parse_pattern_eth_ip4 },
-	{ pattern_eth_ip4_tcp, mrvl_parse_pattern_eth_ip4_tcp },
-	{ pattern_eth_ip4_udp, mrvl_parse_pattern_eth_ip4_udp },
-	{ pattern_eth_ip6, mrvl_parse_pattern_eth_ip6 },
-	{ pattern_eth_ip6_tcp, mrvl_parse_pattern_eth_ip6_tcp },
-	{ pattern_eth_ip6_udp, mrvl_parse_pattern_eth_ip6_udp },
-	{ pattern_vlan, mrvl_parse_pattern_vlan },
-	{ pattern_vlan_ip, mrvl_parse_pattern_vlan_ip4 },
-	{ pattern_vlan_ip_tcp, mrvl_parse_pattern_vlan_ip_tcp },
-	{ pattern_vlan_ip_udp, mrvl_parse_pattern_vlan_ip_udp },
-	{ pattern_vlan_ip6, mrvl_parse_pattern_vlan_ip6 },
-	{ pattern_vlan_ip6_tcp, mrvl_parse_pattern_vlan_ip6_tcp },
-	{ pattern_vlan_ip6_udp, mrvl_parse_pattern_vlan_ip6_udp },
-	{ pattern_ip, mrvl_parse_pattern_ip4 },
-	{ pattern_ip_tcp, mrvl_parse_pattern_ip4_tcp },
-	{ pattern_ip_udp, mrvl_parse_pattern_ip4_udp },
-	{ pattern_ip6, mrvl_parse_pattern_ip6 },
-	{ pattern_ip6_tcp, mrvl_parse_pattern_ip6_tcp },
-	{ pattern_ip6_udp, mrvl_parse_pattern_ip6_udp },
-	{ pattern_tcp, mrvl_parse_pattern_tcp },
-	{ pattern_udp, mrvl_parse_pattern_udp }
+	{ RTE_FLOW_ITEM_TYPE_ETH, mrvl_parse_eth },
+	{ RTE_FLOW_ITEM_TYPE_VLAN, mrvl_parse_vlan },
+	{ RTE_FLOW_ITEM_TYPE_IPV4, mrvl_parse_ip4 },
+	{ RTE_FLOW_ITEM_TYPE_IPV6, mrvl_parse_ip6 },
+	{ RTE_FLOW_ITEM_TYPE_TCP, mrvl_parse_tcp },
+	{ RTE_FLOW_ITEM_TYPE_UDP, mrvl_parse_udp },
+	{ RTE_FLOW_ITEM_TYPE_END, NULL }
 };
-
-/**
- * Check whether provided pattern matches any of the supported ones.
- *
- * @param type_pattern Pointer to the pattern type.
- * @param item_pattern Pointer to the flow pattern.
- * @returns 1 in case of success, 0 value otherwise.
- */
-static int
-mrvl_patterns_match(const enum rte_flow_item_type *type_pattern,
-		    const struct rte_flow_item *item_pattern)
-{
-	const enum rte_flow_item_type *type = type_pattern;
-	const struct rte_flow_item *item = item_pattern;
-
-	for (;;) {
-		if (item->type == RTE_FLOW_ITEM_TYPE_VOID) {
-			item++;
-			continue;
-		}
-
-		if (*type == RTE_FLOW_ITEM_TYPE_END ||
-		    item->type == RTE_FLOW_ITEM_TYPE_END)
-			break;
-
-		if (*type != item->type)
-			break;
-
-		item++;
-		type++;
-	}
-
-	return *type == item->type;
-}
 
 /**
  * Parse flow attribute.
@@ -2169,24 +1215,42 @@ mrvl_flow_parse_pattern(struct mrvl_priv *priv __rte_unused,
 			struct rte_flow *flow,
 			struct rte_flow_error *error)
 {
-	unsigned int i;
+	unsigned int i, j;
 	int ret;
 
-	for (i = 0; i < RTE_DIM(mrvl_patterns); i++) {
-		if (!mrvl_patterns_match(mrvl_patterns[i].pattern, pattern))
+	for (i = 0; pattern[i].type != RTE_FLOW_ITEM_TYPE_END; i++) {
+		if (pattern[i].type == RTE_FLOW_ITEM_TYPE_VOID)
 			continue;
+		for (j = 0; mrvl_patterns[j].pattern_type !=
+			RTE_FLOW_ITEM_TYPE_END; j++) {
+			if (mrvl_patterns[j].pattern_type != pattern[i].type)
+				continue;
 
-		ret = mrvl_patterns[i].parse(pattern, flow, error);
-		if (ret)
-			mrvl_free_all_key_mask(&flow->rule);
+			if (flow->rule.num_fields >=
+			    PP2_CLS_TBL_MAX_NUM_FIELDS) {
+				rte_flow_error_set(error, ENOSPC,
+						   RTE_FLOW_ERROR_TYPE_ITEM_NUM,
+						   NULL,
+						   "too many pattern (max %d)");
+				return -rte_errno;
+			}
 
-		return ret;
+			ret = mrvl_patterns[j].parse(&pattern[i], flow, error);
+			if (ret) {
+				mrvl_free_all_key_mask(&flow->rule);
+				return ret;
+			}
+			break;
+		}
+		if (mrvl_patterns[j].pattern_type == RTE_FLOW_ITEM_TYPE_END) {
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					   "Unsupported pattern");
+			return -rte_errno;
+		}
 	}
 
-	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-			   "Unsupported pattern");
-
-	return -rte_errno;
+	return 0;
 }
 
 /**
@@ -2755,6 +1819,11 @@ mrvl_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 		rte_free(flow);
 	}
 
+	if (priv->cls_tbl) {
+		pp2_cls_tbl_deinit(priv->cls_tbl);
+		priv->cls_tbl = NULL;
+	}
+
 	return 0;
 }
 
@@ -2813,12 +1882,5 @@ mrvl_flow_init(struct rte_eth_dev *dev)
 void
 mrvl_flow_deinit(struct rte_eth_dev *dev)
 {
-	struct mrvl_priv *priv = dev->data->dev_private;
-
 	mrvl_flow_flush(dev, NULL);
-
-	if (priv->cls_tbl) {
-		pp2_cls_tbl_deinit(priv->cls_tbl);
-		priv->cls_tbl = NULL;
-	}
 }

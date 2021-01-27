@@ -375,6 +375,7 @@ Following flow action items are supported by the driver:
 
 * DROP
 * QUEUE
+* METER
 
 Supported flow items
 ~~~~~~~~~~~~~~~~~~~~
