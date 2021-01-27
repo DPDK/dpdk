@@ -17,8 +17,8 @@
 /** Value used as "unknown". */
 #define MRVL_UNKNOWN_TC (0xFF)
 
-/* QoS config. */
-struct mrvl_qos_cfg {
+/* config. */
+struct mrvl_cfg {
 	struct port_cfg {
 		enum pp2_ppio_eth_start_hdr eth_start_hdr;
 		int rate_limit_enable;
@@ -48,11 +48,11 @@ struct mrvl_qos_cfg {
 	} port[RTE_MAX_ETHPORTS];
 };
 
-/** Global QoS configuration. */
-extern struct mrvl_qos_cfg *mrvl_qos_cfg;
+/** Global configuration. */
+extern struct mrvl_cfg *mrvl_cfg;
 
 /**
- * Parse QoS configuration - rte_kvargs_process handler.
+ * Parse configuration - rte_kvargs_process handler.
  *
  * Opens configuration file and parses its content.
  *
@@ -62,8 +62,7 @@ extern struct mrvl_qos_cfg *mrvl_qos_cfg;
  * @returns 0 in case of success, exits otherwise.
  */
 int
-mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
-		void *extra_args);
+mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args);
 
 /**
  * Configure RX Queues in a given port.

@@ -71,8 +71,8 @@
 /** Maximum possible value of DSCP. */
 #define MAX_DSCP 63
 
-/** Global QoS configuration. */
-struct mrvl_qos_cfg *mrvl_qos_cfg;
+/** Global configuration. */
+struct mrvl_cfg *mrvl_cfg;
 
 /**
  * Convert string to uint32_t with extra checks for result correctness.
@@ -104,12 +104,12 @@ get_val_securely(const char *string, uint32_t *val)
  * @param file Path to the configuration file.
  * @param port Port number.
  * @param outq Out queue number.
- * @param cfg Pointer to the Marvell QoS configuration structure.
+ * @param cfg Pointer to the Marvell configuration structure.
  * @returns 0 in case of success, negative value otherwise.
  */
 static int
 get_outq_cfg(struct rte_cfgfile *file, int port, int outq,
-		struct mrvl_qos_cfg *cfg)
+		struct mrvl_cfg *cfg)
 {
 	char sec_name[32];
 	const char *entry;
@@ -315,7 +315,7 @@ get_entry_values(const char *entry, uint8_t *tab,
  */
 static int
 parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
-		struct mrvl_qos_cfg *cfg)
+		struct mrvl_cfg *cfg)
 {
 	char sec_name[32];
 	const char *entry;
@@ -409,7 +409,7 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
  */
 static int
 parse_policer(struct rte_cfgfile *file, int port, const char *sec_name,
-		struct mrvl_qos_cfg *cfg)
+		struct mrvl_cfg *cfg)
 {
 	const char *entry;
 	uint32_t val;
@@ -478,7 +478,7 @@ parse_policer(struct rte_cfgfile *file, int port, const char *sec_name,
 }
 
 /**
- * Parse QoS configuration - rte_kvargs_process handler.
+ * Parse configuration - rte_kvargs_process handler.
  *
  * Opens configuration file and parses its content.
  *
@@ -488,10 +488,9 @@ parse_policer(struct rte_cfgfile *file, int port, const char *sec_name,
  * @returns 0 in case of success, exits otherwise.
  */
 int
-mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
-		void *extra_args)
+mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 {
-	struct mrvl_qos_cfg **cfg = extra_args;
+	struct mrvl_cfg **cfg = extra_args;
 	struct rte_cfgfile *file = rte_cfgfile_load(path, 0);
 	uint32_t val;
 	int n, i, ret;
@@ -506,7 +505,7 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 	/* Create configuration. This is never accessed on the fast path,
 	 * so we can ignore socket.
 	 */
-	*cfg = rte_zmalloc("mrvl_qos_cfg", sizeof(struct mrvl_qos_cfg), 0);
+	*cfg = rte_zmalloc("mrvl_cfg", sizeof(struct mrvl_cfg), 0);
 	if (*cfg == NULL) {
 		MRVL_LOG(ERR, "Cannot allocate configuration %s\n", path);
 		return -1;
@@ -764,8 +763,8 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 {
 	size_t i, tc;
 
-	if (mrvl_qos_cfg == NULL ||
-		mrvl_qos_cfg->port[portid].use_global_defaults) {
+	if (mrvl_cfg == NULL ||
+		mrvl_cfg->port[portid].use_global_defaults) {
 		/*
 		 * No port configuration, use default: 1 TC, no QoS,
 		 * TC color set to green.
@@ -783,7 +782,7 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 	}
 
 	/* We need only a subset of configuration. */
-	struct port_cfg *port_cfg = &mrvl_qos_cfg->port[portid];
+	struct port_cfg *port_cfg = &mrvl_cfg->port[portid];
 
 	priv->qos_tbl_params.type = port_cfg->mapping_priority;
 
@@ -896,10 +895,10 @@ mrvl_configure_txqs(struct mrvl_priv *priv, uint16_t portid,
 		uint16_t max_queues)
 {
 	/* We need only a subset of configuration. */
-	struct port_cfg *port_cfg = &mrvl_qos_cfg->port[portid];
+	struct port_cfg *port_cfg = &mrvl_cfg->port[portid];
 	int i;
 
-	if (mrvl_qos_cfg == NULL)
+	if (mrvl_cfg == NULL)
 		return 0;
 
 	priv->ppio_params.rate_limit_enable = port_cfg->rate_limit_enable;

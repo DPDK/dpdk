@@ -692,9 +692,9 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 		 priv->pp_id, priv->ppio_id);
 	priv->ppio_params.match = match;
 	priv->ppio_params.eth_start_hdr = PP2_PPIO_HDR_ETH;
-	if (mrvl_qos_cfg)
+	if (mrvl_cfg)
 		priv->ppio_params.eth_start_hdr =
-			mrvl_qos_cfg->port[dev->data->port_id].eth_start_hdr;
+			mrvl_cfg->port[dev->data->port_id].eth_start_hdr;
 
 	/*
 	 * Calculate the minimum bpool size for refill feature as follows:
@@ -778,8 +778,8 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* For default QoS config, don't start classifier. */
-	if (mrvl_qos_cfg  &&
-	    mrvl_qos_cfg->port[dev->data->port_id].use_global_defaults == 0) {
+	if (mrvl_cfg  &&
+	    mrvl_cfg->port[dev->data->port_id].use_global_defaults == 0) {
 		ret = mrvl_start_qos_mapping(priv);
 		if (ret) {
 			MRVL_LOG(ERR, "Failed to setup QoS mapping");
@@ -3114,7 +3114,7 @@ rte_pmd_mrvl_probe(struct rte_vdev_device *vdev)
 	 * The below system initialization should be done only once,
 	 * on the first provided configuration file
 	 */
-	if (!mrvl_qos_cfg) {
+	if (!mrvl_cfg) {
 		cfgnum = rte_kvargs_count(kvlist, MRVL_CFG_ARG);
 		MRVL_LOG(INFO, "Parsing config file!");
 		if (cfgnum > 1) {
@@ -3122,7 +3122,7 @@ rte_pmd_mrvl_probe(struct rte_vdev_device *vdev)
 			goto out_free_kvlist;
 		} else if (cfgnum == 1) {
 			rte_kvargs_process(kvlist, MRVL_CFG_ARG,
-					   mrvl_get_qoscfg, &mrvl_qos_cfg);
+					   mrvl_get_cfg, &mrvl_cfg);
 		}
 	}
 
