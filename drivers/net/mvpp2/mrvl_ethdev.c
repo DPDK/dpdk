@@ -1196,6 +1196,9 @@ mrvl_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	case SPEED_1000:
 		dev->data->dev_link.link_speed = ETH_SPEED_NUM_1G;
 		break;
+	case SPEED_2500:
+		dev->data->dev_link.link_speed = ETH_SPEED_NUM_2_5G;
+		break;
 	case SPEED_10000:
 		dev->data->dev_link.link_speed = ETH_SPEED_NUM_10G;
 		break;
@@ -1695,6 +1698,7 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev,
 	info->speed_capa = ETH_LINK_SPEED_10M |
 			   ETH_LINK_SPEED_100M |
 			   ETH_LINK_SPEED_1G |
+			   ETH_LINK_SPEED_2_5G |
 			   ETH_LINK_SPEED_10G;
 
 	info->max_rx_queues = MRVL_PP2_RXQ_MAX;
