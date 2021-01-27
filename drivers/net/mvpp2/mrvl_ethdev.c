@@ -2904,7 +2904,9 @@ mrvl_init_pp2(void)
 	init_params.hif_reserved_map = MRVL_MUSDK_HIFS_RESERVED;
 	init_params.bm_pool_reserved_map = MRVL_MUSDK_BPOOLS_RESERVED;
 	init_params.rss_tbl_reserved_map = MRVL_MUSDK_RSS_RESERVED;
-
+	if (mrvl_cfg && mrvl_cfg->pp2_cfg.prs_udfs.num_udfs)
+		memcpy(&init_params.prs_udfs, &mrvl_cfg->pp2_cfg.prs_udfs,
+		       sizeof(struct pp2_parse_udfs));
 	return pp2_init(&init_params);
 }
 

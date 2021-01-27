@@ -208,6 +208,13 @@ Configuration syntax
    ebs = <ebs>
    cbs = <cbs>
 
+   [parser udf <udf_id>]
+   proto = <proto>
+   field = <field>
+   key = <key>
+   mask = <mask>
+   offset = <offset>
+
    [port <portnum> default]
    dsa_mode = <dsa_mode>
    default_tc = <default_tc>
@@ -239,6 +246,18 @@ Configuration syntax
    burst_size = <burst_size>
 
 Where:
+
+- ``<udf_id>``: Logical UDF id.
+
+- ``<proto>``: Indicate the preceding hdr before the UDF header (`eth` or `udp`).
+
+- ``<field>``: Indicate the field of the <proto> hdr (`type` (eth) or `dport` (udp).
+
+- ``<key>``: UDF key in string format starting with '0x'.
+
+- ``<mask>``: UDF mask in string format starting with '0x'.
+
+- ``<offset>``: Starting UDF offset from the <proto> hdr.
 
 - ``<portnum>``: DPDK Port number (0..n).
 
@@ -347,6 +366,18 @@ Configuration file example
    rate_limit_enable = 1
    rate_limit = 10000
    burst_size = 2000
+
+Configuration file example with UDF
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+   [parser udf 0]
+   proto = eth
+   field = type
+   key = 0x8842
+   mask = 0xffff
+   offset = 6
 
 Usage example
 ^^^^^^^^^^^^^

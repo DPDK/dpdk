@@ -35,6 +35,7 @@
 #define MRVL_TOK_TXQ "txq"
 #define MRVL_TOK_VLAN "vlan"
 #define MRVL_TOK_VLAN_IP "vlan/ip"
+#define MRVL_TOK_PARSER_UDF "parser udf"
 
 /* egress specific configuration tokens */
 #define MRVL_TOK_BURST_SIZE "burst_size"
@@ -61,6 +62,18 @@
 #define MRVL_TOK_PLCR_DEFAULT_COLOR_GREEN "green"
 #define MRVL_TOK_PLCR_DEFAULT_COLOR_YELLOW "yellow"
 #define MRVL_TOK_PLCR_DEFAULT_COLOR_RED "red"
+
+/* parser udf specific configuration tokens */
+#define MRVL_TOK_PARSER_UDF_PROTO "proto"
+#define MRVL_TOK_PARSER_UDF_FIELD "field"
+#define MRVL_TOK_PARSER_UDF_KEY "key"
+#define MRVL_TOK_PARSER_UDF_MASK "mask"
+#define MRVL_TOK_PARSER_UDF_OFFSET "offset"
+#define MRVL_TOK_PARSER_UDF_PROTO_ETH "eth"
+#define MRVL_TOK_PARSER_UDF_FIELD_ETH_TYPE "type"
+#define MRVL_TOK_PARSER_UDF_PROTO_UDP "udp"
+#define MRVL_TOK_PARSER_UDF_FIELD_UDP_DPORT "dport"
+
 
 /** Number of tokens in range a-b = 2. */
 #define MAX_RNG_TOKENS 2
@@ -454,6 +467,175 @@ parse_policer(struct rte_cfgfile *file, int port, const char *sec_name,
 }
 
 /**
+ * Parse parser udf.
+ *
+ * @param file Config file handle.
+ * @param sec_name section name
+ * @param udf udf index
+ * @param cfg[out] Parsing results.
+ * @returns 0 in case of success, negative value otherwise.
+ */
+static int
+parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
+	  struct mrvl_cfg *cfg)
+{
+	struct pp2_parse_udf_params *udf_params;
+	const char *entry, *entry_field;
+	uint32_t val, i;
+	uint8_t field_size;
+	char malloc_name[32], tmp_arr[3];
+	/* field len in chars equal to '0x' + rest of data */
+#define FIELD_LEN_IN_CHARS(field_size)	(uint32_t)(2 + (field_size) * 2)
+
+	udf_params = &cfg->pp2_cfg.prs_udfs.udfs[udf];
+
+	/* Read 'proto' field */
+	entry = rte_cfgfile_get_entry(file, sec_name,
+				      MRVL_TOK_PARSER_UDF_PROTO);
+	if (!entry) {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+			 MRVL_TOK_PARSER_UDF_PROTO);
+		return -1;
+	}
+
+	/* Read 'field' field */
+	entry_field = rte_cfgfile_get_entry(file, sec_name,
+				       MRVL_TOK_PARSER_UDF_FIELD);
+	if (!entry_field) {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+			 MRVL_TOK_PARSER_UDF_FIELD);
+		return -1;
+	}
+
+	if (!strncmp(entry, MRVL_TOK_PARSER_UDF_PROTO_ETH,
+				sizeof(MRVL_TOK_PARSER_UDF_PROTO_ETH))) {
+		udf_params->match_proto = MV_NET_PROTO_ETH;
+		if (!strncmp(entry_field, MRVL_TOK_PARSER_UDF_FIELD_ETH_TYPE,
+			     sizeof(MRVL_TOK_PARSER_UDF_FIELD_ETH_TYPE))) {
+			udf_params->match_field.eth = MV_NET_ETH_F_TYPE;
+			field_size = 2;
+		} else {
+			MRVL_LOG(ERR, "UDF[%d]: mismatch between '%s' proto "
+				 "and '%s' field\n", udf,
+				 MRVL_TOK_PARSER_UDF_PROTO_ETH,
+				 entry_field);
+			return -1;
+		}
+	} else if (!strncmp(entry, MRVL_TOK_PARSER_UDF_PROTO_UDP,
+				sizeof(MRVL_TOK_PARSER_UDF_PROTO_UDP))) {
+		udf_params->match_proto = MV_NET_PROTO_UDP;
+		if (!strncmp(entry_field, MRVL_TOK_PARSER_UDF_FIELD_UDP_DPORT,
+			     sizeof(MRVL_TOK_PARSER_UDF_FIELD_UDP_DPORT))) {
+			udf_params->match_field.udp = MV_NET_UDP_F_DP;
+			field_size = 2;
+		} else {
+			MRVL_LOG(ERR, "UDF[%d]: mismatch between '%s' proto "
+				 "and '%s' field\n", udf,
+				 MRVL_TOK_PARSER_UDF_PROTO_UDP,
+				 entry_field);
+			return -1;
+		}
+	} else {
+		MRVL_LOG(ERR, "UDF[%d]: Unsupported '%s' proto\n", udf, entry);
+		return -1;
+	}
+
+	snprintf(malloc_name, sizeof(malloc_name), "mrvl_udf_%d_key", udf);
+	udf_params->match_key = rte_zmalloc(malloc_name, field_size, 0);
+	if (udf_params->match_key == NULL) {
+		MRVL_LOG(ERR, "Cannot allocate udf %d key\n", udf);
+		return -1;
+	}
+	snprintf(malloc_name, sizeof(malloc_name), "mrvl_udf_%d_mask", udf);
+	udf_params->match_mask = rte_zmalloc(malloc_name, field_size, 0);
+	if (udf_params->match_mask == NULL) {
+		MRVL_LOG(ERR, "Cannot allocate udf %d mask\n", udf);
+		return -1;
+	}
+
+	/* Read 'key' field */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PARSER_UDF_KEY);
+	if (!entry) {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+			 MRVL_TOK_PARSER_UDF_KEY);
+		return -1;
+	}
+
+	if (strncmp(entry, "0x", 2) != 0)  {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must start with '0x'\n",
+			 udf, MRVL_TOK_PARSER_UDF_KEY);
+		return -EINVAL;
+	}
+
+	if (strlen(entry) != FIELD_LEN_IN_CHARS(field_size)) {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field's len must be %d\n", udf,
+			 MRVL_TOK_PARSER_UDF_KEY,
+			 FIELD_LEN_IN_CHARS(field_size));
+		return -EINVAL;
+	}
+
+	entry += 2; /* skip the '0x' */
+	for (i = 0; i < field_size; i++) {
+		strncpy(tmp_arr, entry, 2);
+		tmp_arr[2] = '\0';
+		if (get_val_securely8(tmp_arr, 16,
+				      &udf_params->match_key[i]) < 0) {
+			MRVL_LOG(ERR, "UDF[%d]: '%s' field's value is not in "
+				"hex format\n", udf, MRVL_TOK_PARSER_UDF_KEY);
+			return -EINVAL;
+		}
+		entry += 2;
+	}
+
+	/* Read 'mask' field */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PARSER_UDF_MASK);
+	if (!entry) {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+			 MRVL_TOK_PARSER_UDF_MASK);
+		return -1;
+	}
+	if (strncmp(entry, "0x", 2) != 0) {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must start with '0x'\n",
+			 udf, MRVL_TOK_PARSER_UDF_MASK);
+		return -EINVAL;
+	}
+
+	if (strlen(entry) != FIELD_LEN_IN_CHARS(field_size)) {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field's len must be %d\n", udf,
+			 MRVL_TOK_PARSER_UDF_MASK,
+			 FIELD_LEN_IN_CHARS(field_size));
+		return -EINVAL;
+	}
+
+	entry += 2; /* skip the '0x' */
+	for (i = 0; i < field_size; i++) {
+		strncpy(tmp_arr, entry, 2);
+		tmp_arr[2] = '\0';
+		if (get_val_securely8(tmp_arr, 16,
+				      &udf_params->match_mask[i]) < 0) {
+			MRVL_LOG(ERR, "UDF[%d]: '%s' field's value is not in "
+				"hex format\n", udf, MRVL_TOK_PARSER_UDF_MASK);
+			return -EINVAL;
+		}
+		entry += 2;
+	}
+
+	/* Read offset */
+	entry = rte_cfgfile_get_entry(file, sec_name,
+				      MRVL_TOK_PARSER_UDF_OFFSET);
+	if (!entry) {
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+			 MRVL_TOK_PARSER_UDF_OFFSET);
+		return -1;
+	}
+	if (get_val_securely(entry, &val) < 0)
+		return -1;
+	udf_params->offset = val;
+
+	return 0;
+}
+
+/**
  * Parse configuration - rte_kvargs_process handler.
  *
  * Opens configuration file and parses its content.
@@ -487,6 +669,36 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 		return -1;
 	}
 
+	/* PP2 configuration */
+	n = rte_cfgfile_num_sections(file, MRVL_TOK_PARSER_UDF,
+		sizeof(MRVL_TOK_PARSER_UDF) - 1);
+
+	if (n && n > PP2_MAX_UDFS_SUPPORTED) {
+		MRVL_LOG(ERR, "found %d udf sections, but only %d are supported\n",
+			 n, PP2_MAX_UDFS_SUPPORTED);
+		return -1;
+	}
+	(*cfg)->pp2_cfg.prs_udfs.num_udfs = n;
+	for (i = 0; i < n; i++) {
+		snprintf(sec_name, sizeof(sec_name), "%s %d",
+				MRVL_TOK_PARSER_UDF, i);
+
+		/* udf sections must be sequential. */
+		if (rte_cfgfile_num_sections(file, sec_name,
+				strlen(sec_name)) <= 0) {
+			MRVL_LOG(ERR, "udf sections must be sequential (0 - %d)\n",
+				 PP2_MAX_UDFS_SUPPORTED - 1);
+			return -1;
+		}
+
+		ret = parse_udf(file, sec_name, i, *cfg);
+		if (ret) {
+			MRVL_LOG(ERR, "Error in parsing %s!\n", sec_name);
+			return -1;
+		}
+	}
+
+	/* PP2 Ports configuration */
 	n = rte_cfgfile_num_sections(file, MRVL_TOK_PORT,
 		sizeof(MRVL_TOK_PORT) - 1);
 

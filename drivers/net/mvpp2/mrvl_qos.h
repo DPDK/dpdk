@@ -19,6 +19,9 @@
 
 /* config. */
 struct mrvl_cfg {
+	struct  {
+		struct pp2_parse_udfs	prs_udfs;
+	} pp2_cfg;
 	struct port_cfg {
 		enum pp2_ppio_eth_start_hdr eth_start_hdr;
 		int rate_limit_enable;
