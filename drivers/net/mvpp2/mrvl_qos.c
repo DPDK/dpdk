@@ -75,30 +75,6 @@
 struct mrvl_cfg *mrvl_cfg;
 
 /**
- * Convert string to uint32_t with extra checks for result correctness.
- *
- * @param string String to convert.
- * @param val Conversion result.
- * @returns 0 in case of success, negative value otherwise.
- */
-static int
-get_val_securely(const char *string, uint32_t *val)
-{
-	char *endptr;
-	size_t len = strlen(string);
-
-	if (len == 0)
-		return -1;
-
-	errno = 0;
-	*val = strtoul(string, &endptr, 0);
-	if (errno != 0 || RTE_PTR_DIFF(endptr, string) != len)
-		return -2;
-
-	return 0;
-}
-
-/**
  * Read out-queue configuration from file.
  *
  * @param file Path to the configuration file.
