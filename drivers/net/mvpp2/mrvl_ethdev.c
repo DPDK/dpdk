@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017 Marvell International Ltd.
- * Copyright(c) 2017 Semihalf.
+ * Copyright(c) 2017-2021 Marvell International Ltd.
+ * Copyright(c) 2017-2021 Semihalf.
  * All rights reserved.
  */
 
@@ -146,6 +146,15 @@ static int rte_pmd_mrvl_remove(struct rte_vdev_device *vdev);
 static void mrvl_deinit_pp2(void);
 static void mrvl_deinit_hifs(void);
 
+static int
+mrvl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+		  uint32_t index, uint32_t vmdq __rte_unused);
+static int
+mrvl_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
+static int
+mrvl_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
+static int mrvl_promiscuous_enable(struct rte_eth_dev *dev);
+static int mrvl_allmulticast_enable(struct rte_eth_dev *dev);
 
 #define MRVL_XSTATS_TBL_ENTRY(name) { \
 	#name, offsetof(struct pp2_ppio_statistics, name),	\
@@ -403,7 +412,7 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	return mrvl_configure_rss(priv,
-				  &dev->data->dev_conf.rx_adv_conf.rss_conf);
+			&dev->data->dev_conf.rx_adv_conf.rss_conf);
 }
 
 /**
@@ -490,8 +499,10 @@ mrvl_dev_set_link_up(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (!priv->ppio)
-		return -EPERM;
+	if (!priv->ppio) {
+		dev->data->dev_link.link_status = ETH_LINK_UP;
+		return 0;
+	}
 
 	ret = pp2_ppio_enable(priv->ppio);
 	if (ret)
@@ -505,10 +516,13 @@ mrvl_dev_set_link_up(struct rte_eth_dev *dev)
 	 * Set mtu to default DPDK value here.
 	 */
 	ret = mrvl_mtu_set(dev, dev->data->mtu);
-	if (ret)
+	if (ret) {
 		pp2_ppio_disable(priv->ppio);
+		return ret;
+	}
 
-	return ret;
+	dev->data->dev_link.link_status = ETH_LINK_UP;
+	return 0;
 }
 
 /**
@@ -524,11 +538,18 @@ static int
 mrvl_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
+	int ret;
 
-	if (!priv->ppio)
-		return -EPERM;
+	if (!priv->ppio) {
+		dev->data->dev_link.link_status = ETH_LINK_DOWN;
+		return 0;
+	}
+	ret = pp2_ppio_disable(priv->ppio);
+	if (ret)
+		return ret;
 
-	return pp2_ppio_disable(priv->ppio);
+	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	return 0;
 }
 
 /**
@@ -610,6 +631,9 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	char match[MRVL_MATCH_LEN];
 	int ret = 0, i, def_init_size;
+	uint32_t j;
+	struct rte_vlan_filter_conf *vfc;
+	struct rte_ether_addr *mac_addr;
 
 	if (priv->ppio)
 		return mrvl_dev_set_link_up(dev);
@@ -675,6 +699,47 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	if (ret)
 		MRVL_LOG(ERR, "Failed to set MTU to %d", dev->data->mtu);
 
+	if (!rte_is_zero_ether_addr(&dev->data->mac_addrs[0]))
+		mrvl_mac_addr_set(dev, &dev->data->mac_addrs[0]);
+
+	for (i = 1; i < MRVL_MAC_ADDRS_MAX; i++) {
+		mac_addr = &dev->data->mac_addrs[i];
+
+		/* skip zero address */
+		if (rte_is_zero_ether_addr(mac_addr))
+			continue;
+
+		mrvl_mac_addr_add(dev, mac_addr, i, 0);
+	}
+
+	if (dev->data->all_multicast == 1)
+		mrvl_allmulticast_enable(dev);
+
+	vfc = &dev->data->vlan_filter_conf;
+	for (j = 0; j < RTE_DIM(vfc->ids); j++) {
+		uint64_t vlan;
+		uint64_t vbit;
+		uint64_t ids = vfc->ids[j];
+
+		if (ids == 0)
+			continue;
+
+		while (ids) {
+			vlan = 64 * j;
+			/* count trailing zeroes */
+			vbit = ~ids & (ids - 1);
+			/* clear least significant bit set */
+			ids ^= (ids ^ (ids - 1)) ^ vbit;
+			for (; vbit; vlan++)
+				vbit >>= 1;
+			ret = mrvl_vlan_filter_set(dev, vlan, 1);
+			if (ret) {
+				MRVL_LOG(ERR, "Failed to setup VLAN filter\n");
+				goto out;
+			}
+		}
+	}
+
 	/* For default QoS config, don't start classifier. */
 	if (mrvl_qos_cfg  &&
 	    mrvl_qos_cfg->port[dev->data->port_id].use_global_defaults == 0) {
@@ -685,10 +750,16 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
-	ret = mrvl_dev_set_link_up(dev);
-	if (ret) {
-		MRVL_LOG(ERR, "Failed to set link up");
-		goto out;
+	if (dev->data->promiscuous == 1)
+		mrvl_promiscuous_enable(dev);
+
+	if (dev->data->dev_link.link_status == ETH_LINK_UP) {
+		ret = mrvl_dev_set_link_up(dev);
+		if (ret) {
+			MRVL_LOG(ERR, "Failed to set link up");
+			dev->data->dev_link.link_status = ETH_LINK_DOWN;
+			goto out;
+		}
 	}
 
 	/* start tx queues */
@@ -2843,6 +2914,8 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	mrvl_set_tx_function(eth_dev);
 	eth_dev->dev_ops = &mrvl_ops;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+
+	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
