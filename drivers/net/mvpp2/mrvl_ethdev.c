@@ -2138,6 +2138,7 @@ mrvl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (!priv)
 		return -EPERM;
 
+	fc_conf->autoneg = 1;
 	ret = pp2_ppio_get_rx_pause(priv->ppio, &en);
 	if (ret) {
 		MRVL_LOG(ERR, "Failed to read rx pause state");
@@ -2187,10 +2188,14 @@ mrvl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (fc_conf->high_water ||
 	    fc_conf->low_water ||
 	    fc_conf->pause_time ||
-	    fc_conf->mac_ctrl_frame_fwd ||
-	    fc_conf->autoneg) {
+	    fc_conf->mac_ctrl_frame_fwd) {
 		MRVL_LOG(ERR, "Flowctrl parameter is not supported");
 
+		return -EINVAL;
+	}
+
+	if (fc_conf->autoneg == 0) {
+		MRVL_LOG(ERR, "Flowctrl Autoneg disable is not supported");
 		return -EINVAL;
 	}
 
