@@ -261,7 +261,7 @@ Where:
 
 - ``<portnum>``: DPDK Port number (0..n).
 
-- ``<start_hdr>``: Indicate what is the start header mode (`none` (eth), `dsa`, or `ext_dsa`).
+- ``<start_hdr>``: Indicate what is the start header mode (`none` (eth), `dsa`, `ext_dsa` or `custom`).
 
 - ``<default_tc>``: Default traffic class (e.g. 0)
 

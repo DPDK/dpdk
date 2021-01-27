@@ -23,6 +23,7 @@
 #define MRVL_TOK_START_HDR "start_hdr"
 #define MRVL_TOK_START_HDR_NONE "none"
 #define MRVL_TOK_START_HDR_DSA "dsa"
+#define MRVL_TOK_START_HDR_CUSTOM "custom"
 #define MRVL_TOK_START_HDR_EXT_DSA "ext_dsa"
 #define MRVL_TOK_DEFAULT_TC "default_tc"
 #define MRVL_TOK_DSCP "dscp"
@@ -742,6 +743,10 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 				sizeof(MRVL_TOK_START_HDR_DSA)))
 				(*cfg)->port[n].eth_start_hdr =
 				PP2_PPIO_HDR_ETH_DSA;
+			else if (!strncmp(entry, MRVL_TOK_START_HDR_CUSTOM,
+				sizeof(MRVL_TOK_START_HDR_CUSTOM)))
+				(*cfg)->port[n].eth_start_hdr =
+				PP2_PPIO_HDR_ETH_CUSTOM;
 			else if (!strncmp(entry, MRVL_TOK_START_HDR_EXT_DSA,
 				sizeof(MRVL_TOK_START_HDR_EXT_DSA))) {
 				(*cfg)->port[n].eth_start_hdr =
