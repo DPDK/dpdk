@@ -593,7 +593,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 			}
 		} else {
 			(*cfg)->port[n].mapping_priority =
-				PP2_CLS_QOS_TBL_VLAN_IP_PRI;
+				PP2_CLS_QOS_TBL_NONE;
 		}
 
 		/* Parse policer configuration (if any) */
@@ -908,6 +908,9 @@ int
 mrvl_start_qos_mapping(struct mrvl_priv *priv)
 {
 	size_t i;
+
+	if (priv->qos_tbl_params.type == PP2_CLS_QOS_TBL_NONE)
+		return 0;
 
 	if (priv->ppio == NULL) {
 		MRVL_LOG(ERR, "ppio must not be NULL here!");
