@@ -216,7 +216,7 @@ Configuration syntax
    offset = <offset>
 
    [port <portnum> default]
-   dsa_mode = <dsa_mode>
+   start_hdr = <start_hdr>
    default_tc = <default_tc>
    mapping_priority = <mapping_priority>
 
@@ -261,7 +261,7 @@ Where:
 
 - ``<portnum>``: DPDK Port number (0..n).
 
-- ``<dsa_mode>``: Indicate what is the dsa header mode (`none`, `dsa`, or `ext_dsa`).
+- ``<start_hdr>``: Indicate what is the start header mode (`none` (eth), `dsa`, or `ext_dsa`).
 
 - ``<default_tc>``: Default traffic class (e.g. 0)
 

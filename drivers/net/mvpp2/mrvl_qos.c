@@ -20,9 +20,10 @@
 /* Parsing tokens. Defined conveniently, so that any correction is easy. */
 #define MRVL_TOK_DEFAULT "default"
 #define MRVL_TOK_DSA_MODE "dsa_mode"
-#define MRVL_TOK_DSA_MODE_NONE "none"
-#define MRVL_TOK_DSA_MODE_DSA "dsa"
-#define MRVL_TOK_DSA_MODE_EXT_DSA "ext_dsa"
+#define MRVL_TOK_START_HDR "start_hdr"
+#define MRVL_TOK_START_HDR_NONE "none"
+#define MRVL_TOK_START_HDR_DSA "dsa"
+#define MRVL_TOK_START_HDR_EXT_DSA "ext_dsa"
 #define MRVL_TOK_DEFAULT_TC "default_tc"
 #define MRVL_TOK_DSCP "dscp"
 #define MRVL_TOK_MAPPING_PRIORITY "mapping_priority"
@@ -722,25 +723,33 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 			continue;
 		}
 
+		/* MRVL_TOK_START_HDR replaces MRVL_TOK_DSA_MODE parameter.
+		 * MRVL_TOK_DSA_MODE will be supported for backward
+		 * compatibillity.
+		 */
 		entry = rte_cfgfile_get_entry(file, sec_name,
+				MRVL_TOK_START_HDR);
+		/* if start_hsr is missing, check if dsa_mode exist instead */
+		if (entry == NULL)
+			entry = rte_cfgfile_get_entry(file, sec_name,
 				MRVL_TOK_DSA_MODE);
 		if (entry) {
-			if (!strncmp(entry, MRVL_TOK_DSA_MODE_NONE,
-				sizeof(MRVL_TOK_DSA_MODE_NONE)))
+			if (!strncmp(entry, MRVL_TOK_START_HDR_NONE,
+				sizeof(MRVL_TOK_START_HDR_NONE)))
 				(*cfg)->port[n].eth_start_hdr =
 				PP2_PPIO_HDR_ETH;
-			else if (!strncmp(entry, MRVL_TOK_DSA_MODE_DSA,
-				sizeof(MRVL_TOK_DSA_MODE_DSA)))
+			else if (!strncmp(entry, MRVL_TOK_START_HDR_DSA,
+				sizeof(MRVL_TOK_START_HDR_DSA)))
 				(*cfg)->port[n].eth_start_hdr =
 				PP2_PPIO_HDR_ETH_DSA;
-			else if (!strncmp(entry, MRVL_TOK_DSA_MODE_EXT_DSA,
-				sizeof(MRVL_TOK_DSA_MODE_EXT_DSA))) {
+			else if (!strncmp(entry, MRVL_TOK_START_HDR_EXT_DSA,
+				sizeof(MRVL_TOK_START_HDR_EXT_DSA))) {
 				(*cfg)->port[n].eth_start_hdr =
 				PP2_PPIO_HDR_ETH_EXT_DSA;
 			} else {
 				MRVL_LOG(ERR,
 					"Error in parsing %s value (%s)!\n",
-					MRVL_TOK_DSA_MODE, entry);
+					MRVL_TOK_START_HDR, entry);
 				return -1;
 			}
 		} else {
