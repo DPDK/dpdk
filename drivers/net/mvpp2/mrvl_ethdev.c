@@ -617,6 +617,51 @@ mrvl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id)
 }
 
 /**
+ * Populate VLAN Filter configuration.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param on
+ *   Toggle filter.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int mrvl_populate_vlan_table(struct rte_eth_dev *dev, int on)
+{
+	uint32_t j;
+	int ret;
+	struct rte_vlan_filter_conf *vfc;
+
+	vfc = &dev->data->vlan_filter_conf;
+	for (j = 0; j < RTE_DIM(vfc->ids); j++) {
+		uint64_t vlan;
+		uint64_t vbit;
+		uint64_t ids = vfc->ids[j];
+
+		if (ids == 0)
+			continue;
+
+		while (ids) {
+			vlan = 64 * j;
+			/* count trailing zeroes */
+			vbit = ~ids & (ids - 1);
+			/* clear least significant bit set */
+			ids ^= (ids ^ (ids - 1)) ^ vbit;
+			for (; vbit; vlan++)
+				vbit >>= 1;
+			ret = mrvl_vlan_filter_set(dev, vlan, on);
+			if (ret) {
+				MRVL_LOG(ERR, "Failed to setup VLAN filter\n");
+				return ret;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/**
  * DPDK callback to start the device.
  *
  * @param dev
@@ -631,8 +676,6 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	char match[MRVL_MATCH_LEN];
 	int ret = 0, i, def_init_size;
-	uint32_t j;
-	struct rte_vlan_filter_conf *vfc;
 	struct rte_ether_addr *mac_addr;
 
 	if (priv->ppio)
@@ -715,28 +758,11 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	if (dev->data->all_multicast == 1)
 		mrvl_allmulticast_enable(dev);
 
-	vfc = &dev->data->vlan_filter_conf;
-	for (j = 0; j < RTE_DIM(vfc->ids); j++) {
-		uint64_t vlan;
-		uint64_t vbit;
-		uint64_t ids = vfc->ids[j];
-
-		if (ids == 0)
-			continue;
-
-		while (ids) {
-			vlan = 64 * j;
-			/* count trailing zeroes */
-			vbit = ~ids & (ids - 1);
-			/* clear least significant bit set */
-			ids ^= (ids ^ (ids - 1)) ^ vbit;
-			for (; vbit; vlan++)
-				vbit >>= 1;
-			ret = mrvl_vlan_filter_set(dev, vlan, 1);
-			if (ret) {
-				MRVL_LOG(ERR, "Failed to setup VLAN filter\n");
-				goto out;
-			}
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
+		ret = mrvl_populate_vlan_table(dev, 1);
+		if (ret) {
+			MRVL_LOG(ERR, "Failed to populate VLAN table");
+			goto out;
 		}
 	}
 
@@ -1672,6 +1698,41 @@ mrvl_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 /**
+ * DPDK callback to Configure VLAN offload.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mask
+ *   VLAN offload mask.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
+	int ret;
+
+	if (mask & ETH_VLAN_STRIP_MASK)
+		MRVL_LOG(ERR, "VLAN stripping is not supported\n");
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+			ret = mrvl_populate_vlan_table(dev, 1);
+		else
+			ret = mrvl_populate_vlan_table(dev, 0);
+
+		if (ret)
+			return ret;
+	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK)
+		MRVL_LOG(ERR, "Extend VLAN not supported\n");
+
+	return 0;
+}
+
+/**
  * Release buffers to hardware bpool (buffer-pool)
  *
  * @param rxq
@@ -2164,6 +2225,7 @@ static const struct eth_dev_ops mrvl_ops = {
 	.rxq_info_get = mrvl_rxq_info_get,
 	.txq_info_get = mrvl_txq_info_get,
 	.vlan_filter_set = mrvl_vlan_filter_set,
+	.vlan_offload_set = mrvl_vlan_offload_set,
 	.tx_queue_start = mrvl_tx_queue_start,
 	.tx_queue_stop = mrvl_tx_queue_stop,
 	.rx_queue_setup = mrvl_rx_queue_setup,
