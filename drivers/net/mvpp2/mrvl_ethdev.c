@@ -2171,7 +2171,6 @@ mrvl_desc_to_packet_type_and_offset(struct pp2_ppio_desc *desc,
 		*l4_offset = *l3_offset + MRVL_ARP_LENGTH;
 		break;
 	default:
-		MRVL_LOG(DEBUG, "Failed to recognise l3 packet type");
 		break;
 	}
 
@@ -2183,7 +2182,6 @@ mrvl_desc_to_packet_type_and_offset(struct pp2_ppio_desc *desc,
 		packet_type |= RTE_PTYPE_L4_UDP;
 		break;
 	default:
-		MRVL_LOG(DEBUG, "Failed to recognise l4 packet type");
 		break;
 	}
 
@@ -2253,10 +2251,9 @@ mrvl_rx_pkt_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	ret = pp2_ppio_recv(q->priv->ppio, q->priv->rxq_map[q->queue_id].tc,
 			    q->priv->rxq_map[q->queue_id].inq, descs, &nb_pkts);
-	if (unlikely(ret < 0)) {
-		MRVL_LOG(ERR, "Failed to receive packets");
+	if (unlikely(ret < 0))
 		return 0;
-	}
+
 	mrvl_port_bpool_size[bpool->pp2_id][bpool->id][core_id] -= nb_pkts;
 
 	for (i = 0; i < nb_pkts; i++) {
@@ -2319,20 +2316,12 @@ mrvl_rx_pkt_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		if (unlikely(num <= q->priv->bpool_min_size ||
 			     (!rx_done && num < q->priv->bpool_init_size))) {
-			ret = mrvl_fill_bpool(q, MRVL_BURST_SIZE);
-			if (ret)
-				MRVL_LOG(ERR, "Failed to fill bpool");
+			mrvl_fill_bpool(q, MRVL_BURST_SIZE);
 		} else if (unlikely(num > q->priv->bpool_max_size)) {
 			int i;
 			int pkt_to_remove = num - q->priv->bpool_init_size;
 			struct rte_mbuf *mbuf;
 			struct pp2_buff_inf buff;
-
-			MRVL_LOG(DEBUG,
-				"port-%d:%d: bpool %d oversize - remove %d buffers (pool size: %d -> %d)",
-				bpool->pp2_id, q->priv->ppio->port_id,
-				bpool->id, pkt_to_remove, num,
-				q->priv->bpool_init_size);
 
 			for (i = 0; i < pkt_to_remove; i++) {
 				ret = pp2_bpool_get_buff(hif, bpool, &buff);
@@ -2526,12 +2515,8 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				       sq, q->queue_id, 0);
 
 	sq_free_size = MRVL_PP2_TX_SHADOWQ_SIZE - sq->size - 1;
-	if (unlikely(nb_pkts > sq_free_size)) {
-		MRVL_LOG(DEBUG,
-			"No room in shadow queue for %d packets! %d packets will be sent.",
-			nb_pkts, sq_free_size);
+	if (unlikely(nb_pkts > sq_free_size))
 		nb_pkts = sq_free_size;
-	}
 
 	for (i = 0; i < nb_pkts; i++) {
 		struct rte_mbuf *mbuf = tx_pkts[i];
@@ -2648,10 +2633,6 @@ mrvl_tx_sg_pkt_burst(void *txq, struct rte_mbuf **tx_pkts,
 		 */
 		if (unlikely(total_descs > sq_free_size)) {
 			total_descs -= nb_segs;
-			RTE_LOG(DEBUG, PMD,
-				"No room in shadow queue for %d packets! "
-				"%d packets will be sent.\n",
-				nb_pkts, i);
 			break;
 		}
 
