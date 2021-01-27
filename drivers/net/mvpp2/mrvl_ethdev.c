@@ -1699,7 +1699,8 @@ mrvl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		return -EFAULT;
 	}
 
-	frame_size = buf_size - RTE_PKTMBUF_HEADROOM - MRVL_PKT_EFFEC_OFFS;
+	frame_size = buf_size - RTE_PKTMBUF_HEADROOM -
+		     MRVL_PKT_EFFEC_OFFS + RTE_ETHER_CRC_LEN;
 	if (frame_size < max_rx_pkt_len) {
 		MRVL_LOG(WARNING,
 			"Mbuf size must be increased to %u bytes to hold up "
