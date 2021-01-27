@@ -33,7 +33,7 @@
 /* bitmask with reserved bpools */
 #define MRVL_MUSDK_BPOOLS_RESERVED 0x07
 /* bitmask with reserved kernel RSS tables */
-#define MRVL_MUSDK_RSS_RESERVED 0x01
+#define MRVL_MUSDK_RSS_RESERVED 0x0F
 /* maximum number of available hifs */
 #define MRVL_MUSDK_HIFS_MAX 9
 
