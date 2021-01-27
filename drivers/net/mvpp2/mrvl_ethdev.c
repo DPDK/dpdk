@@ -2033,6 +2033,19 @@ mrvl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	fc_conf->mode = en ? RTE_FC_RX_PAUSE : RTE_FC_NONE;
 
+	ret = pp2_ppio_get_tx_pause(priv->ppio, &en);
+	if (ret) {
+		MRVL_LOG(ERR, "Failed to read tx pause state");
+		return ret;
+	}
+
+	if (en) {
+		if (fc_conf->mode == RTE_FC_NONE)
+			fc_conf->mode = RTE_FC_TX_PAUSE;
+		else
+			fc_conf->mode = RTE_FC_FULL;
+	}
+
 	return 0;
 }
 
@@ -2051,6 +2064,9 @@ static int
 mrvl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
+	struct pp2_ppio_tx_pause_params mrvl_pause_params;
+	int ret;
+	int rx_en, tx_en;
 
 	if (!priv)
 		return -EPERM;
@@ -2065,16 +2081,43 @@ mrvl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return -EINVAL;
 	}
 
-	if (fc_conf->mode == RTE_FC_NONE ||
-	    fc_conf->mode == RTE_FC_RX_PAUSE) {
-		int ret, en;
+	switch (fc_conf->mode) {
+	case RTE_FC_FULL:
+		rx_en = 1;
+		tx_en = 1;
+		break;
+	case RTE_FC_TX_PAUSE:
+		rx_en = 0;
+		tx_en = 1;
+		break;
+	case RTE_FC_RX_PAUSE:
+		rx_en = 1;
+		tx_en = 0;
+		break;
+	case RTE_FC_NONE:
+		rx_en = 0;
+		tx_en = 0;
+		break;
+	default:
+		MRVL_LOG(ERR, "Incorrect Flow control flag (%d)",
+			 fc_conf->mode);
+		return -EINVAL;
+	}
 
-		en = fc_conf->mode == RTE_FC_NONE ? 0 : 1;
-		ret = pp2_ppio_set_rx_pause(priv->ppio, en);
-		if (ret)
-			MRVL_LOG(ERR,
-				"Failed to change flowctrl on RX side");
+	/* Set RX flow control */
+	ret = pp2_ppio_set_rx_pause(priv->ppio, rx_en);
+	if (ret) {
+		MRVL_LOG(ERR, "Failed to change RX flowctrl");
+		return ret;
+	}
 
+	/* Set TX flow control */
+	mrvl_pause_params.en = tx_en;
+	/* all inqs participate in xon/xoff decision */
+	mrvl_pause_params.use_tc_pause_inqs = 0;
+	ret = pp2_ppio_set_tx_pause(priv->ppio, &mrvl_pause_params);
+	if (ret) {
+		MRVL_LOG(ERR, "Failed to change TX flowctrl");
 		return ret;
 	}
 
