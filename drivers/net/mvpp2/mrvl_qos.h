@@ -45,7 +45,7 @@ struct mrvl_cfg {
 		uint16_t inqs;
 		uint16_t outqs;
 		uint8_t default_tc;
-		uint8_t use_global_defaults;
+		uint8_t use_qos_global_defaults;
 		struct pp2_cls_plcr_params policer_params;
 		uint8_t setup_policer;
 		uint8_t forward_bad_frames;

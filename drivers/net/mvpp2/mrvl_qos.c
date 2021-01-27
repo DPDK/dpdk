@@ -321,7 +321,7 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
 	if (rte_cfgfile_num_sections(file, sec_name, strlen(sec_name)) <= 0)
 		return 0;
 
-	cfg->port[port].use_global_defaults = 0;
+	cfg->port[port].use_qos_global_defaults = 0;
 	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_RXQ);
 	if (entry) {
 		n = get_entry_values(entry,
@@ -718,7 +718,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 			MRVL_TOK_PORT, n, MRVL_TOK_DEFAULT);
 
 		/* Use global defaults, unless an override occurs */
-		(*cfg)->port[n].use_global_defaults = 1;
+		(*cfg)->port[n].use_qos_global_defaults = 1;
 
 		/* Skip ports non-existing in configuration. */
 		if (rte_cfgfile_num_sections(file, sec_name,
@@ -796,7 +796,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 		entry = rte_cfgfile_get_entry(file, sec_name,
 				MRVL_TOK_MAPPING_PRIORITY);
 		if (entry) {
-			(*cfg)->port[n].use_global_defaults = 0;
+			(*cfg)->port[n].use_qos_global_defaults = 0;
 			if (!strncmp(entry, MRVL_TOK_VLAN_IP,
 				sizeof(MRVL_TOK_VLAN_IP)))
 				(*cfg)->port[n].mapping_priority =
@@ -828,7 +828,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 		entry = rte_cfgfile_get_entry(file, sec_name,
 				MRVL_TOK_PLCR_DEFAULT);
 		if (entry) {
-			(*cfg)->port[n].use_global_defaults = 0;
+			(*cfg)->port[n].use_qos_global_defaults = 0;
 			if (get_val_securely(entry, &val) < 0)
 				return -1;
 
@@ -867,7 +867,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 				return -1;
 			(*cfg)->port[n].default_tc = (uint8_t)val;
 		} else {
-			if ((*cfg)->port[n].use_global_defaults == 0) {
+			if ((*cfg)->port[n].use_qos_global_defaults == 0) {
 				MRVL_LOG(ERR,
 					 "Default Traffic Class required in "
 					 "custom configuration!");
@@ -984,7 +984,7 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 	size_t i, tc;
 
 	if (mrvl_cfg == NULL ||
-		mrvl_cfg->port[portid].use_global_defaults) {
+		mrvl_cfg->port[portid].use_qos_global_defaults) {
 		/*
 		 * No port configuration, use default: 1 TC, no QoS,
 		 * TC color set to green.
