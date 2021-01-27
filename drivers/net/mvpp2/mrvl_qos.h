@@ -48,6 +48,7 @@ struct mrvl_cfg {
 		uint8_t use_global_defaults;
 		struct pp2_cls_plcr_params policer_params;
 		uint8_t setup_policer;
+		uint8_t forward_bad_frames;
 	} port[RTE_MAX_ETHPORTS];
 };
 

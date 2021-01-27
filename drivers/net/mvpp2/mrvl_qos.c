@@ -76,6 +76,8 @@
 #define MRVL_TOK_PARSER_UDF_PROTO_UDP "udp"
 #define MRVL_TOK_PARSER_UDF_FIELD_UDP_DPORT "dport"
 
+/* parser forward bad frames tokens */
+#define MRVL_TOK_FWD_BAD_FRAMES "forward_bad_frames"
 
 /** Number of tokens in range a-b = 2. */
 #define MAX_RNG_TOKENS 2
@@ -871,6 +873,21 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 					 "custom configuration!");
 				return -1;
 			}
+		}
+
+		/* Parse forward bad frames option */
+		entry = rte_cfgfile_get_entry(file, sec_name,
+				MRVL_TOK_FWD_BAD_FRAMES);
+		if (entry) {
+			if (get_val_securely(entry, &val) < 0) {
+				MRVL_LOG(ERR,
+					"Error in parsing %s value (%s)!\n",
+					MRVL_TOK_FWD_BAD_FRAMES, entry);
+				return -1;
+			}
+			(*cfg)->port[n].forward_bad_frames = (uint8_t)val;
+		} else {
+			(*cfg)->port[n].forward_bad_frames = 0;
 		}
 	}
 

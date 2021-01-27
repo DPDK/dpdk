@@ -813,9 +813,14 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 		 priv->pp_id, priv->ppio_id);
 	priv->ppio_params.match = match;
 	priv->ppio_params.eth_start_hdr = PP2_PPIO_HDR_ETH;
-	if (mrvl_cfg)
+	priv->forward_bad_frames = 0;
+
+	if (mrvl_cfg) {
 		priv->ppio_params.eth_start_hdr =
 			mrvl_cfg->port[dev->data->port_id].eth_start_hdr;
+		priv->forward_bad_frames =
+			mrvl_cfg->port[dev->data->port_id].forward_bad_frames;
+	}
 
 	/*
 	 * Calculate the minimum bpool size for refill feature as follows:
@@ -2622,7 +2627,8 @@ mrvl_rx_pkt_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		/* drop packet in case of mac, overrun or resource error */
 		status = pp2_ppio_inq_desc_get_l2_pkt_error(&descs[i]);
-		if (unlikely(status != PP2_DESC_ERR_OK)) {
+		if ((unlikely(status != PP2_DESC_ERR_OK)) &&
+			!(q->priv->forward_bad_frames)) {
 			struct pp2_buff_inf binf = {
 				.addr = rte_mbuf_data_iova_default(mbuf),
 				.cookie = (uint64_t)mbuf,

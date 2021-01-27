@@ -217,6 +217,7 @@ Configuration syntax
 
    [port <portnum> default]
    start_hdr = <start_hdr>
+   forward_bad_frames = <forward_bad_frames>
    default_tc = <default_tc>
    mapping_priority = <mapping_priority>
 
@@ -262,6 +263,8 @@ Where:
 - ``<portnum>``: DPDK Port number (0..n).
 
 - ``<start_hdr>``: Indicate what is the start header mode (`none` (eth), `dsa`, `ext_dsa` or `custom`).
+
+- ``<forward_bad_frames>``: Indicate whether to forward or drop l2 bad packets (0 or 1).
 
 - ``<default_tc>``: Default traffic class (e.g. 0)
 
