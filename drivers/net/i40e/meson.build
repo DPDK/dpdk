@@ -54,6 +54,10 @@ if arch_subdir == 'x86'
 		cc.has_argument('-mavx512f') and
 		cc.has_argument('-mavx512bw'))
 
+	if is_windows and cc.get_id() != 'clang'
+		i40e_avx512_cc_support = false
+	endif
+
 	if i40e_avx512_cpu_support == true or i40e_avx512_cc_support == true
 		cflags += ['-DCC_AVX512_SUPPORT']
 		avx512_args = [cflags, '-mavx512f', '-mavx512bw']
