@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2020 Broadcom
+ * Copyright(c) 2014-2021 Broadcom
  * All rights reserved.
  */
 

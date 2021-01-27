@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019 Broadcom
+ * Copyright(c) 2019-2021 Broadcom
  * All rights reserved.
  */
 #ifndef _HWRM_TF_H_
