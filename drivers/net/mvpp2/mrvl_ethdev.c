@@ -189,6 +189,39 @@ static struct {
 	MRVL_XSTATS_TBL_ENTRY(tx_errors)
 };
 
+/**
+ * Initialize packet processor.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mrvl_init_pp2(void)
+{
+	struct pp2_init_params init_params;
+
+	memset(&init_params, 0, sizeof(init_params));
+	init_params.hif_reserved_map = MRVL_MUSDK_HIFS_RESERVED;
+	init_params.bm_pool_reserved_map = MRVL_MUSDK_BPOOLS_RESERVED;
+	init_params.rss_tbl_reserved_map = MRVL_MUSDK_RSS_RESERVED;
+	if (mrvl_cfg && mrvl_cfg->pp2_cfg.prs_udfs.num_udfs)
+		memcpy(&init_params.prs_udfs, &mrvl_cfg->pp2_cfg.prs_udfs,
+		       sizeof(struct pp2_parse_udfs));
+	return pp2_init(&init_params);
+}
+
+/**
+ * Deinitialize packet processor.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static void
+mrvl_deinit_pp2(void)
+{
+	pp2_deinit();
+}
+
 static inline void
 mrvl_fill_shadowq(struct mrvl_shadow_txq *sq, struct rte_mbuf *buf)
 {
@@ -203,6 +236,22 @@ mrvl_fill_shadowq(struct mrvl_shadow_txq *sq, struct rte_mbuf *buf)
 
 	sq->head = (sq->head + 1) & MRVL_PP2_TX_SHADOWQ_MASK;
 	sq->size++;
+}
+
+/**
+ * Deinitialize per-lcore MUSDK hardware interfaces (hifs).
+ */
+static void
+mrvl_deinit_hifs(void)
+{
+	int i;
+
+	for (i = mrvl_lcore_first; i <= mrvl_lcore_last; i++) {
+		if (hifs[i])
+			pp2_hif_deinit(hifs[i]);
+	}
+	used_hifs = MRVL_MUSDK_HIFS_RESERVED;
+	memset(hifs, 0, sizeof(hifs));
 }
 
 static inline void
@@ -2890,39 +2939,6 @@ mrvl_tx_sg_pkt_burst(void *txq, struct rte_mbuf **tx_pkts,
 }
 
 /**
- * Initialize packet processor.
- *
- * @return
- *   0 on success, negative error value otherwise.
- */
-static int
-mrvl_init_pp2(void)
-{
-	struct pp2_init_params init_params;
-
-	memset(&init_params, 0, sizeof(init_params));
-	init_params.hif_reserved_map = MRVL_MUSDK_HIFS_RESERVED;
-	init_params.bm_pool_reserved_map = MRVL_MUSDK_BPOOLS_RESERVED;
-	init_params.rss_tbl_reserved_map = MRVL_MUSDK_RSS_RESERVED;
-	if (mrvl_cfg && mrvl_cfg->pp2_cfg.prs_udfs.num_udfs)
-		memcpy(&init_params.prs_udfs, &mrvl_cfg->pp2_cfg.prs_udfs,
-		       sizeof(struct pp2_parse_udfs));
-	return pp2_init(&init_params);
-}
-
-/**
- * Deinitialize packet processor.
- *
- * @return
- *   0 on success, negative error value otherwise.
- */
-static void
-mrvl_deinit_pp2(void)
-{
-	pp2_deinit();
-}
-
-/**
  * Create private device structure.
  *
  * @param dev_name
@@ -3059,22 +3075,6 @@ mrvl_get_ifnames(const char *key __rte_unused, const char *value,
 	ifnames->names[ifnames->idx++] = value;
 
 	return 0;
-}
-
-/**
- * Deinitialize per-lcore MUSDK hardware interfaces (hifs).
- */
-static void
-mrvl_deinit_hifs(void)
-{
-	int i;
-
-	for (i = mrvl_lcore_first; i <= mrvl_lcore_last; i++) {
-		if (hifs[i])
-			pp2_hif_deinit(hifs[i]);
-	}
-	used_hifs = MRVL_MUSDK_HIFS_RESERVED;
-	memset(hifs, 0, sizeof(hifs));
 }
 
 /**
