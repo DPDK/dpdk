@@ -7704,11 +7704,15 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
 		    priv->pf_bond < 0 && attr->transfer)
 			flow_dv_translate_item_source_vport
 				(matcher, key, priv->vport_id, mask);
-		else
-			flow_dv_translate_item_meta_vport
-				(matcher, key,
-				 priv->vport_meta_tag,
-				 priv->vport_meta_mask);
+		/*
+		 * We should always set the vport metadata register,
+		 * otherwise the SW steering library can drop
+		 * the rule if wire vport metadata value is not zero,
+		 * it depends on kernel configuration.
+		 */
+		flow_dv_translate_item_meta_vport(matcher, key,
+						  priv->vport_meta_tag,
+						  priv->vport_meta_mask);
 	} else {
 		flow_dv_translate_item_source_vport(matcher, key,
 						    priv->vport_id, mask);
