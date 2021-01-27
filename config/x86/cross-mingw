@@ -11,3 +11,6 @@ system = 'windows'
 cpu_family = 'x86_64'
 cpu = 'native'
 endian = 'little'
+
+[properties]
+c_args = '-mno-avx512f'
