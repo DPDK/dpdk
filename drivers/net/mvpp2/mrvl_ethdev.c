@@ -2535,22 +2535,27 @@ mrvl_desc_to_packet_type_and_offset(struct pp2_ppio_desc *desc,
  *   Mbuf offload flags.
  */
 static inline uint64_t
-mrvl_desc_to_ol_flags(struct pp2_ppio_desc *desc)
+mrvl_desc_to_ol_flags(struct pp2_ppio_desc *desc, uint64_t packet_type)
 {
-	uint64_t flags;
+	uint64_t flags = 0;
 	enum pp2_inq_desc_status status;
 
-	status = pp2_ppio_inq_desc_get_l3_pkt_error(desc);
-	if (unlikely(status != PP2_DESC_ERR_OK))
-		flags = PKT_RX_IP_CKSUM_BAD;
-	else
-		flags = PKT_RX_IP_CKSUM_GOOD;
+	if (RTE_ETH_IS_IPV4_HDR(packet_type)) {
+		status = pp2_ppio_inq_desc_get_l3_pkt_error(desc);
+		if (unlikely(status != PP2_DESC_ERR_OK))
+			flags |= PKT_RX_IP_CKSUM_BAD;
+		else
+			flags |= PKT_RX_IP_CKSUM_GOOD;
+	}
 
-	status = pp2_ppio_inq_desc_get_l4_pkt_error(desc);
-	if (unlikely(status != PP2_DESC_ERR_OK))
-		flags |= PKT_RX_L4_CKSUM_BAD;
-	else
-		flags |= PKT_RX_L4_CKSUM_GOOD;
+	if (((packet_type & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) ||
+	    ((packet_type & RTE_PTYPE_L4_TCP) == RTE_PTYPE_L4_TCP)) {
+		status = pp2_ppio_inq_desc_get_l4_pkt_error(desc);
+		if (unlikely(status != PP2_DESC_ERR_OK))
+			flags |= PKT_RX_L4_CKSUM_BAD;
+		else
+			flags |= PKT_RX_L4_CKSUM_GOOD;
+	}
 
 	return flags;
 }
@@ -2642,7 +2647,9 @@ mrvl_rx_pkt_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		mbuf->l3_len = l4_offset - l3_offset;
 
 		if (likely(q->cksum_enabled))
-			mbuf->ol_flags = mrvl_desc_to_ol_flags(&descs[i]);
+			mbuf->ol_flags =
+				mrvl_desc_to_ol_flags(&descs[i],
+						      mbuf->packet_type);
 
 		rx_pkts[rx_done++] = mbuf;
 		q->bytes_recv += mbuf->pkt_len;
