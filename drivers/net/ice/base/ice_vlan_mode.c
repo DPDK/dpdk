@@ -354,6 +354,12 @@ static enum ice_status ice_set_svm(struct ice_hw *hw)
  */
 enum ice_status ice_set_vlan_mode(struct ice_hw *hw)
 {
+	/* DCF only has the ability to query the VLAN mode. Setting the VLAN
+	 * mode is done by the PF.
+	 */
+	if (hw->dcf_enabled)
+		return ICE_SUCCESS;
+
 	if (!ice_is_dvm_supported(hw))
 		return ICE_SUCCESS;
 
