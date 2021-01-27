@@ -160,6 +160,8 @@ struct mrvl_priv {
 	uint8_t isolated;
 	uint8_t multiseg;
 	uint16_t max_mtu;
+	uint8_t	flow_ctrl;
+	struct rte_eth_fc_conf fc_conf;
 
 	struct pp2_ppio_params ppio_params;
 	struct pp2_cls_qos_tbl_params qos_tbl_params;

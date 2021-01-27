@@ -164,6 +164,8 @@ static int
 mrvl_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 static int mrvl_promiscuous_enable(struct rte_eth_dev *dev);
 static int mrvl_allmulticast_enable(struct rte_eth_dev *dev);
+static int
+mrvl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
 
 #define MRVL_XSTATS_TBL_ENTRY(name) { \
 	#name, offsetof(struct pp2_ppio_statistics, name),	\
@@ -914,6 +916,15 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 
 	if (dev->data->promiscuous == 1)
 		mrvl_promiscuous_enable(dev);
+
+	if (priv->flow_ctrl) {
+		ret = mrvl_flow_ctrl_set(dev, &priv->fc_conf);
+		if (ret) {
+			MRVL_LOG(ERR, "Failed to configure flow control");
+			goto out;
+		}
+		priv->flow_ctrl = 0;
+	}
 
 	if (dev->data->dev_link.link_status == ETH_LINK_UP) {
 		ret = mrvl_dev_set_link_up(dev);
@@ -2150,8 +2161,10 @@ mrvl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret, en;
 
-	if (!priv)
-		return -EPERM;
+	if (!priv->ppio) {
+		memcpy(fc_conf, &priv->fc_conf, sizeof(struct rte_eth_fc_conf));
+		return 0;
+	}
 
 	fc_conf->autoneg = 1;
 	ret = pp2_ppio_get_rx_pause(priv->ppio, &en);
@@ -2197,9 +2210,6 @@ mrvl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	int ret;
 	int rx_en, tx_en;
 
-	if (!priv)
-		return -EPERM;
-
 	if (fc_conf->high_water ||
 	    fc_conf->low_water ||
 	    fc_conf->pause_time ||
@@ -2212,6 +2222,12 @@ mrvl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (fc_conf->autoneg == 0) {
 		MRVL_LOG(ERR, "Flowctrl Autoneg disable is not supported");
 		return -EINVAL;
+	}
+
+	if (!priv->ppio) {
+		memcpy(&priv->fc_conf, fc_conf, sizeof(struct rte_eth_fc_conf));
+		priv->flow_ctrl = 1;
+		return 0;
 	}
 
 	switch (fc_conf->mode) {
