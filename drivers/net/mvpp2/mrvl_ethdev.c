@@ -750,6 +750,12 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	ret = pp2_ppio_set_loopback(priv->ppio, dev->data->dev_conf.lpbk_mode);
+	if (ret) {
+		MRVL_LOG(ERR, "Failed to set loopback");
+		goto out;
+	}
+
 	if (dev->data->promiscuous == 1)
 		mrvl_promiscuous_enable(dev);
 
