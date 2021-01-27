@@ -40,8 +40,10 @@
 /* prefetch shift */
 #define MRVL_MUSDK_PREFETCH_SHIFT 2
 
-/* TCAM has 25 entries reserved for uc/mc filter entries */
-#define MRVL_MAC_ADDRS_MAX 25
+/* TCAM has 25 entries reserved for uc/mc filter entries
+ * + 1 for primary mac address
+ */
+#define MRVL_MAC_ADDRS_MAX (1 + 25)
 #define MRVL_MATCH_LEN 16
 #define MRVL_PKT_EFFEC_OFFS (MRVL_PKT_OFFS + MV_MH_SIZE)
 /* Maximum allowable packet size */
