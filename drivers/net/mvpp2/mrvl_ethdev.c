@@ -1631,14 +1631,16 @@ mrvl_fill_bpool(struct mrvl_rxq *rxq, int num)
 		if (((uint64_t)mbufs[i] & MRVL_COOKIE_HIGH_ADDR_MASK)
 			!= cookie_addr_high) {
 			MRVL_LOG(ERR,
-				"mbuf virtual addr high 0x%lx out of range",
-				(uint64_t)mbufs[i] >> 32);
+				"mbuf virtual addr high is out of range "
+				"0x%x instead of 0x%x\n",
+				(uint32_t)((uint64_t)mbufs[i] >> 32),
+				(uint32_t)(cookie_addr_high >> 32));
 			goto out;
 		}
 
 		entries[i].buff.addr =
 			rte_mbuf_data_iova_default(mbufs[i]);
-		entries[i].buff.cookie = (uint64_t)mbufs[i];
+		entries[i].buff.cookie = (uintptr_t)mbufs[i];
 		entries[i].bpool = bpool;
 	}
 
@@ -2438,8 +2440,7 @@ mrvl_free_sent_buffers(struct pp2_ppio *ppio, struct pp2_hif *hif,
 		if (unlikely(!entry->bpool)) {
 			struct rte_mbuf *mbuf;
 
-			mbuf = (struct rte_mbuf *)
-			       (cookie_addr_high | entry->buff.cookie);
+			mbuf = (struct rte_mbuf *)entry->buff.cookie;
 			rte_pktmbuf_free(mbuf);
 			skip_bufs = 1;
 			goto skip;
@@ -2548,7 +2549,7 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		for (i = nb_pkts; i < num; i++) {
 			sq->head = (MRVL_PP2_TX_SHADOWQ_SIZE + sq->head - 1) &
 				MRVL_PP2_TX_SHADOWQ_MASK;
-			addr = cookie_addr_high | sq->ent[sq->head].buff.cookie;
+			addr = sq->ent[sq->head].buff.cookie;
 			bytes_sent -=
 				rte_pktmbuf_pkt_len((struct rte_mbuf *)addr);
 		}
