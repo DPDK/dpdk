@@ -79,6 +79,9 @@
 /* parser forward bad frames tokens */
 #define MRVL_TOK_FWD_BAD_FRAMES "forward_bad_frames"
 
+/* parse fill bpool buffers tokens */
+#define MRVL_TOK_FILL_BPOOL_BUFFS "fill_bpool_buffs"
+
 /** Number of tokens in range a-b = 2. */
 #define MAX_RNG_TOKENS 2
 
@@ -720,6 +723,11 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 		/* Use global defaults, unless an override occurs */
 		(*cfg)->port[n].use_qos_global_defaults = 1;
 
+		/* Set non-zero defaults before the decision to continue to next
+		 * port or to parse the port section in config file
+		 */
+		(*cfg)->port[n].fill_bpool_buffs = MRVL_BURST_SIZE;
+
 		/* Skip ports non-existing in configuration. */
 		if (rte_cfgfile_num_sections(file, sec_name,
 				strlen(sec_name)) <= 0) {
@@ -888,6 +896,19 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 			(*cfg)->port[n].forward_bad_frames = (uint8_t)val;
 		} else {
 			(*cfg)->port[n].forward_bad_frames = 0;
+		}
+
+		/* Parse fill bpool buffs option */
+		entry = rte_cfgfile_get_entry(file, sec_name,
+				MRVL_TOK_FILL_BPOOL_BUFFS);
+		if (entry) {
+			if (get_val_securely(entry, &val) < 0) {
+				MRVL_LOG(ERR,
+					"Error in parsing %s value (%s)!\n",
+					MRVL_TOK_FILL_BPOOL_BUFFS, entry);
+				return -1;
+			}
+			(*cfg)->port[n].fill_bpool_buffs = val;
 		}
 	}
 

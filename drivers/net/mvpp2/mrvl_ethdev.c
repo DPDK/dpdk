@@ -52,8 +52,6 @@
 #define MRVL_IFACE_NAME_ARG "iface"
 #define MRVL_CFG_ARG "cfg"
 
-#define MRVL_BURST_SIZE 64
-
 #define MRVL_ARP_LENGTH 28
 
 #define MRVL_COOKIE_ADDR_INVALID ~0ULL
@@ -814,12 +812,15 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	priv->ppio_params.match = match;
 	priv->ppio_params.eth_start_hdr = PP2_PPIO_HDR_ETH;
 	priv->forward_bad_frames = 0;
+	priv->fill_bpool_buffs = MRVL_BURST_SIZE;
 
 	if (mrvl_cfg) {
 		priv->ppio_params.eth_start_hdr =
 			mrvl_cfg->port[dev->data->port_id].eth_start_hdr;
 		priv->forward_bad_frames =
 			mrvl_cfg->port[dev->data->port_id].forward_bad_frames;
+		priv->fill_bpool_buffs =
+			mrvl_cfg->port[dev->data->port_id].fill_bpool_buffs;
 	}
 
 	/*
@@ -2666,7 +2667,7 @@ mrvl_rx_pkt_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		if (unlikely(num <= q->priv->bpool_min_size ||
 			     (!rx_done && num < q->priv->bpool_init_size))) {
-			mrvl_fill_bpool(q, MRVL_BURST_SIZE);
+			mrvl_fill_bpool(q, q->priv->fill_bpool_buffs);
 		} else if (unlikely(num > q->priv->bpool_max_size)) {
 			int i;
 			int pkt_to_remove = num - q->priv->bpool_init_size;

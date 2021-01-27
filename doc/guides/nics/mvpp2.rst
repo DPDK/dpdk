@@ -218,6 +218,7 @@ Configuration syntax
    [port <portnum> default]
    start_hdr = <start_hdr>
    forward_bad_frames = <forward_bad_frames>
+   fill_bpool_buffs = <fill_bpool_buffs>
    default_tc = <default_tc>
    mapping_priority = <mapping_priority>
 
@@ -265,6 +266,8 @@ Where:
 - ``<start_hdr>``: Indicate what is the start header mode (`none` (eth), `dsa`, `ext_dsa` or `custom`).
 
 - ``<forward_bad_frames>``: Indicate whether to forward or drop l2 bad packets (0 or 1).
+
+- ``<fill_bpool_buffs>``: Control the amount of refill buffers (default is 64).
 
 - ``<default_tc>``: Default traffic class (e.g. 0)
 

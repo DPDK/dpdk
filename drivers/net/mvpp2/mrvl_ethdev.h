@@ -82,6 +82,8 @@
 /** Maximum length of a match string */
 #define MRVL_MATCH_LEN 16
 
+#define MRVL_BURST_SIZE 64
+
 /** PMD-specific definition of a flow rule handle. */
 struct mrvl_mtr;
 struct rte_flow {
@@ -183,6 +185,7 @@ struct mrvl_priv {
 	uint64_t rate_max;
 
 	uint8_t forward_bad_frames;
+	uint32_t fill_bpool_buffs;
 };
 
 /** Flow operations forward declaration. */
