@@ -196,6 +196,8 @@ extern int mrvl_logtype;
 	rte_log(RTE_LOG_ ## level, mrvl_logtype, "%s(): " fmt "\n", \
 		__func__, ##args)
 
+extern struct pp2_bpool *dummy_pool[PP2_NUM_PKT_PROC];
+
 /**
  * Convert string to uint32_t with extra checks for result correctness.
  *

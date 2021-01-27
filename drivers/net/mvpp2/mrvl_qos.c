@@ -881,6 +881,7 @@ setup_tc(struct pp2_ppio_tc_params *param, uint8_t inqs,
 
 	param->pkt_offset = MRVL_PKT_OFFS;
 	param->pools[0][0] = bpool;
+	param->pools[0][1] = dummy_pool[bpool->pp2_id];
 	param->default_color = color;
 
 	inq_params = rte_zmalloc_socket("inq_params",
