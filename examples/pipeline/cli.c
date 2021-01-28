@@ -1294,7 +1294,7 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 	}
 
 	if (strcmp(tokens[0], "link") == 0) {
-		if (strcmp(tokens[1], "show") == 0) {
+		if ((n_tokens >= 2) && (strcmp(tokens[1], "show") == 0)) {
 			cmd_link_show(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
