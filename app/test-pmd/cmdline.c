@@ -1877,7 +1877,9 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 				__rte_unused void *data)
 {
 	struct cmd_config_max_pkt_len_result *res = parsed_result;
+	uint32_t max_rx_pkt_len_backup = 0;
 	portid_t pid;
+	int ret;
 
 	if (!all_ports_stopped()) {
 		printf("Please stop all ports first\n");
@@ -1896,7 +1898,18 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 			if (res->value == port->dev_conf.rxmode.max_rx_pkt_len)
 				return;
 
+			ret = eth_dev_info_get_print_err(pid, &port->dev_info);
+			if (ret != 0) {
+				printf("rte_eth_dev_info_get() failed for port %u\n",
+					pid);
+				return;
+			}
+
+			max_rx_pkt_len_backup = port->dev_conf.rxmode.max_rx_pkt_len;
+
 			port->dev_conf.rxmode.max_rx_pkt_len = res->value;
+			if (update_jumbo_frame_offload(pid) != 0)
+				port->dev_conf.rxmode.max_rx_pkt_len = max_rx_pkt_len_backup;
 		} else {
 			printf("Unknown parameter\n");
 			return;

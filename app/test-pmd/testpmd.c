@@ -443,8 +443,11 @@ lcoreid_t latencystats_lcore_id = -1;
  * Ethernet device configuration.
  */
 struct rte_eth_rxmode rx_mode = {
-	.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
-		/**< Default maximum frame length. */
+	/* Default maximum frame length.
+	 * Zero is converted to "RTE_ETHER_MTU + PMD Ethernet overhead"
+	 * in init_config().
+	 */
+	.max_rx_pkt_len = 0,
 };
 
 struct rte_eth_txmode tx_mode = {
@@ -1410,7 +1413,6 @@ init_config(void)
 	struct rte_gro_param gro_param;
 	uint32_t gso_types;
 	uint16_t data_size;
-	uint16_t eth_overhead;
 	bool warning = 0;
 	int k;
 	int ret;
@@ -1447,22 +1449,10 @@ init_config(void)
 			rte_exit(EXIT_FAILURE,
 				 "rte_eth_dev_info_get() failed\n");
 
-		/* Update the max_rx_pkt_len to have MTU as RTE_ETHER_MTU */
-		if (port->dev_info.max_mtu != UINT16_MAX &&
-		    port->dev_info.max_rx_pktlen > port->dev_info.max_mtu)
-			eth_overhead = port->dev_info.max_rx_pktlen -
-				port->dev_info.max_mtu;
-		else
-			eth_overhead =
-				RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
-
-		if (port->dev_conf.rxmode.max_rx_pkt_len <=
-			(uint32_t)(RTE_ETHER_MTU + eth_overhead))
-			port->dev_conf.rxmode.max_rx_pkt_len =
-					RTE_ETHER_MTU + eth_overhead;
-		else
-			port->dev_conf.rxmode.offloads |=
-					DEV_RX_OFFLOAD_JUMBO_FRAME;
+		ret = update_jumbo_frame_offload(pid);
+		if (ret != 0)
+			printf("Updating jumbo frame offload failed for port %u\n",
+				pid);
 
 		if (!(port->dev_info.tx_offload_capa &
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
@@ -3356,6 +3346,80 @@ rxtx_port_config(struct rte_port *port)
 
 		port->nb_tx_desc[qid] = nb_txd;
 	}
+}
+
+/*
+ * Helper function to arrange max_rx_pktlen value and JUMBO_FRAME offload,
+ * MTU is also aligned if JUMBO_FRAME offload is not set.
+ *
+ * port->dev_info should be set before calling this function.
+ *
+ * return 0 on success, negative on error
+ */
+int
+update_jumbo_frame_offload(portid_t portid)
+{
+	struct rte_port *port = &ports[portid];
+	uint32_t eth_overhead;
+	uint64_t rx_offloads;
+	int ret;
+	bool on;
+
+	/* Update the max_rx_pkt_len to have MTU as RTE_ETHER_MTU */
+	if (port->dev_info.max_mtu != UINT16_MAX &&
+	    port->dev_info.max_rx_pktlen > port->dev_info.max_mtu)
+		eth_overhead = port->dev_info.max_rx_pktlen -
+				port->dev_info.max_mtu;
+	else
+		eth_overhead = RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+
+	rx_offloads = port->dev_conf.rxmode.offloads;
+
+	/* Default config value is 0 to use PMD specific overhead */
+	if (port->dev_conf.rxmode.max_rx_pkt_len == 0)
+		port->dev_conf.rxmode.max_rx_pkt_len = RTE_ETHER_MTU + eth_overhead;
+
+	if (port->dev_conf.rxmode.max_rx_pkt_len <= RTE_ETHER_MTU + eth_overhead) {
+		rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
+		on = false;
+	} else {
+		if ((port->dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) == 0) {
+			printf("Frame size (%u) is not supported by port %u\n",
+				port->dev_conf.rxmode.max_rx_pkt_len,
+				portid);
+			return -1;
+		}
+		rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+		on = true;
+	}
+
+	if (rx_offloads != port->dev_conf.rxmode.offloads) {
+		uint16_t qid;
+
+		port->dev_conf.rxmode.offloads = rx_offloads;
+
+		/* Apply JUMBO_FRAME offload configuration to Rx queue(s) */
+		for (qid = 0; qid < port->dev_info.nb_rx_queues; qid++) {
+			if (on)
+				port->rx_conf[qid].offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+			else
+				port->rx_conf[qid].offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
+		}
+	}
+
+	/* If JUMBO_FRAME is set MTU conversion done by ethdev layer,
+	 * if unset do it here
+	 */
+	if ((rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) == 0) {
+		ret = rte_eth_dev_set_mtu(portid,
+				port->dev_conf.rxmode.max_rx_pkt_len - eth_overhead);
+		if (ret)
+			printf("Failed to set MTU to %u for port %u\n",
+				port->dev_conf.rxmode.max_rx_pkt_len - eth_overhead,
+				portid);
+	}
+
+	return 0;
 }
 
 void
