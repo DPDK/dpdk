@@ -590,6 +590,12 @@ bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
 		ol_flags |= PKT_RX_RSS_HASH;
 	}
 
+#ifdef RTE_LIBRTE_IEEE1588
+	if (unlikely((flags_type & RX_PKT_CMPL_FLAGS_MASK) ==
+		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
+		ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
+#endif
+
 	mbuf->ol_flags = ol_flags;
 }
 
@@ -843,10 +849,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 #ifdef RTE_LIBRTE_IEEE1588
 	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
 		      RX_PKT_CMPL_FLAGS_MASK) ==
-		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP)) {
-		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
+		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP))
 		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
-	}
 #endif
 
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V2) {
