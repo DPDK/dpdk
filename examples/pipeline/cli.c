@@ -10,6 +10,7 @@
 #include <rte_common.h>
 #include <rte_ethdev.h>
 #include <rte_swx_port_ethdev.h>
+#include <rte_swx_port_ring.h>
 #include <rte_swx_port_source_sink.h>
 #include <rte_swx_pipeline.h>
 #include <rte_swx_ctl.h>
@@ -444,6 +445,54 @@ cmd_link_show(char **tokens,
 	}
 }
 
+static const char cmd_ring_help[] =
+"ring <ring_name> size <size> numa <numa_node>\n";
+
+static void
+cmd_ring(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct ring_params p;
+	char *name;
+	struct ring *ring;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	if (strcmp(tokens[2], "size") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "size");
+		return;
+	}
+
+	if (parser_read_uint32(&p.size, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "size");
+		return;
+	}
+
+	if (strcmp(tokens[4], "numa") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "numa");
+		return;
+	}
+
+	if (parser_read_uint32(&p.numa_node, tokens[5]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "numa_node");
+		return;
+	}
+
+	ring = ring_create(obj, name, &p);
+	if (!ring) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 static const char cmd_pipeline_create_help[] =
 "pipeline <pipeline_name> create <numa_node>\n";
 
@@ -480,6 +529,7 @@ cmd_pipeline_create(char **tokens,
 static const char cmd_pipeline_port_in_help[] =
 "pipeline <pipeline_name> port in <port_id>\n"
 "   link <link_name> rxq <queue_id> bsz <burst_size>\n"
+"   ring <ring_name> bsz <burst_size>\n"
 "   | source <mempool_name> <file_name>\n";
 
 static void
@@ -567,6 +617,41 @@ cmd_pipeline_port_in(char **tokens,
 			port_id,
 			"ethdev",
 			&params);
+	} else if (strcmp(tokens[t0], "ring") == 0) {
+		struct rte_swx_port_ring_reader_params params;
+		struct ring *ring;
+
+		if (n_tokens < t0 + 4) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in ring");
+			return;
+		}
+
+		ring = ring_find(obj, tokens[t0 + 1]);
+		if (!ring) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"ring_name");
+			return;
+		}
+		params.name = ring->name;
+
+		if (strcmp(tokens[t0 + 2], "bsz") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "bsz");
+			return;
+		}
+
+		if (parser_read_uint32(&params.burst_size, tokens[t0 + 3])) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"burst_size");
+			return;
+		}
+
+		t0 += 4;
+
+		status = rte_swx_pipeline_port_in_config(p->p,
+			port_id,
+			"ring",
+			&params);
 	} else if (strcmp(tokens[t0], "source") == 0) {
 		struct rte_swx_port_source_params params;
 		struct mempool *mp;
@@ -612,6 +697,7 @@ cmd_pipeline_port_in(char **tokens,
 static const char cmd_pipeline_port_out_help[] =
 "pipeline <pipeline_name> port out <port_id>\n"
 "   link <link_name> txq <txq_id> bsz <burst_size>\n"
+"   ring <ring_name> bsz <burst_size>\n"
 "   | sink <file_name> | none\n";
 
 static void
@@ -698,6 +784,41 @@ cmd_pipeline_port_out(char **tokens,
 		status = rte_swx_pipeline_port_out_config(p->p,
 			port_id,
 			"ethdev",
+			&params);
+	} else if (strcmp(tokens[t0], "ring") == 0) {
+		struct rte_swx_port_ring_writer_params params;
+		struct ring *ring;
+
+		if (n_tokens < t0 + 4) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out link");
+			return;
+		}
+
+		ring = ring_find(obj, tokens[t0 + 1]);
+		if (!ring) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"ring_name");
+			return;
+		}
+		params.name = ring->name;
+
+		if (strcmp(tokens[t0 + 2], "bsz") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "bsz");
+			return;
+		}
+
+		if (parser_read_uint32(&params.burst_size, tokens[t0 + 3])) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"burst_size");
+			return;
+		}
+
+		t0 += 4;
+
+		status = rte_swx_pipeline_port_out_config(p->p,
+			port_id,
+			"ring",
 			&params);
 	} else if (strcmp(tokens[t0], "sink") == 0) {
 		struct rte_swx_port_sink_params params;
@@ -1203,6 +1324,11 @@ cmd_help(char **tokens,
 		return;
 	}
 
+	if (strcmp(tokens[0], "ring") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_ring_help);
+		return;
+	}
+
 	if ((strcmp(tokens[0], "pipeline") == 0) &&
 		(n_tokens == 2) && (strcmp(tokens[1], "create") == 0)) {
 		snprintf(out, out_size, "\n%s\n", cmd_pipeline_create_help);
@@ -1300,6 +1426,11 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 		}
 
 		cmd_link(tokens, n_tokens, out, out_size, obj);
+		return;
+	}
+
+	if (strcmp(tokens[0], "ring") == 0) {
+		cmd_ring(tokens, n_tokens, out, out_size, obj);
 		return;
 	}
 

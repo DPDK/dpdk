@@ -9,6 +9,7 @@
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_swx_port_ethdev.h>
+#include <rte_swx_port_ring.h>
 #include <rte_swx_port_source_sink.h>
 #include <rte_swx_table_em.h>
 #include <rte_swx_pipeline.h>
@@ -27,6 +28,11 @@ TAILQ_HEAD(mempool_list, mempool);
 TAILQ_HEAD(link_list, link);
 
 /*
+ * ring
+ */
+TAILQ_HEAD(ring_list, ring);
+
+/*
  * pipeline
  */
 TAILQ_HEAD(pipeline_list, pipeline);
@@ -37,6 +43,7 @@ TAILQ_HEAD(pipeline_list, pipeline);
 struct obj {
 	struct mempool_list mempool_list;
 	struct link_list link_list;
+	struct ring_list ring_list;
 	struct pipeline_list pipeline_list;
 };
 
@@ -359,6 +366,62 @@ link_next(struct obj *obj, struct link *link)
 }
 
 /*
+ * ring
+ */
+struct ring *
+ring_create(struct obj *obj, const char *name, struct ring_params *params)
+{
+	struct ring *ring;
+	struct rte_ring *r;
+	unsigned int flags = RING_F_SP_ENQ | RING_F_SC_DEQ;
+
+	/* Check input params */
+	if (!name || ring_find(obj, name) || !params || !params->size)
+		return NULL;
+
+	/**
+	 * Resource create
+	 */
+	r = rte_ring_create(
+		name,
+		params->size,
+		params->numa_node,
+		flags);
+	if (!r)
+		return NULL;
+
+	/* Node allocation */
+	ring = calloc(1, sizeof(struct ring));
+	if (!ring) {
+		rte_ring_free(r);
+		return NULL;
+	}
+
+	/* Node fill in */
+	strlcpy(ring->name, name, sizeof(ring->name));
+
+	/* Node add to list */
+	TAILQ_INSERT_TAIL(&obj->ring_list, ring, node);
+
+	return ring;
+}
+
+struct ring *
+ring_find(struct obj *obj, const char *name)
+{
+	struct ring *ring;
+
+	if (!obj || !name)
+		return NULL;
+
+	TAILQ_FOREACH(ring, &obj->ring_list, node)
+		if (strcmp(ring->name, name) == 0)
+			return ring;
+
+	return NULL;
+}
+
+/*
  * pipeline
  */
 #ifndef PIPELINE_MSGQ_SIZE
@@ -391,6 +454,18 @@ pipeline_create(struct obj *obj, const char *name, int numa_node)
 	status = rte_swx_pipeline_port_out_type_register(p,
 		"ethdev",
 		&rte_swx_port_ethdev_writer_ops);
+	if (status)
+		goto error;
+
+	status = rte_swx_pipeline_port_in_type_register(p,
+		"ring",
+		&rte_swx_port_ring_reader_ops);
+	if (status)
+		goto error;
+
+	status = rte_swx_pipeline_port_out_type_register(p,
+		"ring",
+		&rte_swx_port_ring_writer_ops);
 	if (status)
 		goto error;
 
@@ -464,6 +539,7 @@ obj_init(void)
 
 	TAILQ_INIT(&obj->mempool_list);
 	TAILQ_INIT(&obj->link_list);
+	TAILQ_INIT(&obj->ring_list);
 	TAILQ_INIT(&obj->pipeline_list);
 
 	return obj;
