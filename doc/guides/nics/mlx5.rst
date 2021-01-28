@@ -371,6 +371,13 @@ Limitations
   - The E-Switch Sample flow must have the eswitch_manager VPORT destination (PF or ECPF) and no additional actions.
   - For ConnectX-5, the ``RTE_FLOW_ACTION_TYPE_SAMPLE`` is typically used as first action in the E-Switch egress flow if with header modify or encapsulation actions.
 
+- Modify Field flow:
+
+  - Supports the 'set' operation only for ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` action.
+  - Modification of an arbitrary place in a packet via the special ``RTE_FLOW_FIELD_START`` Field ID is not supported.
+  - Encapsulation levels are not supported, can modify outermost header fields only.
+  - Offsets must be 32-bits aligned, cannot skip past the boundary of a field.
+
 - IPv6 header item 'proto' field, indicating the next header protocol, should
   not be set as extension header.
   In case the next header is an extension header, it should not be specified in
@@ -1587,6 +1594,11 @@ Supported hardware offloads
    | GENEVE TLV option     | | OFED 5.2      | | OFED 5.2      |
    |                       | | rdma-core 34  | | rdma-core 34  |
    |                       | | ConnectX-6 Dx | | ConnectX-6 Dx |
+   +-----------------------+-----------------+-----------------+
+   | Modify Field          | | DPDK 21.02    | | DPDK 21.02    |
+   |                       | | OFED 5.2      | | OFED 5.2      |
+   |                       | | rdma-core 35  | | rdma-core 35  |
+   |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
 
 Notes for metadata

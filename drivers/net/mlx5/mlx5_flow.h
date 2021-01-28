@@ -219,6 +219,7 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_SAMPLE (1ull << 36)
 #define MLX5_FLOW_ACTION_TUNNEL_SET (1ull << 37)
 #define MLX5_FLOW_ACTION_TUNNEL_MATCH (1ull << 38)
+#define MLX5_FLOW_ACTION_MODIFY_FIELD (1ull << 39)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
@@ -249,7 +250,8 @@ enum mlx5_feature_name {
 				      MLX5_FLOW_ACTION_MARK_EXT | \
 				      MLX5_FLOW_ACTION_SET_META | \
 				      MLX5_FLOW_ACTION_SET_IPV4_DSCP | \
-				      MLX5_FLOW_ACTION_SET_IPV6_DSCP)
+				      MLX5_FLOW_ACTION_SET_IPV6_DSCP | \
+				      MLX5_FLOW_ACTION_MODIFY_FIELD)
 
 #define MLX5_FLOW_VLAN_ACTIONS (MLX5_FLOW_ACTION_OF_POP_VLAN | \
 				MLX5_FLOW_ACTION_OF_PUSH_VLAN)
@@ -392,6 +394,9 @@ enum mlx5_feature_name {
 #define MLX5_ACT_NUM_SET_MARK		MLX5_ACT_NUM_SET_TAG
 #define MLX5_ACT_NUM_SET_META		MLX5_ACT_NUM_SET_TAG
 #define MLX5_ACT_NUM_SET_DSCP		1
+
+/* Maximum number of fields to modify in MODIFY_FIELD */
+#define MLX5_ACT_MAX_MOD_FIELDS 5
 
 enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MIN,

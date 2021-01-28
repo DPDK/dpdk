@@ -431,6 +431,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 				(int)dcopy->offset < 0 ? off_b : dcopy->offset;
 			/* Convert entire record to big-endian format. */
 			actions[i].data1 = rte_cpu_to_be_32(actions[i].data1);
+			++dcopy;
 		} else {
 			MLX5_ASSERT(item->spec);
 			data = flow_dv_fetch_field((const uint8_t *)item->spec +
@@ -1322,6 +1323,511 @@ flow_dv_convert_action_modify_ipv6_dscp
 	item.mask = &ipv6_mask;
 	return flow_dv_convert_modify_action(&item, modify_ipv6, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
+}
+
+static void
+mlx5_flow_field_id_to_modify_info
+		(const struct rte_flow_action_modify_data *data,
+		 struct field_modify_info *info,
+		 uint32_t *mask, uint32_t *value, uint32_t width,
+		 struct rte_eth_dev *dev,
+		 const struct rte_flow_attr *attr,
+		 struct rte_flow_error *error)
+{
+	uint32_t idx = 0;
+	switch (data->field) {
+	case RTE_FLOW_FIELD_START:
+		/* not supported yet */
+		MLX5_ASSERT(false);
+		break;
+	case RTE_FLOW_FIELD_MAC_DST:
+		if (mask) {
+			if (data->offset < 32) {
+				info[idx] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_DMAC_47_16};
+				mask[idx] = 0xffffffff;
+				if (width < 32) {
+					mask[idx] = mask[idx] << (32 - width);
+					width = 0;
+				} else {
+					width -= 32;
+				}
+				if (!width)
+					break;
+				++idx;
+			}
+			info[idx] = (struct field_modify_info){2, 4 * idx,
+						MLX5_MODI_OUT_DMAC_15_0};
+			mask[idx] = (width) ? 0x0000ffff : 0x0;
+			if (width < 16)
+				mask[idx] = (mask[idx] << (16 - width)) &
+						0x0000ffff;
+		} else {
+			if (data->offset < 32)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_DMAC_47_16};
+			info[idx] = (struct field_modify_info){2, 0,
+						MLX5_MODI_OUT_DMAC_15_0};
+		}
+		break;
+	case RTE_FLOW_FIELD_MAC_SRC:
+		if (mask) {
+			if (data->offset < 32) {
+				info[idx] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_SMAC_47_16};
+				mask[idx] = 0xffffffff;
+				if (width < 32) {
+					mask[idx] = mask[idx] << (32 - width);
+					width = 0;
+				} else {
+					width -= 32;
+				}
+				if (!width)
+					break;
+				++idx;
+			}
+			info[idx] = (struct field_modify_info){2, 4 * idx,
+						MLX5_MODI_OUT_SMAC_15_0};
+			mask[idx] = (width) ? 0x0000ffff : 0x0;
+			if (width < 16)
+				mask[idx] = (mask[idx] << (16 - width)) &
+						0x0000ffff;
+		} else {
+			if (data->offset < 32)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_SMAC_47_16};
+			info[idx] = (struct field_modify_info){2, 0,
+						MLX5_MODI_OUT_SMAC_15_0};
+		}
+		break;
+	case RTE_FLOW_FIELD_VLAN_TYPE:
+		/* not supported yet */
+		break;
+	case RTE_FLOW_FIELD_VLAN_ID:
+		info[idx] = (struct field_modify_info){2, 0,
+					MLX5_MODI_OUT_FIRST_VID};
+		if (mask) {
+			mask[idx] = 0x00000fff;
+			if (width < 12)
+				mask[idx] = (mask[idx] << (12 - width)) &
+						0x00000fff;
+		}
+		break;
+	case RTE_FLOW_FIELD_MAC_TYPE:
+		info[idx] = (struct field_modify_info){2, 0,
+					MLX5_MODI_OUT_ETHERTYPE};
+		if (mask) {
+			mask[idx] = 0x0000ffff;
+			if (width < 16)
+				mask[idx] = (mask[idx] << (16 - width)) &
+						0x0000ffff;
+		}
+		break;
+	case RTE_FLOW_FIELD_IPV4_DSCP:
+		info[idx] = (struct field_modify_info){1, 0,
+					MLX5_MODI_OUT_IP_DSCP};
+		if (mask) {
+			mask[idx] = 0x0000003f;
+			if (width < 6)
+				mask[idx] = (mask[idx] << (6 - width)) &
+						0x0000003f;
+		}
+		break;
+	case RTE_FLOW_FIELD_IPV4_TTL:
+		info[idx] = (struct field_modify_info){1, 0,
+					MLX5_MODI_OUT_IPV4_TTL};
+		if (mask) {
+			mask[idx] = 0x000000ff;
+			if (width < 8)
+				mask[idx] = (mask[idx] << (8 - width)) &
+						0x000000ff;
+		}
+		break;
+	case RTE_FLOW_FIELD_IPV4_SRC:
+		info[idx] = (struct field_modify_info){4, 0,
+					MLX5_MODI_OUT_SIPV4};
+		if (mask) {
+			mask[idx] = 0xffffffff;
+			if (width < 32)
+				mask[idx] = mask[idx] << (32 - width);
+		}
+		break;
+	case RTE_FLOW_FIELD_IPV4_DST:
+		info[idx] = (struct field_modify_info){4, 0,
+					MLX5_MODI_OUT_DIPV4};
+		if (mask) {
+			mask[idx] = 0xffffffff;
+			if (width < 32)
+				mask[idx] = mask[idx] << (32 - width);
+		}
+		break;
+	case RTE_FLOW_FIELD_IPV6_DSCP:
+		info[idx] = (struct field_modify_info){1, 0,
+					MLX5_MODI_OUT_IP_DSCP};
+		if (mask) {
+			mask[idx] = 0x0000003f;
+			if (width < 6)
+				mask[idx] = (mask[idx] << (6 - width)) &
+						0x0000003f;
+		}
+		break;
+	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
+		info[idx] = (struct field_modify_info){1, 0,
+					MLX5_MODI_OUT_IPV6_HOPLIMIT};
+		if (mask) {
+			mask[idx] = 0x000000ff;
+			if (width < 8)
+				mask[idx] = (mask[idx] << (8 - width)) &
+						0x000000ff;
+		}
+		break;
+	case RTE_FLOW_FIELD_IPV6_SRC:
+		if (mask) {
+			if (data->offset < 32) {
+				info[idx] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_SIPV6_127_96};
+				mask[idx] = 0xffffffff;
+				if (width < 32) {
+					mask[idx] = mask[idx] << (32 - width);
+					width = 0;
+				} else {
+					width -= 32;
+				}
+				if (!width)
+					break;
+				++idx;
+			}
+			if (data->offset < 64) {
+				info[idx] = (struct field_modify_info){4,
+						4 * idx,
+						MLX5_MODI_OUT_SIPV6_95_64};
+				mask[idx] = 0xffffffff;
+				if (width < 32) {
+					mask[idx] = mask[idx] << (32 - width);
+					width = 0;
+				} else {
+					width -= 32;
+				}
+				if (!width)
+					break;
+				++idx;
+			}
+			if (data->offset < 96) {
+				info[idx] = (struct field_modify_info){4,
+						8 * idx,
+						MLX5_MODI_OUT_SIPV6_63_32};
+				mask[idx] = 0xffffffff;
+				if (width < 32) {
+					mask[idx] = mask[idx] << (32 - width);
+					width = 0;
+				} else {
+					width -= 32;
+				}
+				if (!width)
+					break;
+				++idx;
+			}
+			info[idx] = (struct field_modify_info){4, 12 * idx,
+						MLX5_MODI_OUT_SIPV6_31_0};
+			mask[idx] = 0xffffffff;
+			if (width < 32)
+				mask[idx] = mask[idx] << (32 - width);
+		} else {
+			if (data->offset < 32)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_SIPV6_127_96};
+			if (data->offset < 64)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_SIPV6_95_64};
+			if (data->offset < 96)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_SIPV6_63_32};
+			if (data->offset < 128)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_SIPV6_31_0};
+		}
+		break;
+	case RTE_FLOW_FIELD_IPV6_DST:
+		if (mask) {
+			if (data->offset < 32) {
+				info[idx] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_DIPV6_127_96};
+				mask[idx] = 0xffffffff;
+				if (width < 32) {
+					mask[idx] = mask[idx] << (32 - width);
+					width = 0;
+				} else {
+					width -= 32;
+				}
+				if (!width)
+					break;
+				++idx;
+			}
+			if (data->offset < 64) {
+				info[idx] = (struct field_modify_info){4,
+						4 * idx,
+						MLX5_MODI_OUT_DIPV6_95_64};
+				mask[idx] = 0xffffffff;
+				if (width < 32) {
+					mask[idx] = mask[idx] << (32 - width);
+					width = 0;
+				} else {
+					width -= 32;
+				}
+				if (!width)
+					break;
+				++idx;
+			}
+			if (data->offset < 96) {
+				info[idx] = (struct field_modify_info){4,
+						8 * idx,
+						MLX5_MODI_OUT_DIPV6_63_32};
+				mask[idx] = 0xffffffff;
+				if (width < 32) {
+					mask[idx] = mask[idx] << (32 - width);
+					width = 0;
+				} else {
+					width -= 32;
+				}
+				if (!width)
+					break;
+				++idx;
+			}
+			info[idx] = (struct field_modify_info){4, 12 * idx,
+						MLX5_MODI_OUT_DIPV6_31_0};
+			mask[idx] = 0xffffffff;
+			if (width < 32)
+				mask[idx] = mask[idx] << (32 - width);
+		} else {
+			if (data->offset < 32)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_DIPV6_127_96};
+			if (data->offset < 64)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_DIPV6_95_64};
+			if (data->offset < 96)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_DIPV6_63_32};
+			if (data->offset < 128)
+				info[idx++] = (struct field_modify_info){4, 0,
+						MLX5_MODI_OUT_DIPV6_31_0};
+		}
+		break;
+	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+		info[idx] = (struct field_modify_info){2, 0,
+					MLX5_MODI_OUT_TCP_SPORT};
+		if (mask) {
+			mask[idx] = 0x0000ffff;
+			if (width < 16)
+				mask[idx] = (mask[idx] << (16 - width)) &
+						0x0000ffff;
+		}
+		break;
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
+		info[idx] = (struct field_modify_info){2, 0,
+					MLX5_MODI_OUT_TCP_DPORT};
+		if (mask) {
+			mask[idx] = 0x0000ffff;
+			if (width < 16)
+				mask[idx] = (mask[idx] << (16 - width)) &
+						0x0000ffff;
+		}
+		break;
+	case RTE_FLOW_FIELD_TCP_SEQ_NUM:
+		info[idx] = (struct field_modify_info){4, 0,
+					MLX5_MODI_OUT_TCP_SEQ_NUM};
+		if (mask) {
+			mask[idx] = 0xffffffff;
+			if (width < 32)
+				mask[idx] = (mask[idx] << (32 - width));
+		}
+		break;
+	case RTE_FLOW_FIELD_TCP_ACK_NUM:
+		info[idx] = (struct field_modify_info){4, 0,
+					MLX5_MODI_OUT_TCP_ACK_NUM};
+		if (mask) {
+			mask[idx] = 0xffffffff;
+			if (width < 32)
+				mask[idx] = (mask[idx] << (32 - width));
+		}
+		break;
+	case RTE_FLOW_FIELD_TCP_FLAGS:
+		info[idx] = (struct field_modify_info){1, 0,
+					MLX5_MODI_IN_TCP_FLAGS};
+		if (mask) {
+			mask[idx] = 0x0000003f;
+			if (width < 6)
+				mask[idx] = (mask[idx] << (6 - width)) &
+						0x0000003f;
+		}
+		break;
+	case RTE_FLOW_FIELD_UDP_PORT_SRC:
+		info[idx] = (struct field_modify_info){2, 0,
+					MLX5_MODI_OUT_UDP_SPORT};
+		if (mask) {
+			mask[idx] = 0x0000ffff;
+			if (width < 16)
+				mask[idx] = (mask[idx] << (16 - width)) &
+						0x0000ffff;
+		}
+		break;
+	case RTE_FLOW_FIELD_UDP_PORT_DST:
+		info[idx] = (struct field_modify_info){2, 0,
+					MLX5_MODI_OUT_UDP_DPORT};
+		if (mask) {
+			mask[idx] = 0x0000ffff;
+			if (width < 16)
+				mask[idx] = (mask[idx] << (16 - width)) &
+						0x0000ffff;
+		}
+		break;
+	case RTE_FLOW_FIELD_VXLAN_VNI:
+		/* not supported yet */
+		break;
+	case RTE_FLOW_FIELD_GENEVE_VNI:
+		/* not supported yet*/
+		break;
+	case RTE_FLOW_FIELD_GTP_TEID:
+		info[idx] = (struct field_modify_info){4, 0,
+					MLX5_MODI_GTP_TEID};
+		if (mask) {
+			mask[idx] = 0xffffffff;
+			if (width < 32)
+				mask[idx] = mask[idx] << (32 - width);
+		}
+		break;
+	case RTE_FLOW_FIELD_TAG:
+		{
+			int reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG,
+						   data->level, error);
+			if (reg < 0)
+				return;
+			MLX5_ASSERT(reg != REG_NON);
+			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
+			info[idx] = (struct field_modify_info){4, 0,
+						reg_to_field[reg]};
+			if (mask) {
+				mask[idx] = 0xffffffff;
+				if (width < 32)
+					mask[idx] = mask[idx] << (32 - width);
+			}
+		}
+		break;
+	case RTE_FLOW_FIELD_MARK:
+		{
+			int reg = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK,
+						       0, error);
+			if (reg < 0)
+				return;
+			MLX5_ASSERT(reg != REG_NON);
+			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
+			info[idx] = (struct field_modify_info){4, 0,
+						reg_to_field[reg]};
+			if (mask) {
+				mask[idx] = 0xffffffff;
+				if (width < 32)
+					mask[idx] = mask[idx] << (32 - width);
+			}
+		}
+		break;
+	case RTE_FLOW_FIELD_META:
+		{
+			int reg = flow_dv_get_metadata_reg(dev, attr, error);
+			if (reg < 0)
+				return;
+			MLX5_ASSERT(reg != REG_NON);
+			MLX5_ASSERT((unsigned int)reg < RTE_DIM(reg_to_field));
+			info[idx] = (struct field_modify_info){4, 0,
+						reg_to_field[reg]};
+			if (mask) {
+				mask[idx] = 0xffffffff;
+				if (width < 32)
+					mask[idx] = mask[idx] << (32 - width);
+			}
+		}
+		break;
+	case RTE_FLOW_FIELD_POINTER:
+		for (idx = 0; idx < MLX5_ACT_MAX_MOD_FIELDS; idx++) {
+			if (mask[idx]) {
+				memcpy(&value[idx],
+					(void *)(uintptr_t)data->value, 32);
+				value[idx] = RTE_BE32(value[idx]);
+				break;
+			}
+		}
+		break;
+	case RTE_FLOW_FIELD_VALUE:
+		for (idx = 0; idx < MLX5_ACT_MAX_MOD_FIELDS; idx++) {
+			if (mask[idx]) {
+				value[idx] = RTE_BE32((uint32_t)data->value);
+				break;
+			}
+		}
+		break;
+	default:
+		MLX5_ASSERT(false);
+		break;
+	}
+}
+
+/**
+ * Convert modify_field action to DV specification.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in,out] resource
+ *   Pointer to the modify-header resource.
+ * @param[in] action
+ *   Pointer to action specification.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_action_modify_field
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 const struct rte_flow_action *action,
+			 const struct rte_flow_attr *attr,
+			 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_modify_field *conf =
+		(const struct rte_flow_action_modify_field *)(action->conf);
+	struct rte_flow_item item;
+	struct field_modify_info field[MLX5_ACT_MAX_MOD_FIELDS] = {
+								{0, 0, 0} };
+	struct field_modify_info dcopy[MLX5_ACT_MAX_MOD_FIELDS] = {
+								{0, 0, 0} };
+	uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
+	uint32_t value[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
+	uint32_t type;
+
+	if (conf->src.field == RTE_FLOW_FIELD_POINTER ||
+		conf->src.field == RTE_FLOW_FIELD_VALUE) {
+		type = MLX5_MODIFICATION_TYPE_SET;
+		/** For SET fill the destination field (field) first. */
+		mlx5_flow_field_id_to_modify_info(&conf->dst, field, mask,
+					  value, conf->width, dev, attr, error);
+		/** Then copy immediate value from source as per mask. */
+		mlx5_flow_field_id_to_modify_info(&conf->src, dcopy, mask,
+					  value, conf->width, dev, attr, error);
+		item.spec = &value;
+	} else {
+		type = MLX5_MODIFICATION_TYPE_COPY;
+		/** For COPY fill the destination field (dcopy) without mask. */
+		mlx5_flow_field_id_to_modify_info(&conf->dst, dcopy, NULL,
+					  value, conf->width, dev, attr, error);
+		/** Then construct the source field (field) with mask. */
+		mlx5_flow_field_id_to_modify_info(&conf->src, field, mask,
+					  value, conf->width, dev, attr, error);
+	}
+	item.mask = &mask;
+	return flow_dv_convert_modify_action(&item,
+			field, dcopy, resource, type, error);
 }
 
 /**
@@ -3992,6 +4498,165 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
 	return ret;
 }
 
+static int
+mlx5_flow_item_field_width(enum rte_flow_field_id field)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_START:
+		return 32;
+	case RTE_FLOW_FIELD_MAC_DST:
+	case RTE_FLOW_FIELD_MAC_SRC:
+		return 48;
+	case RTE_FLOW_FIELD_VLAN_TYPE:
+		return 16;
+	case RTE_FLOW_FIELD_VLAN_ID:
+		return 12;
+	case RTE_FLOW_FIELD_MAC_TYPE:
+		return 16;
+	case RTE_FLOW_FIELD_IPV4_DSCP:
+		return 6;
+	case RTE_FLOW_FIELD_IPV4_TTL:
+		return 8;
+	case RTE_FLOW_FIELD_IPV4_SRC:
+	case RTE_FLOW_FIELD_IPV4_DST:
+		return 32;
+	case RTE_FLOW_FIELD_IPV6_DSCP:
+		return 6;
+	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
+		return 8;
+	case RTE_FLOW_FIELD_IPV6_SRC:
+	case RTE_FLOW_FIELD_IPV6_DST:
+		return 128;
+	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
+		return 16;
+	case RTE_FLOW_FIELD_TCP_SEQ_NUM:
+	case RTE_FLOW_FIELD_TCP_ACK_NUM:
+		return 32;
+	case RTE_FLOW_FIELD_TCP_FLAGS:
+		return 6;
+	case RTE_FLOW_FIELD_UDP_PORT_SRC:
+	case RTE_FLOW_FIELD_UDP_PORT_DST:
+		return 16;
+	case RTE_FLOW_FIELD_VXLAN_VNI:
+	case RTE_FLOW_FIELD_GENEVE_VNI:
+		return 24;
+	case RTE_FLOW_FIELD_GTP_TEID:
+	case RTE_FLOW_FIELD_TAG:
+		return 32;
+	case RTE_FLOW_FIELD_MARK:
+		return 24;
+	case RTE_FLOW_FIELD_META:
+	case RTE_FLOW_FIELD_POINTER:
+	case RTE_FLOW_FIELD_VALUE:
+		return 32;
+	default:
+		MLX5_ASSERT(false);
+	}
+	return 0;
+}
+
+/**
+ * Validate the generic modify field actions.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the modify action.
+ * @param[in] item_flags
+ *   Holds the items detected.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   Number of header fields to modify (0 or more) on success,
+ *   a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_modify_field(const uint64_t action_flags,
+				   const struct rte_flow_action *action,
+				   struct rte_flow_error *error)
+{
+	int ret = 0;
+	const struct rte_flow_action_modify_field *action_modify_field =
+		action->conf;
+	uint32_t dst_width =
+		mlx5_flow_item_field_width(action_modify_field->dst.field);
+	uint32_t src_width =
+		mlx5_flow_item_field_width(action_modify_field->src.field);
+
+	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);
+	if (ret)
+		return ret;
+
+	if (action_modify_field->dst.field != RTE_FLOW_FIELD_VALUE &&
+	    action_modify_field->dst.field != RTE_FLOW_FIELD_POINTER) {
+		if (action_modify_field->dst.offset >= dst_width ||
+		    (action_modify_field->dst.offset % 32))
+			return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"destination offset is too big"
+						" or not aligned to 4 bytes");
+		if (action_modify_field->dst.level &&
+		    action_modify_field->dst.field != RTE_FLOW_FIELD_TAG)
+			return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"cannot modify inner headers");
+	}
+	if (action_modify_field->src.field != RTE_FLOW_FIELD_VALUE &&
+	    action_modify_field->src.field != RTE_FLOW_FIELD_POINTER) {
+		if (action_modify_field->src.offset >= src_width ||
+		    (action_modify_field->src.offset % 32))
+			return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"source offset is too big"
+						" or not aligned to 4 bytes");
+		if (action_modify_field->src.level &&
+		    action_modify_field->src.field != RTE_FLOW_FIELD_TAG)
+			return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"cannot copy from inner headers");
+	}
+	if (action_modify_field->width == 0)
+		return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"width is required for modify action");
+	if (action_modify_field->dst.field ==
+	    action_modify_field->src.field)
+		return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL,
+					"source and destination fields"
+					" cannot be the same");
+	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VALUE ||
+	    action_modify_field->dst.field == RTE_FLOW_FIELD_POINTER)
+		return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL,
+					"immediate value or a pointer to it"
+					" cannot be used as a destination");
+	if (action_modify_field->dst.field == RTE_FLOW_FIELD_START ||
+	    action_modify_field->src.field == RTE_FLOW_FIELD_START)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL,
+				"modifications of an arbitrary"
+				" place in a packet is not supported");
+	if (action_modify_field->operation != RTE_FLOW_MODIFY_SET)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL,
+				"add and sub operations"
+				" are not supported");
+	return (action_modify_field->width / 32) +
+	       !!(action_modify_field->width % 32);
+}
+
 /**
  * Validate jump action.
  *
@@ -5388,7 +6053,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	struct mlx5_dev_config *dev_conf = &priv->config;
 	uint16_t queue_index = 0xFFFF;
 	const struct rte_flow_item_vlan *vlan_m = NULL;
-	int16_t rw_act_num = 0;
+	uint32_t rw_act_num = 0;
 	uint64_t is_root;
 	const struct mlx5_flow_tunnel *tunnel;
 	struct flow_grp_info grp_info = {
@@ -6185,6 +6850,23 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 
 			action_flags |= MLX5_FLOW_ACTION_TUNNEL_SET;
 			break;
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			if (!attr->transfer && !attr->group)
+				return rte_flow_error_set(error, ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL, "modify field action "
+						"is not supported for group 0");
+			ret = flow_dv_validate_action_modify_field(action_flags,
+								 actions,
+								 error);
+			if (ret < 0)
+				return ret;
+			/* Count all modify-header actions as one action. */
+			if (!(action_flags & MLX5_FLOW_ACTION_MODIFY_FIELD))
+				++actions_n;
+			action_flags |= MLX5_FLOW_ACTION_MODIFY_FIELD;
+			rw_act_num += ret;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -6342,7 +7024,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	    dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
 	    mlx5_flow_ext_mreg_supported(dev))
 		rw_act_num += MLX5_ACT_NUM_SET_TAG;
-	if ((uint32_t)rw_act_num >
+	if (rw_act_num >
 			flow_dv_modify_hdr_action_max(dev, is_root)) {
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -10691,6 +11373,12 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			    (action_flags & MLX5_FLOW_ACTION_PORT_ID))
 				sample_act->action_flags |=
 							MLX5_FLOW_ACTION_ENCAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			if (flow_dv_convert_action_modify_field
+					(dev, mhdr_res, actions, attr, error))
+				return -rte_errno;
+			action_flags |= MLX5_FLOW_ACTION_MODIFY_FIELD;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
