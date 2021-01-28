@@ -208,10 +208,10 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	struct otx2_ipsec_po_sa_ctl *ctl;
 	int cipher_key_len, auth_key_len;
 	struct otx2_ipsec_po_out_sa *sa;
-	struct rte_ipv6_hdr *ip6 = NULL;
-	struct rte_ipv4_hdr *ip = NULL;
 	struct otx2_sec_session *sess;
 	struct otx2_cpt_inst_s inst;
+	struct rte_ipv6_hdr *ip6;
+	struct rte_ipv4_hdr *ip;
 	int ret, ctx_len;
 
 	sess = get_sec_session_private_data(sec_sess);
@@ -282,6 +282,8 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 						sa->sha2.template.ip4);
 				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
 				lp->ctx_len = ctx_len >> 3;
+			} else {
+				return -EINVAL;
 			}
 			ip->version_ihl = RTE_IPV4_VHL_DEF;
 			ip->next_proto_id = IPPROTO_ESP;
@@ -331,6 +333,8 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 						sa->sha2.template.ip6);
 				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
 				lp->ctx_len = ctx_len >> 3;
+			} else {
+				return -EINVAL;
 			}
 
 			ip6->vtc_flow = rte_cpu_to_be_32(0x60000000 |
