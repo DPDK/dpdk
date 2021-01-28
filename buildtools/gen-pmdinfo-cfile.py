@@ -9,11 +9,12 @@ import tempfile
 
 _, tmp_root, ar, archive, output, *pmdinfogen = sys.argv
 with tempfile.TemporaryDirectory(dir=tmp_root) as temp:
-    proc = subprocess.run(
-        # Don't use "ar p", because its output is corrupted on Windows.
-        [ar, "xv", os.path.abspath(archive)], stdout=subprocess.PIPE, check=True, cwd=temp
+    run_ar = lambda command: subprocess.run(
+        [ar, command, os.path.abspath(archive)],
+        stdout=subprocess.PIPE, check=True, cwd=temp
     )
-    lines = proc.stdout.decode().splitlines()
-    names = [line[len("x - ") :] for line in lines]
+    # Don't use "ar p", because its output is corrupted on Windows.
+    run_ar("x")
+    names = run_ar("t").stdout.decode().splitlines()
     paths = [os.path.join(temp, name) for name in names]
     subprocess.run(pmdinfogen + paths + [output], check=True)
