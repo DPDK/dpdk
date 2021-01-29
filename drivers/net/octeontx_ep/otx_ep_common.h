@@ -4,6 +4,10 @@
 #ifndef _OTX_EP_COMMON_H_
 #define _OTX_EP_COMMON_H_
 
+
+#define OTX_EP_NW_PKT_OP               0x1220
+#define OTX_EP_NW_CMD_OP               0x1221
+
 #define OTX_EP_MAX_RINGS_PER_VF        (8)
 #define OTX_EP_CFG_IO_QUEUES        OTX_EP_MAX_RINGS_PER_VF
 #define OTX_EP_64BYTE_INSTR         (64)
@@ -16,9 +20,24 @@
 
 #define OTX_EP_OQ_INFOPTR_MODE      (0)
 #define OTX_EP_OQ_REFIL_THRESHOLD   (16)
+
+/* IQ instruction req types */
+#define OTX_EP_REQTYPE_NONE             (0)
+#define OTX_EP_REQTYPE_NORESP_INSTR     (1)
+#define OTX_EP_REQTYPE_NORESP_NET_DIRECT       (2)
+#define OTX_EP_REQTYPE_NORESP_NET       OTX_EP_REQTYPE_NORESP_NET_DIRECT
+#define OTX_EP_REQTYPE_NORESP_GATHER    (3)
+#define OTX_EP_NORESP_OHSM_SEND     (4)
+#define OTX_EP_NORESP_LAST          (4)
 #define OTX_EP_PCI_RING_ALIGN   65536
 #define SDP_PKIND 40
 #define SDP_OTX2_PKIND 57
+
+#define      ORDERED_TAG 0
+#define      ATOMIC_TAG  1
+#define      NULL_TAG  2
+#define      NULL_NULL_TAG  3
+
 #define OTX_EP_BUSY_LOOP_COUNT      (10000)
 #define OTX_EP_MAX_IOQS_PER_VF 8
 #define OTX_CUST_DATA_LEN 0
@@ -443,8 +462,40 @@ int otx_ep_setup_oqs(struct otx_ep_device *otx_ep, int oq_no, int num_descs,
 		     unsigned int socket_id);
 int otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no);
 
+struct otx_ep_sg_entry {
+	/** The first 64 bit gives the size of data in each dptr. */
+	union {
+		uint16_t size[4];
+		uint64_t size64;
+	} u;
+
+	/** The 4 dptr pointers for this entry. */
+	uint64_t ptr[4];
+};
+
+#define OTX_EP_SG_ENTRY_SIZE	(sizeof(struct otx_ep_sg_entry))
+
+/** Structure of a node in list of gather components maintained by
+ *  driver for each network device.
+ */
+struct otx_ep_gather {
+	/** number of gather entries. */
+	int num_sg;
+
+	/** Gather component that can accommodate max sized fragment list
+	 *  received from the IP layer.
+	 */
+	struct otx_ep_sg_entry *sg;
+};
+
+struct otx_ep_buf_free_info {
+	struct rte_mbuf *mbuf;
+	struct otx_ep_gather g;
+};
+
 #define OTX_EP_MAX_PKT_SZ 64000U
 #define OTX_EP_MAX_MAC_ADDRS 1
+#define OTX_EP_SG_ALIGN 8
 #define OTX_EP_CLEAR_ISIZE_BSIZE 0x7FFFFFULL
 #define OTX_EP_CLEAR_OUT_INT_LVLS 0x3FFFFFFFFFFFFFULL
 #define OTX_EP_CLEAR_IN_INT_LVLS 0xFFFFFFFF

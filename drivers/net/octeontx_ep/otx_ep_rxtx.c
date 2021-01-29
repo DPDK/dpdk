@@ -360,6 +360,429 @@ delete_OQ:
 	return -ENOMEM;
 }
 
+static inline void
+otx_ep_iqreq_delete(struct otx_ep_instr_queue *iq, uint32_t idx)
+{
+	uint32_t reqtype;
+	void *buf;
+	struct otx_ep_buf_free_info *finfo;
+
+	buf     = iq->req_list[idx].buf;
+	reqtype = iq->req_list[idx].reqtype;
+
+	switch (reqtype) {
+	case OTX_EP_REQTYPE_NORESP_NET:
+		rte_pktmbuf_free((struct rte_mbuf *)buf);
+		otx_ep_dbg("IQ buffer freed at idx[%d]\n", idx);
+		break;
+
+	case OTX_EP_REQTYPE_NORESP_GATHER:
+		finfo = (struct  otx_ep_buf_free_info *)buf;
+		/* This will take care of multiple segments also */
+		rte_pktmbuf_free(finfo->mbuf);
+		rte_free(finfo->g.sg);
+		rte_free(finfo);
+		break;
+
+	case OTX_EP_REQTYPE_NONE:
+	default:
+		otx_ep_info("This iqreq mode is not supported:%d\n", reqtype);
+	}
+
+	/* Reset the request list at this index */
+	iq->req_list[idx].buf = NULL;
+	iq->req_list[idx].reqtype = 0;
+}
+
+static inline void
+otx_ep_iqreq_add(struct otx_ep_instr_queue *iq, void *buf,
+		uint32_t reqtype, int index)
+{
+	iq->req_list[index].buf = buf;
+	iq->req_list[index].reqtype = reqtype;
+}
+
+static uint32_t
+otx_vf_update_read_index(struct otx_ep_instr_queue *iq)
+{
+	uint32_t new_idx = rte_read32(iq->inst_cnt_reg);
+	if (unlikely(new_idx == 0xFFFFFFFFU))
+		rte_write32(new_idx, iq->inst_cnt_reg);
+	/* Modulo of the new index with the IQ size will give us
+	 * the new index.
+	 */
+	new_idx &= (iq->nb_desc - 1);
+
+	return new_idx;
+}
+
+static void
+otx_ep_flush_iq(struct otx_ep_instr_queue *iq)
+{
+	uint32_t instr_processed = 0;
+
+	iq->otx_read_index = otx_vf_update_read_index(iq);
+	while (iq->flush_index != iq->otx_read_index) {
+		/* Free the IQ data buffer to the pool */
+		otx_ep_iqreq_delete(iq, iq->flush_index);
+		iq->flush_index =
+			otx_ep_incr_index(iq->flush_index, 1, iq->nb_desc);
+
+		instr_processed++;
+	}
+
+	iq->stats.instr_processed = instr_processed;
+	iq->instr_pending -= instr_processed;
+}
+
+static inline void
+otx_ep_ring_doorbell(struct otx_ep_device *otx_ep __rte_unused,
+		struct otx_ep_instr_queue *iq)
+{
+	rte_wmb();
+	rte_write64(iq->fill_cnt, iq->doorbell_reg);
+	iq->fill_cnt = 0;
+}
+
+static inline int
+post_iqcmd(struct otx_ep_instr_queue *iq, uint8_t *iqcmd)
+{
+	uint8_t *iqptr, cmdsize;
+
+	/* This ensures that the read index does not wrap around to
+	 * the same position if queue gets full before OCTEON TX2 could
+	 * fetch any instr.
+	 */
+	if (iq->instr_pending > (iq->nb_desc - 1))
+		return OTX_EP_IQ_SEND_FAILED;
+
+	/* Copy cmd into iq */
+	cmdsize = 64;
+	iqptr   = iq->base_addr + (iq->host_write_index << 6);
+
+	rte_memcpy(iqptr, iqcmd, cmdsize);
+
+	/* Increment the host write index */
+	iq->host_write_index =
+		otx_ep_incr_index(iq->host_write_index, 1, iq->nb_desc);
+
+	iq->fill_cnt++;
+
+	/* Flush the command into memory. We need to be sure the data
+	 * is in memory before indicating that the instruction is
+	 * pending.
+	 */
+	iq->instr_pending++;
+	/* OTX_EP_IQ_SEND_SUCCESS */
+	return 0;
+}
+
+
+static int
+otx_ep_send_data(struct otx_ep_device *otx_ep, struct otx_ep_instr_queue *iq,
+		 void *cmd, int dbell)
+{
+	uint32_t ret;
+
+	/* Submit IQ command */
+	ret = post_iqcmd(iq, cmd);
+
+	if (ret == OTX_EP_IQ_SEND_SUCCESS) {
+		if (dbell)
+			otx_ep_ring_doorbell(otx_ep, iq);
+		iq->stats.instr_posted++;
+
+	} else {
+		iq->stats.instr_dropped++;
+		if (iq->fill_cnt)
+			otx_ep_ring_doorbell(otx_ep, iq);
+	}
+	return ret;
+}
+
+static inline void
+set_sg_size(struct otx_ep_sg_entry *sg_entry, uint16_t size, uint32_t pos)
+{
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	sg_entry->u.size[pos] = size;
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	sg_entry->u.size[3 - pos] = size;
+#endif
+}
+
+/* Enqueue requests/packets to OTX_EP IQ queue.
+ * returns number of requests enqueued successfully
+ */
+uint16_t
+otx_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
+{
+	struct otx_ep_instr_64B iqcmd;
+	struct otx_ep_instr_queue *iq;
+	struct otx_ep_device *otx_ep;
+	struct rte_mbuf *m;
+
+	uint32_t iqreq_type, sgbuf_sz;
+	int dbell, index, count = 0;
+	unsigned int pkt_len, i;
+	int gather, gsz;
+	void *iqreq_buf;
+	uint64_t dptr;
+
+	iq = (struct otx_ep_instr_queue *)tx_queue;
+	otx_ep = iq->otx_ep_dev;
+
+	iqcmd.ih.u64 = 0;
+	iqcmd.pki_ih3.u64 = 0;
+	iqcmd.irh.u64 = 0;
+
+	/* ih invars */
+	iqcmd.ih.s.fsz = OTX_EP_FSZ;
+	iqcmd.ih.s.pkind = otx_ep->pkind; /* The SDK decided PKIND value */
+
+	/* pki ih3 invars */
+	iqcmd.pki_ih3.s.w = 1;
+	iqcmd.pki_ih3.s.utt = 1;
+	iqcmd.pki_ih3.s.tagtype = ORDERED_TAG;
+	/* sl will be sizeof(pki_ih3) */
+	iqcmd.pki_ih3.s.sl = OTX_EP_FSZ + OTX_CUST_DATA_LEN;
+
+	/* irh invars */
+	iqcmd.irh.s.opcode = OTX_EP_NW_PKT_OP;
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = pkts[i];
+		if (m->nb_segs == 1) {
+			/* dptr */
+			dptr = rte_mbuf_data_iova(m);
+			pkt_len = rte_pktmbuf_data_len(m);
+			iqreq_buf = m;
+			iqreq_type = OTX_EP_REQTYPE_NORESP_NET;
+			gather = 0;
+			gsz = 0;
+		} else {
+			struct otx_ep_buf_free_info *finfo;
+			int j, frags, num_sg;
+
+			if (!(otx_ep->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS))
+				goto xmit_fail;
+
+			finfo = (struct otx_ep_buf_free_info *)rte_malloc(NULL,
+							sizeof(*finfo), 0);
+			if (finfo == NULL) {
+				otx_ep_err("free buffer alloc failed\n");
+				goto xmit_fail;
+			}
+			num_sg = (m->nb_segs + 3) / 4;
+			sgbuf_sz = sizeof(struct otx_ep_sg_entry) * num_sg;
+			finfo->g.sg =
+				rte_zmalloc(NULL, sgbuf_sz, OTX_EP_SG_ALIGN);
+			if (finfo->g.sg == NULL) {
+				rte_free(finfo);
+				otx_ep_err("sg entry alloc failed\n");
+				goto xmit_fail;
+			}
+			gather = 1;
+			gsz = m->nb_segs;
+			finfo->g.num_sg = num_sg;
+			finfo->g.sg[0].ptr[0] = rte_mbuf_data_iova(m);
+			set_sg_size(&finfo->g.sg[0], m->data_len, 0);
+			pkt_len = m->data_len;
+			finfo->mbuf = m;
+
+			frags = m->nb_segs - 1;
+			j = 1;
+			m = m->next;
+			while (frags--) {
+				finfo->g.sg[(j >> 2)].ptr[(j & 3)] =
+						rte_mbuf_data_iova(m);
+				set_sg_size(&finfo->g.sg[(j >> 2)],
+						m->data_len, (j & 3));
+				pkt_len += m->data_len;
+				j++;
+				m = m->next;
+			}
+			dptr = rte_mem_virt2iova(finfo->g.sg);
+			iqreq_buf = finfo;
+			iqreq_type = OTX_EP_REQTYPE_NORESP_GATHER;
+			if (pkt_len > OTX_EP_MAX_PKT_SZ) {
+				rte_free(finfo->g.sg);
+				rte_free(finfo);
+				otx_ep_err("failed\n");
+				goto xmit_fail;
+			}
+		}
+		/* ih vars */
+		iqcmd.ih.s.tlen = pkt_len + iqcmd.ih.s.fsz;
+		iqcmd.ih.s.gather = gather;
+		iqcmd.ih.s.gsz = gsz;
+
+		iqcmd.dptr = dptr;
+		otx_ep_swap_8B_data(&iqcmd.irh.u64, 1);
+
+#ifdef OTX_EP_IO_DEBUG
+		otx_ep_dbg("After swapping\n");
+		otx_ep_dbg("Word0 [dptr]: 0x%016lx\n",
+			   (unsigned long)iqcmd.dptr);
+		otx_ep_dbg("Word1 [ihtx]: 0x%016lx\n", (unsigned long)iqcmd.ih);
+		otx_ep_dbg("Word2 [pki_ih3]: 0x%016lx\n",
+			   (unsigned long)iqcmd.pki_ih3);
+		otx_ep_dbg("Word3 [rptr]: 0x%016lx\n",
+			   (unsigned long)iqcmd.rptr);
+		otx_ep_dbg("Word4 [irh]: 0x%016lx\n", (unsigned long)iqcmd.irh);
+		otx_ep_dbg("Word5 [exhdr[0]]: 0x%016lx\n",
+				(unsigned long)iqcmd.exhdr[0]);
+		rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
+#endif
+		dbell = (i == (unsigned int)(nb_pkts - 1)) ? 1 : 0;
+		index = iq->host_write_index;
+		if (otx_ep_send_data(otx_ep, iq, &iqcmd, dbell))
+			goto xmit_fail;
+		otx_ep_iqreq_add(iq, iqreq_buf, iqreq_type, index);
+		iq->stats.tx_pkts++;
+		iq->stats.tx_bytes += pkt_len;
+		count++;
+	}
+
+xmit_fail:
+	if (iq->instr_pending >= OTX_EP_MAX_INSTR)
+		otx_ep_flush_iq(iq);
+
+	/* Return no# of instructions posted successfully. */
+	return count;
+}
+
+/* Enqueue requests/packets to OTX_EP IQ queue.
+ * returns number of requests enqueued successfully
+ */
+uint16_t
+otx2_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
+{
+	struct otx2_ep_instr_64B iqcmd2;
+	struct otx_ep_instr_queue *iq;
+	struct otx_ep_device *otx_ep;
+	uint64_t dptr;
+	int count = 0;
+	unsigned int i;
+	struct rte_mbuf *m;
+	unsigned int pkt_len;
+	void *iqreq_buf;
+	uint32_t iqreq_type, sgbuf_sz;
+	int gather, gsz;
+	int dbell;
+	int index;
+
+	iq = (struct otx_ep_instr_queue *)tx_queue;
+	otx_ep = iq->otx_ep_dev;
+
+	iqcmd2.ih.u64 = 0;
+	iqcmd2.irh.u64 = 0;
+
+	/* ih invars */
+	iqcmd2.ih.s.fsz = OTX2_EP_FSZ;
+	iqcmd2.ih.s.pkind = otx_ep->pkind; /* The SDK decided PKIND value */
+	/* irh invars */
+	iqcmd2.irh.s.opcode = OTX_EP_NW_PKT_OP;
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = pkts[i];
+		if (m->nb_segs == 1) {
+			/* dptr */
+			dptr = rte_mbuf_data_iova(m);
+			pkt_len = rte_pktmbuf_data_len(m);
+			iqreq_buf = m;
+			iqreq_type = OTX_EP_REQTYPE_NORESP_NET;
+			gather = 0;
+			gsz = 0;
+		} else {
+			struct otx_ep_buf_free_info *finfo;
+			int j, frags, num_sg;
+
+			if (!(otx_ep->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS))
+				goto xmit_fail;
+
+			finfo = (struct otx_ep_buf_free_info *)
+					rte_malloc(NULL, sizeof(*finfo), 0);
+			if (finfo == NULL) {
+				otx_ep_err("free buffer alloc failed\n");
+				goto xmit_fail;
+			}
+			num_sg = (m->nb_segs + 3) / 4;
+			sgbuf_sz = sizeof(struct otx_ep_sg_entry) * num_sg;
+			finfo->g.sg =
+				rte_zmalloc(NULL, sgbuf_sz, OTX_EP_SG_ALIGN);
+			if (finfo->g.sg == NULL) {
+				rte_free(finfo);
+				otx_ep_err("sg entry alloc failed\n");
+				goto xmit_fail;
+			}
+			gather = 1;
+			gsz = m->nb_segs;
+			finfo->g.num_sg = num_sg;
+			finfo->g.sg[0].ptr[0] = rte_mbuf_data_iova(m);
+			set_sg_size(&finfo->g.sg[0], m->data_len, 0);
+			pkt_len = m->data_len;
+			finfo->mbuf = m;
+
+			frags = m->nb_segs - 1;
+			j = 1;
+			m = m->next;
+			while (frags--) {
+				finfo->g.sg[(j >> 2)].ptr[(j & 3)] =
+						rte_mbuf_data_iova(m);
+				set_sg_size(&finfo->g.sg[(j >> 2)],
+						m->data_len, (j & 3));
+				pkt_len += m->data_len;
+				j++;
+				m = m->next;
+			}
+			dptr = rte_mem_virt2iova(finfo->g.sg);
+			iqreq_buf = finfo;
+			iqreq_type = OTX_EP_REQTYPE_NORESP_GATHER;
+			if (pkt_len > OTX_EP_MAX_PKT_SZ) {
+				rte_free(finfo->g.sg);
+				rte_free(finfo);
+				otx_ep_err("failed\n");
+				goto xmit_fail;
+			}
+		}
+		/* ih vars */
+		iqcmd2.ih.s.tlen = pkt_len + iqcmd2.ih.s.fsz;
+		iqcmd2.ih.s.gather = gather;
+		iqcmd2.ih.s.gsz = gsz;
+		iqcmd2.dptr = dptr;
+		otx_ep_swap_8B_data(&iqcmd2.irh.u64, 1);
+
+#ifdef OTX_EP_IO_DEBUG
+		otx_ep_dbg("After swapping\n");
+		otx_ep_dbg("Word0 [dptr]: 0x%016lx\n",
+			   (unsigned long)iqcmd.dptr);
+		otx_ep_dbg("Word1 [ihtx]: 0x%016lx\n", (unsigned long)iqcmd.ih);
+		otx_ep_dbg("Word2 [pki_ih3]: 0x%016lx\n",
+			   (unsigned long)iqcmd.pki_ih3);
+		otx_ep_dbg("Word3 [rptr]: 0x%016lx\n",
+			   (unsigned long)iqcmd.rptr);
+		otx_ep_dbg("Word4 [irh]: 0x%016lx\n", (unsigned long)iqcmd.irh);
+		otx_ep_dbg("Word5 [exhdr[0]]: 0x%016lx\n",
+			   (unsigned long)iqcmd.exhdr[0]);
+#endif
+		index = iq->host_write_index;
+		dbell = (i == (unsigned int)(nb_pkts - 1)) ? 1 : 0;
+		if (otx_ep_send_data(otx_ep, iq, &iqcmd2, dbell))
+			goto xmit_fail;
+		otx_ep_iqreq_add(iq, iqreq_buf, iqreq_type, index);
+		iq->stats.tx_pkts++;
+		iq->stats.tx_bytes += pkt_len;
+		count++;
+	}
+
+xmit_fail:
+	if (iq->instr_pending >= OTX_EP_MAX_INSTR)
+		otx_ep_flush_iq(iq);
+
+	/* Return no# of instructions posted successfully. */
+	return count;
+}
+
 static uint32_t
 otx_ep_droq_refill(struct otx_ep_droq *droq)
 {

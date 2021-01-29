@@ -137,6 +137,11 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 	otx_epvf->fn_list.setup_device_regs(otx_epvf);
 
 	otx_epvf->eth_dev->rx_pkt_burst = &otx_ep_recv_pkts;
+	if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX_EP_VF)
+		otx_epvf->eth_dev->tx_pkt_burst = &otx_ep_xmit_pkts;
+	else if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX2_EP_NET_VF ||
+		 otx_epvf->chip_id == PCI_DEVID_CN98XX_EP_NET_VF)
+		otx_epvf->eth_dev->tx_pkt_burst = &otx2_ep_xmit_pkts;
 	ethdev_queues = (uint32_t)(otx_epvf->sriov_info.rings_per_vf);
 	otx_epvf->max_rx_queues = ethdev_queues;
 	otx_epvf->max_tx_queues = ethdev_queues;
