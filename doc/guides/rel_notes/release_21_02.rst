@@ -176,6 +176,10 @@ Removed Items
   PCI device IDs ``0x16c8, 0x16c9, 0x16ca, 0x16ce, 0x16cf, 0x16df, 0x16d0,``
   ``0x16d1, 0x16d2, 0x16d4, 0x16d5, 0x16e7, 0x16e8, 0x16e9`` has been removed.
 
+* The ``check-includes.sh`` script for checking DPDK header files has been
+  removed, being replaced by the ``check_includes`` build option described
+  above.
+
 
 API Changes
 -----------
