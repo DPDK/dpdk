@@ -41,7 +41,7 @@ Features of the HNS3 PMD are:
 Prerequisites
 -------------
 - Get the information about Kunpeng920 chip using
-  `<http://www.hisilicon.com/en/Products/ProductList/Kunpeng>`_.
+  `<https://www.hisilicon.com/en/products/Kunpeng>`_.
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
