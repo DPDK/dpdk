@@ -518,6 +518,21 @@ Supports QinQ (queue in queue) offload.
   ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_QINQ_INSERT``.
 
 
+.. _nic_features_fec:
+
+FEC
+---
+
+Supports Forward error correction. Forward error correction (FEC) is a bit error correction mode.
+It adds error correction information to data packets at the transmit end, and uses the error correction
+information to correct the bit errors generated during data packet transmission at the receive end. This
+improves signal quality but also brings a delay to signals. This function can be enabled or disabled as required.
+
+* **[implements] eth_dev_ops**: ``fec_get_capability``, ``fec_get``, ``fec_set``.
+* **[provides]   rte_eth_fec_capa**: ``speed:ETH_SPEED_NUM_*``, ``capa:RTE_ETH_FEC_MODE_TO_CAPA()``.
+* **[related]    API**: ``rte_eth_fec_get_capability()``, ``rte_eth_fec_get()``, ``rte_eth_fec_set()``.
+
+
 .. _nic_features_l3_checksum_offload:
 
 L3 checksum offload
