@@ -7,11 +7,11 @@
  * Used as BSD-3 Licensed with permission from Kip Macy.
  */
 
-#ifndef _RTE_RING_PEEK_C11_MEM_H_
-#define _RTE_RING_PEEK_C11_MEM_H_
+#ifndef _RTE_RING_PEEK_ELEM_PVT_H_
+#define _RTE_RING_PEEK_ELEM_PVT_H_
 
 /**
- * @file rte_ring_peek_c11_mem.h
+ * @file rte_ring_peek_elem_pvt.h
  * It is not recommended to include this file directly,
  * include <rte_ring.h> instead.
  * Contains internal helper functions for rte_ring peek API.
@@ -107,4 +107,73 @@ __rte_ring_hts_set_head_tail(struct rte_ring_hts_headtail *ht, uint32_t tail,
 	__atomic_store_n(&ht->ht.raw, p.raw, __ATOMIC_RELEASE);
 }
 
-#endif /* _RTE_RING_PEEK_C11_MEM_H_ */
+/**
+ * @internal This function moves prod head value.
+ */
+static __rte_always_inline unsigned int
+__rte_ring_do_enqueue_start(struct rte_ring *r, uint32_t n,
+		enum rte_ring_queue_behavior behavior, uint32_t *free_space)
+{
+	uint32_t free, head, next;
+
+	switch (r->prod.sync_type) {
+	case RTE_RING_SYNC_ST:
+		n = __rte_ring_move_prod_head(r, RTE_RING_SYNC_ST, n,
+			behavior, &head, &next, &free);
+		break;
+	case RTE_RING_SYNC_MT_HTS:
+		n =  __rte_ring_hts_move_prod_head(r, n, behavior,
+			&head, &free);
+		break;
+	case RTE_RING_SYNC_MT:
+	case RTE_RING_SYNC_MT_RTS:
+	default:
+		/* unsupported mode, shouldn't be here */
+		RTE_ASSERT(0);
+		n = 0;
+		free = 0;
+	}
+
+	if (free_space != NULL)
+		*free_space = free - n;
+	return n;
+}
+
+/**
+ * @internal This function moves cons head value and copies up to *n*
+ * objects from the ring to the user provided obj_table.
+ */
+static __rte_always_inline unsigned int
+__rte_ring_do_dequeue_start(struct rte_ring *r, void *obj_table,
+	uint32_t esize, uint32_t n, enum rte_ring_queue_behavior behavior,
+	uint32_t *available)
+{
+	uint32_t avail, head, next;
+
+	switch (r->cons.sync_type) {
+	case RTE_RING_SYNC_ST:
+		n = __rte_ring_move_cons_head(r, RTE_RING_SYNC_ST, n,
+			behavior, &head, &next, &avail);
+		break;
+	case RTE_RING_SYNC_MT_HTS:
+		n =  __rte_ring_hts_move_cons_head(r, n, behavior,
+			&head, &avail);
+		break;
+	case RTE_RING_SYNC_MT:
+	case RTE_RING_SYNC_MT_RTS:
+	default:
+		/* unsupported mode, shouldn't be here */
+		RTE_ASSERT(0);
+		n = 0;
+		avail = 0;
+	}
+
+	if (n != 0)
+		__rte_ring_dequeue_elems(r, head, obj_table, esize, n);
+
+	if (available != NULL)
+		*available = avail - n;
+	return n;
+}
+
+#endif /* _RTE_RING_PEEK_ELEM_PVT_H_ */

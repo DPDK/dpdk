@@ -72,7 +72,7 @@
 extern "C" {
 #endif
 
-#include <rte_ring_peek_c11_mem.h>
+#include <rte_ring_peek_elem_pvt.h>
 
 /**
  * Ring zero-copy information structure.

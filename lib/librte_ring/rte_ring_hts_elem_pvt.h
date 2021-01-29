@@ -7,11 +7,11 @@
  * Used as BSD-3 Licensed with permission from Kip Macy.
  */
 
-#ifndef _RTE_RING_HTS_C11_MEM_H_
-#define _RTE_RING_HTS_C11_MEM_H_
+#ifndef _RTE_RING_HTS_ELEM_PVT_H_
+#define _RTE_RING_HTS_ELEM_PVT_H_
 
 /**
- * @file rte_ring_hts_c11_mem.h
+ * @file rte_ring_hts_elem_pvt.h
  * It is not recommended to include this file directly,
  * include <rte_ring.h> instead.
  * Contains internal helper functions for head/tail sync (HTS) ring mode.
@@ -161,4 +161,86 @@ __rte_ring_hts_move_cons_head(struct rte_ring *r, unsigned int num,
 	return n;
 }
 
-#endif /* _RTE_RING_HTS_C11_MEM_H_ */
+/**
+ * @internal Enqueue several objects on the HTS ring.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @param obj_table
+ *   A pointer to a table of objects.
+ * @param esize
+ *   The size of ring element, in bytes. It must be a multiple of 4.
+ *   This must be the same value used while creating the ring. Otherwise
+ *   the results are undefined.
+ * @param n
+ *   The number of objects to add in the ring from the obj_table.
+ * @param behavior
+ *   RTE_RING_QUEUE_FIXED:    Enqueue a fixed number of items from a ring
+ *   RTE_RING_QUEUE_VARIABLE: Enqueue as many items as possible from ring
+ * @param free_space
+ *   returns the amount of space after the enqueue operation has finished
+ * @return
+ *   Actual number of objects enqueued.
+ *   If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only.
+ */
+static __rte_always_inline unsigned int
+__rte_ring_do_hts_enqueue_elem(struct rte_ring *r, const void *obj_table,
+	uint32_t esize, uint32_t n, enum rte_ring_queue_behavior behavior,
+	uint32_t *free_space)
+{
+	uint32_t free, head;
+
+	n =  __rte_ring_hts_move_prod_head(r, n, behavior, &head, &free);
+
+	if (n != 0) {
+		__rte_ring_enqueue_elems(r, head, obj_table, esize, n);
+		__rte_ring_hts_update_tail(&r->hts_prod, head, n, 1);
+	}
+
+	if (free_space != NULL)
+		*free_space = free - n;
+	return n;
+}
+
+/**
+ * @internal Dequeue several objects from the HTS ring.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @param obj_table
+ *   A pointer to a table of objects.
+ * @param esize
+ *   The size of ring element, in bytes. It must be a multiple of 4.
+ *   This must be the same value used while creating the ring. Otherwise
+ *   the results are undefined.
+ * @param n
+ *   The number of objects to pull from the ring.
+ * @param behavior
+ *   RTE_RING_QUEUE_FIXED:    Dequeue a fixed number of items from a ring
+ *   RTE_RING_QUEUE_VARIABLE: Dequeue as many items as possible from ring
+ * @param available
+ *   returns the number of remaining ring entries after the dequeue has finished
+ * @return
+ *   - Actual number of objects dequeued.
+ *     If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only.
+ */
+static __rte_always_inline unsigned int
+__rte_ring_do_hts_dequeue_elem(struct rte_ring *r, void *obj_table,
+	uint32_t esize, uint32_t n, enum rte_ring_queue_behavior behavior,
+	uint32_t *available)
+{
+	uint32_t entries, head;
+
+	n = __rte_ring_hts_move_cons_head(r, n, behavior, &head, &entries);
+
+	if (n != 0) {
+		__rte_ring_dequeue_elems(r, head, obj_table, esize, n);
+		__rte_ring_hts_update_tail(&r->hts_cons, head, n, 0);
+	}
+
+	if (available != NULL)
+		*available = entries - n;
+	return n;
+}
+
+#endif /* _RTE_RING_HTS_ELEM_PVT_H_ */

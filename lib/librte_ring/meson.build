@@ -5,12 +5,13 @@ sources = files('rte_ring.c')
 headers = files('rte_ring.h',
 		'rte_ring_core.h',
 		'rte_ring_elem.h',
-		'rte_ring_c11_mem.h',
-		'rte_ring_generic.h',
+		'rte_ring_elem_pvt.h',
+		'rte_ring_c11_pvt.h',
+		'rte_ring_generic_pvt.h',
 		'rte_ring_hts.h',
-		'rte_ring_hts_c11_mem.h',
+		'rte_ring_hts_elem_pvt.h',
 		'rte_ring_peek.h',
-		'rte_ring_peek_c11_mem.h',
+		'rte_ring_peek_elem_pvt.h',
 		'rte_ring_peek_zc.h',
 		'rte_ring_rts.h',
-		'rte_ring_rts_c11_mem.h')
+		'rte_ring_rts_elem_pvt.h')

@@ -1,23 +1,21 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2010-2017 Intel Corporation
+ * Copyright (c) 2017,2018 HXT-semitech Corporation.
  * Copyright (c) 2007-2009 Kip Macy kmacy@freebsd.org
  * All rights reserved.
  * Derived from FreeBSD's bufring.h
  * Used as BSD-3 Licensed with permission from Kip Macy.
  */
 
-#ifndef _RTE_RING_GENERIC_H_
-#define _RTE_RING_GENERIC_H_
+#ifndef _RTE_RING_C11_PVT_H_
+#define _RTE_RING_C11_PVT_H_
 
 static __rte_always_inline void
-update_tail(struct rte_ring_headtail *ht, uint32_t old_val, uint32_t new_val,
-		uint32_t single, uint32_t enqueue)
+__rte_ring_update_tail(struct rte_ring_headtail *ht, uint32_t old_val,
+		uint32_t new_val, uint32_t single, uint32_t enqueue)
 {
-	if (enqueue)
-		rte_smp_wmb();
-	else
-		rte_smp_rmb();
+	RTE_SET_USED(enqueue);
+
 	/*
 	 * If there are other enqueues/dequeues in progress that preceded us,
 	 * we need to wait for them to complete
@@ -26,7 +24,7 @@ update_tail(struct rte_ring_headtail *ht, uint32_t old_val, uint32_t new_val,
 		while (unlikely(ht->tail != old_val))
 			rte_pause();
 
-	ht->tail = new_val;
+	__atomic_store_n(&ht->tail, new_val, __ATOMIC_RELEASE);
 }
 
 /**
@@ -59,27 +57,30 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 		uint32_t *free_entries)
 {
 	const uint32_t capacity = r->capacity;
+	uint32_t cons_tail;
 	unsigned int max = n;
 	int success;
 
+	*old_head = __atomic_load_n(&r->prod.head, __ATOMIC_RELAXED);
 	do {
 		/* Reset n to the initial burst count */
 		n = max;
 
-		*old_head = r->prod.head;
+		/* Ensure the head is read before tail */
+		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 
-		/* add rmb barrier to avoid load/load reorder in weak
-		 * memory model. It is noop on x86
+		/* load-acquire synchronize with store-release of ht->tail
+		 * in update_tail.
 		 */
-		rte_smp_rmb();
+		cons_tail = __atomic_load_n(&r->cons.tail,
+					__ATOMIC_ACQUIRE);
 
-		/*
-		 *  The subtraction is done between two unsigned 32bits value
+		/* The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
 		 * *old_head > cons_tail). So 'free_entries' is always between 0
 		 * and capacity (which is < size).
 		 */
-		*free_entries = (capacity + r->cons.tail - *old_head);
+		*free_entries = (capacity + cons_tail - *old_head);
 
 		/* check that we have enough room in ring */
 		if (unlikely(n > *free_entries))
@@ -93,8 +94,11 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 		if (is_sp)
 			r->prod.head = *new_head, success = 1;
 		else
-			success = rte_atomic32_cmpset(&r->prod.head,
-					*old_head, *new_head);
+			/* on failure, *old_head is updated */
+			success = __atomic_compare_exchange_n(&r->prod.head,
+					old_head, *new_head,
+					0, __ATOMIC_RELAXED,
+					__ATOMIC_RELAXED);
 	} while (unlikely(success == 0));
 	return n;
 }
@@ -123,32 +127,36 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
  *     If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only.
  */
 static __rte_always_inline unsigned int
-__rte_ring_move_cons_head(struct rte_ring *r, unsigned int is_sc,
+__rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 		unsigned int n, enum rte_ring_queue_behavior behavior,
 		uint32_t *old_head, uint32_t *new_head,
 		uint32_t *entries)
 {
 	unsigned int max = n;
+	uint32_t prod_tail;
 	int success;
 
 	/* move cons.head atomically */
+	*old_head = __atomic_load_n(&r->cons.head, __ATOMIC_RELAXED);
 	do {
 		/* Restore n as it may change every loop */
 		n = max;
 
-		*old_head = r->cons.head;
+		/* Ensure the head is read before tail */
+		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 
-		/* add rmb barrier to avoid load/load reorder in weak
-		 * memory model. It is noop on x86
+		/* this load-acquire synchronize with store-release of ht->tail
+		 * in update_tail.
 		 */
-		rte_smp_rmb();
+		prod_tail = __atomic_load_n(&r->prod.tail,
+					__ATOMIC_ACQUIRE);
 
 		/* The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
 		 * cons_head > prod_tail). So 'entries' is always between 0
 		 * and size(ring)-1.
 		 */
-		*entries = (r->prod.tail - *old_head);
+		*entries = (prod_tail - *old_head);
 
 		/* Set the actual entries for dequeue */
 		if (n > *entries)
@@ -158,16 +166,16 @@ __rte_ring_move_cons_head(struct rte_ring *r, unsigned int is_sc,
 			return 0;
 
 		*new_head = *old_head + n;
-		if (is_sc) {
-			r->cons.head = *new_head;
-			rte_smp_rmb();
-			success = 1;
-		} else {
-			success = rte_atomic32_cmpset(&r->cons.head, *old_head,
-					*new_head);
-		}
+		if (is_sc)
+			r->cons.head = *new_head, success = 1;
+		else
+			/* on failure, *old_head will be updated */
+			success = __atomic_compare_exchange_n(&r->cons.head,
+							old_head, *new_head,
+							0, __ATOMIC_RELAXED,
+							__ATOMIC_RELAXED);
 	} while (unlikely(success == 0));
 	return n;
 }
 
-#endif /* _RTE_RING_GENERIC_H_ */
+#endif /* _RTE_RING_C11_PVT_H_ */
