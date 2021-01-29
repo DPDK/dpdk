@@ -2,7 +2,9 @@
 # Copyright(C) 2021 Marvell.
 #
 
+deps += ['common_octeontx2']
 sources = files(
                'otx_ep_ethdev.c',
                )
 
+includes += include_directories('../../common/octeontx2')
