@@ -36,6 +36,33 @@
 		"%s():%u " fmt "\n",				\
 		__func__, __LINE__, ##args)
 
+/* Input Request Header format */
+union otx_ep_instr_irh {
+	uint64_t u64;
+	struct {
+		/* Request ID  */
+		uint64_t rid:16;
+
+		/* PCIe port to use for response */
+		uint64_t pcie_port:3;
+
+		/* Scatter indicator  1=scatter */
+		uint64_t scatter:1;
+
+		/* Size of Expected result OR no. of entries in scatter list */
+		uint64_t rlenssz:14;
+
+		/* Desired destination port for result */
+		uint64_t dport:6;
+
+		/* Opcode Specific parameters */
+		uint64_t param:8;
+
+		/* Opcode for the return packet  */
+		uint64_t opcode:16;
+	} s;
+};
+
 #define otx_ep_write64(value, base_addr, reg_off) \
 	{\
 	typeof(value) val = (value); \
@@ -44,6 +71,33 @@
 		   (unsigned long)off, (unsigned long long)val); \
 	rte_write64(val, ((base_addr) + off)); \
 	}
+
+/* Instruction Header - for OCTEON-TX models */
+typedef union otx_ep_instr_ih {
+	uint64_t u64;
+	struct {
+	  /** Data Len */
+		uint64_t tlen:16;
+
+	  /** Reserved */
+		uint64_t rsvd:20;
+
+	  /** PKIND for OTX_EP */
+		uint64_t pkind:6;
+
+	  /** Front Data size */
+		uint64_t fsz:6;
+
+	  /** No. of entries in gather list */
+		uint64_t gsz:14;
+
+	  /** Gather indicator 1=gather*/
+		uint64_t gather:1;
+
+	  /** Reserved3 */
+		uint64_t reserved3:1;
+	} s;
+} otx_ep_instr_ih_t;
 
 /* OTX_EP IQ request list */
 struct otx_ep_instr_list {
@@ -246,6 +300,16 @@ struct otx_ep_droq {
 	/* The size of each buffer pointed by the buffer pointer. */
 	uint32_t buffer_size;
 
+	/** Pointer to the mapped packet credit register.
+	 *  Host writes number of info/buffer ptrs available to this register
+	 */
+	void *pkts_credit_reg;
+
+	/** Pointer to the mapped packet sent register. OCTEON TX2 writes the
+	 *  number of packets DMA'ed to host memory in this register.
+	 */
+	void *pkts_sent_reg;
+
 	/* Statistics for this DROQ. */
 	struct otx_ep_droq_stats stats;
 
@@ -263,6 +327,7 @@ struct otx_ep_droq {
 
 	/* Memory zone **/
 	const struct rte_memzone *desc_ring_mz;
+
 	const struct rte_memzone *info_mz;
 };
 #define OTX_EP_DROQ_SIZE		(sizeof(struct otx_ep_droq))
@@ -371,6 +436,13 @@ int otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no);
 
 #define OTX_EP_MAX_PKT_SZ 64000U
 #define OTX_EP_MAX_MAC_ADDRS 1
+#define OTX_EP_CLEAR_ISIZE_BSIZE 0x7FFFFFULL
+#define OTX_EP_CLEAR_OUT_INT_LVLS 0x3FFFFFFFFFFFFFULL
+#define OTX_EP_CLEAR_IN_INT_LVLS 0xFFFFFFFF
+#define OTX_EP_CLEAR_SDP_IN_INT_LVLS 0x3FFFFFFFFFFFFFUL
+#define OTX_EP_DROQ_BUFSZ_MASK 0xFFFF
+#define OTX_EP_CLEAR_SLIST_DBELL 0xFFFFFFFF
+#define OTX_EP_CLEAR_SDP_OUT_PKT_CNT 0xFFFFFFFFF
 
 extern int otx_net_ep_logtype;
 #endif  /* _OTX_EP_COMMON_H_ */
