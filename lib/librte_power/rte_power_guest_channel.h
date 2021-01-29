@@ -4,6 +4,12 @@
 #ifndef RTE_POWER_GUEST_CHANNEL_H
 #define RTE_POWER_GUEST_CHANNEL_H
 
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
