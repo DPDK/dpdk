@@ -7,12 +7,18 @@
 #include <rte_eal.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_io.h>
+#include <rte_net.h>
 #include <ethdev_pci.h>
 
 #include "otx_ep_common.h"
 #include "otx_ep_vf.h"
 #include "otx2_ep_vf.h"
 #include "otx_ep_rxtx.h"
+
+/* SDP_LENGTH_S specifies packet length and is of 8-byte size */
+#define INFO_SIZE 8
+#define DROQ_REFILL_THRESHOLD 16
 
 static void
 otx_ep_dmazone_free(const struct rte_memzone *mz)
@@ -352,4 +358,284 @@ otx_ep_setup_oqs(struct otx_ep_device *otx_ep, int oq_no, int num_descs,
 delete_OQ:
 	otx_ep_delete_oqs(otx_ep, oq_no);
 	return -ENOMEM;
+}
+
+static uint32_t
+otx_ep_droq_refill(struct otx_ep_droq *droq)
+{
+	struct otx_ep_droq_desc *desc_ring;
+	struct otx_ep_droq_info *info;
+	struct rte_mbuf *buf = NULL;
+	uint32_t desc_refilled = 0;
+
+	desc_ring = droq->desc_ring;
+
+	while (droq->refill_count && (desc_refilled < droq->nb_desc)) {
+		/* If a valid buffer exists (happens if there is no dispatch),
+		 * reuse the buffer, else allocate.
+		 */
+		if (droq->recv_buf_list[droq->refill_idx] != NULL)
+			break;
+
+		buf = rte_pktmbuf_alloc(droq->mpool);
+		/* If a buffer could not be allocated, no point in
+		 * continuing
+		 */
+		if (buf == NULL) {
+			droq->stats.rx_alloc_failure++;
+			break;
+		}
+		info = rte_pktmbuf_mtod(buf, struct otx_ep_droq_info *);
+		memset(info, 0, sizeof(*info));
+
+		droq->recv_buf_list[droq->refill_idx] = buf;
+		desc_ring[droq->refill_idx].buffer_ptr =
+					rte_mbuf_data_iova_default(buf);
+
+
+		droq->refill_idx = otx_ep_incr_index(droq->refill_idx, 1,
+				droq->nb_desc);
+
+		desc_refilled++;
+		droq->refill_count--;
+	}
+
+	return desc_refilled;
+}
+
+static struct rte_mbuf *
+otx_ep_droq_read_packet(struct otx_ep_device *otx_ep,
+			struct otx_ep_droq *droq, int next_fetch)
+{
+	volatile struct otx_ep_droq_info *info;
+	struct rte_mbuf *droq_pkt2 = NULL;
+	struct rte_mbuf *droq_pkt = NULL;
+	struct rte_net_hdr_lens hdr_lens;
+	struct otx_ep_droq_info *info2;
+	uint64_t total_pkt_len;
+	uint32_t pkt_len = 0;
+	int next_idx;
+
+	droq_pkt  = droq->recv_buf_list[droq->read_idx];
+	droq_pkt2  = droq->recv_buf_list[droq->read_idx];
+	info = rte_pktmbuf_mtod(droq_pkt, struct otx_ep_droq_info *);
+	/* make sure info is available */
+	rte_rmb();
+	if (unlikely(!info->length)) {
+		int retry = OTX_EP_MAX_DELAYED_PKT_RETRIES;
+		/* otx_ep_dbg("OCTEON DROQ[%d]: read_idx: %d; Data not ready "
+		 * "yet, Retry; pending=%lu\n", droq->q_no, droq->read_idx,
+		 * droq->pkts_pending);
+		 */
+		droq->stats.pkts_delayed_data++;
+		while (retry && !info->length)
+			retry--;
+		if (!retry && !info->length) {
+			otx_ep_err("OCTEON DROQ[%d]: read_idx: %d; Retry failed !!\n",
+				   droq->q_no, droq->read_idx);
+			/* May be zero length packet; drop it */
+			rte_pktmbuf_free(droq_pkt);
+			droq->recv_buf_list[droq->read_idx] = NULL;
+			droq->read_idx = otx_ep_incr_index(droq->read_idx, 1,
+							   droq->nb_desc);
+			droq->stats.dropped_zlp++;
+			droq->refill_count++;
+			goto oq_read_fail;
+		}
+	}
+	if (next_fetch) {
+		next_idx = otx_ep_incr_index(droq->read_idx, 1, droq->nb_desc);
+		droq_pkt2  = droq->recv_buf_list[next_idx];
+		info2 = rte_pktmbuf_mtod(droq_pkt2, struct otx_ep_droq_info *);
+		rte_prefetch_non_temporal((const void *)info2);
+	}
+
+	info->length = rte_bswap64(info->length);
+	/* Deduce the actual data size */
+	total_pkt_len = info->length + INFO_SIZE;
+	if (total_pkt_len <= droq->buffer_size) {
+		info->length -=  OTX_EP_RH_SIZE;
+		droq_pkt  = droq->recv_buf_list[droq->read_idx];
+		if (likely(droq_pkt != NULL)) {
+			droq_pkt->data_off += OTX_EP_DROQ_INFO_SIZE;
+			/* otx_ep_dbg("OQ: pkt_len[%ld], buffer_size %d\n",
+			 * (long)info->length, droq->buffer_size);
+			 */
+			pkt_len = (uint32_t)info->length;
+			droq_pkt->pkt_len  = pkt_len;
+			droq_pkt->data_len  = pkt_len;
+			droq_pkt->port = otx_ep->port_id;
+			droq->recv_buf_list[droq->read_idx] = NULL;
+			droq->read_idx = otx_ep_incr_index(droq->read_idx, 1,
+							   droq->nb_desc);
+			droq->refill_count++;
+		}
+	} else {
+		struct rte_mbuf *first_buf = NULL;
+		struct rte_mbuf *last_buf = NULL;
+
+		while (pkt_len < total_pkt_len) {
+			int cpy_len = 0;
+
+			cpy_len = ((pkt_len + droq->buffer_size) >
+					total_pkt_len)
+					? ((uint32_t)total_pkt_len -
+						pkt_len)
+					: droq->buffer_size;
+
+			droq_pkt = droq->recv_buf_list[droq->read_idx];
+			droq->recv_buf_list[droq->read_idx] = NULL;
+
+			if (likely(droq_pkt != NULL)) {
+				/* Note the first seg */
+				if (!pkt_len)
+					first_buf = droq_pkt;
+
+				droq_pkt->port = otx_ep->port_id;
+				if (!pkt_len) {
+					droq_pkt->data_off +=
+						OTX_EP_DROQ_INFO_SIZE;
+					droq_pkt->pkt_len =
+						cpy_len - OTX_EP_DROQ_INFO_SIZE;
+					droq_pkt->data_len =
+						cpy_len - OTX_EP_DROQ_INFO_SIZE;
+				} else {
+					droq_pkt->pkt_len = cpy_len;
+					droq_pkt->data_len = cpy_len;
+				}
+
+				if (pkt_len) {
+					first_buf->nb_segs++;
+					first_buf->pkt_len += droq_pkt->pkt_len;
+				}
+
+				if (last_buf)
+					last_buf->next = droq_pkt;
+
+				last_buf = droq_pkt;
+			} else {
+				otx_ep_err("no buf\n");
+			}
+
+			pkt_len += cpy_len;
+			droq->read_idx = otx_ep_incr_index(droq->read_idx, 1,
+							   droq->nb_desc);
+			droq->refill_count++;
+		}
+		droq_pkt = first_buf;
+	}
+	droq_pkt->packet_type = rte_net_get_ptype(droq_pkt, &hdr_lens,
+					RTE_PTYPE_ALL_MASK);
+	droq_pkt->l2_len = hdr_lens.l2_len;
+	droq_pkt->l3_len = hdr_lens.l3_len;
+	droq_pkt->l4_len = hdr_lens.l4_len;
+
+	if ((droq_pkt->pkt_len > (RTE_ETHER_MAX_LEN + OTX_CUST_DATA_LEN)) &&
+	    !(otx_ep->rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)) {
+		rte_pktmbuf_free(droq_pkt);
+		goto oq_read_fail;
+	}
+
+	if (droq_pkt->nb_segs > 1 &&
+	    !(otx_ep->rx_offloads & DEV_RX_OFFLOAD_SCATTER)) {
+		rte_pktmbuf_free(droq_pkt);
+		goto oq_read_fail;
+	}
+
+	return droq_pkt;
+
+oq_read_fail:
+	return NULL;
+}
+
+static inline uint32_t
+otx_ep_check_droq_pkts(struct otx_ep_droq *droq)
+{
+	volatile uint64_t pkt_count;
+	uint32_t new_pkts;
+
+	/* Latest available OQ packets */
+	pkt_count = rte_read32(droq->pkts_sent_reg);
+	rte_write32(pkt_count, droq->pkts_sent_reg);
+	new_pkts = pkt_count;
+	droq->pkts_pending += new_pkts;
+	return new_pkts;
+}
+
+/* Check for response arrival from OCTEON TX2
+ * returns number of requests completed
+ */
+uint16_t
+otx_ep_recv_pkts(void *rx_queue,
+		  struct rte_mbuf **rx_pkts,
+		  uint16_t budget)
+{
+	struct otx_ep_droq *droq = rx_queue;
+	struct otx_ep_device *otx_ep;
+	struct rte_mbuf *oq_pkt;
+
+	uint32_t pkts = 0;
+	uint32_t new_pkts = 0;
+	int next_fetch;
+
+	otx_ep = droq->otx_ep_dev;
+
+	if (droq->pkts_pending > budget) {
+		new_pkts = budget;
+	} else {
+		new_pkts = droq->pkts_pending;
+		new_pkts += otx_ep_check_droq_pkts(droq);
+		if (new_pkts > budget)
+			new_pkts = budget;
+	}
+
+	if (!new_pkts)
+		goto update_credit; /* No pkts at this moment */
+
+	for (pkts = 0; pkts < new_pkts; pkts++) {
+		/* Push the received pkt to application */
+		next_fetch = (pkts == new_pkts - 1) ? 0 : 1;
+		oq_pkt = otx_ep_droq_read_packet(otx_ep, droq, next_fetch);
+		if (!oq_pkt) {
+			RTE_LOG_DP(ERR, PMD,
+				   "DROQ read pkt failed pending %" PRIu64
+				    "last_pkt_count %" PRIu64 "new_pkts %d.\n",
+				   droq->pkts_pending, droq->last_pkt_count,
+				   new_pkts);
+			droq->pkts_pending -= pkts;
+			droq->stats.rx_err++;
+			goto finish;
+		}
+		rx_pkts[pkts] = oq_pkt;
+		/* Stats */
+		droq->stats.pkts_received++;
+		droq->stats.bytes_received += oq_pkt->pkt_len;
+	}
+	droq->pkts_pending -= pkts;
+
+	/* Refill DROQ buffers */
+update_credit:
+	if (droq->refill_count >= DROQ_REFILL_THRESHOLD) {
+		int desc_refilled = otx_ep_droq_refill(droq);
+
+		/* Flush the droq descriptor data to memory to be sure
+		 * that when we update the credits the data in memory is
+		 * accurate.
+		 */
+		rte_wmb();
+		rte_write32(desc_refilled, droq->pkts_credit_reg);
+	} else {
+		/*
+		 * SDP output goes into DROP state when output doorbell count
+		 * goes below drop count. When door bell count is written with
+		 * a value greater than drop count SDP output should come out
+		 * of DROP state. Due to a race condition this is not happening.
+		 * Writing doorbell register with 0 again may make SDP output
+		 * come out of this state.
+		 */
+
+		rte_write32(0, droq->pkts_credit_reg);
+	}
+finish:
+	return pkts;
 }

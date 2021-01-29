@@ -21,6 +21,7 @@
 #define SDP_OTX2_PKIND 57
 #define OTX_EP_BUSY_LOOP_COUNT      (10000)
 #define OTX_EP_MAX_IOQS_PER_VF 8
+#define OTX_CUST_DATA_LEN 0
 
 #define otx_ep_info(fmt, args...)				\
 	rte_log(RTE_LOG_INFO, otx_net_ep_logtype,		\
