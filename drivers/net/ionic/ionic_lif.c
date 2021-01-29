@@ -1824,13 +1824,10 @@ ionic_lif_identify(struct ionic_adapter *adapter)
 	struct ionic_dev *idev = &adapter->idev;
 	struct ionic_identity *ident = &adapter->ident;
 	union ionic_lif_config *cfg = &ident->lif.eth.config;
+	uint32_t lif_words = RTE_DIM(ident->lif.words);
+	uint32_t cmd_words = RTE_DIM(idev->dev_cmd->data);
+	uint32_t i, nwords;
 	int err;
-	unsigned int i;
-	unsigned int lif_words = sizeof(ident->lif.words) /
-		sizeof(ident->lif.words[0]);
-	unsigned int cmd_words = sizeof(idev->dev_cmd->data) /
-		sizeof(idev->dev_cmd->data[0]);
-	unsigned int nwords;
 
 	ionic_dev_cmd_lif_identify(idev, IONIC_LIF_TYPE_CLASSIC,
 		IONIC_IDENTITY_VERSION_1);

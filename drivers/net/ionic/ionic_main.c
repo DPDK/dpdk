@@ -263,15 +263,11 @@ ionic_identify(struct ionic_adapter *adapter)
 {
 	struct ionic_dev *idev = &adapter->idev;
 	struct ionic_identity *ident = &adapter->ident;
-	int err = 0;
-	uint32_t i;
-	unsigned int nwords;
-	uint32_t drv_size = sizeof(ident->drv.words) /
-		sizeof(ident->drv.words[0]);
-	uint32_t cmd_size = sizeof(idev->dev_cmd->data) /
-		sizeof(idev->dev_cmd->data[0]);
-	uint32_t dev_size = sizeof(ident->dev.words) /
-		sizeof(ident->dev.words[0]);
+	uint32_t drv_size = RTE_DIM(ident->drv.words);
+	uint32_t cmd_size = RTE_DIM(idev->dev_cmd->data);
+	uint32_t dev_size = RTE_DIM(ident->dev.words);
+	uint32_t i, nwords;
+	int err;
 
 	memset(ident, 0, sizeof(*ident));
 
@@ -323,12 +319,9 @@ ionic_port_identify(struct ionic_adapter *adapter)
 {
 	struct ionic_dev *idev = &adapter->idev;
 	struct ionic_identity *ident = &adapter->ident;
-	unsigned int port_words = sizeof(ident->port.words) /
-		sizeof(ident->port.words[0]);
-	unsigned int cmd_words = sizeof(idev->dev_cmd->data) /
-		sizeof(idev->dev_cmd->data[0]);
-	unsigned int i;
-	unsigned int nwords;
+	uint32_t port_words = RTE_DIM(ident->port.words);
+	uint32_t cmd_words = RTE_DIM(idev->dev_cmd->data);
+	uint32_t i, nwords;
 	int err;
 
 	ionic_dev_cmd_port_identify(idev);
@@ -374,12 +367,9 @@ ionic_port_init(struct ionic_adapter *adapter)
 	struct ionic_dev *idev = &adapter->idev;
 	struct ionic_identity *ident = &adapter->ident;
 	char z_name[RTE_MEMZONE_NAMESIZE];
-	unsigned int config_words = sizeof(ident->port.config.words) /
-		sizeof(ident->port.config.words[0]);
-	unsigned int cmd_words = sizeof(idev->dev_cmd->data) /
-		sizeof(idev->dev_cmd->data[0]);
-	unsigned int nwords;
-	unsigned int i;
+	uint32_t config_words = RTE_DIM(ident->port.config.words);
+	uint32_t cmd_words = RTE_DIM(idev->dev_cmd->data);
+	uint32_t i, nwords;
 	int err;
 
 	if (idev->port_info)

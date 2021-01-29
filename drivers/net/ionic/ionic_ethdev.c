@@ -207,8 +207,7 @@ static const struct rte_ionic_xstats_name_off rte_ionic_xstats_strings[] = {
 			tx_desc_data_error)},
 };
 
-#define IONIC_NB_HW_STATS (sizeof(rte_ionic_xstats_strings) / \
-		sizeof(rte_ionic_xstats_strings[0]))
+#define IONIC_NB_HW_STATS RTE_DIM(rte_ionic_xstats_strings)
 
 static int
 ionic_dev_fw_version_get(struct rte_eth_dev *eth_dev,

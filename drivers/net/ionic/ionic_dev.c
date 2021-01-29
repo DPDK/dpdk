@@ -87,9 +87,8 @@ void
 ionic_dev_cmd_comp(struct ionic_dev *idev, void *mem)
 {
 	union ionic_dev_cmd_comp *comp = mem;
-	unsigned int i;
-	uint32_t comp_size = sizeof(comp->words) /
-		sizeof(comp->words[0]);
+	uint32_t comp_size = RTE_DIM(comp->words);
+	uint32_t i;
 
 	for (i = 0; i < comp_size; i++)
 		comp->words[i] = ioread32(&idev->dev_cmd->comp.words[i]);
@@ -98,9 +97,8 @@ ionic_dev_cmd_comp(struct ionic_dev *idev, void *mem)
 void
 ionic_dev_cmd_go(struct ionic_dev *idev, union ionic_dev_cmd *cmd)
 {
-	unsigned int i;
-	uint32_t cmd_size = sizeof(cmd->words) /
-		sizeof(cmd->words[0]);
+	uint32_t cmd_size = RTE_DIM(cmd->words);
+	uint32_t i;
 
 	IONIC_PRINT(DEBUG, "Sending %s (%d) via dev_cmd",
 		    ionic_opcode_to_str(cmd->cmd.opcode), cmd->cmd.opcode);
