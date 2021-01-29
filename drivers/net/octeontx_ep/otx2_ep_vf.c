@@ -188,6 +188,104 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 		   rte_read32(droq->pkts_sent_reg));
 }
 
+static int
+otx2_vf_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
+{
+	uint64_t loop = SDP_VF_BUSY_LOOP_COUNT;
+	uint64_t reg_val = 0ull;
+
+	/* Resetting doorbells during IQ enabling also to handle abrupt
+	 * guest reboot. IQ reset does not clear the doorbells.
+	 */
+	otx2_write64(0xFFFFFFFF, otx_ep->hw_addr +
+		     SDP_VF_R_IN_INSTR_DBELL(q_no));
+
+	while (((otx2_read64(otx_ep->hw_addr +
+		 SDP_VF_R_IN_INSTR_DBELL(q_no))) != 0ull) && loop--) {
+		rte_delay_ms(1);
+	}
+
+	if (!loop) {
+		otx_ep_err("INSTR DBELL not coming back to 0\n");
+		return -EIO;
+	}
+
+	reg_val = otx2_read64(otx_ep->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
+	reg_val |= 0x1ull;
+
+	otx2_write64(reg_val, otx_ep->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
+
+	otx2_info("IQ[%d] enable done", q_no);
+
+	return 0;
+}
+
+static int
+otx2_vf_enable_oq(struct otx_ep_device *otx_ep, uint32_t q_no)
+{
+	uint64_t reg_val = 0ull;
+
+	reg_val = otx2_read64(otx_ep->hw_addr + SDP_VF_R_OUT_ENABLE(q_no));
+	reg_val |= 0x1ull;
+	otx2_write64(reg_val, otx_ep->hw_addr + SDP_VF_R_OUT_ENABLE(q_no));
+
+	otx2_info("OQ[%d] enable done", q_no);
+
+	return 0;
+}
+
+static int
+otx2_vf_enable_io_queues(struct otx_ep_device *otx_ep)
+{
+	uint32_t q_no = 0;
+	int ret;
+
+	for (q_no = 0; q_no < otx_ep->nb_tx_queues; q_no++) {
+		ret = otx2_vf_enable_iq(otx_ep, q_no);
+		if (ret)
+			return ret;
+	}
+
+	for (q_no = 0; q_no < otx_ep->nb_rx_queues; q_no++)
+		otx2_vf_enable_oq(otx_ep, q_no);
+
+	return 0;
+}
+
+static void
+otx2_vf_disable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
+{
+	uint64_t reg_val = 0ull;
+
+	/* Reset the doorbell register for this Input Queue. */
+	reg_val = otx2_read64(otx_ep->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
+	reg_val &= ~0x1ull;
+
+	otx2_write64(reg_val, otx_ep->hw_addr + SDP_VF_R_IN_ENABLE(q_no));
+}
+
+static void
+otx2_vf_disable_oq(struct otx_ep_device *otx_ep, uint32_t q_no)
+{
+	volatile uint64_t reg_val = 0ull;
+
+	reg_val = otx2_read64(otx_ep->hw_addr + SDP_VF_R_OUT_ENABLE(q_no));
+	reg_val &= ~0x1ull;
+
+	otx2_write64(reg_val, otx_ep->hw_addr + SDP_VF_R_OUT_ENABLE(q_no));
+}
+
+static void
+otx2_vf_disable_io_queues(struct otx_ep_device *otx_ep)
+{
+	uint32_t q_no = 0;
+
+	for (q_no = 0; q_no < otx_ep->sriov_info.rings_per_vf; q_no++) {
+		otx2_vf_disable_iq(otx_ep, q_no);
+		otx2_vf_disable_oq(otx_ep, q_no);
+	}
+}
+
 static const struct otx_ep_config default_otx2_ep_conf = {
 	/* IQ attributes */
 	.iq                        = {
@@ -246,6 +344,15 @@ otx2_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 	otx_ep->fn_list.setup_oq_regs       = otx2_vf_setup_oq_regs;
 
 	otx_ep->fn_list.setup_device_regs   = otx2_vf_setup_device_regs;
+
+	otx_ep->fn_list.enable_io_queues    = otx2_vf_enable_io_queues;
+	otx_ep->fn_list.disable_io_queues   = otx2_vf_disable_io_queues;
+
+	otx_ep->fn_list.enable_iq           = otx2_vf_enable_iq;
+	otx_ep->fn_list.disable_iq          = otx2_vf_disable_iq;
+
+	otx_ep->fn_list.enable_oq           = otx2_vf_enable_oq;
+	otx_ep->fn_list.disable_oq          = otx2_vf_disable_oq;
 
 	return 0;
 }

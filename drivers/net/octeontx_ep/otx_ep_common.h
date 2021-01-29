@@ -19,6 +19,7 @@
 #define OTX_EP_PCI_RING_ALIGN   65536
 #define SDP_PKIND 40
 #define SDP_OTX2_PKIND 57
+#define OTX_EP_BUSY_LOOP_COUNT      (10000)
 #define OTX_EP_MAX_IOQS_PER_VF 8
 
 #define otx_ep_info(fmt, args...)				\
@@ -374,7 +375,14 @@ struct otx_ep_fn_list {
 
 	void (*setup_device_regs)(struct otx_ep_device *otx_ep);
 
+	int (*enable_io_queues)(struct otx_ep_device *otx_ep);
 	void (*disable_io_queues)(struct otx_ep_device *otx_ep);
+
+	int (*enable_iq)(struct otx_ep_device *otx_ep, uint32_t q_no);
+	void (*disable_iq)(struct otx_ep_device *otx_ep, uint32_t q_no);
+
+	int (*enable_oq)(struct otx_ep_device *otx_ep, uint32_t q_no);
+	void (*disable_oq)(struct otx_ep_device *otx_ep, uint32_t q_no);
 };
 
 /* OTX_EP EP VF device data structure */

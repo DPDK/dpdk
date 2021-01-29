@@ -8,6 +8,7 @@
 
 /* OTX_EP VF IQ Registers */
 #define OTX_EP_R_IN_CONTROL_START         (0x10000)
+#define OTX_EP_R_IN_ENABLE_START          (0x10010)
 #define OTX_EP_R_IN_INSTR_BADDR_START     (0x10020)
 #define OTX_EP_R_IN_INSTR_RSIZE_START     (0x10030)
 #define OTX_EP_R_IN_INSTR_DBELL_START     (0x10040)
@@ -16,6 +17,9 @@
 
 #define OTX_EP_R_IN_CONTROL(ring)  \
 	(OTX_EP_R_IN_CONTROL_START + ((ring) * OTX_EP_RING_OFFSET))
+
+#define OTX_EP_R_IN_ENABLE(ring)   \
+	(OTX_EP_R_IN_ENABLE_START + ((ring) * OTX_EP_RING_OFFSET))
 
 #define OTX_EP_R_IN_INSTR_BADDR(ring)   \
 	(OTX_EP_R_IN_INSTR_BADDR_START + ((ring) * OTX_EP_RING_OFFSET))
