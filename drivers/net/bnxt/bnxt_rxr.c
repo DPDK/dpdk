@@ -1116,12 +1116,9 @@ void bnxt_free_rx_rings(struct bnxt *bp)
 
 int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 {
-	struct rte_eth_dev *eth_dev = rxq->bp->eth_dev;
-	struct rte_eth_rxmode *rxmode;
 	struct bnxt_cp_ring_info *cpr;
 	struct bnxt_rx_ring_info *rxr;
 	struct bnxt_ring *ring;
-	bool use_agg_ring;
 
 	rxq->rx_buf_size = BNXT_MAX_PKT_LEN + sizeof(struct rte_mbuf);
 
@@ -1164,19 +1161,9 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 		return -ENOMEM;
 	cpr->cp_ring_struct = ring;
 
-	rxmode = &eth_dev->data->dev_conf.rxmode;
-	use_agg_ring = (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER) ||
-		       (rxmode->offloads & DEV_RX_OFFLOAD_TCP_LRO) ||
-		       (rxmode->max_rx_pkt_len >
-			 (uint32_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
-				    RTE_PKTMBUF_HEADROOM));
-
 	/* Allocate two completion slots per entry in desc ring. */
 	ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
-
-	/* Allocate additional slots if aggregation ring is in use. */
-	if (use_agg_ring)
-		ring->ring_size *= AGG_RING_SIZE_FACTOR;
+	ring->ring_size *= AGG_RING_SIZE_FACTOR;
 
 	ring->ring_size = rte_align32pow2(ring->ring_size);
 	ring->ring_mask = ring->ring_size - 1;
