@@ -62,11 +62,13 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 	case PCI_DEVID_OCTEONTX_EP_VF:
 		otx_epvf->chip_id = dev_id;
 		ret = otx_ep_vf_setup_device(otx_epvf);
+		otx_epvf->fn_list.disable_io_queues(otx_epvf);
 		break;
 	case PCI_DEVID_OCTEONTX2_EP_NET_VF:
 	case PCI_DEVID_CN98XX_EP_NET_VF:
 		otx_epvf->chip_id = dev_id;
 		ret = otx2_ep_vf_setup_device(otx_epvf);
+		otx_epvf->fn_list.disable_io_queues(otx_epvf);
 		break;
 	default:
 		otx_ep_err("Unsupported device\n");
@@ -130,15 +132,132 @@ otx_ep_dev_configure(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+/**
+ * Setup our receive queue/ringbuffer. This is the
+ * queue the Octeon uses to send us packets and
+ * responses. We are given a memory pool for our
+ * packet buffers that are used to populate the receive
+ * queue.
+ *
+ * @param eth_dev
+ *    Pointer to the structure rte_eth_dev
+ * @param q_no
+ *    Queue number
+ * @param num_rx_descs
+ *    Number of entries in the queue
+ * @param socket_id
+ *    Where to allocate memory
+ * @param rx_conf
+ *    Pointer to the struction rte_eth_rxconf
+ * @param mp
+ *    Pointer to the packet pool
+ *
+ * @return
+ *    - On success, return 0
+ *    - On failure, return -1
+ */
+static int
+otx_ep_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
+		       uint16_t num_rx_descs, unsigned int socket_id,
+		       const struct rte_eth_rxconf *rx_conf __rte_unused,
+		       struct rte_mempool *mp)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	uint16_t buf_size;
+
+	if (q_no >= otx_epvf->max_rx_queues) {
+		otx_ep_err("Invalid rx queue number %u\n", q_no);
+		return -EINVAL;
+	}
+
+	if (num_rx_descs & (num_rx_descs - 1)) {
+		otx_ep_err("Invalid rx desc number should be pow 2  %u\n",
+			   num_rx_descs);
+		return -EINVAL;
+	}
+	if (num_rx_descs < (SDP_GBL_WMARK * 8)) {
+		otx_ep_err("Invalid rx desc number should at least be greater than 8xwmark  %u\n",
+			   num_rx_descs);
+		return -EINVAL;
+	}
+
+	otx_ep_dbg("setting up rx queue %u\n", q_no);
+
+	mbp_priv = rte_mempool_get_priv(mp);
+	buf_size = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+
+	if (otx_ep_setup_oqs(otx_epvf, q_no, num_rx_descs, buf_size, mp,
+			     socket_id)) {
+		otx_ep_err("droq allocation failed\n");
+		return -1;
+	}
+
+	eth_dev->data->rx_queues[q_no] = otx_epvf->droq[q_no];
+
+	return 0;
+}
+
+/**
+ * Release the receive queue/ringbuffer. Called by
+ * the upper layers.
+ *
+ * @param rxq
+ *    Opaque pointer to the receive queue to release
+ *
+ * @return
+ *    - nothing
+ */
+static void
+otx_ep_rx_queue_release(void *rxq)
+{
+	struct otx_ep_droq *rq = (struct otx_ep_droq *)rxq;
+	struct otx_ep_device *otx_epvf = rq->otx_ep_dev;
+	int q_id = rq->q_no;
+
+	if (otx_ep_delete_oqs(otx_epvf, q_id))
+		otx_ep_err("Failed to delete OQ:%d\n", q_id);
+}
+
 /* Define our ethernet definitions */
 static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.dev_configure		= otx_ep_dev_configure,
+	.rx_queue_setup	        = otx_ep_rx_queue_setup,
+	.rx_queue_release	= otx_ep_rx_queue_release,
 	.dev_infos_get		= otx_ep_dev_info_get,
 };
 
 static int
-otx_ep_eth_dev_uninit(__rte_unused struct rte_eth_dev *eth_dev)
+otx_epdev_exit(struct rte_eth_dev *eth_dev)
 {
+	struct otx_ep_device *otx_epvf;
+	uint32_t num_queues, q;
+
+	otx_ep_info("%s:\n", __func__);
+
+	otx_epvf = OTX_EP_DEV(eth_dev);
+
+	num_queues = otx_epvf->nb_rx_queues;
+	for (q = 0; q < num_queues; q++) {
+		if (otx_ep_delete_oqs(otx_epvf, q)) {
+			otx_ep_err("Failed to delete OQ:%d\n", q);
+			return -EINVAL;
+		}
+	}
+	otx_ep_info("Num OQs:%d freed\n", otx_epvf->nb_rx_queues);
+
+	return 0;
+}
+
+static int
+otx_ep_eth_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+	otx_epdev_exit(eth_dev);
+
+	eth_dev->dev_ops = NULL;
+
 	return 0;
 }
 
@@ -159,6 +278,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = rte_zmalloc("otx_ep", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		otx_ep_err("MAC addresses memory allocation failed\n");
+		eth_dev->dev_ops = NULL;
 		return -ENOMEM;
 	}
 	rte_eth_random_addr(vf_mac_addr.addr_bytes);
@@ -167,6 +287,11 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	otx_epvf->pdev = pdev;
 
 	otx_epdev_init(otx_epvf);
+	if (pdev->id.device_id == PCI_DEVID_OCTEONTX2_EP_NET_VF)
+		otx_epvf->pkind = SDP_OTX2_PKIND;
+	else
+		otx_epvf->pkind = SDP_PKIND;
+	otx_ep_info("using pkind %d\n", otx_epvf->pkind);
 
 	return 0;
 }

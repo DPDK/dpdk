@@ -37,6 +37,12 @@
 
 #define PCI_DEVID_OCTEONTX_EP_VF 0xa303
 
+/* this is a static value set by SLI PF driver in octeon
+ * No handshake is available
+ * Change this if changing the value in SLI PF driver
+ */
+#define SDP_GBL_WMARK 0x100
+
 int
 otx_ep_vf_setup_device(struct otx_ep_device *otx_ep);
 #endif /*_OTX_EP_VF_H_ */

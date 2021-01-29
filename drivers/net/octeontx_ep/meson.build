@@ -7,6 +7,7 @@ sources = files(
                'otx_ep_ethdev.c',
                'otx_ep_vf.c',
                'otx2_ep_vf.c',
+               'otx_ep_rxtx.c',
                )
 
 includes += include_directories('../../common/octeontx2')

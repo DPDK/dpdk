@@ -16,6 +16,10 @@
 
 #define OTX_EP_OQ_INFOPTR_MODE      (0)
 #define OTX_EP_OQ_REFIL_THRESHOLD   (16)
+#define OTX_EP_PCI_RING_ALIGN   65536
+#define SDP_PKIND 40
+#define SDP_OTX2_PKIND 57
+#define OTX_EP_MAX_IOQS_PER_VF 8
 
 #define otx_ep_info(fmt, args...)				\
 	rte_log(RTE_LOG_INFO, otx_net_ep_logtype,		\
@@ -55,6 +59,64 @@ struct otx_ep_iq_config {
 	uint32_t pending_list_size;
 };
 
+/** Descriptor format.
+ *  The descriptor ring is made of descriptors which have 2 64-bit values:
+ *  -# Physical (bus) address of the data buffer.
+ *  -# Physical (bus) address of a otx_ep_droq_info structure.
+ *  The device DMA's incoming packets and its information at the address
+ *  given by these descriptor fields.
+ */
+struct otx_ep_droq_desc {
+	/* The buffer pointer */
+	uint64_t buffer_ptr;
+
+	/* The Info pointer */
+	uint64_t info_ptr;
+};
+#define OTX_EP_DROQ_DESC_SIZE	(sizeof(struct otx_ep_droq_desc))
+
+/* Receive Header */
+union otx_ep_rh {
+	uint64_t rh64;
+};
+#define OTX_EP_RH_SIZE (sizeof(union otx_ep_rh))
+
+/** Information about packet DMA'ed by OCTEON TX2.
+ *  The format of the information available at Info Pointer after OCTEON TX2
+ *  has posted a packet. Not all descriptors have valid information. Only
+ *  the Info field of the first descriptor for a packet has information
+ *  about the packet.
+ */
+struct otx_ep_droq_info {
+	/* The Length of the packet. */
+	uint64_t length;
+
+	/* The Output Receive Header. */
+	union otx_ep_rh rh;
+};
+#define OTX_EP_DROQ_INFO_SIZE	(sizeof(struct otx_ep_droq_info))
+
+/* DROQ statistics. Each output queue has four stats fields. */
+struct otx_ep_droq_stats {
+	/* Number of packets received in this queue. */
+	uint64_t pkts_received;
+
+	/* Bytes received by this queue. */
+	uint64_t bytes_received;
+
+	/* Num of failures of rte_pktmbuf_alloc() */
+	uint64_t rx_alloc_failure;
+
+	/* Rx error */
+	uint64_t rx_err;
+
+	/* packets with data got ready after interrupt arrived */
+	uint64_t pkts_delayed_data;
+
+	/* packets dropped due to zero length */
+	uint64_t dropped_zlp;
+};
+
 /* Structure to define the configuration attributes for each Output queue. */
 struct otx_ep_oq_config {
 	/* Max number of OQs available */
@@ -68,6 +130,74 @@ struct otx_ep_oq_config {
 	 *  replenish the descriptor ring with new buffers.
 	 */
 	uint32_t refill_threshold;
+};
+
+/* The Descriptor Ring Output Queue(DROQ) structure. */
+struct otx_ep_droq {
+	struct otx_ep_device *otx_ep_dev;
+	/* The 8B aligned descriptor ring starts at this address. */
+	struct otx_ep_droq_desc *desc_ring;
+
+	uint32_t q_no;
+	uint64_t last_pkt_count;
+
+	struct rte_mempool *mpool;
+
+	/* Driver should read the next packet at this index */
+	uint32_t read_idx;
+
+	/* OCTEON TX2 will write the next packet at this index */
+	uint32_t write_idx;
+
+	/* At this index, the driver will refill the descriptor's buffer */
+	uint32_t refill_idx;
+
+	/* Packets pending to be processed */
+	uint64_t pkts_pending;
+
+	/* Number of descriptors in this ring. */
+	uint32_t nb_desc;
+
+	/* The number of descriptors pending to refill. */
+	uint32_t refill_count;
+
+	uint32_t refill_threshold;
+
+	/* The 8B aligned info ptrs begin from this address. */
+	struct otx_ep_droq_info *info_list;
+
+	/* receive buffer list contains mbuf ptr list */
+	struct rte_mbuf **recv_buf_list;
+
+	/* The size of each buffer pointed by the buffer pointer. */
+	uint32_t buffer_size;
+
+	/* Statistics for this DROQ. */
+	struct otx_ep_droq_stats stats;
+
+	/* DMA mapped address of the DROQ descriptor ring. */
+	size_t desc_ring_dma;
+
+	/* Info_ptr list is allocated at this virtual address. */
+	size_t info_base_addr;
+
+	/* DMA mapped address of the info list */
+	size_t info_list_dma;
+
+	/* Allocated size of info list. */
+	uint32_t info_alloc_size;
+
+	/* Memory zone **/
+	const struct rte_memzone *desc_ring_mz;
+	const struct rte_memzone *info_mz;
+};
+#define OTX_EP_DROQ_SIZE		(sizeof(struct otx_ep_droq))
+
+/* IQ/OQ mask */
+struct otx_ep_io_enable {
+	uint64_t iq;
+	uint64_t oq;
+	uint64_t iq64B;
 };
 
 /* Structure to define the configuration. */
@@ -99,7 +229,11 @@ struct otx_ep_sriov_info {
 
 /* Required functions for each VF device */
 struct otx_ep_fn_list {
+	void (*setup_oq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
+
 	void (*setup_device_regs)(struct otx_ep_device *otx_ep);
+
+	void (*disable_io_queues)(struct otx_ep_device *otx_ep);
 };
 
 /* OTX_EP EP VF device data structure */
@@ -108,6 +242,8 @@ struct otx_ep_device {
 	struct rte_pci_device *pdev;
 
 	uint16_t chip_id;
+
+	uint32_t pkind;
 
 	struct rte_eth_dev *eth_dev;
 
@@ -122,6 +258,15 @@ struct otx_ep_device {
 
 	uint32_t max_rx_queues;
 
+	/* Num OQs */
+	uint32_t nb_rx_queues;
+
+	/* The DROQ output queues  */
+	struct otx_ep_droq *droq[OTX_EP_MAX_IOQS_PER_VF];
+
+	/* IOQ mask */
+	struct otx_ep_io_enable io_qmask;
+
 	/* SR-IOV info */
 	struct otx_ep_sriov_info sriov_info;
 
@@ -132,6 +277,11 @@ struct otx_ep_device {
 
 	uint64_t tx_offloads;
 };
+
+int otx_ep_setup_oqs(struct otx_ep_device *otx_ep, int oq_no, int num_descs,
+		     int desc_size, struct rte_mempool *mpool,
+		     unsigned int socket_id);
+int otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no);
 
 #define OTX_EP_MAX_PKT_SZ 64000U
 #define OTX_EP_MAX_MAC_ADDRS 1
