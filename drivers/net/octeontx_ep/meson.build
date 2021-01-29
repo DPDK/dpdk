@@ -5,6 +5,8 @@
 deps += ['common_octeontx2']
 sources = files(
                'otx_ep_ethdev.c',
+               'otx_ep_vf.c',
+               'otx2_ep_vf.c',
                )
 
 includes += include_directories('../../common/octeontx2')
