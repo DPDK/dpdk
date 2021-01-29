@@ -50,6 +50,7 @@ Network Interface Controller Drivers
     null
     octeontx
     octeontx2
+    octeontx_ep
     pfe
     qede
     sfc_efx
