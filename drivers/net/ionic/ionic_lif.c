@@ -761,7 +761,7 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t index, uint16_t ntxq_descs,
 		ntxq_descs,
 		sizeof(struct ionic_txq_desc),
 		sizeof(struct ionic_txq_comp),
-		sizeof(struct ionic_txq_sg_desc),
+		sizeof(struct ionic_txq_sg_desc_v1),
 		&lif->txqcqs[index]);
 	if (err)
 		return err;
@@ -924,6 +924,11 @@ ionic_lif_alloc(struct ionic_lif *lif)
 	IONIC_PRINT(DEBUG, "LIF: %s", lif->name);
 
 	ionic_lif_queue_identify(lif);
+
+	if (lif->qtype_info[IONIC_QTYPE_TXQ].version < 1) {
+		IONIC_PRINT(ERR, "FW too old, please upgrade");
+		return -ENXIO;
+	}
 
 	IONIC_PRINT(DEBUG, "Allocating Lif Info");
 

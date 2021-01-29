@@ -317,9 +317,9 @@ static struct ionic_txq_desc *
 ionic_tx_tso_next(struct ionic_queue *q, struct ionic_txq_sg_elem **elem)
 {
 	struct ionic_txq_desc *desc_base = q->base;
-	struct ionic_txq_sg_desc *sg_desc_base = q->sg_base;
+	struct ionic_txq_sg_desc_v1 *sg_desc_base = q->sg_base;
 	struct ionic_txq_desc *desc = &desc_base[q->head_idx];
-	struct ionic_txq_sg_desc *sg_desc = &sg_desc_base[q->head_idx];
+	struct ionic_txq_sg_desc_v1 *sg_desc = &sg_desc_base[q->head_idx];
 
 	*elem = sg_desc->elems;
 	return desc;
@@ -456,9 +456,9 @@ ionic_tx(struct ionic_qcq *txq, struct rte_mbuf *txm,
 {
 	struct ionic_queue *q = &txq->q;
 	struct ionic_txq_desc *desc_base = q->base;
-	struct ionic_txq_sg_desc *sg_desc_base = q->sg_base;
+	struct ionic_txq_sg_desc_v1 *sg_desc_base = q->sg_base;
 	struct ionic_txq_desc *desc = &desc_base[q->head_idx];
-	struct ionic_txq_sg_desc *sg_desc = &sg_desc_base[q->head_idx];
+	struct ionic_txq_sg_desc_v1 *sg_desc = &sg_desc_base[q->head_idx];
 	struct ionic_txq_sg_elem *elem = sg_desc->elems;
 	struct ionic_tx_stats *stats = IONIC_Q_TO_TX_STATS(q);
 	struct rte_mbuf *txm_seg;

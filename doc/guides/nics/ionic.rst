@@ -25,6 +25,12 @@ on the host, check for the PCI devices:
       b5:00.0 Ethernet controller: Device 1dd8:1002
       b6:00.0 Ethernet controller: Device 1dd8:1002
 
+Firmware Support
+----------------
+
+The ionic PMD requires firmware which supports 16 segment transmit SGLs.
+This support was added prior to version 1.0. For help upgrading older versions,
+please contact Pensando support.
 
 Building DPDK
 -------------

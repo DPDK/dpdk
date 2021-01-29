@@ -107,7 +107,7 @@ static inline void ionic_struct_size_checks(void)
 
 	/* I/O */
 	RTE_BUILD_BUG_ON(sizeof(struct ionic_txq_desc) != 16);
-	RTE_BUILD_BUG_ON(sizeof(struct ionic_txq_sg_desc) != 128);
+	RTE_BUILD_BUG_ON(sizeof(struct ionic_txq_sg_desc_v1) != 256);
 	RTE_BUILD_BUG_ON(sizeof(struct ionic_txq_comp) != 16);
 
 	RTE_BUILD_BUG_ON(sizeof(struct ionic_rxq_desc) != 16);

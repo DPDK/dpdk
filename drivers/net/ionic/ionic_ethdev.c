@@ -70,12 +70,12 @@ static const struct rte_eth_desc_lim rx_desc_lim = {
 	.nb_align = 1,
 };
 
-static const struct rte_eth_desc_lim tx_desc_lim = {
+static const struct rte_eth_desc_lim tx_desc_lim_v1 = {
 	.nb_max = IONIC_MAX_RING_DESC,
 	.nb_min = IONIC_MIN_RING_DESC,
 	.nb_align = 1,
-	.nb_seg_max = IONIC_TX_MAX_SG_ELEMS,
-	.nb_mtu_seg_max = IONIC_TX_MAX_SG_ELEMS,
+	.nb_seg_max = IONIC_TX_MAX_SG_ELEMS_V1,
+	.nb_mtu_seg_max = IONIC_TX_MAX_SG_ELEMS_V1,
 };
 
 static const struct eth_dev_ops ionic_eth_dev_ops = {
@@ -440,7 +440,7 @@ ionic_dev_info_get(struct rte_eth_dev *eth_dev,
 		0;
 
 	dev_info->rx_desc_lim = rx_desc_lim;
-	dev_info->tx_desc_lim = tx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim_v1;
 
 	/* Driver-preferred Rx/Tx parameters */
 	dev_info->default_rxportconf.burst_size = 32;

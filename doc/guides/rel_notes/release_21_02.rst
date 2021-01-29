@@ -121,6 +121,17 @@ New Features
   * Added support for the Tx mbuf fast free offload.
   * Added support for flow modify field action.
 
+* **Updated the Pensando ionic driver.**
+
+  Updated the Pensando ionic driver with new features and improvements, including:
+
+  * Fixed bugs related to link autonegotiation.
+  * Fixed bugs related to port start/stop and queue start/stop.
+  * Added support for probing the supported queue versions. Note that
+    extremely old (pre-1.0) firmware will no longer be usable with the PMD.
+  * Removed unused code.
+  * Reduced device startup time.
+
 * **Updated Wangxun txgbe driver.**
 
   Updated the Wangxun txgbe driver with new features and improvements, including:
