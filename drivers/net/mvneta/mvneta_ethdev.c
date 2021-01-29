@@ -5,7 +5,7 @@
  */
 
 #include <rte_string_fns.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_bus_vdev.h>
 

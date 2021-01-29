@@ -3,7 +3,7 @@
  */
 
 #include <rte_io.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_rxtx.h"

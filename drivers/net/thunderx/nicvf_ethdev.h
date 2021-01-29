@@ -5,7 +5,7 @@
 #ifndef __THUNDERX_NICVF_ETHDEV_H__
 #define __THUNDERX_NICVF_ETHDEV_H__
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #define THUNDERX_NICVF_PMD_VERSION      "2.0"
 #define THUNDERX_REG_BYTES		8

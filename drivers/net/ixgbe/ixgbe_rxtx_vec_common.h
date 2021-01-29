@@ -5,7 +5,7 @@
 #ifndef _IXGBE_RXTX_VEC_COMMON_H_
 #define _IXGBE_RXTX_VEC_COMMON_H_
 #include <stdint.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include "ixgbe_ethdev.h"
 #include "ixgbe_rxtx.h"

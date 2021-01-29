@@ -26,8 +26,8 @@
 #include <rte_eal.h>
 #include <rte_alarm.h>
 #include <rte_ether.h>
-#include <rte_ethdev_driver.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_driver.h>
+#include <ethdev_pci.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_dev.h>

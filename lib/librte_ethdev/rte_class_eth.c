@@ -12,7 +12,7 @@
 
 #include "rte_ethdev.h"
 #include "rte_ethdev_core.h"
-#include "rte_ethdev_driver.h"
+#include "ethdev_driver.h"
 #include "ethdev_private.h"
 
 enum eth_params {

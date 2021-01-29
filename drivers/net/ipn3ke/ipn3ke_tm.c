@@ -14,7 +14,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_sched.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include <rte_io.h>
 #include <rte_rawdev.h>

@@ -5,7 +5,7 @@
 #ifndef	__OCTEONTX_RXTX_H__
 #define	__OCTEONTX_RXTX_H__
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #define OFFLOAD_FLAGS					\
 	uint16_t rx_offload_flags;			\

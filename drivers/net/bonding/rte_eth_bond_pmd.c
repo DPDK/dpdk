@@ -7,8 +7,8 @@
 
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
-#include <rte_ethdev_driver.h>
-#include <rte_ethdev_vdev.h>
+#include <ethdev_driver.h>
+#include <ethdev_vdev.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_ip.h>

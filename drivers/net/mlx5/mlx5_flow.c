@@ -12,7 +12,7 @@
 
 #include <rte_common.h>
 #include <rte_ether.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_eal_paging.h>
 #include <rte_flow.h>
 #include <rte_cycles.h>

@@ -7,7 +7,7 @@
 #include <rte_pci.h>
 #include <rte_malloc.h>
 
-#include "rte_ethdev_driver.h"
+#include "ethdev_driver.h"
 #include "base/i40e_type.h"
 #include "base/virtchnl.h"
 #include "i40e_ethdev.h"

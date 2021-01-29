@@ -2,7 +2,7 @@
  * Copyright(c) 2018-2019 Hisilicon Limited.
  */
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_hash.h>
 #include <rte_hash_crc.h>
 #include <rte_io.h>

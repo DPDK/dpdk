@@ -2,7 +2,7 @@
  * Copyright(c) 2015-2020
  */
 
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_security_driver.h>
 #include <rte_cryptodev.h>
 

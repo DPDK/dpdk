@@ -9,7 +9,7 @@
 #include <netcope/rxmac.h>
 #include <netcope/txmac.h>
 
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_kvargs.h>
 
 #include "nfb_stats.h"

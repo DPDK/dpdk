@@ -2,7 +2,7 @@
  * Copyright(c) 2018 Aquantia Corporation
  */
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include "rte_pmd_atlantic.h"
 #include "atl_ethdev.h"

@@ -2,7 +2,7 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_net.h>
 #include <rte_vect.h>
 

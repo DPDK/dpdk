@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#include <rte_ethdev_driver.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_driver.h>
+#include <ethdev_pci.h>
 
 #include "cxgbe.h"
 #include "cxgbe_pfvf.h"

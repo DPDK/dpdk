@@ -12,7 +12,7 @@
 
 #include <rte_atomic.h>
 #include <rte_dev.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_devargs.h>
 #include <rte_flow.h>
 #include <rte_interrupts.h>

@@ -2,7 +2,7 @@
  * Copyright(c) 2017 Huawei Technologies Co., Ltd
  */
 
-#include<rte_ethdev_driver.h>
+#include<ethdev_driver.h>
 #include <rte_bus_pci.h>
 #include <rte_hash.h>
 #include <rte_jhash.h>

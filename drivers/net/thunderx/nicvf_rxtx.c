@@ -13,7 +13,7 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_errno.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_ether.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>

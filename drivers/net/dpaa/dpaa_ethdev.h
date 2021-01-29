@@ -9,7 +9,7 @@
 
 /* System headers */
 #include <stdbool.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_event_eth_rx_adapter.h>
 
 #include <fsl_usd.h>

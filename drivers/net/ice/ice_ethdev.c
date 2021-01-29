@@ -3,7 +3,7 @@
  */
 
 #include <rte_string_fns.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 
 #include <stdio.h>
 #include <sys/types.h>

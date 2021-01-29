@@ -2,7 +2,7 @@
  * Copyright(c) 2018-2019 Hisilicon Limited.
  */
 
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_io.h>
 
 #include "hns3_ethdev.h"

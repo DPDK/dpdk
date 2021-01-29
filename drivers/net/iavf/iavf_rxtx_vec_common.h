@@ -5,7 +5,7 @@
 #ifndef _IAVF_RXTX_VEC_COMMON_H_
 #define _IAVF_RXTX_VEC_COMMON_H_
 #include <stdint.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_malloc.h>
 
 #include "iavf.h"

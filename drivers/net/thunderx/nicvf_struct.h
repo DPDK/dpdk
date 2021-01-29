@@ -11,7 +11,7 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_interrupts.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_memory.h>
 
 struct nicvf_rbdr {

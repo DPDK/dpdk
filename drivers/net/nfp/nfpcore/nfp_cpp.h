@@ -6,7 +6,7 @@
 #ifndef __NFP_CPP_H__
 #define __NFP_CPP_H__
 
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 
 #include "nfp-common/nfp_platform.h"
 #include "nfp-common/nfp_resid.h"

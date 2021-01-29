@@ -33,7 +33,7 @@
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_ether.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_security_driver.h>
 #include <rte_prefetch.h>
 #include <rte_udp.h>

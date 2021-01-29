@@ -4,7 +4,7 @@
  */
 
 #include <rte_mbuf.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_net.h>
 #include <rte_prefetch.h>
 

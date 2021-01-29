@@ -24,7 +24,7 @@
 #include <rte_memory.h>
 #include <rte_pci.h>
 #include <rte_bus_vdev.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_cryptodev.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>

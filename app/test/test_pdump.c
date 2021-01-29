@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <limits.h>
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_pdump.h>
 #include "rte_eal.h"
 #include "rte_lcore.h"

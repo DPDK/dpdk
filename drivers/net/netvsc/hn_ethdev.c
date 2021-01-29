@@ -24,7 +24,7 @@
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_ether.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_cycles.h>
 #include <rte_errno.h>
 #include <rte_memory.h>

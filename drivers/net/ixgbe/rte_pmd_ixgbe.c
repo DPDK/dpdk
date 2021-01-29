@@ -2,7 +2,7 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include "base/ixgbe_api.h"
 #include "base/ixgbe_x550.h"

@@ -4,7 +4,7 @@
 
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>

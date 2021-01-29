@@ -8,8 +8,8 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <rte_ethdev_driver.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_driver.h>
+#include <ethdev_pci.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_memzone.h>

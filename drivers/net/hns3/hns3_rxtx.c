@@ -6,7 +6,7 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_vxlan.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_io.h>
 #include <rte_net.h>
 #include <rte_malloc.h>

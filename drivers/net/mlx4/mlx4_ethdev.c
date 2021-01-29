@@ -34,7 +34,7 @@
 
 #include <rte_bus_pci.h>
 #include <rte_errno.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_ether.h>
 #include <rte_flow.h>
 #include <rte_pci.h>

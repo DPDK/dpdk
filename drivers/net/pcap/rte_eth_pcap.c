@@ -19,8 +19,8 @@
 #include <pcap.h>
 
 #include <rte_cycles.h>
-#include <rte_ethdev_driver.h>
-#include <rte_ethdev_vdev.h>
+#include <ethdev_driver.h>
+#include <ethdev_vdev.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>

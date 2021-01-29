@@ -6,7 +6,7 @@
 #include <rte_pci.h>
 #include <rte_malloc.h>
 
-#include "rte_ethdev_driver.h"
+#include "ethdev_driver.h"
 #include "base/ixgbe_type.h"
 #include "base/ixgbe_vf.h"
 #include "ixgbe_ethdev.h"

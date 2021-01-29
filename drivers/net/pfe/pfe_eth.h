@@ -7,7 +7,7 @@
 
 #include <compat.h>
 #include <rte_ethdev.h>
-#include <rte_ethdev_vdev.h>
+#include <ethdev_vdev.h>
 
 #define ETH_ALEN 6
 #define GEMAC_NO_PHY            BIT(0)

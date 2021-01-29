@@ -41,7 +41,7 @@
 
 #include "rte_ethdev_trace.h"
 #include "rte_ethdev.h"
-#include "rte_ethdev_driver.h"
+#include "ethdev_driver.h"
 #include "ethdev_profile.h"
 #include "ethdev_private.h"
 

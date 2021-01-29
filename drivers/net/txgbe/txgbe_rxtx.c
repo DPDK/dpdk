@@ -19,7 +19,7 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_ethdev.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_security_driver.h>
 #include <rte_memzone.h>
 #include <rte_atomic.h>

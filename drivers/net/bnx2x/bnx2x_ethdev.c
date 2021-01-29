@@ -10,7 +10,7 @@
 
 #include <rte_string_fns.h>
 #include <rte_dev.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_alarm.h>
 
 /*

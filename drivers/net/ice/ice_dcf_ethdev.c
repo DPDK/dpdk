@@ -14,7 +14,7 @@
 #include <rte_atomic.h>
 #include <rte_eal.h>
 #include <rte_ether.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>

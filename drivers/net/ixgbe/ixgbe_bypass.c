@@ -4,7 +4,7 @@
 
 #include <time.h>
 #include <rte_atomic.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include "ixgbe_ethdev.h"
 #include "ixgbe_bypass_api.h"
 #include "rte_pmd_ixgbe.h"

@@ -33,7 +33,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_string_fns.h>
 
 #include "nfp_cpp.h"

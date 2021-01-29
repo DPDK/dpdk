@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 
 uint16_t eth_ark_xmit_pkts_noop(void *vtxq,

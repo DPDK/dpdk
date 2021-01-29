@@ -5,7 +5,7 @@
 #ifndef _ARK_EXT_H_
 #define _ARK_EXT_H_
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 /*
  * This is the template file for users who which to define a dynamic

@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 

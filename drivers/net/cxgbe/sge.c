@@ -28,7 +28,7 @@
 #include <rte_eal.h>
 #include <rte_alarm.h>
 #include <rte_ether.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_dev.h>

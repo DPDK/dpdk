@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <rte_common.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 
 #include <rte_interrupts.h>
 #include <rte_log.h>

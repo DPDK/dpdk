@@ -12,7 +12,7 @@
 #include <sys/types.h>
 
 #include <rte_byteorder.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 
 #include "nfp_cpp.h"
 #include "nfp_target.h"

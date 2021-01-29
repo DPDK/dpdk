@@ -5,7 +5,7 @@
 #ifndef _ICE_DCF_H_
 #define _ICE_DCF_H_
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include <iavf_prototype.h>
 #include <iavf_adminq_cmd.h>

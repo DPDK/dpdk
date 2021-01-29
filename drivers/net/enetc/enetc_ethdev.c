@@ -3,7 +3,7 @@
  */
 
 #include <stdbool.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_random.h>
 #include <dpaax_iova_table.h>
 

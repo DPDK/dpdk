@@ -20,7 +20,7 @@
  * - The driver-oriented Ethernet API that exports functions allowing
  *   an Ethernet Poll Mode Driver (PMD) to allocate an Ethernet device instance,
  *   create memzone for HW rings and process registered callbacks, and so on.
- *   PMDs should include rte_ethdev_driver.h instead of this header.
+ *   PMDs should include ethdev_driver.h instead of this header.
  *
  * By default, all the functions of the Ethernet Device API exported by a PMD
  * are lock-free functions which assume to not be invoked in parallel on

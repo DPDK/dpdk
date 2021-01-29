@@ -13,7 +13,7 @@
  */
 #include <sys/types.h>
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_common.h>
 
 #include <mlx5.h>

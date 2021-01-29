@@ -4,7 +4,7 @@
 
 #include <inttypes.h>
 
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_io.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>

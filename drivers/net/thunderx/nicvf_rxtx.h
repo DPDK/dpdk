@@ -6,7 +6,7 @@
 #define __THUNDERX_NICVF_RXTX_H__
 
 #include <rte_byteorder.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #define NICVF_RX_OFFLOAD_NONE           0x1
 #define NICVF_RX_OFFLOAD_CKSUM          0x2

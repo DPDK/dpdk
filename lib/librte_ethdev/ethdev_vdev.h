@@ -9,7 +9,7 @@
 #include <rte_config.h>
 #include <rte_malloc.h>
 #include <rte_bus_vdev.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 /**
  * @internal

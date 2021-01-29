@@ -16,7 +16,7 @@
 
 #include <rte_ether.h>
 #include <rte_ethdev.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_lcore.h>
 #include <rte_memory.h>
 #include <rte_bus_vmbus.h>

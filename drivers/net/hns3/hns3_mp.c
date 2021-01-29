@@ -3,7 +3,7 @@
  */
 
 #include <rte_eal.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_string_fns.h>
 #include <rte_io.h>
 

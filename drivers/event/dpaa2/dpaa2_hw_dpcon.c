@@ -18,7 +18,7 @@
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
 #include <rte_dev.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include <rte_fslmc.h>
 #include <mc/fsl_dpcon.h>

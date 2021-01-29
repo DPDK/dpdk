@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 #include <rte_windows.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>

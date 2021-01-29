@@ -4,7 +4,7 @@
 
 #include <linux/pci_regs.h>
 #include <rte_alarm.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 #include <rte_io.h>
 #include <rte_pci.h>
 #include <rte_vfio.h>

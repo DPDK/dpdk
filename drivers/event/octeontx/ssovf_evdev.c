@@ -8,7 +8,7 @@
 #include <rte_debug.h>
 #include <rte_dev.h>
 #include <rte_eal.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_kvargs.h>
 #include <rte_lcore.h>

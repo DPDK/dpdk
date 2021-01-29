@@ -2,7 +2,7 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include "otx2_ethdev.h"
 

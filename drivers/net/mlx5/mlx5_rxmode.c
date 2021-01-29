@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 #include <mlx5_glue.h>
 #include "mlx5.h"

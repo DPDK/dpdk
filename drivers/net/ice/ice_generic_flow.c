@@ -11,7 +11,7 @@
 #include <stdarg.h>
 
 #include <rte_ether.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_tailq.h>
 

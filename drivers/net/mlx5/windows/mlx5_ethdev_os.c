@@ -5,7 +5,7 @@
 
 #include <rte_errno.h>
 #include <rte_ether.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_interrupts.h>
 
 #include <mlx5_glue.h>

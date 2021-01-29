@@ -9,7 +9,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 
 extern uint64_t ark_timestamp_rx_dynflag;
 extern int ark_timestamp_dynfield_offset;

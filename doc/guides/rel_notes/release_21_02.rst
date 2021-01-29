@@ -151,10 +151,17 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* The internal header files ``rte_ethdev_driver.h``, ``rte_ethdev_vdev.h`` and
+  ``rte_ethdev_pci.h`` are no longer installed as part of the DPDK
+  ``ninja install`` action and are renamed to ``ethdev_driver.h``,
+  ``ethdev_vdev.h`` and ``ethdev_pci.h`` respectively in the source tree, to
+  reflect the fact that they are non-public headers.
+
 * Removed support for NetXtreme devices belonging to ``BCM573xx and
   BCM5740x`` families. Specifically the support for the following Broadcom
   PCI device IDs ``0x16c8, 0x16c9, 0x16ca, 0x16ce, 0x16cf, 0x16df, 0x16d0,``
   ``0x16d1, 0x16d2, 0x16d4, 0x16d5, 0x16e7, 0x16e8, 0x16e9`` has been removed.
+
 
 API Changes
 -----------

@@ -13,7 +13,7 @@
 
 #include <linux/if_tun.h>
 
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_ether.h>
 #include <rte_gso.h>
 #include "tap_log.h"

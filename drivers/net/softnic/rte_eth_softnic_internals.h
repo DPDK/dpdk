@@ -19,7 +19,7 @@
 #include <rte_pipeline.h>
 
 #include <rte_ethdev_core.h>
-#include <rte_ethdev_driver.h>
+#include <ethdev_driver.h>
 #include <rte_tm_driver.h>
 #include <rte_flow_driver.h>
 #include <rte_mtr_driver.h>

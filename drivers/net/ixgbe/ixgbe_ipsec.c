@@ -2,8 +2,8 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
-#include <rte_ethdev_driver.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_driver.h>
+#include <ethdev_pci.h>
 #include <rte_ip.h>
 #include <rte_jhash.h>
 #include <rte_security_driver.h>

@@ -3,7 +3,7 @@
  */
 
 #include <rte_common.h>
-#include <rte_ethdev_pci.h>
+#include <ethdev_pci.h>
 
 #include "otx2_ethdev.h"
 
