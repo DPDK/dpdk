@@ -7,9 +7,12 @@
 #define OTX_EP_MAX_RINGS_PER_VF        (8)
 #define OTX_EP_CFG_IO_QUEUES        OTX_EP_MAX_RINGS_PER_VF
 #define OTX_EP_64BYTE_INSTR         (64)
+#define OTX_EP_MIN_IQ_DESCRIPTORS   (128)
+#define OTX_EP_MIN_OQ_DESCRIPTORS   (128)
 #define OTX_EP_MAX_IQ_DESCRIPTORS   (8192)
 #define OTX_EP_MAX_OQ_DESCRIPTORS   (8192)
 #define OTX_EP_OQ_BUF_SIZE          (2048)
+#define OTX_EP_MIN_RX_BUF_SIZE      (64)
 
 #define OTX_EP_OQ_INFOPTR_MODE      (0)
 #define OTX_EP_OQ_REFIL_THRESHOLD   (16)
@@ -115,12 +118,23 @@ struct otx_ep_device {
 
 	struct otx_ep_fn_list fn_list;
 
+	uint32_t max_tx_queues;
+
+	uint32_t max_rx_queues;
+
 	/* SR-IOV info */
 	struct otx_ep_sriov_info sriov_info;
 
 	/* Device configuration */
 	const struct otx_ep_config *conf;
+
+	uint64_t rx_offloads;
+
+	uint64_t tx_offloads;
 };
+
+#define OTX_EP_MAX_PKT_SZ 64000U
+#define OTX_EP_MAX_MAC_ADDRS 1
 
 extern int otx_net_ep_logtype;
 #endif  /* _OTX_EP_COMMON_H_ */
