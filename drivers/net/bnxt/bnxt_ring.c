@@ -568,6 +568,17 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 	int rc;
 
+	/*
+	 * Storage for the cp ring is allocated based on worst-case
+	 * usage, the actual size to be used by hw is computed here.
+	 */
+	cp_ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
+
+	if (bp->eth_dev->data->scattered_rx)
+		cp_ring->ring_size *= AGG_RING_SIZE_FACTOR;
+
+	cp_ring->ring_mask = cp_ring->ring_size - 1;
+
 	rc = bnxt_alloc_cmpl_ring(bp, queue_index, cpr);
 	if (rc)
 		goto err_out;
@@ -678,6 +689,17 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+
+		/*
+		 * Storage for the cp ring is allocated based on worst-case
+		 * usage, the actual size to be used by hw is computed here.
+		 */
+		cp_ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
+
+		if (bp->eth_dev->data->scattered_rx)
+			cp_ring->ring_size *= AGG_RING_SIZE_FACTOR;
+
+		cp_ring->ring_mask = cp_ring->ring_size - 1;
 
 		if (bnxt_alloc_cmpl_ring(bp, i, cpr))
 			goto err_out;

@@ -1147,6 +1147,9 @@ static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER)
 		return 1;
 
+	if (eth_dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO)
+		return 1;
+
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		struct bnxt_rx_queue *rxq = eth_dev->data->rx_queues[i];
 
@@ -1395,11 +1398,12 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	bnxt_enable_int(bp);
 
+	eth_dev->data->scattered_rx = bnxt_scattered_rx(eth_dev);
+
 	rc = bnxt_start_nic(bp);
 	if (rc)
 		goto error;
 
-	eth_dev->data->scattered_rx = bnxt_scattered_rx(eth_dev);
 	eth_dev->data->dev_started = 1;
 
 	bnxt_link_update_op(eth_dev, 1);
