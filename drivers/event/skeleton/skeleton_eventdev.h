@@ -5,8 +5,8 @@
 #ifndef __SKELETON_EVENTDEV_H__
 #define __SKELETON_EVENTDEV_H__
 
-#include <rte_eventdev_pmd_pci.h>
-#include <rte_eventdev_pmd_vdev.h>
+#include <eventdev_pmd_pci.h>
+#include <eventdev_pmd_vdev.h>
 
 #ifdef RTE_LIBRTE_PMD_SKELETON_EVENTDEV_DEBUG
 #define PMD_DRV_LOG(level, fmt, args...) \

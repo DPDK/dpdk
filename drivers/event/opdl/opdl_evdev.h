@@ -6,7 +6,7 @@
 #define _OPDL_EVDEV_H_
 
 #include <rte_eventdev.h>
-#include <rte_eventdev_pmd_vdev.h>
+#include <eventdev_pmd_vdev.h>
 #include <rte_atomic.h>
 #include "opdl_ring.h"
 

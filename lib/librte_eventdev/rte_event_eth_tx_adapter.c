@@ -5,7 +5,7 @@
 #include <rte_service_component.h>
 #include <rte_ethdev.h>
 
-#include "rte_eventdev_pmd.h"
+#include "eventdev_pmd.h"
 #include "rte_eventdev_trace.h"
 #include "rte_event_eth_tx_adapter.h"
 

@@ -7,7 +7,7 @@
 #include <rte_bus_pci.h>
 #include <rte_common.h>
 #include <rte_eal.h>
-#include <rte_eventdev_pmd_pci.h>
+#include <eventdev_pmd_pci.h>
 #include <rte_kvargs.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>

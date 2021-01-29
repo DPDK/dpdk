@@ -21,7 +21,7 @@
 #include <rte_cycles.h>
 
 #include "rte_eventdev.h"
-#include "rte_eventdev_pmd.h"
+#include "eventdev_pmd.h"
 #include "rte_eventdev_trace.h"
 #include "rte_event_timer_adapter.h"
 #include "rte_event_timer_adapter_pmd.h"

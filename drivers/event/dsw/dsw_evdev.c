@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 #include <rte_cycles.h>
-#include <rte_eventdev_pmd.h>
-#include <rte_eventdev_pmd_vdev.h>
+#include <eventdev_pmd.h>
+#include <eventdev_pmd_vdev.h>
 #include <rte_random.h>
 #include <rte_ring_elem.h>
 

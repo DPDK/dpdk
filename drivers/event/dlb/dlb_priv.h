@@ -10,8 +10,8 @@
 
 #include <rte_bus_pci.h>
 #include <rte_eventdev.h>
-#include <rte_eventdev_pmd.h>
-#include <rte_eventdev_pmd_pci.h>
+#include <eventdev_pmd.h>
+#include <eventdev_pmd_pci.h>
 #include <rte_pci.h>
 
 #include "dlb_user.h"

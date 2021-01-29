@@ -20,7 +20,7 @@
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_eventdev.h>
-#include <rte_eventdev_pmd.h>
+#include <eventdev_pmd.h>
 #include <rte_io.h>
 #include <rte_kvargs.h>
 #include <rte_log.h>

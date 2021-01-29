@@ -6,7 +6,7 @@
 #define __SSOVF_EVDEV_H__
 
 #include <rte_event_eth_tx_adapter.h>
-#include <rte_eventdev_pmd_vdev.h>
+#include <eventdev_pmd_vdev.h>
 #include <rte_io.h>
 
 #include <octeontx_mbox.h>

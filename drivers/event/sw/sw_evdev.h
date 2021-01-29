@@ -7,7 +7,7 @@
 
 #include "sw_evdev_log.h"
 #include <rte_eventdev.h>
-#include <rte_eventdev_pmd_vdev.h>
+#include <eventdev_pmd_vdev.h>
 #include <rte_atomic.h>
 
 #define SW_DEFAULT_CREDIT_QUANTA 32

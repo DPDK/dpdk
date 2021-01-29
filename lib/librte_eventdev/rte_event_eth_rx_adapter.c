@@ -19,7 +19,7 @@
 #include <rte_interrupts.h>
 
 #include "rte_eventdev.h"
-#include "rte_eventdev_pmd.h"
+#include "eventdev_pmd.h"
 #include "rte_eventdev_trace.h"
 #include "rte_event_eth_rx_adapter.h"
 

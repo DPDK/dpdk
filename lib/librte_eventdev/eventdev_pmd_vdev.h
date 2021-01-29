@@ -24,7 +24,7 @@ extern "C" {
 #include <rte_eal.h>
 #include <rte_bus_vdev.h>
 
-#include "rte_eventdev_pmd.h"
+#include "eventdev_pmd.h"
 
 /**
  * @internal

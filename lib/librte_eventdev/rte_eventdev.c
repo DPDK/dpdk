@@ -35,7 +35,7 @@
 #include <rte_telemetry.h>
 
 #include "rte_eventdev.h"
-#include "rte_eventdev_pmd.h"
+#include "eventdev_pmd.h"
 #include "rte_eventdev_trace.h"
 
 static struct rte_eventdev rte_event_devices[RTE_EVENT_MAX_DEVS];

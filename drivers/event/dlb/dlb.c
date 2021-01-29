@@ -31,7 +31,7 @@
 #include <rte_string_fns.h>
 
 #include <rte_eventdev.h>
-#include <rte_eventdev_pmd.h>
+#include <eventdev_pmd.h>
 
 #include "dlb_priv.h"
 #include "dlb_iface.h"

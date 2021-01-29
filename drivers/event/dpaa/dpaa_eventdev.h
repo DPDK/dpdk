@@ -5,8 +5,8 @@
 #ifndef __DPAA_EVENTDEV_H__
 #define __DPAA_EVENTDEV_H__
 
-#include <rte_eventdev_pmd.h>
-#include <rte_eventdev_pmd_vdev.h>
+#include <eventdev_pmd.h>
+#include <eventdev_pmd_vdev.h>
 #include <rte_atomic.h>
 #include <rte_per_lcore.h>
 

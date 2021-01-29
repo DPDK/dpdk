@@ -3,7 +3,7 @@
  */
 
 #include <rte_eventdev.h>
-#include <rte_eventdev_pmd.h>
+#include <eventdev_pmd.h>
 
 #include "rte_pmd_dlb2.h"
 #include "dlb2_priv.h"

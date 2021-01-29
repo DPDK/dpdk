@@ -26,7 +26,7 @@ extern "C" {
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 
-#include "rte_eventdev_pmd.h"
+#include "eventdev_pmd.h"
 
 typedef int (*eventdev_pmd_pci_callback_t)(struct rte_eventdev *dev);
 
