@@ -92,6 +92,10 @@ New Features
 
   * Added support for 64B completion queue entries
 
+* **Updated Hisilicon hns3 driver.**
+
+  * Added support for traffic management
+
 * **Updated Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:
