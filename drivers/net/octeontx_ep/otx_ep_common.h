@@ -45,7 +45,21 @@
 	rte_write64(val, ((base_addr) + off)); \
 	}
 
-struct otx_ep_device;
+/* OTX_EP IQ request list */
+struct otx_ep_instr_list {
+	void *buf;
+	uint32_t reqtype;
+};
+#define OTX_EP_IQREQ_LIST_SIZE	(sizeof(struct otx_ep_instr_list))
+
+/* Input Queue statistics. Each input queue has four stats fields. */
+struct otx_ep_iq_stats {
+	uint64_t instr_posted; /* Instructions posted to this queue. */
+	uint64_t instr_processed; /* Instructions processed in this queue. */
+	uint64_t instr_dropped; /* Instructions that could not be processed */
+	uint64_t tx_pkts;
+	uint64_t tx_bytes;
+};
 
 /* Structure to define the configuration attributes for each Input queue. */
 struct otx_ep_iq_config {
@@ -57,6 +71,66 @@ struct otx_ep_iq_config {
 
 	/* Pending list size, usually set to the sum of the size of all IQs */
 	uint32_t pending_list_size;
+};
+
+/** The instruction (input) queue.
+ *  The input queue is used to post raw (instruction) mode data or packet data
+ *  to OCTEON TX2 device from the host. Each IQ of a OTX_EP EP VF device has one
+ *  such structure to represent it.
+ */
+struct otx_ep_instr_queue {
+	struct otx_ep_device *otx_ep_dev;
+
+	uint32_t q_no;
+	uint32_t pkt_in_done;
+
+	/* Flag for 64 byte commands. */
+	uint32_t iqcmd_64B:1;
+	uint32_t rsvd:17;
+	uint32_t status:8;
+
+	/* Number of  descriptors in this ring. */
+	uint32_t nb_desc;
+
+	/* Input ring index, where the driver should write the next packet */
+	uint32_t host_write_index;
+
+	/* Input ring index, where the OCTEON TX2 should read the next packet */
+	uint32_t otx_read_index;
+
+	uint32_t reset_instr_cnt;
+
+	/** This index aids in finding the window in the queue where OCTEON TX2
+	 *  has read the commands.
+	 */
+	uint32_t flush_index;
+
+	/* This keeps track of the instructions pending in this queue. */
+	uint64_t instr_pending;
+
+	/* Pointer to the Virtual Base addr of the input ring. */
+	uint8_t *base_addr;
+
+	/* This IQ request list */
+	struct otx_ep_instr_list *req_list;
+
+	/* OTX_EP doorbell register for the ring. */
+	void *doorbell_reg;
+
+	/* OTX_EP instruction count register for this ring. */
+	void *inst_cnt_reg;
+
+	/* Number of instructions pending to be posted to OCTEON TX2. */
+	uint32_t fill_cnt;
+
+	/* Statistics for this input queue. */
+	struct otx_ep_iq_stats stats;
+
+	/* DMA mapped base address of the input descriptor ring. */
+	uint64_t base_addr_dma;
+
+	/* Memory zone */
+	const struct rte_memzone *iq_mz;
 };
 
 /** Descriptor format.
@@ -229,6 +303,8 @@ struct otx_ep_sriov_info {
 
 /* Required functions for each VF device */
 struct otx_ep_fn_list {
+	void (*setup_iq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
+
 	void (*setup_oq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
 
 	void (*setup_device_regs)(struct otx_ep_device *otx_ep);
@@ -258,6 +334,12 @@ struct otx_ep_device {
 
 	uint32_t max_rx_queues;
 
+	/* Num IQs */
+	uint32_t nb_tx_queues;
+
+	/* The input instruction queues */
+	struct otx_ep_instr_queue *instr_queue[OTX_EP_MAX_IOQS_PER_VF];
+
 	/* Num OQs */
 	uint32_t nb_rx_queues;
 
@@ -277,6 +359,10 @@ struct otx_ep_device {
 
 	uint64_t tx_offloads;
 };
+
+int otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no,
+		     int num_descs, unsigned int socket_id);
+int otx_ep_delete_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no);
 
 int otx_ep_setup_oqs(struct otx_ep_device *otx_ep, int oq_no, int num_descs,
 		     int desc_size, struct rte_mempool *mpool,

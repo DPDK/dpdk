@@ -36,6 +36,139 @@ otx_ep_dmazone_free(const struct rte_memzone *mz)
 		otx_ep_err("Memzone free failed : ret = %d\n", ret);
 }
 
+/* Free IQ resources */
+int
+otx_ep_delete_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no)
+{
+	struct otx_ep_instr_queue *iq;
+
+	iq = otx_ep->instr_queue[iq_no];
+	if (iq == NULL) {
+		otx_ep_err("Invalid IQ[%d]\n", iq_no);
+		return -EINVAL;
+	}
+
+	rte_free(iq->req_list);
+	iq->req_list = NULL;
+
+	if (iq->iq_mz) {
+		otx_ep_dmazone_free(iq->iq_mz);
+		iq->iq_mz = NULL;
+	}
+
+	rte_free(otx_ep->instr_queue[iq_no]);
+	otx_ep->instr_queue[iq_no] = NULL;
+
+	otx_ep->nb_tx_queues--;
+
+	otx_ep_info("IQ[%d] is deleted\n", iq_no);
+
+	return 0;
+}
+
+/* IQ initialization */
+static int
+otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
+		     unsigned int socket_id)
+{
+	const struct otx_ep_config *conf;
+	struct otx_ep_instr_queue *iq;
+	uint32_t q_size;
+
+	conf = otx_ep->conf;
+	iq = otx_ep->instr_queue[iq_no];
+	q_size = conf->iq.instr_type * num_descs;
+
+	/* IQ memory creation for Instruction submission to OCTEON TX2 */
+	iq->iq_mz = rte_eth_dma_zone_reserve(otx_ep->eth_dev,
+					     "instr_queue", iq_no, q_size,
+					     OTX_EP_PCI_RING_ALIGN,
+					     socket_id);
+	if (iq->iq_mz == NULL) {
+		otx_ep_err("IQ[%d] memzone alloc failed\n", iq_no);
+		goto iq_init_fail;
+	}
+
+	iq->base_addr_dma = iq->iq_mz->iova;
+	iq->base_addr = (uint8_t *)iq->iq_mz->addr;
+
+	if (num_descs & (num_descs - 1)) {
+		otx_ep_err("IQ[%d] descs not in power of 2\n", iq_no);
+		goto iq_init_fail;
+	}
+
+	iq->nb_desc = num_descs;
+
+	/* Create a IQ request list to hold requests that have been
+	 * posted to OCTEON TX2. This list will be used for freeing the IQ
+	 * data buffer(s) later once the OCTEON TX2 fetched the requests.
+	 */
+	iq->req_list = rte_zmalloc_socket("request_list",
+			(iq->nb_desc * OTX_EP_IQREQ_LIST_SIZE),
+			RTE_CACHE_LINE_SIZE,
+			rte_socket_id());
+	if (iq->req_list == NULL) {
+		otx_ep_err("IQ[%d] req_list alloc failed\n", iq_no);
+		goto iq_init_fail;
+	}
+
+	otx_ep_info("IQ[%d]: base: %p basedma: %lx count: %d\n",
+		     iq_no, iq->base_addr, (unsigned long)iq->base_addr_dma,
+		     iq->nb_desc);
+
+	iq->otx_ep_dev = otx_ep;
+	iq->q_no = iq_no;
+	iq->fill_cnt = 0;
+	iq->host_write_index = 0;
+	iq->otx_read_index = 0;
+	iq->flush_index = 0;
+	iq->instr_pending = 0;
+
+	otx_ep->io_qmask.iq |= (1ull << iq_no);
+
+	/* Set 32B/64B mode for each input queue */
+	if (conf->iq.instr_type == 64)
+		otx_ep->io_qmask.iq64B |= (1ull << iq_no);
+
+	iq->iqcmd_64B = (conf->iq.instr_type == 64);
+
+	/* Set up IQ registers */
+	otx_ep->fn_list.setup_iq_regs(otx_ep, iq_no);
+
+	return 0;
+
+iq_init_fail:
+	return -ENOMEM;
+}
+
+int
+otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no, int num_descs,
+		 unsigned int socket_id)
+{
+	struct otx_ep_instr_queue *iq;
+
+	iq = (struct otx_ep_instr_queue *)rte_zmalloc("otx_ep_IQ", sizeof(*iq),
+						RTE_CACHE_LINE_SIZE);
+	if (iq == NULL)
+		return -ENOMEM;
+
+	otx_ep->instr_queue[iq_no] = iq;
+
+	if (otx_ep_init_instr_queue(otx_ep, iq_no, num_descs, socket_id)) {
+		otx_ep_err("IQ init is failed\n");
+		goto delete_IQ;
+	}
+	otx_ep->nb_tx_queues++;
+
+	otx_ep_info("IQ[%d] is created.\n", iq_no);
+
+	return 0;
+
+delete_IQ:
+	otx_ep_delete_iqs(otx_ep, iq_no);
+	return -ENOMEM;
+}
+
 static void
 otx_ep_droq_reset_indices(struct otx_ep_droq *droq)
 {

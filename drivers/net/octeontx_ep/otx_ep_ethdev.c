@@ -219,11 +219,83 @@ otx_ep_rx_queue_release(void *rxq)
 		otx_ep_err("Failed to delete OQ:%d\n", q_id);
 }
 
+/**
+ * Allocate and initialize SW ring. Initialize associated HW registers.
+ *
+ * @param eth_dev
+ *   Pointer to structure rte_eth_dev
+ *
+ * @param q_no
+ *   Queue number
+ *
+ * @param num_tx_descs
+ *   Number of ringbuffer descriptors
+ *
+ * @param socket_id
+ *   NUMA socket id, used for memory allocations
+ *
+ * @param tx_conf
+ *   Pointer to the structure rte_eth_txconf
+ *
+ * @return
+ *   - On success, return 0
+ *   - On failure, return -errno value
+ */
+static int
+otx_ep_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
+		       uint16_t num_tx_descs, unsigned int socket_id,
+		       const struct rte_eth_txconf *tx_conf __rte_unused)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+	int retval;
+
+	if (q_no >= otx_epvf->max_tx_queues) {
+		otx_ep_err("Invalid tx queue number %u\n", q_no);
+		return -EINVAL;
+	}
+	if (num_tx_descs & (num_tx_descs - 1)) {
+		otx_ep_err("Invalid tx desc number should be pow 2  %u\n",
+			   num_tx_descs);
+		return -EINVAL;
+	}
+
+	retval = otx_ep_setup_iqs(otx_epvf, q_no, num_tx_descs, socket_id);
+
+	if (retval) {
+		otx_ep_err("IQ(TxQ) creation failed.\n");
+		return retval;
+	}
+
+	eth_dev->data->tx_queues[q_no] = otx_epvf->instr_queue[q_no];
+	otx_ep_dbg("tx queue[%d] setup\n", q_no);
+	return 0;
+}
+
+/**
+ * Release the transmit queue/ringbuffer. Called by
+ * the upper layers.
+ *
+ * @param txq
+ *    Opaque pointer to the transmit queue to release
+ *
+ * @return
+ *    - nothing
+ */
+static void
+otx_ep_tx_queue_release(void *txq)
+{
+	struct otx_ep_instr_queue *tq = (struct otx_ep_instr_queue *)txq;
+
+	otx_ep_delete_iqs(tq->otx_ep_dev, tq->q_no);
+}
+
 /* Define our ethernet definitions */
 static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 	.dev_configure		= otx_ep_dev_configure,
 	.rx_queue_setup	        = otx_ep_rx_queue_setup,
 	.rx_queue_release	= otx_ep_rx_queue_release,
+	.tx_queue_setup	        = otx_ep_tx_queue_setup,
+	.tx_queue_release	= otx_ep_tx_queue_release,
 	.dev_infos_get		= otx_ep_dev_info_get,
 };
 
@@ -245,6 +317,15 @@ otx_epdev_exit(struct rte_eth_dev *eth_dev)
 		}
 	}
 	otx_ep_info("Num OQs:%d freed\n", otx_epvf->nb_rx_queues);
+
+	num_queues = otx_epvf->nb_tx_queues;
+	for (q = 0; q < num_queues; q++) {
+		if (otx_ep_delete_iqs(otx_epvf, q)) {
+			otx_ep_err("Failed to delete IQ:%d\n", q);
+			return -EINVAL;
+		}
+	}
+	otx_ep_dbg("Num IQs:%d freed\n", otx_epvf->nb_tx_queues);
 
 	return 0;
 }
