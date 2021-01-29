@@ -22,6 +22,7 @@
 #include <rte_lcore.h>
 #include <rte_common.h>
 #include <rte_pause.h>
+#include <rte_branch_prediction.h>
 
 /**
  * The rte_mcslock_t type.
