@@ -22,7 +22,7 @@
 static const struct rte_pci_id pci_sdp_vf_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
-			       PCI_DEVID_OCTEONTX2_EP_VF)
+			       PCI_DEVID_OCTEONTX2_EP_RAW_VF)
 	},
 	{
 		.vendor_id = 0,
@@ -109,8 +109,8 @@ sdp_chip_specific_setup(struct sdp_device *sdpvf)
 	int ret;
 
 	switch (dev_id) {
-	case PCI_DEVID_OCTEONTX2_EP_VF:
-		sdpvf->chip_id = PCI_DEVID_OCTEONTX2_EP_VF;
+	case PCI_DEVID_OCTEONTX2_EP_RAW_VF:
+		sdpvf->chip_id = PCI_DEVID_OCTEONTX2_EP_RAW_VF;
 		ret = sdp_vf_setup_device(sdpvf);
 
 		break;
