@@ -16,7 +16,6 @@ headers += files(
 	'rte_dev.h',
 	'rte_devargs.h',
 	'rte_eal.h',
-	'rte_eal_interrupts.h',
 	'rte_eal_memconfig.h',
 	'rte_eal_trace.h',
 	'rte_errno.h',
@@ -49,6 +48,7 @@ headers += files(
 	'rte_version.h',
 	'rte_vfio.h',
 )
+indirect_headers += files('rte_eal_interrupts.h')
 
 # special case install the generic headers, since they go in a subdir
 generic_headers = files(

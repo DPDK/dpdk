@@ -2,11 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 arch_headers = files(
-	'rte_atomic_32.h',
-	'rte_atomic_64.h',
 	'rte_atomic.h',
-	'rte_byteorder_32.h',
-	'rte_byteorder_64.h',
 	'rte_byteorder.h',
 	'rte_cpuflags.h',
 	'rte_cycles.h',
@@ -22,4 +18,12 @@ arch_headers = files(
 	'rte_ticketlock.h',
 	'rte_vect.h',
 )
-install_headers(arch_headers, subdir: get_option('include_subdir_arch'))
+arch_indirect_headers = files(
+	'rte_atomic_32.h',
+	'rte_atomic_64.h',
+	'rte_byteorder_32.h',
+	'rte_byteorder_64.h',
+)
+install_headers(arch_headers + arch_indirect_headers,
+		subdir: get_option('include_subdir_arch'))
+dpdk_chkinc_headers += arch_headers

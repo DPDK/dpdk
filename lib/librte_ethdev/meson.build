@@ -11,10 +11,8 @@ sources = files('ethdev_private.c',
 	'rte_tm.c')
 
 headers = files('rte_ethdev.h',
-	'rte_ethdev_core.h',
 	'rte_ethdev_trace.h',
 	'rte_ethdev_trace_fp.h',
-	'rte_eth_ctrl.h',
 	'rte_dev_info.h',
 	'rte_flow.h',
 	'rte_flow_driver.h',
@@ -22,5 +20,8 @@ headers = files('rte_ethdev.h',
 	'rte_mtr_driver.h',
 	'rte_tm.h',
 	'rte_tm_driver.h')
+indirect_headers += files(
+	'rte_ethdev_core.h',
+	'rte_eth_ctrl.h')
 
 deps += ['net', 'kvargs', 'meter', 'telemetry']

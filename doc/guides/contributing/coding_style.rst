@@ -891,6 +891,18 @@ headers
 	installed to $PREFIX/include when ``ninja install`` is run. As with
 	source files, these should be specified using the meson ``files()``
 	function.
+	When ``check_includes`` build option is set to ``true``, each header file
+	has additional checks performed on it, for example to ensure that it is
+	not missing any include statements for dependent headers.
+	For header files which are public, but only included indirectly in
+	applications, these checks can be skipped by using the ``indirect_headers``
+	variable rather than ``headers``.
+
+indirect_headers
+	**Default Value = []**.
+	As with ``headers`` option above, except that the files are not checked
+	for all needed include files as part of a DPDK build when
+	``check_includes`` is set to ``true``.
 
 includes:
 	**Default Value = []**.

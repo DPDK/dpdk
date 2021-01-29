@@ -227,7 +227,7 @@ default_machine='nehalem'
 if ! check_cc_flags "-march=$default_machine" ; then
 	default_machine='corei7'
 fi
-build build-x86-default cc skipABI \
+build build-x86-default cc skipABI -Dcheck_includes=true \
 	-Dlibdir=lib -Dmachine=$default_machine $use_shared
 
 # 32-bit with default compiler

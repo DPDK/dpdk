@@ -98,6 +98,7 @@ F: Makefile
 F: meson.build
 F: meson_options.txt
 F: config/
+F: buildtools/chkincs/
 F: buildtools/call-sphinx-build.py
 F: buildtools/list-dir-globs.py
 F: buildtools/pkg-config/

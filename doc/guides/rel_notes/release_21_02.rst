@@ -138,6 +138,14 @@ New Features
 
   See the :doc:`../compressdevs/mlx5` for more details.
 
+* **Added support for build-time checking of header includes.**
+
+  A new build option ``check_includes`` has been added, which, when enabled,
+  will perform build-time checking on DPDK public header files, to ensure none
+  are missing dependent header includes. This feature, disabled by default, is
+  intended for use by developers contributing to the DPDK SDK itself, and is
+  integrated into the build scripts and automated CI for patch contributions.
+
 
 Removed Items
 -------------
