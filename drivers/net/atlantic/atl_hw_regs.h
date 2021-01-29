@@ -26,7 +26,7 @@
 
 #define mdelay rte_delay_ms
 #define udelay rte_delay_us
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define ARRAY_SIZE(arr) RTE_DIM(arr)
 #define BIT(x)	(1UL << (x))
 
 #define AQ_HW_WAIT_FOR(_B_, _US_, _N_) \

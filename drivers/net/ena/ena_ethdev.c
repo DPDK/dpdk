@@ -47,7 +47,7 @@
 #define ENA_HASH_KEY_SIZE	40
 #define ETH_GSTRING_LEN	32
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define ARRAY_SIZE(x) RTE_DIM(x)
 
 #define ENA_MIN_RING_DESC	128
 

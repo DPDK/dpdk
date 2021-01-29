@@ -175,7 +175,7 @@ static inline uint64_t i40e_read64_addr(volatile void *addr)
 	I40E_PCI_REG_WRITE(I40E_PCI_REG_ADDR((a), (reg)), (value))
 #define flush(a) i40e_read_addr(I40E_PCI_REG_ADDR((a), (I40E_GLGEN_STAT)))
 
-#define ARRAY_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
+#define ARRAY_SIZE(arr) RTE_DIM(arr)
 
 /* memory allocation tracking */
 struct i40e_dma_mem {

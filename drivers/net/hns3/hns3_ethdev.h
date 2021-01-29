@@ -887,7 +887,7 @@ static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
 #define hns3_read_dev(a, reg) \
 	hns3_read_reg((a)->io_base, (reg))
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define ARRAY_SIZE(x) RTE_DIM(x)
 
 #define NEXT_ITEM_OF_ACTION(act, actions, index)                        \
 	do {								\

@@ -42,7 +42,7 @@
 
 #define BIT(nr)	                       (1 << (nr))
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define ARRAY_SIZE(arr) RTE_DIM(arr)
 #endif
 
 #define AXGBE_HZ				250

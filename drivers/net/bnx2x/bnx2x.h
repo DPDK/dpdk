@@ -81,7 +81,7 @@
 #endif
 
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define ARRAY_SIZE(arr) RTE_DIM(arr)
 #endif
 #ifndef DIV_ROUND_UP
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
