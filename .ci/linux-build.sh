@@ -57,6 +57,7 @@ fi
 OPTS="$OPTS -Dmachine=default"
 OPTS="$OPTS --default-library=$DEF_LIB"
 OPTS="$OPTS --buildtype=debugoptimized"
+OPTS="$OPTS -Dcheck_includes=true"
 meson build --werror $OPTS
 ninja -C build
 
