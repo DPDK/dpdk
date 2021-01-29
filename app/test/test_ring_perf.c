@@ -178,7 +178,7 @@ enqueue_dequeue_bulk_helper(const unsigned int flag, const int esize,
 	struct thread_params *p)
 {
 	int ret;
-	const unsigned int iter_shift = 23;
+	const unsigned int iter_shift = 15;
 	const unsigned int iterations = 1 << iter_shift;
 	struct rte_ring *r = p->r;
 	unsigned int bsize = p->size;
