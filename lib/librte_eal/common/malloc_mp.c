@@ -241,8 +241,13 @@ handle_alloc_request(const struct malloc_mp_req *m,
 
 	heap = &mcfg->malloc_heaps[ar->malloc_heap_idx];
 
-	/* for allocations, we must only use internal heaps */
-	if (rte_malloc_heap_socket_is_external(heap->socket_id)) {
+	/*
+	 * for allocations, we must only use internal heaps, but since the
+	 * rte_malloc_heap_socket_is_external() is thread-safe and we're already
+	 * read-locked, we'll have to take advantage of the fact that internal
+	 * socket ID's are always lower than RTE_MAX_NUMA_NODES.
+	 */
+	if (heap->socket_id >= RTE_MAX_NUMA_NODES) {
 		RTE_LOG(ERR, EAL, "Attempting to allocate from external heap\n");
 		return -1;
 	}
