@@ -291,11 +291,13 @@ iavf_init_rss(struct iavf_adapter *adapter)
 	if (ret)
 		return ret;
 
-	/* Set RSS hash configuration based on rss_conf->rss_hf. */
-	ret = iavf_rss_hash_set(adapter, rss_conf->rss_hf, true);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "fail to set default RSS");
-		return ret;
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF) {
+		/* Set RSS hash configuration based on rss_conf->rss_hf. */
+		ret = iavf_rss_hash_set(adapter, rss_conf->rss_hf, true);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "fail to set default RSS");
+			return ret;
+		}
 	}
 
 	return 0;
@@ -1251,21 +1253,23 @@ iavf_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (rss_conf->rss_hf == 0)
 		return 0;
 
-	/* Clear existing RSS. */
-	ret = iavf_set_hena(adapter, 0);
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF) {
+		/* Clear existing RSS. */
+		ret = iavf_set_hena(adapter, 0);
 
-	/* It is a workaround, temporarily allow error to be returned
-	 * due to possible lack of PF handling for hena = 0.
-	 */
-	if (ret)
-		PMD_DRV_LOG(WARNING, "fail to clean existing RSS,"
-			    "lack PF support");
+		/* It is a workaround, temporarily allow error to be returned
+		 * due to possible lack of PF handling for hena = 0.
+		 */
+		if (ret)
+			PMD_DRV_LOG(WARNING, "fail to clean existing RSS,"
+				    "lack PF support");
 
-	/* Set new RSS configuration. */
-	ret = iavf_rss_hash_set(adapter, rss_conf->rss_hf, true);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "fail to set new RSS");
-		return ret;
+		/* Set new RSS configuration. */
+		ret = iavf_rss_hash_set(adapter, rss_conf->rss_hf, true);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "fail to set new RSS");
+			return ret;
+		}
 	}
 
 	return 0;
@@ -2092,6 +2096,24 @@ iavf_dev_filter_ctrl(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static void
+iavf_default_rss_disable(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	int ret = 0;
+
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF) {
+		/* Set hena = 0 to ask PF to cleanup all existing RSS. */
+		ret = iavf_set_hena(adapter, 0);
+		if (ret)
+			/* It is a workaround, temporarily allow error to be
+			 * returned due to possible lack of PF handling for
+			 * hena = 0.
+			 */
+			PMD_INIT_LOG(WARNING, "fail to disable default RSS,"
+				    "lack PF support");
+	}
+}
 
 static int
 iavf_dev_init(struct rte_eth_dev *eth_dev)
@@ -2180,14 +2202,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
-	/* Set hena = 0 to ask PF to cleanup all existing RSS. */
-	ret = iavf_set_hena(adapter, 0);
-	if (ret)
-		/* It is a workaround, temporarily allow error to be returned
-		 * due to possible lack of PF handling for hena = 0.
-		 */
-		PMD_DRV_LOG(WARNING, "fail to disable default RSS,"
-			    "lack PF support");
+	iavf_default_rss_disable(adapter);
 
 	return 0;
 }
