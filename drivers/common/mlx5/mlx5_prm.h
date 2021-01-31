@@ -1474,13 +1474,13 @@ struct mlx5_ifc_qos_cap_bits {
 	u8 reserved_at_4[0x1];
 	u8 packet_pacing_burst_bound[0x1];
 	u8 packet_pacing_typical_size[0x1];
-	u8 flow_meter_srtcm[0x1];
+	u8 flow_meter_old[0x1];
 	u8 reserved_at_8[0x8];
 	u8 log_max_flow_meter[0x8];
 	u8 flow_meter_reg_id[0x8];
 	u8 wqe_rate_pp[0x1];
 	u8 reserved_at_25[0x7];
-	u8 flow_meter_reg_share[0x1];
+	u8 flow_meter[0x1];
 	u8 reserved_at_2e[0x17];
 	u8 packet_pacing_max_rate[0x20];
 	u8 packet_pacing_min_rate[0x20];

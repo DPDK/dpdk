@@ -1145,7 +1145,7 @@ err_secondary:
 		}
 #if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER)
 		if (config->hca_attr.qos.sup &&
-		    config->hca_attr.qos.srtcm_sup &&
+		    config->hca_attr.qos.flow_meter_old &&
 		    config->dv_flow_en) {
 			uint8_t reg_c_mask =
 				config->hca_attr.qos.flow_meter_reg_c_ids;
@@ -1173,7 +1173,7 @@ err_secondary:
 							      - 1 + REG_C_0;
 				priv->mtr_en = 1;
 				priv->mtr_reg_share =
-				      config->hca_attr.qos.flow_meter_reg_share;
+				      config->hca_attr.qos.flow_meter;
 				DRV_LOG(DEBUG, "The REG_C meter uses is %d",
 					priv->mtr_color_reg);
 			}

@@ -38,11 +38,17 @@ struct mlx5_devx_mkey_attr {
 /* HCA qos attributes. */
 struct mlx5_hca_qos_attr {
 	uint32_t sup:1;	/* Whether QOS is supported. */
-	uint32_t srtcm_sup:1; /* Whether srTCM mode is supported. */
+	uint32_t flow_meter_old:1; /* Flow meter is supported, old version. */
 	uint32_t packet_pacing:1; /* Packet pacing is supported. */
 	uint32_t wqe_rate_pp:1; /* Packet pacing WQE rate mode. */
-	uint32_t flow_meter_reg_share:1;
-	/* Whether reg_c share is supported. */
+	uint32_t flow_meter:1;
+	/*
+	 * Flow meter is supported, updated version.
+	 * When flow_meter is 1, it indicates that REG_C sharing is supported.
+	 * If flow_meter is 1, flow_meter_old is also 1.
+	 * Using older driver versions, flow_meter_old can be 1
+	 * while flow_meter is 0.
+	 */
 	uint8_t log_max_flow_meter;
 	/* Power of the maximum supported meters. */
 	uint8_t flow_meter_reg_c_ids;

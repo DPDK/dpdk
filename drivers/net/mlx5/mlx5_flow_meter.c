@@ -136,7 +136,7 @@ mlx5_flow_meter_profile_validate(struct rte_eth_dev *dev,
 					  NULL,
 					  "Meter profile already exists.");
 	if (profile->alg == RTE_MTR_SRTCM_RFC2697) {
-		if (priv->config.hca_attr.qos.srtcm_sup) {
+		if (priv->config.hca_attr.qos.flow_meter_old) {
 			/* Verify support for flow meter parameters. */
 			if (profile->srtcm_rfc2697.cir > 0 &&
 			    profile->srtcm_rfc2697.cir <= MLX5_SRTCM_CIR_MAX &&
@@ -313,7 +313,7 @@ mlx5_flow_mtr_cap_get(struct rte_eth_dev *dev,
 	cap->shared_n_flows_per_mtr_max = 4 << 20;
 	/* 2M flows can share the same meter. */
 	cap->chaining_n_mtrs_per_flow_max = 1; /* Chaining is not supported. */
-	cap->meter_srtcm_rfc2697_n_max = qattr->srtcm_sup ? cap->n_max : 0;
+	cap->meter_srtcm_rfc2697_n_max = qattr->flow_meter_old ? cap->n_max : 0;
 	cap->meter_rate_max = 1ULL << 40; /* 1 Tera tokens per sec. */
 	cap->policer_action_drop_supported = 1;
 	cap->stats_mask = RTE_MTR_STATS_N_BYTES_DROPPED |

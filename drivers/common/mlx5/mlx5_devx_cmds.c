@@ -758,14 +758,14 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			return -1;
 		}
 		hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
-		attr->qos.srtcm_sup =
-				MLX5_GET(qos_cap, hcattr, flow_meter_srtcm);
+		attr->qos.flow_meter_old =
+				MLX5_GET(qos_cap, hcattr, flow_meter_old);
 		attr->qos.log_max_flow_meter =
 				MLX5_GET(qos_cap, hcattr, log_max_flow_meter);
 		attr->qos.flow_meter_reg_c_ids =
 				MLX5_GET(qos_cap, hcattr, flow_meter_reg_id);
-		attr->qos.flow_meter_reg_share =
-				MLX5_GET(qos_cap, hcattr, flow_meter_reg_share);
+		attr->qos.flow_meter =
+				MLX5_GET(qos_cap, hcattr, flow_meter);
 		attr->qos.packet_pacing =
 				MLX5_GET(qos_cap, hcattr, packet_pacing);
 		attr->qos.wqe_rate_pp =
