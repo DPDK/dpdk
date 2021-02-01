@@ -77,6 +77,7 @@ eth_virtio_pci_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		hw->port_id = eth_dev->data->port_id;
 		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), dev);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "Failed to init PCI device\n");

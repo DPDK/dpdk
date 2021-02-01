@@ -1838,7 +1838,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
-	hw->port_id = eth_dev->data->port_id;
 	rte_spinlock_init(&hw->state_lock);
 
 	/* reset device and negotiate default features */
