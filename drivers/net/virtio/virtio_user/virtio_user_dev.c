@@ -340,7 +340,7 @@ static int
 virtio_user_fill_intr_handle(struct virtio_user_dev *dev)
 {
 	uint32_t i;
-	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->hw.port_id];
 
 	if (!eth_dev->intr_handle) {
 		eth_dev->intr_handle = malloc(sizeof(*eth_dev->intr_handle));
@@ -888,7 +888,7 @@ void
 virtio_user_dev_delayed_handler(void *param)
 {
 	struct virtio_user_dev *dev = param;
-	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->hw.port_id];
 
 	if (rte_intr_disable(eth_dev->intr_handle) < 0) {
 		PMD_DRV_LOG(ERR, "interrupt disable failed");
@@ -913,7 +913,7 @@ int
 virtio_user_dev_server_reconnect(struct virtio_user_dev *dev)
 {
 	int ret, old_status;
-	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->hw.port_id];
 	struct virtio_hw *hw = &dev->hw;
 
 	if (!dev->ops->server_reconnect) {

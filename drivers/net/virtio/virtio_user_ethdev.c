@@ -428,7 +428,6 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	hw = &dev->hw;
 
 	hw->port_id = data->port_id;
-	dev->port_id = data->port_id;
 	VIRTIO_OPS(hw) = &virtio_user_ops;
 
 	hw->intr_lsc = 1;

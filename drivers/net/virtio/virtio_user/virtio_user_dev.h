@@ -43,7 +43,6 @@ struct virtio_user_dev {
 	uint64_t	unsupported_features; /* unsupported features mask */
 	uint8_t		status;
 	uint16_t	net_status;
-	uint16_t	port_id;
 	uint8_t		mac_addr[RTE_ETHER_ADDR_LEN];
 	char		path[PATH_MAX];
 	char		*ifname;

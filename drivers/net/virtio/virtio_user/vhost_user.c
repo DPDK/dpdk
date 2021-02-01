@@ -951,7 +951,7 @@ vhost_user_update_link_state(struct virtio_user_dev *dev)
 		r = recv(data->vhostfd, buf, 128, MSG_PEEK);
 		if (r == 0 || (r < 0 && errno != EAGAIN)) {
 			dev->net_status &= (~VIRTIO_NET_S_LINK_UP);
-			PMD_DRV_LOG(ERR, "virtio-user port %u is down", dev->port_id);
+			PMD_DRV_LOG(ERR, "virtio-user port %u is down", dev->hw.port_id);
 
 			/* This function could be called in the process
 			 * of interrupt handling, callback cannot be
