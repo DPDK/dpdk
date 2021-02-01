@@ -831,6 +831,7 @@ vhost_user_setup(struct virtio_user_dev *dev)
 	dev->backend_data = data;
 
 	data->vhostfd = -1;
+	data->listenfd = -1;
 
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
