@@ -7452,12 +7452,12 @@ mlx5_shared_action_flush(struct rte_eth_dev *dev)
 {
 	struct rte_flow_error error;
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_shared_action_rss *action;
+	struct mlx5_shared_action_rss *shared_rss;
 	int ret = 0;
 	uint32_t idx;
 
 	ILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
-		      priv->rss_shared_actions, idx, action, next) {
+		      priv->rss_shared_actions, idx, shared_rss, next) {
 		ret |= mlx5_shared_action_destroy(dev,
 		       (struct rte_flow_shared_action *)(uintptr_t)idx, &error);
 	}
