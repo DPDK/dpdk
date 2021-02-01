@@ -158,9 +158,6 @@ rte_event_pmd_is_valid_dev(uint8_t dev_id)
  *   Event device pointer
  * @param dev_info
  *   Event device information structure
- *
- * @return
- *   Returns 0 on success
  */
 typedef void (*eventdev_info_get_t)(struct rte_eventdev *dev,
 		struct rte_event_dev_info *dev_info);
