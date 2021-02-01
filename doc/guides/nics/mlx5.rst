@@ -433,13 +433,17 @@ Driver options
   A nonzero value enables the compression of CQE on RX side. This feature
   allows to save PCI bandwidth and improve performance. Enabled by default.
   Different compression formats are supported in order to achieve the best
-  performance for different traffic patterns. Hash RSS format is the default.
+  performance for different traffic patterns. Default format depends on
+  Multi-Packet Rx queue configuration: Hash RSS format is used in case
+  MPRQ is disabled, Checksum format is used in case MPRQ is enabled.
 
   Specifying 2 as a ``rxq_cqe_comp_en`` value selects Flow Tag format for
   better compression rate in case of RTE Flow Mark traffic.
   Specifying 3 as a ``rxq_cqe_comp_en`` value selects Checksum format.
   Specifying 4 as a ``rxq_cqe_comp_en`` value selects L3/L4 Header format for
   better compression rate in case of mixed TCP/UDP and IPv4/IPv6 traffic.
+  CQE compression format selection requires DevX to be enabled. If there is
+  no DevX enabled/supported the value is reset to 1 by default.
 
   Supported on:
 

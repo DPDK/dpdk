@@ -126,7 +126,7 @@ struct mlx5_rxq_data {
 	unsigned int strd_scatter_en:1; /* Scattered packets from a stride. */
 	unsigned int lro:1; /* Enable LRO. */
 	unsigned int dynf_meta:1; /* Dynamic metadata is configured. */
-	unsigned int mcqe_format:3; /* Dynamic metadata is configured. */
+	unsigned int mcqe_format:3; /* CQE compression format. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
