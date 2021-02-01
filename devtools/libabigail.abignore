@@ -13,8 +13,6 @@
         name_regexp = _pmd_info$
 
 ; Explicit ignore for driver-only ABI
-[suppress_type]
-        name = eth_dev_ops
 [suppress_function]
         name_regexp = rte_vdev_(|un)register
 
