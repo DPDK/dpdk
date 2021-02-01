@@ -213,13 +213,22 @@ mlx5_rxq_ibv_cq_create(struct rte_eth_dev *dev, uint16_t idx)
 	if (priv->config.cqe_comp && !rxq_data->hw_timestamp) {
 		cq_attr.mlx5.comp_mask |=
 				MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+		rxq_data->byte_mask = UINT32_MAX;
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-		cq_attr.mlx5.cqe_comp_res_format =
-				mlx5_rxq_mprq_enabled(rxq_data) ?
-				MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX :
-				MLX5DV_CQE_RES_FORMAT_HASH;
+		if (mlx5_rxq_mprq_enabled(rxq_data)) {
+			cq_attr.mlx5.cqe_comp_res_format =
+					MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX;
+			rxq_data->mcqe_format =
+					MLX5_CQE_RESP_FORMAT_CSUM_STRIDX;
+		} else {
+			cq_attr.mlx5.cqe_comp_res_format =
+					MLX5DV_CQE_RES_FORMAT_HASH;
+			rxq_data->mcqe_format =
+					MLX5_CQE_RESP_FORMAT_HASH;
+		}
 #else
 		cq_attr.mlx5.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
+		rxq_data->mcqe_format = MLX5_CQE_RESP_FORMAT_HASH;
 #endif
 		/*
 		 * For vectorized Rx, it must not be doubled in order to
