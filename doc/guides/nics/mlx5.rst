@@ -1497,10 +1497,10 @@ Supported hardware offloads
    |                       | |               | | rdma-core 23  |
    |                       | |               | | ConnectX-4    |
    +-----------------------+-----------------+-----------------+
-   | RSS shared action     | |               | | DPDK 20.11    |
-   |                       | |     N/A       | | OFED 5.2      |
-   |                       | |               | | rdma-core 33  |
-   |                       | |               | | ConnectX-5    |
+   | Shared action         | |               | |               |
+   |                       | | :numref:`sact`| | :numref:`sact`|
+   |                       | |               | |               |
+   |                       | |               | |               |
    +-----------------------+-----------------+-----------------+
    | | VLAN                | | DPDK 19.11    | | DPDK 19.11    |
    | | (of_pop_vlan /      | | OFED 4.7-1    | | OFED 4.7-1    |
@@ -1580,11 +1580,6 @@ Supported hardware offloads
    |                       | |  rdma-core 32 | | N/A           |
    |                       | |  ConnectX-5   | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
-   | Age shared action     | |  DPDK 20.11   | | DPDK 20.11    |
-   |                       | |  OFED 5.2     | | OFED 5.2      |
-   |                       | |  rdma-core 32 | | rdma-core 32  |
-   |                       | |  ConnectX-6 Dx| | ConnectX-6 Dx |
-   +-----------------------+-----------------+-----------------+
    | Encapsulation         | |  DPDK 21.02   | | DPDK 21.02    |
    | GTP PSC               | |  OFED 5.2     | | OFED 5.2      |
    |                       | |  rdma-core 35 | | rdma-core 35  |
@@ -1599,6 +1594,23 @@ Supported hardware offloads
    |                       | | OFED 5.2      | | OFED 5.2      |
    |                       | | rdma-core 35  | | rdma-core 35  |
    |                       | | ConnectX-5    | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
+
+.. table:: Minimal SW/HW versions for shared action offload
+   :name: sact
+
+   +-----------------------+-----------------+-----------------+
+   | Shared Action         | with E-Switch   | with NIC        |
+   +=======================+=================+=================+
+   | RSS                   | |               | | DPDK 20.11    |
+   |                       | |     N/A       | | OFED 5.2      |
+   |                       | |               | | rdma-core 33  |
+   |                       | |               | | ConnectX-5    |
+   +-----------------------+-----------------+-----------------+
+   | Age                   | |  DPDK 20.11   | | DPDK 20.11    |
+   |                       | |  OFED 5.2     | | OFED 5.2      |
+   |                       | |  rdma-core 32 | | rdma-core 32  |
+   |                       | |  ConnectX-6 Dx| | ConnectX-6 Dx |
    +-----------------------+-----------------+-----------------+
 
 Notes for metadata
