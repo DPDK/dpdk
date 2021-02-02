@@ -11,7 +11,7 @@
 
 #define MAX_VHOST_DEVICE 1024
 #define IOAT_RING_SIZE 4096
-#define MAX_ENQUEUED_SIZE 512
+#define MAX_ENQUEUED_SIZE 4096
 
 struct dma_info {
 	struct rte_pci_addr addr;

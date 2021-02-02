@@ -51,7 +51,6 @@ struct vhost_dev {
 	uint64_t features;
 	size_t hdr_len;
 	uint16_t nr_vrings;
-	uint64_t nr_async_pkts;
 	struct rte_vhost_memory *mem;
 	struct device_statistics stats;
 	TAILQ_ENTRY(vhost_dev) global_vdev_entry;

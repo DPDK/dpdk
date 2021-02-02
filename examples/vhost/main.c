@@ -831,11 +831,8 @@ complete_async_pkts(struct vhost_dev *vdev)
 
 	complete_count = rte_vhost_poll_enqueue_completed(vdev->vid,
 					VIRTIO_RXQ, p_cpl, MAX_PKT_BURST);
-	if (complete_count) {
-		__atomic_sub_fetch(&vdev->nr_async_pkts, complete_count,
-			__ATOMIC_SEQ_CST);
+	if (complete_count)
 		free_pkts(p_cpl, complete_count);
-	}
 }
 
 static __rte_always_inline void
@@ -878,8 +875,6 @@ drain_vhost(struct vhost_dev *vdev)
 		complete_async_pkts(vdev);
 		ret = rte_vhost_submit_enqueue_burst(vdev->vid, VIRTIO_RXQ,
 					m, nr_xmit, m_cpu_cpl, &cpu_cpl_nr);
-		__atomic_add_fetch(&vdev->nr_async_pkts, ret - cpu_cpl_nr,
-				__ATOMIC_SEQ_CST);
 
 		if (cpu_cpl_nr)
 			free_pkts(m_cpu_cpl, cpu_cpl_nr);
@@ -1210,9 +1205,6 @@ drain_eth_rx(struct vhost_dev *vdev)
 		enqueue_count = rte_vhost_submit_enqueue_burst(vdev->vid,
 					VIRTIO_RXQ, pkts, rx_count,
 					m_cpu_cpl, &cpu_cpl_nr);
-		__atomic_add_fetch(&vdev->nr_async_pkts,
-					enqueue_count - cpu_cpl_nr,
-					__ATOMIC_SEQ_CST);
 		if (cpu_cpl_nr)
 			free_pkts(m_cpu_cpl, cpu_cpl_nr);
 
