@@ -24,7 +24,6 @@ flags_common = [
 	['RTE_ARCH_ARM64', true],
 	['RTE_CACHE_LINE_SIZE', 128]
 ]
-native_machine_args = ['-mcpu=native']
 
 ## Part numbers are specific to Arm implementers
 # implementer specific aarch64 flags have middle priority
@@ -193,7 +192,6 @@ if dpdk_conf.get('RTE_ARCH_32')
 	machine_args += '-mfpu=neon'
 else
 	# aarch64 build
-	use_native_machine_args = false
 	if not meson.is_cross_build()
 		if machine == 'default'
 			# default build
@@ -213,7 +211,6 @@ else
 			else
 				error('Error when getting Arm Implementer ID and part number.')
 			endif
-			use_native_machine_args = true
 		endif
 	else
 		# cross build
@@ -249,12 +246,7 @@ else
 
 	# apply supported machine args
 	machine_args = [] # Clear previous machine args
-	if use_native_machine_args
-		candidate_machine_args = native_machine_args
-	else
-		candidate_machine_args = part_number_config['machine_args']
-	endif
-	foreach flag: candidate_machine_args
+	foreach flag: part_number_config['machine_args']
 		if cc.has_argument(flag)
 			machine_args += flag
 		endif
