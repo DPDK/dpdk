@@ -141,6 +141,13 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	}
 
 	/*
+	 * 8000-series EF10 hardware requires that innermost IP length
+	 * be greater than or equal to the value which each segment is
+	 * supposed to have; otherwise, TCP checksum will be incorrect.
+	 */
+	sfc_tso_innermost_ip_fix_len(m, tsoh, nh_off);
+
+	/*
 	 * Handle IP header. Tx prepare has debug-only checks that offload flags
 	 * are correctly filled in in TSO mbuf. Use zero IPID if there is no
 	 * IPv4 flag. If the packet is still IPv4, HW will simply start from

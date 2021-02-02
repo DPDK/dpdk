@@ -482,6 +482,25 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 	}
 
 	/*
+	 * 8000-series EF10 hardware requires that innermost IP length
+	 * be greater than or equal to the value which each segment is
+	 * supposed to have; otherwise, TCP checksum will be incorrect.
+	 *
+	 * The same concern applies to outer UDP datagram length field.
+	 */
+	switch (m_seg->ol_flags & PKT_TX_TUNNEL_MASK) {
+	case PKT_TX_TUNNEL_VXLAN:
+		/* FALLTHROUGH */
+	case PKT_TX_TUNNEL_GENEVE:
+		sfc_tso_outer_udp_fix_len(first_m_seg, hdr_addr);
+		break;
+	default:
+		break;
+	}
+
+	sfc_tso_innermost_ip_fix_len(first_m_seg, hdr_addr, iph_off);
+
+	/*
 	 * Tx prepare has debug-only checks that offload flags are correctly
 	 * filled in in TSO mbuf. Use zero IPID if there is no IPv4 flag.
 	 * If the packet is still IPv4, HW will simply start from zero IPID.
