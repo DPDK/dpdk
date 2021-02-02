@@ -723,6 +723,11 @@ When programming cloud filters for IPv4/6_UDP/TCP/SCTP with SRC port only or DST
 it will make any cloud filter using inner_vlan or tunnel key invalid. Default configuration will be
 recovered only by NIC core reset.
 
+Mirror rule limitation for X722
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Due to firmware restriction of X722, the same VSI cannot have more than one mirror rule.
+
 High Performance of Small Packets on 40GbE NIC
 ----------------------------------------------
 
