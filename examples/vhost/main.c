@@ -861,7 +861,7 @@ static __rte_always_inline void
 drain_vhost(struct vhost_dev *vdev)
 {
 	uint16_t ret;
-	uint64_t buff_idx = rte_lcore_id() * MAX_VHOST_DEVICE + vdev->vid;
+	uint32_t buff_idx = rte_lcore_id() * MAX_VHOST_DEVICE + vdev->vid;
 	uint16_t nr_xmit = vhost_txbuff[buff_idx]->len;
 	struct rte_mbuf **m = vhost_txbuff[buff_idx]->m_table;
 
