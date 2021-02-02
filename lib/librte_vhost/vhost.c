@@ -365,7 +365,8 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		vhost_free_async_mem(vq);
 	}
 	rte_free(vq->batch_copy_elems);
-	rte_mempool_free(vq->iotlb_pool);
+	if (vq->iotlb_pool)
+		rte_mempool_free(vq->iotlb_pool);
 	rte_free(vq->log_cache);
 	rte_free(vq);
 }
@@ -569,8 +570,6 @@ init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 	vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 	vq->callfd = VIRTIO_UNINITIALIZED_EVENTFD;
 	vq->notif_enable = VIRTIO_UNINITIALIZED_NOTIF;
-
-	vhost_user_iotlb_init(dev, vring_idx);
 }
 
 static void
