@@ -174,6 +174,12 @@ New Features
 
   See the :doc:`../compressdevs/mlx5` for more details.
 
+* **Added python script to run crypto perf tests and graph the results.**
+
+  A new python script has been added to automate running crypto performance
+  tests and output graphed results to PDF files.
+  See the :doc:`../tools/cryptoperf` guide for more details.
+
 * **Added support for build-time checking of header includes.**
 
   A new build option ``check_includes`` has been added, which, when enabled,
