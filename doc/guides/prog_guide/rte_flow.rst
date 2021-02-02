@@ -2756,6 +2756,13 @@ Flow utilize shared action by handle as returned from
 The behaviour of the shared action defined by ``action`` argument of type
 ``struct rte_flow_action`` passed to ``rte_flow_shared_action_create()``.
 
+Multiple flows can use the same shared action.
+The shared action can be in-place updated by ``rte_flow_shared_action_update()``
+without destroying flow and creating flow again.
+
+The shared action specified data (e.g. counter) can be queried by
+``rte_flow_shared_action_query()``.
+
 .. _table_rte_flow_shared_action:
 
 .. table:: SHARED
