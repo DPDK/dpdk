@@ -3118,6 +3118,8 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to rte_eth_dev structure.
+ * @param[in] action
+ *   Pointer to the action structure.
  * @param[in] action_flags
  *   Holds the actions detected until now.
  * @param[out] error
@@ -3128,17 +3130,25 @@ flow_dv_validate_action_set_tag(struct rte_eth_dev *dev,
  */
 static int
 flow_dv_validate_action_count(struct rte_eth_dev *dev,
+			      const struct rte_flow_action *action,
 			      uint64_t action_flags,
 			      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_count *count;
 
+	if (!priv->config.devx)
+		goto notsup_err;
 	if (action_flags & MLX5_FLOW_ACTION_COUNT)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "duplicate count actions set");
-	if (!priv->config.devx)
-		goto notsup_err;
+	count = (const struct rte_flow_action_count *)action->conf;
+	if (count && count->shared && (action_flags & MLX5_FLOW_ACTION_AGE) &&
+	    !priv->sh->flow_hit_aso_en)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "old age and shared count combination is not supported");
 #ifdef HAVE_IBV_FLOW_DEVX_COUNTERS
 	return 0;
 #endif
@@ -5081,6 +5091,8 @@ flow_dv_modify_create_cb(struct mlx5_hlist *list, uint64_t key __rte_unused,
  *   Pointer to the RSS action.
  * @param[out] sample_rss
  *   Pointer to the RSS action in sample action list.
+ * @param[out] count
+ *   Pointer to the COUNT action in sample action list.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -5095,6 +5107,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			       uint64_t item_flags,
 			       const struct rte_flow_action_rss *rss,
 			       const struct rte_flow_action_rss **sample_rss,
+			       const struct rte_flow_action_count **count,
 			       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5189,16 +5202,13 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			if (*action_flags & MLX5_FLOW_ACTION_COUNT)
-				return rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						action,
-						"duplicate count action set");
-			ret = flow_dv_validate_action_count(dev,
-							    sub_action_flags,
-							    error);
+			ret = flow_dv_validate_action_count
+				(dev, act,
+				 *action_flags | sub_action_flags,
+				 error);
 			if (ret < 0)
 				return ret;
+			*count = act->conf;
 			sub_action_flags |= MLX5_FLOW_ACTION_COUNT;
 			*action_flags |= MLX5_FLOW_ACTION_COUNT;
 			++actions_n;
@@ -6017,6 +6027,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	const struct rte_flow_action_raw_encap *encap;
 	const struct rte_flow_action_rss *rss = NULL;
 	const struct rte_flow_action_rss *sample_rss = NULL;
+	const struct rte_flow_action_count *count = NULL;
+	const struct rte_flow_action_count *sample_count = NULL;
 	const struct rte_flow_item_tcp nic_tcp_mask = {
 		.hdr = {
 			.tcp_flags = 0xFF,
@@ -6528,10 +6540,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = flow_dv_validate_action_count(dev, action_flags,
+			ret = flow_dv_validate_action_count(dev, actions,
+							    action_flags,
 							    error);
 			if (ret < 0)
 				return ret;
+			count = actions->conf;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			++actions_n;
 			break;
@@ -6797,6 +6811,24 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							  error);
 			if (ret < 0)
 				return ret;
+			/*
+			 * Validate the regular AGE action (using counter)
+			 * mutual exclusion with share counter actions.
+			 */
+			if (!priv->sh->flow_hit_aso_en) {
+				if (count && count->shared)
+					return rte_flow_error_set
+						(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"old age and shared count combination is not supported");
+				if (sample_count)
+					return rte_flow_error_set
+						(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"old age action and count must be in the same sub flow");
+			}
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			++actions_n;
 			break;
@@ -6833,6 +6865,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							     actions, dev,
 							     attr, item_flags,
 							     rss, &sample_rss,
+							     &sample_count,
 							     error);
 			if (ret < 0)
 				return ret;
