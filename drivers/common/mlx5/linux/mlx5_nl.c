@@ -758,11 +758,21 @@ mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
 				break;
 		if (j != n)
 			continue;
-		/* Find the first entry available. */
-		for (j = 0; j != n; ++j) {
-			if (rte_is_zero_ether_addr(&mac_addrs[j])) {
-				mac_addrs[j] = macs[i];
-				break;
+		if (rte_is_multicast_ether_addr(&macs[i])) {
+			/* Find the first entry available. */
+			for (j = MLX5_MAX_UC_MAC_ADDRESSES; j != n; ++j) {
+				if (rte_is_zero_ether_addr(&mac_addrs[j])) {
+					mac_addrs[j] = macs[i];
+					break;
+				}
+			}
+		} else {
+			/* Find the first entry available. */
+			for (j = 0; j != MLX5_MAX_UC_MAC_ADDRESSES; ++j) {
+				if (rte_is_zero_ether_addr(&mac_addrs[j])) {
+					mac_addrs[j] = macs[i];
+					break;
+				}
 			}
 		}
 	}
