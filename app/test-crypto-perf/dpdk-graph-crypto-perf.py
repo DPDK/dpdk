@@ -192,10 +192,23 @@ def run_test(test_cmd, test, grapher, params, verbose):
     return
 
 
+def parse_parameters(config_parameters):
+    """Convert the JSON config to list of strings."""
+    params = []
+    for (key, val) in config_parameters:
+        if isinstance(val, bool):
+            params.append("--" + key if val is True else "")
+        elif len(key) == 1:
+            params.append("-" + key)
+            params.append(val)
+        else:
+            params.append("--" + key + "=" + val)
+    return params
+
+
 def run_test_suite(test_cmd, suite_config, verbose):
     """Parse test cases for the test suite and run each test."""
     print("\nRunning Test Suite: " + suite_config['suite'])
-    default_params = []
     graph_path = os.path.join(suite_config['output_path'], GRAPH_DIR,
                               suite_config['suite'], "")
     grapher = Grapher(suite_config['config_name'], suite_config['suite'],
@@ -204,18 +217,10 @@ def run_test_suite(test_cmd, suite_config, verbose):
     if 'default' not in test_cases:
         print("Test Suite must contain default case, skipping")
         return
-    for (key, val) in test_cases['default']['eal'].items():
-        if len(key) == 1:
-            default_params.append("-" + key + " " + val)
-        else:
-            default_params.append("--" + key + "=" + val)
 
+    default_params = parse_parameters(test_cases['default']['eal'].items())
     default_params.append("--")
-    for (key, val) in test_cases['default']['app'].items():
-        if isinstance(val, bool):
-            default_params.append("--" + key if val is True else "")
-        else:
-            default_params.append("--" + key + "=" + val)
+    default_params += parse_parameters(test_cases['default']['app'].items())
 
     if 'ptest' not in test_cases['default']['app']:
         print("Test Suite must contain default ptest value, skipping")
@@ -224,13 +229,7 @@ def run_test_suite(test_cmd, suite_config, verbose):
 
     for (test, params) in {k: v for (k, v) in test_cases.items() if
                            k != "default"}.items():
-        extra_params = []
-        for (key, val) in params.items():
-            if isinstance(val, bool):
-                extra_params.append("--" + key if val is True else "")
-            else:
-                extra_params.append("--" + key + "=" + val)
-
+        extra_params = parse_parameters(params.items())
         run_test(test_cmd, test, grapher, default_params + extra_params,
                  verbose)
 
