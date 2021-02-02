@@ -126,6 +126,9 @@ struct mlx5_hca_attr {
 	uint32_t regexp_num_of_engines;
 	uint32_t log_max_ft_sampler_num:8;
 	uint32_t geneve_tlv_opt;
+	uint32_t cqe_compression:1;
+	uint32_t mini_cqe_resp_flow_tag:1;
+	uint32_t mini_cqe_resp_l3_l4_tag:1;
 	struct mlx5_hca_qos_attr qos;
 	struct mlx5_hca_vdpa_attr vdpa;
 	int log_max_qp_sz;

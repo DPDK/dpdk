@@ -1444,7 +1444,10 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 max_geneve_tlv_options[0x8];
 	u8 reserved_at_568[0x3];
 	u8 max_geneve_tlv_option_data_len[0x5];
-	u8 reserved_at_570[0x4c];
+	u8 reserved_at_570[0x49];
+	u8 mini_cqe_resp_l3_l4_tag[0x1];
+	u8 mini_cqe_resp_flow_tag[0x1];
+	u8 enhanced_cqe_compression[0x1];
 	u8 mini_cqe_resp_stride_index[0x1];
 	u8 cqe_128_always[0x1];
 	u8 cqe_compression_128[0x1];
