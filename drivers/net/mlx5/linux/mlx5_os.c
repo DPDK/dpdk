@@ -670,7 +670,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int err = 0;
 	unsigned int hw_padding = 0;
 	unsigned int mps;
-	unsigned int cqe_comp;
 	unsigned int tunnel_en = 0;
 	unsigned int mpls_en = 0;
 	unsigned int swp = 0;
@@ -862,12 +861,8 @@ err_secondary:
 			mprq_caps.max_single_wqe_log_num_of_strides;
 	}
 #endif
-	if (RTE_CACHE_LINE_SIZE == 128 &&
-	    !(dv_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP))
-		cqe_comp = 0;
-	else
-		cqe_comp = 1;
-	config->cqe_comp = cqe_comp;
+	/* Rx CQE compression is enabled by default. */
+	config->cqe_comp = 1;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
 		tunnel_en = ((dv_attr.tunnel_offloads_caps &
@@ -1098,10 +1093,6 @@ err_secondary:
 		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
 		config->mps == MLX5_MPW ? "legacy " : "",
 		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
-	if (config->cqe_comp && !cqe_comp) {
-		DRV_LOG(WARNING, "Rx CQE compression isn't supported");
-		config->cqe_comp = 0;
-	}
 	if (config->devx) {
 		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config->hca_attr);
 		if (err) {
@@ -1200,6 +1191,25 @@ err_secondary:
 		}
 #endif
 	}
+	if (config->cqe_comp && RTE_CACHE_LINE_SIZE == 128 &&
+	    !(dv_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP)) {
+		DRV_LOG(WARNING, "Rx CQE 128B compression is not supported");
+		config->cqe_comp = 0;
+	}
+	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_FTAG_STRIDX &&
+	    (!config->devx || !config->hca_attr.mini_cqe_resp_flow_tag)) {
+		DRV_LOG(WARNING, "Flow Tag CQE compression"
+				 " format isn't supported.");
+		config->cqe_comp = 0;
+	}
+	if (config->cqe_comp_fmt == MLX5_CQE_RESP_FORMAT_L34H_STRIDX &&
+	    (!config->devx || !config->hca_attr.mini_cqe_resp_l3_l4_tag)) {
+		DRV_LOG(WARNING, "L3/L4 Header CQE compression"
+				 " format isn't supported.");
+		config->cqe_comp = 0;
+	}
+	DRV_LOG(DEBUG, "Rx CQE compression is %ssupported",
+			config->cqe_comp ? "" : "not ");
 	if (config->tx_pp) {
 		DRV_LOG(DEBUG, "Timestamp counter frequency %u kHz",
 			config->hca_attr.dev_freq_khz);

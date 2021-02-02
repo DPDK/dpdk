@@ -720,6 +720,11 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->flow_hit_aso = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 					   general_obj_types) &
 				MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_HIT_ASO);
+	attr->cqe_compression = MLX5_GET(cmd_hca_cap, hcattr, cqe_compression);
+	attr->mini_cqe_resp_flow_tag = MLX5_GET(cmd_hca_cap, hcattr,
+						mini_cqe_resp_flow_tag);
+	attr->mini_cqe_resp_l3_l4_tag = MLX5_GET(cmd_hca_cap, hcattr,
+						 mini_cqe_resp_l3_l4_tag);
 	if (attr->qos.sup) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
 			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
