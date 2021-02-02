@@ -545,8 +545,7 @@ The following are the application optional command-line options:
 
 * ``-h, --help``
 
-    Display usage information and quit
-
+  Display usage information and quit.
 
 * ``-f <file_path>, --file-path <file_path>``
 
@@ -555,8 +554,8 @@ The following are the application optional command-line options:
 
   .. code-block:: console
 
-     ./dpdk-graph-crypto-perf -f <build_dir>/app/dpdk-test-crypto-perf
-
+     ./dpdk-graph-crypto-perf <config_file> \
+         -f <build_dir>/app/dpdk-test-crypto-perf
 
 * ``-t <test_suite_list>, --test-suites <test_suite_list>``
 
@@ -574,7 +573,6 @@ The following are the application optional command-line options:
 
      ./dpdk-graph-crypto-perf configs/crypto-perf-aesni-mb -t throughput latency
 
-
 * ``-o <output_path>, --output-path <output_path>``
 
   Specify directory to use for output files.
@@ -583,7 +581,6 @@ The following are the application optional command-line options:
   .. code-block:: console
 
      ./dpdk-graph-crypto-perf <config_file> -o <output_dir>
-
 
 * ``-v, --verbose``
 
