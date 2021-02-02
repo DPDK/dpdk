@@ -96,6 +96,10 @@ New Features
 
   * Added support for traffic management
 
+* **Updated Intel i40e driver.**
+
+  * Added support on Windows.
+
 * **Updated Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:
