@@ -1595,6 +1595,8 @@ enic_flow_parse(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	enic_filter->type = enic->flow_filter_mode;
+	if (enic->adv_filters)
+		enic_filter->type = FILTER_DPDK_1;
 	ret = enic_copy_filter(pattern, enic_filter_cap, enic,
 				       enic_filter, error);
 	return ret;
