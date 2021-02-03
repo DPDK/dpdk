@@ -3894,6 +3894,26 @@ hns3_buffer_alloc(struct hns3_hw *hw)
 }
 
 static int
+hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
+{
+	struct hns3_firmware_compat_cmd *req;
+	struct hns3_cmd_desc desc;
+	uint32_t compat = 0;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_FIRMWARE_COMPAT_CFG, false);
+	req = (struct hns3_firmware_compat_cmd *)desc.data;
+
+	if (is_init) {
+		hns3_set_bit(compat, HNS3_LINK_EVENT_REPORT_EN_B, 1);
+		hns3_set_bit(compat, HNS3_NCSI_ERROR_REPORT_EN_B, 0);
+	}
+
+	req->compat = rte_cpu_to_le_32(compat);
+
+	return hns3_cmd_send(hw, &desc, 1);
+}
+
+static int
 hns3_mac_init(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
@@ -4542,6 +4562,15 @@ hns3_init_hardware(struct hns3_adapter *hns)
 		goto err_mac_init;
 	}
 
+	/*
+	 * Requiring firmware to enable some features, driver can
+	 * still work without it.
+	 */
+	ret = hns3_firmware_compat_config(hw, true);
+	if (ret)
+		PMD_INIT_LOG(WARNING, "firmware compatible features not "
+			     "supported, ret = %d.", ret);
+
 	return 0;
 
 err_mac_init:
@@ -4676,6 +4705,7 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 err_enable_intr:
 	hns3_fdir_filter_uninit(hns);
 err_fdir:
+	(void)hns3_firmware_compat_config(hw, false);
 	hns3_uninit_umv_space(hw);
 err_init_hw:
 	hns3_tqp_stats_uninit(hw);
@@ -4709,6 +4739,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	(void)hns3_config_gro(hw, false);
 	hns3_promisc_uninit(hw);
 	hns3_fdir_filter_uninit(hns);
+	(void)hns3_firmware_compat_config(hw, false);
 	hns3_uninit_umv_space(hw);
 	hns3_tqp_stats_uninit(hw);
 	hns3_pf_disable_irq0(hw);
