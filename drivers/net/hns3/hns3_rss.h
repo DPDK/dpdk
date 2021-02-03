@@ -24,9 +24,8 @@
 	ETH_RSS_L4_DST_ONLY)
 
 #define HNS3_RSS_IND_TBL_SIZE	512 /* The size of hash lookup table */
+#define HNS3_RSS_IND_TBL_SIZE_MAX 2048
 #define HNS3_RSS_KEY_SIZE	40
-#define HNS3_RSS_CFG_TBL_NUM \
-	(HNS3_RSS_IND_TBL_SIZE / HNS3_RSS_CFG_TBL_SIZE)
 #define HNS3_RSS_SET_BITMAP_MSK	0xffff
 
 #define HNS3_RSS_HASH_ALGO_TOEPLITZ	0
@@ -45,7 +44,7 @@ struct hns3_rss_conf {
 	uint8_t hash_algo; /* hash function type definited by hardware */
 	uint8_t key[HNS3_RSS_KEY_SIZE];  /* Hash key */
 	struct hns3_rss_tuple_cfg rss_tuple_sets;
-	uint16_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE]; /* Shadow table */
+	uint16_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE_MAX];
 	uint16_t queue[HNS3_RSS_QUEUES_BUFFER_NUM]; /* Queues indices to use */
 	bool valid; /* check if RSS rule is valid */
 	/*

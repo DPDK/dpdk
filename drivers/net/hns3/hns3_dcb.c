@@ -634,7 +634,7 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 	 * stage of the reset process.
 	 */
 	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
-		for (i = 0; i < HNS3_RSS_IND_TBL_SIZE; i++)
+		for (i = 0; i < hw->rss_ind_tbl_size; i++)
 			rss_cfg->rss_indirection_tbl[i] =
 							i % hw->alloc_rss_size;
 	}
