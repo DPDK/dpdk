@@ -130,7 +130,7 @@ hns3_proc_imp_reset_event(struct hns3_adapter *hns, bool is_delay,
 {
 	struct hns3_hw *hw = &hns->hw;
 
-	rte_atomic16_set(&hw->reset.disable_cmd, 1);
+	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 	hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
 	*vec_val = BIT(HNS3_VECTOR0_IMPRESET_INT_B);
 	if (!is_delay) {
@@ -150,7 +150,7 @@ hns3_proc_global_reset_event(struct hns3_adapter *hns, bool is_delay,
 {
 	struct hns3_hw *hw = &hns->hw;
 
-	rte_atomic16_set(&hw->reset.disable_cmd, 1);
+	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 	hns3_atomic_set_bit(HNS3_GLOBAL_RESET, &hw->reset.pending);
 	*vec_val = BIT(HNS3_VECTOR0_GLOBALRESET_INT_B);
 	if (!is_delay) {
@@ -5070,7 +5070,7 @@ hns3_do_stop(struct hns3_adapter *hns)
 		return ret;
 	hw->mac.link_status = ETH_LINK_DOWN;
 
-	if (rte_atomic16_read(&hw->reset.disable_cmd) == 0) {
+	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED) == 0) {
 		hns3_configure_all_mac_addr(hns, true);
 		ret = hns3_reset_all_tqps(hns);
 		if (ret) {
@@ -5613,7 +5613,7 @@ hns3_prepare_reset(struct hns3_adapter *hns)
 		 * any mailbox handling or command to firmware is only valid
 		 * after hns3_cmd_init is called.
 		 */
-		rte_atomic16_set(&hw->reset.disable_cmd, 1);
+		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 		hw->reset.stats.request_cnt++;
 		break;
 	case HNS3_IMP_RESET:
@@ -5673,7 +5673,7 @@ hns3_stop_service(struct hns3_adapter *hns)
 	 * from table space. Hence, for function reset software intervention is
 	 * required to delete the entries
 	 */
-	if (rte_atomic16_read(&hw->reset.disable_cmd) == 0)
+	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED) == 0)
 		hns3_configure_all_mc_mac_addr(hns, true);
 	rte_spinlock_unlock(&hw->lock);
 
@@ -5795,8 +5795,10 @@ hns3_reset_service(void *param)
 	 * The interrupt may have been lost. It is necessary to handle
 	 * the interrupt to recover from the error.
 	 */
-	if (rte_atomic16_read(&hns->hw.reset.schedule) == SCHEDULE_DEFERRED) {
-		rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_REQUESTED);
+	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
+			    SCHEDULE_DEFERRED) {
+		__atomic_store_n(&hw->reset.schedule, SCHEDULE_REQUESTED,
+				  __ATOMIC_RELAXED);
 		hns3_err(hw, "Handling interrupts in delayed tasks");
 		hns3_interrupt_handler(&rte_eth_devices[hw->data->port_id]);
 		reset_level = hns3_get_reset_level(hns, &hw->reset.pending);
@@ -5805,7 +5807,7 @@ hns3_reset_service(void *param)
 			hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
 		}
 	}
-	rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_NONE);
+	__atomic_store_n(&hw->reset.schedule, SCHEDULE_NONE, __ATOMIC_RELAXED);
 
 	/*
 	 * Check if there is any ongoing reset in the hardware. This status can
@@ -6325,7 +6327,8 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 
 	hw->adapter_state = HNS3_NIC_INITIALIZED;
 
-	if (rte_atomic16_read(&hns->hw.reset.schedule) == SCHEDULE_PENDING) {
+	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
+			    SCHEDULE_PENDING) {
 		hns3_err(hw, "Reschedule reset service after dev_init");
 		hns3_schedule_reset(hns);
 	} else {

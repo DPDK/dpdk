@@ -1762,7 +1762,7 @@ hns3_reset_init(struct hns3_hw *hw)
 	hw->reset.request = 0;
 	hw->reset.pending = 0;
 	hw->reset.resetting = 0;
-	rte_atomic16_init(&hw->reset.disable_cmd);
+	__atomic_store_n(&hw->reset.disable_cmd, 0, __ATOMIC_RELAXED);
 	hw->reset.wait_data = rte_zmalloc("wait_data",
 					  sizeof(struct hns3_wait_data), 0);
 	if (!hw->reset.wait_data) {
@@ -1779,7 +1779,8 @@ hns3_schedule_reset(struct hns3_adapter *hns)
 
 	/* Reschedule the reset process after successful initialization */
 	if (hw->adapter_state == HNS3_NIC_UNINITIALIZED) {
-		rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_PENDING);
+		__atomic_store_n(&hw->reset.schedule, SCHEDULE_PENDING,
+				 __ATOMIC_RELAXED);
 		return;
 	}
 
@@ -1787,11 +1788,14 @@ hns3_schedule_reset(struct hns3_adapter *hns)
 		return;
 
 	/* Schedule restart alarm if it is not scheduled yet */
-	if (rte_atomic16_read(&hns->hw.reset.schedule) == SCHEDULE_REQUESTED)
+	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
+			SCHEDULE_REQUESTED)
 		return;
-	if (rte_atomic16_read(&hns->hw.reset.schedule) == SCHEDULE_DEFERRED)
+	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
+			SCHEDULE_DEFERRED)
 		rte_eal_alarm_cancel(hw->reset.ops->reset_service, hns);
-	rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_REQUESTED);
+	__atomic_store_n(&hw->reset.schedule, SCHEDULE_REQUESTED,
+			 __ATOMIC_RELAXED);
 
 	rte_eal_alarm_set(SWITCH_CONTEXT_US, hw->reset.ops->reset_service, hns);
 }
@@ -1808,9 +1812,11 @@ hns3_schedule_delayed_reset(struct hns3_adapter *hns)
 		return;
 	}
 
-	if (rte_atomic16_read(&hns->hw.reset.schedule) != SCHEDULE_NONE)
+	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) !=
+			    SCHEDULE_NONE)
 		return;
-	rte_atomic16_set(&hns->hw.reset.schedule, SCHEDULE_DEFERRED);
+	__atomic_store_n(&hw->reset.schedule, SCHEDULE_DEFERRED,
+			 __ATOMIC_RELAXED);
 	rte_eal_alarm_set(DEFERRED_SCHED_US, hw->reset.ops->reset_service, hns);
 }
 
@@ -1983,7 +1989,7 @@ hns3_reset_err_handle(struct hns3_adapter *hns)
 	 * Regardless of whether the execution is successful or not, the
 	 * flow after execution must be continued.
 	 */
-	if (rte_atomic16_read(&hw->reset.disable_cmd))
+	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED))
 		(void)hns3_cmd_init(hw);
 reset_fail:
 	hw->reset.attempts = 0;

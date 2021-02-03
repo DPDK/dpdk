@@ -83,7 +83,7 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code0, uint16_t code1,
 	end = now + HNS3_MAX_RETRY_MS;
 	while ((hw->mbx_resp.head != hw->mbx_resp.tail + hw->mbx_resp.lost) &&
 	       (now < end)) {
-		if (rte_atomic16_read(&hw->reset.disable_cmd)) {
+		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
 			hns3_err(hw, "Don't wait for mbx respone because of "
 				 "disable_cmd");
 			return -EBUSY;
@@ -369,7 +369,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 	int i;
 
 	while (!hns3_cmd_crq_empty(hw)) {
-		if (rte_atomic16_read(&hw->reset.disable_cmd))
+		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED))
 			return;
 
 		desc = &crq->desc[crq->next_to_use];

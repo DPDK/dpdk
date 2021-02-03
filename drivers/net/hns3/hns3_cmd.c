@@ -202,7 +202,8 @@ hns3_cmd_csq_clean(struct hns3_hw *hw)
 		hns3_err(hw, "wrong cmd head (%u, %u-%u)", head,
 			    csq->next_to_use, csq->next_to_clean);
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			rte_atomic16_set(&hw->reset.disable_cmd, 1);
+			__atomic_store_n(&hw->reset.disable_cmd, 1,
+					 __ATOMIC_RELAXED);
 			hns3_schedule_delayed_reset(HNS3_DEV_HW_TO_ADAPTER(hw));
 		}
 
@@ -311,7 +312,7 @@ static int hns3_cmd_poll_reply(struct hns3_hw *hw)
 		if (hns3_cmd_csq_done(hw))
 			return 0;
 
-		if (rte_atomic16_read(&hw->reset.disable_cmd)) {
+		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
 			hns3_err(hw,
 				 "Don't wait for reply because of disable_cmd");
 			return -EBUSY;
@@ -358,7 +359,7 @@ hns3_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc, int num)
 	int retval;
 	uint32_t ntc;
 
-	if (rte_atomic16_read(&hw->reset.disable_cmd))
+	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED))
 		return -EBUSY;
 
 	rte_spinlock_lock(&hw->cmq.csq.lock);
@@ -535,7 +536,7 @@ hns3_cmd_init(struct hns3_hw *hw)
 		ret = -EBUSY;
 		goto err_cmd_init;
 	}
-	rte_atomic16_clear(&hw->reset.disable_cmd);
+	__atomic_store_n(&hw->reset.disable_cmd, 0, __ATOMIC_RELAXED);
 
 	ret = hns3_cmd_query_firmware_version_and_capability(hw);
 	if (ret) {
@@ -557,7 +558,7 @@ hns3_cmd_init(struct hns3_hw *hw)
 	return 0;
 
 err_cmd_init:
-	rte_atomic16_set(&hw->reset.disable_cmd, 1);
+	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 	return ret;
 }
 
@@ -583,7 +584,7 @@ hns3_cmd_uninit(struct hns3_hw *hw)
 {
 	rte_spinlock_lock(&hw->cmq.csq.lock);
 	rte_spinlock_lock(&hw->cmq.crq.lock);
-	rte_atomic16_set(&hw->reset.disable_cmd, 1);
+	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 	hns3_cmd_clear_regs(hw);
 	rte_spinlock_unlock(&hw->cmq.crq.lock);
 	rte_spinlock_unlock(&hw->cmq.csq.lock);
