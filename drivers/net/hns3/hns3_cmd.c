@@ -582,9 +582,21 @@ hns3_cmd_destroy_queue(struct hns3_hw *hw)
 void
 hns3_cmd_uninit(struct hns3_hw *hw)
 {
+	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+
+	/*
+	 * A delay is added to ensure that the register cleanup operations
+	 * will not be performed concurrently with the firmware command and
+	 * ensure that all the reserved commands are executed.
+	 * Concurrency may occur in two scenarios: asynchronous command and
+	 * timeout command. If the command fails to be executed due to busy
+	 * scheduling, the command will be processed in the next scheduling
+	 * of the firmware.
+	 */
+	rte_delay_ms(HNS3_CMDQ_CLEAR_WAIT_TIME);
+
 	rte_spinlock_lock(&hw->cmq.csq.lock);
 	rte_spinlock_lock(&hw->cmq.crq.lock);
-	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 	hns3_cmd_clear_regs(hw);
 	rte_spinlock_unlock(&hw->cmq.crq.lock);
 	rte_spinlock_unlock(&hw->cmq.csq.lock);
