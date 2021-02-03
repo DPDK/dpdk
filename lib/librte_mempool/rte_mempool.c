@@ -1167,7 +1167,7 @@ mempool_audit_cache(const struct rte_mempool *mp)
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		const struct rte_mempool_cache *cache;
 		cache = &mp->local_cache[lcore_id];
-		if (cache->len > cache->flushthresh) {
+		if (cache->len > RTE_DIM(cache->objs)) {
 			RTE_LOG(CRIT, MEMPOOL, "badness on cache[%u]\n",
 				lcore_id);
 			rte_panic("MEMPOOL: invalid cache len\n");
