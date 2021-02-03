@@ -22,7 +22,6 @@ struct packet_tracker {
 
 struct packet_tracker cb_tracker[MAX_VHOST_DEVICE];
 
-
 int
 open_ioat(const char *value)
 {
@@ -129,7 +128,7 @@ ioat_transfer_data_cb(int vid, uint16_t queue_id,
 		struct rte_vhost_async_status *opaque_data, uint16_t count)
 {
 	uint32_t i_desc;
-	int dev_id = dma_bind[vid].dmas[queue_id * 2 + VIRTIO_RXQ].dev_id;
+	uint16_t dev_id = dma_bind[vid].dmas[queue_id * 2 + VIRTIO_RXQ].dev_id;
 	struct rte_vhost_iov_iter *src = NULL;
 	struct rte_vhost_iov_iter *dst = NULL;
 	unsigned long i_seg;
@@ -182,10 +181,17 @@ ioat_check_completed_copies_cb(int vid, uint16_t queue_id,
 		unsigned short mask = MAX_ENQUEUED_SIZE - 1;
 		unsigned short i;
 
-		int dev_id = dma_bind[vid].dmas[queue_id * 2
+		uint16_t dev_id = dma_bind[vid].dmas[queue_id * 2
 				+ VIRTIO_RXQ].dev_id;
 		n_seg = rte_ioat_completed_ops(dev_id, 255, dump, dump);
-		if (n_seg <= 0)
+		if (n_seg < 0) {
+			RTE_LOG(ERR,
+				VHOST_DATA,
+				"fail to poll completed buf on IOAT device %u",
+				dev_id);
+			return 0;
+		}
+		if (n_seg == 0)
 			return 0;
 
 		cb_tracker[dev_id].ioat_space += n_seg;
