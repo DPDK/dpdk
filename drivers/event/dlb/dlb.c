@@ -1847,7 +1847,7 @@ dlb_hw_create_dir_queue(struct dlb_eventdev *dlb, int32_t qm_port_id)
 {
 	struct dlb_hw_dev *handle = &dlb->qm_instance;
 	struct dlb_create_dir_queue_args cfg;
-	struct dlb_cmd_response response;
+	struct dlb_cmd_response response = {0};
 	int32_t ret;
 
 	cfg.response = (uintptr_t)&response;
@@ -3569,7 +3569,7 @@ dlb_get_ldb_queue_depth(struct dlb_eventdev *dlb,
 {
 	struct dlb_hw_dev *handle = &dlb->qm_instance;
 	struct dlb_get_ldb_queue_depth_args cfg;
-	struct dlb_cmd_response response;
+	struct dlb_cmd_response response = {0};
 	int ret;
 
 	cfg.queue_id = queue->qm_queue.id;
@@ -3591,7 +3591,7 @@ dlb_get_dir_queue_depth(struct dlb_eventdev *dlb,
 {
 	struct dlb_hw_dev *handle = &dlb->qm_instance;
 	struct dlb_get_dir_queue_depth_args cfg;
-	struct dlb_cmd_response response;
+	struct dlb_cmd_response response = {0};
 	int ret;
 
 	cfg.queue_id = queue->qm_queue.id;
