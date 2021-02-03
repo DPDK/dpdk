@@ -200,6 +200,12 @@ hns3_tm_shaper_profile_param_check(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	if (profile->peak.rate < hns3_tm_rate_convert_firmware2tm(1)) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_RATE;
+		error->message = "peak rate must be at least 1Mbps";
+		return -EINVAL;
+	}
+
 	if (profile->peak.size) {
 		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_SIZE;
 		error->message = "peak bucket size not supported";
