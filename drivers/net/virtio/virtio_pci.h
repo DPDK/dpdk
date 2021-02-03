@@ -104,7 +104,6 @@ enum virtio_msix_status {
 
 struct virtio_pci_dev {
 	struct virtio_hw hw;
-	struct rte_pci_device *pci_dev;
 	struct virtio_pci_common_cfg *common_cfg;
 	struct virtio_net_config *dev_cfg;
 	enum virtio_msix_status msix_status;
@@ -115,6 +114,17 @@ struct virtio_pci_dev {
 };
 
 #define virtio_pci_get_dev(hwp) container_of(hwp, struct virtio_pci_dev, hw)
+
+struct virtio_pci_internal {
+	struct rte_pci_ioport io;
+	struct rte_pci_device *dev;
+};
+
+extern struct virtio_pci_internal virtio_pci_internal[RTE_MAX_ETHPORTS];
+
+#define VTPCI_IO(hw) (&virtio_pci_internal[(hw)->port_id].io)
+#define VTPCI_DEV(hw) (virtio_pci_internal[(hw)->port_id].dev)
+
 
 /*
  * How many bits to shift physical queue address written to QUEUE_PFN.

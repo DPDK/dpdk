@@ -31,13 +31,6 @@
 #define VIRTIO_PCI_CONFIG(dev) \
 		(((dev)->msix_status == VIRTIO_MSIX_ENABLED) ? 24 : 20)
 
-
-struct virtio_pci_internal {
-	struct rte_pci_ioport io;
-};
-
-#define VTPCI_IO(hw) (&virtio_pci_internal[(hw)->port_id].io)
-
 struct virtio_pci_internal virtio_pci_internal[RTE_MAX_ETHPORTS];
 
 static inline int
@@ -313,16 +306,14 @@ legacy_intr_detect(struct virtio_hw *hw)
 {
 	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
 
-	dev->msix_status = vtpci_msix_detect(dev->pci_dev);
+	dev->msix_status = vtpci_msix_detect(VTPCI_DEV(hw));
 	hw->intr_lsc = !!dev->msix_status;
 }
 
 static int
 legacy_dev_close(struct virtio_hw *hw)
 {
-	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
-
-	rte_pci_unmap_device(dev->pci_dev);
+	rte_pci_unmap_device(VTPCI_DEV(hw));
 	rte_pci_ioport_unmap(VTPCI_IO(hw));
 
 	return 0;
@@ -574,16 +565,14 @@ modern_intr_detect(struct virtio_hw *hw)
 {
 	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
 
-	dev->msix_status = vtpci_msix_detect(dev->pci_dev);
+	dev->msix_status = vtpci_msix_detect(VTPCI_DEV(hw));
 	hw->intr_lsc = !!dev->msix_status;
 }
 
 static int
 modern_dev_close(struct virtio_hw *hw)
 {
-	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
-
-	rte_pci_unmap_device(dev->pci_dev);
+	rte_pci_unmap_device(VTPCI_DEV(hw));
 
 	return 0;
 }
@@ -772,8 +761,6 @@ vtpci_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 
 	RTE_BUILD_BUG_ON(offsetof(struct virtio_pci_dev, hw) != 0);
 
-	dev->pci_dev = pci_dev;
-
 	/*
 	 * Try if we can succeed reading virtio pci caps, which exists
 	 * only on modern pci device. If failed, we fallback to legacy
@@ -816,7 +803,5 @@ void vtpci_legacy_ioport_unmap(struct virtio_hw *hw)
 
 int vtpci_legacy_ioport_map(struct virtio_hw *hw)
 {
-	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
-
-	return rte_pci_ioport_map(dev->pci_dev, 0, VTPCI_IO(hw));
+	return rte_pci_ioport_map(VTPCI_DEV(hw), 0, VTPCI_IO(hw));
 }
