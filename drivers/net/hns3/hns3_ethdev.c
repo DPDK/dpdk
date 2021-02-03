@@ -93,7 +93,7 @@ static enum hns3_reset_level hns3_get_reset_level(struct hns3_adapter *hns,
 static int hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid,
 				    int on);
-static int hns3_update_speed_duplex(struct rte_eth_dev *eth_dev);
+static int hns3_update_link_info(struct rte_eth_dev *eth_dev);
 static bool hns3_update_link_status(struct hns3_hw *hw);
 
 static int hns3_add_mc_addr(struct hns3_hw *hw,
@@ -2642,8 +2642,8 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev,
 	struct rte_eth_link new_link;
 
 	if (!hns3_is_reset_pending(hns)) {
-		hns3_update_speed_duplex(eth_dev);
 		hns3_update_link_status(hw);
+		hns3_update_link_info(eth_dev);
 	}
 
 	memset(&new_link, 0, sizeof(new_link));
@@ -4368,11 +4368,9 @@ hns3_cfg_mac_speed_dup(struct hns3_hw *hw, uint32_t speed, uint8_t duplex)
 }
 
 static int
-hns3_update_speed_duplex(struct rte_eth_dev *eth_dev)
+hns3_update_fiber_link_info(struct hns3_hw *hw)
 {
-	struct hns3_adapter *hns = eth_dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
-	struct hns3_pf *pf = &hns->pf;
+	struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
 	uint32_t speed;
 	int ret;
 
@@ -4392,6 +4390,21 @@ hns3_update_speed_duplex(struct rte_eth_dev *eth_dev)
 
 	/* Config full duplex for SFP */
 	return hns3_cfg_mac_speed_dup(hw, speed, ETH_LINK_FULL_DUPLEX);
+}
+
+static int
+hns3_update_link_info(struct rte_eth_dev *eth_dev)
+{
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret = 0;
+
+	if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER)
+		return 0;
+	else if (hw->mac.media_type == HNS3_MEDIA_TYPE_FIBER)
+		ret = hns3_update_fiber_link_info(hw);
+
+	return ret;
 }
 
 static int
@@ -4509,8 +4522,8 @@ hns3_service_handler(void *param)
 	struct hns3_hw *hw = &hns->hw;
 
 	if (!hns3_is_reset_pending(hns)) {
-		hns3_update_speed_duplex(eth_dev);
 		hns3_update_link_status_and_event(hw);
+		hns3_update_link_info(eth_dev);
 	} else {
 		hns3_warn(hw, "Cancel the query when reset is pending");
 	}
