@@ -2376,15 +2376,17 @@ static int
 hns3vf_prepare_reset(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
-	int ret = 0;
+	int ret;
 
 	if (hw->reset.level == HNS3_VF_FUNC_RESET) {
 		ret = hns3_send_mbx_msg(hw, HNS3_MBX_RESET, 0, NULL,
 					0, true, NULL, 0);
+		if (ret)
+			return ret;
 	}
 	rte_atomic16_set(&hw->reset.disable_cmd, 1);
 
-	return ret;
+	return 0;
 }
 
 static int
