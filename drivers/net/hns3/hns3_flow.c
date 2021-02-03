@@ -1806,17 +1806,18 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 
 		flow->counter_id = fdir_rule.act_cnt.id;
 	}
+
+	fdir_rule_ptr = rte_zmalloc("hns3 fdir rule",
+				    sizeof(struct hns3_fdir_rule_ele),
+				    0);
+	if (fdir_rule_ptr == NULL) {
+		hns3_err(hw, "failed to allocate fdir_rule memory.");
+		ret = -ENOMEM;
+		goto err_fdir;
+	}
+
 	ret = hns3_fdir_filter_program(hns, &fdir_rule, false);
 	if (!ret) {
-		fdir_rule_ptr = rte_zmalloc("hns3 fdir rule",
-					    sizeof(struct hns3_fdir_rule_ele),
-					    0);
-		if (fdir_rule_ptr == NULL) {
-			hns3_err(hw, "Failed to allocate fdir_rule memory");
-			ret = -ENOMEM;
-			goto err_fdir;
-		}
-
 		memcpy(&fdir_rule_ptr->fdir_conf, &fdir_rule,
 			sizeof(struct hns3_fdir_rule));
 		TAILQ_INSERT_TAIL(&process_list->fdir_list,
@@ -1827,10 +1828,10 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		return flow;
 	}
 
+	rte_free(fdir_rule_ptr);
 err_fdir:
 	if (fdir_rule.flags & HNS3_RULE_FLAG_COUNTER)
 		hns3_counter_release(dev, fdir_rule.act_cnt.id);
-
 err:
 	rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			   "Failed to create flow");
