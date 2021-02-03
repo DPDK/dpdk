@@ -206,6 +206,9 @@ enum hns3_opcode_type {
 	/* Clear hardware state command */
 	HNS3_OPC_CLEAR_HW_STATE         = 0x700B,
 
+	/* Firmware stats command */
+	HNS3_OPC_FIRMWARE_COMPAT_CFG    = 0x701A,
+
 	/* SFP command */
 	HNS3_OPC_SFP_GET_SPEED          = 0x7104,
 
@@ -631,6 +634,13 @@ enum hns3_promisc_type {
 	HNS3_UNICAST	= 1,
 	HNS3_MULTICAST	= 2,
 	HNS3_BROADCAST	= 3,
+};
+
+#define HNS3_LINK_EVENT_REPORT_EN_B	0
+#define HNS3_NCSI_ERROR_REPORT_EN_B	1
+struct hns3_firmware_compat_cmd {
+	uint32_t compat;
+	uint8_t rsv[20];
 };
 
 #define HNS3_MAC_TX_EN_B		6
