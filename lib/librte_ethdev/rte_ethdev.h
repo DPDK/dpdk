@@ -1214,7 +1214,8 @@ struct rte_eth_pfc_conf {
 };
 
 /**
- * Tunneled type.
+ * Tunnel type for device-specific classifier configuration.
+ * @see rte_eth_udp_tunnel
  */
 enum rte_eth_tunnel_type {
 	RTE_TUNNEL_TYPE_NONE = 0,
@@ -1270,14 +1271,16 @@ struct rte_fdir_conf {
 
 /**
  * UDP tunneling configuration.
- * Used to config the UDP port for a type of tunnel.
- * NICs need the UDP port to identify the tunnel type.
- * Normally a type of tunnel has a default UDP port, this structure can be used
- * in case if the users want to change or support more UDP port.
+ *
+ * Used to configure the classifier of a device,
+ * associating an UDP port with a type of tunnel.
+ *
+ * Some NICs may need such configuration to properly parse a tunnel
+ * with any standard or custom UDP port.
  */
 struct rte_eth_udp_tunnel {
 	uint16_t udp_port; /**< UDP port used for the tunnel. */
-	uint8_t prot_type; /**< Tunnel type. Defined in rte_eth_tunnel_type. */
+	uint8_t prot_type; /**< Tunnel type. @see rte_eth_tunnel_type */
 };
 
 /**
@@ -3868,7 +3871,7 @@ int rte_eth_dev_rss_reta_update(uint16_t port_id,
 				struct rte_eth_rss_reta_entry64 *reta_conf,
 				uint16_t reta_size);
 
- /**
+/**
  * Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
  *
  * @param port_id
@@ -3890,7 +3893,7 @@ int rte_eth_dev_rss_reta_query(uint16_t port_id,
 			       struct rte_eth_rss_reta_entry64 *reta_conf,
 			       uint16_t reta_size);
 
- /**
+/**
  * Updates unicast hash table for receiving packet with the given destination
  * MAC address, and the packet is routed to all VFs for which the RX mode is
  * accept packets that match the unicast hash table.
@@ -3912,7 +3915,7 @@ int rte_eth_dev_rss_reta_query(uint16_t port_id,
 int rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct rte_ether_addr *addr,
 				  uint8_t on);
 
- /**
+/**
  * Updates all unicast hash bitmaps for receiving packet with any Unicast
  * Ethernet MAC addresses,the packet is routed to all VFs for which the RX
  * mode is accept packets that match the unicast hash table.
@@ -3995,7 +3998,7 @@ int rte_eth_mirror_rule_reset(uint16_t port_id,
 int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 			uint16_t tx_rate);
 
- /**
+/**
  * Configuration of Receive Side Scaling hash computation of Ethernet device.
  *
  * @param port_id
@@ -4012,7 +4015,7 @@ int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx,
 int rte_eth_dev_rss_hash_update(uint16_t port_id,
 				struct rte_eth_rss_conf *rss_conf);
 
- /**
+/**
  * Retrieve current configuration of Receive Side Scaling hash computation
  * of Ethernet device.
  *
@@ -4030,12 +4033,18 @@ int
 rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
 			      struct rte_eth_rss_conf *rss_conf);
 
- /**
- * Add UDP tunneling port for a specific type of tunnel.
- * The packets with this UDP port will be identified as this type of tunnel.
- * Before enabling any offloading function for a tunnel, users can call this API
- * to change or add more UDP port for the tunnel. So the offloading function
- * can take effect on the packets with the specific UDP port.
+/**
+ * Add UDP tunneling port for a type of tunnel.
+ *
+ * Some NICs may require such configuration to properly parse a tunnel
+ * with any standard or custom UDP port.
+ * The packets with this UDP port will be parsed for this type of tunnel.
+ * The device parser will also check the rest of the tunnel headers
+ * before classifying the packet.
+ *
+ * With some devices, this API will affect packet classification, i.e.:
+ *     - mbuf.packet_type reported on Rx
+ *     - rte_flow rules with tunnel items
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -4052,13 +4061,13 @@ int
 rte_eth_dev_udp_tunnel_port_add(uint16_t port_id,
 				struct rte_eth_udp_tunnel *tunnel_udp);
 
- /**
- * Delete UDP tunneling port a specific type of tunnel.
- * The packets with this UDP port will not be identified as this type of tunnel
- * any more.
- * Before enabling any offloading function for a tunnel, users can call this API
- * to delete a UDP port for the tunnel. So the offloading function will not take
- * effect on the packets with the specific UDP port.
+/**
+ * Delete UDP tunneling port for a type of tunnel.
+ *
+ * The packets with this UDP port will not be classified as this type of tunnel
+ * anymore if the device use such mapping for tunnel packet classification.
+ *
+ * @see rte_eth_dev_udp_tunnel_port_add
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
