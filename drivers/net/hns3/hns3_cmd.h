@@ -295,11 +295,16 @@ enum HNS3_CAPS_BITS {
 	HNS3_CAPS_HW_PAD_B,
 	HNS3_CAPS_STASH_B,
 };
+
+enum HNS3_API_CAP_BITS {
+	HNS3_API_CAP_FLEX_RSS_TBL_B,
+};
+
 #define HNS3_QUERY_CAP_LENGTH		3
 struct hns3_query_version_cmd {
 	uint32_t firmware;
 	uint32_t hardware;
-	uint32_t rsv;
+	uint32_t api_caps;
 	uint32_t caps[HNS3_QUERY_CAP_LENGTH]; /* capabilities of device */
 };
 
