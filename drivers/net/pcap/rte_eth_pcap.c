@@ -386,7 +386,7 @@ eth_tx_drop(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		return 0;
 
 	for (i = 0; i < nb_pkts; i++) {
-		tx_bytes += bufs[i]->data_len;
+		tx_bytes += bufs[i]->pkt_len;
 		rte_pktmbuf_free(bufs[i]);
 	}
 
