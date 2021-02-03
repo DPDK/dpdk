@@ -2,10 +2,12 @@
  * Copyright (C) IBM Corporation 2019.
  */
 
+#include <sys/platform/ppc.h>
+
 #include "eal_private.h"
 
 uint64_t
 get_tsc_freq_arch(void)
 {
-	return 0;
+	return __ppc_get_timebase_freq();
 }
