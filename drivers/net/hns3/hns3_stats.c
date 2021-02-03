@@ -554,8 +554,14 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 	}
 
 	rte_stats->oerrors = 0;
-	rte_stats->ipackets  = stats->rcb_rx_ring_pktnum_rcd -
-		rte_stats->ierrors;
+	/*
+	 * If HW statistics are reset by stats_reset, but a lot of residual
+	 * packets exist in the hardware queue and these packets are error
+	 * packets, flip overflow may occurred. So return 0 in this case.
+	 */
+	rte_stats->ipackets =
+		stats->rcb_rx_ring_pktnum_rcd > rte_stats->ierrors ?
+		stats->rcb_rx_ring_pktnum_rcd - rte_stats->ierrors : 0;
 	rte_stats->opackets  = stats->rcb_tx_ring_pktnum_rcd -
 		rte_stats->oerrors;
 	rte_stats->rx_nombuf = eth_dev->data->rx_mbuf_alloc_failed;
@@ -792,8 +798,15 @@ hns3_rxq_basic_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		rxq_stats = &rxq->basic_stats;
 		rxq_stats->errors = rxq->err_stats.l2_errors +
 					rxq->err_stats.pkt_len_errors;
-		rxq_stats->packets = stats->rcb_rx_ring_pktnum[i] -
-			rxq_stats->errors;
+		/*
+		 * If HW statistics are reset by stats_reset, but a lot of
+		 * residual packets exist in the hardware queue and these
+		 * packets are error packets, flip overflow may occurred.
+		 * So return 0 in this case.
+		 */
+		rxq_stats->packets =
+			stats->rcb_rx_ring_pktnum[i] > rxq_stats->errors ?
+			stats->rcb_rx_ring_pktnum[i] - rxq_stats->errors : 0;
 		rxq_stats->bytes = 0;
 		for (j = 0; j < HNS3_NUM_RXQ_BASIC_STATS; j++) {
 			val = (char *)rxq_stats +
