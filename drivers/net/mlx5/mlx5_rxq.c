@@ -2353,7 +2353,9 @@ uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
 			return 0;
 		hrxq = container_of(entry, typeof(*hrxq), entry);
 	}
-	return hrxq->idx;
+	if (hrxq)
+		return hrxq->idx;
+	return 0;
 }
 
 /**
