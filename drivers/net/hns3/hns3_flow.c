@@ -44,8 +44,7 @@ static enum rte_flow_item_type first_items[] = {
 	RTE_FLOW_ITEM_TYPE_NVGRE,
 	RTE_FLOW_ITEM_TYPE_VXLAN,
 	RTE_FLOW_ITEM_TYPE_GENEVE,
-	RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
-	RTE_FLOW_ITEM_TYPE_MPLS
+	RTE_FLOW_ITEM_TYPE_VXLAN_GPE
 };
 
 static enum rte_flow_item_type L2_next_items[] = {
@@ -65,8 +64,7 @@ static enum rte_flow_item_type L3_next_items[] = {
 static enum rte_flow_item_type L4_next_items[] = {
 	RTE_FLOW_ITEM_TYPE_VXLAN,
 	RTE_FLOW_ITEM_TYPE_GENEVE,
-	RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
-	RTE_FLOW_ITEM_TYPE_MPLS
+	RTE_FLOW_ITEM_TYPE_VXLAN_GPE
 };
 
 static enum rte_flow_item_type tunnel_next_items[] = {
@@ -1145,8 +1143,7 @@ is_tunnel_packet(enum rte_flow_item_type type)
 	if (type == RTE_FLOW_ITEM_TYPE_VXLAN_GPE ||
 	    type == RTE_FLOW_ITEM_TYPE_VXLAN ||
 	    type == RTE_FLOW_ITEM_TYPE_NVGRE ||
-	    type == RTE_FLOW_ITEM_TYPE_GENEVE ||
-	    type == RTE_FLOW_ITEM_TYPE_MPLS)
+	    type == RTE_FLOW_ITEM_TYPE_GENEVE)
 		return true;
 	return false;
 }
