@@ -778,6 +778,7 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	uint16_t nb_rx_q = dev->data->nb_rx_queues;
 	uint16_t nb_tx_q = dev->data->nb_tx_queues;
 	struct rte_eth_rss_conf rss_conf;
+	uint32_t max_rx_pkt_len;
 	uint16_t mtu;
 	bool gro_en;
 	int ret;
@@ -825,12 +826,18 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	 * according to the maximum RX packet length.
 	 */
 	if (conf->rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		/*
-		 * Security of max_rx_pkt_len is guaranteed in dpdk frame.
-		 * Maximum value of max_rx_pkt_len is HNS3_MAX_FRAME_LEN, so it
-		 * can safely assign to "uint16_t" type variable.
-		 */
-		mtu = (uint16_t)HNS3_PKTLEN_TO_MTU(conf->rxmode.max_rx_pkt_len);
+		max_rx_pkt_len = conf->rxmode.max_rx_pkt_len;
+		if (max_rx_pkt_len > HNS3_MAX_FRAME_LEN ||
+		    max_rx_pkt_len <= HNS3_DEFAULT_FRAME_LEN) {
+			hns3_err(hw, "maximum Rx packet length must be greater "
+				 "than %u and less than %u when jumbo frame enabled.",
+				 (uint16_t)HNS3_DEFAULT_FRAME_LEN,
+				 (uint16_t)HNS3_MAX_FRAME_LEN);
+			ret = -EINVAL;
+			goto cfg_err;
+		}
+
+		mtu = (uint16_t)HNS3_PKTLEN_TO_MTU(max_rx_pkt_len);
 		ret = hns3vf_dev_mtu_set(dev, mtu);
 		if (ret)
 			goto cfg_err;
