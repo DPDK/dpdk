@@ -11772,6 +11772,10 @@ __flow_dv_action_rss_update(struct rte_eth_dev *dev, uint32_t idx,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "invalid shared action to update");
+	if (priv->obj_ops.ind_table_modify == NULL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "cannot modify indirection table");
 	queue = mlx5_malloc(MLX5_MEM_ZERO,
 			    RTE_ALIGN_CEIL(queue_size, sizeof(void *)),
 			    0, SOCKET_ID_ANY);
@@ -12654,6 +12658,20 @@ flow_dv_action_validate(struct rte_eth_dev *dev,
 	RTE_SET_USED(conf);
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_RSS:
+		/*
+		 * priv->obj_ops is set according to driver capabilities.
+		 * When DevX capabilities are
+		 * sufficient, it is set to devx_obj_ops.
+		 * Otherwise, it is set to ibv_obj_ops.
+		 * ibv_obj_ops doesn't support ind_table_modify operation.
+		 * In this case the shared RSS action can't be used.
+		 */
+		if (priv->obj_ops.ind_table_modify == NULL)
+			return rte_flow_error_set
+					(err, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ACTION,
+					 NULL,
+					 "shared RSS action not supported");
 		return mlx5_validate_action_rss(dev, action, err);
 	case RTE_FLOW_ACTION_TYPE_AGE:
 		if (!priv->sh->aso_age_mng)
