@@ -596,7 +596,7 @@ ionic_prep_pkts(void *tx_queue __rte_unused, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		txm = tx_pkts[i];
 
-		if (txm->nb_segs > IONIC_TX_MAX_SG_ELEMS) {
+		if (txm->nb_segs > IONIC_TX_MAX_SG_ELEMS_V1 + 1) {
 			rte_errno = -EINVAL;
 			break;
 		}

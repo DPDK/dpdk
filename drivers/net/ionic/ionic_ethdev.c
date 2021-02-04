@@ -74,8 +74,8 @@ static const struct rte_eth_desc_lim tx_desc_lim_v1 = {
 	.nb_max = IONIC_MAX_RING_DESC,
 	.nb_min = IONIC_MIN_RING_DESC,
 	.nb_align = 1,
-	.nb_seg_max = IONIC_TX_MAX_SG_ELEMS_V1,
-	.nb_mtu_seg_max = IONIC_TX_MAX_SG_ELEMS_V1,
+	.nb_seg_max = IONIC_TX_MAX_SG_ELEMS_V1 + 1,
+	.nb_mtu_seg_max = IONIC_TX_MAX_SG_ELEMS_V1 + 1,
 };
 
 static const struct eth_dev_ops ionic_eth_dev_ops = {
