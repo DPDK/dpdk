@@ -1036,7 +1036,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	};
 	void *reg_addr;
 	uint32_t cqe_n, log_desc_n;
-	uint32_t wqe_n;
+	uint32_t wqe_n, wqe_size;
 	int ret = 0;
 
 	MLX5_ASSERT(txq_data);
@@ -1069,8 +1069,28 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->cq_pi = 0;
 	txq_data->cq_db = txq_obj->cq_obj.db_rec;
 	*txq_data->cq_db = 0;
+	/*
+	 * Adjust the amount of WQEs depending on inline settings.
+	 * The number of descriptors should be enough to handle
+	 * the specified number of packets. If queue is being created
+	 * with Verbs the rdma-core does queue size adjustment
+	 * internally in the mlx5_calc_sq_size(), we do the same
+	 * for the queue being created with DevX at this point.
+	 */
+	wqe_size = txq_data->tso_en ?
+		   RTE_ALIGN(txq_ctrl->max_tso_header, MLX5_WSEG_SIZE) : 0;
+	wqe_size += sizeof(struct mlx5_wqe_cseg) +
+		    sizeof(struct mlx5_wqe_eseg) +
+		    sizeof(struct mlx5_wqe_dseg);
+	if (txq_data->inlen_send)
+		wqe_size = RTE_MAX(wqe_size, sizeof(struct mlx5_wqe_cseg) +
+					     sizeof(struct mlx5_wqe_eseg) +
+					     RTE_ALIGN(txq_data->inlen_send +
+						       sizeof(uint32_t),
+						       MLX5_WSEG_SIZE));
+	wqe_size = RTE_ALIGN(wqe_size, MLX5_WQE_SIZE) / MLX5_WQE_SIZE;
 	/* Create Send Queue object with DevX. */
-	wqe_n = RTE_MIN(1UL << txq_data->elts_n,
+	wqe_n = RTE_MIN((1UL << txq_data->elts_n) * wqe_size,
 			(uint32_t)priv->sh->device_attr.max_qp_wr);
 	log_desc_n = log2above(wqe_n);
 	ret = mlx5_txq_create_devx_sq_resources(dev, idx, log_desc_n);
