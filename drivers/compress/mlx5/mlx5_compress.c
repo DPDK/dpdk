@@ -614,7 +614,7 @@ mlx5_compress_dequeue_burst(void *queue_pair, struct rte_comp_op **ops,
 			op->consumed = op->src.length;
 			op->produced = rte_be_to_cpu_32(cqe->byte_cnt);
 			MLX5_ASSERT(cqe->byte_cnt ==
-				    qp->opaque_buf[idx].scattered_length);
+				    opaq[idx].scattered_length);
 			switch (xform->csum_type) {
 			case RTE_COMP_CHECKSUM_CRC32:
 				op->output_chksum = (uint64_t)rte_be_to_cpu_32
@@ -731,7 +731,7 @@ mlx5_compress_hw_global_prepare(struct mlx5_compress_priv *priv)
 		return -1;
 	}
 	priv->uar_addr = mlx5_os_get_devx_uar_reg_addr(priv->uar);
-	MLX5_ASSERT(qp->uar_addr);
+	MLX5_ASSERT(priv->uar_addr);
 #ifndef RTE_ARCH_64
 	rte_spinlock_init(&priv->uar32_sl);
 #endif /* RTE_ARCH_64 */
