@@ -81,10 +81,6 @@ app_usage(const char *prgname)
 		);
 }
 
-static inline int str_is(const char *str, const char *is)
-{
-	return strcmp(str, is) == 0;
-}
 
 /* returns core mask used by DPDK */
 static uint64_t
@@ -297,6 +293,25 @@ app_parse_burst_conf(const char *conf_str)
 	return 0;
 }
 
+enum {
+#define OPT_PFC "pfc"
+	OPT_PFC_NUM = 256,
+#define OPT_MNC "mnc"
+	OPT_MNC_NUM,
+#define OPT_RSZ "rsz"
+	OPT_RSZ_NUM,
+#define OPT_BSZ "bsz"
+	OPT_BSZ_NUM,
+#define OPT_MSZ "msz"
+	OPT_MSZ_NUM,
+#define OPT_RTH "rth"
+	OPT_RTH_NUM,
+#define OPT_TTH "tth"
+	OPT_TTH_NUM,
+#define OPT_CFG "cfg"
+	OPT_CFG_NUM,
+};
+
 /*
  * Parses the argument given in the command line of the application,
  * calculates mask for used cores and initializes EAL with calculated core mask
@@ -306,20 +321,19 @@ app_parse_args(int argc, char **argv)
 {
 	int opt, ret;
 	int option_index;
-	const char *optname;
 	char *prgname = argv[0];
 	uint32_t i, nb_lcores;
 
 	static struct option lgopts[] = {
-		{ "pfc", 1, 0, 0 },
-		{ "mnc", 1, 0, 0 },
-		{ "rsz", 1, 0, 0 },
-		{ "bsz", 1, 0, 0 },
-		{ "msz", 1, 0, 0 },
-		{ "rth", 1, 0, 0 },
-		{ "tth", 1, 0, 0 },
-		{ "cfg", 1, 0, 0 },
-		{ NULL,  0, 0, 0 }
+		{OPT_PFC, 1, NULL, OPT_PFC_NUM},
+		{OPT_MNC, 1, NULL, OPT_MNC_NUM},
+		{OPT_RSZ, 1, NULL, OPT_RSZ_NUM},
+		{OPT_BSZ, 1, NULL, OPT_BSZ_NUM},
+		{OPT_MSZ, 1, NULL, OPT_MSZ_NUM},
+		{OPT_RTH, 1, NULL, OPT_RTH_NUM},
+		{OPT_TTH, 1, NULL, OPT_TTH_NUM},
+		{OPT_CFG, 1, NULL, OPT_CFG_NUM},
+		{NULL,    0, 0,    0          }
 	};
 
 	/* initialize EAL first */
@@ -342,64 +356,67 @@ app_parse_args(int argc, char **argv)
 				interactive = 1;
 				break;
 			/* long options */
-			case 0:
-				optname = lgopts[option_index].name;
-				if (str_is(optname, "pfc")) {
-					ret = app_parse_flow_conf(optarg);
-					if (ret) {
-						RTE_LOG(ERR, APP, "Invalid pipe configuration %s\n", optarg);
-						return -1;
-					}
-					break;
+
+			case OPT_PFC_NUM:
+				ret = app_parse_flow_conf(optarg);
+				if (ret) {
+					RTE_LOG(ERR, APP, "Invalid pipe configuration %s\n",
+							optarg);
+					return -1;
 				}
-				if (str_is(optname, "mnc")) {
-					app_main_core = (uint32_t)atoi(optarg);
-					break;
+				break;
+
+			case OPT_MNC_NUM:
+				app_main_core = (uint32_t)atoi(optarg);
+				break;
+
+			case OPT_RSZ_NUM:
+				ret = app_parse_ring_conf(optarg);
+				if (ret) {
+					RTE_LOG(ERR, APP, "Invalid ring configuration %s\n",
+							optarg);
+					return -1;
 				}
-				if (str_is(optname, "rsz")) {
-					ret = app_parse_ring_conf(optarg);
-					if (ret) {
-						RTE_LOG(ERR, APP, "Invalid ring configuration %s\n", optarg);
-						return -1;
-					}
-					break;
+				break;
+
+			case OPT_BSZ_NUM:
+				ret = app_parse_burst_conf(optarg);
+				if (ret) {
+					RTE_LOG(ERR, APP, "Invalid burst configuration %s\n",
+							optarg);
+					return -1;
 				}
-				if (str_is(optname, "bsz")) {
-					ret = app_parse_burst_conf(optarg);
-					if (ret) {
-						RTE_LOG(ERR, APP, "Invalid burst configuration %s\n", optarg);
-						return -1;
-					}
-					break;
+				break;
+
+			case OPT_MSZ_NUM:
+				mp_size = atoi(optarg);
+				if (mp_size <= 0) {
+					RTE_LOG(ERR, APP, "Invalid mempool size %s\n",
+							optarg);
+					return -1;
 				}
-				if (str_is(optname, "msz")) {
-					mp_size = atoi(optarg);
-					if (mp_size <= 0) {
-						RTE_LOG(ERR, APP, "Invalid mempool size %s\n", optarg);
-						return -1;
-					}
-					break;
+				break;
+
+			case OPT_RTH_NUM:
+				ret = app_parse_rth_conf(optarg);
+				if (ret) {
+					RTE_LOG(ERR, APP, "Invalid RX threshold configuration %s\n",
+							optarg);
+					return -1;
 				}
-				if (str_is(optname, "rth")) {
-					ret = app_parse_rth_conf(optarg);
-					if (ret) {
-						RTE_LOG(ERR, APP, "Invalid RX threshold configuration %s\n", optarg);
-						return -1;
-					}
-					break;
+				break;
+
+			case OPT_TTH_NUM:
+				ret = app_parse_tth_conf(optarg);
+				if (ret) {
+					RTE_LOG(ERR, APP, "Invalid TX threshold configuration %s\n",
+							optarg);
+					return -1;
 				}
-				if (str_is(optname, "tth")) {
-					ret = app_parse_tth_conf(optarg);
-					if (ret) {
-						RTE_LOG(ERR, APP, "Invalid TX threshold configuration %s\n", optarg);
-						return -1;
-					}
-					break;
-				}
-				if (str_is(optname, "cfg")) {
-					cfg_profile = optarg;
-					break;
-				}
+				break;
+
+			case OPT_CFG_NUM:
+				cfg_profile = optarg;
 				break;
 
 			default:
