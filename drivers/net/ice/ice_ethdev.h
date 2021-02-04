@@ -167,11 +167,19 @@ struct ice_mac_filter {
 	struct ice_mac_filter_info mac_info;
 };
 
+struct ice_vlan {
+	uint16_t tpid;
+	uint16_t vid;
+};
+
+#define ICE_VLAN(tpid, vid) \
+	((struct ice_vlan){ tpid, vid })
+
 /**
  * VLAN filter structure
  */
 struct ice_vlan_filter_info {
-	uint16_t vlan_id;
+	struct ice_vlan vlan;
 };
 
 TAILQ_HEAD(ice_vlan_filter_list, ice_vlan_filter);
