@@ -15,17 +15,26 @@
 #include "fips_validation.h"
 #include "fips_dev_self_test.h"
 
-#define REQ_FILE_PATH_KEYWORD	"req-file"
-#define RSP_FILE_PATH_KEYWORD	"rsp-file"
-#define MBUF_DATAROOM_KEYWORD	"mbuf-dataroom"
-#define FOLDER_KEYWORD		"path-is-folder"
-#define CRYPTODEV_KEYWORD	"cryptodev"
-#define CRYPTODEV_ID_KEYWORD	"cryptodev-id"
-#define CRYPTODEV_ST_KEYWORD	"self-test"
-#define CRYPTODEV_BK_ID_KEYWORD	"broken-test-id"
-#define CRYPTODEV_BK_DIR_KEY	"broken-test-dir"
-#define CRYPTODEV_ENC_KEYWORD	"enc"
-#define CRYPTODEV_DEC_KEYWORD	"dec"
+enum {
+#define OPT_REQ_FILE_PATH           "req-file"
+	OPT_REQ_FILE_PATH_NUM = 256,
+#define OPT_RSP_FILE_PATH           "rsp-file"
+	OPT_RSP_FILE_PATH_NUM,
+#define OPT_MBUF_DATAROOM           "mbuf-dataroom"
+	OPT_MBUF_DATAROOM_NUM,
+#define OPT_FOLDER                  "path-is-folder"
+	OPT_FOLDER_NUM,
+#define OPT_CRYPTODEV               "cryptodev"
+	OPT_CRYPTODEV_NUM,
+#define OPT_CRYPTODEV_ID            "cryptodev-id"
+	OPT_CRYPTODEV_ID_NUM,
+#define OPT_CRYPTODEV_ST            "self-test"
+	OPT_CRYPTODEV_ST_NUM,
+#define OPT_CRYPTODEV_BK_ID         "broken-test-id"
+	OPT_CRYPTODEV_BK_ID_NUM,
+#define OPT_CRYPTODEV_BK_DIR_KEY    "broken-test-dir"
+	OPT_CRYPTODEV_BK_DIR_KEY_NUM,
+};
 
 struct fips_test_vector vec;
 struct fips_test_interim_info info;
@@ -212,10 +221,10 @@ cryptodev_fips_validate_usage(const char *prgname)
 		"  --%s: self test indicator\n"
 		"  --%s: self broken test ID\n"
 		"  --%s: self broken test direction\n",
-		prgname, REQ_FILE_PATH_KEYWORD, RSP_FILE_PATH_KEYWORD,
-		FOLDER_KEYWORD, MBUF_DATAROOM_KEYWORD, def_mbuf_seg_size,
-		CRYPTODEV_KEYWORD, CRYPTODEV_ID_KEYWORD, CRYPTODEV_ST_KEYWORD,
-		CRYPTODEV_BK_ID_KEYWORD, CRYPTODEV_BK_DIR_KEY);
+		prgname, OPT_REQ_FILE_PATH, OPT_RSP_FILE_PATH,
+		OPT_FOLDER, OPT_MBUF_DATAROOM, def_mbuf_seg_size,
+		OPT_CRYPTODEV, OPT_CRYPTODEV_ID, OPT_CRYPTODEV_ST,
+		OPT_CRYPTODEV_BK_ID, OPT_CRYPTODEV_BK_DIR_KEY);
 }
 
 static int
@@ -226,16 +235,25 @@ cryptodev_fips_validate_parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	struct option lgopts[] = {
-			{REQ_FILE_PATH_KEYWORD, required_argument, 0, 0},
-			{RSP_FILE_PATH_KEYWORD, required_argument, 0, 0},
-			{FOLDER_KEYWORD, no_argument, 0, 0},
-			{MBUF_DATAROOM_KEYWORD, required_argument, 0, 0},
-			{CRYPTODEV_KEYWORD, required_argument, 0, 0},
-			{CRYPTODEV_ID_KEYWORD, required_argument, 0, 0},
-			{CRYPTODEV_ST_KEYWORD, no_argument, 0, 0},
-			{CRYPTODEV_BK_ID_KEYWORD, required_argument, 0, 0},
-			{CRYPTODEV_BK_DIR_KEY, required_argument, 0, 0},
-			{NULL, 0, 0, 0}
+		{OPT_REQ_FILE_PATH, required_argument,
+				NULL, OPT_REQ_FILE_PATH_NUM},
+		{OPT_RSP_FILE_PATH, required_argument,
+				NULL, OPT_RSP_FILE_PATH_NUM},
+		{OPT_FOLDER, no_argument,
+				NULL, OPT_FOLDER_NUM},
+		{OPT_MBUF_DATAROOM, required_argument,
+				NULL, OPT_MBUF_DATAROOM_NUM},
+		{OPT_CRYPTODEV, required_argument,
+				NULL, OPT_CRYPTODEV_NUM},
+		{OPT_CRYPTODEV_ID, required_argument,
+				NULL, OPT_CRYPTODEV_ID_NUM},
+		{OPT_CRYPTODEV_ST, no_argument,
+				NULL, OPT_CRYPTODEV_ST_NUM},
+		{OPT_CRYPTODEV_BK_ID, required_argument,
+				NULL, OPT_CRYPTODEV_BK_ID_NUM},
+		{OPT_CRYPTODEV_BK_DIR_KEY, required_argument,
+				NULL, OPT_CRYPTODEV_BK_DIR_KEY_NUM},
+		{NULL, 0, 0, 0}
 	};
 
 	argvopt = argv;
@@ -252,104 +270,104 @@ cryptodev_fips_validate_parse_args(int argc, char **argv)
 				  lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
-		case 0:
-			if (strcmp(lgopts[option_index].name,
-					REQ_FILE_PATH_KEYWORD) == 0)
-				env.req_path = optarg;
-			else if (strcmp(lgopts[option_index].name,
-					RSP_FILE_PATH_KEYWORD) == 0)
-				env.rsp_path = optarg;
-			else if (strcmp(lgopts[option_index].name,
-					FOLDER_KEYWORD) == 0)
-				env.is_path_folder = 1;
-			else if (strcmp(lgopts[option_index].name,
-					CRYPTODEV_KEYWORD) == 0) {
-				ret = parse_cryptodev_arg(optarg);
-				if (ret < 0) {
-					cryptodev_fips_validate_usage(prgname);
-					return -EINVAL;
-				}
-			} else if (strcmp(lgopts[option_index].name,
-					CRYPTODEV_ID_KEYWORD) == 0) {
-				ret = parse_cryptodev_id_arg(optarg);
-				if (ret < 0) {
-					cryptodev_fips_validate_usage(prgname);
-					return -EINVAL;
-				}
-			} else if (strcmp(lgopts[option_index].name,
-					CRYPTODEV_ST_KEYWORD) == 0) {
-				env.self_test = 1;
-			} else if (strcmp(lgopts[option_index].name,
-					CRYPTODEV_BK_ID_KEYWORD) == 0) {
-				if (!env.broken_test_config) {
-					env.broken_test_config = rte_malloc(
-						NULL,
-						sizeof(*env.broken_test_config),
-						0);
-					if (!env.broken_test_config)
-						return -ENOMEM;
+		case OPT_REQ_FILE_PATH_NUM:
+			env.req_path = optarg;
+			break;
 
-					env.broken_test_config->expect_fail_dir =
-						self_test_dir_enc_auth_gen;
-				}
+		case OPT_RSP_FILE_PATH_NUM:
+			env.rsp_path = optarg;
+			break;
 
-				if (parser_read_uint32(
-					&env.broken_test_config->expect_fail_test_idx,
-						optarg) < 0) {
-					rte_free(env.broken_test_config);
-					cryptodev_fips_validate_usage(prgname);
-					return -EINVAL;
-				}
-			} else if (strcmp(lgopts[option_index].name,
-					CRYPTODEV_BK_DIR_KEY) == 0) {
-				if (!env.broken_test_config) {
-					env.broken_test_config = rte_malloc(
-						NULL,
-						sizeof(*env.broken_test_config),
-						0);
-					if (!env.broken_test_config)
-						return -ENOMEM;
+		case OPT_FOLDER_NUM:
+			env.is_path_folder = 1;
+			break;
 
-					env.broken_test_config->
-						expect_fail_test_idx = 0;
-				}
-
-				if (strcmp(optarg, CRYPTODEV_ENC_KEYWORD) == 0)
-					env.broken_test_config->expect_fail_dir =
-						self_test_dir_enc_auth_gen;
-				else if (strcmp(optarg, CRYPTODEV_DEC_KEYWORD)
-						== 0)
-					env.broken_test_config->expect_fail_dir =
-						self_test_dir_dec_auth_verify;
-				else {
-					rte_free(env.broken_test_config);
-					cryptodev_fips_validate_usage(prgname);
-					return -EINVAL;
-				}
-			} else if (strcmp(lgopts[option_index].name,
-					MBUF_DATAROOM_KEYWORD) == 0) {
-				uint32_t data_room_size;
-
-				if (parser_read_uint32(&data_room_size,
-						optarg) < 0) {
-					cryptodev_fips_validate_usage(prgname);
-					return -EINVAL;
-				}
-
-				if (data_room_size == 0 ||
-						data_room_size > UINT16_MAX) {
-					cryptodev_fips_validate_usage(prgname);
-					return -EINVAL;
-				}
-
-				env.mbuf_data_room = data_room_size;
-			} else {
+		case OPT_CRYPTODEV_NUM:
+			ret = parse_cryptodev_arg(optarg);
+			if (ret < 0) {
 				cryptodev_fips_validate_usage(prgname);
 				return -EINVAL;
 			}
 			break;
+
+		case OPT_CRYPTODEV_ID_NUM:
+			ret = parse_cryptodev_id_arg(optarg);
+			if (ret < 0) {
+				cryptodev_fips_validate_usage(prgname);
+				return -EINVAL;
+			}
+			break;
+
+		case OPT_CRYPTODEV_ST_NUM:
+			env.self_test = 1;
+			break;
+
+		case OPT_CRYPTODEV_BK_ID_NUM:
+			if (!env.broken_test_config) {
+				env.broken_test_config = rte_malloc(
+					NULL,
+					sizeof(*env.broken_test_config),
+					0);
+				if (!env.broken_test_config)
+					return -ENOMEM;
+
+				env.broken_test_config->expect_fail_dir =
+					self_test_dir_enc_auth_gen;
+			}
+
+			if (parser_read_uint32(
+				&env.broken_test_config->expect_fail_test_idx,
+					optarg) < 0) {
+				rte_free(env.broken_test_config);
+				cryptodev_fips_validate_usage(prgname);
+				return -EINVAL;
+			}
+			break;
+
+		case OPT_CRYPTODEV_BK_DIR_KEY_NUM:
+			if (!env.broken_test_config) {
+				env.broken_test_config = rte_malloc(
+					NULL,
+					sizeof(*env.broken_test_config),
+					0);
+				if (!env.broken_test_config)
+					return -ENOMEM;
+
+				env.broken_test_config->expect_fail_test_idx =
+					0;
+			}
+
+			if (strcmp(optarg, "enc") == 0)
+				env.broken_test_config->expect_fail_dir =
+					self_test_dir_enc_auth_gen;
+			else if (strcmp(optarg, "dec")
+					== 0)
+				env.broken_test_config->expect_fail_dir =
+					self_test_dir_dec_auth_verify;
+			else {
+				rte_free(env.broken_test_config);
+				cryptodev_fips_validate_usage(prgname);
+				return -EINVAL;
+			}
+			break;
+
+
+		case OPT_MBUF_DATAROOM_NUM:
+			if (parser_read_uint16(&env.mbuf_data_room,
+					optarg) < 0) {
+				cryptodev_fips_validate_usage(prgname);
+				return -EINVAL;
+			}
+
+			if (env.mbuf_data_room == 0) {
+				cryptodev_fips_validate_usage(prgname);
+				return -EINVAL;
+			}
+			break;
+
 		default:
-			return -1;
+			cryptodev_fips_validate_usage(prgname);
+			return -EINVAL;
 		}
 	}
 

@@ -246,6 +246,9 @@ int
 parse_uint8_known_len_hex_str(const char *key, char *src, struct fips_val *val);
 
 int
+parser_read_uint16(uint16_t *value, const char *p);
+
+int
 parser_read_uint32_val(const char *key, char *src, struct fips_val *val);
 
 int

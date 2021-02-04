@@ -650,6 +650,22 @@ parser_read_uint32(uint32_t *value, char *p)
 	return 0;
 }
 
+int
+parser_read_uint16(uint16_t *value, const char *p)
+{
+	uint64_t val = 0;
+	int ret = parser_read_uint64(&val, p);
+
+	if (ret < 0)
+		return ret;
+
+	if (val > UINT16_MAX)
+		return -ERANGE;
+
+	*value = val;
+	return 0;
+}
+
 void
 parse_write_hex_str(struct fips_val *src)
 {
