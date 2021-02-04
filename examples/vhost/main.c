@@ -478,6 +478,35 @@ us_vhost_usage(const char *prgname)
 	       prgname);
 }
 
+enum {
+#define OPT_VM2VM               "vm2vm"
+	OPT_VM2VM_NUM = 256,
+#define OPT_RX_RETRY            "rx-retry"
+	OPT_RX_RETRY_NUM,
+#define OPT_RX_RETRY_DELAY      "rx-retry-delay"
+	OPT_RX_RETRY_DELAY_NUM,
+#define OPT_RX_RETRY_NUMB       "rx-retry-num"
+	OPT_RX_RETRY_NUMB_NUM,
+#define OPT_MERGEABLE           "mergeable"
+	OPT_MERGEABLE_NUM,
+#define OPT_STATS               "stats"
+	OPT_STATS_NUM,
+#define OPT_SOCKET_FILE         "socket-file"
+	OPT_SOCKET_FILE_NUM,
+#define OPT_TX_CSUM             "tx-csum"
+	OPT_TX_CSUM_NUM,
+#define OPT_TSO                 "tso"
+	OPT_TSO_NUM,
+#define OPT_CLIENT              "client"
+	OPT_CLIENT_NUM,
+#define OPT_BUILTIN_NET_DRIVER  "builtin-net-driver"
+	OPT_BUILTIN_NET_DRIVER_NUM,
+#define OPT_DMA_TYPE            "dma-type"
+	OPT_DMA_TYPE_NUM,
+#define OPT_DMAS                "dmas"
+	OPT_DMAS_NUM,
+};
+
 /*
  * Parse the arguments given in the command line of the application.
  */
@@ -489,19 +518,32 @@ us_vhost_parse_args(int argc, char **argv)
 	unsigned i;
 	const char *prgname = argv[0];
 	static struct option long_option[] = {
-		{"vm2vm", required_argument, NULL, 0},
-		{"rx-retry", required_argument, NULL, 0},
-		{"rx-retry-delay", required_argument, NULL, 0},
-		{"rx-retry-num", required_argument, NULL, 0},
-		{"mergeable", required_argument, NULL, 0},
-		{"stats", required_argument, NULL, 0},
-		{"socket-file", required_argument, NULL, 0},
-		{"tx-csum", required_argument, NULL, 0},
-		{"tso", required_argument, NULL, 0},
-		{"client", no_argument, &client_mode, 1},
-		{"builtin-net-driver", no_argument, &builtin_net_driver, 1},
-		{"dma-type", required_argument, NULL, 0},
-		{"dmas", required_argument, NULL, 0},
+		{OPT_VM2VM, required_argument,
+				NULL, OPT_VM2VM_NUM},
+		{OPT_RX_RETRY, required_argument,
+				NULL, OPT_RX_RETRY_NUM},
+		{OPT_RX_RETRY_DELAY, required_argument,
+				NULL, OPT_RX_RETRY_DELAY_NUM},
+		{OPT_RX_RETRY_NUMB, required_argument,
+				NULL, OPT_RX_RETRY_NUMB_NUM},
+		{OPT_MERGEABLE, required_argument,
+				NULL, OPT_MERGEABLE_NUM},
+		{OPT_STATS, required_argument,
+				NULL, OPT_STATS_NUM},
+		{OPT_SOCKET_FILE, required_argument,
+				NULL, OPT_SOCKET_FILE_NUM},
+		{OPT_TX_CSUM, required_argument,
+				NULL, OPT_TX_CSUM_NUM},
+		{OPT_TSO, required_argument,
+				NULL, OPT_TSO_NUM},
+		{OPT_CLIENT, no_argument,
+				NULL, OPT_CLIENT_NUM},
+		{OPT_BUILTIN_NET_DRIVER, no_argument,
+				NULL, OPT_BUILTIN_NET_DRIVER_NUM},
+		{OPT_DMA_TYPE, required_argument,
+				NULL, OPT_DMA_TYPE_NUM},
+		{OPT_DMAS, required_argument,
+				NULL, OPT_DMAS_NUM},
 		{NULL, 0, 0, 0},
 	};
 
@@ -524,151 +566,131 @@ us_vhost_parse_args(int argc, char **argv)
 			vmdq_conf_default.rx_adv_conf.vmdq_rx_conf.rx_mode =
 				ETH_VMDQ_ACCEPT_BROADCAST |
 				ETH_VMDQ_ACCEPT_MULTICAST;
-
 			break;
 
-		case 0:
-			/* Enable/disable vm2vm comms. */
-			if (!strncmp(long_option[option_index].name, "vm2vm",
-				MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, (VM2VM_LAST - 1));
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG,
-						"Invalid argument for "
-						"vm2vm [0|1|2]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else {
-					vm2vm_mode = (vm2vm_type)ret;
-				}
+		case OPT_VM2VM_NUM:
+			ret = parse_num_opt(optarg, (VM2VM_LAST - 1));
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG,
+					"Invalid argument for "
+					"vm2vm [0|1|2]\n");
+				us_vhost_usage(prgname);
+				return -1;
 			}
-
-			/* Enable/disable retries on RX. */
-			if (!strncmp(long_option[option_index].name, "rx-retry", MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, 1);
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for rx-retry [0|1]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else {
-					enable_retry = ret;
-				}
-			}
-
-			/* Enable/disable TX checksum offload. */
-			if (!strncmp(long_option[option_index].name, "tx-csum", MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, 1);
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for tx-csum [0|1]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else
-					enable_tx_csum = ret;
-			}
-
-			/* Enable/disable TSO offload. */
-			if (!strncmp(long_option[option_index].name, "tso", MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, 1);
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for tso [0|1]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else
-					enable_tso = ret;
-			}
-
-			/* Specify the retries delay time (in useconds) on RX. */
-			if (!strncmp(long_option[option_index].name, "rx-retry-delay", MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, INT32_MAX);
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for rx-retry-delay [0-N]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else {
-					burst_rx_delay_time = ret;
-				}
-			}
-
-			/* Specify the retries number on RX. */
-			if (!strncmp(long_option[option_index].name, "rx-retry-num", MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, INT32_MAX);
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for rx-retry-num [0-N]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else {
-					burst_rx_retry_num = ret;
-				}
-			}
-
-			/* Enable/disable RX mergeable buffers. */
-			if (!strncmp(long_option[option_index].name, "mergeable", MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, 1);
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for mergeable [0|1]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else {
-					mergeable = !!ret;
-					if (ret) {
-						vmdq_conf_default.rxmode.offloads |=
-							DEV_RX_OFFLOAD_JUMBO_FRAME;
-						vmdq_conf_default.rxmode.max_rx_pkt_len
-							= JUMBO_FRAME_MAX_SIZE;
-					}
-				}
-			}
-
-			/* Enable/disable stats. */
-			if (!strncmp(long_option[option_index].name, "stats", MAX_LONG_OPT_SZ)) {
-				ret = parse_num_opt(optarg, INT32_MAX);
-				if (ret == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG,
-						"Invalid argument for stats [0..N]\n");
-					us_vhost_usage(prgname);
-					return -1;
-				} else {
-					enable_stats = ret;
-				}
-			}
-
-			/* Set socket file path. */
-			if (!strncmp(long_option[option_index].name,
-						"socket-file", MAX_LONG_OPT_SZ)) {
-				if (us_vhost_parse_socket_path(optarg) == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG,
-					"Invalid argument for socket name (Max %d characters)\n",
-					PATH_MAX);
-					us_vhost_usage(prgname);
-					return -1;
-				}
-			}
-
-			if (!strncmp(long_option[option_index].name,
-						"dma-type", MAX_LONG_OPT_SZ)) {
-				if (strlen(optarg) >= MAX_LONG_OPT_SZ) {
-					RTE_LOG(INFO, VHOST_CONFIG,
-						"Wrong DMA type\n");
-					us_vhost_usage(prgname);
-					return -1;
-				}
-				strcpy(dma_type, optarg);
-			}
-
-			if (!strncmp(long_option[option_index].name,
-						"dmas", MAX_LONG_OPT_SZ)) {
-				if (open_dma(optarg) == -1) {
-					RTE_LOG(INFO, VHOST_CONFIG,
-						"Wrong DMA args\n");
-					us_vhost_usage(prgname);
-					return -1;
-				}
-				async_vhost_driver = 1;
-			}
-
+			vm2vm_mode = (vm2vm_type)ret;
 			break;
 
-			/* Invalid option - print options. */
+		case OPT_RX_RETRY_NUM:
+			ret = parse_num_opt(optarg, 1);
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for rx-retry [0|1]\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			enable_retry = ret;
+			break;
+
+		case OPT_TX_CSUM_NUM:
+			ret = parse_num_opt(optarg, 1);
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for tx-csum [0|1]\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			enable_tx_csum = ret;
+			break;
+
+		case OPT_TSO_NUM:
+			ret = parse_num_opt(optarg, 1);
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for tso [0|1]\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			enable_tso = ret;
+			break;
+
+		case OPT_RX_RETRY_DELAY_NUM:
+			ret = parse_num_opt(optarg, INT32_MAX);
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for rx-retry-delay [0-N]\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			burst_rx_delay_time = ret;
+			break;
+
+		case OPT_RX_RETRY_NUMB_NUM:
+			ret = parse_num_opt(optarg, INT32_MAX);
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for rx-retry-num [0-N]\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			burst_rx_retry_num = ret;
+			break;
+
+		case OPT_MERGEABLE_NUM:
+			ret = parse_num_opt(optarg, 1);
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG, "Invalid argument for mergeable [0|1]\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			mergeable = !!ret;
+			if (ret) {
+				vmdq_conf_default.rxmode.offloads |=
+					DEV_RX_OFFLOAD_JUMBO_FRAME;
+				vmdq_conf_default.rxmode.max_rx_pkt_len
+					= JUMBO_FRAME_MAX_SIZE;
+			}
+			break;
+
+		case OPT_STATS_NUM:
+			ret = parse_num_opt(optarg, INT32_MAX);
+			if (ret == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG,
+					"Invalid argument for stats [0..N]\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			enable_stats = ret;
+			break;
+
+		/* Set socket file path. */
+		case OPT_SOCKET_FILE_NUM:
+			if (us_vhost_parse_socket_path(optarg) == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG,
+				"Invalid argument for socket name (Max %d characters)\n",
+				PATH_MAX);
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			break;
+
+		case OPT_DMA_TYPE_NUM:
+			strcpy(dma_type, optarg);
+			break;
+
+		case OPT_DMAS_NUM:
+			if (open_dma(optarg) == -1) {
+				RTE_LOG(INFO, VHOST_CONFIG,
+					"Wrong DMA args\n");
+				us_vhost_usage(prgname);
+				return -1;
+			}
+			async_vhost_driver = 1;
+			break;
+
+		case OPT_CLIENT_NUM:
+			client_mode = 1;
+			break;
+
+		case OPT_BUILTIN_NET_DRIVER_NUM:
+			builtin_net_driver = 1;
+			break;
+
+		/* Invalid option - print options. */
 		default:
 			us_vhost_usage(prgname);
 			return -1;
