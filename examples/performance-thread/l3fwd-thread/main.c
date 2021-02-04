@@ -2864,16 +2864,28 @@ parse_eth_dest(const char *optarg)
 	*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
 }
 
-#define CMD_LINE_OPT_RX_CONFIG "rx"
-#define CMD_LINE_OPT_TX_CONFIG "tx"
-#define CMD_LINE_OPT_STAT_LCORE "stat-lcore"
-#define CMD_LINE_OPT_ETH_DEST "eth-dest"
-#define CMD_LINE_OPT_NO_NUMA "no-numa"
-#define CMD_LINE_OPT_IPV6 "ipv6"
-#define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
-#define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
-#define CMD_LINE_OPT_NO_LTHREADS "no-lthreads"
-#define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
+enum {
+#define OPT_RX_CONFIG       "rx"
+	OPT_RX_CONFIG_NUM = 256,
+#define OPT_TX_CONFIG       "tx"
+	OPT_TX_CONFIG_NUM,
+#define OPT_STAT_LCORE      "stat-lcore"
+	OPT_STAT_LCORE_NUM,
+#define OPT_ETH_DEST        "eth-dest"
+	OPT_ETH_DEST_NUM,
+#define OPT_NO_NUMA         "no-numa"
+	OPT_NO_NUMA_NUM,
+#define OPT_IPV6            "ipv6"
+	OPT_IPV6_NUM,
+#define OPT_ENABLE_JUMBO    "enable-jumbo"
+	OPT_ENABLE_JUMBO_NUM,
+#define OPT_HASH_ENTRY_NUM  "hash-entry-num"
+	OPT_HASH_ENTRY_NUM_NUM,
+#define OPT_NO_LTHREADS     "no-lthreads"
+	OPT_NO_LTHREADS_NUM,
+#define OPT_PARSE_PTYPE     "parse-ptype"
+	OPT_PARSE_PTYPE_NUM,
+};
 
 /* Parse the argument given in the command line of the application */
 static int
@@ -2884,17 +2896,17 @@ parse_args(int argc, char **argv)
 	int option_index;
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
-		{CMD_LINE_OPT_RX_CONFIG, 1, 0, 0},
-		{CMD_LINE_OPT_TX_CONFIG, 1, 0, 0},
-		{CMD_LINE_OPT_STAT_LCORE, 1, 0, 0},
-		{CMD_LINE_OPT_ETH_DEST, 1, 0, 0},
-		{CMD_LINE_OPT_NO_NUMA, 0, 0, 0},
-		{CMD_LINE_OPT_IPV6, 0, 0, 0},
-		{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, 0},
-		{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, 0},
-		{CMD_LINE_OPT_NO_LTHREADS, 0, 0, 0},
-		{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, 0},
-		{NULL, 0, 0, 0}
+		{OPT_RX_CONFIG,      1, NULL, OPT_RX_CONFIG_NUM      },
+		{OPT_TX_CONFIG,      1, NULL, OPT_TX_CONFIG_NUM      },
+		{OPT_STAT_LCORE,     1, NULL, OPT_STAT_LCORE_NUM     },
+		{OPT_ETH_DEST,       1, NULL, OPT_ETH_DEST_NUM       },
+		{OPT_NO_NUMA,        0, NULL, OPT_NO_NUMA_NUM        },
+		{OPT_IPV6,           0, NULL, OPT_IPV6_NUM           },
+		{OPT_ENABLE_JUMBO,   0, NULL, OPT_ENABLE_JUMBO_NUM   },
+		{OPT_HASH_ENTRY_NUM, 1, NULL, OPT_HASH_ENTRY_NUM_NUM },
+		{OPT_NO_LTHREADS,    0, NULL, OPT_NO_LTHREADS_NUM    },
+		{OPT_PARSE_PTYPE,    0, NULL, OPT_PARSE_PTYPE_NUM    },
+		{NULL,               0, 0,    0                      }
 	};
 
 	argvopt = argv;
@@ -2912,112 +2924,104 @@ parse_args(int argc, char **argv)
 				return -1;
 			}
 			break;
+
 		case 'P':
 			printf("Promiscuous mode selected\n");
 			promiscuous_on = 1;
 			break;
 
 		/* long options */
-		case 0:
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_RX_CONFIG,
-				sizeof(CMD_LINE_OPT_RX_CONFIG))) {
-				ret = parse_rx_config(optarg);
-				if (ret) {
-					printf("invalid rx-config\n");
-					print_usage(prgname);
-					return -1;
-				}
+		case OPT_RX_CONFIG_NUM:
+			ret = parse_rx_config(optarg);
+			if (ret) {
+				printf("invalid rx-config\n");
+				print_usage(prgname);
+				return -1;
 			}
+			break;
 
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_TX_CONFIG,
-				sizeof(CMD_LINE_OPT_TX_CONFIG))) {
-				ret = parse_tx_config(optarg);
-				if (ret) {
-					printf("invalid tx-config\n");
-					print_usage(prgname);
-					return -1;
-				}
+		case OPT_TX_CONFIG_NUM:
+			ret = parse_tx_config(optarg);
+			if (ret) {
+				printf("invalid tx-config\n");
+				print_usage(prgname);
+				return -1;
 			}
+			break;
 
 #if (APP_CPU_LOAD > 0)
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_STAT_LCORE,
-					sizeof(CMD_LINE_OPT_STAT_LCORE))) {
-				cpu_load_lcore_id = parse_stat_lcore(optarg);
-			}
+		case OPT_STAT_LCORE_NUM:
+			cpu_load_lcore_id = parse_stat_lcore(optarg);
+			break;
 #endif
 
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ETH_DEST,
-				sizeof(CMD_LINE_OPT_ETH_DEST)))
-					parse_eth_dest(optarg);
+		case OPT_ETH_DEST_NUM:
+			parse_eth_dest(optarg);
+			break;
 
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_NO_NUMA,
-				sizeof(CMD_LINE_OPT_NO_NUMA))) {
-				printf("numa is disabled\n");
-				numa_on = 0;
-			}
+		case OPT_NO_NUMA_NUM:
+			printf("numa is disabled\n");
+			numa_on = 0;
+			break;
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_IPV6,
-				sizeof(CMD_LINE_OPT_IPV6))) {
-				printf("ipv6 is specified\n");
-				ipv6 = 1;
-			}
+		case OPT_IPV6_NUM:
+			printf("ipv6 is specified\n");
+			ipv6 = 1;
+			break;
 #endif
 
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_NO_LTHREADS,
-					sizeof(CMD_LINE_OPT_NO_LTHREADS))) {
-				printf("l-threads model is disabled\n");
-				lthreads_on = 0;
-			}
+		case OPT_NO_LTHREADS_NUM:
+			printf("l-threads model is disabled\n");
+			lthreads_on = 0;
+			break;
 
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_PARSE_PTYPE,
-					sizeof(CMD_LINE_OPT_PARSE_PTYPE))) {
-				printf("software packet type parsing enabled\n");
-				parse_ptype_on = 1;
-			}
+		case OPT_PARSE_PTYPE_NUM:
+			printf("software packet type parsing enabled\n");
+			parse_ptype_on = 1;
+			break;
 
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ENABLE_JUMBO,
-				sizeof(CMD_LINE_OPT_ENABLE_JUMBO))) {
-				struct option lenopts = {"max-pkt-len", required_argument, 0,
-						0};
+		case OPT_ENABLE_JUMBO_NUM:
+		{
+			struct option lenopts = {"max-pkt-len",
+					required_argument, 0, 0};
 
-				printf("jumbo frame is enabled - disabling simple TX path\n");
-				port_conf.rxmode.offloads |=
-						DEV_RX_OFFLOAD_JUMBO_FRAME;
-				port_conf.txmode.offloads |=
-						DEV_TX_OFFLOAD_MULTI_SEGS;
+			printf("jumbo frame is enabled - disabling simple TX path\n");
+			port_conf.rxmode.offloads |=
+					DEV_RX_OFFLOAD_JUMBO_FRAME;
+			port_conf.txmode.offloads |=
+					DEV_TX_OFFLOAD_MULTI_SEGS;
 
-				/* if no max-pkt-len set, use the default value
-				 * RTE_ETHER_MAX_LEN
-				 */
-				if (0 == getopt_long(argc, argvopt, "", &lenopts,
-						&option_index)) {
+			/* if no max-pkt-len set, use the default value
+			 * RTE_ETHER_MAX_LEN
+			 */
+			if (getopt_long(argc, argvopt, "", &lenopts,
+					&option_index) == 0) {
 
-					ret = parse_max_pkt_len(optarg);
-					if ((ret < 64) || (ret > MAX_JUMBO_PKT_LEN)) {
-						printf("invalid packet length\n");
-						print_usage(prgname);
-						return -1;
-					}
-					port_conf.rxmode.max_rx_pkt_len = ret;
-				}
-				printf("set jumbo frame max packet length to %u\n",
-						(unsigned int)port_conf.rxmode.max_rx_pkt_len);
-			}
-#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
-			if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_HASH_ENTRY_NUM,
-				sizeof(CMD_LINE_OPT_HASH_ENTRY_NUM))) {
-				ret = parse_hash_entry_number(optarg);
-				if ((ret > 0) && (ret <= L3FWD_HASH_ENTRIES)) {
-					hash_entry_number = ret;
-				} else {
-					printf("invalid hash entry number\n");
+				ret = parse_max_pkt_len(optarg);
+				if ((ret < 64) || (ret > MAX_JUMBO_PKT_LEN)) {
+					printf("invalid packet length\n");
 					print_usage(prgname);
 					return -1;
 				}
+				port_conf.rxmode.max_rx_pkt_len = ret;
 			}
-#endif
+			printf("set jumbo frame max packet length to %u\n",
+				(unsigned int)port_conf.rxmode.max_rx_pkt_len);
 			break;
+		}
+#if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
+		case OPT_HASH_ENTRY_NUM_NUM:
+			ret = parse_hash_entry_number(optarg);
+			if ((ret > 0) && (ret <= L3FWD_HASH_ENTRIES)) {
+				hash_entry_number = ret;
+			} else {
+				printf("invalid hash entry number\n");
+				print_usage(prgname);
+				return -1;
+			}
+			break;
+#endif
 
 		default:
 			print_usage(prgname);
