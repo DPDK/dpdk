@@ -17,7 +17,6 @@ gen_c_files = generator(gen_c_file_for_header,
 	arguments: ['@INPUT@', '@OUTPUT@'])
 
 cflags = machine_args
-cflags += '-Wno-unused-function' # needed if we include generic headers
 cflags += '-DALLOW_EXPERIMENTAL_API'
 
 sources = files('main.c')
