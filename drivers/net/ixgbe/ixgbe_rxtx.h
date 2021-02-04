@@ -129,6 +129,8 @@ struct ixgbe_rx_queue {
 	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
 	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
 	uint8_t             rx_deferred_start; /**< not in global dev start. */
+	/** UDP frames with a 0 checksum can be marked as checksum errors. */
+	uint8_t             rx_udp_csum_zero_err;
 	/** flags to set in mbuf when a vlan is detected. */
 	uint64_t            vlan_flags;
 	uint64_t	    offloads; /**< Rx offloads with DEV_RX_OFFLOAD_* */
