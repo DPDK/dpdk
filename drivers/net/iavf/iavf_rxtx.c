@@ -629,6 +629,8 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		       const struct rte_eth_txconf *tx_conf)
 {
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct iavf_info *vf =
+		IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_tx_queue *txq;
 	const struct rte_memzone *mz;
 	uint32_t ring_size;
@@ -668,6 +670,24 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(ERR, "Failed to allocate memory for "
 			     "tx queue structure");
 		return -ENOMEM;
+	}
+
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2) {
+		struct virtchnl_vlan_supported_caps *insertion_support =
+			&vf->vlan_v2_caps.offloads.insertion_support;
+		uint32_t insertion_cap;
+
+		if (insertion_support->outer)
+			insertion_cap = insertion_support->outer;
+		else
+			insertion_cap = insertion_support->inner;
+
+		if (insertion_cap & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG1)
+			txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1;
+		else if (insertion_cap & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG2)
+			txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2;
+	} else {
+		txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1;
 	}
 
 	txq->nb_tx_desc = nb_desc;
@@ -1968,11 +1988,14 @@ iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 
 /* Check if the context descriptor is needed for TX offloading */
 static inline uint16_t
-iavf_calc_context_desc(uint64_t flags)
+iavf_calc_context_desc(uint64_t flags, uint8_t vlan_flag)
 {
-	static uint64_t mask = PKT_TX_TCP_SEG;
-
-	return (flags & mask) ? 1 : 0;
+	if (flags & PKT_TX_TCP_SEG)
+		return 1;
+	if (flags & PKT_TX_VLAN_PKT &&
+	    vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
+		return 1;
+	return 0;
 }
 
 static inline void
@@ -2093,6 +2116,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t tx_last;
 	uint16_t slen;
 	uint64_t buf_dma_addr;
+	uint16_t cd_l2tag2 = 0;
 	union iavf_tx_offload tx_offload = {0};
 
 	txq = tx_queue;
@@ -2119,7 +2143,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		tx_offload.l4_len = tx_pkt->l4_len;
 		tx_offload.tso_segsz = tx_pkt->tso_segsz;
 		/* Calculate the number of context descriptors needed. */
-		nb_ctx = iavf_calc_context_desc(ol_flags);
+		nb_ctx = iavf_calc_context_desc(ol_flags, txq->vlan_flag);
 
 		/* The number of descriptors that must be allocated for
 		 * a packet equals to the number of the segments of that
@@ -2154,7 +2178,8 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Descriptor based VLAN insertion */
-		if (ol_flags & PKT_TX_VLAN_PKT) {
+		if (ol_flags & PKT_TX_VLAN_PKT &&
+		    txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) {
 			td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
 			td_tag = tx_pkt->vlan_tci;
 		}
@@ -2189,8 +2214,16 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				cd_type_cmd_tso_mss |=
 					iavf_set_tso_ctx(tx_pkt, tx_offload);
 
+			if (ol_flags & PKT_TX_VLAN_PKT &&
+			   txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
+				cd_type_cmd_tso_mss |= IAVF_TX_CTX_DESC_IL2TAG2
+					<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
+				cd_l2tag2 = tx_pkt->vlan_tci;
+			}
+
 			ctx_txd->type_cmd_tso_mss =
 				rte_cpu_to_le_64(cd_type_cmd_tso_mss);
+			ctx_txd->l2tag2 = rte_cpu_to_le_16(cd_l2tag2);
 
 			IAVF_DUMP_TX_DESC(txq, &txr[tx_id], tx_id);
 			txe->last_id = tx_last;

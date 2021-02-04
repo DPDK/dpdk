@@ -232,6 +232,9 @@ struct iavf_tx_queue {
 	bool q_set;                    /* if rx queue has been configured */
 	bool tx_deferred_start;        /* don't start this queue in dev start */
 	const struct iavf_txq_ops *ops;
+#define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1	BIT(0)
+#define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2	BIT(1)
+	uint8_t vlan_flag;
 };
 
 /* Offload features */
