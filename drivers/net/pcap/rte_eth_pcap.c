@@ -735,6 +735,17 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static inline void
+infinite_rx_ring_free(struct rte_ring *pkts)
+{
+	struct rte_mbuf *bufs;
+
+	while (!rte_ring_dequeue(pkts, (void **)&bufs))
+		rte_pktmbuf_free(bufs);
+
+	rte_ring_free(pkts);
+}
+
 static int
 eth_dev_close(struct rte_eth_dev *dev)
 {
@@ -753,7 +764,6 @@ eth_dev_close(struct rte_eth_dev *dev)
 	if (internals->infinite_rx) {
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			struct pcap_rx_queue *pcap_q = &internals->rx_queue[i];
-			struct rte_mbuf *pcap_buf;
 
 			/*
 			 * 'pcap_q->pkts' can be NULL if 'eth_dev_close()'
@@ -762,11 +772,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 			if (pcap_q->pkts == NULL)
 				continue;
 
-			while (!rte_ring_dequeue(pcap_q->pkts,
-					(void **)&pcap_buf))
-				rte_pktmbuf_free(pcap_buf);
-
-			rte_ring_free(pcap_q->pkts);
+			infinite_rx_ring_free(pcap_q->pkts);
 		}
 	}
 
@@ -835,21 +841,25 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 		while (eth_pcap_rx(pcap_q, bufs, 1)) {
 			/* Check for multiseg mbufs. */
 			if (bufs[0]->nb_segs != 1) {
-				rte_pktmbuf_free(*bufs);
-
-				while (!rte_ring_dequeue(pcap_q->pkts,
-						(void **)bufs))
-					rte_pktmbuf_free(*bufs);
-
-				rte_ring_free(pcap_q->pkts);
-				PMD_LOG(ERR, "Multiseg mbufs are not supported in infinite_rx "
-						"mode.");
+				infinite_rx_ring_free(pcap_q->pkts);
+				PMD_LOG(ERR,
+					"Multiseg mbufs are not supported in infinite_rx mode.");
 				return -EINVAL;
 			}
 
 			rte_ring_enqueue_bulk(pcap_q->pkts,
 					(void * const *)bufs, 1, NULL);
 		}
+
+		if (rte_ring_count(pcap_q->pkts) < pcap_pkt_count) {
+			infinite_rx_ring_free(pcap_q->pkts);
+			PMD_LOG(ERR,
+				"Not enough mbufs to accommodate packets in pcap file. "
+				"At least %" PRIu64 " mbufs per queue is required.",
+				pcap_pkt_count);
+			return -EINVAL;
+		}
+
 		/*
 		 * Reset the stats for this queue since eth_pcap_rx calls above
 		 * didn't result in the application receiving packets.
