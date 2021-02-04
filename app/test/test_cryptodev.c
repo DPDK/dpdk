@@ -6324,6 +6324,16 @@ static int
 test_snow3g_decryption_with_digest_test_case_1(void)
 {
 	struct snow3g_hash_test_data snow3g_hash_data;
+	struct rte_cryptodev_info dev_info;
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
+		printf("Device doesn't support encrypted digest operations.\n");
+		return -ENOTSUP;
+	}
 
 	/*
 	 * Function prepare data for hash veryfication test case.
