@@ -62,10 +62,16 @@ struct vhost_crypto_options {
 	uint32_t guest_polling;
 } options;
 
-#define CONFIG_KEYWORD		"config"
-#define SOCKET_FILE_KEYWORD	"socket-file"
-#define ZERO_COPY_KEYWORD	"zero-copy"
-#define POLLING_KEYWORD		"guest-polling"
+enum {
+#define OPT_CONFIG          "config"
+	OPT_CONFIG_NUM = 256,
+#define OPT_SOCKET_FILE     "socket-file"
+	OPT_SOCKET_FILE_NUM,
+#define OPT_ZERO_COPY       "zero-copy"
+	OPT_ZERO_COPY_NUM,
+#define OPT_POLLING         "guest-polling"
+	OPT_POLLING_NUM,
+};
 
 #define NB_SOCKET_FIELDS	(2)
 
@@ -198,8 +204,8 @@ vhost_crypto_usage(const char *prgname)
 		"  --%s (lcore,cdev_id,queue_id)[,(lcore,cdev_id,queue_id)]\n"
 		"  --%s: zero copy\n"
 		"  --%s: guest polling\n",
-		prgname, SOCKET_FILE_KEYWORD, CONFIG_KEYWORD,
-		ZERO_COPY_KEYWORD, POLLING_KEYWORD);
+		prgname, OPT_SOCKET_FILE, OPT_CONFIG,
+		OPT_ZERO_COPY, OPT_POLLING);
 }
 
 static int
@@ -210,11 +216,15 @@ vhost_crypto_parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	struct option lgopts[] = {
-			{SOCKET_FILE_KEYWORD, required_argument, 0, 0},
-			{CONFIG_KEYWORD, required_argument, 0, 0},
-			{ZERO_COPY_KEYWORD, no_argument, 0, 0},
-			{POLLING_KEYWORD, no_argument, 0, 0},
-			{NULL, 0, 0, 0}
+		{OPT_SOCKET_FILE, required_argument,
+				NULL, OPT_SOCKET_FILE_NUM},
+		{OPT_CONFIG, required_argument,
+				NULL, OPT_CONFIG_NUM},
+		{OPT_ZERO_COPY, no_argument,
+				NULL, OPT_ZERO_COPY_NUM},
+		{OPT_POLLING, no_argument,
+				NULL, OPT_POLLING_NUM},
+		{NULL, 0, 0, 0}
 	};
 
 	argvopt = argv;
@@ -222,36 +232,40 @@ vhost_crypto_parse_args(int argc, char **argv)
 	while ((opt = getopt_long(argc, argvopt, "s:",
 				  lgopts, &option_index)) != EOF) {
 
+		if (opt == '?') {
+			vhost_crypto_usage(prgname);
+			return -1;
+		}
+
 		switch (opt) {
-		case 0:
-			if (strcmp(lgopts[option_index].name,
-					SOCKET_FILE_KEYWORD) == 0) {
-				ret = parse_socket_arg(optarg);
-				if (ret < 0) {
-					vhost_crypto_usage(prgname);
-					return ret;
-				}
-			} else if (strcmp(lgopts[option_index].name,
-					CONFIG_KEYWORD) == 0) {
-				ret = parse_config(optarg);
-				if (ret < 0) {
-					vhost_crypto_usage(prgname);
-					return ret;
-				}
-			} else if (strcmp(lgopts[option_index].name,
-					ZERO_COPY_KEYWORD) == 0) {
-				options.zero_copy =
-					RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE;
-			} else if (strcmp(lgopts[option_index].name,
-					POLLING_KEYWORD) == 0) {
-				options.guest_polling = 1;
-			} else {
+		case OPT_SOCKET_FILE_NUM:
+			ret = parse_socket_arg(optarg);
+			if (ret < 0) {
 				vhost_crypto_usage(prgname);
-				return -EINVAL;
+				return ret;
 			}
 			break;
+
+		case OPT_CONFIG_NUM:
+			ret = parse_config(optarg);
+			if (ret < 0) {
+				vhost_crypto_usage(prgname);
+				return ret;
+			}
+			break;
+
+		case OPT_ZERO_COPY_NUM:
+			options.zero_copy =
+				RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE;
+			break;
+
+		case OPT_POLLING_NUM:
+			options.guest_polling = 1;
+			break;
+
 		default:
-			return -1;
+			vhost_crypto_usage(prgname);
+			return -EINVAL;
 		}
 	}
 
