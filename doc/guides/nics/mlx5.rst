@@ -875,8 +875,10 @@ Driver options
   of the extensive metadata features. The legacy Verbs supports FLAG and
   MARK metadata actions over NIC Rx steering domain only.
 
-  The setting MARK or META value to zero means there is no item provided and
-  receiving datapath will not report in mbufs these items are present.
+  Setting META value to zero in flow action means there is no item provided
+  and receiving datapath will not report in mbufs the metadata are present.
+  Setting MARK value to zero in flow action means the zero FDIR ID value
+  will be reported on packet receiving.
 
   For the MARK action the last 16 values in the full range are reserved for
   internal PMD purposes (to emulate FLAG action). The valid range for the
