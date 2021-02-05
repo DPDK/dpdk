@@ -147,6 +147,20 @@ implementer_ampere = {
 	}
 }
 
+implementer_qualcomm = {
+	'description': 'Qualcomm',
+	'flags': [
+		['RTE_MACHINE', '"armv8a"'],
+		['RTE_USE_C11_MEM_MODEL', true],
+		['RTE_CACHE_LINE_SIZE', 64],
+		['RTE_MAX_LCORE', 64],
+		['RTE_MAX_NUMA_NODES', 1]
+	],
+	'part_number_config': {
+		'0xc00': {'machine_args':  ['-march=armv8-a+crc']}
+	}
+}
+
 implementer_marvell = {
 	'description': 'Marvell ARMADA',
 	'flags': [
@@ -177,6 +191,7 @@ implementers = {
 	'0x41': implementer_arm,
 	'0x43': implementer_cavium,
 	'0x50': implementer_ampere,
+	'0x51': implementer_qualcomm,
 	'0x56': implementer_marvell,
 	'dpaa': implementer_dpaa
 }
