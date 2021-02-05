@@ -1653,7 +1653,7 @@ mlx5_flow_field_id_to_modify_info
 		break;
 	case RTE_FLOW_FIELD_TCP_FLAGS:
 		info[idx] = (struct field_modify_info){1, 0,
-					MLX5_MODI_IN_TCP_FLAGS};
+					MLX5_MODI_OUT_TCP_FLAGS};
 		if (mask) {
 			mask[idx] = 0x0000003f;
 			if (width < 6)
