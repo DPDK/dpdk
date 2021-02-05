@@ -1389,7 +1389,7 @@ enic_dump_filter(const struct filter_v2 *filt)
 
 		if (gp->mask_flags & FILTER_GENERIC_1_IPV6)
 			sprintf(ip6, "%s ",
-				(gp->val_flags & FILTER_GENERIC_1_IPV4)
+				(gp->val_flags & FILTER_GENERIC_1_IPV6)
 				 ? "ip6(y)" : "ip6(n)");
 		else
 			sprintf(ip6, "%s ", "ip6(x)");
