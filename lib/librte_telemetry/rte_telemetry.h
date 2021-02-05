@@ -309,7 +309,7 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help);
  * @return
  *  -1 on failure.
  */
-__rte_experimental
+__rte_internal
 int
 rte_telemetry_init(const char *runtime_dir, rte_cpuset_t *cpuset,
 		const char **err_str);

@@ -266,6 +266,11 @@ ABI Changes
 
 * No ABI change that would break compatibility with 20.11.
 
+* The experimental function ``rte_telemetry_init`` has been removed from the
+  public API and is now an internal-only function. Where telemetry library is
+  available, it is called automatically from ``rte_eal_init()`` and so no end
+  application need use it.
+
 
 Known Issues
 ------------
