@@ -147,6 +147,8 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	device_attr->tunnel_offloads_caps = dv_attr.tunnel_offloads_caps;
 #endif
+	strlcpy(device_attr->fw_ver, attr_ex.orig_attr.fw_ver,
+		sizeof(device_attr->fw_ver));
 
 	return err;
 }
