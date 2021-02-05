@@ -2263,7 +2263,6 @@ vhost_reserve_avail_batch_packed(struct virtio_net *dev,
 {
 	bool wrap = vq->avail_wrap_counter;
 	struct vring_packed_desc *descs = vq->desc_packed;
-	struct virtio_net_hdr *hdr;
 	uint64_t lens[PACKED_BATCH_SIZE];
 	uint64_t buf_lens[PACKED_BATCH_SIZE];
 	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
@@ -2320,13 +2319,6 @@ vhost_reserve_avail_batch_packed(struct virtio_net *dev,
 		ids[i] = descs[avail_idx + i].id;
 	}
 
-	if (virtio_net_with_host_offload(dev)) {
-		vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
-			hdr = (struct virtio_net_hdr *)(desc_addrs[i]);
-			vhost_dequeue_offload(hdr, pkts[i]);
-		}
-	}
-
 	return 0;
 
 free_buf:
@@ -2344,6 +2336,7 @@ virtio_dev_tx_batch_packed(struct virtio_net *dev,
 {
 	uint16_t avail_idx = vq->last_avail_idx;
 	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
+	struct virtio_net_hdr *hdr;
 	uintptr_t desc_addrs[PACKED_BATCH_SIZE];
 	uint16_t ids[PACKED_BATCH_SIZE];
 	uint16_t i;
@@ -2359,6 +2352,13 @@ virtio_dev_tx_batch_packed(struct virtio_net *dev,
 		rte_memcpy(rte_pktmbuf_mtod_offset(pkts[i], void *, 0),
 			   (void *)(uintptr_t)(desc_addrs[i] + buf_offset),
 			   pkts[i]->pkt_len);
+
+	if (virtio_net_with_host_offload(dev)) {
+		vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+			hdr = (struct virtio_net_hdr *)(desc_addrs[i]);
+			vhost_dequeue_offload(hdr, pkts[i]);
+		}
+	}
 
 	if (virtio_net_is_inorder(dev))
 		vhost_shadow_dequeue_batch_packed_inorder(vq,
