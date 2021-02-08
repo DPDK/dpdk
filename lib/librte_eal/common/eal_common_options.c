@@ -494,6 +494,39 @@ out:
 	return retval;
 }
 
+static int
+is_shared_build(void)
+{
+#define EAL_SO "librte_eal.so"
+	char soname[32];
+	size_t len, minlen = strlen(EAL_SO);
+
+	len = strlcpy(soname, EAL_SO"."ABI_VERSION, sizeof(soname));
+	if (len > sizeof(soname)) {
+		RTE_LOG(ERR, EAL, "Shared lib name too long in shared build check\n");
+		len = sizeof(soname) - 1;
+	}
+
+	while (len >= minlen) {
+		/* check if we have this .so loaded, if so - shared build */
+		RTE_LOG(DEBUG, EAL, "Checking presence of .so '%s'\n", soname);
+		if (dlopen(soname, RTLD_LAZY | RTLD_NOLOAD) != NULL) {
+			RTE_LOG(INFO, EAL, "Detected shared linkage of DPDK\n");
+			return 1;
+		}
+
+		/* remove any version numbers off the end to retry */
+		while (len-- > 0)
+			if (soname[len] == '.') {
+				soname[len] = '\0';
+				break;
+			}
+	}
+
+	RTE_LOG(INFO, EAL, "Detected static linkage of DPDK\n");
+	return 0;
+}
+
 int
 eal_plugins_init(void)
 {
@@ -505,7 +538,7 @@ eal_plugins_init(void)
 	 * (Using dlopen with NOLOAD flag on EAL, will return NULL if the EAL
 	 * shared library is not already loaded i.e. it's statically linked.)
 	 */
-	if (dlopen("librte_eal.so."ABI_VERSION, RTLD_LAZY | RTLD_NOLOAD) != NULL &&
+	if (is_shared_build() &&
 			*default_solib_dir != '\0' &&
 			stat(default_solib_dir, &sb) == 0 &&
 			S_ISDIR(sb.st_mode))
