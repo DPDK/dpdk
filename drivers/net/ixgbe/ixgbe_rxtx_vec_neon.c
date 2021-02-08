@@ -83,9 +83,12 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 
 static inline void
 desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
-		  uint8x16_t staterr, uint8_t vlan_flags, struct rte_mbuf **rx_pkts)
+		  uint8x16_t staterr, uint8_t vlan_flags, uint16_t udp_p_flag,
+		  struct rte_mbuf **rx_pkts)
 {
-	uint8x16_t ptype;
+	uint16_t udp_p_flag_hi;
+	uint8x16_t ptype, udp_csum_skip;
+	uint32x4_t temp_udp_csum_skip = {0, 0, 0, 0};
 	uint8x16_t vtag_lo, vtag_hi, vtag;
 	uint8x16_t temp_csum;
 	uint32x4_t csum = {0, 0, 0, 0};
@@ -139,7 +142,31 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 			PKT_RX_L4_CKSUM_GOOD >> sizeof(uint8_t), 0,
 			0, 0, 0, 0};
 
+	/* change mask from 0x200(IXGBE_RXDADV_PKTTYPE_UDP) to 0x2 */
+	udp_p_flag_hi = udp_p_flag >> 8;
+
+	/* mask everything except UDP header present if specified */
+	const uint8x16_t udp_hdr_p_msk = {
+			0, 0, 0, 0,
+			udp_p_flag_hi, udp_p_flag_hi, udp_p_flag_hi, udp_p_flag_hi,
+			0, 0, 0, 0,
+			0, 0, 0, 0};
+
+	const uint8x16_t udp_csum_bad_shuf = {
+			0xFF, ~(uint8_t)PKT_RX_L4_CKSUM_BAD, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 0};
+
 	ptype = vzipq_u8(sterr_tmp1.val[0], sterr_tmp2.val[0]).val[0];
+
+	/* save the UDP header present information */
+	udp_csum_skip = vandq_u8(ptype, udp_hdr_p_msk);
+
+	/* move UDP header present information to low 32bits */
+	temp_udp_csum_skip = vcopyq_laneq_u32(temp_udp_csum_skip, 0,
+				vreinterpretq_u32_u8(udp_csum_skip), 1);
+
 	ptype = vandq_u8(ptype, rsstype_msk);
 	ptype = vqtbl1q_u8(rss_flags, ptype);
 
@@ -165,6 +192,15 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 	/* convert VP, IPE, L4E to vtag_lo */
 	vtag_lo = vqtbl1q_u8(vlan_csum_map_lo, vtag);
 	vtag_lo = vorrq_u8(ptype, vtag_lo);
+
+	/* convert the UDP header present 0x2 to 0x1 for aligning with each
+	 * PKT_RX_L4_CKSUM_BAD value in low byte of 8 bits word ol_flag in
+	 * vtag_lo (4x8). Then mask out the bad checksum value by shuffle and
+	 * bit-mask.
+	 */
+	udp_csum_skip = vshrq_n_u8(vreinterpretq_u8_u32(temp_udp_csum_skip), 1);
+	udp_csum_skip = vqtbl1q_u8(udp_csum_bad_shuf, udp_csum_skip);
+	vtag_lo = vandq_u8(vtag_lo, udp_csum_skip);
 
 	vtag = vzipq_u8(vtag_lo, vtag_hi).val[0];
 	vol.word = vgetq_lane_u64(vreinterpretq_u64_u8(vtag), 0);
@@ -267,6 +303,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	uint16x8_t crc_adjust = {0, 0, rxq->crc_len, 0,
 				 rxq->crc_len, 0, 0, 0};
 	uint8_t vlan_flags;
+	uint16_t udp_p_flag = 0; /* Rx Descriptor UDP header present */
 
 	/* nb_pkts has to be floor-aligned to RTE_IXGBE_DESCS_PER_LOOP */
 	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_IXGBE_DESCS_PER_LOOP);
@@ -290,6 +327,9 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	if (!(rxdp->wb.upper.status_error &
 				rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD)))
 		return 0;
+
+	if (rxq->rx_udp_csum_zero_err)
+		udp_p_flag = IXGBE_RXDADV_PKTTYPE_UDP;
 
 	/* Cache is empty -> need to scan the buffer rings, but first move
 	 * the next 'n' mbufs into the cache
@@ -362,7 +402,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		/* set ol_flags with vlan packet type */
 		desc_to_olflags_v(sterr_tmp1, sterr_tmp2, staterr, vlan_flags,
-				  &rx_pkts[pos]);
+				  udp_p_flag, &rx_pkts[pos]);
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb4), crc_adjust);
