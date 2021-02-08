@@ -805,6 +805,38 @@ err_exit:
 	return -rte_errno;
 }
 
+static int
+otx2_flow_dev_dump(struct rte_eth_dev *dev,
+		  FILE *file,
+		  struct rte_flow_error *error)
+{
+	struct otx2_eth_dev *hw = dev->data->dev_private;
+	struct otx2_flow_list *list;
+	struct rte_flow *flow_iter;
+	uint32_t max_prio, i;
+
+	if (file == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Invalid file");
+		return -EINVAL;
+	}
+
+	max_prio = hw->npc_flow.flow_max_priority;
+
+	for (i = 0; i < max_prio; i++) {
+		list = &hw->npc_flow.flow_list[i];
+
+		/* List in ascending order of mcam entries */
+		TAILQ_FOREACH(flow_iter, list, next) {
+			otx2_flow_dump(file, hw, flow_iter);
+		}
+	}
+
+	return 0;
+}
+
 const struct rte_flow_ops otx2_flow_ops = {
 	.validate = otx2_flow_validate,
 	.create = otx2_flow_create,
@@ -812,6 +844,7 @@ const struct rte_flow_ops otx2_flow_ops = {
 	.flush = otx2_flow_flush,
 	.query = otx2_flow_query,
 	.isolate = otx2_flow_isolate,
+	.dev_dump = otx2_flow_dev_dump,
 };
 
 static int

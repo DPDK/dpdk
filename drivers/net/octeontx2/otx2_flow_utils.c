@@ -271,6 +271,7 @@ otx2_flow_update_parse_state(struct otx2_parse_state *pst,
 			     uint8_t flags)
 {
 	struct npc_lid_lt_xtract_info *xinfo;
+	struct otx2_flow_dump_data *dump;
 	struct npc_xtract_info *lfinfo;
 	int intf, lf_cfg;
 	int i, j, rc = 0;
@@ -320,6 +321,9 @@ otx2_flow_update_parse_state(struct otx2_parse_state *pst,
 	}
 
 done:
+	dump = &pst->flow->dump_data[pst->flow->num_patterns++];
+	dump->lid = lid;
+	dump->ltype = lt;
 	/* Next pattern to parse by subsequent layers */
 	pst->pattern++;
 	return 0;
