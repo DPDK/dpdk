@@ -15,6 +15,6 @@ endian = 'little'
 
 [properties]
 implementer_id = 'generic'
-part_number = 'default'
+part_number = 'generic'
 c_args = ['-target', 'aarch64-linux-gnu', '--sysroot', '/usr/aarch64-linux-gnu']
 c_link_args = ['-target', 'aarch64-linux-gnu', '-fuse-ld=lld', '--gcc-toolchain=/usr']
