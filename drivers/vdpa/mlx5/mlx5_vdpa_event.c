@@ -232,6 +232,9 @@ mlx5_vdpa_timer_sleep(struct mlx5_vdpa_priv *priv, uint32_t max)
 	}
 	if (priv->timer_delay_us)
 		usleep(priv->timer_delay_us);
+	else
+		/* Give-up CPU to improve polling threads scheduling. */
+		pthread_yield();
 }
 
 static void *
@@ -500,6 +503,9 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 	rte_cpuset_t cpuset;
 	pthread_attr_t attr;
 	char name[16];
+	const struct sched_param sp = {
+		.sched_priority = sched_get_priority_max(SCHED_RR),
+	};
 
 	if (!priv->eventc)
 		/* All virtqs are in poll mode. */
@@ -518,6 +524,16 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 						  &cpuset);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to set thread affinity.");
+			return -1;
+		}
+		ret = pthread_attr_setschedpolicy(&attr, SCHED_RR);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to set thread sched policy = RR.");
+			return -1;
+		}
+		ret = pthread_attr_setschedparam(&attr, &sp);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to set thread priority.");
 			return -1;
 		}
 		ret = pthread_create(&priv->timer_tid, &attr,
