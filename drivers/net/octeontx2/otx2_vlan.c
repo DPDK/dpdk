@@ -306,12 +306,12 @@ nix_vlan_mcam_config(struct rte_eth_dev *eth_dev,
 			(0xF & ~(NPC_LT_LB_CTAG ^ NPC_LT_LB_STAG_QINQ))
 							<< mkex->lb_lt_offset;
 
-		mcam_data = ((uint32_t)vlan_id << 16);
-		mcam_mask = (BIT_ULL(16) - 1) << 16;
+		mcam_data = (uint16_t)vlan_id;
+		mcam_mask = (BIT_ULL(16) - 1);
 		otx2_mbox_memcpy(key_data + mkex->lb_xtract.key_off,
-				     &mcam_data, mkex->lb_xtract.len + 1);
+				     &mcam_data, mkex->lb_xtract.len);
 		otx2_mbox_memcpy(key_mask + mkex->lb_xtract.key_off,
-				     &mcam_mask, mkex->lb_xtract.len + 1);
+				     &mcam_mask, mkex->lb_xtract.len);
 	}
 
 	/* Adds LB STAG flag to MCAM KW */
