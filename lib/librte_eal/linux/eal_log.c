@@ -27,9 +27,9 @@ console_log_write(__rte_unused void *c, const char *buf, size_t size)
 {
 	ssize_t ret;
 
-	/* write on stdout */
-	ret = fwrite(buf, 1, size, stdout);
-	fflush(stdout);
+	/* write on stderr */
+	ret = fwrite(buf, 1, size, stderr);
+	fflush(stderr);
 
 	/* Syslog error levels are from 0 to 7, so subtract 1 to convert */
 	syslog(rte_log_cur_msg_loglevel() - 1, "%.*s", (int)size, buf);
