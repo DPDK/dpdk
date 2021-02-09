@@ -247,7 +247,6 @@ struct fwd_lcore {
 	streamid_t stream_idx;   /**< index of 1st stream in "fwd_streams" */
 	streamid_t stream_nb;    /**< number of streams in "fwd_streams" */
 	lcoreid_t  cpuid_idx;    /**< index of logical core in CPU id table */
-	queueid_t  tx_queue;     /**< TX queue to send forwarded packets */
 	volatile char stopped;   /**< stop forwarding when set */
 };
 
