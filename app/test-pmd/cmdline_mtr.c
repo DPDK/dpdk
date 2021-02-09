@@ -312,7 +312,7 @@ static void cmd_show_port_meter_cap_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_show_port_meter_cap = {
 	.f = cmd_show_port_meter_cap_parsed,
 	.data = NULL,
-	.help_str = "Show port meter cap",
+	.help_str = "show port meter cap <port_id>",
 	.tokens = {
 		(void *)&cmd_show_port_meter_cap_show,
 		(void *)&cmd_show_port_meter_cap_port,
@@ -408,7 +408,7 @@ static void cmd_add_port_meter_profile_srtcm_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_add_port_meter_profile_srtcm = {
 	.f = cmd_add_port_meter_profile_srtcm_parsed,
 	.data = NULL,
-	.help_str = "Add port meter profile srtcm (rfc2697)",
+	.help_str = "add port meter profile srtcm_rfc2697 <port_id> <profile_id> <cir> <cbs> <ebs>",
 	.tokens = {
 		(void *)&cmd_add_port_meter_profile_srtcm_add,
 		(void *)&cmd_add_port_meter_profile_srtcm_port,
@@ -515,7 +515,7 @@ static void cmd_add_port_meter_profile_trtcm_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_add_port_meter_profile_trtcm = {
 	.f = cmd_add_port_meter_profile_trtcm_parsed,
 	.data = NULL,
-	.help_str = "Add port meter profile trtcm (rfc2698)",
+	.help_str = "add port meter profile trtcm_rfc2698 <port_id> <profile_id> <cir> <pir> <cbs> <pbs>",
 	.tokens = {
 		(void *)&cmd_add_port_meter_profile_trtcm_add,
 		(void *)&cmd_add_port_meter_profile_trtcm_port,
@@ -627,7 +627,7 @@ static void cmd_add_port_meter_profile_trtcm_rfc4115_parsed(
 cmdline_parse_inst_t cmd_add_port_meter_profile_trtcm_rfc4115 = {
 	.f = cmd_add_port_meter_profile_trtcm_rfc4115_parsed,
 	.data = NULL,
-	.help_str = "Add port meter profile trtcm (rfc4115)",
+	.help_str = "add port meter profile trtcm_rfc4115 <port_id> <profile_id> <cir> <eir> <cbs> <ebs>",
 	.tokens = {
 		(void *)&cmd_add_port_meter_profile_trtcm_rfc4115_add,
 		(void *)&cmd_add_port_meter_profile_trtcm_rfc4115_port,
@@ -702,7 +702,7 @@ static void cmd_del_port_meter_profile_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_del_port_meter_profile = {
 	.f = cmd_del_port_meter_profile_parsed,
 	.data = NULL,
-	.help_str = "Delete port meter profile",
+	.help_str = "del port meter profile <port_id> <profile_id>",
 	.tokens = {
 		(void *)&cmd_del_port_meter_profile_del,
 		(void *)&cmd_del_port_meter_profile_port,
@@ -827,7 +827,10 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_create_port_meter = {
 	.f = cmd_create_port_meter_parsed,
 	.data = NULL,
-	.help_str = "Create port meter",
+	.help_str = "create port meter <port_id> <mtr_id> <profile_id> <meter_enable>(yes|no) "
+		"<g_action>(R|Y|G|D) <y_action>(R|Y|G|D) <r_action>(R|Y|G|D) "
+		"<stats_mask> <shared> <use_pre_meter_color> "
+		"[<dscp_tbl_entry0> <dscp_tbl_entry1> ...<dscp_tbl_entry63>]",
 	.tokens = {
 		(void *)&cmd_create_port_meter_create,
 		(void *)&cmd_create_port_meter_port,
@@ -896,7 +899,7 @@ static void cmd_enable_port_meter_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_enable_port_meter = {
 	.f = cmd_enable_port_meter_parsed,
 	.data = NULL,
-	.help_str = "Enable port meter",
+	.help_str = "enable port meter <port_id> <mtr_id>",
 	.tokens = {
 		(void *)&cmd_enable_port_meter_enable,
 		(void *)&cmd_enable_port_meter_port,
@@ -957,7 +960,7 @@ static void cmd_disable_port_meter_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_disable_port_meter = {
 	.f = cmd_disable_port_meter_parsed,
 	.data = NULL,
-	.help_str = "Disable port meter",
+	.help_str = "disable port meter <port_id> <mtr_id>",
 	.tokens = {
 		(void *)&cmd_disable_port_meter_disable,
 		(void *)&cmd_disable_port_meter_port,
@@ -1018,7 +1021,7 @@ static void cmd_del_port_meter_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_del_port_meter = {
 	.f = cmd_del_port_meter_parsed,
 	.data = NULL,
-	.help_str = "Delete port meter",
+	.help_str = "del port meter <port_id> <mtr_id>",
 	.tokens = {
 		(void *)&cmd_del_port_meter_del,
 		(void *)&cmd_del_port_meter_port,
@@ -1092,7 +1095,7 @@ static void cmd_set_port_meter_profile_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_set_port_meter_profile = {
 	.f = cmd_set_port_meter_profile_parsed,
 	.data = NULL,
-	.help_str = "Set port meter profile",
+	.help_str = "set port meter profile <port_id> <mtr_id> <profile_id>",
 	.tokens = {
 		(void *)&cmd_set_port_meter_profile_set,
 		(void *)&cmd_set_port_meter_profile_port,
@@ -1166,7 +1169,8 @@ free_table:
 cmdline_parse_inst_t cmd_set_port_meter_dscp_table = {
 	.f = cmd_set_port_meter_dscp_table_parsed,
 	.data = NULL,
-	.help_str = "Update port meter dscp table",
+	.help_str = "set port meter dscp table <port_id> <mtr_id> "
+		"[<dscp_tbl_entry0> <dscp_tbl_entry1> ... <dscp_tbl_entry63>]",
 	.tokens = {
 		(void *)&cmd_set_port_meter_dscp_table_set,
 		(void *)&cmd_set_port_meter_dscp_table_port,
@@ -1276,7 +1280,8 @@ static void cmd_set_port_meter_policer_action_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_set_port_meter_policer_action = {
 	.f = cmd_set_port_meter_policer_action_parsed,
 	.data = NULL,
-	.help_str = "Set port meter policer action",
+	.help_str = "set port meter policer action <port_id> <mtr_id> "
+		"<action_mask> <action0> [<action1> <action2>]",
 	.tokens = {
 		(void *)&cmd_set_port_meter_policer_action_set,
 		(void *)&cmd_set_port_meter_policer_action_port,
@@ -1355,7 +1360,7 @@ static void cmd_set_port_meter_stats_mask_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_set_port_meter_stats_mask = {
 	.f = cmd_set_port_meter_stats_mask_parsed,
 	.data = NULL,
-	.help_str = "Set port meter stats mask",
+	.help_str = "set port meter stats mask <port_id> <mtr_id> <stats_mask>",
 	.tokens = {
 		(void *)&cmd_set_port_meter_stats_mask_set,
 		(void *)&cmd_set_port_meter_stats_mask_port,
@@ -1459,7 +1464,7 @@ static void cmd_show_port_meter_stats_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_show_port_meter_stats = {
 	.f = cmd_show_port_meter_stats_parsed,
 	.data = NULL,
-	.help_str = "Show port meter stats",
+	.help_str = "show port meter stats <port_id> <mtr_id> <clear>(yes|no)",
 	.tokens = {
 		(void *)&cmd_show_port_meter_stats_show,
 		(void *)&cmd_show_port_meter_stats_port,
