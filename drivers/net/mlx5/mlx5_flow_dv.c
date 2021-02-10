@@ -1450,13 +1450,20 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 					  "isn't supported");
 		if (reg != REG_A)
 			nic_mask.data = priv->sh->dv_meta_mask;
-	} else if (attr->transfer) {
-		return rte_flow_error_set(error, ENOTSUP,
+	} else {
+		if (attr->transfer)
+			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ITEM, item,
 					"extended metadata feature "
 					"should be enabled when "
 					"meta item is requested "
 					"with e-switch mode ");
+		if (attr->ingress)
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ITEM, item,
+					"match on metadata for ingress "
+					"is not supported in legacy "
+					"metadata mode");
 	}
 	if (!mask)
 		mask = &rte_flow_item_meta_mask;
