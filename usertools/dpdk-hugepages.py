@@ -43,6 +43,13 @@ def is_numa():
     return os.path.exists('/sys/devices/system/node')
 
 
+def get_valid_page_sizes(path):
+    '''Extract valid hugepage sizes'''
+    dir = os.path.dirname(path)
+    pg_sizes = (d.split("-")[1] for d in os.listdir(dir))
+    return " ".join(pg_sizes)
+
+
 def get_hugepages(path):
     '''Read number of reserved pages'''
     with open(path + '/nr_hugepages') as nr_hugepages:
@@ -59,9 +66,8 @@ def set_hugepages(path, pages):
     except PermissionError:
         sys.exit('Permission denied: need to be root!')
     except FileNotFoundError:
-        filename = os.path.basename(path)
-        size = filename[10:]
-        sys.exit('{} is not a valid system huge page size'.format(size))
+        sys.exit("Invalid page size. Valid page sizes: {}".format(
+                 get_valid_page_sizes(path)))
     if get_hugepages(path) != pages:
         sys.exit('Unable to reserve required pages.')
 
