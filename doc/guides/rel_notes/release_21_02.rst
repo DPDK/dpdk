@@ -546,3 +546,66 @@ Tested Platforms
     * CentOS Linux release 7.6.1810 (AltArch)
     * MLNX_OFED 5.2-2.2.0 and above
     * DPDK application running on Arm cores
+
+* Intel\ |reg| platforms with Broadcom\ |reg| NICs combinations
+
+  * CPU:
+
+    * Intel\ |reg| Xeon\ |reg| Gold 6154 CPU @ 3.00GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2667 v3 @ 3.20GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2650 v2 @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6142 CPU @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E3-1270 v3 @ 3.50GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6134M CPU @ 3.20GHz
+
+  * OS:
+
+    * Red Hat Enterprise Linux Server release 8.1
+    * Red Hat Enterprise Linux Server release 7.6
+    * Centos 8.1
+    * Centos 7.8
+    * Centos 7.7
+
+  * upstream kernel:
+
+    * Linux 5.3.4
+
+  * NICs:
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P225p (2x25G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Firmware version: 214.4.114.0 and above
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P425p (4x25G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Firmware version: 218.0.124.0 and above
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P2100G (2x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Firmware version: 218.0.124.0 and above
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P425p (4x25G)
+
+      * Host interface: PCI Express 4.0 x16
+      * Firmware version: 218.0.124.0 and above
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P2100G (2x100G)
+
+      * Host interface: PCI Express 4.0 x16
+      * Firmware version: 218.0.124.0 and above
+
+* Broadcom\ |reg| NetXtreme-S\ |reg| Series SmartNIC
+
+  * Broadcom\ |reg| NetXtreme-S\ |reg| Series PS225-H16 SmartNIC (2x25G)
+
+    * Host interface: PCI Express 3.0 x8
+    * Firmware version: 218.1.143.0
+
+  * Embedded software:
+
+    * Broadcom Yocto Linux
+    * Kernel version: 4.14.196
+    * DPDK application running on 8 Arm Cortex-A72 cores
