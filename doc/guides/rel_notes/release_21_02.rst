@@ -609,3 +609,15 @@ Tested Platforms
     * Broadcom Yocto Linux
     * Kernel version: 4.14.196
     * DPDK application running on 8 Arm Cortex-A72 cores
+
+* NXP ARMv8 SoCs (with integrated NICs)
+
+  * SoC:
+
+    * LX2xxx, LS2xxx, LS10xx
+
+  * OS (based on NXP LSDK-20.04):
+
+    * Kernel version: 4.19.90
+    * Kernel version: 5.4.47
+    * Ubuntu 18.04
