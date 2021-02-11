@@ -89,7 +89,7 @@ be passed as part of EAL arguments. For example,
 
 .. code-block:: console
 
-   testpmd -a af:10.0,pflink_fullchk=1 -- -i
+   dpdk-testpmd -a af:10.0,pflink_fullchk=1 -- -i
 
 - ``pflink_fullchk`` (default **0**)
 

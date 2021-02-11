@@ -146,7 +146,7 @@ The following are known limitations:
     Therefore, rte_mbuf should be big enough to hold the whole packet.
     For example, to allow testpmd to receive jumbo frames, use the following:
 
-    testpmd [options] -- --mbuf-size=<your-max-packet-size>
+    dpdk-testpmd [options] -- --mbuf-size=<your-max-packet-size>
 
 #.  Qemu e1000 does not validate the checksum of incoming packets.
 

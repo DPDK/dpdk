@@ -361,7 +361,7 @@ The application enables multiple TX and RX queues when it is started.
 
 .. code-block:: console
 
-    testpmd -l 1,3,5 --main-lcore 1 --txq=2 –rxq=2 --nb-cores=2
+    dpdk-testpmd -l 1,3,5 --main-lcore 1 --txq=2 –rxq=2 --nb-cores=2
 
 **TSS**
 
@@ -753,7 +753,7 @@ The sample command line with the new ``devargs`` looks like this::
 
 .. code-block:: console
 
-	testpmd -l1-4 -n2 -a 0008:01:00.0,host-based-truflow=1,\
+	dpdk-testpmd -l1-4 -n2 -a 0008:01:00.0,host-based-truflow=1,\
 	representor=[0], rep-based-pf=8,rep-is-pf=0,rep-q-r2f=1,rep-fc-r2f=1,\
 	rep-q-f2r=0,rep-fc-f2r=1 --log-level="pmd.*",8 -- -i --rxq=3 --txq=3
 
@@ -847,8 +847,8 @@ DPDK implements a light-weight library to allow PMDs to be bonded together and p
 
 .. code-block:: console
 
-    testpmd -l 0-3 -n4 --vdev 'net_bonding0,mode=0,slave=<PCI B:D.F device 1>,slave=<PCI B:D.F device 2>,mac=XX:XX:XX:XX:XX:XX’ – --socket_num=1 – -i --port-topology=chained
-    (ex) testpmd -l 1,3,5,7,9 -n4 --vdev 'net_bonding0,mode=0,slave=0000:82:00.0,slave=0000:82:00.1,mac=00:1e:67:1d:fd:1d' – --socket-num=1 – -i --port-topology=chained
+    dpdk-testpmd -l 0-3 -n4 --vdev 'net_bonding0,mode=0,slave=<PCI B:D.F device 1>,slave=<PCI B:D.F device 2>,mac=XX:XX:XX:XX:XX:XX’ – --socket_num=1 – -i --port-topology=chained
+    (ex) dpdk-testpmd -l 1,3,5,7,9 -n4 --vdev 'net_bonding0,mode=0,slave=0000:82:00.0,slave=0000:82:00.1,mac=00:1e:67:1d:fd:1d' – --socket-num=1 – -i --port-topology=chained
 
 Vector Processing
 -----------------
