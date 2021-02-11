@@ -152,7 +152,7 @@ Host2VM communication example
     .. code-block:: console
 
         modprobe uio
-        echo 512 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
+        dpdk-hugepages.py --setup 1G
         modprobe uio_pci_generic
         ./usertools/dpdk-devbind.py -b uio_pci_generic 00:03.0
 

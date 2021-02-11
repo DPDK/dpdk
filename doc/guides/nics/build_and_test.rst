@@ -64,6 +64,12 @@ This section demonstrates how to setup and run ``testpmd`` in Linux.
 
          Hugepagesize:       2048 kB
 
+   Mount and request above can be achieved simply with this tool:
+
+   .. code-block:: console
+
+      dpdk-hugepages.py --setup 2G
+
 #. Load ``igb_uio`` or ``vfio-pci`` driver:
 
    .. code-block:: console

@@ -123,7 +123,7 @@ Another way to bind the VF would be to use the ``dpdk-devbind.py`` script:
 
     * Ensure that sufficient huge pages are available for your application::
 
-         echo 8 > /sys/kernel/mm/hugepages/hugepages-524288kB/nr_hugepages
+         dpdk-hugepages.py --setup 4G --pagesize 512M
 
       Refer to :ref:`linux_gsg_hugepages` for more details.
 

@@ -188,7 +188,7 @@ Common Issues
 
   .. code-block:: console
 
-      cat /sys/kernel/mm/hugepages/hugepages-<pagesize>/nr_hugepages
+     dpdk-hugepages.py --show
 
   The command above indicates how many hugepages are free to support QEMU's
   allocation request.

@@ -107,9 +107,7 @@ applications.
 
 .. code-block:: console
 
-        echo 8 > /sys/kernel/mm/hugepages/hugepages-524288kB/nr_hugepages
-        mkdir /mnt/huge
-        mount -t hugetlbfs nodev /mnt/huge
+   dpdk-hugepages.py --setup 4G --pagesize 512M
 
 Example applications can now be executed with crypto operations offloaded to
 OCTEON TX crypto PMD.

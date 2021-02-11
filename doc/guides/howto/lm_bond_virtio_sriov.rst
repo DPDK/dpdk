@@ -581,9 +581,9 @@ Set up DPDK in the Virtual Machine
    # virtio port is 03
    # vf port is 04
 
-   cat  /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
-   echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
-   cat  /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+   /root/dpdk/usertools/dpdk-hugepages.py --show
+   /root/dpdk/usertools/dpdk-hugepages.py --setup 2G
+   /root/dpdk/usertools/dpdk-hugepages.py --show
 
    ifconfig -a
    /root/dpdk/usertools/dpdk-devbind.py --status

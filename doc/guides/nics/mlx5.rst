@@ -1712,7 +1712,7 @@ ConnectX-4/ConnectX-5/ConnectX-6/BlueField devices managed by librte_net_mlx5.
 
 #. Request huge pages::
 
-      echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages/nr_hugepages
+      dpdk-hugepages.py --setup 2G
 
 #. Start testpmd with basic parameters::
 
