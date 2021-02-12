@@ -535,7 +535,18 @@ mlx5_mr_update_mp(struct rte_eth_dev *dev, struct mlx5_mr_ctrl *mr_ctrl,
 		.mr_ctrl = mr_ctrl,
 		.ret = 0,
 	};
+	uint32_t flags = rte_pktmbuf_priv_flags(mp);
 
+	if (flags & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) {
+		/*
+		 * The pinned external buffer should be registered for DMA
+		 * operations by application. The mem_list of the pool contains
+		 * the list of chunks with mbuf structures w/o built-in data
+		 * buffers and DMA actually does not happen there, no need
+		 * to create MR for these chunks.
+		 */
+		return 0;
+	}
 	DRV_LOG(DEBUG, "Port %u Rx queue registering mp %s "
 		       "having %u chunks.", dev->data->port_id,
 		       mp->name, mp->nb_mem_chunks);
