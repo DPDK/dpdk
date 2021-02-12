@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated testpmd.**
+
+  * Added command to display Rx queue used descriptor count.
+    ``show port (port_id) rxq (queue_id) desc used count``
+
 
 Removed Items
 -------------
