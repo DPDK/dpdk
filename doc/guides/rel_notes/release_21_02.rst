@@ -20,6 +20,16 @@ DPDK Release 21.02
       make doc-guides-html
       xdg-open build/doc/html/guides/rel_notes/release_21_02.html
 
+.. note::
+
+   A **dependency** has been added for building DPDK on Linux or FreeBSD:
+   the Python module **pyelftools** (version **0.22** or greater),
+   often packaged as python3-pyelftools, is required.
+
+   If not available as a distribution package, it can be installed with::
+
+      pip3 install pyelftools
+
 
 New Features
 ------------
@@ -179,6 +189,13 @@ New Features
   A new python script has been added to automate running crypto performance
   tests and output graphed results to PDF files.
   See the :doc:`../tools/cryptoperf` guide for more details.
+
+* **Added Windows support to pmdinfogen.**
+
+  PMD information strings were added for Windows as well as for other OS.
+  Extracting them from Windows DLL is not yet supported.
+  The build-time tool pmdinfogen was rewritten in Python,
+  thus libelf dependency was replaced with pyelftools as new build dependency.
 
 * **Added support for build-time checking of header includes.**
 
