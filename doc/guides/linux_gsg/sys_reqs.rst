@@ -54,7 +54,9 @@ Compilation of the DPDK
 
 *   ``pyelftools`` (version 0.22+)
 
-    * For RHEL/Fedora systems it can be installed using ``dnf install python-pyelftools``
+    * For Fedora systems it can be installed using ``dnf install python-pyelftools``
+
+    * For RHEL/CentOS systems it can be installed using ``pip3 install pyelftools``
 
     * For Ubuntu/Debian it can be installed using ``apt install python3-pyelftools``
 
