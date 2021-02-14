@@ -827,7 +827,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 
 		pcap_pkt_count = count_packets_in_pcap(pcap, pcap_q);
 
-		snprintf(ring_name, sizeof(ring_name), "PCAP_RING%" PRIu16,
+		snprintf(ring_name, sizeof(ring_name), "PCAP_RING%" PRIu32,
 				ring_number);
 
 		pcap_q->pkts = rte_ring_create(ring_name,
