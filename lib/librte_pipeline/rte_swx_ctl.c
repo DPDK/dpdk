@@ -1339,19 +1339,32 @@ rte_swx_ctl_pipeline_abort(struct rte_swx_ctl_pipeline *ctl)
 		table_abort(ctl, i);
 }
 
+static int
+token_is_comment(const char *token)
+{
+	if ((token[0] == '#') ||
+	    (token[0] == ';') ||
+	    ((token[0] == '/') && (token[1] == '/')))
+		return 1; /* TRUE. */
+
+	return 0; /* FALSE. */
+}
+
 #define RTE_SWX_CTL_ENTRY_TOKENS_MAX 256
 
 struct rte_swx_table_entry *
 rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 				      const char *table_name,
-				      const char *string)
+				      const char *string,
+				      int *is_blank_or_comment)
 {
-	char *tokens[RTE_SWX_CTL_ENTRY_TOKENS_MAX];
+	char *token_array[RTE_SWX_CTL_ENTRY_TOKENS_MAX], **tokens;
 	struct table *table;
 	struct action *action;
 	struct rte_swx_table_entry *entry = NULL;
 	char *s0 = NULL, *s;
 	uint32_t n_tokens = 0, arg_offset = 0, i;
+	int blank_or_comment = 0;
 
 	/* Check input arguments. */
 	if (!ctl)
@@ -1381,37 +1394,66 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 		char *token;
 
 		token = strtok_r(s, " \f\n\r\t\v", &s);
-		if (!token)
+		if (!token || token_is_comment(token))
 			break;
 
 		if (n_tokens >= RTE_SWX_CTL_ENTRY_TOKENS_MAX)
 			goto error;
 
-		tokens[n_tokens] = token;
+		token_array[n_tokens] = token;
 		n_tokens++;
 	}
 
-	if ((n_tokens < 3 + table->info.n_match_fields) ||
-	    strcmp(tokens[0], "match") ||
-	    strcmp(tokens[1 + table->info.n_match_fields], "action"))
+	if (!n_tokens) {
+		blank_or_comment = 1;
 		goto error;
+	}
 
-	action = action_find(ctl, tokens[2 + table->info.n_match_fields]);
-	if (!action)
-		goto error;
-
-	if (n_tokens != 3 + table->info.n_match_fields +
-	    action->info.n_args * 2)
-		goto error;
+	tokens = token_array;
 
 	/*
 	 * Match.
 	 */
+	if (n_tokens && strcmp(tokens[0], "match"))
+		goto action;
+
+	if (n_tokens < 1 + table->info.n_match_fields)
+		goto error;
+
 	for (i = 0; i < table->info.n_match_fields; i++) {
 		struct rte_swx_ctl_table_match_field_info *mf = &table->mf[i];
-		char *mf_val = tokens[1 + i];
-		uint64_t val;
+		char *mf_val = tokens[1 + i], *mf_mask = NULL;
+		uint64_t val, mask = UINT64_MAX;
+		uint32_t offset = (mf->offset - table->mf[0].offset) / 8;
 
+		/*
+		 * Mask.
+		 */
+		mf_mask = strchr(mf_val, '/');
+		if (mf_mask) {
+			*mf_mask = 0;
+			mf_mask++;
+
+			/* Parse. */
+			mask = strtoull(mf_mask, &mf_mask, 0);
+			if (mf_mask[0])
+				goto error;
+
+			/* Endianness conversion. */
+			if (mf->is_header)
+				mask = field_hton(mask, mf->n_bits);
+		}
+
+			/* Copy to entry. */
+			if (entry->key_mask)
+				memcpy(&entry->key_mask[offset],
+				       (uint8_t *)&mask,
+				       mf->n_bits / 8);
+
+		/*
+		 * Value.
+		 */
+		/* Parse. */
 		val = strtoull(mf_val, &mf_val, 0);
 		if (mf_val[0])
 			goto error;
@@ -1420,17 +1462,32 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 		if (mf->is_header)
 			val = field_hton(val, mf->n_bits);
 
-		/* Copy key and key_mask to entry. */
-		memcpy(&entry->key[(mf->offset - table->mf[0].offset) / 8],
+		/* Copy to entry. */
+		memcpy(&entry->key[offset],
 		       (uint8_t *)&val,
 		       mf->n_bits / 8);
-
-		/* TBD Set entry->key_mask for wildcard and LPM tables. */
 	}
+
+	tokens += 1 + table->info.n_match_fields;
+	n_tokens -= 1 + table->info.n_match_fields;
 
 	/*
 	 * Action.
 	 */
+action:
+	if (n_tokens && strcmp(tokens[0], "action"))
+		goto other;
+
+	if (n_tokens < 2)
+		goto error;
+
+	action = action_find(ctl, tokens[1]);
+	if (!action)
+		goto error;
+
+	if (n_tokens < 2 + action->info.n_args * 2)
+		goto error;
+
 	/* action_id. */
 	entry->action_id = action - ctl->actions;
 
@@ -1441,8 +1498,8 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 		uint64_t val;
 		int is_nbo = 0;
 
-		arg_name = tokens[3 + table->info.n_match_fields + i * 2];
-		arg_val = tokens[3 + table->info.n_match_fields + i * 2 + 1];
+		arg_name = tokens[2 + i * 2];
+		arg_val = tokens[2 + i * 2 + 1];
 
 		if (strcmp(arg_name, arg->name) ||
 		    (strlen(arg_val) < 4) ||
@@ -1473,13 +1530,48 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 		arg_offset += arg->n_bits / 8;
 	}
 
+	tokens += 2 + action->info.n_args * 2;
+	n_tokens -= 2 + action->info.n_args * 2;
+
+other:
+	if (n_tokens)
+		goto error;
+
 	free(s0);
 	return entry;
 
 error:
 	table_entry_free(entry);
 	free(s0);
+	if (is_blank_or_comment)
+		*is_blank_or_comment = blank_or_comment;
 	return NULL;
+}
+
+static void
+table_entry_printf(FILE *f,
+		   struct rte_swx_ctl_pipeline *ctl,
+		   struct table *table,
+		   struct rte_swx_table_entry *entry)
+{
+	struct action *action = &ctl->actions[entry->action_id];
+	uint32_t i;
+
+	fprintf(f, "match ");
+	for (i = 0; i < table->params.key_size; i++)
+		fprintf(f, "%02x", entry->key[i]);
+
+	if (entry->key_mask) {
+		fprintf(f, "/");
+		for (i = 0; i < table->params.key_size; i++)
+			fprintf(f, "%02x", entry->key_mask[i]);
+	}
+
+	fprintf(f, " action %s ", action->info.name);
+	for (i = 0; i < action->data_size; i++)
+		fprintf(f, "%02x", entry->action_data[i]);
+
+	fprintf(f, "\n");
 }
 
 int
@@ -1512,47 +1604,17 @@ rte_swx_ctl_pipeline_table_fprintf(FILE *f,
 
 	/* Table entries. */
 	TAILQ_FOREACH(entry, &table->entries, node) {
-		struct action *action = &ctl->actions[entry->action_id];
-
-		fprintf(f, "match ");
-		for (i = 0; i < table->params.key_size; i++)
-			fprintf(f, "%02x", entry->key[i]);
-
-		fprintf(f, " action %s ", action->info.name);
-		for (i = 0; i < action->data_size; i++)
-			fprintf(f, "%02x", entry->action_data[i]);
-
-		fprintf(f, "\n");
+		table_entry_printf(f, ctl, table, entry);
 		n_entries++;
 	}
 
 	TAILQ_FOREACH(entry, &table->pending_modify0, node) {
-		struct action *action = &ctl->actions[entry->action_id];
-
-		fprintf(f, "match ");
-		for (i = 0; i < table->params.key_size; i++)
-			fprintf(f, "%02x", entry->key[i]);
-
-		fprintf(f, " action %s ", action->info.name);
-		for (i = 0; i < action->data_size; i++)
-			fprintf(f, "%02x", entry->action_data[i]);
-
-		fprintf(f, "\n");
+		table_entry_printf(f, ctl, table, entry);
 		n_entries++;
 	}
 
 	TAILQ_FOREACH(entry, &table->pending_delete, node) {
-		struct action *action = &ctl->actions[entry->action_id];
-
-		fprintf(f, "match ");
-		for (i = 0; i < table->params.key_size; i++)
-			fprintf(f, "%02x", entry->key[i]);
-
-		fprintf(f, " action %s ", action->info.name);
-		for (i = 0; i < action->data_size; i++)
-			fprintf(f, "%02x", entry->action_data[i]);
-
-		fprintf(f, "\n");
+		table_entry_printf(f, ctl, table, entry);
 		n_entries++;
 	}
 

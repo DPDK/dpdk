@@ -521,6 +521,10 @@ rte_swx_ctl_pipeline_abort(struct rte_swx_ctl_pipeline *ctl);
  *   Table name.
  * @param[in] string
  *   String containing the table entry.
+ * @param[out] is_blank_or_comment
+ *   On error, this argument provides an indication of whether *string* contains
+ *   an invalid table entry (set to zero) or a blank or comment line that should
+ *   typically be ignored (set to a non-zero value).
  * @return
  *   0 on success or the following error codes otherwise:
  *   -EINVAL: Invalid argument.
@@ -529,7 +533,8 @@ __rte_experimental
 struct rte_swx_table_entry *
 rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 				      const char *table_name,
-				      const char *string);
+				      const char *string,
+				      int *is_blank_or_comment);
 
 /**
  * Pipeline table print to file

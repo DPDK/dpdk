@@ -1002,14 +1002,19 @@ cmd_pipeline_table_update(char **tokens,
 	if (file_add)
 		for (line_id = 1; ; line_id++) {
 			struct rte_swx_table_entry *entry;
+			int is_blank_or_comment;
 
 			if (fgets(line, 2048, file_add) == NULL)
 				break;
 
 			entry = rte_swx_ctl_pipeline_table_entry_read(p->ctl,
 				table_name,
-				line);
+				line,
+				&is_blank_or_comment);
 			if (!entry) {
+				if (is_blank_or_comment)
+					continue;
+
 				snprintf(out, out_size, MSG_FILE_ERR,
 					file_name_add, line_id);
 				goto error;
@@ -1032,14 +1037,19 @@ cmd_pipeline_table_update(char **tokens,
 	if (file_delete)
 		for (line_id = 1; ; line_id++) {
 			struct rte_swx_table_entry *entry;
+			int is_blank_or_comment;
 
 			if (fgets(line, 2048, file_delete) == NULL)
 				break;
 
 			entry = rte_swx_ctl_pipeline_table_entry_read(p->ctl,
 				table_name,
-				line);
+				line,
+				&is_blank_or_comment);
 			if (!entry) {
+				if (is_blank_or_comment)
+					continue;
+
 				snprintf(out, out_size, MSG_FILE_ERR,
 					file_name_delete, line_id);
 				goto error;
@@ -1061,14 +1071,19 @@ cmd_pipeline_table_update(char **tokens,
 	if (file_default)
 		for (line_id = 1; ; line_id++) {
 			struct rte_swx_table_entry *entry;
+			int is_blank_or_comment;
 
 			if (fgets(line, 2048, file_default) == NULL)
 				break;
 
 			entry = rte_swx_ctl_pipeline_table_entry_read(p->ctl,
 				table_name,
-				line);
+				line,
+				&is_blank_or_comment);
 			if (!entry) {
+				if (is_blank_or_comment)
+					continue;
+
 				snprintf(out, out_size, MSG_FILE_ERR,
 					file_name_default, line_id);
 				goto error;
