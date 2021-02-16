@@ -152,7 +152,6 @@ void ionic_lif_configure_vlan_offload(struct ionic_lif *lif, int mask);
 void ionic_lif_reset(struct ionic_lif *lif);
 
 int ionic_intr_alloc(struct ionic_lif *lif, struct ionic_intr_info *intr);
-void ionic_intr_free(struct ionic_lif *lif, struct ionic_intr_info *intr);
 
 int ionic_qcq_service(struct ionic_qcq *qcq, int budget, ionic_cq_cb cb,
 	void *cb_arg);

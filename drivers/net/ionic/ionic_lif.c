@@ -584,13 +584,6 @@ ionic_intr_alloc(struct ionic_lif *lif, struct ionic_intr_info *intr)
 	return 0;
 }
 
-void
-ionic_intr_free(struct ionic_lif *lif, struct ionic_intr_info *intr)
-{
-	if (intr->index != IONIC_INTR_NONE)
-		lif->adapter->intrs[intr->index] = false;
-}
-
 static int
 ionic_qcq_alloc(struct ionic_lif *lif, uint8_t type,
 		uint32_t index,
