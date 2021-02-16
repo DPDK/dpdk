@@ -47,8 +47,6 @@
 #include "ionic_lif.h"
 #include "ionic_rxtx.h"
 
-#define IONIC_RX_RING_DOORBELL_STRIDE		(32 - 1)
-
 /*********************************************************************
  *
  *  TX functions
@@ -322,9 +320,6 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 	}
 
 	q->head_idx = Q_NEXT_TO_POST(q, 1);
-
-	if (done)
-		ionic_q_flush(q);
 }
 
 static struct ionic_txq_desc *
@@ -341,8 +336,7 @@ ionic_tx_tso_next(struct ionic_tx_qcq *txq, struct ionic_txq_sg_elem **elem)
 }
 
 static int
-ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
-		bool not_xmit_more)
+ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 {
 	struct ionic_queue *q = &txq->qcq.q;
 	struct ionic_tx_stats *stats = &txq->stats;
@@ -410,7 +404,7 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 			hdrlen, mss,
 			encap,
 			vlan_tci, has_vlan,
-			start, done && not_xmit_more);
+			start, done);
 		desc = ionic_tx_tso_next(txq, &elem);
 		start = false;
 		seglen = mss;
@@ -451,7 +445,7 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 				hdrlen, mss,
 				encap,
 				vlan_tci, has_vlan,
-				start, done && not_xmit_more);
+				start, done);
 			desc = ionic_tx_tso_next(txq, &elem);
 			start = false;
 		}
@@ -465,8 +459,7 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 }
 
 static __rte_always_inline int
-ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
-		bool not_xmit_more)
+ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm)
 {
 	struct ionic_queue *q = &txq->qcq.q;
 	struct ionic_txq_desc *desc, *desc_base = q->base;
@@ -531,9 +524,6 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 
 	q->head_idx = Q_NEXT_TO_POST(q, 1);
 
-	if (not_xmit_more)
-		ionic_q_flush(q);
-
 	return 0;
 }
 
@@ -548,7 +538,6 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t bytes_tx = 0;
 	uint16_t nb_tx = 0;
 	int err;
-	bool last;
 
 	/* Cleaning old buffers */
 	ionic_tx_flush(txq);
@@ -559,8 +548,6 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	while (nb_tx < nb_pkts) {
-		last = (nb_tx == (nb_pkts - 1));
-
 		next_q_head_idx = Q_NEXT_TO_POST(q, 1);
 		if ((next_q_head_idx & 0x3) == 0) {
 			struct ionic_txq_desc *desc_base = q->base;
@@ -569,18 +556,21 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 
 		if (tx_pkts[nb_tx]->ol_flags & PKT_TX_TCP_SEG)
-			err = ionic_tx_tso(txq, tx_pkts[nb_tx], last);
+			err = ionic_tx_tso(txq, tx_pkts[nb_tx]);
 		else
-			err = ionic_tx(txq, tx_pkts[nb_tx], last);
+			err = ionic_tx(txq, tx_pkts[nb_tx]);
 		if (err) {
 			stats->drop += nb_pkts - nb_tx;
-			if (nb_tx > 0)
-				ionic_q_flush(q);
 			break;
 		}
 
 		bytes_tx += tx_pkts[nb_tx]->pkt_len;
 		nb_tx++;
+	}
+
+	if (nb_tx > 0) {
+		rte_wmb();
+		ionic_q_flush(q);
 	}
 
 	stats->packets += nb_tx;
@@ -954,7 +944,6 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 	void **info;
 	rte_iova_t dma_addr;
 	uint32_t i, j, nsegs, buf_size, size;
-	bool ring_doorbell;
 
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
 		RTE_PKTMBUF_HEADROOM);
@@ -1010,16 +999,12 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 			IONIC_PRINT(ERR, "Rx SG size is not sufficient (%d < %d)",
 				size, len);
 
-		ring_doorbell = ((q->head_idx + 1) &
-			IONIC_RX_RING_DOORBELL_STRIDE) == 0;
-
 		info[0] = rxm;
 
 		q->head_idx = Q_NEXT_TO_POST(q, 1);
-
-		if (ring_doorbell)
-			ionic_q_flush(q);
 	}
+
+	ionic_q_flush(q);
 
 	return 0;
 }
