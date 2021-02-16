@@ -386,6 +386,9 @@ table_entry_duplicate(struct rte_swx_ctl_pipeline *ctl,
 			       entry->key_mask,
 			       table->params.key_size);
 		}
+
+		/* key_priority. */
+		new_entry->key_priority = entry->key_priority;
 	}
 
 	if (data_duplicate) {
@@ -1673,6 +1676,28 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 	n_tokens -= 1 + table->info.n_match_fields;
 
 	/*
+	 * Match priority.
+	 */
+	if (n_tokens && !strcmp(tokens[0], "priority")) {
+		char *priority = tokens[1];
+		uint32_t val;
+
+		if (n_tokens < 2)
+			goto error;
+
+		/* Parse. */
+		val = strtoul(priority, &priority, 0);
+		if (priority[0])
+			goto error;
+
+		/* Copy to entry. */
+		entry->key_priority = val;
+
+		tokens += 2;
+		n_tokens -= 2;
+	}
+
+	/*
 	 * Action.
 	 */
 action:
@@ -1767,6 +1792,8 @@ table_entry_printf(FILE *f,
 		for (i = 0; i < table->params.key_size; i++)
 			fprintf(f, "%02x", entry->key_mask[i]);
 	}
+
+	fprintf(f, " priority %u", entry->key_priority);
 
 	fprintf(f, " action %s ", action->info.name);
 	for (i = 0; i < action->data_size; i++)

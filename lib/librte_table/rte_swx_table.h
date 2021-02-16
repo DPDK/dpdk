@@ -89,6 +89,15 @@ struct rte_swx_table_entry {
 	 */
 	uint64_t key_signature;
 
+	/** Key priority for the current entry. Useful for wildcard match (as
+	 * match rules are commonly overlapping with other rules), ignored for
+	 * exact match (as match rules never overlap, hence all rules have the
+	 * same match priority) and for LPM (match priority is driven by the
+	 * prefix length, with non-overlapping prefixes essentially having the
+	 * same match priority). Value 0 indicates the highest match priority.
+	 */
+	uint32_t key_priority;
+
 	/** Action ID for the current entry. */
 	uint64_t action_id;
 
