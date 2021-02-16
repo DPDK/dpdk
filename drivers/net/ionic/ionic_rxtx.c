@@ -123,8 +123,12 @@ void __rte_cold
 ionic_dev_tx_queue_release(void *tx_queue)
 {
 	struct ionic_tx_qcq *txq = tx_queue;
+	struct ionic_tx_stats *stats = &txq->stats;
 
 	IONIC_PRINT_CALL();
+
+	IONIC_PRINT(DEBUG, "TX queue %u pkts %ju tso %ju",
+		txq->qcq.q.index, stats->packets, stats->tso);
 
 	ionic_lif_txq_deinit(txq);
 
@@ -410,7 +414,6 @@ ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 		offset = 0;
 		data_iova = rte_mbuf_data_iova(txm_seg);
 		left = txm_seg->data_len;
-		stats->frags++;
 
 		while (left > 0) {
 			next_addr = rte_cpu_to_le_64(data_iova + offset);
@@ -508,7 +511,6 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 	while (txm_seg != NULL) {
 		elem->len = txm_seg->data_len;
 		elem->addr = rte_cpu_to_le_64(rte_mbuf_data_iova(txm_seg));
-		stats->frags++;
 		elem++;
 		txm_seg = txm_seg->next;
 	}
@@ -657,11 +659,17 @@ void __rte_cold
 ionic_dev_rx_queue_release(void *rx_queue)
 {
 	struct ionic_rx_qcq *rxq = rx_queue;
+	struct ionic_rx_stats *stats;
 
 	if (!rxq)
 		return;
 
 	IONIC_PRINT_CALL();
+
+	stats = &rxq->stats;
+
+	IONIC_PRINT(DEBUG, "RX queue %u pkts %ju mtod %ju",
+		rxq->qcq.q.index, stats->packets, stats->mtods);
 
 	ionic_rx_empty(rxq);
 
@@ -887,6 +895,7 @@ ionic_rx_clean(struct ionic_rx_qcq *rxq,
 				pkt_type = RTE_PTYPE_L2_ETHER_ARP;
 			else
 				pkt_type = RTE_PTYPE_UNKNOWN;
+			stats->mtods++;
 			break;
 		}
 	}

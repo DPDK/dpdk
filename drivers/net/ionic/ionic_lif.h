@@ -34,7 +34,6 @@ struct ionic_tx_stats {
 	uint64_t stop;
 	uint64_t no_csum;
 	uint64_t tso;
-	uint64_t frags;
 };
 
 struct ionic_rx_stats {
@@ -44,6 +43,7 @@ struct ionic_rx_stats {
 	uint64_t bad_cq_status;
 	uint64_t no_room;
 	uint64_t bad_len;
+	uint64_t mtods;
 };
 
 #define IONIC_QCQ_F_INITED	BIT(0)
