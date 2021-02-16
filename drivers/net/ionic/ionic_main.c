@@ -194,7 +194,7 @@ ionic_adminq_service(struct ionic_cq *cq, uint16_t cq_desc_index,
 static int
 ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 {
-	struct ionic_queue *q = &lif->adminqcq->q;
+	struct ionic_queue *q = &lif->adminqcq->qcq.q;
 	struct ionic_admin_cmd *q_desc_base = q->base;
 	struct ionic_admin_cmd *q_desc;
 	int err = 0;
@@ -234,7 +234,7 @@ ionic_adminq_wait_for_completion(struct ionic_lif *lif,
 		 */
 		rte_spinlock_lock(&lif->adminq_service_lock);
 
-		ionic_qcq_service(lif->adminqcq, budget,
+		ionic_qcq_service(&lif->adminqcq->qcq, budget,
 				ionic_adminq_service, NULL);
 
 		rte_spinlock_unlock(&lif->adminq_service_lock);
