@@ -11,6 +11,7 @@ import socket
 import os
 import glob
 import json
+import errno
 import readline
 import argparse
 
@@ -33,6 +34,20 @@ def read_socket(sock, buf_len, echo=True):
     return ret
 
 
+def get_app_name(pid):
+    """ return the app name for a given PID, for printing """
+    proc_cmdline = os.path.join('/proc', str(pid), 'cmdline')
+    try:
+        with open(proc_cmdline) as f:
+            argv0 = f.read(1024).split('\0')[0]
+            return os.path.basename(argv0)
+    except IOError as e:
+        # ignore file not found errors
+        if e.errno != errno.ENOENT:
+            raise
+    return None
+
+
 def handle_socket(path):
     """ Connect to socket and handle user input """
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
@@ -46,6 +61,9 @@ def handle_socket(path):
         return
     json_reply = read_socket(sock, 1024)
     output_buf_len = json_reply["max_output_len"]
+    app_name = get_app_name(json_reply["pid"])
+    if app_name:
+        print('Connected to application: "%s"' % app_name)
 
     # get list of commands for readline completion
     sock.send("/".encode())
