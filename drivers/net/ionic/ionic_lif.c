@@ -588,6 +588,7 @@ static int
 ionic_qcq_alloc(struct ionic_lif *lif,
 		uint8_t type,
 		size_t struct_size,
+		uint32_t socket_id,
 		uint32_t index,
 		const char *type_name,
 		uint16_t flags,
@@ -603,7 +604,6 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 	rte_iova_t q_base_pa = 0;
 	rte_iova_t cq_base_pa = 0;
 	rte_iova_t sg_base_pa = 0;
-	uint32_t socket_id = rte_socket_id();
 	int err;
 
 	*qcq = NULL;
@@ -721,7 +721,7 @@ ionic_qcq_free(struct ionic_qcq *qcq)
 }
 
 int
-ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t index,
+ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t nrxq_descs, struct ionic_rx_qcq **rxq_out)
 {
 	struct ionic_rx_qcq *rxq;
@@ -732,6 +732,7 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t index,
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_RXQ,
 		sizeof(struct ionic_rx_qcq),
+		socket_id,
 		index,
 		"rx",
 		flags,
@@ -752,7 +753,7 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t index,
 }
 
 int
-ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t index,
+ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t ntxq_descs, struct ionic_tx_qcq **txq_out)
 {
 	struct ionic_tx_qcq *txq;
@@ -763,6 +764,7 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t index,
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_TXQ,
 		sizeof(struct ionic_tx_qcq),
+		socket_id,
 		index,
 		"tx",
 		flags,
@@ -791,6 +793,7 @@ ionic_admin_qcq_alloc(struct ionic_lif *lif)
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_ADMINQ,
 		sizeof(struct ionic_admin_qcq),
+		rte_socket_id(),
 		0,
 		"admin",
 		flags,
@@ -816,6 +819,7 @@ ionic_notify_qcq_alloc(struct ionic_lif *lif)
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_NOTIFYQ,
 		sizeof(struct ionic_notify_qcq),
+		rte_socket_id(),
 		0,
 		"notify",
 		flags,

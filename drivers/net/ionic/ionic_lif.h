@@ -196,10 +196,12 @@ int ionic_dev_promiscuous_disable(struct rte_eth_dev *dev);
 int ionic_dev_allmulticast_enable(struct rte_eth_dev *dev);
 int ionic_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
-int ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t index,
-	uint16_t nrxq_descs, struct ionic_rx_qcq **qcq_out);
-int ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t index,
-	uint16_t ntxq_descs, struct ionic_tx_qcq **qcq_out);
+int ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id,
+	uint32_t index, uint16_t nrxq_descs,
+	struct ionic_rx_qcq **qcq_out);
+int ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id,
+	uint32_t index, uint16_t ntxq_descs,
+	struct ionic_tx_qcq **qcq_out);
 void ionic_qcq_free(struct ionic_qcq *qcq);
 
 int ionic_qcq_enable(struct ionic_qcq *qcq);

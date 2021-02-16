@@ -191,7 +191,7 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
 	eth_dev->data->tx_queue_state[tx_queue_id] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 
-	err = ionic_tx_qcq_alloc(lif, tx_queue_id, nb_desc, &txq);
+	err = ionic_tx_qcq_alloc(lif, socket_id, tx_queue_id, nb_desc, &txq);
 	if (err) {
 		IONIC_PRINT(DEBUG, "Queue allocation failure");
 		return -EINVAL;
@@ -718,7 +718,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	eth_dev->data->rx_queue_state[rx_queue_id] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 
-	err = ionic_rx_qcq_alloc(lif, rx_queue_id, nb_desc,
+	err = ionic_rx_qcq_alloc(lif, socket_id, rx_queue_id, nb_desc,
 			&rxq);
 	if (err) {
 		IONIC_PRINT(ERR, "Queue %d allocation failure", rx_queue_id);
