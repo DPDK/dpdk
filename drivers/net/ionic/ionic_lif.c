@@ -1605,16 +1605,17 @@ int
 ionic_lif_init(struct ionic_lif *lif)
 {
 	struct ionic_dev *idev = &lif->adapter->idev;
-	struct ionic_q_init_comp comp;
+	struct ionic_lif_init_comp comp;
 	int err;
 
 	memset(&lif->stats_base, 0, sizeof(lif->stats_base));
 
 	ionic_dev_cmd_lif_init(idev, lif->info_pa);
 	err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
-	ionic_dev_cmd_comp(idev, &comp);
 	if (err)
 		return err;
+
+	ionic_dev_cmd_comp(idev, &comp);
 
 	lif->hw_index = rte_cpu_to_le_16(comp.hw_index);
 
