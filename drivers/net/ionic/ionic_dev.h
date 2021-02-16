@@ -90,7 +90,6 @@ static inline void ionic_struct_size_checks(void)
 	RTE_BUILD_BUG_ON(sizeof(struct ionic_rx_mode_set_cmd) != 64);
 	RTE_BUILD_BUG_ON(sizeof(struct ionic_rx_filter_add_cmd) != 64);
 	RTE_BUILD_BUG_ON(sizeof(struct ionic_rx_filter_add_comp) != 16);
-	RTE_BUILD_BUG_ON(sizeof(struct ionic_rx_filter_del_cmd) != 64);
 
 	/* RDMA commands */
 	RTE_BUILD_BUG_ON(sizeof(struct ionic_rdma_reset_cmd) != 64);

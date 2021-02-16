@@ -35,7 +35,6 @@ struct ionic_admin_ctx;
 struct ionic_lif;
 
 void ionic_rx_filter_free(struct ionic_rx_filter *f);
-int ionic_rx_filter_del(struct ionic_lif *lif, struct ionic_rx_filter *f);
 int ionic_rx_filters_init(struct ionic_lif *lif);
 void ionic_rx_filters_deinit(struct ionic_lif *lif);
 int ionic_rx_filter_save(struct ionic_lif *lif, uint32_t flow_id,
