@@ -311,7 +311,7 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help);
  */
 __rte_internal
 int
-rte_telemetry_init(const char *runtime_dir, rte_cpuset_t *cpuset,
+rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset,
 		const char **err_str);
 
 /**

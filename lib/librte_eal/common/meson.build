@@ -36,6 +36,7 @@ if is_windows
 		'rte_random.c',
 		'rte_reciprocal.c',
 		'rte_service.c',
+		'rte_version.c',
 	)
 	subdir_done()
 endif
@@ -79,6 +80,7 @@ sources += files(
 	'rte_random.c',
 	'rte_reciprocal.c',
 	'rte_service.c',
+	'rte_version.c',
 )
 
 if is_linux

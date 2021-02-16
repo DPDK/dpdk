@@ -15,7 +15,6 @@
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_spinlock.h>
-#include <rte_version.h>
 
 #include "rte_telemetry.h"
 #include "telemetry_json.h"
@@ -48,6 +47,8 @@ struct socket {
 static struct socket v2_socket; /* socket for v2 telemetry */
 static struct socket v1_socket; /* socket for v1 telemetry */
 #endif /* !RTE_EXEC_ENV_WINDOWS */
+
+static const char *telemetry_version; /* save rte_version */
 static char telemetry_log_error[1024]; /* Will contain error on init failure */
 /* list of command callbacks, with one command registered by default */
 static struct cmd_callback callbacks[TELEMETRY_MAX_CALLBACKS];
@@ -105,7 +106,7 @@ json_info(const char *cmd __rte_unused, const char *params __rte_unused,
 		struct rte_tel_data *d)
 {
 	rte_tel_data_start_dict(d);
-	rte_tel_data_add_dict_string(d, "version", rte_version());
+	rte_tel_data_add_dict_string(d, "version", telemetry_version);
 	rte_tel_data_add_dict_int(d, "pid", getpid());
 	rte_tel_data_add_dict_int(d, "max_output_len", MAX_OUTPUT_LEN);
 	return 0;
@@ -303,7 +304,7 @@ client_handler(void *sock_id)
 	char info_str[1024];
 	snprintf(info_str, sizeof(info_str),
 			"{\"version\":\"%s\",\"pid\":%d,\"max_output_len\":%d}",
-			rte_version(), getpid(), MAX_OUTPUT_LEN);
+			telemetry_version, getpid(), MAX_OUTPUT_LEN);
 	if (write(s, info_str, strlen(info_str)) < 0) {
 		close(s);
 		return NULL;
@@ -481,9 +482,10 @@ telemetry_v2_init(const char *runtime_dir, rte_cpuset_t *cpuset)
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
 int32_t
-rte_telemetry_init(const char *runtime_dir, rte_cpuset_t *cpuset,
-		const char **err_str)
+rte_telemetry_init(const char *runtime_dir, const char *rte_version,
+		rte_cpuset_t *cpuset, const char **err_str)
 {
+	telemetry_version = rte_version;
 #ifndef RTE_EXEC_ENV_WINDOWS
 	if (telemetry_v2_init(runtime_dir, cpuset) != 0) {
 		*err_str = telemetry_log_error;

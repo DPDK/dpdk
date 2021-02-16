@@ -943,6 +943,7 @@ rte_eal_init(int argc, char **argv)
 	if (!internal_conf->no_telemetry) {
 		const char *error_str = NULL;
 		if (rte_telemetry_init(rte_eal_get_runtime_dir(),
+				rte_version(),
 				&internal_conf->ctrl_cpuset, &error_str)
 				!= 0) {
 			rte_eal_init_alert(error_str);
