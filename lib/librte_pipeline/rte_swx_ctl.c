@@ -235,6 +235,26 @@ error:
 }
 
 static int
+table_entry_key_check_em(struct table *table, struct rte_swx_table_entry *entry)
+{
+	uint8_t *key_mask0 = table->params.key_mask0;
+	uint32_t key_size = table->params.key_size, i;
+
+	if (!entry->key_mask)
+		return 0;
+
+	for (i = 0; i < key_size; i++) {
+		uint8_t km0 = key_mask0[i];
+		uint8_t km = entry->key_mask[i];
+
+		if ((km & km0) != km0)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 table_entry_check(struct rte_swx_ctl_pipeline *ctl,
 		  uint32_t table_id,
 		  struct rte_swx_table_entry *entry,
@@ -242,6 +262,7 @@ table_entry_check(struct rte_swx_ctl_pipeline *ctl,
 		  int data_check)
 {
 	struct table *table = &ctl->tables[table_id];
+	int status;
 
 	CHECK(entry, EINVAL);
 
@@ -266,7 +287,9 @@ table_entry_check(struct rte_swx_ctl_pipeline *ctl,
 				break;
 
 			case RTE_SWX_TABLE_MATCH_EXACT:
-				CHECK(!entry->key_mask, EINVAL);
+				status = table_entry_key_check_em(table, entry);
+				if (status)
+					return status;
 				break;
 
 			default:
@@ -327,10 +350,7 @@ table_entry_duplicate(struct rte_swx_ctl_pipeline *ctl,
 		new_entry->key_signature = entry->key_signature;
 
 		/* key_mask. */
-		if (table->params.match_type != RTE_SWX_TABLE_MATCH_EXACT) {
-			if (!entry->key_mask)
-				goto error;
-
+		if (entry->key_mask) {
 			new_entry->key_mask = malloc(table->params.key_size);
 			if (!new_entry->key_mask)
 				goto error;
@@ -357,18 +377,24 @@ table_entry_duplicate(struct rte_swx_ctl_pipeline *ctl,
 
 		/* action_data. */
 		a = &ctl->actions[entry->action_id];
-		if (a->data_size) {
-			if (!entry->action_data)
-				goto error;
+		if (a->data_size && !entry->action_data)
+			goto error;
 
-			new_entry->action_data = malloc(a->data_size);
-			if (!new_entry->action_data)
-				goto error;
+		/* The table layer provisions a constant action data size per
+		 * entry, which should be the largest data size for all the
+		 * actions enabled for the current table, and attempts to copy
+		 * this many bytes each time a table entry is added, even if the
+		 * specific action requires less data or even no data at all,
+		 * hence we always have to allocate the max.
+		 */
+		new_entry->action_data = calloc(1, table->params.action_data_size);
+		if (!new_entry->action_data)
+			goto error;
 
+		if (a->data_size)
 			memcpy(new_entry->action_data,
 			       entry->action_data,
 			       a->data_size);
-		}
 	}
 
 	return new_entry;
@@ -379,57 +405,35 @@ error:
 }
 
 static int
-entry_keycmp_em(struct rte_swx_table_entry *e0,
-		struct rte_swx_table_entry *e1,
-		uint32_t key_size)
-{
-	if (e0->key_signature != e1->key_signature)
-		return 1; /* Not equal. */
-
-	if (memcmp(e0->key, e1->key, key_size))
-		return 1; /* Not equal. */
-
-	return 0; /* Equal */
-}
-
-static int
-entry_keycmp_wm(struct rte_swx_table_entry *e0 __rte_unused,
-		struct rte_swx_table_entry *e1 __rte_unused,
-		uint32_t key_size __rte_unused)
-{
-	/* TBD */
-
-	return 1; /* Not equal */
-}
-
-static int
-entry_keycmp_lpm(struct rte_swx_table_entry *e0 __rte_unused,
-		 struct rte_swx_table_entry *e1 __rte_unused,
-		 uint32_t key_size __rte_unused)
-{
-	/* TBD */
-
-	return 1; /* Not equal */
-}
-
-static int
 table_entry_keycmp(struct table *table,
 		   struct rte_swx_table_entry *e0,
 		   struct rte_swx_table_entry *e1)
 {
-	switch (table->params.match_type) {
-	case RTE_SWX_TABLE_MATCH_EXACT:
-		return entry_keycmp_em(e0, e1, table->params.key_size);
+	uint32_t key_size = table->params.key_size;
+	uint32_t i;
 
-	case RTE_SWX_TABLE_MATCH_WILDCARD:
-		return entry_keycmp_wm(e0, e1, table->params.key_size);
+	for (i = 0; i < key_size; i++) {
+		uint8_t *key_mask0 = table->params.key_mask0;
+		uint8_t km0, km[2], k[2];
 
-	case RTE_SWX_TABLE_MATCH_LPM:
-		return entry_keycmp_lpm(e0, e1, table->params.key_size);
+		km0 = key_mask0 ? key_mask0[i] : 0xFF;
 
-	default:
-		return 1; /* Not equal. */
+		km[0] = e0->key_mask ? e0->key_mask[i] : 0xFF;
+		km[1] = e1->key_mask ? e1->key_mask[i] : 0xFF;
+
+		k[0] = e0->key[i];
+		k[1] = e1->key[i];
+
+		/* Mask comparison. */
+		if ((km[0] & km0) != (km[1] & km0))
+			return 1; /* Not equal. */
+
+		/* Value comparison. */
+		if ((k[0] & km[0] & km0) != (k[1] & km[1] & km0))
+			return 1; /* Not equal. */
 	}
+
+	return 0; /* Equal. */
 }
 
 static struct rte_swx_table_entry *
@@ -893,6 +897,9 @@ rte_swx_ctl_pipeline_table_entry_add(struct rte_swx_ctl_pipeline *ctl,
 	CHECK(table, EINVAL);
 	table_id = table - ctl->tables;
 
+	CHECK(entry, EINVAL);
+	CHECK(!table_entry_check(ctl, table_id, entry, 1, 1), EINVAL);
+
 	new_entry = table_entry_duplicate(ctl, table_id, entry, 1, 1);
 	CHECK(new_entry, ENOMEM);
 
@@ -1094,6 +1101,9 @@ rte_swx_ctl_pipeline_table_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
 	CHECK(table, EINVAL);
 	table_id = table - ctl->tables;
 	CHECK(!table->info.default_action_is_const, EINVAL);
+
+	CHECK(entry, EINVAL);
+	CHECK(!table_entry_check(ctl, table_id, entry, 0, 1), EINVAL);
 
 	new_entry = table_entry_duplicate(ctl, table_id, entry, 0, 1);
 	CHECK(new_entry, ENOMEM);
