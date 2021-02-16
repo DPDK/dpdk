@@ -42,11 +42,38 @@ struct table {
 	struct rte_swx_table_ops ops;
 	struct rte_swx_table_params params;
 
+	/* Set of "stable" keys: these keys are currently part of the table;
+	 * these keys will be preserved with no action data changes after the
+	 * next commit.
+	 */
 	struct rte_swx_table_entry_list entries;
+
+	/* Set of new keys: these keys are currently NOT part of the table;
+	 * these keys will be added to the table on the next commit, if
+	 * the commit operation is successful.
+	 */
 	struct rte_swx_table_entry_list pending_add;
+
+	/* Set of keys to be modified: these keys are currently part of the
+	 * table; these keys are still going to be part of the table after the
+	 * next commit, but their action data will be modified if the commit
+	 * operation is successful. The modify0 list contains the keys with the
+	 * current action data, the modify1 list contains the keys with the
+	 * modified action data.
+	 */
 	struct rte_swx_table_entry_list pending_modify0;
 	struct rte_swx_table_entry_list pending_modify1;
+
+	/* Set of keys to be deleted: these keys are currently part of the
+	 * table; these keys are to be deleted from the table on the next
+	 * commit, if the commit operation is successful.
+	 */
 	struct rte_swx_table_entry_list pending_delete;
+
+	/* The pending default action: this is NOT the current default action;
+	 * this will be the new default action after the next commit, if the
+	 * next commit operation is successful.
+	 */
 	struct rte_swx_table_entry *pending_default;
 
 	int is_stub;
@@ -609,6 +636,31 @@ table_pending_default_free(struct table *table)
 	table->pending_default = NULL;
 }
 
+static int
+table_is_update_pending(struct table *table, int consider_pending_default)
+{
+	struct rte_swx_table_entry *e;
+	uint32_t n = 0;
+
+	/* Pending add. */
+	TAILQ_FOREACH(e, &table->pending_add, node)
+		n++;
+
+	/* Pending modify. */
+	TAILQ_FOREACH(e, &table->pending_modify1, node)
+		n++;
+
+	/* Pending delete. */
+	TAILQ_FOREACH(e, &table->pending_delete, node)
+		n++;
+
+	/* Pending default. */
+	if (consider_pending_default && table->pending_default)
+		n++;
+
+	return n;
+}
+
 static void
 table_free(struct rte_swx_ctl_pipeline *ctl)
 {
@@ -680,7 +732,7 @@ table_state_create(struct rte_swx_ctl_pipeline *ctl)
 		struct rte_swx_table_state *ts_next = &ctl->ts_next[i];
 
 		/* Table object. */
-		if (!table->is_stub) {
+		if (!table->is_stub && table->ops.add) {
 			ts_next->obj = table->ops.create(&table->params,
 							 &table->entries,
 							 table->info.args,
@@ -690,6 +742,9 @@ table_state_create(struct rte_swx_ctl_pipeline *ctl)
 				goto error;
 			}
 		}
+
+		if (!table->is_stub && !table->ops.add)
+			ts_next->obj = ts->obj;
 
 		/* Default action data: duplicate from current table state. */
 		ts_next->default_action_data =
@@ -1114,54 +1169,173 @@ rte_swx_ctl_pipeline_table_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
 	return 0;
 }
 
+
+static void
+table_entry_list_free(struct rte_swx_table_entry_list *list)
+{
+	for ( ; ; ) {
+		struct rte_swx_table_entry *entry;
+
+		entry = TAILQ_FIRST(list);
+		if (!entry)
+			break;
+
+		TAILQ_REMOVE(list, entry, node);
+		table_entry_free(entry);
+	}
+}
+
 static int
-table_rollfwd0(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
+table_entry_list_duplicate(struct rte_swx_ctl_pipeline *ctl,
+			   uint32_t table_id,
+			   struct rte_swx_table_entry_list *dst,
+			   struct rte_swx_table_entry_list *src)
+{
+	struct rte_swx_table_entry *src_entry;
+
+	TAILQ_FOREACH(src_entry, src, node) {
+		struct rte_swx_table_entry *dst_entry;
+
+		dst_entry = table_entry_duplicate(ctl, table_id, src_entry, 1, 1);
+		if (!dst_entry)
+			goto error;
+
+		TAILQ_INSERT_TAIL(dst, dst_entry, node);
+	}
+
+	return 0;
+
+error:
+	table_entry_list_free(dst);
+	return -ENOMEM;
+}
+
+/* This commit stage contains all the operations that can fail; in case ANY of
+ * them fails for ANY table, ALL of them are rolled back for ALL the tables.
+ */
+static int
+table_rollfwd0(struct rte_swx_ctl_pipeline *ctl,
+	       uint32_t table_id,
+	       uint32_t after_swap)
 {
 	struct table *table = &ctl->tables[table_id];
+	struct rte_swx_table_state *ts = &ctl->ts[table_id];
 	struct rte_swx_table_state *ts_next = &ctl->ts_next[table_id];
-	struct rte_swx_table_entry *entry;
 
-	/* Reset counters. */
-	table->n_add = 0;
-	table->n_modify = 0;
-	table->n_delete = 0;
+	if (table->is_stub || !table_is_update_pending(table, 0))
+		return 0;
 
-	/* Add pending rules. */
-	TAILQ_FOREACH(entry, &table->pending_add, node) {
-		int status;
+	/*
+	 * Current table supports incremental update.
+	 */
+	if (table->ops.add) {
+		/* Reset counters. */
+		table->n_add = 0;
+		table->n_modify = 0;
+		table->n_delete = 0;
 
-		status = table->ops.add(ts_next->obj, entry);
-		if (status)
-			return status;
+		/* Add pending rules. */
+		struct rte_swx_table_entry *entry;
 
-		table->n_add++;
+		TAILQ_FOREACH(entry, &table->pending_add, node) {
+			int status;
+
+			status = table->ops.add(ts_next->obj, entry);
+			if (status)
+				return status;
+
+			table->n_add++;
+		}
+
+		/* Modify pending rules. */
+		TAILQ_FOREACH(entry, &table->pending_modify1, node) {
+			int status;
+
+			status = table->ops.add(ts_next->obj, entry);
+			if (status)
+				return status;
+
+			table->n_modify++;
+		}
+
+		/* Delete pending rules. */
+		TAILQ_FOREACH(entry, &table->pending_delete, node) {
+			int status;
+
+			status = table->ops.del(ts_next->obj, entry);
+			if (status)
+				return status;
+
+			table->n_delete++;
+		}
+
+		return 0;
 	}
 
-	/* Modify pending rules. */
-	TAILQ_FOREACH(entry, &table->pending_modify1, node) {
+	/*
+	 * Current table does NOT support incremental update.
+	 */
+	if (!after_swap) {
+		struct rte_swx_table_entry_list list;
 		int status;
 
-		status = table->ops.add(ts_next->obj, entry);
-		if (status)
-			return status;
+		/* Create updated list of entries included. */
+		TAILQ_INIT(&list);
 
-		table->n_modify++;
+		status = table_entry_list_duplicate(ctl,
+						    table_id,
+						    &list,
+						    &table->entries);
+		if (status)
+			goto error;
+
+		status = table_entry_list_duplicate(ctl,
+						    table_id,
+						    &list,
+						    &table->pending_add);
+		if (status)
+			goto error;
+
+		status = table_entry_list_duplicate(ctl,
+						    table_id,
+						    &list,
+						    &table->pending_modify1);
+		if (status)
+			goto error;
+
+		/* Create new table object with the updates included. */
+		ts_next->obj = table->ops.create(&table->params,
+						 &list,
+						 table->info.args,
+						 ctl->numa_node);
+		if (!ts_next->obj) {
+			status = -ENODEV;
+			goto error;
+		}
+
+		table_entry_list_free(&list);
+
+		return 0;
+
+error:
+		table_entry_list_free(&list);
+		return status;
 	}
 
-	/* Delete pending rules. */
-	TAILQ_FOREACH(entry, &table->pending_delete, node) {
-		int status;
+	/* Free the old table object. */
+	if (ts_next->obj && table->ops.free)
+		table->ops.free(ts_next->obj);
 
-		status = table->ops.del(ts_next->obj, entry);
-		if (status)
-			return status;
-
-		table->n_delete++;
-	}
+	/* Copy over the new table object. */
+	ts_next->obj = ts->obj;
 
 	return 0;
 }
 
+/* This commit stage contains all the operations that cannot fail. They are
+ * executed only if the previous stage was successful for ALL the tables. Hence,
+ * none of these operations has to be rolled back for ANY table.
+ */
 static void
 table_rollfwd1(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 {
@@ -1186,6 +1360,10 @@ table_rollfwd1(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 	ts_next->default_action_id = action_id;
 }
 
+/* This last commit stage is simply finalizing a successful commit operation.
+ * This stage is only executed if all the previous stages were successful. This
+ * stage cannot fail.
+ */
 static void
 table_rollfwd2(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 {
@@ -1212,43 +1390,66 @@ table_rollfwd2(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 	table_pending_default_free(table);
 }
 
+/* The rollback stage is only executed when the commit failed, i.e. ANY of the
+ * commit operations that can fail did fail for ANY table. It reverts ALL the
+ * tables to their state before the commit started, as if the commit never
+ * happened.
+ */
 static void
 table_rollback(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 {
 	struct table *table = &ctl->tables[table_id];
 	struct rte_swx_table_state *ts_next = &ctl->ts_next[table_id];
-	struct rte_swx_table_entry *entry;
 
-	/* Add back all the entries that were just deleted. */
-	TAILQ_FOREACH(entry, &table->pending_delete, node) {
-		if (!table->n_delete)
-			break;
+	if (table->is_stub || !table_is_update_pending(table, 0))
+		return;
 
-		table->ops.add(ts_next->obj, entry);
-		table->n_delete--;
-	}
+	if (table->ops.add) {
+		struct rte_swx_table_entry *entry;
 
-	/* Add back the old copy for all the entries that were just
-	 * modified.
-	 */
-	TAILQ_FOREACH(entry, &table->pending_modify0, node) {
-		if (!table->n_modify)
-			break;
+		/* Add back all the entries that were just deleted. */
+		TAILQ_FOREACH(entry, &table->pending_delete, node) {
+			if (!table->n_delete)
+				break;
 
-		table->ops.add(ts_next->obj, entry);
-		table->n_modify--;
-	}
+			table->ops.add(ts_next->obj, entry);
+			table->n_delete--;
+		}
 
-	/* Delete all the entries that were just added. */
-	TAILQ_FOREACH(entry, &table->pending_add, node) {
-		if (!table->n_add)
-			break;
+		/* Add back the old copy for all the entries that were just
+		 * modified.
+		 */
+		TAILQ_FOREACH(entry, &table->pending_modify0, node) {
+			if (!table->n_modify)
+				break;
 
-		table->ops.del(ts_next->obj, entry);
-		table->n_add--;
+			table->ops.add(ts_next->obj, entry);
+			table->n_modify--;
+		}
+
+		/* Delete all the entries that were just added. */
+		TAILQ_FOREACH(entry, &table->pending_add, node) {
+			if (!table->n_add)
+				break;
+
+			table->ops.del(ts_next->obj, entry);
+			table->n_add--;
+		}
+	} else {
+		struct rte_swx_table_state *ts = &ctl->ts[table_id];
+
+		/* Free the new table object, as update was cancelled. */
+		if (ts_next->obj && table->ops.free)
+			table->ops.free(ts_next->obj);
+
+		/* Reinstate the old table object. */
+		ts_next->obj = ts->obj;
 	}
 }
 
+/* This stage is conditionally executed (as instructed by the user) after a
+ * failed commit operation to remove ALL the pending work for ALL the tables.
+ */
 static void
 table_abort(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 {
@@ -1290,7 +1491,7 @@ rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 	 * ts.
 	 */
 	for (i = 0; i < ctl->info.n_tables; i++) {
-		status = table_rollfwd0(ctl, i);
+		status = table_rollfwd0(ctl, i, 0);
 		if (status)
 			goto rollback;
 	}
@@ -1310,7 +1511,7 @@ rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl, int abort_on_fail)
 	/* Operate the changes on the current ts_next, which is the previous ts.
 	 */
 	for (i = 0; i < ctl->info.n_tables; i++) {
-		table_rollfwd0(ctl, i);
+		table_rollfwd0(ctl, i, 1);
 		table_rollfwd1(ctl, i);
 		table_rollfwd2(ctl, i);
 	}
@@ -1444,11 +1645,11 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 				mask = field_hton(mask, mf->n_bits);
 		}
 
-			/* Copy to entry. */
-			if (entry->key_mask)
-				memcpy(&entry->key_mask[offset],
-				       (uint8_t *)&mask,
-				       mf->n_bits / 8);
+		/* Copy to entry. */
+		if (entry->key_mask)
+			memcpy(&entry->key_mask[offset],
+			       (uint8_t *)&mask,
+			       mf->n_bits / 8);
 
 		/*
 		 * Value.
