@@ -598,9 +598,9 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	(PKT_TX_OFFLOAD_MASK ^ IONIC_TX_OFFLOAD_MASK)
 
 uint16_t
-ionic_prep_pkts(void *tx_queue __rte_unused, struct rte_mbuf **tx_pkts,
-		uint16_t nb_pkts)
+ionic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
+	struct ionic_tx_qcq *txq = tx_queue;
 	struct rte_mbuf *txm;
 	uint64_t offloads;
 	int i = 0;
@@ -608,7 +608,7 @@ ionic_prep_pkts(void *tx_queue __rte_unused, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		txm = tx_pkts[i];
 
-		if (txm->nb_segs > IONIC_TX_MAX_SG_ELEMS_V1 + 1) {
+		if (txm->nb_segs > txq->num_segs_fw) {
 			rte_errno = -EINVAL;
 			break;
 		}

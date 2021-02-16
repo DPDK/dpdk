@@ -757,10 +757,13 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		uint16_t ntxq_descs, struct ionic_tx_qcq **txq_out)
 {
 	struct ionic_tx_qcq *txq;
-	uint16_t flags;
+	uint16_t flags, num_segs_fw;
 	int err;
 
 	flags = IONIC_QCQ_F_SG;
+
+	num_segs_fw = IONIC_TX_MAX_SG_ELEMS_V1 + 1;
+
 	err = ionic_qcq_alloc(lif,
 		IONIC_QTYPE_TXQ,
 		sizeof(struct ionic_tx_qcq),
@@ -777,6 +780,7 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 		return err;
 
 	txq->flags = flags;
+	txq->num_segs_fw = num_segs_fw;
 
 	lif->txqcqs[index] = txq;
 	*txq_out = txq;
