@@ -302,6 +302,7 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 		uint16_t vlan_tci, bool has_vlan,
 		bool start, bool done)
 {
+	void **info;
 	uint8_t flags = 0;
 	flags |= has_vlan ? IONIC_TXQ_DESC_FLAG_VLAN : 0;
 	flags |= encap ? IONIC_TXQ_DESC_FLAG_ENCAP : 0;
@@ -315,7 +316,15 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 	desc->hdr_len = hdrlen;
 	desc->mss = mss;
 
-	ionic_q_post(q, done, done ? txm : NULL);
+	if (done) {
+		info = IONIC_INFO_PTR(q, q->head_idx);
+		info[0] = txm;
+	}
+
+	q->head_idx = Q_NEXT_TO_POST(q, 1);
+
+	if (done)
+		ionic_q_flush(q);
 }
 
 static struct ionic_txq_desc *
@@ -465,6 +474,7 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 	struct ionic_txq_sg_elem *elem;
 	struct ionic_tx_stats *stats = &txq->stats;
 	struct rte_mbuf *txm_seg;
+	void **info;
 	bool encap;
 	bool has_vlan;
 	uint64_t ol_flags = txm->ol_flags;
@@ -473,6 +483,7 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 	uint8_t flags = 0;
 
 	desc = &desc_base[q->head_idx];
+	info = IONIC_INFO_PTR(q, q->head_idx);
 
 	if ((ol_flags & PKT_TX_IP_CKSUM) &&
 	    (txq->flags & IONIC_QCQ_F_CSUM_L3)) {
@@ -506,7 +517,10 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 	desc->len = txm->data_len;
 	desc->vlan_tci = txm->vlan_tci;
 
+	info[0] = txm;
+
 	elem = sg_desc_base[q->head_idx].elems;
+
 	txm_seg = txm->next;
 	while (txm_seg != NULL) {
 		elem->len = txm_seg->data_len;
@@ -515,7 +529,10 @@ ionic_tx(struct ionic_tx_qcq *txq, struct rte_mbuf *txm,
 		txm_seg = txm_seg->next;
 	}
 
-	ionic_q_post(q, not_xmit_more, txm);
+	q->head_idx = Q_NEXT_TO_POST(q, 1);
+
+	if (not_xmit_more)
+		ionic_q_flush(q);
 
 	return 0;
 }
@@ -920,7 +937,11 @@ ionic_rx_recycle(struct ionic_queue *q, uint32_t q_desc_index,
 	new->addr = old->addr;
 	new->len = old->len;
 
-	ionic_q_post(q, true, mbuf);
+	q->info[q->head_idx] = mbuf;
+
+	q->head_idx = Q_NEXT_TO_POST(q, 1);
+
+	ionic_q_flush(q);
 }
 
 static __rte_always_inline int
@@ -930,6 +951,7 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 	struct ionic_rxq_desc *desc, *desc_base = q->base;
 	struct ionic_rxq_sg_desc *sg_desc, *sg_desc_base = q->sg_base;
 	struct ionic_rxq_sg_elem *elem;
+	void **info;
 	rte_iova_t dma_addr;
 	uint32_t i, j, nsegs, buf_size, size;
 	bool ring_doorbell;
@@ -946,6 +968,8 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 			IONIC_PRINT(ERR, "RX mbuf alloc failed");
 			return -ENOMEM;
 		}
+
+		info = IONIC_INFO_PTR(q, q->head_idx);
 
 		nsegs = (len + buf_size - 1) / buf_size;
 
@@ -989,7 +1013,12 @@ ionic_rx_fill(struct ionic_rx_qcq *rxq, uint32_t len)
 		ring_doorbell = ((q->head_idx + 1) &
 			IONIC_RX_RING_DOORBELL_STRIDE) == 0;
 
-		ionic_q_post(q, ring_doorbell, rxm);
+		info[0] = rxm;
+
+		q->head_idx = Q_NEXT_TO_POST(q, 1);
+
+		if (ring_doorbell)
+			ionic_q_flush(q);
 	}
 
 	return 0;

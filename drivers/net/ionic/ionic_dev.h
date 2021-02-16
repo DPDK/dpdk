@@ -224,7 +224,6 @@ uint32_t ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 int ionic_q_init(struct ionic_queue *q, uint32_t index, uint16_t num_descs);
 void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
-void ionic_q_post(struct ionic_queue *q, bool ring_doorbell, void *cb_arg);
 
 static inline uint16_t
 ionic_q_space_avail(struct ionic_queue *q)

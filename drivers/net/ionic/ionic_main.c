@@ -197,6 +197,7 @@ ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 	struct ionic_queue *q = &lif->adminqcq->qcq.q;
 	struct ionic_admin_cmd *q_desc_base = q->base;
 	struct ionic_admin_cmd *q_desc;
+	void **info;
 	int err = 0;
 
 	rte_spinlock_lock(&lif->adminq_lock);
@@ -210,7 +211,14 @@ ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 
 	memcpy(q_desc, &ctx->cmd, sizeof(ctx->cmd));
 
-	ionic_q_post(q, true, ctx);
+	info = IONIC_INFO_PTR(q, q->head_idx);
+	info[0] = ctx;
+
+	q->head_idx = Q_NEXT_TO_POST(q, 1);
+
+	/* Ring doorbell */
+	rte_wmb();
+	ionic_q_flush(q);
 
 err_out:
 	rte_spinlock_unlock(&lif->adminq_lock);
