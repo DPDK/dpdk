@@ -191,6 +191,7 @@ The public API headers are grouped by topics:
   * SWX table:
     [table]            (@ref rte_swx_table.h),
     [table_em]         (@ref rte_swx_table_em.h)
+    [table_wm]         (@ref rte_swx_table_wm.h)
   * [graph]            (@ref rte_graph.h):
     [graph_worker]     (@ref rte_graph_worker.h)
   * graph_nodes:

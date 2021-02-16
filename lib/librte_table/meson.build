@@ -12,7 +12,9 @@ sources = files('rte_table_acl.c',
 		'rte_table_hash_lru.c',
 		'rte_table_array.c',
 		'rte_table_stub.c',
-		'rte_swx_table_em.c',)
+		'rte_swx_table_em.c',
+		'rte_swx_table_wm.c',
+		)
 headers = files('rte_table.h',
 		'rte_table_acl.h',
 		'rte_table_lpm.h',
@@ -24,7 +26,9 @@ headers = files('rte_table.h',
 		'rte_table_array.h',
 		'rte_table_stub.h',
 		'rte_swx_table.h',
-		'rte_swx_table_em.h',)
+		'rte_swx_table_em.h',
+		'rte_swx_table_wm.h',
+		)
 deps += ['mbuf', 'port', 'lpm', 'hash', 'acl']
 
 indirect_headers += files('rte_lru_x86.h',

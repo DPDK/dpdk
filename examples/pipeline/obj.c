@@ -12,6 +12,7 @@
 #include <rte_swx_port_ring.h>
 #include <rte_swx_port_source_sink.h>
 #include <rte_swx_table_em.h>
+#include <rte_swx_table_wm.h>
 #include <rte_swx_pipeline.h>
 #include <rte_swx_ctl.h>
 
@@ -487,6 +488,13 @@ pipeline_create(struct obj *obj, const char *name, int numa_node)
 		"exact",
 		RTE_SWX_TABLE_MATCH_EXACT,
 		&rte_swx_table_exact_match_ops);
+	if (status)
+		goto error;
+
+	status = rte_swx_pipeline_table_type_register(p,
+		"wildcard",
+		RTE_SWX_TABLE_MATCH_WILDCARD,
+		&rte_swx_table_wildcard_match_ops);
 	if (status)
 		goto error;
 
