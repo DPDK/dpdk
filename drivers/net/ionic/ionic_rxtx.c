@@ -536,15 +536,16 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ionic_tx_stats *stats = &txq->stats;
 	uint32_t next_q_head_idx;
 	uint32_t bytes_tx = 0;
-	uint16_t nb_tx = 0;
+	uint16_t nb_avail, nb_tx = 0;
 	int err;
 
 	/* Cleaning old buffers */
 	ionic_tx_flush(txq);
 
-	if (unlikely(ionic_q_space_avail(q) < nb_pkts)) {
-		stats->stop += nb_pkts;
-		return 0;
+	nb_avail = ionic_q_space_avail(q);
+	if (unlikely(nb_avail < nb_pkts)) {
+		stats->stop += nb_pkts - nb_avail;
+		nb_pkts = nb_avail;
 	}
 
 	while (nb_tx < nb_pkts) {
