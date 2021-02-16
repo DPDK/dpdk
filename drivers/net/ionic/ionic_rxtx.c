@@ -68,9 +68,10 @@ ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 }
 
 static __rte_always_inline void
-ionic_tx_flush(struct ionic_cq *cq)
+ionic_tx_flush(struct ionic_qcq *txq)
 {
-	struct ionic_queue *q = cq->bound_q;
+	struct ionic_cq *cq = &txq->cq;
+	struct ionic_queue *q = &txq->q;
 	struct ionic_desc_info *q_desc_info;
 	struct rte_mbuf *txm, *next;
 	struct ionic_txq_comp *cq_desc_base = cq->base;
@@ -79,7 +80,7 @@ ionic_tx_flush(struct ionic_cq *cq)
 
 	cq_desc = &cq_desc_base[cq->tail_idx];
 	while (color_match(cq_desc->color, cq->done_color)) {
-		cq->tail_idx = (cq->tail_idx + 1) & (cq->num_descs - 1);
+		cq->tail_idx = Q_NEXT_TO_SRVC(cq, 1);
 
 		/* Prefetch the next 4 descriptors (not really useful here) */
 		if ((cq->tail_idx & 0x3) == 0)
@@ -149,7 +150,7 @@ ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 
 	ionic_qcq_disable(txq);
 
-	ionic_tx_flush(&txq->cq);
+	ionic_tx_flush(txq);
 
 	return 0;
 }
@@ -521,7 +522,6 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct ionic_qcq *txq = (struct ionic_qcq *)tx_queue;
 	struct ionic_queue *q = &txq->q;
-	struct ionic_cq *cq = &txq->cq;
 	struct ionic_tx_stats *stats = IONIC_Q_TO_TX_STATS(q);
 	uint32_t next_q_head_idx;
 	uint32_t bytes_tx = 0;
@@ -530,7 +530,7 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	bool last;
 
 	/* Cleaning old buffers */
-	ionic_tx_flush(cq);
+	ionic_tx_flush(txq);
 
 	if (unlikely(ionic_q_space_avail(q) < nb_pkts)) {
 		stats->stop += nb_pkts;
@@ -1018,10 +1018,11 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 }
 
 static __rte_always_inline void
-ionic_rxq_service(struct ionic_cq *cq, uint32_t work_to_do,
+ionic_rxq_service(struct ionic_qcq *rxq, uint32_t work_to_do,
 		void *service_cb_arg)
 {
-	struct ionic_queue *q = cq->bound_q;
+	struct ionic_cq *cq = &rxq->cq;
+	struct ionic_queue *q = &rxq->q;
 	struct ionic_desc_info *q_desc_info;
 	struct ionic_rxq_comp *cq_desc_base = cq->base;
 	struct ionic_rxq_comp *cq_desc;
@@ -1035,7 +1036,7 @@ ionic_rxq_service(struct ionic_cq *cq, uint32_t work_to_do,
 	cq_desc = &cq_desc_base[cq->tail_idx];
 	while (color_match(cq_desc->pkt_type_color, cq->done_color)) {
 		curr_cq_tail_idx = cq->tail_idx;
-		cq->tail_idx = (cq->tail_idx + 1) & (cq->num_descs - 1);
+		cq->tail_idx = Q_NEXT_TO_SRVC(cq, 1);
 
 		if (cq->tail_idx == 0)
 			cq->done_color = !cq->done_color;
@@ -1087,7 +1088,7 @@ ionic_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 	ionic_qcq_disable(rxq);
 
 	/* Flush */
-	ionic_rxq_service(&rxq->cq, -1, NULL);
+	ionic_rxq_service(rxq, -1, NULL);
 
 	return 0;
 }
@@ -1099,14 +1100,13 @@ ionic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct ionic_qcq *rxq = (struct ionic_qcq *)rx_queue;
 	uint32_t frame_size =
 		rxq->lif->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
-	struct ionic_cq *cq = &rxq->cq;
 	struct ionic_rx_service service_cb_arg;
 
 	service_cb_arg.rx_pkts = rx_pkts;
 	service_cb_arg.nb_pkts = nb_pkts;
 	service_cb_arg.nb_rx = 0;
 
-	ionic_rxq_service(cq, nb_pkts, &service_cb_arg);
+	ionic_rxq_service(rxq, nb_pkts, &service_cb_arg);
 
 	ionic_rx_fill(rxq, frame_size);
 

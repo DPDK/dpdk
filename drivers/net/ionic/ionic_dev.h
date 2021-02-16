@@ -142,6 +142,9 @@ struct ionic_desc_info {
 	void *cb_arg;
 };
 
+#define Q_NEXT_TO_POST(_q, _n)	(((_q)->head_idx + (_n)) & ((_q)->size_mask))
+#define Q_NEXT_TO_SRVC(_q, _n)	(((_q)->tail_idx + (_n)) & ((_q)->size_mask))
+
 struct ionic_queue {
 	struct ionic_dev *idev;
 	struct ionic_lif *lif;
@@ -174,11 +177,9 @@ struct ionic_intr_info {
 };
 
 struct ionic_cq {
-	struct ionic_lif *lif;
-	struct ionic_queue *bound_q;
-	uint32_t tail_idx;
-	uint32_t num_descs;
-	uint32_t desc_size;
+	uint16_t tail_idx;
+	uint16_t num_descs;
+	uint16_t size_mask;
 	bool done_color;
 	void *base;
 	rte_iova_t base_pa;
@@ -240,8 +241,7 @@ void ionic_dev_cmd_adminq_init(struct ionic_dev *idev, struct ionic_qcq *qcq);
 struct ionic_doorbell __iomem *ionic_db_map(struct ionic_lif *lif,
 	struct ionic_queue *q);
 
-int ionic_cq_init(struct ionic_lif *lif, struct ionic_cq *cq,
-	uint32_t num_descs, size_t desc_size);
+int ionic_cq_init(struct ionic_cq *cq, uint16_t num_descs);
 void ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa);
 void ionic_cq_bind(struct ionic_cq *cq, struct ionic_queue *q);
 typedef bool (*ionic_cq_cb)(struct ionic_cq *cq, uint32_t cq_desc_index,

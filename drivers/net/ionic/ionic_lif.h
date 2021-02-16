@@ -71,7 +71,8 @@ struct ionic_qcq {
 	struct ionic_intr_info intr;
 };
 
-#define IONIC_Q_TO_QCQ(q)	container_of(q, struct ionic_qcq, q)
+#define IONIC_Q_TO_QCQ(_q)	container_of(_q, struct ionic_qcq, q)
+#define IONIC_CQ_TO_QCQ(_cq)	container_of(_cq, struct ionic_qcq, cq)
 #define IONIC_Q_TO_TX_STATS(q)	(&IONIC_Q_TO_QCQ(q)->stats.tx)
 #define IONIC_Q_TO_RX_STATS(q)	(&IONIC_Q_TO_QCQ(q)->stats.rx)
 

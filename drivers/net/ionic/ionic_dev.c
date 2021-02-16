@@ -358,14 +358,8 @@ ionic_dev_cmd_adminq_init(struct ionic_dev *idev, struct ionic_qcq *qcq)
 }
 
 int
-ionic_cq_init(struct ionic_lif *lif, struct ionic_cq *cq,
-		uint32_t num_descs, size_t desc_size)
+ionic_cq_init(struct ionic_cq *cq, uint16_t num_descs)
 {
-	if (desc_size == 0) {
-		IONIC_PRINT(ERR, "Descriptor size is %zu", desc_size);
-		return -EINVAL;
-	}
-
 	if (!rte_is_power_of_2(num_descs) ||
 	    num_descs < IONIC_MIN_RING_DESC ||
 	    num_descs > IONIC_MAX_RING_DESC) {
@@ -374,9 +368,8 @@ ionic_cq_init(struct ionic_lif *lif, struct ionic_cq *cq,
 		return -EINVAL;
 	}
 
-	cq->lif = lif;
 	cq->num_descs = num_descs;
-	cq->desc_size = desc_size;
+	cq->size_mask = num_descs - 1;
 	cq->tail_idx = 0;
 	cq->done_color = 1;
 
@@ -393,7 +386,6 @@ ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa)
 void
 ionic_cq_bind(struct ionic_cq *cq, struct ionic_queue *q)
 {
-	cq->bound_q = q;
 	q->bound_cq = cq;
 }
 
@@ -407,7 +399,7 @@ ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 		return 0;
 
 	while (cb(cq, cq->tail_idx, cb_arg)) {
-		cq->tail_idx = (cq->tail_idx + 1) & (cq->num_descs - 1);
+		cq->tail_idx = Q_NEXT_TO_SRVC(cq, 1);
 		if (cq->tail_idx == 0)
 			cq->done_color = !cq->done_color;
 
