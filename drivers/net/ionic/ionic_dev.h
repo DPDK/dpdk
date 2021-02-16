@@ -137,7 +137,6 @@ struct ionic_dev {
 struct ionic_queue {
 	struct ionic_dev *idev;
 	struct ionic_lif *lif;
-	struct ionic_cq *bound_cq;
 	uint32_t index;
 	uint32_t type;
 	uint32_t hw_index;
@@ -221,7 +220,6 @@ struct ionic_doorbell __iomem *ionic_db_map(struct ionic_lif *lif,
 
 int ionic_cq_init(struct ionic_cq *cq, uint16_t num_descs);
 void ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa);
-void ionic_cq_bind(struct ionic_cq *cq, struct ionic_queue *q);
 typedef bool (*ionic_cq_cb)(struct ionic_cq *cq, uint32_t cq_desc_index,
 		void *cb_arg);
 uint32_t ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,

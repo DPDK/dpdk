@@ -741,14 +741,15 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 }
 
 static __rte_always_inline void
-ionic_rx_clean(struct ionic_queue *q,
+ionic_rx_clean(struct ionic_qcq *rxq,
 		uint32_t q_desc_index, uint32_t cq_desc_index,
 		void *service_cb_arg)
 {
-	struct ionic_rxq_comp *cq_desc_base = q->bound_cq->base;
+	struct ionic_queue *q = &rxq->q;
+	struct ionic_cq *cq = &rxq->cq;
+	struct ionic_rxq_comp *cq_desc_base = cq->base;
 	struct ionic_rxq_comp *cq_desc = &cq_desc_base[cq_desc_index];
 	struct rte_mbuf *rxm, *rxm_seg;
-	struct ionic_qcq *rxq = IONIC_Q_TO_QCQ(q);
 	uint32_t max_frame_size =
 		rxq->lif->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	uint64_t pkt_flags = 0;
@@ -1061,7 +1062,7 @@ ionic_rxq_service(struct ionic_qcq *rxq, uint32_t work_to_do,
 				/* q desc info */
 				rte_prefetch0(&q->info[q->tail_idx]);
 
-			ionic_rx_clean(q, curr_q_tail_idx, curr_cq_tail_idx,
+			ionic_rx_clean(rxq, curr_q_tail_idx, curr_cq_tail_idx,
 				service_cb_arg);
 
 		} while (more);

@@ -383,12 +383,6 @@ ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa)
 	cq->base_pa = base_pa;
 }
 
-void
-ionic_cq_bind(struct ionic_cq *cq, struct ionic_queue *q)
-{
-	q->bound_cq = cq;
-}
-
 uint32_t
 ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 		 ionic_cq_cb cb, void *cb_arg)

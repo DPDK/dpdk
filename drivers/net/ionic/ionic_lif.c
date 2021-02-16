@@ -695,7 +695,6 @@ ionic_qcq_alloc(struct ionic_lif *lif, uint8_t type,
 
 	ionic_q_map(&new->q, q_base, q_base_pa);
 	ionic_cq_map(&new->cq, cq_base, cq_base_pa);
-	ionic_cq_bind(&new->cq, &new->q);
 
 	*qcq = new;
 
