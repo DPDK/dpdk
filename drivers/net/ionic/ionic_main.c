@@ -146,7 +146,7 @@ ionic_adminq_check_err(struct ionic_admin_ctx *ctx, bool timeout)
 }
 
 static bool
-ionic_adminq_service(struct ionic_cq *cq, uint32_t cq_desc_index,
+ionic_adminq_service(struct ionic_cq *cq, uint16_t cq_desc_index,
 		void *cb_arg __rte_unused)
 {
 	struct ionic_admin_comp *cq_desc_base = cq->base;
@@ -174,7 +174,7 @@ ionic_adminq_service(struct ionic_cq *cq, uint32_t cq_desc_index,
 		}
 
 		curr_q_tail_idx = q->tail_idx;
-		q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
+		q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
 	} while (curr_q_tail_idx != stop_index);
 
 	return true;

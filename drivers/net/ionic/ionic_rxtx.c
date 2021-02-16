@@ -98,7 +98,7 @@ ionic_tx_flush(struct ionic_qcq *txq)
 		while (q->tail_idx != comp_index) {
 			info = IONIC_INFO_PTR(q, q->tail_idx);
 
-			q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
+			q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
 
 			/* Prefetch the next 4 descriptors */
 			if ((q->tail_idx & 0x3) == 0)
@@ -540,7 +540,7 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	while (nb_tx < nb_pkts) {
 		last = (nb_tx == (nb_pkts - 1));
 
-		next_q_head_idx = (q->head_idx + 1) & (q->num_descs - 1);
+		next_q_head_idx = Q_NEXT_TO_POST(q, 1);
 		if ((next_q_head_idx & 0x3) == 0) {
 			struct ionic_txq_desc *desc_base = q->base;
 			rte_prefetch0(&desc_base[next_q_head_idx]);
@@ -647,7 +647,7 @@ ionic_rx_empty(struct ionic_queue *q)
 		mbuf = info[0];
 		rte_mempool_put(rxq->mb_pool, mbuf);
 
-		q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
+		q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
 	}
 }
 
@@ -1055,7 +1055,7 @@ ionic_rxq_service(struct ionic_qcq *rxq, uint32_t work_to_do,
 			more = (q->tail_idx != cq_desc->comp_index);
 
 			curr_q_tail_idx = q->tail_idx;
-			q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
+			q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
 
 			/* Prefetch the next 4 descriptors */
 			if ((q->tail_idx & 0x3) == 0)

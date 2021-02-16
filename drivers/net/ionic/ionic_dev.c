@@ -405,26 +405,20 @@ ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 }
 
 int
-ionic_q_init(struct ionic_lif *lif, struct ionic_dev *idev,
-	     struct ionic_queue *q, uint32_t index, uint32_t num_descs,
-	     size_t desc_size, size_t sg_desc_size)
+ionic_q_init(struct ionic_queue *q, uint32_t index, uint16_t num_descs)
 {
 	uint32_t ring_size;
 
-	if (desc_size == 0 || !rte_is_power_of_2(num_descs))
+	if (!rte_is_power_of_2(num_descs))
 		return -EINVAL;
 
 	ring_size = rte_log2_u32(num_descs);
-
 	if (ring_size < 2 || ring_size > 16)
 		return -EINVAL;
 
-	q->lif = lif;
-	q->idev = idev;
 	q->index = index;
 	q->num_descs = num_descs;
-	q->desc_size = desc_size;
-	q->sg_desc_size = sg_desc_size;
+	q->size_mask = num_descs - 1;
 	q->head_idx = 0;
 	q->tail_idx = 0;
 
@@ -450,7 +444,7 @@ ionic_q_post(struct ionic_queue *q, bool ring_doorbell, void *cb_arg)
 {
 	q->info[q->head_idx] = cb_arg;
 
-	q->head_idx = (q->head_idx + 1) & (q->num_descs - 1);
+	q->head_idx = Q_NEXT_TO_POST(q, 1);
 
 	if (ring_doorbell)
 		ionic_q_flush(q);

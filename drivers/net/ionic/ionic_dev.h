@@ -135,25 +135,21 @@ struct ionic_dev {
 #define IONIC_INFO_PTR(_q, _i)	(&(_q)->info[IONIC_INFO_IDX((_q), _i)])
 
 struct ionic_queue {
-	struct ionic_dev *idev;
-	struct ionic_lif *lif;
-	uint32_t index;
-	uint32_t type;
-	uint32_t hw_index;
-	uint32_t hw_type;
+	uint16_t num_descs;
+	uint16_t head_idx;
+	uint16_t tail_idx;
+	uint16_t size_mask;
+	uint8_t type;
+	uint8_t hw_type;
 	void *base;
 	void *sg_base;
+	struct ionic_doorbell __iomem *db;
 	void **info;
+
+	uint32_t index;
+	uint32_t hw_index;
 	rte_iova_t base_pa;
 	rte_iova_t sg_base_pa;
-	uint32_t tail_idx;
-	uint32_t head_idx;
-	uint32_t num_descs;
-	uint32_t desc_size;
-	uint32_t sg_desc_size;
-	uint32_t qid;
-	uint32_t qtype;
-	struct ionic_doorbell __iomem *db;
 };
 
 #define IONIC_INTR_NONE		(-1)
@@ -220,22 +216,20 @@ struct ionic_doorbell __iomem *ionic_db_map(struct ionic_lif *lif,
 
 int ionic_cq_init(struct ionic_cq *cq, uint16_t num_descs);
 void ionic_cq_map(struct ionic_cq *cq, void *base, rte_iova_t base_pa);
-typedef bool (*ionic_cq_cb)(struct ionic_cq *cq, uint32_t cq_desc_index,
+typedef bool (*ionic_cq_cb)(struct ionic_cq *cq, uint16_t cq_desc_index,
 		void *cb_arg);
 uint32_t ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 	ionic_cq_cb cb, void *cb_arg);
 
-int ionic_q_init(struct ionic_lif *lif, struct ionic_dev *idev,
-	struct ionic_queue *q, uint32_t index, uint32_t num_descs,
-	size_t desc_size, size_t sg_desc_size);
+int ionic_q_init(struct ionic_queue *q, uint32_t index, uint16_t num_descs);
 void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_post(struct ionic_queue *q, bool ring_doorbell, void *cb_arg);
 
-static inline uint32_t
+static inline uint16_t
 ionic_q_space_avail(struct ionic_queue *q)
 {
-	uint32_t avail = q->tail_idx;
+	uint16_t avail = q->tail_idx;
 
 	if (q->head_idx >= avail)
 		avail += q->num_descs - q->head_idx - 1;

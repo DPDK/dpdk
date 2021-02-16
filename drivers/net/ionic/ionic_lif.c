@@ -34,7 +34,7 @@ int
 ionic_qcq_enable(struct ionic_qcq *qcq)
 {
 	struct ionic_queue *q = &qcq->q;
-	struct ionic_lif *lif = q->lif;
+	struct ionic_lif *lif = qcq->lif;
 	struct ionic_admin_ctx ctx = {
 		.pending_work = true,
 		.cmd.q_control = {
@@ -52,7 +52,7 @@ int
 ionic_qcq_disable(struct ionic_qcq *qcq)
 {
 	struct ionic_queue *q = &qcq->q;
-	struct ionic_lif *lif = q->lif;
+	struct ionic_lif *lif = qcq->lif;
 	struct ionic_admin_ctx ctx = {
 		.pending_work = true,
 		.cmd.q_control = {
@@ -585,16 +585,17 @@ ionic_intr_alloc(struct ionic_lif *lif, struct ionic_intr_info *intr)
 }
 
 static int
-ionic_qcq_alloc(struct ionic_lif *lif, uint8_t type,
+ionic_qcq_alloc(struct ionic_lif *lif,
+		uint8_t type,
 		uint32_t index,
-		const char *base, uint32_t flags,
-		uint32_t num_descs,
-		uint32_t desc_size,
-		uint32_t cq_desc_size,
-		uint32_t sg_desc_size,
+		const char *type_name,
+		uint16_t flags,
+		uint16_t num_descs,
+		uint16_t desc_size,
+		uint16_t cq_desc_size,
+		uint16_t sg_desc_size,
 		struct ionic_qcq **qcq)
 {
-	struct ionic_dev *idev = &lif->adapter->idev;
 	struct ionic_qcq *new;
 	uint32_t q_size, cq_size, sg_size, total_size;
 	void *q_base, *cq_base, *sg_base;
@@ -642,8 +643,7 @@ ionic_qcq_alloc(struct ionic_lif *lif, uint8_t type,
 
 	new->q.type = type;
 
-	err = ionic_q_init(lif, idev, &new->q, index, num_descs,
-		desc_size, sg_desc_size);
+	err = ionic_q_init(&new->q, index, num_descs);
 	if (err) {
 		IONIC_PRINT(ERR, "Queue initialization failed");
 		goto err_out_free_info;
@@ -656,7 +656,7 @@ ionic_qcq_alloc(struct ionic_lif *lif, uint8_t type,
 	}
 
 	new->base_z = rte_eth_dma_zone_reserve(lif->eth_dev,
-		base /* name */, index /* queue_idx */,
+		type_name, index /* queue_idx */,
 		total_size, IONIC_ALIGN, socket_id);
 
 	if (!new->base_z) {
@@ -727,7 +727,11 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t index, uint16_t nrxq_descs,
 	int err = -ENOMEM;
 
 	flags = IONIC_QCQ_F_SG;
-	err = ionic_qcq_alloc(lif, IONIC_QTYPE_RXQ, index, "rx", flags,
+	err = ionic_qcq_alloc(lif,
+		IONIC_QTYPE_RXQ,
+		index,
+		"rx",
+		flags,
 		nrxq_descs,
 		sizeof(struct ionic_rxq_desc),
 		sizeof(struct ionic_rxq_comp),
@@ -749,7 +753,11 @@ ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t index, uint16_t ntxq_descs,
 	int err = -ENOMEM;
 
 	flags = IONIC_QCQ_F_SG;
-	err = ionic_qcq_alloc(lif, IONIC_QTYPE_TXQ, index, "tx", flags,
+	err = ionic_qcq_alloc(lif,
+		IONIC_QTYPE_TXQ,
+		index,
+		"tx",
+		flags,
 		ntxq_descs,
 		sizeof(struct ionic_txq_desc),
 		sizeof(struct ionic_txq_comp),
@@ -770,7 +778,11 @@ ionic_admin_qcq_alloc(struct ionic_lif *lif)
 	int err = -ENOMEM;
 
 	flags = 0;
-	err = ionic_qcq_alloc(lif, IONIC_QTYPE_ADMINQ, 0, "admin", flags,
+	err = ionic_qcq_alloc(lif,
+		IONIC_QTYPE_ADMINQ,
+		0,
+		"admin",
+		flags,
 		IONIC_ADMINQ_LENGTH,
 		sizeof(struct ionic_admin_cmd),
 		sizeof(struct ionic_admin_comp),
@@ -790,7 +802,10 @@ ionic_notify_qcq_alloc(struct ionic_lif *lif)
 	uint32_t flags = 0;
 	int err = -ENOMEM;
 
-	err = ionic_qcq_alloc(lif, IONIC_QTYPE_NOTIFYQ, 0, "notify",
+	err = ionic_qcq_alloc(lif,
+		IONIC_QTYPE_NOTIFYQ,
+		0,
+		"notify",
 		flags,
 		IONIC_NOTIFYQ_LENGTH,
 		sizeof(struct ionic_notifyq_cmd),
@@ -1216,7 +1231,7 @@ ionic_lif_handle_fw_down(struct ionic_lif *lif)
 }
 
 static bool
-ionic_notifyq_cb(struct ionic_cq *cq, uint32_t cq_desc_index, void *cb_arg)
+ionic_notifyq_cb(struct ionic_cq *cq, uint16_t cq_desc_index, void *cb_arg)
 {
 	union ionic_notifyq_comp *cq_desc_base = cq->base;
 	union ionic_notifyq_comp *cq_desc = &cq_desc_base[cq_desc_index];
