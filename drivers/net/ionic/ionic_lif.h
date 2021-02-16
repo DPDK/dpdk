@@ -154,8 +154,6 @@ void ionic_lif_reset(struct ionic_lif *lif);
 int ionic_intr_alloc(struct ionic_lif *lif, struct ionic_intr_info *intr);
 void ionic_intr_free(struct ionic_lif *lif, struct ionic_intr_info *intr);
 
-bool ionic_adminq_service(struct ionic_cq *cq, uint32_t cq_desc_index,
-	void *cb_arg);
 int ionic_qcq_service(struct ionic_qcq *qcq, int budget, ionic_cq_cb cb,
 	void *cb_arg);
 

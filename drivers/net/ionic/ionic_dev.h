@@ -184,17 +184,6 @@ struct ionic_cq {
 	rte_iova_t base_pa;
 };
 
-/** ionic_admin_ctx - Admin command context.
- * @pending_work:	Flag that indicates a completion.
- * @cmd:		Admin command (64B) to be copied to the queue.
- * @comp:		Admin completion (16B) copied from the queue.
- */
-struct ionic_admin_ctx {
-	bool pending_work;
-	union ionic_adminq_cmd cmd;
-	union ionic_adminq_comp comp;
-};
-
 struct ionic_lif;
 struct ionic_adapter;
 struct ionic_qcq;
@@ -255,8 +244,6 @@ void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_post(struct ionic_queue *q, bool ring_doorbell, desc_cb cb,
 	void *cb_arg);
-void ionic_q_service(struct ionic_queue *q, uint32_t cq_desc_index,
-	uint32_t stop_index, void *service_cb_arg);
 
 static inline uint32_t
 ionic_q_space_avail(struct ionic_queue *q)
@@ -278,7 +265,5 @@ ionic_q_flush(struct ionic_queue *q)
 
 	rte_write64(rte_cpu_to_le_64(val), q->db);
 }
-
-int ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
 
 #endif /* _IONIC_DEV_H_ */

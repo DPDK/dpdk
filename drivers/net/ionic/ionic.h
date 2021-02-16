@@ -65,8 +65,19 @@ struct ionic_adapter {
 	LIST_ENTRY(ionic_adapter) pci_adapters;
 };
 
-int ionic_adminq_check_err(struct ionic_admin_ctx *ctx, bool timeout);
+/** ionic_admin_ctx - Admin command context.
+ * @pending_work:       Flag that indicates a completion.
+ * @cmd:                Admin command (64B) to be copied to the queue.
+ * @comp:               Admin completion (16B) copied from the queue.
+ */
+struct ionic_admin_ctx {
+	bool pending_work;
+	union ionic_adminq_cmd cmd;
+	union ionic_adminq_comp comp;
+};
+
 int ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
+
 int ionic_dev_cmd_wait_check(struct ionic_dev *idev, unsigned long max_wait);
 int ionic_setup(struct ionic_adapter *adapter);
 

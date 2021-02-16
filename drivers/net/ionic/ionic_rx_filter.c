@@ -7,6 +7,7 @@
 
 #include <rte_malloc.h>
 
+#include "ionic.h"
 #include "ionic_lif.h"
 #include "ionic_rx_filter.h"
 

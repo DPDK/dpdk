@@ -1163,22 +1163,6 @@ ionic_lif_notifyq_deinit(struct ionic_lif *lif)
 	nqcq->flags &= ~IONIC_QCQ_F_INITED;
 }
 
-bool
-ionic_adminq_service(struct ionic_cq *cq, uint32_t cq_desc_index,
-		void *cb_arg __rte_unused)
-{
-	struct ionic_admin_comp *cq_desc_base = cq->base;
-	struct ionic_admin_comp *cq_desc = &cq_desc_base[cq_desc_index];
-	struct ionic_qcq *qcq = IONIC_CQ_TO_QCQ(cq);
-
-	if (!color_match(cq_desc->color, cq->done_color))
-		return false;
-
-	ionic_q_service(&qcq->q, cq_desc_index, cq_desc->comp_index, NULL);
-
-	return true;
-}
-
 /* This acts like ionic_napi */
 int
 ionic_qcq_service(struct ionic_qcq *qcq, int budget, ionic_cq_cb cb,
