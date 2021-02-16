@@ -72,10 +72,10 @@ ionic_tx_flush(struct ionic_qcq *txq)
 {
 	struct ionic_cq *cq = &txq->cq;
 	struct ionic_queue *q = &txq->q;
-	struct ionic_desc_info *q_desc_info;
 	struct rte_mbuf *txm, *next;
 	struct ionic_txq_comp *cq_desc_base = cq->base;
 	struct ionic_txq_comp *cq_desc;
+	void **info;
 	u_int32_t comp_index = (u_int32_t)-1;
 
 	cq_desc = &cq_desc_base[cq->tail_idx];
@@ -96,7 +96,7 @@ ionic_tx_flush(struct ionic_qcq *txq)
 
 	if (comp_index != (u_int32_t)-1) {
 		while (q->tail_idx != comp_index) {
-			q_desc_info = &q->info[q->tail_idx];
+			info = IONIC_INFO_PTR(q, q->tail_idx);
 
 			q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
 
@@ -109,7 +109,7 @@ ionic_tx_flush(struct ionic_qcq *txq)
 			 * Note: you can just use rte_pktmbuf_free,
 			 * but this loop is faster
 			 */
-			txm = q_desc_info->cb_arg;
+			txm = info[0];
 			while (txm != NULL) {
 				next = txm->next;
 				rte_pktmbuf_free_seg(txm);
@@ -311,7 +311,7 @@ ionic_tx_tso_post(struct ionic_queue *q, struct ionic_txq_desc *desc,
 	desc->hdr_len = hdrlen;
 	desc->mss = mss;
 
-	ionic_q_post(q, done, NULL, done ? txm : NULL);
+	ionic_q_post(q, done, done ? txm : NULL);
 }
 
 static struct ionic_txq_desc *
@@ -511,7 +511,7 @@ ionic_tx(struct ionic_qcq *txq, struct rte_mbuf *txm,
 		txm_seg = txm_seg->next;
 	}
 
-	ionic_q_post(q, not_xmit_more, NULL, txm);
+	ionic_q_post(q, not_xmit_more, txm);
 
 	return 0;
 }
@@ -639,12 +639,12 @@ static void __rte_cold
 ionic_rx_empty(struct ionic_queue *q)
 {
 	struct ionic_qcq *rxq = IONIC_Q_TO_QCQ(q);
-	struct ionic_desc_info *cur;
 	struct rte_mbuf *mbuf;
+	void **info;
 
 	while (q->tail_idx != q->head_idx) {
-		cur = &q->info[q->tail_idx];
-		mbuf = cur->cb_arg;
+		info = IONIC_INFO_PTR(q, q->tail_idx);
+		mbuf = info[0];
 		rte_mempool_put(rxq->mb_pool, mbuf);
 
 		q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
@@ -743,12 +743,11 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 static __rte_always_inline void
 ionic_rx_clean(struct ionic_queue *q,
 		uint32_t q_desc_index, uint32_t cq_desc_index,
-		void *cb_arg, void *service_cb_arg)
+		void *service_cb_arg)
 {
 	struct ionic_rxq_comp *cq_desc_base = q->bound_cq->base;
 	struct ionic_rxq_comp *cq_desc = &cq_desc_base[cq_desc_index];
-	struct rte_mbuf *rxm = cb_arg;
-	struct rte_mbuf *rxm_seg;
+	struct rte_mbuf *rxm, *rxm_seg;
 	struct ionic_qcq *rxq = IONIC_Q_TO_QCQ(q);
 	uint32_t max_frame_size =
 		rxq->lif->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
@@ -761,6 +760,13 @@ ionic_rx_clean(struct ionic_queue *q,
 		(rte_pktmbuf_data_room_size(rxq->mb_pool) -
 		RTE_PKTMBUF_HEADROOM);
 	uint32_t left;
+	void **info;
+
+	assert(q_desc_index == cq_desc->comp_index);
+
+	info = IONIC_INFO_PTR(q, cq_desc->comp_index);
+
+	rxm = info[0];
 
 	if (!recv_args) {
 		stats->no_cb_arg++;
@@ -898,7 +904,7 @@ ionic_rx_recycle(struct ionic_queue *q, uint32_t q_desc_index,
 	new->addr = old->addr;
 	new->len = old->len;
 
-	ionic_q_post(q, true, ionic_rx_clean, mbuf);
+	ionic_q_post(q, true, mbuf);
 }
 
 static __rte_always_inline int
@@ -969,7 +975,7 @@ ionic_rx_fill(struct ionic_qcq *rxq, uint32_t len)
 		ring_doorbell = ((q->head_idx + 1) &
 			IONIC_RX_RING_DOORBELL_STRIDE) == 0;
 
-		ionic_q_post(q, ring_doorbell, ionic_rx_clean, rxm);
+		ionic_q_post(q, ring_doorbell, rxm);
 	}
 
 	return 0;
@@ -1023,7 +1029,6 @@ ionic_rxq_service(struct ionic_qcq *rxq, uint32_t work_to_do,
 {
 	struct ionic_cq *cq = &rxq->cq;
 	struct ionic_queue *q = &rxq->q;
-	struct ionic_desc_info *q_desc_info;
 	struct ionic_rxq_comp *cq_desc_base = cq->base;
 	struct ionic_rxq_comp *cq_desc;
 	bool more;
@@ -1048,8 +1053,6 @@ ionic_rxq_service(struct ionic_qcq *rxq, uint32_t work_to_do,
 		do {
 			more = (q->tail_idx != cq_desc->comp_index);
 
-			q_desc_info = &q->info[q->tail_idx];
-
 			curr_q_tail_idx = q->tail_idx;
 			q->tail_idx = (q->tail_idx + 1) & (q->num_descs - 1);
 
@@ -1059,7 +1062,7 @@ ionic_rxq_service(struct ionic_qcq *rxq, uint32_t work_to_do,
 				rte_prefetch0(&q->info[q->tail_idx]);
 
 			ionic_rx_clean(q, curr_q_tail_idx, curr_cq_tail_idx,
-				q_desc_info->cb_arg, service_cb_arg);
+				service_cb_arg);
 
 		} while (more);
 

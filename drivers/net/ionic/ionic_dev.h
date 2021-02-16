@@ -128,21 +128,11 @@ struct ionic_dev {
 	uint32_t port_info_sz;
 };
 
-struct ionic_queue;
-struct ionic_desc_info;
-
-typedef void (*desc_cb)(struct ionic_queue *q,
-	uint32_t q_desc_index,
-	uint32_t cq_desc_index,
-	void *cb_arg, void *service_cb_arg);
-
-struct ionic_desc_info {
-	desc_cb cb;
-	void *cb_arg;
-};
-
 #define Q_NEXT_TO_POST(_q, _n)	(((_q)->head_idx + (_n)) & ((_q)->size_mask))
 #define Q_NEXT_TO_SRVC(_q, _n)	(((_q)->tail_idx + (_n)) & ((_q)->size_mask))
+
+#define IONIC_INFO_IDX(_q, _i)	(_i)
+#define IONIC_INFO_PTR(_q, _i)	(&(_q)->info[IONIC_INFO_IDX((_q), _i)])
 
 struct ionic_queue {
 	struct ionic_dev *idev;
@@ -154,9 +144,9 @@ struct ionic_queue {
 	uint32_t hw_type;
 	void *base;
 	void *sg_base;
+	void **info;
 	rte_iova_t base_pa;
 	rte_iova_t sg_base_pa;
-	struct ionic_desc_info *info;
 	uint32_t tail_idx;
 	uint32_t head_idx;
 	uint32_t num_descs;
@@ -242,8 +232,7 @@ int ionic_q_init(struct ionic_lif *lif, struct ionic_dev *idev,
 	size_t desc_size, size_t sg_desc_size);
 void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
-void ionic_q_post(struct ionic_queue *q, bool ring_doorbell, desc_cb cb,
-	void *cb_arg);
+void ionic_q_post(struct ionic_queue *q, bool ring_doorbell, void *cb_arg);
 
 static inline uint32_t
 ionic_q_space_avail(struct ionic_queue *q)

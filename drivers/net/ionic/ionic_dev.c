@@ -452,13 +452,9 @@ ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa)
 }
 
 void
-ionic_q_post(struct ionic_queue *q, bool ring_doorbell, desc_cb cb,
-	     void *cb_arg)
+ionic_q_post(struct ionic_queue *q, bool ring_doorbell, void *cb_arg)
 {
-	struct ionic_desc_info *head = &q->info[q->head_idx];
-
-	head->cb = cb;
-	head->cb_arg = cb_arg;
+	q->info[q->head_idx] = cb_arg;
 
 	q->head_idx = (q->head_idx + 1) & (q->num_descs - 1);
 

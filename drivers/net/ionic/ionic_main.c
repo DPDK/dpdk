@@ -154,9 +154,9 @@ ionic_adminq_service(struct ionic_cq *cq, uint32_t cq_desc_index,
 	struct ionic_qcq *qcq = IONIC_CQ_TO_QCQ(cq);
 	struct ionic_queue *q = &qcq->q;
 	struct ionic_admin_ctx *ctx;
-	struct ionic_desc_info *desc_info;
 	uint16_t curr_q_tail_idx;
 	uint16_t stop_index;
+	void **info;
 
 	if (!color_match(cq_desc->color, cq->done_color))
 		return false;
@@ -164,9 +164,9 @@ ionic_adminq_service(struct ionic_cq *cq, uint32_t cq_desc_index,
 	stop_index = rte_le_to_cpu_16(cq_desc->comp_index);
 
 	do {
-		desc_info = &q->info[q->tail_idx];
+		info = IONIC_INFO_PTR(q, q->tail_idx);
 
-		ctx = desc_info->cb_arg;
+		ctx = info[0];
 		if (ctx) {
 			memcpy(&ctx->comp, cq_desc, sizeof(*cq_desc));
 
@@ -210,7 +210,7 @@ ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 
 	memcpy(q_desc, &ctx->cmd, sizeof(ctx->cmd));
 
-	ionic_q_post(q, true, NULL, ctx);
+	ionic_q_post(q, true, ctx);
 
 err_out:
 	rte_spinlock_unlock(&lif->adminq_lock);
