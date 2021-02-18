@@ -1299,12 +1299,15 @@ error:
  *   Pointer to Ethernet device.
  * @param idx
  *   Queue index in DPDK Tx queue array.
+ * @param[in] log_desc_n
+ *   Log of number of descriptors in queue.
  *
  * @return
  *   Number of WQEs in SQ, 0 otherwise and rte_errno is set.
  */
 static uint32_t
-mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
+				  uint16_t log_desc_n)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
@@ -1324,7 +1327,7 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = ENOMEM;
 		return 0;
 	}
-	wqe_n = RTE_MIN(1UL << txq_data->elts_n,
+	wqe_n = RTE_MIN(1UL << log_desc_n,
 			(uint32_t)priv->sh->device_attr.max_qp_wr);
 	txq_obj->sq_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
 				      wqe_n * sizeof(struct mlx5_wqe),
@@ -1426,8 +1429,8 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
 	void *reg_addr;
-	uint32_t cqe_n;
-	uint32_t wqe_n;
+	uint32_t cqe_n, log_desc_n;
+	uint32_t wqe_n, wqe_size;
 	int ret = 0;
 
 	MLX5_ASSERT(txq_data);
@@ -1448,8 +1451,29 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->cq_db = (volatile uint32_t *)(txq_obj->cq_dbrec_page->dbrs +
 						txq_obj->cq_dbrec_offset);
 	*txq_data->cq_db = 0;
+	/*
+	 * Adjust the amount of WQEs depending on inline settings.
+	 * The number of descriptors should be enough to handle
+	 * the specified number of packets. If queue is being created
+	 * with Verbs the rdma-core does queue size adjustment
+	 * internally in the mlx5_calc_sq_size(), we do the same
+	 * for the queue being created with DevX at this point.
+	 */
+	wqe_size = txq_data->tso_en ?
+		   RTE_ALIGN(txq_ctrl->max_tso_header, MLX5_WSEG_SIZE) : 0;
+	wqe_size += sizeof(struct mlx5_wqe_cseg) +
+		    sizeof(struct mlx5_wqe_eseg) +
+		    sizeof(struct mlx5_wqe_dseg);
+	if (txq_data->inlen_send)
+		wqe_size = RTE_MAX(wqe_size, sizeof(struct mlx5_wqe_cseg) +
+					     sizeof(struct mlx5_wqe_eseg) +
+					     RTE_ALIGN(txq_data->inlen_send +
+						       sizeof(uint32_t),
+						       MLX5_WSEG_SIZE));
+	wqe_size = RTE_ALIGN(wqe_size, MLX5_WQE_SIZE) / MLX5_WQE_SIZE;
 	/* Create Send Queue object with DevX. */
-	wqe_n = mlx5_txq_create_devx_sq_resources(dev, idx);
+	log_desc_n = log2above((1UL << txq_data->elts_n) * wqe_size);
+	wqe_n = mlx5_txq_create_devx_sq_resources(dev, idx, log_desc_n);
 	if (!wqe_n) {
 		rte_errno = errno;
 		goto error;
