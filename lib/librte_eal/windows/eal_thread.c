@@ -134,8 +134,8 @@ eal_thread_create(pthread_t *thread)
 	if (!th)
 		return -1;
 
-	SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-	SetThreadPriority(th, THREAD_PRIORITY_TIME_CRITICAL);
+	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+	SetThreadPriority(th, THREAD_PRIORITY_NORMAL);
 
 	return 0;
 }
