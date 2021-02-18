@@ -26,6 +26,10 @@ struct bnxt_db_info;
 #define CMP_TYPE(cmp)						\
 	(((struct cmpl_base *)cmp)->type & CMPL_BASE_TYPE_MASK)
 
+/* Get completion length from completion type, in 16-byte units. */
+#define CMP_LEN(cmp_type) (((cmp_type) & 1) + 1)
+
+
 #define ADV_RAW_CMP(idx, n)	((idx) + (n))
 #define NEXT_RAW_CMP(idx)	ADV_RAW_CMP(idx, 1)
 #define RING_CMP(ring, idx)	((idx) & (ring)->ring_mask)

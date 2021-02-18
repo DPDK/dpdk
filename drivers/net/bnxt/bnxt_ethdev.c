@@ -2942,8 +2942,8 @@ static uint32_t
 bnxt_rx_queue_count_op(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
-	uint32_t desc = 0, raw_cons = 0, cons;
 	struct bnxt_cp_ring_info *cpr;
+	uint32_t desc = 0, raw_cons;
 	struct bnxt_rx_queue *rxq;
 	struct rx_pkt_cmpl *rxcmp;
 	int rc;
@@ -2957,15 +2957,43 @@ bnxt_rx_queue_count_op(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	raw_cons = cpr->cp_raw_cons;
 
 	while (1) {
+		uint32_t agg_cnt, cons, cmpl_type;
+
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
-		rte_prefetch0(&cpr->cp_desc_ring[cons]);
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
 
-		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct)) {
+		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
 			break;
-		} else {
-			raw_cons++;
+
+		cmpl_type = CMP_TYPE(rxcmp);
+
+		switch (cmpl_type) {
+		case CMPL_BASE_TYPE_RX_L2:
+		case CMPL_BASE_TYPE_RX_L2_V2:
+			agg_cnt = BNXT_RX_L2_AGG_BUFS(rxcmp);
+			raw_cons = raw_cons + CMP_LEN(cmpl_type) + agg_cnt;
 			desc++;
+			break;
+
+		case CMPL_BASE_TYPE_RX_TPA_END:
+			if (BNXT_CHIP_P5(rxq->bp)) {
+				struct rx_tpa_v2_end_cmpl_hi *p5_tpa_end;
+
+				p5_tpa_end = (void *)rxcmp;
+				agg_cnt = BNXT_TPA_END_AGG_BUFS_TH(p5_tpa_end);
+			} else {
+				struct rx_tpa_end_cmpl *tpa_end;
+
+				tpa_end = (void *)rxcmp;
+				agg_cnt = BNXT_TPA_END_AGG_BUFS(tpa_end);
+			}
+
+			raw_cons = raw_cons + CMP_LEN(cmpl_type) + agg_cnt;
+			desc++;
+			break;
+
+		default:
+			raw_cons += CMP_LEN(cmpl_type);
 		}
 	}
 
