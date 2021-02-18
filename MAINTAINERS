@@ -846,7 +846,6 @@ F: doc/guides/nics/features/enetc.ini
 
 NXP pfe
 M: Gagandeep Singh <g.singh@nxp.com>
-M: Akhil Goyal <akhil.goyal@nxp.com>
 F: doc/guides/nics/pfe.rst
 F: drivers/net/pfe/
 F: doc/guides/nics/features/pfe.ini
@@ -1078,14 +1077,14 @@ F: doc/guides/cryptodevs/caam_jr.rst
 F: doc/guides/cryptodevs/features/caam_jr.ini
 
 NXP DPAA_SEC
-M: Akhil Goyal <akhil.goyal@nxp.com>
+M: Gagandeep Singh <g.singh@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: drivers/crypto/dpaa_sec/
 F: doc/guides/cryptodevs/dpaa_sec.rst
 F: doc/guides/cryptodevs/features/dpaa_sec.ini
 
 NXP DPAA2_SEC
-M: Akhil Goyal <akhil.goyal@nxp.com>
+M: Gagandeep Singh <g.singh@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: drivers/crypto/dpaa2_sec/
 F: doc/guides/cryptodevs/dpaa2_sec.rst
