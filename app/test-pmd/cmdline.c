@@ -9097,7 +9097,7 @@ cmdline_parse_inst_t cmd_vf_rate_limit = {
 
 /* *** CONFIGURE TUNNEL UDP PORT *** */
 struct cmd_tunnel_udp_config {
-	cmdline_fixed_string_t cmd;
+	cmdline_fixed_string_t rx_vxlan_port;
 	cmdline_fixed_string_t what;
 	uint16_t udp_port;
 	portid_t port_id;
@@ -9113,9 +9113,7 @@ cmd_tunnel_udp_config_parsed(void *parsed_result,
 	int ret;
 
 	tunnel_udp.udp_port = res->udp_port;
-
-	if (!strcmp(res->cmd, "rx_vxlan_port"))
-		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
+	tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
 
 	if (!strcmp(res->what, "add"))
 		ret = rte_eth_dev_udp_tunnel_port_add(res->port_id,
@@ -9128,9 +9126,9 @@ cmd_tunnel_udp_config_parsed(void *parsed_result,
 		printf("udp tunneling add error: (%s)\n", strerror(-ret));
 }
 
-cmdline_parse_token_string_t cmd_tunnel_udp_config_cmd =
+cmdline_parse_token_string_t cmd_tunnel_udp_config_rx_vxlan_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_udp_config,
-				cmd, "rx_vxlan_port");
+				rx_vxlan_port, "rx_vxlan_port");
 cmdline_parse_token_string_t cmd_tunnel_udp_config_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_udp_config,
 				what, "add#rm");
@@ -9147,7 +9145,7 @@ cmdline_parse_inst_t cmd_tunnel_udp_config = {
 	.help_str = "rx_vxlan_port add|rm <udp_port> <port_id>: "
 		"Add/Remove a tunneling UDP port filter",
 	.tokens = {
-		(void *)&cmd_tunnel_udp_config_cmd,
+		(void *)&cmd_tunnel_udp_config_rx_vxlan_port,
 		(void *)&cmd_tunnel_udp_config_what,
 		(void *)&cmd_tunnel_udp_config_udp_port,
 		(void *)&cmd_tunnel_udp_config_port_id,
