@@ -53,8 +53,8 @@ mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id, uint32_t arg,
 	MLX5_SET(access_register_in, in, register_id, reg_id);
 	MLX5_SET(access_register_in, in, argument, arg);
 	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out,
-					 MLX5_ST_SZ_DW(access_register_out) *
-					 sizeof(uint32_t) + dw_cnt);
+					 MLX5_ST_SZ_BYTES(access_register_out) +
+					 sizeof(uint32_t) * dw_cnt);
 	if (rc)
 		goto error;
 	status = MLX5_GET(access_register_out, out, status);
