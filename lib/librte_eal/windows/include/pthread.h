@@ -137,8 +137,8 @@ pthread_create(void *threadid, const void *threadattr, void *threadfunc,
 	hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadfunc,
 		args, 0, (LPDWORD)threadid);
 	if (hThread) {
-		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-		SetThreadPriority(hThread, THREAD_PRIORITY_TIME_CRITICAL);
+		SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+		SetThreadPriority(hThread, THREAD_PRIORITY_NORMAL);
 	}
 	return ((hThread != NULL) ? 0 : E_FAIL);
 }
