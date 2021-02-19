@@ -1590,12 +1590,14 @@ eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 
 	/*
-	 * refuse mtu that requires the support of scattered packets when
-	 * this feature has not been enabled before.
+	 * If device is started, refuse mtu that requires the support of
+	 * scattered packets when this feature has not been enabled before.
 	 */
-	if (!dev->data->scattered_rx &&
-	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)
+	if (dev->data->dev_started && !dev->data->scattered_rx &&
+	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM) {
+		PMD_INIT_LOG(ERR, "Stop port first.");
 		return -EINVAL;
+	}
 
 	rctl = IGC_READ_REG(hw, IGC_RCTL);
 
