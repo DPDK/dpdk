@@ -581,6 +581,7 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	struct bnxt_coal coal;
 	int rc;
 
 	/*
@@ -602,6 +603,9 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 		bp->grp_info[queue_index].fw_stats_ctx = cpr->hw_stats_ctx_id;
 		bp->grp_info[queue_index].cp_fw_ring_id = cp_ring->fw_ring_id;
 	}
+
+	bnxt_init_dflt_coal(&coal);
+	bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
 
 	if (!BNXT_NUM_ASYNC_CPR(bp) && !queue_index) {
 		/*
@@ -699,60 +703,9 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 	bnxt_init_all_rings(bp);
 
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
-		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
-		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
-		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
-		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-
-		/*
-		 * Storage for the cp ring is allocated based on worst-case
-		 * usage, the actual size to be used by hw is computed here.
-		 */
-		cp_ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
-
-		if (bp->eth_dev->data->scattered_rx)
-			cp_ring->ring_size *= AGG_RING_SIZE_FACTOR;
-
-		cp_ring->ring_mask = cp_ring->ring_size - 1;
-
-		if (bnxt_alloc_cmpl_ring(bp, i, cpr))
+		rc = bnxt_alloc_hwrm_rx_ring(bp, i);
+		if (rc)
 			goto err_out;
-
-		if (BNXT_HAS_RING_GRPS(bp)) {
-			bp->grp_info[i].fw_stats_ctx = cpr->hw_stats_ctx_id;
-			bp->grp_info[i].cp_fw_ring_id = cp_ring->fw_ring_id;
-		}
-
-		bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
-		if (!BNXT_NUM_ASYNC_CPR(bp) && !i) {
-			/*
-			 * If a dedicated async event completion ring is not
-			 * enabled, use the first completion ring as the default
-			 * completion ring for async event handling.
-			 */
-			bp->async_cp_ring = cpr;
-			rc = bnxt_hwrm_set_async_event_cr(bp);
-			if (rc)
-				goto err_out;
-		}
-
-		if (bnxt_alloc_rx_ring(bp, i))
-			goto err_out;
-
-		if (bnxt_alloc_rx_agg_ring(bp, i))
-			goto err_out;
-
-		if (bnxt_init_one_rx_ring(rxq)) {
-			PMD_DRV_LOG(ERR, "bnxt_init_one_rx_ring failed!\n");
-			bnxt_rx_queue_release_op(rxq);
-			return -ENOMEM;
-		}
-		bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
-		bnxt_db_write(&rxr->ag_db, rxr->ag_raw_prod);
-		rxq->index = i;
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-		bnxt_rxq_vec_setup(rxq);
-#endif
 	}
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
