@@ -4039,20 +4039,16 @@ ice_vsi_config_vlan_filter(struct ice_vsi *vsi, bool on)
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_vsi_ctx ctxt;
-	uint8_t sec_flags, sw_flags2;
+	uint8_t sw_flags2;
 	int ret = 0;
 
-	sec_flags = ICE_AQ_VSI_SEC_TX_VLAN_PRUNE_ENA <<
-		    ICE_AQ_VSI_SEC_TX_PRUNE_ENA_S;
 	sw_flags2 = ICE_AQ_VSI_SW_FLAG_RX_VLAN_PRUNE_ENA;
 
-	if (on) {
-		vsi->info.sec_flags |= sec_flags;
+	if (on)
 		vsi->info.sw_flags2 |= sw_flags2;
-	} else {
-		vsi->info.sec_flags &= ~sec_flags;
+	else
 		vsi->info.sw_flags2 &= ~sw_flags2;
-	}
+
 	vsi->info.sw_id = hw->port_info->sw_id;
 	(void)rte_memcpy(&ctxt.info, &vsi->info, sizeof(vsi->info));
 	ctxt.info.valid_sections =
