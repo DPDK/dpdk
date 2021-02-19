@@ -30,6 +30,15 @@
 #define THREAD_TIMER_PERIOD_MS                             100
 #endif
 
+/* Pipeline instruction quanta: Needs to be big enough to do some meaningful
+ * work, but not too big to avoid starving any other pipelines mapped to the
+ * same thread. For a pipeline that executes 10 instructions per packet, a
+ * quanta of 1000 instructions equates to processing 100 packets.
+ */
+#ifndef PIPELINE_INSTR_QUANTA
+#define PIPELINE_INSTR_QUANTA                              1000
+#endif
+
 /**
  * Control thread: data plane thread context
  */
@@ -517,7 +526,7 @@ thread_main(void *arg __rte_unused)
 
 		/* Data Plane */
 		for (j = 0; j < t->n_pipelines; j++)
-			rte_swx_pipeline_run(t->p[j], 1000000);
+			rte_swx_pipeline_run(t->p[j], PIPELINE_INSTR_QUANTA);
 
 		/* Control Plane */
 		if ((i & 0xF) == 0) {
