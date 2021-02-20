@@ -1068,14 +1068,14 @@ validate_enc_op(struct rte_bbdev_enc_op *op __rte_unused)
 				ldpc_enc->basegraph);
 		return -1;
 	}
-	if (ldpc_enc->code_block_mode > 1) {
+	if (ldpc_enc->code_block_mode > RTE_BBDEV_CODE_BLOCK) {
 		rte_bbdev_log(ERR,
 				"code_block_mode (%u) is out of range 0:Tb 1:CB",
 				ldpc_enc->code_block_mode);
 		return -1;
 	}
 
-	if (ldpc_enc->code_block_mode == 0) {
+	if (ldpc_enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		tb = &ldpc_enc->tb_params;
 		if (tb->c == 0) {
 			rte_bbdev_log(ERR,
@@ -1161,14 +1161,14 @@ validate_dec_op(struct rte_bbdev_dec_op *op __rte_unused)
 		return -1;
 	}
 
-	if (ldpc_dec->code_block_mode > 1) {
+	if (ldpc_dec->code_block_mode > RTE_BBDEV_CODE_BLOCK) {
 		rte_bbdev_log(ERR,
 				"code_block_mode (%u) is out of range 0 <= value <= 1",
 				ldpc_dec->code_block_mode);
 		return -1;
 	}
 
-	if (ldpc_dec->code_block_mode == 0) {
+	if (ldpc_dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		tb = &ldpc_dec->tb_params;
 		if (tb->c < 1) {
 			rte_bbdev_log(ERR,
@@ -1370,7 +1370,7 @@ enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
 	if (enc->op_flags & RTE_BBDEV_LDPC_CRC_24B_ATTACH)
 		crc24_bits = 24;
 
-	if (enc->code_block_mode == 0) {
+	if (enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		/* For Transport Block mode */
 		/* FIXME */
 		c = enc->tb_params.c;

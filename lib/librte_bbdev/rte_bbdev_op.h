@@ -112,7 +112,7 @@ enum rte_bbdev_op_td_flag_bitmasks {
 	/** Set if a device supports scatter-gather functionality */
 	RTE_BBDEV_TURBO_DEC_SCATTER_GATHER = (1ULL << 15),
 	/** Set to keep CRC24B bits appended while decoding. Only usable when
-	 * decoding Transport Blocks (code_block_mode = 0).
+	 * decoding Transport Block mode.
 	 */
 	RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP = (1ULL << 16)
 };
@@ -207,6 +207,14 @@ enum rte_bbdev_op_ldpcenc_flag_bitmasks {
 	RTE_BBDEV_LDPC_ENC_SCATTER_GATHER = (1ULL << 6),
 	/** Set if a device supports concatenation of non byte aligned output */
 	RTE_BBDEV_LDPC_ENC_CONCATENATION = (1ULL << 7)
+};
+
+/** Flags for the Code Block/Transport block mode  */
+enum rte_bbdev_op_cb_mode {
+	/** One operation is one or fraction of one transport block  */
+	RTE_BBDEV_TRANSPORT_BLOCK = 0,
+	/** One operation is one code block mode */
+	RTE_BBDEV_CODE_BLOCK = 1,
 };
 
 /** Data input and output buffer for BBDEV operations */

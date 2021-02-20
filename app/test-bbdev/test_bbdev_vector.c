@@ -1052,9 +1052,9 @@ check_decoder(struct test_bbdev_vector *vector)
 	if (!(mask & TEST_BBDEV_VF_CODE_BLOCK_MODE)) {
 		printf(
 			"WARNING: code_block_mode was not specified in vector file and will be set to 1 (0 - TB Mode, 1 - CB mode)\n");
-		turbo_dec->code_block_mode = 1;
+		turbo_dec->code_block_mode = RTE_BBDEV_CODE_BLOCK;
 	}
-	if (turbo_dec->code_block_mode == 0) {
+	if (turbo_dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		if (!(mask & TEST_BBDEV_VF_EA))
 			printf(
 				"WARNING: ea was not specified in vector file and will be set to 0\n");
@@ -1142,9 +1142,9 @@ check_ldpc_decoder(struct test_bbdev_vector *vector)
 	if (!(mask & TEST_BBDEV_VF_CODE_BLOCK_MODE)) {
 		printf(
 			"WARNING: code_block_mode was not specified in vector file and will be set to 1 (0 - TB Mode, 1 - CB mode)\n");
-		ldpc_dec->code_block_mode = 1;
+		ldpc_dec->code_block_mode = RTE_BBDEV_CODE_BLOCK;
 	}
-	if (ldpc_dec->code_block_mode == 0) {
+	if (ldpc_dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		if (!(mask & TEST_BBDEV_VF_EA))
 			printf(
 				"WARNING: ea was not specified in vector file and will be set to 0\n");
@@ -1210,9 +1210,9 @@ check_encoder(struct test_bbdev_vector *vector)
 	if (!(mask & TEST_BBDEV_VF_CODE_BLOCK_MODE)) {
 		printf(
 			"WARNING: code_block_mode was not specified in vector file and will be set to 1\n");
-		vector->turbo_enc.code_block_mode = 1;
+		vector->turbo_enc.code_block_mode = RTE_BBDEV_CODE_BLOCK;
 	}
-	if (vector->turbo_enc.code_block_mode == 0) {
+	if (vector->turbo_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		if (!(mask & TEST_BBDEV_VF_EA) && (vector->turbo_enc.op_flags &
 				RTE_BBDEV_TURBO_RATE_MATCH))
 			printf(
@@ -1298,9 +1298,9 @@ check_ldpc_encoder(struct test_bbdev_vector *vector)
 	if (!(mask & TEST_BBDEV_VF_CODE_BLOCK_MODE)) {
 		printf(
 			"WARNING: code_block_mode was not specified in vector file and will be set to 1\n");
-		vector->turbo_enc.code_block_mode = 1;
+		vector->turbo_enc.code_block_mode = RTE_BBDEV_CODE_BLOCK;
 	}
-	if (vector->turbo_enc.code_block_mode == 0) {
+	if (vector->turbo_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 	} else {
 		if (!(mask & TEST_BBDEV_VF_E) && (vector->turbo_enc.op_flags &
 				RTE_BBDEV_TURBO_RATE_MATCH))

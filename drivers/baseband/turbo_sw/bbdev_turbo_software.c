@@ -578,7 +578,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 
 	/* CRC24A (for TB) */
 	if ((enc->op_flags & RTE_BBDEV_TURBO_CRC_24A_ATTACH) &&
-		(enc->code_block_mode == 1)) {
+		(enc->code_block_mode == RTE_BBDEV_CODE_BLOCK)) {
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 		ret = is_enc_input_valid(k - 24, k_idx, in_length);
 		if (ret != 0) {
@@ -1007,7 +1007,7 @@ enqueue_enc_one_op(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		(enc->op_flags & RTE_BBDEV_TURBO_CRC_24A_ATTACH))
 		crc24_bits = 24;
 
-	if (enc->code_block_mode == 0) { /* For Transport Block mode */
+	if (enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		c = enc->tb_params.c;
 		r = enc->tb_params.r;
 	} else {/* For Code Block mode */
@@ -1019,7 +1019,7 @@ enqueue_enc_one_op(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 
 		seg_total_left = rte_pktmbuf_data_len(m_in) - in_offset;
 
-		if (enc->code_block_mode == 0) {
+		if (enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 			k = (r < enc->tb_params.c_neg) ?
 				enc->tb_params.k_neg : enc->tb_params.k_pos;
 			ncb = (r < enc->tb_params.c_neg) ?
@@ -1101,7 +1101,7 @@ enqueue_ldpc_enc_one_op(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		(enc->op_flags & RTE_BBDEV_TURBO_CRC_24A_ATTACH))
 		crc24_bits = 24;
 
-	if (enc->code_block_mode == 0) { /* For Transport Block mode */
+	if (enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		c = enc->tb_params.c;
 		r = enc->tb_params.r;
 	} else { /* For Code Block mode */
@@ -1113,7 +1113,7 @@ enqueue_ldpc_enc_one_op(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 
 		seg_total_left = rte_pktmbuf_data_len(m_in) - in_offset;
 
-		if (enc->code_block_mode == 0) {
+		if (enc->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 			e = (r < enc->tb_params.cab) ?
 				enc->tb_params.ea : enc->tb_params.eb;
 		} else {
@@ -1570,7 +1570,7 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		return;
 	}
 
-	if (dec->code_block_mode == 0) { /* For Transport Block mode */
+	if (dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		c = dec->tb_params.c;
 	} else { /* For Code Block mode */
 		k = dec->cb_params.k;
@@ -1582,7 +1582,7 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		crc24_overlap = 24;
 
 	while (mbuf_total_left > 0) {
-		if (dec->code_block_mode == 0)
+		if (dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
 			k = (r < dec->tb_params.c_neg) ?
 				dec->tb_params.k_neg : dec->tb_params.k_pos;
 
@@ -1658,7 +1658,7 @@ enqueue_ldpc_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		return;
 	}
 
-	if (dec->code_block_mode == 0) { /* For Transport Block mode */
+	if (dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		c = dec->tb_params.c;
 		e = dec->tb_params.ea;
 	} else { /* For Code Block mode */
@@ -1673,7 +1673,7 @@ enqueue_ldpc_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	out_length = ((out_length - crc24_overlap - dec->n_filler) >> 3);
 
 	while (mbuf_total_left > 0) {
-		if (dec->code_block_mode == 0)
+		if (dec->code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
 			e = (r < dec->tb_params.cab) ?
 				dec->tb_params.ea : dec->tb_params.eb;
 		/* Special case handling when overusing mbuf */
