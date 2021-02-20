@@ -521,8 +521,15 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 		if (rxq) {
 			cnt = rxq->l2_errors + rxq->pkt_len_errors;
 			rte_stats->q_errors[i] = cnt;
+			/*
+			 * If HW statistics are reset by stats_reset, but
+			 * a lot of residual packets exist in the hardware
+			 * queue and these packets are error packets, flip
+			 * overflow may occurred. So return 0 in this case.
+			 */
 			rte_stats->q_ipackets[i] =
-				stats->rcb_rx_ring_pktnum[i] - cnt;
+				stats->rcb_rx_ring_pktnum[i] > cnt ?
+				stats->rcb_rx_ring_pktnum[i] - cnt : 0;
 			rte_stats->ierrors += cnt;
 		}
 	}
@@ -535,8 +542,9 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 	}
 
 	rte_stats->oerrors = 0;
-	rte_stats->ipackets  = stats->rcb_rx_ring_pktnum_rcd -
-		rte_stats->ierrors;
+	rte_stats->ipackets =
+		stats->rcb_rx_ring_pktnum_rcd > rte_stats->ierrors ?
+		stats->rcb_rx_ring_pktnum_rcd - rte_stats->ierrors : 0;
 	rte_stats->opackets  = stats->rcb_tx_ring_pktnum_rcd -
 		rte_stats->oerrors;
 	rte_stats->rx_nombuf = eth_dev->data->rx_mbuf_alloc_failed;
