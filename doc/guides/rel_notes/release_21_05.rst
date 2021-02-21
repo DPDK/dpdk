@@ -106,6 +106,8 @@ New Features
 
   * Added support for txgbevf PMD.
 
+* **Enabled vmxnet3 PMD on Windows.**
+
 * **Updated the AF_XDP driver.**
 
   * Added support for preferred busy polling.
