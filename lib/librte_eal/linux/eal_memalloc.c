@@ -709,7 +709,6 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	uint64_t map_offset;
 	char path[PATH_MAX];
 	int fd, ret = 0;
-	bool exit_early;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
@@ -725,17 +724,8 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 
 	eal_mem_set_dump(ms->addr, ms->len, false);
 
-	exit_early = false;
-
 	/* if we're using anonymous hugepages, nothing to be done */
-	if (internal_conf->in_memory && !memfd_create_supported)
-		exit_early = true;
-
-	/* if we've already unlinked the page, nothing needs to be done */
-	if (!internal_conf->in_memory && internal_conf->hugepage_unlink)
-		exit_early = true;
-
-	if (exit_early) {
+	if (internal_conf->in_memory && !memfd_create_supported) {
 		memset(ms, 0, sizeof(*ms));
 		return 0;
 	}
@@ -761,7 +751,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		/* if we're able to take out a write lock, we're the last one
 		 * holding onto this page.
 		 */
-		if (!internal_conf->in_memory) {
+		if (!internal_conf->in_memory && !internal_conf->hugepage_unlink) {
 			ret = lock(fd, LOCK_EX);
 			if (ret >= 0) {
 				/* no one else is using this page */
