@@ -543,6 +543,24 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		rxq->proto_xtr = IAVF_PROTO_XTR_NONE;
 	}
 
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2) {
+		struct virtchnl_vlan_supported_caps *stripping_support =
+				&vf->vlan_v2_caps.offloads.stripping_support;
+		uint32_t stripping_cap;
+
+		if (stripping_support->outer)
+			stripping_cap = stripping_support->outer;
+		else
+			stripping_cap = stripping_support->inner;
+
+		if (stripping_cap & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG1)
+			rxq->rx_flags = IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG1;
+		else if (stripping_cap & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG2_2)
+			rxq->rx_flags = IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2;
+	} else {
+		rxq->rx_flags = IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG1;
+	}
+
 	iavf_select_rxd_to_pkt_fields_handler(rxq, rxq->rxdid);
 
 	rxq->mp = mp;
@@ -972,31 +990,27 @@ iavf_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union iavf_rx_desc *rxdp)
 
 static inline void
 iavf_flex_rxd_to_vlan_tci(struct rte_mbuf *mb,
-			  volatile union iavf_rx_flex_desc *rxdp)
+			  volatile union iavf_rx_flex_desc *rxdp,
+			  uint8_t rx_flags)
 {
-	if (rte_le_to_cpu_64(rxdp->wb.status_error0) &
-		(1 << IAVF_RX_FLEX_DESC_STATUS0_L2TAG1P_S)) {
-		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
-		mb->vlan_tci =
-			rte_le_to_cpu_16(rxdp->wb.l2tag1);
-	} else {
-		mb->vlan_tci = 0;
-	}
+	uint16_t vlan_tci = 0;
+
+	if (rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG1 &&
+	    rte_le_to_cpu_64(rxdp->wb.status_error0) &
+	    (1 << IAVF_RX_FLEX_DESC_STATUS0_L2TAG1P_S))
+		vlan_tci = rte_le_to_cpu_16(rxdp->wb.l2tag1);
 
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
-	if (rte_le_to_cpu_16(rxdp->wb.status_error1) &
-	    (1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S)) {
-		mb->ol_flags |= PKT_RX_QINQ_STRIPPED | PKT_RX_QINQ |
-				PKT_RX_VLAN_STRIPPED | PKT_RX_VLAN;
-		mb->vlan_tci_outer = mb->vlan_tci;
-		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd);
-		PMD_RX_LOG(DEBUG, "Descriptor l2tag2_1: %u, l2tag2_2: %u",
-			   rte_le_to_cpu_16(rxdp->wb.l2tag2_1st),
-			   rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd));
-	} else {
-		mb->vlan_tci_outer = 0;
-	}
+	if (rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2 &&
+	    rte_le_to_cpu_16(rxdp->wb.status_error1) &
+	    (1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S))
+		vlan_tci = rte_le_to_cpu_16(rxdp->wb.l2tag2_2nd);
 #endif
+
+	if (vlan_tci) {
+		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->vlan_tci = vlan_tci;
+	}
 }
 
 /* Translate the rx descriptor status and error fields to pkt flags */
@@ -1314,7 +1328,7 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		rxm->ol_flags = 0;
 		rxm->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
-		iavf_flex_rxd_to_vlan_tci(rxm, &rxd);
+		iavf_flex_rxd_to_vlan_tci(rxm, &rxd, rxq->rx_flags);
 		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 		rxm->ol_flags |= pkt_flags;
@@ -1455,7 +1469,7 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->ol_flags = 0;
 		first_seg->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
-		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd);
+		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd, rxq->rx_flags);
 		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
@@ -1692,7 +1706,7 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
 
 			mb->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
-			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j]);
+			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j], rxq->rx_flags);
 			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
 			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);

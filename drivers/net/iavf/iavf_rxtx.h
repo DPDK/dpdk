@@ -190,6 +190,9 @@ struct iavf_rx_queue {
 	bool q_set;             /* if rx queue has been configured */
 	bool rx_deferred_start; /* don't start this queue in dev start */
 	const struct iavf_rxq_ops *ops;
+	uint8_t rx_flags;
+#define IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG1     BIT(0)
+#define IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2   BIT(1)
 	uint8_t proto_xtr; /* protocol extraction type */
 	uint64_t xtr_ol_flag;
 		/* flexible descriptor metadata extraction offload flag */
