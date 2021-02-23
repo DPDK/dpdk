@@ -197,6 +197,9 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		return retval;
 	}
 
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TIMESTAMP)
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
