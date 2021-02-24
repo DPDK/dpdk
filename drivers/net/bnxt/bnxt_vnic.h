@@ -52,8 +52,6 @@ struct bnxt_vnic_info {
 	bool		vlan_strip;
 	bool		func_default;
 	bool		bd_stall;
-	bool		roce_dual;
-	bool		roce_only;
 	bool		rss_dflt_cr;
 
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
