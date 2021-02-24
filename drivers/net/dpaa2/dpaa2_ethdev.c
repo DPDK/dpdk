@@ -2368,12 +2368,18 @@ dpaa2_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo)
 {
 	struct dpaa2_queue *rxq;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)dev->process_private;
+	uint16_t max_frame_length;
 
 	rxq = (struct dpaa2_queue *)dev->data->rx_queues[queue_id];
 
 	qinfo->mp = rxq->mb_pool;
 	qinfo->scattered_rx = dev->data->scattered_rx;
 	qinfo->nb_desc = rxq->nb_desc;
+	if (dpni_get_max_frame_length(dpni, CMD_PRI_LOW, priv->token,
+				&max_frame_length) == 0)
+		qinfo->rx_buf_size = max_frame_length;
 
 	qinfo->conf.rx_free_thresh = 1;
 	qinfo->conf.rx_drop_en = 1;
