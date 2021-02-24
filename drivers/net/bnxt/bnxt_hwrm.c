@@ -1336,6 +1336,8 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
+	PMD_DRV_LOG(DEBUG, "Port %u: Unregistered with fw\n",
+		    bp->eth_dev->data->port_id);
 	return rc;
 }
 

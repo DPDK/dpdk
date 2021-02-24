@@ -100,6 +100,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	struct hwrm_async_event_cmpl *async_cmp =
 				(struct hwrm_async_event_cmpl *)cmp;
 	uint16_t event_id = rte_le_to_cpu_16(async_cmp->event_id);
+	uint16_t port_id = bp->eth_dev->data->port_id;
 	struct bnxt_error_recovery_info *info;
 	uint32_t event_data;
 
@@ -145,11 +146,13 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		if ((event_data & EVENT_DATA1_REASON_CODE_MASK) ==
 		    EVENT_DATA1_REASON_CODE_FW_EXCEPTION_FATAL) {
 			PMD_DRV_LOG(INFO,
-				    "Firmware fatal reset event received\n");
+				    "Port %u: Firmware fatal reset event received\n",
+				    port_id);
 			bp->flags |= BNXT_FLAG_FATAL_ERROR;
 		} else {
 			PMD_DRV_LOG(INFO,
-				    "Firmware non-fatal reset event received\n");
+				    "Port %u: Firmware non-fatal reset event received\n",
+				    port_id);
 		}
 
 		bp->flags |= BNXT_FLAG_FW_RESET;
@@ -163,7 +166,8 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		if (!info)
 			return;
 
-		PMD_DRV_LOG(INFO, "Error recovery async event received\n");
+		PMD_DRV_LOG(INFO, "Port %u: Error recovery async event received\n",
+			    port_id);
 
 		event_data = rte_le_to_cpu_32(async_cmp->event_data1) &
 				EVENT_DATA1_FLAGS_MASK;
@@ -178,8 +182,8 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		else
 			info->flags &= ~BNXT_FLAG_RECOVERY_ENABLED;
 
-		PMD_DRV_LOG(INFO, "recovery enabled(%d), master function(%d)\n",
-			    bnxt_is_recovery_enabled(bp),
+		PMD_DRV_LOG(INFO, "Port %u: recovery enabled(%d), master function(%d)\n",
+			    port_id, bnxt_is_recovery_enabled(bp),
 			    bnxt_is_master_func(bp));
 
 		if (bp->flags & BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED)
