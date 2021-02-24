@@ -1225,7 +1225,6 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 		bp->fw_cap |= BNXT_FW_CAP_ADV_FLOW_COUNTERS;
 	}
 
-
 error:
 	HWRM_UNLOCK();
 	return rc;
