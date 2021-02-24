@@ -1300,6 +1300,73 @@ static void bnxt_free_switch_domain(struct bnxt *bp)
 	}
 }
 
+static void bnxt_ptp_get_current_time(void *arg)
+{
+	struct bnxt *bp = arg;
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	int rc;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return;
+
+	if (!ptp)
+		return;
+
+	bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
+				&ptp->current_time);
+
+	rc = rte_eal_alarm_set(US_PER_S, bnxt_ptp_get_current_time, (void *)bp);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR, "Failed to re-schedule PTP alarm\n");
+		bp->flags2 &= ~BNXT_FLAGS2_PTP_ALARM_SCHEDULED;
+	}
+}
+
+static int bnxt_schedule_ptp_alarm(struct bnxt *bp)
+{
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	int rc;
+
+	if (bp->flags2 & BNXT_FLAGS2_PTP_ALARM_SCHEDULED)
+		return 0;
+
+	bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
+				&ptp->current_time);
+
+	rc = rte_eal_alarm_set(US_PER_S, bnxt_ptp_get_current_time, (void *)bp);
+	return rc;
+}
+
+static void bnxt_cancel_ptp_alarm(struct bnxt *bp)
+{
+	if (bp->flags2 & BNXT_FLAGS2_PTP_ALARM_SCHEDULED) {
+		rte_eal_alarm_cancel(bnxt_ptp_get_current_time, (void *)bp);
+		bp->flags2 &= ~BNXT_FLAGS2_PTP_ALARM_SCHEDULED;
+	}
+}
+
+static void bnxt_ptp_stop(struct bnxt *bp)
+{
+	bnxt_cancel_ptp_alarm(bp);
+	bp->flags2 &= ~BNXT_FLAGS2_PTP_TIMESYNC_ENABLED;
+}
+
+static int bnxt_ptp_start(struct bnxt *bp)
+{
+	int rc;
+
+	rc = bnxt_schedule_ptp_alarm(bp);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR, "Failed to schedule PTP alarm\n");
+	} else {
+		bp->flags2 |= BNXT_FLAGS2_PTP_TIMESYNC_ENABLED;
+		bp->flags2 |= BNXT_FLAGS2_PTP_ALARM_SCHEDULED;
+	}
+
+	return rc;
+}
+
 static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -1329,6 +1396,9 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 	bnxt_ulp_port_deinit(bp);
 
 	bnxt_cancel_fw_health_check(bp);
+
+	if (BNXT_P5_PTP_TIMESYNC_ENABLED(bp))
+		bnxt_cancel_ptp_alarm(bp);
 
 	/* Do not bring link down during reset recovery */
 	if (!is_bnxt_in_error(bp)) {
@@ -1448,6 +1518,9 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
 
 	bnxt_schedule_fw_health_check(bp);
+
+	if (BNXT_P5_PTP_TIMESYNC_ENABLED(bp))
+		bnxt_schedule_ptp_alarm(bp);
 
 	return 0;
 
@@ -3351,8 +3424,10 @@ bnxt_timesync_enable(struct rte_eth_dev *dev)
 
 	if (!BNXT_CHIP_P5(bp))
 		bnxt_map_ptp_regs(bp);
+	else
+		rc = bnxt_ptp_start(bp);
 
-	return 0;
+	return rc;
 }
 
 static int
@@ -3372,6 +3447,8 @@ bnxt_timesync_disable(struct rte_eth_dev *dev)
 
 	if (!BNXT_CHIP_P5(bp))
 		bnxt_unmap_ptp_regs(bp);
+	else
+		bnxt_ptp_stop(bp);
 
 	return 0;
 }

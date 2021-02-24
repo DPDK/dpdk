@@ -309,6 +309,7 @@ struct rte_flow {
 #define BNXT_PTP_FLAGS_PATH_TX		0x0
 #define BNXT_PTP_FLAGS_PATH_RX		0x1
 #define BNXT_PTP_FLAGS_CURRENT_TIME	0x2
+#define BNXT_PTP_CURRENT_TIME_MASK	0xFFFF00000000ULL
 
 struct bnxt_ptp_cfg {
 #define BNXT_GRCPF_REG_WINDOW_BASE_OUT  0x400
@@ -358,6 +359,7 @@ struct bnxt_ptp_cfg {
 
 	/* On Thor, the Rx timestamp is present in the Rx completion record */
 	uint64_t			rx_timestamp;
+	uint64_t			current_time;
 };
 
 struct bnxt_coal {
@@ -670,6 +672,12 @@ struct bnxt {
 #define BNXT_HAS_DFLT_MAC_SET(bp)      ((bp)->flags & BNXT_FLAG_DFLT_MAC_SET)
 #define BNXT_TRUFLOW_EN(bp)	((bp)->flags & BNXT_FLAG_TRUFLOW_EN)
 #define BNXT_GFID_ENABLED(bp)	((bp)->flags & BNXT_FLAG_GFID_ENABLE)
+
+	uint32_t			flags2;
+#define BNXT_FLAGS2_PTP_TIMESYNC_ENABLED	BIT(0)
+#define BNXT_FLAGS2_PTP_ALARM_SCHEDULED		BIT(1)
+#define BNXT_P5_PTP_TIMESYNC_ENABLED(bp)	\
+	((bp)->flags2 & BNXT_FLAGS2_PTP_TIMESYNC_ENABLED)
 
 	uint16_t		chip_num;
 #define CHIP_NUM_58818		0xd818
