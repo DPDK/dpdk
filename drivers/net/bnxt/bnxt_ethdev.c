@@ -3859,10 +3859,28 @@ static int bnxt_restore_filters(struct bnxt *bp)
 	return ret;
 }
 
+static int bnxt_check_fw_ready(struct bnxt *bp)
+{
+	int timeout = bp->fw_reset_max_msecs;
+	int rc = 0;
+
+	do {
+		rc = bnxt_hwrm_poll_ver_get(bp);
+		if (rc == 0)
+			break;
+		rte_delay_ms(BNXT_FW_READY_WAIT_INTERVAL);
+		timeout -= BNXT_FW_READY_WAIT_INTERVAL;
+	} while (rc && timeout > 0);
+
+	if (rc)
+		PMD_DRV_LOG(ERR, "FW is not Ready after reset\n");
+
+	return rc;
+}
+
 static void bnxt_dev_recover(void *arg)
 {
 	struct bnxt *bp = arg;
-	int timeout = bp->fw_reset_max_msecs;
 	int rc = 0;
 
 	pthread_mutex_lock(&bp->err_recovery_lock);
@@ -3876,18 +3894,9 @@ static void bnxt_dev_recover(void *arg)
 	/* Clear Error flag so that device re-init should happen */
 	bp->flags &= ~BNXT_FLAG_FATAL_ERROR;
 
-	do {
-		rc = bnxt_hwrm_ver_get(bp, SHORT_HWRM_CMD_TIMEOUT);
-		if (rc == 0)
-			break;
-		rte_delay_ms(BNXT_FW_READY_WAIT_INTERVAL);
-		timeout -= BNXT_FW_READY_WAIT_INTERVAL;
-	} while (rc && timeout);
-
-	if (rc) {
-		PMD_DRV_LOG(ERR, "FW is not Ready after reset\n");
+	rc = bnxt_check_fw_ready(bp);
+	if (rc)
 		goto err;
-	}
 
 	rc = bnxt_init_resources(bp, true);
 	if (rc) {
