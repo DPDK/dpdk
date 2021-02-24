@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2019 NXP
+ * Copyright 2016-2020 NXP
  *
  */
 #ifndef __FSL_DPNI_H
@@ -731,6 +731,23 @@ int dpni_get_link_state(struct fsl_mc_io *mc_io,
 			uint16_t token,
 			struct dpni_link_state *state);
 
+/**
+ * struct dpni_tx_shaping - Structure representing DPNI tx shaping configuration
+ * @rate_limit:		Rate in Mbps
+ * @max_burst_size:	Burst size in bytes (up to 64KB)
+ */
+struct dpni_tx_shaping_cfg {
+	uint32_t rate_limit;
+	uint16_t max_burst_size;
+};
+
+int dpni_set_tx_shaping(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			const struct dpni_tx_shaping_cfg *tx_cr_shaper,
+			const struct dpni_tx_shaping_cfg *tx_er_shaper,
+			int coupled);
+
 int dpni_set_max_frame_length(struct fsl_mc_io *mc_io,
 			      uint32_t cmd_flags,
 			      uint16_t token,
@@ -833,6 +850,49 @@ int dpni_clear_vlan_filters(struct fsl_mc_io *mc_io,
 			    uint16_t token);
 
 /**
+ * enum dpni_tx_schedule_mode - DPNI Tx scheduling mode
+ * @DPNI_TX_SCHED_STRICT_PRIORITY: strict priority
+ * @DPNI_TX_SCHED_WEIGHTED_A: weighted based scheduling in group A
+ * @DPNI_TX_SCHED_WEIGHTED_B: weighted based scheduling in group B
+ */
+enum dpni_tx_schedule_mode {
+	DPNI_TX_SCHED_STRICT_PRIORITY = 0,
+	DPNI_TX_SCHED_WEIGHTED_A,
+	DPNI_TX_SCHED_WEIGHTED_B,
+};
+
+/**
+ * struct dpni_tx_schedule_cfg - Structure representing Tx scheduling conf
+ * @mode:		Scheduling mode
+ * @delta_bandwidth:	Bandwidth represented in weights from 100 to 10000;
+ *	not applicable for 'strict-priority' mode;
+ */
+struct dpni_tx_schedule_cfg {
+	enum dpni_tx_schedule_mode	mode;
+	uint16_t			delta_bandwidth;
+};
+
+/**
+ * struct dpni_tx_priorities_cfg - Structure representing transmission
+ *					priorities for DPNI TCs
+ * @tc_sched:	An array of traffic-classes
+ * @prio_group_A: Priority of group A
+ * @prio_group_B: Priority of group B
+ * @separate_groups: Treat A and B groups as separate
+ */
+struct dpni_tx_priorities_cfg {
+	struct dpni_tx_schedule_cfg tc_sched[DPNI_MAX_TC];
+	uint32_t prio_group_A;
+	uint32_t prio_group_B;
+	uint8_t separate_groups;
+};
+
+int dpni_set_tx_priorities(struct fsl_mc_io			*mc_io,
+			   uint32_t				cmd_flags,
+			   uint16_t				token,
+			   const struct dpni_tx_priorities_cfg	*cfg);
+
+/**
  * enum dpni_dist_mode - DPNI distribution mode
  * @DPNI_DIST_MODE_NONE: No distribution
  * @DPNI_DIST_MODE_HASH: Use hash distribution; only relevant if
@@ -905,6 +965,90 @@ int dpni_set_rx_tc_dist(struct fsl_mc_io *mc_io,
 			const struct dpni_rx_tc_dist_cfg *cfg);
 
 /**
+ * Set to select color aware mode (otherwise - color blind)
+ */
+#define DPNI_POLICER_OPT_COLOR_AWARE	0x00000001
+/**
+ * Set to discard frame with RED color
+ */
+#define DPNI_POLICER_OPT_DISCARD_RED	0x00000002
+
+/**
+ * enum dpni_policer_mode - selecting the policer mode
+ * @DPNI_POLICER_MODE_NONE: Policer is disabled
+ * @DPNI_POLICER_MODE_PASS_THROUGH: Policer pass through
+ * @DPNI_POLICER_MODE_RFC_2698: Policer algorithm RFC 2698
+ * @DPNI_POLICER_MODE_RFC_4115: Policer algorithm RFC 4115
+ */
+enum dpni_policer_mode {
+	DPNI_POLICER_MODE_NONE = 0,
+	DPNI_POLICER_MODE_PASS_THROUGH,
+	DPNI_POLICER_MODE_RFC_2698,
+	DPNI_POLICER_MODE_RFC_4115
+};
+
+/**
+ * enum dpni_policer_unit - DPNI policer units
+ * @DPNI_POLICER_UNIT_BYTES: bytes units
+ * @DPNI_POLICER_UNIT_FRAMES: frames units
+ */
+enum dpni_policer_unit {
+	DPNI_POLICER_UNIT_BYTES = 0,
+	DPNI_POLICER_UNIT_FRAMES
+};
+
+/**
+ * enum dpni_policer_color - selecting the policer color
+ * @DPNI_POLICER_COLOR_GREEN: Green color
+ * @DPNI_POLICER_COLOR_YELLOW: Yellow color
+ * @DPNI_POLICER_COLOR_RED: Red color
+ */
+enum dpni_policer_color {
+	DPNI_POLICER_COLOR_GREEN = 0,
+	DPNI_POLICER_COLOR_YELLOW,
+	DPNI_POLICER_COLOR_RED
+};
+
+/**
+ * struct dpni_rx_tc_policing_cfg - Policer configuration
+ * @options: Mask of available options; use 'DPNI_POLICER_OPT_<X>' values
+ * @mode: policer mode
+ * @default_color: For pass-through mode the policer re-colors with this
+ *	color any incoming packets. For Color aware non-pass-through mode:
+ *	policer re-colors with this color all packets with FD[DROPP]>2.
+ * @units: Bytes or Packets
+ * @cir: Committed information rate (CIR) in Kbps or packets/second
+ * @cbs: Committed burst size (CBS) in bytes or packets
+ * @eir: Peak information rate (PIR, rfc2698) in Kbps or packets/second
+ *	 Excess information rate (EIR, rfc4115) in Kbps or packets/second
+ * @ebs: Peak burst size (PBS, rfc2698) in bytes or packets
+ *       Excess burst size (EBS, rfc4115) in bytes or packets
+ */
+struct dpni_rx_tc_policing_cfg {
+	uint32_t options;
+	enum dpni_policer_mode mode;
+	enum dpni_policer_unit units;
+	enum dpni_policer_color default_color;
+	uint32_t cir;
+	uint32_t cbs;
+	uint32_t eir;
+	uint32_t ebs;
+};
+
+
+int dpni_set_rx_tc_policing(struct fsl_mc_io *mc_io,
+			    uint32_t cmd_flags,
+			    uint16_t token,
+			    uint8_t tc_id,
+			    const struct dpni_rx_tc_policing_cfg *cfg);
+
+int dpni_get_rx_tc_policing(struct fsl_mc_io *mc_io,
+			    uint32_t cmd_flags,
+			    uint16_t token,
+			    uint8_t tc_id,
+			    struct dpni_rx_tc_policing_cfg *cfg);
+
+/**
  * enum dpni_congestion_unit - DPNI congestion units
  * @DPNI_CONGESTION_UNIT_BYTES: bytes units
  * @DPNI_CONGESTION_UNIT_FRAMES: frames units
@@ -913,6 +1057,70 @@ enum dpni_congestion_unit {
 	DPNI_CONGESTION_UNIT_BYTES = 0,
 	DPNI_CONGESTION_UNIT_FRAMES
 };
+
+/**
+ * enum dpni_early_drop_mode - DPNI early drop mode
+ * @DPNI_EARLY_DROP_MODE_NONE: early drop is disabled
+ * @DPNI_EARLY_DROP_MODE_TAIL: early drop in taildrop mode
+ * @DPNI_EARLY_DROP_MODE_WRED: early drop in WRED mode
+ */
+enum dpni_early_drop_mode {
+	DPNI_EARLY_DROP_MODE_NONE = 0,
+	DPNI_EARLY_DROP_MODE_TAIL,
+	DPNI_EARLY_DROP_MODE_WRED
+};
+
+/**
+ * struct dpni_wred_cfg - WRED configuration
+ * @max_threshold: maximum threshold that packets may be discarded. Above this
+ *	  threshold all packets are discarded; must be less than 2^39;
+ *	  approximated to be expressed as (x+256)*2^(y-1) due to HW
+ *	  implementation.
+ * @min_threshold: minimum threshold that packets may be discarded at
+ * @drop_probability: probability that a packet will be discarded (1-100,
+ *			associated with the max_threshold).
+ */
+struct dpni_wred_cfg {
+	uint64_t max_threshold;
+	uint64_t min_threshold;
+	uint8_t drop_probability;
+};
+
+/**
+ * struct dpni_early_drop_cfg - early-drop configuration
+ * @enable: drop enable
+ * @units: units type
+ * @green: WRED - 'green' configuration
+ * @yellow: WRED - 'yellow' configuration
+ * @red: WRED - 'red' configuration
+ */
+struct dpni_early_drop_cfg {
+	uint8_t enable;
+	enum dpni_congestion_unit units;
+	struct dpni_wred_cfg green;
+	struct dpni_wred_cfg yellow;
+	struct dpni_wred_cfg red;
+};
+
+void dpni_prepare_early_drop(const struct dpni_early_drop_cfg *cfg,
+			     uint8_t *early_drop_buf);
+
+void dpni_extract_early_drop(struct dpni_early_drop_cfg *cfg,
+			     const uint8_t *early_drop_buf);
+
+int dpni_set_early_drop(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			enum dpni_queue_type qtype,
+			uint8_t tc_id,
+			uint64_t early_drop_iova);
+
+int dpni_get_early_drop(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			enum dpni_queue_type qtype,
+			uint8_t tc_id,
+			uint64_t early_drop_iova);
 
 /**
  * enum dpni_dest - DPNI destination types

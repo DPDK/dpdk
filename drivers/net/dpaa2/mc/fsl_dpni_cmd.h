@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2019 NXP
+ * Copyright 2016-2020 NXP
  *
  */
 #ifndef _FSL_DPNI_CMD_H
@@ -69,6 +69,8 @@
 
 #define DPNI_CMDID_SET_RX_TC_DIST		DPNI_CMD_V3(0x235)
 
+#define DPNI_CMDID_SET_RX_TC_POLICING		DPNI_CMD(0x23E)
+
 #define DPNI_CMDID_SET_QOS_TBL			DPNI_CMD_V2(0x240)
 #define DPNI_CMDID_ADD_QOS_ENT			DPNI_CMD_V2(0x241)
 #define DPNI_CMDID_REMOVE_QOS_ENT		DPNI_CMD(0x242)
@@ -76,6 +78,9 @@
 #define DPNI_CMDID_ADD_FS_ENT			DPNI_CMD(0x244)
 #define DPNI_CMDID_REMOVE_FS_ENT		DPNI_CMD(0x245)
 #define DPNI_CMDID_CLR_FS_ENT			DPNI_CMD(0x246)
+
+#define DPNI_CMDID_SET_TX_PRIORITIES		DPNI_CMD_V2(0x250)
+#define DPNI_CMDID_GET_RX_TC_POLICING		DPNI_CMD(0x251)
 
 #define DPNI_CMDID_GET_STATISTICS		DPNI_CMD_V3(0x25D)
 #define DPNI_CMDID_RESET_STATISTICS		DPNI_CMD(0x25E)
@@ -354,6 +359,19 @@ struct dpni_rsp_get_link_state {
 	uint64_t advertising;
 };
 
+#define DPNI_COUPLED_SHIFT	0
+#define DPNI_COUPLED_SIZE	1
+
+struct dpni_cmd_set_tx_shaping {
+	uint16_t tx_cr_max_burst_size;
+	uint16_t tx_er_max_burst_size;
+	uint32_t pad;
+	uint32_t tx_cr_rate_limit;
+	uint32_t tx_er_rate_limit;
+	/* from LSB: coupled:1 */
+	uint8_t coupled;
+};
+
 struct dpni_cmd_set_max_frame_length {
 	uint16_t max_frame_length;
 };
@@ -590,6 +608,45 @@ struct dpni_cmd_remove_fs_entry {
 struct dpni_cmd_clear_fs_entries {
 	uint16_t pad;
 	uint8_t tc_id;
+};
+
+#define DPNI_MODE_SHIFT		0
+#define DPNI_MODE_SIZE		4
+#define DPNI_COLOR_SHIFT	4
+#define DPNI_COLOR_SIZE		4
+#define DPNI_UNITS_SHIFT	0
+#define DPNI_UNITS_SIZE		4
+
+struct dpni_cmd_set_rx_tc_policing {
+	/* from LSB: mode:4 color:4 */
+	uint8_t mode_color;
+	/* from LSB: units: 4 */
+	uint8_t units;
+	uint8_t tc_id;
+	uint8_t pad;
+	uint32_t options;
+	uint32_t cir;
+	uint32_t cbs;
+	uint32_t eir;
+	uint32_t ebs;
+};
+
+struct dpni_cmd_get_rx_tc_policing {
+	uint16_t pad;
+	uint8_t tc_id;
+};
+
+struct dpni_rsp_get_rx_tc_policing {
+	/* from LSB: mode:4 color:4 */
+	uint8_t mode_color;
+	/* from LSB: units: 4 */
+	uint8_t units;
+	uint16_t pad;
+	uint32_t options;
+	uint32_t cir;
+	uint32_t cbs;
+	uint32_t eir;
+	uint32_t ebs;
 };
 
 #define DPNI_DROP_ENABLE_SHIFT	0

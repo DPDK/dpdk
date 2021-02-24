@@ -12,6 +12,7 @@
 #include <rte_pmd_dpaa2.h>
 
 #include <dpaa2_hw_pvt.h>
+#include "dpaa2_tm.h"
 
 #include <mc/fsl_dpni.h>
 #include <mc/fsl_mc_sys.h>
@@ -112,6 +113,8 @@ extern int dpaa2_timestamp_dynfield_offset;
 extern const struct rte_flow_ops dpaa2_flow_ops;
 extern enum rte_filter_type dpaa2_filter_type;
 
+extern const struct rte_tm_ops dpaa2_tm_ops;
+
 #define IP_ADDRESS_OFFSET_INVALID (-1)
 
 struct dpaa2_key_info {
@@ -179,6 +182,8 @@ struct dpaa2_dev_priv {
 	struct rte_eth_dev *eth_dev; /**< Pointer back to holding ethdev */
 
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
+	LIST_HEAD(nodes, dpaa2_tm_node) nodes;
+	LIST_HEAD(shaper_profiles, dpaa2_tm_shaper_profile) shaper_profiles;
 };
 
 int dpaa2_distset_to_dpkg_profile_cfg(uint64_t req_dist_set,
