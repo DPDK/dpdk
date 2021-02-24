@@ -28,6 +28,7 @@ extern "C" {
 typedef struct _rte_cpuset_s {
 	long long _bits[_NUM_SETS(CPU_SETSIZE)];
 } rte_cpuset_t;
+#define RTE_HAS_CPUSET
 
 #define CPU_SET(b, s) ((s)->_bits[_WHICH_SET(b)] |= (1LL << _WHICH_BIT(b)))
 

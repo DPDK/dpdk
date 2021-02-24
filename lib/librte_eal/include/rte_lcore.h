@@ -185,6 +185,8 @@ __rte_experimental
 int
 rte_lcore_to_cpu_id(int lcore_id);
 
+#ifdef RTE_HAS_CPUSET
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
@@ -198,6 +200,8 @@ rte_lcore_to_cpu_id(int lcore_id);
 __rte_experimental
 rte_cpuset_t
 rte_lcore_cpuset(unsigned int lcore_id);
+
+#endif /* RTE_HAS_CPUSET */
 
 /**
  * Test if an lcore is enabled.
@@ -357,6 +361,8 @@ __rte_experimental
 void
 rte_lcore_dump(FILE *f);
 
+#ifdef RTE_HAS_CPUSET
+
 /**
  * Set core affinity of the current thread.
  * Support both EAL and non-EAL thread and update TLS.
@@ -377,6 +383,8 @@ int rte_thread_set_affinity(rte_cpuset_t *cpusetp);
  *
  */
 void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
+
+#endif /* RTE_HAS_CPUSET */
 
 /**
  * Set thread names.

@@ -80,7 +80,8 @@ INPUT                   += @API_EXAMPLES@
 FILE_PATTERNS           = rte_*.h \
                           cmdline.h
 PREDEFINED              = __DOXYGEN__ \
-			   VFIO_PRESENT \
+                          RTE_HAS_CPUSET \
+                          VFIO_PRESENT \
                           __attribute__(x)=
 
 OPTIMIZE_OUTPUT_FOR_C   = YES

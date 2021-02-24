@@ -292,6 +292,8 @@ __rte_experimental
 int
 rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help);
 
+#ifdef RTE_HAS_CPUSET
+
 /**
  * @internal
  * Initialize Telemetry.
@@ -313,6 +315,8 @@ __rte_experimental
 int
 rte_telemetry_init(const char *runtime_dir, rte_cpuset_t *cpuset,
 		const char **err_str);
+
+#endif /* RTE_HAS_CPUSET */
 
 /**
  * Get a pointer to a container with memory allocated. The container is to be
