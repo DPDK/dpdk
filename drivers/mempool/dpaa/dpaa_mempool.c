@@ -134,6 +134,7 @@ dpaa_mbuf_free_pool(struct rte_mempool *mp)
 		DPAA_MEMPOOL_INFO("BMAN pool freed for bpid =%d",
 				  bp_info->bpid);
 		rte_free(mp->pool_data);
+		bp_info->bp = NULL;
 		mp->pool_data = NULL;
 	}
 }
