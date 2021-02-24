@@ -6,9 +6,8 @@
 #define _RTE_OS_H_
 
 /**
- * This is header should contain any function/macro definition
- * which are not supported natively or named differently in the
- * linux OS. Functions will be added in future releases.
+ * This header should contain any definition
+ * which is not supported natively or named differently in Linux.
  */
 
 #include <sched.h>
