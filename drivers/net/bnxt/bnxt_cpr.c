@@ -103,6 +103,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	uint16_t port_id = bp->eth_dev->data->port_id;
 	struct bnxt_error_recovery_info *info;
 	uint32_t event_data;
+	uint32_t echo_req_data1, echo_req_data2;
 
 	switch (event_id) {
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_STATUS_CHANGE:
@@ -203,6 +204,16 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE:
 		bnxt_process_default_vnic_change(bp, async_cmp);
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ECHO_REQUEST:
+		echo_req_data1 = rte_le_to_cpu_32(async_cmp->event_data1);
+		echo_req_data2 = rte_le_to_cpu_32(async_cmp->event_data2);
+		PMD_DRV_LOG(INFO,
+			    "Port %u: Received fw echo request: data1 %#x data2 %#x\n",
+			    port_id, echo_req_data1, echo_req_data2);
+		if (bp->recovery_info)
+			bnxt_hwrm_fw_echo_reply(bp, echo_req_data1,
+						echo_req_data2);
 		break;
 	default:
 		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);

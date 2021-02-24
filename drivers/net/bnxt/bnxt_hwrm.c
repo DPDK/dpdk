@@ -954,6 +954,9 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 		req.async_event_fwd[1] |=
 		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE);
 
+	req.async_event_fwd[2] |=
+		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_ECHO_REQUEST);
+
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
@@ -5888,6 +5891,25 @@ int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp)
 		bp->flags |= BNXT_FLAG_FLOW_CFA_RFS_RING_TBL_IDX_V2;
 	else
 		bp->flags |= BNXT_FLAG_RFS_NEEDS_VNIC;
+
+	return rc;
+}
+
+int bnxt_hwrm_fw_echo_reply(struct bnxt *bp, uint32_t echo_req_data1,
+			    uint32_t echo_req_data2)
+{
+	struct hwrm_func_echo_response_input req = {0};
+	struct hwrm_func_echo_response_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	HWRM_PREP(&req, HWRM_FUNC_ECHO_RESPONSE, BNXT_USE_CHIMP_MB);
+	req.event_data1 = rte_cpu_to_le_32(echo_req_data1);
+	req.event_data2 = rte_cpu_to_le_32(echo_req_data2);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
 
 	return rc;
 }

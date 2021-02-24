@@ -35,6 +35,8 @@ struct hwrm_func_qstats_output;
 	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEBUG_NOTIFICATION - 32))
 #define	ASYNC_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE	\
 	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE - 32))
+#define	ASYNC_CMPL_EVENT_ID_ECHO_REQUEST	\
+	(1 << (HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ECHO_REQUEST - 64))
 
 #define HWRM_QUEUE_SERVICE_PROFILE_LOSSY \
 	HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_LOSSY
@@ -300,4 +302,6 @@ int bnxt_hwrm_first_vf_id_query(struct bnxt *bp, uint16_t fid,
 int bnxt_hwrm_cfa_pair_alloc(struct bnxt *bp, struct bnxt_representor *rep);
 int bnxt_hwrm_cfa_pair_free(struct bnxt *bp, struct bnxt_representor *rep);
 int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp);
+int bnxt_hwrm_fw_echo_reply(struct bnxt *bp, uint32_t echo_req_data1,
+			    uint32_t echo_req_data2);
 #endif
