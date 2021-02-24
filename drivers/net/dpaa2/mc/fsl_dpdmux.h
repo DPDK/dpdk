@@ -39,6 +39,12 @@ int dpdmux_close(struct fsl_mc_io *mc_io,
  */
 #define DPDMUX_OPT_CLS_MASK_SUPPORT		0x0000000000000020ULL
 
+/**
+ * Automatic max frame length - maximum frame length for dpdmux interface will
+ * be changed automatically by connected dpni objects.
+ */
+#define DPDMUX_OPT_AUTO_MAX_FRAME_LEN	0x0000000000000040ULL
+
 #define DPDMUX_IRQ_INDEX_IF	0x0000
 #define DPDMUX_IRQ_INDEX	0x0001
 
@@ -203,6 +209,7 @@ int dpdmux_set_max_frame_length(struct fsl_mc_io *mc_io,
  * @DPDMUX_CNT_EGR_FRAME: Counts egress frames
  * @DPDMUX_CNT_EGR_BYTE: Counts egress bytes
  * @DPDMUX_CNT_EGR_FRAME_DISCARD: Counts discarded egress frames
+ * @DPDMUX_CNT_ING_NO_BUFFER_DISCARD: Counts ingress no buffer discard frames
  */
 enum dpdmux_counter_type {
 	DPDMUX_CNT_ING_FRAME = 0x0,
@@ -215,7 +222,8 @@ enum dpdmux_counter_type {
 	DPDMUX_CNT_ING_BCAST_BYTES = 0x7,
 	DPDMUX_CNT_EGR_FRAME = 0x8,
 	DPDMUX_CNT_EGR_BYTE = 0x9,
-	DPDMUX_CNT_EGR_FRAME_DISCARD = 0xa
+	DPDMUX_CNT_EGR_FRAME_DISCARD = 0xa,
+	DPDMUX_CNT_ING_NO_BUFFER_DISCARD = 0xb,
 };
 
 /**
@@ -446,5 +454,108 @@ int dpdmux_get_api_version(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t *major_ver,
 			   uint16_t *minor_ver);
+
+/**
+ * Discard bit. This bit must be used together with other bits in
+ * DPDMUX_ERROR_ACTION_CONTINUE to disable discarding of frames containing
+ * errors
+ */
+#define DPDMUX_ERROR_DISC		0x80000000
+/**
+ * MACSEC is enabled
+ */
+#define DPDMUX_ERROR_MS			0x40000000
+/**
+ * PTP event frame
+ */
+#define DPDMUX_ERROR_PTP			0x08000000
+/**
+ * This is a multicast frame
+ */
+#define DPDMUX_ERROR_MC			0x04000000
+/**
+ * This is a broadcast frame
+ */
+#define DPDMUX_ERROR_BC			0x02000000
+/**
+ * Invalid Key composition or key size error
+ */
+#define DPDMUX_ERROR_KSE			0x00040000
+/**
+ * Extract out of frame header
+ */
+#define DPDMUX_ERROR_EOFHE		0x00020000
+/**
+ * Maximum number of chained lookups is reached
+ */
+#define DPDMUX_ERROR_MNLE			0x00010000
+/**
+ * Invalid table ID
+ */
+#define DPDMUX_ERROR_TIDE			0x00008000
+/**
+ * Policer initialization entry error
+ */
+#define DPDMUX_ERROR_PIEE			0x00004000
+/**
+ * Frame length error
+ */
+#define DPDMUX_ERROR_FLE			0x00002000
+/**
+ * Frame physical error
+ */
+#define DPDMUX_ERROR_FPE			0x00001000
+/**
+ * Cycle limit is exceeded and frame parsing is forced to terminate early
+ */
+#define DPDMUX_ERROR_PTE			0x00000080
+/**
+ * Invalid softparse instruction is encountered
+ */
+#define DPDMUX_ERROR_ISP			0x00000040
+/**
+ * Parsing header error
+ */
+#define DPDMUX_ERROR_PHE			0x00000020
+/*
+ * Block limit is exceeded. Maximum data that can be read and parsed is 256
+ * bytes.
+ * Parser will set this bit if it needs more that this limit to parse.
+ */
+#define DPDMUX_ERROR_BLE			0x00000010
+/**
+ * L3 checksum validation
+ */
+#define DPDMUX__ERROR_L3CV			0x00000008
+/**
+ * L3 checksum error
+ */
+#define DPDMUX__ERROR_L3CE			0x00000004
+/**
+ * L4 checksum validation
+ */
+#define DPDMUX__ERROR_L4CV			0x00000002
+/**
+ * L4 checksum error
+ */
+#define DPDMUX__ERROR_L4CE			0x00000001
+
+enum dpdmux_error_action {
+	DPDMUX_ERROR_ACTION_DISCARD = 0,
+	DPDMUX_ERROR_ACTION_CONTINUE = 1
+};
+
+/**
+ * Configure how dpdmux interface behaves on errors
+ * @errors - or'ed combination of DPDMUX_ERROR_*
+ * @action - set to DPDMUX_ERROR_ACTION_DISCARD or DPDMUX_ERROR_ACTION_CONTINUE
+ */
+struct dpdmux_error_cfg {
+	uint32_t errors;
+	enum dpdmux_error_action error_action;
+};
+
+int dpdmux_if_set_errors_behavior(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, uint16_t if_id, struct dpdmux_error_cfg *cfg);
 
 #endif /* __FSL_DPDMUX_H */

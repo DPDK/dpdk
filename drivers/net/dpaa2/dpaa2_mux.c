@@ -324,6 +324,24 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 		}
 	}
 
+	if (maj_ver >= 6 && min_ver >= 9) {
+		struct dpdmux_error_cfg mux_err_cfg;
+
+		memset(&mux_err_cfg, 0, sizeof(mux_err_cfg));
+		mux_err_cfg.error_action = DPDMUX_ERROR_ACTION_CONTINUE;
+		mux_err_cfg.errors = DPDMUX_ERROR_DISC;
+
+		ret = dpdmux_if_set_errors_behavior(&dpdmux_dev->dpdmux,
+				CMD_PRI_LOW,
+				dpdmux_dev->token, dpdmux_id,
+				&mux_err_cfg);
+		if (ret) {
+			DPAA2_PMD_ERR("dpdmux_if_set_errors_behavior %s err %d",
+				      __func__, ret);
+			goto init_err;
+		}
+	}
+
 	dpdmux_dev->dpdmux_id = dpdmux_id;
 	dpdmux_dev->num_ifs = attr.num_ifs;
 
