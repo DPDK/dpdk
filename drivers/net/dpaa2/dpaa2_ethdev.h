@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2020 NXP
+ *   Copyright 2016-2021 NXP
  *
  */
 
@@ -117,6 +117,8 @@ extern enum rte_filter_type dpaa2_filter_type;
 
 extern const struct rte_tm_ops dpaa2_tm_ops;
 
+extern bool dpaa2_enable_err_queue;
+
 #define IP_ADDRESS_OFFSET_INVALID (-1)
 
 struct dpaa2_key_info {
@@ -154,6 +156,7 @@ struct dpaa2_dev_priv {
 	void *tx_vq[MAX_TX_QUEUES];
 	struct dpaa2_bp_list *bp_list; /**<Attached buffer pool list */
 	void *tx_conf_vq[MAX_TX_QUEUES];
+	void *rx_err_vq;
 	uint8_t flags; /*dpaa2 config flags */
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;

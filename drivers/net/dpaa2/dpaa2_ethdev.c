@@ -32,6 +32,7 @@
 #define DRIVER_LOOPBACK_MODE "drv_loopback"
 #define DRIVER_NO_PREFETCH_MODE "drv_no_prefetch"
 #define DRIVER_TX_CONF "drv_tx_conf"
+#define DRIVER_ERROR_QUEUE  "drv_err_queue"
 #define CHECK_INTERVAL         100  /* 100ms */
 #define MAX_REPEAT_TIME        90   /* 9s (90 * 100ms) in total */
 
@@ -70,6 +71,9 @@ static uint64_t dev_tx_offloads_nodis =
 bool dpaa2_enable_ts[RTE_MAX_ETHPORTS];
 uint64_t dpaa2_timestamp_rx_dynflag;
 int dpaa2_timestamp_dynfield_offset = -1;
+
+/* Enable error queue */
+bool dpaa2_enable_err_queue;
 
 struct rte_dpaa2_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -391,6 +395,25 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 			goto fail;
 	}
 
+	if (dpaa2_enable_err_queue) {
+		priv->rx_err_vq = rte_zmalloc("dpni_rx_err",
+			sizeof(struct dpaa2_queue), 0);
+
+		dpaa2_q = (struct dpaa2_queue *)priv->rx_err_vq;
+		dpaa2_q->q_storage = rte_malloc("err_dq_storage",
+					sizeof(struct queue_storage_info_t) *
+					RTE_MAX_LCORE,
+					RTE_CACHE_LINE_SIZE);
+		if (!dpaa2_q->q_storage)
+			goto fail;
+
+		memset(dpaa2_q->q_storage, 0,
+		       sizeof(struct queue_storage_info_t));
+		for (i = 0; i < RTE_MAX_LCORE; i++)
+			if (dpaa2_alloc_dq_storage(&dpaa2_q->q_storage[i]))
+				goto fail;
+	}
+
 	for (i = 0; i < priv->nb_tx_queues; i++) {
 		mc_q->eth_data = dev->data;
 		mc_q->flow_id = 0xffff;
@@ -458,6 +481,14 @@ fail:
 		rte_free(dpaa2_q->q_storage);
 		priv->rx_vq[i--] = NULL;
 	}
+
+	if (dpaa2_enable_err_queue) {
+		dpaa2_q = (struct dpaa2_queue *)priv->rx_err_vq;
+		if (dpaa2_q->q_storage)
+			dpaa2_free_dq_storage(dpaa2_q->q_storage);
+		rte_free(dpaa2_q->q_storage);
+	}
+
 	rte_free(mc_q);
 	return -1;
 }
@@ -1163,11 +1194,31 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 		dpaa2_q->fqid = qid.fqid;
 	}
 
-	/*checksum errors, send them to normal path and set it in annotation */
-	err_cfg.errors = DPNI_ERROR_L3CE | DPNI_ERROR_L4CE;
-	err_cfg.errors |= DPNI_ERROR_PHE;
+	if (dpaa2_enable_err_queue) {
+		ret = dpni_get_queue(dpni, CMD_PRI_LOW, priv->token,
+				     DPNI_QUEUE_RX_ERR, 0, 0, &cfg, &qid);
+		if (ret) {
+			DPAA2_PMD_ERR("Error getting rx err flow information: err=%d",
+						ret);
+			return ret;
+		}
+		dpaa2_q = (struct dpaa2_queue *)priv->rx_err_vq;
+		dpaa2_q->fqid = qid.fqid;
+		dpaa2_q->eth_data = dev->data;
 
-	err_cfg.error_action = DPNI_ERROR_ACTION_CONTINUE;
+		err_cfg.errors =  DPNI_ERROR_DISC;
+		err_cfg.error_action = DPNI_ERROR_ACTION_SEND_TO_ERROR_QUEUE;
+	} else {
+		/* checksum errors, send them to normal path
+		 * and set it in annotation
+		 */
+		err_cfg.errors = DPNI_ERROR_L3CE | DPNI_ERROR_L4CE;
+
+		/* if packet with parse error are not to be dropped */
+		err_cfg.errors |= DPNI_ERROR_PHE;
+
+		err_cfg.error_action = DPNI_ERROR_ACTION_CONTINUE;
+	}
 	err_cfg.set_frame_annotation = true;
 
 	ret = dpni_set_errors_behavior(dpni, CMD_PRI_LOW,
@@ -2624,6 +2675,11 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		DPAA2_PMD_INFO("TX_CONF Enabled");
 	}
 
+	if (dpaa2_get_devargs(dev->devargs, DRIVER_ERROR_QUEUE)) {
+		dpaa2_enable_err_queue = 1;
+		DPAA2_PMD_INFO("Enable error queue");
+	}
+
 	/* Allocate memory for hardware structure for queues */
 	ret = dpaa2_alloc_rx_tx_queues(eth_dev);
 	if (ret) {
@@ -2863,5 +2919,6 @@ RTE_PMD_REGISTER_DPAA2(net_dpaa2, rte_dpaa2_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(net_dpaa2,
 		DRIVER_LOOPBACK_MODE "=<int> "
 		DRIVER_NO_PREFETCH_MODE "=<int>"
-		DRIVER_TX_CONF "=<int>");
+		DRIVER_TX_CONF "=<int>"
+		DRIVER_ERROR_QUEUE "=<int>");
 RTE_LOG_REGISTER(dpaa2_logtype_pmd, pmd.net.dpaa2, NOTICE);

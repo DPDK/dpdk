@@ -14,6 +14,7 @@
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_dev.h>
+#include <rte_hexdump.h>
 
 #include <rte_fslmc.h>
 #include <fslmc_vfio.h>
@@ -550,6 +551,93 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 return 0;
 }
 
+static void
+dump_err_pkts(struct dpaa2_queue *dpaa2_q)
+{
+	/* Function receive frames for a given device and VQ */
+	struct qbman_result *dq_storage;
+	uint32_t fqid = dpaa2_q->fqid;
+	int ret, num_rx = 0, num_pulled;
+	uint8_t pending, status;
+	struct qbman_swp *swp;
+	const struct qbman_fd *fd;
+	struct qbman_pull_desc pulldesc;
+	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
+	uint32_t lcore_id = rte_lcore_id();
+	void *v_addr, *hw_annot_addr;
+	struct dpaa2_fas *fas;
+
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			DPAA2_PMD_ERR("Failed to allocate IO portal, tid: %d\n",
+				rte_gettid());
+			return;
+		}
+	}
+	swp = DPAA2_PER_LCORE_PORTAL;
+
+	dq_storage = dpaa2_q->q_storage[lcore_id].dq_storage[0];
+	qbman_pull_desc_clear(&pulldesc);
+	qbman_pull_desc_set_fq(&pulldesc, fqid);
+	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
+			(size_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
+	qbman_pull_desc_set_numframes(&pulldesc, dpaa2_dqrr_size);
+
+	while (1) {
+		if (qbman_swp_pull(swp, &pulldesc)) {
+			DPAA2_PMD_DP_DEBUG("VDQ command is not issued.QBMAN is busy\n");
+			/* Portal was busy, try again */
+			continue;
+		}
+		break;
+	}
+
+	/* Check if the previous issued command is completed. */
+	while (!qbman_check_command_complete(dq_storage))
+		;
+
+	num_pulled = 0;
+	pending = 1;
+	do {
+		/* Loop until the dq_storage is updated with
+		 * new token by QBMAN
+		 */
+		while (!qbman_check_new_result(dq_storage))
+			;
+
+		/* Check whether Last Pull command is Expired and
+		 * setting Condition for Loop termination
+		 */
+		if (qbman_result_DQ_is_pull_complete(dq_storage)) {
+			pending = 0;
+			/* Check for valid frame. */
+			status = qbman_result_DQ_flags(dq_storage);
+			if (unlikely((status &
+				QBMAN_DQ_STAT_VALIDFRAME) == 0))
+				continue;
+		}
+		fd = qbman_result_DQ_fd(dq_storage);
+		v_addr = DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+		hw_annot_addr = (void *)((size_t)v_addr + DPAA2_FD_PTA_SIZE);
+		fas = hw_annot_addr;
+
+		DPAA2_PMD_ERR("\n\n[%d] error packet on port[%d]:"
+			" fd_off: %d, fd_err: %x, fas_status: %x",
+			rte_lcore_id(), eth_data->port_id,
+			DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_ERR(fd),
+			fas->status);
+		rte_hexdump(stderr, "Error packet", v_addr,
+			DPAA2_GET_FD_OFFSET(fd) + DPAA2_GET_FD_LEN(fd));
+
+		dq_storage++;
+		num_rx++;
+		num_pulled++;
+	} while (pending);
+
+	dpaa2_q->err_pkts += num_rx;
+}
+
 /* This function assumes that caller will be keep the same value for nb_pkts
  * across calls per queue, if that is not the case, better use non-prefetch
  * version of rx call.
@@ -570,9 +658,10 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct qbman_pull_desc pulldesc;
 	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
-#if defined(RTE_LIBRTE_IEEE1588)
 	struct dpaa2_dev_priv *priv = eth_data->dev_private;
-#endif
+
+	if (unlikely(dpaa2_enable_err_queue))
+		dump_err_pkts(priv->rx_err_vq);
 
 	if (unlikely(!DPAA2_PER_LCORE_ETHRX_DPIO)) {
 		ret = dpaa2_affine_qbman_ethrx_swp();
@@ -807,6 +896,10 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	const struct qbman_fd *fd;
 	struct qbman_pull_desc pulldesc;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
+	struct dpaa2_dev_priv *priv = eth_data->dev_private;
+
+	if (unlikely(dpaa2_enable_err_queue))
+		dump_err_pkts(priv->rx_err_vq);
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
