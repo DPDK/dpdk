@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017,2019 NXP
+ *   Copyright 2017,2019-2021 NXP
  *
  */
 
@@ -334,7 +334,7 @@ dpaa_unsegmented_checksum(struct rte_mbuf *mbuf, struct qm_fd *fd_arr)
 	}
 }
 
-struct rte_mbuf *
+static struct rte_mbuf *
 dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 {
 	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(fd->bpid);
@@ -791,13 +791,12 @@ uint16_t dpaa_eth_queue_rx(void *q,
 	return num_rx;
 }
 
-int
+static int
 dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		struct qm_fd *fd,
-		uint32_t bpid)
+		struct dpaa_bp_info *bp_info)
 {
 	struct rte_mbuf *cur_seg = mbuf, *prev_seg = NULL;
-	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(bpid);
 	struct rte_mbuf *temp, *mi;
 	struct qm_sg_entry *sg_temp, *sgt;
 	int i = 0;
@@ -840,7 +839,7 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 	fd->format = QM_FD_SG;
 	fd->addr = temp->buf_iova;
 	fd->offset = temp->data_off;
-	fd->bpid = bpid;
+	fd->bpid = bp_info ? bp_info->bpid : 0xff;
 	fd->length20 = mbuf->pkt_len;
 
 	while (i < DPAA_SGT_MAX_ENTRIES) {
@@ -861,6 +860,9 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 				sg_temp->bpid =
 					DPAA_MEMPOOL_TO_BPID(cur_seg->pool);
 			}
+			cur_seg = cur_seg->next;
+		} else if (RTE_MBUF_HAS_EXTBUF(cur_seg)) {
+			sg_temp->bpid = 0xff;
 			cur_seg = cur_seg->next;
 		} else {
 			/* Get owner MBUF from indirect buffer */
@@ -911,6 +913,9 @@ tx_on_dpaa_pool_unsegmented(struct rte_mbuf *mbuf,
 			 */
 			DPAA_MBUF_TO_CONTIG_FD(mbuf, fd_arr, bp_info->bpid);
 		}
+	} else if (RTE_MBUF_HAS_EXTBUF(mbuf)) {
+		DPAA_MBUF_TO_CONTIG_FD(mbuf, fd_arr,
+				bp_info ? bp_info->bpid : 0xff);
 	} else {
 		/* This is data-containing core mbuf: 'mi' */
 		mi = rte_mbuf_from_indirect(mbuf);
@@ -929,7 +934,8 @@ tx_on_dpaa_pool_unsegmented(struct rte_mbuf *mbuf,
 			 * been released by BMAN.
 			 */
 			rte_mbuf_refcnt_update(mi, 1);
-			DPAA_MBUF_TO_CONTIG_FD(mbuf, fd_arr, bp_info->bpid);
+			DPAA_MBUF_TO_CONTIG_FD(mbuf, fd_arr,
+						bp_info ? bp_info->bpid : 0xff);
 		}
 		rte_pktmbuf_free(mbuf);
 	}
@@ -951,7 +957,7 @@ tx_on_dpaa_pool(struct rte_mbuf *mbuf,
 		tx_on_dpaa_pool_unsegmented(mbuf, bp_info, fd_arr);
 	} else if (mbuf->nb_segs > 1 &&
 		   mbuf->nb_segs <= DPAA_SGT_MAX_ENTRIES) {
-		if (dpaa_eth_mbuf_to_sg_fd(mbuf, fd_arr, bp_info->bpid)) {
+		if (dpaa_eth_mbuf_to_sg_fd(mbuf, fd_arr, bp_info)) {
 			DPAA_PMD_DEBUG("Unable to create Scatter Gather FD");
 			return 1;
 		}
@@ -1055,6 +1061,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	uint16_t state;
 	int ret, realloc_mbuf = 0;
 	uint32_t seqn, index, flags[DPAA_TX_BURST_SIZE] = {0};
+	struct rte_mbuf **orig_bufs = bufs;
 
 	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		ret = rte_dpaa_portal_init((void *)0);
@@ -1112,6 +1119,11 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 				mp = mi->pool;
 			}
 
+			if (unlikely(RTE_MBUF_HAS_EXTBUF(mbuf))) {
+				bp_info = NULL;
+				goto indirect_buf;
+			}
+
 			bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
 			if (unlikely(mp->ops_index != bp_info->dpaa_ops_index ||
 				     realloc_mbuf == 1)) {
@@ -1130,7 +1142,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 				mbuf = temp_mbuf;
 				realloc_mbuf = 0;
 			}
-
+indirect_buf:
 			state = tx_on_dpaa_pool(mbuf, bp_info,
 						&fd_arr[loop]);
 			if (unlikely(state)) {
@@ -1156,6 +1168,15 @@ send_pkts:
 	}
 
 	DPAA_DP_LOG(DEBUG, "Transmitted %d buffers on queue: %p", sent, q);
+
+
+	loop = 0;
+	while (loop < sent) {
+		if (unlikely(RTE_MBUF_HAS_EXTBUF(*orig_bufs)))
+			rte_pktmbuf_free(*orig_bufs);
+		orig_bufs++;
+		loop++;
+	}
 
 	return sent;
 }
