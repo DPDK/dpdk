@@ -767,7 +767,7 @@ mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
 			 * the UAR mapping type into account on UAR setup
 			 * on queue creation.
 			 */
-			DRV_LOG(WARNING, "Failed to allocate Tx DevX UAR (BF)");
+			DRV_LOG(DEBUG, "Failed to allocate Tx DevX UAR (BF)");
 			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_NC;
 			sh->tx_uar = mlx5_glue->devx_alloc_uar
 							(sh->ctx, uar_mapping);
@@ -780,7 +780,7 @@ mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
 			 * If Verbs/kernel does not support "Non-Cached"
 			 * try the "Write-Combining".
 			 */
-			DRV_LOG(WARNING, "Failed to allocate Tx DevX UAR (NC)");
+			DRV_LOG(DEBUG, "Failed to allocate Tx DevX UAR (NC)");
 			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_BF;
 			sh->tx_uar = mlx5_glue->devx_alloc_uar
 							(sh->ctx, uar_mapping);
@@ -799,7 +799,7 @@ mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
 		 * IB device context, on context closure all UARs
 		 * will be freed, should be no memory/object leakage.
 		 */
-		DRV_LOG(WARNING, "Retrying to allocate Tx DevX UAR");
+		DRV_LOG(DEBUG, "Retrying to allocate Tx DevX UAR");
 		sh->tx_uar = NULL;
 	}
 	/* Check whether we finally succeeded with valid UAR allocation. */
@@ -820,7 +820,7 @@ mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
 			 * should be no datapath noticeable impact,
 			 * can try "Non-Cached" mapping safely.
 			 */
-			DRV_LOG(WARNING, "Failed to allocate Rx DevX UAR (BF)");
+			DRV_LOG(DEBUG, "Failed to allocate Rx DevX UAR (BF)");
 			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_NC;
 			sh->devx_rx_uar = mlx5_glue->devx_alloc_uar
 							(sh->ctx, uar_mapping);
@@ -839,7 +839,7 @@ mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
 		 * IB device context, on context closure all UARs
 		 * will be freed, should be no memory/object leakage.
 		 */
-		DRV_LOG(WARNING, "Retrying to allocate Rx DevX UAR");
+		DRV_LOG(DEBUG, "Retrying to allocate Rx DevX UAR");
 		sh->devx_rx_uar = NULL;
 	}
 	/* Check whether we finally succeeded with valid UAR allocation. */
