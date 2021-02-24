@@ -79,6 +79,8 @@ enum dpdmux_method {
  * @method: Defines the operation method for the DPDMUX address table
  * @manip: Required manipulation operation
  * @num_ifs: Number of interfaces (excluding the uplink interface)
+ * @default_if: Default interface number (different from uplink,
+	maximum value num_ifs)
  * @adv: Advanced parameters; default is all zeros;
  *	use this structure to change default settings
  * @adv.options: DPDMUX options - combination of 'DPDMUX_OPT_<X>' flags.
@@ -89,16 +91,20 @@ enum dpdmux_method {
  * @adv.max_vlan_ids: Maximum vlan ids allowed in the system -
  *	relevant only case of working in mac+vlan method.
  *	0 - indicates default 16 vlan ids.
+ * @adv.mem_size: Size of the memory used for internal buffers expressed as
+ * number of 256byte buffers.
  */
 struct dpdmux_cfg {
 	enum dpdmux_method method;
 	enum dpdmux_manip manip;
 	uint16_t num_ifs;
+	uint16_t default_if;
 	struct {
 		uint64_t options;
 		uint16_t max_dmat_entries;
 		uint16_t max_mc_groups;
 		uint16_t max_vlan_ids;
+		uint16_t mem_size;
 	} adv;
 };
 
@@ -131,6 +137,29 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
 		 uint16_t token);
 
 /**
+ *Setting 1 DPDMUX_RESET will not reset default interface
+ */
+#define DPDMUX_SKIP_DEFAULT_INTERFACE	0x01
+/**
+ *Setting 1 DPDMUX_RESET will not reset unicast rules
+ */
+#define DPDMUX_SKIP_UNICAST_RULES	0x02
+/**
+ *Setting 1 DPDMUX_RESET will not reset multicast rules
+ */
+#define DPDMUX_SKIP_MULTICAST_RULES	0x04
+
+int dpdmux_set_resetable(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t skip_reset_flags);
+
+int dpdmux_get_resetable(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t *skip_reset_flags);
+
+/**
  * struct dpdmux_attr - Structure representing DPDMUX attributes
  * @id: DPDMUX object ID
  * @options: Configuration options (bitmap)
@@ -138,6 +167,8 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
  * @manip: DPDMUX manipulation type
  * @num_ifs: Number of interfaces (excluding the uplink interface)
  * @mem_size: DPDMUX frame storage memory size
+ * @default_if: Default interface number (different from uplink,
+	maximum value num_ifs)
  */
 struct dpdmux_attr {
 	int id;
@@ -146,6 +177,7 @@ struct dpdmux_attr {
 	enum dpdmux_manip manip;
 	uint16_t num_ifs;
 	uint16_t mem_size;
+	uint16_t default_if;
 };
 
 int dpdmux_get_attributes(struct fsl_mc_io *mc_io,

@@ -264,6 +264,8 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 	struct dpaa2_dpdmux_dev *dpdmux_dev;
 	struct dpdmux_attr attr;
 	int ret;
+	uint16_t maj_ver;
+	uint16_t min_ver;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -296,6 +298,30 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 		DPAA2_PMD_ERR("setting default interface failed in %s",
 			      __func__);
 		goto init_err;
+	}
+
+	ret = dpdmux_get_api_version(&dpdmux_dev->dpdmux, CMD_PRI_LOW,
+					&maj_ver, &min_ver);
+	if (ret) {
+		DPAA2_PMD_ERR("setting version failed in %s",
+				__func__);
+		goto init_err;
+	}
+
+	/* The new dpdmux_set/get_resetable() API are available starting with
+	 * DPDMUX_VER_MAJOR==6 and DPDMUX_VER_MINOR==6
+	 */
+	if (maj_ver >= 6 && min_ver >= 6) {
+		ret = dpdmux_set_resetable(&dpdmux_dev->dpdmux, CMD_PRI_LOW,
+				dpdmux_dev->token,
+				DPDMUX_SKIP_DEFAULT_INTERFACE |
+				DPDMUX_SKIP_UNICAST_RULES |
+				DPDMUX_SKIP_MULTICAST_RULES);
+		if (ret) {
+			DPAA2_PMD_ERR("setting default interface failed in %s",
+				      __func__);
+			goto init_err;
+		}
 	}
 
 	dpdmux_dev->dpdmux_id = dpdmux_id;

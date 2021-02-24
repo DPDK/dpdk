@@ -123,10 +123,12 @@ int dpdmux_create(struct fsl_mc_io *mc_io,
 	cmd_params->method = cfg->method;
 	cmd_params->manip = cfg->manip;
 	cmd_params->num_ifs = cpu_to_le16(cfg->num_ifs);
+	cmd_params->default_if = cpu_to_le16(cfg->default_if);
 	cmd_params->adv_max_dmat_entries =
 			cpu_to_le16(cfg->adv.max_dmat_entries);
 	cmd_params->adv_max_mc_groups = cpu_to_le16(cfg->adv.max_mc_groups);
 	cmd_params->adv_max_vlan_ids = cpu_to_le16(cfg->adv.max_vlan_ids);
+	cmd_params->mem_size = cpu_to_le16(cfg->adv.mem_size);
 	cmd_params->options = cpu_to_le64(cfg->adv.options);
 
 	/* send command to mc*/
@@ -279,6 +281,87 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
 }
 
 /**
+ * dpdmux_set_resetable() - Set overall resetable DPDMUX parameters.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPDMUX object
+ * @skip_reset_flags:	By default all are 0.
+ *			By setting 1 will deactivate the reset.
+ *	The flags are:
+ *			DPDMUX_SKIP_DEFAULT_INTERFACE  0x01
+ *			DPDMUX_SKIP_UNICAST_RULES      0x02
+ *			DPDMUX_SKIP_MULTICAST_RULES    0x04
+ *
+ * For example, by default, through DPDMUX_RESET the default
+ * interface will be restored with the one from create.
+ * By setting DPDMUX_SKIP_DEFAULT_INTERFACE flag,
+ * through DPDMUX_RESET the default interface will not be modified.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpdmux_set_resetable(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t skip_reset_flags)
+{
+	struct mc_command cmd = { 0 };
+	struct dpdmux_cmd_set_skip_reset_flags *cmd_params;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_SET_RESETABLE,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpdmux_cmd_set_skip_reset_flags *)cmd.params;
+	dpdmux_set_field(cmd_params->skip_reset_flags,
+			SKIP_RESET_FLAGS,
+			skip_reset_flags);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpdmux_get_resetable() - Get overall resetable parameters.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPDMUX object
+ * @skip_reset_flags:	Get the reset flags.
+ *
+ *	The flags are:
+ *			DPDMUX_SKIP_DEFAULT_INTERFACE  0x01
+ *			DPDMUX_SKIP_UNICAST_RULES      0x02
+ *			DPDMUX_SKIP_MULTICAST_RULES    0x04
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpdmux_get_resetable(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t *skip_reset_flags)
+{
+	struct mc_command cmd = { 0 };
+	struct dpdmux_rsp_get_skip_reset_flags *rsp_params;
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_GET_RESETABLE,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpdmux_rsp_get_skip_reset_flags *)cmd.params;
+	*skip_reset_flags = dpdmux_get_field(rsp_params->skip_reset_flags,
+			SKIP_RESET_FLAGS);
+
+	return 0;
+}
+
+/**
  * dpdmux_get_attributes() - Retrieve DPDMUX attributes
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
@@ -314,6 +397,7 @@ int dpdmux_get_attributes(struct fsl_mc_io *mc_io,
 	attr->manip = rsp_params->manip;
 	attr->num_ifs = le16_to_cpu(rsp_params->num_ifs);
 	attr->mem_size = le16_to_cpu(rsp_params->mem_size);
+	attr->default_if = le16_to_cpu(rsp_params->default_if);
 
 	return 0;
 }
