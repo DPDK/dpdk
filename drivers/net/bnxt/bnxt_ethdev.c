@@ -4354,15 +4354,22 @@ int bnxt_alloc_ctx_mem(struct bnxt *bp)
 	entries = clamp_t(uint32_t, entries, min,
 			  ctx->tqm_max_entries_per_ring);
 	for (i = 0, ena = 0; i < ctx->tqm_fp_rings_count + 1; i++) {
+		/* i=0 is for TQM_SP. i=1 to i=8 applies to RING0 to RING7.
+		 * i > 8 is other ext rings.
+		 */
 		ctx_pg = ctx->tqm_mem[i];
 		ctx_pg->entries = i ? entries : entries_sp;
 		if (ctx->tqm_entry_size) {
 			mem_size = ctx->tqm_entry_size * ctx_pg->entries;
-			rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size, "tqm_mem", i);
+			rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size,
+						    "tqm_mem", i);
 			if (rc)
 				return rc;
 		}
-		ena |= HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_TQM_SP << i;
+		if (i < BNXT_MAX_TQM_LEGACY_RINGS)
+			ena |= HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_TQM_SP << i;
+		else
+			ena |= HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_TQM_RING8;
 	}
 
 	ena |= FUNC_BACKING_STORE_CFG_INPUT_DFLT_ENABLES;

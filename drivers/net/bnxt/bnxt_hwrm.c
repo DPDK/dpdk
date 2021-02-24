@@ -27,7 +27,7 @@
 #define HWRM_SPEC_CODE_1_8_3		0x10803
 #define HWRM_VERSION_1_9_1		0x10901
 #define HWRM_VERSION_1_9_2		0x10903
-
+#define HWRM_VERSION_1_10_2_13		0x10a020d
 struct bnxt_plcmodes_cfg {
 	uint32_t	flags;
 	uint16_t	jumbo_thresh;
@@ -104,6 +104,11 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		return 0;
 
 	timeout = bp->hwrm_cmd_timeout;
+
+	/* Update the message length for backing store config for new FW. */
+	if (bp->fw_ver >= HWRM_VERSION_1_10_2_13 &&
+	    rte_cpu_to_le_16(req->req_type) == HWRM_FUNC_BACKING_STORE_CFG)
+		msg_len = BNXT_BACKING_STORE_CFG_LEGACY_LEN;
 
 	if (bp->flags & BNXT_FLAG_SHORT_CMD ||
 	    msg_len > bp->max_req_len) {
@@ -5120,8 +5125,21 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	ctx->tim_max_entries = rte_le_to_cpu_32(resp->tim_max_entries);
 	ctx->tqm_fp_rings_count = resp->tqm_fp_rings_count;
 
-	if (!ctx->tqm_fp_rings_count)
-		ctx->tqm_fp_rings_count = bp->max_q;
+	ctx->tqm_fp_rings_count = ctx->tqm_fp_rings_count ?
+				  RTE_MIN(ctx->tqm_fp_rings_count,
+					  BNXT_MAX_TQM_FP_LEGACY_RINGS) :
+				  bp->max_q;
+
+	/* Check if the ext ring count needs to be counted.
+	 * Ext ring count is available only with new FW so we should not
+	 * look at the field on older FW.
+	 */
+	if (ctx->tqm_fp_rings_count == BNXT_MAX_TQM_FP_LEGACY_RINGS &&
+	    bp->hwrm_max_ext_req_len >= BNXT_BACKING_STORE_CFG_LEN) {
+		ctx->tqm_fp_rings_count += resp->tqm_fp_rings_count_ext;
+		ctx->tqm_fp_rings_count = RTE_MIN(BNXT_MAX_TQM_FP_RINGS,
+						  ctx->tqm_fp_rings_count);
+	}
 
 	tqm_rings = ctx->tqm_fp_rings_count + 1;
 
@@ -5230,6 +5248,18 @@ int bnxt_hwrm_func_backing_store_cfg(struct bnxt *bp, uint32_t enables)
 		ctx_pg = ctx->tqm_mem[i];
 		*num_entries = rte_cpu_to_le_16(ctx_pg->entries);
 		bnxt_hwrm_set_pg_attr(&ctx_pg->ring_mem, pg_attr, pg_dir);
+	}
+
+	if (enables & HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_TQM_RING8) {
+		/* DPDK does not need to configure MRAV and TIM type.
+		 * So we are skipping over MRAV and TIM. Skip to configure
+		 * HWRM_FUNC_BACKING_STORE_CFG_INPUT_ENABLES_TQM_RING8.
+		 */
+		ctx_pg = ctx->tqm_mem[BNXT_MAX_TQM_LEGACY_RINGS];
+		req.tqm_ring8_num_entries = rte_cpu_to_le_16(ctx_pg->entries);
+		bnxt_hwrm_set_pg_attr(&ctx_pg->ring_mem,
+				      &req.tqm_ring8_pg_size_tqm_ring_lvl,
+				      &req.tqm_ring8_page_dir);
 	}
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
