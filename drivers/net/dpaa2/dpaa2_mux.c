@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #include <sys/queue.h>
@@ -203,6 +203,32 @@ creation_error:
 	rte_free((void *)key_cfg_iova);
 	rte_free((void *)flow);
 	return NULL;
+}
+
+int
+rte_pmd_dpaa2_mux_rx_frame_len(uint32_t dpdmux_id, uint16_t max_rx_frame_len)
+{
+	struct dpaa2_dpdmux_dev *dpdmux_dev;
+	int ret;
+
+	/* Find the DPDMUX from dpdmux_id in our list */
+	dpdmux_dev = get_dpdmux_from_id(dpdmux_id);
+	if (!dpdmux_dev) {
+		DPAA2_PMD_ERR("Invalid dpdmux_id: %d", dpdmux_id);
+		return -1;
+	}
+
+	ret = dpdmux_set_max_frame_length(&dpdmux_dev->dpdmux,
+			CMD_PRI_LOW, dpdmux_dev->token, max_rx_frame_len);
+	if (ret) {
+		DPAA2_PMD_ERR("DPDMUX:Unable to set mtu. check config %d", ret);
+		return ret;
+	}
+
+	DPAA2_PMD_INFO("dpdmux mtu set as %u",
+			DPAA2_MAX_RX_PKT_LEN - RTE_ETHER_CRC_LEN);
+
+	return ret;
 }
 
 static int

@@ -3,6 +3,9 @@ EXPERIMENTAL {
 
 	rte_pmd_dpaa2_mux_flow_create;
 	rte_pmd_dpaa2_set_custom_hash;
+
+	# added in 21.05
+	rte_pmd_dpaa2_mux_rx_frame_len;
 };
 
 INTERNAL {

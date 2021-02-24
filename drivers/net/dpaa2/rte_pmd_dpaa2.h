@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2021 NXP
  */
 
 #ifndef _RTE_PMD_DPAA2_H
@@ -39,6 +39,22 @@ struct rte_flow *
 rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 			      struct rte_flow_item *pattern[],
 			      struct rte_flow_action *actions[]);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * demultiplex interface max rx frame length configure
+ *
+ * @param dpdmux_id
+ *    ID of the DPDMUX MC object.
+ * @param max_rx_frame_len
+ *    maximum receive frame length (will be checked to be minimux of all dpnis)
+ *
+ */
+__rte_experimental
+int
+rte_pmd_dpaa2_mux_rx_frame_len(uint32_t dpdmux_id, uint16_t max_rx_frame_len);
 
 /**
  * @warning
