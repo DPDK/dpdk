@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Broadcom bnxt driver.**
+
+  * Updated HWRM structures to 1.10.2.15 version.
+
 * **Updated Hisilicon hns3 driver.**
 
   * Added support for module EEPROM dumping.
