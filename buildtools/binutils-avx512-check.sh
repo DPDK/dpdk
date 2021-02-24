@@ -3,7 +3,7 @@
 # Copyright(c) 2020 Intel Corporation
 
 AS=${AS:-as}
-OBJFILE=$(mktemp -t dpdk.binutils-check.XXXXXX.o)
+OBJFILE=$(mktemp -t dpdk.binutils-check.XXXXXX)
 trap 'rm -f "$OBJFILE"' EXIT
 # from https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90028
 GATHER_PARAMS='0x8(,%ymm1,1),%ymm0{%k2}'
