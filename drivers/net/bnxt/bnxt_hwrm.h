@@ -14,7 +14,6 @@ struct bnxt_filter_info;
 struct bnxt_cp_ring_info;
 struct hwrm_func_qstats_output;
 
-#define HWRM_SEQ_ID_INVALID -1U
 /* Convert Bit field location to value */
 #define ASYNC_CMPL_EVENT_ID_LINK_STATUS_CHANGE	\
 	(1 << HWRM_ASYNC_EVENT_CMPL_EVENT_ID_LINK_STATUS_CHANGE)
