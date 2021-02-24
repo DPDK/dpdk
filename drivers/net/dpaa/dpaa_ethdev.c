@@ -486,9 +486,6 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	if (dpaa_intf->cgr_rx) {
 		for (loop = 0; loop < dpaa_intf->nb_rx_queues; loop++)
 			qman_delete_cgr(&dpaa_intf->cgr_rx[loop]);
-
-		qman_release_cgrid_range(dpaa_intf->cgr_rx[loop].cgrid,
-					 dpaa_intf->nb_rx_queues);
 	}
 
 	rte_free(dpaa_intf->cgr_rx);
@@ -497,9 +494,6 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	if (dpaa_intf->cgr_tx) {
 		for (loop = 0; loop < MAX_DPAA_CORES; loop++)
 			qman_delete_cgr(&dpaa_intf->cgr_tx[loop]);
-
-		qman_release_cgrid_range(dpaa_intf->cgr_tx[loop].cgrid,
-					 MAX_DPAA_CORES);
 		rte_free(dpaa_intf->cgr_tx);
 		dpaa_intf->cgr_tx = NULL;
 	}
