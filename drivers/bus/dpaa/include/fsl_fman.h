@@ -139,6 +139,7 @@ __rte_internal
 void fman_if_set_sg(struct fman_if *fm_if, int enable);
 
 /* Get interface Max Frame length (MTU) */
+__rte_internal
 uint16_t fman_if_get_maxfrm(struct fman_if *fm_if);
 
 /* Set interface  Max Frame length (MTU) */

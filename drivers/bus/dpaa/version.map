@@ -30,6 +30,7 @@ INTERNAL {
 	fman_if_get_fc_quanta;
 	fman_if_get_fc_threshold;
 	fman_if_get_fdoff;
+	fman_if_get_maxfrm;
 	fman_if_get_sg_enable;
 	fman_if_loopback_disable;
 	fman_if_loopback_enable;

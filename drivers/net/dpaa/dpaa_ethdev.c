@@ -1521,12 +1521,19 @@ dpaa_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	struct qman_fq *rxq;
+	int ret;
 
 	rxq = dev->data->rx_queues[queue_id];
 
 	qinfo->mp = dpaa_intf->bp_info->mp;
 	qinfo->scattered_rx = dev->data->scattered_rx;
 	qinfo->nb_desc = rxq->nb_desc;
+
+	/* Report the HW Rx buffer length to user */
+	ret = fman_if_get_maxfrm(dev->process_private);
+	if (ret > 0)
+		qinfo->rx_buf_size = ret;
+
 	qinfo->conf.rx_free_thresh = 1;
 	qinfo->conf.rx_drop_en = 1;
 	qinfo->conf.rx_deferred_start = 0;
