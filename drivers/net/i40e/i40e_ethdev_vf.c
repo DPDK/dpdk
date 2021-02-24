@@ -2745,7 +2745,7 @@ i40evf_config_rss(struct i40e_vf *vf)
 		}
 
 		for (i = 0; i < rss_lut_size; i++)
-			lut_info[i] = i % vf->num_queue_pairs;
+			lut_info[i] = i % num;
 
 		ret = i40evf_set_rss_lut(&vf->vsi, lut_info,
 					 rss_lut_size);
