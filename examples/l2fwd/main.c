@@ -492,7 +492,10 @@ l2fwd_parse_args(int argc, char **argv)
 			timer_period = timer_secs;
 			break;
 
-		/* long options */
+		/* no-mac-updating */
+		case 0:
+			break;
+
 		case CMD_LINE_OPT_PORTMAP_NUM:
 			ret = l2fwd_parse_port_pair_config(optarg);
 			if (ret) {
