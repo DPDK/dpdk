@@ -44,7 +44,7 @@ for file in $@; do
 			ret = 1;
 		}
 	}
-	/^.*{/ {
+	/^.*\{/ {
 		if ("'$section'" == "all" || $1 == "'$section'") {
 			current_section = $1;
 		}
