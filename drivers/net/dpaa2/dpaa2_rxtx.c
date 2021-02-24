@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2020 NXP
+ *   Copyright 2016-2021 NXP
  *
  */
 
@@ -377,25 +377,47 @@ eth_fd_to_mbuf(const struct qbman_fd *fd,
 
 static int __rte_noinline __rte_hot
 eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
-		  struct qbman_fd *fd, uint16_t bpid)
+		  struct qbman_fd *fd,
+		  struct rte_mempool *mp, uint16_t bpid)
 {
 	struct rte_mbuf *cur_seg = mbuf, *prev_seg, *mi, *temp;
 	struct qbman_sge *sgt, *sge = NULL;
-	int i;
+	int i, offset = 0;
 
-	temp = rte_pktmbuf_alloc(mbuf->pool);
-	if (temp == NULL) {
-		DPAA2_PMD_DP_DEBUG("No memory to allocate S/G table\n");
-		return -ENOMEM;
+#ifdef RTE_LIBRTE_IEEE1588
+	/* annotation area for timestamp in first buffer */
+	offset = 0x64;
+#endif
+	if (RTE_MBUF_DIRECT(mbuf) &&
+		(mbuf->data_off > (mbuf->nb_segs * sizeof(struct qbman_sge)
+		+ offset))) {
+		temp = mbuf;
+		if (rte_mbuf_refcnt_read(temp) > 1) {
+			/* If refcnt > 1, invalid bpid is set to ensure
+			 * buffer is not freed by HW
+			 */
+			fd->simple.bpid_offset = 0;
+			DPAA2_SET_FD_IVP(fd);
+			rte_mbuf_refcnt_update(temp, -1);
+		} else {
+			DPAA2_SET_ONLY_FD_BPID(fd, bpid);
+		}
+		DPAA2_SET_FD_OFFSET(fd, offset);
+	} else {
+		temp = rte_pktmbuf_alloc(mp);
+		if (temp == NULL) {
+			DPAA2_PMD_DP_DEBUG("No memory to allocate S/G table\n");
+			return -ENOMEM;
+		}
+		DPAA2_SET_ONLY_FD_BPID(fd, bpid);
+		DPAA2_SET_FD_OFFSET(fd, temp->data_off);
 	}
-
 	DPAA2_SET_FD_ADDR(fd, DPAA2_MBUF_VADDR_TO_IOVA(temp));
 	DPAA2_SET_FD_LEN(fd, mbuf->pkt_len);
-	DPAA2_SET_ONLY_FD_BPID(fd, bpid);
-	DPAA2_SET_FD_OFFSET(fd, temp->data_off);
 	DPAA2_FD_SET_FORMAT(fd, qbman_fd_sg);
 	DPAA2_RESET_FD_FRC(fd);
 	DPAA2_RESET_FD_CTRL(fd);
+	DPAA2_RESET_FD_FLC(fd);
 	/*Set Scatter gather table and Scatter gather entries*/
 	sgt = (struct qbman_sge *)(
 			(size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
@@ -409,15 +431,24 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		DPAA2_SET_FLE_OFFSET(sge, cur_seg->data_off);
 		sge->length = cur_seg->data_len;
 		if (RTE_MBUF_DIRECT(cur_seg)) {
-			if (rte_mbuf_refcnt_read(cur_seg) > 1) {
+			/* if we are using inline SGT in same buffers
+			 * set the FLE FMT as Frame Data Section
+			 */
+			if (temp == cur_seg) {
+				DPAA2_SG_SET_FORMAT(sge, qbman_fd_list);
+				DPAA2_SET_FLE_IVP(sge);
+			} else {
+				if (rte_mbuf_refcnt_read(cur_seg) > 1) {
 				/* If refcnt > 1, invalid bpid is set to ensure
 				 * buffer is not freed by HW
 				 */
-				DPAA2_SET_FLE_IVP(sge);
-				rte_mbuf_refcnt_update(cur_seg, -1);
-			} else
-				DPAA2_SET_FLE_BPID(sge,
+					DPAA2_SET_FLE_IVP(sge);
+					rte_mbuf_refcnt_update(cur_seg, -1);
+				} else {
+					DPAA2_SET_FLE_BPID(sge,
 						mempool_to_bpid(cur_seg->pool));
+				}
+			}
 			cur_seg = cur_seg->next;
 		} else {
 			/* Get owner MBUF from indirect buffer */
@@ -1152,7 +1183,8 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				bpid = mempool_to_bpid(mp);
 				if (unlikely((*bufs)->nb_segs > 1)) {
 					if (eth_mbuf_to_sg_fd(*bufs,
-							&fd_arr[loop], bpid))
+							&fd_arr[loop],
+							mp, bpid))
 						goto send_n_return;
 				} else {
 					eth_mbuf_to_fd(*bufs,
@@ -1409,6 +1441,7 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				if (unlikely((*bufs)->nb_segs > 1)) {
 					if (eth_mbuf_to_sg_fd(*bufs,
 							      &fd_arr[loop],
+							      mp,
 							      bpid))
 						goto send_n_return;
 				} else {

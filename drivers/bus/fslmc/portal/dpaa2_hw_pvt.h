@@ -330,6 +330,11 @@ enum qbman_fd_format {
 } while (0)
 #define DPAA2_FD_GET_FORMAT(fd)	(((fd)->simple.bpid_offset >> 28) & 0x3)
 
+#define DPAA2_SG_SET_FORMAT(sg, format)	do {				\
+		(sg)->fin_bpid_offset &= 0xCFFFFFFF;			\
+		(sg)->fin_bpid_offset |= (uint32_t)format << 28;	\
+} while (0)
+
 #define DPAA2_SG_SET_FINAL(sg, fin)	do {				\
 		(sg)->fin_bpid_offset &= 0x7FFFFFFF;			\
 		(sg)->fin_bpid_offset |= (uint32_t)fin << 31;		\
