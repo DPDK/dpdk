@@ -922,9 +922,9 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_FRAMES;
 		cong_notif_cfg.threshold_entry = nb_tx_desc;
 		/* Notify that the queue is not congested when the data in
-		 * the queue is below this thershold.
+		 * the queue is below this thershold.(90% of value)
 		 */
-		cong_notif_cfg.threshold_exit = nb_tx_desc - 24;
+		cong_notif_cfg.threshold_exit = (nb_tx_desc * 9) / 10;
 		cong_notif_cfg.message_ctx = 0;
 		cong_notif_cfg.message_iova =
 				(size_t)DPAA2_VADDR_TO_IOVA(dpaa2_q->cscn);
