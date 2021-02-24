@@ -7648,7 +7648,8 @@ int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh)
 		return -ENOMEM;
 	LIST_INIT(&thub->tunnels);
 	rte_spinlock_init(&thub->sl);
-	thub->groups = mlx5_hlist_create("flow groups", MLX5_MAX_TABLES, 0,
+	thub->groups = mlx5_hlist_create("flow groups",
+					 rte_align32pow2(MLX5_MAX_TABLES), 0,
 					 0, mlx5_flow_tunnel_grp2tbl_create_cb,
 					 NULL,
 					 mlx5_flow_tunnel_grp2tbl_remove_cb);
