@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2021 NXP
  *
  */
 #ifndef __FSL_DPDMUX_H
@@ -367,15 +367,23 @@ int dpdmux_set_custom_key(struct fsl_mc_io *mc_io,
  * struct dpdmux_rule_cfg - Custom classification rule.
  *
  * @key_iova: DMA address of buffer storing the look-up value
- * @mask_iova: DMA address of the mask used for TCAM classification
+ * @mask_iova: DMA address of the mask used for TCAM classification. This
+ *  parameter is used only if dpdmux was created using option
+ *  DPDMUX_OPT_CLS_MASK_SUPPORT.
  * @key_size: size, in bytes, of the look-up value. This must match the size
  *	of the look-up key defined using dpdmux_set_custom_key, otherwise the
  *	entry will never be hit
+ * @entry_index: rule index into the table. This parameter is used only when
+ *  dpdmux object was created using option DPDMUX_OPT_CLS_MASK_SUPPORT. In
+ *  this case the rule is masking and the current frame may be a hit for
+ *  multiple rules. This parameter determines the order in which the rules
+ *  will be checked (smaller entry_index first).
  */
 struct dpdmux_rule_cfg {
 	uint64_t key_iova;
 	uint64_t mask_iova;
 	uint8_t key_size;
+	uint16_t entry_index;
 };
 
 /**

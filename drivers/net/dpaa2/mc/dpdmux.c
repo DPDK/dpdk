@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2021 NXP
  *
  */
 #include <fsl_mc_sys.h>
@@ -852,6 +852,7 @@ int dpdmux_add_custom_cls_entry(struct fsl_mc_io *mc_io,
 
 	cmd_params = (struct dpdmux_cmd_add_custom_cls_entry *)cmd.params;
 	cmd_params->key_size = rule->key_size;
+	cmd_params->entry_index = rule->entry_index;
 	cmd_params->dest_if = cpu_to_le16(action->dest_if);
 	cmd_params->key_iova = cpu_to_le64(rule->key_iova);
 	cmd_params->mask_iova = cpu_to_le64(rule->mask_iova);

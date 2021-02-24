@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2021 NXP
  *
  */
 #ifndef _FSL_DPDMUX_CMD_H
@@ -204,7 +204,7 @@ struct dpdmux_set_custom_key {
 struct dpdmux_cmd_add_custom_cls_entry {
 	uint8_t pad[3];
 	uint8_t key_size;
-	uint16_t pad1;
+	uint16_t entry_index;
 	uint16_t dest_if;
 	uint64_t key_iova;
 	uint64_t mask_iova;

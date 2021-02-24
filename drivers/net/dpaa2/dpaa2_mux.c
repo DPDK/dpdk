@@ -66,6 +66,7 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	void *key_iova, *mask_iova, *key_cfg_iova = NULL;
 	uint8_t key_size = 0;
 	int ret;
+	static int i;
 
 	/* Find the DPDMUX from dpdmux_id in our list */
 	dpdmux_dev = get_dpdmux_from_id(dpdmux_id);
@@ -154,6 +155,23 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	}
 	break;
 
+	case RTE_FLOW_ITEM_TYPE_RAW:
+	{
+		const struct rte_flow_item_raw *spec;
+
+		spec = (const struct rte_flow_item_raw *)pattern[0]->spec;
+		kg_cfg.extracts[0].extract.from_data.offset = spec->offset;
+		kg_cfg.extracts[0].extract.from_data.size = spec->length;
+		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_DATA;
+		kg_cfg.num_extracts = 1;
+		memcpy((void *)key_iova, (const void *)spec->pattern,
+							spec->length);
+		memcpy(mask_iova, pattern[0]->mask, spec->length);
+
+		key_size = spec->length;
+	}
+	break;
+
 	default:
 		DPAA2_PMD_ERR("Not supported pattern type: %d",
 				pattern[0]->type);
@@ -166,20 +184,27 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 		goto creation_error;
 	}
 
-	ret = dpdmux_set_custom_key(&dpdmux_dev->dpdmux, CMD_PRI_LOW,
-				    dpdmux_dev->token,
-			(uint64_t)(DPAA2_VADDR_TO_IOVA(key_cfg_iova)));
-	if (ret) {
-		DPAA2_PMD_ERR("dpdmux_set_custom_key failed: err(%d)", ret);
-		goto creation_error;
+	/* Multiple rules with same DPKG extracts (kg_cfg.extracts) like same
+	 * offset and length values in raw is supported right now. Different
+	 * values of kg_cfg may not work.
+	 */
+	if (i == 0) {
+		ret = dpdmux_set_custom_key(&dpdmux_dev->dpdmux, CMD_PRI_LOW,
+					    dpdmux_dev->token,
+				(uint64_t)(DPAA2_VADDR_TO_IOVA(key_cfg_iova)));
+		if (ret) {
+			DPAA2_PMD_ERR("dpdmux_set_custom_key failed: err(%d)",
+					ret);
+			goto creation_error;
+		}
 	}
-
 	/* As now our key extract parameters are set, let us configure
 	 * the rule.
 	 */
 	flow->rule.key_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(key_iova));
 	flow->rule.mask_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(mask_iova));
 	flow->rule.key_size = key_size;
+	flow->rule.entry_index = i++;
 
 	vf_conf = (const struct rte_flow_action_vf *)(actions[0]->conf);
 	if (vf_conf->id == 0 || vf_conf->id > dpdmux_dev->num_ifs) {
