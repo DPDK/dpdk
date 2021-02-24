@@ -3743,6 +3743,32 @@ static void bnxt_dev_cleanup(struct bnxt *bp)
 	bnxt_uninit_resources(bp, true);
 }
 
+static int
+bnxt_check_fw_reset_done(struct bnxt *bp)
+{
+	int timeout = bp->fw_reset_max_msecs;
+	uint16_t val = 0;
+	int rc;
+
+	do {
+		rc = rte_pci_read_config(bp->pdev, &val, sizeof(val), PCI_SUBSYSTEM_ID_OFFSET);
+		if (rc < 0) {
+			PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x", PCI_SUBSYSTEM_ID_OFFSET);
+			return rc;
+		}
+		if (val != 0xffff)
+			break;
+		rte_delay_ms(1);
+	} while (timeout--);
+
+	if (val == 0xffff) {
+		PMD_DRV_LOG(ERR, "Firmware reset aborted, PCI config space invalid\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int bnxt_restore_vlan_filters(struct bnxt *bp)
 {
 	struct rte_eth_dev *dev = bp->eth_dev;
@@ -3840,6 +3866,13 @@ static void bnxt_dev_recover(void *arg)
 	int rc = 0;
 
 	pthread_mutex_lock(&bp->err_recovery_lock);
+
+	if (!bp->fw_reset_min_msecs) {
+		rc = bnxt_check_fw_reset_done(bp);
+		if (rc)
+			goto err;
+	}
+
 	/* Clear Error flag so that device re-init should happen */
 	bp->flags &= ~BNXT_FLAG_FATAL_ERROR;
 
@@ -3891,14 +3924,33 @@ err:
 void bnxt_dev_reset_and_resume(void *arg)
 {
 	struct bnxt *bp = arg;
+	uint32_t us = US_PER_MS * bp->fw_reset_min_msecs;
+	uint16_t val = 0;
 	int rc;
 
 	bnxt_dev_cleanup(bp);
 
 	bnxt_wait_for_device_shutdown(bp);
 
-	rc = rte_eal_alarm_set(US_PER_MS * bp->fw_reset_min_msecs,
-			       bnxt_dev_recover, (void *)bp);
+	/* During some fatal firmware error conditions, the PCI config space
+	 * register 0x2e which normally contains the subsystem ID will become
+	 * 0xffff. This register will revert back to the normal value after
+	 * the chip has completed core reset. If we detect this condition,
+	 * we can poll this config register immediately for the value to revert.
+	 */
+	if (bp->flags & BNXT_FLAG_FATAL_ERROR) {
+		rc = rte_pci_read_config(bp->pdev, &val, sizeof(val), PCI_SUBSYSTEM_ID_OFFSET);
+		if (rc < 0) {
+			PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x", PCI_SUBSYSTEM_ID_OFFSET);
+			return;
+		}
+		if (val == 0xffff) {
+			bp->fw_reset_min_msecs = 0;
+			us = 1;
+		}
+	}
+
+	rc = rte_eal_alarm_set(us, bnxt_dev_recover, (void *)bp);
 	if (rc)
 		PMD_DRV_LOG(ERR, "Error setting recovery alarm");
 }
