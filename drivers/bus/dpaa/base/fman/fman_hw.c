@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright 2017 NXP
+ * Copyright 2017,2020 NXP
  *
  */
 
@@ -219,20 +219,20 @@ fman_if_stats_get(struct fman_if *p, struct rte_eth_stats *stats)
 	struct memac_regs *regs = m->ccsr_map;
 
 	/* read recved packet count */
-	stats->ipackets = ((u64)in_be32(&regs->rfrm_u)) << 32 |
-			in_be32(&regs->rfrm_l);
-	stats->ibytes = ((u64)in_be32(&regs->roct_u)) << 32 |
-			in_be32(&regs->roct_l);
-	stats->ierrors = ((u64)in_be32(&regs->rerr_u)) << 32 |
-			in_be32(&regs->rerr_l);
+	stats->ipackets = (u64)in_be32(&regs->rfrm_l) |
+			((u64)in_be32(&regs->rfrm_u)) << 32;
+	stats->ibytes = (u64)in_be32(&regs->roct_l) |
+			((u64)in_be32(&regs->roct_u)) << 32;
+	stats->ierrors = (u64)in_be32(&regs->rerr_l) |
+			((u64)in_be32(&regs->rerr_u)) << 32;
 
 	/* read xmited packet count */
-	stats->opackets = ((u64)in_be32(&regs->tfrm_u)) << 32 |
-			in_be32(&regs->tfrm_l);
-	stats->obytes = ((u64)in_be32(&regs->toct_u)) << 32 |
-			in_be32(&regs->toct_l);
-	stats->oerrors = ((u64)in_be32(&regs->terr_u)) << 32 |
-			in_be32(&regs->terr_l);
+	stats->opackets = (u64)in_be32(&regs->tfrm_l) |
+			((u64)in_be32(&regs->tfrm_u)) << 32;
+	stats->obytes = (u64)in_be32(&regs->toct_l) |
+			((u64)in_be32(&regs->toct_u)) << 32;
+	stats->oerrors = (u64)in_be32(&regs->terr_l) |
+			((u64)in_be32(&regs->terr_u)) << 32;
 }
 
 void
@@ -244,10 +244,9 @@ fman_if_stats_get_all(struct fman_if *p, uint64_t *value, int n)
 	uint64_t base_offset = offsetof(struct memac_regs, reoct_l);
 
 	for (i = 0; i < n; i++)
-		value[i] = ((u64)in_be32((char *)regs
-				+ base_offset + 8 * i + 4)) << 32 |
-				((u64)in_be32((char *)regs
-				+ base_offset + 8 * i));
+		value[i] = (((u64)in_be32((char *)regs + base_offset + 8 * i) |
+				(u64)in_be32((char *)regs + base_offset +
+				8 * i + 4)) << 32);
 }
 
 void
