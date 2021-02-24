@@ -31,6 +31,8 @@
 
 #define DRIVER_LOOPBACK_MODE "drv_loopback"
 #define DRIVER_NO_PREFETCH_MODE "drv_no_prefetch"
+#define CHECK_INTERVAL         100  /* 100ms */
+#define MAX_REPEAT_TIME        90   /* 9s (90 * 100ms) in total */
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
@@ -1805,23 +1807,32 @@ error:
 /* return 0 means link status changed, -1 means not changed */
 static int
 dpaa2_dev_link_update(struct rte_eth_dev *dev,
-			int wait_to_complete __rte_unused)
+		      int wait_to_complete)
 {
 	int ret;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)dev->process_private;
 	struct rte_eth_link link;
 	struct dpni_link_state state = {0};
+	uint8_t count;
 
 	if (dpni == NULL) {
 		DPAA2_PMD_ERR("dpni is NULL");
 		return 0;
 	}
 
-	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
-	if (ret < 0) {
-		DPAA2_PMD_DEBUG("error: dpni_get_link_state %d", ret);
-		return -1;
+	for (count = 0; count <= MAX_REPEAT_TIME; count++) {
+		ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token,
+					  &state);
+		if (ret < 0) {
+			DPAA2_PMD_DEBUG("error: dpni_get_link_state %d", ret);
+			return -1;
+		}
+		if (state.up == ETH_LINK_DOWN &&
+		    wait_to_complete)
+			rte_delay_ms(CHECK_INTERVAL);
+		else
+			break;
 	}
 
 	memset(&link, 0, sizeof(struct rte_eth_link));
