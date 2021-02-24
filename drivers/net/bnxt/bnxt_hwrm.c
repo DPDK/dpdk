@@ -1999,12 +1999,6 @@ config_mru:
 	if (vnic->bd_stall)
 		req.flags |=
 		    rte_cpu_to_le_32(HWRM_VNIC_CFG_INPUT_FLAGS_BD_STALL_MODE);
-	if (vnic->roce_dual)
-		req.flags |= rte_cpu_to_le_32(
-			HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_DUAL_VNIC_MODE);
-	if (vnic->roce_only)
-		req.flags |= rte_cpu_to_le_32(
-			HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_ONLY_VNIC_MODE);
 	if (vnic->rss_dflt_cr)
 		req.flags |= rte_cpu_to_le_32(
 			HWRM_VNIC_QCFG_OUTPUT_FLAGS_RSS_DFLT_CR_MODE);
@@ -2052,10 +2046,6 @@ int bnxt_hwrm_vnic_qcfg(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 			HWRM_VNIC_QCFG_OUTPUT_FLAGS_VLAN_STRIP_MODE;
 	vnic->bd_stall = rte_le_to_cpu_32(resp->flags) &
 			HWRM_VNIC_QCFG_OUTPUT_FLAGS_BD_STALL_MODE;
-	vnic->roce_dual = rte_le_to_cpu_32(resp->flags) &
-			HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_DUAL_VNIC_MODE;
-	vnic->roce_only = rte_le_to_cpu_32(resp->flags) &
-			HWRM_VNIC_QCFG_OUTPUT_FLAGS_ROCE_ONLY_VNIC_MODE;
 	vnic->rss_dflt_cr = rte_le_to_cpu_32(resp->flags) &
 			HWRM_VNIC_QCFG_OUTPUT_FLAGS_RSS_DFLT_CR_MODE;
 
