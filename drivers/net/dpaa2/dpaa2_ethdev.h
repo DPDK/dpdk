@@ -60,6 +60,8 @@
 
 /* Disable RX tail drop, default is enable */
 #define DPAA2_RX_TAILDROP_OFF	0x04
+/* Tx confirmation enabled */
+#define DPAA2_TX_CONF_ENABLE	0x08
 
 #define DPAA2_RSS_OFFLOAD_ALL ( \
 	ETH_RSS_L2_PAYLOAD | \
@@ -152,14 +154,13 @@ struct dpaa2_dev_priv {
 	void *tx_vq[MAX_TX_QUEUES];
 	struct dpaa2_bp_list *bp_list; /**<Attached buffer pool list */
 	void *tx_conf_vq[MAX_TX_QUEUES];
-	uint8_t tx_conf_en;
+	uint8_t flags; /*dpaa2 config flags */
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;
 	uint8_t num_rx_tc;
 	uint16_t qos_entries;
 	uint16_t fs_entries;
 	uint8_t dist_queues;
-	uint8_t flags; /*dpaa2 config flags */
 	uint8_t en_ordered;
 	uint8_t en_loose_ordered;
 	uint8_t max_cgs;

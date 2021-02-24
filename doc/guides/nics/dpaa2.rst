@@ -484,6 +484,10 @@ for details.
   of the packet pull command which is issued  in the previous cycle.
   e.g. ``fslmc:dpni.1,drv_no_prefetch=1``
 
+* Use dev arg option  ``drv_tx_conf=1`` to enable TX confirmation mode.
+  In this mode tx conf queues need to be polled to free the buffers.
+  e.g. ``fslmc:dpni.1,drv_tx_conf=1``
+
 Enabling logs
 -------------
 
