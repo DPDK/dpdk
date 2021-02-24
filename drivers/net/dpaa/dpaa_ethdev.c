@@ -49,6 +49,9 @@
 #include <process.h>
 #include <fmlib/fm_ext.h>
 
+#define CHECK_INTERVAL         100  /* 100ms */
+#define MAX_REPEAT_TIME        90   /* 9s (90 * 100ms) in total */
+
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
 		DEV_RX_OFFLOAD_JUMBO_FRAME |
@@ -669,23 +672,30 @@ dpaa_dev_tx_burst_mode_get(struct rte_eth_dev *dev,
 }
 
 static int dpaa_eth_link_update(struct rte_eth_dev *dev,
-				int wait_to_complete __rte_unused)
+				int wait_to_complete)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	struct rte_eth_link *link = &dev->data->dev_link;
 	struct fman_if *fif = dev->process_private;
 	struct __fman_if *__fif = container_of(fif, struct __fman_if, __if);
 	int ret, ioctl_version;
+	uint8_t count;
 
 	PMD_INIT_FUNC_TRACE();
 
 	ioctl_version = dpaa_get_ioctl_version_number();
 
-
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
-		ret = dpaa_get_link_status(__fif->node_name, link);
-		if (ret)
-			return ret;
+		for (count = 0; count <= MAX_REPEAT_TIME; count++) {
+			ret = dpaa_get_link_status(__fif->node_name, link);
+			if (ret)
+				return ret;
+			if (link->link_status == ETH_LINK_DOWN &&
+			    wait_to_complete)
+				rte_delay_ms(CHECK_INTERVAL);
+			else
+				break;
+		}
 	} else {
 		link->link_status = dpaa_intf->valid;
 	}
