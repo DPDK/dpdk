@@ -6,9 +6,8 @@
 #define _RTE_OS_H_
 
 /**
- * This is header should contain any function/macro definition
- * which are not supported natively or named differently in the
- * Windows OS. It must not include Windows-specific headers.
+ * This header should contain any definition
+ * which is not supported natively or named differently in Windows.
  */
 
 #include <stdarg.h>
