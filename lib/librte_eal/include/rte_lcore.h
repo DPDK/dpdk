@@ -186,6 +186,8 @@ __rte_experimental
 int
 rte_lcore_to_cpu_id(int lcore_id);
 
+#ifdef RTE_HAS_CPUSET
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
@@ -199,6 +201,8 @@ rte_lcore_to_cpu_id(int lcore_id);
 __rte_experimental
 rte_cpuset_t
 rte_lcore_cpuset(unsigned int lcore_id);
+
+#endif /* RTE_HAS_CPUSET */
 
 /**
  * Test if an lcore is enabled.

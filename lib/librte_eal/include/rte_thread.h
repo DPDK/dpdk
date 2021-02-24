@@ -25,6 +25,8 @@ extern "C" {
  */
 typedef struct eal_tls_key *rte_tls_key;
 
+#ifdef RTE_HAS_CPUSET
+
 /**
  * Set core affinity of the current thread.
  * Support both EAL and non-EAL thread and update TLS.
@@ -45,6 +47,8 @@ int rte_thread_set_affinity(rte_cpuset_t *cpusetp);
  *
  */
 void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
+
+#endif /* RTE_HAS_CPUSET */
 
 /**
  * Create a TLS data key visible to all threads in the process.

@@ -13,6 +13,7 @@
 #include <pthread_np.h>
 
 typedef cpuset_t rte_cpuset_t;
+#define RTE_HAS_CPUSET
 #define RTE_CPU_AND(dst, src1, src2) do \
 { \
 	cpuset_t tmp; \
