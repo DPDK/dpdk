@@ -582,20 +582,18 @@ rte_dpaa_bus_probe(void)
 	/* Device list creation is only done once */
 	if (!process_once) {
 		rte_dpaa_bus_dev_build();
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			/* One time load of Qman/Bman drivers */
-			ret = qman_global_init();
-			if (ret) {
-				DPAA_BUS_ERR("QMAN initialization failed: %d",
-					     ret);
-				return ret;
-			}
-			ret = bman_global_init();
-			if (ret) {
-				DPAA_BUS_ERR("BMAN initialization failed: %d",
-					     ret);
-				return ret;
-			}
+		/* One time load of Qman/Bman drivers */
+		ret = qman_global_init();
+		if (ret) {
+			DPAA_BUS_ERR("QMAN initialization failed: %d",
+				     ret);
+			return ret;
+		}
+		ret = bman_global_init();
+		if (ret) {
+			DPAA_BUS_ERR("BMAN initialization failed: %d",
+				     ret);
+			return ret;
 		}
 	}
 	process_once = 1;
