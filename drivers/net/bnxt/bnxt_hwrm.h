@@ -301,4 +301,5 @@ int bnxt_hwrm_first_vf_id_query(struct bnxt *bp, uint16_t fid,
 				uint16_t *first_vf_id);
 int bnxt_hwrm_cfa_pair_alloc(struct bnxt *bp, struct bnxt_representor *rep);
 int bnxt_hwrm_cfa_pair_free(struct bnxt *bp, struct bnxt_representor *rep);
+int bnxt_hwrm_poll_ver_get(struct bnxt *bp);
 #endif
