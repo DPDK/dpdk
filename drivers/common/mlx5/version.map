@@ -39,6 +39,7 @@ INTERNAL {
 	mlx5_devx_cmd_query_virtio_q_counters;
 	mlx5_devx_cmd_query_virtq;
 	mlx5_devx_cmd_register_read;
+	mlx5_devx_cmd_wq_query;
 	mlx5_devx_get_out_command_status;
 	mlx5_devx_alloc_uar;
 

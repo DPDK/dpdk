@@ -2049,3 +2049,31 @@ mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx, uint32_t pd)
 	flow_hit_aso_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
 	return flow_hit_aso_obj;
 }
+
+int
+mlx5_devx_cmd_wq_query(void *wq, uint32_t *counter_set_id)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint32_t in[MLX5_ST_SZ_DW(query_rq_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_rq_out)] = {0};
+	int rc;
+	void *rq_ctx;
+
+	MLX5_SET(query_rq_in, in, opcode, MLX5_CMD_OP_QUERY_RQ);
+	MLX5_SET(query_rq_in, in, rqn, ((struct ibv_wq *)wq)->wq_num);
+	rc = mlx5_glue->devx_wq_query(wq, in, sizeof(in), out, sizeof(out));
+	if (rc) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to query WQ counter set ID using DevX - "
+			"rc = %d, errno = %d.", rc, errno);
+		return -rc;
+	};
+	rq_ctx = MLX5_ADDR_OF(query_rq_out, out, rq_context);
+	*counter_set_id = MLX5_GET(rqc, rq_ctx, counter_set_id);
+	return 0;
+#else
+	(void)wq;
+	(void)counter_set_id;
+	return -ENOTSUP;
+#endif
+}

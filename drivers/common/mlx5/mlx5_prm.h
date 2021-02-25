@@ -851,6 +851,7 @@ enum {
 	MLX5_CMD_OP_MODIFY_SQ = 0X905,
 	MLX5_CMD_OP_CREATE_RQ = 0x908,
 	MLX5_CMD_OP_MODIFY_RQ = 0x909,
+	MLX5_CMD_OP_QUERY_RQ = 0x90b,
 	MLX5_CMD_OP_CREATE_TIS = 0x912,
 	MLX5_CMD_OP_QUERY_TIS = 0x915,
 	MLX5_CMD_OP_CREATE_RQT = 0x916,
@@ -1808,6 +1809,24 @@ struct mlx5_ifc_modify_rq_out_bits {
 	u8 reserved_at_8[0x18];
 	u8 syndrome[0x20];
 	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_query_rq_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_rqc_bits rq_context;
+};
+
+struct mlx5_ifc_query_rq_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_at_10[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x8];
+	u8 rqn[0x18];
+	u8 reserved_at_60[0x20];
 };
 
 struct mlx5_ifc_create_tis_out_bits {
