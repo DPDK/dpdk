@@ -4938,6 +4938,63 @@ txgbevf_dev_tx_init(struct rte_eth_dev *dev)
 	}
 }
 
+/*
+ * [VF] Start Transmit and Receive Units.
+ */
+void __rte_cold
+txgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw     *hw;
+	struct txgbe_tx_queue *txq;
+	struct txgbe_rx_queue *rxq;
+	uint32_t txdctl;
+	uint32_t rxdctl;
+	uint16_t i;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = TXGBE_DEV_HW(dev);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		/* Setup Transmit Threshold Registers */
+		wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
+		      TXGBE_TXCFG_HTHRESH_MASK |
+		      TXGBE_TXCFG_WTHRESH_MASK,
+		      TXGBE_TXCFG_HTHRESH(txq->hthresh) |
+		      TXGBE_TXCFG_WTHRESH(txq->wthresh));
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		wr32m(hw, TXGBE_TXCFG(i), TXGBE_TXCFG_ENA, TXGBE_TXCFG_ENA);
+
+		poll_ms = 10;
+		/* Wait until TX Enable ready */
+		do {
+			rte_delay_ms(1);
+			txdctl = rd32(hw, TXGBE_TXCFG(i));
+		} while (--poll_ms && !(txdctl & TXGBE_TXCFG_ENA));
+		if (!poll_ms)
+			PMD_INIT_LOG(ERR, "Could not enable Tx Queue %d", i);
+	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+
+		wr32m(hw, TXGBE_RXCFG(i), TXGBE_RXCFG_ENA, TXGBE_RXCFG_ENA);
+
+		/* Wait until RX Enable ready */
+		poll_ms = 10;
+		do {
+			rte_delay_ms(1);
+			rxdctl = rd32(hw, TXGBE_RXCFG(i));
+		} while (--poll_ms && !(rxdctl & TXGBE_RXCFG_ENA));
+		if (!poll_ms)
+			PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d", i);
+		rte_wmb();
+		wr32(hw, TXGBE_RXWP(i), rxq->nb_rx_desc - 1);
+	}
+}
+
 int
 txgbe_rss_conf_init(struct txgbe_rte_flow_rss_conf *out,
 		    const struct rte_flow_action_rss *in)

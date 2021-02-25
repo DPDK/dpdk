@@ -9,6 +9,7 @@
 #include <string.h>
 #include <rte_log.h>
 #include <ethdev_pci.h>
+#include <rte_alarm.h>
 
 #include "txgbe_logs.h"
 #include "base/txgbe.h"
@@ -50,8 +51,10 @@ static int txgbevf_dev_xstats_get(struct rte_eth_dev *dev,
 static int txgbevf_dev_info_get(struct rte_eth_dev *dev,
 				 struct rte_eth_dev_info *dev_info);
 static int  txgbevf_dev_configure(struct rte_eth_dev *dev);
+static int  txgbevf_dev_start(struct rte_eth_dev *dev);
 static int txgbevf_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
+static int txgbevf_dev_stop(struct rte_eth_dev *dev);
 static int txgbevf_dev_close(struct rte_eth_dev *dev);
 static void txgbevf_intr_disable(struct rte_eth_dev *dev);
 static void txgbevf_intr_enable(struct rte_eth_dev *dev);
@@ -604,16 +607,166 @@ txgbevf_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int
+txgbevf_dev_start(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t intr_vector = 0;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	int err, mask = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Stop the link setup handler before resetting the HW. */
+	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
+
+	err = hw->mac.reset_hw(hw);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to reset vf hardware (%d)", err);
+		return err;
+	}
+	hw->mac.get_link_status = true;
+
+	/* negotiate mailbox API version to use with the PF. */
+	txgbevf_negotiate_api(hw);
+
+	txgbevf_dev_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
+	err = txgbevf_dev_rx_init(dev);
+
+	/**
+	 * In this case, reuses the MAC address assigned by VF
+	 * initialization.
+	 */
+	if (err != 0 && err != TXGBE_ERR_INVALID_MAC_ADDR) {
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware (%d)", err);
+		txgbe_dev_clear_queues(dev);
+		return err;
+	}
+
+	/* Set vfta */
+	txgbevf_set_vfta_all(dev, 1);
+
+	/* Set HW strip */
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
+		ETH_VLAN_EXTEND_MASK;
+	err = txgbevf_vlan_offload_config(dev, mask);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to set VLAN offload (%d)", err);
+		txgbe_dev_clear_queues(dev);
+		return err;
+	}
+
+	txgbevf_dev_rxtx_start(dev);
+
+	/* check and configure queue intr-vector mapping */
+	if (rte_intr_cap_multiple(intr_handle) &&
+	    dev->data->dev_conf.intr_conf.rxq) {
+		/* According to datasheet, only vector 0/1/2 can be used,
+		 * now only one vector is used for Rx queue
+		 */
+		intr_vector = 1;
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
+				     " intr_vec", dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+	txgbevf_configure_msix(dev);
+
+	/* When a VF port is bound to VFIO-PCI, only miscellaneous interrupt
+	 * is mapped to VFIO vector 0 in eth_txgbevf_dev_init( ).
+	 * If previous VFIO interrupt mapping setting in eth_txgbevf_dev_init( )
+	 * is not cleared, it will fail when following rte_intr_enable( ) tries
+	 * to map Rx queue interrupt to other VFIO vectors.
+	 * So clear uio/vfio intr/evevnfd first to avoid failure.
+	 */
+	rte_intr_disable(intr_handle);
+
+	rte_intr_enable(intr_handle);
+
+	/* Re-enable interrupt for VF */
+	txgbevf_intr_enable(dev);
+
+	/*
+	 * Update link status right before return, because it may
+	 * start link configuration process in a separate thread.
+	 */
+	txgbevf_dev_link_update(dev, 0);
+
+	hw->adapter_stopped = false;
+
+	return 0;
+}
+
+static int
+txgbevf_dev_stop(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	if (hw->adapter_stopped)
+		return 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler, dev);
+
+	txgbevf_intr_disable(dev);
+
+	hw->adapter_stopped = 1;
+	hw->mac.stop_hw(hw);
+
+	/*
+	 * Clear what we set, but we still keep shadow_vfta to
+	 * restore after device starts
+	 */
+	txgbevf_set_vfta_all(dev, 0);
+
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
+
+	txgbe_dev_clear_queues(dev);
+
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+
+	adapter->rss_reta_updated = 0;
+
+	return 0;
+}
+
+static int
 txgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int ret;
+
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
 	hw->mac.reset_hw(hw);
+
+	ret = txgbevf_dev_stop(dev);
 
 	txgbe_dev_free_queues(dev);
 
@@ -637,7 +790,24 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(intr_handle,
 				     txgbevf_dev_interrupt_handler, dev);
 
-	return 0;
+	return ret;
+}
+
+/*
+ * Reset VF device
+ */
+static int
+txgbevf_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = eth_txgbevf_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	ret = eth_txgbevf_dev_init(dev);
+
+	return ret;
 }
 
 static void txgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
@@ -1170,12 +1340,16 @@ txgbevf_dev_interrupt_handler(void *param)
  */
 static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.dev_configure        = txgbevf_dev_configure,
+	.dev_start            = txgbevf_dev_start,
+	.dev_stop             = txgbevf_dev_stop,
 	.link_update          = txgbevf_dev_link_update,
 	.stats_get            = txgbevf_dev_stats_get,
 	.xstats_get           = txgbevf_dev_xstats_get,
 	.stats_reset          = txgbevf_dev_stats_reset,
 	.xstats_reset         = txgbevf_dev_stats_reset,
 	.xstats_get_names     = txgbevf_dev_xstats_get_names,
+	.dev_close            = txgbevf_dev_close,
+	.dev_reset	      = txgbevf_dev_reset,
 	.promiscuous_enable   = txgbevf_dev_promiscuous_enable,
 	.promiscuous_disable  = txgbevf_dev_promiscuous_disable,
 	.allmulticast_enable  = txgbevf_dev_allmulticast_enable,
