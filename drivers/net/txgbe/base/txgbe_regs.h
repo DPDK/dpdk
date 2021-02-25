@@ -1698,6 +1698,29 @@ enum txgbe_5tuple_protocol {
 #define TXGBE_REG_RSSTBL   TXGBE_RSSTBL(0)
 #define TXGBE_REG_RSSKEY   TXGBE_RSSKEY(0)
 
+/*
+ * read non-rc counters
+ */
+#define TXGBE_UPDCNT32(reg, last, cur)                           \
+do {                                                             \
+	uint32_t latest = rd32(hw, reg);                         \
+	if (hw->offset_loaded || hw->rx_loaded)			 \
+		last = 0;					 \
+	cur += (latest - last) & UINT_MAX;                       \
+	last = latest;                                           \
+} while (0)
+
+#define TXGBE_UPDCNT36(regl, last, cur)                          \
+do {                                                             \
+	uint64_t new_lsb = rd32(hw, regl);                       \
+	uint64_t new_msb = rd32(hw, regl + 4);                   \
+	uint64_t latest = ((new_msb << 32) | new_lsb);           \
+	if (hw->offset_loaded || hw->rx_loaded)			 \
+		last = 0;					 \
+	cur += (0x1000000000LL + latest - last) & 0xFFFFFFFFFLL; \
+	last = latest;                                           \
+} while (0)
+
 /**
  * register operations
  **/

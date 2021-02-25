@@ -15,6 +15,8 @@
 #include "txgbe_ethdev.h"
 #include "txgbe_rxtx.h"
 
+static int txgbevf_dev_xstats_get(struct rte_eth_dev *dev,
+				  struct rte_eth_xstat *xstats, unsigned int n);
 static int txgbevf_dev_info_get(struct rte_eth_dev *dev,
 				 struct rte_eth_dev_info *dev_info);
 static int  txgbevf_dev_configure(struct rte_eth_dev *dev);
@@ -23,6 +25,7 @@ static int txgbevf_dev_link_update(struct rte_eth_dev *dev,
 static int txgbevf_dev_close(struct rte_eth_dev *dev);
 static void txgbevf_intr_disable(struct rte_eth_dev *dev);
 static void txgbevf_intr_enable(struct rte_eth_dev *dev);
+static int txgbevf_dev_stats_reset(struct rte_eth_dev *dev);
 static void txgbevf_configure_msix(struct rte_eth_dev *dev);
 static void txgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 static void txgbevf_dev_interrupt_handler(void *param);
@@ -51,6 +54,28 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 };
 
 static const struct eth_dev_ops txgbevf_eth_dev_ops;
+
+static const struct rte_txgbe_xstats_name_off rte_txgbevf_stats_strings[] = {
+	{"rx_multicast_packets_0",
+			offsetof(struct txgbevf_hw_stats, qp[0].vfmprc)},
+	{"rx_multicast_packets_1",
+			offsetof(struct txgbevf_hw_stats, qp[1].vfmprc)},
+	{"rx_multicast_packets_2",
+			offsetof(struct txgbevf_hw_stats, qp[2].vfmprc)},
+	{"rx_multicast_packets_3",
+			offsetof(struct txgbevf_hw_stats, qp[3].vfmprc)},
+	{"rx_multicast_packets_4",
+			offsetof(struct txgbevf_hw_stats, qp[4].vfmprc)},
+	{"rx_multicast_packets_5",
+			offsetof(struct txgbevf_hw_stats, qp[5].vfmprc)},
+	{"rx_multicast_packets_6",
+			offsetof(struct txgbevf_hw_stats, qp[6].vfmprc)},
+	{"rx_multicast_packets_7",
+			offsetof(struct txgbevf_hw_stats, qp[7].vfmprc)}
+};
+
+#define TXGBEVF_NB_XSTATS (sizeof(rte_txgbevf_stats_strings) /	\
+		sizeof(rte_txgbevf_stats_strings[0]))
 
 /*
  * Negotiate mailbox API version with the PF.
@@ -158,6 +183,9 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* init_mailbox_params */
 	hw->mbx.init_params(hw);
+
+	/* Reset the hw statistics */
+	txgbevf_dev_stats_reset(eth_dev);
 
 	/* Disable the interrupts for VF */
 	txgbevf_intr_disable(eth_dev);
@@ -274,6 +302,131 @@ static struct rte_pci_driver rte_txgbevf_pmd = {
 	.probe = eth_txgbevf_pci_probe,
 	.remove = eth_txgbevf_pci_remove,
 };
+
+static int txgbevf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned int limit)
+{
+	unsigned int i;
+
+	if (limit < TXGBEVF_NB_XSTATS && xstats_names != NULL)
+		return -ENOMEM;
+
+	if (xstats_names != NULL)
+		for (i = 0; i < TXGBEVF_NB_XSTATS; i++)
+			snprintf(xstats_names[i].name,
+				sizeof(xstats_names[i].name),
+				"%s", rte_txgbevf_stats_strings[i].name);
+	return TXGBEVF_NB_XSTATS;
+}
+
+static void
+txgbevf_update_stats(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbevf_hw_stats *hw_stats = (struct txgbevf_hw_stats *)
+			  TXGBE_DEV_STATS(dev);
+	unsigned int i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		/* Good Rx packet, include VF loopback */
+		TXGBE_UPDCNT32(TXGBE_QPRXPKT(i),
+		hw_stats->qp[i].last_vfgprc, hw_stats->qp[i].vfgprc);
+
+		/* Good Rx octets, include VF loopback */
+		TXGBE_UPDCNT36(TXGBE_QPRXOCTL(i),
+		hw_stats->qp[i].last_vfgorc, hw_stats->qp[i].vfgorc);
+
+		/* Rx Multicst Packet */
+		TXGBE_UPDCNT32(TXGBE_QPRXMPKT(i),
+		hw_stats->qp[i].last_vfmprc, hw_stats->qp[i].vfmprc);
+	}
+	hw->rx_loaded = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		/* Good Tx packet, include VF loopback */
+		TXGBE_UPDCNT32(TXGBE_QPTXPKT(i),
+		hw_stats->qp[i].last_vfgptc, hw_stats->qp[i].vfgptc);
+
+		/* Good Tx octets, include VF loopback */
+		TXGBE_UPDCNT36(TXGBE_QPTXOCTL(i),
+		hw_stats->qp[i].last_vfgotc, hw_stats->qp[i].vfgotc);
+	}
+	hw->offset_loaded = 0;
+}
+
+static int
+txgbevf_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+		       unsigned int n)
+{
+	struct txgbevf_hw_stats *hw_stats = (struct txgbevf_hw_stats *)
+			TXGBE_DEV_STATS(dev);
+	unsigned int i;
+
+	if (n < TXGBEVF_NB_XSTATS)
+		return TXGBEVF_NB_XSTATS;
+
+	txgbevf_update_stats(dev);
+
+	if (!xstats)
+		return 0;
+
+	/* Extended stats */
+	for (i = 0; i < TXGBEVF_NB_XSTATS; i++) {
+		xstats[i].id = i;
+		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
+			rte_txgbevf_stats_strings[i].offset);
+	}
+
+	return TXGBEVF_NB_XSTATS;
+}
+
+static int
+txgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct txgbevf_hw_stats *hw_stats = (struct txgbevf_hw_stats *)
+			  TXGBE_DEV_STATS(dev);
+	uint32_t i;
+
+	txgbevf_update_stats(dev);
+
+	if (stats == NULL)
+		return -EINVAL;
+
+	stats->ipackets = 0;
+	stats->ibytes = 0;
+	stats->opackets = 0;
+	stats->obytes = 0;
+
+	for (i = 0; i < 8; i++) {
+		stats->ipackets += hw_stats->qp[i].vfgprc;
+		stats->ibytes += hw_stats->qp[i].vfgorc;
+		stats->opackets += hw_stats->qp[i].vfgptc;
+		stats->obytes += hw_stats->qp[i].vfgotc;
+	}
+
+	return 0;
+}
+
+static int
+txgbevf_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct txgbevf_hw_stats *hw_stats = (struct txgbevf_hw_stats *)
+			TXGBE_DEV_STATS(dev);
+	uint32_t i;
+
+	/* Sync HW register to the last stats */
+	txgbevf_dev_stats_get(dev, NULL);
+
+	/* reset HW current stats*/
+	for (i = 0; i < 8; i++) {
+		hw_stats->qp[i].vfgprc = 0;
+		hw_stats->qp[i].vfgorc = 0;
+		hw_stats->qp[i].vfgptc = 0;
+		hw_stats->qp[i].vfgotc = 0;
+	}
+
+	return 0;
+}
 
 static int
 txgbevf_dev_info_get(struct rte_eth_dev *dev,
@@ -707,6 +860,11 @@ txgbevf_dev_interrupt_handler(void *param)
 static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.dev_configure        = txgbevf_dev_configure,
 	.link_update          = txgbevf_dev_link_update,
+	.stats_get            = txgbevf_dev_stats_get,
+	.xstats_get           = txgbevf_dev_xstats_get,
+	.stats_reset          = txgbevf_dev_stats_reset,
+	.xstats_reset         = txgbevf_dev_stats_reset,
+	.xstats_get_names     = txgbevf_dev_xstats_get_names,
 	.dev_infos_get        = txgbevf_dev_info_get,
 	.rx_queue_intr_enable = txgbevf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = txgbevf_dev_rx_queue_intr_disable,
