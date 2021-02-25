@@ -14,6 +14,36 @@
 #include "base/txgbe.h"
 #include "txgbe_ethdev.h"
 #include "txgbe_rxtx.h"
+#include "txgbe_regs_group.h"
+
+static const struct reg_info txgbevf_regs_general[] = {
+	{TXGBE_VFRST, 1, 1, "TXGBE_VFRST"},
+	{TXGBE_VFSTATUS, 1, 1, "TXGBE_VFSTATUS"},
+	{TXGBE_VFMBCTL, 1, 1, "TXGBE_VFMAILBOX"},
+	{TXGBE_VFMBX, 16, 4, "TXGBE_VFMBX"},
+	{TXGBE_VFPBWRAP, 1, 1, "TXGBE_VFPBWRAP"},
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbevf_regs_interrupt[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbevf_regs_rxdma[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info txgbevf_regs_tx[] = {
+	{0, 0, 0, ""}
+};
+
+/* VF registers */
+static const struct reg_info *txgbevf_regs[] = {
+				txgbevf_regs_general,
+				txgbevf_regs_interrupt,
+				txgbevf_regs_rxdma,
+				txgbevf_regs_tx,
+				NULL};
 
 static int txgbevf_dev_xstats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_xstat *xstats, unsigned int n);
@@ -946,6 +976,49 @@ txgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 }
 
 static int
+txgbevf_get_reg_length(struct rte_eth_dev *dev __rte_unused)
+{
+	int count = 0;
+	int g_ind = 0;
+	const struct reg_info *reg_group;
+
+	while ((reg_group = txgbevf_regs[g_ind++]))
+		count += txgbe_regs_group_count(reg_group);
+
+	return count;
+}
+
+static int
+txgbevf_get_regs(struct rte_eth_dev *dev,
+		struct rte_dev_reg_info *regs)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t *data = regs->data;
+	int g_ind = 0;
+	int count = 0;
+	const struct reg_info *reg_group;
+
+	if (data == NULL) {
+		regs->length = txgbevf_get_reg_length(dev);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
+	/* Support only full register dump */
+	if (regs->length == 0 ||
+	    regs->length == (uint32_t)txgbevf_get_reg_length(dev)) {
+		regs->version = hw->mac.type << 24 | hw->revision_id << 16 |
+			hw->device_id;
+		while ((reg_group = txgbevf_regs[g_ind++]))
+			count += txgbe_read_regs_group(dev, &data[count],
+						      reg_group);
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
 txgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
@@ -1120,6 +1193,7 @@ static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.rxq_info_get         = txgbe_rxq_info_get,
 	.txq_info_get         = txgbe_txq_info_get,
 	.mac_addr_set         = txgbevf_set_default_mac_addr,
+	.get_reg              = txgbevf_get_regs,
 	.reta_update          = txgbe_dev_rss_reta_update,
 	.reta_query           = txgbe_dev_rss_reta_query,
 	.rss_hash_update      = txgbe_dev_rss_hash_update,
