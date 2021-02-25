@@ -36,6 +36,4 @@ EXPERIMENTAL {
 	rte_power_poll_stat_update;
 
 	# added in 21.02
-	rte_power_guest_channel_receive_msg;
-	rte_power_guest_channel_send_msg;
 };
