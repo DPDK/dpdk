@@ -1355,10 +1355,15 @@ static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.allmulticast_enable  = txgbevf_dev_allmulticast_enable,
 	.allmulticast_disable = txgbevf_dev_allmulticast_disable,
 	.dev_infos_get        = txgbevf_dev_info_get,
+	.dev_supported_ptypes_get = txgbe_dev_supported_ptypes_get,
 	.mtu_set              = txgbevf_dev_set_mtu,
 	.vlan_filter_set      = txgbevf_vlan_filter_set,
 	.vlan_strip_queue_set = txgbevf_vlan_strip_queue_set,
 	.vlan_offload_set     = txgbevf_vlan_offload_set,
+	.rx_queue_setup       = txgbe_dev_rx_queue_setup,
+	.rx_queue_release     = txgbe_dev_rx_queue_release,
+	.tx_queue_setup       = txgbe_dev_tx_queue_setup,
+	.tx_queue_release     = txgbe_dev_tx_queue_release,
 	.rx_queue_intr_enable = txgbevf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = txgbevf_dev_rx_queue_intr_disable,
 	.mac_addr_add         = txgbevf_add_mac_addr,
@@ -1372,6 +1377,7 @@ static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.reta_query           = txgbe_dev_rss_reta_query,
 	.rss_hash_update      = txgbe_dev_rss_hash_update,
 	.rss_hash_conf_get    = txgbe_dev_rss_hash_conf_get,
+	.tx_done_cleanup      = txgbe_dev_tx_done_cleanup,
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe_vf, rte_txgbevf_pmd);
