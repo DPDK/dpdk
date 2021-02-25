@@ -2,6 +2,8 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
+#include <math.h>
+
 #include "test_perf_common.h"
 
 int
@@ -95,11 +97,13 @@ perf_event_timer_producer(void *arg)
 	uint64_t timeout_ticks = opt->expiry_nsec / opt->timer_tick_nsec;
 
 	memset(&tim, 0, sizeof(struct rte_event_timer));
-	timeout_ticks = opt->optm_timer_tick_nsec ?
-			(timeout_ticks * opt->timer_tick_nsec)
-			/ opt->optm_timer_tick_nsec : timeout_ticks;
+	timeout_ticks =
+		opt->optm_timer_tick_nsec
+			? ceil((double)(timeout_ticks * opt->timer_tick_nsec) /
+			       opt->optm_timer_tick_nsec)
+			: timeout_ticks;
 	timeout_ticks += timeout_ticks ? 0 : 1;
-	tim.ev.event_type =  RTE_EVENT_TYPE_TIMER;
+	tim.ev.event_type = RTE_EVENT_TYPE_TIMER;
 	tim.ev.op = RTE_EVENT_OP_NEW;
 	tim.ev.sched_type = t->opt->sched_type_list[0];
 	tim.ev.queue_id = p->queue_id;
@@ -159,11 +163,13 @@ perf_event_timer_producer_burst(void *arg)
 	uint64_t timeout_ticks = opt->expiry_nsec / opt->timer_tick_nsec;
 
 	memset(&tim, 0, sizeof(struct rte_event_timer));
-	timeout_ticks = opt->optm_timer_tick_nsec ?
-			(timeout_ticks * opt->timer_tick_nsec)
-			/ opt->optm_timer_tick_nsec : timeout_ticks;
+	timeout_ticks =
+		opt->optm_timer_tick_nsec
+			? ceil((double)(timeout_ticks * opt->timer_tick_nsec) /
+			       opt->optm_timer_tick_nsec)
+			: timeout_ticks;
 	timeout_ticks += timeout_ticks ? 0 : 1;
-	tim.ev.event_type =  RTE_EVENT_TYPE_TIMER;
+	tim.ev.event_type = RTE_EVENT_TYPE_TIMER;
 	tim.ev.op = RTE_EVENT_OP_NEW;
 	tim.ev.sched_type = t->opt->sched_type_list[0];
 	tim.ev.queue_id = p->queue_id;
