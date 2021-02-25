@@ -171,15 +171,17 @@ foreach subpath:subdirs
 				endif
 			else
 				lk_args = ['-Wl,--version-script=' + version_map]
-				# on unix systems check the output of the
-				# check-symbols.sh script, using it as a
-				# dependency of the .so build
-				lk_deps += custom_target(lib_name + '.sym_chk',
-					command: [check_symbols,
-						version_map, '@INPUT@'],
-					capture: true,
-					input: static_lib,
-					output: lib_name + '.sym_chk')
+				if developer_mode
+					# on unix systems check the output of the
+					# check-symbols.sh script, using it as a
+					# dependency of the .so build
+					lk_deps += custom_target(lib_name + '.sym_chk',
+						command: [check_symbols,
+							version_map, '@INPUT@'],
+						capture: true,
+						input: static_lib,
+						output: lib_name + '.sym_chk')
+				endif
 			endif
 
 			shared_lib = shared_library(lib_name,

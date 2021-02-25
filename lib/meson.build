@@ -177,7 +177,7 @@ foreach l:libraries
 			endif
 
 			lk_deps = [version_map, def_file, mingw_map]
-			if not is_windows
+			if developer_mode and not is_windows
 				# on unix systems check the output of the
 				# check-symbols.sh script, using it as a
 				# dependency of the .so build
