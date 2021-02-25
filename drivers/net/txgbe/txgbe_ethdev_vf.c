@@ -15,6 +15,8 @@
 #include "txgbe_ethdev.h"
 #include "txgbe_rxtx.h"
 
+static int txgbevf_dev_info_get(struct rte_eth_dev *dev,
+				 struct rte_eth_dev_info *dev_info);
 static int txgbevf_dev_close(struct rte_eth_dev *dev);
 static void txgbevf_intr_disable(struct rte_eth_dev *dev);
 static void txgbevf_intr_enable(struct rte_eth_dev *dev);
@@ -27,6 +29,20 @@ static const struct rte_pci_id pci_id_txgbevf_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_RAPTOR_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_RAPTOR_VF_HV) },
 	{ .vendor_id = 0, /* sentinel */ },
+};
+
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = TXGBE_RING_DESC_MAX,
+	.nb_min = TXGBE_RING_DESC_MIN,
+	.nb_align = TXGBE_RXD_ALIGN,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = TXGBE_RING_DESC_MAX,
+	.nb_min = TXGBE_RING_DESC_MIN,
+	.nb_align = TXGBE_TXD_ALIGN,
+	.nb_seg_max = TXGBE_TX_MAX_SEG,
+	.nb_mtu_seg_max = TXGBE_TX_MAX_SEG,
 };
 
 static const struct eth_dev_ops txgbevf_eth_dev_ops;
@@ -246,6 +262,57 @@ static struct rte_pci_driver rte_txgbevf_pmd = {
 	.remove = eth_txgbevf_pci_remove,
 };
 
+static int
+txgbevf_dev_info_get(struct rte_eth_dev *dev,
+		     struct rte_eth_dev_info *dev_info)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
+	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
+	dev_info->min_rx_bufsize = 1024;
+	dev_info->max_rx_pktlen = TXGBE_FRAME_SIZE_MAX;
+	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
+	dev_info->max_hash_mac_addrs = TXGBE_VMDQ_NUM_UC_MAC;
+	dev_info->max_vfs = pci_dev->max_vfs;
+	dev_info->max_vmdq_pools = ETH_64_POOLS;
+	dev_info->rx_queue_offload_capa = txgbe_get_rx_queue_offloads(dev);
+	dev_info->rx_offload_capa = (txgbe_get_rx_port_offloads(dev) |
+				     dev_info->rx_queue_offload_capa);
+	dev_info->tx_queue_offload_capa = txgbe_get_tx_queue_offloads(dev);
+	dev_info->tx_offload_capa = txgbe_get_tx_port_offloads(dev);
+	dev_info->hash_key_size = TXGBE_HKEY_MAX_INDEX * sizeof(uint32_t);
+	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+	dev_info->flow_type_rss_offloads = TXGBE_RSS_OFFLOAD_ALL;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = TXGBE_DEFAULT_RX_PTHRESH,
+			.hthresh = TXGBE_DEFAULT_RX_HTHRESH,
+			.wthresh = TXGBE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = TXGBE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+		.offloads = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = TXGBE_DEFAULT_TX_PTHRESH,
+			.hthresh = TXGBE_DEFAULT_TX_HTHRESH,
+			.wthresh = TXGBE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = TXGBE_DEFAULT_TX_FREE_THRESH,
+		.offloads = 0,
+	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
+
+	return 0;
+}
+
 /*
  * Virtual Function operations
  */
@@ -406,8 +473,11 @@ txgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
  * operation have been implemented
  */
 static const struct eth_dev_ops txgbevf_eth_dev_ops = {
+	.dev_infos_get        = txgbevf_dev_info_get,
 	.mac_addr_add         = txgbevf_add_mac_addr,
 	.mac_addr_remove      = txgbevf_remove_mac_addr,
+	.rxq_info_get         = txgbe_rxq_info_get,
+	.txq_info_get         = txgbe_txq_info_get,
 	.mac_addr_set         = txgbevf_set_default_mac_addr,
 };
 
