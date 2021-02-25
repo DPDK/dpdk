@@ -798,6 +798,14 @@ Integrating with the Build System
 
 DPDK is built using the tools ``meson`` and ``ninja``.
 
+.. note::
+
+   In order to catch possible issues as soon as possible,
+   it is recommended that developers build DPDK in "developer mode" to enable additional checks.
+   By default, this mode is enabled if the build is being done from a git checkout,
+   but the mode can be manually enabled/disabled using the
+   ``developer_mode`` meson configuration option.
+
 Therefore all new component additions should include a ``meson.build`` file,
 and should be added to the component lists in the ``meson.build`` files in the
 relevant top-level directory:

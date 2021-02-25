@@ -11,6 +11,20 @@ project('DPDK', 'C',
 	meson_version: '>= 0.47.1'
 )
 
+# check for developer mode
+developer_mode = false
+if get_option('developer_mode').auto()
+	if meson.version().version_compare('>=0.53') # fs module available
+		fs = import('fs')
+		developer_mode = fs.is_dir('.git')
+	endif
+else
+	developer_mode = get_option('developer_mode').enabled()
+endif
+if developer_mode
+	message('## Building in Developer Mode ##')
+endif
+
 # set up some global vars for compiler, platform, configuration, etc.
 cc = meson.get_compiler('c')
 dpdk_conf = configuration_data()
