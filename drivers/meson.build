@@ -209,8 +209,10 @@ foreach subpath:subdirs
 			set_variable('shared_@0@'.format(lib_name), shared_dep)
 			set_variable('static_@0@'.format(lib_name), static_dep)
 			dependency_name = ''.join(lib_name.split('rte_'))
-			message('drivers/@0@: Defining dependency "@1@"'.format(
-					drv_path, dependency_name))
+			if developer_mode
+				message('drivers/@0@: Defining dependency "@1@"'.format(
+						drv_path, dependency_name))
+			endif
 		endif # build
 	endforeach
 

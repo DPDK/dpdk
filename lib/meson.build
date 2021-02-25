@@ -119,9 +119,9 @@ foreach l:libraries
 			shared_dep = declare_dependency(include_directories: includes)
 			static_dep = shared_dep
 		else
-			if is_windows and use_function_versioning
+			if is_windows and use_function_versioning and developer_mode
 				message('@0@: Function versioning is not supported by Windows.'
-				.format(name))
+						.format(name))
 			endif
 
 			if use_function_versioning
@@ -210,7 +210,9 @@ foreach l:libraries
 
 		set_variable('shared_rte_' + name, shared_dep)
 		set_variable('static_rte_' + name, static_dep)
-		message('lib/@0@: Defining dependency "@1@"'.format(
-				dir_name, name))
+		if developer_mode
+			message('lib/@0@: Defining dependency "@1@"'.format(
+					dir_name, name))
+		endif
 	endif # if build
 endforeach
