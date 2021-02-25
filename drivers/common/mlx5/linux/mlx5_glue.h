@@ -307,6 +307,8 @@ struct mlx5_glue {
 	int (*devx_qp_query)(struct ibv_qp *qp,
 			     const void *in, size_t inlen,
 			     void *out, size_t outlen);
+	int (*devx_wq_query)(struct ibv_wq *wq, const void *in, size_t inlen,
+			     void *out, size_t outlen);
 	int (*devx_port_query)(struct ibv_context *ctx,
 			       uint32_t port_num,
 			       struct mlx5dv_devx_port *mlx5_devx_port);

@@ -1068,6 +1068,23 @@ mlx5_glue_devx_qp_query(struct ibv_qp *qp,
 }
 
 static int
+mlx5_glue_devx_wq_query(struct ibv_wq *wq, const void *in, size_t inlen,
+			void *out, size_t outlen)
+{
+#ifdef HAVE_IBV_DEVX_QP
+	return mlx5dv_devx_wq_query(wq, in, inlen, out, outlen);
+#else
+	(void)wq;
+	(void)in;
+	(void)inlen;
+	(void)out;
+	(void)outlen;
+	errno = ENOTSUP;
+	return errno;
+#endif
+}
+
+static int
 mlx5_glue_devx_port_query(struct ibv_context *ctx,
 			  uint32_t port_num,
 			  struct mlx5dv_devx_port *mlx5_devx_port)
@@ -1403,6 +1420,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.devx_umem_reg = mlx5_glue_devx_umem_reg,
 	.devx_umem_dereg = mlx5_glue_devx_umem_dereg,
 	.devx_qp_query = mlx5_glue_devx_qp_query,
+	.devx_wq_query = mlx5_glue_devx_wq_query,
 	.devx_port_query = mlx5_glue_devx_port_query,
 	.dr_dump_domain = mlx5_glue_dr_dump_domain,
 	.dr_reclaim_domain_memory = mlx5_glue_dr_reclaim_domain_memory,
