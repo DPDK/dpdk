@@ -17,6 +17,8 @@
 
 static int txgbevf_dev_info_get(struct rte_eth_dev *dev,
 				 struct rte_eth_dev_info *dev_info);
+static int txgbevf_dev_link_update(struct rte_eth_dev *dev,
+				   int wait_to_complete);
 static int txgbevf_dev_close(struct rte_eth_dev *dev);
 static void txgbevf_intr_disable(struct rte_eth_dev *dev);
 static void txgbevf_intr_enable(struct rte_eth_dev *dev);
@@ -317,6 +319,12 @@ txgbevf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->tx_desc_lim = tx_desc_lim;
 
 	return 0;
+}
+
+static int
+txgbevf_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	return txgbe_dev_link_update_share(dev, wait_to_complete);
 }
 
 /*
@@ -652,6 +660,7 @@ txgbevf_dev_interrupt_handler(void *param)
  * operation have been implemented
  */
 static const struct eth_dev_ops txgbevf_eth_dev_ops = {
+	.link_update          = txgbevf_dev_link_update,
 	.dev_infos_get        = txgbevf_dev_info_get,
 	.rx_queue_intr_enable = txgbevf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = txgbevf_dev_rx_queue_intr_disable,
