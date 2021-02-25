@@ -2,10 +2,6 @@
  * Copyright 2019 Mellanox Technologies, Ltd
  */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>

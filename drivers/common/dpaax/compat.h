@@ -10,10 +10,6 @@
 #define __COMPAT_H
 
 #include <sched.h>
-
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
 #include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
