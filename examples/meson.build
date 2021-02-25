@@ -6,8 +6,6 @@ if get_option('default_library') == 'static'
 	link_whole_libs = dpdk_static_libraries + dpdk_drivers
 endif
 
-execinfo = cc.find_library('execinfo', required: false)
-
 # list of all example apps. Keep 1-3 per line, in alphabetical order.
 all_examples = [
 	'bbdev_app', 'bond',
@@ -82,7 +80,7 @@ foreach example: examples
 	cflags = default_cflags
 	ldflags = default_ldflags
 
-	ext_deps = [execinfo]
+	ext_deps = []
 	includes = [include_directories(example)]
 	deps = ['eal', 'mempool', 'net', 'mbuf', 'ethdev', 'cmdline']
 	subdir(example)
