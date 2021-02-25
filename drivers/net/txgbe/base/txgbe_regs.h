@@ -1698,6 +1698,27 @@ enum txgbe_5tuple_protocol {
 #define TXGBE_REG_RSSTBL   TXGBE_RSSTBL(0)
 #define TXGBE_REG_RSSKEY   TXGBE_RSSKEY(0)
 
+static inline u32
+txgbe_map_reg(struct txgbe_hw *hw, u32 reg)
+{
+	switch (reg) {
+	case TXGBE_REG_RSSTBL:
+		if (hw->mac.type == txgbe_mac_raptor_vf)
+			reg = TXGBE_VFRSSTBL(0);
+		break;
+	case TXGBE_REG_RSSKEY:
+		if (hw->mac.type == txgbe_mac_raptor_vf)
+			reg = TXGBE_VFRSSKEY(0);
+		break;
+	default:
+		/* you should never reach here */
+		reg = TXGBE_REG_DUMMY;
+		break;
+	}
+
+	return reg;
+}
+
 /*
  * read non-rc counters
  */
@@ -1860,6 +1881,11 @@ po32m(struct txgbe_hw *hw, u32 reg, u32 mask, u32 expect, u32 *actual,
 	rd32((hw), (reg) + ((idx) << 2)))
 #define wr32a(hw, reg, idx, val) \
 	wr32((hw), (reg) + ((idx) << 2), (val))
+
+#define rd32at(hw, reg, idx) \
+		rd32a(hw, txgbe_map_reg(hw, reg), idx)
+#define wr32at(hw, reg, idx, val) \
+		wr32a(hw, txgbe_map_reg(hw, reg), idx, val)
 
 #define rd32w(hw, reg, mask, slice) do { \
 	rd32((hw), reg); \

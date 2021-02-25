@@ -2868,36 +2868,68 @@ txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 			rss_key |= LS32(hash_key[(i * 4) + 1], 8, 0xFF);
 			rss_key |= LS32(hash_key[(i * 4) + 2], 16, 0xFF);
 			rss_key |= LS32(hash_key[(i * 4) + 3], 24, 0xFF);
-			wr32a(hw, TXGBE_REG_RSSKEY, i, rss_key);
+			wr32at(hw, TXGBE_REG_RSSKEY, i, rss_key);
 		}
 	}
 
 	/* Set configured hashing protocols */
 	rss_hf = rss_conf->rss_hf & TXGBE_RSS_OFFLOAD_ALL;
-	mrqc = rd32(hw, TXGBE_RACTL);
-	mrqc &= ~TXGBE_RACTL_RSSMASK;
-	if (rss_hf & ETH_RSS_IPV4)
-		mrqc |= TXGBE_RACTL_RSSIPV4;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
-		mrqc |= TXGBE_RACTL_RSSIPV4TCP;
-	if (rss_hf & ETH_RSS_IPV6 ||
-	    rss_hf & ETH_RSS_IPV6_EX)
-		mrqc |= TXGBE_RACTL_RSSIPV6;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP ||
-	    rss_hf & ETH_RSS_IPV6_TCP_EX)
-		mrqc |= TXGBE_RACTL_RSSIPV6TCP;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
-		mrqc |= TXGBE_RACTL_RSSIPV4UDP;
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP ||
-	    rss_hf & ETH_RSS_IPV6_UDP_EX)
-		mrqc |= TXGBE_RACTL_RSSIPV6UDP;
+	if (hw->mac.type == txgbe_mac_raptor_vf) {
+		mrqc = rd32(hw, TXGBE_VFPLCFG);
+		mrqc &= ~TXGBE_VFPLCFG_RSSMASK;
+		if (rss_hf & ETH_RSS_IPV4)
+			mrqc |= TXGBE_VFPLCFG_RSSIPV4;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+			mrqc |= TXGBE_VFPLCFG_RSSIPV4TCP;
+		if (rss_hf & ETH_RSS_IPV6 ||
+		    rss_hf & ETH_RSS_IPV6_EX)
+			mrqc |= TXGBE_VFPLCFG_RSSIPV6;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP ||
+		    rss_hf & ETH_RSS_IPV6_TCP_EX)
+			mrqc |= TXGBE_VFPLCFG_RSSIPV6TCP;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+			mrqc |= TXGBE_VFPLCFG_RSSIPV4UDP;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP ||
+		    rss_hf & ETH_RSS_IPV6_UDP_EX)
+			mrqc |= TXGBE_VFPLCFG_RSSIPV6UDP;
 
-	if (rss_hf)
-		mrqc |= TXGBE_RACTL_RSSENA;
-	else
-		mrqc &= ~TXGBE_RACTL_RSSENA;
+		if (rss_hf)
+			mrqc |= TXGBE_VFPLCFG_RSSENA;
+		else
+			mrqc &= ~TXGBE_VFPLCFG_RSSENA;
 
-	wr32(hw, TXGBE_RACTL, mrqc);
+		if (dev->data->nb_rx_queues > 3)
+			mrqc |= TXGBE_VFPLCFG_RSSHASH(2);
+		else if (dev->data->nb_rx_queues > 1)
+			mrqc |= TXGBE_VFPLCFG_RSSHASH(1);
+
+		wr32(hw, TXGBE_VFPLCFG, mrqc);
+	} else {
+		mrqc = rd32(hw, TXGBE_RACTL);
+		mrqc &= ~TXGBE_RACTL_RSSMASK;
+		if (rss_hf & ETH_RSS_IPV4)
+			mrqc |= TXGBE_RACTL_RSSIPV4;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+			mrqc |= TXGBE_RACTL_RSSIPV4TCP;
+		if (rss_hf & ETH_RSS_IPV6 ||
+		    rss_hf & ETH_RSS_IPV6_EX)
+			mrqc |= TXGBE_RACTL_RSSIPV6;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP ||
+		    rss_hf & ETH_RSS_IPV6_TCP_EX)
+			mrqc |= TXGBE_RACTL_RSSIPV6TCP;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+			mrqc |= TXGBE_RACTL_RSSIPV4UDP;
+		if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP ||
+		    rss_hf & ETH_RSS_IPV6_UDP_EX)
+			mrqc |= TXGBE_RACTL_RSSIPV6UDP;
+
+		if (rss_hf)
+			mrqc |= TXGBE_RACTL_RSSENA;
+		else
+			mrqc &= ~TXGBE_RACTL_RSSENA;
+
+		wr32(hw, TXGBE_RACTL, mrqc);
+	}
 
 	return 0;
 }
@@ -2917,7 +2949,7 @@ txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if (hash_key) {
 		/* Return RSS hash key */
 		for (i = 0; i < 10; i++) {
-			rss_key = rd32a(hw, TXGBE_REG_RSSKEY, i);
+			rss_key = rd32at(hw, TXGBE_REG_RSSKEY, i);
 			hash_key[(i * 4) + 0] = RS32(rss_key, 0, 0xFF);
 			hash_key[(i * 4) + 1] = RS32(rss_key, 8, 0xFF);
 			hash_key[(i * 4) + 2] = RS32(rss_key, 16, 0xFF);
@@ -2926,24 +2958,45 @@ txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	}
 
 	rss_hf = 0;
-	mrqc = rd32(hw, TXGBE_RACTL);
-	if (mrqc & TXGBE_RACTL_RSSIPV4)
-		rss_hf |= ETH_RSS_IPV4;
-	if (mrqc & TXGBE_RACTL_RSSIPV4TCP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
-	if (mrqc & TXGBE_RACTL_RSSIPV6)
-		rss_hf |= ETH_RSS_IPV6 |
-			  ETH_RSS_IPV6_EX;
-	if (mrqc & TXGBE_RACTL_RSSIPV6TCP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP |
-			  ETH_RSS_IPV6_TCP_EX;
-	if (mrqc & TXGBE_RACTL_RSSIPV4UDP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
-	if (mrqc & TXGBE_RACTL_RSSIPV6UDP)
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP |
-			  ETH_RSS_IPV6_UDP_EX;
-	if (!(mrqc & TXGBE_RACTL_RSSENA))
-		rss_hf = 0;
+	if (hw->mac.type == txgbe_mac_raptor_vf) {
+		mrqc = rd32(hw, TXGBE_VFPLCFG);
+		if (mrqc & TXGBE_VFPLCFG_RSSIPV4)
+			rss_hf |= ETH_RSS_IPV4;
+		if (mrqc & TXGBE_VFPLCFG_RSSIPV4TCP)
+			rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		if (mrqc & TXGBE_VFPLCFG_RSSIPV6)
+			rss_hf |= ETH_RSS_IPV6 |
+				  ETH_RSS_IPV6_EX;
+		if (mrqc & TXGBE_VFPLCFG_RSSIPV6TCP)
+			rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP |
+				  ETH_RSS_IPV6_TCP_EX;
+		if (mrqc & TXGBE_VFPLCFG_RSSIPV4UDP)
+			rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+		if (mrqc & TXGBE_VFPLCFG_RSSIPV6UDP)
+			rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP |
+				  ETH_RSS_IPV6_UDP_EX;
+		if (!(mrqc & TXGBE_VFPLCFG_RSSENA))
+			rss_hf = 0;
+	} else {
+		mrqc = rd32(hw, TXGBE_RACTL);
+		if (mrqc & TXGBE_RACTL_RSSIPV4)
+			rss_hf |= ETH_RSS_IPV4;
+		if (mrqc & TXGBE_RACTL_RSSIPV4TCP)
+			rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+		if (mrqc & TXGBE_RACTL_RSSIPV6)
+			rss_hf |= ETH_RSS_IPV6 |
+				  ETH_RSS_IPV6_EX;
+		if (mrqc & TXGBE_RACTL_RSSIPV6TCP)
+			rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP |
+				  ETH_RSS_IPV6_TCP_EX;
+		if (mrqc & TXGBE_RACTL_RSSIPV4UDP)
+			rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+		if (mrqc & TXGBE_RACTL_RSSIPV6UDP)
+			rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP |
+				  ETH_RSS_IPV6_UDP_EX;
+		if (!(mrqc & TXGBE_RACTL_RSSENA))
+			rss_hf = 0;
+	}
 
 	rss_hf &= TXGBE_RSS_OFFLOAD_ALL;
 
@@ -2975,7 +3028,7 @@ txgbe_rss_configure(struct rte_eth_dev *dev)
 				j = 0;
 			reta = (reta >> 8) | LS32(j, 24, 0xFF);
 			if ((i & 3) == 3)
-				wr32a(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
+				wr32at(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
 		}
 	}
 	/*
@@ -4961,7 +5014,7 @@ txgbe_config_rss_filter(struct rte_eth_dev *dev,
 			j = 0;
 		reta = (reta >> 8) | LS32(conf->conf.queue[j], 24, 0xFF);
 		if ((i & 3) == 3)
-			wr32a(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
+			wr32at(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
 	}
 
 	/* Configure the RSS key and the RSS protocols used to compute

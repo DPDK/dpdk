@@ -3257,7 +3257,7 @@ txgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 		if (!mask)
 			continue;
 
-		reta = rd32a(hw, TXGBE_REG_RSSTBL, i >> 2);
+		reta = rd32at(hw, TXGBE_REG_RSSTBL, i >> 2);
 		for (j = 0; j < 4; j++) {
 			if (RS8(mask, j, 0x1)) {
 				reta  &= ~(MS32(8 * j, 0xFF));
@@ -3265,7 +3265,7 @@ txgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 						8 * j, 0xFF);
 			}
 		}
-		wr32a(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
+		wr32at(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
 	}
 	adapter->rss_reta_updated = 1;
 
@@ -3298,7 +3298,7 @@ txgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 		if (!mask)
 			continue;
 
-		reta = rd32a(hw, TXGBE_REG_RSSTBL, i >> 2);
+		reta = rd32at(hw, TXGBE_REG_RSSTBL, i >> 2);
 		for (j = 0; j < 4; j++) {
 			if (RS8(mask, j, 0x1))
 				reta_conf[idx].reta[shift + j] =
@@ -4524,6 +4524,7 @@ txgbe_rss_update_sp(enum txgbe_mac_type mac_type)
 {
 	switch (mac_type) {
 	case txgbe_mac_raptor:
+	case txgbe_mac_raptor_vf:
 		return 1;
 	default:
 		return 0;

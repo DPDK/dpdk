@@ -990,6 +990,10 @@ static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.rxq_info_get         = txgbe_rxq_info_get,
 	.txq_info_get         = txgbe_txq_info_get,
 	.mac_addr_set         = txgbevf_set_default_mac_addr,
+	.reta_update          = txgbe_dev_rss_reta_update,
+	.reta_query           = txgbe_dev_rss_reta_query,
+	.rss_hash_update      = txgbe_dev_rss_hash_update,
+	.rss_hash_conf_get    = txgbe_dev_rss_hash_conf_get,
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe_vf, rte_txgbevf_pmd);
