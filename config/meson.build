@@ -125,11 +125,8 @@ if cc.find_library('m', required : false).found()
 	dpdk_extra_ldflags += '-lm'
 endif
 
-# for linux link against dl, for bsd execinfo
 if is_linux
 	link_lib = 'dl'
-elif is_freebsd
-	link_lib = 'execinfo'
 else
 	link_lib = ''
 endif
@@ -157,6 +154,12 @@ if fdt_dep.found() and cc.has_header('fdt.h')
 	has_libfdt = 1
 	add_project_link_arguments('-lfdt', language: 'c')
 	dpdk_extra_ldflags += '-lfdt'
+endif
+
+libexecinfo = cc.find_library('libexecinfo', required: false)
+if libexecinfo.found() and cc.has_header('execinfo.h')
+	add_project_link_arguments('-lexecinfo', language: 'c')
+	dpdk_extra_ldflags += '-lexecinfo'
 endif
 
 # check for libbsd
