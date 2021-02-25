@@ -29,6 +29,8 @@ static int txgbevf_dev_stats_reset(struct rte_eth_dev *dev);
 static int txgbevf_vlan_offload_config(struct rte_eth_dev *dev, int mask);
 static void txgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
 static void txgbevf_configure_msix(struct rte_eth_dev *dev);
+static int txgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static int txgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void txgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 static void txgbevf_dev_interrupt_handler(void *param);
 
@@ -264,6 +266,9 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", err);
 		return -EIO;
 	}
+
+	/* enter promiscuous mode */
+	txgbevf_dev_promiscuous_enable(eth_dev);
 
 	rte_intr_callback_register(intr_handle,
 				   txgbevf_dev_interrupt_handler, eth_dev);
@@ -905,6 +910,90 @@ txgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+txgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int ret;
+
+	switch (hw->mac.update_xcast_mode(hw, TXGBEVF_XCAST_MODE_PROMISC)) {
+	case 0:
+		ret = 0;
+		break;
+	case TXGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+txgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int ret;
+
+	switch (hw->mac.update_xcast_mode(hw, TXGBEVF_XCAST_MODE_NONE)) {
+	case 0:
+		ret = 0;
+		break;
+	case TXGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+txgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int ret;
+
+	switch (hw->mac.update_xcast_mode(hw, TXGBEVF_XCAST_MODE_ALLMULTI)) {
+	case 0:
+		ret = 0;
+		break;
+	case TXGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+txgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int ret;
+
+	switch (hw->mac.update_xcast_mode(hw, TXGBEVF_XCAST_MODE_MULTI)) {
+	case 0:
+		ret = 0;
+		break;
+	case TXGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
+}
+
 static void txgbevf_mbx_process(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
@@ -979,6 +1068,10 @@ static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.stats_reset          = txgbevf_dev_stats_reset,
 	.xstats_reset         = txgbevf_dev_stats_reset,
 	.xstats_get_names     = txgbevf_dev_xstats_get_names,
+	.promiscuous_enable   = txgbevf_dev_promiscuous_enable,
+	.promiscuous_disable  = txgbevf_dev_promiscuous_disable,
+	.allmulticast_enable  = txgbevf_dev_allmulticast_enable,
+	.allmulticast_disable = txgbevf_dev_allmulticast_disable,
 	.dev_infos_get        = txgbevf_dev_info_get,
 	.vlan_filter_set      = txgbevf_vlan_filter_set,
 	.vlan_strip_queue_set = txgbevf_vlan_strip_queue_set,

@@ -33,6 +33,7 @@ s32 txgbe_init_ops_vf(struct txgbe_hw *hw)
 	/* RAR, Multicast, VLAN */
 	mac->set_rar = txgbe_set_rar_vf;
 	mac->set_uc_addr = txgbevf_set_uc_addr_vf;
+	mac->update_xcast_mode = txgbevf_update_xcast_mode;
 	mac->set_vfta = txgbe_set_vfta_vf;
 	mac->set_rlpml = txgbevf_rlpml_set_vf;
 
@@ -255,6 +256,43 @@ s32 txgbe_set_rar_vf(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 	}
 
 	return ret_val;
+}
+
+/**
+ *  txgbevf_update_xcast_mode - Update Multicast mode
+ *  @hw: pointer to the HW structure
+ *  @xcast_mode: new multicast mode
+ *
+ *  Updates the Multicast Mode of VF.
+ **/
+s32 txgbevf_update_xcast_mode(struct txgbe_hw *hw, int xcast_mode)
+{
+	u32 msgbuf[2];
+	s32 err;
+
+	switch (hw->api_version) {
+	case txgbe_mbox_api_12:
+		/* New modes were introduced in 1.3 version */
+		if (xcast_mode > TXGBEVF_XCAST_MODE_ALLMULTI)
+			return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+		/* Fall through */
+	case txgbe_mbox_api_13:
+		break;
+	default:
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+	}
+
+	msgbuf[0] = TXGBE_VF_UPDATE_XCAST_MODE;
+	msgbuf[1] = xcast_mode;
+
+	err = txgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 2);
+	if (err)
+		return err;
+
+	msgbuf[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+	if (msgbuf[0] == (TXGBE_VF_UPDATE_XCAST_MODE | TXGBE_VT_MSGTYPE_NACK))
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+	return 0;
 }
 
 /**

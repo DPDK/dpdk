@@ -47,6 +47,7 @@ s32 txgbe_check_mac_link_vf(struct txgbe_hw *hw, u32 *speed,
 s32 txgbe_set_rar_vf(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 		     u32 enable_addr);
 s32 txgbevf_set_uc_addr_vf(struct txgbe_hw *hw, u32 index, u8 *addr);
+s32 txgbevf_update_xcast_mode(struct txgbe_hw *hw, int xcast_mode);
 s32 txgbe_set_vfta_vf(struct txgbe_hw *hw, u32 vlan, u32 vind,
 		      bool vlan_on, bool vlvf_bypass);
 s32 txgbevf_rlpml_set_vf(struct txgbe_hw *hw, u16 max_size);
