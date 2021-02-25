@@ -26,6 +26,8 @@ static int txgbevf_dev_close(struct rte_eth_dev *dev);
 static void txgbevf_intr_disable(struct rte_eth_dev *dev);
 static void txgbevf_intr_enable(struct rte_eth_dev *dev);
 static int txgbevf_dev_stats_reset(struct rte_eth_dev *dev);
+static int txgbevf_vlan_offload_config(struct rte_eth_dev *dev, int mask);
+static void txgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
 static void txgbevf_configure_msix(struct rte_eth_dev *dev);
 static void txgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 static void txgbevf_dev_interrupt_handler(void *param);
@@ -130,6 +132,8 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
+	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(eth_dev);
+	struct txgbe_hwstrip *hwstrip = TXGBE_DEV_HWSTRIP(eth_dev);
 	struct rte_ether_addr *perm_addr =
 			(struct rte_ether_addr *)hw->mac.perm_addr;
 
@@ -172,6 +176,12 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+
+	/* initialize the vfta */
+	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
+
+	/* initialize the hw strip bitmap*/
+	memset(hwstrip, 0, sizeof(*hwstrip));
 
 	/* Initialize the shared code (base driver) */
 	err = txgbe_init_shared_code(hw);
@@ -595,6 +605,110 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void txgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(dev);
+	int i = 0, j = 0, vfta = 0, mask = 1;
+
+	for (i = 0; i < TXGBE_VFTA_SIZE; i++) {
+		vfta = shadow_vfta->vfta[i];
+		if (vfta) {
+			mask = 1;
+			for (j = 0; j < 32; j++) {
+				if (vfta & mask)
+					txgbe_set_vfta(hw, (i << 5) + j, 0,
+						       on, false);
+				mask <<= 1;
+			}
+		}
+	}
+}
+
+static int
+txgbevf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_vfta *shadow_vfta = TXGBE_DEV_VFTA(dev);
+	uint32_t vid_idx = 0;
+	uint32_t vid_bit = 0;
+	int ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* vind is not used in VF driver, set to 0, check txgbe_set_vfta_vf */
+	ret = hw->mac.set_vfta(hw, vlan_id, 0, !!on, false);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Unable to set VF vlan");
+		return ret;
+	}
+	vid_idx = (uint32_t)((vlan_id >> 5) & 0x7F);
+	vid_bit = (uint32_t)(1 << (vlan_id & 0x1F));
+
+	/* Save what we set and restore it after device reset */
+	if (on)
+		shadow_vfta->vfta[vid_idx] |= vid_bit;
+	else
+		shadow_vfta->vfta[vid_idx] &= ~vid_bit;
+
+	return 0;
+}
+
+static void
+txgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (queue >= hw->mac.max_rx_queues)
+		return;
+
+	ctrl = rd32(hw, TXGBE_RXCFG(queue));
+	txgbe_dev_save_rx_queue(hw, queue);
+	if (on)
+		ctrl |= TXGBE_RXCFG_VLAN;
+	else
+		ctrl &= ~TXGBE_RXCFG_VLAN;
+	wr32(hw, TXGBE_RXCFG(queue), 0);
+	msec_delay(100);
+	txgbe_dev_store_rx_queue(hw, queue);
+	wr32m(hw, TXGBE_RXCFG(queue),
+		TXGBE_RXCFG_VLAN | TXGBE_RXCFG_ENA, ctrl);
+
+	txgbe_vlan_hw_strip_bitmap_set(dev, queue, on);
+}
+
+static int
+txgbevf_vlan_offload_config(struct rte_eth_dev *dev, int mask)
+{
+	struct txgbe_rx_queue *rxq;
+	uint16_t i;
+	int on = 0;
+
+	/* VF function only support hw strip feature, others are not support */
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq = dev->data->rx_queues[i];
+			on = !!(rxq->offloads &	DEV_RX_OFFLOAD_VLAN_STRIP);
+			txgbevf_vlan_strip_queue_set(dev, i, on);
+		}
+	}
+
+	return 0;
+}
+
+static int
+txgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	txgbe_config_vlan_strip_on_all_queues(dev, mask);
+
+	txgbevf_vlan_offload_config(dev, mask);
+
+	return 0;
+}
+
 static int
 txgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
@@ -866,6 +980,9 @@ static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.xstats_reset         = txgbevf_dev_stats_reset,
 	.xstats_get_names     = txgbevf_dev_xstats_get_names,
 	.dev_infos_get        = txgbevf_dev_info_get,
+	.vlan_filter_set      = txgbevf_vlan_filter_set,
+	.vlan_strip_queue_set = txgbevf_vlan_strip_queue_set,
+	.vlan_offload_set     = txgbevf_vlan_offload_set,
 	.rx_queue_intr_enable = txgbevf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = txgbevf_dev_rx_queue_intr_disable,
 	.mac_addr_add         = txgbevf_add_mac_addr,
