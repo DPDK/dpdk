@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Wangxun txgbe driver.**
+
+  * Added support for txgbevf PMD.
+
 * **Updated testpmd.**
 
   * Added command to display Rx queue used descriptor count.

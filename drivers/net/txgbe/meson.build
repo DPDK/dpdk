@@ -12,6 +12,7 @@ objs = [base_objs]
 
 sources = files(
 	'txgbe_ethdev.c',
+	'txgbe_ethdev_vf.c',
 	'txgbe_fdir.c',
 	'txgbe_flow.c',
 	'txgbe_ipsec.c',
