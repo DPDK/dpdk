@@ -21,8 +21,15 @@ s32 txgbe_init_ops_vf(struct txgbe_hw *hw)
 
 	/* MAC */
 	mac->reset_hw = txgbe_reset_hw_vf;
+	mac->start_hw = txgbe_start_hw_vf;
+	/* Cannot clear stats on VF */
+	mac->get_mac_addr = txgbe_get_mac_addr_vf;
 	mac->stop_hw = txgbe_stop_hw_vf;
 	mac->negotiate_api_version = txgbevf_negotiate_api_version;
+
+	/* RAR, Multicast, VLAN */
+	mac->set_rar = txgbe_set_rar_vf;
+	mac->set_uc_addr = txgbevf_set_uc_addr_vf;
 
 	mac->max_tx_queues = 1;
 	mac->max_rx_queues = 1;
@@ -58,6 +65,23 @@ static void txgbe_virt_clr_reg(struct txgbe_hw *hw)
 	}
 
 	txgbe_flush(hw);
+}
+
+/**
+ *  txgbe_start_hw_vf - Prepare hardware for Tx/Rx
+ *  @hw: pointer to hardware structure
+ *
+ *  Starts the hardware by filling the bus info structure and media type, clears
+ *  all on chip counters, initializes receive address registers, multicast
+ *  table, VLAN filter table, calls routine to set up link and flow control
+ *  settings, and leaves transmit and receive units disabled and uninitialized
+ **/
+s32 txgbe_start_hw_vf(struct txgbe_hw *hw)
+{
+	/* Clear adapter stopped flag */
+	hw->adapter_stopped = false;
+
+	return 0;
 }
 
 /**
@@ -193,6 +217,84 @@ STATIC s32 txgbevf_write_msg_read_ack(struct txgbe_hw *hw, u32 *msg,
 		return retval;
 
 	return mbx->read_posted(hw, retmsg, size, 0);
+}
+
+/**
+ *  txgbe_set_rar_vf - set device MAC address
+ *  @hw: pointer to hardware structure
+ *  @index: Receive address register to write
+ *  @addr: Address to put into receive address register
+ *  @vmdq: VMDq "set" or "pool" index
+ *  @enable_addr: set flag that address is active
+ **/
+s32 txgbe_set_rar_vf(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
+		     u32 enable_addr)
+{
+	u32 msgbuf[3];
+	u8 *msg_addr = (u8 *)(&msgbuf[1]);
+	s32 ret_val;
+	UNREFERENCED_PARAMETER(vmdq, enable_addr, index);
+
+	memset(msgbuf, 0, 12);
+	msgbuf[0] = TXGBE_VF_SET_MAC_ADDR;
+	memcpy(msg_addr, addr, 6);
+	ret_val = txgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 3);
+
+	msgbuf[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+
+	/* if nacked the address was rejected, use "perm_addr" */
+	if (!ret_val &&
+	    (msgbuf[0] == (TXGBE_VF_SET_MAC_ADDR | TXGBE_VT_MSGTYPE_NACK))) {
+		txgbe_get_mac_addr_vf(hw, hw->mac.addr);
+		return TXGBE_ERR_MBX;
+	}
+
+	return ret_val;
+}
+
+/**
+ * txgbe_get_mac_addr_vf - Read device MAC address
+ * @hw: pointer to the HW structure
+ * @mac_addr: the MAC address
+ **/
+s32 txgbe_get_mac_addr_vf(struct txgbe_hw *hw, u8 *mac_addr)
+{
+	int i;
+
+	for (i = 0; i < ETH_ADDR_LEN; i++)
+		mac_addr[i] = hw->mac.perm_addr[i];
+
+	return 0;
+}
+
+s32 txgbevf_set_uc_addr_vf(struct txgbe_hw *hw, u32 index, u8 *addr)
+{
+	u32 msgbuf[3], msgbuf_chk;
+	u8 *msg_addr = (u8 *)(&msgbuf[1]);
+	s32 ret_val;
+
+	memset(msgbuf, 0, sizeof(msgbuf));
+	/*
+	 * If index is one then this is the start of a new list and needs
+	 * indication to the PF so it can do it's own list management.
+	 * If it is zero then that tells the PF to just clear all of
+	 * this VF's macvlans and there is no new list.
+	 */
+	msgbuf[0] |= index << TXGBE_VT_MSGINFO_SHIFT;
+	msgbuf[0] |= TXGBE_VF_SET_MACVLAN;
+	msgbuf_chk = msgbuf[0];
+	if (addr)
+		memcpy(msg_addr, addr, 6);
+
+	ret_val = txgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 3);
+	if (!ret_val) {
+		msgbuf[0] &= ~TXGBE_VT_MSGTYPE_CTS;
+
+		if (msgbuf[0] == (msgbuf_chk | TXGBE_VT_MSGTYPE_NACK))
+			return TXGBE_ERR_OUT_OF_MEM;
+	}
+
+	return ret_val;
 }
 
 /**

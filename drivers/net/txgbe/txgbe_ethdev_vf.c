@@ -18,6 +18,7 @@
 static int txgbevf_dev_close(struct rte_eth_dev *dev);
 static void txgbevf_intr_disable(struct rte_eth_dev *dev);
 static void txgbevf_intr_enable(struct rte_eth_dev *dev);
+static void txgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 
 /*
  * The set of PCI devices this driver supports (for VF)
@@ -56,6 +57,22 @@ txgbevf_negotiate_api(struct txgbe_hw *hw)
 	}
 }
 
+static void
+generate_random_mac_addr(struct rte_ether_addr *mac_addr)
+{
+	uint64_t random;
+
+	/* Set Organizationally Unique Identifier (OUI) prefix. */
+	mac_addr->addr_bytes[0] = 0x00;
+	mac_addr->addr_bytes[1] = 0x09;
+	mac_addr->addr_bytes[2] = 0xC0;
+	/* Force indication of locally assigned MAC address. */
+	mac_addr->addr_bytes[0] |= RTE_ETHER_LOCAL_ADMIN_ADDR;
+	/* Generate the last 3 bytes of the MAC address with a random number. */
+	random = rte_rand();
+	memcpy(&mac_addr->addr_bytes[3], &random, 3);
+}
+
 /*
  * Virtual Function device init
  */
@@ -66,6 +83,8 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	uint32_t tc, tcs;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
+	struct rte_ether_addr *perm_addr =
+			(struct rte_ether_addr *)hw->mac.perm_addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -141,7 +160,52 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	/* Get Rx/Tx queue count via mailbox, which is ready after reset_hw */
 	txgbevf_get_queues(hw, &tcs, &tc);
 
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc("txgbevf", RTE_ETHER_ADDR_LEN *
+					       hw->mac.num_rar_entries, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate %u bytes needed to store "
+			     "MAC addresses",
+			     RTE_ETHER_ADDR_LEN * hw->mac.num_rar_entries);
+		return -ENOMEM;
+	}
+
+	/* Generate a random MAC address, if none was assigned by PF. */
+	if (rte_is_zero_ether_addr(perm_addr)) {
+		generate_random_mac_addr(perm_addr);
+		err = txgbe_set_rar_vf(hw, 1, perm_addr->addr_bytes, 0, 1);
+		if (err) {
+			rte_free(eth_dev->data->mac_addrs);
+			eth_dev->data->mac_addrs = NULL;
+			return err;
+		}
+		PMD_INIT_LOG(INFO, "\tVF MAC address not assigned by Host PF");
+		PMD_INIT_LOG(INFO, "\tAssign randomly generated MAC address "
+			     "%02x:%02x:%02x:%02x:%02x:%02x",
+			     perm_addr->addr_bytes[0],
+			     perm_addr->addr_bytes[1],
+			     perm_addr->addr_bytes[2],
+			     perm_addr->addr_bytes[3],
+			     perm_addr->addr_bytes[4],
+			     perm_addr->addr_bytes[5]);
+	}
+
+	/* Copy the permanent MAC address */
+	rte_ether_addr_copy(perm_addr, &eth_dev->data->mac_addrs[0]);
+
+	/* reset the hardware with the new settings */
+	err = hw->mac.start_hw(hw);
+	if (err) {
+		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", err);
+		return -EIO;
+	}
+
 	txgbevf_intr_enable(eth_dev);
+
+	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
+		     eth_dev->data->port_id, pci_dev->id.vendor_id,
+		     pci_dev->id.device_id, "txgbe_mac_raptor_vf");
 
 	return 0;
 }
@@ -230,8 +294,109 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
 
 	txgbe_dev_free_queues(dev);
 
+	/**
+	 * Remove the VF MAC address ro ensure
+	 * that the VF traffic goes to the PF
+	 * after stop, close and detach of the VF
+	 **/
+	txgbevf_remove_mac_addr(dev, 0);
+
 	/* Disable the interrupts for VF */
 	txgbevf_intr_disable(dev);
+
+	rte_free(dev->data->mac_addrs);
+	dev->data->mac_addrs = NULL;
+
+	return 0;
+}
+
+static int
+txgbevf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+		     __rte_unused uint32_t index,
+		     __rte_unused uint32_t pool)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	int err;
+
+	/*
+	 * On a VF, adding again the same MAC addr is not an idempotent
+	 * operation. Trap this case to avoid exhausting the [very limited]
+	 * set of PF resources used to store VF MAC addresses.
+	 */
+	if (memcmp(hw->mac.perm_addr, mac_addr,
+			sizeof(struct rte_ether_addr)) == 0)
+		return -1;
+	err = txgbevf_set_uc_addr_vf(hw, 2, mac_addr->addr_bytes);
+	if (err != 0)
+		PMD_DRV_LOG(ERR, "Unable to add MAC address "
+			    "%02x:%02x:%02x:%02x:%02x:%02x - err=%d",
+			    mac_addr->addr_bytes[0],
+			    mac_addr->addr_bytes[1],
+			    mac_addr->addr_bytes[2],
+			    mac_addr->addr_bytes[3],
+			    mac_addr->addr_bytes[4],
+			    mac_addr->addr_bytes[5],
+			    err);
+	return err;
+}
+
+static void
+txgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct rte_ether_addr *perm_addr =
+			(struct rte_ether_addr *)hw->mac.perm_addr;
+	struct rte_ether_addr *mac_addr;
+	uint32_t i;
+	int err;
+
+	/*
+	 * The TXGBE_VF_SET_MACVLAN command of the txgbe-pf driver does
+	 * not support the deletion of a given MAC address.
+	 * Instead, it imposes to delete all MAC addresses, then to add again
+	 * all MAC addresses with the exception of the one to be deleted.
+	 */
+	(void)txgbevf_set_uc_addr_vf(hw, 0, NULL);
+
+	/*
+	 * Add again all MAC addresses, with the exception of the deleted one
+	 * and of the permanent MAC address.
+	 */
+	for (i = 0, mac_addr = dev->data->mac_addrs;
+	     i < hw->mac.num_rar_entries; i++, mac_addr++) {
+		/* Skip the deleted MAC address */
+		if (i == index)
+			continue;
+		/* Skip NULL MAC addresses */
+		if (rte_is_zero_ether_addr(mac_addr))
+			continue;
+		/* Skip the permanent MAC address */
+		if (memcmp(perm_addr, mac_addr,
+				sizeof(struct rte_ether_addr)) == 0)
+			continue;
+		err = txgbevf_set_uc_addr_vf(hw, 2, mac_addr->addr_bytes);
+		if (err != 0)
+			PMD_DRV_LOG(ERR,
+				    "Adding again MAC address "
+				    "%02x:%02x:%02x:%02x:%02x:%02x failed "
+				    "err=%d",
+				    mac_addr->addr_bytes[0],
+				    mac_addr->addr_bytes[1],
+				    mac_addr->addr_bytes[2],
+				    mac_addr->addr_bytes[3],
+				    mac_addr->addr_bytes[4],
+				    mac_addr->addr_bytes[5],
+				    err);
+	}
+}
+
+static int
+txgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
+		struct rte_ether_addr *addr)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	hw->mac.set_rar(hw, 0, (void *)addr, 0, 0);
 
 	return 0;
 }
@@ -241,6 +406,9 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
  * operation have been implemented
  */
 static const struct eth_dev_ops txgbevf_eth_dev_ops = {
+	.mac_addr_add         = txgbevf_add_mac_addr,
+	.mac_addr_remove      = txgbevf_remove_mac_addr,
+	.mac_addr_set         = txgbevf_set_default_mac_addr,
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe_vf, rte_txgbevf_pmd);
