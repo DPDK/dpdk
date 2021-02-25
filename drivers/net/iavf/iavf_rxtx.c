@@ -1109,7 +1109,7 @@ iavf_flex_rxd_error_to_pkt_flags(uint16_t stat_err0)
 		flags |= PKT_RX_L4_CKSUM_GOOD;
 
 	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S)))
-		flags |= PKT_RX_EIP_CKSUM_BAD;
+		flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
 
 	return flags;
 }

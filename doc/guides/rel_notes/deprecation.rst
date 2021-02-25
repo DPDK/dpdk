@@ -113,6 +113,11 @@ Deprecation Notices
   will be limited to maximum 256 queues.
   Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
 
+* ethdev: The offload flag ``PKT_RX_EIP_CKSUM_BAD`` will be removed and
+  replaced by the new flag ``PKT_RX_OUTER_IP_CKSUM_BAD``. The new name is more
+  consistent with existing outer header checksum status flag naming, which
+  should help in reducing confusion about its usage.
+
 * sched: To allow more traffic classes, flexible mapping of pipe queues to
   traffic classes, and subport level configuration of pipes and queues
   changes will be made to macros, data structures and API functions defined

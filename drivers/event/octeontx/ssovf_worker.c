@@ -434,7 +434,7 @@ octeontx_create_rx_ol_flags_array(void *mem)
 		case OCCTX_ERRLEV_LC:
 			if (errcode == OCCTX_EC_IP4_CSUM) {
 				val |= PKT_RX_IP_CKSUM_BAD;
-				val |= PKT_RX_EIP_CKSUM_BAD;
+				val |= PKT_RX_OUTER_IP_CKSUM_BAD;
 			} else {
 				val |= PKT_RX_IP_CKSUM_GOOD;
 			}

@@ -864,7 +864,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			rx_bad_l4_csum += 1;
 		if (rx_ol_flags & PKT_RX_OUTER_L4_CKSUM_BAD)
 			rx_bad_outer_l4_csum += 1;
-		if (rx_ol_flags & PKT_RX_EIP_CKSUM_BAD)
+		if (rx_ol_flags & PKT_RX_OUTER_IP_CKSUM_BAD)
 			rx_bad_outer_ip_csum += 1;
 
 		/* step 1: dissect packet, parsing optional vlan, ip4/ip6, vxlan

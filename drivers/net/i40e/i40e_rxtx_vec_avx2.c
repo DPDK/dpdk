@@ -342,13 +342,13 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 */
 	const __m256i l3_l4_flags_shuf = _mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
 			/* shift right 1 bit to make sure it not exceed 255 */
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
+			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
 			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
+			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
 			 PKT_RX_IP_CKSUM_GOOD) >> 1,
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
 			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
 			 PKT_RX_IP_CKSUM_GOOD) >> 1,
 			(PKT_RX_L4_CKSUM_BAD  | PKT_RX_IP_CKSUM_BAD) >> 1,
 			(PKT_RX_L4_CKSUM_BAD  | PKT_RX_IP_CKSUM_GOOD) >> 1,
@@ -356,13 +356,13 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_GOOD) >> 1,
 			/* second 128-bits */
 			0, 0, 0, 0, 0, 0, 0, 0,
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
+			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
 			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
+			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD  |
 			 PKT_RX_IP_CKSUM_GOOD) >> 1,
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
 			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
 			 PKT_RX_IP_CKSUM_GOOD) >> 1,
 			(PKT_RX_L4_CKSUM_BAD  | PKT_RX_IP_CKSUM_BAD) >> 1,
 			(PKT_RX_L4_CKSUM_BAD  | PKT_RX_IP_CKSUM_GOOD) >> 1,
@@ -372,7 +372,7 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	const __m256i cksum_mask = _mm256_set1_epi32(
 			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
 			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
-			PKT_RX_EIP_CKSUM_BAD);
+			PKT_RX_OUTER_IP_CKSUM_BAD);
 
 	RTE_SET_USED(avx_aligned); /* for 32B descriptors we don't use this */
 

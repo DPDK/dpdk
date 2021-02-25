@@ -169,7 +169,7 @@ i40e_rxd_error_to_pkt_flags(uint64_t qword)
 		flags |= PKT_RX_L4_CKSUM_GOOD;
 
 	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_EIPE_SHIFT)))
-		flags |= PKT_RX_EIP_CKSUM_BAD;
+		flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
 
 	return flags;
 }

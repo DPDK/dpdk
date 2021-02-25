@@ -73,8 +73,17 @@ extern "C" {
  */
 #define PKT_RX_IP_CKSUM_BAD  (1ULL << 4)
 
- /** External IP header checksum error. */
-#define PKT_RX_EIP_CKSUM_BAD (1ULL << 5)
+/**
+ * This flag is set when the outermost IP header checksum is detected as
+ * wrong by the hardware.
+ */
+#define PKT_RX_OUTER_IP_CKSUM_BAD (1ULL << 5)
+
+/**
+ * Deprecated.
+ * This flag has been renamed, use PKT_RX_OUTER_IP_CKSUM_BAD instead.
+ */
+#define PKT_RX_EIP_CKSUM_BAD PKT_RX_OUTER_IP_CKSUM_BAD
 
 /**
  * A vlan has been stripped by the hardware and its tci is saved in

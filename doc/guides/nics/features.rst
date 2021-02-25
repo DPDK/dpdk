@@ -612,7 +612,7 @@ Supports inner packet L3 checksum.
   ``mbuf.ol_flags:PKT_TX_OUTER_IP_CKSUM``,
   ``mbuf.ol_flags:PKT_TX_OUTER_IPV4`` | ``PKT_TX_OUTER_IPV6``.
 * **[uses]     mbuf**: ``mbuf.outer_l2_len``, ``mbuf.outer_l3_len``.
-* **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_EIP_CKSUM_BAD``.
+* **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_OUTER_IP_CKSUM_BAD``.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM``,
   ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM``.
 

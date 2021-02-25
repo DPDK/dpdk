@@ -1495,7 +1495,7 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status, uint16_t pkt_info,
 
 	if ((rx_status & IXGBE_RXD_STAT_OUTERIPCS) &&
 	    (rx_status & IXGBE_RXDADV_ERR_OUTERIPER)) {
-		pkt_flags |= PKT_RX_EIP_CKSUM_BAD;
+		pkt_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
 	}
 
 #ifdef RTE_LIB_SECURITY

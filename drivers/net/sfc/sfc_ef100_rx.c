@@ -305,7 +305,7 @@ sfc_ef100_rx_class_decode(const efx_word_t class, uint64_t *ol_flags)
 			break;
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP4BAD:
 			ptype |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-			*ol_flags |= PKT_RX_EIP_CKSUM_BAD;
+			*ol_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
 			break;
 		case ESE_GZ_RH_HCLASS_L3_CLASS_IP6:
 			ptype |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;

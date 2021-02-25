@@ -1632,7 +1632,7 @@ qede_recv_pkts_regular(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					"Outer L3 csum failed, flags = 0x%x\n",
 					parse_flag);
 				rxq->rx_hw_errors++;
-				ol_flags |= PKT_RX_EIP_CKSUM_BAD;
+				ol_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
 			} else {
 				ol_flags |= PKT_RX_IP_CKSUM_GOOD;
 			}
@@ -1901,7 +1901,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					"Outer L3 csum failed, flags = 0x%x\n",
 					parse_flag);
 				  rxq->rx_hw_errors++;
-				  ol_flags |= PKT_RX_EIP_CKSUM_BAD;
+				  ol_flags |= PKT_RX_OUTER_IP_CKSUM_BAD;
 			} else {
 				  ol_flags |= PKT_RX_IP_CKSUM_GOOD;
 			}

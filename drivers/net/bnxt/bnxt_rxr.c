@@ -529,7 +529,7 @@ bnxt_init_ol_flags_tables(struct bnxt_rx_queue *rxq)
 					pt[i] |= PKT_RX_IP_CKSUM_BAD;
 
 				if (i & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR >> 4))
-					pt[i] |= PKT_RX_EIP_CKSUM_BAD;
+					pt[i] |= PKT_RX_OUTER_IP_CKSUM_BAD;
 
 				if (i & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR >> 4))
 					pt[i] |= PKT_RX_L4_CKSUM_BAD;
