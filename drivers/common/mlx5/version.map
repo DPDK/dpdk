@@ -21,7 +21,7 @@ INTERNAL {
 	mlx5_devx_cmd_create_tis;
 	mlx5_devx_cmd_create_virtio_q_counters;
 	mlx5_devx_cmd_create_virtq;
-        mlx5_devx_cmd_create_flow_hit_aso_obj;
+	mlx5_devx_cmd_create_flow_hit_aso_obj;
 	mlx5_devx_cmd_destroy;
 	mlx5_devx_cmd_flow_counter_alloc;
 	mlx5_devx_cmd_flow_counter_query;
@@ -38,6 +38,8 @@ INTERNAL {
 	mlx5_devx_cmd_query_parse_samples;
 	mlx5_devx_cmd_query_virtio_q_counters;
 	mlx5_devx_cmd_query_virtq;
+	mlx5_devx_cmd_queue_counter_alloc;
+	mlx5_devx_cmd_queue_counter_query;
 	mlx5_devx_cmd_register_read;
 	mlx5_devx_cmd_wq_query;
 	mlx5_devx_get_out_command_status;

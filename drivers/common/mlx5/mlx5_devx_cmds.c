@@ -2077,3 +2077,76 @@ mlx5_devx_cmd_wq_query(void *wq, uint32_t *counter_set_id)
 	return -ENOTSUP;
 #endif
 }
+
+/*
+ * Allocate queue counters via devx interface.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ *
+ * @return
+ *   Pointer to counter object on success, a NULL value otherwise and
+ *   rte_errno is set.
+ */
+struct mlx5_devx_obj *
+mlx5_devx_cmd_queue_counter_alloc(void *ctx)
+{
+	struct mlx5_devx_obj *dcs = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*dcs), 0,
+						SOCKET_ID_ANY);
+	uint32_t in[MLX5_ST_SZ_DW(alloc_q_counter_in)]   = {0};
+	uint32_t out[MLX5_ST_SZ_DW(alloc_q_counter_out)] = {0};
+
+	if (!dcs) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(alloc_q_counter_in, in, opcode, MLX5_CMD_OP_ALLOC_Q_COUNTER);
+	dcs->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
+					      sizeof(out));
+	if (!dcs->obj) {
+		DRV_LOG(DEBUG, "Can't allocate q counter set by DevX - error "
+			"%d.", errno);
+		rte_errno = errno;
+		mlx5_free(dcs);
+		return NULL;
+	}
+	dcs->id = MLX5_GET(alloc_q_counter_out, out, counter_set_id);
+	return dcs;
+}
+
+/**
+ * Query queue counters values.
+ *
+ * @param[in] dcs
+ *   devx object of the queue counter set.
+ * @param[in] clear
+ *   Whether hardware should clear the counters after the query or not.
+ *  @param[out] out_of_buffers
+ *   Number of dropped occurred due to lack of WQE for the associated QPs/RQs.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int
+mlx5_devx_cmd_queue_counter_query(struct mlx5_devx_obj *dcs, int clear,
+				  uint32_t *out_of_buffers)
+{
+	uint32_t out[MLX5_ST_SZ_BYTES(query_q_counter_out)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(query_q_counter_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_q_counter_in, in, opcode,
+		 MLX5_CMD_OP_QUERY_Q_COUNTER);
+	MLX5_SET(query_q_counter_in, in, op_mod, 0);
+	MLX5_SET(query_q_counter_in, in, counter_set_id, dcs->id);
+	MLX5_SET(query_q_counter_in, in, clear, !!clear);
+	rc = mlx5_glue->devx_obj_query(dcs->obj, in, sizeof(in), out,
+				       sizeof(out));
+	if (rc) {
+		DRV_LOG(ERR, "Failed to query devx q counter set - rc %d", rc);
+		rte_errno = rc;
+		return -rc;
+	}
+	*out_of_buffers = MLX5_GET(query_q_counter_out, out, out_of_buffer);
+	return 0;
+}

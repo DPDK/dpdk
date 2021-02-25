@@ -505,4 +505,10 @@ struct mlx5_devx_obj *mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx,
 
 __rte_internal
 int mlx5_devx_cmd_wq_query(void *wq, uint32_t *counter_set_id);
+
+__rte_internal
+struct mlx5_devx_obj *mlx5_devx_cmd_queue_counter_alloc(void *ctx);
+__rte_internal
+int mlx5_devx_cmd_queue_counter_query(struct mlx5_devx_obj *dcs, int clear,
+				      uint32_t *out_of_buffers);
 #endif /* RTE_PMD_MLX5_DEVX_CMDS_H_ */
