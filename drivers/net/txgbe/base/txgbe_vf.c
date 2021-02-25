@@ -26,6 +26,7 @@ s32 txgbe_init_ops_vf(struct txgbe_hw *hw)
 	mac->get_mac_addr = txgbe_get_mac_addr_vf;
 	mac->stop_hw = txgbe_stop_hw_vf;
 	mac->negotiate_api_version = txgbevf_negotiate_api_version;
+	mac->update_mc_addr_list = txgbe_update_mc_addr_list_vf;
 
 	/* Link */
 	mac->check_link = txgbe_check_mac_link_vf;
@@ -213,6 +214,39 @@ s32 txgbe_stop_hw_vf(struct txgbe_hw *hw)
 	return 0;
 }
 
+/**
+ *  txgbe_mta_vector - Determines bit-vector in multicast table to set
+ *  @hw: pointer to hardware structure
+ *  @mc_addr: the multicast address
+ **/
+STATIC s32 txgbe_mta_vector(struct txgbe_hw *hw, u8 *mc_addr)
+{
+	u32 vector = 0;
+
+	switch (hw->mac.mc_filter_type) {
+	case 0:   /* use bits [47:36] of the address */
+		vector = ((mc_addr[4] >> 4) | (((u16)mc_addr[5]) << 4));
+		break;
+	case 1:   /* use bits [46:35] of the address */
+		vector = ((mc_addr[4] >> 3) | (((u16)mc_addr[5]) << 5));
+		break;
+	case 2:   /* use bits [45:34] of the address */
+		vector = ((mc_addr[4] >> 2) | (((u16)mc_addr[5]) << 6));
+		break;
+	case 3:   /* use bits [43:32] of the address */
+		vector = ((mc_addr[4]) | (((u16)mc_addr[5]) << 8));
+		break;
+	default:  /* Invalid mc_filter_type */
+		DEBUGOUT("MC filter type param set incorrectly\n");
+		ASSERT(0);
+		break;
+	}
+
+	/* vector can only be 12-bits or boundary will be exceeded */
+	vector &= 0xFFF;
+	return vector;
+}
+
 STATIC s32 txgbevf_write_msg_read_ack(struct txgbe_hw *hw, u32 *msg,
 				      u32 *retmsg, u16 size)
 {
@@ -256,6 +290,55 @@ s32 txgbe_set_rar_vf(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 	}
 
 	return ret_val;
+}
+
+/**
+ *  txgbe_update_mc_addr_list_vf - Update Multicast addresses
+ *  @hw: pointer to the HW structure
+ *  @mc_addr_list: array of multicast addresses to program
+ *  @mc_addr_count: number of multicast addresses to program
+ *  @next: caller supplied function to return next address in list
+ *  @clear: unused
+ *
+ *  Updates the Multicast Table Array.
+ **/
+s32 txgbe_update_mc_addr_list_vf(struct txgbe_hw *hw, u8 *mc_addr_list,
+				 u32 mc_addr_count, txgbe_mc_addr_itr next,
+				 bool clear)
+{
+	struct txgbe_mbx_info *mbx = &hw->mbx;
+	u32 msgbuf[TXGBE_P2VMBX_SIZE];
+	u16 *vector_list = (u16 *)&msgbuf[1];
+	u32 vector;
+	u32 cnt, i;
+	u32 vmdq;
+
+	UNREFERENCED_PARAMETER(clear);
+
+	DEBUGFUNC("txgbe_update_mc_addr_list_vf");
+
+	/* Each entry in the list uses 1 16 bit word.  We have 30
+	 * 16 bit words available in our HW msg buffer (minus 1 for the
+	 * msg type).  That's 30 hash values if we pack 'em right.  If
+	 * there are more than 30 MC addresses to add then punt the
+	 * extras for now and then add code to handle more than 30 later.
+	 * It would be unusual for a server to request that many multi-cast
+	 * addresses except for in large enterprise network environments.
+	 */
+
+	DEBUGOUT("MC Addr Count = %d\n", mc_addr_count);
+
+	cnt = (mc_addr_count > 30) ? 30 : mc_addr_count;
+	msgbuf[0] = TXGBE_VF_SET_MULTICAST;
+	msgbuf[0] |= cnt << TXGBE_VT_MSGINFO_SHIFT;
+
+	for (i = 0; i < cnt; i++) {
+		vector = txgbe_mta_vector(hw, next(hw, &mc_addr_list, &vmdq));
+		DEBUGOUT("Hash value = 0x%03X\n", vector);
+		vector_list[i] = (u16)vector;
+	}
+
+	return mbx->write_posted(hw, msgbuf, TXGBE_P2VMBX_SIZE, 0);
 }
 
 /**

@@ -4121,7 +4121,7 @@ txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 
 	hw = TXGBE_DEV_HW(dev);
 	mc_addr_list = (u8 *)mc_addr_set;
-	return txgbe_update_mc_addr_list(hw, mc_addr_list, nb_mc_addr,
+	return hw->mac.update_mc_addr_list(hw, mc_addr_list, nb_mc_addr,
 					 txgbe_dev_addr_list_itr, TRUE);
 }
 

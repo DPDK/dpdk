@@ -2808,6 +2808,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	mac->acquire_swfw_sync = txgbe_acquire_swfw_sync;
 	mac->release_swfw_sync = txgbe_release_swfw_sync;
 	mac->reset_hw = txgbe_reset_hw;
+	mac->update_mc_addr_list = txgbe_update_mc_addr_list;
 
 	mac->disable_sec_rx_path = txgbe_disable_sec_rx_path;
 	mac->enable_sec_rx_path = txgbe_enable_sec_rx_path;

@@ -1080,6 +1080,7 @@ static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.rx_queue_intr_disable = txgbevf_dev_rx_queue_intr_disable,
 	.mac_addr_add         = txgbevf_add_mac_addr,
 	.mac_addr_remove      = txgbevf_remove_mac_addr,
+	.set_mc_addr_list     = txgbe_dev_set_mc_addr_list,
 	.rxq_info_get         = txgbe_rxq_info_get,
 	.txq_info_get         = txgbe_txq_info_get,
 	.mac_addr_set         = txgbevf_set_default_mac_addr,
