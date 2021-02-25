@@ -117,15 +117,15 @@ although once they are created, DPDK apps should be able to use them as normal
 PCI ports.
 
 NFP ports belonging to same PF can be seen inside PMD initialization with a
-suffix added to the PCI ID: wwww:xx:yy.z_port_n. For example, a PF with PCI ID
+suffix added to the PCI ID: wwww:xx:yy.z_portn. For example, a PF with PCI ID
 0000:03:00.0 and four ports is seen by the PMD code as:
 
    .. code-block:: console
 
-      0000:03:00.0_port_0
-      0000:03:00.0_port_1
-      0000:03:00.0_port_2
-      0000:03:00.0_port_3
+      0000:03:00.0_port0
+      0000:03:00.0_port1
+      0000:03:00.0_port2
+      0000:03:00.0_port3
 
    .. Note::
 
