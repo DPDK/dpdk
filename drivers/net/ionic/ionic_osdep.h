@@ -17,6 +17,7 @@
 #include <rte_byteorder.h>
 #include <rte_io.h>
 #include <rte_memory.h>
+#include <rte_eal_paging.h>
 
 #include "ionic_logs.h"
 
@@ -25,7 +26,6 @@
 
 #ifndef PAGE_SHIFT
 #define PAGE_SHIFT      12
-#define PAGE_SIZE       (1 << PAGE_SHIFT)
 #endif
 
 #define __iomem

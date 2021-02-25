@@ -6,6 +6,8 @@
  * All rights reserved.
  */
 
+#include <rte_eal_paging.h>
+
 /*
  * Tunable ethdev params
  */
@@ -28,13 +30,8 @@
 
 #define HN_RX_EXTMBUF_ENABLE	0
 
-/* Buffers need to be aligned */
-#ifndef PAGE_SIZE
-#define PAGE_SIZE 4096
-#endif
-
 #ifndef PAGE_MASK
-#define PAGE_MASK (PAGE_SIZE - 1)
+#define PAGE_MASK (rte_mem_page_size() - 1)
 #endif
 
 struct hn_data;

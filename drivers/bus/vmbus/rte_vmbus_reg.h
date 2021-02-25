@@ -100,7 +100,7 @@ struct vmbus_bufring {
 		uint32_t value;
 	} feature_bits;
 
-	/* Pad it to PAGE_SIZE so that data starts on page boundary */
+	/* Pad it to rte_mem_page_size() so that data starts on page boundary */
 	uint8_t	reserved2[4028];
 
 	/*

@@ -456,7 +456,8 @@ ionic_port_init(struct ionic_adapter *adapter)
 	if (idev->port_info)
 		return 0;
 
-	idev->port_info_sz = RTE_ALIGN(sizeof(*idev->port_info), PAGE_SIZE);
+	idev->port_info_sz = RTE_ALIGN(sizeof(*idev->port_info),
+			rte_mem_page_size());
 
 	snprintf(z_name, sizeof(z_name), "%s_port_%s_info",
 		IONIC_DRV_NAME, adapter->name);

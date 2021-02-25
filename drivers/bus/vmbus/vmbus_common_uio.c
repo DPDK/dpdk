@@ -63,7 +63,7 @@ vmbus_uio_map_secondary(struct rte_vmbus_device *dev)
 
 	for (i = 0; i != uio_res->nb_maps; i++) {
 		void *mapaddr;
-		off_t offset = i * PAGE_SIZE;
+		off_t offset = i * rte_mem_page_size();
 
 		mapaddr = vmbus_map_resource(uio_res->maps[i].addr,
 					     fd, offset,
@@ -175,7 +175,7 @@ vmbus_uio_map_resource(struct rte_vmbus_device *dev)
 	}
 
 	dev->int_page = (uint32_t *)((char *)uio_res->maps[HV_INT_PAGE_MAP].addr
-				     + (PAGE_SIZE >> 1));
+				     + (rte_mem_page_size() >> 1));
 	dev->monitor_page = uio_res->maps[HV_MON_PAGE_MAP].addr;
 	return 0;
 }

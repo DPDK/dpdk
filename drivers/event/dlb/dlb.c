@@ -23,6 +23,7 @@
 #include <rte_io.h>
 #include <rte_kvargs.h>
 #include <rte_log.h>
+#include <rte_eal_paging.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_power_intrinsics.h>
@@ -991,7 +992,8 @@ dlb_hw_create_ldb_port(struct dlb_eventdev *dlb,
 		goto error_exit;
 	}
 
-	qm_port->pp_mmio_base = DLB_LDB_PP_BASE + PAGE_SIZE * qm_port_id;
+	qm_port->pp_mmio_base = DLB_LDB_PP_BASE +
+			rte_mem_page_size() * qm_port_id;
 	qm_port->id = qm_port_id;
 
 	/* The credit window is one high water mark of QEs */
@@ -1181,7 +1183,8 @@ dlb_hw_create_dir_port(struct dlb_eventdev *dlb,
 		goto error_exit;
 	}
 
-	qm_port->pp_mmio_base = DLB_DIR_PP_BASE + PAGE_SIZE * qm_port_id;
+	qm_port->pp_mmio_base = DLB_DIR_PP_BASE +
+			rte_mem_page_size() * qm_port_id;
 	qm_port->id = qm_port_id;
 
 	/* The credit window is one high water mark of QEs */

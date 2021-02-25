@@ -154,7 +154,7 @@ vmbus_uio_map_resource_by_index(struct rte_vmbus_device *dev, int idx,
 		vmbus_map_addr = vmbus_find_max_end_va();
 
 	/* offset is special in uio it indicates which resource */
-	offset = idx * PAGE_SIZE;
+	offset = idx * rte_mem_page_size();
 
 	mapaddr = vmbus_map_resource(vmbus_map_addr, fd, offset, size, flags);
 	close(fd);
@@ -224,7 +224,7 @@ static int vmbus_uio_map_subchan(const struct rte_vmbus_device *dev,
 	}
 	file_size = sb.st_size;
 
-	if (file_size == 0 || (file_size & (PAGE_SIZE - 1))) {
+	if (file_size == 0 || (file_size & (rte_mem_page_size() - 1))) {
 		VMBUS_LOG(ERR, "incorrect size %s: %zu",
 			  ring_path, file_size);
 

@@ -612,18 +612,18 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 	cq_size = num_descs * cq_desc_size;
 	sg_size = num_descs * sg_desc_size;
 
-	total_size = RTE_ALIGN(q_size, PAGE_SIZE) +
-		RTE_ALIGN(cq_size, PAGE_SIZE);
+	total_size = RTE_ALIGN(q_size, rte_mem_page_size()) +
+			RTE_ALIGN(cq_size, rte_mem_page_size());
 	/*
 	 * Note: aligning q_size/cq_size is not enough due to cq_base address
 	 * aligning as q_base could be not aligned to the page.
-	 * Adding PAGE_SIZE.
+	 * Adding rte_mem_page_size().
 	 */
-	total_size += PAGE_SIZE;
+	total_size += rte_mem_page_size();
 
 	if (flags & IONIC_QCQ_F_SG) {
-		total_size += RTE_ALIGN(sg_size, PAGE_SIZE);
-		total_size += PAGE_SIZE;
+		total_size += RTE_ALIGN(sg_size, rte_mem_page_size());
+		total_size += rte_mem_page_size();
 	}
 
 	new = rte_zmalloc("ionic", struct_size, 0);
@@ -636,7 +636,7 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 
 	new->q.info = rte_calloc_socket("ionic",
 				num_descs, sizeof(void *),
-				PAGE_SIZE, socket_id);
+				rte_mem_page_size(), socket_id);
 	if (!new->q.info) {
 		IONIC_PRINT(ERR, "Cannot allocate queue info");
 		err = -ENOMEM;
@@ -673,13 +673,16 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 	q_base = new->base;
 	q_base_pa = new->base_pa;
 
-	cq_base = (void *)RTE_ALIGN((uintptr_t)q_base + q_size, PAGE_SIZE);
-	cq_base_pa = RTE_ALIGN(q_base_pa + q_size, PAGE_SIZE);
+	cq_base = (void *)RTE_ALIGN((uintptr_t)q_base + q_size,
+			rte_mem_page_size());
+	cq_base_pa = RTE_ALIGN(q_base_pa + q_size,
+			rte_mem_page_size());
 
 	if (flags & IONIC_QCQ_F_SG) {
 		sg_base = (void *)RTE_ALIGN((uintptr_t)cq_base + cq_size,
-			PAGE_SIZE);
-		sg_base_pa = RTE_ALIGN(cq_base_pa + cq_size, PAGE_SIZE);
+				rte_mem_page_size());
+		sg_base_pa = RTE_ALIGN(cq_base_pa + cq_size,
+				rte_mem_page_size());
 		ionic_q_sg_map(&new->q, sg_base, sg_base_pa);
 	}
 
@@ -1002,7 +1005,7 @@ ionic_lif_alloc(struct ionic_lif *lif)
 
 	IONIC_PRINT(DEBUG, "Allocating Lif Info");
 
-	lif->info_sz = RTE_ALIGN(sizeof(*lif->info), PAGE_SIZE);
+	lif->info_sz = RTE_ALIGN(sizeof(*lif->info), rte_mem_page_size());
 
 	lif->info_z = rte_eth_dma_zone_reserve(lif->eth_dev,
 		"lif_info", 0 /* queue_idx*/,

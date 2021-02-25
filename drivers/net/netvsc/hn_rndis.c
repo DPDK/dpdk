@@ -67,7 +67,7 @@ hn_rndis_rid(struct hn_data *hv)
 
 static void *hn_rndis_alloc(size_t size)
 {
-	return rte_zmalloc("RNDIS", size, PAGE_SIZE);
+	return rte_zmalloc("RNDIS", size, rte_mem_page_size());
 }
 
 #ifdef RTE_LIBRTE_NETVSC_DEBUG_DUMP
@@ -265,17 +265,17 @@ static int hn_nvs_send_rndis_ctrl(struct vmbus_channel *chan,
 		return -EINVAL;
 	}
 
-	if (unlikely(reqlen > PAGE_SIZE)) {
+	if (unlikely(reqlen > rte_mem_page_size())) {
 		PMD_DRV_LOG(ERR, "RNDIS request %u greater than page size",
 			    reqlen);
 		return -EINVAL;
 	}
 
-	sg.page = addr / PAGE_SIZE;
+	sg.page = addr / rte_mem_page_size();
 	sg.ofs  = addr & PAGE_MASK;
 	sg.len  = reqlen;
 
-	if (sg.ofs + reqlen >  PAGE_SIZE) {
+	if (sg.ofs + reqlen >  rte_mem_page_size()) {
 		PMD_DRV_LOG(ERR, "RNDIS request crosses page boundary");
 		return -EINVAL;
 	}
@@ -479,7 +479,7 @@ hn_rndis_query(struct hn_data *hv, uint32_t oid,
 		return -ENOMEM;
 
 	comp_len = sizeof(*comp) + odlen;
-	comp = rte_zmalloc("QUERY", comp_len, PAGE_SIZE);
+	comp = rte_zmalloc("QUERY", comp_len, rte_mem_page_size());
 	if (!comp) {
 		error = -ENOMEM;
 		goto done;
@@ -736,7 +736,7 @@ hn_rndis_set(struct hn_data *hv, uint32_t oid, const void *data, uint32_t dlen)
 	int error;
 
 	reqlen = sizeof(*req) + dlen;
-	req = rte_zmalloc("RNDIS_SET", reqlen, PAGE_SIZE);
+	req = rte_zmalloc("RNDIS_SET", reqlen, rte_mem_page_size());
 	if (!req)
 		return -ENOMEM;
 

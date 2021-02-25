@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <rte_eal_paging.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_cryptodev.h>
@@ -67,7 +68,7 @@ struct virtqueue;
  *
  * Note the sizeof(struct vring_desc) is 16 bytes.
  */
-#define VIRTIO_MAX_INDIRECT ((int) (PAGE_SIZE / 16))
+#define VIRTIO_MAX_INDIRECT ((int) (rte_mem_page_size() / 16))
 
 /* Do we get callbacks when the ring is completely used, even if we've
  * suppressed them?

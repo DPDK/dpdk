@@ -76,8 +76,6 @@
 
 #define PP_BASE(is_dir) ((is_dir) ? DLB_DIR_PP_BASE : DLB_LDB_PP_BASE)
 
-#define PAGE_SIZE (sysconf(_SC_PAGESIZE))
-
 #define DLB_NUM_QES_PER_CACHE_LINE 4
 
 #define DLB_MAX_ENQUEUE_DEPTH 64

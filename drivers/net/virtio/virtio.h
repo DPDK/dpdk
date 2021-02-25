@@ -98,7 +98,7 @@
  *
  * Note the sizeof(struct vring_desc) is 16 bytes.
  */
-#define VIRTIO_MAX_INDIRECT ((int)(PAGE_SIZE / 16))
+#define VIRTIO_MAX_INDIRECT ((int)(rte_mem_page_size() / 16))
 
 /*
  * Maximum number of virtqueues per device.

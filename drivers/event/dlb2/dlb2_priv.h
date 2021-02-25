@@ -78,8 +78,6 @@
 				    DLB2_LDB_CQ_MAX_SIZE)
 #define PP_BASE(is_dir) ((is_dir) ? DLB2_DIR_PP_BASE : DLB2_LDB_PP_BASE)
 
-#define PAGE_SIZE (sysconf(_SC_PAGESIZE))
-
 #define DLB2_NUM_QES_PER_CACHE_LINE 4
 
 #define DLB2_MAX_ENQUEUE_DEPTH 64

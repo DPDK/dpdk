@@ -10,10 +10,7 @@
 #include <rte_spinlock.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
-
-#ifndef PAGE_SIZE
-#define PAGE_SIZE (sysconf(_SC_PAGESIZE))
-#endif
+#include <rte_eal_paging.h>
 
 #include "base/dlb_hw_types.h"
 #include "../dlb_user.h"

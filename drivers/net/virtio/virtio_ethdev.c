@@ -21,8 +21,8 @@
 #include <rte_errno.h>
 #include <rte_cpuflags.h>
 #include <rte_vect.h>
-
 #include <rte_memory.h>
+#include <rte_eal_paging.h>
 #include <rte_eal.h>
 #include <rte_dev.h>
 #include <rte_cycles.h>
@@ -469,7 +469,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 		sz_hdr_mz = vq_size * sizeof(struct virtio_tx_region);
 	} else if (queue_type == VTNET_CQ) {
 		/* Allocate a page for control vq command, data and status */
-		sz_hdr_mz = PAGE_SIZE;
+		sz_hdr_mz = rte_mem_page_size();
 	}
 
 	vq = rte_zmalloc_socket(vq_name, size, RTE_CACHE_LINE_SIZE,
@@ -568,7 +568,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 		cvq->mz = mz;
 		cvq->virtio_net_hdr_mz = hdr_mz;
 		cvq->virtio_net_hdr_mem = hdr_mz->iova;
-		memset(cvq->virtio_net_hdr_mz->addr, 0, PAGE_SIZE);
+		memset(cvq->virtio_net_hdr_mz->addr, 0, rte_mem_page_size());
 
 		hw->cvq = cvq;
 	}

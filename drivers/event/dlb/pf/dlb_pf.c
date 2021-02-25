@@ -303,7 +303,7 @@ dlb_pf_ldb_port_create(struct dlb_hw_dev *handle,
 	alloc_sz = RTE_CACHE_LINE_ROUNDUP(alloc_sz);
 
 	port_base = dlb_alloc_coherent_aligned(&mz, &pc_dma_base,
-					       alloc_sz, PAGE_SIZE);
+					       alloc_sz, rte_mem_page_size());
 	if (port_base == NULL)
 		return -ENOMEM;
 
@@ -328,7 +328,8 @@ dlb_pf_ldb_port_create(struct dlb_hw_dev *handle,
 
 	pp_dma_base = (uintptr_t)dlb_dev->hw.func_kva + PP_BASE(is_dir);
 	dlb_port[response.id][DLB_LDB].pp_addr =
-		(void *)(uintptr_t)(pp_dma_base + (PAGE_SIZE * response.id));
+			(void *)(uintptr_t)(pp_dma_base +
+			(rte_mem_page_size() * response.id));
 
 	dlb_port[response.id][DLB_LDB].cq_base =
 		(void *)(uintptr_t)(port_base + (2 * RTE_CACHE_LINE_SIZE));
@@ -381,7 +382,7 @@ dlb_pf_dir_port_create(struct dlb_hw_dev *handle,
 	alloc_sz = RTE_CACHE_LINE_ROUNDUP(alloc_sz);
 
 	port_base = dlb_alloc_coherent_aligned(&mz, &pc_dma_base,
-					       alloc_sz, PAGE_SIZE);
+					       alloc_sz, rte_mem_page_size());
 	if (port_base == NULL)
 		return -ENOMEM;
 
@@ -406,7 +407,8 @@ dlb_pf_dir_port_create(struct dlb_hw_dev *handle,
 
 	pp_dma_base = (uintptr_t)dlb_dev->hw.func_kva + PP_BASE(is_dir);
 	dlb_port[response.id][DLB_DIR].pp_addr =
-		(void *)(uintptr_t)(pp_dma_base + (PAGE_SIZE * response.id));
+			(void *)(uintptr_t)(pp_dma_base +
+			(rte_mem_page_size() * response.id));
 
 	dlb_port[response.id][DLB_DIR].cq_base =
 		(void *)(uintptr_t)(port_base + (2 * RTE_CACHE_LINE_SIZE));

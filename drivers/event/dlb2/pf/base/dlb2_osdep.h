@@ -89,7 +89,7 @@ static inline void *os_map_producer_port(struct dlb2_hw *hw,
 	uint64_t pp_dma_base;
 
 	pp_dma_base = (uintptr_t)hw->func_kva + DLB2_PP_BASE(is_ldb);
-	addr = (pp_dma_base + (PAGE_SIZE * port_id));
+	addr = (pp_dma_base + (rte_mem_page_size() * port_id));
 
 	return (void *)(uintptr_t)addr;
 }

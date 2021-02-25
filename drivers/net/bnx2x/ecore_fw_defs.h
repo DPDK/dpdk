@@ -13,6 +13,8 @@
 #ifndef ECORE_FW_DEFS_H
 #define ECORE_FW_DEFS_H
 
+#include <rte_eal_paging.h>
+
 #define CSTORM_ASSERT_LIST_INDEX_OFFSET	(IRO[152].base)
 #define CSTORM_ASSERT_LIST_OFFSET(assertListEntry) \
 	(IRO[151].base + ((assertListEntry) * IRO[151].m1))
@@ -252,7 +254,8 @@
 #define X_ETH_LOCAL_RING_SIZE 13
 #define FIRST_BD_IN_PKT	0
 #define PARSE_BD_INDEX 1
-#define NUM_OF_ETH_BDS_IN_PAGE ((PAGE_SIZE)/(STRUCT_SIZE(eth_tx_bd)/8))
+#define NUM_OF_ETH_BDS_IN_PAGE \
+	(rte_mem_page_size() / (STRUCT_SIZE(eth_tx_bd) / 8))
 #define U_ETH_NUM_OF_SGES_TO_FETCH 8
 #define U_ETH_MAX_SGES_FOR_PACKET 3
 
@@ -265,11 +268,14 @@
 #define IP_HEADER_ALIGNMENT_PADDING 2
 
 #define U_ETH_SGES_PER_PAGE_INVERSE_MASK \
-	(0xFFFF - ((PAGE_SIZE/((STRUCT_SIZE(eth_rx_sge))/8))-1))
+	(0xFFFF - ((rte_mem_page_size() / ((STRUCT_SIZE(eth_rx_sge)) / 8)) - 1))
 
-#define TU_ETH_CQES_PER_PAGE (PAGE_SIZE/(STRUCT_SIZE(eth_rx_cqe)/8))
-#define U_ETH_BDS_PER_PAGE (PAGE_SIZE/(STRUCT_SIZE(eth_rx_bd)/8))
-#define U_ETH_SGES_PER_PAGE (PAGE_SIZE/(STRUCT_SIZE(eth_rx_sge)/8))
+#define TU_ETH_CQES_PER_PAGE \
+	(rte_mem_page_size() / (STRUCT_SIZE(eth_rx_cqe) / 8))
+#define U_ETH_BDS_PER_PAGE \
+	(rte_mem_page_size() / (STRUCT_SIZE(eth_rx_bd) / 8))
+#define U_ETH_SGES_PER_PAGE \
+	(rte_mem_page_size() / (STRUCT_SIZE(eth_rx_sge) / 8))
 
 #define U_ETH_BDS_PER_PAGE_MASK	(U_ETH_BDS_PER_PAGE-1)
 #define U_ETH_CQE_PER_PAGE_MASK	(TU_ETH_CQES_PER_PAGE-1)
@@ -396,7 +402,7 @@
 
 /* Event Ring definitions */
 #define C_ERES_PER_PAGE \
-	(PAGE_SIZE / BITS_TO_BYTES(STRUCT_SIZE(event_ring_elem)))
+	(rte_mem_page_size() / BITS_TO_BYTES(STRUCT_SIZE(event_ring_elem)))
 #define C_ERE_PER_PAGE_MASK (C_ERES_PER_PAGE - 1)
 
 /* number of statistic command */

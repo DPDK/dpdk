@@ -11,10 +11,6 @@
 
 #include "virtio.h"
 
-#ifndef PAGE_SIZE
-#define PAGE_SIZE 4096
-#endif
-
 #define VIRTIO_MAX_RX_QUEUES 128U
 #define VIRTIO_MAX_TX_QUEUES 128U
 #define VIRTIO_MAX_MAC_ADDRS 64

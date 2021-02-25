@@ -38,11 +38,6 @@
 
 #ifdef VFIO_PRESENT
 
-#ifndef PAGE_SIZE
-#define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
-#endif
-#define PAGE_MASK   (~(PAGE_SIZE - 1))
-
 static struct rte_tailq_elem rte_vfio_tailq = {
 	.name = "VFIO_RESOURCE_LIST",
 };
@@ -507,8 +502,8 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 		 */
 		uint32_t table_start = msix_table->offset;
 		uint32_t table_end = table_start + msix_table->size;
-		table_end = RTE_ALIGN(table_end, PAGE_SIZE);
-		table_start = RTE_ALIGN_FLOOR(table_start, PAGE_SIZE);
+		table_end = RTE_ALIGN(table_end, rte_mem_page_size());
+		table_start = RTE_ALIGN_FLOOR(table_start, rte_mem_page_size());
 
 		/* If page-aligned start of MSI-X table is less than the
 		 * actual MSI-X table start address, reassign to the actual

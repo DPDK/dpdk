@@ -9,12 +9,9 @@
 #include <stdbool.h>
 #include <sys/uio.h>
 #include <rte_log.h>
+#include <rte_eal_paging.h>
 #include <rte_vmbus_reg.h>
 #include <rte_bus_vmbus.h>
-
-#ifndef PAGE_SIZE
-#define PAGE_SIZE	4096
-#endif
 
 extern struct rte_vmbus_bus rte_vmbus_bus;
 
