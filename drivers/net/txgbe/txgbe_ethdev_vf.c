@@ -17,6 +17,7 @@
 
 static int txgbevf_dev_info_get(struct rte_eth_dev *dev,
 				 struct rte_eth_dev_info *dev_info);
+static int  txgbevf_dev_configure(struct rte_eth_dev *dev);
 static int txgbevf_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
 static int txgbevf_dev_close(struct rte_eth_dev *dev);
@@ -110,6 +111,10 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &txgbevf_eth_dev_ops;
+	eth_dev->rx_descriptor_status = txgbe_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = txgbe_dev_tx_descriptor_status;
+	eth_dev->rx_pkt_burst = &txgbe_recv_pkts;
+	eth_dev->tx_pkt_burst = &txgbe_xmit_pkts;
 
 	/* for secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
@@ -364,6 +369,43 @@ txgbevf_intr_enable(struct rte_eth_dev *dev)
 }
 
 static int
+txgbevf_dev_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+
+	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
+		     dev->data->port_id);
+
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
+	/*
+	 * VF has no ability to enable/disable HW CRC
+	 * Keep the persistent behavior the same as Host PF
+	 */
+#ifndef RTE_LIBRTE_TXGBE_PF_DISABLE_STRIP_CRC
+	if (conf->rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
+		PMD_INIT_LOG(NOTICE, "VF can't disable HW CRC Strip");
+		conf->rxmode.offloads &= ~DEV_RX_OFFLOAD_KEEP_CRC;
+	}
+#else
+	if (!(conf->rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)) {
+		PMD_INIT_LOG(NOTICE, "VF can't enable HW CRC Strip");
+		conf->rxmode.offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
+	}
+#endif
+
+	/*
+	 * Initialize to TRUE. If any of Rx queues doesn't meet the bulk
+	 * allocation or vector Rx preconditions we will reset it.
+	 */
+	adapter->rx_bulk_alloc_allowed = true;
+
+	return 0;
+}
+
+static int
 txgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
@@ -383,6 +425,9 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
 	 * after stop, close and detach of the VF
 	 **/
 	txgbevf_remove_mac_addr(dev, 0);
+
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
 
 	/* Disable the interrupts for VF */
 	txgbevf_intr_disable(dev);
@@ -660,6 +705,7 @@ txgbevf_dev_interrupt_handler(void *param)
  * operation have been implemented
  */
 static const struct eth_dev_ops txgbevf_eth_dev_ops = {
+	.dev_configure        = txgbevf_dev_configure,
 	.link_update          = txgbevf_dev_link_update,
 	.dev_infos_get        = txgbevf_dev_info_get,
 	.rx_queue_intr_enable = txgbevf_dev_rx_queue_intr_enable,

@@ -20,6 +20,7 @@ s32 txgbe_check_mac_link_vf(struct txgbe_hw *hw, u32 *speed,
 s32 txgbe_set_rar_vf(struct txgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 		     u32 enable_addr);
 s32 txgbevf_set_uc_addr_vf(struct txgbe_hw *hw, u32 index, u8 *addr);
+s32 txgbevf_rlpml_set_vf(struct txgbe_hw *hw, u16 max_size);
 int txgbevf_negotiate_api_version(struct txgbe_hw *hw, int api);
 int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 		       unsigned int *default_tc);

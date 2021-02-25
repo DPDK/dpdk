@@ -33,6 +33,7 @@ s32 txgbe_init_ops_vf(struct txgbe_hw *hw)
 	/* RAR, Multicast, VLAN */
 	mac->set_rar = txgbe_set_rar_vf;
 	mac->set_uc_addr = txgbevf_set_uc_addr_vf;
+	mac->set_rlpml = txgbevf_rlpml_set_vf;
 
 	mac->max_tx_queues = 1;
 	mac->max_rx_queues = 1;
@@ -394,6 +395,29 @@ s32 txgbe_check_mac_link_vf(struct txgbe_hw *hw, u32 *speed,
 out:
 	*link_up = !mac->get_link_status;
 	return ret_val;
+}
+
+/**
+ *  txgbevf_rlpml_set_vf - Set the maximum receive packet length
+ *  @hw: pointer to the HW structure
+ *  @max_size: value to assign to max frame size
+ **/
+s32 txgbevf_rlpml_set_vf(struct txgbe_hw *hw, u16 max_size)
+{
+	u32 msgbuf[2];
+	s32 retval;
+
+	msgbuf[0] = TXGBE_VF_SET_LPE;
+	msgbuf[1] = max_size;
+
+	retval = txgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 2);
+	if (retval)
+		return retval;
+	if ((msgbuf[0] & TXGBE_VF_SET_LPE) &&
+	    (msgbuf[0] & TXGBE_VT_MSGTYPE_NACK))
+		return TXGBE_ERR_MBX;
+
+	return 0;
 }
 
 /**

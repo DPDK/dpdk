@@ -2837,8 +2837,10 @@ txgbe_rss_disable(struct rte_eth_dev *dev)
 	struct txgbe_hw *hw;
 
 	hw = TXGBE_DEV_HW(dev);
-
-	wr32m(hw, TXGBE_RACTL, TXGBE_RACTL_RSSENA, 0);
+	if (hw->mac.type == txgbe_mac_raptor_vf)
+		wr32m(hw, TXGBE_VFPLCFG, TXGBE_VFPLCFG_RSSENA, 0);
+	else
+		wr32m(hw, TXGBE_RACTL, TXGBE_RACTL_RSSENA, 0);
 }
 
 int
@@ -4720,6 +4722,167 @@ txgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.offloads = txq->offloads;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+}
+
+/*
+ * [VF] Initializes Receive Unit.
+ */
+int __rte_cold
+txgbevf_dev_rx_init(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw     *hw;
+	struct txgbe_rx_queue *rxq;
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	uint64_t bus_addr;
+	uint32_t srrctl, psrtype;
+	uint16_t buf_size;
+	uint16_t i;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = TXGBE_DEV_HW(dev);
+
+	if (rte_is_power_of_2(dev->data->nb_rx_queues) == 0) {
+		PMD_INIT_LOG(ERR, "The number of Rx queue invalid, "
+			"it should be power of 2");
+		return -1;
+	}
+
+	if (dev->data->nb_rx_queues > hw->mac.max_rx_queues) {
+		PMD_INIT_LOG(ERR, "The number of Rx queue invalid, "
+			"it should be equal to or less than %d",
+			hw->mac.max_rx_queues);
+		return -1;
+	}
+
+	/*
+	 * When the VF driver issues a TXGBE_VF_RESET request, the PF driver
+	 * disables the VF receipt of packets if the PF MTU is > 1500.
+	 * This is done to deal with limitations that imposes
+	 * the PF and all VFs to share the same MTU.
+	 * Then, the PF driver enables again the VF receipt of packet when
+	 * the VF driver issues a TXGBE_VF_SET_LPE request.
+	 * In the meantime, the VF device cannot be used, even if the VF driver
+	 * and the Guest VM network stack are ready to accept packets with a
+	 * size up to the PF MTU.
+	 * As a work-around to this PF behaviour, force the call to
+	 * txgbevf_rlpml_set_vf even if jumbo frames are not used. This way,
+	 * VF packets received can work in all cases.
+	 */
+	if (txgbevf_rlpml_set_vf(hw,
+	    (uint16_t)dev->data->dev_conf.rxmode.max_rx_pkt_len)) {
+		PMD_INIT_LOG(ERR, "Set max packet length to %d failed.",
+			     dev->data->dev_conf.rxmode.max_rx_pkt_len);
+		return -EINVAL;
+	}
+
+	/*
+	 * Assume no header split and no VLAN strip support
+	 * on any Rx queue first .
+	 */
+	rxmode->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+
+	/* Set PSR type for VF RSS according to max Rx queue */
+	psrtype = TXGBE_VFPLCFG_PSRL4HDR |
+		  TXGBE_VFPLCFG_PSRL4HDR |
+		  TXGBE_VFPLCFG_PSRL2HDR |
+		  TXGBE_VFPLCFG_PSRTUNHDR |
+		  TXGBE_VFPLCFG_PSRTUNMAC;
+	wr32(hw, TXGBE_VFPLCFG, TXGBE_VFPLCFG_PSR(psrtype));
+
+	/* Setup RX queues */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+
+		/* Allocate buffers for descriptor rings */
+		ret = txgbe_alloc_rx_queue_mbufs(rxq);
+		if (ret)
+			return ret;
+
+		/* Setup the Base and Length of the Rx Descriptor Rings */
+		bus_addr = rxq->rx_ring_phys_addr;
+
+		wr32(hw, TXGBE_RXBAL(i),
+				(uint32_t)(bus_addr & BIT_MASK32));
+		wr32(hw, TXGBE_RXBAH(i),
+				(uint32_t)(bus_addr >> 32));
+		wr32(hw, TXGBE_RXRP(i), 0);
+		wr32(hw, TXGBE_RXWP(i), 0);
+
+		/* Configure the RXCFG register */
+		srrctl = TXGBE_RXCFG_RNGLEN(rxq->nb_rx_desc);
+
+		/* Set if packets are dropped when no descriptors available */
+		if (rxq->drop_en)
+			srrctl |= TXGBE_RXCFG_DROP;
+
+		/*
+		 * Configure the RX buffer size in the PKTLEN field of
+		 * the RXCFG register of the queue.
+		 * The value is in 1 KB resolution. Valid values can be from
+		 * 1 KB to 16 KB.
+		 */
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+			RTE_PKTMBUF_HEADROOM);
+		buf_size = ROUND_UP(buf_size, 1 << 10);
+		srrctl |= TXGBE_RXCFG_PKTLEN(buf_size);
+
+		/*
+		 * VF modification to write virtual function RXCFG register
+		 */
+		wr32(hw, TXGBE_RXCFG(i), srrctl);
+
+		if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER ||
+		    /* It adds dual VLAN length for supporting dual VLAN */
+		    (rxmode->max_rx_pkt_len +
+				2 * TXGBE_VLAN_TAG_SIZE) > buf_size) {
+			if (!dev->data->scattered_rx)
+				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
+			dev->data->scattered_rx = 1;
+		}
+
+		if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			rxmode->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	}
+
+	/*
+	 * Device configured with multiple RX queues.
+	 */
+	txgbe_dev_mq_rx_configure(dev);
+
+	txgbe_set_rx_function(dev);
+
+	return 0;
+}
+
+/*
+ * [VF] Initializes Transmit Unit.
+ */
+void __rte_cold
+txgbevf_dev_tx_init(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw     *hw;
+	struct txgbe_tx_queue *txq;
+	uint64_t bus_addr;
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = TXGBE_DEV_HW(dev);
+
+	/* Setup the Base and Length of the Tx Descriptor Rings */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		bus_addr = txq->tx_ring_phys_addr;
+		wr32(hw, TXGBE_TXBAL(i),
+				(uint32_t)(bus_addr & BIT_MASK32));
+		wr32(hw, TXGBE_TXBAH(i),
+				(uint32_t)(bus_addr >> 32));
+		wr32m(hw, TXGBE_TXCFG(i), TXGBE_TXCFG_BUFLEN_MASK,
+			TXGBE_TXCFG_BUFLEN(txq->nb_tx_desc));
+		/* Setup the HW Tx Head and TX Tail descriptor pointers */
+		wr32(hw, TXGBE_TXRP(i), 0);
+		wr32(hw, TXGBE_TXWP(i), 0);
+	}
 }
 
 int

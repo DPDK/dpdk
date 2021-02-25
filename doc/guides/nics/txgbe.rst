@@ -63,6 +63,10 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle display of transmit descriptor clean messages.
 
+- ``RTE_LIBRTE_TXGBE_PF_DISABLE_STRIP_CRC`` (undefined by default)
+
+  Decide to enable or disable HW CRC in VF PMD.
+
 Dynamic Logging Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
