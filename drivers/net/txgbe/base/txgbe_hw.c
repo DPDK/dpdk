@@ -6,6 +6,7 @@
 #include "txgbe_mbx.h"
 #include "txgbe_phy.h"
 #include "txgbe_dcb.h"
+#include "txgbe_vf.h"
 #include "txgbe_eeprom.h"
 #include "txgbe_mng.h"
 #include "txgbe_hw.h"
@@ -2490,6 +2491,9 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 	switch (hw->mac.type) {
 	case txgbe_mac_raptor:
 		status = txgbe_init_ops_pf(hw);
+		break;
+	case txgbe_mac_raptor_vf:
+		status = txgbe_init_ops_vf(hw);
 		break;
 	default:
 		status = TXGBE_ERR_DEVICE_NOT_SUPPORTED;

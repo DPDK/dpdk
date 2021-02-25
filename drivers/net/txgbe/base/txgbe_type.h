@@ -11,6 +11,9 @@
 #define TXGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 #define TXGBE_AUTO_NEG_TIME	45 /* 4.5 Seconds */
 
+#define TXGBE_RX_HDR_SIZE	256
+#define TXGBE_RX_BUF_SIZE	2048
+
 #define TXGBE_FRAME_SIZE_MAX	(9728) /* Maximum frame size, +FCS */
 #define TXGBE_FRAME_SIZE_DFT	(1518) /* Default frame size, +FCS */
 #define TXGBE_NUM_POOL		(64)
@@ -23,6 +26,7 @@
 
 #define TXGBE_FDIR_INIT_DONE_POLL		10
 #define TXGBE_FDIRCMD_CMD_POLL			10
+#define TXGBE_VF_INIT_TIMEOUT	200 /* Number of retries to clear RSTI */
 
 #define TXGBE_ALIGN		128 /* as intel did */
 
@@ -703,6 +707,7 @@ struct txgbe_mbx_info {
 	struct txgbe_mbx_stats stats;
 	u32 timeout;
 	u32 usec_delay;
+	u32 v2p_mailbox;
 	u16 size;
 };
 
@@ -732,6 +737,7 @@ struct txgbe_hw {
 	u16 subsystem_vendor_id;
 	u8 revision_id;
 	bool adapter_stopped;
+	int api_version;
 	bool allow_unsupported_sfp;
 	bool need_crosstalk_fix;
 
@@ -755,6 +761,7 @@ struct txgbe_hw {
 	u32 q_rx_regs[128 * 4];
 	u32 q_tx_regs[128 * 4];
 	bool offset_loaded;
+	bool rx_loaded;
 	struct {
 		u64 rx_qp_packets;
 		u64 tx_qp_packets;

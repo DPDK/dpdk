@@ -9,6 +9,7 @@ sources = [
 	'txgbe_mbx.c',
 	'txgbe_mng.c',
 	'txgbe_phy.c',
+	'txgbe_vf.c',
 ]
 
 error_cflags = []

@@ -60,6 +60,8 @@ enum txgbe_pfvf_api_rev {
 #define TXGBE_VF_GET_RSS_KEY	0x0b    /* get RSS key */
 #define TXGBE_VF_UPDATE_XCAST_MODE	0x0c
 
+#define TXGBE_VF_BACKUP		0x8001 /* VF requests backup */
+
 /* mode choices for TXGBE_VF_UPDATE_XCAST_MODE */
 enum txgbevf_xcast_modes {
 	TXGBEVF_XCAST_MODE_NONE = 0,
@@ -76,12 +78,20 @@ enum txgbevf_xcast_modes {
 
 /* length of permanent address message returned from PF */
 #define TXGBE_VF_PERMADDR_MSG_LEN	4
+/* word in permanent address message with the current multicast type */
+#define TXGBE_VF_MC_TYPE_WORD		3
+
+#define TXGBE_VF_MBX_INIT_TIMEOUT	2000 /* number of retries on mailbox */
+#define TXGBE_VF_MBX_INIT_DELAY		500  /* microseconds between retries */
 
 s32 txgbe_read_mbx(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
 s32 txgbe_write_mbx(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
+s32 txgbe_read_posted_mbx(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
+s32 txgbe_write_posted_mbx(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
 s32 txgbe_check_for_msg(struct txgbe_hw *hw, u16 mbx_id);
 s32 txgbe_check_for_ack(struct txgbe_hw *hw, u16 mbx_id);
 s32 txgbe_check_for_rst(struct txgbe_hw *hw, u16 mbx_id);
+void txgbe_init_mbx_params_vf(struct txgbe_hw *hw);
 void txgbe_init_mbx_params_pf(struct txgbe_hw *hw);
 
 s32 txgbe_read_mbx_pf(struct txgbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
@@ -89,5 +99,11 @@ s32 txgbe_write_mbx_pf(struct txgbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
 s32 txgbe_check_for_msg_pf(struct txgbe_hw *hw, u16 vf_number);
 s32 txgbe_check_for_ack_pf(struct txgbe_hw *hw, u16 vf_number);
 s32 txgbe_check_for_rst_pf(struct txgbe_hw *hw, u16 vf_number);
+
+s32 txgbe_read_mbx_vf(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
+s32 txgbe_write_mbx_vf(struct txgbe_hw *hw, u32 *msg, u16 size, u16 mbx_id);
+s32 txgbe_check_for_msg_vf(struct txgbe_hw *hw, u16 mbx_id);
+s32 txgbe_check_for_ack_vf(struct txgbe_hw *hw, u16 mbx_id);
+s32 txgbe_check_for_rst_vf(struct txgbe_hw *hw, u16 mbx_id);
 
 #endif /* _TXGBE_MBX_H_ */
