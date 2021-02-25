@@ -275,6 +275,7 @@ mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
 						MLX5_WQ_END_PAD_MODE_ALIGN :
 						MLX5_WQ_END_PAD_MODE_NONE;
 	rq_attr.wq_attr.pd = priv->sh->pdn;
+	rq_attr.counter_set_id = priv->counter_set_id;
 	/* Create RQ using DevX API. */
 	return mlx5_devx_rq_create(priv->sh->ctx, &rxq_ctrl->obj->rq_obj,
 				   wqe_size, log_desc_n, &rq_attr,
@@ -438,6 +439,7 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	attr.wq_attr.log_hairpin_num_packets =
 			attr.wq_attr.log_hairpin_data_sz -
 			MLX5_HAIRPIN_QUEUE_STRIDE;
+	attr.counter_set_id = priv->counter_set_id;
 	tmpl->rq = mlx5_devx_cmd_create_rq(priv->sh->ctx, &attr,
 					   rxq_ctrl->socket);
 	if (!tmpl->rq) {
