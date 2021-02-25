@@ -81,6 +81,8 @@ enum txgbevf_xcast_modes {
 /* word in permanent address message with the current multicast type */
 #define TXGBE_VF_MC_TYPE_WORD		3
 
+#define TXGBE_PF_CONTROL_MSG		0x0100 /* PF control message */
+
 #define TXGBE_VF_MBX_INIT_TIMEOUT	2000 /* number of retries on mailbox */
 #define TXGBE_VF_MBX_INIT_DELAY		500  /* microseconds between retries */
 

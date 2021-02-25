@@ -20,7 +20,9 @@ static int txgbevf_dev_info_get(struct rte_eth_dev *dev,
 static int txgbevf_dev_close(struct rte_eth_dev *dev);
 static void txgbevf_intr_disable(struct rte_eth_dev *dev);
 static void txgbevf_intr_enable(struct rte_eth_dev *dev);
+static void txgbevf_configure_msix(struct rte_eth_dev *dev);
 static void txgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
+static void txgbevf_dev_interrupt_handler(void *param);
 
 /*
  * The set of PCI devices this driver supports (for VF)
@@ -98,6 +100,7 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	int err;
 	uint32_t tc, tcs;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(eth_dev);
 	struct rte_ether_addr *perm_addr =
 			(struct rte_ether_addr *)hw->mac.perm_addr;
@@ -217,6 +220,9 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		return -EIO;
 	}
 
+	rte_intr_callback_register(intr_handle,
+				   txgbevf_dev_interrupt_handler, eth_dev);
+	rte_intr_enable(intr_handle);
 	txgbevf_intr_enable(eth_dev);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
@@ -353,6 +359,8 @@ static int
 txgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -374,7 +382,116 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
 
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+				     txgbevf_dev_interrupt_handler, dev);
+
 	return 0;
+}
+
+static int
+txgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t vec = TXGBE_MISC_VEC_ID;
+
+	if (rte_intr_allow_others(intr_handle))
+		vec = TXGBE_RX_VEC_START;
+	intr->mask_misc &= ~(1 << vec);
+	RTE_SET_USED(queue_id);
+	wr32(hw, TXGBE_VFIMC, ~intr->mask_misc);
+
+	rte_intr_enable(intr_handle);
+
+	return 0;
+}
+
+static int
+txgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint32_t vec = TXGBE_MISC_VEC_ID;
+
+	if (rte_intr_allow_others(intr_handle))
+		vec = TXGBE_RX_VEC_START;
+	intr->mask_misc |= (1 << vec);
+	RTE_SET_USED(queue_id);
+	wr32(hw, TXGBE_VFIMS, intr->mask_misc);
+
+	return 0;
+}
+
+static void
+txgbevf_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
+		     uint8_t queue, uint8_t msix_vector)
+{
+	uint32_t tmp, idx;
+
+	if (direction == -1) {
+		/* other causes */
+		msix_vector |= TXGBE_VFIVAR_VLD;
+		tmp = rd32(hw, TXGBE_VFIVARMISC);
+		tmp &= ~0xFF;
+		tmp |= msix_vector;
+		wr32(hw, TXGBE_VFIVARMISC, tmp);
+	} else {
+		/* rx or tx cause */
+		/* Workround for ICR lost */
+		idx = ((16 * (queue & 1)) + (8 * direction));
+		tmp = rd32(hw, TXGBE_VFIVAR(queue >> 1));
+		tmp &= ~(0xFF << idx);
+		tmp |= (msix_vector << idx);
+		wr32(hw, TXGBE_VFIVAR(queue >> 1), tmp);
+	}
+}
+
+static void
+txgbevf_configure_msix(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t q_idx;
+	uint32_t vector_idx = TXGBE_MISC_VEC_ID;
+	uint32_t base = TXGBE_MISC_VEC_ID;
+
+	/* Configure VF other cause ivar */
+	txgbevf_set_ivar_map(hw, -1, 1, vector_idx);
+
+	/* won't configure msix register if no mapping is done
+	 * between intr vector and event fd.
+	 */
+	if (!rte_intr_dp_is_en(intr_handle))
+		return;
+
+	if (rte_intr_allow_others(intr_handle)) {
+		base = TXGBE_RX_VEC_START;
+		vector_idx = TXGBE_RX_VEC_START;
+	}
+
+	/* Configure all RX queues of VF */
+	for (q_idx = 0; q_idx < dev->data->nb_rx_queues; q_idx++) {
+		/* Force all queue use vector 0,
+		 * as TXGBE_VF_MAXMSIVECOTR = 1
+		 */
+		txgbevf_set_ivar_map(hw, 0, q_idx, vector_idx);
+		intr_handle->intr_vec[q_idx] = vector_idx;
+		if (vector_idx < base + intr_handle->nb_efd - 1)
+			vector_idx++;
+	}
+
+	/* As RX queue setting above show, all queues use the vector 0.
+	 * Set only the ITR value of TXGBE_MISC_VEC_ID.
+	 */
+	wr32(hw, TXGBE_ITR(TXGBE_MISC_VEC_ID),
+		TXGBE_ITR_IVAL(TXGBE_QUEUE_ITR_INTERVAL_DEFAULT)
+		| TXGBE_ITR_WRDSA);
 }
 
 static int
@@ -468,12 +585,76 @@ txgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void txgbevf_mbx_process(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	u32 in_msg = 0;
+
+	/* peek the message first */
+	in_msg = rd32(hw, TXGBE_VFMBX);
+
+	/* PF reset VF event */
+	if (in_msg == TXGBE_PF_CONTROL_MSG) {
+		/* dummy mbx read to ack pf */
+		if (txgbe_read_mbx(hw, &in_msg, 1, 0))
+			return;
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
+					      NULL);
+	}
+}
+
+static int
+txgbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
+{
+	uint32_t eicr;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+	txgbevf_intr_disable(dev);
+
+	/* read-on-clear nic registers here */
+	eicr = rd32(hw, TXGBE_VFICR);
+	intr->flags = 0;
+
+	/* only one misc vector supported - mailbox */
+	eicr &= TXGBE_VFICR_MASK;
+	/* Workround for ICR lost */
+	intr->flags |= TXGBE_FLAG_MAILBOX;
+
+	return 0;
+}
+
+static int
+txgbevf_dev_interrupt_action(struct rte_eth_dev *dev)
+{
+	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
+
+	if (intr->flags & TXGBE_FLAG_MAILBOX) {
+		txgbevf_mbx_process(dev);
+		intr->flags &= ~TXGBE_FLAG_MAILBOX;
+	}
+
+	txgbevf_intr_enable(dev);
+
+	return 0;
+}
+
+static void
+txgbevf_dev_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	txgbevf_dev_interrupt_get_status(dev);
+	txgbevf_dev_interrupt_action(dev);
+}
+
 /*
  * dev_ops for virtual function, bare necessities for basic vf
  * operation have been implemented
  */
 static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.dev_infos_get        = txgbevf_dev_info_get,
+	.rx_queue_intr_enable = txgbevf_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable = txgbevf_dev_rx_queue_intr_disable,
 	.mac_addr_add         = txgbevf_add_mac_addr,
 	.mac_addr_remove      = txgbevf_remove_mac_addr,
 	.rxq_info_get         = txgbe_rxq_info_get,
