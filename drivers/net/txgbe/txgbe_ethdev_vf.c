@@ -911,6 +911,41 @@ txgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
 }
 
 static int
+txgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct txgbe_hw *hw;
+	uint32_t max_frame = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
+
+	hw = TXGBE_DEV_HW(dev);
+
+	if (mtu < RTE_ETHER_MIN_MTU ||
+			max_frame > RTE_ETHER_MAX_JUMBO_FRAME_LEN)
+		return -EINVAL;
+
+	/* refuse mtu that requires the support of scattered packets when this
+	 * feature has not been enabled before.
+	 */
+	if (!(rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) &&
+	    (max_frame + 2 * TXGBE_VLAN_TAG_SIZE >
+	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM))
+		return -EINVAL;
+
+	/*
+	 * When supported by the underlying PF driver, use the TXGBE_VF_SET_MTU
+	 * request of the version 2.0 of the mailbox API.
+	 * For now, use the TXGBE_VF_SET_LPE request of the version 1.0
+	 * of the mailbox API.
+	 */
+	if (txgbevf_rlpml_set_vf(hw, max_frame))
+		return -EINVAL;
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame;
+	return 0;
+}
+
+static int
 txgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
@@ -1073,6 +1108,7 @@ static const struct eth_dev_ops txgbevf_eth_dev_ops = {
 	.allmulticast_enable  = txgbevf_dev_allmulticast_enable,
 	.allmulticast_disable = txgbevf_dev_allmulticast_disable,
 	.dev_infos_get        = txgbevf_dev_info_get,
+	.mtu_set              = txgbevf_dev_set_mtu,
 	.vlan_filter_set      = txgbevf_vlan_filter_set,
 	.vlan_strip_queue_set = txgbevf_vlan_strip_queue_set,
 	.vlan_offload_set     = txgbevf_vlan_offload_set,
