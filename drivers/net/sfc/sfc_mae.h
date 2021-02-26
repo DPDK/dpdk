@@ -179,7 +179,8 @@ struct sfc_mae_parse_ctx {
 	 * which part of the pattern is being parsed.
 	 */
 	const efx_mae_field_id_t	*field_ids_remap;
-	/* This points to a tunnel-specific default mask. */
+	/* These two fields correspond to the tunnel-specific default mask. */
+	size_t				tunnel_def_mask_size;
 	const void			*tunnel_def_mask;
 	bool				match_mport_set;
 	struct sfc_mae_pattern_data	pattern_data;
