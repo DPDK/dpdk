@@ -1395,7 +1395,6 @@ sfc_mae_rule_parse_item_tunnel(const struct rte_flow_item *item,
 	uint8_t supp_mask[sizeof(uint64_t)];
 	const uint8_t *spec = NULL;
 	const uint8_t *mask = NULL;
-	const void *def_mask;
 	int rc;
 
 	/*
@@ -1417,12 +1416,11 @@ sfc_mae_rule_parse_item_tunnel(const struct rte_flow_item *item,
 	 * sfc_mae_rule_encap_parse_init(). Default mask
 	 * was also picked by that helper. Use it here.
 	 */
-	def_mask = ctx_mae->tunnel_def_mask;
-
 	rc = sfc_flow_parse_init(item,
 				 (const void **)&spec, (const void **)&mask,
-				 (const void *)&supp_mask, def_mask,
-				 sizeof(def_mask), error);
+				 (const void *)&supp_mask,
+				 ctx_mae->tunnel_def_mask,
+				 ctx_mae->tunnel_def_mask_size,  error);
 	if (rc != 0)
 		return rc;
 
@@ -1656,20 +1654,20 @@ sfc_mae_rule_encap_parse_init(struct sfc_adapter *sa,
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ctx->encap_type = EFX_TUNNEL_PROTOCOL_VXLAN;
 			ctx->tunnel_def_mask = &rte_flow_item_vxlan_mask;
-			RTE_BUILD_BUG_ON(sizeof(ctx->tunnel_def_mask) !=
-					 sizeof(rte_flow_item_vxlan_mask));
+			ctx->tunnel_def_mask_size =
+				sizeof(rte_flow_item_vxlan_mask);
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 			ctx->encap_type = EFX_TUNNEL_PROTOCOL_GENEVE;
 			ctx->tunnel_def_mask = &rte_flow_item_geneve_mask;
-			RTE_BUILD_BUG_ON(sizeof(ctx->tunnel_def_mask) !=
-					 sizeof(rte_flow_item_geneve_mask));
+			ctx->tunnel_def_mask_size =
+				sizeof(rte_flow_item_geneve_mask);
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			ctx->encap_type = EFX_TUNNEL_PROTOCOL_NVGRE;
 			ctx->tunnel_def_mask = &rte_flow_item_nvgre_mask;
-			RTE_BUILD_BUG_ON(sizeof(ctx->tunnel_def_mask) !=
-					 sizeof(rte_flow_item_nvgre_mask));
+			ctx->tunnel_def_mask_size =
+				sizeof(rte_flow_item_nvgre_mask);
 			break;
 		case RTE_FLOW_ITEM_TYPE_END:
 			break;
