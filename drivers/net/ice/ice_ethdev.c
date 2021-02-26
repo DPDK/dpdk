@@ -1768,8 +1768,14 @@ ice_pkg_file_search_path(struct rte_pci_device *pci_dev, char *pkg_file)
 	pos = rte_pci_find_ext_capability(pci_dev, RTE_PCI_EXT_CAP_ID_DSN);
 
 	if (pos) {
-		rte_pci_read_config(pci_dev, &dsn_low, 4, pos + 4);
-		rte_pci_read_config(pci_dev, &dsn_high, 4, pos + 8);
+		if (rte_pci_read_config(pci_dev, &dsn_low, 4, pos + 4) < 0) {
+			PMD_INIT_LOG(ERR, "Failed to read pci config space\n");
+			return -1;
+		}
+		if (rte_pci_read_config(pci_dev, &dsn_high, 4, pos + 8) < 0) {
+			PMD_INIT_LOG(ERR, "Failed to read pci config space\n");
+			return -1;
+		}
 		snprintf(opt_ddp_filename, ICE_MAX_PKG_FILENAME_SIZE,
 			 "ice-%08x%08x.pkg", dsn_high, dsn_low);
 	} else {
@@ -1831,7 +1837,11 @@ static int ice_load_pkg(struct rte_eth_dev *dev)
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
-	ice_pkg_file_search_path(pci_dev, pkg_file);
+	err = ice_pkg_file_search_path(pci_dev, pkg_file);
+	if (err) {
+		PMD_INIT_LOG(ERR, "failed to search file path\n");
+		return err;
+	}
 
 	file = fopen(pkg_file, "rb");
 	if (!file)  {
