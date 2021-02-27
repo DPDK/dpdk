@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2020 Dmitry Kozlyuk
+ */
+
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_memory.h>
