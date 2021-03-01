@@ -34,7 +34,7 @@
 #define DEFAULT_TX_RS_THRESH     32
 #define DEFAULT_TX_FREE_THRESH   32
 
-#define IAVF_MIN_TSO_MSS          256
+#define IAVF_MIN_TSO_MSS          88
 #define IAVF_MAX_TSO_MSS          9668
 #define IAVF_TSO_MAX_SEG          UINT8_MAX
 #define IAVF_TX_MAX_MTU_SEG       8
