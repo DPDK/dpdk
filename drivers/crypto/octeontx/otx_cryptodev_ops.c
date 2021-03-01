@@ -577,8 +577,8 @@ otx_cpt_enq_single_sym_sessless(struct cpt_instance *instance,
 	int ret;
 
 	/* Create temporary session */
-
-	if (rte_mempool_get(instance->sess_mp, (void **)&sess))
+	sess = rte_cryptodev_sym_session_create(instance->sess_mp);
+	if (sess == NULL)
 		return -ENOMEM;
 
 	ret = sym_session_configure(driver_id, sym_op->xform, sess,
