@@ -1148,7 +1148,8 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	}
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-	if (rte_pktmbuf_alloc_bulk(rxq->umem->mb_pool, fq_bufs, reserve_size)) {
+	ret = rte_pktmbuf_alloc_bulk(rxq->umem->mb_pool, fq_bufs, reserve_size);
+	if (ret) {
 		AF_XDP_LOG(DEBUG, "Failed to get enough buffers for fq.\n");
 		goto err;
 	}
