@@ -1430,6 +1430,9 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				rte_mbuf_raw_free(pkt);
 				pkt = rep;
 			}
+			rq_ci >>= sges_n;
+			++rq_ci;
+			rq_ci <<= sges_n;
 			break;
 		}
 		if (!pkt) {
