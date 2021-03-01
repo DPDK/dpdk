@@ -103,13 +103,8 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 	for (i = 0; i < priv->nr_virtqs; i++) {
 		virtq = &priv->virtqs[i];
 		mlx5_vdpa_virtq_unset(virtq);
-		if (virtq->counters) {
+		if (virtq->counters)
 			claim_zero(mlx5_devx_cmd_destroy(virtq->counters));
-			virtq->counters = NULL;
-			memset(&virtq->reset, 0, sizeof(virtq->reset));
-		}
-		memset(virtq->err_time, 0, sizeof(virtq->err_time));
-		virtq->n_retry = 0;
 	}
 	for (i = 0; i < priv->num_lag_ports; i++) {
 		if (priv->tiss[i]) {
@@ -126,6 +121,7 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 		priv->virtq_db_addr = NULL;
 	}
 	priv->features = 0;
+	memset(priv->virtqs, 0, sizeof(*virtq) * priv->nr_virtqs);
 	priv->nr_virtqs = 0;
 }
 
