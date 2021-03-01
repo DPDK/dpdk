@@ -331,17 +331,24 @@ set_kernel_driver_type(PSP_DEVINFO_DATA device_info_data,
 static int
 pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 {
-	struct rte_pci_device *dev;
+	struct rte_pci_device *dev = NULL;
 	int ret = -1;
 	char  pci_device_info[REGSTR_VAL_MAX_HCID_LEN];
 	struct rte_pci_addr addr;
 	struct rte_pci_id pci_id;
 
-	dev = malloc(sizeof(*dev));
-	if (dev == NULL)
+	ret = get_device_pci_address(dev_info, device_info_data, &addr);
+	if (ret != 0)
 		goto end;
 
-	memset(dev, 0, sizeof(*dev));
+	if (rte_pci_ignore_device(&addr)) {
+		/*
+		 * We won't add this device, but we want to continue
+		 * looking for supported devices
+		 */
+		ret = ERROR_CONTINUE;
+		goto end;
+	}
 
 	ret = get_pci_hardware_id(dev_info, device_info_data,
 		pci_device_info, sizeof(pci_device_info));
@@ -358,9 +365,11 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 		goto end;
 	}
 
-	ret = get_device_pci_address(dev_info, device_info_data, &addr);
-	if (ret != 0)
+	dev = malloc(sizeof(*dev));
+	if (dev == NULL)
 		goto end;
+
+	memset(dev, 0, sizeof(*dev));
 
 	dev->device.bus = &rte_pci_bus.bus;
 	dev->addr = addr;
@@ -441,7 +450,7 @@ rte_pci_scan(void)
 		device_index++;
 		/* we only want to enumerate net & netuio class devices */
 		if (IsEqualGUID(&(device_info_data.ClassGuid),
-		    &GUID_DEVCLASS_NET) ||
+			    &GUID_DEVCLASS_NET) ||
 			IsEqualGUID(&(device_info_data.ClassGuid),
 			    &GUID_DEVCLASS_NETUIO)) {
 			ret = pci_scan_one(dev_info, &device_info_data);
