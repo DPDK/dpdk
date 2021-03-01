@@ -471,13 +471,9 @@ Dependencies
 
 The following python modules must be installed to run the script:
 
-* img2pdf
+.. code-block:: console
 
-* plotly
-
-* pandas
-
-* glob
+   pip3 install img2pdf plotly pandas psutil kaleido
 
 
 Test Configuration
