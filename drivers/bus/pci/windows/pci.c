@@ -23,6 +23,9 @@ DEFINE_DEVPROPKEY(DEVPKEY_Device_Numa_Node, 0x540b947e, 0x8b40, 0x45bc,
  * the registry hive for PCI devices.
  */
 
+/* Class ID consists of hexadecimal digits */
+#define RTE_PCI_DRV_CLASSID_DIGIT "0123456789abcdefABCDEF"
+
 /* Some of the functions below are not implemented on Windows,
  * but need to be defined for compilation purposes
  */
@@ -276,23 +279,41 @@ get_pci_hardware_id(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data,
 
 /*
  * parse the SPDRP_HARDWAREID output and assign to rte_pci_id
+ *
+ * A list of the device identification string formats can be found at:
+ * https://docs.microsoft.com/en-us/windows-hardware/drivers/install/identifiers-for-pci-devices
  */
 static int
 parse_pci_hardware_id(const char *buf, struct rte_pci_id *pci_id)
 {
 	int ids = 0;
 	uint16_t vendor_id, device_id;
-	uint32_t subvendor_id = 0;
+	uint32_t subvendor_id = 0, class_id = 0;
+	const char *cp;
 
 	ids = sscanf_s(buf, "PCI\\VEN_%" PRIx16 "&DEV_%" PRIx16 "&SUBSYS_%"
 		PRIx32, &vendor_id, &device_id, &subvendor_id);
 	if (ids != 3)
 		return -1;
 
+	/* Try and find PCI class ID */
+	for (cp = buf; !(cp[0] == 0 && cp[1] == 0); cp++)
+		if (*cp == '&' && sscanf_s(cp,
+				"&CC_%" PRIx32, &class_id) == 1) {
+			/*
+			 * If the Programming Interface code is not specified,
+			 * assume that it is zero.
+			 */
+			if (strspn(cp + 4, RTE_PCI_DRV_CLASSID_DIGIT) == 4)
+				class_id <<= 8;
+			break;
+		}
+
 	pci_id->vendor_id = vendor_id;
 	pci_id->device_id = device_id;
 	pci_id->subsystem_device_id = subvendor_id >> 16;
 	pci_id->subsystem_vendor_id = subvendor_id & 0xffff;
+	pci_id->class_id = class_id;
 	return 0;
 }
 
@@ -341,6 +362,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 	if (ret != 0)
 		goto end;
 
+	dev->device.bus = &rte_pci_bus.bus;
 	dev->addr = addr;
 	dev->id = pci_id;
 	dev->max_vfs = 0; /* TODO: get max_vfs */
