@@ -2269,7 +2269,7 @@ i40e_flow_set_fdir_inset(struct i40e_pf *pf,
 	    !memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t)))
 		return 0;
 
-	num = i40e_generate_inset_mask_reg(input_set, mask_reg,
+	num = i40e_generate_inset_mask_reg(hw, input_set, mask_reg,
 					   I40E_INSET_MASK_NUM_REG);
 	if (num < 0)
 		return -EINVAL;

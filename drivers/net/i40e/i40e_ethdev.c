@@ -202,12 +202,12 @@
 #define I40E_TRANSLATE_INSET 0
 #define I40E_TRANSLATE_REG   1
 
-#define I40E_INSET_IPV4_TOS_MASK        0x0009FF00UL
-#define I40E_INSET_IPv4_TTL_MASK        0x000D00FFUL
-#define I40E_INSET_IPV4_PROTO_MASK      0x000DFF00UL
-#define I40E_INSET_IPV6_TC_MASK         0x0009F00FUL
-#define I40E_INSET_IPV6_HOP_LIMIT_MASK  0x000CFF00UL
-#define I40E_INSET_IPV6_NEXT_HDR_MASK   0x000C00FFUL
+#define I40E_INSET_IPV4_TOS_MASK        0x0000FF00UL
+#define I40E_INSET_IPV4_TTL_MASK        0x000000FFUL
+#define I40E_INSET_IPV4_PROTO_MASK      0x0000FF00UL
+#define I40E_INSET_IPV6_TC_MASK         0x0000F00FUL
+#define I40E_INSET_IPV6_HOP_LIMIT_MASK  0x0000FF00UL
+#define I40E_INSET_IPV6_NEXT_HDR_MASK   0x000000FFUL
 
 /* PCI offset for querying capability */
 #define PCI_DEV_CAP_REG            0xA4
@@ -219,6 +219,25 @@
 #define PCI_DEV_CTRL_EXT_TAG_SHIFT 8
 /* Bit mask of Extended Tag enable/disable */
 #define PCI_DEV_CTRL_EXT_TAG_MASK  (1 << PCI_DEV_CTRL_EXT_TAG_SHIFT)
+
+#define I40E_GLQF_PIT_IPV4_START	2
+#define I40E_GLQF_PIT_IPV4_COUNT	2
+#define I40E_GLQF_PIT_IPV6_START	4
+#define I40E_GLQF_PIT_IPV6_COUNT	2
+
+#define I40E_GLQF_PIT_SOURCE_OFF_GET(a)	\
+				(((a) & I40E_GLQF_PIT_SOURCE_OFF_MASK) >> \
+				 I40E_GLQF_PIT_SOURCE_OFF_SHIFT)
+
+#define I40E_GLQF_PIT_DEST_OFF_GET(a) \
+				(((a) & I40E_GLQF_PIT_DEST_OFF_MASK) >> \
+				 I40E_GLQF_PIT_DEST_OFF_SHIFT)
+
+#define I40E_GLQF_PIT_FSIZE_GET(a)	(((a) & I40E_GLQF_PIT_FSIZE_MASK) >> \
+					 I40E_GLQF_PIT_FSIZE_SHIFT)
+
+#define I40E_GLQF_PIT_BUILD(off, mask)	(((off) << 16) | (mask))
+#define I40E_FDIR_FIELD_OFFSET(a)	((a) >> 1)
 
 static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev, void *init_params);
 static int eth_i40e_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -9487,49 +9506,116 @@ i40e_translate_input_set_reg(enum i40e_mac_type type, uint64_t input)
 	return val;
 }
 
-int
-i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask, uint8_t nb_elem)
+static int
+i40e_get_inset_field_offset(struct i40e_hw *hw, uint32_t pit_reg_start,
+			    uint32_t pit_reg_count, uint32_t hdr_off)
 {
-	uint8_t i, idx = 0;
-	uint64_t inset_need_mask = inset;
+	const uint32_t pit_reg_end = pit_reg_start + pit_reg_count;
+	uint32_t field_off = I40E_FDIR_FIELD_OFFSET(hdr_off);
+	uint32_t i, reg_val, src_off, count;
+
+	for (i = pit_reg_start; i < pit_reg_end; i++) {
+		reg_val = i40e_read_rx_ctl(hw, I40E_GLQF_PIT(i));
+
+		src_off = I40E_GLQF_PIT_SOURCE_OFF_GET(reg_val);
+		count = I40E_GLQF_PIT_FSIZE_GET(reg_val);
+
+		if (src_off <= field_off && (src_off + count) > field_off)
+			break;
+	}
+
+	if (i >= pit_reg_end) {
+		PMD_DRV_LOG(ERR,
+			    "Hardware GLQF_PIT configuration does not support this field mask");
+		return -1;
+	}
+
+	return I40E_GLQF_PIT_DEST_OFF_GET(reg_val) + field_off - src_off;
+}
+
+int
+i40e_generate_inset_mask_reg(struct i40e_hw *hw, uint64_t inset,
+			     uint32_t *mask, uint8_t nb_elem)
+{
+	static const uint64_t mask_inset[] = {
+		I40E_INSET_IPV4_PROTO | I40E_INSET_IPV4_TTL,
+		I40E_INSET_IPV6_NEXT_HDR | I40E_INSET_IPV6_HOP_LIMIT };
 
 	static const struct {
 		uint64_t inset;
 		uint32_t mask;
-	} inset_mask_map[] = {
-		{I40E_INSET_IPV4_TOS, I40E_INSET_IPV4_TOS_MASK},
-		{I40E_INSET_IPV4_PROTO | I40E_INSET_IPV4_TTL, 0},
-		{I40E_INSET_IPV4_PROTO, I40E_INSET_IPV4_PROTO_MASK},
-		{I40E_INSET_IPV4_TTL, I40E_INSET_IPv4_TTL_MASK},
-		{I40E_INSET_IPV6_TC, I40E_INSET_IPV6_TC_MASK},
-		{I40E_INSET_IPV6_NEXT_HDR | I40E_INSET_IPV6_HOP_LIMIT, 0},
-		{I40E_INSET_IPV6_NEXT_HDR, I40E_INSET_IPV6_NEXT_HDR_MASK},
-		{I40E_INSET_IPV6_HOP_LIMIT, I40E_INSET_IPV6_HOP_LIMIT_MASK},
+		uint32_t offset;
+	} inset_mask_offset_map[] = {
+		{ I40E_INSET_IPV4_TOS, I40E_INSET_IPV4_TOS_MASK,
+		  offsetof(struct rte_ipv4_hdr, type_of_service) },
+
+		{ I40E_INSET_IPV4_PROTO, I40E_INSET_IPV4_PROTO_MASK,
+		  offsetof(struct rte_ipv4_hdr, next_proto_id) },
+
+		{ I40E_INSET_IPV4_TTL, I40E_INSET_IPV4_TTL_MASK,
+		  offsetof(struct rte_ipv4_hdr, time_to_live) },
+
+		{ I40E_INSET_IPV6_TC, I40E_INSET_IPV6_TC_MASK,
+		  offsetof(struct rte_ipv6_hdr, vtc_flow) },
+
+		{ I40E_INSET_IPV6_NEXT_HDR, I40E_INSET_IPV6_NEXT_HDR_MASK,
+		  offsetof(struct rte_ipv6_hdr, proto) },
+
+		{ I40E_INSET_IPV6_HOP_LIMIT, I40E_INSET_IPV6_HOP_LIMIT_MASK,
+		  offsetof(struct rte_ipv6_hdr, hop_limits) },
 	};
 
-	if (!inset || !mask || !nb_elem)
+	uint32_t i;
+	int idx = 0;
+
+	assert(mask);
+	if (!inset)
 		return 0;
 
-	for (i = 0, idx = 0; i < RTE_DIM(inset_mask_map); i++) {
+	for (i = 0; i < RTE_DIM(mask_inset); i++) {
 		/* Clear the inset bit, if no MASK is required,
 		 * for example proto + ttl
 		 */
-		if ((inset & inset_mask_map[i].inset) ==
-		     inset_mask_map[i].inset && inset_mask_map[i].mask == 0)
-			inset_need_mask &= ~inset_mask_map[i].inset;
-		if (!inset_need_mask)
-			return 0;
-	}
-	for (i = 0, idx = 0; i < RTE_DIM(inset_mask_map); i++) {
-		if ((inset_need_mask & inset_mask_map[i].inset) ==
-		    inset_mask_map[i].inset) {
-			if (idx >= nb_elem) {
-				PMD_DRV_LOG(ERR, "exceed maximal number of bitmasks");
-				return -EINVAL;
-			}
-			mask[idx] = inset_mask_map[i].mask;
-			idx++;
+		if ((mask_inset[i] & inset) == mask_inset[i]) {
+			inset &= ~mask_inset[i];
+			if (!inset)
+				return 0;
 		}
+	}
+
+	for (i = 0; i < RTE_DIM(inset_mask_offset_map); i++) {
+		uint32_t pit_start, pit_count;
+		int offset;
+
+		if (!(inset_mask_offset_map[i].inset & inset))
+			continue;
+
+		if (inset_mask_offset_map[i].inset &
+		    (I40E_INSET_IPV4_TOS | I40E_INSET_IPV4_PROTO |
+		     I40E_INSET_IPV4_TTL)) {
+			pit_start = I40E_GLQF_PIT_IPV4_START;
+			pit_count = I40E_GLQF_PIT_IPV4_COUNT;
+		} else {
+			pit_start = I40E_GLQF_PIT_IPV6_START;
+			pit_count = I40E_GLQF_PIT_IPV6_COUNT;
+		}
+
+		offset = i40e_get_inset_field_offset(hw, pit_start, pit_count,
+				inset_mask_offset_map[i].offset);
+
+		if (offset < 0)
+			return -EINVAL;
+
+		if (idx >= nb_elem) {
+			PMD_DRV_LOG(ERR,
+				    "Configuration of inset mask out of range %u",
+				    nb_elem);
+			return -ERANGE;
+		}
+
+		mask[idx] = I40E_GLQF_PIT_BUILD((uint32_t)offset,
+						inset_mask_offset_map[i].mask);
+		idx++;
 	}
 
 	return idx;
@@ -9583,7 +9669,7 @@ i40e_filter_input_set_init(struct i40e_pf *pf)
 
 		input_set = i40e_get_default_input_set(pctype);
 
-		num = i40e_generate_inset_mask_reg(input_set, mask_reg,
+		num = i40e_generate_inset_mask_reg(hw, input_set, mask_reg,
 						   I40E_INSET_MASK_NUM_REG);
 		if (num < 0)
 			return;
@@ -9688,7 +9774,7 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 		inset_reg |= i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(0, pctype));
 		input_set |= pf->hash_input_set[pctype];
 	}
-	num = i40e_generate_inset_mask_reg(input_set, mask_reg,
+	num = i40e_generate_inset_mask_reg(hw, input_set, mask_reg,
 					   I40E_INSET_MASK_NUM_REG);
 	if (num < 0)
 		return -EINVAL;
