@@ -992,6 +992,8 @@ struct ice_hw {
 	/* tunneling info */
 	struct ice_lock tnl_lock;
 	struct ice_tunnel_table tnl;
+	/* dvm boost update information */
+	struct ice_dvm_table dvm_upd;
 
 	struct ice_acl_tbl *acl_tbl;
 	struct ice_fd_hw_prof **acl_prof;

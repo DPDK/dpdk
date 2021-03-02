@@ -312,6 +312,13 @@ static enum ice_status ice_set_dvm(struct ice_hw *hw)
 		return status;
 	}
 
+	status = ice_set_dvm_boost_entries(hw);
+	if (status) {
+		ice_debug(hw, ICE_DBG_INIT, "Failed to set boost TCAM entries for double VLAN mode, status %d\n",
+			  status);
+		return status;
+	}
+
 	return ICE_SUCCESS;
 }
 

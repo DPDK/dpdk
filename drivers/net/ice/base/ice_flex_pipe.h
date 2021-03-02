@@ -49,6 +49,7 @@ ice_get_open_tunnel_port(struct ice_hw *hw, enum ice_tunnel_type type,
 			 u16 *port);
 enum ice_status
 ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port);
+enum ice_status ice_set_dvm_boost_entries(struct ice_hw *hw);
 enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all);
 bool ice_tunnel_port_in_use(struct ice_hw *hw, u16 port, u16 *index);
 bool

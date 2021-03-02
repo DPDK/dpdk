@@ -675,6 +675,19 @@ struct ice_tunnel_table {
 	u16 count;
 };
 
+struct ice_dvm_entry {
+	u16 boost_addr;
+	u16 enable;
+	struct ice_boost_tcam_entry *boost_entry;
+};
+
+#define ICE_DVM_MAX_ENTRIES	48
+
+struct ice_dvm_table {
+	struct ice_dvm_entry tbl[ICE_DVM_MAX_ENTRIES];
+	u16 count;
+};
+
 struct ice_pkg_es {
 	__le16 count;
 	__le16 offset;

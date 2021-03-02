@@ -7,9 +7,17 @@
 #include "ice_protocol_type.h"
 #include "ice_flow.h"
 
+/* For supporting double VLAN mode, it is necessary to enable or disable certain
+ * boost tcam entries. The metadata labels names that match the following
+ * prefixes will be saved to allow enabling double VLAN mode.
+ */
+#define ICE_DVM_PRE	"BOOST_MAC_VLAN_DVM"	/* enable these entries */
+#define ICE_SVM_PRE	"BOOST_MAC_VLAN_SVM"	/* disable these entries */
+
 /* To support tunneling entries by PF, the package will append the PF number to
  * the label; for example TNL_VXLAN_PF0, TNL_VXLAN_PF1, TNL_VXLAN_PF2, etc.
  */
+#define ICE_TNL_PRE	"TNL_"
 static const struct ice_tunnel_type_scan tnls[] = {
 	{ TNL_VXLAN,		"TNL_VXLAN_PF" },
 	{ TNL_GENEVE,		"TNL_GENEVE_PF" },
@@ -532,6 +540,57 @@ ice_enum_labels(struct ice_seg *ice_seg, u32 type, struct ice_pkg_enum *state,
 }
 
 /**
+ * ice_add_tunnel_hint
+ * @hw: pointer to the HW structure
+ * @label_name: label text
+ * @val: value of the tunnel port boost entry
+ */
+static void ice_add_tunnel_hint(struct ice_hw *hw, char *label_name, u16 val)
+{
+	if (hw->tnl.count < ICE_TUNNEL_MAX_ENTRIES) {
+		u16 i;
+
+		for (i = 0; tnls[i].type != TNL_LAST; i++) {
+			size_t len = strlen(tnls[i].label_prefix);
+
+			/* Look for matching label start, before continuing */
+			if (strncmp(label_name, tnls[i].label_prefix, len))
+				continue;
+
+			/* Make sure this label matches our PF. Note that the PF
+			 * character ('0' - '7') will be located where our
+			 * prefix string's null terminator is located.
+			 */
+			if ((label_name[len] - '0') == hw->pf_id) {
+				hw->tnl.tbl[hw->tnl.count].type = tnls[i].type;
+				hw->tnl.tbl[hw->tnl.count].valid = false;
+				hw->tnl.tbl[hw->tnl.count].in_use = false;
+				hw->tnl.tbl[hw->tnl.count].marked = false;
+				hw->tnl.tbl[hw->tnl.count].boost_addr = val;
+				hw->tnl.tbl[hw->tnl.count].port = 0;
+				hw->tnl.count++;
+				break;
+			}
+		}
+	}
+}
+
+/**
+ * ice_add_dvm_hint
+ * @hw: pointer to the HW structure
+ * @val: value of the boost entry
+ * @enable: true if entry needs to be enabled, or false if needs to be disabled
+ */
+static void ice_add_dvm_hint(struct ice_hw *hw, u16 val, bool enable)
+{
+	if (hw->dvm_upd.count < ICE_DVM_MAX_ENTRIES) {
+		hw->dvm_upd.tbl[hw->dvm_upd.count].boost_addr = val;
+		hw->dvm_upd.tbl[hw->dvm_upd.count].enable = enable;
+		hw->dvm_upd.count++;
+	}
+}
+
+/**
  * ice_init_pkg_hints
  * @hw: pointer to the HW structure
  * @ice_seg: pointer to the segment of the package scan (non-NULL)
@@ -557,40 +616,34 @@ static void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg)
 	label_name = ice_enum_labels(ice_seg, ICE_SID_LBL_RXPARSER_TMEM, &state,
 				     &val);
 
-	while (label_name && hw->tnl.count < ICE_TUNNEL_MAX_ENTRIES) {
-		for (i = 0; tnls[i].type != TNL_LAST; i++) {
-			size_t len = strlen(tnls[i].label_prefix);
+	while (label_name) {
+		if (!strncmp(label_name, ICE_TNL_PRE, strlen(ICE_TNL_PRE)))
+			/* check for a tunnel entry */
+			ice_add_tunnel_hint(hw, label_name, val);
 
-			/* Look for matching label start, before continuing */
-			if (strncmp(label_name, tnls[i].label_prefix, len))
-				continue;
+		/* check for a dvm mode entry */
+		else if (!strncmp(label_name, ICE_DVM_PRE, strlen(ICE_DVM_PRE)))
+			ice_add_dvm_hint(hw, val, true);
 
-			/* Make sure this label matches our PF. Note that the PF
-			 * character ('0' - '7') will be located where our
-			 * prefix string's null terminator is located.
-			 */
-			if ((label_name[len] - '0') == hw->pf_id) {
-				hw->tnl.tbl[hw->tnl.count].type = tnls[i].type;
-				hw->tnl.tbl[hw->tnl.count].valid = false;
-				hw->tnl.tbl[hw->tnl.count].in_use = false;
-				hw->tnl.tbl[hw->tnl.count].marked = false;
-				hw->tnl.tbl[hw->tnl.count].boost_addr = val;
-				hw->tnl.tbl[hw->tnl.count].port = 0;
-				hw->tnl.count++;
-				break;
-			}
-		}
+		/* check for a svm mode entry */
+		else if (!strncmp(label_name, ICE_SVM_PRE, strlen(ICE_SVM_PRE)))
+			ice_add_dvm_hint(hw, val, false);
 
 		label_name = ice_enum_labels(NULL, 0, &state, &val);
 	}
 
-	/* Cache the appropriate boost TCAM entry pointers */
+	/* Cache the appropriate boost TCAM entry pointers for tunnels */
 	for (i = 0; i < hw->tnl.count; i++) {
 		ice_find_boost_entry(ice_seg, hw->tnl.tbl[i].boost_addr,
 				     &hw->tnl.tbl[i].boost_entry);
 		if (hw->tnl.tbl[i].boost_entry)
 			hw->tnl.tbl[i].valid = true;
 	}
+
+	/* Cache the appropriate boost TCAM entry pointers for DVM and SVM */
+	for (i = 0; i < hw->dvm_upd.count; i++)
+		ice_find_boost_entry(ice_seg, hw->dvm_upd.tbl[i].boost_addr,
+				     &hw->dvm_upd.tbl[i].boost_entry);
 }
 
 /* Key creation */
@@ -995,6 +1048,36 @@ ice_find_seg_in_pkg(struct ice_hw *hw, u32 seg_type,
 }
 
 /**
+ * ice_update_pkg_no_lock
+ * @hw: pointer to the hardware structure
+ * @bufs: pointer to an array of buffers
+ * @count: the number of buffers in the array
+ */
+static enum ice_status
+ice_update_pkg_no_lock(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
+{
+	enum ice_status status = ICE_SUCCESS;
+	u32 i;
+
+	for (i = 0; i < count; i++) {
+		struct ice_buf_hdr *bh = (struct ice_buf_hdr *)(bufs + i);
+		bool last = ((i + 1) == count);
+		u32 offset, info;
+
+		status = ice_aq_update_pkg(hw, bh, LE16_TO_CPU(bh->data_end),
+					   last, &offset, &info, NULL);
+
+		if (status) {
+			ice_debug(hw, ICE_DBG_PKG, "Update pkg failed: err %d off %d inf %d\n",
+				  status, offset, info);
+			break;
+		}
+	}
+
+	return status;
+}
+
+/**
  * ice_update_pkg
  * @hw: pointer to the hardware structure
  * @bufs: pointer to an array of buffers
@@ -1006,25 +1089,12 @@ enum ice_status
 ice_update_pkg(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 {
 	enum ice_status status;
-	u32 offset, info, i;
 
 	status = ice_acquire_change_lock(hw, ICE_RES_WRITE);
 	if (status)
 		return status;
 
-	for (i = 0; i < count; i++) {
-		struct ice_buf_hdr *bh = (struct ice_buf_hdr *)(bufs + i);
-		bool last = ((i + 1) == count);
-
-		status = ice_aq_update_pkg(hw, bh, LE16_TO_CPU(bh->data_end),
-					   last, &offset, &info, NULL);
-
-		if (status) {
-			ice_debug(hw, ICE_DBG_PKG, "Update pkg failed: err %d off %d inf %d\n",
-				  status, offset, info);
-			break;
-		}
-	}
+	status = ice_update_pkg_no_lock(hw, bufs, count);
 
 	ice_release_change_lock(hw);
 
@@ -2200,6 +2270,93 @@ ice_get_open_tunnel_port(struct ice_hw *hw, enum ice_tunnel_type type,
 	ice_release_lock(&hw->tnl_lock);
 
 	return res;
+}
+
+/**
+ * ice_upd_dvm_boost_entry
+ * @hw: pointer to the HW structure
+ * @entry: pointer to double vlan boost entry info
+ */
+static enum ice_status
+ice_upd_dvm_boost_entry(struct ice_hw *hw, struct ice_dvm_entry *entry)
+{
+	struct ice_boost_tcam_section *sect_rx, *sect_tx;
+	enum ice_status status = ICE_ERR_MAX_LIMIT;
+	struct ice_buf_build *bld;
+	u8 val, dc, nm;
+
+	bld = ice_pkg_buf_alloc(hw);
+	if (!bld)
+		return ICE_ERR_NO_MEMORY;
+
+	/* allocate 2 sections, one for Rx parser, one for Tx parser */
+	if (ice_pkg_buf_reserve_section(bld, 2))
+		goto ice_upd_dvm_boost_entry_err;
+
+	sect_rx = (struct ice_boost_tcam_section *)
+		ice_pkg_buf_alloc_section(bld, ICE_SID_RXPARSER_BOOST_TCAM,
+					  ice_struct_size(sect_rx, tcam, 1));
+	if (!sect_rx)
+		goto ice_upd_dvm_boost_entry_err;
+	sect_rx->count = CPU_TO_LE16(1);
+
+	sect_tx = (struct ice_boost_tcam_section *)
+		ice_pkg_buf_alloc_section(bld, ICE_SID_TXPARSER_BOOST_TCAM,
+					  ice_struct_size(sect_tx, tcam, 1));
+	if (!sect_tx)
+		goto ice_upd_dvm_boost_entry_err;
+	sect_tx->count = CPU_TO_LE16(1);
+
+	/* copy original boost entry to update package buffer */
+	ice_memcpy(sect_rx->tcam, entry->boost_entry, sizeof(*sect_rx->tcam),
+		   ICE_NONDMA_TO_NONDMA);
+
+	/* re-write the don't care and never match bits accordingly */
+	if (entry->enable) {
+		/* all bits are don't care */
+		val = 0x00;
+		dc = 0xFF;
+		nm = 0x00;
+	} else {
+		/* disable, one never match bit, the rest are don't care */
+		val = 0x00;
+		dc = 0xF7;
+		nm = 0x08;
+	}
+
+	ice_set_key((u8 *)&sect_rx->tcam[0].key, sizeof(sect_rx->tcam[0].key),
+		    &val, NULL, &dc, &nm, 0, sizeof(u8));
+
+	/* exact copy of entry to Tx section entry */
+	ice_memcpy(sect_tx->tcam, sect_rx->tcam, sizeof(*sect_tx->tcam),
+		   ICE_NONDMA_TO_NONDMA);
+
+	status = ice_update_pkg_no_lock(hw, ice_pkg_buf(bld), 1);
+
+ice_upd_dvm_boost_entry_err:
+	ice_pkg_buf_free(hw, bld);
+
+	return status;
+}
+
+/**
+ * ice_set_dvm_boost_entries
+ * @hw: pointer to the HW structure
+ *
+ * Enable double vlan by updating the appropriate boost tcam entries.
+ */
+enum ice_status ice_set_dvm_boost_entries(struct ice_hw *hw)
+{
+	enum ice_status status;
+	u16 i;
+
+	for (i = 0; i < hw->dvm_upd.count; i++) {
+		status = ice_upd_dvm_boost_entry(hw, &hw->dvm_upd.tbl[i]);
+		if (status)
+			return status;
+	}
+
+	return ICE_SUCCESS;
 }
 
 /**
