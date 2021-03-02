@@ -213,6 +213,16 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 
 	sw_ring = rxq->rx_ring->rx_buf_ring;
 	if (sw_ring) {
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
+		/*
+		 * The vector receive burst function does not set used
+		 * mbuf pointers to NULL, do that here to simplify
+		 * cleanup logic.
+		 */
+		for (i = 0; i < rxq->rxrearm_nb; i++)
+			sw_ring[rxq->rxrearm_start + i] = NULL;
+		rxq->rxrearm_nb = 0;
+#endif
 		for (i = 0;
 		     i < rxq->rx_ring->rx_ring_struct->ring_size; i++) {
 			if (sw_ring[i]) {

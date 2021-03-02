@@ -274,22 +274,8 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		num_valid = (sizeof(uint64_t) / sizeof(uint16_t)) -
 				(__builtin_clzl(valid & desc_valid_mask) / 16);
 
-		switch (num_valid) {
-		case 4:
-			rxr->rx_buf_ring[mbcons + 3] = NULL;
-			/* FALLTHROUGH */
-		case 3:
-			rxr->rx_buf_ring[mbcons + 2] = NULL;
-			/* FALLTHROUGH */
-		case 2:
-			rxr->rx_buf_ring[mbcons + 1] = NULL;
-			/* FALLTHROUGH */
-		case 1:
-			rxr->rx_buf_ring[mbcons + 0] = NULL;
+		if (num_valid == 0)
 			break;
-		case 0:
-			goto out;
-		}
 
 		descs_to_mbufs(rxcmp, rxcmp1, mb_init, &rx_pkts[nb_rx_pkts],
 			       rxr);
@@ -299,7 +285,6 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 	}
 
-out:
 	if (nb_rx_pkts) {
 		rxr->rx_raw_prod = RING_ADV(rxr->rx_raw_prod, nb_rx_pkts);
 
