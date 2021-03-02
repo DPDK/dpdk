@@ -429,6 +429,7 @@ ice_aq_get_link_info(struct ice_port_info *pi, bool ena_lse,
 	li->phy_type_high = LE64_TO_CPU(link_data.phy_type_high);
 	*hw_media_type = ice_get_media_type(pi);
 	li->link_info = link_data.link_info;
+	li->link_cfg_err = link_data.link_cfg_err;
 	li->an_info = link_data.an_info;
 	li->ext_info = link_data.ext_info;
 	li->max_frame_size = LE16_TO_CPU(link_data.max_frame_size);

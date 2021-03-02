@@ -1513,6 +1513,7 @@ struct ice_aqc_get_link_status_data {
 #define ICE_AQ_LINK_TOPO_CRITICAL_SDP_ERR	BIT(4)
 #define ICE_AQ_LINK_MODULE_POWER_UNSUPPORTED	BIT(5)
 #define ICE_AQ_LINK_EXTERNAL_PHY_LOAD_FAILURE	BIT(6)
+#define ICE_AQ_LINK_INVAL_MAX_POWER_LIMIT	BIT(7)
 	u8 link_info;
 #define ICE_AQ_LINK_UP			BIT(0)	/* Link Status */
 #define ICE_AQ_LINK_FAULT		BIT(1)
