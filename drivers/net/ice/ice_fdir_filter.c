@@ -1013,7 +1013,7 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 		return -ENOMEM;
 	}
 
-	/* use seg_tun[1] to record tunnel inner part or non-tunnel */
+	/* use seg_tun[1] to record tunnel inner part */
 	for (k = 0; k <= ICE_FD_HW_SEG_TUN; k++) {
 		seg = &seg_tun[k];
 		input_set = (k == ICE_FD_HW_SEG_TUN) ? inner_input_set : outer_input_set;
@@ -1036,13 +1036,9 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 	}
 
 	is_tunnel = ice_fdir_is_tunnel_profile(ttype);
-	if (!is_tunnel) {
-		ret = ice_fdir_hw_tbl_conf(pf, pf->main_vsi, pf->fdir.fdir_vsi,
-					   seg_tun + 1, flow, false);
-	} else {
-		ret = ice_fdir_hw_tbl_conf(pf, pf->main_vsi, pf->fdir.fdir_vsi,
-					   seg_tun, flow, true);
-	}
+
+	ret = ice_fdir_hw_tbl_conf(pf, pf->main_vsi, pf->fdir.fdir_vsi,
+				   seg_tun, flow, is_tunnel);
 
 	if (!ret) {
 		return ret;
