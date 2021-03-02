@@ -301,8 +301,8 @@ struct ice_fdir_filter_conf {
 	struct ice_fdir_counter *counter; /* flow specific counter context */
 	struct rte_flow_action_count act_count;
 
-	uint64_t input_set;
-	uint64_t outer_input_set; /* only for tunnel packets outer fields */
+	uint64_t input_set_o; /* used for non-tunnel or tunnel outer fields */
+	uint64_t input_set_i; /* only for tunnel inner fields */
 	uint32_t mark_flag;
 };
 

@@ -1249,7 +1249,7 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 	is_tun = ice_fdir_is_tunnel_profile(filter->tunnel_type);
 
 	ret = ice_fdir_input_set_conf(pf, filter->input.flow_type,
-				      filter->input_set, filter->outer_input_set,
+				      filter->input_set_i, filter->input_set_o,
 				      filter->tunnel_type);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
@@ -1982,7 +1982,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 
 	filter->tunnel_type = tunnel_type;
 	filter->input.flow_type = flow_type;
-	filter->input_set = input_set;
+	filter->input_set_o = input_set;
 
 	return 0;
 }
@@ -2011,7 +2011,7 @@ ice_fdir_parse(struct ice_adapter *ad,
 	ret = ice_fdir_parse_pattern(ad, pattern, error, filter);
 	if (ret)
 		goto error;
-	input_set = filter->input_set | filter->outer_input_set;
+	input_set = filter->input_set_o | filter->input_set_i;
 	if (!input_set || input_set & ~item->input_set_mask) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
