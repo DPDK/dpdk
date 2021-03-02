@@ -621,9 +621,11 @@ eth_dev_stop(struct rte_eth_dev *dev)
 
 	/* Special iface case. Single pcap is open and shared between tx/rx. */
 	if (internals->single_iface) {
-		pcap_close(pp->tx_pcap[0]);
-		pp->tx_pcap[0] = NULL;
-		pp->rx_pcap[0] = NULL;
+		if (pp->tx_pcap[0] != NULL) {
+			pcap_close(pp->tx_pcap[0]);
+			pp->tx_pcap[0] = NULL;
+			pp->rx_pcap[0] = NULL;
+		}
 		goto status_down;
 	}
 
@@ -754,6 +756,8 @@ eth_dev_close(struct rte_eth_dev *dev)
 
 	PMD_LOG(INFO, "Closing pcap ethdev on NUMA socket %d",
 			rte_socket_id());
+
+	eth_dev_stop(dev);
 
 	rte_free(dev->process_private);
 
