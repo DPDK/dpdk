@@ -111,6 +111,7 @@ struct ice_aqc_list_caps_elem {
 #define ICE_AQC_CAPS_MAX_MTU				0x0047
 #define ICE_AQC_CAPS_IWARP				0x0051
 #define ICE_AQC_CAPS_PCIE_RESET_AVOIDANCE		0x0076
+#define ICE_AQC_CAPS_POST_UPDATE_RESET_RESTRICT		0x0077
 #define ICE_AQC_CAPS_NVM_MGMT				0x0080
 
 	u8 major_ver;
@@ -1765,6 +1766,7 @@ struct ice_aqc_nvm {
 #define ICE_AQC_NVM_POR_FLAG	0	/* Used by NVM Write completion on ARQ */
 #define ICE_AQC_NVM_PERST_FLAG	1
 #define ICE_AQC_NVM_EMPR_FLAG	2
+#define ICE_AQC_NVM_EMPR_ENA		BIT(0)
 	__le16 module_typeid;
 	__le16 length;
 #define ICE_AQC_NVM_ERASE_LEN	0xFFFF
