@@ -2730,6 +2730,50 @@ struct ice_aqc_clear_health_status {
 	__le32 reserved[4];
 };
 
+/* Set FW Logging configuration (indirect 0xFF30)
+ * Register for FW Logging (indirect 0xFF31)
+ * Query FW Logging (indirect 0xFF32)
+ * FW Log Event (indirect 0xFF33)
+ * Get FW Log (indirect 0xFF34)
+ * Clear FW Log (indirect 0xFF35)
+ */
+
+struct ice_aqc_fw_log {
+	u8 cmd_flags;
+#define ICE_AQC_FW_LOG_CONF_UART_EN	BIT(0)
+#define ICE_AQC_FW_LOG_CONF_AQ_EN	BIT(1)
+#define ICE_AQC_FW_LOG_CONF_SET_VALID	BIT(3)
+#define ICE_AQC_FW_LOG_AQ_REGISTER	BIT(0)
+#define ICE_AQC_FW_LOG_AQ_QUERY		BIT(2)
+#define ICE_AQC_FW_LOG_PERSISTENT	BIT(0)
+	u8 rsp_flag;
+#define ICE_AQC_FW_LOG_MORE_DATA	BIT(1)
+	__le16 fw_rt_msb;
+	union {
+		struct {
+			__le32 fw_rt_lsb;
+		} sync;
+		struct {
+			__le16 log_resolution;
+#define ICE_AQC_FW_LOG_MIN_RESOLUTION		(1)
+#define ICE_AQC_FW_LOG_MAX_RESOLUTION		(128)
+			__le16 mdl_cnt;
+		} cfg;
+	} ops;
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Response Buffer for:
+ *    Set Firmware Logging Configuration (0xFF30)
+ *    Query FW Logging (0xFF32)
+ */
+struct ice_aqc_fw_log_cfg_resp {
+	__le16 module_identifier;
+	u8 log_level;
+	u8 rsvd0;
+};
+
 /**
  * struct ice_aq_desc - Admin Queue (AQ) descriptor
  * @flags: ICE_AQ_FLAG_* flags
@@ -3090,7 +3134,15 @@ enum ice_adminq_opc {
 	ice_aqc_opc_set_health_status_config		= 0xFF20,
 	ice_aqc_opc_get_supported_health_status_codes	= 0xFF21,
 	ice_aqc_opc_get_health_status			= 0xFF22,
-	ice_aqc_opc_clear_health_status			= 0xFF23
+	ice_aqc_opc_clear_health_status			= 0xFF23,
+
+	/* FW Logging Commands */
+	ice_aqc_opc_fw_logs_config			= 0xFF30,
+	ice_aqc_opc_fw_logs_register			= 0xFF31,
+	ice_aqc_opc_fw_logs_query			= 0xFF32,
+	ice_aqc_opc_fw_logs_event			= 0xFF33,
+	ice_aqc_opc_fw_logs_get				= 0xFF34,
+	ice_aqc_opc_fw_logs_clear			= 0xFF35
 };
 
 #endif /* _ICE_ADMINQ_CMD_H_ */
