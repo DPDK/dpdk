@@ -2216,8 +2216,10 @@ ice_search_pattern_match_item(struct ice_adapter *ad,
 	for (i = 0; i < array_len; i++) {
 		if (ice_match_pattern(array[i].pattern_list,
 				      items)) {
-			pattern_match_item->input_set_mask =
-				array[i].input_set_mask;
+			pattern_match_item->input_set_mask_o =
+				array[i].input_set_mask_o;
+			pattern_match_item->input_set_mask_i =
+				array[i].input_set_mask_i;
 			pattern_match_item->pattern_list =
 				array[i].pattern_list;
 			pattern_match_item->meta = array[i].meta;

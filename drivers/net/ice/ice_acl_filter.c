@@ -50,10 +50,10 @@ struct acl_rule {
 
 static struct
 ice_pattern_match_item ice_acl_pattern[] = {
-	{pattern_eth_ipv4,      ICE_ACL_INSET_ETH_IPV4,      ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp,  ICE_ACL_INSET_ETH_IPV4_UDP,  ICE_INSET_NONE},
-	{pattern_eth_ipv4_tcp,  ICE_ACL_INSET_ETH_IPV4_TCP,  ICE_INSET_NONE},
-	{pattern_eth_ipv4_sctp, ICE_ACL_INSET_ETH_IPV4_SCTP, ICE_INSET_NONE},
+	{pattern_eth_ipv4,	ICE_ACL_INSET_ETH_IPV4,		ICE_INSET_NONE,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp,	ICE_ACL_INSET_ETH_IPV4_UDP,	ICE_INSET_NONE,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_tcp,	ICE_ACL_INSET_ETH_IPV4_TCP,	ICE_INSET_NONE,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_sctp,	ICE_ACL_INSET_ETH_IPV4_SCTP,	ICE_INSET_NONE,	ICE_INSET_NONE},
 };
 
 static int
@@ -923,7 +923,7 @@ ice_acl_parse(struct ice_adapter *ad,
 	if (ret)
 		goto error;
 	input_set = filter->input_set;
-	if (!input_set || input_set & ~item->input_set_mask) {
+	if (!input_set || input_set & ~item->input_set_mask_o) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,

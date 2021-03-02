@@ -473,8 +473,9 @@ enum ice_flow_classification_stage {
 /* pattern structure */
 struct ice_pattern_match_item {
 	enum rte_flow_item_type *pattern_list;
+	uint64_t input_set_mask_o; /* used for tunnel outer or non tunnel fields */
 	/* pattern_list must end with RTE_FLOW_ITEM_TYPE_END */
-	uint64_t input_set_mask;
+	uint64_t input_set_mask_i; /* only used for tunnel inner fields */
 	void *meta;
 };
 

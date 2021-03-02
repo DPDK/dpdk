@@ -55,20 +55,24 @@
 	ICE_FDIR_INSET_ETH_IPV6 | \
 	ICE_INSET_SCTP_SRC_PORT | ICE_INSET_SCTP_DST_PORT)
 
-#define ICE_FDIR_INSET_VXLAN_IPV4 (\
+#define ICE_FDIR_INSET_IPV4 (\
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST)
 
-#define ICE_FDIR_INSET_VXLAN_IPV4_TCP (\
-	ICE_FDIR_INSET_VXLAN_IPV4 | \
+#define ICE_FDIR_INSET_IPV4_TCP (\
+	ICE_FDIR_INSET_IPV4 | \
 	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 
-#define ICE_FDIR_INSET_VXLAN_IPV4_UDP (\
-	ICE_FDIR_INSET_VXLAN_IPV4 | \
+#define ICE_FDIR_INSET_IPV4_UDP (\
+	ICE_FDIR_INSET_IPV4 | \
 	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 
-#define ICE_FDIR_INSET_VXLAN_IPV4_SCTP (\
-	ICE_FDIR_INSET_VXLAN_IPV4 | \
+#define ICE_FDIR_INSET_IPV4_SCTP (\
+	ICE_FDIR_INSET_IPV4 | \
 	ICE_INSET_SCTP_SRC_PORT | ICE_INSET_SCTP_DST_PORT)
+
+#define ICE_FDIR_INSET_ETH_IPV4_VXLAN (\
+	ICE_FDIR_INSET_ETH | \
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST)
 
 #define ICE_FDIR_INSET_IPV4_GTPU (\
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | ICE_INSET_GTPU_TEID)
@@ -85,35 +89,28 @@
 	ICE_INSET_GTPU_TEID | ICE_INSET_GTPU_QFI)
 
 static struct ice_pattern_match_item ice_fdir_pattern_list[] = {
-	{pattern_ethertype,	       ICE_FDIR_INSET_ETH,		     ICE_INSET_NONE},
-	{pattern_eth_ipv4,             ICE_FDIR_INSET_ETH_IPV4,              ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp,         ICE_FDIR_INSET_ETH_IPV4_UDP,          ICE_INSET_NONE},
-	{pattern_eth_ipv4_tcp,         ICE_FDIR_INSET_ETH_IPV4_TCP,          ICE_INSET_NONE},
-	{pattern_eth_ipv4_sctp,        ICE_FDIR_INSET_ETH_IPV4_SCTP,         ICE_INSET_NONE},
-	{pattern_eth_ipv6,             ICE_FDIR_INSET_ETH_IPV6,              ICE_INSET_NONE},
-	{pattern_eth_ipv6_udp,         ICE_FDIR_INSET_ETH_IPV6_UDP,          ICE_INSET_NONE},
-	{pattern_eth_ipv6_tcp,         ICE_FDIR_INSET_ETH_IPV6_TCP,          ICE_INSET_NONE},
-	{pattern_eth_ipv6_sctp,        ICE_FDIR_INSET_ETH_IPV6_SCTP,         ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_ipv4,
-				       ICE_FDIR_INSET_VXLAN_IPV4,            ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_ipv4_udp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_UDP,        ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_ipv4_tcp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_TCP,        ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_ipv4_sctp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_SCTP,       ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4,
-				       ICE_FDIR_INSET_VXLAN_IPV4,            ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_udp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_UDP,        ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_tcp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_TCP,        ICE_INSET_NONE},
-	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_sctp,
-				       ICE_FDIR_INSET_VXLAN_IPV4_SCTP,       ICE_INSET_NONE},
-	{pattern_eth_ipv4_gtpu,	       ICE_FDIR_INSET_IPV4_GTPU,             ICE_INSET_NONE},
-	{pattern_eth_ipv4_gtpu_eh,     ICE_FDIR_INSET_IPV4_GTPU_EH,          ICE_INSET_NONE},
-	{pattern_eth_ipv6_gtpu,	       ICE_FDIR_INSET_IPV6_GTPU,             ICE_INSET_NONE},
-	{pattern_eth_ipv6_gtpu_eh,     ICE_FDIR_INSET_IPV6_GTPU_EH,          ICE_INSET_NONE},
+	{pattern_ethertype,				ICE_FDIR_INSET_ETH,		ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv4,				ICE_FDIR_INSET_ETH_IPV4,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp,				ICE_FDIR_INSET_ETH_IPV4_UDP,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv4_tcp,				ICE_FDIR_INSET_ETH_IPV4_TCP,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv4_sctp,				ICE_FDIR_INSET_ETH_IPV4_SCTP,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv6,				ICE_FDIR_INSET_ETH_IPV6,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv6_udp,				ICE_FDIR_INSET_ETH_IPV6_UDP,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv6_tcp,				ICE_FDIR_INSET_ETH_IPV6_TCP,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv6_sctp,				ICE_FDIR_INSET_ETH_IPV6_SCTP,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_vxlan_ipv4,		ICE_FDIR_INSET_ETH_IPV4_VXLAN,	ICE_FDIR_INSET_IPV4,		ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_vxlan_ipv4_udp,		ICE_FDIR_INSET_ETH_IPV4_VXLAN,	ICE_FDIR_INSET_IPV4_UDP,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_vxlan_ipv4_tcp,		ICE_FDIR_INSET_ETH_IPV4_VXLAN,	ICE_FDIR_INSET_IPV4_TCP,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_vxlan_ipv4_sctp,		ICE_FDIR_INSET_ETH_IPV4_VXLAN,	ICE_FDIR_INSET_IPV4_SCTP,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_vxlan_eth_ipv4,		ICE_FDIR_INSET_ETH_IPV4_VXLAN,	ICE_FDIR_INSET_ETH_IPV4,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_udp,	ICE_FDIR_INSET_ETH_IPV4_VXLAN,	ICE_FDIR_INSET_ETH_IPV4_UDP,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_tcp,	ICE_FDIR_INSET_ETH_IPV4_VXLAN,	ICE_FDIR_INSET_ETH_IPV4_TCP,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_vxlan_eth_ipv4_sctp,	ICE_FDIR_INSET_ETH_IPV4_VXLAN,	ICE_FDIR_INSET_ETH_IPV4_SCTP,	ICE_INSET_NONE},
+	/* duplicated GTPU input set in 3rd column to align with shared code behavior. Ideally, only put GTPU field in 2nd column. */
+	{pattern_eth_ipv4_gtpu,				ICE_FDIR_INSET_IPV4_GTPU,	ICE_FDIR_INSET_IPV4_GTPU,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh,			ICE_FDIR_INSET_IPV4_GTPU_EH,	ICE_FDIR_INSET_IPV4_GTPU_EH,	ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu,				ICE_FDIR_INSET_IPV6_GTPU,	ICE_FDIR_INSET_IPV6_GTPU,	ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh,			ICE_FDIR_INSET_IPV6_GTPU_EH,	ICE_FDIR_INSET_IPV6_GTPU_EH,	ICE_INSET_NONE},
 };
 
 static struct ice_flow_parser ice_fdir_parser;
@@ -2005,7 +2002,8 @@ ice_fdir_parse(struct ice_adapter *ad,
 	if (ret)
 		goto error;
 	input_set = filter->input_set_o | filter->input_set_i;
-	if (!input_set || input_set & ~item->input_set_mask) {
+	if (!input_set || filter->input_set_o & ~item->input_set_mask_o ||
+	    filter->input_set_i & ~item->input_set_mask_i) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,
