@@ -1528,6 +1528,10 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v4.src_ip);
 		ice_pkt_insert_u32(loc, ICE_IPV4_NO_MAC_SRC_ADDR_OFFSET,
 				   input->ip.v4.dst_ip);
+		ice_pkt_insert_u8(loc, ICE_IPV4_NO_MAC_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_NO_MAC_TTL_OFFSET, input->ip.v4.ttl);
+		ice_pkt_insert_u8(loc, ICE_IPV4_NO_MAC_PROTO_OFFSET,
+				  input->ip.v4.proto);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_DW:
@@ -1553,6 +1557,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v4.dst_ip);
 		ice_pkt_insert_u16(loc, ICE_UDP4_NO_MAC_SRC_PORT_OFFSET,
 				   input->ip.v4.dst_port);
+		ice_pkt_insert_u8(loc, ICE_IPV4_NO_MAC_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_NO_MAC_TTL_OFFSET, input->ip.v4.ttl);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_TCP:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_IPV4_TCP:
@@ -1566,6 +1572,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v4.dst_ip);
 		ice_pkt_insert_u16(loc, ICE_TCP4_NO_MAC_SRC_PORT_OFFSET,
 				   input->ip.v4.dst_port);
+		ice_pkt_insert_u8(loc, ICE_IPV4_NO_MAC_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u8(loc, ICE_IPV4_NO_MAC_TTL_OFFSET, input->ip.v4.ttl);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_GTPU:
 	case ICE_FLTR_PTYPE_NONF_IPV6_GTPU_IPV6_OTHER:
