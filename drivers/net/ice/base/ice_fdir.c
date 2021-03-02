@@ -72,32 +72,29 @@ static const u8 ice_fdir_ipv4_gtpu4_pkt[] = {
 static const u8 ice_fdir_udp4_gtpu4_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00,
-	0x00, 0x4c, 0x00, 0x00, 0x40, 0x00, 0x40, 0x11,
+	0x00, 0x40, 0x00, 0x01, 0x00, 0x00, 0x40, 0x11,
+	0x7c, 0xaa, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x08, 0x68, 0x08, 0x68, 0x00, 0x2c,
+	0x00, 0x6f, 0x30, 0xff, 0x00, 0x1c, 0x00, 0x00,
+	0x00, 0x00, 0x45, 0x00, 0x00, 0x1c, 0x00, 0x01,
+	0x00, 0x00, 0x40, 0x11, 0x3a, 0x24, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x08, 0x68, 0x08, 0x68, 0x00, 0x00,
-	0x00, 0x00, 0x34, 0xff, 0x00, 0x28, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x85, 0x02, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x00,
-	0x00, 0x1c, 0x00, 0x00, 0x40, 0x00, 0x40, 0x11,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00,
+	0x00, 0x00, 0x00, 0x08, 0xbe, 0xc7, 0x00, 0x00,
 };
 
 static const u8 ice_fdir_tcp4_gtpu4_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00,
-	0x00, 0x58, 0x00, 0x00, 0x40, 0x00, 0x40, 0x11,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x08, 0x68, 0x08, 0x68, 0x00, 0x00,
-	0x00, 0x00, 0x34, 0xff, 0x00, 0x28, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x85, 0x02, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45, 0x00,
-	0x00, 0x28, 0x00, 0x00, 0x40, 0x00, 0x40, 0x06,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x4c, 0x00, 0x01, 0x00, 0x00, 0x40, 0x11,
+	0x7c, 0x9e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x08, 0x68, 0x08, 0x68, 0x00, 0x38,
+	0x00, 0x4c, 0x30, 0xff, 0x00, 0x28, 0x00, 0x00,
+	0x00, 0x00, 0x45, 0x00, 0x00, 0x28, 0x00, 0x01,
+	0x00, 0x00, 0x40, 0x06, 0x3a, 0x23, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x50, 0x02, 0x20, 0x00, 0x4e, 0xd2,
+	0x00, 0x00, 0x00, 0x00,
 };
 
 static const u8 ice_fdir_ipv4_gtpu4_eh_pkt[] = {
@@ -1387,19 +1384,44 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 			   ice_fdir_pkt[idx].pkt_len, ICE_NONDMA_TO_NONDMA);
 		loc = pkt;
 	} else {
-		enum ice_status ret;
-
-		ret = ice_fdir_get_open_tunnel_port(hw, flow, &tnl_port);
-		if (ret)
-			return ret;
-
 		if (!ice_fdir_pkt[idx].tun_pkt)
 			return ICE_ERR_PARAM;
-		ice_memcpy(pkt, ice_fdir_pkt[idx].tun_pkt,
-			   ice_fdir_pkt[idx].tun_pkt_len, ICE_NONDMA_TO_NONDMA);
-		ice_pkt_insert_u16(pkt, ICE_IPV4_UDP_DST_PORT_OFFSET,
-				   HTONS(tnl_port));
-		loc = &pkt[ICE_FDIR_TUN_PKT_OFF];
+
+		switch (flow) {
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_UDP:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_TCP:
+			ice_memcpy(pkt, ice_fdir_pkt[idx].tun_pkt,
+				   ice_fdir_pkt[idx].tun_pkt_len,
+				   ICE_NONDMA_TO_NONDMA);
+			loc = &pkt[ICE_FDIR_GTPU_IP_INNER_PKT_OFF];
+			break;
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_IPV4:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_IPV4_UDP:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_IPV4_TCP:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_DW_IPV4:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_DW_IPV4_UDP:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_DW_IPV4_TCP:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_UP_IPV4:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_UP_IPV4_UDP:
+		case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_UP_IPV4_TCP:
+			ice_memcpy(pkt, ice_fdir_pkt[idx].tun_pkt,
+				   ice_fdir_pkt[idx].tun_pkt_len,
+				   ICE_NONDMA_TO_NONDMA);
+			loc = &pkt[ICE_FDIR_GTPU_EH_INNER_PKT_OFF];
+			break;
+		default:
+			if (ice_fdir_get_open_tunnel_port(hw, flow, &tnl_port))
+				return ICE_ERR_DOES_NOT_EXIST;
+
+			ice_memcpy(pkt, ice_fdir_pkt[idx].tun_pkt,
+				   ice_fdir_pkt[idx].tun_pkt_len,
+				   ICE_NONDMA_TO_NONDMA);
+			ice_pkt_insert_u16(pkt, ICE_IPV4_UDP_DST_PORT_OFFSET,
+					   HTONS(tnl_port));
+			loc = &pkt[ICE_FDIR_TUN_PKT_OFF];
+			break;
+		}
 	}
 
 	/* Reverse the src and dst, since the HW expects them to be from Tx
@@ -1491,7 +1513,6 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		ice_pkt_insert_mac_addr(loc + ETH_ALEN, input->ext_data.src_mac);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU:
-	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_OTHER:
 		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
 				   input->ip.v4.src_ip);
 		ice_pkt_insert_u32(loc, ICE_IPV4_SRC_ADDR_OFFSET,
@@ -1499,13 +1520,18 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		ice_pkt_insert_u32(loc, ICE_IPV4_GTPU_TEID_OFFSET,
 				   input->gtpu_data.teid);
 		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_IPV4:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_DW_IPV4:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_UP_IPV4:
+		ice_pkt_insert_u32(loc, ICE_IPV4_NO_MAC_DST_ADDR_OFFSET,
+				   input->ip.v4.src_ip);
+		ice_pkt_insert_u32(loc, ICE_IPV4_NO_MAC_SRC_ADDR_OFFSET,
+				   input->ip.v4.dst_ip);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_DW:
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_UP:
-	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_UDP:
-	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_TCP:
-	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_ICMP:
-	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_IPV4_OTHER:
 		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
 				   input->ip.v4.src_ip);
 		ice_pkt_insert_u32(loc, ICE_IPV4_SRC_ADDR_OFFSET,
@@ -1514,6 +1540,32 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->gtpu_data.teid);
 		ice_pkt_insert_u6_qfi(loc, ICE_IPV4_GTPU_QFI_OFFSET,
 				      input->gtpu_data.qfi);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_UDP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_IPV4_UDP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_DW_IPV4_UDP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_UP_IPV4_UDP:
+		ice_pkt_insert_u32(loc, ICE_IPV4_NO_MAC_DST_ADDR_OFFSET,
+				   input->ip.v4.src_ip);
+		ice_pkt_insert_u16(loc, ICE_UDP4_NO_MAC_DST_PORT_OFFSET,
+				   input->ip.v4.src_port);
+		ice_pkt_insert_u32(loc, ICE_IPV4_NO_MAC_SRC_ADDR_OFFSET,
+				   input->ip.v4.dst_ip);
+		ice_pkt_insert_u16(loc, ICE_UDP4_NO_MAC_SRC_PORT_OFFSET,
+				   input->ip.v4.dst_port);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_IPV4_TCP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_IPV4_TCP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_DW_IPV4_TCP:
+	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU_EH_UP_IPV4_TCP:
+		ice_pkt_insert_u32(loc, ICE_IPV4_NO_MAC_DST_ADDR_OFFSET,
+				   input->ip.v4.src_ip);
+		ice_pkt_insert_u16(loc, ICE_TCP4_NO_MAC_DST_PORT_OFFSET,
+				   input->ip.v4.src_port);
+		ice_pkt_insert_u32(loc, ICE_IPV4_NO_MAC_SRC_ADDR_OFFSET,
+				   input->ip.v4.dst_ip);
+		ice_pkt_insert_u16(loc, ICE_TCP4_NO_MAC_SRC_PORT_OFFSET,
+				   input->ip.v4.dst_port);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_GTPU:
 	case ICE_FLTR_PTYPE_NONF_IPV6_GTPU_IPV6_OTHER:
