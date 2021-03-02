@@ -1732,9 +1732,14 @@ ice_flow_acl_free_act_cntr(struct ice_hw *hw, struct ice_flow_action *acts,
 		if (acts[i].type == ICE_FLOW_ACT_CNTR_PKT ||
 		    acts[i].type == ICE_FLOW_ACT_CNTR_BYTES ||
 		    acts[i].type == ICE_FLOW_ACT_CNTR_PKT_BYTES) {
-			struct ice_acl_cntrs cntrs;
+			struct ice_acl_cntrs cntrs = { 0 };
 			enum ice_status status;
 
+			/* amount is unused in the dealloc path but the common
+			 * parameter check routine wants a value set, as zero
+			 * is invalid for the check. Just set it.
+			 */
+			cntrs.amount = 1;
 			cntrs.bank = 0; /* Only bank0 for the moment */
 			cntrs.first_cntr =
 					LE16_TO_CPU(acts[i].data.acl_act.value);
@@ -2333,7 +2338,7 @@ ice_flow_acl_check_actions(struct ice_hw *hw, struct ice_flow_action *acts,
 		if (acts[i].type == ICE_FLOW_ACT_CNTR_PKT ||
 		    acts[i].type == ICE_FLOW_ACT_CNTR_BYTES ||
 		    acts[i].type == ICE_FLOW_ACT_CNTR_PKT_BYTES) {
-			struct ice_acl_cntrs cntrs;
+			struct ice_acl_cntrs cntrs = { 0 };
 			enum ice_status status;
 
 			cntrs.amount = 1;
