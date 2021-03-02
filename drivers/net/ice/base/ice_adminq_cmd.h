@@ -1506,11 +1506,12 @@ struct ice_aqc_get_link_status_data {
 #define ICE_AQ_LINK_TOPO_UNDRUTIL_MEDIA	BIT(6)
 #define ICE_AQ_LINK_TOPO_UNSUPP_MEDIA	BIT(7)
 	u8 link_cfg_err;
-#define ICE_AQ_LINK_CFG_ERR		BIT(0)
-#define ICE_AQ_LINK_ACT_PORT_OPT_INVAL	BIT(2)
+#define ICE_AQ_LINK_CFG_ERR			BIT(0)
+#define ICE_AQ_LINK_ACT_PORT_OPT_INVAL		BIT(2)
 #define ICE_AQ_LINK_FEAT_ID_OR_CONFIG_ID_INVAL	BIT(3)
 #define ICE_AQ_LINK_TOPO_CRITICAL_SDP_ERR	BIT(4)
 #define ICE_AQ_LINK_MODULE_POWER_UNSUPPORTED	BIT(5)
+#define ICE_AQ_LINK_EXTERNAL_PHY_LOAD_FAILURE	BIT(6)
 	u8 link_info;
 #define ICE_AQ_LINK_UP			BIT(0)	/* Link Status */
 #define ICE_AQ_LINK_FAULT		BIT(1)
@@ -1714,6 +1715,25 @@ struct ice_aqc_sw_gpio {
 #define ICE_AQC_SW_GPIO_PARAMS_DIRECTION    BIT(1)
 #define ICE_AQC_SW_GPIO_PARAMS_VALUE        BIT(0)
 	u8 rsvd[12];
+};
+
+/* Program topology device NVM (direct, 0x06F2) */
+struct ice_aqc_program_topology_device_nvm {
+	u8 lport_num;
+	u8 lport_num_valid;
+	u8 node_type_ctx;
+	u8 index;
+	u8 rsvd[12];
+};
+
+/* Read topology device NVM (indirect, 0x06F3) */
+struct ice_aqc_read_topology_device_nvm {
+	u8 lport_num;
+	u8 lport_num_valid;
+	u8 node_type_ctx;
+	u8 index;
+	__le32 start_address;
+	u8 data_read[8];
 };
 
 /* NVM Read command (indirect 0x0701)
@@ -3059,6 +3079,8 @@ enum ice_adminq_opc {
 	ice_aqc_opc_sff_eeprom				= 0x06EE,
 	ice_aqc_opc_sw_set_gpio				= 0x06EF,
 	ice_aqc_opc_sw_get_gpio				= 0x06F0,
+	ice_aqc_opc_program_topology_device_nvm		= 0x06F2,
+	ice_aqc_opc_read_topology_device_nvm		= 0x06F3,
 
 	/* NVM commands */
 	ice_aqc_opc_nvm_read				= 0x0701,
