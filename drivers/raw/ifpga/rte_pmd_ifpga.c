@@ -8,6 +8,7 @@
 #include <rte_rawdev_pmd.h>
 #include "rte_pmd_ifpga.h"
 #include "ifpga_rawdev.h"
+#include "base/ifpga_api.h"
 #include "base/ifpga_sec_mgr.h"
 
 
@@ -97,6 +98,226 @@ get_share_data(struct opae_adapter *adapter)
 	}
 
 	return sd;
+}
+
+int
+rte_pmd_ifpga_get_rsu_status(uint16_t dev_id, uint32_t *stat, uint32_t *prog)
+{
+	struct opae_adapter *adapter = NULL;
+	opae_share_data *sd = NULL;
+
+	adapter = get_opae_adapter(dev_id);
+	if (!adapter)
+		return -ENODEV;
+
+	sd = get_share_data(adapter);
+	if (!sd)
+		return -ENOMEM;
+
+	if (stat)
+		*stat = IFPGA_RSU_GET_STAT(sd->rsu_stat);
+	if (prog)
+		*prog = IFPGA_RSU_GET_PROG(sd->rsu_stat);
+
+	return 0;
+}
+
+static int
+ifpga_is_rebooting(struct opae_adapter *adapter)
+{
+	opae_share_data *sd = NULL;
+
+	sd = get_share_data(adapter);
+	if (!sd)
+		return 1;
+
+	if (IFPGA_RSU_GET_STAT(sd->rsu_stat) == IFPGA_RSU_REBOOT) {
+		IFPGA_RAWDEV_PMD_WARN("Reboot is in progress.");
+		return 1;
+	}
+
+	return 0;
+}
+
+static int
+get_common_property(struct opae_adapter *adapter,
+	rte_pmd_ifpga_common_prop *prop)
+{
+	struct ifpga_fme_hw *fme = NULL;
+	struct opae_board_info *info = NULL;
+	struct feature_prop fp;
+	struct uuid pr_id;
+	int ret = 0;
+
+	if (!adapter || !prop)
+		return -EINVAL;
+
+	if (!adapter->mgr || !adapter->mgr->data) {
+		IFPGA_RAWDEV_PMD_ERR("Manager is not registered.");
+		return -ENODEV;
+	}
+
+	fme = adapter->mgr->data;
+	fp.feature_id = FME_FEATURE_ID_HEADER;
+	fp.prop_id = FME_HDR_PROP_PORTS_NUM;
+	ret = ifpga_get_prop(fme->parent, FEATURE_FIU_ID_FME, 0, &fp);
+	if (ret) {
+		IFPGA_RAWDEV_PMD_ERR("Failed to get port number.");
+		return ret;
+	}
+	prop->num_ports = fp.data;
+
+	fp.prop_id = FME_HDR_PROP_BITSTREAM_ID;
+	ret = ifpga_get_prop(fme->parent, FEATURE_FIU_ID_FME, 0, &fp);
+	if (ret) {
+		IFPGA_RAWDEV_PMD_ERR("Failed to get bitstream ID.");
+		return ret;
+	}
+	prop->bitstream_id = fp.data;
+
+	fp.prop_id = FME_HDR_PROP_BITSTREAM_METADATA;
+	ret = ifpga_get_prop(fme->parent, FEATURE_FIU_ID_FME, 0, &fp);
+	if (ret) {
+		IFPGA_RAWDEV_PMD_ERR("Failed to get bitstream metadata.");
+		return ret;
+	}
+	prop->bitstream_metadata = fp.data;
+
+	ret = opae_mgr_get_uuid(adapter->mgr, &pr_id);
+	if (ret) {
+		IFPGA_RAWDEV_PMD_ERR("Failed to get PR ID.");
+		return ret;
+	}
+	memcpy(prop->pr_id.b, pr_id.b, sizeof(rte_pmd_ifpga_uuid));
+
+	ret = opae_mgr_get_board_info(adapter->mgr, &info);
+	if (ret) {
+		IFPGA_RAWDEV_PMD_ERR("Failed to get board info.");
+		return ret;
+	}
+	prop->boot_page = info->boot_page;
+	prop->bmc_version = info->max10_version;
+	prop->bmc_nios_version = info->nios_fw_version;
+
+	return 0;
+}
+
+static int
+get_port_property(struct opae_adapter *adapter, uint16_t port,
+	rte_pmd_ifpga_port_prop *prop)
+{
+	struct ifpga_fme_hw *fme = NULL;
+	struct feature_prop fp;
+	struct opae_accelerator *acc = NULL;
+	struct uuid afu_id;
+	int ret = 0;
+
+	if (!adapter || !prop)
+		return -EINVAL;
+
+	if (!adapter->mgr || !adapter->mgr->data) {
+		IFPGA_RAWDEV_PMD_ERR("Manager is not registered.");
+		return -ENODEV;
+	}
+
+	fme = adapter->mgr->data;
+	fp.feature_id = FME_FEATURE_ID_HEADER;
+	fp.prop_id = FME_HDR_PROP_PORT_TYPE;
+	fp.data = port;
+	fp.data <<= 32;
+	ret = ifpga_get_prop(fme->parent, FEATURE_FIU_ID_FME, 0, &fp);
+	if (ret)
+		return ret;
+	prop->type = fp.data & 0xffffffff;
+
+	if (prop->type == 0) {
+		acc = opae_adapter_get_acc(adapter, port);
+		ret = opae_acc_get_uuid(acc, &afu_id);
+		if (ret) {
+			IFPGA_RAWDEV_PMD_ERR("Failed to get port%u AFU ID.",
+				port);
+			return ret;
+		}
+		memcpy(prop->afu_id.b, afu_id.b, sizeof(rte_pmd_ifpga_uuid));
+	}
+
+	return 0;
+}
+
+int
+rte_pmd_ifpga_get_property(uint16_t dev_id, rte_pmd_ifpga_prop *prop)
+{
+	struct opae_adapter *adapter = NULL;
+	uint32_t i = 0;
+	int ret = 0;
+
+	adapter = get_opae_adapter(dev_id);
+	if (!adapter)
+		return -ENODEV;
+
+	opae_adapter_lock(adapter, -1);
+	if (ifpga_is_rebooting(adapter)) {
+		ret = -EBUSY;
+		goto unlock_dev;
+	}
+
+	ret = get_common_property(adapter, &prop->common);
+	if (ret) {
+		ret = -EIO;
+		goto unlock_dev;
+	}
+
+	for (i = 0; i < prop->common.num_ports; i++) {
+		ret = get_port_property(adapter, i, &prop->port[i]);
+		if (ret) {
+			ret = -EIO;
+			break;
+		}
+	}
+
+unlock_dev:
+	opae_adapter_unlock(adapter);
+	return ret;
+}
+
+int
+rte_pmd_ifpga_get_phy_info(uint16_t dev_id, rte_pmd_ifpga_phy_info *info)
+{
+	struct opae_adapter *adapter = NULL;
+	struct opae_retimer_info rtm_info;
+	struct opae_retimer_status rtm_status;
+	int ret = 0;
+
+	adapter = get_opae_adapter(dev_id);
+	if (!adapter)
+		return -ENODEV;
+
+	opae_adapter_lock(adapter, -1);
+	if (ifpga_is_rebooting(adapter)) {
+		ret = -EBUSY;
+		goto unlock_dev;
+	}
+
+	ret = opae_manager_get_retimer_info(adapter->mgr, &rtm_info);
+	if (ret) {
+		IFPGA_RAWDEV_PMD_ERR("Failed to get retimer info.");
+		ret = -EIO;
+		goto unlock_dev;
+	}
+	info->num_retimers = rtm_info.nums_retimer;
+
+	ret = opae_manager_get_retimer_status(adapter->mgr, &rtm_status);
+	if (ret) {
+		IFPGA_RAWDEV_PMD_ERR("Failed to get retimer status.");
+		ret = -EIO;
+		goto unlock_dev;
+	}
+	info->link_speed = rtm_status.speed;
+	info->link_status = rtm_status.line_link_bitmap;
+
+unlock_dev:
+	opae_adapter_unlock(adapter);
+	return ret;
 }
 
 int

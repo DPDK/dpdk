@@ -18,6 +18,55 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
+#define IFPGA_MAX_PORT_NUM   4
+
+/**
+ * UUID data structure.
+ */
+typedef struct {
+	uint8_t b[16];
+} rte_pmd_ifpga_uuid;
+
+/**
+ * FME property data structure.
+ */
+typedef struct {
+	uint32_t num_ports;
+	uint32_t boot_page;
+	uint64_t bitstream_id;
+	uint64_t bitstream_metadata;
+	rte_pmd_ifpga_uuid pr_id;
+	uint32_t bmc_version;
+	uint32_t bmc_nios_version;
+} rte_pmd_ifpga_common_prop;
+
+/**
+ * port property data structure.
+ */
+typedef struct {
+	rte_pmd_ifpga_uuid afu_id;
+	uint32_t type;   /* AFU memory access control type */
+} rte_pmd_ifpga_port_prop;
+
+/**
+ * FPGA property data structure.
+ */
+typedef struct {
+	rte_pmd_ifpga_common_prop  common;
+	rte_pmd_ifpga_port_prop    port[IFPGA_MAX_PORT_NUM];
+} rte_pmd_ifpga_prop;
+
+/**
+ * PHY information data structure.
+ */
+typedef struct {
+	uint32_t num_retimers;
+	uint32_t link_speed;
+	uint32_t link_status;
+} rte_pmd_ifpga_phy_info;
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
@@ -36,6 +85,67 @@ extern "C" {
 __rte_experimental
 int
 rte_pmd_ifpga_get_dev_id(const char *pci_addr, uint16_t *dev_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get current RSU status of the specified Intel FPGA device
+ *
+ * @param dev_id
+ *    The raw device ID of specified Intel FPGA device.
+ * @param stat
+ *    The buffer to output RSU status.
+ * @param prog
+ *    The buffer to output RSU progress.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if dev_id is invalid.
+ *   - (-ENOMEM) if share data is not initialized.
+ */
+__rte_experimental
+int
+rte_pmd_ifpga_get_rsu_status(uint16_t dev_id, uint32_t *stat, uint32_t *prog);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get FPGA property of specified Intel FPGA device
+ *
+ * @param dev_id
+ *    The raw device ID of specified Intel FPGA device.
+ * @param prop
+ *    The data pointer of FPGA property buffer.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if dev_id is invalid.
+ *   - (-EBUSY) if FPGA is rebooting.
+ *   - (-EIO) if failed to access hardware.
+ */
+__rte_experimental
+int
+rte_pmd_ifpga_get_property(uint16_t dev_id, rte_pmd_ifpga_prop *prop);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get PHY information of specified Intel FPGA device
+ *
+ * @param dev_id
+ *    The raw device ID of specified Intel FPGA device.
+ * @param info
+ *    The data pointer of PHY information buffer.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if dev_id is invalid.
+ *   - (-EBUSY) if FPGA is rebooting.
+ *   - (-EIO) if failed to access hardware.
+ */
+__rte_experimental
+int
+rte_pmd_ifpga_get_phy_info(uint16_t dev_id, rte_pmd_ifpga_phy_info *info);
 
 /**
  * @warning

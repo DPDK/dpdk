@@ -87,6 +87,27 @@ int fpga_get_afu_uuid(struct ifpga_port_hw *port, struct uuid *uuid)
 	return 0;
 }
 
+int fpga_get_pr_uuid(struct ifpga_fme_hw *fme, struct uuid *uuid)
+{
+	struct feature_fme_pr *fme_pr;
+	u64 guidl, guidh;
+
+	if (!fme || !uuid)
+		return -EINVAL;
+
+	fme_pr = get_fme_feature_ioaddr_by_index(fme, FME_FEATURE_ID_PR_MGMT);
+
+	spinlock_lock(&fme->lock);
+	guidl = readq(&fme_pr->fme_pr_intfc_id_l);
+	guidh = readq(&fme_pr->fme_pr_intfc_id_h);
+	spinlock_unlock(&fme->lock);
+
+	opae_memcpy(uuid->b, &guidl, sizeof(u64));
+	opae_memcpy(uuid->b + 8, &guidh, sizeof(u64));
+
+	return 0;
+}
+
 /* Mask / Unmask Port Errors by the Error Mask register. */
 void port_err_mask(struct ifpga_port_hw *port, bool mask)
 {

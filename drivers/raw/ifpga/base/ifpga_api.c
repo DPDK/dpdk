@@ -229,6 +229,13 @@ static int ifpga_mgr_get_board_info(struct opae_manager *mgr,
 	return 0;
 }
 
+static int ifpga_mgr_get_uuid(struct opae_manager *mgr, struct uuid *uuid)
+{
+	struct ifpga_fme_hw *fme = mgr->data;
+
+	return fpga_get_pr_uuid(fme, uuid);
+}
+
 static int ifpga_mgr_update_flash(struct opae_manager *mgr, const char *image,
 	u64 *status)
 {
@@ -256,6 +263,7 @@ struct opae_manager_ops ifpga_mgr_ops = {
 	.get_eth_group_region_info = ifpga_mgr_get_eth_group_region_info,
 	.get_sensor_value = ifpga_mgr_get_sensor_value,
 	.get_board_info = ifpga_mgr_get_board_info,
+	.get_uuid = ifpga_mgr_get_uuid,
 	.update_flash = ifpga_mgr_update_flash,
 	.stop_flash_update = ifpga_mgr_stop_flash_update,
 	.reload = ifpga_mgr_reload,

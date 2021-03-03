@@ -1727,6 +1727,7 @@ struct opae_board_info {
 	u8 seu;
 	u8 ptp;
 
+	u32 boot_page;
 	u32 max10_version;
 	u32 nios_fw_version;
 	u32 nums_of_retimer;

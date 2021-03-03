@@ -968,6 +968,24 @@ opae_mgr_get_board_info(struct opae_manager *mgr,
 }
 
 /**
+ * opae_mgr_get_uuid -  get manager's UUID.
+ * @mgr: targeted manager
+ * @uuid: a pointer to UUID
+ *
+ * Return: 0 on success, otherwise error code.
+ */
+int opae_mgr_get_uuid(struct opae_manager *mgr, struct uuid *uuid)
+{
+	if (!mgr || !uuid)
+		return -EINVAL;
+
+	if (mgr->ops && mgr->ops->get_uuid)
+		return mgr->ops->get_uuid(mgr, uuid);
+
+	return -ENOENT;
+}
+
+/**
  * opae_mgr_update_flash -  update image in flash.
  * @mgr: targeted manager
  * @image: name of image file

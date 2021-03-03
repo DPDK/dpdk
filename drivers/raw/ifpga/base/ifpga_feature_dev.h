@@ -103,6 +103,7 @@ is_port_feature_present(struct ifpga_port_hw *port, int index)
 }
 
 int fpga_get_afu_uuid(struct ifpga_port_hw *port, struct uuid *uuid);
+int fpga_get_pr_uuid(struct ifpga_fme_hw *fme, struct uuid *uuid);
 
 int __fpga_port_disable(struct ifpga_port_hw *port);
 void __fpga_port_enable(struct ifpga_port_hw *port);

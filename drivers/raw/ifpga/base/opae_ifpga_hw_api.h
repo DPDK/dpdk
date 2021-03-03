@@ -61,6 +61,7 @@ struct feature_prop {
 #define FME_HDR_PROP_SOCKET_ID		0x5	/* RDONLY */
 #define FME_HDR_PROP_BITSTREAM_ID		0x6	/* RDONLY */
 #define FME_HDR_PROP_BITSTREAM_METADATA	0x7	/* RDONLY */
+#define FME_HDR_PROP_PORT_TYPE		0x8	/* RDWR */
 
 /* FME error reporting feature's properties */
 /* FME error reporting properties format */
