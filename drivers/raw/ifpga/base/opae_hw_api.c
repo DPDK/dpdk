@@ -470,6 +470,8 @@ static void opae_adapter_shm_init(struct opae_adapter *adapter)
 	opae_mutex_init(&sd->i2c_mutex);
 	sd->ref_cnt = 0;
 	sd->dtb_size = SHM_BLK_SIZE;
+	sd->rsu_ctrl = 0;
+	sd->rsu_stat = 0;
 }
 
 static void *opae_adapter_shm_alloc(struct opae_adapter *adapter)
@@ -961,6 +963,63 @@ opae_mgr_get_board_info(struct opae_manager *mgr,
 
 	if (mgr->ops && mgr->ops->get_board_info)
 		return mgr->ops->get_board_info(mgr, info);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_mgr_update_flash -  update image in flash.
+ * @mgr: targeted manager
+ * @image: name of image file
+ * @status: status of update
+ *
+ * Return: 0 on success, otherwise error code.
+ */
+int opae_mgr_update_flash(struct opae_manager *mgr, const char *image,
+	uint64_t *status)
+{
+	if (!mgr)
+		return -EINVAL;
+
+	if (mgr->ops && mgr->ops->update_flash)
+		return mgr->ops->update_flash(mgr, image, status);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_stop_flash_update -  stop flash update.
+ * @mgr: targeted manager
+ * @force: make sure the update process is stopped
+ *
+ * Return: 0 on success, otherwise error code.
+ */
+int opae_mgr_stop_flash_update(struct opae_manager *mgr, int force)
+{
+	if (!mgr)
+		return -EINVAL;
+
+	if (mgr->ops && mgr->ops->stop_flash_update)
+		return mgr->ops->stop_flash_update(mgr, force);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_mgr_reload -  reload FPGA.
+ * @mgr: targeted manager
+ * @type: FPGA type
+ * @page: reload from which page
+ *
+ * Return: 0 on success, otherwise error code.
+ */
+int opae_mgr_reload(struct opae_manager *mgr, int type, int page)
+{
+	if (!mgr)
+		return -EINVAL;
+
+	if (mgr->ops && mgr->ops->reload)
+		return mgr->ops->reload(mgr, type, page);
 
 	return -ENOENT;
 }

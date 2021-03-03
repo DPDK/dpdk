@@ -38,6 +38,8 @@ struct intel_max10_device {
 	unsigned int base; /* max10 base address */
 	u16 bus;
 	struct opae_sensor_list opae_sensor_list;
+	u32 staging_area_base;
+	u32 staging_area_size;
 };
 
 /* retimer speed */
@@ -98,6 +100,7 @@ struct opae_retimer_status {
 #define   MAX10_MAC_COUNT	GENMASK(23, 16)
 #define RSU_REG			0x2c
 #define   FPGA_RECONF_PAGE	GENMASK(2, 0)
+#define   FPGA_PAGE(p)		((p) & 0x1)
 #define   FPGA_RP_LOAD		BIT(3)
 #define   NIOS2_PRERESET	BIT(4)
 #define   NIOS2_HANG		BIT(5)
@@ -106,6 +109,9 @@ struct opae_retimer_status {
 #define   NIOS2_I2C2_POLL_STOP	BIT(13)
 #define   PKVL_EEPROM_LOAD	BIT(31)
 #define FPGA_RECONF_REG		0x30
+#define   SFPGA_RECONF_PAGE	GENMASK(22, 20)
+#define   SFPGA_PAGE(p)		(((p) & 0x1) << 20)
+#define   SFPGA_RP_LOAD		BIT(23)
 #define MAX10_TEST_REG		0x3c
 #define   COUNTDOWN_START	BIT(18)
 #define MAX10_BUILD_VER		0x68
@@ -118,8 +124,44 @@ struct opae_retimer_status {
 #define MAX10_DOORBELL		0x400
 #define   RSU_REQUEST		BIT(0)
 #define   SEC_PROGRESS		GENMASK(7, 4)
+#define   SEC_PROGRESS_G(v)	(((v) >> 4) & 0xf)
+#define   SEC_PROGRESS_IDLE				0x0
+#define   SEC_PROGRESS_PREPARE			0x1
+#define   SEC_PROGRESS_SLEEP			0x2
+#define   SEC_PROGRESS_READY			0x3
+#define   SEC_PROGRESS_AUTHENTICATING	0x4
+#define   SEC_PROGRESS_COPYING			0x5
+#define   SEC_PROGRESS_UPDATE_CANCEL	0x6
+#define   SEC_PROGRESS_PROGRAM_KEY_HASH	0x7
+#define   SEC_PROGRESS_RSU_DONE			0x8
+#define   SEC_PROGRESS_PKVL_PROM_DONE	0x9
 #define   HOST_STATUS		GENMASK(11, 8)
+#define   HOST_STATUS_S(v)	(((v) << 8) & 0xf00)
+#define   HOST_STATUS_IDLE			0x0
+#define   HOST_STATUS_WRITE_DONE	0x1
+#define   HOST_STATUS_ABORT_RSU		0x2
 #define   SEC_STATUS		GENMASK(23, 16)
+#define   SEC_STATUS_G(v)	(((v) >> 16) & 0xff)
+#define   SEC_STATUS_NORMAL			0x0
+#define   SEC_STATUS_TIMEOUT		0x1
+#define   SEC_STATUS_AUTH_FAIL		0x2
+#define   SEC_STATUS_COPY_FAIL		0x3
+#define   SEC_STATUS_FATAL			0x4
+#define   SEC_STATUS_PKVL_REJECT	0x5
+#define   SEC_STATUS_NON_INC		0x6
+#define   SEC_STATUS_ERASE_FAIL		0x7
+#define   SEC_STATUS_WEAROUT		0x8
+#define   SEC_STATUS_NIOS_OK		0x80
+#define   SEC_STATUS_USER_OK		0x81
+#define   SEC_STATUS_FACTORY_OK		0x82
+#define   SEC_STATUS_USER_FAIL		0x83
+#define   SEC_STATUS_FACTORY_FAIL	0x84
+#define   SEC_STATUS_NIOS_FLASH_ERR	0x85
+#define   SEC_STATUS_FPGA_FLASH_ERR	0x86
+#define   CONFIG_SEL		BIT(28)
+#define   CONFIG_SEL_S(v)	(((v) & 0x1) << 28)
+#define   REBOOT_REQ		BIT(29)
+#define MAX10_AUTH_RESULT	0x404
 
 /* PKVL related registers, in system register region */
 #define PKVL_POLLING_CTRL		0x80
@@ -149,6 +191,8 @@ int max10_sys_read(struct intel_max10_device *dev,
 	unsigned int offset, unsigned int *val);
 int max10_sys_write(struct intel_max10_device *dev,
 	unsigned int offset, unsigned int val);
+int max10_sys_update_bits(struct intel_max10_device *dev,
+	unsigned int offset, unsigned int msk, unsigned int val);
 struct intel_max10_device *
 intel_max10_device_probe(struct altera_spi_device *spi,
 		int chipselect);

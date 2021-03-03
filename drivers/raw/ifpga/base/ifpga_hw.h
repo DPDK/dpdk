@@ -91,6 +91,7 @@ struct ifpga_fme_hw {
 	struct opae_board_info board_info;
 	int nums_eth_dev;
 	unsigned int nums_acc_region;
+	void *sec_mgr;
 };
 
 enum ifpga_port_state {

@@ -12,6 +12,8 @@ sources = [
 	'ifpga_port.c',
 	'ifpga_port_error.c',
 	'ifpga_fme_pr.c',
+	'ifpga_fme_rsu.c',
+	'ifpga_sec_mgr.c',
 	'opae_hw_api.c',
 	'opae_ifpga_hw_api.c',
 	'opae_debug.c',

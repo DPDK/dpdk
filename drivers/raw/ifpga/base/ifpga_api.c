@@ -5,6 +5,7 @@
 #include "ifpga_api.h"
 #include "ifpga_enumerate.h"
 #include "ifpga_feature_dev.h"
+#include "ifpga_sec_mgr.h"
 
 #include "opae_hw_api.h"
 
@@ -228,11 +229,36 @@ static int ifpga_mgr_get_board_info(struct opae_manager *mgr,
 	return 0;
 }
 
+static int ifpga_mgr_update_flash(struct opae_manager *mgr, const char *image,
+	u64 *status)
+{
+	struct ifpga_fme_hw *fme = mgr->data;
+
+	return fpga_update_flash(fme, image, status);
+}
+
+static int ifpga_mgr_stop_flash_update(struct opae_manager *mgr, int force)
+{
+	struct ifpga_fme_hw *fme = mgr->data;
+
+	return fpga_stop_flash_update(fme, force);
+}
+
+static int ifpga_mgr_reload(struct opae_manager *mgr, int type, int page)
+{
+	struct ifpga_fme_hw *fme = mgr->data;
+
+	return fpga_reload(fme, type, page);
+}
+
 struct opae_manager_ops ifpga_mgr_ops = {
 	.flash = ifpga_mgr_flash,
 	.get_eth_group_region_info = ifpga_mgr_get_eth_group_region_info,
 	.get_sensor_value = ifpga_mgr_get_sensor_value,
 	.get_board_info = ifpga_mgr_get_board_info,
+	.update_flash = ifpga_mgr_update_flash,
+	.stop_flash_update = ifpga_mgr_stop_flash_update,
+	.reload = ifpga_mgr_reload,
 };
 
 static int ifpga_mgr_read_mac_rom(struct opae_manager *mgr, int offset,

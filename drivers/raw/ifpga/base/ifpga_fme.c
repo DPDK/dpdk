@@ -7,6 +7,7 @@
 #include "opae_intel_max10.h"
 #include "opae_i2c.h"
 #include "opae_at24_eeprom.h"
+#include "ifpga_sec_mgr.h"
 
 #define PWR_THRESHOLD_MAX       0x7F
 
@@ -1152,6 +1153,12 @@ static int fme_nios_spi_init(struct ifpga_feature *feature)
 	if (spi_self_checking(max10))
 		goto spi_fail;
 
+	ret = init_sec_mgr(fme);
+	if (ret) {
+		dev_err(fme, "security manager init fail\n");
+		goto spi_fail;
+	}
+
 	return ret;
 
 spi_fail:
@@ -1165,6 +1172,7 @@ static void fme_nios_spi_uinit(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 
+	release_sec_mgr(fme);
 	if (fme->max10_dev)
 		intel_max10_device_remove(fme->max10_dev);
 }

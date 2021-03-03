@@ -55,6 +55,10 @@ struct opae_manager_ops {
 			unsigned int *value);
 	int (*get_board_info)(struct opae_manager *mgr,
 			struct opae_board_info **info);
+	int (*update_flash)(struct opae_manager *mgr, const char *image,
+			u64 *status);
+	int (*stop_flash_update)(struct opae_manager *mgr, int force);
+	int (*reload)(struct opae_manager *mgr, int type, int page);
 };
 
 /* networking management ops in FME */
@@ -276,6 +280,8 @@ typedef struct {
 			pthread_mutex_t i2c_mutex;
 			u32 ref_cnt;    /* reference count of shared memory */
 			u32 dtb_size;   /* actual length of DTB data in byte */
+			u32 rsu_ctrl;   /* used to control rsu */
+			u32 rsu_stat;   /* used to report status for rsu */
 		};
 	};
 	u8 dtb[SHM_BLK_SIZE];   /* DTB data */
@@ -354,4 +360,8 @@ int opae_manager_eth_group_read_reg(struct opae_manager *mgr, u8 group_id,
 		u8 type, u8 index, u16 addr, u32 *data);
 int opae_mgr_get_board_info(struct opae_manager *mgr,
 		struct opae_board_info **info);
+int opae_mgr_update_flash(struct opae_manager *mgr, const char *image,
+		uint64_t *status);
+int opae_mgr_stop_flash_update(struct opae_manager *mgr, int force);
+int opae_mgr_reload(struct opae_manager *mgr, int type, int page);
 #endif /* _OPAE_HW_API_H_*/

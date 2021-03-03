@@ -51,6 +51,22 @@ int max10_sys_write(struct intel_max10_device *dev,
 	return max10_reg_write(dev, dev->base + offset, val);
 }
 
+int max10_sys_update_bits(struct intel_max10_device *dev, unsigned int offset,
+					unsigned int msk, unsigned int val)
+{
+	int ret = 0;
+	unsigned int temp = 0;
+
+	ret = max10_sys_read(dev, offset, &temp);
+	if (ret < 0)
+		return ret;
+
+	temp &= ~msk;
+	temp |= val & msk;
+
+	return max10_sys_write(dev, offset, temp);
+}
+
 static struct max10_compatible_id max10_id_table[] = {
 	{.compatible = MAX10_PAC,},
 	{.compatible = MAX10_PAC_N3000,},
@@ -557,6 +573,36 @@ static int check_max10_version(struct intel_max10_device *dev)
 	return -ENODEV;
 }
 
+static int max10_staging_area_init(struct intel_max10_device *dev)
+{
+	char *fdt_root = dev->fdt_root;
+	int ret, offset = 0;
+	u64 start, size;
+
+	if (!fdt_root) {
+		dev_debug(dev,
+			"skip staging area init as not find Device Tree\n");
+		return -ENODEV;
+	}
+
+	dev->staging_area_size = 0;
+
+	fdt_for_each_subnode(offset, fdt_root, 0) {
+		if (fdt_node_check_compatible(fdt_root, offset,
+					      "ifpga-sec-mgr,staging-area"))
+			continue;
+
+		ret = fdt_get_reg(fdt_root, offset, 0, &start, &size);
+		if (!ret) {
+			dev->staging_area_base = start;
+			dev->staging_area_size = size;
+		}
+		return ret;
+	}
+
+	return -ENODEV;
+}
+
 static int
 max10_secure_hw_init(struct intel_max10_device *dev)
 {
@@ -580,6 +626,8 @@ max10_secure_hw_init(struct intel_max10_device *dev)
 	max10_check_capability(dev);
 
 	max10_sensor_init(dev, sysmgr_offset);
+
+	max10_staging_area_init(dev);
 
 	return 0;
 }

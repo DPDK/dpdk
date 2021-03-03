@@ -1,3 +1,14 @@
 DPDK_21 {
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	# added in 21.05
+	rte_pmd_ifpga_get_dev_id;
+	rte_pmd_ifpga_update_flash;
+	rte_pmd_ifpga_stop_update;
+	rte_pmd_ifpga_reboot_try;
+	rte_pmd_ifpga_reload;
+};
