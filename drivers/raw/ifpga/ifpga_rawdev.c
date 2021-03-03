@@ -1737,3 +1737,33 @@ RTE_PMD_REGISTER_PARAM_STRING(ifpga_rawdev_cfg,
 	"ifpga=<string> "
 	"port=<int> "
 	"afu_bts=<path>");
+
+struct rte_pci_bus *ifpga_get_pci_bus(void)
+{
+	return rte_ifpga_rawdev_pmd.bus;
+}
+
+int ifpga_rawdev_partial_reconfigure(struct rte_rawdev *dev, int port,
+	const char *file)
+{
+	if (!dev) {
+		IFPGA_RAWDEV_PMD_ERR("Input parameter is invalid");
+		return -EINVAL;
+	}
+
+	return rte_fpga_do_pr(dev, port, file);
+}
+
+void ifpga_rawdev_cleanup(void)
+{
+	struct ifpga_rawdev *dev;
+	unsigned int i;
+
+	for (i = 0; i < IFPGA_RAWDEV_NUM; i++) {
+		dev = &ifpga_rawdevices[i];
+		if (dev->rawdev) {
+			rte_rawdev_pmd_release(dev->rawdev);
+			dev->rawdev = NULL;
+		}
+	}
+}

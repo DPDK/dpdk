@@ -111,6 +111,27 @@ rte_pmd_ifpga_get_rsu_status(uint16_t dev_id, uint32_t *stat, uint32_t *prog);
  * @warning
  * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
  *
+ * Set current RSU status of the specified Intel FPGA device
+ *
+ * @param dev_id
+ *    The raw device ID of specified Intel FPGA device.
+ * @param stat
+ *    The RSU status value to set.
+ * @param prog
+ *    The RSU progress value to set.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if dev_id is invalid.
+ *   - (-ENOMEM) if share data is not initialized.
+ */
+__rte_experimental
+int
+rte_pmd_ifpga_set_rsu_status(uint16_t dev_id, uint32_t stat, uint32_t prog);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
  * Get FPGA property of specified Intel FPGA device
  *
  * @param dev_id
@@ -234,6 +255,51 @@ rte_pmd_ifpga_reboot_try(uint16_t dev_id);
 __rte_experimental
 int
 rte_pmd_ifpga_reload(uint16_t dev_id, int type, int page);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get PCI bus the Intel FPGA driver register to
+ *
+ * @return
+ *   - (valid pointer) if successful.
+ *   - (NULL) if the Intel FPGA driver is not registered to any PCI bus.
+ */
+__rte_experimental
+const struct rte_pci_bus *
+rte_pmd_ifpga_get_pci_bus(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Perform PR (partial reconfiguration) on specified Intel FPGA device
+ *
+ * @param dev_id
+ *   The raw device ID of specified Intel FPGA device.
+ * @param port
+ *   The port index of the partial reconfiguration area.
+ * @param file
+ *   The GBS (Green BitStream) image file name string.
+ * @return
+ *   - (0) if successful.
+ *   - (-EINVAL) if bad parameter or operation failed.
+ *   - (-ENOMEM) if failed to allocate memory.
+ */
+__rte_experimental
+int
+rte_pmd_ifpga_partial_reconfigure(uint16_t dev_id, int port, const char *file);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Free software resources allocated by Intel FPGA PMD
+ */
+__rte_experimental
+void
+rte_pmd_ifpga_cleanup(void);
 
 #ifdef __cplusplus
 }

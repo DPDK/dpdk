@@ -122,6 +122,25 @@ rte_pmd_ifpga_get_rsu_status(uint16_t dev_id, uint32_t *stat, uint32_t *prog)
 	return 0;
 }
 
+int
+rte_pmd_ifpga_set_rsu_status(uint16_t dev_id, uint32_t stat, uint32_t prog)
+{
+	struct opae_adapter *adapter = NULL;
+	opae_share_data *sd = NULL;
+
+	adapter = get_opae_adapter(dev_id);
+	if (!adapter)
+		return -ENODEV;
+
+	sd = get_share_data(adapter);
+	if (!sd)
+		return -ENOMEM;
+
+	sd->rsu_stat = IFPGA_RSU_STATUS(stat, prog);
+
+	return 0;
+}
+
 static int
 ifpga_is_rebooting(struct opae_adapter *adapter)
 {
@@ -381,4 +400,30 @@ rte_pmd_ifpga_reload(uint16_t dev_id, int type, int page)
 		return -ENODEV;
 
 	return opae_mgr_reload(adapter->mgr, type, page);
+}
+
+const struct rte_pci_bus *
+rte_pmd_ifpga_get_pci_bus(void)
+{
+	return ifpga_get_pci_bus();
+}
+
+int
+rte_pmd_ifpga_partial_reconfigure(uint16_t dev_id, int port, const char *file)
+{
+	struct rte_rawdev *dev = NULL;
+
+	dev = get_rte_rawdev(dev_id);
+	if (!dev) {
+		IFPGA_RAWDEV_PMD_ERR("Device ID %u is invalid.", dev_id);
+		return -EINVAL;
+	}
+
+	return ifpga_rawdev_partial_reconfigure(dev, port, file);
+}
+
+void
+rte_pmd_ifpga_cleanup(void)
+{
+	ifpga_rawdev_cleanup();
 }
