@@ -2832,35 +2832,35 @@ struct rte_flow_shared_action;
  * Field IDs for MODIFY_FIELD action.
  */
 enum rte_flow_field_id {
-	RTE_FLOW_FIELD_START = 0, /**< Start of a packet. */
-	RTE_FLOW_FIELD_MAC_DST,
-	RTE_FLOW_FIELD_MAC_SRC,
-	RTE_FLOW_FIELD_VLAN_TYPE,
-	RTE_FLOW_FIELD_VLAN_ID,
-	RTE_FLOW_FIELD_MAC_TYPE,
-	RTE_FLOW_FIELD_IPV4_DSCP,
-	RTE_FLOW_FIELD_IPV4_TTL,
-	RTE_FLOW_FIELD_IPV4_SRC,
-	RTE_FLOW_FIELD_IPV4_DST,
-	RTE_FLOW_FIELD_IPV6_DSCP,
-	RTE_FLOW_FIELD_IPV6_HOPLIMIT,
-	RTE_FLOW_FIELD_IPV6_SRC,
-	RTE_FLOW_FIELD_IPV6_DST,
-	RTE_FLOW_FIELD_TCP_PORT_SRC,
-	RTE_FLOW_FIELD_TCP_PORT_DST,
-	RTE_FLOW_FIELD_TCP_SEQ_NUM,
-	RTE_FLOW_FIELD_TCP_ACK_NUM,
-	RTE_FLOW_FIELD_TCP_FLAGS,
-	RTE_FLOW_FIELD_UDP_PORT_SRC,
-	RTE_FLOW_FIELD_UDP_PORT_DST,
-	RTE_FLOW_FIELD_VXLAN_VNI,
-	RTE_FLOW_FIELD_GENEVE_VNI,
-	RTE_FLOW_FIELD_GTP_TEID,
-	RTE_FLOW_FIELD_TAG,
-	RTE_FLOW_FIELD_MARK,
-	RTE_FLOW_FIELD_META,
-	RTE_FLOW_FIELD_POINTER, /**< Memory pointer. */
-	RTE_FLOW_FIELD_VALUE,   /**< Immediate value. */
+	RTE_FLOW_FIELD_START = 0,	/**< Start of a packet. */
+	RTE_FLOW_FIELD_MAC_DST,		/**< Destination MAC Address. */
+	RTE_FLOW_FIELD_MAC_SRC,		/**< Source MAC Address. */
+	RTE_FLOW_FIELD_VLAN_TYPE,	/**< 802.1Q Tag Identifier. */
+	RTE_FLOW_FIELD_VLAN_ID,		/**< 802.1Q VLAN Identifier. */
+	RTE_FLOW_FIELD_MAC_TYPE,	/**< EtherType. */
+	RTE_FLOW_FIELD_IPV4_DSCP,	/**< IPv4 DSCP. */
+	RTE_FLOW_FIELD_IPV4_TTL,	/**< IPv4 Time To Live. */
+	RTE_FLOW_FIELD_IPV4_SRC,	/**< IPv4 Source Address. */
+	RTE_FLOW_FIELD_IPV4_DST,	/**< IPv4 Destination Address. */
+	RTE_FLOW_FIELD_IPV6_DSCP,	/**< IPv6 DSCP. */
+	RTE_FLOW_FIELD_IPV6_HOPLIMIT,	/**< IPv6 Hop Limit. */
+	RTE_FLOW_FIELD_IPV6_SRC,	/**< IPv6 Source Address. */
+	RTE_FLOW_FIELD_IPV6_DST,	/**< IPv6 Destination Address. */
+	RTE_FLOW_FIELD_TCP_PORT_SRC,	/**< TCP Source Port Number. */
+	RTE_FLOW_FIELD_TCP_PORT_DST,	/**< TCP Destination Port Number. */
+	RTE_FLOW_FIELD_TCP_SEQ_NUM,	/**< TCP Sequence Number. */
+	RTE_FLOW_FIELD_TCP_ACK_NUM,	/**< TCP Acknowledgment Number. */
+	RTE_FLOW_FIELD_TCP_FLAGS,	/**< TCP Flags. */
+	RTE_FLOW_FIELD_UDP_PORT_SRC,	/**< UDP Source Port Number. */
+	RTE_FLOW_FIELD_UDP_PORT_DST,	/**< UDP Destination Port Number. */
+	RTE_FLOW_FIELD_VXLAN_VNI,	/**< VXLAN Network Identifier. */
+	RTE_FLOW_FIELD_GENEVE_VNI,	/**< GENEVE Network Identifier. */
+	RTE_FLOW_FIELD_GTP_TEID,	/**< GTP Tunnel Endpoint Identifier. */
+	RTE_FLOW_FIELD_TAG,		/**< Tag value. */
+	RTE_FLOW_FIELD_MARK,		/**< Mark value. */
+	RTE_FLOW_FIELD_META,		/**< Metadata value. */
+	RTE_FLOW_FIELD_POINTER,		/**< Memory pointer. */
+	RTE_FLOW_FIELD_VALUE,		/**< Immediate value. */
 };
 
 /**
