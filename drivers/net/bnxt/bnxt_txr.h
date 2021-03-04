@@ -56,6 +56,7 @@ uint16_t bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int bnxt_flush_tx_cmp(struct bnxt_cp_ring_info *cpr);
 
 #define PKT_TX_OIP_IIP_TCP_UDP_CKSUM	(PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM | \
 					PKT_TX_IP_CKSUM | PKT_TX_OUTER_IP_CKSUM)

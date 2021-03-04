@@ -75,6 +75,82 @@ static void bnxt_hwrm_set_pg_attr(struct bnxt_ring_mem_info *rmem,
 	}
 }
 
+static struct bnxt_cp_ring_info*
+bnxt_get_ring_info_by_id(struct bnxt *bp, uint16_t rid, uint16_t type)
+{
+	struct bnxt_cp_ring_info *cp_ring = NULL;
+	uint16_t i;
+
+	switch (type) {
+	case HWRM_RING_FREE_INPUT_RING_TYPE_RX:
+	case HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG:
+		/* FALLTHROUGH */
+		for (i = 0; i < bp->rx_cp_nr_rings; i++) {
+			struct bnxt_rx_queue *rxq = bp->rx_queues[i];
+
+			if (rxq->cp_ring->cp_ring_struct->fw_ring_id ==
+			    rte_cpu_to_le_16(rid)) {
+				return rxq->cp_ring;
+			}
+		}
+		break;
+	case HWRM_RING_FREE_INPUT_RING_TYPE_TX:
+		for (i = 0; i < bp->tx_cp_nr_rings; i++) {
+			struct bnxt_tx_queue *txq = bp->tx_queues[i];
+
+			if (txq->cp_ring->cp_ring_struct->fw_ring_id ==
+			    rte_cpu_to_le_16(rid)) {
+				return txq->cp_ring;
+			}
+		}
+		break;
+	default:
+		return cp_ring;
+	}
+	return cp_ring;
+}
+
+/* Complete a sweep of the CQ ring for the corresponding Tx/Rx/AGG ring.
+ * If the CMPL_BASE_TYPE_HWRM_DONE is not encountered by the last pass,
+ * before timeout, we force the done bit for the cleanup to proceed.
+ * Also if cpr is null, do nothing.. The HWRM command is  not for a
+ * Tx/Rx/AGG ring cleanup.
+ */
+static int
+bnxt_check_cq_hwrm_done(struct bnxt_cp_ring_info *cpr,
+			bool tx, bool rx, bool timeout)
+{
+	int done = 0;
+
+	if (cpr != NULL) {
+		if (tx)
+			done = bnxt_flush_tx_cmp(cpr);
+
+		if (rx)
+			done = bnxt_flush_rx_cmp(cpr);
+
+		if (done)
+			PMD_DRV_LOG(DEBUG, "HWRM DONE for %s ring\n",
+				    rx ? "Rx" : "Tx");
+
+		/* We are about to timeout and still haven't seen the
+		 * HWRM done for the Ring free. Force the cleanup.
+		 */
+		if (!done && timeout) {
+			done = 1;
+			PMD_DRV_LOG(DEBUG, "Timing out for %s ring\n",
+				    rx ? "Rx" : "Tx");
+		}
+	} else {
+		/* This HWRM command is not for a Tx/Rx/AGG ring cleanup.
+		 * Otherwise the cpr would have been valid. So do nothing.
+		 */
+		done = 1;
+	}
+
+	return done;
+}
+
 /*
  * HWRM Functions (sent to HWRM)
  * These are named bnxt_hwrm_*() and return 0 on success or -110 if the
@@ -97,6 +173,9 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		GRCPF_REG_KONG_CHANNEL_OFFSET : GRCPF_REG_CHIMP_CHANNEL_OFFSET;
 	uint16_t mb_trigger_offset = use_kong_mb ?
 		GRCPF_REG_KONG_COMM_TRIGGER : GRCPF_REG_CHIMP_COMM_TRIGGER;
+	struct bnxt_cp_ring_info *cpr = NULL;
+	bool is_rx = false;
+	bool is_tx = false;
 	uint32_t timeout;
 
 	/* Do not send HWRM commands to firmware in error state */
@@ -153,14 +232,42 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	 */
 	rte_io_mb();
 
+	/* Check ring flush is done.
+	 * This is valid only for Tx and Rx rings (including AGG rings).
+	 * The Tx and Rx rings should be freed once the HW confirms all
+	 * the internal buffers and BDs associated with the rings are
+	 * consumed and the corresponding DMA is handled.
+	 */
+	if (rte_cpu_to_le_16(req->cmpl_ring) != INVALID_HW_RING_ID) {
+		/* Check if the TxCQ matches. If that fails check if RxCQ
+		 * matches. And if neither match, is_rx = false, is_tx = false.
+		 */
+		cpr = bnxt_get_ring_info_by_id(bp, req->cmpl_ring,
+					       HWRM_RING_FREE_INPUT_RING_TYPE_TX);
+		if (cpr == NULL) {
+			/* Not a TxCQ. Check if the RxCQ matches. */
+			cpr =
+			bnxt_get_ring_info_by_id(bp, req->cmpl_ring,
+						 HWRM_RING_FREE_INPUT_RING_TYPE_RX);
+			if (cpr != NULL)
+				is_rx = true;
+		} else {
+			is_tx = true;
+		}
+	}
+
 	/* Poll for the valid bit */
 	for (i = 0; i < timeout; i++) {
+		int done;
+
+		done = bnxt_check_cq_hwrm_done(cpr, is_tx, is_rx,
+					       i == timeout - 1);
 		/* Sanity check on the resp->resp_len */
 		rte_io_rmb();
 		if (resp->resp_len && resp->resp_len <= bp->max_resp_len) {
 			/* Last byte of resp contains the valid key */
 			valid = (uint8_t *)resp + resp->resp_len - 1;
-			if (*valid == HWRM_RESP_VALID_KEY)
+			if (*valid == HWRM_RESP_VALID_KEY && done)
 				break;
 		}
 		rte_delay_us(1);
@@ -1672,7 +1779,8 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 }
 
 int bnxt_hwrm_ring_free(struct bnxt *bp,
-			struct bnxt_ring *ring, uint32_t ring_type)
+			struct bnxt_ring *ring, uint32_t ring_type,
+			uint16_t cp_ring_id)
 {
 	int rc;
 	struct hwrm_ring_free_input req = {.req_type = 0 };
@@ -1682,6 +1790,7 @@ int bnxt_hwrm_ring_free(struct bnxt *bp,
 
 	req.ring_type = ring_type;
 	req.ring_id = rte_cpu_to_le_16(ring->fw_ring_id);
+	req.cmpl_ring = rte_cpu_to_le_16(cp_ring_id);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
@@ -2541,7 +2650,8 @@ void bnxt_free_nq_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 
 	bnxt_hwrm_ring_free(bp, cp_ring,
-			    HWRM_RING_FREE_INPUT_RING_TYPE_NQ);
+			    HWRM_RING_FREE_INPUT_RING_TYPE_NQ,
+			    INVALID_HW_RING_ID);
 	cp_ring->fw_ring_id = INVALID_HW_RING_ID;
 	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
 				     sizeof(*cpr->cp_desc_ring));
@@ -2554,7 +2664,8 @@ void bnxt_free_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 
 	bnxt_hwrm_ring_free(bp, cp_ring,
-			HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL);
+			HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL,
+			INVALID_HW_RING_ID);
 	cp_ring->fw_ring_id = INVALID_HW_RING_ID;
 	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
 			sizeof(*cpr->cp_desc_ring));
@@ -2571,7 +2682,8 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 
 	if (ring->fw_ring_id != INVALID_HW_RING_ID) {
 		bnxt_hwrm_ring_free(bp, ring,
-				    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
+				    HWRM_RING_FREE_INPUT_RING_TYPE_RX,
+				    cpr->cp_ring_struct->fw_ring_id);
 		ring->fw_ring_id = INVALID_HW_RING_ID;
 		if (BNXT_HAS_RING_GRPS(bp))
 			bp->grp_info[queue_index].rx_fw_ring_id =
@@ -2582,7 +2694,8 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 		bnxt_hwrm_ring_free(bp, ring,
 				    BNXT_CHIP_P5(bp) ?
 				    HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG :
-				    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
+				    HWRM_RING_FREE_INPUT_RING_TYPE_RX,
+				    cpr->cp_ring_struct->fw_ring_id);
 		if (BNXT_HAS_RING_GRPS(bp))
 			bp->grp_info[queue_index].ag_fw_ring_id =
 							INVALID_HW_RING_ID;
@@ -2607,7 +2720,8 @@ bnxt_free_all_hwrm_rings(struct bnxt *bp)
 
 		if (ring->fw_ring_id != INVALID_HW_RING_ID) {
 			bnxt_hwrm_ring_free(bp, ring,
-					HWRM_RING_FREE_INPUT_RING_TYPE_TX);
+					HWRM_RING_FREE_INPUT_RING_TYPE_TX,
+					cpr->cp_ring_struct->fw_ring_id);
 			ring->fw_ring_id = INVALID_HW_RING_ID;
 			memset(txr->tx_desc_ring, 0,
 					txr->tx_ring_struct->ring_size *

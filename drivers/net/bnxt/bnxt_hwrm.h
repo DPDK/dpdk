@@ -162,7 +162,8 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			 uint32_t stats_ctx_id, uint32_t cmpl_ring_id,
 			 uint16_t tx_cosq_id);
 int bnxt_hwrm_ring_free(struct bnxt *bp,
-			struct bnxt_ring *ring, uint32_t ring_type);
+			struct bnxt_ring *ring, uint32_t ring_type,
+			uint16_t cp_ring_id);
 int bnxt_hwrm_ring_grp_alloc(struct bnxt *bp, unsigned int idx);
 int bnxt_hwrm_ring_grp_free(struct bnxt *bp, unsigned int idx);
 

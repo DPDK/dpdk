@@ -569,3 +569,39 @@ int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	return 0;
 }
+
+/* Sweep the Tx completion queue till HWRM_DONE for ring flush is received.
+ * The mbufs will not be freed in this call.
+ * They will be freed during ring free as a part of mem cleanup.
+ */
+int bnxt_flush_tx_cmp(struct bnxt_cp_ring_info *cpr)
+{
+	uint32_t raw_cons = cpr->cp_raw_cons;
+	uint32_t cons;
+	uint32_t nb_tx_pkts = 0;
+	struct tx_cmpl *txcmp;
+	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
+	struct bnxt_ring *cp_ring_struct = cpr->cp_ring_struct;
+	uint32_t ring_mask = cp_ring_struct->ring_mask;
+	uint32_t opaque = 0;
+
+	do {
+		cons = RING_CMPL(ring_mask, raw_cons);
+		txcmp = (struct tx_cmpl *)&cp_desc_ring[cons];
+
+		opaque = rte_cpu_to_le_32(txcmp->opaque);
+		raw_cons = NEXT_RAW_CMP(raw_cons);
+
+		if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
+			nb_tx_pkts += opaque;
+		else if (CMP_TYPE(txcmp) == HWRM_CMPL_TYPE_HWRM_DONE)
+			return 1;
+	} while (nb_tx_pkts < ring_mask);
+
+	if (nb_tx_pkts) {
+		cpr->cp_raw_cons = raw_cons;
+		bnxt_db_cq(cpr);
+	}
+
+	return 0;
+}
