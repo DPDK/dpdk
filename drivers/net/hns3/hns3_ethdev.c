@@ -4742,6 +4742,13 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_cmd_init;
 	}
 
+	/* Hardware statistics of imissed registers cleared. */
+	ret = hns3_update_imissed_stats(hw, true);
+	if (ret) {
+		hns3_err(hw, "clear imissed stats failed, ret = %d", ret);
+		return ret;
+	}
+
 	hns3_config_all_msix_error(hw, true);
 
 	ret = rte_intr_callback_register(&pci_dev->intr_handle,

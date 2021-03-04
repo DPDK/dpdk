@@ -434,6 +434,7 @@ struct hns3_hw {
 	struct hns3_tqp_stats tqp_stats;
 	/* Include Mac stats | Rx stats | Tx stats */
 	struct hns3_mac_stats mac_stats;
+	struct hns3_rx_missed_stats imissed_stats;
 	uint32_t fw_version;
 
 	uint16_t num_msi;

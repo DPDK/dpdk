@@ -110,6 +110,10 @@ struct hns3_mac_stats {
 	uint64_t mac_rx_ctrl_pkt_num;
 };
 
+struct hns3_rx_missed_stats {
+	uint64_t rpu_rx_drop_cnt;
+};
+
 /* store statistics names and its offset in stats structure */
 struct hns3_xstats_name_offset {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -141,6 +145,9 @@ struct hns3_reset_stats;
 #define HNS3_TXQ_BASIC_STATS_FIELD_OFFSET(f) \
 	(offsetof(struct hns3_tx_basic_stats, f))
 
+#define HNS3_IMISSED_STATS_FIELD_OFFSET(f) \
+	(offsetof(struct hns3_rx_missed_stats, f))
+
 int hns3_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats);
 int hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			unsigned int n);
@@ -160,5 +167,6 @@ int hns3_stats_reset(struct rte_eth_dev *dev);
 void hns3_error_int_stats_add(struct hns3_adapter *hns, const char *err);
 int hns3_tqp_stats_init(struct hns3_hw *hw);
 void hns3_tqp_stats_uninit(struct hns3_hw *hw);
+int hns3_update_imissed_stats(struct hns3_hw *hw, bool is_clear);
 
 #endif /* _HNS3_STATS_H_ */

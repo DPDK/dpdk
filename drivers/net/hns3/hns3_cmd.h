@@ -905,6 +905,13 @@ struct hns3_dev_specs_0_cmd {
 	uint32_t max_tm_rate;
 };
 
+struct hns3_query_rpu_cmd {
+	uint32_t tc_queue_num;
+	uint32_t rsv1[2];
+	uint32_t rpu_rx_pkt_drop_cnt;
+	uint32_t rsv2[2];
+};
+
 #define HNS3_MAX_TQP_NUM_HIP08_PF	64
 #define HNS3_DEFAULT_TX_BUF		0x4000    /* 16k  bytes */
 #define HNS3_TOTAL_PKT_BUF		0x108000  /* 1.03125M bytes */
