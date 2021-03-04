@@ -211,6 +211,8 @@ enum hns3_opcode_type {
 	HNS3_OPC_FIRMWARE_COMPAT_CFG    = 0x701A,
 
 	/* SFP command */
+	HNS3_OPC_GET_SFP_EEPROM         = 0x7100,
+	HNS3_OPC_GET_SFP_EXIST          = 0x7101,
 	HNS3_OPC_SFP_GET_SPEED          = 0x7104,
 
 	/* Interrupts commands */
@@ -713,6 +715,20 @@ struct hns3_config_auto_neg_cmd {
 #define HNS3_MAC_FEC_OFF		0
 #define HNS3_MAC_FEC_BASER		1
 #define HNS3_MAC_FEC_RS			2
+
+#define HNS3_SFP_INFO_BD0_LEN  20UL
+#define HNS3_SFP_INFO_BDX_LEN  24UL
+
+struct hns3_sfp_info_bd0_cmd {
+	uint16_t offset;
+	uint16_t read_len;
+	uint8_t data[HNS3_SFP_INFO_BD0_LEN];
+};
+
+struct hns3_sfp_type {
+	uint8_t type;
+	uint8_t ext_type;
+};
 
 struct hns3_sfp_speed_cmd {
 	uint32_t  sfp_speed;

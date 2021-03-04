@@ -6172,6 +6172,163 @@ hns3_query_dev_fec_info(struct hns3_hw *hw)
 	return ret;
 }
 
+static bool
+hns3_optical_module_existed(struct hns3_hw *hw)
+{
+	struct hns3_cmd_desc desc;
+	bool existed;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_GET_SFP_EXIST, true);
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw,
+			 "fail to get optical module exist state, ret = %d.\n",
+			 ret);
+		return false;
+	}
+	existed = !!desc.data[0];
+
+	return existed;
+}
+
+static int
+hns3_get_module_eeprom_data(struct hns3_hw *hw, uint32_t offset,
+				uint32_t len, uint8_t *data)
+{
+#define HNS3_SFP_INFO_CMD_NUM 6
+#define HNS3_SFP_INFO_MAX_LEN \
+	(HNS3_SFP_INFO_BD0_LEN + \
+	(HNS3_SFP_INFO_CMD_NUM - 1) * HNS3_SFP_INFO_BDX_LEN)
+	struct hns3_cmd_desc desc[HNS3_SFP_INFO_CMD_NUM];
+	struct hns3_sfp_info_bd0_cmd *sfp_info_bd0;
+	uint16_t read_len;
+	uint16_t copy_len;
+	int ret;
+	int i;
+
+	for (i = 0; i < HNS3_SFP_INFO_CMD_NUM; i++) {
+		hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_GET_SFP_EEPROM,
+					  true);
+		if (i < HNS3_SFP_INFO_CMD_NUM - 1)
+			desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+	}
+
+	sfp_info_bd0 = (struct hns3_sfp_info_bd0_cmd *)desc[0].data;
+	sfp_info_bd0->offset = rte_cpu_to_le_16((uint16_t)offset);
+	read_len = RTE_MIN(len, HNS3_SFP_INFO_MAX_LEN);
+	sfp_info_bd0->read_len = rte_cpu_to_le_16((uint16_t)read_len);
+
+	ret = hns3_cmd_send(hw, desc, HNS3_SFP_INFO_CMD_NUM);
+	if (ret) {
+		hns3_err(hw, "fail to get module EEPROM info, ret = %d.\n",
+				ret);
+		return ret;
+	}
+
+	/* The data format in BD0 is different with the others. */
+	copy_len = RTE_MIN(len, HNS3_SFP_INFO_BD0_LEN);
+	memcpy(data, sfp_info_bd0->data, copy_len);
+	read_len = copy_len;
+
+	for (i = 1; i < HNS3_SFP_INFO_CMD_NUM; i++) {
+		if (read_len >= len)
+			break;
+
+		copy_len = RTE_MIN(len - read_len, HNS3_SFP_INFO_BDX_LEN);
+		memcpy(data + read_len, desc[i].data, copy_len);
+		read_len += copy_len;
+	}
+
+	return (int)read_len;
+}
+
+static int
+hns3_get_module_eeprom(struct rte_eth_dev *dev,
+		       struct rte_dev_eeprom_info *info)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
+	uint32_t offset = info->offset;
+	uint32_t len = info->length;
+	uint8_t *data = info->data;
+	uint32_t read_len = 0;
+
+	if (hw->mac.media_type != HNS3_MEDIA_TYPE_FIBER)
+		return -ENOTSUP;
+
+	if (!hns3_optical_module_existed(hw)) {
+		hns3_err(hw, "fail to read module EEPROM: no module is connected.\n");
+		return -EIO;
+	}
+
+	while (read_len < len) {
+		int ret;
+		ret = hns3_get_module_eeprom_data(hw, offset + read_len,
+						  len - read_len,
+						  data + read_len);
+		if (ret < 0)
+			return -EIO;
+		read_len += ret;
+	}
+
+	return 0;
+}
+
+static int
+hns3_get_module_info(struct rte_eth_dev *dev,
+		     struct rte_eth_dev_module_info *modinfo)
+{
+#define HNS3_SFF8024_ID_SFP		0x03
+#define HNS3_SFF8024_ID_QSFP_8438	0x0c
+#define HNS3_SFF8024_ID_QSFP_8436_8636	0x0d
+#define HNS3_SFF8024_ID_QSFP28_8636	0x11
+#define HNS3_SFF_8636_V1_3		0x03
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
+	struct rte_dev_eeprom_info info;
+	struct hns3_sfp_type sfp_type;
+	int ret;
+
+	memset(&sfp_type, 0, sizeof(sfp_type));
+	memset(&info, 0, sizeof(info));
+	info.data = (uint8_t *)&sfp_type;
+	info.length = sizeof(sfp_type);
+	ret = hns3_get_module_eeprom(dev, &info);
+	if (ret)
+		return ret;
+
+	switch (sfp_type.type) {
+	case HNS3_SFF8024_ID_SFP:
+		modinfo->type = RTE_ETH_MODULE_SFF_8472;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8472_LEN;
+		break;
+	case HNS3_SFF8024_ID_QSFP_8438:
+		modinfo->type = RTE_ETH_MODULE_SFF_8436;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8436_MAX_LEN;
+		break;
+	case HNS3_SFF8024_ID_QSFP_8436_8636:
+		if (sfp_type.ext_type < HNS3_SFF_8636_V1_3) {
+			modinfo->type = RTE_ETH_MODULE_SFF_8436;
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8436_MAX_LEN;
+		} else {
+			modinfo->type = RTE_ETH_MODULE_SFF_8636;
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8636_MAX_LEN;
+		}
+		break;
+	case HNS3_SFF8024_ID_QSFP28_8636:
+		modinfo->type = RTE_ETH_MODULE_SFF_8636;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8636_MAX_LEN;
+		break;
+	default:
+		hns3_err(hw, "unknown module, type = %u, extra_type = %u.\n",
+			 sfp_type.type, sfp_type.ext_type);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.dev_configure      = hns3_dev_configure,
 	.dev_start          = hns3_dev_start,
@@ -6223,6 +6380,8 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.vlan_offload_set       = hns3_vlan_offload_set,
 	.vlan_pvid_set          = hns3_vlan_pvid_set,
 	.get_reg                = hns3_get_regs,
+	.get_module_info        = hns3_get_module_info,
+	.get_module_eeprom      = hns3_get_module_eeprom,
 	.get_dcb_info           = hns3_get_dcb_info,
 	.dev_supported_ptypes_get = hns3_dev_supported_ptypes_get,
 	.fec_get_capability     = hns3_fec_get_capability,

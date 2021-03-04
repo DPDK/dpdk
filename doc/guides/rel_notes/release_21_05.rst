@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Hisilicon hns3 driver.**
+
+  * Added support for module EEPROM dumping.
+
 * **Updated Wangxun txgbe driver.**
 
   * Added support for txgbevf PMD.
