@@ -673,9 +673,12 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 	return 0;
 }
 
-void bnxt_hwrm_free_vf_info(struct bnxt *bp)
+void bnxt_free_vf_info(struct bnxt *bp)
 {
 	int i;
+
+	if (bp->pf->vf_info == NULL)
+		return;
 
 	for (i = 0; i < bp->pf->max_vfs; i++) {
 		rte_free(bp->pf->vf_info[i].vlan_table);
@@ -687,6 +690,50 @@ void bnxt_hwrm_free_vf_info(struct bnxt *bp)
 	bp->pf->vf_info = NULL;
 }
 
+static int bnxt_alloc_vf_info(struct bnxt *bp, uint16_t max_vfs)
+{
+	struct bnxt_child_vf_info *vf_info = bp->pf->vf_info;
+	int i;
+
+	if (vf_info)
+		bnxt_free_vf_info(bp);
+
+	vf_info = rte_zmalloc("bnxt_vf_info", sizeof(*vf_info) * max_vfs, 0);
+	if (vf_info == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to alloc vf info\n");
+		return -ENOMEM;
+	}
+
+	bp->pf->max_vfs = max_vfs;
+	for (i = 0; i < max_vfs; i++) {
+		vf_info[i].fid = bp->pf->first_vf_id + i;
+		vf_info[i].vlan_table = rte_zmalloc("VF VLAN table",
+						    getpagesize(), getpagesize());
+		if (vf_info[i].vlan_table == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc VLAN table for VF %d\n", i);
+			goto err;
+		}
+		rte_mem_lock_page(vf_info[i].vlan_table);
+
+		vf_info[i].vlan_as_table = rte_zmalloc("VF VLAN AS table",
+						       getpagesize(), getpagesize());
+		if (vf_info[i].vlan_as_table == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc VLAN AS table for VF %d\n", i);
+			goto err;
+		}
+		rte_mem_lock_page(vf_info[i].vlan_as_table);
+
+		STAILQ_INIT(&vf_info[i].filter);
+	}
+
+	bp->pf->vf_info = vf_info;
+
+	return 0;
+err:
+	bnxt_free_vf_info(bp);
+	return -ENOMEM;
+}
+
 static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 {
 	int rc = 0;
@@ -694,7 +741,6 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
 	uint16_t new_max_vfs;
 	uint32_t flags;
-	int i;
 
 	HWRM_PREP(&req, HWRM_FUNC_QCAPS, BNXT_USE_CHIMP_MB);
 
@@ -712,43 +758,9 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->pf->total_vfs = rte_le_to_cpu_16(resp->max_vfs);
 		new_max_vfs = bp->pdev->max_vfs;
 		if (new_max_vfs != bp->pf->max_vfs) {
-			if (bp->pf->vf_info)
-				bnxt_hwrm_free_vf_info(bp);
-			bp->pf->vf_info = rte_zmalloc("bnxt_vf_info",
-			    sizeof(bp->pf->vf_info[0]) * new_max_vfs, 0);
-			if (bp->pf->vf_info == NULL) {
-				PMD_DRV_LOG(ERR, "Alloc vf info fail\n");
-				HWRM_UNLOCK();
-				return -ENOMEM;
-			}
-			bp->pf->max_vfs = new_max_vfs;
-			for (i = 0; i < new_max_vfs; i++) {
-				bp->pf->vf_info[i].fid =
-					bp->pf->first_vf_id + i;
-				bp->pf->vf_info[i].vlan_table =
-					rte_zmalloc("VF VLAN table",
-						    getpagesize(),
-						    getpagesize());
-				if (bp->pf->vf_info[i].vlan_table == NULL)
-					PMD_DRV_LOG(ERR,
-					"Fail to alloc VLAN table for VF %d\n",
-					i);
-				else
-					rte_mem_lock_page(
-						bp->pf->vf_info[i].vlan_table);
-				bp->pf->vf_info[i].vlan_as_table =
-					rte_zmalloc("VF VLAN AS table",
-						    getpagesize(),
-						    getpagesize());
-				if (bp->pf->vf_info[i].vlan_as_table == NULL)
-					PMD_DRV_LOG(ERR,
-					"Alloc VLAN AS table for VF %d fail\n",
-					i);
-				else
-					rte_mem_lock_page(
-					      bp->pf->vf_info[i].vlan_as_table);
-				STAILQ_INIT(&bp->pf->vf_info[i].filter);
-			}
+			rc = bnxt_alloc_vf_info(bp, new_max_vfs);
+			if (rc)
+				goto unlock;
 		}
 	}
 
@@ -807,6 +819,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_LINK_ADMIN_STATUS_SUPPORTED)
 		bp->fw_cap |= BNXT_FW_CAP_LINK_ADMIN;
 
+unlock:
 	HWRM_UNLOCK();
 
 	return rc;
@@ -817,6 +830,9 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	int rc;
 
 	rc = __bnxt_hwrm_func_qcaps(bp);
+	if (rc == -ENOMEM)
+		return rc;
+
 	if (!rc && bp->hwrm_spec_code >= HWRM_SPEC_CODE_1_8_3) {
 		rc = bnxt_alloc_ctx_mem(bp);
 		if (rc)

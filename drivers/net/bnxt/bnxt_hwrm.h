@@ -296,7 +296,7 @@ int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp);
 int bnxt_hwrm_oem_cmd(struct bnxt *bp, uint32_t entry_num);
 int bnxt_clear_one_vnic_filter(struct bnxt *bp,
 			       struct bnxt_filter_info *filter);
-void bnxt_hwrm_free_vf_info(struct bnxt *bp);
+void bnxt_free_vf_info(struct bnxt *bp);
 int bnxt_hwrm_first_vf_id_query(struct bnxt *bp, uint16_t fid,
 				uint16_t *first_vf_id);
 int bnxt_hwrm_cfa_pair_alloc(struct bnxt *bp, struct bnxt_representor *rep);

@@ -1460,7 +1460,7 @@ static void bnxt_drv_uninit(struct bnxt *bp)
 	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
 	bp->rx_mem_zone = NULL;
 
-	bnxt_hwrm_free_vf_info(bp);
+	bnxt_free_vf_info(bp);
 
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;
