@@ -2763,6 +2763,7 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.vlan_offload_set   = hns3vf_vlan_offload_set,
 	.get_reg            = hns3_get_regs,
 	.dev_supported_ptypes_get = hns3_dev_supported_ptypes_get,
+	.tx_done_cleanup    = hns3_tx_done_cleanup,
 };
 
 static const struct hns3_reset_ops hns3vf_reset_ops = {

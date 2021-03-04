@@ -6388,6 +6388,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.fec_get                = hns3_fec_get,
 	.fec_set                = hns3_fec_set,
 	.tm_ops_get             = hns3_tm_ops_get,
+	.tx_done_cleanup        = hns3_tx_done_cleanup,
 };
 
 static const struct hns3_reset_ops hns3_reset_ops = {

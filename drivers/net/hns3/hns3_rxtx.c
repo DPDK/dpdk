@@ -3913,6 +3913,65 @@ hns3_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	return 0;
 }
 
+static int
+hns3_tx_done_cleanup_full(struct hns3_tx_queue *txq, uint32_t free_cnt)
+{
+	uint16_t next_to_clean = txq->next_to_clean;
+	uint16_t next_to_use   = txq->next_to_use;
+	uint16_t tx_bd_ready   = txq->tx_bd_ready;
+	struct hns3_entry *tx_pkt = &txq->sw_ring[next_to_clean];
+	struct hns3_desc *desc = &txq->tx_ring[next_to_clean];
+	uint32_t idx;
+
+	if (free_cnt == 0 || free_cnt > txq->nb_tx_desc)
+		free_cnt = txq->nb_tx_desc;
+
+	for (idx = 0; idx < free_cnt; idx++) {
+		if (next_to_clean == next_to_use)
+			break;
+
+		if (desc->tx.tp_fe_sc_vld_ra_ri &
+		    rte_cpu_to_le_16(BIT(HNS3_TXD_VLD_B)))
+			break;
+
+		if (tx_pkt->mbuf != NULL) {
+			rte_pktmbuf_free_seg(tx_pkt->mbuf);
+			tx_pkt->mbuf = NULL;
+		}
+
+		next_to_clean++;
+		tx_bd_ready++;
+		tx_pkt++;
+		desc++;
+		if (next_to_clean == txq->nb_tx_desc) {
+			tx_pkt = txq->sw_ring;
+			desc = txq->tx_ring;
+			next_to_clean = 0;
+		}
+	}
+
+	if (idx > 0) {
+		txq->next_to_clean = next_to_clean;
+		txq->tx_bd_ready = tx_bd_ready;
+	}
+
+	return (int)idx;
+}
+
+int
+hns3_tx_done_cleanup(void *txq, uint32_t free_cnt)
+{
+	struct hns3_tx_queue *q = (struct hns3_tx_queue *)txq;
+	struct rte_eth_dev *dev = &rte_eth_devices[q->port_id];
+
+	if (dev->tx_pkt_burst == hns3_xmit_pkts)
+		return hns3_tx_done_cleanup_full(q, free_cnt);
+	else if (dev->tx_pkt_burst == hns3_dummy_rxtx_burst)
+		return 0;
+	else
+		return -ENOTSUP;
+}
+
 uint32_t
 hns3_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {

@@ -58,6 +58,7 @@ New Features
 * **Updated Hisilicon hns3 driver.**
 
   * Added support for module EEPROM dumping.
+  * Added support for freeing Tx mbuf on demand.
 
 * **Updated Wangxun txgbe driver.**
 
