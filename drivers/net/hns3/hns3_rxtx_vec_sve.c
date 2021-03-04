@@ -58,6 +58,9 @@ hns3_desc_parse_field_sve(struct hns3_rx_queue *rxq,
 		if (likely(key->bd_base_info[i] & BIT(HNS3_RXD_L3L4P_B)))
 			hns3_rx_set_cksum_flag(rx_pkts[i],
 					rx_pkts[i]->packet_type, cksum_err);
+
+		/* Increment bytes counter */
+		rxq->basic_stats.bytes += rx_pkts[i]->pkt_len;
 	}
 
 	return retcode;
@@ -407,6 +410,11 @@ hns3_tx_fill_hw_ring_sve(struct hns3_tx_queue *txq,
 		/* save offset 24~31byte of every BD */
 		svst1_scatter_u64offset_u64(pg, (uint64_t *)&txdp->tx.paylen,
 					    offsets, svdup_n_u64(valid_bit));
+
+		/* Increment bytes counter */
+		uint32_t idx;
+		for (idx = 0; idx < svcntd(); idx++)
+			txq->basic_stats.bytes += pkts[idx]->pkt_len;
 
 		/* update index for next loop */
 		i += svcntd();

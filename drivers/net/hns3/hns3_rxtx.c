@@ -2181,6 +2181,9 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					       cksum_err);
 		hns3_rxd_to_vlan_tci(rxq, rxm, l234_info, &rxd);
 
+		/* Increment bytes counter  */
+		rxq->basic_stats.bytes += rxm->pkt_len;
+
 		rx_pkts[nb_rx++] = rxm;
 		continue;
 pkt_err:
@@ -2400,6 +2403,9 @@ hns3_recv_scattered_pkts(void *rx_queue,
 					       first_seg->packet_type,
 					       cksum_err);
 		hns3_rxd_to_vlan_tci(rxq, first_seg, l234_info, &rxd);
+
+		/* Increment bytes counter */
+		rxq->basic_stats.bytes += first_seg->pkt_len;
 
 		rx_pkts[nb_rx++] = first_seg;
 		first_seg = NULL;
@@ -3516,6 +3522,11 @@ hns3_tx_fill_hw_ring(struct hns3_tx_queue *txq,
 	for (i = 0; i < mainpart; i += PER_LOOP_NUM) {
 		hns3_tx_backup_4mbuf(tx_entry + i, pkts + i);
 		hns3_tx_setup_4bd(txdp + i, pkts + i);
+
+		/* Increment bytes counter */
+		uint32_t j;
+		for (j = 0; j < PER_LOOP_NUM; j++)
+			txq->basic_stats.bytes += pkts[i + j]->pkt_len;
 	}
 	if (unlikely(leftover > 0)) {
 		for (i = 0; i < leftover; i++) {
@@ -3523,6 +3534,9 @@ hns3_tx_fill_hw_ring(struct hns3_tx_queue *txq,
 					     pkts + mainpart + i);
 			hns3_tx_setup_1bd(txdp + mainpart + i,
 					  pkts + mainpart + i);
+
+			/* Increment bytes counter */
+			txq->basic_stats.bytes += pkts[mainpart + i]->pkt_len;
 		}
 	}
 }
@@ -3661,6 +3675,8 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		desc->tx.tp_fe_sc_vld_ra_ri |=
 				 rte_cpu_to_le_16(BIT(HNS3_TXD_FE_B));
 
+		/* Increment bytes counter */
+		txq->basic_stats.bytes += tx_pkt->pkt_len;
 		nb_hold += i;
 		txq->next_to_use = tx_next_use;
 		txq->tx_bd_ready -= i;

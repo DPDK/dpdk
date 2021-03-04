@@ -61,6 +61,9 @@ hns3_xmit_fixed_burst_vec(void *__restrict tx_queue,
 		for (i = 0; i < n; i++, tx_pkts++, tx_desc++) {
 			hns3_vec_tx(tx_desc, *tx_pkts);
 			tx_entry[i].mbuf = *tx_pkts;
+
+			/* Increment bytes counter */
+			txq->basic_stats.bytes += (*tx_pkts)->pkt_len;
 		}
 
 		nb_commit -= n;
@@ -72,6 +75,9 @@ hns3_xmit_fixed_burst_vec(void *__restrict tx_queue,
 	for (i = 0; i < nb_commit; i++, tx_pkts++, tx_desc++) {
 		hns3_vec_tx(tx_desc, *tx_pkts);
 		tx_entry[i].mbuf = *tx_pkts;
+
+		/* Increment bytes counter */
+		txq->basic_stats.bytes += (*tx_pkts)->pkt_len;
 	}
 
 	next_to_use += nb_commit;
@@ -116,6 +122,9 @@ hns3_desc_parse_field(struct hns3_rx_queue *rxq,
 		if (likely(bd_base_info & BIT(HNS3_RXD_L3L4P_B)))
 			hns3_rx_set_cksum_flag(pkt, pkt->packet_type,
 					       cksum_err);
+
+		/* Increment bytes counter */
+		rxq->basic_stats.bytes += pkt->pkt_len;
 	}
 
 	return retcode;

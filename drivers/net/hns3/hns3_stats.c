@@ -358,6 +358,7 @@ static const struct hns3_xstats_name_offset hns3_tx_queue_strings[] = {
 			    HNS3_NUM_RESET_XSTATS)
 
 static void hns3_tqp_stats_clear(struct hns3_hw *hw);
+static void hns3_tqp_basic_stats_clear(struct rte_eth_dev *dev);
 
 /*
  * Query all the MAC statistics data of Network ICL command ,opcode id: 0x0034.
@@ -543,14 +544,24 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 		return ret;
 	}
 
-	/* Get the error stats of received packets */
+	/* Get the error stats and bytes of received packets */
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rxq = eth_dev->data->rx_queues[i];
 		if (rxq) {
 			cnt = rxq->err_stats.l2_errors +
 				rxq->err_stats.pkt_len_errors;
 			rte_stats->ierrors += cnt;
+
+			rte_stats->ibytes += rxq->basic_stats.bytes;
 		}
+	}
+
+	/* Get the bytes of received packets */
+	struct hns3_tx_queue *txq;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		txq = eth_dev->data->tx_queues[i];
+		if (txq)
+			rte_stats->obytes += txq->basic_stats.bytes;
 	}
 
 	rte_stats->oerrors = 0;
@@ -623,6 +634,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 	 * their source.
 	 */
 	hns3_tqp_stats_clear(hw);
+	hns3_tqp_basic_stats_clear(eth_dev);
 
 	return 0;
 }
@@ -807,7 +819,6 @@ hns3_rxq_basic_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		rxq_stats->packets =
 			stats->rcb_rx_ring_pktnum[i] > rxq_stats->errors ?
 			stats->rcb_rx_ring_pktnum[i] - rxq_stats->errors : 0;
-		rxq_stats->bytes = 0;
 		for (j = 0; j < HNS3_NUM_RXQ_BASIC_STATS; j++) {
 			val = (char *)rxq_stats +
 				hns3_rxq_basic_stats_strings[j].offset;
@@ -836,7 +847,7 @@ hns3_txq_basic_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 
 		txq_stats = &txq->basic_stats;
 		txq_stats->packets = stats->rcb_tx_ring_pktnum[i];
-		txq_stats->bytes = 0;
+
 		for (j = 0; j < HNS3_NUM_TXQ_BASIC_STATS; j++) {
 			val = (char *)txq_stats +
 				hns3_txq_basic_stats_strings[j].offset;
@@ -1328,7 +1339,6 @@ hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 	if (ret)
 		return ret;
 
-	hns3_tqp_basic_stats_clear(dev);
 	hns3_tqp_dfx_stats_clear(dev);
 
 	/* Clear reset stats */
