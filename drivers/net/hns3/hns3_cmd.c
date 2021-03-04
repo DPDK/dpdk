@@ -409,8 +409,9 @@ hns3_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc, int num)
 	return retval;
 }
 
-static void hns3_parse_capability(struct hns3_hw *hw,
-				  struct hns3_query_version_cmd *cmd)
+static void
+hns3_parse_capability(struct hns3_hw *hw,
+		      struct hns3_query_version_cmd *cmd)
 {
 	uint32_t caps = rte_le_to_cpu_32(cmd->caps[0]);
 
@@ -429,6 +430,9 @@ static void hns3_parse_capability(struct hns3_hw *hw,
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_INDEP_TXRX_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_STASH_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_STASH_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_RXD_ADV_LAYOUT_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B,
+			     1);
 }
 
 static uint32_t

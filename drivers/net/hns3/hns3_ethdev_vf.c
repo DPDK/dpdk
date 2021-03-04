@@ -2125,6 +2125,8 @@ hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 	if (ret)
 		return ret;
 
+	hns3_enable_rxd_adv_layout(hw);
+
 	ret = hns3_init_queues(hns, reset_queue);
 	if (ret)
 		hns3_err(hw, "failed to init queues, ret = %d.", ret);

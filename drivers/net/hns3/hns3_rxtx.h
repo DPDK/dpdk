@@ -88,6 +88,8 @@
 #define HNS3_RXD_OL3ID_M			(0xf << HNS3_RXD_OL3ID_S)
 #define HNS3_RXD_OL4ID_S			8
 #define HNS3_RXD_OL4ID_M			(0xf << HNS3_RXD_OL4ID_S)
+#define HNS3_RXD_PTYPE_S			4
+#define HNS3_RXD_PTYPE_M			(0xff << HNS3_RXD_PTYPE_S)
 #define HNS3_RXD_FBHI_S				12
 #define HNS3_RXD_FBHI_M				(0x3 << HNS3_RXD_FBHI_S)
 #define HNS3_RXD_FBLI_S				14
@@ -328,6 +330,7 @@ struct hns3_rx_queue {
 	 * point, the pvid_sw_discard_en will be false.
 	 */
 	bool pvid_sw_discard_en;
+	bool ptype_en;          /* indicate if the ptype field enabled */
 	bool enabled;           /* indicate if Rx queue has been enabled */
 
 	struct hns3_rx_basic_stats basic_stats;
@@ -609,6 +612,13 @@ hns3_rx_calc_ptype(struct hns3_rx_queue *rxq, const uint32_t l234_info,
 	const struct hns3_ptype_table * const ptype_tbl = rxq->ptype_tbl;
 	uint32_t l2id, l3id, l4id;
 	uint32_t ol3id, ol4id, ol2id;
+	uint32_t ptype;
+
+	if (rxq->ptype_en) {
+		ptype = hns3_get_field(ol_info, HNS3_RXD_PTYPE_M,
+				       HNS3_RXD_PTYPE_S);
+		return ptype_tbl->ptype[ptype];
+	}
 
 	ol4id = hns3_get_field(ol_info, HNS3_RXD_OL4ID_M, HNS3_RXD_OL4ID_S);
 	ol3id = hns3_get_field(ol_info, HNS3_RXD_OL3ID_M, HNS3_RXD_OL3ID_S);
@@ -707,5 +717,6 @@ int hns3_start_all_rxqs(struct rte_eth_dev *dev);
 void hns3_stop_all_txqs(struct rte_eth_dev *dev);
 void hns3_restore_tqp_enable_state(struct hns3_hw *hw);
 int hns3_tx_done_cleanup(void *txq, uint32_t free_cnt);
+void hns3_enable_rxd_adv_layout(struct hns3_hw *hw);
 
 #endif /* _HNS3_RXTX_H_ */

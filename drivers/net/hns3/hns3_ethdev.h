@@ -667,8 +667,13 @@ struct hns3_mp_param {
 #define HNS3_OL2TBL_NUM	4
 #define HNS3_OL3TBL_NUM	16
 #define HNS3_OL4TBL_NUM	16
+#define HNS3_PTYPE_NUM	256
 
 struct hns3_ptype_table {
+	/*
+	 * The next fields used to calc packet-type by the
+	 * L3_ID/L4_ID/OL3_ID/OL4_ID from the Rx descriptor.
+	 */
 	uint32_t l2l3table[HNS3_L2TBL_NUM][HNS3_L3TBL_NUM];
 	uint32_t l4table[HNS3_L4TBL_NUM];
 	uint32_t inner_l2table[HNS3_L2TBL_NUM];
@@ -677,6 +682,13 @@ struct hns3_ptype_table {
 	uint32_t ol2table[HNS3_OL2TBL_NUM];
 	uint32_t ol3table[HNS3_OL3TBL_NUM];
 	uint32_t ol4table[HNS3_OL4TBL_NUM];
+
+	/*
+	 * The next field used to calc packet-type by the PTYPE from the Rx
+	 * descriptor, it functions only when firmware report the capability of
+	 * HNS3_CAPS_RXD_ADV_LAYOUT_B and driver enabled it.
+	 */
+	uint32_t ptype[HNS3_PTYPE_NUM] __rte_cache_min_aligned;
 };
 
 #define HNS3_FIXED_MAX_TQP_NUM_MODE		0
@@ -771,6 +783,7 @@ struct hns3_adapter {
 #define HNS3_DEV_SUPPORT_TX_PUSH_B		0x5
 #define HNS3_DEV_SUPPORT_INDEP_TXRX_B		0x6
 #define HNS3_DEV_SUPPORT_STASH_B		0x7
+#define HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B	0x9
 
 #define hns3_dev_dcb_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
@@ -800,6 +813,9 @@ struct hns3_adapter {
 
 #define hns3_dev_stash_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_STASH_B)
+
+#define hns3_dev_rxd_adv_layout_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)adapter)->hw)
