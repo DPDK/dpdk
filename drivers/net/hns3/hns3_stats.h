@@ -140,8 +140,8 @@ int hns3_dev_xstats_get_names(struct rte_eth_dev *dev,
 			      struct rte_eth_xstat_name *xstats_names,
 			      __rte_unused unsigned int size);
 int hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev,
-			      __rte_unused const uint64_t *ids,
-			      __rte_unused uint64_t *values,
+			      const uint64_t *ids,
+			      uint64_t *values,
 			      uint32_t size);
 int hns3_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 				    struct rte_eth_xstat_name *xstats_names,
