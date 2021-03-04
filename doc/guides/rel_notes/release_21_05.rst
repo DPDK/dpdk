@@ -59,6 +59,7 @@ New Features
 
   * Added support for module EEPROM dumping.
   * Added support for freeing Tx mbuf on demand.
+  * Added support for copper port in Kunpeng930.
 
 * **Updated Wangxun txgbe driver.**
 

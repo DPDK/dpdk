@@ -3090,6 +3090,37 @@ hns3_get_capability(struct hns3_hw *hw)
 }
 
 static int
+hns3_check_media_type(struct hns3_hw *hw, uint8_t media_type)
+{
+	int ret;
+
+	switch (media_type) {
+	case HNS3_MEDIA_TYPE_COPPER:
+		if (!hns3_dev_copper_supported(hw)) {
+			PMD_INIT_LOG(ERR,
+				     "Media type is copper, not supported.");
+			ret = -EOPNOTSUPP;
+		} else {
+			ret = 0;
+		}
+		break;
+	case HNS3_MEDIA_TYPE_FIBER:
+		ret = 0;
+		break;
+	case HNS3_MEDIA_TYPE_BACKPLANE:
+		PMD_INIT_LOG(ERR, "Media type is Backplane, not supported.");
+		ret = -EOPNOTSUPP;
+		break;
+	default:
+		PMD_INIT_LOG(ERR, "Unknown media type = %u!", media_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int
 hns3_get_board_configuration(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
@@ -3103,11 +3134,9 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 		return ret;
 	}
 
-	if (cfg.media_type == HNS3_MEDIA_TYPE_COPPER &&
-	    !hns3_dev_copper_supported(hw)) {
-		PMD_INIT_LOG(ERR, "media type is copper, not supported.");
-		return -EOPNOTSUPP;
-	}
+	ret = hns3_check_media_type(hw, cfg.media_type);
+	if (ret)
+		return ret;
 
 	hw->mac.media_type = cfg.media_type;
 	hw->rss_size_max = cfg.rss_size_max;
@@ -3952,6 +3981,8 @@ hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
 	if (is_init) {
 		hns3_set_bit(compat, HNS3_LINK_EVENT_REPORT_EN_B, 1);
 		hns3_set_bit(compat, HNS3_NCSI_ERROR_REPORT_EN_B, 0);
+		if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER)
+			hns3_set_bit(compat, HNS3_FIRMWARE_PHY_DRIVER_EN_B, 1);
 	}
 
 	req->compat = rte_cpu_to_le_32(compat);
@@ -4429,6 +4460,78 @@ hns3_update_fiber_link_info(struct hns3_hw *hw)
 	return hns3_cfg_mac_speed_dup(hw, speed, ETH_LINK_FULL_DUPLEX);
 }
 
+static void
+hns3_parse_phy_params(struct hns3_cmd_desc *desc, struct hns3_mac *mac)
+{
+	struct hns3_phy_params_bd0_cmd *req;
+
+	req = (struct hns3_phy_params_bd0_cmd *)desc[0].data;
+	mac->link_speed = rte_le_to_cpu_32(req->speed);
+	mac->link_duplex = hns3_get_bit(req->duplex,
+					   HNS3_PHY_DUPLEX_CFG_B);
+	mac->link_autoneg = hns3_get_bit(req->autoneg,
+					   HNS3_PHY_AUTONEG_CFG_B);
+	mac->supported_capa = rte_le_to_cpu_32(req->supported);
+	mac->advertising = rte_le_to_cpu_32(req->advertising);
+	mac->lp_advertising = rte_le_to_cpu_32(req->lp_advertising);
+	mac->support_autoneg = !!(mac->supported_capa &
+				HNS3_PHY_LINK_MODE_AUTONEG_BIT);
+}
+
+static int
+hns3_get_phy_params(struct hns3_hw *hw, struct hns3_mac *mac)
+{
+	struct hns3_cmd_desc desc[HNS3_PHY_PARAM_CFG_BD_NUM];
+	uint16_t i;
+	int ret;
+
+	for (i = 0; i < HNS3_PHY_PARAM_CFG_BD_NUM - 1; i++) {
+		hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_PHY_PARAM_CFG,
+					  true);
+		desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+	}
+	hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_PHY_PARAM_CFG, true);
+
+	ret = hns3_cmd_send(hw, desc, HNS3_PHY_PARAM_CFG_BD_NUM);
+	if (ret) {
+		hns3_err(hw, "get phy parameters failed, ret = %d.", ret);
+		return ret;
+	}
+
+	hns3_parse_phy_params(desc, mac);
+
+	return 0;
+}
+
+static int
+hns3_update_phy_link_info(struct hns3_hw *hw)
+{
+	struct hns3_mac *mac = &hw->mac;
+	struct hns3_mac mac_info;
+	int ret;
+
+	memset(&mac_info, 0, sizeof(struct hns3_mac));
+	ret = hns3_get_phy_params(hw, &mac_info);
+	if (ret)
+		return ret;
+
+	if (mac_info.link_speed != mac->link_speed) {
+		ret = hns3_port_shaper_update(hw, mac_info.link_speed);
+		if (ret)
+			return ret;
+	}
+
+	mac->link_speed = mac_info.link_speed;
+	mac->link_duplex = mac_info.link_duplex;
+	mac->link_autoneg = mac_info.link_autoneg;
+	mac->supported_capa = mac_info.supported_capa;
+	mac->advertising = mac_info.advertising;
+	mac->lp_advertising = mac_info.lp_advertising;
+	mac->support_autoneg = mac_info.support_autoneg;
+
+	return 0;
+}
+
 static int
 hns3_update_link_info(struct rte_eth_dev *eth_dev)
 {
@@ -4437,7 +4540,7 @@ hns3_update_link_info(struct rte_eth_dev *eth_dev)
 	int ret = 0;
 
 	if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER)
-		return 0;
+		ret = hns3_update_phy_link_info(hw);
 	else if (hw->mac.media_type == HNS3_MEDIA_TYPE_FIBER)
 		ret = hns3_update_fiber_link_info(hw);
 

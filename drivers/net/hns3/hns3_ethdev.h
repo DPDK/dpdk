@@ -180,6 +180,11 @@ struct hns3_mac {
 	uint8_t link_autoneg : 1; /* ETH_LINK_[AUTONEG/FIXED] */
 	uint8_t link_status  : 1; /* ETH_LINK_[DOWN/UP] */
 	uint32_t link_speed;      /* ETH_SPEED_NUM_ */
+	uint32_t supported_capa;  /* supported capability for current media */
+	uint32_t advertising;     /* advertised capability in the local part */
+	/* advertised capability in the link partner */
+	uint32_t lp_advertising;
+	uint8_t support_autoneg;
 };
 
 struct hns3_fake_queue_data {

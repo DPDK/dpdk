@@ -222,6 +222,8 @@ enum hns3_opcode_type {
 
 	/* Firmware stats command */
 	HNS3_OPC_FIRMWARE_COMPAT_CFG    = 0x701A,
+	/* Firmware control phy command */
+	HNS3_OPC_PHY_PARAM_CFG          = 0x7025,
 
 	/* SFP command */
 	HNS3_OPC_GET_SFP_EEPROM         = 0x7100,
@@ -659,9 +661,44 @@ enum hns3_promisc_type {
 
 #define HNS3_LINK_EVENT_REPORT_EN_B	0
 #define HNS3_NCSI_ERROR_REPORT_EN_B	1
+#define HNS3_FIRMWARE_PHY_DRIVER_EN_B	2
 struct hns3_firmware_compat_cmd {
 	uint32_t compat;
 	uint8_t rsv[20];
+};
+
+/* Bitmap flags in supported, advertising and lp_advertising */
+#define HNS3_PHY_LINK_SPEED_10M_HD_BIT		BIT(0)
+#define HNS3_PHY_LINK_SPEED_10M_BIT		BIT(1)
+#define HNS3_PHY_LINK_SPEED_100M_HD_BIT		BIT(2)
+#define HNS3_PHY_LINK_SPEED_100M_BIT		BIT(3)
+#define HNS3_PHY_LINK_MODE_AUTONEG_BIT		BIT(6)
+#define HNS3_PHY_LINK_MODE_PAUSE_BIT		BIT(13)
+#define HNS3_PHY_LINK_MODE_ASYM_PAUSE_BIT	BIT(14)
+
+#define HNS3_PHY_PARAM_CFG_BD_NUM	2
+struct hns3_phy_params_bd0_cmd {
+	uint32_t speed;
+#define HNS3_PHY_DUPLEX_CFG_B		0
+	uint8_t duplex;
+#define HNS3_PHY_AUTONEG_CFG_B	0
+	uint8_t autoneg;
+	uint8_t eth_tp_mdix;
+	uint8_t eth_tp_mdix_ctrl;
+	uint8_t port;
+	uint8_t transceiver;
+	uint8_t phy_address;
+	uint8_t rsv;
+	uint32_t supported;
+	uint32_t advertising;
+	uint32_t lp_advertising;
+};
+
+struct hns3_phy_params_bd1_cmd {
+	uint8_t master_slave_cfg;
+	uint8_t master_slave_state;
+	uint8_t rsv1[2];
+	uint32_t rsv2[5];
 };
 
 #define HNS3_MAC_TX_EN_B		6
