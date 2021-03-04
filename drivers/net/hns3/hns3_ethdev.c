@@ -217,9 +217,6 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 		goto out;
 	}
 
-	if (clearval && (vector0_int_stats || cmdq_src_val || hw_err_src_reg))
-		hns3_warn(hw, "vector0_int_stats:0x%x cmdq_src_val:0x%x hw_err_src_reg:0x%x",
-			  vector0_int_stats, cmdq_src_val, hw_err_src_reg);
 	val = vector0_int_stats;
 	ret = HNS3_VECTOR0_EVENT_OTHER;
 out:
@@ -258,6 +255,34 @@ hns3_clear_all_event_cause(struct hns3_hw *hw)
 }
 
 static void
+hns3_handle_mac_tnl(struct hns3_hw *hw)
+{
+	struct hns3_cmd_desc desc;
+	uint32_t status;
+	int ret;
+
+	/* query and clear mac tnl interruptions */
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_QUERY_MAC_TNL_INT, true);
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "failed to query mac tnl int, ret = %d.", ret);
+		return;
+	}
+
+	status = rte_le_to_cpu_32(desc.data[0]);
+	if (status) {
+		hns3_warn(hw, "mac tnl int occurs, status = 0x%x.", status);
+		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_CLEAR_MAC_TNL_INT,
+					  false);
+		desc.data[0] = rte_cpu_to_le_32(HNS3_MAC_TNL_INT_CLR);
+		ret = hns3_cmd_send(hw, &desc, 1);
+		if (ret)
+			hns3_err(hw, "failed to clear mac tnl int, ret = %d.",
+				 ret);
+	}
+}
+
+static void
 hns3_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
@@ -265,24 +290,36 @@ hns3_interrupt_handler(void *param)
 	struct hns3_hw *hw = &hns->hw;
 	enum hns3_evt_cause event_cause;
 	uint32_t clearval = 0;
+	uint32_t vector0_int;
+	uint32_t ras_int;
+	uint32_t cmdq_int;
 
 	/* Disable interrupt */
 	hns3_pf_disable_irq0(hw);
 
 	event_cause = hns3_check_event_cause(hns, &clearval);
+	vector0_int = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
+	ras_int = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
+	cmdq_int = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
 	/* vector 0 interrupt is shared with reset and mailbox source events. */
 	if (event_cause == HNS3_VECTOR0_EVENT_ERR) {
-		hns3_warn(hw, "Received err interrupt");
+		hns3_warn(hw, "received interrupt: vector0_int_stat:0x%x "
+			  "ras_int_stat:0x%x cmdq_int_stat:0x%x",
+			  vector0_int, ras_int, cmdq_int);
 		hns3_handle_msix_error(hns, &hw->reset.request);
 		hns3_handle_ras_error(hns, &hw->reset.request);
+		hns3_handle_mac_tnl(hw);
 		hns3_schedule_reset(hns);
 	} else if (event_cause == HNS3_VECTOR0_EVENT_RST) {
-		hns3_warn(hw, "Received reset interrupt");
+		hns3_warn(hw, "received reset interrupt");
 		hns3_schedule_reset(hns);
-	} else if (event_cause == HNS3_VECTOR0_EVENT_MBX)
+	} else if (event_cause == HNS3_VECTOR0_EVENT_MBX) {
 		hns3_dev_handle_mbx_msg(hw);
-	else
-		hns3_err(hw, "Received unknown event");
+	} else {
+		hns3_warn(hw, "received unknown event: vector0_int_stat:0x%x "
+			  "ras_int_stat:0x%x cmdq_int_stat:0x%x",
+			  vector0_int, ras_int, cmdq_int);
+	}
 
 	hns3_clear_event_cause(hw, event_cause, clearval);
 	/* Enable interrupt if it is not cause by reset */
@@ -4639,6 +4676,8 @@ hns3_update_link_status(struct hns3_hw *hw)
 	if (state != hw->mac.link_status) {
 		hw->mac.link_status = state;
 		hns3_warn(hw, "Link status change to %s!", state ? "up" : "down");
+		hns3_config_mac_tnl_int(hw,
+					state == ETH_LINK_UP ? true : false);
 		return true;
 	}
 
@@ -4957,6 +4996,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	(void)hns3_firmware_compat_config(hw, false);
 	hns3_uninit_umv_space(hw);
 	hns3_tqp_stats_uninit(hw);
+	hns3_config_mac_tnl_int(hw, false);
 	hns3_pf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
 	hns3_intr_unregister(&pci_dev->intr_handle, hns3_interrupt_handler,
@@ -5282,6 +5322,7 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 	rte_spinlock_lock(&hw->lock);
 	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
 		hns3_tm_dev_stop_proc(hw);
+		hns3_config_mac_tnl_int(hw, false);
 		hns3_stop_tqps(hw);
 		hns3_do_stop(hns);
 		hns3_unmap_rx_interrupt(dev);

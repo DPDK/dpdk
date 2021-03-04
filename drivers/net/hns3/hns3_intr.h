@@ -22,6 +22,9 @@
 
 #define HNS3_MAC_COMMON_ERR_INT_EN		0x107FF
 #define HNS3_MAC_COMMON_ERR_INT_EN_MASK		0x107FF
+#define HNS3_MAC_TNL_INT_EN			GENMASK(9, 0)
+#define HNS3_MAC_TNL_INT_EN_MASK		GENMASK(9, 0)
+#define HNS3_MAC_TNL_INT_CLR			GENMASK(9, 0)
 
 #define HNS3_IMP_TCM_ECC_ERR_INT_EN		0xFFFF0000
 #define HNS3_IMP_TCM_ECC_ERR_INT_EN_MASK	0xFFFF0000
@@ -99,6 +102,7 @@ struct hns3_hw_error_desc {
 int hns3_enable_hw_error_intr(struct hns3_adapter *hns, bool state);
 void hns3_handle_msix_error(struct hns3_adapter *hns, uint64_t *levels);
 void hns3_handle_ras_error(struct hns3_adapter *hns, uint64_t *levels);
+void hns3_config_mac_tnl_int(struct hns3_hw *hw, bool en);
 
 void hns3_intr_unregister(const struct rte_intr_handle *hdl,
 			  rte_intr_callback_fn cb_fn, void *cb_arg);

@@ -1248,6 +1248,26 @@ enable_ssu_err_intr(struct hns3_adapter *hns, bool en)
 	return ret;
 }
 
+void
+hns3_config_mac_tnl_int(struct hns3_hw *hw, bool en)
+{
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MAC_TNL_INT_EN, false);
+	if (en)
+		desc.data[0] = rte_cpu_to_le_32(HNS3_MAC_TNL_INT_EN);
+	else
+		desc.data[0] = 0;
+
+	desc.data[1] = rte_cpu_to_le_32(HNS3_MAC_TNL_INT_EN_MASK);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "fail to %s mac tnl intr, ret = %d",
+			 en ? "enable" : "disable", ret);
+}
+
 static int
 config_ppu_err_intrs(struct hns3_adapter *hns, uint32_t cmd, bool en)
 {
