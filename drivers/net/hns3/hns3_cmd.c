@@ -424,8 +424,14 @@ static void hns3_parse_capability(struct hns3_hw *hw,
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_PTP_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_TX_PUSH_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_TX_PUSH_B, 1);
+	/*
+	 * Currently, the query of link status and link info on copper ports
+	 * are not supported. So it is necessary for driver to set the copper
+	 * capability bit to zero when the firmware supports the configuration
+	 * of the PHY.
+	 */
 	if (hns3_get_bit(caps, HNS3_CAPS_PHY_IMP_B))
-		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_COPPER_B, 1);
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_COPPER_B, 0);
 	if (hns3_get_bit(caps, HNS3_CAPS_TQP_TXRX_INDEP_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_INDEP_TXRX_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_STASH_B))
