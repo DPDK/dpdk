@@ -102,6 +102,7 @@ static int hns3_remove_mc_addr(struct hns3_hw *hw,
 			    struct rte_ether_addr *mac_addr);
 static int hns3_restore_fec(struct hns3_hw *hw);
 static int hns3_query_dev_fec_info(struct hns3_hw *hw);
+static int hns3_do_stop(struct hns3_adapter *hns);
 
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			    const struct rte_ether_addr *ether_addr)
@@ -5133,11 +5134,8 @@ hns3_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 	ret = hns3_map_rx_interrupt(dev);
-	if (ret) {
-		hw->adapter_state = HNS3_NIC_CONFIGURED;
-		rte_spinlock_unlock(&hw->lock);
-		return ret;
-	}
+	if (ret)
+		goto map_rx_inter_err;
 
 	/*
 	 * There are three register used to control the status of a TQP
@@ -5151,19 +5149,12 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	 * status of queue in the dpdk framework.
 	 */
 	ret = hns3_start_all_txqs(dev);
-	if (ret) {
-		hw->adapter_state = HNS3_NIC_CONFIGURED;
-		rte_spinlock_unlock(&hw->lock);
-		return ret;
-	}
+	if (ret)
+		goto map_rx_inter_err;
 
 	ret = hns3_start_all_rxqs(dev);
-	if (ret) {
-		hns3_stop_all_txqs(dev);
-		hw->adapter_state = HNS3_NIC_CONFIGURED;
-		rte_spinlock_unlock(&hw->lock);
-		return ret;
-	}
+	if (ret)
+		goto start_all_rxqs_fail;
 
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
@@ -5187,7 +5178,17 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	hns3_tm_dev_start_proc(hw);
 
 	hns3_info(hw, "hns3 dev start successful!");
+
 	return 0;
+
+start_all_rxqs_fail:
+	hns3_stop_all_txqs(dev);
+map_rx_inter_err:
+	(void)hns3_do_stop(hns);
+	hw->adapter_state = HNS3_NIC_CONFIGURED;
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
 }
 
 static int
@@ -5195,6 +5196,17 @@ hns3_do_stop(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
+
+	/*
+	 * The "hns3_do_stop" function will also be called by .stop_service to
+	 * prepare reset. At the time of global or IMP reset, the command cannot
+	 * be sent to stop the tx/rx queues. The mbuf in Tx/Rx queues may be
+	 * accessed during the reset process. So the mbuf can not be released
+	 * during reset and is required to be released after the reset is
+	 * completed.
+	 */
+	if (__atomic_load_n(&hw->reset.resetting,  __ATOMIC_RELAXED) == 0)
+		hns3_dev_release_mbufs(hns);
 
 	ret = hns3_cfg_mac_mode(hw, false);
 	if (ret)
@@ -5273,7 +5285,6 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 		hns3_stop_tqps(hw);
 		hns3_do_stop(hns);
 		hns3_unmap_rx_interrupt(dev);
-		hns3_dev_release_mbufs(hns);
 		hw->adapter_state = HNS3_NIC_CONFIGURED;
 	}
 	hns3_rx_scattered_reset(dev);
