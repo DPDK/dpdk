@@ -2435,17 +2435,33 @@ hns3_set_mac_mtu(struct hns3_hw *hw, uint16_t new_mps)
 static int
 hns3_config_mtu(struct hns3_hw *hw, uint16_t mps)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	uint16_t original_mps = hns->pf.mps;
+	int err;
 	int ret;
 
 	ret = hns3_set_mac_mtu(hw, mps);
 	if (ret) {
-		hns3_err(hw, "Failed to set mtu, ret = %d", ret);
+		hns3_err(hw, "failed to set mtu, ret = %d", ret);
 		return ret;
 	}
 
+	hns->pf.mps = mps;
 	ret = hns3_buffer_alloc(hw);
-	if (ret)
-		hns3_err(hw, "Failed to allocate buffer, ret = %d", ret);
+	if (ret) {
+		hns3_err(hw, "failed to allocate buffer, ret = %d", ret);
+		goto rollback;
+	}
+
+	return 0;
+
+rollback:
+	err = hns3_set_mac_mtu(hw, original_mps);
+	if (err) {
+		hns3_err(hw, "fail to rollback MTU, err = %d", err);
+		return ret;
+	}
+	hns->pf.mps = original_mps;
 
 	return ret;
 }
@@ -2480,7 +2496,7 @@ hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 			 dev->data->port_id, mtu, ret);
 		return ret;
 	}
-	hns->pf.mps = (uint16_t)frame_size;
+
 	if (is_jumbo_frame)
 		dev->data->dev_conf.rxmode.offloads |=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
