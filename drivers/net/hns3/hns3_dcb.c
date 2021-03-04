@@ -330,8 +330,8 @@ hns3_dcb_get_shapping_para(uint8_t ir_b, uint8_t ir_u, uint8_t ir_s,
 	return shapping_para;
 }
 
-int
-hns3_dcb_port_shaper_cfg(struct hns3_hw *hw)
+static int
+hns3_dcb_port_shaper_cfg(struct hns3_hw *hw, uint32_t speed)
 {
 	struct hns3_port_shapping_cmd *shap_cfg_cmd;
 	struct hns3_shaper_parameter shaper_parameter;
@@ -340,7 +340,7 @@ hns3_dcb_port_shaper_cfg(struct hns3_hw *hw)
 	struct hns3_cmd_desc desc;
 	int ret;
 
-	ret = hns3_shaper_para_calc(hw, hw->mac.link_speed,
+	ret = hns3_shaper_para_calc(hw, speed,
 				    HNS3_SHAPER_LVL_PORT, &shaper_parameter);
 	if (ret) {
 		hns3_err(hw, "calculate shaper parameter failed: %d", ret);
@@ -366,10 +366,22 @@ hns3_dcb_port_shaper_cfg(struct hns3_hw *hw)
 	 * depends on the firmware version. But driver still needs to
 	 * calculate it and configure to firmware for better compatibility.
 	 */
-	shap_cfg_cmd->port_rate = rte_cpu_to_le_32(hw->mac.link_speed);
+	shap_cfg_cmd->port_rate = rte_cpu_to_le_32(speed);
 	hns3_set_bit(shap_cfg_cmd->flag, HNS3_TM_RATE_VLD_B, 1);
 
 	return hns3_cmd_send(hw, &desc, 1);
+}
+
+int
+hns3_port_shaper_update(struct hns3_hw *hw, uint32_t speed)
+{
+	int ret;
+
+	ret = hns3_dcb_port_shaper_cfg(hw, speed);
+	if (ret)
+		hns3_err(hw, "configure port shappering failed: ret = %d", ret);
+
+	return ret;
 }
 
 static int
@@ -961,7 +973,7 @@ hns3_dcb_shaper_cfg(struct hns3_hw *hw)
 {
 	int ret;
 
-	ret = hns3_dcb_port_shaper_cfg(hw);
+	ret = hns3_dcb_port_shaper_cfg(hw, hw->mac.link_speed);
 	if (ret) {
 		hns3_err(hw, "config port shaper failed: %d", ret);
 		return ret;
