@@ -1881,6 +1881,7 @@ txgbe_read_stats_registers(struct txgbe_hw *hw,
 
 	hw_stats->rx_bytes += rd64(hw, TXGBE_DMARXOCTL);
 	hw_stats->tx_bytes += rd64(hw, TXGBE_DMATXOCTL);
+	hw_stats->rx_dma_drop += rd32(hw, TXGBE_DMARXDROP);
 	hw_stats->rx_drop_packets += rd32(hw, TXGBE_PBRXDROP);
 
 	/* MAC Stats */
@@ -2029,7 +2030,8 @@ txgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	}
 
 	/* Rx Errors */
-	stats->imissed  = hw_stats->rx_total_missed_packets;
+	stats->imissed  = hw_stats->rx_total_missed_packets +
+			  hw_stats->rx_dma_drop;
 	stats->ierrors  = hw_stats->rx_crc_errors +
 			  hw_stats->rx_mac_short_packet_dropped +
 			  hw_stats->rx_length_errors +

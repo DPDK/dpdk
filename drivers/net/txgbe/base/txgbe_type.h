@@ -284,6 +284,7 @@ struct txgbe_hw_stats {
 	u64 rx_management_packets;
 	u64 tx_management_packets;
 	u64 rx_management_dropped;
+	u64 rx_dma_drop;
 	u64 rx_drop_packets;
 
 	/* Basic Error */
