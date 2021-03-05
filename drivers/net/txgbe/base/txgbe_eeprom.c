@@ -193,7 +193,7 @@ s32 txgbe_ee_read16(struct txgbe_hw *hw, u32 offset,
 }
 
 /**
- *  txgbe_ee_read_buffer- Read EEPROM word(s) using hostif
+ *  txgbe_ee_readw_buffer- Read EEPROM word(s) using hostif
  *  @hw: pointer to hardware structure
  *  @offset: offset of  word in the EEPROM to read
  *  @words: number of words
@@ -275,42 +275,6 @@ s32 txgbe_ee_read32(struct txgbe_hw *hw, u32 addr, u32 *data)
 }
 
 /**
- *  txgbe_ee_read_buffer - Read EEPROM byte(s) using hostif
- *  @hw: pointer to hardware structure
- *  @addr: offset of bytes in the EEPROM to read
- *  @len: number of bytes
- *  @data: byte(s) read from the EEPROM
- *
- *  Reads a 8 bit byte(s) from the EEPROM using the hostif.
- **/
-s32 txgbe_ee_read_buffer(struct txgbe_hw *hw,
-				     u32 addr, u32 len, void *data)
-{
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
-	u8 *buf = (u8 *)data;
-	int err;
-
-	err = hw->mac.acquire_swfw_sync(hw, mask);
-	if (err)
-		return err;
-
-	while (len) {
-		u32 seg = (len <= TXGBE_PMMBX_DATA_SIZE
-				? len : TXGBE_PMMBX_DATA_SIZE);
-
-		err = txgbe_hic_sr_read(hw, addr, buf, seg);
-		if (err)
-			break;
-
-		len -= seg;
-		buf += seg;
-	}
-
-	hw->mac.release_swfw_sync(hw, mask);
-	return err;
-}
-
-/**
  *  txgbe_ee_write - Write EEPROM word using hostif
  *  @hw: pointer to hardware structure
  *  @offset: offset of  word in the EEPROM to write
@@ -339,7 +303,7 @@ s32 txgbe_ee_write16(struct txgbe_hw *hw, u32 offset,
 }
 
 /**
- *  txgbe_ee_write_buffer - Write EEPROM word(s) using hostif
+ *  txgbe_ee_writew_buffer - Write EEPROM word(s) using hostif
  *  @hw: pointer to hardware structure
  *  @offset: offset of  word in the EEPROM to write
  *  @words: number of words
@@ -417,42 +381,6 @@ s32 txgbe_ee_write32(struct txgbe_hw *hw, u32 addr, u32 data)
 
 	hw->mac.release_swfw_sync(hw, mask);
 
-	return err;
-}
-
-/**
- *  txgbe_ee_write_buffer - Write EEPROM byte(s) using hostif
- *  @hw: pointer to hardware structure
- *  @addr: offset of bytes in the EEPROM to write
- *  @len: number of bytes
- *  @data: word(s) write to the EEPROM
- *
- *  Write a 8 bit byte(s) to the EEPROM using the hostif.
- **/
-s32 txgbe_ee_write_buffer(struct txgbe_hw *hw,
-				      u32 addr, u32 len, void *data)
-{
-	const u32 mask = TXGBE_MNGSEM_SWMBX | TXGBE_MNGSEM_SWFLASH;
-	u8 *buf = (u8 *)data;
-	int err;
-
-	err = hw->mac.acquire_swfw_sync(hw, mask);
-	if (err)
-		return err;
-
-	while (len) {
-		u32 seg = (len <= TXGBE_PMMBX_DATA_SIZE
-				? len : TXGBE_PMMBX_DATA_SIZE);
-
-		err = txgbe_hic_sr_write(hw, addr, buf, seg);
-		if (err)
-			break;
-
-		len -= seg;
-		buf += seg;
-	}
-
-	hw->mac.release_swfw_sync(hw, mask);
 	return err;
 }
 
