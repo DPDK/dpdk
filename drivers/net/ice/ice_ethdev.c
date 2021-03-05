@@ -4394,8 +4394,10 @@ ice_rss_hash_update(struct rte_eth_dev *dev,
 	if (status)
 		return status;
 
-	if (rss_conf->rss_hf == 0)
+	if (rss_conf->rss_hf == 0) {
+		pf->rss_hf = 0;
 		return 0;
+	}
 
 	/* RSS hash configuration */
 	ice_rss_hash_set(pf, rss_conf->rss_hf);
