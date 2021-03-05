@@ -184,6 +184,7 @@ usage(char* progname)
 	printf("  --txpkts=X[,Y]*: set TX segment sizes"
 		" or total packet length.\n");
 	printf("  --txonly-multi-flow: generate multiple flows in txonly mode\n");
+	printf("  --eth-link-speed: force link speed.\n");
 	printf("  --disable-link-check: disable check on link status when "
 	       "starting/stopping ports.\n");
 	printf("  --disable-device-start: do not automatically start port\n");
@@ -485,6 +486,43 @@ parse_event_printing_config(const char *optarg, int enable)
 	return 0;
 }
 
+static int
+parse_link_speed(int n)
+{
+	uint32_t speed = ETH_LINK_SPEED_FIXED;
+
+	switch (n) {
+	case 1000:
+		speed |= ETH_LINK_SPEED_1G;
+		break;
+	case 10000:
+		speed |= ETH_LINK_SPEED_10G;
+		break;
+	case 25000:
+		speed |= ETH_LINK_SPEED_25G;
+		break;
+	case 40000:
+		speed |= ETH_LINK_SPEED_40G;
+		break;
+	case 50000:
+		speed |= ETH_LINK_SPEED_50G;
+		break;
+	case 100000:
+		speed |= ETH_LINK_SPEED_100G;
+		break;
+	case 200000:
+		speed |= ETH_LINK_SPEED_200G;
+		break;
+	case 100:
+	case 10:
+	default:
+		printf("Unsupported fixed speed\n");
+		return 0;
+	}
+
+	return speed;
+}
+
 void
 launch_args_parse(int argc, char** argv)
 {
@@ -579,6 +617,7 @@ launch_args_parse(int argc, char** argv)
 		{ "rxpkts",			1, 0, 0 },
 		{ "txpkts",			1, 0, 0 },
 		{ "txonly-multi-flow",		0, 0, 0 },
+		{ "eth-link-speed",		1, 0, 0 },
 		{ "disable-link-check",		0, 0, 0 },
 		{ "disable-device-start",	0, 0, 0 },
 		{ "no-lsc-interrupt",		0, 0, 0 },
@@ -1232,6 +1271,11 @@ launch_args_parse(int argc, char** argv)
 				txonly_multi_flow = 1;
 			if (!strcmp(lgopts[opt_idx].name, "no-flush-rx"))
 				no_flush_rx = 1;
+			if (!strcmp(lgopts[opt_idx].name, "eth-link-speed")) {
+				n = atoi(optarg);
+				if (n >= 0 && parse_link_speed(n) > 0)
+					eth_link_speed = parse_link_speed(n);
+			}
 			if (!strcmp(lgopts[opt_idx].name, "disable-link-check"))
 				no_link_check = 1;
 			if (!strcmp(lgopts[opt_idx].name, "disable-device-start"))

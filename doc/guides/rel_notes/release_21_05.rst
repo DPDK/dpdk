@@ -78,6 +78,8 @@ New Features
 
 * **Updated testpmd.**
 
+  * Added a command line option to configure forced speed for Ethernet port.
+    ``dpdk-testpmd -- --eth-link-speed N``
   * Added command to display Rx queue used descriptor count.
     ``show port (port_id) rxq (queue_id) desc used count``
 

@@ -392,6 +392,21 @@ The command line options are:
 
     Generate multiple flows in txonly mode.
 
+*   ``--eth-link-speed``
+
+    Set a forced link speed to the ethernet port::
+
+       10 - 10Mbps (not supported)
+       100 - 100Mbps (not supported)
+       1000 - 1Gbps
+       10000 - 10Gbps
+       25000 - 25Gbps
+       40000 - 40Gbps
+       50000 - 50Gbps
+       100000 - 100Gbps
+       200000 - 200Gbps
+       ...
+
 *   ``--disable-link-check``
 
     Disable check on link status when starting/stopping ports.

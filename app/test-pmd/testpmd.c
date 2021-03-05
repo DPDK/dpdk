@@ -513,6 +513,11 @@ uint8_t gro_flush_cycles = GRO_DEFAULT_FLUSH_CYCLES;
  */
 enum rte_eth_rx_mq_mode rx_mq_mode = ETH_MQ_RX_VMDQ_DCB_RSS;
 
+/*
+ * Used to set forced link speed
+ */
+uint32_t eth_link_speed;
+
 /* Forward function declarations */
 static void setup_attached_port(portid_t pi);
 static void check_all_ports_link_status(uint32_t port_mask);
@@ -1483,6 +1488,9 @@ init_config(void)
 		for (k = 0; k < port->dev_info.max_tx_queues; k++)
 			port->tx_conf[k].offloads =
 				port->dev_conf.txmode.offloads;
+
+		if (eth_link_speed)
+			port->dev_conf.link_speeds = eth_link_speed;
 
 		/* set flag to initialize port/queue */
 		port->need_reconfig = 1;
