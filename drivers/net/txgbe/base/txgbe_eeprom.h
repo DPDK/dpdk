@@ -51,14 +51,12 @@ s32 txgbe_ee_readw_sw(struct txgbe_hw *hw, u32 offset, u16 *data);
 s32 txgbe_ee_readw_buffer(struct txgbe_hw *hw, u32 offset, u32 words,
 				void *data);
 s32 txgbe_ee_read32(struct txgbe_hw *hw, u32 addr, u32 *data);
-s32 txgbe_ee_read_buffer(struct txgbe_hw *hw, u32 addr, u32 len, void *data);
 
 s32 txgbe_ee_write16(struct txgbe_hw *hw, u32 offset, u16 data);
 s32 txgbe_ee_writew_sw(struct txgbe_hw *hw, u32 offset, u16 data);
 s32 txgbe_ee_writew_buffer(struct txgbe_hw *hw, u32 offset, u32 words,
 				void *data);
 s32 txgbe_ee_write32(struct txgbe_hw *hw, u32 addr, u32 data);
-s32 txgbe_ee_write_buffer(struct txgbe_hw *hw, u32 addr, u32 len, void *data);
 
 
 #endif /* _TXGBE_EEPROM_H_ */
