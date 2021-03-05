@@ -145,11 +145,11 @@ txgbe_crypto_add_sa(struct txgbe_crypto_session *ic_session)
 		reg_val = TXGBE_IPSRXIDX_ENA | TXGBE_IPSRXIDX_WRITE |
 				TXGBE_IPSRXIDX_TB_IP | (ip_index << 3);
 		if (priv->rx_ip_tbl[ip_index].ip.type == IPv4) {
-			wr32(hw, TXGBE_IPSRXADDR(0), 0);
+			uint32_t ipv4 = priv->rx_ip_tbl[ip_index].ip.ipv4;
+			wr32(hw, TXGBE_IPSRXADDR(0), rte_cpu_to_be_32(ipv4));
 			wr32(hw, TXGBE_IPSRXADDR(1), 0);
 			wr32(hw, TXGBE_IPSRXADDR(2), 0);
-			wr32(hw, TXGBE_IPSRXADDR(3),
-					priv->rx_ip_tbl[ip_index].ip.ipv4);
+			wr32(hw, TXGBE_IPSRXADDR(3), 0);
 		} else {
 			wr32(hw, TXGBE_IPSRXADDR(0),
 					priv->rx_ip_tbl[ip_index].ip.ipv6[0]);
