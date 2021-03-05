@@ -61,6 +61,17 @@ New Features
   * Added support for freeing Tx mbuf on demand.
   * Added support for copper port in Kunpeng930.
 
+* **Updated NXP DPAA driver.**
+
+  * Added support for shared ethernet interface.
+  * Added support for external buffers in Tx.
+
+* **Updated NXP DPAA2 driver.**
+
+  * Added support for traffic management.
+  * Added support for configurable Tx confirmation.
+  * Added support for external buffers in Tx.
+
 * **Updated Wangxun txgbe driver.**
 
   * Added support for txgbevf PMD.
