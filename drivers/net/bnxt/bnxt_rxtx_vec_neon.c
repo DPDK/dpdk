@@ -346,7 +346,7 @@ bnxt_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t tx_prod, tx_raw_prod = txr->tx_raw_prod;
 	struct rte_mbuf *tx_mbuf;
 	struct tx_bd_long *txbd = NULL;
-	struct bnxt_sw_tx_bd *tx_buf;
+	struct rte_mbuf **tx_buf;
 	uint16_t to_send;
 
 	nb_pkts = RTE_MIN(nb_pkts, bnxt_tx_avail(txq));
@@ -362,8 +362,7 @@ bnxt_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		tx_prod = RING_IDX(txr->tx_ring_struct, tx_raw_prod);
 		tx_buf = &txr->tx_buf_ring[tx_prod];
-		tx_buf->mbuf = tx_mbuf;
-		tx_buf->nr_bds = 1;
+		*tx_buf = tx_mbuf;
 
 		txbd = &txr->tx_desc_ring[tx_prod];
 		txbd->address = tx_mbuf->buf_iova + tx_mbuf->data_off;

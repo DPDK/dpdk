@@ -24,7 +24,7 @@ void bnxt_free_txq_stats(struct bnxt_tx_queue *txq)
 
 static void bnxt_tx_queue_release_mbufs(struct bnxt_tx_queue *txq)
 {
-	struct bnxt_sw_tx_bd *sw_ring;
+	struct rte_mbuf **sw_ring;
 	uint16_t i;
 
 	if (!txq || !txq->tx_ring)
@@ -33,9 +33,9 @@ static void bnxt_tx_queue_release_mbufs(struct bnxt_tx_queue *txq)
 	sw_ring = txq->tx_ring->tx_buf_ring;
 	if (sw_ring) {
 		for (i = 0; i < txq->tx_ring->tx_ring_struct->ring_size; i++) {
-			if (sw_ring[i].mbuf) {
-				rte_pktmbuf_free_seg(sw_ring[i].mbuf);
-				sw_ring[i].mbuf = NULL;
+			if (sw_ring[i]) {
+				rte_pktmbuf_free_seg(sw_ring[i]);
+				sw_ring[i] = NULL;
 			}
 		}
 	}

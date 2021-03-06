@@ -3189,7 +3189,7 @@ bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
 	struct bnxt_tx_queue *txq = (struct bnxt_tx_queue *)tx_queue;
 	struct bnxt_tx_ring_info *txr;
 	struct bnxt_cp_ring_info *cpr;
-	struct bnxt_sw_tx_bd *tx_buf;
+	struct rte_mbuf **tx_buf;
 	struct tx_pkt_cmpl *txcmp;
 	uint32_t cons, cp_cons;
 	int rc;
@@ -3219,7 +3219,7 @@ bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
 			return RTE_ETH_TX_DESC_UNAVAIL;
 	}
 	tx_buf = &txr->tx_buf_ring[cons];
-	if (tx_buf->mbuf == NULL)
+	if (*tx_buf == NULL)
 		return RTE_ETH_TX_DESC_DONE;
 
 	return RTE_ETH_TX_DESC_FULL;

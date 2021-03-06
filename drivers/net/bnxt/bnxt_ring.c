@@ -230,7 +230,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			tx_ring->vmem =
 			    (void **)((char *)mz->addr + tx_vmem_start);
 			tx_ring_info->tx_buf_ring =
-			    (struct bnxt_sw_tx_bd *)tx_ring->vmem;
+			    (struct rte_mbuf **)tx_ring->vmem;
 		}
 	}
 
