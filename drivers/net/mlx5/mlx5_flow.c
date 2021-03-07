@@ -1220,10 +1220,14 @@ mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev)
 			data->dynf_meta = 0;
 			data->flow_meta_mask = 0;
 			data->flow_meta_offset = -1;
+			data->flow_meta_port_mask = 0;
 		} else {
 			data->dynf_meta = 1;
 			data->flow_meta_mask = rte_flow_dynf_metadata_mask;
 			data->flow_meta_offset = rte_flow_dynf_metadata_offs;
+			data->flow_meta_port_mask = (uint32_t)~0;
+			if (priv->config.dv_xmeta_en == MLX5_XMETA_MODE_META16)
+				data->flow_meta_port_mask >>= 16;
 		}
 	}
 }
