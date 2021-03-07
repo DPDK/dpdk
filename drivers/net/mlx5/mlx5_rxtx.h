@@ -168,6 +168,7 @@ struct mlx5_rxq_data {
 	uint64_t timestamp_rx_flag; /* Dynamic mbuf flag for timestamp. */
 	uint64_t flow_meta_mask;
 	int32_t flow_meta_offset;
+	uint32_t flow_meta_port_mask;
 	uint32_t rxseg_n; /* Number of split segment descriptions. */
 	struct mlx5_eth_rxseg rxseg[MLX5_MAX_RXQ_NSEG];
 	/* Buffer split segment descriptions - sizes, offsets, pools. */
