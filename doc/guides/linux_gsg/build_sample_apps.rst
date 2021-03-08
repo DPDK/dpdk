@@ -138,11 +138,16 @@ This can be useful when using other processors to understand the mapping of the 
 
 .. note::
 
-    A more graphical view of the logical core layout may be obtained using the ``lstopo`` Linux utility.
-    On Fedora Linux, this may be installed and run using the following command::
+   A more graphical view of the logical core layout
+   may be obtained using the ``lstopo`` Linux utility.
+   On Fedora, this may be installed and run using the following commands::
 
-        sudo yum install hwloc
-        ./lstopo
+      sudo yum install hwloc
+      lstopo
+
+   This command produces a quite short textual output::
+
+      lstopo-no-graphics --merge
 
 .. warning::
 

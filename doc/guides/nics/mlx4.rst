@@ -308,7 +308,7 @@ Performance tuning
    for better performance. For VMs, verify that the right CPU
    and NUMA node are pinned according to the above. Run::
 
-        lstopo-no-graphics
+        lstopo-no-graphics --merge
 
    to identify the NUMA node to which the PCIe adapter is connected.
 
