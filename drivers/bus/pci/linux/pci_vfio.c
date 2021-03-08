@@ -73,8 +73,8 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 			VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 			PCI_CAPABILITY_LIST);
 	if (ret != sizeof(reg)) {
-		RTE_LOG(ERR, EAL, "Cannot read capability pointer from PCI "
-				"config space!\n");
+		RTE_LOG(ERR, EAL,
+			"Cannot read capability pointer from PCI config space!\n");
 		return -1;
 	}
 
@@ -88,8 +88,8 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 				VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 				cap_offset);
 		if (ret != sizeof(reg)) {
-			RTE_LOG(ERR, EAL, "Cannot read capability ID from PCI "
-					"config space!\n");
+			RTE_LOG(ERR, EAL,
+				"Cannot read capability ID from PCI config space!\n");
 			return -1;
 		}
 
@@ -102,8 +102,8 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 					VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 					cap_offset);
 			if (ret != sizeof(reg)) {
-				RTE_LOG(ERR, EAL, "Cannot read capability pointer from PCI "
-						"config space!\n");
+				RTE_LOG(ERR, EAL,
+					"Cannot read capability pointer from PCI config space!\n");
 				return -1;
 			}
 
@@ -119,8 +119,8 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 					VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 					cap_offset + 4);
 			if (ret != sizeof(reg)) {
-				RTE_LOG(ERR, EAL, "Cannot read table offset from PCI config "
-						"space!\n");
+				RTE_LOG(ERR, EAL,
+					"Cannot read table offset from PCI config space!\n");
 				return -1;
 			}
 
@@ -128,8 +128,8 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 					VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 					cap_offset + 2);
 			if (ret != sizeof(flags)) {
-				RTE_LOG(ERR, EAL, "Cannot read table flags from PCI config "
-						"space!\n");
+				RTE_LOG(ERR, EAL,
+					"Cannot read table flags from PCI config space!\n");
 				return -1;
 			}
 
@@ -239,7 +239,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 	case RTE_INTR_MODE_NONE:
 		break;
 	default:
-		RTE_LOG(ERR, EAL, "  unknown default interrupt type!\n");
+		RTE_LOG(ERR, EAL, "Unknown default interrupt type!\n");
 		return -1;
 	}
 
@@ -257,8 +257,8 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 
 		ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "  cannot get IRQ info, "
-					"error %i (%s)\n", errno, strerror(errno));
+			RTE_LOG(ERR, EAL, "Cannot get VFIO IRQ info, error "
+					"%i (%s)\n", errno, strerror(errno));
 			return -1;
 		}
 
@@ -267,7 +267,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 		if ((irq.flags & VFIO_IRQ_INFO_EVENTFD) == 0) {
 			if (intr_mode != RTE_INTR_MODE_NONE) {
 				RTE_LOG(ERR, EAL,
-						"  interrupt vector does not support eventfd!\n");
+					"Interrupt vector does not support eventfd!\n");
 				return -1;
 			} else
 				continue;
@@ -276,8 +276,8 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 		/* set up an eventfd for interrupts */
 		fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "  cannot set up eventfd, "
-					"error %i (%s)\n", errno, strerror(errno));
+			RTE_LOG(ERR, EAL, "Cannot set up eventfd, error "
+					"%i (%s)\n", errno, strerror(errno));
 			return -1;
 		}
 
@@ -298,7 +298,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 			dev->intr_handle.type = RTE_INTR_HANDLE_VFIO_LEGACY;
 			break;
 		default:
-			RTE_LOG(ERR, EAL, "  unknown interrupt type!\n");
+			RTE_LOG(ERR, EAL, "Unknown interrupt type!\n");
 			return -1;
 		}
 
@@ -616,7 +616,8 @@ pci_vfio_get_region_info(int vfio_dev_fd, struct vfio_region_info **info,
 
 	ri = malloc(sizeof(*ri));
 	if (ri == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memory for region info\n");
+		RTE_LOG(ERR, EAL,
+			"Cannot allocate memory for VFIO region info\n");
 		return -1;
 	}
 again:
@@ -638,7 +639,8 @@ again:
 		if (tmp == NULL) {
 			/* realloc failed but the ri is still there */
 			free(ri);
-			RTE_LOG(ERR, EAL, "Cannot reallocate memory for region info\n");
+			RTE_LOG(ERR, EAL,
+				"Cannot reallocate memory for VFIO region info\n");
 			return -1;
 		}
 		ri = tmp;
@@ -721,7 +723,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	vfio_res = rte_zmalloc("VFIO_RES", sizeof(*vfio_res), 0);
 	if (vfio_res == NULL) {
 		RTE_LOG(ERR, EAL,
-			"%s(): cannot store vfio mmap details\n", __func__);
+			"Cannot store VFIO mmap details\n");
 		goto err_vfio_dev_fd;
 	}
 	memcpy(&vfio_res->pci_addr, &dev->addr, sizeof(vfio_res->pci_addr));
@@ -739,7 +741,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	 */
 	ret = pci_vfio_get_msix_bar(vfio_dev_fd, &vfio_res->msix_table);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "  %s cannot get MSI-X BAR number!\n",
+		RTE_LOG(ERR, EAL, "%s cannot get MSI-X BAR number!\n",
 				pci_addr);
 		goto err_vfio_res;
 	}
@@ -763,9 +765,9 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 
 		ret = pci_vfio_get_region_info(vfio_dev_fd, &reg, i);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "  %s cannot get device region info "
-				"error %i (%s)\n", pci_addr, errno,
-				strerror(errno));
+			RTE_LOG(ERR, EAL,
+				"%s cannot get device region info error "
+				"%i (%s)\n", pci_addr, errno, strerror(errno));
 			goto err_vfio_res;
 		}
 
@@ -804,7 +806,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 
 		ret = pci_vfio_mmap_bar(vfio_dev_fd, vfio_res, i, 0);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "  %s mapping BAR%i failed: %s\n",
+			RTE_LOG(ERR, EAL, "%s mapping BAR%i failed: %s\n",
 					pci_addr, i, strerror(errno));
 			free(reg);
 			goto err_vfio_res;
@@ -816,7 +818,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	}
 
 	if (pci_rte_vfio_setup_device(dev, vfio_dev_fd) < 0) {
-		RTE_LOG(ERR, EAL, "  %s setup device failed\n", pci_addr);
+		RTE_LOG(ERR, EAL, "%s setup device failed\n", pci_addr);
 		goto err_vfio_res;
 	}
 
@@ -870,7 +872,7 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	}
 	/* if we haven't found our tailq entry, something's wrong */
 	if (vfio_res == NULL) {
-		RTE_LOG(ERR, EAL, "  %s cannot find TAILQ entry for PCI device!\n",
+		RTE_LOG(ERR, EAL, "%s cannot find TAILQ entry for PCI device!\n",
 				pci_addr);
 		return -1;
 	}
@@ -886,7 +888,7 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	for (i = 0; i < vfio_res->nb_maps; i++) {
 		ret = pci_vfio_mmap_bar(vfio_dev_fd, vfio_res, i, MAP_FIXED);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "  %s mapping BAR%i failed: %s\n",
+			RTE_LOG(ERR, EAL, "%s mapping BAR%i failed: %s\n",
 					pci_addr, i, strerror(errno));
 			goto err_vfio_dev_fd;
 		}
@@ -939,7 +941,7 @@ find_and_unmap_vfio_resource(struct mapped_pci_res_list *vfio_res_list,
 	if  (vfio_res == NULL)
 		return vfio_res;
 
-	RTE_LOG(INFO, EAL, "Releasing pci mapped resource for %s\n",
+	RTE_LOG(INFO, EAL, "Releasing PCI mapped resource for %s\n",
 		pci_addr);
 
 	maps = vfio_res->maps;
@@ -987,7 +989,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 	}
 
 	if (pci_vfio_set_bus_master(dev->intr_handle.vfio_dev_fd, false)) {
-		RTE_LOG(ERR, EAL, "  %s cannot unset bus mastering for PCI device!\n",
+		RTE_LOG(ERR, EAL, "%s cannot unset bus mastering for PCI device!\n",
 				pci_addr);
 		return -1;
 	}
@@ -995,8 +997,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 	ret = rte_vfio_release_device(rte_pci_get_sysfs_path(), pci_addr,
 				  dev->intr_handle.vfio_dev_fd);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL,
-			"%s(): cannot release device\n", __func__);
+		RTE_LOG(ERR, EAL, "Cannot release VFIO device\n");
 		return ret;
 	}
 
@@ -1006,7 +1007,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 
 	/* if we haven't found our tailq entry, something's wrong */
 	if (vfio_res == NULL) {
-		RTE_LOG(ERR, EAL, "  %s cannot find TAILQ entry for PCI device!\n",
+		RTE_LOG(ERR, EAL, "%s cannot find TAILQ entry for PCI device!\n",
 				pci_addr);
 		return -1;
 	}
@@ -1032,8 +1033,7 @@ pci_vfio_unmap_resource_secondary(struct rte_pci_device *dev)
 	ret = rte_vfio_release_device(rte_pci_get_sysfs_path(), pci_addr,
 				  dev->intr_handle.vfio_dev_fd);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL,
-			"%s(): cannot release device\n", __func__);
+		RTE_LOG(ERR, EAL, "Cannot release VFIO device\n");
 		return ret;
 	}
 
@@ -1043,7 +1043,7 @@ pci_vfio_unmap_resource_secondary(struct rte_pci_device *dev)
 
 	/* if we haven't found our tailq entry, something's wrong */
 	if (vfio_res == NULL) {
-		RTE_LOG(ERR, EAL, "  %s cannot find TAILQ entry for PCI device!\n",
+		RTE_LOG(ERR, EAL, "%s cannot find TAILQ entry for PCI device!\n",
 				pci_addr);
 		return -1;
 	}
