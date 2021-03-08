@@ -259,6 +259,8 @@ struct sw_evdev {
 	uint64_t sched_no_iq_enqueues;
 	uint64_t sched_no_cq_enqueues;
 	uint64_t sched_cq_qid_called;
+	uint64_t sched_last_iter_bitmask;
+	uint8_t sched_progress_last_iter;
 
 	uint8_t started;
 	uint32_t credit_update_quanta;
