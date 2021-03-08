@@ -384,7 +384,7 @@ rte_ipv4_udptcp_cksum(const struct rte_ipv4_hdr *ipv4_hdr, const void *l4_hdr)
  */
 struct rte_ipv6_hdr {
 	rte_be32_t vtc_flow;	/**< IP version, traffic class & flow label. */
-	rte_be16_t payload_len;	/**< IP packet length - includes header size */
+	rte_be16_t payload_len;	/**< IP payload size, including ext. headers */
 	uint8_t  proto;		/**< Protocol, next header. */
 	uint8_t  hop_limits;	/**< Hop limits. */
 	uint8_t  src_addr[16];	/**< IP address of source host. */
