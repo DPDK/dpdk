@@ -2,8 +2,6 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
-#include <jansson.h>
-
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
 #ifdef RTE_LIB_TELEMETRY
@@ -12,6 +10,8 @@
 
 #include "rte_metrics.h"
 #include "rte_metrics_telemetry.h"
+
+#ifdef RTE_HAS_JANSSON
 
 struct telemetry_metrics_data tel_met_data;
 
@@ -541,3 +541,62 @@ RTE_INIT(metrics_ctor)
 			handle_ports_stats_values_by_name);
 #endif
 }
+
+#else /* !RTE_HAS_JANSSON */
+
+int32_t
+rte_metrics_tel_reg_all_ethdev(int *metrics_register_done, int *reg_index_list)
+{
+	RTE_SET_USED(metrics_register_done);
+	RTE_SET_USED(reg_index_list);
+
+	return -ENOTSUP;
+}
+
+int32_t
+rte_metrics_tel_encode_json_format(struct telemetry_encode_param *ep,
+	char **json_buffer)
+{
+	RTE_SET_USED(ep);
+	RTE_SET_USED(json_buffer);
+
+	return -ENOTSUP;
+}
+
+int32_t
+rte_metrics_tel_get_ports_stats_json(struct telemetry_encode_param *ep,
+	int *reg_index, char **json_buffer)
+{
+	RTE_SET_USED(ep);
+	RTE_SET_USED(reg_index);
+	RTE_SET_USED(json_buffer);
+
+	return -ENOTSUP;
+}
+
+int32_t
+rte_metrics_tel_get_port_stats_ids(struct telemetry_encode_param *ep)
+{
+	RTE_SET_USED(ep);
+
+	return -ENOTSUP;
+}
+
+int32_t
+rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data)
+{
+	RTE_SET_USED(ep);
+	RTE_SET_USED(data);
+
+	return -ENOTSUP;
+}
+
+int32_t
+rte_metrics_tel_get_global_stats(struct telemetry_encode_param *ep)
+{
+	RTE_SET_USED(ep);
+
+	return -ENOTSUP;
+}
+
+#endif /* !RTE_HAS_JANSSON */
