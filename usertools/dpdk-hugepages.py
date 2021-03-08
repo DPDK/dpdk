@@ -57,19 +57,21 @@ def get_hugepages(path):
     return 0
 
 
-def set_hugepages(path, pages):
+def set_hugepages(path, reqpages):
     '''Write the number of reserved huge pages'''
     filename = path + '/nr_hugepages'
     try:
         with open(filename, 'w') as nr_hugepages:
-            nr_hugepages.write('{}\n'.format(pages))
+            nr_hugepages.write('{}\n'.format(reqpages))
     except PermissionError:
         sys.exit('Permission denied: need to be root!')
     except FileNotFoundError:
         sys.exit("Invalid page size. Valid page sizes: {}".format(
                  get_valid_page_sizes(path)))
-    if get_hugepages(path) != pages:
-        sys.exit('Unable to reserve required pages.')
+    gotpages = get_hugepages(path)
+    if gotpages != reqpages:
+        sys.exit('Unable to set pages ({} instead of {} in {}).'.format(
+                 gotpages, reqpages, filename))
 
 
 def show_numa_pages():
