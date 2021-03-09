@@ -275,7 +275,7 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, in_size_dw * 4, out,
 					       sizeof(out));
 	if (!mkey->obj) {
-		DRV_LOG(ERR, "Can't create %sdirect mkey - error %d\n",
+		DRV_LOG(ERR, "Can't create %sdirect mkey - error %d",
 			klm_num ? "an in" : "a ", errno);
 		rte_errno = errno;
 		mlx5_free(mkey);

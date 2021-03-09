@@ -245,14 +245,14 @@ drivers_probe(struct mlx5_pci_device *dev, struct rte_pci_driver *pci_drv,
 		already_loaded = dev->classes_loaded & driver->driver_class;
 		if (already_loaded &&
 		    !(driver->pci_driver.drv_flags & RTE_PCI_DRV_PROBE_AGAIN)) {
-			DRV_LOG(ERR, "Device %s is already probed\n",
+			DRV_LOG(ERR, "Device %s is already probed",
 				pci_dev->device.name);
 			ret = -EEXIST;
 			goto probe_err;
 		}
 		ret = driver->pci_driver.probe(pci_drv, pci_dev);
 		if (ret < 0) {
-			DRV_LOG(ERR, "Failed to load driver = %s.\n",
+			DRV_LOG(ERR, "Failed to load driver %s",
 				driver->pci_driver.driver.name);
 			goto probe_err;
 		}

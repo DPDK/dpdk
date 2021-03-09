@@ -751,7 +751,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->pci_dev = pci_dev;
 	priv->var = mlx5_glue->dv_alloc_var(ctx, 0);
 	if (!priv->var) {
-		DRV_LOG(ERR, "Failed to allocate VAR %u.\n", errno);
+		DRV_LOG(ERR, "Failed to allocate VAR %u.", errno);
 		goto error;
 	}
 	priv->vdev = rte_vdpa_register_device(&pci_dev->device,

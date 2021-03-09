@@ -7924,7 +7924,7 @@ void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id)
 	if (!thub)
 		return;
 	if (!LIST_EMPTY(&thub->tunnels))
-		DRV_LOG(WARNING, "port %u tunnels present\n", port_id);
+		DRV_LOG(WARNING, "port %u tunnels present", port_id);
 	mlx5_hlist_destroy(thub->groups);
 	mlx5_free(thub);
 }

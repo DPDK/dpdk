@@ -257,7 +257,7 @@ mlx5_compress_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		DRV_LOG(ERR, "Can't change SQ state to ready.");
 		goto err;
 	}
-	DRV_LOG(INFO, "QP %u: SQN=0x%X CQN=0x%X entries num = %u\n",
+	DRV_LOG(INFO, "QP %u: SQN=0x%X CQN=0x%X entries num = %u",
 		(uint32_t)qp_id, qp->sq.sq->id, qp->cq.cq->id, qp->entries_n);
 	return 0;
 err:

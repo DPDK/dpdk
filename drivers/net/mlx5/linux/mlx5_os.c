@@ -1244,14 +1244,14 @@ err_secondary:
 		if (config->hca_attr.log_max_ft_sampler_num > 0  &&
 		    config->dv_flow_en) {
 			priv->sampler_en = 1;
-			DRV_LOG(DEBUG, "The Sampler enabled!\n");
+			DRV_LOG(DEBUG, "Sampler enabled!");
 		} else {
 			priv->sampler_en = 0;
 			if (!config->hca_attr.log_max_ft_sampler_num)
-				DRV_LOG(WARNING, "No available register for"
-						" Sampler.");
+				DRV_LOG(WARNING,
+					"No available register for sampler.");
 			else
-				DRV_LOG(DEBUG, "DV flow is not supported!\n");
+				DRV_LOG(DEBUG, "DV flow is not supported!");
 		}
 #endif
 	}

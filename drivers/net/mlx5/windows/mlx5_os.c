@@ -165,7 +165,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	if (!sh->flow_tbls)
 		err = mlx5_alloc_table_hash_list(priv);
 	else
-		DRV_LOG(DEBUG, "sh->flow_tbls[%p] already created, reuse\n",
+		DRV_LOG(DEBUG, "sh->flow_tbls[%p] already created, reuse",
 			(void *)sh->flow_tbls);
 	return err;
 }
