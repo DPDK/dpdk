@@ -40,8 +40,8 @@ mlx5_hlist_create(const char *name, uint32_t size, uint32_t entry_size,
 	/* Align to the next power of 2, 32bits integer is enough now. */
 	if (!rte_is_power_of_2(size)) {
 		act_size = rte_align32pow2(size);
-		DRV_LOG(WARNING, "Size 0x%" PRIX32 " is not power of 2, will "
-			"be aligned to 0x%" PRIX32 ".", size, act_size);
+		DRV_LOG(DEBUG, "Size 0x%" PRIX32 " is not power of 2, "
+			"will be aligned to 0x%" PRIX32 ".", size, act_size);
 	} else {
 		act_size = size;
 	}
