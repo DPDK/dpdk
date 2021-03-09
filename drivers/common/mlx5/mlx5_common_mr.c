@@ -187,8 +187,9 @@ mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket)
 				0, socket);
 	if (bt->table == NULL) {
 		rte_errno = ENOMEM;
-		DEBUG("failed to allocate memory for btree cache on socket %d",
-		      socket);
+		DRV_LOG(DEBUG,
+			"failed to allocate memory for btree cache on socket "
+			"%d", socket);
 		return -rte_errno;
 	}
 	bt->size = n;
@@ -196,7 +197,7 @@ mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket)
 	(*bt->table)[bt->len++] = (struct mr_cache_entry) {
 		.lkey = UINT32_MAX,
 	};
-	DEBUG("initialized B-tree %p with table %p",
+	DRV_LOG(DEBUG, "initialized B-tree %p with table %p",
 	      (void *)bt, (void *)bt->table);
 	return 0;
 }
@@ -212,7 +213,7 @@ mlx5_mr_btree_free(struct mlx5_mr_btree *bt)
 {
 	if (bt == NULL)
 		return;
-	DEBUG("freeing B-tree %p with table %p",
+	DRV_LOG(DEBUG, "freeing B-tree %p with table %p",
 	      (void *)bt, (void *)bt->table);
 	mlx5_free(bt->table);
 	memset(bt, 0, sizeof(*bt));
@@ -237,7 +238,7 @@ mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused)
 	for (idx = 0; idx < bt->len; ++idx) {
 		struct mr_cache_entry *entry = &lkp_tbl[idx];
 
-		DEBUG("B-tree(%p)[%u],"
+		DRV_LOG(DEBUG, "B-tree(%p)[%u],"
 		      " [0x%" PRIxPTR ", 0x%" PRIxPTR ") lkey=0x%x",
 		      (void *)bt, idx, entry->start, entry->end, entry->lkey);
 	}
@@ -543,11 +544,11 @@ mlx5_mr_create_secondary(void *pd __rte_unused,
 {
 	int ret;
 
-	DEBUG("port %u requesting MR creation for address (%p)",
+	DRV_LOG(DEBUG, "port %u requesting MR creation for address (%p)",
 	      mp_id->port_id, (void *)addr);
 	ret = mlx5_mp_req_mr_create(mp_id, addr);
 	if (ret) {
-		DEBUG("Fail to request MR creation for address (%p)",
+		DRV_LOG(DEBUG, "Fail to request MR creation for address (%p)",
 		      (void *)addr);
 		return UINT32_MAX;
 	}
@@ -557,7 +558,7 @@ mlx5_mr_create_secondary(void *pd __rte_unused,
 	/* Lookup can't fail. */
 	MLX5_ASSERT(entry->lkey != UINT32_MAX);
 	rte_rwlock_read_unlock(&share_cache->rwlock);
-	DEBUG("MR CREATED by primary process for %p:\n"
+	DRV_LOG(DEBUG, "MR CREATED by primary process for %p:\n"
 	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "), lkey=0x%x",
 	      (void *)addr, entry->start, entry->end, entry->lkey);
 	return entry->lkey;
@@ -647,7 +648,7 @@ alloc_resources:
 	MLX5_ASSERT(msl->page_sz == ms->hugepage_sz);
 	/* Number of memsegs in the range. */
 	ms_n = len / msl->page_sz;
-	DEBUG("Extending %p to [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
+	DRV_LOG(DEBUG, "Extending %p to [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
 	      " page_sz=0x%" PRIx64 ", ms_n=%u",
 	      (void *)addr, data.start, data.end, msl->page_sz, ms_n);
 	/* Size of memory for bitmap. */
@@ -656,7 +657,7 @@ alloc_resources:
 			 RTE_ALIGN_CEIL(sizeof(*mr), RTE_CACHE_LINE_SIZE) +
 			 bmp_size, RTE_CACHE_LINE_SIZE, msl->socket_id);
 	if (mr == NULL) {
-		DEBUG("Unable to allocate memory for a new MR of"
+		DRV_LOG(DEBUG, "Unable to allocate memory for a new MR of"
 		      " address (%p).", (void *)addr);
 		rte_errno = ENOMEM;
 		goto err_nolock;
@@ -671,7 +672,7 @@ alloc_resources:
 	bmp_mem = RTE_PTR_ALIGN_CEIL(mr + 1, RTE_CACHE_LINE_SIZE);
 	mr->ms_bmp = rte_bitmap_init(ms_n, bmp_mem, bmp_size);
 	if (mr->ms_bmp == NULL) {
-		DEBUG("Unable to initialize bitmap for a new MR of"
+		DRV_LOG(DEBUG, "Unable to initialize bitmap for a new MR of"
 		      " address (%p).", (void *)addr);
 		rte_errno = EINVAL;
 		goto err_nolock;
@@ -688,9 +689,9 @@ alloc_resources:
 	data_re = data;
 	if (len > msl->page_sz &&
 	    !rte_memseg_contig_walk(mr_find_contig_memsegs_cb, &data_re)) {
-		DEBUG("Unable to find virtually contiguous"
-		      " chunk for address (%p)."
-		      " rte_memseg_contig_walk() failed.", (void *)addr);
+		DRV_LOG(DEBUG,
+			"Unable to find virtually contiguous chunk for address "
+			"(%p). rte_memseg_contig_walk() failed.", (void *)addr);
 		rte_errno = ENXIO;
 		goto err_memlock;
 	}
@@ -718,7 +719,8 @@ alloc_resources:
 		 * here again.
 		 */
 		mr_btree_insert(&share_cache->cache, entry);
-		DEBUG("Found MR for %p on final lookup, abort", (void *)addr);
+		DRV_LOG(DEBUG, "Found MR for %p on final lookup, abort",
+			(void *)addr);
 		rte_rwlock_write_unlock(&share_cache->rwlock);
 		rte_mcfg_mem_read_unlock();
 		/*
@@ -767,7 +769,7 @@ alloc_resources:
 	 */
 	share_cache->reg_mr_cb(pd, (void *)data.start, len, &mr->pmd_mr);
 	if (mr->pmd_mr.obj == NULL) {
-		DEBUG("Fail to create an MR for address (%p)",
+		DRV_LOG(DEBUG, "Fail to create an MR for address (%p)",
 		      (void *)addr);
 		rte_errno = EINVAL;
 		goto err_mrlock;
@@ -775,7 +777,7 @@ alloc_resources:
 	MLX5_ASSERT((uintptr_t)mr->pmd_mr.addr == data.start);
 	MLX5_ASSERT(mr->pmd_mr.len);
 	LIST_INSERT_HEAD(&share_cache->mr_list, mr, mr);
-	DEBUG("MR CREATED (%p) for %p:\n"
+	DRV_LOG(DEBUG, "MR CREATED (%p) for %p:\n"
 	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
 	      " lkey=0x%x base_idx=%u ms_n=%u, ms_bmp_n=%u",
 	      (void *)mr, (void *)addr, data.start, data.end,
@@ -1079,7 +1081,7 @@ mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused)
 	LIST_FOREACH(mr, &share_cache->mr_list, mr) {
 		unsigned int n;
 
-		DEBUG("MR[%u], LKey = 0x%x, ms_n = %u, ms_bmp_n = %u",
+		DRV_LOG(DEBUG, "MR[%u], LKey = 0x%x, ms_n = %u, ms_bmp_n = %u",
 		      mr_n++, rte_cpu_to_be_32(mr->pmd_mr.lkey),
 		      mr->ms_n, mr->ms_bmp_n);
 		if (mr->ms_n == 0)
@@ -1090,11 +1092,12 @@ mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused)
 			n = mr_find_next_chunk(mr, &ret, n);
 			if (!ret.end)
 				break;
-			DEBUG("  chunk[%u], [0x%" PRIxPTR ", 0x%" PRIxPTR ")",
-			      chunk_n++, ret.start, ret.end);
+			DRV_LOG(DEBUG,
+				"  chunk[%u], [0x%" PRIxPTR ", 0x%" PRIxPTR ")",
+				chunk_n++, ret.start, ret.end);
 		}
 	}
-	DEBUG("Dumping global cache %p", (void *)share_cache);
+	DRV_LOG(DEBUG, "Dumping global cache %p", (void *)share_cache);
 	mlx5_mr_btree_dump(&share_cache->cache);
 	rte_rwlock_read_unlock(&share_cache->rwlock);
 #endif

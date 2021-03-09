@@ -57,7 +57,7 @@ mlx5_mr_mem_event_free_cb(struct mlx5_dev_ctx_shared *sh,
 	int i;
 	int rebuild = 0;
 
-	DEBUG("device %s free callback: addr=%p, len=%zu",
+	DRV_LOG(DEBUG, "device %s free callback: addr=%p, len=%zu",
 	      sh->ibdev_name, addr, len);
 	msl = rte_mem_virt2memseg_list(addr);
 	/* addr and len must be page-aligned. */
@@ -87,13 +87,13 @@ mlx5_mr_mem_event_free_cb(struct mlx5_dev_ctx_shared *sh,
 		pos = ms_idx - mr->ms_base_idx;
 		MLX5_ASSERT(rte_bitmap_get(mr->ms_bmp, pos));
 		MLX5_ASSERT(pos < mr->ms_bmp_n);
-		DEBUG("device %s MR(%p): clear bitmap[%u] for addr %p",
+		DRV_LOG(DEBUG, "device %s MR(%p): clear bitmap[%u] for addr %p",
 		      sh->ibdev_name, (void *)mr, pos, (void *)start);
 		rte_bitmap_clear(mr->ms_bmp, pos);
 		if (--mr->ms_n == 0) {
 			LIST_REMOVE(mr, mr);
 			LIST_INSERT_HEAD(&sh->share_cache.mr_free_list, mr, mr);
-			DEBUG("device %s remove MR(%p) from list",
+			DRV_LOG(DEBUG, "device %s remove MR(%p) from list",
 			      sh->ibdev_name, (void *)mr);
 		}
 		/*
@@ -114,7 +114,7 @@ mlx5_mr_mem_event_free_cb(struct mlx5_dev_ctx_shared *sh,
 		 * before the core sees the newly allocated memory.
 		 */
 		++sh->share_cache.dev_gen;
-		DEBUG("broadcasting local cache flush, gen=%d",
+		DRV_LOG(DEBUG, "broadcasting local cache flush, gen=%d",
 		      sh->share_cache.dev_gen);
 		rte_smp_wmb();
 	}
@@ -405,7 +405,7 @@ mlx5_dma_unmap(struct rte_pci_device *pdev, void *addr,
 	}
 	LIST_REMOVE(mr, mr);
 	mlx5_mr_free(mr, sh->share_cache.dereg_mr_cb);
-	DEBUG("port %u remove MR(%p) from list", dev->data->port_id,
+	DRV_LOG(DEBUG, "port %u remove MR(%p) from list", dev->data->port_id,
 	      (void *)mr);
 	mlx5_mr_rebuild_cache(&sh->share_cache);
 	/*
@@ -418,7 +418,7 @@ mlx5_dma_unmap(struct rte_pci_device *pdev, void *addr,
 	 * before the core sees the newly allocated memory.
 	 */
 	++sh->share_cache.dev_gen;
-	DEBUG("broadcasting local cache flush, gen=%d",
+	DRV_LOG(DEBUG, "broadcasting local cache flush, gen=%d",
 	      sh->share_cache.dev_gen);
 	rte_smp_wmb();
 	rte_rwlock_read_unlock(&sh->share_cache.rwlock);

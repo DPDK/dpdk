@@ -92,14 +92,12 @@ pmd_drv_log_basename(const char *s)
 /* claim_zero() does not perform any check when debugging is disabled. */
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 
-#define DEBUG(...) DRV_LOG(DEBUG, __VA_ARGS__)
 #define MLX5_ASSERT(exp) RTE_VERIFY(exp)
 #define claim_zero(...) MLX5_ASSERT((__VA_ARGS__) == 0)
 #define claim_nonzero(...) MLX5_ASSERT((__VA_ARGS__) != 0)
 
 #else /* RTE_LIBRTE_MLX5_DEBUG */
 
-#define DEBUG(...) (void)0
 #define MLX5_ASSERT(exp) RTE_ASSERT(exp)
 #define claim_zero(...) (__VA_ARGS__)
 #define claim_nonzero(...) (__VA_ARGS__)

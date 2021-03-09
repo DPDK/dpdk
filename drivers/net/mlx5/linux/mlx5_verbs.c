@@ -721,7 +721,7 @@ mlx5_rxq_ibv_obj_drop_create(struct rte_eth_dev *dev)
 		return 0;
 	rxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq), 0, SOCKET_ID_ANY);
 	if (!rxq) {
-		DEBUG("Port %u cannot allocate drop Rx queue memory.",
+		DRV_LOG(DEBUG, "Port %u cannot allocate drop Rx queue memory.",
 		      dev->data->port_id);
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -729,7 +729,7 @@ mlx5_rxq_ibv_obj_drop_create(struct rte_eth_dev *dev)
 	priv->drop_queue.rxq = rxq;
 	rxq->ibv_cq = mlx5_glue->create_cq(ctx, 1, NULL, NULL, 0);
 	if (!rxq->ibv_cq) {
-		DEBUG("Port %u cannot allocate CQ for drop queue.",
+		DRV_LOG(DEBUG, "Port %u cannot allocate CQ for drop queue.",
 		      dev->data->port_id);
 		rte_errno = errno;
 		goto error;
@@ -742,7 +742,7 @@ mlx5_rxq_ibv_obj_drop_create(struct rte_eth_dev *dev)
 						    .cq = rxq->ibv_cq,
 					      });
 	if (!rxq->wq) {
-		DEBUG("Port %u cannot allocate WQ for drop queue.",
+		DRV_LOG(DEBUG, "Port %u cannot allocate WQ for drop queue.",
 		      dev->data->port_id);
 		rte_errno = errno;
 		goto error;
@@ -785,8 +785,9 @@ mlx5_ibv_drop_action_create(struct rte_eth_dev *dev)
 					.comp_mask = 0,
 				 });
 	if (!ind_tbl) {
-		DEBUG("Port %u cannot allocate indirection table for drop"
-		      " queue.", dev->data->port_id);
+		DRV_LOG(DEBUG, "Port %u"
+			" cannot allocate indirection table for drop queue.",
+			dev->data->port_id);
 		rte_errno = errno;
 		goto error;
 	}
@@ -806,7 +807,7 @@ mlx5_ibv_drop_action_create(struct rte_eth_dev *dev)
 			.pd = priv->sh->pd
 		 });
 	if (!hrxq->qp) {
-		DEBUG("Port %u cannot allocate QP for drop queue.",
+		DRV_LOG(DEBUG, "Port %u cannot allocate QP for drop queue.",
 		      dev->data->port_id);
 		rte_errno = errno;
 		goto error;

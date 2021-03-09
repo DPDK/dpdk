@@ -1972,7 +1972,8 @@ error:
 	for (j = 0; j < i; j++)
 		mlx5_rxq_release(dev, ind_tbl->queues[j]);
 	rte_errno = err;
-	DEBUG("Port %u cannot setup indirection table.", dev->data->port_id);
+	DRV_LOG(DEBUG, "Port %u cannot setup indirection table.",
+		dev->data->port_id);
 	return ret;
 }
 
@@ -2056,8 +2057,9 @@ mlx5_ind_table_obj_modify(struct rte_eth_dev *dev,
 		 * reference unsupported. Intended for standalone indirection
 		 * tables only.
 		 */
-		DEBUG("Port %u cannot modify indirection table (refcnt> 1).",
-		      dev->data->port_id);
+		DRV_LOG(DEBUG,
+			"Port %u cannot modify indirection table (refcnt> 1).",
+			dev->data->port_id);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -2081,7 +2083,8 @@ error:
 	for (j = 0; j < i; j++)
 		mlx5_rxq_release(dev, ind_tbl->queues[j]);
 	rte_errno = err;
-	DEBUG("Port %u cannot setup indirection table.", dev->data->port_id);
+	DRV_LOG(DEBUG, "Port %u cannot setup indirection table.",
+		dev->data->port_id);
 	return ret;
 }
 
