@@ -1150,6 +1150,7 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 	if (bp->max_req_len > resp->max_req_win_len) {
 		PMD_DRV_LOG(ERR, "Unsupported request length\n");
 		rc = -EINVAL;
+		goto error;
 	}
 	bp->max_req_len = rte_le_to_cpu_16(resp->max_req_win_len);
 	bp->hwrm_max_ext_req_len = rte_le_to_cpu_16(resp->max_ext_req_len);
