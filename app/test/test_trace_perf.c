@@ -79,7 +79,6 @@ signal_workers_to_finish(struct test_data *data)
 
 	for (workers = 0; workers < data->nb_workers; workers++) {
 		data->ldata[workers].done = 1;
-		rte_smp_wmb();
 	}
 }
 
@@ -102,7 +101,6 @@ worker_fn_##func(void *arg) \
 { \
 	struct lcore_data *ldata = arg; \
 	ldata->started = 1; \
-	rte_smp_wmb(); \
 	__worker_##func(ldata); \
 	return 0; \
 }
@@ -137,11 +135,12 @@ run_test(const char *str, lcore_function_t f, struct test_data *data, size_t sz)
 
 	wait_till_workers_are_ready(data);
 	rte_delay_ms(100); /* Wait for some time to accumulate the stats */
-	measure_perf(str, data);
 	signal_workers_to_finish(data);
 
 	RTE_LCORE_FOREACH_WORKER(id)
 		rte_eal_wait_lcore(id);
+
+	measure_perf(str, data);
 }
 
 static int
