@@ -76,6 +76,10 @@ New Features
 
   * Added support for txgbevf PMD.
 
+* **Updated the AF_XDP driver.**
+
+  * Added support for preferred busy polling.
+
 * **Updated testpmd.**
 
   * Added a command line option to configure forced speed for Ethernet port.

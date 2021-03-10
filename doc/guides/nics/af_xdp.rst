@@ -35,6 +35,7 @@ The following options can be provided to set up an af_xdp port in DPDK.
 *   ``shared_umem`` - PMD will attempt to share UMEM with others (optional,
     default 0);
 *   ``xdp_prog`` - path to custom xdp program (optional, default none);
+*   ``busy_budget`` - busy polling budget (optional, default 64);
 
 Prerequisites
 -------------
@@ -51,6 +52,7 @@ This is a Linux-specific PMD, thus the following prerequisites apply:
 *  For shared_umem, it requires kernel version v5.10 or later and libbpf version
    v0.2.0 or later.
 *  For 32-bit OS, a kernel with version 5.4 or later is required.
+*  For busy polling, kernel version v5.11 or later is required.
 
 Set up an af_xdp interface
 -----------------------------
@@ -108,3 +110,37 @@ Limitations
 
     --vdev net_af_xdp0,iface=ens786f1,shared_umem=1 \
     --vdev net_af_xdp1,iface=ens786f2,shared_umem=1 \
+
+- **Preferred Busy Polling**
+
+  The SO_PREFER_BUSY_POLL socket option was introduced in kernel v5.11. It can
+  deliver a performance improvement for sockets with heavy traffic loads and
+  can significantly improve single-core performance in this context.
+
+  The feature is enabled by default in the AF_XDP PMD. To disable it, set the
+  'busy_budget' vdevarg to zero:
+
+  .. code-block:: console
+
+    --vdev net_af_xdp0,iface=ens786f1,busy_budget=0
+
+  The default 'busy_budget' is 64 and it represents the number of packets the
+  kernel will attempt to process in the netdev's NAPI context. You can change
+  the value for example to 256 like so:
+
+  .. code-block:: console
+
+    --vdev net_af_xdp0,iface=ens786f1,busy_budget=256
+
+  It is also strongly recommended to set the following for optimal performance:
+
+  .. code-block:: console
+
+    echo 2 | sudo tee /sys/class/net/ens786f1/napi_defer_hard_irqs
+    echo 200000 | sudo tee /sys/class/net/ens786f1/gro_flush_timeout
+
+  The above defers interrupts for interface ens786f1 and instead schedules its
+  NAPI context from a watchdog timer instead of from softirqs. More information
+  on this feature can be found at [1].
+
+  [1] https://lwn.net/Articles/837010/
