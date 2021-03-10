@@ -310,10 +310,16 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 		/* pkt 3,4 shift the pktlen field to be 16-bit aligned*/
 		uint32x4_t len3 = vshlq_u32(vreinterpretq_u32_u64(descs[3]),
 					    len_shl);
-		descs[3] = vreinterpretq_u64_u32(len3);
+		descs[3] = vreinterpretq_u64_u16(vsetq_lane_u16
+				(vgetq_lane_u16(vreinterpretq_u16_u32(len3), 7),
+				 vreinterpretq_u16_u64(descs[3]),
+				 7));
 		uint32x4_t len2 = vshlq_u32(vreinterpretq_u32_u64(descs[2]),
 					    len_shl);
-		descs[2] = vreinterpretq_u64_u32(len2);
+		descs[2] = vreinterpretq_u64_u16(vsetq_lane_u16
+				(vgetq_lane_u16(vreinterpretq_u16_u32(len2), 7),
+				 vreinterpretq_u16_u64(descs[2]),
+				 7));
 
 		/* D.1 pkt 3,4 convert format from desc to pktmbuf */
 		pkt_mb4 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[3]), shuf_msk);
@@ -341,10 +347,16 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 		/* pkt 1,2 shift the pktlen field to be 16-bit aligned*/
 		uint32x4_t len1 = vshlq_u32(vreinterpretq_u32_u64(descs[1]),
 					    len_shl);
-		descs[1] = vreinterpretq_u64_u32(len1);
+		descs[1] = vreinterpretq_u64_u16(vsetq_lane_u16
+				(vgetq_lane_u16(vreinterpretq_u16_u32(len1), 7),
+				 vreinterpretq_u16_u64(descs[1]),
+				 7));
 		uint32x4_t len0 = vshlq_u32(vreinterpretq_u32_u64(descs[0]),
 					    len_shl);
-		descs[0] = vreinterpretq_u64_u32(len0);
+		descs[0] = vreinterpretq_u64_u16(vsetq_lane_u16
+				(vgetq_lane_u16(vreinterpretq_u16_u32(len0), 7),
+				 vreinterpretq_u16_u64(descs[0]),
+				 7));
 
 		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
 		pkt_mb2 = vqtbl1q_u8(vreinterpretq_u8_u64(descs[1]), shuf_msk);
