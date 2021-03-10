@@ -373,10 +373,13 @@ int
 pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		   struct rte_pci_ioport *p)
 {
+	FILE *f = NULL;
 	char dirname[PATH_MAX];
 	char filename[PATH_MAX];
-	int uio_num;
-	unsigned long start;
+	char buf[BUFSIZ];
+	uint64_t phys_addr, end_addr, flags;
+	unsigned long base;
+	int i;
 
 	if (rte_eal_iopl_init() != 0) {
 		RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
@@ -384,41 +387,66 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		return -1;
 	}
 
-	uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname), 0);
-	if (uio_num < 0)
-		return -1;
-
-	/* get portio start */
-	snprintf(filename, sizeof(filename),
-		 "%s/portio/port%d/start", dirname, bar);
-	if (eal_parse_sysfs_value(filename, &start) < 0) {
-		RTE_LOG(ERR, EAL, "%s(): cannot parse portio start\n",
-			__func__);
+	/* open and read addresses of the corresponding resource in sysfs */
+	snprintf(filename, sizeof(filename), "%s/" PCI_PRI_FMT "/resource",
+		rte_pci_get_sysfs_path(), dev->addr.domain, dev->addr.bus,
+		dev->addr.devid, dev->addr.function);
+	f = fopen(filename, "r");
+	if (f == NULL) {
+		RTE_LOG(ERR, EAL, "%s(): Cannot open sysfs resource: %s\n",
+			__func__, strerror(errno));
 		return -1;
 	}
-	/* ensure we don't get anything funny here, read/write will cast to
-	 * uin16_t */
-	if (start > UINT16_MAX)
-		return -1;
+
+	for (i = 0; i < bar + 1; i++) {
+		if (fgets(buf, sizeof(buf), f) == NULL) {
+			RTE_LOG(ERR, EAL, "%s(): Cannot read sysfs resource\n", __func__);
+			goto error;
+		}
+	}
+	if (pci_parse_one_sysfs_resource(buf, sizeof(buf), &phys_addr,
+		&end_addr, &flags) < 0)
+		goto error;
+
+	if (!(flags & IORESOURCE_IO)) {
+		RTE_LOG(ERR, EAL, "%s(): bar resource other than IO is not supported\n", __func__);
+		goto error;
+	}
+	base = (unsigned long)phys_addr;
+	RTE_LOG(INFO, EAL, "%s(): PIO BAR %08lx detected\n", __func__, base);
+
+	if (base > UINT16_MAX)
+		goto error;
 
 	/* FIXME only for primary process ? */
 	if (dev->intr_handle.type == RTE_INTR_HANDLE_UNKNOWN) {
+		int uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname), 0);
+		if (uio_num < 0) {
+			RTE_LOG(ERR, EAL, "cannot open %s: %s\n",
+				dirname, strerror(errno));
+			goto error;
+		}
 
 		snprintf(filename, sizeof(filename), "/dev/uio%u", uio_num);
 		dev->intr_handle.fd = open(filename, O_RDWR);
 		if (dev->intr_handle.fd < 0) {
 			RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 				filename, strerror(errno));
-			return -1;
+			goto error;
 		}
 		dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
 	}
 
-	RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%lx\n", start);
+	RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%lx\n", base);
 
-	p->base = start;
+	p->base = base;
 	p->len = 0;
+	fclose(f);
 	return 0;
+error:
+	if (f)
+		fclose(f);
+	return -1;
 }
 #else
 int

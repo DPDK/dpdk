@@ -677,71 +677,6 @@ int rte_pci_write_config(const struct rte_pci_device *device,
 	}
 }
 
-#if defined(RTE_ARCH_X86)
-static int
-pci_ioport_map(struct rte_pci_device *dev, int bar __rte_unused,
-		struct rte_pci_ioport *p)
-{
-	uint16_t start, end;
-	FILE *fp;
-	char *line = NULL;
-	char pci_id[16];
-	int found = 0;
-	size_t linesz;
-
-	if (rte_eal_iopl_init() != 0) {
-		RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
-			__func__, dev->name);
-		return -1;
-	}
-
-	snprintf(pci_id, sizeof(pci_id), PCI_PRI_FMT,
-		 dev->addr.domain, dev->addr.bus,
-		 dev->addr.devid, dev->addr.function);
-
-	fp = fopen("/proc/ioports", "r");
-	if (fp == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): can't open ioports\n", __func__);
-		return -1;
-	}
-
-	while (getdelim(&line, &linesz, '\n', fp) > 0) {
-		char *ptr = line;
-		char *left;
-		int n;
-
-		n = strcspn(ptr, ":");
-		ptr[n] = 0;
-		left = &ptr[n + 1];
-
-		while (*left && isspace(*left))
-			left++;
-
-		if (!strncmp(left, pci_id, strlen(pci_id))) {
-			found = 1;
-
-			while (*ptr && isspace(*ptr))
-				ptr++;
-
-			sscanf(ptr, "%04hx-%04hx", &start, &end);
-
-			break;
-		}
-	}
-
-	free(line);
-	fclose(fp);
-
-	if (!found)
-		return -1;
-
-	p->base = start;
-	RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%x\n", start);
-
-	return 0;
-}
-#endif
-
 int
 rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		struct rte_pci_ioport *p)
@@ -756,14 +691,8 @@ rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 		break;
 #endif
 	case RTE_PCI_KDRV_IGB_UIO:
-		ret = pci_uio_ioport_map(dev, bar, p);
-		break;
 	case RTE_PCI_KDRV_UIO_GENERIC:
-#if defined(RTE_ARCH_X86)
-		ret = pci_ioport_map(dev, bar, p);
-#else
 		ret = pci_uio_ioport_map(dev, bar, p);
-#endif
 		break;
 	default:
 		break;
@@ -830,14 +759,8 @@ rte_pci_ioport_unmap(struct rte_pci_ioport *p)
 		break;
 #endif
 	case RTE_PCI_KDRV_IGB_UIO:
-		ret = pci_uio_ioport_unmap(p);
-		break;
 	case RTE_PCI_KDRV_UIO_GENERIC:
-#if defined(RTE_ARCH_X86)
-		ret = 0;
-#else
 		ret = pci_uio_ioport_unmap(p);
-#endif
 		break;
 	default:
 		break;
