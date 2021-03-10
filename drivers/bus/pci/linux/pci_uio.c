@@ -368,6 +368,8 @@ error:
 	return -1;
 }
 
+#define PIO_MAX 0x10000
+
 #if defined(RTE_ARCH_X86)
 int
 pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
@@ -380,12 +382,6 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 	uint64_t phys_addr, end_addr, flags;
 	unsigned long base;
 	int i;
-
-	if (rte_eal_iopl_init() != 0) {
-		RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
-			__func__, dev->name);
-		return -1;
-	}
 
 	/* open and read addresses of the corresponding resource in sysfs */
 	snprintf(filename, sizeof(filename), "%s/" PCI_PRI_FMT "/resource",
@@ -408,15 +404,27 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		&end_addr, &flags) < 0)
 		goto error;
 
-	if (!(flags & IORESOURCE_IO)) {
-		RTE_LOG(ERR, EAL, "%s(): bar resource other than IO is not supported\n", __func__);
+	if (flags & IORESOURCE_IO) {
+		if (rte_eal_iopl_init()) {
+			RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
+				__func__, dev->name);
+			goto error;
+		}
+
+		base = (unsigned long)phys_addr;
+		if (base > PIO_MAX) {
+			RTE_LOG(ERR, EAL, "%s(): %08lx too large PIO resource\n", __func__, base);
+			goto error;
+		}
+
+		RTE_LOG(DEBUG, EAL, "%s(): PIO BAR %08lx detected\n", __func__, base);
+	} else if (flags & IORESOURCE_MEM) {
+		base = (unsigned long)dev->mem_resource[bar].addr;
+		RTE_LOG(DEBUG, EAL, "%s(): MMIO BAR %08lx detected\n", __func__, base);
+	} else {
+		RTE_LOG(ERR, EAL, "%s(): unknown BAR type\n", __func__);
 		goto error;
 	}
-	base = (unsigned long)phys_addr;
-	RTE_LOG(INFO, EAL, "%s(): PIO BAR %08lx detected\n", __func__, base);
-
-	if (base > UINT16_MAX)
-		goto error;
 
 	/* FIXME only for primary process ? */
 	if (dev->intr_handle.type == RTE_INTR_HANDLE_UNKNOWN) {
@@ -517,6 +525,92 @@ error:
 }
 #endif
 
+#if defined(RTE_ARCH_X86)
+static inline uint8_t ioread8(void *addr)
+{
+	uint8_t val;
+
+	val = (uint64_t)(uintptr_t)addr >= PIO_MAX ?
+		*(volatile uint8_t *)addr :
+		inb_p((unsigned long)addr);
+
+	return val;
+}
+
+static inline uint16_t ioread16(void *addr)
+{
+	uint16_t val;
+
+	val = (uint64_t)(uintptr_t)addr >= PIO_MAX ?
+		*(volatile uint16_t *)addr :
+		inw_p((unsigned long)addr);
+
+	return val;
+}
+
+static inline uint32_t ioread32(void *addr)
+{
+	uint32_t val;
+
+	val = (uint64_t)(uintptr_t)addr >= PIO_MAX ?
+		*(volatile uint32_t *)addr :
+		inl_p((unsigned long)addr);
+
+	return val;
+}
+
+static inline void iowrite8(uint8_t val, void *addr)
+{
+	(uint64_t)(uintptr_t)addr >= PIO_MAX ?
+		*(volatile uint8_t *)addr = val :
+		outb_p(val, (unsigned long)addr);
+}
+
+static inline void iowrite16(uint16_t val, void *addr)
+{
+	(uint64_t)(uintptr_t)addr >= PIO_MAX ?
+		*(volatile uint16_t *)addr = val :
+		outw_p(val, (unsigned long)addr);
+}
+
+static inline void iowrite32(uint32_t val, void *addr)
+{
+	(uint64_t)(uintptr_t)addr >= PIO_MAX ?
+		*(volatile uint32_t *)addr = val :
+		outl_p(val, (unsigned long)addr);
+}
+#else
+static inline uint8_t ioread8(void *addr)
+{
+	return *(volatile uint8_t *)addr;
+}
+
+static inline uint16_t ioread16(void *addr)
+{
+	return *(volatile uint16_t *)addr;
+}
+
+static inline uint32_t ioread32(void *addr)
+{
+	return *(volatile uint32_t *)addr;
+}
+
+static inline void iowrite8(uint8_t val, void *addr)
+{
+	*(volatile uint8_t *)addr = val;
+}
+
+static inline void iowrite16(uint16_t val, void *addr)
+{
+	*(volatile uint16_t *)addr = val;
+}
+
+static inline void iowrite32(uint32_t val, void *addr)
+{
+	*(volatile uint32_t *)addr = val;
+}
+#endif
+
 void
 pci_uio_ioport_read(struct rte_pci_ioport *p,
 		    void *data, size_t len, off_t offset)
@@ -528,25 +622,13 @@ pci_uio_ioport_read(struct rte_pci_ioport *p,
 	for (d = data; len > 0; d += size, reg += size, len -= size) {
 		if (len >= 4) {
 			size = 4;
-#if defined(RTE_ARCH_X86)
-			*(uint32_t *)d = inl(reg);
-#else
-			*(uint32_t *)d = *(volatile uint32_t *)reg;
-#endif
+			*(uint32_t *)d = ioread32((void *)reg);
 		} else if (len >= 2) {
 			size = 2;
-#if defined(RTE_ARCH_X86)
-			*(uint16_t *)d = inw(reg);
-#else
-			*(uint16_t *)d = *(volatile uint16_t *)reg;
-#endif
+			*(uint16_t *)d = ioread16((void *)reg);
 		} else {
 			size = 1;
-#if defined(RTE_ARCH_X86)
-			*d = inb(reg);
-#else
-			*d = *(volatile uint8_t *)reg;
-#endif
+			*d = ioread8((void *)reg);
 		}
 	}
 }
@@ -562,25 +644,13 @@ pci_uio_ioport_write(struct rte_pci_ioport *p,
 	for (s = data; len > 0; s += size, reg += size, len -= size) {
 		if (len >= 4) {
 			size = 4;
-#if defined(RTE_ARCH_X86)
-			outl_p(*(const uint32_t *)s, reg);
-#else
-			*(volatile uint32_t *)reg = *(const uint32_t *)s;
-#endif
+			iowrite32(*(const uint32_t *)s, (void *)reg);
 		} else if (len >= 2) {
 			size = 2;
-#if defined(RTE_ARCH_X86)
-			outw_p(*(const uint16_t *)s, reg);
-#else
-			*(volatile uint16_t *)reg = *(const uint16_t *)s;
-#endif
+			iowrite16(*(const uint16_t *)s, (void *)reg);
 		} else {
 			size = 1;
-#if defined(RTE_ARCH_X86)
-			outb_p(*s, reg);
-#else
-			*(volatile uint8_t *)reg = *s;
-#endif
+			iowrite8(*s, (void *)reg);
 		}
 	}
 }

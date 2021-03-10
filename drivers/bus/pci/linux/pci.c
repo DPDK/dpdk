@@ -715,8 +715,6 @@ rte_pci_ioport_read(struct rte_pci_ioport *p,
 		break;
 #endif
 	case RTE_PCI_KDRV_IGB_UIO:
-		pci_uio_ioport_read(p, data, len, offset);
-		break;
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		pci_uio_ioport_read(p, data, len, offset);
 		break;
@@ -736,8 +734,6 @@ rte_pci_ioport_write(struct rte_pci_ioport *p,
 		break;
 #endif
 	case RTE_PCI_KDRV_IGB_UIO:
-		pci_uio_ioport_write(p, data, len, offset);
-		break;
 	case RTE_PCI_KDRV_UIO_GENERIC:
 		pci_uio_ioport_write(p, data, len, offset);
 		break;
