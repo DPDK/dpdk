@@ -5816,6 +5816,20 @@ rte_eth_hairpin_queue_peer_unbind(uint16_t cur_port, uint16_t cur_queue,
 							  direction);
 }
 
+int
+rte_eth_representor_info_get(uint16_t port_id,
+			     struct rte_eth_representor_info *info)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->representor_info_get, -ENOTSUP);
+	return eth_err(port_id, (*dev->dev_ops->representor_info_get)(dev,
+								      info));
+}
+
 RTE_LOG_REGISTER(rte_eth_dev_logtype, lib.ethdev, INFO);
 
 RTE_INIT(ethdev_init_telemetry)

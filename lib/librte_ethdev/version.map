@@ -243,6 +243,9 @@ EXPERIMENTAL {
 
 	# added in 21.02
 	rte_eth_get_monitor_addr;
+
+	# added in 21.05
+	rte_eth_representor_info_get;
 };
 
 INTERNAL {
