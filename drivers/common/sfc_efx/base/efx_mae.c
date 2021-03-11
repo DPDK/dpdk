@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2019 Xilinx, Inc. All rights reserved.
- * All rights reserved.
+ * Copyright(c) 2019-2021 Xilinx, Inc.
  */
 
 #include "efx.h"

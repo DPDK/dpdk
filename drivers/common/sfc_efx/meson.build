@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright(c) 2019-2020 Xilinx, Inc.
+# Copyright(c) 2019-2021 Xilinx, Inc.
 #
 # This software was jointly developed between OKTET Labs (under contract
 # for Solarflare) and Solarflare Communications, Inc.
