@@ -49,9 +49,15 @@ sfc_tx_get_offload_mask(struct sfc_adapter *sa)
 	if (!sa->tso)
 		no_caps |= DEV_TX_OFFLOAD_TCP_TSO;
 
-	if (!sa->tso_encap)
-		no_caps |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			    DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+	if (!sa->tso_encap ||
+	    (encp->enc_tunnel_encapsulations_supported &
+	     (1u << EFX_TUNNEL_PROTOCOL_VXLAN)) == 0)
+		no_caps |= DEV_TX_OFFLOAD_VXLAN_TNL_TSO;
+
+	if (!sa->tso_encap ||
+	    (encp->enc_tunnel_encapsulations_supported &
+	     (1u << EFX_TUNNEL_PROTOCOL_GENEVE)) == 0)
+		no_caps |= DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
 
 	return ~no_caps;
 }
