@@ -5589,6 +5589,12 @@ rte_eth_devargs_parse(const char *dargs, struct rte_eth_devargs *eth_da)
 	for (i = 0; i < args.count; i++) {
 		pair = &args.pairs[i];
 		if (strcmp("representor", pair->key) == 0) {
+			if (eth_da->type != RTE_ETH_REPRESENTOR_NONE) {
+				RTE_LOG(ERR, EAL, "duplicated representor key: %s\n",
+					dargs);
+				result = -1;
+				goto parse_cleanup;
+			}
 			result = rte_eth_devargs_parse_representor_ports(
 					pair->value, eth_da);
 			if (result < 0)

@@ -119,6 +119,7 @@ rte_eth_devargs_process_list(char *str, uint16_t *list, uint16_t *len_list,
  * Representor format:
  *   #: range or single number of VF representor - legacy
  *   vf#: VF port representor/s
+ *   sf#: SF port representor/s
  *
  * Examples of #:
  *  2               - single
@@ -130,9 +131,15 @@ rte_eth_devargs_parse_representor_ports(char *str, void *data)
 {
 	struct rte_eth_devargs *eth_da = data;
 
-	eth_da->type = RTE_ETH_REPRESENTOR_VF;
-	if (str[0] == 'v' && str[1] == 'f')
+	if (str[0] == 'v' && str[1] == 'f') {
+		eth_da->type = RTE_ETH_REPRESENTOR_VF;
 		str += 2;
+	} else if (str[0] == 's' && str[1] == 'f') {
+		eth_da->type = RTE_ETH_REPRESENTOR_SF;
+		str += 2;
+	} else {
+		eth_da->type = RTE_ETH_REPRESENTOR_VF;
+	}
 	str = rte_eth_devargs_process_list(str, eth_da->representor_ports,
 		&eth_da->nb_representor_ports,
 		RTE_DIM(eth_da->representor_ports));

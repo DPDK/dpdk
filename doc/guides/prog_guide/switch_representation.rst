@@ -13,7 +13,7 @@ Introduction
 
 Network adapters with multiple physical ports and/or SR-IOV capabilities
 usually support the offload of traffic steering rules between their virtual
-functions (VFs), physical functions (PFs) and ports.
+functions (VFs), sub functions (SFs), physical functions (PFs) and ports.
 
 Like for standard Ethernet switches, this involves a combination of
 automatic MAC learning and manual configuration. For most purposes it is
@@ -24,7 +24,7 @@ layer 2 (L2) traffic (such as OVS) need to steer traffic themselves
 according on their own criteria.
 
 Without a standard software interface to manage traffic steering rules
-between VFs, PFs and the various physical ports of a given device,
+between VFs, SFs, PFs and the various physical ports of a given device,
 applications cannot take advantage of these offloads; software processing is
 mandatory even for traffic which ends up re-injected into the device it
 originates from.
@@ -34,6 +34,17 @@ the DPDK flow API (**rte_flow**), with emphasis on the SR-IOV use case
 (PF/VF steering) using a single physical port for clarity, however the same
 logic applies to any number of ports without necessarily involving SR-IOV.
 
+Sub Function
+------------
+Besides SR-IOV, Sub function is a portion of the PCI device, a SF netdev
+has its own dedicated queues(txq, rxq). A SF netdev supports E-Switch
+representation offload similar to existing PF and VF representors.
+A SF shares PCI level resources with other SFs and/or with its parent PCI
+function.
+
+Sub function is created on-demand, coexists with VFs. Number of SFs is
+limited by hardware resources.
+
 Port Representors
 -----------------
 
@@ -42,15 +53,16 @@ applications usually have to process a bit of traffic in software before
 thinking about offloading specific flows to hardware.
 
 Applications therefore need the ability to receive and inject traffic to
-various device endpoints (other VFs, PFs or physical ports) before
+various device endpoints (other VFs, SFs, PFs or physical ports) before
 connecting them together. Device drivers must provide means to hook the
 "other end" of these endpoints and to refer them when configuring flow
 rules.
 
 This role is left to so-called "port representors" (also known as "VF
-representors" in the specific context of VFs), which are to DPDK what the
-Ethernet switch device driver model (**switchdev**) [1]_ is to Linux, and
-which can be thought as a software "patch panel" front-end for applications.
+representors" in the specific context of VFs, "SF representors" in the
+specific context of SFs), which are to DPDK what the Ethernet switch
+device driver model (**switchdev**) [1]_ is to Linux, and which can be
+thought as a software "patch panel" front-end for applications.
 
 - DPDK port representors are implemented as additional virtual Ethernet
   device (**ethdev**) instances, spawned on an as needed basis through
@@ -59,9 +71,12 @@ which can be thought as a software "patch panel" front-end for applications.
 
 ::
 
-   -a pci:dbdf,representor=0
-   -a pci:dbdf,representor=[0-3]
-   -a pci:dbdf,representor=[0,5-11]
+   -a pci:dbdf,representor=vf0
+   -a pci:dbdf,representor=vf[0-3]
+   -a pci:dbdf,representor=vf[0,5-11]
+   -a pci:dbdf,representor=sf1
+   -a pci:dbdf,representor=sf[0-1023]
+   -a pci:dbdf,representor=sf[0,2-1023]
 
 - As virtual devices, they may be more limited than their physical
   counterparts, for instance by exposing only a subset of device
@@ -360,7 +375,7 @@ Compared to creating a brand new dedicated interface, **rte_flow** was
 deemed flexible enough to manage representor traffic only with minor
 extensions:
 
-- Using physical ports, PF, VF or port representors as targets.
+- Using physical ports, PF, SF, VF or port representors as targets.
 
 - Affecting traffic that is not necessarily addressed to the DPDK port ID a
   flow rule is associated with (e.g. forcing VF traffic redirection to PF).
