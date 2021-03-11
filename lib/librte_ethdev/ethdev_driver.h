@@ -1222,6 +1222,10 @@ rte_eth_switch_domain_free(uint16_t domain_id);
  * One type of representor each structure.
  */
 struct rte_eth_devargs {
+	uint16_t mh_controllers[RTE_MAX_MULTI_HOST_CTRLS];
+	/** controller/s number in case of multi-host */
+	uint16_t nb_mh_controllers;
+	/** number of controllers in multi-host controllers field */
 	uint16_t ports[RTE_MAX_ETHPORTS];
 	/** port/s number to enable on a multi-port single function */
 	uint16_t nb_ports;
