@@ -1089,6 +1089,8 @@ eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 					    ice_dcf_dev_init);
 	if (ret || !eth_da.nb_representor_ports)
 		return ret;
+	if (eth_da.type != RTE_ETH_REPRESENTOR_VF)
+		return -ENOTSUP;
 
 	dcf_ethdev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (dcf_ethdev == NULL)

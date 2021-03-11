@@ -111,11 +111,16 @@ rte_eth_devargs_process_range(char *str, uint16_t *list, uint16_t *len_list,
 	return 0;
 }
 
+/*
+ * representor format:
+ *   #: range or single number of VF representor
+ */
 int
 rte_eth_devargs_parse_representor_ports(char *str, void *data)
 {
 	struct rte_eth_devargs *eth_da = data;
 
+	eth_da->type = RTE_ETH_REPRESENTOR_VF;
 	return rte_eth_devargs_process_range(str, eth_da->representor_ports,
 		&eth_da->nb_representor_ports, RTE_MAX_ETHPORTS);
 }

@@ -751,6 +751,17 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 				strerror(rte_errno));
 			return NULL;
 		}
+		if (eth_da.type == RTE_ETH_REPRESENTOR_NONE) {
+			/* Representor not specified. */
+			rte_errno = EBUSY;
+			return NULL;
+		}
+		if (eth_da.type != RTE_ETH_REPRESENTOR_VF) {
+			rte_errno = ENOTSUP;
+			DRV_LOG(ERR, "unsupported representor type: %s",
+				dpdk_dev->devargs->args);
+			return NULL;
+		}
 		for (i = 0; i < eth_da.nb_representor_ports; ++i)
 			if (eth_da.representor_ports[i] ==
 			    (uint16_t)switch_info->port_name)

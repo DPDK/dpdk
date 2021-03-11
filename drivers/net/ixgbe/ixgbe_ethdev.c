@@ -1718,6 +1718,13 @@ eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	} else
 		memset(&eth_da, 0, sizeof(eth_da));
 
+	if (eth_da.nb_representor_ports > 0 &&
+	    eth_da.type != RTE_ETH_REPRESENTOR_VF) {
+		PMD_DRV_LOG(ERR, "unsupported representor type: %s\n",
+			    pci_dev->device.devargs->args);
+		return -ENOTSUP;
+	}
+
 	retval = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
 		sizeof(struct ixgbe_adapter),
 		eth_dev_pci_specific_init, pci_dev,

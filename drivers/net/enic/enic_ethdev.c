@@ -1312,6 +1312,12 @@ static int eth_enic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (retval)
 			return retval;
 	}
+	if (eth_da.nb_representor_ports > 0 &&
+	    eth_da.type != RTE_ETH_REPRESENTOR_VF) {
+		ENICPMD_LOG(ERR, "unsupported representor type: %s\n",
+			    pci_dev->device.devargs->args);
+		return -ENOTSUP;
+	}
 	retval = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
 		sizeof(struct enic),
 		eth_dev_pci_specific_init, pci_dev,

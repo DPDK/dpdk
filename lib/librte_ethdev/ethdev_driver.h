@@ -1216,7 +1216,11 @@ __rte_internal
 int
 rte_eth_switch_domain_free(uint16_t domain_id);
 
-/** Generic Ethernet device arguments  */
+/**
+ * Generic Ethernet device arguments
+ *
+ * One type of representor each structure.
+ */
 struct rte_eth_devargs {
 	uint16_t ports[RTE_MAX_ETHPORTS];
 	/** port/s number to enable on a multi-port single function */
@@ -1226,6 +1230,7 @@ struct rte_eth_devargs {
 	/** representor port/s identifier to enable on device */
 	uint16_t nb_representor_ports;
 	/** number of ports in representor port field */
+	enum rte_eth_representor_type type; /* type of representor */
 };
 
 /**

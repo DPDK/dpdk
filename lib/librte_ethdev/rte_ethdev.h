@@ -1507,6 +1507,14 @@ struct rte_eth_rxseg_capa {
  */
 
 /**
+ * Ethernet device representor port type.
+ */
+enum rte_eth_representor_type {
+	RTE_ETH_REPRESENTOR_NONE, /**< not a representor. */
+	RTE_ETH_REPRESENTOR_VF,   /**< representor of Virtual Function. */
+};
+
+/**
  * A structure used to retrieve the contextual information of
  * an Ethernet device, such as the controlling driver of the
  * device, etc...

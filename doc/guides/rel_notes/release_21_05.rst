@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Enhanced ethdev representor syntax.**
+
+  * Introduced representor type of VF.
+
 * **Updated Broadcom bnxt driver.**
 
   * Updated HWRM structures to 1.10.2.15 version.

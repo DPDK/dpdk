@@ -882,6 +882,8 @@ eth_txgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	if (retval || eth_da.nb_representor_ports < 1)
 		return retval;
+	if (eth_da.type != RTE_ETH_REPRESENTOR_VF)
+		return -ENOTSUP;
 
 	pf_ethdev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (pf_ethdev == NULL)

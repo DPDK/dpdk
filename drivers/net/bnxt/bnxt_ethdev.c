@@ -5862,6 +5862,13 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 	int i, ret = 0;
 	struct rte_kvargs *kvlist = NULL;
 
+	if (eth_da->type == RTE_ETH_REPRESENTOR_NONE)
+		return 0;
+	if (eth_da->type != RTE_ETH_REPRESENTOR_VF) {
+		PMD_DRV_LOG(ERR, "unsupported representor type %d\n",
+			    eth_da->type);
+		return -ENOTSUP;
+	}
 	num_rep = eth_da->nb_representor_ports;
 	if (num_rep > BNXT_MAX_VF_REPS) {
 		PMD_DRV_LOG(ERR, "nb_representor_ports = %d > %d MAX VF REPS\n",
