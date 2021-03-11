@@ -195,6 +195,7 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.rx_queue_intr_disable      = iavf_dev_rx_queue_intr_disable,
 	.flow_ops_get               = iavf_dev_flow_ops_get,
 	.tx_done_cleanup	    = iavf_dev_tx_done_cleanup,
+	.get_monitor_addr           = iavf_get_monitor_addr,
 };
 
 static int
