@@ -35,6 +35,25 @@ static int check_handler(const char *key, const char *value,
 	return 0;
 }
 
+/* test parsing. */
+static int test_kvargs_parsing(const char *args, unsigned int n)
+{
+	struct rte_kvargs *kvlist;
+
+	kvlist = rte_kvargs_parse(args, NULL);
+	if (kvlist == NULL) {
+		printf("rte_kvargs_parse() error: %s\n", args);
+		return -1;
+	}
+	if (kvlist->count != n) {
+		printf("invalid count value %d: %s\n", kvlist->count, args);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+	rte_kvargs_free(kvlist);
+	return 0;
+}
+
 /* test a valid case */
 static int test_valid_kvargs(void)
 {
@@ -42,6 +61,19 @@ static int test_valid_kvargs(void)
 	const char *args;
 	const char *valid_keys_list[] = { "foo", "check", NULL };
 	const char **valid_keys;
+	static const struct {
+		unsigned int expected;
+		const char *input;
+	} valid_inputs[] = {
+		{ 2, "foo=1,foo=" },
+		{ 2, "foo=1,foo=" },
+		{ 2, "foo=1,foo" },
+		{ 2, "foo=1,=2" },
+		{ 1, "foo=[1,2" },
+		{ 1, ",=" },
+		{ 1, "foo=[" },
+	};
+	unsigned int i;
 
 	/* empty args is valid */
 	args = "";
@@ -191,6 +223,14 @@ static int test_valid_kvargs(void)
 	}
 	rte_kvargs_free(kvlist);
 
+	valid_keys = NULL;
+
+	for (i = 0; i < RTE_DIM(valid_inputs); ++i) {
+		args = valid_inputs[i].input;
+		if (test_kvargs_parsing(args, valid_inputs[i].expected))
+			goto fail;
+	}
+
 	return 0;
 
  fail:
@@ -212,12 +252,6 @@ static int test_invalid_kvargs(void)
 	/* list of argument that should fail */
 	const char *args_list[] = {
 		"wrong-key=x",     /* key not in valid_keys_list */
-		"foo=1,foo=",      /* empty value */
-		"foo=1,foo",       /* no value */
-		"foo=1,=2",        /* no key */
-		"foo=[1,2",        /* no closing bracket in value */
-		",=",              /* also test with a smiley */
-		"foo=[",           /* no value in list and no closing bracket */
 		NULL };
 	const char **args;
 	const char *valid_keys_list[] = { "foo", "check", NULL };

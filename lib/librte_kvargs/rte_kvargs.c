@@ -5,6 +5,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <rte_string_fns.h>
 
@@ -13,15 +14,19 @@
 /*
  * Receive a string with a list of arguments following the pattern
  * key=value,key=value,... and insert them into the list.
- * strtok() is used so the params string will be copied to be modified.
+ * Params string will be copied to be modified.
+ * list "[]" and list element splitter ",", "-" is treated as value.
+ * Supported examples:
+ *   k1=v1,k2=v2
+ *   k1
+ *   k1=x[0-1]y[1,3-5,9]z
  */
 static int
 rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 {
-	unsigned i;
-	char *str;
-	char *ctx1 = NULL;
-	char *ctx2 = NULL;
+	char *str, *start;
+	bool in_list = false, end_key = false, end_value = false;
+	bool save = false, end_pair = false;
 
 	/* Copy the const char *params to a modifiable string
 	 * to pass to rte_strsplit
@@ -32,36 +37,74 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 
 	/* browse each key/value pair and add it in kvlist */
 	str = kvlist->str;
-	while ((str = strtok_r(str, RTE_KVARGS_PAIRS_DELIM, &ctx1)) != NULL) {
-
-		i = kvlist->count;
-		if (i >= RTE_KVARGS_MAX)
-			return -1;
-
-		kvlist->pairs[i].key = strtok_r(str, RTE_KVARGS_KV_DELIM, &ctx2);
-		kvlist->pairs[i].value = strtok_r(NULL, RTE_KVARGS_KV_DELIM, &ctx2);
-		if (kvlist->pairs[i].key == NULL ||
-		    kvlist->pairs[i].value == NULL)
-			return -1;
-
-		/* Detect list [a,b] to skip comma delimiter in list. */
-		str = kvlist->pairs[i].value;
-		if (str[0] == '[') {
-			/* Find the end of the list. */
-			while (str[strlen(str) - 1] != ']') {
-				/* Restore the comma erased by strtok_r(). */
-				if (ctx1 == NULL || ctx1[0] == '\0')
-					return -1; /* no closing bracket */
-				str[strlen(str)] = ',';
-				/* Parse until next comma. */
-				str = strtok_r(NULL, RTE_KVARGS_PAIRS_DELIM, &ctx1);
-				if (str == NULL)
-					return -1; /* no closing bracket */
+	start = str; /* start of current key or value */
+	while (1) {
+		switch (*str) {
+		case '=': /* End of key. */
+			end_key = true;
+			save = true;
+			break;
+		case ',':
+			/* End of value, skip comma in middle of range */
+			if (!in_list) {
+				if (end_key)
+					end_value = true;
+				else
+					end_key = true;
+				save = true;
+				end_pair = true;
 			}
+			break;
+		case '[': /* Start of list. */
+			in_list = true;
+			break;
+		case ']': /* End of list.  */
+			if (in_list)
+				in_list = false;
+			break;
+		case '\0': /* End of string */
+			if (end_key)
+				end_value = true;
+			else
+				end_key = true;
+			save = true;
+			end_pair = true;
+			break;
+		default:
+			break;
 		}
 
-		kvlist->count++;
-		str = NULL;
+		if (!save) {
+			/* Continue if not end of key or value. */
+			str++;
+			continue;
+		}
+
+		if (kvlist->count >= RTE_KVARGS_MAX)
+			return -1;
+
+		if (end_value)
+			/* Value parsed */
+			kvlist->pairs[kvlist->count].value = start;
+		else if (end_key)
+			/* Key parsed. */
+			kvlist->pairs[kvlist->count].key = start;
+
+		if (end_pair) {
+			if (end_value || str != start)
+				/* Ignore empty pair. */
+				kvlist->count++;
+			end_key = false;
+			end_value = false;
+			end_pair = false;
+		}
+
+		if (*str == '\0') /* End of string. */
+			break;
+		*str = '\0';
+		str++;
+		start = str;
+		save = false;
 	}
 
 	return 0;
