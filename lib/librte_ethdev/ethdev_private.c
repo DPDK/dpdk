@@ -38,82 +38,91 @@ eth_find_device(const struct rte_eth_dev *start, rte_eth_cmp_t cmp,
 	return NULL;
 }
 
-int
-rte_eth_devargs_parse_list(char *str, rte_eth_devargs_callback_t callback,
-	void *data)
+/* Put new value into list. */
+static int
+rte_eth_devargs_enlist(uint16_t *list, uint16_t *len_list,
+		       const uint16_t max_list, uint16_t val)
 {
-	char *str_start;
-	int state;
-	int result;
+	uint16_t i;
 
-	if (*str != '[')
-		/* Single element, not a list */
-		return callback(str, data);
-
-	/* Sanity check, then strip the brackets */
-	str_start = &str[strlen(str) - 1];
-	if (*str_start != ']') {
-		RTE_LOG(ERR, EAL, "(%s): List does not end with ']'\n", str);
-		return -EINVAL;
+	for (i = 0; i < *len_list; i++) {
+		if (list[i] == val)
+			return 0;
 	}
-	str++;
-	*str_start = '\0';
-
-	/* Process list elements */
-	state = 0;
-	while (1) {
-		if (state == 0) {
-			if (*str == '\0')
-				break;
-			if (*str != ',') {
-				str_start = str;
-				state = 1;
-			}
-		} else if (state == 1) {
-			if (*str == ',' || *str == '\0') {
-				if (str > str_start) {
-					/* Non-empty string fragment */
-					*str = '\0';
-					result = callback(str_start, data);
-					if (result < 0)
-						return result;
-				}
-				state = 0;
-			}
-		}
-		str++;
-	}
+	if (*len_list >= max_list)
+		return -1;
+	list[(*len_list)++] = val;
 	return 0;
 }
 
-static int
+/* Parse and enlist a range expression of "min-max" or a single value. */
+static char *
 rte_eth_devargs_process_range(char *str, uint16_t *list, uint16_t *len_list,
 	const uint16_t max_list)
 {
 	uint16_t lo, hi, val;
-	int result;
+	int result, n = 0;
+	char *pos = str;
 
-	result = sscanf(str, "%hu-%hu", &lo, &hi);
+	result = sscanf(str, "%hu%n-%hu%n", &lo, &n, &hi, &n);
 	if (result == 1) {
-		if (*len_list >= max_list)
-			return -ENOMEM;
-		list[(*len_list)++] = lo;
+		if (rte_eth_devargs_enlist(list, len_list, max_list, lo) != 0)
+			return NULL;
 	} else if (result == 2) {
-		if (lo >= hi || lo > RTE_MAX_ETHPORTS || hi > RTE_MAX_ETHPORTS)
-			return -EINVAL;
+		if (lo > hi)
+			return NULL;
 		for (val = lo; val <= hi; val++) {
-			if (*len_list >= max_list)
-				return -ENOMEM;
-			list[(*len_list)++] = val;
+			if (rte_eth_devargs_enlist(list, len_list, max_list,
+						   val) != 0)
+				return NULL;
 		}
 	} else
-		return -EINVAL;
-	return 0;
+		return NULL;
+	return pos + n;
 }
 
 /*
- * representor format:
+ * Parse list of values separated by ",".
+ * Each value could be a range [min-max] or single number.
+ * Examples:
+ *  2               - single
+ *  [1,2,3]         - single list
+ *  [1,3-5,7,9-11]  - list with singles and ranges
+ */
+static char *
+rte_eth_devargs_process_list(char *str, uint16_t *list, uint16_t *len_list,
+	const uint16_t max_list)
+{
+	char *pos = str;
+
+	if (*pos == '[')
+		pos++;
+	while (1) {
+		pos = rte_eth_devargs_process_range(pos, list, len_list,
+						    max_list);
+		if (pos == NULL)
+			return NULL;
+		if (*pos != ',') /* end of list */
+			break;
+		pos++;
+	}
+	if (*str == '[' && *pos != ']')
+		return NULL;
+	if (*pos == ']')
+		pos++;
+	return pos;
+}
+
+/*
+ * Parse representor ports from a single value or lists.
+ *
+ * Representor format:
  *   #: range or single number of VF representor
+ *
+ * Examples of #:
+ *  2               - single
+ *  [1,2,3]         - single list
+ *  [1,3-5,7,9-11]  - list with singles and ranges
  */
 int
 rte_eth_devargs_parse_representor_ports(char *str, void *data)
@@ -121,6 +130,10 @@ rte_eth_devargs_parse_representor_ports(char *str, void *data)
 	struct rte_eth_devargs *eth_da = data;
 
 	eth_da->type = RTE_ETH_REPRESENTOR_VF;
-	return rte_eth_devargs_process_range(str, eth_da->representor_ports,
-		&eth_da->nb_representor_ports, RTE_MAX_ETHPORTS);
+	str = rte_eth_devargs_process_list(str, eth_da->representor_ports,
+		&eth_da->nb_representor_ports,
+		RTE_DIM(eth_da->representor_ports));
+	if (str == NULL)
+		RTE_LOG(ERR, EAL, "wrong representor format: %s\n", str);
+	return str == NULL ? -1 : 0;
 }

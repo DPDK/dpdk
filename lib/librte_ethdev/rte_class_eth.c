@@ -77,9 +77,7 @@ eth_representor_cmp(const char *key __rte_unused,
 	if (values == NULL)
 		return -1;
 	memset(&representors, 0, sizeof(representors));
-	ret = rte_eth_devargs_parse_list(values,
-			rte_eth_devargs_parse_representor_ports,
-			&representors);
+	ret = rte_eth_devargs_parse_representor_ports(values, &representors);
 	free(values);
 	if (ret != 0)
 		return -1; /* invalid devargs value */

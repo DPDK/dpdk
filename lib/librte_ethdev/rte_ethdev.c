@@ -5589,9 +5589,8 @@ rte_eth_devargs_parse(const char *dargs, struct rte_eth_devargs *eth_da)
 	for (i = 0; i < args.count; i++) {
 		pair = &args.pairs[i];
 		if (strcmp("representor", pair->key) == 0) {
-			result = rte_eth_devargs_parse_list(pair->value,
-				rte_eth_devargs_parse_representor_ports,
-				eth_da);
+			result = rte_eth_devargs_parse_representor_ports(
+					pair->value, eth_da);
 			if (result < 0)
 				goto parse_cleanup;
 		}
