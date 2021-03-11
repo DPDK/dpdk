@@ -57,11 +57,13 @@ New Features
 
 * **Enhanced ethdev representor syntax.**
 
-  * Introduced representor type of VF, SF.
+  * Introduced representor type of VF, SF and PF.
   * Supported sub-function in representor syntax::
 
       representor=#            [0,2-4]      /* Legacy VF compatible.         */
-      representor=sf#          sf[0,2-1023] /* 1023 SFs.                     */
+      representor=[pf#]vf#     pf2vf3       /* VF 3 on PF 2.                 */
+      representor=[pf#]sf#     sf[0,2-1023] /* 1023 SFs.                     */
+      representor=pf#          pf[0,1]      /* 2 PFs.                        */
 
 * **Updated Broadcom bnxt driver.**
 

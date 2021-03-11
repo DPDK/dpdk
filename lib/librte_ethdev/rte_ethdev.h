@@ -1513,6 +1513,7 @@ enum rte_eth_representor_type {
 	RTE_ETH_REPRESENTOR_NONE, /**< not a representor. */
 	RTE_ETH_REPRESENTOR_VF,   /**< representor of Virtual Function. */
 	RTE_ETH_REPRESENTOR_SF,   /**< representor of Sub Function. */
+	RTE_ETH_REPRESENTOR_PF,   /**< representor of Physical Function. */
 };
 
 /**
