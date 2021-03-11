@@ -28,7 +28,6 @@ rhead_board_cfg(
 	 */
 	encp->enc_tunnel_encapsulations_supported =
 	    (1u << EFX_TUNNEL_PROTOCOL_VXLAN) |
-	    (1u << EFX_TUNNEL_PROTOCOL_GENEVE) |
 	    (1u << EFX_TUNNEL_PROTOCOL_NVGRE);
 
 	/*
