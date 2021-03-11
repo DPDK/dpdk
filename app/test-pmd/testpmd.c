@@ -2626,8 +2626,10 @@ start_port(portid_t pid)
 		cnt_pi++;
 
 		/* start port */
-		if (rte_eth_dev_start(pi) < 0) {
-			printf("Fail to start port %d\n", pi);
+		diag = rte_eth_dev_start(pi);
+		if (diag < 0) {
+			printf("Fail to start port %d: %s\n", pi,
+			       rte_strerror(-diag));
 
 			/* Fail to setup rx queue, return */
 			if (rte_atomic16_cmpset(&(port->port_status),
