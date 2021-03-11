@@ -1265,6 +1265,38 @@ struct rte_eth_devargs {
 };
 
 /**
+ * PMD helper function to get representor ID from location detail.
+ *
+ * Get representor ID from controller, pf and (sf or vf).
+ * The mapping is retrieved from rte_eth_representor_info_get().
+ *
+ * For backward compatibility, if no representor info, direct
+ * map legacy VF (no controller and pf).
+ *
+ * @param ethdev
+ *  Handle of ethdev port.
+ * @param type
+ *  Representor type.
+ * @param controller
+ *  Controller ID, -1 if unspecified.
+ * @param pf
+ *  PF port ID, -1 if unspecified.
+ * @param representor_port
+ *  VF or SF representor port number, -1 if unspecified.
+ * @param repr_id
+ *  Pointer to output representor ID.
+ *
+ * @return
+ *  Negative errno value on error, 0 on success.
+ */
+__rte_internal
+int
+rte_eth_representor_id_get(const struct rte_eth_dev *ethdev,
+			   enum rte_eth_representor_type type,
+			   int controller, int pf, int representor_port,
+			   uint16_t *repr_id);
+
+/**
  * PMD helper function to parse ethdev arguments
  *
  * @param devargs

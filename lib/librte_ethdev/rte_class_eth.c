@@ -65,9 +65,10 @@ eth_representor_cmp(const char *key __rte_unused,
 {
 	int ret;
 	char *values;
-	const struct rte_eth_dev_data *data = opaque;
-	struct rte_eth_devargs representors;
-	uint16_t index;
+	const struct rte_eth_dev *edev = opaque;
+	const struct rte_eth_dev_data *data = edev->data;
+	struct rte_eth_devargs eth_da;
+	uint16_t id, nc, np, nf, i, c, p, f;
 
 	if ((data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0)
 		return -1; /* not a representor port */
@@ -76,17 +77,36 @@ eth_representor_cmp(const char *key __rte_unused,
 	values = strdup(value);
 	if (values == NULL)
 		return -1;
-	memset(&representors, 0, sizeof(representors));
-	ret = rte_eth_devargs_parse_representor_ports(values, &representors);
+	memset(&eth_da, 0, sizeof(eth_da));
+	ret = rte_eth_devargs_parse_representor_ports(values, &eth_da);
 	free(values);
 	if (ret != 0)
 		return -1; /* invalid devargs value */
 
+	if (eth_da.nb_mh_controllers == 0 && eth_da.nb_ports == 0 &&
+	    eth_da.nb_representor_ports == 0)
+		return -1;
+	nc = eth_da.nb_mh_controllers > 0 ? eth_da.nb_mh_controllers : 1;
+	np = eth_da.nb_ports > 0 ? eth_da.nb_ports : 1;
+	nf = eth_da.nb_representor_ports > 0 ? eth_da.nb_representor_ports : 1;
+
 	/* Return 0 if representor id is matching one of the values. */
-	for (index = 0; index < representors.nb_representor_ports; index++)
-		if (data->representor_id ==
-				representors.representor_ports[index])
+	for (i = 0; i < nc * np * nf; ++i) {
+		c = i / (np * nf);
+		p = (i / nf) % np;
+		f = i % nf;
+		if (rte_eth_representor_id_get(edev,
+			eth_da.type,
+			eth_da.nb_mh_controllers == 0 ? -1 :
+					eth_da.mh_controllers[c],
+			eth_da.nb_ports == 0 ? -1 : eth_da.ports[p],
+			eth_da.nb_representor_ports == 0 ? -1 :
+					eth_da.representor_ports[f],
+			&id) < 0)
+			continue;
+		if (data->representor_id == id)
 			return 0;
+	}
 	return -1; /* no match */
 }
 
@@ -112,7 +132,7 @@ eth_dev_match(const struct rte_eth_dev *edev,
 
 	ret = rte_kvargs_process(kvlist,
 			eth_params_keys[RTE_ETH_PARAM_REPRESENTOR],
-			eth_representor_cmp, edev->data);
+			eth_representor_cmp, (void *)(uintptr_t)edev);
 	if (ret != 0)
 		return -1;
 	/* search for representor key */
