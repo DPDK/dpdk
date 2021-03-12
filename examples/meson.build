@@ -48,6 +48,12 @@ all_examples = [
 	'vmdq', 'vmdq_dcb',
 ]
 
+# on install, skip copying all meson.build files
+ex_file_excludes = ['meson.build']
+foreach ex:all_examples
+	ex_file_excludes += [ex + '/meson.build']
+endforeach
+
 if get_option('examples') == ''
 	subdir_done()
 endif
