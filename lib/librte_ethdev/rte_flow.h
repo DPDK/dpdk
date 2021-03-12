@@ -778,13 +778,23 @@ static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
  * If a @p VLAN item is present in the pattern, then only tagged packets will
  * match the pattern.
  * The field @p has_more_vlan can be used to match any type of tagged packets,
- * instead of using the @p inner_type field.
- * If the @p inner_type and @p has_more_vlan fields are not specified,
+ * instead of using the @p eth_proto field of @p hdr.
+ * If the @p eth_proto of @p hdr and @p has_more_vlan fields are not specified,
  * then any tagged packets will match the pattern.
  */
+RTE_STD_C11
 struct rte_flow_item_vlan {
-	rte_be16_t tci; /**< Tag control information. */
-	rte_be16_t inner_type; /**< Inner EtherType or TPID. */
+	union {
+		struct {
+			/*
+			 * These fields are retained for compatibility.
+			 * Please switch to the new header field below.
+			 */
+			rte_be16_t tci; /**< Tag control information. */
+			rte_be16_t inner_type; /**< Inner EtherType or TPID. */
+		};
+		struct rte_vlan_hdr hdr;
+	};
 	uint32_t has_more_vlan:1;
 	/**< Packet header contains at least one more VLAN, after this VLAN. */
 	uint32_t reserved:31; /**< Reserved, must be zero. */
@@ -793,8 +803,8 @@ struct rte_flow_item_vlan {
 /** Default mask for RTE_FLOW_ITEM_TYPE_VLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vlan rte_flow_item_vlan_mask = {
-	.tci = RTE_BE16(0x0fff),
-	.inner_type = RTE_BE16(0x0000),
+	.hdr.vlan_tci = RTE_BE16(0x0fff),
+	.hdr.eth_proto = RTE_BE16(0x0000),
 };
 #endif
 
