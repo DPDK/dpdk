@@ -61,7 +61,7 @@ subdir('doc')
 subdir('examples')
 install_subdir('examples',
 	install_dir: get_option('datadir') + '/dpdk',
-	exclude_files: 'meson.build')
+	exclude_files: ex_file_excludes)
 
 # build kernel modules if enabled
 if get_option('enable_kmods')
