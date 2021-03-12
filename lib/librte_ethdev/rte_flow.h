@@ -25,6 +25,7 @@
 #include <rte_sctp.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
+#include <rte_vxlan.h>
 #include <rte_byteorder.h>
 #include <rte_esp.h>
 #include <rte_higig.h>
@@ -955,17 +956,27 @@ static const struct rte_flow_item_sctp rte_flow_item_sctp_mask = {
  *
  * Matches a VXLAN header (RFC 7348).
  */
+RTE_STD_C11
 struct rte_flow_item_vxlan {
-	uint8_t flags; /**< Normally 0x08 (I flag). */
-	uint8_t rsvd0[3]; /**< Reserved, normally 0x000000. */
-	uint8_t vni[3]; /**< VXLAN identifier. */
-	uint8_t rsvd1; /**< Reserved, normally 0x00. */
+	union {
+		struct {
+			/*
+			 * These fields are retained for compatibility.
+			 * Please switch to the new header field below.
+			 */
+			uint8_t flags; /**< Normally 0x08 (I flag). */
+			uint8_t rsvd0[3]; /**< Reserved, normally 0x000000. */
+			uint8_t vni[3]; /**< VXLAN identifier. */
+			uint8_t rsvd1; /**< Reserved, normally 0x00. */
+		};
+		struct rte_vxlan_hdr hdr;
+	};
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
-	.vni = "\xff\xff\xff",
+	.hdr.vx_vni = RTE_BE32(__builtin_constant_p(0xffffff << 8)),
 };
 #endif
 
