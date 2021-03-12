@@ -2501,6 +2501,7 @@ sfc_mae_rule_parse_action_port_id(struct sfc_adapter *sa,
 static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
+			  const struct sfc_mae_outer_rule *outer_rule,
 			  struct sfc_mae_actions_bundle *bundle,
 			  efx_mae_actions_t *spec,
 			  struct rte_flow_error *error)
@@ -2509,6 +2510,15 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	int rc = 0;
 
 	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_VXLAN_DECAP,
+				       bundle->actions_mask);
+		if (outer_rule == NULL ||
+		    outer_rule->encap_type != EFX_TUNNEL_PROTOCOL_VXLAN)
+			rc = EINVAL;
+		else
+			rc = efx_mae_action_set_populate_decap(spec);
+		break;
 	case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_OF_POP_VLAN,
 				       bundle->actions_mask);
@@ -2643,8 +2653,8 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		if (rc != 0)
 			goto fail_rule_parse_action;
 
-		rc = sfc_mae_rule_parse_action(sa, action, &bundle, spec,
-					       error);
+		rc = sfc_mae_rule_parse_action(sa, action, spec_mae->outer_rule,
+					       &bundle, spec, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
 	}
