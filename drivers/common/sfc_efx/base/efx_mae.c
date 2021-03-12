@@ -352,6 +352,8 @@ efx_mae_get_limits(
 	emlp->eml_max_n_outer_prios = maep->em_max_n_outer_prios;
 	emlp->eml_max_n_action_prios = maep->em_max_n_action_prios;
 	emlp->eml_encap_types_supported = maep->em_encap_types_supported;
+	emlp->eml_encap_header_size_limit =
+	    MC_CMD_MAE_ENCAP_HEADER_ALLOC_IN_HDR_DATA_MAXNUM_MCDI2;
 
 	return (0);
 
@@ -1687,6 +1689,159 @@ efx_mae_match_spec_outer_rule_id_set(
 	    sizeof (full_mask), (const uint8_t *)&full_mask);
 	if (rc != 0)
 		goto fail3;
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	 __checkReturn			efx_rc_t
+efx_mae_encap_header_alloc(
+	__in				efx_nic_t *enp,
+	__in				efx_tunnel_protocol_t encap_type,
+	__in_bcount(header_size)	uint8_t *header_data,
+	__in				size_t header_size,
+	__out				efx_mae_eh_id_t *eh_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ENCAP_HEADER_ALLOC_IN_LENMAX_MCDI2,
+	    MC_CMD_MAE_ENCAP_HEADER_ALLOC_OUT_LEN);
+	uint32_t encap_type_mcdi;
+	efx_mae_eh_id_t eh_id;
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(sizeof (eh_idp->id) ==
+	    MC_CMD_MAE_ENCAP_HEADER_ALLOC_OUT_ENCAP_HEADER_ID_LEN);
+
+	EFX_STATIC_ASSERT(EFX_MAE_RSRC_ID_INVALID ==
+	    MC_CMD_MAE_ENCAP_HEADER_ALLOC_OUT_ENCAP_HEADER_ID_NULL);
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	switch (encap_type) {
+	case EFX_TUNNEL_PROTOCOL_NONE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_NONE;
+		break;
+	case EFX_TUNNEL_PROTOCOL_VXLAN:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_VXLAN;
+		break;
+	case EFX_TUNNEL_PROTOCOL_GENEVE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_GENEVE;
+		break;
+	case EFX_TUNNEL_PROTOCOL_NVGRE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_NVGRE;
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
+	if (header_size >
+	    MC_CMD_MAE_ENCAP_HEADER_ALLOC_IN_HDR_DATA_MAXNUM_MCDI2) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ENCAP_HEADER_ALLOC;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ENCAP_HEADER_ALLOC_IN_LEN(header_size);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ENCAP_HEADER_ALLOC_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ENCAP_HEADER_ALLOC_IN_ENCAP_TYPE, encap_type_mcdi);
+
+	memcpy(payload + MC_CMD_MAE_ENCAP_HEADER_ALLOC_IN_HDR_DATA_OFST,
+	    header_data, header_size);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail4;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_MAE_ENCAP_HEADER_ALLOC_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail5;
+	}
+
+	eh_id.id = MCDI_OUT_DWORD(req,
+	    MAE_ENCAP_HEADER_ALLOC_OUT_ENCAP_HEADER_ID);
+
+	if (eh_id.id == EFX_MAE_RSRC_ID_INVALID) {
+		rc = ENOENT;
+		goto fail6;
+	}
+
+	eh_idp->id = eh_id.id;
+
+	return (0);
+
+fail6:
+	EFSYS_PROBE(fail6);
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_encap_header_free(
+	__in				efx_nic_t *enp,
+	__in				const efx_mae_eh_id_t *eh_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ENCAP_HEADER_FREE_IN_LEN(1),
+	    MC_CMD_MAE_ENCAP_HEADER_FREE_OUT_LEN(1));
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ENCAP_HEADER_FREE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ENCAP_HEADER_FREE_IN_LEN(1);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ENCAP_HEADER_FREE_OUT_LEN(1);
+
+	MCDI_IN_SET_DWORD(req, MAE_ENCAP_HEADER_FREE_IN_EH_ID, eh_idp->id);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	if (MCDI_OUT_DWORD(req, MAE_ENCAP_HEADER_FREE_OUT_FREED_EH_ID) !=
+	    eh_idp->id) {
+		/* Firmware failed to remove the encap. header. */
+		rc = EAGAIN;
+		goto fail3;
+	}
 
 	return (0);
 
