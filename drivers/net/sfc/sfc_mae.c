@@ -2093,7 +2093,7 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 int
 sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			   const struct rte_flow_action actions[],
-			   struct sfc_mae_action_set **action_setp,
+			   struct sfc_flow_spec_mae *spec_mae,
 			   struct rte_flow_error *error)
 {
 	struct sfc_mae_actions_bundle bundle = {0};
@@ -2127,13 +2127,13 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_rule_parse_action;
 
-	*action_setp = sfc_mae_action_set_attach(sa, spec);
-	if (*action_setp != NULL) {
+	spec_mae->action_set = sfc_mae_action_set_attach(sa, spec);
+	if (spec_mae->action_set != NULL) {
 		efx_mae_action_set_spec_fini(sa->nic, spec);
 		return 0;
 	}
 
-	rc = sfc_mae_action_set_add(sa, spec, action_setp);
+	rc = sfc_mae_action_set_add(sa, spec, &spec_mae->action_set);
 	if (rc != 0)
 		goto fail_action_set_add;
 

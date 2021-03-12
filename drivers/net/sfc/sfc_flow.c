@@ -2440,8 +2440,7 @@ sfc_flow_parse_rte_to_mae(struct rte_eth_dev *dev,
 	if (rc != 0)
 		return rc;
 
-	rc = sfc_mae_rule_parse_actions(sa, actions, &spec_mae->action_set,
-					error);
+	rc = sfc_mae_rule_parse_actions(sa, actions, spec_mae, error);
 	if (rc != 0)
 		return rc;
 
