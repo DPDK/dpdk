@@ -728,22 +728,32 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
  *
  * Matches an Ethernet header.
  *
- * The @p type field either stands for "EtherType" or "TPID" when followed
- * by so-called layer 2.5 pattern items such as RTE_FLOW_ITEM_TYPE_VLAN. In
- * the latter case, @p type refers to that of the outer header, with the
- * inner EtherType/TPID provided by the subsequent pattern item. This is the
- * same order as on the wire.
- * If the @p type field contains a TPID value, then only tagged packets with the
- * specified TPID will match the pattern.
- * The field @p has_vlan can be used to match any type of tagged packets,
- * instead of using the @p type field.
- * If the @p type and @p has_vlan fields are not specified, then both tagged
- * and untagged packets will match the pattern.
+ * Inside @p hdr field, the sub-field @p ether_type stands either for EtherType
+ * or TPID, depending on whether the item is followed by a VLAN item or not. If
+ * two VLAN items follow, the sub-field refers to the outer one, which, in turn,
+ * contains the inner TPID in the similar header field. The innermost VLAN item
+ * contains a layer-3 EtherType. All of that follows the order seen on the wire.
+ *
+ * If the field in question contains a TPID value, only tagged packets with the
+ * specified TPID will match the pattern. Alternatively, it's possible to match
+ * any type of tagged packets by means of the field @p has_vlan rather than use
+ * the EtherType/TPID field. Also, it's possible to leave the two fields unused.
+ * If this is the case, both tagged and untagged packets will match the pattern.
  */
+RTE_STD_C11
 struct rte_flow_item_eth {
-	struct rte_ether_addr dst; /**< Destination MAC. */
-	struct rte_ether_addr src; /**< Source MAC. */
-	rte_be16_t type; /**< EtherType or TPID. */
+	union {
+		struct {
+			/*
+			 * These fields are retained for compatibility.
+			 * Please switch to the new header field below.
+			 */
+			struct rte_ether_addr dst; /**< Destination MAC. */
+			struct rte_ether_addr src; /**< Source MAC. */
+			rte_be16_t type; /**< EtherType or TPID. */
+		};
+		struct rte_ether_hdr hdr;
+	};
 	uint32_t has_vlan:1; /**< Packet header contains at least one VLAN. */
 	uint32_t reserved:31; /**< Reserved, must be zero. */
 };
@@ -751,9 +761,9 @@ struct rte_flow_item_eth {
 /** Default mask for RTE_FLOW_ITEM_TYPE_ETH. */
 #ifndef __cplusplus
 static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
-	.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.type = RTE_BE16(0x0000),
+	.hdr.d_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.s_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.ether_type = RTE_BE16(0x0000),
 };
 #endif
 
