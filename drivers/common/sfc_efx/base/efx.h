@@ -4242,6 +4242,11 @@ efx_mae_action_set_spec_fini(
 
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_decap(
+	__in				efx_mae_actions_t *spec);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_vlan_pop(
 	__in				efx_mae_actions_t *spec);
 

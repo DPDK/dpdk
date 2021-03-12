@@ -1013,6 +1013,37 @@ efx_mae_action_set_spec_fini(
 }
 
 static	__checkReturn			efx_rc_t
+efx_mae_action_set_add_decap(
+	__in				efx_mae_actions_t *spec,
+	__in				size_t arg_size,
+	__in_bcount(arg_size)		const uint8_t *arg)
+{
+	efx_rc_t rc;
+
+	_NOTE(ARGUNUSED(spec))
+
+	if (arg_size != 0) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (arg != NULL) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	/* This action does not have any arguments, so do nothing here. */
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+static	__checkReturn			efx_rc_t
 efx_mae_action_set_add_vlan_pop(
 	__in				efx_mae_actions_t *spec,
 	__in				size_t arg_size,
@@ -1226,6 +1257,9 @@ typedef struct efx_mae_action_desc_s {
 } efx_mae_action_desc_t;
 
 static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
+	[EFX_MAE_ACTION_DECAP] = {
+		.emad_add = efx_mae_action_set_add_decap
+	},
 	[EFX_MAE_ACTION_VLAN_POP] = {
 		.emad_add = efx_mae_action_set_add_vlan_pop
 	},
@@ -1247,6 +1281,7 @@ static const efx_mae_action_desc_t efx_mae_actions[EFX_MAE_NACTIONS] = {
 };
 
 static const uint32_t efx_mae_action_ordered_map =
+	(1U << EFX_MAE_ACTION_DECAP) |
 	(1U << EFX_MAE_ACTION_VLAN_POP) |
 	(1U << EFX_MAE_ACTION_VLAN_PUSH) |
 	(1U << EFX_MAE_ACTION_ENCAP) |
@@ -1340,6 +1375,14 @@ fail2:
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
+}
+
+	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_decap(
+	__in				efx_mae_actions_t *spec)
+{
+	return (efx_mae_action_set_spec_populate(spec,
+	    EFX_MAE_ACTION_DECAP, 0, NULL));
 }
 
 	__checkReturn			efx_rc_t
@@ -2007,6 +2050,11 @@ efx_mae_action_set_alloc(
 	    MAE_ACTION_SET_ALLOC_IN_COUNTER_LIST_ID, EFX_MAE_RSRC_ID_INVALID);
 	MCDI_IN_SET_DWORD(req,
 	    MAE_ACTION_SET_ALLOC_IN_COUNTER_ID, EFX_MAE_RSRC_ID_INVALID);
+
+	if ((spec->ema_actions & (1U << EFX_MAE_ACTION_DECAP)) != 0) {
+		MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
+		    MAE_ACTION_SET_ALLOC_IN_DECAP, 1);
+	}
 
 	MCDI_IN_SET_DWORD_FIELD(req, MAE_ACTION_SET_ALLOC_IN_FLAGS,
 	    MAE_ACTION_SET_ALLOC_IN_VLAN_POP, spec->ema_n_vlan_tags_to_pop);
