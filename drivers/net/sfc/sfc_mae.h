@@ -27,6 +27,7 @@ struct sfc_mae_fw_rsrc {
 	union {
 		efx_mae_aset_id_t	aset_id;
 		efx_mae_rule_id_t	rule_id;
+		efx_mae_eh_id_t		eh_id;
 	};
 };
 
@@ -41,11 +42,24 @@ struct sfc_mae_outer_rule {
 
 TAILQ_HEAD(sfc_mae_outer_rules, sfc_mae_outer_rule);
 
+/** Encap. header registry entry */
+struct sfc_mae_encap_header {
+	TAILQ_ENTRY(sfc_mae_encap_header)	entries;
+	unsigned int				refcnt;
+	uint8_t					*buf;
+	size_t					size;
+	efx_tunnel_protocol_t			type;
+	struct sfc_mae_fw_rsrc			fw_rsrc;
+};
+
+TAILQ_HEAD(sfc_mae_encap_headers, sfc_mae_encap_header);
+
 /** Action set registry entry */
 struct sfc_mae_action_set {
 	TAILQ_ENTRY(sfc_mae_action_set)	entries;
 	unsigned int			refcnt;
 	efx_mae_actions_t		*spec;
+	struct sfc_mae_encap_header	*encap_header;
 	struct sfc_mae_fw_rsrc		fw_rsrc;
 };
 
@@ -56,6 +70,17 @@ enum sfc_mae_status {
 	SFC_MAE_STATUS_UNKNOWN = 0,
 	SFC_MAE_STATUS_UNSUPPORTED,
 	SFC_MAE_STATUS_SUPPORTED
+};
+
+/*
+ * Encap. header bounce buffer. It is used to store header data
+ * when parsing the header definition in the action VXLAN_ENCAP.
+ */
+struct sfc_mae_bounce_eh {
+	uint8_t				*buf;
+	size_t				buf_size;
+	size_t				size;
+	efx_tunnel_protocol_t		type;
 };
 
 struct sfc_mae {
@@ -73,8 +98,12 @@ struct sfc_mae {
 	uint32_t			encap_types_supported;
 	/** Outer rule registry */
 	struct sfc_mae_outer_rules	outer_rules;
+	/** Encap. header registry */
+	struct sfc_mae_encap_headers	encap_headers;
 	/** Action set registry */
 	struct sfc_mae_action_sets	action_sets;
+	/** Encap. header bounce buffer */
+	struct sfc_mae_bounce_eh	bounce_eh;
 };
 
 struct sfc_adapter;
