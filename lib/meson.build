@@ -67,6 +67,7 @@ foreach l:libraries
 	sources = []
 	headers = []
 	indirect_headers = [] # public headers not directly included by apps
+	driver_sdk_headers = [] # public headers included by drivers
 	includes = []
 	cflags = default_cflags
 	objs = [] # other object files to link against, used e.g. for
@@ -105,6 +106,9 @@ foreach l:libraries
 		dpdk_conf.set('RTE_LIB_' + name.to_upper(), 1)
 		install_headers(headers)
 		install_headers(indirect_headers)
+		if get_option('enable_driver_sdk')
+			install_headers(driver_sdk_headers)
+		endif
 		dpdk_chkinc_headers += headers
 
 		libname = 'rte_' + name
