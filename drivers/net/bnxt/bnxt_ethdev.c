@@ -3227,6 +3227,8 @@ bnxt_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 	ns = rte_timespec_to_ns(ts);
 	/* Set the timecounters to a new value. */
 	ptp->tc.nsec = ns;
+	ptp->tx_tstamp_tc.nsec = ns;
+	ptp->rx_tstamp_tc.nsec = ns;
 
 	return 0;
 }
@@ -3373,6 +3375,8 @@ bnxt_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
 		return 0;
 
 	ptp->tc.nsec += delta;
+	ptp->tx_tstamp_tc.nsec += delta;
+	ptp->rx_tstamp_tc.nsec += delta;
 
 	return 0;
 }
