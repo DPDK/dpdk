@@ -72,14 +72,15 @@ add_ipv6(struct rte_flow_item *items,
 	static struct rte_flow_item_ipv6 ipv6_specs[RTE_MAX_LCORE] __rte_cache_aligned;
 	static struct rte_flow_item_ipv6 ipv6_masks[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint8_t ti = para.core_idx;
+	uint8_t i;
 
 	/** Set ipv6 src **/
-	memset(&ipv6_specs[ti].hdr.src_addr, para.src_ip,
-		sizeof(ipv6_specs->hdr.src_addr) / 2);
-
-	/** Full mask **/
-	memset(&ipv6_masks[ti].hdr.src_addr, 0xff,
-		sizeof(ipv6_specs->hdr.src_addr));
+	for (i = 0; i < 16; i++) {
+		/* Currently src_ip is limited to 32 bit */
+		if (i < 4)
+			ipv6_specs[ti].hdr.src_addr[15 - i] = para.src_ip >> (i * 8);
+		ipv6_masks[ti].hdr.src_addr[15 - i] = 0xff;
+	}
 
 	items[items_counter].type = RTE_FLOW_ITEM_TYPE_IPV6;
 	items[items_counter].spec = &ipv6_specs[ti];
