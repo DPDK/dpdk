@@ -1140,6 +1140,7 @@ insert_flows(int port_id, uint8_t core_id)
 	struct rte_flow **flows_list;
 	struct rte_flow_error error;
 	clock_t start_batch, end_batch;
+	double first_flow_latency;
 	double cpu_time_used;
 	double insertion_rate;
 	double cpu_time_per_batch[MAX_BATCHES_COUNT] = { 0 };
@@ -1197,6 +1198,16 @@ insert_flows(int port_id, uint8_t core_id)
 			hairpin_queues_num,
 			encap_data, decap_data,
 			core_id, unique_data, &error);
+
+		if (!counter) {
+			first_flow_latency = (double) (rte_get_timer_cycles() - start_batch);
+			first_flow_latency /= rte_get_timer_hz();
+			/* In millisecond */
+			first_flow_latency *= 1000;
+			printf(":: First Flow Latency :: Port %d :: First flow "
+				"installed in %f milliseconds\n",
+				port_id, first_flow_latency);
+		}
 
 		if (force_quit)
 			counter = end_counter;
