@@ -1056,6 +1056,7 @@ enum {
 	MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE = 0x0 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS = 0x1 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP = 0xc << 1,
+	MLX5_GET_HCA_CAP_OP_MOD_ROCE = 0x4 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE = 0x7 << 1,
 	MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION = 0x13 << 1,
 };
@@ -1089,6 +1090,20 @@ enum {
 	MLX5_INLINE_MODE_INNER_L2,
 	MLX5_INLINE_MODE_INNER_IP,
 	MLX5_INLINE_MODE_INNER_TCP_UDP,
+};
+
+/* The supported timestamp formats reported in HCA attributes. */
+enum {
+	MLX5_HCA_CAP_TIMESTAMP_FORMAT_FR = 0x0,
+	MLX5_HCA_CAP_TIMESTAMP_FORMAT_RT = 0x1,
+	MLX5_HCA_CAP_TIMESTAMP_FORMAT_FR_RT = 0x2,
+};
+
+/* The timestamp format attributes to configure queues (RQ/SQ/QP). */
+enum {
+	MLX5_QPC_TIMESTAMP_FORMAT_FREE_RUNNING = 0x0,
+	MLX5_QPC_TIMESTAMP_FORMAT_DEFAULT      = 0x1,
+	MLX5_QPC_TIMESTAMP_FORMAT_REAL_TIME    = 0x2,
 };
 
 /* HCA bit masks indicating which Flex parser protocols are already enabled. */
@@ -1353,7 +1368,9 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_3f8[0x3];
 	u8 log_max_current_uc_list[0x5];
 	u8 general_obj_types[0x40];
-	u8 reserved_at_440[0x20];
+	u8 sq_ts_format[0x2];
+	u8 rq_ts_format[0x2];
+	u8 reserved_at_444[0x1C];
 	u8 reserved_at_460[0x10];
 	u8 max_num_eqs[0x10];
 	u8 reserved_at_480[0x3];
@@ -1543,6 +1560,12 @@ struct mlx5_ifc_flow_table_prop_layout_bits {
 	u8 reserved_at_c0[0x140];
 };
 
+struct mlx5_ifc_roce_caps_bits {
+	u8 reserved_0[0x1e];
+	u8 qp_ts_format[0x2];
+	u8 reserved_at_20[0x7e0];
+};
+
 struct mlx5_ifc_flow_table_nic_cap_bits {
 	u8	   reserved_at_0[0x200];
 	struct mlx5_ifc_flow_table_prop_layout_bits flow_table_properties;
@@ -1555,6 +1578,7 @@ union mlx5_ifc_hca_cap_union_bits {
 	struct mlx5_ifc_qos_cap_bits qos_cap;
 	struct mlx5_ifc_virtio_emulation_cap_bits vdpa_caps;
 	struct mlx5_ifc_flow_table_nic_cap_bits flow_table_nic_cap;
+	struct mlx5_ifc_roce_caps_bits roce_caps;
 	u8 reserved_at_0[0x8000];
 };
 
@@ -1771,7 +1795,9 @@ struct mlx5_ifc_rqc_bits {
 	u8 reserved_at_c[0x1];
 	u8 flush_in_error_en[0x1];
 	u8 hairpin[0x1];
-	u8 reserved_at_f[0x11];
+	u8 reserved_at_f[0xB];
+	u8 ts_format[0x02];
+	u8 reserved_at_1c[0x4];
 	u8 reserved_at_20[0x8];
 	u8 user_index[0x18];
 	u8 reserved_at_40[0x8];
@@ -2077,7 +2103,9 @@ struct mlx5_ifc_sqc_bits {
 	u8 hairpin[0x1];
 	u8 non_wire[0x1];
 	u8 static_sq_wq[0x1];
-	u8 reserved_at_11[0xf];
+	u8 reserved_at_11[0x9];
+	u8 ts_format[0x02];
+	u8 reserved_at_1c[0x4];
 	u8 reserved_at_20[0x8];
 	u8 user_index[0x18];
 	u8 reserved_at_40[0x8];
@@ -2539,7 +2567,9 @@ struct mlx5_ifc_qpc_bits {
 	u8 log_rq_stride[0x3];
 	u8 no_sq[0x1];
 	u8 log_sq_size[0x4];
-	u8 reserved_at_55[0x6];
+	u8 reserved_at_55[0x3];
+	u8 ts_format[0x2];
+	u8 reserved_at_5a[0x1];
 	u8 rlky[0x1];
 	u8 ulp_stateless_offload_mode[0x4];
 	u8 counter_set_id[0x8];
@@ -3259,6 +3289,23 @@ mlx5_flow_mark_get(uint32_t val)
 #else
 	return val - 1;
 #endif
+}
+
+/**
+ * Convert a timestamp format to configure settings in the queue context.
+ *
+ * @param val
+ *   timestamp format supported by the queue.
+ *
+ * @return
+ *   Converted timstamp format settings.
+ */
+static inline uint32_t
+mlx5_ts_format_conv(uint32_t ts_format)
+{
+	return ts_format == MLX5_HCA_CAP_TIMESTAMP_FORMAT_FR ?
+			MLX5_QPC_TIMESTAMP_FORMAT_FREE_RUNNING :
+			MLX5_QPC_TIMESTAMP_FORMAT_DEFAULT;
 }
 
 #endif /* RTE_PMD_MLX5_PRM_H_ */

@@ -714,6 +714,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				      device_frequency_khz);
 	attr->scatter_fcs_w_decap_disable =
 		MLX5_GET(cmd_hca_cap, hcattr, scatter_fcs_w_decap_disable);
+	attr->roce = MLX5_GET(cmd_hca_cap, hcattr, roce);
+	attr->rq_ts_format = MLX5_GET(cmd_hca_cap, hcattr, rq_ts_format);
+	attr->sq_ts_format = MLX5_GET(cmd_hca_cap, hcattr, sq_ts_format);
 	attr->regex = MLX5_GET(cmd_hca_cap, hcattr, regexp);
 	attr->regexp_num_of_engines = MLX5_GET(cmd_hca_cap, hcattr,
 					       regexp_num_of_engines);
@@ -839,9 +842,32 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->tunnel_stateless_gtp = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, tunnel_stateless_gtp);
-	if (attr->wqe_inline_mode != MLX5_CAP_INLINE_MODE_VPORT_CONTEXT)
-		return 0;
-	if (attr->eth_virt) {
+	/* Query HCA attribute for ROCE. */
+	if (attr->roce) {
+		memset(in, 0, sizeof(in));
+		memset(out, 0, sizeof(out));
+		MLX5_SET(query_hca_cap_in, in, opcode,
+			 MLX5_CMD_OP_QUERY_HCA_CAP);
+		MLX5_SET(query_hca_cap_in, in, op_mod,
+			 MLX5_GET_HCA_CAP_OP_MOD_ROCE |
+			 MLX5_HCA_CAP_OPMOD_GET_CUR);
+		rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in),
+						 out, sizeof(out));
+		if (rc)
+			goto error;
+		status = MLX5_GET(query_hca_cap_out, out, status);
+		syndrome = MLX5_GET(query_hca_cap_out, out, syndrome);
+		if (status) {
+			DRV_LOG(DEBUG,
+				"Failed to query devx HCA ROCE capabilities, "
+				"status %x, syndrome = %x", status, syndrome);
+			return -1;
+		}
+		hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
+		attr->qp_ts_format = MLX5_GET(roce_caps, hcattr, qp_ts_format);
+	}
+	if (attr->eth_virt &&
+	    attr->wqe_inline_mode == MLX5_CAP_INLINE_MODE_VPORT_CONTEXT) {
 		rc = mlx5_devx_cmd_query_nic_vport_context(ctx, 0, attr);
 		if (rc) {
 			attr->eth_virt = 0;
@@ -982,6 +1008,7 @@ mlx5_devx_cmd_create_rq(void *ctx,
 	MLX5_SET(rqc, rq_ctx, cqn, rq_attr->cqn);
 	MLX5_SET(rqc, rq_ctx, counter_set_id, rq_attr->counter_set_id);
 	MLX5_SET(rqc, rq_ctx, rmpn, rq_attr->rmpn);
+	MLX5_SET(sqc, rq_ctx, ts_format, rq_attr->ts_format);
 	wq_ctx = MLX5_ADDR_OF(rqc, rq_ctx, wq);
 	wq_attr = &rq_attr->wq_attr;
 	devx_cmd_fill_wq_data(wq_ctx, wq_attr);
@@ -1354,6 +1381,7 @@ mlx5_devx_cmd_create_sq(void *ctx,
 		 sq_attr->packet_pacing_rate_limit_index);
 	MLX5_SET(sqc, sq_ctx, tis_lst_sz, sq_attr->tis_lst_sz);
 	MLX5_SET(sqc, sq_ctx, tis_num_0, sq_attr->tis_num);
+	MLX5_SET(sqc, sq_ctx, ts_format, sq_attr->ts_format);
 	wq_ctx = MLX5_ADDR_OF(sqc, sq_ctx, wq);
 	wq_attr = &sq_attr->wq_attr;
 	devx_cmd_fill_wq_data(wq_ctx, wq_attr);
@@ -1800,6 +1828,7 @@ mlx5_devx_cmd_create_qp(void *ctx,
 	MLX5_SET(create_qp_in, in, opcode, MLX5_CMD_OP_CREATE_QP);
 	MLX5_SET(qpc, qpc, st, MLX5_QP_ST_RC);
 	MLX5_SET(qpc, qpc, pd, attr->pd);
+	MLX5_SET(qpc, qpc, ts_format, attr->ts_format);
 	if (attr->uar_index) {
 		MLX5_SET(qpc, qpc, pm_state, MLX5_QP_PM_MIGRATED);
 		MLX5_SET(qpc, qpc, uar_page, attr->uar_index);
