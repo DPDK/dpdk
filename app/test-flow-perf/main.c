@@ -105,8 +105,8 @@ struct used_cpu_time {
 struct multi_cores_pool {
 	uint32_t cores_count;
 	uint32_t rules_count;
-	struct used_cpu_time create_meter;
-	struct used_cpu_time create_flow;
+	struct used_cpu_time meters_record;
+	struct used_cpu_time flows_record;
 	int64_t last_alloc[RTE_MAX_LCORE];
 	int64_t current_alloc[RTE_MAX_LCORE];
 } __rte_cache_aligned;
@@ -1010,10 +1010,10 @@ meters_handler(int port_id, uint8_t core_id, uint8_t ops)
 		cpu_time_used, insertion_rate);
 
 	if (ops == METER_CREATE)
-		mc_pool.create_meter.insertion[port_id][core_id]
+		mc_pool.meters_record.insertion[port_id][core_id]
 			= cpu_time_used;
 	else
-		mc_pool.create_meter.deletion[port_id][core_id]
+		mc_pool.meters_record.deletion[port_id][core_id]
 			= cpu_time_used;
 }
 
@@ -1131,7 +1131,7 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 	printf(":: Port %d :: Core %d :: The time for deleting %d rules is %f seconds\n",
 		port_id, core_id, rules_count_per_core, cpu_time_used);
 
-	mc_pool.create_flow.deletion[port_id][core_id] = cpu_time_used;
+	mc_pool.flows_record.deletion[port_id][core_id] = cpu_time_used;
 }
 
 static struct rte_flow **
@@ -1238,7 +1238,7 @@ insert_flows(int port_id, uint8_t core_id)
 	printf(":: Port %d :: Core %d :: The time for creating %d in rules %f seconds\n",
 		port_id, core_id, rules_count_per_core, cpu_time_used);
 
-	mc_pool.create_flow.insertion[port_id][core_id] = cpu_time_used;
+	mc_pool.flows_record.insertion[port_id][core_id] = cpu_time_used;
 	return flows_list;
 }
 
@@ -1436,9 +1436,9 @@ run_rte_flow_handler_cores(void *data __rte_unused)
 	RTE_ETH_FOREACH_DEV(port) {
 		if (has_meter())
 			dump_used_cpu_time("Meters:",
-				port, &mc_pool.create_meter);
+				port, &mc_pool.meters_record);
 		dump_used_cpu_time("Flows:",
-			port, &mc_pool.create_flow);
+			port, &mc_pool.flows_record);
 		dump_used_mem(port);
 	}
 
