@@ -70,6 +70,7 @@ struct mlx5_regex_priv {
 	struct ibv_pd *pd;
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	uint8_t is_bf2; /* The device is BF2 device. */
+	uint8_t sq_ts_format; /* Whether SQ supports timestamp formats. */
 };
 
 /* mlx5_regex.c */

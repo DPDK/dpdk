@@ -158,6 +158,7 @@ regex_ctrl_create_sq(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 		.wq_attr = (struct mlx5_devx_wq_attr){
 			.uar_page = priv->uar->page_id,
 		},
+		.ts_format = mlx5_ts_format_conv(priv->sq_ts_format),
 	};
 	struct mlx5_devx_modify_sq_attr modify_attr = {
 		.state = MLX5_SQC_STATE_RDY,
