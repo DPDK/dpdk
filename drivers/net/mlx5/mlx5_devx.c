@@ -996,8 +996,8 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
 			.uar_page =
 				 mlx5_os_get_devx_uar_page_id(priv->sh->tx_uar),
 		},
+		.ts_format = mlx5_ts_format_conv(priv->sh->sq_ts_format),
 	};
-
 	/* Create Send Queue object with DevX. */
 	return mlx5_devx_sq_create(priv->sh->ctx, &txq_obj->sq_obj, log_desc_n,
 				   &sq_attr, priv->sh->numa_node);

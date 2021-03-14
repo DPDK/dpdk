@@ -497,6 +497,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 						 (NS_PER_S / MS_PER_S))
 				config->rt_timestamp = 1;
 		}
+		sh->rq_ts_format = config->hca_attr.rq_ts_format;
+		sh->sq_ts_format = config->hca_attr.sq_ts_format;
+		sh->qp_ts_format = config->hca_attr.qp_ts_format;
 	}
 	if (config->mprq.enabled) {
 		DRV_LOG(WARNING, "Multi-Packet RQ isn't supported");
