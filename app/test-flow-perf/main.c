@@ -1434,6 +1434,9 @@ run_rte_flow_handler_cores(void *data __rte_unused)
 	rte_eal_mp_wait_lcore();
 
 	RTE_ETH_FOREACH_DEV(port) {
+		/* If port outside portmask */
+		if (!((ports_mask >> port) & 0x1))
+			continue;
 		if (has_meter())
 			dump_used_cpu_time("Meters:",
 				port, &mc_pool.meters_record);
