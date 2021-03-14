@@ -735,6 +735,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->caps = attr.vdpa;
 	priv->log_max_rqt_size = attr.log_max_rqt_size;
 	priv->num_lag_ports = attr.num_lag_ports;
+	priv->qp_ts_format = attr.qp_ts_format;
 	if (attr.num_lag_ports == 0)
 		priv->num_lag_ports = 1;
 	priv->ctx = ctx;
