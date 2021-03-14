@@ -693,7 +693,7 @@ args_parse(int argc, char **argv)
 					for (i = 0; i < RTE_DIM(flow_options); i++) {
 						if (strcmp(flow_options[i].str, token) == 0) {
 							printf("%s,", token);
-							encap_data |= flow_options[i].mask;
+							decap_data |= flow_options[i].mask;
 							break;
 						}
 						/* Reached last item with no match */
