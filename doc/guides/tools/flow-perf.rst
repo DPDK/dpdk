@@ -100,6 +100,11 @@ The command line options are:
 	Set the number of needed cores to insert/delete rte_flow rules.
 	Default cores count is 1.
 
+*       ``--unique-data``
+        Flag to set using unique data for all actions that support data,
+        Such as header modify and encap actions. Default is using fixed
+        data for any action that support data for all flows.
+
 Attributes:
 
 *	``--ingress``

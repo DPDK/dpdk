@@ -30,6 +30,7 @@ struct additional_para {
 	uint64_t encap_data;
 	uint64_t decap_data;
 	uint8_t core_idx;
+	bool unique_data;
 };
 
 /* Storage for struct rte_flow_action_raw_encap including external data. */
@@ -202,14 +203,14 @@ add_count(struct rte_flow_action *actions,
 static void
 add_set_src_mac(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_mac set_macs[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t mac = para.counter;
 	uint16_t i;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		mac = 1;
 
 	/* Mac address to be set is random each time */
@@ -225,14 +226,14 @@ add_set_src_mac(struct rte_flow_action *actions,
 static void
 add_set_dst_mac(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_mac set_macs[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t mac = para.counter;
 	uint16_t i;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		mac = 1;
 
 	/* Mac address to be set is random each time */
@@ -248,13 +249,13 @@ add_set_dst_mac(struct rte_flow_action *actions,
 static void
 add_set_src_ipv4(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_ipv4 set_ipv4[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t ip = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ip = 1;
 
 	/* IPv4 value to be set is random each time */
@@ -267,13 +268,13 @@ add_set_src_ipv4(struct rte_flow_action *actions,
 static void
 add_set_dst_ipv4(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_ipv4 set_ipv4[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t ip = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ip = 1;
 
 	/* IPv4 value to be set is random each time */
@@ -286,14 +287,14 @@ add_set_dst_ipv4(struct rte_flow_action *actions,
 static void
 add_set_src_ipv6(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_ipv6 set_ipv6[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t ipv6 = para.counter;
 	uint8_t i;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ipv6 = 1;
 
 	/* IPv6 value to set is random each time */
@@ -309,14 +310,14 @@ add_set_src_ipv6(struct rte_flow_action *actions,
 static void
 add_set_dst_ipv6(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_ipv6 set_ipv6[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t ipv6 = para.counter;
 	uint8_t i;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ipv6 = 1;
 
 	/* IPv6 value to set is random each time */
@@ -332,13 +333,13 @@ add_set_dst_ipv6(struct rte_flow_action *actions,
 static void
 add_set_src_tp(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_tp set_tp[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t tp = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		tp = 100;
 
 	/* TP src port is random each time */
@@ -353,13 +354,13 @@ add_set_src_tp(struct rte_flow_action *actions,
 static void
 add_set_dst_tp(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_tp set_tp[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t tp = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		tp = 100;
 
 	/* TP src port is random each time */
@@ -375,13 +376,13 @@ add_set_dst_tp(struct rte_flow_action *actions,
 static void
 add_inc_tcp_ack(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static rte_be32_t value[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t ack_value = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ack_value = 1;
 
 	value[para.core_idx] = RTE_BE32(ack_value);
@@ -393,13 +394,13 @@ add_inc_tcp_ack(struct rte_flow_action *actions,
 static void
 add_dec_tcp_ack(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static rte_be32_t value[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t ack_value = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ack_value = 1;
 
 	value[para.core_idx] = RTE_BE32(ack_value);
@@ -411,13 +412,13 @@ add_dec_tcp_ack(struct rte_flow_action *actions,
 static void
 add_inc_tcp_seq(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static rte_be32_t value[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t seq_value = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		seq_value = 1;
 
 	value[para.core_idx] = RTE_BE32(seq_value);
@@ -429,13 +430,13 @@ add_inc_tcp_seq(struct rte_flow_action *actions,
 static void
 add_dec_tcp_seq(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static rte_be32_t value[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t seq_value = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		seq_value = 1;
 
 	value[para.core_idx] = RTE_BE32(seq_value);
@@ -447,13 +448,13 @@ add_dec_tcp_seq(struct rte_flow_action *actions,
 static void
 add_set_ttl(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_ttl set_ttl[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t ttl_value = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ttl_value = 1;
 
 	/* Set ttl to random value each time */
@@ -476,13 +477,13 @@ add_dec_ttl(struct rte_flow_action *actions,
 static void
 add_set_ipv4_dscp(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_dscp set_dscp[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t dscp_value = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		dscp_value = 1;
 
 	/* Set dscp to random value each time */
@@ -497,13 +498,13 @@ add_set_ipv4_dscp(struct rte_flow_action *actions,
 static void
 add_set_ipv6_dscp(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_set_dscp set_dscp[RTE_MAX_LCORE] __rte_cache_aligned;
 	uint32_t dscp_value = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		dscp_value = 1;
 
 	/* Set dscp to random value each time */
@@ -577,7 +578,7 @@ add_ipv4_header(uint8_t **header, uint64_t data,
 		return;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ip_dst = 1;
 
 	memset(&ipv4_hdr, 0, sizeof(struct rte_ipv4_hdr));
@@ -643,7 +644,7 @@ add_vxlan_header(uint8_t **header, uint64_t data,
 		return;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		vni_value = 1;
 
 	memset(&vxlan_hdr, 0, sizeof(struct rte_vxlan_hdr));
@@ -666,7 +667,7 @@ add_vxlan_gpe_header(uint8_t **header, uint64_t data,
 		return;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		vni_value = 1;
 
 	memset(&vxlan_gpe_hdr, 0, sizeof(struct rte_vxlan_gpe_hdr));
@@ -707,7 +708,7 @@ add_geneve_header(uint8_t **header, uint64_t data,
 		return;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		vni_value = 1;
 
 	memset(&geneve_hdr, 0, sizeof(struct rte_geneve_hdr));
@@ -730,7 +731,7 @@ add_gtp_header(uint8_t **header, uint64_t data,
 		return;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		teid_value = 1;
 
 	memset(&gtp_hdr, 0, sizeof(struct rte_flow_item_gtp));
@@ -849,7 +850,7 @@ add_vxlan_encap(struct rte_flow_action *actions,
 	uint32_t ip_dst = para.counter;
 
 	/* Fixed value */
-	if (FIXED_VALUES)
+	if (!para.unique_data)
 		ip_dst = 1;
 
 	items[0].spec = &item_eth;
@@ -907,7 +908,8 @@ add_meter(struct rte_flow_action *actions,
 void
 fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	uint32_t counter, uint16_t next_table, uint16_t hairpinq,
-	uint64_t encap_data, uint64_t decap_data, uint8_t core_idx)
+	uint64_t encap_data, uint64_t decap_data, uint8_t core_idx,
+	bool unique_data)
 {
 	struct additional_para additional_para_data;
 	uint8_t actions_counter = 0;
@@ -930,6 +932,7 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 		.encap_data = encap_data,
 		.decap_data = decap_data,
 		.core_idx = core_idx,
+		.unique_data = unique_data,
 	};
 
 	if (hairpinq != 0) {

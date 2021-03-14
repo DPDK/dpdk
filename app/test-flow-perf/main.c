@@ -61,6 +61,7 @@ static bool dump_iterations;
 static bool delete_flag;
 static bool dump_socket_mem_flag;
 static bool enable_fwd;
+static bool unique_data;
 
 static struct rte_mempool *mbuf_mp;
 static uint32_t nb_lcores;
@@ -131,6 +132,8 @@ usage(char *progname)
 	printf("  --enable-fwd: To enable packets forwarding"
 		" after insertion\n");
 	printf("  --portmask=N: hexadecimal bitmask of ports used\n");
+	printf("  --unique-data: flag to set using unique data for all"
+		" actions that support data, such as header modify and encap actions\n");
 
 	printf("To set flow attributes:\n");
 	printf("  --ingress: set ingress attribute in flows\n");
@@ -567,6 +570,7 @@ args_parse(int argc, char **argv)
 		{ "deletion-rate",              0, 0, 0 },
 		{ "dump-socket-mem",            0, 0, 0 },
 		{ "enable-fwd",                 0, 0, 0 },
+		{ "unique-data",                0, 0, 0 },
 		{ "portmask",                   1, 0, 0 },
 		{ "cores",                      1, 0, 0 },
 		/* Attributes */
@@ -762,6 +766,9 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name,
 					"dump-iterations") == 0)
 				dump_iterations = true;
+			if (strcmp(lgopts[opt_idx].name,
+					"unique-data") == 0)
+				unique_data = true;
 			if (strcmp(lgopts[opt_idx].name,
 					"deletion-rate") == 0)
 				delete_flag = true;
@@ -1173,7 +1180,7 @@ insert_flows(int port_id, uint8_t core_id)
 		 */
 		flow = generate_flow(port_id, 0, flow_attrs,
 			global_items, global_actions,
-			flow_group, 0, 0, 0, 0, core_id, &error);
+			flow_group, 0, 0, 0, 0, core_id, unique_data, &error);
 
 		if (flow == NULL) {
 			print_flow_error(error);
@@ -1189,7 +1196,7 @@ insert_flows(int port_id, uint8_t core_id)
 			JUMP_ACTION_TABLE, counter,
 			hairpin_queues_num,
 			encap_data, decap_data,
-			core_id, &error);
+			core_id, unique_data, &error);
 
 		if (force_quit)
 			counter = end_counter;
@@ -1860,6 +1867,7 @@ main(int argc, char **argv)
 	delete_flag = false;
 	dump_socket_mem_flag = false;
 	flow_group = DEFAULT_GROUP;
+	unique_data = false;
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
@@ -1874,7 +1882,6 @@ main(int argc, char **argv)
 	nb_lcores = rte_lcore_count();
 	if (nb_lcores <= 1)
 		rte_exit(EXIT_FAILURE, "This app needs at least two cores\n");
-
 
 	printf(":: Flows Count per port: %d\n\n", rules_count);
 

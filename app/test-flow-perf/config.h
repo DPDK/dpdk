@@ -5,7 +5,7 @@
 #define FLOW_ITEM_MASK(_x) (UINT64_C(1) << _x)
 #define FLOW_ACTION_MASK(_x) (UINT64_C(1) << _x)
 #define FLOW_ATTR_MASK(_x) (UINT64_C(1) << _x)
-#define GET_RSS_HF() (ETH_RSS_IP | ETH_RSS_TCP)
+#define GET_RSS_HF() (ETH_RSS_IP)
 
 /* Configuration */
 #define RXQ_NUM 4
@@ -18,12 +18,6 @@
 #define MAX_PORTS 64
 #define METER_CIR 1250000
 #define DEFAULT_METER_PROF_ID 100
-
-/* This is used for encap/decap & header modify actions.
- * When it's 1: it means all actions have fixed values.
- * When it's 0: it means all actions will have different values.
- */
-#define FIXED_VALUES 1
 
 /* Items/Actions parameters */
 #define JUMP_ACTION_TABLE 2
