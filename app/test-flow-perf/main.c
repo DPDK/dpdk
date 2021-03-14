@@ -966,7 +966,7 @@ meters_handler(int port_id, uint8_t core_id, uint8_t ops)
 	end_counter = (core_id + 1) * rules_count_per_core;
 
 	cpu_time_used = 0;
-	start_batch = rte_rdtsc();
+	start_batch = rte_get_timer_cycles();
 	for (counter = start_counter; counter < end_counter; counter++) {
 		if (ops == METER_CREATE)
 			create_meter_rule(port_id, counter);
@@ -981,10 +981,10 @@ meters_handler(int port_id, uint8_t core_id, uint8_t ops)
 		if (!((counter + 1) % rules_batch)) {
 			rules_batch_idx = ((counter + 1) / rules_batch) - 1;
 			cpu_time_per_batch[rules_batch_idx] =
-				((double)(rte_rdtsc() - start_batch))
-				/ rte_get_tsc_hz();
+				((double)(rte_get_timer_cycles() - start_batch))
+				/ rte_get_timer_hz();
 			cpu_time_used += cpu_time_per_batch[rules_batch_idx];
-			start_batch = rte_rdtsc();
+			start_batch = rte_get_timer_cycles();
 		}
 	}
 
@@ -1086,7 +1086,7 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 	if (flow_group > 0 && core_id == 0)
 		rules_count_per_core++;
 
-	start_batch = rte_rdtsc();
+	start_batch = rte_get_timer_cycles();
 	for (i = 0; i < (uint32_t) rules_count_per_core; i++) {
 		if (flows_list[i] == 0)
 			break;
@@ -1104,12 +1104,12 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 		 * for this batch.
 		 */
 		if (!((i + 1) % rules_batch)) {
-			end_batch = rte_rdtsc();
+			end_batch = rte_get_timer_cycles();
 			delta = (double) (end_batch - start_batch);
 			rules_batch_idx = ((i + 1) / rules_batch) - 1;
-			cpu_time_per_batch[rules_batch_idx] = delta / rte_get_tsc_hz();
+			cpu_time_per_batch[rules_batch_idx] = delta / rte_get_timer_hz();
 			cpu_time_used += cpu_time_per_batch[rules_batch_idx];
-			start_batch = rte_rdtsc();
+			start_batch = rte_get_timer_cycles();
 		}
 	}
 
@@ -1182,7 +1182,7 @@ insert_flows(int port_id, uint8_t core_id)
 		flows_list[flow_index++] = flow;
 	}
 
-	start_batch = rte_rdtsc();
+	start_batch = rte_get_timer_cycles();
 	for (counter = start_counter; counter < end_counter; counter++) {
 		flow = generate_flow(port_id, flow_group,
 			flow_attrs, flow_items, flow_actions,
@@ -1208,12 +1208,12 @@ insert_flows(int port_id, uint8_t core_id)
 		 * for this batch.
 		 */
 		if (!((counter + 1) % rules_batch)) {
-			end_batch = rte_rdtsc();
+			end_batch = rte_get_timer_cycles();
 			delta = (double) (end_batch - start_batch);
 			rules_batch_idx = ((counter + 1) / rules_batch) - 1;
-			cpu_time_per_batch[rules_batch_idx] = delta / rte_get_tsc_hz();
+			cpu_time_per_batch[rules_batch_idx] = delta / rte_get_timer_hz();
 			cpu_time_used += cpu_time_per_batch[rules_batch_idx];
-			start_batch = rte_rdtsc();
+			start_batch = rte_get_timer_cycles();
 		}
 	}
 
