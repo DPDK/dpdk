@@ -242,7 +242,7 @@ int
 rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 {
 	va_list ap;
-	size_t len;
+	int len;
 	char *dev;
 	int ret;
 
@@ -252,15 +252,18 @@ rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 	va_start(ap, format);
 	len = vsnprintf(NULL, 0, format, ap);
 	va_end(ap);
+	if (len < 0)
+		return -EINVAL;
 
-	dev = calloc(1, len + 1);
+	len += 1;
+	dev = calloc(1, (size_t)len);
 	if (dev == NULL) {
 		RTE_LOG(ERR, EAL, "not enough memory to parse device\n");
 		return -ENOMEM;
 	}
 
 	va_start(ap, format);
-	vsnprintf(dev, len + 1, format, ap);
+	vsnprintf(dev, (size_t)len, format, ap);
 	va_end(ap);
 
 	ret = rte_devargs_parse(da, dev);
