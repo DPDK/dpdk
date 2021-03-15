@@ -58,6 +58,9 @@ struct port_info {
 	 */
 	u8 vin;
 	u8 vivld;
+
+	u8 vi_en_rx; /* Enable/disable VI Rx */
+	u8 vi_en_tx; /* Enable/disable VI Tx */
 };
 
 enum {                                 /* adapter flags */
@@ -792,6 +795,7 @@ void t4_free_mem(void *addr);
 #define t4_os_free(_ptr)       t4_free_mem((_ptr))
 
 void t4_os_portmod_changed(const struct adapter *adap, int port_id);
+void t4_os_link_changed(struct adapter *adap, int port_id);
 
 void reclaim_completed_tx(struct sge_txq *q);
 void t4_free_sge_resources(struct adapter *adap);

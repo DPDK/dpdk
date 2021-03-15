@@ -4595,6 +4595,7 @@ static void t4_handle_get_port_info(struct port_info *pi, const __be64 *rpl)
 		lc->link_ok = link_ok;
 		lc->acaps = acaps;
 		lc->link_caps = link_caps;
+		t4_os_link_changed(adapter, pi->pidx);
 	}
 
 	if (mod_changed) {

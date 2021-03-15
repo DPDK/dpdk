@@ -1496,6 +1496,10 @@ static int adap_init0(struct adapter *adap)
 	else
 		adap->params.max_tx_coalesce_num = ETH_COALESCE_PKT_NUM;
 
+	params[0] = CXGBE_FW_PARAM_DEV(VI_ENABLE_INGRESS_AFTER_LINKUP);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1, params, val);
+	adap->params.vi_enable_rx = (ret == 0 && val[0] != 0);
+
 	/*
 	 * The MTU/MSS Table is initialized by now, so load their values.  If
 	 * we're initializing the adapter, then we'll make any modifications
@@ -1594,6 +1598,33 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 			 pi->port_id, pi->link_cfg.mod_type);
 }
 
+void t4_os_link_changed(struct adapter *adap, int port_id)
+{
+	struct port_info *pi = adap2pinfo(adap, port_id);
+
+	/* If link status has not changed or if firmware doesn't
+	 * support enabling/disabling VI's Rx path during runtime,
+	 * then return.
+	 */
+	if (adap->params.vi_enable_rx == 0 ||
+	    pi->vi_en_rx == pi->link_cfg.link_ok)
+		return;
+
+	/* Don't enable VI Rx path, if link has been administratively
+	 * turned off.
+	 */
+	if (pi->vi_en_tx == 0 && pi->vi_en_rx == 0)
+		return;
+
+	/* When link goes down, disable the port's Rx path to drop
+	 * Rx traffic closer to the wire, instead of processing it
+	 * further in the Rx pipeline. The Rx path will be re-enabled
+	 * once the link up message comes in firmware event queue.
+	 */
+	pi->vi_en_rx = pi->link_cfg.link_ok;
+	t4_enable_vi(adap, adap->mbox, pi->viid, pi->vi_en_rx, pi->vi_en_tx);
+}
+
 bool cxgbe_force_linkup(struct adapter *adap)
 {
 	if (is_pf4(adap))
@@ -1638,15 +1669,14 @@ int cxgbe_link_start(struct port_info *pi)
 	if (ret == 0 && is_pf4(adapter))
 		ret = t4_link_l1cfg(pi, pi->link_cfg.admin_caps);
 	if (ret == 0) {
-		/*
-		 * Enabling a Virtual Interface can result in an interrupt
-		 * during the processing of the VI Enable command and, in some
-		 * paths, result in an attempt to issue another command in the
-		 * interrupt context.  Thus, we disable interrupts during the
-		 * course of the VI Enable command ...
+		/* Disable VI Rx until link up message is received in
+		 * firmware event queue, if firmware supports enabling/
+		 * disabling VI Rx at runtime.
 		 */
+		pi->vi_en_rx = adapter->params.vi_enable_rx ? 0 : 1;
+		pi->vi_en_tx = 1;
 		ret = t4_enable_vi_params(adapter, adapter->mbox, pi->viid,
-					  true, true, false);
+					  pi->vi_en_rx, pi->vi_en_tx, false);
 	}
 
 	if (ret == 0 && cxgbe_force_linkup(adapter))
@@ -1923,7 +1953,13 @@ int cxgbe_set_link_status(struct port_info *pi, bool status)
 	struct adapter *adapter = pi->adapter;
 	int err = 0;
 
-	err = t4_enable_vi(adapter, adapter->mbox, pi->viid, status, status);
+	/* Wait for link up message from firmware to enable Rx path,
+	 * if firmware supports enabling/disabling VI Rx at runtime.
+	 */
+	pi->vi_en_rx = adapter->params.vi_enable_rx ? 0 : status;
+	pi->vi_en_tx = status;
+	err = t4_enable_vi(adapter, adapter->mbox, pi->viid, pi->vi_en_rx,
+			   pi->vi_en_tx);
 	if (err) {
 		dev_err(adapter, "%s: disable_vi failed: %d\n", __func__, err);
 		return err;
