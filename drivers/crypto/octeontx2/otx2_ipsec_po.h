@@ -203,7 +203,6 @@ struct otx2_ipsec_po_out_sa {
 
 	/* w8-w55 */
 	union {
-		uint8_t raw[384];
 		struct {
 			struct otx2_ipsec_po_ip_template template;
 		} aes_gcm;
