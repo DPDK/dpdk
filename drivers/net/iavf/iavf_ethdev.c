@@ -1250,8 +1250,17 @@ iavf_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
-	if (rss_conf->rss_hf == 0)
+	if (rss_conf->rss_hf == 0) {
+		vf->rss_hf = 0;
+		ret = iavf_set_hena(adapter, 0);
+
+		/* It is a workaround, temporarily allow error to be returned
+		 * due to possible lack of PF handling for hena = 0.
+		 */
+		if (ret)
+			PMD_DRV_LOG(WARNING, "fail to clean existing RSS, lack PF support");
 		return 0;
+	}
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF) {
 		/* Clear existing RSS. */
