@@ -10,7 +10,7 @@
 
 extern int mlx5_common_logtype;
 
-#define MLX5_COMMON_LOG_PREFIX "common_mlx5"
+#define MLX5_COMMON_LOG_PREFIX "mlx5_common"
 /* Generic printf()-like logging macro with automatic line feed. */
 #define DRV_LOG(level, ...) \
 	PMD_DRV_LOG_(level, mlx5_common_logtype, MLX5_COMMON_LOG_PREFIX, \

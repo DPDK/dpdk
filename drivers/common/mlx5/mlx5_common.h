@@ -65,10 +65,6 @@ pmd_drv_log_basename(const char *s)
 			RTE_FMT_HEAD(__VA_ARGS__,), \
 		RTE_FMT_TAIL(__VA_ARGS__,)))
 
-/*
- * When debugging is enabled (MLX5_DEBUG not defined), file, line and function
- * information replace the driver name (MLX5_DRIVER_NAME) in log messages.
- */
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 
 #define PMD_DRV_LOG__(level, type, name, ...) \

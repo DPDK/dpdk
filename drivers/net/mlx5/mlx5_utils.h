@@ -29,9 +29,11 @@
 
 extern int mlx5_logtype;
 
+#define MLX5_NET_LOG_PREFIX "mlx5_net"
+
 /* Generic printf()-like logging macro with automatic line feed. */
 #define DRV_LOG(level, ...) \
-	PMD_DRV_LOG_(level, mlx5_logtype, MLX5_DRIVER_NAME, \
+	PMD_DRV_LOG_(level, mlx5_logtype, MLX5_NET_LOG_PREFIX, \
 		__VA_ARGS__ PMD_DRV_LOG_STRIP PMD_DRV_LOG_OPAREN, \
 		PMD_DRV_LOG_CPAREN)
 
