@@ -2116,7 +2116,7 @@ mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev)
 		    (dev->device == &pci_dev->device ||
 		     (dev->device->driver &&
 		     dev->device->driver->name &&
-		     !strcmp(dev->device->driver->name, MLX5_DRIVER_NAME))))
+		     !strcmp(dev->device->driver->name, MLX5_PCI_DRIVER_NAME))))
 			break;
 		port_id++;
 	}
@@ -2237,7 +2237,7 @@ static struct mlx5_pci_driver mlx5_driver = {
 	.driver_class = MLX5_CLASS_NET,
 	.pci_driver = {
 		.driver = {
-			.name = MLX5_DRIVER_NAME,
+			.name = MLX5_PCI_DRIVER_NAME,
 		},
 		.id_table = mlx5_pci_id_map,
 		.probe = mlx5_os_pci_probe,

@@ -415,7 +415,7 @@ static struct rte_pci_id *mlx5_pci_id_table;
 
 static struct rte_pci_driver mlx5_pci_driver = {
 	.driver = {
-		.name = MLX5_DRIVER_NAME,
+		.name = MLX5_PCI_DRIVER_NAME,
 	},
 	.probe = mlx5_common_pci_probe,
 	.remove = mlx5_common_pci_remove,
