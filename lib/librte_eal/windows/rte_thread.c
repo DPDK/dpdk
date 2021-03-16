@@ -12,7 +12,7 @@ struct eal_tls_key {
 };
 
 int
-rte_thread_tls_key_create(rte_tls_key *key,
+rte_thread_key_create(rte_thread_key *key,
 		__rte_unused void (*destructor)(void *))
 {
 	*key = malloc(sizeof(**key));
@@ -32,7 +32,7 @@ rte_thread_tls_key_create(rte_tls_key *key,
 }
 
 int
-rte_thread_tls_key_delete(rte_tls_key key)
+rte_thread_key_delete(rte_thread_key key)
 {
 	if (!key) {
 		RTE_LOG(DEBUG, EAL, "Invalid TLS key.\n");
@@ -50,7 +50,7 @@ rte_thread_tls_key_delete(rte_tls_key key)
 }
 
 int
-rte_thread_tls_value_set(rte_tls_key key, const void *value)
+rte_thread_value_set(rte_thread_key key, const void *value)
 {
 	char *p;
 
@@ -70,7 +70,7 @@ rte_thread_tls_value_set(rte_tls_key key, const void *value)
 }
 
 void *
-rte_thread_tls_value_get(rte_tls_key key)
+rte_thread_value_get(rte_thread_key key)
 {
 	void *output;
 

@@ -130,6 +130,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: The experimental TLS API added in ``rte_thread.h`` has been renamed
+  from ``rte_thread_tls_*`` to ``rte_thread_*`` to avoid naming redundancy
+  and confusion with the transport layer security term.
+
 
 ABI Changes
 -----------

@@ -252,7 +252,7 @@ struct mlx5_workspace_thread {
  */
 static struct mlx5_workspace_thread *curr;
 static struct mlx5_workspace_thread *first;
-rte_tls_key ws_tls_index;
+rte_thread_key ws_tls_index;
 static pthread_mutex_t lock_thread_list;
 
 static bool
@@ -329,7 +329,7 @@ mlx5_flow_os_release_workspace(void)
 		flow_release_workspace(first->mlx5_ws);
 		free(first);
 	}
-	rte_thread_tls_key_delete(ws_tls_index);
+	rte_thread_key_delete(ws_tls_index);
 	pthread_mutex_destroy(&lock_thread_list);
 }
 
@@ -368,7 +368,7 @@ mlx5_add_workspace_to_list(struct mlx5_flow_workspace *data)
 int
 mlx5_flow_os_init_workspace_once(void)
 {
-	int err = rte_thread_tls_key_create(&ws_tls_index, NULL);
+	int err = rte_thread_key_create(&ws_tls_index, NULL);
 
 	if (err) {
 		DRV_LOG(ERR, "Can't create flow workspace data thread key.");
@@ -381,7 +381,7 @@ mlx5_flow_os_init_workspace_once(void)
 void *
 mlx5_flow_os_get_specific_workspace(void)
 {
-	return rte_thread_tls_value_get(ws_tls_index);
+	return rte_thread_value_get(ws_tls_index);
 }
 
 int
@@ -391,7 +391,7 @@ mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data)
 	int old_err = rte_errno;
 
 	rte_errno = 0;
-	if (!rte_thread_tls_value_get(ws_tls_index)) {
+	if (!rte_thread_value_get(ws_tls_index)) {
 		if (rte_errno) {
 			DRV_LOG(ERR, "Failed checking specific workspace.");
 			rte_errno = old_err;
@@ -409,7 +409,7 @@ mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data)
 			return -1;
 		}
 	}
-	if (rte_thread_tls_value_set(ws_tls_index, data)) {
+	if (rte_thread_value_set(ws_tls_index, data)) {
 		DRV_LOG(ERR, "Failed setting specific workspace.");
 		err = -1;
 	}
