@@ -111,7 +111,7 @@ clb_umwait(uint16_t port_id, uint16_t qidx, struct rte_mbuf **pkts __rte_unused,
 				ret = rte_eth_get_monitor_addr(port_id, qidx,
 						&pmc);
 				if (ret == 0)
-					rte_power_monitor(&pmc, -1ULL);
+					rte_power_monitor(&pmc, UINT64_MAX);
 			}
 			q_conf->umwait_in_progress = false;
 
