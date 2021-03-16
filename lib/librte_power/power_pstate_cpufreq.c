@@ -154,29 +154,49 @@ out:	close(fd);
 static int
 power_init_for_setting_freq(struct pstate_power_info *pi)
 {
-	FILE *f_min, *f_max, *f_base;
+	FILE *f_min, *f_max, *f_base = NULL, *f_base_max;
 	char fullpath_min[PATH_MAX];
 	char fullpath_max[PATH_MAX];
 	char fullpath_base[PATH_MAX];
+	char fullpath_base_max[PATH_MAX];
 	char buf_base[BUFSIZ];
 	char *s_base;
+	char *s_base_max;
 	uint32_t base_ratio = 0;
+	uint32_t base_max_ratio = 0;
 	uint64_t max_non_turbo = 0;
 	int  ret_val = 0;
 
+	snprintf(fullpath_base_max,
+			sizeof(fullpath_base_max),
+			POWER_SYSFILE_BASE_MAX_FREQ,
+			pi->lcore_id);
+	f_base_max = fopen(fullpath_base_max, "r");
+	FOPEN_OR_ERR_RET(f_base_max, -1);
+	if (f_base_max != NULL) {
+		s_base_max = fgets(buf_base, sizeof(buf_base), f_base_max);
+		FOPS_OR_NULL_GOTO(s_base_max, out);
+
+		buf_base[BUFSIZ-1] = '\0';
+		if (strlen(buf_base))
+			/* Strip off terminating '\n' */
+			strtok(buf_base, "\n");
+
+		base_max_ratio =
+			strtoul(buf_base, NULL, POWER_CONVERT_TO_DECIMAL)
+				/ BUS_FREQ;
+	}
+
 	snprintf(fullpath_min, sizeof(fullpath_min), POWER_SYSFILE_MIN_FREQ,
 			pi->lcore_id);
-
 	f_min = fopen(fullpath_min, "rw+");
 	FOPEN_OR_ERR_RET(f_min, -1);
 
 	snprintf(fullpath_max, sizeof(fullpath_max), POWER_SYSFILE_MAX_FREQ,
 			pi->lcore_id);
-
 	f_max = fopen(fullpath_max, "rw+");
 	if (f_max == NULL)
 		fclose(f_min);
-
 	FOPEN_OR_ERR_RET(f_max, -1);
 
 	pi->f_cur_min = f_min;
@@ -186,6 +206,7 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 			pi->lcore_id);
 
 	f_base = fopen(fullpath_base, "r");
+	FOPEN_OR_ERR_RET(f_base, -1);
 	if (f_base == NULL) {
 		/* No sysfs base_frequency, that's OK, continue without */
 		base_ratio = 0;
@@ -214,6 +235,17 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 	POWER_DEBUG_TRACE("no turbo perf %"PRIu64"\n", max_non_turbo);
 
 	pi->non_turbo_max_ratio = max_non_turbo;
+
+	/*
+	 * If base_frequency is reported as greater than the maximum
+	 * turbo frequency, that's a known issue with some kernels.
+	 * Set base_frequency to max_non_turbo as a workaround.
+	 */
+	if (base_ratio > base_max_ratio) {
+		/* base_ratio is greater than max turbo. Kernel bug. */
+		pi->priority_core = 0;
+		goto out;
+	}
 
 	/*
 	 * If base_frequency is reported as greater than the maximum
