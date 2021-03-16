@@ -1256,6 +1256,105 @@ error:
 		fclose(file_default);
 }
 
+static const char cmd_pipeline_regrd_help[] =
+"pipeline <pipeline_name> regrd <register_array_name> <index>\n";
+
+static void
+cmd_pipeline_regrd(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	const char *name;
+	uint64_t value;
+	uint32_t idx;
+	int status;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "regrd")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "regrd");
+		return;
+	}
+
+	name = tokens[3];
+
+	if (parser_read_uint32(&idx, tokens[4])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_regarray_read(p->p, name, idx, &value);
+	if (status) {
+		snprintf(out, out_size, "Command failed.\n");
+		return;
+	}
+
+	snprintf(out, out_size, "0x%" PRIx64 "\n", value);
+}
+
+static const char cmd_pipeline_regwr_help[] =
+"pipeline <pipeline_name> regwr <register_array_name> <index> <value>\n";
+
+static void
+cmd_pipeline_regwr(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	const char *name;
+	uint64_t value;
+	uint32_t idx;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "regwr")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "regwr");
+		return;
+	}
+
+	name = tokens[3];
+
+	if (parser_read_uint32(&idx, tokens[4])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index");
+		return;
+	}
+
+	if (parser_read_uint64(&value, tokens[5])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "value");
+		return;
+	}
+
+	status = rte_swx_ctl_pipeline_regarray_write(p->p, name, idx, value);
+	if (status) {
+		snprintf(out, out_size, "Command failed.\n");
+		return;
+	}
+}
+
 static const char cmd_pipeline_stats_help[] =
 "pipeline <pipeline_name> stats\n";
 
@@ -1450,6 +1549,8 @@ cmd_help(char **tokens,
 			"\tpipeline port out\n"
 			"\tpipeline build\n"
 			"\tpipeline table update\n"
+			"\tpipeline regrd\n"
+			"\tpipeline regwr\n"
 			"\tpipeline stats\n"
 			"\tthread pipeline enable\n"
 			"\tthread pipeline disable\n\n");
@@ -1509,6 +1610,18 @@ cmd_help(char **tokens,
 		(strcmp(tokens[2], "update") == 0)) {
 		snprintf(out, out_size, "\n%s\n",
 			cmd_pipeline_table_update_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 2) && (strcmp(tokens[1], "regrd") == 0)) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_regrd_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(n_tokens == 2) && (strcmp(tokens[1], "regwr") == 0)) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_regwr_help);
 		return;
 	}
 
@@ -1621,6 +1734,18 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 			(strcmp(tokens[2], "table") == 0)) {
 			cmd_pipeline_table_update(tokens, n_tokens, out,
 				out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 3) &&
+			(strcmp(tokens[2], "regrd") == 0)) {
+			cmd_pipeline_regrd(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 3) &&
+			(strcmp(tokens[2], "regwr") == 0)) {
+			cmd_pipeline_regwr(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
 

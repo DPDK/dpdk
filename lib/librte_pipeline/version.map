@@ -102,4 +102,10 @@ EXPERIMENTAL {
 	rte_swx_pipeline_table_state_get;
 	rte_swx_pipeline_table_state_set;
 	rte_swx_pipeline_table_type_register;
+
+	#added in 21.05
+	rte_swx_ctl_pipeline_regarray_read;
+	rte_swx_ctl_pipeline_regarray_write;
+	rte_swx_ctl_regarray_info_get;
+	rte_swx_pipeline_regarray_config;
 };

@@ -617,6 +617,30 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 			      uint32_t size);
 
 /**
+ * Pipeline register array configure
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Register array name.
+ * @param[in] size
+ *   Number of registers in the array. Each register is 64-bit in size.
+ * @param[in] init_val
+ *   Initial value for every register in the array. The recommended value is 0.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Register array with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_regarray_config(struct rte_swx_pipeline *p,
+				 const char *name,
+				 uint32_t size,
+				 uint64_t init_val);
+
+/**
  * Pipeline instructions configure
  *
  * @param[in] p

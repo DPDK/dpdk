@@ -46,6 +46,9 @@ struct rte_swx_ctl_pipeline_info {
 
 	/** Number of tables. */
 	uint32_t n_tables;
+
+	/** Number of register arrays. */
+	uint32_t n_regarrays;
 };
 
 /**
@@ -556,6 +559,82 @@ int
 rte_swx_ctl_pipeline_table_fprintf(FILE *f,
 				   struct rte_swx_ctl_pipeline *ctl,
 				   const char *table_name);
+
+/*
+ * Register Array Query API.
+ */
+
+/** Register array info. */
+struct rte_swx_ctl_regarray_info {
+	/** Register array name. */
+	char name[RTE_SWX_CTL_NAME_SIZE];
+
+	/** Register array size. */
+	uint32_t size;
+};
+
+/**
+ * Register array info get
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] regarray_id
+ *   Register array ID (0 .. *n_regarrays* - 1).
+ * @param[out] regarray
+ *   Register array info.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_regarray_info_get(struct rte_swx_pipeline *p,
+			      uint32_t regarray_id,
+			      struct rte_swx_ctl_regarray_info *regarray);
+
+/**
+ * Register read
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] regarray_name
+ *   Register array name.
+ * @param[in] regarray_index
+ *   Register index within the array (0 .. *size* - 1).
+ * @param[out] value
+ *   Current register value.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_regarray_read(struct rte_swx_pipeline *p,
+				   const char *regarray_name,
+				   uint32_t regarray_index,
+				   uint64_t *value);
+
+/**
+ * Register write
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] regarray_name
+ *   Register array name.
+ * @param[in] regarray_index
+ *   Register index within the array (0 .. *size* - 1).
+ * @param[in] value
+ *   Value to be written to the register.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_regarray_write(struct rte_swx_pipeline *p,
+				   const char *regarray_name,
+				   uint32_t regarray_index,
+				   uint64_t value);
 
 /**
  * Pipeline control free
