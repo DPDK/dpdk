@@ -498,6 +498,13 @@ rhead_virtio_get_doorbell_offset(
 	__in				efx_virtio_vq_t *evvp,
 	__out				uint32_t *offsetp);
 
+LIBEFX_INTERNAL
+extern	__checkReturn			efx_rc_t
+rhead_virtio_get_features(
+	__in				efx_nic_t *enp,
+	__in				efx_virtio_device_type_t type,
+	__out				uint64_t *featuresp);
+
 #endif /* EFSYS_OPT_VIRTIO */
 
 #ifdef	__cplusplus

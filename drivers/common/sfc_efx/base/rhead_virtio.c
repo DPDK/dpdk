@@ -280,4 +280,56 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	efx_rc_t
+rhead_virtio_get_features(
+	__in		efx_nic_t *enp,
+	__in		efx_virtio_device_type_t type,
+	__out		uint64_t *featuresp)
+{
+	efx_mcdi_req_t req;
+	uint32_t features_lo;
+	uint32_t features_hi;
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_VIRTIO_GET_FEATURES_IN_LEN,
+		MC_CMD_VIRTIO_GET_FEATURES_OUT_LEN);
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(EFX_VIRTIO_DEVICE_TYPE_NET ==
+		MC_CMD_VIRTIO_GET_FEATURES_IN_NET);
+	EFX_STATIC_ASSERT(EFX_VIRTIO_DEVICE_TYPE_BLOCK ==
+		MC_CMD_VIRTIO_GET_FEATURES_IN_BLOCK);
+
+	req.emr_cmd = MC_CMD_VIRTIO_GET_FEATURES;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_VIRTIO_GET_FEATURES_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_VIRTIO_GET_FEATURES_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, VIRTIO_GET_FEATURES_IN_DEVICE_ID, type);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_VIRTIO_GET_FEATURES_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	features_lo = MCDI_OUT_DWORD(req, VIRTIO_GET_FEATURES_OUT_FEATURES_LO);
+	features_hi = MCDI_OUT_DWORD(req, VIRTIO_GET_FEATURES_OUT_FEATURES_HI);
+	*featuresp = ((uint64_t)features_hi << 32) | features_lo;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 #endif	/* EFSYS_OPT_RIVERHEAD && EFSYS_OPT_VIRTIO */

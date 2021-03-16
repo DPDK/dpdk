@@ -318,6 +318,8 @@ typedef struct efx_virtio_ops_s {
 				efx_virtio_vq_dyncfg_t *);
 	efx_rc_t	(*evo_get_doorbell_offset)(efx_virtio_vq_t *,
 				uint32_t *);
+	efx_rc_t	(*evo_get_features)(efx_nic_t *,
+				efx_virtio_device_type_t, uint64_t *);
 } efx_virtio_ops_t;
 #endif /* EFSYS_OPT_VIRTIO */
 
