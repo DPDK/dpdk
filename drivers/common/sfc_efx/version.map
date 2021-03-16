@@ -221,6 +221,8 @@ INTERNAL {
 	efx_txq_nbufs;
 	efx_txq_size;
 
+	sfc_efx_dev_class_get;
+
 	sfc_efx_mcdi_init;
 	sfc_efx_mcdi_fini;
 
