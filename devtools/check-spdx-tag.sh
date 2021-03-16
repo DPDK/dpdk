@@ -25,8 +25,8 @@ check_spdx() {
 	':^*/Kbuild' ':^*/README' \
 	':^license/' ':^config/' ':^buildtools/' \
 	':^*.cocci' ':^*.abignore' \
-	':^*.map' ':^*.ini' ':^*.data' ':^*.cfg' ':^*.txt' \
-	':^*.svg' ':^*.png'\
+	':^*.map' ':^*.ini' ':^*.data' ':^*.json' ':^*.cfg' ':^*.txt' \
+	':^*.svg' ':^*.png' \
 	> $tmpfile
 
     errors=$(wc -l < $tmpfile)
