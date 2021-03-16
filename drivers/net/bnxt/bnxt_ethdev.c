@@ -3377,6 +3377,7 @@ static int bnxt_get_tx_ts(struct bnxt *bp, uint64_t *ts)
 				ptp->tx_mapped_regs[BNXT_PTP_TX_TS_L]));
 	*ts |= (uint64_t)rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
 				ptp->tx_mapped_regs[BNXT_PTP_TX_TS_H])) << 32;
+	rte_read32((uint8_t *)bp->bar0 + ptp->tx_mapped_regs[BNXT_PTP_TX_SEQ]);
 
 	return 0;
 }
