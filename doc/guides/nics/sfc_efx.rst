@@ -357,6 +357,14 @@ allow option like "-a 02:00.0,arg1=value1,...".
 Case-insensitive 1/y/yes/on or 0/n/no/off may be used to specify
 boolean parameters value.
 
+- ``class`` [net|vdpa] (default **net**)
+
+  Choose the mode of operation of ef100 device.
+  **net** device will work as network device and will be probed by net/sfc driver.
+  **vdpa** device will work as vdpa device and will be probed by vdpa/sfc driver.
+  If this parameter is not specified then ef100 device will operate as
+  network device.
+
 - ``rx_datapath`` [auto|efx|ef10|ef10_essb] (default **auto**)
 
   Choose receive datapath implementation.

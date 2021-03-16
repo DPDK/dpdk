@@ -22,6 +22,7 @@
 #include "efx.h"
 
 #include "sfc_efx_mcdi.h"
+#include "sfc_efx.h"
 
 #include "sfc_debug.h"
 #include "sfc_log.h"

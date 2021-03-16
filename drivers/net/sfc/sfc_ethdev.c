@@ -2161,6 +2161,13 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	const struct rte_ether_addr *from;
 	int ret;
 
+	if (sfc_efx_dev_class_get(pci_dev->device.devargs) !=
+			SFC_EFX_DEV_CLASS_NET) {
+		SFC_GENERIC_LOG(DEBUG,
+			"Incompatible device class: skip probing, should be probed by other sfc driver.");
+		return 1;
+	}
+
 	sfc_register_dp();
 
 	logtype_main = sfc_register_logtype(&pci_dev->addr,
