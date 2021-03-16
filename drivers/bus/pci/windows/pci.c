@@ -35,7 +35,7 @@ rte_pci_map_device(struct rte_pci_device *dev)
 	 * Devices that are bound to netuio are mapped at
 	 * the bus probing stage.
 	 */
-	if (dev->kdrv == RTE_PCI_KDRV_NIC_UIO)
+	if (dev->kdrv == RTE_PCI_KDRV_NET_UIO)
 		return 0;
 	else
 		return -1;
@@ -204,14 +204,14 @@ get_device_resource_info(HDEVINFO dev_info,
 	int ret;
 
 	switch (dev->kdrv) {
-	case RTE_PCI_KDRV_NONE:
-		/* mem_resource - Unneeded for RTE_PCI_KDRV_NONE */
+	case RTE_PCI_KDRV_UNKNOWN:
+		/* bifurcated driver case - mem_resource is unneeded */
 		dev->mem_resource[0].phys_addr = 0;
 		dev->mem_resource[0].len = 0;
 		dev->mem_resource[0].addr = NULL;
 		break;
-	case RTE_PCI_KDRV_NIC_UIO:
-		/* get device info from netuio kernel driver */
+	case RTE_PCI_KDRV_NET_UIO:
+		/* get device info from NetUIO kernel driver */
 		ret = get_netuio_device_info(dev_info, dev_info_data, dev);
 		if (ret != 0) {
 			RTE_LOG(DEBUG, EAL,
@@ -302,9 +302,9 @@ set_kernel_driver_type(PSP_DEVINFO_DATA device_info_data,
 {
 	/* set kernel driver type based on device class */
 	if (IsEqualGUID(&(device_info_data->ClassGuid), &GUID_DEVCLASS_NETUIO))
-		dev->kdrv = RTE_PCI_KDRV_NIC_UIO;
+		dev->kdrv = RTE_PCI_KDRV_NET_UIO;
 	else
-		dev->kdrv = RTE_PCI_KDRV_NONE;
+		dev->kdrv = RTE_PCI_KDRV_UNKNOWN;
 }
 
 static int

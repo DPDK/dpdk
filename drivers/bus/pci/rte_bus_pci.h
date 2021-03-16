@@ -52,12 +52,13 @@ TAILQ_HEAD(rte_pci_driver_list, rte_pci_driver);
 struct rte_devargs;
 
 enum rte_pci_kernel_driver {
-	RTE_PCI_KDRV_UNKNOWN = 0,
-	RTE_PCI_KDRV_IGB_UIO,
-	RTE_PCI_KDRV_VFIO,
-	RTE_PCI_KDRV_UIO_GENERIC,
-	RTE_PCI_KDRV_NIC_UIO,
-	RTE_PCI_KDRV_NONE,
+	RTE_PCI_KDRV_UNKNOWN = 0,  /* may be misc UIO or bifurcated driver */
+	RTE_PCI_KDRV_IGB_UIO,      /* igb_uio for Linux */
+	RTE_PCI_KDRV_VFIO,         /* VFIO for Linux */
+	RTE_PCI_KDRV_UIO_GENERIC,  /* uio_pci_generic for Linux */
+	RTE_PCI_KDRV_NIC_UIO,      /* nic_uio for FreeBSD */
+	RTE_PCI_KDRV_NONE,         /* no attached driver */
+	RTE_PCI_KDRV_NET_UIO,      /* NetUIO for Windows */
 };
 
 /**
