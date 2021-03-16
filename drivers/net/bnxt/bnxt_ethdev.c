@@ -3656,13 +3656,19 @@ static void bnxt_write_fw_reset_reg(struct bnxt *bp, uint32_t index)
 	uint32_t val = info->reset_reg_val[index];
 	uint32_t reg = info->reset_reg[index];
 	uint32_t type, offset;
+	int ret;
 
 	type = BNXT_FW_STATUS_REG_TYPE(reg);
 	offset = BNXT_FW_STATUS_REG_OFF(reg);
 
 	switch (type) {
 	case BNXT_FW_STATUS_REG_TYPE_CFG:
-		rte_pci_write_config(bp->pdev, &val, sizeof(val), offset);
+		ret = rte_pci_write_config(bp->pdev, &val, sizeof(val), offset);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to write %#x at PCI offset %#x",
+				    val, offset);
+			return;
+		}
 		break;
 	case BNXT_FW_STATUS_REG_TYPE_GRC:
 		offset = bnxt_map_reset_regs(bp, offset);
