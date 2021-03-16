@@ -435,6 +435,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 	int queue_type = virtio_get_queue_type(hw, queue_idx);
 	int ret;
 	int numa_node = dev->device->numa_node;
+	struct rte_mbuf *fake_mbuf = NULL;
 
 	PMD_INIT_LOG(INFO, "setting up queue: %u on NUMA node %d",
 			queue_idx, numa_node);
@@ -550,10 +551,19 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 			goto free_hdr_mz;
 		}
 
+		fake_mbuf = rte_zmalloc_socket("sw_ring", sizeof(*fake_mbuf),
+				RTE_CACHE_LINE_SIZE, numa_node);
+		if (!fake_mbuf) {
+			PMD_INIT_LOG(ERR, "can not allocate fake mbuf");
+			ret = -ENOMEM;
+			goto free_sw_ring;
+		}
+
 		vq->sw_ring = sw_ring;
 		rxvq = &vq->rxq;
 		rxvq->port_id = dev->data->port_id;
 		rxvq->mz = mz;
+		rxvq->fake_mbuf = fake_mbuf;
 	} else if (queue_type == VTNET_TQ) {
 		txvq = &vq->txq;
 		txvq->port_id = dev->data->port_id;
@@ -612,6 +622,8 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 clean_vq:
 	hw->cvq = NULL;
+	rte_free(fake_mbuf);
+free_sw_ring:
 	rte_free(sw_ring);
 free_hdr_mz:
 	rte_memzone_free(hdr_mz);
@@ -641,6 +653,7 @@ virtio_free_queues(struct virtio_hw *hw)
 
 		queue_type = virtio_get_queue_type(hw, i);
 		if (queue_type == VTNET_RQ) {
+			rte_free(vq->rxq.fake_mbuf);
 			rte_free(vq->sw_ring);
 			rte_memzone_free(vq->rxq.mz);
 		} else if (queue_type == VTNET_TQ) {
