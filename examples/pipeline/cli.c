@@ -1355,6 +1355,398 @@ cmd_pipeline_regwr(char **tokens,
 	}
 }
 
+static const char cmd_pipeline_meter_profile_add_help[] =
+"pipeline <pipeline_name> meter profile <profile_name> add "
+	"cir <cir> pir <pir> cbs <cbs> pbs <pbs>\n";
+
+static void
+cmd_pipeline_meter_profile_add(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct rte_meter_trtcm_params params;
+	struct pipeline *p;
+	const char *profile_name;
+	int status;
+
+	if (n_tokens != 14) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "meter")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	if (strcmp(tokens[3], "profile")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	profile_name = tokens[4];
+
+	if (strcmp(tokens[5], "add")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "add");
+		return;
+	}
+
+	if (strcmp(tokens[6], "cir")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cir");
+		return;
+	}
+
+	if (parser_read_uint64(&params.cir, tokens[7])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "cir");
+		return;
+	}
+
+	if (strcmp(tokens[8], "pir")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pir");
+		return;
+	}
+
+	if (parser_read_uint64(&params.pir, tokens[9])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pir");
+		return;
+	}
+
+	if (strcmp(tokens[10], "cbs")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cbs");
+		return;
+	}
+
+	if (parser_read_uint64(&params.cbs, tokens[11])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "cbs");
+		return;
+	}
+
+	if (strcmp(tokens[12], "pbs")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pbs");
+		return;
+	}
+
+	if (parser_read_uint64(&params.pbs, tokens[13])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pbs");
+		return;
+	}
+
+	status = rte_swx_ctl_meter_profile_add(p->p, profile_name, &params);
+	if (status) {
+		snprintf(out, out_size, "Command failed.\n");
+		return;
+	}
+}
+
+static const char cmd_pipeline_meter_profile_delete_help[] =
+"pipeline <pipeline_name> meter profile <profile_name> delete\n";
+
+static void
+cmd_pipeline_meter_profile_delete(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	const char *profile_name;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "meter")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	if (strcmp(tokens[3], "profile")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	profile_name = tokens[4];
+
+	if (strcmp(tokens[5], "delete")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "delete");
+		return;
+	}
+
+	status = rte_swx_ctl_meter_profile_delete(p->p, profile_name);
+	if (status) {
+		snprintf(out, out_size, "Command failed.\n");
+		return;
+	}
+}
+
+static const char cmd_pipeline_meter_reset_help[] =
+"pipeline <pipeline_name> meter <meter_array_name> from <index0> to <index1> "
+	"reset\n";
+
+static void
+cmd_pipeline_meter_reset(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	const char *name;
+	uint32_t idx0, idx1;
+
+	if (n_tokens != 9) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "meter")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	name = tokens[3];
+
+	if (strcmp(tokens[4], "from")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "from");
+		return;
+	}
+
+	if (parser_read_uint32(&idx0, tokens[5])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index0");
+		return;
+	}
+
+	if (strcmp(tokens[6], "to")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "to");
+		return;
+	}
+
+	if (parser_read_uint32(&idx1, tokens[7]) || (idx1 < idx0)) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index1");
+		return;
+	}
+
+	if (strcmp(tokens[8], "reset")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "reset");
+		return;
+	}
+
+	for ( ; idx0 <= idx1; idx0++) {
+		int status;
+
+		status = rte_swx_ctl_meter_reset(p->p, name, idx0);
+		if (status) {
+			snprintf(out, out_size, "Command failed for index %u.\n", idx0);
+			return;
+		}
+	}
+}
+
+static const char cmd_pipeline_meter_set_help[] =
+"pipeline <pipeline_name> meter <meter_array_name> from <index0> to <index1> "
+	"set profile <profile_name>\n";
+
+static void
+cmd_pipeline_meter_set(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct pipeline *p;
+	const char *name, *profile_name;
+	uint32_t idx0, idx1;
+
+	if (n_tokens != 11) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "meter")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	name = tokens[3];
+
+	if (strcmp(tokens[4], "from")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "from");
+		return;
+	}
+
+	if (parser_read_uint32(&idx0, tokens[5])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index0");
+		return;
+	}
+
+	if (strcmp(tokens[6], "to")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "to");
+		return;
+	}
+
+	if (parser_read_uint32(&idx1, tokens[7]) || (idx1 < idx0)) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index1");
+		return;
+	}
+
+	if (strcmp(tokens[8], "set")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "set");
+		return;
+	}
+
+	if (strcmp(tokens[9], "profile")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	profile_name = tokens[10];
+
+	for ( ; idx0 <= idx1; idx0++) {
+		int status;
+
+		status = rte_swx_ctl_meter_set(p->p, name, idx0, profile_name);
+		if (status) {
+			snprintf(out, out_size, "Command failed for index %u.\n", idx0);
+			return;
+		}
+	}
+}
+
+static const char cmd_pipeline_meter_stats_help[] =
+"pipeline <pipeline_name> meter <meter_array_name> from <index0> to <index1> "
+	"stats\n";
+
+static void
+cmd_pipeline_meter_stats(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct rte_swx_ctl_meter_stats stats;
+	struct pipeline *p;
+	const char *name;
+	uint32_t idx0, idx1;
+
+	if (n_tokens != 9) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	p = pipeline_find(obj, tokens[1]);
+	if (!p || !p->ctl) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipeline_name");
+		return;
+	}
+
+	if (strcmp(tokens[2], "meter")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	name = tokens[3];
+
+	if (strcmp(tokens[4], "from")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "from");
+		return;
+	}
+
+	if (parser_read_uint32(&idx0, tokens[5])) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index0");
+		return;
+	}
+
+	if (strcmp(tokens[6], "to")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "to");
+		return;
+	}
+
+	if (parser_read_uint32(&idx1, tokens[7]) || (idx1 < idx0)) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "index1");
+		return;
+	}
+
+	if (strcmp(tokens[8], "stats")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "stats");
+		return;
+	}
+
+	/* Table header. */
+	snprintf(out, out_size, "+-%7s-+-%16s-+-%16s-+-%16s-+-%16s-+-%16s-+-%16s-+\n",
+		 "-------",
+		 "----------------", "----------------", "----------------",
+		 "----------------", "----------------", "----------------");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	snprintf(out, out_size, "| %4s | %16s | %16s | %16s | %16s | %16s | %16s |\n",
+		 "METER #",
+		 "GREEN (packets)", "YELLOW (packets)", "RED (packets)",
+		 "GREEN (bytes)", "YELLOW (bytes)", "RED (bytes)");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	snprintf(out, out_size, "+-%7s-+-%16s-+-%16s-+-%16s-+-%16s-+-%16s-+-%16s-+\n",
+		 "-------",
+		 "----------------", "----------------", "----------------",
+		 "----------------", "----------------", "----------------");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	/* Table rows. */
+	for ( ; idx0 <= idx1; idx0++) {
+		int status;
+
+		status = rte_swx_ctl_meter_stats_read(p->p, name, idx0, &stats);
+		if (status) {
+			snprintf(out, out_size, "Pipeline meter stats error at index %u.\n", idx0);
+			out_size -= strlen(out);
+			out += strlen(out);
+			return;
+		}
+
+		snprintf(out, out_size, "| %7d | %16" PRIx64 " | %16" PRIx64 " | %16" PRIx64
+			 " | %16" PRIx64 " | %16" PRIx64 " | %16" PRIx64 " |\n",
+			 idx0,
+			 stats.n_pkts[RTE_COLOR_GREEN],
+			 stats.n_pkts[RTE_COLOR_YELLOW],
+			 stats.n_pkts[RTE_COLOR_RED],
+			 stats.n_bytes[RTE_COLOR_GREEN],
+			 stats.n_bytes[RTE_COLOR_YELLOW],
+			 stats.n_bytes[RTE_COLOR_RED]);
+		out_size -= strlen(out);
+		out += strlen(out);
+	}
+}
+
 static const char cmd_pipeline_stats_help[] =
 "pipeline <pipeline_name> stats\n";
 
@@ -1551,6 +1943,11 @@ cmd_help(char **tokens,
 			"\tpipeline table update\n"
 			"\tpipeline regrd\n"
 			"\tpipeline regwr\n"
+			"\tpipeline meter profile add\n"
+			"\tpipeline meter profile delete\n"
+			"\tpipeline meter reset\n"
+			"\tpipeline meter set\n"
+			"\tpipeline meter stats\n"
 			"\tpipeline stats\n"
 			"\tthread pipeline enable\n"
 			"\tthread pipeline disable\n\n");
@@ -1622,6 +2019,43 @@ cmd_help(char **tokens,
 	if ((strcmp(tokens[0], "pipeline") == 0) &&
 		(n_tokens == 2) && (strcmp(tokens[1], "regwr") == 0)) {
 		snprintf(out, out_size, "\n%s\n", cmd_pipeline_regwr_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 4) && !strcmp(tokens[1], "meter")
+		&& !strcmp(tokens[2], "profile")
+		&& !strcmp(tokens[3], "add")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_meter_profile_add_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 4) && !strcmp(tokens[1], "meter")
+		&& !strcmp(tokens[2], "profile")
+		&& !strcmp(tokens[3], "delete")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_meter_profile_delete_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 3) && !strcmp(tokens[1], "meter")
+		&& !strcmp(tokens[2], "reset")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_meter_reset_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 3) && !strcmp(tokens[1], "meter")
+		&& !strcmp(tokens[2], "set")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_meter_set_help);
+		return;
+	}
+
+	if (!strcmp(tokens[0], "pipeline") &&
+		(n_tokens == 3) && !strcmp(tokens[1], "meter")
+		&& !strcmp(tokens[2], "stats")) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_meter_stats_help);
 		return;
 	}
 
@@ -1746,6 +2180,43 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 		if ((n_tokens >= 3) &&
 			(strcmp(tokens[2], "regwr") == 0)) {
 			cmd_pipeline_regwr(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 6) &&
+			(strcmp(tokens[2], "meter") == 0) &&
+			(strcmp(tokens[3], "profile") == 0) &&
+			(strcmp(tokens[5], "add") == 0)) {
+			cmd_pipeline_meter_profile_add(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 6) &&
+			(strcmp(tokens[2], "meter") == 0) &&
+			(strcmp(tokens[3], "profile") == 0) &&
+			(strcmp(tokens[5], "delete") == 0)) {
+			cmd_pipeline_meter_profile_delete(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 9) &&
+			(strcmp(tokens[2], "meter") == 0) &&
+			(strcmp(tokens[8], "reset") == 0)) {
+			cmd_pipeline_meter_reset(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 9) &&
+			(strcmp(tokens[2], "meter") == 0) &&
+			(strcmp(tokens[8], "set") == 0)) {
+			cmd_pipeline_meter_set(tokens, n_tokens, out, out_size, obj);
+			return;
+		}
+
+		if ((n_tokens >= 9) &&
+			(strcmp(tokens[2], "meter") == 0) &&
+			(strcmp(tokens[8], "stats") == 0)) {
+			cmd_pipeline_meter_stats(tokens, n_tokens, out, out_size, obj);
 			return;
 		}
 

@@ -12,6 +12,8 @@
 #include <rte_common.h>
 #include <rte_prefetch.h>
 #include <rte_byteorder.h>
+#include <rte_cycles.h>
+#include <rte_meter.h>
 
 #include "rte_swx_pipeline.h"
 #include "rte_swx_ctl.h"
@@ -458,6 +460,31 @@ enum instruction_type {
 	INSTR_REGADD_RIM, /* index = I, src = MEFT */
 	INSTR_REGADD_RII, /* index = I, src = I */
 
+	/* metprefetch METARRAY index
+	 * prefetch METARRAY[index]
+	 * index = HMEFTI
+	 */
+	INSTR_METPREFETCH_H, /* index = H */
+	INSTR_METPREFETCH_M, /* index = MEFT */
+	INSTR_METPREFETCH_I, /* index = I */
+
+	/* meter METARRAY index length color_in color_out
+	 * color_out = meter(METARRAY[index], length, color_in)
+	 * index = HMEFTI, length = HMEFT, color_in = MEFTI, color_out = MEF
+	 */
+	INSTR_METER_HHM, /* index = H, length = H, color_in = MEFT */
+	INSTR_METER_HHI, /* index = H, length = H, color_in = I */
+	INSTR_METER_HMM, /* index = H, length = MEFT, color_in = MEFT */
+	INSTR_METER_HMI, /* index = H, length = MEFT, color_in = I */
+	INSTR_METER_MHM, /* index = MEFT, length = H, color_in = MEFT */
+	INSTR_METER_MHI, /* index = MEFT, length = H, color_in = I */
+	INSTR_METER_MMM, /* index = MEFT, length = MEFT, color_in = MEFT */
+	INSTR_METER_MMI, /* index = MEFT, length = MEFT, color_in = I */
+	INSTR_METER_IHM, /* index = I, length = H, color_in = MEFT */
+	INSTR_METER_IHI, /* index = I, length = H, color_in = I */
+	INSTR_METER_IMM, /* index = I, length = MEFT, color_in = MEFT */
+	INSTR_METER_IMI, /* index = I, length = MEFT, color_in = I */
+
 	/* table TABLE */
 	INSTR_TABLE,
 
@@ -607,6 +634,25 @@ struct instr_regarray {
 	};
 };
 
+struct instr_meter {
+	uint8_t metarray_id;
+	uint8_t pad[3];
+
+	union {
+		struct instr_operand idx;
+		uint32_t idx_val;
+	};
+
+	struct instr_operand length;
+
+	union {
+		struct instr_operand color_in;
+		uint32_t color_in_val;
+	};
+
+	struct instr_operand color_out;
+};
+
 struct instr_dma {
 	struct {
 		uint8_t header_id[8];
@@ -642,6 +688,7 @@ struct instruction {
 		struct instr_hdr_validity valid;
 		struct instr_dst_src mov;
 		struct instr_regarray regarray;
+		struct instr_meter meter;
 		struct instr_dma dma;
 		struct instr_dst_src alu;
 		struct instr_table table;
@@ -736,6 +783,43 @@ TAILQ_HEAD(regarray_tailq, regarray);
 
 struct regarray_runtime {
 	uint64_t *regarray;
+	uint32_t size_mask;
+};
+
+/*
+ * Meter array.
+ */
+struct meter_profile {
+	TAILQ_ENTRY(meter_profile) node;
+	char name[RTE_SWX_NAME_SIZE];
+	struct rte_meter_trtcm_params params;
+	struct rte_meter_trtcm_profile profile;
+	uint32_t n_users;
+};
+
+TAILQ_HEAD(meter_profile_tailq, meter_profile);
+
+struct metarray {
+	TAILQ_ENTRY(metarray) node;
+	char name[RTE_SWX_NAME_SIZE];
+	uint32_t size;
+	uint32_t id;
+};
+
+TAILQ_HEAD(metarray_tailq, metarray);
+
+struct meter {
+	struct rte_meter_trtcm m;
+	struct meter_profile *profile;
+	enum rte_color color_mask;
+	uint8_t pad[20];
+
+	uint64_t n_pkts[RTE_COLORS];
+	uint64_t n_bytes[RTE_COLORS];
+};
+
+struct metarray_runtime {
+	struct meter *metarray;
 	uint32_t size_mask;
 };
 
@@ -1115,12 +1199,15 @@ struct rte_swx_pipeline {
 	struct table_type_tailq table_types;
 	struct table_tailq tables;
 	struct regarray_tailq regarrays;
+	struct meter_profile_tailq meter_profiles;
+	struct metarray_tailq metarrays;
 
 	struct port_in_runtime *in;
 	struct port_out_runtime *out;
 	struct instruction **action_instructions;
 	struct rte_swx_table_state *table_state;
 	struct regarray_runtime *regarray_runtime;
+	struct metarray_runtime *metarray_runtime;
 	struct instruction *instructions;
 	struct thread threads[RTE_SWX_PIPELINE_THREADS_MAX];
 
@@ -1132,6 +1219,7 @@ struct rte_swx_pipeline {
 	uint32_t n_actions;
 	uint32_t n_tables;
 	uint32_t n_regarrays;
+	uint32_t n_metarrays;
 	uint32_t n_headers;
 	uint32_t thread_id;
 	uint32_t port_id;
@@ -5658,6 +5746,829 @@ instr_regadd_rii_exec(struct rte_swx_pipeline *p)
 }
 
 /*
+ * metarray.
+ */
+static struct metarray *
+metarray_find(struct rte_swx_pipeline *p, const char *name);
+
+static int
+instr_metprefetch_translate(struct rte_swx_pipeline *p,
+			    struct action *action,
+			    char **tokens,
+			    int n_tokens,
+			    struct instruction *instr,
+			    struct instruction_data *data __rte_unused)
+{
+	char *metarray = tokens[1], *idx = tokens[2];
+	struct metarray *m;
+	struct field *fidx;
+	uint32_t idx_struct_id, idx_val;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	m = metarray_find(p, metarray);
+	CHECK(m, EINVAL);
+
+	/* METPREFETCH_H, METPREFETCH_M. */
+	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
+	if (fidx) {
+		instr->type = INSTR_METPREFETCH_M;
+		if (idx[0] == 'h')
+			instr->type = INSTR_METPREFETCH_H;
+
+		instr->meter.metarray_id = m->id;
+		instr->meter.idx.struct_id = (uint8_t)idx_struct_id;
+		instr->meter.idx.n_bits = fidx->n_bits;
+		instr->meter.idx.offset = fidx->offset / 8;
+		return 0;
+	}
+
+	/* METPREFETCH_I. */
+	idx_val = strtoul(idx, &idx, 0);
+	CHECK(!idx[0], EINVAL);
+
+	instr->type = INSTR_METPREFETCH_I;
+	instr->meter.metarray_id = m->id;
+	instr->meter.idx_val = idx_val;
+	return 0;
+}
+
+static int
+instr_meter_translate(struct rte_swx_pipeline *p,
+		      struct action *action,
+		      char **tokens,
+		      int n_tokens,
+		      struct instruction *instr,
+		      struct instruction_data *data __rte_unused)
+{
+	char *metarray = tokens[1], *idx = tokens[2], *length = tokens[3];
+	char *color_in = tokens[4], *color_out = tokens[5];
+	struct metarray *m;
+	struct field *fidx, *flength, *fcin, *fcout;
+	uint32_t idx_struct_id, length_struct_id;
+	uint32_t color_in_struct_id, color_out_struct_id;
+
+	CHECK(n_tokens == 6, EINVAL);
+
+	m = metarray_find(p, metarray);
+	CHECK(m, EINVAL);
+
+	fidx = struct_field_parse(p, action, idx, &idx_struct_id);
+
+	flength = struct_field_parse(p, action, length, &length_struct_id);
+	CHECK(flength, EINVAL);
+
+	fcin = struct_field_parse(p, action, color_in, &color_in_struct_id);
+
+	fcout = struct_field_parse(p, NULL, color_out, &color_out_struct_id);
+	CHECK(fcout, EINVAL);
+
+	/* index = HMEFT, length = HMEFT, color_in = MEFT, color_out = MEF. */
+	if (fidx && fcin) {
+		instr->type = INSTR_METER_MMM;
+		if (idx[0] == 'h' && length[0] == 'h')
+			instr->type = INSTR_METER_HHM;
+		if (idx[0] == 'h' && length[0] != 'h')
+			instr->type = INSTR_METER_HMM;
+		if (idx[0] != 'h' && length[0] == 'h')
+			instr->type = INSTR_METER_MHM;
+
+		instr->meter.metarray_id = m->id;
+
+		instr->meter.idx.struct_id = (uint8_t)idx_struct_id;
+		instr->meter.idx.n_bits = fidx->n_bits;
+		instr->meter.idx.offset = fidx->offset / 8;
+
+		instr->meter.length.struct_id = (uint8_t)length_struct_id;
+		instr->meter.length.n_bits = flength->n_bits;
+		instr->meter.length.offset = flength->offset / 8;
+
+		instr->meter.color_in.struct_id = (uint8_t)color_in_struct_id;
+		instr->meter.color_in.n_bits = fcin->n_bits;
+		instr->meter.color_in.offset = fcin->offset / 8;
+
+		instr->meter.color_out.struct_id = (uint8_t)color_out_struct_id;
+		instr->meter.color_out.n_bits = fcout->n_bits;
+		instr->meter.color_out.offset = fcout->offset / 8;
+
+		return 0;
+	}
+
+	/* index = HMEFT, length = HMEFT, color_in = I, color_out = MEF. */
+	if (fidx && !fcin) {
+		uint32_t color_in_val = strtoul(color_in, &color_in, 0);
+		CHECK(!color_in[0], EINVAL);
+
+		instr->type = INSTR_METER_MMI;
+		if (idx[0] == 'h' && length[0] == 'h')
+			instr->type = INSTR_METER_HHI;
+		if (idx[0] == 'h' && length[0] != 'h')
+			instr->type = INSTR_METER_HMI;
+		if (idx[0] != 'h' && length[0] == 'h')
+			instr->type = INSTR_METER_MHI;
+
+		instr->meter.metarray_id = m->id;
+
+		instr->meter.idx.struct_id = (uint8_t)idx_struct_id;
+		instr->meter.idx.n_bits = fidx->n_bits;
+		instr->meter.idx.offset = fidx->offset / 8;
+
+		instr->meter.length.struct_id = (uint8_t)length_struct_id;
+		instr->meter.length.n_bits = flength->n_bits;
+		instr->meter.length.offset = flength->offset / 8;
+
+		instr->meter.color_in_val = color_in_val;
+
+		instr->meter.color_out.struct_id = (uint8_t)color_out_struct_id;
+		instr->meter.color_out.n_bits = fcout->n_bits;
+		instr->meter.color_out.offset = fcout->offset / 8;
+
+		return 0;
+	}
+
+	/* index = I, length = HMEFT, color_in = MEFT, color_out = MEF. */
+	if (!fidx && fcin) {
+		uint32_t idx_val;
+
+		idx_val = strtoul(idx, &idx, 0);
+		CHECK(!idx[0], EINVAL);
+
+		instr->type = INSTR_METER_IMM;
+		if (length[0] == 'h')
+			instr->type = INSTR_METER_IHM;
+
+		instr->meter.metarray_id = m->id;
+
+		instr->meter.idx_val = idx_val;
+
+		instr->meter.length.struct_id = (uint8_t)length_struct_id;
+		instr->meter.length.n_bits = flength->n_bits;
+		instr->meter.length.offset = flength->offset / 8;
+
+		instr->meter.color_in.struct_id = (uint8_t)color_in_struct_id;
+		instr->meter.color_in.n_bits = fcin->n_bits;
+		instr->meter.color_in.offset = fcin->offset / 8;
+
+		instr->meter.color_out.struct_id = (uint8_t)color_out_struct_id;
+		instr->meter.color_out.n_bits = fcout->n_bits;
+		instr->meter.color_out.offset = fcout->offset / 8;
+
+		return 0;
+	}
+
+	/* index = I, length = HMEFT, color_in = I, color_out = MEF. */
+	if (!fidx && !fcin) {
+		uint32_t idx_val, color_in_val;
+
+		idx_val = strtoul(idx, &idx, 0);
+		CHECK(!idx[0], EINVAL);
+
+		color_in_val = strtoul(color_in, &color_in, 0);
+		CHECK(!color_in[0], EINVAL);
+
+		instr->type = INSTR_METER_IMI;
+		if (length[0] == 'h')
+			instr->type = INSTR_METER_IHI;
+
+		instr->meter.metarray_id = m->id;
+
+		instr->meter.idx_val = idx_val;
+
+		instr->meter.length.struct_id = (uint8_t)length_struct_id;
+		instr->meter.length.n_bits = flength->n_bits;
+		instr->meter.length.offset = flength->offset / 8;
+
+		instr->meter.color_in_val = color_in_val;
+
+		instr->meter.color_out.struct_id = (uint8_t)color_out_struct_id;
+		instr->meter.color_out.n_bits = fcout->n_bits;
+		instr->meter.color_out.offset = fcout->offset / 8;
+
+		return 0;
+	}
+
+	CHECK(0, EINVAL);
+}
+
+static inline struct meter *
+instr_meter_idx_hbo(struct rte_swx_pipeline *p, struct thread *t, struct instruction *ip)
+{
+	struct metarray_runtime *r = &p->metarray_runtime[ip->meter.metarray_id];
+
+	uint8_t *idx_struct = t->structs[ip->meter.idx.struct_id];
+	uint64_t *idx64_ptr = (uint64_t *)&idx_struct[ip->meter.idx.offset];
+	uint64_t idx64 = *idx64_ptr;
+	uint64_t idx64_mask = UINT64_MAX >> (64 - (ip)->meter.idx.n_bits);
+	uint64_t idx = idx64 & idx64_mask & r->size_mask;
+
+	return &r->metarray[idx];
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+static inline struct meter *
+instr_meter_idx_nbo(struct rte_swx_pipeline *p, struct thread *t, struct instruction *ip)
+{
+	struct metarray_runtime *r = &p->metarray_runtime[ip->meter.metarray_id];
+
+	uint8_t *idx_struct = t->structs[ip->meter.idx.struct_id];
+	uint64_t *idx64_ptr = (uint64_t *)&idx_struct[ip->meter.idx.offset];
+	uint64_t idx64 = *idx64_ptr;
+	uint64_t idx = (ntoh64(idx64) >> (64 - ip->meter.idx.n_bits)) & r->size_mask;
+
+	return &r->metarray[idx];
+}
+
+#else
+
+#define instr_meter_idx_nbo instr_meter_idx_hbo
+
+#endif
+
+static inline struct meter *
+instr_meter_idx_imm(struct rte_swx_pipeline *p, struct instruction *ip)
+{
+	struct metarray_runtime *r = &p->metarray_runtime[ip->meter.metarray_id];
+
+	uint64_t idx =  ip->meter.idx_val & r->size_mask;
+
+	return &r->metarray[idx];
+}
+
+static inline uint32_t
+instr_meter_length_hbo(struct thread *t, struct instruction *ip)
+{
+	uint8_t *src_struct = t->structs[ip->meter.length.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->meter.length.offset];
+	uint64_t src64 = *src64_ptr;
+	uint64_t src64_mask = UINT64_MAX >> (64 - (ip)->meter.length.n_bits);
+	uint64_t src = src64 & src64_mask;
+
+	return (uint32_t)src;
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+static inline uint32_t
+instr_meter_length_nbo(struct thread *t, struct instruction *ip)
+{
+	uint8_t *src_struct = t->structs[ip->meter.length.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->meter.length.offset];
+	uint64_t src64 = *src64_ptr;
+	uint64_t src = ntoh64(src64) >> (64 - ip->meter.length.n_bits);
+
+	return (uint32_t)src;
+}
+
+#else
+
+#define instr_meter_length_nbo instr_meter_length_hbo
+
+#endif
+
+static inline enum rte_color
+instr_meter_color_in_hbo(struct thread *t, struct instruction *ip)
+{
+	uint8_t *src_struct = t->structs[ip->meter.color_in.struct_id];
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[ip->meter.color_in.offset];
+	uint64_t src64 = *src64_ptr;
+	uint64_t src64_mask = UINT64_MAX >> (64 - ip->meter.color_in.n_bits);
+	uint64_t src = src64 & src64_mask;
+
+	return (enum rte_color)src;
+}
+
+static inline void
+instr_meter_color_out_hbo_set(struct thread *t, struct instruction *ip, enum rte_color color_out)
+{
+	uint8_t *dst_struct = t->structs[ip->meter.color_out.struct_id];
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[ip->meter.color_out.offset];
+	uint64_t dst64 = *dst64_ptr;
+	uint64_t dst64_mask = UINT64_MAX >> (64 - ip->meter.color_out.n_bits);
+
+	uint64_t src = (uint64_t)color_out;
+
+	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);
+}
+
+static inline void
+instr_metprefetch_h_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+
+	TRACE("[Thread %2u] metprefetch (h)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_metprefetch_m_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+
+	TRACE("[Thread %2u] metprefetch (m)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_metprefetch_i_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+
+	TRACE("[Thread %2u] metprefetch (i)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_hhm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (hhm)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_hhi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (hhi)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_hmm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (hmm)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+static inline void
+instr_meter_hmi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (hmi)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_nbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_mhm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (mhm)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_mhi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (mhi)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_mmm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (mmm)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_mmi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (mmi)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_hbo(p, t, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_ihm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (ihm)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_ihi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (ihi)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_nbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_meter_imm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (imm)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = instr_meter_color_in_hbo(t, ip);
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+static inline void
+instr_meter_imi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct meter *m;
+	uint64_t time, n_pkts, n_bytes;
+	uint32_t length;
+	enum rte_color color_in, color_out;
+
+	TRACE("[Thread %2u] meter (imi)\n", p->thread_id);
+
+	/* Structs. */
+	m = instr_meter_idx_imm(p, ip);
+	rte_prefetch0(m->n_pkts);
+	time = rte_get_tsc_cycles();
+	length = instr_meter_length_hbo(t, ip);
+	color_in = (enum rte_color)ip->meter.color_in_val;
+
+	color_out = rte_meter_trtcm_color_aware_check(&m->m,
+		&m->profile->profile,
+		time,
+		length,
+		color_in);
+
+	color_out &= m->color_mask;
+
+	n_pkts = m->n_pkts[color_out];
+	n_bytes = m->n_bytes[color_out];
+
+	instr_meter_color_out_hbo_set(t, ip, color_out);
+
+	m->n_pkts[color_out] = n_pkts + 1;
+	m->n_bytes[color_out] = n_bytes + length;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+/*
  * jmp.
  */
 static struct action *
@@ -6543,6 +7454,22 @@ instr_translate(struct rte_swx_pipeline *p,
 					      instr,
 					      data);
 
+	if (!strcmp(tokens[tpos], "metprefetch"))
+		return instr_metprefetch_translate(p,
+						   action,
+						   &tokens[tpos],
+						   n_tokens - tpos,
+						   instr,
+						   data);
+
+	if (!strcmp(tokens[tpos], "meter"))
+		return instr_meter_translate(p,
+					     action,
+					     &tokens[tpos],
+					     n_tokens - tpos,
+					     instr,
+					     data);
+
 	if (!strcmp(tokens[tpos], "table"))
 		return instr_table_translate(p,
 					     action,
@@ -7209,6 +8136,23 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_REGADD_RIH] = instr_regadd_rih_exec,
 	[INSTR_REGADD_RIM] = instr_regadd_rim_exec,
 	[INSTR_REGADD_RII] = instr_regadd_rii_exec,
+
+	[INSTR_METPREFETCH_H] = instr_metprefetch_h_exec,
+	[INSTR_METPREFETCH_M] = instr_metprefetch_m_exec,
+	[INSTR_METPREFETCH_I] = instr_metprefetch_i_exec,
+
+	[INSTR_METER_HHM] = instr_meter_hhm_exec,
+	[INSTR_METER_HHI] = instr_meter_hhi_exec,
+	[INSTR_METER_HMM] = instr_meter_hmm_exec,
+	[INSTR_METER_HMI] = instr_meter_hmi_exec,
+	[INSTR_METER_MHM] = instr_meter_mhm_exec,
+	[INSTR_METER_MHI] = instr_meter_mhi_exec,
+	[INSTR_METER_MMM] = instr_meter_mmm_exec,
+	[INSTR_METER_MMI] = instr_meter_mmi_exec,
+	[INSTR_METER_IHM] = instr_meter_ihm_exec,
+	[INSTR_METER_IHI] = instr_meter_ihi_exec,
+	[INSTR_METER_IMM] = instr_meter_imm_exec,
+	[INSTR_METER_IMI] = instr_meter_imi_exec,
 
 	[INSTR_TABLE] = instr_table_exec,
 	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
@@ -8049,6 +8993,182 @@ regarray_free(struct rte_swx_pipeline *p)
 }
 
 /*
+ * Meter array.
+ */
+static struct meter_profile *
+meter_profile_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct meter_profile *elem;
+
+	TAILQ_FOREACH(elem, &p->meter_profiles, node)
+		if (!strcmp(elem->name, name))
+			return elem;
+
+	return NULL;
+}
+
+static struct metarray *
+metarray_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct metarray *elem;
+
+	TAILQ_FOREACH(elem, &p->metarrays, node)
+		if (!strcmp(elem->name, name))
+			return elem;
+
+	return NULL;
+}
+
+static struct metarray *
+metarray_find_by_id(struct rte_swx_pipeline *p, uint32_t id)
+{
+	struct metarray *elem = NULL;
+
+	TAILQ_FOREACH(elem, &p->metarrays, node)
+		if (elem->id == id)
+			return elem;
+
+	return NULL;
+}
+
+int
+rte_swx_pipeline_metarray_config(struct rte_swx_pipeline *p,
+				 const char *name,
+				 uint32_t size)
+{
+	struct metarray *m;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!metarray_find(p, name), EEXIST);
+
+	CHECK(size, EINVAL);
+	size = rte_align32pow2(size);
+
+	/* Memory allocation. */
+	m = calloc(1, sizeof(struct metarray));
+	CHECK(m, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(m->name, name);
+	m->size = size;
+	m->id = p->n_metarrays;
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->metarrays, m, node);
+	p->n_metarrays++;
+
+	return 0;
+}
+
+struct meter_profile meter_profile_default = {
+	.node = {0},
+	.name = "",
+	.params = {0},
+
+	.profile = {
+		.cbs = 10000,
+		.pbs = 10000,
+		.cir_period = 1,
+		.cir_bytes_per_period = 1,
+		.pir_period = 1,
+		.pir_bytes_per_period = 1,
+	},
+
+	.n_users = 0,
+};
+
+static void
+meter_init(struct meter *m)
+{
+	memset(m, 0, sizeof(struct meter));
+	rte_meter_trtcm_config(&m->m, &meter_profile_default.profile);
+	m->profile = &meter_profile_default;
+	m->color_mask = RTE_COLOR_GREEN;
+
+	meter_profile_default.n_users++;
+}
+
+static int
+metarray_build(struct rte_swx_pipeline *p)
+{
+	struct metarray *m;
+
+	if (!p->n_metarrays)
+		return 0;
+
+	p->metarray_runtime = calloc(p->n_metarrays, sizeof(struct metarray_runtime));
+	CHECK(p->metarray_runtime, ENOMEM);
+
+	TAILQ_FOREACH(m, &p->metarrays, node) {
+		struct metarray_runtime *r = &p->metarray_runtime[m->id];
+		uint32_t i;
+
+		r->metarray = env_malloc(m->size * sizeof(struct meter),
+					 RTE_CACHE_LINE_SIZE,
+					 p->numa_node);
+		CHECK(r->metarray, ENOMEM);
+
+		for (i = 0; i < m->size; i++)
+			meter_init(&r->metarray[i]);
+
+		r->size_mask = m->size - 1;
+	}
+
+	return 0;
+}
+
+static void
+metarray_build_free(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	if (!p->metarray_runtime)
+		return;
+
+	for (i = 0; i < p->n_metarrays; i++) {
+		struct metarray *m = metarray_find_by_id(p, i);
+		struct metarray_runtime *r = &p->metarray_runtime[i];
+
+		env_free(r->metarray, m->size * sizeof(struct meter));
+	}
+
+	free(p->metarray_runtime);
+	p->metarray_runtime = NULL;
+}
+
+static void
+metarray_free(struct rte_swx_pipeline *p)
+{
+	metarray_build_free(p);
+
+	/* Meter arrays. */
+	for ( ; ; ) {
+		struct metarray *elem;
+
+		elem = TAILQ_FIRST(&p->metarrays);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->metarrays, elem, node);
+		free(elem);
+	}
+
+	/* Meter profiles. */
+	for ( ; ; ) {
+		struct meter_profile *elem;
+
+		elem = TAILQ_FIRST(&p->meter_profiles);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->meter_profiles, elem, node);
+		free(elem);
+	}
+}
+
+/*
  * Pipeline.
  */
 int
@@ -8077,6 +9197,8 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	TAILQ_INIT(&pipeline->table_types);
 	TAILQ_INIT(&pipeline->tables);
 	TAILQ_INIT(&pipeline->regarrays);
+	TAILQ_INIT(&pipeline->meter_profiles);
+	TAILQ_INIT(&pipeline->metarrays);
 
 	pipeline->n_structs = 1; /* Struct 0 is reserved for action_data. */
 	pipeline->numa_node = numa_node;
@@ -8093,6 +9215,7 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 
 	free(p->instructions);
 
+	metarray_free(p);
 	regarray_free(p);
 	table_state_free(p);
 	table_free(p);
@@ -8182,10 +9305,15 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = metarray_build(p);
+	if (status)
+		goto error;
+
 	p->build_done = 1;
 	return 0;
 
 error:
+	metarray_build_free(p);
 	regarray_build_free(p);
 	table_state_build_free(p);
 	table_build_free(p);
@@ -8248,6 +9376,7 @@ rte_swx_ctl_pipeline_info_get(struct rte_swx_pipeline *p,
 	pipeline->n_actions = n_actions;
 	pipeline->n_tables = n_tables;
 	pipeline->n_regarrays = p->n_regarrays;
+	pipeline->n_metarrays = p->n_metarrays;
 
 	return 0;
 }
@@ -8514,5 +9643,168 @@ rte_swx_ctl_pipeline_regarray_write(struct rte_swx_pipeline *p,
 
 	r = &p->regarray_runtime[regarray->id];
 	r->regarray[regarray_index] = value;
+	return 0;
+}
+
+int
+rte_swx_ctl_metarray_info_get(struct rte_swx_pipeline *p,
+			      uint32_t metarray_id,
+			      struct rte_swx_ctl_metarray_info *metarray)
+{
+	struct metarray *m;
+
+	if (!p || !metarray)
+		return -EINVAL;
+
+	m = metarray_find_by_id(p, metarray_id);
+	if (!m)
+		return -EINVAL;
+
+	strcpy(metarray->name, m->name);
+	metarray->size = m->size;
+	return 0;
+}
+
+int
+rte_swx_ctl_meter_profile_add(struct rte_swx_pipeline *p,
+			      const char *name,
+			      struct rte_meter_trtcm_params *params)
+{
+	struct meter_profile *mp;
+	int status;
+
+	CHECK(p, EINVAL);
+	CHECK_NAME(name, EINVAL);
+	CHECK(params, EINVAL);
+	CHECK(!meter_profile_find(p, name), EEXIST);
+
+	/* Node allocation. */
+	mp = calloc(1, sizeof(struct meter_profile));
+	CHECK(mp, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(mp->name, name);
+	memcpy(&mp->params, params, sizeof(struct rte_meter_trtcm_params));
+	status = rte_meter_trtcm_profile_config(&mp->profile, params);
+	if (status) {
+		free(mp);
+		CHECK(0, EINVAL);
+	}
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->meter_profiles, mp, node);
+
+	return 0;
+}
+
+int
+rte_swx_ctl_meter_profile_delete(struct rte_swx_pipeline *p,
+				 const char *name)
+{
+	struct meter_profile *mp;
+
+	CHECK(p, EINVAL);
+	CHECK_NAME(name, EINVAL);
+
+	mp = meter_profile_find(p, name);
+	CHECK(mp, EINVAL);
+	CHECK(!mp->n_users, EBUSY);
+
+	/* Remove node from tailq. */
+	TAILQ_REMOVE(&p->meter_profiles, mp, node);
+	free(mp);
+
+	return 0;
+}
+
+int
+rte_swx_ctl_meter_reset(struct rte_swx_pipeline *p,
+			const char *metarray_name,
+			uint32_t metarray_index)
+{
+	struct meter_profile *mp_old;
+	struct metarray *metarray;
+	struct metarray_runtime *metarray_runtime;
+	struct meter *m;
+
+	CHECK(p, EINVAL);
+	CHECK_NAME(metarray_name, EINVAL);
+
+	metarray = metarray_find(p, metarray_name);
+	CHECK(metarray, EINVAL);
+	CHECK(metarray_index < metarray->size, EINVAL);
+
+	metarray_runtime = &p->metarray_runtime[metarray->id];
+	m = &metarray_runtime->metarray[metarray_index];
+	mp_old = m->profile;
+
+	meter_init(m);
+
+	mp_old->n_users--;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_meter_set(struct rte_swx_pipeline *p,
+		      const char *metarray_name,
+		      uint32_t metarray_index,
+		      const char *profile_name)
+{
+	struct meter_profile *mp, *mp_old;
+	struct metarray *metarray;
+	struct metarray_runtime *metarray_runtime;
+	struct meter *m;
+
+	CHECK(p, EINVAL);
+	CHECK_NAME(metarray_name, EINVAL);
+
+	metarray = metarray_find(p, metarray_name);
+	CHECK(metarray, EINVAL);
+	CHECK(metarray_index < metarray->size, EINVAL);
+
+	mp = meter_profile_find(p, profile_name);
+	CHECK(mp, EINVAL);
+
+	metarray_runtime = &p->metarray_runtime[metarray->id];
+	m = &metarray_runtime->metarray[metarray_index];
+	mp_old = m->profile;
+
+	memset(m, 0, sizeof(struct meter));
+	rte_meter_trtcm_config(&m->m, &mp->profile);
+	m->profile = mp;
+	m->color_mask = RTE_COLORS;
+
+	mp->n_users++;
+	mp_old->n_users--;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_meter_stats_read(struct rte_swx_pipeline *p,
+			     const char *metarray_name,
+			     uint32_t metarray_index,
+			     struct rte_swx_ctl_meter_stats *stats)
+{
+	struct metarray *metarray;
+	struct metarray_runtime *metarray_runtime;
+	struct meter *m;
+
+	CHECK(p, EINVAL);
+	CHECK_NAME(metarray_name, EINVAL);
+
+	metarray = metarray_find(p, metarray_name);
+	CHECK(metarray, EINVAL);
+	CHECK(metarray_index < metarray->size, EINVAL);
+
+	CHECK(stats, EINVAL);
+
+	metarray_runtime = &p->metarray_runtime[metarray->id];
+	m = &metarray_runtime->metarray[metarray_index];
+
+	memcpy(stats->n_pkts, m->n_pkts, sizeof(m->n_pkts));
+	memcpy(stats->n_bytes, m->n_bytes, sizeof(m->n_bytes));
+
 	return 0;
 }

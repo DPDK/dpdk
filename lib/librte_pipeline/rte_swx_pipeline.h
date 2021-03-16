@@ -641,6 +641,28 @@ rte_swx_pipeline_regarray_config(struct rte_swx_pipeline *p,
 				 uint64_t init_val);
 
 /**
+ * Pipeline meter array configure
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Meter array name.
+ * @param[in] size
+ *   Number of meters in the array. Each meter in the array implements the Two
+ *   Rate Three Color Marker (trTCM) algorithm, as specified by RFC 2698.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Meter array with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_metarray_config(struct rte_swx_pipeline *p,
+				 const char *name,
+				 uint32_t size);
+
+/**
  * Pipeline instructions configure
  *
  * @param[in] p
