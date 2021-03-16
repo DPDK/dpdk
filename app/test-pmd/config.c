@@ -4930,7 +4930,8 @@ show_macs(portid_t port_id)
 
 	dev = &rte_eth_devices[port_id];
 
-	rte_eth_dev_info_get(port_id, &dev_info);
+	if (eth_dev_info_get_print_err(port_id, &dev_info))
+		return;
 
 	for (i = 0; i < dev_info.max_mac_addrs; i++) {
 		addr = &dev->data->mac_addrs[i];
