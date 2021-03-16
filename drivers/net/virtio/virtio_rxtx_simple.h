@@ -23,7 +23,7 @@ virtio_rxq_rearm_vec(struct virtnet_rx *rxvq)
 	struct rte_mbuf **sw_ring;
 	struct vring_desc *start_dp;
 	int ret;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 
 	desc_idx = vq->vq_avail_idx & (vq->vq_nentries - 1);
 	sw_ring = &vq->sw_ring[desc_idx];

@@ -871,13 +871,13 @@ virtio_user_dev_reset_queues_packed(struct rte_eth_dev *eth_dev)
 	/* Vring reset for each Tx queue and Rx queue. */
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rxvq = eth_dev->data->rx_queues[i];
-		virtqueue_rxvq_reset_packed(rxvq->vq);
+		virtqueue_rxvq_reset_packed(virtnet_rxq_to_vq(rxvq));
 		virtio_dev_rx_queue_setup_finish(eth_dev, i);
 	}
 
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
 		txvq = eth_dev->data->tx_queues[i];
-		virtqueue_txvq_reset_packed(txvq->vq);
+		virtqueue_txvq_reset_packed(virtnet_txq_to_vq(txvq));
 	}
 
 	hw->started = 1;

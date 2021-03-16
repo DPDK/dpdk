@@ -249,7 +249,7 @@ virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	uint64_t buf = 1;
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
-	if (hw->cvq && (hw->cvq->vq == vq)) {
+	if (hw->cvq && (virtnet_cq_to_vq(hw->cvq) == vq)) {
 		if (virtio_with_packed_queue(vq->hw))
 			virtio_user_handle_cq_packed(dev, vq->vq_queue_index);
 		else

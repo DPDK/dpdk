@@ -27,7 +27,7 @@ virtio_xmit_pkts_packed_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts)
 {
 	struct virtnet_tx *txvq = tx_queue;
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct virtio_hw *hw = vq->hw;
 	uint16_t nb_tx = 0;
 	uint16_t remained;
@@ -81,7 +81,7 @@ virtio_recv_pkts_packed_vec(void *rx_queue,
 			    uint16_t nb_pkts)
 {
 	struct virtnet_rx *rxvq = rx_queue;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct virtio_hw *hw = vq->hw;
 	uint16_t num, nb_rx = 0;
 	uint32_t nb_enqueued = 0;

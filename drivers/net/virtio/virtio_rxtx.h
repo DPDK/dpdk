@@ -18,7 +18,6 @@ struct virtnet_stats {
 };
 
 struct virtnet_rx {
-	struct virtqueue *vq;
 	/* dummy mbuf, for wraparound when processing RX ring. */
 	struct rte_mbuf fake_mbuf;
 	uint64_t mbuf_initializer; /**< value to init mbufs. */
@@ -34,7 +33,6 @@ struct virtnet_rx {
 };
 
 struct virtnet_tx {
-	struct virtqueue *vq;
 	/**< memzone to populate hdr. */
 	const struct rte_memzone *virtio_net_hdr_mz;
 	rte_iova_t virtio_net_hdr_mem;   /**< hdr for each xmit packet */
@@ -49,7 +47,6 @@ struct virtnet_tx {
 };
 
 struct virtnet_ctl {
-	struct virtqueue *vq;
 	/**< memzone to populate hdr. */
 	const struct rte_memzone *virtio_net_hdr_mz;
 	rte_iova_t virtio_net_hdr_mem;  /**< hdr for each xmit packet */

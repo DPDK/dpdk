@@ -104,7 +104,7 @@ static inline int
 virtqueue_enqueue_single_packed_vec(struct virtnet_tx *txvq,
 				    struct rte_mbuf *txm)
 {
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct virtio_hw *hw = vq->hw;
 	uint16_t hdr_size = hw->vtnet_hdr_size;
 	uint16_t slots, can_push = 0, use_indirect = 0;
@@ -212,7 +212,7 @@ virtqueue_dequeue_single_packed_vec(struct virtnet_rx *rxvq,
 {
 	uint16_t used_idx, id;
 	uint32_t len;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct virtio_hw *hw = vq->hw;
 	uint32_t hdr_size = hw->vtnet_hdr_size;
 	struct virtio_net_hdr *hdr;
@@ -264,7 +264,7 @@ virtio_recv_refill_packed_vec(struct virtnet_rx *rxvq,
 			      struct rte_mbuf **cookie,
 			      uint16_t num)
 {
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct vring_packed_desc *start_dp = vq->vq_packed.ring.desc;
 	uint16_t flags = vq->vq_packed.cached_flags;
 	struct virtio_hw *hw = vq->hw;

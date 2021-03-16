@@ -20,7 +20,7 @@ static inline int
 virtqueue_enqueue_batch_packed_vec(struct virtnet_tx *txvq,
 				   struct rte_mbuf **tx_pkts)
 {
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	uint16_t head_size = vq->hw->vtnet_hdr_size;
 	uint16_t idx = vq->vq_avail_idx;
 	struct virtio_net_hdr *hdr;
@@ -142,7 +142,7 @@ static inline uint16_t
 virtqueue_dequeue_batch_packed_vec(struct virtnet_rx *rxvq,
 				   struct rte_mbuf **rx_pkts)
 {
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct virtio_hw *hw = vq->hw;
 	uint16_t hdr_size = hw->vtnet_hdr_size;
 	uint64_t addrs[PACKED_BATCH_SIZE];

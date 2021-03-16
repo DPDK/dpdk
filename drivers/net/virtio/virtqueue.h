@@ -217,6 +217,10 @@ struct vq_desc_extra {
 	uint16_t next;
 };
 
+#define virtnet_rxq_to_vq(rxvq) container_of(rxvq, struct virtqueue, rxq)
+#define virtnet_txq_to_vq(txvq) container_of(txvq, struct virtqueue, txq)
+#define virtnet_cq_to_vq(cvq) container_of(cvq, struct virtqueue, cq)
+
 struct virtqueue {
 	struct virtio_hw  *hw; /**< virtio_hw structure pointer. */
 	union {
@@ -667,7 +671,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 {
 	struct virtio_tx_region *txr = txvq->virtio_net_hdr_mz->addr;
 	struct vq_desc_extra *dxp;
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct vring_packed_desc *start_dp, *head_dp;
 	uint16_t idx, id, head_idx, head_flags;
 	int16_t head_size = vq->hw->vtnet_hdr_size;

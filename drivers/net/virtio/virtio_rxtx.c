@@ -43,7 +43,7 @@ int
 virtio_dev_rx_queue_done(void *rxq, uint16_t offset)
 {
 	struct virtnet_rx *rxvq = rxq;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 
 	return virtqueue_nused(vq) >= offset;
 }
@@ -424,7 +424,7 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 			uint16_t num)
 {
 	struct vq_desc_extra *dxp;
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct vring_desc *start_dp;
 	struct virtio_net_hdr *hdr;
 	uint16_t idx;
@@ -470,7 +470,7 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 				   struct rte_mbuf *cookie,
 				   int in_order)
 {
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct vring_packed_desc *dp;
 	struct vq_desc_extra *dxp;
 	uint16_t idx, id, flags;
@@ -524,7 +524,7 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 {
 	struct virtio_tx_region *txr = txvq->virtio_net_hdr_mz->addr;
 	struct vq_desc_extra *dxp;
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct vring_desc *start_dp;
 	uint16_t seg_num = cookie->nb_segs;
 	uint16_t head_idx, idx;
@@ -614,9 +614,9 @@ virtio_dev_cq_start(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
 
-	if (hw->cvq && hw->cvq->vq) {
+	if (hw->cvq) {
 		rte_spinlock_init(&hw->cvq->lock);
-		VIRTQUEUE_DUMP((struct virtqueue *)hw->cvq->vq);
+		VIRTQUEUE_DUMP(virtnet_cq_to_vq(hw->cvq));
 	}
 }
 
@@ -948,7 +948,7 @@ uint16_t
 virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct virtnet_rx *rxvq = rx_queue;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct virtio_hw *hw = vq->hw;
 	struct rte_mbuf *rxm;
 	uint16_t nb_used, num, nb_rx;
@@ -1055,7 +1055,7 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts)
 {
 	struct virtnet_rx *rxvq = rx_queue;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct virtio_hw *hw = vq->hw;
 	struct rte_mbuf *rxm;
 	uint16_t num, nb_rx;
@@ -1158,7 +1158,7 @@ virtio_recv_pkts_inorder(void *rx_queue,
 			uint16_t nb_pkts)
 {
 	struct virtnet_rx *rxvq = rx_queue;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct virtio_hw *hw = vq->hw;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *prev = NULL;
@@ -1342,7 +1342,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 			uint16_t nb_pkts)
 {
 	struct virtnet_rx *rxvq = rx_queue;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct virtio_hw *hw = vq->hw;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *prev = NULL;
@@ -1520,7 +1520,7 @@ virtio_recv_mergeable_pkts_packed(void *rx_queue,
 			uint16_t nb_pkts)
 {
 	struct virtnet_rx *rxvq = rx_queue;
-	struct virtqueue *vq = rxvq->vq;
+	struct virtqueue *vq = virtnet_rxq_to_vq(rxvq);
 	struct virtio_hw *hw = vq->hw;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *prev = NULL;
@@ -1731,7 +1731,7 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts)
 {
 	struct virtnet_tx *txvq = tx_queue;
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct virtio_hw *hw = vq->hw;
 	uint16_t hdr_size = hw->vtnet_hdr_size;
 	uint16_t nb_tx = 0;
@@ -1812,7 +1812,7 @@ uint16_t
 virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct virtnet_tx *txvq = tx_queue;
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct virtio_hw *hw = vq->hw;
 	uint16_t hdr_size = hw->vtnet_hdr_size;
 	uint16_t nb_used, nb_tx = 0;
@@ -1912,7 +1912,7 @@ virtio_xmit_pkts_inorder(void *tx_queue,
 			uint16_t nb_pkts)
 {
 	struct virtnet_tx *txvq = tx_queue;
-	struct virtqueue *vq = txvq->vq;
+	struct virtqueue *vq = virtnet_txq_to_vq(txvq);
 	struct virtio_hw *hw = vq->hw;
 	uint16_t hdr_size = hw->vtnet_hdr_size;
 	uint16_t nb_used, nb_tx = 0, nb_inorder_pkts = 0;
