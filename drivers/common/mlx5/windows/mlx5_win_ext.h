@@ -1,7 +1,7 @@
-/*
+/* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) Mellanox Technologies, Ltd. 2001-2020.
- *
  */
+
 #ifndef __MLX5_WIN_ETX_H__
 #define __MLX5_WIN_ETX_H__
 
