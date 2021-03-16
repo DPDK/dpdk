@@ -244,6 +244,15 @@ struct virtqueue {
 	uint16_t vq_avail_idx; /**< sync until needed */
 	uint16_t vq_free_thresh; /**< free threshold */
 
+	/**
+	 * Head of the free chain in the descriptor table. If
+	 * there are no free descriptors, this will be set to
+	 * VQ_RING_DESC_CHAIN_END.
+	 */
+	uint16_t  vq_desc_head_idx;
+	uint16_t  vq_desc_tail_idx;
+	uint16_t  vq_queue_index;   /**< PCI queue index */
+
 	void *vq_ring_virt_mem;  /**< linear address of vring*/
 	unsigned int vq_ring_size;
 
@@ -256,15 +265,6 @@ struct virtqueue {
 	rte_iova_t vq_ring_mem; /**< physical address of vring,
 	                         * or virtual address for virtio_user. */
 
-	/**
-	 * Head of the free chain in the descriptor table. If
-	 * there are no free descriptors, this will be set to
-	 * VQ_RING_DESC_CHAIN_END.
-	 */
-	uint16_t  vq_desc_head_idx;
-	uint16_t  vq_desc_tail_idx;
-	uint16_t  vq_queue_index;
-	uint16_t offset; /**< relative offset to obtain addr in mbuf */
 	uint16_t  *notify_addr;
 	struct rte_mbuf **sw_ring;  /**< RX software ring. */
 	struct vq_desc_extra vq_descx[0];
