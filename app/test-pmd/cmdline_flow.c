@@ -5203,6 +5203,8 @@ parse_vc_action_nvgre_encap(struct context *ctx, const struct token *token,
 		       .src_addr = nvgre_encap_conf.ipv4_src,
 		       .dst_addr = nvgre_encap_conf.ipv4_dst,
 		},
+		.item_nvgre.c_k_s_rsvd0_ver = RTE_BE16(0x2000),
+		.item_nvgre.protocol = RTE_BE16(RTE_ETHER_TYPE_TEB),
 		.item_nvgre.flow_id = 0,
 	};
 	memcpy(action_nvgre_encap_data->item_eth.dst.addr_bytes,
