@@ -507,7 +507,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 			mz = rte_memzone_lookup(vq_name);
 		if (mz == NULL) {
 			ret = -ENOMEM;
-			goto fail_q_alloc;
+			goto free_vq;
 		}
 	}
 
@@ -533,7 +533,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 				hdr_mz = rte_memzone_lookup(vq_hdr_name);
 			if (hdr_mz == NULL) {
 				ret = -ENOMEM;
-				goto fail_q_alloc;
+				goto free_mz;
 			}
 		}
 	}
@@ -547,7 +547,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 		if (!sw_ring) {
 			PMD_INIT_LOG(ERR, "can not allocate RX soft ring");
 			ret = -ENOMEM;
-			goto fail_q_alloc;
+			goto free_hdr_mz;
 		}
 
 		vq->sw_ring = sw_ring;
@@ -604,15 +604,20 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 	if (VIRTIO_OPS(hw)->setup_queue(hw, vq) < 0) {
 		PMD_INIT_LOG(ERR, "setup_queue failed");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto clean_vq;
 	}
 
 	return 0;
 
-fail_q_alloc:
+clean_vq:
+	hw->cvq = NULL;
 	rte_free(sw_ring);
+free_hdr_mz:
 	rte_memzone_free(hdr_mz);
+free_mz:
 	rte_memzone_free(mz);
+free_vq:
 	rte_free(vq);
 
 	return ret;
