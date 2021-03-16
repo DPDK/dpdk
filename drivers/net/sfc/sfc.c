@@ -631,29 +631,6 @@ sfc_close(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 }
 
-static efx_rc_t
-sfc_find_mem_bar(efsys_pci_config_t *configp, int bar_index,
-		 efsys_bar_t *barp)
-{
-	efsys_bar_t result;
-	struct rte_pci_device *dev;
-
-	memset(&result, 0, sizeof(result));
-
-	if (bar_index < 0 || bar_index >= PCI_MAX_RESOURCE)
-		return EINVAL;
-
-	dev = configp->espc_dev;
-
-	result.esb_rid = bar_index;
-	result.esb_dev = dev;
-	result.esb_base = dev->mem_resource[bar_index].addr;
-
-	*barp = result;
-
-	return 0;
-}
-
 static int
 sfc_mem_bar_init(struct sfc_adapter *sa, const efx_bar_region_t *mem_ebrp)
 {
@@ -1095,43 +1072,12 @@ sfc_nic_probe(struct sfc_adapter *sa)
 	return 0;
 }
 
-static efx_rc_t
-sfc_pci_config_readd(efsys_pci_config_t *configp, uint32_t offset,
-		     efx_dword_t *edp)
-{
-	int rc;
-
-	rc = rte_pci_read_config(configp->espc_dev, edp->ed_u32, sizeof(*edp),
-				 offset);
-
-	return (rc < 0 || rc != sizeof(*edp)) ? EIO : 0;
-}
-
-static int
-sfc_family(struct sfc_adapter *sa, efx_bar_region_t *mem_ebrp)
-{
-	struct rte_eth_dev *eth_dev = sa->eth_dev;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	efsys_pci_config_t espcp;
-	static const efx_pci_ops_t ops = {
-		.epo_config_readd = sfc_pci_config_readd,
-		.epo_find_mem_bar = sfc_find_mem_bar,
-	};
-	int rc;
-
-	espcp.espc_dev = pci_dev;
-
-	rc = efx_family_probe_bar(pci_dev->id.vendor_id,
-				  pci_dev->id.device_id,
-				  &espcp, &ops, &sa->family, mem_ebrp);
-
-	return rc;
-}
-
 int
 sfc_probe(struct sfc_adapter *sa)
 {
 	efx_bar_region_t mem_ebrp;
+	struct rte_eth_dev *eth_dev = sa->eth_dev;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	efx_nic_t *enp;
 	int rc;
 
@@ -1143,7 +1089,8 @@ sfc_probe(struct sfc_adapter *sa)
 	rte_atomic32_init(&sa->restart_required);
 
 	sfc_log_init(sa, "get family");
-	rc = sfc_family(sa, &mem_ebrp);
+	rc = sfc_efx_family(pci_dev, &mem_ebrp, &sa->family);
+
 	if (rc != 0)
 		goto fail_family;
 	sfc_log_init(sa,

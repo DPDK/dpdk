@@ -62,6 +62,62 @@ sfc_efx_dev_class_get(struct rte_devargs *devargs)
 	return dev_class;
 }
 
+static efx_rc_t
+sfc_efx_find_mem_bar(efsys_pci_config_t *configp, int bar_index,
+		     efsys_bar_t *barp)
+{
+	efsys_bar_t result;
+	struct rte_pci_device *dev;
+
+	memset(&result, 0, sizeof(result));
+
+	if (bar_index < 0 || bar_index >= PCI_MAX_RESOURCE)
+		return -EINVAL;
+
+	dev = configp->espc_dev;
+
+	result.esb_rid = bar_index;
+	result.esb_dev = dev;
+	result.esb_base = dev->mem_resource[bar_index].addr;
+
+	*barp = result;
+
+	return 0;
+}
+
+static efx_rc_t
+sfc_efx_pci_config_readd(efsys_pci_config_t *configp, uint32_t offset,
+			 efx_dword_t *edp)
+{
+	int rc;
+
+	rc = rte_pci_read_config(configp->espc_dev, edp->ed_u32, sizeof(*edp),
+				 offset);
+
+	return (rc < 0 || rc != sizeof(*edp)) ? EIO : 0;
+}
+
+int
+sfc_efx_family(struct rte_pci_device *pci_dev,
+	       efx_bar_region_t *mem_ebrp, efx_family_t *family)
+{
+	static const efx_pci_ops_t ops = {
+		.epo_config_readd = sfc_efx_pci_config_readd,
+		.epo_find_mem_bar = sfc_efx_find_mem_bar,
+	};
+
+	efsys_pci_config_t espcp;
+	int rc;
+
+	espcp.espc_dev = pci_dev;
+
+	rc = efx_family_probe_bar(pci_dev->id.vendor_id,
+				  pci_dev->id.device_id,
+				  &espcp, &ops, family, mem_ebrp);
+
+	return rc;
+}
+
 RTE_INIT(sfc_efx_register_logtype)
 {
 	int ret;

@@ -10,6 +10,11 @@
 #ifndef _SFC_EFX_H_
 #define _SFC_EFX_H_
 
+#include <rte_bus_pci.h>
+
+#include "efx.h"
+#include "efsys.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,6 +31,11 @@ enum sfc_efx_dev_class {
 
 __rte_internal
 enum sfc_efx_dev_class sfc_efx_dev_class_get(struct rte_devargs *devargs);
+
+__rte_internal
+int sfc_efx_family(struct rte_pci_device *pci_dev,
+		   efx_bar_region_t *mem_ebrp,
+		   efx_family_t *family);
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,11 @@
 # This software was jointly developed between OKTET Labs (under contract
 # for Solarflare) and Solarflare Communications, Inc.
 
+if is_windows
+	build = false
+	reason = 'not supported on Windows'
+endif
+
 if (arch_subdir != 'x86' or not dpdk_conf.get('RTE_ARCH_64')) and (arch_subdir != 'arm' or not host_machine.cpu_family().startswith('aarch64'))
 	build = false
 	reason = 'only supported on x86_64 and aarch64'
@@ -32,6 +37,7 @@ endforeach
 subdir('base')
 objs = [base_objs]
 
+deps += ['bus_pci']
 sources = files(
 	'sfc_efx.c',
 	'sfc_efx_mcdi.c',
