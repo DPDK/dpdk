@@ -31,7 +31,7 @@ static struct rte_logs {
 	size_t dynamic_types_len;
 	struct rte_log_dynamic_type *dynamic_types;
 } rte_logs = {
-	.type = ~0,
+	.type = UINT32_MAX,
 	.level = RTE_LOG_DEBUG,
 };
 

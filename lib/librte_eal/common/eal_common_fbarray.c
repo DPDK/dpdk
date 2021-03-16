@@ -138,7 +138,7 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 	 */
 	last = MASK_LEN_TO_IDX(arr->len);
 	last_mod = MASK_LEN_TO_MOD(arr->len);
-	last_msk = ~(-1ULL << last_mod);
+	last_msk = ~(UINT64_MAX << last_mod);
 
 	for (msk_idx = first; msk_idx < msk->n_masks; msk_idx++) {
 		uint64_t cur_msk, lookahead_msk;
@@ -398,8 +398,8 @@ find_prev_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 	first_mod = MASK_LEN_TO_MOD(start);
 	/* we're going backwards, so mask must start from the top */
 	ignore_msk = first_mod == MASK_ALIGN - 1 ?
-				-1ULL : /* prevent overflow */
-				~(-1ULL << (first_mod + 1));
+				UINT64_MAX : /* prevent overflow */
+				~(UINT64_MAX << (first_mod + 1));
 
 	/* go backwards, include zero */
 	msk_idx = first;
@@ -513,7 +513,7 @@ find_prev_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 				 * no runs in the space we've lookbehind-scanned
 				 * as well, so skip that on next iteration.
 				 */
-				ignore_msk = -1ULL << need;
+				ignore_msk = UINT64_MAX << need;
 				msk_idx = lookbehind_idx;
 				break;
 			}
@@ -560,8 +560,8 @@ find_prev(const struct rte_fbarray *arr, unsigned int start, bool used)
 	first_mod = MASK_LEN_TO_MOD(start);
 	/* we're going backwards, so mask must start from the top */
 	ignore_msk = first_mod == MASK_ALIGN - 1 ?
-				-1ULL : /* prevent overflow */
-				~(-1ULL << (first_mod + 1));
+				UINT64_MAX : /* prevent overflow */
+				~(UINT64_MAX << (first_mod + 1));
 
 	/* go backwards, include zero */
 	idx = first;
