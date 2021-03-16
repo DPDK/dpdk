@@ -2425,6 +2425,10 @@ static int bnxt_free_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	}
 	bnxt_del_dflt_mac_filter(bp, vnic);
 
+	rc = bnxt_hwrm_vnic_ctx_free(bp, vnic);
+	if (rc)
+		return rc;
+
 	rc = bnxt_hwrm_vnic_free(bp, vnic);
 	if (rc)
 		return rc;
