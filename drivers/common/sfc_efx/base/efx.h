@@ -4368,6 +4368,115 @@ efx_mae_action_rule_remove(
 
 #endif /* EFSYS_OPT_MAE */
 
+#if EFSYS_OPT_VIRTIO
+
+/* A Virtio net device can have one or more pairs of Rx/Tx virtqueues
+ * while virtio block device has a single virtqueue,
+ * for further details refer section of 4.2.3 of SF-120734
+ */
+typedef enum efx_virtio_vq_type_e {
+	EFX_VIRTIO_VQ_TYPE_NET_RXQ,
+	EFX_VIRTIO_VQ_TYPE_NET_TXQ,
+	EFX_VIRTIO_VQ_TYPE_BLOCK,
+	EFX_VIRTIO_VQ_NTYPES
+} efx_virtio_vq_type_t;
+
+typedef struct efx_virtio_vq_dyncfg_s {
+	/*
+	 * If queue is being created to be migrated then this
+	 * should be the FINAL_PIDX value returned by MC_CMD_VIRTIO_FINI_QUEUE
+	 * of the queue being migrated from. Otherwise, it should be zero.
+	 */
+	uint32_t		evvd_vq_pidx;
+	/*
+	 * If this queue is being created to be migrated then this
+	 * should be the FINAL_CIDX value returned by MC_CMD_VIRTIO_FINI_QUEUE
+	 * of the queue being migrated from. Otherwise, it should be zero.
+	 */
+	uint32_t		evvd_vq_cidx;
+} efx_virtio_vq_dyncfg_t;
+
+/*
+ * Virtqueue size must be a power of 2, maximum size is 32768
+ * (see VIRTIO v1.1 section 2.6)
+ */
+#define EFX_VIRTIO_MAX_VQ_SIZE	0x8000
+
+typedef struct efx_virtio_vq_cfg_s {
+	unsigned int		evvc_vq_num;
+	efx_virtio_vq_type_t	evvc_type;
+	/*
+	 * vDPA as VF : It is target VF number if queue is being created on VF.
+	 * vDPA as PF : If queue to be created on PF then it should be
+	 * EFX_PCI_VF_INVALID.
+	 */
+	uint16_t		evvc_target_vf;
+	/*
+	 * Maximum virtqueue size is EFX_VIRTIO_MAX_VQ_SIZE and
+	 * virtqueue size 0 means the queue is unavailable.
+	 */
+	uint32_t		evvc_vq_size;
+	efsys_dma_addr_t        evvc_desc_tbl_addr;
+	efsys_dma_addr_t	evvc_avail_ring_addr;
+	efsys_dma_addr_t	evvc_used_ring_addr;
+	/* MSIX vector number for the virtqueue or 0xFFFF if MSIX is not used */
+	uint16_t                evvc_msix_vector;
+	/*
+	 * evvc_pas_id contains a PCIe address space identifier if the queue
+	 * uses PASID.
+	 */
+	boolean_t               evvc_use_pasid;
+	uint32_t		evvc_pas_id;
+	/* Negotiated virtio features to be applied to this virtqueue */
+	uint64_t		evcc_features;
+} efx_virtio_vq_cfg_t;
+
+typedef struct efx_virtio_vq_s	efx_virtio_vq_t;
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_virtio_init(
+	__in		efx_nic_t *enp);
+
+LIBEFX_API
+extern			void
+efx_virtio_fini(
+	__in		efx_nic_t *enp);
+
+/*
+ * When virtio net driver in the guest sets VIRTIO_CONFIG_STATUS_DRIVER_OK bit,
+ * hypervisor starts configuring all the virtqueues in the device. When the
+ * vhost_user has received VHOST_USER_SET_VRING_ENABLE for all the virtqueues,
+ * then it invokes VDPA driver callback dev_conf. APIs qstart and qcreate would
+ * be invoked from dev_conf callback to create the virtqueues, For further
+ * details refer SF-122427.
+ */
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_virtio_qcreate(
+	__in		efx_nic_t *enp,
+	__deref_out	efx_virtio_vq_t **evvpp);
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_virtio_qstart(
+	__in		efx_virtio_vq_t *evvp,
+	__in		efx_virtio_vq_cfg_t *evvcp,
+	__in_opt	efx_virtio_vq_dyncfg_t *evvdp);
+
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_virtio_qstop(
+	__in		efx_virtio_vq_t *evvp,
+	__out_opt	efx_virtio_vq_dyncfg_t *evvdp);
+
+LIBEFX_API
+extern			void
+efx_virtio_qdestroy(
+	__in		efx_virtio_vq_t *evvp);
+
+#endif /* EFSYS_OPT_VIRTIO */
+
 #ifdef	__cplusplus
 }
 #endif
