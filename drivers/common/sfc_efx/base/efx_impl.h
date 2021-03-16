@@ -320,6 +320,8 @@ typedef struct efx_virtio_ops_s {
 				uint32_t *);
 	efx_rc_t	(*evo_get_features)(efx_nic_t *,
 				efx_virtio_device_type_t, uint64_t *);
+	efx_rc_t	(*evo_verify_features)(efx_nic_t *,
+				efx_virtio_device_type_t, uint64_t);
 } efx_virtio_ops_t;
 #endif /* EFSYS_OPT_VIRTIO */
 

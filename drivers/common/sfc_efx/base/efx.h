@@ -4501,6 +4501,13 @@ efx_virtio_get_features(
 	__in		efx_virtio_device_type_t type,
 	__out		uint64_t *featuresp);
 
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_virtio_verify_features(
+	__in		efx_nic_t *enp,
+	__in		efx_virtio_device_type_t type,
+	__in		uint64_t features);
+
 #endif /* EFSYS_OPT_VIRTIO */
 
 #ifdef	__cplusplus

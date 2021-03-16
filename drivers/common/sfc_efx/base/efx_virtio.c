@@ -14,6 +14,7 @@ static const efx_virtio_ops_t	__efx_virtio_rhead_ops = {
 	rhead_virtio_qstop,			/* evo_virtio_qstop */
 	rhead_virtio_get_doorbell_offset,	/* evo_get_doorbell_offset */
 	rhead_virtio_get_features,		/* evo_get_features */
+	rhead_virtio_verify_features,		/* evo_verify_features */
 };
 #endif /* EFSYS_OPT_RIVERHEAD */
 
@@ -289,6 +290,43 @@ efx_virtio_get_features(
 
 fail4:
 	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_virtio_verify_features(
+	__in		efx_nic_t *enp,
+	__in		efx_virtio_device_type_t type,
+	__in		uint64_t features)
+{
+	const efx_virtio_ops_t *evop = enp->en_evop;
+	efx_rc_t rc;
+
+	if (type >= EFX_VIRTIO_DEVICE_NTYPES) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_VIRTIO);
+
+	if (evop == NULL) {
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
+	if ((rc = evop->evo_verify_features(enp, type, features)) != 0)
+		goto fail3;
+
+	return (0);
+
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
