@@ -3039,6 +3039,7 @@ flow_dv_port_id_create_cb(struct mlx5_cache_list *list,
 				   "cannot create action");
 		return NULL;
 	}
+	cache->idx = idx;
 	return &cache->entry;
 }
 
@@ -3130,6 +3131,7 @@ flow_dv_push_vlan_create_cb(struct mlx5_cache_list *list,
 				   "cannot create push vlan action");
 		return NULL;
 	}
+	cache->idx = idx;
 	return &cache->entry;
 }
 
