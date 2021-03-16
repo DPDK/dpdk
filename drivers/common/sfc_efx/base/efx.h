@@ -4475,6 +4475,18 @@ extern			void
 efx_virtio_qdestroy(
 	__in		efx_virtio_vq_t *evvp);
 
+/*
+ * Get the offset in the BAR of the doorbells for a VI.
+ * net device : doorbell offset of RX & TX queues
+ * block device : request doorbell offset in the BAR.
+ * For further details refer section of 4 of SF-119689
+ */
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_virtio_get_doorbell_offset(
+	__in		efx_virtio_vq_t *evvp,
+	__out		uint32_t *offsetp);
+
 #endif /* EFSYS_OPT_VIRTIO */
 
 #ifdef	__cplusplus

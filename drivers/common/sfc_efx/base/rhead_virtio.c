@@ -187,4 +187,97 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	efx_rc_t
+rhead_virtio_get_doorbell_offset(
+	__in		efx_virtio_vq_t *evvp,
+	__out		uint32_t *offsetp)
+{
+	efx_nic_t *enp = evvp->evv_enp;
+	efx_mcdi_req_t req;
+	uint32_t type;
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_VIRTIO_GET_DOORBELL_OFFSET_REQ_LEN,
+		MC_CMD_VIRTIO_GET_NET_DOORBELL_OFFSET_RESP_LEN);
+	efx_rc_t rc;
+
+	req.emr_cmd = MC_CMD_VIRTIO_GET_DOORBELL_OFFSET;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_VIRTIO_GET_DOORBELL_OFFSET_REQ_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_VIRTIO_GET_NET_DOORBELL_OFFSET_RESP_LEN;
+
+	switch (evvp->evv_type) {
+	case EFX_VIRTIO_VQ_TYPE_NET_RXQ:
+	case EFX_VIRTIO_VQ_TYPE_NET_TXQ:
+		type = MC_CMD_VIRTIO_GET_FEATURES_IN_NET;
+		break;
+	case EFX_VIRTIO_VQ_TYPE_BLOCK:
+		type = MC_CMD_VIRTIO_GET_FEATURES_IN_BLOCK;
+		break;
+	default:
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	MCDI_IN_SET_BYTE(req, VIRTIO_GET_DOORBELL_OFFSET_REQ_DEVICE_ID,
+		type);
+	MCDI_IN_SET_WORD(req, VIRTIO_GET_DOORBELL_OFFSET_REQ_TARGET_VF,
+		evvp->evv_target_vf);
+	MCDI_IN_SET_DWORD(req, VIRTIO_GET_DOORBELL_OFFSET_REQ_INSTANCE,
+		evvp->evv_vi_index);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	switch (type) {
+	case MC_CMD_VIRTIO_GET_FEATURES_IN_NET:
+		if (req.emr_out_length_used <
+		    MC_CMD_VIRTIO_GET_NET_DOORBELL_OFFSET_RESP_LEN) {
+			rc = EMSGSIZE;
+			goto fail3;
+		}
+
+		if (evvp->evv_type == EFX_VIRTIO_VQ_TYPE_NET_RXQ) {
+			*offsetp = MCDI_OUT_DWORD(req,
+			    VIRTIO_GET_NET_DOORBELL_OFFSET_RESP_RX_DBL_OFFSET);
+		} else if (evvp->evv_type == EFX_VIRTIO_VQ_TYPE_NET_TXQ) {
+			*offsetp = MCDI_OUT_DWORD(req,
+			    VIRTIO_GET_NET_DOORBELL_OFFSET_RESP_TX_DBL_OFFSET);
+		}
+		break;
+	case MC_CMD_VIRTIO_GET_FEATURES_IN_BLOCK:
+		if (req.emr_out_length_used <
+		    MC_CMD_VIRTIO_GET_BLOCK_DOORBELL_OFFSET_RESP_LEN) {
+			rc = EMSGSIZE;
+			goto fail4;
+		}
+
+		*offsetp = MCDI_OUT_DWORD(req,
+			VIRTIO_GET_BLOCK_DOORBELL_OFFSET_RESP_DBL_OFFSET);
+		break;
+	default:
+		EFSYS_ASSERT(0);
+		rc = EINVAL;
+		goto fail5;
+	}
+
+	return (0);
+
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 #endif	/* EFSYS_OPT_RIVERHEAD && EFSYS_OPT_VIRTIO */

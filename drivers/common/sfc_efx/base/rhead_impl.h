@@ -492,6 +492,12 @@ rhead_virtio_qstop(
 	__in				efx_virtio_vq_t *evvp,
 	__out_opt			efx_virtio_vq_dyncfg_t *evvdp);
 
+LIBEFX_INTERNAL
+extern	__checkReturn			efx_rc_t
+rhead_virtio_get_doorbell_offset(
+	__in				efx_virtio_vq_t *evvp,
+	__out				uint32_t *offsetp);
+
 #endif /* EFSYS_OPT_VIRTIO */
 
 #ifdef	__cplusplus

@@ -12,6 +12,7 @@
 static const efx_virtio_ops_t	__efx_virtio_rhead_ops = {
 	rhead_virtio_qstart,			/* evo_virtio_qstart */
 	rhead_virtio_qstop,			/* evo_virtio_qstop */
+	rhead_virtio_get_doorbell_offset,	/* evo_get_doorbell_offset */
 };
 #endif /* EFSYS_OPT_RIVERHEAD */
 
@@ -211,6 +212,46 @@ efx_virtio_qdestroy(
 		/* Free the virtqueue object */
 		EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_virtio_vq_t), evvp);
 	}
+}
+
+	__checkReturn	efx_rc_t
+efx_virtio_get_doorbell_offset(
+	__in		efx_virtio_vq_t *evvp,
+	__out		uint32_t *offsetp)
+{
+	efx_nic_t *enp;
+	const efx_virtio_ops_t *evop;
+	efx_rc_t rc;
+
+	if ((evvp == NULL) || (offsetp == NULL)) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	enp = evvp->evv_enp;
+	evop = enp->en_evop;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_VIRTIO);
+
+	if (evop == NULL) {
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
+	if ((rc = evop->evo_get_doorbell_offset(evvp, offsetp)) != 0)
+		goto fail3;
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
 }
 
 #endif /* EFSYS_OPT_VIRTIO */
