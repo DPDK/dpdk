@@ -337,7 +337,7 @@ bkt_key_install(struct table *t,
 	/* Key data. */
 	bkt_data = table_key_data(t, bkt_key_id);
 	bkt_data[0] = input->action_id;
-	if (t->params.action_data_size)
+	if (t->params.action_data_size && input->action_data)
 		memcpy(&bkt_data[1],
 		       input->action_data,
 		       t->params.action_data_size);
@@ -358,7 +358,7 @@ bkt_key_data_update(struct table *t,
 	/* Key data. */
 	bkt_data = table_key_data(t, bkt_key_id);
 	bkt_data[0] = input->action_id;
-	if (t->params.action_data_size)
+	if (t->params.action_data_size && input->action_data)
 		memcpy(&bkt_data[1],
 		       input->action_data,
 		       t->params.action_data_size);
@@ -485,8 +485,6 @@ table_add(void *table, struct rte_swx_table_entry *entry)
 	CHECK(t, EINVAL);
 	CHECK(entry, EINVAL);
 	CHECK(entry->key, EINVAL);
-	CHECK((!t->params.action_data_size && !entry->action_data) ||
-	      (t->params.action_data_size && entry->action_data), EINVAL);
 
 	input_sig = hash(entry->key, t->key_mask, t->key_size, 0);
 	bkt_id = input_sig & (t->n_buckets - 1);
