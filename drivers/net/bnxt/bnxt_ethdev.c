@@ -5239,40 +5239,49 @@ bnxt_parse_devarg_rep_fc_f2r(__rte_unused const char *key,
 	return 0;
 }
 
-static void
+static int
 bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvlist;
+	int ret;
 
 	if (devargs == NULL)
-		return;
+		return 0;
 
 	kvlist = rte_kvargs_parse(devargs->args, bnxt_dev_args);
 	if (kvlist == NULL)
-		return;
+		return -EINVAL;
 
 	/*
 	 * Handler for "truflow" devarg.
 	 * Invoked as for ex: "-a 0000:00:0d.0,host-based-truflow=1"
 	 */
-	rte_kvargs_process(kvlist, BNXT_DEVARG_TRUFLOW,
-			   bnxt_parse_devarg_truflow, bp);
+	ret = rte_kvargs_process(kvlist, BNXT_DEVARG_TRUFLOW,
+				 bnxt_parse_devarg_truflow, bp);
+	if (ret)
+		goto err;
 
 	/*
 	 * Handler for "flow_xstat" devarg.
 	 * Invoked as for ex: "-a 0000:00:0d.0,flow_xstat=1"
 	 */
-	rte_kvargs_process(kvlist, BNXT_DEVARG_FLOW_XSTAT,
-			   bnxt_parse_devarg_flow_xstat, bp);
+	ret = rte_kvargs_process(kvlist, BNXT_DEVARG_FLOW_XSTAT,
+				 bnxt_parse_devarg_flow_xstat, bp);
+	if (ret)
+		goto err;
 
 	/*
 	 * Handler for "max_num_kflows" devarg.
 	 * Invoked as for ex: "-a 000:00:0d.0,max_num_kflows=32"
 	 */
-	rte_kvargs_process(kvlist, BNXT_DEVARG_MAX_NUM_KFLOWS,
-			   bnxt_parse_devarg_max_num_kflows, bp);
+	ret = rte_kvargs_process(kvlist, BNXT_DEVARG_MAX_NUM_KFLOWS,
+				 bnxt_parse_devarg_max_num_kflows, bp);
+	if (ret)
+		goto err;
 
+err:
 	rte_kvargs_free(kvlist);
+	return ret;
 }
 
 static int bnxt_alloc_switch_domain(struct bnxt *bp)
@@ -5407,7 +5416,9 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	bp = eth_dev->data->dev_private;
 
 	/* Parse dev arguments passed on when starting the DPDK application. */
-	bnxt_parse_dev_args(bp, pci_dev->device.devargs);
+	rc = bnxt_parse_dev_args(bp, pci_dev->device.devargs);
+	if (rc)
+		goto error_free;
 
 	rc = bnxt_drv_init(eth_dev);
 	if (rc)
