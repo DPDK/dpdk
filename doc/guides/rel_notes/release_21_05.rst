@@ -152,6 +152,7 @@ New Features
 * **Introduced period timer mode in eventdev timer adapter.**
 
   * Added support for periodic timer mode in eventdev timer adapter.
+  * Added support for periodic timer mode in octeontx2 event device driver.
 
 * **Updated testpmd.**
 

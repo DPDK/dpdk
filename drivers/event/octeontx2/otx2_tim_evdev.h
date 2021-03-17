@@ -155,6 +155,7 @@ struct otx2_tim_ring {
 	uint8_t disable_npa;
 	uint8_t optimized;
 	uint8_t ena_dfb;
+	uint8_t ena_periodic;
 	uint16_t ring_id;
 	uint32_t aura;
 	uint64_t nb_timers;
