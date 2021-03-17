@@ -149,6 +149,10 @@ New Features
 
   * Added support for multi-segments mbuf.
 
+* **Introduced period timer mode in eventdev timer adapter.**
+
+  * Added support for periodic timer mode in eventdev timer adapter.
+
 * **Updated testpmd.**
 
   * Added a command line option to configure forced speed for Ethernet port.

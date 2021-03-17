@@ -138,6 +138,18 @@ This function is passed a callback function that will be invoked if the
 adapter needs to create an event port, giving the application the opportunity
 to control how it is done.
 
+Adapter modes
+^^^^^^^^^^^^^
+An event timer adapter can be configured in either periodic or non-periodic mode
+to support timers of the respective type. A periodic timer expires at a fixed
+time interval repeatedly till it is cancelled. A non-periodic timer expires only
+once. The periodic capability flag, ``RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC``,
+can be set for implementations that support periodic mode if desired. To
+configure an adapter in periodic mode, ``timer_adapter_flags`` of
+``rte_event_timer_adapter_conf`` is set to include the periodic flag
+``RTE_EVENT_TIMER_ADAPTER_F_PERIODIC``. Maximum timeout (``max_tmo_nsec``) does
+not apply to periodic mode.
+
 Retrieve Event Timer Adapter Contextual Information
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The event timer adapter implementation may have constraints on tick resolution
@@ -229,7 +241,9 @@ Now we can arm the event timer with ``rte_event_timer_arm_burst()``:
 
 Once an event timer expires, the application may free it or rearm it as
 necessary.  If the application will rearm the timer, the state should be reset
-to RTE_EVENT_TIMER_NOT_ARMED by the application before rearming it.
+to RTE_EVENT_TIMER_NOT_ARMED by the application before rearming it. Timer expiry
+events will be generated once or periodically until the timer is cancelled based
+on adapter mode.
 
 Multiple Event Timers with Same Expiry Value
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

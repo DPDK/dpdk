@@ -151,6 +151,14 @@ enum rte_event_timer_adapter_clk_src {
  * @see struct rte_event_timer_adapter_conf::flags
  */
 
+#define RTE_EVENT_TIMER_ADAPTER_F_PERIODIC	(1ULL << 2)
+/**< Flag to configure an event timer adapter in periodic mode; non-periodic
+ * mode is the default. A timer will fire once or periodically until the timer
+ * is cancelled based on the adapter mode.
+ *
+ * @see struct rte_event_timer_adapter_conf::flags
+ */
+
 /**
  * Timer adapter configuration structure
  */
@@ -551,6 +559,8 @@ struct rte_event_timer_adapter {
  * expiry event attributes, timeout ticks from now.
  * This function submits the event timer arm requests to the event timer adapter
  * and on expiry, the events will be injected to designated event queue.
+ * Timer expiry events will be generated once or periodically until cancellation
+ * based on the adapter mode.
  *
  * @param adapter
  *   A pointer to an event timer adapter structure.
@@ -570,6 +580,9 @@ struct rte_event_timer_adapter {
  *   destination event queue.
  *   - EAGAIN Specified timer adapter is not running
  *   - EALREADY A timer was encountered that was already armed
+ *
+ * @see RTE_EVENT_TIMER_ADAPTER_F_PERIODIC
+ *
  */
 static inline uint16_t
 rte_event_timer_arm_burst(const struct rte_event_timer_adapter *adapter,

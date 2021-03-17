@@ -1154,6 +1154,9 @@ rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 #define RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT (1ULL << 0)
 /**< This flag is set when the timer mechanism is in HW. */
 
+#define RTE_EVENT_TIMER_ADAPTER_CAP_PERIODIC      (1ULL << 1)
+/**< This flag is set if periodic mode is supported. */
+
 /**
  * Retrieve the event device's timer adapter capabilities.
  *
