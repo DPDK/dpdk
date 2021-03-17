@@ -275,6 +275,7 @@ int fpga_update_flash(struct ifpga_fme_hw *fme, const char *image,
 	struct ifpga_sec_mgr *smgr = NULL;
 	uint32_t rsu_stat = 0;
 	int fd = -1;
+	off_t len = 0;
 	struct sigaction old_sigint_action;
 	struct sigaction sa;
 	time_t start;
@@ -318,8 +319,20 @@ int fpga_update_flash(struct ifpga_fme_hw *fme, const char *image,
 			image, strerror(errno));
 		return -EIO;
 	}
-	smgr->rsu_length = lseek(fd, 0, SEEK_END);
+	len = lseek(fd, 0, SEEK_END);
 	close(fd);
+
+	if (len < 0) {
+		dev_err(smgr,
+			"Failed to get file length of \'%s\' [e:%s]\n",
+			image, strerror(errno));
+		return -EIO;
+	}
+	if (len == 0) {
+		dev_err(smgr, "Length of file \'%s\' is invalid\n", image);
+		return -EINVAL;
+	}
+	smgr->rsu_length = len;
 
 	if (smgr->max10_dev->staging_area_size < smgr->rsu_length) {
 		dev_err(dev, "Size of staging area is small than image length "
