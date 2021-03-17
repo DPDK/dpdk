@@ -128,7 +128,12 @@ static int write_flash_image(struct ifpga_sec_mgr *smgr, const char *image,
 	do {
 		to_transfer = (length > IFPGA_RSU_DATA_BLK_SIZE) ?
 			IFPGA_RSU_DATA_BLK_SIZE : length;
-		lseek(fd, offset, SEEK_SET);
+		if (lseek(fd, offset, SEEK_SET) < 0) {
+			dev_err(smgr, "Failed to seek in \'%s\' [e:%s]\n",
+				image, strerror(errno));
+			ret = -EIO;
+			goto end;
+		}
 		read_size = read(fd, buf, to_transfer);
 		if (read_size < 0) {
 			dev_err(smgr, "Failed to read from \'%s\' [e:%s]\n",
