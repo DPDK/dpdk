@@ -957,7 +957,9 @@ vhost_user_update_link_state(struct virtio_user_dev *dev)
 			 * of interrupt handling, callback cannot be
 			 * unregistered here, set an alarm to do it.
 			 */
-			rte_eal_alarm_set(1, virtio_user_dev_delayed_handler, (void *)dev);
+			rte_eal_alarm_set(1,
+				virtio_user_dev_delayed_disconnect_handler,
+				(void *)dev);
 		} else {
 			dev->net_status |= VIRTIO_NET_S_LINK_UP;
 		}
