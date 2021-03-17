@@ -28,10 +28,10 @@ extern "C" {
  * All version numbers in one to compare with RTE_VERSION_NUM()
  */
 #define RTE_VERSION RTE_VERSION_NUM( \
-			rte_version_year(), \
-			rte_version_month(), \
-			rte_version_minor(), \
-			rte_version_release())
+			RTE_VER_YEAR, \
+			RTE_VER_MONTH, \
+			RTE_VER_MINOR, \
+			RTE_VER_RELEASE)
 
 /**
  * Function to return DPDK version prefix string
