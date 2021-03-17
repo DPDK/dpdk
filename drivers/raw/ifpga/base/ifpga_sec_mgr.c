@@ -610,7 +610,7 @@ int init_sec_mgr(struct ifpga_fme_hw *fme)
 		smgr->rsu_status = NULL;
 	}
 
-	if ((hw->pci_data->device_id == IFPGA_N3000_DID) &&
+	if (hw && (hw->pci_data->device_id == IFPGA_N3000_DID) &&
 		(hw->pci_data->vendor_id == IFPGA_N3000_VID)) {
 		smgr->ops = &n3000_sec_ops;
 		smgr->copy_speed = IFPGA_N3000_COPY_SPEED;
