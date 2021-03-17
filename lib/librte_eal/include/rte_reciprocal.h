@@ -29,6 +29,10 @@
 
 #include <rte_common.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct rte_reciprocal {
 	uint32_t m;
 	uint8_t sh1, sh2;
@@ -88,5 +92,9 @@ rte_reciprocal_divide_u64(uint64_t a, const struct rte_reciprocal_u64 *R)
 
 struct rte_reciprocal rte_reciprocal_value(uint32_t d);
 struct rte_reciprocal_u64 rte_reciprocal_value_u64(uint64_t d);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_RECIPROCAL_H_ */
