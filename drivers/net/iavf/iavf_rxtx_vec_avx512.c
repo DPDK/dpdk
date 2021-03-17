@@ -380,7 +380,7 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 								len4_7);
 		__m512i mb4_7 = _mm512_shuffle_epi8(desc4_7, shuf_msk);
 
-		mb4_7 = _mm512_add_epi16(mb4_7, crc_adjust);
+		mb4_7 = _mm512_add_epi32(mb4_7, crc_adjust);
 		/**
 		 * to get packet types, shift 64-bit values down 30 bits
 		 * and so ptype is in lower 8-bits in each
@@ -411,7 +411,7 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 								len0_3);
 		__m512i mb0_3 = _mm512_shuffle_epi8(desc0_3, shuf_msk);
 
-		mb0_3 = _mm512_add_epi16(mb0_3, crc_adjust);
+		mb0_3 = _mm512_add_epi32(mb0_3, crc_adjust);
 		/* get the packet types */
 		const __m512i ptypes0_3 = _mm512_srli_epi64(desc0_3, 30);
 		const __m256i ptypes2_3 = _mm512_extracti64x4_epi64(ptypes0_3, 1);
@@ -869,7 +869,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 		 */
 		__m512i mb4_7 = _mm512_shuffle_epi8(raw_desc4_7, shuf_msk);
 
-		mb4_7 = _mm512_add_epi16(mb4_7, crc_adjust);
+		mb4_7 = _mm512_add_epi32(mb4_7, crc_adjust);
 		/**
 		 * to get packet types, ptype is located in bit16-25
 		 * of each 128bits
@@ -898,7 +898,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 		 */
 		__m512i mb0_3 = _mm512_shuffle_epi8(raw_desc0_3, shuf_msk);
 
-		mb0_3 = _mm512_add_epi16(mb0_3, crc_adjust);
+		mb0_3 = _mm512_add_epi32(mb0_3, crc_adjust);
 		/**
 		 * to get packet types, ptype is located in bit16-25
 		 * of each 128bits
