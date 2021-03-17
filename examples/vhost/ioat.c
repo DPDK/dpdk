@@ -113,7 +113,7 @@ open_ioat(const char *value)
 			goto out;
 		}
 		rte_rawdev_start(dev_id);
-		cb_tracker[dev_id].ioat_space = IOAT_RING_SIZE;
+		cb_tracker[dev_id].ioat_space = IOAT_RING_SIZE - 1;
 		dma_info->nr++;
 		i++;
 	}
