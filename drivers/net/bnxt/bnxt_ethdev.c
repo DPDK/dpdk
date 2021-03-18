@@ -3198,9 +3198,6 @@ static int bnxt_get_rx_ts(struct bnxt *bp, uint64_t *ts)
 	uint16_t port_id;
 	uint32_t fifo;
 
-	if (!ptp)
-		return -ENODEV;
-
 	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
 				ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
 	if (!(fifo & BNXT_PTP_RX_FIFO_PENDING))
@@ -3233,7 +3230,7 @@ bnxt_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
 
 	if (!ptp)
-		return 0;
+		return -ENOTSUP;
 
 	ns = rte_timespec_to_ns(ts);
 	/* Set the timecounters to a new value. */
@@ -3253,7 +3250,7 @@ bnxt_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 	int rc = 0;
 
 	if (!ptp)
-		return 0;
+		return -ENOTSUP;
 
 	if (BNXT_CHIP_THOR(bp))
 		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
@@ -3275,7 +3272,7 @@ bnxt_timesync_enable(struct rte_eth_dev *dev)
 	int rc;
 
 	if (!ptp)
-		return 0;
+		return -ENOTSUP;
 
 	ptp->rx_filter = 1;
 	ptp->tx_tstamp_en = 1;
@@ -3314,7 +3311,7 @@ bnxt_timesync_disable(struct rte_eth_dev *dev)
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
 
 	if (!ptp)
-		return 0;
+		return -ENOTSUP;
 
 	ptp->rx_filter = 0;
 	ptp->tx_tstamp_en = 0;
@@ -3339,7 +3336,7 @@ bnxt_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 	uint64_t ns;
 
 	if (!ptp)
-		return 0;
+		return -ENOTSUP;
 
 	if (BNXT_CHIP_THOR(bp))
 		rx_tstamp_cycles = ptp->rx_timestamp;
@@ -3362,7 +3359,7 @@ bnxt_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	int rc = 0;
 
 	if (!ptp)
-		return 0;
+		return -ENOTSUP;
 
 	if (BNXT_CHIP_THOR(bp))
 		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_PATH_TX,
@@ -3383,7 +3380,7 @@ bnxt_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
 
 	if (!ptp)
-		return 0;
+		return -ENOTSUP;
 
 	ptp->tc.nsec += delta;
 	ptp->tx_tstamp_tc.nsec += delta;
