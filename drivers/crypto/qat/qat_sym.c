@@ -162,6 +162,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	uint8_t do_sgl = 0;
 	uint8_t in_place = 1;
 	int alignment_adjustment = 0;
+	int oop_shift = 0;
 	struct rte_crypto_op *op = (struct rte_crypto_op *)in_op;
 	struct qat_sym_op_cookie *cookie =
 				(struct qat_sym_op_cookie *)op_cookie;
@@ -472,6 +473,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			rte_pktmbuf_iova_offset(op->sym->m_src, min_ofs);
 		dst_buf_start =
 			rte_pktmbuf_iova_offset(op->sym->m_dst, min_ofs);
+		oop_shift = min_ofs;
 
 	} else {
 		/* In-place operation
@@ -532,7 +534,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		 /* First find the end of the data */
 		if (do_sgl) {
 			uint32_t remaining_off = auth_param->auth_off +
-				auth_param->auth_len + alignment_adjustment;
+				auth_param->auth_len + alignment_adjustment + oop_shift;
 			struct rte_mbuf *sgl_buf =
 				(in_place ?
 					op->sym->m_src : op->sym->m_dst);
