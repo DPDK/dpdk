@@ -4,7 +4,6 @@
 
 #include <unistd.h>
 
-#include "rte_pmd_ark.h"
 #include "ark_ethdev_tx.h"
 #include "ark_global.h"
 #include "ark_mpu.h"
@@ -33,6 +32,9 @@ struct ark_tx_queue {
 	/* Stats HW tracks bytes and packets, need to count send errors */
 	uint64_t tx_errors;
 
+	tx_user_meta_hook_fn tx_user_meta_hook;
+	void *ext_user_data;
+
 	uint32_t queue_size;
 	uint32_t queue_mask;
 
@@ -45,9 +47,7 @@ struct ark_tx_queue {
 	/* The queue Index within the dpdk device structures */
 	uint16_t queue_index;
 
-	uint32_t pad[1];
-
-	/* second cache line - fields written by device */
+	/* next cache line - fields written by device */
 	RTE_MARKER cacheline1 __rte_cache_min_aligned;
 	volatile int32_t cons_index;		/* hw is done, can be freed */
 } __rte_cache_aligned;
@@ -120,15 +120,17 @@ eth_ark_xmit_pkts(void *vtxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct ark_tx_queue *queue;
 	struct rte_mbuf *mbuf;
-	uint32_t user_meta;
+	uint32_t user_meta[5];
 
 	int stat;
 	int32_t prod_index_limit;
 	uint16_t nb;
-	uint8_t user_len = 1;
+	uint8_t user_len = 0;
 	const uint32_t min_pkt_len = ARK_MIN_TX_PKTLEN;
+	tx_user_meta_hook_fn tx_user_meta_hook;
 
 	queue = (struct ark_tx_queue *)vtxq;
+	tx_user_meta_hook = queue->tx_user_meta_hook;
 
 	/* free any packets after the HW is done with them */
 	free_completed_tx(queue);
@@ -163,16 +165,18 @@ eth_ark_xmit_pkts(void *vtxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			memset(appended, 0, to_add);
 		}
 
-		user_meta = rte_pmd_ark_mbuf_tx_userdata_get(mbuf);
+		if (tx_user_meta_hook)
+			tx_user_meta_hook(mbuf, user_meta, &user_len,
+					  queue->ext_user_data);
 		if (unlikely(mbuf->nb_segs != 1)) {
 			stat = eth_ark_tx_jumbo(queue, mbuf,
-						&user_meta, user_len);
+						user_meta, user_len);
 			if (unlikely(stat != 0))
 				break;		/* Queue is full */
 		} else {
 			eth_ark_tx_desc_fill(queue, mbuf,
 					     ARK_DDM_SOP | ARK_DDM_EOP,
-					     &user_meta, user_len);
+					     user_meta, user_len);
 		}
 	}
 
@@ -271,6 +275,8 @@ eth_ark_tx_queue_setup(struct rte_eth_dev *dev,
 	queue->phys_qid = qidx;
 	queue->queue_index = queue_idx;
 	dev->data->tx_queues[queue_idx] = queue;
+	queue->tx_user_meta_hook = ark->user_ext.tx_user_meta_hook;
+	queue->ext_user_data = ark->user_data[dev->data->port_id];
 
 	queue->meta_q =
 		rte_zmalloc_socket("Ark_txqueue meta",

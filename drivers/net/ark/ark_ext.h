@@ -244,5 +244,43 @@ int rte_pmd_ark_set_mtu(struct rte_eth_dev *dev,
 			uint16_t size,
 			void *user_data);
 
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_rx_burst() for each packet. This extension
+ * function allows the transfer of meta data from the user's FPGA to
+ * mbuf fields.
+ *
+ * @param mbuf
+ *   The newly received mbuf
+ * @param meta
+ *   The meta data from the user, up to 20 bytes. The
+ *   underlying data in the PMD is of type uint32_t meta[5];
+ * @param user_data
+ *   user argument from dev_init() call.
+ */
+void rte_pmd_ark_rx_user_meta_hook(struct rte_mbuf *mbuf,
+				   const uint32_t *meta,
+				   void *user_data);
+
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_tx_burst() for each packet. This extension
+ * function allows the transfer of data from the mbuf to the user's
+ * FPGA.  Up to 20 bytes (5 32-bit words) are transferable
+ *
+ * @param mbuf
+ *   The mbuf about to be transmitted.
+ * @param meta
+ *   The meta data to be populate by this call. The
+ *   underlying in the PMD is of type uint32_t meta[5];
+ * @param meta_cnt
+ *   The count in 32-bit words of the meta data populated, 0 to 5.
+ * @param user_data
+ *   user argument from dev_init() call.
+ */
+void rte_pmd_ark_tx_user_meta_hook(const struct rte_mbuf *mbuf,
+				   uint32_t *meta,
+				   uint8_t *meta_cnt,
+				   void *user_data);
 
 #endif

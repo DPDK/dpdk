@@ -1,5 +1,5 @@
 .. SPDX-License-Identifier: BSD-3-Clause
-    Copyright (c) 2015-2017 Atomic Rules LLC
+    Copyright (c) 2015-2021 Atomic Rules LLC
     All rights reserved.
 
 ARK Poll Mode Driver
@@ -130,6 +130,141 @@ Configuration Information
      be offloaded or remain in host software.
 
 
+Dynamic PMD Extension
+---------------------
+
+Dynamic PMD extensions allow users to customize net/ark functionality
+using their own code. Arkville RTL and this PMD support high-throughput data
+movement, and these extensions allow PMD support for users' FPGA
+features.
+Dynamic PMD extensions operate by having users supply a shared object
+file which is loaded by Arkville PMD during initialization.  The
+object file contains extension (or hook) functions that are registered
+and then called during PMD operations.
+
+The allowable set of extension functions are defined and documented in
+``ark_ext.h``, only the initialization function,
+``rte_pmd_ark_dev_init()``, is required; all others are optional. The
+following sections give a small extension example along with
+instructions for compiling and using the extension.
+
+
+Extension Example
+^^^^^^^^^^^^^^^^^
+
+The following example shows an extension which populates mbuf fields
+during RX from user meta data coming from FPGA hardware.
+
+.. code-block:: c
+
+   #include <ark_ext.h>
+   #include <rte_mbuf.h>
+   #include <rte_ethdev.h>
+   #include <rte_malloc.h>
+
+   /* Global structure passed to extension/hook functions */
+   struct ark_user_extension {
+       int timestamp_dynfield_offset;
+   };
+
+   /* RX tuser field based on user's hardware */
+   struct user_rx_meta {
+      uint64_t timestamp;
+      uint32_t rss;
+   } __rte_packed;
+
+   /* Create ark_user_extension object for use in other hook functions */
+   void *rte_pmd_ark_dev_init(struct rte_eth_dev * dev,
+                              void * abar, int port_id )
+   {
+      RTE_SET_USED(dev);
+      RTE_SET_USED(abar);
+      fprintf(stderr, "Called Arkville user extension for port %u\n",
+              port_id);
+
+      struct ark_user_extension *xdata = rte_zmalloc("macExtS",
+             sizeof(struct ark_user_extension), 64);
+      if (!xdata)
+         return NULL;
+
+      /* register dynfield for rx timestamp */
+      rte_mbuf_dyn_rx_timestamp_register(&xdata->timestamp_dynfield_offset,
+                                         NULL);
+
+      fprintf(stderr, "timestamp fields offset in extension is %d\n",
+              xdata->timestamp_dynfield_offset);
+      return xdata;
+   }
+
+   /* uninitialization */
+   void rte_pmd_ark_dev_uninit(struct rte_eth_dev * dev, void *user_data)
+   {
+      rte_free(user_data);
+   }
+
+   /* Hook function -- called for each RX packet
+    * Extract RX timestamp and RSS from meta and place in mbuf
+    */
+   void rte_pmd_ark_rx_user_meta_hook(struct rte_mbuf *mbuf,
+                                      const uint32_t *meta,
+                                      void *user_data)
+   {
+      struct ark_user_extension *xdata = user_data;
+      struct user_rx_meta *user_rx = (struct user_rx_meta*)meta;
+      *RTE_MBUF_DYNFIELD(mbuf, xdata->timestamp_dynfield_offset, uint64_t*) =
+                         user_rx->timestamp;
+      mbuf->hash.rss = user_rx->rss;
+   }
+
+
+Compiling Extension
+^^^^^^^^^^^^^^^^^^^
+
+It is recommended to the compile the extension code with
+``-Wmissing-prototypes`` flag to insure correct function types. Typical
+DPDK options will also be needed.
+
+
+An example command line is give below
+
+.. code-block:: console
+
+    cc `pkg-config --cflags libdpdk` \
+    -O3 -DALLOW_EXPERIMENTAL_API -fPIC -Wall -Wmissing-prototypes -c \
+    -o pmd_net_ark_ext.o pmd_net_ark_ext.c
+    # Linking
+    cc -o libfx1_100g_ext.so.1 -shared \
+    `pkg-config --libs libdpdk` \
+    -Wl,--unresolved-symbols=ignore-all \
+    -Wl,-soname,libpmd_net_ark_ext.so.1 pmd_net_ark_ext.o
+
+In a ``Makefile`` this would be
+
+.. code-block:: Makefile
+
+   CFLAGS += $(shell pkg-config --cflags libdpdk)
+   CFLAGS += -O3 -DALLOW_EXPERIMENTAL_API -fPIC -Wall -Wmissing-prototypes
+   # Linking
+   LDFLAGS += $(shell pkg-config --libs libdpdk)
+   LDFLAGS += -Wl,--unresolved-symbols=ignore-all -Wl,-soname,libpmd_net_ark_ext.so.1
+
+The application must be linked with the ``-export-dynamic`` flags if any
+DPDK or application specific code will called from the extension.
+
+
+Enabling Extension
+^^^^^^^^^^^^^^^^^^
+
+The extensions are enabled in the application through the use of an
+environment variable ``ARK_EXT_PATH`` This variable points to the lib
+extension file generated above.  For example:
+
+.. code-block:: console
+
+   export ARK_EXT_PATH=$(PWD)/libpmd_net_ark_ext.so.1
+   testpmd ...
+
+
 Building DPDK
 -------------
 
@@ -143,6 +278,8 @@ documentation that comes with DPDK suite <linux_gsg>`.
 
 To build with a non-zero minimum tx packet length, set the above macro in your
 CFLAGS environment prior to the meson build step. I.e.,
+
+.. code-block:: console
 
     export CFLAGS="-DRTE_LIBRTE_ARK_MIN_TX_PKTLEN=60"
     meson build

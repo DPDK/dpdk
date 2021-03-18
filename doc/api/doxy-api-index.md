@@ -41,7 +41,6 @@ The public API headers are grouped by topics:
   [vhost]              (@ref rte_vhost.h),
   [vdpa]               (@ref rte_vdpa.h),
   [KNI]                (@ref rte_kni.h),
-  [ark]                (@ref rte_pmd_ark.h),
   [ixgbe]              (@ref rte_pmd_ixgbe.h),
   [i40e]               (@ref rte_pmd_i40e.h),
   [ice]                (@ref rte_pmd_ice.h),

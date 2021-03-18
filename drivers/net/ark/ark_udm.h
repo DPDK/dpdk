@@ -19,9 +19,8 @@
  * -- 32 bytes
  */
 struct ark_rx_meta {
-	uint64_t timestamp;
-	uint64_t user_data;
-	uint8_t  reserved[14];
+	uint32_t user_meta[5];	/* user defined based on fpga code */
+	uint8_t  reserved[10];
 	uint16_t pkt_len;
 } __rte_packed;
 

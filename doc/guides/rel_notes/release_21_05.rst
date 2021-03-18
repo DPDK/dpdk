@@ -69,6 +69,9 @@ New Features
 
   Updated Arkville net driver with new features and improvements, including:
 
+  * Generalized passing meta data between PMD and FPGA, allowing up to 20
+    bytes of user specified information in RX and TX paths.
+
   * Updated dynamic PMD extensions API using standardized names.
 
   * Added support for new Atomic Rules PCI device IDs ``0x100f, 0x1010, 0x1017,

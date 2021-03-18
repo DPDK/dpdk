@@ -57,6 +57,23 @@
 		void     *v;	   \
 	} name
 
+
+/* Extension hooks for extraction and placement of user meta data
+ * during RX an TX operations. These functions are the bridge
+ * between the mbuf struct and the tuser fields on the AXIS
+ * interfaces in the FPGA
+ */
+/* RX hook populates mbuf fields from user defined *meta up to 20 bytes */
+typedef void (*rx_user_meta_hook_fn)(struct rte_mbuf *mbuf,
+				     const uint32_t *meta,
+				     void *ext_user_data);
+/* TX hook poplulate *meta, with up to 20 bytes.  meta_cnt
+ * returns the number of uint32_t words populated, 0 to 5
+ */
+typedef void (*tx_user_meta_hook_fn)(const struct rte_mbuf *mbuf,
+				     uint32_t *meta, uint8_t *meta_cnt,
+				     void *ext_user_data);
+
 struct ark_user_ext {
 	void *(*dev_init)(struct rte_eth_dev *, void *abar, int port_id);
 	void (*dev_uninit)(struct rte_eth_dev *, void *);
@@ -79,6 +96,9 @@ struct ark_user_ext {
 	void (*mac_addr_set)(struct rte_eth_dev *, struct rte_ether_addr *,
 			void *);
 	int (*set_mtu)(struct rte_eth_dev *, uint16_t, void *);
+	/* user meta, hook functions  */
+	rx_user_meta_hook_fn rx_user_meta_hook;
+	tx_user_meta_hook_fn tx_user_meta_hook;
 };
 
 struct ark_adapter {
