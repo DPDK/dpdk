@@ -1261,6 +1261,9 @@ static int bnxt_dev_set_link_up_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc = 0;
 
+	if (!BNXT_SINGLE_PF(bp))
+		return -ENOTSUP;
+
 	if (!bp->link_info->link_up)
 		rc = bnxt_set_hwrm_link_config(bp, true);
 	if (!rc)
@@ -1273,6 +1276,9 @@ static int bnxt_dev_set_link_up_op(struct rte_eth_dev *eth_dev)
 static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
+
+	if (!BNXT_SINGLE_PF(bp))
+		return -ENOTSUP;
 
 	eth_dev->data->dev_link.link_status = 0;
 	bnxt_set_hwrm_link_config(bp, false);
