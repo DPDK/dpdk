@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#define ARK_PKTDIR_BASE_ADR  0xa0000
+#define ARK_PKT_DIR_INIT_VAL 0x0110
 
 typedef void *ark_pkt_dir_t;
 

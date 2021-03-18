@@ -22,7 +22,7 @@ ark_pktdir_init(void *base)
 		return inst;
 	}
 	inst->regs = (struct ark_pkt_dir_regs *)base;
-	inst->regs->ctrl = 0x00110110;	/* POR state */
+	inst->regs->ctrl = ARK_PKT_DIR_INIT_VAL; /* POR state */
 	return inst;
 }
 
