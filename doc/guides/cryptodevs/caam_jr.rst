@@ -24,7 +24,7 @@ accelerators. This provides significant improvement to system level performance.
 
 SEC HW accelerator above 4.x+ version are also known as CAAM.
 
-caam_jr PMD is one of DPAA drivers which uses uio interface to interact with
+caam_jr PMD is one of DPAA drivers which uses UIO interface to interact with
 Linux kernel for configure and destroy the device instance (ring).
 
 

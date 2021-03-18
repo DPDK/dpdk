@@ -71,7 +71,7 @@ In this release, the virtio PMD driver provides the basic functionality of packe
 
 *   Virtio supports software vlan stripping and inserting.
 
-*   Virtio supports using port IO to get PCI resource when uio/igb_uio module is not available.
+*   Virtio supports using port IO to get PCI resource when UIO module is not available.
 
 Prerequisites
 -------------
@@ -103,7 +103,8 @@ Host2VM communication example
 
         insmod rte_kni.ko
 
-    Other basic DPDK preparations like hugepage enabling, uio port binding are not listed here.
+    Other basic DPDK preparations like hugepage enabling,
+    UIO port binding are not listed here.
     Please refer to the *DPDK Getting Started Guide* for detailed instructions.
 
 #.  Launch the kni user application:
