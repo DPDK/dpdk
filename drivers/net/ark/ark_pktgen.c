@@ -2,15 +2,9 @@
  * Copyright (c) 2015-2018 Atomic Rules LLC
  */
 
-#include <getopt.h>
-#include <sys/time.h>
-#include <locale.h>
 #include <unistd.h>
 
 #include <rte_string_fns.h>
-#include <rte_eal.h>
-
-#include <ethdev_driver.h>
 #include <rte_malloc.h>
 
 #include "ark_pktgen.h"
@@ -469,4 +463,18 @@ ark_pktgen_setup(ark_pkt_gen_t handle)
 				options("port")->v.INT);
 		ark_pktgen_run(handle);
 	}
+}
+
+void *
+ark_pktgen_delay_start(void *arg)
+{
+	struct ark_pkt_gen_inst *inst = (struct ark_pkt_gen_inst *)arg;
+
+	/* This function is used exclusively for regression testing, We
+	 * perform a blind sleep here to ensure that the external test
+	 * application has time to setup the test before we generate packets
+	 */
+	usleep(100000);
+	ark_pktgen_run(inst);
+	return NULL;
 }

@@ -2,13 +2,9 @@
  * Copyright (c) 2015-2018 Atomic Rules LLC
  */
 
-#include <getopt.h>
-#include <sys/time.h>
-#include <locale.h>
 #include <unistd.h>
 
 #include <rte_string_fns.h>
-#include <ethdev_driver.h>
 #include <rte_malloc.h>
 
 #include "ark_pktchkr.h"

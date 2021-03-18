@@ -534,20 +534,6 @@ eth_ark_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void *
-delay_pg_start(void *arg)
-{
-	struct ark_adapter *ark = (struct ark_adapter *)arg;
-
-	/* This function is used exclusively for regression testing, We
-	 * perform a blind sleep here to ensure that the external test
-	 * application has time to setup the test before we generate packets
-	 */
-	usleep(100000);
-	ark_pktgen_run(ark->pg);
-	return NULL;
-}
-
 static int
 eth_ark_dev_start(struct rte_eth_dev *dev)
 {
@@ -582,7 +568,8 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 		/* Delay packet generatpr start allow the hardware to be ready
 		 * This is only used for sanity checking with internal generator
 		 */
-		if (pthread_create(&thread, NULL, delay_pg_start, ark)) {
+		if (pthread_create(&thread, NULL,
+				   ark_pktgen_delay_start, ark->pg)) {
 			ARK_PMD_LOG(ERR, "Could not create pktgen "
 				    "starter thread\n");
 			return -1;
