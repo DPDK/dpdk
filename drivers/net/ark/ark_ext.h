@@ -7,84 +7,242 @@
 
 #include <ethdev_driver.h>
 
-/*
- * This is the template file for users who which to define a dynamic
- * extension to the Arkville PMD.   User's who create an extension
- * should include this file and define the necessary and desired
- * functions.
- * Only 1 function is required for an extension, dev_init(); all other
- * functions prototyped in this file are optional.
+/* The following section lists function prototypes for Arkville's
+ * dynamic PMD extension. User's who create an extension
+ * must include this file and define the necessary and desired
+ * functions. Only 1 function is required for an extension,
+ * rte_pmd_ark_dev_init(); all other functions prototypes in this
+ * section are optional.
+ * See documentation for compiling and use of extensions.
  */
 
-/*
- * Called post PMD init.
- * The implementation returns its private data that gets passed into
- * all other functions as user_data
- * The ARK extension implementation MUST implement this function
+/**
+ * Extension prototype, required implementation if extensions are used.
+ * Called during device probe to initialize the user structure
+ * passed to other extension functions.  This is called once for each
+ * port of the device.
+ *
+ * @param dev
+ *   current device.
+ * @param a_bar
+ *   access to PCIe device bar (application bar) and hence access to
+ *   user's portion of FPGA.
+ * @param port_id
+ *   port identifier.
+ * @return user_data
+ *   which will be passed to other extension functions.
  */
-void *dev_init(struct rte_eth_dev *dev, void *a_bar, int port_id);
+void *rte_pmd_ark_dev_init(struct rte_eth_dev *dev, void *a_bar, int port_id);
 
-/* Called during device shutdown */
-void dev_uninit(struct rte_eth_dev *dev, void *user_data);
-
-/* This call is optional and allows the
- * extension to specify the number of supported ports.
+/**
+ * Extension prototype, optional implementation.
+ * Called during device uninit.
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
  */
-uint8_t dev_get_port_count(struct rte_eth_dev *dev,
-			   void *user_data);
+void rte_pmd_ark_dev_uninit(struct rte_eth_dev *dev, void *user_data);
 
-/*
- * The following functions are optional and are directly mapped
- * from the DPDK PMD ops structure.
- * Each function if implemented is called after the ARK PMD
- * implementation executes.
+/**
+ * Extension prototype, optional implementation.
+ * Called during device probe to change the port count from 1.
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
  */
+uint8_t dev_get_port_count(struct rte_eth_dev *dev, void *user_data);
 
-int dev_configure(struct rte_eth_dev *dev,
-		  void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_configure().
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+int rte_pmd_ark_dev_configure(struct rte_eth_dev *dev, void *user_data);
 
-int dev_start(struct rte_eth_dev *dev,
-	      void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_start().
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+int rte_pmd_ark_dev_start(struct rte_eth_dev *dev, void *user_data);
 
-void dev_stop(struct rte_eth_dev *dev,
-	      void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during  rte_eth_dev_stop().
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+void rte_pmd_ark_dev_stop(struct rte_eth_dev *dev, void *user_data);
 
-void dev_close(struct rte_eth_dev *dev,
-	       void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_close().
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+void rte_pmd_ark_dev_close(struct rte_eth_dev *dev, void *user_data);
 
-int link_update(struct rte_eth_dev *dev,
-		int wait_to_complete,
-		void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during link_update status event.
+ *
+ * @param dev
+ *   current device.
+ * @param wait_to_complete
+ *    argument from update event.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+int rte_pmd_ark_link_update(struct rte_eth_dev *dev,
+			    int wait_to_complete,
+			    void *user_data);
 
-int dev_set_link_up(struct rte_eth_dev *dev,
-		    void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_set_link_up().
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+int rte_pmd_ark_dev_set_link_up(struct rte_eth_dev *dev, void *user_data);
 
-int dev_set_link_down(struct rte_eth_dev *dev,
-		      void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_set_link_down().
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+int rte_pmd_ark_dev_set_link_down(struct rte_eth_dev *dev, void *user_data);
 
-int stats_get(struct rte_eth_dev *dev,
-	       struct rte_eth_stats *stats,
-	       void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_stats_get(); allows updates to the stats
+ * struct in addition Ark's PMD operations.
+ *
+ * @param dev
+ *   current device.
+ * @param stats
+ *   statistics struct already populated by Ark PMD.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+int rte_pmd_ark_stats_get(struct rte_eth_dev *dev,
+			  struct rte_eth_stats *stats,
+			  void *user_data);
 
-void stats_reset(struct rte_eth_dev *dev,
-		 void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_stats_reset().
+ *
+ * @param dev
+ *   current device.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+void rte_pmd_ark_stats_reset(struct rte_eth_dev *dev, void *user_data);
 
-void mac_addr_add(struct rte_eth_dev *dev,
-		  struct rte_ether_addr *macadr,
-		  uint32_t index,
-		  uint32_t pool,
-		  void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_mac_addr_add().
+ *
+ * @param dev
+ *   current device.
+ * @param macaddr
+ *   The MAC address to add
+ * @param index
+ *   The index into the MAC address array.
+ * @param pool
+ *   VMDq pool index from caller
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+void rte_pmd_ark_mac_addr_add(struct rte_eth_dev *dev,
+			      struct rte_ether_addr *macaddr,
+			      uint32_t index,
+			      uint32_t pool,
+			      void *user_data);
 
-void mac_addr_remove(struct rte_eth_dev *dev,
-		     uint32_t index,
-		     void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_mac_addr_remove().
+ *
+ * @param dev
+ *   current device.
+ * @param index
+ *   The index into the MAC address array.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+void rte_pmd_ark_mac_addr_remove(struct rte_eth_dev *dev,
+				 uint32_t index,
+				 void *user_data);
 
-void mac_addr_set(struct rte_eth_dev *dev,
-		  struct rte_ether_addr *mac_addr,
-		  void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_default_mac_addr_set().
+ *
+ * @param dev
+ *   current device.
+ * @param mac_addr
+ *   The new default MAC address.
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+void rte_pmd_ark_mac_addr_set(struct rte_eth_dev *dev,
+			      struct rte_ether_addr *mac_addr,
+			      void *user_data);
 
-int set_mtu(struct rte_eth_dev *dev,
-	    uint16_t size,
-	    void *user_data);
+/**
+ * Extension prototype, optional implementation.
+ * Called during rte_eth_dev_set_mtu().
+ *
+ * @param dev
+ *   current device.
+ * @param size
+ *   The MTU to be applied
+ * @param user_data
+ *   user argument from dev_init() call.
+ * @return (0) if successful.
+ */
+int rte_pmd_ark_set_mtu(struct rte_eth_dev *dev,
+			uint16_t size,
+			void *user_data);
+
 
 #endif

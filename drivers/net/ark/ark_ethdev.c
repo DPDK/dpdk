@@ -193,58 +193,58 @@ check_for_ext(struct ark_adapter *ark)
 	/* Get the entry points */
 	ark->user_ext.dev_init =
 		(void *(*)(struct rte_eth_dev *, void *, int))
-		dlsym(ark->d_handle, "dev_init");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_init");
 	ARK_PMD_LOG(DEBUG, "device ext init pointer = %p\n",
 		      ark->user_ext.dev_init);
 	ark->user_ext.dev_get_port_count =
 		(int (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "dev_get_port_count");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_get_port_count");
 	ark->user_ext.dev_uninit =
 		(void (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "dev_uninit");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_uninit");
 	ark->user_ext.dev_configure =
 		(int (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "dev_configure");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_configure");
 	ark->user_ext.dev_start =
 		(int (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "dev_start");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_start");
 	ark->user_ext.dev_stop =
 		(void (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "dev_stop");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_stop");
 	ark->user_ext.dev_close =
 		(void (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "dev_close");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_close");
 	ark->user_ext.link_update =
 		(int (*)(struct rte_eth_dev *, int, void *))
-		dlsym(ark->d_handle, "link_update");
+		dlsym(ark->d_handle, "rte_pmd_ark_link_update");
 	ark->user_ext.dev_set_link_up =
 		(int (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "dev_set_link_up");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_set_link_up");
 	ark->user_ext.dev_set_link_down =
 		(int (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "dev_set_link_down");
+		dlsym(ark->d_handle, "rte_pmd_ark_dev_set_link_down");
 	ark->user_ext.stats_get =
 		(int (*)(struct rte_eth_dev *, struct rte_eth_stats *,
 			  void *))
-		dlsym(ark->d_handle, "stats_get");
+		dlsym(ark->d_handle, "rte_pmd_ark_stats_get");
 	ark->user_ext.stats_reset =
 		(void (*)(struct rte_eth_dev *, void *))
-		dlsym(ark->d_handle, "stats_reset");
+		dlsym(ark->d_handle, "rte_pmd_ark_stats_reset");
 	ark->user_ext.mac_addr_add =
 		(void (*)(struct rte_eth_dev *, struct rte_ether_addr *,
 			uint32_t, uint32_t, void *))
-		dlsym(ark->d_handle, "mac_addr_add");
+		dlsym(ark->d_handle, "rte_pmd_ark_mac_addr_add");
 	ark->user_ext.mac_addr_remove =
 		(void (*)(struct rte_eth_dev *, uint32_t, void *))
-		dlsym(ark->d_handle, "mac_addr_remove");
+		dlsym(ark->d_handle, "rte_pmd_ark_mac_addr_remove");
 	ark->user_ext.mac_addr_set =
 		(void (*)(struct rte_eth_dev *, struct rte_ether_addr *,
 			  void *))
-		dlsym(ark->d_handle, "mac_addr_set");
+		dlsym(ark->d_handle, "rte_pmd_ark_mac_addr_set");
 	ark->user_ext.set_mtu =
 		(int (*)(struct rte_eth_dev *, uint16_t,
 			  void *))
-		dlsym(ark->d_handle, "set_mtu");
+		dlsym(ark->d_handle, "rte_pmd_ark_set_mtu");
 
 	return found;
 }
