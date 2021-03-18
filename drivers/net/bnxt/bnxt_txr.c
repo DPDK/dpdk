@@ -178,7 +178,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	txbd->flags_type |= TX_BD_SHORT_FLAGS_COAL_NOW;
 	txbd->flags_type |= TX_BD_LONG_FLAGS_NO_CMPL;
 	txbd->len = tx_pkt->data_len;
-	if (tx_pkt->pkt_len >= 2014)
+	if (tx_pkt->pkt_len >= 2048)
 		txbd->flags_type |= TX_BD_LONG_FLAGS_LHINT_GTE2K;
 	else
 		txbd->flags_type |= lhint_arr[tx_pkt->pkt_len >> 9];
