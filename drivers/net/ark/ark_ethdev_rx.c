@@ -26,9 +26,6 @@ static uint32_t eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 				 struct rte_mbuf *mbuf0,
 				 uint32_t cons_index);
 static inline int eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue);
-static int eth_ark_rx_seed_recovery(struct ark_rx_queue *queue,
-				    uint32_t *pnb,
-				    struct rte_mbuf **mbufs);
 
 /* ************************************************************************* */
 struct ark_rx_queue {
@@ -54,7 +51,7 @@ struct ark_rx_queue {
 	/* The queue Index is used within the dpdk device structures */
 	uint16_t queue_index;
 
-	uint32_t last_cons;
+	uint32_t unused;
 
 	/* separate cache line */
 	/* second cache line - fields only used in slow path */
@@ -105,9 +102,8 @@ static inline void
 eth_ark_rx_update_cons_index(struct ark_rx_queue *queue, uint32_t cons_index)
 {
 	queue->cons_index = cons_index;
-	eth_ark_rx_seed_mbufs(queue);
-	if (((cons_index - queue->last_cons) >= 64U)) {
-		queue->last_cons = cons_index;
+	if ((cons_index + queue->queue_size - queue->seed_index) >= 64U) {
+		eth_ark_rx_seed_mbufs(queue);
 		ark_mpu_set_producer(queue->mpu, queue->seed_index);
 	}
 }
@@ -321,9 +317,7 @@ eth_ark_recv_pkts(void *rx_queue,
 			break;
 	}
 
-	if (unlikely(nb != 0))
-		/* report next free to FPGA */
-		eth_ark_rx_update_cons_index(queue, cons_index);
+	eth_ark_rx_update_cons_index(queue, cons_index);
 
 	return nb;
 }
@@ -458,11 +452,13 @@ eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 	int status = rte_pktmbuf_alloc_bulk(queue->mb_pool, mbufs, nb);
 
 	if (unlikely(status != 0)) {
-		/* Try to recover from lack of mbufs in pool */
-		status = eth_ark_rx_seed_recovery(queue, &nb, mbufs);
-		if (unlikely(status != 0)) {
-			return -1;
-		}
+		ARK_PMD_LOG(NOTICE,
+			    "Could not allocate %u mbufs from pool"
+			    " for RX queue %u;"
+			    " %u free buffers remaining in queue\n",
+			    nb, queue->queue_index,
+			    queue->seed_index - queue->cons_index);
+		return -1;
 	}
 
 	if (ARK_DEBUG_CORE) {		/* DEBUG */
@@ -509,29 +505,6 @@ eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 	} /* switch */
 
 	return 0;
-}
-
-int
-eth_ark_rx_seed_recovery(struct ark_rx_queue *queue,
-			 uint32_t *pnb,
-			 struct rte_mbuf **mbufs)
-{
-	int status = -1;
-
-	/* Ignore small allocation failures */
-	if (*pnb <= 64)
-		return -1;
-
-	*pnb = 64U;
-	status = rte_pktmbuf_alloc_bulk(queue->mb_pool, mbufs, *pnb);
-	if (status != 0) {
-		ARK_PMD_LOG(NOTICE,
-			    "ARK: Could not allocate %u mbufs from pool for RX queue %u;"
-			    " %u free buffers remaining in queue\n",
-			    *pnb, queue->queue_index,
-			    queue->seed_index - queue->cons_index);
-	}
-	return status;
 }
 
 void
