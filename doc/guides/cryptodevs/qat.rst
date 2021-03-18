@@ -562,7 +562,7 @@ Binding the available VFs to the vfio-pci driver
 
 Note:
 
-* Please note that due to security issues, the usage of older DPDK igb-uio
+* Please note that due to security issues, the usage of older DPDK igb_uio
   driver is not recommended. This document shows how to use the more secure
   vfio-pci driver.
 * If QAT fails to bind to vfio-pci on Linux kernel 5.9+, please see the

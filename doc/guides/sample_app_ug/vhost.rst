@@ -72,7 +72,7 @@ Run testpmd inside guest
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 Make sure you have DPDK built inside the guest. Also make sure the
-corresponding virtio-net PCI device is bond to a uio driver, which
+corresponding virtio-net PCI device is bond to a UIO driver, which
 could be done by:
 
 .. code-block:: console

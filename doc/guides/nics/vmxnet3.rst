@@ -119,7 +119,8 @@ This section describes an example setup for Phy-vSwitch-VM-Phy communication.
 
 .. note::
 
-    Other instructions on preparing to use DPDK such as, hugepage enabling, uio port binding are not listed here.
+    Other instructions on preparing to use DPDK such as,
+    hugepage enabling, UIO port binding are not listed here.
     Please refer to *DPDK Getting Started Guide and DPDK Sample Application's User Guide* for detailed instructions.
 
 The packet reception and transmission flow path is::

@@ -63,7 +63,7 @@ QEMU can then be started using the following parameters:
         -device virtio-crypto-pci,id=crypto0,cryptodev=cryptodev0
     [...]
 
-Secondly bind the uio_generic driver for the virtio-crypto device.
+Secondly bind the uio_pci_generic driver for the virtio-crypto device.
 For example, 0000:00:04.0 is the domain, bus, device and function
 number of the virtio-crypto device:
 

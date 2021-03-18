@@ -62,7 +62,7 @@ store it in a shell variable:
 
 .. _`UUID`: https://en.wikipedia.org/wiki/Universally_unique_identifier
 
-There are several possible ways to assign the uio device driver for a device.
+There are several possible ways to assign the UIO device driver for a device.
 The easiest way (but only on 4.18 or later)
 is to use the `driverctl Device Driver control utility`_ to override
 the normal kernel device.

@@ -419,7 +419,7 @@ Binding PCI devices to igb_uio fails on Linux kernel 3.9 when more than one devi
 ------------------------------------------------------------------------------------------
 
 **Description**:
-   A known bug in the uio driver included in Linux kernel version 3.9 prevents more than one PCI device to be
+   A known bug in the UIO driver included in Linux kernel version 3.9 prevents more than one PCI device to be
    bound to the igb_uio driver.
 
 **Implication**:
@@ -614,7 +614,7 @@ I40e VF may not receive packets in the promiscuous mode
    Poll Mode Driver (PMD).
 
 
-uio pci generic module bind failed in X710/XL710/XXV710
+uio_pci_generic module bind failed in X710/XL710/XXV710
 -------------------------------------------------------
 
 **Description**:
@@ -671,7 +671,7 @@ virtio tx_burst() function cannot do TSO on shared packets
    Poll Mode Driver (PMD).
 
 
-igb uio legacy mode can not be used in X710/XL710/XXV710
+igb_uio legacy mode can not be used in X710/XL710/XXV710
 --------------------------------------------------------
 
 **Description**:
@@ -752,7 +752,7 @@ Netvsc driver and application restart
    handshake sequence with the host.
 
 **Resolution/Workaround**:
-   Either reboot the guest or remove and reinsert the hv_uio_generic module.
+   Either reboot the guest or remove and reinsert the uio_hv_generic module.
 
 **Affected Environment/Platform**:
    Linux Hyper-V.
@@ -816,7 +816,7 @@ Kernel crash when hot-unplug igb_uio device while DPDK application is running
 
 **Reason**:
    When device is hot-unplugged, igb_uio driver will be removed which will destroy UIO resources.
-   Later trying to access any uio resource will cause kernel crash.
+   Later trying to access any UIO resource will cause kernel crash.
 
 **Resolution/Workaround**:
    If using DPDK for PCI HW hot-unplug, prefer to bind device with VFIO instead of IGB_UIO.
