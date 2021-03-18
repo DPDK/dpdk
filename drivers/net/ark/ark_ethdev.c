@@ -321,6 +321,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	ark->rqpacing =
 		(struct ark_rqpace_t *)(ark->bar0 + ARK_RCPACING_BASE);
 	ark->started = 0;
+	ark->pkt_dir_v = ARK_PKT_DIR_INIT_VAL;
 
 	ARK_PMD_LOG(INFO, "Sys Ctrl Const = 0x%x  HW Commit_ID: %08x\n",
 		      ark->sysctrl.t32[4],
