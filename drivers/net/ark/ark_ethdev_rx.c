@@ -60,7 +60,6 @@ struct ark_rx_queue {
 	volatile uint32_t prod_index;	/* step 2 filled by FPGA */
 } __rte_cache_aligned;
 
-
 /* ************************************************************************* */
 static int
 eth_ark_rx_hw_setup(struct rte_eth_dev *dev,
@@ -265,7 +264,6 @@ eth_ark_recv_pkts(void *rx_queue,
 		/* META DATA embedded in headroom */
 		meta = RTE_PTR_ADD(mbuf->buf_addr, ARK_RX_META_OFFSET);
 
-		mbuf->port = meta->port;
 		mbuf->pkt_len = meta->pkt_len;
 		mbuf->data_len = meta->pkt_len;
 		/* set timestamp if enabled at least on one device */
@@ -346,8 +344,7 @@ eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 	/* HW guarantees that the data does not exceed prod_index! */
 	while (remaining != 0) {
 		data_len = RTE_MIN(remaining,
-				   RTE_MBUF_DEFAULT_DATAROOM +
-				   RTE_PKTMBUF_HEADROOM);
+				   RTE_MBUF_DEFAULT_DATAROOM);
 
 		remaining -= data_len;
 		segments += 1;
@@ -356,7 +353,6 @@ eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 		mbuf_prev->next = mbuf;
 		mbuf_prev = mbuf;
 		mbuf->data_len = data_len;
-		mbuf->data_off = 0;
 
 		cons_index += 1;
 	}

@@ -65,6 +65,13 @@ New Features
       representor=[[c#]pf#]sf# sf[0,2-1023] /* 1023 SFs.                     */
       representor=[c#]pf#      c2pf[0,1]    /* 2 PFs on controller 2.        */
 
+* **Updated Arkville PMD driver.**
+
+  Updated Arkville net driver with new features and improvements, including:
+
+  * Added support for new Atomic Rules PCI device IDs ``0x100f, 0x1010, 0x1017,
+    0x1018, 0x1019``.
+
 * **Updated Broadcom bnxt driver.**
 
   * Updated HWRM structures to 1.10.2.15 version.

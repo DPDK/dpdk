@@ -16,17 +16,22 @@
  * there is minimal documentation.
  */
 
-/* struct defining Tx meta data --  fixed in FPGA -- 16 bytes */
-struct ark_tx_meta {
+/* struct defining Tx meta data --  fixed in FPGA -- 8 bytes */
+union ark_tx_meta {
 	uint64_t physaddr;
-	uint32_t user1;
-	uint16_t data_len;		/* of this MBUF */
+	struct {
+		uint32_t usermeta0;
+		uint32_t usermeta1;
+	};
+	struct {
+		uint16_t data_len;	/* of this MBUF */
 #define   ARK_DDM_EOP   0x01
 #define   ARK_DDM_SOP   0x02
-	uint8_t flags;		/* bit 0 indicates last mbuf in chain. */
-	uint8_t reserved[1];
-};
-
+		uint8_t  flags;
+		uint8_t  meta_cnt;
+		uint32_t user1;
+	};
+} __rte_packed;
 
 /*
  * DDM core hardware structures
@@ -35,6 +40,7 @@ struct ark_tx_meta {
  */
 #define ARK_DDM_CFG 0x0000
 /* Set unique HW ID for hardware version */
+#define ARK_DDM_CONST3 (0x334d4444)
 #define ARK_DDM_CONST2 (0x324d4444)
 #define ARK_DDM_CONST1 (0xfacecafe)
 

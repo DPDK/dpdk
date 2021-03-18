@@ -15,14 +15,15 @@
  * there is minimal documentation.
  */
 
-/* Meta data structure apssed from FPGA, must match layout in FPGA */
+/* Meta data structure passed from FPGA, must match layout in FPGA
+ * -- 32 bytes
+ */
 struct ark_rx_meta {
 	uint64_t timestamp;
 	uint64_t user_data;
-	uint8_t port;
-	uint8_t dst_queue;
+	uint8_t  reserved[14];
 	uint16_t pkt_len;
-};
+} __rte_packed;
 
 /*
  * UDM hardware structures
@@ -32,7 +33,9 @@ struct ark_rx_meta {
 
 #define ARK_RX_WRITE_TIME_NS 2500
 #define ARK_UDM_SETUP 0
-#define ARK_UDM_CONST 0xbACECACE
+#define ARK_UDM_CONST2 0xbACECACE
+#define ARK_UDM_CONST3 0x334d4455
+#define ARK_UDM_CONST ARK_UDM_CONST3
 struct ark_udm_setup_t {
 	uint32_t r0;
 	uint32_t r4;

@@ -155,6 +155,11 @@ ARK PMD supports the following Arkville RTL PCIe instances including:
 
 * ``1d6c:100d`` - AR-ARKA-FX0 [Arkville 32B DPDK Data Mover]
 * ``1d6c:100e`` - AR-ARKA-FX1 [Arkville 64B DPDK Data Mover]
+* ``1d6c:100f`` - AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Versal]
+* ``1d6c:1010`` - AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Agilex]
+* ``1d6c:1017`` - AR-ARK-FX1 [Arkville 64B Multi-Homed Primary Endpoint]
+* ``1d6c:1018`` - AR-ARK-FX1 [Arkville 64B Multi-Homed Secondary Endpoint]
+* ``1d6c:1019`` - AR-ARK-FX1 [Arkville 64B Multi-Homed Tertiary Endpoint]
 
 Supported Operating Systems
 ---------------------------

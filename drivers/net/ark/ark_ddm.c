@@ -7,6 +7,8 @@
 #include "ark_logs.h"
 #include "ark_ddm.h"
 
+static_assert(sizeof(union ark_tx_meta) == 8, "Unexpected struct size ark_tx_meta");
+
 /* ************************************************************************* */
 int
 ark_ddm_verify(struct ark_ddm_t *ddm)
@@ -19,18 +21,26 @@ ark_ddm_verify(struct ark_ddm_t *ddm)
 	}
 
 	hw_const = ddm->cfg.const0;
+	if (hw_const == ARK_DDM_CONST3)
+		return 0;
+
 	if (hw_const == ARK_DDM_CONST1) {
 		ARK_PMD_LOG(ERR,
 			    "ARK: DDM module is version 1, "
 			    "PMD expects version 2\n");
 		return -1;
-	} else if (hw_const != ARK_DDM_CONST2) {
+	}
+
+	if (hw_const == ARK_DDM_CONST2) {
 		ARK_PMD_LOG(ERR,
-			    "ARK: DDM module not found as expected 0x%08x\n",
-			    ddm->cfg.const0);
+			    "ARK: DDM module is version 2, "
+			    "PMD expects version 3\n");
 		return -1;
 	}
-	return 0;
+	ARK_PMD_LOG(ERR,
+		    "ARK: DDM module not found as expected 0x%08x\n",
+		    ddm->cfg.const0);
+	return -1;
 }
 
 void
