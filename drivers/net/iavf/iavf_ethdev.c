@@ -954,7 +954,7 @@ iavf_dev_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr,
 		return -EINVAL;
 	}
 
-	err = iavf_add_del_eth_addr(adapter, addr, true);
+	err = iavf_add_del_eth_addr(adapter, addr, true, VIRTCHNL_ETHER_ADDR_EXTRA);
 	if (err) {
 		PMD_DRV_LOG(ERR, "fail to add MAC address");
 		return -EIO;
@@ -976,7 +976,7 @@ iavf_dev_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 
 	addr = &dev->data->mac_addrs[index];
 
-	err = iavf_add_del_eth_addr(adapter, addr, false);
+	err = iavf_add_del_eth_addr(adapter, addr, false, VIRTCHNL_ETHER_ADDR_EXTRA);
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to delete MAC address");
 
@@ -1188,17 +1188,15 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
-	struct rte_ether_addr *perm_addr, *old_addr;
+	struct rte_ether_addr *old_addr;
 	int ret;
 
 	old_addr = (struct rte_ether_addr *)hw->mac.addr;
-	perm_addr = (struct rte_ether_addr *)hw->mac.perm_addr;
 
-	/* If the MAC address is configured by host, skip the setting */
-	if (rte_is_valid_assigned_ether_addr(perm_addr))
-		return -EPERM;
+	if (rte_is_same_ether_addr(old_addr, mac_addr))
+		return 0;
 
-	ret = iavf_add_del_eth_addr(adapter, old_addr, false);
+	ret = iavf_add_del_eth_addr(adapter, old_addr, false, VIRTCHNL_ETHER_ADDR_PRIMARY);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Fail to delete old MAC:"
 			    " %02X:%02X:%02X:%02X:%02X:%02X",
@@ -1209,7 +1207,7 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 			    old_addr->addr_bytes[4],
 			    old_addr->addr_bytes[5]);
 
-	ret = iavf_add_del_eth_addr(adapter, mac_addr, true);
+	ret = iavf_add_del_eth_addr(adapter, mac_addr, true, VIRTCHNL_ETHER_ADDR_PRIMARY);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Fail to add new MAC:"
 			    " %02X:%02X:%02X:%02X:%02X:%02X",

@@ -1016,6 +1016,7 @@ iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
 				continue;
 			rte_memcpy(list->list[j].addr, addr->addr_bytes,
 				   sizeof(addr->addr_bytes));
+			list->list[j].type = VIRTCHNL_ETHER_ADDR_EXTRA;
 			PMD_DRV_LOG(DEBUG, "add/rm mac:%x:%x:%x:%x:%x:%x",
 				    addr->addr_bytes[0], addr->addr_bytes[1],
 				    addr->addr_bytes[2], addr->addr_bytes[3],
@@ -1111,7 +1112,7 @@ iavf_config_promisc(struct iavf_adapter *adapter,
 
 int
 iavf_add_del_eth_addr(struct iavf_adapter *adapter, struct rte_ether_addr *addr,
-		     bool add)
+		     bool add, uint8_t type)
 {
 	struct virtchnl_ether_addr_list *list;
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
@@ -1123,6 +1124,7 @@ iavf_add_del_eth_addr(struct iavf_adapter *adapter, struct rte_ether_addr *addr,
 	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
 	list->vsi_id = vf->vsi_res->vsi_id;
 	list->num_elements = 1;
+	list->list[0].type = type;
 	rte_memcpy(list->list[0].addr, addr->addr_bytes,
 		   sizeof(addr->addr_bytes));
 
@@ -1377,6 +1379,7 @@ iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 
 		memcpy(list->list[i].addr, mc_addrs[i].addr_bytes,
 			sizeof(list->list[i].addr));
+		list->list[i].type = VIRTCHNL_ETHER_ADDR_EXTRA;
 	}
 
 	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
