@@ -928,7 +928,7 @@ static void ecore_int_attn_print(struct ecore_hwfn *p_hwfn,
 				 bool b_clear)
 {
 	/* @DPDK */
-	DP_NOTICE(p_hwfn->p_dev, false, "[block_id %d type %d]\n", id, type);
+	DP_VERBOSE(p_hwfn, ECORE_MSG_INTR, "[block_id %d type %d]\n", id, type);
 }
 
 /**
