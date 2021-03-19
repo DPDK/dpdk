@@ -2139,8 +2139,10 @@ int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 		/* RSS hash key */
 		if (key) {
 			if (len > (ECORE_RSS_KEY_SIZE * sizeof(uint32_t))) {
-				DP_ERR(edev, "RSS key length exceeds limit\n");
-				return -EINVAL;
+				len = ECORE_RSS_KEY_SIZE * sizeof(uint32_t);
+				DP_NOTICE(edev, false,
+					  "RSS key length too big, trimmed to %d\n",
+					  len);
 			}
 			DP_INFO(edev, "Applying user supplied hash key\n");
 			rss_params.update_rss_key = 1;
