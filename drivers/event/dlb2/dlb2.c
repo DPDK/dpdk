@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/fcntl.h>
+#include <fcntl.h>
 
 #include <rte_common.h>
 #include <rte_config.h>
