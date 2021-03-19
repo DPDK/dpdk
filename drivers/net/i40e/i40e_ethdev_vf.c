@@ -106,6 +106,9 @@ static int i40evf_dev_tx_queue_start(struct rte_eth_dev *dev,
 				     uint16_t tx_queue_id);
 static int i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev,
 				    uint16_t tx_queue_id);
+static int i40evf_add_del_eth_addr(struct rte_eth_dev *dev,
+				   struct rte_ether_addr *addr,
+				   bool add, uint8_t type);
 static int i40evf_add_mac_addr(struct rte_eth_dev *dev,
 			       struct rte_ether_addr *addr,
 			       uint32_t index,
@@ -823,10 +826,9 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 }
 
 static int
-i40evf_add_mac_addr(struct rte_eth_dev *dev,
-		    struct rte_ether_addr *addr,
-		    __rte_unused uint32_t index,
-		    __rte_unused uint32_t pool)
+i40evf_add_del_eth_addr(struct rte_eth_dev *dev,
+			struct rte_ether_addr *addr,
+			bool add, uint8_t type)
 {
 	struct virtchnl_ether_addr_list *list;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -834,6 +836,34 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 			sizeof(struct virtchnl_ether_addr)];
 	int err;
 	struct vf_cmd_info args;
+
+	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
+	list->vsi_id = vf->vsi_res->vsi_id;
+	list->num_elements = 1;
+	list->list[0].type = type;
+	rte_memcpy(list->list[0].addr, addr->addr_bytes,
+					sizeof(addr->addr_bytes));
+
+	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
+	args.in_args = cmd_buffer;
+	args.in_args_size = sizeof(cmd_buffer);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = I40E_AQ_BUF_SZ;
+	err = i40evf_execute_vf_cmd(dev, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    add ? "OP_ADD_ETH_ADDR" :  "OP_DEL_ETH_ADDR");
+	return err;
+}
+
+static int
+i40evf_add_mac_addr(struct rte_eth_dev *dev,
+		    struct rte_ether_addr *addr,
+		    __rte_unused uint32_t index,
+		    __rte_unused uint32_t pool)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int err;
 
 	if (rte_is_zero_ether_addr(addr)) {
 		PMD_DRV_LOG(ERR, "Invalid mac:%x:%x:%x:%x:%x:%x",
@@ -843,21 +873,10 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 		return I40E_ERR_INVALID_MAC_ADDR;
 	}
 
-	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
-	list->vsi_id = vf->vsi_res->vsi_id;
-	list->num_elements = 1;
-	rte_memcpy(list->list[0].addr, addr->addr_bytes,
-					sizeof(addr->addr_bytes));
+	err = i40evf_add_del_eth_addr(dev, addr, TRUE, VIRTCHNL_ETHER_ADDR_EXTRA);
 
-	args.ops = VIRTCHNL_OP_ADD_ETH_ADDR;
-	args.in_args = cmd_buffer;
-	args.in_args_size = sizeof(cmd_buffer);
-	args.out_buffer = vf->aq_resp;
-	args.out_size = I40E_AQ_BUF_SZ;
-	err = i40evf_execute_vf_cmd(dev, &args);
 	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command "
-			    "OP_ADD_ETHER_ADDRESS");
+		PMD_DRV_LOG(ERR, "fail to add MAC address");
 	else
 		vf->vsi.mac_num++;
 
@@ -865,53 +884,23 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 }
 
 static void
-i40evf_del_mac_addr_by_addr(struct rte_eth_dev *dev,
-			    struct rte_ether_addr *addr)
-{
-	struct virtchnl_ether_addr_list *list;
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	uint8_t cmd_buffer[sizeof(struct virtchnl_ether_addr_list) + \
-			sizeof(struct virtchnl_ether_addr)];
-	int err;
-	struct vf_cmd_info args;
-
-	if (i40e_validate_mac_addr(addr->addr_bytes) != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Invalid mac:%x-%x-%x-%x-%x-%x",
-			    addr->addr_bytes[0], addr->addr_bytes[1],
-			    addr->addr_bytes[2], addr->addr_bytes[3],
-			    addr->addr_bytes[4], addr->addr_bytes[5]);
-		return;
-	}
-
-	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
-	list->vsi_id = vf->vsi_res->vsi_id;
-	list->num_elements = 1;
-	rte_memcpy(list->list[0].addr, addr->addr_bytes,
-			sizeof(addr->addr_bytes));
-
-	args.ops = VIRTCHNL_OP_DEL_ETH_ADDR;
-	args.in_args = cmd_buffer;
-	args.in_args_size = sizeof(cmd_buffer);
-	args.out_buffer = vf->aq_resp;
-	args.out_size = I40E_AQ_BUF_SZ;
-	err = i40evf_execute_vf_cmd(dev, &args);
-	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command "
-			    "OP_DEL_ETHER_ADDRESS");
-	else
-		vf->vsi.mac_num--;
-	return;
-}
-
-static void
 i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 {
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct rte_eth_dev_data *data = dev->data;
 	struct rte_ether_addr *addr;
+	int err;
 
 	addr = &data->mac_addrs[index];
 
-	i40evf_del_mac_addr_by_addr(dev, addr);
+	err = i40evf_add_del_eth_addr(dev, addr, FALSE, VIRTCHNL_ETHER_ADDR_EXTRA);
+
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to delete MAC address");
+	else
+		vf->vsi.mac_num--;
+
+	return;
 }
 
 static int
@@ -2092,6 +2081,7 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 				continue;
 			rte_memcpy(list->list[j].addr, addr->addr_bytes,
 					 sizeof(addr->addr_bytes));
+			list->list[j].type = VIRTCHNL_ETHER_ADDR_EXTRA;
 			PMD_DRV_LOG(DEBUG, "add/rm mac:%x:%x:%x:%x:%x:%x",
 				    addr->addr_bytes[0], addr->addr_bytes[1],
 				    addr->addr_bytes[2], addr->addr_bytes[3],
@@ -2852,15 +2842,23 @@ i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
 			    struct rte_ether_addr *mac_addr)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_ether_addr *old_addr;
+	int ret;
+
+	old_addr = (struct rte_ether_addr *)hw->mac.addr;
 
 	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
 		PMD_DRV_LOG(ERR, "Tried to set invalid MAC address.");
 		return -EINVAL;
 	}
 
-	i40evf_del_mac_addr_by_addr(dev, (struct rte_ether_addr *)hw->mac.addr);
+	if (rte_is_same_ether_addr(old_addr, mac_addr))
+		return 0;
 
-	if (i40evf_add_mac_addr(dev, mac_addr, 0, 0) != 0)
+	i40evf_add_del_eth_addr(dev, old_addr, FALSE, VIRTCHNL_ETHER_ADDR_PRIMARY);
+
+	ret = i40evf_add_del_eth_addr(dev, mac_addr, TRUE, VIRTCHNL_ETHER_ADDR_PRIMARY);
+	if (ret)
 		return -EIO;
 
 	rte_ether_addr_copy(mac_addr, (struct rte_ether_addr *)hw->mac.addr);
@@ -2904,6 +2902,7 @@ i40evf_add_del_mc_addr_list(struct rte_eth_dev *dev,
 
 		memcpy(list->list[i].addr, mc_addrs[i].addr_bytes,
 			sizeof(list->list[i].addr));
+		list->list[i].type = VIRTCHNL_ETHER_ADDR_EXTRA;
 	}
 
 	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
