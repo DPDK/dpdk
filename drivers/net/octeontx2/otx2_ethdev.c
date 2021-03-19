@@ -122,6 +122,14 @@ nix_lf_switch_header_type_enable(struct otx2_eth_dev *dev, bool enable)
 		   OTX2_PRIV_FLAGS_CH_LEN_24B) {
 		req->mode = OTX2_PRIV_FLAGS_CUSTOM;
 		req->pkind = NPC_RX_CHLEN24B_PKIND;
+	} else if (dev->npc_flow.switch_header_type ==
+		   OTX2_PRIV_FLAGS_EXDSA) {
+		req->mode = OTX2_PRIV_FLAGS_CUSTOM;
+		req->pkind = NPC_RX_EXDSA_PKIND;
+	} else if (dev->npc_flow.switch_header_type ==
+		   OTX2_PRIV_FLAGS_VLAN_EXDSA) {
+		req->mode = OTX2_PRIV_FLAGS_CUSTOM;
+		req->pkind = NPC_RX_VLAN_EXDSA_PKIND;
 	}
 
 	if (enable == 0)

@@ -489,13 +489,45 @@ flow_check_lc_ip_tunnel(struct otx2_parse_state *pst)
 		pst->tunnel = 1;
 }
 
+static int
+otx2_flow_raw_item_prepare(const struct rte_flow_item_raw *raw_spec,
+			   const struct rte_flow_item_raw *raw_mask,
+			   struct otx2_flow_item_info *info,
+			   uint8_t *spec_buf, uint8_t *mask_buf)
+{
+	uint32_t custom_hdr_size = 0;
+
+	memset(spec_buf, 0, NPC_MAX_RAW_ITEM_LEN);
+	memset(mask_buf, 0, NPC_MAX_RAW_ITEM_LEN);
+	custom_hdr_size = raw_spec->offset + raw_spec->length;
+
+	memcpy(spec_buf + raw_spec->offset, raw_spec->pattern,
+	       raw_spec->length);
+
+	if (raw_mask->pattern) {
+		memcpy(mask_buf + raw_spec->offset, raw_mask->pattern,
+		       raw_spec->length);
+	} else {
+		memset(mask_buf + raw_spec->offset, 0xFF, raw_spec->length);
+	}
+
+	info->len = custom_hdr_size;
+	info->spec = spec_buf;
+	info->mask = mask_buf;
+
+	return 0;
+}
+
 /* Outer IPv4, Outer IPv6, MPLS, ARP */
 int
 otx2_flow_parse_lc(struct otx2_parse_state *pst)
 {
+	uint8_t raw_spec_buf[NPC_MAX_RAW_ITEM_LEN];
+	uint8_t raw_mask_buf[NPC_MAX_RAW_ITEM_LEN];
 	uint8_t hw_mask[NPC_MAX_EXTRACT_DATA_LEN];
+	const struct rte_flow_item_raw *raw_spec;
 	struct otx2_flow_item_info info;
-	int lid, lt;
+	int lid, lt, len;
 	int rc;
 
 	if (pst->pattern->type == RTE_FLOW_ITEM_TYPE_MPLS)
@@ -531,6 +563,30 @@ otx2_flow_parse_lc(struct otx2_parse_state *pst)
 		info.len = sizeof(struct rte_flow_item_ipv6_ext);
 		info.hw_hdr_len = 40;
 		break;
+	case RTE_FLOW_ITEM_TYPE_RAW:
+		raw_spec = pst->pattern->spec;
+		if (!raw_spec->relative)
+			return 0;
+
+		len = raw_spec->length + raw_spec->offset;
+		if (len > NPC_MAX_RAW_ITEM_LEN) {
+			rte_flow_error_set(pst->error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					   "Spec length too big");
+			return -rte_errno;
+		}
+
+		otx2_flow_raw_item_prepare((const struct rte_flow_item_raw *)
+					   pst->pattern->spec,
+					   (const struct rte_flow_item_raw *)
+					   pst->pattern->mask, &info,
+					   raw_spec_buf, raw_mask_buf);
+
+		lid = NPC_LID_LC;
+		lt = NPC_LT_LC_NGIO;
+		info.hw_mask = &hw_mask;
+		otx2_flow_get_hw_supp_mask(pst, &info, lid, lt);
+		break;
 	default:
 		/* No match at this layer */
 		return 0;
@@ -552,10 +608,13 @@ int
 otx2_flow_parse_lb(struct otx2_parse_state *pst)
 {
 	const struct rte_flow_item *pattern = pst->pattern;
+	uint8_t raw_spec_buf[NPC_MAX_RAW_ITEM_LEN];
+	uint8_t raw_mask_buf[NPC_MAX_RAW_ITEM_LEN];
 	const struct rte_flow_item *last_pattern;
+	const struct rte_flow_item_raw *raw_spec;
 	char hw_mask[NPC_MAX_EXTRACT_DATA_LEN];
 	struct otx2_flow_item_info info;
-	int lid, lt, lflags;
+	int lid, lt, lflags, len;
 	int nr_vlans = 0;
 	int rc;
 
@@ -638,13 +697,44 @@ otx2_flow_parse_lb(struct otx2_parse_state *pst)
 
 		info.def_mask = &rte_flow_item_e_tag_mask;
 		info.len = sizeof(struct rte_flow_item_e_tag);
+	} else if (pst->pattern->type == RTE_FLOW_ITEM_TYPE_RAW) {
+		raw_spec = pst->pattern->spec;
+		if (raw_spec->relative)
+			return 0;
+		len = raw_spec->length + raw_spec->offset;
+		if (len > NPC_MAX_RAW_ITEM_LEN) {
+			rte_flow_error_set(pst->error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					   "Spec length too big");
+			return -rte_errno;
+		}
+
+		if (pst->npc->switch_header_type ==
+		    OTX2_PRIV_FLAGS_VLAN_EXDSA) {
+			lt = NPC_LT_LB_VLAN_EXDSA;
+		} else if (pst->npc->switch_header_type ==
+			   OTX2_PRIV_FLAGS_EXDSA) {
+			lt = NPC_LT_LB_EXDSA;
+		} else {
+			rte_flow_error_set(pst->error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					   "exdsa or vlan_exdsa not enabled on"
+					   " port");
+			return -rte_errno;
+		}
+
+		otx2_flow_raw_item_prepare((const struct rte_flow_item_raw *)
+					   pst->pattern->spec,
+					   (const struct rte_flow_item_raw *)
+					   pst->pattern->mask, &info,
+					   raw_spec_buf, raw_mask_buf);
+
+		info.hw_hdr_len = 0;
 	} else {
 		return 0;
 	}
 
 	info.hw_mask = &hw_mask;
-	info.spec = NULL;
-	info.mask = NULL;
 	otx2_flow_get_hw_supp_mask(pst, &info, lid, lt);
 
 	rc = otx2_flow_parse_item_basic(pst->pattern, &info, pst->error);
@@ -655,6 +745,7 @@ otx2_flow_parse_lb(struct otx2_parse_state *pst)
 	pst->pattern = last_pattern;
 	return otx2_flow_update_parse_state(pst, &info, lid, lt, lflags);
 }
+
 
 int
 otx2_flow_parse_la(struct otx2_parse_state *pst)

@@ -390,7 +390,8 @@ otx2_flow_parse_item_basic(const struct rte_flow_item *item,
 	}
 
 	/* We have valid spec */
-	info->spec = item->spec;
+	if (item->type != RTE_FLOW_ITEM_TYPE_RAW)
+		info->spec = item->spec;
 
 	/* If mask is not set, use default mask, err if default mask is
 	 * also NULL.
@@ -405,7 +406,8 @@ otx2_flow_parse_item_basic(const struct rte_flow_item *item,
 		}
 		info->mask = info->def_mask;
 	} else {
-		info->mask = item->mask;
+		if (item->type != RTE_FLOW_ITEM_TYPE_RAW)
+			info->mask = item->mask;
 	}
 
 	/* mask specified must be subset of hw supported mask

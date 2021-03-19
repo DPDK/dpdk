@@ -30,6 +30,7 @@ enum {
 #define NPC_IH_LENGTH			8
 #define NPC_TPID_LENGTH			2
 #define NPC_HIGIG2_LENGTH		16
+#define NPC_MAX_RAW_ITEM_LEN		16
 #define NPC_COUNTER_NONE		(-1)
 /* 32 bytes from LDATA_CFG & 32 bytes from FLAGS_CFG */
 #define NPC_MAX_EXTRACT_DATA_LEN	(64)

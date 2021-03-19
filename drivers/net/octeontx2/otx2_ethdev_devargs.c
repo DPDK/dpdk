@@ -119,6 +119,12 @@ parse_switch_header_type(const char *key, const char *value, void *extra_args)
 	if (strcmp(value, "chlen24b") == 0)
 		*(uint16_t *)extra_args = OTX2_PRIV_FLAGS_CH_LEN_24B;
 
+	if (strcmp(value, "exdsa") == 0)
+		*(uint16_t *)extra_args = OTX2_PRIV_FLAGS_EXDSA;
+
+	if (strcmp(value, "vlan_exdsa") == 0)
+		*(uint16_t *)extra_args = OTX2_PRIV_FLAGS_VLAN_EXDSA;
+
 	return 0;
 }
 
