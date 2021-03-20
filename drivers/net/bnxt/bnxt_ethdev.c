@@ -5608,7 +5608,7 @@ static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
 	rc = bnxt_alloc_hwrm_resources(bp);
 	if (rc) {
 		PMD_DRV_LOG(ERR,
-			    "Failed to allocate hwrm resource rc: %x\n", rc);
+			    "Failed to allocate response buffer rc: %x\n", rc);
 		return rc;
 	}
 	rc = bnxt_alloc_leds_info(bp);
