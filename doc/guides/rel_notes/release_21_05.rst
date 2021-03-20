@@ -169,6 +169,9 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* Removed support for Intel DLB V1 hardware. This is not a broad market device,
+  and existing customers already obtain the source code directly from Intel.
+
 
 API Changes
 -----------

@@ -1031,12 +1031,6 @@ test_eventdev_selftest_dpaa2(void)
 }
 
 static int
-test_eventdev_selftest_dlb(void)
-{
-	return test_eventdev_selftest_impl("dlb_event", "");
-}
-
-static int
 test_eventdev_selftest_dlb2(void)
 {
 	return test_eventdev_selftest_impl("dlb2_event", "");
@@ -1049,5 +1043,4 @@ REGISTER_TEST_COMMAND(eventdev_selftest_octeontx,
 REGISTER_TEST_COMMAND(eventdev_selftest_octeontx2,
 		test_eventdev_selftest_octeontx2);
 REGISTER_TEST_COMMAND(eventdev_selftest_dpaa2, test_eventdev_selftest_dpaa2);
-REGISTER_TEST_COMMAND(eventdev_selftest_dlb, test_eventdev_selftest_dlb);
 REGISTER_TEST_COMMAND(eventdev_selftest_dlb2, test_eventdev_selftest_dlb2);

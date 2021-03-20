@@ -345,8 +345,7 @@ New Features
 
 * **Added a new driver for the Intel Dynamic Load Balancer v1.0 device.**
 
-  Added the new ``dlb`` eventdev driver for the Intel DLB V1.0 device. See the
-  :doc:`../eventdevs/dlb` eventdev guide for more details on this new driver.
+  Added the new ``dlb`` eventdev driver for the Intel DLB V1.0 device.
 
 * **Added a new driver for the Intel Dynamic Load Balancer v2.0 device.**
 
