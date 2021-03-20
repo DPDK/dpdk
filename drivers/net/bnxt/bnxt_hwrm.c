@@ -1160,28 +1160,8 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 	max_resp_len = rte_le_to_cpu_16(resp->max_resp_len);
 	dev_caps_cfg = rte_le_to_cpu_32(resp->dev_caps_cfg);
 
-	if (bp->max_resp_len != max_resp_len) {
-		sprintf(type, "bnxt_hwrm_" PCI_PRI_FMT,
-			bp->pdev->addr.domain, bp->pdev->addr.bus,
-			bp->pdev->addr.devid, bp->pdev->addr.function);
-
-		rte_free(bp->hwrm_cmd_resp_addr);
-
-		bp->hwrm_cmd_resp_addr = rte_malloc(type, max_resp_len, 0);
-		if (bp->hwrm_cmd_resp_addr == NULL) {
-			rc = -ENOMEM;
-			goto error;
-		}
-		bp->hwrm_cmd_resp_dma_addr =
-			rte_malloc_virt2iova(bp->hwrm_cmd_resp_addr);
-		if (bp->hwrm_cmd_resp_dma_addr == RTE_BAD_IOVA) {
-			PMD_DRV_LOG(ERR,
-			"Unable to map response buffer to physical memory.\n");
-			rc = -ENOMEM;
-			goto error;
-		}
-		bp->max_resp_len = max_resp_len;
-	}
+	RTE_VERIFY(max_resp_len <= bp->max_resp_len);
+	bp->max_resp_len = max_resp_len;
 
 	if ((dev_caps_cfg &
 		HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_SUPPORTED) &&
@@ -2667,7 +2647,7 @@ int bnxt_alloc_hwrm_resources(struct bnxt *bp)
 
 	sprintf(type, "bnxt_hwrm_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
-	bp->max_resp_len = HWRM_MAX_RESP_LEN;
+	bp->max_resp_len = BNXT_PAGE_SIZE;
 	bp->hwrm_cmd_resp_addr = rte_malloc(type, bp->max_resp_len, 0);
 	if (bp->hwrm_cmd_resp_addr == NULL)
 		return -ENOMEM;
@@ -5842,6 +5822,7 @@ int bnxt_hwrm_poll_ver_get(struct bnxt *bp)
 	int rc = 0;
 
 	bp->max_req_len = HWRM_MAX_REQ_LEN;
+	bp->max_resp_len = BNXT_PAGE_SIZE;
 	bp->hwrm_cmd_timeout = SHORT_HWRM_CMD_TIMEOUT;
 
 	HWRM_PREP(&req, HWRM_VER_GET, BNXT_USE_CHIMP_MB);
