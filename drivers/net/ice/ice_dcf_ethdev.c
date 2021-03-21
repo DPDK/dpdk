@@ -743,31 +743,14 @@ ice_dcf_dev_allmulticast_disable(__rte_unused struct rte_eth_dev *dev)
 }
 
 static int
-ice_dcf_dev_filter_ctrl(struct rte_eth_dev *dev,
-			enum rte_filter_type filter_type,
-			enum rte_filter_op filter_op,
-			void *arg)
+ice_dcf_dev_flow_ops_get(struct rte_eth_dev *dev,
+			 const struct rte_flow_ops **ops)
 {
-	int ret = 0;
-
 	if (!dev)
 		return -EINVAL;
 
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		*(const void **)arg = &ice_flow_ops;
-		break;
-
-	default:
-		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
-			    filter_type);
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
+	*ops = &ice_flow_ops;
+	return 0;
 }
 
 #define ICE_DCF_32_BIT_WIDTH (CHAR_BIT * 4)
@@ -984,7 +967,7 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.promiscuous_disable     = ice_dcf_dev_promiscuous_disable,
 	.allmulticast_enable     = ice_dcf_dev_allmulticast_enable,
 	.allmulticast_disable    = ice_dcf_dev_allmulticast_disable,
-	.filter_ctrl             = ice_dcf_dev_filter_ctrl,
+	.flow_ops_get            = ice_dcf_dev_flow_ops_get,
 	.udp_tunnel_port_add	 = ice_dcf_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del	 = ice_dcf_dev_udp_tunnel_port_del,
 };

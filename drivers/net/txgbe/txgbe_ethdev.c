@@ -4080,27 +4080,11 @@ txgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 }
 
 static int
-txgbe_dev_filter_ctrl(__rte_unused struct rte_eth_dev *dev,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op,
-		     void *arg)
+txgbe_dev_flow_ops_get(__rte_unused struct rte_eth_dev *dev,
+		       const struct rte_flow_ops **ops)
 {
-	int ret = 0;
-
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		*(const void **)arg = &txgbe_flow_ops;
-		break;
-	default:
-		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
-							filter_type);
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
+	*ops = &txgbe_flow_ops;
+	return 0;
 }
 
 static u8 *
@@ -5210,7 +5194,7 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.reta_query                 = txgbe_dev_rss_reta_query,
 	.rss_hash_update            = txgbe_dev_rss_hash_update,
 	.rss_hash_conf_get          = txgbe_dev_rss_hash_conf_get,
-	.filter_ctrl                = txgbe_dev_filter_ctrl,
+	.flow_ops_get               = txgbe_dev_flow_ops_get,
 	.set_mc_addr_list           = txgbe_dev_set_mc_addr_list,
 	.rxq_info_get               = txgbe_rxq_info_get,
 	.txq_info_get               = txgbe_txq_info_get,

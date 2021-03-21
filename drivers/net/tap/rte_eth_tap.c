@@ -1890,7 +1890,7 @@ static const struct eth_dev_ops ops = {
 	.stats_reset            = tap_stats_reset,
 	.dev_supported_ptypes_get = tap_dev_supported_ptypes_get,
 	.rss_hash_update        = tap_rss_hash_update,
-	.filter_ctrl            = tap_dev_filter_ctrl,
+	.flow_ops_get           = tap_dev_flow_ops_get,
 };
 
 static int

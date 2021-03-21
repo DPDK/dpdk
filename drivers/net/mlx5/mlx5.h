@@ -1195,10 +1195,7 @@ int mlx5_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 		    struct rte_flow_error *error);
 int mlx5_flow_isolate(struct rte_eth_dev *dev, int enable,
 		      struct rte_flow_error *error);
-int mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
-			 enum rte_filter_type filter_type,
-			 enum rte_filter_op filter_op,
-			 void *arg);
+int mlx5_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops);
 int mlx5_flow_start_default(struct rte_eth_dev *dev);
 void mlx5_flow_stop_default(struct rte_eth_dev *dev);
 int mlx5_flow_verify(struct rte_eth_dev *dev);

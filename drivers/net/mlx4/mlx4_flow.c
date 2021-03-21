@@ -1590,37 +1590,19 @@ static const struct rte_flow_ops mlx4_flow_ops = {
 };
 
 /**
- * Manage filter operations.
+ * Get rte_flow callbacks.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- * @param filter_type
- *   Filter type.
- * @param filter_op
- *   Operation to perform.
- * @param arg
+ * @param ops
  *   Pointer to operation-specific structure.
  *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
+ * @return 0
  */
 int
-mlx4_filter_ctrl(struct rte_eth_dev *dev,
-		 enum rte_filter_type filter_type,
-		 enum rte_filter_op filter_op,
-		 void *arg)
+mlx4_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
+		  const struct rte_flow_ops **ops)
 {
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			break;
-		*(const void **)arg = &mlx4_flow_ops;
-		return 0;
-	default:
-		ERROR("%p: filter type (%d) not supported",
-		      (void *)dev, filter_type);
-		break;
-	}
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	*ops = &mlx4_flow_ops;
+	return 0;
 }

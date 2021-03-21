@@ -113,7 +113,6 @@ extern int dpaa2_timestamp_dynfield_offset;
 
 /*Externaly defined*/
 extern const struct rte_flow_ops dpaa2_flow_ops;
-extern enum rte_filter_type dpaa2_filter_type;
 
 extern const struct rte_tm_ops dpaa2_tm_ops;
 

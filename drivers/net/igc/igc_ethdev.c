@@ -297,7 +297,7 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.vlan_offload_set	= eth_igc_vlan_offload_set,
 	.vlan_tpid_set		= eth_igc_vlan_tpid_set,
 	.vlan_strip_queue_set	= eth_igc_vlan_strip_queue_set,
-	.filter_ctrl		= eth_igc_filter_ctrl,
+	.flow_ops_get		= eth_igc_flow_ops_get,
 };
 
 /*

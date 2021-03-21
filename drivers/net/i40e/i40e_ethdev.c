@@ -338,10 +338,8 @@ static int i40e_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 static int i40e_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					struct rte_eth_udp_tunnel *udp_tunnel);
 static void i40e_filter_input_set_init(struct i40e_pf *pf);
-static int i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
-				enum rte_filter_type filter_type,
-				enum rte_filter_op filter_op,
-				void *arg);
+static int i40e_dev_flow_ops_get(struct rte_eth_dev *dev,
+				 const struct rte_flow_ops **ops);
 static int i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 				  struct rte_eth_dcb_info *dcb_info);
 static int i40e_dev_sync_phy_type(struct i40e_hw *hw);
@@ -503,7 +501,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.rss_hash_conf_get            = i40e_dev_rss_hash_conf_get,
 	.udp_tunnel_port_add          = i40e_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del          = i40e_dev_udp_tunnel_port_del,
-	.filter_ctrl                  = i40e_dev_filter_ctrl,
+	.flow_ops_get                 = i40e_dev_flow_ops_get,
 	.rxq_info_get                 = i40e_rxq_info_get,
 	.txq_info_get                 = i40e_txq_info_get,
 	.rx_burst_mode_get            = i40e_rx_burst_mode_get,
@@ -9878,30 +9876,14 @@ i40e_ethertype_filter_set(struct i40e_pf *pf,
 }
 
 static int
-i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op,
-		     void *arg)
+i40e_dev_flow_ops_get(struct rte_eth_dev *dev,
+		      const struct rte_flow_ops **ops)
 {
-	int ret = 0;
-
 	if (dev == NULL)
 		return -EINVAL;
 
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		*(const void **)arg = &i40e_flow_ops;
-		break;
-	default:
-		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
-							filter_type);
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
+	*ops = &i40e_flow_ops;
+	return 0;
 }
 
 /*

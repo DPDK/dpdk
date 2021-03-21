@@ -255,18 +255,21 @@ rte_flow_ops_get(uint16_t port_id, struct rte_flow_error *error)
 
 	if (unlikely(!rte_eth_dev_is_valid_port(port_id)))
 		code = ENODEV;
-	else if (unlikely(!dev->dev_ops->filter_ctrl ||
-			  dev->dev_ops->filter_ctrl(dev,
-						    RTE_ETH_FILTER_GENERIC,
-						    RTE_ETH_FILTER_GET,
-						    &ops) ||
-			  !ops))
+	else if (unlikely(dev->dev_ops->flow_ops_get == NULL))
+		/* flow API not supported with this driver dev_ops */
 		code = ENOSYS;
 	else
-		return ops;
-	rte_flow_error_set(error, code, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			   NULL, rte_strerror(code));
-	return NULL;
+		code = dev->dev_ops->flow_ops_get(dev, &ops);
+	if (code == 0 && ops == NULL)
+		/* flow API not supported with this device */
+		code = ENOSYS;
+
+	if (code != 0) {
+		rte_flow_error_set(error, code, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, rte_strerror(code));
+		return NULL;
+	}
+	return ops;
 }
 
 /* Check whether a flow rule can be created on a given port. */

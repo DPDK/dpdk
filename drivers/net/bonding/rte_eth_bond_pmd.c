@@ -3108,14 +3108,11 @@ bond_ethdev_mac_address_set(struct rte_eth_dev *dev,
 }
 
 static int
-bond_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
-		 enum rte_filter_type type, enum rte_filter_op op, void *arg)
+bond_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
+		  const struct rte_flow_ops **ops)
 {
-	if (type == RTE_ETH_FILTER_GENERIC && op == RTE_ETH_FILTER_GET) {
-		*(const void **)arg = &bond_flow_ops;
-		return 0;
-	}
-	return -ENOTSUP;
+	*ops = &bond_flow_ops;
+	return 0;
 }
 
 static int
@@ -3207,7 +3204,7 @@ const struct eth_dev_ops default_dev_ops = {
 	.mac_addr_set         = bond_ethdev_mac_address_set,
 	.mac_addr_add         = bond_ethdev_mac_addr_add,
 	.mac_addr_remove      = bond_ethdev_mac_addr_remove,
-	.filter_ctrl          = bond_filter_ctrl
+	.flow_ops_get         = bond_flow_ops_get
 };
 
 static int

@@ -377,34 +377,21 @@ static const struct rte_flow_ops enic_vf_flow_ops = {
 };
 
 static int
-enic_vf_filter_ctrl(struct rte_eth_dev *eth_dev,
-		    enum rte_filter_type filter_type,
-		    enum rte_filter_op filter_op,
-		    void *arg)
+enic_vf_flow_ops_get(struct rte_eth_dev *eth_dev,
+		     const struct rte_flow_ops **ops)
 {
 	struct enic_vf_representor *vf;
-	int ret = 0;
 
 	ENICPMD_FUNC_TRACE();
 	vf = eth_dev->data->dev_private;
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		if (vf->enic.flow_filter_mode == FILTER_FLOWMAN) {
-			*(const void **)arg = &enic_vf_flow_ops;
-		} else {
-			ENICPMD_LOG(WARNING, "VF representors require flowman support for rte_flow API");
-			ret = -EINVAL;
-		}
-		break;
-	default:
-		ENICPMD_LOG(WARNING, "Filter type (%d) not supported",
-			    filter_type);
-		ret = -EINVAL;
-		break;
+	if (vf->enic.flow_filter_mode != FILTER_FLOWMAN) {
+		ENICPMD_LOG(WARNING,
+				"VF representors require flowman support for rte_flow API");
+		return -EINVAL;
 	}
-	return ret;
+
+	*ops = &enic_vf_flow_ops;
+	return 0;
 }
 
 static int enic_vf_link_update(struct rte_eth_dev *eth_dev,
@@ -566,7 +553,7 @@ static const struct eth_dev_ops enic_vf_representor_dev_ops = {
 	.dev_start            = enic_vf_dev_start,
 	.dev_stop             = enic_vf_dev_stop,
 	.dev_close            = enic_vf_dev_close,
-	.filter_ctrl          = enic_vf_filter_ctrl,
+	.flow_ops_get         = enic_vf_flow_ops_get,
 	.link_update          = enic_vf_link_update,
 	.promiscuous_enable   = enic_vf_promiscuous_enable,
 	.promiscuous_disable  = enic_vf_promiscuous_disable,

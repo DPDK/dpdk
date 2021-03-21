@@ -285,11 +285,8 @@ int qede_dev_set_link_state(struct rte_eth_dev *eth_dev, bool link_up);
 int qede_link_update(struct rte_eth_dev *eth_dev,
 		     __rte_unused int wait_to_complete);
 
-int qede_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type type,
-			 enum rte_filter_op op, void *arg);
-
-int qede_ntuple_filter_conf(struct rte_eth_dev *eth_dev,
-			    enum rte_filter_op filter_op, void *arg);
+int qede_dev_flow_ops_get(struct rte_eth_dev *dev,
+			  const struct rte_flow_ops **ops);
 
 int qede_check_fdir_support(struct rte_eth_dev *eth_dev);
 

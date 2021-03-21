@@ -465,34 +465,16 @@ typedef int (*eth_get_module_eeprom_t)(struct rte_eth_dev *dev,
 				       struct rte_dev_eeprom_info *info);
 /**< @internal Retrieve plugin module eeprom data */
 
+struct rte_flow_ops;
 /**
- * Feature filter types
+ * @internal
+ * Get flow operations.
+ *
+ * If the flow API is not supported for the specified device,
+ * the driver can return NULL.
  */
-enum rte_filter_type {
-	RTE_ETH_FILTER_NONE = 0,
-	RTE_ETH_FILTER_ETHERTYPE,
-	RTE_ETH_FILTER_FLEXIBLE,
-	RTE_ETH_FILTER_SYN,
-	RTE_ETH_FILTER_NTUPLE,
-	RTE_ETH_FILTER_TUNNEL,
-	RTE_ETH_FILTER_FDIR,
-	RTE_ETH_FILTER_HASH,
-	RTE_ETH_FILTER_L2_TUNNEL,
-	RTE_ETH_FILTER_GENERIC,
-};
-
-/**
- * Generic operations on filters
- */
-enum rte_filter_op {
-	RTE_ETH_FILTER_GET,      /**< get flow API ops */
-};
-
-typedef int (*eth_filter_ctrl_t)(struct rte_eth_dev *dev,
-				 enum rte_filter_type filter_type,
-				 enum rte_filter_op filter_op,
-				 void *arg);
-/**< @internal Take operations to assigned filter type on an Ethernet device */
+typedef int (*eth_flow_ops_get_t)(struct rte_eth_dev *dev,
+				  const struct rte_flow_ops **ops);
 
 typedef int (*eth_tm_ops_get_t)(struct rte_eth_dev *dev, void *ops);
 /**< @internal Get Traffic Management (TM) operations on an Ethernet device */
@@ -904,7 +886,7 @@ struct eth_dev_ops {
 	eth_get_module_eeprom_t    get_module_eeprom;
 	/** Get plugin module eeprom data. */
 
-	eth_filter_ctrl_t          filter_ctrl; /**< common filter control. */
+	eth_flow_ops_get_t         flow_ops_get; /**< Get flow operations. */
 
 	eth_get_dcb_info           get_dcb_info; /** Get DCB information. */
 
@@ -1444,6 +1426,18 @@ rte_eth_hairpin_queue_peer_unbind(uint16_t cur_port, uint16_t cur_queue,
 /*
  * Legacy ethdev API used internally by drivers.
  */
+
+enum rte_filter_type {
+	RTE_ETH_FILTER_NONE = 0,
+	RTE_ETH_FILTER_ETHERTYPE,
+	RTE_ETH_FILTER_FLEXIBLE,
+	RTE_ETH_FILTER_SYN,
+	RTE_ETH_FILTER_NTUPLE,
+	RTE_ETH_FILTER_TUNNEL,
+	RTE_ETH_FILTER_FDIR,
+	RTE_ETH_FILTER_HASH,
+	RTE_ETH_FILTER_L2_TUNNEL,
+};
 
 /**
  * Define all structures for Ethertype Filter type.

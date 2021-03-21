@@ -1514,17 +1514,11 @@ fs_rss_hash_update(struct rte_eth_dev *dev,
 }
 
 static int
-fs_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
-		enum rte_filter_type type,
-		enum rte_filter_op op,
-		void *arg)
+fs_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
+		const struct rte_flow_ops **ops)
 {
-	if (type == RTE_ETH_FILTER_GENERIC &&
-	    op == RTE_ETH_FILTER_GET) {
-		*(const void **)arg = &fs_flow_ops;
-		return 0;
-	}
-	return -ENOTSUP;
+	*ops = &fs_flow_ops;
+	return 0;
 }
 
 const struct eth_dev_ops failsafe_ops = {
@@ -1565,5 +1559,5 @@ const struct eth_dev_ops failsafe_ops = {
 	.mac_addr_set = fs_mac_addr_set,
 	.set_mc_addr_list = fs_set_mc_addr_list,
 	.rss_hash_update = fs_rss_hash_update,
-	.filter_ctrl = fs_filter_ctrl,
+	.flow_ops_get = fs_flow_ops_get,
 };

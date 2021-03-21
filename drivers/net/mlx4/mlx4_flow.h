@@ -51,9 +51,6 @@ uint64_t mlx4_conv_rss_types(struct mlx4_priv *priv, uint64_t types,
 			     int verbs_to_dpdk);
 int mlx4_flow_sync(struct mlx4_priv *priv, struct rte_flow_error *error);
 void mlx4_flow_clean(struct mlx4_priv *priv);
-int mlx4_filter_ctrl(struct rte_eth_dev *dev,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op,
-		     void *arg);
+int mlx4_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops);
 
 #endif /* RTE_PMD_MLX4_FLOW_H_ */

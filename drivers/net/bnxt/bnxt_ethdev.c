@@ -3236,9 +3236,8 @@ bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
 }
 
 int
-bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
-		    enum rte_filter_type filter_type,
-		    enum rte_filter_op filter_op, void *arg)
+bnxt_flow_ops_get_op(struct rte_eth_dev *dev,
+		     const struct rte_flow_ops **ops)
 {
 	struct bnxt *bp = dev->data->dev_private;
 	int ret = 0;
@@ -3251,10 +3250,8 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 		bp = vfr->parent_dev->data->dev_private;
 		/* parent is deleted while children are still valid */
 		if (!bp) {
-			PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR Error %d:%d\n",
-				    dev->data->port_id,
-				    filter_type,
-				    filter_op);
+			PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR Error\n",
+				    dev->data->port_id);
 			return -EIO;
 		}
 	}
@@ -3263,27 +3260,16 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
+	/* PMD supports thread-safe flow operations.  rte_flow API
+	 * functions can avoid mutex for multi-thread safety.
+	 */
+	dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
 
-		/* PMD supports thread-safe flow operations.  rte_flow API
-		 * functions can avoid mutex for multi-thread safety.
-		 */
-		dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
+	if (BNXT_TRUFLOW_EN(bp))
+		*ops = &bnxt_ulp_rte_flow_ops;
+	else
+		*ops = &bnxt_flow_ops;
 
-		if (BNXT_TRUFLOW_EN(bp))
-			*(const void **)arg = &bnxt_ulp_rte_flow_ops;
-		else
-			*(const void **)arg = &bnxt_flow_ops;
-		break;
-	default:
-		PMD_DRV_LOG(ERR,
-			"Filter type (%d) not supported", filter_type);
-		ret = -EINVAL;
-		break;
-	}
 	return ret;
 }
 
@@ -3800,7 +3786,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.rx_queue_stop = bnxt_rx_queue_stop,
 	.tx_queue_start = bnxt_tx_queue_start,
 	.tx_queue_stop = bnxt_tx_queue_stop,
-	.filter_ctrl = bnxt_filter_ctrl_op,
+	.flow_ops_get = bnxt_flow_ops_get_op,
 	.dev_supported_ptypes_get = bnxt_dev_supported_ptypes_get_op,
 	.get_eeprom_length    = bnxt_get_eeprom_length_op,
 	.get_eeprom           = bnxt_get_eeprom_op,

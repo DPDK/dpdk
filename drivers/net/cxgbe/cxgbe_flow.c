@@ -1448,23 +1448,9 @@ static const struct rte_flow_ops cxgbe_flow_ops = {
 };
 
 int
-cxgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
-		      enum rte_filter_type filter_type,
-		      enum rte_filter_op filter_op,
-		      void *arg)
+cxgbe_dev_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
+		       const struct rte_flow_ops **ops)
 {
-	int ret = 0;
-
-	RTE_SET_USED(dev);
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		*(const void **)arg = &cxgbe_flow_ops;
-		break;
-	default:
-		ret = -ENOTSUP;
-		break;
-	}
-	return ret;
+	*ops = &cxgbe_flow_ops;
+	return 0;
 }

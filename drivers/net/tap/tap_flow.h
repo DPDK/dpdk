@@ -46,10 +46,8 @@ enum bpf_fd_idx {
 	SEC_MAX,
 };
 
-int tap_dev_filter_ctrl(struct rte_eth_dev *dev,
-			enum rte_filter_type filter_type,
-			enum rte_filter_op filter_op,
-			void *arg);
+int tap_dev_flow_ops_get(struct rte_eth_dev *dev,
+			 const struct rte_flow_ops **ops);
 int tap_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error);
 
 int tap_flow_implicit_create(struct pmd_internals *pmd,

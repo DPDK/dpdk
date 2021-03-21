@@ -29,9 +29,8 @@ int igc_set_syn_filter(struct rte_eth_dev *dev,
 		const struct igc_syn_filter *filter);
 void igc_clear_syn_filter(struct rte_eth_dev *dev);
 void igc_clear_all_filter(struct rte_eth_dev *dev);
-int
-eth_igc_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
-		enum rte_filter_op filter_op, void *arg);
+int eth_igc_flow_ops_get(struct rte_eth_dev *dev,
+			 const struct rte_flow_ops **ops);
 
 #ifdef __cplusplus
 }

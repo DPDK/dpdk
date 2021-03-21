@@ -402,9 +402,9 @@ Supports configuring link flow control.
 Flow API
 --------
 
-Supports the DPDK Flow API for generic filtering.
+Supports flow API family.
 
-* **[implements] eth_dev_ops**: ``filter_ctrl:RTE_ETH_FILTER_GENERIC``.
+* **[implements] eth_dev_ops**: ``flow_ops_get``.
 * **[implements] rte_flow_ops**: ``All``.
 
 

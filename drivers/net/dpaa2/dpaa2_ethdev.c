@@ -99,10 +99,6 @@ static const struct rte_dpaa2_xstats_name_off dpaa2_xstats_strings[] = {
 	{"cgr_reject_bytes", 4, 1},
 };
 
-static const enum rte_filter_op dpaa2_supported_filter_ops[] = {
-	RTE_ETH_FILTER_GET
-};
-
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
 static int dpaa2_dev_link_update(struct rte_eth_dev *dev,
 				 int wait_to_complete);
@@ -2322,45 +2318,15 @@ int dpaa2_eth_eventq_detach(const struct rte_eth_dev *dev,
 	return ret;
 }
 
-static inline int
-dpaa2_dev_verify_filter_ops(enum rte_filter_op filter_op)
-{
-	unsigned int i;
-
-	for (i = 0; i < RTE_DIM(dpaa2_supported_filter_ops); i++) {
-		if (dpaa2_supported_filter_ops[i] == filter_op)
-			return 0;
-	}
-	return -ENOTSUP;
-}
-
 static int
-dpaa2_dev_flow_ctrl(struct rte_eth_dev *dev,
-		    enum rte_filter_type filter_type,
-				 enum rte_filter_op filter_op,
-				 void *arg)
+dpaa2_dev_flow_ops_get(struct rte_eth_dev *dev,
+		       const struct rte_flow_ops **ops)
 {
-	int ret = 0;
-
 	if (!dev)
 		return -ENODEV;
 
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (dpaa2_dev_verify_filter_ops(filter_op) < 0) {
-			ret = -ENOTSUP;
-			break;
-		}
-		*(const void **)arg = &dpaa2_flow_ops;
-		dpaa2_filter_type |= filter_type;
-		break;
-	default:
-		RTE_LOG(ERR, PMD, "Filter type (%d) not supported",
-			filter_type);
-		ret = -ENOTSUP;
-		break;
-	}
-	return ret;
+	*ops = &dpaa2_flow_ops;
+	return 0;
 }
 
 static void
@@ -2453,7 +2419,7 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.mac_addr_set         = dpaa2_dev_set_mac_addr,
 	.rss_hash_update      = dpaa2_dev_rss_hash_update,
 	.rss_hash_conf_get    = dpaa2_dev_rss_hash_conf_get,
-	.filter_ctrl          = dpaa2_dev_flow_ctrl,
+	.flow_ops_get         = dpaa2_dev_flow_ops_get,
 	.rxq_info_get	      = dpaa2_rxq_info_get,
 	.txq_info_get	      = dpaa2_txq_info_get,
 	.tm_ops_get	      = dpaa2_tm_ops_get,

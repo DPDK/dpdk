@@ -396,9 +396,8 @@ otx2_eth_pmd_priv(struct rte_eth_dev *eth_dev)
 /* Ops */
 int otx2_nix_info_get(struct rte_eth_dev *eth_dev,
 		      struct rte_eth_dev_info *dev_info);
-int otx2_nix_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
-			     enum rte_filter_type filter_type,
-			     enum rte_filter_op filter_op, void *arg);
+int otx2_nix_dev_flow_ops_get(struct rte_eth_dev *eth_dev,
+			      const struct rte_flow_ops **ops);
 int otx2_nix_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
 			    size_t fw_size);
 int otx2_nix_get_module_info(struct rte_eth_dev *eth_dev,

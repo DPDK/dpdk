@@ -89,8 +89,6 @@ enum rte_flow_action_type dpaa2_supported_action_type[] = {
 /* Max of enum rte_flow_item_type + 1, for both IPv4 and IPv6*/
 #define DPAA2_FLOW_ITEM_TYPE_GENERIC_IP (RTE_FLOW_ITEM_TYPE_META + 1)
 
-enum rte_filter_type dpaa2_filter_type = RTE_ETH_FILTER_NONE;
-
 #ifndef __cplusplus
 static const struct rte_flow_item_eth dpaa2_flow_item_eth_mask = {
 	.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
@@ -3969,24 +3967,15 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 	flow->ipaddr_rule.fs_ipdst_offset =
 		IP_ADDRESS_OFFSET_INVALID;
 
-	switch (dpaa2_filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		ret = dpaa2_generic_flow_set(flow, dev, attr, pattern,
-					     actions, error);
-		if (ret < 0) {
-			if (error->type > RTE_FLOW_ERROR_TYPE_ACTION)
-				rte_flow_error_set(error, EPERM,
-						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-						attr, "unknown");
-			DPAA2_PMD_ERR(
-			"Failure to create flow, return code (%d)", ret);
-			goto creation_error;
-		}
-		break;
-	default:
-		DPAA2_PMD_ERR("Filter type (%d) not supported",
-		dpaa2_filter_type);
-		break;
+	ret = dpaa2_generic_flow_set(flow, dev, attr, pattern,
+			actions, error);
+	if (ret < 0) {
+		if (error->type > RTE_FLOW_ERROR_TYPE_ACTION)
+			rte_flow_error_set(error, EPERM,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					attr, "unknown");
+		DPAA2_PMD_ERR("Failure to create flow, return code (%d)", ret);
+		goto creation_error;
 	}
 
 	return flow;

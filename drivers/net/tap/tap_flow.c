@@ -2160,35 +2160,20 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 }
 
 /**
- * Manage filter operations.
+ * Get rte_flow operations.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- * @param filter_type
- *   Filter type.
- * @param filter_op
- *   Operation to perform.
- * @param arg
+ * @param ops
  *   Pointer to operation-specific structure.
  *
  * @return
  *   0 on success, negative errno value on failure.
  */
 int
-tap_dev_filter_ctrl(struct rte_eth_dev *dev,
-		    enum rte_filter_type filter_type,
-		    enum rte_filter_op filter_op,
-		    void *arg)
+tap_dev_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
+		     const struct rte_flow_ops **ops)
 {
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		*(const void **)arg = &tap_flow_ops;
-		return 0;
-	default:
-		TAP_LOG(ERR, "%p: filter type (%d) not supported",
-			dev, filter_type);
-	}
-	return -EINVAL;
+	*ops = &tap_flow_ops;
+	return 0;
 }

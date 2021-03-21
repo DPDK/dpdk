@@ -28,31 +28,6 @@ extern "C" {
 /**
  * Generic flow operations structure implemented and returned by PMDs.
  *
- * To implement this API, PMDs must handle the RTE_ETH_FILTER_GENERIC filter
- * type in their .filter_ctrl callback function (struct eth_dev_ops) as well
- * as the RTE_ETH_FILTER_GET filter operation.
- *
- * If successful, this operation must result in a pointer to a PMD-specific
- * struct rte_flow_ops written to the argument address as described below:
- *
- * \code
- *
- * // PMD filter_ctrl callback
- *
- * static const struct rte_flow_ops pmd_flow_ops = { ... };
- *
- * switch (filter_type) {
- * case RTE_ETH_FILTER_GENERIC:
- *     if (filter_op != RTE_ETH_FILTER_GET)
- *         return -EINVAL;
- *     *(const void **)arg = &pmd_flow_ops;
- *     return 0;
- * }
- *
- * \endcode
- *
- * See also rte_flow_ops_get().
- *
  * These callback functions are not supposed to be used by applications
  * directly, which must rely on the API defined in rte_flow.h.
  *

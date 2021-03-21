@@ -2340,32 +2340,18 @@ mrvl_rss_hash_conf_get(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to the device structure.
- * @param filer_type
- *   Flow filter type.
- * @param filter_op
- *   Flow filter operation.
- * @param arg
+ * @param ops
  *   Pointer to pass the flow ops.
  *
  * @return
  *   0 on success, negative error value otherwise.
  */
 static int
-mrvl_eth_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op, void *arg)
+mrvl_eth_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
+		      const struct rte_flow_ops **ops)
 {
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		*(const void **)arg = &mrvl_flow_ops;
-		return 0;
-	default:
-		MRVL_LOG(WARNING, "Filter type (%d) not supported",
-				filter_type);
-		return -EINVAL;
-	}
+	*ops = &mrvl_flow_ops;
+	return 0;
 }
 
 /**
@@ -2443,7 +2429,7 @@ static const struct eth_dev_ops mrvl_ops = {
 	.flow_ctrl_set = mrvl_flow_ctrl_set,
 	.rss_hash_update = mrvl_rss_hash_update,
 	.rss_hash_conf_get = mrvl_rss_hash_conf_get,
-	.filter_ctrl = mrvl_eth_filter_ctrl,
+	.flow_ops_get = mrvl_eth_flow_ops_get,
 	.mtr_ops_get = mrvl_mtr_ops_get,
 	.tm_ops_get = mrvl_tm_ops_get,
 };

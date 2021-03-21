@@ -29,7 +29,7 @@ static const struct eth_dev_ops bnxt_rep_dev_ops = {
 	.dev_stop = bnxt_rep_dev_stop_op,
 	.stats_get = bnxt_rep_stats_get_op,
 	.stats_reset = bnxt_rep_stats_reset_op,
-	.filter_ctrl = bnxt_filter_ctrl_op
+	.flow_ops_get = bnxt_flow_ops_get_op
 };
 
 uint16_t

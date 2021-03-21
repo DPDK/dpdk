@@ -2001,34 +2001,16 @@ static const struct rte_flow_ops hns3_flow_ops = {
 	.isolate = NULL,
 };
 
-/*
- * The entry of flow API.
- * @param dev
- *   Pointer to Ethernet device.
- * @return
- *   0 on success, a negative errno value otherwise is set.
- */
 int
-hns3_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op, void *arg)
+hns3_dev_flow_ops_get(struct rte_eth_dev *dev,
+		      const struct rte_flow_ops **ops)
 {
 	struct hns3_hw *hw;
-	int ret = 0;
 
 	hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		if (hw->adapter_state >= HNS3_NIC_CLOSED)
-			return -ENODEV;
-		*(const void **)arg = &hns3_flow_ops;
-		break;
-	default:
-		hns3_err(hw, "Filter type (%d) not supported", filter_type);
-		ret = -EOPNOTSUPP;
-		break;
-	}
+	if (hw->adapter_state >= HNS3_NIC_CLOSED)
+		return -ENODEV;
 
-	return ret;
+	*ops = &hns3_flow_ops;
+	return 0;
 }

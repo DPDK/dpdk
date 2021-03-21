@@ -2821,11 +2821,9 @@ ipn3ke_rpst_mtu_set(struct rte_eth_dev *ethdev, uint16_t mtu)
 }
 
 static int
-ipn3ke_afu_filter_ctrl(struct rte_eth_dev *ethdev,
-	enum rte_filter_type filter_type, enum rte_filter_op filter_op,
-	void *arg)
+ipn3ke_afu_flow_ops_get(struct rte_eth_dev *ethdev,
+			const struct rte_flow_ops **ops)
 {
-	int ret = 0;
 	struct ipn3ke_hw *hw;
 	struct ipn3ke_rpst *rpst;
 
@@ -2836,27 +2834,13 @@ ipn3ke_afu_filter_ctrl(struct rte_eth_dev *ethdev,
 	rpst = IPN3KE_DEV_PRIVATE_TO_RPST(ethdev);
 
 	if (hw->acc_flow)
-		switch (filter_type) {
-		case RTE_ETH_FILTER_GENERIC:
-			if (filter_op != RTE_ETH_FILTER_GET)
-				return -EINVAL;
-			*(const void **)arg = &ipn3ke_flow_ops;
-			break;
-		default:
-			IPN3KE_AFU_PMD_WARN("Filter type (%d) not supported",
-					filter_type);
-			ret = -EINVAL;
-			break;
-		}
+		*ops = &ipn3ke_flow_ops;
 	else if (rpst->i40e_pf_eth)
-		(*rpst->i40e_pf_eth->dev_ops->filter_ctrl)(ethdev,
-							filter_type,
-							filter_op,
-							arg);
+		(*rpst->i40e_pf_eth->dev_ops->flow_ops_get)(ethdev, ops);
 	else
 		return -EINVAL;
 
-	return ret;
+	return 0;
 }
 
 static const struct eth_dev_ops ipn3ke_rpst_dev_ops = {
@@ -2874,7 +2858,7 @@ static const struct eth_dev_ops ipn3ke_rpst_dev_ops = {
 	.stats_reset          = ipn3ke_rpst_stats_reset,
 	.xstats_reset         = ipn3ke_rpst_stats_reset,
 
-	.filter_ctrl          = ipn3ke_afu_filter_ctrl,
+	.flow_ops_get         = ipn3ke_afu_flow_ops_get,
 
 	.rx_queue_start       = ipn3ke_rpst_rx_queue_start,
 	.rx_queue_stop        = ipn3ke_rpst_rx_queue_stop,

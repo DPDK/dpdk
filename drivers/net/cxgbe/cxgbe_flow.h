@@ -35,10 +35,7 @@ struct rte_flow {
 	struct rte_eth_dev *dev;
 };
 
-int
-cxgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
-		      enum rte_filter_type filter_type,
-		      enum rte_filter_op filter_op,
-		      void *arg);
+int cxgbe_dev_flow_ops_get(struct rte_eth_dev *dev,
+			   const struct rte_flow_ops **ops);
 
 #endif /* _CXGBE_FLOW_H_ */

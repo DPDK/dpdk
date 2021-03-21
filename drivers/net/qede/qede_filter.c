@@ -1050,31 +1050,18 @@ const struct rte_flow_ops qede_flow_ops = {
 	.flush = qede_flow_flush,
 };
 
-int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
-			 enum rte_filter_type filter_type,
-			 enum rte_filter_op filter_op,
-			 void *arg)
+int
+qede_dev_flow_ops_get(struct rte_eth_dev *eth_dev,
+		      const struct rte_flow_ops **ops)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (ECORE_IS_CMT(edev)) {
-			DP_ERR(edev, "flowdir is not supported in 100G mode\n");
-			return -ENOTSUP;
-		}
-
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-
-		*(const void **)arg = &qede_flow_ops;
-		return 0;
-	default:
-		DP_ERR(edev, "Unsupported filter type %d\n",
-			filter_type);
-		return -EINVAL;
+	if (ECORE_IS_CMT(edev)) {
+		DP_ERR(edev, "flowdir is not supported in 100G mode\n");
+		return -ENOTSUP;
 	}
 
+	*ops = &qede_flow_ops;
 	return 0;
 }

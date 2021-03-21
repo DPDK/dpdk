@@ -194,10 +194,8 @@ static int igb_add_5tuple_filter_82576(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
 static int igb_remove_5tuple_filter_82576(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
-static int eth_igb_filter_ctrl(struct rte_eth_dev *dev,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op,
-		     void *arg);
+static int eth_igb_flow_ops_get(struct rte_eth_dev *dev,
+				const struct rte_flow_ops **ops);
 static int eth_igb_get_reg_length(struct rte_eth_dev *dev);
 static int eth_igb_get_regs(struct rte_eth_dev *dev,
 		struct rte_dev_reg_info *regs);
@@ -374,7 +372,7 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.reta_query           = eth_igb_rss_reta_query,
 	.rss_hash_update      = eth_igb_rss_hash_update,
 	.rss_hash_conf_get    = eth_igb_rss_hash_conf_get,
-	.filter_ctrl          = eth_igb_filter_ctrl,
+	.flow_ops_get         = eth_igb_flow_ops_get,
 	.set_mc_addr_list     = eth_igb_set_mc_addr_list,
 	.rxq_info_get         = igb_rxq_info_get,
 	.txq_info_get         = igb_txq_info_get,
@@ -4583,26 +4581,11 @@ igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
 }
 
 static int
-eth_igb_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op,
-		     void *arg)
+eth_igb_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
+		     const struct rte_flow_ops **ops)
 {
-	int ret = 0;
-
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		*(const void **)arg = &igb_flow_ops;
-		break;
-	default:
-		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
-							filter_type);
-		break;
-	}
-
-	return ret;
+	*ops = &igb_flow_ops;
+	return 0;
 }
 
 static int

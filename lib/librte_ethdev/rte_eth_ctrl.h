@@ -339,7 +339,7 @@ struct rte_eth_fdir_action {
 };
 
 /**
- * A structure used to define the flow director filter entry by filter_ctrl API.
+ * A structure used to define the flow director filter entry.
  */
 struct rte_eth_fdir_filter {
 	uint32_t soft_id;

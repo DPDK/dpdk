@@ -471,24 +471,11 @@ otx2_nix_pool_ops_supported(struct rte_eth_dev *eth_dev, const char *pool)
 }
 
 int
-otx2_nix_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
-			 enum rte_filter_type filter_type,
-			 enum rte_filter_op filter_op, void *arg)
+otx2_nix_dev_flow_ops_get(struct rte_eth_dev *eth_dev __rte_unused,
+			  const struct rte_flow_ops **ops)
 {
-	RTE_SET_USED(eth_dev);
-
-	if (filter_type != RTE_ETH_FILTER_GENERIC) {
-		otx2_err("Unsupported filter type %d", filter_type);
-		return -ENOTSUP;
-	}
-
-	if (filter_op == RTE_ETH_FILTER_GET) {
-		*(const void **)arg = &otx2_flow_ops;
-		return 0;
-	}
-
-	otx2_err("Invalid filter_op %d", filter_op);
-	return -EINVAL;
+	*ops = &otx2_flow_ops;
+	return 0;
 }
 
 static struct cgx_fw_data *

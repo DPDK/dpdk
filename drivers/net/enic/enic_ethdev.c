@@ -74,13 +74,10 @@ static const struct vic_speed_capa {
 RTE_LOG_REGISTER(enic_pmd_logtype, pmd.net.enic, INFO);
 
 static int
-enicpmd_dev_filter_ctrl(struct rte_eth_dev *dev,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op,
-		     void *arg)
+enicpmd_dev_flow_ops_get(struct rte_eth_dev *dev,
+			 const struct rte_flow_ops **ops)
 {
 	struct enic *enic = pmd_priv(dev);
-	int ret = 0;
 
 	ENICPMD_FUNC_TRACE();
 
@@ -90,23 +87,12 @@ enicpmd_dev_filter_ctrl(struct rte_eth_dev *dev,
 	 */
 	if (enic->geneve_opt_enabled)
 		return -ENOTSUP;
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
-		if (enic->flow_filter_mode == FILTER_FLOWMAN)
-			*(const void **)arg = &enic_fm_flow_ops;
-		else
-			*(const void **)arg = &enic_flow_ops;
-		break;
-	default:
-		dev_warning(enic, "Filter type (%d) not supported",
-			filter_type);
-		ret = -EINVAL;
-		break;
-	}
 
-	return ret;
+	if (enic->flow_filter_mode == FILTER_FLOWMAN)
+		*ops = &enic_fm_flow_ops;
+	else
+		*ops = &enic_flow_ops;
+	return 0;
 }
 
 static void enicpmd_dev_tx_queue_release(void *txq)
@@ -1121,7 +1107,7 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.mac_addr_remove      = enicpmd_remove_mac_addr,
 	.mac_addr_set         = enicpmd_set_mac_addr,
 	.set_mc_addr_list     = enicpmd_set_mc_addr_list,
-	.filter_ctrl          = enicpmd_dev_filter_ctrl,
+	.flow_ops_get         = enicpmd_dev_flow_ops_get,
 	.reta_query           = enicpmd_dev_rss_reta_query,
 	.reta_update          = enicpmd_dev_rss_reta_update,
 	.rss_hash_conf_get    = enicpmd_dev_rss_hash_conf_get,
