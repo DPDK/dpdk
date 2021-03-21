@@ -29,7 +29,7 @@ def get_memsize(arg):
     '''Convert memory size with suffix to kB'''
     match = re.match(r'(\d+)([' + BINARY_PREFIX + r']?)$', arg.upper())
     if match is None:
-        sys.exit('{} is not a valid page size'.format(arg))
+        sys.exit('{} is not a valid size'.format(arg))
     num = float(match.group(1))
     suffix = match.group(2)
     if suffix == "":
@@ -254,6 +254,8 @@ To a complete setup of with 2 Gigabyte of 1G huge pages:
         pagesize_kb = get_memsize(args.pagesize)
     else:
         pagesize_kb = default_pagesize()
+    if not pagesize_kb:
+        sys.exit("Invalid page size: {}kB".format(pagesize_kb))
 
     if args.clear:
         clear_pages()
