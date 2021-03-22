@@ -567,6 +567,21 @@ rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num);
  */
 int rte_vhost_get_negotiated_features(int vid, uint64_t *features);
 
+/**
+ * Get the protocol feature bits after negotiation
+ *
+ * @param vid
+ *  Vhost device ID
+ * @param protocol_features
+ *  A pointer to store the queried protocol feature bits
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_get_negotiated_protocol_features(int vid,
+					   uint64_t *protocol_features);
+
 /* Register callbacks. */
 int rte_vhost_driver_callback_register(const char *path,
 	struct vhost_device_ops const * const ops);

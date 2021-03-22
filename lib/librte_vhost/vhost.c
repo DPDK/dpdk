@@ -886,6 +886,20 @@ rte_vhost_get_negotiated_features(int vid, uint64_t *features)
 }
 
 int
+rte_vhost_get_negotiated_protocol_features(int vid,
+					   uint64_t *protocol_features)
+{
+	struct virtio_net *dev;
+
+	dev = get_device(vid);
+	if (dev == NULL || protocol_features == NULL)
+		return -1;
+
+	*protocol_features = dev->protocol_features;
+	return 0;
+}
+
+int
 rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem)
 {
 	struct virtio_net *dev;

@@ -76,4 +76,7 @@ EXPERIMENTAL {
 	rte_vhost_async_channel_unregister;
 	rte_vhost_submit_enqueue_burst;
 	rte_vhost_poll_enqueue_completed;
+
+	# added in 21.05
+	rte_vhost_get_negotiated_protocol_features;
 };
