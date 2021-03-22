@@ -603,10 +603,10 @@ new_device(int vid)
 	struct vhost_blk_ctrlr *ctrlr;
 	struct vhost_blk_queue *vq;
 	char path[PATH_MAX];
-	uint64_t features;
+	uint64_t features, protocol_features;
 	pthread_t tid;
 	int i, ret;
-	bool packed_ring;
+	bool packed_ring, inflight_shmfd;
 
 	ret = rte_vhost_get_ifname(vid, path, PATH_MAX);
 	if (ret) {
@@ -631,6 +631,16 @@ new_device(int vid)
 	}
 	packed_ring = !!(features & (1ULL << VIRTIO_F_RING_PACKED));
 
+	ret = rte_vhost_get_negotiated_protocol_features(
+		vid, &protocol_features);
+	if (ret) {
+		fprintf(stderr,
+			"Failed to get the negotiated protocol features\n");
+		return -1;
+	}
+	inflight_shmfd = !!(features &
+			    (1ULL << VHOST_USER_PROTOCOL_F_INFLIGHT_SHMFD));
+
 	/* Disable Notifications and init last idx */
 	for (i = 0; i < NUM_OF_BLK_QUEUES; i++) {
 		vq = &ctrlr->queues[i];
@@ -641,10 +651,13 @@ new_device(int vid)
 		assert(rte_vhost_get_vring_base(ctrlr->vid, i,
 					       &vq->last_avail_idx,
 					       &vq->last_used_idx) == 0);
-		assert(rte_vhost_get_vhost_ring_inflight(ctrlr->vid, i,
-						&vq->inflight_ring) == 0);
 
-		if (packed_ring) {
+		if (inflight_shmfd)
+			assert(rte_vhost_get_vhost_ring_inflight(
+				       ctrlr->vid, i,
+				       &vq->inflight_ring) == 0);
+
+		if (packed_ring && inflight_shmfd) {
 			/* for the reconnection */
 			assert(rte_vhost_get_vring_base_from_inflight(
 				ctrlr->vid, i,
