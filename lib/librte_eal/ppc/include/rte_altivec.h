@@ -7,6 +7,9 @@
 #define _RTE_ALTIVEC_H_
 
 /* To include altivec.h, GCC version must be >= 4.8 */
+#ifdef __clang__
+#define vector __vector
+#endif
 #include <altivec.h>
 
 /*

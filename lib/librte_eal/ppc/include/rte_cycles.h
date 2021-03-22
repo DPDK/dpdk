@@ -10,7 +10,13 @@
 extern "C" {
 #endif
 
+#ifdef linux
+#include <features.h>
+#endif
+
+#ifdef __GLIBC__
 #include <sys/platform/ppc.h>
+#endif
 
 #include "generic/rte_cycles.h"
 
@@ -26,7 +32,13 @@ extern "C" {
 static inline uint64_t
 rte_rdtsc(void)
 {
+#ifdef __GLIBC__
 	return __ppc_get_timebase();
+#else
+	uint64_t __tb;
+	__asm__ volatile ("mfspr %0, 268" : "=r" (__tb));
+	return __tb;
+#endif
 }
 
 static inline uint64_t
