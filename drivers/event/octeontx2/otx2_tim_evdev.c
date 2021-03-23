@@ -92,6 +92,8 @@ tim_chnk_pool_create(struct otx2_tim_ring *tim_ring,
 	if (cache_sz > RTE_MEMPOOL_CACHE_MAX_SIZE)
 		cache_sz = RTE_MEMPOOL_CACHE_MAX_SIZE;
 
+	cache_sz = cache_sz != 0 ? cache_sz : 2;
+	tim_ring->nb_chunks += (cache_sz * rte_lcore_count());
 	if (!tim_ring->disable_npa) {
 		tim_ring->chunk_pool = rte_mempool_create_empty(pool_name,
 				tim_ring->nb_chunks, tim_ring->chunk_sz,
@@ -286,16 +288,15 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		}
 	}
 
-	tim_ring->nb_chunks = tim_ring->nb_timers / OTX2_TIM_NB_CHUNK_SLOTS(
-							tim_ring->chunk_sz);
-	tim_ring->nb_chunk_slots = OTX2_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
-
-	if (tim_ring->disable_npa)
+	if (tim_ring->disable_npa) {
+		tim_ring->nb_chunks =
+			tim_ring->nb_timers /
+			OTX2_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
 		tim_ring->nb_chunks = tim_ring->nb_chunks * tim_ring->nb_bkts;
-	else
-		tim_ring->nb_chunks = tim_ring->nb_chunks + tim_ring->nb_bkts;
-
-	/* Create buckets. */
+	} else {
+		tim_ring->nb_chunks = tim_ring->nb_timers;
+	}
+	tim_ring->nb_chunk_slots = OTX2_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
 	tim_ring->bkt = rte_zmalloc("otx2_tim_bucket", (tim_ring->nb_bkts) *
 				    sizeof(struct otx2_tim_bkt),
 				    RTE_CACHE_LINE_SIZE);
