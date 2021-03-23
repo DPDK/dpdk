@@ -372,7 +372,7 @@ otx2_tim_calibrate_start_tsc(struct otx2_tim_ring *tim_ring)
 
 	for (icount = 0; icount < OTX2_TIM_CALIB_ITER; icount++) {
 		real_bkt = otx2_read64(tim_ring->base + TIM_LF_RING_REL) >> 44;
-		bkt_cyc = rte_rdtsc();
+		bkt_cyc = tim_cntvct();
 		bucket = (bkt_cyc - tim_ring->ring_start_cyc) /
 							tim_ring->tck_int;
 		bucket = bucket % (tim_ring->nb_bkts);
@@ -407,20 +407,8 @@ otx2_tim_ring_start(const struct rte_event_timer_adapter *adptr)
 		tim_err_desc(rc);
 		goto fail;
 	}
-#ifdef RTE_ARM_EAL_RDTSC_USE_PMU
-	uint64_t tenns_stmp, tenns_diff;
-	uint64_t pmu_stmp;
-
-	pmu_stmp = rte_rdtsc();
-	asm volatile("mrs %0, cntvct_el0" : "=r" (tenns_stmp));
-
-	tenns_diff = tenns_stmp - rsp->timestarted;
-	pmu_stmp = pmu_stmp - (NSEC2TICK(tenns_diff  * 10, rte_get_timer_hz()));
-	tim_ring->ring_start_cyc = pmu_stmp;
-#else
 	tim_ring->ring_start_cyc = rsp->timestarted;
-#endif
-	tim_ring->tck_int = NSEC2TICK(tim_ring->tck_nsec, rte_get_timer_hz());
+	tim_ring->tck_int = NSEC2TICK(tim_ring->tck_nsec, tim_cntfrq());
 	tim_ring->tot_int = tim_ring->tck_int * tim_ring->nb_bkts;
 	tim_ring->fast_div = rte_reciprocal_value_u64(tim_ring->tck_int);
 	tim_ring->fast_bkt = rte_reciprocal_value_u64(tim_ring->nb_bkts);
@@ -488,8 +476,7 @@ otx2_tim_stats_get(const struct rte_event_timer_adapter *adapter,
 		   struct rte_event_timer_adapter_stats *stats)
 {
 	struct otx2_tim_ring *tim_ring = adapter->data->adapter_priv;
-	uint64_t bkt_cyc = rte_rdtsc() - tim_ring->ring_start_cyc;
-
+	uint64_t bkt_cyc = tim_cntvct() - tim_ring->ring_start_cyc;
 
 	stats->evtim_exp_count = __atomic_load_n(&tim_ring->arm_cnt,
 						 __ATOMIC_RELAXED);
