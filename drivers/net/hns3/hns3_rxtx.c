@@ -629,10 +629,6 @@ hns3pf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 	uint64_t end;
 	int ret;
 
-	ret = hns3_tqp_enable(hw, queue_id, false);
-	if (ret)
-		return ret;
-
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
 	 * driver, all task queue pairs are mapped to PF function, so PF's queue
@@ -679,11 +675,6 @@ hns3vf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 	uint8_t msg_data[2];
 	int ret;
 
-	/* Disable VF's queue before send queue reset msg to PF */
-	ret = hns3_tqp_enable(hw, queue_id, false);
-	if (ret)
-		return ret;
-
 	memcpy(msg_data, &queue_id, sizeof(uint16_t));
 
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_QUEUE_RESET, 0, msg_data,
@@ -695,14 +686,105 @@ hns3vf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 }
 
 static int
-hns3_reset_tqp(struct hns3_adapter *hns, uint16_t queue_id)
+hns3_reset_rcb_cmd(struct hns3_hw *hw, uint8_t *reset_status)
 {
-	struct hns3_hw *hw = &hns->hw;
+	struct hns3_reset_cmd *req;
+	struct hns3_cmd_desc desc;
+	int ret;
 
-	if (hns->is_vf)
-		return hns3vf_reset_tqp(hw, queue_id);
-	else
-		return hns3pf_reset_tqp(hw, queue_id);
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_CFG_RST_TRIGGER, false);
+	req = (struct hns3_reset_cmd *)desc.data;
+	hns3_set_bit(req->mac_func_reset, HNS3_CFG_RESET_RCB_B, 1);
+
+	/*
+	 * The start qid should be the global qid of the first tqp of the
+	 * function which should be reset in this port. Since our PF not
+	 * support take over of VFs, so we only need to reset function 0,
+	 * and its start qid is always 0.
+	 */
+	req->fun_reset_rcb_vqid_start = rte_cpu_to_le_16(0);
+	req->fun_reset_rcb_vqid_num = rte_cpu_to_le_16(hw->cfg_max_queues);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "fail to send rcb reset cmd, ret = %d.", ret);
+		return ret;
+	}
+
+	*reset_status = req->fun_reset_rcb_return_status;
+	return 0;
+}
+
+static int
+hns3pf_reset_all_tqps(struct hns3_hw *hw)
+{
+#define HNS3_RESET_RCB_NOT_SUPPORT	0U
+#define HNS3_RESET_ALL_TQP_SUCCESS	1U
+	uint8_t reset_status;
+	int ret;
+	int i;
+
+	ret = hns3_reset_rcb_cmd(hw, &reset_status);
+	if (ret)
+		return ret;
+
+	/*
+	 * If the firmware version is low, it may not support the rcb reset
+	 * which means reset all the tqps at a time. In this case, we should
+	 * reset tqps one by one.
+	 */
+	if (reset_status == HNS3_RESET_RCB_NOT_SUPPORT) {
+		for (i = 0; i < hw->cfg_max_queues; i++) {
+			ret = hns3pf_reset_tqp(hw, i);
+			if (ret) {
+				hns3_err(hw,
+				  "fail to reset tqp, queue_id = %d, ret = %d.",
+				  i, ret);
+				return ret;
+			}
+		}
+	} else if (reset_status != HNS3_RESET_ALL_TQP_SUCCESS) {
+		hns3_err(hw, "fail to reset all tqps, reset_status = %u.",
+				reset_status);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int
+hns3vf_reset_all_tqps(struct hns3_hw *hw)
+{
+#define HNS3VF_RESET_ALL_TQP_DONE	1U
+	uint8_t reset_status;
+	uint8_t msg_data[2];
+	int ret;
+	int i;
+
+	memset(msg_data, 0, sizeof(uint16_t));
+	ret = hns3_send_mbx_msg(hw, HNS3_MBX_QUEUE_RESET, 0, msg_data,
+				sizeof(msg_data), true, &reset_status,
+				sizeof(reset_status));
+	if (ret) {
+		hns3_err(hw, "fail to send rcb reset mbx, ret = %d.", ret);
+		return ret;
+	}
+
+	if (reset_status == HNS3VF_RESET_ALL_TQP_DONE)
+		return 0;
+
+	/*
+	 * If the firmware version or kernel PF version is low, it may not
+	 * support the rcb reset which means reset all the tqps at a time.
+	 * In this case, we should reset tqps one by one.
+	 */
+	for (i = 1; i < hw->cfg_max_queues; i++) {
+		ret = hns3vf_reset_tqp(hw, i);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 
 int
@@ -711,14 +793,21 @@ hns3_reset_all_tqps(struct hns3_adapter *hns)
 	struct hns3_hw *hw = &hns->hw;
 	int ret, i;
 
+	/* Disable all queues before reset all queues */
 	for (i = 0; i < hw->cfg_max_queues; i++) {
-		ret = hns3_reset_tqp(hns, i);
+		ret = hns3_tqp_enable(hw, i, false);
 		if (ret) {
-			hns3_err(hw, "Failed to reset No.%d queue: %d", i, ret);
+			hns3_err(hw,
+			    "fail to disable tqps before tqps reset, ret = %d.",
+			    ret);
 			return ret;
 		}
 	}
-	return 0;
+
+	if (hns->is_vf)
+		return hns3vf_reset_all_tqps(hw);
+	else
+		return hns3pf_reset_all_tqps(hw);
 }
 
 static int

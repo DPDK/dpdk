@@ -856,10 +856,16 @@ struct hns3_reset_tqp_queue_cmd {
 
 #define HNS3_CFG_RESET_MAC_B		3
 #define HNS3_CFG_RESET_FUNC_B		7
+#define HNS3_CFG_RESET_RCB_B		1
 struct hns3_reset_cmd {
 	uint8_t mac_func_reset;
 	uint8_t fun_reset_vfid;
-	uint8_t rsv[22];
+	uint8_t fun_reset_rcb;
+	uint8_t rsv1;
+	uint16_t fun_reset_rcb_vqid_start;
+	uint16_t fun_reset_rcb_vqid_num;
+	uint8_t fun_reset_rcb_return_status;
+	uint8_t rsv2[15];
 };
 
 #define HNS3_QUERY_DEV_SPECS_BD_NUM		4
