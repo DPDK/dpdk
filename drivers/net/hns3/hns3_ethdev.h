@@ -561,38 +561,6 @@ struct hns3_hw {
 #define HNS3_FLAG_TC_BASE_SCH_MODE		1
 #define HNS3_FLAG_VNET_BASE_SCH_MODE		2
 
-struct hns3_err_msix_intr_stats {
-	uint64_t mac_afifo_tnl_int_cnt;
-	uint64_t ppu_mpf_abn_int_st2_msix_cnt;
-	uint64_t ssu_port_based_pf_int_cnt;
-	uint64_t ppp_pf_abnormal_int_cnt;
-	uint64_t ppu_pf_abnormal_int_msix_cnt;
-
-	uint64_t imp_tcm_ecc_int_cnt;
-	uint64_t cmdq_mem_ecc_int_cnt;
-	uint64_t imp_rd_poison_int_cnt;
-	uint64_t tqp_int_ecc_int_cnt;
-	uint64_t msix_ecc_int_cnt;
-	uint64_t ssu_ecc_multi_bit_int_0_cnt;
-	uint64_t ssu_ecc_multi_bit_int_1_cnt;
-	uint64_t ssu_common_ecc_int_cnt;
-	uint64_t igu_int_cnt;
-	uint64_t ppp_mpf_abnormal_int_st1_cnt;
-	uint64_t ppp_mpf_abnormal_int_st3_cnt;
-	uint64_t ppu_mpf_abnormal_int_st1_cnt;
-	uint64_t ppu_mpf_abn_int_st2_ras_cnt;
-	uint64_t ppu_mpf_abnormal_int_st3_cnt;
-	uint64_t tm_sch_int_cnt;
-	uint64_t qcn_fifo_int_cnt;
-	uint64_t qcn_ecc_int_cnt;
-	uint64_t ncsi_ecc_int_cnt;
-	uint64_t ssu_port_based_err_int_cnt;
-	uint64_t ssu_fifo_overflow_int_cnt;
-	uint64_t ssu_ets_tcg_int_cnt;
-	uint64_t igu_egu_tnl_int_cnt;
-	uint64_t ppu_pf_abnormal_int_ras_cnt;
-};
-
 /* vlan entry information. */
 struct hns3_user_vlan_table {
 	LIST_ENTRY(hns3_user_vlan_table) next;
@@ -737,9 +705,6 @@ struct hns3_pf {
 	uint16_t wanted_umv_size;
 	uint16_t max_umv_size;
 	uint16_t used_umv_size;
-
-	/* Statistics information for abnormal interrupt */
-	struct hns3_err_msix_intr_stats abn_int_stats;
 
 	bool support_sfp_query;
 	uint32_t fec_mode; /* current FEC mode for ethdev */

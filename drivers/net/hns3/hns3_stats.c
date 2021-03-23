@@ -201,65 +201,6 @@ static const struct hns3_xstats_name_offset hns3_mac_strings[] = {
 		HNS3_MAC_STATS_OFFSET(mac_rx_send_app_bad_pkt_num)}
 };
 
-static const struct hns3_xstats_name_offset hns3_error_int_stats_strings[] = {
-	{"MAC_AFIFO_TNL_INT_R",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(mac_afifo_tnl_int_cnt)},
-	{"PPU_MPF_ABNORMAL_INT_ST2_MSIX",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abn_int_st2_msix_cnt)},
-	{"SSU_PORT_BASED_ERR_INT_MSIX",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_port_based_pf_int_cnt)},
-	{"PPP_PF_ABNORMAL_INT_ST0",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppp_pf_abnormal_int_cnt)},
-	{"PPU_PF_ABNORMAL_INT_ST_MSIX",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_pf_abnormal_int_msix_cnt)},
-	{"IMP_TCM_ECC_INT_STS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(imp_tcm_ecc_int_cnt)},
-	{"CMDQ_MEM_ECC_INT_STS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(cmdq_mem_ecc_int_cnt)},
-	{"IMP_RD_POISON_INT_STS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(imp_rd_poison_int_cnt)},
-	{"TQP_INT_ECC_INT_STS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(tqp_int_ecc_int_cnt)},
-	{"MSIX_ECC_INT_STS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(msix_ecc_int_cnt)},
-	{"SSU_ECC_MULTI_BIT_INT_0",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_ecc_multi_bit_int_0_cnt)},
-	{"SSU_ECC_MULTI_BIT_INT_1",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_ecc_multi_bit_int_1_cnt)},
-	{"SSU_COMMON_ERR_INT",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_common_ecc_int_cnt)},
-	{"IGU_INT_STS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(igu_int_cnt)},
-	{"PPP_MPF_ABNORMAL_INT_ST1",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppp_mpf_abnormal_int_st1_cnt)},
-	{"PPP_MPF_ABNORMAL_INT_ST3",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppp_mpf_abnormal_int_st3_cnt)},
-	{"PPU_MPF_ABNORMAL_INT_ST1",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abnormal_int_st1_cnt)},
-	{"PPU_MPF_ABNORMAL_INT_ST2_RAS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abn_int_st2_ras_cnt)},
-	{"PPU_MPF_ABNORMAL_INT_ST3",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abnormal_int_st3_cnt)},
-	{"TM_SCH_RINT",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(tm_sch_int_cnt)},
-	{"QCN_FIFO_RINT",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(qcn_fifo_int_cnt)},
-	{"QCN_ECC_RINT",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(qcn_ecc_int_cnt)},
-	{"NCSI_ECC_INT_RPT",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ncsi_ecc_int_cnt)},
-	{"SSU_PORT_BASED_ERR_INT_RAS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_port_based_err_int_cnt)},
-	{"SSU_FIFO_OVERFLOW_INT",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_fifo_overflow_int_cnt)},
-	{"SSU_ETS_TCG_INT",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_ets_tcg_int_cnt)},
-	{"IGU_EGU_TNL_INT_STS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(igu_egu_tnl_int_cnt)},
-	{"PPU_PF_ABNORMAL_INT_ST_RAS",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_pf_abnormal_int_ras_cnt)},
-};
-
 /* The statistic of reset */
 static const struct hns3_xstats_name_offset hns3_reset_stats_strings[] = {
 	{"REQ_RESET_CNT",
@@ -333,9 +274,6 @@ static const struct hns3_xstats_name_offset hns3_imissed_stats_strings[] = {
 #define HNS3_NUM_MAC_STATS (sizeof(hns3_mac_strings) / \
 	sizeof(hns3_mac_strings[0]))
 
-#define HNS3_NUM_ERROR_INT_XSTATS (sizeof(hns3_error_int_stats_strings) / \
-	sizeof(hns3_error_int_stats_strings[0]))
-
 #define HNS3_NUM_RESET_XSTATS (sizeof(hns3_reset_stats_strings) / \
 	sizeof(hns3_reset_stats_strings[0]))
 
@@ -363,7 +301,7 @@ static const struct hns3_xstats_name_offset hns3_imissed_stats_strings[] = {
 #define HNS3_NUM_IMISSED_XSTATS (sizeof(hns3_imissed_stats_strings) / \
 	sizeof(hns3_imissed_stats_strings[0]))
 
-#define HNS3_FIX_NUM_STATS (HNS3_NUM_MAC_STATS + HNS3_NUM_ERROR_INT_XSTATS + \
+#define HNS3_FIX_NUM_STATS (HNS3_NUM_MAC_STATS + \
 			    HNS3_NUM_RESET_XSTATS + HNS3_NUM_IMISSED_XSTATS)
 
 static void hns3_tqp_stats_clear(struct hns3_hw *hw);
@@ -750,23 +688,6 @@ hns3_queue_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	}
 }
 
-void
-hns3_error_int_stats_add(struct hns3_adapter *hns, const char *err)
-{
-	struct hns3_pf *pf = &hns->pf;
-	uint16_t i;
-	char *addr;
-
-	for (i = 0; i < HNS3_NUM_ERROR_INT_XSTATS; i++) {
-		if (strcmp(hns3_error_int_stats_strings[i].name, err) == 0) {
-			addr = (char *)&pf->abn_int_stats +
-				hns3_error_int_stats_strings[i].offset;
-			*(uint64_t *)addr += 1;
-			break;
-		}
-	}
-}
-
 static void
 hns3_rxq_dfx_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		       int *count)
@@ -932,7 +853,6 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		    unsigned int n)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rx_missed_stats *imissed_stats = &hw->imissed_stats;
 	struct hns3_mac_stats *mac_stats = &hw->mac_stats;
@@ -986,13 +906,6 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			count++;
 		}
 
-		for (i = 0; i < HNS3_NUM_ERROR_INT_XSTATS; i++) {
-			addr = (char *)&pf->abn_int_stats +
-			       hns3_error_int_stats_strings[i].offset;
-			xstats[count].value = *(uint64_t *)addr;
-			xstats[count].id = count;
-			count++;
-		}
 	}
 
 	/* Get the reset stat */
@@ -1132,13 +1045,6 @@ hns3_dev_xstats_get_names(struct rte_eth_dev *dev,
 			snprintf(xstats_names[count].name,
 				 sizeof(xstats_names[count].name),
 				 "%s", hns3_imissed_stats_strings[i].name);
-			count++;
-		}
-
-		for (i = 0; i < HNS3_NUM_ERROR_INT_XSTATS; i++) {
-			snprintf(xstats_names[count].name,
-				 sizeof(xstats_names[count].name),
-				 "%s", hns3_error_int_stats_strings[i].name);
 			count++;
 		}
 	}
@@ -1358,7 +1264,6 @@ int
 hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_pf *pf = &hns->pf;
 	int ret;
 
 	/* Clear tqp stats */
@@ -1378,9 +1283,6 @@ hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 	ret = hns3_mac_stats_reset(dev);
 	if (ret)
 		return ret;
-
-	/* Clear error stats */
-	memset(&pf->abn_int_stats, 0, sizeof(struct hns3_err_msix_intr_stats));
 
 	return 0;
 }

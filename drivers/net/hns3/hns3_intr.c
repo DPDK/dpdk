@@ -1838,7 +1838,6 @@ hns3_find_highest_level(struct hns3_adapter *hns, const char *reg,
 				reset_level = err->reset_level;
 				need_reset = true;
 			}
-			hns3_error_int_stats_add(hns, reg);
 		}
 		err++;
 	}

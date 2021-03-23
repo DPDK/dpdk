@@ -5768,14 +5768,12 @@ hns3_record_imp_error(struct hns3_adapter *hns)
 	reg_val = hns3_read_dev(hw, HNS3_VECTOR0_OTER_EN_REG);
 	if (hns3_get_bit(reg_val, HNS3_VECTOR0_IMP_RD_POISON_B)) {
 		hns3_warn(hw, "Detected IMP RD poison!");
-		hns3_error_int_stats_add(hns, "IMP_RD_POISON_INT_STS");
 		hns3_set_bit(reg_val, HNS3_VECTOR0_IMP_RD_POISON_B, 0);
 		hns3_write_dev(hw, HNS3_VECTOR0_OTER_EN_REG, reg_val);
 	}
 
 	if (hns3_get_bit(reg_val, HNS3_VECTOR0_IMP_CMDQ_ERR_B)) {
 		hns3_warn(hw, "Detected IMP CMDQ error!");
-		hns3_error_int_stats_add(hns, "CMDQ_MEM_ECC_INT_STS");
 		hns3_set_bit(reg_val, HNS3_VECTOR0_IMP_CMDQ_ERR_B, 0);
 		hns3_write_dev(hw, HNS3_VECTOR0_OTER_EN_REG, reg_val);
 	}
