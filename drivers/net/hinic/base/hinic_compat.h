@@ -171,6 +171,7 @@ static inline u32 readl(const volatile void *addr)
 #else
 #define CLOCK_TYPE CLOCK_MONOTONIC
 #endif
+#define HINIC_MUTEX_TIMEOUT  10
 
 static inline unsigned long clock_gettime_ms(void)
 {
@@ -225,24 +226,14 @@ static inline int hinic_mutex_destroy(pthread_mutex_t *pthreadmutex)
 static inline int hinic_mutex_lock(pthread_mutex_t *pthreadmutex)
 {
 	int err;
+	struct timespec tout;
 
-	err = pthread_mutex_lock(pthreadmutex);
-	if (!err) {
-		return err;
-	} else if (err == EOWNERDEAD) {
-		PMD_DRV_LOG(ERR, "Mutex lock failed. (ErrorNo=%d)", errno);
-#if defined(__GLIBC__)
-#if __GLIBC_PREREQ(2, 12)
-		(void)pthread_mutex_consistent(pthreadmutex);
-#else
-		(void)pthread_mutex_consistent_np(pthreadmutex);
-#endif
-#else
-		(void)pthread_mutex_consistent(pthreadmutex);
-#endif
-	} else {
-		PMD_DRV_LOG(ERR, "Mutex lock failed. (ErrorNo=%d)", errno);
-	}
+	(void)clock_gettime(CLOCK_TYPE, &tout);
+
+	tout.tv_sec += HINIC_MUTEX_TIMEOUT;
+	err = pthread_mutex_timedlock(pthreadmutex, &tout);
+	if (err)
+		PMD_DRV_LOG(ERR, "Mutex lock failed. (ErrorNo=%d)", err);
 
 	return err;
 }
