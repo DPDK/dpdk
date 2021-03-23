@@ -798,6 +798,7 @@ enum {
 #define HNS3_DEV_SUPPORT_INDEP_TXRX_B		0x6
 #define HNS3_DEV_SUPPORT_STASH_B		0x7
 #define HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B	0x9
+#define HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B	0xA
 
 #define hns3_dev_dcb_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
@@ -830,6 +831,9 @@ enum {
 
 #define hns3_dev_rxd_adv_layout_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B)
+
+#define hns3_dev_outer_udp_cksum_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)adapter)->hw)

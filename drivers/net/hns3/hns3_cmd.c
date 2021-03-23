@@ -433,6 +433,9 @@ hns3_parse_capability(struct hns3_hw *hw,
 	if (hns3_get_bit(caps, HNS3_CAPS_RXD_ADV_LAYOUT_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B,
 			     1);
+	if (hns3_get_bit(caps, HNS3_CAPS_UDP_TUNNEL_CSUM_B))
+		hns3_set_bit(hw->capability,
+				HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B, 1);
 }
 
 static uint32_t

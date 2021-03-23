@@ -87,6 +87,7 @@ New Features
   * Added support for freeing Tx mbuf on demand.
   * Added support for copper port in Kunpeng930.
   * Added support for runtime config to select IO burst function.
+  * Added support for outer UDP checksum in Kunpeng930.
 
 * **Updated NXP DPAA driver.**
 

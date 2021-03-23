@@ -408,8 +408,9 @@ hns3_tx_fill_hw_ring_sve(struct hns3_tx_queue *txq,
 				(uint64_t *)&txdp->tx.outer_vlan_tag,
 				offsets, svdup_n_u64(0));
 		/* save offset 24~31byte of every BD */
-		svst1_scatter_u64offset_u64(pg, (uint64_t *)&txdp->tx.paylen,
-					    offsets, svdup_n_u64(valid_bit));
+		svst1_scatter_u64offset_u64(pg,
+				(uint64_t *)&txdp->tx.paylen_fd_dop_ol4cs,
+				offsets, svdup_n_u64(valid_bit));
 
 		/* Increment bytes counter */
 		uint32_t idx;

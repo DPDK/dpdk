@@ -149,6 +149,7 @@
 #define HNS3_TXD_MSS_S				0
 #define HNS3_TXD_MSS_M				(0x3fff << HNS3_TXD_MSS_S)
 
+#define HNS3_TXD_OL4CS_B			22
 #define HNS3_L2_LEN_UNIT			1UL
 #define HNS3_L3_LEN_UNIT			2UL
 #define HNS3_L4_LEN_UNIT			2UL
@@ -234,7 +235,7 @@ struct hns3_desc {
 				};
 			};
 
-			uint32_t paylen;
+			uint32_t paylen_fd_dop_ol4cs;
 			uint16_t tp_fe_sc_vld_ra_ri;
 			uint16_t mss;
 		} tx;
@@ -503,6 +504,7 @@ struct hns3_queue_info {
 };
 
 #define HNS3_TX_CKSUM_OFFLOAD_MASK ( \
+	PKT_TX_OUTER_UDP_CKSUM | \
 	PKT_TX_OUTER_IP_CKSUM | \
 	PKT_TX_IP_CKSUM | \
 	PKT_TX_TCP_SEG | \
