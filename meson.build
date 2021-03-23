@@ -8,7 +8,7 @@ project('DPDK', 'C',
 		files('VERSION')).stdout().strip(),
 	license: 'BSD',
 	default_options: ['buildtype=release', 'default_library=static'],
-	meson_version: '>= 0.47.1'
+	meson_version: '>= 0.49.2'
 )
 
 # check for developer mode

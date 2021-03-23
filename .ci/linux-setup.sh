@@ -1,7 +1,7 @@
 #!/bin/sh -xe
 
 # need to install as 'root' since some of the unit tests won't run without it
-sudo python3 -m pip install --upgrade 'meson==0.47.1'
+sudo python3 -m pip install --upgrade 'meson==0.49.2'
 
 # setup hugepages. error ignored because having hugepage is not mandatory.
 cat /proc/meminfo
