@@ -519,6 +519,31 @@ hns3_update_port_rx_ssu_drop_stats(struct hns3_hw *hw)
 	return 0;
 }
 
+static int
+hns3_update_port_tx_ssu_drop_stats(struct hns3_hw *hw)
+{
+	struct hns3_cmd_desc desc[HNS3_OPC_SSU_DROP_REG_NUM];
+	struct hns3_query_ssu_cmd *req;
+	uint64_t cnt;
+	int ret;
+
+	ret = hns3_get_ssu_drop_stats(hw, desc, HNS3_OPC_SSU_DROP_REG_NUM,
+				      false);
+	if (ret) {
+		hns3_err(hw, "failed to get Tx SSU drop stats, ret = %d", ret);
+		return ret;
+	}
+
+	req = (struct hns3_query_ssu_cmd *)desc[0].data;
+	cnt = rte_le_to_cpu_32(req->oq_drop_cnt) +
+		rte_le_to_cpu_32(req->full_drop_cnt) +
+		rte_le_to_cpu_32(req->part_drop_cnt);
+
+	hw->oerror_stats += cnt;
+
+	return 0;
+}
+
 int
 hns3_update_imissed_stats(struct hns3_hw *hw, bool is_clear)
 {
@@ -540,6 +565,25 @@ hns3_update_imissed_stats(struct hns3_hw *hw, bool is_clear)
 
 	if (is_clear)
 		memset(&hw->imissed_stats, 0, sizeof(hw->imissed_stats));
+
+	return 0;
+}
+
+static int
+hns3_update_oerror_stats(struct hns3_hw *hw, bool is_clear)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	int ret;
+
+	if (hw->drop_stats_mode == HNS3_PKTS_DROP_STATS_MODE1 || hns->is_vf)
+		return 0;
+
+	ret = hns3_update_port_tx_ssu_drop_stats(hw);
+	if (ret)
+		return ret;
+
+	if (is_clear)
+		hw->oerror_stats = 0;
 
 	return 0;
 }
@@ -608,7 +652,14 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 		rte_stats->obytes += txq->basic_stats.bytes;
 	}
 
-	rte_stats->oerrors = 0;
+	ret = hns3_update_oerror_stats(hw, false);
+	if (ret) {
+		hns3_err(hw, "update oerror stats failed, ret = %d",
+			 ret);
+		return ret;
+	}
+	rte_stats->oerrors = hw->oerror_stats;
+
 	/*
 	 * If HW statistics are reset by stats_reset, but a lot of residual
 	 * packets exist in the hardware queue and these packets are error
@@ -641,6 +692,17 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 	ret = hns3_update_imissed_stats(hw, true);
 	if (ret) {
 		hns3_err(hw, "clear imissed stats failed, ret = %d", ret);
+		return ret;
+	}
+
+	/*
+	 * Note: Reading hardware statistics of oerror registers will
+	 * clear them.
+	 */
+	ret = hns3_update_oerror_stats(hw, true);
+	if (ret) {
+		hns3_err(hw, "clear oerror stats failed, ret = %d",
+			 ret);
 		return ret;
 	}
 
