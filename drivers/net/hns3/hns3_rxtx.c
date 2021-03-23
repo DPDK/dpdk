@@ -3083,6 +3083,7 @@ hns3_parse_l4_cksum_params(struct rte_mbuf *m, uint32_t *type_cs_vlan_tso_len)
 	uint32_t tmp;
 	/* Enable L4 checksum offloads */
 	switch (ol_flags & (PKT_TX_L4_MASK | PKT_TX_TCP_SEG)) {
+	case PKT_TX_TCP_CKSUM | PKT_TX_TCP_SEG:
 	case PKT_TX_TCP_CKSUM:
 	case PKT_TX_TCP_SEG:
 		tmp = *type_cs_vlan_tso_len;
