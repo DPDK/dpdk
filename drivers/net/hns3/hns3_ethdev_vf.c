@@ -2917,6 +2917,7 @@ err_mp_init_secondary:
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->tx_pkt_prepare = NULL;
+	eth_dev->tx_descriptor_status = NULL;
 	rte_free(eth_dev->process_private);
 	eth_dev->process_private = NULL;
 

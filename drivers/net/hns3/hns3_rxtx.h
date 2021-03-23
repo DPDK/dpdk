@@ -720,5 +720,6 @@ void hns3_stop_all_txqs(struct rte_eth_dev *dev);
 void hns3_restore_tqp_enable_state(struct hns3_hw *hw);
 int hns3_tx_done_cleanup(void *txq, uint32_t free_cnt);
 void hns3_enable_rxd_adv_layout(struct hns3_hw *hw);
+int hns3_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
 
 #endif /* _HNS3_RXTX_H_ */

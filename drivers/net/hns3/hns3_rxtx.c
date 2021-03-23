@@ -4044,6 +4044,7 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = hns3_get_rx_function(eth_dev);
 		eth_dev->tx_pkt_burst = hns3_get_tx_function(eth_dev, &prep);
 		eth_dev->tx_pkt_prepare = prep;
+		eth_dev->tx_descriptor_status = hns3_dev_tx_descriptor_status;
 	} else {
 		eth_dev->rx_pkt_burst = hns3_dummy_rxtx_burst;
 		eth_dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
@@ -4254,6 +4255,33 @@ hns3_tx_done_cleanup(void *txq, uint32_t free_cnt)
 		return 0;
 	else
 		return -ENOTSUP;
+}
+
+int
+hns3_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	volatile struct hns3_desc *txdp;
+	struct hns3_tx_queue *txq;
+	struct rte_eth_dev *dev;
+	uint16_t desc_id;
+
+	txq = (struct hns3_tx_queue *)tx_queue;
+	if (offset >= txq->nb_tx_desc)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[txq->port_id];
+	if (dev->tx_pkt_burst != hns3_xmit_pkts_simple &&
+	    dev->tx_pkt_burst != hns3_xmit_pkts &&
+	    dev->tx_pkt_burst != hns3_xmit_pkts_vec_sve &&
+	    dev->tx_pkt_burst != hns3_xmit_pkts_vec)
+		return RTE_ETH_TX_DESC_UNAVAIL;
+
+	desc_id = (txq->next_to_use + offset) % txq->nb_tx_desc;
+	txdp = &txq->tx_ring[desc_id];
+	if (txdp->tx.tp_fe_sc_vld_ra_ri & rte_cpu_to_le_16(BIT(HNS3_TXD_VLD_B)))
+		return RTE_ETH_TX_DESC_FULL;
+	else
+		return RTE_ETH_TX_DESC_DONE;
 }
 
 uint32_t
