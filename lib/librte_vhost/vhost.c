@@ -524,7 +524,7 @@ vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (log_translate(dev, vq) < 0)
 		return -1;
 
-	vq->access_ok = 1;
+	vq->access_ok = true;
 
 	return 0;
 }
@@ -535,7 +535,7 @@ vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_wr_lock(vq);
 
-	vq->access_ok = 0;
+	vq->access_ok = false;
 	vq->desc = NULL;
 	vq->avail = NULL;
 	vq->used = NULL;
@@ -1451,7 +1451,7 @@ rte_vhost_rx_queue_count(int vid, uint16_t qid)
 
 	rte_spinlock_lock(&vq->access_lock);
 
-	if (unlikely(vq->enabled == 0 || vq->avail == NULL))
+	if (unlikely(!vq->enabled || vq->avail == NULL))
 		goto out;
 
 	ret = *((volatile uint16_t *)&vq->avail->idx) - vq->last_avail_idx;

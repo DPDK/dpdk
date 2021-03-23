@@ -406,6 +406,11 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 	if (validate_msg_fds(msg, 0) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
 
+	if (msg->payload.state.num > 32768) {
+		VHOST_LOG_CONFIG(ERR, "invalid virtqueue size %u\n", msg->payload.state.num);
+		return RTE_VHOST_MSG_RESULT_ERR;
+	}
+
 	vq->size = msg->payload.state.num;
 
 	/* VIRTIO 1.0, 2.4 Virtqueues says:
@@ -423,12 +428,6 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 				"invalid virtqueue size %u\n", vq->size);
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
-	}
-
-	if (vq->size > 32768) {
-		VHOST_LOG_CONFIG(ERR,
-			"invalid virtqueue size %u\n", vq->size);
-		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
 	if (vq_is_packed(dev)) {
@@ -713,7 +712,7 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 			return dev;
 		}
 
-		vq->access_ok = 1;
+		vq->access_ok = true;
 		return dev;
 	}
 
@@ -771,7 +770,7 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 		vq->last_avail_idx = vq->used->idx;
 	}
 
-	vq->access_ok = 1;
+	vq->access_ok = true;
 
 	VHOST_LOG_CONFIG(DEBUG, "(%d) mapped address desc: %p\n",
 			dev->vid, vq->desc);
@@ -1658,7 +1657,7 @@ vhost_user_set_vring_call(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	vq = dev->virtqueue[file.index];
 
 	if (vq->ready) {
-		vq->ready = 0;
+		vq->ready = false;
 		vhost_user_notify_queue_state(dev, file.index, 0);
 	}
 
@@ -1918,14 +1917,14 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	 * the SET_VRING_ENABLE message.
 	 */
 	if (!(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES))) {
-		vq->enabled = 1;
+		vq->enabled = true;
 		if (dev->notify_ops->vring_state_changed)
 			dev->notify_ops->vring_state_changed(
 				dev->vid, file.index, 1);
 	}
 
 	if (vq->ready) {
-		vq->ready = 0;
+		vq->ready = false;
 		vhost_user_notify_queue_state(dev, file.index, 0);
 	}
 
@@ -2043,7 +2042,7 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 			int main_fd __rte_unused)
 {
 	struct virtio_net *dev = *pdev;
-	int enable = (int)msg->payload.state.num;
+	bool enable = !!msg->payload.state.num;
 	int index = (int)msg->payload.state.index;
 
 	if (validate_msg_fds(msg, 0) != 0)

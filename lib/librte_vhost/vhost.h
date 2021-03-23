@@ -133,7 +133,7 @@ struct vhost_virtqueue {
 		struct vring_used	*used;
 		struct vring_packed_desc_event *device_event;
 	};
-	uint32_t		size;
+	uint16_t		size;
 
 	uint16_t		last_avail_idx;
 	uint16_t		last_used_idx;
@@ -143,29 +143,12 @@ struct vhost_virtqueue {
 #define VIRTIO_INVALID_EVENTFD		(-1)
 #define VIRTIO_UNINITIALIZED_EVENTFD	(-2)
 
-	int			enabled;
-	int			access_ok;
-	int			ready;
-	int			notif_enable;
-#define VIRTIO_UNINITIALIZED_NOTIF	(-1)
+	bool			enabled;
+	bool			access_ok;
+	bool			ready;
 
 	rte_spinlock_t		access_lock;
 
-	/* Used to notify the guest (trigger interrupt) */
-	int			callfd;
-	/* Currently unused as polling mode is enabled */
-	int			kickfd;
-
-	/* Physical address of used ring, for logging */
-	uint64_t		log_guest_addr;
-
-	/* inflight share memory info */
-	union {
-		struct rte_vhost_inflight_info_split *inflight_split;
-		struct rte_vhost_inflight_info_packed *inflight_packed;
-	};
-	struct rte_vhost_resubmit_info *resubmit_inflight;
-	uint64_t		global_counter;
 
 	union {
 		struct vring_used_elem  *shadow_used_split;
@@ -176,22 +159,36 @@ struct vhost_virtqueue {
 	uint16_t		shadow_aligned_idx;
 	/* Record packed ring first dequeue desc index */
 	uint16_t		shadow_last_used_idx;
-	struct vhost_vring_addr ring_addrs;
 
-	struct batch_copy_elem	*batch_copy_elems;
 	uint16_t		batch_copy_nb_elems;
+	struct batch_copy_elem	*batch_copy_elems;
 	bool			used_wrap_counter;
 	bool			avail_wrap_counter;
 
-	struct log_cache_entry *log_cache;
-	uint16_t log_cache_nb_elem;
+	/* Physical address of used ring, for logging */
+	uint16_t		log_cache_nb_elem;
+	uint64_t		log_guest_addr;
+	struct log_cache_entry	*log_cache;
 
 	rte_rwlock_t	iotlb_lock;
 	rte_rwlock_t	iotlb_pending_lock;
 	struct rte_mempool *iotlb_pool;
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
-	int				iotlb_cache_nr;
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
+	int				iotlb_cache_nr;
+
+	/* Used to notify the guest (trigger interrupt) */
+	int			callfd;
+	/* Currently unused as polling mode is enabled */
+	int			kickfd;
+
+	/* inflight share memory info */
+	union {
+		struct rte_vhost_inflight_info_split *inflight_split;
+		struct rte_vhost_inflight_info_packed *inflight_packed;
+	};
+	struct rte_vhost_resubmit_info *resubmit_inflight;
+	uint64_t		global_counter;
 
 	/* operation callbacks for async dma */
 	struct rte_vhost_async_channel_ops	async_ops;
@@ -212,6 +209,11 @@ struct vhost_virtqueue {
 	bool		async_inorder;
 	bool		async_registered;
 	uint16_t	async_threshold;
+
+	int			notif_enable;
+#define VIRTIO_UNINITIALIZED_NOTIF	(-1)
+
+	struct vhost_vring_addr ring_addrs;
 } __rte_cache_aligned;
 
 /* Virtio device status as per Virtio specification */
