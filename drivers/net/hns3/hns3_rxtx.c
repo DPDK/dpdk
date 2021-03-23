@@ -2689,13 +2689,26 @@ hns3_get_rx_function(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	uint64_t offloads = dev->data->dev_conf.rxmode.offloads;
+	bool vec_allowed, sve_allowed, simple_allowed;
 
-	if (hns->rx_vec_allowed && hns3_rx_check_vec_support(dev) == 0)
-		return hns3_check_sve_support() ? hns3_recv_pkts_vec_sve :
-		       hns3_recv_pkts_vec;
+	vec_allowed = hns->rx_vec_allowed &&
+		      hns3_rx_check_vec_support(dev) == 0;
+	sve_allowed = vec_allowed && hns3_check_sve_support();
+	simple_allowed = hns->rx_simple_allowed && !dev->data->scattered_rx &&
+			 (offloads & DEV_RX_OFFLOAD_TCP_LRO) == 0;
 
-	if (hns->rx_simple_allowed && !dev->data->scattered_rx &&
-	    (offloads & DEV_RX_OFFLOAD_TCP_LRO) == 0)
+	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_VEC && vec_allowed)
+		return hns3_recv_pkts_vec;
+	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_SVE && sve_allowed)
+		return hns3_recv_pkts_vec_sve;
+	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_SIMPLE && simple_allowed)
+		return hns3_recv_pkts;
+	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_COMMON)
+		return hns3_recv_scattered_pkts;
+
+	if (vec_allowed)
+		return hns3_recv_pkts_vec;
+	if (simple_allowed)
 		return hns3_recv_pkts;
 
 	return hns3_recv_scattered_pkts;
@@ -3930,18 +3943,31 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 {
 	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 	struct hns3_adapter *hns = dev->data->dev_private;
+	bool vec_allowed, sve_allowed, simple_allowed;
 
-	if (hns->tx_vec_allowed && hns3_tx_check_vec_support(dev) == 0) {
-		*prep = NULL;
-		return hns3_check_sve_support() ? hns3_xmit_pkts_vec_sve :
-			hns3_xmit_pkts_vec;
-	}
+	vec_allowed = hns->tx_vec_allowed &&
+		      hns3_tx_check_vec_support(dev) == 0;
+	sve_allowed = vec_allowed && hns3_check_sve_support();
+	simple_allowed = hns->tx_simple_allowed &&
+			 offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE);
 
-	if (hns->tx_simple_allowed &&
-	    offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)) {
-		*prep = NULL;
+	*prep = NULL;
+
+	if (hns->tx_func_hint == HNS3_IO_FUNC_HINT_VEC && vec_allowed)
+		return hns3_xmit_pkts_vec;
+	if (hns->tx_func_hint == HNS3_IO_FUNC_HINT_SVE && sve_allowed)
+		return hns3_xmit_pkts_vec_sve;
+	if (hns->tx_func_hint == HNS3_IO_FUNC_HINT_SIMPLE && simple_allowed)
 		return hns3_xmit_pkts_simple;
+	if (hns->tx_func_hint == HNS3_IO_FUNC_HINT_COMMON) {
+		*prep = hns3_prep_pkts;
+		return hns3_xmit_pkts;
 	}
+
+	if (vec_allowed)
+		return hns3_xmit_pkts_vec;
+	if (simple_allowed)
+		return hns3_xmit_pkts_simple;
 
 	*prep = hns3_prep_pkts;
 	return hns3_xmit_pkts;

@@ -2834,6 +2834,7 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->adapter_state = HNS3_NIC_UNINITIALIZED;
 	hns->is_vf = true;
 	hw->data = eth_dev->data;
+	hns3_parse_devargs(eth_dev);
 
 	ret = hns3_reset_init(hw);
 	if (ret)
@@ -2962,3 +2963,6 @@ static struct rte_pci_driver rte_hns3vf_pmd = {
 RTE_PMD_REGISTER_PCI(net_hns3_vf, rte_hns3vf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_hns3_vf, pci_id_hns3vf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_hns3_vf, "* igb_uio | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_hns3_vf,
+		HNS3_DEVARG_RX_FUNC_HINT "=vec|sve|simple|common "
+		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common ");

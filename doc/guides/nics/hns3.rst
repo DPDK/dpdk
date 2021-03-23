@@ -46,6 +46,43 @@ Prerequisites
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
 
+Runtime Config Options
+----------------------
+
+- ``rx_func_hint`` (default ``none``)
+
+  Used to select Rx burst function, supported value are ``vec``, ``sve``,
+  ``simple``, ``common``.
+  ``vec``, if supported use the ``vec`` Rx function which indicates the
+  default vector algorithm, neon for Kunpeng Arm platform.
+  ``sve``, if supported use the ``sve`` Rx function which indicates the
+  sve algorithm.
+  ``simple``, if supported use the ``simple`` Rx function which indicates
+  the scalar algorithm.
+  ``common``, if supported use the ``common`` Rx function which indicates
+  the scalar scattered algorithm.
+
+  When provided parameter is not supported, ``vec`` usage condition will
+  be first checked, if meets, use the ``vec``. Then, ``simple``, at last
+  ``common``.
+
+- ``tx_func_hint`` (default ``none``)
+
+  Used to select Tx burst function, supported value are ``vec``, ``sve``,
+  ``simple``, ``common``.
+  ``vec``, if supported use the ``vec`` Tx function which indicates the
+  default vector algorithm, neon for Kunpeng Arm platform.
+  ``sve``, if supported use the ``sve`` Tx function which indicates the
+  sve algorithm.
+  ``simple``, if supported use the ``simple`` Tx function which indicates
+  the scalar simple algorithm.
+  ``common``, if supported use the ``common`` Tx function which indicates
+  the scalar algorithm.
+
+  When provided parameter is not supported, ``vec`` usage condition will
+  be first checked, if meets, use the ``vec``. Then, ``simple``, at last
+  ``common``.
+
 Driver compilation and testing
 ------------------------------
 

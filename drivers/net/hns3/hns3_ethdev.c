@@ -6,6 +6,7 @@
 #include <rte_bus_pci.h>
 #include <ethdev_pci.h>
 #include <rte_pci.h>
+#include <rte_kvargs.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
@@ -6505,6 +6506,78 @@ hns3_get_module_info(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+hns3_parse_io_hint_func(const char *key, const char *value, void *extra_args)
+{
+	uint32_t hint = HNS3_IO_FUNC_HINT_NONE;
+
+	RTE_SET_USED(key);
+
+	if (strcmp(value, "vec") == 0)
+		hint = HNS3_IO_FUNC_HINT_VEC;
+	else if (strcmp(value, "sve") == 0)
+		hint = HNS3_IO_FUNC_HINT_SVE;
+	else if (strcmp(value, "simple") == 0)
+		hint = HNS3_IO_FUNC_HINT_SIMPLE;
+	else if (strcmp(value, "common") == 0)
+		hint = HNS3_IO_FUNC_HINT_COMMON;
+
+	/* If the hint is valid then update output parameters */
+	if (hint != HNS3_IO_FUNC_HINT_NONE)
+		*(uint32_t *)extra_args = hint;
+
+	return 0;
+}
+
+static const char *
+hns3_get_io_hint_func_name(uint32_t hint)
+{
+	switch (hint) {
+	case HNS3_IO_FUNC_HINT_VEC:
+		return "vec";
+	case HNS3_IO_FUNC_HINT_SVE:
+		return "sve";
+	case HNS3_IO_FUNC_HINT_SIMPLE:
+		return "simple";
+	case HNS3_IO_FUNC_HINT_COMMON:
+		return "common";
+	default:
+		return "none";
+	}
+}
+
+void
+hns3_parse_devargs(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	uint32_t rx_func_hint = HNS3_IO_FUNC_HINT_NONE;
+	uint32_t tx_func_hint = HNS3_IO_FUNC_HINT_NONE;
+	struct hns3_hw *hw = &hns->hw;
+	struct rte_kvargs *kvlist;
+
+	if (dev->device->devargs == NULL)
+		return;
+
+	kvlist = rte_kvargs_parse(dev->device->devargs->args, NULL);
+	if (!kvlist)
+		return;
+
+	rte_kvargs_process(kvlist, HNS3_DEVARG_RX_FUNC_HINT,
+			   &hns3_parse_io_hint_func, &rx_func_hint);
+	rte_kvargs_process(kvlist, HNS3_DEVARG_TX_FUNC_HINT,
+			   &hns3_parse_io_hint_func, &tx_func_hint);
+	rte_kvargs_free(kvlist);
+
+	if (rx_func_hint != HNS3_IO_FUNC_HINT_NONE)
+		hns3_warn(hw, "parsed %s = %s.", HNS3_DEVARG_RX_FUNC_HINT,
+			  hns3_get_io_hint_func_name(rx_func_hint));
+	hns->rx_func_hint = rx_func_hint;
+	if (tx_func_hint != HNS3_IO_FUNC_HINT_NONE)
+		hns3_warn(hw, "parsed %s = %s.", HNS3_DEVARG_TX_FUNC_HINT,
+			  hns3_get_io_hint_func_name(tx_func_hint));
+	hns->tx_func_hint = tx_func_hint;
+}
+
 static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.dev_configure      = hns3_dev_configure,
 	.dev_start          = hns3_dev_start,
@@ -6625,6 +6698,7 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	hw->adapter_state = HNS3_NIC_UNINITIALIZED;
 	hns->is_vf = false;
 	hw->data = eth_dev->data;
+	hns3_parse_devargs(eth_dev);
 
 	/*
 	 * Set default max packet size according to the mtu
@@ -6758,5 +6832,8 @@ static struct rte_pci_driver rte_hns3_pmd = {
 RTE_PMD_REGISTER_PCI(net_hns3, rte_hns3_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_hns3, pci_id_hns3_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_hns3, "* igb_uio | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_hns3,
+		HNS3_DEVARG_RX_FUNC_HINT "=vec|sve|simple|common "
+		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common ");
 RTE_LOG_REGISTER(hns3_logtype_init, pmd.net.hns3.init, NOTICE);
 RTE_LOG_REGISTER(hns3_logtype_driver, pmd.net.hns3.driver, NOTICE);

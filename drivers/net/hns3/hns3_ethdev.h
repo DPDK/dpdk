@@ -772,8 +772,22 @@ struct hns3_adapter {
 	bool tx_simple_allowed;
 	bool tx_vec_allowed;
 
+	uint32_t rx_func_hint;
+	uint32_t tx_func_hint;
+
 	struct hns3_ptype_table ptype_tbl __rte_cache_min_aligned;
 };
+
+enum {
+	HNS3_IO_FUNC_HINT_NONE = 0,
+	HNS3_IO_FUNC_HINT_VEC,
+	HNS3_IO_FUNC_HINT_SVE,
+	HNS3_IO_FUNC_HINT_SIMPLE,
+	HNS3_IO_FUNC_HINT_COMMON
+};
+
+#define HNS3_DEVARG_RX_FUNC_HINT	"rx_func_hint"
+#define HNS3_DEVARG_TX_FUNC_HINT	"tx_func_hint"
 
 #define HNS3_DEV_SUPPORT_DCB_B			0x0
 #define HNS3_DEV_SUPPORT_COPPER_B		0x1
@@ -975,6 +989,7 @@ int hns3_dev_infos_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_dev_info *info);
 void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 			  uint32_t link_speed, uint8_t link_duplex);
+void hns3_parse_devargs(struct rte_eth_dev *dev);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)
