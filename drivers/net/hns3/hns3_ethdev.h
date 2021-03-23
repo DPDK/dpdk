@@ -43,6 +43,9 @@
 #define HNS3_UNLIMIT_PROMISC_MODE       0
 #define HNS3_LIMIT_PROMISC_MODE         1
 
+#define HNS3_SPECIAL_PORT_SW_CKSUM_MODE         0
+#define HNS3_SPECIAL_PORT_HW_CKSUM_MODE         1
+
 #define HNS3_UC_MACADDR_NUM		128
 #define HNS3_VF_UC_MACADDR_NUM		48
 #define HNS3_MC_MACADDR_NUM		128
@@ -535,6 +538,22 @@ struct hns3_hw {
 	 */
 	uint8_t promisc_mode;
 	uint8_t max_non_tso_bd_num; /* max BD number of one non-TSO packet */
+	/*
+	 * udp checksum mode.
+	 * value range:
+	 *      HNS3_SPECIAL_PORT_HW_CKSUM_MODE/HNS3_SPECIAL_PORT_SW_CKSUM_MODE
+	 *
+	 *  - HNS3_SPECIAL_PORT_SW_CKSUM_MODE
+	 *     In this mode, HW can not do checksum for special UDP port like
+	 *     4789, 4790, 6081 for non-tunnel UDP packets and UDP tunnel
+	 *     packets without the PKT_TX_TUNEL_MASK in the mbuf. So, PMD need
+	 *     do the checksum for these packets to avoid a checksum error.
+	 *
+	 *  - HNS3_SPECIAL_PORT_HW_CKSUM_MODE
+	 *     In this mode, HW does not have the preceding problems and can
+	 *     directly calculate the checksum of these UDP packets.
+	 */
+	uint8_t udp_cksum_mode;
 
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;
 	/*

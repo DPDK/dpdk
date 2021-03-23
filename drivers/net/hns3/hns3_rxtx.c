@@ -5,6 +5,7 @@
 #include <rte_bus_pci.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
+#include <rte_geneve.h>
 #include <rte_vxlan.h>
 #include <rte_ethdev_driver.h>
 #include <rte_io.h>
@@ -2640,6 +2641,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 					     HNS3_RING_TX_TAIL_REG);
 	txq->min_tx_pkt_len = hw->min_tx_pkt_len;
 	txq->tso_mode = hw->tso_mode;
+	txq->udp_cksum_mode = hw->udp_cksum_mode;
 	txq->over_length_pkt_cnt = 0;
 	txq->exceed_limit_bd_pkt_cnt = 0;
 	txq->exceed_limit_bd_reassem_fail = 0;
@@ -3293,6 +3295,69 @@ hns3_vld_vlan_chk(struct hns3_tx_queue *txq, struct rte_mbuf *m)
 }
 #endif
 
+static uint16_t
+hns3_udp_cksum_help(struct rte_mbuf *m)
+{
+	uint64_t ol_flags = m->ol_flags;
+	uint16_t cksum = 0;
+	uint32_t l4_len;
+
+	if (ol_flags & PKT_TX_IPV4) {
+		struct rte_ipv4_hdr *ipv4_hdr = rte_pktmbuf_mtod_offset(m,
+				struct rte_ipv4_hdr *, m->l2_len);
+		l4_len = rte_be_to_cpu_16(ipv4_hdr->total_length) - m->l3_len;
+	} else {
+		struct rte_ipv6_hdr *ipv6_hdr = rte_pktmbuf_mtod_offset(m,
+				struct rte_ipv6_hdr *, m->l2_len);
+		l4_len = rte_be_to_cpu_16(ipv6_hdr->payload_len);
+	}
+
+	rte_raw_cksum_mbuf(m, m->l2_len + m->l3_len, l4_len, &cksum);
+
+	cksum = ~cksum;
+	/*
+	 * RFC 768:If the computed checksum is zero for UDP, it is transmitted
+	 * as all ones
+	 */
+	if (cksum == 0)
+		cksum = 0xffff;
+
+	return (uint16_t)cksum;
+}
+
+static bool
+hns3_validate_tunnel_cksum(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
+{
+	uint64_t ol_flags = m->ol_flags;
+	struct rte_udp_hdr *udp_hdr;
+	uint16_t dst_port;
+
+	if (tx_queue->udp_cksum_mode == HNS3_SPECIAL_PORT_HW_CKSUM_MODE ||
+	    ol_flags & PKT_TX_TUNNEL_MASK ||
+	    (ol_flags & PKT_TX_L4_MASK) != PKT_TX_UDP_CKSUM)
+		return true;
+	/*
+	 * A UDP packet with the same dst_port as VXLAN\VXLAN_GPE\GENEVE will
+	 * be recognized as a tunnel packet in HW. In this case, if UDP CKSUM
+	 * offload is set and the tunnel mask has not been set, the CKSUM will
+	 * be wrong since the header length is wrong and driver should complete
+	 * the CKSUM to avoid CKSUM error.
+	 */
+	udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
+						m->l2_len + m->l3_len);
+	dst_port = rte_be_to_cpu_16(udp_hdr->dst_port);
+	switch (dst_port) {
+	case RTE_VXLAN_DEFAULT_PORT:
+	case RTE_VXLAN_GPE_DEFAULT_PORT:
+	case RTE_GENEVE_DEFAULT_PORT:
+		udp_hdr->dgram_cksum = hns3_udp_cksum_help(m);
+		m->ol_flags = ol_flags & ~PKT_TX_L4_MASK;
+		return false;
+	default:
+		return true;
+	}
+}
+
 static int
 hns3_prep_pkt_proc(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
 {
@@ -3336,6 +3401,9 @@ hns3_prep_pkt_proc(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
 		rte_errno = -ret;
 		return ret;
 	}
+
+	if (!hns3_validate_tunnel_cksum(tx_queue, m))
+		return 0;
 
 	hns3_outer_header_cksum_prepare(m);
 
