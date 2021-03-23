@@ -2022,6 +2022,9 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 	rte_free(vq->batch_copy_elems);
 	vq->batch_copy_elems = NULL;
 
+	rte_free(vq->log_cache);
+	vq->log_cache = NULL;
+
 	msg->size = sizeof(msg->payload.state);
 	msg->fd_num = 0;
 
@@ -2121,6 +2124,7 @@ vhost_user_set_log_base(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	int fd = msg->fds[0];
 	uint64_t size, off;
 	void *addr;
+	uint32_t i;
 
 	if (validate_msg_fds(msg, 1) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
@@ -2173,6 +2177,23 @@ vhost_user_set_log_base(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	dev->log_addr = (uint64_t)(uintptr_t)addr;
 	dev->log_base = dev->log_addr + off;
 	dev->log_size = size;
+
+	for (i = 0; i < dev->nr_vring; i++) {
+		struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+		rte_free(vq->log_cache);
+		vq->log_cache = NULL;
+		vq->log_cache_nb_elem = 0;
+		vq->log_cache = rte_zmalloc("vq log cache",
+				sizeof(struct log_cache_entry) * VHOST_LOG_CACHE_NR,
+				0);
+		/*
+		 * If log cache alloc fail, don't fail migration, but no
+		 * caching will be done, which will impact performance
+		 */
+		if (!vq->log_cache)
+			VHOST_LOG_CONFIG(ERR, "Failed to allocate VQ logging cache\n");
+	}
 
 	/*
 	 * The spec is not clear about it (yet), but QEMU doesn't expect

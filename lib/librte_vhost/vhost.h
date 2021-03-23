@@ -183,7 +183,7 @@ struct vhost_virtqueue {
 	bool			used_wrap_counter;
 	bool			avail_wrap_counter;
 
-	struct log_cache_entry log_cache[VHOST_LOG_CACHE_NR];
+	struct log_cache_entry *log_cache;
 	uint16_t log_cache_nb_elem;
 
 	rte_rwlock_t	iotlb_lock;
