@@ -136,7 +136,7 @@ tim_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
 	return set_timers;
 }
 
-#define FP(_name, _f4, _f3, _f2, _f1, _flags)				\
+#define FP(_name, _f3, _f2, _f1, _flags)				\
 uint16_t __rte_noinline							  \
 otx2_tim_arm_burst_ ## _name(const struct rte_event_timer_adapter *adptr, \
 			     struct rte_event_timer **tim,		  \
@@ -147,7 +147,7 @@ otx2_tim_arm_burst_ ## _name(const struct rte_event_timer_adapter *adptr, \
 TIM_ARM_FASTPATH_MODES
 #undef FP
 
-#define FP(_name, _f3, _f2, _f1, _flags)				\
+#define FP(_name, _f2, _f1, _flags)				\
 uint16_t __rte_noinline							\
 otx2_tim_arm_tmo_tick_burst_ ## _name(					\
 			const struct rte_event_timer_adapter *adptr,	\

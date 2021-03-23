@@ -34,27 +34,25 @@ tim_set_fp_ops(struct otx2_tim_ring *tim_ring)
 {
 	uint8_t prod_flag = !tim_ring->prod_type_sp;
 
-	/* [MOD/AND] [DFB/FB] [SP][MP]*/
-	const rte_event_timer_arm_burst_t arm_burst[2][2][2][2] = {
-#define FP(_name, _f4, _f3, _f2, _f1, flags) \
-		[_f4][_f3][_f2][_f1] = otx2_tim_arm_burst_ ## _name,
-TIM_ARM_FASTPATH_MODES
+	/* [DFB/FB] [SP][MP]*/
+	const rte_event_timer_arm_burst_t arm_burst[2][2][2] = {
+#define FP(_name, _f3, _f2, _f1, flags)                                        \
+	[_f3][_f2][_f1] = otx2_tim_arm_burst_##_name,
+		TIM_ARM_FASTPATH_MODES
 #undef FP
 	};
 
-	const rte_event_timer_arm_tmo_tick_burst_t arm_tmo_burst[2][2][2] = {
-#define FP(_name, _f3, _f2, _f1, flags) \
-		[_f3][_f2][_f1] = otx2_tim_arm_tmo_tick_burst_ ## _name,
-TIM_ARM_TMO_FASTPATH_MODES
+	const rte_event_timer_arm_tmo_tick_burst_t arm_tmo_burst[2][2] = {
+#define FP(_name, _f2, _f1, flags)                                             \
+	[_f2][_f1] = otx2_tim_arm_tmo_tick_burst_##_name,
+		TIM_ARM_TMO_FASTPATH_MODES
 #undef FP
 	};
 
 	otx2_tim_ops.arm_burst =
-		arm_burst[tim_ring->enable_stats][tim_ring->optimized]
-			[tim_ring->ena_dfb][prod_flag];
+		arm_burst[tim_ring->enable_stats][tim_ring->ena_dfb][prod_flag];
 	otx2_tim_ops.arm_tmo_tick_burst =
-		arm_tmo_burst[tim_ring->enable_stats][tim_ring->optimized]
-			[tim_ring->ena_dfb];
+		arm_tmo_burst[tim_ring->enable_stats][tim_ring->ena_dfb];
 	otx2_tim_ops.cancel_burst = otx2_tim_timer_cancel_burst;
 }
 
@@ -69,51 +67,6 @@ otx2_tim_ring_info_get(const struct rte_event_timer_adapter *adptr,
 		tim_ring->max_tout : tim_ring->tck_nsec;
 	rte_memcpy(&adptr_info->conf, &adptr->data->conf,
 		   sizeof(struct rte_event_timer_adapter_conf));
-}
-
-static void
-tim_optimze_bkt_param(struct otx2_tim_ring *tim_ring)
-{
-	uint64_t tck_nsec;
-	uint32_t hbkts;
-	uint32_t lbkts;
-
-	hbkts = rte_align32pow2(tim_ring->nb_bkts);
-	tck_nsec = RTE_ALIGN_MUL_CEIL(tim_ring->max_tout / (hbkts - 1), 10);
-
-	if ((tck_nsec < TICK2NSEC(OTX2_TIM_MIN_TMO_TKS,
-				  tim_ring->tenns_clk_freq) ||
-	    hbkts > OTX2_TIM_MAX_BUCKETS))
-		hbkts = 0;
-
-	lbkts = rte_align32prevpow2(tim_ring->nb_bkts);
-	tck_nsec = RTE_ALIGN_MUL_CEIL((tim_ring->max_tout / (lbkts - 1)), 10);
-
-	if ((tck_nsec < TICK2NSEC(OTX2_TIM_MIN_TMO_TKS,
-				  tim_ring->tenns_clk_freq) ||
-	    lbkts > OTX2_TIM_MAX_BUCKETS))
-		lbkts = 0;
-
-	if (!hbkts && !lbkts)
-		return;
-
-	if (!hbkts) {
-		tim_ring->nb_bkts = lbkts;
-		goto end;
-	} else if (!lbkts) {
-		tim_ring->nb_bkts = hbkts;
-		goto end;
-	}
-
-	tim_ring->nb_bkts = (hbkts - tim_ring->nb_bkts) <
-		(tim_ring->nb_bkts - lbkts) ? hbkts : lbkts;
-end:
-	tim_ring->optimized = true;
-	tim_ring->tck_nsec = RTE_ALIGN_MUL_CEIL((tim_ring->max_tout /
-						(tim_ring->nb_bkts - 1)), 10);
-	otx2_tim_dbg("Optimized configured values");
-	otx2_tim_dbg("Nb_bkts  : %" PRIu32 "", tim_ring->nb_bkts);
-	otx2_tim_dbg("Tck_nsec : %" PRIu64 "", tim_ring->tck_nsec);
 }
 
 static int
@@ -337,14 +290,6 @@ otx2_tim_ring_create(struct rte_event_timer_adapter *adptr)
 							tim_ring->chunk_sz);
 	tim_ring->nb_chunk_slots = OTX2_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
 
-	/* Try to optimize the bucket parameters. */
-	if ((rcfg->flags & RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES)) {
-		if (rte_is_power_of_2(tim_ring->nb_bkts))
-			tim_ring->optimized = true;
-		else
-			tim_optimze_bkt_param(tim_ring);
-	}
-
 	if (tim_ring->disable_npa)
 		tim_ring->nb_chunks = tim_ring->nb_chunks * tim_ring->nb_bkts;
 	else
@@ -477,6 +422,7 @@ otx2_tim_ring_start(const struct rte_event_timer_adapter *adptr)
 	tim_ring->tck_int = NSEC2TICK(tim_ring->tck_nsec, rte_get_timer_hz());
 	tim_ring->tot_int = tim_ring->tck_int * tim_ring->nb_bkts;
 	tim_ring->fast_div = rte_reciprocal_value_u64(tim_ring->tck_int);
+	tim_ring->fast_bkt = rte_reciprocal_value_u64(tim_ring->nb_bkts);
 
 	otx2_tim_calibrate_start_tsc(tim_ring);
 

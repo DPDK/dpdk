@@ -115,27 +115,27 @@ tim_bkt_clr_nent(struct otx2_tim_bkt *bktp)
 	return __atomic_and_fetch(&bktp->w1, v, __ATOMIC_ACQ_REL);
 }
 
+static inline uint64_t
+tim_bkt_fast_mod(uint64_t n, uint64_t d, struct rte_reciprocal_u64 R)
+{
+	return (n - (d * rte_reciprocal_divide_u64(n, &R)));
+}
+
 static __rte_always_inline void
-tim_get_target_bucket(struct otx2_tim_ring * const tim_ring,
+tim_get_target_bucket(struct otx2_tim_ring *const tim_ring,
 		      const uint32_t rel_bkt, struct otx2_tim_bkt **bkt,
-		      struct otx2_tim_bkt **mirr_bkt, const uint8_t flag)
+		      struct otx2_tim_bkt **mirr_bkt)
 {
 	const uint64_t bkt_cyc = rte_rdtsc() - tim_ring->ring_start_cyc;
-	uint32_t bucket = rte_reciprocal_divide_u64(bkt_cyc,
-			&tim_ring->fast_div) + rel_bkt;
-	uint32_t mirr_bucket = 0;
+	uint64_t bucket =
+		rte_reciprocal_divide_u64(bkt_cyc, &tim_ring->fast_div) +
+		rel_bkt;
+	uint64_t mirr_bucket = 0;
 
-	if (flag & OTX2_TIM_BKT_MOD) {
-		bucket = bucket % tim_ring->nb_bkts;
-		mirr_bucket = (bucket + (tim_ring->nb_bkts >> 1)) %
-						tim_ring->nb_bkts;
-	}
-	if (flag & OTX2_TIM_BKT_AND) {
-		bucket = bucket & (tim_ring->nb_bkts - 1);
-		mirr_bucket = (bucket + (tim_ring->nb_bkts >> 1)) &
-						(tim_ring->nb_bkts - 1);
-	}
-
+	bucket =
+		tim_bkt_fast_mod(bucket, tim_ring->nb_bkts, tim_ring->fast_bkt);
+	mirr_bucket = tim_bkt_fast_mod(bucket + (tim_ring->nb_bkts >> 1),
+				       tim_ring->nb_bkts, tim_ring->fast_bkt);
 	*bkt = &tim_ring->bkt[bucket];
 	*mirr_bkt = &tim_ring->bkt[mirr_bucket];
 }
@@ -236,7 +236,7 @@ tim_add_entry_sp(struct otx2_tim_ring * const tim_ring,
 	int16_t rem;
 
 __retry:
-	tim_get_target_bucket(tim_ring, rel_bkt, &bkt, &mirr_bkt, flags);
+	tim_get_target_bucket(tim_ring, rel_bkt, &bkt, &mirr_bkt);
 
 	/* Get Bucket sema*/
 	lock_sema = tim_bkt_fetch_sema_lock(bkt);
@@ -322,7 +322,7 @@ tim_add_entry_mp(struct otx2_tim_ring * const tim_ring,
 	int16_t rem;
 
 __retry:
-	tim_get_target_bucket(tim_ring, rel_bkt, &bkt, &mirr_bkt, flags);
+	tim_get_target_bucket(tim_ring, rel_bkt, &bkt, &mirr_bkt);
 	/* Get Bucket sema*/
 	lock_sema = tim_bkt_fetch_sema_lock(bkt);
 
@@ -454,7 +454,7 @@ tim_add_entry_brst(struct otx2_tim_ring * const tim_ring,
 	uint8_t lock_cnt;
 
 __retry:
-	tim_get_target_bucket(tim_ring, rel_bkt, &bkt, &mirr_bkt, flags);
+	tim_get_target_bucket(tim_ring, rel_bkt, &bkt, &mirr_bkt);
 
 	/* Only one thread beyond this. */
 	lock_sema = tim_bkt_inc_lock(bkt);
