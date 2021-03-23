@@ -186,6 +186,7 @@ The public API headers are grouped by topics:
   * SWX port:
     [port]             (@ref rte_swx_port.h),
     [ethdev]           (@ref rte_swx_port_ethdev.h),
+    [fd]               (@ref rte_swx_port_fd.h),
     [ring]             (@ref rte_swx_port_ring.h),
     [src/sink]         (@ref rte_swx_port_source_sink.h)
   * SWX table:

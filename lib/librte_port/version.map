@@ -46,6 +46,8 @@ EXPERIMENTAL {
 	rte_swx_port_source_ops;
 
 	# added in 21.05
+	rte_swx_port_fd_reader_ops;
+	rte_swx_port_fd_writer_ops;
 	rte_swx_port_ring_reader_ops;
 	rte_swx_port_ring_writer_ops;
 };

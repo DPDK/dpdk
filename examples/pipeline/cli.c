@@ -12,6 +12,7 @@
 #include <rte_swx_port_ethdev.h>
 #include <rte_swx_port_ring.h>
 #include <rte_swx_port_source_sink.h>
+#include <rte_swx_port_fd.h>
 #include <rte_swx_pipeline.h>
 #include <rte_swx_ctl.h>
 
@@ -493,6 +494,32 @@ cmd_ring(char **tokens,
 	}
 }
 
+static const char cmd_tap_help[] =
+"tap <tap_name>\n";
+
+static void
+cmd_tap(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size,
+	void *obj)
+{
+	struct tap *tap;
+	char *name;
+
+	if (n_tokens < 2) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+	name = tokens[1];
+
+	tap = tap_create(obj, name);
+	if (tap == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 static const char cmd_pipeline_create_help[] =
 "pipeline <pipeline_name> create <numa_node>\n";
 
@@ -530,7 +557,8 @@ static const char cmd_pipeline_port_in_help[] =
 "pipeline <pipeline_name> port in <port_id>\n"
 "   link <link_name> rxq <queue_id> bsz <burst_size>\n"
 "   ring <ring_name> bsz <burst_size>\n"
-"   | source <mempool_name> <file_name>\n";
+"   | source <mempool_name> <file_name>\n"
+"   | tap <tap_name> mempool <mempool_name> mtu <mtu> bsz <burst_size>\n";
 
 static void
 cmd_pipeline_port_in(char **tokens,
@@ -678,6 +706,68 @@ cmd_pipeline_port_in(char **tokens,
 			port_id,
 			"source",
 			&params);
+	} else if (strcmp(tokens[t0], "tap") == 0) {
+		struct rte_swx_port_fd_reader_params params;
+		struct tap *tap;
+		struct mempool *mp;
+
+		if (n_tokens < t0 + 8) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in tap");
+			return;
+		}
+
+		tap = tap_find(obj, tokens[t0 + 1]);
+		if (!tap) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"tap_name");
+			return;
+		}
+		params.fd = tap->fd;
+
+		if (strcmp(tokens[t0 + 2], "mempool") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"mempool");
+			return;
+		}
+
+		mp = mempool_find(obj, tokens[t0 + 3]);
+		if (!mp) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"mempool_name");
+			return;
+		}
+		params.mempool = mp->m;
+
+		if (strcmp(tokens[t0 + 4], "mtu") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+				"mtu");
+			return;
+		}
+
+		if (parser_read_uint32(&params.mtu, tokens[t0 + 5]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "mtu");
+			return;
+		}
+
+		if (strcmp(tokens[t0 + 6], "bsz") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "bsz");
+			return;
+		}
+
+		if (parser_read_uint32(&params.burst_size, tokens[t0 + 7])) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"burst_size");
+			return;
+		}
+
+		t0 += 8;
+
+		status = rte_swx_pipeline_port_in_config(p->p,
+			port_id,
+			"fd",
+			&params);
+
 	} else {
 		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
 		return;
@@ -698,7 +788,8 @@ static const char cmd_pipeline_port_out_help[] =
 "pipeline <pipeline_name> port out <port_id>\n"
 "   link <link_name> txq <txq_id> bsz <burst_size>\n"
 "   ring <ring_name> bsz <burst_size>\n"
-"   | sink <file_name> | none\n";
+"   | sink <file_name> | none\n"
+"   | tap <tap_name> bsz <burst_size>\n";
 
 static void
 cmd_pipeline_port_out(char **tokens,
@@ -831,6 +922,41 @@ cmd_pipeline_port_out(char **tokens,
 		status = rte_swx_pipeline_port_out_config(p->p,
 			port_id,
 			"sink",
+			&params);
+	} else if (strcmp(tokens[t0], "tap") == 0) {
+		struct rte_swx_port_fd_writer_params params;
+		struct tap *tap;
+
+		if (n_tokens < t0 + 4) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out tap");
+			return;
+		}
+
+		tap = tap_find(obj, tokens[t0 + 1]);
+		if (!tap) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"tap_name");
+			return;
+		}
+		params.fd = tap->fd;
+
+		if (strcmp(tokens[t0 + 2], "bsz") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "bsz");
+			return;
+		}
+
+		if (parser_read_uint32(&params.burst_size, tokens[t0 + 3])) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"burst_size");
+			return;
+		}
+
+		t0 += 4;
+
+		status = rte_swx_pipeline_port_out_config(p->p,
+			port_id,
+			"fd",
 			&params);
 	} else {
 		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
@@ -1318,6 +1444,7 @@ cmd_help(char **tokens,
 			"List of commands:\n"
 			"\tmempool\n"
 			"\tlink\n"
+			"\ttap\n"
 			"\tpipeline create\n"
 			"\tpipeline port in\n"
 			"\tpipeline port out\n"
@@ -1341,6 +1468,11 @@ cmd_help(char **tokens,
 
 	if (strcmp(tokens[0], "ring") == 0) {
 		snprintf(out, out_size, "\n%s\n", cmd_ring_help);
+		return;
+	}
+
+	if (strcmp(tokens[0], "tap") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_tap_help);
 		return;
 	}
 
@@ -1446,6 +1578,11 @@ cli_process(char *in, char *out, size_t out_size, void *obj)
 
 	if (strcmp(tokens[0], "ring") == 0) {
 		cmd_ring(tokens, n_tokens, out, out_size, obj);
+		return;
+	}
+
+	if (strcmp(tokens[0], "tap") == 0) {
+		cmd_tap(tokens, n_tokens, out, out_size, obj);
 		return;
 	}
 

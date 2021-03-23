@@ -12,6 +12,7 @@ sources = files(
 	'rte_port_sym_crypto.c',
 	'rte_port_eventdev.c',
 	'rte_swx_port_ethdev.c',
+	'rte_swx_port_fd.c',
 	'rte_swx_port_ring.c',
 	'rte_swx_port_source_sink.c',
 	)
@@ -28,6 +29,7 @@ headers = files(
 	'rte_port_eventdev.h',
 	'rte_swx_port.h',
 	'rte_swx_port_ethdev.h',
+	'rte_swx_port_fd.h',
 	'rte_swx_port_ring.h',
 	'rte_swx_port_source_sink.h',
 	)

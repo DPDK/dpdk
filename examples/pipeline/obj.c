@@ -4,11 +4,20 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <netinet/in.h>
+#ifdef RTE_EXEC_ENV_LINUX
+#include <linux/if.h>
+#include <linux/if_tun.h>
+#endif
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_swx_port_ethdev.h>
+#include <rte_swx_port_fd.h>
 #include <rte_swx_port_ring.h>
 #include <rte_swx_port_source_sink.h>
 #include <rte_swx_table_em.h>
@@ -34,6 +43,11 @@ TAILQ_HEAD(link_list, link);
 TAILQ_HEAD(ring_list, ring);
 
 /*
+ * tap
+ */
+TAILQ_HEAD(tap_list, tap);
+
+/*
  * pipeline
  */
 TAILQ_HEAD(pipeline_list, pipeline);
@@ -46,6 +60,7 @@ struct obj {
 	struct link_list link_list;
 	struct ring_list ring_list;
 	struct pipeline_list pipeline_list;
+	struct tap_list tap_list;
 };
 
 /*
@@ -423,6 +438,88 @@ ring_find(struct obj *obj, const char *name)
 }
 
 /*
+ * tap
+ */
+#define TAP_DEV		"/dev/net/tun"
+
+struct tap *
+tap_find(struct obj *obj, const char *name)
+{
+	struct tap *tap;
+
+	if (!obj || !name)
+		return NULL;
+
+	TAILQ_FOREACH(tap, &obj->tap_list, node)
+		if (strcmp(tap->name, name) == 0)
+			return tap;
+
+	return NULL;
+}
+
+struct tap *
+tap_next(struct obj *obj, struct tap *tap)
+{
+	return (tap == NULL) ?
+		TAILQ_FIRST(&obj->tap_list) : TAILQ_NEXT(tap, node);
+}
+
+#ifndef RTE_EXEC_ENV_LINUX
+
+struct tap *
+tap_create(struct obj *obj __rte_unused, const char *name __rte_unused)
+{
+	return NULL;
+}
+
+#else
+
+struct tap *
+tap_create(struct obj *obj, const char *name)
+{
+	struct tap *tap;
+	struct ifreq ifr;
+	int fd, status;
+
+	/* Check input params */
+	if ((name == NULL) ||
+		tap_find(obj, name))
+		return NULL;
+
+	/* Resource create */
+	fd = open(TAP_DEV, O_RDWR | O_NONBLOCK);
+	if (fd < 0)
+		return NULL;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_flags = IFF_TAP | IFF_NO_PI; /* No packet information */
+	strlcpy(ifr.ifr_name, name, IFNAMSIZ);
+
+	status = ioctl(fd, TUNSETIFF, (void *) &ifr);
+	if (status < 0) {
+		close(fd);
+		return NULL;
+	}
+
+	/* Node allocation */
+	tap = calloc(1, sizeof(struct tap));
+	if (tap == NULL) {
+		close(fd);
+		return NULL;
+	}
+	/* Node fill in */
+	strlcpy(tap->name, name, sizeof(tap->name));
+	tap->fd = fd;
+
+	/* Node add to list */
+	TAILQ_INSERT_TAIL(&obj->tap_list, tap, node);
+
+	return tap;
+}
+
+#endif
+
+/*
  * pipeline
  */
 #ifndef PIPELINE_MSGQ_SIZE
@@ -481,6 +578,18 @@ pipeline_create(struct obj *obj, const char *name, int numa_node)
 	status = rte_swx_pipeline_port_out_type_register(p,
 		"sink",
 		&rte_swx_port_sink_ops);
+	if (status)
+		goto error;
+
+	status = rte_swx_pipeline_port_in_type_register(p,
+		"fd",
+		&rte_swx_port_fd_reader_ops);
+	if (status)
+		goto error;
+
+	status = rte_swx_pipeline_port_out_type_register(p,
+		"fd",
+		&rte_swx_port_fd_writer_ops);
 	if (status)
 		goto error;
 
@@ -549,6 +658,7 @@ obj_init(void)
 	TAILQ_INIT(&obj->link_list);
 	TAILQ_INIT(&obj->ring_list);
 	TAILQ_INIT(&obj->pipeline_list);
+	TAILQ_INIT(&obj->tap_list);
 
 	return obj;
 }
