@@ -3129,6 +3129,7 @@ hns3_get_capability(struct hns3_hw *hw)
 		hw->min_tx_pkt_len = HNS3_HIP08_MIN_TX_PKT_LEN;
 		pf->tqp_config_mode = HNS3_FIXED_MAX_TQP_NUM_MODE;
 		hw->rss_info.ipv6_sctp_offload_supported = false;
+		hw->udp_cksum_mode = HNS3_SPECIAL_PORT_SW_CKSUM_MODE;
 		return 0;
 	}
 
@@ -3148,6 +3149,7 @@ hns3_get_capability(struct hns3_hw *hw)
 	hw->min_tx_pkt_len = HNS3_HIP09_MIN_TX_PKT_LEN;
 	pf->tqp_config_mode = HNS3_FLEX_MAX_TQP_NUM_MODE;
 	hw->rss_info.ipv6_sctp_offload_supported = true;
+	hw->udp_cksum_mode = HNS3_SPECIAL_PORT_HW_CKSUM_MODE;
 
 	return 0;
 }
