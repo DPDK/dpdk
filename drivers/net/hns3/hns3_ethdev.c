@@ -2725,7 +2725,10 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev,
 		new_link.link_speed = mac->link_speed;
 		break;
 	default:
-		new_link.link_speed = ETH_SPEED_NUM_100M;
+		if (mac->link_status)
+			new_link.link_speed = ETH_SPEED_NUM_UNKNOWN;
+		else
+			new_link.link_speed = ETH_SPEED_NUM_NONE;
 		break;
 	}
 
