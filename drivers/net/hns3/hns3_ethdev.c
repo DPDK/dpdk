@@ -2631,20 +2631,22 @@ hns3_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
 }
 
 static int
-hns3_dev_link_update(struct rte_eth_dev *eth_dev,
-		     __rte_unused int wait_to_complete)
+hns3_update_port_link_info(struct rte_eth_dev *eth_dev)
 {
-	struct hns3_adapter *hns = eth_dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	(void)hns3_update_link_status(hw);
+
+	return hns3_update_link_info(eth_dev);
+}
+
+static void
+hns3_setup_linkstatus(struct rte_eth_dev *eth_dev,
+		      struct rte_eth_link *new_link)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct hns3_mac *mac = &hw->mac;
-	struct rte_eth_link new_link;
 
-	if (!hns3_is_reset_pending(hns)) {
-		hns3_update_link_status(hw);
-		hns3_update_link_info(eth_dev);
-	}
-
-	memset(&new_link, 0, sizeof(new_link));
 	switch (mac->link_speed) {
 	case ETH_SPEED_NUM_10M:
 	case ETH_SPEED_NUM_100M:
@@ -2655,20 +2657,39 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev,
 	case ETH_SPEED_NUM_50G:
 	case ETH_SPEED_NUM_100G:
 	case ETH_SPEED_NUM_200G:
-		new_link.link_speed = mac->link_speed;
+		new_link->link_speed = mac->link_speed;
 		break;
 	default:
 		if (mac->link_status)
-			new_link.link_speed = ETH_SPEED_NUM_UNKNOWN;
+			new_link->link_speed = ETH_SPEED_NUM_UNKNOWN;
 		else
-			new_link.link_speed = ETH_SPEED_NUM_NONE;
+			new_link->link_speed = ETH_SPEED_NUM_NONE;
 		break;
 	}
 
-	new_link.link_duplex = mac->link_duplex;
-	new_link.link_status = mac->link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
-	new_link.link_autoneg =
+	new_link->link_duplex = mac->link_duplex;
+	new_link->link_status = mac->link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
+	new_link->link_autoneg =
 	    !(eth_dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED);
+}
+
+static int
+hns3_dev_link_update(struct rte_eth_dev *eth_dev,
+		     __rte_unused int wait_to_complete)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct hns3_mac *mac = &hw->mac;
+	struct rte_eth_link new_link;
+	int ret;
+
+	ret = hns3_update_port_link_info(eth_dev);
+	if (ret) {
+		mac->link_status = ETH_LINK_DOWN;
+		hns3_err(hw, "failed to get port link info, ret = %d.", ret);
+	}
+
+	memset(&new_link, 0, sizeof(new_link));
+	hns3_setup_linkstatus(eth_dev, &new_link);
 
 	return rte_eth_linkstatus_set(eth_dev, &new_link);
 }
