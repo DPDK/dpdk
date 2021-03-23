@@ -143,8 +143,6 @@ struct vhost_virtqueue {
 #define VIRTIO_INVALID_EVENTFD		(-1)
 #define VIRTIO_UNINITIALIZED_EVENTFD	(-2)
 
-	/* Backend value to determine if device should started/stopped */
-	int			backend;
 	int			enabled;
 	int			access_ok;
 	int			ready;

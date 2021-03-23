@@ -558,8 +558,6 @@ init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 	vq->notif_enable = VIRTIO_UNINITIALIZED_NOTIF;
 
 	vhost_user_iotlb_init(dev, vring_idx);
-	/* Backends are set to -1 indicating an inactive device. */
-	vq->backend = -1;
 }
 
 static void
