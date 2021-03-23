@@ -1385,14 +1385,14 @@ static const struct rte_flow_item_meta rte_flow_item_meta_mask = {
  */
 struct rte_flow_item_gtp_psc {
 	uint8_t pdu_type; /**< PDU type. */
-	uint8_t qfi; /**< QoS flow identifier. */
+	uint8_t qfi; /**< PPP, RQI, QoS flow identifier. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_GTP_PSC. */
 #ifndef __cplusplus
 static const struct rte_flow_item_gtp_psc
 rte_flow_item_gtp_psc_mask = {
-	.qfi = 0x3f,
+	.qfi = 0xff,
 };
 #endif
 

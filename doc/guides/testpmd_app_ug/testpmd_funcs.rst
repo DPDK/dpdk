@@ -3729,7 +3729,8 @@ This section lists supported pattern items and their attributes, if any.
 - ``gtp_psc``: match GTP PDU extension header with type 0x85.
 
   - ``pdu_type {unsigned}``: PDU type.
-  - ``qfi {unsigned}``: QoS flow identifier.
+
+  - ``qfi {unsigned}``: PPP, RQI and QoS flow identifier.
 
 - ``pppoes``, ``pppoed``: match PPPoE header.
 
