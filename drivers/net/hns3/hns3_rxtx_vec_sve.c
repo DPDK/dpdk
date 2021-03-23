@@ -439,7 +439,7 @@ hns3_xmit_fixed_burst_vec_sve(void *__restrict tx_queue,
 
 	nb_pkts = RTE_MIN(txq->tx_bd_ready, nb_pkts);
 	if (unlikely(nb_pkts == 0)) {
-		txq->queue_full_cnt++;
+		txq->dfx_stats.queue_full_cnt++;
 		return 0;
 	}
 
