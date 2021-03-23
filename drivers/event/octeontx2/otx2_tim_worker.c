@@ -170,6 +170,7 @@ otx2_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 	int ret;
 
 	RTE_SET_USED(adptr);
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
 	for (index = 0; index < nb_timers; index++) {
 		if (tim[index]->state == RTE_EVENT_TIMER_CANCELED) {
 			rte_errno = EALREADY;

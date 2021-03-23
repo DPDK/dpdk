@@ -84,7 +84,13 @@ tim_bkt_inc_lock(struct otx2_tim_bkt *bktp)
 static inline void
 tim_bkt_dec_lock(struct otx2_tim_bkt *bktp)
 {
-	__atomic_add_fetch(&bktp->lock, 0xff, __ATOMIC_RELEASE);
+	__atomic_fetch_sub(&bktp->lock, 1, __ATOMIC_RELEASE);
+}
+
+static inline void
+tim_bkt_dec_lock_relaxed(struct otx2_tim_bkt *bktp)
+{
+	__atomic_fetch_sub(&bktp->lock, 1, __ATOMIC_RELAXED);
 }
 
 static inline uint32_t
@@ -246,22 +252,20 @@ __retry:
 		if (tim_bkt_get_nent(lock_sema) != 0) {
 			uint64_t hbt_state;
 #ifdef RTE_ARCH_ARM64
-			asm volatile(
-					"	ldaxr %[hbt], [%[w1]]	\n"
-					"	tbz %[hbt], 33, dne%=	\n"
-					"	sevl			\n"
-					"rty%=: wfe			\n"
-					"	ldaxr %[hbt], [%[w1]]	\n"
-					"	tbnz %[hbt], 33, rty%=	\n"
-					"dne%=:				\n"
-					: [hbt] "=&r" (hbt_state)
-					: [w1] "r" ((&bkt->w1))
-					: "memory"
-				    );
+			asm volatile("		ldxr %[hbt], [%[w1]]	\n"
+				     "		tbz %[hbt], 33, dne%=	\n"
+				     "		sevl			\n"
+				     "rty%=:	wfe			\n"
+				     "		ldxr %[hbt], [%[w1]]	\n"
+				     "		tbnz %[hbt], 33, rty%=	\n"
+				     "dne%=:				\n"
+				     : [hbt] "=&r"(hbt_state)
+				     : [w1] "r"((&bkt->w1))
+				     : "memory");
 #else
 			do {
 				hbt_state = __atomic_load_n(&bkt->w1,
-						__ATOMIC_ACQUIRE);
+							    __ATOMIC_RELAXED);
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
@@ -282,10 +286,10 @@ __retry:
 
 		if (unlikely(chunk == NULL)) {
 			bkt->chunk_remainder = 0;
-			tim_bkt_dec_lock(bkt);
 			tim->impl_opaque[0] = 0;
 			tim->impl_opaque[1] = 0;
 			tim->state = RTE_EVENT_TIMER_ERROR;
+			tim_bkt_dec_lock(bkt);
 			return -ENOMEM;
 		}
 		mirr_bkt->current_chunk = (uintptr_t)chunk;
@@ -298,12 +302,11 @@ __retry:
 	/* Copy work entry. */
 	*chunk = *pent;
 
-	tim_bkt_inc_nent(bkt);
-	tim_bkt_dec_lock(bkt);
-
 	tim->impl_opaque[0] = (uintptr_t)chunk;
 	tim->impl_opaque[1] = (uintptr_t)bkt;
-	tim->state = RTE_EVENT_TIMER_ARMED;
+	__atomic_store_n(&tim->state, RTE_EVENT_TIMER_ARMED, __ATOMIC_RELEASE);
+	tim_bkt_inc_nent(bkt);
+	tim_bkt_dec_lock_relaxed(bkt);
 
 	return 0;
 }
@@ -331,22 +334,20 @@ __retry:
 		if (tim_bkt_get_nent(lock_sema) != 0) {
 			uint64_t hbt_state;
 #ifdef RTE_ARCH_ARM64
-			asm volatile(
-					"	ldaxr %[hbt], [%[w1]]	\n"
-					"	tbz %[hbt], 33, dne%=	\n"
-					"	sevl			\n"
-					"rty%=: wfe			\n"
-					"	ldaxr %[hbt], [%[w1]]	\n"
-					"	tbnz %[hbt], 33, rty%=	\n"
-					"dne%=:				\n"
-					: [hbt] "=&r" (hbt_state)
-					: [w1] "r" ((&bkt->w1))
-					: "memory"
-				    );
+			asm volatile("		ldxr %[hbt], [%[w1]]	\n"
+				     "		tbz %[hbt], 33, dne%=	\n"
+				     "		sevl			\n"
+				     "rty%=:	wfe			\n"
+				     "		ldxr %[hbt], [%[w1]]	\n"
+				     "		tbnz %[hbt], 33, rty%=	\n"
+				     "dne%=:				\n"
+				     : [hbt] "=&r"(hbt_state)
+				     : [w1] "r"((&bkt->w1))
+				     : "memory");
 #else
 			do {
 				hbt_state = __atomic_load_n(&bkt->w1,
-						__ATOMIC_ACQUIRE);
+							    __ATOMIC_RELAXED);
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
@@ -359,26 +360,24 @@ __retry:
 
 	rem = tim_bkt_fetch_rem(lock_sema);
 	if (rem < 0) {
+		tim_bkt_dec_lock(bkt);
 #ifdef RTE_ARCH_ARM64
-		asm volatile(
-				"	ldaxrh %w[rem], [%[crem]]	\n"
-				"	tbz %w[rem], 15, dne%=		\n"
-				"	sevl				\n"
-				"rty%=: wfe				\n"
-				"	ldaxrh %w[rem], [%[crem]]	\n"
-				"	tbnz %w[rem], 15, rty%=		\n"
-				"dne%=:					\n"
-				: [rem] "=&r" (rem)
-				: [crem] "r" (&bkt->chunk_remainder)
-				: "memory"
-			    );
+		uint64_t w1;
+		asm volatile("		ldxr %[w1], [%[crem]]	\n"
+			     "		tbz %[w1], 63, dne%=		\n"
+			     "		sevl				\n"
+			     "rty%=:	wfe				\n"
+			     "		ldxr %[w1], [%[crem]]	\n"
+			     "		tbnz %[w1], 63, rty%=		\n"
+			     "dne%=:					\n"
+			     : [w1] "=&r"(w1)
+			     : [crem] "r"(&bkt->w1)
+			     : "memory");
 #else
-		while (__atomic_load_n(&bkt->chunk_remainder,
-				       __ATOMIC_ACQUIRE) < 0)
+		while (__atomic_load_n((int64_t *)&bkt->w1, __ATOMIC_RELAXED) <
+		       0)
 			;
 #endif
-		/* Goto diff bucket. */
-		tim_bkt_dec_lock(bkt);
 		goto __retry;
 	} else if (!rem) {
 		/* Only one thread can be here*/
@@ -388,18 +387,21 @@ __retry:
 			chunk = tim_insert_chunk(bkt, mirr_bkt, tim_ring);
 
 		if (unlikely(chunk == NULL)) {
-			tim_bkt_set_rem(bkt, 0);
-			tim_bkt_dec_lock(bkt);
 			tim->impl_opaque[0] = 0;
 			tim->impl_opaque[1] = 0;
 			tim->state = RTE_EVENT_TIMER_ERROR;
+			tim_bkt_set_rem(bkt, 0);
+			tim_bkt_dec_lock(bkt);
 			return -ENOMEM;
 		}
 		*chunk = *pent;
-		while (tim_bkt_fetch_lock(lock_sema) !=
-				(-tim_bkt_fetch_rem(lock_sema)))
-			lock_sema = __atomic_load_n(&bkt->w1, __ATOMIC_ACQUIRE);
-
+		if (tim_bkt_fetch_lock(lock_sema)) {
+			do {
+				lock_sema = __atomic_load_n(&bkt->w1,
+							    __ATOMIC_RELAXED);
+			} while (tim_bkt_fetch_lock(lock_sema) - 1);
+			rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		}
 		mirr_bkt->current_chunk = (uintptr_t)chunk;
 		__atomic_store_n(&bkt->chunk_remainder,
 				tim_ring->nb_chunk_slots - 1, __ATOMIC_RELEASE);
@@ -409,12 +411,11 @@ __retry:
 		*chunk = *pent;
 	}
 
-	/* Copy work entry. */
-	tim_bkt_inc_nent(bkt);
-	tim_bkt_dec_lock(bkt);
 	tim->impl_opaque[0] = (uintptr_t)chunk;
 	tim->impl_opaque[1] = (uintptr_t)bkt;
-	tim->state = RTE_EVENT_TIMER_ARMED;
+	__atomic_store_n(&tim->state, RTE_EVENT_TIMER_ARMED, __ATOMIC_RELEASE);
+	tim_bkt_inc_nent(bkt);
+	tim_bkt_dec_lock_relaxed(bkt);
 
 	return 0;
 }
@@ -463,6 +464,23 @@ __retry:
 
 	if (lock_cnt) {
 		tim_bkt_dec_lock(bkt);
+#ifdef RTE_ARCH_ARM64
+		asm volatile("		ldxrb %w[lock_cnt], [%[lock]]	\n"
+			     "		tst %w[lock_cnt], 255		\n"
+			     "		beq dne%=			\n"
+			     "		sevl				\n"
+			     "rty%=:	wfe				\n"
+			     "		ldxrb %w[lock_cnt], [%[lock]]	\n"
+			     "		tst %w[lock_cnt], 255		\n"
+			     "		bne rty%=			\n"
+			     "dne%=:					\n"
+			     : [lock_cnt] "=&r"(lock_cnt)
+			     : [lock] "r"(&bkt->lock)
+			     : "memory");
+#else
+		while (__atomic_load_n(&bkt->lock, __ATOMIC_RELAXED))
+			;
+#endif
 		goto __retry;
 	}
 
@@ -471,22 +489,20 @@ __retry:
 		if (tim_bkt_get_nent(lock_sema) != 0) {
 			uint64_t hbt_state;
 #ifdef RTE_ARCH_ARM64
-			asm volatile(
-					"	ldaxr %[hbt], [%[w1]]	\n"
-					"	tbz %[hbt], 33, dne%=	\n"
-					"	sevl			\n"
-					"rty%=: wfe			\n"
-					"	ldaxr %[hbt], [%[w1]]	\n"
-					"	tbnz %[hbt], 33, rty%=	\n"
-					"dne%=:				\n"
-					: [hbt] "=&r" (hbt_state)
-					: [w1] "r" ((&bkt->w1))
-					: "memory"
-					);
+			asm volatile("		ldxr %[hbt], [%[w1]]	\n"
+				     "		tbz %[hbt], 33, dne%=	\n"
+				     "		sevl			\n"
+				     "rty%=:	wfe			\n"
+				     "		ldxr %[hbt], [%[w1]]	\n"
+				     "		tbnz %[hbt], 33, rty%=	\n"
+				     "dne%=:				\n"
+				     : [hbt] "=&r"(hbt_state)
+				     : [w1] "r"((&bkt->w1))
+				     : "memory");
 #else
 			do {
 				hbt_state = __atomic_load_n(&bkt->w1,
-						__ATOMIC_ACQUIRE);
+							    __ATOMIC_RELAXED);
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
@@ -563,19 +579,18 @@ tim_rm_entry(struct rte_event_timer *tim)
 	bkt = (struct otx2_tim_bkt *)(uintptr_t)tim->impl_opaque[1];
 	lock_sema = tim_bkt_inc_lock(bkt);
 	if (tim_bkt_get_hbt(lock_sema) || !tim_bkt_get_nent(lock_sema)) {
-		tim_bkt_dec_lock(bkt);
 		tim->impl_opaque[0] = 0;
 		tim->impl_opaque[1] = 0;
+		tim_bkt_dec_lock(bkt);
 		return -ENOENT;
 	}
 
 	entry->w0 = 0;
 	entry->wqe = 0;
-	tim_bkt_dec_lock(bkt);
-
 	tim->state = RTE_EVENT_TIMER_CANCELED;
 	tim->impl_opaque[0] = 0;
 	tim->impl_opaque[1] = 0;
+	tim_bkt_dec_lock(bkt);
 
 	return 0;
 }
