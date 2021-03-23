@@ -4042,6 +4042,7 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 	if (hns->hw.adapter_state == HNS3_NIC_STARTED &&
 	    __atomic_load_n(&hns->hw.reset.resetting, __ATOMIC_RELAXED) == 0) {
 		eth_dev->rx_pkt_burst = hns3_get_rx_function(eth_dev);
+		eth_dev->rx_descriptor_status = hns3_dev_rx_descriptor_status;
 		eth_dev->tx_pkt_burst = hns3_get_tx_function(eth_dev, &prep);
 		eth_dev->tx_pkt_prepare = prep;
 		eth_dev->tx_descriptor_status = hns3_dev_tx_descriptor_status;
@@ -4255,6 +4256,41 @@ hns3_tx_done_cleanup(void *txq, uint32_t free_cnt)
 		return 0;
 	else
 		return -ENOTSUP;
+}
+
+int
+hns3_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	volatile struct hns3_desc *rxdp;
+	struct hns3_rx_queue *rxq;
+	struct rte_eth_dev *dev;
+	uint32_t bd_base_info;
+	uint16_t desc_id;
+
+	rxq = (struct hns3_rx_queue *)rx_queue;
+	if (offset >= rxq->nb_rx_desc)
+		return -EINVAL;
+
+	desc_id = (rxq->next_to_use + offset) % rxq->nb_rx_desc;
+	rxdp = &rxq->rx_ring[desc_id];
+	bd_base_info = rte_le_to_cpu_32(rxdp->rx.bd_base_info);
+	dev = &rte_eth_devices[rxq->port_id];
+	if (dev->rx_pkt_burst == hns3_recv_pkts ||
+	    dev->rx_pkt_burst == hns3_recv_scattered_pkts) {
+		if (offset >= rxq->nb_rx_desc - rxq->rx_free_hold)
+			return RTE_ETH_RX_DESC_UNAVAIL;
+	} else if (dev->rx_pkt_burst == hns3_recv_pkts_vec ||
+		   dev->rx_pkt_burst == hns3_recv_pkts_vec_sve){
+		if (offset >= rxq->nb_rx_desc - rxq->rx_rearm_nb)
+			return RTE_ETH_RX_DESC_UNAVAIL;
+	} else {
+		return RTE_ETH_RX_DESC_UNAVAIL;
+	}
+
+	if (!(bd_base_info & BIT(HNS3_RXD_VLD_B)))
+		return RTE_ETH_RX_DESC_AVAIL;
+	else
+		return RTE_ETH_RX_DESC_DONE;
 }
 
 int

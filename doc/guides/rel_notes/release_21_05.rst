@@ -89,6 +89,7 @@ New Features
   * Added support for runtime config to select IO burst function.
   * Added support for outer UDP checksum in Kunpeng930.
   * Added support for query Tx descriptor status.
+  * Added support for query Rx descriptor status.
 
 * **Updated NXP DPAA driver.**
 

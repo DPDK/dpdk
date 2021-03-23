@@ -6772,6 +6772,7 @@ err_mp_init_primary:
 err_mp_init_secondary:
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->rx_descriptor_status = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->tx_pkt_prepare = NULL;
 	eth_dev->tx_descriptor_status = NULL;
