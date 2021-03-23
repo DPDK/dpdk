@@ -112,6 +112,7 @@ struct hns3_mac_stats {
 
 struct hns3_rx_missed_stats {
 	uint64_t rpu_rx_drop_cnt;
+	uint64_t ssu_rx_drop_cnt;
 };
 
 /* store statistics names and its offset in stats structure */

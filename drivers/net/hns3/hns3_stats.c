@@ -269,6 +269,8 @@ static const struct hns3_xstats_name_offset hns3_tx_queue_strings[] = {
 static const struct hns3_xstats_name_offset hns3_imissed_stats_strings[] = {
 	{"RPU_DROP_CNT",
 		HNS3_IMISSED_STATS_FIELD_OFFSET(rpu_rx_drop_cnt)},
+	{"SSU_DROP_CNT",
+		HNS3_IMISSED_STATS_FIELD_OFFSET(ssu_rx_drop_cnt)},
 };
 
 #define HNS3_NUM_MAC_STATS (sizeof(hns3_mac_strings) / \
@@ -301,8 +303,7 @@ static const struct hns3_xstats_name_offset hns3_imissed_stats_strings[] = {
 #define HNS3_NUM_IMISSED_XSTATS (sizeof(hns3_imissed_stats_strings) / \
 	sizeof(hns3_imissed_stats_strings[0]))
 
-#define HNS3_FIX_NUM_STATS (HNS3_NUM_MAC_STATS + \
-			    HNS3_NUM_RESET_XSTATS + HNS3_NUM_IMISSED_XSTATS)
+#define HNS3_FIX_NUM_STATS (HNS3_NUM_MAC_STATS + HNS3_NUM_RESET_XSTATS)
 
 static void hns3_tqp_stats_clear(struct hns3_hw *hw);
 
@@ -419,7 +420,7 @@ hns3_query_update_mac_stats(struct rte_eth_dev *dev)
 }
 
 static int
-hns3_update_rpu_drop_stats(struct hns3_hw *hw)
+hns3_update_port_rpu_drop_stats(struct hns3_hw *hw)
 {
 	struct hns3_rx_missed_stats *stats = &hw->imissed_stats;
 	struct hns3_query_rpu_cmd *req;
@@ -449,10 +450,89 @@ hns3_update_rpu_drop_stats(struct hns3_hw *hw)
 	return 0;
 }
 
+static void
+hns3_update_function_rpu_drop_stats(struct hns3_hw *hw)
+{
+	struct hns3_rx_missed_stats *stats = &hw->imissed_stats;
+
+	stats->rpu_rx_drop_cnt += hns3_read_dev(hw, HNS3_RPU_DROP_CNT_REG);
+}
+
+static int
+hns3_update_rpu_drop_stats(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	int ret = 0;
+
+	if (hw->drop_stats_mode == HNS3_PKTS_DROP_STATS_MODE1 && !hns->is_vf)
+		ret = hns3_update_port_rpu_drop_stats(hw);
+	else if (hw->drop_stats_mode == HNS3_PKTS_DROP_STATS_MODE2)
+		hns3_update_function_rpu_drop_stats(hw);
+
+	return ret;
+}
+
+static int
+hns3_get_ssu_drop_stats(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
+			int bd_num, bool is_rx)
+{
+	struct hns3_query_ssu_cmd *req;
+	int ret;
+	int i;
+
+	for (i = 0; i < bd_num - 1; i++) {
+		hns3_cmd_setup_basic_desc(&desc[i],
+					  HNS3_OPC_SSU_DROP_REG, true);
+		desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+	}
+	hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_SSU_DROP_REG, true);
+	req = (struct hns3_query_ssu_cmd *)desc[0].data;
+	req->rxtx = is_rx ? 0 : 1;
+	ret = hns3_cmd_send(hw, desc, bd_num);
+
+	return ret;
+}
+
+static int
+hns3_update_port_rx_ssu_drop_stats(struct hns3_hw *hw)
+{
+	struct hns3_rx_missed_stats *stats = &hw->imissed_stats;
+	struct hns3_cmd_desc desc[HNS3_OPC_SSU_DROP_REG_NUM];
+	struct hns3_query_ssu_cmd *req;
+	uint64_t cnt;
+	int ret;
+
+	ret = hns3_get_ssu_drop_stats(hw, desc, HNS3_OPC_SSU_DROP_REG_NUM,
+				      true);
+	if (ret) {
+		hns3_err(hw, "failed to get Rx SSU drop stats, ret = %d", ret);
+		return ret;
+	}
+
+	req = (struct hns3_query_ssu_cmd *)desc[0].data;
+	cnt = rte_le_to_cpu_32(req->oq_drop_cnt) +
+		rte_le_to_cpu_32(req->full_drop_cnt) +
+		rte_le_to_cpu_32(req->part_drop_cnt);
+
+	stats->ssu_rx_drop_cnt += cnt;
+
+	return 0;
+}
+
 int
 hns3_update_imissed_stats(struct hns3_hw *hw, bool is_clear)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	int ret;
+
+	if (hw->drop_stats_mode == HNS3_PKTS_DROP_STATS_MODE1 && hns->is_vf)
+		return 0;
+
+	if (hw->drop_stats_mode == HNS3_PKTS_DROP_STATS_MODE2 && !hns->is_vf) {
+		ret = hns3_update_port_rx_ssu_drop_stats(hw);
+		if (ret)
+			return ret;
+	}
 
 	ret = hns3_update_rpu_drop_stats(hw);
 	if (ret)
@@ -488,19 +568,17 @@ hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 	uint16_t i;
 	int ret;
 
-	if (!hns->is_vf) {
-		/* Update imissed stats */
-		ret = hns3_update_imissed_stats(hw, false);
-		if (ret) {
-			hns3_err(hw, "update imissed stats failed, ret = %d",
-				 ret);
-			return ret;
-		}
-
-		rte_stats->imissed = imissed_stats->rpu_rx_drop_cnt;
+	/* Update imissed stats */
+	ret = hns3_update_imissed_stats(hw, false);
+	if (ret) {
+		hns3_err(hw, "update imissed stats failed, ret = %d",
+			 ret);
+		return ret;
 	}
+	rte_stats->imissed = imissed_stats->rpu_rx_drop_cnt +
+				imissed_stats->ssu_rx_drop_cnt;
 
-	/* Reads all the stats of a rxq in a loop to keep them synchronized */
+	/* Get the error stats and bytes of received packets */
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		rxq = eth_dev->data->rx_queues[i];
 		if (rxq == NULL)
@@ -556,17 +634,14 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 	uint16_t i;
 	int ret;
 
-	if (!hns->is_vf) {
-		/*
-		 * Note: Reading hardware statistics of imissed registers will
-		 * clear them.
-		 */
-		ret = hns3_update_imissed_stats(hw, true);
-		if (ret) {
-			hns3_err(hw, "clear imissed stats failed, ret = %d",
-				 ret);
-			return ret;
-		}
+	/*
+	 * Note: Reading hardware statistics of imissed registers will
+	 * clear them.
+	 */
+	ret = hns3_update_imissed_stats(hw, true);
+	if (ret) {
+		hns3_err(hw, "clear imissed stats failed, ret = %d", ret);
+		return ret;
 	}
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
@@ -630,6 +705,22 @@ hns3_mac_stats_reset(__rte_unused struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+hns3_get_imissed_stats_num(struct hns3_adapter *hns)
+{
+#define NO_IMISSED_STATS_NUM   0
+#define RPU_STATS_ITEM_NUM     1
+	struct hns3_hw *hw = &hns->hw;
+
+	if (hw->drop_stats_mode == HNS3_PKTS_DROP_STATS_MODE1 && hns->is_vf)
+		return NO_IMISSED_STATS_NUM;
+
+	if (hw->drop_stats_mode == HNS3_PKTS_DROP_STATS_MODE2 && !hns->is_vf)
+		return HNS3_NUM_IMISSED_XSTATS;
+
+	return RPU_STATS_ITEM_NUM;
+}
+
 /* This function calculates the number of xstats based on the current config */
 static int
 hns3_xstats_calc_num(struct rte_eth_dev *dev)
@@ -647,13 +738,17 @@ hns3_xstats_calc_num(struct rte_eth_dev *dev)
 	uint16_t nb_tx_q = dev->data->nb_tx_queues;
 	int rx_comm_stats_num = nb_rx_q * HNS3_PF_VF_RX_COMM_STATS_NUM;
 	int tx_comm_stats_num = nb_tx_q * HNS3_PF_VF_TX_COMM_STATS_NUM;
+	int stats_num;
+
+	stats_num = rx_comm_stats_num + tx_comm_stats_num;
+	stats_num += hns3_get_imissed_stats_num(hns);
 
 	if (hns->is_vf)
-		return rx_comm_stats_num + tx_comm_stats_num +
-			HNS3_NUM_RESET_XSTATS;
+		stats_num += HNS3_NUM_RESET_XSTATS;
 	else
-		return rx_comm_stats_num + tx_comm_stats_num +
-			HNS3_FIX_NUM_STATS;
+		stats_num += HNS3_FIX_NUM_STATS;
+
+	return stats_num;
 }
 
 static void
@@ -835,6 +930,31 @@ hns3_tqp_basic_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	hns3_txq_basic_stats_get(dev, xstats, count);
 }
 
+static void
+hns3_imissed_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+			  int *count)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_rx_missed_stats *imissed_stats = &hw->imissed_stats;
+	int imissed_stats_num;
+	int cnt = *count;
+	char *addr;
+	uint16_t i;
+
+	imissed_stats_num = hns3_get_imissed_stats_num(hns);
+
+	for (i = 0; i < imissed_stats_num; i++) {
+		addr = (char *)imissed_stats +
+			hns3_imissed_stats_strings[i].offset;
+		xstats[cnt].value = *(uint64_t *)addr;
+		xstats[cnt].id = cnt;
+		cnt++;
+	}
+
+	*count = cnt;
+}
+
 /*
  * Retrieve extended(tqp | Mac) statistics of an Ethernet device.
  * @param dev
@@ -854,7 +974,6 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	struct hns3_rx_missed_stats *imissed_stats = &hw->imissed_stats;
 	struct hns3_mac_stats *mac_stats = &hw->mac_stats;
 	struct hns3_reset_stats *reset_stats = &hw->reset.stats;
 	struct hns3_rx_bd_errors_stats *rx_err_stats;
@@ -890,23 +1009,16 @@ hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			xstats[count].id = count;
 			count++;
 		}
-
-		ret = hns3_update_imissed_stats(hw, false);
-		if (ret) {
-			hns3_err(hw, "update imissed stats failed, ret = %d",
-				 ret);
-			return ret;
-		}
-
-		for (i = 0; i < HNS3_NUM_IMISSED_XSTATS; i++) {
-			addr = (char *)imissed_stats +
-				hns3_imissed_stats_strings[i].offset;
-			xstats[count].value = *(uint64_t *)addr;
-			xstats[count].id = count;
-			count++;
-		}
-
 	}
+
+	ret = hns3_update_imissed_stats(hw, false);
+	if (ret) {
+		hns3_err(hw, "update imissed stats failed, ret = %d",
+			 ret);
+		return ret;
+	}
+
+	hns3_imissed_stats_get(dev, xstats, &count);
 
 	/* Get the reset stat */
 	for (i = 0; i < HNS3_NUM_RESET_XSTATS; i++) {
@@ -992,6 +1104,28 @@ hns3_tqp_dfx_stats_name_get(struct rte_eth_dev *dev,
 	}
 }
 
+static void
+hns3_imissed_stats_name_get(struct rte_eth_dev *dev,
+			    struct rte_eth_xstat_name *xstats_names,
+			    uint32_t *count)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	uint32_t cnt = *count;
+	int imissed_stats_num;
+	uint16_t i;
+
+	imissed_stats_num = hns3_get_imissed_stats_num(hns);
+
+	for (i = 0; i < imissed_stats_num; i++) {
+		snprintf(xstats_names[cnt].name,
+			 sizeof(xstats_names[cnt].name),
+			 "%s", hns3_imissed_stats_strings[i].name);
+		cnt++;
+	}
+
+	*count = cnt;
+}
+
 /*
  * Retrieve names of extended statistics of an Ethernet device.
  *
@@ -1040,14 +1174,10 @@ hns3_dev_xstats_get_names(struct rte_eth_dev *dev,
 				 "%s", hns3_mac_strings[i].name);
 			count++;
 		}
-
-		for (i = 0; i < HNS3_NUM_IMISSED_XSTATS; i++) {
-			snprintf(xstats_names[count].name,
-				 sizeof(xstats_names[count].name),
-				 "%s", hns3_imissed_stats_strings[i].name);
-			count++;
-		}
 	}
+
+	hns3_imissed_stats_name_get(dev, xstats_names, &count);
+
 	for (i = 0; i < HNS3_NUM_RESET_XSTATS; i++) {
 		snprintf(xstats_names[count].name,
 			 sizeof(xstats_names[count].name),

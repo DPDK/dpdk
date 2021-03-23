@@ -111,6 +111,8 @@ enum hns3_opcode_type {
 
 	HNS3_OPC_QUERY_DEV_SPECS        = 0x0050,
 
+	HNS3_OPC_SSU_DROP_REG           = 0x0065,
+
 	/* MAC command */
 	HNS3_OPC_CONFIG_MAC_MODE        = 0x0301,
 	HNS3_OPC_QUERY_LINK_STATUS      = 0x0307,
@@ -955,6 +957,17 @@ struct hns3_query_rpu_cmd {
 	uint32_t rsv1[2];
 	uint32_t rpu_rx_pkt_drop_cnt;
 	uint32_t rsv2[2];
+};
+
+#define HNS3_OPC_SSU_DROP_REG_NUM 2
+
+struct hns3_query_ssu_cmd {
+	uint8_t rxtx;
+	uint8_t rsv[3];
+	uint32_t full_drop_cnt;
+	uint32_t part_drop_cnt;
+	uint32_t oq_drop_cnt;
+	uint32_t rev1[2];
 };
 
 #define HNS3_MAX_TQP_NUM_HIP08_PF	64

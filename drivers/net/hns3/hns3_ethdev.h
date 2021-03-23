@@ -426,6 +426,9 @@ struct hns3_queue_intr {
 #define HNS3_TSO_SW_CAL_PSEUDO_H_CSUM		0
 #define HNS3_TSO_HW_CAL_PSEUDO_H_CSUM		1
 
+#define HNS3_PKTS_DROP_STATS_MODE1		0
+#define HNS3_PKTS_DROP_STATS_MODE2		1
+
 struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
@@ -544,6 +547,24 @@ struct hns3_hw {
 	 *     port won't be copied to the function which has set promisc mode.
 	 */
 	uint8_t promisc_mode;
+
+	/*
+	 * drop_stats_mode mode.
+	 * value range:
+	 *      HNS3_PKTS_DROP_STATS_MODE1/HNS3_PKTS_DROP_STATS_MODE2
+	 *
+	 *  - HNS3_PKTS_DROP_STATS_MODE1
+	 *     This mode for kunpeng920. In this mode, port level imissed stats
+	 *     is supported. It only includes RPU drop stats.
+	 *
+	 *  - HNS3_PKTS_DROP_STATS_MODE2
+	 *     This mode for kunpeng930. In this mode, imissed stats and oerrors
+	 *     stats is supported. Function level imissed stats is supported. It
+	 *     includes RPU drop stats in VF, and includes both RPU drop stats
+	 *     and SSU drop stats in PF. Oerror stats is also supported in PF.
+	 */
+	uint8_t drop_stats_mode;
+
 	uint8_t max_non_tso_bd_num; /* max BD number of one non-TSO packet */
 
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;
