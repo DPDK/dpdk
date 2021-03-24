@@ -37,7 +37,7 @@ The detailed information can refer to chapter Tested Platforms/Tested NICs in re
    +-----------+---------------+-----------------+-----------+-----------+
    |    DPDK   | Kernel Driver | OS Default DDP  | COMMS DDP | Firmware  |
    +===========+===============+=================+===========+===========+
-   |    20.11  |     1.3.0     |      1.3.20     |  1.3.24   |    2.3    |
+   |    20.11  |     1.3.2     |      1.3.20     |  1.3.24   |    2.3    |
    +-----------+---------------+-----------------+-----------+-----------+
 
 Pre-Installation Configuration
