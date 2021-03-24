@@ -322,12 +322,16 @@ sym_xform_verify(struct rte_crypto_sym_xform *xform)
 	if (xform->next) {
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 		    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-		    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+		    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
+		    (xform->auth.algo != RTE_CRYPTO_AUTH_SHA1_HMAC ||
+		     xform->next->cipher.algo != RTE_CRYPTO_CIPHER_AES_CBC))
 			return -ENOTSUP;
 
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
 		    xform->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT &&
-		    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
+		    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		    (xform->cipher.algo != RTE_CRYPTO_CIPHER_AES_CBC ||
+		     xform->next->auth.algo != RTE_CRYPTO_AUTH_SHA1_HMAC))
 			return -ENOTSUP;
 
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&

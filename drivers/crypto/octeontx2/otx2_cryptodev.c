@@ -123,7 +123,8 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			     RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
 			     RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT |
 			     RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
-			     RTE_CRYPTODEV_FF_SECURITY;
+			     RTE_CRYPTODEV_FF_SECURITY |
+			     RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		otx2_cpt_set_enqdeq_fns(dev);

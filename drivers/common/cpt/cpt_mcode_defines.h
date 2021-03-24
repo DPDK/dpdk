@@ -20,6 +20,9 @@
 #define CPT_MAJOR_OP_ZUC_SNOW3G	0x37
 #define CPT_MAJOR_OP_KASUMI	0x38
 #define CPT_MAJOR_OP_MISC	0x01
+#define CPT_HMAC_FIRST_BIT_POS	0x4
+#define CPT_FC_MINOR_OP_ENCRYPT	0x0
+#define CPT_FC_MINOR_OP_DECRYPT	0x1
 
 /* AE opcodes */
 #define CPT_MAJOR_OP_MODEX	0x03
@@ -314,8 +317,10 @@ struct cpt_ctx {
 	uint64_t hmac		:1;
 	uint64_t zsk_flags	:3;
 	uint64_t k_ecb		:1;
+	uint64_t auth_enc	:1;
+	uint64_t dec_auth	:1;
 	uint64_t snow3g		:2;
-	uint64_t rsvd		:21;
+	uint64_t rsvd		:19;
 	/* Below fields are accessed by hardware */
 	union {
 		mc_fc_context_t fctx;

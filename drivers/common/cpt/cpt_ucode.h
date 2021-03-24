@@ -752,7 +752,9 @@ cpt_enc_hmac_prep(uint32_t flags,
 
 	/* Encryption */
 	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_FC;
-	vq_cmd_w0.s.opcode.minor = 0;
+	vq_cmd_w0.s.opcode.minor = CPT_FC_MINOR_OP_ENCRYPT;
+	vq_cmd_w0.s.opcode.minor |= (cpt_ctx->auth_enc <<
+					CPT_HMAC_FIRST_BIT_POS);
 
 	if (hash_type == GMAC_TYPE) {
 		encr_offset = 0;
@@ -778,6 +780,9 @@ cpt_enc_hmac_prep(uint32_t flags,
 		inputlen = enc_dlen;
 		outputlen = enc_dlen + mac_len;
 	}
+
+	if (cpt_ctx->auth_enc != 0)
+		outputlen = enc_dlen;
 
 	/* GP op header */
 	vq_cmd_w0.s.param1 = encr_data_len;
@@ -1112,7 +1117,9 @@ cpt_dec_hmac_prep(uint32_t flags,
 
 	/* Decryption */
 	vq_cmd_w0.s.opcode.major = CPT_MAJOR_OP_FC;
-	vq_cmd_w0.s.opcode.minor = 1;
+	vq_cmd_w0.s.opcode.minor = CPT_FC_MINOR_OP_DECRYPT;
+	vq_cmd_w0.s.opcode.minor |= (cpt_ctx->dec_auth <<
+					CPT_HMAC_FIRST_BIT_POS);
 
 	if (hash_type == GMAC_TYPE) {
 		encr_offset = 0;
@@ -1129,6 +1136,9 @@ cpt_dec_hmac_prep(uint32_t flags,
 		inputlen = enc_dlen + mac_len;
 		outputlen = enc_dlen;
 	}
+
+	if (cpt_ctx->dec_auth != 0)
+		outputlen = inputlen = enc_dlen;
 
 	vq_cmd_w0.s.param1 = encr_data_len;
 	vq_cmd_w0.s.param2 = auth_data_len;
@@ -2566,6 +2576,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform,
 		 struct cpt_sess_misc *sess)
 {
 	struct rte_crypto_cipher_xform *c_form;
+	struct cpt_ctx *ctx = SESS_PRIV(sess);
 	cipher_type_t enc_type = 0; /* NULL Cipher type */
 	uint32_t cipher_key_len = 0;
 	uint8_t zsk_flag = 0, aes_ctr = 0, is_null = 0;
@@ -2574,9 +2585,14 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform,
 
 	if (c_form->op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
 		sess->cpt_op |= CPT_OP_CIPHER_ENCRYPT;
-	else if (c_form->op == RTE_CRYPTO_CIPHER_OP_DECRYPT)
+	else if (c_form->op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
 		sess->cpt_op |= CPT_OP_CIPHER_DECRYPT;
-	else {
+		if (xform->next != NULL &&
+		    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+			/* Perform decryption followed by auth verify */
+			ctx->dec_auth = 1;
+		}
+	} else {
 		CPT_LOG_DP_ERR("Unknown cipher operation\n");
 		return -1;
 	}
@@ -2667,9 +2683,17 @@ static __rte_always_inline int
 fill_sess_auth(struct rte_crypto_sym_xform *xform,
 	       struct cpt_sess_misc *sess)
 {
+	struct cpt_ctx *ctx = SESS_PRIV(sess);
 	struct rte_crypto_auth_xform *a_form;
 	auth_type_t auth_type = 0; /* NULL Auth type */
 	uint8_t zsk_flag = 0, aes_gcm = 0, is_null = 0;
+
+	if (xform->next != NULL &&
+	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+	    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+		/* Perform auth followed by encryption */
+		ctx->auth_enc = 1;
+	}
 
 	a_form = &xform->auth;
 
@@ -2993,6 +3017,7 @@ fill_fc_params(struct rte_crypto_op *cop,
 {
 	uint32_t space = 0;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
+	struct cpt_ctx *ctx = SESS_PRIV(sess_misc);
 	void *mdata = NULL;
 	uintptr_t *op;
 	uint32_t mc_hash_off;
@@ -3120,9 +3145,10 @@ fill_fc_params(struct rte_crypto_op *cop,
 				m = m_src;
 
 			/* hmac immediately following data is best case */
-			if (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
+			if (!ctx->dec_auth && !ctx->auth_enc &&
+				 (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
 			    mc_hash_off !=
-			     (uint8_t *)sym_op->auth.digest.data)) {
+			     (uint8_t *)sym_op->auth.digest.data))) {
 				flags |= VALID_MAC_BUF;
 				fc_params.mac_buf.size =
 					sess_misc->mac_len;
@@ -3137,7 +3163,9 @@ fill_fc_params(struct rte_crypto_op *cop,
 	fc_params.ctx_buf.vaddr = SESS_PRIV(sess_misc);
 	fc_params.ctx_buf.dma_addr = sess_misc->ctx_dma_addr;
 
-	if (unlikely(sess_misc->is_null || sess_misc->cpt_op == CPT_OP_DECODE))
+	if (!ctx->dec_auth &&
+		  unlikely(sess_misc->is_null ||
+		  sess_misc->cpt_op == CPT_OP_DECODE))
 		inplace = 0;
 
 	if (likely(!m_dst && inplace)) {
