@@ -31,8 +31,10 @@ extern "C" {
 #define typeof __typeof__
 #endif
 
+#ifndef __cplusplus
 #ifndef asm
 #define asm __asm__
+#endif
 #endif
 
 /** C extension macro for environments lacking C11 features. */
