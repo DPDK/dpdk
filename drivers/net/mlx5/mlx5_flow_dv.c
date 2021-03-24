@@ -4548,8 +4548,8 @@ mlx5_flow_item_field_width(enum rte_flow_field_id field)
  *   Holds the actions detected until now.
  * @param[in] action
  *   Pointer to the modify action.
- * @param[in] item_flags
- *   Holds the items detected.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -4561,6 +4561,7 @@ static int
 flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				   const uint64_t action_flags,
 				   const struct rte_flow_action *action,
+				   const struct rte_flow_attr *attr,
 				   struct rte_flow_error *error)
 {
 	int ret = 0;
@@ -4608,6 +4609,11 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	}
 	if (action_modify_field->src.field != RTE_FLOW_FIELD_VALUE &&
 	    action_modify_field->src.field != RTE_FLOW_FIELD_POINTER) {
+		if (!attr->transfer && !attr->group)
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL, "modify field action "
+					"is not supported for group 0");
 		if ((action_modify_field->src.offset +
 		     action_modify_field->width > src_width) ||
 		    (action_modify_field->src.offset % 32))
@@ -6922,14 +6928,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			action_flags |= MLX5_FLOW_ACTION_TUNNEL_SET;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
-			if (!attr->transfer && !attr->group)
-				return rte_flow_error_set(error, ENOTSUP,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL, "modify field action "
-						"is not supported for group 0");
 			ret = flow_dv_validate_action_modify_field(dev,
 								   action_flags,
 								   actions,
+								   attr,
 								   error);
 			if (ret < 0)
 				return ret;
