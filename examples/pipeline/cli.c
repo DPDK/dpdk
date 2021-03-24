@@ -55,7 +55,7 @@ parser_read_uint64(uint64_t *value, const char *p)
 	if (!isdigit(*p))
 		return -EINVAL;
 
-	val = strtoul(p, &next, 10);
+	val = strtoul(p, &next, 0);
 	if (p == next)
 		return -EINVAL;
 
