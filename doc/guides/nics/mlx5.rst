@@ -383,6 +383,7 @@ Limitations
 
   - Supports the 'set' operation only for ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` action.
   - Modification of an arbitrary place in a packet via the special ``RTE_FLOW_FIELD_START`` Field ID is not supported.
+  - Modification of the 802.1Q Tag, VXLAN Network or GENEVE Network ID's is not supported.
   - Encapsulation levels are not supported, can modify outermost header fields only.
   - Offsets must be 32-bits aligned, cannot skip past the boundary of a field.
 

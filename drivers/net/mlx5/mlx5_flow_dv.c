@@ -4650,6 +4650,27 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				NULL,
 				"modifications of an arbitrary"
 				" place in a packet is not supported");
+	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VLAN_TYPE ||
+	    action_modify_field->src.field == RTE_FLOW_FIELD_VLAN_TYPE)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL,
+				"modifications of the 802.1Q Tag"
+				" Identifier is not supported");
+	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VXLAN_VNI ||
+	    action_modify_field->src.field == RTE_FLOW_FIELD_VXLAN_VNI)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL,
+				"modifications of the VXLAN Network"
+				" Identifier is not supported");
+	if (action_modify_field->dst.field == RTE_FLOW_FIELD_GENEVE_VNI ||
+	    action_modify_field->src.field == RTE_FLOW_FIELD_GENEVE_VNI)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL,
+				"modifications of the GENEVE Network"
+				" Identifier is not supported");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_MARK ||
 	    action_modify_field->src.field == RTE_FLOW_FIELD_MARK) {
 		if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
