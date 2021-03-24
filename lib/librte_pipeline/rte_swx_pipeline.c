@@ -3475,9 +3475,9 @@ instr_alu_add_translate(struct rte_swx_pipeline *p,
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
 		instr->type = INSTR_ALU_ADD;
-		if (dst[0] == 'h' && src[0] == 'm')
+		if (dst[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_ALU_ADD_HM;
-		if (dst[0] == 'm' && src[0] == 'h')
+		if (dst[0] != 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_ADD_MH;
 		if (dst[0] == 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_ADD_HH;
@@ -3528,9 +3528,9 @@ instr_alu_sub_translate(struct rte_swx_pipeline *p,
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
 		instr->type = INSTR_ALU_SUB;
-		if (dst[0] == 'h' && src[0] == 'm')
+		if (dst[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_ALU_SUB_HM;
-		if (dst[0] == 'm' && src[0] == 'h')
+		if (dst[0] != 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_SUB_MH;
 		if (dst[0] == 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_SUB_HH;
@@ -3658,9 +3658,9 @@ instr_alu_shl_translate(struct rte_swx_pipeline *p,
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
 		instr->type = INSTR_ALU_SHL;
-		if (dst[0] == 'h' && src[0] == 'm')
+		if (dst[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_ALU_SHL_HM;
-		if (dst[0] == 'm' && src[0] == 'h')
+		if (dst[0] != 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_SHL_MH;
 		if (dst[0] == 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_SHL_HH;
@@ -3711,9 +3711,9 @@ instr_alu_shr_translate(struct rte_swx_pipeline *p,
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
 		instr->type = INSTR_ALU_SHR;
-		if (dst[0] == 'h' && src[0] == 'm')
+		if (dst[0] == 'h' && src[0] != 'h')
 			instr->type = INSTR_ALU_SHR_HM;
-		if (dst[0] == 'm' && src[0] == 'h')
+		if (dst[0] != 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_SHR_MH;
 		if (dst[0] == 'h' && src[0] == 'h')
 			instr->type = INSTR_ALU_SHR_HH;
@@ -4906,9 +4906,9 @@ instr_jmp_lt_translate(struct rte_swx_pipeline *p,
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
 		instr->type = INSTR_JMP_LT;
-		if (a[0] == 'h' && b[0] == 'm')
+		if (a[0] == 'h' && b[0] != 'h')
 			instr->type = INSTR_JMP_LT_HM;
-		if (a[0] == 'm' && b[0] == 'h')
+		if (a[0] != 'h' && b[0] == 'h')
 			instr->type = INSTR_JMP_LT_MH;
 		if (a[0] == 'h' && b[0] == 'h')
 			instr->type = INSTR_JMP_LT_HH;
@@ -4963,9 +4963,9 @@ instr_jmp_gt_translate(struct rte_swx_pipeline *p,
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
 		instr->type = INSTR_JMP_GT;
-		if (a[0] == 'h' && b[0] == 'm')
+		if (a[0] == 'h' && b[0] != 'h')
 			instr->type = INSTR_JMP_GT_HM;
-		if (a[0] == 'm' && b[0] == 'h')
+		if (a[0] != 'h' && b[0] == 'h')
 			instr->type = INSTR_JMP_GT_MH;
 		if (a[0] == 'h' && b[0] == 'h')
 			instr->type = INSTR_JMP_GT_HH;
