@@ -1006,9 +1006,14 @@ rte_extmem_detach(void *va_addr, size_t len)
 int
 rte_eal_memory_detach(void)
 {
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	size_t page_sz = rte_mem_page_size();
 	unsigned int i;
+
+	if (internal_conf->in_memory == 1)
+		return 0;
 
 	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
 
@@ -1032,7 +1037,7 @@ rte_eal_memory_detach(void)
 		if (!msl->external)
 			if (rte_mem_unmap(msl->base_va, msl->len) != 0)
 				RTE_LOG(ERR, EAL, "Could not unmap memory: %s\n",
-						strerror(errno));
+						rte_strerror(rte_errno));
 
 		/*
 		 * we are detaching the fbarray rather than destroying because
@@ -1050,7 +1055,11 @@ rte_eal_memory_detach(void)
 	 * config - we can't zero it out because it might still be referenced
 	 * by other processes.
 	 */
-	rte_mem_unmap(mcfg, RTE_ALIGN(sizeof(*mcfg), page_sz));
+	if (internal_conf->no_shconf == 0) {
+		if (rte_mem_unmap(mcfg, RTE_ALIGN(sizeof(*mcfg), page_sz)) != 0)
+			RTE_LOG(ERR, EAL, "Could not unmap shared memory config: %s\n",
+					rte_strerror(rte_errno));
+	}
 	rte_eal_get_configuration()->mem_config = NULL;
 
 	return 0;
