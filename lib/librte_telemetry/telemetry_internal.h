@@ -84,4 +84,37 @@ rte_telemetry_legacy_register(const char *cmd,
 		enum rte_telemetry_legacy_data_req data_req,
 		telemetry_legacy_cb fn);
 
+#ifdef RTE_HAS_CPUSET
+
+/**
+ * @internal
+ * Log function type, to allow passing as parameter if necessary
+ */
+typedef int (*rte_log_fn)(uint32_t level, uint32_t logtype, const char *format, ...);
+
+/**
+ * @internal
+ * Initialize Telemetry.
+ *
+ * @param runtime_dir
+ * The runtime directory of DPDK.
+ * @param cpuset
+ * The CPU set to be used for setting the thread affinity.
+ * @param log_fn
+ * Function pointer to the rte_log function for logging use
+ * @param registered_logtype
+ * The registered log type to use for logging
+ *
+ * @return
+ *  0 on success.
+ * @return
+ *  -1 on failure.
+ */
+__rte_internal
+int
+rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset,
+		rte_log_fn log_fn, uint32_t registered_logtype);
+
+#endif /* RTE_HAS_CPUSET */
+
 #endif

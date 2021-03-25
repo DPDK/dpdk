@@ -49,8 +49,8 @@
 #include <rte_version.h>
 #include <malloc_heap.h>
 #include <rte_vfio.h>
-#include <rte_telemetry.h>
 
+#include <telemetry_internal.h>
 #include "eal_private.h"
 #include "eal_thread.h"
 #include "eal_internal_cfg.h"
