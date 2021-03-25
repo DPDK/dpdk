@@ -23,10 +23,10 @@
 #define	IPV4_HDR_FO_ALIGN			(1 << RTE_IPV4_HDR_FO_SHIFT)
 
 static inline void __fill_ipv4hdr_frag(struct rte_ipv4_hdr *dst,
-		const struct rte_ipv4_hdr *src, uint16_t len, uint16_t fofs,
-		uint16_t dofs, uint32_t mf)
+		const struct rte_ipv4_hdr *src, uint16_t header_len,
+		uint16_t len, uint16_t fofs, uint16_t dofs, uint32_t mf)
 {
-	rte_memcpy(dst, src, sizeof(*dst));
+	rte_memcpy(dst, src, header_len);
 	fofs = (uint16_t)(fofs + (dofs >> RTE_IPV4_HDR_FO_SHIFT));
 	fofs = (uint16_t)(fofs | mf << RTE_IPV4_HDR_MF_SHIFT);
 	dst->fragment_offset = rte_cpu_to_be_16(fofs);
@@ -74,7 +74,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	struct rte_ipv4_hdr *in_hdr;
 	uint32_t out_pkt_pos, in_seg_data_pos;
 	uint32_t more_in_segs;
-	uint16_t fragment_offset, flag_offset, frag_size;
+	uint16_t fragment_offset, flag_offset, frag_size, header_len;
 	uint16_t frag_bytes_remaining;
 
 	/*
@@ -86,14 +86,22 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	    unlikely(mtu_size < RTE_ETHER_MIN_MTU))
 		return -EINVAL;
 
+	in_hdr = rte_pktmbuf_mtod(pkt_in, struct rte_ipv4_hdr *);
+	header_len = (in_hdr->version_ihl & RTE_IPV4_HDR_IHL_MASK) *
+	    RTE_IPV4_IHL_MULTIPLIER;
+
+	/* Check IP header length */
+	if (unlikely(pkt_in->data_len < header_len) ||
+	    unlikely(mtu_size < header_len))
+		return -EINVAL;
+
 	/*
 	 * Ensure the IP payload length of all fragments is aligned to a
 	 * multiple of 8 bytes as per RFC791 section 2.3.
 	 */
-	frag_size = RTE_ALIGN_FLOOR((mtu_size - sizeof(struct rte_ipv4_hdr)),
+	frag_size = RTE_ALIGN_FLOOR((mtu_size - header_len),
 				    IPV4_HDR_FO_ALIGN);
 
-	in_hdr = rte_pktmbuf_mtod(pkt_in, struct rte_ipv4_hdr *);
 	flag_offset = rte_cpu_to_be_16(in_hdr->fragment_offset);
 
 	/* If Don't Fragment flag is set */
@@ -102,11 +110,11 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 
 	/* Check that pkts_out is big enough to hold all fragments */
 	if (unlikely(frag_size * nb_pkts_out <
-	    (uint16_t)(pkt_in->pkt_len - sizeof(struct rte_ipv4_hdr))))
+	    (uint16_t)(pkt_in->pkt_len - header_len)))
 		return -EINVAL;
 
 	in_seg = pkt_in;
-	in_seg_data_pos = sizeof(struct rte_ipv4_hdr);
+	in_seg_data_pos = header_len;
 	out_pkt_pos = 0;
 	fragment_offset = 0;
 
@@ -124,8 +132,8 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 		}
 
 		/* Reserve space for the IP header that will be built later */
-		out_pkt->data_len = sizeof(struct rte_ipv4_hdr);
-		out_pkt->pkt_len = sizeof(struct rte_ipv4_hdr);
+		out_pkt->data_len = header_len;
+		out_pkt->pkt_len = header_len;
 		frag_bytes_remaining = frag_size;
 
 		out_seg_prev = out_pkt;
@@ -176,14 +184,14 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 
 		out_hdr = rte_pktmbuf_mtod(out_pkt, struct rte_ipv4_hdr *);
 
-		__fill_ipv4hdr_frag(out_hdr, in_hdr,
+		__fill_ipv4hdr_frag(out_hdr, in_hdr, header_len,
 		    (uint16_t)out_pkt->pkt_len,
 		    flag_offset, fragment_offset, more_in_segs);
 
 		fragment_offset = (uint16_t)(fragment_offset +
-		    out_pkt->pkt_len - sizeof(struct rte_ipv4_hdr));
+		    out_pkt->pkt_len - header_len);
 
-		out_pkt->l3_len = sizeof(struct rte_ipv4_hdr);
+		out_pkt->l3_len = header_len;
 
 		/* Write the fragment to the output list */
 		pkts_out[out_pkt_pos] = out_pkt;
