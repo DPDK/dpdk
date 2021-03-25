@@ -148,6 +148,11 @@ ABI Changes
 
 * No ABI change that would break compatibility with 20.11.
 
+* The experimental function ``rte_telemetry_legacy_register`` has been
+  removed from the public API and is now an internal-only function. This
+  function was already marked as internal in the API documentation for it,
+  and was not for use by external applications.
+
 
 Known Issues
 ------------

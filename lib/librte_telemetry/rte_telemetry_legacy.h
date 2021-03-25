@@ -78,7 +78,7 @@ legacy_client_handler(void *sock_id);
  *  @return
  *  -ENOENT if max callbacks limit has been reached.
  */
-__rte_experimental
+__rte_internal
 int
 rte_telemetry_legacy_register(const char *cmd,
 		enum rte_telemetry_legacy_data_req data_req,
