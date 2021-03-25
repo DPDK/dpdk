@@ -2,8 +2,8 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
-#ifndef _RTE_TELEMETRY_LEGACY_H_
-#define _RTE_TELEMETRY_LEGACY_H_
+#ifndef _RTE_TELEMETRY_INTERNAL_H_
+#define _RTE_TELEMETRY_INTERNAL_H_
 
 #include <rte_compat.h>
 #include "rte_telemetry.h"
@@ -14,7 +14,7 @@
  * @b EXPERIMENTAL: this API may change without prior notice
 
  * @file
- * RTE Telemetry Legacy
+ * RTE Telemetry Legacy and internal definitions
  *
  ***/
 

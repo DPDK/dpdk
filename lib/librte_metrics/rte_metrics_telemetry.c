@@ -5,7 +5,7 @@
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
 #ifdef RTE_LIB_TELEMETRY
-#include <rte_telemetry_legacy.h>
+#include <telemetry_internal.h>
 #endif
 
 #include "rte_metrics.h"

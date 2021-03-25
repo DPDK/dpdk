@@ -20,7 +20,7 @@
 #include "rte_telemetry.h"
 #include "telemetry_json.h"
 #include "telemetry_data.h"
-#include "rte_telemetry_legacy.h"
+#include "telemetry_internal.h"
 
 #define MAX_CMD_LEN 56
 #define MAX_HELP_LEN 64

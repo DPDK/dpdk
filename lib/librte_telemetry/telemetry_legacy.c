@@ -15,7 +15,7 @@
 #include <rte_common.h>
 #include <rte_spinlock.h>
 
-#include "rte_telemetry_legacy.h"
+#include "telemetry_internal.h"
 
 #define MAX_LEN 128
 #define BUF_SIZE 1024
