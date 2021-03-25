@@ -1527,7 +1527,7 @@ F: lib/librte_latencystats/
 F: app/test/test_latencystats.c
 
 Telemetry - EXPERIMENTAL
-M: Kevin Laatz <kevin.laatz@intel.com>
+M: Ciara Power <ciara.power@intel.com>
 F: lib/librte_telemetry/
 F: app/test/test_telemetry*
 F: usertools/dpdk-telemetry*
