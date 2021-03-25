@@ -2346,7 +2346,7 @@ hash_cfg_reset(struct ice_rss_hash_cfg *cfg)
 	cfg->hash_flds = 0;
 	cfg->addl_hdrs = 0;
 	cfg->symm = 0;
-	cfg->hdr_type = ICE_RSS_ANY_HEADERS;
+	cfg->hdr_type = ICE_RSS_OUTER_HEADERS;
 }
 
 static int
@@ -2831,7 +2831,7 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 			    __func__, ret);
 
 	cfg.symm = 0;
-	cfg.hdr_type = ICE_RSS_ANY_HEADERS;
+	cfg.hdr_type = ICE_RSS_OUTER_HEADERS;
 	/* Configure RSS for IPv4 with src/dst addr as input set */
 	if (rss_hf & ETH_RSS_IPV4) {
 		cfg.addl_hdrs = ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER;

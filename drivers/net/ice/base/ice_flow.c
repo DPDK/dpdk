@@ -3678,13 +3678,6 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle,
 	if (status)
 		goto exit;
 
-	/* Don't do RSS for GTPU Outer */
-	if (segs_cnt == ICE_FLOW_SEG_SINGLE &&
-	    segs[segs_cnt - 1].hdrs & ICE_FLOW_SEG_HDR_GTPU) {
-		status = ICE_SUCCESS;
-		goto exit;
-	}
-
 	/* Search for a flow profile that has matching headers, hash fields
 	 * and has the input VSI associated to it. If found, no further
 	 * operations required and exit.
@@ -3846,13 +3839,6 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle,
 	status = ice_flow_set_rss_seg_info(segs, segs_cnt, cfg);
 	if (status)
 		goto out;
-
-	/* Don't do RSS for GTPU Outer */
-	if (segs_cnt == ICE_FLOW_SEG_SINGLE &&
-	    segs[segs_cnt - 1].hdrs & ICE_FLOW_SEG_HDR_GTPU) {
-		status = ICE_SUCCESS;
-		goto out;
-	}
 
 	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, segs_cnt,
 					vsi_handle,
