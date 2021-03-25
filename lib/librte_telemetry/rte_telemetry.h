@@ -296,15 +296,22 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help);
 
 /**
  * @internal
+ * Log function type, to allow passing as parameter if necessary
+ */
+typedef int (*rte_log_fn)(uint32_t level, uint32_t logtype, const char *format, ...);
+
+/**
+ * @internal
  * Initialize Telemetry.
  *
  * @param runtime_dir
  * The runtime directory of DPDK.
  * @param cpuset
  * The CPU set to be used for setting the thread affinity.
- * @param err_str
- * This err_str pointer should point to NULL on entry. In the case of an error
- * or warning, it will be non-NULL on exit.
+ * @param log_fn
+ * Function pointer to the rte_log function for logging use
+ * @param registered_logtype
+ * The registered log type to use for logging
  *
  * @return
  *  0 on success.
@@ -314,7 +321,7 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help);
 __rte_internal
 int
 rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset,
-		const char **err_str);
+		rte_log_fn log_fn, uint32_t registered_logtype);
 
 #endif /* RTE_HAS_CPUSET */
 
