@@ -393,6 +393,7 @@ qede_alloc_tx_queue_mem(struct rte_eth_dev *dev,
 	struct ecore_dev *edev = &qdev->edev;
 	struct qede_tx_queue *txq;
 	int rc;
+	size_t sw_tx_ring_size;
 
 	txq = rte_zmalloc_socket("qede_tx_queue", sizeof(struct qede_tx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
@@ -425,9 +426,9 @@ qede_alloc_tx_queue_mem(struct rte_eth_dev *dev,
 	}
 
 	/* Allocate software ring */
+	sw_tx_ring_size = sizeof(txq->sw_tx_ring) * txq->nb_tx_desc;
 	txq->sw_tx_ring = rte_zmalloc_socket("txq->sw_tx_ring",
-					     (sizeof(struct qede_tx_entry) *
-					      txq->nb_tx_desc),
+					     sw_tx_ring_size,
 					     RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (!txq->sw_tx_ring) {
@@ -523,9 +524,9 @@ static void qede_tx_queue_release_mbufs(struct qede_tx_queue *txq)
 
 	if (txq->sw_tx_ring) {
 		for (i = 0; i < txq->nb_tx_desc; i++) {
-			if (txq->sw_tx_ring[i].mbuf) {
-				rte_pktmbuf_free(txq->sw_tx_ring[i].mbuf);
-				txq->sw_tx_ring[i].mbuf = NULL;
+			if (txq->sw_tx_ring[i]) {
+				rte_pktmbuf_free(txq->sw_tx_ring[i]);
+				txq->sw_tx_ring[i] = NULL;
 			}
 		}
 	}
@@ -889,10 +890,11 @@ qede_free_tx_pkt(struct qede_tx_queue *txq)
 	uint16_t idx;
 
 	idx = TX_CONS(txq);
-	mbuf = txq->sw_tx_ring[idx].mbuf;
+	mbuf = txq->sw_tx_ring[idx];
 	if (mbuf) {
 		nb_segs = mbuf->nb_segs;
 		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
+
 		while (nb_segs) {
 			/* It's like consuming rxbuf in recv() */
 			ecore_chain_consume(&txq->tx_pbl);
@@ -900,7 +902,7 @@ qede_free_tx_pkt(struct qede_tx_queue *txq)
 			nb_segs--;
 		}
 		rte_pktmbuf_free(mbuf);
-		txq->sw_tx_ring[idx].mbuf = NULL;
+		txq->sw_tx_ring[idx] = NULL;
 		txq->sw_tx_cons++;
 		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
 	} else {
@@ -2243,7 +2245,7 @@ qede_xmit_pkts_regular(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct eth_tx_3rd_bd *bd3;
 	struct rte_mbuf *m_seg = NULL;
 	struct rte_mbuf *mbuf;
-	struct qede_tx_entry *sw_tx_ring;
+	struct rte_mbuf **sw_tx_ring;
 	uint16_t nb_tx_pkts;
 	uint16_t bd_prod;
 	uint16_t idx;
@@ -2306,7 +2308,7 @@ qede_xmit_pkts_regular(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Fill the entry in the SW ring and the BDs in the FW ring */
 		idx = TX_PROD(txq);
-		sw_tx_ring[idx].mbuf = mbuf;
+		sw_tx_ring[idx] = mbuf;
 
 		/* BD1 */
 		bd1 = (struct eth_tx_1st_bd *)ecore_chain_produce(&txq->tx_pbl);
@@ -2612,7 +2614,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Fill the entry in the SW ring and the BDs in the FW ring */
 		idx = TX_PROD(txq);
-		txq->sw_tx_ring[idx].mbuf = mbuf;
+		txq->sw_tx_ring[idx] = mbuf;
 
 		/* BD1 */
 		bd1 = (struct eth_tx_1st_bd *)ecore_chain_produce(&txq->tx_pbl);

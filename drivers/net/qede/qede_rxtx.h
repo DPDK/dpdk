@@ -203,14 +203,6 @@ struct qede_rx_queue {
 	void *handle;
 };
 
-/*
- * TX BD descriptor ring
- */
-struct qede_tx_entry {
-	struct rte_mbuf *mbuf;
-	uint8_t flags;
-};
-
 union db_prod {
 	struct eth_db_data data;
 	uint32_t raw;
@@ -220,7 +212,7 @@ struct qede_tx_queue {
 	/* Always keep qdev as first member */
 	struct qede_dev *qdev;
 	struct ecore_chain tx_pbl;
-	struct qede_tx_entry *sw_tx_ring;
+	struct rte_mbuf **sw_tx_ring;
 	uint16_t nb_tx_desc;
 	uint16_t nb_tx_avail;
 	uint16_t tx_free_thresh;
