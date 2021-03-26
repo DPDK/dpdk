@@ -24,6 +24,7 @@
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_bus_vdev.h>
 #include <rte_string_fns.h>
 

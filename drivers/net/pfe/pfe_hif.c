@@ -7,6 +7,7 @@
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <arpa/inet.h>
 
 static int
 pfe_hif_alloc_descr(struct pfe_hif *hif)

@@ -2,6 +2,8 @@
  * Copyright 2018-2019 NXP
  */
 
+#include <arpa/inet.h>
+
 #include "pfe_logs.h"
 #include "pfe_mod.h"
 

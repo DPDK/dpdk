@@ -6,6 +6,7 @@
 #define _IGC_ETHDEV_H_
 
 #include <rte_ethdev.h>
+#include <rte_flow.h>
 
 #include "base/igc_osdep.h"
 #include "base/igc_hw.h"

@@ -6,6 +6,7 @@
 #define _VMXNET3_ETHDEV_H_
 
 #include <rte_io.h>
+#include <rte_mbuf_dyn.h>
 
 #define VMXNET3_MAX_MAC_ADDRS 1
 

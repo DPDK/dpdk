@@ -11,6 +11,7 @@
 #include <nfb/ndp.h>
 
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 #include <rte_ethdev.h>
 
 #define NFB_TIMESTAMP_FLAG (1 << 0)

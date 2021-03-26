@@ -10,6 +10,8 @@
 #ifndef _SFC_TSO_H
 #define _SFC_TSO_H
 
+#include <rte_udp.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

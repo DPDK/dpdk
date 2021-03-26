@@ -20,6 +20,7 @@
 #endif
 #include <rte_cycles.h>
 #include <rte_dev.h>
+#include <rte_ip.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>

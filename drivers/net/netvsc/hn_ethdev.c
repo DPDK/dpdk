@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <netinet/in.h>
 #include <sys/ioctl.h>
 
 #include <rte_ethdev.h>

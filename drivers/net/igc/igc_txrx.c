@@ -3,6 +3,7 @@
  */
 
 #include <rte_config.h>
+#include <rte_flow.h>
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
 #include <rte_net.h>
