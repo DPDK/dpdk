@@ -142,8 +142,8 @@ uint16_t
 initialize_ipv6_header(struct rte_ipv6_hdr *ip_hdr, uint8_t *src_addr,
 		uint8_t *dst_addr, uint16_t pkt_data_len)
 {
-	ip_hdr->vtc_flow = 0;
-	ip_hdr->payload_len = pkt_data_len;
+	ip_hdr->vtc_flow = rte_cpu_to_be_32(0x60000000); /* Set version to 6. */
+	ip_hdr->payload_len = rte_cpu_to_be_16(pkt_data_len);
 	ip_hdr->proto = IPPROTO_UDP;
 	ip_hdr->hop_limits = IP_DEFTTL;
 
