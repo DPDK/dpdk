@@ -893,6 +893,7 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 	struct rte_mbuf *mbuf;
 	uint16_t nb_segs;
 	uint16_t idx;
+	uint16_t first_idx;
 
 	rte_compiler_barrier();
 	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
@@ -907,6 +908,7 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 
 	remaining = hw_bd_cons - sw_tx_cons;
 	txq->nb_tx_avail += remaining;
+	first_idx = idx;
 
 	while (remaining) {
 		mbuf = txq->sw_tx_ring[idx];
@@ -921,11 +923,19 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 			nb_segs--;
 		}
 
-		rte_pktmbuf_free(mbuf);
 		idx = (idx + 1) & mask;
 		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
 	}
 	txq->sw_tx_cons = idx;
+
+	if (first_idx > idx) {
+		rte_pktmbuf_free_bulk(&txq->sw_tx_ring[first_idx],
+							  mask - first_idx + 1);
+		rte_pktmbuf_free_bulk(&txq->sw_tx_ring[0], idx);
+	} else {
+		rte_pktmbuf_free_bulk(&txq->sw_tx_ring[first_idx],
+							  idx - first_idx);
+	}
 }
 
 static int qede_drain_txq(struct qede_dev *qdev,
