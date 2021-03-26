@@ -171,6 +171,7 @@ int rte_timer_data_dealloc(uint32_t id);
  *   - 0: Success
  *   - -ENOMEM: Unable to allocate memory needed to initialize timer
  *      subsystem
+ *   - -EALREADY: timer subsystem was already initialized. Not an error.
  */
 int rte_timer_subsystem_init(void);
 
