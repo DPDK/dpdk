@@ -896,6 +896,7 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 	uint16_t first_idx;
 
 	rte_compiler_barrier();
+	rte_prefetch0(txq->hw_cons_ptr);
 	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
 	hw_bd_cons = rte_le_to_cpu_16(*txq->hw_cons_ptr);
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
