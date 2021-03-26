@@ -3101,10 +3101,11 @@ __instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
+	uint64_t valid_headers = t->valid_headers;
 	uint32_t n_headers_out = t->n_headers_out;
 	struct header_out_runtime *ho = &t->headers_out[n_headers_out - 1];
 	uint8_t *ho_ptr = NULL;
-	uint32_t ho_nbytes = 0, i;
+	uint32_t ho_nbytes = 0, first = 1, i;
 
 	for (i = 0; i < n_emit; i++) {
 		uint32_t header_id = ip->io.hdr.header_id[i];
@@ -3114,12 +3115,17 @@ __instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit)
 		struct header_runtime *hi = &t->headers[header_id];
 		uint8_t *hi_ptr = t->structs[struct_id];
 
+		if (!MASK64_BIT_GET(valid_headers, header_id))
+			continue;
+
 		TRACE("[Thread %2u]: emit header %u\n",
 		      p->thread_id,
 		      header_id);
 
 		/* Headers. */
-		if (!i) {
+		if (first) {
+			first = 0;
+
 			if (!t->n_headers_out) {
 				ho = &t->headers_out[0];
 
