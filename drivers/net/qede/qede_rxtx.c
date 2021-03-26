@@ -882,38 +882,6 @@ qede_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 	return rc;
 }
 
-static inline uint16_t
-qede_free_tx_pkt(struct qede_tx_queue *txq)
-{
-	struct rte_mbuf *mbuf;
-	uint16_t nb_segs;
-	uint16_t idx;
-	uint16_t ret;
-
-	idx = TX_CONS(txq);
-	mbuf = txq->sw_tx_ring[idx];
-	if (mbuf) {
-		nb_segs = mbuf->nb_segs;
-		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
-
-		ret = nb_segs;
-		while (nb_segs) {
-			/* It's like consuming rxbuf in recv() */
-			ecore_chain_consume(&txq->tx_pbl);
-			nb_segs--;
-		}
-
-		rte_pktmbuf_free(mbuf);
-		txq->sw_tx_ring[idx] = NULL;
-		txq->sw_tx_cons++;
-		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
-	} else {
-		ecore_chain_consume(&txq->tx_pbl);
-		ret = 1;
-	}
-	return ret;
-}
-
 static inline void
 qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 		      struct qede_tx_queue *txq)
@@ -921,6 +889,10 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 	uint16_t hw_bd_cons;
 	uint16_t sw_tx_cons;
 	uint16_t remaining;
+	uint16_t mask;
+	struct rte_mbuf *mbuf;
+	uint16_t nb_segs;
+	uint16_t idx;
 
 	rte_compiler_barrier();
 	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
@@ -930,11 +902,30 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 		   abs(hw_bd_cons - sw_tx_cons));
 #endif
 
+	mask = NUM_TX_BDS(txq);
+	idx = txq->sw_tx_cons & mask;
+
 	remaining = hw_bd_cons - sw_tx_cons;
 	txq->nb_tx_avail += remaining;
 
-	while (remaining)
-		remaining -= qede_free_tx_pkt(txq);
+	while (remaining) {
+		mbuf = txq->sw_tx_ring[idx];
+		RTE_ASSERT(mbuf);
+		nb_segs = mbuf->nb_segs;
+		remaining -= nb_segs;
+
+		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
+
+		while (nb_segs) {
+			ecore_chain_consume(&txq->tx_pbl);
+			nb_segs--;
+		}
+
+		rte_pktmbuf_free(mbuf);
+		idx = (idx + 1) & mask;
+		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
+	}
+	txq->sw_tx_cons = idx;
 }
 
 static int qede_drain_txq(struct qede_dev *qdev,
