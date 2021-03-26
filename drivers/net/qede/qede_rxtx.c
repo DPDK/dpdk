@@ -882,12 +882,13 @@ qede_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 	return rc;
 }
 
-static inline void
+static inline uint16_t
 qede_free_tx_pkt(struct qede_tx_queue *txq)
 {
 	struct rte_mbuf *mbuf;
 	uint16_t nb_segs;
 	uint16_t idx;
+	uint16_t ret;
 
 	idx = TX_CONS(txq);
 	mbuf = txq->sw_tx_ring[idx];
@@ -895,20 +896,22 @@ qede_free_tx_pkt(struct qede_tx_queue *txq)
 		nb_segs = mbuf->nb_segs;
 		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
 
+		ret = nb_segs;
 		while (nb_segs) {
 			/* It's like consuming rxbuf in recv() */
 			ecore_chain_consume(&txq->tx_pbl);
-			txq->nb_tx_avail++;
 			nb_segs--;
 		}
+
 		rte_pktmbuf_free(mbuf);
 		txq->sw_tx_ring[idx] = NULL;
 		txq->sw_tx_cons++;
 		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
 	} else {
 		ecore_chain_consume(&txq->tx_pbl);
-		txq->nb_tx_avail++;
+		ret = 1;
 	}
+	return ret;
 }
 
 static inline void
@@ -916,19 +919,22 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 		      struct qede_tx_queue *txq)
 {
 	uint16_t hw_bd_cons;
-#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 	uint16_t sw_tx_cons;
-#endif
+	uint16_t remaining;
 
 	rte_compiler_barrier();
+	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
 	hw_bd_cons = rte_le_to_cpu_16(*txq->hw_cons_ptr);
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
-	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
 	PMD_TX_LOG(DEBUG, txq, "Tx Completions = %u\n",
 		   abs(hw_bd_cons - sw_tx_cons));
 #endif
-	while (hw_bd_cons !=  ecore_chain_get_cons_idx(&txq->tx_pbl))
-		qede_free_tx_pkt(txq);
+
+	remaining = hw_bd_cons - sw_tx_cons;
+	txq->nb_tx_avail += remaining;
+
+	while (remaining)
+		remaining -= qede_free_tx_pkt(txq);
 }
 
 static int qede_drain_txq(struct qede_dev *qdev,
