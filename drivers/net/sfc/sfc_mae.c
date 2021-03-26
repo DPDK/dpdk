@@ -2101,6 +2101,8 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 	efx_mae_actions_t *spec;
 	int rc;
 
+	rte_errno = 0;
+
 	if (actions == NULL) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
@@ -2144,7 +2146,7 @@ fail_rule_parse_action:
 	efx_mae_action_set_spec_fini(sa->nic, spec);
 
 fail_action_set_spec_init:
-	if (rc > 0) {
+	if (rc > 0 && rte_errno == 0) {
 		rc = rte_flow_error_set(error, rc,
 			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			NULL, "Failed to process the action");
