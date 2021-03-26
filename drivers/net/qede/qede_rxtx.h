@@ -159,15 +159,6 @@
 #define QEDE_TX_OFFLOAD_NOTSUP_MASK \
 	(PKT_TX_OFFLOAD_MASK ^ QEDE_TX_OFFLOAD_MASK)
 
-/*
- * RX BD descriptor ring
- */
-struct qede_rx_entry {
-	struct rte_mbuf *mbuf;
-	uint32_t page_offset;
-	/* allows expansion .. */
-};
-
 /* TPA related structures */
 struct qede_agg_info {
 	struct rte_mbuf *tpa_head; /* Pointer to first TPA segment */
@@ -185,7 +176,7 @@ struct qede_rx_queue {
 	struct ecore_chain rx_comp_ring;
 	uint16_t *hw_cons_ptr;
 	void OSAL_IOMEM *hw_rxq_prod_addr;
-	struct qede_rx_entry *sw_rx_ring;
+	struct rte_mbuf **sw_rx_ring;
 	struct ecore_sb_info *sb_info;
 	uint16_t sw_rx_cons;
 	uint16_t sw_rx_prod;
