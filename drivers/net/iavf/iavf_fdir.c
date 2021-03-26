@@ -75,6 +75,19 @@
 	IAVF_INSET_IPV4_SRC | IAVF_INSET_IPV4_DST | \
 	IAVF_INSET_GTPU_TEID)
 
+#define IAVF_FDIR_INSET_GTPU_IPV4 (\
+	IAVF_INSET_TUN_IPV4_SRC | IAVF_INSET_TUN_IPV4_DST | \
+	IAVF_INSET_TUN_IPV4_PROTO | IAVF_INSET_TUN_IPV4_TOS | \
+	IAVF_INSET_TUN_IPV4_TTL)
+
+#define IAVF_FDIR_INSET_GTPU_IPV4_UDP (\
+	IAVF_FDIR_INSET_GTPU_IPV4 | \
+	IAVF_INSET_TUN_UDP_SRC_PORT | IAVF_INSET_TUN_UDP_DST_PORT)
+
+#define IAVF_FDIR_INSET_GTPU_IPV4_TCP (\
+	IAVF_FDIR_INSET_GTPU_IPV4 | \
+	IAVF_INSET_TUN_TCP_SRC_PORT | IAVF_INSET_TUN_TCP_DST_PORT)
+
 #define IAVF_FDIR_INSET_IPV4_GTPU_EH (\
 	IAVF_INSET_IPV4_SRC | IAVF_INSET_IPV4_DST | \
 	IAVF_INSET_GTPU_TEID | IAVF_INSET_GTPU_QFI)
@@ -111,31 +124,37 @@
 	IAVF_INSET_ECPRI)
 
 static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
-	{iavf_pattern_ethertype,		IAVF_FDIR_INSET_ETH,			IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4,			IAVF_FDIR_INSET_ETH_IPV4,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_udp,		IAVF_FDIR_INSET_ETH_IPV4_UDP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_tcp,		IAVF_FDIR_INSET_ETH_IPV4_TCP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_sctp,		IAVF_FDIR_INSET_ETH_IPV4_SCTP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6,			IAVF_FDIR_INSET_ETH_IPV6,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_udp,		IAVF_FDIR_INSET_ETH_IPV6_UDP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_tcp,		IAVF_FDIR_INSET_ETH_IPV6_TCP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_sctp,		IAVF_FDIR_INSET_ETH_IPV6_SCTP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_gtpu,		IAVF_FDIR_INSET_IPV4_GTPU,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_gtpu_eh,		IAVF_FDIR_INSET_IPV4_GTPU_EH,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_gtpu,		IAVF_FDIR_INSET_IPV6_GTPU,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_gtpu_eh,		IAVF_FDIR_INSET_IPV6_GTPU_EH,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_l2tpv3,		IAVF_FDIR_INSET_L2TPV3OIP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_l2tpv3,		IAVF_FDIR_INSET_L2TPV3OIP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_esp,		IAVF_FDIR_INSET_ESP,			IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_esp,		IAVF_FDIR_INSET_ESP,			IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_ah,		IAVF_FDIR_INSET_AH,			IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_ah,		IAVF_FDIR_INSET_AH,			IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_udp_esp,		IAVF_FDIR_INSET_IPV4_NATT_ESP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_udp_esp,		IAVF_FDIR_INSET_IPV6_NATT_ESP,		IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_pfcp,		IAVF_FDIR_INSET_PFCP,			IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv6_pfcp,		IAVF_FDIR_INSET_PFCP,			IAVF_INSET_NONE},
-	{iavf_pattern_eth_ecpri,		IAVF_FDIR_INSET_ECPRI,			IAVF_INSET_NONE},
-	{iavf_pattern_eth_ipv4_ecpri,		IAVF_FDIR_INSET_ECPRI,			IAVF_INSET_NONE},
+	{iavf_pattern_ethertype,		 IAVF_FDIR_INSET_ETH,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4,			 IAVF_FDIR_INSET_ETH_IPV4,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_udp,		 IAVF_FDIR_INSET_ETH_IPV4_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_tcp,		 IAVF_FDIR_INSET_ETH_IPV4_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_sctp,		 IAVF_FDIR_INSET_ETH_IPV4_SCTP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6,			 IAVF_FDIR_INSET_ETH_IPV6,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_udp,		 IAVF_FDIR_INSET_ETH_IPV6_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_tcp,		 IAVF_FDIR_INSET_ETH_IPV6_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_sctp,		 IAVF_FDIR_INSET_ETH_IPV6_SCTP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu,		 IAVF_FDIR_INSET_IPV4_GTPU,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_ipv4,	 IAVF_FDIR_INSET_GTPU_IPV4,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_ipv4_udp,	 IAVF_FDIR_INSET_GTPU_IPV4_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_ipv4_tcp,	 IAVF_FDIR_INSET_GTPU_IPV4_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_eh,		 IAVF_FDIR_INSET_IPV4_GTPU_EH,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4,	 IAVF_FDIR_INSET_GTPU_IPV4,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4_udp, IAVF_FDIR_INSET_GTPU_IPV4_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4_tcp, IAVF_FDIR_INSET_GTPU_IPV4_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_gtpu,		 IAVF_FDIR_INSET_IPV6_GTPU,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_gtpu_eh,		 IAVF_FDIR_INSET_IPV6_GTPU_EH,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_l2tpv3,		 IAVF_FDIR_INSET_L2TPV3OIP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_l2tpv3,		 IAVF_FDIR_INSET_L2TPV3OIP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_esp,		 IAVF_FDIR_INSET_ESP,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_esp,		 IAVF_FDIR_INSET_ESP,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_ah,		 IAVF_FDIR_INSET_AH,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_ah,		 IAVF_FDIR_INSET_AH,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_udp_esp,		 IAVF_FDIR_INSET_IPV4_NATT_ESP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_udp_esp,		 IAVF_FDIR_INSET_IPV6_NATT_ESP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_pfcp,		 IAVF_FDIR_INSET_PFCP,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_pfcp,		 IAVF_FDIR_INSET_PFCP,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ecpri,		 IAVF_FDIR_INSET_ECPRI,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_ecpri,		 IAVF_FDIR_INSET_ECPRI,		IAVF_INSET_NONE},
 };
 
 static struct iavf_flow_parser iavf_fdir_parser;
@@ -534,6 +553,7 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 	enum rte_flow_item_type next_type;
 	uint16_t ether_type;
 
+	u8 tun_inner = 0;
 	int layer = 0;
 	struct virtchnl_proto_hdr *hdr;
 
@@ -650,6 +670,11 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, IPV4, DST);
 				}
 
+				if (tun_inner) {
+					input_set &= ~IAVF_PROT_IPV4_OUTER;
+					input_set |= IAVF_PROT_IPV4_INNER;
+				}
+
 				rte_memcpy(hdr->buffer,
 					&ipv4_spec->hdr,
 					sizeof(ipv4_spec->hdr));
@@ -736,6 +761,11 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, UDP, DST_PORT);
 				}
 
+				if (tun_inner) {
+					input_set &= ~IAVF_PROT_UDP_OUTER;
+					input_set |= IAVF_PROT_UDP_INNER;
+				}
+
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 					rte_memcpy(hdr->buffer,
 						&udp_spec->hdr,
@@ -778,6 +808,11 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 				if (tcp_mask->hdr.dst_port == UINT16_MAX) {
 					input_set |= IAVF_INSET_TCP_DST_PORT;
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, TCP, DST_PORT);
+				}
+
+				if (tun_inner) {
+					input_set &= ~IAVF_PROT_TCP_OUTER;
+					input_set |= IAVF_PROT_TCP_INNER;
 				}
 
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
@@ -857,6 +892,8 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 				rte_memcpy(hdr->buffer,
 					gtp_spec, sizeof(*gtp_spec));
 			}
+
+			tun_inner = 1;
 
 			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
 			break;

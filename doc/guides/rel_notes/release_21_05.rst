@@ -91,6 +91,12 @@ New Features
   * Added support for query Tx descriptor status.
   * Added support for query Rx descriptor status.
 
+* **Updated Intel iavf driver.**
+
+  Updated the Intel iavf driver with new features and improvements, including:
+
+  * Added flow filter to support GTPU inner L3/L4 fields matching.
+
 * **Updated NXP DPAA driver.**
 
   * Added support for shared ethernet interface.
