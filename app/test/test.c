@@ -134,8 +134,13 @@ main(int argc, char **argv)
 		goto out;
 	}
 
+	argv += ret;
+
+	prgname = argv[0];
+
 #ifdef RTE_LIB_TIMER
-	if (rte_timer_subsystem_init() < 0) {
+	ret = rte_timer_subsystem_init();
+	if (ret < 0 && ret != -EALREADY) {
 		ret = -1;
 		goto out;
 	}
@@ -145,10 +150,6 @@ main(int argc, char **argv)
 		ret = -1;
 		goto out;
 	}
-
-	argv += ret;
-
-	prgname = argv[0];
 
 	recursive_call = getenv(RECURSIVE_ENV_VAR);
 	if (recursive_call != NULL) {
