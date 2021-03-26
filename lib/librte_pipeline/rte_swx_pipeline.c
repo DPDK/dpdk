@@ -281,8 +281,11 @@ enum instruction_type {
 	/* rx m.port_in */
 	INSTR_RX,
 
-	/* tx m.port_out */
-	INSTR_TX,
+	/* tx port_out
+	 * port_out = MI
+	 */
+	INSTR_TX,   /* port_out = M */
+	INSTR_TX_I, /* port_out = I */
 
 	/* extract h.header */
 	INSTR_HDR_EXTRACT,
@@ -582,9 +585,15 @@ struct instr_operand {
 
 struct instr_io {
 	struct {
-		uint8_t offset;
-		uint8_t n_bits;
-		uint8_t pad[2];
+		union {
+			struct {
+				uint8_t offset;
+				uint8_t n_bits;
+				uint8_t pad[2];
+			};
+
+			uint32_t val;
+		};
 	} io;
 
 	struct {
@@ -2490,6 +2499,19 @@ metadata_free(struct rte_swx_pipeline *p)
  * Instruction.
  */
 static int
+instruction_is_tx(enum instruction_type type)
+{
+	switch (type) {
+	case INSTR_TX:
+	case INSTR_TX_I:
+		return 1;
+
+	default:
+		return 0;
+	}
+}
+
+static int
 instruction_is_jmp(struct instruction *instr)
 {
 	switch (instr->type) {
@@ -2731,16 +2753,42 @@ instr_tx_translate(struct rte_swx_pipeline *p,
 		   struct instruction *instr,
 		   struct instruction_data *data __rte_unused)
 {
+	char *port = tokens[1];
 	struct field *f;
+	uint32_t port_val;
 
 	CHECK(n_tokens == 2, EINVAL);
 
-	f = metadata_field_parse(p, tokens[1]);
-	CHECK(f, EINVAL);
+	f = metadata_field_parse(p, port);
+	if (f) {
+		instr->type = INSTR_TX;
+		instr->io.io.offset = f->offset / 8;
+		instr->io.io.n_bits = f->n_bits;
+		return 0;
+	}
 
-	instr->type = INSTR_TX;
-	instr->io.io.offset = f->offset / 8;
-	instr->io.io.n_bits = f->n_bits;
+	/* TX_I. */
+	port_val = strtoul(port, &port, 0);
+	CHECK(!port[0], EINVAL);
+
+	instr->type = INSTR_TX_I;
+	instr->io.io.val = port_val;
+	return 0;
+}
+
+static int
+instr_drop_translate(struct rte_swx_pipeline *p,
+		     struct action *action __rte_unused,
+		     char **tokens __rte_unused,
+		     int n_tokens,
+		     struct instruction *instr,
+		     struct instruction_data *data __rte_unused)
+{
+	CHECK(n_tokens == 1, EINVAL);
+
+	/* TX_I. */
+	instr->type = INSTR_TX_I;
+	instr->io.io.val = p->n_ports_out - 1;
 	return 0;
 }
 
@@ -2814,6 +2862,30 @@ instr_tx_exec(struct rte_swx_pipeline *p)
 	struct rte_swx_pkt *pkt = &t->pkt;
 
 	TRACE("[Thread %2u]: tx 1 pkt to port %u\n",
+	      p->thread_id,
+	      (uint32_t)port_id);
+
+	/* Headers. */
+	emit_handler(t);
+
+	/* Packet. */
+	port->pkt_tx(port->obj, pkt);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
+}
+
+static inline void
+instr_tx_i_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint64_t port_id = ip->io.io.val;
+	struct port_out_runtime *port = &p->out[port_id];
+	struct rte_swx_pkt *pkt = &t->pkt;
+
+	TRACE("[Thread %2u]: tx (i) 1 pkt to port %u\n",
 	      p->thread_id,
 	      (uint32_t)port_id);
 
@@ -7301,6 +7373,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					  instr,
 					  data);
 
+	if (!strcmp(tokens[tpos], "drop"))
+		return instr_drop_translate(p,
+					    action,
+					    &tokens[tpos],
+					    n_tokens - tpos,
+					    instr,
+					    data);
+
 	if (!strcmp(tokens[tpos], "extract"))
 		return instr_hdr_extract_translate(p,
 						   action,
@@ -7687,7 +7767,7 @@ instr_verify(struct rte_swx_pipeline *p __rte_unused,
 		for (i = 0; i < n_instructions; i++) {
 			type = instr[i].type;
 
-			if (type == INSTR_TX)
+			if (instruction_is_tx(type))
 				break;
 		}
 		CHECK(i < n_instructions, EINVAL);
@@ -7696,7 +7776,7 @@ instr_verify(struct rte_swx_pipeline *p __rte_unused,
 		 * jump.
 		 */
 		type = instr[n_instructions - 1].type;
-		CHECK((type == INSTR_TX) || (type == INSTR_JMP), EINVAL);
+		CHECK(instruction_is_tx(type) || (type == INSTR_JMP), EINVAL);
 	}
 
 	if (a) {
@@ -7707,7 +7787,7 @@ instr_verify(struct rte_swx_pipeline *p __rte_unused,
 		for (i = 0; i < n_instructions; i++) {
 			type = instr[i].type;
 
-			if ((type == INSTR_RETURN) || (type == INSTR_TX))
+			if ((type == INSTR_RETURN) || instruction_is_tx(type))
 				break;
 		}
 		CHECK(i < n_instructions, EINVAL);
@@ -7787,7 +7867,7 @@ instr_pattern_emit_many_tx_detect(struct instruction *instr,
 	if (!i)
 		return 0;
 
-	if (instr[i].type != INSTR_TX)
+	if (!instruction_is_tx(instr[i].type))
 		return 0;
 
 	if (data[i].n_users)
@@ -8024,6 +8104,7 @@ typedef void (*instr_exec_t)(struct rte_swx_pipeline *);
 static instr_exec_t instruction_table[] = {
 	[INSTR_RX] = instr_rx_exec,
 	[INSTR_TX] = instr_tx_exec,
+	[INSTR_TX_I] = instr_tx_i_exec,
 
 	[INSTR_HDR_EXTRACT] = instr_hdr_extract_exec,
 	[INSTR_HDR_EXTRACT2] = instr_hdr_extract2_exec,

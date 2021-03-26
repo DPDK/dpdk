@@ -134,8 +134,7 @@ action vxlan_encap args instanceof vxlan_encap_args_t {
 }
 
 action drop args none {
-	mov m.port_out 4
-	tx m.port_out
+	drop
 }
 
 //
