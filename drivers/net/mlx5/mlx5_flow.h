@@ -1082,8 +1082,6 @@ struct mlx5_shared_action_rss {
 	/**< Hash RX queues (hrxq, hrxq_tunnel fields) indirection table. */
 	uint32_t hrxq[MLX5_RSS_HASH_FIELDS_LEN];
 	/**< Hash RX queue indexes mapped to mlx5_rss_hash_fields */
-	uint32_t hrxq_tunnel[MLX5_RSS_HASH_FIELDS_LEN];
-	/**< Hash RX queue indexes for tunneled RSS */
 	rte_spinlock_t action_rss_sl; /**< Shared RSS action spinlock. */
 };
 

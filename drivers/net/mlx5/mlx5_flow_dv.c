@@ -10675,10 +10675,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 static int
 __flow_dv_action_rss_hrxq_set(struct mlx5_shared_action_rss *action,
 			      const uint64_t hash_fields,
-			      const int tunnel,
 			      uint32_t hrxq_idx)
 {
-	uint32_t *hrxqs = tunnel ? action->hrxq : action->hrxq_tunnel;
+	uint32_t *hrxqs = action->hrxq;
 
 	switch (hash_fields & ~IBV_RX_HASH_INNER) {
 	case MLX5_RSS_HASH_IPV4:
@@ -10725,14 +10724,12 @@ __flow_dv_action_rss_hrxq_set(struct mlx5_shared_action_rss *action,
  */
 static uint32_t
 __flow_dv_action_rss_hrxq_lookup(struct rte_eth_dev *dev, uint32_t idx,
-				 const uint64_t hash_fields,
-				 const int tunnel)
+				 const uint64_t hash_fields)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_shared_action_rss *shared_rss =
 	    mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
-	const uint32_t *hrxqs = tunnel ? shared_rss->hrxq :
-							shared_rss->hrxq_tunnel;
+	const uint32_t *hrxqs = shared_rss->hrxq;
 
 	switch (hash_fields & ~IBV_RX_HASH_INNER) {
 	case MLX5_RSS_HASH_IPV4:
@@ -10821,9 +10818,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 			hrxq_idx = __flow_dv_action_rss_hrxq_lookup(dev,
 						rss_desc->shared_rss,
-						dev_flow->hash_fields,
-						!!(dh->layers &
-						MLX5_FLOW_LAYER_TUNNEL));
+						dev_flow->hash_fields);
 			if (hrxq_idx)
 				hrxq = mlx5_ipool_get
 					(priv->sh->ipool[MLX5_IPOOL_HRXQ],
@@ -11415,8 +11410,7 @@ static int
 __flow_dv_action_rss_hrxqs_release(struct rte_eth_dev *dev,
 				 struct mlx5_shared_action_rss *shared_rss)
 {
-	return __flow_dv_hrxqs_release(dev, &shared_rss->hrxq) +
-		__flow_dv_hrxqs_release(dev, &shared_rss->hrxq_tunnel);
+	return __flow_dv_hrxqs_release(dev, &shared_rss->hrxq);
 }
 
 /**
@@ -11462,23 +11456,25 @@ __flow_dv_action_rss_setup(struct rte_eth_dev *dev,
 	for (i = 0; i < MLX5_RSS_HASH_FIELDS_LEN; i++) {
 		uint32_t hrxq_idx;
 		uint64_t hash_fields = mlx5_rss_hash_fields[i];
-		int tunnel;
+		int tunnel = 0;
 
-		for (tunnel = 0; tunnel < 2; tunnel++) {
-			rss_desc.tunnel = tunnel;
-			rss_desc.hash_fields = hash_fields;
-			hrxq_idx = mlx5_hrxq_get(dev, &rss_desc);
-			if (!hrxq_idx) {
-				rte_flow_error_set
-					(error, rte_errno,
-					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					 "cannot get hash queue");
-				goto error_hrxq_new;
-			}
-			err = __flow_dv_action_rss_hrxq_set
-				(shared_rss, hash_fields, tunnel, hrxq_idx);
-			MLX5_ASSERT(!err);
+		if (shared_rss->origin.level > 1) {
+			hash_fields |= IBV_RX_HASH_INNER;
+			tunnel = 1;
 		}
+		rss_desc.tunnel = tunnel;
+		rss_desc.hash_fields = hash_fields;
+		hrxq_idx = mlx5_hrxq_get(dev, &rss_desc);
+		if (!hrxq_idx) {
+			rte_flow_error_set
+				(error, rte_errno,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				 "cannot get hash queue");
+			goto error_hrxq_new;
+		}
+		err = __flow_dv_action_rss_hrxq_set
+			(shared_rss, hash_fields, hrxq_idx);
+		MLX5_ASSERT(!err);
 	}
 	return 0;
 error_hrxq_new:
