@@ -6,13 +6,12 @@
 #define _RTE_TELEMETRY_INTERNAL_H_
 
 #include <rte_compat.h>
+#include <rte_os.h>
 #include "rte_telemetry.h"
 
 /**
  * @internal
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
-
+ *
  * @file
  * RTE Telemetry Legacy and internal definitions
  *
@@ -84,8 +83,6 @@ rte_telemetry_legacy_register(const char *cmd,
 		enum rte_telemetry_legacy_data_req data_req,
 		telemetry_legacy_cb fn);
 
-#ifdef RTE_HAS_CPUSET
-
 /**
  * @internal
  * Log function type, to allow passing as parameter if necessary
@@ -114,7 +111,5 @@ __rte_internal
 int
 rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset,
 		rte_log_fn log_fn, uint32_t registered_logtype);
-
-#endif /* RTE_HAS_CPUSET */
 
 #endif
