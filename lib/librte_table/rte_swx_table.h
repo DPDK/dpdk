@@ -101,10 +101,11 @@ struct rte_swx_table_entry {
 	/** Action ID for the current entry. */
 	uint64_t action_id;
 
-	/** Action data for the current entry. Its size is defined by the action
-	 * specified by the *action_id*. It must be NULL when the action data
-	 * size of the *action_id* action is NULL. It must never exceed the
-	 * *action_data_size* of the table.
+	/** Action data for the current entry. Considering S as the action data
+	 * size of the *action_id* action, which must be less than or equal to
+	 * the table *action_data_size*, the *action_data* field must point to
+	 * an array of S bytes when S is non-zero. The *action_data* field is
+	 * ignored when S is zero.
 	 */
 	uint8_t *action_data;
 };

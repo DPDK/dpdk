@@ -338,8 +338,7 @@ table_entry_check(struct rte_swx_ctl_pipeline *ctl,
 
 		/* action_data. */
 		a = &ctl->actions[entry->action_id];
-		CHECK((a->data_size && entry->action_data) ||
-		      (!a->data_size && !entry->action_data), EINVAL);
+		CHECK(!(a->data_size && !entry->action_data), EINVAL);
 	}
 
 	return 0;
