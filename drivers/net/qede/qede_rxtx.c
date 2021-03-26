@@ -917,6 +917,12 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 		nb_segs = mbuf->nb_segs;
 		remaining -= nb_segs;
 
+		/* Prefetch the next mbuf. Note that at least the last 4 mbufs
+		 * that are prefetched will not be used in the current call.
+		 */
+		rte_mbuf_prefetch_part1(txq->sw_tx_ring[(idx + 4) & mask]);
+		rte_mbuf_prefetch_part2(txq->sw_tx_ring[(idx + 4) & mask]);
+
 		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
 
 		while (nb_segs) {
