@@ -96,6 +96,19 @@
 	IAVF_INSET_IPV6_SRC | IAVF_INSET_IPV6_DST | \
 	IAVF_INSET_GTPU_TEID)
 
+#define IAVF_FDIR_INSET_GTPU_IPV6 (\
+	IAVF_INSET_TUN_IPV6_SRC | IAVF_INSET_TUN_IPV6_DST | \
+	IAVF_INSET_TUN_IPV6_NEXT_HDR | IAVF_INSET_TUN_IPV6_TC | \
+	IAVF_INSET_TUN_IPV6_HOP_LIMIT)
+
+#define IAVF_FDIR_INSET_GTPU_IPV6_UDP (\
+	IAVF_FDIR_INSET_GTPU_IPV6 | \
+	IAVF_INSET_TUN_UDP_SRC_PORT | IAVF_INSET_TUN_UDP_DST_PORT)
+
+#define IAVF_FDIR_INSET_GTPU_IPV6_TCP (\
+	IAVF_FDIR_INSET_GTPU_IPV6 | \
+	IAVF_INSET_TUN_TCP_SRC_PORT | IAVF_INSET_TUN_TCP_DST_PORT)
+
 #define IAVF_FDIR_INSET_IPV6_GTPU_EH (\
 	IAVF_INSET_IPV6_SRC | IAVF_INSET_IPV6_DST | \
 	IAVF_INSET_GTPU_TEID | IAVF_INSET_GTPU_QFI)
@@ -137,10 +150,16 @@ static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_eth_ipv4_gtpu_ipv4,	 IAVF_FDIR_INSET_GTPU_IPV4,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_gtpu_ipv4_udp,	 IAVF_FDIR_INSET_GTPU_IPV4_UDP,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_gtpu_ipv4_tcp,	 IAVF_FDIR_INSET_GTPU_IPV4_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_ipv6,	 IAVF_FDIR_INSET_GTPU_IPV6,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_ipv6_udp,	 IAVF_FDIR_INSET_GTPU_IPV6_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_ipv6_tcp,	 IAVF_FDIR_INSET_GTPU_IPV6_TCP,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_gtpu_eh,		 IAVF_FDIR_INSET_IPV4_GTPU_EH,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4,	 IAVF_FDIR_INSET_GTPU_IPV4,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4_udp, IAVF_FDIR_INSET_GTPU_IPV4_UDP,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4_tcp, IAVF_FDIR_INSET_GTPU_IPV4_TCP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_eh_ipv6,	 IAVF_FDIR_INSET_GTPU_IPV6,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_eh_ipv6_udp, IAVF_FDIR_INSET_GTPU_IPV6_UDP,	IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_eh_ipv6_tcp, IAVF_FDIR_INSET_GTPU_IPV6_TCP,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv6_gtpu,		 IAVF_FDIR_INSET_IPV6_GTPU,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv6_gtpu_eh,		 IAVF_FDIR_INSET_IPV6_GTPU_EH,	IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_l2tpv3,		 IAVF_FDIR_INSET_L2TPV3OIP,	IAVF_INSET_NONE},
@@ -725,6 +744,11 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 					RTE_DIM(ipv6_mask->hdr.dst_addr))) {
 					input_set |= IAVF_INSET_IPV6_DST;
 					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, IPV6, DST);
+				}
+
+				if (tun_inner) {
+					input_set &= ~IAVF_PROT_IPV6_OUTER;
+					input_set |= IAVF_PROT_IPV6_INNER;
 				}
 
 				rte_memcpy(hdr->buffer,
