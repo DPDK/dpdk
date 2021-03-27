@@ -7609,10 +7609,11 @@ static void get_tunnel_miss(struct rte_eth_dev *dev, void *x)
 
 	rte_spinlock_unlock(&thub->sl);
 	ctx->tunnel = mlx5_flow_tunnel_allocate(dev, ctx->app_tunnel);
-	ctx->tunnel->refctn = 1;
 	rte_spinlock_lock(&thub->sl);
-	if (ctx->tunnel)
+	if (ctx->tunnel) {
+		ctx->tunnel->refctn = 1;
 		LIST_INSERT_HEAD(&thub->tunnels, ctx->tunnel, chain);
+	}
 }
 
 
