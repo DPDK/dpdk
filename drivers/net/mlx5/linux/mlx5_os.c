@@ -710,11 +710,15 @@ mlx5_representor_match(struct mlx5_dev_spawn_data *spawn,
 	struct mlx5_switch_info *switch_info = &spawn->info;
 	unsigned int p, f;
 	uint16_t id;
-	uint16_t repr_id = mlx5_representor_id_encode(switch_info);
+	uint16_t repr_id = mlx5_representor_id_encode(switch_info,
+						      eth_da->type);
 
 	switch (eth_da->type) {
 	case RTE_ETH_REPRESENTOR_SF:
-		if (switch_info->name_type != MLX5_PHYS_PORT_NAME_TYPE_PFSF) {
+		if (!(spawn->info.port_name == -1 &&
+		      switch_info->name_type ==
+				MLX5_PHYS_PORT_NAME_TYPE_PFHPF) &&
+		    switch_info->name_type != MLX5_PHYS_PORT_NAME_TYPE_PFSF) {
 			rte_errno = EBUSY;
 			return false;
 		}
@@ -742,7 +746,8 @@ mlx5_representor_match(struct mlx5_dev_spawn_data *spawn,
 		if (spawn->pf_bond < 0) {
 			/* For non-LAG mode, allow and ignore pf. */
 			switch_info->pf_num = eth_da->ports[p];
-			repr_id = mlx5_representor_id_encode(switch_info);
+			repr_id = mlx5_representor_id_encode(switch_info,
+							     eth_da->type);
 		}
 		for (f = 0; f < eth_da->nb_representor_ports; ++f) {
 			id = MLX5_REPRESENTOR_ID
@@ -1107,7 +1112,8 @@ err_secondary:
 	priv->vport_id = switch_info->representor ?
 			 switch_info->port_name + 1 : -1;
 #endif
-	priv->representor_id = mlx5_representor_id_encode(switch_info);
+	priv->representor_id = mlx5_representor_id_encode(switch_info,
+							  eth_da->type);
 	/*
 	 * Look for sibling devices in order to reuse their switch domain
 	 * if any, otherwise allocate one.

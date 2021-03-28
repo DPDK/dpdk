@@ -363,12 +363,15 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
  *
  * @param info
  *   Port switch info.
+ * @param hpf_type
+ *   Use this type if port is HPF.
  *
  * @return
  *   Encoded representor ID.
  */
 uint16_t
-mlx5_representor_id_encode(const struct mlx5_switch_info *info)
+mlx5_representor_id_encode(const struct mlx5_switch_info *info,
+			   enum rte_eth_representor_type hpf_type)
 {
 	enum rte_eth_representor_type type = RTE_ETH_REPRESENTOR_VF;
 	uint16_t repr = info->port_name;
@@ -377,8 +380,10 @@ mlx5_representor_id_encode(const struct mlx5_switch_info *info)
 		return UINT16_MAX;
 	if (info->name_type == MLX5_PHYS_PORT_NAME_TYPE_PFSF)
 		type = RTE_ETH_REPRESENTOR_SF;
-	if (info->name_type == MLX5_PHYS_PORT_NAME_TYPE_PFHPF)
+	if (info->name_type == MLX5_PHYS_PORT_NAME_TYPE_PFHPF) {
+		type = hpf_type;
 		repr = UINT16_MAX;
+	}
 	return MLX5_REPRESENTOR_ID(info->pf_num, type, repr);
 }
 
@@ -403,7 +408,7 @@ mlx5_representor_info_get(struct rte_eth_dev *dev,
 			  struct rte_eth_representor_info *info)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	int n_type = 3; /* Number of representor types, VF, HPF and SF. */
+	int n_type = 4; /* Representor types, VF, HPF@VF, SF and HPF@SF. */
 	int n_pf = 2; /* Number of PFs. */
 	int i = 0, pf;
 
@@ -424,7 +429,7 @@ mlx5_representor_info_get(struct rte_eth_dev *dev,
 		snprintf(info->ranges[i].name,
 			 sizeof(info->ranges[i].name), "pf%dvf", pf);
 		i++;
-		/* HPF range. */
+		/* HPF range of VF type. */
 		info->ranges[i].type = RTE_ETH_REPRESENTOR_VF;
 		info->ranges[i].controller = 0;
 		info->ranges[i].pf = pf;
@@ -443,6 +448,18 @@ mlx5_representor_info_get(struct rte_eth_dev *dev,
 		info->ranges[i].vf = 0;
 		info->ranges[i].id_base =
 			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, 0);
+		info->ranges[i].id_end =
+			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, -1);
+		snprintf(info->ranges[i].name,
+			 sizeof(info->ranges[i].name), "pf%dsf", pf);
+		i++;
+		/* HPF range of SF type. */
+		info->ranges[i].type = RTE_ETH_REPRESENTOR_SF;
+		info->ranges[i].controller = 0;
+		info->ranges[i].pf = pf;
+		info->ranges[i].vf = UINT16_MAX;
+		info->ranges[i].id_base =
+			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, -1);
 		info->ranges[i].id_end =
 			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, -1);
 		snprintf(info->ranges[i].name,
