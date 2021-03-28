@@ -154,6 +154,7 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	uint16_t port_id;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_priv *pf_priv;
 
 	/*
 	 * Configuring the VF instead of its representor,
@@ -162,17 +163,21 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	if (priv->representor && !mlx5_is_hpf(dev)) {
 		DRV_LOG(DEBUG, "VF represented by port %u setting primary MAC address",
 			dev->data->port_id);
+		if (priv->pf_bond >= 0) {
+			/* Bonding, get owner PF ifindex from shared data. */
+			return mlx5_os_vf_mac_addr_modify
+			       (priv,
+				priv->sh->bond.ports[priv->pf_bond].ifindex,
+				mac_addr,
+				MLX5_REPRESENTOR_REPR(priv->representor_id));
+		}
 		RTE_ETH_FOREACH_DEV_SIBLING(port_id, dev->data->port_id) {
-			priv = rte_eth_devices[port_id].data->dev_private;
-			if (priv->master == 1) {
-				priv = dev->data->dev_private;
+			pf_priv = rte_eth_devices[port_id].data->dev_private;
+			if (pf_priv->master == 1)
 				return mlx5_os_vf_mac_addr_modify
-				       (priv,
-					mlx5_ifindex(&rte_eth_devices[port_id]),
-					mac_addr,
+				       (priv, pf_priv->if_index, mac_addr,
 					MLX5_REPRESENTOR_REPR
 						(priv->representor_id));
-			}
 		}
 		rte_errno = -ENOTSUP;
 		return rte_errno;
