@@ -1010,6 +1010,8 @@ mlx5_sysfs_check_switch_info(bool device_dir,
 	case MLX5_PHYS_PORT_NAME_TYPE_PFHPF:
 		/* Fallthrough */
 	case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
+		/* Fallthrough */
+	case MLX5_PHYS_PORT_NAME_TYPE_PFSF:
 		/* New representors naming schema. */
 		switch_info->representor = 1;
 		break;

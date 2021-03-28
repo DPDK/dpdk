@@ -378,6 +378,106 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 }
 
 /**
+ * Calculate representor ID from port switch info.
+ *
+ * Uint16 representor ID bits definition:
+ *   pf: 2
+ *   type: 2
+ *   vf/sf: 12
+ *
+ * @param info
+ *   Port switch info.
+ *
+ * @return
+ *   Encoded representor ID.
+ */
+uint16_t
+mlx5_representor_id_encode(const struct mlx5_switch_info *info)
+{
+	enum rte_eth_representor_type type = RTE_ETH_REPRESENTOR_VF;
+	uint16_t repr = info->port_name;
+
+	if (info->representor == 0)
+		return UINT16_MAX;
+	if (info->name_type == MLX5_PHYS_PORT_NAME_TYPE_PFSF)
+		type = RTE_ETH_REPRESENTOR_SF;
+	if (info->name_type == MLX5_PHYS_PORT_NAME_TYPE_PFHPF)
+		repr = UINT16_MAX;
+	return MLX5_REPRESENTOR_ID(info->pf_num, type, repr);
+}
+
+/**
+ * DPDK callback to get information about representor.
+ *
+ * Representor ID bits definition:
+ *   vf/sf: 12
+ *   type: 2
+ *   pf: 2
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] info
+ *   Nullable info structure output buffer.
+ *
+ * @return
+ *   negative on error, or the number of representor ranges.
+ */
+int
+mlx5_representor_info_get(struct rte_eth_dev *dev,
+			  struct rte_eth_representor_info *info)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int n_type = 3; /* Number of representor types, VF, HPF and SF. */
+	int n_pf = 2; /* Number of PFs. */
+	int i = 0, pf;
+
+	if (info == NULL)
+		goto out;
+	info->controller = 0;
+	info->pf = priv->pf_bond >= 0 ? priv->pf_bond : 0;
+	for (pf = 0; pf < n_pf; ++pf) {
+		/* VF range. */
+		info->ranges[i].type = RTE_ETH_REPRESENTOR_VF;
+		info->ranges[i].controller = 0;
+		info->ranges[i].pf = pf;
+		info->ranges[i].vf = 0;
+		info->ranges[i].id_base =
+			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, 0);
+		info->ranges[i].id_end =
+			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, -1);
+		snprintf(info->ranges[i].name,
+			 sizeof(info->ranges[i].name), "pf%dvf", pf);
+		i++;
+		/* HPF range. */
+		info->ranges[i].type = RTE_ETH_REPRESENTOR_VF;
+		info->ranges[i].controller = 0;
+		info->ranges[i].pf = pf;
+		info->ranges[i].vf = UINT16_MAX;
+		info->ranges[i].id_base =
+			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, -1);
+		info->ranges[i].id_end =
+			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, -1);
+		snprintf(info->ranges[i].name,
+			 sizeof(info->ranges[i].name), "pf%dvf", pf);
+		i++;
+		/* SF range. */
+		info->ranges[i].type = RTE_ETH_REPRESENTOR_SF;
+		info->ranges[i].controller = 0;
+		info->ranges[i].pf = pf;
+		info->ranges[i].vf = 0;
+		info->ranges[i].id_base =
+			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, 0);
+		info->ranges[i].id_end =
+			MLX5_REPRESENTOR_ID(pf, info->ranges[i].type, -1);
+		snprintf(info->ranges[i].name,
+			 sizeof(info->ranges[i].name), "pf%dsf", pf);
+		i++;
+	}
+out:
+	return n_type * n_pf;
+}
+
+/**
  * Get firmware version of a device.
  *
  * @param dev

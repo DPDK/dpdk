@@ -1043,6 +1043,15 @@ int mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh);
 /* mlx5_ethdev.c */
 
 int mlx5_dev_configure(struct rte_eth_dev *dev);
+int mlx5_representor_info_get(struct rte_eth_dev *dev,
+			      struct rte_eth_representor_info *info);
+#define MLX5_REPRESENTOR_ID(pf, type, repr) \
+		(((pf) << 14) + ((type) << 12) + ((repr) & 0xfff))
+#define MLX5_REPRESENTOR_REPR(repr_id) \
+		((repr_id) & 0xfff)
+#define MLX5_REPRESENTOR_TYPE(repr_id) \
+		(((repr_id) >> 12) & 3)
+uint16_t mlx5_representor_id_encode(const struct mlx5_switch_info *info);
 int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver,
 			size_t fw_size);
 int mlx5_dev_infos_get(struct rte_eth_dev *dev,
