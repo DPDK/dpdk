@@ -48,10 +48,6 @@
 #define MLX5_PMD_SOFT_COUNTERS 1
 #endif
 
-/* Switch port ID parameters for bonding configurations. */
-#define MLX5_PORT_ID_BONDING_PF_MASK 0xf
-#define MLX5_PORT_ID_BONDING_PF_SHIFT 12
-
 /* Alarm timeout. */
 #define MLX5_ALARM_TIMEOUT_US 100000
 

@@ -938,11 +938,11 @@ Driver options
 
   For instance, to probe VF port representors 0 through 2::
 
-    representor=vf[0-2]
+    <PCI_BDF>,representor=vf[0-2]
 
   To probe SF port representors 0 through 2::
 
-    representor=sf[0-2]
+    <PCI_BDF>,representor=sf[0-2]
 
 - ``max_dump_files_num`` parameter [int]
 

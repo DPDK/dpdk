@@ -356,6 +356,26 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 #define MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE 4096
 
 /**
+ * Decide whether representor ID is a HPF(host PF) port on BF2.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   Non-zero if HPF, otherwise 0.
+ */
+bool
+mlx5_is_hpf(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint16_t repr = MLX5_REPRESENTOR_REPR(priv->representor_id);
+	int type = MLX5_REPRESENTOR_TYPE(priv->representor_id);
+
+	return priv->representor != 0 && type == RTE_ETH_REPRESENTOR_VF &&
+	       MLX5_REPRESENTOR_REPR(-1) == repr;
+}
+
+/**
  * Initialize the ASO aging management structure.
  *
  * @param[in] sh
