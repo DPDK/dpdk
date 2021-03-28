@@ -925,6 +925,8 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		rte_errno  = ENOMEM;
 		goto exit;
 	}
+	if (spawn->bond_info)
+		sh->bond = *spawn->bond_info;
 	err = mlx5_os_open_device(spawn, config, sh);
 	if (!sh->ctx)
 		goto error;

@@ -150,8 +150,8 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
 
 	MLX5_ASSERT(priv);
 	MLX5_ASSERT(priv->sh);
-	if (priv->bond_ifindex > 0) {
-		memcpy(ifname, priv->bond_name, MLX5_NAMESIZE);
+	if (priv->master && priv->sh->bond.ifindex > 0) {
+		memcpy(ifname, priv->sh->bond.ifname, MLX5_NAMESIZE);
 		return 0;
 	}
 	ifindex = mlx5_ifindex(dev);

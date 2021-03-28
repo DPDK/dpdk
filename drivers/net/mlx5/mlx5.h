@@ -115,6 +115,7 @@ struct mlx5_dev_spawn_data {
 	void *phys_dev; /**< Associated physical device. */
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
 	struct rte_pci_device *pci_dev; /**< Backend PCI device. */
+	struct mlx5_bond_info *bond_info;
 };
 
 /** Key string for IPC. */
@@ -671,6 +672,21 @@ struct mlx5_flex_parser_profiles {
 	void *obj;		/* Flex parser node object. */
 };
 
+/* Max member ports per bonding device. */
+#define MLX5_BOND_MAX_PORTS 2
+
+/* Bonding device information. */
+struct mlx5_bond_info {
+	int n_port; /* Number of bond member ports. */
+	uint32_t ifindex;
+	char ifname[MLX5_NAMESIZE + 1];
+	struct {
+		char ifname[MLX5_NAMESIZE + 1];
+		uint32_t ifindex;
+		struct rte_pci_addr pci_addr;
+	} ports[MLX5_BOND_MAX_PORTS];
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -684,6 +700,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t sq_ts_format:2; /* SQ timestamp formats supported. */
 	uint32_t qp_ts_format:2; /* QP timestamp formats supported. */
 	uint32_t max_port; /* Maximal IB device port index. */
+	struct mlx5_bond_info bond; /* Bonding information. */
 	void *ctx; /* Verbs/DV/DevX context. */
 	void *pd; /* Protection Domain. */
 	uint32_t pdn; /* Protection Domain number. */
@@ -935,10 +952,8 @@ struct mlx5_priv {
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
 	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
 	int32_t representor_id; /* -1 if not a representor. */
-	int32_t pf_bond; /* >=0 means PF index in bonding configuration. */
+	int32_t pf_bond; /* >=0, representor owner PF index in bonding. */
 	unsigned int if_index; /* Associated kernel network device index. */
-	uint32_t bond_ifindex; /**< Bond interface index. */
-	char bond_name[MLX5_NAMESIZE]; /**< Bond interface name. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */

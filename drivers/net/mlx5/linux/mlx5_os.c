@@ -1467,19 +1467,6 @@ err_secondary:
 	 */
 	MLX5_ASSERT(spawn->ifindex);
 	priv->if_index = spawn->ifindex;
-	if (priv->pf_bond >= 0 && priv->master) {
-		/* Get bond interface info */
-		err = mlx5_sysfs_bond_info(priv->if_index,
-				     &priv->bond_ifindex,
-				     priv->bond_name);
-		if (err)
-			DRV_LOG(ERR, "unable to get bond info: %s",
-				strerror(rte_errno));
-		else
-			DRV_LOG(INFO, "PF device %u, bond device %u(%s)",
-				priv->if_index, priv->bond_ifindex,
-				priv->bond_name);
-	}
 	eth_dev->data->dev_private = priv;
 	priv->dev_data = eth_dev->data;
 	eth_dev->data->mac_addrs = priv->mac;
@@ -1748,6 +1735,8 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
  *   Netlink RDMA group socket handle.
  * @param[in] owner
  *   Rerepsentor owner PF index.
+ * @param[out] bond_info
+ *   Pointer to bonding information.
  *
  * @return
  *   negative value if no bonding device found, otherwise
@@ -1756,19 +1745,22 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
 static int
 mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 			   const struct rte_pci_addr *pci_dev,
-			   int nl_rdma, uint16_t owner)
+			   int nl_rdma, uint16_t owner,
+			   struct mlx5_bond_info *bond_info)
 {
 	char ifname[IF_NAMESIZE + 1];
 	unsigned int ifindex;
 	unsigned int np, i;
-	FILE *file = NULL;
+	FILE *bond_file = NULL, *file;
 	int pf = -1;
+	int ret;
 
 	/*
 	 * Try to get master device name. If something goes
 	 * wrong suppose the lack of kernel support and no
 	 * bonding devices.
 	 */
+	memset(bond_info, 0, sizeof(*bond_info));
 	if (nl_rdma < 0)
 		return -1;
 	if (!strstr(ibv_dev->name, "bond"))
@@ -1792,15 +1784,15 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 		/* Try to read bonding slave names from sysfs. */
 		MKSTR(slaves,
 		      "/sys/class/net/%s/master/bonding/slaves", ifname);
-		file = fopen(slaves, "r");
-		if (file)
+		bond_file = fopen(slaves, "r");
+		if (bond_file)
 			break;
 	}
-	if (!file)
+	if (!bond_file)
 		return -1;
 	/* Use safe format to check maximal buffer length. */
 	MLX5_ASSERT(atol(RTE_STR(IF_NAMESIZE)) == IF_NAMESIZE);
-	while (fscanf(file, "%" RTE_STR(IF_NAMESIZE) "s", ifname) == 1) {
+	while (fscanf(bond_file, "%" RTE_STR(IF_NAMESIZE) "s", ifname) == 1) {
 		char tmp_str[IF_NAMESIZE + 32];
 		struct rte_pci_addr pci_addr;
 		struct mlx5_switch_info	info;
@@ -1813,13 +1805,7 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 					 " for netdev \"%s\"", ifname);
 			continue;
 		}
-		if (pci_dev->domain != pci_addr.domain ||
-		    pci_dev->bus != pci_addr.bus ||
-		    pci_dev->devid != pci_addr.devid ||
-		    pci_dev->function + owner != pci_addr.function)
-			continue;
 		/* Slave interface PCI address match found. */
-		fclose(file);
 		snprintf(tmp_str, sizeof(tmp_str),
 			 "/sys/class/net/%s/phys_port_name", ifname);
 		file = fopen(tmp_str, "rb");
@@ -1828,13 +1814,52 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 		info.name_type = MLX5_PHYS_PORT_NAME_TYPE_NOTSET;
 		if (fscanf(file, "%32s", tmp_str) == 1)
 			mlx5_translate_port_name(tmp_str, &info);
-		if (info.name_type == MLX5_PHYS_PORT_NAME_TYPE_LEGACY ||
-		    info.name_type == MLX5_PHYS_PORT_NAME_TYPE_UPLINK)
-			pf = info.port_name;
-		break;
-	}
-	if (file)
 		fclose(file);
+		/* Only process PF ports. */
+		if (info.name_type != MLX5_PHYS_PORT_NAME_TYPE_LEGACY &&
+		    info.name_type != MLX5_PHYS_PORT_NAME_TYPE_UPLINK)
+			continue;
+		/* Check max bonding member. */
+		if (info.port_name >= MLX5_BOND_MAX_PORTS) {
+			DRV_LOG(WARNING, "bonding index out of range, "
+				"please increase MLX5_BOND_MAX_PORTS: %s",
+				tmp_str);
+			break;
+		}
+		/* Match PCI address. */
+		if (pci_dev->domain == pci_addr.domain &&
+		    pci_dev->bus == pci_addr.bus &&
+		    pci_dev->devid == pci_addr.devid &&
+		    pci_dev->function + owner == pci_addr.function)
+			pf = info.port_name;
+		/* Get ifindex. */
+		snprintf(tmp_str, sizeof(tmp_str),
+			 "/sys/class/net/%s/ifindex", ifname);
+		file = fopen(tmp_str, "rb");
+		if (!file)
+			break;
+		ret = fscanf(file, "%u", &ifindex);
+		fclose(file);
+		if (ret != 1)
+			break;
+		/* Save bonding info. */
+		strncpy(bond_info->ports[info.port_name].ifname, ifname,
+			sizeof(bond_info->ports[0].ifname));
+		bond_info->ports[info.port_name].pci_addr = pci_addr;
+		bond_info->ports[info.port_name].ifindex = ifindex;
+		bond_info->n_port++;
+	}
+	if (pf >= 0) {
+		/* Get bond interface info */
+		ret = mlx5_sysfs_bond_info(ifindex, &bond_info->ifindex,
+					   bond_info->ifname);
+		if (ret)
+			DRV_LOG(ERR, "unable to get bond info: %s",
+				strerror(rte_errno));
+		else
+			DRV_LOG(INFO, "PF device %u, bond device %u(%s)",
+				ifindex, bond_info->ifindex, bond_info->ifname);
+	}
 	return pf;
 }
 
@@ -1889,6 +1914,7 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 	unsigned int dev_config_vf;
 	struct rte_eth_devargs eth_da = *req_eth_da;
 	struct rte_pci_addr owner_pci = pci_dev->addr; /* Owner PF. */
+	struct mlx5_bond_info bond_info;
 	int ret = -1;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
@@ -1920,7 +1946,8 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 
 		DRV_LOG(DEBUG, "checking device \"%s\"", ibv_list[ret]->name);
 		bd = mlx5_device_bond_pci_match
-				(ibv_list[ret], &owner_pci, nl_rdma, owner_id);
+				(ibv_list[ret], &owner_pci, nl_rdma, owner_id,
+				 &bond_info);
 		if (bd >= 0) {
 			/*
 			 * Bonding device detected. Only one match is allowed,
@@ -2029,6 +2056,7 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 		MLX5_ASSERT(nd == 1);
 		MLX5_ASSERT(np);
 		for (i = 1; i <= np; ++i) {
+			list[ns].bond_info = &bond_info;
 			list[ns].max_port = np;
 			list[ns].phys_port = i;
 			list[ns].phys_dev = ibv_match[0];
@@ -2119,6 +2147,7 @@ mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
 		 */
 		for (i = 0; i != nd; ++i) {
 			memset(&list[ns].info, 0, sizeof(list[ns].info));
+			list[ns].bond_info = NULL;
 			list[ns].max_port = 1;
 			list[ns].phys_port = 1;
 			list[ns].phys_dev = ibv_match[i];
