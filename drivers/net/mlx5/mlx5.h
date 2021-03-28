@@ -678,7 +678,6 @@ struct mlx5_flex_parser_profiles {
 struct mlx5_dev_ctx_shared {
 	LIST_ENTRY(mlx5_dev_ctx_shared) next;
 	uint32_t refcnt;
-	uint16_t bond_dev; /* Bond primary device id. */
 	uint32_t devx:1; /* Opened with DV. */
 	uint32_t flow_hit_aso_en:1; /* Flow Hit ASO is supported. */
 	uint32_t rq_ts_format:2; /* RQ timestamp formats supported. */

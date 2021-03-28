@@ -862,13 +862,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			rte_errno = ENOMEM;
 			return NULL;
 		}
-		priv = eth_dev->data->dev_private;
-		if (priv->sh->bond_dev != UINT16_MAX)
-			/* For bonding port, use primary PCI device. */
-			eth_dev->device =
-				rte_eth_devices[priv->sh->bond_dev].device;
-		else
-			eth_dev->device = dpdk_dev;
+		eth_dev->device = dpdk_dev;
 		eth_dev->dev_ops = &mlx5_dev_sec_ops;
 		eth_dev->rx_descriptor_status = mlx5_rx_descriptor_status;
 		eth_dev->tx_descriptor_status = mlx5_tx_descriptor_status;
@@ -1495,17 +1489,7 @@ err_secondary:
 	eth_dev->data->dev_private = priv;
 	priv->dev_data = eth_dev->data;
 	eth_dev->data->mac_addrs = priv->mac;
-	if (spawn->pf_bond < 0) {
-		eth_dev->device = dpdk_dev;
-	} else {
-		/* Use primary bond PCI as device. */
-		if (sh->bond_dev == UINT16_MAX) {
-			sh->bond_dev = eth_dev->data->port_id;
-			eth_dev->device = dpdk_dev;
-		} else {
-			eth_dev->device = rte_eth_devices[sh->bond_dev].device;
-		}
-	}
+	eth_dev->device = dpdk_dev;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	/* Configure the first MAC address by default. */
 	if (mlx5_get_mac(eth_dev, &mac.addr_bytes)) {
