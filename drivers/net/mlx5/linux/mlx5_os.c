@@ -1839,21 +1839,25 @@ mlx5_device_bond_pci_match(const struct ibv_device *ibv_dev,
 }
 
 /**
- * DPDK callback to register a PCI device.
+ * Register a PCI device within bonding.
  *
- * This function spawns Ethernet devices out of a given PCI device.
+ * This function spawns Ethernet devices out of a given PCI device and
+ * bonding owner PF index.
  *
- * @param[in] pci_drv
- *   PCI driver structure (mlx5_driver).
  * @param[in] pci_dev
  *   PCI device information.
+ * @param[in] req_eth_da
+ *   Requested ethdev device argument.
+ * @param[in] owner_id
+ *   Requested owner PF port ID within bonding device, default to 0.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-int
-mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		  struct rte_pci_device *pci_dev)
+static int
+mlx5_os_pci_probe_pf(struct rte_pci_device *pci_dev,
+		     struct rte_eth_devargs *req_eth_da,
+		     uint16_t owner_id)
 {
 	struct ibv_device **ibv_list;
 	/*
@@ -1883,7 +1887,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_dev_spawn_data *list = NULL;
 	struct mlx5_dev_config dev_config;
 	unsigned int dev_config_vf;
-	struct rte_eth_devargs eth_da = { .type = RTE_ETH_REPRESENTOR_NONE };
+	struct rte_eth_devargs eth_da = *req_eth_da;
 	struct rte_pci_addr owner_pci = pci_dev->addr; /* Owner PF. */
 	int ret = -1;
 
@@ -1894,27 +1898,6 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "unable to init PMD global data: %s",
 			strerror(rte_errno));
 		return -rte_errno;
-	}
-	if (pci_dev->device.devargs) {
-		/* Parse representor information from device argument. */
-		if (pci_dev->device.devargs->cls_str)
-			ret = rte_eth_devargs_parse
-				(pci_dev->device.devargs->cls_str, &eth_da);
-		if (ret) {
-			DRV_LOG(ERR, "failed to parse device arguments: %s",
-				pci_dev->device.devargs->cls_str);
-			return -rte_errno;
-		}
-		if (eth_da.type == RTE_ETH_REPRESENTOR_NONE) {
-			/* Support legacy device argument */
-			ret = rte_eth_devargs_parse
-				(pci_dev->device.devargs->args, &eth_da);
-			if (ret) {
-				DRV_LOG(ERR, "failed to parse device arguments: %s",
-					pci_dev->device.devargs->args);
-				return -rte_errno;
-			}
-		}
 	}
 	errno = 0;
 	ibv_list = mlx5_glue->get_device_list(&ret);
@@ -1937,8 +1920,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 		DRV_LOG(DEBUG, "checking device \"%s\"", ibv_list[ret]->name);
 		bd = mlx5_device_bond_pci_match
-				(ibv_list[ret], &owner_pci, nl_rdma,
-				 eth_da.ports[0]);
+				(ibv_list[ret], &owner_pci, nl_rdma, owner_id);
 		if (bd >= 0) {
 			/*
 			 * Bonding device detected. Only one match is allowed,
@@ -1957,7 +1939,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			}
 			/* Amend owner pci address if owner PF ID specified. */
 			if (eth_da.nb_representor_ports)
-				owner_pci.function += eth_da.ports[0];
+				owner_pci.function += owner_id;
 			DRV_LOG(INFO, "PCI information matches for"
 				      " slave %d bonding device \"%s\"",
 				      bd, ibv_list[ret]->name);
@@ -2342,6 +2324,60 @@ exit:
 		mlx5_free(list);
 	MLX5_ASSERT(ibv_list);
 	mlx5_glue->free_device_list(ibv_list);
+	return ret;
+}
+
+/**
+ * DPDK callback to register a PCI device.
+ *
+ * This function spawns Ethernet devices out of a given PCI device.
+ *
+ * @param[in] pci_drv
+ *   PCI driver structure (mlx5_driver).
+ * @param[in] pci_dev
+ *   PCI device information.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		  struct rte_pci_device *pci_dev)
+{
+	struct rte_eth_devargs eth_da = { .type = RTE_ETH_REPRESENTOR_NONE };
+	int ret = 0;
+	uint16_t p;
+
+	if (pci_dev->device.devargs) {
+		/* Parse representor information from device argument. */
+		if (pci_dev->device.devargs->cls_str)
+			ret = rte_eth_devargs_parse
+				(pci_dev->device.devargs->cls_str, &eth_da);
+		if (ret) {
+			DRV_LOG(ERR, "failed to parse device arguments: %s",
+				pci_dev->device.devargs->cls_str);
+			return -rte_errno;
+		}
+		if (eth_da.type == RTE_ETH_REPRESENTOR_NONE) {
+			/* Support legacy device argument */
+			ret = rte_eth_devargs_parse
+				(pci_dev->device.devargs->args, &eth_da);
+			if (ret) {
+				DRV_LOG(ERR, "failed to parse device arguments: %s",
+					pci_dev->device.devargs->args);
+				return -rte_errno;
+			}
+		}
+	}
+
+	if (eth_da.nb_ports > 0) {
+		/* Iterate all port if devargs pf is range: "pf[0-1]vf[...]". */
+		for (p = 0; p < eth_da.nb_ports; p++)
+			ret = mlx5_os_pci_probe_pf(pci_dev, &eth_da,
+						   eth_da.ports[p]);
+	} else {
+		ret = mlx5_os_pci_probe_pf(pci_dev, &eth_da, 0);
+	}
 	return ret;
 }
 

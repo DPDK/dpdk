@@ -944,6 +944,10 @@ Driver options
 
     <PCI_BDF>,representor=sf[0-2]
 
+  To probe VF port representors 0 through 2 on both PFs of bonding device::
+
+    <Primary_PCI_BDF>,representor=pf[0,1]vf[0-2]
+
 - ``max_dump_files_num`` parameter [int]
 
   The maximum number of files per PMD entity that may be created for debug information.
