@@ -1013,6 +1013,9 @@ mlx5_sysfs_check_switch_info(bool device_dir,
 		/* New representors naming schema. */
 		switch_info->representor = 1;
 		break;
+	default:
+		switch_info->master = device_dir;
+		break;
 	}
 }
 
