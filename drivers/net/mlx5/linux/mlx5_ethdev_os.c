@@ -169,6 +169,42 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
 }
 
 /**
+ * Perform ifreq ioctl() on associated netdev ifname.
+ *
+ * @param[in] ifname
+ *   Pointer to netdev name.
+ * @param req
+ *   Request number to pass to ioctl().
+ * @param[out] ifr
+ *   Interface request structure output buffer.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_ifreq_by_ifname(const char *ifname, int req, struct ifreq *ifr)
+{
+	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+	int ret = 0;
+
+	if (sock == -1) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	rte_strscpy(ifr->ifr_name, ifname, sizeof(ifr->ifr_name));
+	ret = ioctl(sock, req, ifr);
+	if (ret == -1) {
+		rte_errno = errno;
+		goto error;
+	}
+	close(sock);
+	return 0;
+error:
+	close(sock);
+	return -rte_errno;
+}
+
+/**
  * Perform ifreq ioctl() on associated Ethernet device.
  *
  * @param[in] dev
@@ -184,26 +220,13 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
 static int
 mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr)
 {
-	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-	int ret = 0;
+	char ifname[sizeof(ifr->ifr_name)];
+	int ret;
 
-	if (sock == -1) {
-		rte_errno = errno;
-		return -rte_errno;
-	}
-	ret = mlx5_get_ifname(dev, &ifr->ifr_name);
+	ret = mlx5_get_ifname(dev, &ifname);
 	if (ret)
-		goto error;
-	ret = ioctl(sock, req, ifr);
-	if (ret == -1) {
-		rte_errno = errno;
-		goto error;
-	}
-	close(sock);
-	return 0;
-error:
-	close(sock);
-	return -rte_errno;
+		return -rte_errno;
+	return mlx5_ifreq_by_ifname(ifname, req, ifr);
 }
 
 /**
@@ -1243,6 +1266,8 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param[in] pf
+ *   PF index in case of bonding device, -1 otherwise
  * @param[out] stats
  *   Counters table output buffer.
  *
@@ -1250,8 +1275,8 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
  *   0 on success and stats is filled, negative errno value otherwise and
  *   rte_errno is set.
  */
-int
-mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
+static int
+_mlx5_os_read_dev_counters(struct rte_eth_dev *dev, int pf, uint64_t *stats)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
@@ -1265,7 +1290,11 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 	et_stats->cmd = ETHTOOL_GSTATS;
 	et_stats->n_stats = xstats_ctrl->stats_n;
 	ifr.ifr_data = (caddr_t)et_stats;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (pf >= 0)
+		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[pf].ifname,
+					   SIOCETHTOOL, &ifr);
+	else
+		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
 		DRV_LOG(WARNING,
 			"port %u unable to read statistic values from device",
@@ -1273,21 +1302,58 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 		return ret;
 	}
 	for (i = 0; i != xstats_ctrl->mlx5_stats_n; ++i) {
-		if (xstats_ctrl->info[i].dev) {
-			ret = mlx5_os_read_dev_stat(priv,
-					    xstats_ctrl->info[i].ctr_name,
-					    &stats[i]);
-			/* return last xstats counter if fail to read. */
-			if (ret == 0)
-				xstats_ctrl->xstats[i] = stats[i];
-			else
-				stats[i] = xstats_ctrl->xstats[i];
-		} else {
-			stats[i] = (uint64_t)
-				et_stats->data[xstats_ctrl->dev_table_idx[i]];
-		}
+		if (xstats_ctrl->info[i].dev)
+			continue;
+		stats[i] += (uint64_t)
+			    et_stats->data[xstats_ctrl->dev_table_idx[i]];
 	}
 	return 0;
+}
+
+/**
+ * Read device counters.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] stats
+ *   Counters table output buffer.
+ *
+ * @return
+ *   0 on success and stats is filled, negative errno value otherwise and
+ *   rte_errno is set.
+ */
+int
+mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	int ret = 0, i;
+
+	memset(stats, 0, sizeof(*stats) * xstats_ctrl->mlx5_stats_n);
+	/* Read ifreq counters. */
+	if (priv->master && priv->pf_bond >= 0) {
+		/* Sum xstats from bonding device member ports. */
+		for (i = 0; i < priv->sh->bond.n_port; i++) {
+			ret = _mlx5_os_read_dev_counters(dev, i, stats);
+			if (ret)
+				return ret;
+		}
+	} else {
+		ret = _mlx5_os_read_dev_counters(dev, -1, stats);
+	}
+	/* Read IB counters. */
+	for (i = 0; i != xstats_ctrl->mlx5_stats_n; ++i) {
+		if (!xstats_ctrl->info[i].dev)
+			continue;
+		ret = mlx5_os_read_dev_stat(priv, xstats_ctrl->info[i].ctr_name,
+					    &stats[i]);
+		/* return last xstats counter if fail to read. */
+		if (ret != 0)
+			xstats_ctrl->xstats[i] = stats[i];
+		else
+			stats[i] = xstats_ctrl->xstats[i];
+	}
+	return ret;
 }
 
 /**
@@ -1303,13 +1369,19 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 int
 mlx5_os_get_stats_n(struct rte_eth_dev *dev)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct ethtool_drvinfo drvinfo;
 	struct ifreq ifr;
 	int ret;
 
 	drvinfo.cmd = ETHTOOL_GDRVINFO;
 	ifr.ifr_data = (caddr_t)&drvinfo;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (priv->master && priv->pf_bond >= 0)
+		/* Bonding PF. */
+		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[0].ifname,
+					   SIOCETHTOOL, &ifr);
+	else
+		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u unable to query number of statistics",
 			dev->data->port_id);
@@ -1480,7 +1552,12 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
 	strings->string_set = ETH_SS_STATS;
 	strings->len = dev_stats_n;
 	ifr.ifr_data = (caddr_t)strings;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (priv->master && priv->pf_bond >= 0)
+		/* Bonding master. */
+		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[0].ifname,
+					   SIOCETHTOOL, &ifr);
+	else
+		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u unable to get statistic names",
 			dev->data->port_id);
