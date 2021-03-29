@@ -1526,26 +1526,6 @@ ice_switch_check_action(const struct rte_flow_action *actions,
 	return 0;
 }
 
-static bool
-ice_is_profile_rule(enum ice_sw_tunnel_type tun_type)
-{
-	switch (tun_type) {
-	case ICE_SW_TUN_PROFID_IPV6_ESP:
-	case ICE_SW_TUN_PROFID_IPV6_AH:
-	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
-	case ICE_SW_TUN_PROFID_IPV6_NAT_T:
-	case ICE_SW_TUN_PROFID_IPV4_PFCP_NODE:
-	case ICE_SW_TUN_PROFID_IPV4_PFCP_SESSION:
-	case ICE_SW_TUN_PROFID_IPV6_PFCP_NODE:
-	case ICE_SW_TUN_PROFID_IPV6_PFCP_SESSION:
-		return true;
-	default:
-		break;
-	}
-
-	return false;
-}
-
 static int
 ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		struct ice_pattern_match_item *array,
@@ -1625,7 +1605,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 
 	inputset = ice_switch_inset_get
 		(pattern, error, list, &lkups_num, &tun_type);
-	if ((!inputset && !ice_is_profile_rule(tun_type)) ||
+	if ((!inputset && !ice_is_prof_rule(tun_type)) ||
 		(inputset & ~pattern_match_item->input_set_mask_o)) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
