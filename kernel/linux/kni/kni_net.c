@@ -113,6 +113,14 @@ kni_net_process_request(struct net_device *dev, struct rte_kni_request *req)
 
 	ASSERT_RTNL();
 
+	/* If we need to wait and RTNL mutex is held
+	 * drop the mutex and hold reference to keep device
+	 */
+	if (req->async == 0) {
+		dev_hold(dev);
+		rtnl_unlock();
+	}
+
 	mutex_lock(&kni->sync_lock);
 
 	/* Construct data */
@@ -152,6 +160,10 @@ async:
 
 fail:
 	mutex_unlock(&kni->sync_lock);
+	if (req->async == 0) {
+		rtnl_lock();
+		dev_put(dev);
+	}
 	return ret;
 }
 
@@ -194,6 +206,10 @@ kni_net_release(struct net_device *dev)
 
 	/* Setting if_up to 0 means down */
 	req.if_up = 0;
+
+	/* request async because of the deadlock problem */
+	req.async = 1;
+
 	ret = kni_net_process_request(dev, &req);
 
 	return (ret == 0) ? req.result : ret;
