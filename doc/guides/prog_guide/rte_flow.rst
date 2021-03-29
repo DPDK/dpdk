@@ -714,9 +714,6 @@ Most of these are basically protocol header definitions with associated
 bit-masks. They must be specified (stacked) from lowest to highest protocol
 layer to form a matching pattern.
 
-The following list is not exhaustive, new protocols will be added in the
-future.
-
 Item: ``ANY``
 ^^^^^^^^^^^^^
 
@@ -1548,8 +1545,7 @@ that VOID is ignored.
 Action types
 ~~~~~~~~~~~~
 
-Common action types are described in this section. Like pattern item types,
-this list is not exhaustive as new actions will be added in the future.
+Common action types are described in this section.
 
 Action: ``END``
 ^^^^^^^^^^^^^^^
@@ -3018,19 +3014,6 @@ A method to generate them remains to be defined.
 Application may use PMD dynamic items or actions in flow rules. In that case
 size of configuration object in dynamic element must be a pointer size.
 
-Planned types
-~~~~~~~~~~~~~
-
-Pattern item types will be added as new protocols are implemented.
-
-Variable headers support through dedicated pattern items, for example in
-order to match specific IPv4 options and IPv6 extension headers would be
-stacked after IPv4/IPv6 items.
-
-Other action types are planned but are not defined yet. These include the
-ability to alter packet data in several ways, such as performing
-encapsulation/decapsulation of tunnel headers.
-
 Rules management
 ----------------
 
@@ -3518,8 +3501,6 @@ so the API level protection is disabled.
 Please note that this API-level mutex protects only rte_flow functions,
 other control path functions are not in scope.
 
-More will be added over time.
-
 Device compatibility
 --------------------
 
@@ -3668,22 +3649,5 @@ PMDs.
 - In order to save priority levels, PMDs may evaluate whether rules are
   likely to collide and adjust their priority accordingly.
 
-Future evolutions
------------------
-
-- A device profile selection function which could be used to force a
-  permanent profile instead of relying on its automatic configuration based
-  on existing flow rules.
-
-- A method to optimize *rte_flow* rules with specific pattern items and
-  action types generated on the fly by PMDs. DPDK should assign negative
-  numbers to these in order to not collide with the existing types. See
-  `Negative types`_.
-
-- Adding specific egress pattern items and actions as described in
-  `Attribute: Traffic direction`_.
-
-- Optional software fallback when PMDs are unable to handle requested flow
-  rules so applications do not have to implement their own.
 
 .. _OpenFlow Switch Specification: https://www.opennetworking.org/software-defined-standards/specifications/
