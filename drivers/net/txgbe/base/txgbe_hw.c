@@ -323,6 +323,9 @@ s32 txgbe_init_hw(struct txgbe_hw *hw)
 
 	DEBUGFUNC("txgbe_init_hw");
 
+	/* Get firmware version */
+	hw->phy.get_fw_version(hw, &hw->fw_version);
+
 	/* Reset the hardware */
 	status = hw->mac.reset_hw(hw);
 	if (status == 0 || status == TXGBE_ERR_SFP_NOT_PRESENT) {
@@ -2774,6 +2777,7 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	phy->write_reg_mdi = txgbe_write_phy_reg_mdi;
 	phy->setup_link = txgbe_setup_phy_link;
 	phy->setup_link_speed = txgbe_setup_phy_link_speed;
+	phy->get_fw_version = txgbe_get_phy_fw_version;
 	phy->read_i2c_byte = txgbe_read_i2c_byte;
 	phy->write_i2c_byte = txgbe_write_i2c_byte;
 	phy->read_i2c_sff8472 = txgbe_read_i2c_sff8472;

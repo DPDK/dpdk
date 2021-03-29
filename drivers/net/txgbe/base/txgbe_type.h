@@ -647,6 +647,7 @@ struct txgbe_phy_info {
 	s32 (*setup_link_speed)(struct txgbe_hw *hw, u32 speed,
 				bool autoneg_wait_to_complete);
 	s32 (*check_link)(struct txgbe_hw *hw, u32 *speed, bool *link_up);
+	s32 (*get_fw_version)(struct txgbe_hw *hw, u32 *fw_version);
 	s32 (*read_i2c_byte)(struct txgbe_hw *hw, u8 byte_offset,
 				u8 dev_addr, u8 *data);
 	s32 (*write_i2c_byte)(struct txgbe_hw *hw, u8 byte_offset,
@@ -747,6 +748,7 @@ struct txgbe_hw {
 	u16 nb_rx_queues;
 	u16 nb_tx_queues;
 
+	u32 fw_version;
 	u32 mode;
 	enum txgbe_link_status {
 		TXGBE_LINK_STATUS_NONE = 0,

@@ -558,6 +558,18 @@ s32 txgbe_setup_phy_link_speed(struct txgbe_hw *hw,
 	return 0;
 }
 
+s32 txgbe_get_phy_fw_version(struct txgbe_hw *hw, u32 *fw_version)
+{
+	u16 eeprom_verh, eeprom_verl;
+
+	hw->rom.readw_sw(hw, TXGBE_EEPROM_VERSION_H, &eeprom_verh);
+	hw->rom.readw_sw(hw, TXGBE_EEPROM_VERSION_L, &eeprom_verl);
+
+	*fw_version = (eeprom_verh << 16) | eeprom_verl;
+
+	return 0;
+}
+
 /**
  * txgbe_get_copper_speeds_supported - Get copper link speeds from phy
  * @hw: pointer to hardware structure

@@ -424,6 +424,11 @@ static inline s32 txgbe_phy_check_link_dummy(struct txgbe_hw *TUP0, u32 *TUP1,
 {
 	return TXGBE_ERR_OPS_DUMMY;
 }
+static inline s32 txgbe_get_phy_fw_version_dummy(struct txgbe_hw *TUP0,
+					u32 *TUP1)
+{
+	return TXGBE_ERR_OPS_DUMMY;
+}
 static inline s32 txgbe_phy_read_i2c_byte_dummy(struct txgbe_hw *TUP0, u8 TUP1,
 					u8 TUP2, u8 *TUP3)
 {
@@ -628,6 +633,7 @@ static inline void txgbe_init_ops_dummy(struct txgbe_hw *hw)
 	hw->phy.setup_link = txgbe_phy_setup_link_dummy;
 	hw->phy.setup_link_speed = txgbe_phy_setup_link_speed_dummy;
 	hw->phy.check_link = txgbe_phy_check_link_dummy;
+	hw->phy.get_fw_version = txgbe_get_phy_fw_version_dummy;
 	hw->phy.read_i2c_byte = txgbe_phy_read_i2c_byte_dummy;
 	hw->phy.write_i2c_byte = txgbe_phy_write_i2c_byte_dummy;
 	hw->phy.read_i2c_sff8472 = txgbe_phy_read_i2c_sff8472_dummy;

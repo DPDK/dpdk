@@ -340,6 +340,7 @@ s32 txgbe_setup_phy_link(struct txgbe_hw *hw);
 s32 txgbe_setup_phy_link_speed(struct txgbe_hw *hw,
 				       u32 speed,
 				       bool autoneg_wait_to_complete);
+s32 txgbe_get_phy_fw_version(struct txgbe_hw *hw, u32 *fw_version);
 s32 txgbe_get_copper_link_capabilities(struct txgbe_hw *hw,
 					       u32 *speed,
 					       bool *autoneg);

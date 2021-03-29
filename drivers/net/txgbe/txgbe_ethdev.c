@@ -2505,14 +2505,11 @@ static int
 txgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
-	u16 eeprom_verh, eeprom_verl;
 	u32 etrack_id;
 	int ret;
 
-	hw->rom.readw_sw(hw, TXGBE_EEPROM_VERSION_H, &eeprom_verh);
-	hw->rom.readw_sw(hw, TXGBE_EEPROM_VERSION_L, &eeprom_verl);
+	hw->phy.get_fw_version(hw, &etrack_id);
 
-	etrack_id = (eeprom_verh << 16) | eeprom_verl;
 	ret = snprintf(fw_version, fw_size, "0x%08x", etrack_id);
 
 	ret += 1; /* add the size of '\0' */
