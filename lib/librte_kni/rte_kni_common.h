@@ -48,6 +48,7 @@ struct rte_kni_request {
 		uint8_t promiscusity;/**< 1: promisc mode enable, 0: disable */
 		uint8_t allmulti;    /**< 1: all-multicast mode enable, 0: disable */
 	};
+	int32_t async : 1;            /**< 1: request is asynchronous */
 	int32_t result;               /**< Result for processing request */
 } __attribute__((__packed__));
 

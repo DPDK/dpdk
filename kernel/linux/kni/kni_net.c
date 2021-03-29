@@ -125,6 +125,14 @@ kni_net_process_request(struct kni_dev *kni, struct rte_kni_request *req)
 		goto fail;
 	}
 
+	/* No result available since request is handled
+	 * asynchronously. set response to success.
+	 */
+	if (req->async != 0) {
+		req->result = 0;
+		goto async;
+	}
+
 	ret_val = wait_event_interruptible_timeout(kni->wq,
 			kni_fifo_count(kni->resp_q), 3 * HZ);
 	if (signal_pending(current) || ret_val <= 0) {
@@ -140,6 +148,7 @@ kni_net_process_request(struct kni_dev *kni, struct rte_kni_request *req)
 	}
 
 	memcpy(req, kni->sync_kva, sizeof(struct rte_kni_request));
+async:
 	ret = 0;
 
 fail:

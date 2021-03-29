@@ -591,8 +591,11 @@ rte_kni_handle_request(struct rte_kni *kni)
 		break;
 	}
 
-	/* Construct response mbuf and put it back to resp_q */
-	ret = kni_fifo_put(kni->resp_q, (void **)&req, 1);
+	/* if needed, construct response buffer and put it back to resp_q */
+	if (!req->async)
+		ret = kni_fifo_put(kni->resp_q, (void **)&req, 1);
+	else
+		ret = 1;
 	if (ret != 1) {
 		RTE_LOG(ERR, KNI, "Fail to put the muf back to resp_q\n");
 		return -1; /* It is an error of can't putting the mbuf back */
