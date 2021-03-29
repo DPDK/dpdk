@@ -601,6 +601,7 @@ struct txgbe_mac_info {
 	s32 (*setup_eee)(struct txgbe_hw *hw, bool enable_eee);
 
 	s32 (*kr_handle)(struct txgbe_hw *hw);
+	void (*bp_down_event)(struct txgbe_hw *hw);
 
 	enum txgbe_mac_type type;
 	u8 addr[ETH_ADDR_LEN];

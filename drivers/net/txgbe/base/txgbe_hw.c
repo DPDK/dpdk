@@ -2574,8 +2574,10 @@ s32 txgbe_init_phy_raptor(struct txgbe_hw *hw)
 				  txgbe_get_copper_link_capabilities;
 	}
 
-	if (phy->media_type == txgbe_media_type_backplane)
+	if (phy->media_type == txgbe_media_type_backplane) {
 		mac->kr_handle = txgbe_kr_handle;
+		mac->bp_down_event = txgbe_bp_down_event;
+	}
 
 	/* Set necessary function pointers based on PHY type */
 	switch (hw->phy.type) {

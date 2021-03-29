@@ -28,6 +28,7 @@
 #define TXGBE_FLAG_PHY_INTERRUPT    (uint32_t)(1 << 2)
 #define TXGBE_FLAG_MACSEC           (uint32_t)(1 << 3)
 #define TXGBE_FLAG_NEED_LINK_CONFIG (uint32_t)(1 << 4)
+#define TXGBE_FLAG_NEED_AN_CONFIG   (uint32_t)(1 << 5)
 
 /*
  * Defines that were not part of txgbe_type.h as they are not used by the
@@ -138,9 +139,9 @@ struct txgbe_rte_flow_rss_conf {
 struct txgbe_interrupt {
 	uint32_t flags;
 	uint32_t mask_misc;
-	/* to save original mask during delayed handler */
-	uint32_t mask_misc_orig;
-	uint32_t mask[2];
+	uint32_t mask_misc_orig; /* save mask during delayed handler */
+	uint64_t mask;
+	uint64_t mask_orig; /* save mask during delayed handler */
 };
 
 #define TXGBE_NB_STAT_MAPPING  32

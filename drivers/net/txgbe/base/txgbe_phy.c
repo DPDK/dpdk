@@ -2304,6 +2304,20 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 		mactxcfg | TXGBE_MACTXCFG_TXE);
 }
 
+void txgbe_bp_down_event(struct txgbe_hw *hw)
+{
+	if (!(hw->devarg.auto_neg == 1))
+		return;
+
+	BP_LOG("restart phy power.\n");
+	wr32_epcs(hw, VR_AN_KR_MODE_CL, 0);
+	wr32_epcs(hw, SR_AN_CTRL, 0);
+	wr32_epcs(hw, VR_AN_INTR_MSK, 0);
+
+	msleep(1050);
+	txgbe_set_link_to_kr(hw, 0);
+}
+
 /**
  * txgbe_kr_handle - Handle the interrupt of auto-negotiation
  * @hw: pointer to hardware structure
