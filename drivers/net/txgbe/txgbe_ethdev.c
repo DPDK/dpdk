@@ -495,6 +495,10 @@ txgbe_parse_devargs(struct txgbe_hw *hw, struct rte_devargs *devargs)
 	u16 poll = 0;
 	u16 present = 1;
 	u16 sgmii = 0;
+	u16 ffe_set = 0;
+	u16 ffe_main = 27;
+	u16 ffe_pre = 8;
+	u16 ffe_post = 44;
 
 	if (devargs == NULL)
 		goto null;
@@ -511,6 +515,14 @@ txgbe_parse_devargs(struct txgbe_hw *hw, struct rte_devargs *devargs)
 			   &txgbe_handle_devarg, &present);
 	rte_kvargs_process(kvlist, TXGBE_DEVARG_KX_SGMII,
 			   &txgbe_handle_devarg, &sgmii);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_FFE_SET,
+			   &txgbe_handle_devarg, &ffe_set);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_FFE_MAIN,
+			   &txgbe_handle_devarg, &ffe_main);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_FFE_PRE,
+			   &txgbe_handle_devarg, &ffe_pre);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_FFE_POST,
+			   &txgbe_handle_devarg, &ffe_post);
 	rte_kvargs_free(kvlist);
 
 null:
@@ -518,6 +530,10 @@ null:
 	hw->devarg.poll = poll;
 	hw->devarg.present = present;
 	hw->devarg.sgmii = sgmii;
+	hw->phy.ffe_set = ffe_set;
+	hw->phy.ffe_main = ffe_main;
+	hw->phy.ffe_pre = ffe_pre;
+	hw->phy.ffe_post = ffe_post;
 }
 
 static int
@@ -5315,7 +5331,11 @@ RTE_PMD_REGISTER_PARAM_STRING(net_txgbe,
 			      TXGBE_DEVARG_BP_AUTO "=<0|1>"
 			      TXGBE_DEVARG_KR_POLL "=<0|1>"
 			      TXGBE_DEVARG_KR_PRESENT "=<0|1>"
-			      TXGBE_DEVARG_KX_SGMII "=<0|1>");
+			      TXGBE_DEVARG_KX_SGMII "=<0|1>"
+			      TXGBE_DEVARG_FFE_SET "=<0-4>"
+			      TXGBE_DEVARG_FFE_MAIN "=<uint16>"
+			      TXGBE_DEVARG_FFE_PRE "=<uint16>"
+			      TXGBE_DEVARG_FFE_POST "=<uint16>");
 
 RTE_LOG_REGISTER(txgbe_logtype_init, pmd.net.txgbe.init, NOTICE);
 RTE_LOG_REGISTER(txgbe_logtype_driver, pmd.net.txgbe.driver, NOTICE);

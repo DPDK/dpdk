@@ -1513,6 +1513,15 @@ txgbe_set_link_to_kr(struct txgbe_hw *hw, bool autoneg)
 	} else {
 		wr32_epcs(hw, VR_AN_KR_MODE_CL, 0x1);
 	}
+
+	if (hw->phy.ffe_set == TXGBE_BP_M_KR) {
+		value = (0x1804 & ~0x3F3F);
+		value |= hw->phy.ffe_main << 8 | hw->phy.ffe_pre;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = (0x50 & ~0x7F) | (1 << 6) | hw->phy.ffe_post;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	}
 out:
 	return err;
 }
@@ -1710,7 +1719,14 @@ txgbe_set_link_to_kx4(struct txgbe_hw *hw, bool autoneg)
 		goto out;
 	}
 
-	if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
+	if (hw->phy.ffe_set == TXGBE_BP_M_KX4) {
+		value = (0x1804 & ~0x3F3F);
+		value |= hw->phy.ffe_main << 8 | hw->phy.ffe_pre;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = (0x50 & ~0x7F) | (1 << 6) | hw->phy.ffe_post;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	} else if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
 		value = (0x1804 & ~0x3F3F);
 		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
 
@@ -1917,7 +1933,15 @@ txgbe_set_link_to_kx(struct txgbe_hw *hw,
 		goto out;
 	}
 
-	if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
+	if (hw->phy.ffe_set == TXGBE_BP_M_KX) {
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0) & ~0x3F3F;
+		value |= hw->phy.ffe_main << 8 | hw->phy.ffe_pre;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0) & ~0x7F;
+		value |= hw->phy.ffe_post | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	} else if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
 		value = (0x1804 & ~0x3F3F) | (24 << 8) | 4;
 		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
 
@@ -2144,7 +2168,15 @@ txgbe_set_link_to_sfi(struct txgbe_hw *hw,
 		goto out;
 	}
 
-	if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
+	if (hw->phy.ffe_set == TXGBE_BP_M_SFI) {
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0) & ~0x3F3F;
+		value |= hw->phy.ffe_main << 8 | hw->phy.ffe_pre;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0) & ~0x7F;
+		value |= hw->phy.ffe_post | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	} else if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
 		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0);
 		value = (value & ~0x3F3F) | (24 << 8) | 4;
 		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
@@ -2316,6 +2348,66 @@ void txgbe_bp_down_event(struct txgbe_hw *hw)
 
 	msleep(1050);
 	txgbe_set_link_to_kr(hw, 0);
+}
+
+void txgbe_bp_mode_set(struct txgbe_hw *hw)
+{
+	if (hw->phy.ffe_set == TXGBE_BP_M_SFI)
+		hw->subsystem_device_id = TXGBE_DEV_ID_WX1820_SFP;
+	else if (hw->phy.ffe_set == TXGBE_BP_M_KR)
+		hw->subsystem_device_id = TXGBE_DEV_ID_WX1820_KR_KX_KX4;
+	else if (hw->phy.ffe_set == TXGBE_BP_M_KX4)
+		hw->subsystem_device_id = TXGBE_DEV_ID_WX1820_MAC_XAUI;
+	else if (hw->phy.ffe_set == TXGBE_BP_M_KX)
+		hw->subsystem_device_id = TXGBE_DEV_ID_WX1820_MAC_SGMII;
+}
+
+void txgbe_set_phy_temp(struct txgbe_hw *hw)
+{
+	u32 value;
+
+	if (hw->phy.ffe_set == TXGBE_BP_M_SFI) {
+		BP_LOG("Set SFI TX_EQ MAIN:%d PRE:%d POST:%d\n",
+			hw->phy.ffe_main, hw->phy.ffe_pre, hw->phy.ffe_post);
+
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0);
+		value = (value & ~0x3F3F) | (hw->phy.ffe_main << 8) |
+			hw->phy.ffe_pre;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
+		value = (value & ~0x7F) | hw->phy.ffe_post | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	}
+
+	if (hw->phy.ffe_set == TXGBE_BP_M_KR) {
+		BP_LOG("Set KR TX_EQ MAIN:%d PRE:%d POST:%d\n",
+			hw->phy.ffe_main, hw->phy.ffe_pre, hw->phy.ffe_post);
+		value = (0x1804 & ~0x3F3F);
+		value |= hw->phy.ffe_main << 8 | hw->phy.ffe_pre;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = (0x50 & ~0x7F) | (1 << 6) | hw->phy.ffe_post;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+		wr32_epcs(hw, 0x18035, 0x00FF);
+		wr32_epcs(hw, 0x18055, 0x00FF);
+	}
+
+	if (hw->phy.ffe_set == TXGBE_BP_M_KX) {
+		BP_LOG("Set KX TX_EQ MAIN:%d PRE:%d POST:%d\n",
+			hw->phy.ffe_main, hw->phy.ffe_pre, hw->phy.ffe_post);
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0);
+		value = (value & ~0x3F3F) | (hw->phy.ffe_main << 8) |
+			hw->phy.ffe_pre;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
+		value = (value & ~0x7F) | hw->phy.ffe_post | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+
+		wr32_epcs(hw, 0x18035, 0x00FF);
+		wr32_epcs(hw, 0x18055, 0x00FF);
+	}
 }
 
 /**

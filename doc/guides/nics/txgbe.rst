@@ -118,6 +118,27 @@ Please note that following ``devargs`` are only set for backplane NICs.
 
   Special treatment for KX SGMII cards.
 
+- ``ffe_set`` (default **0**)
+
+  Use to set PHY link mode and enable FFE parameters for user debugging.
+  If disabled, the FFE parameters will not take effect. Otherwise, set 1
+  for SFI mode, set 2 for KR mode, set 3 for KX4 mode, set 4 for KX mode.
+
+- ``ffe_main`` (default **27**)
+
+  PHY parameter used for user debugging. Setting other values to
+  take effect requires setting the ``ffe_set``.
+
+- ``ffe_pre`` (default **8**)
+
+  PHY parameter used for user debugging. Setting other values to
+  take effect requires setting the ``ffe_set``.
+
+- ``ffe_post`` (default **44**)
+
+  PHY parameter used for user debugging. Setting other values to
+  take effect requires setting the ``ffe_set``.
+
 Driver compilation and testing
 ------------------------------
 

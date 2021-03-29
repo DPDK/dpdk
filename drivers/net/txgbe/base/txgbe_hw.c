@@ -2951,6 +2951,9 @@ u32 txgbe_get_media_type_raptor(struct txgbe_hw *hw)
 
 	DEBUGFUNC("txgbe_get_media_type_raptor");
 
+	if (hw->phy.ffe_set)
+		txgbe_bp_mode_set(hw);
+
 	/* Detect if there is a copper PHY attached. */
 	switch (hw->phy.type) {
 	case txgbe_phy_cu_unknown:
@@ -3542,6 +3545,14 @@ mac_reset_top:
 		hw->mac.orig_link_settings_stored = true;
 	} else {
 		hw->mac.orig_autoc = autoc;
+	}
+
+	if (hw->phy.ffe_set) {
+		/* Make sure phy power is up */
+		msec_delay(50);
+
+		/* A temporary solution to set phy */
+		txgbe_set_phy_temp(hw);
 	}
 
 	/* Store the permanent mac address */

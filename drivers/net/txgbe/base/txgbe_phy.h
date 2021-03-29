@@ -396,6 +396,14 @@
 #define TXGBE_MD_PORT_CTRL            0xF001
 #define   TXGBE_MD_PORT_CTRL_RESET    MS16(14, 0x1)
 
+#define TXGBE_BP_M_NULL                      0
+#define TXGBE_BP_M_SFI                       1
+#define TXGBE_BP_M_KR                        2
+#define TXGBE_BP_M_KX4                       3
+#define TXGBE_BP_M_KX                        4
+#define TXGBE_BP_M_NAUTO                     0
+#define TXGBE_BP_M_AUTO                      1
+
 #ifndef CL72_KRTR_PRBS_MODE_EN
 #define CL72_KRTR_PRBS_MODE_EN	0xFFFF	/* open kr prbs check */
 #endif
@@ -454,6 +462,8 @@ s32 txgbe_write_i2c_eeprom(struct txgbe_hw *hw, u8 byte_offset,
 				   u8 eeprom_data);
 u64 txgbe_autoc_read(struct txgbe_hw *hw);
 void txgbe_autoc_write(struct txgbe_hw *hw, u64 value);
+void txgbe_bp_mode_set(struct txgbe_hw *hw);
+void txgbe_set_phy_temp(struct txgbe_hw *hw);
 void txgbe_bp_down_event(struct txgbe_hw *hw);
 s32 txgbe_kr_handle(struct txgbe_hw *hw);
 
