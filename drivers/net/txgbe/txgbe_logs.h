@@ -5,6 +5,8 @@
 #ifndef _TXGBE_LOGS_H_
 #define _TXGBE_LOGS_H_
 
+#include <inttypes.h>
+
 /*
  * PMD_USER_LOG: for user
  */
@@ -50,5 +52,12 @@ extern int txgbe_logtype_tx_free;
 #define DEBUGOUT(fmt, args...)    TLOG_DEBUG(fmt, ##args)
 #define PMD_INIT_FUNC_TRACE()     TLOG_DEBUG(" >>")
 #define DEBUGFUNC(fmt)            TLOG_DEBUG(fmt)
+
+extern int txgbe_logtype_bp;
+#define BP_LOG(fmt, args...) \
+	rte_log(RTE_LOG_DEBUG, txgbe_logtype_bp, \
+		"[%"PRIu64".%"PRIu64"]%s(%d): " fmt, \
+		usec_stamp() / 1000000, usec_stamp() % 1000000, \
+		__func__, __LINE__, ##args)
 
 #endif /* _TXGBE_LOGS_H_ */

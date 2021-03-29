@@ -16,6 +16,7 @@
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_alarm.h>
+#include <rte_kvargs.h>
 
 #include "txgbe_logs.h"
 #include "base/txgbe.h"
@@ -470,6 +471,55 @@ txgbe_swfw_lock_reset(struct txgbe_hw *hw)
 }
 
 static int
+txgbe_handle_devarg(__rte_unused const char *key, const char *value,
+		  void *extra_args)
+{
+	uint16_t *n = extra_args;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	*n = (uint16_t)strtoul(value, NULL, 10);
+	if (*n == USHRT_MAX && errno == ERANGE)
+		return -1;
+
+	return 0;
+}
+
+static void
+txgbe_parse_devargs(struct txgbe_hw *hw, struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	u16 auto_neg = 1;
+	u16 poll = 0;
+	u16 present = 1;
+	u16 sgmii = 0;
+
+	if (devargs == NULL)
+		goto null;
+
+	kvlist = rte_kvargs_parse(devargs->args, txgbe_valid_arguments);
+	if (kvlist == NULL)
+		goto null;
+
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_BP_AUTO,
+			   &txgbe_handle_devarg, &auto_neg);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_KR_POLL,
+			   &txgbe_handle_devarg, &poll);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_KR_PRESENT,
+			   &txgbe_handle_devarg, &present);
+	rte_kvargs_process(kvlist, TXGBE_DEVARG_KX_SGMII,
+			   &txgbe_handle_devarg, &sgmii);
+	rte_kvargs_free(kvlist);
+
+null:
+	hw->devarg.auto_neg = auto_neg;
+	hw->devarg.poll = poll;
+	hw->devarg.present = present;
+	hw->devarg.sgmii = sgmii;
+}
+
+static int
 eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -537,6 +587,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	hw->isb_dma = TMZ_PADDR(mz);
 	hw->isb_mem = TMZ_VADDR(mz);
 
+	txgbe_parse_devargs(hw, pci_dev->device.devargs);
 	/* Initialize the shared code (base driver) */
 	err = txgbe_init_shared_code(hw);
 	if (err != 0) {
@@ -5218,9 +5269,15 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 RTE_PMD_REGISTER_PCI(net_txgbe, rte_txgbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_txgbe, pci_id_txgbe_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_txgbe, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_txgbe,
+			      TXGBE_DEVARG_BP_AUTO "=<0|1>"
+			      TXGBE_DEVARG_KR_POLL "=<0|1>"
+			      TXGBE_DEVARG_KR_PRESENT "=<0|1>"
+			      TXGBE_DEVARG_KX_SGMII "=<0|1>");
 
 RTE_LOG_REGISTER(txgbe_logtype_init, pmd.net.txgbe.init, NOTICE);
 RTE_LOG_REGISTER(txgbe_logtype_driver, pmd.net.txgbe.driver, NOTICE);
+RTE_LOG_REGISTER(txgbe_logtype_bp, pmd.net.txgbe.bp, NOTICE);
 
 #ifdef RTE_LIBRTE_TXGBE_DEBUG_RX
 	RTE_LOG_REGISTER(txgbe_logtype_rx, pmd.net.txgbe.rx, DEBUG);

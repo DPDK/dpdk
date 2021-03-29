@@ -36,6 +36,7 @@
 #define msec_delay(x) rte_delay_ms(x)
 #define usleep(x)     rte_delay_us(x)
 #define msleep(x)     rte_delay_ms(x)
+#define usec_stamp()    (rte_get_timer_cycles() * 1000000 / rte_get_timer_hz())
 
 #define FALSE               0
 #define TRUE                1

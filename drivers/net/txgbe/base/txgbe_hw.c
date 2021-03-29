@@ -91,7 +91,6 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw)
 	u16 reg_cu = 0;
 	u32 value = 0;
 	u64 reg_bp = 0;
-	bool locked = false;
 
 	DEBUGFUNC("txgbe_setup_fc");
 
@@ -110,29 +109,6 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw)
 		hw->fc.requested_mode = txgbe_fc_full;
 
 	/*
-	 * Set up the 1G and 10G flow control advertisement registers so the
-	 * HW will be able to do fc autoneg once the cable is plugged in.  If
-	 * we link at 10G, the 1G advertisement is harmless and vice versa.
-	 */
-	switch (hw->phy.media_type) {
-	case txgbe_media_type_backplane:
-		/* some MAC's need RMW protection on AUTOC */
-		err = hw->mac.prot_autoc_read(hw, &locked, &reg_bp);
-		if (err != 0)
-			goto out;
-
-		/* fall through - only backplane uses autoc */
-	case txgbe_media_type_fiber_qsfp:
-	case txgbe_media_type_fiber:
-	case txgbe_media_type_copper:
-		hw->phy.read_reg(hw, TXGBE_MD_AUTO_NEG_ADVT,
-				     TXGBE_MD_DEV_AUTO_NEG, &reg_cu);
-		break;
-	default:
-		break;
-	}
-
-	/*
 	 * The possible values of fc.requested_mode are:
 	 * 0: Flow control is completely disabled
 	 * 1: Rx flow control is enabled (we can receive pause frames,
@@ -145,28 +121,12 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw)
 	switch (hw->fc.requested_mode) {
 	case txgbe_fc_none:
 		/* Flow control completely disabled by software override. */
-		reg &= ~(SR_MII_MMD_AN_ADV_PAUSE_SYM |
-			SR_MII_MMD_AN_ADV_PAUSE_ASM);
-		if (hw->phy.media_type == txgbe_media_type_backplane)
-			reg_bp &= ~(TXGBE_AUTOC_SYM_PAUSE |
-				    TXGBE_AUTOC_ASM_PAUSE);
-		else if (hw->phy.media_type == txgbe_media_type_copper)
-			reg_cu &= ~(TXGBE_TAF_SYM_PAUSE | TXGBE_TAF_ASM_PAUSE);
 		break;
 	case txgbe_fc_tx_pause:
 		/*
 		 * Tx Flow control is enabled, and Rx Flow control is
 		 * disabled by software override.
 		 */
-		reg |= SR_MII_MMD_AN_ADV_PAUSE_ASM;
-		reg &= ~SR_MII_MMD_AN_ADV_PAUSE_SYM;
-		if (hw->phy.media_type == txgbe_media_type_backplane) {
-			reg_bp |= TXGBE_AUTOC_ASM_PAUSE;
-			reg_bp &= ~TXGBE_AUTOC_SYM_PAUSE;
-		} else if (hw->phy.media_type == txgbe_media_type_copper) {
-			reg_cu |= TXGBE_TAF_ASM_PAUSE;
-			reg_cu &= ~TXGBE_TAF_SYM_PAUSE;
-		}
 		reg |= SR_MII_MMD_AN_ADV_PAUSE_ASM;
 		reg_bp |= SR_AN_MMD_ADV_REG1_PAUSE_ASM;
 		break;
@@ -182,13 +142,6 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw)
 		 */
 	case txgbe_fc_full:
 		/* Flow control (both Rx and Tx) is enabled by SW override. */
-		reg |= SR_MII_MMD_AN_ADV_PAUSE_SYM |
-			SR_MII_MMD_AN_ADV_PAUSE_ASM;
-		if (hw->phy.media_type == txgbe_media_type_backplane)
-			reg_bp |= TXGBE_AUTOC_SYM_PAUSE |
-				  TXGBE_AUTOC_ASM_PAUSE;
-		else if (hw->phy.media_type == txgbe_media_type_copper)
-			reg_cu |= TXGBE_TAF_SYM_PAUSE | TXGBE_TAF_ASM_PAUSE;
 		reg |= SR_MII_MMD_AN_ADV_PAUSE_SYM |
 			SR_MII_MMD_AN_ADV_PAUSE_ASM;
 		reg_bp |= SR_AN_MMD_ADV_REG1_PAUSE_SYM |
@@ -2575,13 +2528,9 @@ void txgbe_init_mac_link_ops(struct txgbe_hw *hw)
 		mac->setup_link = txgbe_setup_mac_link_multispeed_fiber;
 		mac->setup_mac_link = txgbe_setup_mac_link;
 		mac->set_rate_select_speed = txgbe_set_hard_rate_select_speed;
-	} else if ((hw->phy.media_type == txgbe_media_type_backplane) &&
-		    (hw->phy.smart_speed == txgbe_smart_speed_auto ||
-		     hw->phy.smart_speed == txgbe_smart_speed_on) &&
-		     !txgbe_verify_lesm_fw_enabled_raptor(hw)) {
-		mac->setup_link = txgbe_setup_mac_link_smartspeed;
 	} else {
 		mac->setup_link = txgbe_setup_mac_link;
+		mac->set_rate_select_speed = txgbe_set_hard_rate_select_speed;
 	}
 }
 
@@ -3309,13 +3258,11 @@ s32 txgbe_setup_mac_link(struct txgbe_hw *hw,
 	u64 pma_pmd_10gs = autoc & TXGBE_AUTOC_10GS_PMA_PMD_MASK;
 	u64 pma_pmd_1g = autoc & TXGBE_AUTOC_1G_PMA_PMD_MASK;
 	u64 link_mode = autoc & TXGBE_AUTOC_LMS_MASK;
-	u64 current_autoc = autoc;
 	u64 orig_autoc = 0;
-	u32 links_reg;
-	u32 i;
 	u32 link_capabilities = TXGBE_LINK_SPEED_UNKNOWN;
 
 	DEBUGFUNC("txgbe_setup_mac_link");
+	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
 
 	/* Check to see if speed passed in is supported. */
 	status = hw->mac.get_link_capabilities(hw,
@@ -3346,8 +3293,7 @@ s32 txgbe_setup_mac_link(struct txgbe_hw *hw,
 		if (speed & TXGBE_LINK_SPEED_10GB_FULL) {
 			if (orig_autoc & TXGBE_AUTOC_KX4_SUPP)
 				autoc |= TXGBE_AUTOC_KX4_SUPP;
-			if ((orig_autoc & TXGBE_AUTOC_KR_SUPP) &&
-			    !hw->phy.smart_speed_active)
+			if (orig_autoc & TXGBE_AUTOC_KR_SUPP)
 				autoc |= TXGBE_AUTOC_KR_SUPP;
 		}
 		if (speed & TXGBE_LINK_SPEED_1GB_FULL)
@@ -3374,34 +3320,13 @@ s32 txgbe_setup_mac_link(struct txgbe_hw *hw,
 		}
 	}
 
-	if (autoc == current_autoc)
-		return status;
-
 	autoc &= ~TXGBE_AUTOC_SPEED_MASK;
 	autoc |= TXGBE_AUTOC_SPEED(speed);
+	autoc &= ~TXGBE_AUTOC_AUTONEG;
 	autoc |= (autoneg ? TXGBE_AUTOC_AUTONEG : 0);
 
 	/* Restart link */
 	hw->mac.autoc_write(hw, autoc);
-
-	/* Only poll for autoneg to complete if specified to do so */
-	if (autoneg_wait_to_complete) {
-		if (link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR ||
-		    link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR_1G_AN ||
-		    link_mode == TXGBE_AUTOC_LMS_KX4_KX_KR_SGMII) {
-			links_reg = 0; /*Just in case Autoneg time=0*/
-			for (i = 0; i < TXGBE_AUTO_NEG_TIME; i++) {
-				links_reg = rd32(hw, TXGBE_PORTSTAT);
-				if (links_reg & TXGBE_PORTSTAT_UP)
-					break;
-				msec_delay(100);
-			}
-			if (!(links_reg & TXGBE_PORTSTAT_UP)) {
-				status = TXGBE_ERR_AUTONEG_NOT_COMPLETE;
-				DEBUGOUT("Autoneg did not complete.\n");
-			}
-		}
-	}
 
 	/* Add delay to filter out noises during initial link setup */
 	msec_delay(50);
@@ -3515,6 +3440,7 @@ txgbe_reset_misc(struct txgbe_hw *hw)
 	/* enable mac transmitter */
 	wr32m(hw, TXGBE_MACTXCFG, TXGBE_MACTXCFG_TXE, TXGBE_MACTXCFG_TXE);
 
+	hw->mac.autoc = hw->mac.orig_autoc;
 	for (i = 0; i < 4; i++)
 		wr32m(hw, TXGBE_IVAR(i), 0x80808080, 0);
 }
@@ -3608,7 +3534,6 @@ mac_reset_top:
 	 */
 	if (!hw->mac.orig_link_settings_stored) {
 		hw->mac.orig_autoc = hw->mac.autoc_read(hw);
-		hw->mac.autoc_write(hw, hw->mac.orig_autoc);
 		hw->mac.orig_link_settings_stored = true;
 	} else {
 		hw->mac.orig_autoc = autoc;

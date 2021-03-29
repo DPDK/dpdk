@@ -84,6 +84,40 @@ TXGBE PMD provides the following log types available for control:
 
   Extra logging of the messages during PMD initialization.
 
+- ``pmd.net.txgbe.bp`` (default level is **notice**)
+
+  Extra logging of auto-negtiation process for backplane NICs.
+  Supply ``--log-level=pmd.net.txgbe.bp:debug`` to view messages.
+
+Runtime Options
+~~~~~~~~~~~~~~~
+
+The following ``devargs`` options can be enabled at runtime. They must
+be passed as part of EAL arguments. For example,
+
+.. code-block:: console
+
+   dpdk-testpmd -a 01:00.0,auto_neg=1 -- -i
+
+Please note that following ``devargs`` are only set for backplane NICs.
+
+- ``auto_neg`` (default **1**)
+
+  Toggle behavior to use auto-negotiation mode or force mode to
+  link up backplane NICs.
+
+- ``poll`` (default **0**)
+
+  Toggle behavior to enable/disable polling mode to receive AN interrupt.
+
+- ``present`` (default **1**)
+
+  Toggle behavior to use present mode or init mode.
+
+- ``sgmii`` (default **0**)
+
+  Special treatment for KX SGMII cards.
+
 Driver compilation and testing
 ------------------------------
 

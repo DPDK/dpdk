@@ -617,9 +617,10 @@ struct txgbe_mac_info {
 	u32 rx_pb_size;
 	u32 max_tx_queues;
 	u32 max_rx_queues;
+	u64 autoc;
+	u64 orig_autoc;  /* cached value of AUTOC */
 	u8  san_mac_rar_index;
 	bool get_link_status;
-	u64 orig_autoc;  /* cached value of AUTOC */
 	bool orig_link_settings_stored;
 	bool autotry_restart;
 	u8 flags;
@@ -685,6 +686,18 @@ struct txgbe_phy_info {
 	u32 link_mode;
 };
 
+#define TXGBE_DEVARG_BP_AUTO		"auto_neg"
+#define TXGBE_DEVARG_KR_POLL		"poll"
+#define TXGBE_DEVARG_KR_PRESENT		"present"
+#define TXGBE_DEVARG_KX_SGMII		"sgmii"
+
+static const char * const txgbe_valid_arguments[] = {
+	TXGBE_DEVARG_BP_AUTO,
+	TXGBE_DEVARG_KR_POLL,
+	TXGBE_DEVARG_KR_PRESENT,
+	TXGBE_DEVARG_KX_SGMII,
+};
+
 struct txgbe_mbx_stats {
 	u32 msgs_tx;
 	u32 msgs_rx;
@@ -721,6 +734,13 @@ enum txgbe_isb_idx {
 	TXGBE_ISB_MAX
 };
 
+struct txgbe_devargs {
+	u16 auto_neg;
+	u16 poll;
+	u16 present;
+	u16 sgmii;
+};
+
 struct txgbe_hw {
 	void IOMEM *hw_addr;
 	void *back;
@@ -742,6 +762,7 @@ struct txgbe_hw {
 	int api_version;
 	bool allow_unsupported_sfp;
 	bool need_crosstalk_fix;
+	struct txgbe_devargs devarg;
 
 	uint64_t isb_dma;
 	void IOMEM *isb_mem;

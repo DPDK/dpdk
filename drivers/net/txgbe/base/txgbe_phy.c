@@ -9,6 +9,7 @@
 
 static void txgbe_i2c_start(struct txgbe_hw *hw);
 static void txgbe_i2c_stop(struct txgbe_hw *hw);
+static s32 txgbe_set_link_to_sfi(struct txgbe_hw *hw, u32 speed);
 
 /**
  * txgbe_identify_extphy - Identify a single address for a PHY
@@ -1416,6 +1417,7 @@ static s32
 txgbe_set_link_to_kr(struct txgbe_hw *hw, bool autoneg)
 {
 	u32 i;
+	u16 value;
 	s32 err = 0;
 
 	/* 1. Wait xpcs power-up good */
@@ -1430,18 +1432,33 @@ txgbe_set_link_to_kr(struct txgbe_hw *hw, bool autoneg)
 		err = TXGBE_ERR_XPCS_POWER_UP_FAILED;
 		goto out;
 	}
+	BP_LOG("It is set to kr.\n");
+
+	wr32_epcs(hw, VR_AN_INTR_MSK, 0x7);
+	wr32_epcs(hw, TXGBE_PHY_TX_POWER_ST_CTL, 0x00FC);
+	wr32_epcs(hw, TXGBE_PHY_RX_POWER_ST_CTL, 0x00FC);
 
 	if (!autoneg) {
 		/* 2. Disable xpcs AN-73 */
-		wr32_epcs(hw, SR_AN_CTRL, 0x0);
-		/* Disable PHY MPLLA for eth mode change(after ECO) */
-		wr32_ephy(hw, 0x4, 0x243A);
-		txgbe_flush(hw);
-		msec_delay(1);
-		/* Set the eth change_mode bit first in mis_rst register
-		 * for corresponding LAN port
-		 */
-		wr32(hw, TXGBE_RST, TXGBE_RST_ETH(hw->bus.lan_id));
+		wr32_epcs(hw, SR_AN_CTRL,
+			SR_AN_CTRL_AN_EN | SR_AN_CTRL_EXT_NP);
+
+		wr32_epcs(hw, VR_AN_KR_MODE_CL, VR_AN_KR_MODE_CL_PDET);
+
+		if (!(hw->devarg.auto_neg == 1)) {
+			wr32_epcs(hw, SR_AN_CTRL, 0);
+			wr32_epcs(hw, VR_AN_KR_MODE_CL, 0);
+		}
+		if (hw->devarg.present  == 1) {
+			value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
+			value |= TXGBE_PHY_TX_EQ_CTL1_DEF;
+			wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+		}
+		if (hw->devarg.poll == 1) {
+			wr32_epcs(hw, VR_PMA_KRTR_TIMER_CTRL0,
+				VR_PMA_KRTR_TIMER_MAX_WAIT);
+			wr32_epcs(hw, VR_PMA_KRTR_TIMER_CTRL2, 0xA697);
+		}
 
 		/* 3. Set VR_XS_PMA_Gen5_12G_MPLLA_CTRL3 Register
 		 * Bit[10:0](MPLLA_BANDWIDTH) = 11'd123 (default: 11'd16)
@@ -1501,6 +1518,10 @@ txgbe_set_link_to_kx4(struct txgbe_hw *hw, bool autoneg)
 	if (hw->link_status == TXGBE_LINK_STATUS_KX4)
 		goto out;
 
+	BP_LOG("It is set to kx4.\n");
+	wr32_epcs(hw, TXGBE_PHY_TX_POWER_ST_CTL, 0);
+	wr32_epcs(hw, TXGBE_PHY_RX_POWER_ST_CTL, 0);
+
 	/* 1. Wait xpcs power-up good */
 	for (i = 0; i < 100; i++) {
 		if ((rd32_epcs(hw, VR_XS_OR_PCS_MMD_DIGI_STATUS) &
@@ -1545,16 +1566,13 @@ txgbe_set_link_to_kx4(struct txgbe_hw *hw, bool autoneg)
 	wr32_epcs(hw, SR_PMA_CTRL1,
 			SR_PMA_CTRL1_SS13_KX4);
 
-	value = (0xf5f0 & ~0x7F0) |  (0x5 << 8) | (0x7 << 5) | 0x10;
+	value = (0xf5f0 & ~0x7F0) |  (0x5 << 8) | (0x7 << 5) | 0xF0;
 	wr32_epcs(hw, TXGBE_PHY_TX_GENCTRL1, value);
 
-	wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0x4F00);
-
-	value = (0x1804 & ~0x3F3F);
-	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
-
-	value = (0x50 & ~0x7F) | 40 | (1 << 6);
-	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	if ((hw->subsystem_device_id & 0xFF) == TXGBE_DEV_ID_MAC_XAUI)
+		wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0xCF00);
+	else
+		wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0x4F00);
 
 	for (i = 0; i < 4; i++) {
 		if (i == 0)
@@ -1682,6 +1700,13 @@ txgbe_set_link_to_kx4(struct txgbe_hw *hw, bool autoneg)
 		goto out;
 	}
 
+	if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
+		value = (0x1804 & ~0x3F3F);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = (0x50 & ~0x7F) | 40 | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	}
 out:
 	return err;
 }
@@ -1699,6 +1724,10 @@ txgbe_set_link_to_kx(struct txgbe_hw *hw,
 	/* Check link status, if already set, skip setting it again */
 	if (hw->link_status == TXGBE_LINK_STATUS_KX)
 		goto out;
+
+	BP_LOG("It is set to kx. speed =0x%x\n", speed);
+	wr32_epcs(hw, TXGBE_PHY_TX_POWER_ST_CTL, 0x00FC);
+	wr32_epcs(hw, TXGBE_PHY_RX_POWER_ST_CTL, 0x00FC);
 
 	/* 1. Wait xpcs power-up good */
 	for (i = 0; i < 100; i++) {
@@ -1756,16 +1785,13 @@ txgbe_set_link_to_kx(struct txgbe_hw *hw,
 	wr32_epcs(hw, SR_MII_MMD_CTL,
 			wdata);
 
-	value = (0xf5f0 & ~0x710) |  (0x5 << 8);
+	value = (0xf5f0 & ~0x710) | (0x5 << 8) | 0x10;
 	wr32_epcs(hw, TXGBE_PHY_TX_GENCTRL1, value);
 
-	wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0x4F00);
-
-	value = (0x1804 & ~0x3F3F) | (24 << 8) | 4;
-	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
-
-	value = (0x50 & ~0x7F) | 16 | (1 << 6);
-	wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	if (hw->devarg.sgmii == 1)
+		wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0x4F00);
+	else
+		wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0xCF00);
 
 	for (i = 0; i < 4; i++) {
 		if (i) {
@@ -1881,6 +1907,13 @@ txgbe_set_link_to_kx(struct txgbe_hw *hw,
 		goto out;
 	}
 
+	if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
+		value = (0x1804 & ~0x3F3F) | (24 << 8) | 4;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = (0x50 & ~0x7F) | 16 | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	}
 out:
 	return err;
 }
@@ -1977,18 +2010,7 @@ txgbe_set_link_to_sfi(struct txgbe_hw *hw,
 		 * MPLLA_DIV8_CLK_EN=0
 		 */
 		wr32_epcs(hw, TXGBE_PHY_MPLLA_CTL2, 0x0600);
-		/* 5. Set VR_XS_PMA_Gen5_12G_TX_EQ_CTRL0 Register
-		 * Bit[13:8](TX_EQ_MAIN) = 6'd30, Bit[5:0](TX_EQ_PRE) = 6'd4
-		 */
-		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0);
-		value = (value & ~0x3F3F) | (24 << 8) | 4;
-		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
-		/* 6. Set VR_XS_PMA_Gen5_12G_TX_EQ_CTRL1 Register
-		 * Bit[6](TX_EQ_OVR_RIDE) = 1'b1, Bit[5:0](TX_EQ_POST) = 6'd36
-		 */
-		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
-		value = (value & ~0x7F) | 16 | (1 << 6);
-		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+
 		if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
 			hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1) {
 			/* 7. Set VR_XS_PMA_Gen5_12G_RX_EQ_CTRL0 Register
@@ -2055,18 +2077,7 @@ txgbe_set_link_to_sfi(struct txgbe_hw *hw,
 		 * Bit[12:8](RX_VREF_CTRL) = 5'hF
 		 */
 		wr32_epcs(hw, TXGBE_PHY_MISC_CTL0, 0xCF00);
-		/* 5. Set VR_XS_PMA_Gen5_12G_TX_EQ_CTRL0 Register
-		 * Bit[13:8](TX_EQ_MAIN) = 6'd30, Bit[5:0](TX_EQ_PRE) = 6'd4
-		 */
-		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0);
-		value = (value & ~0x3F3F) | (24 << 8) | 4;
-		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
-		/* 6. Set VR_XS_PMA_Gen5_12G_TX_EQ_CTRL1 Register Bit[6]
-		 * (TX_EQ_OVR_RIDE) = 1'b1, Bit[5:0](TX_EQ_POST) = 6'd36
-		 */
-		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
-		value = (value & ~0x7F) | 16 | (1 << 6);
-		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+
 		if (hw->phy.sfp_type == txgbe_sfp_type_da_cu_core0 ||
 			hw->phy.sfp_type == txgbe_sfp_type_da_cu_core1) {
 			wr32_epcs(hw, TXGBE_PHY_RX_EQ_CTL0, 0x774F);
@@ -2123,6 +2134,15 @@ txgbe_set_link_to_sfi(struct txgbe_hw *hw,
 		goto out;
 	}
 
+	if (hw->fw_version <= TXGBE_FW_N_TXEQ) {
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0);
+		value = (value & ~0x3F3F) | (24 << 8) | 4;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL0, value);
+
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
+		value = (value & ~0x7F) | 16 | (1 << 6);
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	}
 out:
 	return err;
 }
@@ -2133,12 +2153,14 @@ out:
  */
 u64 txgbe_autoc_read(struct txgbe_hw *hw)
 {
-	u64 autoc = 0;
+	u64 autoc;
 	u32 sr_pcs_ctl;
 	u32 sr_pma_ctl1;
 	u32 sr_an_ctl;
 	u32 sr_an_adv_reg2;
 	u8 type = hw->subsystem_device_id & 0xFF;
+
+	autoc = hw->mac.autoc;
 
 	if (hw->phy.multispeed_fiber) {
 		autoc |= TXGBE_AUTOC_LMS_10G;
@@ -2195,11 +2217,11 @@ u64 txgbe_autoc_read(struct txgbe_hw *hw)
 	} else if ((sr_an_ctl & SR_AN_CTRL_AN_EN)) {
 		/* KX/KX4/KR backplane auto-negotiation enable */
 		if (sr_an_adv_reg2 & SR_AN_MMD_ADV_REG2_BP_TYPE_KR)
-			autoc |= TXGBE_AUTOC_10G_KR;
+			autoc |= TXGBE_AUTOC_KR_SUPP;
 		if (sr_an_adv_reg2 & SR_AN_MMD_ADV_REG2_BP_TYPE_KX4)
-			autoc |= TXGBE_AUTOC_10G_KX4;
+			autoc |= TXGBE_AUTOC_KX4_SUPP;
 		if (sr_an_adv_reg2 & SR_AN_MMD_ADV_REG2_BP_TYPE_KX)
-			autoc |= TXGBE_AUTOC_1G_KX;
+			autoc |= TXGBE_AUTOC_KX_SUPP;
 		autoc |= TXGBE_AUTOC_LMS_KX4_KX_KR;
 		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_10GBASE_KR |
 				TXGBE_PHYSICAL_LAYER_10GBASE_KX4 |
@@ -2221,7 +2243,7 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 	u32 mactxcfg = 0;
 	u8 device_type = hw->subsystem_device_id & 0xFF;
 
-	speed = TXGBE_AUTOC_SPEED(autoc);
+	speed = TXGBD_AUTOC_SPEED(autoc);
 	autoc &= ~TXGBE_AUTOC_SPEED_MASK;
 	autoneg = (autoc & TXGBE_AUTOC_AUTONEG ? true : false);
 	autoc &= ~TXGBE_AUTOC_AUTONEG;
@@ -2241,6 +2263,8 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 			default:
 				return;
 			}
+		} else {
+			txgbe_set_link_to_kr(hw, !autoneg);
 		}
 	} else if (device_type == TXGBE_DEV_ID_XAUI ||
 		   device_type == TXGBE_DEV_ID_SGMII ||
@@ -2249,10 +2273,11 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 		   (device_type == TXGBE_DEV_ID_SFI_XAUI &&
 		   hw->phy.media_type == txgbe_media_type_copper)) {
 		if (speed == TXGBE_LINK_SPEED_10GB_FULL) {
-			txgbe_set_link_to_kx4(hw, autoneg);
+			txgbe_set_link_to_kx4(hw, 0);
 		} else {
 			txgbe_set_link_to_kx(hw, speed, 0);
-			txgbe_set_sgmii_an37_ability(hw);
+			if (hw->devarg.auto_neg == 1)
+				txgbe_set_sgmii_an37_ability(hw);
 		}
 	} else if (hw->phy.media_type == txgbe_media_type_fiber) {
 		txgbe_set_link_to_sfi(hw, speed);
@@ -2264,6 +2289,8 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 		mactxcfg = TXGBE_MACTXCFG_SPEED_1G;
 
 	/* enable mac transmitter */
-	wr32m(hw, TXGBE_MACTXCFG, TXGBE_MACTXCFG_SPEED_MASK, mactxcfg);
+	wr32m(hw, TXGBE_MACTXCFG,
+		TXGBE_MACTXCFG_SPEED_MASK | TXGBE_MACTXCFG_TXE,
+		mactxcfg | TXGBE_MACTXCFG_TXE);
 }
 
