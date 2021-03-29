@@ -9,6 +9,17 @@
 
 static void txgbe_i2c_start(struct txgbe_hw *hw);
 static void txgbe_i2c_stop(struct txgbe_hw *hw);
+static s32 txgbe_handle_bp_flow(u32 link_mode, struct txgbe_hw *hw);
+static void txgbe_get_bp_ability(struct txgbe_backplane_ability *ability,
+	u32 link_partner, struct txgbe_hw *hw);
+static s32 txgbe_check_bp_ability(struct txgbe_backplane_ability *local_ability,
+	struct txgbe_backplane_ability *lp_ability, struct txgbe_hw *hw);
+static void txgbe_clear_bp_intr(u32 bit, u32 bit_high, struct txgbe_hw *hw);
+static s32 txgbe_enable_kr_training(struct txgbe_hw *hw);
+static s32 txgbe_disable_kr_training(struct txgbe_hw *hw, s32 post, s32 mode);
+static s32 txgbe_check_kr_training(struct txgbe_hw *hw);
+static void txgbe_read_phy_lane_tx_eq(u16 lane, struct txgbe_hw *hw,
+				s32 post, s32 mode);
 static s32 txgbe_set_link_to_sfi(struct txgbe_hw *hw, u32 speed);
 
 /**
@@ -1399,7 +1410,7 @@ static void txgbe_i2c_stop(struct txgbe_hw *hw)
 	wr32(hw, TXGBE_I2CENA, 0);
 }
 
-static s32
+static void
 txgbe_set_sgmii_an37_ability(struct txgbe_hw *hw)
 {
 	u32 value;
@@ -1410,7 +1421,6 @@ txgbe_set_sgmii_an37_ability(struct txgbe_hw *hw)
 	value = rd32_epcs(hw, SR_MII_MMD_CTL);
 	value = (value & ~0x1200) | (0x1 << 12) | (0x1 << 9);
 	wr32_epcs(hw, SR_MII_MMD_CTL, value);
-	return 0;
 }
 
 static s32
@@ -2294,3 +2304,450 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 		mactxcfg | TXGBE_MACTXCFG_TXE);
 }
 
+/**
+ * txgbe_kr_handle - Handle the interrupt of auto-negotiation
+ * @hw: pointer to hardware structure
+ */
+s32 txgbe_kr_handle(struct txgbe_hw *hw)
+{
+	u32 value;
+	s32 status = 0;
+
+	DEBUGFUNC("txgbe_kr_handle");
+
+	value = rd32_epcs(hw, VR_AN_INTR);
+	BP_LOG("AN INTERRUPT!! value: 0x%x\n", value);
+	if (!(value & VR_AN_INTR_PG_RCV)) {
+		wr32_epcs(hw, VR_AN_INTR, 0);
+		return status;
+	}
+
+	status = txgbe_handle_bp_flow(0, hw);
+
+	return status;
+}
+
+/**
+ * txgbe_handle_bp_flow - Handle backplane AN73 flow
+ * @hw: pointer to hardware structure
+ * @link_mode: local AN73 link mode
+ */
+static s32 txgbe_handle_bp_flow(u32 link_mode, struct txgbe_hw *hw)
+{
+	u32 value, i, lp_reg, ld_reg;
+	s32 status = 0;
+	struct txgbe_backplane_ability local_ability, lp_ability;
+
+	DEBUGFUNC("txgbe_handle_bp_flow");
+
+	local_ability.current_link_mode = link_mode;
+
+	/* 1. Get the local AN73 Base Page Ability */
+	BP_LOG("<1>. Get the local AN73 Base Page Ability ...\n");
+	txgbe_get_bp_ability(&local_ability, 0, hw);
+
+	/* 2. Check and clear the AN73 Interrupt Status */
+	BP_LOG("<2>. Check the AN73 Interrupt Status ...\n");
+	txgbe_clear_bp_intr(2, 0, hw);
+
+	/* 3.1. Get the link partner AN73 Base Page Ability */
+	BP_LOG("<3.1>. Get the link partner AN73 Base Page Ability ...\n");
+	txgbe_get_bp_ability(&lp_ability, 1, hw);
+
+	/* 3.2. Check the AN73 Link Ability with Link Partner */
+	BP_LOG("<3.2>. Check the AN73 Link Ability with Link Partner ...\n");
+	BP_LOG("       Local Link Ability: 0x%x\n", local_ability.link_ability);
+	BP_LOG("   Link Partner Link Ability: 0x%x\n", lp_ability.link_ability);
+
+	status = txgbe_check_bp_ability(&local_ability, &lp_ability, hw);
+
+	wr32_epcs(hw, SR_AN_CTRL, 0);
+	wr32_epcs(hw, VR_AN_KR_MODE_CL, 0);
+
+	/* 3.3. Check the FEC and KR Training for KR mode */
+	BP_LOG("<3.3>. Check the FEC for KR mode ...\n");
+	if ((local_ability.fec_ability & lp_ability.fec_ability) == 0x03) {
+		BP_LOG("Enable the Backplane KR FEC ...\n");
+		wr32_epcs(hw, SR_PMA_KR_FEC_CTRL, SR_PMA_KR_FEC_CTRL_EN);
+	} else {
+		BP_LOG("Backplane KR FEC is disabled.\n");
+	}
+
+	printf("Enter training.\n");
+	/* CL72 KR training on */
+	for (i = 0; i < 2; i++) {
+		/* 3.4. Check the CL72 KR Training for KR mode */
+		BP_LOG("<3.4>. Check the CL72 KR Training for KR mode ...\n");
+		BP_LOG("==================%d==================\n", i);
+		status = txgbe_enable_kr_training(hw);
+		BP_LOG("Check the Clause 72 KR Training status ...\n");
+		status |= txgbe_check_kr_training(hw);
+
+		lp_reg = rd32_epcs(hw, SR_PMA_KR_LP_CESTS);
+		lp_reg &= SR_PMA_KR_LP_CESTS_RR;
+		BP_LOG("SR PMA MMD 10GBASE-KR LP Coefficient Status Register: 0x%x\n",
+			lp_reg);
+		ld_reg = rd32_epcs(hw, SR_PMA_KR_LD_CESTS);
+		ld_reg &= SR_PMA_KR_LD_CESTS_RR;
+		BP_LOG("SR PMA MMD 10GBASE-KR LD Coefficient Status Register: 0x%x\n",
+			ld_reg);
+		if (hw->devarg.poll == 0 && status != 0)
+			lp_reg = SR_PMA_KR_LP_CESTS_RR;
+
+		if (lp_reg & ld_reg) {
+			BP_LOG("==================out==================\n");
+			status = txgbe_disable_kr_training(hw, 0, 0);
+			wr32_epcs(hw, SR_AN_CTRL, 0);
+			txgbe_clear_bp_intr(2, 0, hw);
+			txgbe_clear_bp_intr(1, 0, hw);
+			txgbe_clear_bp_intr(0, 0, hw);
+			for (i = 0; i < 10; i++) {
+				value = rd32_epcs(hw, SR_XS_PCS_KR_STS1);
+				if (value & SR_XS_PCS_KR_STS1_PLU) {
+					BP_LOG("\nINT_AN_INT_CMPLT =1, AN73 Done Success.\n");
+					wr32_epcs(hw, SR_AN_CTRL, 0);
+					return 0;
+				}
+				msec_delay(10);
+			}
+			msec_delay(1000);
+			txgbe_set_link_to_kr(hw, 0);
+
+			return 0;
+		}
+
+		status |= txgbe_disable_kr_training(hw, 0, 0);
+	}
+
+	txgbe_clear_bp_intr(2, 0, hw);
+	txgbe_clear_bp_intr(1, 0, hw);
+	txgbe_clear_bp_intr(0, 0, hw);
+
+	return status;
+}
+
+/**
+ * txgbe_get_bp_ability
+ * @hw: pointer to hardware structure
+ * @ability: pointer to blackplane ability structure
+ * @link_partner:
+ *	1: Get Link Partner Base Page
+ *	2: Get Link Partner Next Page
+ *		(only get NXP Ability Register 1 at the moment)
+ *	0: Get Local Device Base Page
+ */
+static void txgbe_get_bp_ability(struct txgbe_backplane_ability *ability,
+		u32 link_partner, struct txgbe_hw *hw)
+{
+	u32 value = 0;
+
+	DEBUGFUNC("txgbe_get_bp_ability");
+
+	/* Link Partner Base Page */
+	if (link_partner == 1) {
+		/* Read the link partner AN73 Base Page Ability Registers */
+		BP_LOG("Read the link partner AN73 Base Page Ability Registers...\n");
+		value = rd32_epcs(hw, SR_AN_MMD_LP_ABL1);
+		BP_LOG("SR AN MMD LP Base Page Ability Register 1: 0x%x\n",
+			value);
+		ability->next_page = SR_MMD_LP_ABL1_ADV_NP(value);
+		BP_LOG("  Next Page (bit15): %d\n", ability->next_page);
+
+		value = rd32_epcs(hw, SR_AN_MMD_LP_ABL2);
+		BP_LOG("SR AN MMD LP Base Page Ability Register 2: 0x%x\n",
+			value);
+		ability->link_ability =
+			value & SR_AN_MMD_LP_ABL2_BP_TYPE_KR_KX4_KX;
+		BP_LOG("  Link Ability (bit[15:0]): 0x%x\n",
+			ability->link_ability);
+		BP_LOG("  (0x20- KX_ONLY, 0x40- KX4_ONLY, 0x60- KX4_KX\n");
+		BP_LOG("   0x80- KR_ONLY, 0xA0- KR_KX, 0xC0- KR_KX4, 0xE0- KR_KX4_KX)\n");
+
+		value = rd32_epcs(hw, SR_AN_MMD_LP_ABL3);
+		BP_LOG("SR AN MMD LP Base Page Ability Register 3: 0x%x\n",
+			value);
+		BP_LOG("  FEC Request (bit15): %d\n", ((value >> 15) & 0x01));
+		BP_LOG("  FEC Enable  (bit14): %d\n", ((value >> 14) & 0x01));
+		ability->fec_ability = SR_AN_MMD_LP_ABL3_FCE(value);
+	} else if (link_partner == 2) {
+		/* Read the link partner AN73 Next Page Ability Registers */
+		BP_LOG("\nRead the link partner AN73 Next Page Ability Registers...\n");
+		value = rd32_epcs(hw, SR_AN_LP_XNP_ABL1);
+		BP_LOG(" SR AN MMD LP XNP Ability Register 1: 0x%x\n", value);
+		ability->next_page = SR_AN_LP_XNP_ABL1_NP(value);
+		BP_LOG("  Next Page (bit15): %d\n", ability->next_page);
+	} else {
+		/* Read the local AN73 Base Page Ability Registers */
+		BP_LOG("Read the local AN73 Base Page Ability Registers...\n");
+		value = rd32_epcs(hw, SR_AN_MMD_ADV_REG1);
+		BP_LOG("SR AN MMD Advertisement Register 1: 0x%x\n", value);
+		ability->next_page = SR_AN_MMD_ADV_REG1_NP(value);
+		BP_LOG("  Next Page (bit15): %d\n", ability->next_page);
+
+		value = rd32_epcs(hw, SR_AN_MMD_ADV_REG2);
+		BP_LOG("SR AN MMD Advertisement Register 2: 0x%x\n", value);
+		ability->link_ability =
+			value & SR_AN_MMD_ADV_REG2_BP_TYPE_KR_KX4_KX;
+		BP_LOG("  Link Ability (bit[15:0]): 0x%x\n",
+			ability->link_ability);
+		BP_LOG("  (0x20- KX_ONLY, 0x40- KX4_ONLY, 0x60- KX4_KX\n");
+		BP_LOG("   0x80- KR_ONLY, 0xA0- KR_KX, 0xC0- KR_KX4, 0xE0- KR_KX4_KX)\n");
+
+		value = rd32_epcs(hw, SR_AN_MMD_ADV_REG3);
+		BP_LOG("SR AN MMD Advertisement Register 3: 0x%x\n", value);
+		BP_LOG("  FEC Request (bit15): %d\n", ((value >> 15) & 0x01));
+		BP_LOG("  FEC Enable  (bit14): %d\n", ((value >> 14) & 0x01));
+		ability->fec_ability = SR_AN_MMD_ADV_REG3_FCE(value);
+	}
+
+	BP_LOG("done.\n");
+}
+
+/**
+ * txgbe_check_bp_ability
+ * @hw: pointer to hardware structure
+ * @ability: pointer to blackplane ability structure
+ */
+static s32 txgbe_check_bp_ability(struct txgbe_backplane_ability *local_ability,
+	struct txgbe_backplane_ability *lp_ability, struct txgbe_hw *hw)
+{
+	u32 com_link_abi;
+	s32 ret = 0;
+
+	DEBUGFUNC("txgbe_check_bp_ability");
+
+	com_link_abi = local_ability->link_ability & lp_ability->link_ability;
+	BP_LOG("com_link_abi = 0x%x, local_ability = 0x%x, lp_ability = 0x%x\n",
+		com_link_abi, local_ability->link_ability,
+		lp_ability->link_ability);
+
+	if (!com_link_abi) {
+		BP_LOG("The Link Partner does not support any compatible speed mode.\n");
+		ret = -1;
+	} else if (com_link_abi & BP_TYPE_KR) {
+		if (local_ability->current_link_mode) {
+			BP_LOG("Link mode is not matched with Link Partner: [LINK_KR].\n");
+			BP_LOG("Set the local link mode to [LINK_KR] ...\n");
+			txgbe_set_link_to_kr(hw, 0);
+			ret = 1;
+		} else {
+			BP_LOG("Link mode is matched with Link Partner: [LINK_KR].\n");
+			ret = 0;
+		}
+	} else if (com_link_abi & BP_TYPE_KX4) {
+		if (local_ability->current_link_mode == 0x10) {
+			BP_LOG("Link mode is matched with Link Partner: [LINK_KX4].\n");
+			ret = 0;
+		} else {
+			BP_LOG("Link mode is not matched with Link Partner: [LINK_KX4].\n");
+			BP_LOG("Set the local link mode to [LINK_KX4] ...\n");
+			txgbe_set_link_to_kx4(hw, 1);
+			ret = 1;
+		}
+	} else if (com_link_abi & BP_TYPE_KX) {
+		if (local_ability->current_link_mode == 0x1) {
+			BP_LOG("Link mode is matched with Link Partner: [LINK_KX].\n");
+			ret = 0;
+		} else {
+			BP_LOG("Link mode is not matched with Link Partner: [LINK_KX].\n");
+			BP_LOG("Set the local link mode to [LINK_KX] ...\n");
+			txgbe_set_link_to_kx(hw, 1, 1);
+			ret = 1;
+		}
+	}
+
+	return ret;
+}
+
+/**
+ * txgbe_clear_bp_intr
+ * @hw: pointer to hardware structure
+ * @index: the bit will be cleared
+ * @index_high:
+ *	index_high = 0: Only the index bit will be cleared
+ *	index_high != 0: the [index_high, index] range will be cleared
+ */
+static void txgbe_clear_bp_intr(u32 bit, u32 bit_high, struct txgbe_hw *hw)
+{
+	u32 rdata = 0, wdata, i;
+
+	DEBUGFUNC("txgbe_clear_bp_intr");
+
+	rdata = rd32_epcs(hw, VR_AN_INTR);
+	BP_LOG("[Before clear]Read VR AN MMD Interrupt Register: 0x%x\n",
+			rdata);
+	BP_LOG("Interrupt: 0- AN_INT_CMPLT, 1-  AN_INC_LINK, 2- AN_PG_RCV\n\n");
+
+	wdata = rdata;
+	if (bit_high) {
+		for (i = bit; i <= bit_high; i++)
+			wdata &= ~(1 << i);
+	} else {
+		wdata &= ~(1 << bit);
+	}
+
+	wr32_epcs(hw, VR_AN_INTR, wdata);
+
+	rdata = rd32_epcs(hw, VR_AN_INTR);
+	BP_LOG("[After clear]Read VR AN MMD Interrupt Register: 0x%x\n", rdata);
+}
+
+static s32 txgbe_enable_kr_training(struct txgbe_hw *hw)
+{
+	s32 status = 0;
+	u32 value = 0;
+
+	DEBUGFUNC("txgbe_enable_kr_training");
+
+	BP_LOG("Enable Clause 72 KR Training ...\n");
+
+	if (CL72_KRTR_PRBS_MODE_EN != 0xFFFF) {
+		/* Set PRBS Timer Duration Control to maximum 6.7ms in
+		 * VR_PMA_KRTR_PRBS_CTRL2 Register
+		 */
+		value = CL72_KRTR_PRBS_MODE_EN;
+		wr32_epcs(hw, VR_PMA_KRTR_PRBS_CTRL2, value);
+		/* Set PRBS Timer Duration Control to maximum 6.7ms in
+		 * VR_PMA_KRTR_PRBS_CTRL1 Register
+		 */
+		wr32_epcs(hw, VR_PMA_KRTR_PRBS_CTRL1,
+			VR_PMA_KRTR_PRBS_TIME_LMT);
+		/* Enable PRBS Mode to determine KR Training Status by setting
+		 * Bit 0 of VR_PMA_KRTR_PRBS_CTRL0 Register
+		 */
+		value = VR_PMA_KRTR_PRBS_MODE_EN;
+	}
+#ifdef CL72_KRTR_PRBS31_EN
+	/* Enable PRBS Mode to determine KR Training Status by setting
+	 * Bit 1 of VR_PMA_KRTR_PRBS_CTRL0 Register
+	 */
+	value = VR_PMA_KRTR_PRBS31_EN;
+#endif
+	wr32_epcs(hw, VR_PMA_KRTR_PRBS_CTRL0, value);
+	/* Read PHY Lane0 TX EQ before Clause 72 KR Training. */
+	txgbe_read_phy_lane_tx_eq(0, hw, 0, 0);
+
+	/* Enable the Clause 72 start-up protocol
+	 *   by setting Bit 1 of SR_PMA_KR_PMD_CTRL Register.
+	 * Restart the Clause 72 start-up protocol
+	 *   by setting Bit 0 of SR_PMA_KR_PMD_CTRL Register.
+	 */
+	wr32_epcs(hw, SR_PMA_KR_PMD_CTRL,
+		SR_PMA_KR_PMD_CTRL_EN_TR | SR_PMA_KR_PMD_CTRL_RS_TR);
+
+	return status;
+}
+
+static s32 txgbe_disable_kr_training(struct txgbe_hw *hw, s32 post, s32 mode)
+{
+	s32 status = 0;
+
+	DEBUGFUNC("txgbe_disable_kr_training");
+
+	BP_LOG("Disable Clause 72 KR Training ...\n");
+	/* Read PHY Lane0 TX EQ before Clause 72 KR Training. */
+	txgbe_read_phy_lane_tx_eq(0, hw, post, mode);
+
+	wr32_epcs(hw, SR_PMA_KR_PMD_CTRL, SR_PMA_KR_PMD_CTRL_RS_TR);
+
+	return status;
+}
+
+static s32 txgbe_check_kr_training(struct txgbe_hw *hw)
+{
+	s32 status = 0;
+	u32 value, test;
+	int i;
+	int times = hw->devarg.poll ? 35 : 20;
+
+	DEBUGFUNC("txgbe_check_kr_training");
+
+	for (i = 0; i < times; i++) {
+		value = rd32_epcs(hw, SR_PMA_KR_LP_CEU);
+		BP_LOG("SR PMA MMD 10GBASE-KR LP Coefficient Update Register: 0x%x\n",
+			value);
+		value = rd32_epcs(hw, SR_PMA_KR_LP_CESTS);
+		BP_LOG("SR PMA MMD 10GBASE-KR LP Coefficient Status Register: 0x%x\n",
+			value);
+		value = rd32_epcs(hw, SR_PMA_KR_LD_CEU);
+		BP_LOG("SR PMA MMD 10GBASE-KR LD Coefficient Update: 0x%x\n",
+			value);
+		value = rd32_epcs(hw, SR_PMA_KR_LD_CESTS);
+		BP_LOG("SR PMA MMD 10GBASE-KR LD Coefficient Status: 0x%x\n",
+			value);
+		value = rd32_epcs(hw, SR_PMA_KR_PMD_STS);
+		BP_LOG("SR PMA MMD 10GBASE-KR Status Register: 0x%x\n", value);
+		BP_LOG("  Training Failure         (bit3): %d\n",
+			((value >> 3) & 0x01));
+		BP_LOG("  Start-Up Protocol Status (bit2): %d\n",
+			((value >> 2) & 0x01));
+		BP_LOG("  Frame Lock               (bit1): %d\n",
+			((value >> 1) & 0x01));
+		BP_LOG("  Receiver Status          (bit0): %d\n",
+			((value >> 0) & 0x01));
+
+		test = rd32_epcs(hw, SR_PMA_KR_LP_CESTS);
+		if (test & SR_PMA_KR_LP_CESTS_RR) {
+			BP_LOG("TEST Coefficient Status Register: 0x%x\n",
+				test);
+			status = 1;
+		}
+
+		if (value & SR_PMA_KR_PMD_STS_TR_FAIL) {
+			BP_LOG("Training is completed with failure.\n");
+			txgbe_read_phy_lane_tx_eq(0, hw, 0, 0);
+			return 0;
+		}
+
+		if (value & SR_PMA_KR_PMD_STS_RCV) {
+			BP_LOG("Receiver trained and ready to receive data.\n");
+			txgbe_read_phy_lane_tx_eq(0, hw, 0, 0);
+			return 0;
+		}
+
+		msec_delay(20);
+	}
+
+	BP_LOG("ERROR: Check Clause 72 KR Training Complete Timeout.\n");
+	return status;
+}
+
+static void txgbe_read_phy_lane_tx_eq(u16 lane, struct txgbe_hw *hw,
+				s32 post, s32 mode)
+{
+	u32 value = 0;
+	u32 addr;
+	u32 tx_main_cursor, tx_pre_cursor, tx_post_cursor, lmain;
+
+	DEBUGFUNC("txgbe_read_phy_lane_tx_eq");
+
+	addr = TXGBE_PHY_LANE0_TX_EQ_CTL1 | (lane << 8);
+	value = rd32_ephy(hw, addr);
+	BP_LOG("PHY LANE TX EQ Read Value: %x\n", lane);
+	tx_main_cursor = TXGBE_PHY_LANE0_TX_EQ_CTL1_MAIN(value);
+	BP_LOG("TX_MAIN_CURSOR: %x\n", tx_main_cursor);
+	UNREFERENCED_PARAMETER(tx_main_cursor);
+
+	addr = TXGBE_PHY_LANE0_TX_EQ_CTL2 | (lane << 8);
+	value = rd32_ephy(hw, addr);
+	tx_pre_cursor = value & TXGBE_PHY_LANE0_TX_EQ_CTL2_PRE;
+	tx_post_cursor = TXGBE_PHY_LANE0_TX_EQ_CTL2_POST(value);
+	BP_LOG("TX_PRE_CURSOR: %x\n", tx_pre_cursor);
+	BP_LOG("TX_POST_CURSOR: %x\n", tx_post_cursor);
+
+	if (mode == 1) {
+		lmain = 160 - tx_pre_cursor - tx_post_cursor;
+		if (lmain < 88)
+			lmain = 88;
+
+		if (post)
+			tx_post_cursor = post;
+
+		wr32_epcs(hw, TXGBE_PHY_EQ_INIT_CTL1, tx_post_cursor);
+		wr32_epcs(hw, TXGBE_PHY_EQ_INIT_CTL0,
+				tx_pre_cursor | (lmain << 8));
+		value = rd32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1);
+		value &= ~TXGBE_PHY_TX_EQ_CTL1_DEF;
+		wr32_epcs(hw, TXGBE_PHY_TX_EQ_CTL1, value);
+	}
+}

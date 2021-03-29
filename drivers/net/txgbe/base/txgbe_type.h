@@ -600,6 +600,8 @@ struct txgbe_mac_info {
 	s32 (*dmac_config)(struct txgbe_hw *hw);
 	s32 (*setup_eee)(struct txgbe_hw *hw, bool enable_eee);
 
+	s32 (*kr_handle)(struct txgbe_hw *hw);
+
 	enum txgbe_mac_type type;
 	u8 addr[ETH_ADDR_LEN];
 	u8 perm_addr[ETH_ADDR_LEN];
@@ -793,6 +795,13 @@ struct txgbe_hw {
 		u64 tx_qp_bytes;
 		u64 rx_qp_mc_packets;
 	} qp_last[TXGBE_MAX_QP];
+};
+
+struct txgbe_backplane_ability {
+	u32 next_page;	  /* Next Page (bit0) */
+	u32 link_ability; /* Link Ability (bit[7:0]) */
+	u32 fec_ability;  /* FEC Request (bit1), FEC Enable (bit0) */
+	u32 current_link_mode; /* current link mode for local device */
 };
 
 #include "txgbe_regs.h"
