@@ -60,9 +60,9 @@ bool txgbe_device_supports_autoneg_fc(struct txgbe_hw *hw)
 		break;
 	case txgbe_media_type_copper:
 		/* only some copper devices support flow control autoneg */
-		switch (hw->device_id) {
-		case TXGBE_DEV_ID_RAPTOR_XAUI:
-		case TXGBE_DEV_ID_RAPTOR_SGMII:
+		switch (hw->subsystem_device_id & 0xFF) {
+		case TXGBE_DEV_ID_XAUI:
+		case TXGBE_DEV_ID_SGMII:
 			supported = true;
 			break;
 		default:
@@ -2525,26 +2525,12 @@ s32 txgbe_set_mac_type(struct txgbe_hw *hw)
 	}
 
 	switch (hw->device_id) {
-	case TXGBE_DEV_ID_RAPTOR_KR_KX_KX4:
-		hw->phy.media_type = txgbe_media_type_backplane;
+	case TXGBE_DEV_ID_SP1000:
+	case TXGBE_DEV_ID_WX1820:
 		hw->mac.type = txgbe_mac_raptor;
 		break;
-	case TXGBE_DEV_ID_RAPTOR_XAUI:
-	case TXGBE_DEV_ID_RAPTOR_SGMII:
-		hw->phy.media_type = txgbe_media_type_copper;
-		hw->mac.type = txgbe_mac_raptor;
-		break;
-	case TXGBE_DEV_ID_RAPTOR_SFP:
-	case TXGBE_DEV_ID_WX1820_SFP:
-		hw->phy.media_type = txgbe_media_type_fiber;
-		hw->mac.type = txgbe_mac_raptor;
-		break;
-	case TXGBE_DEV_ID_RAPTOR_QSFP:
-		hw->phy.media_type = txgbe_media_type_fiber_qsfp;
-		hw->mac.type = txgbe_mac_raptor;
-		break;
-	case TXGBE_DEV_ID_RAPTOR_VF:
-	case TXGBE_DEV_ID_RAPTOR_VF_HV:
+	case TXGBE_DEV_ID_SP1000_VF:
+	case TXGBE_DEV_ID_WX1820_VF:
 		hw->phy.media_type = txgbe_media_type_virtual;
 		hw->mac.type = txgbe_mac_raptor_vf;
 		break;
@@ -2554,8 +2540,8 @@ s32 txgbe_set_mac_type(struct txgbe_hw *hw)
 		break;
 	}
 
-	DEBUGOUT("found mac: %d media: %d, returns: %d\n",
-		  hw->mac.type, hw->phy.media_type, err);
+	DEBUGOUT("found mac: %d, returns: %d\n",
+		  hw->mac.type, err);
 	return err;
 }
 
@@ -2613,7 +2599,7 @@ s32 txgbe_init_phy_raptor(struct txgbe_hw *hw)
 
 	DEBUGFUNC("txgbe_init_phy_raptor");
 
-	if (hw->device_id == TXGBE_DEV_ID_RAPTOR_QSFP) {
+	if ((hw->device_id & 0xFF) == TXGBE_DEV_ID_QSFP) {
 		/* Store flag indicating I2C bus access control unit. */
 		hw->phy.qsfp_shared_i2c_bus = TRUE;
 
@@ -3017,21 +3003,28 @@ u32 txgbe_get_media_type_raptor(struct txgbe_hw *hw)
 		break;
 	}
 
-	switch (hw->device_id) {
-	case TXGBE_DEV_ID_RAPTOR_KR_KX_KX4:
+	switch (hw->subsystem_device_id & 0xFF) {
+	case TXGBE_DEV_ID_KR_KX_KX4:
+	case TXGBE_DEV_ID_MAC_SGMII:
+	case TXGBE_DEV_ID_MAC_XAUI:
 		/* Default device ID is mezzanine card KX/KX4 */
 		media_type = txgbe_media_type_backplane;
 		break;
-	case TXGBE_DEV_ID_RAPTOR_SFP:
-	case TXGBE_DEV_ID_WX1820_SFP:
+	case TXGBE_DEV_ID_SFP:
 		media_type = txgbe_media_type_fiber;
 		break;
-	case TXGBE_DEV_ID_RAPTOR_QSFP:
+	case TXGBE_DEV_ID_QSFP:
 		media_type = txgbe_media_type_fiber_qsfp;
 		break;
-	case TXGBE_DEV_ID_RAPTOR_XAUI:
-	case TXGBE_DEV_ID_RAPTOR_SGMII:
+	case TXGBE_DEV_ID_XAUI:
+	case TXGBE_DEV_ID_SGMII:
 		media_type = txgbe_media_type_copper;
+		break;
+	case TXGBE_DEV_ID_SFI_XAUI:
+		if (hw->bus.lan_id == 0)
+			media_type = txgbe_media_type_fiber;
+		else
+			media_type = txgbe_media_type_copper;
 		break;
 	default:
 		media_type = txgbe_media_type_unknown;

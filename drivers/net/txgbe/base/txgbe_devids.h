@@ -15,22 +15,40 @@
 /*
  * Device IDs
  */
-#define TXGBE_DEV_ID_RAPTOR_VF                  0x1000
-#define TXGBE_DEV_ID_RAPTOR_SFP                 0x1001 /* fiber */
-#define TXGBE_DEV_ID_RAPTOR_KR_KX_KX4           0x1002 /* backplane */
-#define TXGBE_DEV_ID_RAPTOR_XAUI                0x1003 /* copper */
-#define TXGBE_DEV_ID_RAPTOR_SGMII               0x1004 /* copper */
-#define TXGBE_DEV_ID_RAPTOR_QSFP                0x1011 /* fiber */
-#define TXGBE_DEV_ID_RAPTOR_VF_HV               0x2000
-#define TXGBE_DEV_ID_RAPTOR_T3_LOM              0x2001
-
-#define TXGBE_DEV_ID_WX1820_SFP                 0x2001
+#define TXGBE_DEV_ID_SP1000			0x1001
+#define TXGBE_DEV_ID_WX1820			0x2001
+#define TXGBE_DEV_ID_SP1000_VF                  0x1000
+#define TXGBE_DEV_ID_WX1820_VF                  0x2000
 
 /*
- * Subdevice IDs
+ * Subsystem IDs
  */
-#define TXGBE_SUBDEV_ID_RAPTOR			0x0000
-#define TXGBE_SUBDEV_ID_MPW			0x0001
+/* SFP */
+#define TXGBE_DEV_ID_SP1000_SFP			0x0000
+#define TXGBE_DEV_ID_WX1820_SFP			0x2000
+#define TXGBE_DEV_ID_SFP			0x00
+/* copper */
+#define TXGBE_DEV_ID_SP1000_XAUI		0x1010
+#define TXGBE_DEV_ID_WX1820_XAUI		0x2010
+#define TXGBE_DEV_ID_XAUI			0x10
+#define TXGBE_DEV_ID_SP1000_SGMII		0x1020
+#define TXGBE_DEV_ID_WX1820_SGMII		0x2020
+#define TXGBE_DEV_ID_SGMII			0x20
+/* backplane */
+#define TXGBE_DEV_ID_SP1000_KR_KX_KX4		0x1030
+#define TXGBE_DEV_ID_WX1820_KR_KX_KX4		0x2030
+#define TXGBE_DEV_ID_KR_KX_KX4			0x30
+/* MAC Interface */
+#define TXGBE_DEV_ID_SP1000_MAC_XAUI		0x1040
+#define TXGBE_DEV_ID_WX1820_MAC_XAUI		0x2040
+#define TXGBE_DEV_ID_MAC_XAUI			0x40
+#define TXGBE_DEV_ID_SP1000_MAC_SGMII           0x1060
+#define TXGBE_DEV_ID_WX1820_MAC_SGMII           0x2060
+#define TXGBE_DEV_ID_MAC_SGMII                  0x60
+/* combined interface*/
+#define TXGBE_DEV_ID_SFI_XAUI			0x50
+/* fiber qsfp*/
+#define TXGBE_DEV_ID_QSFP			0x11
 
 #define TXGBE_ETHERTYPE_FLOW_CTRL   0x8808
 #define TXGBE_ETHERTYPE_IEEE_VLAN   0x8100  /* 802.1q protocol */

@@ -71,8 +71,8 @@ static void txgbevf_dev_interrupt_handler(void *param);
  * The set of PCI devices this driver supports (for VF)
  */
 static const struct rte_pci_id pci_id_txgbevf_map[] = {
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_RAPTOR_VF) },
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_RAPTOR_VF_HV) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_SP1000_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_WX1820_VF) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 

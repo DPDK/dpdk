@@ -2126,26 +2126,32 @@ u64 txgbe_autoc_read(struct txgbe_hw *hw)
 	u32 sr_pma_ctl1;
 	u32 sr_an_ctl;
 	u32 sr_an_adv_reg2;
+	u8 type = hw->subsystem_device_id & 0xFF;
 
 	if (hw->phy.multispeed_fiber) {
 		autoc |= TXGBE_AUTOC_LMS_10G;
-	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_SFP ||
-		   hw->device_id == TXGBE_DEV_ID_WX1820_SFP) {
-		autoc |= TXGBE_AUTOC_LMS_10G |
-			 TXGBE_AUTOC_10GS_SFI;
-	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_QSFP) {
+	} else if (type == TXGBE_DEV_ID_SFP) {
+		autoc |= TXGBE_AUTOC_LMS_10G;
+		autoc |= TXGBE_AUTOC_10GS_SFI;
+	} else if (type == TXGBE_DEV_ID_QSFP) {
 		autoc = 0; /*TBD*/
-	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_XAUI) {
-		autoc |= TXGBE_AUTOC_LMS_10G_LINK_NO_AN |
-			 TXGBE_AUTOC_10G_XAUI;
+	} else if (type == TXGBE_DEV_ID_XAUI || type == TXGBE_DEV_ID_SFI_XAUI) {
+		autoc |= TXGBE_AUTOC_LMS_10G_LINK_NO_AN;
+		autoc |= TXGBE_AUTOC_10G_XAUI;
 		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_10GBASE_T;
-	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_SGMII) {
+	} else if (type == TXGBE_DEV_ID_SGMII) {
 		autoc |= TXGBE_AUTOC_LMS_SGMII_1G_100M;
 		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_1000BASE_T |
 				TXGBE_PHYSICAL_LAYER_100BASE_TX;
+	} else if (type == TXGBE_DEV_ID_MAC_XAUI) {
+		autoc |= TXGBE_AUTOC_LMS_10G_LINK_NO_AN;
+		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_10GBASE_KX4;
+	} else if (type == TXGBE_DEV_ID_MAC_SGMII) {
+		autoc |= TXGBE_AUTOC_LMS_1G_LINK_NO_AN;
+		hw->phy.link_mode = TXGBE_PHYSICAL_LAYER_1000BASE_KX;
 	}
 
-	if (hw->device_id != TXGBE_DEV_ID_RAPTOR_SGMII)
+	if (type != TXGBE_DEV_ID_KR_KX_KX4)
 		return autoc;
 
 	sr_pcs_ctl = rd32_epcs(hw, SR_XS_PCS_CTRL2);
@@ -2201,13 +2207,14 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 	bool autoneg;
 	u32 speed;
 	u32 mactxcfg = 0;
+	u8 device_type = hw->subsystem_device_id & 0xFF;
 
 	speed = TXGBE_AUTOC_SPEED(autoc);
 	autoc &= ~TXGBE_AUTOC_SPEED_MASK;
 	autoneg = (autoc & TXGBE_AUTOC_AUTONEG ? true : false);
 	autoc &= ~TXGBE_AUTOC_AUTONEG;
 
-	if (hw->device_id == TXGBE_DEV_ID_RAPTOR_KR_KX_KX4) {
+	if (device_type == TXGBE_DEV_ID_KR_KX_KX4) {
 		if (!autoneg) {
 			switch (hw->phy.link_mode) {
 			case TXGBE_PHYSICAL_LAYER_10GBASE_KR:
@@ -2223,16 +2230,19 @@ void txgbe_autoc_write(struct txgbe_hw *hw, u64 autoc)
 				return;
 			}
 		}
-	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_XAUI ||
-		   hw->device_id == TXGBE_DEV_ID_RAPTOR_SGMII) {
+	} else if (device_type == TXGBE_DEV_ID_XAUI ||
+		   device_type == TXGBE_DEV_ID_SGMII ||
+		   device_type == TXGBE_DEV_ID_MAC_XAUI ||
+		   device_type == TXGBE_DEV_ID_MAC_SGMII ||
+		   (device_type == TXGBE_DEV_ID_SFI_XAUI &&
+		   hw->phy.media_type == txgbe_media_type_copper)) {
 		if (speed == TXGBE_LINK_SPEED_10GB_FULL) {
 			txgbe_set_link_to_kx4(hw, autoneg);
 		} else {
 			txgbe_set_link_to_kx(hw, speed, 0);
 			txgbe_set_sgmii_an37_ability(hw);
 		}
-	} else if (hw->device_id == TXGBE_DEV_ID_RAPTOR_SFP ||
-		   hw->device_id == TXGBE_DEV_ID_WX1820_SFP) {
+	} else if (hw->phy.media_type == txgbe_media_type_fiber) {
 		txgbe_set_link_to_sfi(hw, speed);
 	}
 

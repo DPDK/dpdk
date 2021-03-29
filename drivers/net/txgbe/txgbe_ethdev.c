@@ -138,8 +138,8 @@ static void txgbe_l2_tunnel_conf(struct rte_eth_dev *dev);
  * The set of PCI devices this driver supports
  */
 static const struct rte_pci_id pci_id_txgbe_map[] = {
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_RAPTOR_SFP) },
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_WX1820_SFP) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_SP1000) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_WANGXUN, TXGBE_DEV_ID_WX1820) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
