@@ -432,8 +432,6 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 	else
 		dev_link.link_speed = link_speed;
 	priv->link_speed_capa = 0;
-	if (edata.supported & SUPPORTED_Autoneg)
-		priv->link_speed_capa |= ETH_LINK_SPEED_AUTONEG;
 	if (edata.supported & (SUPPORTED_1000baseT_Full |
 			       SUPPORTED_1000baseKX_Full))
 		priv->link_speed_capa |= ETH_LINK_SPEED_1G;
@@ -540,8 +538,6 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 	sc = ecmd->link_mode_masks[0] |
 		((uint64_t)ecmd->link_mode_masks[1] << 32);
 	priv->link_speed_capa = 0;
-	if (sc & MLX5_BITSHIFT(ETHTOOL_LINK_MODE_Autoneg_BIT))
-		priv->link_speed_capa |= ETH_LINK_SPEED_AUTONEG;
 	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_1000baseT_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_1000baseKX_Full_BIT)))
 		priv->link_speed_capa |= ETH_LINK_SPEED_1G;

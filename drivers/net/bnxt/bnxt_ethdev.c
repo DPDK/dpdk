@@ -889,8 +889,6 @@ uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 	if (bp->link_info->auto_mode ==
 	    HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE)
 		speed_capa |= ETH_LINK_SPEED_FIXED;
-	else
-		speed_capa |= ETH_LINK_SPEED_AUTONEG;
 
 	return speed_capa;
 }
