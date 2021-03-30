@@ -385,22 +385,6 @@ mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
 		}
 		node = *next_node ? &graph[*next_node] : NULL;
 	};
-	/* no expanded flows but we have missed item, create one rule for it */
-	if (buf->entries == 1 && missed != 0) {
-		elt = 2;
-		lsize += elt * sizeof(*item) + user_pattern_size;
-		if (lsize <= size) {
-			buf->entry[buf->entries].priority = 1;
-			buf->entry[buf->entries].pattern = addr;
-			buf->entries++;
-			flow_items[0].type = missed_item.type;
-			flow_items[1].type = RTE_FLOW_ITEM_TYPE_END;
-			rte_memcpy(addr, buf->entry[0].pattern,
-				   user_pattern_size);
-			addr = (void *)(((uintptr_t)addr) + user_pattern_size);
-			rte_memcpy(addr, flow_items, elt * sizeof(*item));
-		}
-	}
 	return lsize;
 }
 
