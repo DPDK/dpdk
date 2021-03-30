@@ -8059,20 +8059,20 @@ instruction_config(struct rte_swx_pipeline *p,
 	/* Memory allocation. */
 	instr = calloc(n_instructions, sizeof(struct instruction));
 	if (!instr) {
-		err = ENOMEM;
+		err = -ENOMEM;
 		goto error;
 	}
 
 	data = calloc(n_instructions, sizeof(struct instruction_data));
 	if (!data) {
-		err = ENOMEM;
+		err = -ENOMEM;
 		goto error;
 	}
 
 	for (i = 0; i < n_instructions; i++) {
 		char *string = strdup(instructions[i]);
 		if (!string) {
-			err = ENOMEM;
+			err = -ENOMEM;
 			goto error;
 		}
 
