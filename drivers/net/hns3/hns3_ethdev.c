@@ -2779,19 +2779,31 @@ hns3_setup_linkstatus(struct rte_eth_dev *eth_dev,
 }
 
 static int
-hns3_dev_link_update(struct rte_eth_dev *eth_dev,
-		     __rte_unused int wait_to_complete)
+hns3_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 {
+#define HNS3_LINK_CHECK_INTERVAL 100  /* 100ms */
+#define HNS3_MAX_LINK_CHECK_TIMES 20  /* 2s (100 * 20ms) in total */
+
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	uint32_t retry_cnt = HNS3_MAX_LINK_CHECK_TIMES;
 	struct hns3_mac *mac = &hw->mac;
 	struct rte_eth_link new_link;
 	int ret;
 
-	ret = hns3_update_port_link_info(eth_dev);
-	if (ret) {
-		mac->link_status = ETH_LINK_DOWN;
-		hns3_err(hw, "failed to get port link info, ret = %d.", ret);
-	}
+	do {
+		ret = hns3_update_port_link_info(eth_dev);
+		if (ret) {
+			mac->link_status = ETH_LINK_DOWN;
+			hns3_err(hw, "failed to get port link info, ret = %d.",
+				 ret);
+			break;
+		}
+
+		if (!wait_to_complete || mac->link_status == ETH_LINK_UP)
+			break;
+
+		rte_delay_ms(HNS3_LINK_CHECK_INTERVAL);
+	} while (retry_cnt--);
 
 	memset(&new_link, 0, sizeof(new_link));
 	hns3_setup_linkstatus(eth_dev, &new_link);
