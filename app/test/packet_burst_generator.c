@@ -117,6 +117,7 @@ initialize_tcp_header(struct rte_tcp_hdr *tcp_hdr, uint16_t src_port,
 	memset(tcp_hdr, 0, sizeof(struct rte_tcp_hdr));
 	tcp_hdr->src_port = rte_cpu_to_be_16(src_port);
 	tcp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
+	tcp_hdr->data_off = (sizeof(struct rte_tcp_hdr) << 2) & 0xF0;
 
 	return pkt_len;
 }
