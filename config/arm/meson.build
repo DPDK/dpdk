@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation.
 # Copyright(c) 2017 Cavium, Inc
+# Copyright(c) 2021 PANTHEON.tech s.r.o.
 
 # common flags to all aarch64 builds, with lowest priority
 flags_common = [
@@ -208,8 +209,8 @@ if dpdk_conf.get('RTE_ARCH_32')
 else
 	# aarch64 build
 	if not meson.is_cross_build()
-		if machine == 'default'
-			# default build
+		if machine == 'generic'
+			# generic build
 			implementer_id = 'generic'
 			part_number = 'generic'
 		else
@@ -256,7 +257,7 @@ else
 		      '(-Dmachine=generic) build.')
 	endif
 
-	# use default flags with implementer flags
+	# use common flags with implementer flags
 	dpdk_flags = flags_common + implementer_config['flags'] + part_number_config.get('flags', [])
 
 	# apply supported machine args

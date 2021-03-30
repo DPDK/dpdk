@@ -77,7 +77,7 @@ else
     OPTS="$OPTS -Dexamples=all"
 fi
 
-OPTS="$OPTS -Dmachine=default"
+OPTS="$OPTS -Dmachine=generic"
 OPTS="$OPTS --default-library=$DEF_LIB"
 OPTS="$OPTS --buildtype=debugoptimized"
 OPTS="$OPTS -Dcheck_includes=true"

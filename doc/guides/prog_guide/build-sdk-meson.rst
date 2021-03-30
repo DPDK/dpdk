@@ -85,7 +85,7 @@ Project-specific options are passed used -Doption=value::
 
 	meson -Denable_docs=true fullbuild  # build and install docs
 
-	meson -Dmachine=default  # use builder-independent baseline -march
+	meson -Dmachine=generic  # use builder-independent baseline -march
 
 	meson -Ddisable_drivers=event/*,net/tap  # disable tap driver and all
 					# eventdev PMDs for a smaller build
@@ -114,7 +114,7 @@ Examples of setting some of the same options using meson configure::
         re-scan from meson.
 
 .. note::
-        machine=default uses a config that works on all supported architectures
+        machine=generic uses a config that works on all supported architectures
         regardless of the capabilities of the machine where the build is happening.
 
 As well as those settings taken from ``meson configure``, other options

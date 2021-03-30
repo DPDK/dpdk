@@ -25,7 +25,7 @@ option('include_subdir_arch', type: 'string', value: '',
 option('kernel_dir', type: 'string', value: '',
 	description: 'Path to the kernel for building kernel modules. Headers must be in $kernel_dir or $kernel_dir/build. Modules will be installed in /lib/modules.')
 option('machine', type: 'string', value: 'native',
-	description: 'set the target machine type')
+	description: 'set the target machine type or "generic", a build usable on all machines of the build machine architecture or "native", which lets the compiler pick the architecture of the build machine.')
 option('max_ethports', type: 'integer', value: 32,
 	description: 'maximum number of Ethernet devices')
 option('max_lcores', type: 'integer', value: 128,
