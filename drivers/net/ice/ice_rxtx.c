@@ -2436,11 +2436,11 @@ ice_xmit_cleanup(struct ice_tx_queue *txq)
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
 	if (!(txd[desc_to_clean_to].cmd_type_offset_bsz &
 	    rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))) {
-		PMD_TX_FREE_LOG(DEBUG, "TX descriptor %4u is not done "
-				"(port=%d queue=%d) value=0x%"PRIx64"\n",
-				desc_to_clean_to,
-				txq->port_id, txq->queue_id,
-				txd[desc_to_clean_to].cmd_type_offset_bsz);
+		PMD_TX_LOG(DEBUG, "TX descriptor %4u is not done "
+			   "(port=%d queue=%d) value=0x%"PRIx64"\n",
+			   desc_to_clean_to,
+			   txq->port_id, txq->queue_id,
+			   txd[desc_to_clean_to].cmd_type_offset_bsz);
 		/* Failed to clean any descriptors */
 		return -1;
 	}
@@ -2731,10 +2731,10 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* set RS bit on the last descriptor of one packet */
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
-			PMD_TX_FREE_LOG(DEBUG,
-					"Setting RS bit on TXD id="
-					"%4u (port=%d queue=%d)",
-					tx_last, txq->port_id, txq->queue_id);
+			PMD_TX_LOG(DEBUG,
+				   "Setting RS bit on TXD id="
+				   "%4u (port=%d queue=%d)",
+				   tx_last, txq->port_id, txq->queue_id);
 
 			td_cmd |= ICE_TX_DESC_CMD_RS;
 
@@ -3243,7 +3243,7 @@ ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+#ifdef RTE_ETHDEV_DEBUG_TX
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
 			rte_errno = -ret;

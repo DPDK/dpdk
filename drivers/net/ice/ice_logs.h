@@ -14,7 +14,7 @@ extern int ice_logtype_driver;
 
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
-#ifdef RTE_LIBRTE_ICE_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 extern int ice_logtype_rx;
 #define PMD_RX_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, ice_logtype_rx,	\
@@ -23,22 +23,13 @@ extern int ice_logtype_rx;
 #define PMD_RX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
-#ifdef RTE_LIBRTE_ICE_DEBUG_TX
+#ifdef RTE_ETHDEV_DEBUG_TX
 extern int ice_logtype_tx;
 #define PMD_TX_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, ice_logtype_tx,	\
 		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
-#endif
-
-#ifdef RTE_LIBRTE_ICE_DEBUG_TX_FREE
-extern int ice_logtype_tx_free;
-#define PMD_TX_FREE_LOG(level, fmt, args...)			\
-	rte_log(RTE_LOG_ ## level, ice_logtype_tx_free,	\
-		"%s(): " fmt "\n", __func__, ## args)
-#else
-#define PMD_TX_FREE_LOG(level, fmt, args...) do { } while (0)
 #endif
 
 #define PMD_DRV_LOG_RAW(level, fmt, args...) \

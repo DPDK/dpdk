@@ -5360,12 +5360,9 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ice,
 
 RTE_LOG_REGISTER(ice_logtype_init, pmd.net.ice.init, NOTICE);
 RTE_LOG_REGISTER(ice_logtype_driver, pmd.net.ice.driver, NOTICE);
-#ifdef RTE_LIBRTE_ICE_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 RTE_LOG_REGISTER(ice_logtype_rx, pmd.net.ice.rx, DEBUG);
 #endif
-#ifdef RTE_LIBRTE_ICE_DEBUG_TX
+#ifdef RTE_ETHDEV_DEBUG_TX
 RTE_LOG_REGISTER(ice_logtype_tx, pmd.net.ice.tx, DEBUG);
-#endif
-#ifdef RTE_LIBRTE_ICE_DEBUG_TX_FREE
-RTE_LOG_REGISTER(ice_logtype_tx_free, pmd.net.ice.tx_free, DEBUG);
 #endif
