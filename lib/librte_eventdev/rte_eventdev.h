@@ -927,11 +927,13 @@ struct rte_event_vector {
 	/**< Indicates that the below union attributes have valid information.
 	 */
 	union {
-		/* Used by Rx adapter.
+		/* Used by Rx/Tx adapter.
 		 * Indicates that all the elements in this vector belong to the
 		 * same port and queue pair when originating from Rx adapter,
 		 * valid only when event type is ETHDEV_VECTOR or
 		 * ETH_RX_ADAPTER_VECTOR.
+		 * Can also be used to indicate the Tx adapter the destination
+		 * port and queue of the mbufs in the vector
 		 */
 		struct {
 			uint16_t port;
@@ -1295,6 +1297,10 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
 /* Ethdev Tx adapter capability bitmap flags */
 #define RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT	0x1
 /**< This flag is sent when the PMD supports a packet transmit callback
+ */
+#define RTE_EVENT_ETH_TX_ADAPTER_CAP_EVENT_VECTOR	0x2
+/**< Indicates that the Tx adapter is capable of handling event vector of
+ * mbufs.
  */
 
 /**
