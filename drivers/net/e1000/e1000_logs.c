@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include <rte_ethdev.h>
 #include "e1000_logs.h"
 
 RTE_LOG_REGISTER(e1000_logtype_init, pmd.net.e1000.init, NOTICE)
