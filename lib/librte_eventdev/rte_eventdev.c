@@ -196,7 +196,10 @@ rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 	if (caps == NULL)
 		return -EINVAL;
 
-	*caps = 0;
+	if (dev->dev_ops->eth_tx_adapter_caps_get == NULL)
+		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_EVENT_VECTOR;
+	else
+		*caps = 0;
 
 	return dev->dev_ops->eth_tx_adapter_caps_get ?
 			(*dev->dev_ops->eth_tx_adapter_caps_get)(dev,

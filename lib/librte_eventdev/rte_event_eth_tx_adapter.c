@@ -510,6 +510,47 @@ txa_service_buffer_retry(struct rte_mbuf **pkts, uint16_t unsent,
 	stats->tx_dropped += unsent - sent;
 }
 
+static uint16_t
+txa_process_event_vector(struct txa_service_data *txa,
+			 struct rte_event_vector *vec)
+{
+	struct txa_service_queue_info *tqi;
+	uint16_t port, queue, nb_tx = 0;
+	struct rte_mbuf **mbufs;
+	int i;
+
+	mbufs = (struct rte_mbuf **)vec->mbufs;
+	if (vec->attr_valid) {
+		port = vec->port;
+		queue = vec->queue;
+		tqi = txa_service_queue(txa, port, queue);
+		if (unlikely(tqi == NULL || !tqi->added)) {
+			rte_pktmbuf_free_bulk(mbufs, vec->nb_elem);
+			rte_mempool_put(rte_mempool_from_obj(vec), vec);
+			return 0;
+		}
+		for (i = 0; i < vec->nb_elem; i++) {
+			nb_tx += rte_eth_tx_buffer(port, queue, tqi->tx_buf,
+						   mbufs[i]);
+		}
+	} else {
+		for (i = 0; i < vec->nb_elem; i++) {
+			port = mbufs[i]->port;
+			queue = rte_event_eth_tx_adapter_txq_get(mbufs[i]);
+			tqi = txa_service_queue(txa, port, queue);
+			if (unlikely(tqi == NULL || !tqi->added)) {
+				rte_pktmbuf_free(mbufs[i]);
+				continue;
+			}
+			nb_tx += rte_eth_tx_buffer(port, queue, tqi->tx_buf,
+						   mbufs[i]);
+		}
+	}
+	rte_mempool_put(rte_mempool_from_obj(vec), vec);
+
+	return nb_tx;
+}
+
 static void
 txa_service_tx(struct txa_service_data *txa, struct rte_event *ev,
 	uint32_t n)
@@ -522,22 +563,27 @@ txa_service_tx(struct txa_service_data *txa, struct rte_event *ev,
 
 	nb_tx = 0;
 	for (i = 0; i < n; i++) {
-		struct rte_mbuf *m;
 		uint16_t port;
 		uint16_t queue;
 		struct txa_service_queue_info *tqi;
 
-		m = ev[i].mbuf;
-		port = m->port;
-		queue = rte_event_eth_tx_adapter_txq_get(m);
+		if (!(ev[i].event_type & RTE_EVENT_TYPE_VECTOR)) {
+			struct rte_mbuf *m;
 
-		tqi = txa_service_queue(txa, port, queue);
-		if (unlikely(tqi == NULL || !tqi->added)) {
-			rte_pktmbuf_free(m);
-			continue;
+			m = ev[i].mbuf;
+			port = m->port;
+			queue = rte_event_eth_tx_adapter_txq_get(m);
+
+			tqi = txa_service_queue(txa, port, queue);
+			if (unlikely(tqi == NULL || !tqi->added)) {
+				rte_pktmbuf_free(m);
+				continue;
+			}
+
+			nb_tx += rte_eth_tx_buffer(port, queue, tqi->tx_buf, m);
+		} else {
+			nb_tx += txa_process_event_vector(txa, ev[i].vec);
 		}
-
-		nb_tx += rte_eth_tx_buffer(port, queue, tqi->tx_buf, m);
 	}
 
 	stats->tx_packets += nb_tx;
