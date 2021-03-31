@@ -571,10 +571,11 @@ fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			return -1;
 		}
 
-		len += descs[idx].len;
+		dlen = descs[idx].len;
+		len += dlen;
 
 		if (unlikely(map_one_desc(dev, vq, buf_vec, &vec_id,
-						descs[idx].addr, descs[idx].len,
+						descs[idx].addr, dlen,
 						perm))) {
 			free_ind_table(idesc);
 			return -1;
