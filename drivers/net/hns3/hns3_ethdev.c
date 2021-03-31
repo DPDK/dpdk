@@ -4597,7 +4597,7 @@ hns3_update_fiber_link_info(struct hns3_hw *hw)
 }
 
 static void
-hns3_parse_phy_params(struct hns3_cmd_desc *desc, struct hns3_mac *mac)
+hns3_parse_copper_phy_params(struct hns3_cmd_desc *desc, struct hns3_mac *mac)
 {
 	struct hns3_phy_params_bd0_cmd *req;
 
@@ -4615,7 +4615,7 @@ hns3_parse_phy_params(struct hns3_cmd_desc *desc, struct hns3_mac *mac)
 }
 
 static int
-hns3_get_phy_params(struct hns3_hw *hw, struct hns3_mac *mac)
+hns3_get_copper_phy_params(struct hns3_hw *hw, struct hns3_mac *mac)
 {
 	struct hns3_cmd_desc desc[HNS3_PHY_PARAM_CFG_BD_NUM];
 	uint16_t i;
@@ -4634,20 +4634,20 @@ hns3_get_phy_params(struct hns3_hw *hw, struct hns3_mac *mac)
 		return ret;
 	}
 
-	hns3_parse_phy_params(desc, mac);
+	hns3_parse_copper_phy_params(desc, mac);
 
 	return 0;
 }
 
 static int
-hns3_update_phy_link_info(struct hns3_hw *hw)
+hns3_update_copper_link_info(struct hns3_hw *hw)
 {
 	struct hns3_mac *mac = &hw->mac;
 	struct hns3_mac mac_info;
 	int ret;
 
 	memset(&mac_info, 0, sizeof(struct hns3_mac));
-	ret = hns3_get_phy_params(hw, &mac_info);
+	ret = hns3_get_copper_phy_params(hw, &mac_info);
 	if (ret)
 		return ret;
 
@@ -4676,7 +4676,7 @@ hns3_update_link_info(struct rte_eth_dev *eth_dev)
 	int ret = 0;
 
 	if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER)
-		ret = hns3_update_phy_link_info(hw);
+		ret = hns3_update_copper_link_info(hw);
 	else if (hw->mac.media_type == HNS3_MEDIA_TYPE_FIBER)
 		ret = hns3_update_fiber_link_info(hw);
 
