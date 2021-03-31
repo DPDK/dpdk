@@ -4477,7 +4477,7 @@ hns3_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 		if (offset >= rxq->nb_rx_desc - rxq->rx_free_hold)
 			return RTE_ETH_RX_DESC_UNAVAIL;
 	} else if (dev->rx_pkt_burst == hns3_recv_pkts_vec ||
-		   dev->rx_pkt_burst == hns3_recv_pkts_vec_sve){
+		   dev->rx_pkt_burst == hns3_recv_pkts_vec_sve) {
 		if (offset >= rxq->nb_rx_desc - rxq->rx_rearm_nb)
 			return RTE_ETH_RX_DESC_UNAVAIL;
 	} else {
