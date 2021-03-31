@@ -16,7 +16,7 @@
 #define rte_packet_prefetch(p)  do {} while (0)
 #endif
 
-#ifdef RTE_LIBRTE_FM10K_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 static inline void dump_rxd(union fm10k_rx_desc *rxd)
 {
 	PMD_RX_LOG(DEBUG, "+----------------|----------------+");
@@ -115,7 +115,7 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 		mbuf = q->sw_ring[next_dd];
 		desc = q->hw_ring[next_dd];
-#ifdef RTE_LIBRTE_FM10K_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 		dump_rxd(&desc);
 #endif
 		rte_pktmbuf_pkt_len(mbuf) = desc.w.length;
@@ -229,7 +229,7 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 		mbuf = q->sw_ring[next_dd];
 		desc = q->hw_ring[next_dd];
-#ifdef RTE_LIBRTE_FM10K_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 		dump_rxd(&desc);
 #endif
 
@@ -710,7 +710,7 @@ fm10k_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+#ifdef RTE_ETHDEV_DEBUG_TX
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
 			rte_errno = -ret;
