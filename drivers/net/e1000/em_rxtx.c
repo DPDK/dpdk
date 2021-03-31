@@ -311,10 +311,10 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
 	if (! (txr[desc_to_clean_to].upper.fields.status & E1000_TXD_STAT_DD))
 	{
-		PMD_TX_FREE_LOG(DEBUG,
-				"TX descriptor %4u is not done"
-				"(port=%d queue=%d)", desc_to_clean_to,
-				txq->port_id, txq->queue_id);
+		PMD_TX_LOG(DEBUG,
+			   "TX descriptor %4u is not done"
+			   "(port=%d queue=%d)", desc_to_clean_to,
+			   txq->port_id, txq->queue_id);
 		/* Failed to clean any descriptors, better luck next time */
 		return -(1);
 	}
@@ -327,11 +327,11 @@ em_xmit_cleanup(struct em_tx_queue *txq)
 		nb_tx_to_clean = (uint16_t)(desc_to_clean_to -
 						last_desc_cleaned);
 
-	PMD_TX_FREE_LOG(DEBUG,
-			"Cleaning %4u TX descriptors: %4u to %4u "
-			"(port=%d queue=%d)", nb_tx_to_clean,
-			last_desc_cleaned, desc_to_clean_to, txq->port_id,
-			txq->queue_id);
+	PMD_TX_LOG(DEBUG,
+		   "Cleaning %4u TX descriptors: %4u to %4u "
+		   "(port=%d queue=%d)", nb_tx_to_clean,
+		   last_desc_cleaned, desc_to_clean_to, txq->port_id,
+		   txq->queue_id);
 
 	/*
 	 * The last descriptor to clean is done, so that means all the
@@ -457,11 +457,11 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * nb_used better be less than or equal to txq->tx_rs_thresh
 		 */
 		while (unlikely (nb_used > txq->nb_tx_free)) {
-			PMD_TX_FREE_LOG(DEBUG, "Not enough free TX descriptors "
-					"nb_used=%4u nb_free=%4u "
-					"(port=%d queue=%d)",
-					nb_used, txq->nb_tx_free,
-					txq->port_id, txq->queue_id);
+			PMD_TX_LOG(DEBUG, "Not enough free TX descriptors "
+				   "nb_used=%4u nb_free=%4u "
+				   "(port=%d queue=%d)",
+				   nb_used, txq->nb_tx_free,
+				   txq->port_id, txq->queue_id);
 
 			if (em_xmit_cleanup(txq) != 0) {
 				/* Could not clean any descriptors */
@@ -579,10 +579,10 @@ eth_em_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* Set RS bit only on threshold packets' last descriptor */
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
-			PMD_TX_FREE_LOG(DEBUG,
-					"Setting RS bit on TXD id=%4u "
-					"(port=%d queue=%d)",
-					tx_last, txq->port_id, txq->queue_id);
+			PMD_TX_LOG(DEBUG,
+				   "Setting RS bit on TXD id=%4u "
+				   "(port=%d queue=%d)",
+				   tx_last, txq->port_id, txq->queue_id);
 
 			cmd_type_len |= E1000_TXD_CMD_RS;
 
@@ -626,7 +626,7 @@ eth_em_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+#ifdef RTE_ETHDEV_DEBUG_TX
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
 			rte_errno = -ret;
