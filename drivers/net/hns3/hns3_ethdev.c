@@ -894,7 +894,7 @@ hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid, int on)
 {
 	struct hns3_hw *hw = &hns->hw;
 	uint16_t port_base_vlan_state;
-	int ret;
+	int ret, err;
 
 	if (on == 0 && pvid != hw->port_base_vlan_cfg.pvid) {
 		if (hw->port_base_vlan_cfg.pvid != HNS3_INVALID_PVID)
@@ -917,7 +917,7 @@ hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid, int on)
 	if (ret) {
 		hns3_err(hw, "failed to config rx vlan strip for pvid, "
 			 "ret = %d", ret);
-		return ret;
+		goto pvid_vlan_strip_fail;
 	}
 
 	if (pvid == HNS3_INVALID_PVID)
@@ -926,12 +926,26 @@ hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid, int on)
 	if (ret) {
 		hns3_err(hw, "failed to update vlan filter entries, ret = %d",
 			 ret);
-		return ret;
+		goto vlan_filter_set_fail;
 	}
 
 out:
 	hw->port_base_vlan_cfg.state = port_base_vlan_state;
 	hw->port_base_vlan_cfg.pvid = on ? pvid : HNS3_INVALID_PVID;
+	return ret;
+
+vlan_filter_set_fail:
+	err = hns3_en_pvid_strip(hns, hw->port_base_vlan_cfg.state ==
+					HNS3_PORT_BASE_VLAN_ENABLE);
+	if (err)
+		hns3_err(hw, "fail to rollback pvid strip, ret = %d", err);
+
+pvid_vlan_strip_fail:
+	err = hns3_vlan_txvlan_cfg(hns, hw->port_base_vlan_cfg.state,
+					hw->port_base_vlan_cfg.pvid);
+	if (err)
+		hns3_err(hw, "fail to rollback txvlan status, ret = %d", err);
+
 	return ret;
 }
 
