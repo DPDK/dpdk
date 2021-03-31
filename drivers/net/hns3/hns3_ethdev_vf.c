@@ -1067,7 +1067,6 @@ hns3vf_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 
 	/* Fetch the events from their corresponding regs */
 	cmdq_stat_reg = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_STAT_REG);
-
 	if (BIT(HNS3_VECTOR0_RST_INT_B) & cmdq_stat_reg) {
 		rst_ing_reg = hns3_read_dev(hw, HNS3_FUN_RST_ING);
 		hns3_warn(hw, "resetting reg: 0x%x", rst_ing_reg);
