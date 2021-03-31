@@ -118,6 +118,15 @@ Deprecation Notices
   consistent with existing outer header checksum status flag naming, which
   should help in reducing confusion about its usage.
 
+* eventdev: The structure ``rte_event_eth_rx_adapter_queue_conf`` will be
+  extended to include ``rte_event_eth_rx_adapter_event_vector_config`` elements
+  and the function ``rte_event_eth_rx_adapter_queue_event_vector_config`` will
+  be removed in DPDK 21.11.
+
+  An application can enable event vectorization by passing the desired vector
+  values to the function ``rte_event_eth_rx_adapter_queue_add`` using
+  the structure ``rte_event_eth_rx_adapter_queue_add``.
+
 * sched: To allow more traffic classes, flexible mapping of pipe queues to
   traffic classes, and subport level configuration of pipes and queues
   changes will be made to macros, data structures and API functions defined
