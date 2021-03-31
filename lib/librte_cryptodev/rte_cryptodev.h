@@ -1562,6 +1562,9 @@ typedef void (*rte_cryptodev_raw_post_dequeue_t)(void *user_data,
  * @param	drv_ctx			Driver specific context data.
  * @param	get_dequeue_count	User provided callback function to
  *					obtain dequeue operation count.
+ * @param	max_nb_to_dequeue	When get_dequeue_count is NULL this
+ *					value is used to pass the maximum
+ *					number of operations to be dequeued.
  * @param	post_dequeue		User provided callback function to
  *					post-process a dequeued operation.
  * @param	out_user_data		User data pointer array to be retrieve
@@ -1596,6 +1599,7 @@ typedef void (*rte_cryptodev_raw_post_dequeue_t)(void *user_data,
 typedef uint32_t (*cryptodev_sym_raw_dequeue_burst_t)(void *qp,
 	uint8_t *drv_ctx,
 	rte_cryptodev_raw_get_dequeue_count_t get_dequeue_count,
+	uint32_t max_nb_to_dequeue,
 	rte_cryptodev_raw_post_dequeue_t post_dequeue,
 	void **out_user_data, uint8_t is_user_data_array,
 	uint32_t *n_success, int *dequeue_status);
@@ -1763,6 +1767,9 @@ rte_cryptodev_raw_enqueue_done(struct rte_crypto_raw_dp_ctx *ctx,
  *					data.
  * @param	get_dequeue_count	User provided callback function to
  *					obtain dequeue operation count.
+ * @param	max_nb_to_dequeue	When get_dequeue_count is NULL this
+ *					value is used to pass the maximum
+ *					number of operations to be dequeued.
  * @param	post_dequeue		User provided callback function to
  *					post-process a dequeued operation.
  * @param	out_user_data		User data pointer array to be retrieve
@@ -1798,6 +1805,7 @@ __rte_experimental
 uint32_t
 rte_cryptodev_raw_dequeue_burst(struct rte_crypto_raw_dp_ctx *ctx,
 	rte_cryptodev_raw_get_dequeue_count_t get_dequeue_count,
+	uint32_t max_nb_to_dequeue,
 	rte_cryptodev_raw_post_dequeue_t post_dequeue,
 	void **out_user_data, uint8_t is_user_data_array,
 	uint32_t *n_success, int *dequeue_status);

@@ -162,12 +162,6 @@ ceil_byte_length(uint32_t num_bits)
 		return (num_bits >> 3);
 }
 
-static uint32_t
-get_raw_dp_dequeue_count(void *user_data __rte_unused)
-{
-	return 1;
-}
-
 static void
 post_process_raw_dp_op(void *user_data,	uint32_t index __rte_unused,
 		uint8_t is_op_success)
@@ -345,7 +339,7 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 	n = n_success = 0;
 	while (count++ < MAX_RAW_DEQUEUE_COUNT && n == 0) {
 		n = rte_cryptodev_raw_dequeue_burst(ctx,
-			get_raw_dp_dequeue_count, post_process_raw_dp_op,
+			NULL, 1, post_process_raw_dp_op,
 				(void **)&ret_op, 0, &n_success,
 				&dequeue_status);
 		if (dequeue_status < 0) {

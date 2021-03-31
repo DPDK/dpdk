@@ -2234,13 +2234,14 @@ rte_cryptodev_raw_enqueue_done(struct rte_crypto_raw_dp_ctx *ctx,
 uint32_t
 rte_cryptodev_raw_dequeue_burst(struct rte_crypto_raw_dp_ctx *ctx,
 	rte_cryptodev_raw_get_dequeue_count_t get_dequeue_count,
+	uint32_t max_nb_to_dequeue,
 	rte_cryptodev_raw_post_dequeue_t post_dequeue,
 	void **out_user_data, uint8_t is_user_data_array,
 	uint32_t *n_success_jobs, int *status)
 {
 	return (*ctx->dequeue_burst)(ctx->qp_data, ctx->drv_ctx_data,
-		get_dequeue_count, post_dequeue, out_user_data,
-		is_user_data_array, n_success_jobs, status);
+		get_dequeue_count, max_nb_to_dequeue, post_dequeue,
+		out_user_data, is_user_data_array, n_success_jobs, status);
 }
 
 int

@@ -236,6 +236,10 @@ API Changes
 * pci: The value ``PCI_ANY_ID`` is marked as deprecated
   and can be replaced with ``RTE_PCI_ANY_ID``.
 
+* cryptodev: The experimental raw data path API for dequeue
+  ``rte_cryptodev_raw_dequeue_burst`` got a new parameter
+  ``max_nb_to_dequeue`` to provide flexible control on dequeue.
+
 
 ABI Changes
 -----------
