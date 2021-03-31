@@ -12448,14 +12448,11 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 
 RTE_LOG_REGISTER(i40e_logtype_init, pmd.net.i40e.init, NOTICE);
 RTE_LOG_REGISTER(i40e_logtype_driver, pmd.net.i40e.driver, NOTICE);
-#ifdef RTE_LIBRTE_I40E_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 RTE_LOG_REGISTER(i40e_logtype_rx, pmd.net.i40e.rx, DEBUG);
 #endif
-#ifdef RTE_LIBRTE_I40E_DEBUG_TX
+#ifdef RTE_ETHDEV_DEBUG_TX
 RTE_LOG_REGISTER(i40e_logtype_tx, pmd.net.i40e.tx, DEBUG);
-#endif
-#ifdef RTE_LIBRTE_I40E_DEBUG_TX_FREE
-RTE_LOG_REGISTER(i40e_logtype_tx_free, pmd.net.i40e.tx_free, DEBUG);
 #endif
 
 RTE_PMD_REGISTER_PARAM_STRING(net_i40e,

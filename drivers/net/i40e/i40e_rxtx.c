@@ -372,9 +372,9 @@ i40e_xmit_cleanup(struct i40e_tx_queue *txq)
 	if ((txd[desc_to_clean_to].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
 			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE)) {
-		PMD_TX_FREE_LOG(DEBUG, "TX descriptor %4u is not done "
-			"(port=%d queue=%d)", desc_to_clean_to,
-				txq->port_id, txq->queue_id);
+		PMD_TX_LOG(DEBUG, "TX descriptor %4u is not done "
+			   "(port=%d queue=%d)", desc_to_clean_to,
+			   txq->port_id, txq->queue_id);
 		return -1;
 	}
 
@@ -1253,10 +1253,10 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
-			PMD_TX_FREE_LOG(DEBUG,
-					"Setting RS bit on TXD id="
-					"%4u (port=%d queue=%d)",
-					tx_last, txq->port_id, txq->queue_id);
+			PMD_TX_LOG(DEBUG,
+				   "Setting RS bit on TXD id="
+				   "%4u (port=%d queue=%d)",
+				   tx_last, txq->port_id, txq->queue_id);
 
 			td_cmd |= I40E_TX_DESC_CMD_RS;
 
@@ -1525,7 +1525,7 @@ i40e_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+#ifdef RTE_ETHDEV_DEBUG_TX
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
 			rte_errno = -ret;
