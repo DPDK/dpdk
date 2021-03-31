@@ -692,9 +692,10 @@ fill_vec_buf_packed_indirect(struct virtio_net *dev,
 			return -1;
 		}
 
-		*len += descs[i].len;
+		dlen = descs[i].len;
+		*len += dlen;
 		if (unlikely(map_one_desc(dev, vq, buf_vec, &vec_id,
-						descs[i].addr, descs[i].len,
+						descs[i].addr, dlen,
 						perm)))
 			return -1;
 	}
@@ -715,6 +716,7 @@ fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	bool wrap_counter = vq->avail_wrap_counter;
 	struct vring_packed_desc *descs = vq->desc_packed;
 	uint16_t vec_id = *vec_idx;
+	uint64_t dlen;
 
 	if (avail_idx < vq->last_avail_idx)
 		wrap_counter ^= 1;
@@ -747,11 +749,12 @@ fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 							len, perm) < 0))
 				return -1;
 		} else {
-			*len += descs[avail_idx].len;
+			dlen = descs[avail_idx].len;
+			*len += dlen;
 
 			if (unlikely(map_one_desc(dev, vq, buf_vec, &vec_id,
 							descs[avail_idx].addr,
-							descs[avail_idx].len,
+							dlen,
 							perm)))
 				return -1;
 		}
