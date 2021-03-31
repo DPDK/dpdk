@@ -224,3 +224,22 @@ A loop processing ``rte_event_vector`` containing mbufs is shown below.
         case ...
         ...
         }
+
+Rx event vectorization for SW Rx adapter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For SW based event vectorization, i.e., when the
+``RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT`` is not set in the adapter's
+capabilities flags for a particular ethernet device, the service function
+creates a single event vector flow for all the mbufs arriving on the given
+Rx queue.
+The 20-bit event flow identifier is set to 12-bits of Rx queue identifier
+and 8-bits of ethernet device identifier.
+Flow identifier is formatted as follows:
+
+.. code-block:: console
+
+    19      12,11            0
+    +---------+--------------+
+    | port_id |   queue_id   |
+    +---------+--------------+
