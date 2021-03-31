@@ -186,3 +186,41 @@ the event buffer fill level is low. The
 ``rte_event_eth_rx_adapter_cb_register()`` function allow the application
 to register a callback that selects which packets to enqueue to the event
 device.
+
+Rx event vectorization
+~~~~~~~~~~~~~~~~~~~~~~
+
+The event devices, ethernet device pairs which support the capability
+``RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR`` can aggregate packets based on
+flow characteristics and generate a ``rte_event`` containing ``rte_event_vector``
+whose event type is either ``RTE_EVENT_TYPE_ETHDEV_VECTOR`` or
+``RTE_EVENT_TYPE_ETH_RX_ADAPTER_VECTOR``.
+The aggregation size and timeout are configurable at a queue level and the
+maximum, minimum vector sizes and timeouts vary based on the device capability
+and can be queried using ``rte_event_eth_rx_adapter_vector_limits_get``.
+The Rx adapter additionally might include useful data such as ethernet device
+port and queue identifier in the ``rte_event_vector::port`` and
+``rte_event_vector::queue`` and mark ``rte_event_vector::attr_valid`` as true.
+
+A loop processing ``rte_event_vector`` containing mbufs is shown below.
+
+.. code-block:: c
+
+        event = rte_event_dequeue_burst(event_dev, event_port, &event,
+                                        1, 0);
+        if (!event)
+                continue;
+
+        switch (ev.event_type) {
+        case RTE_EVENT_TYPE_ETH_RX_ADAPTER_VECTOR:
+        case RTE_EVENT_TYPE_ETHDEV_VECTOR:
+                struct rte_mbufs **mbufs;
+
+                mbufs = (struct rte_mbufs **)ev[i].vec->mbufs;
+                for (i = 0; i < ev.vec->nb_elem; i++) {
+                        /* Process each mbuf. */
+                }
+        break;
+        case ...
+        ...
+        }

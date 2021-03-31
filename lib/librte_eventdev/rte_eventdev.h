@@ -919,10 +919,28 @@ rte_event_dev_close(uint8_t dev_id);
  * Event vector structure.
  */
 struct rte_event_vector {
-	uint64_t nb_elem : 16;
+	uint16_t nb_elem;
 	/**< Number of elements in this event vector. */
-	uint64_t rsvd : 48;
+	uint16_t rsvd : 15;
 	/**< Reserved for future use */
+	uint16_t attr_valid : 1;
+	/**< Indicates that the below union attributes have valid information.
+	 */
+	union {
+		/* Used by Rx adapter.
+		 * Indicates that all the elements in this vector belong to the
+		 * same port and queue pair when originating from Rx adapter,
+		 * valid only when event type is ETHDEV_VECTOR or
+		 * ETH_RX_ADAPTER_VECTOR.
+		 */
+		struct {
+			uint16_t port;
+			/* Ethernet device port id. */
+			uint16_t queue;
+			/* Ethernet device queue id. */
+		};
+	};
+	/**< Union to hold common attributes of the vector array. */
 	uint64_t impl_opaque;
 	/**< Implementation specific opaque value.
 	 * An implementation may use this field to hold implementation specific
@@ -1025,8 +1043,14 @@ struct rte_event_vector {
  *		// Classify and handle event.
  *	}
  */
+#define RTE_EVENT_TYPE_ETHDEV_VECTOR                                           \
+	(RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_ETHDEV)
+/**< The event vector generated from ethdev subsystem */
 #define RTE_EVENT_TYPE_CPU_VECTOR (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)
 /**< The event vector generated from cpu for pipelining. */
+#define RTE_EVENT_TYPE_ETH_RX_ADAPTER_VECTOR                                   \
+	(RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_ETH_RX_ADAPTER)
+/**< The event vector generated from eth Rx adapter. */
 
 #define RTE_EVENT_TYPE_MAX              0x10
 /**< Maximum number of event types */
@@ -1171,6 +1195,8 @@ struct rte_event {
  * @see struct rte_event_eth_rx_adapter_queue_conf::ev
  * @see struct rte_event_eth_rx_adapter_queue_conf::rx_queue_flags
  */
+#define RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR	0x8
+/**< Adapter supports event vectorization per ethdev. */
 
 /**
  * Retrieve the event device's ethdev Rx adapter capabilities for the
