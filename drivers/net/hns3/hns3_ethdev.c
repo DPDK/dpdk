@@ -5554,6 +5554,11 @@ hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return -EOPNOTSUPP;
 	}
 
+	if (hw->num_tc > 1) {
+		hns3_err(hw, "in multi-TC scenarios, MAC pause is not supported.");
+		return -EOPNOTSUPP;
+	}
+
 	hns3_get_fc_mode(hw, fc_conf->mode);
 	if (hw->requested_mode == hw->current_mode &&
 	    pf->pause_time == fc_conf->pause_time)
