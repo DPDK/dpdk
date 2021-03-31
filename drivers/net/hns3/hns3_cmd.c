@@ -195,12 +195,14 @@ hns3_cmd_csq_clean(struct hns3_hw *hw)
 {
 	struct hns3_cmq_ring *csq = &hw->cmq.csq;
 	uint32_t head;
+	uint32_t addr;
 	int clean;
 
 	head = hns3_read_dev(hw, HNS3_CMDQ_TX_HEAD_REG);
-	if (!is_valid_csq_clean_head(csq, head)) {
-		hns3_err(hw, "wrong cmd head (%u, %u-%u)", head,
-			    csq->next_to_use, csq->next_to_clean);
+	addr = hns3_read_dev(hw, HNS3_CMDQ_TX_ADDR_L_REG);
+	if (!is_valid_csq_clean_head(csq, head) || addr == 0) {
+		hns3_err(hw, "wrong cmd addr(%0x) head (%u, %u-%u)", addr, head,
+			 csq->next_to_use, csq->next_to_clean);
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			__atomic_store_n(&hw->reset.disable_cmd, 1,
 					 __ATOMIC_RELAXED);
