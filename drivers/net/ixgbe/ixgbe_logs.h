@@ -12,7 +12,7 @@ extern int ixgbe_logtype_init;
 
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 extern int ixgbe_logtype_rx;
 #define PMD_RX_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, ixgbe_logtype_rx,	\
@@ -21,22 +21,13 @@ extern int ixgbe_logtype_rx;
 #define PMD_RX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX
+#ifdef RTE_ETHDEV_DEBUG_TX
 extern int ixgbe_logtype_tx;
 #define PMD_TX_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, ixgbe_logtype_tx,	\
 		"%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
-#endif
-
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX_FREE
-extern int ixgbe_logtype_tx_free;
-#define PMD_TX_FREE_LOG(level, fmt, args...)			\
-	rte_log(RTE_LOG_ ## level, ixgbe_logtype_tx_free,	\
-		"%s(): " fmt "\n", __func__, ## args)
-#else
-#define PMD_TX_FREE_LOG(level, fmt, args...) do { } while (0)
 #endif
 
 extern int ixgbe_logtype_driver;

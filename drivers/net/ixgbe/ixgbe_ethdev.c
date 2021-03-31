@@ -8452,12 +8452,9 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ixgbe_vf,
 RTE_LOG_REGISTER(ixgbe_logtype_init, pmd.net.ixgbe.init, NOTICE);
 RTE_LOG_REGISTER(ixgbe_logtype_driver, pmd.net.ixgbe.driver, NOTICE);
 
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_RX
+#ifdef RTE_ETHDEV_DEBUG_RX
 RTE_LOG_REGISTER(ixgbe_logtype_rx, pmd.net.ixgbe.rx, DEBUG);
 #endif
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX
+#ifdef RTE_ETHDEV_DEBUG_TX
 RTE_LOG_REGISTER(ixgbe_logtype_tx, pmd.net.ixgbe.tx, DEBUG);
-#endif
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX_FREE
-RTE_LOG_REGISTER(ixgbe_logtype_tx_free, pmd.net.ixgbe.tx_free, DEBUG);
 #endif
