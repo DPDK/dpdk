@@ -2004,9 +2004,9 @@ iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 	if ((txd[desc_to_clean_to].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) !=
 			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE)) {
-		PMD_TX_FREE_LOG(DEBUG, "TX descriptor %4u is not done "
-				"(port=%d queue=%d)", desc_to_clean_to,
-				txq->port_id, txq->queue_id);
+		PMD_TX_LOG(DEBUG, "TX descriptor %4u is not done "
+			   "(port=%d queue=%d)", desc_to_clean_to,
+			   txq->port_id, txq->queue_id);
 		return -1;
 	}
 
@@ -2360,7 +2360,7 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+#ifdef RTE_ETHDEV_DEBUG_TX
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
 			rte_errno = -ret;
