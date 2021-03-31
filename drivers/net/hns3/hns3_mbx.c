@@ -171,6 +171,7 @@ hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		hw->mbx_resp.head++;
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
+			hw->mbx_resp.head--;
 			rte_spinlock_unlock(&hw->mbx_resp.lock);
 			hns3_err(hw, "VF failed(=%d) to send mbx message to PF",
 				 ret);
