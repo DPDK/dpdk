@@ -337,6 +337,8 @@ hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 	if (regs->length && regs->length != length)
 		return -ENOTSUP;
 
+	regs->version = hw->fw_version;
+
 	/* fetching per-PF registers values from PF PCIe register space */
 	data += hns3_direct_access_regs(hw, data);
 
