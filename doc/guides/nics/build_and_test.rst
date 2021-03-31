@@ -26,6 +26,22 @@ This will also build testpmd.
 Detailed instructions are available
 in the :doc:`meson build guide <../prog_guide/build-sdk-meson>`.
 
+The ethdev layer supports below build options for debug purpose:
+
+- ``RTE_ETHDEV_DEBUG_RX`` (default **disabled**)
+
+  Build with debug code on Rx path.
+
+- ``RTE_ETHDEV_DEBUG_TX`` (default **disabled**)
+
+  Build with debug code on Tx path.
+
+.. Note::
+
+   The ethdev library use above options to wrap debug code to trace invalid parameters
+   on data path APIs, so performance downgrade is expected when enabling those options.
+   Each PMD can decide to reuse them to wrap their own debug code in the Rx/Tx path.
+
 Running testpmd in Linux
 ------------------------
 
