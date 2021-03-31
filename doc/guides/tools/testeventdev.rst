@@ -158,6 +158,26 @@ The following are the application command-line options:
        Set max packet mbuf size. Can be used configure Rx/Tx scatter gather.
        Only applicable for `pipeline_atq` and `pipeline_queue` tests.
 
+* ``--nb_eth_queues``
+
+       Configure multiple Rx queues per each ethernet port.
+       Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+
+* ``--enable_vector``
+
+       Enable event vector for Rx/Tx adapters.
+       Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+
+* ``--vector_size``
+
+       Vector size to configure for the Rx adapter.
+       Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+
+* ``--vector_tmo_ns``
+
+       Vector timeout nanoseconds to be configured for the Rx adapter.
+       Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+
 
 Eventdev Tests
 --------------
@@ -607,6 +627,10 @@ Supported application command line options are following::
         --worker_deq_depth
         --prod_type_ethdev
         --deq_tmo_nsec
+        --nb_eth_queues
+        --enable_vector
+        --vector_size
+        --vector_tmo_ns
 
 
 .. Note::
@@ -623,6 +647,13 @@ Example command to run pipeline queue test:
     sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
         --test=pipeline_queue --wlcore=1 --prod_type_ethdev --stlist=a
 
+Example command to run pipeline atq test with vector events:
+
+.. code-block:: console
+
+    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+        --test=pipeline_queue --wlcore=1 --prod_type_ethdev --stlist=a \
+        --enable_vector  --vector_size 512
 
 PIPELINE_ATQ Test
 ~~~~~~~~~~~~~~~~~~~
@@ -699,6 +730,10 @@ Supported application command line options are following::
         --worker_deq_depth
         --prod_type_ethdev
         --deq_tmo_nsec
+        --nb_eth_queues
+        --enable_vector
+        --vector_size
+        --vector_tmo_ns
 
 
 .. Note::
@@ -708,9 +743,17 @@ Supported application command line options are following::
 Example
 ^^^^^^^
 
-Example command to run pipeline queue test:
+Example command to run pipeline atq test:
 
 .. code-block:: console
 
     sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
         --test=pipeline_atq --wlcore=1 --prod_type_ethdev --stlist=a
+
+Example command to run pipeline atq test with vector events:
+
+.. code-block:: console
+
+    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+        --test=pipeline_atq --wlcore=1 --prod_type_ethdev --stlist=a \
+        --enable_vector  --vector_size 512

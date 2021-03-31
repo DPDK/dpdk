@@ -42,6 +42,10 @@
 #define EVT_EXPIRY_NSEC          ("expiry_nsec")
 #define EVT_MBUF_SZ              ("mbuf_sz")
 #define EVT_MAX_PKT_SZ           ("max_pkt_sz")
+#define EVT_NB_ETH_QUEUES        ("nb_eth_queues")
+#define EVT_ENA_VECTOR           ("enable_vector")
+#define EVT_VECTOR_SZ            ("vector_size")
+#define EVT_VECTOR_TMO           ("vector_tmo_ns")
 #define EVT_HELP                 ("help")
 
 void evt_options_default(struct evt_options *opt);

@@ -15,6 +15,8 @@ pipeline_atq_nb_event_queues(struct evt_options *opt)
 	return rte_eth_dev_count_avail();
 }
 
+typedef int (*pipeline_atq_worker_t)(void *arg);
+
 static __rte_noinline int
 pipeline_atq_worker_single_stage_tx(void *arg)
 {
@@ -108,6 +110,112 @@ pipeline_atq_worker_single_stage_burst_fwd(void *arg)
 
 		pipeline_event_enqueue_burst(dev, port, ev, nb_rx);
 		w->processed_pkts += nb_rx;
+	}
+
+	return 0;
+}
+
+static __rte_noinline int
+pipeline_atq_worker_single_stage_tx_vector(void *arg)
+{
+	PIPELINE_WORKER_SINGLE_STAGE_INIT;
+	uint16_t vector_sz;
+
+	while (!t->done) {
+		uint16_t event = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
+
+		if (!event) {
+			rte_pause();
+			continue;
+		}
+		vector_sz = ev.vec->nb_elem;
+		pipeline_event_tx_vector(dev, port, &ev);
+		w->processed_pkts += vector_sz;
+	}
+
+	return 0;
+}
+
+static __rte_noinline int
+pipeline_atq_worker_single_stage_fwd_vector(void *arg)
+{
+	PIPELINE_WORKER_SINGLE_STAGE_INIT;
+	const uint8_t *tx_queue = t->tx_evqueue_id;
+	uint16_t vector_sz;
+
+	while (!t->done) {
+		uint16_t event = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
+
+		if (!event) {
+			rte_pause();
+			continue;
+		}
+
+		vector_sz = ev.vec->nb_elem;
+		ev.queue_id = tx_queue[ev.vec->port];
+		ev.vec->queue = 0;
+		pipeline_fwd_event_vector(&ev, RTE_SCHED_TYPE_ATOMIC);
+		pipeline_event_enqueue(dev, port, &ev);
+		w->processed_pkts += vector_sz;
+	}
+
+	return 0;
+}
+
+static __rte_noinline int
+pipeline_atq_worker_single_stage_burst_tx_vector(void *arg)
+{
+	PIPELINE_WORKER_SINGLE_STAGE_BURST_INIT;
+	uint16_t vector_sz;
+
+	while (!t->done) {
+		uint16_t nb_rx =
+			rte_event_dequeue_burst(dev, port, ev, BURST_SIZE, 0);
+
+		if (!nb_rx) {
+			rte_pause();
+			continue;
+		}
+		vector_sz = 0;
+		for (i = 0; i < nb_rx; i++) {
+			vector_sz += ev[i].vec->nb_elem;
+			ev[i].vec->queue = 0;
+		}
+
+		pipeline_event_tx_burst(dev, port, ev, nb_rx);
+		w->processed_pkts += vector_sz;
+	}
+
+	return 0;
+}
+
+static __rte_noinline int
+pipeline_atq_worker_single_stage_burst_fwd_vector(void *arg)
+{
+	PIPELINE_WORKER_SINGLE_STAGE_BURST_INIT;
+	const uint8_t *tx_queue = t->tx_evqueue_id;
+	uint16_t vector_sz;
+
+	while (!t->done) {
+		uint16_t nb_rx =
+			rte_event_dequeue_burst(dev, port, ev, BURST_SIZE, 0);
+
+		if (!nb_rx) {
+			rte_pause();
+			continue;
+		}
+
+		vector_sz = 0;
+		for (i = 0; i < nb_rx; i++) {
+			ev[i].queue_id = tx_queue[ev[i].vec->port];
+			ev[i].vec->queue = 0;
+			vector_sz += ev[i].vec->nb_elem;
+			pipeline_fwd_event_vector(&ev[i],
+						  RTE_SCHED_TYPE_ATOMIC);
+		}
+
+		pipeline_event_enqueue_burst(dev, port, ev, nb_rx);
+		w->processed_pkts += vector_sz;
 	}
 
 	return 0;
@@ -245,6 +353,147 @@ pipeline_atq_worker_multi_stage_burst_fwd(void *arg)
 	return 0;
 }
 
+static __rte_noinline int
+pipeline_atq_worker_multi_stage_tx_vector(void *arg)
+{
+	PIPELINE_WORKER_MULTI_STAGE_INIT;
+	uint16_t vector_sz;
+
+	while (!t->done) {
+		uint16_t event = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
+
+		if (!event) {
+			rte_pause();
+			continue;
+		}
+
+		cq_id = ev.sub_event_type % nb_stages;
+
+		if (cq_id == last_queue) {
+			vector_sz = ev.vec->nb_elem;
+			pipeline_event_tx_vector(dev, port, &ev);
+			w->processed_pkts += vector_sz;
+			continue;
+		}
+
+		ev.sub_event_type++;
+		pipeline_fwd_event_vector(&ev, sched_type_list[cq_id]);
+		pipeline_event_enqueue(dev, port, &ev);
+	}
+
+	return 0;
+}
+
+static __rte_noinline int
+pipeline_atq_worker_multi_stage_fwd_vector(void *arg)
+{
+	PIPELINE_WORKER_MULTI_STAGE_INIT;
+	const uint8_t *tx_queue = t->tx_evqueue_id;
+	uint16_t vector_sz;
+
+	while (!t->done) {
+		uint16_t event = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
+
+		if (!event) {
+			rte_pause();
+			continue;
+		}
+
+		cq_id = ev.sub_event_type % nb_stages;
+
+		if (cq_id == last_queue) {
+			ev.queue_id = tx_queue[ev.vec->port];
+			ev.vec->queue = 0;
+			vector_sz = ev.vec->nb_elem;
+			pipeline_fwd_event_vector(&ev, RTE_SCHED_TYPE_ATOMIC);
+			pipeline_event_enqueue(dev, port, &ev);
+			w->processed_pkts += vector_sz;
+		} else {
+			ev.sub_event_type++;
+			pipeline_fwd_event_vector(&ev, sched_type_list[cq_id]);
+			pipeline_event_enqueue(dev, port, &ev);
+		}
+	}
+
+	return 0;
+}
+
+static __rte_noinline int
+pipeline_atq_worker_multi_stage_burst_tx_vector(void *arg)
+{
+	PIPELINE_WORKER_MULTI_STAGE_BURST_INIT;
+	uint16_t vector_sz;
+
+	while (!t->done) {
+		uint16_t nb_rx =
+			rte_event_dequeue_burst(dev, port, ev, BURST_SIZE, 0);
+
+		if (!nb_rx) {
+			rte_pause();
+			continue;
+		}
+
+		for (i = 0; i < nb_rx; i++) {
+			cq_id = ev[i].sub_event_type % nb_stages;
+
+			if (cq_id == last_queue) {
+				vector_sz = ev[i].vec->nb_elem;
+				pipeline_event_tx_vector(dev, port, &ev[i]);
+				ev[i].op = RTE_EVENT_OP_RELEASE;
+				w->processed_pkts += vector_sz;
+				continue;
+			}
+
+			ev[i].sub_event_type++;
+			pipeline_fwd_event_vector(&ev[i],
+						  sched_type_list[cq_id]);
+		}
+
+		pipeline_event_enqueue_burst(dev, port, ev, nb_rx);
+	}
+
+	return 0;
+}
+
+static __rte_noinline int
+pipeline_atq_worker_multi_stage_burst_fwd_vector(void *arg)
+{
+	PIPELINE_WORKER_MULTI_STAGE_BURST_INIT;
+	const uint8_t *tx_queue = t->tx_evqueue_id;
+	uint16_t vector_sz;
+
+	while (!t->done) {
+		uint16_t nb_rx =
+			rte_event_dequeue_burst(dev, port, ev, BURST_SIZE, 0);
+
+		if (!nb_rx) {
+			rte_pause();
+			continue;
+		}
+
+		for (i = 0; i < nb_rx; i++) {
+			cq_id = ev[i].sub_event_type % nb_stages;
+
+			if (cq_id == last_queue) {
+				vector_sz = ev[i].vec->nb_elem;
+				ev[i].queue_id = tx_queue[ev[i].vec->port];
+				ev[i].vec->queue = 0;
+				pipeline_fwd_event_vector(
+					&ev[i], RTE_SCHED_TYPE_ATOMIC);
+				w->processed_pkts += vector_sz;
+			} else {
+				ev[i].sub_event_type++;
+				pipeline_fwd_event_vector(
+					&ev[i], sched_type_list[cq_id]);
+			}
+		}
+
+		pipeline_event_enqueue_burst(dev, port, ev, nb_rx);
+	}
+
+	return 0;
+}
+
 static int
 worker_wrapper(void *arg)
 {
@@ -253,27 +502,36 @@ worker_wrapper(void *arg)
 	const bool burst = evt_has_burst_mode(w->dev_id);
 	const bool internal_port = w->t->internal_port;
 	const uint8_t nb_stages = opt->nb_stages;
-	RTE_SET_USED(opt);
+	/*vector/burst/internal_port*/
+	const pipeline_atq_worker_t
+	pipeline_atq_worker_single_stage[2][2][2] = {
+		[0][0][0] = pipeline_atq_worker_single_stage_fwd,
+		[0][0][1] = pipeline_atq_worker_single_stage_tx,
+		[0][1][0] = pipeline_atq_worker_single_stage_burst_fwd,
+		[0][1][1] = pipeline_atq_worker_single_stage_burst_tx,
+		[1][0][0] = pipeline_atq_worker_single_stage_fwd_vector,
+		[1][0][1] = pipeline_atq_worker_single_stage_tx_vector,
+		[1][1][0] = pipeline_atq_worker_single_stage_burst_fwd_vector,
+		[1][1][1] = pipeline_atq_worker_single_stage_burst_tx_vector,
+	};
+	const pipeline_atq_worker_t
+	pipeline_atq_worker_multi_stage[2][2][2] = {
+		[0][0][0] = pipeline_atq_worker_multi_stage_fwd,
+		[0][0][1] = pipeline_atq_worker_multi_stage_tx,
+		[0][1][0] = pipeline_atq_worker_multi_stage_burst_fwd,
+		[0][1][1] = pipeline_atq_worker_multi_stage_burst_tx,
+		[1][0][0] = pipeline_atq_worker_multi_stage_fwd_vector,
+		[1][0][1] = pipeline_atq_worker_multi_stage_tx_vector,
+		[1][1][0] = pipeline_atq_worker_multi_stage_burst_fwd_vector,
+		[1][1][1] = pipeline_atq_worker_multi_stage_burst_tx_vector,
+	};
 
-	if (nb_stages == 1) {
-		if (!burst && internal_port)
-			return pipeline_atq_worker_single_stage_tx(arg);
-		else if (!burst && !internal_port)
-			return pipeline_atq_worker_single_stage_fwd(arg);
-		else if (burst && internal_port)
-			return pipeline_atq_worker_single_stage_burst_tx(arg);
-		else if (burst && !internal_port)
-			return pipeline_atq_worker_single_stage_burst_fwd(arg);
-	} else {
-		if (!burst && internal_port)
-			return pipeline_atq_worker_multi_stage_tx(arg);
-		else if (!burst && !internal_port)
-			return pipeline_atq_worker_multi_stage_fwd(arg);
-		if (burst && internal_port)
-			return pipeline_atq_worker_multi_stage_burst_tx(arg);
-		else if (burst && !internal_port)
-			return pipeline_atq_worker_multi_stage_burst_fwd(arg);
-	}
+	if (nb_stages == 1)
+		return (pipeline_atq_worker_single_stage[opt->ena_vector][burst]
+							[internal_port])(arg);
+	else
+		return (pipeline_atq_worker_multi_stage[opt->ena_vector][burst]
+						       [internal_port])(arg);
 
 	rte_panic("invalid worker\n");
 }
@@ -290,7 +548,7 @@ pipeline_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	int ret;
 	int nb_ports;
 	int nb_queues;
-	uint8_t queue;
+	uint8_t queue, is_prod;
 	uint8_t tx_evqueue_id[RTE_MAX_ETHPORTS];
 	uint8_t queue_arr[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	uint8_t nb_worker_queues = 0;
@@ -330,14 +588,18 @@ pipeline_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 		q_conf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ALL_TYPES;
 
 		if (!t->internal_port) {
+			is_prod = false;
 			RTE_ETH_FOREACH_DEV(prod) {
 				if (queue == tx_evqueue_id[prod]) {
 					q_conf.event_queue_cfg =
 						RTE_EVENT_QUEUE_CFG_SINGLE_LINK;
-				} else {
-					queue_arr[nb_worker_queues] = queue;
-					nb_worker_queues++;
+					is_prod = true;
+					break;
 				}
+			}
+			if (!is_prod) {
+				queue_arr[nb_worker_queues] = queue;
+				nb_worker_queues++;
 			}
 		}
 

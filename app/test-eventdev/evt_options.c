@@ -34,6 +34,9 @@ evt_options_default(struct evt_options *opt)
 	opt->max_tmo_nsec = 1E5;  /* 100000ns ~100us */
 	opt->expiry_nsec = 1E4;   /* 10000ns ~10us */
 	opt->prod_type = EVT_PROD_TYPE_SYNT;
+	opt->eth_queues = 1;
+	opt->vector_size = 64;
+	opt->vector_tmo_nsec = 100E3;
 }
 
 typedef int (*option_parser_t)(struct evt_options *opt,
@@ -257,6 +260,43 @@ evt_parse_max_pkt_sz(struct evt_options *opt, const char *arg)
 	return ret;
 }
 
+static int
+evt_parse_ena_vector(struct evt_options *opt, const char *arg __rte_unused)
+{
+	opt->ena_vector = 1;
+	return 0;
+}
+
+static int
+evt_parse_vector_size(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint16(&(opt->vector_size), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_vector_tmo_ns(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint64(&(opt->vector_tmo_nsec), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_eth_queues(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint16(&(opt->eth_queues), arg);
+
+	return ret;
+}
+
 static void
 usage(char *program)
 {
@@ -289,6 +329,10 @@ usage(char *program)
 		"\t--expiry_nsec      : event timer expiry ns.\n"
 		"\t--mbuf_sz          : packet mbuf size.\n"
 		"\t--max_pkt_sz       : max packet size.\n"
+		"\t--nb_eth_queues    : number of ethernet Rx queues.\n"
+		"\t--enable_vector    : enable event vectorization.\n"
+		"\t--vector_size      : Max vector size.\n"
+		"\t--vector_tmo_ns    : Max vector timeout in nanoseconds\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -360,6 +404,10 @@ static struct option lgopts[] = {
 	{ EVT_EXPIRY_NSEC,         1, 0, 0 },
 	{ EVT_MBUF_SZ,             1, 0, 0 },
 	{ EVT_MAX_PKT_SZ,          1, 0, 0 },
+	{ EVT_NB_ETH_QUEUES,       1, 0, 0 },
+	{ EVT_ENA_VECTOR,          0, 0, 0 },
+	{ EVT_VECTOR_SZ,           1, 0, 0 },
+	{ EVT_VECTOR_TMO,          1, 0, 0 },
 	{ EVT_HELP,                0, 0, 0 },
 	{ NULL,                    0, 0, 0 }
 };
@@ -394,6 +442,10 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_EXPIRY_NSEC, evt_parse_expiry_nsec},
 		{ EVT_MBUF_SZ, evt_parse_mbuf_sz},
 		{ EVT_MAX_PKT_SZ, evt_parse_max_pkt_sz},
+		{ EVT_NB_ETH_QUEUES, evt_parse_eth_queues},
+		{ EVT_ENA_VECTOR, evt_parse_ena_vector},
+		{ EVT_VECTOR_SZ, evt_parse_vector_size},
+		{ EVT_VECTOR_TMO, evt_parse_vector_tmo_ns},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {

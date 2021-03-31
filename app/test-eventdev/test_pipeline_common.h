@@ -102,10 +102,28 @@ pipeline_fwd_event(struct rte_event *ev, uint8_t sched)
 }
 
 static __rte_always_inline void
+pipeline_fwd_event_vector(struct rte_event *ev, uint8_t sched)
+{
+	ev->event_type = RTE_EVENT_TYPE_CPU_VECTOR;
+	ev->op = RTE_EVENT_OP_FORWARD;
+	ev->sched_type = sched;
+}
+
+static __rte_always_inline void
 pipeline_event_tx(const uint8_t dev, const uint8_t port,
 		struct rte_event * const ev)
 {
 	rte_event_eth_tx_adapter_txq_set(ev->mbuf, 0);
+	while (!rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1, 0))
+		rte_pause();
+}
+
+static __rte_always_inline void
+pipeline_event_tx_vector(const uint8_t dev, const uint8_t port,
+			 struct rte_event *const ev)
+{
+	ev->vec->queue = 0;
+
 	while (!rte_event_eth_tx_adapter_enqueue(dev, port, ev, 1, 0))
 		rte_pause();
 }
