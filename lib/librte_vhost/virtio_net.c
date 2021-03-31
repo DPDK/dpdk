@@ -2287,7 +2287,7 @@ vhost_reserve_avail_batch_packed(struct virtio_net *dev,
 	}
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
-		pkts[i]->pkt_len = descs[avail_idx + i].len - buf_offset;
+		pkts[i]->pkt_len = lens[i] - buf_offset;
 		pkts[i]->data_len = pkts[i]->pkt_len;
 		ids[i] = descs[avail_idx + i].id;
 	}
