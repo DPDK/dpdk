@@ -154,6 +154,14 @@ New Features
   * Added support for periodic timer mode in eventdev timer adapter.
   * Added support for periodic timer mode in octeontx2 event device driver.
 
+* **Added event device vector capability.**
+
+  * Added ``rte_event_vector`` data structure which is capable of holding
+    multiple ``uintptr_t`` of the same flow thereby allowing applications
+    to vectorize their pipelines and also reduce the complexity of pipelining
+    the events across multiple stages.
+  * This also reduced the scheduling overhead on a event device.
+
 * **Updated testpmd.**
 
   * Added a command line option to configure forced speed for Ethernet port.

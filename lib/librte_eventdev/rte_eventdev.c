@@ -1266,6 +1266,48 @@ int rte_event_dev_selftest(uint8_t dev_id)
 	return -ENOTSUP;
 }
 
+struct rte_mempool *
+rte_event_vector_pool_create(const char *name, unsigned int n,
+			     unsigned int cache_size, uint16_t nb_elem,
+			     int socket_id)
+{
+	const char *mp_ops_name;
+	struct rte_mempool *mp;
+	unsigned int elt_sz;
+	int ret;
+
+	if (!nb_elem) {
+		RTE_LOG(ERR, EVENTDEV,
+			"Invalid number of elements=%d requested\n", nb_elem);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	elt_sz =
+		sizeof(struct rte_event_vector) + (nb_elem * sizeof(uintptr_t));
+	mp = rte_mempool_create_empty(name, n, elt_sz, cache_size, 0, socket_id,
+				      0);
+	if (mp == NULL)
+		return NULL;
+
+	mp_ops_name = rte_mbuf_best_mempool_ops();
+	ret = rte_mempool_set_ops_byname(mp, mp_ops_name, NULL);
+	if (ret != 0) {
+		RTE_LOG(ERR, EVENTDEV, "error setting mempool handler\n");
+		goto err;
+	}
+
+	ret = rte_mempool_populate_default(mp);
+	if (ret < 0)
+		goto err;
+
+	return mp;
+err:
+	rte_mempool_free(mp);
+	rte_errno = -ret;
+	return NULL;
+}
+
 int
 rte_event_dev_start(uint8_t dev_id)
 {

@@ -63,12 +63,44 @@ the actual event being scheduled is. The payload is a union of the following:
 * ``uint64_t u64``
 * ``void *event_ptr``
 * ``struct rte_mbuf *mbuf``
+* ``struct rte_event_vector *vec``
 
-These three items in a union occupy the same 64 bits at the end of the rte_event
+These four items in a union occupy the same 64 bits at the end of the rte_event
 structure. The application can utilize the 64 bits directly by accessing the
-u64 variable, while the event_ptr and mbuf are provided as convenience
+u64 variable, while the event_ptr, mbuf, vec are provided as a convenience
 variables.  For example the mbuf pointer in the union can used to schedule a
 DPDK packet.
+
+Event Vector
+~~~~~~~~~~~~
+
+The rte_event_vector struct contains a vector of elements defined by the event
+type specified in the ``rte_event``. The event_vector structure contains the
+following data:
+
+* ``nb_elem`` - The number of elements held within the vector.
+
+Similar to ``rte_event`` the payload of event vector is also a union, allowing
+flexibility in what the actual vector is.
+
+* ``struct rte_mbuf *mbufs[0]`` - An array of mbufs.
+* ``void *ptrs[0]`` - An array of pointers.
+* ``uint64_t *u64s[0]`` - An array of uint64_t elements.
+
+The size of the event vector is related to the total number of elements it is
+configured to hold, this is achieved by making `rte_event_vector` a variable
+length structure.
+A helper function is provided to create a mempool that holds event vector, which
+takes name of the pool, total number of required ``rte_event_vector``,
+cache size, number of elements in each ``rte_event_vector`` and socket id.
+
+.. code-block:: c
+
+        rte_event_vector_pool_create("vector_pool", nb_event_vectors, cache_sz,
+                                     nb_elements_per_vector, socket_id);
+
+The function ``rte_event_vector_pool_create`` creates mempool with the best
+platform mempool ops.
 
 Queues
 ~~~~~~
