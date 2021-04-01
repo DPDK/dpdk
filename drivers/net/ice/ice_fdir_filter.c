@@ -71,8 +71,8 @@
 	ICE_INSET_SCTP_SRC_PORT | ICE_INSET_SCTP_DST_PORT)
 
 #define ICE_FDIR_INSET_ETH_IPV4_VXLAN (\
-	ICE_FDIR_INSET_ETH | \
-	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST)
+	ICE_FDIR_INSET_ETH | ICE_FDIR_INSET_ETH_IPV4 | \
+	ICE_INSET_TUN_VXLAN_VNI)
 
 #define ICE_FDIR_INSET_IPV4_GTPU (\
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | ICE_INSET_GTPU_TEID)
@@ -903,6 +903,7 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 		{ICE_INSET_TUN_SCTP_DST_PORT, ICE_FLOW_FIELD_IDX_SCTP_DST_PORT},
 		{ICE_INSET_GTPU_TEID, ICE_FLOW_FIELD_IDX_GTPU_IP_TEID},
 		{ICE_INSET_GTPU_QFI, ICE_FLOW_FIELD_IDX_GTPU_EH_QFI},
+		{ICE_INSET_TUN_VXLAN_VNI, ICE_FLOW_FIELD_IDX_VXLAN_VNI},
 	};
 
 	for (i = 0, j = 0; i < RTE_DIM(ice_inset_map); i++) {
@@ -953,6 +954,12 @@ ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
 	case ICE_FLTR_PTYPE_NONF_IPV6_OTHER:
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV6 |
 				  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
+	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
+				ICE_FLOW_SEG_HDR_IPV4 |
+				ICE_FLOW_SEG_HDR_VXLAN |
+				ICE_FLOW_SEG_HDR_IPV_OTHER);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_GTPU:
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_GTPU_IP |
@@ -1897,13 +1904,21 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			vxlan_mask = item->mask;
 			is_outer = false;
 
-			if (vxlan_spec || vxlan_mask) {
+			if (!(vxlan_spec && vxlan_mask))
+				break;
+
+			if (vxlan_mask->hdr.vx_flags) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "Invalid vxlan field");
 				return -rte_errno;
 			}
+
+			if (vxlan_mask->hdr.vx_vni)
+				*input_set |= ICE_INSET_TUN_VXLAN_VNI;
+
+			filter->input.vxlan_data.vni = vxlan_spec->hdr.vx_vni;
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTPU:
@@ -1965,6 +1980,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	else if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_GTPU_EH &&
 		flow_type == ICE_FLTR_PTYPE_NONF_IPV6_UDP)
 		flow_type = ICE_FLTR_PTYPE_NONF_IPV6_GTPU_EH;
+	else if (tunnel_type == ICE_FDIR_TUNNEL_TYPE_VXLAN)
+		flow_type = ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN;
 
 	filter->tunnel_type = tunnel_type;
 	filter->input.flow_type = flow_type;
