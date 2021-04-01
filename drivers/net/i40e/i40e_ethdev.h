@@ -629,6 +629,7 @@ struct i40e_fdir_flow_ext {
 	uint8_t raw_id;
 	uint8_t is_vf;   /* 1 for VF, 0 for port dev */
 	uint16_t dst_id; /* VF ID, available when is_vf is 1*/
+	uint64_t input_set;
 	bool inner_ip;   /* If there is inner ip */
 	enum i40e_fdir_ip_type iip_type; /* ip type for inner ip */
 	enum i40e_fdir_ip_type oip_type; /* ip type for outer ip */
