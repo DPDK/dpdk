@@ -2003,6 +2003,24 @@ Set fec mode for a specific port::
 
   testpmd> set port (port_id) fec_mode auto|off|rs|baser
 
+Config Sample actions list
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure the sample actions list to be used when sampling a packet by
+rte_flow_action_sample::
+
+ set sample_actions {index} {action} [/ {action} [...]] / end
+
+There are multiple global buffers for ``sample_actions``, this command will set
+one internal buffer index by ``{index}``.
+
+In order to use different sample actions list, ``index`` must be specified
+during the flow rule creation::
+
+ testpmd> flow create 0 ingress pattern eth / ipv4 / end actions
+        sample ratio 2 index 2 / end
+
+Otherwise the default index ``0`` is used.
 
 Port Functions
 --------------
@@ -4840,6 +4858,40 @@ if seid is set)::
         actions queue index 3 / end
  testpmd> flow create 0 ingress pattern eth / ipv6 / pfcp s_field is 1
         seid is 1 / end actions queue index 3 / end
+
+Sample Sampling/Mirroring rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sample/Mirroring rules can be set by the following commands
+
+NIC-RX Sampling rule, the matched ingress packets and sent to the queue 1,
+and 50% packets are duplicated and marked with 0x1234 and sent to queue 0.
+
+::
+
+ testpmd> set sample_actions 0 mark id  0x1234 / queue index 0 / end
+ testpmd> flow create 0 ingress group 1 pattern eth / end actions
+        sample ratio 2 index 0 / queue index 1 / end
+
+Mirroring rule with port representors (with "transfer" attribute), the matched
+ingress packets with encapsulation header are sent to port id 0, and also
+mirrored the packets and sent to port id 2.
+
+::
+
+ testpmd> set sample_actions 0 port_id id 2 / end
+ testpmd> flow create 1 ingress transfer pattern eth / end actions
+        sample ratio 1 index 0  / raw_encap / port_id id 0 / end
+
+Mirroring rule with port representors (with "transfer" attribute), the matched
+ingress packets are sent to port id 2, and also mirrored the packets with
+encapsulation header and sent to port id 0.
+
+::
+
+ testpmd> set sample_actions 0 raw_encap / port_id id 0 / end
+ testpmd> flow create 0 ingress transfer pattern eth / end actions
+        sample ratio 1 index 0  / port_id id 2 / end
 
 BPF Functions
 --------------
