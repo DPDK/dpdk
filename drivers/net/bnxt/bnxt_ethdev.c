@@ -797,7 +797,7 @@ skip_cosq_cfg:
 			PMD_DRV_LOG(ERR, "Failed to allocate %d rx_queues"
 				" intr_vec", bp->eth_dev->data->nb_rx_queues);
 			rc = -ENOMEM;
-			goto err_disable;
+			goto err_out;
 		}
 		PMD_DRV_LOG(DEBUG, "intr_handle->intr_vec = %p "
 			"intr_handle->nb_efd = %d intr_handle->max_intr = %d\n",
@@ -817,12 +817,12 @@ skip_cosq_cfg:
 #ifndef RTE_EXEC_ENV_FREEBSD
 	/* In FreeBSD OS, nic_uio driver does not support interrupts */
 	if (rc)
-		goto err_free;
+		goto err_out;
 #endif
 
 	rc = bnxt_update_phy_setting(bp);
 	if (rc)
-		goto err_free;
+		goto err_out;
 
 	bp->mark_table = rte_zmalloc("bnxt_mark_table", BNXT_MARK_TABLE_SZ, 0);
 	if (!bp->mark_table)
@@ -830,10 +830,6 @@ skip_cosq_cfg:
 
 	return 0;
 
-err_free:
-	rte_free(intr_handle->intr_vec);
-err_disable:
-	rte_intr_efd_disable(intr_handle);
 err_out:
 	/* Some of the error status returned by FW may not be from errno.h */
 	if (rc > 0)
