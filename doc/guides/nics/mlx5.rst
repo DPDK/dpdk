@@ -171,9 +171,9 @@ Limitations
 
   - Flow rules having a VLAN pop offload command as one of their actions and
     are lacking a match on VLAN as one of their items are not supported.
-  - The command is not supported on egress traffic.
+  - The command is not supported on egress traffic in NIC mode.
 
-- VLAN push offload is not supported on ingress traffic.
+- VLAN push offload is not supported on ingress traffic in NIC mode.
 
 - VLAN set PCP offload is not supported on existing headers.
 
@@ -1565,6 +1565,14 @@ Supported hardware offloads
    | | of_push_vlan /      | | ConnectX-5    | | ConnectX-5    |
    | | of_set_vlan_pcp /   | |               | |               |
    | | of_set_vlan_vid)    | |               | |               |
+   +-----------------------+-----------------+-----------------+
+   | | VLAN                | | DPDK 21.05    | |               |
+   | | ingress and /       | | OFED 5.3      | |    N/A        |
+   | | of_push_vlan /      | | ConnectX-6 Dx | |               |
+   +-----------------------+-----------------+-----------------+
+   | | VLAN                | | DPDK 21.05    | |               |
+   | | egress and /        | | OFED 5.3      | |    N/A        |
+   | | of_pop_vlan /       | | ConnectX-6 Dx | |               |
    +-----------------------+-----------------+-----------------+
    | Encapsulation         | | DPDK 19.05    | | DPDK 19.02    |
    | (VXLAN / NVGRE / RAW) | | OFED 4.7-1    | | OFED 4.6      |

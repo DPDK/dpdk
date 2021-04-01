@@ -127,6 +127,7 @@ New Features
   Updated the Mellanox mlx5 driver with new features and improvements, including:
 
   * Added support for VXLAN and NVGRE encap as sample actions.
+  * Support push VLAN on ingress traffic and pop VLAN on egress traffic in E-Switch mode.
 
 * **Updated NXP DPAA driver.**
 
