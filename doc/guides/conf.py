@@ -20,7 +20,6 @@ try:
     import sphinx_rtd_theme
 
     html_theme = "sphinx_rtd_theme"
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 except:
     print('Install the sphinx ReadTheDocs theme for improved html documentation '
           'layout: https://sphinx-rtd-theme.readthedocs.io/',
