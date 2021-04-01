@@ -58,6 +58,7 @@ enum hns3_evt_cause {
 	HNS3_VECTOR0_EVENT_RST,
 	HNS3_VECTOR0_EVENT_MBX,
 	HNS3_VECTOR0_EVENT_ERR,
+	HNS3_VECTOR0_EVENT_PTP,
 	HNS3_VECTOR0_EVENT_OTHER,
 };
 
@@ -202,6 +203,13 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 		goto out;
 	}
 
+	/* Check for vector0 1588 event source */
+	if (BIT(HNS3_VECTOR0_1588_INT_B) & vector0_int_stats) {
+		val = BIT(HNS3_VECTOR0_1588_INT_B);
+		ret = HNS3_VECTOR0_EVENT_PTP;
+		goto out;
+	}
+
 	/* check for vector0 msix event source */
 	if (vector0_int_stats & HNS3_VECTOR0_REG_MSIX_MASK ||
 	    hw_err_src_reg & HNS3_RAS_REG_NFE_MASK) {
@@ -227,10 +235,17 @@ out:
 	return ret;
 }
 
+static bool
+hns3_is_1588_event_type(uint32_t event_type)
+{
+	return (event_type == HNS3_VECTOR0_EVENT_PTP);
+}
+
 static void
 hns3_clear_event_cause(struct hns3_hw *hw, uint32_t event_type, uint32_t regclr)
 {
-	if (event_type == HNS3_VECTOR0_EVENT_RST)
+	if (event_type == HNS3_VECTOR0_EVENT_RST ||
+	    hns3_is_1588_event_type(event_type))
 		hns3_write_dev(hw, HNS3_MISC_RESET_STS_REG, regclr);
 	else if (event_type == HNS3_VECTOR0_EVENT_MBX)
 		hns3_write_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG, regclr);
@@ -253,6 +268,8 @@ hns3_clear_all_event_cause(struct hns3_hw *hw)
 			       BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) |
 			       BIT(HNS3_VECTOR0_CORERESET_INT_B));
 	hns3_clear_event_cause(hw, HNS3_VECTOR0_EVENT_MBX, 0);
+	hns3_clear_event_cause(hw, HNS3_VECTOR0_EVENT_PTP,
+				BIT(HNS3_VECTOR0_1588_INT_B));
 }
 
 static void
@@ -2468,6 +2485,10 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	if (ret)
 		goto cfg_err;
 
+	ret = hns3_mbuf_dyn_rx_timestamp_register(dev, conf);
+	if (ret)
+		goto cfg_err;
+
 	ret = hns3_dev_configure_vlan(dev);
 	if (ret)
 		goto cfg_err;
@@ -2640,6 +2661,9 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	if (hns3_dev_indep_txrx_supported(hw))
 		info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 				 RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
+
+	if (hns3_dev_ptp_supported(hw))
+		info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
 
 	info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = HNS3_MAX_RING_DESC,
@@ -4960,6 +4984,10 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_intr_callback_register;
 	}
 
+	ret = hns3_ptp_init(hw);
+	if (ret)
+		goto err_get_config;
+
 	/* Enable interrupt */
 	rte_intr_enable(&pci_dev->intr_handle);
 	hns3_pf_enable_irq0(hw);
@@ -5977,6 +6005,10 @@ hns3_restore_conf(struct hns3_adapter *hns)
 	if (ret)
 		goto err_promisc;
 
+	ret = hns3_restore_ptp(hns);
+	if (ret)
+		goto err_promisc;
+
 	ret = hns3_restore_rx_interrupt(hw);
 	if (ret)
 		goto err_promisc;
@@ -6681,6 +6713,13 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.fec_set                = hns3_fec_set,
 	.tm_ops_get             = hns3_tm_ops_get,
 	.tx_done_cleanup        = hns3_tx_done_cleanup,
+	.timesync_enable            = hns3_timesync_enable,
+	.timesync_disable           = hns3_timesync_disable,
+	.timesync_read_rx_timestamp = hns3_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = hns3_timesync_read_tx_timestamp,
+	.timesync_adjust_time       = hns3_timesync_adjust_time,
+	.timesync_read_time         = hns3_timesync_read_time,
+	.timesync_write_time        = hns3_timesync_write_time,
 };
 
 static const struct hns3_reset_ops hns3_reset_ops = {

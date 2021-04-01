@@ -101,6 +101,7 @@ New Features
   * Added support for outer UDP checksum in Kunpeng930.
   * Added support for query Tx descriptor status.
   * Added support for query Rx descriptor status.
+  * Added support for IEEE 1588 PTP.
 
 * **Updated Intel iavf driver.**
 

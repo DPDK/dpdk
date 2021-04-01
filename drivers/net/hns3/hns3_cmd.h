@@ -123,6 +123,10 @@ enum hns3_opcode_type {
 	HNS3_OPC_CLEAR_MAC_TNL_INT      = 0x0312,
 	HNS3_OPC_CONFIG_FEC_MODE        = 0x031A,
 
+	/* PTP command */
+	HNS3_OPC_PTP_INT_EN             = 0x0501,
+	HNS3_OPC_CFG_PTP_MODE           = 0x0507,
+
 	/* PFC/Pause commands */
 	HNS3_OPC_CFG_MAC_PAUSE_EN       = 0x0701,
 	HNS3_OPC_CFG_PFC_PAUSE_EN       = 0x0702,
@@ -974,6 +978,32 @@ struct hns3_query_ssu_cmd {
 	uint32_t part_drop_cnt;
 	uint32_t oq_drop_cnt;
 	uint32_t rev1[2];
+};
+
+#define HNS3_PTP_ENABLE_B               0
+#define HNS3_PTP_TX_ENABLE_B            1
+#define HNS3_PTP_RX_ENABLE_B            2
+
+#define HNS3_PTP_TYPE_S                 0
+#define HNS3_PTP_TYPE_M                (0x3 << HNS3_PTP_TYPE_S)
+
+#define ALL_PTP_V2_TYPE                 0xF
+#define HNS3_PTP_MESSAGE_TYPE_S         0
+#define HNS3_PTP_MESSAGE_TYPE_M        (0xF << HNS3_PTP_MESSAGE_TYPE_S)
+
+#define PTP_TYPE_L2_V2_TYPE             0
+
+struct hns3_ptp_mode_cfg_cmd {
+	uint8_t enable;
+	uint8_t ptp_type;
+	uint8_t v2_message_type_1;
+	uint8_t v2_message_type_0;
+	uint8_t rsv[20];
+};
+
+struct hns3_ptp_int_cmd {
+	uint8_t int_en;
+	uint8_t rsvd[23];
 };
 
 #define HNS3_MAX_TQP_NUM_HIP08_PF	64

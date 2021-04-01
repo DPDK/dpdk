@@ -37,6 +37,7 @@ Features of the HNS3 PMD are:
 - MTU update
 - NUMA support
 - Generic flow API
+- IEEE1588/802.1AS timestamping
 
 Prerequisites
 -------------

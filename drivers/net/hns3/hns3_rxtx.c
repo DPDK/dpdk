@@ -2365,6 +2365,23 @@ hns3_rx_alloc_buffer(struct hns3_rx_queue *rxq)
 		return rte_mbuf_raw_alloc(rxq->mb_pool);
 }
 
+static inline void
+hns3_rx_ptp_timestamp_handle(struct hns3_rx_queue *rxq, struct rte_mbuf *mbuf,
+		  volatile struct hns3_desc *rxd)
+{
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(rxq->hns);
+	uint64_t timestamp = rte_le_to_cpu_64(rxd->timestamp);
+
+	mbuf->ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
+	if (hns3_timestamp_rx_dynflag > 0) {
+		*RTE_MBUF_DYNFIELD(mbuf, hns3_timestamp_dynfield_offset,
+			rte_mbuf_timestamp_t *) = timestamp;
+		mbuf->ol_flags |= hns3_timestamp_rx_dynflag;
+	}
+
+	pf->rx_timestamp = timestamp;
+}
+
 uint16_t
 hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -2424,7 +2441,11 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 
 		rxm = rxe->mbuf;
+		rxm->ol_flags = 0;
 		rxe->mbuf = nmb;
+
+		if (unlikely(bd_base_info & BIT(HNS3_RXD_TS_VLD_B)))
+			hns3_rx_ptp_timestamp_handle(rxq, rxm, rxdp);
 
 		dma_addr = rte_mbuf_data_iova_default(nmb);
 		rxdp->addr = rte_cpu_to_le_64(dma_addr);
@@ -2436,7 +2457,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->data_len = rxm->pkt_len;
 		rxm->port = rxq->port_id;
 		rxm->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
-		rxm->ol_flags = PKT_RX_RSS_HASH;
+		rxm->ol_flags |= PKT_RX_RSS_HASH;
 		if (unlikely(bd_base_info & BIT(HNS3_RXD_LUM_B))) {
 			rxm->hash.fdir.hi =
 				rte_le_to_cpu_16(rxd.rx.fd_id);
@@ -2454,6 +2475,9 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			goto pkt_err;
 
 		rxm->packet_type = hns3_rx_calc_ptype(rxq, l234_info, ol_info);
+
+		if (rxm->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC)
+			rxm->ol_flags |= PKT_RX_IEEE1588_PTP;
 
 		if (likely(bd_base_info & BIT(HNS3_RXD_L3L4P_B)))
 			hns3_rx_set_cksum_flag(rxm, rxm->packet_type,
@@ -3043,7 +3067,7 @@ hns3_fill_per_desc(struct hns3_desc *desc, struct rte_mbuf *rxm)
 {
 	desc->addr = rte_mbuf_data_iova(rxm);
 	desc->tx.send_size = rte_cpu_to_le_16(rte_pktmbuf_data_len(rxm));
-	desc->tx.tp_fe_sc_vld_ra_ri = rte_cpu_to_le_16(BIT(HNS3_TXD_VLD_B));
+	desc->tx.tp_fe_sc_vld_ra_ri |= rte_cpu_to_le_16(BIT(HNS3_TXD_VLD_B));
 }
 
 static void
@@ -3091,6 +3115,10 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 					rte_cpu_to_le_32(BIT(HNS3_TXD_VLAN_B));
 		desc->tx.vlan_tag = rte_cpu_to_le_16(rxm->vlan_tci);
 	}
+
+	if (ol_flags & PKT_TX_IEEE1588_TMST)
+		desc->tx.tp_fe_sc_vld_ra_ri |=
+				rte_cpu_to_le_16(BIT(HNS3_TXD_TSYN_B));
 }
 
 static inline int
@@ -4149,10 +4177,21 @@ hns3_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 	return 0;
 }
 
+static bool
+hns3_tx_check_simple_support(struct rte_eth_dev *dev)
+{
+	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
+
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (hns3_dev_ptp_supported(hw))
+		return false;
+
+	return (offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE));
+}
+
 static eth_tx_burst_t
 hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 {
-	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	bool vec_allowed, sve_allowed, simple_allowed;
 
@@ -4160,7 +4199,7 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 		      hns3_tx_check_vec_support(dev) == 0;
 	sve_allowed = vec_allowed && hns3_check_sve_support();
 	simple_allowed = hns->tx_simple_allowed &&
-			 offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE);
+			 hns3_tx_check_simple_support(dev);
 
 	*prep = NULL;
 

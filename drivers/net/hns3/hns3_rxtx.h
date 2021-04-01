@@ -106,6 +106,8 @@
 #define HNS3_RXD_L3L4P_B			11
 #define HNS3_RXD_TSIND_S			12
 #define HNS3_RXD_TSIND_M			(0x7 << HNS3_RXD_TSIND_S)
+
+#define HNS3_RXD_TS_VLD_B			14
 #define HNS3_RXD_LKBK_B				15
 #define HNS3_RXD_GRO_SIZE_S			16
 #define HNS3_RXD_GRO_SIZE_M			(0x3fff << HNS3_RXD_GRO_SIZE_S)
@@ -200,6 +202,8 @@ enum hns3_pkt_tun_type {
 struct hns3_desc {
 	union {
 		uint64_t addr;
+		uint64_t timestamp;
+
 		struct {
 			uint32_t addr0;
 			uint32_t addr1;
@@ -533,6 +537,9 @@ enum hns3_cksum_status {
 	HNS3_OUTER_L3_CKSUM_ERR = 4,
 	HNS3_OUTER_L4_CKSUM_ERR = 8
 };
+
+extern uint64_t hns3_timestamp_rx_dynflag;
+extern int hns3_timestamp_dynfield_offset;
 
 static inline int
 hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,

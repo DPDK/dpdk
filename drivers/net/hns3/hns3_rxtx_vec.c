@@ -18,6 +18,10 @@ hns3_tx_check_vec_support(struct rte_eth_dev *dev)
 {
 	struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
 
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (hns3_dev_ptp_supported(hw))
+		return -ENOTSUP;
+
 	/* Only support DEV_TX_OFFLOAD_MBUF_FAST_FREE */
 	if (txmode->offloads != DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		return -ENOTSUP;
@@ -167,7 +171,6 @@ hns3_rxq_vec_setup(struct hns3_rx_queue *rxq)
 	memset(rxq->offset_table, 0, sizeof(rxq->offset_table));
 }
 
-#ifndef RTE_LIBRTE_IEEE1588
 static int
 hns3_rxq_vec_check(struct hns3_rx_queue *rxq, void *arg)
 {
@@ -183,16 +186,18 @@ hns3_rxq_vec_check(struct hns3_rx_queue *rxq, void *arg)
 	RTE_SET_USED(arg);
 	return 0;
 }
-#endif
 
 int
 hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 {
-#ifndef RTE_LIBRTE_IEEE1588
 	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint64_t offloads_mask = DEV_RX_OFFLOAD_TCP_LRO |
 				 DEV_RX_OFFLOAD_VLAN;
+
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (hns3_dev_ptp_supported(hw))
+		return -ENOTSUP;
 
 	if (dev->data->scattered_rx)
 		return -ENOTSUP;
@@ -207,8 +212,4 @@ hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 
 	return 0;
-#else
-	RTE_SET_USED(dev);
-	return -ENOTSUP;
-#endif
 }
