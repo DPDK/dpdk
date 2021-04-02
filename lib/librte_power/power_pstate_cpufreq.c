@@ -206,7 +206,6 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 			pi->lcore_id);
 
 	f_base = fopen(fullpath_base, "r");
-	FOPEN_OR_ERR_RET(f_base, -1);
 	if (f_base == NULL) {
 		/* No sysfs base_frequency, that's OK, continue without */
 		base_ratio = 0;
@@ -221,6 +220,7 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 
 		base_ratio = strtoul(buf_base, NULL, POWER_CONVERT_TO_DECIMAL)
 				/ BUS_FREQ;
+		fclose(f_base);
 	}
 
 	/* Add MSR read to detect turbo status */
