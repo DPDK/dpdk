@@ -330,3 +330,8 @@ is stored in ``ice_adapter->active_pkg_type``.
 
 A symbolic link to the DDP package file is also ok. The same package
 file is used by both the kernel driver and the DPDK PMD.
+
+   .. Note::
+
+      Windows support: The DDP package is not supported on Windows so,
+      loading of the package is disabled on Windows.

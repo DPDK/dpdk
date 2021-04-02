@@ -1650,6 +1650,7 @@ ice_pf_setup(struct ice_pf *pf)
  * Extract device serial number from PCIe Configuration Space and
  * determine the pkg file path according to the DSN.
  */
+#ifndef RTE_EXEC_ENV_WINDOWS
 static int
 ice_pkg_file_search_path(struct rte_pci_device *pci_dev, char *pkg_file)
 {
@@ -1693,6 +1694,7 @@ fail_dsn:
 	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
 	return 0;
 }
+#endif
 
 enum ice_pkg_type
 ice_load_pkg_type(struct ice_hw *hw)
@@ -1718,6 +1720,7 @@ ice_load_pkg_type(struct ice_hw *hw)
 	return package_type;
 }
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 static int ice_load_pkg(struct rte_eth_dev *dev)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1793,6 +1796,7 @@ fail_exit:
 	rte_free(buf);
 	return err;
 }
+#endif
 
 static void
 ice_base_queue_get(struct ice_pf *pf)
@@ -2073,6 +2077,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 	ret = ice_load_pkg(dev);
 	if (ret) {
 		if (ad->devargs.safe_mode_support == 0) {
@@ -2085,6 +2090,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 					"Entering Safe Mode");
 		ad->is_safe_mode = 1;
 	}
+#endif
 
 	PMD_INIT_LOG(INFO, "FW %d.%d.%05d API %d.%d",
 		     hw->fw_maj_ver, hw->fw_min_ver, hw->fw_build,
