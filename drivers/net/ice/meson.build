@@ -1,12 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-if is_windows
-	build = false
-	reason = 'not supported on Windows'
-	subdir_done()
-endif
-
 subdir('base')
 objs = [base_objs]
 
@@ -25,6 +19,10 @@ includes += include_directories('base', '../../common/iavf')
 
 if arch_subdir == 'x86'
 	sources += files('ice_rxtx_vec_sse.c')
+
+	if is_windows and cc.get_id() != 'clang'
+		cflags += ['-fno-asynchronous-unwind-tables']
+	endif
 
 	# compile AVX2 version if either:
 	# a. we have AVX supported in minimum instruction set baseline

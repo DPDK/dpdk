@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <sys/types.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 
 #include <rte_interrupts.h>

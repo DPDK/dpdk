@@ -21,6 +21,11 @@ error_cflags = ['-Wno-unused-value',
 		'-Wno-unused-variable',
 		'-Wno-unused-parameter',
 ]
+
+if is_windows and cc.get_id() != 'clang'
+	cflags += ['-fno-asynchronous-unwind-tables']
+endif
+
 c_args = cflags
 
 foreach flag: error_cflags

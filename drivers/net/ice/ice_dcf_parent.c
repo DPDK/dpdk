@@ -121,7 +121,7 @@ ice_dcf_vsi_update_service_handler(void *param)
 	struct ice_dcf_hw *hw = reset_param->dcf_hw;
 	struct ice_dcf_adapter *adapter;
 
-	usleep(ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL);
+	rte_delay_us(ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL);
 
 	rte_spinlock_lock(&vsi_update_lock);
 
@@ -315,24 +315,24 @@ ice_dcf_request_pkg_name(struct ice_hw *hw, char *pkg_name)
 	snprintf(pkg_name, ICE_MAX_PKG_FILENAME_SIZE,
 		 ICE_PKG_FILE_SEARCH_PATH_UPDATES "ice-%016llx.pkg",
 		 (unsigned long long)dsn);
-	if (!access(pkg_name, 0))
+	if (!ice_access(pkg_name, 0))
 		return 0;
 
 	snprintf(pkg_name, ICE_MAX_PKG_FILENAME_SIZE,
 		 ICE_PKG_FILE_SEARCH_PATH_DEFAULT "ice-%016llx.pkg",
 		 (unsigned long long)dsn);
-	if (!access(pkg_name, 0))
+	if (!ice_access(pkg_name, 0))
 		return 0;
 
 pkg_file_direct:
 	snprintf(pkg_name,
 		 ICE_MAX_PKG_FILENAME_SIZE, "%s", ICE_PKG_FILE_UPDATES);
-	if (!access(pkg_name, 0))
+	if (!ice_access(pkg_name, 0))
 		return 0;
 
 	snprintf(pkg_name,
 		 ICE_MAX_PKG_FILENAME_SIZE, "%s", ICE_PKG_FILE_DEFAULT);
-	if (!access(pkg_name, 0))
+	if (!ice_access(pkg_name, 0))
 		return 0;
 
 	return -1;

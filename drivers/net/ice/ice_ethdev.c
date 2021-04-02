@@ -1678,17 +1678,17 @@ ice_pkg_file_search_path(struct rte_pci_device *pci_dev, char *pkg_file)
 
 	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES,
 		ICE_MAX_PKG_FILENAME_SIZE);
-	if (!access(strcat(pkg_file, opt_ddp_filename), 0))
+	if (!ice_access(strcat(pkg_file, opt_ddp_filename), 0))
 		return 0;
 
 	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_DEFAULT,
 		ICE_MAX_PKG_FILENAME_SIZE);
-	if (!access(strcat(pkg_file, opt_ddp_filename), 0))
+	if (!ice_access(strcat(pkg_file, opt_ddp_filename), 0))
 		return 0;
 
 fail_dsn:
 	strncpy(pkg_file, ICE_PKG_FILE_UPDATES, ICE_MAX_PKG_FILENAME_SIZE);
-	if (!access(pkg_file, 0))
+	if (!ice_access(pkg_file, 0))
 		return 0;
 	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
 	return 0;

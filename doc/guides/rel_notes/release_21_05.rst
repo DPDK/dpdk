@@ -109,6 +109,10 @@ New Features
 
   * Added flow filter to support GTPU inner L3/L4 fields matching.
 
+* **Updated Intel ice driver.**
+
+  * Added Intel ice support on Windows.
+
 * **Updated NXP DPAA driver.**
 
   * Added support for shared ethernet interface.

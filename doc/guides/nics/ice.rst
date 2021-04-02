@@ -8,8 +8,8 @@ The ice PMD (**librte_net_ice**) provides poll mode driver support for
 10/25/50/100 Gbps Intel® Ethernet 800 Series Network Adapters based on
 the Intel Ethernet Controller E810 and Intel Ethernet Connection E822/E823.
 
-Prerequisites
--------------
+Linux Prerequisites
+-------------------
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
@@ -24,6 +24,20 @@ Prerequisites
 
 - To understand DDP for COMMs usage with DPDK, please review `Intel® Ethernet 800 Series Telecommunication (Comms)
   Dynamic Device Personalization (DDP) Package <https://cdrdv2.intel.com/v1/dl/getContent/618651>`_.
+
+Windows Prerequisites
+---------------------
+
+- Follow the DPDK `Getting Started Guide for Windows <https://doc.dpdk.org/guides/windows_gsg/index.html>`_ to setup the basic DPDK environment.
+
+- Identify the Intel® Ethernet adapter and get the latest NVM/FW version.
+
+- To access any Intel® Ethernet hardware, load the NetUIO driver in place of existing built-in (inbox) driver.
+
+- To load NetUIO driver, follow the steps mentioned in `dpdk-kmods repository
+  <https://git.dpdk.org/dpdk-kmods/tree/windows/netuio/README.rst>`_.
+
+- Loading of private Dynamic Device Personalization (DDP) package is not supported on Windows.
 
 
 Recommended Matching List

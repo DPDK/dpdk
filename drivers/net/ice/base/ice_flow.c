@@ -3144,7 +3144,7 @@ enum ice_status ice_flow_rem_entry(struct ice_hw *hw, enum ice_block blk,
 	if (entry_h == ICE_FLOW_ENTRY_HANDLE_INVAL)
 		return ICE_ERR_PARAM;
 
-	entry = ICE_FLOW_ENTRY_PTR((unsigned long)entry_h);
+	entry = ICE_FLOW_ENTRY_PTR((intptr_t)entry_h);
 
 	/* Retain the pointer to the flow profile as the entry will be freed */
 	prof = entry->prof;
