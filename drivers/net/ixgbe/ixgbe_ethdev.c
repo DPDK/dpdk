@@ -7330,9 +7330,6 @@ ixgbe_get_module_eeprom(struct rte_eth_dev *dev,
 	uint8_t *data = info->data;
 	uint32_t i = 0;
 
-	if (info->length == 0)
-		return -EINVAL;
-
 	for (i = info->offset; i < info->offset + info->length; i++) {
 		if (i < RTE_ETH_MODULE_SFF_8079_LEN)
 			status = hw->phy.ops.read_i2c_eeprom(hw, i, &databyte);

@@ -11659,9 +11659,6 @@ static int i40e_get_module_eeprom(struct rte_eth_dev *dev,
 	uint32_t value = 0;
 	uint32_t i;
 
-	if (!info || !info->length || !info->data)
-		return -EINVAL;
-
 	if (hw->phy.link_info.module_type[0] == I40E_MODULE_TYPE_SFP)
 		is_sfp = true;
 
