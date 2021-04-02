@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added phase-fair lock.**
+
+  Phase-fair lock provides fairness guarantees.
+  It has two ticket pools, one for readers and one for writers.
+
 * **Added support for Marvell CN10K SoC drivers.**
 
   Added Marvell CN10K SoC support. Marvell CN10K SoC are based on Octeon 10

@@ -72,6 +72,7 @@ The public API headers are grouped by topics:
 - **locks**:
   [atomic]             (@ref rte_atomic.h),
   [mcslock]            (@ref rte_mcslock.h),
+  [pflock]             (@ref rte_pflock.h),
   [rwlock]             (@ref rte_rwlock.h),
   [spinlock]           (@ref rte_spinlock.h),
   [ticketlock]         (@ref rte_ticketlock.h),

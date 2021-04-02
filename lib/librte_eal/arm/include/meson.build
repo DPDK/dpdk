@@ -21,6 +21,7 @@ arch_headers = files(
 	'rte_pause_32.h',
 	'rte_pause_64.h',
 	'rte_pause.h',
+	'rte_pflock.h',
 	'rte_power_intrinsics.h',
 	'rte_prefetch_32.h',
 	'rte_prefetch_64.h',
