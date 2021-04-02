@@ -4395,6 +4395,7 @@ int rte_eth_dev_get_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.

@@ -322,11 +322,6 @@ hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 	uint32_t *data;
 	int ret;
 
-	if (regs == NULL) {
-		hns3_err(hw, "the input parameter regs is NULL!");
-		return -EINVAL;
-	}
-
 	ret = hns3_get_regs_length(hw, &length);
 	if (ret)
 		return ret;
