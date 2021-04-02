@@ -489,10 +489,11 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 
 	bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
 
-	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
-		bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 1);
-	else
-		bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 0);
+	rc = bnxt_hwrm_vnic_tpa_cfg(bp, vnic,
+				    (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) ?
+				    true : false);
+	if (rc)
+		goto err_out;
 
 	return 0;
 err_out:
