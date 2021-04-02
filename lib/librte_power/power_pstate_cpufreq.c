@@ -350,6 +350,9 @@ power_set_governor_performance(struct pstate_power_info *pi)
 	/* Strip off terminating '\n' */
 	strtok(buf, "\n");
 
+	/* Save the original governor */
+	rte_strscpy(pi->governor_ori, buf, sizeof(pi->governor_ori));
+
 	/* Check if current governor is performance */
 	if (strncmp(buf, POWER_GOVERNOR_PERF,
 			sizeof(POWER_GOVERNOR_PERF)) == 0) {
@@ -358,8 +361,6 @@ power_set_governor_performance(struct pstate_power_info *pi)
 				"already performance\n", pi->lcore_id);
 		goto out;
 	}
-	/* Save the original governor */
-	strlcpy(pi->governor_ori, buf, sizeof(pi->governor_ori));
 
 	/* Write 'performance' to the governor */
 	val = fseek(f, 0, SEEK_SET);
