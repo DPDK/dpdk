@@ -4403,6 +4403,7 @@ int rte_eth_get_monitor_addr(uint16_t port_id, uint16_t queue_id,
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
