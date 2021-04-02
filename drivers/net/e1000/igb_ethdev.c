@@ -5135,9 +5135,6 @@ eth_igb_get_module_eeprom(struct rte_eth_dev *dev,
 	u16 first_word, last_word;
 	int i = 0;
 
-	if (info->length == 0)
-		return -EINVAL;
-
 	first_word = info->offset >> 1;
 	last_word = (info->offset + info->length - 1) >> 1;
 

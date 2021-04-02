@@ -533,8 +533,7 @@ otx2_nix_get_module_eeprom(struct rte_eth_dev *eth_dev,
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct cgx_fw_data *rsp;
 
-	if (!info->data || !info->length ||
-	    (info->offset + info->length > SFP_EEPROM_SIZE))
+	if (info->offset + info->length > SFP_EEPROM_SIZE)
 		return -EINVAL;
 
 	rsp = nix_get_fwdata(dev);

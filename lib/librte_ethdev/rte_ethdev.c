@@ -5307,6 +5307,8 @@ rte_eth_dev_get_module_info(uint16_t port_id,
 	struct rte_eth_dev *dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	if (modinfo == NULL)
+		return -EINVAL;
 
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_module_info, -ENOTSUP);
@@ -5320,6 +5322,8 @@ rte_eth_dev_get_module_eeprom(uint16_t port_id,
 	struct rte_eth_dev *dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	if (info == NULL || info->data == NULL || info->length == 0)
+		return -EINVAL;
 
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->get_module_eeprom, -ENOTSUP);

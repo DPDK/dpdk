@@ -1169,7 +1169,7 @@ mlx5_get_module_info(struct rte_eth_dev *dev,
 	};
 	int ret = 0;
 
-	if (!dev || !modinfo) {
+	if (!dev) {
 		DRV_LOG(WARNING, "missing argument, cannot get module info");
 		rte_errno = EINVAL;
 		return -rte_errno;
@@ -1203,7 +1203,7 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 	struct ifreq ifr;
 	int ret = 0;
 
-	if (!dev || !info) {
+	if (!dev) {
 		DRV_LOG(WARNING, "missing argument, cannot get module eeprom");
 		rte_errno = EINVAL;
 		return -rte_errno;
