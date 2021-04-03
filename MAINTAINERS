@@ -1237,7 +1237,7 @@ F: drivers/event/dsw/
 F: doc/guides/eventdevs/dsw.rst
 
 Software OPDL Eventdev PMD
-M: Liang Ma <liang.j.ma@intel.com>
+M: Liang Ma <liangma@liangbit.com>
 M: Peter Mccarthy <peter.mccarthy@intel.com>
 F: drivers/event/opdl/
 F: doc/guides/eventdevs/opdl.rst
