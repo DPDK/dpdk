@@ -263,9 +263,11 @@ enum instruction_type {
 	 * dst = src
 	 * dst = HMEF, src = HMEFTI
 	 */
-	INSTR_MOV,   /* dst = MEF, src = MEFT */
-	INSTR_MOV_S, /* (dst, src) = (MEF, H) or (dst, src) = (H, MEFT) */
-	INSTR_MOV_I, /* dst = HMEF, src = I */
+	INSTR_MOV,    /* dst = MEF, src = MEFT */
+	INSTR_MOV_MH, /* dst = MEF, src = H */
+	INSTR_MOV_HM, /* dst = H, src = MEFT */
+	INSTR_MOV_HH, /* dst = H, src = H */
+	INSTR_MOV_I,  /* dst = HMEF, src = I */
 
 	/* dma h.header t.field
 	 * memcpy(h.header, t.field, sizeof(h.header))
@@ -319,25 +321,31 @@ enum instruction_type {
 	 * dst &= src
 	 * dst = HMEF, src = HMEFTI
 	 */
-	INSTR_ALU_AND,   /* dst = MEF, src = MEFT */
-	INSTR_ALU_AND_S, /* (dst, src) = (MEF, H) or (dst, src) = (H, MEFT) */
-	INSTR_ALU_AND_I, /* dst = HMEF, src = I */
+	INSTR_ALU_AND,    /* dst = MEF, src = MEFT */
+	INSTR_ALU_AND_MH, /* dst = MEF, src = H */
+	INSTR_ALU_AND_HM, /* dst = H, src = MEFT */
+	INSTR_ALU_AND_HH, /* dst = H, src = H */
+	INSTR_ALU_AND_I,  /* dst = HMEF, src = I */
 
 	/* or dst src
 	 * dst |= src
 	 * dst = HMEF, src = HMEFTI
 	 */
-	INSTR_ALU_OR,   /* dst = MEF, src = MEFT */
-	INSTR_ALU_OR_S, /* (dst, src) = (MEF, H) or (dst, src) = (H, MEFT) */
-	INSTR_ALU_OR_I, /* dst = HMEF, src = I */
+	INSTR_ALU_OR,    /* dst = MEF, src = MEFT */
+	INSTR_ALU_OR_MH, /* dst = MEF, src = H */
+	INSTR_ALU_OR_HM, /* dst = H, src = MEFT */
+	INSTR_ALU_OR_HH, /* dst = H, src = H */
+	INSTR_ALU_OR_I,  /* dst = HMEF, src = I */
 
 	/* xor dst src
 	 * dst ^= src
 	 * dst = HMEF, src = HMEFTI
 	 */
-	INSTR_ALU_XOR,   /* dst = MEF, src = MEFT */
-	INSTR_ALU_XOR_S, /* (dst, src) = (MEF, H) or (dst, src) = (H, MEFT) */
-	INSTR_ALU_XOR_I, /* dst = HMEF, src = I */
+	INSTR_ALU_XOR,    /* dst = MEF, src = MEFT */
+	INSTR_ALU_XOR_MH, /* dst = MEF, src = H */
+	INSTR_ALU_XOR_HM, /* dst = H, src = MEFT */
+	INSTR_ALU_XOR_HH, /* dst = H, src = H */
+	INSTR_ALU_XOR_I,  /* dst = HMEF, src = I */
 
 	/* shl dst src
 	 * dst <<= src
@@ -406,41 +414,45 @@ enum instruction_type {
 	INSTR_JMP_ACTION_MISS,
 
 	/* jmpeq LABEL a b
-	 * Jump is a is equal to b
+	 * Jump if a is equal to b
 	 * a = HMEFT, b = HMEFTI
 	 */
-	INSTR_JMP_EQ,   /* (a, b) = (MEFT, MEFT) or (a, b) = (H, H) */
-	INSTR_JMP_EQ_S, /* (a, b) = (MEFT, H) or (a, b) = (H, MEFT) */
-	INSTR_JMP_EQ_I, /* (a, b) = (MEFT, I) or (a, b) = (H, I) */
+	INSTR_JMP_EQ,    /* a = MEFT, b = MEFT */
+	INSTR_JMP_EQ_MH, /* a = MEFT, b = H */
+	INSTR_JMP_EQ_HM, /* a = H, b = MEFT */
+	INSTR_JMP_EQ_HH, /* a = H, b = H */
+	INSTR_JMP_EQ_I,  /* (a, b) = (MEFT, I) or (a, b) = (H, I) */
 
 	/* jmpneq LABEL a b
-	 * Jump is a is not equal to b
+	 * Jump if a is not equal to b
 	 * a = HMEFT, b = HMEFTI
 	 */
-	INSTR_JMP_NEQ,   /* (a, b) = (MEFT, MEFT) or (a, b) = (H, H) */
-	INSTR_JMP_NEQ_S, /* (a, b) = (MEFT, H) or (a, b) = (H, MEFT) */
-	INSTR_JMP_NEQ_I, /* (a, b) = (MEFT, I) or (a, b) = (H, I) */
+	INSTR_JMP_NEQ,    /* a = MEFT, b = MEFT */
+	INSTR_JMP_NEQ_MH, /* a = MEFT, b = H */
+	INSTR_JMP_NEQ_HM, /* a = H, b = MEFT */
+	INSTR_JMP_NEQ_HH, /* a = H, b = H */
+	INSTR_JMP_NEQ_I,  /* (a, b) = (MEFT, I) or (a, b) = (H, I) */
 
 	/* jmplt LABEL a b
 	 * Jump if a is less than b
 	 * a = HMEFT, b = HMEFTI
 	 */
-	INSTR_JMP_LT,    /* a = MEF, b = MEF */
-	INSTR_JMP_LT_MH, /* a = MEF, b = H */
-	INSTR_JMP_LT_HM, /* a = H, b = MEF */
+	INSTR_JMP_LT,    /* a = MEFT, b = MEFT */
+	INSTR_JMP_LT_MH, /* a = MEFT, b = H */
+	INSTR_JMP_LT_HM, /* a = H, b = MEFT */
 	INSTR_JMP_LT_HH, /* a = H, b = H */
-	INSTR_JMP_LT_MI, /* a = MEF, b = I */
+	INSTR_JMP_LT_MI, /* a = MEFT, b = I */
 	INSTR_JMP_LT_HI, /* a = H, b = I */
 
 	/* jmpgt LABEL a b
 	 * Jump if a is greater than b
 	 * a = HMEFT, b = HMEFTI
 	 */
-	INSTR_JMP_GT,    /* a = MEF, b = MEF */
-	INSTR_JMP_GT_MH, /* a = MEF, b = H */
-	INSTR_JMP_GT_HM, /* a = H, b = MEF */
+	INSTR_JMP_GT,    /* a = MEFT, b = MEFT */
+	INSTR_JMP_GT_MH, /* a = MEFT, b = H */
+	INSTR_JMP_GT_HM, /* a = H, b = MEFT */
 	INSTR_JMP_GT_HH, /* a = H, b = H */
-	INSTR_JMP_GT_MI, /* a = MEF, b = I */
+	INSTR_JMP_GT_MI, /* a = MEFT, b = I */
 	INSTR_JMP_GT_HI, /* a = H, b = I */
 
 	/* return
@@ -673,7 +685,7 @@ struct thread {
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 
-#define ALU_S(thread, ip, operator)  \
+#define ALU_MH(thread, ip, operator)  \
 {                                                                              \
 	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
 	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];   \
@@ -690,8 +702,6 @@ struct thread {
 									       \
 	*dst64_ptr = (dst64 & ~dst64_mask) | (result & dst64_mask);            \
 }
-
-#define ALU_MH ALU_S
 
 #define ALU_HM(thread, ip, operator)  \
 {                                                                              \
@@ -713,6 +723,25 @@ struct thread {
 	*dst64_ptr = (dst64 & ~dst64_mask) | result;                           \
 }
 
+#define ALU_HM_FAST(thread, ip, operator)  \
+{                                                                                 \
+	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];         \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];      \
+	uint64_t dst64 = *dst64_ptr;                                              \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->alu.dst.n_bits);          \
+	uint64_t dst = dst64 & dst64_mask;                                        \
+										  \
+	uint8_t *src_struct = (thread)->structs[(ip)->alu.src.struct_id];         \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->alu.src.offset];      \
+	uint64_t src64 = *src64_ptr;                                              \
+	uint64_t src64_mask = UINT64_MAX >> (64 - (ip)->alu.src.n_bits);          \
+	uint64_t src = hton64(src64 & src64_mask) >> (64 - (ip)->alu.dst.n_bits); \
+										  \
+	uint64_t result = dst operator src;                                       \
+										  \
+	*dst64_ptr = (dst64 & ~dst64_mask) | result;                              \
+}
+
 #define ALU_HH(thread, ip, operator)  \
 {                                                                              \
 	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
@@ -732,12 +761,31 @@ struct thread {
 	*dst64_ptr = (dst64 & ~dst64_mask) | result;                           \
 }
 
+#define ALU_HH_FAST(thread, ip, operator)  \
+{                                                                                             \
+	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];                     \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];                  \
+	uint64_t dst64 = *dst64_ptr;                                                          \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->alu.dst.n_bits);                      \
+	uint64_t dst = dst64 & dst64_mask;                                                    \
+											      \
+	uint8_t *src_struct = (thread)->structs[(ip)->alu.src.struct_id];                     \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->alu.src.offset];                  \
+	uint64_t src64 = *src64_ptr;                                                          \
+	uint64_t src = (src64 << (64 - (ip)->alu.src.n_bits)) >> (64 - (ip)->alu.dst.n_bits); \
+											      \
+	uint64_t result = dst operator src;                                                   \
+											      \
+	*dst64_ptr = (dst64 & ~dst64_mask) | result;                                          \
+}
+
 #else
 
-#define ALU_S ALU
 #define ALU_MH ALU
 #define ALU_HM ALU
+#define ALU_HM_FAST ALU
 #define ALU_HH ALU
+#define ALU_HH_FAST ALU
 
 #endif
 
@@ -800,7 +848,7 @@ struct thread {
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 
-#define MOV_S(thread, ip)  \
+#define MOV_MH(thread, ip)  \
 {                                                                              \
 	uint8_t *dst_struct = (thread)->structs[(ip)->mov.dst.struct_id];      \
 	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->mov.dst.offset];   \
@@ -815,9 +863,44 @@ struct thread {
 	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);               \
 }
 
+#define MOV_HM(thread, ip)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->mov.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->mov.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->mov.dst.n_bits);       \
+									       \
+	uint8_t *src_struct = (thread)->structs[(ip)->mov.src.struct_id];      \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->mov.src.offset];   \
+	uint64_t src64 = *src64_ptr;                                           \
+	uint64_t src64_mask = UINT64_MAX >> (64 - (ip)->mov.src.n_bits);       \
+	uint64_t src = src64 & src64_mask;                                     \
+									       \
+	src = hton64(src) >> (64 - (ip)->mov.dst.n_bits);                      \
+	*dst64_ptr = (dst64 & ~dst64_mask) | src;                              \
+}
+
+#define MOV_HH(thread, ip)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->mov.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->mov.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->mov.dst.n_bits);       \
+									       \
+	uint8_t *src_struct = (thread)->structs[(ip)->mov.src.struct_id];      \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->mov.src.offset];   \
+	uint64_t src64 = *src64_ptr;                                           \
+									       \
+	uint64_t src = src64 << (64 - (ip)->mov.src.n_bits);                   \
+	src = src >> (64 - (ip)->mov.dst.n_bits);                              \
+	*dst64_ptr = (dst64 & ~dst64_mask) | src;                              \
+}
+
 #else
 
-#define MOV_S MOV
+#define MOV_MH MOV
+#define MOV_HM MOV
+#define MOV_HH MOV
 
 #endif
 
@@ -852,7 +935,7 @@ struct thread {
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 
-#define JMP_CMP_S(thread, ip, operator)  \
+#define JMP_CMP_MH(thread, ip, operator)  \
 {                                                                              \
 	uint8_t *a_struct = (thread)->structs[(ip)->jmp.a.struct_id];          \
 	uint64_t *a64_ptr = (uint64_t *)&a_struct[(ip)->jmp.a.offset];         \
@@ -867,8 +950,6 @@ struct thread {
 									       \
 	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
 }
-
-#define JMP_CMP_MH JMP_CMP_S
 
 #define JMP_CMP_HM(thread, ip, operator)  \
 {                                                                              \
@@ -901,12 +982,27 @@ struct thread {
 	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
 }
 
+#define JMP_CMP_HH_FAST(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *a_struct = (thread)->structs[(ip)->jmp.a.struct_id];          \
+	uint64_t *a64_ptr = (uint64_t *)&a_struct[(ip)->jmp.a.offset];         \
+	uint64_t a64 = *a64_ptr;                                               \
+	uint64_t a = a64 << (64 - (ip)->jmp.a.n_bits);                         \
+									       \
+	uint8_t *b_struct = (thread)->structs[(ip)->jmp.b.struct_id];          \
+	uint64_t *b64_ptr = (uint64_t *)&b_struct[(ip)->jmp.b.offset];         \
+	uint64_t b64 = *b64_ptr;                                               \
+	uint64_t b = b64 << (64 - (ip)->jmp.b.n_bits);                         \
+									       \
+	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
+}
+
 #else
 
-#define JMP_CMP_S JMP_CMP
 #define JMP_CMP_MH JMP_CMP
 #define JMP_CMP_HM JMP_CMP
 #define JMP_CMP_HH JMP_CMP
+#define JMP_CMP_HH_FAST JMP_CMP
 
 #endif
 
@@ -2280,10 +2376,14 @@ instruction_is_jmp(struct instruction *instr)
 	case INSTR_JMP_ACTION_HIT:
 	case INSTR_JMP_ACTION_MISS:
 	case INSTR_JMP_EQ:
-	case INSTR_JMP_EQ_S:
+	case INSTR_JMP_EQ_MH:
+	case INSTR_JMP_EQ_HM:
+	case INSTR_JMP_EQ_HH:
 	case INSTR_JMP_EQ_I:
 	case INSTR_JMP_NEQ:
-	case INSTR_JMP_NEQ_S:
+	case INSTR_JMP_NEQ_MH:
+	case INSTR_JMP_NEQ_HM:
+	case INSTR_JMP_NEQ_HH:
 	case INSTR_JMP_NEQ_I:
 	case INSTR_JMP_LT:
 	case INSTR_JMP_LT_MH:
@@ -3208,13 +3308,16 @@ instr_mov_translate(struct rte_swx_pipeline *p,
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
 
-	/* MOV or MOV_S. */
+	/* MOV, MOV_MH, MOV_HM or MOV_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
 		instr->type = INSTR_MOV;
-		if ((dst[0] == 'h' && src[0] != 'h') ||
-		    (dst[0] != 'h' && src[0] == 'h'))
-			instr->type = INSTR_MOV_S;
+		if (dst[0] != 'h' && src[0] == 'h')
+			instr->type = INSTR_MOV_MH;
+		if (dst[0] == 'h' && src[0] != 'h')
+			instr->type = INSTR_MOV_HM;
+		if (dst[0] == 'h' && src[0] == 'h')
+			instr->type = INSTR_MOV_HH;
 
 		instr->mov.dst.struct_id = (uint8_t)dst_struct_id;
 		instr->mov.dst.n_bits = fdst->n_bits;
@@ -3256,15 +3359,45 @@ instr_mov_exec(struct rte_swx_pipeline *p)
 }
 
 static inline void
-instr_mov_s_exec(struct rte_swx_pipeline *p)
+instr_mov_mh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] mov (s)\n",
+	TRACE("[Thread %2u] mov (mh)\n",
 	      p->thread_id);
 
-	MOV_S(t, ip);
+	MOV_MH(t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_mov_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] mov (hm)\n",
+	      p->thread_id);
+
+	MOV_HM(t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_mov_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] mov (hh)\n",
+	      p->thread_id);
+
+	MOV_HH(t, ip);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -3760,13 +3893,16 @@ instr_alu_and_translate(struct rte_swx_pipeline *p,
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
 
-	/* AND or AND_S. */
+	/* AND, AND_MH, AND_HM, AND_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
 		instr->type = INSTR_ALU_AND;
-		if ((dst[0] == 'h' && src[0] != 'h') ||
-		    (dst[0] != 'h' && src[0] == 'h'))
-			instr->type = INSTR_ALU_AND_S;
+		if (dst[0] != 'h' && src[0] == 'h')
+			instr->type = INSTR_ALU_AND_MH;
+		if (dst[0] == 'h' && src[0] != 'h')
+			instr->type = INSTR_ALU_AND_HM;
+		if (dst[0] == 'h' && src[0] == 'h')
+			instr->type = INSTR_ALU_AND_HH;
 
 		instr->alu.dst.struct_id = (uint8_t)dst_struct_id;
 		instr->alu.dst.n_bits = fdst->n_bits;
@@ -3810,13 +3946,16 @@ instr_alu_or_translate(struct rte_swx_pipeline *p,
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
 
-	/* OR or OR_S. */
+	/* OR, OR_MH, OR_HM, OR_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
 		instr->type = INSTR_ALU_OR;
-		if ((dst[0] == 'h' && src[0] != 'h') ||
-		    (dst[0] != 'h' && src[0] == 'h'))
-			instr->type = INSTR_ALU_OR_S;
+		if (dst[0] != 'h' && src[0] == 'h')
+			instr->type = INSTR_ALU_OR_MH;
+		if (dst[0] == 'h' && src[0] != 'h')
+			instr->type = INSTR_ALU_OR_HM;
+		if (dst[0] == 'h' && src[0] == 'h')
+			instr->type = INSTR_ALU_OR_HH;
 
 		instr->alu.dst.struct_id = (uint8_t)dst_struct_id;
 		instr->alu.dst.n_bits = fdst->n_bits;
@@ -3860,13 +3999,16 @@ instr_alu_xor_translate(struct rte_swx_pipeline *p,
 	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
 	CHECK(fdst, EINVAL);
 
-	/* XOR or XOR_S. */
+	/* XOR, XOR_MH, XOR_HM, XOR_HH. */
 	fsrc = struct_field_parse(p, action, src, &src_struct_id);
 	if (fsrc) {
 		instr->type = INSTR_ALU_XOR;
-		if ((dst[0] == 'h' && src[0] != 'h') ||
-		    (dst[0] != 'h' && src[0] == 'h'))
-			instr->type = INSTR_ALU_XOR_S;
+		if (dst[0] != 'h' && src[0] == 'h')
+			instr->type = INSTR_ALU_XOR_MH;
+		if (dst[0] == 'h' && src[0] != 'h')
+			instr->type = INSTR_ALU_XOR_HM;
+		if (dst[0] == 'h' && src[0] == 'h')
+			instr->type = INSTR_ALU_XOR_HH;
 
 		instr->alu.dst.struct_id = (uint8_t)dst_struct_id;
 		instr->alu.dst.n_bits = fdst->n_bits;
@@ -4268,15 +4410,45 @@ instr_alu_and_exec(struct rte_swx_pipeline *p)
 }
 
 static inline void
-instr_alu_and_s_exec(struct rte_swx_pipeline *p)
+instr_alu_and_mh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] and (s)\n", p->thread_id);
+	TRACE("[Thread %2u] and (mh)\n", p->thread_id);
 
 	/* Structs. */
-	ALU_S(t, ip, &);
+	ALU_MH(t, ip, &);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_and_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] and (hm)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HM_FAST(t, ip, &);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_and_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] and (hh)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HH_FAST(t, ip, &);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4313,15 +4485,45 @@ instr_alu_or_exec(struct rte_swx_pipeline *p)
 }
 
 static inline void
-instr_alu_or_s_exec(struct rte_swx_pipeline *p)
+instr_alu_or_mh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] or (s)\n", p->thread_id);
+	TRACE("[Thread %2u] or (mh)\n", p->thread_id);
 
 	/* Structs. */
-	ALU_S(t, ip, |);
+	ALU_MH(t, ip, |);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_or_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] or (hm)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HM_FAST(t, ip, |);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_or_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] or (hh)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HH_FAST(t, ip, |);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4358,15 +4560,45 @@ instr_alu_xor_exec(struct rte_swx_pipeline *p)
 }
 
 static inline void
-instr_alu_xor_s_exec(struct rte_swx_pipeline *p)
+instr_alu_xor_mh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] xor (s)\n", p->thread_id);
+	TRACE("[Thread %2u] xor (mh)\n", p->thread_id);
 
 	/* Structs. */
-	ALU_S(t, ip, ^);
+	ALU_MH(t, ip, ^);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_xor_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] xor (hm)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HM_FAST(t, ip, ^);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_xor_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] xor (hh)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HH_FAST(t, ip, ^);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4794,13 +5026,16 @@ instr_jmp_eq_translate(struct rte_swx_pipeline *p,
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
 
-	/* JMP_EQ or JMP_EQ_S. */
+	/* JMP_EQ, JMP_EQ_MH, JMP_EQ_HM, JMP_EQ_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
 		instr->type = INSTR_JMP_EQ;
-		if ((a[0] == 'h' && b[0] != 'h') ||
-		    (a[0] != 'h' && b[0] == 'h'))
-			instr->type = INSTR_JMP_EQ_S;
+		if (a[0] != 'h' && b[0] == 'h')
+			instr->type = INSTR_JMP_EQ_MH;
+		if (a[0] == 'h' && b[0] != 'h')
+			instr->type = INSTR_JMP_EQ_HM;
+		if (a[0] == 'h' && b[0] == 'h')
+			instr->type = INSTR_JMP_EQ_HH;
 		instr->jmp.ip = NULL; /* Resolved later. */
 
 		instr->jmp.a.struct_id = (uint8_t)a_struct_id;
@@ -4848,13 +5083,16 @@ instr_jmp_neq_translate(struct rte_swx_pipeline *p,
 	fa = struct_field_parse(p, action, a, &a_struct_id);
 	CHECK(fa, EINVAL);
 
-	/* JMP_NEQ or JMP_NEQ_S. */
+	/* JMP_NEQ, JMP_NEQ_MH, JMP_NEQ_HM, JMP_NEQ_HH. */
 	fb = struct_field_parse(p, action, b, &b_struct_id);
 	if (fb) {
 		instr->type = INSTR_JMP_NEQ;
-		if ((a[0] == 'h' && b[0] != 'h') ||
-		    (a[0] != 'h' && b[0] == 'h'))
-			instr->type = INSTR_JMP_NEQ_S;
+		if (a[0] != 'h' && b[0] == 'h')
+			instr->type = INSTR_JMP_NEQ_MH;
+		if (a[0] == 'h' && b[0] != 'h')
+			instr->type = INSTR_JMP_NEQ_HM;
+		if (a[0] == 'h' && b[0] == 'h')
+			instr->type = INSTR_JMP_NEQ_HH;
 		instr->jmp.ip = NULL; /* Resolved later. */
 
 		instr->jmp.a.struct_id = (uint8_t)a_struct_id;
@@ -5089,14 +5327,36 @@ instr_jmp_eq_exec(struct rte_swx_pipeline *p)
 }
 
 static inline void
-instr_jmp_eq_s_exec(struct rte_swx_pipeline *p)
+instr_jmp_eq_mh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] jmpeq (s)\n", p->thread_id);
+	TRACE("[Thread %2u] jmpeq (mh)\n", p->thread_id);
 
-	JMP_CMP_S(t, ip, ==);
+	JMP_CMP_MH(t, ip, ==);
+}
+
+static inline void
+instr_jmp_eq_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpeq (hm)\n", p->thread_id);
+
+	JMP_CMP_HM(t, ip, ==);
+}
+
+static inline void
+instr_jmp_eq_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpeq (hh)\n", p->thread_id);
+
+	JMP_CMP_HH_FAST(t, ip, ==);
 }
 
 static inline void
@@ -5122,14 +5382,36 @@ instr_jmp_neq_exec(struct rte_swx_pipeline *p)
 }
 
 static inline void
-instr_jmp_neq_s_exec(struct rte_swx_pipeline *p)
+instr_jmp_neq_mh_exec(struct rte_swx_pipeline *p)
 {
 	struct thread *t = &p->threads[p->thread_id];
 	struct instruction *ip = t->ip;
 
-	TRACE("[Thread %2u] jmpneq (s)\n", p->thread_id);
+	TRACE("[Thread %2u] jmpneq (mh)\n", p->thread_id);
 
-	JMP_CMP_S(t, ip, !=);
+	JMP_CMP_MH(t, ip, !=);
+}
+
+static inline void
+instr_jmp_neq_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpneq (hm)\n", p->thread_id);
+
+	JMP_CMP_HM(t, ip, !=);
+}
+
+static inline void
+instr_jmp_neq_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpneq (hh)\n", p->thread_id);
+
+	JMP_CMP_HH_FAST(t, ip, !=);
 }
 
 static inline void
@@ -6054,7 +6336,9 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_HDR_INVALIDATE] = instr_hdr_invalidate_exec,
 
 	[INSTR_MOV] = instr_mov_exec,
-	[INSTR_MOV_S] = instr_mov_s_exec,
+	[INSTR_MOV_MH] = instr_mov_mh_exec,
+	[INSTR_MOV_HM] = instr_mov_hm_exec,
+	[INSTR_MOV_HH] = instr_mov_hh_exec,
 	[INSTR_MOV_I] = instr_mov_i_exec,
 
 	[INSTR_DMA_HT] = instr_dma_ht_exec,
@@ -6086,15 +6370,21 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_ALU_CKSUB_FIELD] = instr_alu_cksub_field_exec,
 
 	[INSTR_ALU_AND] = instr_alu_and_exec,
-	[INSTR_ALU_AND_S] = instr_alu_and_s_exec,
+	[INSTR_ALU_AND_MH] = instr_alu_and_mh_exec,
+	[INSTR_ALU_AND_HM] = instr_alu_and_hm_exec,
+	[INSTR_ALU_AND_HH] = instr_alu_and_hh_exec,
 	[INSTR_ALU_AND_I] = instr_alu_and_i_exec,
 
 	[INSTR_ALU_OR] = instr_alu_or_exec,
-	[INSTR_ALU_OR_S] = instr_alu_or_s_exec,
+	[INSTR_ALU_OR_MH] = instr_alu_or_mh_exec,
+	[INSTR_ALU_OR_HM] = instr_alu_or_hm_exec,
+	[INSTR_ALU_OR_HH] = instr_alu_or_hh_exec,
 	[INSTR_ALU_OR_I] = instr_alu_or_i_exec,
 
 	[INSTR_ALU_XOR] = instr_alu_xor_exec,
-	[INSTR_ALU_XOR_S] = instr_alu_xor_s_exec,
+	[INSTR_ALU_XOR_MH] = instr_alu_xor_mh_exec,
+	[INSTR_ALU_XOR_HM] = instr_alu_xor_hm_exec,
+	[INSTR_ALU_XOR_HH] = instr_alu_xor_hh_exec,
 	[INSTR_ALU_XOR_I] = instr_alu_xor_i_exec,
 
 	[INSTR_ALU_SHL] = instr_alu_shl_exec,
@@ -6124,11 +6414,15 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_JMP_ACTION_MISS] = instr_jmp_action_miss_exec,
 
 	[INSTR_JMP_EQ] = instr_jmp_eq_exec,
-	[INSTR_JMP_EQ_S] = instr_jmp_eq_s_exec,
+	[INSTR_JMP_EQ_MH] = instr_jmp_eq_mh_exec,
+	[INSTR_JMP_EQ_HM] = instr_jmp_eq_hm_exec,
+	[INSTR_JMP_EQ_HH] = instr_jmp_eq_hh_exec,
 	[INSTR_JMP_EQ_I] = instr_jmp_eq_i_exec,
 
 	[INSTR_JMP_NEQ] = instr_jmp_neq_exec,
-	[INSTR_JMP_NEQ_S] = instr_jmp_neq_s_exec,
+	[INSTR_JMP_NEQ_MH] = instr_jmp_neq_mh_exec,
+	[INSTR_JMP_NEQ_HM] = instr_jmp_neq_hm_exec,
+	[INSTR_JMP_NEQ_HH] = instr_jmp_neq_hh_exec,
 	[INSTR_JMP_NEQ_I] = instr_jmp_neq_i_exec,
 
 	[INSTR_JMP_LT] = instr_jmp_lt_exec,
