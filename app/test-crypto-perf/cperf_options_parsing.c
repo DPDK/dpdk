@@ -983,7 +983,7 @@ cperf_options_parse(struct cperf_options *options, int argc, char **argv)
 		switch (opt) {
 		case 'h':
 			usage(argv[0]);
-			rte_exit(EXIT_SUCCESS, "Displayed help\n");
+			exit(EXIT_SUCCESS);
 			break;
 		/* long options */
 		case 0:

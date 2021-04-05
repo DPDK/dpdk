@@ -639,7 +639,7 @@ args_parse(int argc, char **argv)
 		case 0:
 			if (strcmp(lgopts[opt_idx].name, "help") == 0) {
 				usage(argv[0]);
-				rte_exit(EXIT_SUCCESS, "Displayed help\n");
+				exit(EXIT_SUCCESS);
 			}
 
 			if (strcmp(lgopts[opt_idx].name, "group") == 0) {
@@ -647,7 +647,7 @@ args_parse(int argc, char **argv)
 				if (n >= 0)
 					flow_group = n;
 				else
-					rte_exit(EXIT_SUCCESS,
+					rte_exit(EXIT_FAILURE,
 						"flow group should be >= 0\n");
 				printf("group %d / ", flow_group);
 			}
@@ -667,7 +667,7 @@ args_parse(int argc, char **argv)
 				if (n > 0)
 					hairpin_queues_num = n;
 				else
-					rte_exit(EXIT_SUCCESS,
+					rte_exit(EXIT_FAILURE,
 						"Hairpin queues should be > 0\n");
 
 				flow_actions[actions_idx++] =
@@ -680,7 +680,7 @@ args_parse(int argc, char **argv)
 				if (n > 0)
 					hairpin_queues_num = n;
 				else
-					rte_exit(EXIT_SUCCESS,
+					rte_exit(EXIT_FAILURE,
 						"Hairpin queues should be > 0\n");
 
 				flow_actions[actions_idx++] =
@@ -704,11 +704,9 @@ args_parse(int argc, char **argv)
 							break;
 						}
 						/* Reached last item with no match */
-						if (i == (RTE_DIM(flow_options) - 1)) {
-							fprintf(stderr, "Invalid encap item: %s\n", token);
-							usage(argv[0]);
-							rte_exit(EXIT_SUCCESS, "Invalid encap item\n");
-						}
+						if (i == (RTE_DIM(flow_options) - 1))
+							rte_exit(EXIT_FAILURE,
+								"Invalid encap item: %s\n", token);
 					}
 					token = strtok(NULL, ",");
 				}
@@ -730,11 +728,9 @@ args_parse(int argc, char **argv)
 							break;
 						}
 						/* Reached last item with no match */
-						if (i == (RTE_DIM(flow_options) - 1)) {
-							fprintf(stderr, "Invalid decap item: %s\n", token);
-							usage(argv[0]);
-							rte_exit(EXIT_SUCCESS, "Invalid decap item\n");
-						}
+						if (i == (RTE_DIM(flow_options) - 1))
+							rte_exit(EXIT_FAILURE,
+								"Invalid decap item %s\n", token);
 					}
 					token = strtok(NULL, ",");
 				}
@@ -747,9 +743,9 @@ args_parse(int argc, char **argv)
 				if (n >= DEFAULT_RULES_BATCH)
 					rules_batch = n;
 				else {
-					printf("\n\nrules_batch should be >= %d\n",
+					rte_exit(EXIT_FAILURE,
+						"rules_batch should be >= %d\n",
 						DEFAULT_RULES_BATCH);
-					rte_exit(EXIT_SUCCESS, " ");
 				}
 			}
 			if (strcmp(lgopts[opt_idx].name,
@@ -758,7 +754,8 @@ args_parse(int argc, char **argv)
 				if (n >= (int) rules_batch)
 					rules_count = n;
 				else {
-					printf("\n\nrules_count should be >= %d\n",
+					rte_exit(EXIT_FAILURE,
+						"rules_count should be >= %d\n",
 						rules_batch);
 				}
 			}
@@ -786,23 +783,23 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name, "cores") == 0) {
 				n = atoi(optarg);
 				if ((int) rte_lcore_count() <= n) {
-					printf("\nError: you need %d cores to run on multi-cores\n"
+					rte_exit(EXIT_FAILURE,
+						"Error: you need %d cores to run on multi-cores\n"
 						"Existing cores are: %d\n", n, rte_lcore_count());
-					rte_exit(EXIT_FAILURE, " ");
 				}
 				if (n <= RTE_MAX_LCORE && n > 0)
 					mc_pool.cores_count = n;
 				else {
-					printf("Error: cores count must be > 0 "
-						" and < %d\n", RTE_MAX_LCORE);
-					rte_exit(EXIT_FAILURE, " ");
+					rte_exit(EXIT_FAILURE,
+						"Error: cores count must be > 0 and < %d\n",
+						RTE_MAX_LCORE);
 				}
 			}
 			break;
 		default:
-			fprintf(stderr, "Invalid option: %s\n", argv[optind]);
 			usage(argv[0]);
-			rte_exit(EXIT_SUCCESS, "Invalid option\n");
+			rte_exit(EXIT_FAILURE, "Invalid option: %s\n",
+					argv[optind]);
 			break;
 		}
 	}
@@ -936,7 +933,7 @@ create_meter_rule(int port_id, uint32_t counter)
 		printf("Port %u create meter idx(%d) error(%d) message: %s\n",
 			port_id, counter, error.type,
 			error.message ? error.message : "(no stated reason)");
-		rte_exit(EXIT_FAILURE, "error in creating meter");
+		rte_exit(EXIT_FAILURE, "Error in creating meter\n");
 	}
 }
 
@@ -949,7 +946,7 @@ destroy_meter_rule(int port_id, uint32_t counter)
 		printf("Port %u destroy meter(%d) error(%d) message: %s\n",
 			port_id, counter, error.type,
 			error.message ? error.message : "(no stated reason)");
-		rte_exit(EXIT_FAILURE, "Error in deleting meter rule");
+		rte_exit(EXIT_FAILURE, "Error in deleting meter rule\n");
 	}
 }
 
@@ -1097,7 +1094,7 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 		memset(&error, 0x33, sizeof(error));
 		if (rte_flow_destroy(port_id, flows_list[i], &error)) {
 			print_flow_error(error);
-			rte_exit(EXIT_FAILURE, "Error in deleting flow");
+			rte_exit(EXIT_FAILURE, "Error in deleting flow\n");
 		}
 
 		/*
@@ -1160,7 +1157,7 @@ insert_flows(int port_id, uint8_t core_id)
 	flows_list = rte_zmalloc("flows_list",
 		(sizeof(struct rte_flow *) * rules_count_per_core) + 1, 0);
 	if (flows_list == NULL)
-		rte_exit(EXIT_FAILURE, "No Memory available!");
+		rte_exit(EXIT_FAILURE, "No Memory available!\n");
 
 	cpu_time_used = 0;
 	flow_index = 0;
@@ -1180,7 +1177,7 @@ insert_flows(int port_id, uint8_t core_id)
 
 		if (flow == NULL) {
 			print_flow_error(error);
-			rte_exit(EXIT_FAILURE, "error in creating flow");
+			rte_exit(EXIT_FAILURE, "Error in creating flow\n");
 		}
 		flows_list[flow_index++] = flow;
 	}
@@ -1199,7 +1196,7 @@ insert_flows(int port_id, uint8_t core_id)
 
 		if (!flow) {
 			print_flow_error(error);
-			rte_exit(EXIT_FAILURE, "error in creating flow");
+			rte_exit(EXIT_FAILURE, "Error in creating flow\n");
 		}
 
 		flows_list[flow_index++] = flow;
@@ -1517,7 +1514,7 @@ packet_per_second_stats(void)
 	old = rte_zmalloc("old",
 		sizeof(struct lcore_info) * RTE_MAX_LCORE, 0);
 	if (old == NULL)
-		rte_exit(EXIT_FAILURE, "No Memory available!");
+		rte_exit(EXIT_FAILURE, "No Memory available!\n");
 
 	memcpy(old, lcore_infos,
 		sizeof(struct lcore_info) * RTE_MAX_LCORE);
