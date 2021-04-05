@@ -10839,11 +10839,19 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		n = dv->actions_n;
 		if (dh->fate_action == MLX5_FLOW_FATE_DROP) {
 			if (dv->transfer) {
-				dv->actions[n++] = priv->sh->esw_drop_action;
+				MLX5_ASSERT(priv->sh->dr_drop_action);
+				dv->actions[n++] = priv->sh->dr_drop_action;
 			} else {
+#ifdef HAVE_MLX5DV_DR
+				/* DR supports drop action placeholder. */
+				MLX5_ASSERT(priv->sh->dr_drop_action);
+				dv->actions[n++] = priv->sh->dr_drop_action;
+#else
+				/* For DV we use the explicit drop queue. */
 				MLX5_ASSERT(priv->drop_queue.hrxq);
 				dv->actions[n++] =
 						priv->drop_queue.hrxq->action;
+#endif
 			}
 		} else if ((dh->fate_action == MLX5_FLOW_FATE_QUEUE &&
 			   !dv_h->rix_sample && !dv_h->rix_dest_array)) {
@@ -12610,7 +12618,8 @@ mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev)
 						    &actions[0]);
 	if (ret)
 		goto err;
-	actions[1] = priv->drop_queue.hrxq->action;
+	actions[1] = sh->dr_drop_action ? sh->dr_drop_action :
+					  priv->drop_queue.hrxq->action;
 	dv_attr.match_criteria_enable = flow_dv_matcher_enable(mask.buf);
 	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj,
 					       &matcher);

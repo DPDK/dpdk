@@ -319,7 +319,17 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 			goto error;
 		}
 		sh->fdb_domain = domain;
-		sh->esw_drop_action = mlx5_glue->dr_create_flow_action_drop();
+	}
+	/*
+	 * The drop action is just some dummy placeholder in rdma-core. It
+	 * does not belong to domains and has no any attributes, and, can be
+	 * shared by the entire device.
+	 */
+	sh->dr_drop_action = mlx5_glue->dr_create_flow_action_drop();
+	if (!sh->dr_drop_action) {
+		DRV_LOG(ERR, "FDB mlx5dv_dr_create_flow_action_drop");
+		err = errno;
+		goto error;
 	}
 #endif
 	if (!sh->tunnel_hub)
@@ -355,9 +365,9 @@ error:
 		mlx5_glue->dr_destroy_domain(sh->fdb_domain);
 		sh->fdb_domain = NULL;
 	}
-	if (sh->esw_drop_action) {
-		mlx5_glue->destroy_flow_action(sh->esw_drop_action);
-		sh->esw_drop_action = NULL;
+	if (sh->dr_drop_action) {
+		mlx5_glue->destroy_flow_action(sh->dr_drop_action);
+		sh->dr_drop_action = NULL;
 	}
 	if (sh->pop_vlan_action) {
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
@@ -412,9 +422,9 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 		mlx5_glue->dr_destroy_domain(sh->fdb_domain);
 		sh->fdb_domain = NULL;
 	}
-	if (sh->esw_drop_action) {
-		mlx5_glue->destroy_flow_action(sh->esw_drop_action);
-		sh->esw_drop_action = NULL;
+	if (sh->dr_drop_action) {
+		mlx5_glue->destroy_flow_action(sh->dr_drop_action);
+		sh->dr_drop_action = NULL;
 	}
 #endif
 	if (sh->pop_vlan_action) {

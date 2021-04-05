@@ -719,7 +719,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_hlist *flow_tbls;
 	struct mlx5_flow_tunnel_hub *tunnel_hub;
 	/* Direct Rules tables for FDB, NIC TX+RX */
-	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
+	void *dr_drop_action; /* Pointer to DR drop action, any domain. */
 	void *pop_vlan_action; /* Pointer to DR pop VLAN action. */
 	struct mlx5_hlist *encaps_decaps; /* Encap/decap action hash list. */
 	struct mlx5_hlist *modify_cmds;
