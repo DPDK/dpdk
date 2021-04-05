@@ -91,26 +91,22 @@ struct rte_pci_device {
 
 #define RTE_ETH_DEV_TO_PCI(eth_dev)	RTE_DEV_TO_PCI((eth_dev)->device)
 
-/** Any PCI device identifier (vendor, device, ...) */
-#define PCI_ANY_ID (0xffff)
-#define RTE_CLASS_ANY_ID (0xffffff)
-
 #ifdef __cplusplus
 /** C++ macro used to help building up tables of device IDs */
 #define RTE_PCI_DEVICE(vend, dev) \
 	RTE_CLASS_ANY_ID,         \
 	(vend),                   \
 	(dev),                    \
-	PCI_ANY_ID,               \
-	PCI_ANY_ID
+	RTE_PCI_ANY_ID,           \
+	RTE_PCI_ANY_ID
 #else
 /** Macro used to help building up tables of device IDs */
 #define RTE_PCI_DEVICE(vend, dev)          \
 	.class_id = RTE_CLASS_ANY_ID,      \
 	.vendor_id = (vend),               \
 	.device_id = (dev),                \
-	.subsystem_vendor_id = PCI_ANY_ID, \
-	.subsystem_device_id = PCI_ANY_ID
+	.subsystem_vendor_id = RTE_PCI_ANY_ID, \
+	.subsystem_device_id = RTE_PCI_ANY_ID
 #endif
 
 /**

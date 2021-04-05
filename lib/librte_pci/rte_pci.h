@@ -78,10 +78,10 @@ extern "C" {
  */
 struct rte_pci_id {
 	uint32_t class_id;            /**< Class ID or RTE_CLASS_ANY_ID. */
-	uint16_t vendor_id;           /**< Vendor ID or PCI_ANY_ID. */
-	uint16_t device_id;           /**< Device ID or PCI_ANY_ID. */
-	uint16_t subsystem_vendor_id; /**< Subsystem vendor ID or PCI_ANY_ID. */
-	uint16_t subsystem_device_id; /**< Subsystem device ID or PCI_ANY_ID. */
+	uint16_t vendor_id;           /**< Vendor ID or RTE_PCI_ANY_ID. */
+	uint16_t device_id;           /**< Device ID or RTE_PCI_ANY_ID. */
+	uint16_t subsystem_vendor_id; /**< Subsystem vendor ID or RTE_PCI_ANY_ID. */
+	uint16_t subsystem_device_id; /**< Subsystem device ID or RTE_PCI_ANY_ID. */
 };
 
 /**
@@ -95,7 +95,9 @@ struct rte_pci_addr {
 };
 
 /** Any PCI device identifier (vendor, device, ...) */
-#define PCI_ANY_ID (0xffff)
+#define RTE_PCI_ANY_ID (0xffff)
+/** @deprecated Replaced with RTE_PCI_ANY_ID */
+#define PCI_ANY_ID RTE_DEPRECATED(PCI_ANY_ID) RTE_PCI_ANY_ID
 #define RTE_CLASS_ANY_ID (0xffffff)
 
 /**

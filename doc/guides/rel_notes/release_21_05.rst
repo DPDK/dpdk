@@ -159,6 +159,9 @@ API Changes
   from ``rte_thread_tls_*`` to ``rte_thread_*`` to avoid naming redundancy
   and confusion with the transport layer security term.
 
+* pci: The value ``PCI_ANY_ID`` is marked as deprecated
+  and can be replaced with ``RTE_PCI_ANY_ID``.
+
 
 ABI Changes
 -----------

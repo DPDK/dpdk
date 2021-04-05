@@ -133,18 +133,18 @@ rte_pci_match(const struct rte_pci_driver *pci_drv,
 	     id_table++) {
 		/* check if device's identifiers match the driver's ones */
 		if (id_table->vendor_id != pci_dev->id.vendor_id &&
-				id_table->vendor_id != PCI_ANY_ID)
+				id_table->vendor_id != RTE_PCI_ANY_ID)
 			continue;
 		if (id_table->device_id != pci_dev->id.device_id &&
-				id_table->device_id != PCI_ANY_ID)
+				id_table->device_id != RTE_PCI_ANY_ID)
 			continue;
 		if (id_table->subsystem_vendor_id !=
 		    pci_dev->id.subsystem_vendor_id &&
-		    id_table->subsystem_vendor_id != PCI_ANY_ID)
+		    id_table->subsystem_vendor_id != RTE_PCI_ANY_ID)
 			continue;
 		if (id_table->subsystem_device_id !=
 		    pci_dev->id.subsystem_device_id &&
-		    id_table->subsystem_device_id != PCI_ANY_ID)
+		    id_table->subsystem_device_id != RTE_PCI_ANY_ID)
 			continue;
 		if (id_table->class_id != pci_dev->id.class_id &&
 				id_table->class_id != RTE_CLASS_ANY_ID)
