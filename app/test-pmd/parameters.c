@@ -49,29 +49,7 @@
 static void
 usage(char* progname)
 {
-	printf("usage: %s [EAL options] -- "
-#ifdef RTE_LIB_CMDLINE
-	       "[--interactive|-i] "
-	       "[--cmdline-file=FILENAME] "
-#endif
-	       "[--help|-h] | [--auto-start|-a] | ["
-	       "--tx-first | --stats-period=PERIOD | "
-	       "--coremask=COREMASK --portmask=PORTMASK --numa "
-	       "--portlist=PORTLIST "
-	       "--mbuf-size= | --total-num-mbufs= | "
-	       "--nb-cores= | --nb-ports= | "
-#ifdef RTE_LIB_CMDLINE
-	       "--eth-peers-configfile= | "
-	       "--eth-peer=X,M:M:M:M:M:M | "
-	       "--tx-ip=SRC,DST | --tx-udp=PORT | "
-#endif
-	       "--pkt-filter-mode= |"
-	       "--rss-ip | --rss-udp | --rss-level-inner | --rss-level-outer |"
-	       "--rxpt= | --rxht= | --rxwt= |"
-	       " --rxfreet= | --txpt= | --txht= | --txwt= | --txfreet= | "
-	       "--txrst= | --tx-offloads= | | --rx-offloads= | "
-	       "--vxlan-gpe-port= | --geneve-parsed-port= | "
-	       "--record-core-cycles | --record-burst-stats]\n",
+	printf("\nUsage: %s [EAL options] -- [testpmd options]\n\n",
 	       progname);
 #ifdef RTE_LIB_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
@@ -97,6 +75,7 @@ usage(char* progname)
 	printf("  --portlist=PORTLIST: list of forwarding ports\n");
 	printf("  --numa: enable NUMA-aware allocation of RX/TX rings and of "
 	       "RX memory buffers (mbufs).\n");
+	printf("  --no-numa: disable NUMA-aware allocation.\n");
 	printf("  --port-numa-config=(port,socket)[,(port,socket)]: "
 	       "specify the socket on which the memory pool "
 	       "used by the port will be allocated.\n");
@@ -136,6 +115,7 @@ usage(char* progname)
 	       "monitoring on forwarding lcore id N.\n");
 #endif
 	printf("  --disable-crc-strip: disable CRC stripping by hardware.\n");
+	printf("  --enable-scatter: enable scattered Rx.\n");
 	printf("  --enable-lro: enable large receive offload.\n");
 	printf("  --enable-rx-cksum: enable rx hardware checksum offload.\n");
 	printf("  --enable-rx-timestamp: enable rx hardware timestamp offload.\n");
@@ -183,6 +163,8 @@ usage(char* progname)
 	printf("  --txpkts=X[,Y]*: set TX segment sizes"
 		" or total packet length.\n");
 	printf("  --txonly-multi-flow: generate multiple flows in txonly mode\n");
+	printf("  --tx-ip=src,dst: IP addresses in Tx-only mode\n");
+	printf("  --tx-udp=src[,dst]: UDP ports in Tx-only mode\n");
 	printf("  --disable-link-check: disable check on link status when "
 	       "starting/stopping ports.\n");
 	printf("  --disable-device-start: do not automatically start port\n");
@@ -213,14 +195,14 @@ usage(char* progname)
 	printf("  --noisy-lkup-memory=N: allocate N MB of VNF memory\n");
 	printf("  --noisy-lkup-num-writes=N: do N random writes per packet\n");
 	printf("  --noisy-lkup-num-reads=N: do N random reads per packet\n");
-	printf("  --noisy-lkup-num-writes=N: do N random reads and writes per packet\n");
+	printf("  --noisy-lkup-num-reads-writes=N: do N random reads and writes per packet\n");
 	printf("  --no-iova-contig: mempool memory can be IOVA non contiguous. "
 	       "valid only with --mp-alloc=anon\n");
 	printf("  --rx-mq-mode=0xX: hexadecimal bitmask of RX mq mode can be "
 	       "enabled\n");
 	printf("  --record-core-cycles: enable measurement of CPU cycles.\n");
 	printf("  --record-burst-stats: enable display of RX and TX bursts.\n");
-	printf("  --hairpin-mode=0xXX: bitmask set the hairpin port mode.\n "
+	printf("  --hairpin-mode=0xXX: bitmask set the hairpin port mode.\n"
 	       "    0x10 - explicit Tx rule, 0x02 - hairpin ports paired\n"
 	       "    0x01 - hairpin ports loop, 0x00 - hairpin port self\n");
 }
@@ -510,7 +492,6 @@ launch_args_parse(int argc, char** argv)
 #endif
 		{ "tx-first",			0, 0, 0 },
 		{ "stats-period",		1, 0, 0 },
-		{ "ports",			1, 0, 0 },
 		{ "nb-cores",			1, 0, 0 },
 		{ "nb-ports",			1, 0, 0 },
 		{ "coremask",			1, 0, 0 },
@@ -518,7 +499,7 @@ launch_args_parse(int argc, char** argv)
 		{ "portlist",			1, 0, 0 },
 		{ "numa",			0, 0, 0 },
 		{ "no-numa",			0, 0, 0 },
-		{ "mp-anon",			0, 0, 0 },
+		{ "mp-anon",			0, 0, 0 }, /* deprecated */
 		{ "port-numa-config",           1, 0, 0 },
 		{ "ring-numa-config",           1, 0, 0 },
 		{ "socket-num",			1, 0, 0 },
