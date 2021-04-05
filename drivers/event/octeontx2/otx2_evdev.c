@@ -883,28 +883,26 @@ sso_configure_ports(const struct rte_eventdev *event_dev)
 		struct otx2_ssogws *ws;
 		uintptr_t base;
 
-		/* Free memory prior to re-allocation if needed */
 		if (event_dev->data->ports[i] != NULL) {
 			ws = event_dev->data->ports[i];
-			rte_free(ssogws_get_cookie(ws));
-			ws = NULL;
-		}
+		} else {
+			/* Allocate event port memory */
+			ws = rte_zmalloc_socket("otx2_sso_ws",
+						sizeof(struct otx2_ssogws) +
+						RTE_CACHE_LINE_SIZE,
+						RTE_CACHE_LINE_SIZE,
+						event_dev->data->socket_id);
+			if (ws == NULL) {
+				otx2_err("Failed to alloc memory for port=%d",
+					 i);
+				rc = -ENOMEM;
+				break;
+			}
 
-		/* Allocate event port memory */
-		ws = rte_zmalloc_socket("otx2_sso_ws",
-					sizeof(struct otx2_ssogws) +
-					RTE_CACHE_LINE_SIZE,
-					RTE_CACHE_LINE_SIZE,
-					event_dev->data->socket_id);
-		if (ws == NULL) {
-			otx2_err("Failed to alloc memory for port=%d", i);
-			rc = -ENOMEM;
-			break;
+			/* First cache line is reserved for cookie */
+			ws = (struct otx2_ssogws *)
+				((uint8_t *)ws + RTE_CACHE_LINE_SIZE);
 		}
-
-		/* First cache line is reserved for cookie */
-		ws = (struct otx2_ssogws *)
-			((uint8_t *)ws + RTE_CACHE_LINE_SIZE);
 
 		ws->port = i;
 		base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | i << 12);
