@@ -105,11 +105,11 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 			*nb_iterations = atoi(optarg);
 			break;
 		case ARG_HELP:
-			usage("RegEx test app");
+			usage(argv[0]);
 			break;
 		default:
 			fprintf(stderr, "Invalid option: %s\n", argv[optind]);
-			usage("RegEx test app");
+			usage(argv[0]);
 			rte_exit(EXIT_FAILURE, "Invalid option\n");
 			break;
 		}
