@@ -112,12 +112,12 @@ struct rte_pci_device {
 /**
  * Initialisation function for the driver called during PCI probing.
  */
-typedef int (pci_probe_t)(struct rte_pci_driver *, struct rte_pci_device *);
+typedef int (rte_pci_probe_t)(struct rte_pci_driver *, struct rte_pci_device *);
 
 /**
  * Uninitialisation function for the driver called during hotplugging.
  */
-typedef int (pci_remove_t)(struct rte_pci_device *);
+typedef int (rte_pci_remove_t)(struct rte_pci_device *);
 
 /**
  * Driver-specific DMA mapping. After a successful call the device
@@ -164,8 +164,8 @@ struct rte_pci_driver {
 	TAILQ_ENTRY(rte_pci_driver) next;  /**< Next in list. */
 	struct rte_driver driver;          /**< Inherit core driver. */
 	struct rte_pci_bus *bus;           /**< PCI bus reference. */
-	pci_probe_t *probe;                /**< Device Probe function. */
-	pci_remove_t *remove;              /**< Device Remove function. */
+	rte_pci_probe_t *probe;            /**< Device probe function. */
+	rte_pci_remove_t *remove;          /**< Device remove function. */
 	pci_dma_map_t *dma_map;		   /**< device dma map function. */
 	pci_dma_unmap_t *dma_unmap;	   /**< device dma unmap function. */
 	const struct rte_pci_id *id_table; /**< ID table, NULL terminated. */
