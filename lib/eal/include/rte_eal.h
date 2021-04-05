@@ -74,6 +74,8 @@ int rte_eal_iopl_init(void);
  * @param argv
  *   An array of strings.  The contents of the array, as well as the strings
  *   which are pointed to by the array, may be modified by this function.
+ *   The program name pointer argv[0] is copied into the last parsed argv
+ *   so that argv[0] is still the same after deducing the parsed arguments.
  * @return
  *   - On success, the number of parsed arguments, which is greater or
  *     equal to zero. After the call to rte_eal_init(),
