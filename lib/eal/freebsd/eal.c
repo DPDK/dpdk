@@ -464,7 +464,7 @@ eal_parse_args(int argc, char **argv)
 			}
 			break;
 		}
-		case 'h':
+		case OPT_HELP_NUM:
 			eal_usage(prgname);
 			exit(EXIT_SUCCESS);
 		default:

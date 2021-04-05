@@ -2225,7 +2225,7 @@ eal_common_usage(void)
 	       "                      must be specified once only.\n"
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 	       "  -v                  Display version information on startup\n"
-	       "  -h, --help          This help\n"
+	       "  -h, --"OPT_HELP"          This help\n"
 	       "  --"OPT_IN_MEMORY"   Operate entirely in memory. This will\n"
 	       "                      disable secondary process support\n"
 	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
