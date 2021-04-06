@@ -363,6 +363,11 @@ skip_dev_init:
 	nix->reta_sz = reta_sz;
 	nix->mtu = ROC_NIX_DEFAULT_HW_FRS;
 
+	/* Register error and ras interrupts */
+	rc = nix_register_irqs(nix);
+	if (rc)
+		goto lf_detach;
+
 	/* Get NIX HW info */
 	roc_nix_get_hw_info(roc_nix);
 	nix->dev.drv_inited = true;
@@ -387,6 +392,8 @@ roc_nix_dev_fini(struct roc_nix *roc_nix)
 
 	if (!nix->dev.drv_inited)
 		goto fini;
+
+	nix_unregister_irqs(nix);
 
 	rc = nix_lf_detach(nix);
 	nix->dev.drv_inited = false;

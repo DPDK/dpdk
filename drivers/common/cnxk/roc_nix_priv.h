@@ -18,11 +18,25 @@
 /* Apply BP/DROP when CQ is 95% full */
 #define NIX_CQ_THRESH_LEVEL (5 * 256 / 100)
 
+/* IRQ triggered when NIX_LF_CINTX_CNT[QCOUNT] crosses this value */
+#define CQ_CQE_THRESH_DEFAULT	0x1ULL
+#define CQ_TIMER_THRESH_DEFAULT 0xAULL /* ~1usec i.e (0xA * 100nsec) */
+#define CQ_TIMER_THRESH_MAX	255
+
+struct nix_qint {
+	struct nix *nix;
+	uint8_t qintx;
+};
+
 struct nix {
 	uint16_t reta[ROC_NIX_RSS_GRPS][ROC_NIX_RSS_RETA_MAX];
 	enum roc_nix_rss_reta_sz reta_sz;
 	struct plt_pci_device *pci_dev;
 	uint16_t bpid[NIX_MAX_CHAN];
+	struct nix_qint *qints_mem;
+	struct nix_qint *cints_mem;
+	uint8_t configured_qints;
+	uint8_t configured_cints;
 	struct roc_nix_sq **sqs;
 	uint16_t vwqe_interval;
 	uint16_t tx_chan_base;
@@ -96,5 +110,9 @@ nix_priv_to_roc_nix(struct nix *nix)
 	return (struct roc_nix *)((char *)nix -
 				  offsetof(struct roc_nix, reserved));
 }
+
+/* IRQ */
+int nix_register_irqs(struct nix *nix);
+void nix_unregister_irqs(struct nix *nix);
 
 #endif /* _ROC_NIX_PRIV_H_ */

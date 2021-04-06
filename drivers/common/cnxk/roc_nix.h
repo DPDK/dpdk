@@ -81,4 +81,16 @@ int __roc_api roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq,
 			       uint32_t nb_txq, uint64_t rx_cfg);
 int __roc_api roc_nix_lf_free(struct roc_nix *roc_nix);
 
+/* IRQ */
+void __roc_api roc_nix_rx_queue_intr_enable(struct roc_nix *roc_nix,
+					    uint16_t rxq_id);
+void __roc_api roc_nix_rx_queue_intr_disable(struct roc_nix *roc_nix,
+					     uint16_t rxq_id);
+void __roc_api roc_nix_err_intr_ena_dis(struct roc_nix *roc_nix, bool enb);
+void __roc_api roc_nix_ras_intr_ena_dis(struct roc_nix *roc_nix, bool enb);
+int __roc_api roc_nix_register_queue_irqs(struct roc_nix *roc_nix);
+void __roc_api roc_nix_unregister_queue_irqs(struct roc_nix *roc_nix);
+int __roc_api roc_nix_register_cq_irqs(struct roc_nix *roc_nix);
+void __roc_api roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix);
+
 #endif /* _ROC_NIX_H_ */

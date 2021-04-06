@@ -15,6 +15,7 @@ INTERNAL {
 	roc_model;
 	roc_nix_dev_fini;
 	roc_nix_dev_init;
+	roc_nix_err_intr_ena_dis;
 	roc_nix_get_base_chan;
 	roc_nix_get_pf;
 	roc_nix_get_pf_func;
@@ -27,6 +28,13 @@ INTERNAL {
 	roc_nix_lf_alloc;
 	roc_nix_lf_free;
 	roc_nix_max_pkt_len;
+	roc_nix_ras_intr_ena_dis;
+	roc_nix_register_cq_irqs;
+	roc_nix_register_queue_irqs;
+	roc_nix_rx_queue_intr_disable;
+	roc_nix_rx_queue_intr_enable;
+	roc_nix_unregister_cq_irqs;
+	roc_nix_unregister_queue_irqs;
 	roc_npa_aura_limit_modify;
 	roc_npa_aura_op_range_set;
 	roc_npa_ctx_dump;
