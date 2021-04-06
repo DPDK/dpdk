@@ -55,6 +55,15 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added support for Marvell CN10K SoC drivers.**
+
+  Added Marvell CN10K SoC support. Marvell CN10K SoC are based on Octeon 10
+  family of ARM64 processors with ARM Neoverse N2 core with accelerators for
+  packet processing, timers, cryptography, etc.
+
+  * Added common/cnxk driver consisting of common API to be used by
+    net, crypto and event PMD's.
+
 * **Enhanced ethdev representor syntax.**
 
   * Introduced representor type of VF, SF and PF.

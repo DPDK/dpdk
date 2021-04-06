@@ -731,6 +731,15 @@ F: drivers/net/ipn3ke/
 F: doc/guides/nics/ipn3ke.rst
 F: doc/guides/nics/features/ipn3ke.ini
 
+Marvell cnxk
+M: Nithin Dabilpuram <ndabilpuram@marvell.com>
+M: Kiran Kumar K <kirankumark@marvell.com>
+M: Sunil Kumar Kori <skori@marvell.com>
+M: Satha Rao <skoteshwar@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
+F: drivers/common/cnxk/
+F: doc/guides/platform/cnxk.rst
+
 Marvell mvpp2
 M: Liron Himi <lironh@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
