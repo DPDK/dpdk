@@ -66,6 +66,17 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	return 0;
 }
 
+int
+roc_nix_tm_free_resources(struct roc_nix *roc_nix, bool hw_only)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	if (nix->tm_flags & NIX_TM_HIERARCHY_ENA)
+		return -EBUSY;
+
+	return nix_tm_free_resources(roc_nix, BIT(ROC_NIX_TM_USER), hw_only);
+}
+
 static int
 nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
 			  struct nix_tm_shaper_profile *profile, int skip_ins)

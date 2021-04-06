@@ -330,8 +330,17 @@ int nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node);
 int nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
 		       enum roc_nix_tm_tree tree, bool free);
 int nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node);
+int nix_tm_free_resources(struct roc_nix *roc_nix, uint32_t tree_mask,
+			  bool hw_only);
 int nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node);
 void nix_tm_clear_shaper_profiles(struct nix *nix);
+int nix_tm_alloc_txschq(struct nix *nix, enum roc_nix_tm_tree tree);
+int nix_tm_assign_resources(struct nix *nix, enum roc_nix_tm_tree tree);
+int nix_tm_release_resources(struct nix *nix, uint8_t hw_lvl, bool contig,
+			     bool above_thresh);
+void nix_tm_copy_rsp_to_nix(struct nix *nix, struct nix_txsch_alloc_rsp *rsp);
+
+int nix_tm_update_parent_info(struct nix *nix, enum roc_nix_tm_tree tree);
 
 /*
  * TM priv utils.
@@ -348,11 +357,18 @@ struct nix_tm_shaper_profile *nix_tm_shaper_profile_search(struct nix *nix,
 							   uint32_t id);
 uint8_t nix_tm_sw_xoff_prep(struct nix_tm_node *node, bool enable,
 			    volatile uint64_t *reg, volatile uint64_t *regval);
+uint32_t nix_tm_check_rr(struct nix *nix, uint32_t parent_id,
+			 enum roc_nix_tm_tree tree, uint32_t *rr_prio,
+			 uint32_t *max_prio);
 uint64_t nix_tm_shaper_profile_rate_min(struct nix *nix);
 uint64_t nix_tm_shaper_rate_conv(uint64_t value, uint64_t *exponent_p,
 				 uint64_t *mantissa_p, uint64_t *div_exp_p);
 uint64_t nix_tm_shaper_burst_conv(uint64_t value, uint64_t *exponent_p,
 				  uint64_t *mantissa_p);
+bool nix_tm_child_res_valid(struct nix_tm_node_list *list,
+			    struct nix_tm_node *parent);
+uint16_t nix_tm_resource_estimate(struct nix *nix, uint16_t *schq_contig,
+				  uint16_t *schq, enum roc_nix_tm_tree tree);
 struct nix_tm_node *nix_tm_node_alloc(void);
 void nix_tm_node_free(struct nix_tm_node *node);
 struct nix_tm_shaper_profile *nix_tm_shaper_profile_alloc(void);

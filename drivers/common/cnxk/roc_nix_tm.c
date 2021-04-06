@@ -5,6 +5,15 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+static inline int
+bitmap_ctzll(uint64_t slab)
+{
+	if (slab == 0)
+		return 0;
+
+	return __builtin_ctzll(slab);
+}
+
 void
 nix_tm_clear_shaper_profiles(struct nix *nix)
 {
@@ -19,6 +28,44 @@ nix_tm_clear_shaper_profiles(struct nix *nix)
 		nix_tm_shaper_profile_free(shaper_profile);
 		shaper_profile = TAILQ_FIRST(&nix->shaper_profile_list);
 	}
+}
+
+int
+nix_tm_update_parent_info(struct nix *nix, enum roc_nix_tm_tree tree)
+{
+	struct nix_tm_node *child, *parent;
+	struct nix_tm_node_list *list;
+	uint32_t rr_prio, max_prio;
+	uint32_t rr_num = 0;
+
+	list = nix_tm_node_list(nix, tree);
+
+	/* Release all the node hw resources locally
+	 * if parent marked as dirty and resource exists.
+	 */
+	TAILQ_FOREACH(child, list, node) {
+		/* Release resource only if parent direct hierarchy changed */
+		if (child->flags & NIX_TM_NODE_HWRES && child->parent &&
+		    child->parent->child_realloc) {
+			nix_tm_free_node_resource(nix, child);
+		}
+		child->max_prio = UINT32_MAX;
+	}
+
+	TAILQ_FOREACH(parent, list, node) {
+		/* Count group of children of same priority i.e are RR */
+		rr_num = nix_tm_check_rr(nix, parent->id, tree, &rr_prio,
+					 &max_prio);
+
+		/* Assuming that multiple RR groups are
+		 * not configured based on capability.
+		 */
+		parent->rr_prio = rr_prio;
+		parent->rr_num = rr_num;
+		parent->max_prio = max_prio;
+	}
+
+	return 0;
 }
 
 int
@@ -431,6 +478,71 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 }
 
 int
+nix_tm_release_resources(struct nix *nix, uint8_t hw_lvl, bool contig,
+			 bool above_thresh)
+{
+	uint16_t avail, thresh, to_free = 0, schq;
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txsch_free_req *req;
+	struct plt_bitmap *bmp;
+	uint64_t slab = 0;
+	uint32_t pos = 0;
+	int rc = -ENOSPC;
+
+	bmp = contig ? nix->schq_contig_bmp[hw_lvl] : nix->schq_bmp[hw_lvl];
+	thresh =
+		contig ? nix->contig_rsvd[hw_lvl] : nix->discontig_rsvd[hw_lvl];
+	plt_bitmap_scan_init(bmp);
+
+	avail = nix_tm_resource_avail(nix, hw_lvl, contig);
+
+	if (above_thresh) {
+		/* Release only above threshold */
+		if (avail > thresh)
+			to_free = avail - thresh;
+	} else {
+		/* Release everything */
+		to_free = avail;
+	}
+
+	/* Now release resources to AF */
+	while (to_free) {
+		if (!slab && !plt_bitmap_scan(bmp, &pos, &slab))
+			break;
+
+		schq = bitmap_ctzll(slab);
+		slab &= ~(1ULL << schq);
+		schq += pos;
+
+		/* Free to AF */
+		req = mbox_alloc_msg_nix_txsch_free(mbox);
+		if (req == NULL)
+			return rc;
+		req->flags = 0;
+		req->schq_lvl = hw_lvl;
+		req->schq = schq;
+		rc = mbox_process(mbox);
+		if (rc) {
+			plt_err("failed to release hwres %s(%u) rc %d",
+				nix_tm_hwlvl2str(hw_lvl), schq, rc);
+			return rc;
+		}
+
+		plt_tm_dbg("Released hwres %s(%u)", nix_tm_hwlvl2str(hw_lvl),
+			   schq);
+		plt_bitmap_clear(bmp, schq);
+		to_free--;
+	}
+
+	if (to_free) {
+		plt_err("resource inconsistency for %s(%u)",
+			nix_tm_hwlvl2str(hw_lvl), contig);
+		return -EFAULT;
+	}
+	return 0;
+}
+
+int
 nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node)
 {
 	struct mbox *mbox = (&nix->dev)->mbox;
@@ -537,6 +649,355 @@ nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
 	if (free)
 		nix_tm_node_free(node);
 	return 0;
+}
+
+static int
+nix_tm_assign_hw_id(struct nix *nix, struct nix_tm_node *parent,
+		    uint16_t *contig_id, int *contig_cnt,
+		    struct nix_tm_node_list *list)
+{
+	struct nix_tm_node *child;
+	struct plt_bitmap *bmp;
+	uint8_t child_hw_lvl;
+	int spare_schq = -1;
+	uint32_t pos = 0;
+	uint64_t slab;
+	uint16_t schq;
+
+	child_hw_lvl = parent->hw_lvl - 1;
+	bmp = nix->schq_bmp[child_hw_lvl];
+	plt_bitmap_scan_init(bmp);
+	slab = 0;
+
+	/* Save spare schq if it is case of RR + SP */
+	if (parent->rr_prio != 0xf && *contig_cnt > 1)
+		spare_schq = *contig_id + parent->rr_prio;
+
+	TAILQ_FOREACH(child, list, node) {
+		if (!child->parent)
+			continue;
+		if (child->parent->id != parent->id)
+			continue;
+
+		/* Resource never expected to be present */
+		if (child->flags & NIX_TM_NODE_HWRES) {
+			plt_err("Resource exists for child (%s)%u, id %u (%p)",
+				nix_tm_hwlvl2str(child->hw_lvl), child->hw_id,
+				child->id, child);
+			return -EFAULT;
+		}
+
+		if (!slab)
+			plt_bitmap_scan(bmp, &pos, &slab);
+
+		if (child->priority == parent->rr_prio && spare_schq != -1) {
+			/* Use spare schq first if present */
+			schq = spare_schq;
+			spare_schq = -1;
+			*contig_cnt = *contig_cnt - 1;
+
+		} else if (child->priority == parent->rr_prio) {
+			/* Assign a discontiguous queue */
+			if (!slab) {
+				plt_err("Schq not found for Child %u "
+					"lvl %u (%p)",
+					child->id, child->lvl, child);
+				return -ENOENT;
+			}
+
+			schq = bitmap_ctzll(slab);
+			slab &= ~(1ULL << schq);
+			schq += pos;
+			plt_bitmap_clear(bmp, schq);
+		} else {
+			/* Assign a contiguous queue */
+			schq = *contig_id + child->priority;
+			*contig_cnt = *contig_cnt - 1;
+		}
+
+		plt_tm_dbg("Resource %s(%u), for lvl %u id %u(%p)",
+			   nix_tm_hwlvl2str(child->hw_lvl), schq, child->lvl,
+			   child->id, child);
+
+		child->hw_id = schq;
+		child->parent_hw_id = parent->hw_id;
+		child->flags |= NIX_TM_NODE_HWRES;
+	}
+
+	return 0;
+}
+
+int
+nix_tm_assign_resources(struct nix *nix, enum roc_nix_tm_tree tree)
+{
+	struct nix_tm_node *parent, *root = NULL;
+	struct plt_bitmap *bmp, *bmp_contig;
+	struct nix_tm_node_list *list;
+	uint8_t child_hw_lvl, hw_lvl;
+	uint16_t contig_id, j;
+	uint64_t slab = 0;
+	uint32_t pos = 0;
+	int cnt, rc;
+
+	list = nix_tm_node_list(nix, tree);
+	/* Walk from TL1 to TL4 parents */
+	for (hw_lvl = NIX_TXSCH_LVL_TL1; hw_lvl > 0; hw_lvl--) {
+		TAILQ_FOREACH(parent, list, node) {
+			child_hw_lvl = parent->hw_lvl - 1;
+			if (parent->hw_lvl != hw_lvl)
+				continue;
+
+			/* Remember root for future */
+			if (parent->hw_lvl == nix->tm_root_lvl)
+				root = parent;
+
+			if (!parent->child_realloc) {
+				/* Skip when parent is not dirty */
+				if (nix_tm_child_res_valid(list, parent))
+					continue;
+				plt_err("Parent not dirty but invalid "
+					"child res parent id %u(lvl %u)",
+					parent->id, parent->lvl);
+				return -EFAULT;
+			}
+
+			bmp_contig = nix->schq_contig_bmp[child_hw_lvl];
+
+			/* Prealloc contiguous indices for a parent */
+			contig_id = NIX_TM_MAX_HW_TXSCHQ;
+			cnt = (int)parent->max_prio + 1;
+			if (cnt > 0) {
+				plt_bitmap_scan_init(bmp_contig);
+				if (!plt_bitmap_scan(bmp_contig, &pos, &slab)) {
+					plt_err("Contig schq not found");
+					return -ENOENT;
+				}
+				contig_id = pos + bitmap_ctzll(slab);
+
+				/* Check if we have enough */
+				for (j = contig_id; j < contig_id + cnt; j++) {
+					if (!plt_bitmap_get(bmp_contig, j))
+						break;
+				}
+
+				if (j != contig_id + cnt) {
+					plt_err("Contig schq not sufficient");
+					return -ENOENT;
+				}
+
+				for (j = contig_id; j < contig_id + cnt; j++)
+					plt_bitmap_clear(bmp_contig, j);
+			}
+
+			/* Assign hw id to all children */
+			rc = nix_tm_assign_hw_id(nix, parent, &contig_id, &cnt,
+						 list);
+			if (cnt || rc) {
+				plt_err("Unexpected err, contig res alloc, "
+					"parent %u, of %s, rc=%d, cnt=%d",
+					parent->id, nix_tm_hwlvl2str(hw_lvl),
+					rc, cnt);
+				return -EFAULT;
+			}
+
+			/* Clear the dirty bit as children's
+			 * resources are reallocated.
+			 */
+			parent->child_realloc = false;
+		}
+	}
+
+	/* Root is always expected to be there */
+	if (!root)
+		return -EFAULT;
+
+	if (root->flags & NIX_TM_NODE_HWRES)
+		return 0;
+
+	/* Process root node */
+	bmp = nix->schq_bmp[nix->tm_root_lvl];
+	plt_bitmap_scan_init(bmp);
+	if (!plt_bitmap_scan(bmp, &pos, &slab)) {
+		plt_err("Resource not allocated for root");
+		return -EIO;
+	}
+
+	root->hw_id = pos + bitmap_ctzll(slab);
+	root->flags |= NIX_TM_NODE_HWRES;
+	plt_bitmap_clear(bmp, root->hw_id);
+
+	/* Get TL1 id as well when root is not TL1 */
+	if (!nix_tm_have_tl1_access(nix)) {
+		bmp = nix->schq_bmp[NIX_TXSCH_LVL_TL1];
+
+		plt_bitmap_scan_init(bmp);
+		if (!plt_bitmap_scan(bmp, &pos, &slab)) {
+			plt_err("Resource not found for TL1");
+			return -EIO;
+		}
+		root->parent_hw_id = pos + bitmap_ctzll(slab);
+		plt_bitmap_clear(bmp, root->parent_hw_id);
+	}
+
+	plt_tm_dbg("Resource %s(%u) for root(id %u) (%p)",
+		   nix_tm_hwlvl2str(root->hw_lvl), root->hw_id, root->id, root);
+
+	return 0;
+}
+
+void
+nix_tm_copy_rsp_to_nix(struct nix *nix, struct nix_txsch_alloc_rsp *rsp)
+{
+	uint8_t lvl;
+	uint16_t i;
+
+	for (lvl = 0; lvl < NIX_TXSCH_LVL_CNT; lvl++) {
+		for (i = 0; i < rsp->schq[lvl]; i++)
+			plt_bitmap_set(nix->schq_bmp[lvl],
+				       rsp->schq_list[lvl][i]);
+
+		for (i = 0; i < rsp->schq_contig[lvl]; i++)
+			plt_bitmap_set(nix->schq_contig_bmp[lvl],
+				       rsp->schq_contig_list[lvl][i]);
+	}
+}
+
+int
+nix_tm_alloc_txschq(struct nix *nix, enum roc_nix_tm_tree tree)
+{
+	uint16_t schq_contig[NIX_TXSCH_LVL_CNT];
+	struct mbox *mbox = (&nix->dev)->mbox;
+	uint16_t schq[NIX_TXSCH_LVL_CNT];
+	struct nix_txsch_alloc_req *req;
+	struct nix_txsch_alloc_rsp *rsp;
+	uint8_t hw_lvl, i;
+	bool pend;
+	int rc;
+
+	memset(schq, 0, sizeof(schq));
+	memset(schq_contig, 0, sizeof(schq_contig));
+
+	/* Estimate requirement */
+	rc = nix_tm_resource_estimate(nix, schq_contig, schq, tree);
+	if (!rc)
+		return 0;
+
+	/* Release existing contiguous resources when realloc requested
+	 * as there is no way to guarantee continuity of old with new.
+	 */
+	for (hw_lvl = 0; hw_lvl < NIX_TXSCH_LVL_CNT; hw_lvl++) {
+		if (schq_contig[hw_lvl])
+			nix_tm_release_resources(nix, hw_lvl, true, false);
+	}
+
+	/* Alloc as needed */
+	do {
+		pend = false;
+		req = mbox_alloc_msg_nix_txsch_alloc(mbox);
+		if (!req) {
+			rc = -ENOMEM;
+			goto alloc_err;
+		}
+		mbox_memcpy(req->schq, schq, sizeof(req->schq));
+		mbox_memcpy(req->schq_contig, schq_contig,
+			    sizeof(req->schq_contig));
+
+		/* Each alloc can be at max of MAX_TXSCHQ_PER_FUNC per level.
+		 * So split alloc to multiple requests.
+		 */
+		for (i = 0; i < NIX_TXSCH_LVL_CNT; i++) {
+			if (req->schq[i] > MAX_TXSCHQ_PER_FUNC)
+				req->schq[i] = MAX_TXSCHQ_PER_FUNC;
+			schq[i] -= req->schq[i];
+
+			if (req->schq_contig[i] > MAX_TXSCHQ_PER_FUNC)
+				req->schq_contig[i] = MAX_TXSCHQ_PER_FUNC;
+			schq_contig[i] -= req->schq_contig[i];
+
+			if (schq[i] || schq_contig[i])
+				pend = true;
+		}
+
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto alloc_err;
+
+		nix_tm_copy_rsp_to_nix(nix, rsp);
+	} while (pend);
+
+	nix->tm_link_cfg_lvl = rsp->link_cfg_lvl;
+	return 0;
+alloc_err:
+	for (i = 0; i < NIX_TXSCH_LVL_CNT; i++) {
+		if (nix_tm_release_resources(nix, i, true, false))
+			plt_err("Failed to release contig resources of "
+				"lvl %d on error",
+				i);
+		if (nix_tm_release_resources(nix, i, false, false))
+			plt_err("Failed to release discontig resources of "
+				"lvl %d on error",
+				i);
+	}
+	return rc;
+}
+
+int
+nix_tm_free_resources(struct roc_nix *roc_nix, uint32_t tree_mask, bool hw_only)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile *profile;
+	struct nix_tm_node *node, *next_node;
+	struct nix_tm_node_list *list;
+	enum roc_nix_tm_tree tree;
+	uint32_t profile_id;
+	int rc = 0;
+
+	for (tree = 0; tree < ROC_NIX_TM_TREE_MAX; tree++) {
+		if (!(tree_mask & BIT(tree)))
+			continue;
+
+		plt_tm_dbg("Freeing resources of tree %u", tree);
+
+		list = nix_tm_node_list(nix, tree);
+		next_node = TAILQ_FIRST(list);
+		while (next_node) {
+			node = next_node;
+			next_node = TAILQ_NEXT(node, node);
+
+			if (!nix_tm_is_leaf(nix, node->lvl) &&
+			    node->flags & NIX_TM_NODE_HWRES) {
+				/* Clear xoff in path for flush to succeed */
+				rc = nix_tm_clear_path_xoff(nix, node);
+				if (rc)
+					return rc;
+				rc = nix_tm_free_node_resource(nix, node);
+				if (rc)
+					return rc;
+			}
+		}
+
+		/* Leave software elements if needed */
+		if (hw_only)
+			continue;
+
+		next_node = TAILQ_FIRST(list);
+		while (next_node) {
+			node = next_node;
+			next_node = TAILQ_NEXT(node, node);
+
+			plt_tm_dbg("Free node lvl %u id %u (%p)", node->lvl,
+				   node->id, node);
+
+			profile_id = node->shaper_profile_id;
+			profile = nix_tm_shaper_profile_search(nix, profile_id);
+			if (profile)
+				profile->ref_cnt--;
+
+			TAILQ_REMOVE(list, node, node);
+			nix_tm_node_free(node);
+		}
+	}
+	return rc;
 }
 
 int

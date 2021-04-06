@@ -177,6 +177,58 @@ nix_tm_shaper_burst_conv(uint64_t value, uint64_t *exponent_p,
 	return NIX_TM_SHAPER_BURST(exponent, mantissa);
 }
 
+uint32_t
+nix_tm_check_rr(struct nix *nix, uint32_t parent_id, enum roc_nix_tm_tree tree,
+		uint32_t *rr_prio, uint32_t *max_prio)
+{
+	uint32_t node_cnt[NIX_TM_TLX_SP_PRIO_MAX];
+	struct nix_tm_node_list *list;
+	struct nix_tm_node *node;
+	uint32_t rr_num = 0, i;
+	uint32_t children = 0;
+	uint32_t priority;
+
+	memset(node_cnt, 0, sizeof(node_cnt));
+	*rr_prio = 0xF;
+	*max_prio = UINT32_MAX;
+
+	list = nix_tm_node_list(nix, tree);
+	TAILQ_FOREACH(node, list, node) {
+		if (!node->parent)
+			continue;
+
+		if (!(node->parent->id == parent_id))
+			continue;
+
+		priority = node->priority;
+		node_cnt[priority]++;
+		children++;
+	}
+
+	for (i = 0; i < NIX_TM_TLX_SP_PRIO_MAX; i++) {
+		if (!node_cnt[i])
+			break;
+
+		if (node_cnt[i] > rr_num) {
+			*rr_prio = i;
+			rr_num = node_cnt[i];
+		}
+	}
+
+	/* RR group of single RR child is considered as SP */
+	if (rr_num == 1) {
+		*rr_prio = 0xF;
+		rr_num = 0;
+	}
+
+	/* Max prio will be returned only when we have non zero prio
+	 * or if a parent has single child.
+	 */
+	if (i > 1 || (children == 1))
+		*max_prio = i - 1;
+	return rr_num;
+}
+
 static uint16_t
 nix_tm_max_prio(struct nix *nix, uint16_t hw_lvl)
 {
@@ -239,6 +291,21 @@ nix_tm_validate_prio(struct nix *nix, uint32_t lvl, uint32_t parent_id,
 		return NIX_ERR_TM_PRIO_ORDER;
 
 	return 0;
+}
+
+bool
+nix_tm_child_res_valid(struct nix_tm_node_list *list,
+		       struct nix_tm_node *parent)
+{
+	struct nix_tm_node *child;
+
+	TAILQ_FOREACH(child, list, node) {
+		if (child->parent != parent)
+			continue;
+		if (!(child->flags & NIX_TM_NODE_HWRES))
+			return false;
+	}
+	return true;
 }
 
 uint8_t
@@ -323,6 +390,72 @@ nix_tm_resource_avail(struct nix *nix, uint8_t hw_lvl, bool contig)
 	} while (pos != start_pos);
 
 	return count;
+}
+
+uint16_t
+nix_tm_resource_estimate(struct nix *nix, uint16_t *schq_contig, uint16_t *schq,
+			 enum roc_nix_tm_tree tree)
+{
+	struct nix_tm_node_list *list;
+	uint8_t contig_cnt, hw_lvl;
+	struct nix_tm_node *parent;
+	uint16_t cnt = 0, avail;
+
+	list = nix_tm_node_list(nix, tree);
+	/* Walk through parents from TL1..TL4 */
+	for (hw_lvl = NIX_TXSCH_LVL_TL1; hw_lvl > 0; hw_lvl--) {
+		TAILQ_FOREACH(parent, list, node) {
+			if (hw_lvl != parent->hw_lvl)
+				continue;
+
+			/* Skip accounting for children whose
+			 * parent does not indicate so.
+			 */
+			if (!parent->child_realloc)
+				continue;
+
+			/* Count children needed */
+			schq[hw_lvl - 1] += parent->rr_num;
+			if (parent->max_prio != UINT32_MAX) {
+				contig_cnt = parent->max_prio + 1;
+				schq_contig[hw_lvl - 1] += contig_cnt;
+				/* When we have SP + DWRR at a parent,
+				 * we will always have a spare schq at rr prio
+				 * location in contiguous queues. Hence reduce
+				 * discontiguous count by 1.
+				 */
+				if (parent->max_prio > 0 && parent->rr_num)
+					schq[hw_lvl - 1] -= 1;
+			}
+		}
+	}
+
+	schq[nix->tm_root_lvl] = 1;
+	if (!nix_tm_have_tl1_access(nix))
+		schq[NIX_TXSCH_LVL_TL1] = 1;
+
+	/* Now check for existing resources */
+	for (hw_lvl = 0; hw_lvl < NIX_TXSCH_LVL_CNT; hw_lvl++) {
+		avail = nix_tm_resource_avail(nix, hw_lvl, false);
+		if (schq[hw_lvl] <= avail)
+			schq[hw_lvl] = 0;
+		else
+			schq[hw_lvl] -= avail;
+
+		/* For contiguous queues, realloc everything */
+		avail = nix_tm_resource_avail(nix, hw_lvl, true);
+		if (schq_contig[hw_lvl] <= avail)
+			schq_contig[hw_lvl] = 0;
+
+		cnt += schq[hw_lvl];
+		cnt += schq_contig[hw_lvl];
+
+		plt_tm_dbg("Estimate resources needed for %s: dis %u cont %u",
+			   nix_tm_hwlvl2str(hw_lvl), schq[hw_lvl],
+			   schq_contig[hw_lvl]);
+	}
+
+	return cnt;
 }
 
 int
