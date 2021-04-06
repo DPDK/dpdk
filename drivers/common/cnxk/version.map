@@ -55,6 +55,12 @@ INTERNAL {
 	roc_nix_npc_promisc_ena_dis;
 	roc_nix_npc_rx_ena_dis;
 	roc_nix_npc_mcast_config;
+	roc_nix_ptp_clock_read;
+	roc_nix_ptp_info_cb_register;
+	roc_nix_ptp_info_cb_unregister;
+	roc_nix_ptp_rx_ena_dis;
+	roc_nix_ptp_sync_time_adjust;
+	roc_nix_ptp_tx_ena_dis;
 	roc_nix_ras_intr_ena_dis;
 	roc_nix_register_cq_irqs;
 	roc_nix_register_queue_irqs;

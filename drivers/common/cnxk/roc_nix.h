@@ -17,6 +17,11 @@ enum roc_nix_sq_max_sqe_sz {
 	roc_nix_maxsqesz_w8 = NIX_MAXSQESZ_W8,
 };
 
+/* Range to adjust PTP frequency. Valid range is
+ * (-ROC_NIX_PTP_FREQ_ADJUST, ROC_NIX_PTP_FREQ_ADJUST)
+ */
+#define ROC_NIX_PTP_FREQ_ADJUST (1 << 9)
+
 /* NIX LF RX offload configuration flags.
  * These are input flags to roc_nix_lf_alloc:rx_cfg
  */
@@ -243,6 +248,17 @@ int __roc_api roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq);
 int __roc_api roc_nix_cq_fini(struct roc_nix_cq *cq);
 int __roc_api roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq);
 int __roc_api roc_nix_sq_fini(struct roc_nix_sq *sq);
+
+/* PTP */
+int __roc_api roc_nix_ptp_rx_ena_dis(struct roc_nix *roc_nix, int enable);
+int __roc_api roc_nix_ptp_tx_ena_dis(struct roc_nix *roc_nix, int enable);
+int __roc_api roc_nix_ptp_clock_read(struct roc_nix *roc_nix, uint64_t *clock,
+				     uint64_t *tsc, uint8_t is_pmu);
+int __roc_api roc_nix_ptp_sync_time_adjust(struct roc_nix *roc_nix,
+					   int64_t delta);
+int __roc_api roc_nix_ptp_info_cb_register(struct roc_nix *roc_nix,
+					   ptp_info_update_t ptp_update);
+void __roc_api roc_nix_ptp_info_cb_unregister(struct roc_nix *roc_nix);
 
 /* MCAST*/
 int __roc_api roc_nix_mcast_mcam_entry_alloc(struct roc_nix *roc_nix,
