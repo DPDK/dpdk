@@ -5,6 +5,100 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+int
+nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile *profile;
+	uint32_t node_id, parent_id, lvl;
+	struct nix_tm_node *parent_node;
+	uint32_t priority, profile_id;
+	uint8_t hw_lvl, exp_next_lvl;
+	enum roc_nix_tm_tree tree;
+	int rc;
+
+	node_id = node->id;
+	priority = node->priority;
+	parent_id = node->parent_id;
+	profile_id = node->shaper_profile_id;
+	lvl = node->lvl;
+	tree = node->tree;
+
+	plt_tm_dbg("Add node %s lvl %u id %u, prio 0x%x weight 0x%x "
+		   "parent %u profile 0x%x tree %u",
+		   nix_tm_hwlvl2str(nix_tm_lvl2nix(nix, lvl)), lvl, node_id,
+		   priority, node->weight, parent_id, profile_id, tree);
+
+	if (tree >= ROC_NIX_TM_TREE_MAX)
+		return NIX_ERR_PARAM;
+
+	/* Translate sw level id's to nix hw level id's */
+	hw_lvl = nix_tm_lvl2nix(nix, lvl);
+	if (hw_lvl == NIX_TXSCH_LVL_CNT && !nix_tm_is_leaf(nix, lvl))
+		return NIX_ERR_TM_INVALID_LVL;
+
+	/* Leaf nodes have to be same priority */
+	if (nix_tm_is_leaf(nix, lvl) && priority != 0)
+		return NIX_ERR_TM_INVALID_PRIO;
+
+	parent_node = nix_tm_node_search(nix, parent_id, tree);
+
+	if (node_id < nix->nb_tx_queues)
+		exp_next_lvl = NIX_TXSCH_LVL_SMQ;
+	else
+		exp_next_lvl = hw_lvl + 1;
+
+	/* Check if there is no parent node yet */
+	if (hw_lvl != nix->tm_root_lvl &&
+	    (!parent_node || parent_node->hw_lvl != exp_next_lvl))
+		return NIX_ERR_TM_INVALID_PARENT;
+
+	/* Check if a node already exists */
+	if (nix_tm_node_search(nix, node_id, tree))
+		return NIX_ERR_TM_NODE_EXISTS;
+
+	profile = nix_tm_shaper_profile_search(nix, profile_id);
+	if (!nix_tm_is_leaf(nix, lvl)) {
+		/* Check if shaper profile exists for non leaf node */
+		if (!profile && profile_id != ROC_NIX_TM_SHAPER_PROFILE_NONE)
+			return NIX_ERR_TM_INVALID_SHAPER_PROFILE;
+
+		/* Packet mode in profile should match with that of tm node */
+		if (profile && profile->pkt_mode != node->pkt_mode)
+			return NIX_ERR_TM_PKT_MODE_MISMATCH;
+	}
+
+	/* Check if there is second DWRR already in siblings or holes in prio */
+	rc = nix_tm_validate_prio(nix, lvl, parent_id, priority, tree);
+	if (rc)
+		return rc;
+
+	if (node->weight > ROC_NIX_TM_MAX_SCHED_WT)
+		return NIX_ERR_TM_WEIGHT_EXCEED;
+
+	/* Maintain minimum weight */
+	if (!node->weight)
+		node->weight = 1;
+
+	node->hw_lvl = nix_tm_lvl2nix(nix, lvl);
+	node->rr_prio = 0xF;
+	node->max_prio = UINT32_MAX;
+	node->hw_id = NIX_TM_HW_ID_INVALID;
+	node->flags = 0;
+
+	if (profile)
+		profile->ref_cnt++;
+
+	node->parent = parent_node;
+	if (parent_node)
+		parent_node->child_realloc = true;
+	node->parent_hw_id = NIX_TM_HW_ID_INVALID;
+
+	TAILQ_INSERT_TAIL(&nix->trees[tree], node, node);
+	plt_tm_dbg("Added node %s lvl %u id %u (%p)",
+		   nix_tm_hwlvl2str(node->hw_lvl), lvl, node_id, node);
+	return 0;
+}
 
 int
 nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node)
@@ -321,12 +415,123 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 }
 
 int
+nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node)
+{
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txsch_free_req *req;
+	struct plt_bitmap *bmp;
+	uint16_t avail, hw_id;
+	uint8_t hw_lvl;
+	int rc = -ENOSPC;
+
+	hw_lvl = node->hw_lvl;
+	hw_id = node->hw_id;
+	bmp = nix->schq_bmp[hw_lvl];
+	/* Free specific HW resource */
+	plt_tm_dbg("Free hwres %s(%u) lvl %u id %u (%p)",
+		   nix_tm_hwlvl2str(node->hw_lvl), hw_id, node->lvl, node->id,
+		   node);
+
+	avail = nix_tm_resource_avail(nix, hw_lvl, false);
+	/* Always for now free to discontiguous queue when avail
+	 * is not sufficient.
+	 */
+	if (nix->discontig_rsvd[hw_lvl] &&
+	    avail < nix->discontig_rsvd[hw_lvl]) {
+		PLT_ASSERT(hw_id < NIX_TM_MAX_HW_TXSCHQ);
+		PLT_ASSERT(plt_bitmap_get(bmp, hw_id) == 0);
+		plt_bitmap_set(bmp, hw_id);
+		node->hw_id = NIX_TM_HW_ID_INVALID;
+		node->flags &= ~NIX_TM_NODE_HWRES;
+		return 0;
+	}
+
+	/* Free to AF */
+	req = mbox_alloc_msg_nix_txsch_free(mbox);
+	if (req == NULL)
+		return rc;
+	req->flags = 0;
+	req->schq_lvl = node->hw_lvl;
+	req->schq = hw_id;
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("failed to release hwres %s(%u) rc %d",
+			nix_tm_hwlvl2str(node->hw_lvl), hw_id, rc);
+		return rc;
+	}
+
+	/* Mark parent as dirty for reallocing it's children */
+	if (node->parent)
+		node->parent->child_realloc = true;
+
+	node->hw_id = NIX_TM_HW_ID_INVALID;
+	node->flags &= ~NIX_TM_NODE_HWRES;
+	plt_tm_dbg("Released hwres %s(%u) to af",
+		   nix_tm_hwlvl2str(node->hw_lvl), hw_id);
+	return 0;
+}
+
+int
+nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
+		   enum roc_nix_tm_tree tree, bool free)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile *profile;
+	struct nix_tm_node *node, *child;
+	struct nix_tm_node_list *list;
+	uint32_t profile_id;
+	int rc;
+
+	plt_tm_dbg("Delete node id %u tree %u", node_id, tree);
+
+	node = nix_tm_node_search(nix, node_id, tree);
+	if (!node)
+		return NIX_ERR_TM_INVALID_NODE;
+
+	list = nix_tm_node_list(nix, tree);
+	/* Check for any existing children */
+	TAILQ_FOREACH(child, list, node) {
+		if (child->parent == node)
+			return NIX_ERR_TM_CHILD_EXISTS;
+	}
+
+	/* Remove shaper profile reference */
+	profile_id = node->shaper_profile_id;
+	profile = nix_tm_shaper_profile_search(nix, profile_id);
+
+	/* Free hw resource locally */
+	if (node->flags & NIX_TM_NODE_HWRES) {
+		rc = nix_tm_free_node_resource(nix, node);
+		if (rc)
+			return rc;
+	}
+
+	if (profile)
+		profile->ref_cnt--;
+
+	TAILQ_REMOVE(list, node, node);
+
+	plt_tm_dbg("Deleted node %s lvl %u id %u, prio 0x%x weight 0x%x "
+		   "parent %u profile 0x%x tree %u (%p)",
+		   nix_tm_hwlvl2str(node->hw_lvl), node->lvl, node->id,
+		   node->priority, node->weight,
+		   node->parent ? node->parent->id : UINT32_MAX,
+		   node->shaper_profile_id, tree, node);
+	/* Free only if requested */
+	if (free)
+		nix_tm_node_free(node);
+	return 0;
+}
+
+int
 nix_tm_conf_init(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	uint32_t bmp_sz, hw_lvl;
 	void *bmp_mem;
 	int rc, i;
+
+	PLT_STATIC_ASSERT(sizeof(struct nix_tm_node) <= ROC_NIX_TM_NODE_SZ);
 
 	nix->tm_flags = 0;
 	for (i = 0; i < ROC_NIX_TM_TREE_MAX; i++)

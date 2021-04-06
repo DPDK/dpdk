@@ -307,6 +307,8 @@ void __roc_api roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix);
 
 /* Traffic Management */
 #define ROC_NIX_TM_MAX_SCHED_WT	       ((uint8_t)~0)
+#define ROC_NIX_TM_SHAPER_PROFILE_NONE UINT32_MAX
+#define ROC_NIX_TM_NODE_ID_INVALID     UINT32_MAX
 
 enum roc_nix_tm_tree {
 	ROC_NIX_TM_DEFAULT = 0,
@@ -330,6 +332,46 @@ enum roc_tm_node_level {
  */
 int __roc_api roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable);
 int __roc_api roc_nix_tm_sq_flush_spin(struct roc_nix_sq *sq);
+
+/*
+ * TM User hierarchy API.
+ */
+
+struct roc_nix_tm_node {
+#define ROC_NIX_TM_NODE_SZ (128)
+	uint8_t reserved[ROC_NIX_TM_NODE_SZ];
+
+	uint32_t id;
+	uint32_t parent_id;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t shaper_profile_id;
+	uint16_t lvl;
+	bool pkt_mode;
+	bool pkt_mode_set;
+	/* Function to free this memory */
+	void (*free_fn)(void *node);
+};
+
+int __roc_api roc_nix_tm_node_add(struct roc_nix *roc_nix,
+				  struct roc_nix_tm_node *roc_node);
+int __roc_api roc_nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
+				     bool free);
+int __roc_api roc_nix_tm_node_pkt_mode_update(struct roc_nix *roc_nix,
+					      uint32_t node_id, bool pkt_mode);
+
+struct roc_nix_tm_node *__roc_api roc_nix_tm_node_get(struct roc_nix *roc_nix,
+						      uint32_t node_id);
+struct roc_nix_tm_node *__roc_api
+roc_nix_tm_node_next(struct roc_nix *roc_nix, struct roc_nix_tm_node *__prev);
+
+/*
+ * TM utilities API.
+ */
+int __roc_api roc_nix_tm_node_lvl(struct roc_nix *roc_nix, uint32_t node_id);
+int __roc_api roc_nix_tm_node_name_get(struct roc_nix *roc_nix,
+				       uint32_t node_id, char *buf,
+				       size_t buflen);
 
 /* MAC */
 int __roc_api roc_nix_mac_rxtx_start_stop(struct roc_nix *roc_nix, bool start);

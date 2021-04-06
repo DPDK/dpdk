@@ -326,14 +326,28 @@ int nix_tm_leaf_data_get(struct nix *nix, uint16_t sq, uint32_t *rr_quantum,
 int nix_tm_sq_flush_pre(struct roc_nix_sq *sq);
 int nix_tm_sq_flush_post(struct roc_nix_sq *sq);
 int nix_tm_smq_xoff(struct nix *nix, struct nix_tm_node *node, bool enable);
+int nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node);
+int nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
+		       enum roc_nix_tm_tree tree, bool free);
+int nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node);
 int nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node);
 
 /*
  * TM priv utils.
  */
+uint16_t nix_tm_lvl2nix(struct nix *nix, uint32_t lvl);
+uint16_t nix_tm_lvl2nix_tl1_root(uint32_t lvl);
+uint16_t nix_tm_lvl2nix_tl2_root(uint32_t lvl);
+uint16_t nix_tm_resource_avail(struct nix *nix, uint8_t hw_lvl, bool contig);
+int nix_tm_validate_prio(struct nix *nix, uint32_t lvl, uint32_t parent_id,
+			 uint32_t priority, enum roc_nix_tm_tree tree);
 struct nix_tm_node *nix_tm_node_search(struct nix *nix, uint32_t node_id,
 				       enum roc_nix_tm_tree tree);
+struct nix_tm_shaper_profile *nix_tm_shaper_profile_search(struct nix *nix,
+							   uint32_t id);
 uint8_t nix_tm_sw_xoff_prep(struct nix_tm_node *node, bool enable,
 			    volatile uint64_t *reg, volatile uint64_t *regval);
+struct nix_tm_node *nix_tm_node_alloc(void);
+void nix_tm_node_free(struct nix_tm_node *node);
 
 #endif /* _ROC_NIX_PRIV_H_ */

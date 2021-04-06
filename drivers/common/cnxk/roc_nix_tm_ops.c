@@ -65,3 +65,91 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	plt_wmb();
 	return 0;
 }
+
+int
+roc_nix_tm_node_add(struct roc_nix *roc_nix, struct roc_nix_tm_node *roc_node)
+{
+	struct nix_tm_node *node;
+
+	node = (struct nix_tm_node *)&roc_node->reserved;
+	node->id = roc_node->id;
+	node->priority = roc_node->priority;
+	node->weight = roc_node->weight;
+	node->lvl = roc_node->lvl;
+	node->parent_id = roc_node->parent_id;
+	node->shaper_profile_id = roc_node->shaper_profile_id;
+	node->pkt_mode = roc_node->pkt_mode;
+	node->pkt_mode_set = roc_node->pkt_mode_set;
+	node->free_fn = roc_node->free_fn;
+	node->tree = ROC_NIX_TM_USER;
+
+	return nix_tm_node_add(roc_nix, node);
+}
+
+int
+roc_nix_tm_node_pkt_mode_update(struct roc_nix *roc_nix, uint32_t node_id,
+				bool pkt_mode)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_node *node, *child;
+	struct nix_tm_node_list *list;
+	int num_children = 0;
+
+	node = nix_tm_node_search(nix, node_id, ROC_NIX_TM_USER);
+	if (!node)
+		return NIX_ERR_TM_INVALID_NODE;
+
+	if (node->pkt_mode == pkt_mode) {
+		node->pkt_mode_set = true;
+		return 0;
+	}
+
+	/* Check for any existing children, if there are any,
+	 * then we cannot update the pkt mode as children's quantum
+	 * are already taken in.
+	 */
+	list = nix_tm_node_list(nix, ROC_NIX_TM_USER);
+	TAILQ_FOREACH(child, list, node) {
+		if (child->parent == node)
+			num_children++;
+	}
+
+	/* Cannot update mode if it has children or tree is enabled */
+	if ((nix->tm_flags & NIX_TM_HIERARCHY_ENA) && num_children)
+		return -EBUSY;
+
+	if (node->pkt_mode_set && num_children)
+		return NIX_ERR_TM_PKT_MODE_MISMATCH;
+
+	node->pkt_mode = pkt_mode;
+	node->pkt_mode_set = true;
+
+	return 0;
+}
+
+int
+roc_nix_tm_node_name_get(struct roc_nix *roc_nix, uint32_t node_id, char *buf,
+			 size_t buflen)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_node *node;
+
+	node = nix_tm_node_search(nix, node_id, ROC_NIX_TM_USER);
+	if (!node) {
+		plt_strlcpy(buf, "???", buflen);
+		return NIX_ERR_TM_INVALID_NODE;
+	}
+
+	if (node->hw_lvl == NIX_TXSCH_LVL_CNT)
+		snprintf(buf, buflen, "SQ_%d", node->id);
+	else
+		snprintf(buf, buflen, "%s_%d", nix_tm_hwlvl2str(node->hw_lvl),
+			 node->hw_id);
+	return 0;
+}
+
+int
+roc_nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id, bool free)
+{
+	return nix_tm_node_delete(roc_nix, node_id, ROC_NIX_TM_USER, free);
+}
