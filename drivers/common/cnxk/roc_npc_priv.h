@@ -423,4 +423,13 @@ npc_parse_skip_void_and_any_items(const struct roc_npc_item_info *pattern);
 int npc_program_mcam(struct npc *npc, struct npc_parse_state *pst,
 		     bool mcam_alloc);
 uint64_t npc_get_kex_capability(struct npc *npc);
+int npc_rss_free_grp_get(struct npc *npc, uint32_t *grp);
+int npc_rss_action_configure(struct roc_npc *roc_npc,
+			     const struct roc_npc_action_rss *rss,
+			     uint8_t *alg_idx, uint32_t *rss_grp,
+			     uint32_t mcam_id);
+int npc_rss_action_program(struct roc_npc *roc_npc,
+			   const struct roc_npc_action actions[],
+			   struct roc_npc_flow *flow);
+int npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow);
 #endif /* _ROC_NPC_PRIV_H_ */

@@ -106,6 +106,24 @@ struct roc_npc_flow {
 	TAILQ_ENTRY(roc_npc_flow) next;
 };
 
+enum roc_npc_rss_hash_function {
+	ROC_NPC_RSS_HASH_FUNCTION_DEFAULT = 0,
+	ROC_NPC_RSS_HASH_FUNCTION_TOEPLITZ,   /**< Toeplitz */
+	ROC_NPC_RSS_HASH_FUNCTION_SIMPLE_XOR, /**< Simple XOR */
+	ROC_NPC_RSS_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
+	ROC_NPC_RSS_HASH_FUNCTION_MAX,
+};
+
+struct roc_npc_action_rss {
+	enum roc_npc_rss_hash_function func;
+	uint32_t level;
+	uint64_t types;	       /**< Specific RSS hash types (see ETH_RSS_*). */
+	uint32_t key_len;      /**< Hash key length in bytes. */
+	uint32_t queue_num;    /**< Number of entries in @p queue. */
+	const uint8_t *key;    /**< Hash key. */
+	const uint16_t *queue; /**< Queue indices to use. */
+};
+
 enum roc_npc_intf {
 	ROC_NPC_INTF_RX = 0,
 	ROC_NPC_INTF_TX = 1,
@@ -121,6 +139,8 @@ struct roc_npc {
 	uint16_t pf_func;
 	uint64_t kex_capability;
 	uint64_t rx_parse_nibble;
+	/* Parsed RSS Flowkey cfg for current flow being created */
+	uint32_t flowkey_cfg_state;
 
 #define ROC_NPC_MEM_SZ (5 * 1024)
 	uint8_t reserved[ROC_NPC_MEM_SZ];

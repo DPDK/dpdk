@@ -634,6 +634,129 @@ roc_npc_flow_parse(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	return npc_program_mcam(npc, &parse_state, 0);
 }
 
+int
+npc_rss_free_grp_get(struct npc *npc, uint32_t *pos)
+{
+	struct plt_bitmap *bmap = npc->rss_grp_entries;
+
+	for (*pos = 0; *pos < ROC_NIX_RSS_GRPS; ++*pos) {
+		if (!plt_bitmap_get(bmap, *pos))
+			break;
+	}
+	return *pos < ROC_NIX_RSS_GRPS ? 0 : -1;
+}
+
+int
+npc_rss_action_configure(struct roc_npc *roc_npc,
+			 const struct roc_npc_action_rss *rss, uint8_t *alg_idx,
+			 uint32_t *rss_grp, uint32_t mcam_id)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct roc_nix *roc_nix = roc_npc->roc_nix;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint32_t flowkey_cfg, rss_grp_idx, i, rem;
+	uint8_t key[ROC_NIX_RSS_KEY_LEN];
+	const uint8_t *key_ptr;
+	uint8_t flowkey_algx;
+	uint16_t *reta;
+	int rc;
+
+	rc = npc_rss_free_grp_get(npc, &rss_grp_idx);
+	/* RSS group :0 is not usable for flow rss action */
+	if (rc < 0 || rss_grp_idx == 0)
+		return -ENOSPC;
+
+	for (i = 0; i < rss->queue_num; i++) {
+		if (rss->queue[i] >= nix->nb_rx_queues) {
+			plt_err("queue id > max number of queues");
+			return -EINVAL;
+		}
+	}
+
+	*rss_grp = rss_grp_idx;
+
+	if (rss->key == NULL) {
+		roc_nix_rss_key_default_fill(roc_nix, key);
+		key_ptr = key;
+	} else {
+		key_ptr = rss->key;
+	}
+
+	roc_nix_rss_key_set(roc_nix, key_ptr);
+
+	/* If queue count passed in the rss action is less than
+	 * HW configured reta size, replicate rss action reta
+	 * across HW reta table.
+	 */
+	reta = nix->reta[rss_grp_idx];
+
+	if (rss->queue_num > nix->reta_sz) {
+		plt_err("too many queues for RSS context");
+		return -ENOTSUP;
+	}
+
+	for (i = 0; i < (nix->reta_sz / rss->queue_num); i++)
+		memcpy(reta + i * rss->queue_num, rss->queue,
+		       sizeof(uint16_t) * rss->queue_num);
+
+	rem = nix->reta_sz % rss->queue_num;
+	if (rem)
+		memcpy(&reta[i * rss->queue_num], rss->queue,
+		       rem * sizeof(uint16_t));
+
+	rc = roc_nix_rss_reta_set(roc_nix, *rss_grp, reta);
+	if (rc) {
+		plt_err("Failed to init rss table rc = %d", rc);
+		return rc;
+	}
+
+	flowkey_cfg = roc_npc->flowkey_cfg_state;
+
+	rc = roc_nix_rss_flowkey_set(roc_nix, &flowkey_algx, flowkey_cfg,
+				     *rss_grp, mcam_id);
+	if (rc) {
+		plt_err("Failed to set rss hash function rc = %d", rc);
+		return rc;
+	}
+
+	*alg_idx = flowkey_algx;
+
+	plt_bitmap_set(npc->rss_grp_entries, *rss_grp);
+
+	return 0;
+}
+
+int
+npc_rss_action_program(struct roc_npc *roc_npc,
+		       const struct roc_npc_action actions[],
+		       struct roc_npc_flow *flow)
+{
+	const struct roc_npc_action_rss *rss;
+	uint32_t rss_grp;
+	uint8_t alg_idx;
+	int rc;
+
+	for (; actions->type != ROC_NPC_ACTION_TYPE_END; actions++) {
+		if (actions->type == ROC_NPC_ACTION_TYPE_RSS) {
+			rss = (const struct roc_npc_action_rss *)actions->conf;
+			rc = npc_rss_action_configure(roc_npc, rss, &alg_idx,
+						      &rss_grp, flow->mcam_id);
+			if (rc)
+				return rc;
+
+			flow->npc_action &= (~(0xfULL));
+			flow->npc_action |= NIX_RX_ACTIONOP_RSS;
+			flow->npc_action |=
+				((uint64_t)(alg_idx & NPC_RSS_ACT_ALG_MASK)
+				 << NPC_RSS_ACT_ALG_OFFSET) |
+				((uint64_t)(rss_grp & NPC_RSS_ACT_GRP_MASK)
+				 << NPC_RSS_ACT_GRP_OFFSET);
+			break;
+		}
+	}
+	return 0;
+}
+
 struct roc_npc_flow *
 roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		    const struct roc_npc_item_info pattern[],
@@ -666,6 +789,12 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		goto err_exit;
 	}
 
+	rc = npc_rss_action_program(roc_npc, actions, flow);
+	if (rc != 0) {
+		*errcode = rc;
+		goto set_rss_failed;
+	}
+
 	list = &npc->flow_list[flow->priority];
 	/* List in ascending order of mcam entries */
 	TAILQ_FOREACH(flow_iter, list, next) {
@@ -678,9 +807,33 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	TAILQ_INSERT_TAIL(list, flow, next);
 	return flow;
 
+set_rss_failed:
+	rc = npc_mcam_free_entry(npc, flow->mcam_id);
+	if (rc != 0) {
+		*errcode = rc;
+		plt_free(flow);
+		return NULL;
+	}
 err_exit:
 	plt_free(flow);
 	return NULL;
+}
+
+int
+npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow)
+{
+	uint32_t rss_grp;
+
+	if ((flow->npc_action & 0xF) == NIX_RX_ACTIONOP_RSS) {
+		rss_grp = (flow->npc_action >> NPC_RSS_ACT_GRP_OFFSET) &
+			  NPC_RSS_ACT_GRP_MASK;
+		if (rss_grp == 0 || rss_grp >= npc->rss_grps)
+			return -EINVAL;
+
+		plt_bitmap_clear(npc->rss_grp_entries, rss_grp);
+	}
+
+	return 0;
 }
 
 int
@@ -697,6 +850,12 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	if (match_id && match_id < NPC_ACTION_FLAG_DEFAULT) {
 		if (npc->mark_actions == 0)
 			return NPC_ERR_PARAM;
+	}
+
+	rc = npc_rss_group_free(npc, flow);
+	if (rc != 0) {
+		plt_err("Failed to free rss action rc = %d", rc);
+		return rc;
 	}
 
 	rc = npc_mcam_free_entry(npc, flow->mcam_id);

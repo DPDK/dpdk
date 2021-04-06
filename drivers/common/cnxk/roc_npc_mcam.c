@@ -692,6 +692,7 @@ npc_flow_free_all_resources(struct npc *npc)
 	/* Free any MCAM counters and delete flow list */
 	for (idx = 0; idx < npc->flow_max_priority; idx++) {
 		while ((flow = TAILQ_FIRST(&npc->flow_list[idx])) != NULL) {
+			npc_rss_group_free(npc, flow);
 			if (flow->ctr_id != NPC_COUNTER_NONE)
 				rc |= npc_mcam_free_counter(npc, flow->ctr_id);
 
