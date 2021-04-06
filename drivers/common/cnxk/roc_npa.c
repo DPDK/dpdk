@@ -242,11 +242,17 @@ npa_lf_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	idev->npa = lf;
 	plt_wmb();
 
+	rc = npa_register_irqs(lf);
+	if (rc)
+		goto npa_fini;
+
 	plt_npa_dbg("npa=%p max_pools=%d pf_func=0x%x msix=0x%x", lf,
 		    roc_idev_npa_maxpools_get(), lf->pf_func, npa_msixoff);
 
 	return 0;
 
+npa_fini:
+	npa_dev_fini(idev->npa);
 npa_detach:
 	npa_detach(dev->mbox);
 fail:
@@ -268,6 +274,7 @@ npa_lf_fini(void)
 	if (__atomic_sub_fetch(&idev->npa_refcnt, 1, __ATOMIC_SEQ_CST) != 0)
 		return 0;
 
+	npa_unregister_irqs(idev->npa);
 	rc |= npa_dev_fini(idev->npa);
 	rc |= npa_detach(idev->npa->mbox);
 	idev_set_defaults(idev);

@@ -56,4 +56,8 @@ roc_npa_to_npa_priv(struct roc_npa *roc_npa)
 int npa_lf_init(struct dev *dev, struct plt_pci_device *pci_dev);
 int npa_lf_fini(void);
 
+/* IRQ */
+int npa_register_irqs(struct npa_lf *lf);
+void npa_unregister_irqs(struct npa_lf *lf);
+
 #endif /* _ROC_NPA_PRIV_H_ */

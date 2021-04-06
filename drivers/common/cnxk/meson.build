@@ -16,6 +16,7 @@ sources = files('roc_dev.c',
 		'roc_mbox.c',
 		'roc_model.c',
 		'roc_npa.c',
+		'roc_npa_irq.c',
 		'roc_platform.c',
 		'roc_utils.c')
 includes += include_directories('../../bus/pci')
