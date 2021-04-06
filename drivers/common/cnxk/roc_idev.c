@@ -142,3 +142,16 @@ roc_idev_num_lmtlines_get(void)
 
 	return num_lmtlines;
 }
+
+struct roc_nix *
+roc_idev_npa_nix_get(void)
+{
+	struct npa_lf *npa_lf = idev_npa_obj_get();
+	struct dev *dev;
+
+	if (!npa_lf)
+		return NULL;
+
+	dev = container_of(npa_lf, struct dev, npa);
+	return dev->roc_nix;
+}

@@ -82,6 +82,9 @@
 /* NPA */
 #include "roc_npa.h"
 
+/* NIX */
+#include "roc_nix.h"
+
 /* Utils */
 #include "roc_utils.h"
 

@@ -11,9 +11,35 @@ roc_error_msg_get(int errorcode)
 	const char *err_msg;
 
 	switch (errorcode) {
+	case NIX_AF_ERR_PARAM:
+	case NIX_ERR_PARAM:
 	case NPA_ERR_PARAM:
 	case UTIL_ERR_PARAM:
 		err_msg = "Invalid parameter";
+		break;
+	case NIX_ERR_NO_MEM:
+		err_msg = "Out of memory";
+		break;
+	case NIX_ERR_INVALID_RANGE:
+		err_msg = "Range is not supported";
+		break;
+	case NIX_ERR_INTERNAL:
+		err_msg = "Internal error";
+		break;
+	case NIX_ERR_OP_NOTSUP:
+		err_msg = "Operation not supported";
+		break;
+	case NIX_ERR_QUEUE_INVALID_RANGE:
+		err_msg = "Invalid Queue range";
+		break;
+	case NIX_ERR_AQ_READ_FAILED:
+		err_msg = "AQ read failed";
+		break;
+	case NIX_ERR_AQ_WRITE_FAILED:
+		err_msg = "AQ write failed";
+		break;
+	case NIX_ERR_NDC_SYNC:
+		err_msg = "NDC Sync failed";
 		break;
 	case NPA_ERR_ALLOC:
 		err_msg = "NPA alloc failed";
@@ -35,6 +61,21 @@ roc_error_msg_get(int errorcode)
 		break;
 	case NPA_ERR_DEVICE_NOT_BOUNDED:
 		err_msg = "NPA device is not bounded";
+		break;
+	case NIX_AF_ERR_AQ_FULL:
+		err_msg = "AQ full";
+		break;
+	case NIX_AF_ERR_AQ_ENQUEUE:
+		err_msg = "AQ enqueue failed";
+		break;
+	case NIX_AF_ERR_AF_LF_INVALID:
+		err_msg = "Invalid NIX LF";
+		break;
+	case NIX_AF_ERR_AF_LF_ALLOC:
+		err_msg = "NIX LF alloc failed";
+		break;
+	case NIX_AF_ERR_LF_RESET:
+		err_msg = "NIX LF reset failed";
 		break;
 	case UTIL_ERR_FS:
 		err_msg = "file operation failed";

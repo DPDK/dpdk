@@ -20,4 +20,7 @@
 /* idev */
 #include "roc_idev_priv.h"
 
+/* NIX */
+#include "roc_nix_priv.h"
+
 #endif /* _ROC_PRIV_H_ */
