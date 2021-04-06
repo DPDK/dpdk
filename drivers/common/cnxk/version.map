@@ -11,8 +11,10 @@ INTERNAL {
 	roc_idev_npa_maxpools_set;
 	roc_idev_num_lmtlines_get;
 	roc_model;
+	roc_npa_ctx_dump;
 	roc_npa_dev_fini;
 	roc_npa_dev_init;
+	roc_npa_dump;
 	roc_plt_init;
 	roc_plt_init_cb_register;
 

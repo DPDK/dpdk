@@ -17,4 +17,8 @@ struct roc_npa {
 int __roc_api roc_npa_dev_init(struct roc_npa *roc_npa);
 int __roc_api roc_npa_dev_fini(struct roc_npa *roc_npa);
 
+/* Debug */
+int __roc_api roc_npa_ctx_dump(void);
+int __roc_api roc_npa_dump(void);
+
 #endif /* _ROC_NPA_H_ */

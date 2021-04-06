@@ -192,6 +192,7 @@ npa_q_irq(void *param)
 
 	/* Clear interrupt */
 	plt_write64(intr, lf->base + NPA_LF_QINTX_INT(qintx));
+	roc_npa_ctx_dump();
 }
 
 static int
