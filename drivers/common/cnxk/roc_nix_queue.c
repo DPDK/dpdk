@@ -494,3 +494,361 @@ roc_nix_cq_fini(struct roc_nix_cq *cq)
 	plt_free(cq->desc_base);
 	return 0;
 }
+
+static int
+sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint16_t sqes_per_sqb, count, nb_sqb_bufs;
+	struct npa_pool_s pool;
+	struct npa_aura_s aura;
+	uint64_t blk_sz;
+	uint64_t iova;
+	int rc;
+
+	blk_sz = nix->sqb_size;
+	if (sq->max_sqe_sz == roc_nix_maxsqesz_w16)
+		sqes_per_sqb = (blk_sz / 8) / 16;
+	else
+		sqes_per_sqb = (blk_sz / 8) / 8;
+
+	sq->nb_desc = PLT_MAX(256U, sq->nb_desc);
+	nb_sqb_bufs = sq->nb_desc / sqes_per_sqb;
+	nb_sqb_bufs += NIX_SQB_LIST_SPACE;
+	/* Clamp up the SQB count */
+	nb_sqb_bufs = PLT_MIN(roc_nix->max_sqb_count,
+			      (uint16_t)PLT_MAX(NIX_DEF_SQB, nb_sqb_bufs));
+
+	sq->nb_sqb_bufs = nb_sqb_bufs;
+	sq->sqes_per_sqb_log2 = (uint16_t)plt_log2_u32(sqes_per_sqb);
+	sq->nb_sqb_bufs_adj =
+		nb_sqb_bufs -
+		(PLT_ALIGN_MUL_CEIL(nb_sqb_bufs, sqes_per_sqb) / sqes_per_sqb);
+	sq->nb_sqb_bufs_adj =
+		(sq->nb_sqb_bufs_adj * NIX_SQB_LOWER_THRESH) / 100;
+
+	/* Explicitly set nat_align alone as by default pool is with both
+	 * nat_align and buf_offset = 1 which we don't want for SQB.
+	 */
+	memset(&pool, 0, sizeof(struct npa_pool_s));
+	pool.nat_align = 1;
+
+	memset(&aura, 0, sizeof(aura));
+	aura.fc_ena = 1;
+	aura.fc_addr = (uint64_t)sq->fc;
+	aura.fc_hyst_bits = 0; /* Store count on all updates */
+	rc = roc_npa_pool_create(&sq->aura_handle, blk_sz, nb_sqb_bufs, &aura,
+				 &pool);
+	if (rc)
+		goto fail;
+
+	sq->sqe_mem = plt_zmalloc(blk_sz * nb_sqb_bufs, blk_sz);
+	if (sq->sqe_mem == NULL) {
+		rc = NIX_ERR_NO_MEM;
+		goto nomem;
+	}
+
+	/* Fill the initial buffers */
+	iova = (uint64_t)sq->sqe_mem;
+	for (count = 0; count < nb_sqb_bufs; count++) {
+		roc_npa_aura_op_free(sq->aura_handle, 0, iova);
+		iova += blk_sz;
+	}
+	roc_npa_aura_op_range_set(sq->aura_handle, (uint64_t)sq->sqe_mem, iova);
+
+	return rc;
+nomem:
+	roc_npa_pool_destroy(sq->aura_handle);
+fail:
+	return rc;
+}
+
+static void
+sq_cn9k_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
+	     uint16_t smq)
+{
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_aq_enq_req *aq;
+
+	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_INIT;
+	aq->sq.max_sqe_size = sq->max_sqe_sz;
+
+	aq->sq.max_sqe_size = sq->max_sqe_sz;
+	aq->sq.smq = smq;
+	aq->sq.smq_rr_quantum = rr_quantum;
+	aq->sq.default_chan = nix->tx_chan_base;
+	aq->sq.sqe_stype = NIX_STYPE_STF;
+	aq->sq.ena = 1;
+	if (aq->sq.max_sqe_size == NIX_MAXSQESZ_W8)
+		aq->sq.sqe_stype = NIX_STYPE_STP;
+	aq->sq.sqb_aura = roc_npa_aura_handle_to_aura(sq->aura_handle);
+	aq->sq.sq_int_ena = BIT(NIX_SQINT_LMT_ERR);
+	aq->sq.sq_int_ena |= BIT(NIX_SQINT_SQB_ALLOC_FAIL);
+	aq->sq.sq_int_ena |= BIT(NIX_SQINT_SEND_ERR);
+	aq->sq.sq_int_ena |= BIT(NIX_SQINT_MNQ_ERR);
+
+	/* Many to one reduction */
+	aq->sq.qint_idx = sq->qid % nix->qints;
+}
+
+static int
+sq_cn9k_fini(struct nix *nix, struct roc_nix_sq *sq)
+{
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_aq_enq_rsp *rsp;
+	struct nix_aq_enq_req *aq;
+	uint16_t sqes_per_sqb;
+	void *sqb_buf;
+	int rc, count;
+
+	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_READ;
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	/* Check if sq is already cleaned up */
+	if (!rsp->sq.ena)
+		return 0;
+
+	/* Disable sq */
+	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+	aq->sq_mask.ena = ~aq->sq_mask.ena;
+	aq->sq.ena = 0;
+	rc = mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	/* Read SQ and free sqb's */
+	aq = mbox_alloc_msg_nix_aq_enq(mbox);
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_READ;
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (aq->sq.smq_pend)
+		plt_err("SQ has pending SQE's");
+
+	count = aq->sq.sqb_count;
+	sqes_per_sqb = 1 << sq->sqes_per_sqb_log2;
+	/* Free SQB's that are used */
+	sqb_buf = (void *)rsp->sq.head_sqb;
+	while (count) {
+		void *next_sqb;
+
+		next_sqb = *(void **)((uintptr_t)sqb_buf +
+				      (uint32_t)((sqes_per_sqb - 1) *
+						 sq->max_sqe_sz));
+		roc_npa_aura_op_free(sq->aura_handle, 1, (uint64_t)sqb_buf);
+		sqb_buf = next_sqb;
+		count--;
+	}
+
+	/* Free next to use sqb */
+	if (rsp->sq.next_sqb)
+		roc_npa_aura_op_free(sq->aura_handle, 1, rsp->sq.next_sqb);
+	return 0;
+}
+
+static void
+sq_init(struct nix *nix, struct roc_nix_sq *sq, uint32_t rr_quantum,
+	uint16_t smq)
+{
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_cn10k_aq_enq_req *aq;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_INIT;
+	aq->sq.max_sqe_size = sq->max_sqe_sz;
+
+	aq->sq.max_sqe_size = sq->max_sqe_sz;
+	aq->sq.smq = smq;
+	aq->sq.smq_rr_weight = rr_quantum;
+	aq->sq.default_chan = nix->tx_chan_base;
+	aq->sq.sqe_stype = NIX_STYPE_STF;
+	aq->sq.ena = 1;
+	if (aq->sq.max_sqe_size == NIX_MAXSQESZ_W8)
+		aq->sq.sqe_stype = NIX_STYPE_STP;
+	aq->sq.sqb_aura = roc_npa_aura_handle_to_aura(sq->aura_handle);
+	aq->sq.sq_int_ena = BIT(NIX_SQINT_LMT_ERR);
+	aq->sq.sq_int_ena |= BIT(NIX_SQINT_SQB_ALLOC_FAIL);
+	aq->sq.sq_int_ena |= BIT(NIX_SQINT_SEND_ERR);
+	aq->sq.sq_int_ena |= BIT(NIX_SQINT_MNQ_ERR);
+
+	/* Many to one reduction */
+	aq->sq.qint_idx = sq->qid % nix->qints;
+}
+
+static int
+sq_fini(struct nix *nix, struct roc_nix_sq *sq)
+{
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_cn10k_aq_enq_rsp *rsp;
+	struct nix_cn10k_aq_enq_req *aq;
+	uint16_t sqes_per_sqb;
+	void *sqb_buf;
+	int rc, count;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_READ;
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	/* Check if sq is already cleaned up */
+	if (!rsp->sq.ena)
+		return 0;
+
+	/* Disable sq */
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+	aq->sq_mask.ena = ~aq->sq_mask.ena;
+	aq->sq.ena = 0;
+	rc = mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	/* Read SQ and free sqb's */
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	aq->qidx = sq->qid;
+	aq->ctype = NIX_AQ_CTYPE_SQ;
+	aq->op = NIX_AQ_INSTOP_READ;
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	if (aq->sq.smq_pend)
+		plt_err("SQ has pending SQE's");
+
+	count = aq->sq.sqb_count;
+	sqes_per_sqb = 1 << sq->sqes_per_sqb_log2;
+	/* Free SQB's that are used */
+	sqb_buf = (void *)rsp->sq.head_sqb;
+	while (count) {
+		void *next_sqb;
+
+		next_sqb = *(void **)((uintptr_t)sqb_buf +
+				      (uint32_t)((sqes_per_sqb - 1) *
+						 sq->max_sqe_sz));
+		roc_npa_aura_op_free(sq->aura_handle, 1, (uint64_t)sqb_buf);
+		sqb_buf = next_sqb;
+		count--;
+	}
+
+	/* Free next to use sqb */
+	if (rsp->sq.next_sqb)
+		roc_npa_aura_op_free(sq->aura_handle, 1, rsp->sq.next_sqb);
+	return 0;
+}
+
+int
+roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = (&nix->dev)->mbox;
+	uint16_t qid, smq = UINT16_MAX;
+	uint32_t rr_quantum = 0;
+	int rc;
+
+	if (sq == NULL)
+		return NIX_ERR_PARAM;
+
+	qid = sq->qid;
+	if (qid >= nix->nb_tx_queues)
+		return NIX_ERR_QUEUE_INVALID_RANGE;
+
+	sq->roc_nix = roc_nix;
+	/*
+	 * Allocate memory for flow control updates from HW.
+	 * Alloc one cache line, so that fits all FC_STYPE modes.
+	 */
+	sq->fc = plt_zmalloc(ROC_ALIGN, ROC_ALIGN);
+	if (sq->fc == NULL) {
+		rc = NIX_ERR_NO_MEM;
+		goto fail;
+	}
+
+	rc = sqb_pool_populate(roc_nix, sq);
+	if (rc)
+		goto nomem;
+
+	/* Init SQ context */
+	if (roc_model_is_cn9k())
+		sq_cn9k_init(nix, sq, rr_quantum, smq);
+	else
+		sq_init(nix, sq, rr_quantum, smq);
+
+	rc = mbox_process(mbox);
+	if (rc)
+		goto nomem;
+
+	nix->sqs[qid] = sq;
+	sq->io_addr = nix->base + NIX_LF_OP_SENDX(0);
+	/* Evenly distribute LMT slot for each sq */
+	if (roc_model_is_cn9k()) {
+		/* Multiple cores/SQ's can use same LMTLINE safely in CN9K */
+		sq->lmt_addr = (void *)(nix->lmt_base +
+					((qid & RVU_CN9K_LMT_SLOT_MASK) << 12));
+	}
+
+	return rc;
+nomem:
+	plt_free(sq->fc);
+fail:
+	return rc;
+}
+
+int
+roc_nix_sq_fini(struct roc_nix_sq *sq)
+{
+	struct nix *nix;
+	struct mbox *mbox;
+	struct ndc_sync_op *ndc_req;
+	uint16_t qid;
+	int rc = 0;
+
+	if (sq == NULL)
+		return NIX_ERR_PARAM;
+
+	nix = roc_nix_to_nix_priv(sq->roc_nix);
+	mbox = (&nix->dev)->mbox;
+
+	qid = sq->qid;
+
+	/* Release SQ context */
+	if (roc_model_is_cn9k())
+		rc |= sq_cn9k_fini(roc_nix_to_nix_priv(sq->roc_nix), sq);
+	else
+		rc |= sq_fini(roc_nix_to_nix_priv(sq->roc_nix), sq);
+
+	/* Sync NDC-NIX-TX for LF */
+	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox);
+	if (ndc_req == NULL)
+		return -ENOSPC;
+	ndc_req->nix_lf_tx_sync = 1;
+	if (mbox_process(mbox))
+		rc |= NIX_ERR_NDC_SYNC;
+
+	rc |= roc_npa_pool_destroy(sq->aura_handle);
+	plt_free(sq->fc);
+	plt_free(sq->sqe_mem);
+	nix->sqs[qid] = NULL;
+
+	return rc;
+}

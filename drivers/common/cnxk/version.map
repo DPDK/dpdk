@@ -39,6 +39,8 @@ INTERNAL {
 	roc_nix_rq_modify;
 	roc_nix_rx_queue_intr_disable;
 	roc_nix_rx_queue_intr_enable;
+	roc_nix_sq_fini;
+	roc_nix_sq_init;
 	roc_nix_unregister_cq_irqs;
 	roc_nix_unregister_queue_irqs;
 	roc_npa_aura_limit_modify;

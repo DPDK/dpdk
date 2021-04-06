@@ -83,6 +83,23 @@ struct roc_nix_cq {
 	uint32_t head;
 };
 
+struct roc_nix_sq {
+	/* Input parameters */
+	enum roc_nix_sq_max_sqe_sz max_sqe_sz;
+	uint32_t nb_desc;
+	uint16_t qid;
+	/* End of Input parameters */
+	uint16_t sqes_per_sqb_log2;
+	struct roc_nix *roc_nix;
+	uint64_t aura_handle;
+	int16_t nb_sqb_bufs_adj;
+	uint16_t nb_sqb_bufs;
+	plt_iova_t io_addr;
+	void *lmt_addr;
+	void *sqe_mem;
+	void *fc;
+};
+
 struct roc_nix {
 	/* Input parameters */
 	struct plt_pci_device *pci_dev;
@@ -144,5 +161,7 @@ int __roc_api roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable);
 int __roc_api roc_nix_rq_fini(struct roc_nix_rq *rq);
 int __roc_api roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq);
 int __roc_api roc_nix_cq_fini(struct roc_nix_cq *cq);
+int __roc_api roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq);
+int __roc_api roc_nix_sq_fini(struct roc_nix_sq *sq);
 
 #endif /* _ROC_NIX_H_ */
