@@ -11,10 +11,15 @@ INTERNAL {
 	roc_idev_npa_maxpools_set;
 	roc_idev_num_lmtlines_get;
 	roc_model;
+	roc_npa_aura_limit_modify;
+	roc_npa_aura_op_range_set;
 	roc_npa_ctx_dump;
 	roc_npa_dev_fini;
 	roc_npa_dev_init;
 	roc_npa_dump;
+	roc_npa_pool_create;
+	roc_npa_pool_destroy;
+	roc_npa_pool_range_update_check;
 	roc_plt_init;
 	roc_plt_init_cb_register;
 
