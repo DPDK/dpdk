@@ -194,6 +194,14 @@ roc_sso_hws_base_get(struct roc_sso *roc_sso, uint8_t hws)
 	return dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | hws << 12);
 }
 
+uintptr_t
+roc_sso_hwgrp_base_get(struct roc_sso *roc_sso, uint16_t hwgrp)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+
+	return dev->bar2 + (RVU_BLOCK_ADDR_SSO << 20 | hwgrp << 12);
+}
+
 uint64_t
 roc_sso_ns_to_gw(struct roc_sso *roc_sso, uint64_t ns)
 {
@@ -248,6 +256,108 @@ roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],
 	sso_hws_link_modify(hws, base, sso->link_map[hws], hwgrp, nb_hwgrp, 0);
 
 	return nb_hwgrp;
+}
+
+int
+roc_sso_hwgrp_hws_link_status(struct roc_sso *roc_sso, uint8_t hws,
+			      uint16_t hwgrp)
+{
+	struct sso *sso;
+
+	sso = roc_sso_to_sso_priv(roc_sso);
+	return plt_bitmap_get(sso->link_map[hws], hwgrp);
+}
+
+int
+roc_sso_hwgrp_qos_config(struct roc_sso *roc_sso, struct roc_sso_hwgrp_qos *qos,
+			 uint8_t nb_qos, uint32_t nb_xaq)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct sso_grp_qos_cfg *req;
+	int i, rc;
+
+	for (i = 0; i < nb_qos; i++) {
+		uint8_t xaq_prcnt = qos[i].xaq_prcnt;
+		uint8_t iaq_prcnt = qos[i].iaq_prcnt;
+		uint8_t taq_prcnt = qos[i].taq_prcnt;
+
+		req = mbox_alloc_msg_sso_grp_qos_config(dev->mbox);
+		if (req == NULL) {
+			rc = mbox_process(dev->mbox);
+			if (rc < 0)
+				return rc;
+			req = mbox_alloc_msg_sso_grp_qos_config(dev->mbox);
+			if (req == NULL)
+				return -ENOSPC;
+		}
+		req->grp = qos[i].hwgrp;
+		req->xaq_limit = (nb_xaq * (xaq_prcnt ? xaq_prcnt : 100)) / 100;
+		req->taq_thr = (SSO_HWGRP_IAQ_MAX_THR_MASK *
+				(iaq_prcnt ? iaq_prcnt : 100)) /
+			       100;
+		req->iaq_thr = (SSO_HWGRP_TAQ_MAX_THR_MASK *
+				(taq_prcnt ? taq_prcnt : 100)) /
+			       100;
+	}
+
+	return mbox_process(dev->mbox);
+}
+
+int
+roc_sso_hwgrp_alloc_xaq(struct roc_sso *roc_sso, uint32_t npa_aura_id,
+			uint16_t hwgrps)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct sso_hw_setconfig *req;
+	int rc = -ENOSPC;
+
+	req = mbox_alloc_msg_sso_hw_setconfig(dev->mbox);
+	if (req == NULL)
+		return rc;
+	req->npa_pf_func = idev_npa_pffunc_get();
+	req->npa_aura_id = npa_aura_id;
+	req->hwgrps = hwgrps;
+
+	return mbox_process(dev->mbox);
+}
+
+int
+roc_sso_hwgrp_release_xaq(struct roc_sso *roc_sso, uint16_t hwgrps)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct sso_hw_xaq_release *req;
+
+	req = mbox_alloc_msg_sso_hw_release_xaq_aura(dev->mbox);
+	if (req == NULL)
+		return -EINVAL;
+	req->hwgrps = hwgrps;
+
+	return mbox_process(dev->mbox);
+}
+
+int
+roc_sso_hwgrp_set_priority(struct roc_sso *roc_sso, uint16_t hwgrp,
+			   uint8_t weight, uint8_t affinity, uint8_t priority)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct sso_grp_priority *req;
+	int rc = -ENOSPC;
+
+	req = mbox_alloc_msg_sso_grp_set_priority(dev->mbox);
+	if (req == NULL)
+		return rc;
+	req->grp = hwgrp;
+	req->weight = weight;
+	req->affinity = affinity;
+	req->priority = priority;
+
+	rc = mbox_process(dev->mbox);
+	if (rc < 0)
+		return rc;
+	plt_sso_dbg("HWGRP %d weight %d affinity %d priority %d", hwgrp, weight,
+		    affinity, priority);
+
+	return 0;
 }
 
 int

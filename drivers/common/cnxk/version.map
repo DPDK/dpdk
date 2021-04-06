@@ -175,6 +175,12 @@ INTERNAL {
 	roc_plt_init_cb_register;
 	roc_sso_dev_fini;
 	roc_sso_dev_init;
+	roc_sso_hwgrp_alloc_xaq;
+	roc_sso_hwgrp_base_get;
+	roc_sso_hwgrp_hws_link_status;
+	roc_sso_hwgrp_qos_config;
+	roc_sso_hwgrp_release_xaq;
+	roc_sso_hwgrp_set_priority;
 	roc_sso_hws_base_get;
 	roc_sso_hws_link;
 	roc_sso_hws_unlink;
