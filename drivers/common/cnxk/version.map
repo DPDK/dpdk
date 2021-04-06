@@ -19,6 +19,7 @@ INTERNAL {
 	roc_npa_dump;
 	roc_npa_pool_create;
 	roc_npa_pool_destroy;
+	roc_npa_pool_op_pc_reset;
 	roc_npa_pool_range_update_check;
 	roc_plt_init;
 	roc_plt_init_cb_register;

@@ -131,6 +131,56 @@ npa_aura_pool_fini(struct mbox *mbox, uint32_t aura_id, uint64_t aura_handle)
 	return 0;
 }
 
+int
+roc_npa_pool_op_pc_reset(uint64_t aura_handle)
+{
+	struct npa_lf *lf = idev_npa_obj_get();
+	struct npa_aq_enq_req *pool_req;
+	struct npa_aq_enq_rsp *pool_rsp;
+	struct ndc_sync_op *ndc_req;
+	struct mbox_dev *mdev;
+	int rc = -ENOSPC, off;
+	struct mbox *mbox;
+
+	if (lf == NULL)
+		return NPA_ERR_PARAM;
+
+	mbox = lf->mbox;
+	mdev = &mbox->dev[0];
+	plt_npa_dbg("lf=%p aura_handle=0x%" PRIx64, lf, aura_handle);
+
+	pool_req = mbox_alloc_msg_npa_aq_enq(mbox);
+	if (pool_req == NULL)
+		return rc;
+	pool_req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+	pool_req->ctype = NPA_AQ_CTYPE_POOL;
+	pool_req->op = NPA_AQ_INSTOP_WRITE;
+	pool_req->pool.op_pc = 0;
+	pool_req->pool_mask.op_pc = ~pool_req->pool_mask.op_pc;
+
+	rc = mbox_process(mbox);
+	if (rc < 0)
+		return rc;
+
+	off = mbox->rx_start +
+	      PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
+	pool_rsp = (struct npa_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
+
+	if (pool_rsp->hdr.rc != 0)
+		return NPA_ERR_AURA_POOL_FINI;
+
+	/* Sync NDC-NPA for LF */
+	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox);
+	if (ndc_req == NULL)
+		return -ENOSPC;
+	ndc_req->npa_lf_sync = 1;
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("Error on NDC-NPA LF sync, rc %d", rc);
+		return NPA_ERR_AURA_POOL_FINI;
+	}
+	return 0;
+}
 static inline char *
 npa_stack_memzone_name(struct npa_lf *lf, int pool_id, char *name)
 {

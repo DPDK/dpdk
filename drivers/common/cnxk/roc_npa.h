@@ -146,6 +146,40 @@ roc_npa_aura_op_available(uint64_t aura_handle)
 		return reg & 0xFFFFFFFFF;
 }
 
+static inline uint64_t
+roc_npa_pool_op_performance_counter(uint64_t aura_handle, const int drop)
+{
+	union {
+		uint64_t u;
+		struct npa_aura_op_wdata_s s;
+	} op_wdata;
+	int64_t *addr;
+	uint64_t reg;
+
+	op_wdata.u = 0;
+	op_wdata.s.aura = roc_npa_aura_handle_to_aura(aura_handle);
+	if (drop)
+		op_wdata.s.drop |= BIT_ULL(63); /* DROP */
+
+	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
+			   NPA_LF_POOL_OP_PC);
+
+	reg = roc_atomic64_add_nosync(op_wdata.u, addr);
+	/*
+	 * NPA_LF_POOL_OP_PC Read Data
+	 *
+	 * 63       49 48    48 47     0
+	 * -----------------------------
+	 * | Reserved | OP_ERR | OP_PC |
+	 * -----------------------------
+	 */
+
+	if (reg & BIT_ULL(48) /* OP_ERR */)
+		return 0;
+	else
+		return reg & 0xFFFFFFFFFFFF;
+}
+
 static inline void
 roc_npa_aura_op_bulk_free(uint64_t aura_handle, uint64_t const *buf,
 			  unsigned int num, const int fabs)
@@ -395,5 +429,8 @@ void __roc_api roc_npa_aura_op_range_set(uint64_t aura_handle,
 /* Debug */
 int __roc_api roc_npa_ctx_dump(void);
 int __roc_api roc_npa_dump(void);
+
+/* Reset operation performance counter. */
+int __roc_api roc_npa_pool_op_pc_reset(uint64_t aura_handle);
 
 #endif /* _ROC_NPA_H_ */
