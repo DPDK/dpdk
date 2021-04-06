@@ -29,6 +29,13 @@
 #define ROC_LMT_BASE_PER_CORE_LOG2                                             \
 	(ROC_LMT_LINES_PER_CORE_LOG2 + ROC_LMT_LINE_SIZE_LOG2)
 
+/* IO */
+#if defined(__aarch64__)
+#include "roc_io.h"
+#else
+#include "roc_io_generic.h"
+#endif
+
 /* PCI IDs */
 #define PCI_VENDOR_ID_CAVIUM	      0x177D
 #define PCI_DEVID_CNXK_RVU_PF	      0xA063
@@ -65,5 +72,11 @@
 #include "hw/sso.h"
 #include "hw/ssow.h"
 #include "hw/tim.h"
+
+/* Model */
+#include "roc_model.h"
+
+/* Utils */
+#include "roc_utils.h"
 
 #endif /* _ROC_API_H_ */

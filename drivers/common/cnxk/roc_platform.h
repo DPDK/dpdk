@@ -131,6 +131,13 @@
 
 #define plt_strlcpy rte_strlcpy
 
+/* Log */
+#define plt_err(fmt, args...)                                                  \
+	RTE_LOG(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
+#define plt_info(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
+#define plt_warn(fmt, args...) RTE_LOG(WARNING, PMD, fmt "\n", ##args)
+#define plt_print(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
+
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)				\
 	{							\
@@ -150,5 +157,8 @@
 		.subsystem_device_id = (subsystem_dev),		\
 	}
 #endif
+
+__rte_internal
+int roc_plt_init(void);
 
 #endif /* _ROC_PLATFORM_H_ */
