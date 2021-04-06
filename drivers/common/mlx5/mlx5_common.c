@@ -16,8 +16,6 @@
 #include "mlx5_malloc.h"
 #include "mlx5_common_pci.h"
 
-int mlx5_common_logtype;
-
 uint8_t haswell_broadwell_cpu;
 
 /* In case this is an x86_64 intel processor to check if
@@ -43,12 +41,7 @@ static inline void mlx5_cpu_id(unsigned int level,
 }
 #endif
 
-RTE_INIT_PRIO(mlx5_log_init, LOG)
-{
-	mlx5_common_logtype = rte_log_register("pmd.common.mlx5");
-	if (mlx5_common_logtype >= 0)
-		rte_log_set_level(mlx5_common_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(mlx5_common_logtype, pmd.common.mlx5, NOTICE)
 
 static bool mlx5_common_initialized;
 
