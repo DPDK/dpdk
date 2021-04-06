@@ -29,4 +29,7 @@
 /* SSO */
 #include "roc_sso_priv.h"
 
+/* TIM */
+#include "roc_tim_priv.h"
+
 #endif /* _ROC_PRIV_H_ */

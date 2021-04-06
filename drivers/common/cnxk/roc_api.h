@@ -91,6 +91,9 @@
 /* SSO */
 #include "roc_sso.h"
 
+/* TIM */
+#include "roc_tim.h"
+
 /* Utils */
 #include "roc_utils.h"
 
