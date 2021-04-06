@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2020 Hisilicon Limited.
+ * Copyright(c) 2020 HiSilicon Limited.
  */
 
 #include <arm_sve.h>
