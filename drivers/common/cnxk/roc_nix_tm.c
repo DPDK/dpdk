@@ -30,6 +30,93 @@ nix_tm_clear_shaper_profiles(struct nix *nix)
 	}
 }
 
+static int
+nix_tm_node_reg_conf(struct nix *nix, struct nix_tm_node *node)
+{
+	uint64_t regval_mask[MAX_REGS_PER_MBOX_MSG];
+	uint64_t regval[MAX_REGS_PER_MBOX_MSG];
+	struct nix_tm_shaper_profile *profile;
+	uint64_t reg[MAX_REGS_PER_MBOX_MSG];
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txschq_config *req;
+	int rc = -EFAULT;
+	uint32_t hw_lvl;
+	uint8_t k = 0;
+
+	memset(regval, 0, sizeof(regval));
+	memset(regval_mask, 0, sizeof(regval_mask));
+
+	profile = nix_tm_shaper_profile_search(nix, node->shaper_profile_id);
+	hw_lvl = node->hw_lvl;
+
+	/* Need this trigger to configure TL1 */
+	if (!nix_tm_have_tl1_access(nix) && hw_lvl == NIX_TXSCH_LVL_TL2) {
+		/* Prepare default conf for TL1 */
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req->lvl = NIX_TXSCH_LVL_TL1;
+
+		k = nix_tm_tl1_default_prep(node->parent_hw_id, req->reg,
+					    req->regval);
+		req->num_regs = k;
+		rc = mbox_process(mbox);
+		if (rc)
+			goto error;
+	}
+
+	/* Prepare topology config */
+	k = nix_tm_topology_reg_prep(nix, node, reg, regval, regval_mask);
+
+	/* Prepare schedule config */
+	k += nix_tm_sched_reg_prep(nix, node, &reg[k], &regval[k]);
+
+	/* Prepare shaping config */
+	k += nix_tm_shaper_reg_prep(node, profile, &reg[k], &regval[k]);
+
+	if (!k)
+		return 0;
+
+	/* Copy and send config mbox */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = hw_lvl;
+	req->num_regs = k;
+
+	mbox_memcpy(req->reg, reg, sizeof(uint64_t) * k);
+	mbox_memcpy(req->regval, regval, sizeof(uint64_t) * k);
+	mbox_memcpy(req->regval_mask, regval_mask, sizeof(uint64_t) * k);
+
+	rc = mbox_process(mbox);
+	if (rc)
+		goto error;
+
+	return 0;
+error:
+	plt_err("Txschq conf failed for node %p, rc=%d", node, rc);
+	return rc;
+}
+
+int
+nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree)
+{
+	struct nix_tm_node_list *list;
+	struct nix_tm_node *node;
+	uint32_t hw_lvl;
+	int rc = 0;
+
+	list = nix_tm_node_list(nix, tree);
+
+	for (hw_lvl = 0; hw_lvl <= nix->tm_root_lvl; hw_lvl++) {
+		TAILQ_FOREACH(node, list, node) {
+			if (node->hw_lvl != hw_lvl)
+				continue;
+			rc = nix_tm_node_reg_conf(nix, node);
+			if (rc)
+				goto exit;
+		}
+	}
+exit:
+	return rc;
+}
+
 int
 nix_tm_update_parent_info(struct nix *nix, enum roc_nix_tm_tree tree)
 {
@@ -475,6 +562,66 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 	}
 
 	return 0;
+}
+
+int
+nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
+		     bool rr_quantum_only)
+{
+	struct mbox *mbox = (&nix->dev)->mbox;
+	uint16_t qid = node->id, smq;
+	uint64_t rr_quantum;
+	int rc;
+
+	smq = node->parent->hw_id;
+	rr_quantum = nix_tm_weight_to_rr_quantum(node->weight);
+
+	if (rr_quantum_only)
+		plt_tm_dbg("Update sq(%u) rr_quantum 0x%" PRIx64, qid,
+			   rr_quantum);
+	else
+		plt_tm_dbg("Enabling sq(%u)->smq(%u), rr_quantum 0x%" PRIx64,
+			   qid, smq, rr_quantum);
+
+	if (qid > nix->nb_tx_queues)
+		return -EFAULT;
+
+	if (roc_model_is_cn9k()) {
+		struct nix_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_aq_enq(mbox);
+		aq->qidx = qid;
+		aq->ctype = NIX_AQ_CTYPE_SQ;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+
+		/* smq update only when needed */
+		if (!rr_quantum_only) {
+			aq->sq.smq = smq;
+			aq->sq_mask.smq = ~aq->sq_mask.smq;
+		}
+		aq->sq.smq_rr_quantum = rr_quantum;
+		aq->sq_mask.smq_rr_quantum = ~aq->sq_mask.smq_rr_quantum;
+	} else {
+		struct nix_cn10k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		aq->qidx = qid;
+		aq->ctype = NIX_AQ_CTYPE_SQ;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+
+		/* smq update only when needed */
+		if (!rr_quantum_only) {
+			aq->sq.smq = smq;
+			aq->sq_mask.smq = ~aq->sq_mask.smq;
+		}
+		aq->sq.smq_rr_weight = rr_quantum;
+		aq->sq_mask.smq_rr_weight = ~aq->sq_mask.smq_rr_weight;
+	}
+
+	rc = mbox_process(mbox);
+	if (rc)
+		plt_err("Failed to set smq, rc=%d", rc);
+	return rc;
 }
 
 int

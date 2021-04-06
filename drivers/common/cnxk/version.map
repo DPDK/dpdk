@@ -105,6 +105,8 @@ INTERNAL {
 	roc_nix_switch_hdr_set;
 	roc_nix_eeprom_info_get;
 	roc_nix_tm_free_resources;
+	roc_nix_tm_hierarchy_disable;
+	roc_nix_tm_hierarchy_enable;
 	roc_nix_tm_node_add;
 	roc_nix_tm_node_delete;
 	roc_nix_tm_node_get;

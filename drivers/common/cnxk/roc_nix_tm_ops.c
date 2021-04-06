@@ -309,3 +309,237 @@ roc_nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id, bool free)
 {
 	return nix_tm_node_delete(roc_nix, node_id, ROC_NIX_TM_USER, free);
 }
+
+int
+roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint16_t sqb_cnt, head_off, tail_off;
+	uint16_t sq_cnt = nix->nb_tx_queues;
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_tm_node_list *list;
+	enum roc_nix_tm_tree tree;
+	struct nix_tm_node *node;
+	struct roc_nix_sq *sq;
+	uint64_t wdata, val;
+	uintptr_t regaddr;
+	int rc = -1, i;
+
+	if (!(nix->tm_flags & NIX_TM_HIERARCHY_ENA))
+		return 0;
+
+	plt_tm_dbg("Disabling hierarchy on %s", nix->pci_dev->name);
+
+	tree = nix->tm_tree;
+	list = nix_tm_node_list(nix, tree);
+
+	/* Enable CGX RXTX to drain pkts */
+	if (!roc_nix->io_enabled) {
+		/* Though it enables both RX MCAM Entries and CGX Link
+		 * we assume all the rx queues are stopped way back.
+		 */
+		mbox_alloc_msg_nix_lf_start_rx(mbox);
+		rc = mbox_process(mbox);
+		if (rc) {
+			plt_err("cgx start failed, rc=%d", rc);
+			return rc;
+		}
+	}
+
+	/* XON all SMQ's */
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+		if (!(node->flags & NIX_TM_NODE_HWRES))
+			continue;
+
+		rc = nix_tm_smq_xoff(nix, node, false);
+		if (rc) {
+			plt_err("Failed to enable smq %u, rc=%d", node->hw_id,
+				rc);
+			goto cleanup;
+		}
+	}
+
+	/* Flush all tx queues */
+	for (i = 0; i < sq_cnt; i++) {
+		sq = nix->sqs[i];
+		if (!sq)
+			continue;
+
+		rc = roc_nix_tm_sq_aura_fc(sq, false);
+		if (rc) {
+			plt_err("Failed to disable sqb aura fc, rc=%d", rc);
+			goto cleanup;
+		}
+
+		/* Wait for sq entries to be flushed */
+		rc = roc_nix_tm_sq_flush_spin(sq);
+		if (rc) {
+			plt_err("Failed to drain sq, rc=%d\n", rc);
+			goto cleanup;
+		}
+	}
+
+	/* XOFF & Flush all SMQ's. HRM mandates
+	 * all SQ's empty before SMQ flush is issued.
+	 */
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+		if (!(node->flags & NIX_TM_NODE_HWRES))
+			continue;
+
+		rc = nix_tm_smq_xoff(nix, node, true);
+		if (rc) {
+			plt_err("Failed to enable smq %u, rc=%d", node->hw_id,
+				rc);
+			goto cleanup;
+		}
+
+		node->flags &= ~NIX_TM_NODE_ENABLED;
+	}
+
+	/* Verify sanity of all tx queues */
+	for (i = 0; i < sq_cnt; i++) {
+		sq = nix->sqs[i];
+		if (!sq)
+			continue;
+
+		wdata = ((uint64_t)sq->qid << 32);
+		regaddr = nix->base + NIX_LF_SQ_OP_STATUS;
+		val = roc_atomic64_add_nosync(wdata, (int64_t *)regaddr);
+
+		sqb_cnt = val & 0xFFFF;
+		head_off = (val >> 20) & 0x3F;
+		tail_off = (val >> 28) & 0x3F;
+
+		if (sqb_cnt > 1 || head_off != tail_off ||
+		    (*(uint64_t *)sq->fc != sq->nb_sqb_bufs))
+			plt_err("Failed to gracefully flush sq %u", sq->qid);
+	}
+
+	nix->tm_flags &= ~NIX_TM_HIERARCHY_ENA;
+cleanup:
+	/* Restore cgx state */
+	if (!roc_nix->io_enabled) {
+		mbox_alloc_msg_nix_lf_stop_rx(mbox);
+		rc |= mbox_process(mbox);
+	}
+	return rc;
+}
+
+int
+roc_nix_tm_hierarchy_enable(struct roc_nix *roc_nix, enum roc_nix_tm_tree tree,
+			    bool xmit_enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_node_list *list;
+	struct nix_tm_node *node;
+	struct roc_nix_sq *sq;
+	uint32_t tree_mask;
+	uint16_t sq_id;
+	int rc;
+
+	if (tree >= ROC_NIX_TM_TREE_MAX)
+		return NIX_ERR_PARAM;
+
+	if (nix->tm_flags & NIX_TM_HIERARCHY_ENA) {
+		if (nix->tm_tree != tree)
+			return -EBUSY;
+		return 0;
+	}
+
+	plt_tm_dbg("Enabling hierarchy on %s, xmit_ena %u, tree %u",
+		   nix->pci_dev->name, xmit_enable, tree);
+
+	/* Free hw resources of other trees */
+	tree_mask = NIX_TM_TREE_MASK_ALL;
+	tree_mask &= ~BIT(tree);
+
+	rc = nix_tm_free_resources(roc_nix, tree_mask, true);
+	if (rc) {
+		plt_err("failed to free resources of other trees, rc=%d", rc);
+		return rc;
+	}
+
+	/* Update active tree before starting to do anything */
+	nix->tm_tree = tree;
+
+	nix_tm_update_parent_info(nix, tree);
+
+	rc = nix_tm_alloc_txschq(nix, tree);
+	if (rc) {
+		plt_err("TM failed to alloc tm resources=%d", rc);
+		return rc;
+	}
+
+	rc = nix_tm_assign_resources(nix, tree);
+	if (rc) {
+		plt_err("TM failed to assign tm resources=%d", rc);
+		return rc;
+	}
+
+	rc = nix_tm_txsch_reg_config(nix, tree);
+	if (rc) {
+		plt_err("TM failed to configure sched registers=%d", rc);
+		return rc;
+	}
+
+	list = nix_tm_node_list(nix, tree);
+	/* Mark all non-leaf's as enabled */
+	TAILQ_FOREACH(node, list, node) {
+		if (!nix_tm_is_leaf(nix, node->lvl))
+			node->flags |= NIX_TM_NODE_ENABLED;
+	}
+
+	if (!xmit_enable)
+		goto skip_sq_update;
+
+	/* Update SQ Sched Data while SQ is idle */
+	TAILQ_FOREACH(node, list, node) {
+		if (!nix_tm_is_leaf(nix, node->lvl))
+			continue;
+
+		rc = nix_tm_sq_sched_conf(nix, node, false);
+		if (rc) {
+			plt_err("SQ %u sched update failed, rc=%d", node->id,
+				rc);
+			return rc;
+		}
+	}
+
+	/* Finally XON all SMQ's */
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+
+		rc = nix_tm_smq_xoff(nix, node, false);
+		if (rc) {
+			plt_err("Failed to enable smq %u, rc=%d", node->hw_id,
+				rc);
+			return rc;
+		}
+	}
+
+	/* Enable xmit as all the topology is ready */
+	TAILQ_FOREACH(node, list, node) {
+		if (!nix_tm_is_leaf(nix, node->lvl))
+			continue;
+
+		sq_id = node->id;
+		sq = nix->sqs[sq_id];
+
+		rc = roc_nix_tm_sq_aura_fc(sq, true);
+		if (rc) {
+			plt_err("TM sw xon failed on SQ %u, rc=%d", node->id,
+				rc);
+			return rc;
+		}
+		node->flags |= NIX_TM_NODE_ENABLED;
+	}
+
+skip_sq_update:
+	nix->tm_flags |= NIX_TM_HIERARCHY_ENA;
+	return 0;
+}

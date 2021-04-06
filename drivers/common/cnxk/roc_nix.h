@@ -392,6 +392,14 @@ struct roc_nix_tm_shaper_profile *__roc_api roc_nix_tm_shaper_profile_next(
 	struct roc_nix *roc_nix, struct roc_nix_tm_shaper_profile *__prev);
 
 /*
+ * TM hierarchy enable/disable API.
+ */
+int __roc_api roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix);
+int __roc_api roc_nix_tm_hierarchy_enable(struct roc_nix *roc_nix,
+					  enum roc_nix_tm_tree tree,
+					  bool xmit_enable);
+
+/*
  * TM utilities API.
  */
 int __roc_api roc_nix_tm_node_lvl(struct roc_nix *roc_nix, uint32_t node_id);

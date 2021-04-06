@@ -340,7 +340,10 @@ int nix_tm_release_resources(struct nix *nix, uint8_t hw_lvl, bool contig,
 			     bool above_thresh);
 void nix_tm_copy_rsp_to_nix(struct nix *nix, struct nix_txsch_alloc_rsp *rsp);
 
+int nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree);
 int nix_tm_update_parent_info(struct nix *nix, enum roc_nix_tm_tree tree);
+int nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
+			 bool rr_quantum_only);
 
 /*
  * TM priv utils.
@@ -369,6 +372,19 @@ bool nix_tm_child_res_valid(struct nix_tm_node_list *list,
 			    struct nix_tm_node *parent);
 uint16_t nix_tm_resource_estimate(struct nix *nix, uint16_t *schq_contig,
 				  uint16_t *schq, enum roc_nix_tm_tree tree);
+uint8_t nix_tm_tl1_default_prep(uint32_t schq, volatile uint64_t *reg,
+				volatile uint64_t *regval);
+uint8_t nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
+				 volatile uint64_t *reg,
+				 volatile uint64_t *regval,
+				 volatile uint64_t *regval_mask);
+uint8_t nix_tm_sched_reg_prep(struct nix *nix, struct nix_tm_node *node,
+			      volatile uint64_t *reg,
+			      volatile uint64_t *regval);
+uint8_t nix_tm_shaper_reg_prep(struct nix_tm_node *node,
+			       struct nix_tm_shaper_profile *profile,
+			       volatile uint64_t *reg,
+			       volatile uint64_t *regval);
 struct nix_tm_node *nix_tm_node_alloc(void);
 void nix_tm_node_free(struct nix_tm_node *node);
 struct nix_tm_shaper_profile *nix_tm_shaper_profile_alloc(void);
