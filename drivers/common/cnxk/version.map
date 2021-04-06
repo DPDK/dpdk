@@ -13,6 +13,8 @@ INTERNAL {
 	roc_idev_npa_nix_get;
 	roc_idev_num_lmtlines_get;
 	roc_model;
+	roc_nix_cq_fini;
+	roc_nix_cq_init;
 	roc_nix_dev_fini;
 	roc_nix_dev_init;
 	roc_nix_err_intr_ena_dis;
@@ -31,6 +33,10 @@ INTERNAL {
 	roc_nix_ras_intr_ena_dis;
 	roc_nix_register_cq_irqs;
 	roc_nix_register_queue_irqs;
+	roc_nix_rq_ena_dis;
+	roc_nix_rq_fini;
+	roc_nix_rq_init;
+	roc_nix_rq_modify;
 	roc_nix_rx_queue_intr_disable;
 	roc_nix_rx_queue_intr_enable;
 	roc_nix_unregister_cq_irqs;

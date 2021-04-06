@@ -41,6 +41,48 @@ enum roc_nix_sq_max_sqe_sz {
 
 #define ROC_NIX_VWQE_MAX_SIZE_LOG2 11
 #define ROC_NIX_VWQE_MIN_SIZE_LOG2 2
+
+struct roc_nix_rq {
+	/* Input parameters */
+	uint16_t qid;
+	uint64_t aura_handle;
+	bool ipsech_ena;
+	uint16_t first_skip;
+	uint16_t later_skip;
+	uint16_t wqe_skip;
+	uint16_t lpb_size;
+	uint32_t tag_mask;
+	uint32_t flow_tag_width;
+	uint8_t tt;	/* Valid when SSO is enabled */
+	uint16_t hwgrp; /* Valid when SSO is enabled */
+	bool sso_ena;
+	bool vwqe_ena;
+	uint64_t spb_aura_handle; /* Valid when SPB is enabled */
+	uint16_t spb_size;	  /* Valid when SPB is enabled */
+	bool spb_ena;
+	uint8_t vwqe_first_skip;
+	uint32_t vwqe_max_sz_exp;
+	uint64_t vwqe_wait_tmo;
+	uint64_t vwqe_aura_handle;
+	/* End of Input parameters */
+	struct roc_nix *roc_nix;
+};
+
+struct roc_nix_cq {
+	/* Input parameters */
+	uint16_t qid;
+	uint16_t nb_desc;
+	/* End of Input parameters */
+	uint16_t drop_thresh;
+	struct roc_nix *roc_nix;
+	uintptr_t door;
+	int64_t *status;
+	uint64_t wdata;
+	void *desc_base;
+	uint32_t qmask;
+	uint32_t head;
+};
+
 struct roc_nix {
 	/* Input parameters */
 	struct plt_pci_device *pci_dev;
@@ -92,5 +134,15 @@ int __roc_api roc_nix_register_queue_irqs(struct roc_nix *roc_nix);
 void __roc_api roc_nix_unregister_queue_irqs(struct roc_nix *roc_nix);
 int __roc_api roc_nix_register_cq_irqs(struct roc_nix *roc_nix);
 void __roc_api roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix);
+
+/* Queue */
+int __roc_api roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq,
+			      bool ena);
+int __roc_api roc_nix_rq_modify(struct roc_nix *roc_nix, struct roc_nix_rq *rq,
+				bool ena);
+int __roc_api roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable);
+int __roc_api roc_nix_rq_fini(struct roc_nix_rq *rq);
+int __roc_api roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq);
+int __roc_api roc_nix_cq_fini(struct roc_nix_cq *cq);
 
 #endif /* _ROC_NIX_H_ */
