@@ -17,6 +17,26 @@ enum roc_nix_sq_max_sqe_sz {
 	roc_nix_maxsqesz_w8 = NIX_MAXSQESZ_W8,
 };
 
+enum roc_nix_vlan_type {
+	ROC_NIX_VLAN_TYPE_INNER = 0x01,
+	ROC_NIX_VLAN_TYPE_OUTER = 0x02,
+};
+
+struct roc_nix_vlan_config {
+	uint32_t type;
+	union {
+		struct {
+			uint32_t vtag_inner;
+			uint32_t vtag_outer;
+		} vlan;
+
+		struct {
+			int idx_inner;
+			int idx_outer;
+		} mcam;
+	};
+};
+
 /* Range to adjust PTP frequency. Valid range is
  * (-ROC_NIX_PTP_FREQ_ADJUST, ROC_NIX_PTP_FREQ_ADJUST)
  */
@@ -340,6 +360,31 @@ int __roc_api roc_nix_ptp_sync_time_adjust(struct roc_nix *roc_nix,
 int __roc_api roc_nix_ptp_info_cb_register(struct roc_nix *roc_nix,
 					   ptp_info_update_t ptp_update);
 void __roc_api roc_nix_ptp_info_cb_unregister(struct roc_nix *roc_nix);
+
+/* VLAN */
+int __roc_api
+roc_nix_vlan_mcam_entry_read(struct roc_nix *roc_nix, uint32_t index,
+			     struct npc_mcam_read_entry_rsp **rsp);
+int __roc_api roc_nix_vlan_mcam_entry_write(struct roc_nix *roc_nix,
+					    uint32_t index,
+					    struct mcam_entry *entry,
+					    uint8_t intf, uint8_t enable);
+int __roc_api roc_nix_vlan_mcam_entry_alloc_and_write(struct roc_nix *roc_nix,
+						      struct mcam_entry *entry,
+						      uint8_t intf,
+						      uint8_t priority,
+						      uint8_t ref_entry);
+int __roc_api roc_nix_vlan_mcam_entry_free(struct roc_nix *roc_nix,
+					   uint32_t index);
+int __roc_api roc_nix_vlan_mcam_entry_ena_dis(struct roc_nix *roc_nix,
+					      uint32_t index, const int enable);
+int __roc_api roc_nix_vlan_strip_vtag_ena_dis(struct roc_nix *roc_nix,
+					      bool enable);
+int __roc_api roc_nix_vlan_insert_ena_dis(struct roc_nix *roc_nix,
+					  struct roc_nix_vlan_config *vlan_cfg,
+					  uint64_t *mcam_index, bool enable);
+int __roc_api roc_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type,
+				    uint16_t tpid);
 
 /* MCAST*/
 int __roc_api roc_nix_mcast_mcam_entry_alloc(struct roc_nix *roc_nix,
