@@ -8,6 +8,9 @@
 #define ROC_AURA_ID_MASK       (BIT_ULL(16) - 1)
 #define ROC_AURA_OP_LIMIT_MASK (BIT_ULL(36) - 1)
 
+#define ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS 512
+#define ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS  15
+
 /* 16 CASP instructions can be outstanding in CN9k, but we use only 15
  * outstanding CASPs as we run out of registers.
  */
@@ -180,6 +183,114 @@ roc_npa_pool_op_performance_counter(uint64_t aura_handle, const int drop)
 		return reg & 0xFFFFFFFFFFFF;
 }
 
+static inline int
+roc_npa_aura_batch_alloc_issue(uint64_t aura_handle, uint64_t *buf,
+			       unsigned int num, const int dis_wait,
+			       const int drop)
+{
+	unsigned int i;
+	int64_t *addr;
+	uint64_t res;
+	union {
+		uint64_t u;
+		struct npa_batch_alloc_compare_s compare_s;
+	} cmp;
+
+	if (num > ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS)
+		return -1;
+
+	/* Zero first word of every cache line */
+	for (i = 0; i < num; i += (ROC_ALIGN / sizeof(uint64_t)))
+		buf[i] = 0;
+
+	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
+			   NPA_LF_AURA_BATCH_ALLOC);
+	cmp.u = 0;
+	cmp.compare_s.aura = roc_npa_aura_handle_to_aura(aura_handle);
+	cmp.compare_s.drop = drop;
+	cmp.compare_s.stype = ALLOC_STYPE_STSTP;
+	cmp.compare_s.dis_wait = dis_wait;
+	cmp.compare_s.count = num;
+
+	res = roc_atomic64_cas(cmp.u, (uint64_t)buf, addr);
+	if (res != ALLOC_RESULT_ACCEPTED && res != ALLOC_RESULT_NOCORE)
+		return -1;
+
+	return 0;
+}
+
+static inline unsigned int
+roc_npa_aura_batch_alloc_count(uint64_t *aligned_buf, unsigned int num)
+{
+	unsigned int count, i;
+
+	if (num > ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS)
+		return 0;
+
+	count = 0;
+	/* Check each ROC cache line one by one */
+	for (i = 0; i < num; i += (ROC_ALIGN >> 3)) {
+		struct npa_batch_alloc_status_s *status;
+		int ccode;
+
+		status = (struct npa_batch_alloc_status_s *)&aligned_buf[i];
+
+		/* Status is updated in first 7 bits of each 128 byte cache
+		 * line. Wait until the status gets updated.
+		 */
+		do {
+			ccode = (volatile int)status->ccode;
+		} while (ccode == ALLOC_CCODE_INVAL);
+
+		count += status->count;
+	}
+
+	return count;
+}
+
+static inline unsigned int
+roc_npa_aura_batch_alloc_extract(uint64_t *buf, uint64_t *aligned_buf,
+				 unsigned int num)
+{
+	unsigned int count, i;
+
+	if (num > ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS)
+		return 0;
+
+	count = 0;
+	/* Check each ROC cache line one by one */
+	for (i = 0; i < num; i += (ROC_ALIGN >> 3)) {
+		struct npa_batch_alloc_status_s *status;
+		int line_count, ccode;
+
+		status = (struct npa_batch_alloc_status_s *)&aligned_buf[i];
+
+		/* Status is updated in first 7 bits of each 128 byte cache
+		 * line. Wait until the status gets updated.
+		 */
+		do {
+			ccode = (volatile int)status->ccode;
+		} while (ccode == ALLOC_CCODE_INVAL);
+
+		line_count = status->count;
+
+		/* Clear the status from the cache line */
+		status->ccode = 0;
+		status->count = 0;
+
+		/* 'Compress' the allocated buffers as there can
+		 * be 'holes' at the end of the 128 byte cache
+		 * lines.
+		 */
+		memmove(&buf[count], &aligned_buf[i],
+			line_count * sizeof(uint64_t));
+
+		count += line_count;
+	}
+
+	return count;
+}
+
 static inline void
 roc_npa_aura_op_bulk_free(uint64_t aura_handle, uint64_t const *buf,
 			  unsigned int num, const int fabs)
@@ -190,6 +301,112 @@ roc_npa_aura_op_bulk_free(uint64_t aura_handle, uint64_t const *buf,
 		const uint64_t inbuf = buf[i];
 
 		roc_npa_aura_op_free(aura_handle, fabs, inbuf);
+	}
+}
+
+static inline unsigned int
+roc_npa_aura_op_batch_alloc(uint64_t aura_handle, uint64_t *buf,
+			    uint64_t *aligned_buf, unsigned int num,
+			    const int dis_wait, const int drop,
+			    const int partial)
+{
+	unsigned int count, chunk, num_alloc;
+
+	/* The buffer should be 128 byte cache line aligned */
+	if (((uint64_t)aligned_buf & (ROC_ALIGN - 1)) != 0)
+		return 0;
+
+	count = 0;
+	while (num) {
+		chunk = (num > ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS) ?
+				      ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS :
+				      num;
+
+		if (roc_npa_aura_batch_alloc_issue(aura_handle, aligned_buf,
+						   chunk, dis_wait, drop))
+			break;
+
+		num_alloc = roc_npa_aura_batch_alloc_extract(buf, aligned_buf,
+							     chunk);
+
+		count += num_alloc;
+		buf += num_alloc;
+		num -= num_alloc;
+
+		if (num_alloc != chunk)
+			break;
+	}
+
+	/* If the requested number of pointers was not allocated and if partial
+	 * alloc is not desired, then free allocated pointers.
+	 */
+	if (unlikely(num != 0 && !partial)) {
+		roc_npa_aura_op_bulk_free(aura_handle, buf - count, count, 1);
+		count = 0;
+	}
+
+	return count;
+}
+
+static inline void
+roc_npa_aura_batch_free(uint64_t aura_handle, uint64_t const *buf,
+			unsigned int num, const int fabs, uint64_t lmt_addr,
+			uint64_t lmt_id)
+{
+	uint64_t addr, tar_addr, free0;
+	volatile uint64_t *lmt_data;
+	unsigned int i;
+
+	if (num > ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS)
+		return;
+
+	lmt_data = (uint64_t *)lmt_addr;
+
+	addr = roc_npa_aura_handle_to_base(aura_handle) +
+	       NPA_LF_AURA_BATCH_FREE0;
+
+	/*
+	 * NPA_LF_AURA_BATCH_FREE0
+	 *
+	 * 63   63 62  33 32       32 31  20 19    0
+	 * -----------------------------------------
+	 * | FABS | Rsvd | COUNT_EOT | Rsvd | AURA |
+	 * -----------------------------------------
+	 */
+	free0 = roc_npa_aura_handle_to_aura(aura_handle);
+	if (fabs)
+		free0 |= (0x1UL << 63);
+	if (num & 0x1)
+		free0 |= (0x1UL << 32);
+
+	/* tar_addr[4:6] is LMTST size-1 in units of 128b */
+	tar_addr = addr | ((num >> 1) << 4);
+
+	lmt_data[0] = free0;
+	for (i = 0; i < num; i++)
+		lmt_data[i + 1] = buf[i];
+
+	roc_lmt_submit_steorl(lmt_id, tar_addr);
+	plt_io_wmb();
+}
+
+static inline void
+roc_npa_aura_op_batch_free(uint64_t aura_handle, uint64_t const *buf,
+			   unsigned int num, const int fabs, uint64_t lmt_addr,
+			   uint64_t lmt_id)
+{
+	unsigned int chunk;
+
+	while (num) {
+		chunk = (num >= ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS) ?
+				      ROC_CN10K_NPA_BATCH_FREE_MAX_PTRS :
+				      num;
+
+		roc_npa_aura_batch_free(aura_handle, buf, chunk, fabs, lmt_addr,
+					lmt_id);
+
+		buf += chunk;
+		num -= chunk;
 	}
 }
 
