@@ -77,6 +77,106 @@ nix_tm_node_search(struct nix *nix, uint32_t node_id, enum roc_nix_tm_tree tree)
 	return NULL;
 }
 
+uint64_t
+nix_tm_shaper_rate_conv(uint64_t value, uint64_t *exponent_p,
+			uint64_t *mantissa_p, uint64_t *div_exp_p)
+{
+	uint64_t div_exp, exponent, mantissa;
+
+	/* Boundary checks */
+	if (value < NIX_TM_MIN_SHAPER_RATE || value > NIX_TM_MAX_SHAPER_RATE)
+		return 0;
+
+	if (value <= NIX_TM_SHAPER_RATE(0, 0, 0)) {
+		/* Calculate rate div_exp and mantissa using
+		 * the following formula:
+		 *
+		 * value = (2E6 * (256 + mantissa)
+		 *              / ((1 << div_exp) * 256))
+		 */
+		div_exp = 0;
+		exponent = 0;
+		mantissa = NIX_TM_MAX_RATE_MANTISSA;
+
+		while (value < (NIX_TM_SHAPER_RATE_CONST / (1 << div_exp)))
+			div_exp += 1;
+
+		while (value < ((NIX_TM_SHAPER_RATE_CONST * (256 + mantissa)) /
+				((1 << div_exp) * 256)))
+			mantissa -= 1;
+	} else {
+		/* Calculate rate exponent and mantissa using
+		 * the following formula:
+		 *
+		 * value = (2E6 * ((256 + mantissa) << exponent)) / 256
+		 *
+		 */
+		div_exp = 0;
+		exponent = NIX_TM_MAX_RATE_EXPONENT;
+		mantissa = NIX_TM_MAX_RATE_MANTISSA;
+
+		while (value < (NIX_TM_SHAPER_RATE_CONST * (1 << exponent)))
+			exponent -= 1;
+
+		while (value < ((NIX_TM_SHAPER_RATE_CONST *
+				 ((256 + mantissa) << exponent)) /
+				256))
+			mantissa -= 1;
+	}
+
+	if (div_exp > NIX_TM_MAX_RATE_DIV_EXP ||
+	    exponent > NIX_TM_MAX_RATE_EXPONENT ||
+	    mantissa > NIX_TM_MAX_RATE_MANTISSA)
+		return 0;
+
+	if (div_exp_p)
+		*div_exp_p = div_exp;
+	if (exponent_p)
+		*exponent_p = exponent;
+	if (mantissa_p)
+		*mantissa_p = mantissa;
+
+	/* Calculate real rate value */
+	return NIX_TM_SHAPER_RATE(exponent, mantissa, div_exp);
+}
+
+uint64_t
+nix_tm_shaper_burst_conv(uint64_t value, uint64_t *exponent_p,
+			 uint64_t *mantissa_p)
+{
+	uint64_t exponent, mantissa;
+
+	if (value < NIX_TM_MIN_SHAPER_BURST || value > NIX_TM_MAX_SHAPER_BURST)
+		return 0;
+
+	/* Calculate burst exponent and mantissa using
+	 * the following formula:
+	 *
+	 * value = (((256 + mantissa) << (exponent + 1)
+	 / 256)
+	 *
+	 */
+	exponent = NIX_TM_MAX_BURST_EXPONENT;
+	mantissa = NIX_TM_MAX_BURST_MANTISSA;
+
+	while (value < (1ull << (exponent + 1)))
+		exponent -= 1;
+
+	while (value < ((256 + mantissa) << (exponent + 1)) / 256)
+		mantissa -= 1;
+
+	if (exponent > NIX_TM_MAX_BURST_EXPONENT ||
+	    mantissa > NIX_TM_MAX_BURST_MANTISSA)
+		return 0;
+
+	if (exponent_p)
+		*exponent_p = exponent;
+	if (mantissa_p)
+		*mantissa_p = mantissa;
+
+	return NIX_TM_SHAPER_BURST(exponent, mantissa);
+}
+
 static uint16_t
 nix_tm_max_prio(struct nix *nix, uint16_t hw_lvl)
 {
@@ -183,6 +283,23 @@ nix_tm_sw_xoff_prep(struct nix_tm_node *node, bool enable,
 	return k;
 }
 
+/* Search for min rate in topology */
+uint64_t
+nix_tm_shaper_profile_rate_min(struct nix *nix)
+{
+	struct nix_tm_shaper_profile *profile;
+	uint64_t rate_min = 1E9; /* 1 Gbps */
+
+	TAILQ_FOREACH(profile, &nix->shaper_profile_list, shaper) {
+		if (profile->peak.rate && profile->peak.rate < rate_min)
+			rate_min = profile->peak.rate;
+
+		if (profile->commit.rate && profile->commit.rate < rate_min)
+			rate_min = profile->commit.rate;
+	}
+	return rate_min;
+}
+
 uint16_t
 nix_tm_resource_avail(struct nix *nix, uint8_t hw_lvl, bool contig)
 {
@@ -251,6 +368,34 @@ roc_nix_tm_node_next(struct roc_nix *roc_nix, struct roc_nix_tm_node *__prev)
 	return (struct roc_nix_tm_node *)TAILQ_NEXT(prev, node);
 }
 
+struct roc_nix_tm_shaper_profile *
+roc_nix_tm_shaper_profile_get(struct roc_nix *roc_nix, uint32_t profile_id)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile *profile;
+
+	profile = nix_tm_shaper_profile_search(nix, profile_id);
+	return (struct roc_nix_tm_shaper_profile *)profile;
+}
+
+struct roc_nix_tm_shaper_profile *
+roc_nix_tm_shaper_profile_next(struct roc_nix *roc_nix,
+			       struct roc_nix_tm_shaper_profile *__prev)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile_list *list;
+	struct nix_tm_shaper_profile *prev;
+
+	prev = (struct nix_tm_shaper_profile *)__prev;
+	list = &nix->shaper_profile_list;
+
+	/* HEAD of the list */
+	if (!prev)
+		return (struct roc_nix_tm_shaper_profile *)TAILQ_FIRST(list);
+
+	return (struct roc_nix_tm_shaper_profile *)TAILQ_NEXT(prev, shaper);
+}
+
 struct nix_tm_node *
 nix_tm_node_alloc(void)
 {
@@ -271,4 +416,26 @@ nix_tm_node_free(struct nix_tm_node *node)
 		return;
 
 	(node->free_fn)(node);
+}
+
+struct nix_tm_shaper_profile *
+nix_tm_shaper_profile_alloc(void)
+{
+	struct nix_tm_shaper_profile *profile;
+
+	profile = plt_zmalloc(sizeof(struct nix_tm_shaper_profile), 0);
+	if (!profile)
+		return NULL;
+
+	profile->free_fn = plt_free;
+	return profile;
+}
+
+void
+nix_tm_shaper_profile_free(struct nix_tm_shaper_profile *profile)
+{
+	if (!profile || !profile->free_fn)
+		return;
+
+	(profile->free_fn)(profile);
 }

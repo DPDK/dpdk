@@ -111,6 +111,11 @@ INTERNAL {
 	roc_nix_tm_node_name_get;
 	roc_nix_tm_node_next;
 	roc_nix_tm_node_pkt_mode_update;
+	roc_nix_tm_shaper_profile_add;
+	roc_nix_tm_shaper_profile_delete;
+	roc_nix_tm_shaper_profile_get;
+	roc_nix_tm_shaper_profile_next;
+	roc_nix_tm_shaper_profile_update;
 	roc_nix_tm_sq_aura_fc;
 	roc_nix_tm_sq_flush_spin;
 	roc_nix_unregister_cq_irqs;

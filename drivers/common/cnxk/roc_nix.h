@@ -353,17 +353,42 @@ struct roc_nix_tm_node {
 	void (*free_fn)(void *node);
 };
 
+struct roc_nix_tm_shaper_profile {
+#define ROC_NIX_TM_SHAPER_PROFILE_SZ (128)
+	uint8_t reserved[ROC_NIX_TM_SHAPER_PROFILE_SZ];
+
+	uint32_t id;
+	uint64_t commit_rate;
+	uint64_t commit_sz;
+	uint64_t peak_rate;
+	uint64_t peak_sz;
+	int32_t pkt_len_adj;
+	bool pkt_mode;
+	/* Function to free this memory */
+	void (*free_fn)(void *profile);
+};
+
 int __roc_api roc_nix_tm_node_add(struct roc_nix *roc_nix,
 				  struct roc_nix_tm_node *roc_node);
 int __roc_api roc_nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
 				     bool free);
 int __roc_api roc_nix_tm_node_pkt_mode_update(struct roc_nix *roc_nix,
 					      uint32_t node_id, bool pkt_mode);
+int __roc_api roc_nix_tm_shaper_profile_add(
+	struct roc_nix *roc_nix, struct roc_nix_tm_shaper_profile *profile);
+int __roc_api roc_nix_tm_shaper_profile_update(
+	struct roc_nix *roc_nix, struct roc_nix_tm_shaper_profile *profile);
+int __roc_api roc_nix_tm_shaper_profile_delete(struct roc_nix *roc_nix,
+					       uint32_t id);
 
 struct roc_nix_tm_node *__roc_api roc_nix_tm_node_get(struct roc_nix *roc_nix,
 						      uint32_t node_id);
 struct roc_nix_tm_node *__roc_api
 roc_nix_tm_node_next(struct roc_nix *roc_nix, struct roc_nix_tm_node *__prev);
+struct roc_nix_tm_shaper_profile *__roc_api
+roc_nix_tm_shaper_profile_get(struct roc_nix *roc_nix, uint32_t profile_id);
+struct roc_nix_tm_shaper_profile *__roc_api roc_nix_tm_shaper_profile_next(
+	struct roc_nix *roc_nix, struct roc_nix_tm_shaper_profile *__prev);
 
 /*
  * TM utilities API.

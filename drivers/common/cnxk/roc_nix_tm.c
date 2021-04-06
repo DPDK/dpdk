@@ -5,6 +5,22 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+void
+nix_tm_clear_shaper_profiles(struct nix *nix)
+{
+	struct nix_tm_shaper_profile *shaper_profile;
+
+	shaper_profile = TAILQ_FIRST(&nix->shaper_profile_list);
+	while (shaper_profile != NULL) {
+		if (shaper_profile->ref_cnt)
+			plt_warn("Shaper profile %u has non zero references",
+				 shaper_profile->id);
+		TAILQ_REMOVE(&nix->shaper_profile_list, shaper_profile, shaper);
+		nix_tm_shaper_profile_free(shaper_profile);
+		shaper_profile = TAILQ_FIRST(&nix->shaper_profile_list);
+	}
+}
+
 int
 nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node)
 {
@@ -532,6 +548,8 @@ nix_tm_conf_init(struct roc_nix *roc_nix)
 	int rc, i;
 
 	PLT_STATIC_ASSERT(sizeof(struct nix_tm_node) <= ROC_NIX_TM_NODE_SZ);
+	PLT_STATIC_ASSERT(sizeof(struct nix_tm_shaper_profile) <=
+			  ROC_NIX_TM_SHAPER_PROFILE_SZ);
 
 	nix->tm_flags = 0;
 	for (i = 0; i < ROC_NIX_TM_TREE_MAX; i++)

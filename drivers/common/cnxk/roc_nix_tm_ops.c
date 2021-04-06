@@ -66,6 +66,151 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	return 0;
 }
 
+static int
+nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
+			  struct nix_tm_shaper_profile *profile, int skip_ins)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint64_t commit_rate, commit_sz;
+	uint64_t peak_rate, peak_sz;
+	uint32_t id;
+
+	id = profile->id;
+	commit_rate = profile->commit.rate;
+	commit_sz = profile->commit.size;
+	peak_rate = profile->peak.rate;
+	peak_sz = profile->peak.size;
+
+	if (nix_tm_shaper_profile_search(nix, id) && !skip_ins)
+		return NIX_ERR_TM_SHAPER_PROFILE_EXISTS;
+
+	if (profile->pkt_len_adj < NIX_TM_LENGTH_ADJUST_MIN ||
+	    profile->pkt_len_adj > NIX_TM_LENGTH_ADJUST_MAX)
+		return NIX_ERR_TM_SHAPER_PKT_LEN_ADJUST;
+
+	/* We cannot support both pkt length adjust and pkt mode */
+	if (profile->pkt_mode && profile->pkt_len_adj)
+		return NIX_ERR_TM_SHAPER_PKT_LEN_ADJUST;
+
+	/* commit rate and burst size can be enabled/disabled */
+	if (commit_rate || commit_sz) {
+		if (commit_sz < NIX_TM_MIN_SHAPER_BURST ||
+		    commit_sz > NIX_TM_MAX_SHAPER_BURST)
+			return NIX_ERR_TM_INVALID_COMMIT_SZ;
+		else if (!nix_tm_shaper_rate_conv(commit_rate, NULL, NULL,
+						  NULL))
+			return NIX_ERR_TM_INVALID_COMMIT_RATE;
+	}
+
+	/* Peak rate and burst size can be enabled/disabled */
+	if (peak_sz || peak_rate) {
+		if (peak_sz < NIX_TM_MIN_SHAPER_BURST ||
+		    peak_sz > NIX_TM_MAX_SHAPER_BURST)
+			return NIX_ERR_TM_INVALID_PEAK_SZ;
+		else if (!nix_tm_shaper_rate_conv(peak_rate, NULL, NULL, NULL))
+			return NIX_ERR_TM_INVALID_PEAK_RATE;
+	}
+
+	if (!skip_ins)
+		TAILQ_INSERT_TAIL(&nix->shaper_profile_list, profile, shaper);
+
+	plt_tm_dbg("Added TM shaper profile %u, "
+		   " pir %" PRIu64 " , pbs %" PRIu64 ", cir %" PRIu64
+		   ", cbs %" PRIu64 " , adj %u, pkt_mode %u",
+		   id, profile->peak.rate, profile->peak.size,
+		   profile->commit.rate, profile->commit.size,
+		   profile->pkt_len_adj, profile->pkt_mode);
+
+	/* Always use PIR for single rate shaping */
+	if (!peak_rate && commit_rate) {
+		profile->peak.rate = profile->commit.rate;
+		profile->peak.size = profile->commit.size;
+		profile->commit.rate = 0;
+		profile->commit.size = 0;
+	}
+
+	/* update min rate */
+	nix->tm_rate_min = nix_tm_shaper_profile_rate_min(nix);
+	return 0;
+}
+
+int
+roc_nix_tm_shaper_profile_add(struct roc_nix *roc_nix,
+			      struct roc_nix_tm_shaper_profile *roc_profile)
+{
+	struct nix_tm_shaper_profile *profile;
+
+	profile = (struct nix_tm_shaper_profile *)roc_profile->reserved;
+
+	profile->ref_cnt = 0;
+	profile->id = roc_profile->id;
+	if (roc_profile->pkt_mode) {
+		/* Each packet accomulate single count, whereas HW
+		 * considers each unit as Byte, so we need convert
+		 * user pps to bps
+		 */
+		profile->commit.rate = roc_profile->commit_rate * 8;
+		profile->peak.rate = roc_profile->peak_rate * 8;
+	} else {
+		profile->commit.rate = roc_profile->commit_rate;
+		profile->peak.rate = roc_profile->peak_rate;
+	}
+	profile->commit.size = roc_profile->commit_sz;
+	profile->peak.size = roc_profile->peak_sz;
+	profile->pkt_len_adj = roc_profile->pkt_len_adj;
+	profile->pkt_mode = roc_profile->pkt_mode;
+	profile->free_fn = roc_profile->free_fn;
+
+	return nix_tm_shaper_profile_add(roc_nix, profile, 0);
+}
+
+int
+roc_nix_tm_shaper_profile_update(struct roc_nix *roc_nix,
+				 struct roc_nix_tm_shaper_profile *roc_profile)
+{
+	struct nix_tm_shaper_profile *profile;
+
+	profile = (struct nix_tm_shaper_profile *)roc_profile->reserved;
+
+	if (roc_profile->pkt_mode) {
+		/* Each packet accomulate single count, whereas HW
+		 * considers each unit as Byte, so we need convert
+		 * user pps to bps
+		 */
+		profile->commit.rate = roc_profile->commit_rate * 8;
+		profile->peak.rate = roc_profile->peak_rate * 8;
+	} else {
+		profile->commit.rate = roc_profile->commit_rate;
+		profile->peak.rate = roc_profile->peak_rate;
+	}
+	profile->commit.size = roc_profile->commit_sz;
+	profile->peak.size = roc_profile->peak_sz;
+
+	return nix_tm_shaper_profile_add(roc_nix, profile, 1);
+}
+
+int
+roc_nix_tm_shaper_profile_delete(struct roc_nix *roc_nix, uint32_t id)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile *profile;
+
+	profile = nix_tm_shaper_profile_search(nix, id);
+	if (!profile)
+		return NIX_ERR_TM_INVALID_SHAPER_PROFILE;
+
+	if (profile->ref_cnt)
+		return NIX_ERR_TM_SHAPER_PROFILE_IN_USE;
+
+	plt_tm_dbg("Removing TM shaper profile %u", id);
+	TAILQ_REMOVE(&nix->shaper_profile_list, profile, shaper);
+	nix_tm_shaper_profile_free(profile);
+
+	/* update min rate */
+	nix->tm_rate_min = nix_tm_shaper_profile_rate_min(nix);
+	return 0;
+}
+
 int
 roc_nix_tm_node_add(struct roc_nix *roc_nix, struct roc_nix_tm_node *roc_node)
 {

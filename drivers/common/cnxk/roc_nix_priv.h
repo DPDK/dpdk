@@ -331,6 +331,7 @@ int nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
 		       enum roc_nix_tm_tree tree, bool free);
 int nix_tm_free_node_resource(struct nix *nix, struct nix_tm_node *node);
 int nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node);
+void nix_tm_clear_shaper_profiles(struct nix *nix);
 
 /*
  * TM priv utils.
@@ -347,7 +348,14 @@ struct nix_tm_shaper_profile *nix_tm_shaper_profile_search(struct nix *nix,
 							   uint32_t id);
 uint8_t nix_tm_sw_xoff_prep(struct nix_tm_node *node, bool enable,
 			    volatile uint64_t *reg, volatile uint64_t *regval);
+uint64_t nix_tm_shaper_profile_rate_min(struct nix *nix);
+uint64_t nix_tm_shaper_rate_conv(uint64_t value, uint64_t *exponent_p,
+				 uint64_t *mantissa_p, uint64_t *div_exp_p);
+uint64_t nix_tm_shaper_burst_conv(uint64_t value, uint64_t *exponent_p,
+				  uint64_t *mantissa_p);
 struct nix_tm_node *nix_tm_node_alloc(void);
 void nix_tm_node_free(struct nix_tm_node *node);
+struct nix_tm_shaper_profile *nix_tm_shaper_profile_alloc(void);
+void nix_tm_shaper_profile_free(struct nix_tm_shaper_profile *profile);
 
 #endif /* _ROC_NIX_PRIV_H_ */
