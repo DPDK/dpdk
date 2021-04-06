@@ -82,4 +82,7 @@
 /* Utils */
 #include "roc_utils.h"
 
+/* Idev */
+#include "roc_idev.h"
+
 #endif /* _ROC_API_H_ */

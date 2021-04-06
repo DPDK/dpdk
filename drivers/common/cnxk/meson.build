@@ -10,7 +10,9 @@ endif
 
 config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
 deps = ['eal', 'pci', 'bus_pci', 'mbuf']
-sources = files('roc_irq.c',
+sources = files('roc_dev.c',
+		'roc_idev.c',
+		'roc_irq.c',
 		'roc_mbox.c',
 		'roc_model.c',
 		'roc_platform.c',
