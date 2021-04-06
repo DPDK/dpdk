@@ -110,6 +110,14 @@ struct roc_nix_link_info {
 	uint64_t port : 8;
 };
 
+struct roc_nix_ipsec_cfg {
+	uint32_t sa_size;
+	uint32_t tag_const;
+	plt_iova_t iova;
+	uint16_t max_sa;
+	uint8_t tt;
+};
+
 /* Link status update callback */
 typedef void (*link_status_t)(struct roc_nix *roc_nix,
 			      struct roc_nix_link_info *link);
@@ -156,6 +164,8 @@ int __roc_api roc_nix_max_pkt_len(struct roc_nix *roc_nix);
 int __roc_api roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq,
 			       uint32_t nb_txq, uint64_t rx_cfg);
 int __roc_api roc_nix_lf_free(struct roc_nix *roc_nix);
+int __roc_api roc_nix_lf_inl_ipsec_cfg(struct roc_nix *roc_nix,
+				       struct roc_nix_ipsec_cfg *cfg, bool enb);
 
 /* IRQ */
 void __roc_api roc_nix_rx_queue_intr_enable(struct roc_nix *roc_nix,

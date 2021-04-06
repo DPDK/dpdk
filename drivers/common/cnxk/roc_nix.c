@@ -81,6 +81,34 @@ roc_nix_get_pf_func(struct roc_nix *roc_nix)
 }
 
 int
+roc_nix_lf_inl_ipsec_cfg(struct roc_nix *roc_nix, struct roc_nix_ipsec_cfg *cfg,
+			 bool enb)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_inline_ipsec_lf_cfg *lf_cfg;
+	struct mbox *mbox = (&nix->dev)->mbox;
+
+	lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
+	if (lf_cfg == NULL)
+		return -ENOSPC;
+
+	if (enb) {
+		lf_cfg->enable = 1;
+		lf_cfg->sa_base_addr = cfg->iova;
+		lf_cfg->ipsec_cfg1.sa_idx_w = plt_log2_u32(cfg->max_sa);
+		lf_cfg->ipsec_cfg0.lenm1_max = roc_nix_max_pkt_len(roc_nix) - 1;
+		lf_cfg->ipsec_cfg1.sa_idx_max = cfg->max_sa - 1;
+		lf_cfg->ipsec_cfg0.sa_pow2_size = plt_log2_u32(cfg->sa_size);
+		lf_cfg->ipsec_cfg0.tag_const = cfg->tag_const;
+		lf_cfg->ipsec_cfg0.tt = cfg->tt;
+	} else {
+		lf_cfg->enable = 0;
+	}
+
+	return mbox_process(mbox);
+}
+
+int
 roc_nix_max_pkt_len(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);

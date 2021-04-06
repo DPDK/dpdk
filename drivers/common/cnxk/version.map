@@ -28,6 +28,7 @@ INTERNAL {
 	roc_nix_is_sdp;
 	roc_nix_is_vf_or_sdp;
 	roc_nix_lf_alloc;
+	roc_nix_lf_inl_ipsec_cfg;
 	roc_nix_lf_free;
 	roc_nix_mac_addr_add;
 	roc_nix_mac_addr_del;
