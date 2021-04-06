@@ -378,4 +378,15 @@ roc_npc_to_npc_priv(struct roc_npc *npc)
 {
 	return (struct npc *)npc->reserved;
 }
+
+int npc_update_parse_state(struct npc_parse_state *pst,
+			   struct npc_parse_item_info *info, int lid, int lt,
+			   uint8_t flags);
+void npc_get_hw_supp_mask(struct npc_parse_state *pst,
+			  struct npc_parse_item_info *info, int lid, int lt);
+int npc_parse_item_basic(const struct roc_npc_item_info *item,
+			 struct npc_parse_item_info *info);
+int npc_check_preallocated_entry_cache(struct mbox *mbox,
+				       struct roc_npc_flow *flow,
+				       struct npc *npc);
 #endif /* _ROC_NPC_PRIV_H_ */
