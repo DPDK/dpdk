@@ -254,7 +254,7 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	}
 	priv = dev->data->dev_private;
 	context_obj = (mlx5_context_st *)priv->sh->ctx;
-	dev_link.link_speed = context_obj->mlx5_dev.link_speed / (1024 * 1024);
+	dev_link.link_speed = context_obj->mlx5_dev.link_speed / (1000 * 1000);
 	dev_link.link_status =
 	      (context_obj->mlx5_dev.link_state == 1 && !mlx5_is_removed(dev))
 	      ? 1 : 0;
