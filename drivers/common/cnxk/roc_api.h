@@ -76,6 +76,9 @@
 /* Model */
 #include "roc_model.h"
 
+/* Mbox */
+#include "roc_mbox.h"
+
 /* Utils */
 #include "roc_utils.h"
 
