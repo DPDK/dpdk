@@ -13,6 +13,9 @@ struct sso_rsrc {
 struct sso {
 	struct plt_pci_device *pci_dev;
 	struct dev dev;
+	/* SSO link mapping. */
+	struct plt_bitmap **link_map;
+	void *link_map_mem;
 } __plt_cache_aligned;
 
 enum sso_err_status {

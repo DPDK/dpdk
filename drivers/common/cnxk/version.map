@@ -175,6 +175,10 @@ INTERNAL {
 	roc_plt_init_cb_register;
 	roc_sso_dev_fini;
 	roc_sso_dev_init;
+	roc_sso_hws_base_get;
+	roc_sso_hws_link;
+	roc_sso_hws_unlink;
+	roc_sso_ns_to_gw;
 	roc_sso_rsrc_fini;
 	roc_sso_rsrc_init;
 

@@ -30,5 +30,11 @@ int __roc_api roc_sso_dev_fini(struct roc_sso *roc_sso);
 int __roc_api roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws,
 				uint16_t nb_hwgrp);
 void __roc_api roc_sso_rsrc_fini(struct roc_sso *roc_sso);
+uint64_t __roc_api roc_sso_ns_to_gw(struct roc_sso *roc_sso, uint64_t ns);
+int __roc_api roc_sso_hws_link(struct roc_sso *roc_sso, uint8_t hws,
+			       uint16_t hwgrp[], uint16_t nb_hwgrp);
+int __roc_api roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws,
+				 uint16_t hwgrp[], uint16_t nb_hwgrp);
+uintptr_t __roc_api roc_sso_hws_base_get(struct roc_sso *roc_sso, uint8_t hws);
 
 #endif /* _ROC_SSOW_H_ */
