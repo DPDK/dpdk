@@ -35,6 +35,7 @@ sources = files('roc_dev.c',
 		'roc_npa_debug.c',
 		'roc_npa_irq.c',
 		'roc_npc_mcam.c',
+		'roc_npc_parse.c',
 		'roc_npc_utils.c',
 		'roc_platform.c',
 		'roc_utils.c')

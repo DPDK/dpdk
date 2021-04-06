@@ -402,11 +402,24 @@ void npc_get_hw_supp_mask(struct npc_parse_state *pst,
 			  struct npc_parse_item_info *info, int lid, int lt);
 int npc_parse_item_basic(const struct roc_npc_item_info *item,
 			 struct npc_parse_item_info *info);
+int npc_parse_meta_items(struct npc_parse_state *pst);
+int npc_parse_higig2_hdr(struct npc_parse_state *pst);
+int npc_parse_cpt_hdr(struct npc_parse_state *pst);
+int npc_parse_la(struct npc_parse_state *pst);
+int npc_parse_lb(struct npc_parse_state *pst);
+int npc_parse_lc(struct npc_parse_state *pst);
+int npc_parse_ld(struct npc_parse_state *pst);
+int npc_parse_le(struct npc_parse_state *pst);
+int npc_parse_lf(struct npc_parse_state *pst);
+int npc_parse_lg(struct npc_parse_state *pst);
+int npc_parse_lh(struct npc_parse_state *pst);
 int npc_mcam_fetch_kex_cfg(struct npc *npc);
 int npc_check_preallocated_entry_cache(struct mbox *mbox,
 				       struct roc_npc_flow *flow,
 				       struct npc *npc);
 int npc_flow_free_all_resources(struct npc *npc);
+const struct roc_npc_item_info *
+npc_parse_skip_void_and_any_items(const struct roc_npc_item_info *pattern);
 int npc_program_mcam(struct npc *npc, struct npc_parse_state *pst,
 		     bool mcam_alloc);
 uint64_t npc_get_kex_capability(struct npc *npc);
