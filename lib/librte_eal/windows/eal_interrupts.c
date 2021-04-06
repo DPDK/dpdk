@@ -132,6 +132,14 @@ rte_intr_callback_unregister(
 }
 
 int
+rte_intr_callback_unregister_sync(
+	__rte_unused const struct rte_intr_handle *intr_handle,
+	__rte_unused rte_intr_callback_fn cb_fn, __rte_unused void *cb_arg)
+{
+	return 0;
+}
+
+int
 rte_intr_enable(__rte_unused const struct rte_intr_handle *intr_handle)
 {
 	return -ENOTSUP;

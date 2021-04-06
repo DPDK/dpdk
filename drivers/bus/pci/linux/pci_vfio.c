@@ -409,7 +409,7 @@ pci_vfio_disable_notifier(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	ret = rte_intr_callback_unregister(&dev->vfio_req_intr_handle,
+	ret = rte_intr_callback_unregister_sync(&dev->vfio_req_intr_handle,
 					   pci_vfio_req_handler,
 					   (void *)&dev->device);
 	if (ret < 0) {

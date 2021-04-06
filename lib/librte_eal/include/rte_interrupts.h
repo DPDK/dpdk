@@ -95,6 +95,31 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 				rte_intr_unregister_callback_fn ucb_fn);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Loop until rte_intr_callback_unregister() succeeds.
+ * After a call to this function,
+ * the callback provided by the specified interrupt handle is unregistered.
+ *
+ * @param intr_handle
+ *  pointer to the interrupt handle.
+ * @param cb
+ *  callback address.
+ * @param cb_arg
+ *  address of parameter for callback, (void *)-1 means to remove all
+ *  registered which has the same callback address.
+ *
+ * @return
+ *  - On success, return the number of callback entities removed.
+ *  - On failure, a negative value.
+ */
+__rte_experimental
+int
+rte_intr_callback_unregister_sync(const struct rte_intr_handle *intr_handle,
+				rte_intr_callback_fn cb, void *cb_arg);
+
+/**
  * It enables the interrupt for the specified handle.
  *
  * @param intr_handle

@@ -346,6 +346,18 @@ out:
 }
 
 int
+rte_intr_callback_unregister_sync(const struct rte_intr_handle *intr_handle,
+		rte_intr_callback_fn cb_fn, void *cb_arg)
+{
+	int ret = 0;
+
+	while ((ret = rte_intr_callback_unregister(intr_handle, cb_fn, cb_arg)) == -EAGAIN)
+		rte_pause();
+
+	return ret;
+}
+
+int
 rte_intr_enable(const struct rte_intr_handle *intr_handle)
 {
 	int rc = 0;

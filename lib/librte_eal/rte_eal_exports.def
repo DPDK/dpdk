@@ -325,6 +325,7 @@ EXPORTS
 	rte_vect_get_max_simd_bitwidth
 	rte_vect_set_max_simd_bitwidth
 
+	rte_intr_callback_unregister_sync
 	rte_thread_key_create
 	rte_thread_key_delete
 	rte_thread_value_get
