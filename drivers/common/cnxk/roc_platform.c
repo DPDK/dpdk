@@ -57,3 +57,4 @@ roc_plt_init(void)
 }
 
 RTE_LOG_REGISTER(cnxk_logtype_base, pmd.cnxk.base, NOTICE);
+RTE_LOG_REGISTER(cnxk_logtype_mbox, pmd.cnxk.mbox, NOTICE);

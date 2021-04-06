@@ -33,3 +33,10 @@ roc_error_msg_get(int errorcode)
 
 	return err_msg;
 }
+
+void
+roc_clk_freq_get(uint16_t *rclk_freq, uint16_t *sclk_freq)
+{
+	*rclk_freq = dev_rclk_freq;
+	*sclk_freq = dev_sclk_freq;
+}

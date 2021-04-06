@@ -8,6 +8,9 @@
 /* Utils */
 #include "roc_util_priv.h"
 
+/* Mbox */
+#include "roc_mbox_priv.h"
+
 /* Dev */
 #include "roc_dev_priv.h"
 
