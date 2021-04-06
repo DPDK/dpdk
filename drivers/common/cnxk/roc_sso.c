@@ -185,6 +185,27 @@ sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp,
 	}
 }
 
+static int
+sso_msix_fill(struct roc_sso *roc_sso, uint16_t nb_hws, uint16_t nb_hwgrp)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct msix_offset_rsp *rsp;
+	struct dev *dev = &sso->dev;
+	int i, rc;
+
+	mbox_alloc_msg_msix_offset(dev->mbox);
+	rc = mbox_process_msg(dev->mbox, (void **)&rsp);
+	if (rc < 0)
+		return rc;
+
+	for (i = 0; i < nb_hws; i++)
+		sso->hws_msix_offset[i] = rsp->ssow_msixoff[i];
+	for (i = 0; i < nb_hwgrp; i++)
+		sso->hwgrp_msix_offset[i] = rsp->sso_msixoff[i];
+
+	return 0;
+}
+
 /* Public Functions. */
 uintptr_t
 roc_sso_hws_base_get(struct roc_sso *roc_sso, uint8_t hws)
@@ -363,6 +384,7 @@ roc_sso_hwgrp_set_priority(struct roc_sso *roc_sso, uint16_t hwgrp,
 int
 roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp)
 {
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct sso_lf_alloc_rsp *rsp_hwgrp;
 	int rc;
 
@@ -400,10 +422,25 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp)
 	roc_sso->xae_waes = rsp_hwgrp->xaq_wq_entries;
 	roc_sso->iue = rsp_hwgrp->in_unit_entries;
 
+	rc = sso_msix_fill(roc_sso, nb_hws, nb_hwgrp);
+	if (rc < 0) {
+		plt_err("Unable to get MSIX offsets for SSO LFs");
+		goto sso_msix_fail;
+	}
+
+	rc = sso_register_irqs_priv(roc_sso, &sso->pci_dev->intr_handle, nb_hws,
+				    nb_hwgrp);
+	if (rc < 0) {
+		plt_err("Failed to register SSO LF IRQs");
+		goto sso_msix_fail;
+	}
+
 	roc_sso->nb_hwgrp = nb_hwgrp;
 	roc_sso->nb_hws = nb_hws;
 
 	return 0;
+sso_msix_fail:
+	sso_lf_free(roc_sso, SSO_LF_TYPE_HWGRP, nb_hwgrp);
 hwgrp_alloc_fail:
 	sso_lf_free(roc_sso, SSO_LF_TYPE_HWS, nb_hws);
 hws_alloc_fail:
@@ -416,9 +453,13 @@ hwgrp_atch_fail:
 void
 roc_sso_rsrc_fini(struct roc_sso *roc_sso)
 {
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+
 	if (!roc_sso->nb_hws && !roc_sso->nb_hwgrp)
 		return;
 
+	sso_unregister_irqs_priv(roc_sso, &sso->pci_dev->intr_handle,
+				 roc_sso->nb_hws, roc_sso->nb_hwgrp);
 	sso_lf_free(roc_sso, SSO_LF_TYPE_HWS, roc_sso->nb_hws);
 	sso_lf_free(roc_sso, SSO_LF_TYPE_HWGRP, roc_sso->nb_hwgrp);
 
