@@ -1,0 +1,381 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(C) 2021 Marvell.
+ */
+
+#ifndef _ROC_NPC_PRIV_H_
+#define _ROC_NPC_PRIV_H_
+
+#define NPC_IH_LENGTH	  8
+#define NPC_TPID_LENGTH	  2
+#define NPC_HIGIG2_LENGTH 16
+#define NPC_COUNTER_NONE  (-1)
+
+#define NPC_RSS_GRPS 8
+
+#define NPC_ACTION_FLAG_DEFAULT 0xffff
+
+#define NPC_PFVF_FUNC_MASK 0x3FF
+
+/* 32 bytes from LDATA_CFG & 32 bytes from FLAGS_CFG */
+#define NPC_MAX_EXTRACT_DATA_LEN (64)
+#define NPC_MAX_EXTRACT_HW_LEN	 (4 * NPC_MAX_EXTRACT_DATA_LEN)
+#define NPC_LDATA_LFLAG_LEN	 (16)
+#define NPC_MAX_KEY_NIBBLES	 (31)
+
+/* Nibble offsets */
+#define NPC_LAYER_KEYX_SZ	  (3)
+#define NPC_PARSE_KEX_S_LA_OFFSET (7)
+#define NPC_PARSE_KEX_S_LID_OFFSET(lid)                                        \
+	((((lid) - (NPC_LID_LA)) * NPC_LAYER_KEYX_SZ) +                        \
+	 NPC_PARSE_KEX_S_LA_OFFSET)
+
+/* This mark value indicates flag action */
+#define NPC_FLOW_FLAG_VAL (0xffff)
+
+#define NPC_RX_ACT_MATCH_OFFSET (40)
+#define NPC_RX_ACT_MATCH_MASK	(0xFFFF)
+
+#define NPC_RSS_ACT_GRP_OFFSET (20)
+#define NPC_RSS_ACT_ALG_OFFSET (56)
+#define NPC_RSS_ACT_GRP_MASK   (0xFFFFF)
+#define NPC_RSS_ACT_ALG_MASK   (0x1F)
+
+#define NPC_MCAM_KEX_FIELD_MAX	  23
+#define NPC_MCAM_MAX_PROTO_FIELDS (NPC_MCAM_KEX_FIELD_MAX + 1)
+#define NPC_MCAM_KEY_X4_WORDS	  7 /* Number of 64-bit words */
+
+#define NPC_RVUPF_MAX_9XXX 0x10 /* HRM: RVU_PRIV_CONST */
+#define NPC_RVUPF_MAX_10XX 0x20 /* HRM: RVU_PRIV_CONST */
+#define NPC_NIXLF_MAX	   0x80 /* HRM: NIX_AF_CONST2 */
+#define NPC_MCAME_PER_PF   2	/* DRV: RSVD_MCAM_ENTRIES_PER_PF */
+#define NPC_MCAME_PER_LF   1	/* DRV: RSVD_MCAM_ENTRIES_PER_NIXLF */
+#define NPC_MCAME_RESVD_9XXX                                                   \
+	(NPC_NIXLF_MAX * NPC_MCAME_PER_LF +                                    \
+	 (NPC_RVUPF_MAX_9XXX - 1) * NPC_MCAME_PER_PF)
+
+#define NPC_MCAME_RESVD_10XX                                                   \
+	(NPC_NIXLF_MAX * NPC_MCAME_PER_LF +                                    \
+	 (NPC_RVUPF_MAX_10XX - 1) * NPC_MCAME_PER_PF)
+
+enum npc_err_status {
+	NPC_ERR_PARAM = -1024,
+	NPC_ERR_NO_MEM,
+	NPC_ERR_INVALID_SPEC,
+	NPC_ERR_INVALID_MASK,
+	NPC_ERR_INVALID_RANGE,
+	NPC_ERR_INVALID_KEX,
+	NPC_ERR_INVALID_SIZE,
+	NPC_ERR_INTERNAL,
+	NPC_ERR_MCAM_ALLOC,
+	NPC_ERR_ACTION_NOTSUP,
+	NPC_ERR_PATTERN_NOTSUP,
+};
+
+enum npc_mcam_intf { NPC_MCAM_RX, NPC_MCAM_TX };
+
+typedef union npc_kex_cap_terms_t {
+	struct {
+		/** Total length of received packet */
+		uint64_t len : 1;
+		/** Initial (outer) Ethertype only */
+		uint64_t ethtype_0 : 1;
+		/** Ethertype of most inner VLAN tag */
+		uint64_t ethtype_x : 1;
+		/** First VLAN ID (outer) */
+		uint64_t vlan_id_0 : 1;
+		/** Last VLAN ID (inner) */
+		uint64_t vlan_id_x : 1;
+		/** destination MAC address */
+		uint64_t dmac : 1;
+		/** IP Protocol or IPv6 Next Header */
+		uint64_t ip_proto : 1;
+		/** Destination UDP port, implies IPPROTO=17 */
+		uint64_t udp_dport : 1;
+		/** Destination TCP port implies IPPROTO=6 */
+		uint64_t tcp_dport : 1;
+		/** Source UDP Port */
+		uint64_t udp_sport : 1;
+		/** Source TCP port */
+		uint64_t tcp_sport : 1;
+		/** Source IP address */
+		uint64_t sip_addr : 1;
+		/** Destination IP address */
+		uint64_t dip_addr : 1;
+		/** Source IP address */
+		uint64_t sip6_addr : 1;
+		/** Destination IP address */
+		uint64_t dip6_addr : 1;
+		/** IPsec session identifier */
+		uint64_t ipsec_spi : 1;
+		/** NVGRE/VXLAN network identifier */
+		uint64_t ld_vni : 1;
+		/** Custom frame match rule. PMR offset is counted from
+		 *  the start of the packet.
+		 */
+		uint64_t custom_frame : 1;
+		/** Custom layer 3 match rule. PMR offset is counted from
+		 *  the start of layer 3 in the packet.
+		 */
+		uint64_t custom_l3 : 1;
+		/** IGMP Group address */
+		uint64_t igmp_grp_addr : 1;
+		/** ICMP identifier */
+		uint64_t icmp_id : 1;
+		/** ICMP type */
+		uint64_t icmp_type : 1;
+		/** ICMP code */
+		uint64_t icmp_code : 1;
+		/** Source SCTP port */
+		uint64_t sctp_sport : 1;
+		/** Destination SCTP port */
+		uint64_t sctp_dport : 1;
+		/** GTPU Tunnel endpoint identifier */
+		uint64_t gtpu_teid : 1;
+
+	} bit;
+	/** All bits of the bit field structure */
+	uint64_t all_bits;
+} npc_kex_cap_terms_t;
+
+struct npc_parse_item_info {
+	const void *def_mask; /* default mask */
+	void *hw_mask;	      /* hardware supported mask */
+	int len;	      /* length of item */
+	const void *spec;     /* spec to use, NULL implies match any */
+	const void *mask;     /* mask to use */
+	uint8_t hw_hdr_len;   /* Extra data len at each layer*/
+};
+
+struct npc_parse_state {
+	struct npc *npc;
+	const struct roc_npc_item_info *pattern;
+	const struct roc_npc_item_info *last_pattern;
+	struct roc_npc_flow *flow;
+	uint8_t nix_intf;
+	uint8_t tunnel;
+	uint8_t terminate;
+	uint8_t layer_mask;
+	uint8_t lt[NPC_MAX_LID];
+	uint8_t flags[NPC_MAX_LID];
+	uint8_t *mcam_data; /* point to flow->mcam_data + key_len */
+	uint8_t *mcam_mask; /* point to flow->mcam_mask + key_len */
+	bool is_vf;
+};
+
+enum npc_kpu_parser_flag {
+	NPC_F_NA = 0,
+	NPC_F_PKI,
+	NPC_F_PKI_VLAN,
+	NPC_F_PKI_ETAG,
+	NPC_F_PKI_ITAG,
+	NPC_F_PKI_MPLS,
+	NPC_F_PKI_NSH,
+	NPC_F_ETYPE_UNK,
+	NPC_F_ETHER_VLAN,
+	NPC_F_ETHER_ETAG,
+	NPC_F_ETHER_ITAG,
+	NPC_F_ETHER_MPLS,
+	NPC_F_ETHER_NSH,
+	NPC_F_STAG_CTAG,
+	NPC_F_STAG_CTAG_UNK,
+	NPC_F_STAG_STAG_CTAG,
+	NPC_F_STAG_STAG_STAG,
+	NPC_F_QINQ_CTAG,
+	NPC_F_QINQ_CTAG_UNK,
+	NPC_F_QINQ_QINQ_CTAG,
+	NPC_F_QINQ_QINQ_QINQ,
+	NPC_F_BTAG_ITAG,
+	NPC_F_BTAG_ITAG_STAG,
+	NPC_F_BTAG_ITAG_CTAG,
+	NPC_F_BTAG_ITAG_UNK,
+	NPC_F_ETAG_CTAG,
+	NPC_F_ETAG_BTAG_ITAG,
+	NPC_F_ETAG_STAG,
+	NPC_F_ETAG_QINQ,
+	NPC_F_ETAG_ITAG,
+	NPC_F_ETAG_ITAG_STAG,
+	NPC_F_ETAG_ITAG_CTAG,
+	NPC_F_ETAG_ITAG_UNK,
+	NPC_F_ITAG_STAG_CTAG,
+	NPC_F_ITAG_STAG,
+	NPC_F_ITAG_CTAG,
+	NPC_F_MPLS_4_LABELS,
+	NPC_F_MPLS_3_LABELS,
+	NPC_F_MPLS_2_LABELS,
+	NPC_F_IP_HAS_OPTIONS,
+	NPC_F_IP_IP_IN_IP,
+	NPC_F_IP_6TO4,
+	NPC_F_IP_MPLS_IN_IP,
+	NPC_F_IP_UNK_PROTO,
+	NPC_F_IP_IP_IN_IP_HAS_OPTIONS,
+	NPC_F_IP_6TO4_HAS_OPTIONS,
+	NPC_F_IP_MPLS_IN_IP_HAS_OPTIONS,
+	NPC_F_IP_UNK_PROTO_HAS_OPTIONS,
+	NPC_F_IP6_HAS_EXT,
+	NPC_F_IP6_TUN_IP6,
+	NPC_F_IP6_MPLS_IN_IP,
+	NPC_F_TCP_HAS_OPTIONS,
+	NPC_F_TCP_HTTP,
+	NPC_F_TCP_HTTPS,
+	NPC_F_TCP_PPTP,
+	NPC_F_TCP_UNK_PORT,
+	NPC_F_TCP_HTTP_HAS_OPTIONS,
+	NPC_F_TCP_HTTPS_HAS_OPTIONS,
+	NPC_F_TCP_PPTP_HAS_OPTIONS,
+	NPC_F_TCP_UNK_PORT_HAS_OPTIONS,
+	NPC_F_UDP_VXLAN,
+	NPC_F_UDP_VXLAN_NOVNI,
+	NPC_F_UDP_VXLAN_NOVNI_NSH,
+	NPC_F_UDP_VXLANGPE,
+	NPC_F_UDP_VXLANGPE_NSH,
+	NPC_F_UDP_VXLANGPE_MPLS,
+	NPC_F_UDP_VXLANGPE_NOVNI,
+	NPC_F_UDP_VXLANGPE_NOVNI_NSH,
+	NPC_F_UDP_VXLANGPE_NOVNI_MPLS,
+	NPC_F_UDP_VXLANGPE_UNK,
+	NPC_F_UDP_VXLANGPE_NONP,
+	NPC_F_UDP_GTP_GTPC,
+	NPC_F_UDP_GTP_GTPU_G_PDU,
+	NPC_F_UDP_GTP_GTPU_UNK,
+	NPC_F_UDP_UNK_PORT,
+	NPC_F_UDP_GENEVE,
+	NPC_F_UDP_GENEVE_OAM,
+	NPC_F_UDP_GENEVE_CRI_OPT,
+	NPC_F_UDP_GENEVE_OAM_CRI_OPT,
+	NPC_F_GRE_NVGRE,
+	NPC_F_GRE_HAS_SRE,
+	NPC_F_GRE_HAS_CSUM,
+	NPC_F_GRE_HAS_KEY,
+	NPC_F_GRE_HAS_SEQ,
+	NPC_F_GRE_HAS_CSUM_KEY,
+	NPC_F_GRE_HAS_CSUM_SEQ,
+	NPC_F_GRE_HAS_KEY_SEQ,
+	NPC_F_GRE_HAS_CSUM_KEY_SEQ,
+	NPC_F_GRE_HAS_ROUTE,
+	NPC_F_GRE_UNK_PROTO,
+	NPC_F_GRE_VER1,
+	NPC_F_GRE_VER1_HAS_SEQ,
+	NPC_F_GRE_VER1_HAS_ACK,
+	NPC_F_GRE_VER1_HAS_SEQ_ACK,
+	NPC_F_GRE_VER1_UNK_PROTO,
+	NPC_F_TU_ETHER_UNK,
+	NPC_F_TU_ETHER_CTAG,
+	NPC_F_TU_ETHER_CTAG_UNK,
+	NPC_F_TU_ETHER_STAG_CTAG,
+	NPC_F_TU_ETHER_STAG_CTAG_UNK,
+	NPC_F_TU_ETHER_STAG,
+	NPC_F_TU_ETHER_STAG_UNK,
+	NPC_F_TU_ETHER_QINQ_CTAG,
+	NPC_F_TU_ETHER_QINQ_CTAG_UNK,
+	NPC_F_TU_ETHER_QINQ,
+	NPC_F_TU_ETHER_QINQ_UNK,
+	NPC_F_LAST /* has to be the last item */
+};
+
+#define NPC_ACTION_TERM                                                        \
+	(ROC_NPC_ACTION_TYPE_DROP | ROC_NPC_ACTION_TYPE_QUEUE |                \
+	 ROC_NPC_ACTION_TYPE_RSS | ROC_NPC_ACTION_TYPE_DUP |                   \
+	 ROC_NPC_ACTION_TYPE_SEC)
+
+struct npc_xtract_info {
+	/* Length in bytes of pkt data extracted. len = 0
+	 * indicates that extraction is disabled.
+	 */
+	uint8_t len;
+	uint8_t hdr_off;      /* Byte offset of proto hdr: extract_src */
+	uint8_t key_off;      /* Byte offset in MCAM key where data is placed */
+	uint8_t enable;	      /* Extraction enabled or disabled */
+	uint8_t flags_enable; /* Flags extraction enabled */
+};
+
+/* Information for a given {LAYER, LTYPE} */
+struct npc_lid_lt_xtract_info {
+	/* Info derived from parser configuration */
+	uint16_t npc_proto;	    /* Network protocol identified */
+	uint8_t valid_flags_mask;   /* Flags applicable */
+	uint8_t is_terminating : 1; /* No more parsing */
+	struct npc_xtract_info xtract[NPC_MAX_LD];
+};
+
+union npc_kex_ldata_flags_cfg {
+	struct {
+		uint64_t lid : 3;
+		uint64_t rvsd_62_1 : 61;
+	} s;
+
+	uint64_t i;
+};
+
+typedef struct npc_lid_lt_xtract_info npc_dxcfg_t[NPC_MAX_INTF][NPC_MAX_LID]
+						 [NPC_MAX_LT];
+typedef struct npc_lid_lt_xtract_info npc_fxcfg_t[NPC_MAX_INTF][NPC_MAX_LD]
+						 [NPC_MAX_LFL];
+typedef union npc_kex_ldata_flags_cfg npc_ld_flags_t[NPC_MAX_LD];
+
+/* MBOX_MSG_NPC_GET_DATAX_CFG Response */
+struct npc_get_datax_cfg {
+	/* NPC_AF_KEX_LDATA(0..1)_FLAGS_CFG */
+	union npc_kex_ldata_flags_cfg ld_flags[NPC_MAX_LD];
+	/* Extract information indexed with [LID][LTYPE] */
+	struct npc_lid_lt_xtract_info lid_lt_xtract[NPC_MAX_LID][NPC_MAX_LT];
+	/* Flags based extract indexed with [LDATA][FLAGS_LOWER_NIBBLE]
+	 * Fields flags_ena_ld0, flags_ena_ld1 in
+	 * struct npc_lid_lt_xtract_info indicate if this is applicable
+	 * for a given {LAYER, LTYPE}
+	 */
+	struct npc_xtract_info flag_xtract[NPC_MAX_LD][NPC_MAX_LT];
+};
+
+TAILQ_HEAD(npc_flow_list, roc_npc_flow);
+
+struct npc_mcam_ents_info {
+	/* Current max & min values of mcam index */
+	uint32_t max_id;
+	uint32_t min_id;
+	uint32_t free_ent;
+	uint32_t live_ent;
+};
+
+struct npc {
+	struct mbox *mbox;			/* Mbox */
+	uint32_t keyx_supp_nmask[NPC_MAX_INTF]; /* nibble mask */
+	uint8_t profile_name[MKEX_NAME_LEN];	/* KEX profile name */
+	uint32_t keyx_len[NPC_MAX_INTF];	/* per intf key len in bits */
+	uint32_t datax_len[NPC_MAX_INTF];	/* per intf data len in bits */
+	uint32_t keyw[NPC_MAX_INTF];		/* max key + data len bits */
+	uint32_t mcam_entries;			/* mcam entries supported */
+	uint16_t channel;			/* RX Channel number */
+	uint32_t rss_grps;			/* rss groups supported */
+	uint16_t flow_prealloc_size;		/* Pre allocated mcam size */
+	uint16_t flow_max_priority;		/* Max priority for flow */
+	uint16_t switch_header_type; /* Suppprted switch header type */
+	uint32_t mark_actions;	     /* Number of mark actions */
+	uint16_t pf_func;	     /* pf_func of device */
+	npc_dxcfg_t prx_dxcfg;	     /* intf, lid, lt, extract */
+	npc_fxcfg_t prx_fxcfg;	     /* Flag extract */
+	npc_ld_flags_t prx_lfcfg;    /* KEX LD_Flags CFG */
+	/* mcam entry info per priority level: both free & in-use */
+	struct npc_mcam_ents_info *flow_entry_info;
+	/* Bitmap of free preallocated entries in ascending index &
+	 * descending priority
+	 */
+	struct plt_bitmap **free_entries;
+	/* Bitmap of free preallocated entries in descending index &
+	 * ascending priority
+	 */
+	struct plt_bitmap **free_entries_rev;
+	/* Bitmap of live entries in ascending index & descending priority */
+	struct plt_bitmap **live_entries;
+	/* Bitmap of live entries in descending index & ascending priority */
+	struct plt_bitmap **live_entries_rev;
+	/* Priority bucket wise tail queue of all npc_flow resources */
+	struct npc_flow_list *flow_list;
+	struct plt_bitmap *rss_grp_entries;
+};
+
+static inline struct npc *
+roc_npc_to_npc_priv(struct roc_npc *npc)
+{
+	return (struct npc *)npc->reserved;
+}
+#endif /* _ROC_NPC_PRIV_H_ */

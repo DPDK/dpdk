@@ -14,16 +14,20 @@ roc_error_msg_get(int errorcode)
 	case NIX_AF_ERR_PARAM:
 	case NIX_ERR_PARAM:
 	case NPA_ERR_PARAM:
+	case NPC_ERR_PARAM:
 	case UTIL_ERR_PARAM:
 		err_msg = "Invalid parameter";
 		break;
 	case NIX_ERR_NO_MEM:
+	case NPC_ERR_NO_MEM:
 		err_msg = "Out of memory";
 		break;
 	case NIX_ERR_INVALID_RANGE:
+	case NPC_ERR_INVALID_RANGE:
 		err_msg = "Range is not supported";
 		break;
 	case NIX_ERR_INTERNAL:
+	case NPC_ERR_INTERNAL:
 		err_msg = "Internal error";
 		break;
 	case NIX_ERR_OP_NOTSUP:
@@ -103,6 +107,27 @@ roc_error_msg_get(int errorcode)
 		break;
 	case NIX_ERR_NDC_SYNC:
 		err_msg = "NDC Sync failed";
+		break;
+	case NPC_ERR_INVALID_SPEC:
+		err_msg = "NPC invalid spec";
+		break;
+	case NPC_ERR_INVALID_MASK:
+		err_msg = "NPC  invalid mask";
+		break;
+	case NPC_ERR_INVALID_KEX:
+		err_msg = "NPC invalid key";
+		break;
+	case NPC_ERR_INVALID_SIZE:
+		err_msg = "NPC invalid key size";
+		break;
+	case NPC_ERR_ACTION_NOTSUP:
+		err_msg = "NPC action not supported";
+		break;
+	case NPC_ERR_PATTERN_NOTSUP:
+		err_msg = "NPC pattern not supported";
+		break;
+	case NPC_ERR_MCAM_ALLOC:
+		err_msg = "MCAM entry alloc failed";
 		break;
 	case NPA_ERR_ALLOC:
 		err_msg = "NPA alloc failed";

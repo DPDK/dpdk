@@ -5,6 +5,7 @@ INTERNAL {
 	cnxk_logtype_mbox;
 	cnxk_logtype_nix;
 	cnxk_logtype_npa;
+	cnxk_logtype_npc;
 	cnxk_logtype_tm;
 	roc_clk_freq_get;
 	roc_error_msg_get;

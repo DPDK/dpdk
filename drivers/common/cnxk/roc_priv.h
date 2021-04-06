@@ -23,4 +23,7 @@
 /* NIX */
 #include "roc_nix_priv.h"
 
+/* NPC */
+#include "roc_npc_priv.h"
+
 #endif /* _ROC_PRIV_H_ */

@@ -60,4 +60,5 @@ RTE_LOG_REGISTER(cnxk_logtype_base, pmd.cnxk.base, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_mbox, pmd.cnxk.mbox, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_npa, pmd.mempool.cnxk, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_nix, pmd.net.cnxk, NOTICE);
+RTE_LOG_REGISTER(cnxk_logtype_npc, pmd.net.cnxk.flow, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_tm, pmd.net.cnxk.tm, NOTICE);
