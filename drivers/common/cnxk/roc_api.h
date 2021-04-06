@@ -88,6 +88,9 @@
 /* NIX */
 #include "roc_nix.h"
 
+/* SSO */
+#include "roc_sso.h"
+
 /* Utils */
 #include "roc_utils.h"
 

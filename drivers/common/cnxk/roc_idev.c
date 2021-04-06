@@ -29,6 +29,7 @@ idev_get_cfg(void)
 void
 idev_set_defaults(struct idev_cfg *idev)
 {
+	idev->sso_pf_func = 0;
 	idev->npa = NULL;
 	idev->npa_pf_func = 0;
 	idev->max_pools = 128;
@@ -36,6 +37,32 @@ idev_set_defaults(struct idev_cfg *idev)
 	idev->lmt_base_addr = 0;
 	idev->num_lmtlines = 0;
 	__atomic_store_n(&idev->npa_refcnt, 0, __ATOMIC_RELEASE);
+}
+
+uint16_t
+idev_sso_pffunc_get(void)
+{
+	struct idev_cfg *idev;
+	uint16_t sso_pf_func;
+
+	idev = idev_get_cfg();
+	sso_pf_func = 0;
+	if (idev != NULL)
+		sso_pf_func = __atomic_load_n(&idev->sso_pf_func,
+					      __ATOMIC_ACQUIRE);
+
+	return sso_pf_func;
+}
+
+void
+idev_sso_pffunc_set(uint16_t sso_pf_func)
+{
+	struct idev_cfg *idev;
+
+	idev = idev_get_cfg();
+	if (idev != NULL)
+		__atomic_store_n(&idev->sso_pf_func, sso_pf_func,
+				 __ATOMIC_RELEASE);
 }
 
 uint16_t

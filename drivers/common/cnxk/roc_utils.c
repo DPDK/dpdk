@@ -15,6 +15,7 @@ roc_error_msg_get(int errorcode)
 	case NIX_ERR_PARAM:
 	case NPA_ERR_PARAM:
 	case NPC_ERR_PARAM:
+	case SSO_ERR_PARAM:
 	case UTIL_ERR_PARAM:
 		err_msg = "Invalid parameter";
 		break;

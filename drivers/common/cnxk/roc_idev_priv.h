@@ -8,6 +8,7 @@
 /* Intra device related functions */
 struct npa_lf;
 struct idev_cfg {
+	uint16_t sso_pf_func;
 	uint16_t npa_pf_func;
 	struct npa_lf *npa;
 	uint16_t npa_refcnt;
@@ -27,6 +28,10 @@ struct npa_lf *idev_npa_obj_get(void);
 uint32_t idev_npa_maxpools_get(void);
 void idev_npa_maxpools_set(uint32_t max_pools);
 uint16_t idev_npa_lf_active(struct dev *dev);
+
+/* idev sso */
+void idev_sso_pffunc_set(uint16_t sso_pf_func);
+uint16_t idev_sso_pffunc_get(void);
 
 /* idev lmt */
 uint16_t idev_lmt_pffunc_get(void);

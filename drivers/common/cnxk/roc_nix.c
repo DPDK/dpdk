@@ -143,6 +143,7 @@ roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq, uint32_t nb_txq,
 	req->rss_sz = nix->reta_sz;
 	req->rss_grps = ROC_NIX_RSS_GRPS;
 	req->npa_func = idev_npa_pffunc_get();
+	req->sso_func = idev_sso_pffunc_get();
 	req->rx_cfg = rx_cfg;
 
 	if (!roc_nix->rss_tag_as_xor)

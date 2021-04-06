@@ -6,6 +6,7 @@ INTERNAL {
 	cnxk_logtype_nix;
 	cnxk_logtype_npa;
 	cnxk_logtype_npc;
+	cnxk_logtype_sso;
 	cnxk_logtype_tm;
 	roc_clk_freq_get;
 	roc_error_msg_get;
@@ -172,6 +173,10 @@ INTERNAL {
 	roc_npc_profile_name_get;
 	roc_plt_init;
 	roc_plt_init_cb_register;
+	roc_sso_dev_fini;
+	roc_sso_dev_init;
+	roc_sso_rsrc_fini;
+	roc_sso_rsrc_init;
 
 	local: *;
 };

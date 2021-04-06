@@ -26,4 +26,7 @@
 /* NPC */
 #include "roc_npc_priv.h"
 
+/* SSO */
+#include "roc_sso_priv.h"
+
 #endif /* _ROC_PRIV_H_ */
