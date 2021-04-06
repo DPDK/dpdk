@@ -45,6 +45,15 @@ INTERNAL {
 	roc_nix_mac_promisc_mode_enable;
 	roc_nix_mac_rxtx_start_stop;
 	roc_nix_max_pkt_len;
+	roc_nix_mcast_mcam_entry_alloc;
+	roc_nix_mcast_mcam_entry_ena_dis;
+	roc_nix_mcast_mcam_entry_free;
+	roc_nix_mcast_mcam_entry_write;
+	roc_nix_npc_mac_addr_get;
+	roc_nix_npc_mac_addr_set;
+	roc_nix_npc_promisc_ena_dis;
+	roc_nix_npc_rx_ena_dis;
+	roc_nix_npc_mcast_config;
 	roc_nix_ras_intr_ena_dis;
 	roc_nix_register_cq_irqs;
 	roc_nix_register_queue_irqs;

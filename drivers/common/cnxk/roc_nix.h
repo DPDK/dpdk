@@ -193,6 +193,18 @@ int __roc_api roc_nix_mac_link_cb_register(struct roc_nix *roc_nix,
 					   link_status_t link_update);
 void __roc_api roc_nix_mac_link_cb_unregister(struct roc_nix *roc_nix);
 
+/* NPC */
+int __roc_api roc_nix_npc_promisc_ena_dis(struct roc_nix *roc_nix, int enable);
+
+int __roc_api roc_nix_npc_mac_addr_set(struct roc_nix *roc_nix, uint8_t addr[]);
+
+int __roc_api roc_nix_npc_mac_addr_get(struct roc_nix *roc_nix, uint8_t *addr);
+
+int __roc_api roc_nix_npc_rx_ena_dis(struct roc_nix *roc_nix, bool enable);
+
+int __roc_api roc_nix_npc_mcast_config(struct roc_nix *roc_nix,
+				       bool mcast_enable, bool prom_enable);
+
 /* Queue */
 int __roc_api roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq,
 			      bool ena);
@@ -205,4 +217,17 @@ int __roc_api roc_nix_cq_fini(struct roc_nix_cq *cq);
 int __roc_api roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq);
 int __roc_api roc_nix_sq_fini(struct roc_nix_sq *sq);
 
+/* MCAST*/
+int __roc_api roc_nix_mcast_mcam_entry_alloc(struct roc_nix *roc_nix,
+					     uint16_t nb_entries,
+					     uint8_t priority,
+					     uint16_t index[]);
+int __roc_api roc_nix_mcast_mcam_entry_free(struct roc_nix *roc_nix,
+					    uint32_t index);
+int __roc_api roc_nix_mcast_mcam_entry_write(struct roc_nix *roc_nix,
+					     struct mcam_entry *entry,
+					     uint32_t index, uint8_t intf,
+					     uint64_t action);
+int __roc_api roc_nix_mcast_mcam_entry_ena_dis(struct roc_nix *roc_nix,
+					       uint32_t index, bool enable);
 #endif /* _ROC_NIX_H_ */
