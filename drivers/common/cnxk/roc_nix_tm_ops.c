@@ -543,3 +543,144 @@ skip_sq_update:
 	nix->tm_flags |= NIX_TM_HIERARCHY_ENA;
 	return 0;
 }
+
+int
+roc_nix_tm_init(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint32_t tree_mask;
+	int rc;
+
+	if (nix->tm_flags & NIX_TM_HIERARCHY_ENA) {
+		plt_err("Cannot init while existing hierarchy is enabled");
+		return -EBUSY;
+	}
+
+	/* Free up all user resources already held */
+	tree_mask = NIX_TM_TREE_MASK_ALL;
+	rc = nix_tm_free_resources(roc_nix, tree_mask, false);
+	if (rc) {
+		plt_err("Failed to freeup all nodes and resources, rc=%d", rc);
+		return rc;
+	}
+
+	/* Prepare default tree */
+	rc = nix_tm_prepare_default_tree(roc_nix);
+	if (rc) {
+		plt_err("failed to prepare default tm tree, rc=%d", rc);
+		return rc;
+	}
+
+	/* Prepare rlimit tree */
+	rc = nix_tm_prepare_rate_limited_tree(roc_nix);
+	if (rc) {
+		plt_err("failed to prepare rlimit tm tree, rc=%d", rc);
+		return rc;
+	}
+
+	return rc;
+}
+
+int
+roc_nix_tm_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid, uint64_t rate)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile profile;
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_tm_node *node, *parent;
+
+	volatile uint64_t *reg, *regval;
+	struct nix_txschq_config *req;
+	uint16_t flags;
+	uint8_t k = 0;
+	int rc;
+
+	if (nix->tm_tree != ROC_NIX_TM_RLIMIT ||
+	    !(nix->tm_flags & NIX_TM_HIERARCHY_ENA))
+		return NIX_ERR_TM_INVALID_TREE;
+
+	node = nix_tm_node_search(nix, qid, ROC_NIX_TM_RLIMIT);
+
+	/* check if we found a valid leaf node */
+	if (!node || !nix_tm_is_leaf(nix, node->lvl) || !node->parent ||
+	    node->parent->hw_id == NIX_TM_HW_ID_INVALID)
+		return NIX_ERR_TM_INVALID_NODE;
+
+	parent = node->parent;
+	flags = parent->flags;
+
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = NIX_TXSCH_LVL_MDQ;
+	reg = req->reg;
+	regval = req->regval;
+
+	if (rate == 0) {
+		k += nix_tm_sw_xoff_prep(parent, true, &reg[k], &regval[k]);
+		flags &= ~NIX_TM_NODE_ENABLED;
+		goto exit;
+	}
+
+	if (!(flags & NIX_TM_NODE_ENABLED)) {
+		k += nix_tm_sw_xoff_prep(parent, false, &reg[k], &regval[k]);
+		flags |= NIX_TM_NODE_ENABLED;
+	}
+
+	/* Use only PIR for rate limit */
+	memset(&profile, 0, sizeof(profile));
+	profile.peak.rate = rate;
+	/* Minimum burst of ~4us Bytes of Tx */
+	profile.peak.size = PLT_MAX((uint64_t)roc_nix_max_pkt_len(roc_nix),
+				    (4ul * rate) / ((uint64_t)1E6 * 8));
+	if (!nix->tm_rate_min || nix->tm_rate_min > rate)
+		nix->tm_rate_min = rate;
+
+	k += nix_tm_shaper_reg_prep(parent, &profile, &reg[k], &regval[k]);
+exit:
+	req->num_regs = k;
+	rc = mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	parent->flags = flags;
+	return 0;
+}
+
+void
+roc_nix_tm_fini(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txsch_free_req *req;
+	uint32_t tree_mask;
+	uint8_t hw_lvl;
+	int rc;
+
+	/* Xmit is assumed to be disabled */
+	/* Free up resources already held */
+	tree_mask = NIX_TM_TREE_MASK_ALL;
+	rc = nix_tm_free_resources(roc_nix, tree_mask, false);
+	if (rc)
+		plt_err("Failed to freeup existing nodes or rsrcs, rc=%d", rc);
+
+	/* Free all other hw resources */
+	req = mbox_alloc_msg_nix_txsch_free(mbox);
+	if (req == NULL)
+		return;
+
+	req->flags = TXSCHQ_FREE_ALL;
+	rc = mbox_process(mbox);
+	if (rc)
+		plt_err("Failed to freeup all res, rc=%d", rc);
+
+	for (hw_lvl = 0; hw_lvl < NIX_TXSCH_LVL_CNT; hw_lvl++) {
+		plt_bitmap_reset(nix->schq_bmp[hw_lvl]);
+		plt_bitmap_reset(nix->schq_contig_bmp[hw_lvl]);
+		nix->contig_rsvd[hw_lvl] = 0;
+		nix->discontig_rsvd[hw_lvl] = 0;
+	}
+
+	/* Clear shaper profiles */
+	nix_tm_clear_shaper_profiles(nix);
+	nix->tm_tree = 0;
+	nix->tm_flags &= ~NIX_TM_HIERARCHY_ENA;
+}

@@ -326,6 +326,7 @@ int nix_tm_leaf_data_get(struct nix *nix, uint16_t sq, uint32_t *rr_quantum,
 int nix_tm_sq_flush_pre(struct roc_nix_sq *sq);
 int nix_tm_sq_flush_post(struct roc_nix_sq *sq);
 int nix_tm_smq_xoff(struct nix *nix, struct nix_tm_node *node, bool enable);
+int nix_tm_prepare_default_tree(struct roc_nix *roc_nix);
 int nix_tm_node_add(struct roc_nix *roc_nix, struct nix_tm_node *node);
 int nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
 		       enum roc_nix_tm_tree tree, bool free);
@@ -344,6 +345,7 @@ int nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree);
 int nix_tm_update_parent_info(struct nix *nix, enum roc_nix_tm_tree tree);
 int nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 			 bool rr_quantum_only);
+int nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix);
 
 /*
  * TM priv utils.

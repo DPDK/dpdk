@@ -1089,6 +1089,162 @@ alloc_err:
 }
 
 int
+nix_tm_prepare_default_tree(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint32_t nonleaf_id = nix->nb_tx_queues;
+	struct nix_tm_node *node = NULL;
+	uint8_t leaf_lvl, lvl, lvl_end;
+	uint32_t parent, i;
+	int rc = 0;
+
+	/* Add ROOT, SCH1, SCH2, SCH3, [SCH4]  nodes */
+	parent = ROC_NIX_TM_NODE_ID_INVALID;
+	/* With TL1 access we have an extra level */
+	lvl_end = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_SCH4 :
+						       ROC_TM_LVL_SCH3);
+
+	for (lvl = ROC_TM_LVL_ROOT; lvl <= lvl_end; lvl++) {
+		rc = -ENOMEM;
+		node = nix_tm_node_alloc();
+		if (!node)
+			goto error;
+
+		node->id = nonleaf_id;
+		node->parent_id = parent;
+		node->priority = 0;
+		node->weight = NIX_TM_DFLT_RR_WT;
+		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+		node->lvl = lvl;
+		node->tree = ROC_NIX_TM_DEFAULT;
+
+		rc = nix_tm_node_add(roc_nix, node);
+		if (rc)
+			goto error;
+		parent = nonleaf_id;
+		nonleaf_id++;
+	}
+
+	parent = nonleaf_id - 1;
+	leaf_lvl = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_QUEUE :
+							ROC_TM_LVL_SCH4);
+
+	/* Add leaf nodes */
+	for (i = 0; i < nix->nb_tx_queues; i++) {
+		rc = -ENOMEM;
+		node = nix_tm_node_alloc();
+		if (!node)
+			goto error;
+
+		node->id = i;
+		node->parent_id = parent;
+		node->priority = 0;
+		node->weight = NIX_TM_DFLT_RR_WT;
+		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+		node->lvl = leaf_lvl;
+		node->tree = ROC_NIX_TM_DEFAULT;
+
+		rc = nix_tm_node_add(roc_nix, node);
+		if (rc)
+			goto error;
+	}
+
+	return 0;
+error:
+	nix_tm_node_free(node);
+	return rc;
+}
+
+int
+nix_tm_prepare_rate_limited_tree(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint32_t nonleaf_id = nix->nb_tx_queues;
+	struct nix_tm_node *node = NULL;
+	uint8_t leaf_lvl, lvl, lvl_end;
+	uint32_t parent, i;
+	int rc = 0;
+
+	/* Add ROOT, SCH1, SCH2 nodes */
+	parent = ROC_NIX_TM_NODE_ID_INVALID;
+	lvl_end = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_SCH3 :
+						       ROC_TM_LVL_SCH2);
+
+	for (lvl = ROC_TM_LVL_ROOT; lvl <= lvl_end; lvl++) {
+		rc = -ENOMEM;
+		node = nix_tm_node_alloc();
+		if (!node)
+			goto error;
+
+		node->id = nonleaf_id;
+		node->parent_id = parent;
+		node->priority = 0;
+		node->weight = NIX_TM_DFLT_RR_WT;
+		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+		node->lvl = lvl;
+		node->tree = ROC_NIX_TM_RLIMIT;
+
+		rc = nix_tm_node_add(roc_nix, node);
+		if (rc)
+			goto error;
+		parent = nonleaf_id;
+		nonleaf_id++;
+	}
+
+	/* SMQ is mapped to SCH4 when we have TL1 access and SCH3 otherwise */
+	lvl = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_SCH4 : ROC_TM_LVL_SCH3);
+
+	/* Add per queue SMQ nodes i.e SCH4 / SCH3 */
+	for (i = 0; i < nix->nb_tx_queues; i++) {
+		rc = -ENOMEM;
+		node = nix_tm_node_alloc();
+		if (!node)
+			goto error;
+
+		node->id = nonleaf_id + i;
+		node->parent_id = parent;
+		node->priority = 0;
+		node->weight = NIX_TM_DFLT_RR_WT;
+		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+		node->lvl = lvl;
+		node->tree = ROC_NIX_TM_RLIMIT;
+
+		rc = nix_tm_node_add(roc_nix, node);
+		if (rc)
+			goto error;
+	}
+
+	parent = nonleaf_id;
+	leaf_lvl = (nix_tm_have_tl1_access(nix) ? ROC_TM_LVL_QUEUE :
+							ROC_TM_LVL_SCH4);
+
+	/* Add leaf nodes */
+	for (i = 0; i < nix->nb_tx_queues; i++) {
+		rc = -ENOMEM;
+		node = nix_tm_node_alloc();
+		if (!node)
+			goto error;
+
+		node->id = i;
+		node->parent_id = parent;
+		node->priority = 0;
+		node->weight = NIX_TM_DFLT_RR_WT;
+		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
+		node->lvl = leaf_lvl;
+		node->tree = ROC_NIX_TM_RLIMIT;
+
+		rc = nix_tm_node_add(roc_nix, node);
+		if (rc)
+			goto error;
+	}
+
+	return 0;
+error:
+	nix_tm_node_free(node);
+	return rc;
+}
+
+int
 nix_tm_free_resources(struct roc_nix *roc_nix, uint32_t tree_mask, bool hw_only)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);

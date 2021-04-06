@@ -330,6 +330,8 @@ enum roc_tm_node_level {
 /*
  * TM runtime hierarchy init API.
  */
+int __roc_api roc_nix_tm_init(struct roc_nix *roc_nix);
+void __roc_api roc_nix_tm_fini(struct roc_nix *roc_nix);
 int __roc_api roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable);
 int __roc_api roc_nix_tm_sq_flush_spin(struct roc_nix_sq *sq);
 
@@ -391,6 +393,11 @@ roc_nix_tm_shaper_profile_get(struct roc_nix *roc_nix, uint32_t profile_id);
 struct roc_nix_tm_shaper_profile *__roc_api roc_nix_tm_shaper_profile_next(
 	struct roc_nix *roc_nix, struct roc_nix_tm_shaper_profile *__prev);
 
+/*
+ * TM ratelimit tree API.
+ */
+int __roc_api roc_nix_tm_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid,
+				   uint64_t rate);
 /*
  * TM hierarchy enable/disable API.
  */
