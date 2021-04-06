@@ -5,6 +5,25 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+static int
+tim_fill_msix(struct roc_tim *roc_tim, uint16_t nb_ring)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_tim->roc_sso)->dev;
+	struct tim *tim = roc_tim_to_tim_priv(roc_tim);
+	struct msix_offset_rsp *rsp;
+	int i, rc;
+
+	mbox_alloc_msg_msix_offset(dev->mbox);
+	rc = mbox_process_msg(dev->mbox, (void **)&rsp);
+	if (rc < 0)
+		return rc;
+
+	for (i = 0; i < nb_ring; i++)
+		tim->tim_msix_offsets[i] = rsp->timlf_msixoff[i];
+
+	return 0;
+}
+
 static void
 tim_err_desc(int rc)
 {
@@ -158,6 +177,8 @@ int
 roc_tim_lf_alloc(struct roc_tim *roc_tim, uint8_t ring_id, uint64_t *clk)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_tim->roc_sso);
+	struct tim *tim = roc_tim_to_tim_priv(roc_tim);
+	struct tim_ring_req *free_req;
 	struct tim_lf_alloc_req *req;
 	struct tim_lf_alloc_rsp *rsp;
 	struct dev *dev = &sso->dev;
@@ -179,6 +200,17 @@ roc_tim_lf_alloc(struct roc_tim *roc_tim, uint8_t ring_id, uint64_t *clk)
 	if (clk)
 		*clk = rsp->tenns_clk;
 
+	rc = tim_register_irq_priv(roc_tim, &sso->pci_dev->intr_handle, ring_id,
+				   tim->tim_msix_offsets[ring_id]);
+	if (rc < 0) {
+		plt_tim_dbg("Failed to register Ring[%d] IRQ", ring_id);
+		free_req = mbox_alloc_msg_tim_lf_free(dev->mbox);
+		if (free_req == NULL)
+			return -ENOSPC;
+		free_req->ring = ring_id;
+		mbox_process(dev->mbox);
+	}
+
 	return rc;
 }
 
@@ -186,9 +218,13 @@ int
 roc_tim_lf_free(struct roc_tim *roc_tim, uint8_t ring_id)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_tim->roc_sso);
+	struct tim *tim = roc_tim_to_tim_priv(roc_tim);
 	struct dev *dev = &sso->dev;
 	struct tim_ring_req *req;
 	int rc = -ENOSPC;
+
+	tim_unregister_irq_priv(roc_tim, &sso->pci_dev->intr_handle, ring_id,
+				tim->tim_msix_offsets[ring_id]);
 
 	req = mbox_alloc_msg_tim_lf_free(dev->mbox);
 	if (req == NULL)
@@ -208,6 +244,7 @@ int
 roc_tim_init(struct roc_tim *roc_tim)
 {
 	struct rsrc_attach_req *attach_req;
+	struct rsrc_detach_req *detach_req;
 	struct free_rsrcs_rsp *free_rsrc;
 	struct dev *dev;
 	uint16_t nb_lfs;
@@ -242,6 +279,20 @@ roc_tim_init(struct roc_tim *roc_tim)
 	rc = mbox_process(dev->mbox);
 	if (rc < 0) {
 		plt_err("Unable to attach TIM LFs.");
+		return 0;
+	}
+
+	rc = tim_fill_msix(roc_tim, nb_lfs);
+	if (rc < 0) {
+		plt_err("Unable to get TIM MSIX vectors");
+
+		detach_req = mbox_alloc_msg_detach_resources(dev->mbox);
+		if (detach_req == NULL)
+			return -ENOSPC;
+		detach_req->partial = true;
+		detach_req->timlfs = true;
+		mbox_process(dev->mbox);
+
 		return 0;
 	}
 
