@@ -17,6 +17,13 @@ enum roc_nix_sq_max_sqe_sz {
 	roc_nix_maxsqesz_w8 = NIX_MAXSQESZ_W8,
 };
 
+enum roc_nix_fc_mode {
+	ROC_NIX_FC_NONE = 0,
+	ROC_NIX_FC_RX,
+	ROC_NIX_FC_TX,
+	ROC_NIX_FC_FULL
+};
+
 enum roc_nix_vlan_type {
 	ROC_NIX_VLAN_TYPE_INNER = 0x01,
 	ROC_NIX_VLAN_TYPE_OUTER = 0x02,
@@ -34,6 +41,21 @@ struct roc_nix_vlan_config {
 			int idx_inner;
 			int idx_outer;
 		} mcam;
+	};
+};
+
+struct roc_nix_fc_cfg {
+	bool cq_cfg_valid;
+	union {
+		struct {
+			bool enable;
+		} rxchan_cfg;
+
+		struct {
+			uint32_t rq;
+			uint16_t cq_drop;
+			bool enable;
+		} cq_cfg;
 	};
 };
 
@@ -292,6 +314,18 @@ int __roc_api roc_nix_mac_max_rx_len_set(struct roc_nix *roc_nix,
 int __roc_api roc_nix_mac_link_cb_register(struct roc_nix *roc_nix,
 					   link_status_t link_update);
 void __roc_api roc_nix_mac_link_cb_unregister(struct roc_nix *roc_nix);
+
+/* Flow control */
+int __roc_api roc_nix_fc_config_set(struct roc_nix *roc_nix,
+				    struct roc_nix_fc_cfg *fc_cfg);
+
+int __roc_api roc_nix_fc_config_get(struct roc_nix *roc_nix,
+				    struct roc_nix_fc_cfg *fc_cfg);
+
+int __roc_api roc_nix_fc_mode_set(struct roc_nix *roc_nix,
+				  enum roc_nix_fc_mode mode);
+
+enum roc_nix_fc_mode __roc_api roc_nix_fc_mode_get(struct roc_nix *roc_nix);
 
 /* NPC */
 int __roc_api roc_nix_npc_promisc_ena_dis(struct roc_nix *roc_nix, int enable);
