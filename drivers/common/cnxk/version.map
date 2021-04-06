@@ -4,6 +4,7 @@ INTERNAL {
 	roc_error_msg_get;
 	roc_model;
 	roc_plt_init;
+	roc_plt_init_cb_register;
 
 	local: *;
 };

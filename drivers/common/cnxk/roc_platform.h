@@ -161,4 +161,8 @@
 __rte_internal
 int roc_plt_init(void);
 
+/* Init callbacks */
+typedef int (*roc_plt_init_cb_t)(void);
+int __roc_api roc_plt_init_cb_register(roc_plt_init_cb_t cb);
+
 #endif /* _ROC_PLATFORM_H_ */
