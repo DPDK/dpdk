@@ -1125,6 +1125,10 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	}
 	dev->mbox_active = 1;
 
+	rc = npa_lf_init(dev, pci_dev);
+	if (rc)
+		goto iounmap;
+
 	/* Setup LMT line base */
 	rc = dev_lmt_setup(pci_dev, dev);
 	if (rc)
@@ -1149,6 +1153,13 @@ dev_fini(struct dev *dev, struct plt_pci_device *pci_dev)
 {
 	struct plt_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct mbox *mbox;
+
+	/* Check if this dev hosts npalf and has 1+ refs */
+	if (idev_npa_lf_active(dev) > 1)
+		return -EAGAIN;
+
+	/* Clear references to this pci dev */
+	npa_lf_fini();
 
 	mbox_unregister_irq(pci_dev, dev);
 

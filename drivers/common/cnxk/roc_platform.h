@@ -134,6 +134,7 @@
 /* Log */
 extern int cnxk_logtype_base;
 extern int cnxk_logtype_mbox;
+extern int cnxk_logtype_npa;
 
 #define plt_err(fmt, args...)                                                  \
 	RTE_LOG(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
@@ -151,6 +152,7 @@ extern int cnxk_logtype_mbox;
 
 #define plt_base_dbg(fmt, ...)	plt_dbg(base, fmt, ##__VA_ARGS__)
 #define plt_mbox_dbg(fmt, ...)	plt_dbg(mbox, fmt, ##__VA_ARGS__)
+#define plt_npa_dbg(fmt, ...)	plt_dbg(npa, fmt, ##__VA_ARGS__)
 
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)				\

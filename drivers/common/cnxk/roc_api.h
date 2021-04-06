@@ -79,6 +79,9 @@
 /* Mbox */
 #include "roc_mbox.h"
 
+/* NPA */
+#include "roc_npa.h"
+
 /* Utils */
 #include "roc_utils.h"
 

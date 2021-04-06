@@ -11,6 +11,9 @@
 /* Mbox */
 #include "roc_mbox_priv.h"
 
+/* NPA */
+#include "roc_npa_priv.h"
+
 /* Dev */
 #include "roc_dev_priv.h"
 

@@ -78,11 +78,17 @@ struct dev {
 	dev_intr_t intr;
 	int timer_set; /* ~0 : no alarm handling */
 	uint64_t hwcap;
+	struct npa_lf npa;
 	struct mbox *mbox;
 	uint16_t maxvf;
 	struct dev_ops *ops;
 	void *roc_nix;
 	bool disable_shared_lmt; /* false(default): shared lmt mode enabled */
+} __plt_cache_aligned;
+
+struct npa {
+	struct plt_pci_device *pci_dev;
+	struct dev dev;
 } __plt_cache_aligned;
 
 extern uint16_t dev_rclk_freq;

@@ -29,9 +29,76 @@ idev_get_cfg(void)
 void
 idev_set_defaults(struct idev_cfg *idev)
 {
+	idev->npa = NULL;
+	idev->npa_pf_func = 0;
+	idev->max_pools = 128;
 	idev->lmt_pf_func = 0;
 	idev->lmt_base_addr = 0;
 	idev->num_lmtlines = 0;
+	__atomic_store_n(&idev->npa_refcnt, 0, __ATOMIC_RELEASE);
+}
+
+uint16_t
+idev_npa_pffunc_get(void)
+{
+	struct idev_cfg *idev;
+	uint16_t npa_pf_func;
+
+	idev = idev_get_cfg();
+	npa_pf_func = 0;
+	if (idev != NULL)
+		npa_pf_func = idev->npa_pf_func;
+
+	return npa_pf_func;
+}
+
+struct npa_lf *
+idev_npa_obj_get(void)
+{
+	struct idev_cfg *idev;
+
+	idev = idev_get_cfg();
+	if (idev && __atomic_load_n(&idev->npa_refcnt, __ATOMIC_ACQUIRE))
+		return idev->npa;
+
+	return NULL;
+}
+
+uint32_t
+roc_idev_npa_maxpools_get(void)
+{
+	struct idev_cfg *idev;
+	uint32_t max_pools;
+
+	idev = idev_get_cfg();
+	max_pools = 0;
+	if (idev != NULL)
+		max_pools = idev->max_pools;
+
+	return max_pools;
+}
+
+void
+roc_idev_npa_maxpools_set(uint32_t max_pools)
+{
+	struct idev_cfg *idev;
+
+	idev = idev_get_cfg();
+	if (idev != NULL)
+		__atomic_store_n(&idev->max_pools, max_pools, __ATOMIC_RELEASE);
+}
+
+uint16_t
+idev_npa_lf_active(struct dev *dev)
+{
+	struct idev_cfg *idev;
+
+	/* Check if npalf is actively used on this dev */
+	idev = idev_get_cfg();
+	if (!idev || !idev->npa || idev->npa->mbox != dev->mbox)
+		return 0;
+
+	return __atomic_load_n(&idev->npa_refcnt, __ATOMIC_ACQUIRE);
 }
 
 uint16_t

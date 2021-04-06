@@ -11,8 +11,30 @@ roc_error_msg_get(int errorcode)
 	const char *err_msg;
 
 	switch (errorcode) {
+	case NPA_ERR_PARAM:
 	case UTIL_ERR_PARAM:
 		err_msg = "Invalid parameter";
+		break;
+	case NPA_ERR_ALLOC:
+		err_msg = "NPA alloc failed";
+		break;
+	case NPA_ERR_INVALID_BLOCK_SZ:
+		err_msg = "NPA invalid block size";
+		break;
+	case NPA_ERR_AURA_ID_ALLOC:
+		err_msg = "NPA aura id alloc failed";
+		break;
+	case NPA_ERR_AURA_POOL_INIT:
+		err_msg = "NPA aura pool init failed";
+		break;
+	case NPA_ERR_AURA_POOL_FINI:
+		err_msg = "NPA aura pool fini failed";
+		break;
+	case NPA_ERR_BASE_INVALID:
+		err_msg = "NPA invalid base";
+		break;
+	case NPA_ERR_DEVICE_NOT_BOUNDED:
+		err_msg = "NPA device is not bounded";
 		break;
 	case UTIL_ERR_FS:
 		err_msg = "file operation failed";
