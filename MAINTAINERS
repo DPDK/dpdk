@@ -333,7 +333,6 @@ M: Narcisa Ana Maria Vasile <navasile@linux.microsoft.com>
 M: Dmitry Malloy <dmitrym@microsoft.com>
 M: Pallavi Kadam <pallavi.kadam@intel.com>
 F: lib/librte_eal/windows/
-F: lib/librte_eal/rte_eal_exports.def
 F: buildtools/map_to_win.py
 F: doc/guides/windows_gsg/
 

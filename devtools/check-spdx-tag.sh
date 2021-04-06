@@ -25,7 +25,7 @@ check_spdx() {
 	':^*/Kbuild' ':^*/README' \
 	':^license/' ':^config/' ':^buildtools/' \
 	':^*.cocci' ':^*.abignore' \
-	':^*.def' ':^*.map' ':^*.ini' ':^*.data' ':^*.cfg' ':^*.txt' \
+	':^*.map' ':^*.ini' ':^*.data' ':^*.cfg' ':^*.txt' \
 	':^*.svg' ':^*.png'\
 	> $tmpfile
 

@@ -12,7 +12,7 @@ ret=0
 find_orphan_symbols ()
 {
     for map in $(find lib drivers -name '*.map') ; do
-        for sym in $(sed -rn 's,^([^}]*_.*);,\1,p' $map) ; do
+        for sym in $(sed -rn 's,^([^}]*_.*);.*$,\1,p' $map) ; do
             if echo $sym | grep -q '^per_lcore_' ; then
                 symsrc=${sym#per_lcore_}
             elif echo $sym | grep -q '^__rte_.*_trace_' ; then
@@ -32,26 +32,6 @@ orphan_symbols=$(find_orphan_symbols)
 if [ -n "$orphan_symbols" ] ; then
     echo "Found only in symbol map file:"
     echo "$orphan_symbols" | sed 's,^,\t,'
-    ret=1
-fi
-
-find_orphan_windows_symbols ()
-{
-    for def in $(find lib drivers -name '*_exports.def') ; do
-        if echo $def | grep -q 'common_mlx5' ; then
-            continue # mlx5 exports different symbols per OS
-        fi
-        map=$(dirname $def)/version.map
-        for sym in $(grep -v ^EXPORTS $def); do
-            grep -q $sym $map || echo $sym
-        done
-    done
-}
-
-orphan_windows_symbols=$(find_orphan_windows_symbols)
-if [ -n "$orphan_windows_symbols" ] ; then
-    echo "Found only in Windows export file:"
-    echo "$orphan_windows_symbols" | sed 's,^,\t,'
     ret=1
 fi
 

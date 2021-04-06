@@ -15,12 +15,16 @@ import re
 
 
 def __parse_map_file(f_in):
-    # match function name, followed by semicolon, followed by EOL, optionally
-    # with whitespace in between each item
+    # match function name, followed by semicolon, followed by EOL or comments,
+    # optionally with whitespace in between each item
     func_line_regex = re.compile(r"\s*"
+                                 r"(?P<line>"
                                  r"(?P<func>[a-zA-Z_0-9]+)"
                                  r"\s*"
                                  r";"
+                                 r"\s*"
+                                 r"(?P<comment>#.+)?"
+                                 r")"
                                  r"\s*"
                                  r"$")
     # match section name, followed by opening bracked, followed by EOL,
@@ -99,7 +103,7 @@ def __parse_map_file(f_in):
         # is this a function?
         match = func_line_regex.match(line)
         if match:
-            stable_lines.add(match.group("func"))
+            stable_lines.add(match.group("line"))
 
     return has_stable, stable_lines, experimental_lines, internal_lines
 
@@ -116,7 +120,7 @@ def __generate_stable_abi(f_out, abi_major, lines):
 
         # print all stable lines, alphabetically sorted
         for line in sorted(lines):
-            print("\t{};".format(line), file=f_out)
+            print("\t{}".format(line), file=f_out)
 
         # another blank line
         print(file=f_out)

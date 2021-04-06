@@ -1,14 +1,16 @@
 INTERNAL {
 	global:
 
+	haswell_broadwell_cpu;
+
 	mlx5_common_init;
 
-	mlx5_common_verbs_reg_mr;
-	mlx5_common_verbs_dereg_mr;
+	mlx5_common_verbs_reg_mr; # WINDOWS_NO_EXPORT
+	mlx5_common_verbs_dereg_mr; # WINDOWS_NO_EXPORT
 
 	mlx5_create_mr_ext;
 
-	mlx5_dev_to_pci_addr;
+	mlx5_dev_to_pci_addr; # WINDOWS_NO_EXPORT
 
 	mlx5_devx_cmd_alloc_pd;
 	mlx5_devx_cmd_create_cq;
@@ -20,7 +22,7 @@ INTERNAL {
 	mlx5_devx_cmd_create_tir;
 	mlx5_devx_cmd_create_td;
 	mlx5_devx_cmd_create_tis;
-	mlx5_devx_cmd_create_virtio_q_counters;
+	mlx5_devx_cmd_create_virtio_q_counters; # WINDOWS_NO_EXPORT
 	mlx5_devx_cmd_create_virtq;
 	mlx5_devx_cmd_create_flow_hit_aso_obj;
 	mlx5_devx_cmd_create_geneve_tlv_option;
@@ -38,14 +40,14 @@ INTERNAL {
 	mlx5_devx_cmd_qp_query_tis_td;
 	mlx5_devx_cmd_query_hca_attr;
 	mlx5_devx_cmd_query_parse_samples;
-	mlx5_devx_cmd_query_virtio_q_counters;
+	mlx5_devx_cmd_query_virtio_q_counters; # WINDOWS_NO_EXPORT
 	mlx5_devx_cmd_query_virtq;
-	mlx5_devx_cmd_queue_counter_alloc;
-	mlx5_devx_cmd_queue_counter_query;
+	mlx5_devx_cmd_queue_counter_alloc; # WINDOWS_NO_EXPORT
+	mlx5_devx_cmd_queue_counter_query; # WINDOWS_NO_EXPORT
 	mlx5_devx_cmd_register_read;
-	mlx5_devx_cmd_wq_query;
+	mlx5_devx_cmd_wq_query; # WINDOWS_NO_EXPORT
 	mlx5_devx_get_out_command_status;
-	mlx5_devx_alloc_uar;
+	mlx5_devx_alloc_uar; # WINDOWS_NO_EXPORT
 
 	mlx5_devx_cq_create;
 	mlx5_devx_cq_destroy;
@@ -54,15 +56,17 @@ INTERNAL {
 	mlx5_devx_sq_create;
 	mlx5_devx_sq_destroy;
 
-	mlx5_get_ifname_sysfs;
+	mlx5_get_ifname_sysfs; # WINDOWS_NO_EXPORT
 
-	mlx5_mp_init_primary;
-	mlx5_mp_uninit_primary;
-	mlx5_mp_init_secondary;
-	mlx5_mp_uninit_secondary;
-	mlx5_mp_req_mr_create;
+	mlx5_glue;
+
+	mlx5_mp_init_primary; # WINDOWS_NO_EXPORT
+	mlx5_mp_uninit_primary; # WINDOWS_NO_EXPORT
+	mlx5_mp_init_secondary; # WINDOWS_NO_EXPORT
+	mlx5_mp_uninit_secondary; # WINDOWS_NO_EXPORT
+	mlx5_mp_req_mr_create; # WINDOWS_NO_EXPORT
 	mlx5_mp_req_queue_state_modify;
-	mlx5_mp_req_verbs_cmd_fd;
+	mlx5_mp_req_verbs_cmd_fd; # WINDOWS_NO_EXPORT
 
 	mlx5_mr_btree_init;
 	mlx5_mr_btree_free;
@@ -78,28 +82,35 @@ INTERNAL {
 	mlx5_mr_flush_local_cache;
 	mlx5_mr_free;
 
-	mlx5_nl_allmulti;
-	mlx5_nl_devlink_family_id_get;
-	mlx5_nl_driver_reload;
-	mlx5_nl_enable_roce_get;
-	mlx5_nl_enable_roce_set;
-	mlx5_nl_ifindex;
-	mlx5_nl_init;
-	mlx5_nl_mac_addr_add;
-	mlx5_nl_mac_addr_flush;
-	mlx5_nl_mac_addr_remove;
-	mlx5_nl_mac_addr_sync;
-	mlx5_nl_portnum;
-	mlx5_nl_promisc;
-	mlx5_nl_switch_info;
-	mlx5_nl_vf_mac_addr_modify;
-	mlx5_nl_vlan_vmwa_create;
-	mlx5_nl_vlan_vmwa_delete;
+	mlx5_nl_allmulti; # WINDOWS_NO_EXPORT
+	mlx5_nl_devlink_family_id_get; # WINDOWS_NO_EXPORT
+	mlx5_nl_driver_reload; # WINDOWS_NO_EXPORT
+	mlx5_nl_enable_roce_get; # WINDOWS_NO_EXPORT
+	mlx5_nl_enable_roce_set; # WINDOWS_NO_EXPORT
+	mlx5_nl_ifindex; # WINDOWS_NO_EXPORT
+	mlx5_nl_init; # WINDOWS_NO_EXPORT
+	mlx5_nl_mac_addr_add; # WINDOWS_NO_EXPORT
+	mlx5_nl_mac_addr_flush; # WINDOWS_NO_EXPORT
+	mlx5_nl_mac_addr_remove; # WINDOWS_NO_EXPORT
+	mlx5_nl_mac_addr_sync; # WINDOWS_NO_EXPORT
+	mlx5_nl_portnum; # WINDOWS_NO_EXPORT
+	mlx5_nl_promisc; # WINDOWS_NO_EXPORT
+	mlx5_nl_switch_info; # WINDOWS_NO_EXPORT
+	mlx5_nl_vf_mac_addr_modify; # WINDOWS_NO_EXPORT
+	mlx5_nl_vlan_vmwa_create; # WINDOWS_NO_EXPORT
+	mlx5_nl_vlan_vmwa_delete; # WINDOWS_NO_EXPORT
 
-	mlx5_translate_port_name;
+	mlx5_os_alloc_pd;
+	mlx5_os_dealloc_pd;
+	mlx5_os_dereg_mr;
+	mlx5_os_reg_mr;
+	mlx5_os_umem_reg;
+	mlx5_os_umem_dereg;
+
+	mlx5_translate_port_name; # WINDOWS_NO_EXPORT
 
 	mlx5_malloc_mem_select;
-	mlx5_memory_stat_dump;
+	mlx5_memory_stat_dump; # WINDOWS_NO_EXPORT
 	mlx5_malloc;
 	mlx5_realloc;
 	mlx5_free;

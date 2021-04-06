@@ -3,11 +3,10 @@
 # Copyright(c) 2019 Intel Corporation
 
 import sys
-from os.path import dirname, basename, join, exists
 
 
 def is_function_line(ln):
-    return ln.startswith('\t') and ln.endswith(';\n') and ":" not in ln
+    return ln.startswith('\t') and ln.endswith(';\n') and ":" not in ln and "# WINDOWS_NO_EXPORT" not in ln
 
 # MinGW keeps the original .map file but replaces per_lcore* to __emutls_v.per_lcore*
 def create_mingw_map_file(input_map, output_map):
@@ -23,12 +22,6 @@ def main(args):
     if args[2].endswith('mingw.map'):
         create_mingw_map_file(args[1], args[2])
         return 0
-
-# special case, allow override if an def file already exists alongside map file
-    override_file = join(dirname(args[1]), basename(args[2]))
-    if exists(override_file):
-        with open(override_file) as f_in:
-            functions = f_in.readlines()
 
 # generate def file from map file.
 # This works taking indented lines only which end with a ";" and which don't

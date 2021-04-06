@@ -2,8 +2,8 @@ DPDK_21 {
 	global:
 
 	__rte_panic;
-	eal_parse_sysfs_value;
-	eal_timer_source;
+	eal_parse_sysfs_value; # WINDOWS_NO_EXPORT
+	eal_timer_source; # WINDOWS_NO_EXPORT
 	per_lcore__lcore_id;
 	per_lcore__rte_errno;
 	per_lcore__thread_id;
@@ -20,9 +20,9 @@ DPDK_21 {
 	rte_calloc_socket;
 	rte_cpu_get_flag_enabled;
 	rte_cpu_get_flag_name;
-	rte_cpu_is_supported;
+	rte_cpu_is_supported; # WINDOWS_NO_EXPORT
 	rte_ctrl_thread_create;
-	rte_cycles_vmware_tsc_map;
+	rte_cycles_vmware_tsc_map; # WINDOWS_NO_EXPORT
 	rte_delay_us;
 	rte_delay_us_block;
 	rte_delay_us_callback_register;
@@ -43,7 +43,7 @@ DPDK_21 {
 	rte_eal_alarm_cancel;
 	rte_eal_alarm_set;
 	rte_eal_cleanup;
-	rte_eal_create_uio_dev;
+	rte_eal_create_uio_dev; # WINDOWS_NO_EXPORT
 	rte_eal_get_lcore_state;
 	rte_eal_get_physmem_size;
 	rte_eal_get_runtime_dir;
@@ -51,34 +51,34 @@ DPDK_21 {
 	rte_eal_has_pci;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
-	rte_eal_hpet_init;
+	rte_eal_hpet_init; # WINDOWS_NO_EXPORT
 	rte_eal_init;
-	rte_eal_iopl_init;
+	rte_eal_iopl_init; # WINDOWS_NO_EXPORT
 	rte_eal_iova_mode;
 	rte_eal_lcore_role;
 	rte_eal_mbuf_user_pool_ops;
 	rte_eal_mp_remote_launch;
 	rte_eal_mp_wait_lcore;
-	rte_eal_primary_proc_alive;
+	rte_eal_primary_proc_alive; # WINDOWS_NO_EXPORT
 	rte_eal_process_type;
 	rte_eal_remote_launch;
 	rte_eal_tailq_lookup;
 	rte_eal_tailq_register;
 	rte_eal_using_phys_addrs;
-	rte_eal_vfio_intr_mode;
+	rte_eal_vfio_intr_mode; # WINDOWS_NO_EXPORT
 	rte_eal_wait_lcore;
 	rte_epoll_ctl;
 	rte_epoll_wait;
 	rte_exit;
 	rte_free;
-	rte_get_hpet_cycles;
-	rte_get_hpet_hz;
+	rte_get_hpet_cycles; # WINDOWS_NO_EXPORT
+	rte_get_hpet_hz; # WINDOWS_NO_EXPORT
 	rte_get_main_lcore;
 	rte_get_next_lcore;
 	rte_get_tsc_hz;
 	rte_hexdump;
 	rte_hypervisor_get;
-	rte_hypervisor_get_name;
+	rte_hypervisor_get_name; # WINDOWS_NO_EXPORT
 	rte_intr_allow_others;
 	rte_intr_callback_register;
 	rte_intr_callback_unregister;
@@ -91,12 +91,12 @@ DPDK_21 {
 	rte_intr_free_epoll_fd;
 	rte_intr_rx_ctl;
 	rte_intr_tls_epfd;
-	rte_keepalive_create;
-	rte_keepalive_dispatch_pings;
-	rte_keepalive_mark_alive;
-	rte_keepalive_mark_sleep;
-	rte_keepalive_register_core;
-	rte_keepalive_register_relay_callback;
+	rte_keepalive_create; # WINDOWS_NO_EXPORT
+	rte_keepalive_dispatch_pings; # WINDOWS_NO_EXPORT
+	rte_keepalive_mark_alive; # WINDOWS_NO_EXPORT
+	rte_keepalive_mark_sleep; # WINDOWS_NO_EXPORT
+	rte_keepalive_register_core; # WINDOWS_NO_EXPORT
+	rte_keepalive_register_relay_callback; # WINDOWS_NO_EXPORT
 	rte_lcore_count;
 	rte_lcore_has_role;
 	rte_lcore_index;
@@ -186,7 +186,7 @@ DPDK_21 {
 	rte_socket_count;
 	rte_socket_id;
 	rte_socket_id_by_idx;
-	rte_srand;
+	rte_srand; # WINDOWS_NO_EXPORT
 	rte_strerror;
 	rte_strscpy;
 	rte_strsplit;
@@ -194,26 +194,26 @@ DPDK_21 {
 	rte_thread_get_affinity;
 	rte_thread_set_affinity;
 	rte_thread_setname;
-	rte_uuid_compare;
-	rte_uuid_is_null;
-	rte_uuid_parse;
-	rte_uuid_unparse;
-	rte_version;
-	rte_vfio_clear_group;
-	rte_vfio_container_create;
-	rte_vfio_container_destroy;
+	rte_uuid_compare; # WINDOWS_NO_EXPORT
+	rte_uuid_is_null; # WINDOWS_NO_EXPORT
+	rte_uuid_parse; # WINDOWS_NO_EXPORT
+	rte_uuid_unparse; # WINDOWS_NO_EXPORT
+	rte_version; # WINDOWS_NO_EXPORT
+	rte_vfio_clear_group; # WINDOWS_NO_EXPORT
+	rte_vfio_container_create; # WINDOWS_NO_EXPORT
+	rte_vfio_container_destroy; # WINDOWS_NO_EXPORT
 	rte_vfio_container_dma_map;
 	rte_vfio_container_dma_unmap;
-	rte_vfio_container_group_bind;
-	rte_vfio_container_group_unbind;
-	rte_vfio_enable;
-	rte_vfio_get_container_fd;
-	rte_vfio_get_group_fd;
-	rte_vfio_get_group_num;
-	rte_vfio_is_enabled;
-	rte_vfio_noiommu_is_enabled;
-	rte_vfio_release_device;
-	rte_vfio_setup_device;
+	rte_vfio_container_group_bind; # WINDOWS_NO_EXPORT
+	rte_vfio_container_group_unbind; # WINDOWS_NO_EXPORT
+	rte_vfio_enable; # WINDOWS_NO_EXPORT
+	rte_vfio_get_container_fd; # WINDOWS_NO_EXPORT
+	rte_vfio_get_group_fd; # WINDOWS_NO_EXPORT
+	rte_vfio_get_group_num; # WINDOWS_NO_EXPORT
+	rte_vfio_is_enabled; # WINDOWS_NO_EXPORT
+	rte_vfio_noiommu_is_enabled; # WINDOWS_NO_EXPORT
+	rte_vfio_release_device; # WINDOWS_NO_EXPORT
+	rte_vfio_setup_device; # WINDOWS_NO_EXPORT
 	rte_vlog;
 	rte_zmalloc;
 	rte_zmalloc_socket;
@@ -233,8 +233,8 @@ EXPERIMENTAL {
 	# added in 18.05
 	rte_dev_event_callback_register;
 	rte_dev_event_callback_unregister;
-	rte_dev_event_monitor_start;
-	rte_dev_event_monitor_stop;
+	rte_dev_event_monitor_start; # WINDOWS_NO_EXPORT
+	rte_dev_event_monitor_stop; # WINDOWS_NO_EXPORT
 	rte_fbarray_attach;
 	rte_fbarray_destroy;
 	rte_fbarray_detach;
@@ -287,8 +287,8 @@ EXPERIMENTAL {
 	# added in 18.11
 	rte_delay_us_sleep;
 	rte_dev_event_callback_process;
-	rte_dev_hotplug_handle_disable;
-	rte_dev_hotplug_handle_enable;
+	rte_dev_hotplug_handle_disable; # WINDOWS_NO_EXPORT
+	rte_dev_hotplug_handle_enable; # WINDOWS_NO_EXPORT
 	rte_malloc_heap_create;
 	rte_malloc_heap_destroy;
 	rte_malloc_heap_get_socket;
@@ -326,7 +326,7 @@ EXPERIMENTAL {
 	rte_lcore_to_cpu_id;
 	rte_mcfg_timer_lock;
 	rte_mcfg_timer_unlock;
-	rte_rand_max;
+	rte_rand_max; # WINDOWS_NO_EXPORT
 
 	# added in 19.11
 	rte_mcfg_get_single_file_segments;
@@ -372,22 +372,22 @@ EXPERIMENTAL {
 	per_lcore_trace_mem;
 	per_lcore_trace_point_sz;
 	rte_log_can_log;
-	rte_thread_getname;
-	rte_trace_dump;
-	rte_trace_is_enabled;
-	rte_trace_metadata_dump;
-	rte_trace_mode_get;
-	rte_trace_mode_set;
-	rte_trace_pattern;
-	rte_trace_point_disable;
-	rte_trace_point_enable;
-	rte_trace_point_is_enabled;
-	rte_trace_point_lookup;
-	rte_trace_regexp;
-	rte_trace_save;
+	rte_thread_getname; # WINDOWS_NO_EXPORT
+	rte_trace_dump; # WINDOWS_NO_EXPORT
+	rte_trace_is_enabled; # WINDOWS_NO_EXPORT
+	rte_trace_metadata_dump; # WINDOWS_NO_EXPORT
+	rte_trace_mode_get; # WINDOWS_NO_EXPORT
+	rte_trace_mode_set; # WINDOWS_NO_EXPORT
+	rte_trace_pattern; # WINDOWS_NO_EXPORT
+	rte_trace_point_disable; # WINDOWS_NO_EXPORT
+	rte_trace_point_enable; # WINDOWS_NO_EXPORT
+	rte_trace_point_is_enabled; # WINDOWS_NO_EXPORT
+	rte_trace_point_lookup; # WINDOWS_NO_EXPORT
+	rte_trace_regexp; # WINDOWS_NO_EXPORT
+	rte_trace_save; # WINDOWS_NO_EXPORT
 
 	# added in 20.08
-	rte_eal_vfio_get_vf_token;
+	rte_eal_vfio_get_vf_token; # WINDOWS_NO_EXPORT
 	rte_lcore_callback_register;
 	rte_lcore_callback_unregister;
 	rte_lcore_dump;
@@ -397,17 +397,17 @@ EXPERIMENTAL {
 	rte_thread_unregister;
 
 	# added in 20.11
-	__rte_eal_trace_generic_size_t;
-	rte_cpu_get_intrinsics_support;
+	__rte_eal_trace_generic_size_t; # WINDOWS_NO_EXPORT
+	rte_cpu_get_intrinsics_support; # WINDOWS_NO_EXPORT
 	rte_epoll_wait_interruptible;
 	rte_service_lcore_may_be_active;
 	rte_vect_get_max_simd_bitwidth;
 	rte_vect_set_max_simd_bitwidth;
 
 	# added in 21.02
-	rte_power_monitor;
-	rte_power_monitor_wakeup;
-	rte_power_pause;
+	rte_power_monitor; # WINDOWS_NO_EXPORT
+	rte_power_monitor_wakeup; # WINDOWS_NO_EXPORT
+	rte_power_pause; # WINDOWS_NO_EXPORT
 
 	# added in 21.05
 	rte_intr_callback_unregister_sync;
@@ -415,12 +415,12 @@ EXPERIMENTAL {
 	rte_thread_key_delete;
 	rte_thread_value_get;
 	rte_thread_value_set;
-	rte_version_minor;
-	rte_version_month;
-	rte_version_prefix;
-	rte_version_release;
-	rte_version_suffix;
-	rte_version_year;
+	rte_version_minor; # WINDOWS_NO_EXPORT
+	rte_version_month; # WINDOWS_NO_EXPORT
+	rte_version_prefix; # WINDOWS_NO_EXPORT
+	rte_version_release; # WINDOWS_NO_EXPORT
+	rte_version_suffix; # WINDOWS_NO_EXPORT
+	rte_version_year; # WINDOWS_NO_EXPORT
 };
 
 INTERNAL {
