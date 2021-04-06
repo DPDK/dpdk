@@ -158,6 +158,18 @@ struct roc_nix_link_info {
 	uint64_t port : 8;
 };
 
+/** Maximum name length for extended statistics counters */
+#define ROC_NIX_XSTATS_NAME_SIZE 64
+
+struct roc_nix_xstat {
+	uint64_t id;	/**< The index in xstats name array. */
+	uint64_t value; /**< The statistic counter value. */
+};
+
+struct roc_nix_xstat_name {
+	char name[ROC_NIX_XSTATS_NAME_SIZE];
+};
+
 struct roc_nix_ipsec_cfg {
 	uint32_t sa_size;
 	uint32_t tag_const;
@@ -289,6 +301,12 @@ int __roc_api roc_nix_stats_queue_get(struct roc_nix *roc_nix, uint16_t qid,
 				      struct roc_nix_stats_queue *qstats);
 int __roc_api roc_nix_stats_queue_reset(struct roc_nix *roc_nix, uint16_t qid,
 					bool is_rx);
+int __roc_api roc_nix_num_xstats_get(struct roc_nix *roc_nix);
+int __roc_api roc_nix_xstats_get(struct roc_nix *roc_nix,
+				 struct roc_nix_xstat *xstats, unsigned int n);
+int __roc_api roc_nix_xstats_names_get(struct roc_nix *roc_nix,
+				       struct roc_nix_xstat_name *xstats_names,
+				       unsigned int limit);
 
 /* Queue */
 int __roc_api roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq,

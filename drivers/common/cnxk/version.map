@@ -83,6 +83,9 @@ INTERNAL {
 	roc_nix_stats_queue_get;
 	roc_nix_stats_queue_reset;
 	roc_nix_stats_reset;
+	roc_nix_num_xstats_get;
+	roc_nix_xstats_get;
+	roc_nix_xstats_names_get;
 	roc_nix_unregister_cq_irqs;
 	roc_nix_unregister_queue_irqs;
 	roc_npa_aura_limit_modify;
