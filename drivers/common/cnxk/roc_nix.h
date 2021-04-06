@@ -100,6 +100,23 @@ struct roc_nix_sq {
 	void *fc;
 };
 
+struct roc_nix_link_info {
+	uint64_t status : 1;
+	uint64_t full_duplex : 1;
+	uint64_t lmac_type_id : 4;
+	uint64_t speed : 20;
+	uint64_t autoneg : 1;
+	uint64_t fec : 2;
+	uint64_t port : 8;
+};
+
+/* Link status update callback */
+typedef void (*link_status_t)(struct roc_nix *roc_nix,
+			      struct roc_nix_link_info *link);
+
+/* PTP info update callback */
+typedef int (*ptp_info_update_t)(struct roc_nix *roc_nix, bool enable);
+
 struct roc_nix {
 	/* Input parameters */
 	struct plt_pci_device *pci_dev;
@@ -151,6 +168,30 @@ int __roc_api roc_nix_register_queue_irqs(struct roc_nix *roc_nix);
 void __roc_api roc_nix_unregister_queue_irqs(struct roc_nix *roc_nix);
 int __roc_api roc_nix_register_cq_irqs(struct roc_nix *roc_nix);
 void __roc_api roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix);
+
+/* MAC */
+int __roc_api roc_nix_mac_rxtx_start_stop(struct roc_nix *roc_nix, bool start);
+int __roc_api roc_nix_mac_link_event_start_stop(struct roc_nix *roc_nix,
+						bool start);
+int __roc_api roc_nix_mac_loopback_enable(struct roc_nix *roc_nix, bool enable);
+int __roc_api roc_nix_mac_addr_set(struct roc_nix *roc_nix,
+				   const uint8_t addr[]);
+int __roc_api roc_nix_mac_max_entries_get(struct roc_nix *roc_nix);
+int __roc_api roc_nix_mac_addr_add(struct roc_nix *roc_nix, uint8_t addr[]);
+int __roc_api roc_nix_mac_addr_del(struct roc_nix *roc_nix, uint32_t index);
+int __roc_api roc_nix_mac_promisc_mode_enable(struct roc_nix *roc_nix,
+					      int enable);
+int __roc_api roc_nix_mac_link_state_set(struct roc_nix *roc_nix, uint8_t up);
+int __roc_api roc_nix_mac_link_info_set(struct roc_nix *roc_nix,
+					struct roc_nix_link_info *link_info);
+int __roc_api roc_nix_mac_link_info_get(struct roc_nix *roc_nix,
+					struct roc_nix_link_info *link_info);
+int __roc_api roc_nix_mac_mtu_set(struct roc_nix *roc_nix, uint16_t mtu);
+int __roc_api roc_nix_mac_max_rx_len_set(struct roc_nix *roc_nix,
+					 uint16_t maxlen);
+int __roc_api roc_nix_mac_link_cb_register(struct roc_nix *roc_nix,
+					   link_status_t link_update);
+void __roc_api roc_nix_mac_link_cb_unregister(struct roc_nix *roc_nix);
 
 /* Queue */
 int __roc_api roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq,
