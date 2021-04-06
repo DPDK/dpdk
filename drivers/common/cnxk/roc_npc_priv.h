@@ -379,6 +379,22 @@ roc_npc_to_npc_priv(struct roc_npc *npc)
 	return (struct npc *)npc->reserved;
 }
 
+int npc_mcam_free_counter(struct npc *npc, uint16_t ctr_id);
+int npc_mcam_read_counter(struct npc *npc, uint32_t ctr_id, uint64_t *count);
+int npc_mcam_clear_counter(struct npc *npc, uint32_t ctr_id);
+int npc_mcam_free_entry(struct npc *npc, uint32_t entry);
+int npc_mcam_free_all_entries(struct npc *npc);
+int npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
+			     struct npc_parse_state *pst);
+int npc_mcam_alloc_entry(struct npc *npc, struct roc_npc_flow *mcam,
+			 struct roc_npc_flow *ref_mcam, int prio,
+			 int *resp_count);
+int npc_mcam_alloc_entries(struct npc *npc, int ref_mcam, int *alloc_entry,
+			   int req_count, int prio, int *resp_count);
+
+int npc_mcam_ena_dis_entry(struct npc *npc, struct roc_npc_flow *mcam,
+			   bool enable);
+int npc_mcam_write_entry(struct npc *npc, struct roc_npc_flow *mcam);
 int npc_update_parse_state(struct npc_parse_state *pst,
 			   struct npc_parse_item_info *info, int lid, int lt,
 			   uint8_t flags);
@@ -386,7 +402,12 @@ void npc_get_hw_supp_mask(struct npc_parse_state *pst,
 			  struct npc_parse_item_info *info, int lid, int lt);
 int npc_parse_item_basic(const struct roc_npc_item_info *item,
 			 struct npc_parse_item_info *info);
+int npc_mcam_fetch_kex_cfg(struct npc *npc);
 int npc_check_preallocated_entry_cache(struct mbox *mbox,
 				       struct roc_npc_flow *flow,
 				       struct npc *npc);
+int npc_flow_free_all_resources(struct npc *npc);
+int npc_program_mcam(struct npc *npc, struct npc_parse_state *pst,
+		     bool mcam_alloc);
+uint64_t npc_get_kex_capability(struct npc *npc);
 #endif /* _ROC_NPC_PRIV_H_ */
