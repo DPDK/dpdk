@@ -77,6 +77,7 @@ Developers and Maintainers Tools
 M: Thomas Monjalon <thomas@monjalon.net>
 F: MAINTAINERS
 F: devtools/build-dict.sh
+F: devtools/check-doc-vs-code.sh
 F: devtools/check-dup-includes.sh
 F: devtools/check-maintainers.sh
 F: devtools/check-forbidden-tokens.awk
@@ -87,6 +88,7 @@ F: devtools/checkpatches.sh
 F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
+F: devtools/parse-flow-support.sh
 F: devtools/update-patches.py
 F: devtools/words-case.txt
 F: license/
