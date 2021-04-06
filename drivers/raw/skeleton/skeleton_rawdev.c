@@ -768,4 +768,4 @@ static struct rte_vdev_driver skeleton_pmd_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(SKELETON_PMD_RAWDEV_NAME, skeleton_pmd_drv);
-RTE_LOG_REGISTER(skeleton_pmd_logtype, rawdev.skeleton, INFO);
+RTE_LOG_REGISTER(skeleton_pmd_logtype, pmd.raw.skeleton, INFO);

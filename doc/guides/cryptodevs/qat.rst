@@ -659,15 +659,15 @@ Debugging
 
 There are 2 sets of trace available via the dynamic logging feature:
 
-* pmd.qat_dp exposes trace on the data-path.
-* pmd.qat_general exposes all other trace.
+* pmd.qat.dp exposes trace on the data-path.
+* pmd.qat.general exposes all other trace.
 
 pmd.qat exposes both sets of traces.
 They can be enabled using the log-level option (where 8=maximum log level) on
 the process cmdline, e.g. using any of the following::
 
-    --log-level="pmd.qat_general,8"
-    --log-level="pmd.qat_dp,8"
+    --log-level="pmd.qat.general,8"
+    --log-level="pmd.qat.dp,8"
     --log-level="pmd.qat,8"
 
 .. Note::
@@ -678,4 +678,4 @@ the process cmdline, e.g. using any of the following::
     Also the dynamic global log level overrides both sets of trace, so e.g. no
     QAT trace would display in this case::
 
-	--log-level="7" --log-level="pmd.qat_general,8"
+	--log-level="7" --log-level="pmd.qat.general,8"

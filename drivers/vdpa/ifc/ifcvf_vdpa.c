@@ -26,7 +26,7 @@
 
 #include "base/ifcvf.h"
 
-RTE_LOG_REGISTER(ifcvf_vdpa_logtype, pmd.net.ifcvf_vdpa, NOTICE);
+RTE_LOG_REGISTER(ifcvf_vdpa_logtype, pmd.vdpa.ifcvf, NOTICE);
 #define DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, ifcvf_vdpa_logtype, \
 		"IFCVF %s(): " fmt "\n", __func__, ##args)

@@ -17,5 +17,5 @@ qat_hexdump_log(uint32_t level, uint32_t logtype, const char *title,
 	return 0;
 }
 
-RTE_LOG_REGISTER(qat_gen_logtype, pmd.qat_general, NOTICE);
-RTE_LOG_REGISTER(qat_dp_logtype, pmd.qat_dp, NOTICE);
+RTE_LOG_REGISTER(qat_gen_logtype, pmd.qat.general, NOTICE);
+RTE_LOG_REGISTER(qat_dp_logtype, pmd.qat.dp, NOTICE);

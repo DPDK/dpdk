@@ -3775,4 +3775,4 @@ RTE_PMD_REGISTER_PARAM_STRING(net_bonding,
 	"up_delay=<int> "
 	"down_delay=<int>");
 
-RTE_LOG_REGISTER(bond_logtype, pmd.net.bond, NOTICE);
+RTE_LOG_REGISTER(bond_logtype, pmd.net.bonding, NOTICE);
