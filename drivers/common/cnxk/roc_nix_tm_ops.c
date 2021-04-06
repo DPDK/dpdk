@@ -545,6 +545,226 @@ skip_sq_update:
 }
 
 int
+roc_nix_tm_node_suspend_resume(struct roc_nix *roc_nix, uint32_t node_id,
+			       bool suspend)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txschq_config *req;
+	struct nix_tm_node *node;
+	uint16_t flags;
+	int rc;
+
+	node = nix_tm_node_search(nix, node_id, ROC_NIX_TM_USER);
+	if (!node)
+		return NIX_ERR_TM_INVALID_NODE;
+
+	flags = node->flags;
+	flags = suspend ? (flags & ~NIX_TM_NODE_ENABLED) :
+				(flags | NIX_TM_NODE_ENABLED);
+
+	if (node->flags == flags)
+		return 0;
+
+	/* send mbox for state change */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+
+	req->lvl = node->hw_lvl;
+	req->num_regs =
+		nix_tm_sw_xoff_prep(node, suspend, req->reg, req->regval);
+	rc = mbox_process(mbox);
+	if (!rc)
+		node->flags = flags;
+	return rc;
+}
+
+int
+roc_nix_tm_node_shaper_update(struct roc_nix *roc_nix, uint32_t node_id,
+			      uint32_t profile_id, bool force_update)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile *profile = NULL;
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txschq_config *req;
+	struct nix_tm_node *node;
+	uint8_t k;
+	int rc;
+
+	/* Shaper updates valid only for user nodes */
+	node = nix_tm_node_search(nix, node_id, ROC_NIX_TM_USER);
+	if (!node || nix_tm_is_leaf(nix, node->lvl))
+		return NIX_ERR_TM_INVALID_NODE;
+
+	if (profile_id != ROC_NIX_TM_SHAPER_PROFILE_NONE) {
+		profile = nix_tm_shaper_profile_search(nix, profile_id);
+		if (!profile)
+			return NIX_ERR_TM_INVALID_SHAPER_PROFILE;
+	}
+
+	/* Pkt mode should match existing node's pkt mode */
+	if (profile && profile->pkt_mode != node->pkt_mode)
+		return NIX_ERR_TM_PKT_MODE_MISMATCH;
+
+	if ((profile_id == node->shaper_profile_id) && !force_update) {
+		return 0;
+	} else if (profile_id != node->shaper_profile_id) {
+		struct nix_tm_shaper_profile *old;
+
+		/* Find old shaper profile and reduce ref count */
+		old = nix_tm_shaper_profile_search(nix,
+						   node->shaper_profile_id);
+		if (old)
+			old->ref_cnt--;
+
+		if (profile)
+			profile->ref_cnt++;
+
+		/* Reduce older shaper ref count and increase new one */
+		node->shaper_profile_id = profile_id;
+	}
+
+	/* Nothing to do if hierarchy not yet enabled */
+	if (!(nix->tm_flags & NIX_TM_HIERARCHY_ENA))
+		return 0;
+
+	node->flags &= ~NIX_TM_NODE_ENABLED;
+
+	/* Flush the specific node with SW_XOFF */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = node->hw_lvl;
+	k = nix_tm_sw_xoff_prep(node, true, req->reg, req->regval);
+	req->num_regs = k;
+
+	rc = mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	/* Update the PIR/CIR and clear SW XOFF */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = node->hw_lvl;
+
+	k = nix_tm_shaper_reg_prep(node, profile, req->reg, req->regval);
+
+	k += nix_tm_sw_xoff_prep(node, false, &req->reg[k], &req->regval[k]);
+
+	req->num_regs = k;
+	rc = mbox_process(mbox);
+	if (!rc)
+		node->flags |= NIX_TM_NODE_ENABLED;
+	return rc;
+}
+
+int
+roc_nix_tm_node_parent_update(struct roc_nix *roc_nix, uint32_t node_id,
+			      uint32_t new_parent_id, uint32_t priority,
+			      uint32_t weight)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_tm_node *node, *sibling;
+	struct nix_tm_node *new_parent;
+	struct nix_txschq_config *req;
+	struct nix_tm_node_list *list;
+	uint8_t k;
+	int rc;
+
+	node = nix_tm_node_search(nix, node_id, ROC_NIX_TM_USER);
+	if (!node)
+		return NIX_ERR_TM_INVALID_NODE;
+
+	/* Parent id valid only for non root nodes */
+	if (node->hw_lvl != nix->tm_root_lvl) {
+		new_parent =
+			nix_tm_node_search(nix, new_parent_id, ROC_NIX_TM_USER);
+		if (!new_parent)
+			return NIX_ERR_TM_INVALID_PARENT;
+
+		/* Current support is only for dynamic weight update */
+		if (node->parent != new_parent || node->priority != priority)
+			return NIX_ERR_TM_PARENT_PRIO_UPDATE;
+	}
+
+	list = nix_tm_node_list(nix, ROC_NIX_TM_USER);
+	/* Skip if no change */
+	if (node->weight == weight)
+		return 0;
+
+	node->weight = weight;
+
+	/* Nothing to do if hierarchy not yet enabled */
+	if (!(nix->tm_flags & NIX_TM_HIERARCHY_ENA))
+		return 0;
+
+	/* For leaf nodes, SQ CTX needs update */
+	if (nix_tm_is_leaf(nix, node->lvl)) {
+		/* Update SQ quantum data on the fly */
+		rc = nix_tm_sq_sched_conf(nix, node, true);
+		if (rc)
+			return NIX_ERR_TM_SQ_UPDATE_FAIL;
+	} else {
+		/* XOFF Parent node */
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req->lvl = node->parent->hw_lvl;
+		req->num_regs = nix_tm_sw_xoff_prep(node->parent, true,
+						    req->reg, req->regval);
+		rc = mbox_process(mbox);
+		if (rc)
+			return rc;
+
+		/* XOFF this node and all other siblings */
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req->lvl = node->hw_lvl;
+
+		k = 0;
+		TAILQ_FOREACH(sibling, list, node) {
+			if (sibling->parent != node->parent)
+				continue;
+			k += nix_tm_sw_xoff_prep(sibling, true, &req->reg[k],
+						 &req->regval[k]);
+		}
+		req->num_regs = k;
+		rc = mbox_process(mbox);
+		if (rc)
+			return rc;
+
+		/* Update new weight for current node */
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req->lvl = node->hw_lvl;
+		req->num_regs =
+			nix_tm_sched_reg_prep(nix, node, req->reg, req->regval);
+		rc = mbox_process(mbox);
+		if (rc)
+			return rc;
+
+		/* XON this node and all other siblings */
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req->lvl = node->hw_lvl;
+
+		k = 0;
+		TAILQ_FOREACH(sibling, list, node) {
+			if (sibling->parent != node->parent)
+				continue;
+			k += nix_tm_sw_xoff_prep(sibling, false, &req->reg[k],
+						 &req->regval[k]);
+		}
+		req->num_regs = k;
+		rc = mbox_process(mbox);
+		if (rc)
+			return rc;
+
+		/* XON Parent node */
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+		req->lvl = node->parent->hw_lvl;
+		req->num_regs = nix_tm_sw_xoff_prep(node->parent, false,
+						    req->reg, req->regval);
+		rc = mbox_process(mbox);
+		if (rc)
+			return rc;
+	}
+	return 0;
+}
+
+int
 roc_nix_tm_init(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);

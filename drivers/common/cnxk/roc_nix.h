@@ -375,6 +375,16 @@ int __roc_api roc_nix_tm_node_add(struct roc_nix *roc_nix,
 int __roc_api roc_nix_tm_node_delete(struct roc_nix *roc_nix, uint32_t node_id,
 				     bool free);
 int __roc_api roc_nix_tm_free_resources(struct roc_nix *roc_nix, bool hw_only);
+int __roc_api roc_nix_tm_node_suspend_resume(struct roc_nix *roc_nix,
+					     uint32_t node_id, bool suspend);
+int __roc_api roc_nix_tm_node_parent_update(struct roc_nix *roc_nix,
+					    uint32_t node_id,
+					    uint32_t new_parent_id,
+					    uint32_t priority, uint32_t weight);
+int __roc_api roc_nix_tm_node_shaper_update(struct roc_nix *roc_nix,
+					    uint32_t node_id,
+					    uint32_t profile_id,
+					    bool force_update);
 int __roc_api roc_nix_tm_node_pkt_mode_update(struct roc_nix *roc_nix,
 					      uint32_t node_id, bool pkt_mode);
 int __roc_api roc_nix_tm_shaper_profile_add(
