@@ -380,6 +380,8 @@ RTE_INIT(__##type)							\
 {									\
 	type = rte_log_register_type_and_pick_level(RTE_STR(name),	\
 						    RTE_LOG_##level);	\
+	if (type < 0)                                                   \
+		type = RTE_LOGTYPE_EAL;                                 \
 }
 
 #ifdef __cplusplus
