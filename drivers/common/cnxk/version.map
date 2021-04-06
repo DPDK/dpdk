@@ -62,6 +62,13 @@ INTERNAL {
 	roc_nix_rq_fini;
 	roc_nix_rq_init;
 	roc_nix_rq_modify;
+	roc_nix_rss_default_setup;
+	roc_nix_rss_flowkey_set;
+	roc_nix_rss_key_default_fill;
+	roc_nix_rss_key_get;
+	roc_nix_rss_key_set;
+	roc_nix_rss_reta_get;
+	roc_nix_rss_reta_set;
 	roc_nix_rx_queue_intr_disable;
 	roc_nix_rx_queue_intr_enable;
 	roc_nix_sq_fini;

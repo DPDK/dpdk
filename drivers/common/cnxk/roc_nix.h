@@ -215,6 +215,23 @@ int __roc_api roc_nix_npc_rx_ena_dis(struct roc_nix *roc_nix, bool enable);
 int __roc_api roc_nix_npc_mcast_config(struct roc_nix *roc_nix,
 				       bool mcast_enable, bool prom_enable);
 
+/* RSS */
+void __roc_api roc_nix_rss_key_default_fill(struct roc_nix *roc_nix,
+					    uint8_t key[ROC_NIX_RSS_KEY_LEN]);
+void __roc_api roc_nix_rss_key_set(struct roc_nix *roc_nix,
+				   const uint8_t key[ROC_NIX_RSS_KEY_LEN]);
+void __roc_api roc_nix_rss_key_get(struct roc_nix *roc_nix,
+				   uint8_t key[ROC_NIX_RSS_KEY_LEN]);
+int __roc_api roc_nix_rss_reta_set(struct roc_nix *roc_nix, uint8_t group,
+				   uint16_t reta[ROC_NIX_RSS_RETA_MAX]);
+int __roc_api roc_nix_rss_reta_get(struct roc_nix *roc_nix, uint8_t group,
+				   uint16_t reta[ROC_NIX_RSS_RETA_MAX]);
+int __roc_api roc_nix_rss_flowkey_set(struct roc_nix *roc_nix, uint8_t *alg_idx,
+				      uint32_t flowkey, uint8_t group,
+				      int mcam_index);
+int __roc_api roc_nix_rss_default_setup(struct roc_nix *roc_nix,
+					uint32_t flowkey);
+
 /* Queue */
 int __roc_api roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq,
 			      bool ena);
