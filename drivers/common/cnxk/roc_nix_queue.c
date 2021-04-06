@@ -788,6 +788,12 @@ roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	if (rc)
 		goto nomem;
 
+	rc = nix_tm_leaf_data_get(nix, sq->qid, &rr_quantum, &smq);
+	if (rc) {
+		rc = NIX_ERR_TM_LEAF_NODE_GET;
+		goto nomem;
+	}
+
 	/* Init SQ context */
 	if (roc_model_is_cn9k())
 		sq_cn9k_init(nix, sq, rr_quantum, smq);
@@ -831,6 +837,8 @@ roc_nix_sq_fini(struct roc_nix_sq *sq)
 
 	qid = sq->qid;
 
+	rc = nix_tm_sq_flush_pre(sq);
+
 	/* Release SQ context */
 	if (roc_model_is_cn9k())
 		rc |= sq_cn9k_fini(roc_nix_to_nix_priv(sq->roc_nix), sq);
@@ -845,6 +853,7 @@ roc_nix_sq_fini(struct roc_nix_sq *sq)
 	if (mbox_process(mbox))
 		rc |= NIX_ERR_NDC_SYNC;
 
+	rc |= nix_tm_sq_flush_post(sq);
 	rc |= roc_npa_pool_destroy(sq->aura_handle);
 	plt_free(sq->fc);
 	plt_free(sq->sqe_mem);

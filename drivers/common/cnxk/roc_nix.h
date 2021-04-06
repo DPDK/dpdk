@@ -305,6 +305,32 @@ void __roc_api roc_nix_unregister_queue_irqs(struct roc_nix *roc_nix);
 int __roc_api roc_nix_register_cq_irqs(struct roc_nix *roc_nix);
 void __roc_api roc_nix_unregister_cq_irqs(struct roc_nix *roc_nix);
 
+/* Traffic Management */
+#define ROC_NIX_TM_MAX_SCHED_WT	       ((uint8_t)~0)
+
+enum roc_nix_tm_tree {
+	ROC_NIX_TM_DEFAULT = 0,
+	ROC_NIX_TM_RLIMIT,
+	ROC_NIX_TM_USER,
+	ROC_NIX_TM_TREE_MAX,
+};
+
+enum roc_tm_node_level {
+	ROC_TM_LVL_ROOT = 0,
+	ROC_TM_LVL_SCH1,
+	ROC_TM_LVL_SCH2,
+	ROC_TM_LVL_SCH3,
+	ROC_TM_LVL_SCH4,
+	ROC_TM_LVL_QUEUE,
+	ROC_TM_LVL_MAX,
+};
+
+/*
+ * TM runtime hierarchy init API.
+ */
+int __roc_api roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable);
+int __roc_api roc_nix_tm_sq_flush_spin(struct roc_nix_sq *sq);
+
 /* MAC */
 int __roc_api roc_nix_mac_rxtx_start_stop(struct roc_nix *roc_nix, bool start);
 int __roc_api roc_nix_mac_link_event_start_stop(struct roc_nix *roc_nix,

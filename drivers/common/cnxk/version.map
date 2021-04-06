@@ -5,6 +5,7 @@ INTERNAL {
 	cnxk_logtype_mbox;
 	cnxk_logtype_nix;
 	cnxk_logtype_npa;
+	cnxk_logtype_tm;
 	roc_clk_freq_get;
 	roc_error_msg_get;
 	roc_idev_lmt_base_addr_get;
@@ -103,6 +104,8 @@ INTERNAL {
 	roc_nix_xstats_names_get;
 	roc_nix_switch_hdr_set;
 	roc_nix_eeprom_info_get;
+	roc_nix_tm_sq_aura_fc;
+	roc_nix_tm_sq_flush_spin;
 	roc_nix_unregister_cq_irqs;
 	roc_nix_unregister_queue_irqs;
 	roc_nix_vlan_insert_ena_dis;

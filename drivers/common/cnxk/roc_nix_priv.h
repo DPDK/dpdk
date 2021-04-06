@@ -28,6 +28,77 @@ struct nix_qint {
 	uint8_t qintx;
 };
 
+/* Traffic Manager */
+#define NIX_TM_MAX_HW_TXSCHQ 512
+#define NIX_TM_HW_ID_INVALID UINT32_MAX
+
+/* TM flags */
+#define NIX_TM_HIERARCHY_ENA BIT_ULL(0)
+#define NIX_TM_TL1_NO_SP     BIT_ULL(1)
+#define NIX_TM_TL1_ACCESS    BIT_ULL(2)
+
+struct nix_tm_tb {
+	/** Token bucket rate (bytes per second) */
+	uint64_t rate;
+
+	/** Token bucket size (bytes), a.k.a. max burst size */
+	uint64_t size;
+};
+
+struct nix_tm_node {
+	TAILQ_ENTRY(nix_tm_node) node;
+
+	/* Input params */
+	enum roc_nix_tm_tree tree;
+	uint32_t id;
+	uint32_t priority;
+	uint32_t weight;
+	uint16_t lvl;
+	uint32_t parent_id;
+	uint32_t shaper_profile_id;
+	void (*free_fn)(void *node);
+
+	/* Derived params */
+	uint32_t hw_id;
+	uint16_t hw_lvl;
+	uint32_t rr_prio;
+	uint32_t rr_num;
+	uint32_t max_prio;
+	uint32_t parent_hw_id;
+	uint32_t flags : 16;
+#define NIX_TM_NODE_HWRES   BIT_ULL(0)
+#define NIX_TM_NODE_ENABLED BIT_ULL(1)
+	/* Shaper algorithm for RED state @NIX_REDALG_E */
+	uint32_t red_algo : 2;
+	uint32_t pkt_mode : 1;
+	uint32_t pkt_mode_set : 1;
+
+	bool child_realloc;
+	struct nix_tm_node *parent;
+
+	/* Non-leaf node sp count */
+	uint32_t n_sp_priorities;
+
+	/* Last stats */
+	uint64_t last_pkts;
+	uint64_t last_bytes;
+};
+
+struct nix_tm_shaper_profile {
+	TAILQ_ENTRY(nix_tm_shaper_profile) shaper;
+	struct nix_tm_tb commit;
+	struct nix_tm_tb peak;
+	int32_t pkt_len_adj;
+	bool pkt_mode;
+	uint32_t id;
+	void (*free_fn)(void *profile);
+
+	uint32_t ref_cnt;
+};
+
+TAILQ_HEAD(nix_tm_node_list, nix_tm_node);
+TAILQ_HEAD(nix_tm_shaper_profile_list, nix_tm_shaper_profile);
+
 struct nix {
 	uint16_t reta[ROC_NIX_RSS_GRPS][ROC_NIX_RSS_RETA_MAX];
 	enum roc_nix_rss_reta_sz reta_sz;
@@ -73,6 +144,23 @@ struct nix {
 	bool ptp_en;
 	bool is_nix1;
 
+	/* Traffic manager info */
+
+	/* Contiguous resources per lvl */
+	struct plt_bitmap *schq_contig_bmp[NIX_TXSCH_LVL_CNT];
+	/* Dis-contiguous resources per lvl */
+	struct plt_bitmap *schq_bmp[NIX_TXSCH_LVL_CNT];
+	void *schq_bmp_mem;
+
+	struct nix_tm_shaper_profile_list shaper_profile_list;
+	struct nix_tm_node_list trees[ROC_NIX_TM_TREE_MAX];
+	enum roc_nix_tm_tree tm_tree;
+	uint64_t tm_rate_min;
+	uint16_t tm_root_lvl;
+	uint16_t tm_flags;
+	uint16_t tm_link_cfg_lvl;
+	uint16_t contig_rsvd[NIX_TXSCH_LVL_CNT];
+	uint16_t discontig_rsvd[NIX_TXSCH_LVL_CNT];
 } __plt_cache_aligned;
 
 enum nix_err_status {
@@ -84,6 +172,29 @@ enum nix_err_status {
 	NIX_ERR_QUEUE_INVALID_RANGE,
 	NIX_ERR_AQ_READ_FAILED,
 	NIX_ERR_AQ_WRITE_FAILED,
+	NIX_ERR_TM_LEAF_NODE_GET,
+	NIX_ERR_TM_INVALID_LVL,
+	NIX_ERR_TM_INVALID_PRIO,
+	NIX_ERR_TM_INVALID_PARENT,
+	NIX_ERR_TM_NODE_EXISTS,
+	NIX_ERR_TM_INVALID_NODE,
+	NIX_ERR_TM_INVALID_SHAPER_PROFILE,
+	NIX_ERR_TM_PKT_MODE_MISMATCH,
+	NIX_ERR_TM_WEIGHT_EXCEED,
+	NIX_ERR_TM_CHILD_EXISTS,
+	NIX_ERR_TM_INVALID_PEAK_SZ,
+	NIX_ERR_TM_INVALID_PEAK_RATE,
+	NIX_ERR_TM_INVALID_COMMIT_SZ,
+	NIX_ERR_TM_INVALID_COMMIT_RATE,
+	NIX_ERR_TM_SHAPER_PROFILE_IN_USE,
+	NIX_ERR_TM_SHAPER_PROFILE_EXISTS,
+	NIX_ERR_TM_SHAPER_PKT_LEN_ADJUST,
+	NIX_ERR_TM_INVALID_TREE,
+	NIX_ERR_TM_PARENT_PRIO_UPDATE,
+	NIX_ERR_TM_PRIO_EXCEEDED,
+	NIX_ERR_TM_PRIO_ORDER,
+	NIX_ERR_TM_MULTIPLE_RR_GROUPS,
+	NIX_ERR_TM_SQ_UPDATE_FAIL,
 	NIX_ERR_NDC_SYNC,
 };
 
@@ -116,5 +227,113 @@ nix_priv_to_roc_nix(struct nix *nix)
 /* IRQ */
 int nix_register_irqs(struct nix *nix);
 void nix_unregister_irqs(struct nix *nix);
+
+/* TM */
+#define NIX_TM_TREE_MASK_ALL                                                   \
+	(BIT(ROC_NIX_TM_DEFAULT) | BIT(ROC_NIX_TM_RLIMIT) |                    \
+	 BIT(ROC_NIX_TM_USER))
+
+/* NIX_MAX_HW_FRS ==
+ * NIX_TM_DFLT_RR_WT * NIX_TM_RR_QUANTUM_MAX / ROC_NIX_TM_MAX_SCHED_WT
+ */
+#define NIX_TM_DFLT_RR_WT 71
+
+/* Default TL1 priority and Quantum from AF */
+#define NIX_TM_TL1_DFLT_RR_QTM	((1 << 24) - 1)
+#define NIX_TM_TL1_DFLT_RR_PRIO 1
+
+struct nix_tm_shaper_data {
+	uint64_t burst_exponent;
+	uint64_t burst_mantissa;
+	uint64_t div_exp;
+	uint64_t exponent;
+	uint64_t mantissa;
+	uint64_t burst;
+	uint64_t rate;
+};
+
+static inline uint64_t
+nix_tm_weight_to_rr_quantum(uint64_t weight)
+{
+	uint64_t max = (roc_model_is_cn9k() ? NIX_CN9K_TM_RR_QUANTUM_MAX :
+						    NIX_TM_RR_QUANTUM_MAX);
+
+	weight &= (uint64_t)ROC_NIX_TM_MAX_SCHED_WT;
+	return (weight * max) / ROC_NIX_TM_MAX_SCHED_WT;
+}
+
+static inline bool
+nix_tm_have_tl1_access(struct nix *nix)
+{
+	return !!(nix->tm_flags & NIX_TM_TL1_ACCESS);
+}
+
+static inline bool
+nix_tm_is_leaf(struct nix *nix, int lvl)
+{
+	if (nix_tm_have_tl1_access(nix))
+		return (lvl == ROC_TM_LVL_QUEUE);
+	return (lvl == ROC_TM_LVL_SCH4);
+}
+
+static inline struct nix_tm_node_list *
+nix_tm_node_list(struct nix *nix, enum roc_nix_tm_tree tree)
+{
+	return &nix->trees[tree];
+}
+
+static inline const char *
+nix_tm_hwlvl2str(uint32_t hw_lvl)
+{
+	switch (hw_lvl) {
+	case NIX_TXSCH_LVL_MDQ:
+		return "SMQ/MDQ";
+	case NIX_TXSCH_LVL_TL4:
+		return "TL4";
+	case NIX_TXSCH_LVL_TL3:
+		return "TL3";
+	case NIX_TXSCH_LVL_TL2:
+		return "TL2";
+	case NIX_TXSCH_LVL_TL1:
+		return "TL1";
+	default:
+		break;
+	}
+
+	return "???";
+}
+
+static inline const char *
+nix_tm_tree2str(enum roc_nix_tm_tree tree)
+{
+	if (tree == ROC_NIX_TM_DEFAULT)
+		return "Default Tree";
+	else if (tree == ROC_NIX_TM_RLIMIT)
+		return "Rate Limit Tree";
+	else if (tree == ROC_NIX_TM_USER)
+		return "User Tree";
+	return "???";
+}
+
+/*
+ * TM priv ops.
+ */
+
+int nix_tm_conf_init(struct roc_nix *roc_nix);
+void nix_tm_conf_fini(struct roc_nix *roc_nix);
+int nix_tm_leaf_data_get(struct nix *nix, uint16_t sq, uint32_t *rr_quantum,
+			 uint16_t *smq);
+int nix_tm_sq_flush_pre(struct roc_nix_sq *sq);
+int nix_tm_sq_flush_post(struct roc_nix_sq *sq);
+int nix_tm_smq_xoff(struct nix *nix, struct nix_tm_node *node, bool enable);
+int nix_tm_clear_path_xoff(struct nix *nix, struct nix_tm_node *node);
+
+/*
+ * TM priv utils.
+ */
+struct nix_tm_node *nix_tm_node_search(struct nix *nix, uint32_t node_id,
+				       enum roc_nix_tm_tree tree);
+uint8_t nix_tm_sw_xoff_prep(struct nix_tm_node *node, bool enable,
+			    volatile uint64_t *reg, volatile uint64_t *regval);
 
 #endif /* _ROC_NIX_PRIV_H_ */

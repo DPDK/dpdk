@@ -396,11 +396,17 @@ skip_dev_init:
 	if (rc)
 		goto lf_detach;
 
+	rc = nix_tm_conf_init(roc_nix);
+	if (rc)
+		goto unregister_irqs;
+
 	/* Get NIX HW info */
 	roc_nix_get_hw_info(roc_nix);
 	nix->dev.drv_inited = true;
 
 	return 0;
+unregister_irqs:
+	nix_unregister_irqs(nix);
 lf_detach:
 	nix_lf_detach(nix);
 dev_fini:
@@ -421,6 +427,7 @@ roc_nix_dev_fini(struct roc_nix *roc_nix)
 	if (!nix->dev.drv_inited)
 		goto fini;
 
+	nix_tm_conf_fini(roc_nix);
 	nix_unregister_irqs(nix);
 
 	rc = nix_lf_detach(nix);
