@@ -8,9 +8,6 @@
 
 #include "bcmfs_logs.h"
 
-int bcmfs_conf_logtype;
-int bcmfs_dp_logtype;
-
 int
 bcmfs_hexdump_log(uint32_t level, uint32_t logtype, const char *title,
 		const void *buf, unsigned int len)
@@ -24,15 +21,5 @@ bcmfs_hexdump_log(uint32_t level, uint32_t logtype, const char *title,
 	return 0;
 }
 
-RTE_INIT(bcmfs_device_init_log)
-{
-	/* Configuration and general logs */
-	bcmfs_conf_logtype = rte_log_register("pmd.bcmfs_config");
-	if (bcmfs_conf_logtype >= 0)
-		rte_log_set_level(bcmfs_conf_logtype, RTE_LOG_NOTICE);
-
-	/* data-path logs */
-	bcmfs_dp_logtype = rte_log_register("pmd.bcmfs_fp");
-	if (bcmfs_dp_logtype >= 0)
-		rte_log_set_level(bcmfs_dp_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(bcmfs_conf_logtype, pmd.bcmfs_config, NOTICE)
+RTE_LOG_REGISTER(bcmfs_dp_logtype, pmd.bcmfs_fp, NOTICE)
