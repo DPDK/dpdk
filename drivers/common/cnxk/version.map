@@ -104,11 +104,13 @@ INTERNAL {
 	roc_nix_xstats_names_get;
 	roc_nix_switch_hdr_set;
 	roc_nix_eeprom_info_get;
+	roc_nix_tm_dump;
 	roc_nix_tm_fini;
 	roc_nix_tm_free_resources;
 	roc_nix_tm_hierarchy_disable;
 	roc_nix_tm_hierarchy_enable;
 	roc_nix_tm_init;
+	roc_nix_tm_leaf_cnt;
 	roc_nix_tm_node_add;
 	roc_nix_tm_node_delete;
 	roc_nix_tm_node_get;
@@ -119,7 +121,11 @@ INTERNAL {
 	roc_nix_tm_node_pkt_mode_update;
 	roc_nix_tm_node_shaper_update;
 	roc_nix_tm_node_suspend_resume;
+	roc_nix_tm_prealloc_res;
 	roc_nix_tm_rlimit_sq;
+	roc_nix_tm_root_has_sp;
+	roc_nix_tm_rsrc_count;
+	roc_nix_tm_rsrc_max;
 	roc_nix_tm_shaper_profile_add;
 	roc_nix_tm_shaper_profile_delete;
 	roc_nix_tm_shaper_profile_get;

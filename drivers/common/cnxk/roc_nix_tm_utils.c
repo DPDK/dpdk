@@ -868,6 +868,24 @@ nix_tm_resource_estimate(struct nix *nix, uint16_t *schq_contig, uint16_t *schq,
 	return cnt;
 }
 
+uint16_t
+roc_nix_tm_leaf_cnt(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_node_list *list;
+	struct nix_tm_node *node;
+	uint16_t leaf_cnt = 0;
+
+	/* Count leafs only in user list */
+	list = nix_tm_node_list(nix, ROC_NIX_TM_USER);
+	TAILQ_FOREACH(node, list, node) {
+		if (node->id < nix->nb_tx_queues)
+			leaf_cnt++;
+	}
+
+	return leaf_cnt;
+}
+
 int
 roc_nix_tm_node_lvl(struct roc_nix *roc_nix, uint32_t node_id)
 {

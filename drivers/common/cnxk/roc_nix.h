@@ -291,6 +291,7 @@ void __roc_api roc_nix_cqe_dump(const struct nix_cqe_hdr_s *cq);
 void __roc_api roc_nix_rq_dump(struct roc_nix_rq *rq);
 void __roc_api roc_nix_cq_dump(struct roc_nix_cq *cq);
 void __roc_api roc_nix_sq_dump(struct roc_nix_sq *sq);
+void __roc_api roc_nix_tm_dump(struct roc_nix *roc_nix);
 void __roc_api roc_nix_dump(struct roc_nix *roc_nix);
 
 /* IRQ */
@@ -394,6 +395,10 @@ int __roc_api roc_nix_tm_shaper_profile_update(
 int __roc_api roc_nix_tm_shaper_profile_delete(struct roc_nix *roc_nix,
 					       uint32_t id);
 
+int __roc_api roc_nix_tm_prealloc_res(struct roc_nix *roc_nix, uint8_t lvl,
+				      uint16_t discontig, uint16_t contig);
+uint16_t __roc_api roc_nix_tm_leaf_cnt(struct roc_nix *roc_nix);
+
 struct roc_nix_tm_node *__roc_api roc_nix_tm_node_get(struct roc_nix *roc_nix,
 						      uint32_t node_id);
 struct roc_nix_tm_node *__roc_api
@@ -420,6 +425,10 @@ int __roc_api roc_nix_tm_hierarchy_enable(struct roc_nix *roc_nix,
  * TM utilities API.
  */
 int __roc_api roc_nix_tm_node_lvl(struct roc_nix *roc_nix, uint32_t node_id);
+bool __roc_api roc_nix_tm_root_has_sp(struct roc_nix *roc_nix);
+void __roc_api roc_nix_tm_rsrc_max(bool pf, uint16_t schq[ROC_TM_LVL_MAX]);
+int __roc_api roc_nix_tm_rsrc_count(struct roc_nix *roc_nix,
+				    uint16_t schq[ROC_TM_LVL_MAX]);
 int __roc_api roc_nix_tm_node_name_get(struct roc_nix *roc_nix,
 				       uint32_t node_id, char *buf,
 				       size_t buflen);

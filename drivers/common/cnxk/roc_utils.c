@@ -38,6 +38,69 @@ roc_error_msg_get(int errorcode)
 	case NIX_ERR_AQ_WRITE_FAILED:
 		err_msg = "AQ write failed";
 		break;
+	case NIX_ERR_TM_LEAF_NODE_GET:
+		err_msg = "TM leaf node get failed";
+		break;
+	case NIX_ERR_TM_INVALID_LVL:
+		err_msg = "TM node level invalid";
+		break;
+	case NIX_ERR_TM_INVALID_PRIO:
+		err_msg = "TM node priority invalid";
+		break;
+	case NIX_ERR_TM_INVALID_PARENT:
+		err_msg = "TM parent id invalid";
+		break;
+	case NIX_ERR_TM_NODE_EXISTS:
+		err_msg = "TM Node Exists";
+		break;
+	case NIX_ERR_TM_INVALID_NODE:
+		err_msg = "TM node id invalid";
+		break;
+	case NIX_ERR_TM_INVALID_SHAPER_PROFILE:
+		err_msg = "TM shaper profile invalid";
+		break;
+	case NIX_ERR_TM_WEIGHT_EXCEED:
+		err_msg = "TM DWRR weight exceeded";
+		break;
+	case NIX_ERR_TM_CHILD_EXISTS:
+		err_msg = "TM node children exists";
+		break;
+	case NIX_ERR_TM_INVALID_PEAK_SZ:
+		err_msg = "TM peak size invalid";
+		break;
+	case NIX_ERR_TM_INVALID_PEAK_RATE:
+		err_msg = "TM peak rate invalid";
+		break;
+	case NIX_ERR_TM_INVALID_COMMIT_SZ:
+		err_msg = "TM commit size invalid";
+		break;
+	case NIX_ERR_TM_INVALID_COMMIT_RATE:
+		err_msg = "TM commit rate invalid";
+		break;
+	case NIX_ERR_TM_SHAPER_PROFILE_IN_USE:
+		err_msg = "TM shaper profile in use";
+		break;
+	case NIX_ERR_TM_SHAPER_PROFILE_EXISTS:
+		err_msg = "TM shaper profile exists";
+		break;
+	case NIX_ERR_TM_INVALID_TREE:
+		err_msg = "TM tree invalid";
+		break;
+	case NIX_ERR_TM_PARENT_PRIO_UPDATE:
+		err_msg = "TM node parent and prio update failed";
+		break;
+	case NIX_ERR_TM_PRIO_EXCEEDED:
+		err_msg = "TM node priority exceeded";
+		break;
+	case NIX_ERR_TM_PRIO_ORDER:
+		err_msg = "TM node priority not in order";
+		break;
+	case NIX_ERR_TM_MULTIPLE_RR_GROUPS:
+		err_msg = "TM multiple rr groups";
+		break;
+	case NIX_ERR_TM_SQ_UPDATE_FAIL:
+		err_msg = "TM SQ update failed";
+		break;
 	case NIX_ERR_NDC_SYNC:
 		err_msg = "NDC Sync failed";
 		break;
@@ -74,8 +137,53 @@ roc_error_msg_get(int errorcode)
 	case NIX_AF_ERR_AF_LF_ALLOC:
 		err_msg = "NIX LF alloc failed";
 		break;
+	case NIX_AF_ERR_TLX_INVALID:
+		err_msg = "Invalid NIX TLX";
+		break;
+	case NIX_AF_ERR_TLX_ALLOC_FAIL:
+		err_msg = "NIX TLX alloc failed";
+		break;
+	case NIX_AF_ERR_RSS_SIZE_INVALID:
+		err_msg = "Invalid RSS size";
+		break;
+	case NIX_AF_ERR_RSS_GRPS_INVALID:
+		err_msg = "Invalid RSS groups";
+		break;
+	case NIX_AF_ERR_FRS_INVALID:
+		err_msg = "Invalid frame size";
+		break;
+	case NIX_AF_ERR_RX_LINK_INVALID:
+		err_msg = "Invalid Rx link";
+		break;
+	case NIX_AF_INVAL_TXSCHQ_CFG:
+		err_msg = "Invalid Tx scheduling config";
+		break;
+	case NIX_AF_SMQ_FLUSH_FAILED:
+		err_msg = "SMQ flush failed";
+		break;
 	case NIX_AF_ERR_LF_RESET:
 		err_msg = "NIX LF reset failed";
+		break;
+	case NIX_AF_ERR_MARK_CFG_FAIL:
+		err_msg = "Marking config failed";
+		break;
+	case NIX_AF_ERR_LSO_CFG_FAIL:
+		err_msg = "LSO config failed";
+		break;
+	case NIX_AF_INVAL_NPA_PF_FUNC:
+		err_msg = "Invalid NPA pf_func";
+		break;
+	case NIX_AF_INVAL_SSO_PF_FUNC:
+		err_msg = "Invalid SSO pf_func";
+		break;
+	case NIX_AF_ERR_TX_VTAG_NOSPC:
+		err_msg = "No space for Tx VTAG";
+		break;
+	case NIX_AF_ERR_RX_VTAG_INUSE:
+		err_msg = "Rx VTAG is in use";
+		break;
+	case NIX_AF_ERR_PTP_CONFIG_FAIL:
+		err_msg = "PTP config failed";
 		break;
 	case UTIL_ERR_FS:
 		err_msg = "file operation failed";

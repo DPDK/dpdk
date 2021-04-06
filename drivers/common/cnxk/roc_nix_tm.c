@@ -393,6 +393,7 @@ roc_nix_tm_sq_flush_spin(struct roc_nix_sq *sq)
 
 	return 0;
 exit:
+	roc_nix_tm_dump(sq->roc_nix);
 	roc_nix_queues_ctx_dump(sq->roc_nix);
 	return -EFAULT;
 }

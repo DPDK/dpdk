@@ -579,6 +579,58 @@ roc_nix_tm_node_suspend_resume(struct roc_nix *roc_nix, uint32_t node_id,
 }
 
 int
+roc_nix_tm_prealloc_res(struct roc_nix *roc_nix, uint8_t lvl,
+			uint16_t discontig, uint16_t contig)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_txsch_alloc_req *req;
+	struct nix_txsch_alloc_rsp *rsp;
+	uint8_t hw_lvl;
+	int rc = -ENOSPC;
+
+	hw_lvl = nix_tm_lvl2nix(nix, lvl);
+	if (hw_lvl == NIX_TXSCH_LVL_CNT)
+		return -EINVAL;
+
+	/* Preallocate contiguous */
+	if (nix->contig_rsvd[hw_lvl] < contig) {
+		req = mbox_alloc_msg_nix_txsch_alloc(mbox);
+		if (req == NULL)
+			return rc;
+		req->schq_contig[hw_lvl] = contig - nix->contig_rsvd[hw_lvl];
+
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			return rc;
+
+		nix_tm_copy_rsp_to_nix(nix, rsp);
+	}
+
+	/* Preallocate contiguous */
+	if (nix->discontig_rsvd[hw_lvl] < discontig) {
+		req = mbox_alloc_msg_nix_txsch_alloc(mbox);
+		if (req == NULL)
+			return -ENOSPC;
+		req->schq[hw_lvl] = discontig - nix->discontig_rsvd[hw_lvl];
+
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			return rc;
+
+		nix_tm_copy_rsp_to_nix(nix, rsp);
+	}
+
+	/* Save thresholds */
+	nix->contig_rsvd[hw_lvl] = contig;
+	nix->discontig_rsvd[hw_lvl] = discontig;
+	/* Release anything present above thresholds */
+	nix_tm_release_resources(nix, hw_lvl, true, true);
+	nix_tm_release_resources(nix, hw_lvl, false, true);
+	return 0;
+}
+
+int
 roc_nix_tm_node_shaper_update(struct roc_nix *roc_nix, uint32_t node_id,
 			      uint32_t profile_id, bool force_update)
 {
@@ -903,4 +955,77 @@ roc_nix_tm_fini(struct roc_nix *roc_nix)
 	nix_tm_clear_shaper_profiles(nix);
 	nix->tm_tree = 0;
 	nix->tm_flags &= ~NIX_TM_HIERARCHY_ENA;
+}
+
+int
+roc_nix_tm_rsrc_count(struct roc_nix *roc_nix, uint16_t schq[ROC_TM_LVL_MAX])
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct free_rsrcs_rsp *rsp;
+	uint8_t hw_lvl;
+	int rc, i;
+
+	/* Get the current free resources */
+	mbox_alloc_msg_free_rsrc_cnt(mbox);
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	for (i = 0; i < ROC_TM_LVL_MAX; i++) {
+		hw_lvl = nix_tm_lvl2nix(nix, i);
+		if (hw_lvl == NIX_TXSCH_LVL_CNT)
+			continue;
+
+		schq[i] = (nix->is_nix1 ? rsp->schq_nix1[hw_lvl] :
+						rsp->schq[hw_lvl]);
+	}
+
+	return 0;
+}
+
+void
+roc_nix_tm_rsrc_max(bool pf, uint16_t schq[ROC_TM_LVL_MAX])
+{
+	uint8_t hw_lvl, i;
+	uint16_t max;
+
+	for (i = 0; i < ROC_TM_LVL_MAX; i++) {
+		hw_lvl = pf ? nix_tm_lvl2nix_tl1_root(i) :
+				    nix_tm_lvl2nix_tl2_root(i);
+
+		switch (hw_lvl) {
+		case NIX_TXSCH_LVL_SMQ:
+			max = (roc_model_is_cn9k() ?
+					     NIX_CN9K_TXSCH_LVL_SMQ_MAX :
+					     NIX_TXSCH_LVL_SMQ_MAX);
+			break;
+		case NIX_TXSCH_LVL_TL4:
+			max = NIX_TXSCH_LVL_TL4_MAX;
+			break;
+		case NIX_TXSCH_LVL_TL3:
+			max = NIX_TXSCH_LVL_TL3_MAX;
+			break;
+		case NIX_TXSCH_LVL_TL2:
+			max = pf ? NIX_TXSCH_LVL_TL2_MAX : 1;
+			break;
+		case NIX_TXSCH_LVL_TL1:
+			max = pf ? 1 : 0;
+			break;
+		default:
+			max = 0;
+			break;
+		}
+		schq[i] = max;
+	}
+}
+
+bool
+roc_nix_tm_root_has_sp(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	if (nix->tm_flags & NIX_TM_TL1_NO_SP)
+		return false;
+	return true;
 }
