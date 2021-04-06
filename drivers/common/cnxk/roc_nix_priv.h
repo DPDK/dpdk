@@ -45,6 +45,8 @@ struct nix {
 	uint16_t nb_tx_queues;
 	uint8_t lso_tsov6_idx;
 	uint8_t lso_tsov4_idx;
+	uint8_t lso_udp_tun_idx[ROC_NIX_LSO_TUN_MAX];
+	uint8_t lso_tun_idx[ROC_NIX_LSO_TUN_MAX];
 	uint8_t lf_rx_stats;
 	uint8_t lf_tx_stats;
 	uint8_t rx_chan_cnt;

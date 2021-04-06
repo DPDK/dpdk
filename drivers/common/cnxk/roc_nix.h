@@ -59,6 +59,12 @@ struct roc_nix_fc_cfg {
 	};
 };
 
+struct roc_nix_eeprom_info {
+#define ROC_NIX_EEPROM_SIZE 256
+	uint16_t sff_id;
+	uint8_t buf[ROC_NIX_EEPROM_SIZE];
+};
+
 /* Range to adjust PTP frequency. Valid range is
  * (-ROC_NIX_PTP_FREQ_ADJUST, ROC_NIX_PTP_FREQ_ADJUST)
  */
@@ -246,6 +252,14 @@ struct roc_nix {
 	uint8_t reserved[ROC_NIX_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 
+enum roc_nix_lso_tun_type {
+	ROC_NIX_LSO_TUN_V4V4,
+	ROC_NIX_LSO_TUN_V4V6,
+	ROC_NIX_LSO_TUN_V6V4,
+	ROC_NIX_LSO_TUN_V6V6,
+	ROC_NIX_LSO_TUN_MAX,
+};
+
 /* Dev */
 int __roc_api roc_nix_dev_init(struct roc_nix *roc_nix);
 int __roc_api roc_nix_dev_fini(struct roc_nix *roc_nix);
@@ -314,6 +328,20 @@ int __roc_api roc_nix_mac_max_rx_len_set(struct roc_nix *roc_nix,
 int __roc_api roc_nix_mac_link_cb_register(struct roc_nix *roc_nix,
 					   link_status_t link_update);
 void __roc_api roc_nix_mac_link_cb_unregister(struct roc_nix *roc_nix);
+
+/* Ops */
+int __roc_api roc_nix_switch_hdr_set(struct roc_nix *roc_nix,
+				     uint64_t switch_header_type);
+int __roc_api roc_nix_lso_fmt_setup(struct roc_nix *roc_nix);
+int __roc_api roc_nix_lso_fmt_get(struct roc_nix *roc_nix,
+				  uint8_t udp_tun[ROC_NIX_LSO_TUN_MAX],
+				  uint8_t tun[ROC_NIX_LSO_TUN_MAX]);
+int __roc_api roc_nix_lso_custom_fmt_setup(struct roc_nix *roc_nix,
+					   struct nix_lso_format *fields,
+					   uint16_t nb_fields);
+
+int __roc_api roc_nix_eeprom_info_get(struct roc_nix *roc_nix,
+				      struct roc_nix_eeprom_info *info);
 
 /* Flow control */
 int __roc_api roc_nix_fc_config_set(struct roc_nix *roc_nix,

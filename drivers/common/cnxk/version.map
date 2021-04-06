@@ -39,6 +39,9 @@ INTERNAL {
 	roc_nix_lf_free;
 	roc_nix_lf_get_reg_count;
 	roc_nix_lf_reg_dump;
+	roc_nix_lso_custom_fmt_setup;
+	roc_nix_lso_fmt_get;
+	roc_nix_lso_fmt_setup;
 	roc_nix_mac_addr_add;
 	roc_nix_mac_addr_del;
 	roc_nix_mac_addr_set;
@@ -98,6 +101,8 @@ INTERNAL {
 	roc_nix_num_xstats_get;
 	roc_nix_xstats_get;
 	roc_nix_xstats_names_get;
+	roc_nix_switch_hdr_set;
+	roc_nix_eeprom_info_get;
 	roc_nix_unregister_cq_irqs;
 	roc_nix_unregister_queue_irqs;
 	roc_nix_vlan_insert_ena_dis;

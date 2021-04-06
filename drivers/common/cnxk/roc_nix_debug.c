@@ -786,6 +786,22 @@ roc_nix_dump(struct roc_nix *roc_nix)
 	nix_dump("  \tnb_tx_queues = %d", nix->nb_tx_queues);
 	nix_dump("  \tlso_tsov6_idx = %d", nix->lso_tsov6_idx);
 	nix_dump("  \tlso_tsov4_idx = %d", nix->lso_tsov4_idx);
+	nix_dump("  \tlso_udp_tun_v4v4 = %d",
+		 nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V4V4]);
+	nix_dump("  \tlso_udp_tun_v4v6 = %d",
+		 nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V4V6]);
+	nix_dump("  \tlso_udp_tun_v6v4 = %d",
+		 nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V6V4]);
+	nix_dump("  \tlso_udp_tun_v6v6 = %d",
+		 nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V6V6]);
+	nix_dump("  \tlso_tun_v4v4 = %d",
+		 nix->lso_tun_idx[ROC_NIX_LSO_TUN_V4V4]);
+	nix_dump("  \tlso_tun_v4v6 = %d",
+		 nix->lso_tun_idx[ROC_NIX_LSO_TUN_V4V6]);
+	nix_dump("  \tlso_tun_v6v4 = %d",
+		 nix->lso_tun_idx[ROC_NIX_LSO_TUN_V6V4]);
+	nix_dump("  \tlso_tun_v6v6 = %d",
+		 nix->lso_tun_idx[ROC_NIX_LSO_TUN_V6V6]);
 	nix_dump("  \tlf_rx_stats = %d", nix->lf_rx_stats);
 	nix_dump("  \tlf_tx_stats = %d", nix->lf_tx_stats);
 	nix_dump("  \trx_chan_cnt = %d", nix->rx_chan_cnt);
