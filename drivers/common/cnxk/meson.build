@@ -40,6 +40,7 @@ sources = files('roc_dev.c',
 		'roc_npc_utils.c',
 		'roc_platform.c',
 		'roc_sso.c',
+		'roc_sso_debug.c',
 		'roc_sso_irq.c',
 		'roc_utils.c')
 includes += include_directories('../../bus/pci')

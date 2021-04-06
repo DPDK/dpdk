@@ -58,4 +58,8 @@ uintptr_t __roc_api roc_sso_hws_base_get(struct roc_sso *roc_sso, uint8_t hws);
 uintptr_t __roc_api roc_sso_hwgrp_base_get(struct roc_sso *roc_sso,
 					   uint16_t hwgrp);
 
+/* Debug */
+void __roc_api roc_sso_dump(struct roc_sso *roc_sso, uint8_t nb_hws,
+			    uint16_t hwgrp, FILE *f);
+
 #endif /* _ROC_SSOW_H_ */
