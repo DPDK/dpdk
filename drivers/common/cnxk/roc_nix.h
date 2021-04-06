@@ -47,6 +47,49 @@ enum roc_nix_sq_max_sqe_sz {
 #define ROC_NIX_VWQE_MAX_SIZE_LOG2 11
 #define ROC_NIX_VWQE_MIN_SIZE_LOG2 2
 
+struct roc_nix_stats {
+	/* Rx */
+	uint64_t rx_octs;
+	uint64_t rx_ucast;
+	uint64_t rx_bcast;
+	uint64_t rx_mcast;
+	uint64_t rx_drop;
+	uint64_t rx_drop_octs;
+	uint64_t rx_fcs;
+	uint64_t rx_err;
+	uint64_t rx_drop_bcast;
+	uint64_t rx_drop_mcast;
+	uint64_t rx_drop_l3_bcast;
+	uint64_t rx_drop_l3_mcast;
+	/* Tx */
+	uint64_t tx_ucast;
+	uint64_t tx_bcast;
+	uint64_t tx_mcast;
+	uint64_t tx_drop;
+	uint64_t tx_octs;
+};
+
+struct roc_nix_stats_queue {
+	PLT_STD_C11
+	union {
+		struct {
+			/* Rx */
+			uint64_t rx_pkts;
+			uint64_t rx_octs;
+			uint64_t rx_drop_pkts;
+			uint64_t rx_drop_octs;
+			uint64_t rx_error_pkts;
+		};
+		struct {
+			/* Tx */
+			uint64_t tx_pkts;
+			uint64_t tx_octs;
+			uint64_t tx_drop_pkts;
+			uint64_t tx_drop_octs;
+		};
+	};
+};
+
 struct roc_nix_rq {
 	/* Input parameters */
 	uint16_t qid;
@@ -236,6 +279,16 @@ int __roc_api roc_nix_rss_flowkey_set(struct roc_nix *roc_nix, uint8_t *alg_idx,
 				      int mcam_index);
 int __roc_api roc_nix_rss_default_setup(struct roc_nix *roc_nix,
 					uint32_t flowkey);
+
+/* Stats */
+int __roc_api roc_nix_stats_get(struct roc_nix *roc_nix,
+				struct roc_nix_stats *stats);
+int __roc_api roc_nix_stats_reset(struct roc_nix *roc_nix);
+int __roc_api roc_nix_stats_queue_get(struct roc_nix *roc_nix, uint16_t qid,
+				      bool is_rx,
+				      struct roc_nix_stats_queue *qstats);
+int __roc_api roc_nix_stats_queue_reset(struct roc_nix *roc_nix, uint16_t qid,
+					bool is_rx);
 
 /* Queue */
 int __roc_api roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq,

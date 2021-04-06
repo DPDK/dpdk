@@ -79,6 +79,10 @@ INTERNAL {
 	roc_nix_rx_queue_intr_enable;
 	roc_nix_sq_fini;
 	roc_nix_sq_init;
+	roc_nix_stats_get;
+	roc_nix_stats_queue_get;
+	roc_nix_stats_queue_reset;
+	roc_nix_stats_reset;
 	roc_nix_unregister_cq_irqs;
 	roc_nix_unregister_queue_irqs;
 	roc_npa_aura_limit_modify;
