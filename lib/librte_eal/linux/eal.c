@@ -1314,8 +1314,10 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 	if (!internal_conf->no_telemetry) {
-		uint32_t tlog = rte_log_register_type_and_pick_level(
+		int tlog = rte_log_register_type_and_pick_level(
 				"lib.telemetry", RTE_LOG_WARNING);
+		if (tlog < 0)
+			tlog = RTE_LOGTYPE_EAL;
 		if (rte_telemetry_init(rte_eal_get_runtime_dir(),
 				rte_version(),
 				&internal_conf->ctrl_cpuset, rte_log, tlog) != 0)
