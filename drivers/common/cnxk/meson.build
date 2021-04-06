@@ -10,7 +10,8 @@ endif
 
 config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
 deps = ['eal', 'pci', 'bus_pci', 'mbuf']
-sources = files('roc_model.c',
+sources = files('roc_irq.c',
+		'roc_model.c',
 		'roc_platform.c',
 		'roc_utils.c')
 includes += include_directories('../../bus/pci')

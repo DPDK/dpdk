@@ -8,4 +8,7 @@
 /* Utils */
 #include "roc_util_priv.h"
 
+/* Dev */
+#include "roc_dev_priv.h"
+
 #endif /* _ROC_PRIV_H_ */

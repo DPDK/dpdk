@@ -132,11 +132,22 @@
 #define plt_strlcpy rte_strlcpy
 
 /* Log */
+extern int cnxk_logtype_base;
 #define plt_err(fmt, args...)                                                  \
 	RTE_LOG(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
 #define plt_info(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
 #define plt_warn(fmt, args...) RTE_LOG(WARNING, PMD, fmt "\n", ##args)
 #define plt_print(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
+
+/**
+ * Log debug message if given subsystem logging is enabled.
+ */
+#define plt_dbg(subsystem, fmt, args...)                                       \
+	rte_log(RTE_LOG_DEBUG, cnxk_logtype_##subsystem,                       \
+		"[%s] %s():%u " fmt "\n", #subsystem, __func__, __LINE__,      \
+		##args)
+
+#define plt_base_dbg(fmt, ...)	plt_dbg(base, fmt, ##__VA_ARGS__)
 
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)				\

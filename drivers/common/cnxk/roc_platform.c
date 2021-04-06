@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <rte_log.h>
+
 #include "roc_api.h"
 
 #define PLT_INIT_CB_MAX 8
@@ -53,3 +55,5 @@ roc_plt_init(void)
 
 	return 0;
 }
+
+RTE_LOG_REGISTER(cnxk_logtype_base, pmd.cnxk.base, NOTICE);

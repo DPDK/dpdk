@@ -1,6 +1,7 @@
 INTERNAL {
 	global:
 
+	cnxk_logtype_base;
 	roc_error_msg_get;
 	roc_model;
 	roc_plt_init;
