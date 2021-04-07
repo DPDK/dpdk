@@ -583,6 +583,7 @@ struct rte_flow_action_count sample_count[RAW_SAMPLE_CONFS_MAX_NUM];
 struct rte_flow_action_port_id sample_port_id[RAW_SAMPLE_CONFS_MAX_NUM];
 struct rte_flow_action_raw_encap sample_encap[RAW_SAMPLE_CONFS_MAX_NUM];
 struct action_vxlan_encap_data sample_vxlan_encap[RAW_SAMPLE_CONFS_MAX_NUM];
+struct action_nvgre_encap_data sample_nvgre_encap[RAW_SAMPLE_CONFS_MAX_NUM];
 struct action_rss_data sample_rss_data[RAW_SAMPLE_CONFS_MAX_NUM];
 struct rte_flow_action_vf sample_vf[RAW_SAMPLE_CONFS_MAX_NUM];
 
@@ -1617,6 +1618,7 @@ static const enum index next_action_sample[] = {
 	ACTION_PORT_ID,
 	ACTION_RAW_ENCAP,
 	ACTION_VXLAN_ENCAP,
+	ACTION_NVGRE_ENCAP,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -7951,6 +7953,11 @@ cmd_set_raw_parsed_sample(const struct buffer *in)
 			size = sizeof(struct rte_flow_action_vxlan_encap);
 			parse_setup_vxlan_encap_data(&sample_vxlan_encap[idx]);
 			action->conf = &sample_vxlan_encap[idx].conf;
+			break;
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+			size = sizeof(struct rte_flow_action_nvgre_encap);
+			parse_setup_nvgre_encap_data(&sample_nvgre_encap[idx]);
+			action->conf = &sample_nvgre_encap[idx];
 			break;
 		default:
 			printf("Error - Not supported action\n");
