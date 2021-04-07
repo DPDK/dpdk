@@ -4580,110 +4580,101 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 
 	if (action_modify_field->width == 0)
 		return rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ACTION,
-					NULL,
-					"no bits are requested to be modified");
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"no bits are requested to be modified");
 	else if (action_modify_field->width > dst_width ||
 		 action_modify_field->width > src_width)
 		return rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ACTION,
-					NULL,
-					"cannot modify more bits than"
-					" the width of a field");
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"cannot modify more bits than"
+				" the width of a field");
 	if (action_modify_field->dst.field != RTE_FLOW_FIELD_VALUE &&
 	    action_modify_field->dst.field != RTE_FLOW_FIELD_POINTER) {
 		if ((action_modify_field->dst.offset +
 		     action_modify_field->width > dst_width) ||
 		    (action_modify_field->dst.offset % 32))
 			return rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL,
-						"destination offset is too big"
-						" or not aligned to 4 bytes");
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"destination offset is too big"
+					" or not aligned to 4 bytes");
 		if (action_modify_field->dst.level &&
 		    action_modify_field->dst.field != RTE_FLOW_FIELD_TAG)
-			return rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL,
-						"cannot modify inner headers");
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"inner header fields modification"
+					" is not supported");
 	}
 	if (action_modify_field->src.field != RTE_FLOW_FIELD_VALUE &&
 	    action_modify_field->src.field != RTE_FLOW_FIELD_POINTER) {
 		if (!attr->transfer && !attr->group)
 			return rte_flow_error_set(error, ENOTSUP,
-					RTE_FLOW_ERROR_TYPE_ACTION,
-					NULL, "modify field action "
-					"is not supported for group 0");
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"modify field action is not"
+					" supported for group 0");
 		if ((action_modify_field->src.offset +
 		     action_modify_field->width > src_width) ||
 		    (action_modify_field->src.offset % 32))
 			return rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL,
-						"source offset is too big"
-						" or not aligned to 4 bytes");
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"source offset is too big"
+					" or not aligned to 4 bytes");
 		if (action_modify_field->src.level &&
 		    action_modify_field->src.field != RTE_FLOW_FIELD_TAG)
-			return rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL,
-						"cannot copy from inner headers");
+			return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"inner header fields modification"
+					" is not supported");
 	}
 	if (action_modify_field->dst.field ==
 	    action_modify_field->src.field)
 		return rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ACTION,
-					NULL,
-					"source and destination fields"
-					" cannot be the same");
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"source and destination fields"
+				" cannot be the same");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VALUE ||
 	    action_modify_field->dst.field == RTE_FLOW_FIELD_POINTER)
 		return rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ACTION,
-					NULL,
-					"immediate value or a pointer to it"
-					" cannot be used as a destination");
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"immediate value or a pointer to it"
+				" cannot be used as a destination");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_START ||
 	    action_modify_field->src.field == RTE_FLOW_FIELD_START)
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION,
-				NULL,
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of an arbitrary"
 				" place in a packet is not supported");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VLAN_TYPE ||
 	    action_modify_field->src.field == RTE_FLOW_FIELD_VLAN_TYPE)
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION,
-				NULL,
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the 802.1Q Tag"
 				" Identifier is not supported");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_VXLAN_VNI ||
 	    action_modify_field->src.field == RTE_FLOW_FIELD_VXLAN_VNI)
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION,
-				NULL,
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the VXLAN Network"
 				" Identifier is not supported");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_GENEVE_VNI ||
 	    action_modify_field->src.field == RTE_FLOW_FIELD_GENEVE_VNI)
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION,
-				NULL,
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the GENEVE Network"
 				" Identifier is not supported");
 	if (action_modify_field->dst.field == RTE_FLOW_FIELD_MARK ||
-	    action_modify_field->src.field == RTE_FLOW_FIELD_MARK) {
+	    action_modify_field->src.field == RTE_FLOW_FIELD_MARK ||
+	    action_modify_field->dst.field == RTE_FLOW_FIELD_META ||
+	    action_modify_field->src.field == RTE_FLOW_FIELD_META) {
 		if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||
 		    !mlx5_flow_ext_mreg_supported(dev))
 			return rte_flow_error_set(error, ENOTSUP,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"cannot modify mark without extended"
-					" metadata register support");
+					"cannot modify mark or metadata without"
+					" extended metadata register support");
 	}
 	if (action_modify_field->operation != RTE_FLOW_MODIFY_SET)
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION,
-				NULL,
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"add and sub operations"
 				" are not supported");
 	return (action_modify_field->width / 32) +
