@@ -397,17 +397,6 @@ Supports configuring link flow control.
   ``rte_eth_dev_priority_flow_ctrl_set()``.
 
 
-.. _nic_features_flow_api:
-
-Flow API
---------
-
-Supports flow API family.
-
-* **[implements] eth_dev_ops**: ``flow_ops_get``.
-* **[implements] rte_flow_ops**: ``All``.
-
-
 .. _nic_features_rate_limitation:
 
 Rate limitation

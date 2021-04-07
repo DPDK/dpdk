@@ -3,6 +3,8 @@
 
 # ignore generated documentation tables
 doc/guides/nics/overview_table.txt
+doc/guides/nics/rte_flow_actions_table.txt
+doc/guides/nics/rte_flow_items_table.txt
 doc/guides/cryptodevs/overview_feature_table.txt
 doc/guides/cryptodevs/overview_cipher_table.txt
 doc/guides/cryptodevs/overview_auth_table.txt
