@@ -53,15 +53,14 @@ env_free(void *start, size_t size)
 
 static char *get_unique_name(void)
 {
-	char *name;
-	uint64_t *tsc;
+	uint64_t tsc = rte_get_tsc_cycles();
+	size_t size = sizeof(uint64_t) * 2 + 1;
+	char *name = calloc(1, size);
 
-	name = calloc(7, 1);
 	if (!name)
 		return NULL;
 
-	tsc = (uint64_t *) name;
-	*tsc = rte_get_tsc_cycles();
+	snprintf(name, size, "%016" PRIx64, tsc);
 	return name;
 }
 
