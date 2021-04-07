@@ -195,7 +195,7 @@ writer_create(void *args)
 		goto error;
 
 	p->params.name = strdup(params->name);
-	if (!p)
+	if (!p->params.name)
 		goto error;
 
 	p->pkts = calloc(params->burst_size, sizeof(struct rte_mbuf *));
