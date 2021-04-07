@@ -377,7 +377,7 @@ Limitations
   - For NIC Rx flow, supports ``MARK``, ``COUNT``, ``QUEUE``, ``RSS`` in the
     sample actions list.
   - For E-Switch mirroring flow, supports ``RAW ENCAP``, ``Port ID``,
-    ``VXLAN ENCAP`` in the sample actions list.
+    ``VXLAN ENCAP``, ``NVGRE ENCAP`` in the sample actions list.
 
 - Modify Field flow:
 

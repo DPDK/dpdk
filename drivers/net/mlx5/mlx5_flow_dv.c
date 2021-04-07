@@ -5259,6 +5259,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			ret = flow_dv_validate_action_l2_encap(dev,
 							       sub_action_flags,
 							       act, attr,
@@ -10431,6 +10432,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			/* Save the encap resource before sample */
 			pre_rix = dev_flow->handle->dvh.rix_encap_decap;

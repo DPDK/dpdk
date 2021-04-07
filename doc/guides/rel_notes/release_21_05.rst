@@ -117,7 +117,7 @@ New Features
 
   Updated the Mellanox mlx5 driver with new features and improvements, including:
 
-  * Added support for VXLAN encap as a sample action.
+  * Added support for VXLAN and NVGRE encap as sample actions.
 
 * **Updated NXP DPAA driver.**
 
