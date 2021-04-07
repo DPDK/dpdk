@@ -791,7 +791,8 @@ fill:
 			rss = action->conf;
 			/* Default RSS configuration if none is provided. */
 			if (rss->key_len) {
-				rss_key = rss->key;
+				rss_key = rss->key ?
+					  rss->key : mlx4_rss_hash_key_default;
 				rss_key_len = rss->key_len;
 			} else {
 				rss_key = mlx4_rss_hash_key_default;
