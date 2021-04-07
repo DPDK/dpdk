@@ -220,7 +220,6 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 
 		base_ratio = strtoul(buf_base, NULL, POWER_CONVERT_TO_DECIMAL)
 				/ BUS_FREQ;
-		fclose(f_base);
 	}
 
 	/* Add MSR read to detect turbo status */
