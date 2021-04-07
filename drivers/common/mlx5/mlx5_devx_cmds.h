@@ -31,6 +31,7 @@ struct mlx5_devx_mkey_attr {
 	uint32_t pg_access:1;
 	uint32_t relaxed_ordering_write:1;
 	uint32_t relaxed_ordering_read:1;
+	uint32_t umr_en:1;
 	struct mlx5_klm *klm_array;
 	int klm_num;
 };
@@ -151,6 +152,8 @@ struct mlx5_hca_attr {
 	uint32_t log_max_mmo_dma:5;
 	uint32_t log_max_mmo_compress:5;
 	uint32_t log_max_mmo_decompress:5;
+	uint32_t umr_modify_entity_size_disabled:1;
+	uint32_t umr_indirect_mkey_disabled:1;
 };
 
 struct mlx5_devx_wq_attr {

@@ -186,6 +186,8 @@ has_sym_args = [
 	'mlx5dv_dr_action_create_aso' ],
 	[ 'HAVE_INFINIBAND_VERBS_H', 'infiniband/verbs.h',
 	'INFINIBAND_VERBS_H' ],
+        [ 'HAVE_MLX5_UMR_IMKEY', 'infiniband/mlx5dv.h',
+        'MLX5_WQE_UMR_CTRL_FLAG_INLINE' ],
 ]
 config = configuration_data()
 foreach arg:has_sym_args
