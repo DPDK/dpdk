@@ -4893,6 +4893,18 @@ encapsulation header and sent to port id 0.
  testpmd> flow create 0 ingress transfer pattern eth / end actions
         sample ratio 1 index 0  / port_id id 2 / end
 
+Mirroring rule with port representors (with "transfer" attribute), the matched
+ingress packets are sent to port id 2, and also mirrored the packets with
+VXLAN encapsulation header and sent to port id 0.
+
+::
+
+ testpmd> set vxlan ip-version ipv4 vni 4 udp-src 4 udp-dst 4 ip-src 127.0.0.1
+        ip-dst 128.0.0.1 eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+ testpmd> set sample_actions 0 vxlan_encap / port_id id 0 / end
+ testpmd> flow create 0 ingress transfer pattern eth / end actions
+        sample ratio 1 index 0  / port_id id 2 / end
+
 BPF Functions
 --------------
 
