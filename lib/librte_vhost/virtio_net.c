@@ -835,9 +835,10 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	hdr_mbuf = m;
 	hdr_addr = buf_addr;
-	if (unlikely(buf_len < dev->vhost_hlen))
+	if (unlikely(buf_len < dev->vhost_hlen)) {
+		memset(&tmp_hdr, 0, sizeof(struct virtio_net_hdr_mrg_rxbuf));
 		hdr = &tmp_hdr;
-	else
+	} else
 		hdr = (struct virtio_net_hdr_mrg_rxbuf *)(uintptr_t)hdr_addr;
 
 	VHOST_LOG_DATA(DEBUG, "(%d) RX: num merge buffers %d\n",
