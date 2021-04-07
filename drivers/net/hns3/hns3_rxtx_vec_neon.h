@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2020 HiSilicon Limited.
+ * Copyright(c) 2020-2021 HiSilicon Limited.
  */
 
 #ifndef _HNS3_RXTX_VEC_NEON_H_
