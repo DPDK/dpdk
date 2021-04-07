@@ -68,6 +68,9 @@ Application Options
 ``--nb_iter N``
   number of iteration to run
 
+``--nb_segs N``
+  number of mbuf segment
+
 ``--help``
   print application options
 

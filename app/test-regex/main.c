@@ -35,6 +35,7 @@ enum app_args {
 	ARG_NUM_OF_ITERATIONS,
 	ARG_NUM_OF_QPS,
 	ARG_NUM_OF_LCORES,
+	ARG_NUM_OF_MBUF_SEGS,
 };
 
 struct job_ctx {
@@ -70,6 +71,7 @@ struct regex_conf {
 	char *data_buf;
 	long data_len;
 	long job_len;
+	uint32_t nb_segs;
 };
 
 static void
@@ -82,14 +84,15 @@ usage(const char *prog_name)
 		" --perf N: only outputs the performance data\n"
 		" --nb_iter N: number of iteration to run\n"
 		" --nb_qps N: number of queues to use\n"
-		" --nb_lcores N: number of lcores to use\n",
+		" --nb_lcores N: number of lcores to use\n"
+		" --nb_segs N: number of mbuf segments\n",
 		prog_name);
 }
 
 static void
 args_parse(int argc, char **argv, char *rules_file, char *data_file,
 	   uint32_t *nb_jobs, bool *perf_mode, uint32_t *nb_iterations,
-	   uint32_t *nb_qps, uint32_t *nb_lcores)
+	   uint32_t *nb_qps, uint32_t *nb_lcores, uint32_t *nb_segs)
 {
 	char **argvopt;
 	int opt;
@@ -111,6 +114,8 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 		{ "nb_qps", 1, 0, ARG_NUM_OF_QPS},
 		/* Number of lcores. */
 		{ "nb_lcores", 1, 0, ARG_NUM_OF_LCORES},
+		/* Number of mbuf segments. */
+		{ "nb_segs", 1, 0, ARG_NUM_OF_MBUF_SEGS},
 		/* End of options */
 		{ 0, 0, 0, 0 }
 	};
@@ -149,6 +154,9 @@ args_parse(int argc, char **argv, char *rules_file, char *data_file,
 			break;
 		case ARG_NUM_OF_LCORES:
 			*nb_lcores = atoi(optarg);
+			break;
+		case ARG_NUM_OF_MBUF_SEGS:
+			*nb_segs = atoi(optarg);
 			break;
 		case ARG_HELP:
 			usage("RegEx test app");
@@ -302,11 +310,75 @@ extbuf_free_cb(void *addr __rte_unused, void *fcb_opaque __rte_unused)
 {
 }
 
+static inline struct rte_mbuf *
+regex_create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
+		int nb_segs, void *buf) {
+
+	struct rte_mbuf *m = NULL, *mbuf = NULL;
+	uint8_t *dst;
+	char *src = buf;
+	int data_len = 0;
+	int i, size;
+	int t_len;
+
+	if (pkt_len < 1) {
+		printf("Packet size must be 1 or more (is %d)\n", pkt_len);
+		return NULL;
+	}
+
+	if (nb_segs < 1) {
+		printf("Number of segments must be 1 or more (is %d)\n",
+				nb_segs);
+		return NULL;
+	}
+
+	t_len = pkt_len >= nb_segs ? (pkt_len / nb_segs +
+				     !!(pkt_len % nb_segs)) : 1;
+	size = pkt_len;
+
+	/* Create chained mbuf_src and fill it with buf data */
+	for (i = 0; size > 0; i++) {
+
+		m = rte_pktmbuf_alloc(mbuf_pool);
+		if (i == 0)
+			mbuf = m;
+
+		if (m == NULL) {
+			printf("Cannot create segment for source mbuf");
+			goto fail;
+		}
+
+		data_len = size > t_len ? t_len : size;
+		memset(rte_pktmbuf_mtod(m, uint8_t *), 0,
+				rte_pktmbuf_tailroom(m));
+		memcpy(rte_pktmbuf_mtod(m, uint8_t *), src, data_len);
+		dst = (uint8_t *)rte_pktmbuf_append(m, data_len);
+		if (dst == NULL) {
+			printf("Cannot append %d bytes to the mbuf\n",
+					data_len);
+			goto fail;
+		}
+
+		if (mbuf != m)
+			rte_pktmbuf_chain(mbuf, m);
+		src += data_len;
+		size -= data_len;
+
+	}
+	return mbuf;
+
+fail:
+	if (mbuf)
+		rte_pktmbuf_free(mbuf);
+	return NULL;
+}
+
 static int
 run_regex(void *args)
 {
 	struct regex_conf *rgxc = args;
 	uint32_t nb_jobs = rgxc->nb_jobs;
+	uint32_t nb_segs = rgxc->nb_segs;
 	uint32_t nb_iterations = rgxc->nb_iterations;
 	uint8_t nb_max_matches = rgxc->nb_max_matches;
 	uint32_t nb_qps = rgxc->nb_qps;
@@ -338,8 +410,12 @@ run_regex(void *args)
 	snprintf(mbuf_pool,
 		 sizeof(mbuf_pool),
 		 "mbuf_pool_%2u", qp_id_base);
-	mbuf_mp = rte_pktmbuf_pool_create(mbuf_pool, nb_jobs * nb_qps, 0,
-			0, MBUF_SIZE, rte_socket_id());
+	mbuf_mp = rte_pktmbuf_pool_create(mbuf_pool,
+			rte_align32pow2(nb_jobs * nb_qps * nb_segs),
+			0, 0, (nb_segs == 1) ? MBUF_SIZE :
+			(rte_align32pow2(job_len) / nb_segs +
+			RTE_PKTMBUF_HEADROOM),
+			rte_socket_id());
 	if (mbuf_mp == NULL) {
 		printf("Error, can't create memory pool\n");
 		return -ENOMEM;
@@ -375,25 +451,6 @@ run_regex(void *args)
 			goto end;
 		}
 
-		/* Allocate the jobs and assign each job with an mbuf. */
-		for (i = 0; i < nb_jobs; i++) {
-			ops[i] = rte_malloc(NULL, sizeof(*ops[0]) +
-					nb_max_matches *
-					sizeof(struct rte_regexdev_match), 0);
-			if (!ops[i]) {
-				printf("Error, can't allocate "
-				       "memory for op.\n");
-				res = -ENOMEM;
-				goto end;
-			}
-			ops[i]->mbuf = rte_pktmbuf_alloc(mbuf_mp);
-			if (!ops[i]->mbuf) {
-				printf("Error, can't attach mbuf.\n");
-				res = -ENOMEM;
-				goto end;
-			}
-		}
-
 		if (clone_buf(data_buf, &buf, data_len)) {
 			printf("Error, can't clone buf.\n");
 			res = -EXIT_FAILURE;
@@ -403,13 +460,39 @@ run_regex(void *args)
 		/* Assign each mbuf with the data to handle. */
 		actual_jobs = 0;
 		pos = 0;
+		/* Allocate the jobs and assign each job with an mbuf. */
 		for (i = 0; (pos < data_len) && (i < nb_jobs) ; i++) {
 			long act_job_len = RTE_MIN(job_len, data_len - pos);
-			rte_pktmbuf_attach_extbuf(ops[i]->mbuf, &buf[pos], 0,
-					act_job_len, &shinfo);
+
+			ops[i] = rte_malloc(NULL, sizeof(*ops[0]) +
+					nb_max_matches *
+					sizeof(struct rte_regexdev_match), 0);
+			if (!ops[i]) {
+				printf("Error, can't allocate "
+				       "memory for op.\n");
+				res = -ENOMEM;
+				goto end;
+			}
+			if (nb_segs > 1) {
+				ops[i]->mbuf = regex_create_segmented_mbuf
+							(mbuf_mp, act_job_len,
+							 nb_segs, &buf[pos]);
+			} else {
+				ops[i]->mbuf = rte_pktmbuf_alloc(mbuf_mp);
+				if (ops[i]->mbuf) {
+					rte_pktmbuf_attach_extbuf(ops[i]->mbuf,
+					&buf[pos], 0, act_job_len, &shinfo);
+					ops[i]->mbuf->data_len = job_len;
+					ops[i]->mbuf->pkt_len = act_job_len;
+				}
+			}
+			if (!ops[i]->mbuf) {
+				printf("Error, can't add mbuf.\n");
+				res = -ENOMEM;
+				goto end;
+			}
+
 			jobs_ctx[i].mbuf = ops[i]->mbuf;
-			ops[i]->mbuf->data_len = job_len;
-			ops[i]->mbuf->pkt_len = act_job_len;
 			ops[i]->user_id = i;
 			ops[i]->group_id0 = 1;
 			pos += act_job_len;
@@ -612,7 +695,7 @@ main(int argc, char **argv)
 	char *data_buf;
 	long data_len;
 	long job_len;
-	uint32_t nb_lcores = 1;
+	uint32_t nb_lcores = 1, nb_segs = 1;
 	struct regex_conf *rgxc;
 	uint32_t i;
 	struct qps_per_lcore *qps_per_lcore;
@@ -626,7 +709,7 @@ main(int argc, char **argv)
 	if (argc > 1)
 		args_parse(argc, argv, rules_file, data_file, &nb_jobs,
 				&perf_mode, &nb_iterations, &nb_qps,
-				&nb_lcores);
+				&nb_lcores, &nb_segs);
 
 	if (nb_qps == 0)
 		rte_exit(EXIT_FAILURE, "Number of QPs must be greater than 0\n");
@@ -656,6 +739,7 @@ main(int argc, char **argv)
 	for (i = 0; i < nb_lcores; i++) {
 		rgxc[i] = (struct regex_conf){
 			.nb_jobs = nb_jobs,
+			.nb_segs = nb_segs,
 			.perf_mode = perf_mode,
 			.nb_iterations = nb_iterations,
 			.nb_max_matches = nb_max_matches,
