@@ -119,6 +119,10 @@ New Features
 
   * Added support for preferred busy polling.
 
+* **Updated Mellanox RegEx PMD.**
+
+  * Added support for multi-segments mbuf.
+
 * **Updated testpmd.**
 
   * Added a command line option to configure forced speed for Ethernet port.

@@ -35,6 +35,11 @@ be specified as device parameter. The RegEx device can be probed and used with
 other Mellanox devices, by adding more options in the class.
 For example: ``class=net:regex`` will probe both the net PMD and the RegEx PMD.
 
+Features
+--------
+
+- Multi segments mbuf support.
+
 Supported NICs
 --------------
 

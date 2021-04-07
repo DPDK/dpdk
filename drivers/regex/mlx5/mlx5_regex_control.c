@@ -27,6 +27,9 @@
 
 #define MLX5_REGEX_NUM_WQE_PER_PAGE (4096/64)
 
+#define MLX5_REGEX_WQE_LOG_NUM(has_umr, log_desc) \
+		((has_umr) ? ((log_desc) + 2) : (log_desc))
+
 /**
  * Returns the number of qp obj to be created.
  *
@@ -91,26 +94,6 @@ regex_ctrl_create_cq(struct mlx5_regex_priv *priv, struct mlx5_regex_cq *cq)
 	return 0;
 }
 
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-static int
-regex_get_pdn(void *pd, uint32_t *pdn)
-{
-	struct mlx5dv_obj obj;
-	struct mlx5dv_pd pd_info;
-	int ret = 0;
-
-	obj.pd.in = pd;
-	obj.pd.out = &pd_info;
-	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
-	if (ret) {
-		DRV_LOG(DEBUG, "Fail to get PD object info");
-		return ret;
-	}
-	*pdn = pd_info.pdn;
-	return 0;
-}
-#endif
-
 /**
  * Destroy the SQ object.
  *
@@ -168,14 +151,16 @@ regex_ctrl_create_sq(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	int ret;
 
 	sq->log_nb_desc = log_nb_desc;
+	sq->sqn = q_ind;
 	sq->ci = 0;
 	sq->pi = 0;
 	ret = regex_get_pdn(priv->pd, &pd_num);
 	if (ret)
 		return ret;
 	attr.wq_attr.pd = pd_num;
-	ret = mlx5_devx_sq_create(priv->ctx, &sq->sq_obj, log_nb_desc, &attr,
-				  SOCKET_ID_ANY);
+	ret = mlx5_devx_sq_create(priv->ctx, &sq->sq_obj,
+			MLX5_REGEX_WQE_LOG_NUM(priv->has_umr, log_nb_desc),
+			&attr, SOCKET_ID_ANY);
 	if (ret) {
 		DRV_LOG(ERR, "Can't create SQ object.");
 		rte_errno = ENOMEM;
@@ -225,10 +210,18 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 
 	qp = &priv->qps[qp_ind];
 	qp->flags = cfg->qp_conf_flags;
-	qp->cq.log_nb_desc = rte_log2_u32(cfg->nb_desc);
-	qp->nb_desc = 1 << qp->cq.log_nb_desc;
+	log_desc = rte_log2_u32(cfg->nb_desc);
+	/*
+	 * UMR mode requires two WQEs(UMR and RegEx WQE) for one descriptor.
+	 * For CQ, expand the CQE number multiple with 2.
+	 * For SQ, the UMR and RegEx WQE for one descriptor consumes 4 WQEBBS,
+	 * expand the WQE number multiple with 4.
+	 */
+	qp->cq.log_nb_desc = log_desc + (!!priv->has_umr);
+	qp->nb_desc = 1 << log_desc;
 	if (qp->flags & RTE_REGEX_QUEUE_PAIR_CFG_OOS_F)
-		qp->nb_obj = regex_ctrl_get_nb_obj(qp->nb_desc);
+		qp->nb_obj = regex_ctrl_get_nb_obj
+			(1 << MLX5_REGEX_WQE_LOG_NUM(priv->has_umr, log_desc));
 	else
 		qp->nb_obj = 1;
 	qp->sqs = rte_malloc(NULL,

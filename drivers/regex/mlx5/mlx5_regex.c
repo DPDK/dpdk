@@ -199,6 +199,13 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	priv->regexdev->dev_ops = &mlx5_regexdev_ops;
 	priv->regexdev->enqueue = mlx5_regexdev_enqueue;
+#ifdef HAVE_MLX5_UMR_IMKEY
+	if (!attr.umr_indirect_mkey_disabled &&
+	    !attr.umr_modify_entity_size_disabled)
+		priv->has_umr = 1;
+	if (priv->has_umr)
+		priv->regexdev->enqueue = mlx5_regexdev_enqueue_gga;
+#endif
 	priv->regexdev->dequeue = mlx5_regexdev_dequeue;
 	priv->regexdev->device = (struct rte_device *)pci_dev;
 	priv->regexdev->data->dev_private = priv;
@@ -213,6 +220,8 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	    rte_errno = ENOMEM;
 		goto error;
 	}
+	DRV_LOG(INFO, "RegEx GGA is %s.",
+		priv->has_umr ? "supported" : "unsupported");
 	return 0;
 
 error:
