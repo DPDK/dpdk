@@ -1462,8 +1462,9 @@ mlx5_flow_field_id_to_modify_info
 	case RTE_FLOW_FIELD_IPV6_SRC:
 		if (mask) {
 			if (data->offset < 32) {
-				info[idx] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_SIPV6_127_96};
+				info[idx] = (struct field_modify_info){4,
+						4 * idx,
+						MLX5_MODI_OUT_SIPV6_31_0};
 				if (width < 32) {
 					mask[idx] =
 						rte_cpu_to_be_32(0xffffffff >>
@@ -1480,7 +1481,7 @@ mlx5_flow_field_id_to_modify_info
 			if (data->offset < 64) {
 				info[idx] = (struct field_modify_info){4,
 						4 * idx,
-						MLX5_MODI_OUT_SIPV6_95_64};
+						MLX5_MODI_OUT_SIPV6_63_32};
 				if (width < 32) {
 					mask[idx] =
 						rte_cpu_to_be_32(0xffffffff >>
@@ -1496,8 +1497,8 @@ mlx5_flow_field_id_to_modify_info
 			}
 			if (data->offset < 96) {
 				info[idx] = (struct field_modify_info){4,
-						8 * idx,
-						MLX5_MODI_OUT_SIPV6_63_32};
+						4 * idx,
+						MLX5_MODI_OUT_SIPV6_95_64};
 				if (width < 32) {
 					mask[idx] =
 						rte_cpu_to_be_32(0xffffffff >>
@@ -1511,30 +1512,31 @@ mlx5_flow_field_id_to_modify_info
 					break;
 				++idx;
 			}
-			info[idx] = (struct field_modify_info){4, 12 * idx,
-						MLX5_MODI_OUT_SIPV6_31_0};
+			info[idx] = (struct field_modify_info){4, 4 * idx,
+						MLX5_MODI_OUT_SIPV6_127_96};
 			mask[idx] = rte_cpu_to_be_32(0xffffffff >>
 						     (32 - width));
 		} else {
 			if (data->offset < 32)
 				info[idx++] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_SIPV6_127_96};
+						MLX5_MODI_OUT_SIPV6_31_0};
 			if (data->offset < 64)
 				info[idx++] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_SIPV6_95_64};
+						MLX5_MODI_OUT_SIPV6_63_32};
 			if (data->offset < 96)
 				info[idx++] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_SIPV6_63_32};
+						MLX5_MODI_OUT_SIPV6_95_64};
 			if (data->offset < 128)
 				info[idx++] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_SIPV6_31_0};
+						MLX5_MODI_OUT_SIPV6_127_96};
 		}
 		break;
 	case RTE_FLOW_FIELD_IPV6_DST:
 		if (mask) {
 			if (data->offset < 32) {
-				info[idx] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_DIPV6_127_96};
+				info[idx] = (struct field_modify_info){4,
+						4 * idx,
+						MLX5_MODI_OUT_DIPV6_31_0};
 				if (width < 32) {
 					mask[idx] =
 						rte_cpu_to_be_32(0xffffffff >>
@@ -1551,7 +1553,7 @@ mlx5_flow_field_id_to_modify_info
 			if (data->offset < 64) {
 				info[idx] = (struct field_modify_info){4,
 						4 * idx,
-						MLX5_MODI_OUT_DIPV6_95_64};
+						MLX5_MODI_OUT_DIPV6_63_32};
 				if (width < 32) {
 					mask[idx] =
 						rte_cpu_to_be_32(0xffffffff >>
@@ -1567,8 +1569,8 @@ mlx5_flow_field_id_to_modify_info
 			}
 			if (data->offset < 96) {
 				info[idx] = (struct field_modify_info){4,
-						8 * idx,
-						MLX5_MODI_OUT_DIPV6_63_32};
+						4 * idx,
+						MLX5_MODI_OUT_DIPV6_95_64};
 				if (width < 32) {
 					mask[idx] =
 						rte_cpu_to_be_32(0xffffffff >>
@@ -1582,23 +1584,23 @@ mlx5_flow_field_id_to_modify_info
 					break;
 				++idx;
 			}
-			info[idx] = (struct field_modify_info){4, 12 * idx,
-						MLX5_MODI_OUT_DIPV6_31_0};
+			info[idx] = (struct field_modify_info){4, 4 * idx,
+						MLX5_MODI_OUT_DIPV6_127_96};
 			mask[idx] = rte_cpu_to_be_32(0xffffffff >>
 						     (32 - width));
 		} else {
 			if (data->offset < 32)
 				info[idx++] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_DIPV6_127_96};
+						MLX5_MODI_OUT_DIPV6_31_0};
 			if (data->offset < 64)
 				info[idx++] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_DIPV6_95_64};
+						MLX5_MODI_OUT_DIPV6_63_32};
 			if (data->offset < 96)
 				info[idx++] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_DIPV6_63_32};
+						MLX5_MODI_OUT_DIPV6_95_64};
 			if (data->offset < 128)
 				info[idx++] = (struct field_modify_info){4, 0,
-						MLX5_MODI_OUT_DIPV6_31_0};
+						MLX5_MODI_OUT_DIPV6_127_96};
 		}
 		break;
 	case RTE_FLOW_FIELD_TCP_PORT_SRC:
