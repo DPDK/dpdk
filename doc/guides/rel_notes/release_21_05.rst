@@ -113,6 +113,12 @@ New Features
 
   * Added Intel ice support on Windows.
 
+* **Updated Mellanox mlx5 driver.**
+
+  Updated the Mellanox mlx5 driver with new features and improvements, including:
+
+  * Added support for VXLAN encap as a sample action.
+
 * **Updated NXP DPAA driver.**
 
   * Added support for shared ethernet interface.

@@ -5258,6 +5258,16 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 				return ret;
 			++actions_n;
 			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			ret = flow_dv_validate_action_l2_encap(dev,
+							       sub_action_flags,
+							       act, attr,
+							       error);
+			if (ret < 0)
+				return ret;
+			sub_action_flags |= MLX5_FLOW_ACTION_ENCAP;
+			++actions_n;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -10420,6 +10430,7 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
 			break;
 		}
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			/* Save the encap resource before sample */
 			pre_rix = dev_flow->handle->dvh.rix_encap_decap;
