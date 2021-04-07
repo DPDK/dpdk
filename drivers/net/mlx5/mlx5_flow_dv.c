@@ -1325,16 +1325,77 @@ flow_dv_convert_action_modify_ipv6_dscp
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
 
+static int
+mlx5_flow_item_field_width(enum rte_flow_field_id field)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_START:
+		return 32;
+	case RTE_FLOW_FIELD_MAC_DST:
+	case RTE_FLOW_FIELD_MAC_SRC:
+		return 48;
+	case RTE_FLOW_FIELD_VLAN_TYPE:
+		return 16;
+	case RTE_FLOW_FIELD_VLAN_ID:
+		return 12;
+	case RTE_FLOW_FIELD_MAC_TYPE:
+		return 16;
+	case RTE_FLOW_FIELD_IPV4_DSCP:
+		return 6;
+	case RTE_FLOW_FIELD_IPV4_TTL:
+		return 8;
+	case RTE_FLOW_FIELD_IPV4_SRC:
+	case RTE_FLOW_FIELD_IPV4_DST:
+		return 32;
+	case RTE_FLOW_FIELD_IPV6_DSCP:
+		return 6;
+	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
+		return 8;
+	case RTE_FLOW_FIELD_IPV6_SRC:
+	case RTE_FLOW_FIELD_IPV6_DST:
+		return 128;
+	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
+		return 16;
+	case RTE_FLOW_FIELD_TCP_SEQ_NUM:
+	case RTE_FLOW_FIELD_TCP_ACK_NUM:
+		return 32;
+	case RTE_FLOW_FIELD_TCP_FLAGS:
+		return 6;
+	case RTE_FLOW_FIELD_UDP_PORT_SRC:
+	case RTE_FLOW_FIELD_UDP_PORT_DST:
+		return 16;
+	case RTE_FLOW_FIELD_VXLAN_VNI:
+	case RTE_FLOW_FIELD_GENEVE_VNI:
+		return 24;
+	case RTE_FLOW_FIELD_GTP_TEID:
+	case RTE_FLOW_FIELD_TAG:
+		return 32;
+	case RTE_FLOW_FIELD_MARK:
+		return 24;
+	case RTE_FLOW_FIELD_META:
+		return 32;
+	case RTE_FLOW_FIELD_POINTER:
+	case RTE_FLOW_FIELD_VALUE:
+		return 64;
+	default:
+		MLX5_ASSERT(false);
+	}
+	return 0;
+}
+
 static void
 mlx5_flow_field_id_to_modify_info
 		(const struct rte_flow_action_modify_data *data,
 		 struct field_modify_info *info,
-		 uint32_t *mask, uint32_t *value, uint32_t width,
+		 uint32_t *mask, uint32_t *value,
+		 uint32_t width, uint32_t dst_width,
 		 struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr,
 		 struct rte_flow_error *error)
 {
 	uint32_t idx = 0;
+	uint64_t val = 0;
 	switch (data->field) {
 	case RTE_FLOW_FIELD_START:
 		/* not supported yet */
@@ -1700,21 +1761,26 @@ mlx5_flow_field_id_to_modify_info
 		}
 		break;
 	case RTE_FLOW_FIELD_POINTER:
-		for (idx = 0; idx < MLX5_ACT_MAX_MOD_FIELDS; idx++) {
-			if (mask[idx]) {
-				memcpy(&value[idx],
-					(void *)(uintptr_t)data->value, 32);
-				value[idx] = rte_cpu_to_be_32(value[idx]);
-				break;
-			}
-		}
-		break;
 	case RTE_FLOW_FIELD_VALUE:
+		if (data->field == RTE_FLOW_FIELD_POINTER)
+			memcpy(&val, (void *)(uintptr_t)data->value,
+			       sizeof(uint64_t));
+		else
+			val = data->value;
 		for (idx = 0; idx < MLX5_ACT_MAX_MOD_FIELDS; idx++) {
 			if (mask[idx]) {
-				value[idx] =
-					rte_cpu_to_be_32((uint32_t)data->value);
-				break;
+				if (dst_width > 16) {
+					value[idx] = rte_cpu_to_be_32(val);
+					val >>= 32;
+				} else if (dst_width > 8) {
+					value[idx] = rte_cpu_to_be_16(val);
+					val >>= 16;
+				} else {
+					value[idx] = (uint8_t)val;
+					val >>= 8;
+				}
+				if (!val)
+					break;
 			}
 		}
 		break;
@@ -1759,25 +1825,26 @@ flow_dv_convert_action_modify_field
 	uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
 	uint32_t value[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
 	uint32_t type;
+	uint32_t dst_width = mlx5_flow_item_field_width(conf->dst.field);
 
 	if (conf->src.field == RTE_FLOW_FIELD_POINTER ||
 		conf->src.field == RTE_FLOW_FIELD_VALUE) {
 		type = MLX5_MODIFICATION_TYPE_SET;
 		/** For SET fill the destination field (field) first. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, field, mask,
-					  value, conf->width, dev, attr, error);
+			value, conf->width, dst_width, dev, attr, error);
 		/** Then copy immediate value from source as per mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->src, dcopy, mask,
-					  value, conf->width, dev, attr, error);
+			value, conf->width, dst_width, dev, attr, error);
 		item.spec = &value;
 	} else {
 		type = MLX5_MODIFICATION_TYPE_COPY;
 		/** For COPY fill the destination field (dcopy) without mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, dcopy, NULL,
-					  value, conf->width, dev, attr, error);
+			value, conf->width, dst_width, dev, attr, error);
 		/** Then construct the source field (field) with mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->src, field, mask,
-					  value, conf->width, dev, attr, error);
+			value, conf->width, dst_width, dev, attr, error);
 	}
 	item.mask = &mask;
 	return flow_dv_convert_modify_action(&item,
@@ -4469,64 +4536,6 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
 						  "no IP protocol in pattern");
 	}
 	return ret;
-}
-
-static int
-mlx5_flow_item_field_width(enum rte_flow_field_id field)
-{
-	switch (field) {
-	case RTE_FLOW_FIELD_START:
-		return 32;
-	case RTE_FLOW_FIELD_MAC_DST:
-	case RTE_FLOW_FIELD_MAC_SRC:
-		return 48;
-	case RTE_FLOW_FIELD_VLAN_TYPE:
-		return 16;
-	case RTE_FLOW_FIELD_VLAN_ID:
-		return 12;
-	case RTE_FLOW_FIELD_MAC_TYPE:
-		return 16;
-	case RTE_FLOW_FIELD_IPV4_DSCP:
-		return 6;
-	case RTE_FLOW_FIELD_IPV4_TTL:
-		return 8;
-	case RTE_FLOW_FIELD_IPV4_SRC:
-	case RTE_FLOW_FIELD_IPV4_DST:
-		return 32;
-	case RTE_FLOW_FIELD_IPV6_DSCP:
-		return 6;
-	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
-		return 8;
-	case RTE_FLOW_FIELD_IPV6_SRC:
-	case RTE_FLOW_FIELD_IPV6_DST:
-		return 128;
-	case RTE_FLOW_FIELD_TCP_PORT_SRC:
-	case RTE_FLOW_FIELD_TCP_PORT_DST:
-		return 16;
-	case RTE_FLOW_FIELD_TCP_SEQ_NUM:
-	case RTE_FLOW_FIELD_TCP_ACK_NUM:
-		return 32;
-	case RTE_FLOW_FIELD_TCP_FLAGS:
-		return 6;
-	case RTE_FLOW_FIELD_UDP_PORT_SRC:
-	case RTE_FLOW_FIELD_UDP_PORT_DST:
-		return 16;
-	case RTE_FLOW_FIELD_VXLAN_VNI:
-	case RTE_FLOW_FIELD_GENEVE_VNI:
-		return 24;
-	case RTE_FLOW_FIELD_GTP_TEID:
-	case RTE_FLOW_FIELD_TAG:
-		return 32;
-	case RTE_FLOW_FIELD_MARK:
-		return 24;
-	case RTE_FLOW_FIELD_META:
-	case RTE_FLOW_FIELD_POINTER:
-	case RTE_FLOW_FIELD_VALUE:
-		return 32;
-	default:
-		MLX5_ASSERT(false);
-	}
-	return 0;
 }
 
 /**
