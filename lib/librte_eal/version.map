@@ -159,7 +159,6 @@ DPDK_21 {
 	rte_service_component_unregister;
 	rte_service_dump;
 	rte_service_finalize;
-	rte_service_get_by_id;
 	rte_service_get_by_name;
 	rte_service_get_count;
 	rte_service_get_name;

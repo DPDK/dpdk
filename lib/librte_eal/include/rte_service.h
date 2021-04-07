@@ -47,10 +47,7 @@ extern "C" {
 #define RTE_SERVICE_CAP_MT_SAFE (1 << 0)
 
 /**
- *  Return the number of services registered.
- *
- * The number of services registered can be passed to *rte_service_get_by_id*,
- * enabling the application to retrieve the specification of each service.
+ * Return the number of services registered.
  *
  * @return The number of services registered.
  */
