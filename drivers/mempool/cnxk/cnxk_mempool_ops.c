@@ -174,12 +174,15 @@ cnxk_mempool_populate(struct rte_mempool *mp, unsigned int max_objs,
 static int
 cnxk_mempool_plt_init(void)
 {
-	if (roc_model_is_cn9k())
-		rte_mbuf_set_platform_mempool_ops("cn9k_mempool_ops");
-	else if (roc_model_is_cn10k())
-		rte_mbuf_set_platform_mempool_ops("cn10k_mempool_ops");
+	int rc = 0;
 
-	return 0;
+	if (roc_model_is_cn9k()) {
+		rte_mbuf_set_platform_mempool_ops("cn9k_mempool_ops");
+	} else if (roc_model_is_cn10k()) {
+		rte_mbuf_set_platform_mempool_ops("cn10k_mempool_ops");
+		rc = cn10k_mempool_plt_init();
+	}
+	return rc;
 }
 
 RTE_INIT(cnxk_mempool_ops_init)

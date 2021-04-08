@@ -7,11 +7,136 @@
 #include "roc_api.h"
 #include "cnxk_mempool.h"
 
+#define BATCH_ALLOC_SZ              ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS
+#define BATCH_OP_DATA_TABLE_MZ_NAME "batch_op_data_table_mz"
+
+enum batch_op_status {
+	BATCH_ALLOC_OP_NOT_ISSUED = 0,
+	BATCH_ALLOC_OP_ISSUED = 1,
+	BATCH_ALLOC_OP_DONE
+};
+
+struct batch_op_mem {
+	unsigned int sz;
+	enum batch_op_status status;
+	uint64_t objs[BATCH_ALLOC_SZ] __rte_aligned(ROC_ALIGN);
+};
+
+struct batch_op_data {
+	uint64_t lmt_addr;
+	struct batch_op_mem mem[RTE_MAX_LCORE] __rte_aligned(ROC_ALIGN);
+};
+
+static struct batch_op_data **batch_op_data_tbl;
+
+static int
+batch_op_data_table_create(void)
+{
+	const struct rte_memzone *mz;
+
+	/* If table is already set, nothing to do */
+	if (batch_op_data_tbl)
+		return 0;
+
+	mz = rte_memzone_lookup(BATCH_OP_DATA_TABLE_MZ_NAME);
+	if (mz == NULL) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			unsigned int maxpools, sz;
+
+			maxpools = roc_idev_npa_maxpools_get();
+			sz = maxpools * sizeof(struct batch_op_data *);
+
+			mz = rte_memzone_reserve_aligned(
+				BATCH_OP_DATA_TABLE_MZ_NAME, sz, SOCKET_ID_ANY,
+				0, ROC_ALIGN);
+		}
+		if (mz == NULL) {
+			plt_err("Failed to reserve batch op data table");
+			return -ENOMEM;
+		}
+	}
+	batch_op_data_tbl = mz->addr;
+	rte_wmb();
+	return 0;
+}
+
+static inline struct batch_op_data *
+batch_op_data_get(uint64_t pool_id)
+{
+	uint64_t aura = roc_npa_aura_handle_to_aura(pool_id);
+
+	return batch_op_data_tbl[aura];
+}
+
+static inline void
+batch_op_data_set(uint64_t pool_id, struct batch_op_data *op_data)
+{
+	uint64_t aura = roc_npa_aura_handle_to_aura(pool_id);
+
+	batch_op_data_tbl[aura] = op_data;
+}
+
+static int
+batch_op_init(struct rte_mempool *mp)
+{
+	struct batch_op_data *op_data;
+	int i;
+
+	op_data = batch_op_data_get(mp->pool_id);
+	/* The data should not have been allocated previously */
+	RTE_ASSERT(op_data == NULL);
+
+	op_data = rte_zmalloc(NULL, sizeof(struct batch_op_data), ROC_ALIGN);
+	if (op_data == NULL)
+		return -ENOMEM;
+
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		op_data->mem[i].sz = 0;
+		op_data->mem[i].status = BATCH_ALLOC_OP_NOT_ISSUED;
+	}
+
+	op_data->lmt_addr = roc_idev_lmt_base_addr_get();
+	batch_op_data_set(mp->pool_id, op_data);
+	rte_wmb();
+
+	return 0;
+}
+
+static void
+batch_op_fini(struct rte_mempool *mp)
+{
+	struct batch_op_data *op_data;
+	int i;
+
+	op_data = batch_op_data_get(mp->pool_id);
+
+	rte_wmb();
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		struct batch_op_mem *mem = &op_data->mem[i];
+
+		if (mem->status == BATCH_ALLOC_OP_ISSUED) {
+			mem->sz = roc_npa_aura_batch_alloc_extract(
+				mem->objs, mem->objs, BATCH_ALLOC_SZ);
+			mem->status = BATCH_ALLOC_OP_DONE;
+		}
+		if (mem->status == BATCH_ALLOC_OP_DONE) {
+			roc_npa_aura_op_bulk_free(mp->pool_id, mem->objs,
+						  mem->sz, 1);
+			mem->status = BATCH_ALLOC_OP_NOT_ISSUED;
+		}
+	}
+
+	rte_free(op_data);
+	batch_op_data_set(mp->pool_id, NULL);
+	rte_wmb();
+}
+
 static int
 cn10k_mempool_alloc(struct rte_mempool *mp)
 {
 	uint32_t block_size;
 	size_t padding;
+	int rc;
 
 	block_size = mp->elt_size + mp->header_size + mp->trailer_size;
 	/* Align header size to ROC_ALIGN */
@@ -29,13 +154,33 @@ cn10k_mempool_alloc(struct rte_mempool *mp)
 		block_size += padding;
 	}
 
-	return cnxk_mempool_alloc(mp);
+	rc = cnxk_mempool_alloc(mp);
+	if (rc)
+		return rc;
+
+	rc = batch_op_init(mp);
+	if (rc) {
+		plt_err("Failed to init batch alloc mem rc=%d", rc);
+		goto error;
+	}
+
+	return 0;
+error:
+	cnxk_mempool_free(mp);
+	return rc;
 }
 
 static void
 cn10k_mempool_free(struct rte_mempool *mp)
 {
+	batch_op_fini(mp);
 	cnxk_mempool_free(mp);
+}
+
+int
+cn10k_mempool_plt_init(void)
+{
+	return batch_op_data_table_create();
 }
 
 static struct rte_mempool_ops cn10k_mempool_ops = {

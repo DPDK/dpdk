@@ -25,6 +25,11 @@ CN9k NPA supports:
 
 - Burst alloc of up to 32 pointers.
 
+CN10k NPA supports:
+
+- Batch dequeue of up to 512 pointers with single instruction.
+- Batch enqueue of up to 15 pointers with single instruction.
+
 Prerequisites and Compilation procedure
 ---------------------------------------
 
