@@ -2343,15 +2343,18 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	 * Configure support of jumbo frames, if any.
 	 */
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+		uint32_t max_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+
 		rctl |= E1000_RCTL_LPE;
 
 		/*
 		 * Set maximum packet length by default, and might be updated
 		 * together with enabling/disabling dual VLAN.
 		 */
-		E1000_WRITE_REG(hw, E1000_RLPML,
-			dev->data->dev_conf.rxmode.max_rx_pkt_len +
-						VLAN_TAG_SIZE);
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
+			max_len += VLAN_TAG_SIZE;
+
+		E1000_WRITE_REG(hw, E1000_RLPML, max_len);
 	} else
 		rctl &= ~E1000_RCTL_LPE;
 
