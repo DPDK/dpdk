@@ -131,6 +131,32 @@ batch_op_fini(struct rte_mempool *mp)
 	rte_wmb();
 }
 
+static int __rte_hot
+cn10k_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
+		  unsigned int n)
+{
+	const uint64_t *ptr = (const uint64_t *)obj_table;
+	uint64_t lmt_addr = 0, lmt_id = 0;
+	struct batch_op_data *op_data;
+
+	/* Ensure mbuf init changes are written before the free pointers are
+	 * enqueued to the stack.
+	 */
+	rte_io_wmb();
+
+	if (n == 1) {
+		roc_npa_aura_op_free(mp->pool_id, 1, ptr[0]);
+		return 0;
+	}
+
+	op_data = batch_op_data_get(mp->pool_id);
+	lmt_addr = op_data->lmt_addr;
+	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
+	roc_npa_aura_op_batch_free(mp->pool_id, ptr, n, 1, lmt_addr, lmt_id);
+
+	return 0;
+}
+
 static int
 cn10k_mempool_alloc(struct rte_mempool *mp)
 {
@@ -187,7 +213,7 @@ static struct rte_mempool_ops cn10k_mempool_ops = {
 	.name = "cn10k_mempool_ops",
 	.alloc = cn10k_mempool_alloc,
 	.free = cn10k_mempool_free,
-	.enqueue = cnxk_mempool_enq,
+	.enqueue = cn10k_mempool_enq,
 	.dequeue = cnxk_mempool_deq,
 	.get_count = cnxk_mempool_get_count,
 	.calc_mem_size = cnxk_mempool_calc_mem_size,
