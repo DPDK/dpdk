@@ -7,6 +7,41 @@
 #include "roc_api.h"
 #include "cnxk_mempool.h"
 
+static int __rte_hot
+cn9k_mempool_enq(struct rte_mempool *mp, void *const *obj_table, unsigned int n)
+{
+	/* Ensure mbuf init changes are written before the free pointers
+	 * are enqueued to the stack.
+	 */
+	rte_io_wmb();
+	roc_npa_aura_op_bulk_free(mp->pool_id, (const uint64_t *)obj_table, n,
+				  0);
+
+	return 0;
+}
+
+static inline int __rte_hot
+cn9k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	unsigned int count;
+
+	count = roc_npa_aura_op_bulk_alloc(mp->pool_id, (uint64_t *)obj_table,
+					   n, 0, 1);
+
+	if (unlikely(count != n)) {
+		/* If bulk alloc failed to allocate all pointers, try
+		 * allocating remaining pointers with the default alloc
+		 * with retry scheme.
+		 */
+		if (cnxk_mempool_deq(mp, &obj_table[count], n - count)) {
+			cn9k_mempool_enq(mp, obj_table, count);
+			return -ENOENT;
+		}
+	}
+
+	return 0;
+}
+
 static int
 cn9k_mempool_alloc(struct rte_mempool *mp)
 {
@@ -44,8 +79,8 @@ static struct rte_mempool_ops cn9k_mempool_ops = {
 	.name = "cn9k_mempool_ops",
 	.alloc = cn9k_mempool_alloc,
 	.free = cnxk_mempool_free,
-	.enqueue = cnxk_mempool_enq,
-	.dequeue = cnxk_mempool_deq,
+	.enqueue = cn9k_mempool_enq,
+	.dequeue = cn9k_mempool_deq,
 	.get_count = cnxk_mempool_get_count,
 	.calc_mem_size = cnxk_mempool_calc_mem_size,
 	.populate = cnxk_mempool_populate,

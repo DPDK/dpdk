@@ -21,6 +21,10 @@ cnxk NPA PMD supports:
 - Ethdev Rx buffer allocation in HW to save CPU cycles in the Rx path.
 - Ethdev Tx buffer recycling in HW to save CPU cycles in the Tx path.
 
+CN9k NPA supports:
+
+- Burst alloc of up to 32 pointers.
+
 Prerequisites and Compilation procedure
 ---------------------------------------
 
