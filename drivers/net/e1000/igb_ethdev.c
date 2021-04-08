@@ -2688,8 +2688,7 @@ igb_vlan_hw_extend_disable(struct rte_eth_dev *dev)
 	/* Update maximum packet length */
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		E1000_WRITE_REG(hw, E1000_RLPML,
-			dev->data->dev_conf.rxmode.max_rx_pkt_len +
-						VLAN_TAG_SIZE);
+				dev->data->dev_conf.rxmode.max_rx_pkt_len);
 }
 
 static void
@@ -2708,7 +2707,7 @@ igb_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		E1000_WRITE_REG(hw, E1000_RLPML,
 			dev->data->dev_conf.rxmode.max_rx_pkt_len +
-						2 * VLAN_TAG_SIZE);
+						VLAN_TAG_SIZE);
 }
 
 static int
