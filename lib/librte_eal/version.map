@@ -411,6 +411,7 @@ EXPERIMENTAL {
 
 	# added in 21.05
 	rte_intr_callback_unregister_sync;
+	rte_log_list_types;
 	rte_thread_key_create;
 	rte_thread_key_delete;
 	rte_thread_value_get;

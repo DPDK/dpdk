@@ -241,6 +241,20 @@ __rte_experimental
 int rte_log_register_type_and_pick_level(const char *name, uint32_t level_def);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Dump name of each logtype, one per line.
+ *
+ * @param out
+ *   Stream where the list is sent.
+ * @param prefix
+ *   String preceding each logtype in the output.
+ */
+__rte_experimental
+void rte_log_list_types(FILE *out, const char *prefix);
+
+/**
  * Dump log information.
  *
  * Dump the global level and the registered log types.

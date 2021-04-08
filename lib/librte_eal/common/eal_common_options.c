@@ -1227,19 +1227,31 @@ eal_parse_syslog(const char *facility, struct internal_config *conf)
 }
 #endif
 
+static void
+eal_log_usage(void)
+{
+	unsigned int level;
+
+	printf("Log type is a pattern matching items of this list"
+			" (plugins may be missing):\n");
+	rte_log_list_types(stdout, "\t");
+	printf("\n");
+	printf("Syntax using globbing pattern:     ");
+	printf("--"OPT_LOG_LEVEL" pattern:level\n");
+	printf("Syntax using regular expression:   ");
+	printf("--"OPT_LOG_LEVEL" regexp,level\n");
+	printf("Syntax for the global level:       ");
+	printf("--"OPT_LOG_LEVEL" level\n");
+	printf("Logs are emitted if allowed by both global and specific levels.\n");
+	printf("\n");
+	printf("Log level can be a number or the first letters of its name:\n");
+	for (level = 1; level <= RTE_LOG_MAX; level++)
+		printf("\t%d   %s\n", level, eal_log_level2str(level));
+}
+
 static int
 eal_parse_log_priority(const char *level)
 {
-	static const char * const levels[] = {
-		[RTE_LOG_EMERG]   = "emergency",
-		[RTE_LOG_ALERT]   = "alert",
-		[RTE_LOG_CRIT]    = "critical",
-		[RTE_LOG_ERR]     = "error",
-		[RTE_LOG_WARNING] = "warning",
-		[RTE_LOG_NOTICE]  = "notice",
-		[RTE_LOG_INFO]    = "info",
-		[RTE_LOG_DEBUG]   = "debug",
-	};
 	size_t len = strlen(level);
 	unsigned long tmp;
 	char *end;
@@ -1250,7 +1262,7 @@ eal_parse_log_priority(const char *level)
 
 	/* look for named values, skip 0 which is not a valid level */
 	for (i = 1; i <= RTE_LOG_MAX; i++) {
-		if (strncmp(levels[i], level, len) == 0)
+		if (strncmp(eal_log_level2str(i), level, len) == 0)
 			return i;
 	}
 
@@ -1273,6 +1285,11 @@ eal_parse_log_level(const char *arg)
 	const char *regex = NULL;
 	char *str, *level;
 	int priority;
+
+	if (strcmp(arg, "help") == 0) {
+		eal_log_usage();
+		exit(EXIT_SUCCESS);
+	}
 
 	str = strdup(arg);
 	if (str == NULL)
@@ -2068,9 +2085,10 @@ eal_common_usage(void)
 #ifndef RTE_EXEC_ENV_WINDOWS
 	       "  --"OPT_SYSLOG"            Set syslog facility\n"
 #endif
-	       "  --"OPT_LOG_LEVEL"=<int>   Set global log level\n"
-	       "  --"OPT_LOG_LEVEL"=<type-match>:<int>\n"
+	       "  --"OPT_LOG_LEVEL"=<level> Set global log level\n"
+	       "  --"OPT_LOG_LEVEL"=<type-match>:<level>\n"
 	       "                      Set specific log level\n"
+	       "  --"OPT_LOG_LEVEL"=help    Show log types and levels\n"
 #ifndef RTE_EXEC_ENV_WINDOWS
 	       "  --"OPT_TRACE"=<regex-match>\n"
 	       "                      Enable trace based on regular expression trace name.\n"

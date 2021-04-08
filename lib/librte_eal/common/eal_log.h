@@ -24,4 +24,9 @@ void eal_log_set_default(FILE *default_log);
 int eal_log_save_regexp(const char *regexp, uint32_t level);
 int eal_log_save_pattern(const char *pattern, uint32_t level);
 
+/*
+ * Convert log level to string.
+ */
+const char *eal_log_level2str(uint32_t level);
+
 #endif /* EAL_LOG_H */
