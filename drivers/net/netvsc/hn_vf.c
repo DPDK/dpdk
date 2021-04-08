@@ -69,7 +69,7 @@ static int hn_vf_attach(struct rte_eth_dev *dev, struct hn_data *hv)
 		return port;
 	}
 
-	PMD_DRV_LOG(NOTICE, "found matching VF port %d\n", port);
+	PMD_DRV_LOG(NOTICE, "found matching VF port %d", port);
 	ret = rte_eth_dev_owner_get(port, &owner);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Can not find owner for port %d", port);
@@ -106,13 +106,13 @@ static void hn_remove_delayed(void *args)
 	/* Tell VSP to switch data path to synthentic */
 	hn_vf_remove(hv);
 
-	PMD_DRV_LOG(NOTICE, "Start to remove port %d\n", port_id);
+	PMD_DRV_LOG(NOTICE, "Start to remove port %d", port_id);
 	rte_rwlock_write_lock(&hv->vf_lock);
 
 	/* Give back ownership */
 	ret = rte_eth_dev_owner_unset(port_id, hv->owner.id);
 	if (ret)
-		PMD_DRV_LOG(ERR, "rte_eth_dev_owner_unset failed ret=%d\n",
+		PMD_DRV_LOG(ERR, "rte_eth_dev_owner_unset failed ret=%d",
 			    ret);
 	hv->vf_ctx.vf_attached = false;
 
@@ -120,18 +120,18 @@ static void hn_remove_delayed(void *args)
 					      hn_eth_rmv_event_callback, hv);
 	if (ret)
 		PMD_DRV_LOG(ERR,
-			    "rte_eth_dev_callback_unregister failed ret=%d\n",
+			    "rte_eth_dev_callback_unregister failed ret=%d",
 			    ret);
 
 	/* Detach and release port_id from system */
 	ret = rte_eth_dev_stop(port_id);
 	if (ret)
-		PMD_DRV_LOG(ERR, "rte_eth_dev_stop failed port_id=%u ret=%d\n",
+		PMD_DRV_LOG(ERR, "rte_eth_dev_stop failed port_id=%u ret=%d",
 			    port_id, ret);
 
 	ret = rte_eth_dev_close(port_id);
 	if (ret)
-		PMD_DRV_LOG(ERR, "rte_eth_dev_close failed port_id=%u ret=%d\n",
+		PMD_DRV_LOG(ERR, "rte_eth_dev_close failed port_id=%u ret=%d",
 			    port_id, ret);
 
 	ret = rte_dev_remove(dev);
@@ -146,7 +146,7 @@ int hn_eth_rmv_event_callback(uint16_t port_id,
 {
 	struct hn_data *hv = cb_arg;
 
-	PMD_DRV_LOG(NOTICE, "Removing VF portid %d\n", port_id);
+	PMD_DRV_LOG(NOTICE, "Removing VF portid %d", port_id);
 	rte_eal_alarm_set(1, hn_remove_delayed, hv);
 
 	return 0;
@@ -163,7 +163,7 @@ static int hn_setup_vf_queues(int port, struct rte_eth_dev *dev)
 		ret = rte_eth_tx_queue_info_get(dev->data->port_id, i, &txinfo);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
-				    "rte_eth_tx_queue_info_get failed ret=%d\n",
+				    "rte_eth_tx_queue_info_get failed ret=%d",
 				    ret);
 			return ret;
 		}
@@ -172,7 +172,7 @@ static int hn_setup_vf_queues(int port, struct rte_eth_dev *dev)
 					     &txinfo.conf);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
-				    "rte_eth_tx_queue_setup failed ret=%d\n",
+				    "rte_eth_tx_queue_setup failed ret=%d",
 				    ret);
 			return ret;
 		}
@@ -182,7 +182,7 @@ static int hn_setup_vf_queues(int port, struct rte_eth_dev *dev)
 		ret = rte_eth_rx_queue_info_get(dev->data->port_id, i, &rxinfo);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
-				    "rte_eth_rx_queue_info_get failed ret=%d\n",
+				    "rte_eth_rx_queue_info_get failed ret=%d",
 				    ret);
 			return ret;
 		}
@@ -193,7 +193,7 @@ static int hn_setup_vf_queues(int port, struct rte_eth_dev *dev)
 					     &rxinfo.conf, rx_queue->mb_pool);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
-				    "rte_eth_rx_queue_setup failed ret=%d\n",
+				    "rte_eth_rx_queue_setup failed ret=%d",
 				    ret);
 			return ret;
 		}
@@ -244,10 +244,10 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 			goto exit;
 		}
 
-		PMD_DRV_LOG(NOTICE, "configuring VF port %d\n", port);
+		PMD_DRV_LOG(NOTICE, "configuring VF port %d", port);
 		ret = hn_vf_configure(dev, &dev->data->dev_conf);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Failed to configure VF port %d\n",
+			PMD_DRV_LOG(ERR, "Failed to configure VF port %d",
 				    port);
 			goto exit;
 		}
@@ -255,15 +255,15 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 		ret = hn_setup_vf_queues(port, dev);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
-				    "Failed to configure VF queues port %d\n",
+				    "Failed to configure VF queues port %d",
 				    port);
 			goto exit;
 		}
 
-		PMD_DRV_LOG(NOTICE, "Starting VF port %d\n", port);
+		PMD_DRV_LOG(NOTICE, "Starting VF port %d", port);
 		ret = rte_eth_dev_start(port);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "rte_eth_dev_start failed ret=%d\n",
+			PMD_DRV_LOG(ERR, "rte_eth_dev_start failed ret=%d",
 				    ret);
 			goto exit;
 		}
@@ -414,8 +414,7 @@ int hn_vf_configure(struct rte_eth_dev *dev,
 						    hv);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
-				    "Registering callback failed for "
-				    "vf port %d ret %d\n",
+				    "Registering callback failed for vf port %d ret %d",
 				    hv->vf_ctx.vf_port, ret);
 			return ret;
 		}
