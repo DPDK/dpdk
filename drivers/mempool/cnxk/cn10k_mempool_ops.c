@@ -157,6 +157,32 @@ cn10k_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
 	return 0;
 }
 
+static unsigned int
+cn10k_mempool_get_count(const struct rte_mempool *mp)
+{
+	struct batch_op_data *op_data;
+	unsigned int count = 0;
+	int i;
+
+	op_data = batch_op_data_get(mp->pool_id);
+
+	rte_wmb();
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		struct batch_op_mem *mem = &op_data->mem[i];
+
+		if (mem->status == BATCH_ALLOC_OP_ISSUED)
+			count += roc_npa_aura_batch_alloc_count(mem->objs,
+								BATCH_ALLOC_SZ);
+
+		if (mem->status == BATCH_ALLOC_OP_DONE)
+			count += mem->sz;
+	}
+
+	count += cnxk_mempool_get_count(mp);
+
+	return count;
+}
+
 static int
 cn10k_mempool_alloc(struct rte_mempool *mp)
 {
@@ -215,7 +241,7 @@ static struct rte_mempool_ops cn10k_mempool_ops = {
 	.free = cn10k_mempool_free,
 	.enqueue = cn10k_mempool_enq,
 	.dequeue = cnxk_mempool_deq,
-	.get_count = cnxk_mempool_get_count,
+	.get_count = cn10k_mempool_get_count,
 	.calc_mem_size = cnxk_mempool_calc_mem_size,
 	.populate = cnxk_mempool_populate,
 };
