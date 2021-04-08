@@ -80,3 +80,7 @@ Standalone mempool device
    device. In case, if end user need to run mempool as a standalone device
    (without ethdev or eventdev), end user needs to bind a mempool device using
    ``usertools/dpdk-devbind.py``
+
+   Example command to run ``mempool_autotest`` test with standalone CN10K NPA device::
+
+     echo "mempool_autotest" | <build_dir>/app/test/dpdk-test -c 0xf0 --mbuf-pool-ops-name="cn10k_mempool_ops"
