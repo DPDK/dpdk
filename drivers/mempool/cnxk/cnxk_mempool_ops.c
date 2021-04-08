@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <rte_mbuf_pool_ops.h>
 #include <rte_mempool.h>
 
 #include "roc_api.h"
@@ -168,4 +169,18 @@ cnxk_mempool_populate(struct rte_mempool *mp, unsigned int max_objs,
 	return rte_mempool_op_populate_helper(
 		mp, RTE_MEMPOOL_POPULATE_F_ALIGN_OBJ, max_objs, vaddr, iova,
 		len, obj_cb, obj_cb_arg);
+}
+
+static int
+cnxk_mempool_plt_init(void)
+{
+	if (roc_model_is_cn10k() || roc_model_is_cn9k())
+		rte_mbuf_set_platform_mempool_ops("cnxk_mempool_ops");
+
+	return 0;
+}
+
+RTE_INIT(cnxk_mempool_ops_init)
+{
+	roc_plt_init_cb_register(cnxk_mempool_plt_init);
 }
