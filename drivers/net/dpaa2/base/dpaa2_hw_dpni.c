@@ -203,7 +203,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 	memset(kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
 	while (req_dist_set) {
 		if (req_dist_set % 2 != 0) {
-			dist_field = 1U << loop;
+			dist_field = 1ULL << loop;
 			switch (dist_field) {
 			case ETH_RSS_L2_PAYLOAD:
 
