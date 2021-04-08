@@ -101,9 +101,20 @@ vhost_kernel_ioctl(int fd, uint64_t request, void *arg)
 static int
 vhost_kernel_set_owner(struct virtio_user_dev *dev)
 {
+	int ret;
+	uint32_t i;
 	struct vhost_kernel_data *data = dev->backend_data;
 
-	return vhost_kernel_ioctl(data->vhostfds[0], VHOST_SET_OWNER, NULL);
+	for (i = 0; i < dev->max_queue_pairs; ++i) {
+		if (data->vhostfds[i] < 0)
+			continue;
+
+		ret = vhost_kernel_ioctl(data->vhostfds[i], VHOST_SET_OWNER, NULL);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
 }
 
 static int
