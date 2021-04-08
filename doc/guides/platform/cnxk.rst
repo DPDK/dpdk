@@ -142,6 +142,9 @@ HW Offload Drivers
 
 This section lists dataplane H/W block(s) available in cnxk SoC.
 
+#. **Mempool Driver**
+   See :doc:`../mempool/cnxk` for NPA mempool driver information.
+
 Procedure to Setup Platform
 ---------------------------
 

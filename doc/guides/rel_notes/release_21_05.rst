@@ -63,6 +63,8 @@ New Features
 
   * Added common/cnxk driver consisting of common API to be used by
     net, crypto and event PMD's.
+  * Added mempool/cnxk driver which provides the support for the integrated
+    mempool device.
 
 * **Enhanced ethdev representor syntax.**
 

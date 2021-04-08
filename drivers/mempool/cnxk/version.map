@@ -1,0 +1,3 @@
+INTERNAL {
+	local: *;
+};
