@@ -2779,6 +2779,7 @@ can be used as both source and destination fields as set by ``field``.
 The immediate value ``RTE_FLOW_FIELD_VALUE`` (or a pointer to it
 ``RTE_FLOW_FIELD_POINTER``) is allowed as a source only.
 ``RTE_FLOW_FIELD_START`` is used to point to the beginning of a packet.
+See ``enum rte_flow_field_id`` for the list of supported fields.
 
 ``op`` selects the operation to perform on a destination field.
 - ``set`` copies the data from ``src`` field to ``dst`` field.
@@ -2812,12 +2813,15 @@ for ``RTE_FLOW_FIELD_VALUE`` and ``RTE_FLOW_FIELD_POINTER`` respectively.
 
 .. table:: MODIFY_FIELD
 
-   +-----------------------------------------+
+   +---------------+-------------------------+
    | Field         | Value                   |
    +===============+=========================+
    | ``op``        | operation to perform    |
+   +---------------+-------------------------+
    | ``dst``       | destination field       |
+   +---------------+-------------------------+
    | ``src``       | source field            |
+   +---------------+-------------------------+
    | ``width``     | number of bits to use   |
    +---------------+-------------------------+
 
@@ -2825,12 +2829,15 @@ for ``RTE_FLOW_FIELD_VALUE`` and ``RTE_FLOW_FIELD_POINTER`` respectively.
 
 .. table:: destination/source field definition
 
-   +--------------------------------------------------------------------------+
+   +---------------+----------------------------------------------------------+
    | Field         | Value                                                    |
    +===============+==========================================================+
    | ``field``     | ID: packet field, mark, meta, tag, immediate, pointer    |
+   +---------------+----------------------------------------------------------+
    | ``level``     | encapsulation level of a packet field or tag array index |
+   +---------------+----------------------------------------------------------+
    | ``offset``    | number of bits to skip at the beginning                  |
+   +---------------+----------------------------------------------------------+
    | ``value``     | immediate value or a pointer to this value               |
    +---------------+----------------------------------------------------------+
 
