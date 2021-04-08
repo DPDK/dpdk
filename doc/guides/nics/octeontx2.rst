@@ -401,6 +401,12 @@ Actions:
    +----+-----------------------------------------+
    | 11 | RTE_FLOW_ACTION_TYPE_OF_POP_VLAN        |
    +----+-----------------------------------------+
+   | 12 | RTE_FLOW_ACTION_TYPE_PORT_ID            |
+   +----+-----------------------------------------+
+
+.. note::
+
+   ``RTE_FLOW_ACTION_TYPE_PORT_ID`` is only supported between PF and its VFs.
 
 .. _table_octeontx2_supported_egress_action_types:
 

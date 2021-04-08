@@ -2802,6 +2802,6 @@ static struct rte_pci_driver pci_nix = {
 	.remove = nix_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_octeontx2, pci_nix);
-RTE_PMD_REGISTER_PCI_TABLE(net_octeontx2, pci_nix_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_octeontx2, "vfio-pci");
+RTE_PMD_REGISTER_PCI(OCTEONTX2_PMD, pci_nix);
+RTE_PMD_REGISTER_PCI_TABLE(OCTEONTX2_PMD, pci_nix_map);
+RTE_PMD_REGISTER_KMOD_DEP(OCTEONTX2_PMD, "vfio-pci");

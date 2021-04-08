@@ -900,14 +900,17 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 {
 	struct otx2_eth_dev *hw = dev->data->dev_private;
 	struct otx2_npc_flow_info *npc = &hw->npc_flow;
+	const struct rte_flow_action_port_id *port_act;
 	const struct rte_flow_action_count *act_count;
 	const struct rte_flow_action_mark *act_mark;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_vf *vf_act;
+	uint16_t pf_func, vf_id, port_id, pf_id;
+	char if_name[RTE_ETH_NAME_MAX_LEN];
 	bool vlan_insert_action = false;
+	struct rte_eth_dev *eth_dev;
 	const char *errmsg = NULL;
 	int sel_act, req_act = 0;
-	uint16_t pf_func, vf_id;
 	int errcode = 0;
 	int mark = 0;
 	int rq = 0;
@@ -981,6 +984,48 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 				pf_func &= (0xfc00);
 				pf_func = (pf_func | (vf_id + 1));
 			}
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			port_act = (const struct rte_flow_action_port_id *)
+				actions->conf;
+			port_id = port_act->id;
+			if (rte_eth_dev_get_name_by_port(port_id, if_name)) {
+				errmsg = "Name not found for output port id";
+				errcode = EINVAL;
+				goto err_exit;
+			}
+			eth_dev = rte_eth_dev_allocated(if_name);
+			if (!eth_dev) {
+				errmsg = "eth_dev not found for output port id";
+				errcode = EINVAL;
+				goto err_exit;
+			}
+			if (!otx2_ethdev_is_same_driver(eth_dev)) {
+				errmsg = "Output port id unsupported type";
+				errcode = ENOTSUP;
+				goto err_exit;
+			}
+			if (!otx2_dev_is_vf(otx2_eth_pmd_priv(eth_dev))) {
+				errmsg = "Output port should be VF";
+				errcode = ENOTSUP;
+				goto err_exit;
+			}
+			vf_id = otx2_eth_pmd_priv(eth_dev)->vf;
+			if (vf_id  >= hw->maxvf) {
+				errmsg = "Invalid vf for output port";
+				errcode = EINVAL;
+				goto err_exit;
+			}
+			pf_id = otx2_eth_pmd_priv(eth_dev)->pf;
+			if (pf_id != hw->pf) {
+				errmsg = "Output port unsupported PF";
+				errcode = ENOTSUP;
+				goto err_exit;
+			}
+			pf_func &= (0xfc00);
+			pf_func = (pf_func | (vf_id + 1));
+			req_act |= OTX2_FLOW_ACT_VF;
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_QUEUE:

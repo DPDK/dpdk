@@ -113,6 +113,10 @@ New Features
 
   * Added Intel ice support on Windows.
 
+* **Updated Marvell OCTEON TX2 ethdev driver.**
+
+  * Added support for flow action port id.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated the Mellanox mlx5 driver with new features and improvements, including:

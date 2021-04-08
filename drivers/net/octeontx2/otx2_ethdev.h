@@ -164,6 +164,11 @@
 /* Additional timesync values. */
 #define OTX2_CYCLECOUNTER_MASK   0xffffffffffffffffULL
 
+#define OCTEONTX2_PMD			net_octeontx2
+
+#define otx2_ethdev_is_same_driver(dev) \
+	(strcmp((dev)->device->driver->name, RTE_STR(OCTEONTX2_PMD)) == 0)
+
 enum nix_q_size_e {
 	nix_q_size_16,	/* 16 entries */
 	nix_q_size_64,	/* 64 entries */
