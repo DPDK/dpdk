@@ -3338,6 +3338,13 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			  hw_stats->fccrc +
 			  hw_stats->fclast;
 
+	/*
+	 * 82599 errata, UDP frames with a 0 checksum can be marked as checksum
+	 * errors.
+	 */
+	if (hw->mac.type != ixgbe_mac_82599EB)
+		stats->ierrors += hw_stats->xec;
+
 	/* Tx Errors */
 	stats->oerrors  = 0;
 	return 0;
