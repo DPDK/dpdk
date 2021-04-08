@@ -976,7 +976,7 @@ struct rte_flow_item_vxlan {
 /** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
-	.hdr.vx_vni = RTE_BE32(__builtin_constant_p(0xffffff << 8)),
+	.hdr.vx_vni = RTE_BE32(0xffffff00), /* (0xffffff << 8) */
 };
 #endif
 
