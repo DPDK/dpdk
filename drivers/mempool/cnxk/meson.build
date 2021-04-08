@@ -8,6 +8,7 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 	subdir_done()
 endif
 
-sources = files('cnxk_mempool.c')
+sources = files('cnxk_mempool.c',
+		'cnxk_mempool_ops.c')
 
 deps += ['eal', 'mbuf', 'kvargs', 'bus_pci', 'common_cnxk', 'mempool']
