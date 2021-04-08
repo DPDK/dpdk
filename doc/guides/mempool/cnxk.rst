@@ -30,6 +30,29 @@ Pre-Installation Configuration
 ------------------------------
 
 
+Runtime Config Options
+~~~~~~~~~~~~~~~~~~~~~~
+
+- ``Maximum number of mempools per application`` (default ``128``)
+
+  The maximum number of mempools per application needs to be configured on
+  HW during mempool driver initialization. HW can support up to 1M mempools,
+  Since each mempool costs set of HW resources, the ``max_pools`` ``devargs``
+  parameter is being introduced to configure the number of mempools required
+  for the application.
+  For example::
+
+    -a 0002:02:00.0,max_pools=512
+
+  With the above configuration, the driver will set up only 512 mempools for
+  the given application to save HW resources.
+
+.. note::
+
+   Since this configuration is per application, the end user needs to
+   provide ``max_pools`` parameter to the first PCIe device probed by the given
+   application.
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 
