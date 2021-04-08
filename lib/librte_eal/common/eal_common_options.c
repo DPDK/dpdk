@@ -1289,9 +1289,14 @@ eal_parse_log_level(const char *arg)
 	}
 
 	priority = eal_parse_log_priority(level);
-	if (priority < 0) {
-		fprintf(stderr, "invalid log priority: %s\n", level);
+	if (priority <= 0) {
+		fprintf(stderr, "Invalid log level: %s\n", level);
 		goto fail;
+	}
+	if (priority > (int)RTE_LOG_MAX) {
+		fprintf(stderr, "Log level %d higher than maximum (%d)\n",
+				priority, RTE_LOG_MAX);
+		priority = RTE_LOG_MAX;
 	}
 
 	if (regex) {
