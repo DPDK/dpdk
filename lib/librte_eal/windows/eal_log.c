@@ -2,11 +2,13 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
-#include "eal_private.h"
+#include <rte_common.h>
+#include <rte_log.h>
+#include "eal_log.h"
 
 /* set the log to default function, called during eal init process. */
 int
-rte_eal_log_init(__rte_unused const char *id, __rte_unused int facility)
+eal_log_init(__rte_unused const char *id, __rte_unused int facility)
 {
 	rte_openlog_stream(stderr);
 

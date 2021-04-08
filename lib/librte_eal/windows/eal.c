@@ -22,6 +22,7 @@
 
 #include "eal_hugepages.h"
 #include "eal_trace.h"
+#include "eal_log.h"
 #include "eal_windows.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
@@ -267,7 +268,7 @@ rte_eal_init(int argc, char **argv)
 		eal_get_internal_configuration();
 	int ret;
 
-	rte_eal_log_init(NULL, 0);
+	eal_log_init(NULL, 0);
 
 	eal_log_level_parse(argc, argv);
 

@@ -41,6 +41,7 @@
 #include "eal_options.h"
 #include "eal_filesystem.h"
 #include "eal_private.h"
+#include "eal_log.h"
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include "eal_trace.h"
 #endif
@@ -1299,7 +1300,7 @@ eal_parse_log_level(const char *arg)
 				regex, priority);
 			goto fail;
 		}
-		if (rte_log_save_regexp(regex, priority) < 0)
+		if (eal_log_save_regexp(regex, priority) < 0)
 			goto fail;
 	} else if (pattern) {
 		if (rte_log_set_level_pattern(pattern, priority) < 0) {
@@ -1307,7 +1308,7 @@ eal_parse_log_level(const char *arg)
 				pattern, priority);
 			goto fail;
 		}
-		if (rte_log_save_pattern(pattern, priority) < 0)
+		if (eal_log_save_pattern(pattern, priority) < 0)
 			goto fail;
 	} else {
 		rte_log_set_global_level(priority);

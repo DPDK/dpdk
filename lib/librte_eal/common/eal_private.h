@@ -80,19 +80,6 @@ struct rte_config *rte_eal_get_configuration(void);
 int rte_eal_memzone_init(void);
 
 /**
- * Common log initialization function (private to eal).  Determines
- * where log data is written when no call to rte_openlog_stream is
- * in effect.
- *
- * @param default_log
- *   The default log stream to be used.
- * @return
- *   - 0 on success
- *   - Negative on error
- */
-void eal_log_set_default(FILE *default_log);
-
-/**
  * Fill configuration with number of physical and logical processors
  *
  * This function is private to EAL.
@@ -142,22 +129,6 @@ int rte_eal_memory_init(void);
  *   0 on success, negative on error
  */
 int rte_eal_timer_init(void);
-
-/**
- * Init the default log stream
- *
- * This function is private to EAL.
- *
- * @return
- *   0 on success, negative on error
- */
-int rte_eal_log_init(const char *id, int facility);
-
-/**
- * Save the log regexp for later
- */
-int rte_log_save_regexp(const char *type, int priority);
-int rte_log_save_pattern(const char *pattern, int priority);
 
 /**
  * Init tail queues for non-EAL library structures. This is to allow

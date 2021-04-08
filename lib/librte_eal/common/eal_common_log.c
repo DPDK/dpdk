@@ -15,7 +15,7 @@
 #include <rte_log.h>
 #include <rte_per_lcore.h>
 
-#include "eal_private.h"
+#include "eal_log.h"
 
 struct rte_log_dynamic_type {
 	const char *name;
@@ -178,8 +178,8 @@ rte_log_set_level_regexp(const char *regex, uint32_t level)
  * Save the type string and the loglevel for later dynamic
  * logtypes which may register later.
  */
-static int rte_log_save_level(int priority,
-			      const char *regex, const char *pattern)
+static int
+log_save_level(uint32_t priority, const char *regex, const char *pattern)
 {
 	struct rte_eal_opt_loglevel *opt_ll = NULL;
 
@@ -207,9 +207,10 @@ fail:
 	return -1;
 }
 
-int rte_log_save_regexp(const char *regex, int tmp)
+int
+eal_log_save_regexp(const char *regex, uint32_t level)
 {
-	return rte_log_save_level(tmp, regex, NULL);
+	return log_save_level(level, regex, NULL);
 }
 
 /* set log level based on globbing pattern */
@@ -232,9 +233,10 @@ rte_log_set_level_pattern(const char *pattern, uint32_t level)
 	return 0;
 }
 
-int rte_log_save_pattern(const char *pattern, int priority)
+int
+eal_log_save_pattern(const char *pattern, uint32_t level)
 {
-	return rte_log_save_level(priority, NULL, pattern);
+	return log_save_level(level, NULL, pattern);
 }
 
 /* get the current loglevel for the message being processed */
@@ -250,7 +252,7 @@ int rte_log_cur_msg_logtype(void)
 }
 
 static int
-rte_log_lookup(const char *name)
+log_lookup(const char *name)
 {
 	size_t i;
 
@@ -268,7 +270,7 @@ rte_log_lookup(const char *name)
  * is not yet registered.
  */
 static int
-__rte_log_register(const char *name, int id)
+log_register(const char *name, int id)
 {
 	char *dup_name = strdup(name);
 
@@ -288,7 +290,7 @@ rte_log_register(const char *name)
 	struct rte_log_dynamic_type *new_dynamic_types;
 	int id, ret;
 
-	id = rte_log_lookup(name);
+	id = log_lookup(name);
 	if (id >= 0)
 		return id;
 
@@ -299,7 +301,7 @@ rte_log_register(const char *name)
 		return -ENOMEM;
 	rte_logs.dynamic_types = new_dynamic_types;
 
-	ret = __rte_log_register(name, rte_logs.dynamic_types_len);
+	ret = log_register(name, rte_logs.dynamic_types_len);
 	if (ret < 0)
 		return ret;
 
@@ -376,7 +378,7 @@ static const struct logtype logtype_strings[] = {
 };
 
 /* Logging should be first initializer (before drivers and bus) */
-RTE_INIT_PRIO(rte_log_init, LOG)
+RTE_INIT_PRIO(log_init, LOG)
 {
 	uint32_t i;
 
@@ -389,7 +391,7 @@ RTE_INIT_PRIO(rte_log_init, LOG)
 
 	/* register legacy log types */
 	for (i = 0; i < RTE_DIM(logtype_strings); i++)
-		__rte_log_register(logtype_strings[i].logtype,
+		log_register(logtype_strings[i].logtype,
 				logtype_strings[i].log_id);
 
 	rte_logs.dynamic_types_len = RTE_LOGTYPE_FIRST_EXT_ID;

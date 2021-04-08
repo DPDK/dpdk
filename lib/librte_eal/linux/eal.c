@@ -58,6 +58,7 @@
 #include "eal_hugepages.h"
 #include "eal_memcfg.h"
 #include "eal_trace.h"
+#include "eal_log.h"
 #include "eal_options.h"
 #include "eal_vfio.h"
 #include "hotplug_mp.h"
@@ -1160,7 +1161,7 @@ rte_eal_init(int argc, char **argv)
 #endif
 	}
 
-	if (rte_eal_log_init(logid, internal_conf->syslog_facility) < 0) {
+	if (eal_log_init(logid, internal_conf->syslog_facility) < 0) {
 		rte_eal_init_alert("Cannot init logging.");
 		rte_errno = ENOMEM;
 		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
