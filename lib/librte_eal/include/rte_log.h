@@ -72,6 +72,7 @@ extern "C" {
 #define RTE_LOG_NOTICE   6U  /**< Normal but significant condition. */
 #define RTE_LOG_INFO     7U  /**< Informational.                    */
 #define RTE_LOG_DEBUG    8U  /**< Debug-level messages.             */
+#define RTE_LOG_MAX RTE_LOG_DEBUG /**< Most detailed log level.     */
 
 /**
  * Change the stream that will be used by the logging system.

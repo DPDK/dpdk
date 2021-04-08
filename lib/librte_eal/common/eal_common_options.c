@@ -1249,7 +1249,7 @@ eal_parse_log_priority(const char *level)
 		return -1;
 
 	/* look for named values, skip 0 which is not a valid level */
-	for (i = 1; i < RTE_DIM(levels); i++) {
+	for (i = 1; i <= RTE_LOG_MAX; i++) {
 		if (strncmp(levels[i], level, len) == 0)
 			return i;
 	}

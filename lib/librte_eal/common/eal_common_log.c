@@ -140,7 +140,7 @@ rte_log_set_level(uint32_t type, uint32_t level)
 {
 	if (type >= rte_logs.dynamic_types_len)
 		return -1;
-	if (level > RTE_LOG_DEBUG)
+	if (level > RTE_LOG_MAX)
 		return -1;
 
 	rte_logs.dynamic_types[type].loglevel = level;
@@ -155,7 +155,7 @@ rte_log_set_level_regexp(const char *regex, uint32_t level)
 	regex_t r;
 	size_t i;
 
-	if (level > RTE_LOG_DEBUG)
+	if (level > RTE_LOG_MAX)
 		return -1;
 
 	if (regcomp(&r, regex, 0) != 0)
@@ -219,7 +219,7 @@ rte_log_set_level_pattern(const char *pattern, uint32_t level)
 {
 	size_t i;
 
-	if (level > RTE_LOG_DEBUG)
+	if (level > RTE_LOG_MAX)
 		return -1;
 
 	for (i = 0; i < rte_logs.dynamic_types_len; i++) {
@@ -323,7 +323,7 @@ rte_log_register_type_and_pick_level(const char *name, uint32_t level_def)
 		return type;
 
 	TAILQ_FOREACH(opt_ll, &opt_loglevel_list, next) {
-		if (opt_ll->level > RTE_LOG_DEBUG)
+		if (opt_ll->level > RTE_LOG_MAX)
 			continue;
 
 		if (opt_ll->pattern) {
