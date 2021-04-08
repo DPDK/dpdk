@@ -257,7 +257,7 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	struct rte_eth_dev *dev = ICE_VSI_TO_ETH_DEV(rxq->vsi);
 	struct ice_rlan_ctx rx_ctx;
 	enum ice_status err;
-	uint16_t buf_size, len;
+	uint16_t buf_size;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint32_t rxdid = ICE_RXDID_COMMS_OVS;
 	uint32_t regval;
@@ -267,8 +267,8 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 			      RTE_PKTMBUF_HEADROOM);
 	rxq->rx_hdr_len = 0;
 	rxq->rx_buf_len = RTE_ALIGN(buf_size, (1 << ICE_RLAN_CTX_DBUF_S));
-	len = ICE_SUPPORT_CHAIN_NUM * rxq->rx_buf_len;
-	rxq->max_pkt_len = RTE_MIN(len,
+	rxq->max_pkt_len = RTE_MIN((uint32_t)
+				   ICE_SUPPORT_CHAIN_NUM * rxq->rx_buf_len,
 				   dev->data->dev_conf.rxmode.max_rx_pkt_len);
 
 	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
