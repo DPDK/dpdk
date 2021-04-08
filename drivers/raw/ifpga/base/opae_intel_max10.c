@@ -593,7 +593,7 @@ static int max10_staging_area_init(struct intel_max10_device *dev)
 			continue;
 
 		ret = fdt_get_reg(fdt_root, offset, 0, &start, &size);
-		if (!ret) {
+		if (!ret && (size <= MAX_STAGING_AREA_SIZE)) {
 			dev->staging_area_base = start;
 			dev->staging_area_size = size;
 		}
