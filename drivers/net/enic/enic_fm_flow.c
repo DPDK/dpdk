@@ -2886,7 +2886,7 @@ enic_fm_init(struct enic *enic)
 	rc = enic_fm_init_actions(fm);
 	if (rc) {
 		ENICPMD_LOG(ERR, "cannot create action hash, error:%d", rc);
-		goto error_tables;
+		goto error_counters;
 	}
 	/*
 	 * One default exact match table for each direction. We hold onto
@@ -2895,7 +2895,7 @@ enic_fm_init(struct enic *enic)
 	rc = enic_fet_alloc(fm, 1, NULL, 128, &fm->default_ig_fet);
 	if (rc) {
 		ENICPMD_LOG(ERR, "cannot alloc default IG exact match table");
-		goto error_counters;
+		goto error_actions;
 	}
 	fm->default_ig_fet->ref = 1;
 	rc = enic_fet_alloc(fm, 0, NULL, 128, &fm->default_eg_fet);
@@ -2910,6 +2910,8 @@ enic_fm_init(struct enic *enic)
 
 error_ig_fet:
 	enic_fet_free(fm, fm->default_ig_fet);
+error_actions:
+	rte_hash_free(fm->action_hash);
 error_counters:
 	enic_fm_free_all_counters(fm);
 error_tables:
