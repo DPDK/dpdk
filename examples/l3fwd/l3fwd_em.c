@@ -629,8 +629,6 @@ em_main_loop(__rte_unused void *dummy)
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 		US_PER_S * BURST_TX_DRAIN_US;
 
-	prev_tsc = 0;
-
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_conf[lcore_id];
 
@@ -650,9 +648,10 @@ em_main_loop(__rte_unused void *dummy)
 			lcore_id, portid, queueid);
 	}
 
-	while (!force_quit) {
+	cur_tsc = rte_rdtsc();
+	prev_tsc = cur_tsc;
 
-		cur_tsc = rte_rdtsc();
+	while (!force_quit) {
 
 		/*
 		 * TX burst queue drain
@@ -692,6 +691,8 @@ em_main_loop(__rte_unused void *dummy)
 							portid, qconf);
 #endif
 		}
+
+		cur_tsc = rte_rdtsc();
 	}
 
 	return 0;
