@@ -677,6 +677,9 @@ void bnxt_free_vf_info(struct bnxt *bp)
 {
 	int i;
 
+	if (bp->pf == NULL)
+		return;
+
 	if (bp->pf->vf_info == NULL)
 		return;
 

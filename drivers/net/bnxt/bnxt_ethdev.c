@@ -229,16 +229,19 @@ uint16_t bnxt_rss_hash_tbl_size(const struct bnxt *bp)
 static void bnxt_free_parent_info(struct bnxt *bp)
 {
 	rte_free(bp->parent);
+	bp->parent = NULL;
 }
 
 static void bnxt_free_pf_info(struct bnxt *bp)
 {
 	rte_free(bp->pf);
+	bp->pf = NULL;
 }
 
 static void bnxt_free_link_info(struct bnxt *bp)
 {
 	rte_free(bp->link_info);
+	bp->link_info = NULL;
 }
 
 static void bnxt_free_leds_info(struct bnxt *bp)
@@ -259,7 +262,9 @@ static void bnxt_free_flow_stats_info(struct bnxt *bp)
 static void bnxt_free_cos_queues(struct bnxt *bp)
 {
 	rte_free(bp->rx_cos_queue);
+	bp->rx_cos_queue = NULL;
 	rte_free(bp->tx_cos_queue);
+	bp->tx_cos_queue = NULL;
 }
 
 static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
@@ -853,8 +858,13 @@ static int bnxt_shutdown_nic(struct bnxt *bp)
 
 uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 {
-	uint32_t link_speed = bp->link_info->support_speeds;
+	uint32_t link_speed = 0;
 	uint32_t speed_capa = 0;
+
+	if (bp->link_info == NULL)
+		return 0;
+
+	link_speed = bp->link_info->support_speeds;
 
 	/* If PAM4 is configured, use PAM4 supported speed */
 	if (link_speed == 0 && bp->link_info->support_pam4_speeds > 0)
@@ -1288,12 +1298,13 @@ static void bnxt_free_switch_domain(struct bnxt *bp)
 {
 	int rc = 0;
 
-	if (bp->switch_domain_id) {
-		rc = rte_eth_switch_domain_free(bp->switch_domain_id);
-		if (rc)
-			PMD_DRV_LOG(ERR, "free switch domain:%d fail: %d\n",
-				    bp->switch_domain_id, rc);
-	}
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp)))
+		return;
+
+	rc = rte_eth_switch_domain_free(bp->switch_domain_id);
+	if (rc)
+		PMD_DRV_LOG(ERR, "free switch domain:%d fail: %d\n",
+			    bp->switch_domain_id, rc);
 }
 
 /* Unload the driver, release resources */
@@ -1450,11 +1461,9 @@ bnxt_uninit_locks(struct bnxt *bp)
 
 static void bnxt_drv_uninit(struct bnxt *bp)
 {
-	bnxt_free_switch_domain(bp);
 	bnxt_free_leds_info(bp);
 	bnxt_free_cos_queues(bp);
 	bnxt_free_link_info(bp);
-	bnxt_free_pf_info(bp);
 	bnxt_free_parent_info(bp);
 	bnxt_uninit_locks(bp);
 
@@ -1464,6 +1473,7 @@ static void bnxt_drv_uninit(struct bnxt *bp)
 	bp->rx_mem_zone = NULL;
 
 	bnxt_free_vf_info(bp);
+	bnxt_free_pf_info(bp);
 
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;
@@ -1616,6 +1626,10 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 		return rc;
 
 	memset(&new, 0, sizeof(new));
+
+	if (bp->link_info == NULL)
+		goto out;
+
 	do {
 		/* Retrieve link info from hardware */
 		rc = bnxt_get_hwrm_link_config(bp, &new);
@@ -5519,7 +5533,10 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 	bnxt_free_mem(bp, reconfig_dev);
 
 	bnxt_hwrm_func_buf_unrgtr(bp);
-	rte_free(bp->pf->vf_req_buf);
+	if (bp->pf != NULL) {
+		rte_free(bp->pf->vf_req_buf);
+		bp->pf->vf_req_buf = NULL;
+	}
 
 	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
 	bp->flags &= ~BNXT_FLAG_REGISTERED;
@@ -5532,6 +5549,8 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 	bnxt_uninit_ctx_mem(bp);
 
 	bnxt_free_flow_stats_info(bp);
+	if (bp->rep_info != NULL)
+		bnxt_free_switch_domain(bp);
 	bnxt_free_rep_info(bp);
 	rte_free(bp->ptp_cfg);
 	bp->ptp_cfg = NULL;
