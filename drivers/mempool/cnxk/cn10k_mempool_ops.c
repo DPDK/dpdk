@@ -183,6 +183,76 @@ cn10k_mempool_get_count(const struct rte_mempool *mp)
 	return count;
 }
 
+static int __rte_hot
+cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	struct batch_op_data *op_data;
+	struct batch_op_mem *mem;
+	unsigned int count = 0;
+	int tid, rc, retry;
+	bool loop = true;
+
+	op_data = batch_op_data_get(mp->pool_id);
+	tid = rte_lcore_id();
+	mem = &op_data->mem[tid];
+
+	/* Issue batch alloc */
+	if (mem->status == BATCH_ALLOC_OP_NOT_ISSUED) {
+		rc = roc_npa_aura_batch_alloc_issue(mp->pool_id, mem->objs,
+						    BATCH_ALLOC_SZ, 0, 1);
+		/* If issue fails, try falling back to default alloc */
+		if (unlikely(rc))
+			return cn10k_mempool_enq(mp, obj_table, n);
+		mem->status = BATCH_ALLOC_OP_ISSUED;
+	}
+
+	retry = 4;
+	while (loop) {
+		unsigned int cur_sz;
+
+		if (mem->status == BATCH_ALLOC_OP_ISSUED) {
+			mem->sz = roc_npa_aura_batch_alloc_extract(
+				mem->objs, mem->objs, BATCH_ALLOC_SZ);
+
+			/* If partial alloc reduce the retry count */
+			retry -= (mem->sz != BATCH_ALLOC_SZ);
+			/* Break the loop if retry count exhausted */
+			loop = !!retry;
+			mem->status = BATCH_ALLOC_OP_DONE;
+		}
+
+		cur_sz = n - count;
+		if (cur_sz > mem->sz)
+			cur_sz = mem->sz;
+
+		/* Dequeue the pointers */
+		memcpy(&obj_table[count], &mem->objs[mem->sz - cur_sz],
+		       cur_sz * sizeof(uintptr_t));
+		mem->sz -= cur_sz;
+		count += cur_sz;
+
+		/* Break loop if the required pointers has been dequeued */
+		loop &= (count != n);
+
+		/* Issue next batch alloc if pointers are exhausted */
+		if (mem->sz == 0) {
+			rc = roc_npa_aura_batch_alloc_issue(
+				mp->pool_id, mem->objs, BATCH_ALLOC_SZ, 0, 1);
+			/* Break loop if issue failed and set status */
+			loop &= !rc;
+			mem->status = !rc;
+		}
+	}
+
+	if (unlikely(count != n)) {
+		/* No partial alloc allowed. Free up allocated pointers */
+		cn10k_mempool_enq(mp, obj_table, count);
+		return -ENOENT;
+	}
+
+	return 0;
+}
+
 static int
 cn10k_mempool_alloc(struct rte_mempool *mp)
 {
@@ -240,7 +310,7 @@ static struct rte_mempool_ops cn10k_mempool_ops = {
 	.alloc = cn10k_mempool_alloc,
 	.free = cn10k_mempool_free,
 	.enqueue = cn10k_mempool_enq,
-	.dequeue = cnxk_mempool_deq,
+	.dequeue = cn10k_mempool_deq,
 	.get_count = cn10k_mempool_get_count,
 	.calc_mem_size = cnxk_mempool_calc_mem_size,
 	.populate = cnxk_mempool_populate,
