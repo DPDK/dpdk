@@ -6597,6 +6597,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							     item_flags, attr,
 							     error))
 				return -rte_errno;
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+				modify_after_mirror = 1;
 			action_flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
 			++actions_n;
 			break;
@@ -6608,6 +6610,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 								error);
 			if (ret < 0)
 				return ret;
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+				modify_after_mirror = 1;
 			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
 			++actions_n;
 			break;
@@ -6616,6 +6620,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						(action_flags, actions, error);
 			if (ret < 0)
 				return ret;
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+				modify_after_mirror = 1;
 			/* Count PCP with push_vlan command. */
 			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_PCP;
 			break;
@@ -6625,6 +6631,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						 actions, error);
 			if (ret < 0)
 				return ret;
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+				modify_after_mirror = 1;
 			/* Count VID with push_vlan command. */
 			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
 			rw_act_num += MLX5_ACT_NUM_MDF_VID;
@@ -6647,6 +6655,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							    attr, error);
 			if (ret < 0)
 				return ret;
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+				modify_after_mirror = 1;
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
 			++actions_n;
 			break;
@@ -6674,6 +6684,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					    actions, item_flags, error);
 			if (ret < 0)
 				return ret;
+			if ((action_flags & MLX5_FLOW_ACTION_SAMPLE) &&
+			    (action_flags & MLX5_FLOW_ACTION_DECAP))
+				modify_after_mirror = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
@@ -6957,6 +6970,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 								   error);
 			if (ret < 0)
 				return ret;
+			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
+				modify_after_mirror = 1;
 			/* Count all modify-header actions as one action. */
 			if (!(action_flags & MLX5_FLOW_ACTION_MODIFY_FIELD))
 				++actions_n;

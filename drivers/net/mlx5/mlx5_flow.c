@@ -4743,6 +4743,14 @@ flow_check_match_action(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_MARK:
 		case RTE_FLOW_ACTION_TYPE_SET_META:
 		case RTE_FLOW_ACTION_TYPE_SET_TAG:
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			if (fdb_mirror)
 				*modify_after_mirror = 1;
 			break;
