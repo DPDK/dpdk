@@ -125,7 +125,7 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 			     (rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
 
 	/* Update the tail pointer on the NIC */
-	ICE_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+	ICE_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 }
 
 static inline __m256i
@@ -1111,7 +1111,7 @@ ice_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	txq->tx_tail = tx_id;
 
-	ICE_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+	ICE_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }
