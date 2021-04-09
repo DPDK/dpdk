@@ -704,6 +704,10 @@ eal_parse_args(int argc, char **argv)
 			goto out;
 		}
 
+		/* eal_log_level_parse() already handled this option */
+		if (opt == OPT_LOG_LEVEL_NUM)
+			continue;
+
 		ret = eal_parse_common_option(opt, optarg, internal_conf);
 		/* common parser is not happy */
 		if (ret < 0) {
