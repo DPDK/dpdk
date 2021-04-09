@@ -4231,6 +4231,22 @@ hns3_dummy_rxtx_burst(void *dpdk_txq __rte_unused,
 	return 0;
 }
 
+static void
+hns3_trace_rxtx_function(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_burst_mode rx_mode;
+	struct rte_eth_burst_mode tx_mode;
+
+	memset(&rx_mode, 0, sizeof(rx_mode));
+	memset(&tx_mode, 0, sizeof(tx_mode));
+	(void)hns3_rx_burst_mode_get(dev, 0, &rx_mode);
+	(void)hns3_tx_burst_mode_get(dev, 0, &tx_mode);
+
+	hns3_dbg(hw, "using rx_pkt_burst: %s, tx_pkt_burst: %s.",
+		 rx_mode.info, tx_mode.info);
+}
+
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
@@ -4243,6 +4259,7 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 		eth_dev->tx_pkt_burst = hns3_get_tx_function(eth_dev, &prep);
 		eth_dev->tx_pkt_prepare = prep;
 		eth_dev->tx_descriptor_status = hns3_dev_tx_descriptor_status;
+		hns3_trace_rxtx_function(eth_dev);
 	} else {
 		eth_dev->rx_pkt_burst = hns3_dummy_rxtx_burst;
 		eth_dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
