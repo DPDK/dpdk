@@ -2251,6 +2251,12 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		if (enabled_cdevs[cdev_id] == 0)
 			continue;
 
+		if (check_cryptodev_mask(options, cdev_id) < 0)
+			continue;
+
+		if (check_capabilities(options, cdev_id) < 0)
+			continue;
+
 		retval = rte_cryptodev_socket_id(cdev_id);
 
 		if (retval < 0) {
