@@ -49,7 +49,7 @@ with SPDX-License-Identifiers.
 Any exception to the DPDK IP policies shall be approved by DPDK Tech Board and
 DPDK Governing Board. Steps for any exception approval:
 1. Mention the appropriate license identifier form SPDX. If the license is not
-   listed in SPDX Licenses. It is the submitters responsibiliity to get it
+   listed in SPDX Licenses. It is the submitters responsibility to get it
    first listed.
 2. Get the required approval from the DPDK Technical Board. Technical Board may
    advise the author to check alternate means first. If no other alternative
@@ -72,6 +72,6 @@ DPDK project supported licenses are:
 	URL: http://spdx.org/licenses/GPL-2.0.html#licenseText
 	DPDK License text: licenses/gpl-2.0.txt
 3. GNU Lesser General Public License v2.1
-	SPDX-License-Identifieri: LGPL-2.1
+	SPDX-License-Identifier: LGPL-2.1
 	URL: http://spdx.org/licenses/LGPL-2.1.html#licenseText
 	DPDK License text: licenses/lgpl-2.1.txt
