@@ -842,6 +842,7 @@ static void
 testsuite_teardown(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int res;
 
 	if (ts_params->mbuf_pool != NULL) {
 		RTE_LOG(DEBUG, USER1, "CRYPTO_MBUFPOOL count %u\n",
@@ -863,6 +864,10 @@ testsuite_teardown(void)
 		rte_mempool_free(ts_params->session_mpool);
 		ts_params->session_mpool = NULL;
 	}
+
+	res = rte_cryptodev_close(ts_params->valid_devs[0]);
+	if (res)
+		RTE_LOG(ERR, USER1, "Crypto device close error %d\n", res);
 }
 
 static int
