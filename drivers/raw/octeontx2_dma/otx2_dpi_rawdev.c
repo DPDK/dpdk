@@ -389,6 +389,7 @@ otx2_dpi_rawdev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	vf_id = ((pci_dev->addr.devid & 0x1F) << 3) |
 		 (pci_dev->addr.function & 0x7);
 	vf_id -= 1;
+	dpivf->dev = pci_dev;
 	dpivf->state = DPI_QUEUE_START;
 	dpivf->vf_id = vf_id;
 	dpivf->vf_bar0 = (uintptr_t)pci_dev->mem_resource[0].addr;
