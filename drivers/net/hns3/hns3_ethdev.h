@@ -1021,7 +1021,7 @@ int hns3_dev_flow_ops_get(struct rte_eth_dev *dev,
 			  const struct rte_flow_ops **ops);
 bool hns3_is_reset_pending(struct hns3_adapter *hns);
 bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
-void hns3_update_link_status_and_event(struct hns3_hw *hw);
+void hns3_update_linkstatus_and_event(struct hns3_hw *hw, bool query);
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			const struct rte_ether_addr *ether_addr);
 int hns3_dev_infos_get(struct rte_eth_dev *eth_dev,

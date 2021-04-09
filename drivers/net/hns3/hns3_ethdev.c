@@ -2753,10 +2753,15 @@ static int
 hns3_update_port_link_info(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	int ret;
 
 	(void)hns3_update_link_status(hw);
 
-	return hns3_update_link_info(eth_dev);
+	ret = hns3_update_link_info(eth_dev);
+	if (ret)
+		hw->mac.link_status = ETH_LINK_DOWN;
+
+	return ret;
 }
 
 static void
@@ -2807,7 +2812,6 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete)
 	do {
 		ret = hns3_update_port_link_info(eth_dev);
 		if (ret) {
-			mac->link_status = ETH_LINK_DOWN;
 			hns3_err(hw, "failed to get port link info, ret = %d.",
 				 ret);
 			break;
@@ -4780,30 +4784,22 @@ hns3_update_link_status(struct hns3_hw *hw)
 	return false;
 }
 
-/*
- * Current, the PF driver get link status by two ways:
- * 1) Periodic polling in the intr thread context, driver call
- *    hns3_update_link_status to update link status.
- * 2) Firmware report async interrupt, driver process the event in the intr
- *    thread context, and call hns3_update_link_status to update link status.
- *
- * If detect link status changed, driver need report LSE. One method is add the
- * report LSE logic in hns3_update_link_status.
- *
- * But the PF driver ops(link_update) also call hns3_update_link_status to
- * update link status.
- * If we report LSE in hns3_update_link_status, it may lead to deadlock in the
- * bonding application.
- *
- * So add the one new API which used only in intr thread context.
- */
 void
-hns3_update_link_status_and_event(struct hns3_hw *hw)
+hns3_update_linkstatus_and_event(struct hns3_hw *hw, bool query)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
-	bool changed = hns3_update_link_status(hw);
-	if (changed)
-		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	struct rte_eth_link new_link;
+	int ret;
+
+	if (query)
+		hns3_update_port_link_info(dev);
+
+	memset(&new_link, 0, sizeof(new_link));
+	hns3_setup_linkstatus(dev, &new_link);
+
+	ret = rte_eth_linkstatus_set(dev, &new_link);
+	if (ret == 0 && dev->data->dev_conf.intr_conf.lsc != 0)
+		hns3_start_report_lse(dev);
 }
 
 static void
@@ -4813,14 +4809,34 @@ hns3_service_handler(void *param)
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
-	if (!hns3_is_reset_pending(hns)) {
-		hns3_update_link_status_and_event(hw);
-		hns3_update_link_info(eth_dev);
-	} else {
+	if (!hns3_is_reset_pending(hns))
+		hns3_update_linkstatus_and_event(hw, true);
+	else
 		hns3_warn(hw, "Cancel the query when reset is pending");
-	}
 
 	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, eth_dev);
+}
+
+static void
+hns3_update_dev_lsc_cap(struct hns3_hw *hw,
+			int fw_compact_cmd_result)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+
+	if (hw->adapter_state != HNS3_NIC_UNINITIALIZED)
+		return;
+
+	if (fw_compact_cmd_result != 0) {
+		/*
+		 * If fw_compact_cmd_result is not zero, it means firmware don't
+		 * support link status change interrupt.
+		 * Framework already set RTE_ETH_DEV_INTR_LSC bit because driver
+		 * declared RTE_PCI_DRV_INTR_LSC in drv_flags. It need to clear
+		 * the RTE_ETH_DEV_INTR_LSC capability when detect firmware
+		 * don't support link status change interrupt.
+		 */
+		dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
+	}
 }
 
 static int
@@ -4910,6 +4926,7 @@ hns3_init_hardware(struct hns3_adapter *hns)
 	if (ret)
 		PMD_INIT_LOG(WARNING, "firmware compatible features not "
 			     "supported, ret = %d.", ret);
+	hns3_update_dev_lsc_cap(hw, ret);
 
 	return 0;
 
@@ -5302,7 +5319,6 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	hns3_rx_scattered_calc(dev);
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
-	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, dev);
 
 	hns3_restore_filter(dev);
 
@@ -5316,6 +5332,10 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	hns3_start_tqps(hw);
 
 	hns3_tm_dev_start_proc(hw);
+
+	if (dev->data->dev_conf.intr_conf.lsc != 0)
+		hns3_dev_link_update(dev, 0);
+	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, dev);
 
 	hns3_info(hw, "hns3 dev start successful!");
 
@@ -5430,6 +5450,7 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 	}
 	hns3_rx_scattered_reset(dev);
 	rte_eal_alarm_cancel(hns3_service_handler, dev);
+	hns3_stop_report_lse(dev);
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
@@ -5933,11 +5954,11 @@ hns3_stop_service(struct hns3_adapter *hns)
 	struct rte_eth_dev *eth_dev;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
+	hw->mac.link_status = ETH_LINK_DOWN;
 	if (hw->adapter_state == HNS3_NIC_STARTED) {
 		rte_eal_alarm_cancel(hns3_service_handler, eth_dev);
-		hns3_update_link_status_and_event(hw);
+		hns3_update_linkstatus_and_event(hw, false);
 	}
-	hw->mac.link_status = ETH_LINK_DOWN;
 
 	hns3_set_rxtx_function(eth_dev);
 	rte_wmb();
@@ -6939,7 +6960,7 @@ static const struct rte_pci_id pci_id_hns3_map[] = {
 
 static struct rte_pci_driver rte_hns3_pmd = {
 	.id_table = pci_id_hns3_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_hns3_pci_probe,
 	.remove = eth_hns3_pci_remove,
 };

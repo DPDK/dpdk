@@ -287,7 +287,7 @@ hns3_handle_link_change_event(struct hns3_hw *hw,
 	if (!req->msg[LINK_STATUS_OFFSET])
 		hns3_link_fail_parse(hw, req->msg[LINK_FAIL_CODE_OFFSET]);
 
-	hns3_update_link_status_and_event(hw);
+	hns3_update_linkstatus_and_event(hw, true);
 }
 
 static void
