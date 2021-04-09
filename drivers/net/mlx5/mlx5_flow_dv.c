@@ -10155,24 +10155,8 @@ flow_dv_dest_array_create_cb(struct mlx5_cache_list *list __rte_unused,
 	return &cache_resource->entry;
 error:
 	for (idx = 0; idx < resource->num_of_dest; idx++) {
-		struct mlx5_flow_sub_actions_idx *act_res =
-					&cache_resource->sample_idx[idx];
-		if (act_res->rix_hrxq &&
-		    !mlx5_hrxq_release(dev,
-				act_res->rix_hrxq))
-			act_res->rix_hrxq = 0;
-		if (act_res->rix_encap_decap &&
-			!flow_dv_encap_decap_resource_release(dev,
-				act_res->rix_encap_decap))
-			act_res->rix_encap_decap = 0;
-		if (act_res->rix_port_id_action &&
-			!flow_dv_port_id_action_resource_release(dev,
-				act_res->rix_port_id_action))
-			act_res->rix_port_id_action = 0;
-		if (act_res->rix_jump &&
-			!flow_dv_jump_tbl_resource_release(dev,
-				act_res->rix_jump))
-			act_res->rix_jump = 0;
+		flow_dv_sample_sub_actions_release(dev,
+				&cache_resource->sample_idx[idx]);
 		if (dest_attr[idx])
 			mlx5_free(dest_attr[idx]);
 	}
@@ -10542,6 +10526,7 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 				dev_flow->handle->dvh.rix_encap_decap;
 			sample_act->dr_encap_action =
 				dev_flow->dv.encap_decap->action;
+			dev_flow->handle->dvh.rix_encap_decap = 0;
 		}
 		if (sample_act->action_flags & MLX5_FLOW_ACTION_PORT_ID) {
 			normal_idx++;
@@ -10549,6 +10534,7 @@ flow_dv_create_action_sample(struct rte_eth_dev *dev,
 				dev_flow->handle->rix_port_id_action;
 			sample_act->dr_port_id_action =
 				dev_flow->dv.port_id_action->action;
+			dev_flow->handle->rix_port_id_action = 0;
 		}
 		if (sample_act->action_flags & MLX5_FLOW_ACTION_JUMP) {
 			normal_idx++;
@@ -12415,7 +12401,8 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 		return;
 	switch (handle->fate_action) {
 	case MLX5_FLOW_FATE_QUEUE:
-		mlx5_hrxq_release(dev, handle->rix_hrxq);
+		if (!handle->dvh.rix_sample && !handle->dvh.rix_dest_array)
+			mlx5_hrxq_release(dev, handle->rix_hrxq);
 		break;
 	case MLX5_FLOW_FATE_JUMP:
 		flow_dv_jump_tbl_resource_release(dev, handle->rix_jump);
