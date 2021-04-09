@@ -763,8 +763,26 @@ struct hns3_pf {
 	struct hns3_tm_conf tm_conf;
 };
 
+enum {
+	HNS3_PF_PUSH_LSC_CAP_NOT_SUPPORTED,
+	HNS3_PF_PUSH_LSC_CAP_SUPPORTED,
+	HNS3_PF_PUSH_LSC_CAP_UNKNOWN
+};
+
 struct hns3_vf {
 	struct hns3_adapter *adapter;
+
+	/* Whether PF support push link status change to VF */
+	uint16_t pf_push_lsc_cap;
+
+	/*
+	 * If PF support push link status change, VF still need send request to
+	 * get link status in some cases (such as reset recover stage), so use
+	 * the req_link_info_cnt to control max request count.
+	 */
+	uint16_t req_link_info_cnt;
+
+	uint16_t poll_job_started; /* whether poll job is started */
 };
 
 struct hns3_adapter {
@@ -849,6 +867,8 @@ enum {
 	(&((struct hns3_adapter *)adapter)->hw)
 #define HNS3_DEV_PRIVATE_TO_PF(adapter) \
 	(&((struct hns3_adapter *)adapter)->pf)
+#define HNS3_DEV_PRIVATE_TO_VF(adapter) \
+	(&((struct hns3_adapter *)adapter)->vf)
 #define HNS3_DEV_HW_TO_ADAPTER(hw) \
 	container_of(hw, struct hns3_adapter, hw)
 
@@ -856,6 +876,12 @@ static inline struct hns3_pf *HNS3_DEV_HW_TO_PF(struct hns3_hw *hw)
 {
 	struct hns3_adapter *adapter = HNS3_DEV_HW_TO_ADAPTER(hw);
 	return &adapter->pf;
+}
+
+static inline struct hns3_vf *HNS3_DEV_HW_TO_VF(struct hns3_hw *hw)
+{
+	struct hns3_adapter *adapter = HNS3_DEV_HW_TO_ADAPTER(hw);
+	return &adapter->vf;
 }
 
 #define hns3_set_field(origin, mask, shift, val) \
@@ -1003,6 +1029,7 @@ int hns3_dev_infos_get(struct rte_eth_dev *eth_dev,
 void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 			  uint32_t link_speed, uint8_t link_duplex);
 void hns3_parse_devargs(struct rte_eth_dev *dev);
+void hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported);
 int hns3_restore_ptp(struct hns3_adapter *hns);
 int hns3_mbuf_dyn_rx_timestamp_register(struct rte_eth_dev *dev,
 				    struct rte_eth_conf *conf);

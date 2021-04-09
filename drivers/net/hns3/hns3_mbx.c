@@ -177,6 +177,7 @@ hns3_mbx_handler(struct hns3_hw *hw)
 {
 	enum hns3_reset_level reset_level;
 	uint8_t link_status, link_duplex;
+	uint8_t support_push_lsc;
 	uint32_t link_speed;
 	uint16_t *msg_q;
 	uint8_t opcode;
@@ -196,6 +197,8 @@ hns3_mbx_handler(struct hns3_hw *hw)
 			link_duplex = (uint8_t)rte_le_to_cpu_16(msg_q[4]);
 			hns3vf_update_link_status(hw, link_status, link_speed,
 						  link_duplex);
+			support_push_lsc = (*(uint8_t *)&msg_q[5]) & 1u;
+			hns3vf_update_push_lsc_cap(hw, support_push_lsc);
 			break;
 		case HNS3_MBX_ASSERTING_RESET:
 			/* PF has asserted reset hence VF should go in pending

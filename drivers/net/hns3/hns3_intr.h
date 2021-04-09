@@ -115,5 +115,7 @@ int hns3_reset_req_hw_reset(struct hns3_adapter *hns);
 int hns3_reset_process(struct hns3_adapter *hns,
 		       enum hns3_reset_level reset_level);
 void hns3_reset_abort(struct hns3_adapter *hns);
+void hns3_start_report_lse(struct rte_eth_dev *dev);
+void hns3_stop_report_lse(struct rte_eth_dev *dev);
 
 #endif /* _HNS3_INTR_H_ */

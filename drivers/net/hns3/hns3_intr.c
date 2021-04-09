@@ -2614,3 +2614,33 @@ hns3_reset_abort(struct hns3_adapter *hns)
 			 reset_string[hw->reset.level], tv.tv_sec, tv.tv_usec);
 	}
 }
+
+static void
+hns3_report_lse(void *arg)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)arg;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->adapter_state == HNS3_NIC_STARTED)
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+}
+
+void
+hns3_start_report_lse(struct rte_eth_dev *dev)
+{
+#define DELAY_REPORT_LSE_US	1
+	/*
+	 * When this function called, the context may hold hns3_hw.lock, if
+	 * report lse right now, in some application such as bonding, it will
+	 * trigger call driver's ops which may acquire hns3_hw.lock again, so
+	 * lead to deadlock.
+	 * Here we use delay report to avoid the deadlock.
+	 */
+	rte_eal_alarm_set(DELAY_REPORT_LSE_US, hns3_report_lse, dev);
+}
+
+void
+hns3_stop_report_lse(struct rte_eth_dev *dev)
+{
+	rte_eal_alarm_cancel(hns3_report_lse, dev);
+}

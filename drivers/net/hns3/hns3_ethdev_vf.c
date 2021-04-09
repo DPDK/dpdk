@@ -44,6 +44,9 @@ static int hns3vf_add_mc_mac_addr(struct hns3_hw *hw,
 				  struct rte_ether_addr *mac_addr);
 static int hns3vf_remove_mc_mac_addr(struct hns3_hw *hw,
 				     struct rte_ether_addr *mac_addr);
+static int hns3vf_dev_link_update(struct rte_eth_dev *eth_dev,
+				   __rte_unused int wait_to_complete);
+
 /* set PCI bus mastering */
 static int
 hns3vf_set_bus_master(const struct rte_pci_device *device, bool op)
@@ -1191,6 +1194,65 @@ hns3vf_query_dev_specifications(struct hns3_hw *hw)
 	return hns3vf_check_dev_specifications(hw);
 }
 
+void
+hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported)
+{
+	uint16_t val = supported ? HNS3_PF_PUSH_LSC_CAP_SUPPORTED :
+				   HNS3_PF_PUSH_LSC_CAP_NOT_SUPPORTED;
+	uint16_t exp = HNS3_PF_PUSH_LSC_CAP_UNKNOWN;
+	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
+
+	if (vf->pf_push_lsc_cap == HNS3_PF_PUSH_LSC_CAP_UNKNOWN)
+		__atomic_compare_exchange(&vf->pf_push_lsc_cap, &exp, &val, 0,
+					  __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+}
+
+static void
+hns3vf_get_push_lsc_cap(struct hns3_hw *hw)
+{
+#define HNS3_CHECK_PUSH_LSC_CAP_TIMEOUT_MS	500
+
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	int32_t remain_ms = HNS3_CHECK_PUSH_LSC_CAP_TIMEOUT_MS;
+	uint16_t val = HNS3_PF_PUSH_LSC_CAP_NOT_SUPPORTED;
+	uint16_t exp = HNS3_PF_PUSH_LSC_CAP_UNKNOWN;
+	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
+
+	__atomic_store_n(&vf->pf_push_lsc_cap, HNS3_PF_PUSH_LSC_CAP_UNKNOWN,
+			 __ATOMIC_RELEASE);
+
+	(void)hns3_send_mbx_msg(hw, HNS3_MBX_GET_LINK_STATUS, 0, NULL, 0, false,
+				NULL, 0);
+
+	while (remain_ms > 0) {
+		rte_delay_ms(HNS3_POLL_RESPONE_MS);
+		if (__atomic_load_n(&vf->pf_push_lsc_cap, __ATOMIC_ACQUIRE) !=
+			HNS3_PF_PUSH_LSC_CAP_UNKNOWN)
+			break;
+		remain_ms--;
+	}
+
+	/*
+	 * When exit above loop, the pf_push_lsc_cap could be one of the three
+	 * state: unknown (means pf not ack), not_supported, supported.
+	 * Here config it as 'not_supported' when it's 'unknown' state.
+	 */
+	__atomic_compare_exchange(&vf->pf_push_lsc_cap, &exp, &val, 0,
+				  __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+
+	if (__atomic_load_n(&vf->pf_push_lsc_cap, __ATOMIC_ACQUIRE) ==
+		HNS3_PF_PUSH_LSC_CAP_SUPPORTED) {
+		hns3_info(hw, "detect PF support push link status change!");
+	} else {
+		/*
+		 * Framework already set RTE_ETH_DEV_INTR_LSC bit because driver
+		 * declared RTE_PCI_DRV_INTR_LSC in drv_flags. So here cleared
+		 * the RTE_ETH_DEV_INTR_LSC capability.
+		 */
+		dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
+	}
+}
+
 static int
 hns3vf_get_capability(struct hns3_hw *hw)
 {
@@ -1404,6 +1466,8 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 		return ret;
 	}
 
+	hns3vf_get_push_lsc_cap(hw);
+
 	/* Get queue configuration from PF */
 	ret = hns3vf_get_queue_info(hw);
 	if (ret)
@@ -1451,15 +1515,28 @@ hns3vf_set_tc_queue_mapping(struct hns3_adapter *hns, uint16_t nb_rx_q,
 static void
 hns3vf_request_link_info(struct hns3_hw *hw)
 {
+	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
 	uint8_t resp_msg;
+	bool send_req;
 	int ret;
 
 	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED))
 		return;
+
+	send_req = vf->pf_push_lsc_cap == HNS3_PF_PUSH_LSC_CAP_NOT_SUPPORTED ||
+		   vf->req_link_info_cnt > 0;
+	if (!send_req)
+		return;
+
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_LINK_STATUS, 0, NULL, 0, false,
 				&resp_msg, sizeof(resp_msg));
-	if (ret)
-		hns3_err(hw, "Failed to fetch link status from PF: %d", ret);
+	if (ret) {
+		hns3_err(hw, "failed to fetch link status, ret = %d", ret);
+		return;
+	}
+
+	if (vf->req_link_info_cnt > 0)
+		vf->req_link_info_cnt--;
 }
 
 void
@@ -1467,34 +1544,30 @@ hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 			  uint32_t link_speed, uint8_t link_duplex)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
 	struct hns3_mac *mac = &hw->mac;
-	bool report_lse;
-	bool changed;
-
-	changed = mac->link_status != link_status ||
-		  mac->link_speed != link_speed ||
-		  mac->link_duplex != link_duplex;
-	if (!changed)
-		return;
+	int ret;
 
 	/*
-	 * VF's link status/speed/duplex were updated by polling from PF driver,
-	 * because the link status/speed/duplex may be changed in the polling
-	 * interval, so driver will report lse (lsc event) once any of the above
-	 * thress variables changed.
-	 * But if the PF's link status is down and driver saved link status is
-	 * also down, there are no need to report lse.
+	 * PF kernel driver may push link status when VF driver is in resetting,
+	 * driver will stop polling job in this case, after resetting done
+	 * driver will start polling job again.
+	 * When polling job started, driver will get initial link status by
+	 * sending request to PF kernel driver, then could update link status by
+	 * process PF kernel driver's link status mailbox message.
 	 */
-	report_lse = true;
-	if (link_status == ETH_LINK_DOWN && link_status == mac->link_status)
-		report_lse = false;
+	if (!__atomic_load_n(&vf->poll_job_started, __ATOMIC_RELAXED))
+		return;
+
+	if (hw->adapter_state != HNS3_NIC_STARTED)
+		return;
 
 	mac->link_status = link_status;
 	mac->link_speed = link_speed;
 	mac->link_duplex = link_duplex;
-
-	if (report_lse)
-		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	ret = hns3vf_dev_link_update(dev, 0);
+	if (ret == 0 && dev->data->dev_conf.intr_conf.lsc != 0)
+		hns3_start_report_lse(dev);
 }
 
 static int
@@ -1710,8 +1783,8 @@ hns3vf_service_handler(void *param)
 
 	/*
 	 * The query link status and reset processing are executed in the
-	 * interrupt thread.When the IMP reset occurs, IMP will not respond,
-	 * and the query operation will time out after 30ms. In the case of
+	 * interrupt thread. When the IMP reset occurs, IMP will not respond,
+	 * and the query operation will timeout after 30ms. In the case of
 	 * multiple PF/VFs, each query failure timeout causes the IMP reset
 	 * interrupt to fail to respond within 100ms.
 	 * Before querying the link status, check whether there is a reset
@@ -1724,6 +1797,31 @@ hns3vf_service_handler(void *param)
 
 	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler,
 			  eth_dev);
+}
+
+static void
+hns3vf_start_poll_job(struct rte_eth_dev *dev)
+{
+#define HNS3_REQUEST_LINK_INFO_REMAINS_CNT	3
+
+	struct hns3_vf *vf = HNS3_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	if (vf->pf_push_lsc_cap == HNS3_PF_PUSH_LSC_CAP_SUPPORTED)
+		vf->req_link_info_cnt = HNS3_REQUEST_LINK_INFO_REMAINS_CNT;
+
+	__atomic_store_n(&vf->poll_job_started, 1, __ATOMIC_RELAXED);
+
+	hns3vf_service_handler(dev);
+}
+
+static void
+hns3vf_stop_poll_job(struct rte_eth_dev *dev)
+{
+	struct hns3_vf *vf = HNS3_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	rte_eal_alarm_cancel(hns3vf_service_handler, dev);
+
+	__atomic_store_n(&vf->poll_job_started, 0, __ATOMIC_RELAXED);
 }
 
 static int
@@ -2032,7 +2130,8 @@ hns3vf_dev_stop(struct rte_eth_dev *dev)
 		hw->adapter_state = HNS3_NIC_CONFIGURED;
 	}
 	hns3_rx_scattered_reset(dev);
-	rte_eal_alarm_cancel(hns3vf_service_handler, dev);
+	hns3vf_stop_poll_job(dev);
+	hns3_stop_report_lse(dev);
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
@@ -2302,18 +2401,16 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	hns3_rx_scattered_calc(dev);
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
-	hns3vf_service_handler(dev);
 
 	hns3vf_restore_filter(dev);
 
 	/* Enable interrupt of all rx queues before enabling queues */
 	hns3_dev_all_rx_queue_intr_enable(hw, true);
-
-	/*
-	 * After finished the initialization, start all tqps to receive/transmit
-	 * packets and refresh all queue status.
-	 */
 	hns3_start_tqps(hw);
+
+	if (dev->data->dev_conf.intr_conf.lsc != 0)
+		hns3vf_dev_link_update(dev, 0);
+	hns3vf_start_poll_job(dev);
 
 	return ret;
 
@@ -2454,9 +2551,13 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
 	if (hw->adapter_state == HNS3_NIC_STARTED) {
-		rte_eal_alarm_cancel(hns3vf_service_handler, eth_dev);
+		/*
+		 * Make sure call update link status before hns3vf_stop_poll_job
+		 * because update link status depend on polling job exist.
+		 */
 		hns3vf_update_link_status(hw, ETH_LINK_DOWN, hw->mac.link_speed,
-			hw->mac.link_duplex);
+					  hw->mac.link_duplex);
+		hns3vf_stop_poll_job(eth_dev);
 	}
 	hw->mac.link_status = ETH_LINK_DOWN;
 
@@ -2497,7 +2598,7 @@ hns3vf_start_service(struct hns3_adapter *hns)
 	hns3_set_rxtx_function(eth_dev);
 	hns3_mp_req_start_rxtx(eth_dev);
 	if (hw->adapter_state == HNS3_NIC_STARTED) {
-		hns3vf_service_handler(eth_dev);
+		hns3vf_start_poll_job(eth_dev);
 
 		/* Enable interrupt of all rx queues before enabling queues */
 		hns3_dev_all_rx_queue_intr_enable(hw, true);
@@ -2968,7 +3069,7 @@ static const struct rte_pci_id pci_id_hns3vf_map[] = {
 
 static struct rte_pci_driver rte_hns3vf_pmd = {
 	.id_table = pci_id_hns3vf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_hns3vf_pci_probe,
 	.remove = eth_hns3vf_pci_remove,
 };
