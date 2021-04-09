@@ -1055,7 +1055,7 @@ rte_eal_memory_detach(void)
 	 * config - we can't zero it out because it might still be referenced
 	 * by other processes.
 	 */
-	if (internal_conf->no_shconf == 0) {
+	if (internal_conf->no_shconf == 0 && mcfg->mem_cfg_addr != 0) {
 		if (rte_mem_unmap(mcfg, RTE_ALIGN(sizeof(*mcfg), page_sz)) != 0)
 			RTE_LOG(ERR, EAL, "Could not unmap shared memory config: %s\n",
 					rte_strerror(rte_errno));
