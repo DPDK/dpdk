@@ -5,13 +5,7 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <ctype.h>
 #include <string.h>
-#include <sys/types.h>
 
 #include <rte_string_fns.h>
 #include <rte_ether.h>

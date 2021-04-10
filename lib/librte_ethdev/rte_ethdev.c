@@ -2,18 +2,14 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
-#include <sys/types.h>
-#include <sys/queue.h>
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <inttypes.h>
-#include <netinet/in.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/queue.h>
 
 #include <rte_byteorder.h>
 #include <rte_log.h>

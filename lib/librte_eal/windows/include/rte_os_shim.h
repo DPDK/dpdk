@@ -25,4 +25,12 @@
 #define close(fd) _close(fd)
 #define unlink(path) _unlink(path)
 
+#define IPVERSION	4
+
+#define IPPROTO_IPIP	4
+#define IPPROTO_GRE	47
+#ifdef RTE_TOOLCHAIN_GCC
+#define IPPROTO_SCTP	132
+#endif
+
 #endif /* _RTE_OS_SHIM_ */

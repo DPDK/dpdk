@@ -6,7 +6,6 @@
 #define _RTE_ETHDEV_CORE_H_
 
 #include <pthread.h>
-#include <sys/types.h>
 
 /**
  * @file

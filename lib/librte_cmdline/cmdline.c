@@ -12,7 +12,6 @@
 #include <inttypes.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <netinet/in.h>
 
 #include <rte_string_fns.h>
 

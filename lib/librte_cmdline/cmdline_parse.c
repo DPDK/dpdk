@@ -11,8 +11,6 @@
 #include <inttypes.h>
 #include <ctype.h>
 
-#include <netinet/in.h>
-
 #include <rte_string_fns.h>
 
 #include "cmdline_private.h"

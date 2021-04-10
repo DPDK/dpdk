@@ -8,7 +8,6 @@
 #include <string.h>
 #include <inttypes.h>
 #include <errno.h>
-#include <netinet/in.h>
 
 #include <rte_ether.h>
 #include <ethdev_driver.h>

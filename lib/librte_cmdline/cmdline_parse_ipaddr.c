@@ -6,14 +6,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <inttypes.h>
-#include <ctype.h>
 #include <string.h>
 #include <errno.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 
 #include <rte_string_fns.h>
 

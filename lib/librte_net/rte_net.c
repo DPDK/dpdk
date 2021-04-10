@@ -15,6 +15,7 @@
 #include <rte_gre.h>
 #include <rte_mpls.h>
 #include <rte_net.h>
+#include <rte_os_shim.h>
 
 /* get l3 packet type from ip6 next protocol */
 static uint32_t

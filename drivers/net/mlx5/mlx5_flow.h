@@ -5,11 +5,10 @@
 #ifndef RTE_PMD_MLX5_FLOW_H_
 #define RTE_PMD_MLX5_FLOW_H_
 
-#include <netinet/in.h>
-#include <sys/queue.h>
 #include <stdalign.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/queue.h>
 
 #include <rte_alarm.h>
 #include <rte_mtr.h>

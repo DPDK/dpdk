@@ -22,6 +22,7 @@
 #include <rte_sctp.h>
 #include <rte_hash_crc.h>
 #include <rte_bitmap.h>
+#include <rte_os_shim.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_type.h"

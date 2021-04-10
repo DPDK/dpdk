@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <limits.h>
-#include <netinet/in.h>
 #include <sys/queue.h>
 
 #include <rte_pci.h>

@@ -8,12 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <errno.h>
-#include <netinet/in.h>
-#ifdef RTE_EXEC_ENV_FREEBSD
-#include <sys/socket.h>
-#endif
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
