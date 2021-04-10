@@ -6128,11 +6128,16 @@ hns3_fec_set(struct rte_eth_dev *dev, uint32_t mode)
 		return -EINVAL;
 	}
 
+	rte_spinlock_lock(&hw->lock);
 	ret = hns3_set_fec_hw(hw, mode);
-	if (ret)
+	if (ret) {
+		rte_spinlock_unlock(&hw->lock);
 		return ret;
+	}
 
 	pf->fec_mode = mode;
+	rte_spinlock_unlock(&hw->lock);
+
 	return 0;
 }
 
