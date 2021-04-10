@@ -10,7 +10,6 @@
  * which is not supported natively or named differently in Windows.
  */
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,34 +70,6 @@ extern "C" {
 typedef long long ssize_t;
 
 #ifndef RTE_TOOLCHAIN_GCC
-
-static inline int
-asprintf(char **buffer, const char *format, ...)
-{
-	int size, ret;
-	va_list arg;
-
-	va_start(arg, format);
-	size = vsnprintf(NULL, 0, format, arg);
-	va_end(arg);
-	if (size < 0)
-		return -1;
-	size++;
-
-	*buffer = (char *)malloc(size);
-	if (*buffer == NULL)
-		return -1;
-
-	va_start(arg, format);
-	ret = vsnprintf(*buffer, size, format, arg);
-	va_end(arg);
-	if (ret != size - 1) {
-		free(*buffer);
-		return -1;
-	}
-	return ret;
-}
-
 static inline const char *
 eal_strerror(int code)
 {
@@ -111,7 +82,6 @@ eal_strerror(int code)
 #ifndef strerror
 #define strerror eal_strerror
 #endif
-
 #endif /* RTE_TOOLCHAIN_GCC */
 
 #ifdef __cplusplus

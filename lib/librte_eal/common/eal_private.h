@@ -716,4 +716,15 @@ void __rte_thread_init(unsigned int lcore_id, rte_cpuset_t *cpuset);
  */
 void __rte_thread_uninit(void);
 
+/**
+ * asprintf(3) replacement for Windows.
+ */
+#ifdef RTE_EXEC_ENV_WINDOWS
+__rte_format_printf(2, 3)
+int eal_asprintf(char **buffer, const char *format, ...);
+
+#define asprintf(buffer, format, ...) \
+		eal_asprintf(buffer, format, ##__VA_ARGS__)
+#endif
+
 #endif /* _EAL_PRIVATE_H_ */

@@ -2,6 +2,8 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
+#include <stdarg.h>
+
 #include <fcntl.h>
 #include <io.h>
 #include <share.h>
@@ -414,6 +416,34 @@ rte_eal_init(int argc, char **argv)
 	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MAIN);
 	rte_eal_mp_wait_lcore();
 	return fctret;
+}
+
+/* Don't use MinGW asprintf() to have identical code with all toolchains. */
+int
+eal_asprintf(char **buffer, const char *format, ...)
+{
+	int size, ret;
+	va_list arg;
+
+	va_start(arg, format);
+	size = vsnprintf(NULL, 0, format, arg);
+	va_end(arg);
+	if (size < 0)
+		return -1;
+	size++;
+
+	*buffer = malloc(size);
+	if (*buffer == NULL)
+		return -1;
+
+	va_start(arg, format);
+	ret = vsnprintf(*buffer, size, format, arg);
+	va_end(arg);
+	if (ret != size - 1) {
+		free(*buffer);
+		return -1;
+	}
+	return ret;
 }
 
 int
