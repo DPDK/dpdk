@@ -171,6 +171,10 @@ adjust_map(struct user_mem_map *src, struct user_mem_map *end,
 static int
 merge_map(struct user_mem_map *left, struct user_mem_map *right)
 {
+	/* merge the same maps into one */
+	if (memcmp(left, right, sizeof(struct user_mem_map)) == 0)
+		goto out;
+
 	if (left->addr + left->len != right->addr)
 		return 0;
 	if (left->iova + left->len != right->iova)
@@ -178,6 +182,7 @@ merge_map(struct user_mem_map *left, struct user_mem_map *right)
 
 	left->len += right->len;
 
+out:
 	memset(right, 0, sizeof(*right));
 
 	return 1;
