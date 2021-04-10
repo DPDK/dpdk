@@ -1959,7 +1959,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 		RTE_LOG(ERR, EAL, "Invalid length of --" OPT_MBUF_POOL_OPS_NAME" option\n");
 		return -1;
 	}
-	if (index(eal_get_hugefile_prefix(), '%') != NULL) {
+	if (strchr(eal_get_hugefile_prefix(), '%') != NULL) {
 		RTE_LOG(ERR, EAL, "Invalid char, '%%', in --"OPT_FILE_PREFIX" "
 			"option\n");
 		return -1;

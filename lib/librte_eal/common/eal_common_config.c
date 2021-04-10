@@ -3,7 +3,6 @@
  */
 #include <string.h>
 
-#include <rte_os.h>
 #include <rte_string_fns.h>
 
 #include "eal_private.h"

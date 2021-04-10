@@ -8,6 +8,7 @@
 #include <stdarg.h>
 
 #include <rte_common.h>
+#include <rte_os_shim.h>
 #ifdef RTE_EXEC_ENV_WINDOWS
 #include <rte_windows.h>
 #endif

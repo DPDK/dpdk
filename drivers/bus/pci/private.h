@@ -7,8 +7,10 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <rte_pci.h>
+
 #include <rte_bus_pci.h>
+#include <rte_os_shim.h>
+#include <rte_pci.h>
 
 extern struct rte_pci_bus rte_pci_bus;
 

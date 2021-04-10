@@ -5,6 +5,8 @@
 #ifndef _VDEV_PRIVATE_H_
 #define _VDEV_PRIVATE_H_
 
+#include <rte_os_shim.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

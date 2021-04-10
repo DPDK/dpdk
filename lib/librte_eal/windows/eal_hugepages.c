@@ -6,7 +6,6 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_os.h>
 
 #include "eal_private.h"
 #include "eal_filesystem.h"

@@ -16,10 +16,6 @@
 #include "cmdline_private.h"
 #include "cmdline_socket.h"
 
-#ifdef RTE_EXEC_ENV_WINDOWS
-#define open _open
-#endif
-
 struct cmdline *
 cmdline_file_new(cmdline_parse_ctx_t *ctx, const char *prompt, const char *path)
 {

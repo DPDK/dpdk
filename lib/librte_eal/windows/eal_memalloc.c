@@ -3,7 +3,6 @@
  */
 
 #include <rte_errno.h>
-#include <rte_os.h>
 
 #include "eal_internal_cfg.h"
 #include "eal_memalloc.h"

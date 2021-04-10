@@ -9,7 +9,6 @@
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_lcore.h>
-#include <rte_os.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"

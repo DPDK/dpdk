@@ -5,6 +5,8 @@
 #ifndef _ETH_PRIVATE_H_
 #define _ETH_PRIVATE_H_
 
+#include <rte_os_shim.h>
+
 #include "rte_ethdev.h"
 
 #ifdef __cplusplus

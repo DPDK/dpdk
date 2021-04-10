@@ -11,6 +11,7 @@
 #define EAL_INTERNAL_CFG_H
 
 #include <rte_eal.h>
+#include <rte_os_shim.h>
 #include <rte_pci_dev_feature_defs.h>
 
 #include "eal_thread.h"

@@ -18,71 +18,17 @@
 extern "C" {
 #endif
 
-/* limits.h replacement, value as in <windows.h> */
-#ifndef PATH_MAX
-#define PATH_MAX _MAX_PATH
-#endif
-
-#ifndef sleep
-#define sleep(x) Sleep(1000 * (x))
-#endif
-
-#ifndef strerror_r
-#define strerror_r(a, b, c) strerror_s(b, c, a)
-#endif
-
-#ifndef strdup
-/* strdup is deprecated in Microsoft libc and _strdup is preferred */
-#define strdup(str) _strdup(str)
-#endif
-
-#ifndef strtok_r
-#define strtok_r(str, delim, saveptr) strtok_s(str, delim, saveptr)
-#endif
-
-#ifndef index
-#define index(a, b)     strchr(a, b)
-#endif
-
-#ifndef rindex
-#define rindex(a, b)    strrchr(a, b)
-#endif
-
-#ifndef strncasecmp
-#define strncasecmp(s1, s2, count)        _strnicmp(s1, s2, count)
-#endif
-
-#ifndef close
-#define close _close
-#endif
-
-#ifndef unlink
-#define unlink _unlink
-#endif
-
 /* cpu_set macros implementation */
 #define RTE_CPU_AND(dst, src1, src2) CPU_AND(dst, src1, src2)
 #define RTE_CPU_OR(dst, src1, src2) CPU_OR(dst, src1, src2)
 #define RTE_CPU_FILL(set) CPU_FILL(set)
 #define RTE_CPU_NOT(dst, src) CPU_NOT(dst, src)
 
-/* as in <windows.h> */
+/* This is an exception without "rte_" prefix, because Windows does have
+ * ssize_t, but it's defined in <windows.h> which we avoid to expose.
+ * If ssize_t is defined in user code, it necessarily has the same type.
+ */
 typedef long long ssize_t;
-
-#ifndef RTE_TOOLCHAIN_GCC
-static inline const char *
-eal_strerror(int code)
-{
-	static char buffer[128];
-
-	strerror_s(buffer, sizeof(buffer), code);
-	return buffer;
-}
-
-#ifndef strerror
-#define strerror eal_strerror
-#endif
-#endif /* RTE_TOOLCHAIN_GCC */
 
 #ifdef __cplusplus
 }

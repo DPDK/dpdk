@@ -4,8 +4,6 @@
 
 #include <io.h>
 
-#include <rte_os.h>
-
 #include "cmdline_private.h"
 
 /* Missing from some MinGW-w64 distributions. */
