@@ -23,10 +23,6 @@ extern "C" {
 #include <rte_mbuf.h>
 #include <rte_byteorder.h>
 
-#ifdef RTE_EXEC_ENV_WINDOWS /* Workaround conflict with rte_ether_hdr. */
-#undef s_addr /* Defined in winsock2.h included in windows.h. */
-#endif
-
 #define RTE_ETHER_ADDR_LEN  6 /**< Length of Ethernet address. */
 #define RTE_ETHER_TYPE_LEN  2 /**< Length of Ethernet type field. */
 #define RTE_ETHER_CRC_LEN   4 /**< Length of Ethernet CRC. */
@@ -257,15 +253,33 @@ __rte_experimental
 int
 rte_ether_unformat_addr(const char *str, struct rte_ether_addr *eth_addr);
 
+/* Windows Sockets headers contain `#define s_addr S_un.S_addr`.
+ * Temporarily disable this macro to avoid conflict at definition.
+ * Place source MAC address in both `s_addr` and `S_un.S_addr` fields,
+ * so that access works either directly or through the macro.
+ */
+#pragma push_macro("s_addr")
+#ifdef s_addr
+#undef s_addr
+#endif
+
 /**
  * Ethernet header: Contains the destination address, source address
  * and frame type.
  */
 struct rte_ether_hdr {
 	struct rte_ether_addr d_addr; /**< Destination address. */
-	struct rte_ether_addr s_addr; /**< Source address. */
-	uint16_t ether_type;      /**< Frame type. */
+	RTE_STD_C11
+	union {
+		struct rte_ether_addr s_addr; /**< Source address. */
+		struct {
+			struct rte_ether_addr S_addr;
+		} S_un; /**< Do not use directly; use s_addr instead.*/
+	};
+	uint16_t ether_type; /**< Frame type. */
 } __rte_aligned(2);
+
+#pragma pop_macro("s_addr")
 
 /**
  * Ethernet VLAN Header.
