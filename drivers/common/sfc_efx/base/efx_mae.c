@@ -47,17 +47,20 @@ efx_mae_get_capabilities(
 
 	maep->em_encap_types_supported = 0;
 
-	if (MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_ENCAP_TYPE_VXLAN) == 1) {
+	if (MCDI_OUT_DWORD_FIELD(req, MAE_GET_CAPS_OUT_ENCAP_TYPES_SUPPORTED,
+	    MAE_GET_CAPS_OUT_ENCAP_TYPE_VXLAN) != 0) {
 		maep->em_encap_types_supported |=
 		    (1U << EFX_TUNNEL_PROTOCOL_VXLAN);
 	}
 
-	if (MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_ENCAP_TYPE_GENEVE) == 1) {
+	if (MCDI_OUT_DWORD_FIELD(req, MAE_GET_CAPS_OUT_ENCAP_TYPES_SUPPORTED,
+	    MAE_GET_CAPS_OUT_ENCAP_TYPE_GENEVE) != 0) {
 		maep->em_encap_types_supported |=
 		    (1U << EFX_TUNNEL_PROTOCOL_GENEVE);
 	}
 
-	if (MCDI_OUT_DWORD(req, MAE_GET_CAPS_OUT_ENCAP_TYPE_NVGRE) == 1) {
+	if (MCDI_OUT_DWORD_FIELD(req, MAE_GET_CAPS_OUT_ENCAP_TYPES_SUPPORTED,
+	    MAE_GET_CAPS_OUT_ENCAP_TYPE_NVGRE) != 0) {
 		maep->em_encap_types_supported |=
 		    (1U << EFX_TUNNEL_PROTOCOL_NVGRE);
 	}
