@@ -678,12 +678,10 @@ struct hns3_mp_param {
 #define HNS3_OL4TBL_NUM	16
 
 struct hns3_ptype_table {
-	uint32_t l2l3table[HNS3_L2TBL_NUM][HNS3_L3TBL_NUM];
+	uint32_t l3table[HNS3_L3TBL_NUM];
 	uint32_t l4table[HNS3_L4TBL_NUM];
-	uint32_t inner_l2table[HNS3_L2TBL_NUM];
 	uint32_t inner_l3table[HNS3_L3TBL_NUM];
 	uint32_t inner_l4table[HNS3_L4TBL_NUM];
-	uint32_t ol2table[HNS3_OL2TBL_NUM];
 	uint32_t ol3table[HNS3_OL3TBL_NUM];
 	uint32_t ol4table[HNS3_OL4TBL_NUM];
 };

@@ -2005,32 +2005,12 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 static void
 hns3_init_non_tunnel_ptype_tbl(struct hns3_ptype_table *tbl)
 {
-	tbl->l2l3table[0][0] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4;
-	tbl->l2l3table[0][1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6;
-	tbl->l2l3table[0][2] = RTE_PTYPE_L2_ETHER_ARP;
-	tbl->l2l3table[0][3] = RTE_PTYPE_L2_ETHER;
-	tbl->l2l3table[0][4] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT;
-	tbl->l2l3table[0][5] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT;
-	tbl->l2l3table[0][6] = RTE_PTYPE_L2_ETHER_LLDP;
-	tbl->l2l3table[0][15] = RTE_PTYPE_L2_ETHER;
-
-	tbl->l2l3table[1][0] = RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV4;
-	tbl->l2l3table[1][1] = RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV6;
-	tbl->l2l3table[1][2] = RTE_PTYPE_L2_ETHER_ARP;
-	tbl->l2l3table[1][3] = RTE_PTYPE_L2_ETHER_VLAN;
-	tbl->l2l3table[1][4] = RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV4_EXT;
-	tbl->l2l3table[1][5] = RTE_PTYPE_L2_ETHER_VLAN | RTE_PTYPE_L3_IPV6_EXT;
-	tbl->l2l3table[1][6] = RTE_PTYPE_L2_ETHER_LLDP;
-	tbl->l2l3table[1][15] = RTE_PTYPE_L2_ETHER_VLAN;
-
-	tbl->l2l3table[2][0] = RTE_PTYPE_L2_ETHER_QINQ | RTE_PTYPE_L3_IPV4;
-	tbl->l2l3table[2][1] = RTE_PTYPE_L2_ETHER_QINQ | RTE_PTYPE_L3_IPV6;
-	tbl->l2l3table[2][2] = RTE_PTYPE_L2_ETHER_ARP;
-	tbl->l2l3table[2][3] = RTE_PTYPE_L2_ETHER_QINQ;
-	tbl->l2l3table[2][4] = RTE_PTYPE_L2_ETHER_QINQ | RTE_PTYPE_L3_IPV4_EXT;
-	tbl->l2l3table[2][5] = RTE_PTYPE_L2_ETHER_QINQ | RTE_PTYPE_L3_IPV6_EXT;
-	tbl->l2l3table[2][6] = RTE_PTYPE_L2_ETHER_LLDP;
-	tbl->l2l3table[2][15] = RTE_PTYPE_L2_ETHER_QINQ;
+	tbl->l3table[0] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4;
+	tbl->l3table[1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6;
+	tbl->l3table[2] = RTE_PTYPE_L2_ETHER_ARP;
+	tbl->l3table[4] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT;
+	tbl->l3table[5] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT;
+	tbl->l3table[6] = RTE_PTYPE_L2_ETHER_LLDP;
 
 	tbl->l4table[0] = RTE_PTYPE_L4_UDP;
 	tbl->l4table[1] = RTE_PTYPE_L4_TCP;
@@ -2043,17 +2023,17 @@ hns3_init_non_tunnel_ptype_tbl(struct hns3_ptype_table *tbl)
 static void
 hns3_init_tunnel_ptype_tbl(struct hns3_ptype_table *tbl)
 {
-	tbl->inner_l2table[0] = RTE_PTYPE_INNER_L2_ETHER;
-	tbl->inner_l2table[1] = RTE_PTYPE_INNER_L2_ETHER_VLAN;
-	tbl->inner_l2table[2] = RTE_PTYPE_INNER_L2_ETHER_QINQ;
-
-	tbl->inner_l3table[0] = RTE_PTYPE_INNER_L3_IPV4;
-	tbl->inner_l3table[1] = RTE_PTYPE_INNER_L3_IPV6;
+	tbl->inner_l3table[0] = RTE_PTYPE_INNER_L2_ETHER |
+				RTE_PTYPE_INNER_L3_IPV4;
+	tbl->inner_l3table[1] = RTE_PTYPE_INNER_L2_ETHER |
+				RTE_PTYPE_INNER_L3_IPV6;
 	/* There is not a ptype for inner ARP/RARP */
 	tbl->inner_l3table[2] = RTE_PTYPE_UNKNOWN;
 	tbl->inner_l3table[3] = RTE_PTYPE_UNKNOWN;
-	tbl->inner_l3table[4] = RTE_PTYPE_INNER_L3_IPV4_EXT;
-	tbl->inner_l3table[5] = RTE_PTYPE_INNER_L3_IPV6_EXT;
+	tbl->inner_l3table[4] = RTE_PTYPE_INNER_L2_ETHER |
+				RTE_PTYPE_INNER_L3_IPV4_EXT;
+	tbl->inner_l3table[5] = RTE_PTYPE_INNER_L2_ETHER |
+				RTE_PTYPE_INNER_L3_IPV6_EXT;
 
 	tbl->inner_l4table[0] = RTE_PTYPE_INNER_L4_UDP;
 	tbl->inner_l4table[1] = RTE_PTYPE_INNER_L4_TCP;
@@ -2064,16 +2044,12 @@ hns3_init_tunnel_ptype_tbl(struct hns3_ptype_table *tbl)
 	tbl->inner_l4table[4] = RTE_PTYPE_UNKNOWN;
 	tbl->inner_l4table[5] = RTE_PTYPE_INNER_L4_ICMP;
 
-	tbl->ol2table[0] = RTE_PTYPE_L2_ETHER;
-	tbl->ol2table[1] = RTE_PTYPE_L2_ETHER_VLAN;
-	tbl->ol2table[2] = RTE_PTYPE_L2_ETHER_QINQ;
-
-	tbl->ol3table[0] = RTE_PTYPE_L3_IPV4;
-	tbl->ol3table[1] = RTE_PTYPE_L3_IPV6;
+	tbl->ol3table[0] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4;
+	tbl->ol3table[1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6;
 	tbl->ol3table[2] = RTE_PTYPE_UNKNOWN;
 	tbl->ol3table[3] = RTE_PTYPE_UNKNOWN;
-	tbl->ol3table[4] = RTE_PTYPE_L3_IPV4_EXT;
-	tbl->ol3table[5] = RTE_PTYPE_L3_IPV6_EXT;
+	tbl->ol3table[4] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT;
+	tbl->ol3table[5] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT;
 
 	tbl->ol4table[0] = RTE_PTYPE_UNKNOWN;
 	tbl->ol4table[1] = RTE_PTYPE_TUNNEL_VXLAN;

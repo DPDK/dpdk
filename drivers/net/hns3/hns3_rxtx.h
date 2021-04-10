@@ -596,25 +596,21 @@ hns3_rx_calc_ptype(struct hns3_rx_queue *rxq, const uint32_t l234_info,
 		   const uint32_t ol_info)
 {
 	const struct hns3_ptype_table * const ptype_tbl = rxq->ptype_tbl;
-	uint32_t l2id, l3id, l4id;
-	uint32_t ol3id, ol4id, ol2id;
+	uint32_t ol3id, ol4id;
+	uint32_t l3id, l4id;
 
 	ol4id = hns3_get_field(ol_info, HNS3_RXD_OL4ID_M, HNS3_RXD_OL4ID_S);
 	ol3id = hns3_get_field(ol_info, HNS3_RXD_OL3ID_M, HNS3_RXD_OL3ID_S);
-	ol2id = hns3_get_field(ol_info, HNS3_RXD_OVLAN_M, HNS3_RXD_OVLAN_S);
-	l2id = hns3_get_field(l234_info, HNS3_RXD_VLAN_M, HNS3_RXD_VLAN_S);
 	l3id = hns3_get_field(l234_info, HNS3_RXD_L3ID_M, HNS3_RXD_L3ID_S);
 	l4id = hns3_get_field(l234_info, HNS3_RXD_L4ID_M, HNS3_RXD_L4ID_S);
 
 	if (unlikely(ptype_tbl->ol4table[ol4id]))
-		return ptype_tbl->inner_l2table[l2id] |
-			ptype_tbl->inner_l3table[l3id] |
+		return ptype_tbl->inner_l3table[l3id] |
 			ptype_tbl->inner_l4table[l4id] |
 			ptype_tbl->ol3table[ol3id] |
-			ptype_tbl->ol4table[ol4id] | ptype_tbl->ol2table[ol2id];
+			ptype_tbl->ol4table[ol4id];
 	else
-		return ptype_tbl->l2l3table[l2id][l3id] |
-			ptype_tbl->l4table[l4id];
+		return ptype_tbl->l3table[l3id] | ptype_tbl->l4table[l4id];
 }
 
 void hns3_dev_rx_queue_release(void *queue);
