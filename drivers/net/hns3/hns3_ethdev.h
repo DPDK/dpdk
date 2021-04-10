@@ -682,12 +682,10 @@ struct hns3_ptype_table {
 	 * The next fields used to calc packet-type by the
 	 * L3_ID/L4_ID/OL3_ID/OL4_ID from the Rx descriptor.
 	 */
-	uint32_t l2l3table[HNS3_L2TBL_NUM][HNS3_L3TBL_NUM];
+	uint32_t l3table[HNS3_L3TBL_NUM];
 	uint32_t l4table[HNS3_L4TBL_NUM];
-	uint32_t inner_l2table[HNS3_L2TBL_NUM];
 	uint32_t inner_l3table[HNS3_L3TBL_NUM];
 	uint32_t inner_l4table[HNS3_L4TBL_NUM];
-	uint32_t ol2table[HNS3_OL2TBL_NUM];
 	uint32_t ol3table[HNS3_OL3TBL_NUM];
 	uint32_t ol4table[HNS3_OL4TBL_NUM];
 
