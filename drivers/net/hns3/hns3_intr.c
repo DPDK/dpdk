@@ -2133,10 +2133,11 @@ hns3_schedule_reset(struct hns3_adapter *hns)
 			SCHEDULE_REQUESTED)
 		return;
 	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
-			SCHEDULE_DEFERRED)
+			    SCHEDULE_DEFERRED)
 		rte_eal_alarm_cancel(hw->reset.ops->reset_service, hns);
-	__atomic_store_n(&hw->reset.schedule, SCHEDULE_REQUESTED,
-			 __ATOMIC_RELAXED);
+	else
+		__atomic_store_n(&hw->reset.schedule, SCHEDULE_REQUESTED,
+				 __ATOMIC_RELAXED);
 
 	rte_eal_alarm_set(SWITCH_CONTEXT_US, hw->reset.ops->reset_service, hns);
 }
