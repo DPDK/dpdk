@@ -625,8 +625,8 @@ static int
 hns3pf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 {
 #define HNS3_TQP_RESET_TRY_MS	200
+	uint16_t wait_time = 0;
 	uint8_t reset_status;
-	uint64_t end;
 	int ret;
 
 	/*
@@ -639,17 +639,18 @@ hns3pf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 		hns3_err(hw, "Send reset tqp cmd fail, ret = %d", ret);
 		return ret;
 	}
-	end = get_timeofday_ms() + HNS3_TQP_RESET_TRY_MS;
+
 	do {
 		/* Wait for tqp hw reset */
 		rte_delay_ms(HNS3_POLL_RESPONE_MS);
+		wait_time += HNS3_POLL_RESPONE_MS;
 		ret = hns3_get_tqp_reset_status(hw, queue_id, &reset_status);
 		if (ret)
 			goto tqp_reset_fail;
 
 		if (reset_status)
 			break;
-	} while (get_timeofday_ms() < end);
+	} while (wait_time < HNS3_TQP_RESET_TRY_MS);
 
 	if (!reset_status) {
 		ret = -ETIMEDOUT;
