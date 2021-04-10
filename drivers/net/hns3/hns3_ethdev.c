@@ -5009,7 +5009,7 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 	ret = hns3_update_imissed_stats(hw, true);
 	if (ret) {
 		hns3_err(hw, "clear imissed stats failed, ret = %d", ret);
-		return ret;
+		goto err_cmd_init;
 	}
 
 	hns3_config_all_msix_error(hw, true);
