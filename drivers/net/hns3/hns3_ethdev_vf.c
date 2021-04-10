@@ -857,11 +857,6 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	if (ret)
 		goto cfg_err;
 
-	hns->rx_simple_allowed = true;
-	hns->rx_vec_allowed = true;
-	hns->tx_simple_allowed = true;
-	hns->tx_vec_allowed = true;
-
 	hns3_init_rx_ptype_tble(dev);
 
 	hw->adapter_state = HNS3_NIC_CONFIGURED;

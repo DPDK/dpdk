@@ -795,11 +795,6 @@ struct hns3_adapter {
 		struct hns3_vf vf;
 	};
 
-	bool rx_simple_allowed;
-	bool rx_vec_allowed;
-	bool tx_simple_allowed;
-	bool tx_vec_allowed;
-
 	uint32_t rx_func_hint;
 	uint32_t tx_func_hint;
 

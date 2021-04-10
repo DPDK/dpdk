@@ -2805,10 +2805,9 @@ hns3_get_rx_function(struct rte_eth_dev *dev)
 	uint64_t offloads = dev->data->dev_conf.rxmode.offloads;
 	bool vec_allowed, sve_allowed, simple_allowed;
 
-	vec_allowed = hns->rx_vec_allowed &&
-		      hns3_rx_check_vec_support(dev) == 0;
+	vec_allowed = hns3_rx_check_vec_support(dev) == 0;
 	sve_allowed = vec_allowed && hns3_check_sve_support();
-	simple_allowed = hns->rx_simple_allowed && !dev->data->scattered_rx &&
+	simple_allowed = !dev->data->scattered_rx &&
 			 (offloads & DEV_RX_OFFLOAD_TCP_LRO) == 0;
 
 	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_VEC && vec_allowed)
@@ -4195,11 +4194,9 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	bool vec_allowed, sve_allowed, simple_allowed;
 
-	vec_allowed = hns->tx_vec_allowed &&
-		      hns3_tx_check_vec_support(dev) == 0;
+	vec_allowed = hns3_tx_check_vec_support(dev) == 0;
 	sve_allowed = vec_allowed && hns3_check_sve_support();
-	simple_allowed = hns->tx_simple_allowed &&
-			 hns3_tx_check_simple_support(dev);
+	simple_allowed = hns3_tx_check_simple_support(dev);
 
 	*prep = NULL;
 
