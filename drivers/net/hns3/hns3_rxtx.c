@@ -3954,10 +3954,12 @@ hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (!hns3_dev_indep_txrx_supported(hw))
 		return -ENOTSUP;
 
+	rte_spinlock_lock(&hw->lock);
 	ret = hns3_reset_queue(hw, rx_queue_id, HNS3_RING_TYPE_RX);
 	if (ret) {
 		hns3_err(hw, "fail to reset Rx queue %u, ret = %d.",
 			 rx_queue_id, ret);
+		rte_spinlock_unlock(&hw->lock);
 		return ret;
 	}
 
@@ -3965,11 +3967,13 @@ hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (ret) {
 		hns3_err(hw, "fail to init Rx queue %u, ret = %d.",
 			 rx_queue_id, ret);
+		rte_spinlock_unlock(&hw->lock);
 		return ret;
 	}
 
 	hns3_enable_rxq(rxq, true);
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
 }
@@ -3996,12 +4000,14 @@ hns3_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (!hns3_dev_indep_txrx_supported(hw))
 		return -ENOTSUP;
 
+	rte_spinlock_lock(&hw->lock);
 	hns3_enable_rxq(rxq, false);
 
 	hns3_rx_queue_release_mbufs(rxq);
 
 	hns3_reset_sw_rxq(rxq);
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
 }
@@ -4016,16 +4022,19 @@ hns3_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (!hns3_dev_indep_txrx_supported(hw))
 		return -ENOTSUP;
 
+	rte_spinlock_lock(&hw->lock);
 	ret = hns3_reset_queue(hw, tx_queue_id, HNS3_RING_TYPE_TX);
 	if (ret) {
 		hns3_err(hw, "fail to reset Tx queue %u, ret = %d.",
 			 tx_queue_id, ret);
+		rte_spinlock_unlock(&hw->lock);
 		return ret;
 	}
 
 	hns3_init_txq(txq);
 	hns3_enable_txq(txq, true);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
 }
@@ -4039,6 +4048,7 @@ hns3_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (!hns3_dev_indep_txrx_supported(hw))
 		return -ENOTSUP;
 
+	rte_spinlock_lock(&hw->lock);
 	hns3_enable_txq(txq, false);
 	hns3_tx_queue_release_mbufs(txq);
 	/*
@@ -4050,6 +4060,7 @@ hns3_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	 */
 	hns3_init_txq(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
 }
