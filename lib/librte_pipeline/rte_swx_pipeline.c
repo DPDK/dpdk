@@ -8095,8 +8095,34 @@ instr_verify(struct rte_swx_pipeline *p __rte_unused,
 	return 0;
 }
 
+static uint32_t
+instr_compact(struct instruction *instructions,
+	      struct instruction_data *instruction_data,
+	      uint32_t n_instructions)
+{
+	uint32_t i, pos = 0;
+
+	/* Eliminate the invalid instructions that have been optimized out. */
+	for (i = 0; i < n_instructions; i++) {
+		struct instruction *instr = &instructions[i];
+		struct instruction_data *data = &instruction_data[i];
+
+		if (data->invalid)
+			continue;
+
+		if (i != pos) {
+			memcpy(&instructions[pos], instr, sizeof(*instr));
+			memcpy(&instruction_data[pos], data, sizeof(*data));
+		}
+
+		pos++;
+	}
+
+	return pos;
+}
+
 static int
-instr_pattern_extract_many_detect(struct instruction *instr,
+instr_pattern_extract_many_search(struct instruction *instr,
 				  struct instruction_data *data,
 				  uint32_t n_instr,
 				  uint32_t *n_pattern_instr)
@@ -8125,9 +8151,9 @@ instr_pattern_extract_many_detect(struct instruction *instr,
 }
 
 static void
-instr_pattern_extract_many_optimize(struct instruction *instr,
-				    struct instruction_data *data,
-				    uint32_t n_instr)
+instr_pattern_extract_many_replace(struct instruction *instr,
+				   struct instruction_data *data,
+				   uint32_t n_instr)
 {
 	uint32_t i;
 
@@ -8141,8 +8167,46 @@ instr_pattern_extract_many_optimize(struct instruction *instr,
 	}
 }
 
+static uint32_t
+instr_pattern_extract_many_optimize(struct instruction *instructions,
+				    struct instruction_data *instruction_data,
+				    uint32_t n_instructions)
+{
+	uint32_t i;
+
+	for (i = 0; i < n_instructions; ) {
+		struct instruction *instr = &instructions[i];
+		struct instruction_data *data = &instruction_data[i];
+		uint32_t n_instr = 0;
+		int detected;
+
+		/* Extract many. */
+		detected = instr_pattern_extract_many_search(instr,
+							     data,
+							     n_instructions - i,
+							     &n_instr);
+		if (detected) {
+			instr_pattern_extract_many_replace(instr,
+							   data,
+							   n_instr);
+			i += n_instr;
+			continue;
+		}
+
+		/* No pattern starting at the current instruction. */
+		i++;
+	}
+
+	/* Eliminate the invalid instructions that have been optimized out. */
+	n_instructions = instr_compact(instructions,
+				       instruction_data,
+				       n_instructions);
+
+	return n_instructions;
+}
+
 static int
-instr_pattern_emit_many_tx_detect(struct instruction *instr,
+instr_pattern_emit_many_tx_search(struct instruction *instr,
 				  struct instruction_data *data,
 				  uint32_t n_instr,
 				  uint32_t *n_pattern_instr)
@@ -8179,9 +8243,9 @@ instr_pattern_emit_many_tx_detect(struct instruction *instr,
 }
 
 static void
-instr_pattern_emit_many_tx_optimize(struct instruction *instr,
-				    struct instruction_data *data,
-				    uint32_t n_instr)
+instr_pattern_emit_many_tx_replace(struct instruction *instr,
+				   struct instruction_data *data,
+				   uint32_t n_instr)
 {
 	uint32_t i;
 
@@ -8202,8 +8266,46 @@ instr_pattern_emit_many_tx_optimize(struct instruction *instr,
 	data[i].invalid = 1;
 }
 
+static uint32_t
+instr_pattern_emit_many_tx_optimize(struct instruction *instructions,
+				    struct instruction_data *instruction_data,
+				    uint32_t n_instructions)
+{
+	uint32_t i;
+
+	for (i = 0; i < n_instructions; ) {
+		struct instruction *instr = &instructions[i];
+		struct instruction_data *data = &instruction_data[i];
+		uint32_t n_instr = 0;
+		int detected;
+
+		/* Emit many + TX. */
+		detected = instr_pattern_emit_many_tx_search(instr,
+							     data,
+							     n_instructions - i,
+							     &n_instr);
+		if (detected) {
+			instr_pattern_emit_many_tx_replace(instr,
+							   data,
+							   n_instr);
+			i += n_instr;
+			continue;
+		}
+
+		/* No pattern starting at the current instruction. */
+		i++;
+	}
+
+	/* Eliminate the invalid instructions that have been optimized out. */
+	n_instructions = instr_compact(instructions,
+				       instruction_data,
+				       n_instructions);
+
+	return n_instructions;
+}
+
 static int
-instr_pattern_dma_many_detect(struct instruction *instr,
+instr_pattern_dma_many_search(struct instruction *instr,
 			      struct instruction_data *data,
 			      uint32_t n_instr,
 			      uint32_t *n_pattern_instr)
@@ -8232,9 +8334,9 @@ instr_pattern_dma_many_detect(struct instruction *instr,
 }
 
 static void
-instr_pattern_dma_many_optimize(struct instruction *instr,
-				struct instruction_data *data,
-				uint32_t n_instr)
+instr_pattern_dma_many_replace(struct instruction *instr,
+			       struct instruction_data *data,
+			       uint32_t n_instr)
 {
 	uint32_t i;
 
@@ -8250,11 +8352,11 @@ instr_pattern_dma_many_optimize(struct instruction *instr,
 }
 
 static uint32_t
-instr_optimize(struct instruction *instructions,
+instr_pattern_dma_many_optimize(struct instruction *instructions,
 	       struct instruction_data *instruction_data,
 	       uint32_t n_instructions)
 {
-	uint32_t i, pos = 0;
+	uint32_t i;
 
 	for (i = 0; i < n_instructions; ) {
 		struct instruction *instr = &instructions[i];
@@ -8262,39 +8364,13 @@ instr_optimize(struct instruction *instructions,
 		uint32_t n_instr = 0;
 		int detected;
 
-		/* Extract many. */
-		detected = instr_pattern_extract_many_detect(instr,
-							     data,
-							     n_instructions - i,
-							     &n_instr);
-		if (detected) {
-			instr_pattern_extract_many_optimize(instr,
-							    data,
-							    n_instr);
-			i += n_instr;
-			continue;
-		}
-
-		/* Emit many + TX. */
-		detected = instr_pattern_emit_many_tx_detect(instr,
-							     data,
-							     n_instructions - i,
-							     &n_instr);
-		if (detected) {
-			instr_pattern_emit_many_tx_optimize(instr,
-							    data,
-							    n_instr);
-			i += n_instr;
-			continue;
-		}
-
 		/* DMA many. */
-		detected = instr_pattern_dma_many_detect(instr,
+		detected = instr_pattern_dma_many_search(instr,
 							 data,
 							 n_instructions - i,
 							 &n_instr);
 		if (detected) {
-			instr_pattern_dma_many_optimize(instr, data, n_instr);
+			instr_pattern_dma_many_replace(instr, data, n_instr);
 			i += n_instr;
 			continue;
 		}
@@ -8304,22 +8380,34 @@ instr_optimize(struct instruction *instructions,
 	}
 
 	/* Eliminate the invalid instructions that have been optimized out. */
-	for (i = 0; i < n_instructions; i++) {
-		struct instruction *instr = &instructions[i];
-		struct instruction_data *data = &instruction_data[i];
+	n_instructions = instr_compact(instructions,
+				       instruction_data,
+				       n_instructions);
 
-		if (data->invalid)
-			continue;
+	return n_instructions;
+}
 
-		if (i != pos) {
-			memcpy(&instructions[pos], instr, sizeof(*instr));
-			memcpy(&instruction_data[pos], data, sizeof(*data));
-		}
+static uint32_t
+instr_optimize(struct instruction *instructions,
+	       struct instruction_data *instruction_data,
+	       uint32_t n_instructions)
+{
+	/* Extract many. */
+	n_instructions = instr_pattern_extract_many_optimize(instructions,
+							     instruction_data,
+							     n_instructions);
 
-		pos++;
-	}
+	/* Emit many + TX. */
+	n_instructions = instr_pattern_emit_many_tx_optimize(instructions,
+							     instruction_data,
+							     n_instructions);
 
-	return pos;
+	/* DMA many. */
+	n_instructions = instr_pattern_dma_many_optimize(instructions,
+							 instruction_data,
+							 n_instructions);
+
+	return n_instructions;
 }
 
 static int
