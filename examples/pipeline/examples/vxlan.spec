@@ -60,7 +60,7 @@ metadata instanceof metadata_t
 struct vxlan_encap_args_t {
 	bit<48> ethernet_dst_addr
 	bit<48> ethernet_src_addr
-	bit<16> ethernet_ether_type
+	bit<16> ethernet_ethertype
 	bit<8> ipv4_ver_ihl
 	bit<8> ipv4_diffserv
 	bit<16> ipv4_total_len
@@ -114,11 +114,40 @@ struct vxlan_encap_args_t {
 //
 
 action vxlan_encap args instanceof vxlan_encap_args_t {
-	//Copy from table entry to headers and metadata.
-	dma h.outer_ethernet t.ethernet_dst_addr
-	dma h.outer_ipv4 t.ipv4_ver_ihl
-	dma h.outer_udp t.udp_src_port
-	dma h.outer_vxlan t.vxlan_flags
+	//Set the outer Ethernet header.
+	mov h.outer_ethernet.dst_addr t.ethernet_dst_addr
+	mov h.outer_ethernet.src_addr t.ethernet_src_addr
+	mov h.outer_ethernet.ethertype t.ethernet_ethertype
+	validate h.outer_ethernet
+
+	//Set the outer IPv4 header.
+	mov h.outer_ipv4.ver_ihl t.ipv4_ver_ihl
+	mov h.outer_ipv4.diffserv t.ipv4_diffserv
+	mov h.outer_ipv4.total_len t.ipv4_total_len
+	mov h.outer_ipv4.identification t.ipv4_identification
+	mov h.outer_ipv4.flags_offset t.ipv4_flags_offset
+	mov h.outer_ipv4.ttl t.ipv4_ttl
+	mov h.outer_ipv4.protocol t.ipv4_protocol
+	mov h.outer_ipv4.hdr_checksum t.ipv4_hdr_checksum
+	mov h.outer_ipv4.src_addr t.ipv4_src_addr
+	mov h.outer_ipv4.dst_addr t.ipv4_dst_addr
+	validate h.outer_ipv4
+
+	//Set the outer UDP header.
+	mov h.outer_udp.src_port t.udp_src_port
+	mov h.outer_udp.dst_port t.udp_dst_port
+	mov h.outer_udp.length t.udp_length
+	mov h.outer_udp.checksum t.udp_checksum
+	validate h.outer_udp
+
+	//Set the outer VXLAN header.
+	mov h.outer_vxlan.flags t.vxlan_flags
+	mov h.outer_vxlan.reserved t.vxlan_reserved
+	mov h.outer_vxlan.vni t.vxlan_vni
+	mov h.outer_vxlan.reserved2 t.vxlan_reserved2
+	validate h.outer_vxlan
+
+	//Set the output port.
 	mov m.port_out t.port_out
 
 	//Update h.outer_ipv4.total_len field.

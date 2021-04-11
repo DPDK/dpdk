@@ -406,10 +406,6 @@ rte_swx_pipeline_packet_metadata_register(struct rte_swx_pipeline *p,
  *<pre>+------------+----------------------+-------------------+------+--------+</pre>
  *<pre>| mov        | dst = src            | mov dst src       | HMEF | HMEFTI |</pre>
  *<pre>+------------+----------------------+-------------------+------+--------+</pre>
- *<pre>| dma        | memcpy(h.hdr,        | dma h.hdr t.field | hdr  | T      |</pre>
- *<pre>|            |    &t.field,         |                   |      |        |</pre>
- *<pre>|            |    sizeof(h.hdr)     |                   |      |        |</pre>
- *<pre>+------------+----------------------+-------------------+------+--------+</pre>
  *<pre>| add        | dst += src           | add dst src       | HMEF | HMEFTI |</pre>
  *<pre>+------------+----------------------+-------------------+------+--------+</pre>
  *<pre>| sub        | dst -= src           | add dst src       | HMEF | HMEFTI |</pre>

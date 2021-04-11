@@ -733,6 +733,7 @@ struct action {
 	TAILQ_ENTRY(action) node;
 	char name[RTE_SWX_NAME_SIZE];
 	struct struct_type *st;
+	int *args_endianness; /* 0 = Host Byte Order (HBO). */
 	struct instruction *instructions;
 	uint32_t n_instructions;
 	uint32_t id;
@@ -2348,6 +2349,18 @@ header_find(struct rte_swx_pipeline *p, const char *name)
 }
 
 static struct header *
+header_find_by_struct_id(struct rte_swx_pipeline *p, uint32_t struct_id)
+{
+	struct header *elem;
+
+	TAILQ_FOREACH(elem, &p->headers, node)
+		if (elem->struct_id == struct_id)
+			return elem;
+
+	return NULL;
+}
+
+static struct header *
 header_parse(struct rte_swx_pipeline *p,
 	     const char *name)
 {
@@ -3732,37 +3745,6 @@ instr_mov_i_exec(struct rte_swx_pipeline *p)
 /*
  * dma.
  */
-static int
-instr_dma_translate(struct rte_swx_pipeline *p,
-		    struct action *action,
-		    char **tokens,
-		    int n_tokens,
-		    struct instruction *instr,
-		    struct instruction_data *data __rte_unused)
-{
-	char *dst = tokens[1];
-	char *src = tokens[2];
-	struct header *h;
-	struct field *tf;
-
-	CHECK(action, EINVAL);
-	CHECK(n_tokens == 3, EINVAL);
-
-	h = header_parse(p, dst);
-	CHECK(h, EINVAL);
-
-	tf = action_field_parse(action, src);
-	CHECK(tf, EINVAL);
-
-	instr->type = INSTR_DMA_HT;
-	instr->dma.dst.header_id[0] = h->id;
-	instr->dma.dst.struct_id[0] = h->struct_id;
-	instr->dma.n_bytes[0] = h->st->n_bits / 8;
-	instr->dma.src.offset[0] = tf->offset / 8;
-
-	return 0;
-}
-
 static inline void
 __instr_dma_ht_exec(struct rte_swx_pipeline *p, uint32_t n_dma);
 
@@ -7720,14 +7702,6 @@ instr_translate(struct rte_swx_pipeline *p,
 					   instr,
 					   data);
 
-	if (!strcmp(tokens[tpos], "dma"))
-		return instr_dma_translate(p,
-					   action,
-					   &tokens[tpos],
-					   n_tokens - tpos,
-					   instr,
-					   data);
-
 	if (!strcmp(tokens[tpos], "add"))
 		return instr_alu_add_translate(p,
 					       action,
@@ -8304,6 +8278,180 @@ instr_pattern_emit_many_tx_optimize(struct instruction *instructions,
 	return n_instructions;
 }
 
+static uint32_t
+action_arg_src_mov_count(struct action *a,
+			 uint32_t arg_id,
+			 struct instruction *instructions,
+			 struct instruction_data *instruction_data,
+			 uint32_t n_instructions);
+
+static int
+instr_pattern_mov_all_validate_search(struct rte_swx_pipeline *p,
+				      struct action *a,
+				      struct instruction *instr,
+				      struct instruction_data *data,
+				      uint32_t n_instr,
+				      struct instruction *instructions,
+				      struct instruction_data *instruction_data,
+				      uint32_t n_instructions,
+				      uint32_t *n_pattern_instr)
+{
+	struct header *h;
+	uint32_t src_field_id, i, j;
+
+	/* Prerequisites. */
+	if (!a || !a->st)
+		return 0;
+
+	/* First instruction: MOV_HM. */
+	if (data[0].invalid || (instr[0].type != INSTR_MOV_HM))
+		return 0;
+
+	h = header_find_by_struct_id(p, instr[0].mov.dst.struct_id);
+	if (!h)
+		return 0;
+
+	for (src_field_id = 0; src_field_id < a->st->n_fields; src_field_id++)
+		if (instr[0].mov.src.offset == a->st->fields[src_field_id].offset / 8)
+			break;
+
+	if (src_field_id == a->st->n_fields)
+		return 0;
+
+	if (instr[0].mov.dst.offset ||
+	    (instr[0].mov.dst.n_bits != h->st->fields[0].n_bits) ||
+	    instr[0].mov.src.struct_id ||
+	    (instr[0].mov.src.n_bits != a->st->fields[src_field_id].n_bits) ||
+	    (instr[0].mov.dst.n_bits != instr[0].mov.src.n_bits))
+		return 0;
+
+	if ((n_instr < h->st->n_fields + 1) ||
+	     (a->st->n_fields < src_field_id + h->st->n_fields + 1))
+		return 0;
+
+	/* Subsequent instructions: MOV_HM. */
+	for (i = 1; i < h->st->n_fields; i++)
+		if (data[i].invalid ||
+		    data[i].n_users ||
+		    (instr[i].type != INSTR_MOV_HM) ||
+		    (instr[i].mov.dst.struct_id != h->struct_id) ||
+		    (instr[i].mov.dst.offset != h->st->fields[i].offset / 8) ||
+		    (instr[i].mov.dst.n_bits != h->st->fields[i].n_bits) ||
+		    instr[i].mov.src.struct_id ||
+		    (instr[i].mov.src.offset != a->st->fields[src_field_id + i].offset / 8) ||
+		    (instr[i].mov.src.n_bits != a->st->fields[src_field_id + i].n_bits) ||
+		    (instr[i].mov.dst.n_bits != instr[i].mov.src.n_bits))
+			return 0;
+
+	/* Last instruction: HDR_VALIDATE. */
+	if ((instr[i].type != INSTR_HDR_VALIDATE) ||
+	    (instr[i].valid.header_id != h->id))
+		return 0;
+
+	/* Check that none of the action args that are used as source for this
+	 * DMA transfer are not used as source in any other mov instruction.
+	 */
+	for (j = src_field_id; j < src_field_id + h->st->n_fields; j++) {
+		uint32_t n_users;
+
+		n_users = action_arg_src_mov_count(a,
+						   j,
+						   instructions,
+						   instruction_data,
+						   n_instructions);
+		if (n_users > 1)
+			return 0;
+	}
+
+	*n_pattern_instr = 1 + i;
+	return 1;
+}
+
+static void
+instr_pattern_mov_all_validate_replace(struct rte_swx_pipeline *p,
+				       struct action *a,
+				       struct instruction *instr,
+				       struct instruction_data *data,
+				       uint32_t n_instr)
+{
+	struct header *h;
+	uint32_t src_field_id, src_offset, i;
+
+	/* Read from the instructions before they are modified. */
+	h = header_find_by_struct_id(p, instr[0].mov.dst.struct_id);
+	if (!h)
+		return;
+
+	for (src_field_id = 0; src_field_id < a->st->n_fields; src_field_id++)
+		if (instr[0].mov.src.offset == a->st->fields[src_field_id].offset / 8)
+			break;
+
+	if (src_field_id == a->st->n_fields)
+		return;
+
+	src_offset = instr[0].mov.src.offset;
+
+	/* Modify the instructions. */
+	instr[0].type = INSTR_DMA_HT;
+	instr[0].dma.dst.header_id[0] = h->id;
+	instr[0].dma.dst.struct_id[0] = h->struct_id;
+	instr[0].dma.src.offset[0] = (uint8_t)src_offset;
+	instr[0].dma.n_bytes[0] = h->st->n_bits / 8;
+
+	for (i = 1; i < n_instr; i++)
+		data[i].invalid = 1;
+
+	/* Update the endianness of the action arguments to header endianness. */
+	for (i = 0; i < h->st->n_fields; i++)
+		a->args_endianness[src_field_id + i] = 1;
+}
+
+static uint32_t
+instr_pattern_mov_all_validate_optimize(struct rte_swx_pipeline *p,
+					struct action *a,
+					struct instruction *instructions,
+					struct instruction_data *instruction_data,
+					uint32_t n_instructions)
+{
+	uint32_t i;
+
+	if (!a || !a->st)
+		return n_instructions;
+
+	for (i = 0; i < n_instructions; ) {
+		struct instruction *instr = &instructions[i];
+		struct instruction_data *data = &instruction_data[i];
+		uint32_t n_instr = 0;
+		int detected;
+
+		/* Mov all + validate. */
+		detected = instr_pattern_mov_all_validate_search(p,
+								 a,
+								 instr,
+								 data,
+								 n_instructions - i,
+								 instructions,
+								 instruction_data,
+								 n_instructions,
+								 &n_instr);
+		if (detected) {
+			instr_pattern_mov_all_validate_replace(p, a, instr, data, n_instr);
+			i += n_instr;
+			continue;
+		}
+
+		/* No pattern starting at the current instruction. */
+		i++;
+	}
+
+	/* Eliminate the invalid instructions that have been optimized out. */
+	n_instructions = instr_compact(instructions,
+				       instruction_data,
+				       n_instructions);
+
+	return n_instructions;
+}
+
 static int
 instr_pattern_dma_many_search(struct instruction *instr,
 			      struct instruction_data *data,
@@ -8388,7 +8536,9 @@ instr_pattern_dma_many_optimize(struct instruction *instructions,
 }
 
 static uint32_t
-instr_optimize(struct instruction *instructions,
+instr_optimize(struct rte_swx_pipeline *p,
+	       struct action *a,
+	       struct instruction *instructions,
 	       struct instruction_data *instruction_data,
 	       uint32_t n_instructions)
 {
@@ -8401,6 +8551,13 @@ instr_optimize(struct instruction *instructions,
 	n_instructions = instr_pattern_emit_many_tx_optimize(instructions,
 							     instruction_data,
 							     n_instructions);
+
+	/* Mov all + validate. */
+	n_instructions = instr_pattern_mov_all_validate_optimize(p,
+								 a,
+								 instructions,
+								 instruction_data,
+								 n_instructions);
 
 	/* DMA many. */
 	n_instructions = instr_pattern_dma_many_optimize(instructions,
@@ -8463,7 +8620,7 @@ instruction_config(struct rte_swx_pipeline *p,
 	if (err)
 		goto error;
 
-	n_instructions = instr_optimize(instr, data, n_instructions);
+	n_instructions = instr_optimize(p, a, instr, data, n_instructions);
 
 	err = instr_jmp_resolve(instr, data, n_instructions);
 	if (err)
@@ -8752,6 +8909,13 @@ rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
 	/* Node allocation. */
 	a = calloc(1, sizeof(struct action));
 	CHECK(a, ENOMEM);
+	if (args_struct_type) {
+		a->args_endianness = calloc(args_struct_type->n_fields, sizeof(int));
+		if (!a->args_endianness) {
+			free(a);
+			CHECK(0, ENOMEM);
+		}
+	}
 
 	/* Node initialization. */
 	strcpy(a->name, name);
@@ -8761,6 +8925,7 @@ rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
 	/* Instruction translation. */
 	err = instruction_config(p, a, instructions, n_instructions);
 	if (err) {
+		free(a->args_endianness);
 		free(a);
 		return err;
 	}
@@ -8810,6 +8975,40 @@ action_free(struct rte_swx_pipeline *p)
 		free(action->instructions);
 		free(action);
 	}
+}
+
+static uint32_t
+action_arg_src_mov_count(struct action *a,
+			 uint32_t arg_id,
+			 struct instruction *instructions,
+			 struct instruction_data *instruction_data,
+			 uint32_t n_instructions)
+{
+	uint32_t offset, n_users = 0, i;
+
+	if (!a->st ||
+	    (arg_id >= a->st->n_fields) ||
+	    !instructions ||
+	    !instruction_data ||
+	    !n_instructions)
+		return 0;
+
+	offset = a->st->fields[arg_id].offset / 8;
+
+	for (i = 0; i < n_instructions; i++) {
+		struct instruction *instr = &instructions[i];
+		struct instruction_data *data = &instruction_data[i];
+
+		if (data->invalid ||
+		    ((instr->type != INSTR_MOV) && (instr->type != INSTR_MOV_HM)) ||
+		    instr->mov.src.struct_id ||
+		    (instr->mov.src.offset != offset))
+			continue;
+
+		n_users++;
+	}
+
+	return n_users;
 }
 
 /*
@@ -10022,6 +10221,7 @@ rte_swx_ctl_action_arg_info_get(struct rte_swx_pipeline *p,
 	arg = &a->st->fields[action_arg_id];
 	strcpy(action_arg->name, arg->name);
 	action_arg->n_bits = arg->n_bits;
+	action_arg->is_network_byte_order = a->args_endianness[action_arg_id];
 
 	return 0;
 }

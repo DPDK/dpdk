@@ -13,28 +13,28 @@ DESCRIPTION = 'Table Generator'
 
 KEY = '0xaabbccdd{0:04x}'
 ACTION = 'vxlan_encap'
-ETHERNET_HEADER = 'ethernet_dst_addr N(0xa0a1a2a3{0:04x}) ' \
-    'ethernet_src_addr N(0xb0b1b2b3{0:04x}) ' \
-    'ethernet_ether_type N(0x0800)'
-IPV4_HEADER = 'ipv4_ver_ihl N(0x45) ' \
-    'ipv4_diffserv N(0) ' \
-    'ipv4_total_len N(50) ' \
-    'ipv4_identification N(0) ' \
-    'ipv4_flags_offset N(0) ' \
-    'ipv4_ttl N(64) ' \
-    'ipv4_protocol N(17) ' \
-    'ipv4_hdr_checksum N(0x{1:04x}) ' \
-    'ipv4_src_addr N(0xc0c1{0:04x}) ' \
-    'ipv4_dst_addr N(0xd0d1{0:04x})'
-UDP_HEADER = 'udp_src_port N(0xe0{0:02x}) ' \
-    'udp_dst_port N(4789) ' \
-    'udp_length N(30) ' \
-    'udp_checksum N(0)'
-VXLAN_HEADER = 'vxlan_flags N(0) ' \
-    'vxlan_reserved N(0) ' \
-    'vxlan_vni N({0:d}) ' \
-    'vxlan_reserved2 N(0)'
-PORT_OUT = 'port_out H({0:d})'
+ETHERNET_HEADER = 'ethernet_dst_addr 0xa0a1a2a3{0:04x} ' \
+    'ethernet_src_addr 0xb0b1b2b3{0:04x} ' \
+    'ethernet_ethertype 0x0800'
+IPV4_HEADER = 'ipv4_ver_ihl 0x45 ' \
+    'ipv4_diffserv 0 ' \
+    'ipv4_total_len 50 ' \
+    'ipv4_identification 0 ' \
+    'ipv4_flags_offset 0 ' \
+    'ipv4_ttl 64 ' \
+    'ipv4_protocol 17 ' \
+    'ipv4_hdr_checksum 0x{1:04x} ' \
+    'ipv4_src_addr 0xc0c1{0:04x} ' \
+    'ipv4_dst_addr 0xd0d1{0:04x}'
+UDP_HEADER = 'udp_src_port 0xe0{0:02x} ' \
+    'udp_dst_port 4789 ' \
+    'udp_length 30 ' \
+    'udp_checksum 0'
+VXLAN_HEADER = 'vxlan_flags 0 ' \
+    'vxlan_reserved 0 ' \
+    'vxlan_vni {0:d} ' \
+    'vxlan_reserved2 0'
+PORT_OUT = 'port_out {0:d}'
 
 def ipv4_header_checksum(i):
     cksum = (0x4500 + 0x0032) + (0x0000 + 0x0000) + (0x4011 + 0x0000) + (0xc0c1 + i) + (0xd0d1 + i)

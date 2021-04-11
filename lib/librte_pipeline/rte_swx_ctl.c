@@ -1740,30 +1740,19 @@ action:
 		struct rte_swx_ctl_action_arg_info *arg = &action->args[i];
 		char *arg_name, *arg_val;
 		uint64_t val;
-		int is_nbo = 0;
 
 		arg_name = tokens[2 + i * 2];
 		arg_val = tokens[2 + i * 2 + 1];
 
-		if (strcmp(arg_name, arg->name) ||
-		    (strlen(arg_val) < 4) ||
-		    ((arg_val[0] != 'H') && (arg_val[0] != 'N')) ||
-		    (arg_val[1] != '(') ||
-		    (arg_val[strlen(arg_val) - 1] != ')'))
+		if (strcmp(arg_name, arg->name))
 			goto error;
-
-		if (arg_val[0] == 'N')
-			is_nbo = 1;
-
-		arg_val[strlen(arg_val) - 1] = 0; /* Remove the ')'. */
-		arg_val += 2; /* Remove the "H(" or "N(". */
 
 		val = strtoull(arg_val, &arg_val, 0);
 		if (arg_val[0])
 			goto error;
 
 		/* Endianness conversion. */
-		if (is_nbo)
+		if (arg->is_network_byte_order)
 			val = field_hton(val, arg->n_bits);
 
 		/* Copy to entry. */

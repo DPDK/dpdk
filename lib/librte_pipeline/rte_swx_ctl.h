@@ -168,6 +168,12 @@ struct rte_swx_ctl_action_arg_info {
 
 	/** Action argument size (in bits). */
 	uint32_t n_bits;
+
+	/** Non-zero (true) when this action argument must be stored in the
+	 * table in network byte order (NBO), zero when it must be stored in
+	 * host byte order (HBO).
+	 */
+	int is_network_byte_order;
 };
 
 /**
