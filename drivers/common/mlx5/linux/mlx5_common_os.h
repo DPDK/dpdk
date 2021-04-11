@@ -203,24 +203,28 @@ mlx5_os_get_devx_uar_page_id(void *uar)
 #endif
 }
 
+__rte_internal
 static inline void *
 mlx5_os_alloc_pd(void *ctx)
 {
 	return mlx5_glue->alloc_pd(ctx);
 }
 
+__rte_internal
 static inline int
 mlx5_os_dealloc_pd(void *pd)
 {
 	return mlx5_glue->dealloc_pd(pd);
 }
 
+__rte_internal
 static inline void *
 mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access)
 {
 	return mlx5_glue->devx_umem_reg(ctx, addr, size, access);
 }
 
+__rte_internal
 static inline int
 mlx5_os_umem_dereg(void *pumem)
 {
