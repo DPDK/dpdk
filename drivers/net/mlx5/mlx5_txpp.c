@@ -16,8 +16,8 @@
 #include <mlx5_common_devx.h>
 
 #include "mlx5.h"
-#include "mlx5_rxtx.h"
 #include "mlx5_rx.h"
+#include "mlx5_tx.h"
 #include "mlx5_common_os.h"
 
 static_assert(sizeof(struct mlx5_cqe_ts) == sizeof(rte_int128_t),

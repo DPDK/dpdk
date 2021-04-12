@@ -17,6 +17,7 @@
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_rx.h"
+#include "mlx5_tx.h"
 #include "mlx5_utils.h"
 
 int

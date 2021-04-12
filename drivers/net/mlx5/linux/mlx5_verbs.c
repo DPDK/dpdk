@@ -20,9 +20,9 @@
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>
-#include <mlx5_rxtx.h>
 #include <mlx5_verbs.h>
 #include <mlx5_rx.h>
+#include <mlx5_tx.h>
 #include <mlx5_utils.h>
 #include <mlx5_malloc.h>
 

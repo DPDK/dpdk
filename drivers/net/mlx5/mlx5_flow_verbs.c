@@ -23,7 +23,6 @@
 #include "mlx5_defs.h"
 #include "mlx5.h"
 #include "mlx5_flow.h"
-#include "mlx5_rxtx.h"
 #include "mlx5_rx.h"
 
 #define VERBS_SPEC_INNER(item_flags) \
