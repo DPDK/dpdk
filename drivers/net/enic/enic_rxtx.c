@@ -70,7 +70,7 @@ enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 	cq = &enic->cq[enic_cq_rq(enic, sop_rq->index)];
 	cq_idx = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
 	cqd_ptr = (struct cq_desc *)((uintptr_t)(cq->ring.descs) +
-				     cq_idx * desc_size);
+				     (uintptr_t)cq_idx * desc_size);
 	color = cq->last_color;
 
 	data_rq = &enic->rq[sop_rq->data_queue_idx];
@@ -126,7 +126,7 @@ enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* Prefetch next mbuf & desc while processing current one */
 		cqd_ptr = (struct cq_desc *)((uintptr_t)(cq->ring.descs) +
-					     cq_idx * desc_size);
+					     (uintptr_t)cq_idx * desc_size);
 		rte_enic_prefetch(cqd_ptr);
 
 		ciflags = enic_cq_rx_desc_ciflags(
