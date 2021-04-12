@@ -329,6 +329,10 @@ API Changes
   ``policer_action_recolor_supported`` and ``policer_action_drop_supported``
   have been removed.
 
+* stack: Lock-free ``rte_stack`` no longer silently ignores push and pop when
+  it's not supported on the current platform. Instead ``rte_stack_create()``
+  fails and ``rte_errno`` is set to ``ENOTSUP``.
+
 
 ABI Changes
 -----------

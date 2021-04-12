@@ -13,6 +13,11 @@
 #else
 #include "rte_stack_lf_generic.h"
 #endif
+
+/**
+ * Indicates that RTE_STACK_F_LF is supported.
+ */
+#define RTE_STACK_LF_SUPPORTED
 #endif
 
 /**

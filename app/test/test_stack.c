@@ -373,7 +373,11 @@ test_stack(void)
 static int
 test_lf_stack(void)
 {
+#if defined(RTE_STACK_LF_SUPPORTED)
 	return __test_stack(RTE_STACK_F_LF);
+#else
+	return TEST_SKIPPED;
+#endif
 }
 
 REGISTER_TEST_COMMAND(stack_autotest, test_stack);
