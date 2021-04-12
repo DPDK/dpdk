@@ -242,7 +242,7 @@ uint32_t mlx5_tx_mb2mr_bh(struct mlx5_txq_data *txq, struct rte_mbuf *mb);
 uint32_t mlx5_tx_update_ext_mp(struct mlx5_txq_data *txq, uintptr_t addr,
 			       struct rte_mempool *mp);
 
-/* mlx5_rxtx.c */
+/* mlx5_tx_empw.c */
 
 MLX5_TXOFF_PRE_DECL(full_empw);
 MLX5_TXOFF_PRE_DECL(none_empw);
@@ -260,6 +260,8 @@ MLX5_TXOFF_PRE_DECL(i_empw);
 MLX5_TXOFF_PRE_DECL(v_empw);
 MLX5_TXOFF_PRE_DECL(iv_empw);
 
+/* mlx5_tx_nompw.c */
+
 MLX5_TXOFF_PRE_DECL(full);
 MLX5_TXOFF_PRE_DECL(none);
 MLX5_TXOFF_PRE_DECL(md);
@@ -276,6 +278,8 @@ MLX5_TXOFF_PRE_DECL(i);
 MLX5_TXOFF_PRE_DECL(v);
 MLX5_TXOFF_PRE_DECL(iv);
 
+/* mlx5_tx_txpp.c */
+
 MLX5_TXOFF_PRE_DECL(full_ts_nompw);
 MLX5_TXOFF_PRE_DECL(full_ts_nompwi);
 MLX5_TXOFF_PRE_DECL(full_ts);
@@ -284,6 +288,8 @@ MLX5_TXOFF_PRE_DECL(none_ts);
 MLX5_TXOFF_PRE_DECL(mdi_ts);
 MLX5_TXOFF_PRE_DECL(mti_ts);
 MLX5_TXOFF_PRE_DECL(mtiv_ts);
+
+/* mlx5_tx_mpw.c */
 
 MLX5_TXOFF_PRE_DECL(none_mpw);
 MLX5_TXOFF_PRE_DECL(mci_mpw);
