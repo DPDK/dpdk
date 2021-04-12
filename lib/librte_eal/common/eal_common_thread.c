@@ -176,7 +176,7 @@ struct rte_thread_ctrl_params {
 static void ctrl_params_free(struct rte_thread_ctrl_params *params)
 {
 	if (__atomic_sub_fetch(&params->refcnt, 1, __ATOMIC_ACQ_REL) == 0) {
-		pthread_barrier_destroy(&params->configured);
+		(void)pthread_barrier_destroy(&params->configured);
 		free(params);
 	}
 }
@@ -251,7 +251,7 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 	return -ret;
 
 fail_with_barrier:
-	pthread_barrier_destroy(&params->configured);
+	(void)pthread_barrier_destroy(&params->configured);
 
 fail_no_barrier:
 	free(params);

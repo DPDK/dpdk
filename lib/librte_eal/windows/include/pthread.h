@@ -35,12 +35,12 @@ typedef CRITICAL_SECTION pthread_mutex_t;
 typedef SYNCHRONIZATION_BARRIER pthread_barrier_t;
 
 #define pthread_barrier_init(barrier, attr, count) \
-	InitializeSynchronizationBarrier(barrier, count, -1)
+	!InitializeSynchronizationBarrier(barrier, count, -1)
 #define pthread_barrier_wait(barrier) EnterSynchronizationBarrier(barrier, \
 	SYNCHRONIZATION_BARRIER_FLAGS_BLOCK_ONLY)
 #define pthread_barrier_destroy(barrier) \
-	DeleteSynchronizationBarrier(barrier)
-#define pthread_cancel(thread) TerminateThread((HANDLE) thread, 0)
+	!DeleteSynchronizationBarrier(barrier)
+#define pthread_cancel(thread) !TerminateThread((HANDLE) thread, 0)
 
 /* pthread function overrides */
 #define pthread_self() \
