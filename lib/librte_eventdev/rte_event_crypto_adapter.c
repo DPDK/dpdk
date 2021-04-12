@@ -861,6 +861,7 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 	 *          b. OP_NEW mode -> SW Dequeue
 	 */
 	if ((cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW &&
+	     !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
 	     adapter->mode == RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD) ||
 	     (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW) &&
 	      !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
