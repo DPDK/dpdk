@@ -89,7 +89,7 @@ struct rte_stack {
 
 /**
  * The stack uses lock-free push and pop functions. This flag is only
- * supported on x86_64 platforms, currently.
+ * supported on x86_64 or arm64 platforms, currently.
  */
 #define RTE_STACK_F_LF 0x0001
 
@@ -205,6 +205,7 @@ rte_stack_free_count(struct rte_stack *s)
  *    - EEXIST - a stack with the same name already exists
  *    - ENOMEM - insufficient memory to create the stack
  *    - ENAMETOOLONG - name size exceeds RTE_STACK_NAMESIZE
+ *    - ENOTSUP - platform does not support given flags combination.
  */
 struct rte_stack *
 rte_stack_create(const char *name, unsigned int count, int socket_id,

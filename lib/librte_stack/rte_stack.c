@@ -64,9 +64,11 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 
 #ifdef RTE_ARCH_64
 	RTE_BUILD_BUG_ON(sizeof(struct rte_stack_lf_head) != 16);
-#else
+#endif
+#if !defined(RTE_STACK_LF_SUPPORTED)
 	if (flags & RTE_STACK_F_LF) {
 		STACK_LOG_ERR("Lock-free stack is not supported on your platform\n");
+		rte_errno = ENOTSUP;
 		return NULL;
 	}
 #endif

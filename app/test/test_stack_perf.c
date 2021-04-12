@@ -349,7 +349,11 @@ test_stack_perf(void)
 static int
 test_lf_stack_perf(void)
 {
+#if defined(RTE_STACK_LF_SUPPORTED)
 	return __test_stack_perf(RTE_STACK_F_LF);
+#else
+	return TEST_SKIPPED;
+#endif
 }
 
 REGISTER_TEST_COMMAND(stack_perf_autotest, test_stack_perf);
