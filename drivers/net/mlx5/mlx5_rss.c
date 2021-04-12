@@ -16,6 +16,7 @@
 #include "mlx5_defs.h"
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_rx.h"
 
 /**
  * DPDK callback to update the RSS hash configuration.

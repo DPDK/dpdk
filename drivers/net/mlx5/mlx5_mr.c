@@ -15,6 +15,7 @@
 #include "mlx5.h"
 #include "mlx5_mr.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_rx.h"
 
 struct mr_find_contig_memsegs_data {
 	uintptr_t addr;

@@ -25,6 +25,7 @@
 #include "mlx5_defs.h"
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_rx.h"
 #include "mlx5_utils.h"
 #include "mlx5_autoconf.h"
 

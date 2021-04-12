@@ -33,6 +33,7 @@
 #include "mlx5_flow.h"
 #include "mlx5_flow_os.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_rx.h"
 #include "rte_pmd_mlx5.h"
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)

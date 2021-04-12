@@ -21,6 +21,7 @@
 #include "mlx5.h"
 #include "mlx5_common_os.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_rx.h"
 #include "mlx5_utils.h"
 #include "mlx5_devx.h"
 #include "mlx5_flow.h"

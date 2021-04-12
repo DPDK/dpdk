@@ -29,6 +29,7 @@
 #include "mlx5_flow.h"
 #include "mlx5_flow_os.h"
 #include "mlx5_rxtx.h"
+#include "mlx5_rx.h"
 #include "mlx5_common_os.h"
 #include "rte_pmd_mlx5.h"
 
