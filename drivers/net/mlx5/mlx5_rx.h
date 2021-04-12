@@ -246,7 +246,7 @@ int mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hxrq_idx,
 		     uint64_t hash_fields,
 		     const uint16_t *queues, uint32_t queues_n);
 
-/* mlx5_rxtx.c */
+/* mlx5_rx.c */
 
 uint16_t mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
 void mlx5_rxq_initialize(struct mlx5_rxq_data *rxq);
@@ -264,7 +264,7 @@ void mlx5_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 int mlx5_rx_burst_mode_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 			   struct rte_eth_burst_mode *mode);
 
-/* Vectorized version of mlx5_rxtx.c */
+/* Vectorized version of mlx5_rx.c */
 int mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq_data);
 int mlx5_check_vec_rx_support(struct rte_eth_dev *dev);
 uint16_t mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts,

@@ -196,6 +196,8 @@ void mlx5_dump_debug_information(const char *path, const char *title,
 				 const void *buf, unsigned int len);
 int mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 			const struct mlx5_mp_arg_queue_state_modify *sm);
+int mlx5_queue_state_modify(struct rte_eth_dev *dev,
+			    struct mlx5_mp_arg_queue_state_modify *sm);
 void mlx5_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_txq_info *qinfo);
 int mlx5_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,

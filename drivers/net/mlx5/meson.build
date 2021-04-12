@@ -19,6 +19,7 @@ sources = files(
 	'mlx5_mac.c',
 	'mlx5_mr.c',
 	'mlx5_rss.c',
+	'mlx5_rx.c',
 	'mlx5_rxmode.c',
 	'mlx5_rxq.c',
 	'mlx5_rxtx.c',
