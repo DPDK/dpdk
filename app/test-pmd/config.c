@@ -509,8 +509,6 @@ device_infos_display(const char *identifier)
 
 	if (rte_devargs_parsef(&da, "%s", identifier)) {
 		printf("cannot parse identifier\n");
-		if (da.args)
-			free(da.args);
 		return;
 	}
 
@@ -558,6 +556,7 @@ skip_parse:
 			}
 		}
 	};
+	rte_devargs_reset(&da);
 }
 
 void

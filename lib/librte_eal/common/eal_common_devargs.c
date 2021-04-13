@@ -150,7 +150,7 @@ next_layer:
 	 * their parsing afterward.
 	 */
 	if (devargs->data != devstr) {
-		char *s = (void *)(intptr_t)(devargs->data);
+		char *s = devargs->data;
 
 		while ((s = strchr(s, '/'))) {
 			*s = '\0';
@@ -219,13 +219,14 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 	da->bus = bus;
 	/* Parse eventual device arguments */
 	if (devname[i] == ',')
-		da->args = strdup(&devname[i + 1]);
+		da->data = strdup(&devname[i + 1]);
 	else
-		da->args = strdup("");
-	if (da->args == NULL) {
+		da->data = strdup("");
+	if (da->data == NULL) {
 		RTE_LOG(ERR, EAL, "not enough memory to parse arguments\n");
 		return -ENOMEM;
 	}
+	da->drv_str = da->data;
 	return 0;
 }
 
@@ -260,6 +261,16 @@ rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 	return ret;
 }
 
+void
+rte_devargs_reset(struct rte_devargs *da)
+{
+	if (da == NULL)
+		return;
+	if (da->data)
+		free(da->data);
+	da->data = NULL;
+}
+
 int
 rte_devargs_insert(struct rte_devargs **da)
 {
@@ -276,15 +287,8 @@ rte_devargs_insert(struct rte_devargs **da)
 		if (strcmp(listed_da->bus->name, (*da)->bus->name) == 0 &&
 				strcmp(listed_da->name, (*da)->name) == 0) {
 			/* device already in devargs list, must be updated */
-			listed_da->type = (*da)->type;
-			listed_da->policy = (*da)->policy;
-			free(listed_da->args);
-			listed_da->args = (*da)->args;
-			listed_da->bus = (*da)->bus;
-			listed_da->cls = (*da)->cls;
-			listed_da->bus_str = (*da)->bus_str;
-			listed_da->cls_str = (*da)->cls_str;
-			listed_da->data = (*da)->data;
+			rte_devargs_reset(listed_da);
+			*listed_da = **da;
 			/* replace provided devargs with found one */
 			free(*da);
 			*da = listed_da;
@@ -326,7 +330,7 @@ rte_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 
 fail:
 	if (devargs) {
-		free(devargs->args);
+		rte_devargs_reset(devargs);
 		free(devargs);
 	}
 
@@ -346,7 +350,7 @@ rte_devargs_remove(struct rte_devargs *devargs)
 		if (strcmp(d->bus->name, devargs->bus->name) == 0 &&
 		    strcmp(d->name, devargs->name) == 0) {
 			TAILQ_REMOVE(&devargs_list, d, next);
-			free(d->args);
+			rte_devargs_reset(d);
 			free(d);
 			return 0;
 		}

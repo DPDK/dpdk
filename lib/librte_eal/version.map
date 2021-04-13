@@ -410,6 +410,7 @@ EXPERIMENTAL {
 	rte_power_pause; # WINDOWS_NO_EXPORT
 
 	# added in 21.05
+	rte_devargs_reset;
 	rte_intr_callback_unregister_sync;
 	rte_log_list_types;
 	rte_thread_key_create;

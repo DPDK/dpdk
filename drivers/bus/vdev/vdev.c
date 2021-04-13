@@ -245,13 +245,14 @@ alloc_devargs(const char *name, const char *args)
 
 	devargs->bus = &rte_vdev_bus;
 	if (args)
-		devargs->args = strdup(args);
+		devargs->data = strdup(args);
 	else
-		devargs->args = strdup("");
+		devargs->data = strdup("");
+	devargs->args = devargs->data;
 
 	ret = strlcpy(devargs->name, name, sizeof(devargs->name));
 	if (ret < 0 || ret >= (int)sizeof(devargs->name)) {
-		free(devargs->args);
+		rte_devargs_reset(devargs);
 		free(devargs);
 		return NULL;
 	}
@@ -305,7 +306,7 @@ insert_vdev(const char *name, const char *args,
 
 	return 0;
 fail:
-	free(devargs->args);
+	rte_devargs_reset(devargs);
 	free(devargs);
 	free(dev);
 	return ret;

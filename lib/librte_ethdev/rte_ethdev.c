@@ -193,13 +193,14 @@ int
 rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs_str)
 {
 	int ret;
-	struct rte_devargs devargs = {.args = NULL};
+	struct rte_devargs devargs;
 	const char *bus_param_key;
 	char *bus_str = NULL;
 	char *cls_str = NULL;
 	int str_size;
 
 	memset(iter, 0, sizeof(*iter));
+	memset(&devargs, 0, sizeof(devargs));
 
 	/*
 	 * The devargs string may use various syntaxes:
@@ -244,8 +245,6 @@ rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs_str)
 		goto error;
 	}
 	iter->cls_str = cls_str;
-	free(devargs.args); /* allocated by rte_devargs_parse() */
-	devargs.args = NULL;
 
 	iter->bus = devargs.bus;
 	if (iter->bus->dev_iterate == NULL) {
@@ -278,13 +277,14 @@ rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs_str)
 
 end:
 	iter->cls = rte_class_find_by_name("eth");
+	rte_devargs_reset(&devargs);
 	return 0;
 
 error:
 	if (ret == -ENOTSUP)
 		RTE_ETHDEV_LOG(ERR, "Bus %s does not support iterating.\n",
 				iter->bus->name);
-	free(devargs.args);
+	rte_devargs_reset(&devargs);
 	free(bus_str);
 	free(cls_str);
 	return ret;

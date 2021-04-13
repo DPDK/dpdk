@@ -121,8 +121,6 @@ static void cmd_dev_attach_parsed(void *parsed_result,
 
 	if (rte_devargs_parsef(&da, "%s", res->devargs)) {
 		cmdline_printf(cl, "cannot parse devargs\n");
-		if (da.args)
-			free(da.args);
 		return;
 	}
 
@@ -131,6 +129,7 @@ static void cmd_dev_attach_parsed(void *parsed_result,
 	else
 		cmdline_printf(cl, "failed to attached device %s\n",
 				da.name);
+	rte_devargs_reset(&da);
 }
 
 cmdline_parse_token_string_t cmd_dev_attach_attach =
@@ -168,8 +167,6 @@ static void cmd_dev_detach_parsed(void *parsed_result,
 
 	if (rte_devargs_parsef(&da, "%s", res->devargs)) {
 		cmdline_printf(cl, "cannot parse devargs\n");
-		if (da.args)
-			free(da.args);
 		return;
 	}
 
@@ -180,6 +177,7 @@ static void cmd_dev_detach_parsed(void *parsed_result,
 	else
 		cmdline_printf(cl, "failed to dettach device %s\n",
 			da.name);
+	rte_devargs_reset(&da);
 }
 
 cmdline_parse_token_string_t cmd_dev_detach_detach =

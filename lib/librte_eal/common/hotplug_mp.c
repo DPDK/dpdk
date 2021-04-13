@@ -95,6 +95,7 @@ __handle_secondary_request(void *param)
 
 	tmp_req = *req;
 
+	memset(&da, 0, sizeof(da));
 	if (req->t == EAL_DEV_REQ_TYPE_ATTACH) {
 		ret = local_dev_probe(req->devargs, &dev);
 		if (ret != 0) {
@@ -118,8 +119,6 @@ __handle_secondary_request(void *param)
 		ret = rte_devargs_parse(&da, req->devargs);
 		if (ret != 0)
 			goto finish;
-		free(da.args); /* we don't need those */
-		da.args = NULL;
 
 		ret = eal_dev_hotplug_request_to_secondary(&tmp_req);
 		if (ret != 0) {
@@ -176,6 +175,7 @@ finish:
 	if (ret)
 		RTE_LOG(ERR, EAL, "failed to send response to secondary\n");
 
+	rte_devargs_reset(&da);
 	free(bundle->peer);
 	free(bundle);
 }
@@ -283,7 +283,7 @@ static void __handle_primary_request(void *param)
 
 		ret = local_dev_remove(dev);
 quit:
-		free(da->args);
+		rte_devargs_reset(da);
 		free(da);
 		break;
 	default:

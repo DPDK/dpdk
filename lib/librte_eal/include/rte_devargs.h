@@ -61,15 +61,14 @@ struct rte_devargs {
 	char name[RTE_DEV_NAME_MAX_LEN];
 	RTE_STD_C11
 	union {
-	/** Arguments string as given by user or "" for no argument. */
-		char *args;
-		const char *drv_str;
+		const char *args; /**< legacy name. */
+		const char *drv_str; /**< driver-related part of device string. */
 	};
 	struct rte_bus *bus; /**< bus handle. */
 	struct rte_class *cls; /**< class handle. */
 	const char *bus_str; /**< bus-related part of device string. */
 	const char *cls_str; /**< class-related part of device string. */
-	const char *data; /**< Device string storage. */
+	char *data; /**< raw string including bus, class and driver parts. */
 };
 
 /**
@@ -144,6 +143,16 @@ int
 rte_devargs_parsef(struct rte_devargs *da,
 		   const char *format, ...)
 __rte_format_printf(2, 0);
+
+/**
+ * Free resources in devargs.
+ *
+ * @param da
+ *   The devargs structure holding the device information.
+ */
+__rte_experimental
+void
+rte_devargs_reset(struct rte_devargs *da);
 
 /**
  * Insert an rte_devargs in the global list.

@@ -3015,8 +3015,6 @@ detach_devargs(char *identifier)
 	memset(&da, 0, sizeof(da));
 	if (rte_devargs_parsef(&da, "%s", identifier)) {
 		printf("cannot parse identifier\n");
-		if (da.args)
-			free(da.args);
 		return;
 	}
 
@@ -3025,6 +3023,7 @@ detach_devargs(char *identifier)
 			if (ports[port_id].port_status != RTE_PORT_STOPPED) {
 				printf("Port %u not stopped\n", port_id);
 				rte_eth_iterator_cleanup(&iterator);
+				rte_devargs_reset(&da);
 				return;
 			}
 			port_flow_flush(port_id);
@@ -3034,6 +3033,7 @@ detach_devargs(char *identifier)
 	if (rte_eal_hotplug_remove(da.bus->name, da.name) != 0) {
 		TESTPMD_LOG(ERR, "Failed to detach device %s(%s)\n",
 			    da.name, da.bus->name);
+		rte_devargs_reset(&da);
 		return;
 	}
 
@@ -3042,6 +3042,7 @@ detach_devargs(char *identifier)
 	printf("Device %s is detached\n", identifier);
 	printf("Now total ports is %d\n", nb_ports);
 	printf("Done\n");
+	rte_devargs_reset(&da);
 }
 
 void
