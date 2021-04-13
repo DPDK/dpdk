@@ -88,6 +88,12 @@ mrvl_meter_profile_add(struct rte_eth_dev *dev, uint32_t meter_profile_id,
 					  NULL,
 					  "Only srTCM RFC 2697 is supported\n");
 
+	if (profile->packet_mode)
+		return -rte_mtr_error_set(error, EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE_PACKET_MODE,
+				NULL,
+				"Packet mode is not supported\n");
+
 	prof = mrvl_mtr_profile_from_id(priv, meter_profile_id);
 	if (prof)
 		return -rte_mtr_error_set(error, EEXIST,
