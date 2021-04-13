@@ -125,7 +125,6 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 		layers[i].str = s;
 		layers[i].kvlist = rte_kvargs_parse_delim(s, NULL, "/");
 		if (layers[i].kvlist == NULL) {
-			RTE_LOG(ERR, EAL, "Could not parse %s\n", s);
 			ret = -EINVAL;
 			goto get_out;
 		}
@@ -223,6 +222,15 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 
 	if (da == NULL)
 		return -EINVAL;
+
+	/* First parse according global device syntax. */
+	if (rte_devargs_layers_parse(da, dev) == 0) {
+		if (da->bus != NULL || da->cls != NULL)
+			return 0;
+		rte_devargs_reset(da);
+	}
+
+	/* Otherwise fallback to legacy syntax: */
 
 	/* Retrieve eventual bus info */
 	do {

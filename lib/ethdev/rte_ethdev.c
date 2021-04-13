@@ -214,7 +214,6 @@ rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs_str)
 	 *   - 0000:08:00.0,representor=[1-3]
 	 *   - pci:0000:06:00.0,representor=[0,5]
 	 *   - class=eth,mac=00:11:22:33:44:55
-	 * A new syntax is in development (not yet supported):
 	 *   - bus=X,paramX=x/class=Y,paramY=y/driver=Z,paramZ=z
 	 */
 

@@ -55,6 +55,13 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Enabled new devargs parser.**
+
+  * Enabled devargs syntax
+    ``bus=X,paramX=x/class=Y,paramY=y/driver=Z,paramZ=z``
+  * Added bus-level parsing of the devargs syntax.
+  * Kept compatibility with the legacy syntax as parsing fallback.
+
 
 Removed Items
 -------------
