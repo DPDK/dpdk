@@ -450,7 +450,7 @@ hns3_build_api_caps(void)
 	return rte_cpu_to_le_32(api_caps);
 }
 
-static enum hns3_cmd_status
+static int
 hns3_cmd_query_firmware_version_and_capability(struct hns3_hw *hw)
 {
 	struct hns3_query_version_cmd *resp;
