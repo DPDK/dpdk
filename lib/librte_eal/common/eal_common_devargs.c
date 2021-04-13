@@ -60,6 +60,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 	size_t nblayer;
 	size_t i = 0;
 	int ret = 0;
+	bool allocated_data = false;
 
 	/* Split each sub-lists. */
 	nblayer = devargs_layer_count(devstr);
@@ -81,6 +82,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 			ret = -ENOMEM;
 			goto get_out;
 		}
+		allocated_data = true;
 		s = devargs->data;
 	}
 
@@ -163,8 +165,14 @@ get_out:
 		if (layers[i].kvlist)
 			rte_kvargs_free(layers[i].kvlist);
 	}
-	if (ret != 0)
+	if (ret != 0) {
+		if (allocated_data) {
+			/* Free duplicated data. */
+			free(devargs->data);
+			devargs->data = NULL;
+		}
 		rte_errno = -ret;
+	}
 	return ret;
 }
 
