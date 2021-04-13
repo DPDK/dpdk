@@ -4612,7 +4612,10 @@ hns3_update_fiber_link_info(struct hns3_hw *hw)
 static void
 hns3_parse_copper_phy_params(struct hns3_cmd_desc *desc, struct hns3_mac *mac)
 {
+#define HNS3_PHY_SUPPORTED_SPEED_MASK   0x2f
+
 	struct hns3_phy_params_bd0_cmd *req;
+	uint32_t supported;
 
 	req = (struct hns3_phy_params_bd0_cmd *)desc[0].data;
 	mac->link_speed = rte_le_to_cpu_32(req->speed);
@@ -4620,11 +4623,11 @@ hns3_parse_copper_phy_params(struct hns3_cmd_desc *desc, struct hns3_mac *mac)
 					   HNS3_PHY_DUPLEX_CFG_B);
 	mac->link_autoneg = hns3_get_bit(req->autoneg,
 					   HNS3_PHY_AUTONEG_CFG_B);
-	mac->supported_capa = rte_le_to_cpu_32(req->supported);
 	mac->advertising = rte_le_to_cpu_32(req->advertising);
 	mac->lp_advertising = rte_le_to_cpu_32(req->lp_advertising);
-	mac->support_autoneg = !!(mac->supported_capa &
-				HNS3_PHY_LINK_MODE_AUTONEG_BIT);
+	supported = rte_le_to_cpu_32(req->supported);
+	mac->supported_speed = supported & HNS3_PHY_SUPPORTED_SPEED_MASK;
+	mac->support_autoneg = !!(supported & HNS3_PHY_LINK_MODE_AUTONEG_BIT);
 }
 
 static int
@@ -4673,7 +4676,7 @@ hns3_update_copper_link_info(struct hns3_hw *hw)
 	mac->link_speed = mac_info.link_speed;
 	mac->link_duplex = mac_info.link_duplex;
 	mac->link_autoneg = mac_info.link_autoneg;
-	mac->supported_capa = mac_info.supported_capa;
+	mac->supported_speed = mac_info.supported_speed;
 	mac->advertising = mac_info.advertising;
 	mac->lp_advertising = mac_info.lp_advertising;
 	mac->support_autoneg = mac_info.support_autoneg;
