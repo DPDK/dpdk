@@ -110,6 +110,8 @@ enum ice_sw_tunnel_type {
 	ICE_SW_TUN_IPV4_GTPU_IPV6,
 	ICE_SW_TUN_IPV6_GTPU_IPV4,
 	ICE_SW_TUN_IPV6_GTPU_IPV6,
+	ICE_SW_TUN_GTP_IPV4,
+	ICE_SW_TUN_GTP_IPV6,
 	ICE_ALL_TUNNELS /* All tunnel types including NVGRE */
 };
 

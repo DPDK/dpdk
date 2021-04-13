@@ -7980,13 +7980,15 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 	}
 
 	/* Support GTP tunnel + L3 */
-	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV4) {
+	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV4 ||
+	    tun_type == ICE_SW_TUN_GTP_IPV4) {
 		*pkt = dummy_ipv4_gtpu_ipv4_packet;
 		*pkt_len = sizeof(dummy_ipv4_gtpu_ipv4_packet);
 		*offsets = dummy_ipv4_gtpu_ipv4_packet_offsets;
 		return;
 	}
-	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV6) {
+	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV6 ||
+	    tun_type == ICE_SW_TUN_GTP_IPV6) {
 		*pkt = dummy_ipv4_gtpu_ipv6_packet;
 		*pkt_len = sizeof(dummy_ipv4_gtpu_ipv6_packet);
 		*offsets = dummy_ipv4_gtpu_ipv6_packet_offsets;
