@@ -128,6 +128,14 @@ meter_profile_check(struct rte_eth_dev *dev,
 			NULL,
 			"Metering alg not supported");
 
+	/* Not support packet mode, just support byte mode. */
+	if (profile->packet_mode)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_PROFILE_PACKET_MODE,
+			NULL,
+			"Meter packet mode not supported");
+
 	return 0;
 }
 
