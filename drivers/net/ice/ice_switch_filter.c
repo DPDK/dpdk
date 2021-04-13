@@ -389,11 +389,16 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	bool profile_rule = 0;
 	bool nvgre_valid = 0;
 	bool vxlan_valid = 0;
+	bool qinq_valid = 0;
 	bool ipv6_valid = 0;
 	bool ipv4_valid = 0;
 	bool udp_valid = 0;
 	bool tcp_valid = 0;
 	uint16_t j, t = 0;
+
+	if (*tun_type == ICE_SW_TUN_AND_NON_TUN_QINQ ||
+	    *tun_type == ICE_NON_TUN_QINQ)
+		qinq_valid = 1;
 
 	for (item = pattern; item->type !=
 			RTE_FLOW_ITEM_TYPE_END; item++) {
@@ -932,22 +937,25 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				return 0;
 			}
 
-			if (!outer_vlan_valid &&
-			    (*tun_type == ICE_SW_TUN_AND_NON_TUN_QINQ ||
-			     *tun_type == ICE_NON_TUN_QINQ))
-				outer_vlan_valid = 1;
-			else if (!inner_vlan_valid &&
-				 (*tun_type == ICE_SW_TUN_AND_NON_TUN_QINQ ||
-				  *tun_type == ICE_NON_TUN_QINQ))
-				inner_vlan_valid = 1;
-			else if (!inner_vlan_valid)
-				inner_vlan_valid = 1;
+			if (qinq_valid) {
+				if (!outer_vlan_valid)
+					outer_vlan_valid = 1;
+				else
+					inner_vlan_valid = 1;
+			}
 
 			if (vlan_spec && vlan_mask) {
-				if (outer_vlan_valid && !inner_vlan_valid) {
-					list[t].type = ICE_VLAN_EX;
-					input_set |= ICE_INSET_VLAN_OUTER;
-				} else if (inner_vlan_valid) {
+				if (qinq_valid) {
+					if (!inner_vlan_valid) {
+						list[t].type = ICE_VLAN_EX;
+						input_set |=
+							ICE_INSET_VLAN_OUTER;
+					} else {
+						list[t].type = ICE_VLAN_IN;
+						input_set |=
+							ICE_INSET_VLAN_INNER;
+					}
+				} else {
 					list[t].type = ICE_VLAN_OFOS;
 					input_set |= ICE_INSET_VLAN_INNER;
 				}
