@@ -1790,7 +1790,7 @@ rxa_update_queue(struct rte_event_eth_rx_adapter *rx_adapter,
 
 static void
 rxa_set_vector_data(struct eth_rx_queue_info *queue_info, uint16_t vector_count,
-		    uint64_t vector_ns, struct rte_mempool *mp, int32_t qid,
+		    uint64_t vector_ns, struct rte_mempool *mp, uint32_t qid,
 		    uint16_t port_id)
 {
 #define NSEC2TICK(__ns, __freq) (((__ns) * (__freq)) / 1E9)
