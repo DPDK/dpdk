@@ -422,8 +422,19 @@ hns3_parse_capability(struct hns3_hw *hw,
 	if (hns3_get_bit(caps, HNS3_CAPS_FD_QUEUE_REGION_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B,
 			     1);
-	if (hns3_get_bit(caps, HNS3_CAPS_PTP_B))
-		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_PTP_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_PTP_B)) {
+		/*
+		 * PTP depends on special packet type reported by hardware which
+		 * enabled rxd advanced layout, so if the hardware doesn't
+		 * support rxd advanced layout, driver should ignore the PTP
+		 * capability.
+		 */
+		if (hns3_get_bit(caps, HNS3_CAPS_RXD_ADV_LAYOUT_B))
+			hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_PTP_B, 1);
+		else
+			hns3_warn(hw, "ignore PTP capability due to lack of "
+				  "rxd advanced layout capability.");
+	}
 	if (hns3_get_bit(caps, HNS3_CAPS_TX_PUSH_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_TX_PUSH_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_PHY_IMP_B))
