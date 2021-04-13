@@ -115,6 +115,26 @@ struct rte_kvargs *rte_kvargs_parse_delim(const char *args,
 void rte_kvargs_free(struct rte_kvargs *kvlist);
 
 /**
+ * Get the value associated with a given key.
+ *
+ * If multiple key matches, the value of the first one is returned.
+ *
+ * The memory returned is allocated as part of the rte_kvargs structure,
+ * it must never be modified.
+ *
+ * @param kvlist
+ *   A list of rte_kvargs pair of 'key=value'.
+ * @param key
+ *   The matching key.
+
+ * @return
+ *   NULL if no key matches the input,
+ *   a value associated with a matching key otherwise.
+ */
+__rte_experimental
+const char *rte_kvargs_get(const struct rte_kvargs *kvlist, const char *key);
+
+/**
  * Call a handler function for each key/value matching the key
  *
  * For each key/value association that matches the given key, calls the

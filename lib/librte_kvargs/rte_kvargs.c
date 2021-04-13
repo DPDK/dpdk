@@ -203,6 +203,21 @@ rte_kvargs_free(struct rte_kvargs *kvlist)
 	free(kvlist);
 }
 
+/* Lookup a value in an rte_kvargs list by its key. */
+const char *
+rte_kvargs_get(const struct rte_kvargs *kvlist, const char *key)
+{
+	unsigned int i;
+
+	if (kvlist == NULL || key == NULL)
+		return NULL;
+	for (i = 0; i < kvlist->count; ++i) {
+		if (strcmp(kvlist->pairs[i].key, key) == 0)
+			return kvlist->pairs[i].value;
+	}
+	return NULL;
+}
+
 /*
  * Parse the arguments "key=value,key=value,..." string and return
  * an allocated structure that contains a key/value list. Also
