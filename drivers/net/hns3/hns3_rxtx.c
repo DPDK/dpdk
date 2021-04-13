@@ -1991,12 +1991,45 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_TUNNEL_NVGRE,
 		RTE_PTYPE_UNKNOWN
 	};
+	static const uint32_t adv_layout_ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_TIMESYNC,
+		RTE_PTYPE_L2_ETHER_LLDP,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_IGMP,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_TUNNEL_GRE,
+		RTE_PTYPE_TUNNEL_GRENAT,
+		RTE_PTYPE_INNER_L2_ETHER,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_ICMP,
+		RTE_PTYPE_INNER_L4_NONFRAG,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_SCTP,
+		RTE_PTYPE_INNER_L4_ICMP,
+		RTE_PTYPE_UNKNOWN
+	};
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (dev->rx_pkt_burst == hns3_recv_pkts ||
 	    dev->rx_pkt_burst == hns3_recv_scattered_pkts ||
 	    dev->rx_pkt_burst == hns3_recv_pkts_vec ||
-	    dev->rx_pkt_burst == hns3_recv_pkts_vec_sve)
-		return ptypes;
+	    dev->rx_pkt_burst == hns3_recv_pkts_vec_sve) {
+		if (hns3_dev_rxd_adv_layout_supported(hw))
+			return adv_layout_ptypes;
+		else
+			return ptypes;
+	}
 
 	return NULL;
 }
