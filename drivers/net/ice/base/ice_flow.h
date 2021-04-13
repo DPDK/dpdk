@@ -553,6 +553,8 @@ ice_flow_set_fld_prefix(struct ice_flow_seg_info *seg, enum ice_flow_field fld,
 void
 ice_flow_add_fld_raw(struct ice_flow_seg_info *seg, u16 off, u8 len,
 		     u16 val_loc, u16 mask_loc);
+enum ice_status ice_flow_rem_vsi_prof(struct ice_hw *hw, enum ice_block blk,
+				      u16 vsi_handle, u64 prof_id);
 void ice_rem_vsi_rss_list(struct ice_hw *hw, u16 vsi_handle);
 enum ice_status ice_replay_rss_cfg(struct ice_hw *hw, u16 vsi_handle);
 enum ice_status

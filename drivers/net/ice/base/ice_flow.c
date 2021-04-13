@@ -3295,6 +3295,61 @@ ice_flow_add_fld_raw(struct ice_flow_seg_info *seg, u16 off, u8 len,
 	seg->raws_cnt++;
 }
 
+/**
+ * ice_flow_rem_vsi_prof - remove vsi from flow profile
+ * @hw: pointer to the hardware structure
+ * @blk: classification stage
+ * @vsi_handle: software VSI handle
+ * @prof_id: unique ID to identify this flow profile
+ *
+ * This function removes the flow entries associated to the input
+ * vsi handle and disassociates the vsi from the flow profile.
+ */
+enum ice_status ice_flow_rem_vsi_prof(struct ice_hw *hw, enum ice_block blk, u16 vsi_handle,
+				      u64 prof_id)
+{
+	struct ice_flow_prof *prof = NULL;
+	enum ice_status status = ICE_SUCCESS;
+
+	if (blk >= ICE_BLK_COUNT || !ice_is_vsi_valid(hw, vsi_handle))
+		return ICE_ERR_PARAM;
+
+	/* find flow profile pointer with input package block and profile id */
+	prof = ice_flow_find_prof_id(hw, ICE_BLK_FD, prof_id);
+	if (!prof) {
+		ice_debug(hw, ICE_DBG_PKG,
+			  "Cannot find flow profile id=%" PRIu64 "\n", prof_id);
+		return ICE_ERR_DOES_NOT_EXIST;
+	}
+
+	/* Remove all remaining flow entries before removing the flow profile */
+	if (!LIST_EMPTY(&prof->entries)) {
+		struct ice_flow_entry *e, *t;
+
+		ice_acquire_lock(&prof->entries_lock);
+		LIST_FOR_EACH_ENTRY_SAFE(e, t, &prof->entries, ice_flow_entry,
+					 l_entry) {
+			if (e->vsi_handle != vsi_handle)
+				continue;
+
+			status = ice_flow_rem_entry_sync(hw, blk, e);
+			if (status)
+				break;
+		}
+		ice_release_lock(&prof->entries_lock);
+	}
+	if (status)
+		return status;
+
+	/* disassociate the flow profile from sw vsi handle */
+	status = ice_flow_disassoc_prof(hw, blk, prof, vsi_handle);
+	if (status)
+		ice_debug(hw, ICE_DBG_PKG,
+			  "ice_flow_disassoc_prof() failed with status=%d\n",
+			  status);
+	return status;
+}
+
 #define ICE_FLOW_RSS_SEG_HDR_L2_MASKS \
 (ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
 
