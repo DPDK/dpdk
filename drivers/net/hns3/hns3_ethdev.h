@@ -457,8 +457,7 @@ struct hns3_hw {
 
 	uint8_t num_tc;             /* Total number of enabled TCs */
 	uint8_t hw_tc_map;
-	enum hns3_fc_mode current_mode;
-	enum hns3_fc_mode requested_mode;
+	enum hns3_fc_mode requested_fc_mode; /* FC mode requested by user */
 	struct hns3_dcb_info dcb_info;
 	enum hns3_fc_status current_fc_status; /* current flow control status */
 	struct hns3_tc_queue_info tc_queue[HNS3_MAX_TC_NUM];

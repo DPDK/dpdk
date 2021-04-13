@@ -5202,8 +5202,11 @@ hns3_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	fc_conf->pause_time = pf->pause_time;
 
-	/* return fc current mode */
-	switch (hw->current_mode) {
+	/*
+	 * If fc auto-negotiation is not supported, the configured fc mode
+	 * from user is the current fc mode.
+	 */
+	switch (hw->requested_fc_mode) {
 	case HNS3_FC_FULL:
 		fc_conf->mode = RTE_FC_FULL;
 		break;
@@ -5227,19 +5230,19 @@ hns3_get_fc_mode(struct hns3_hw *hw, enum rte_eth_fc_mode mode)
 {
 	switch (mode) {
 	case RTE_FC_NONE:
-		hw->requested_mode = HNS3_FC_NONE;
+		hw->requested_fc_mode = HNS3_FC_NONE;
 		break;
 	case RTE_FC_RX_PAUSE:
-		hw->requested_mode = HNS3_FC_RX_PAUSE;
+		hw->requested_fc_mode = HNS3_FC_RX_PAUSE;
 		break;
 	case RTE_FC_TX_PAUSE:
-		hw->requested_mode = HNS3_FC_TX_PAUSE;
+		hw->requested_fc_mode = HNS3_FC_TX_PAUSE;
 		break;
 	case RTE_FC_FULL:
-		hw->requested_mode = HNS3_FC_FULL;
+		hw->requested_fc_mode = HNS3_FC_FULL;
 		break;
 	default:
-		hw->requested_mode = HNS3_FC_NONE;
+		hw->requested_fc_mode = HNS3_FC_NONE;
 		hns3_warn(hw, "fc_mode(%u) exceeds member scope and is "
 			  "configured to RTE_FC_NONE", mode);
 		break;
@@ -5250,7 +5253,6 @@ static int
 hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	int ret;
 
 	if (fc_conf->high_water || fc_conf->low_water ||
@@ -5285,9 +5287,6 @@ hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 
 	hns3_get_fc_mode(hw, fc_conf->mode);
-	if (hw->requested_mode == hw->current_mode &&
-	    pf->pause_time == fc_conf->pause_time)
-		return 0;
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_fc_enable(dev, fc_conf);
@@ -5301,8 +5300,6 @@ hns3_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 			    struct rte_eth_pfc_conf *pfc_conf)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	uint8_t priority;
 	int ret;
 
 	if (!hns3_dev_dcb_supported(hw)) {
@@ -5337,12 +5334,7 @@ hns3_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 		return -EOPNOTSUPP;
 	}
 
-	priority = pfc_conf->priority;
 	hns3_get_fc_mode(hw, pfc_conf->fc.mode);
-	if (hw->dcb_info.pfc_en & BIT(priority) &&
-	    hw->requested_mode == hw->current_mode &&
-	    pfc_conf->fc.pause_time == pf->pause_time)
-		return 0;
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_dcb_pfc_enable(dev, pfc_conf);

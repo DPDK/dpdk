@@ -1196,7 +1196,7 @@ hns3_qs_bp_cfg(struct hns3_hw *hw, uint8_t tc, uint8_t grp_id, uint32_t bit_map)
 static void
 hns3_get_rx_tx_en_status(struct hns3_hw *hw, bool *tx_en, bool *rx_en)
 {
-	switch (hw->current_mode) {
+	switch (hw->requested_fc_mode) {
 	case HNS3_FC_NONE:
 		*tx_en = false;
 		*rx_en = false;
@@ -1373,7 +1373,7 @@ hns3_dcb_cfg_validate(struct hns3_adapter *hns, uint8_t *tc, bool *changed)
 	 * We ensure that dcb information can be reconfigured
 	 * after the hns3_priority_flow_ctrl_set function called.
 	 */
-	if (hw->current_mode != HNS3_FC_FULL)
+	if (hw->requested_fc_mode != HNS3_FC_FULL)
 		*changed = true;
 	pfc_en = RTE_LEN2MASK((uint8_t)dcb_rx_conf->nb_tcs, uint8_t);
 	if (hw->dcb_info.pfc_en != pfc_en)
@@ -1487,7 +1487,7 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
 	enum hns3_fc_status fc_status = hw->current_fc_status;
-	enum hns3_fc_mode current_mode = hw->current_mode;
+	enum hns3_fc_mode requested_fc_mode = hw->requested_fc_mode;
 	uint8_t hw_pfc_map = hw->dcb_info.hw_pfc_map;
 	int ret, status;
 
@@ -1517,7 +1517,7 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 			return ret;
 
 		hw->current_fc_status = HNS3_FC_STATUS_PFC;
-		hw->current_mode = HNS3_FC_FULL;
+		hw->requested_fc_mode = HNS3_FC_FULL;
 		ret = hns3_dcb_pause_setup_hw(hw);
 		if (ret) {
 			hns3_err(hw, "setup pfc failed! ret = %d", ret);
@@ -1538,7 +1538,7 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 	return 0;
 
 pfc_setup_fail:
-	hw->current_mode = current_mode;
+	hw->requested_fc_mode = requested_fc_mode;
 	hw->current_fc_status = fc_status;
 	hw->dcb_info.hw_pfc_map = hw_pfc_map;
 	status = hns3_buffer_alloc(hw);
@@ -1616,8 +1616,7 @@ hns3_dcb_init(struct hns3_hw *hw)
 	 * will be changed.
 	 */
 	if (hw->adapter_state == HNS3_NIC_UNINITIALIZED) {
-		hw->requested_mode = HNS3_FC_NONE;
-		hw->current_mode = hw->requested_mode;
+		hw->requested_fc_mode = HNS3_FC_NONE;
 		pf->pause_time = HNS3_DEFAULT_PAUSE_TRANS_TIME;
 		hw->current_fc_status = HNS3_FC_STATUS_NONE;
 
@@ -1718,7 +1717,6 @@ hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	enum hns3_fc_status fc_status = hw->current_fc_status;
-	enum hns3_fc_mode current_mode = hw->current_mode;
 	uint8_t hw_pfc_map = hw->dcb_info.hw_pfc_map;
 	uint8_t pfc_en = hw->dcb_info.pfc_en;
 	uint8_t priority = pfc_conf->priority;
@@ -1726,7 +1724,6 @@ hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
 	int ret, status;
 
 	pf->pause_time = pfc_conf->fc.pause_time;
-	hw->current_mode = hw->requested_mode;
 	hw->current_fc_status = HNS3_FC_STATUS_PFC;
 	hw->dcb_info.pfc_en |= BIT(priority);
 	hw->dcb_info.hw_pfc_map =
@@ -1737,7 +1734,7 @@ hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
 
 	/*
 	 * The flow control mode of all UPs will be changed based on
-	 * current_mode coming from user.
+	 * requested_fc_mode coming from user.
 	 */
 	ret = hns3_dcb_pause_setup_hw(hw);
 	if (ret) {
@@ -1748,7 +1745,6 @@ hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf)
 	return 0;
 
 pfc_setup_fail:
-	hw->current_mode = current_mode;
 	hw->current_fc_status = fc_status;
 	pf->pause_time = pause_time;
 	hw->dcb_info.pfc_en = pfc_en;
@@ -1772,18 +1768,16 @@ hns3_fc_enable(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	enum hns3_fc_status fc_status = hw->current_fc_status;
-	enum hns3_fc_mode current_mode = hw->current_mode;
 	uint16_t pause_time = pf->pause_time;
 	int ret;
 
 	pf->pause_time = fc_conf->pause_time;
-	hw->current_mode = hw->requested_mode;
 
 	/*
 	 * In fact, current_fc_status is HNS3_FC_STATUS_NONE when mode
 	 * of flow control is configured to be HNS3_FC_NONE.
 	 */
-	if (hw->current_mode == HNS3_FC_NONE)
+	if (hw->requested_fc_mode == HNS3_FC_NONE)
 		hw->current_fc_status = HNS3_FC_STATUS_NONE;
 	else
 		hw->current_fc_status = HNS3_FC_STATUS_MAC_PAUSE;
@@ -1797,7 +1791,6 @@ hns3_fc_enable(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	return 0;
 
 setup_fc_fail:
-	hw->current_mode = current_mode;
 	hw->current_fc_status = fc_status;
 	pf->pause_time = pause_time;
 
