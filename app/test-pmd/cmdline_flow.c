@@ -170,6 +170,7 @@ enum index {
 	ITEM_VLAN_HAS_MORE_VLAN,
 	ITEM_IPV4,
 	ITEM_IPV4_TOS,
+	ITEM_IPV4_ID,
 	ITEM_IPV4_FRAGMENT_OFFSET,
 	ITEM_IPV4_TTL,
 	ITEM_IPV4_PROTO,
@@ -240,6 +241,7 @@ enum index {
 	ITEM_IPV6_FRAG_EXT,
 	ITEM_IPV6_FRAG_EXT_NEXT_HDR,
 	ITEM_IPV6_FRAG_EXT_FRAG_DATA,
+	ITEM_IPV6_FRAG_EXT_ID,
 	ITEM_ICMP6,
 	ITEM_ICMP6_TYPE,
 	ITEM_ICMP6_CODE,
@@ -1044,6 +1046,7 @@ static const enum index item_vlan[] = {
 
 static const enum index item_ipv4[] = {
 	ITEM_IPV4_TOS,
+	ITEM_IPV4_ID,
 	ITEM_IPV4_FRAGMENT_OFFSET,
 	ITEM_IPV4_TTL,
 	ITEM_IPV4_PROTO,
@@ -1180,6 +1183,7 @@ static const enum index item_ipv6_ext[] = {
 static const enum index item_ipv6_frag_ext[] = {
 	ITEM_IPV6_FRAG_EXT_NEXT_HDR,
 	ITEM_IPV6_FRAG_EXT_FRAG_DATA,
+	ITEM_IPV6_FRAG_EXT_ID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2510,6 +2514,13 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
 					     hdr.type_of_service)),
 	},
+	[ITEM_IPV4_ID] = {
+		.name = "packet_id",
+		.help = "fragment packet id",
+		.next = NEXT(item_ipv4, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
+					     hdr.packet_id)),
+	},
 	[ITEM_IPV4_FRAGMENT_OFFSET] = {
 		.name = "fragment_offset",
 		.help = "fragmentation flags and fragment offset",
@@ -3013,11 +3024,19 @@ static const struct token token_list[] = {
 	},
 	[ITEM_IPV6_FRAG_EXT_FRAG_DATA] = {
 		.name = "frag_data",
-		.help = "Fragment flags and offset",
+		.help = "fragment flags and offset",
 		.next = NEXT(item_ipv6_frag_ext, NEXT_ENTRY(UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6_frag_ext,
 					     hdr.frag_data)),
+	},
+	[ITEM_IPV6_FRAG_EXT_ID] = {
+		.name = "packet_id",
+		.help = "fragment packet id",
+		.next = NEXT(item_ipv6_frag_ext, NEXT_ENTRY(UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6_frag_ext,
+					     hdr.id)),
 	},
 	[ITEM_ICMP6] = {
 		.name = "icmp6",
