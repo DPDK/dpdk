@@ -526,9 +526,99 @@ err_crq:
 	return ret;
 }
 
+static void
+hns3_update_dev_lsc_cap(struct hns3_hw *hw, int fw_compact_cmd_result)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+
+	if (hw->adapter_state != HNS3_NIC_UNINITIALIZED)
+		return;
+
+	if (fw_compact_cmd_result != 0) {
+		/*
+		 * If fw_compact_cmd_result is not zero, it means firmware don't
+		 * support link status change interrupt.
+		 * Framework already set RTE_ETH_DEV_INTR_LSC bit because driver
+		 * declared RTE_PCI_DRV_INTR_LSC in drv_flags. It need to clear
+		 * the RTE_ETH_DEV_INTR_LSC capability when detect firmware
+		 * don't support link status change interrupt.
+		 */
+		dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
+	}
+}
+
+static int
+hns3_apply_fw_compat_cmd_result(struct hns3_hw *hw, int result)
+{
+	if (result != 0 && hns3_dev_copper_supported(hw)) {
+		hns3_err(hw, "firmware fails to initialize the PHY, ret = %d.",
+			 result);
+		return result;
+	}
+
+	hns3_update_dev_lsc_cap(hw, result);
+
+	return 0;
+}
+
+static int
+hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
+{
+	struct hns3_firmware_compat_cmd *req;
+	struct hns3_cmd_desc desc;
+	uint32_t compat = 0;
+
+#if defined(RTE_HNS3_ONLY_1630_FPGA)
+	/* If resv reg enabled phy driver of imp is not configured, driver
+	 * will use temporary phy driver.
+	 */
+	struct rte_pci_device *pci_dev;
+	struct rte_eth_dev *eth_dev;
+	uint8_t revision;
+	int ret;
+
+	eth_dev = &rte_eth_devices[hw->data->port_id];
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	/* Get PCI revision id */
+	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
+				  HNS3_PCI_REVISION_ID);
+	if (ret != HNS3_PCI_REVISION_ID_LEN) {
+		PMD_INIT_LOG(ERR, "failed to read pci revision id, ret = %d",
+			     ret);
+		return -EIO;
+	}
+	if (revision == PCI_REVISION_ID_HIP09_A) {
+		struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
+		if (hns3_dev_copper_supported(hw) == 0 || pf->is_tmp_phy) {
+			PMD_INIT_LOG(ERR, "***use temp phy driver in dpdk***");
+			pf->is_tmp_phy = true;
+			hns3_set_bit(hw->capability,
+				     HNS3_DEV_SUPPORT_COPPER_B, 1);
+			return 0;
+		}
+
+		PMD_INIT_LOG(ERR, "***use phy driver in imp***");
+	}
+#endif
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_FIRMWARE_COMPAT_CFG, false);
+	req = (struct hns3_firmware_compat_cmd *)desc.data;
+
+	if (is_init) {
+		hns3_set_bit(compat, HNS3_LINK_EVENT_REPORT_EN_B, 1);
+		hns3_set_bit(compat, HNS3_NCSI_ERROR_REPORT_EN_B, 0);
+		if (hns3_dev_copper_supported(hw))
+			hns3_set_bit(compat, HNS3_FIRMWARE_PHY_DRIVER_EN_B, 1);
+	}
+	req->compat = rte_cpu_to_le_32(compat);
+
+	return hns3_cmd_send(hw, &desc, 1);
+}
+
 int
 hns3_cmd_init(struct hns3_hw *hw)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	uint32_t version;
 	int ret;
 
@@ -575,6 +665,27 @@ hns3_cmd_init(struct hns3_hw *hw)
 		     hns3_get_field(version, HNS3_FW_VERSION_BYTE0_M,
 				    HNS3_FW_VERSION_BYTE0_S));
 
+	if (hns->is_vf)
+		return 0;
+
+	/*
+	 * Requiring firmware to enable some features, firber port can still
+	 * work without it, but copper port can't work because the firmware
+	 * fails to take over the PHY.
+	 */
+	ret = hns3_firmware_compat_config(hw, true);
+	if (ret)
+		PMD_INIT_LOG(WARNING, "firmware compatible features not "
+			     "supported, ret = %d.", ret);
+
+	/*
+	 * Perform some corresponding operations based on the firmware
+	 * compatibility configuration result.
+	 */
+	ret = hns3_apply_fw_compat_cmd_result(hw, ret);
+	if (ret)
+		goto err_cmd_init;
+
 	return 0;
 
 err_cmd_init:
@@ -602,6 +713,11 @@ hns3_cmd_destroy_queue(struct hns3_hw *hw)
 void
 hns3_cmd_uninit(struct hns3_hw *hw)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+
+	if (!hns->is_vf)
+		(void)hns3_firmware_compat_config(hw, false);
+
 	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 
 	/*

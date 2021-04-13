@@ -4118,28 +4118,6 @@ hns3_buffer_alloc(struct hns3_hw *hw)
 }
 
 static int
-hns3_firmware_compat_config(struct hns3_hw *hw, bool is_init)
-{
-	struct hns3_firmware_compat_cmd *req;
-	struct hns3_cmd_desc desc;
-	uint32_t compat = 0;
-
-	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_FIRMWARE_COMPAT_CFG, false);
-	req = (struct hns3_firmware_compat_cmd *)desc.data;
-
-	if (is_init) {
-		hns3_set_bit(compat, HNS3_LINK_EVENT_REPORT_EN_B, 1);
-		hns3_set_bit(compat, HNS3_NCSI_ERROR_REPORT_EN_B, 0);
-		if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER)
-			hns3_set_bit(compat, HNS3_FIRMWARE_PHY_DRIVER_EN_B, 1);
-	}
-
-	req->compat = rte_cpu_to_le_32(compat);
-
-	return hns3_cmd_send(hw, &desc, 1);
-}
-
-static int
 hns3_mac_init(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
@@ -4815,28 +4793,6 @@ hns3_service_handler(void *param)
 	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, eth_dev);
 }
 
-static void
-hns3_update_dev_lsc_cap(struct hns3_hw *hw,
-			int fw_compact_cmd_result)
-{
-	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
-
-	if (hw->adapter_state != HNS3_NIC_UNINITIALIZED)
-		return;
-
-	if (fw_compact_cmd_result != 0) {
-		/*
-		 * If fw_compact_cmd_result is not zero, it means firmware don't
-		 * support link status change interrupt.
-		 * Framework already set RTE_ETH_DEV_INTR_LSC bit because driver
-		 * declared RTE_PCI_DRV_INTR_LSC in drv_flags. It need to clear
-		 * the RTE_ETH_DEV_INTR_LSC capability when detect firmware
-		 * don't support link status change interrupt.
-		 */
-		dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
-	}
-}
-
 static int
 hns3_init_hardware(struct hns3_adapter *hns)
 {
@@ -4915,16 +4871,6 @@ hns3_init_hardware(struct hns3_adapter *hns)
 		PMD_INIT_LOG(ERR, "Failed to init ring intr vector: %d", ret);
 		goto err_mac_init;
 	}
-
-	/*
-	 * Requiring firmware to enable some features, driver can
-	 * still work without it.
-	 */
-	ret = hns3_firmware_compat_config(hw, true);
-	if (ret)
-		PMD_INIT_LOG(WARNING, "firmware compatible features not "
-			     "supported, ret = %d.", ret);
-	hns3_update_dev_lsc_cap(hw, ret);
 
 	return 0;
 
@@ -5073,7 +5019,6 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 err_enable_intr:
 	hns3_fdir_filter_uninit(hns);
 err_fdir:
-	(void)hns3_firmware_compat_config(hw, false);
 	hns3_uninit_umv_space(hw);
 err_init_hw:
 	hns3_tqp_stats_uninit(hw);
@@ -5108,7 +5053,6 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	(void)hns3_config_gro(hw, false);
 	hns3_promisc_uninit(hw);
 	hns3_fdir_filter_uninit(hns);
-	(void)hns3_firmware_compat_config(hw, false);
 	hns3_uninit_umv_space(hw);
 	hns3_tqp_stats_uninit(hw);
 	hns3_config_mac_tnl_int(hw, false);
