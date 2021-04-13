@@ -7808,6 +7808,11 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		*pkt_len = sizeof(dummy_qinq_pppoe_ipv4_pkt);
 		*offsets = dummy_qinq_pppoe_ipv4_packet_offsets;
 		return;
+	} else if (tun_type == ICE_SW_TUN_PPPOE_QINQ && ipv6) {
+		*pkt = dummy_qinq_pppoe_ipv6_packet;
+		*pkt_len = sizeof(dummy_qinq_pppoe_ipv6_packet);
+		*offsets = dummy_qinq_pppoe_packet_offsets;
+		return;
 	} else if (tun_type == ICE_SW_TUN_PPPOE_QINQ ||
 			tun_type == ICE_SW_TUN_PPPOE_PAY_QINQ) {
 		*pkt = dummy_qinq_pppoe_ipv4_pkt;
