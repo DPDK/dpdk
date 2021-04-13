@@ -5088,6 +5088,24 @@ hns3_get_port_supported_speed(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static void
+hns3_get_fc_autoneg_capability(struct hns3_adapter *hns)
+{
+	struct hns3_mac *mac = &hns->hw.mac;
+
+	if (mac->media_type == HNS3_MEDIA_TYPE_COPPER) {
+		hns->pf.support_fc_autoneg = true;
+		return;
+	}
+
+	/*
+	 * Flow control auto-negotiation requires the cooperation of the driver
+	 * and firmware. Currently, the optical port does not support flow
+	 * control auto-negotiation.
+	 */
+	hns->pf.support_fc_autoneg = false;
+}
+
 static int
 hns3_init_pf(struct rte_eth_dev *eth_dev)
 {
@@ -5194,6 +5212,8 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 			     "by device, ret = %d.", ret);
 		goto err_supported_speed;
 	}
+
+	hns3_get_fc_autoneg_capability(hns);
 
 	hns3_tm_conf_init(eth_dev);
 
@@ -5761,19 +5781,102 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	return ret;
 }
 
+static void
+hns3_get_autoneg_rxtx_pause_copper(struct hns3_hw *hw, bool *rx_pause,
+				   bool *tx_pause)
+{
+	struct hns3_mac *mac = &hw->mac;
+	uint32_t advertising = mac->advertising;
+	uint32_t lp_advertising = mac->lp_advertising;
+	*rx_pause = false;
+	*tx_pause = false;
+
+	if (advertising & lp_advertising & HNS3_PHY_LINK_MODE_PAUSE_BIT) {
+		*rx_pause = true;
+		*tx_pause = true;
+	} else if (advertising & lp_advertising &
+		   HNS3_PHY_LINK_MODE_ASYM_PAUSE_BIT) {
+		if (advertising & HNS3_PHY_LINK_MODE_PAUSE_BIT)
+			*rx_pause = true;
+		else if (lp_advertising & HNS3_PHY_LINK_MODE_PAUSE_BIT)
+			*tx_pause = true;
+	}
+}
+
+static enum hns3_fc_mode
+hns3_get_autoneg_fc_mode(struct hns3_hw *hw)
+{
+	enum hns3_fc_mode current_mode;
+	bool rx_pause = false;
+	bool tx_pause = false;
+
+	switch (hw->mac.media_type) {
+	case HNS3_MEDIA_TYPE_COPPER:
+		hns3_get_autoneg_rxtx_pause_copper(hw, &rx_pause, &tx_pause);
+		break;
+
+	/*
+	 * Flow control auto-negotiation is not supported for fiber and
+	 * backpalne media type.
+	 */
+	case HNS3_MEDIA_TYPE_FIBER:
+	case HNS3_MEDIA_TYPE_BACKPLANE:
+		hns3_err(hw, "autoneg FC mode can't be obtained, but flow control auto-negotiation is enabled.");
+		current_mode = hw->requested_fc_mode;
+		goto out;
+	default:
+		hns3_err(hw, "autoneg FC mode can't be obtained for unknown media type(%u).",
+			 hw->mac.media_type);
+		current_mode = HNS3_FC_NONE;
+		goto out;
+	}
+
+	if (rx_pause && tx_pause)
+		current_mode = HNS3_FC_FULL;
+	else if (rx_pause)
+		current_mode = HNS3_FC_RX_PAUSE;
+	else if (tx_pause)
+		current_mode = HNS3_FC_TX_PAUSE;
+	else
+		current_mode = HNS3_FC_NONE;
+
+out:
+	return current_mode;
+}
+
+static enum hns3_fc_mode
+hns3_get_current_fc_mode(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct hns3_mac *mac = &hw->mac;
+
+	/*
+	 * When the flow control mode is obtained, the device may not complete
+	 * auto-negotiation. It is necessary to wait for link establishment.
+	 */
+	(void)hns3_dev_link_update(dev, 1);
+
+	/*
+	 * If the link auto-negotiation of the nic is disabled, or the flow
+	 * control auto-negotiation is not supported, the forced flow control
+	 * mode is used.
+	 */
+	if (mac->link_autoneg == 0 || !pf->support_fc_autoneg)
+		return hw->requested_fc_mode;
+
+	return hns3_get_autoneg_fc_mode(hw);
+}
+
 static int
 hns3_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	enum hns3_fc_mode current_mode;
 
-	fc_conf->pause_time = pf->pause_time;
-
-	/*
-	 * If fc auto-negotiation is not supported, the configured fc mode
-	 * from user is the current fc mode.
-	 */
-	switch (hw->requested_fc_mode) {
+	current_mode = hns3_get_current_fc_mode(dev);
+	switch (current_mode) {
 	case HNS3_FC_FULL:
 		fc_conf->mode = RTE_FC_FULL;
 		break;
@@ -5788,6 +5891,9 @@ hns3_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		fc_conf->mode = RTE_FC_NONE;
 		break;
 	}
+
+	fc_conf->pause_time = pf->pause_time;
+	fc_conf->autoneg = pf->support_fc_autoneg ? hw->mac.link_autoneg : 0;
 
 	return 0;
 }
@@ -5817,6 +5923,41 @@ hns3_get_fc_mode(struct hns3_hw *hw, enum rte_eth_fc_mode mode)
 }
 
 static int
+hns3_check_fc_autoneg_valid(struct hns3_hw *hw, uint8_t autoneg)
+{
+	struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
+
+	if (!pf->support_fc_autoneg) {
+		if (autoneg != 0) {
+			hns3_err(hw, "unsupported fc auto-negotiation setting.");
+			return -EOPNOTSUPP;
+		}
+
+		/*
+		 * Flow control auto-negotiation of the NIC is not supported,
+		 * but other auto-negotiation features may be supported.
+		 */
+		if (autoneg != hw->mac.link_autoneg) {
+			hns3_err(hw, "please use 'link_speeds' in struct rte_eth_conf to disable autoneg!");
+			return -EOPNOTSUPP;
+		}
+
+		return 0;
+	}
+
+	/*
+	 * If flow control auto-negotiation of the NIC is supported, all
+	 * auto-negotiation features are supported.
+	 */
+	if (autoneg != hw->mac.link_autoneg) {
+		hns3_err(hw, "please use 'link_speeds' in struct rte_eth_conf to change autoneg!");
+		return -EOPNOTSUPP;
+	}
+
+	return 0;
+}
+
+static int
 hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -5831,10 +5972,11 @@ hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 			 fc_conf->send_xon, fc_conf->mac_ctrl_frame_fwd);
 		return -EINVAL;
 	}
-	if (fc_conf->autoneg) {
-		hns3_err(hw, "Unsupported fc auto-negotiation setting.");
-		return -EINVAL;
-	}
+
+	ret = hns3_check_fc_autoneg_valid(hw, fc_conf->autoneg);
+	if (ret)
+		return ret;
+
 	if (!fc_conf->pause_time) {
 		hns3_err(hw, "Invalid pause time %u setting.",
 			 fc_conf->pause_time);
