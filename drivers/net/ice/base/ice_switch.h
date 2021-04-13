@@ -535,4 +535,5 @@ bool ice_is_prof_rule(enum ice_sw_tunnel_type type);
 enum ice_status
 ice_update_recipe_lkup_idx(struct ice_hw *hw,
 			   struct ice_update_recipe_lkup_idx_params *params);
+void ice_change_proto_id_to_dvm(void);
 #endif /* _ICE_SWITCH_H_ */

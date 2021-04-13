@@ -1244,6 +1244,9 @@ ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
 
 	ice_cache_vlan_mode(hw);
 
+	if (ice_is_dvm_ena(hw))
+		ice_change_proto_id_to_dvm();
+
 	return status;
 }
 
