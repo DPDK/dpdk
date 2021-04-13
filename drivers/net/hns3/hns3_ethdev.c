@@ -2473,12 +2473,6 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	hw->adapter_state = HNS3_NIC_CONFIGURING;
-	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
-		hns3_err(hw, "setting link speed/duplex not supported");
-		ret = -EINVAL;
-		goto cfg_err;
-	}
-
 	if ((uint32_t)mq_mode & ETH_MQ_RX_DCB_FLAG) {
 		ret = hns3_check_dcb_cfg(dev);
 		if (ret)
@@ -5271,6 +5265,130 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	hw->io_base = NULL;
 }
 
+static uint32_t
+hns3_convert_link_speeds2bitmap_copper(uint32_t link_speeds)
+{
+	uint32_t speed_bit;
+
+	switch (link_speeds & ~ETH_LINK_SPEED_FIXED) {
+	case ETH_LINK_SPEED_10M:
+		speed_bit = HNS3_PHY_LINK_SPEED_10M_BIT;
+		break;
+	case ETH_LINK_SPEED_10M_HD:
+		speed_bit = HNS3_PHY_LINK_SPEED_10M_HD_BIT;
+		break;
+	case ETH_LINK_SPEED_100M:
+		speed_bit = HNS3_PHY_LINK_SPEED_100M_BIT;
+		break;
+	case ETH_LINK_SPEED_100M_HD:
+		speed_bit = HNS3_PHY_LINK_SPEED_100M_HD_BIT;
+		break;
+	case ETH_LINK_SPEED_1G:
+		speed_bit = HNS3_PHY_LINK_SPEED_1000M_BIT;
+		break;
+	default:
+		speed_bit = 0;
+		break;
+	}
+
+	return speed_bit;
+}
+
+static uint32_t
+hns3_convert_link_speeds2bitmap_fiber(uint32_t link_speeds)
+{
+	uint32_t speed_bit;
+
+	switch (link_speeds & ~ETH_LINK_SPEED_FIXED) {
+	case ETH_LINK_SPEED_1G:
+		speed_bit = HNS3_FIBER_LINK_SPEED_1G_BIT;
+		break;
+	case ETH_LINK_SPEED_10G:
+		speed_bit = HNS3_FIBER_LINK_SPEED_10G_BIT;
+		break;
+	case ETH_LINK_SPEED_25G:
+		speed_bit = HNS3_FIBER_LINK_SPEED_25G_BIT;
+		break;
+	case ETH_LINK_SPEED_40G:
+		speed_bit = HNS3_FIBER_LINK_SPEED_40G_BIT;
+		break;
+	case ETH_LINK_SPEED_50G:
+		speed_bit = HNS3_FIBER_LINK_SPEED_50G_BIT;
+		break;
+	case ETH_LINK_SPEED_100G:
+		speed_bit = HNS3_FIBER_LINK_SPEED_100G_BIT;
+		break;
+	case ETH_LINK_SPEED_200G:
+		speed_bit = HNS3_FIBER_LINK_SPEED_200G_BIT;
+		break;
+	default:
+		speed_bit = 0;
+		break;
+	}
+
+	return speed_bit;
+}
+
+static int
+hns3_check_port_speed(struct hns3_hw *hw, uint32_t link_speeds)
+{
+	struct hns3_mac *mac = &hw->mac;
+	uint32_t supported_speed = mac->supported_speed;
+	uint32_t speed_bit = 0;
+
+	if (mac->media_type == HNS3_MEDIA_TYPE_COPPER)
+		speed_bit = hns3_convert_link_speeds2bitmap_copper(link_speeds);
+	else if (mac->media_type == HNS3_MEDIA_TYPE_FIBER)
+		speed_bit = hns3_convert_link_speeds2bitmap_fiber(link_speeds);
+
+	if (!(speed_bit & supported_speed)) {
+		hns3_err(hw, "link_speeds(0x%x) exceeds the supported speed capability or is incorrect.",
+			 link_speeds);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static inline uint32_t
+hns3_get_link_speed(uint32_t link_speeds)
+{
+	uint32_t speed = ETH_SPEED_NUM_NONE;
+
+	if (link_speeds & ETH_LINK_SPEED_10M ||
+	    link_speeds & ETH_LINK_SPEED_10M_HD)
+		speed = ETH_SPEED_NUM_10M;
+	if (link_speeds & ETH_LINK_SPEED_100M ||
+	    link_speeds & ETH_LINK_SPEED_100M_HD)
+		speed = ETH_SPEED_NUM_100M;
+	if (link_speeds & ETH_LINK_SPEED_1G)
+		speed = ETH_SPEED_NUM_1G;
+	if (link_speeds & ETH_LINK_SPEED_10G)
+		speed = ETH_SPEED_NUM_10G;
+	if (link_speeds & ETH_LINK_SPEED_25G)
+		speed = ETH_SPEED_NUM_25G;
+	if (link_speeds & ETH_LINK_SPEED_40G)
+		speed = ETH_SPEED_NUM_40G;
+	if (link_speeds & ETH_LINK_SPEED_50G)
+		speed = ETH_SPEED_NUM_50G;
+	if (link_speeds & ETH_LINK_SPEED_100G)
+		speed = ETH_SPEED_NUM_100G;
+	if (link_speeds & ETH_LINK_SPEED_200G)
+		speed = ETH_SPEED_NUM_200G;
+
+	return speed;
+}
+
+static uint8_t
+hns3_get_link_duplex(uint32_t link_speeds)
+{
+	if ((link_speeds & ETH_LINK_SPEED_10M_HD) ||
+	    (link_speeds & ETH_LINK_SPEED_100M_HD))
+		return ETH_LINK_HALF_DUPLEX;
+	else
+		return ETH_LINK_FULL_DUPLEX;
+}
+
 static int
 hns3_set_copper_port_link_speed(struct hns3_hw *hw,
 				struct hns3_set_link_speed_cfg *cfg)
@@ -5298,6 +5416,9 @@ hns3_set_copper_port_link_speed(struct hns3_hw *hw,
 				    HNS3_PHY_LINK_SPEED_100M_BIT |
 				    HNS3_PHY_LINK_SPEED_100M_HD_BIT |
 				    HNS3_PHY_LINK_SPEED_1000M_BIT;
+	} else {
+		req->speed = cfg->speed;
+		req->duplex = cfg->duplex;
 	}
 
 	return hns3_cmd_send(hw, desc, HNS3_PHY_PARAM_CFG_BD_NUM);
@@ -5358,7 +5479,7 @@ hns3_set_fiber_port_link_speed(struct hns3_hw *hw,
 		return 0;
 	}
 
-	return 0;
+	return hns3_cfg_mac_speed_dup(hw, cfg->speed, cfg->duplex);
 }
 
 static int
@@ -5397,13 +5518,18 @@ hns3_apply_link_speed(struct hns3_hw *hw)
 {
 	struct rte_eth_conf *conf = &hw->data->dev_conf;
 	struct hns3_set_link_speed_cfg cfg;
+	int ret;
 
 	memset(&cfg, 0, sizeof(struct hns3_set_link_speed_cfg));
 	cfg.autoneg = (conf->link_speeds == ETH_LINK_SPEED_AUTONEG) ?
 			ETH_LINK_AUTONEG : ETH_LINK_FIXED;
 	if (cfg.autoneg != ETH_LINK_AUTONEG) {
-		hns3_err(hw, "device doesn't support to force link speed.");
-		return -EOPNOTSUPP;
+		ret = hns3_check_port_speed(hw, conf->link_speeds);
+		if (ret)
+			return ret;
+
+		cfg.speed = hns3_get_link_speed(conf->link_speeds);
+		cfg.duplex = hns3_get_link_duplex(conf->link_speeds);
 	}
 
 	return hns3_set_port_link_speed(hw, &cfg);
