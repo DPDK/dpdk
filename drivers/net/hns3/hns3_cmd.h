@@ -55,13 +55,6 @@ enum hns3_cmd_return_status {
 	HNS3_CMD_INVALID        = 11,
 };
 
-enum hns3_cmd_status {
-	HNS3_STATUS_SUCCESS     = 0,
-	HNS3_ERR_CSQ_FULL       = -1,
-	HNS3_ERR_CSQ_TIMEOUT    = -2,
-	HNS3_ERR_CSQ_ERROR      = -3,
-};
-
 struct hns3_misc_vector {
 	uint8_t *addr;
 	int vector_irq;
@@ -71,7 +64,7 @@ struct hns3_cmq {
 	struct hns3_cmq_ring csq;
 	struct hns3_cmq_ring crq;
 	uint16_t tx_timeout;
-	enum hns3_cmd_status last_status;
+	enum hns3_cmd_return_status last_status;
 };
 
 enum hns3_opcode_type {

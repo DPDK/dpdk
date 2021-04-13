@@ -2223,11 +2223,11 @@ hns3_bind_ring_with_vector(struct hns3_hw *hw, uint16_t vector_id, bool en,
 	struct hns3_cmd_desc desc;
 	struct hns3_ctrl_vector_chain_cmd *req =
 		(struct hns3_ctrl_vector_chain_cmd *)desc.data;
-	enum hns3_cmd_status status;
 	enum hns3_opcode_type op;
 	uint16_t tqp_type_and_id = 0;
 	uint16_t type;
 	uint16_t gl;
+	int ret;
 
 	op = en ? HNS3_OPC_ADD_RING_TO_VECTOR : HNS3_OPC_DEL_RING_TO_VECTOR;
 	hns3_cmd_setup_basic_desc(&desc, op, false);
@@ -2250,11 +2250,11 @@ hns3_bind_ring_with_vector(struct hns3_hw *hw, uint16_t vector_id, bool en,
 		       gl);
 	req->tqp_type_and_id[0] = rte_cpu_to_le_16(tqp_type_and_id);
 	req->int_cause_num = 1;
-	status = hns3_cmd_send(hw, &desc, 1);
-	if (status) {
-		hns3_err(hw, "%s TQP %u fail, vector_id is %u, status is %d.",
-			 en ? "Map" : "Unmap", queue_id, vector_id, status);
-		return status;
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "%s TQP %u fail, vector_id = %u, ret = %d.",
+			 en ? "Map" : "Unmap", queue_id, vector_id, ret);
+		return ret;
 	}
 
 	return 0;
