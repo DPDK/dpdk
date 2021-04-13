@@ -1984,7 +1984,7 @@ ice_sched_cfg_vsi(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u16 maxqs,
 }
 
 /**
- * ice_sched_rm_agg_vsi_entry - remove aggregator related VSI info entry
+ * ice_sched_rm_agg_vsi_info - remove aggregator related VSI info entry
  * @pi: port information structure
  * @vsi_handle: software VSI handle
  *
@@ -3360,7 +3360,7 @@ ice_cfg_vsi_bw_lmt_per_tc(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
 }
 
 /**
- * ice_cfg_dflt_vsi_bw_lmt_per_tc - configure default VSI BW limit per TC
+ * ice_cfg_vsi_bw_dflt_lmt_per_tc - configure default VSI BW limit per TC
  * @pi: port information structure
  * @vsi_handle: software VSI handle
  * @tc: traffic class
@@ -3515,7 +3515,7 @@ ice_cfg_agg_bw_no_shared_lmt(struct ice_port_info *pi, u32 agg_id)
 }
 
 /**
- * ice_cfg_agg_bw_shared_lmt_per_tc - configure aggregator BW shared limit per tc
+ * ice_cfg_agg_bw_shared_lmt_per_tc - config aggregator BW shared limit per tc
  * @pi: port information structure
  * @agg_id: aggregator ID
  * @tc: traffic class
@@ -3535,7 +3535,7 @@ ice_cfg_agg_bw_shared_lmt_per_tc(struct ice_port_info *pi, u32 agg_id, u8 tc,
 }
 
 /**
- * ice_cfg_agg_bw_shared_lmt_per_tc - configure aggregator BW shared limit per tc
+ * ice_cfg_agg_bw_no_shared_lmt_per_tc - cfg aggregator BW shared limit per tc
  * @pi: port information structure
  * @agg_id: aggregator ID
  * @tc: traffic class
@@ -3553,7 +3553,7 @@ ice_cfg_agg_bw_no_shared_lmt_per_tc(struct ice_port_info *pi, u32 agg_id, u8 tc)
 }
 
 /**
- * ice_config_vsi_queue_priority - config VSI queue priority of node
+ * ice_cfg_vsi_q_priority - config VSI queue priority of node
  * @pi: port information structure
  * @num_qs: number of VSI queues
  * @q_ids: queue IDs array
@@ -3649,7 +3649,6 @@ ice_cfg_agg_vsi_priority_per_tc(struct ice_port_info *pi, u32 agg_id,
 		LIST_FOR_EACH_ENTRY(agg_vsi_info, &agg_info->agg_vsi_list,
 				    ice_sched_agg_vsi_info, list_entry)
 			if (agg_vsi_info->vsi_handle == vsi_handle) {
-				/* cppcheck-suppress unreadVariable */
 				vsi_handle_valid = true;
 				break;
 			}

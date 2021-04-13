@@ -2,11 +2,10 @@
  * Copyright(c) 2001-2021 Intel Corporation
  */
 
-#include "ice_vlan_mode.h"
 #include "ice_common.h"
 
 /**
- * ice_pkg_supports_dvm - determine if DDP supports Double VLAN mode (DVM)
+ * ice_pkg_get_supported_vlan_mode - chk if DDP supports Double VLAN mode (DVM)
  * @hw: pointer to the HW struct
  * @dvm: output variable to determine if DDP supports DVM(true) or SVM(false)
  */

@@ -6,7 +6,6 @@
 #define _ICE_VLAN_MODE_H_
 
 #include "ice_osdep.h"
-#include "ice_status.h"
 
 struct ice_hw;
 

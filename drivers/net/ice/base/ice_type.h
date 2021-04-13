@@ -44,9 +44,7 @@
 #define ice_struct_size(ptr, field, num) \
 	(sizeof(*(ptr)) + sizeof(*(ptr)->field) * (num))
 
-#ifndef FLEX_ARRAY_SIZE
 #define FLEX_ARRAY_SIZE(_ptr, _mem, cnt) ((cnt) * sizeof(_ptr->_mem[0]))
-#endif /* FLEX_ARRAY_SIZE */
 
 #include "ice_status.h"
 #include "ice_hw_autogen.h"

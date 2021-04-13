@@ -2298,7 +2298,7 @@ ice_alloc_global_lut_exit:
 }
 
 /**
- * ice_free_global_lut - free a RSS global LUT
+ * ice_free_rss_global_lut - free a RSS global LUT
  * @hw: pointer to the HW struct
  * @global_lut_id: ID of the RSS global LUT to free
  */
@@ -3174,7 +3174,6 @@ ice_aq_get_recipe(struct ice_hw *hw,
 	buf_size = *num_recipes * sizeof(*s_recipe_list);
 
 	status = ice_aq_send_cmd(hw, &desc, s_recipe_list, buf_size, cd);
-	/* cppcheck-suppress constArgument */
 	*num_recipes = LE16_TO_CPU(cmd->num_sub_recipes);
 
 	return status;
@@ -4979,7 +4978,7 @@ enum ice_status ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 }
 
 /**
- * ice_add_mac_vlan - Add MAC and VLAN pair based filter rule
+ * ice_add_mac_vlan_rule - Add MAC and VLAN pair based filter rule
  * @hw: pointer to the hardware structure
  * @mv_list: list of MAC and VLAN filters
  * @sw: pointer to switch info struct for which function add rule
@@ -5671,7 +5670,7 @@ ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
 }
 
 /**
- * ice_get_vsi_vlan_promisc - get VLAN promiscuous mode of given VSI
+ * _ice_get_vsi_vlan_promisc - get VLAN promiscuous mode of given VSI
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle to retrieve info from
  * @promisc_mask: pointer to mask to be filled in
@@ -6664,7 +6663,7 @@ static bool ice_prot_type_to_id(enum ice_protocol_type type, u8 *id)
 }
 
 /**
- * ice_find_valid_words - count valid words
+ * ice_fill_valid_words - count valid words
  * @rule: advanced rule with lookup information
  * @lkup_exts: byte offset extractions of the words that are valid
  *
@@ -7263,7 +7262,7 @@ free_mem:
 }
 
 /**
- * ice_tun_type_match_mask - determine if tun type needs a match mask
+ * ice_tun_type_match_word - determine if tun type needs a match mask
  * @tun_type: tunnel type
  * @mask: mask to be used for the tunnel
  */
@@ -8860,7 +8859,7 @@ ice_rem_adv_rule_by_id(struct ice_hw *hw,
 }
 
 /**
- * ice_rem_adv_for_vsi - removes existing advanced switch rules for a
+ * ice_rem_adv_rule_for_vsi - removes existing advanced switch rules for a
  *                       given VSI handle
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle for which we are supposed to remove all the rules.
@@ -9142,7 +9141,7 @@ ice_replay_vsi_all_fltr(struct ice_hw *hw, struct ice_port_info *pi,
 }
 
 /**
- * ice_rm_all_sw_replay_rule - helper function to delete filter replay rules
+ * ice_rm_sw_replay_rule_info - helper function to delete filter replay rules
  * @hw: pointer to the HW struct
  * @sw: pointer to switch info struct for which function removes filters
  *

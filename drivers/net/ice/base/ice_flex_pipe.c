@@ -357,7 +357,6 @@ ice_marker_ptype_tcam_handler(u32 sect_type, void *section, u32 index,
 	if (sect_type != ICE_SID_RXPARSER_MARKER_PTYPE)
 		return NULL;
 
-	/* cppcheck-suppress nullPointer */
 	if (index > ICE_MAX_MARKER_PTYPE_TCAMS_IN_BUF)
 		return NULL;
 
