@@ -185,6 +185,8 @@ enum ice_flow_seg_hdr {
 	ICE_FLOW_SEG_HDR_VXLAN		= 0x02000000,
 	ICE_FLOW_SEG_HDR_ECPRI_TP0	= 0x04000000,
 	ICE_FLOW_SEG_HDR_UDP_ECPRI_TP0	= 0x08000000,
+	ICE_FLOW_SEG_HDR_L2TPV2		= 0x10000000,
+	ICE_FLOW_SEG_HDR_PPP		= 0x40000000,
 	/* The following is an additive bit for ICE_FLOW_SEG_HDR_IPV4 and
 	 * ICE_FLOW_SEG_HDR_IPV6 which include the IPV4 other PTYPEs
 	 */
