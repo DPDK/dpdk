@@ -230,7 +230,7 @@ enum hns3_opcode_type {
 	/* SFP command */
 	HNS3_OPC_GET_SFP_EEPROM         = 0x7100,
 	HNS3_OPC_GET_SFP_EXIST          = 0x7101,
-	HNS3_OPC_SFP_GET_SPEED          = 0x7104,
+	HNS3_OPC_GET_SFP_INFO           = 0x7104,
 
 	/* Interrupts commands */
 	HNS3_OPC_ADD_RING_TO_VECTOR     = 0x1503,
@@ -767,13 +767,6 @@ struct hns3_config_auto_neg_cmd {
 	uint8_t   rsv[20];
 };
 
-#define HNS3_MAC_CFG_FEC_AUTO_EN_B	0
-#define HNS3_MAC_CFG_FEC_MODE_S		1
-#define HNS3_MAC_CFG_FEC_MODE_M	GENMASK(3, 1)
-#define HNS3_MAC_FEC_OFF		0
-#define HNS3_MAC_FEC_BASER		1
-#define HNS3_MAC_FEC_RS			2
-
 #define HNS3_SFP_INFO_BD0_LEN  20UL
 #define HNS3_SFP_INFO_BDX_LEN  24UL
 
@@ -788,13 +781,33 @@ struct hns3_sfp_type {
 	uint8_t ext_type;
 };
 
-struct hns3_sfp_speed_cmd {
-	uint32_t  sfp_speed;
-	uint8_t   query_type; /* 0: sfp speed, 1: active fec */
-	uint8_t   active_fec; /* current FEC mode */
-	uint16_t  rsv1;
-	uint32_t  rsv2[4];
+/* Bitmap flags in supported_speed */
+#define HNS3_FIBER_LINK_SPEED_1G_BIT		BIT(0)
+#define HNS3_FIBER_LINK_SPEED_10G_BIT		BIT(1)
+#define HNS3_FIBER_LINK_SPEED_25G_BIT		BIT(2)
+#define HNS3_FIBER_LINK_SPEED_50G_BIT		BIT(3)
+#define HNS3_FIBER_LINK_SPEED_100G_BIT		BIT(4)
+#define HNS3_FIBER_LINK_SPEED_40G_BIT		BIT(5)
+#define HNS3_FIBER_LINK_SPEED_100M_BIT		BIT(6)
+#define HNS3_FIBER_LINK_SPEED_10M_BIT		BIT(7)
+#define HNS3_FIBER_LINK_SPEED_200G_BIT		BIT(8)
+
+struct hns3_sfp_info_cmd {
+	uint32_t sfp_speed;
+	uint8_t query_type; /* 0: sfp speed, 1: active */
+	uint8_t active_fec; /* current FEC mode */
+	uint16_t rsv;
+	uint32_t supported_speed; /* speed supported by current media */
+	uint32_t module_type;
+	uint8_t rsv1[8];
 };
+
+#define HNS3_MAC_CFG_FEC_AUTO_EN_B	0
+#define HNS3_MAC_CFG_FEC_MODE_S		1
+#define HNS3_MAC_CFG_FEC_MODE_M	GENMASK(3, 1)
+#define HNS3_MAC_FEC_OFF		0
+#define HNS3_MAC_FEC_BASER		1
+#define HNS3_MAC_FEC_RS			2
 
 /* Configure FEC mode, opcode:0x031A */
 struct hns3_config_fec_cmd {

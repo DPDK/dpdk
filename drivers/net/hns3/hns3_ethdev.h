@@ -174,6 +174,9 @@ enum hns3_media_type {
 	HNS3_MEDIA_TYPE_NONE,
 };
 
+#define HNS3_DEFAULT_QUERY		0
+#define HNS3_ACTIVE_QUERY		1
+
 struct hns3_mac {
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	bool default_addr_setted; /* whether default addr(mac_addr) is set */
@@ -183,10 +186,29 @@ struct hns3_mac {
 	uint8_t link_autoneg : 1; /* ETH_LINK_[AUTONEG/FIXED] */
 	uint8_t link_status  : 1; /* ETH_LINK_[DOWN/UP] */
 	uint32_t link_speed;      /* ETH_SPEED_NUM_ */
+	/*
+	 * Some firmware versions support only the SFP speed query. In addition
+	 * to the SFP speed query, some firmware supports the query of the speed
+	 * capability, auto-negotiation capability, and FEC mode, which can be
+	 * selected by the 'query_type' filed in the HNS3_OPC_GET_SFP_INFO CMD.
+	 * This field is used to record the SFP information query mode.
+	 * Value range:
+	 *       HNS3_DEFAULT_QUERY/HNS3_ACTIVE_QUERY
+	 *
+	 * - HNS3_DEFAULT_QUERY
+	 * Speed obtained is from SFP. When the queried speed changes, the MAC
+	 * speed needs to be reconfigured.
+	 *
+	 * - HNS3_ACTIVE_QUERY
+	 * Speed obtained is from MAC. At this time, it is unnecessary for
+	 * driver to reconfigured the MAC speed. In addition, more information,
+	 * such as, the speed capability, auto-negotiation capability and FEC
+	 * mode, can be obtained by the HNS3_OPC_GET_SFP_INFO CMD.
+	 */
+	uint8_t query_type;
 	uint32_t supported_speed;  /* supported speed for current media type */
 	uint32_t advertising;     /* advertised capability in the local part */
-	/* advertised capability in the link partner */
-	uint32_t lp_advertising;
+	uint32_t lp_advertising; /* advertised capability in the link partner */
 	uint8_t support_autoneg;
 };
 
