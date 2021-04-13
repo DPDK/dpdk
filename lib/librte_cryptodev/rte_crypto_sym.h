@@ -204,6 +204,14 @@ struct rte_crypto_cipher_xform {
 	} key;
 	/**< Cipher key
 	 *
+	 * In case the PMD supports RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY, the
+	 * original key data provided may be wrapped(encrypted) using key wrap
+	 * algorithm such as AES key wrap (rfc3394) and hence length of the key
+	 * may increase beyond the PMD advertised supported key size.
+	 * PMD shall validate the key length and report EMSGSIZE error while
+	 * configuring the session and application can skip checking the
+	 * capability key length in such cases.
+	 *
 	 * For the RTE_CRYPTO_CIPHER_AES_F8 mode of operation, key.data will
 	 * point to a concatenation of the AES encryption key followed by a
 	 * keymask. As per RFC3711, the keymask should be padded with trailing

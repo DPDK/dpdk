@@ -619,6 +619,8 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "NON_BYTE_ALIGNED_DATA";
 	case RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS:
 		return "CIPHER_MULTIPLE_DATA_UNITS";
+	case RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY:
+		return "CIPHER_WRAPPED_KEY";
 	default:
 		return NULL;
 	}

@@ -156,6 +156,11 @@ New Features
   data-units for AES-XTS algorithm, the data-unit length should be set in the
   transformation. A capability for it was added too.
 
+* **Added a cryptodev feature flag to support cipher wrapped keys.**
+
+  A new feature flag has been added to allow application to provide
+  cipher wrapped keys in session xforms.
+
 * **Updated the OCTEON TX crypto PMD.**
 
   * Added support for DIGEST_ENCRYPTED mode in OCTEON TX crypto PMD.

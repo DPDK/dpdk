@@ -477,6 +477,8 @@ rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 /**< Support accelerator specific symmetric raw data-path APIs */
 #define RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS	(1ULL << 25)
 /**< Support operations on multiple data-units message */
+#define RTE_CRYPTODEV_FF_CIPHER_WRAPPED_KEY		(1ULL << 26)
+/**< Support wrapped key in cipher xform  */
 
 /**
  * Get the name of a crypto device feature flag
