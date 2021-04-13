@@ -81,6 +81,12 @@ New Features
       representor=[[c#]pf#]sf# sf[0,2-1023] /* 1023 SFs.                     */
       representor=[c#]pf#      c2pf[0,1]    /* 2 PFs on controller 2.        */
 
+* **Added support for meter PPS profile.**
+
+  Added packet mode in the meter profile parameters data structures
+  to support metering traffic by packet per second (PPS),
+  in addition to the initial bytes per second (BPS) mode (value 0).
+
 * **Updated Arkville PMD driver.**
 
   Updated Arkville net driver with new features and improvements, including:

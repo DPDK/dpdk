@@ -132,46 +132,71 @@ struct rte_mtr_meter_profile {
 	union {
 		/** Items only valid when *alg* is set to srTCM - RFC 2697. */
 		struct {
-			/** Committed Information Rate (CIR) (bytes/second). */
+			/**
+			 * Committed Information Rate (CIR)
+			 * (bytes per second or packets per second).
+			 */
 			uint64_t cir;
 
-			/** Committed Burst Size (CBS) (bytes). */
+			/** Committed Burst Size (CBS) (bytes or packets). */
 			uint64_t cbs;
 
-			/** Excess Burst Size (EBS) (bytes). */
+			/** Excess Burst Size (EBS) (bytes or packets). */
 			uint64_t ebs;
 		} srtcm_rfc2697;
 
 		/** Items only valid when *alg* is set to trTCM - RFC 2698. */
 		struct {
-			/** Committed Information Rate (CIR) (bytes/second). */
+			/**
+			 * Committed Information Rate (CIR)
+			 * (bytes per second or packets per second).
+			 */
 			uint64_t cir;
 
-			/** Peak Information Rate (PIR) (bytes/second). */
+			/**
+			 * Peak Information Rate (PIR)
+			 * (bytes per second or packets per second).
+			 */
 			uint64_t pir;
 
-			/** Committed Burst Size (CBS) (byes). */
+			/** Committed Burst Size (CBS) (bytes or packets). */
 			uint64_t cbs;
 
-			/** Peak Burst Size (PBS) (bytes). */
+			/** Peak Burst Size (PBS) (bytes or packets). */
 			uint64_t pbs;
 		} trtcm_rfc2698;
 
 		/** Items only valid when *alg* is set to trTCM - RFC 4115. */
 		struct {
-			/** Committed Information Rate (CIR) (bytes/second). */
+			/**
+			 * Committed Information Rate (CIR)
+			 * (bytes per second or packets per second).
+			 */
 			uint64_t cir;
 
-			/** Excess Information Rate (EIR) (bytes/second). */
+			/**
+			 * Excess Information Rate (EIR)
+			 * (bytes per second or packets per second).
+			 */
 			uint64_t eir;
 
-			/** Committed Burst Size (CBS) (byes). */
+			/** Committed Burst Size (CBS) (bytes or packets). */
 			uint64_t cbs;
 
-			/** Excess Burst Size (EBS) (bytes). */
+			/** Excess Burst Size (EBS) (bytes or packets). */
 			uint64_t ebs;
 		} trtcm_rfc4115;
 	};
+
+	/**
+	 * When zero, the byte mode is enabled for the current profile, so the
+	 * *rate* and *size* fields are specified in bytes per second
+	 * and bytes, respectively.
+	 * When non-zero, the packet mode is enabled for the current profile,
+	 * so the *rate* and *size* fields are specified in packets per second
+	 * and packets, respectively.
+	 */
+	int packet_mode;
 };
 
 /**
@@ -354,6 +379,48 @@ struct rte_mtr_capabilities {
 	 */
 	int policer_action_drop_supported;
 
+	/**
+	 * srTCM rfc2697 byte mode supported.
+	 * When non-zero, it indicates that byte mode is supported for
+	 * the srTCM RFC 2697 metering algorithm.
+	 */
+	int srtcm_rfc2697_byte_mode_supported;
+
+	/**
+	 * srTCM rfc2697 packet mode supported.
+	 * When non-zero, it indicates that packet mode is supported for
+	 * the srTCM RFC 2697 metering algorithm.
+	 */
+	int srtcm_rfc2697_packet_mode_supported;
+
+	/**
+	 * trTCM rfc2698 byte mode supported.
+	 * When non-zero, it indicates that byte mode is supported for
+	 * the trTCM RFC 2698 metering algorithm.
+	 */
+	int trtcm_rfc2698_byte_mode_supported;
+
+	/**
+	 * trTCM rfc2698 packet mode supported.
+	 * When non-zero, it indicates that packet mode is supported for
+	 * the trTCM RFC 2698 metering algorithm.
+	 */
+	int trtcm_rfc2698_packet_mode_supported;
+
+	/**
+	 * trTCM rfc4115 byte mode supported.
+	 * When non-zero, it indicates that byte mode is supported for
+	 * the trTCM RFC 4115 metering algorithm.
+	 */
+	int trtcm_rfc4115_byte_mode_supported;
+
+	/**
+	 * trTCM rfc4115 packet mode supported.
+	 * When non-zero, it indicates that packet mode is supported for
+	 * the trTCM RFC 4115 metering algorithm.
+	 */
+	int trtcm_rfc4115_packet_mode_supported;
+
 	/** Set of supported statistics counter types.
 	 * @see enum rte_mtr_stats_type
 	 */
@@ -371,6 +438,7 @@ enum rte_mtr_error_type {
 	RTE_MTR_ERROR_TYPE_UNSPECIFIED, /**< Cause unspecified. */
 	RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
 	RTE_MTR_ERROR_TYPE_METER_PROFILE,
+	RTE_MTR_ERROR_TYPE_METER_PROFILE_PACKET_MODE,
 	RTE_MTR_ERROR_TYPE_MTR_ID,
 	RTE_MTR_ERROR_TYPE_MTR_PARAMS,
 	RTE_MTR_ERROR_TYPE_POLICER_ACTION_GREEN,
