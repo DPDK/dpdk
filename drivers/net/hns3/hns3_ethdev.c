@@ -2617,6 +2617,67 @@ hns3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+static uint32_t
+hns3_get_copper_port_speed_capa(uint32_t supported_speed)
+{
+	uint32_t speed_capa = 0;
+
+	if (supported_speed & HNS3_PHY_LINK_SPEED_10M_HD_BIT)
+		speed_capa |= ETH_LINK_SPEED_10M_HD;
+	if (supported_speed & HNS3_PHY_LINK_SPEED_10M_BIT)
+		speed_capa |= ETH_LINK_SPEED_10M;
+	if (supported_speed & HNS3_PHY_LINK_SPEED_100M_HD_BIT)
+		speed_capa |= ETH_LINK_SPEED_100M_HD;
+	if (supported_speed & HNS3_PHY_LINK_SPEED_100M_BIT)
+		speed_capa |= ETH_LINK_SPEED_100M;
+	if (supported_speed & HNS3_PHY_LINK_SPEED_1000M_BIT)
+		speed_capa |= ETH_LINK_SPEED_1G;
+
+	return speed_capa;
+}
+
+static uint32_t
+hns3_get_firber_port_speed_capa(uint32_t supported_speed)
+{
+	uint32_t speed_capa = 0;
+
+	if (supported_speed & HNS3_FIBER_LINK_SPEED_1G_BIT)
+		speed_capa |= ETH_LINK_SPEED_1G;
+	if (supported_speed & HNS3_FIBER_LINK_SPEED_10G_BIT)
+		speed_capa |= ETH_LINK_SPEED_10G;
+	if (supported_speed & HNS3_FIBER_LINK_SPEED_25G_BIT)
+		speed_capa |= ETH_LINK_SPEED_25G;
+	if (supported_speed & HNS3_FIBER_LINK_SPEED_40G_BIT)
+		speed_capa |= ETH_LINK_SPEED_40G;
+	if (supported_speed & HNS3_FIBER_LINK_SPEED_50G_BIT)
+		speed_capa |= ETH_LINK_SPEED_50G;
+	if (supported_speed & HNS3_FIBER_LINK_SPEED_100G_BIT)
+		speed_capa |= ETH_LINK_SPEED_100G;
+	if (supported_speed & HNS3_FIBER_LINK_SPEED_200G_BIT)
+		speed_capa |= ETH_LINK_SPEED_200G;
+
+	return speed_capa;
+}
+
+static uint32_t
+hns3_get_speed_capa(struct hns3_hw *hw)
+{
+	struct hns3_mac *mac = &hw->mac;
+	uint32_t speed_capa;
+
+	if (mac->media_type == HNS3_MEDIA_TYPE_COPPER)
+		speed_capa =
+			hns3_get_copper_port_speed_capa(mac->supported_speed);
+	else
+		speed_capa =
+			hns3_get_firber_port_speed_capa(mac->supported_speed);
+
+	if (mac->support_autoneg == 0)
+		speed_capa |= ETH_LINK_SPEED_FIXED;
+
+	return speed_capa;
+}
+
 int
 hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 {
@@ -2688,6 +2749,7 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 		.nb_mtu_seg_max = hw->max_non_tso_bd_num,
 	};
 
+	info->speed_capa = hns3_get_speed_capa(hw);
 	info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = HNS3_DEFAULT_RX_FREE_THRESH,
 		/*
@@ -4957,6 +5019,71 @@ hns3_config_all_msix_error(struct hns3_hw *hw, bool enable)
 	hns3_write_dev(hw, HNS3_VECTOR0_OTER_EN_REG, val);
 }
 
+static uint32_t
+hns3_set_firber_default_support_speed(struct hns3_hw *hw)
+{
+	struct hns3_mac *mac = &hw->mac;
+
+	switch (mac->link_speed) {
+	case ETH_SPEED_NUM_1G:
+		return HNS3_FIBER_LINK_SPEED_1G_BIT;
+	case ETH_SPEED_NUM_10G:
+		return HNS3_FIBER_LINK_SPEED_10G_BIT;
+	case ETH_SPEED_NUM_25G:
+		return HNS3_FIBER_LINK_SPEED_25G_BIT;
+	case ETH_SPEED_NUM_40G:
+		return HNS3_FIBER_LINK_SPEED_40G_BIT;
+	case ETH_SPEED_NUM_50G:
+		return HNS3_FIBER_LINK_SPEED_50G_BIT;
+	case ETH_SPEED_NUM_100G:
+		return HNS3_FIBER_LINK_SPEED_100G_BIT;
+	case ETH_SPEED_NUM_200G:
+		return HNS3_FIBER_LINK_SPEED_200G_BIT;
+	default:
+		hns3_warn(hw, "invalid speed %u Mbps.", mac->link_speed);
+		return 0;
+	}
+}
+
+/*
+ * Validity of supported_speed for firber and copper media type can be
+ * guaranteed by the following policy:
+ * Copper:
+ *       Although the initialization of the phy in the firmware may not be
+ *       completed, the firmware can guarantees that the supported_speed is
+ *       an valid value.
+ * Firber:
+ *       If the version of firmware supports the acitive query way of the
+ *       HNS3_OPC_GET_SFP_INFO opcode, the supported_speed can be obtained
+ *       through it. If unsupported, use the SFP's speed as the value of the
+ *       supported_speed.
+ */
+static int
+hns3_get_port_supported_speed(struct rte_eth_dev *eth_dev)
+{
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_mac *mac = &hw->mac;
+	int ret;
+
+	ret = hns3_update_link_info(eth_dev);
+	if (ret)
+		return ret;
+
+	if (mac->media_type == HNS3_MEDIA_TYPE_FIBER) {
+		/*
+		 * Some firmware does not support the report of supported_speed,
+		 * and only report the effective speed of SFP. In this case, it
+		 * is necessary to use the SFP's speed as the supported_speed.
+		 */
+		if (mac->supported_speed == 0)
+			mac->supported_speed =
+				hns3_set_firber_default_support_speed(hw);
+	}
+
+	return 0;
+}
+
 static int
 hns3_init_pf(struct rte_eth_dev *eth_dev)
 {
@@ -5057,10 +5184,19 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_enable_intr;
 	}
 
+	ret = hns3_get_port_supported_speed(eth_dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to get speed capabilities supported "
+			     "by device, ret = %d.", ret);
+		goto err_supported_speed;
+	}
+
 	hns3_tm_conf_init(eth_dev);
 
 	return 0;
 
+err_supported_speed:
+	(void)hns3_enable_hw_error_intr(hns, false);
 err_enable_intr:
 	hns3_fdir_filter_uninit(hns);
 err_fdir:
