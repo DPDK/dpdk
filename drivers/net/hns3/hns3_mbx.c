@@ -173,55 +173,42 @@ hns3_cmd_crq_empty(struct hns3_hw *hw)
 }
 
 static void
-hns3_mbx_handler(struct hns3_hw *hw)
+hns3vf_handle_link_change_event(struct hns3_hw *hw,
+				struct hns3_mbx_pf_to_vf_cmd *req)
 {
-	enum hns3_reset_level reset_level;
 	uint8_t link_status, link_duplex;
+	uint16_t *msg_q = req->msg;
 	uint8_t support_push_lsc;
 	uint32_t link_speed;
-	uint16_t *msg_q;
-	uint8_t opcode;
-	uint32_t tail;
 
-	tail = hw->arq.tail;
+	memcpy(&link_speed, &msg_q[2], sizeof(link_speed));
+	link_status = rte_le_to_cpu_16(msg_q[1]);
+	link_duplex = (uint8_t)rte_le_to_cpu_16(msg_q[4]);
+	hns3vf_update_link_status(hw, link_status, link_speed,
+				  link_duplex);
+	support_push_lsc = (*(uint8_t *)&msg_q[5]) & 1u;
+	hns3vf_update_push_lsc_cap(hw, support_push_lsc);
+}
 
-	/* process all the async queue messages */
-	while (tail != hw->arq.head) {
-		msg_q = hw->arq.msg_q[hw->arq.head];
+static void
+hns3_handle_asserting_reset(struct hns3_hw *hw,
+			    struct hns3_mbx_pf_to_vf_cmd *req)
+{
+	enum hns3_reset_level reset_level;
+	uint16_t *msg_q = req->msg;
 
-		opcode = msg_q[0] & 0xff;
-		switch (opcode) {
-		case HNS3_MBX_LINK_STAT_CHANGE:
-			memcpy(&link_speed, &msg_q[2], sizeof(link_speed));
-			link_status = rte_le_to_cpu_16(msg_q[1]);
-			link_duplex = (uint8_t)rte_le_to_cpu_16(msg_q[4]);
-			hns3vf_update_link_status(hw, link_status, link_speed,
-						  link_duplex);
-			support_push_lsc = (*(uint8_t *)&msg_q[5]) & 1u;
-			hns3vf_update_push_lsc_cap(hw, support_push_lsc);
-			break;
-		case HNS3_MBX_ASSERTING_RESET:
-			/* PF has asserted reset hence VF should go in pending
-			 * state and poll for the hardware reset status till it
-			 * has been completely reset. After this stack should
-			 * eventually be re-initialized.
-			 */
-			reset_level = rte_le_to_cpu_16(msg_q[1]);
-			hns3_atomic_set_bit(reset_level, &hw->reset.pending);
+	/*
+	 * PF has asserted reset hence VF should go in pending
+	 * state and poll for the hardware reset status till it
+	 * has been completely reset. After this stack should
+	 * eventually be re-initialized.
+	 */
+	reset_level = rte_le_to_cpu_16(msg_q[1]);
+	hns3_atomic_set_bit(reset_level, &hw->reset.pending);
 
-			hns3_warn(hw, "PF inform reset level %d", reset_level);
-			hw->reset.stats.request_cnt++;
-			hns3_schedule_reset(HNS3_DEV_HW_TO_ADAPTER(hw));
-			break;
-		default:
-			hns3_err(hw, "Fetched unsupported(%u) message from arq",
-				 opcode);
-			break;
-		}
-
-		hns3_mbx_head_ptr_move_arq(hw->arq);
-		msg_q = hw->arq.msg_q[hw->arq.head];
-	}
+	hns3_warn(hw, "PF inform reset level %d", reset_level);
+	hw->reset.stats.request_cnt++;
+	hns3_schedule_reset(HNS3_DEV_HW_TO_ADAPTER(hw));
 }
 
 /*
@@ -278,7 +265,7 @@ hns3_link_fail_parse(struct hns3_hw *hw, uint8_t link_fail_code)
 }
 
 static void
-hns3_handle_link_change_event(struct hns3_hw *hw,
+hns3pf_handle_link_change_event(struct hns3_hw *hw,
 			      struct hns3_mbx_pf_to_vf_cmd *req)
 {
 #define LINK_STATUS_OFFSET     1
@@ -337,7 +324,6 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 	struct hns3_mbx_pf_to_vf_cmd *req;
 	struct hns3_cmd_desc *desc;
 	uint32_t msg_data;
-	uint16_t *msg_q;
 	uint8_t opcode;
 	uint16_t flag;
 	uint8_t *temp;
@@ -380,16 +366,13 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			hns3_update_resp_position(hw, msg_data);
 			break;
 		case HNS3_MBX_LINK_STAT_CHANGE:
+			hns3vf_handle_link_change_event(hw, req);
+			break;
 		case HNS3_MBX_ASSERTING_RESET:
-			msg_q = hw->arq.msg_q[hw->arq.tail];
-			memcpy(&msg_q[0], req->msg,
-			       HNS3_MBX_MAX_ARQ_MSG_SIZE * sizeof(uint16_t));
-			hns3_mbx_tail_ptr_move_arq(hw->arq);
-
-			hns3_mbx_handler(hw);
+			hns3_handle_asserting_reset(hw, req);
 			break;
 		case HNS3_MBX_PUSH_LINK_STATUS:
-			hns3_handle_link_change_event(hw, req);
+			hns3pf_handle_link_change_event(hw, req);
 			break;
 		case HNS3_MBX_PUSH_VLAN_INFO:
 			/*

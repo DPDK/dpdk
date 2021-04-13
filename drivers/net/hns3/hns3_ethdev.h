@@ -438,7 +438,6 @@ struct hns3_hw {
 	uint8_t revision;           /* PCI revision, low byte of class word */
 	struct hns3_cmq cmq;
 	struct hns3_mbx_resp_status mbx_resp; /* mailbox response */
-	struct hns3_mbx_arq_ring arq;         /* mailbox async rx queue */
 	struct hns3_mac mac;
 	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
 	struct hns3_tqp_stats tqp_stats;

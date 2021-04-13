@@ -144,22 +144,8 @@ struct hns3_pf_rst_done_cmd {
 
 #define HNS3_PF_RESET_DONE_BIT		BIT(0)
 
-/* used by VF to store the received Async responses from PF */
-struct hns3_mbx_arq_ring {
-#define HNS3_MBX_MAX_ARQ_MSG_SIZE	8
-#define HNS3_MBX_MAX_ARQ_MSG_NUM	1024
-	uint32_t head;
-	uint32_t tail;
-	uint32_t count;
-	uint16_t msg_q[HNS3_MBX_MAX_ARQ_MSG_NUM][HNS3_MBX_MAX_ARQ_MSG_SIZE];
-};
-
 #define hns3_mbx_ring_ptr_move_crq(crq) \
 	((crq)->next_to_use = ((crq)->next_to_use + 1) % (crq)->desc_num)
-#define hns3_mbx_tail_ptr_move_arq(arq) \
-	((arq).tail = ((arq).tail + 1) % HNS3_MBX_MAX_ARQ_MSG_SIZE)
-#define hns3_mbx_head_ptr_move_arq(arq) \
-		((arq).head = ((arq).head + 1) % HNS3_MBX_MAX_ARQ_MSG_SIZE)
 
 struct hns3_hw;
 void hns3_dev_handle_mbx_msg(struct hns3_hw *hw);
