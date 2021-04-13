@@ -47,8 +47,10 @@
 				 ETH_RSS_NONFRAG_IPV6_TCP	| \
 				 ETH_RSS_NONFRAG_IPV6_SCTP)
 
-#define VALID_RSS_IPV4		(ETH_RSS_IPV4 | VALID_RSS_IPV4_L4)
-#define VALID_RSS_IPV6		(ETH_RSS_IPV6 | VALID_RSS_IPV6_L4)
+#define VALID_RSS_IPV4		(ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 | \
+				 VALID_RSS_IPV4_L4)
+#define VALID_RSS_IPV6		(ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 | \
+				 VALID_RSS_IPV6_L4)
 #define VALID_RSS_L3		(VALID_RSS_IPV4 | VALID_RSS_IPV6)
 #define VALID_RSS_L4		(VALID_RSS_IPV4_L4 | VALID_RSS_IPV6_L4)
 
@@ -109,6 +111,7 @@ ice_hash_parse_pattern_action(struct ice_adapter *ad,
 /* Rss configuration template */
 struct ice_rss_hash_cfg ipv4_tmplt = {
 	ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_FRAG |
 	ICE_FLOW_SEG_HDR_IPV_OTHER,
 	ICE_FLOW_HASH_ETH | ICE_FLOW_HASH_IPV4,
 	ICE_RSS_OUTER_HEADERS,
@@ -144,6 +147,15 @@ struct ice_rss_hash_cfg ipv6_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV_OTHER,
 	ICE_FLOW_HASH_ETH | ICE_FLOW_HASH_IPV6,
 	ICE_RSS_OUTER_HEADERS,
+	0
+};
+
+struct ice_rss_hash_cfg ipv6_frag_tmplt = {
+	ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_FRAG |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ICE_FLOW_HASH_ETH | ICE_FLOW_HASH_IPV6,
+	ICE_RSS_ANY_HEADERS,
 	0
 };
 
@@ -199,6 +211,7 @@ struct ice_rss_hash_cfg outer_ipv6_inner_ipv4_tmplt = {
 	ICE_RSS_INNER_HEADERS_W_OUTER_IPV6,
 	0
 };
+
 struct ice_rss_hash_cfg outer_ipv6_inner_ipv4_udp_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
 	ICE_FLOW_SEG_HDR_UDP,
@@ -221,6 +234,7 @@ struct ice_rss_hash_cfg outer_ipv4_inner_ipv6_tmplt = {
 	ICE_RSS_INNER_HEADERS_W_OUTER_IPV4,
 	0
 };
+
 struct ice_rss_hash_cfg outer_ipv4_inner_ipv6_udp_tmplt = {
 	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
 	ICE_FLOW_SEG_HDR_UDP,
@@ -354,7 +368,8 @@ struct ice_rss_hash_cfg empty_tmplt = {
 };
 
 /* IPv4 */
-#define ICE_RSS_TYPE_ETH_IPV4		(ETH_RSS_ETH | ETH_RSS_IPV4)
+#define ICE_RSS_TYPE_ETH_IPV4		(ETH_RSS_ETH | ETH_RSS_IPV4 | \
+					 ETH_RSS_FRAG_IPV4)
 #define ICE_RSS_TYPE_ETH_IPV4_UDP	(ICE_RSS_TYPE_ETH_IPV4 | \
 					 ETH_RSS_NONFRAG_IPV4_UDP)
 #define ICE_RSS_TYPE_ETH_IPV4_TCP	(ICE_RSS_TYPE_ETH_IPV4 | \
@@ -371,6 +386,8 @@ struct ice_rss_hash_cfg empty_tmplt = {
 
 /* IPv6 */
 #define ICE_RSS_TYPE_ETH_IPV6		(ETH_RSS_ETH | ETH_RSS_IPV6)
+#define ICE_RSS_TYPE_ETH_IPV6_FRAG	(ETH_RSS_ETH | ETH_RSS_IPV6 | \
+					 ETH_RSS_FRAG_IPV6)
 #define ICE_RSS_TYPE_ETH_IPV6_UDP	(ICE_RSS_TYPE_ETH_IPV6 | \
 					 ETH_RSS_NONFRAG_IPV6_UDP)
 #define ICE_RSS_TYPE_ETH_IPV6_TCP	(ICE_RSS_TYPE_ETH_IPV6 | \
@@ -387,7 +404,8 @@ struct ice_rss_hash_cfg empty_tmplt = {
 
 /* VLAN IPV4 */
 #define ICE_RSS_TYPE_VLAN_IPV4		(ICE_RSS_TYPE_IPV4 | \
-					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN | \
+					 ETH_RSS_FRAG_IPV4)
 #define ICE_RSS_TYPE_VLAN_IPV4_UDP	(ICE_RSS_TYPE_IPV4_UDP | \
 					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
 #define ICE_RSS_TYPE_VLAN_IPV4_TCP	(ICE_RSS_TYPE_IPV4_TCP | \
@@ -397,6 +415,9 @@ struct ice_rss_hash_cfg empty_tmplt = {
 /* VLAN IPv6 */
 #define ICE_RSS_TYPE_VLAN_IPV6		(ICE_RSS_TYPE_IPV6 | \
 					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
+#define ICE_RSS_TYPE_VLAN_IPV6_FRAG	(ICE_RSS_TYPE_IPV6 | \
+					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN | \
+					 ETH_RSS_FRAG_IPV6)
 #define ICE_RSS_TYPE_VLAN_IPV6_UDP	(ICE_RSS_TYPE_IPV6_UDP | \
 					 ETH_RSS_S_VLAN | ETH_RSS_C_VLAN)
 #define ICE_RSS_TYPE_VLAN_IPV6_TCP	(ICE_RSS_TYPE_IPV6_TCP | \
@@ -486,10 +507,12 @@ static struct ice_pattern_match_item ice_hash_pattern_list[] = {
 	{pattern_eth_ipv4_pfcp,			ICE_RSS_TYPE_IPV4_PFCP,		ICE_INSET_NONE,	&eth_ipv4_pfcp_tmplt},
 	/* IPV6 */
 	{pattern_eth_ipv6,			ICE_RSS_TYPE_ETH_IPV6,		ICE_INSET_NONE,	&ipv6_tmplt},
+	{pattern_eth_ipv6_frag_ext,		ICE_RSS_TYPE_ETH_IPV6_FRAG,	ICE_INSET_NONE,	&ipv6_frag_tmplt},
 	{pattern_eth_ipv6_udp,			ICE_RSS_TYPE_ETH_IPV6_UDP,	ICE_INSET_NONE,	&ipv6_udp_tmplt},
 	{pattern_eth_ipv6_tcp,			ICE_RSS_TYPE_ETH_IPV6_TCP,	ICE_INSET_NONE,	&ipv6_tcp_tmplt},
 	{pattern_eth_ipv6_sctp,			ICE_RSS_TYPE_ETH_IPV6_SCTP,	ICE_INSET_NONE,	&ipv6_sctp_tmplt},
 	{pattern_eth_vlan_ipv6,			ICE_RSS_TYPE_VLAN_IPV6,		ICE_INSET_NONE,	&ipv6_tmplt},
+	{pattern_eth_vlan_ipv6_frag_ext,	ICE_RSS_TYPE_VLAN_IPV6_FRAG,	ICE_INSET_NONE, &ipv6_frag_tmplt},
 	{pattern_eth_vlan_ipv6_udp,		ICE_RSS_TYPE_VLAN_IPV6_UDP,	ICE_INSET_NONE,	&ipv6_udp_tmplt},
 	{pattern_eth_vlan_ipv6_tcp,		ICE_RSS_TYPE_VLAN_IPV6_TCP,	ICE_INSET_NONE,	&ipv6_tcp_tmplt},
 	{pattern_eth_vlan_ipv6_sctp,		ICE_RSS_TYPE_VLAN_IPV6_SCTP,	ICE_INSET_NONE,	&ipv6_sctp_tmplt},
@@ -630,11 +653,14 @@ ice_refine_hash_cfg_l234(struct ice_rss_hash_cfg *hash_cfg,
 
 	if (*addl_hdrs & ICE_FLOW_SEG_HDR_IPV4) {
 		if (rss_type &
-		   (ETH_RSS_IPV4 |
+		   (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
 		    ETH_RSS_NONFRAG_IPV4_UDP |
 		    ETH_RSS_NONFRAG_IPV4_TCP |
 		    ETH_RSS_NONFRAG_IPV4_SCTP)) {
-			if (rss_type & ETH_RSS_L3_SRC_ONLY)
+			if (rss_type & ETH_RSS_FRAG_IPV4)
+				*hash_flds &=
+					~(BIT_ULL(ICE_FLOW_FIELD_IDX_IPV4_ID));
+			else if (rss_type & ETH_RSS_L3_SRC_ONLY)
 				*hash_flds &= ~(BIT_ULL(ICE_FLOW_FIELD_IDX_IPV4_DA));
 			else if (rss_type & ETH_RSS_L3_DST_ONLY)
 				*hash_flds &= ~(BIT_ULL(ICE_FLOW_FIELD_IDX_IPV4_SA));
@@ -649,11 +675,14 @@ ice_refine_hash_cfg_l234(struct ice_rss_hash_cfg *hash_cfg,
 
 	if (*addl_hdrs & ICE_FLOW_SEG_HDR_IPV6) {
 		if (rss_type &
-		   (ETH_RSS_IPV6 |
+		   (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
 		    ETH_RSS_NONFRAG_IPV6_UDP |
 		    ETH_RSS_NONFRAG_IPV6_TCP |
 		    ETH_RSS_NONFRAG_IPV6_SCTP)) {
-			if (rss_type & ETH_RSS_L3_SRC_ONLY)
+			if (rss_type & ETH_RSS_FRAG_IPV6)
+				*hash_flds &=
+					~(BIT_ULL(ICE_FLOW_FIELD_IDX_IPV6_ID));
+			else if (rss_type & ETH_RSS_L3_SRC_ONLY)
 				*hash_flds &= ~(BIT_ULL(ICE_FLOW_FIELD_IDX_IPV6_DA));
 			else if (rss_type & ETH_RSS_L3_DST_ONLY)
 				*hash_flds &= ~(BIT_ULL(ICE_FLOW_FIELD_IDX_IPV6_SA));
@@ -868,6 +897,7 @@ ice_any_invalid_rss_type(enum rte_eth_hash_function rss_func,
 
 		if (!(rss_type &
 		   (ETH_RSS_IPV4 | ETH_RSS_IPV6 |
+		    ETH_RSS_FRAG_IPV4 | ETH_RSS_FRAG_IPV6 |
 		    ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP |
 		    ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV6_TCP |
 		    ETH_RSS_NONFRAG_IPV4_SCTP | ETH_RSS_NONFRAG_IPV6_SCTP)))

@@ -212,6 +212,27 @@ enum rte_flow_item_type pattern_eth_qinq_ipv6[] = {
 	RTE_FLOW_ITEM_TYPE_IPV6,
 	RTE_FLOW_ITEM_TYPE_END,
 };
+enum rte_flow_item_type pattern_eth_ipv6_frag_ext[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+enum rte_flow_item_type pattern_eth_vlan_ipv6_frag_ext[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+enum rte_flow_item_type pattern_eth_qinq_ipv6_frag_ext[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT,
+	RTE_FLOW_ITEM_TYPE_END,
+};
 enum rte_flow_item_type pattern_eth_ipv6_udp[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV6,

@@ -52,6 +52,7 @@
 #define ICE_L2TPV3OIP_SESSION_ID	BIT_ULL(43)
 #define ICE_PFCP_SEID			BIT_ULL(42)
 #define ICE_PFCP_S_FIELD		BIT_ULL(41)
+#define ICE_IP_PK_ID		    BIT_ULL(40)
 
 /* input set */
 
@@ -69,11 +70,13 @@
 #define ICE_INSET_IPV4_TOS		(ICE_PROT_IPV4 | ICE_IP_TOS)
 #define ICE_INSET_IPV4_PROTO		(ICE_PROT_IPV4 | ICE_IP_PROTO)
 #define ICE_INSET_IPV4_TTL		(ICE_PROT_IPV4 | ICE_IP_TTL)
+#define ICE_INSET_IPV4_PKID		(ICE_PROT_IPV4 | ICE_IP_PK_ID)
 #define ICE_INSET_IPV6_SRC		(ICE_PROT_IPV6 | ICE_IP_SRC)
 #define ICE_INSET_IPV6_DST		(ICE_PROT_IPV6 | ICE_IP_DST)
 #define ICE_INSET_IPV6_NEXT_HDR		(ICE_PROT_IPV6 | ICE_IP_PROTO)
 #define ICE_INSET_IPV6_HOP_LIMIT	(ICE_PROT_IPV6 | ICE_IP_TTL)
 #define ICE_INSET_IPV6_TC		(ICE_PROT_IPV6 | ICE_IP_TOS)
+#define ICE_INSET_IPV6_PKID		(ICE_PROT_IPV6 | ICE_IP_PK_ID)
 
 #define ICE_INSET_TCP_SRC_PORT		(ICE_PROT_TCP | ICE_SPORT)
 #define ICE_INSET_TCP_DST_PORT		(ICE_PROT_TCP | ICE_DPORT)
@@ -147,6 +150,9 @@ extern enum rte_flow_item_type pattern_eth_qinq_ipv4_icmp[];
 extern enum rte_flow_item_type pattern_eth_ipv6[];
 extern enum rte_flow_item_type pattern_eth_vlan_ipv6[];
 extern enum rte_flow_item_type pattern_eth_qinq_ipv6[];
+extern enum rte_flow_item_type pattern_eth_ipv6_frag_ext[];
+extern enum rte_flow_item_type pattern_eth_vlan_ipv6_frag_ext[];
+extern enum rte_flow_item_type pattern_eth_qinq_ipv6_frag_ext[];
 extern enum rte_flow_item_type pattern_eth_ipv6_udp[];
 extern enum rte_flow_item_type pattern_eth_vlan_ipv6_udp[];
 extern enum rte_flow_item_type pattern_eth_qinq_ipv6_udp[];
