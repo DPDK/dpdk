@@ -7,7 +7,9 @@
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_kvargs.h>
+#include <rte_devargs.h>
 #include <rte_pci.h>
+#include <rte_debug.h>
 
 #include "private.h"
 
@@ -75,4 +77,49 @@ rte_pci_dev_iterate(const void *start,
 	dev = find_device(start, pci_dev_match, kvargs);
 	rte_kvargs_free(kvargs);
 	return dev;
+}
+
+int
+rte_pci_devargs_parse(struct rte_devargs *da)
+{
+	struct rte_kvargs *kvargs;
+	const char *addr_str;
+	struct rte_pci_addr addr;
+	int ret;
+
+	if (da == NULL)
+		return 0;
+	RTE_ASSERT(da->bus_str != NULL);
+
+	kvargs = rte_kvargs_parse(da->bus_str, NULL);
+	if (kvargs == NULL) {
+		RTE_LOG(ERR, EAL, "cannot parse argument list: %s\n",
+			da->bus_str);
+		ret = -ENODEV;
+		goto out;
+	}
+
+	addr_str = rte_kvargs_get(kvargs, pci_params_keys[RTE_PCI_PARAM_ADDR]);
+	if (addr_str == NULL) {
+		RTE_LOG(ERR, EAL, "No PCI address specified using '%s=<id>' in: %s\n",
+			pci_params_keys[RTE_PCI_PARAM_ADDR], da->bus_str);
+		ret = -ENODEV;
+		goto out;
+	}
+
+	ret = rte_pci_addr_parse(addr_str, &addr);
+	if (ret != 0) {
+		RTE_LOG(ERR, EAL, "PCI address invalid: %s\n", da->bus_str);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	rte_pci_device_name(&addr, da->name, sizeof(da->name));
+
+out:
+	if (kvargs != NULL)
+		rte_kvargs_free(kvargs);
+	if (ret != 0)
+		rte_errno = -ret;
+	return ret;
 }

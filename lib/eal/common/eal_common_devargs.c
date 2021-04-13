@@ -19,6 +19,7 @@
 #include <rte_kvargs.h>
 #include <rte_log.h>
 #include <rte_tailq.h>
+#include <rte_string_fns.h>
 #include "eal_private.h"
 
 /** user device double-linked queue type definition */
@@ -38,6 +39,28 @@ devargs_layer_count(const char *s)
 		s++;
 	}
 	return i;
+}
+
+/* Resolve devargs name from bus arguments. */
+static int
+devargs_bus_parse_default(struct rte_devargs *devargs,
+			  struct rte_kvargs *bus_args)
+{
+	const char *name;
+
+	/* Parse devargs name from bus key-value list. */
+	name = rte_kvargs_get(bus_args, "name");
+	if (name == NULL) {
+		RTE_LOG(INFO, EAL, "devargs name not found: %s\n",
+			devargs->data);
+		return 0;
+	}
+	if (rte_strscpy(devargs->name, name, sizeof(devargs->name)) < 0) {
+		RTE_LOG(ERR, EAL, "devargs name too long: %s\n",
+			devargs->data);
+		return -E2BIG;
+	}
+	return 0;
 }
 
 int
@@ -118,6 +141,8 @@ next_layer:
 		if (layers[i].kvlist == NULL)
 			continue;
 		kv = &layers[i].kvlist->pairs[0];
+		if (kv->key == NULL)
+			continue;
 		if (strcmp(kv->key, RTE_DEVARGS_KEY_BUS) == 0) {
 			bus = rte_bus_find_by_name(kv->value);
 			if (bus == NULL) {
@@ -159,6 +184,12 @@ next_layer:
 			s++;
 		}
 	}
+
+	/* Resolve devargs name. */
+	if (bus != NULL && bus->devargs_parse != NULL)
+		ret = bus->devargs_parse(devargs);
+	else if (layers[0].kvlist != NULL)
+		ret = devargs_bus_parse_default(devargs, layers[0].kvlist);
 
 get_out:
 	for (i = 0; i < RTE_DIM(layers); i++) {
