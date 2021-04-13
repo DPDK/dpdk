@@ -2850,8 +2850,7 @@ hns3_setup_linkstatus(struct rte_eth_dev *eth_dev,
 
 	new_link->link_duplex = mac->link_duplex;
 	new_link->link_status = mac->link_status ? ETH_LINK_UP : ETH_LINK_DOWN;
-	new_link->link_autoneg =
-	    !(eth_dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED);
+	new_link->link_autoneg = mac->link_autoneg;
 }
 
 static int
@@ -4605,6 +4604,9 @@ hns3_get_sfp_info(struct hns3_hw *hw, struct hns3_mac *mac_info)
 		mac_info->query_type = HNS3_ACTIVE_QUERY;
 		mac_info->supported_speed =
 					rte_le_to_cpu_32(resp->supported_speed);
+		mac_info->support_autoneg = resp->autoneg_ability;
+		mac_info->link_autoneg = (resp->autoneg == 0) ? ETH_LINK_FIXED
+					: ETH_LINK_AUTONEG;
 	} else {
 		mac_info->query_type = HNS3_DEFAULT_QUERY;
 	}
@@ -4685,6 +4687,8 @@ hns3_update_fiber_link_info(struct hns3_hw *hw)
 
 		mac->link_speed = mac_info.link_speed;
 		mac->supported_speed = mac_info.supported_speed;
+		mac->support_autoneg = mac_info.support_autoneg;
+		mac->link_autoneg = mac_info.link_autoneg;
 
 		return 0;
 	}
@@ -5248,6 +5252,144 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 }
 
 static int
+hns3_set_copper_port_link_speed(struct hns3_hw *hw,
+				struct hns3_set_link_speed_cfg *cfg)
+{
+	struct hns3_cmd_desc desc[HNS3_PHY_PARAM_CFG_BD_NUM];
+	struct hns3_phy_params_bd0_cmd *req;
+	uint16_t i;
+
+	for (i = 0; i < HNS3_PHY_PARAM_CFG_BD_NUM - 1; i++) {
+		hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_PHY_PARAM_CFG,
+					  false);
+		desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+	}
+	hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_PHY_PARAM_CFG, false);
+	req = (struct hns3_phy_params_bd0_cmd *)desc[0].data;
+	req->autoneg = cfg->autoneg;
+
+	/*
+	 * The full speed capability is used to negotiate when
+	 * auto-negotiation is enabled.
+	 */
+	if (cfg->autoneg) {
+		req->advertising = HNS3_PHY_LINK_SPEED_10M_BIT |
+				    HNS3_PHY_LINK_SPEED_10M_HD_BIT |
+				    HNS3_PHY_LINK_SPEED_100M_BIT |
+				    HNS3_PHY_LINK_SPEED_100M_HD_BIT |
+				    HNS3_PHY_LINK_SPEED_1000M_BIT;
+	}
+
+	return hns3_cmd_send(hw, desc, HNS3_PHY_PARAM_CFG_BD_NUM);
+}
+
+static int
+hns3_set_autoneg(struct hns3_hw *hw, bool enable)
+{
+	struct hns3_config_auto_neg_cmd *req;
+	struct hns3_cmd_desc desc;
+	uint32_t flag = 0;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_CONFIG_AN_MODE, false);
+
+	req = (struct hns3_config_auto_neg_cmd *)desc.data;
+	if (enable)
+		hns3_set_bit(flag, HNS3_MAC_CFG_AN_EN_B, 1);
+	req->cfg_an_cmd_flag = rte_cpu_to_le_32(flag);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "autoneg set cmd failed, ret = %d.", ret);
+
+	return ret;
+}
+
+static int
+hns3_set_fiber_port_link_speed(struct hns3_hw *hw,
+			       struct hns3_set_link_speed_cfg *cfg)
+{
+	int ret;
+
+	if (hw->mac.support_autoneg) {
+		ret = hns3_set_autoneg(hw, cfg->autoneg);
+		if (ret) {
+			hns3_err(hw, "failed to configure auto-negotiation.");
+			return ret;
+		}
+
+		/*
+		 * To enable auto-negotiation, we only need to open the switch
+		 * of auto-negotiation, then firmware sets all speed
+		 * capabilities.
+		 */
+		if (cfg->autoneg)
+			return 0;
+	}
+
+	/*
+	 * Some hardware doesn't support auto-negotiation, but users may not
+	 * configure link_speeds (default 0), which means auto-negotiation
+	 * In this case, a warning message need to be printed, instead of
+	 * an error.
+	 */
+	if (cfg->autoneg) {
+		hns3_warn(hw, "auto-negotiation is not supported.");
+		return 0;
+	}
+
+	return 0;
+}
+
+static int
+hns3_set_port_link_speed(struct hns3_hw *hw,
+			 struct hns3_set_link_speed_cfg *cfg)
+{
+	int ret;
+
+	if (hw->mac.media_type == HNS3_MEDIA_TYPE_COPPER) {
+#if defined(RTE_HNS3_ONLY_1630_FPGA)
+		struct hns3_pf *pf = HNS3_DEV_HW_TO_PF(hw);
+		if (pf->is_tmp_phy)
+			return 0;
+#endif
+
+		ret = hns3_set_copper_port_link_speed(hw, cfg);
+		if (ret) {
+			hns3_err(hw, "failed to set copper port link speed,"
+				 "ret = %d.", ret);
+			return ret;
+		}
+	} else if (hw->mac.media_type == HNS3_MEDIA_TYPE_FIBER) {
+		ret = hns3_set_fiber_port_link_speed(hw, cfg);
+		if (ret) {
+			hns3_err(hw, "failed to set fiber port link speed,"
+				 "ret = %d.", ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+hns3_apply_link_speed(struct hns3_hw *hw)
+{
+	struct rte_eth_conf *conf = &hw->data->dev_conf;
+	struct hns3_set_link_speed_cfg cfg;
+
+	memset(&cfg, 0, sizeof(struct hns3_set_link_speed_cfg));
+	cfg.autoneg = (conf->link_speeds == ETH_LINK_SPEED_AUTONEG) ?
+			ETH_LINK_AUTONEG : ETH_LINK_FIXED;
+	if (cfg.autoneg != ETH_LINK_AUTONEG) {
+		hns3_err(hw, "device doesn't support to force link speed.");
+		return -EOPNOTSUPP;
+	}
+
+	return hns3_set_port_link_speed(hw, &cfg);
+}
+
+static int
 hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
@@ -5280,9 +5422,15 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 		PMD_INIT_LOG(ERR, "failed to enable MAC, ret = %d", ret);
 		goto err_config_mac_mode;
 	}
+
+	ret = hns3_apply_link_speed(hw);
+	if (ret)
+		goto err_config_mac_mode;
+
 	return 0;
 
 err_config_mac_mode:
+	(void)hns3_cfg_mac_mode(hw, false);
 	hns3_dev_release_mbufs(hns);
 	/*
 	 * Here is exception handling, hns3_reset_all_tqps will have the

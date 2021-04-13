@@ -108,6 +108,7 @@ enum hns3_opcode_type {
 
 	/* MAC command */
 	HNS3_OPC_CONFIG_MAC_MODE        = 0x0301,
+	HNS3_OPC_CONFIG_AN_MODE         = 0x0304,
 	HNS3_OPC_QUERY_LINK_STATUS      = 0x0307,
 	HNS3_OPC_CONFIG_MAX_FRM_SIZE    = 0x0308,
 	HNS3_OPC_CONFIG_SPEED_DUP       = 0x0309,
@@ -796,7 +797,9 @@ struct hns3_sfp_info_cmd {
 	uint32_t sfp_speed;
 	uint8_t query_type; /* 0: sfp speed, 1: active */
 	uint8_t active_fec; /* current FEC mode */
-	uint16_t rsv;
+	uint8_t autoneg; /* current autoneg state */
+	/* 0: not support autoneg, 1: support autoneg */
+	uint8_t autoneg_ability;
 	uint32_t supported_speed; /* speed supported by current media */
 	uint32_t module_type;
 	uint8_t rsv1[8];

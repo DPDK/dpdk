@@ -165,6 +165,12 @@ struct hns3_cfg {
 	uint16_t umv_space;
 };
 
+struct hns3_set_link_speed_cfg {
+	uint32_t speed;
+	uint8_t duplex  : 1;
+	uint8_t autoneg : 1;
+};
+
 /* mac media type */
 enum hns3_media_type {
 	HNS3_MEDIA_TYPE_UNKNOWN,
