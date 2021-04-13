@@ -53,6 +53,7 @@ enum ice_protocol_type {
 	ICE_NAT_T,
 	ICE_GTP_NO_PAY,
 	ICE_VLAN_EX,
+	ICE_VLAN_IN,
 	ICE_PROTOCOL_LAST
 };
 

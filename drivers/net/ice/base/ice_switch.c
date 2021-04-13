@@ -1612,7 +1612,7 @@ static const struct ice_dummy_pkt_offsets dummy_qinq_ipv4_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
 	{ ICE_ETYPE_OL,         12 },
 	{ ICE_VLAN_EX,		14 },
-	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_VLAN_IN,		18 },
 	{ ICE_IPV4_OFOS,	22 },
 	{ ICE_PROTOCOL_LAST,	0 },
 };
@@ -1625,7 +1625,7 @@ static const u8 dummy_qinq_ipv4_pkt[] = {
 	0x91, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x00, 0x00, 0x81, 0x00, /* ICE_VLAN_EX 14 */
-	0x00, 0x00, 0x08, 0x00, /* ICE_VLAN_OFOS 18 */
+	0x00, 0x00, 0x08, 0x00, /* ICE_VLAN_IN 18 */
 
 	0x45, 0x00, 0x00, 0x1c, /* ICE_IPV4_OFOS 22 */
 	0x00, 0x01, 0x00, 0x00,
@@ -1643,7 +1643,7 @@ static const struct ice_dummy_pkt_offsets dummy_qinq_ipv6_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
 	{ ICE_ETYPE_OL,         12 },
 	{ ICE_VLAN_EX,		14 },
-	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_VLAN_IN,		18 },
 	{ ICE_IPV6_OFOS,	22 },
 	{ ICE_PROTOCOL_LAST,	0 },
 };
@@ -1656,7 +1656,7 @@ static const u8 dummy_qinq_ipv6_pkt[] = {
 	0x91, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x00, 0x00, 0x81, 0x00, /* ICE_VLAN_EX 14 */
-	0x00, 0x00, 0x86, 0xDD, /* ICE_VLAN_OFOS 18 */
+	0x00, 0x00, 0x86, 0xDD, /* ICE_VLAN_IN 18 */
 
 	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 22 */
 	0x00, 0x10, 0x11, 0x00, /* Next header UDP */
@@ -1682,7 +1682,7 @@ static const struct ice_dummy_pkt_offsets dummy_qinq_pppoe_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
 	{ ICE_ETYPE_OL,         12 },
 	{ ICE_VLAN_EX,		14 },
-	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_VLAN_IN,		18 },
 	{ ICE_PPPOE,		22 },
 	{ ICE_PROTOCOL_LAST,	0 },
 };
@@ -1692,7 +1692,7 @@ struct ice_dummy_pkt_offsets dummy_qinq_pppoe_ipv4_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
 	{ ICE_ETYPE_OL,         12 },
 	{ ICE_VLAN_EX,		14 },
-	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_VLAN_IN,		18 },
 	{ ICE_PPPOE,		22 },
 	{ ICE_IPV4_OFOS,	30 },
 	{ ICE_PROTOCOL_LAST,	0 },
@@ -1706,14 +1706,14 @@ static const u8 dummy_qinq_pppoe_ipv4_pkt[] = {
 	0x91, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x00, 0x00, 0x81, 0x00, /* ICE_VLAN_EX 14 */
-	0x00, 0x00, 0x88, 0x64, /* ICE_VLAN_OFOS 18 */
+	0x00, 0x00, 0x88, 0x64, /* ICE_VLAN_IN 18 */
 
 	0x11, 0x00, 0x00, 0x00, /* ICE_PPPOE 22 */
 	0x00, 0x16,
 
 	0x00, 0x21,		/* PPP Link Layer 28 */
 
-	0x45, 0x00, 0x00, 0x14, /* ICE_IPV4_IL 30 */
+	0x45, 0x00, 0x00, 0x14, /* ICE_IPV4_OFOS 30 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
@@ -1727,7 +1727,7 @@ struct ice_dummy_pkt_offsets dummy_qinq_pppoe_packet_ipv6_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
 	{ ICE_ETYPE_OL,		12 },
 	{ ICE_VLAN_EX,		14},
-	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_VLAN_IN,		18 },
 	{ ICE_PPPOE,		22 },
 	{ ICE_IPV6_OFOS,	30 },
 	{ ICE_PROTOCOL_LAST,	0 },
@@ -1741,7 +1741,7 @@ static const u8 dummy_qinq_pppoe_ipv6_packet[] = {
 	0x91, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x00, 0x00, 0x81, 0x00, /* ICE_VLAN_EX 14 */
-	0x00, 0x00, 0x88, 0x64, /* ICE_VLAN_OFOS 18 */
+	0x00, 0x00, 0x88, 0x64, /* ICE_VLAN_IN 18 */
 
 	0x11, 0x00, 0x00, 0x00, /* ICE_PPPOE 22 */
 	0x00, 0x2a,
@@ -6530,6 +6530,7 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[ICE_PROTOCOL_LAST] = {
 	{ ICE_NAT_T,		{ 8, 10, 12, 14 } },
 	{ ICE_GTP_NO_PAY,	{ 8, 10, 12, 14 } },
 	{ ICE_VLAN_EX,		{ 0, 2 } },
+	{ ICE_VLAN_IN,		{ 0, 2 } },
 };
 
 /* The following table describes preferred grouping of recipes.
@@ -6564,6 +6565,7 @@ static struct ice_protocol_entry ice_prot_id_tbl[ICE_PROTOCOL_LAST] = {
 	{ ICE_NAT_T,		ICE_UDP_ILOS_HW },
 	{ ICE_GTP_NO_PAY,	ICE_UDP_ILOS_HW },
 	{ ICE_VLAN_EX,		ICE_VLAN_OF_HW },
+	{ ICE_VLAN_IN,		ICE_VLAN_OL_HW },
 };
 
 /**
@@ -8139,6 +8141,7 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			break;
 		case ICE_VLAN_OFOS:
 		case ICE_VLAN_EX:
+		case ICE_VLAN_IN:
 			len = sizeof(struct ice_vlan_hdr);
 			break;
 		case ICE_IPV4_OFOS:
