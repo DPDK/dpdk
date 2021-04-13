@@ -11,7 +11,7 @@
 #include <rte_io.h>
 #include <rte_net.h>
 #include <rte_malloc.h>
-#if defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_SVE)
+#if defined(RTE_ARCH_ARM64)
 #include <rte_cpuflags.h>
 #endif
 
@@ -2766,7 +2766,17 @@ hns3_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 }
 
 static bool
-hns3_check_sve_support(void)
+hns3_get_default_vec_support(void)
+{
+#if defined(RTE_ARCH_ARM64)
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+		return true;
+#endif
+	return false;
+}
+
+static bool
+hns3_get_sve_support(void)
 {
 #if defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_SVE)
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SVE))
@@ -2781,9 +2791,11 @@ hns3_get_rx_function(struct rte_eth_dev *dev)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	uint64_t offloads = dev->data->dev_conf.rxmode.offloads;
 	bool vec_allowed, sve_allowed, simple_allowed;
+	bool vec_support;
 
-	vec_allowed = hns3_rx_check_vec_support(dev) == 0;
-	sve_allowed = vec_allowed && hns3_check_sve_support();
+	vec_support = hns3_rx_check_vec_support(dev) == 0;
+	vec_allowed = vec_support && hns3_get_default_vec_support();
+	sve_allowed = vec_support && hns3_get_sve_support();
 	simple_allowed = !dev->data->scattered_rx &&
 			 (offloads & DEV_RX_OFFLOAD_TCP_LRO) == 0;
 
@@ -4170,9 +4182,11 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	bool vec_allowed, sve_allowed, simple_allowed;
+	bool vec_support;
 
-	vec_allowed = hns3_tx_check_vec_support(dev) == 0;
-	sve_allowed = vec_allowed && hns3_check_sve_support();
+	vec_support = hns3_tx_check_vec_support(dev) == 0;
+	vec_allowed = vec_support && hns3_get_default_vec_support();
+	sve_allowed = vec_support && hns3_get_sve_support();
 	simple_allowed = hns3_tx_check_simple_support(dev);
 
 	*prep = NULL;
