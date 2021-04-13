@@ -6574,7 +6574,7 @@ static struct ice_protocol_entry ice_prot_id_tbl[ICE_PROTOCOL_LAST] = {
  * Returns index of matching recipe, or ICE_MAX_NUM_RECIPES if not found.
  */
 static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
-			 enum ice_sw_tunnel_type tun_type)
+			 enum ice_sw_tunnel_type tun_type, u32 priority)
 {
 	bool refresh_required = true;
 	struct ice_sw_recipe *recp;
@@ -6636,7 +6636,8 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
 			/* If for "i"th recipe the found was never set to false
 			 * then it means we found our match
 			 */
-			if (tun_type == recp[i].tun_type && found)
+			if (tun_type == recp[i].tun_type && found &&
+			    priority == recp[i].priority)
 				return i; /* Return the recipe ID */
 		}
 	}
@@ -7650,7 +7651,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	}
 
 	/* Look for a recipe which matches our requested fv / mask list */
-	*rid = ice_find_recp(hw, lkup_exts, rinfo->tun_type);
+	*rid = ice_find_recp(hw, lkup_exts, rinfo->tun_type, rinfo->priority);
 	if (*rid < ICE_MAX_NUM_RECIPES)
 		/* Success if found a recipe that match the existing criteria */
 		goto err_unroll;
@@ -8779,7 +8780,7 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	if (status)
 		return status;
 
-	rid = ice_find_recp(hw, &lkup_exts, rinfo->tun_type);
+	rid = ice_find_recp(hw, &lkup_exts, rinfo->tun_type, rinfo->priority);
 	/* If did not find a recipe that match the existing criteria */
 	if (rid == ICE_MAX_NUM_RECIPES)
 		return ICE_ERR_PARAM;
