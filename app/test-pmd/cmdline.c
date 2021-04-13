@@ -693,13 +693,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port meter cap (port_id)\n"
 			"    Show port meter capability information\n\n"
 
-			"add port meter profile srtcm_rfc2697 (port_id) (profile_id) (cir) (cbs) (ebs)\n"
+			"add port meter profile srtcm_rfc2697 (port_id) (profile_id) (cir) (cbs) (ebs) (packet_mode)\n"
 			"    meter profile add - srtcm rfc 2697\n\n"
 
-			"add port meter profile trtcm_rfc2698 (port_id) (profile_id) (cir) (pir) (cbs) (pbs)\n"
+			"add port meter profile trtcm_rfc2698 (port_id) (profile_id) (cir) (pir) (cbs) (pbs) (packet_mode)\n"
 			"    meter profile add - trtcm rfc 2698\n\n"
 
-			"add port meter profile trtcm_rfc4115 (port_id) (profile_id) (cir) (eir) (cbs) (ebs)\n"
+			"add port meter profile trtcm_rfc4115 (port_id) (profile_id) (cir) (eir) (cbs) (ebs) (packet_mode)\n"
 			"    meter profile add - trtcm rfc 4115\n\n"
 
 			"del port meter profile (port_id) (profile_id)\n"

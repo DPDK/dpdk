@@ -306,6 +306,18 @@ static void cmd_show_port_meter_cap_parsed(void *parsed_result,
 		cap.policer_action_recolor_supported);
 	printf("cap.policer_action_drop_supported %" PRId32 "\n",
 		cap.policer_action_drop_supported);
+	printf("cap.srtcm_rfc2697_byte_mode_supported %" PRId32 "\n",
+		cap.srtcm_rfc2697_byte_mode_supported);
+	printf("cap.srtcm_rfc2697_packet_mode_supported %" PRId32 "\n",
+		cap.srtcm_rfc2697_packet_mode_supported);
+	printf("cap.trtcm_rfc2698_byte_mode_supported %" PRId32 "\n",
+		cap.trtcm_rfc2698_byte_mode_supported);
+	printf("cap.trtcm_rfc2698_packet_mode_supported %" PRId32 "\n",
+		cap.trtcm_rfc2698_packet_mode_supported);
+	printf("cap.trtcm_rfc4115_byte_mode_supported %" PRId32 "\n",
+		cap.trtcm_rfc4115_byte_mode_supported);
+	printf("cap.trtcm_rfc4115_packet_mode_supported %" PRId32 "\n",
+		cap.trtcm_rfc4115_packet_mode_supported);
 	printf("cap.stats_mask %" PRIx64 "\n", cap.stats_mask);
 }
 
@@ -335,6 +347,7 @@ struct cmd_add_port_meter_profile_srtcm_result {
 	uint64_t cir;
 	uint64_t cbs;
 	uint64_t ebs;
+	int packet_mode;
 };
 
 cmdline_parse_token_string_t cmd_add_port_meter_profile_srtcm_add =
@@ -376,6 +389,10 @@ cmdline_parse_token_num_t cmd_add_port_meter_profile_srtcm_ebs =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_meter_profile_srtcm_result,
 			ebs, RTE_UINT64);
+cmdline_parse_token_num_t cmd_add_port_meter_profile_srtcm_packet_mode =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_add_port_meter_profile_srtcm_result,
+			packet_mode, RTE_UINT32);
 
 static void cmd_add_port_meter_profile_srtcm_parsed(void *parsed_result,
 	__rte_unused struct cmdline *cl,
@@ -397,6 +414,7 @@ static void cmd_add_port_meter_profile_srtcm_parsed(void *parsed_result,
 	mp.srtcm_rfc2697.cir = res->cir;
 	mp.srtcm_rfc2697.cbs = res->cbs;
 	mp.srtcm_rfc2697.ebs = res->ebs;
+	mp.packet_mode = res->packet_mode;
 
 	ret = rte_mtr_meter_profile_add(port_id, profile_id, &mp, &error);
 	if (ret != 0) {
@@ -408,7 +426,7 @@ static void cmd_add_port_meter_profile_srtcm_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_add_port_meter_profile_srtcm = {
 	.f = cmd_add_port_meter_profile_srtcm_parsed,
 	.data = NULL,
-	.help_str = "add port meter profile srtcm_rfc2697 <port_id> <profile_id> <cir> <cbs> <ebs>",
+	.help_str = "add port meter profile srtcm_rfc2697 <port_id> <profile_id> <cir> <cbs> <ebs> <packet_mode>",
 	.tokens = {
 		(void *)&cmd_add_port_meter_profile_srtcm_add,
 		(void *)&cmd_add_port_meter_profile_srtcm_port,
@@ -420,6 +438,7 @@ cmdline_parse_inst_t cmd_add_port_meter_profile_srtcm = {
 		(void *)&cmd_add_port_meter_profile_srtcm_cir,
 		(void *)&cmd_add_port_meter_profile_srtcm_cbs,
 		(void *)&cmd_add_port_meter_profile_srtcm_ebs,
+		(void *)&cmd_add_port_meter_profile_srtcm_packet_mode,
 		NULL,
 	},
 };
@@ -437,6 +456,7 @@ struct cmd_add_port_meter_profile_trtcm_result {
 	uint64_t pir;
 	uint64_t cbs;
 	uint64_t pbs;
+	int packet_mode;
 };
 
 cmdline_parse_token_string_t cmd_add_port_meter_profile_trtcm_add =
@@ -482,6 +502,10 @@ cmdline_parse_token_num_t cmd_add_port_meter_profile_trtcm_pbs =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_meter_profile_trtcm_result,
 			pbs, RTE_UINT64);
+cmdline_parse_token_num_t cmd_add_port_meter_profile_trtcm_packet_mode =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_add_port_meter_profile_trtcm_result,
+			packet_mode, RTE_UINT32);
 
 static void cmd_add_port_meter_profile_trtcm_parsed(void *parsed_result,
 	__rte_unused struct cmdline *cl,
@@ -504,6 +528,7 @@ static void cmd_add_port_meter_profile_trtcm_parsed(void *parsed_result,
 	mp.trtcm_rfc2698.pir = res->pir;
 	mp.trtcm_rfc2698.cbs = res->cbs;
 	mp.trtcm_rfc2698.pbs = res->pbs;
+	mp.packet_mode = res->packet_mode;
 
 	ret = rte_mtr_meter_profile_add(port_id, profile_id, &mp, &error);
 	if (ret != 0) {
@@ -515,7 +540,7 @@ static void cmd_add_port_meter_profile_trtcm_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_add_port_meter_profile_trtcm = {
 	.f = cmd_add_port_meter_profile_trtcm_parsed,
 	.data = NULL,
-	.help_str = "add port meter profile trtcm_rfc2698 <port_id> <profile_id> <cir> <pir> <cbs> <pbs>",
+	.help_str = "add port meter profile trtcm_rfc2698 <port_id> <profile_id> <cir> <pir> <cbs> <pbs> <packet_mode>",
 	.tokens = {
 		(void *)&cmd_add_port_meter_profile_trtcm_add,
 		(void *)&cmd_add_port_meter_profile_trtcm_port,
@@ -528,6 +553,7 @@ cmdline_parse_inst_t cmd_add_port_meter_profile_trtcm = {
 		(void *)&cmd_add_port_meter_profile_trtcm_pir,
 		(void *)&cmd_add_port_meter_profile_trtcm_cbs,
 		(void *)&cmd_add_port_meter_profile_trtcm_pbs,
+		(void *)&cmd_add_port_meter_profile_trtcm_packet_mode,
 		NULL,
 	},
 };
@@ -545,6 +571,7 @@ struct cmd_add_port_meter_profile_trtcm_rfc4115_result {
 	uint64_t eir;
 	uint64_t cbs;
 	uint64_t ebs;
+	int packet_mode;
 };
 
 cmdline_parse_token_string_t cmd_add_port_meter_profile_trtcm_rfc4115_add =
@@ -592,6 +619,11 @@ cmdline_parse_token_num_t cmd_add_port_meter_profile_trtcm_rfc4115_ebs =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_meter_profile_trtcm_rfc4115_result,
 			ebs, RTE_UINT64);
+cmdline_parse_token_num_t
+	cmd_add_port_meter_profile_trtcm_rfc4115_packet_mode =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_add_port_meter_profile_trtcm_rfc4115_result,
+			packet_mode, RTE_UINT32);
 
 static void cmd_add_port_meter_profile_trtcm_rfc4115_parsed(
 	void *parsed_result,
@@ -616,6 +648,7 @@ static void cmd_add_port_meter_profile_trtcm_rfc4115_parsed(
 	mp.trtcm_rfc4115.eir = res->eir;
 	mp.trtcm_rfc4115.cbs = res->cbs;
 	mp.trtcm_rfc4115.ebs = res->ebs;
+	mp.packet_mode = res->packet_mode;
 
 	ret = rte_mtr_meter_profile_add(port_id, profile_id, &mp, &error);
 	if (ret != 0) {
@@ -627,7 +660,7 @@ static void cmd_add_port_meter_profile_trtcm_rfc4115_parsed(
 cmdline_parse_inst_t cmd_add_port_meter_profile_trtcm_rfc4115 = {
 	.f = cmd_add_port_meter_profile_trtcm_rfc4115_parsed,
 	.data = NULL,
-	.help_str = "add port meter profile trtcm_rfc4115 <port_id> <profile_id> <cir> <eir> <cbs> <ebs>",
+	.help_str = "add port meter profile trtcm_rfc4115 <port_id> <profile_id> <cir> <eir> <cbs> <ebs> <packet_mode>",
 	.tokens = {
 		(void *)&cmd_add_port_meter_profile_trtcm_rfc4115_add,
 		(void *)&cmd_add_port_meter_profile_trtcm_rfc4115_port,
@@ -640,6 +673,7 @@ cmdline_parse_inst_t cmd_add_port_meter_profile_trtcm_rfc4115 = {
 		(void *)&cmd_add_port_meter_profile_trtcm_rfc4115_eir,
 		(void *)&cmd_add_port_meter_profile_trtcm_rfc4115_cbs,
 		(void *)&cmd_add_port_meter_profile_trtcm_rfc4115_ebs,
+		(void *)&cmd_add_port_meter_profile_trtcm_rfc4115_packet_mode,
 		NULL,
 	},
 };

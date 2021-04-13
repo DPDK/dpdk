@@ -2716,14 +2716,15 @@ add port meter profile (srTCM rfc2967)
 Add meter profile (srTCM rfc2697) to the ethernet device::
 
    testpmd> add port meter profile srtcm_rfc2697 (port_id) (profile_id) \
-   (cir) (cbs) (ebs)
+   (cir) (cbs) (ebs) (packet_mode)
 
 where:
 
 * ``profile_id``: ID for the meter profile.
-* ``cir``: Committed Information Rate (CIR) (bytes/second).
-* ``cbs``: Committed Burst Size (CBS) (bytes).
-* ``ebs``: Excess Burst Size (EBS) (bytes).
+* ``cir``: Committed Information Rate (CIR) (bytes per second or packets per second).
+* ``cbs``: Committed Burst Size (CBS) (bytes or packets).
+* ``ebs``: Excess Burst Size (EBS) (bytes or packets).
+* ``packet_mode``: Packets mode for meter profile.
 
 add port meter profile (trTCM rfc2968)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2731,15 +2732,16 @@ add port meter profile (trTCM rfc2968)
 Add meter profile (srTCM rfc2698) to the ethernet device::
 
    testpmd> add port meter profile trtcm_rfc2698 (port_id) (profile_id) \
-   (cir) (pir) (cbs) (pbs)
+   (cir) (pir) (cbs) (pbs) (packet_mode)
 
 where:
 
 * ``profile_id``: ID for the meter profile.
-* ``cir``: Committed information rate (bytes/second).
-* ``pir``: Peak information rate (bytes/second).
-* ``cbs``: Committed burst size (bytes).
-* ``pbs``: Peak burst size (bytes).
+* ``cir``: Committed information rate (bytes per second or packets per second).
+* ``pir``: Peak information rate (bytes per second or packets per second).
+* ``cbs``: Committed burst size (bytes or packets).
+* ``pbs``: Peak burst size (bytes or packets).
+* ``packet_mode``: Packets mode for meter profile.
 
 add port meter profile (trTCM rfc4115)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2747,15 +2749,16 @@ add port meter profile (trTCM rfc4115)
 Add meter profile (trTCM rfc4115) to the ethernet device::
 
    testpmd> add port meter profile trtcm_rfc4115 (port_id) (profile_id) \
-   (cir) (eir) (cbs) (ebs)
+   (cir) (eir) (cbs) (ebs) (packet_mode)
 
 where:
 
 * ``profile_id``: ID for the meter profile.
-* ``cir``: Committed information rate (bytes/second).
-* ``eir``: Excess information rate (bytes/second).
-* ``cbs``: Committed burst size (bytes).
-* ``ebs``: Excess burst size (bytes).
+* ``cir``: Committed information rate (bytes per second or packets per second).
+* ``eir``: Excess information rate (bytes per second or packets per second).
+* ``cbs``: Committed burst size (bytes or packets).
+* ``ebs``: Excess burst size (bytes or packets).
+* ``packet_mode``: Packets mode for meter profile.
 
 delete port meter profile
 ~~~~~~~~~~~~~~~~~~~~~~~~~
