@@ -24,7 +24,7 @@
 #define ICE_FDIR_INSET_ETH_IPV4 (\
 	ICE_FDIR_INSET_ETH | \
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_TOS | \
-	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_PROTO)
+	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_PROTO | ICE_INSET_IPV4_PKID)
 
 #define ICE_FDIR_INSET_ETH_IPV4_UDP (\
 	ICE_FDIR_INSET_ETH_IPV4 | \
@@ -41,7 +41,8 @@
 #define ICE_FDIR_INSET_ETH_IPV6 (\
 	ICE_INSET_DMAC | \
 	ICE_INSET_IPV6_SRC | ICE_INSET_IPV6_DST | ICE_INSET_IPV6_TC | \
-	ICE_INSET_IPV6_HOP_LIMIT | ICE_INSET_IPV6_NEXT_HDR)
+	ICE_INSET_IPV6_HOP_LIMIT | ICE_INSET_IPV6_NEXT_HDR | \
+	ICE_INSET_IPV6_PKID)
 
 #define ICE_FDIR_INSET_ETH_IPV6_UDP (\
 	ICE_FDIR_INSET_ETH_IPV6 | \
@@ -56,7 +57,8 @@
 	ICE_INSET_SCTP_SRC_PORT | ICE_INSET_SCTP_DST_PORT)
 
 #define ICE_FDIR_INSET_IPV4 (\
-	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_IPV4_PKID)
 
 #define ICE_FDIR_INSET_IPV4_TCP (\
 	ICE_FDIR_INSET_IPV4 | \
@@ -95,6 +97,7 @@ static struct ice_pattern_match_item ice_fdir_pattern_list[] = {
 	{pattern_eth_ipv4_tcp,				ICE_FDIR_INSET_ETH_IPV4_TCP,	ICE_INSET_NONE,			ICE_INSET_NONE},
 	{pattern_eth_ipv4_sctp,				ICE_FDIR_INSET_ETH_IPV4_SCTP,	ICE_INSET_NONE,			ICE_INSET_NONE},
 	{pattern_eth_ipv6,				ICE_FDIR_INSET_ETH_IPV6,	ICE_INSET_NONE,			ICE_INSET_NONE},
+	{pattern_eth_ipv6_frag_ext,			ICE_FDIR_INSET_ETH_IPV6,	ICE_INSET_NONE,			ICE_INSET_NONE},
 	{pattern_eth_ipv6_udp,				ICE_FDIR_INSET_ETH_IPV6_UDP,	ICE_INSET_NONE,			ICE_INSET_NONE},
 	{pattern_eth_ipv6_tcp,				ICE_FDIR_INSET_ETH_IPV6_TCP,	ICE_INSET_NONE,			ICE_INSET_NONE},
 	{pattern_eth_ipv6_sctp,				ICE_FDIR_INSET_ETH_IPV6_SCTP,	ICE_INSET_NONE,			ICE_INSET_NONE},
@@ -882,11 +885,13 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 		{ICE_INSET_IPV4_TOS, ICE_FLOW_FIELD_IDX_IPV4_DSCP},
 		{ICE_INSET_IPV4_TTL, ICE_FLOW_FIELD_IDX_IPV4_TTL},
 		{ICE_INSET_IPV4_PROTO, ICE_FLOW_FIELD_IDX_IPV4_PROT},
+		{ICE_INSET_IPV4_PKID, ICE_FLOW_FIELD_IDX_IPV4_ID},
 		{ICE_INSET_IPV6_SRC, ICE_FLOW_FIELD_IDX_IPV6_SA},
 		{ICE_INSET_IPV6_DST, ICE_FLOW_FIELD_IDX_IPV6_DA},
 		{ICE_INSET_IPV6_TC, ICE_FLOW_FIELD_IDX_IPV6_DSCP},
 		{ICE_INSET_IPV6_NEXT_HDR, ICE_FLOW_FIELD_IDX_IPV6_PROT},
 		{ICE_INSET_IPV6_HOP_LIMIT, ICE_FLOW_FIELD_IDX_IPV6_TTL},
+		{ICE_INSET_IPV6_PKID, ICE_FLOW_FIELD_IDX_IPV6_ID},
 		{ICE_INSET_TCP_SRC_PORT, ICE_FLOW_FIELD_IDX_TCP_SRC_PORT},
 		{ICE_INSET_TCP_DST_PORT, ICE_FLOW_FIELD_IDX_TCP_DST_PORT},
 		{ICE_INSET_UDP_SRC_PORT, ICE_FLOW_FIELD_IDX_UDP_SRC_PORT},
@@ -936,6 +941,10 @@ ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV4 |
 				  ICE_FLOW_SEG_HDR_IPV_OTHER);
 		break;
+	case ICE_FLTR_PTYPE_FRAG_IPV4:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV4 |
+				  ICE_FLOW_SEG_HDR_IPV_FRAG);
+		break;
 	case ICE_FLTR_PTYPE_NONF_IPV6_UDP:
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
 				  ICE_FLOW_SEG_HDR_IPV6 |
@@ -954,6 +963,10 @@ ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
 	case ICE_FLTR_PTYPE_NONF_IPV6_OTHER:
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV6 |
 				  ICE_FLOW_SEG_HDR_IPV_OTHER);
+		break;
+	case ICE_FLTR_PTYPE_FRAG_IPV6:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV6 |
+				  ICE_FLOW_SEG_HDR_IPV_FRAG);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_UDP_VXLAN:
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
@@ -1599,8 +1612,10 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	enum rte_flow_item_type l3 = RTE_FLOW_ITEM_TYPE_END;
 	enum ice_fdir_tunnel_type tunnel_type = ICE_FDIR_TUNNEL_TYPE_NONE;
 	const struct rte_flow_item_eth *eth_spec, *eth_mask;
-	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_mask;
+	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_last, *ipv4_mask;
 	const struct rte_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
+	const struct rte_flow_item_ipv6_frag_ext *ipv6_frag_spec,
+					*ipv6_frag_last, *ipv6_frag_mask;
 	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
 	const struct rte_flow_item_udp *udp_spec, *udp_mask;
 	const struct rte_flow_item_sctp *sctp_spec, *sctp_mask;
@@ -1639,14 +1654,15 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	 * flow. input_set_i is used for inner part.
 	 */
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
-		if (item->last) {
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Not support range");
-			return -rte_errno;
-		}
 		item_type = item->type;
+
+		if (item->last && !(item_type == RTE_FLOW_ITEM_TYPE_IPV4 ||
+				    item_type ==
+				    RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT)) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM, item,
+					   "Not support range");
+		}
 
 		input_set = (tunnel_type && !is_outer) ?
 			    &input_set_i : &input_set_o;
@@ -1696,6 +1712,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			flow_type = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;
 			l3 = RTE_FLOW_ITEM_TYPE_IPV4;
 			ipv4_spec = item->spec;
+			ipv4_last = item->last;
 			ipv4_mask = item->mask;
 			p_v4 = (tunnel_type && is_outer) ?
 			       &filter->input.ip_outer.v4 :
@@ -1707,13 +1724,26 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			/* Check IPv4 mask and update input set */
 			if (ipv4_mask->hdr.version_ihl ||
 			    ipv4_mask->hdr.total_length ||
-			    ipv4_mask->hdr.packet_id ||
-			    ipv4_mask->hdr.fragment_offset ||
 			    ipv4_mask->hdr.hdr_checksum) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "Invalid IPv4 mask.");
+				return -rte_errno;
+			}
+
+			if (ipv4_last &&
+			    (ipv4_last->hdr.version_ihl ||
+			     ipv4_last->hdr.type_of_service ||
+			     ipv4_last->hdr.time_to_live ||
+			     ipv4_last->hdr.total_length |
+			     ipv4_last->hdr.next_proto_id ||
+			     ipv4_last->hdr.hdr_checksum ||
+			     ipv4_last->hdr.src_addr ||
+			     ipv4_last->hdr.dst_addr)) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item, "Invalid IPv4 last.");
 				return -rte_errno;
 			}
 
@@ -1733,6 +1763,32 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			p_v4->ttl = ipv4_spec->hdr.time_to_live;
 			p_v4->proto = ipv4_spec->hdr.next_proto_id;
 			p_v4->tos = ipv4_spec->hdr.type_of_service;
+
+			/* only support any packet id for fragment IPv4
+			 * any packet_id:
+			 * spec is 0, last is 0xffff, mask is 0xffff
+			 * fragment Ipv4:
+			 * spec is 0x2000, mask is 0xffff
+			 */
+			if (ipv4_last && ipv4_spec->hdr.packet_id == 0 &&
+			    ipv4_last->hdr.packet_id == UINT16_MAX &&
+			    ipv4_mask->hdr.packet_id == UINT16_MAX &&
+			    ipv4_spec->hdr.fragment_offset ==
+			    rte_cpu_to_be_16(RTE_IPV4_HDR_MF_FLAG) &&
+			    ipv4_mask->hdr.fragment_offset == UINT16_MAX) {
+				/* all IPv4 fragment packet has the same
+				 * ethertype, if the spec is for all valid
+				 * packet id, set ethertype into input set.
+				 */
+				*input_set |= ICE_INSET_ETHERTYPE;
+				input_set_o |= ICE_INSET_ETHERTYPE;
+			} else if (ipv4_mask->hdr.packet_id == UINT16_MAX) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item, "Invalid IPv4 mask.");
+				return -rte_errno;
+			}
+
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			flow_type = ICE_FLTR_PTYPE_NONF_IPV6_OTHER;
@@ -1778,6 +1834,43 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			p_v6->proto = ipv6_spec->hdr.proto;
 			p_v6->hlim = ipv6_spec->hdr.hop_limits;
 			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
+			l3 = RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT;
+			flow_type = ICE_FLTR_PTYPE_FRAG_IPV6;
+			ipv6_frag_spec = item->spec;
+			ipv6_frag_last = item->last;
+			ipv6_frag_mask = item->mask;
+
+			if (!(ipv6_frag_spec && ipv6_frag_mask))
+				break;
+
+			/* only support any packet id for fragment IPv6
+			 * any packet_id:
+			 * spec is 0, last is 0xffffffff, mask is 0xffffffff
+			 * fragment Ipv6:
+			 * spec is 0x1, mask is 0xffff
+			 */
+			if (ipv6_frag_last && ipv6_frag_spec->hdr.id == 0 &&
+			    ipv6_frag_last->hdr.id == UINT32_MAX &&
+			    ipv6_frag_mask->hdr.id == UINT32_MAX &&
+			    ipv6_frag_spec->hdr.frag_data ==
+			    rte_cpu_to_be_16(1) &&
+			    ipv6_frag_mask->hdr.frag_data == UINT16_MAX) {
+				/* all IPv6 fragment packet has the same
+				 * ethertype, if the spec is for all valid
+				 * packet id, set ethertype into input set.
+				 */
+				*input_set |= ICE_INSET_ETHERTYPE;
+				input_set_o |= ICE_INSET_ETHERTYPE;
+			} else if (ipv6_frag_mask->hdr.id == UINT32_MAX) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item, "Invalid IPv6 mask.");
+				return -rte_errno;
+			}
+
+			break;
+
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
 				flow_type = ICE_FLTR_PTYPE_NONF_IPV4_TCP;
@@ -2017,7 +2110,8 @@ ice_fdir_parse(struct ice_adapter *ad,
 	if (ret)
 		goto error;
 	input_set = filter->input_set_o | filter->input_set_i;
-	if (!input_set || filter->input_set_o & ~item->input_set_mask_o ||
+	if (!input_set || filter->input_set_o &
+	    ~(item->input_set_mask_o | ICE_INSET_ETHERTYPE) ||
 	    filter->input_set_i & ~item->input_set_mask_i) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
