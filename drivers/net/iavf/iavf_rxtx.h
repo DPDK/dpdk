@@ -496,6 +496,9 @@ uint16_t iavf_recv_pkts_vec_avx512_offload(void *rx_queue,
 uint16_t iavf_recv_pkts_vec_avx512_flex_rxd(void *rx_queue,
 					    struct rte_mbuf **rx_pkts,
 					    uint16_t nb_pkts);
+uint16_t iavf_recv_pkts_vec_avx512_flex_rxd_offload(void *rx_queue,
+						    struct rte_mbuf **rx_pkts,
+						    uint16_t nb_pkts);
 uint16_t iavf_recv_scattered_pkts_vec_avx512(void *rx_queue,
 					     struct rte_mbuf **rx_pkts,
 					     uint16_t nb_pkts);
@@ -505,6 +508,9 @@ uint16_t iavf_recv_scattered_pkts_vec_avx512_offload(void *rx_queue,
 uint16_t iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
 						      struct rte_mbuf **rx_pkts,
 						      uint16_t nb_pkts);
+uint16_t iavf_recv_scattered_pkts_vec_avx512_flex_rxd_offload(void *rx_queue,
+							      struct rte_mbuf **rx_pkts,
+							      uint16_t nb_pkts);
 uint16_t iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);
 uint16_t iavf_xmit_pkts_vec_avx512_offload(void *tx_queue,

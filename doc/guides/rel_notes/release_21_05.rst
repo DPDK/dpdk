@@ -119,6 +119,10 @@ New Features
   Updated the Intel iavf driver with new features and improvements, including:
 
   * Added flow filter to support GTPU inner L3/L4 fields matching.
+  * In AVX512 code, added the new RX and TX paths to use the HW offload
+    features. When the HW offload features are configured to be used, the
+    offload paths are chosen automatically. In parallel the support of HW
+    offload features was removed from the legacy AVX512 paths.
 
 * **Updated Intel ice driver.**
 

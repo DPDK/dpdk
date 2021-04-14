@@ -2420,11 +2420,8 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 			goto normal;
 
 		if (vf->vf_res->vf_cap_flags &
-			VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
+			VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
 			use_flex = true;
-			if (use_avx512 && check_ret == IAVF_VECTOR_OFFLOAD_PATH)
-				use_flex = false;
-		}
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			rxq = dev->data->rx_queues[i];
@@ -2452,9 +2449,14 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 					iavf_recv_scattered_pkts_vec_avx2_flex_rxd :
 					iavf_recv_scattered_pkts_vec_flex_rxd;
 #ifdef CC_AVX512_SUPPORT
-				if (use_avx512)
-					dev->rx_pkt_burst =
-						iavf_recv_scattered_pkts_vec_avx512_flex_rxd;
+				if (use_avx512) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						dev->rx_pkt_burst =
+							iavf_recv_scattered_pkts_vec_avx512_flex_rxd;
+					else
+						dev->rx_pkt_burst =
+							iavf_recv_scattered_pkts_vec_avx512_flex_rxd_offload;
+				}
 #endif
 			} else {
 				dev->rx_pkt_burst = use_avx2 ?
@@ -2491,9 +2493,14 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 					iavf_recv_pkts_vec_avx2_flex_rxd :
 					iavf_recv_pkts_vec_flex_rxd;
 #ifdef CC_AVX512_SUPPORT
-				if (use_avx512)
-					dev->rx_pkt_burst =
-						iavf_recv_pkts_vec_avx512_flex_rxd;
+				if (use_avx512) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						dev->rx_pkt_burst =
+							iavf_recv_pkts_vec_avx512_flex_rxd;
+					else
+						dev->rx_pkt_burst =
+							iavf_recv_pkts_vec_avx512_flex_rxd_offload;
+				}
 #endif
 			} else {
 				dev->rx_pkt_burst = use_avx2 ?

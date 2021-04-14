@@ -684,7 +684,7 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 	return received;
 }
 
-static inline __m256i
+static __rte_always_inline __m256i
 flex_rxd_to_fdir_flags_vec_avx512(const __m256i fdir_id0_7)
 {
 #define FDID_MIS_MAGIC 0xFFFFFFFF
@@ -703,12 +703,16 @@ flex_rxd_to_fdir_flags_vec_avx512(const __m256i fdir_id0_7)
 	return fdir_flags;
 }
 
-static inline uint16_t
+static __rte_always_inline uint16_t
 _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 					struct rte_mbuf **rx_pkts,
-					uint16_t nb_pkts, uint8_t *split_packet)
+					uint16_t nb_pkts,
+					uint8_t *split_packet,
+					bool offload)
 {
+#ifdef IAVF_RX_PTYPE_OFFLOAD
 	const uint32_t *type_table = rxq->vsi->adapter->ptype_tbl;
+#endif
 
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0,
 						    rxq->mbuf_initializer);
@@ -812,71 +816,6 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, hash) !=
 			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 12);
 
-	/* Status/Error flag masks */
-	/**
-	 * mask everything except Checksum Reports, RSS indication
-	 * and VLAN indication.
-	 * bit6:4 for IP/L4 checksum errors.
-	 * bit12 is for RSS indication.
-	 * bit13 is for VLAN indication.
-	 */
-	const __m256i flags_mask =
-		_mm256_set1_epi32((7 << 4) | (1 << 12) | (1 << 13));
-	/**
-	 * data to be shuffled by the result of the flags mask shifted by 4
-	 * bits.  This gives use the l3_l4 flags.
-	 */
-	const __m256i l3_l4_flags_shuf = _mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
-			/* shift right 1 bit to make sure it not exceed 255 */
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
-			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
-			 PKT_RX_IP_CKSUM_GOOD) >> 1,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
-			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
-			 PKT_RX_IP_CKSUM_GOOD) >> 1,
-			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_GOOD) >> 1,
-			(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_GOOD) >> 1,
-			/* second 128-bits */
-			0, 0, 0, 0, 0, 0, 0, 0,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
-			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
-			 PKT_RX_IP_CKSUM_GOOD) >> 1,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
-			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
-			 PKT_RX_IP_CKSUM_GOOD) >> 1,
-			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_GOOD) >> 1,
-			(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_GOOD) >> 1);
-	const __m256i cksum_mask =
-		_mm256_set1_epi32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
-				  PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
-				  PKT_RX_OUTER_IP_CKSUM_BAD);
-	/**
-	 * data to be shuffled by result of flag mask, shifted down 12.
-	 * If RSS(bit12)/VLAN(bit13) are set,
-	 * shuffle moves appropriate flags in place.
-	 */
-	const __m256i rss_vlan_flags_shuf = _mm256_set_epi8(0, 0, 0, 0,
-			0, 0, 0, 0,
-			0, 0, 0, 0,
-			PKT_RX_RSS_HASH | PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-			PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-			PKT_RX_RSS_HASH, 0,
-			/* end up 128-bits */
-			0, 0, 0, 0,
-			0, 0, 0, 0,
-			0, 0, 0, 0,
-			PKT_RX_RSS_HASH | PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-			PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-			PKT_RX_RSS_HASH, 0);
-
 	uint16_t i, received;
 
 	for (i = 0, received = 0; i < nb_pkts;
@@ -940,6 +879,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 		__m512i mb4_7 = _mm512_shuffle_epi8(raw_desc4_7, shuf_msk);
 
 		mb4_7 = _mm512_add_epi32(mb4_7, crc_adjust);
+#ifdef IAVF_RX_PTYPE_OFFLOAD
 		/**
 		 * to get packet types, ptype is located in bit16-25
 		 * of each 128bits
@@ -961,6 +901,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 			 0, 0, 0, type_table[ptype5],
 			 0, 0, 0, type_table[ptype4]);
 		mb4_7 = _mm512_mask_blend_epi32(0x1111, mb4_7, ptype4_7);
+#endif
 
 		/**
 		 * convert descriptors 0-3 into mbufs, re-arrange fields.
@@ -969,6 +910,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 		__m512i mb0_3 = _mm512_shuffle_epi8(raw_desc0_3, shuf_msk);
 
 		mb0_3 = _mm512_add_epi32(mb0_3, crc_adjust);
+#ifdef IAVF_RX_PTYPE_OFFLOAD
 		/**
 		 * to get packet types, ptype is located in bit16-25
 		 * of each 128bits
@@ -988,6 +930,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 			 0, 0, 0, type_table[ptype1],
 			 0, 0, 0, type_table[ptype0]);
 		mb0_3 = _mm512_mask_blend_epi32(0x1111, mb0_3, ptype0_3);
+#endif
 
 		/**
 		 * use permute/extract to get status content
@@ -1007,28 +950,114 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 
 		/* now do flag manipulation */
 
-		/* get only flag/error bits we want */
-		const __m256i flag_bits =
-			_mm256_and_si256(status0_7, flags_mask);
-		/**
-		 * l3_l4_error flags, shuffle, then shift to correct adjustment
-		 * of flags in flags_shuf, and finally mask out extra bits
-		 */
-		__m256i l3_l4_flags = _mm256_shuffle_epi8(l3_l4_flags_shuf,
-				_mm256_srli_epi32(flag_bits, 4));
-		l3_l4_flags = _mm256_slli_epi32(l3_l4_flags, 1);
-		l3_l4_flags = _mm256_and_si256(l3_l4_flags, cksum_mask);
-		/* set rss and vlan flags */
-		const __m256i rss_vlan_flag_bits =
-			_mm256_srli_epi32(flag_bits, 12);
-		const __m256i rss_vlan_flags =
-			_mm256_shuffle_epi8(rss_vlan_flags_shuf,
-					    rss_vlan_flag_bits);
-
 		/* merge flags */
-		__m256i mbuf_flags = _mm256_or_si256(l3_l4_flags,
-						     rss_vlan_flags);
+		__m256i mbuf_flags = _mm256_set1_epi32(0);
 
+		if (offload) {
+#if defined(IAVF_RX_CSUM_OFFLOAD) || defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
+			/* Status/Error flag masks */
+			/**
+			 * mask everything except Checksum Reports, RSS indication
+			 * and VLAN indication.
+			 * bit6:4 for IP/L4 checksum errors.
+			 * bit12 is for RSS indication.
+			 * bit13 is for VLAN indication.
+			 */
+			const __m256i flags_mask =
+				_mm256_set1_epi32((7 << 4) | (1 << 12) | (1 << 13));
+#endif
+#ifdef IAVF_RX_CSUM_OFFLOAD
+			/**
+			 * data to be shuffled by the result of the flags mask shifted by 4
+			 * bits.  This gives use the l3_l4 flags.
+			 */
+			const __m256i l3_l4_flags_shuf = _mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
+					/* shift right 1 bit to make sure it not exceed 255 */
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+					 PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+					 PKT_RX_IP_CKSUM_GOOD) >> 1,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+					 PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+					 PKT_RX_IP_CKSUM_GOOD) >> 1,
+					(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_GOOD) >> 1,
+					(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_GOOD) >> 1,
+					/* second 128-bits */
+					0, 0, 0, 0, 0, 0, 0, 0,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+					 PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+					 PKT_RX_IP_CKSUM_GOOD) >> 1,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+					 PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_GOOD |
+					 PKT_RX_IP_CKSUM_GOOD) >> 1,
+					(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_GOOD) >> 1,
+					(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_L4_CKSUM_GOOD | PKT_RX_IP_CKSUM_GOOD) >> 1);
+			const __m256i cksum_mask =
+				_mm256_set1_epi32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+						  PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+						  PKT_RX_OUTER_IP_CKSUM_BAD);
+#endif
+#if defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
+			/**
+			 * data to be shuffled by result of flag mask, shifted down 12.
+			 * If RSS(bit12)/VLAN(bit13) are set,
+			 * shuffle moves appropriate flags in place.
+			 */
+			const __m256i rss_vlan_flags_shuf = _mm256_set_epi8(0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					PKT_RX_RSS_HASH | PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
+					PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
+					PKT_RX_RSS_HASH, 0,
+					/* end up 128-bits */
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					0, 0, 0, 0,
+					PKT_RX_RSS_HASH | PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
+					PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
+					PKT_RX_RSS_HASH, 0);
+#endif
+
+#if defined(IAVF_RX_CSUM_OFFLOAD) || defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
+			/* get only flag/error bits we want */
+			const __m256i flag_bits =
+				_mm256_and_si256(status0_7, flags_mask);
+#endif
+#ifdef IAVF_RX_CSUM_OFFLOAD
+			/**
+			 * l3_l4_error flags, shuffle, then shift to correct adjustment
+			 * of flags in flags_shuf, and finally mask out extra bits
+			 */
+			__m256i l3_l4_flags = _mm256_shuffle_epi8(l3_l4_flags_shuf,
+					_mm256_srli_epi32(flag_bits, 4));
+			l3_l4_flags = _mm256_slli_epi32(l3_l4_flags, 1);
+			l3_l4_flags = _mm256_and_si256(l3_l4_flags, cksum_mask);
+#endif
+#if defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
+			/* set rss and vlan flags */
+			const __m256i rss_vlan_flag_bits =
+				_mm256_srli_epi32(flag_bits, 12);
+			const __m256i rss_vlan_flags =
+				_mm256_shuffle_epi8(rss_vlan_flags_shuf,
+						    rss_vlan_flag_bits);
+#endif
+
+#ifdef IAVF_RX_CSUM_OFFLOAD
+			mbuf_flags = _mm256_or_si256(mbuf_flags, l3_l4_flags);
+#endif
+#if defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
+			mbuf_flags = _mm256_or_si256(mbuf_flags, rss_vlan_flags);
+#endif
+		}
+
+#ifdef IAVF_RX_FDIR_OFFLOAD
 		if (rxq->fdir_enabled) {
 			const __m512i fdir_permute_mask = _mm512_set_epi32
 				(0, 0, 0, 0,
@@ -1070,6 +1099,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 			rx_pkts[i + 7]->hash.fdir.hi =
 				_mm256_extract_epi32(fdir_id0_7, 4);
 		} /* if() on fdir_enabled */
+#endif
 
 		__m256i mb4_5 = _mm512_extracti64x4_epi64(mb4_7, 0);
 		__m256i mb6_7 = _mm512_extracti64x4_epi64(mb4_7, 1);
@@ -1077,93 +1107,97 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 		__m256i mb2_3 = _mm512_extracti64x4_epi64(mb0_3, 1);
 
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
-		/**
-		 * needs to load 2nd 16B of each desc for RSS hash parsing,
-		 * will cause performance drop to get into this context.
-		 */
-		if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_RSS_HASH) {
-			/* load bottom half of every 32B desc */
-			const __m128i raw_desc_bh7 =
-				_mm_load_si128
-					((void *)(&rxdp[7].wb.status_error1));
-			rte_compiler_barrier();
-			const __m128i raw_desc_bh6 =
-				_mm_load_si128
-					((void *)(&rxdp[6].wb.status_error1));
-			rte_compiler_barrier();
-			const __m128i raw_desc_bh5 =
-				_mm_load_si128
-					((void *)(&rxdp[5].wb.status_error1));
-			rte_compiler_barrier();
-			const __m128i raw_desc_bh4 =
-				_mm_load_si128
-					((void *)(&rxdp[4].wb.status_error1));
-			rte_compiler_barrier();
-			const __m128i raw_desc_bh3 =
-				_mm_load_si128
-					((void *)(&rxdp[3].wb.status_error1));
-			rte_compiler_barrier();
-			const __m128i raw_desc_bh2 =
-				_mm_load_si128
-					((void *)(&rxdp[2].wb.status_error1));
-			rte_compiler_barrier();
-			const __m128i raw_desc_bh1 =
-				_mm_load_si128
-					((void *)(&rxdp[1].wb.status_error1));
-			rte_compiler_barrier();
-			const __m128i raw_desc_bh0 =
-				_mm_load_si128
-					((void *)(&rxdp[0].wb.status_error1));
-
-			__m256i raw_desc_bh6_7 =
-				_mm256_inserti128_si256
-					(_mm256_castsi128_si256(raw_desc_bh6),
-					 raw_desc_bh7, 1);
-			__m256i raw_desc_bh4_5 =
-				_mm256_inserti128_si256
-					(_mm256_castsi128_si256(raw_desc_bh4),
-					 raw_desc_bh5, 1);
-			__m256i raw_desc_bh2_3 =
-				_mm256_inserti128_si256
-					(_mm256_castsi128_si256(raw_desc_bh2),
-					 raw_desc_bh3, 1);
-			__m256i raw_desc_bh0_1 =
-				_mm256_inserti128_si256
-					(_mm256_castsi128_si256(raw_desc_bh0),
-					 raw_desc_bh1, 1);
-
+		if (offload) {
+#ifdef IAVF_RX_RSS_OFFLOAD
 			/**
-			 * to shift the 32b RSS hash value to the
-			 * highest 32b of each 128b before mask
+			 * needs to load 2nd 16B of each desc for RSS hash parsing,
+			 * will cause performance drop to get into this context.
 			 */
-			__m256i rss_hash6_7 =
-				_mm256_slli_epi64(raw_desc_bh6_7, 32);
-			__m256i rss_hash4_5 =
-				_mm256_slli_epi64(raw_desc_bh4_5, 32);
-			__m256i rss_hash2_3 =
-				_mm256_slli_epi64(raw_desc_bh2_3, 32);
-			__m256i rss_hash0_1 =
-				_mm256_slli_epi64(raw_desc_bh0_1, 32);
+			if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
+			    DEV_RX_OFFLOAD_RSS_HASH) {
+				/* load bottom half of every 32B desc */
+				const __m128i raw_desc_bh7 =
+					_mm_load_si128
+						((void *)(&rxdp[7].wb.status_error1));
+				rte_compiler_barrier();
+				const __m128i raw_desc_bh6 =
+					_mm_load_si128
+						((void *)(&rxdp[6].wb.status_error1));
+				rte_compiler_barrier();
+				const __m128i raw_desc_bh5 =
+					_mm_load_si128
+						((void *)(&rxdp[5].wb.status_error1));
+				rte_compiler_barrier();
+				const __m128i raw_desc_bh4 =
+					_mm_load_si128
+						((void *)(&rxdp[4].wb.status_error1));
+				rte_compiler_barrier();
+				const __m128i raw_desc_bh3 =
+					_mm_load_si128
+						((void *)(&rxdp[3].wb.status_error1));
+				rte_compiler_barrier();
+				const __m128i raw_desc_bh2 =
+					_mm_load_si128
+						((void *)(&rxdp[2].wb.status_error1));
+				rte_compiler_barrier();
+				const __m128i raw_desc_bh1 =
+					_mm_load_si128
+						((void *)(&rxdp[1].wb.status_error1));
+				rte_compiler_barrier();
+				const __m128i raw_desc_bh0 =
+					_mm_load_si128
+						((void *)(&rxdp[0].wb.status_error1));
 
-			__m256i rss_hash_msk =
-				_mm256_set_epi32(0xFFFFFFFF, 0, 0, 0,
-						 0xFFFFFFFF, 0, 0, 0);
+				__m256i raw_desc_bh6_7 =
+					_mm256_inserti128_si256
+						(_mm256_castsi128_si256(raw_desc_bh6),
+						 raw_desc_bh7, 1);
+				__m256i raw_desc_bh4_5 =
+					_mm256_inserti128_si256
+						(_mm256_castsi128_si256(raw_desc_bh4),
+						 raw_desc_bh5, 1);
+				__m256i raw_desc_bh2_3 =
+					_mm256_inserti128_si256
+						(_mm256_castsi128_si256(raw_desc_bh2),
+						 raw_desc_bh3, 1);
+				__m256i raw_desc_bh0_1 =
+					_mm256_inserti128_si256
+						(_mm256_castsi128_si256(raw_desc_bh0),
+						 raw_desc_bh1, 1);
 
-			rss_hash6_7 = _mm256_and_si256
-					(rss_hash6_7, rss_hash_msk);
-			rss_hash4_5 = _mm256_and_si256
-					(rss_hash4_5, rss_hash_msk);
-			rss_hash2_3 = _mm256_and_si256
-					(rss_hash2_3, rss_hash_msk);
-			rss_hash0_1 = _mm256_and_si256
-					(rss_hash0_1, rss_hash_msk);
+				/**
+				 * to shift the 32b RSS hash value to the
+				 * highest 32b of each 128b before mask
+				 */
+				__m256i rss_hash6_7 =
+					_mm256_slli_epi64(raw_desc_bh6_7, 32);
+				__m256i rss_hash4_5 =
+					_mm256_slli_epi64(raw_desc_bh4_5, 32);
+				__m256i rss_hash2_3 =
+					_mm256_slli_epi64(raw_desc_bh2_3, 32);
+				__m256i rss_hash0_1 =
+					_mm256_slli_epi64(raw_desc_bh0_1, 32);
 
-			mb6_7 = _mm256_or_si256(mb6_7, rss_hash6_7);
-			mb4_5 = _mm256_or_si256(mb4_5, rss_hash4_5);
-			mb2_3 = _mm256_or_si256(mb2_3, rss_hash2_3);
-			mb0_1 = _mm256_or_si256(mb0_1, rss_hash0_1);
-		} /* if() on RSS hash parsing */
+				__m256i rss_hash_msk =
+					_mm256_set_epi32(0xFFFFFFFF, 0, 0, 0,
+							 0xFFFFFFFF, 0, 0, 0);
+
+				rss_hash6_7 = _mm256_and_si256
+						(rss_hash6_7, rss_hash_msk);
+				rss_hash4_5 = _mm256_and_si256
+						(rss_hash4_5, rss_hash_msk);
+				rss_hash2_3 = _mm256_and_si256
+						(rss_hash2_3, rss_hash_msk);
+				rss_hash0_1 = _mm256_and_si256
+						(rss_hash0_1, rss_hash_msk);
+
+				mb6_7 = _mm256_or_si256(mb6_7, rss_hash6_7);
+				mb4_5 = _mm256_or_si256(mb4_5, rss_hash4_5);
+				mb2_3 = _mm256_or_si256(mb2_3, rss_hash2_3);
+				mb0_1 = _mm256_or_si256(mb0_1, rss_hash0_1);
+			} /* if() on RSS hash parsing */
+#endif
+		}
 #endif
 
 		/**
@@ -1330,7 +1364,7 @@ iavf_recv_pkts_vec_avx512_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts)
 {
 	return _iavf_recv_raw_pkts_vec_avx512_flex_rxd(rx_queue, rx_pkts,
-						       nb_pkts, NULL);
+						       nb_pkts, NULL, false);
 }
 
 /**
@@ -1412,17 +1446,18 @@ iavf_recv_scattered_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
  * Notice:
  * - nb_pkts < IAVF_DESCS_PER_LOOP, just return no packet
  */
-static uint16_t
+static __rte_always_inline uint16_t
 iavf_recv_scattered_burst_vec_avx512_flex_rxd(void *rx_queue,
 					      struct rte_mbuf **rx_pkts,
-					      uint16_t nb_pkts)
+					      uint16_t nb_pkts,
+					      bool offload)
 {
 	struct iavf_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[IAVF_VPMD_RX_MAX_BURST] = {0};
 
 	/* get some new buffers */
 	uint16_t nb_bufs = _iavf_recv_raw_pkts_vec_avx512_flex_rxd(rxq,
-					rx_pkts, nb_pkts, split_flags);
+					rx_pkts, nb_pkts, split_flags, offload);
 	if (nb_bufs == 0)
 		return 0;
 
@@ -1455,10 +1490,11 @@ iavf_recv_scattered_burst_vec_avx512_flex_rxd(void *rx_queue,
  * Notice:
  * - nb_pkts < IAVF_DESCS_PER_LOOP, just return no packet
  */
-uint16_t
-iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
-					     struct rte_mbuf **rx_pkts,
-					     uint16_t nb_pkts)
+static __rte_always_inline uint16_t
+iavf_recv_scattered_pkts_vec_avx512_flex_rxd_cmn(void *rx_queue,
+						 struct rte_mbuf **rx_pkts,
+						 uint16_t nb_pkts,
+						 bool offload)
 {
 	uint16_t retval = 0;
 
@@ -1466,14 +1502,25 @@ iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
 		uint16_t burst =
 			iavf_recv_scattered_burst_vec_avx512_flex_rxd
 				(rx_queue, rx_pkts + retval,
-				 IAVF_VPMD_RX_MAX_BURST);
+				 IAVF_VPMD_RX_MAX_BURST, offload);
 		retval += burst;
 		nb_pkts -= burst;
 		if (burst < IAVF_VPMD_RX_MAX_BURST)
 			return retval;
 	}
 	return retval + iavf_recv_scattered_burst_vec_avx512_flex_rxd(rx_queue,
-				rx_pkts + retval, nb_pkts);
+				rx_pkts + retval, nb_pkts, offload);
+}
+
+uint16_t
+iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
+					     struct rte_mbuf **rx_pkts,
+					     uint16_t nb_pkts)
+{
+	return iavf_recv_scattered_pkts_vec_avx512_flex_rxd_cmn(rx_queue,
+								rx_pkts,
+								nb_pkts,
+								false);
 }
 
 uint16_t
@@ -1491,6 +1538,29 @@ iavf_recv_scattered_pkts_vec_avx512_offload(void *rx_queue,
 {
 	return iavf_recv_scattered_pkts_vec_avx512_cmn(rx_queue, rx_pkts,
 						       nb_pkts, true);
+}
+
+uint16_t
+iavf_recv_pkts_vec_avx512_flex_rxd_offload(void *rx_queue,
+					   struct rte_mbuf **rx_pkts,
+					   uint16_t nb_pkts)
+{
+	return _iavf_recv_raw_pkts_vec_avx512_flex_rxd(rx_queue,
+						       rx_pkts,
+						       nb_pkts,
+						       NULL,
+						       true);
+}
+
+uint16_t
+iavf_recv_scattered_pkts_vec_avx512_flex_rxd_offload(void *rx_queue,
+						     struct rte_mbuf **rx_pkts,
+						     uint16_t nb_pkts)
+{
+	return iavf_recv_scattered_pkts_vec_avx512_flex_rxd_cmn(rx_queue,
+								rx_pkts,
+								nb_pkts,
+								true);
 }
 
 static __rte_always_inline int
