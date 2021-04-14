@@ -1518,14 +1518,16 @@ tx_backlog_entry_avx512(struct iavf_tx_vec_entry *txep,
 		txep[i].mbuf = tx_pkts[i];
 }
 
-static inline void
+static __rte_always_inline void
 iavf_vtx1(volatile struct iavf_tx_desc *txdp,
-	  struct rte_mbuf *pkt, uint64_t flags)
+	  struct rte_mbuf *pkt, uint64_t flags, bool offload)
 {
 	uint64_t high_qw =
 		(IAVF_TX_DESC_DTYPE_DATA |
 		 ((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT) |
 		 ((uint64_t)pkt->data_len << IAVF_TXD_QW1_TX_BUF_SZ_SHIFT));
+	if (offload)
+		iavf_txd_enable_offload(pkt, &high_qw);
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 					    pkt->buf_iova + pkt->data_off);
@@ -1534,62 +1536,70 @@ iavf_vtx1(volatile struct iavf_tx_desc *txdp,
 
 #define IAVF_TX_LEN_MASK 0xAA
 #define IAVF_TX_OFF_MASK 0x55
-static inline void
+static __rte_always_inline void
 iavf_vtx(volatile struct iavf_tx_desc *txdp,
-	 struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
+	 struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags,
+	 bool offload)
 {
 	const uint64_t hi_qw_tmpl = (IAVF_TX_DESC_DTYPE_DATA |
 			((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT));
 
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
-		iavf_vtx1(txdp, *pkt, flags);
+		iavf_vtx1(txdp, *pkt, flags, offload);
 		nb_pkts--, txdp++, pkt++;
 	}
 
 	/* do 4 at a time while possible, in bursts */
 	for (; nb_pkts > 3; txdp += 4, pkt += 4, nb_pkts -= 4) {
-		__m512i desc4 =
-			_mm512_set_epi64
-				((uint64_t)pkt[3]->data_len,
-				 pkt[3]->buf_iova,
-				 (uint64_t)pkt[2]->data_len,
-				 pkt[2]->buf_iova,
-				 (uint64_t)pkt[1]->data_len,
-				 pkt[1]->buf_iova,
-				 (uint64_t)pkt[0]->data_len,
-				 pkt[0]->buf_iova);
-		__m512i hi_qw_tmpl_4 = _mm512_set1_epi64(hi_qw_tmpl);
-		__m512i data_off_4 =
-			_mm512_set_epi64
-				(0,
-				 pkt[3]->data_off,
-				 0,
-				 pkt[2]->data_off,
-				 0,
-				 pkt[1]->data_off,
-				 0,
-				 pkt[0]->data_off);
+		uint64_t hi_qw3 =
+			hi_qw_tmpl |
+			((uint64_t)pkt[3]->data_len <<
+			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		if (offload)
+			iavf_txd_enable_offload(pkt[3], &hi_qw3);
+		uint64_t hi_qw2 =
+			hi_qw_tmpl |
+			((uint64_t)pkt[2]->data_len <<
+			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		if (offload)
+			iavf_txd_enable_offload(pkt[2], &hi_qw2);
+		uint64_t hi_qw1 =
+			hi_qw_tmpl |
+			((uint64_t)pkt[1]->data_len <<
+			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		if (offload)
+			iavf_txd_enable_offload(pkt[1], &hi_qw1);
+		uint64_t hi_qw0 =
+			hi_qw_tmpl |
+			((uint64_t)pkt[0]->data_len <<
+			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
+		if (offload)
+			iavf_txd_enable_offload(pkt[0], &hi_qw0);
 
-		desc4 = _mm512_mask_slli_epi64(desc4, IAVF_TX_LEN_MASK, desc4,
-					       IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
-		desc4 = _mm512_mask_or_epi64(desc4, IAVF_TX_LEN_MASK, desc4,
-					     hi_qw_tmpl_4);
-		desc4 = _mm512_mask_add_epi64(desc4, IAVF_TX_OFF_MASK, desc4,
-					      data_off_4);
-		_mm512_storeu_si512((void *)txdp, desc4);
+		__m512i desc0_3 =
+			_mm512_set_epi64
+				(hi_qw3,
+				 pkt[3]->buf_iova + pkt[3]->data_off,
+				 hi_qw2,
+				 pkt[2]->buf_iova + pkt[2]->data_off,
+				 hi_qw1,
+				 pkt[1]->buf_iova + pkt[1]->data_off,
+				 hi_qw0,
+				 pkt[0]->buf_iova + pkt[0]->data_off);
+		_mm512_storeu_si512((void *)txdp, desc0_3);
 	}
 
 	/* do any last ones */
 	while (nb_pkts) {
-		iavf_vtx1(txdp, *pkt, flags);
+		iavf_vtx1(txdp, *pkt, flags, offload);
 		txdp++, pkt++, nb_pkts--;
 	}
 }
 
-static inline uint16_t
+static __rte_always_inline uint16_t
 iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
-				 uint16_t nb_pkts)
+				 uint16_t nb_pkts, bool offload)
 {
 	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
 	volatile struct iavf_tx_desc *txdp;
@@ -1620,11 +1630,11 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (nb_commit >= n) {
 		tx_backlog_entry_avx512(txep, tx_pkts, n);
 
-		iavf_vtx(txdp, tx_pkts, n - 1, flags);
+		iavf_vtx(txdp, tx_pkts, n - 1, flags, offload);
 		tx_pkts += (n - 1);
 		txdp += (n - 1);
 
-		iavf_vtx1(txdp, *tx_pkts++, rs);
+		iavf_vtx1(txdp, *tx_pkts++, rs, offload);
 
 		nb_commit = (uint16_t)(nb_commit - n);
 
@@ -1639,7 +1649,7 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_backlog_entry_avx512(txep, tx_pkts, nb_commit);
 
-	iavf_vtx(txdp, tx_pkts, nb_commit, flags);
+	iavf_vtx(txdp, tx_pkts, nb_commit, flags, offload);
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->next_rs) {
@@ -1657,9 +1667,9 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
-uint16_t
-iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
-			  uint16_t nb_pkts)
+static __rte_always_inline uint16_t
+iavf_xmit_pkts_vec_avx512_cmn(void *tx_queue, struct rte_mbuf **tx_pkts,
+			      uint16_t nb_pkts, bool offload)
 {
 	uint16_t nb_tx = 0;
 	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
@@ -1669,7 +1679,7 @@ iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
 		ret = iavf_xmit_fixed_burst_vec_avx512(tx_queue, &tx_pkts[nb_tx],
-						       num);
+						       num, offload);
 		nb_tx += ret;
 		nb_pkts -= ret;
 		if (ret < num)
@@ -1677,6 +1687,13 @@ iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	return nb_tx;
+}
+
+uint16_t
+iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
+			  uint16_t nb_pkts)
+{
+	return iavf_xmit_pkts_vec_avx512_cmn(tx_queue, tx_pkts, nb_pkts, false);
 }
 
 static inline void
@@ -1708,4 +1725,11 @@ iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq)
 {
 	txq->ops = &avx512_vec_txq_ops;
 	return 0;
+}
+
+uint16_t
+iavf_xmit_pkts_vec_avx512_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
+				  uint16_t nb_pkts)
+{
+	return iavf_xmit_pkts_vec_avx512_cmn(tx_queue, tx_pkts, nb_pkts, true);
 }

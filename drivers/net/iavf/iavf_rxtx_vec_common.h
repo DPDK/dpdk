@@ -240,14 +240,17 @@ iavf_tx_vec_queue_default(struct iavf_tx_queue *txq)
 	if (!txq)
 		return -1;
 
-	if (txq->offloads & IAVF_NO_VECTOR_FLAGS)
-		return -1;
-
 	if (txq->rs_thresh < IAVF_VPMD_TX_MAX_BURST ||
 	    txq->rs_thresh > IAVF_VPMD_TX_MAX_FREE_BUF)
 		return -1;
 
-	return 0;
+	if (txq->offloads & IAVF_TX_NO_VECTOR_FLAGS)
+		return -1;
+
+	if (txq->offloads & IAVF_TX_VECTOR_OFFLOAD)
+		return IAVF_VECTOR_OFFLOAD_PATH;
+
+	return IAVF_VECTOR_PATH;
 }
 
 static inline int
@@ -270,14 +273,97 @@ iavf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 {
 	int i;
 	struct iavf_tx_queue *txq;
+	int ret;
+	int result = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		if (iavf_tx_vec_queue_default(txq))
+		ret = iavf_tx_vec_queue_default(txq);
+
+		if (ret < 0)
 			return -1;
+		if (ret > result)
+			result = ret;
 	}
 
-	return 0;
+	return result;
+}
+
+/******************************************************************************
+ * If user knows a specific offload is not enabled by APP,
+ * the macro can be commented to save the effort of fast path.
+ * Currently below 2 features are supported in TX path,
+ * 1, checksum offload
+ * 2, VLAN/QINQ insertion
+ ******************************************************************************/
+#define IAVF_TX_CSUM_OFFLOAD
+#define IAVF_TX_VLAN_QINQ_OFFLOAD
+
+static __rte_always_inline void
+iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
+			uint64_t *txd_hi)
+{
+#if defined(IAVF_TX_CSUM_OFFLOAD) || defined(IAVF_TX_VLAN_QINQ_OFFLOAD)
+	uint64_t ol_flags = tx_pkt->ol_flags;
+#endif
+	uint32_t td_cmd = 0;
+#ifdef IAVF_TX_CSUM_OFFLOAD
+	uint32_t td_offset = 0;
+#endif
+
+#ifdef IAVF_TX_CSUM_OFFLOAD
+	/* Set MACLEN */
+	td_offset |= (tx_pkt->l2_len >> 1) <<
+		     IAVF_TX_DESC_LENGTH_MACLEN_SHIFT;
+
+	/* Enable L3 checksum offloads */
+	if (ol_flags & PKT_TX_IP_CKSUM) {
+		td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV4_CSUM;
+		td_offset |= (tx_pkt->l3_len >> 2) <<
+			     IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+	} else if (ol_flags & PKT_TX_IPV4) {
+		td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV4;
+		td_offset |= (tx_pkt->l3_len >> 2) <<
+			     IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+	} else if (ol_flags & PKT_TX_IPV6) {
+		td_cmd |= IAVF_TX_DESC_CMD_IIPT_IPV6;
+		td_offset |= (tx_pkt->l3_len >> 2) <<
+			     IAVF_TX_DESC_LENGTH_IPLEN_SHIFT;
+	}
+
+	/* Enable L4 checksum offloads */
+	switch (ol_flags & PKT_TX_L4_MASK) {
+	case PKT_TX_TCP_CKSUM:
+		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
+		td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
+			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+		break;
+	case PKT_TX_SCTP_CKSUM:
+		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_SCTP;
+		td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
+			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+		break;
+	case PKT_TX_UDP_CKSUM:
+		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_UDP;
+		td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
+			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
+		break;
+	default:
+		break;
+	}
+
+	*txd_hi |= ((uint64_t)td_offset) << IAVF_TXD_QW1_OFFSET_SHIFT;
+#endif
+
+#ifdef IAVF_TX_VLAN_QINQ_OFFLOAD
+	if (ol_flags & (PKT_TX_VLAN | PKT_TX_QINQ)) {
+		td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
+		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci <<
+			    IAVF_TXD_QW1_L2TAG1_SHIFT);
+	}
+#endif
+
+	*txd_hi |= ((uint64_t)td_cmd) << IAVF_TXD_QW1_CMD_SHIFT;
 }
 
 #ifdef CC_AVX2_SUPPORT
