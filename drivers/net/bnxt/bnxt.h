@@ -844,6 +844,7 @@ struct bnxt {
 static
 inline uint16_t bnxt_max_rings(struct bnxt *bp)
 {
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	uint16_t max_tx_rings = bp->max_tx_rings;
 	uint16_t max_rx_rings = bp->max_rx_rings;
 	uint16_t max_cp_rings = bp->max_cp_rings;
@@ -859,6 +860,18 @@ inline uint16_t bnxt_max_rings(struct bnxt *bp)
 	} else {
 		max_rx_rings = RTE_MIN(max_rx_rings / 2U,
 				       bp->max_stat_ctx / 2U);
+	}
+
+	if (BNXT_CHIP_P5(bp)) {
+		/* RSS table size in Thor is 512.
+		 * Cap max Rx rings to the same value for RSS.
+		 * For non-RSS case cap it to the max VNIC count.
+		 */
+		if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+			max_rx_rings = RTE_MIN(max_rx_rings,
+					       BNXT_RSS_TBL_SIZE_P5);
+		else
+			max_rx_rings = RTE_MIN(max_rx_rings, bp->max_vnics);
 	}
 
 	max_tx_rings = RTE_MIN(max_tx_rings, max_rx_rings);
