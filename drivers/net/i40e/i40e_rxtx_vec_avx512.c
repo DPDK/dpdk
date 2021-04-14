@@ -20,7 +20,7 @@
 
 #define RTE_I40E_DESCS_PER_LOOP_AVX 8
 
-static inline void
+static __rte_always_inline void
 i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 {
 	int i;
@@ -31,6 +31,9 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 			rte_lcore_id());
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
+
+	if (unlikely(!cache))
+		return i40e_rxq_rearm_common(rxq, true);
 
 	/* We need to pull 'n' more MBUFs into the software ring from mempool
 	 * We inline the mempool function here, so we can vectorize the copy
