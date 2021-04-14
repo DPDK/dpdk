@@ -14,13 +14,13 @@ qat_compress = true
 qat_compress_path = 'compress/qat'
 qat_compress_relpath = '../../' + qat_compress_path
 
-if disabled_drivers.contains(qat_crypto_path)
+if disable_drivers.contains(qat_crypto_path)
 	qat_crypto = false
 	dpdk_drvs_disabled += qat_crypto_path
 	set_variable(qat_crypto_path.underscorify() + '_disable_reason',
 			'Explicitly disabled via build config')
 endif
-if disabled_drivers.contains(qat_compress_path)
+if disable_drivers.contains(qat_compress_path)
 	qat_compress = false
 	dpdk_drvs_disabled += qat_compress_path
 	set_variable(qat_compress_path.underscorify() + '_disable_reason',

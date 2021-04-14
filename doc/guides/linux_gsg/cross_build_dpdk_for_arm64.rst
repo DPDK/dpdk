@@ -234,3 +234,11 @@ There are other options you may specify in a cross file to tailor the build::
       numa = false        # set to false to force building for a non-NUMA system
          # if not set or set to true, the build system will build for a NUMA
          # system only if libnuma is installed
+
+      disable_drivers = 'bus/dpaa,crypto/*'  # add disabled drivers
+         # valid values are dir/subdirs in the drivers directory
+         # wildcards are allowed
+
+      enable_drivers = 'common/*,bus/*'  # build only these drivers
+         # valid values are dir/subdirs in the drivers directory
+         # wildcards are allowed

@@ -10,6 +10,8 @@ option('drivers_install_subdir', type: 'string', value: 'dpdk/pmds-<VERSION>',
 	description: 'Subdirectory of libdir where to install PMDs. Defaults to using a versioned subdirectory.')
 option('enable_docs', type: 'boolean', value: false,
 	description: 'build documentation')
+option('enable_drivers', type: 'string', value: '',
+	description: 'Comma-separated list of drivers to build. If unspecified, build all drivers.')
 option('enable_driver_sdk', type: 'boolean', value: false,
 	description: 'Install headers to build drivers.')
 option('enable_kmods', type: 'boolean', value: false,

@@ -20,8 +20,25 @@ subdirs = [
 	'baseband', # depends on common and bus.
 ]
 
-disabled_drivers = run_command(list_dir_globs, get_option('disable_drivers'),
-		).stdout().split()
+if meson.is_cross_build()
+	disable_drivers += ',' + meson.get_cross_property('disable_drivers', '')
+	enable_drivers += ',' + meson.get_cross_property('enable_drivers', '')
+endif
+
+# add cmdline disabled drivers and meson disabled drivers together
+disable_drivers += ',' + get_option('disable_drivers')
+disable_drivers = run_command(list_dir_globs, disable_drivers).stdout().split()
+
+# add cmdline enabled drivers and meson enabled drivers together
+enable_drivers = ',' + get_option('enable_drivers')
+enable_drivers = run_command(list_dir_globs, enable_drivers).stdout().split()
+if enable_drivers.length() == 0
+	enable_drivers = run_command(list_dir_globs, '*/*').stdout().split()
+endif
+
+# these drivers must always be enabled, otherwise the build breaks
+always_enable = ['bus/pci', 'bus/vdev']
+enable_drivers += always_enable
 
 default_cflags = machine_args
 default_cflags += ['-DALLOW_EXPERIMENTAL_API']
@@ -75,9 +92,16 @@ foreach subpath:subdirs
 		ext_deps = []
 		pkgconfig_extra_libs = []
 
-		if disabled_drivers.contains(drv_path)
+		if not enable_drivers.contains(drv_path)
 			build = false
-			reason = 'explicitly disabled via build config'
+			reason = 'not in enabled drivers build config'
+		elif disable_drivers.contains(drv_path)
+			if always_enable.contains(drv_path)
+				message('Driver @0@ cannot be disabled, not disabling.'.format(drv_path))
+			else
+				build = false
+				reason = 'explicitly disabled via build config'
+			endif
 		else
 			# pull in driver directory which should update all the local variables
 			subdir(drv_path)

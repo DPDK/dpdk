@@ -14,6 +14,7 @@ root = os.path.join(os.getenv('MESON_SOURCE_ROOT', '.'),
                     os.getenv('MESON_SUBDIR', '.'))
 
 for path in sys.argv[1].split(','):
-    for p in iglob(os.path.join(root, path)):
-        if os.path.isdir(p):
-            print(os.path.relpath(p))
+    if path:
+        for p in iglob(os.path.join(root, path)):
+            if os.path.isdir(p):
+                print(os.path.relpath(p))

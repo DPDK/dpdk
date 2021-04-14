@@ -17,9 +17,6 @@ flags_common = [
 	#	['RTE_ARM64_MEMCPY_ALIGN_MASK', 0xF],
 	#	['RTE_ARM64_MEMCPY_STRICT_ALIGN', false],
 
-	['RTE_NET_FM10K', false],
-	['RTE_NET_AVP', false],
-
 	['RTE_SCHED_VECTOR', false],
 	['RTE_ARM_USE_WFE', false],
 	['RTE_ARCH_ARM64', true],
@@ -126,7 +123,6 @@ implementer_cavium = {
 				['RTE_MACHINE', '"octeontx2"'],
 				['RTE_ARM_FEATURE_ATOMICS', true],
 				['RTE_USE_C11_MEM_MODEL', true],
-				['RTE_EAL_IGB_UIO', false],
 				['RTE_MAX_LCORE', 36],
 				['RTE_MAX_NUMA_NODES', 1]
 			]

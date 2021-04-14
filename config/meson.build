@@ -63,6 +63,10 @@ if not is_windows
 			pmd_subdir_opt)
 endif
 
+# init disable/enable driver lists that will be populated in different places
+disable_drivers = ''
+enable_drivers = ''
+
 # set the machine type and cflags for it
 if meson.is_cross_build()
 	machine = host_machine.cpu()
