@@ -84,7 +84,7 @@ mlx5_pmd_socket_handle(void *cb __rte_unused)
 	}
 	/* Dump flow. */
 	dev = &rte_eth_devices[port_id];
-	ret = mlx5_flow_dev_dump(dev, file, NULL);
+	ret = mlx5_flow_dev_dump(dev, NULL, file, NULL);
 	/* Set-up the ancillary data and reply. */
 	msg.msg_controllen = 0;
 	msg.msg_control = NULL;

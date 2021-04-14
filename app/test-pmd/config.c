@@ -1931,7 +1931,7 @@ port_flow_dump(portid_t port_id, const char *file_name)
 			return -errno;
 		}
 	}
-	ret = rte_flow_dev_dump(port_id, file, &error);
+	ret = rte_flow_dev_dump(port_id, NULL, file, &error);
 	if (ret) {
 		port_flow_complain(&error);
 		printf("Failed to dump flow: %s\n", strerror(-ret));

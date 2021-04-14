@@ -1027,7 +1027,8 @@ rte_flow_copy(struct rte_flow_desc *desc, size_t len,
 }
 
 int
-rte_flow_dev_dump(uint16_t port_id, FILE *file, struct rte_flow_error *error)
+rte_flow_dev_dump(uint16_t port_id, struct rte_flow *flow,
+			FILE *file, struct rte_flow_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
@@ -1037,7 +1038,7 @@ rte_flow_dev_dump(uint16_t port_id, FILE *file, struct rte_flow_error *error)
 		return -rte_errno;
 	if (likely(!!ops->dev_dump)) {
 		fts_enter(dev);
-		ret = ops->dev_dump(dev, file, error);
+		ret = ops->dev_dump(dev, flow, file, error);
 		fts_exit(dev);
 		return flow_err(port_id, ret, error);
 	}

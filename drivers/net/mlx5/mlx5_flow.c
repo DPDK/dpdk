@@ -7153,7 +7153,7 @@ mlx5_flow_discover_mreg_c(struct rte_eth_dev *dev)
  *   0 on success, a nagative value otherwise.
  */
 int
-mlx5_flow_dev_dump(struct rte_eth_dev *dev,
+mlx5_flow_dev_dump(struct rte_eth_dev *dev, struct rte_flow *flow_idx,
 		   FILE *file,
 		   struct rte_flow_error *error __rte_unused)
 {
@@ -7165,8 +7165,11 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev,
 			return -errno;
 		return -ENOTSUP;
 	}
-	return mlx5_devx_cmd_flow_dump(sh->fdb_domain, sh->rx_domain,
-				       sh->tx_domain, file);
+
+	if (!flow_idx)
+		return mlx5_devx_cmd_flow_dump(sh->fdb_domain,
+				sh->rx_domain, sh->tx_domain, file);
+	return -ENOTSUP;
 }
 
 /**

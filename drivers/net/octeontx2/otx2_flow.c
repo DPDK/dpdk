@@ -807,7 +807,7 @@ err_exit:
 
 static int
 otx2_flow_dev_dump(struct rte_eth_dev *dev,
-		  FILE *file,
+		  struct rte_flow *flow, FILE *file,
 		  struct rte_flow_error *error)
 {
 	struct otx2_eth_dev *hw = dev->data->dev_private;
@@ -820,6 +820,13 @@ otx2_flow_dev_dump(struct rte_eth_dev *dev,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,
 				   "Invalid file");
+		return -EINVAL;
+	}
+	if (flow != NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL,
+				   "Invalid argument");
 		return -EINVAL;
 	}
 

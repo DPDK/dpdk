@@ -1837,13 +1837,16 @@ all flows with assistance of external tools.
 
    .. code-block:: console
 
-       testpmd> flow dump <port> <output_file>
+       To dump all flows:
+       testpmd> flow dump <port> all <output_file>
+       and dump one flow:
+       testpmd> flow dump <port> rule <rule_id> <output_file>
 
    - call rte_flow_dev_dump api:
 
    .. code-block:: console
 
-       rte_flow_dev_dump(port, file, NULL);
+       rte_flow_dev_dump(port, flow, file, NULL);
 
 #. Dump human-readable flows from raw file:
 
@@ -1851,4 +1854,4 @@ all flows with assistance of external tools.
 
    .. code-block:: console
 
-       mlx_steering_dump.py -f <output_file>
+       mlx_steering_dump.py -f <output_file> -flowptr <flow_ptr>
