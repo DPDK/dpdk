@@ -150,6 +150,12 @@ New Features
 
   * Added support for preferred busy polling.
 
+* **Added support of multiple data-units in cryptodev API.**
+
+  The cryptodev library has been enhanced to allow operations on multiple
+  data-units for AES-XTS algorithm, the data-unit length should be set in the
+  transformation. A capability for it was added too.
+
 * **Updated the OCTEON TX crypto PMD.**
 
   * Added support for DIGEST_ENCRYPTED mode in OCTEON TX crypto PMD.

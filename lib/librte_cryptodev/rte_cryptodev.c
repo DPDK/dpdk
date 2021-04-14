@@ -617,6 +617,8 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "SYM_SESSIONLESS";
 	case RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA:
 		return "NON_BYTE_ALIGNED_DATA";
+	case RTE_CRYPTODEV_FF_CIPHER_MULTIPLE_DATA_UNITS:
+		return "CIPHER_MULTIPLE_DATA_UNITS";
 	default:
 		return NULL;
 	}

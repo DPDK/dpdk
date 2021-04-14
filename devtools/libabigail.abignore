@@ -20,3 +20,13 @@
 [suppress_type]
         name = rte_cryptodev
         has_data_member_inserted_between = {offset_after(attached), end}
+
+; Ignore fields inserted in union boundary of rte_cryptodev_symmetric_capability
+[suppress_type]
+        name = rte_cryptodev_symmetric_capability
+        has_data_member_inserted_between = {offset_after(cipher.iv_size), end}
+
+; Ignore fields inserted in middle padding of rte_crypto_cipher_xform
+[suppress_type]
+        name = rte_crypto_cipher_xform
+        has_data_member_inserted_between = {offset_after(key), offset_of(iv)}
