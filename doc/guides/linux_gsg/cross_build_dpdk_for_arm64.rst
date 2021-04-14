@@ -187,58 +187,60 @@ Use the following command to cross-compile DPDK for the target machine::
    meson aarch64-build-clang --cross-file config/arm/arm64_armv8_linux_clang_ubuntu1804
    ninja -C aarch64-build-clang
 
-Supported cross-compilation targets
------------------------------------
+Building for an aarch64 SoC on an aarch64 build machine
+-------------------------------------------------------
 
-If you wish to build for a target which is not among the current cross-files,
-you may use various combinations of implementer/part number::
+If you wish to build on an aarch64 build machine for a different aarch64 SoC,
+you don't need a separate cross toolchain, just a different set of
+configuration options. To build for an aarch64 SoC, use the -Dplatform meson
+option::
 
-   Supported implementers:
-      'generic': Generic armv8
-      '0x41':    Arm
-      '0x43':    Cavium
-      '0x50':    Ampere Computing
-      '0x56':    Marvell ARMADA
-      'dpaa':    NXP DPAA
+   meson soc_build -Dplatform=<target_soc>
 
-   Supported part_numbers for generic:
-      'generic': valid for all armv8-a architectures (unoptimized portable build)
+Substitute <target_soc> with one of the supported SoCs::
 
-   Supported part_numbers for 0x41, 0x56, dpaa:
-      '0xd03':   cortex-a53
-      '0xd04':   cortex-a35
-      '0xd09':   cortex-a73
-      '0xd0a':   cortex-a75
-      '0xd0b':   cortex-a76
-      '0xd0c':   neoverse-n1
+   generic:     Generic un-optimized build for all aarch64 machines.
+   armada:      Marvell ARMADA
+   bluefield:   NVIDIA BlueField
+   dpaa:        NXP DPAA
+   emag:        Ampere eMAG
+   graviton2:   AWS Graviton2
+   n1sdp:       Arm Neoverse N1SDP
+   octeontx2:   Marvell OCTEON TX2
+   stingray:    Broadcom Stingray
+   thunderx2:   Marvell ThunderX2 T99
+   thunderxt88: Marvell ThunderX T88
 
-   Supported part_numbers for 0x43:
-      '0xa1':    thunderxt88
-      '0xa2':    thunderxt81
-      '0xa3':    thunderxt83
-      '0xaf':    thunderx2t99
-      '0xb2':    octeontx2
+These SoCs are also used in cross files, e.g.::
 
-   Supported part_numbers for 0x50:
-      '0x0':     emag
+   [properties]
+   # Generate binaries that are portable across all Armv8 machines
+   platform = 'generic'
 
-Other cross file options
-------------------------
+Supported SoC configuration
+---------------------------
 
-There are other options you may specify in a cross file to tailor the build::
+The SoC configuration is a combination of implementer and CPU part number
+configuration and SoC-specific configuration::
 
-   Supported extra configuration
-      max_numa_nodes = n  # will set RTE_MAX_NUMA_NODES
-      max_lcores = n      # will set RTE_MAX_LCORE
+   soc_<name> = {
+      'description': 'SoC Description',  # mandatory
+      'implementer': <implementer_id>,   # mandatory
+      'part_number': <part_number>,      # mandatory
+      'numa': false,  # optional, specify for non-NUMA SoCs
+      'enable_drivers': 'common/*,bus/*',  # optional, comma-separated list of
+                              # drivers to build, wildcards are accepted
+      'disable_drivers': 'crypto/*',       # optional, comma-separated list of
+                              # drivers to disable, wildcards are accepted
+      'flags': [
+         ['RTE_MAX_LCORE', '16'],
+         ['RTE_MAX_NUMA_NODES', '1']
+      ]               # optional, list of DPDK options that will be added
+                      # or overwritten
+   }
 
-      numa = false        # set to false to force building for a non-NUMA system
-         # if not set or set to true, the build system will build for a NUMA
-         # system only if libnuma is installed
-
-      disable_drivers = 'bus/dpaa,crypto/*'  # add disabled drivers
-         # valid values are dir/subdirs in the drivers directory
-         # wildcards are allowed
-
-      enable_drivers = 'common/*,bus/*'  # build only these drivers
-         # valid values are dir/subdirs in the drivers directory
-         # wildcards are allowed
+Where <implementer_id> is a key defined in the implementers dictionary
+in config/arm/meson.build (e.g. 0x41) and part_number is a key defined
+in implementers[<implementer_id>]['part_number_config'] dictionary
+(i.e. the part number must be defined for the implementer,
+e.g. for 0x41, a valid value is 0xd49, which is the neoverse-n2 SoC).

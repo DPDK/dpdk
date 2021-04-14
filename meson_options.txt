@@ -34,6 +34,8 @@ option('max_lcores', type: 'integer', value: 128,
 	description: 'maximum number of cores/threads supported by EAL')
 option('max_numa_nodes', type: 'integer', value: 32,
 	description: 'maximum number of NUMA nodes supported by EAL')
+option('platform', type: 'string', value: '',
+	description: 'use configuration for a particular platform (such as a SoC).')
 option('enable_trace_fp', type: 'boolean', value: false,
 	description: 'enable fast path trace points.')
 option('tests', type: 'boolean', value: true,

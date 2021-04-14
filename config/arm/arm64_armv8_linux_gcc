@@ -14,7 +14,4 @@ endian = 'little'
 
 [properties]
 # Generate binaries that are portable across all Armv8 machines
-implementer_id = 'generic'
-part_number = 'generic'
-max_lcores = 256
-max_numa_nodes = 4
+platform = 'generic'

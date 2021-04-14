@@ -14,7 +14,6 @@ cpu = 'armv8-a'
 endian = 'little'
 
 [properties]
-implementer_id = 'generic'
-part_number = 'generic'
+platform = 'generic'
 c_args = ['-target', 'aarch64-linux-gnu', '--sysroot', '/usr/aarch64-linux-gnu']
 c_link_args = ['-target', 'aarch64-linux-gnu', '-fuse-ld=lld', '--gcc-toolchain=/usr']

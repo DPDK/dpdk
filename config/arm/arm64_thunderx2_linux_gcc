@@ -13,7 +13,4 @@ cpu = 'armv8-a'
 endian = 'little'
 
 [properties]
-implementer_id = '0x43'
-part_number = '0xaf'
-max_lcores = 256
-max_numa_nodes = 2
+platform = 'thunderx2'

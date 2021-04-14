@@ -14,8 +14,4 @@ cpu = 'armv8-a'
 endian = 'little'
 
 [properties]
-implementer_id = '0x56'
-part_number = '0xd08'
-max_lcores = 16
-max_numa_nodes = 1
-numa = false
+platform = 'armada'

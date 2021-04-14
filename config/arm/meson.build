@@ -26,7 +26,7 @@ flags_common = [
 ## Part numbers are specific to Arm implementers
 # implementer specific aarch64 flags have middle priority
 #     (will overwrite common flags)
-# part number specific aarch64 flags have the highest priority
+# part number specific aarch64 flags have higher priority
 #     (will overwrite both common and implementer specific flags)
 implementer_generic = {
 	'description': 'Generic armv8',
@@ -193,6 +193,106 @@ implementers = {
 	'dpaa': implementer_dpaa
 }
 
+# SoC specific aarch64 flags have the highest priority
+#     (will overwrite all other flags)
+soc_generic = {
+	'description': 'Generic un-optimized build for all aarch64 machines',
+	'implementer': 'generic',
+	'part_number': 'generic'
+}
+
+soc_armada = {
+	'description': 'Marvell ARMADA',
+	'implementer': '0x56',
+	'part_number': '0xd08',
+	'numa': false
+}
+
+soc_bluefield = {
+	'description': 'NVIDIA BlueField',
+	'implementer': '0x41',
+	'part_number': '0xd08',
+	'numa': false
+}
+
+soc_dpaa = {
+	'description': 'NXP DPAA',
+	'implementer': 'dpaa',
+	'part_number': '0xd08',
+	'numa': false
+}
+
+soc_emag = {
+	'description': 'Ampere eMAG',
+	'implementer': '0x50',
+	'part_number': '0x0'
+}
+
+soc_graviton2 = {
+	'description': 'AWS Graviton2',
+	'implementer': '0x41',
+	'part_number': '0xd0c',
+	'numa': false
+}
+
+soc_n1sdp = {
+	'description': 'Arm Neoverse N1SDP',
+	'implementer': '0x41',
+	'part_number': '0xd0c',
+	'flags': [
+		['RTE_MAX_LCORE', 4]
+	],
+	'numa': false
+}
+
+soc_n2 = {
+	'description': 'Arm Neoverse N2',
+	'implementer': '0x41',
+	'part_number': '0xd49',
+	'numa': false
+}
+
+soc_octeontx2 = {
+	'description': 'Marvell OCTEON TX2',
+	'implementer': '0x43',
+	'part_number': '0xb2',
+	'numa': false
+}
+
+soc_stingray = {
+	'description': 'Broadcom Stingray',
+	'implementer': '0x41',
+	'part_number': '0xd08',
+	'numa': false
+}
+
+soc_thunderx2 = {
+	'description': 'Marvell ThunderX2 T99',
+	'implementer': '0x43',
+	'part_number': '0xaf'
+}
+
+soc_thunderxt88 = {
+	'description': 'Marvell ThunderX T88',
+	'implementer': '0x43',
+	'part_number': '0xa1'
+}
+
+socs = {
+	'generic': soc_generic,
+	'armada': soc_armada,
+	'bluefield': soc_bluefield,
+	'dpaa': soc_dpaa,
+	'emag': soc_emag,
+	'graviton2': soc_graviton2,
+	'n1sdp': soc_n1sdp,
+	'n2': soc_n2,
+	'octeontx2': soc_octeontx2,
+	'stingray': soc_stingray,
+	'thunderx2': soc_thunderx2,
+	'thunderxt88': soc_thunderxt88
+}
+
 dpdk_conf.set('RTE_ARCH_ARM', 1)
 dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
@@ -204,11 +304,19 @@ if dpdk_conf.get('RTE_ARCH_32')
 	machine_args += '-mfpu=neon'
 else
 	# aarch64 build
+	soc = get_option('platform')
+	soc_config = {}
 	if not meson.is_cross_build()
 		if machine == 'generic'
 			# generic build
+			if soc != ''
+				error('Building for a particular platform is ' +
+				      'unsupported with generic build.')
+			endif
 			implementer_id = 'generic'
 			part_number = 'generic'
+		elif soc != ''
+			soc_config = socs.get(soc, {'not_supported': true})
 		else
 			# native build
 			# The script returns ['Implementer', 'Variant', 'Architecture',
@@ -226,8 +334,27 @@ else
 		endif
 	else
 		# cross build
-		implementer_id = meson.get_cross_property('implementer_id')
-		part_number = meson.get_cross_property('part_number')
+		soc = meson.get_cross_property('platform', '')
+		if soc == ''
+			error('Arm SoC must be specified in the cross file.')
+		endif
+		soc_config = socs.get(soc, {'not_supported': true})
+	endif
+
+	soc_flags = []
+	if soc_config.has_key('not_supported')
+		error('SoC @0@ not supported.'.format(soc))
+	elif soc_config != {}
+		implementer_id = soc_config['implementer']
+		implementer_config = implementers[implementer_id]
+		part_number = soc_config['part_number']
+		soc_flags = soc_config.get('flags', [])
+		if not soc_config.get('numa', true)
+			has_libnuma = 0
+		endif
+
+		disable_drivers += ',' + soc_config.get('disable_drivers', '')
+		enable_drivers += ',' + soc_config.get('enable_drivers', '')
 	endif
 
 	if implementers.has_key(implementer_id)
@@ -253,8 +380,8 @@ else
 		      '(-Dmachine=generic) build.')
 	endif
 
-	# use common flags with implementer flags
-	dpdk_flags = flags_common + implementer_config['flags'] + part_number_config.get('flags', [])
+	# add/overwrite flags in the proper order
+	dpdk_flags = flags_common + implementer_config['flags'] + part_number_config.get('flags', []) + soc_flags
 
 	# apply supported machine args
 	machine_args = [] # Clear previous machine args
