@@ -537,6 +537,8 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
 	struct qat_sym_session *session = session_private;
+	struct qat_sym_dev_private *internals = dev->data->dev_private;
+	enum qat_device_gen qat_dev_gen = internals->qat_dev->qat_dev_gen;
 	int ret;
 	int qat_cmd_id;
 
@@ -571,6 +573,10 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		ret = qat_sym_session_configure_auth(dev, xform, session);
 		if (ret < 0)
 			return ret;
+		session->is_single_pass_gmac =
+			       qat_dev_gen == QAT_GEN3 &&
+			       xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC &&
+			       xform->auth.iv.length == QAT_AES_GCM_SPC_IV_SIZE;
 		break;
 	case ICP_QAT_FW_LA_CMD_CIPHER_HASH:
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
@@ -706,8 +712,9 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 	struct qat_sym_dev_private *internals = dev->data->dev_private;
 	const uint8_t *key_data = auth_xform->key.data;
 	uint8_t key_length = auth_xform->key.length;
-	session->aes_cmac = 0;
 
+	session->aes_cmac = 0;
+	session->auth_key_length = auth_xform->key.length;
 	session->auth_iv.offset = auth_xform->iv.offset;
 	session->auth_iv.length = auth_xform->iv.length;
 	session->auth_mode = ICP_QAT_HW_AUTH_MODE1;
@@ -765,7 +772,6 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
 		if (session->auth_iv.length == 0)
 			session->auth_iv.length = AES_GCM_J0_LEN;
-
 		break;
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2;

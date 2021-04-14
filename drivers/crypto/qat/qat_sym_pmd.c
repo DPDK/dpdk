@@ -211,6 +211,12 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 				rte_mempool_virt2iova(cookie) +
 				offsetof(struct qat_sym_op_cookie,
 				qat_sgl_dst);
+
+		cookie->opt.spc_gmac.cd_phys_addr =
+				rte_mempool_virt2iova(cookie) +
+				offsetof(struct qat_sym_op_cookie,
+				opt.spc_gmac.cd_cipher);
+
 	}
 
 	/* Get fw version from QAT (GEN2), skip if we've got it already */

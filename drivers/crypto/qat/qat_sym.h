@@ -29,6 +29,9 @@
  */
 #define QAT_SYM_SGL_MAX_NUMBER	16
 
+/* Maximum data length for single pass GMAC: 2^14-1 */
+#define QAT_AES_GMAC_SPC_MAX_SIZE 16383
+
 struct qat_sym_session;
 
 struct qat_sym_sgl {
@@ -41,6 +44,14 @@ struct qat_sym_op_cookie {
 	struct qat_sym_sgl qat_sgl_dst;
 	phys_addr_t qat_sgl_src_phys_addr;
 	phys_addr_t qat_sgl_dst_phys_addr;
+	union {
+		/* Used for Single-Pass AES-GMAC only */
+		struct {
+			struct icp_qat_hw_cipher_algo_blk cd_cipher
+					__rte_packed __rte_cache_aligned;
+			phys_addr_t cd_phys_addr;
+		} spc_gmac;
+	} opt;
 };
 
 int
@@ -212,18 +223,39 @@ qat_sym_preprocess_requests(void **ops __rte_unused,
 #endif
 
 static inline void
-qat_sym_process_response(void **op, uint8_t *resp)
+qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie)
 {
 	struct icp_qat_fw_comn_resp *resp_msg =
 			(struct icp_qat_fw_comn_resp *)resp;
 	struct rte_crypto_op *rx_op = (struct rte_crypto_op *)(uintptr_t)
 			(resp_msg->opaque_data);
 	struct qat_sym_session *sess;
+	uint8_t is_docsis_sec;
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	QAT_DP_HEXDUMP_LOG(DEBUG, "qat_response:", (uint8_t *)resp_msg,
 			sizeof(struct icp_qat_fw_comn_resp));
 #endif
+
+#ifdef RTE_LIB_SECURITY
+	if (rx_op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		/*
+		 * Assuming at this point that if it's a security
+		 * op, that this is for DOCSIS
+		 */
+		sess = (struct qat_sym_session *)
+				get_sec_session_private_data(
+				rx_op->sym->sec_session);
+		is_docsis_sec = 1;
+	} else
+#endif
+	{
+		sess = (struct qat_sym_session *)
+				get_sym_session_private_data(
+				rx_op->sym->session,
+				qat_sym_driver_id);
+		is_docsis_sec = 0;
+	}
 
 	if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
 			ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
@@ -231,27 +263,6 @@ qat_sym_process_response(void **op, uint8_t *resp)
 
 		rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	} else {
-#ifdef RTE_LIB_SECURITY
-		uint8_t is_docsis_sec = 0;
-
-		if (rx_op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
-			/*
-			 * Assuming at this point that if it's a security
-			 * op, that this is for DOCSIS
-			 */
-			sess = (struct qat_sym_session *)
-					get_sec_session_private_data(
-					rx_op->sym->sec_session);
-			is_docsis_sec = 1;
-		} else
-#endif
-		{
-			sess = (struct qat_sym_session *)
-					get_sym_session_private_data(
-					rx_op->sym->session,
-					qat_sym_driver_id);
-		}
-
 		rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
 		if (sess->bpi_ctx) {
@@ -262,6 +273,14 @@ qat_sym_process_response(void **op, uint8_t *resp)
 #endif
 		}
 	}
+
+	if (sess->is_single_pass_gmac) {
+		struct qat_sym_op_cookie *cookie =
+				(struct qat_sym_op_cookie *) op_cookie;
+		memset(cookie->opt.spc_gmac.cd_cipher.key, 0,
+				sess->auth_key_length);
+	}
+
 	*op = (void *)rx_op;
 }
 
@@ -283,7 +302,8 @@ qat_sym_preprocess_requests(void **ops __rte_unused,
 }
 
 static inline void
-qat_sym_process_response(void **op __rte_unused, uint8_t *resp __rte_unused)
+qat_sym_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
+	void *op_cookie __rte_unused)
 {
 }
 
