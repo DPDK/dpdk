@@ -84,6 +84,12 @@ virtio_recv_pkts_vec(void *rx_queue,
 	if (unlikely(nb_pkts < RTE_VIRTIO_DESC_PER_LOOP))
 		return 0;
 
+	if (vq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {
+		virtio_rxq_rearm_vec(rxvq);
+		if (unlikely(virtqueue_kick_prepare(vq)))
+			virtqueue_notify(vq);
+	}
+
 	/* virtqueue_nused has a load-acquire or rte_io_rmb inside */
 	nb_used = virtqueue_nused(vq);
 
@@ -99,12 +105,6 @@ virtio_recv_pkts_vec(void *rx_queue,
 	sw_ring_end = &vq->sw_ring[vq->vq_nentries];
 
 	rte_prefetch_non_temporal(rused);
-
-	if (vq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {
-		virtio_rxq_rearm_vec(rxvq);
-		if (unlikely(virtqueue_kick_prepare(vq)))
-			virtqueue_notify(vq);
-	}
 
 	nb_total = nb_used;
 	ref_rx_pkts = rx_pkts;
