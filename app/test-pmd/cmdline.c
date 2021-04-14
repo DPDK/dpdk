@@ -1521,6 +1521,9 @@ parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint32_t *speed)
 		}
 	}
 
+	if (*speed != ETH_LINK_SPEED_AUTONEG)
+		*speed |= ETH_LINK_SPEED_FIXED;
+
 	return 0;
 }
 
