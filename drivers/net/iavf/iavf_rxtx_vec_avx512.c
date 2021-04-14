@@ -13,6 +13,22 @@
 #define IAVF_DESCS_PER_LOOP_AVX 8
 #define PKTLEN_SHIFT 10
 
+/******************************************************************************
+ * If user knows a specific offload is not enabled by APP,
+ * the macro can be commented to save the effort of fast path.
+ * Currently below 2 features are supported in RX path,
+ * 1, checksum offload
+ * 2, VLAN/QINQ stripping
+ * 3, RSS hash
+ * 4, packet type analysis
+ * 5, flow director ID report
+ ******************************************************************************/
+#define IAVF_RX_CSUM_OFFLOAD
+#define IAVF_RX_VLAN_OFFLOAD
+#define IAVF_RX_RSS_OFFLOAD
+#define IAVF_RX_PTYPE_OFFLOAD
+#define IAVF_RX_FDIR_OFFLOAD
+
 static __rte_always_inline void
 iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 {
@@ -144,12 +160,15 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 }
 
 #define IAVF_RX_LEN_MASK 0x80808080
-static inline uint16_t
+static __rte_always_inline uint16_t
 _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 			       struct rte_mbuf **rx_pkts,
-			       uint16_t nb_pkts, uint8_t *split_packet)
+			       uint16_t nb_pkts, uint8_t *split_packet,
+			       bool offload)
 {
+#ifdef IAVF_RX_PTYPE_OFFLOAD
 	const uint32_t *type_table = rxq->vsi->adapter->ptype_tbl;
+#endif
 
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0,
 						    rxq->mbuf_initializer);
@@ -252,71 +271,6 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, hash) !=
 			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 12);
 
-	/* Status/Error flag masks */
-	/**
-	 * mask everything except RSS, flow director and VLAN flags
-	 * bit2 is for VLAN tag, bit11 for flow director indication
-	 * bit13:12 for RSS indication. Bits 3-5 of error
-	 * field (bits 22-24) are for IP/L4 checksum errors
-	 */
-	const __m256i flags_mask =
-		_mm256_set1_epi32((1 << 2) | (1 << 11) |
-				  (3 << 12) | (7 << 22));
-	/**
-	 * data to be shuffled by result of flag mask. If VLAN bit is set,
-	 * (bit 2), then position 4 in this array will be used in the
-	 * destination
-	 */
-	const __m256i vlan_flags_shuf =
-		_mm256_set_epi32(0, 0, PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, 0,
-				 0, 0, PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, 0);
-	/**
-	 * data to be shuffled by result of flag mask, shifted down 11.
-	 * If RSS/FDIR bits are set, shuffle moves appropriate flags in
-	 * place.
-	 */
-	const __m256i rss_flags_shuf =
-		_mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
-				PKT_RX_RSS_HASH | PKT_RX_FDIR, PKT_RX_RSS_HASH,
-				0, 0, 0, 0, PKT_RX_FDIR, 0,/* end up 128-bits */
-				0, 0, 0, 0, 0, 0, 0, 0,
-				PKT_RX_RSS_HASH | PKT_RX_FDIR, PKT_RX_RSS_HASH,
-				0, 0, 0, 0, PKT_RX_FDIR, 0);
-
-	/**
-	 * data to be shuffled by the result of the flags mask shifted by 22
-	 * bits.  This gives use the l3_l4 flags.
-	 */
-	const __m256i l3_l4_flags_shuf = _mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
-			/* shift right 1 bit to make sure it not exceed 255 */
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
-			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_OUTER_IP_CKSUM_BAD |
-			 PKT_RX_L4_CKSUM_BAD) >> 1,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_OUTER_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1,
-			PKT_RX_IP_CKSUM_BAD >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1,
-			/* second 128-bits */
-			0, 0, 0, 0, 0, 0, 0, 0,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
-			 PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_OUTER_IP_CKSUM_BAD |
-			 PKT_RX_L4_CKSUM_BAD) >> 1,
-			(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_OUTER_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1,
-			PKT_RX_IP_CKSUM_BAD >> 1,
-			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1);
-
-	const __m256i cksum_mask =
-		_mm256_set1_epi32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
-				  PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
-				  PKT_RX_OUTER_IP_CKSUM_BAD);
-
 	uint16_t i, received;
 
 	for (i = 0, received = 0; i < nb_pkts;
@@ -384,6 +338,7 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 		__m512i mb4_7 = _mm512_shuffle_epi8(desc4_7, shuf_msk);
 
 		mb4_7 = _mm512_add_epi32(mb4_7, crc_adjust);
+#ifdef IAVF_RX_PTYPE_OFFLOAD
 		/**
 		 * to get packet types, shift 64-bit values down 30 bits
 		 * and so ptype is in lower 8-bits in each
@@ -402,6 +357,7 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 			 0, 0, 0, type_table[ptype5],
 			 0, 0, 0, type_table[ptype4]);
 		mb4_7 = _mm512_mask_blend_epi32(0x1111, mb4_7, ptype4_7);
+#endif
 
 		/**
 		 * convert descriptors 0-3 into mbufs, adjusting length and
@@ -415,6 +371,7 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 		__m512i mb0_3 = _mm512_shuffle_epi8(desc0_3, shuf_msk);
 
 		mb0_3 = _mm512_add_epi32(mb0_3, crc_adjust);
+#ifdef IAVF_RX_PTYPE_OFFLOAD
 		/* get the packet types */
 		const __m512i ptypes0_3 = _mm512_srli_epi64(desc0_3, 30);
 		const __m256i ptypes2_3 = _mm512_extracti64x4_epi64(ptypes0_3, 1);
@@ -430,6 +387,7 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 			 0, 0, 0, type_table[ptype1],
 			 0, 0, 0, type_table[ptype0]);
 		mb0_3 = _mm512_mask_blend_epi32(0x1111, mb0_3, ptype0_3);
+#endif
 
 		/**
 		 * use permute/extract to get status content
@@ -449,27 +407,122 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 
 		/* now do flag manipulation */
 
-		/* get only flag/error bits we want */
-		const __m256i flag_bits =
-			_mm256_and_si256(status0_7, flags_mask);
-		/* set vlan and rss flags */
-		const __m256i vlan_flags =
-			_mm256_shuffle_epi8(vlan_flags_shuf, flag_bits);
-		const __m256i rss_flags =
-			_mm256_shuffle_epi8(rss_flags_shuf,
-					    _mm256_srli_epi32(flag_bits, 11));
-		/**
-		 * l3_l4_error flags, shuffle, then shift to correct adjustment
-		 * of flags in flags_shuf, and finally mask out extra bits
-		 */
-		__m256i l3_l4_flags = _mm256_shuffle_epi8(l3_l4_flags_shuf,
-						_mm256_srli_epi32(flag_bits, 22));
-		l3_l4_flags = _mm256_slli_epi32(l3_l4_flags, 1);
-		l3_l4_flags = _mm256_and_si256(l3_l4_flags, cksum_mask);
-
 		/* merge flags */
-		const __m256i mbuf_flags = _mm256_or_si256(l3_l4_flags,
-				_mm256_or_si256(rss_flags, vlan_flags));
+		__m256i mbuf_flags = _mm256_set1_epi32(0);
+
+		if (offload) {
+#if defined(IAVF_RX_CSUM_OFFLOAD) || defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
+			/* Status/Error flag masks */
+			/**
+			 * mask everything except RSS, flow director and VLAN flags
+			 * bit2 is for VLAN tag, bit11 for flow director indication
+			 * bit13:12 for RSS indication. Bits 3-5 of error
+			 * field (bits 22-24) are for IP/L4 checksum errors
+			 */
+			const __m256i flags_mask =
+				_mm256_set1_epi32((1 << 2) | (1 << 11) |
+						  (3 << 12) | (7 << 22));
+#endif
+
+#ifdef IAVF_RX_VLAN_OFFLOAD
+			/**
+			 * data to be shuffled by result of flag mask. If VLAN bit is set,
+			 * (bit 2), then position 4 in this array will be used in the
+			 * destination
+			 */
+			const __m256i vlan_flags_shuf =
+				_mm256_set_epi32(0, 0, PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, 0,
+						 0, 0, PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED, 0);
+#endif
+
+#ifdef IAVF_RX_RSS_OFFLOAD
+			/**
+			 * data to be shuffled by result of flag mask, shifted down 11.
+			 * If RSS/FDIR bits are set, shuffle moves appropriate flags in
+			 * place.
+			 */
+			const __m256i rss_flags_shuf =
+				_mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
+						PKT_RX_RSS_HASH | PKT_RX_FDIR, PKT_RX_RSS_HASH,
+						0, 0, 0, 0, PKT_RX_FDIR, 0,/* end up 128-bits */
+						0, 0, 0, 0, 0, 0, 0, 0,
+						PKT_RX_RSS_HASH | PKT_RX_FDIR, PKT_RX_RSS_HASH,
+						0, 0, 0, 0, PKT_RX_FDIR, 0);
+#endif
+
+#ifdef IAVF_RX_CSUM_OFFLOAD
+			/**
+			 * data to be shuffled by the result of the flags mask shifted by 22
+			 * bits.  This gives use the l3_l4 flags.
+			 */
+			const __m256i l3_l4_flags_shuf = _mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
+					/* shift right 1 bit to make sure it not exceed 255 */
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+					 PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_IP_CKSUM_GOOD | PKT_RX_OUTER_IP_CKSUM_BAD |
+					 PKT_RX_L4_CKSUM_BAD) >> 1,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_IP_CKSUM_GOOD | PKT_RX_OUTER_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1,
+					PKT_RX_IP_CKSUM_BAD >> 1,
+					(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1,
+					/* second 128-bits */
+					0, 0, 0, 0, 0, 0, 0, 0,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+					 PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_IP_CKSUM_GOOD | PKT_RX_OUTER_IP_CKSUM_BAD |
+					 PKT_RX_L4_CKSUM_BAD) >> 1,
+					(PKT_RX_OUTER_IP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_IP_CKSUM_GOOD | PKT_RX_OUTER_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+					(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1,
+					PKT_RX_IP_CKSUM_BAD >> 1,
+					(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1);
+
+			const __m256i cksum_mask =
+				_mm256_set1_epi32(PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+						  PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+						  PKT_RX_OUTER_IP_CKSUM_BAD);
+#endif
+
+#if defined(IAVF_RX_CSUM_OFFLOAD) || defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
+			/* get only flag/error bits we want */
+			const __m256i flag_bits =
+				_mm256_and_si256(status0_7, flags_mask);
+#endif
+			/* set vlan and rss flags */
+#ifdef IAVF_RX_VLAN_OFFLOAD
+			const __m256i vlan_flags =
+				_mm256_shuffle_epi8(vlan_flags_shuf, flag_bits);
+#endif
+#ifdef IAVF_RX_RSS_OFFLOAD
+			const __m256i rss_flags =
+				_mm256_shuffle_epi8(rss_flags_shuf,
+						    _mm256_srli_epi32(flag_bits, 11));
+#endif
+#ifdef IAVF_RX_CSUM_OFFLOAD
+			/**
+			 * l3_l4_error flags, shuffle, then shift to correct adjustment
+			 * of flags in flags_shuf, and finally mask out extra bits
+			 */
+			__m256i l3_l4_flags = _mm256_shuffle_epi8(l3_l4_flags_shuf,
+							_mm256_srli_epi32(flag_bits, 22));
+			l3_l4_flags = _mm256_slli_epi32(l3_l4_flags, 1);
+			l3_l4_flags = _mm256_and_si256(l3_l4_flags, cksum_mask);
+#endif
+
+#ifdef IAVF_RX_CSUM_OFFLOAD
+			mbuf_flags = _mm256_or_si256(mbuf_flags, l3_l4_flags);
+#endif
+#ifdef IAVF_RX_RSS_OFFLOAD
+			mbuf_flags = _mm256_or_si256(mbuf_flags, rss_flags);
+#endif
+#ifdef IAVF_RX_VLAN_OFFLOAD
+			mbuf_flags = _mm256_or_si256(mbuf_flags, vlan_flags);
+#endif
+		}
+
 		/**
 		 * At this point, we have the 8 sets of flags in the low 16-bits
 		 * of each 32-bit value in vlan0.
@@ -487,7 +540,7 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 		RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, rearm_data) !=
 				 RTE_ALIGN(offsetof(struct rte_mbuf,
 						    rearm_data),
-					   16));
+						    16));
 		/* build up data and do writes */
 		__m256i rearm0, rearm1, rearm2, rearm3, rearm4, rearm5,
 			rearm6, rearm7;
@@ -496,21 +549,28 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 		const __m256i mb0_1 = _mm512_extracti64x4_epi64(mb0_3, 0);
 		const __m256i mb2_3 = _mm512_extracti64x4_epi64(mb0_3, 1);
 
-		rearm6 = _mm256_blend_epi32(mbuf_init,
-					    _mm256_slli_si256(mbuf_flags, 8),
-					    0x04);
-		rearm4 = _mm256_blend_epi32(mbuf_init,
-					    _mm256_slli_si256(mbuf_flags, 4),
-					    0x04);
-		rearm2 = _mm256_blend_epi32(mbuf_init, mbuf_flags, 0x04);
-		rearm0 = _mm256_blend_epi32(mbuf_init,
-					    _mm256_srli_si256(mbuf_flags, 4),
-					    0x04);
-		/* permute to add in the rx_descriptor e.g. rss fields */
-		rearm6 = _mm256_permute2f128_si256(rearm6, mb6_7, 0x20);
-		rearm4 = _mm256_permute2f128_si256(rearm4, mb4_5, 0x20);
-		rearm2 = _mm256_permute2f128_si256(rearm2, mb2_3, 0x20);
-		rearm0 = _mm256_permute2f128_si256(rearm0, mb0_1, 0x20);
+		if (offload) {
+			rearm6 = _mm256_blend_epi32(mbuf_init,
+						    _mm256_slli_si256(mbuf_flags, 8),
+						    0x04);
+			rearm4 = _mm256_blend_epi32(mbuf_init,
+						    _mm256_slli_si256(mbuf_flags, 4),
+						    0x04);
+			rearm2 = _mm256_blend_epi32(mbuf_init, mbuf_flags, 0x04);
+			rearm0 = _mm256_blend_epi32(mbuf_init,
+						    _mm256_srli_si256(mbuf_flags, 4),
+						    0x04);
+			/* permute to add in the rx_descriptor e.g. rss fields */
+			rearm6 = _mm256_permute2f128_si256(rearm6, mb6_7, 0x20);
+			rearm4 = _mm256_permute2f128_si256(rearm4, mb4_5, 0x20);
+			rearm2 = _mm256_permute2f128_si256(rearm2, mb2_3, 0x20);
+			rearm0 = _mm256_permute2f128_si256(rearm0, mb0_1, 0x20);
+		} else {
+			rearm6 = _mm256_permute2f128_si256(mbuf_init, mb6_7, 0x20);
+			rearm4 = _mm256_permute2f128_si256(mbuf_init, mb4_5, 0x20);
+			rearm2 = _mm256_permute2f128_si256(mbuf_init, mb2_3, 0x20);
+			rearm0 = _mm256_permute2f128_si256(mbuf_init, mb0_1, 0x20);
+		}
 		/* write to mbuf */
 		_mm256_storeu_si256((__m256i *)&rx_pkts[i + 6]->rearm_data,
 				    rearm6);
@@ -522,24 +582,31 @@ _iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
 				    rearm0);
 
 		/* repeat for the odd mbufs */
-		const __m256i odd_flags =
-			_mm256_castsi128_si256
-				(_mm256_extracti128_si256(mbuf_flags, 1));
-		rearm7 = _mm256_blend_epi32(mbuf_init,
-					    _mm256_slli_si256(odd_flags, 8),
-					    0x04);
-		rearm5 = _mm256_blend_epi32(mbuf_init,
-					    _mm256_slli_si256(odd_flags, 4),
-					    0x04);
-		rearm3 = _mm256_blend_epi32(mbuf_init, odd_flags, 0x04);
-		rearm1 = _mm256_blend_epi32(mbuf_init,
-					    _mm256_srli_si256(odd_flags, 4),
-					    0x04);
-		/* since odd mbufs are already in hi 128-bits use blend */
-		rearm7 = _mm256_blend_epi32(rearm7, mb6_7, 0xF0);
-		rearm5 = _mm256_blend_epi32(rearm5, mb4_5, 0xF0);
-		rearm3 = _mm256_blend_epi32(rearm3, mb2_3, 0xF0);
-		rearm1 = _mm256_blend_epi32(rearm1, mb0_1, 0xF0);
+		if (offload) {
+			const __m256i odd_flags =
+				_mm256_castsi128_si256
+					(_mm256_extracti128_si256(mbuf_flags, 1));
+			rearm7 = _mm256_blend_epi32(mbuf_init,
+						    _mm256_slli_si256(odd_flags, 8),
+						    0x04);
+			rearm5 = _mm256_blend_epi32(mbuf_init,
+						    _mm256_slli_si256(odd_flags, 4),
+						    0x04);
+			rearm3 = _mm256_blend_epi32(mbuf_init, odd_flags, 0x04);
+			rearm1 = _mm256_blend_epi32(mbuf_init,
+						    _mm256_srli_si256(odd_flags, 4),
+						    0x04);
+			/* since odd mbufs are already in hi 128-bits use blend */
+			rearm7 = _mm256_blend_epi32(rearm7, mb6_7, 0xF0);
+			rearm5 = _mm256_blend_epi32(rearm5, mb4_5, 0xF0);
+			rearm3 = _mm256_blend_epi32(rearm3, mb2_3, 0xF0);
+			rearm1 = _mm256_blend_epi32(rearm1, mb0_1, 0xF0);
+		} else {
+			rearm7 = _mm256_blend_epi32(mbuf_init, mb6_7, 0xF0);
+			rearm5 = _mm256_blend_epi32(mbuf_init, mb4_5, 0xF0);
+			rearm3 = _mm256_blend_epi32(mbuf_init, mb2_3, 0xF0);
+			rearm1 = _mm256_blend_epi32(mbuf_init, mb0_1, 0xF0);
+		}
 		/* again write to mbufs */
 		_mm256_storeu_si256((__m256i *)&rx_pkts[i + 7]->rearm_data,
 				    rearm7);
@@ -1250,7 +1317,8 @@ uint16_t
 iavf_recv_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 			  uint16_t nb_pkts)
 {
-	return _iavf_recv_raw_pkts_vec_avx512(rx_queue, rx_pkts, nb_pkts, NULL);
+	return _iavf_recv_raw_pkts_vec_avx512(rx_queue, rx_pkts, nb_pkts,
+					      NULL, false);
 }
 
 /**
@@ -1270,16 +1338,16 @@ iavf_recv_pkts_vec_avx512_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
  * Notice:
  * - nb_pkts < IAVF_DESCS_PER_LOOP, just return no packet
  */
-static uint16_t
+static __rte_always_inline uint16_t
 iavf_recv_scattered_burst_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
-				     uint16_t nb_pkts)
+				     uint16_t nb_pkts, bool offload)
 {
 	struct iavf_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[IAVF_VPMD_RX_MAX_BURST] = {0};
 
 	/* get some new buffers */
 	uint16_t nb_bufs = _iavf_recv_raw_pkts_vec_avx512(rxq, rx_pkts, nb_pkts,
-							  split_flags);
+							  split_flags, offload);
 	if (nb_bufs == 0)
 		return 0;
 
@@ -1312,22 +1380,30 @@ iavf_recv_scattered_burst_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
  * Notice:
  * - nb_pkts < IAVF_DESCS_PER_LOOP, just return no packet
  */
-uint16_t
-iavf_recv_scattered_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
-				    uint16_t nb_pkts)
+static __rte_always_inline uint16_t
+iavf_recv_scattered_pkts_vec_avx512_cmn(void *rx_queue, struct rte_mbuf **rx_pkts,
+					uint16_t nb_pkts, bool offload)
 {
 	uint16_t retval = 0;
 
 	while (nb_pkts > IAVF_VPMD_RX_MAX_BURST) {
 		uint16_t burst = iavf_recv_scattered_burst_vec_avx512(rx_queue,
-				rx_pkts + retval, IAVF_VPMD_RX_MAX_BURST);
+				rx_pkts + retval, IAVF_VPMD_RX_MAX_BURST, offload);
 		retval += burst;
 		nb_pkts -= burst;
 		if (burst < IAVF_VPMD_RX_MAX_BURST)
 			return retval;
 	}
 	return retval + iavf_recv_scattered_burst_vec_avx512(rx_queue,
-				rx_pkts + retval, nb_pkts);
+				rx_pkts + retval, nb_pkts, offload);
+}
+
+uint16_t
+iavf_recv_scattered_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
+				    uint16_t nb_pkts)
+{
+	return iavf_recv_scattered_pkts_vec_avx512_cmn(rx_queue, rx_pkts,
+						       nb_pkts, false);
 }
 
 /**
@@ -1398,6 +1474,23 @@ iavf_recv_scattered_pkts_vec_avx512_flex_rxd(void *rx_queue,
 	}
 	return retval + iavf_recv_scattered_burst_vec_avx512_flex_rxd(rx_queue,
 				rx_pkts + retval, nb_pkts);
+}
+
+uint16_t
+iavf_recv_pkts_vec_avx512_offload(void *rx_queue, struct rte_mbuf **rx_pkts,
+				  uint16_t nb_pkts)
+{
+	return _iavf_recv_raw_pkts_vec_avx512(rx_queue, rx_pkts,
+					      nb_pkts, NULL, true);
+}
+
+uint16_t
+iavf_recv_scattered_pkts_vec_avx512_offload(void *rx_queue,
+					    struct rte_mbuf **rx_pkts,
+					    uint16_t nb_pkts)
+{
+	return iavf_recv_scattered_pkts_vec_avx512_cmn(rx_queue, rx_pkts,
+						       nb_pkts, true);
 }
 
 static __rte_always_inline int

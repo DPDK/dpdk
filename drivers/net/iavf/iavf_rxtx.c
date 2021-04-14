@@ -2392,22 +2392,23 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct iavf_rx_queue *rxq;
 	int i;
+	int check_ret;
+	bool use_sse = false;
 	bool use_avx2 = false;
-#ifdef CC_AVX512_SUPPORT
 	bool use_avx512 = false;
-#endif
+	bool use_flex = false;
 
-	if (!iavf_rx_vec_dev_check(dev) &&
-			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			rxq = dev->data->rx_queues[i];
-			(void)iavf_rxq_vec_setup(rxq);
+	check_ret = iavf_rx_vec_dev_check(dev);
+	if (check_ret >= 0 &&
+	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+		if (check_ret == IAVF_VECTOR_PATH) {
+			use_sse = true;
+			if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
+			     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
+			    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
+				use_avx2 = true;
 		}
 
-		if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
-		     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
-				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
-			use_avx2 = true;
 #ifdef CC_AVX512_SUPPORT
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
 		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1 &&
@@ -2415,13 +2416,38 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 			use_avx512 = true;
 #endif
 
+		if (!use_sse && !use_avx2 && !use_avx512)
+			goto normal;
+
+		if (vf->vf_res->vf_cap_flags &
+			VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
+			use_flex = true;
+			if (use_avx512 && check_ret == IAVF_VECTOR_OFFLOAD_PATH)
+				use_flex = false;
+		}
+
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq = dev->data->rx_queues[i];
+			(void)iavf_rxq_vec_setup(rxq);
+		}
+
 		if (dev->data->scattered_rx) {
-			PMD_DRV_LOG(DEBUG,
-				    "Using %sVector Scattered Rx (port %d).",
-				    use_avx2 ? "avx2 " : "",
-				    dev->data->port_id);
-			if (vf->vf_res->vf_cap_flags &
-				VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
+			if (!use_avx512) {
+				PMD_DRV_LOG(DEBUG,
+					    "Using %sVector Scattered Rx (port %d).",
+					    use_avx2 ? "avx2 " : "",
+					    dev->data->port_id);
+			} else {
+				if (check_ret == IAVF_VECTOR_PATH)
+					PMD_DRV_LOG(DEBUG,
+						    "Using AVX512 Vector Scattered Rx (port %d).",
+						    dev->data->port_id);
+				else
+					PMD_DRV_LOG(DEBUG,
+						    "Using AVX512 OFFLOAD Vector Scattered Rx (port %d).",
+						    dev->data->port_id);
+			}
+			if (use_flex) {
 				dev->rx_pkt_burst = use_avx2 ?
 					iavf_recv_scattered_pkts_vec_avx2_flex_rxd :
 					iavf_recv_scattered_pkts_vec_flex_rxd;
@@ -2435,17 +2461,32 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 					iavf_recv_scattered_pkts_vec_avx2 :
 					iavf_recv_scattered_pkts_vec;
 #ifdef CC_AVX512_SUPPORT
-				if (use_avx512)
-					dev->rx_pkt_burst =
-						iavf_recv_scattered_pkts_vec_avx512;
+				if (use_avx512) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						dev->rx_pkt_burst =
+							iavf_recv_scattered_pkts_vec_avx512;
+					else
+						dev->rx_pkt_burst =
+							iavf_recv_scattered_pkts_vec_avx512_offload;
+				}
 #endif
 			}
 		} else {
-			PMD_DRV_LOG(DEBUG, "Using %sVector Rx (port %d).",
-				    use_avx2 ? "avx2 " : "",
-				    dev->data->port_id);
-			if (vf->vf_res->vf_cap_flags &
-				VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
+			if (!use_avx512) {
+				PMD_DRV_LOG(DEBUG, "Using %sVector Rx (port %d).",
+					    use_avx2 ? "avx2 " : "",
+					    dev->data->port_id);
+			} else {
+				if (check_ret == IAVF_VECTOR_PATH)
+					PMD_DRV_LOG(DEBUG,
+						    "Using AVX512 Vector Rx (port %d).",
+						    dev->data->port_id);
+				else
+					PMD_DRV_LOG(DEBUG,
+						    "Using AVX512 OFFLOAD Vector Rx (port %d).",
+						    dev->data->port_id);
+			}
+			if (use_flex) {
 				dev->rx_pkt_burst = use_avx2 ?
 					iavf_recv_pkts_vec_avx2_flex_rxd :
 					iavf_recv_pkts_vec_flex_rxd;
@@ -2459,17 +2500,23 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 					iavf_recv_pkts_vec_avx2 :
 					iavf_recv_pkts_vec;
 #ifdef CC_AVX512_SUPPORT
-				if (use_avx512)
-					dev->rx_pkt_burst =
-						iavf_recv_pkts_vec_avx512;
+				if (use_avx512) {
+					if (check_ret == IAVF_VECTOR_PATH)
+						dev->rx_pkt_burst =
+							iavf_recv_pkts_vec_avx512;
+					else
+						dev->rx_pkt_burst =
+							iavf_recv_pkts_vec_avx512_offload;
+				}
 #endif
 			}
 		}
 
 		return;
 	}
-#endif
 
+normal:
+#endif
 	if (dev->data->scattered_rx) {
 		PMD_DRV_LOG(DEBUG, "Using a Scattered Rx callback (port=%d).",
 			    dev->data->port_id);
