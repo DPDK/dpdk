@@ -13,7 +13,7 @@
 #define IAVF_DESCS_PER_LOOP_AVX 8
 #define PKTLEN_SHIFT 10
 
-static inline void
+static __rte_always_inline void
 iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 {
 	int i;
@@ -24,6 +24,9 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 	struct rte_mbuf **rxp = &rxq->sw_ring[rxq->rxrearm_start];
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
+
+	if (unlikely(!cache))
+		return iavf_rxq_rearm_common(rxq, true);
 
 	/* We need to pull 'n' more MBUFs into the software ring from mempool
 	 * We inline the mempool function here, so we can vectorize the copy
