@@ -825,7 +825,8 @@ void update_age_action_context(const struct rte_flow_action *actions,
 		     struct port_flow *pf);
 int port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule);
 int port_flow_flush(portid_t port_id);
-int port_flow_dump(portid_t port_id, const char *file_name);
+int port_flow_dump(portid_t port_id, bool dump_all,
+			uint32_t rule, const char *file_name);
 int port_flow_query(portid_t port_id, uint32_t rule,
 		    const struct rte_flow_action *action);
 void port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group);

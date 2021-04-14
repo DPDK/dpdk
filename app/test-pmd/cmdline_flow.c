@@ -108,6 +108,10 @@ enum index {
 	TUNNEL_SET,
 	TUNNEL_MATCH,
 
+	/* Dump arguments */
+	DUMP_ALL,
+	DUMP_ONE,
+
 	/* Shared action arguments */
 	SHARED_ACTION_CREATE,
 	SHARED_ACTION_UPDATE,
@@ -793,6 +797,8 @@ struct buffer {
 		} destroy; /**< Destroy arguments. */
 		struct {
 			char file[128];
+			bool mode;
+			uint32_t rule;
 		} dump; /**< Dump arguments. */
 		struct {
 			uint32_t rule;
@@ -841,6 +847,12 @@ static const enum index next_sa_create_attr[] = {
 	SHARED_ACTION_EGRESS,
 	SHARED_ACTION_TRANSFER,
 	SHARED_ACTION_SPEC,
+	ZERO,
+};
+
+static const enum index next_dump_subcmd[] = {
+	DUMP_ALL,
+	DUMP_ONE,
 	ZERO,
 };
 
@@ -2032,10 +2044,9 @@ static const struct token token_list[] = {
 	},
 	[DUMP] = {
 		.name = "dump",
-		.help = "dump all flow rules to file",
-		.next = NEXT(next_dump_attr, NEXT_ENTRY(PORT_ID)),
-		.args = ARGS(ARGS_ENTRY(struct buffer, args.dump.file),
-			     ARGS_ENTRY(struct buffer, port)),
+		.help = "dump single/all flow rules to file",
+		.next = NEXT(next_dump_subcmd, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_dump,
 	},
 	[QUERY] = {
@@ -2124,6 +2135,22 @@ static const struct token token_list[] = {
 		.next = NEXT(next_destroy_attr, NEXT_ENTRY(RULE_ID)),
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer, args.destroy.rule)),
 		.call = parse_destroy,
+	},
+	/* Dump arguments. */
+	[DUMP_ALL] = {
+		.name = "all",
+		.help = "dump all",
+		.next = NEXT(next_dump_attr),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.dump.file)),
+		.call = parse_dump,
+	},
+	[DUMP_ONE] = {
+		.name = "rule",
+		.help = "dump one rule",
+		.next = NEXT(next_dump_attr, NEXT_ENTRY(RULE_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.dump.file),
+				ARGS_ENTRY(struct buffer, args.dump.rule)),
+		.call = parse_dump,
 	},
 	/* Query arguments. */
 	[QUERY_ACTION] = {
@@ -6364,8 +6391,20 @@ parse_dump(struct context *ctx, const struct token *token,
 		ctx->objdata = 0;
 		ctx->object = out;
 		ctx->objmask = NULL;
+		return len;
 	}
-	return len;
+	switch (ctx->curr) {
+	case DUMP_ALL:
+	case DUMP_ONE:
+		out->args.dump.mode = (ctx->curr == DUMP_ALL) ? true : false;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+		return len;
+	default:
+		return -1;
+	}
 }
 
 /** Parse tokens for query command. */
@@ -7659,8 +7698,10 @@ cmd_flow_parsed(const struct buffer *in)
 	case FLUSH:
 		port_flow_flush(in->port);
 		break;
-	case DUMP:
-		port_flow_dump(in->port, in->args.dump.file);
+	case DUMP_ONE:
+	case DUMP_ALL:
+		port_flow_dump(in->port, in->args.dump.mode,
+				in->args.dump.rule, in->args.dump.file);
 		break;
 	case QUERY:
 		port_flow_query(in->port, in->args.query.rule,

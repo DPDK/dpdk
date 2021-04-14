@@ -203,6 +203,8 @@ New Features
     ``dpdk-testpmd -- --eth-link-speed N``
   * Added command to display Rx queue used descriptor count.
     ``show port (port_id) rxq (queue_id) desc used count``
+  * Added command to dump internal representation information of single flow.
+    ``flow dump (port_id) rule (rule_id)``
 
 * **Updated ipsec-secgw sample application.**
 

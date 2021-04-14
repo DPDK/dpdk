@@ -1915,13 +1915,41 @@ port_flow_flush(portid_t port_id)
 	return ret;
 }
 
-/** Dump all flow rules. */
+/** Dump flow rules. */
 int
-port_flow_dump(portid_t port_id, const char *file_name)
+port_flow_dump(portid_t port_id, bool dump_all, uint32_t rule_id,
+		const char *file_name)
 {
 	int ret = 0;
 	FILE *file = stdout;
 	struct rte_flow_error error;
+	struct rte_port *port;
+	struct port_flow *pflow;
+	struct rte_flow *tmpFlow = NULL;
+	bool found = false;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+		port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+
+	if (!dump_all) {
+		port = &ports[port_id];
+		pflow = port->flow_list;
+		while (pflow) {
+			if (rule_id != pflow->id) {
+				pflow = pflow->next;
+			} else {
+				tmpFlow = pflow->flow;
+				if (tmpFlow)
+					found = true;
+				break;
+			}
+		}
+		if (found == false) {
+			printf("Failed to dump to flow %d\n", rule_id);
+			return -EINVAL;
+		}
+	}
 
 	if (file_name && strlen(file_name)) {
 		file = fopen(file_name, "w");
@@ -1931,7 +1959,11 @@ port_flow_dump(portid_t port_id, const char *file_name)
 			return -errno;
 		}
 	}
-	ret = rte_flow_dev_dump(port_id, NULL, file, &error);
+
+	if (!dump_all)
+		ret = rte_flow_dev_dump(port_id, tmpFlow, file, &error);
+	else
+		ret = rte_flow_dev_dump(port_id, NULL, file, &error);
 	if (ret) {
 		port_flow_complain(&error);
 		printf("Failed to dump flow: %s\n", strerror(-ret));
