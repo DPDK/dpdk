@@ -198,6 +198,7 @@ struct iavf_rx_queue {
 		/* flexible descriptor metadata extraction offload flag */
 	iavf_rxd_to_pkt_fields_t rxd_to_pkt_fields;
 				/* handle flexible descriptor by RXDID */
+	uint64_t offloads;
 };
 
 struct iavf_tx_entry {
