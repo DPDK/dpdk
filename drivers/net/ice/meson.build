@@ -24,8 +24,10 @@ if arch_subdir == 'x86'
 	# a. we have AVX supported in minimum instruction set baseline
 	# b. it's not minimum instruction set, but supported by compiler
 	if cc.get_define('__AVX2__', args: machine_args) != ''
+		cflags += ['-DCC_AVX2_SUPPORT']
 		sources += files('ice_rxtx_vec_avx2.c')
 	elif cc.has_argument('-mavx2')
+		cflags += ['-DCC_AVX2_SUPPORT']
 		ice_avx2_lib = static_library('ice_avx2_lib',
 				'ice_rxtx_vec_avx2.c',
 				dependencies: [static_rte_ethdev,

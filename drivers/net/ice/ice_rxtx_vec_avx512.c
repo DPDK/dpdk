@@ -12,7 +12,7 @@
 
 #define ICE_DESCS_PER_LOOP_AVX 8
 
-static inline void
+static __rte_always_inline void
 ice_rxq_rearm(struct ice_rx_queue *rxq)
 {
 	int i;
@@ -23,6 +23,9 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 			rte_lcore_id());
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
+
+	if (unlikely(!cache))
+		return ice_rxq_rearm_common(rxq, true);
 
 	/* We need to pull 'n' more MBUFs into the software ring */
 	if (cache->len < ICE_RXQ_REARM_THRESH) {
