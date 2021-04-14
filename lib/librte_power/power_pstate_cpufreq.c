@@ -175,6 +175,11 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 	FOPEN_OR_ERR_RET(f_base_max, -1);
 	if (f_base_max != NULL) {
 		s_base_max = fgets(buf_base, sizeof(buf_base), f_base_max);
+
+		/* close the file unconditionally */
+		fclose(f_base_max);
+		f_base_max = NULL;
+
 		FOPS_OR_NULL_GOTO(s_base_max, out);
 
 		buf_base[BUFSIZ-1] = '\0';
