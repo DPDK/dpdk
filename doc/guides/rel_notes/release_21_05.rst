@@ -217,6 +217,13 @@ New Features
   * Updated the ``ipsec-secgw`` sample application with UDP encapsulation
     support for NAT Traversal.
 
+* **Enhanced crypto adapter forward mode.**
+
+  * Added ``rte_event_crypto_adapter_enqueue()`` API to enqueue events to crypto
+    adapter if forward mode is supported by driver.
+  * Added support for crypto adapter forward mode in octeontx2 event and crypto
+    device driver.
+
 
 Removed Items
 -------------

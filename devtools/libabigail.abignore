@@ -30,3 +30,8 @@
 [suppress_type]
         name = rte_crypto_cipher_xform
         has_data_member_inserted_between = {offset_after(key), offset_of(iv)}
+
+; Ignore fields inserted in place of reserved fields of rte_eventdev
+[suppress_type]
+	name = rte_eventdev
+	has_data_member_inserted_between = {offset_after(attached), end}

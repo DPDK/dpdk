@@ -55,21 +55,22 @@ which is needed to enqueue an event after the crypto operation is completed.
 RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD mode, if HW supports
-RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD capability the application
-can directly submit the crypto operations to the cryptodev.
-If not, application retrieves crypto adapter's event port using
-rte_event_crypto_adapter_event_port_get() API. Then, links its event
-queue to this port and starts enqueuing crypto operations as events
-to the eventdev. The adapter then dequeues the events and submits the
-crypto operations to the cryptodev. After the crypto completions, the
-adapter enqueues events to the event device.
-Application can use this mode, when ingress packet ordering is needed.
-In this mode, events dequeued from the adapter will be treated as
-forwarded events. The application needs to specify the cryptodev ID
-and queue pair ID (request information) needed to enqueue a crypto
-operation in addition to the event information (response information)
-needed to enqueue an event after the crypto operation has completed.
+In the ``RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD`` mode, if the event PMD and crypto
+PMD supports internal event port
+(``RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD``), the application should
+use ``rte_event_crypto_adapter_enqueue()`` API to enqueue crypto operations as
+events to crypto adapter. If not, application retrieves crypto adapter's event
+port using ``rte_event_crypto_adapter_event_port_get()`` API, links its event
+queue to this port and starts enqueuing crypto operations as events to eventdev
+using ``rte_event_enqueue_burst()``. The adapter then dequeues the events and
+submits the crypto operations to the cryptodev. After the crypto operation is
+complete, the adapter enqueues events to the event device. The application can
+use this mode when ingress packet ordering is needed. In this mode, events
+dequeued from the adapter will be treated as forwarded events. The application
+needs to specify the cryptodev ID and queue pair ID (request information) needed
+to enqueue a crypto operation in addition to the event information (response
+information) needed to enqueue an event after the crypto operation has
+completed.
 
 .. _figure_event_crypto_adapter_op_forward:
 
@@ -120,28 +121,44 @@ service function and needs to create an event port for it. The callback is
 expected to fill the ``struct rte_event_crypto_adapter_conf`` structure
 passed to it.
 
-For RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD mode, the event port created by adapter
-can be retrieved using ``rte_event_crypto_adapter_event_port_get()`` API.
-Application can use this event port to link with event queue on which it
-enqueues events towards the crypto adapter.
+In the ``RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD`` mode, if the event PMD and crypto
+PMD supports internal event port
+(``RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD``), events with crypto
+operations should be enqueued to the crypto adapter using
+``rte_event_crypto_adapter_enqueue()`` API. If not, the event port created by
+the adapter can be retrieved using ``rte_event_crypto_adapter_event_port_get()``
+API. An application can use this event port to link with an event queue, on
+which it enqueues events towards the crypto adapter using
+``rte_event_enqueue_burst()``.
 
 .. code-block:: c
 
-        uint8_t id, evdev, crypto_ev_port_id, app_qid;
+        uint8_t id, evdev_id, cdev_id, crypto_ev_port_id, app_qid;
         struct rte_event ev;
+        uint32_t cap;
         int ret;
-
-        ret = rte_event_crypto_adapter_event_port_get(id, &crypto_ev_port_id);
-        ret = rte_event_queue_setup(evdev, app_qid, NULL);
-        ret = rte_event_port_link(evdev, crypto_ev_port_id, &app_qid, NULL, 1);
 
         // Fill in event info and update event_ptr with rte_crypto_op
         memset(&ev, 0, sizeof(ev));
-        ev.queue_id = app_qid;
         .
         .
         ev.event_ptr = op;
-        ret = rte_event_enqueue_burst(evdev, app_ev_port_id, ev, nb_events);
+
+        ret = rte_event_crypto_adapter_caps_get(evdev_id, cdev_id, &cap);
+        if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) {
+                ret = rte_event_crypto_adapter_enqueue(evdev_id, app_ev_port_id,
+                                                       ev, nb_events);
+        } else {
+                ret = rte_event_crypto_adapter_event_port_get(id,
+                                                        &crypto_ev_port_id);
+                ret = rte_event_queue_setup(evdev_id, app_qid, NULL);
+                ret = rte_event_port_link(evdev_id, crypto_ev_port_id, &app_qid,
+                                          NULL, 1);
+                ev.queue_id = app_qid;
+                ret = rte_event_enqueue_burst(evdev_id, app_ev_port_id, ev,
+                                              nb_events);
+        }
+
 
 Querying adapter capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

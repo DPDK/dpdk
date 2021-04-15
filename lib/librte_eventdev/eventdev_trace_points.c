@@ -118,3 +118,6 @@ RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_crypto_adapter_start,
 
 RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_crypto_adapter_stop,
 	lib.eventdev.crypto.stop)
+
+RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_crypto_adapter_enqueue,
+	lib.eventdev.crypto.enq)

@@ -171,6 +171,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "rte_eventdev.h"
+#include "eventdev_pmd.h"
 
 /**
  * Crypto event adapter mode
@@ -521,6 +522,68 @@ rte_event_crypto_adapter_service_id_get(uint8_t id, uint32_t *service_id);
  */
 int
 rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
+
+/**
+ * Enqueue a burst of crypto operations as event objects supplied in *rte_event*
+ * structure on an event crypto adapter designated by its event *dev_id* through
+ * the event port specified by *port_id*. This function is supported if the
+ * eventdev PMD has the #RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD
+ * capability flag set.
+ *
+ * The *nb_events* parameter is the number of event objects to enqueue which are
+ * supplied in the *ev* array of *rte_event* structure.
+ *
+ * The rte_event_crypto_adapter_enqueue() function returns the number of
+ * event objects it actually enqueued. A return value equal to *nb_events*
+ * means that all event objects have been enqueued.
+ *
+ * @param dev_id
+ *  The identifier of the device.
+ * @param port_id
+ *  The identifier of the event port.
+ * @param ev
+ *  Points to an array of *nb_events* objects of type *rte_event* structure
+ *  which contain the event object enqueue operations to be processed.
+ * @param nb_events
+ *  The number of event objects to enqueue, typically number of
+ *  rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
+ *  available for this port.
+ *
+ * @return
+ *   The number of event objects actually enqueued on the event device. The
+ *   return value can be less than the value of the *nb_events* parameter when
+ *   the event devices queue is full or if invalid parameters are specified in a
+ *   *rte_event*. If the return value is less than *nb_events*, the remaining
+ *   events at the end of ev[] are not consumed and the caller has to take care
+ *   of them, and rte_errno is set accordingly. Possible errno values include:
+ *   - EINVAL   The port ID is invalid, device ID is invalid, an event's queue
+ *              ID is invalid, or an event's sched type doesn't match the
+ *              capabilities of the destination queue.
+ *   - ENOSPC   The event port was backpressured and unable to enqueue
+ *              one or more events. This error code is only applicable to
+ *              closed systems.
+ */
+static inline uint16_t
+rte_event_crypto_adapter_enqueue(uint8_t dev_id,
+				uint8_t port_id,
+				struct rte_event ev[],
+				uint16_t nb_events)
+{
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+
+	if (port_id >= dev->data->nb_ports) {
+		rte_errno = EINVAL;
+		return 0;
+	}
+#endif
+	rte_eventdev_trace_crypto_adapter_enqueue(dev_id, port_id, ev,
+		nb_events);
+
+	return dev->ca_enqueue(dev->data->ports[port_id], ev, nb_events);
+}
 
 #ifdef __cplusplus
 }

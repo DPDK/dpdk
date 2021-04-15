@@ -50,6 +50,16 @@ RTE_TRACE_POINT_FP(
 )
 
 RTE_TRACE_POINT_FP(
+	rte_eventdev_trace_crypto_adapter_enqueue,
+	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id, void *ev_table,
+		uint16_t nb_events),
+	rte_trace_point_emit_u8(dev_id);
+	rte_trace_point_emit_u8(port_id);
+	rte_trace_point_emit_ptr(ev_table);
+	rte_trace_point_emit_u16(nb_events);
+)
+
+RTE_TRACE_POINT_FP(
 	rte_eventdev_trace_timer_arm_burst,
 	RTE_TRACE_POINT_ARGS(const void *adapter, void **evtims_table,
 		uint16_t nb_evtims),
