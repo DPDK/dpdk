@@ -12,8 +12,9 @@
 #include <rte_mbuf_pool_ops.h>
 #include <rte_pci.h>
 
-#include "otx2_evdev_stats.h"
 #include "otx2_evdev.h"
+#include "otx2_evdev_crypto_adptr_tx.h"
+#include "otx2_evdev_stats.h"
 #include "otx2_irq.h"
 #include "otx2_tim_evdev.h"
 
@@ -311,6 +312,7 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)]
 			[!!(dev->tx_offloads & NIX_TX_OFFLOAD_L3_L4_CSUM_F)];
 	}
+	event_dev->ca_enqueue = otx2_ssogws_ca_enq;
 
 	if (dev->dual_ws) {
 		event_dev->enqueue		= otx2_ssogws_dual_enq;
@@ -473,6 +475,7 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 				[!!(dev->tx_offloads &
 						NIX_TX_OFFLOAD_L3_L4_CSUM_F)];
 		}
+		event_dev->ca_enqueue = otx2_ssogws_dual_ca_enq;
 	}
 
 	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;

@@ -2,8 +2,8 @@
  * Copyright (C) 2020 Marvell International Ltd.
  */
 
-#ifndef _OTX2_EVDEV_CRYPTO_ADPTR_DP_H_
-#define _OTX2_EVDEV_CRYPTO_ADPTR_DP_H_
+#ifndef _OTX2_EVDEV_CRYPTO_ADPTR_RX_H_
+#define _OTX2_EVDEV_CRYPTO_ADPTR_RX_H_
 
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
@@ -72,4 +72,4 @@ otx2_handle_crypto_event(uint64_t get_work1)
 
 	return (uint64_t)(cop);
 }
-#endif /* _OTX2_EVDEV_CRYPTO_ADPTR_DP_H_ */
+#endif /* _OTX2_EVDEV_CRYPTO_ADPTR_RX_H_ */

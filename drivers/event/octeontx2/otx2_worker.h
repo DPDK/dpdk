@@ -10,7 +10,7 @@
 
 #include <otx2_common.h>
 #include "otx2_evdev.h"
-#include "otx2_evdev_crypto_adptr_dp.h"
+#include "otx2_evdev_crypto_adptr_rx.h"
 #include "otx2_ethdev_sec_tx.h"
 
 /* SSO Operations */
