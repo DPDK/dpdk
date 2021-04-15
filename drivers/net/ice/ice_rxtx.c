@@ -8,6 +8,7 @@
 
 #include "rte_pmd_ice.h"
 #include "ice_rxtx.h"
+#include "ice_rxtx_vec_common.h"
 
 #define ICE_TX_CKSUM_OFFLOAD_MASK (		 \
 		PKT_TX_IP_CKSUM |		 \
@@ -3267,12 +3268,14 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct ice_tx_queue *txq;
 	int i;
+	int tx_check_ret;
 	bool use_avx512 = false;
 	bool use_avx2 = false;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		if (!ice_tx_vec_dev_check(dev) &&
-				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+		tx_check_ret = ice_tx_vec_dev_check(dev);
+		if (tx_check_ret >= 0 &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			ad->tx_vec_allowed = true;
 			for (i = 0; i < dev->data->nb_tx_queues; i++) {
 				txq = dev->data->tx_queues[i];
@@ -3291,11 +3294,14 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(NOTICE,
 				"AVX512 is not supported in build env");
 #endif
-			if (!use_avx512 &&
+			if (!use_avx512 && tx_check_ret == ICE_VECTOR_PATH &&
 			(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
 			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
 			rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 				use_avx2 = true;
+
+			if (!use_avx512 && tx_check_ret == ICE_VECTOR_OFFLOAD_PATH)
+				ad->tx_vec_allowed = false;
 
 		} else {
 			ad->tx_vec_allowed = false;
@@ -3305,9 +3311,18 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 	if (ad->tx_vec_allowed) {
 		if (use_avx512) {
 #ifdef CC_AVX512_SUPPORT
-			PMD_DRV_LOG(NOTICE, "Using AVX512 Vector Tx (port %d).",
-				    dev->data->port_id);
-			dev->tx_pkt_burst = ice_xmit_pkts_vec_avx512;
+			if (tx_check_ret == ICE_VECTOR_OFFLOAD_PATH) {
+				PMD_DRV_LOG(NOTICE,
+					    "Using AVX512 OFFLOAD Vector Tx (port %d).",
+					    dev->data->port_id);
+				dev->tx_pkt_burst =
+					ice_xmit_pkts_vec_avx512_offload;
+			} else {
+				PMD_DRV_LOG(NOTICE,
+					    "Using AVX512 Vector Tx (port %d).",
+					    dev->data->port_id);
+				dev->tx_pkt_burst = ice_xmit_pkts_vec_avx512;
+			}
 #endif
 		} else {
 			PMD_DRV_LOG(DEBUG, "Using %sVector Tx (port %d).",
@@ -3343,6 +3358,7 @@ static const struct {
 #ifdef RTE_ARCH_X86
 #ifdef CC_AVX512_SUPPORT
 	{ ice_xmit_pkts_vec_avx512, "Vector AVX512" },
+	{ ice_xmit_pkts_vec_avx512_offload, "Offload Vector AVX512" },
 #endif
 	{ ice_xmit_pkts_vec_avx2, "Vector AVX2" },
 	{ ice_xmit_pkts_vec,      "Vector SSE" },
