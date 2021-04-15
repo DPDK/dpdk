@@ -14,6 +14,7 @@
 #define ICE_PPP_IPV6_PROTO_ID		0x0057
 #define ICE_IPV6_ETHER_ID		0x86DD
 #define ICE_TCP_PROTO_ID		0x06
+#define ICE_GTPU_PROFILE		24
 #define ICE_ETH_P_8021Q			0x8100
 
 /* Dummy ethernet header needed in the ice_aqc_sw_rules_elem
@@ -1123,6 +1124,7 @@ static const u8 dummy_udp_gtp_packet[] = {
 
 	0x02, 0x00, 0x00, 0x00, /* PDU Session extension header */
 	0x00, 0x00, 0x00, 0x00,
+
 };
 
 static const struct ice_dummy_pkt_offsets dummy_ipv4_gtp_no_pay_packet_offsets[] = {
@@ -1140,6 +1142,32 @@ struct ice_dummy_pkt_offsets dummy_ipv6_gtp_no_pay_packet_offsets[] = {
 	{ ICE_UDP_OF,		54 },
 	{ ICE_GTP_NO_PAY,	62 },
 	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv6_gtp_packet[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x86, 0xdd,
+
+	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 14 */
+	0x00, 0x6c, 0x11, 0x00, /* Next header UDP*/
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x08, 0x68, 0x08, 0x68, /* ICE_UDP_OF 54 */
+	0x00, 0x00, 0x00, 0x00,
+
+	0x30, 0x00, 0x00, 0x28,  /* ICE_GTP 62 */
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00,
 };
 
 static const struct ice_dummy_pkt_offsets dummy_pppoe_packet_offsets[] = {
@@ -1785,6 +1813,33 @@ static void ice_collect_result_idx(struct ice_aqc_recipe_data_elem *buf,
 			    ~ICE_AQ_RECIPE_RESULT_EN, recp->res_idxs);
 }
 
+static struct ice_prof_type_entry ice_prof_type_tbl[ICE_GTPU_PROFILE] = {
+	{ ICE_PROFID_IPV4_GTPU_IPV4_OTHER,    ICE_SW_TUN_IPV4_GTPU_IPV4},
+	{ ICE_PROFID_IPV4_GTPU_IPV4_UDP,      ICE_SW_TUN_IPV4_GTPU_IPV4_UDP},
+	{ ICE_PROFID_IPV4_GTPU_IPV4_TCP,      ICE_SW_TUN_IPV4_GTPU_IPV4_TCP},
+	{ ICE_PROFID_IPV4_GTPU_EH_IPV4_OTHER, ICE_SW_TUN_IPV4_GTPU_EH_IPV4},
+	{ ICE_PROFID_IPV4_GTPU_EH_IPV4_UDP,   ICE_SW_TUN_IPV4_GTPU_EH_IPV4_UDP},
+	{ ICE_PROFID_IPV4_GTPU_EH_IPV4_TCP,   ICE_SW_TUN_IPV4_GTPU_EH_IPV4_TCP},
+	{ ICE_PROFID_IPV4_GTPU_IPV6_OTHER,    ICE_SW_TUN_IPV4_GTPU_IPV6},
+	{ ICE_PROFID_IPV4_GTPU_IPV6_UDP,      ICE_SW_TUN_IPV4_GTPU_IPV6_UDP},
+	{ ICE_PROFID_IPV4_GTPU_IPV6_TCP,      ICE_SW_TUN_IPV4_GTPU_IPV6_TCP},
+	{ ICE_PROFID_IPV4_GTPU_EH_IPV6_OTHER, ICE_SW_TUN_IPV4_GTPU_EH_IPV6},
+	{ ICE_PROFID_IPV4_GTPU_EH_IPV6_UDP,   ICE_SW_TUN_IPV4_GTPU_EH_IPV6_UDP},
+	{ ICE_PROFID_IPV4_GTPU_EH_IPV6_TCP,   ICE_SW_TUN_IPV4_GTPU_EH_IPV6_TCP},
+	{ ICE_PROFID_IPV6_GTPU_IPV4_OTHER,    ICE_SW_TUN_IPV6_GTPU_IPV4},
+	{ ICE_PROFID_IPV6_GTPU_IPV4_UDP,      ICE_SW_TUN_IPV6_GTPU_IPV4_UDP},
+	{ ICE_PROFID_IPV6_GTPU_IPV4_TCP,      ICE_SW_TUN_IPV6_GTPU_IPV4_TCP},
+	{ ICE_PROFID_IPV6_GTPU_EH_IPV4_OTHER, ICE_SW_TUN_IPV6_GTPU_EH_IPV4},
+	{ ICE_PROFID_IPV6_GTPU_EH_IPV4_UDP,   ICE_SW_TUN_IPV6_GTPU_EH_IPV4_UDP},
+	{ ICE_PROFID_IPV6_GTPU_EH_IPV4_TCP,   ICE_SW_TUN_IPV6_GTPU_EH_IPV4_TCP},
+	{ ICE_PROFID_IPV6_GTPU_IPV6_OTHER,    ICE_SW_TUN_IPV6_GTPU_IPV6},
+	{ ICE_PROFID_IPV6_GTPU_IPV6_UDP,      ICE_SW_TUN_IPV6_GTPU_IPV6_UDP},
+	{ ICE_PROFID_IPV6_GTPU_IPV6_TCP,      ICE_SW_TUN_IPV6_GTPU_IPV6_TCP},
+	{ ICE_PROFID_IPV6_GTPU_EH_IPV6_OTHER, ICE_SW_TUN_IPV6_GTPU_EH_IPV6},
+	{ ICE_PROFID_IPV6_GTPU_EH_IPV6_UDP,   ICE_SW_TUN_IPV6_GTPU_EH_IPV6_UDP},
+	{ ICE_PROFID_IPV6_GTPU_EH_IPV6_TCP,   ICE_SW_TUN_IPV6_GTPU_EH_IPV6_TCP},
+};
+
 /**
  * ice_get_tun_type_for_recipe - get tunnel type for the recipe
  * @rid: recipe ID that we are populating
@@ -1796,7 +1851,7 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid, bool vlan)
 	u8 pppoe_profile[7] = {34, 35, 36, 37, 38, 39, 40};
 	u8 non_tun_profile[6] = {4, 5, 6, 7, 8, 9};
 	enum ice_sw_tunnel_type tun_type;
-	u16 i, j, profile_num = 0;
+	u16 i, j, k, profile_num = 0;
 	bool non_tun_valid = false;
 	bool pppoe_valid = false;
 	bool vxlan_valid = false;
@@ -1870,18 +1925,12 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid, bool vlan)
 	}
 
 	if (tun_type == ICE_SW_TUN_GTP) {
-		if (ice_is_bit_set(recipe_to_profile[rid],
-				   ICE_PROFID_IPV4_GTPU_IPV4_OTHER))
-			tun_type = ICE_SW_TUN_IPV4_GTPU_IPV4;
-		else if (ice_is_bit_set(recipe_to_profile[rid],
-					ICE_PROFID_IPV4_GTPU_IPV6_OTHER))
-			tun_type = ICE_SW_TUN_IPV4_GTPU_IPV6;
-		else if (ice_is_bit_set(recipe_to_profile[rid],
-					ICE_PROFID_IPV6_GTPU_IPV4_OTHER))
-			tun_type = ICE_SW_TUN_IPV6_GTPU_IPV4;
-		else if (ice_is_bit_set(recipe_to_profile[rid],
-					ICE_PROFID_IPV6_GTPU_IPV6_OTHER))
-			tun_type = ICE_SW_TUN_IPV6_GTPU_IPV6;
+		for (k = 0; k < ARRAY_SIZE(ice_prof_type_tbl); k++)
+			if (ice_is_bit_set(recipe_to_profile[rid],
+					   ice_prof_type_tbl[k].prof_id)) {
+				tun_type = ice_prof_type_tbl[k].type;
+				break;
+			}
 	}
 
 	if (profile_num == 1 && (flag_valid || non_tun_valid || pppoe_valid)) {
@@ -6521,7 +6570,7 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[ICE_PROTOCOL_LAST] = {
 	{ ICE_GENEVE,		{ 8, 10, 12, 14 } },
 	{ ICE_VXLAN_GPE,	{ 8, 10, 12, 14 } },
 	{ ICE_NVGRE,		{ 0, 2, 4, 6 } },
-	{ ICE_GTP,		{ 8, 10, 12, 14, 16, 18, 20 } },
+	{ ICE_GTP,		{ 8, 10, 12, 14, 16, 18, 20, 22 } },
 	{ ICE_PPPOE,		{ 0, 2, 4, 6 } },
 	{ ICE_PFCP,		{ 8, 10, 12, 14, 16, 18, 20, 22 } },
 	{ ICE_L2TPV3,		{ 0, 2, 4, 6, 8, 10 } },
@@ -7461,37 +7510,99 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 	case ICE_SW_IPV6_UDP:
 		ice_set_bit(ICE_PROFID_IPV6_UDP, bm);
 		return;
+	case ICE_SW_TUN_IPV4_GTPU_NO_PAY:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_TEID, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_NO_PAY:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_TEID, bm);
+		return;
 	case ICE_SW_TUN_IPV4_GTPU_IPV4:
-		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV4_OTHER, bm);
 		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV4_OTHER, bm);
-		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV4_UDP, bm);
 		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV4_UDP, bm);
-		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV4_TCP, bm);
 		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV4_TCP, bm);
 		return;
+	case ICE_SW_TUN_IPV4_GTPU_IPV4_UDP:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV4_UDP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_GTPU_IPV4_TCP:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV4_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_GTPU_EH_IPV4:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV4_OTHER, bm);
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV4_UDP, bm);
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV4_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_GTPU_EH_IPV4_UDP:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV4_UDP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_GTPU_EH_IPV4_TCP:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV4_TCP, bm);
+		return;
 	case ICE_SW_TUN_IPV6_GTPU_IPV4:
-		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV4_OTHER, bm);
 		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV4_OTHER, bm);
-		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV4_UDP, bm);
 		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV4_UDP, bm);
-		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV4_TCP, bm);
 		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV4_TCP, bm);
 		return;
+	case ICE_SW_TUN_IPV6_GTPU_IPV4_UDP:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV4_UDP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_IPV4_TCP:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV4_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_EH_IPV4:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV4_OTHER, bm);
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV4_UDP, bm);
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV4_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_EH_IPV4_UDP:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV4_UDP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_EH_IPV4_TCP:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV4_TCP, bm);
+		return;
 	case ICE_SW_TUN_IPV4_GTPU_IPV6:
-		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV6_OTHER, bm);
 		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV6_OTHER, bm);
-		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV6_UDP, bm);
 		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV6_UDP, bm);
-		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV6_TCP, bm);
 		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV6_TCP, bm);
 		return;
+	case ICE_SW_TUN_IPV4_GTPU_IPV6_UDP:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV6_UDP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_GTPU_IPV6_TCP:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_IPV6_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_GTPU_EH_IPV6:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV6_OTHER, bm);
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV6_UDP, bm);
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV6_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_GTPU_EH_IPV6_UDP:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV6_UDP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_GTPU_EH_IPV6_TCP:
+		ice_set_bit(ICE_PROFID_IPV4_GTPU_EH_IPV6_TCP, bm);
+		return;
 	case ICE_SW_TUN_IPV6_GTPU_IPV6:
-		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV6_OTHER, bm);
 		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV6_OTHER, bm);
-		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV6_UDP, bm);
 		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV6_UDP, bm);
-		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV6_TCP, bm);
 		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV6_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_IPV6_UDP:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV6_UDP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_IPV6_TCP:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV6_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_EH_IPV6:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV6_OTHER, bm);
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV6_UDP, bm);
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV6_TCP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_EH_IPV6_UDP:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV6_UDP, bm);
+		return;
+	case ICE_SW_TUN_IPV6_GTPU_EH_IPV6_TCP:
+		ice_set_bit(ICE_PROFID_IPV6_GTPU_EH_IPV6_TCP, bm);
 		return;
 	case ICE_SW_TUN_AND_NON_TUN:
 	case ICE_SW_TUN_AND_NON_TUN_QINQ:
@@ -7827,8 +7938,8 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		*offsets = dummy_ipv4_gtp_no_pay_packet_offsets;
 		return;
 	} else if (tun_type == ICE_SW_TUN_IPV6_GTPU_NO_PAY) {
-		*pkt = dummy_ipv6_gtpu_ipv6_packet;
-		*pkt_len = sizeof(dummy_ipv6_gtpu_ipv6_packet);
+		*pkt = dummy_ipv6_gtp_packet;
+		*pkt_len = sizeof(dummy_ipv6_gtp_packet);
 		*offsets = dummy_ipv6_gtp_no_pay_packet_offsets;
 		return;
 	}
@@ -7893,6 +8004,102 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		*pkt = dummy_udp_gtp_packet;
 		*pkt_len = sizeof(dummy_udp_gtp_packet);
 		*offsets = dummy_udp_gtp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV4 ||
+	    tun_type == ICE_SW_TUN_IPV4_GTPU_EH_IPV4) {
+		*pkt = dummy_ipv4_gtpu_ipv4_packet;
+		*pkt_len = sizeof(dummy_ipv4_gtpu_ipv4_packet);
+		*offsets = dummy_ipv4_gtpu_ipv4_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV4_UDP ||
+	    tun_type == ICE_SW_TUN_IPV4_GTPU_EH_IPV4_UDP) {
+		*pkt = dummy_ipv4_gtpu_ipv4_udp_packet;
+		*pkt_len = sizeof(dummy_ipv4_gtpu_ipv4_udp_packet);
+		*offsets = dummy_ipv4_gtpu_ipv4_udp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV4_TCP ||
+	    tun_type == ICE_SW_TUN_IPV4_GTPU_EH_IPV4_TCP) {
+		*pkt = dummy_ipv4_gtpu_ipv4_tcp_packet;
+		*pkt_len = sizeof(dummy_ipv4_gtpu_ipv4_tcp_packet);
+		*offsets = dummy_ipv4_gtpu_ipv4_tcp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV6 ||
+	    tun_type == ICE_SW_TUN_IPV4_GTPU_EH_IPV6) {
+		*pkt = dummy_ipv4_gtpu_ipv6_packet;
+		*pkt_len = sizeof(dummy_ipv4_gtpu_ipv6_packet);
+		*offsets = dummy_ipv4_gtpu_ipv6_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV6_UDP ||
+	    tun_type == ICE_SW_TUN_IPV4_GTPU_EH_IPV6_UDP) {
+		*pkt = dummy_ipv4_gtpu_ipv6_udp_packet;
+		*pkt_len = sizeof(dummy_ipv4_gtpu_ipv6_udp_packet);
+		*offsets = dummy_ipv4_gtpu_ipv6_udp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV4_GTPU_IPV6_TCP ||
+	    tun_type == ICE_SW_TUN_IPV4_GTPU_EH_IPV6_TCP) {
+		*pkt = dummy_ipv4_gtpu_ipv6_tcp_packet;
+		*pkt_len = sizeof(dummy_ipv4_gtpu_ipv6_tcp_packet);
+		*offsets = dummy_ipv4_gtpu_ipv6_tcp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_GTPU_IPV4 ||
+	    tun_type == ICE_SW_TUN_IPV6_GTPU_EH_IPV4) {
+		*pkt = dummy_ipv6_gtpu_ipv4_packet;
+		*pkt_len = sizeof(dummy_ipv6_gtpu_ipv4_packet);
+		*offsets = dummy_ipv6_gtpu_ipv4_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_GTPU_IPV4_UDP ||
+	    tun_type == ICE_SW_TUN_IPV6_GTPU_EH_IPV4_UDP) {
+		*pkt = dummy_ipv6_gtpu_ipv4_udp_packet;
+		*pkt_len = sizeof(dummy_ipv6_gtpu_ipv4_udp_packet);
+		*offsets = dummy_ipv6_gtpu_ipv4_udp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_GTPU_IPV4_TCP ||
+	    tun_type == ICE_SW_TUN_IPV6_GTPU_EH_IPV4_TCP) {
+		*pkt = dummy_ipv6_gtpu_ipv4_tcp_packet;
+		*pkt_len = sizeof(dummy_ipv6_gtpu_ipv4_tcp_packet);
+		*offsets = dummy_ipv6_gtpu_ipv4_tcp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_GTPU_IPV6 ||
+	    tun_type == ICE_SW_TUN_IPV6_GTPU_EH_IPV6) {
+		*pkt = dummy_ipv6_gtpu_ipv6_packet;
+		*pkt_len = sizeof(dummy_ipv6_gtpu_ipv6_packet);
+		*offsets = dummy_ipv6_gtpu_ipv6_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_GTPU_IPV6_UDP ||
+	    tun_type == ICE_SW_TUN_IPV6_GTPU_EH_IPV6_UDP) {
+		*pkt = dummy_ipv6_gtpu_ipv6_udp_packet;
+		*pkt_len = sizeof(dummy_ipv6_gtpu_ipv6_udp_packet);
+		*offsets = dummy_ipv6_gtpu_ipv6_udp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_GTPU_IPV6_TCP ||
+	    tun_type == ICE_SW_TUN_IPV6_GTPU_EH_IPV6_TCP) {
+		*pkt = dummy_ipv6_gtpu_ipv6_tcp_packet;
+		*pkt_len = sizeof(dummy_ipv6_gtpu_ipv6_tcp_packet);
+		*offsets = dummy_ipv6_gtpu_ipv6_tcp_packet_offsets;
 		return;
 	}
 

@@ -216,6 +216,11 @@ struct ice_adv_lkup_elem {
 	union ice_prot_hdr m_u;	/* Mask of header values to match */
 };
 
+struct ice_prof_type_entry {
+	u16 prof_id;
+	enum ice_sw_tunnel_type type;
+};
+
 struct ice_sw_act_ctrl {
 	/* Source VSI for LOOKUP_TX or source port for LOOKUP_RX */
 	u16 src;
