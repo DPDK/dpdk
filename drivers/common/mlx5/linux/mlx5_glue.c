@@ -1101,6 +1101,18 @@ mlx5_glue_devx_port_query(struct ibv_context *ctx,
 }
 
 static int
+mlx5_glue_dr_dump_single_rule(FILE *file, void *rule)
+{
+#ifdef HAVE_MLX5_DR_FLOW_DUMP_RULE
+	return mlx5dv_dump_dr_rule(file, rule);
+#else
+	RTE_SET_USED(file);
+	RTE_SET_USED(rule);
+	return -ENOTSUP;
+#endif
+}
+
+static int
 mlx5_glue_dr_dump_domain(FILE *file, void *domain)
 {
 #ifdef HAVE_MLX5_DR_FLOW_DUMP
@@ -1423,6 +1435,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.devx_wq_query = mlx5_glue_devx_wq_query,
 	.devx_port_query = mlx5_glue_devx_port_query,
 	.dr_dump_domain = mlx5_glue_dr_dump_domain,
+	.dr_dump_rule = mlx5_glue_dr_dump_single_rule,
 	.dr_reclaim_domain_memory = mlx5_glue_dr_reclaim_domain_memory,
 	.dr_create_flow_action_sampler =
 		mlx5_glue_dr_create_flow_action_sampler,

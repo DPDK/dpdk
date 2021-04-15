@@ -477,6 +477,8 @@ __rte_internal
 int mlx5_devx_cmd_flow_dump(void *fdb_domain, void *rx_domain, void *tx_domain,
 			    FILE *file);
 __rte_internal
+int mlx5_devx_cmd_flow_single_dump(void *rule, FILE *file);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_cq(void *ctx,
 					      struct mlx5_devx_cq_attr *attr);
 __rte_internal
