@@ -35,6 +35,10 @@ test_power_caps(void)
 #define TEST_POWER_LCORE_INVALID ((unsigned)RTE_MAX_LCORE)
 #define TEST_POWER_FREQS_NUM_MAX ((unsigned)RTE_MAX_LCORE_FREQS)
 
+/* macros used for rounding frequency to nearest 100000 */
+#define TEST_FREQ_ROUNDING_DELTA 50000
+#define TEST_ROUND_FREQ_TO_N_100000 100000
+
 #define TEST_POWER_SYSFILE_CUR_FREQ \
 	"/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_cur_freq"
 
@@ -67,7 +71,17 @@ check_cur_freq(unsigned lcore_id, uint32_t idx)
 			goto fail_all;
 
 		cur_freq = strtoul(buf, NULL, TEST_POWER_CONVERT_TO_DECIMAL);
-		ret = (freqs[idx] == cur_freq ? 0 : -1);
+
+		/* convert the frequency to nearest 100000 value
+		 * Ex: if cur_freq=1396789 then freq_conv=1400000
+		 * Ex: if cur_freq=800030 then freq_conv=800000
+		 */
+		unsigned int freq_conv = 0;
+		freq_conv = (cur_freq + TEST_FREQ_ROUNDING_DELTA)
+					/ TEST_ROUND_FREQ_TO_N_100000;
+		freq_conv = freq_conv * TEST_ROUND_FREQ_TO_N_100000;
+
+		ret = (freqs[idx] == freq_conv ? 0 : -1);
 
 		if (ret == 0)
 			break;
