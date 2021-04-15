@@ -2017,7 +2017,7 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	};
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (dev->rx_pkt_burst == hns3_recv_pkts ||
+	if (dev->rx_pkt_burst == hns3_recv_pkts_simple ||
 	    dev->rx_pkt_burst == hns3_recv_scattered_pkts ||
 	    dev->rx_pkt_burst == hns3_recv_pkts_vec ||
 	    dev->rx_pkt_burst == hns3_recv_pkts_vec_sve) {
@@ -2389,7 +2389,9 @@ hns3_rx_ptp_timestamp_handle(struct hns3_rx_queue *rxq, struct rte_mbuf *mbuf,
 }
 
 uint16_t
-hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+hns3_recv_pkts_simple(void *rx_queue,
+		      struct rte_mbuf **rx_pkts,
+		      uint16_t nb_pkts)
 {
 	volatile struct hns3_desc *rx_ring;  /* RX ring (desc) */
 	volatile struct hns3_desc *rxdp;     /* pointer of the current desc */
@@ -2772,10 +2774,10 @@ hns3_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		eth_rx_burst_t pkt_burst;
 		const char *info;
 	} burst_infos[] = {
-		{ hns3_recv_pkts,		"Scalar" },
+		{ hns3_recv_pkts_simple,	"Scalar Simple" },
 		{ hns3_recv_scattered_pkts,	"Scalar Scattered" },
-		{ hns3_recv_pkts_vec,		"Vector Neon" },
-		{ hns3_recv_pkts_vec_sve,	"Vector Sve" },
+		{ hns3_recv_pkts_vec,		"Vector Neon"   },
+		{ hns3_recv_pkts_vec_sve,	"Vector Sve"    },
 	};
 
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
@@ -2833,14 +2835,14 @@ hns3_get_rx_function(struct rte_eth_dev *dev)
 	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_SVE && sve_allowed)
 		return hns3_recv_pkts_vec_sve;
 	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_SIMPLE && simple_allowed)
-		return hns3_recv_pkts;
+		return hns3_recv_pkts_simple;
 	if (hns->rx_func_hint == HNS3_IO_FUNC_HINT_COMMON)
 		return hns3_recv_scattered_pkts;
 
 	if (vec_allowed)
 		return hns3_recv_pkts_vec;
 	if (simple_allowed)
-		return hns3_recv_pkts;
+		return hns3_recv_pkts_simple;
 
 	return hns3_recv_scattered_pkts;
 }
@@ -4517,7 +4519,7 @@ hns3_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	rxdp = &rxq->rx_ring[desc_id];
 	bd_base_info = rte_le_to_cpu_32(rxdp->rx.bd_base_info);
 	dev = &rte_eth_devices[rxq->port_id];
-	if (dev->rx_pkt_burst == hns3_recv_pkts ||
+	if (dev->rx_pkt_burst == hns3_recv_pkts_simple ||
 	    dev->rx_pkt_burst == hns3_recv_scattered_pkts) {
 		if (offset >= rxq->nb_rx_desc - rxq->rx_free_hold)
 			return RTE_ETH_RX_DESC_UNAVAIL;
