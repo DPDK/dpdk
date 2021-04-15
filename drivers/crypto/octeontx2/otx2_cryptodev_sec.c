@@ -25,12 +25,15 @@ ipsec_lp_len_precalc(struct rte_security_ipsec_xform *ipsec,
 {
 	struct rte_crypto_sym_xform *cipher_xform, *auth_xform;
 
-	if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4)
-		lp->partial_len = sizeof(struct rte_ipv4_hdr);
-	else if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV6)
-		lp->partial_len = sizeof(struct rte_ipv6_hdr);
-	else
-		return -EINVAL;
+	lp->partial_len = 0;
+	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
+		if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4)
+			lp->partial_len = sizeof(struct rte_ipv4_hdr);
+		else if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV6)
+			lp->partial_len = sizeof(struct rte_ipv6_hdr);
+		else
+			return -EINVAL;
+	}
 
 	if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_ESP) {
 		lp->partial_len += sizeof(struct rte_esp_hdr);
@@ -203,7 +206,7 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 				     struct rte_security_session *sec_sess)
 {
 	struct rte_crypto_sym_xform *auth_xform, *cipher_xform;
-	struct otx2_ipsec_po_ip_template *template;
+	struct otx2_ipsec_po_ip_template *template = NULL;
 	const uint8_t *cipher_key, *auth_key;
 	struct otx2_sec_session_ipsec_lp *lp;
 	struct otx2_ipsec_po_sa_ctl *ctl;
@@ -229,10 +232,10 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	memset(sa, 0, sizeof(struct otx2_ipsec_po_out_sa));
 
 	/* Initialize lookaside ipsec private data */
+	lp->mode_type = OTX2_IPSEC_PO_TRANSPORT;
 	lp->ip_id = 0;
 	lp->seq_lo = 1;
 	lp->seq_hi = 0;
-	lp->tunnel_type = ipsec->tunnel.type;
 
 	ret = ipsec_po_sa_ctl_set(ipsec, crypto_xform, ctl);
 	if (ret)
@@ -242,46 +245,47 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	if (ret)
 		return ret;
 
+	/* Start ip id from 1 */
+	lp->ip_id = 1;
+
+	if (ctl->enc_type == OTX2_IPSEC_PO_SA_ENC_AES_GCM) {
+		template = &sa->aes_gcm.template;
+		ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
+				aes_gcm.template) + sizeof(
+				sa->aes_gcm.template.ip4);
+		ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
+		lp->ctx_len = ctx_len >> 3;
+	} else if (ctl->auth_type ==
+			OTX2_IPSEC_PO_SA_AUTH_SHA1) {
+		template = &sa->sha1.template;
+		ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
+				sha1.template) + sizeof(
+				sa->sha1.template.ip4);
+		ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
+		lp->ctx_len = ctx_len >> 3;
+	} else if (ctl->auth_type ==
+			OTX2_IPSEC_PO_SA_AUTH_SHA2_256) {
+		template = &sa->sha2.template;
+		ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
+				sha2.template) + sizeof(
+				sa->sha2.template.ip4);
+		ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
+		lp->ctx_len = ctx_len >> 3;
+	} else {
+		return -EINVAL;
+	}
+	ip = &template->ip4.ipv4_hdr;
+	if (ipsec->options.udp_encap) {
+		ip->next_proto_id = IPPROTO_UDP;
+		template->ip4.udp_src = rte_be_to_cpu_16(4500);
+		template->ip4.udp_dst = rte_be_to_cpu_16(4500);
+	} else {
+		ip->next_proto_id = IPPROTO_ESP;
+	}
+
 	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL) {
-		/* Start ip id from 1 */
-		lp->ip_id = 1;
-
 		if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
-
-			if (ctl->enc_type == OTX2_IPSEC_PO_SA_ENC_AES_GCM) {
-				template = &sa->aes_gcm.template;
-				ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
-						aes_gcm.template) + sizeof(
-						sa->aes_gcm.template.ip4);
-				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
-				lp->ctx_len = ctx_len >> 3;
-			} else if (ctl->auth_type ==
-					OTX2_IPSEC_PO_SA_AUTH_SHA1) {
-				template = &sa->sha1.template;
-				ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
-						sha1.template) + sizeof(
-						sa->sha1.template.ip4);
-				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
-				lp->ctx_len = ctx_len >> 3;
-			} else if (ctl->auth_type ==
-					OTX2_IPSEC_PO_SA_AUTH_SHA2_256) {
-				template = &sa->sha2.template;
-				ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
-						sha2.template) + sizeof(
-						sa->sha2.template.ip4);
-				ctx_len = RTE_ALIGN_CEIL(ctx_len, 8);
-				lp->ctx_len = ctx_len >> 3;
-			} else {
-				return -EINVAL;
-			}
-			ip = &template->ip4.ipv4_hdr;
-			if (ipsec->options.udp_encap) {
-				ip->next_proto_id = IPPROTO_UDP;
-				template->ip4.udp_src = rte_be_to_cpu_16(4500);
-				template->ip4.udp_dst = rte_be_to_cpu_16(4500);
-			} else {
-				ip->next_proto_id = IPPROTO_ESP;
-			}
+			lp->mode_type = OTX2_IPSEC_PO_TUNNEL_IPV4;
 			ip->version_ihl = RTE_IPV4_VHL_DEF;
 			ip->time_to_live = ipsec->tunnel.ipv4.ttl;
 			ip->type_of_service |= (ipsec->tunnel.ipv4.dscp << 2);
@@ -294,6 +298,7 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 		} else if (ipsec->tunnel.type ==
 				RTE_SECURITY_IPSEC_TUNNEL_IPV6) {
 
+			lp->mode_type = OTX2_IPSEC_PO_TUNNEL_IPV6;
 			if (ctl->enc_type == OTX2_IPSEC_PO_SA_ENC_AES_GCM) {
 				template = &sa->aes_gcm.template;
 				ctx_len = offsetof(struct otx2_ipsec_po_out_sa,
@@ -343,11 +348,7 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 				sizeof(struct in6_addr));
 			memcpy(&ip6->dst_addr, &ipsec->tunnel.ipv6.dst_addr,
 				sizeof(struct in6_addr));
-		} else {
-			return -EINVAL;
 		}
-	} else {
-		return -EINVAL;
 	}
 
 	cipher_xform = crypto_xform;
@@ -428,12 +429,19 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	if (ret)
 		return ret;
 
-	lp->tunnel_type = ipsec->tunnel.type;
+	lp->mode_type = OTX2_IPSEC_PO_TRANSPORT;
+
 	auth_xform = crypto_xform;
 	cipher_xform = crypto_xform->next;
 
 	cipher_key_len = 0;
 	auth_key_len = 0;
+
+	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TUNNEL)
+		lp->mode_type = (ipsec->tunnel.type ==
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4) ?
+				OTX2_IPSEC_PO_TUNNEL_IPV4 :
+				OTX2_IPSEC_PO_TUNNEL_IPV6;
 
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		if (crypto_xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM)

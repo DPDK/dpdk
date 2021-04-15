@@ -165,6 +165,8 @@ New Features
   * Added support for DIGEST_ENCRYPTED mode in OCTEON TX2 crypto PMD.
   * Added support in lookaside protocol offload mode for IPsec with
     UDP encapsulation support for NAT Traversal.
+  * Added support in lookaside protocol offload mode for IPsec with
+    IPv4 transport mode.
 
 * **Updated Mellanox RegEx PMD.**
 

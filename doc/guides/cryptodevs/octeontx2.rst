@@ -179,6 +179,7 @@ Features supported
 * IPv6
 * ESP
 * Tunnel mode
+* Transport mode(IPv4)
 * ESN
 * Anti-replay
 * UDP Encapsulation

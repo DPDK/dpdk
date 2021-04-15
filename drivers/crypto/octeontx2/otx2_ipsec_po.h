@@ -20,6 +20,12 @@
 
 #define OTX2_IPSEC_PO_INB_RPTR_HDR         0x8
 
+enum otx2_ipsec_po_mode_type {
+	OTX2_IPSEC_PO_TRANSPORT = 1,
+	OTX2_IPSEC_PO_TUNNEL_IPV4,
+	OTX2_IPSEC_PO_TUNNEL_IPV6,
+};
+
 enum otx2_ipsec_po_comp_e {
 	OTX2_IPSEC_PO_CC_SUCCESS = 0x00,
 	OTX2_IPSEC_PO_CC_AUTH_UNSUPPORTED = 0xB0,
