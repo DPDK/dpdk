@@ -13,6 +13,7 @@
 #include <rte_malloc.h>
 #if defined(RTE_ARCH_ARM64)
 #include <rte_cpuflags.h>
+#include <rte_vect.h>
 #endif
 
 #include "hns3_ethdev.h"
@@ -2790,6 +2791,8 @@ static bool
 hns3_get_default_vec_support(void)
 {
 #if defined(RTE_ARCH_ARM64)
+	if (rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_128)
+		return false;
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
 		return true;
 #endif
@@ -2800,6 +2803,8 @@ static bool
 hns3_get_sve_support(void)
 {
 #if defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_SVE)
+	if (rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_256)
+		return false;
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SVE))
 		return true;
 #endif
