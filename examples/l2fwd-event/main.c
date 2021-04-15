@@ -716,6 +716,9 @@ main(int argc, char **argv)
 			printf(" Done\n");
 		}
 	}
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
 	printf("Bye...\n");
 
 	return 0;

@@ -472,5 +472,8 @@ main(int argc, char **argv)
 
 	rte_eal_mp_remote_launch(lcore_main, NULL, CALL_MAIN);
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

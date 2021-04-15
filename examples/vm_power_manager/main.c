@@ -468,5 +468,8 @@ main(int argc, char **argv)
 
 	free(ci->cd);
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

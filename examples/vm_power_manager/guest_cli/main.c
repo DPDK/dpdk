@@ -200,5 +200,8 @@ main(int argc, char **argv)
 	}
 	run_cli(NULL);
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

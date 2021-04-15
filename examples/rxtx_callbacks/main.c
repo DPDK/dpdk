@@ -338,5 +338,9 @@ main(int argc, char *argv[])
 
 	/* call lcore_main on main core only */
 	lcore_main();
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

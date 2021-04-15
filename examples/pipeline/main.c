@@ -190,4 +190,7 @@ main(int argc, char **argv)
 
 		conn_poll_for_msg(conn);
 	}
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
 }

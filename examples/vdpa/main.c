@@ -576,5 +576,8 @@ main(int argc, char *argv[])
 		vdpa_sample_quit();
 	}
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }
