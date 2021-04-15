@@ -181,6 +181,7 @@ Features supported
 * Tunnel mode
 * ESN
 * Anti-replay
+* UDP Encapsulation
 * AES-128/192/256-GCM
 * AES-128/192/256-CBC-SHA1-HMAC
 * AES-128/192/256-CBC-SHA256-128-HMAC
