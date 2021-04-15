@@ -184,7 +184,8 @@ static uint64_t frag_ttl_ns = MAX_FRAG_TTL_NS;
 /* application wide librte_ipsec/SA parameters */
 struct app_sa_prm app_sa_prm = {
 			.enable = 0,
-			.cache_sz = SA_CACHE_SZ
+			.cache_sz = SA_CACHE_SZ,
+			.udp_encap = 0
 		};
 static const char *cfgfile;
 
@@ -360,6 +361,9 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 	const struct rte_ether_hdr *eth;
 	const struct rte_ipv4_hdr *iph4;
 	const struct rte_ipv6_hdr *iph6;
+	const struct rte_udp_hdr *udp;
+	uint16_t ip4_hdr_len;
+	uint16_t nat_port;
 
 	eth = rte_pktmbuf_mtod(pkt, const struct rte_ether_hdr *);
 	if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
@@ -368,9 +372,28 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 			RTE_ETHER_HDR_LEN);
 		adjust_ipv4_pktlen(pkt, iph4, 0);
 
-		if (iph4->next_proto_id == IPPROTO_ESP)
+		switch (iph4->next_proto_id) {
+		case IPPROTO_ESP:
 			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
-		else {
+			break;
+		case IPPROTO_UDP:
+			if (app_sa_prm.udp_encap == 1) {
+				ip4_hdr_len = ((iph4->version_ihl &
+					RTE_IPV4_HDR_IHL_MASK) *
+					RTE_IPV4_IHL_MULTIPLIER);
+				udp = rte_pktmbuf_mtod_offset(pkt,
+					struct rte_udp_hdr *, ip4_hdr_len);
+				nat_port = rte_cpu_to_be_16(IPSEC_NAT_T_PORT);
+				if (udp->src_port == nat_port ||
+					udp->dst_port == nat_port){
+					t->ipsec.pkts[(t->ipsec.num)++] = pkt;
+					pkt->packet_type |=
+						MBUF_PTYPE_TUNNEL_ESP_IN_UDP;
+					break;
+				}
+			}
+		/* Fall through */
+		default:
 			t->ip4.data[t->ip4.num] = &iph4->next_proto_id;
 			t->ip4.pkts[(t->ip4.num)++] = pkt;
 		}
@@ -403,9 +426,25 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 			return;
 		}
 
-		if (next_proto == IPPROTO_ESP)
+		switch (iph6->proto) {
+		case IPPROTO_ESP:
 			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
-		else {
+			break;
+		case IPPROTO_UDP:
+			if (app_sa_prm.udp_encap == 1) {
+				udp = rte_pktmbuf_mtod_offset(pkt,
+					struct rte_udp_hdr *, l3len);
+				nat_port = rte_cpu_to_be_16(IPSEC_NAT_T_PORT);
+				if (udp->src_port == nat_port ||
+					udp->dst_port == nat_port){
+					t->ipsec.pkts[(t->ipsec.num)++] = pkt;
+					pkt->packet_type |=
+						MBUF_PTYPE_TUNNEL_ESP_IN_UDP;
+					break;
+				}
+			}
+		/* Fall through */
+		default:
 			t->ip6.data[t->ip6.num] = &iph6->proto;
 			t->ip6.pkts[(t->ip6.num)++] = pkt;
 		}

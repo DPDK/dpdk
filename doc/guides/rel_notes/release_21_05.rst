@@ -190,6 +190,11 @@ New Features
   * Added command to display Rx queue used descriptor count.
     ``show port (port_id) rxq (queue_id) desc used count``
 
+* **Updated ipsec-secgw sample application.**
+
+  * Updated the ``ipsec-secgw`` sample application with UDP encapsulation
+    support for NAT Traversal.
+
 
 Removed Items
 -------------

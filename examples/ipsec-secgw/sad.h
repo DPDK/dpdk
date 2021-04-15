@@ -77,6 +77,7 @@ sad_lookup(struct ipsec_sad *sad, struct rte_mbuf *pkts[],
 	uint32_t spi, cache_idx;
 	struct ipsec_sad_cache *cache;
 	struct ipsec_sa *cached_sa;
+	uint16_t udp_hdr_len = 0;
 	int is_ipv4;
 
 	cache  = &RTE_PER_LCORE(sad_cache);
@@ -85,8 +86,12 @@ sad_lookup(struct ipsec_sad *sad, struct rte_mbuf *pkts[],
 	for (i = 0; i < nb_pkts; i++) {
 		ipv4 = rte_pktmbuf_mtod(pkts[i], struct rte_ipv4_hdr *);
 		ipv6 = rte_pktmbuf_mtod(pkts[i], struct rte_ipv6_hdr *);
+		if ((pkts[i]->packet_type &
+				(RTE_PTYPE_TUNNEL_MASK | RTE_PTYPE_L4_MASK)) ==
+				MBUF_PTYPE_TUNNEL_ESP_IN_UDP)
+			udp_hdr_len = sizeof(struct rte_udp_hdr);
 		esp = rte_pktmbuf_mtod_offset(pkts[i], struct rte_esp_hdr *,
-				pkts[i]->l3_len);
+				pkts[i]->l3_len + udp_hdr_len);
 
 		is_ipv4 = pkts[i]->packet_type & RTE_PTYPE_L3_IPV4;
 		spi = rte_be_to_cpu_32(esp->spi);

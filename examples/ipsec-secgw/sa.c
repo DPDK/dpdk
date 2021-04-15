@@ -298,6 +298,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	uint32_t portid_p = 0;
 	uint32_t fallback_p = 0;
 	int16_t status_p = 0;
+	uint16_t udp_encap_p = 0;
 
 	if (strcmp(tokens[0], "in") == 0) {
 		ri = &nb_sa_in;
@@ -755,6 +756,23 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 					ips->type);
 				return;
 			}
+			continue;
+		}
+		if (strcmp(tokens[ti], "udp-encap") == 0) {
+			APP_CHECK(ips->type ==
+				RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+				status, "UDP encapsulation is allowed if the "
+				"session is of type lookaside-protocol-offload "
+				"only.");
+			if (status->status < 0)
+				return;
+			APP_CHECK_PRESENCE(udp_encap_p, tokens[ti], status);
+			if (status->status < 0)
+				return;
+
+			rule->udp_encap = 1;
+			app_sa_prm.udp_encap = 1;
+			udp_encap_p = 1;
 			continue;
 		}
 

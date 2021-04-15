@@ -500,7 +500,7 @@ The SA rule syntax is shown as follows:
 
     sa <dir> <spi> <cipher_algo> <cipher_key> <auth_algo> <auth_key>
     <mode> <src_ip> <dst_ip> <action_type> <port_id> <fallback>
-    <flow-direction> <port_id> <queue_id>
+    <flow-direction> <port_id> <queue_id> <udp-encap>
 
 where each options means:
 
@@ -708,6 +708,17 @@ where each options means:
 
    * *port_id*: Port ID of the NIC for which the SA is configured.
    * *queue_id*: Queue ID to which traffic should be redirected.
+
+ ``<udp-encap>``
+
+ * Option to enable IPsec UDP encapsulation for NAT Traversal.
+   Only *lookaside-protocol-offload* mode is supported at the moment.
+
+ * Optional: Yes, it is disabled by default
+
+ * Syntax:
+
+   * *udp-encap*
 
 Example SA rules:
 
