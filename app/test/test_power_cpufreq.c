@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <string.h>
 #include <inttypes.h>
+#include <rte_cycles.h>
 
 #include "test.h"
 
@@ -44,11 +45,13 @@ static int
 check_cur_freq(unsigned lcore_id, uint32_t idx)
 {
 #define TEST_POWER_CONVERT_TO_DECIMAL 10
+#define MAX_LOOP 100
 	FILE *f;
 	char fullpath[PATH_MAX];
 	char buf[BUFSIZ];
 	uint32_t cur_freq;
 	int ret = -1;
+	int i;
 
 	if (snprintf(fullpath, sizeof(fullpath),
 		TEST_POWER_SYSFILE_CUR_FREQ, lcore_id) < 0) {
@@ -58,13 +61,27 @@ check_cur_freq(unsigned lcore_id, uint32_t idx)
 	if (f == NULL) {
 		return 0;
 	}
-	if (fgets(buf, sizeof(buf), f) == NULL) {
-		goto fail_get_cur_freq;
-	}
-	cur_freq = strtoul(buf, NULL, TEST_POWER_CONVERT_TO_DECIMAL);
-	ret = (freqs[idx] == cur_freq ? 0 : -1);
+	for (i = 0; i < MAX_LOOP; i++) {
+		fflush(f);
+		if (fgets(buf, sizeof(buf), f) == NULL)
+			goto fail_all;
 
-fail_get_cur_freq:
+		cur_freq = strtoul(buf, NULL, TEST_POWER_CONVERT_TO_DECIMAL);
+		ret = (freqs[idx] == cur_freq ? 0 : -1);
+
+		if (ret == 0)
+			break;
+
+		if (fseek(f, 0, SEEK_SET) < 0) {
+			printf("Fail to set file position indicator to 0\n");
+			goto fail_all;
+		}
+
+		/* wait for the value to be updated */
+		rte_delay_ms(10);
+	}
+
+fail_all:
 	fclose(f);
 
 	return ret;
