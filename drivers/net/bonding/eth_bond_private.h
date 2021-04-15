@@ -212,7 +212,7 @@ int
 valid_bonded_port_id(uint16_t port_id);
 
 int
-valid_slave_port_id(uint16_t port_id, uint8_t mode);
+valid_slave_port_id(struct bond_dev_private *internals, uint16_t port_id);
 
 void
 deactivate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id);
