@@ -304,5 +304,9 @@ main(int argc, char *argv[])
 	rte_eal_mp_remote_launch(sleep_lcore, NULL, SKIP_MAIN);
 
 	do_packet_forwarding();
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

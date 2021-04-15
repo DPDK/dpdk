@@ -268,4 +268,7 @@ main(int argc, char *argv[])
 
 		need_flush = 1;
 	}
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
 }

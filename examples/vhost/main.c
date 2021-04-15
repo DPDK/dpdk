@@ -1647,6 +1647,8 @@ main(int argc, char *argv[])
 	RTE_LCORE_FOREACH_WORKER(lcore_id)
 		rte_eal_wait_lcore(lcore_id);
 
-	return 0;
+	/* clean up the EAL */
+	rte_eal_cleanup();
 
+	return 0;
 }

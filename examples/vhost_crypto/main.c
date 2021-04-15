@@ -455,6 +455,9 @@ free_resource(void)
 	}
 
 	memset(&options, 0, sizeof(options));
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
 }
 
 int

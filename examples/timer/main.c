@@ -117,5 +117,8 @@ main(int argc, char **argv)
 	/* call it on main lcore too */
 	(void) lcore_mainloop(NULL);
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

@@ -817,5 +817,9 @@ main(int argc, char **argv)
 
 	if (ka_shm != NULL)
 		rte_keepalive_shm_cleanup(ka_shm);
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

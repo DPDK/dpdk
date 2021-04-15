@@ -903,6 +903,9 @@ main(int argc, char **argv)
 		rte_eth_dev_close(portid);
 		printf(" Done\n");
 	}
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
 	printf("Bye...\n");
 
 	return ret;

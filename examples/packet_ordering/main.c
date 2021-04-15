@@ -776,5 +776,9 @@ main(int argc, char **argv)
 	}
 
 	print_stats();
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

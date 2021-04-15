@@ -876,5 +876,9 @@ main(int argc, char *argv[])
 	prompt(NULL);
 
 	rte_delay_ms(100);
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

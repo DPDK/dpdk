@@ -707,5 +707,8 @@ main(int argc, char *argv[])
 	/* call on main too */
 	(void) lcore_main((void*)i);
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

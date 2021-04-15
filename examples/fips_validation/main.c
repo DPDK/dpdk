@@ -483,6 +483,9 @@ exit:
 	fips_test_clear();
 	cryptodev_fips_validate_app_uninit();
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return ret;
 
 }

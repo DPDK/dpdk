@@ -121,5 +121,9 @@ main(int argc, char **argv)
 	cmdline_stdin_exit(cl);
 
 	rte_eal_mp_wait_lcore();
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

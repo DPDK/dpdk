@@ -932,5 +932,8 @@ main(int argc, char *argv[])
 	rte_free(pd);
 	rte_free(pr);
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

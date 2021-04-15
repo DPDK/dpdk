@@ -258,5 +258,9 @@ int main(int argc, char **argv)
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_wait_lcore(lcore_id);
 	}
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

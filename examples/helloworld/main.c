@@ -43,5 +43,9 @@ main(int argc, char **argv)
 	lcore_hello(NULL);
 
 	rte_eal_mp_wait_lcore();
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }

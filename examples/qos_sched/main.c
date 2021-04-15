@@ -218,5 +218,8 @@ main(int argc, char **argv)
 		}
 	}
 
+	/* clean up the EAL */
+	rte_eal_cleanup();
+
 	return 0;
 }
