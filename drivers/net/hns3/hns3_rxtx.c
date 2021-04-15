@@ -2402,7 +2402,6 @@ hns3_recv_pkts_simple(void *rx_queue,
 	struct rte_mbuf *nmb;           /* pointer of the new mbuf */
 	struct rte_mbuf *rxm;
 	uint32_t bd_base_info;
-	uint32_t cksum_err;
 	uint32_t l234_info;
 	uint32_t ol_info;
 	uint64_t dma_addr;
@@ -2477,8 +2476,7 @@ hns3_recv_pkts_simple(void *rx_queue,
 		/* Load remained descriptor data and extract necessary fields */
 		l234_info = rte_le_to_cpu_32(rxd.rx.l234_info);
 		ol_info = rte_le_to_cpu_32(rxd.rx.ol_info);
-		ret = hns3_handle_bdinfo(rxq, rxm, bd_base_info,
-					 l234_info, &cksum_err);
+		ret = hns3_handle_bdinfo(rxq, rxm, bd_base_info, l234_info);
 		if (unlikely(ret))
 			goto pkt_err;
 
@@ -2487,9 +2485,6 @@ hns3_recv_pkts_simple(void *rx_queue,
 		if (rxm->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC)
 			rxm->ol_flags |= PKT_RX_IEEE1588_PTP;
 
-		if (likely(bd_base_info & BIT(HNS3_RXD_L3L4P_B)))
-			hns3_rx_set_cksum_flag(rxm, rxm->packet_type,
-					       cksum_err);
 		hns3_rxd_to_vlan_tci(rxq, rxm, l234_info, &rxd);
 
 		/* Increment bytes counter  */
@@ -2528,7 +2523,6 @@ hns3_recv_scattered_pkts(void *rx_queue,
 	struct rte_mbuf *rxm;
 	struct rte_eth_dev *dev;
 	uint32_t bd_base_info;
-	uint32_t cksum_err;
 	uint32_t l234_info;
 	uint32_t gro_size;
 	uint32_t ol_info;
@@ -2702,17 +2696,13 @@ hns3_recv_scattered_pkts(void *rx_queue,
 		l234_info = rte_le_to_cpu_32(rxd.rx.l234_info);
 		ol_info = rte_le_to_cpu_32(rxd.rx.ol_info);
 		ret = hns3_handle_bdinfo(rxq, first_seg, bd_base_info,
-					 l234_info, &cksum_err);
+					 l234_info);
 		if (unlikely(ret))
 			goto pkt_err;
 
 		first_seg->packet_type = hns3_rx_calc_ptype(rxq,
 						l234_info, ol_info);
 
-		if (bd_base_info & BIT(HNS3_RXD_L3L4P_B))
-			hns3_rx_set_cksum_flag(first_seg,
-					       first_seg->packet_type,
-					       cksum_err);
 		hns3_rxd_to_vlan_tci(rxq, first_seg, l234_info, &rxd);
 
 		/* Increment bytes counter */

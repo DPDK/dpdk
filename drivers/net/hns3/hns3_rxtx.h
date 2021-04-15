@@ -539,19 +539,50 @@ enum hns3_cksum_status {
 extern uint64_t hns3_timestamp_rx_dynflag;
 extern int hns3_timestamp_dynfield_offset;
 
-static inline int
-hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
-		   uint32_t bd_base_info, uint32_t l234_info,
-		   uint32_t *cksum_err)
+static inline void
+hns3_rx_set_cksum_flag(struct hns3_rx_queue *rxq,
+		       struct rte_mbuf *rxm,
+		       uint32_t l234_info)
 {
-#define L2E_TRUNC_ERR_FLAG	(BIT(HNS3_RXD_L2E_B) | \
-				 BIT(HNS3_RXD_TRUNCATE_B))
-#define CHECKSUM_ERR_FLAG	(BIT(HNS3_RXD_L3E_B) | \
+#define HNS3_RXD_CKSUM_ERR_MASK	(BIT(HNS3_RXD_L3E_B) | \
 				 BIT(HNS3_RXD_L4E_B) | \
 				 BIT(HNS3_RXD_OL3E_B) | \
 				 BIT(HNS3_RXD_OL4E_B))
 
-	uint32_t tmp = 0;
+	if (likely((l234_info & HNS3_RXD_CKSUM_ERR_MASK) == 0)) {
+		rxm->ol_flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		return;
+	}
+
+	if (unlikely(l234_info & BIT(HNS3_RXD_L3E_B))) {
+		rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+		rxq->dfx_stats.l3_csum_errors++;
+	} else {
+		rxm->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+	}
+
+	if (unlikely(l234_info & BIT(HNS3_RXD_L4E_B))) {
+		rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+		rxq->dfx_stats.l4_csum_errors++;
+	} else {
+		rxm->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+	}
+
+	if (unlikely(l234_info & BIT(HNS3_RXD_OL3E_B)))
+		rxq->dfx_stats.ol3_csum_errors++;
+
+	if (unlikely(l234_info & BIT(HNS3_RXD_OL4E_B))) {
+		rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
+		rxq->dfx_stats.ol4_csum_errors++;
+	}
+}
+
+static inline int
+hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
+		   uint32_t bd_base_info, uint32_t l234_info)
+{
+#define L2E_TRUNC_ERR_FLAG	(BIT(HNS3_RXD_L2E_B) | \
+				 BIT(HNS3_RXD_TRUNCATE_B))
 
 	/*
 	 * If packet len bigger than mtu when recv with no-scattered algorithm,
@@ -570,62 +601,10 @@ hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
 		return -EINVAL;
 	}
 
-	if (bd_base_info & BIT(HNS3_RXD_L3L4P_B)) {
-		if (likely((l234_info & CHECKSUM_ERR_FLAG) == 0)) {
-			*cksum_err = 0;
-			return 0;
-		}
-
-		if (unlikely(l234_info & BIT(HNS3_RXD_L3E_B))) {
-			rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-			rxq->dfx_stats.l3_csum_errors++;
-			tmp |= HNS3_L3_CKSUM_ERR;
-		}
-
-		if (unlikely(l234_info & BIT(HNS3_RXD_L4E_B))) {
-			rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-			rxq->dfx_stats.l4_csum_errors++;
-			tmp |= HNS3_L4_CKSUM_ERR;
-		}
-
-		if (unlikely(l234_info & BIT(HNS3_RXD_OL3E_B))) {
-			rxq->dfx_stats.ol3_csum_errors++;
-			tmp |= HNS3_OUTER_L3_CKSUM_ERR;
-		}
-
-		if (unlikely(l234_info & BIT(HNS3_RXD_OL4E_B))) {
-			rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
-			rxq->dfx_stats.ol4_csum_errors++;
-			tmp |= HNS3_OUTER_L4_CKSUM_ERR;
-		}
-	}
-	*cksum_err = tmp;
+	if (bd_base_info & BIT(HNS3_RXD_L3L4P_B))
+		hns3_rx_set_cksum_flag(rxq, rxm, l234_info);
 
 	return 0;
-}
-
-static inline void
-hns3_rx_set_cksum_flag(struct rte_mbuf *rxm, const uint64_t packet_type,
-		       const uint32_t cksum_err)
-{
-	if (unlikely((packet_type & RTE_PTYPE_TUNNEL_MASK))) {
-		if (likely(packet_type & RTE_PTYPE_INNER_L3_MASK) &&
-		    (cksum_err & HNS3_L3_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-		if (likely(packet_type & RTE_PTYPE_INNER_L4_MASK) &&
-		    (cksum_err & HNS3_L4_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-		if (likely(packet_type & RTE_PTYPE_L4_MASK) &&
-		    (cksum_err & HNS3_OUTER_L4_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
-	} else {
-		if (likely(packet_type & RTE_PTYPE_L3_MASK) &&
-		    (cksum_err & HNS3_L3_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-		if (likely(packet_type & RTE_PTYPE_L4_MASK) &&
-		    (cksum_err & HNS3_L4_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-	}
 }
 
 static inline uint32_t

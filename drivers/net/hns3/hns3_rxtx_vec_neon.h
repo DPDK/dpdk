@@ -98,7 +98,6 @@ hns3_desc_parse_field(struct hns3_rx_queue *rxq,
 	uint32_t l234_info, ol_info, bd_base_info;
 	struct rte_mbuf *pkt;
 	uint32_t retcode = 0;
-	uint32_t cksum_err;
 	uint32_t i;
 	int ret;
 
@@ -111,17 +110,13 @@ hns3_desc_parse_field(struct hns3_rx_queue *rxq,
 		l234_info = rxdp[i].rx.l234_info;
 		ol_info = rxdp[i].rx.ol_info;
 		bd_base_info = rxdp[i].rx.bd_base_info;
-		ret = hns3_handle_bdinfo(rxq, pkt, bd_base_info,
-					 l234_info, &cksum_err);
+		ret = hns3_handle_bdinfo(rxq, pkt, bd_base_info, l234_info);
 		if (unlikely(ret)) {
 			retcode |= 1u << i;
 			continue;
 		}
 
 		pkt->packet_type = hns3_rx_calc_ptype(rxq, l234_info, ol_info);
-		if (likely(bd_base_info & BIT(HNS3_RXD_L3L4P_B)))
-			hns3_rx_set_cksum_flag(pkt, pkt->packet_type,
-					       cksum_err);
 
 		/* Increment bytes counter */
 		rxq->basic_stats.bytes += pkt->pkt_len;

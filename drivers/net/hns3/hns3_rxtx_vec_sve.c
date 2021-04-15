@@ -39,7 +39,6 @@ hns3_desc_parse_field_sve(struct hns3_rx_queue *rxq,
 			  uint32_t   bd_vld_num)
 {
 	uint32_t retcode = 0;
-	uint32_t cksum_err;
 	int ret, i;
 
 	for (i = 0; i < (int)bd_vld_num; i++) {
@@ -47,7 +46,7 @@ hns3_desc_parse_field_sve(struct hns3_rx_queue *rxq,
 		rx_pkts[i]->ol_flags = PKT_RX_RSS_HASH;
 
 		ret = hns3_handle_bdinfo(rxq, rx_pkts[i], key->bd_base_info[i],
-					 key->l234_info[i], &cksum_err);
+					 key->l234_info[i]);
 		if (unlikely(ret)) {
 			retcode |= 1u << i;
 			continue;
@@ -55,9 +54,6 @@ hns3_desc_parse_field_sve(struct hns3_rx_queue *rxq,
 
 		rx_pkts[i]->packet_type = hns3_rx_calc_ptype(rxq,
 					key->l234_info[i], key->ol_info[i]);
-		if (likely(key->bd_base_info[i] & BIT(HNS3_RXD_L3L4P_B)))
-			hns3_rx_set_cksum_flag(rx_pkts[i],
-					rx_pkts[i]->packet_type, cksum_err);
 
 		/* Increment bytes counter */
 		rxq->basic_stats.bytes += rx_pkts[i]->pkt_len;
