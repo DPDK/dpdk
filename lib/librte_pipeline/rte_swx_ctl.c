@@ -38,6 +38,13 @@ struct action {
 struct table {
 	struct rte_swx_ctl_table_info info;
 	struct rte_swx_ctl_table_match_field_info *mf;
+
+	/* Match field with the smallest offset. */
+	struct rte_swx_ctl_table_match_field_info *mf_first;
+
+	/* Match field with the biggest offset. */
+	struct rte_swx_ctl_table_match_field_info *mf_last;
+
 	struct rte_swx_ctl_table_action_info *actions;
 	struct rte_swx_table_ops ops;
 	struct rte_swx_table_params params;
@@ -144,29 +151,39 @@ static int
 table_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 {
 	struct table *table = &ctl->tables[table_id];
+	struct rte_swx_ctl_table_match_field_info *first = NULL, *last = NULL;
 	uint8_t *key_mask = NULL;
 	enum rte_swx_table_match_type match_type = RTE_SWX_TABLE_MATCH_WILDCARD;
 	uint32_t key_size = 0, key_offset = 0, action_data_size = 0, i;
 
 	if (table->info.n_match_fields) {
-		struct rte_swx_ctl_table_match_field_info *first, *last;
-		uint32_t i;
+		uint32_t n_match_fields_em = 0, i;
 
+		/* Find first (smallest offset) and last (biggest offset) match fields. */
 		first = &table->mf[0];
-		last = &table->mf[table->info.n_match_fields - 1];
+		last = &table->mf[0];
+
+		for (i = 1; i < table->info.n_match_fields; i++) {
+			struct rte_swx_ctl_table_match_field_info *f = &table->mf[i];
+
+			if (f->offset < first->offset)
+				first = f;
+
+			if (f->offset > last->offset)
+				last = f;
+		}
 
 		/* match_type. */
 		for (i = 0; i < table->info.n_match_fields; i++) {
-			struct rte_swx_ctl_table_match_field_info *f;
+			struct rte_swx_ctl_table_match_field_info *f = &table->mf[i];
 
-			f = &table->mf[i];
-			if (f->match_type != RTE_SWX_TABLE_MATCH_EXACT)
-				break;
+			if (f->match_type == RTE_SWX_TABLE_MATCH_EXACT)
+				n_match_fields_em++;
 		}
 
-		if (i == table->info.n_match_fields)
+		if (n_match_fields_em == table->info.n_match_fields)
 			match_type = RTE_SWX_TABLE_MATCH_EXACT;
-		else if ((i == table->info.n_match_fields - 1) &&
+		else if ((n_match_fields_em == table->info.n_match_fields - 1) &&
 			 (last->match_type == RTE_SWX_TABLE_MATCH_LPM))
 			match_type = RTE_SWX_TABLE_MATCH_LPM;
 
@@ -181,11 +198,10 @@ table_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 		CHECK(key_mask, ENOMEM);
 
 		for (i = 0; i < table->info.n_match_fields; i++) {
-			struct rte_swx_ctl_table_match_field_info *f;
+			struct rte_swx_ctl_table_match_field_info *f = &table->mf[i];
 			uint32_t start;
 			size_t size;
 
-			f = &table->mf[i];
 			start = (f->offset - first->offset) / 8;
 			size = f->n_bits / 8;
 
@@ -209,6 +225,9 @@ table_params_get(struct rte_swx_ctl_pipeline *ctl, uint32_t table_id)
 	table->params.key_mask0 = key_mask;
 	table->params.action_data_size = action_data_size;
 	table->params.n_keys_max = table->info.size;
+
+	table->mf_first = first;
+	table->mf_last = last;
 
 	return 0;
 }
@@ -1627,7 +1646,7 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 		struct rte_swx_ctl_table_match_field_info *mf = &table->mf[i];
 		char *mf_val = tokens[1 + i], *mf_mask = NULL;
 		uint64_t val, mask = UINT64_MAX;
-		uint32_t offset = (mf->offset - table->mf[0].offset) / 8;
+		uint32_t offset = (mf->offset - table->mf_first->offset) / 8;
 
 		/*
 		 * Mask.

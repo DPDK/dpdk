@@ -745,7 +745,6 @@ struct table {
 	/* Match. */
 	struct match_field *fields;
 	uint32_t n_fields;
-	int is_header; /* Only valid when n_fields > 0. */
 	struct header *header; /* Only valid when n_fields > 0. */
 
 	/* Action. */
@@ -8431,22 +8430,129 @@ rte_swx_pipeline_table_type_register(struct rte_swx_pipeline *p,
 
 static enum rte_swx_table_match_type
 table_match_type_resolve(struct rte_swx_match_field_params *fields,
-			 uint32_t n_fields)
+			 uint32_t n_fields,
+			 uint32_t max_offset_field_id)
 {
-	uint32_t i;
+	uint32_t n_fields_em = 0, i;
 
 	for (i = 0; i < n_fields; i++)
-		if (fields[i].match_type != RTE_SWX_TABLE_MATCH_EXACT)
-			break;
+		if (fields[i].match_type == RTE_SWX_TABLE_MATCH_EXACT)
+			n_fields_em++;
 
-	if (i == n_fields)
+	if (n_fields_em == n_fields)
 		return RTE_SWX_TABLE_MATCH_EXACT;
 
-	if ((i == n_fields - 1) &&
-	    (fields[i].match_type == RTE_SWX_TABLE_MATCH_LPM))
+	if ((n_fields_em == n_fields - 1) &&
+	    (fields[max_offset_field_id].match_type == RTE_SWX_TABLE_MATCH_LPM))
 		return RTE_SWX_TABLE_MATCH_LPM;
 
 	return RTE_SWX_TABLE_MATCH_WILDCARD;
+}
+
+static int
+table_match_fields_check(struct rte_swx_pipeline *p,
+			 struct rte_swx_pipeline_table_params *params,
+			 struct header **header,
+			 uint32_t *min_offset_field_id,
+			 uint32_t *max_offset_field_id)
+{
+	struct header *h0 = NULL;
+	struct field *hf, *mf;
+	uint32_t *offset = NULL, min_offset, max_offset, min_offset_pos, max_offset_pos, i;
+	int status = 0;
+
+	/* Return if no match fields. */
+	if (!params->n_fields) {
+		if (params->fields) {
+			status = -EINVAL;
+			goto end;
+		}
+
+		return 0;
+	}
+
+	/* Memory allocation. */
+	offset = calloc(params->n_fields, sizeof(uint32_t));
+	if (!offset) {
+		status = -ENOMEM;
+		goto end;
+	}
+
+	/* Check that all the match fields belong to either the same header or
+	 * to the meta-data.
+	 */
+	hf = header_field_parse(p, params->fields[0].name, &h0);
+	mf = metadata_field_parse(p, params->fields[0].name);
+	if (!hf && !mf) {
+		status = -EINVAL;
+		goto end;
+	}
+
+	offset[0] = h0 ? hf->offset : mf->offset;
+
+	for (i = 1; i < params->n_fields; i++)
+		if (h0) {
+			struct header *h;
+
+			hf = header_field_parse(p, params->fields[i].name, &h);
+			if (!hf || (h->id != h0->id)) {
+				status = -EINVAL;
+				goto end;
+			}
+
+			offset[i] = hf->offset;
+		} else {
+			mf = metadata_field_parse(p, params->fields[i].name);
+			if (!mf) {
+				status = -EINVAL;
+				goto end;
+			}
+
+			offset[i] = mf->offset;
+		}
+
+	/* Check that there are no duplicated match fields. */
+	for (i = 0; i < params->n_fields; i++) {
+		uint32_t j;
+
+		for (j = 0; j < i; j++)
+			if (offset[j] == offset[i]) {
+				status = -EINVAL;
+				goto end;
+			}
+	}
+
+	/* Find the min and max offset fields. */
+	min_offset = offset[0];
+	max_offset = offset[0];
+	min_offset_pos = 0;
+	max_offset_pos = 0;
+
+	for (i = 1; i < params->n_fields; i++) {
+		if (offset[i] < min_offset) {
+			min_offset = offset[i];
+			min_offset_pos = i;
+		}
+
+		if (offset[i] > max_offset) {
+			max_offset = offset[i];
+			max_offset_pos = i;
+		}
+	}
+
+	/* Return. */
+	if (header)
+		*header = h0;
+
+	if (min_offset_field_id)
+		*min_offset_field_id = min_offset_pos;
+
+	if (max_offset_field_id)
+		*max_offset_field_id = max_offset_pos;
+
+end:
+	free(offset);
+	return status;
 }
 
 int
@@ -8461,8 +8567,8 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	struct table *t;
 	struct action *default_action;
 	struct header *header = NULL;
-	int is_header = 0;
-	uint32_t offset_prev = 0, action_data_size_max = 0, i;
+	uint32_t action_data_size_max = 0, min_offset_field_id = 0, max_offset_field_id = 0, i;
+	int status = 0;
 
 	CHECK(p, EINVAL);
 
@@ -8472,35 +8578,13 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 	CHECK(params, EINVAL);
 
 	/* Match checks. */
-	CHECK(!params->n_fields || params->fields, EINVAL);
-	for (i = 0; i < params->n_fields; i++) {
-		struct rte_swx_match_field_params *field = &params->fields[i];
-		struct header *h;
-		struct field *hf, *mf;
-		uint32_t offset;
-
-		CHECK_NAME(field->name, EINVAL);
-
-		hf = header_field_parse(p, field->name, &h);
-		mf = metadata_field_parse(p, field->name);
-		CHECK(hf || mf, EINVAL);
-
-		offset = hf ? hf->offset : mf->offset;
-
-		if (i == 0) {
-			is_header = hf ? 1 : 0;
-			header = hf ? h : NULL;
-			offset_prev = offset;
-
-			continue;
-		}
-
-		CHECK((is_header && hf && (h->id == header->id)) ||
-		      (!is_header && mf), EINVAL);
-
-		CHECK(offset > offset_prev, EINVAL);
-		offset_prev = offset;
-	}
+	status = table_match_fields_check(p,
+					  params,
+					  &header,
+					  &min_offset_field_id,
+					  &max_offset_field_id);
+	if (status)
+		return status;
 
 	/* Action checks. */
 	CHECK(params->n_actions, EINVAL);
@@ -8538,7 +8622,8 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 		enum rte_swx_table_match_type match_type;
 
 		match_type = table_match_type_resolve(params->fields,
-						      params->n_fields);
+						      params->n_fields,
+						      max_offset_field_id);
 		type = table_type_resolve(p,
 					  recommended_table_type_name,
 					  match_type);
@@ -8585,12 +8670,11 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 		struct match_field *f = &t->fields[i];
 
 		f->match_type = field->match_type;
-		f->field = is_header ?
+		f->field = header ?
 			header_field_parse(p, field->name, NULL) :
 			metadata_field_parse(p, field->name);
 	}
 	t->n_fields = params->n_fields;
-	t->is_header = is_header;
 	t->header = header;
 
 	for (i = 0; i < params->n_actions; i++)
@@ -8627,9 +8711,21 @@ table_params_get(struct table *table)
 	if (!params)
 		return NULL;
 
-	/* Key offset and size. */
+	/* Find first (smallest offset) and last (biggest offset) match fields. */
 	first = table->fields[0].field;
-	last = table->fields[table->n_fields - 1].field;
+	last = table->fields[0].field;
+
+	for (i = 0; i < table->n_fields; i++) {
+		struct field *f = table->fields[i].field;
+
+		if (f->offset < first->offset)
+			first = f;
+
+		if (f->offset > last->offset)
+			last = f;
+	}
+
+	/* Key offset and size. */
 	key_offset = first->offset / 8;
 	key_size = (last->offset + last->n_bits - first->offset) / 8;
 
@@ -8798,7 +8894,7 @@ table_build(struct rte_swx_pipeline *p)
 				}
 
 				/* r->key. */
-				r->key = table->is_header ?
+				r->key = table->header ?
 					&t->structs[table->header->struct_id] :
 					&t->structs[p->metadata_struct_id];
 			} else {
@@ -9474,7 +9570,7 @@ rte_swx_ctl_table_match_field_info_get(struct rte_swx_pipeline *p,
 
 	f = &t->fields[match_field_id];
 	match_field->match_type = f->match_type;
-	match_field->is_header = t->is_header;
+	match_field->is_header = t->header ? 1 : 0;
 	match_field->n_bits = f->field->n_bits;
 	match_field->offset = f->field->offset;
 
