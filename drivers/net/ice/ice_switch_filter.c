@@ -137,6 +137,78 @@
 #define ICE_SW_INSET_MAC_IPV6_PFCP ( \
 	ICE_SW_INSET_MAC_IPV6 | \
 	ICE_INSET_PFCP_S_FIELD | ICE_INSET_PFCP_SEID)
+#define ICE_SW_INSET_MAC_IPV4_GTPU ( \
+	ICE_SW_INSET_MAC_IPV4 | ICE_INSET_GTPU_TEID)
+#define ICE_SW_INSET_MAC_IPV6_GTPU ( \
+	ICE_SW_INSET_MAC_IPV6 | ICE_INSET_GTPU_TEID)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_IPV4 ( \
+	ICE_INSET_DMAC | ICE_INSET_GTPU_TEID | \
+	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4 ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_IPV4 | ICE_INSET_GTPU_QFI)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_IPV6 ( \
+	ICE_INSET_DMAC | ICE_INSET_GTPU_TEID | \
+	ICE_INSET_TUN_IPV6_SRC | ICE_INSET_TUN_IPV6_DST)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6 ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_IPV6 | ICE_INSET_GTPU_QFI)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_IPV4 ( \
+	ICE_INSET_DMAC | ICE_INSET_GTPU_TEID | \
+	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4 ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_IPV4 | ICE_INSET_GTPU_QFI)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_IPV6 ( \
+	ICE_INSET_DMAC | ICE_INSET_GTPU_TEID | \
+	ICE_INSET_TUN_IPV6_SRC | ICE_INSET_TUN_IPV6_DST)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6 ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_IPV6 | ICE_INSET_GTPU_QFI)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_IPV4_UDP ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_IPV4 | \
+	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4_UDP ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4 | \
+	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_IPV4_TCP ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_IPV4 | \
+	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4_TCP ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4 | \
+	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_IPV6_UDP ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_IPV6 | \
+	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6_UDP ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6 | \
+	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_IPV6_TCP ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_IPV6 | \
+	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6_TCP ( \
+	ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6 | \
+	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_IPV4_UDP ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_IPV4 | \
+	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4_UDP ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4 | \
+	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_IPV4_TCP ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_IPV4 | \
+	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4_TCP ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4 | \
+	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_IPV6_UDP ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_IPV6 | \
+	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6_UDP ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6 | \
+	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_IPV6_TCP ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_IPV6 | \
+	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+#define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6_TCP ( \
+	ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6 | \
+	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
 
 struct sw_meta {
 	struct ice_adv_lkup_elem *list;
@@ -198,6 +270,32 @@ ice_pattern_match_item ice_switch_pattern_dist_list[] = {
 	{pattern_eth_qinq_pppoes_proto,			ICE_SW_INSET_MAC_PPPOE_PROTO,		ICE_INSET_NONE,	ICE_INSET_NONE},
 	{pattern_eth_qinq_pppoes_ipv4,			ICE_SW_INSET_MAC_PPPOE_IPV4,		ICE_INSET_NONE,	ICE_INSET_NONE},
 	{pattern_eth_qinq_pppoes_ipv6,			ICE_SW_INSET_MAC_PPPOE_IPV6,		ICE_INSET_NONE,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu,				ICE_SW_INSET_MAC_IPV4_GTPU,		ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu,				ICE_SW_INSET_MAC_IPV6_GTPU,		ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv4,			ICE_SW_INSET_MAC_IPV4_GTPU_IPV4,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv4,			ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv4_udp,		ICE_SW_INSET_MAC_IPV4_GTPU_IPV4_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_udp,		ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv4_tcp,		ICE_SW_INSET_MAC_IPV4_GTPU_IPV4_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp,		ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv6,			ICE_SW_INSET_MAC_IPV4_GTPU_IPV6,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv6,			ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv6_udp,		ICE_SW_INSET_MAC_IPV4_GTPU_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_udp,		ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv6_tcp,		ICE_SW_INSET_MAC_IPV4_GTPU_IPV6_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_tcp,		ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv4,			ICE_SW_INSET_MAC_IPV6_GTPU_IPV4,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv4,			ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv4_udp,		ICE_SW_INSET_MAC_IPV6_GTPU_IPV4_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_udp,		ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv4_tcp,		ICE_SW_INSET_MAC_IPV6_GTPU_IPV4_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_tcp,		ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv6,			ICE_SW_INSET_MAC_IPV6_GTPU_IPV6,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv6,			ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv6_udp,		ICE_SW_INSET_MAC_IPV6_GTPU_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_udp,		ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv6_tcp,		ICE_SW_INSET_MAC_IPV6_GTPU_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_tcp,		ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
 };
 
 static struct
@@ -251,6 +349,32 @@ ice_pattern_match_item ice_switch_pattern_perm_list[] = {
 	{pattern_eth_qinq_pppoes_proto,			ICE_SW_INSET_MAC_PPPOE_PROTO,		ICE_INSET_NONE,	ICE_INSET_NONE},
 	{pattern_eth_qinq_pppoes_ipv4,			ICE_SW_INSET_MAC_PPPOE_IPV4,		ICE_INSET_NONE,	ICE_INSET_NONE},
 	{pattern_eth_qinq_pppoes_ipv6,			ICE_SW_INSET_MAC_PPPOE_IPV6,		ICE_INSET_NONE,	ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu,				ICE_SW_INSET_MAC_IPV4_GTPU,		ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu,				ICE_SW_INSET_MAC_IPV6_GTPU,		ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv4,			ICE_SW_INSET_MAC_IPV4_GTPU_IPV4,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv4,			ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv4_udp,		ICE_SW_INSET_MAC_IPV4_GTPU_IPV4_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_udp,		ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv4_tcp,		ICE_SW_INSET_MAC_IPV4_GTPU_IPV4_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp,		ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv6,			ICE_SW_INSET_MAC_IPV4_GTPU_IPV6,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv6,			ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv6_udp,		ICE_SW_INSET_MAC_IPV4_GTPU_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_udp,		ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_ipv6_tcp,		ICE_SW_INSET_MAC_IPV4_GTPU_IPV6_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_tcp,		ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv4,			ICE_SW_INSET_MAC_IPV6_GTPU_IPV4,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv4,			ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv4_udp,		ICE_SW_INSET_MAC_IPV6_GTPU_IPV4_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_udp,		ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv4_tcp,		ICE_SW_INSET_MAC_IPV6_GTPU_IPV4_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_tcp,		ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv6,			ICE_SW_INSET_MAC_IPV6_GTPU_IPV6,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv6,			ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv6_udp,		ICE_SW_INSET_MAC_IPV6_GTPU_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_udp,		ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_ipv6_tcp,		ICE_SW_INSET_MAC_IPV6_GTPU_IPV6_UDP,	ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_tcp,		ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6_TCP,	ICE_INSET_NONE, ICE_INSET_NONE},
 };
 
 static int
@@ -378,6 +502,8 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	const struct rte_flow_item_ah *ah_spec, *ah_mask;
 	const struct rte_flow_item_l2tpv3oip *l2tp_spec, *l2tp_mask;
 	const struct rte_flow_item_pfcp *pfcp_spec, *pfcp_mask;
+	const struct rte_flow_item_gtp *gtp_spec, *gtp_mask;
+	const struct rte_flow_item_gtp_psc *gtp_psc_spec, *gtp_psc_mask;
 	uint64_t input_set = ICE_INSET_NONE;
 	uint16_t input_set_byte = 0;
 	bool pppoe_elem_valid = 0;
@@ -394,7 +520,13 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	bool ipv4_valid = 0;
 	bool udp_valid = 0;
 	bool tcp_valid = 0;
-	uint16_t j, t = 0;
+	bool gtpu_valid = 0;
+	bool gtpu_psc_valid = 0;
+	bool inner_ipv4_valid = 0;
+	bool inner_ipv6_valid = 0;
+	bool inner_tcp_valid = 0;
+	bool inner_udp_valid = 0;
+	uint16_t j, k, t = 0;
 
 	if (*tun_type == ICE_SW_TUN_AND_NON_TUN_QINQ ||
 	    *tun_type == ICE_NON_TUN_QINQ)
@@ -484,7 +616,11 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ipv4_spec = item->spec;
 			ipv4_mask = item->mask;
-			ipv4_valid = 1;
+			if (tunnel_valid)
+				inner_ipv4_valid = 1;
+			else
+				ipv4_valid = 1;
+
 			if (ipv4_spec && ipv4_mask) {
 				/* Check IPv4 mask and update input set */
 				if (ipv4_mask->hdr.version_ihl ||
@@ -576,7 +712,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			ipv6_spec = item->spec;
 			ipv6_mask = item->mask;
-			ipv6_valid = 1;
+			if (tunnel_valid)
+				inner_ipv6_valid = 1;
+			else
+				ipv6_valid = 1;
 			if (ipv6_spec && ipv6_mask) {
 				if (ipv6_mask->hdr.payload_len) {
 					rte_flow_error_set(error, EINVAL,
@@ -694,7 +833,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp_spec = item->spec;
 			udp_mask = item->mask;
-			udp_valid = 1;
+			if (tunnel_valid)
+				inner_udp_valid = 1;
+			else
+				udp_valid = 1;
 			if (udp_spec && udp_mask) {
 				/* Check UDP mask and update input set*/
 				if (udp_mask->hdr.dgram_len ||
@@ -747,7 +889,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			tcp_spec = item->spec;
 			tcp_mask = item->mask;
-			tcp_valid = 1;
+			if (tunnel_valid)
+				inner_tcp_valid = 1;
+			else
+				tcp_valid = 1;
 			if (tcp_spec && tcp_mask) {
 				/* Check TCP mask and update input set */
 				if (tcp_mask->hdr.sent_seq ||
@@ -1263,6 +1408,71 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			}
 			break;
 
+		case RTE_FLOW_ITEM_TYPE_GTPU:
+			gtp_spec = item->spec;
+			gtp_mask = item->mask;
+			if (gtp_spec && !gtp_mask) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"Invalid GTP item");
+				return 0;
+			}
+			if (gtp_spec && gtp_mask) {
+				if (gtp_mask->v_pt_rsv_flags ||
+				    gtp_mask->msg_type ||
+				    gtp_mask->msg_len) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid GTP mask");
+					return 0;
+				}
+				if (gtp_mask->teid)
+					input_set |= ICE_INSET_GTPU_TEID;
+				list[t].type = ICE_GTP;
+				list[t].h_u.gtp_hdr.teid =
+					gtp_spec->teid;
+				list[t].m_u.gtp_hdr.teid =
+					gtp_mask->teid;
+				input_set_byte += 4;
+				t++;
+			}
+			tunnel_valid = 1;
+			gtpu_valid = 1;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+			gtp_psc_spec = item->spec;
+			gtp_psc_mask = item->mask;
+			if (gtp_psc_spec && !gtp_psc_mask) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"Invalid GTPU_EH item");
+				return 0;
+			}
+			if (gtp_psc_spec && gtp_psc_mask) {
+				if (gtp_psc_mask->pdu_type) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid GTPU_EH mask");
+					return 0;
+				}
+				if (gtp_psc_mask->qfi)
+					input_set |= ICE_INSET_GTPU_QFI;
+				list[t].type = ICE_GTP;
+				list[t].h_u.gtp_hdr.qfi =
+					gtp_psc_spec->qfi;
+				list[t].m_u.gtp_hdr.qfi =
+					gtp_psc_mask->qfi;
+				input_set_byte += 1;
+				t++;
+			}
+			gtpu_psc_valid = 1;
+			break;
+
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 
@@ -1308,6 +1518,74 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			*tun_type = ICE_SW_TUN_PPPOE_IPV4;
 		else
 			*tun_type = ICE_SW_TUN_PPPOE;
+	}
+
+	if (gtpu_valid && gtpu_psc_valid) {
+		if (ipv4_valid && inner_ipv4_valid && inner_udp_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_EH_IPV4_UDP;
+		else if (ipv4_valid && inner_ipv4_valid && inner_tcp_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_EH_IPV4_TCP;
+		else if (ipv4_valid && inner_ipv4_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_EH_IPV4;
+		else if (ipv4_valid && inner_ipv6_valid && inner_udp_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_EH_IPV6_UDP;
+		else if (ipv4_valid && inner_ipv6_valid && inner_tcp_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_EH_IPV6_TCP;
+		else if (ipv4_valid && inner_ipv6_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_EH_IPV6;
+		else if (ipv6_valid && inner_ipv4_valid && inner_udp_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_EH_IPV4_UDP;
+		else if (ipv6_valid && inner_ipv4_valid && inner_tcp_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_EH_IPV4_TCP;
+		else if (ipv6_valid && inner_ipv4_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_EH_IPV4;
+		else if (ipv6_valid && inner_ipv6_valid && inner_udp_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_EH_IPV6_UDP;
+		else if (ipv6_valid && inner_ipv6_valid && inner_tcp_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_EH_IPV6_TCP;
+		else if (ipv6_valid && inner_ipv6_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_EH_IPV6;
+		else if (ipv4_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_NO_PAY;
+		else if (ipv6_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_NO_PAY;
+	} else if (gtpu_valid) {
+		if (ipv4_valid && inner_ipv4_valid && inner_udp_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_IPV4_UDP;
+		else if (ipv4_valid && inner_ipv4_valid && inner_tcp_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_IPV4_TCP;
+		else if (ipv4_valid && inner_ipv4_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_IPV4;
+		else if (ipv4_valid && inner_ipv6_valid && inner_udp_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_IPV6_UDP;
+		else if (ipv4_valid && inner_ipv6_valid && inner_tcp_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_IPV6_TCP;
+		else if (ipv4_valid && inner_ipv6_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_IPV6;
+		else if (ipv6_valid && inner_ipv4_valid && inner_udp_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_IPV4_UDP;
+		else if (ipv6_valid && inner_ipv4_valid && inner_tcp_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_IPV4_TCP;
+		else if (ipv6_valid && inner_ipv4_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_IPV4;
+		else if (ipv6_valid && inner_ipv6_valid && inner_udp_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_IPV6_UDP;
+		else if (ipv6_valid && inner_ipv6_valid && inner_tcp_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_IPV6_TCP;
+		else if (ipv6_valid && inner_ipv6_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_IPV6;
+		else if (ipv4_valid)
+			*tun_type = ICE_SW_TUN_IPV4_GTPU_NO_PAY;
+		else if (ipv6_valid)
+			*tun_type = ICE_SW_TUN_IPV6_GTPU_NO_PAY;
+	}
+
+	if (*tun_type == ICE_SW_TUN_IPV4_GTPU_NO_PAY ||
+	    *tun_type == ICE_SW_TUN_IPV6_GTPU_NO_PAY) {
+		for (k = 0; k < t; k++) {
+			if (list[k].type == ICE_GTP)
+				list[k].type = ICE_GTP_NO_PAY;
+		}
 	}
 
 	if (*tun_type == ICE_NON_TUN) {
