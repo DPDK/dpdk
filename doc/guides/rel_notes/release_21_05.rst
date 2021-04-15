@@ -128,6 +128,7 @@ New Features
 
   * Added Intel ice support on Windows.
   * Added GTPU TEID support for DCF switch filter.
+  * Added flow priority support for DCF switch filter.
 
 * **Updated Marvell OCTEON TX2 ethdev driver.**
 

@@ -102,6 +102,7 @@ ice_hash_parse_pattern_action(struct ice_adapter *ad,
 			uint32_t array_len,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
+			uint32_t priority,
 			void **meta,
 			struct rte_flow_error *error);
 
@@ -985,6 +986,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 			uint32_t array_len,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
+			uint32_t priority __rte_unused,
 			void **meta,
 			struct rte_flow_error *error)
 {
