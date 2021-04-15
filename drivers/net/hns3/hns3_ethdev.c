@@ -7209,6 +7209,19 @@ hns3_get_io_hint_func_name(uint32_t hint)
 	}
 }
 
+static int
+hns3_parse_dev_caps_mask(const char *key, const char *value, void *extra_args)
+{
+	uint64_t val;
+
+	RTE_SET_USED(key);
+
+	val = strtoull(value, NULL, 16);
+	*(uint64_t *)extra_args = val;
+
+	return 0;
+}
+
 void
 hns3_parse_devargs(struct rte_eth_dev *dev)
 {
@@ -7216,6 +7229,7 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 	uint32_t rx_func_hint = HNS3_IO_FUNC_HINT_NONE;
 	uint32_t tx_func_hint = HNS3_IO_FUNC_HINT_NONE;
 	struct hns3_hw *hw = &hns->hw;
+	uint64_t dev_caps_mask = 0;
 	struct rte_kvargs *kvlist;
 
 	if (dev->device->devargs == NULL)
@@ -7229,6 +7243,8 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 			   &hns3_parse_io_hint_func, &rx_func_hint);
 	rte_kvargs_process(kvlist, HNS3_DEVARG_TX_FUNC_HINT,
 			   &hns3_parse_io_hint_func, &tx_func_hint);
+	rte_kvargs_process(kvlist, HNS3_DEVARG_DEV_CAPS_MASK,
+			   &hns3_parse_dev_caps_mask, &dev_caps_mask);
 	rte_kvargs_free(kvlist);
 
 	if (rx_func_hint != HNS3_IO_FUNC_HINT_NONE)
@@ -7239,6 +7255,11 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 		hns3_warn(hw, "parsed %s = %s.", HNS3_DEVARG_TX_FUNC_HINT,
 			  hns3_get_io_hint_func_name(tx_func_hint));
 	hns->tx_func_hint = tx_func_hint;
+
+	if (dev_caps_mask != 0)
+		hns3_warn(hw, "parsed %s = 0x%" PRIx64 ".",
+			  HNS3_DEVARG_DEV_CAPS_MASK, dev_caps_mask);
+	hns->dev_caps_mask = dev_caps_mask;
 }
 
 static const struct eth_dev_ops hns3_eth_dev_ops = {
@@ -7506,6 +7527,7 @@ RTE_PMD_REGISTER_PCI_TABLE(net_hns3, pci_id_hns3_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_hns3, "* igb_uio | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_hns3,
 		HNS3_DEVARG_RX_FUNC_HINT "=vec|sve|simple|common "
-		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common ");
+		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common "
+		HNS3_DEVARG_DEV_CAPS_MASK "=<1-65535> ");
 RTE_LOG_REGISTER(hns3_logtype_init, pmd.net.hns3.init, NOTICE);
 RTE_LOG_REGISTER(hns3_logtype_driver, pmd.net.hns3.driver, NOTICE);

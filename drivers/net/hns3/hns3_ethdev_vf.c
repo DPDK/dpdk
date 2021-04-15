@@ -3075,4 +3075,5 @@ RTE_PMD_REGISTER_PCI_TABLE(net_hns3_vf, pci_id_hns3vf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_hns3_vf, "* igb_uio | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_hns3_vf,
 		HNS3_DEVARG_RX_FUNC_HINT "=vec|sve|simple|common "
-		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common ");
+		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common "
+		HNS3_DEVARG_DEV_CAPS_MASK "=<1-65535> ");

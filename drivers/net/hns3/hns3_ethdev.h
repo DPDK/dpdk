@@ -833,6 +833,8 @@ struct hns3_adapter {
 	uint32_t rx_func_hint;
 	uint32_t tx_func_hint;
 
+	uint64_t dev_caps_mask;
+
 	struct hns3_ptype_table ptype_tbl __rte_cache_min_aligned;
 };
 
@@ -846,6 +848,8 @@ enum {
 
 #define HNS3_DEVARG_RX_FUNC_HINT	"rx_func_hint"
 #define HNS3_DEVARG_TX_FUNC_HINT	"tx_func_hint"
+
+#define HNS3_DEVARG_DEV_CAPS_MASK	"dev_caps_mask"
 
 #define HNS3_DEV_SUPPORT_DCB_B			0x0
 #define HNS3_DEV_SUPPORT_COPPER_B		0x1

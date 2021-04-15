@@ -416,6 +416,68 @@ hns3_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc, int num)
 	return retval;
 }
 
+static const char *
+hns3_get_caps_name(uint32_t caps_id)
+{
+	const struct {
+		enum HNS3_CAPS_BITS caps;
+		const char *name;
+	} dev_caps[] = {
+		{ HNS3_CAPS_UDP_GSO_B,         "udp_gso"         },
+		{ HNS3_CAPS_ATR_B,             "atr"             },
+		{ HNS3_CAPS_FD_QUEUE_REGION_B, "fd_queue_region" },
+		{ HNS3_CAPS_PTP_B,             "ptp"             },
+		{ HNS3_CAPS_INT_QL_B,          "int_ql"          },
+		{ HNS3_CAPS_SIMPLE_BD_B,       "simple_bd"       },
+		{ HNS3_CAPS_TX_PUSH_B,         "tx_push"         },
+		{ HNS3_CAPS_PHY_IMP_B,         "phy_imp"         },
+		{ HNS3_CAPS_TQP_TXRX_INDEP_B,  "tqp_txrx_indep"  },
+		{ HNS3_CAPS_HW_PAD_B,          "hw_pad"          },
+		{ HNS3_CAPS_STASH_B,           "stash"           },
+		{ HNS3_CAPS_UDP_TUNNEL_CSUM_B, "udp_tunnel_csum" },
+		{ HNS3_CAPS_RAS_IMP_B,         "ras_imp"         },
+		{ HNS3_CAPS_FEC_B,             "fec"             },
+		{ HNS3_CAPS_PAUSE_B,           "pause"           },
+		{ HNS3_CAPS_RXD_ADV_LAYOUT_B,  "rxd_adv_layout"  }
+	};
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(dev_caps); i++) {
+		if (dev_caps[i].caps == caps_id)
+			return dev_caps[i].name;
+	}
+
+	return "unknown";
+}
+
+static void
+hns3_mask_capability(struct hns3_hw *hw,
+		     struct hns3_query_version_cmd *cmd)
+{
+#define MAX_CAPS_BIT	64
+
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	uint64_t caps_org, caps_new, caps_masked;
+	uint32_t i;
+
+	if (hns->dev_caps_mask == 0)
+		return;
+
+	memcpy(&caps_org, &cmd->caps[0], sizeof(caps_org));
+	caps_org = rte_le_to_cpu_64(caps_org);
+	caps_new = caps_org ^ (caps_org & hns->dev_caps_mask);
+	caps_masked = caps_org ^ caps_new;
+	caps_new = rte_cpu_to_le_64(caps_new);
+	memcpy(&cmd->caps[0], &caps_new, sizeof(caps_new));
+
+	for (i = 0; i < MAX_CAPS_BIT; i++) {
+		if (!(caps_masked & BIT_ULL(i)))
+			continue;
+		hns3_info(hw, "mask capabiliy: id-%u, name-%s.",
+			  i, hns3_get_caps_name(i));
+	}
+}
+
 static void
 hns3_parse_capability(struct hns3_hw *hw,
 		      struct hns3_query_version_cmd *cmd)
@@ -485,6 +547,11 @@ hns3_cmd_query_firmware_version_and_capability(struct hns3_hw *hw)
 		return ret;
 
 	hw->fw_version = rte_le_to_cpu_32(resp->firmware);
+	/*
+	 * Make sure mask the capability before parse capability because it
+	 * may overwrite resp's data.
+	 */
+	hns3_mask_capability(hw, resp);
 	hns3_parse_capability(hw, resp);
 
 	return 0;

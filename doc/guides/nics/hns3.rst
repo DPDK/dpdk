@@ -84,6 +84,15 @@ Runtime Config Options
   be first checked, if meets, use the ``vec``. Then, ``simple``, at last
   ``common``.
 
+- ``dev_caps_mask`` (default ``0``)
+
+  Used to mask the capability which queried from firmware.
+  This args take hexadecimal bitmask where each bit represents whether mask
+  corresponding capability. eg. If the capability is 0xFFFF queried from
+  firmware, and the args value is 0xF which means the bit0~bit3 should be
+  masked off, then the capability will be 0xFFF0.
+  Its main purpose is to debug and avoid problems.
+
 Driver compilation and testing
 ------------------------------
 
