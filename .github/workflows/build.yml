@@ -21,7 +21,7 @@ jobs:
       CC: ccache ${{ matrix.config.compiler }}
       DEF_LIB: ${{ matrix.config.library }}
       LIBABIGAIL_VERSION: libabigail-1.8
-      REF_GIT_TAG: v20.11
+      REF_GIT_TAG: v21.02
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
 
     strategy:
