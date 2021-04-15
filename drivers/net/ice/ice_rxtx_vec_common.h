@@ -247,6 +247,28 @@ ice_rxq_vec_setup_default(struct ice_rx_queue *rxq)
 	return 0;
 }
 
+#define ICE_TX_NO_VECTOR_FLAGS (			\
+		DEV_TX_OFFLOAD_MULTI_SEGS |		\
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\
+		DEV_TX_OFFLOAD_TCP_TSO)
+
+#define ICE_TX_VECTOR_OFFLOAD (				\
+		DEV_TX_OFFLOAD_VLAN_INSERT |		\
+		DEV_TX_OFFLOAD_QINQ_INSERT |		\
+		DEV_TX_OFFLOAD_IPV4_CKSUM |		\
+		DEV_TX_OFFLOAD_SCTP_CKSUM |		\
+		DEV_TX_OFFLOAD_UDP_CKSUM |		\
+		DEV_TX_OFFLOAD_TCP_CKSUM)
+
+#define ICE_RX_VECTOR_OFFLOAD (				\
+		DEV_RX_OFFLOAD_CHECKSUM |		\
+		DEV_RX_OFFLOAD_SCTP_CKSUM |		\
+		DEV_RX_OFFLOAD_VLAN |			\
+		DEV_RX_OFFLOAD_RSS_HASH)
+
+#define ICE_VECTOR_PATH		0
+#define ICE_VECTOR_OFFLOAD_PATH	1
+
 static inline int
 ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 {
@@ -265,24 +287,11 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 	if (rxq->proto_xtr != PROTO_XTR_NONE)
 		return -1;
 
-	return 0;
+	if (rxq->offloads & ICE_RX_VECTOR_OFFLOAD)
+		return ICE_VECTOR_OFFLOAD_PATH;
+
+	return ICE_VECTOR_PATH;
 }
-
-#define ICE_TX_NO_VECTOR_FLAGS (			\
-		DEV_TX_OFFLOAD_MULTI_SEGS |		\
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\
-		DEV_TX_OFFLOAD_TCP_TSO)
-
-#define ICE_TX_VECTOR_OFFLOAD (				\
-		DEV_TX_OFFLOAD_VLAN_INSERT |		\
-		DEV_TX_OFFLOAD_QINQ_INSERT |		\
-		DEV_TX_OFFLOAD_IPV4_CKSUM |		\
-		DEV_TX_OFFLOAD_SCTP_CKSUM |		\
-		DEV_TX_OFFLOAD_UDP_CKSUM |		\
-		DEV_TX_OFFLOAD_TCP_CKSUM)
-
-#define ICE_VECTOR_PATH		0
-#define ICE_VECTOR_OFFLOAD_PATH	1
 
 static inline int
 ice_tx_vec_queue_default(struct ice_tx_queue *txq)
@@ -308,14 +317,19 @@ ice_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 {
 	int i;
 	struct ice_rx_queue *rxq;
+	int ret = 0;
+	int result = 0;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
-		if (ice_rx_vec_queue_default(rxq))
+		ret = (ice_rx_vec_queue_default(rxq));
+		if (ret < 0)
 			return -1;
+		if (ret == ICE_VECTOR_OFFLOAD_PATH)
+			result = ret;
 	}
 
-	return 0;
+	return result;
 }
 
 static inline int

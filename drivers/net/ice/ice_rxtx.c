@@ -1059,6 +1059,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	uint32_t ring_size;
 	uint16_t len;
 	int use_def_burst_func = 1;
+	uint64_t offloads;
 
 	if (nb_desc % ICE_ALIGN_RING_DESC != 0 ||
 	    nb_desc > ICE_MAX_RING_DESC ||
@@ -1067,6 +1068,8 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 			     "invalid", nb_desc);
 		return -EINVAL;
 	}
+
+	offloads = rx_conf->offloads | dev->data->dev_conf.rxmode.offloads;
 
 	/* Free memory if needed */
 	if (dev->data->rx_queues[queue_idx]) {
@@ -1088,6 +1091,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
+	rxq->offloads = offloads;
 
 	rxq->reg_idx = vsi->base_queue + queue_idx;
 	rxq->port_id = dev->data->port_id;
@@ -1990,7 +1994,9 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec ||
 #ifdef CC_AVX512_SUPPORT
 	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx512 ||
+	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx512_offload ||
 	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec_avx512 ||
+	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec_avx512_offload ||
 #endif
 	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx2 ||
 	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec_avx2)
@@ -3052,12 +3058,14 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct ice_rx_queue *rxq;
 	int i;
+	int rx_check_ret;
 	bool use_avx512 = false;
 	bool use_avx2 = false;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		if (!ice_rx_vec_dev_check(dev) && ad->rx_bulk_alloc_allowed &&
-				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+		rx_check_ret = ice_rx_vec_dev_check(dev);
+		if (rx_check_ret >= 0 && ad->rx_bulk_alloc_allowed &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			ad->rx_vec_allowed = true;
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
 				rxq = dev->data->rx_queues[i];
@@ -3091,11 +3099,19 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 		if (dev->data->scattered_rx) {
 			if (use_avx512) {
 #ifdef CC_AVX512_SUPPORT
-				PMD_DRV_LOG(NOTICE,
-					"Using AVX512 Vector Scattered Rx (port %d).",
-					dev->data->port_id);
-				dev->rx_pkt_burst =
-					ice_recv_scattered_pkts_vec_avx512;
+				if (rx_check_ret == ICE_VECTOR_OFFLOAD_PATH) {
+					PMD_DRV_LOG(NOTICE,
+						"Using AVX512 OFFLOAD Vector Scattered Rx (port %d).",
+						dev->data->port_id);
+					dev->rx_pkt_burst =
+						ice_recv_scattered_pkts_vec_avx512_offload;
+				} else {
+					PMD_DRV_LOG(NOTICE,
+						"Using AVX512 Vector Scattered Rx (port %d).",
+						dev->data->port_id);
+					dev->rx_pkt_burst =
+						ice_recv_scattered_pkts_vec_avx512;
+				}
 #endif
 			} else {
 				PMD_DRV_LOG(DEBUG,
@@ -3109,11 +3125,19 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 		} else {
 			if (use_avx512) {
 #ifdef CC_AVX512_SUPPORT
-				PMD_DRV_LOG(NOTICE,
-					"Using AVX512 Vector Rx (port %d).",
-					dev->data->port_id);
-				dev->rx_pkt_burst =
-					ice_recv_pkts_vec_avx512;
+				if (rx_check_ret == ICE_VECTOR_OFFLOAD_PATH) {
+					PMD_DRV_LOG(NOTICE,
+						"Using AVX512 OFFLOAD Vector Rx (port %d).",
+						dev->data->port_id);
+					dev->rx_pkt_burst =
+						ice_recv_pkts_vec_avx512_offload;
+				} else {
+					PMD_DRV_LOG(NOTICE,
+						"Using AVX512 Vector Rx (port %d).",
+						dev->data->port_id);
+					dev->rx_pkt_burst =
+						ice_recv_pkts_vec_avx512;
+				}
 #endif
 			} else {
 				PMD_DRV_LOG(DEBUG,
@@ -3162,7 +3186,9 @@ static const struct {
 #ifdef RTE_ARCH_X86
 #ifdef CC_AVX512_SUPPORT
 	{ ice_recv_scattered_pkts_vec_avx512, "Vector AVX512 Scattered" },
+	{ ice_recv_scattered_pkts_vec_avx512_offload, "Offload Vector AVX512 Scattered" },
 	{ ice_recv_pkts_vec_avx512,           "Vector AVX512" },
+	{ ice_recv_pkts_vec_avx512_offload,   "Offload Vector AVX512" },
 #endif
 	{ ice_recv_scattered_pkts_vec_avx2, "Vector AVX2 Scattered" },
 	{ ice_recv_pkts_vec_avx2,           "Vector AVX2" },

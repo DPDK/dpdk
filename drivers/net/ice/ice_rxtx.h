@@ -88,6 +88,7 @@ struct ice_rx_queue {
 	uint64_t xtr_ol_flag; /* Protocol extraction offload flag */
 	ice_rxd_to_pkt_fields_t rxd_to_pkt_fields; /* handle FlexiMD by RXDID */
 	ice_rx_release_mbufs_t rx_rel_mbufs;
+	uint64_t offloads;
 };
 
 struct ice_tx_entry {
@@ -256,9 +257,15 @@ uint16_t ice_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts);
 uint16_t ice_recv_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts);
+uint16_t ice_recv_pkts_vec_avx512_offload(void *rx_queue,
+					  struct rte_mbuf **rx_pkts,
+					  uint16_t nb_pkts);
 uint16_t ice_recv_scattered_pkts_vec_avx512(void *rx_queue,
 					    struct rte_mbuf **rx_pkts,
 					    uint16_t nb_pkts);
+uint16_t ice_recv_scattered_pkts_vec_avx512_offload(void *rx_queue,
+						    struct rte_mbuf **rx_pkts,
+						    uint16_t nb_pkts);
 uint16_t ice_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
 uint16_t ice_xmit_pkts_vec_avx512_offload(void *tx_queue,
