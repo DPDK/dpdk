@@ -618,6 +618,8 @@ port_infos_display(portid_t port_id)
 	printf("Link speed: %s\n", rte_eth_link_speed_to_str(link.link_speed));
 	printf("Link duplex: %s\n", (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 	       ("full-duplex") : ("half-duplex"));
+	printf("Autoneg status: %s\n", (link.link_autoneg == ETH_LINK_AUTONEG) ?
+	       ("On") : ("Off"));
 
 	if (!rte_eth_dev_get_mtu(port_id, &mtu))
 		printf("MTU: %u\n", mtu);
