@@ -2,6 +2,10 @@
  * Copyright 2019 Mellanox Technologies, Ltd
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -30,10 +34,11 @@ mlx5_pmd_socket_handle(void *cb __rte_unused)
 	int conn_sock;
 	int ret;
 	struct cmsghdr *cmsg = NULL;
-	int data;
-	char buf[CMSG_SPACE(sizeof(int))] = { 0 };
+	uint32_t data[MLX5_SENDMSG_MAX / sizeof(uint32_t)];
+	uint64_t flow_ptr = 0;
+	uint8_t  buf[CMSG_SPACE(sizeof(int))] = { 0 };
 	struct iovec io = {
-		.iov_base = &data,
+		.iov_base = data,
 		.iov_len = sizeof(data),
 	};
 	struct msghdr msg = {
@@ -42,11 +47,16 @@ mlx5_pmd_socket_handle(void *cb __rte_unused)
 		.msg_control = buf,
 		.msg_controllen = sizeof(buf),
 	};
-	uint16_t port_id;
+
+	uint32_t port_id;
 	int fd;
 	FILE *file = NULL;
 	struct rte_eth_dev *dev;
+	struct rte_flow_error err;
+	struct mlx5_flow_dump_req  *dump_req;
+	struct mlx5_flow_dump_ack  *dump_ack;
 
+	memset(data, 0, sizeof(data));
 	/* Accept the connection from the client. */
 	conn_sock = accept(server_socket, NULL, NULL);
 	if (conn_sock < 0) {
@@ -54,11 +64,12 @@ mlx5_pmd_socket_handle(void *cb __rte_unused)
 		return;
 	}
 	ret = recvmsg(conn_sock, &msg, MSG_WAITALL);
-	if (ret < 0) {
+	if (ret != sizeof(struct mlx5_flow_dump_req)) {
 		DRV_LOG(WARNING, "wrong message received: %s",
 			strerror(errno));
 		goto error;
 	}
+
 	/* Receive file descriptor. */
 	cmsg = CMSG_FIRSTHDR(&msg);
 	if (cmsg == NULL || cmsg->cmsg_type != SCM_RIGHTS ||
@@ -77,22 +88,38 @@ mlx5_pmd_socket_handle(void *cb __rte_unused)
 		DRV_LOG(WARNING, "wrong port number message");
 		goto error;
 	}
-	memcpy(&port_id, msg.msg_iov->iov_base, sizeof(port_id));
+
+	dump_req = (struct mlx5_flow_dump_req *)msg.msg_iov->iov_base;
+	if (dump_req) {
+		port_id = dump_req->port_id;
+		flow_ptr = dump_req->flow_id;
+	} else {
+		DRV_LOG(WARNING, "Invalid message");
+		goto error;
+	}
+
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		DRV_LOG(WARNING, "Invalid port %u", port_id);
 		goto error;
 	}
+
 	/* Dump flow. */
 	dev = &rte_eth_devices[port_id];
-	ret = mlx5_flow_dev_dump(dev, NULL, file, NULL);
+	if (flow_ptr == 0)
+		ret = mlx5_flow_dev_dump(dev, NULL, file, NULL);
+	else
+		ret = mlx5_flow_dev_dump(dev,
+			(struct rte_flow *)((uintptr_t)flow_ptr), file, &err);
+
 	/* Set-up the ancillary data and reply. */
 	msg.msg_controllen = 0;
 	msg.msg_control = NULL;
 	msg.msg_iovlen = 1;
 	msg.msg_iov = &io;
-	data = -ret;
-	io.iov_len = sizeof(data);
-	io.iov_base = &data;
+	dump_ack = (struct mlx5_flow_dump_ack *)data;
+	dump_ack->rc = -ret;
+	io.iov_len = sizeof(struct mlx5_flow_dump_ack);
+	io.iov_base = dump_ack;
 	do {
 		ret = sendmsg(conn_sock, &msg, 0);
 	} while (ret < 0 && errno == EINTR);

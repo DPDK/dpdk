@@ -117,6 +117,16 @@ struct mlx5_dev_spawn_data {
 	struct mlx5_bond_info *bond_info;
 };
 
+/** Data associated with socket messages. */
+struct mlx5_flow_dump_req  {
+	uint32_t port_id; /**< There are plans in DPDK to extend port_id. */
+	uint64_t flow_id;
+} __rte_packed;
+
+struct mlx5_flow_dump_ack {
+	int rc; /**< Return code. */
+};
+
 /** Key string for IPC. */
 #define MLX5_MP_NAME "net_mlx5_mp"
 
