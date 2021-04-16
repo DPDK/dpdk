@@ -356,14 +356,6 @@ The command line options are:
     Set the transmit RS bit threshold of TX rings to N, where 0 <= N <= value of ``--txd``.
     The default value is 0.
 
-*   ``--rx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping)]``
-
-    Set the RX queues statistics counters mapping 0 <= mapping <= 15.
-
-*   ``--tx-queue-stats-mapping=(port,queue,mapping)[,(port,queue,mapping)]``
-
-    Set the TX queues statistics counters mapping 0 <= mapping <= 15.
-
 *   ``--no-flush-rx``
 
     Don't flush the RX streams before starting forwarding. Used mainly with the PCAP PMD.
