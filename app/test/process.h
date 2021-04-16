@@ -48,6 +48,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 #ifdef RTE_LIB_PDUMP
 #ifdef RTE_NET_RING
 	pthread_t thread;
+	int rc;
 #endif
 #endif
 
@@ -126,8 +127,13 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 	/* parent process does a wait */
 #ifdef RTE_LIB_PDUMP
 #ifdef RTE_NET_RING
-	if ((strcmp(env_value, "run_pdump_server_tests") == 0))
-		pthread_create(&thread, NULL, &send_pkts, NULL);
+	if ((strcmp(env_value, "run_pdump_server_tests") == 0)) {
+		rc = pthread_create(&thread, NULL, &send_pkts, NULL);
+		if (rc != 0) {
+			rte_panic("Cannot start send pkts thread: %s\n",
+				  strerror(rc));
+		}
+	}
 #endif
 #endif
 
