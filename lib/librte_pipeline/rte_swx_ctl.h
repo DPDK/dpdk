@@ -341,6 +341,44 @@ rte_swx_ctl_table_ops_get(struct rte_swx_pipeline *p,
 			  struct rte_swx_table_ops *table_ops,
 			  int *is_stub);
 
+/** Table statistics. */
+struct rte_swx_table_stats {
+	/** Number of packets with lookup hit. */
+	uint64_t n_pkts_hit;
+
+	/** Number of packets with lookup miss. */
+	uint64_t n_pkts_miss;
+
+	/** Number of packets (with either lookup hit or miss) per pipeline
+	 * action. Array of pipeline *n_actions* elements indedex by the
+	 * pipeline-level *action_id*, therefore this array has the same size
+	 * for all the tables within the same pipeline.
+	 */
+	uint64_t *n_pkts_action;
+};
+
+/**
+ * Table statistics counters read
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] table_name
+ *   Table name.
+ * @param[out] stats
+ *   Table stats. Must point to a pre-allocated structure. The *n_pkts_action*
+ *   field also needs to be pre-allocated as array of pipeline *n_actions*
+ *   elements. The pipeline actions that are not valid for the current table
+ *   have their associated *n_pkts_action* element always set to zero.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_table_stats_read(struct rte_swx_pipeline *p,
+				      const char *table_name,
+				      struct rte_swx_table_stats *stats);
+
 /*
  * Table Update API.
  */

@@ -1802,7 +1802,7 @@ cmd_pipeline_stats(char **tokens,
 		out += strlen(out);
 	}
 
-	snprintf(out, out_size, "Output ports:\n");
+	snprintf(out, out_size, "\nOutput ports:\n");
 	out_size -= strlen(out);
 	out += strlen(out);
 
@@ -1817,6 +1817,58 @@ cmd_pipeline_stats(char **tokens,
 			i, stats.n_pkts, stats.n_bytes);
 		out_size -= strlen(out);
 		out += strlen(out);
+	}
+
+	snprintf(out, out_size, "\nTables:\n");
+	out_size -= strlen(out);
+	out += strlen(out);
+
+	for (i = 0; i < info.n_tables; i++) {
+		struct rte_swx_ctl_table_info table_info;
+		uint64_t n_pkts_action[info.n_actions];
+		struct rte_swx_table_stats stats = {
+			.n_pkts_hit = 0,
+			.n_pkts_miss = 0,
+			.n_pkts_action = n_pkts_action,
+		};
+		uint32_t j;
+
+		status = rte_swx_ctl_table_info_get(p->p, i, &table_info);
+		if (status) {
+			snprintf(out, out_size, "Table info get error.");
+			return;
+		}
+
+		status = rte_swx_ctl_pipeline_table_stats_read(p->p, table_info.name, &stats);
+		if (status) {
+			snprintf(out, out_size, "Table stats read error.");
+			return;
+		}
+
+		snprintf(out, out_size, "\tTable %s:\n"
+			"\t\tHit (packets): %" PRIu64 "\n"
+			"\t\tMiss (packets): %" PRIu64 "\n",
+			table_info.name,
+			stats.n_pkts_hit,
+			stats.n_pkts_miss);
+		out_size -= strlen(out);
+		out += strlen(out);
+
+		for (j = 0; j < info.n_actions; j++) {
+			struct rte_swx_ctl_action_info action_info;
+
+			status = rte_swx_ctl_action_info_get(p->p, j, &action_info);
+			if (status) {
+				snprintf(out, out_size, "Action info get error.");
+				return;
+			}
+
+			snprintf(out, out_size, "\t\tAction %s (packets): %" PRIu64 "\n",
+				action_info.name,
+				stats.n_pkts_action[j]);
+			out_size -= strlen(out);
+			out += strlen(out);
+		}
 	}
 }
 

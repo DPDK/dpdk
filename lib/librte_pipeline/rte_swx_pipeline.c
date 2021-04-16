@@ -776,6 +776,11 @@ struct table_runtime {
 	uint8_t **key;
 };
 
+struct table_statistics {
+	uint64_t n_pkts_hit[2]; /* 0 = Miss, 1 = Hit. */
+	uint64_t *n_pkts_action;
+};
+
 /*
  * Register array.
  */
@@ -1214,6 +1219,7 @@ struct rte_swx_pipeline {
 	struct port_out_runtime *out;
 	struct instruction **action_instructions;
 	struct rte_swx_table_state *table_state;
+	struct table_statistics *table_stats;
 	struct regarray_runtime *regarray_runtime;
 	struct metarray_runtime *metarray_runtime;
 	struct instruction *instructions;
@@ -3354,7 +3360,8 @@ instr_table_exec(struct rte_swx_pipeline *p)
 	uint32_t table_id = ip->table.table_id;
 	struct rte_swx_table_state *ts = &t->table_state[table_id];
 	struct table_runtime *table = &t->tables[table_id];
-	uint64_t action_id;
+	struct table_statistics *stats = &p->table_stats[table_id];
+	uint64_t action_id, n_pkts_hit, n_pkts_action;
 	uint8_t *action_data;
 	int done, hit;
 
@@ -3377,6 +3384,8 @@ instr_table_exec(struct rte_swx_pipeline *p)
 
 	action_id = hit ? action_id : ts->default_action_id;
 	action_data = hit ? action_data : ts->default_action_data;
+	n_pkts_hit = stats->n_pkts_hit[hit];
+	n_pkts_action = stats->n_pkts_action[action_id];
 
 	TRACE("[Thread %2u] table %u (%s, action %u)\n",
 	      p->thread_id,
@@ -3387,6 +3396,8 @@ instr_table_exec(struct rte_swx_pipeline *p)
 	t->action_id = action_id;
 	t->structs[0] = action_data;
 	t->hit = hit;
+	stats->n_pkts_hit[hit] = n_pkts_hit + 1;
+	stats->n_pkts_action[action_id] = n_pkts_action + 1;
 
 	/* Thread. */
 	thread_ip_action_call(p, t, action_id);
@@ -8950,6 +8961,16 @@ table_build(struct rte_swx_pipeline *p)
 {
 	uint32_t i;
 
+	/* Per pipeline: table statistics. */
+	p->table_stats = calloc(p->n_tables, sizeof(struct table_statistics));
+	CHECK(p->table_stats, ENOMEM);
+
+	for (i = 0; i < p->n_tables; i++) {
+		p->table_stats[i].n_pkts_action = calloc(p->n_actions, sizeof(uint64_t));
+		CHECK(p->table_stats[i].n_pkts_action, ENOMEM);
+	}
+
+	/* Per thread: table runt-time. */
 	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
 		struct thread *t = &p->threads[i];
 		struct table *table;
@@ -9007,6 +9028,13 @@ table_build_free(struct rte_swx_pipeline *p)
 
 		free(t->tables);
 		t->tables = NULL;
+	}
+
+	if (p->table_stats) {
+		for (i = 0; i < p->n_tables; i++)
+			free(p->table_stats[i].n_pkts_action);
+
+		free(p->table_stats);
 	}
 }
 
@@ -9759,6 +9787,33 @@ rte_swx_ctl_pipeline_port_out_stats_read(struct rte_swx_pipeline *p,
 		return -EINVAL;
 
 	port->type->ops.stats_read(port->obj, stats);
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_table_stats_read(struct rte_swx_pipeline *p,
+				      const char *table_name,
+				      struct rte_swx_table_stats *stats)
+{
+	struct table *table;
+	struct table_statistics *table_stats;
+
+	if (!p || !table_name || !table_name[0] || !stats || !stats->n_pkts_action)
+		return -EINVAL;
+
+	table = table_find(p, table_name);
+	if (!table)
+		return -EINVAL;
+
+	table_stats = &p->table_stats[table->id];
+
+	memcpy(&stats->n_pkts_action,
+	       &table_stats->n_pkts_action,
+	       p->n_actions * sizeof(uint64_t));
+
+	stats->n_pkts_hit = table_stats->n_pkts_hit[1];
+	stats->n_pkts_miss = table_stats->n_pkts_hit[0];
+
 	return 0;
 }
 
