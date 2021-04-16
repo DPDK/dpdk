@@ -146,6 +146,35 @@ implementer_ampere = {
 	}
 }
 
+implementer_hisilicon = {
+	'description': 'HiSilicon',
+	'flags': [
+		['RTE_USE_C11_MEM_MODEL', true],
+		['RTE_CACHE_LINE_SIZE', 128]
+	],
+	'part_number_config': {
+		'0xd01': {
+			'machine_args': ['-march=armv8.2-a+crypto',
+					 '-mtune=tsv110'],
+			'flags': [
+				['RTE_MACHINE', '"Kunpeng 920"'],
+				['RTE_ARM_FEATURE_ATOMICS', true],
+				['RTE_MAX_LCORE', 256],
+				['RTE_MAX_NUMA_NODES', 8]
+			]
+		},
+		'0xd02': {
+			'machine_args': ['-march=armv8.2-a+crypto+sve'],
+			'flags': [
+				['RTE_MACHINE', '"Kunpeng 930"'],
+				['RTE_ARM_FEATURE_ATOMICS', true],
+				['RTE_MAX_LCORE', 1280],
+				['RTE_MAX_NUMA_NODES', 16]
+			]
+		}
+	}
+}
+
 implementer_qualcomm = {
 	'description': 'Qualcomm',
 	'flags': [
@@ -165,6 +194,7 @@ implementers = {
 	'generic': implementer_generic,
 	'0x41': implementer_arm,
 	'0x43': implementer_cavium,
+	'0x48': implementer_hisilicon,
 	'0x50': implementer_ampere,
 	'0x51': implementer_qualcomm
 }
@@ -225,6 +255,20 @@ soc_graviton2 = {
 	'numa': false
 }
 
+soc_kunpeng920 = {
+	'description': 'HiSilicon Kunpeng 920',
+	'implementer': '0x48',
+	'part_number': '0xd01',
+	'numa': true
+}
+
+soc_kunpeng930 = {
+	'description': 'HiSilicon Kunpeng 930',
+	'implementer': '0x48',
+	'part_number': '0xd02',
+	'numa': true
+}
+
 soc_n1sdp = {
 	'description': 'Arm Neoverse N1SDP',
 	'implementer': '0x41',
@@ -279,6 +323,8 @@ socs = {
 	'dpaa': soc_dpaa,
 	'emag': soc_emag,
 	'graviton2': soc_graviton2,
+	'kunpeng920': soc_kunpeng920,
+	'kunpeng930': soc_kunpeng930,
 	'n1sdp': soc_n1sdp,
 	'n2': soc_n2,
 	'octeontx2': soc_octeontx2,
