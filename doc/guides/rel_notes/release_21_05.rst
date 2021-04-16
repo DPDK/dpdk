@@ -212,6 +212,11 @@ New Features
   * Added command to dump internal representation information of single flow.
     ``flow dump (port_id) rule (rule_id)``
 
+* **Added support for the FIB lookup method in the l3fwd example app.**
+
+  Previously the l3fwd sample app only supported LPM and EM lookup methods,
+  the app now supports the Forwarding Information Base (FIB) lookup method.
+
 * **Updated ipsec-secgw sample application.**
 
   * Updated the ``ipsec-secgw`` sample application with UDP encapsulation
