@@ -30,47 +30,7 @@
 #include "l3fwd.h"
 #include "l3fwd_event.h"
 
-struct ipv4_l3fwd_lpm_route {
-	uint32_t ip;
-	uint8_t  depth;
-	uint8_t  if_out;
-};
-
-struct ipv6_l3fwd_lpm_route {
-	uint8_t ip[16];
-	uint8_t  depth;
-	uint8_t  if_out;
-};
-
-/*
- * 198.18.0.0/16 are set aside for RFC2544 benchmarking (RFC5735).
- * 198.18.{0-7}.0/24 = Port {0-7}
- */
-static const struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
-	{RTE_IPV4(198, 18, 0, 0), 24, 0},
-	{RTE_IPV4(198, 18, 1, 0), 24, 1},
-	{RTE_IPV4(198, 18, 2, 0), 24, 2},
-	{RTE_IPV4(198, 18, 3, 0), 24, 3},
-	{RTE_IPV4(198, 18, 4, 0), 24, 4},
-	{RTE_IPV4(198, 18, 5, 0), 24, 5},
-	{RTE_IPV4(198, 18, 6, 0), 24, 6},
-	{RTE_IPV4(198, 18, 7, 0), 24, 7},
-};
-
-/*
- * 2001:200::/48 is IANA reserved range for IPv6 benchmarking (RFC5180).
- * 2001:200:0:{0-7}::/64 = Port {0-7}
- */
-static const struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
-	{{32, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 0},
-	{{32, 1, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 1},
-	{{32, 1, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 2},
-	{{32, 1, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 3},
-	{{32, 1, 2, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 4},
-	{{32, 1, 2, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 5},
-	{{32, 1, 2, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 6},
-	{{32, 1, 2, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 7},
-};
+#include "l3fwd_route.h"
 
 #define IPV4_L3FWD_LPM_MAX_RULES         1024
 #define IPV4_L3FWD_LPM_NUMBER_TBL8S (1 << 8)
@@ -486,18 +446,18 @@ setup_lpm(const int socketid)
 			socketid);
 
 	/* populate the LPM table */
-	for (i = 0; i < RTE_DIM(ipv4_l3fwd_lpm_route_array); i++) {
+	for (i = 0; i < RTE_DIM(ipv4_l3fwd_route_array); i++) {
 		struct in_addr in;
 
 		/* skip unused ports */
-		if ((1 << ipv4_l3fwd_lpm_route_array[i].if_out &
+		if ((1 << ipv4_l3fwd_route_array[i].if_out &
 				enabled_port_mask) == 0)
 			continue;
 
 		ret = rte_lpm_add(ipv4_l3fwd_lpm_lookup_struct[socketid],
-			ipv4_l3fwd_lpm_route_array[i].ip,
-			ipv4_l3fwd_lpm_route_array[i].depth,
-			ipv4_l3fwd_lpm_route_array[i].if_out);
+			ipv4_l3fwd_route_array[i].ip,
+			ipv4_l3fwd_route_array[i].depth,
+			ipv4_l3fwd_route_array[i].if_out);
 
 		if (ret < 0) {
 			rte_exit(EXIT_FAILURE,
@@ -505,11 +465,11 @@ setup_lpm(const int socketid)
 				i, socketid);
 		}
 
-		in.s_addr = htonl(ipv4_l3fwd_lpm_route_array[i].ip);
+		in.s_addr = htonl(ipv4_l3fwd_route_array[i].ip);
 		printf("LPM: Adding route %s / %d (%d)\n",
 		       inet_ntop(AF_INET, &in, abuf, sizeof(abuf)),
-			ipv4_l3fwd_lpm_route_array[i].depth,
-			ipv4_l3fwd_lpm_route_array[i].if_out);
+			ipv4_l3fwd_route_array[i].depth,
+			ipv4_l3fwd_route_array[i].if_out);
 	}
 
 	/* create the LPM6 table */
@@ -526,17 +486,17 @@ setup_lpm(const int socketid)
 			socketid);
 
 	/* populate the LPM table */
-	for (i = 0; i < RTE_DIM(ipv6_l3fwd_lpm_route_array); i++) {
+	for (i = 0; i < RTE_DIM(ipv6_l3fwd_route_array); i++) {
 
 		/* skip unused ports */
-		if ((1 << ipv6_l3fwd_lpm_route_array[i].if_out &
+		if ((1 << ipv6_l3fwd_route_array[i].if_out &
 				enabled_port_mask) == 0)
 			continue;
 
 		ret = rte_lpm6_add(ipv6_l3fwd_lpm_lookup_struct[socketid],
-			ipv6_l3fwd_lpm_route_array[i].ip,
-			ipv6_l3fwd_lpm_route_array[i].depth,
-			ipv6_l3fwd_lpm_route_array[i].if_out);
+			ipv6_l3fwd_route_array[i].ip,
+			ipv6_l3fwd_route_array[i].depth,
+			ipv6_l3fwd_route_array[i].if_out);
 
 		if (ret < 0) {
 			rte_exit(EXIT_FAILURE,
@@ -545,10 +505,10 @@ setup_lpm(const int socketid)
 		}
 
 		printf("LPM: Adding route %s / %d (%d)\n",
-		       inet_ntop(AF_INET6, ipv6_l3fwd_lpm_route_array[i].ip,
+		       inet_ntop(AF_INET6, ipv6_l3fwd_route_array[i].ip,
 				 abuf, sizeof(abuf)),
-		       ipv6_l3fwd_lpm_route_array[i].depth,
-		       ipv6_l3fwd_lpm_route_array[i].if_out);
+		       ipv6_l3fwd_route_array[i].depth,
+		       ipv6_l3fwd_route_array[i].if_out);
 	}
 }
 
