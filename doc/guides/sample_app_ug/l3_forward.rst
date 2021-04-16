@@ -53,8 +53,7 @@ The application has a number of command line options::
 
     ./dpdk-l3fwd [EAL options] -- -p PORTMASK
                              [-P]
-                             [-E]
-                             [-L]
+                             [--lookup LOOKUP_METHOD]
                              --config(port,queue,lcore)[,(port,queue,lcore)]
                              [--eth-dest=X,MM:MM:MM:MM:MM:MM]
                              [--enable-jumbo [--max-pkt-len PKTLEN]]
@@ -66,6 +65,8 @@ The application has a number of command line options::
                              [--mode]
                              [--eventq-sched]
                              [--event-eth-rxqs]
+                             [-E]
+                             [-L]
 
 Where,
 
@@ -74,9 +75,12 @@ Where,
 * ``-P:`` Optional, sets all ports to promiscuous mode so that packets are accepted regardless of the packet's Ethernet MAC destination address.
   Without this option, only packets with the Ethernet MAC destination address set to the Ethernet address of the port are accepted.
 
-* ``-E:`` Optional, enable exact match.
-
-* ``-L:`` Optional, enable longest prefix match.
+* ``--lookup:`` Optional, select the lookup method.
+  Accepted options:
+  ``em`` (Exact Match),
+  ``lpm`` (Longest Prefix Match),
+  ``fib`` (Forwarding Information Base).
+  Default is ``lpm``.
 
 * ``--config (port,queue,lcore)[,(port,queue,lcore)]:`` Determines which queues from which ports are mapped to which cores.
 
@@ -101,6 +105,12 @@ Where,
 * ``--eventq-sched:`` Optional, Event queue synchronization method, Ordered, Atomic or Parallel. Only valid if --mode=eventdev.
 
 * ``--event-eth-rxqs:`` Optional, Number of ethernet RX queues per device. Only valid if --mode=eventdev.
+
+* ``-E:`` Optional, enable exact match,
+  legacy flag, please use ``--lookup=em`` instead.
+
+* ``-L:`` Optional, enable longest prefix match,
+  legacy flag, please use ``--lookup=lpm`` instead.
 
 
 For example, consider a dual processor socket platform with 8 physical cores, where cores 0-7 and 16-23 appear on socket 0,
