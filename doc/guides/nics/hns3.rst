@@ -1,12 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2018-2019 Hisilicon Limited.
+    Copyright(c) 2018-2019 HiSilicon Limited.
 
 HNS3 Poll Mode Driver
 ===============================
 
 The hns3 PMD (**librte_net_hns3**) provides poll mode driver support
-for the inbuilt Hisilicon Network Subsystem(HNS) network engine
-found in the Hisilicon Kunpeng 920 SoC.
+for the inbuilt HiSilicon Network Subsystem(HNS) network engine
+found in the HiSilicon Kunpeng 920 SoC.
 
 Features
 --------
