@@ -442,7 +442,7 @@ telemetry_legacy_init(void)
 		return -1;
 	pthread_create(&t_old, NULL, socket_listener, &v1_socket);
 	pthread_setaffinity_np(t_old, sizeof(*thread_cpuset), thread_cpuset);
-
+	pthread_setname_np(t_old, "telemetry-v1");
 	TMTY_LOG(DEBUG, "Legacy telemetry socket initialized ok\n");
 	return 0;
 }
@@ -471,6 +471,7 @@ telemetry_v2_init(void)
 		return -1;
 	pthread_create(&t_new, NULL, socket_listener, &v2_socket);
 	pthread_setaffinity_np(t_new, sizeof(*thread_cpuset), thread_cpuset);
+	pthread_setname_np(t_new, "telemetry-v2");
 	atexit(unlink_sockets);
 
 	return 0;
