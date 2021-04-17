@@ -298,6 +298,7 @@ rte_devargs_insert(struct rte_devargs **da)
 		if (strcmp(listed_da->bus->name, (*da)->bus->name) == 0 &&
 				strcmp(listed_da->name, (*da)->name) == 0) {
 			/* device already in devargs list, must be updated */
+			(*da)->next = listed_da->next;
 			rte_devargs_reset(listed_da);
 			*listed_da = **da;
 			/* replace provided devargs with found one */
