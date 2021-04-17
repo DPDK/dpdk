@@ -2154,7 +2154,7 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (rx_mq_mode == ETH_MQ_RX_DCB_RSS) {
+	if (rx_mq_mode & ETH_MQ_RX_DCB_FLAG) {
 		if (dcb_rx_conf->nb_tcs > pf->tc_max) {
 			hns3_err(hw, "nb_tcs(%u) > max_tc(%u) driver supported.",
 				 dcb_rx_conf->nb_tcs, pf->tc_max);
