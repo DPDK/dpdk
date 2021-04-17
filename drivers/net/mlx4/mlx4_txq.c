@@ -206,19 +206,18 @@ mlx4_tx_uar_uninit_secondary(struct rte_eth_dev *dev __rte_unused)
 static void
 mlx4_txq_free_elts(struct txq *txq)
 {
-	unsigned int elts_head = txq->elts_head;
-	unsigned int elts_tail = txq->elts_tail;
 	struct txq_elt (*elts)[txq->elts_n] = txq->elts;
-	unsigned int elts_m = txq->elts_n - 1;
+	unsigned int n = txq->elts_n;
 
-	DEBUG("%p: freeing WRs", (void *)txq);
-	while (elts_tail != elts_head) {
-		struct txq_elt *elt = &(*elts)[elts_tail++ & elts_m];
+	DEBUG("%p: freeing WRs, %u", (void *)txq, n);
+	while (n--) {
+		struct txq_elt *elt = &(*elts)[n];
 
-		MLX4_ASSERT(elt->buf != NULL);
-		rte_pktmbuf_free(elt->buf);
-		elt->buf = NULL;
-		elt->wqe = NULL;
+		if (elt->buf) {
+			rte_pktmbuf_free(elt->buf);
+			elt->buf = NULL;
+			elt->wqe = NULL;
+		}
 	}
 	txq->elts_tail = txq->elts_head;
 }

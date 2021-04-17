@@ -921,10 +921,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (likely(elt->buf != NULL)) {
 			struct rte_mbuf *tmp = elt->buf;
 
-#ifdef RTE_LIBRTE_MLX4_DEBUG
-			/* Poisoning. */
-			memset(&elt->buf, 0x66, sizeof(struct rte_mbuf *));
-#endif
 			/* Faster than rte_pktmbuf_free(). */
 			do {
 				struct rte_mbuf *next = tmp->next;
