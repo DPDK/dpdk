@@ -526,10 +526,10 @@ ifpga_monitor_start_func(void)
 	int ret;
 
 	if (ifpga_monitor_start == 0) {
-		ret = pthread_create(&ifpga_monitor_start_thread,
-			NULL,
-			ifpga_rawdev_gsd_handle, NULL);
-		if (ret) {
+		ret = rte_ctrl_thread_create(&ifpga_monitor_start_thread,
+					     "ifpga-monitor", NULL,
+					     ifpga_rawdev_gsd_handle, NULL);
+		if (ret != 0) {
 			IFPGA_RAWDEV_PMD_ERR(
 				"Fail to create ifpga nonitor thread");
 			return -1;
