@@ -27,6 +27,7 @@
 
 #define DEBUG_APP 0
 #define HELLOW_WORLD_MAX_LTHREADS 10
+#define THREAD_NAME_LEN	16
 
 #ifndef __GLIBC__ /* sched_getcpu() is glibc-specific */
 #define sched_getcpu() rte_lcore_id()
@@ -149,6 +150,7 @@ static void *initial_lthread(void *args __rte_unused)
 		 */
 		pthread_attr_t attr;
 		rte_cpuset_t cpuset;
+		char name[THREAD_NAME_LEN];
 
 		CPU_ZERO(&cpuset);
 		CPU_SET(lcore, &cpuset);
@@ -160,6 +162,9 @@ static void *initial_lthread(void *args __rte_unused)
 				helloworld_pthread, (void *) i);
 		if (ret != 0)
 			rte_exit(EXIT_FAILURE, "Cannot create helloworld thread\n");
+
+		snprintf(name, sizeof(name), "helloworld-%u", (uint32_t)i);
+		rte_thread_setname(tid[i], name);
 	}
 
 	/* wait for 1s to allow threads
