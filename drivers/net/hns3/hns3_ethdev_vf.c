@@ -2911,8 +2911,7 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
-	/* initialize flow filter lists */
-	hns3_filterlist_init(eth_dev);
+	hns3_flow_init(eth_dev);
 
 	hns3_set_rxtx_function(eth_dev);
 	eth_dev->dev_ops = &hns3vf_eth_dev_ops;

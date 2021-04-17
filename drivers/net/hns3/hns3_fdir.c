@@ -830,7 +830,6 @@ int hns3_fdir_filter_init(struct hns3_adapter *hns)
 
 	fdir_hash_params.socket_id = rte_socket_id();
 	TAILQ_INIT(&fdir_info->fdir_list);
-	rte_spinlock_init(&fdir_info->flows_lock);
 	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE, "%s", hns->hw.data->name);
 	fdir_info->hash_handle = rte_hash_create(&fdir_hash_params);
 	if (fdir_info->hash_handle == NULL) {
@@ -856,7 +855,6 @@ void hns3_fdir_filter_uninit(struct hns3_adapter *hns)
 	struct hns3_fdir_info *fdir_info = &pf->fdir;
 	struct hns3_fdir_rule_ele *fdir_filter;
 
-	rte_spinlock_lock(&fdir_info->flows_lock);
 	if (fdir_info->hash_map) {
 		rte_free(fdir_info->hash_map);
 		fdir_info->hash_map = NULL;
@@ -865,7 +863,6 @@ void hns3_fdir_filter_uninit(struct hns3_adapter *hns)
 		rte_hash_free(fdir_info->hash_handle);
 		fdir_info->hash_handle = NULL;
 	}
-	rte_spinlock_unlock(&fdir_info->flows_lock);
 
 	fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list);
 	while (fdir_filter) {
@@ -891,10 +888,8 @@ static int hns3_fdir_filter_lookup(struct hns3_fdir_info *fdir_info,
 	hash_sig_t sig;
 	int ret;
 
-	rte_spinlock_lock(&fdir_info->flows_lock);
 	sig = rte_hash_crc(key, sizeof(*key), 0);
 	ret = rte_hash_lookup_with_hash(fdir_info->hash_handle, key, sig);
-	rte_spinlock_unlock(&fdir_info->flows_lock);
 
 	return ret;
 }
@@ -908,11 +903,9 @@ static int hns3_insert_fdir_filter(struct hns3_hw *hw,
 	int ret;
 
 	key = &fdir_filter->fdir_conf.key_conf;
-	rte_spinlock_lock(&fdir_info->flows_lock);
 	sig = rte_hash_crc(key, sizeof(*key), 0);
 	ret = rte_hash_add_key_with_hash(fdir_info->hash_handle, key, sig);
 	if (ret < 0) {
-		rte_spinlock_unlock(&fdir_info->flows_lock);
 		hns3_err(hw, "Hash table full? err:%d(%s)!", ret,
 			 strerror(-ret));
 		return ret;
@@ -920,7 +913,6 @@ static int hns3_insert_fdir_filter(struct hns3_hw *hw,
 
 	fdir_info->hash_map[ret] = fdir_filter;
 	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, fdir_filter, entries);
-	rte_spinlock_unlock(&fdir_info->flows_lock);
 
 	return ret;
 }
@@ -933,11 +925,9 @@ static int hns3_remove_fdir_filter(struct hns3_hw *hw,
 	hash_sig_t sig;
 	int ret;
 
-	rte_spinlock_lock(&fdir_info->flows_lock);
 	sig = rte_hash_crc(key, sizeof(*key), 0);
 	ret = rte_hash_del_key_with_hash(fdir_info->hash_handle, key, sig);
 	if (ret < 0) {
-		rte_spinlock_unlock(&fdir_info->flows_lock);
 		hns3_err(hw, "Delete hash key fail ret=%d", ret);
 		return ret;
 	}
@@ -945,7 +935,6 @@ static int hns3_remove_fdir_filter(struct hns3_hw *hw,
 	fdir_filter = fdir_info->hash_map[ret];
 	fdir_info->hash_map[ret] = NULL;
 	TAILQ_REMOVE(&fdir_info->fdir_list, fdir_filter, entries);
-	rte_spinlock_unlock(&fdir_info->flows_lock);
 
 	rte_free(fdir_filter);
 
@@ -1000,11 +989,9 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 	rule->location = ret;
 	node->fdir_conf.location = ret;
 
-	rte_spinlock_lock(&fdir_info->flows_lock);
 	ret = hns3_config_action(hw, rule);
 	if (!ret)
 		ret = hns3_config_key(hns, rule);
-	rte_spinlock_unlock(&fdir_info->flows_lock);
 	if (ret) {
 		hns3_err(hw, "Failed to config fdir: %u src_ip:%x dst_ip:%x "
 			 "src_port:%u dst_port:%u ret = %d",
@@ -1029,9 +1016,7 @@ int hns3_clear_all_fdir_filter(struct hns3_adapter *hns)
 	int ret = 0;
 
 	/* flush flow director */
-	rte_spinlock_lock(&fdir_info->flows_lock);
 	rte_hash_reset(fdir_info->hash_handle);
-	rte_spinlock_unlock(&fdir_info->flows_lock);
 
 	fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list);
 	while (fdir_filter) {
@@ -1059,6 +1044,17 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 	bool err = false;
 	int ret;
 
+	/*
+	 * This API is called in the reset recovery process, the parent function
+	 * must hold hw->lock.
+	 * There maybe deadlock if acquire hw->flows_lock directly because rte
+	 * flow driver ops first acquire hw->flows_lock and then may acquire
+	 * hw->lock.
+	 * So here first release the hw->lock and then acquire the
+	 * hw->flows_lock to avoid deadlock.
+	 */
+	rte_spinlock_unlock(&hw->lock);
+	pthread_mutex_lock(&hw->flows_lock);
 	TAILQ_FOREACH(fdir_filter, &fdir_info->fdir_list, entries) {
 		ret = hns3_config_action(hw, &fdir_filter->fdir_conf);
 		if (!ret)
@@ -1069,6 +1065,8 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 				break;
 		}
 	}
+	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 
 	if (err) {
 		hns3_err(hw, "Fail to restore FDIR filter, ret = %d", ret);

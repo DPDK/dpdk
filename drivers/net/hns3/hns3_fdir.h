@@ -199,7 +199,6 @@ struct hns3_process_private {
  *  A structure used to define fields of a FDIR related info.
  */
 struct hns3_fdir_info {
-	rte_spinlock_t flows_lock;
 	struct hns3_fdir_rule_list fdir_list;
 	struct hns3_fdir_rule_ele **hash_map;
 	struct rte_hash *hash_handle;
@@ -220,7 +219,7 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 			     struct hns3_fdir_rule *rule, bool del);
 int hns3_clear_all_fdir_filter(struct hns3_adapter *hns);
 int hns3_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value);
-void hns3_filterlist_init(struct rte_eth_dev *dev);
+void hns3_flow_init(struct rte_eth_dev *dev);
 int hns3_restore_all_fdir_filter(struct hns3_adapter *hns);
 
 #endif /* _HNS3_FDIR_H_ */

@@ -5,6 +5,7 @@
 #ifndef _HNS3_ETHDEV_H_
 #define _HNS3_ETHDEV_H_
 
+#include <pthread.h>
 #include <sys/time.h>
 #include <ethdev_driver.h>
 #include <rte_byteorder.h>
@@ -624,6 +625,9 @@ struct hns3_hw {
 	uint8_t udp_cksum_mode;
 
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;
+
+	pthread_mutex_t flows_lock; /* rte_flow ops lock */
+
 	/*
 	 * PMD setup and configuration is not thread safe. Since it is not
 	 * performance sensitive, it is better to guarantee thread-safety
