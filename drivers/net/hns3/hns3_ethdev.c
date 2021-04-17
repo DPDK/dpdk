@@ -105,6 +105,7 @@ static int hns3_remove_mc_addr(struct hns3_hw *hw,
 static int hns3_restore_fec(struct hns3_hw *hw);
 static int hns3_query_dev_fec_info(struct hns3_hw *hw);
 static int hns3_do_stop(struct hns3_adapter *hns);
+static int hns3_check_port_speed(struct hns3_hw *hw, uint32_t link_speeds);
 
 void hns3_ether_format_addr(char *buf, uint16_t size,
 			    const struct rte_ether_addr *ether_addr)
@@ -2429,6 +2430,46 @@ hns3_refresh_mtu(struct rte_eth_dev *dev, struct rte_eth_conf *conf)
 }
 
 static int
+hns3_check_link_speed(struct hns3_hw *hw, uint32_t link_speeds)
+{
+	int ret;
+
+	/*
+	 * Some hardware doesn't support auto-negotiation, but users may not
+	 * configure link_speeds (default 0), which means auto-negotiation.
+	 * In this case, a warning message need to be printed, instead of
+	 * an error.
+	 */
+	if (link_speeds == ETH_LINK_SPEED_AUTONEG &&
+	    hw->mac.support_autoneg == 0) {
+		hns3_warn(hw, "auto-negotiation is not supported, use default fixed speed!");
+		return 0;
+	}
+
+	if (link_speeds != ETH_LINK_SPEED_AUTONEG) {
+		ret = hns3_check_port_speed(hw, link_speeds);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int
+hns3_check_dev_conf(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	int ret;
+
+	ret = hns3_check_mq_mode(dev);
+	if (ret)
+		return ret;
+
+	return hns3_check_link_speed(hw, conf->link_speeds);
+}
+
+static int
 hns3_dev_configure(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
@@ -2463,7 +2504,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	hw->adapter_state = HNS3_NIC_CONFIGURING;
-	ret = hns3_check_mq_mode(dev);
+	ret = hns3_check_dev_conf(dev);
 	if (ret)
 		goto cfg_err;
 
@@ -5464,14 +5505,11 @@ hns3_set_fiber_port_link_speed(struct hns3_hw *hw,
 
 	/*
 	 * Some hardware doesn't support auto-negotiation, but users may not
-	 * configure link_speeds (default 0), which means auto-negotiation
-	 * In this case, a warning message need to be printed, instead of
-	 * an error.
+	 * configure link_speeds (default 0), which means auto-negotiation.
+	 * In this case, it should return success.
 	 */
-	if (cfg->autoneg) {
-		hns3_warn(hw, "auto-negotiation is not supported.");
+	if (cfg->autoneg)
 		return 0;
-	}
 
 	return hns3_cfg_mac_speed_dup(hw, cfg->speed, cfg->duplex);
 }
@@ -5512,16 +5550,11 @@ hns3_apply_link_speed(struct hns3_hw *hw)
 {
 	struct rte_eth_conf *conf = &hw->data->dev_conf;
 	struct hns3_set_link_speed_cfg cfg;
-	int ret;
 
 	memset(&cfg, 0, sizeof(struct hns3_set_link_speed_cfg));
 	cfg.autoneg = (conf->link_speeds == ETH_LINK_SPEED_AUTONEG) ?
 			ETH_LINK_AUTONEG : ETH_LINK_FIXED;
 	if (cfg.autoneg != ETH_LINK_AUTONEG) {
-		ret = hns3_check_port_speed(hw, conf->link_speeds);
-		if (ret)
-			return ret;
-
 		cfg.speed = hns3_get_link_speed(conf->link_speeds);
 		cfg.duplex = hns3_get_link_duplex(conf->link_speeds);
 	}
