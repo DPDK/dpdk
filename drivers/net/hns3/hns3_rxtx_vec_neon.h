@@ -156,6 +156,14 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 		0, 0, 0,      /* ignore non-length fields */
 	};
 
+	/* compile-time verifies the shuffle mask */
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
+			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 4);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_len) !=
+			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 8);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, hash.rss) !=
+			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 12);
+
 	for (pos = 0; pos < nb_pkts; pos += HNS3_DEFAULT_DESCS_PER_LOOP,
 				     rxdp += HNS3_DEFAULT_DESCS_PER_LOOP) {
 		uint64x2x2_t descs[HNS3_DEFAULT_DESCS_PER_LOOP];

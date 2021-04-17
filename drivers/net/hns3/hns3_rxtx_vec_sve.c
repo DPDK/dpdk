@@ -118,6 +118,12 @@ hns3_recv_burst_vec_sve(struct hns3_rx_queue *__restrict rxq,
 	svuint32_t rss_tbl1 = svld1_u32(PG32_256BIT, rss_adjust);
 	svuint32_t rss_tbl2 = svld1_u32(PG32_256BIT, &rss_adjust[8]);
 
+	/* compile-time verifies the xlen_adjust mask */
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_len) !=
+			 offsetof(struct rte_mbuf, pkt_len) + 4);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, vlan_tci) !=
+			 offsetof(struct rte_mbuf, data_len) + 2);
+
 	for (pos = 0; pos < nb_pkts; pos += HNS3_SVE_DEFAULT_DESCS_PER_LOOP,
 				     rxdp += HNS3_SVE_DEFAULT_DESCS_PER_LOOP) {
 		svuint64_t vld_clz, mbp1st, mbp2st, mbuf_init;
