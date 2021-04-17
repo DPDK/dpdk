@@ -1511,7 +1511,6 @@ static void
 hns3vf_request_link_info(struct hns3_hw *hw)
 {
 	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
-	uint8_t resp_msg;
 	bool send_req;
 	int ret;
 
@@ -1524,7 +1523,7 @@ hns3vf_request_link_info(struct hns3_hw *hw)
 		return;
 
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_LINK_STATUS, 0, NULL, 0, false,
-				&resp_msg, sizeof(resp_msg));
+				NULL, 0);
 	if (ret) {
 		hns3_err(hw, "failed to fetch link status, ret = %d", ret);
 		return;
@@ -1756,11 +1755,10 @@ hns3vf_keep_alive_handler(void *param)
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	uint8_t respmsg;
 	int ret;
 
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_KEEP_ALIVE, 0, NULL, 0,
-				false, &respmsg, sizeof(uint8_t));
+				false, NULL, 0);
 	if (ret)
 		hns3_err(hw, "VF sends keeping alive cmd failed(=%d)",
 			 ret);
