@@ -685,7 +685,8 @@ new_device(int vid)
 	/* start polling vring */
 	worker_thread_status = WORKER_STATE_START;
 	fprintf(stdout, "New Device %s, Device ID %d\n", path, vid);
-	if (pthread_create(&tid, NULL, &ctrlr_worker, ctrlr) < 0) {
+	if (rte_ctrl_thread_create(&tid, "vhostblk-ctrlr", NULL,
+				   &ctrlr_worker, ctrlr) != 0) {
 		fprintf(stderr, "Worker Thread Started Failed\n");
 		return -1;
 	}
