@@ -1455,13 +1455,12 @@ hns3vf_set_tc_queue_mapping(struct hns3_adapter *hns, uint16_t nb_rx_q,
 static void
 hns3vf_request_link_info(struct hns3_hw *hw)
 {
-	uint8_t resp_msg;
 	int ret;
 
 	if (rte_atomic16_read(&hw->reset.resetting))
 		return;
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_LINK_STATUS, 0, NULL, 0, false,
-				&resp_msg, sizeof(resp_msg));
+				NULL, 0);
 	if (ret)
 		hns3_err(hw, "Failed to fetch link status from PF: %d", ret);
 }
@@ -1657,11 +1656,10 @@ hns3vf_keep_alive_handler(void *param)
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	uint8_t respmsg;
 	int ret;
 
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_KEEP_ALIVE, 0, NULL, 0,
-				false, &respmsg, sizeof(uint8_t));
+				false, NULL, 0);
 	if (ret)
 		hns3_err(hw, "VF sends keeping alive cmd failed(=%d)",
 			 ret);
