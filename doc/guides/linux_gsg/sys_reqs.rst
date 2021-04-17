@@ -40,31 +40,29 @@ Compilation of the DPDK
 *   General development tools including a supported C compiler such as gcc (version 4.9+) or clang (version 3.4+).
 
     * For RHEL/Fedora systems these can be installed using ``dnf groupinstall "Development Tools"``
-
     * For Ubuntu/Debian systems these can be installed using ``apt install build-essential``
+    * For Alpine Linux, ``apk add gcc libc-dev bsd-compat-headers libexecinfo-dev``
 
 *   Python 3.5 or later.
 
 *   Meson (version 0.49.2+) and ninja
 
     * ``meson`` & ``ninja-build`` packages in most Linux distributions
-
     * If the packaged version is below the minimum version, the latest versions
       can be installed from Python's "pip" repository: ``pip3 install meson ninja``
 
 *   ``pyelftools`` (version 0.22+)
 
     * For Fedora systems it can be installed using ``dnf install python-pyelftools``
-
     * For RHEL/CentOS systems it can be installed using ``pip3 install pyelftools``
-
     * For Ubuntu/Debian it can be installed using ``apt install python3-pyelftools``
+    * For Alpine Linux, ``apk add py3-elftools``
 
 *   Library for handling NUMA (Non Uniform Memory Access).
 
     * ``numactl-devel`` in RHEL/Fedora;
-
     * ``libnuma-dev`` in Debian/Ubuntu;
+    * ``numactl-dev`` in Alpine Linux
 
 .. note::
 

@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added Alpine Linux with musl libc support**
+
+  The distribution Alpine Linux, using musl libc and busybox,
+  got initial support starting with building DPDK without modification.
+
 * **Added phase-fair lock.**
 
   Phase-fair lock provides fairness guarantees.
