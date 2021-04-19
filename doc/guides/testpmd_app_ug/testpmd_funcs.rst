@@ -3789,6 +3789,13 @@ This section lists supported pattern items and their attributes, if any.
   - ``s_field {unsigned}``: S field.
   - ``seid {unsigned}``: session endpoint identifier.
 
+- ``integrity``: match packet integrity.
+
+   - ``level {unsigned}``: Packet encapsulation level the item should
+     apply to. See rte_flow_action_rss for details.
+   - ``value {unsigned}``: A bitmask that specify what packet elements
+     must be matched for integrity.
+
 Actions list
 ^^^^^^^^^^^^
 
@@ -4926,6 +4933,27 @@ NVGRE encapsulation header and sent to port id 0.
  testpmd> set sample_actions 0 nvgre_encap / port_id id 0 / end
  testpmd> flow create 0 ingress transfer pattern eth / end actions
         sample ratio 1 index 0  / port_id id 2 / end
+
+Sample integrity rules
+~~~~~~~~~~~~~~~~~~~~~~
+
+Integrity rules can be created by the following commands:
+
+Integrity rule that forwards valid TCP packets to group 1.
+TCP packet integrity is matched with the ``l4_ok`` bit 3.
+
+::
+
+ testpmd> flow create 0 ingress
+            pattern eth / ipv4 / tcp / integrity value mask 8 value spec 8 / end
+            actions jump group 1 / end
+
+Integrity rule that forwards invalid packets to application.
+General packet integrity is matched with the ``packet_ok`` bit 0.
+
+::
+
+ testpmd> flow create 0 ingress pattern integrity value mask 1 value spec 0 / end actions queue index 0 / end
 
 BPF Functions
 --------------

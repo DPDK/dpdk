@@ -293,6 +293,9 @@ enum index {
 	ITEM_GENEVE_OPT_TYPE,
 	ITEM_GENEVE_OPT_LENGTH,
 	ITEM_GENEVE_OPT_DATA,
+	ITEM_INTEGRITY,
+	ITEM_INTEGRITY_LEVEL,
+	ITEM_INTEGRITY_VALUE,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -968,6 +971,7 @@ static const enum index next_item[] = {
 	ITEM_PFCP,
 	ITEM_ECPRI,
 	ITEM_GENEVE_OPT,
+	ITEM_INTEGRITY,
 	END_SET,
 	ZERO,
 };
@@ -1315,6 +1319,19 @@ static const enum index item_geneve_opt[] = {
 	ITEM_GENEVE_OPT_TYPE,
 	ITEM_GENEVE_OPT_LENGTH,
 	ITEM_GENEVE_OPT_DATA,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_integrity[] = {
+	ITEM_INTEGRITY_LEVEL,
+	ITEM_INTEGRITY_VALUE,
+	ZERO,
+};
+
+static const enum index item_integrity_lv[] = {
+	ITEM_INTEGRITY_LEVEL,
+	ITEM_INTEGRITY_VALUE,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -3399,6 +3416,28 @@ static const struct token token_list[] = {
 			     ARGS_ENTRY_ARB
 				(sizeof(struct rte_flow_item_geneve_opt),
 				ITEM_GENEVE_OPT_DATA_SIZE)),
+	},
+	[ITEM_INTEGRITY] = {
+		.name = "integrity",
+		.help = "match packet integrity",
+		.priv = PRIV_ITEM(INTEGRITY,
+				  sizeof(struct rte_flow_item_integrity)),
+		.next = NEXT(item_integrity),
+		.call = parse_vc,
+	},
+	[ITEM_INTEGRITY_LEVEL] = {
+		.name = "level",
+		.help = "integrity level",
+		.next = NEXT(item_integrity_lv, NEXT_ENTRY(UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_integrity, level)),
+	},
+	[ITEM_INTEGRITY_VALUE] = {
+		.name = "value",
+		.help = "integrity value",
+		.next = NEXT(item_integrity_lv, NEXT_ENTRY(UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_integrity, value)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
