@@ -80,6 +80,8 @@ test_crc_calc(void)
 
 	/* 32-bit ethernet CRC: Test 2 */
 	test_data = rte_zmalloc(NULL, CRC32_VEC_LEN1, 0);
+	if (test_data == NULL)
+		return -7;
 
 	for (i = 0; i < CRC32_VEC_LEN1; i += 12)
 		rte_memcpy(&test_data[i], crc32_vec1, 12);
