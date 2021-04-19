@@ -324,10 +324,8 @@ hns3_interrupt_handler(void *param)
 		hns3_warn(hw, "received interrupt: vector0_int_stat:0x%x "
 			  "ras_int_stat:0x%x cmdq_int_stat:0x%x",
 			  vector0_int, ras_int, cmdq_int);
-		hns3_handle_msix_error(hns, &hw->reset.request);
-		hns3_handle_ras_error(hns, &hw->reset.request);
 		hns3_handle_mac_tnl(hw);
-		hns3_schedule_reset(hns);
+		hns3_handle_error(hns);
 	} else if (event_cause == HNS3_VECTOR0_EVENT_RST) {
 		hns3_warn(hw, "received reset interrupt");
 		hns3_schedule_reset(hns);
@@ -6284,12 +6282,15 @@ hns3_is_reset_pending(struct hns3_adapter *hns)
 
 	hns3_check_event_cause(hns, NULL);
 	reset = hns3_get_reset_level(hns, &hw->reset.pending);
-	if (hw->reset.level != HNS3_NONE_RESET && hw->reset.level < reset) {
+
+	if (reset != HNS3_NONE_RESET && hw->reset.level != HNS3_NONE_RESET &&
+	    hw->reset.level < reset) {
 		hns3_warn(hw, "High level reset %d is pending", reset);
 		return true;
 	}
 	reset = hns3_get_reset_level(hns, &hw->reset.request);
-	if (hw->reset.level != HNS3_NONE_RESET && hw->reset.level < reset) {
+	if (reset != HNS3_NONE_RESET && hw->reset.level != HNS3_NONE_RESET &&
+	    hw->reset.level < reset) {
 		hns3_warn(hw, "High level reset %d is request", reset);
 		return true;
 	}

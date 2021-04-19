@@ -23,8 +23,8 @@
 	} while (0)
 
 static const char *reset_string[HNS3_MAX_RESET] = {
-	"none", "vf_func", "vf_pf_func", "vf_full", "flr",
-	"vf_global", "pf_func", "global", "IMP",
+	"flr", "vf_func", "vf_pf_func", "vf_full", "vf_global",
+	"pf_func", "global", "IMP", "none",
 };
 
 static const struct hns3_hw_error mac_afifo_tnl_int[] = {
@@ -1384,11 +1384,106 @@ static const struct hns3_hw_error_desc pf_msix_err_tbl[] = {
 	}
 };
 
-enum hns3_hw_err_type {
+enum hns3_hw_err_report_type {
 	MPF_MSIX_ERR,
 	PF_MSIX_ERR,
 	MPF_RAS_ERR,
 	PF_RAS_ERR,
+};
+
+static const struct hns3_hw_mod_name hns3_hw_module_name[] = {
+	{
+		.module_name = MODULE_NONE,
+		.msg = "MODULE_NONE"
+	}, {
+		.module_name = MODULE_BIOS_COMMON,
+		.msg = "MODULE_BIOS_COMMON"
+	}, {
+		.module_name = MODULE_GE,
+		.msg = "MODULE_GE"
+	}, {
+		.module_name = MODULE_IGU_EGU,
+		.msg = "MODULE_IGU_EGU"
+	}, {
+		.module_name = MODULE_LGE,
+		.msg = "MODULE_LGE"
+	}, {
+		.module_name = MODULE_NCSI,
+		.msg = "MODULE_NCSI"
+	}, {
+		.module_name = MODULE_PPP,
+		.msg = "MODULE_PPP"
+	}, {
+		.module_name = MODULE_QCN,
+		.msg = "MODULE_QCN"
+	}, {
+		.module_name = MODULE_RCB_RX,
+		.msg = "MODULE_RCB_RX"
+	}, {
+		.module_name = MODULE_RTC,
+		.msg = "MODULE_RTC"
+	}, {
+		.module_name = MODULE_SSU,
+		.msg = "MODULE_SSU"
+	}, {
+		.module_name = MODULE_TM,
+		.msg = "MODULE_TM"
+	}, {
+		.module_name = MODULE_RCB_TX,
+		.msg = "MODULE_RCB_TX"
+	}, {
+		.module_name = MODULE_TXDMA,
+		.msg = "MODULE_TXDMA"
+	}, {
+		.module_name = MODULE_MASTER,
+		.msg = "MODULE_MASTER"
+	}, {
+		.module_name = MODULE_ROH_MAC,
+		.msg = "MODULE_ROH_MAC"
+	}
+};
+
+static const struct hns3_hw_err_type hns3_hw_error_type[] = {
+	{
+		.error_type = NONE_ERROR,
+		.msg = "none_error"
+	}, {
+		.error_type = FIFO_ERROR,
+		.msg = "fifo_error"
+	}, {
+		.error_type = MEMORY_ERROR,
+		.msg = "memory_error"
+	}, {
+		.error_type = POISION_ERROR,
+		.msg = "poision_error"
+	}, {
+		.error_type = MSIX_ECC_ERROR,
+		.msg = "msix_ecc_error"
+	}, {
+		.error_type = TQP_INT_ECC_ERROR,
+		.msg = "tqp_int_ecc_error"
+	}, {
+		.error_type = PF_ABNORMAL_INT_ERROR,
+		.msg = "pf_abnormal_int_error"
+	}, {
+		.error_type = MPF_ABNORMAL_INT_ERROR,
+		.msg = "mpf_abnormal_int_error"
+	}, {
+		.error_type = COMMON_ERROR,
+		.msg = "common_error"
+	}, {
+		.error_type = PORT_ERROR,
+		.msg = "port_error"
+	}, {
+		.error_type = ETS_ERROR,
+		.msg = "ets_error"
+	}, {
+		.error_type = NCSI_ERROR,
+		.msg = "ncsi_error"
+	}, {
+		.error_type = GLB_ERROR,
+		.msg = "glb_error"
+	}
 };
 
 static int
@@ -1927,7 +2022,8 @@ hns3_get_hw_error_status(struct hns3_cmd_desc *desc, uint8_t desc_offset,
 
 static int
 hns3_handle_hw_error(struct hns3_adapter *hns, struct hns3_cmd_desc *desc,
-		     int num, uint64_t *levels, enum hns3_hw_err_type err_type)
+		     int num, uint64_t *levels,
+		     enum hns3_hw_err_report_type err_type)
 {
 	const struct hns3_hw_error_desc *err = pf_ras_err_tbl;
 	enum hns3_opcode_type opcode;
@@ -2092,6 +2188,198 @@ hns3_handle_ras_error(struct hns3_adapter *hns, uint64_t *levels)
 
 out:
 	rte_free(desc);
+}
+
+static void
+hns3_handle_type_reg_error_data(struct hns3_hw *hw,
+				struct hns3_mod_err_info *mod_err_info,
+				struct hns3_type_reg_err_info *err_info)
+{
+#define HNS3_ERR_TYPE_MASK 0x7F
+#define HNS3_ERR_TYPE_IS_RAS_OFFSET 7
+
+	uint8_t mod_id, total_module, type_id, total_type;
+	uint8_t is_ras;
+	uint8_t i;
+
+	mod_id = mod_err_info->mod_id;
+	type_id = err_info->type_id & HNS3_ERR_TYPE_MASK;
+	is_ras = err_info->type_id >> HNS3_ERR_TYPE_IS_RAS_OFFSET;
+
+	total_module = ARRAY_SIZE(hns3_hw_module_name);
+	total_type = ARRAY_SIZE(hns3_hw_error_type);
+
+	hns3_err(hw, "total_module:%u, total_type:%u",
+		 total_module, total_type);
+
+	if (mod_id < total_module && type_id < total_type)
+		hns3_err(hw, "found %s %s, is %s error.",
+			 hns3_hw_module_name[mod_id].msg,
+			 hns3_hw_error_type[type_id].msg,
+			 is_ras ? "ras" : "msix");
+	else
+		hns3_err(hw, "unknown module[%u] or type[%u].",
+			 mod_id, type_id);
+
+	hns3_err(hw, "reg_value:");
+	for (i = 0; i < err_info->reg_num; i++)
+		hns3_err(hw, "0x%08x", err_info->reg[i]);
+}
+
+static void
+hns3_handle_module_error_data(struct hns3_hw *hw, uint32_t *buf,
+			      uint32_t buf_size)
+{
+	struct hns3_type_reg_err_info *type_reg_err_info;
+	struct hns3_mod_err_info *mod_err_info;
+	struct hns3_sum_err_info *sum_err_info;
+	uint8_t mod_num, reset_type;
+	uint32_t offset = 0;
+	uint8_t err_num;
+	uint8_t i;
+
+	sum_err_info = (struct hns3_sum_err_info *)&buf[offset++];
+	mod_num = sum_err_info->mod_num;
+	reset_type = sum_err_info->reset_type;
+	if (reset_type && reset_type != HNS3_NONE_RESET)
+		hns3_atomic_set_bit(reset_type, &hw->reset.request);
+
+	hns3_err(hw, "reset_type = %s, mod_num = %u.",
+		 reset_string[reset_type], mod_num);
+
+	while (mod_num--) {
+		if (offset >= buf_size) {
+			hns3_err(hw, "offset(%u) exceeds buf's size(%u).",
+				 offset, buf_size);
+			return;
+		}
+		mod_err_info = (struct hns3_mod_err_info *)&buf[offset++];
+		err_num = mod_err_info->err_num;
+		for (i = 0; i < err_num; i++) {
+			if (offset >= buf_size) {
+				hns3_err(hw,
+					 "offset(%u) exceeds buf size(%u).",
+					 offset, buf_size);
+				return;
+			}
+
+			type_reg_err_info = (struct hns3_type_reg_err_info *)
+					     &buf[offset++];
+			hns3_handle_type_reg_error_data(hw, mod_err_info,
+							type_reg_err_info);
+
+			offset += type_reg_err_info->reg_num;
+		}
+	}
+}
+
+static int
+hns3_query_all_err_bd_num(struct hns3_hw *hw, uint32_t *bd_num)
+{
+	struct hns3_cmd_desc desc;
+	uint32_t bd_num_data;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_QUERY_ALL_ERR_BD_NUM, true);
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "failed to query error bd_num, ret = %d.", ret);
+		return ret;
+	}
+
+	bd_num_data = rte_le_to_cpu_32(desc.data[0]);
+	*bd_num = bd_num_data;
+	if (bd_num_data == 0) {
+		hns3_err(hw, "the value of bd_num is 0!");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+hns3_query_all_err_info(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
+			uint32_t bd_num)
+{
+	int ret;
+
+	hns3_cmd_setup_basic_desc(desc, HNS3_OPC_QUERY_ALL_ERR_INFO, true);
+	ret = hns3_cmd_send(hw, desc, bd_num);
+	if (ret) {
+		hns3_err(hw, "failed to query error info, ret = %d.", ret);
+		return ret;
+	}
+
+	return ret;
+}
+
+static void
+hns3_handle_hw_error_v2(struct hns3_hw *hw)
+{
+	uint32_t bd_num, buf_len, i, buf_size;
+	struct hns3_cmd_desc *desc;
+	uint32_t *desc_data;
+	uint32_t *buf;
+	int ret;
+
+	ret = hns3_query_all_err_bd_num(hw, &bd_num);
+	if (ret)
+		goto out;
+
+	desc = rte_zmalloc("hns3_ras", bd_num * sizeof(struct hns3_cmd_desc),
+					   0);
+	if (desc == NULL) {
+		hns3_err(hw, "failed to malloc hns3 ras cmd desc.");
+		goto out;
+	}
+
+	ret = hns3_query_all_err_info(hw, desc, bd_num);
+	if (ret)
+		goto err_desc;
+
+	buf_len = bd_num * sizeof(struct hns3_cmd_desc) - HNS3_DESC_NO_DATA_LEN;
+	buf_size = buf_len / HNS3_DESC_DATA_UNIT_SIZE;
+
+	desc_data = rte_zmalloc("hns3_ras", buf_len, 0);
+	if (desc_data == NULL) {
+		hns3_err(hw, "failed to malloc hns3 ras desc data.");
+		goto err_desc;
+	}
+
+	buf = rte_zmalloc("hns3_ras", buf_len, 0);
+	if (buf == NULL) {
+		hns3_err(hw, "failed to malloc hns3 ras buf data.");
+		goto err_buf_alloc;
+	}
+
+	memcpy(desc_data, &desc[0].data[0], buf_len);
+	for (i = 0; i < buf_size; i++)
+		buf[i] = rte_le_to_cpu_32(desc_data[i]);
+
+	hns3_handle_module_error_data(hw, buf, buf_size);
+	rte_free(buf);
+
+err_buf_alloc:
+	rte_free(desc_data);
+err_desc:
+	rte_free(desc);
+out:
+	return;
+}
+
+void
+hns3_handle_error(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+
+	if (hns3_dev_ras_imp_supported(hw)) {
+		hns3_handle_hw_error_v2(hw);
+		hns3_schedule_reset(hns);
+	} else {
+		hns3_handle_msix_error(hns, &hw->reset.request);
+		hns3_handle_ras_error(hns, &hw->reset.request);
+		hns3_schedule_reset(hns);
+	}
 }
 
 int

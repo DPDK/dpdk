@@ -306,8 +306,9 @@ enum hns3_reset_stage {
 };
 
 enum hns3_reset_level {
-	HNS3_NONE_RESET,
+	HNS3_FLR_RESET,     /* A VF perform FLR reset */
 	HNS3_VF_FUNC_RESET, /* A VF function reset */
+
 	/*
 	 * All VFs under a PF perform function reset.
 	 * Kernel PF driver use mailbox to inform DPDK VF to do reset, the value
@@ -315,6 +316,7 @@ enum hns3_reset_level {
 	 * same.
 	 */
 	HNS3_VF_PF_FUNC_RESET = 2,
+
 	/*
 	 * All VFs under a PF perform FLR reset.
 	 * Kernel PF driver use mailbox to inform DPDK VF to do reset, the value
@@ -328,14 +330,23 @@ enum hns3_reset_level {
 	 * In PF FLR, the register state of VF is not reliable, VF's driver
 	 * should not access the registers of the VF device.
 	 */
-	HNS3_VF_FULL_RESET = 3,
-	HNS3_FLR_RESET,     /* A VF perform FLR reset */
+	HNS3_VF_FULL_RESET,
+
 	/* All VFs under the rootport perform a global or IMP reset */
 	HNS3_VF_RESET,
-	HNS3_FUNC_RESET,    /* A PF function reset */
+
+	/*
+	 * The enumeration value of HNS3_FUNC_RESET/HNS3_GLOBAL_RESET/
+	 * HNS3_IMP_RESET/HNS3_NONE_RESET are also used by firmware, and
+	 * can not be changed.
+	 */
+
+	HNS3_FUNC_RESET = 5,    /* A PF function reset */
+
 	/* All PFs under the rootport perform a global reset */
 	HNS3_GLOBAL_RESET,
 	HNS3_IMP_RESET,     /* All PFs under the rootport perform a IMP reset */
+	HNS3_NONE_RESET,
 	HNS3_MAX_RESET
 };
 
@@ -846,6 +857,7 @@ enum {
 #define HNS3_DEV_SUPPORT_STASH_B		0x7
 #define HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B	0x9
 #define HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B	0xA
+#define HNS3_DEV_SUPPORT_RAS_IMP_B		0xB
 
 #define hns3_dev_dcb_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
@@ -881,6 +893,9 @@ enum {
 
 #define hns3_dev_outer_udp_cksum_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B)
+
+#define hns3_dev_ras_imp_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_RAS_IMP_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)adapter)->hw)

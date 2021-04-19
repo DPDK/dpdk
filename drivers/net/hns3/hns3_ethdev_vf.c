@@ -2465,7 +2465,8 @@ hns3vf_is_reset_pending(struct hns3_adapter *hns)
 	/* Check the registers to confirm whether there is reset pending */
 	hns3vf_check_event_cause(hns, NULL);
 	reset = hns3vf_get_reset_level(hw, &hw->reset.pending);
-	if (hw->reset.level != HNS3_NONE_RESET && hw->reset.level < reset) {
+	if (hw->reset.level != HNS3_NONE_RESET && reset != HNS3_NONE_RESET &&
+	    hw->reset.level < reset) {
 		hns3_warn(hw, "High level reset %d is pending", reset);
 		return true;
 	}

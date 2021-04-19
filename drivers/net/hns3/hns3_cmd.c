@@ -237,7 +237,12 @@ hns3_is_special_opcode(uint16_t opcode)
 				  HNS3_OPC_STATS_MAC,
 				  HNS3_OPC_STATS_MAC_ALL,
 				  HNS3_OPC_QUERY_32_BIT_REG,
-				  HNS3_OPC_QUERY_64_BIT_REG};
+				  HNS3_OPC_QUERY_64_BIT_REG,
+				  HNS3_OPC_QUERY_CLEAR_MPF_RAS_INT,
+				  HNS3_OPC_QUERY_CLEAR_PF_RAS_INT,
+				  HNS3_OPC_QUERY_CLEAR_ALL_MPF_MSIX_INT,
+				  HNS3_OPC_QUERY_CLEAR_ALL_PF_MSIX_INT,
+				  HNS3_OPC_QUERY_ALL_ERR_INFO,};
 	uint32_t i;
 
 	for (i = 0; i < ARRAY_SIZE(spec_opcode); i++)
@@ -449,6 +454,8 @@ hns3_parse_capability(struct hns3_hw *hw,
 	if (hns3_get_bit(caps, HNS3_CAPS_UDP_TUNNEL_CSUM_B))
 		hns3_set_bit(hw->capability,
 				HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_RAS_IMP_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_RAS_IMP_B, 1);
 }
 
 static uint32_t
