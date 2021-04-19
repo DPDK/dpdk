@@ -1588,6 +1588,13 @@ struct rte_eth_dev_info {
 };
 
 /**
+ * RX/TX queue states
+ */
+#define RTE_ETH_QUEUE_STATE_STOPPED 0
+#define RTE_ETH_QUEUE_STATE_STARTED 1
+#define RTE_ETH_QUEUE_STATE_HAIRPIN 2
+
+/**
  * Ethernet device RX queue information structure.
  * Used to retrieve information about configured queue.
  */
@@ -1595,6 +1602,7 @@ struct rte_eth_rxq_info {
 	struct rte_mempool *mp;     /**< mempool used by that queue. */
 	struct rte_eth_rxconf conf; /**< queue config parameters. */
 	uint8_t scattered_rx;       /**< scattered packets RX supported. */
+	uint8_t queue_state;        /**< one of RTE_ETH_QUEUE_STATE_*. */
 	uint16_t nb_desc;           /**< configured number of RXDs. */
 	uint16_t rx_buf_size;       /**< hardware receive buffer size. */
 } __rte_cache_min_aligned;
@@ -1606,6 +1614,7 @@ struct rte_eth_rxq_info {
 struct rte_eth_txq_info {
 	struct rte_eth_txconf conf; /**< queue config parameters. */
 	uint16_t nb_desc;           /**< configured number of TXDs. */
+	uint8_t queue_state;        /**< one of RTE_ETH_QUEUE_STATE_*. */
 } __rte_cache_min_aligned;
 
 /* Generic Burst mode flag definition, values can be ORed. */

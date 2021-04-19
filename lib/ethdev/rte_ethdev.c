@@ -5038,6 +5038,8 @@ rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 
 	memset(qinfo, 0, sizeof(*qinfo));
 	dev->dev_ops->rxq_info_get(dev, queue_id, qinfo);
+	qinfo->queue_state = dev->data->rx_queue_state[queue_id];
+
 	return 0;
 }
 
@@ -5078,6 +5080,7 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 
 	memset(qinfo, 0, sizeof(*qinfo));
 	dev->dev_ops->txq_info_get(dev, queue_id, qinfo);
+	qinfo->queue_state = dev->data->tx_queue_state[queue_id];
 
 	return 0;
 }

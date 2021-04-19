@@ -81,6 +81,13 @@ New Features
       representor=[[c#]pf#]sf# sf[0,2-1023] /* 1023 SFs.                     */
       representor=[c#]pf#      c2pf[0,1]    /* 2 PFs on controller 2.        */
 
+* **Added queue state in queried Rx/Tx queue info.**
+
+  * Added new field ``queue_state`` to ``rte_eth_rxq_info`` structure to
+    provide indicated Rx queue state.
+  * Added new field ``queue_state`` to ``rte_eth_txq_info`` structure to
+    provide indicated Tx queue state.
+
 * **Added support for meter PPS profile.**
 
   Added packet mode in the meter profile parameters data structures
