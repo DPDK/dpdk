@@ -630,6 +630,8 @@ extern struct mplsoudp_decap_conf mplsoudp_decap_conf;
 
 extern enum rte_eth_rx_mq_mode rx_mq_mode;
 
+extern struct rte_flow_action_conntrack conntrack_context;
+
 static inline unsigned int
 lcore_num(void)
 {

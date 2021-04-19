@@ -3796,6 +3796,8 @@ This section lists supported pattern items and their attributes, if any.
    - ``value {unsigned}``: A bitmask that specify what packet elements
      must be matched for integrity.
 
+- ``conntrack``: match conntrack state.
+
 Actions list
 ^^^^^^^^^^^^
 
@@ -4954,6 +4956,39 @@ General packet integrity is matched with the ``packet_ok`` bit 0.
 ::
 
  testpmd> flow create 0 ingress pattern integrity value mask 1 value spec 0 / end actions queue index 0 / end
+
+Sample conntrack rules
+~~~~~~~~~~~~~~~~~~~~~~
+
+Conntrack rules can be set by the following commands
+
+Need to construct the connection context with provided information.
+In the first table, create a flow rule by using conntrack action and jump to
+the next table. In the next table, create a rule to check the state.
+
+::
+
+ testpmd> set conntrack com peer 1 is_orig 1 enable 1 live 1 sack 1 cack 0
+        last_dir 0 liberal 0 state 1 max_ack_win 7 r_lim 5 last_win 510
+        last_seq 2632987379 last_ack 2532480967 last_end 2632987379
+        last_index 0x8
+ testpmd> set conntrack orig scale 7 fin 0 acked 1 unack_data 0
+        sent_end 2632987379 reply_end 2633016339 max_win 28960
+        max_ack 2632987379
+ testpmd> set conntrack rply scale 7 fin 0 acked 1 unack_data 0
+        sent_end 2532480967 reply_end 2532546247 max_win 65280
+        max_ack 2532480967
+ testpmd> flow indirect_action 0 create ingress action conntrack / end
+ testpmd> flow create 0 group 3 ingress pattern eth / ipv4 / tcp / end actions indirect 0 / jump group 5 / end
+ testpmd> flow create 0 group 5 ingress pattern eth / ipv4 / tcp / conntrack is 1 / end actions queue index 5 / end
+
+Construct the conntrack again with only "is_orig" set to 0 (other fields are
+ignored), then use "update" interface to update the direction. Create flow
+rules like above for the peer port.
+
+::
+
+ testpmd> flow indirect_action 0 update 0 action conntrack_update dir / end
 
 BPF Functions
 --------------

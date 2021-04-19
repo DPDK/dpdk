@@ -13621,6 +13621,359 @@ cmdline_parse_inst_t cmd_set_mplsoudp_decap_with_vlan = {
 	},
 };
 
+/** Set connection tracking object common details */
+struct cmd_set_conntrack_common_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t conntrack;
+	cmdline_fixed_string_t common;
+	cmdline_fixed_string_t peer;
+	cmdline_fixed_string_t is_orig;
+	cmdline_fixed_string_t enable;
+	cmdline_fixed_string_t live;
+	cmdline_fixed_string_t sack;
+	cmdline_fixed_string_t cack;
+	cmdline_fixed_string_t last_dir;
+	cmdline_fixed_string_t liberal;
+	cmdline_fixed_string_t state;
+	cmdline_fixed_string_t max_ack_win;
+	cmdline_fixed_string_t retrans;
+	cmdline_fixed_string_t last_win;
+	cmdline_fixed_string_t last_seq;
+	cmdline_fixed_string_t last_ack;
+	cmdline_fixed_string_t last_end;
+	cmdline_fixed_string_t last_index;
+	uint8_t stat;
+	uint8_t factor;
+	uint16_t peer_port;
+	uint32_t is_original;
+	uint32_t en;
+	uint32_t is_live;
+	uint32_t s_ack;
+	uint32_t c_ack;
+	uint32_t ld;
+	uint32_t lb;
+	uint8_t re_num;
+	uint8_t li;
+	uint16_t lw;
+	uint32_t ls;
+	uint32_t la;
+	uint32_t le;
+};
+
+cmdline_parse_token_string_t cmd_set_conntrack_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 set, "set");
+cmdline_parse_token_string_t cmd_set_conntrack_conntrack =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 conntrack, "conntrack");
+cmdline_parse_token_string_t cmd_set_conntrack_common_com =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 common, "com");
+cmdline_parse_token_string_t cmd_set_conntrack_common_peer =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 peer, "peer");
+cmdline_parse_token_num_t cmd_set_conntrack_common_peer_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      peer_port, RTE_UINT16);
+cmdline_parse_token_string_t cmd_set_conntrack_common_is_orig =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 is_orig, "is_orig");
+cmdline_parse_token_num_t cmd_set_conntrack_common_is_orig_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      is_original, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_enable =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 enable, "enable");
+cmdline_parse_token_num_t cmd_set_conntrack_common_enable_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      en, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_live =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 live, "live");
+cmdline_parse_token_num_t cmd_set_conntrack_common_live_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      is_live, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_sack =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 sack, "sack");
+cmdline_parse_token_num_t cmd_set_conntrack_common_sack_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      s_ack, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_cack =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 cack, "cack");
+cmdline_parse_token_num_t cmd_set_conntrack_common_cack_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      c_ack, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_last_dir =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 last_dir, "last_dir");
+cmdline_parse_token_num_t cmd_set_conntrack_common_last_dir_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      ld, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_liberal =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 liberal, "liberal");
+cmdline_parse_token_num_t cmd_set_conntrack_common_liberal_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      lb, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_state =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 state, "state");
+cmdline_parse_token_num_t cmd_set_conntrack_common_state_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      stat, RTE_UINT8);
+cmdline_parse_token_string_t cmd_set_conntrack_common_max_ackwin =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 max_ack_win, "max_ack_win");
+cmdline_parse_token_num_t cmd_set_conntrack_common_max_ackwin_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      factor, RTE_UINT8);
+cmdline_parse_token_string_t cmd_set_conntrack_common_retrans =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 retrans, "r_lim");
+cmdline_parse_token_num_t cmd_set_conntrack_common_retrans_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      re_num, RTE_UINT8);
+cmdline_parse_token_string_t cmd_set_conntrack_common_last_win =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 last_win, "last_win");
+cmdline_parse_token_num_t cmd_set_conntrack_common_last_win_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      lw, RTE_UINT16);
+cmdline_parse_token_string_t cmd_set_conntrack_common_last_seq =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 last_seq, "last_seq");
+cmdline_parse_token_num_t cmd_set_conntrack_common_last_seq_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      ls, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_last_ack =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 last_ack, "last_ack");
+cmdline_parse_token_num_t cmd_set_conntrack_common_last_ack_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      la, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_last_end =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 last_end, "last_end");
+cmdline_parse_token_num_t cmd_set_conntrack_common_last_end_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      le, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_common_last_index =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_common_result,
+				 last_index, "last_index");
+cmdline_parse_token_num_t cmd_set_conntrack_common_last_index_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_common_result,
+			      li, RTE_UINT8);
+
+static void cmd_set_conntrack_common_parsed(void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
+{
+	struct cmd_set_conntrack_common_result *res = parsed_result;
+
+	/* No need to swap to big endian. */
+	conntrack_context.peer_port = res->peer_port;
+	conntrack_context.is_original_dir = res->is_original;
+	conntrack_context.enable = res->en;
+	conntrack_context.live_connection = res->is_live;
+	conntrack_context.selective_ack = res->s_ack;
+	conntrack_context.challenge_ack_passed = res->c_ack;
+	conntrack_context.last_direction = res->ld;
+	conntrack_context.liberal_mode = res->lb;
+	conntrack_context.state = (enum rte_flow_conntrack_state)res->stat;
+	conntrack_context.max_ack_window = res->factor;
+	conntrack_context.retransmission_limit = res->re_num;
+	conntrack_context.last_window = res->lw;
+	conntrack_context.last_index =
+		(enum rte_flow_conntrack_tcp_last_index)res->li;
+	conntrack_context.last_seq = res->ls;
+	conntrack_context.last_ack = res->la;
+	conntrack_context.last_end = res->le;
+}
+
+cmdline_parse_inst_t cmd_set_conntrack_common = {
+	.f = cmd_set_conntrack_common_parsed,
+	.data = NULL,
+	.help_str = "set conntrack com peer <port_id> is_orig <dir> enable <en>"
+		" live <ack_seen> sack <en> cack <passed> last_dir <dir>"
+		" liberal <en> state <s> max_ack_win <factor> r_lim <num>"
+		" last_win <win> last_seq <seq> last_ack <ack> last_end <end>"
+		" last_index <flag>",
+	.tokens = {
+		(void *)&cmd_set_conntrack_set,
+		(void *)&cmd_set_conntrack_conntrack,
+		(void *)&cmd_set_conntrack_common_com,
+		(void *)&cmd_set_conntrack_common_peer,
+		(void *)&cmd_set_conntrack_common_peer_value,
+		(void *)&cmd_set_conntrack_common_is_orig,
+		(void *)&cmd_set_conntrack_common_is_orig_value,
+		(void *)&cmd_set_conntrack_common_enable,
+		(void *)&cmd_set_conntrack_common_enable_value,
+		(void *)&cmd_set_conntrack_common_live,
+		(void *)&cmd_set_conntrack_common_live_value,
+		(void *)&cmd_set_conntrack_common_sack,
+		(void *)&cmd_set_conntrack_common_sack_value,
+		(void *)&cmd_set_conntrack_common_cack,
+		(void *)&cmd_set_conntrack_common_cack_value,
+		(void *)&cmd_set_conntrack_common_last_dir,
+		(void *)&cmd_set_conntrack_common_last_dir_value,
+		(void *)&cmd_set_conntrack_common_liberal,
+		(void *)&cmd_set_conntrack_common_liberal_value,
+		(void *)&cmd_set_conntrack_common_state,
+		(void *)&cmd_set_conntrack_common_state_value,
+		(void *)&cmd_set_conntrack_common_max_ackwin,
+		(void *)&cmd_set_conntrack_common_max_ackwin_value,
+		(void *)&cmd_set_conntrack_common_retrans,
+		(void *)&cmd_set_conntrack_common_retrans_value,
+		(void *)&cmd_set_conntrack_common_last_win,
+		(void *)&cmd_set_conntrack_common_last_win_value,
+		(void *)&cmd_set_conntrack_common_last_seq,
+		(void *)&cmd_set_conntrack_common_last_seq_value,
+		(void *)&cmd_set_conntrack_common_last_ack,
+		(void *)&cmd_set_conntrack_common_last_ack_value,
+		(void *)&cmd_set_conntrack_common_last_end,
+		(void *)&cmd_set_conntrack_common_last_end_value,
+		(void *)&cmd_set_conntrack_common_last_index,
+		(void *)&cmd_set_conntrack_common_last_index_value,
+		NULL,
+	},
+};
+
+/** Set connection tracking object both directions' details */
+struct cmd_set_conntrack_dir_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t conntrack;
+	cmdline_fixed_string_t dir;
+	cmdline_fixed_string_t scale;
+	cmdline_fixed_string_t fin;
+	cmdline_fixed_string_t ack_seen;
+	cmdline_fixed_string_t unack;
+	cmdline_fixed_string_t sent_end;
+	cmdline_fixed_string_t reply_end;
+	cmdline_fixed_string_t max_win;
+	cmdline_fixed_string_t max_ack;
+	uint32_t factor;
+	uint32_t f;
+	uint32_t as;
+	uint32_t un;
+	uint32_t se;
+	uint32_t re;
+	uint32_t mw;
+	uint32_t ma;
+};
+
+cmdline_parse_token_string_t cmd_set_conntrack_dir_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 set, "set");
+cmdline_parse_token_string_t cmd_set_conntrack_dir_conntrack =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 conntrack, "conntrack");
+cmdline_parse_token_string_t cmd_set_conntrack_dir_dir =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 dir, "orig#rply");
+cmdline_parse_token_string_t cmd_set_conntrack_dir_scale =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 scale, "scale");
+cmdline_parse_token_num_t cmd_set_conntrack_dir_scale_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_dir_result,
+			      factor, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_dir_fin =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 fin, "fin");
+cmdline_parse_token_num_t cmd_set_conntrack_dir_fin_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_dir_result,
+			      f, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_dir_ack =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 ack_seen, "acked");
+cmdline_parse_token_num_t cmd_set_conntrack_dir_ack_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_dir_result,
+			      as, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_dir_unack_data =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 unack, "unack_data");
+cmdline_parse_token_num_t cmd_set_conntrack_dir_unack_data_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_dir_result,
+			      un, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_dir_sent_end =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 sent_end, "sent_end");
+cmdline_parse_token_num_t cmd_set_conntrack_dir_sent_end_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_dir_result,
+			      se, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_dir_reply_end =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 reply_end, "reply_end");
+cmdline_parse_token_num_t cmd_set_conntrack_dir_reply_end_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_dir_result,
+			      re, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_dir_max_win =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 max_win, "max_win");
+cmdline_parse_token_num_t cmd_set_conntrack_dir_max_win_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_dir_result,
+			      mw, RTE_UINT32);
+cmdline_parse_token_string_t cmd_set_conntrack_dir_max_ack =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_conntrack_dir_result,
+				 max_ack, "max_ack");
+cmdline_parse_token_num_t cmd_set_conntrack_dir_max_ack_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_conntrack_dir_result,
+			      ma, RTE_UINT32);
+
+static void cmd_set_conntrack_dir_parsed(void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
+{
+	struct cmd_set_conntrack_dir_result *res = parsed_result;
+	struct rte_flow_tcp_dir_param *dir = NULL;
+
+	if (strcmp(res->dir, "orig") == 0)
+		dir = &conntrack_context.original_dir;
+	else if (strcmp(res->dir, "rply") == 0)
+		dir = &conntrack_context.reply_dir;
+	else
+		return;
+	dir->scale = res->factor;
+	dir->close_initiated = res->f;
+	dir->last_ack_seen = res->as;
+	dir->data_unacked = res->un;
+	dir->sent_end = res->se;
+	dir->reply_end = res->re;
+	dir->max_ack = res->ma;
+	dir->max_win = res->mw;
+}
+
+cmdline_parse_inst_t cmd_set_conntrack_dir = {
+	.f = cmd_set_conntrack_dir_parsed,
+	.data = NULL,
+	.help_str = "set conntrack orig|rply scale <factor> fin <sent>"
+		    " acked <seen> unack_data <unack> sent_end <sent>"
+		    " reply_end <reply> max_win <win> max_ack <ack>",
+	.tokens = {
+		(void *)&cmd_set_conntrack_set,
+		(void *)&cmd_set_conntrack_conntrack,
+		(void *)&cmd_set_conntrack_dir_dir,
+		(void *)&cmd_set_conntrack_dir_scale,
+		(void *)&cmd_set_conntrack_dir_scale_value,
+		(void *)&cmd_set_conntrack_dir_fin,
+		(void *)&cmd_set_conntrack_dir_fin_value,
+		(void *)&cmd_set_conntrack_dir_ack,
+		(void *)&cmd_set_conntrack_dir_ack_value,
+		(void *)&cmd_set_conntrack_dir_unack_data,
+		(void *)&cmd_set_conntrack_dir_unack_data_value,
+		(void *)&cmd_set_conntrack_dir_sent_end,
+		(void *)&cmd_set_conntrack_dir_sent_end_value,
+		(void *)&cmd_set_conntrack_dir_reply_end,
+		(void *)&cmd_set_conntrack_dir_reply_end_value,
+		(void *)&cmd_set_conntrack_dir_max_win,
+		(void *)&cmd_set_conntrack_dir_max_win_value,
+		(void *)&cmd_set_conntrack_dir_max_ack,
+		(void *)&cmd_set_conntrack_dir_max_ack_value,
+		NULL,
+	},
+};
+
 /* Strict link priority scheduling mode setting */
 static void
 cmd_strict_link_prio_parsed(
@@ -17120,6 +17473,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_encap_with_vlan,
 	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_decap,
 	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_decap_with_vlan,
+	(cmdline_parse_inst_t *)&cmd_set_conntrack_common,
+	(cmdline_parse_inst_t *)&cmd_set_conntrack_dir,
 	(cmdline_parse_inst_t *)&cmd_ddp_add,
 	(cmdline_parse_inst_t *)&cmd_ddp_del,
 	(cmdline_parse_inst_t *)&cmd_ddp_get_list,

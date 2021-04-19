@@ -298,6 +298,7 @@ enum index {
 	ITEM_INTEGRITY,
 	ITEM_INTEGRITY_LEVEL,
 	ITEM_INTEGRITY_VALUE,
+	ITEM_CONNTRACK,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -436,6 +437,10 @@ enum index {
 	ACTION_MODIFY_FIELD_SRC_OFFSET,
 	ACTION_MODIFY_FIELD_SRC_VALUE,
 	ACTION_MODIFY_FIELD_WIDTH,
+	ACTION_CONNTRACK,
+	ACTION_CONNTRACK_UPDATE,
+	ACTION_CONNTRACK_UPDATE_DIR,
+	ACTION_CONNTRACK_UPDATE_CTX,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -573,6 +578,8 @@ struct mplsogre_decap_conf mplsogre_decap_conf;
 struct mplsoudp_encap_conf mplsoudp_encap_conf;
 
 struct mplsoudp_decap_conf mplsoudp_decap_conf;
+
+struct rte_flow_action_conntrack conntrack_context;
 
 #define ACTION_SAMPLE_ACTIONS_NUM 10
 #define RAW_SAMPLE_CONFS_MAX_NUM 8
@@ -974,6 +981,7 @@ static const enum index next_item[] = {
 	ITEM_ECPRI,
 	ITEM_GENEVE_OPT,
 	ITEM_INTEGRITY,
+	ITEM_CONNTRACK,
 	END_SET,
 	ZERO,
 };
@@ -1403,6 +1411,8 @@ static const enum index next_action[] = {
 	ACTION_SAMPLE,
 	ACTION_INDIRECT,
 	ACTION_MODIFY_FIELD,
+	ACTION_CONNTRACK,
+	ACTION_CONNTRACK_UPDATE,
 	ZERO,
 };
 
@@ -1671,6 +1681,13 @@ static const enum index action_modify_field_src[] = {
 	ZERO,
 };
 
+static const enum index action_update_conntrack[] = {
+	ACTION_CONNTRACK_UPDATE_DIR,
+	ACTION_CONNTRACK_UPDATE_CTX,
+	ACTION_NEXT,
+	ZERO,
+};
+
 static int parse_set_raw_encap_decap(struct context *, const struct token *,
 				     const char *, unsigned int,
 				     void *, unsigned int);
@@ -1761,6 +1778,10 @@ static int
 parse_vc_modify_field_id(struct context *ctx, const struct token *token,
 				const char *str, unsigned int len, void *buf,
 				unsigned int size);
+static int
+parse_vc_action_conntrack_update(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len, void *buf,
+			 unsigned int size);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -3458,6 +3479,13 @@ static const struct token token_list[] = {
 			     item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_integrity, value)),
 	},
+	[ITEM_CONNTRACK] = {
+		.name = "conntrack",
+		.help = "conntrack state",
+		.next = NEXT(NEXT_ENTRY(ITEM_NEXT), NEXT_ENTRY(UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_conntrack, flags)),
+	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
@@ -4555,6 +4583,34 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc_action_sample_index,
 		.comp = comp_set_sample_index,
+	},
+	[ACTION_CONNTRACK] = {
+		.name = "conntrack",
+		.help = "create a conntrack object",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.priv = PRIV_ACTION(CONNTRACK,
+				    sizeof(struct rte_flow_action_conntrack)),
+		.call = parse_vc,
+	},
+	[ACTION_CONNTRACK_UPDATE] = {
+		.name = "conntrack_update",
+		.help = "update a conntrack object",
+		.next = NEXT(action_update_conntrack),
+		.priv = PRIV_ACTION(CONNTRACK,
+				    sizeof(struct rte_flow_modify_conntrack)),
+		.call = parse_vc,
+	},
+	[ACTION_CONNTRACK_UPDATE_DIR] = {
+		.name = "dir",
+		.help = "update a conntrack object direction",
+		.next = NEXT(action_update_conntrack),
+		.call = parse_vc_action_conntrack_update,
+	},
+	[ACTION_CONNTRACK_UPDATE_CTX] = {
+		.name = "ctx",
+		.help = "update a conntrack object context",
+		.next = NEXT(action_update_conntrack),
+		.call = parse_vc_action_conntrack_update,
 	},
 	/* Indirect action destroy arguments. */
 	[INDIRECT_ACTION_DESTROY_ID] = {
@@ -6359,6 +6415,42 @@ parse_vc_modify_field_id(struct context *ctx, const struct token *token,
 		action_modify_field->dst.field = (enum rte_flow_field_id)i;
 	else
 		action_modify_field->src.field = (enum rte_flow_field_id)i;
+	return len;
+}
+
+/** Parse the conntrack update, not a rte_flow_action. */
+static int
+parse_vc_action_conntrack_update(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len, void *buf,
+			 unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_modify_conntrack *ct_modify = NULL;
+
+	(void)size;
+	if (ctx->curr != ACTION_CONNTRACK_UPDATE_CTX &&
+	    ctx->curr != ACTION_CONNTRACK_UPDATE_DIR)
+		return -1;
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	ct_modify = (struct rte_flow_modify_conntrack *)out->args.vc.data;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (ctx->curr == ACTION_CONNTRACK_UPDATE_DIR) {
+		ct_modify->new_ct.is_original_dir =
+				conntrack_context.is_original_dir;
+		ct_modify->direction = 1;
+	} else {
+		uint32_t old_dir;
+
+		old_dir = ct_modify->new_ct.is_original_dir;
+		memcpy(&ct_modify->new_ct, &conntrack_context,
+		       sizeof(conntrack_context));
+		ct_modify->new_ct.is_original_dir = old_dir;
+		ct_modify->state = 1;
+	}
 	return len;
 }
 

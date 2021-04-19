@@ -1485,6 +1485,11 @@ port_action_handle_create(portid_t port_id, uint32_t id,
 
 		pia->age_type = ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION;
 		age->context = &pia->age_type;
+	} else if (action->type == RTE_FLOW_ACTION_TYPE_CONNTRACK) {
+		struct rte_flow_action_conntrack *ct =
+		(struct rte_flow_action_conntrack *)(uintptr_t)(action->conf);
+
+		memcpy(ct, &conntrack_context, sizeof(*ct));
 	}
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x22, sizeof(error));
@@ -1566,11 +1571,24 @@ port_action_handle_update(portid_t port_id, uint32_t id,
 {
 	struct rte_flow_error error;
 	struct rte_flow_action_handle *action_handle;
+	struct port_indirect_action *pia;
+	const void *update;
 
 	action_handle = port_action_handle_get_by_id(port_id, id);
 	if (!action_handle)
 		return -EINVAL;
-	if (rte_flow_action_handle_update(port_id, action_handle, action,
+	pia = action_get_by_id(port_id, id);
+	if (!pia)
+		return -EINVAL;
+	switch (pia->type) {
+	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+		update = action->conf;
+		break;
+	default:
+		update = action;
+		break;
+	}
+	if (rte_flow_action_handle_update(port_id, action_handle, update,
 					  &error)) {
 		return port_flow_complain(&error);
 	}
@@ -1620,6 +1638,51 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 			       resp->aged,
 			       resp->sec_since_last_hit_valid,
 			       resp->sec_since_last_hit);
+		}
+		data = NULL;
+		break;
+	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+		if (!ret) {
+			struct rte_flow_action_conntrack *ct = data;
+
+			printf("Conntrack Context:\n"
+			       "  Peer: %u, Flow dir: %s, Enable: %u\n"
+			       "  Live: %u, SACK: %u, CACK: %u\n"
+			       "  Packet dir: %s, Liberal: %u, State: %u\n"
+			       "  Factor: %u, Retrans: %u, TCP flags: %u\n"
+			       "  Last Seq: %u, Last ACK: %u\n"
+			       "  Last Win: %u, Last End: %u\n",
+			       ct->peer_port,
+			       ct->is_original_dir ? "Original" : "Reply",
+			       ct->enable, ct->live_connection,
+			       ct->selective_ack, ct->challenge_ack_passed,
+			       ct->last_direction ? "Original" : "Reply",
+			       ct->liberal_mode, ct->state,
+			       ct->max_ack_window, ct->retransmission_limit,
+			       ct->last_index, ct->last_seq, ct->last_ack,
+			       ct->last_window, ct->last_end);
+			printf("  Original Dir:\n"
+			       "    scale: %u, fin: %u, ack seen: %u\n"
+			       " unacked data: %u\n    Sent end: %u,"
+			       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
+			       ct->original_dir.scale,
+			       ct->original_dir.close_initiated,
+			       ct->original_dir.last_ack_seen,
+			       ct->original_dir.data_unacked,
+			       ct->original_dir.sent_end,
+			       ct->original_dir.reply_end,
+			       ct->original_dir.max_win,
+			       ct->original_dir.max_ack);
+			printf("  Reply Dir:\n"
+			       "    scale: %u, fin: %u, ack seen: %u\n"
+			       " unacked data: %u\n    Sent end: %u,"
+			       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
+			       ct->reply_dir.scale,
+			       ct->reply_dir.close_initiated,
+			       ct->reply_dir.last_ack_seen,
+			       ct->reply_dir.data_unacked,
+			       ct->reply_dir.sent_end, ct->reply_dir.reply_end,
+			       ct->reply_dir.max_win, ct->reply_dir.max_ack);
 		}
 		data = NULL;
 		break;
