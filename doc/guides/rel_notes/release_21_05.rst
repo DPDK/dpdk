@@ -94,6 +94,11 @@ New Features
   to support metering traffic by packet per second (PPS),
   in addition to the initial bytes per second (BPS) mode (value 0).
 
+* **Added packet integrity match to flow rules.**
+
+  * Added ``RTE_FLOW_ITEM_TYPE_INTEGRITY`` flow item.
+  * Added ``rte_flow_item_integrity`` data structure.
+
 * **Updated Arkville PMD driver.**
 
   Updated Arkville net driver with new features and improvements, including:
