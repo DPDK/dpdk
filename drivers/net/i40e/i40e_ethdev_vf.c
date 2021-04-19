@@ -1645,9 +1645,53 @@ i40evf_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+i40evf_check_driver_handler(__rte_unused const char *key,
+			    const char *value, __rte_unused void *opaque)
+{
+	if (strcmp(value, "i40evf"))
+		return -1;
+
+	return 0;
+}
+
+static int
+i40evf_driver_selected(struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+	const char *key = "driver";
+	int ret = 0;
+
+	if (devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, key))
+		goto exit;
+
+	/* i40evf driver selected when there's a key-value pair:
+	 * driver=i40evf
+	 */
+	if (rte_kvargs_process(kvlist, key,
+			       i40evf_check_driver_handler, NULL) < 0)
+		goto exit;
+
+	ret = 1;
+
+exit:
+	rte_kvargs_free(kvlist);
+	return ret;
+}
+
 static int eth_i40evf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
+	if (!i40evf_driver_selected(pci_dev->device.devargs))
+		return 1;
+
 	return rte_eth_dev_pci_generic_probe(pci_dev,
 		sizeof(struct i40e_adapter), i40evf_dev_init);
 }
@@ -1670,6 +1714,7 @@ static struct rte_pci_driver rte_i40evf_pmd = {
 RTE_PMD_REGISTER_PCI(net_i40e_vf, rte_i40evf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_i40e_vf, pci_id_i40evf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_i40e_vf, "* igb_uio | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_i40e_vf, "driver=i40evf");
 
 static int
 i40evf_dev_configure(struct rte_eth_dev *dev)

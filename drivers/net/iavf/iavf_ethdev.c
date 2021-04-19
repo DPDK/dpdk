@@ -125,6 +125,10 @@ static int iavf_set_mc_addr_list(struct rte_eth_dev *dev,
 
 static const struct rte_pci_id pci_id_iavf_map[] = {
 	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_ADAPTIVE_VF) },
+	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_VF) },
+	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_VF_HV) },
+	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_X722_VF) },
+	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_X722_A0_VF) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -2321,10 +2325,59 @@ exit:
 	return ret;
 }
 
+static int
+iavf_drv_i40evf_check_handler(__rte_unused const char *key,
+			      const char *value, __rte_unused void *opaque)
+{
+	if (strcmp(value, "i40evf"))
+		return -1;
+
+	return 0;
+}
+
+static int
+iavf_drv_i40evf_selected(struct rte_devargs *devargs, uint16_t device_id)
+{
+	struct rte_kvargs *kvlist;
+	const char *key = "driver";
+	int ret = 0;
+
+	if (device_id != IAVF_DEV_ID_VF &&
+	    device_id != IAVF_DEV_ID_VF_HV &&
+	    device_id != IAVF_DEV_ID_X722_VF &&
+	    device_id != IAVF_DEV_ID_X722_A0_VF)
+		return 0;
+
+	if (devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, key))
+		goto exit;
+
+	/* i40evf driver selected when there's a key-value pair:
+	 * driver=i40evf
+	 */
+	if (rte_kvargs_process(kvlist, key,
+			       iavf_drv_i40evf_check_handler, NULL) < 0)
+		goto exit;
+
+	ret = 1;
+
+exit:
+	rte_kvargs_free(kvlist);
+	return ret;
+}
+
 static int eth_iavf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			     struct rte_pci_device *pci_dev)
 {
-	if (iavf_dcf_cap_selected(pci_dev->device.devargs))
+	if (iavf_dcf_cap_selected(pci_dev->device.devargs) ||
+	    iavf_drv_i40evf_selected(pci_dev->device.devargs,
+				     pci_dev->id.device_id))
 		return 1;
 
 	return rte_eth_dev_pci_generic_probe(pci_dev,
@@ -2347,7 +2400,7 @@ static struct rte_pci_driver rte_iavf_pmd = {
 RTE_PMD_REGISTER_PCI(net_iavf, rte_iavf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_iavf, pci_id_iavf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_iavf, "* igb_uio | vfio-pci");
-RTE_PMD_REGISTER_PARAM_STRING(net_iavf, "cap=dcf");
+RTE_PMD_REGISTER_PARAM_STRING(net_iavf, "cap=dcf driver=i40evf");
 RTE_LOG_REGISTER(iavf_logtype_init, pmd.net.iavf.init, NOTICE);
 RTE_LOG_REGISTER(iavf_logtype_driver, pmd.net.iavf.driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX

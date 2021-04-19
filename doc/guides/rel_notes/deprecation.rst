@@ -118,6 +118,14 @@ Deprecation Notices
   consistent with existing outer header checksum status flag naming, which
   should help in reducing confusion about its usage.
 
+* i40e: As there are both i40evf and iavf pmd, the functions of them are
+  duplicated. And now more and more advanced features are developed on iavf.
+  To keep consistent with kernel driver's name
+  (https://patchwork.ozlabs.org/patch/970154/), i40evf is no need to maintain.
+  Starting from 21.05, the default VF driver of i40e will be iavf, but i40evf
+  can still be used if users specify the devarg "driver=i40evf". I40evf will
+  be deleted in DPDK 21.11.
+
 * eventdev: The structure ``rte_event_eth_rx_adapter_queue_conf`` will be
   extended to include ``rte_event_eth_rx_adapter_event_vector_config`` elements
   and the function ``rte_event_eth_rx_adapter_queue_event_vector_config`` will

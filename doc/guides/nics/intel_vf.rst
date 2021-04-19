@@ -88,6 +88,12 @@ For more detail on SR-IOV, please refer to the following documents:
     assignment in hypervisor. Take qemu for example, the device assignment should carry the IAVF device id (0x1889) like
     ``-device vfio-pci,x-pci-device-id=0x1889,host=03:0a.0``.
 
+    Starting from DPDK 21.05, the default VF driver for Intel® 700 Series Ethernet Controller will be IAVF. No new feature
+    will be added into i40evf except bug fix until it's removed in DPDK 21.11. Between DPDK 21.05 and 21.11, by using the
+    ``devargs`` option ``driver=i40evf``, i40evf PMD still can be used on Intel® 700 Series Ethernet Controller, for example::
+
+    -a 81:02.0,driver=i40evf
+
     When IAVF is backed by an Intel® E810 device, the "Protocol Extraction" feature which is supported by ice PMD is also
     available for IAVF PMD. The same devargs with the same parameters can be applied to IAVF PMD, for detail please reference
     the section ``Protocol extraction for per queue`` of ice.rst.
