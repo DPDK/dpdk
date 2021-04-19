@@ -229,6 +229,17 @@ soc_bluefield = {
 	'numa': false
 }
 
+soc_cn10k = {
+	'description' : 'Marvell OCTEON 10',
+	'implementer' : '0x41',
+	'flags': [
+		['RTE_MAX_LCORE', 24],
+		['RTE_MAX_NUMA_NODES', 1]
+	],
+	'part_number': '0xd49',
+	'numa': false
+}
+
 soc_dpaa = {
 	'description': 'NXP DPAA',
 	'implementer': '0x41',
@@ -320,6 +331,7 @@ socs = {
 	'generic': soc_generic,
 	'armada': soc_armada,
 	'bluefield': soc_bluefield,
+	'cn10k' : soc_cn10k,
 	'dpaa': soc_dpaa,
 	'emag': soc_emag,
 	'graviton2': soc_graviton2,
