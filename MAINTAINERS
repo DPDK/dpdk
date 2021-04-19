@@ -1430,6 +1430,7 @@ Hashes
 M: Yipeng Wang <yipeng1.wang@intel.com>
 M: Sameh Gobriel <sameh.gobriel@intel.com>
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 F: lib/librte_hash/
 F: doc/guides/prog_guide/hash_lib.rst
 F: doc/guides/prog_guide/toeplitz_hash_lib.rst

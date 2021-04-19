@@ -203,6 +203,12 @@ New Features
     the events across multiple stages.
   * This also reduced the scheduling overhead on a event device.
 
+* **Added Predictable RSS functionality to the Toeplitz hash library.**
+
+  Added feature for finding collisions of the Toeplitz hash function -
+  the hash function used in NICs to spread the traffic among the queues.
+  It can be used to get predictable mapping of the flows.
+
 * **Updated testpmd.**
 
   * Added a command line option to configure forced speed for Ethernet port.

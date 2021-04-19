@@ -8,6 +8,7 @@ headers = files('rte_fbk_hash.h',
 	'rte_thash.h')
 indirect_headers += files('rte_crc_arm64.h')
 
-sources = files('rte_cuckoo_hash.c', 'rte_fbk_hash.c')
+sources = files('rte_cuckoo_hash.c', 'rte_fbk_hash.c', 'rte_thash.c')
+deps += ['net']
 deps += ['ring']
 deps += ['rcu']

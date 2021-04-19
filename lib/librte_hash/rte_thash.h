@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2015-2019 Vladimir Medvedkin <medvedkinv@gmail.com>
+ * Copyright(c) 2021 Intel Corporation
  */
 
 #ifndef _RTE_THASH_H
@@ -221,6 +222,228 @@ rte_softrss_be(uint32_t *input_tuple, uint32_t input_len,
 	}
 	return ret;
 }
+
+/** @internal Logarithm of minimum size of the RSS ReTa */
+#define	RTE_THASH_RETA_SZ_MIN	2U
+/** @internal Logarithm of maximum size of the RSS ReTa */
+#define	RTE_THASH_RETA_SZ_MAX	16U
+
+/**
+ * LFSR will ignore if generated m-sequence has more than 2^n -1 bits,
+ * where n is the logarithm of the RSS ReTa size.
+ */
+#define RTE_THASH_IGNORE_PERIOD_OVERFLOW	0x1
+/**
+ * Generate minimal required bit (equal to ReTa LSB) sequence into
+ * the hash_key
+ */
+#define RTE_THASH_MINIMAL_SEQ			0x2
+
+/** @internal thash context structure. */
+struct rte_thash_ctx;
+/** @internal thash helper structure. */
+struct rte_thash_subtuple_helper;
+
+/**
+ * Create a new thash context.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param name
+ *  Context name
+ * @param key_len
+ *  Length of the toeplitz hash key
+ * @param reta_sz
+ *  Logarithm of the NIC's Redirection Table (ReTa) size,
+ *  i.e. number of the LSBs if the hash used to determine
+ *  the reta entry.
+ * @param key
+ *  Pointer to the key used to init an internal key state.
+ *  Could be NULL, in this case internal key will be inited with random.
+ * @param flags
+ *  Supported flags are:
+ *   RTE_THASH_IGNORE_PERIOD_OVERFLOW
+ *   RTE_THASH_MINIMAL_SEQ
+ * @return
+ *  A pointer to the created context on success
+ *  NULL otherwise
+ */
+__rte_experimental
+struct rte_thash_ctx *
+rte_thash_init_ctx(const char *name, uint32_t key_len, uint32_t reta_sz,
+	uint8_t *key, uint32_t flags);
+
+/**
+ * Find an existing thash context and return a pointer to it.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param name
+ *  Name of the thash context
+ * @return
+ *  Pointer to the thash context or NULL if it was not found with rte_errno
+ *  set appropriately. Possible rte_errno values include:
+ *   - ENOENT - required entry not available to return.
+ */
+__rte_experimental
+struct rte_thash_ctx *
+rte_thash_find_existing(const char *name);
+
+/**
+ * Free a thash context object
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param ctx
+ *  Thash context
+ * @return
+ *  None
+ */
+__rte_experimental
+void
+rte_thash_free_ctx(struct rte_thash_ctx *ctx);
+
+/**
+ * Add a special properties to the toeplitz hash key inside a thash context.
+ * Creates an internal helper struct which has a complementary table
+ * to calculate toeplitz hash collisions.
+ * This function is not multi-thread safe.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param ctx
+ *  Thash context
+ * @param name
+ *  Name of the helper
+ * @param len
+ *  Length in bits of the target subtuple
+ *  Must be no shorter than reta_sz passed on rte_thash_init_ctx().
+ * @param offset
+ *  Offset in bits of the subtuple
+ * @return
+ *  0 on success
+ *  negative on error
+ */
+__rte_experimental
+int
+rte_thash_add_helper(struct rte_thash_ctx *ctx, const char *name, uint32_t len,
+	uint32_t offset);
+
+/**
+ * Find a helper in the context by the given name
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param ctx
+ *  Thash context
+ * @param name
+ *  Name of the helper
+ * @return
+ *  Pointer to the thash helper or NULL if it was not found.
+ */
+__rte_experimental
+struct rte_thash_subtuple_helper *
+rte_thash_get_helper(struct rte_thash_ctx *ctx, const char *name);
+
+/**
+ * Get a complementary value for the subtuple to produce a
+ * partial toeplitz hash collision. It must be XOR'ed with the
+ * subtuple to produce the hash value with the desired hash LSB's
+ * This function is multi-thread safe.
+ *
+ * @param h
+ *  Pointer to the helper struct
+ * @param hash
+ *  Toeplitz hash value calculated for the given tuple
+ * @param desired_hash
+ *  Desired hash value to find a collision for
+ * @return
+ *  A complementary value which must be xored with the corresponding subtuple
+ */
+__rte_experimental
+uint32_t
+rte_thash_get_complement(struct rte_thash_subtuple_helper *h,
+	uint32_t hash, uint32_t desired_hash);
+
+/**
+ * Get a pointer to the toeplitz hash contained in the context.
+ * It changes after each addition of a helper. It should be installed to
+ * the NIC.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param ctx
+ *  Thash context
+ * @return
+ *  A pointer to the toeplitz hash key
+ */
+__rte_experimental
+const uint8_t *
+rte_thash_get_key(struct rte_thash_ctx *ctx);
+
+/**
+ * Function prototype for the rte_thash_adjust_tuple
+ * to check if adjusted tuple could be used.
+ * Generally it is some kind of lookup function to check
+ * if adjusted tuple is already in use.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param userdata
+ *  Pointer to the userdata. It could be a pointer to the
+ *  table with used tuples to search.
+ * @param tuple
+ *  Pointer to the tuple to check
+ *
+ * @return
+ *  1 on success
+ *  0 otherwise
+ */
+typedef int (*rte_thash_check_tuple_t)(void *userdata, uint8_t *tuple);
+
+/**
+ * Adjusts tuple in the way to make Toeplitz hash has
+ * desired least significant bits.
+ * This function is multi-thread safe.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * @param ctx
+ *  Thash context
+ * @param h
+ *  Pointer to the helper struct
+ * @param tuple
+ *  Pointer to the tuple to be adjusted
+ * @param tuple_len
+ *  Length of the tuple. Must be multiple of 4.
+ * @param desired_value
+ *  Desired value of least significant bits of the hash
+ * @param attempts
+ *  Number of attempts to adjust tuple with fn() calling
+ * @param fn
+ *  Callback function to check adjusted tuple. Could be NULL
+ * @param userdata
+ *  Pointer to the userdata to be passed to fn(). Could be NULL
+ *
+ * @return
+ *  0 on success
+ *  negative otherwise
+ */
+__rte_experimental
+int
+rte_thash_adjust_tuple(struct rte_thash_ctx *ctx,
+	struct rte_thash_subtuple_helper *h,
+	uint8_t *tuple, unsigned int tuple_len,
+	uint32_t desired_value, unsigned int attempts,
+	rte_thash_check_tuple_t fn, void *userdata);
 
 #ifdef __cplusplus
 }

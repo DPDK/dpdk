@@ -37,4 +37,12 @@ EXPERIMENTAL {
 	rte_hash_lookup_with_hash_bulk_data;
 	rte_hash_max_key_id;
 	rte_hash_rcu_qsbr_add;
+	rte_thash_add_helper;
+	rte_thash_adjust_tuple;
+	rte_thash_find_existing;
+	rte_thash_free_ctx;
+	rte_thash_get_complement;
+	rte_thash_get_helper;
+	rte_thash_get_key;
+	rte_thash_init_ctx;
 };
