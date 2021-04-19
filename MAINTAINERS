@@ -1432,6 +1432,7 @@ M: Sameh Gobriel <sameh.gobriel@intel.com>
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_hash/
 F: doc/guides/prog_guide/hash_lib.rst
+F: doc/guides/prog_guide/toeplitz_hash_lib.rst
 F: app/test/test_*hash*
 F: app/test/test_func_reentrancy.c
 
