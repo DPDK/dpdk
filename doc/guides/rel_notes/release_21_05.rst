@@ -99,6 +99,10 @@ New Features
   * Added ``RTE_FLOW_ITEM_TYPE_INTEGRITY`` flow item.
   * Added ``rte_flow_item_integrity`` data structure.
 
+* **Added TCP connection tracking offload in flow API.**
+
+  * Added conntrack item and action for stateful connection offload.
+
 * **Updated Arkville PMD driver.**
 
   Updated Arkville net driver with new features and improvements, including:

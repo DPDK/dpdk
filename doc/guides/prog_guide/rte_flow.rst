@@ -1420,6 +1420,14 @@ before using this item.
 - ``l4_csum_ok``: layer 4 checksum check passed.
 - ``l3_len_ok``: the layer 3 length is smaller than the frame length.
 
+Item: ``CONNTRACK``
+^^^^^^^^^^^^^^^^^^^
+
+Matches a conntrack state after conntrack action.
+
+- ``flags``: conntrack packet state flags.
+- Default ``mask`` matches all state bits.
+
 Actions
 ~~~~~~~
 
@@ -2863,6 +2871,116 @@ for ``RTE_FLOW_FIELD_VALUE`` and ``RTE_FLOW_FIELD_POINTER`` respectively.
    +---------------+----------------------------------------------------------+
    | ``value``     | immediate value or a pointer to this value               |
    +---------------+----------------------------------------------------------+
+
+Action: ``CONNTRACK``
+^^^^^^^^^^^^^^^^^^^^^
+
+Create a conntrack (connection tracking) context with the provided information.
+
+In stateful session like TCP, the conntrack action provides the ability to
+examine every packet of this connection and associate the state to every
+packet. It will help to realize the stateful offload of connections with little
+software participation. For example, the packets with invalid state may be
+handled by the software. The control packets could be handled in the hardware.
+The software just need to query the state of a connection when needed, and then
+decide how to handle the flow rules and conntrack context.
+
+A conntrack context should be created via ``rte_flow_action_handle_create()``
+before using. Then the handle with ``INDIRECT`` type is used for a flow rule
+creation. If a flow rule with an opposite direction needs to be created, the
+``rte_flow_action_handle_update()`` should be used to modify the direction.
+
+Not all the fields of the ``struct rte_flow_action_conntrack`` will be used
+for a conntrack context creating, depending on the HW, and they should be
+in host byte order. PMD should convert them into network byte order when
+needed by the HW.
+
+The ``struct rte_flow_modify_conntrack`` should be used for an updating.
+
+The current conntrack context information could be queried via the
+``rte_flow_action_handle_query()`` interface.
+
+.. _table_rte_flow_action_conntrack:
+
+.. table:: CONNTRACK
+
+   +--------------------------+-------------------------------------------------------------+
+   | Field                    | Value                                                       |
+   +==========================+=============================================================+
+   | ``peer_port``            | peer port number                                            |
+   +--------------------------+-------------------------------------------------------------+
+   | ``is_original_dir``      | direction of this connection for creating flow rule         |
+   +--------------------------+-------------------------------------------------------------+
+   | ``enable``               | enable the conntrack context                                |
+   +--------------------------+-------------------------------------------------------------+
+   | ``live_connection``      | one ack was seen for this connection                        |
+   +--------------------------+-------------------------------------------------------------+
+   | ``selective_ack``        | SACK enabled                                                |
+   +--------------------------+-------------------------------------------------------------+
+   | ``challenge_ack_passed`` | a challenge ack has passed                                  |
+   +--------------------------+-------------------------------------------------------------+
+   | ``last_direction``       | direction of the last passed packet                         |
+   +--------------------------+-------------------------------------------------------------+
+   | ``liberal_mode``         | only report state change                                    |
+   +--------------------------+-------------------------------------------------------------+
+   | ``state``                | current state                                               |
+   +--------------------------+-------------------------------------------------------------+
+   | ``max_ack_window``       | maximal window scaling factor                               |
+   +--------------------------+-------------------------------------------------------------+
+   | ``retransmission_limit`` | maximal retransmission times                                |
+   +--------------------------+-------------------------------------------------------------+
+   | ``original_dir``         | TCP parameters of the original direction                    |
+   +--------------------------+-------------------------------------------------------------+
+   | ``reply_dir``            | TCP parameters of the reply direction                       |
+   +--------------------------+-------------------------------------------------------------+
+   | ``last_window``          | window size of the last passed packet                       |
+   +--------------------------+-------------------------------------------------------------+
+   | ``last_seq``             | sequence number of the last passed packet                   |
+   +--------------------------+-------------------------------------------------------------+
+   | ``last_ack``             | acknowledgment number the last passed packet                |
+   +--------------------------+-------------------------------------------------------------+
+   | ``last_end``             | sum of ack number and length of the last passed packet      |
+   +--------------------------+-------------------------------------------------------------+
+
+.. _table_rte_flow_tcp_dir_param:
+
+.. table:: configuration parameters for each direction
+
+   +---------------------+---------------------------------------------------------+
+   | Field               | Value                                                   |
+   +=====================+=========================================================+
+   | ``scale``           | TCP window scaling factor                               |
+   +---------------------+---------------------------------------------------------+
+   | ``close_initiated`` | FIN sent from this direction                            |
+   +---------------------+---------------------------------------------------------+
+   | ``last_ack_seen``   | an ACK packet received                                  |
+   +---------------------+---------------------------------------------------------+
+   | ``data_unacked``    | unacknowledged data for packets from this direction     |
+   +---------------------+---------------------------------------------------------+
+   | ``sent_end``        | max{seq + len} seen in sent packets                     |
+   +---------------------+---------------------------------------------------------+
+   | ``reply_end``       | max{sack + max{win, 1}} seen in reply packets           |
+   +---------------------+---------------------------------------------------------+
+   | ``max_win``         | max{max{win, 1}} + {sack - ack} seen in sent packets    |
+   +---------------------+---------------------------------------------------------+
+   | ``max_ack``         | max{ack} + seen in sent packets                         |
+   +---------------------+---------------------------------------------------------+
+
+.. _table_rte_flow_modify_conntrack:
+
+.. table:: update a conntrack context
+
+   +----------------+-------------------------------------------------+
+   | Field          | Value                                           |
+   +================+=================================================+
+   | ``new_ct``     | new conntrack information                       |
+   +----------------+-------------------------------------------------+
+   | ``direction``  | direction will be updated                       |
+   +----------------+-------------------------------------------------+
+   | ``state``      | other fields except direction will be updated   |
+   +----------------+-------------------------------------------------+
+   | ``reserved``   | reserved bits                                   |
+   +----------------+-------------------------------------------------+
 
 Negative types
 ~~~~~~~~~~~~~~
