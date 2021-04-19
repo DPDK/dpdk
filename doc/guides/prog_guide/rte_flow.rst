@@ -1719,7 +1719,7 @@ that counter.
 For ports within the same switch domain then the counter id namespace extends
 to all ports within that switch domain.
 
-The shared flag is DEPRECATED and ``SHARED`` ``COUNT`` action should be used
+The shared flag is DEPRECATED and ``INDIRECT`` ``COUNT`` action should be used
 to make shared counters.
 
 .. _table_rte_flow_action_count:
@@ -2742,25 +2742,26 @@ packets, and must have a fate action.
    | ``actions``  | sub-action list for sampling    |
    +--------------+---------------------------------+
 
-Action: ``SHARED``
-^^^^^^^^^^^^^^^^^^
+Action: ``INDIRECT``
+^^^^^^^^^^^^^^^^^^^^
 
-Flow utilize shared action by handle as returned from
-``rte_flow_shared_action_create()``.
+Flow utilize indirect action by handle as returned from
+``rte_flow_action_handle_create()``.
 
-The behaviour of the shared action defined by ``action`` argument of type
-``struct rte_flow_action`` passed to ``rte_flow_shared_action_create()``.
+The behaviour of the indirect action defined by ``action`` argument of type
+``struct rte_flow_action`` passed to ``rte_flow_action_handle_create()``.
 
-Multiple flows can use the same shared action.
-The shared action can be in-place updated by ``rte_flow_shared_action_update()``
-without destroying flow and creating flow again.
+The indirect action can be used by a single flow or shared among multiple flows.
+The indirect action can be in-place updated by ``rte_flow_action_handle_update()``
+without destroying flow and creating flow again. The fields that could be
+updated depend on the type of the ``action`` and different for every type.
 
-The shared action specified data (e.g. counter) can be queried by
-``rte_flow_shared_action_query()``.
+The indirect action specified data (e.g. counter) can be queried by
+``rte_flow_action_handle_query()``.
 
-.. _table_rte_flow_shared_action:
+.. _table_rte_flow_action_handle:
 
-.. table:: SHARED
+.. table:: INDIRECT
 
    +---------------+
    | Field         |

@@ -4055,10 +4055,10 @@ This section lists supported actions and their attributes, if any.
 
   - ``dscp_value {unsigned}``: The new DSCP value to be set
 
-- ``shared``: Use shared action created via
-  ``flow shared_action {port_id} create``
+- ``indirect``: Use indirect action created via
+  ``flow indirect_action {port_id} create``
 
-  - ``shared_action_id {unsigned}``: Shared action ID to use
+  - ``indirect_action_id {unsigned}``: Indirect action ID to use
 
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
@@ -4349,113 +4349,117 @@ If attach ``destroy`` parameter, the command will destroy all the list aged flow
    testpmd> flow aged 0
    Port 0 total aged flows: 0
 
-Creating shared actions
-~~~~~~~~~~~~~~~~~~~~~~~
-``flow shared_action {port_id} create`` creates shared action with optional
-shared action ID. It is bound to ``rte_flow_shared_action_create()``::
+Creating indirect actions
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   flow shared_action {port_id} create [action_id {shared_action_id}]
+``flow indirect_action {port_id} create`` creates indirect action with optional
+indirect action ID. It is bound to ``rte_flow_action_handle_create()``::
+
+   flow indirect_action {port_id} create [action_id {indirect_action_id}]
       [ingress] [egress] [transfer] action {action} / end
 
 If successful, it will show::
 
-   Shared action #[...] created
+   Indirect action #[...] created
 
-Otherwise, it will complain either that shared action already exists or that
+Otherwise, it will complain either that indirect action already exists or that
 some error occurred::
 
-   Shared action #[...] is already assigned, delete it first
+   Indirect action #[...] is already assigned, delete it first
 
 ::
 
    Caught error type [...] ([...]): [...]
 
-Create shared rss action with id 100 to queues 1 and 2 on port 0::
+Create indirect rss action with id 100 to queues 1 and 2 on port 0::
 
-   testpmd> flow shared_action 0 create action_id 100 \
+   testpmd> flow indirect_action 0 create action_id 100 \
       ingress action rss queues 1 2 end / end
 
-Create shared rss action with id assigned by testpmd to queues 1 and 2 on
+Create indirect rss action with id assigned by testpmd to queues 1 and 2 on
 port 0::
 
-	testpmd> flow shared_action 0 create action_id \
+	testpmd> flow indirect_action 0 create action_id \
 		ingress action rss queues 0 1 end / end
 
-Updating shared actions
-~~~~~~~~~~~~~~~~~~~~~~~
-``flow shared_action {port_id} update`` updates configuration of the shared
-action from its shared action ID (as returned by
-``flow shared_action {port_id} create``). It is bound to
-``rte_flow_shared_action_update()``::
+Updating indirect actions
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   flow shared_action {port_id} update {shared_action_id}
+``flow indirect_action {port_id} update`` updates configuration of the indirect
+action from its indirect action ID (as returned by
+``flow indirect_action {port_id} create``). It is bound to
+``rte_flow_action_handle_update()``::
+
+   flow indirect_action {port_id} update {indirect_action_id}
       action {action} / end
 
 If successful, it will show::
 
-   Shared action #[...] updated
+   Indirect action #[...] updated
 
-Otherwise, it will complain either that shared action not found or that some
+Otherwise, it will complain either that indirect action not found or that some
 error occurred::
 
-   Failed to find shared action #[...] on port [...]
+   Failed to find indirect action #[...] on port [...]
 
 ::
 
    Caught error type [...] ([...]): [...]
 
-Update shared rss action having id 100 on port 0 with rss to queues 0 and 3
+Update indirect rss action having id 100 on port 0 with rss to queues 0 and 3
 (in create example above rss queues were 1 and 2)::
 
-   testpmd> flow shared_action 0 update 100 action rss queues 0 3 end / end
+   testpmd> flow indirect_action 0 update 100 action rss queues 0 3 end / end
 
-Destroying shared actions
-~~~~~~~~~~~~~~~~~~~~~~~~~
-``flow shared_action {port_id} update`` destroys one or more shared actions
-from their shared action IDs (as returned by
-``flow shared_action {port_id} create``). It is bound to
-``rte_flow_shared_action_destroy()``::
+Destroying indirect actions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   flow shared_action {port_id} destroy action_id {shared_action_id} [...]
+``flow indirect_action {port_id} destroy`` destroys one or more indirect actions
+from their indirect action IDs (as returned by
+``flow indirect_action {port_id} create``). It is bound to
+``rte_flow_action_handle_destroy()``::
+
+   flow indirect_action {port_id} destroy action_id {indirect_action_id} [...]
 
 If successful, it will show::
 
-   Shared action #[...] destroyed
+   Indirect action #[...] destroyed
 
-It does not report anything for shared action IDs that do not exist.
-The usual error message is shown when a shared action cannot be destroyed::
+It does not report anything for indirect action IDs that do not exist.
+The usual error message is shown when a indirect action cannot be destroyed::
 
    Caught error type [...] ([...]): [...]
 
-Destroy shared actions having id 100 & 101::
+Destroy indirect actions having id 100 & 101::
 
-   testpmd> flow shared_action 0 destroy action_id 100 action_id 101
+   testpmd> flow indirect_action 0 destroy action_id 100 action_id 101
 
-Query shared actions
-~~~~~~~~~~~~~~~~~~~~
-``flow shared_action {port_id} query`` queries the shared action from its
-shared action ID (as returned by ``flow shared_action {port_id} create``).
-It is bound to ``rte_flow_shared_action_query()``::
+Query indirect actions
+~~~~~~~~~~~~~~~~~~~~~~
 
-  flow shared_action {port_id} query {shared_action_id}
+``flow indirect_action {port_id} query`` queries the indirect action from its
+indirect action ID (as returned by ``flow indirect_action {port_id} create``).
+It is bound to ``rte_flow_action_handle_query()``::
 
-Currently only rss shared action supported. If successful, it will show::
+  flow indirect_action {port_id} query {indirect_action_id}
 
-   Shared RSS action:
+Currently only rss indirect action supported. If successful, it will show::
+
+   Indirect RSS action:
       refs:[...]
 
-Otherwise, it will complain either that shared action not found or that some
+Otherwise, it will complain either that indirect action not found or that some
 error occurred::
 
-   Failed to find shared action #[...] on port [...]
+   Failed to find indirect action #[...] on port [...]
 
 ::
 
    Caught error type [...] ([...]): [...]
 
-Query shared action having id 100::
+Query indirect action having id 100::
 
-   testpmd> flow shared_action 0 query 100
+   testpmd> flow indirect_action 0 query 100
 
 Sample QinQ flow rules
 ~~~~~~~~~~~~~~~~~~~~~~

@@ -1391,38 +1391,38 @@ rss_config_display(struct rte_flow_action_rss *rss_conf)
 	}
 }
 
-static struct port_shared_action *
+static struct port_indirect_action *
 action_get_by_id(portid_t port_id, uint32_t id)
 {
 	struct rte_port *port;
-	struct port_shared_action **ppsa;
-	struct port_shared_action *psa = NULL;
+	struct port_indirect_action **ppia;
+	struct port_indirect_action *pia = NULL;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 	    port_id == (portid_t)RTE_PORT_ALL)
 		return NULL;
 	port = &ports[port_id];
-	ppsa = &port->actions_list;
-	while (*ppsa) {
-		if ((*ppsa)->id == id) {
-			psa = *ppsa;
+	ppia = &port->actions_list;
+	while (*ppia) {
+		if ((*ppia)->id == id) {
+			pia = *ppia;
 			break;
 		}
-		ppsa = &(*ppsa)->next;
+		ppia = &(*ppia)->next;
 	}
-	if (!psa)
-		printf("Failed to find shared action #%u on port %u\n",
+	if (!pia)
+		printf("Failed to find indirect action #%u on port %u\n",
 		       id, port_id);
-	return psa;
+	return pia;
 }
 
 static int
 action_alloc(portid_t port_id, uint32_t id,
-	     struct port_shared_action **action)
+	     struct port_indirect_action **action)
 {
 	struct rte_port *port;
-	struct port_shared_action **ppsa;
-	struct port_shared_action *psa = NULL;
+	struct port_indirect_action **ppia;
+	struct port_indirect_action *pia = NULL;
 
 	*action = NULL;
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -1433,7 +1433,7 @@ action_alloc(portid_t port_id, uint32_t id,
 		/* taking first available ID */
 		if (port->actions_list) {
 			if (port->actions_list->id == UINT32_MAX - 1) {
-				printf("Highest shared action ID is already"
+				printf("Highest indirect action ID is already"
 				" assigned, delete it first\n");
 				return -ENOMEM;
 			}
@@ -1442,70 +1442,70 @@ action_alloc(portid_t port_id, uint32_t id,
 			id = 0;
 		}
 	}
-	psa = calloc(1, sizeof(*psa));
-	if (!psa) {
-		printf("Allocation of port %u shared action failed\n",
+	pia = calloc(1, sizeof(*pia));
+	if (!pia) {
+		printf("Allocation of port %u indirect action failed\n",
 		       port_id);
 		return -ENOMEM;
 	}
-	ppsa = &port->actions_list;
-	while (*ppsa && (*ppsa)->id > id)
-		ppsa = &(*ppsa)->next;
-	if (*ppsa && (*ppsa)->id == id) {
-		printf("Shared action #%u is already assigned,"
+	ppia = &port->actions_list;
+	while (*ppia && (*ppia)->id > id)
+		ppia = &(*ppia)->next;
+	if (*ppia && (*ppia)->id == id) {
+		printf("Indirect action #%u is already assigned,"
 			" delete it first\n", id);
-		free(psa);
+		free(pia);
 		return -EINVAL;
 	}
-	psa->next = *ppsa;
-	psa->id = id;
-	*ppsa = psa;
-	*action = psa;
+	pia->next = *ppia;
+	pia->id = id;
+	*ppia = pia;
+	*action = pia;
 	return 0;
 }
 
-/** Create shared action */
+/** Create indirect action */
 int
-port_shared_action_create(portid_t port_id, uint32_t id,
-			  const struct rte_flow_shared_action_conf *conf,
+port_action_handle_create(portid_t port_id, uint32_t id,
+			  const struct rte_flow_indir_action_conf *conf,
 			  const struct rte_flow_action *action)
 {
-	struct port_shared_action *psa;
+	struct port_indirect_action *pia;
 	int ret;
 	struct rte_flow_error error;
 
-	ret = action_alloc(port_id, id, &psa);
+	ret = action_alloc(port_id, id, &pia);
 	if (ret)
 		return ret;
 	if (action->type == RTE_FLOW_ACTION_TYPE_AGE) {
 		struct rte_flow_action_age *age =
 			(struct rte_flow_action_age *)(uintptr_t)(action->conf);
 
-		psa->age_type = ACTION_AGE_CONTEXT_TYPE_SHARED_ACTION;
-		age->context = &psa->age_type;
+		pia->age_type = ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION;
+		age->context = &pia->age_type;
 	}
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x22, sizeof(error));
-	psa->action = rte_flow_shared_action_create(port_id, conf, action,
+	pia->handle = rte_flow_action_handle_create(port_id, conf, action,
 						    &error);
-	if (!psa->action) {
-		uint32_t destroy_id = psa->id;
-		port_shared_action_destroy(port_id, 1, &destroy_id);
+	if (!pia->handle) {
+		uint32_t destroy_id = pia->id;
+		port_action_handle_destroy(port_id, 1, &destroy_id);
 		return port_flow_complain(&error);
 	}
-	psa->type = action->type;
-	printf("Shared action #%u created\n", psa->id);
+	pia->type = action->type;
+	printf("Indirect action #%u created\n", pia->id);
 	return 0;
 }
 
-/** Destroy shared action */
+/** Destroy indirect action */
 int
-port_shared_action_destroy(portid_t port_id,
+port_action_handle_destroy(portid_t port_id,
 			   uint32_t n,
 			   const uint32_t *actions)
 {
 	struct rte_port *port;
-	struct port_shared_action **tmp;
+	struct port_indirect_action **tmp;
 	uint32_t c = 0;
 	int ret = 0;
 
@@ -1519,9 +1519,9 @@ port_shared_action_destroy(portid_t port_id,
 
 		for (i = 0; i != n; ++i) {
 			struct rte_flow_error error;
-			struct port_shared_action *psa = *tmp;
+			struct port_indirect_action *pia = *tmp;
 
-			if (actions[i] != psa->id)
+			if (actions[i] != pia->id)
 				continue;
 			/*
 			 * Poisoning to make sure PMDs update it in case
@@ -1529,14 +1529,14 @@ port_shared_action_destroy(portid_t port_id,
 			 */
 			memset(&error, 0x33, sizeof(error));
 
-			if (psa->action && rte_flow_shared_action_destroy(
-					port_id, psa->action, &error)) {
+			if (pia->handle && rte_flow_action_handle_destroy(
+					port_id, pia->handle, &error)) {
 				ret = port_flow_complain(&error);
 				continue;
 			}
-			*tmp = psa->next;
-			printf("Shared action #%u destroyed\n", psa->id);
-			free(psa);
+			*tmp = pia->next;
+			printf("Indirect action #%u destroyed\n", pia->id);
+			free(pia);
 			break;
 		}
 		if (i == n)
@@ -1547,60 +1547,60 @@ port_shared_action_destroy(portid_t port_id,
 }
 
 
-/** Get shared action by port + id */
-struct rte_flow_shared_action *
-port_shared_action_get_by_id(portid_t port_id, uint32_t id)
+/** Get indirect action by port + id */
+struct rte_flow_action_handle *
+port_action_handle_get_by_id(portid_t port_id, uint32_t id)
 {
 
-	struct port_shared_action *psa = action_get_by_id(port_id, id);
+	struct port_indirect_action *pia = action_get_by_id(port_id, id);
 
-	return (psa) ? psa->action : NULL;
+	return (pia) ? pia->handle : NULL;
 }
 
-/** Update shared action */
+/** Update indirect action */
 int
-port_shared_action_update(portid_t port_id, uint32_t id,
+port_action_handle_update(portid_t port_id, uint32_t id,
 			  const struct rte_flow_action *action)
 {
 	struct rte_flow_error error;
-	struct rte_flow_shared_action *shared_action;
+	struct rte_flow_action_handle *action_handle;
 
-	shared_action = port_shared_action_get_by_id(port_id, id);
-	if (!shared_action)
+	action_handle = port_action_handle_get_by_id(port_id, id);
+	if (!action_handle)
 		return -EINVAL;
-	if (rte_flow_shared_action_update(port_id, shared_action, action,
+	if (rte_flow_action_handle_update(port_id, action_handle, action,
 					  &error)) {
 		return port_flow_complain(&error);
 	}
-	printf("Shared action #%u updated\n", id);
+	printf("Indirect action #%u updated\n", id);
 	return 0;
 }
 
 int
-port_shared_action_query(portid_t port_id, uint32_t id)
+port_action_handle_query(portid_t port_id, uint32_t id)
 {
 	struct rte_flow_error error;
-	struct port_shared_action *psa;
+	struct port_indirect_action *pia;
 	uint64_t default_data;
 	void *data = NULL;
 	int ret = 0;
 
-	psa = action_get_by_id(port_id, id);
-	if (!psa)
+	pia = action_get_by_id(port_id, id);
+	if (!pia)
 		return -EINVAL;
-	switch (psa->type) {
+	switch (pia->type) {
 	case RTE_FLOW_ACTION_TYPE_RSS:
 	case RTE_FLOW_ACTION_TYPE_AGE:
 		data = &default_data;
 		break;
 	default:
-		printf("Shared action %u (type: %d) on port %u doesn't support"
-		       " query\n", id, psa->type, port_id);
+		printf("Indirect action %u (type: %d) on port %u doesn't"
+		       " support query\n", id, pia->type, port_id);
 		return -1;
 	}
-	if (rte_flow_shared_action_query(port_id, psa->action, data, &error))
+	if (rte_flow_action_handle_query(port_id, pia->handle, data, &error))
 		ret = port_flow_complain(&error);
-	switch (psa->type) {
+	switch (pia->type) {
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		if (!ret)
 			printf("Shared RSS action:\n\trefs:%u\n",
@@ -1622,8 +1622,8 @@ port_shared_action_query(portid_t port_id, uint32_t id)
 		data = NULL;
 		break;
 	default:
-		printf("Shared action %u (type: %d) on port %u doesn't support"
-		       " query\n", id, psa->type, port_id);
+		printf("Indirect action %u (type: %d) on port %u doesn't"
+		       " support query\n", id, pia->type, port_id);
 		ret = -1;
 	}
 	return ret;
@@ -2065,7 +2065,7 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 	enum age_action_context_type *type;
 	union {
 		struct port_flow *pf;
-		struct port_shared_action *psa;
+		struct port_indirect_action *pia;
 	} ctx;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -2115,11 +2115,11 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 							  &ctx.pf->id))
 				total++;
 			break;
-		case ACTION_AGE_CONTEXT_TYPE_SHARED_ACTION:
-			ctx.psa = container_of(type, struct port_shared_action,
-					       age_type);
-			printf("%-20s\t%" PRIu32 "\n", "Shared action",
-			       ctx.psa->id);
+		case ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION:
+			ctx.pia = container_of(type,
+					struct port_indirect_action, age_type);
+			printf("%-20s\t%" PRIu32 "\n", "Indirect action",
+			       ctx.pia->id);
 			break;
 		default:
 			printf("Error: invalid context type %u\n", port_id);

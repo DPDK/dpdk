@@ -1821,7 +1821,7 @@ enum rte_flow_action_type {
 	 * Enables counters for this flow rule.
 	 *
 	 * These counters can be retrieved and reset through rte_flow_query() or
-	 * rte_flow_shared_action_query() if the action provided via handle,
+	 * rte_flow_action_handle_query() if the action provided via handle,
 	 * see struct rte_flow_query_count.
 	 *
 	 * See struct rte_flow_action_count.
@@ -2250,6 +2250,9 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_SAMPLE,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ACTION_TYPE_INDIRECT
+	 *
 	 * Describe action shared across multiple flow rules.
 	 *
 	 * Allow multiple rules reference the same action by handle (see
@@ -2267,6 +2270,14 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_modify_field.
 	 */
 	RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
+
+	/**
+	 * An action handle is referenced in a rule through an indirect action.
+	 *
+	 * The same action handle may be used in multiple rules for the same
+	 * or different ethdev ports.
+	 */
+	RTE_FLOW_ACTION_TYPE_INDIRECT,
 };
 
 /**
@@ -2357,7 +2368,7 @@ struct rte_flow_query_age {
  * ``struct rte_flow_query_count``.
  *
  * @deprecated Shared attribute is deprecated, use generic
- * RTE_FLOW_ACTION_TYPE_SHARED action.
+ * RTE_FLOW_ACTION_TYPE_INDIRECT action.
  *
  * The shared flag indicates whether the counter is unique to the flow rule the
  * action is specified with, or whether it is a shared counter.
@@ -2847,17 +2858,23 @@ struct rte_flow_action_set_dscp {
 };
 
 /**
- * RTE_FLOW_ACTION_TYPE_SHARED
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
  *
- * Opaque type returned after successfully creating a shared action.
+ * RTE_FLOW_ACTION_TYPE_INDIRECT
  *
- * This handle can be used to manage and query the related action:
- * - share it across multiple flow rules
- * - update action configuration
- * - query action data
- * - destroy action
+ * Opaque type returned after successfully creating an indirect action object.
+ * The definition of the object handle is different per driver or
+ * per direct action type.
+ *
+ * This handle can be used to manage and query the related direct action:
+ * - referenced in single flow rule or across multiple flow rules
+ *   over multiple ports
+ * - update action object configuration
+ * - query action object data
+ * - destroy action object
  */
-struct rte_flow_shared_action;
+struct rte_flow_action_handle;
 
 /**
  * Field IDs for MODIFY_FIELD action.
@@ -3631,25 +3648,22 @@ rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
 
 /**
- * Specify shared action configuration
+ * Specify indirect action object configuration
  */
-struct rte_flow_shared_action_conf {
+struct rte_flow_indir_action_conf {
 	/**
-	 * Flow direction for shared action configuration.
+	 * Flow direction for the indirect action configuration.
 	 *
-	 * Shared action should be valid at least for one flow direction,
+	 * Action should be valid at least for one flow direction,
 	 * otherwise it is invalid for both ingress and egress rules.
 	 */
 	uint32_t ingress:1;
 	/**< Action valid for rules applied to ingress traffic. */
 	uint32_t egress:1;
 	/**< Action valid for rules applied to egress traffic. */
-
 	/**
 	 * When set to 1, indicates that the action is valid for
 	 * transfer traffic; otherwise, for non-transfer traffic.
-	 *
-	 * See struct rte_flow_attr.
 	 */
 	uint32_t transfer:1;
 };
@@ -3658,16 +3672,17 @@ struct rte_flow_shared_action_conf {
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
- * Create shared action for reuse in multiple flow rules.
- * The created shared action has single state and configuration
- * across all flow rules using it.
+ * Create an indirect action object that can be used in flow rules
+ * via its handle.
+ * The created object handle has single state and configuration
+ * across all the flow rules using it.
  *
  * @param[in] port_id
  *    The port identifier of the Ethernet device.
  * @param[in] conf
- *   Shared action configuration.
+ *   Action configuration for the indirect action object creation.
  * @param[in] action
- *   Action configuration for shared action creation.
+ *   Specific configuration of the indirect action object.
  * @param[out] error
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
@@ -3681,9 +3696,9 @@ struct rte_flow_shared_action_conf {
  *   - (ENOTSUP) if *action* valid but unsupported.
  */
 __rte_experimental
-struct rte_flow_shared_action *
-rte_flow_shared_action_create(uint16_t port_id,
-			      const struct rte_flow_shared_action_conf *conf,
+struct rte_flow_action_handle *
+rte_flow_action_handle_create(uint16_t port_id,
+			      const struct rte_flow_indir_action_conf *conf,
 			      const struct rte_flow_action *action,
 			      struct rte_flow_error *error);
 
@@ -3691,12 +3706,12 @@ rte_flow_shared_action_create(uint16_t port_id,
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
- * Destroy the shared action by handle.
+ * Destroy indirect action by handle.
  *
  * @param[in] port_id
  *    The port identifier of the Ethernet device.
- * @param[in] action
- *   Handle for the shared action to be destroyed.
+ * @param[in] handle
+ *   Handle for the indirect action object to be destroyed.
  * @param[out] error
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
@@ -3711,27 +3726,30 @@ rte_flow_shared_action_create(uint16_t port_id,
  */
 __rte_experimental
 int
-rte_flow_shared_action_destroy(uint16_t port_id,
-			       struct rte_flow_shared_action *action,
+rte_flow_action_handle_destroy(uint16_t port_id,
+			       struct rte_flow_action_handle *handle,
 			       struct rte_flow_error *error);
 
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
- * Update in-place the shared action configuration pointed by *action* handle
- * with the configuration provided as *update* argument.
- * The update of the shared action configuration effects all flow rules reusing
- * the action via handle.
+ * Update in-place the action configuration and / or state pointed
+ * by action *handle* with the configuration provided as *update* argument.
+ * The update of the action configuration effects all flow rules reusing
+ * the action via *handle*.
+ * The update general pointer provides the ability of partial updating.
  *
  * @param[in] port_id
  *    The port identifier of the Ethernet device.
- * @param[in] action
- *   Handle for the shared action to be updated.
+ * @param[in] handle
+ *   Handle for the indirect action object to be updated.
  * @param[in] update
- *   Action specification used to modify the action pointed by handle.
- *   *update* should be of same type with the action pointed by the *action*
- *   handle argument, otherwise considered as invalid.
+ *   Update profile specification used to modify the action pointed by handle.
+ *   *update* could be with the same type of the immediate action corresponding
+ *   to the *handle* argument when creating, or a wrapper structure includes
+ *   action configuration to be updated and bit fields to indicate the member
+ *   of fields inside the action to update.
  * @param[out] error
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
@@ -3742,32 +3760,32 @@ rte_flow_shared_action_destroy(uint16_t port_id,
  *   - (-EIO) if underlying device is removed.
  *   - (-EINVAL) if *update* invalid.
  *   - (-ENOTSUP) if *update* valid but unsupported.
- *   - (-ENOENT) if action pointed by *ctx* was not found.
+ *   - (-ENOENT) if indirect action object pointed by *handle* was not found.
  *   rte_errno is also set.
  */
 __rte_experimental
 int
-rte_flow_shared_action_update(uint16_t port_id,
-			      struct rte_flow_shared_action *action,
-			      const struct rte_flow_action *update,
+rte_flow_action_handle_update(uint16_t port_id,
+			      struct rte_flow_action_handle *handle,
+			      const void *update,
 			      struct rte_flow_error *error);
 
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
- * Query the shared action by handle.
+ * Query the direct action by corresponding indirect action object handle.
  *
  * Retrieve action-specific data such as counters.
  * Data is gathered by special action which may be present/referenced in
  * more than one flow rule definition.
  *
- * \see RTE_FLOW_ACTION_TYPE_COUNT
+ * @see RTE_FLOW_ACTION_TYPE_COUNT
  *
  * @param port_id
  *   Port identifier of Ethernet device.
- * @param[in] action
- *   Handle for the shared action to query.
+ * @param[in] handle
+ *   Handle for the action object to query.
  * @param[in, out] data
  *   Pointer to storage for the associated query data type.
  * @param[out] error
@@ -3779,10 +3797,9 @@ rte_flow_shared_action_update(uint16_t port_id,
  */
 __rte_experimental
 int
-rte_flow_shared_action_query(uint16_t port_id,
-			     const struct rte_flow_shared_action *action,
-			     void *data,
-			     struct rte_flow_error *error);
+rte_flow_action_handle_query(uint16_t port_id,
+			     const struct rte_flow_action_handle *handle,
+			     void *data, struct rte_flow_error *error);
 
 /* Tunnel has a type and the key information. */
 struct rte_flow_tunnel {

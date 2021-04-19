@@ -567,23 +567,23 @@ static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 	},
 };
 
-static struct rte_flow_shared_action *
-mlx5_shared_action_create(struct rte_eth_dev *dev,
-			  const struct rte_flow_shared_action_conf *conf,
+static struct rte_flow_action_handle *
+mlx5_action_handle_create(struct rte_eth_dev *dev,
+			  const struct rte_flow_indir_action_conf *conf,
 			  const struct rte_flow_action *action,
 			  struct rte_flow_error *error);
-static int mlx5_shared_action_destroy
+static int mlx5_action_handle_destroy
 				(struct rte_eth_dev *dev,
-				 struct rte_flow_shared_action *shared_action,
+				 struct rte_flow_action_handle *handle,
 				 struct rte_flow_error *error);
-static int mlx5_shared_action_update
+static int mlx5_action_handle_update
 				(struct rte_eth_dev *dev,
-				 struct rte_flow_shared_action *shared_action,
-				 const struct rte_flow_action *action,
+				 struct rte_flow_action_handle *handle,
+				 const void *update,
 				 struct rte_flow_error *error);
-static int mlx5_shared_action_query
+static int mlx5_action_handle_query
 				(struct rte_eth_dev *dev,
-				 const struct rte_flow_shared_action *action,
+				 const struct rte_flow_action_handle *handle,
 				 void *data,
 				 struct rte_flow_error *error);
 static int
@@ -622,10 +622,10 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.query = mlx5_flow_query,
 	.dev_dump = mlx5_flow_dev_dump,
 	.get_aged_flows = mlx5_flow_get_aged_flows,
-	.shared_action_create = mlx5_shared_action_create,
-	.shared_action_destroy = mlx5_shared_action_destroy,
-	.shared_action_update = mlx5_shared_action_update,
-	.shared_action_query = mlx5_shared_action_query,
+	.action_handle_create = mlx5_action_handle_create,
+	.action_handle_destroy = mlx5_action_handle_destroy,
+	.action_handle_update = mlx5_action_handle_update,
+	.action_handle_query = mlx5_action_handle_query,
 	.tunnel_decap_set = mlx5_flow_tunnel_decap_set,
 	.tunnel_match = mlx5_flow_tunnel_match,
 	.tunnel_action_decap_release = mlx5_flow_tunnel_action_release,
@@ -3401,31 +3401,31 @@ flow_aso_age_get_by_idx(struct rte_eth_dev *dev, uint32_t age_idx)
 	return &pool->actions[offset - 1];
 }
 
-/* maps shared action to translated non shared in some actions array */
-struct mlx5_translated_shared_action {
-	struct rte_flow_shared_action *action; /**< Shared action */
-	int index; /**< Index in related array of rte_flow_action */
+/* maps indirect action to translated direct in some actions array */
+struct mlx5_translated_action_handle {
+	struct rte_flow_action_handle *action; /**< Indirect action handle. */
+	int index; /**< Index in related array of rte_flow_action. */
 };
 
 /**
- * Translates actions of type RTE_FLOW_ACTION_TYPE_SHARED to related
- * non shared action if translation possible.
- * This functionality used to run same execution path for both shared & non
- * shared actions on flow create. All necessary preparations for shared
- * action handling should be preformed on *shared* actions list returned
+ * Translates actions of type RTE_FLOW_ACTION_TYPE_INDIRECT to related
+ * direct action if translation possible.
+ * This functionality used to run same execution path for both direct and
+ * indirect actions on flow create. All necessary preparations for indirect
+ * action handling should be performed on *handle* actions list returned
  * from this call.
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
  * @param[in] actions
  *   List of actions to translate.
- * @param[out] shared
- *   List to store translated shared actions.
- * @param[in, out] shared_n
- *   Size of *shared* array. On return should be updated with number of shared
- *   actions retrieved from the *actions* list.
+ * @param[out] handle
+ *   List to store translated indirect action object handles.
+ * @param[in, out] indir_n
+ *   Size of *handle* array. On return should be updated with number of
+ *   indirect actions retrieved from the *actions* list.
  * @param[out] translated_actions
- *   List of actions where all shared actions were translated to non shared
+ *   List of actions where all indirect actions were translated to direct
  *   if possible. NULL if no translation took place.
  * @param[out] error
  *   Pointer to the error structure.
@@ -3434,10 +3434,10 @@ struct mlx5_translated_shared_action {
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_shared_actions_translate(struct rte_eth_dev *dev,
+flow_action_handles_translate(struct rte_eth_dev *dev,
 			      const struct rte_flow_action actions[],
-			      struct mlx5_translated_shared_action *shared,
-			      int *shared_n,
+			      struct mlx5_translated_action_handle *handle,
+			      int *indir_n,
 			      struct rte_flow_action **translated_actions,
 			      struct rte_flow_error *error)
 {
@@ -3446,23 +3446,23 @@ flow_shared_actions_translate(struct rte_eth_dev *dev,
 	size_t actions_size;
 	int n;
 	int copied_n = 0;
-	struct mlx5_translated_shared_action *shared_end = NULL;
+	struct mlx5_translated_action_handle *handle_end = NULL;
 
 	for (n = 0; actions[n].type != RTE_FLOW_ACTION_TYPE_END; n++) {
-		if (actions[n].type != RTE_FLOW_ACTION_TYPE_SHARED)
+		if (actions[n].type != RTE_FLOW_ACTION_TYPE_INDIRECT)
 			continue;
-		if (copied_n == *shared_n) {
+		if (copied_n == *indir_n) {
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION_NUM,
 				 NULL, "too many shared actions");
 		}
-		rte_memcpy(&shared[copied_n].action, &actions[n].conf,
+		rte_memcpy(&handle[copied_n].action, &actions[n].conf,
 			   sizeof(actions[n].conf));
-		shared[copied_n].index = n;
+		handle[copied_n].index = n;
 		copied_n++;
 	}
 	n++;
-	*shared_n = copied_n;
+	*indir_n = copied_n;
 	if (!copied_n)
 		return 0;
 	actions_size = sizeof(struct rte_flow_action) * n;
@@ -3472,28 +3472,28 @@ flow_shared_actions_translate(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 	memcpy(translated, actions, actions_size);
-	for (shared_end = shared + copied_n; shared < shared_end; shared++) {
+	for (handle_end = handle + copied_n; handle < handle_end; handle++) {
 		struct mlx5_shared_action_rss *shared_rss;
-		uint32_t act_idx = (uint32_t)(uintptr_t)shared->action;
-		uint32_t type = act_idx >> MLX5_SHARED_ACTION_TYPE_OFFSET;
-		uint32_t idx = act_idx & ((1u << MLX5_SHARED_ACTION_TYPE_OFFSET)
-									   - 1);
+		uint32_t act_idx = (uint32_t)(uintptr_t)handle->action;
+		uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
+		uint32_t idx = act_idx &
+			       ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
 
 		switch (type) {
-		case MLX5_SHARED_ACTION_TYPE_RSS:
+		case MLX5_INDIRECT_ACTION_TYPE_RSS:
 			shared_rss = mlx5_ipool_get
 			  (priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], idx);
-			translated[shared->index].type =
+			translated[handle->index].type =
 				RTE_FLOW_ACTION_TYPE_RSS;
-			translated[shared->index].conf =
+			translated[handle->index].conf =
 				&shared_rss->origin;
 			break;
-		case MLX5_SHARED_ACTION_TYPE_AGE:
+		case MLX5_INDIRECT_ACTION_TYPE_AGE:
 			if (priv->sh->flow_hit_aso_en) {
-				translated[shared->index].type =
+				translated[handle->index].type =
 					(enum rte_flow_action_type)
 					MLX5_RTE_FLOW_ACTION_TYPE_AGE;
-				translated[shared->index].conf =
+				translated[handle->index].conf =
 							 (void *)(uintptr_t)idx;
 				break;
 			}
@@ -3502,7 +3502,7 @@ flow_shared_actions_translate(struct rte_eth_dev *dev,
 			mlx5_free(translated);
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-				 NULL, "invalid shared action type");
+				 NULL, "invalid indirect action type");
 		}
 	}
 	*translated_actions = translated;
@@ -3524,21 +3524,21 @@ flow_shared_actions_translate(struct rte_eth_dev *dev,
  */
 static uint32_t
 flow_get_shared_rss_action(struct rte_eth_dev *dev,
-			   struct mlx5_translated_shared_action *shared,
+			   struct mlx5_translated_action_handle *handle,
 			   int shared_n)
 {
-	struct mlx5_translated_shared_action *shared_end;
+	struct mlx5_translated_action_handle *handle_end;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_shared_action_rss *shared_rss;
 
 
-	for (shared_end = shared + shared_n; shared < shared_end; shared++) {
-		uint32_t act_idx = (uint32_t)(uintptr_t)shared->action;
-		uint32_t type = act_idx >> MLX5_SHARED_ACTION_TYPE_OFFSET;
+	for (handle_end = handle + shared_n; handle < handle_end; handle++) {
+		uint32_t act_idx = (uint32_t)(uintptr_t)handle->action;
+		uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 		uint32_t idx = act_idx &
-				   ((1u << MLX5_SHARED_ACTION_TYPE_OFFSET) - 1);
+			       ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
 		switch (type) {
-		case MLX5_SHARED_ACTION_TYPE_RSS:
+		case MLX5_INDIRECT_ACTION_TYPE_RSS:
 			shared_rss = mlx5_ipool_get
 				(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 									   idx);
@@ -5548,9 +5548,9 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	struct rte_flow *flow = NULL;
 	struct mlx5_flow *dev_flow;
 	const struct rte_flow_action_rss *rss = NULL;
-	struct mlx5_translated_shared_action
-		shared_actions[MLX5_MAX_SHARED_ACTIONS];
-	int shared_actions_n = MLX5_MAX_SHARED_ACTIONS;
+	struct mlx5_translated_action_handle
+		indir_actions[MLX5_MAX_INDIRECT_ACTIONS];
+	int indir_actions_n = MLX5_MAX_INDIRECT_ACTIONS;
 	union {
 		struct mlx5_flow_expand_rss buf;
 		uint8_t buffer[2048];
@@ -5590,9 +5590,9 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 
 	MLX5_ASSERT(wks);
 	rss_desc = &wks->rss_desc;
-	ret = flow_shared_actions_translate(dev, original_actions,
-					    shared_actions,
-					    &shared_actions_n,
+	ret = flow_action_handles_translate(dev, original_actions,
+					    indir_actions,
+					    &indir_actions_n,
 					    &translated_actions, error);
 	if (ret < 0) {
 		MLX5_ASSERT(translated_actions == NULL);
@@ -5653,8 +5653,8 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		buf->entries = 1;
 		buf->entry[0].pattern = (void *)(uintptr_t)items;
 	}
-	rss_desc->shared_rss = flow_get_shared_rss_action(dev, shared_actions,
-						      shared_actions_n);
+	rss_desc->shared_rss = flow_get_shared_rss_action(dev, indir_actions,
+						      indir_actions_n);
 	for (i = 0; i < buf->entries; ++i) {
 		/* Initialize flow split data. */
 		flow_split_info.prefix_layers = 0;
@@ -5833,14 +5833,14 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 		   struct rte_flow_error *error)
 {
 	int hairpin_flow;
-	struct mlx5_translated_shared_action
-		shared_actions[MLX5_MAX_SHARED_ACTIONS];
-	int shared_actions_n = MLX5_MAX_SHARED_ACTIONS;
+	struct mlx5_translated_action_handle
+		indir_actions[MLX5_MAX_INDIRECT_ACTIONS];
+	int indir_actions_n = MLX5_MAX_INDIRECT_ACTIONS;
 	const struct rte_flow_action *actions;
 	struct rte_flow_action *translated_actions = NULL;
-	int ret = flow_shared_actions_translate(dev, original_actions,
-						shared_actions,
-						&shared_actions_n,
+	int ret = flow_action_handles_translate(dev, original_actions,
+						indir_actions,
+						&indir_actions_n,
 						&translated_actions, error);
 
 	if (ret)
@@ -7213,12 +7213,12 @@ mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 /* Wrapper for driver action_validate op callback */
 static int
 flow_drv_action_validate(struct rte_eth_dev *dev,
-			 const struct rte_flow_shared_action_conf *conf,
+			 const struct rte_flow_indir_action_conf *conf,
 			 const struct rte_flow_action *action,
 			 const struct mlx5_flow_driver_ops *fops,
 			 struct rte_flow_error *error)
 {
-	static const char err_msg[] = "shared action validation unsupported";
+	static const char err_msg[] = "indirect action validation unsupported";
 
 	if (!fops->action_validate) {
 		DRV_LOG(ERR, "port %u %s.", dev->data->port_id, err_msg);
@@ -7234,8 +7234,8 @@ flow_drv_action_validate(struct rte_eth_dev *dev,
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- * @param[in] action
- *   Handle for the shared action to be destroyed.
+ * @param[in] handle
+ *   Handle for the indirect action object to be destroyed.
  * @param[out] error
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
@@ -7246,11 +7246,11 @@ flow_drv_action_validate(struct rte_eth_dev *dev,
  * @note: wrapper for driver action_create op callback.
  */
 static int
-mlx5_shared_action_destroy(struct rte_eth_dev *dev,
-			   struct rte_flow_shared_action *action,
+mlx5_action_handle_destroy(struct rte_eth_dev *dev,
+			   struct rte_flow_action_handle *handle,
 			   struct rte_flow_error *error)
 {
-	static const char err_msg[] = "shared action destruction unsupported";
+	static const char err_msg[] = "indirect action destruction unsupported";
 	struct rte_flow_attr attr = { .transfer = 0 };
 	const struct mlx5_flow_driver_ops *fops =
 			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
@@ -7261,18 +7261,18 @@ mlx5_shared_action_destroy(struct rte_eth_dev *dev,
 				   NULL, err_msg);
 		return -rte_errno;
 	}
-	return fops->action_destroy(dev, action, error);
+	return fops->action_destroy(dev, handle, error);
 }
 
 /* Wrapper for driver action_destroy op callback */
 static int
 flow_drv_action_update(struct rte_eth_dev *dev,
-		       struct rte_flow_shared_action *action,
-		       const void *action_conf,
+		       struct rte_flow_action_handle *handle,
+		       const void *update,
 		       const struct mlx5_flow_driver_ops *fops,
 		       struct rte_flow_error *error)
 {
-	static const char err_msg[] = "shared action update unsupported";
+	static const char err_msg[] = "indirect action update unsupported";
 
 	if (!fops->action_update) {
 		DRV_LOG(ERR, "port %u %s.", dev->data->port_id, err_msg);
@@ -7280,18 +7280,18 @@ flow_drv_action_update(struct rte_eth_dev *dev,
 				   NULL, err_msg);
 		return -rte_errno;
 	}
-	return fops->action_update(dev, action, action_conf, error);
+	return fops->action_update(dev, handle, update, error);
 }
 
 /* Wrapper for driver action_destroy op callback */
 static int
 flow_drv_action_query(struct rte_eth_dev *dev,
-		      const struct rte_flow_shared_action *action,
+		      const struct rte_flow_action_handle *handle,
 		      void *data,
 		      const struct mlx5_flow_driver_ops *fops,
 		      struct rte_flow_error *error)
 {
-	static const char err_msg[] = "shared action query unsupported";
+	static const char err_msg[] = "indirect action query unsupported";
 
 	if (!fops->action_query) {
 		DRV_LOG(ERR, "port %u %s.", dev->data->port_id, err_msg);
@@ -7299,29 +7299,31 @@ flow_drv_action_query(struct rte_eth_dev *dev,
 				   NULL, err_msg);
 		return -rte_errno;
 	}
-	return fops->action_query(dev, action, data, error);
+	return fops->action_query(dev, handle, data, error);
 }
 
 /**
- * Create shared action for reuse in multiple flow rules.
+ * Create indirect action for reuse in multiple flow rules.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
+ * @param conf
+ *   Pointer to indirect action object configuration.
  * @param[in] action
- *   Action configuration for shared action creation.
+ *   Action configuration for indirect action object creation.
  * @param[out] error
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
  * @return
  *   A valid handle in case of success, NULL otherwise and rte_errno is set.
  */
-static struct rte_flow_shared_action *
-mlx5_shared_action_create(struct rte_eth_dev *dev,
-			  const struct rte_flow_shared_action_conf *conf,
+static struct rte_flow_action_handle *
+mlx5_action_handle_create(struct rte_eth_dev *dev,
+			  const struct rte_flow_indir_action_conf *conf,
 			  const struct rte_flow_action *action,
 			  struct rte_flow_error *error)
 {
-	static const char err_msg[] = "shared action creation unsupported";
+	static const char err_msg[] = "indirect action creation unsupported";
 	struct rte_flow_attr attr = { .transfer = 0 };
 	const struct mlx5_flow_driver_ops *fops =
 			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
@@ -7338,19 +7340,20 @@ mlx5_shared_action_create(struct rte_eth_dev *dev,
 }
 
 /**
- * Updates inplace the shared action configuration pointed by *action* handle
- * with the configuration provided as *action* argument.
- * The update of the shared action configuration effects all flow rules reusing
- * the action via handle.
+ * Updates inplace the indirect action configuration pointed by *handle*
+ * with the configuration provided as *update* argument.
+ * The update of the indirect action configuration effects all flow rules
+ * reusing the action via handle.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- * @param[in] shared_action
- *   Handle for the shared action to be updated.
- * @param[in] action
+ * @param[in] handle
+ *   Handle for the indirect action to be updated.
+ * @param[in] update
  *   Action specification used to modify the action pointed by handle.
- *   *action* should be of same type with the action pointed by the *action*
- *   handle argument, otherwise considered as invalid.
+ *   *update* could be of same type with the action pointed by the *handle*
+ *   handle argument, or some other structures like a wrapper, depending on
+ *   the indirect action type.
  * @param[out] error
  *   Perform verbose error reporting if not NULL. PMDs initialize this
  *   structure in case of error only.
@@ -7359,9 +7362,9 @@ mlx5_shared_action_create(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_shared_action_update(struct rte_eth_dev *dev,
-		struct rte_flow_shared_action *shared_action,
-		const struct rte_flow_action *action,
+mlx5_action_handle_update(struct rte_eth_dev *dev,
+		struct rte_flow_action_handle *handle,
+		const void *update,
 		struct rte_flow_error *error)
 {
 	struct rte_flow_attr attr = { .transfer = 0 };
@@ -7369,26 +7372,27 @@ mlx5_shared_action_update(struct rte_eth_dev *dev,
 			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
 	int ret;
 
-	ret = flow_drv_action_validate(dev, NULL, action, fops, error);
+	ret = flow_drv_action_validate(dev, NULL,
+			(const struct rte_flow_action *)update, fops, error);
 	if (ret)
 		return ret;
-	return flow_drv_action_update(dev, shared_action, action->conf, fops,
+	return flow_drv_action_update(dev, handle, update, fops,
 				      error);
 }
 
 /**
- * Query the shared action by handle.
+ * Query the indirect action by handle.
  *
  * This function allows retrieving action-specific data such as counters.
  * Data is gathered by special action which may be present/referenced in
  * more than one flow rule definition.
  *
- * \see RTE_FLOW_ACTION_TYPE_COUNT
+ * see @RTE_FLOW_ACTION_TYPE_COUNT
  *
  * @param dev
  *   Pointer to Ethernet device structure.
- * @param[in] action
- *   Handle for the shared action to query.
+ * @param[in] handle
+ *   Handle for the indirect action to query.
  * @param[in, out] data
  *   Pointer to storage for the associated query data type.
  * @param[out] error
@@ -7399,8 +7403,8 @@ mlx5_shared_action_update(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_shared_action_query(struct rte_eth_dev *dev,
-			 const struct rte_flow_shared_action *action,
+mlx5_action_handle_query(struct rte_eth_dev *dev,
+			 const struct rte_flow_action_handle *handle,
 			 void *data,
 			 struct rte_flow_error *error)
 {
@@ -7408,11 +7412,11 @@ mlx5_shared_action_query(struct rte_eth_dev *dev,
 	const struct mlx5_flow_driver_ops *fops =
 			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
 
-	return flow_drv_action_query(dev, action, data, fops, error);
+	return flow_drv_action_query(dev, handle, data, fops, error);
 }
 
 /**
- * Destroy all shared actions.
+ * Destroy all indirect actions (shared RSS).
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -7421,7 +7425,7 @@ mlx5_shared_action_query(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_shared_action_flush(struct rte_eth_dev *dev)
+mlx5_action_handle_flush(struct rte_eth_dev *dev)
 {
 	struct rte_flow_error error;
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -7431,8 +7435,8 @@ mlx5_shared_action_flush(struct rte_eth_dev *dev)
 
 	ILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 		      priv->rss_shared_actions, idx, shared_rss, next) {
-		ret |= mlx5_shared_action_destroy(dev,
-		       (struct rte_flow_shared_action *)(uintptr_t)idx, &error);
+		ret |= mlx5_action_handle_destroy(dev,
+		       (struct rte_flow_action_handle *)(uintptr_t)idx, &error);
 	}
 	return ret;
 }

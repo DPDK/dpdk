@@ -54,7 +54,7 @@ enum index {
 	PORT_ID,
 	GROUP_ID,
 	PRIORITY_LEVEL,
-	SHARED_ACTION_ID,
+	INDIRECT_ACTION_ID,
 
 	/* Top-level command. */
 	SET,
@@ -68,7 +68,7 @@ enum index {
 	/* Top-level command. */
 	FLOW,
 	/* Sub-level commands. */
-	SHARED_ACTION,
+	INDIRECT_ACTION,
 	VALIDATE,
 	CREATE,
 	DESTROY,
@@ -112,21 +112,21 @@ enum index {
 	DUMP_ALL,
 	DUMP_ONE,
 
-	/* Shared action arguments */
-	SHARED_ACTION_CREATE,
-	SHARED_ACTION_UPDATE,
-	SHARED_ACTION_DESTROY,
-	SHARED_ACTION_QUERY,
+	/* Indirect action arguments */
+	INDIRECT_ACTION_CREATE,
+	INDIRECT_ACTION_UPDATE,
+	INDIRECT_ACTION_DESTROY,
+	INDIRECT_ACTION_QUERY,
 
-	/* Shared action create arguments */
-	SHARED_ACTION_CREATE_ID,
-	SHARED_ACTION_INGRESS,
-	SHARED_ACTION_EGRESS,
-	SHARED_ACTION_TRANSFER,
-	SHARED_ACTION_SPEC,
+	/* Indirect action create arguments */
+	INDIRECT_ACTION_CREATE_ID,
+	INDIRECT_ACTION_INGRESS,
+	INDIRECT_ACTION_EGRESS,
+	INDIRECT_ACTION_TRANSFER,
+	INDIRECT_ACTION_SPEC,
 
-	/* Shared action destroy arguments */
-	SHARED_ACTION_DESTROY_ID,
+	/* Indirect action destroy arguments */
+	INDIRECT_ACTION_DESTROY_ID,
 
 	/* Validate/create pattern. */
 	PATTERN,
@@ -416,8 +416,8 @@ enum index {
 	ACTION_SAMPLE_RATIO,
 	ACTION_SAMPLE_INDEX,
 	ACTION_SAMPLE_INDEX_VALUE,
-	ACTION_SHARED,
-	SHARED_ACTION_ID2PTR,
+	ACTION_INDIRECT,
+	INDIRECT_ACTION_ID2PTR,
 	ACTION_MODIFY_FIELD,
 	ACTION_MODIFY_FIELD_OP,
 	ACTION_MODIFY_FIELD_OP_VALUE,
@@ -778,10 +778,10 @@ struct buffer {
 		struct {
 			uint32_t *action_id;
 			uint32_t action_id_n;
-		} sa_destroy; /**< Shared action destroy arguments. */
+		} ia_destroy; /**< Indirect action destroy arguments. */
 		struct {
 			uint32_t action_id;
-		} sa; /* Shared action query arguments */
+		} ia; /* Indirect action query arguments */
 		struct {
 			struct rte_flow_attr attr;
 			struct tunnel_ops tunnel_ops;
@@ -841,12 +841,12 @@ struct parse_action_priv {
 		.size = s, \
 	})
 
-static const enum index next_sa_create_attr[] = {
-	SHARED_ACTION_CREATE_ID,
-	SHARED_ACTION_INGRESS,
-	SHARED_ACTION_EGRESS,
-	SHARED_ACTION_TRANSFER,
-	SHARED_ACTION_SPEC,
+static const enum index next_ia_create_attr[] = {
+	INDIRECT_ACTION_CREATE_ID,
+	INDIRECT_ACTION_INGRESS,
+	INDIRECT_ACTION_EGRESS,
+	INDIRECT_ACTION_TRANSFER,
+	INDIRECT_ACTION_SPEC,
 	ZERO,
 };
 
@@ -856,11 +856,11 @@ static const enum index next_dump_subcmd[] = {
 	ZERO,
 };
 
-static const enum index next_sa_subcmd[] = {
-	SHARED_ACTION_CREATE,
-	SHARED_ACTION_UPDATE,
-	SHARED_ACTION_DESTROY,
-	SHARED_ACTION_QUERY,
+static const enum index next_ia_subcmd[] = {
+	INDIRECT_ACTION_CREATE,
+	INDIRECT_ACTION_UPDATE,
+	INDIRECT_ACTION_DESTROY,
+	INDIRECT_ACTION_QUERY,
 	ZERO,
 };
 
@@ -900,8 +900,8 @@ static const enum index next_aged_attr[] = {
 	ZERO,
 };
 
-static const enum index next_sa_destroy_attr[] = {
-	SHARED_ACTION_DESTROY_ID,
+static const enum index next_ia_destroy_attr[] = {
+	INDIRECT_ACTION_DESTROY_ID,
 	END,
 	ZERO,
 };
@@ -1380,7 +1380,7 @@ static const enum index next_action[] = {
 	ACTION_SET_IPV6_DSCP,
 	ACTION_AGE,
 	ACTION_SAMPLE,
-	ACTION_SHARED,
+	ACTION_INDIRECT,
 	ACTION_MODIFY_FIELD,
 	ZERO,
 };
@@ -1797,13 +1797,13 @@ static int parse_ipv6_addr(struct context *, const struct token *,
 static int parse_port(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
-static int parse_sa(struct context *, const struct token *,
+static int parse_ia(struct context *, const struct token *,
 		    const char *, unsigned int,
 		    void *, unsigned int);
-static int parse_sa_destroy(struct context *ctx, const struct token *token,
+static int parse_ia_destroy(struct context *ctx, const struct token *token,
 			    const char *str, unsigned int len,
 			    void *buf, unsigned int size);
-static int parse_sa_id2ptr(struct context *ctx, const struct token *token,
+static int parse_ia_id2ptr(struct context *ctx, const struct token *token,
 			   const char *str, unsigned int len, void *buf,
 			   unsigned int size);
 static int comp_none(struct context *, const struct token *,
@@ -1950,10 +1950,10 @@ static const struct token token_list[] = {
 		.call = parse_int,
 		.comp = comp_none,
 	},
-	[SHARED_ACTION_ID] = {
-		.name = "{shared_action_id}",
-		.type = "SHARED_ACTION_ID",
-		.help = "shared action id",
+	[INDIRECT_ACTION_ID] = {
+		.name = "{indirect_action_id}",
+		.type = "INDIRECT_ACTION_ID",
+		.help = "indirect action id",
 		.call = parse_int,
 		.comp = comp_none,
 	},
@@ -1963,7 +1963,7 @@ static const struct token token_list[] = {
 		.type = "{command} {port_id} [{arg} [...]]",
 		.help = "manage ingress/egress flow rules",
 		.next = NEXT(NEXT_ENTRY
-			     (SHARED_ACTION,
+			     (INDIRECT_ACTION,
 			      VALIDATE,
 			      CREATE,
 			      DESTROY,
@@ -1977,42 +1977,42 @@ static const struct token token_list[] = {
 		.call = parse_init,
 	},
 	/* Top-level command. */
-	[SHARED_ACTION] = {
-		.name = "shared_action",
+	[INDIRECT_ACTION] = {
+		.name = "indirect_action",
 		.type = "{command} {port_id} [{arg} [...]]",
-		.help = "manage shared actions",
-		.next = NEXT(next_sa_subcmd, NEXT_ENTRY(PORT_ID)),
+		.help = "manage indirect actions",
+		.next = NEXT(next_ia_subcmd, NEXT_ENTRY(PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
-		.call = parse_sa,
+		.call = parse_ia,
 	},
 	/* Sub-level commands. */
-	[SHARED_ACTION_CREATE] = {
+	[INDIRECT_ACTION_CREATE] = {
 		.name = "create",
-		.help = "create shared action",
-		.next = NEXT(next_sa_create_attr),
-		.call = parse_sa,
+		.help = "create indirect action",
+		.next = NEXT(next_ia_create_attr),
+		.call = parse_ia,
 	},
-	[SHARED_ACTION_UPDATE] = {
+	[INDIRECT_ACTION_UPDATE] = {
 		.name = "update",
-		.help = "update shared action",
-		.next = NEXT(NEXT_ENTRY(SHARED_ACTION_SPEC),
-			     NEXT_ENTRY(SHARED_ACTION_ID)),
+		.help = "update indirect action",
+		.next = NEXT(NEXT_ENTRY(INDIRECT_ACTION_SPEC),
+			     NEXT_ENTRY(INDIRECT_ACTION_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, args.vc.attr.group)),
-		.call = parse_sa,
+		.call = parse_ia,
 	},
-	[SHARED_ACTION_DESTROY] = {
+	[INDIRECT_ACTION_DESTROY] = {
 		.name = "destroy",
-		.help = "destroy shared action",
-		.next = NEXT(NEXT_ENTRY(SHARED_ACTION_DESTROY_ID)),
+		.help = "destroy indirect action",
+		.next = NEXT(NEXT_ENTRY(INDIRECT_ACTION_DESTROY_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
-		.call = parse_sa_destroy,
+		.call = parse_ia_destroy,
 	},
-	[SHARED_ACTION_QUERY] = {
+	[INDIRECT_ACTION_QUERY] = {
 		.name = "query",
-		.help = "query shared action",
-		.next = NEXT(NEXT_ENTRY(END), NEXT_ENTRY(SHARED_ACTION_ID)),
-		.args = ARGS(ARGS_ENTRY(struct buffer, args.sa.action_id)),
-		.call = parse_sa,
+		.help = "query indirect action",
+		.next = NEXT(NEXT_ENTRY(END), NEXT_ENTRY(INDIRECT_ACTION_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.ia.action_id)),
+		.call = parse_ia,
 	},
 	[VALIDATE] = {
 		.name = "validate",
@@ -4498,61 +4498,61 @@ static const struct token token_list[] = {
 		.call = parse_vc_action_sample_index,
 		.comp = comp_set_sample_index,
 	},
-	/* Shared action destroy arguments. */
-	[SHARED_ACTION_DESTROY_ID] = {
+	/* Indirect action destroy arguments. */
+	[INDIRECT_ACTION_DESTROY_ID] = {
 		.name = "action_id",
-		.help = "specify a shared action id to destroy",
-		.next = NEXT(next_sa_destroy_attr,
-			     NEXT_ENTRY(SHARED_ACTION_ID)),
+		.help = "specify a indirect action id to destroy",
+		.next = NEXT(next_ia_destroy_attr,
+			     NEXT_ENTRY(INDIRECT_ACTION_ID)),
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
-					    args.sa_destroy.action_id)),
-		.call = parse_sa_destroy,
+					    args.ia_destroy.action_id)),
+		.call = parse_ia_destroy,
 	},
-	/* Shared action create arguments. */
-	[SHARED_ACTION_CREATE_ID] = {
+	/* Indirect action create arguments. */
+	[INDIRECT_ACTION_CREATE_ID] = {
 		.name = "action_id",
-		.help = "specify a shared action id to create",
-		.next = NEXT(next_sa_create_attr,
-			     NEXT_ENTRY(SHARED_ACTION_ID)),
+		.help = "specify a indirect action id to create",
+		.next = NEXT(next_ia_create_attr,
+			     NEXT_ENTRY(INDIRECT_ACTION_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, args.vc.attr.group)),
 	},
-	[ACTION_SHARED] = {
-		.name = "shared",
-		.help = "apply shared action by id",
-		.priv = PRIV_ACTION(SHARED, 0),
-		.next = NEXT(NEXT_ENTRY(SHARED_ACTION_ID2PTR)),
+	[ACTION_INDIRECT] = {
+		.name = "indirect",
+		.help = "apply indirect action by id",
+		.priv = PRIV_ACTION(INDIRECT, 0),
+		.next = NEXT(NEXT_ENTRY(INDIRECT_ACTION_ID2PTR)),
 		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uint32_t))),
 		.call = parse_vc,
 	},
-	[SHARED_ACTION_ID2PTR] = {
+	[INDIRECT_ACTION_ID2PTR] = {
 		.name = "{action_id}",
-		.type = "SHARED_ACTION_ID",
-		.help = "shared action id",
+		.type = "INDIRECT_ACTION_ID",
+		.help = "indirect action id",
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
-		.call = parse_sa_id2ptr,
+		.call = parse_ia_id2ptr,
 		.comp = comp_none,
 	},
-	[SHARED_ACTION_INGRESS] = {
+	[INDIRECT_ACTION_INGRESS] = {
 		.name = "ingress",
 		.help = "affect rule to ingress",
-		.next = NEXT(next_sa_create_attr),
-		.call = parse_sa,
+		.next = NEXT(next_ia_create_attr),
+		.call = parse_ia,
 	},
-	[SHARED_ACTION_EGRESS] = {
+	[INDIRECT_ACTION_EGRESS] = {
 		.name = "egress",
 		.help = "affect rule to egress",
-		.next = NEXT(next_sa_create_attr),
-		.call = parse_sa,
+		.next = NEXT(next_ia_create_attr),
+		.call = parse_ia,
 	},
-	[SHARED_ACTION_TRANSFER] = {
+	[INDIRECT_ACTION_TRANSFER] = {
 		.name = "transfer",
 		.help = "affect rule to transfer",
-		.next = NEXT(next_sa_create_attr),
-		.call = parse_sa,
+		.next = NEXT(next_ia_create_attr),
+		.call = parse_ia,
 	},
-	[SHARED_ACTION_SPEC] = {
+	[INDIRECT_ACTION_SPEC] = {
 		.name = "action",
-		.help = "specify action to share",
+		.help = "specify action to create indirect handle",
 		.next = NEXT(next_action),
 	},
 };
@@ -4739,9 +4739,9 @@ parse_init(struct context *ctx, const struct token *token,
 	return len;
 }
 
-/** Parse tokens for shared action commands. */
+/** Parse tokens for indirect action commands. */
 static int
-parse_sa(struct context *ctx, const struct token *token,
+parse_ia(struct context *ctx, const struct token *token,
 	 const char *str, unsigned int len,
 	 void *buf, unsigned int size)
 {
@@ -4754,7 +4754,7 @@ parse_sa(struct context *ctx, const struct token *token,
 	if (!out)
 		return len;
 	if (!out->command) {
-		if (ctx->curr != SHARED_ACTION)
+		if (ctx->curr != INDIRECT_ACTION)
 			return -1;
 		if (sizeof(*out) > size)
 			return -1;
@@ -4766,26 +4766,26 @@ parse_sa(struct context *ctx, const struct token *token,
 		return len;
 	}
 	switch (ctx->curr) {
-	case SHARED_ACTION_CREATE:
-	case SHARED_ACTION_UPDATE:
+	case INDIRECT_ACTION_CREATE:
+	case INDIRECT_ACTION_UPDATE:
 		out->args.vc.actions =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
 					       sizeof(double));
 		out->args.vc.attr.group = UINT32_MAX;
 		/* fallthrough */
-	case SHARED_ACTION_QUERY:
+	case INDIRECT_ACTION_QUERY:
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
 		ctx->objmask = NULL;
 		return len;
-	case SHARED_ACTION_EGRESS:
+	case INDIRECT_ACTION_EGRESS:
 		out->args.vc.attr.egress = 1;
 		return len;
-	case SHARED_ACTION_INGRESS:
+	case INDIRECT_ACTION_INGRESS:
 		out->args.vc.attr.ingress = 1;
 		return len;
-	case SHARED_ACTION_TRANSFER:
+	case INDIRECT_ACTION_TRANSFER:
 		out->args.vc.attr.transfer = 1;
 		return len;
 	default:
@@ -4794,9 +4794,9 @@ parse_sa(struct context *ctx, const struct token *token,
 }
 
 
-/** Parse tokens for shared action destroy command. */
+/** Parse tokens for indirect action destroy command. */
 static int
-parse_sa_destroy(struct context *ctx, const struct token *token,
+parse_ia_destroy(struct context *ctx, const struct token *token,
 		 const char *str, unsigned int len,
 		 void *buf, unsigned int size)
 {
@@ -4809,8 +4809,8 @@ parse_sa_destroy(struct context *ctx, const struct token *token,
 	/* Nothing else to do if there is no buffer. */
 	if (!out)
 		return len;
-	if (!out->command || out->command == SHARED_ACTION) {
-		if (ctx->curr != SHARED_ACTION_DESTROY)
+	if (!out->command || out->command == INDIRECT_ACTION) {
+		if (ctx->curr != INDIRECT_ACTION_DESTROY)
 			return -1;
 		if (sizeof(*out) > size)
 			return -1;
@@ -4818,13 +4818,13 @@ parse_sa_destroy(struct context *ctx, const struct token *token,
 		ctx->objdata = 0;
 		ctx->object = out;
 		ctx->objmask = NULL;
-		out->args.sa_destroy.action_id =
+		out->args.ia_destroy.action_id =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
 					       sizeof(double));
 		return len;
 	}
-	action_id = out->args.sa_destroy.action_id
-		    + out->args.sa_destroy.action_id_n++;
+	action_id = out->args.ia_destroy.action_id
+		    + out->args.ia_destroy.action_id_n++;
 	if ((uint8_t *)action_id > (uint8_t *)out + size)
 		return -1;
 	ctx->objdata = 0;
@@ -7102,7 +7102,7 @@ parse_port(struct context *ctx, const struct token *token,
 }
 
 static int
-parse_sa_id2ptr(struct context *ctx, const struct token *token,
+parse_ia_id2ptr(struct context *ctx, const struct token *token,
 		const char *str, unsigned int len,
 		void *buf, unsigned int size)
 {
@@ -7119,9 +7119,9 @@ parse_sa_id2ptr(struct context *ctx, const struct token *token,
 	ctx->object = action;
 	if (ret != (int)len)
 		return ret;
-	/* set shared action */
+	/* set indirect action */
 	if (action) {
-		action->conf = port_shared_action_get_by_id(ctx->port, id);
+		action->conf = port_action_handle_get_by_id(ctx->port, id);
 		ret = (action->conf) ? ret : -1;
 	}
 	return ret;
@@ -7659,27 +7659,27 @@ static void
 cmd_flow_parsed(const struct buffer *in)
 {
 	switch (in->command) {
-	case SHARED_ACTION_CREATE:
-		port_shared_action_create(
+	case INDIRECT_ACTION_CREATE:
+		port_action_handle_create(
 				in->port, in->args.vc.attr.group,
-				&((const struct rte_flow_shared_action_conf) {
+				&((const struct rte_flow_indir_action_conf) {
 					.ingress = in->args.vc.attr.ingress,
 					.egress = in->args.vc.attr.egress,
 					.transfer = in->args.vc.attr.transfer,
 				}),
 				in->args.vc.actions);
 		break;
-	case SHARED_ACTION_DESTROY:
-		port_shared_action_destroy(in->port,
-					   in->args.sa_destroy.action_id_n,
-					   in->args.sa_destroy.action_id);
+	case INDIRECT_ACTION_DESTROY:
+		port_action_handle_destroy(in->port,
+					   in->args.ia_destroy.action_id_n,
+					   in->args.ia_destroy.action_id);
 		break;
-	case SHARED_ACTION_UPDATE:
-		port_shared_action_update(in->port, in->args.vc.attr.group,
+	case INDIRECT_ACTION_UPDATE:
+		port_action_handle_update(in->port, in->args.vc.attr.group,
 					  in->args.vc.actions);
 		break;
-	case SHARED_ACTION_QUERY:
-		port_shared_action_query(in->port, in->args.sa.action_id);
+	case INDIRECT_ACTION_QUERY:
+		port_action_handle_query(in->port, in->args.ia.action_id);
 		break;
 	case VALIDATE:
 		port_flow_validate(in->port, &in->args.vc.attr,

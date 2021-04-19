@@ -38,11 +38,11 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_AGE,
 };
 
-#define MLX5_SHARED_ACTION_TYPE_OFFSET 30
+#define MLX5_INDIRECT_ACTION_TYPE_OFFSET 30
 
 enum {
-	MLX5_SHARED_ACTION_TYPE_RSS,
-	MLX5_SHARED_ACTION_TYPE_AGE,
+	MLX5_INDIRECT_ACTION_TYPE_RSS,
+	MLX5_INDIRECT_ACTION_TYPE_AGE,
 };
 
 /* Matches on selected register. */
@@ -1151,7 +1151,7 @@ struct mlx5_shared_action_rss {
 	rte_spinlock_t action_rss_sl; /**< Shared RSS action spinlock. */
 };
 
-struct rte_flow_shared_action {
+struct rte_flow_action_handle {
 	uint32_t id;
 };
 
@@ -1232,26 +1232,26 @@ typedef int (*mlx5_flow_get_aged_flows_t)
 					 struct rte_flow_error *error);
 typedef int (*mlx5_flow_action_validate_t)
 				(struct rte_eth_dev *dev,
-				 const struct rte_flow_shared_action_conf *conf,
+				 const struct rte_flow_indir_action_conf *conf,
 				 const struct rte_flow_action *action,
 				 struct rte_flow_error *error);
-typedef struct rte_flow_shared_action *(*mlx5_flow_action_create_t)
+typedef struct rte_flow_action_handle *(*mlx5_flow_action_create_t)
 				(struct rte_eth_dev *dev,
-				 const struct rte_flow_shared_action_conf *conf,
+				 const struct rte_flow_indir_action_conf *conf,
 				 const struct rte_flow_action *action,
 				 struct rte_flow_error *error);
 typedef int (*mlx5_flow_action_destroy_t)
 				(struct rte_eth_dev *dev,
-				 struct rte_flow_shared_action *action,
+				 struct rte_flow_action_handle *action,
 				 struct rte_flow_error *error);
 typedef int (*mlx5_flow_action_update_t)
 			(struct rte_eth_dev *dev,
-			 struct rte_flow_shared_action *action,
-			 const void *action_conf,
+			 struct rte_flow_action_handle *action,
+			 const void *update,
 			 struct rte_flow_error *error);
 typedef int (*mlx5_flow_action_query_t)
 			(struct rte_eth_dev *dev,
-			 const struct rte_flow_shared_action *action,
+			 const struct rte_flow_action_handle *action,
 			 void *data,
 			 struct rte_flow_error *error);
 typedef int (*mlx5_flow_sync_domain_t)
@@ -1482,7 +1482,7 @@ int mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
 int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
-int mlx5_shared_action_flush(struct rte_eth_dev *dev);
+int mlx5_action_handle_flush(struct rte_eth_dev *dev);
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
 int mlx5_alloc_tunnel_hub(struct mlx5_dev_ctx_shared *sh);
 

@@ -180,12 +180,12 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(MODIFY_FIELD,
 		       sizeof(struct rte_flow_action_modify_field)),
 	/**
-	 * Shared action represented as handle of type
-	 * (struct rte_flow_shared action *) stored in conf field (see
+	 * Indirect action represented as handle of type
+	 * (struct rte_flow_action_handle *) stored in conf field (see
 	 * struct rte_flow_action); no need for additional structure to * store
-	 * shared action handle.
+	 * indirect action handle.
 	 */
-	MK_FLOW_ACTION(SHARED, 0),
+	MK_FLOW_ACTION(INDIRECT, 0),
 };
 
 int
@@ -1068,53 +1068,53 @@ rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
 				  NULL, rte_strerror(ENOTSUP));
 }
 
-struct rte_flow_shared_action *
-rte_flow_shared_action_create(uint16_t port_id,
-			      const struct rte_flow_shared_action_conf *conf,
+struct rte_flow_action_handle *
+rte_flow_action_handle_create(uint16_t port_id,
+			      const struct rte_flow_indir_action_conf *conf,
 			      const struct rte_flow_action *action,
 			      struct rte_flow_error *error)
 {
-	struct rte_flow_shared_action *shared_action;
+	struct rte_flow_action_handle *handle;
 	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
 
 	if (unlikely(!ops))
 		return NULL;
-	if (unlikely(!ops->shared_action_create)) {
+	if (unlikely(!ops->action_handle_create)) {
 		rte_flow_error_set(error, ENOSYS,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   rte_strerror(ENOSYS));
 		return NULL;
 	}
-	shared_action = ops->shared_action_create(&rte_eth_devices[port_id],
-						  conf, action, error);
-	if (shared_action == NULL)
+	handle = ops->action_handle_create(&rte_eth_devices[port_id],
+					   conf, action, error);
+	if (handle == NULL)
 		flow_err(port_id, -rte_errno, error);
-	return shared_action;
+	return handle;
 }
 
 int
-rte_flow_shared_action_destroy(uint16_t port_id,
-			      struct rte_flow_shared_action *action,
-			      struct rte_flow_error *error)
+rte_flow_action_handle_destroy(uint16_t port_id,
+			       struct rte_flow_action_handle *handle,
+			       struct rte_flow_error *error)
 {
 	int ret;
 	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
 
 	if (unlikely(!ops))
 		return -rte_errno;
-	if (unlikely(!ops->shared_action_destroy))
+	if (unlikely(!ops->action_handle_destroy))
 		return rte_flow_error_set(error, ENOSYS,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, rte_strerror(ENOSYS));
-	ret = ops->shared_action_destroy(&rte_eth_devices[port_id], action,
-					 error);
+	ret = ops->action_handle_destroy(&rte_eth_devices[port_id],
+					 handle, error);
 	return flow_err(port_id, ret, error);
 }
 
 int
-rte_flow_shared_action_update(uint16_t port_id,
-			      struct rte_flow_shared_action *action,
-			      const struct rte_flow_action *update,
+rte_flow_action_handle_update(uint16_t port_id,
+			      struct rte_flow_action_handle *handle,
+			      const void *update,
 			      struct rte_flow_error *error)
 {
 	int ret;
@@ -1122,18 +1122,18 @@ rte_flow_shared_action_update(uint16_t port_id,
 
 	if (unlikely(!ops))
 		return -rte_errno;
-	if (unlikely(!ops->shared_action_update))
+	if (unlikely(!ops->action_handle_update))
 		return rte_flow_error_set(error, ENOSYS,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, rte_strerror(ENOSYS));
-	ret = ops->shared_action_update(&rte_eth_devices[port_id], action,
+	ret = ops->action_handle_update(&rte_eth_devices[port_id], handle,
 					update, error);
 	return flow_err(port_id, ret, error);
 }
 
 int
-rte_flow_shared_action_query(uint16_t port_id,
-			     const struct rte_flow_shared_action *action,
+rte_flow_action_handle_query(uint16_t port_id,
+			     const struct rte_flow_action_handle *handle,
 			     void *data,
 			     struct rte_flow_error *error)
 {
@@ -1142,11 +1142,11 @@ rte_flow_shared_action_query(uint16_t port_id,
 
 	if (unlikely(!ops))
 		return -rte_errno;
-	if (unlikely(!ops->shared_action_query))
+	if (unlikely(!ops->action_handle_query))
 		return rte_flow_error_set(error, ENOSYS,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, rte_strerror(ENOSYS));
-	ret = ops->shared_action_query(&rte_eth_devices[port_id], action,
+	ret = ops->action_handle_query(&rte_eth_devices[port_id], handle,
 				       data, error);
 	return flow_err(port_id, ret, error);
 }

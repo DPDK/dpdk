@@ -288,6 +288,13 @@ API Changes
   ``rte_cryptodev_raw_dequeue_burst`` got a new parameter
   ``max_nb_to_dequeue`` to provide flexible control on dequeue.
 
+* ethdev: The experimental flow API for shared action has been generalized
+  as a flow action handle used in rules through an indirect action.
+  The functions ``rte_flow_shared_action_*`` manipulating the action object
+  are replaced with ``rte_flow_action_handle_*``.
+  The action ``RTE_FLOW_ACTION_TYPE_SHARED`` is deprecated and can be
+  replaced with ``RTE_FLOW_ACTION_TYPE_INDIRECT``.
+
 
 ABI Changes
 -----------

@@ -84,27 +84,27 @@ struct rte_flow_ops {
 		 void **context,
 		 uint32_t nb_contexts,
 		 struct rte_flow_error *err);
-	/** See rte_flow_shared_action_create() */
-	struct rte_flow_shared_action *(*shared_action_create)
+	/** See rte_flow_action_handle_create() */
+	struct rte_flow_action_handle *(*action_handle_create)
 		(struct rte_eth_dev *dev,
-		 const struct rte_flow_shared_action_conf *conf,
+		 const struct rte_flow_indir_action_conf *conf,
 		 const struct rte_flow_action *action,
 		 struct rte_flow_error *error);
-	/** See rte_flow_shared_action_destroy() */
-	int (*shared_action_destroy)
+	/** See rte_flow_action_handle_destroy() */
+	int (*action_handle_destroy)
 		(struct rte_eth_dev *dev,
-		 struct rte_flow_shared_action *shared_action,
+		 struct rte_flow_action_handle *handle,
 		 struct rte_flow_error *error);
-	/** See rte_flow_shared_action_update() */
-	int (*shared_action_update)
+	/** See rte_flow_action_handle_update() */
+	int (*action_handle_update)
 		(struct rte_eth_dev *dev,
-		 struct rte_flow_shared_action *shared_action,
-		 const struct rte_flow_action *update,
+		 struct rte_flow_action_handle *handle,
+		 const void *update,
 		 struct rte_flow_error *error);
-	/** See rte_flow_shared_action_query() */
-	int (*shared_action_query)
+	/** See rte_flow_action_handle_query() */
+	int (*action_handle_query)
 		(struct rte_eth_dev *dev,
-		 const struct rte_flow_shared_action *shared_action,
+		 const struct rte_flow_action_handle *handle,
 		 void *data,
 		 struct rte_flow_error *error);
 	/** See rte_flow_tunnel_decap_set() */

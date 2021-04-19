@@ -231,10 +231,6 @@ EXPERIMENTAL {
 	rte_eth_fec_get_capability;
 	rte_eth_fec_get;
 	rte_eth_fec_set;
-	rte_flow_shared_action_create;
-	rte_flow_shared_action_destroy;
-	rte_flow_shared_action_query;
-	rte_flow_shared_action_update;
 	rte_flow_tunnel_decap_set;
 	rte_flow_tunnel_match;
 	rte_flow_get_restore_info;
@@ -246,6 +242,10 @@ EXPERIMENTAL {
 
 	# added in 21.05
 	rte_eth_representor_info_get;
+	rte_flow_action_handle_create;
+	rte_flow_action_handle_destroy;
+	rte_flow_action_handle_update;
+	rte_flow_action_handle_query;
 };
 
 INTERNAL {
