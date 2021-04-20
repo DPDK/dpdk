@@ -4363,6 +4363,8 @@ flow_create_split_inner(struct rte_eth_dev *dev,
  *   Parent flow structure pointer.
  * @param[in] fm
  *   Pointer to flow meter structure.
+ * @param[in] attr
+ *   Flow rule attributes.
  * @param[in] items
  *   Pattern specification (list terminated by the END pattern item).
  * @param[out] sfx_items
@@ -4383,6 +4385,7 @@ static uint32_t
 flow_meter_split_prep(struct rte_eth_dev *dev,
 		      struct rte_flow *flow,
 		      struct mlx5_flow_meter_info *fm,
+		      const struct rte_flow_attr *attr,
 		      const struct rte_flow_item items[],
 		      struct rte_flow_item sfx_items[],
 		      const struct rte_flow_action actions[],
@@ -4400,6 +4403,12 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	struct mlx5_rte_flow_item_tag *tag_item_mask;
 	uint32_t tag_id = 0;
 	bool copy_vlan = false;
+	struct rte_flow_action *hw_mtr_action;
+	struct rte_flow_action_jump *jump_data;
+	struct rte_flow_action *action_pre_head = NULL;
+	bool mtr_first = priv->sh->meter_aso_en &&
+			(attr->egress ||
+			(attr->transfer && priv->representor_id != UINT16_MAX));
 	uint8_t mtr_id_offset = priv->mtr_reg_share ? MLX5_MTR_COLOR_BITS : 0;
 	uint8_t mtr_reg_bits = priv->mtr_reg_share ?
 				MLX5_MTR_IDLE_BITS_IN_COLOR_REG : MLX5_REG_BITS;
@@ -4408,29 +4417,39 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	uint8_t flow_id_bits = 0;
 	int shift;
 
+	/* For ASO meter, meter must be before tag in TX direction. */
+	if (mtr_first) {
+		action_pre_head = actions_pre++;
+		/* Leave space for tag action. */
+		tag_action = actions_pre++;
+	}
 	/* Prepare the actions for prefix and suffix flow. */
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
-		struct rte_flow_action **action_cur = NULL;
+		struct rte_flow_action *action_cur = NULL;
 
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_METER:
-			/* Add the extra tag action first. */
-			tag_action = actions_pre++;
-			action_cur = &actions_pre;
+			if (mtr_first) {
+				action_cur = action_pre_head;
+			} else {
+				/* Leave space for tag action. */
+				tag_action = actions_pre++;
+				action_cur = actions_pre++;
+			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
-			action_cur = &actions_pre;
+			action_cur = actions_pre++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			raw_encap = actions->conf;
 			if (raw_encap->size < MLX5_ENCAPSULATION_DECISION_SIZE)
-				action_cur = &actions_pre;
+				action_cur = actions_pre++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			raw_decap = actions->conf;
 			if (raw_decap->size > MLX5_ENCAPSULATION_DECISION_SIZE)
-				action_cur = &actions_pre;
+				action_cur = actions_pre++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
@@ -4440,14 +4459,32 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 			break;
 		}
 		if (!action_cur)
-			action_cur = &actions_sfx;
-		memcpy(*action_cur, actions, sizeof(struct rte_flow_action));
-		(*action_cur)++;
+			action_cur = actions_sfx++;
+		memcpy(action_cur, actions, sizeof(struct rte_flow_action));
 	}
 	/* Add end action to the actions. */
 	actions_sfx->type = RTE_FLOW_ACTION_TYPE_END;
-	actions_pre->type = RTE_FLOW_ACTION_TYPE_END;
-	actions_pre++;
+	if (priv->sh->meter_aso_en) {
+		/**
+		 * For ASO meter, need to add an extra jump action explicitly,
+		 * to jump from meter to policer table.
+		 */
+		hw_mtr_action = actions_pre;
+		hw_mtr_action->type = RTE_FLOW_ACTION_TYPE_JUMP;
+		actions_pre++;
+		actions_pre->type = RTE_FLOW_ACTION_TYPE_END;
+		actions_pre++;
+		jump_data = (struct rte_flow_action_jump *)actions_pre;
+		jump_data->group = attr->transfer ?
+				(MLX5_FLOW_TABLE_LEVEL_METER - 1) :
+				 MLX5_FLOW_TABLE_LEVEL_METER;
+		hw_mtr_action->conf = jump_data;
+		actions_pre = (struct rte_flow_action *)(jump_data + 1);
+	} else {
+		actions_pre->type = RTE_FLOW_ACTION_TYPE_END;
+		actions_pre++;
+	}
+	/* Generate meter flow_id only if support multiple flows per meter. */
 	mlx5_ipool_malloc(fm->flow_ipool, &tag_id);
 	if (!tag_id)
 		return rte_flow_error_set(error, ENOMEM,
@@ -5272,10 +5309,11 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			flow->meter = mtr_idx;
 		}
 		wks->fm = fm;
-		/* The prefix actions: meter, decap, encap, tag, end. */
-		act_size = sizeof(struct rte_flow_action) * (actions_n + 5) +
-			   sizeof(struct mlx5_rte_flow_action_set_tag);
-		/* The suffix items: tag, vlan, port id, end. */
+		/* Prefix actions: meter, decap, encap, tag, jump, end. */
+		act_size = sizeof(struct rte_flow_action) * (actions_n + 6) +
+			   sizeof(struct mlx5_rte_flow_action_set_tag) +
+			   sizeof(struct rte_flow_action_jump);
+		/* Suffix items: tag, vlan, port id, end. */
 #define METER_SUFFIX_ITEM 4
 		item_size = sizeof(struct rte_flow_item) * METER_SUFFIX_ITEM +
 			    sizeof(struct mlx5_rte_flow_item_tag) * 2;
@@ -5289,8 +5327,8 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		sfx_items = (struct rte_flow_item *)((char *)sfx_actions +
 			     act_size);
 		pre_actions = sfx_actions + actions_n;
-		mtr_tag_id = flow_meter_split_prep(dev, flow, fm, items,
-						   sfx_items, actions,
+		mtr_tag_id = flow_meter_split_prep(dev, flow, fm, &sfx_attr,
+						   items, sfx_items, actions,
 						   sfx_actions, pre_actions,
 						   error);
 		if (!mtr_tag_id) {

@@ -1255,7 +1255,9 @@ err_secondary:
 				"required for coalescing is %d bytes",
 				config->hca_attr.lro_min_mss_size);
 		}
-#if defined(HAVE_MLX5DV_DR) && defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER)
+#if defined(HAVE_MLX5DV_DR) && \
+	(defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER) || \
+	 defined(HAVE_MLX5_DR_CREATE_ACTION_ASO))
 		if (config->hca_attr.qos.sup &&
 		    config->hca_attr.qos.flow_meter_old &&
 		    config->dv_flow_en) {

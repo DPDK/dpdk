@@ -634,8 +634,6 @@ struct mlx5_meter_domains_infos {
 	/**< Counters for green rule. */
 	void *drop_count;
 	/**< Counters for green rule. */
-	void *meter_action;
-	/**< Flow meter action. */
 };
 
 /* Meter parameter structure. */
@@ -698,6 +696,8 @@ struct mlx5_flow_meter_info {
 	/**< Use count. */
 	struct mlx5_indexed_pool *flow_ipool;
 	/**< Index pool for flow id. */
+	void *meter_action;
+	/**< Flow meter action. */
 };
 
 /* RFC2697 parameter structure. */
@@ -1487,7 +1487,8 @@ int mlx5_flow_meter_attach(struct mlx5_priv *priv,
 			   struct mlx5_flow_meter_info *fm,
 			   const struct rte_flow_attr *attr,
 			   struct rte_flow_error *error);
-void mlx5_flow_meter_detach(struct mlx5_flow_meter_info *fm);
+void mlx5_flow_meter_detach(struct mlx5_priv *priv,
+			    struct mlx5_flow_meter_info *fm);
 
 /* mlx5_os.c */
 struct rte_pci_driver;
