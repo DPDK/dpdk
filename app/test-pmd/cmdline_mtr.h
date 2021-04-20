@@ -4,6 +4,7 @@
 
 #ifndef _CMDLINE_MTR_H_
 #define _CMDLINE_MTR_H_
+#include <rte_mtr.h>
 
 /* Traffic Metering and Policing */
 extern cmdline_parse_inst_t cmd_show_port_meter_cap;
@@ -15,9 +16,11 @@ extern cmdline_parse_inst_t cmd_create_port_meter;
 extern cmdline_parse_inst_t cmd_enable_port_meter;
 extern cmdline_parse_inst_t cmd_disable_port_meter;
 extern cmdline_parse_inst_t cmd_del_port_meter;
+extern cmdline_parse_inst_t cmd_del_port_meter_policy;
 extern cmdline_parse_inst_t cmd_set_port_meter_profile;
 extern cmdline_parse_inst_t cmd_set_port_meter_dscp_table;
 extern cmdline_parse_inst_t cmd_set_port_meter_stats_mask;
 extern cmdline_parse_inst_t cmd_show_port_meter_stats;
+void print_mtr_err_msg(struct rte_mtr_error *error);
 
 #endif /* _CMDLINE_MTR_H_ */

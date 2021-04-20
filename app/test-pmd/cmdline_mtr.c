@@ -37,6 +37,8 @@ print_err_msg(struct rte_mtr_error *error)
 		[RTE_MTR_ERROR_TYPE_STATS] = "stats",
 		[RTE_MTR_ERROR_TYPE_SHARED]
 			= "shared meter",
+		[RTE_MTR_ERROR_TYPE_METER_POLICY_ID] = "meter policy id",
+		[RTE_MTR_ERROR_TYPE_METER_POLICY] = "meter policy null",
 	};
 
 	const char *errstr;
@@ -54,6 +56,12 @@ print_err_msg(struct rte_mtr_error *error)
 	printf("%s: %s%s (error %d)\n", errstr, error->cause ? buf : "",
 		error->message ? error->message : "(no stated reason)",
 		error->type);
+}
+
+void
+print_mtr_err_msg(struct rte_mtr_error *error)
+{
+	print_err_msg(error);
 }
 
 static int
@@ -705,6 +713,7 @@ struct cmd_create_port_meter_result {
 	uint16_t port_id;
 	uint32_t mtr_id;
 	uint32_t profile_id;
+	uint32_t policy_id;
 	cmdline_fixed_string_t meter_enable;
 	cmdline_fixed_string_t g_action;
 	cmdline_fixed_string_t y_action;
@@ -732,6 +741,9 @@ cmdline_parse_token_num_t cmd_create_port_meter_mtr_id =
 cmdline_parse_token_num_t cmd_create_port_meter_profile_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_create_port_meter_result, profile_id, RTE_UINT32);
+cmdline_parse_token_num_t cmd_create_port_meter_policy_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_create_port_meter_result, policy_id, RTE_UINT32);
 cmdline_parse_token_string_t cmd_create_port_meter_meter_enable =
 	TOKEN_STRING_INITIALIZER(struct cmd_create_port_meter_result,
 		meter_enable, "yes#no");
@@ -775,7 +787,7 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 	/* Meter params */
 	memset(&params, 0, sizeof(struct rte_mtr_params));
 	params.meter_profile_id = res->profile_id;
-
+	params.meter_policy_id = res->policy_id;
 	/* Parse meter input color string params */
 	ret = parse_meter_color_str(c_str, &use_prev_meter_color, &dscp_table);
 	if (ret) {
@@ -790,7 +802,6 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 		params.meter_enable = 1;
 	else
 		params.meter_enable = 0;
-
 	params.stats_mask = res->statistics_mask;
 
 	ret = rte_mtr_create(port_id, mtr_id, &params, shared, &error);
@@ -805,7 +816,6 @@ cmdline_parse_inst_t cmd_create_port_meter = {
 	.f = cmd_create_port_meter_parsed,
 	.data = NULL,
 	.help_str = "create port meter <port_id> <mtr_id> <profile_id> <meter_enable>(yes|no) "
-		"<g_action>(R|Y|G|D) <y_action>(R|Y|G|D) <r_action>(R|Y|G|D) "
 		"<stats_mask> <shared> <use_pre_meter_color> "
 		"[<dscp_tbl_entry0> <dscp_tbl_entry1> ...<dscp_tbl_entry63>]",
 	.tokens = {
@@ -815,10 +825,8 @@ cmdline_parse_inst_t cmd_create_port_meter = {
 		(void *)&cmd_create_port_meter_port_id,
 		(void *)&cmd_create_port_meter_mtr_id,
 		(void *)&cmd_create_port_meter_profile_id,
+		(void *)&cmd_create_port_meter_policy_id,
 		(void *)&cmd_create_port_meter_meter_enable,
-		(void *)&cmd_create_port_meter_g_action,
-		(void *)&cmd_create_port_meter_y_action,
-		(void *)&cmd_create_port_meter_r_action,
 		(void *)&cmd_create_port_meter_statistics_mask,
 		(void *)&cmd_create_port_meter_shared,
 		(void *)&cmd_create_port_meter_input_color,
@@ -944,6 +952,71 @@ cmdline_parse_inst_t cmd_disable_port_meter = {
 		(void *)&cmd_disable_port_meter_meter,
 		(void *)&cmd_disable_port_meter_port_id,
 		(void *)&cmd_disable_port_meter_mtr_id,
+		NULL,
+	},
+};
+
+/* *** Delete Port Meter Policy Object *** */
+struct cmd_del_port_meter_policy_result {
+	cmdline_fixed_string_t del;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t meter;
+	cmdline_fixed_string_t policy;
+	uint16_t port_id;
+	uint32_t policy_id;
+};
+
+cmdline_parse_token_string_t cmd_del_port_meter_policy_del =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_del_port_meter_policy_result, del, "del");
+cmdline_parse_token_string_t cmd_del_port_meter_policy_port =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_del_port_meter_policy_result, port, "port");
+cmdline_parse_token_string_t cmd_del_port_meter_policy_meter =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_del_port_meter_policy_result, meter, "meter");
+cmdline_parse_token_string_t cmd_del_port_meter_policy_policy =
+	TOKEN_STRING_INITIALIZER(
+		struct cmd_del_port_meter_policy_result, policy, "policy");
+cmdline_parse_token_num_t cmd_del_port_meter_policy_port_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_del_port_meter_policy_result, port_id, RTE_UINT16);
+cmdline_parse_token_num_t cmd_del_port_meter_policy_policy_id =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_del_port_meter_policy_result, policy_id, RTE_UINT32);
+
+static void cmd_del_port_meter_policy_parsed(void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
+{
+	struct cmd_del_port_meter_policy_result *res = parsed_result;
+	struct rte_mtr_error error;
+	uint32_t policy_id = res->policy_id;
+	uint16_t port_id = res->port_id;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	/* Delete Meter Policy*/
+	ret = rte_mtr_meter_policy_delete(port_id, policy_id, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_del_port_meter_policy = {
+	.f = cmd_del_port_meter_policy_parsed,
+	.data = NULL,
+	.help_str = "Delete port meter policy",
+	.tokens = {
+		(void *)&cmd_del_port_meter_policy_del,
+		(void *)&cmd_del_port_meter_policy_port,
+		(void *)&cmd_del_port_meter_policy_meter,
+		(void *)&cmd_del_port_meter_policy_policy,
+		(void *)&cmd_del_port_meter_policy_port_id,
+		(void *)&cmd_del_port_meter_policy_policy_id,
 		NULL,
 	},
 };

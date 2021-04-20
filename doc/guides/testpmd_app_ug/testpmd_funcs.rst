@@ -2765,13 +2765,37 @@ Delete meter profile from the ethernet device::
 
    testpmd> del port meter profile (port_id) (profile_id)
 
+create port policy
+~~~~~~~~~~~~~~~~~~
+
+Create new policy object for the ethernet device::
+
+   testpmd> add port meter policy (port_id) (policy_id) g_actions \
+   {action} y_actions {action} r_actions {action}
+
+where:
+
+* ``policy_id``: policy ID.
+* ``action``: action lists for green/yellow/red colors.
+
+delete port policy
+~~~~~~~~~~~~~~~~~~
+
+Delete policy object for the ethernet device::
+
+   testpmd> del port meter policy (port_id) (policy_id)
+
+where:
+
+* ``policy_id``: policy ID.
+
 create port meter
 ~~~~~~~~~~~~~~~~~
 
 Create new meter object for the ethernet device::
 
    testpmd> create port meter (port_id) (mtr_id) (profile_id) \
-   (meter_enable) (g_action) (y_action) (r_action) (stats_mask) (shared) \
+   (policy_id) (meter_enable) (stats_mask) (shared) \
    (use_pre_meter_color) [(dscp_tbl_entry0) (dscp_tbl_entry1)...\
    (dscp_tbl_entry63)]
 
@@ -2779,11 +2803,9 @@ where:
 
 * ``mtr_id``: meter object ID.
 * ``profile_id``: ID for the meter profile.
+* ``policy_id``: ID for the policy.
 * ``meter_enable``: When this parameter has a non-zero value, the meter object
   gets enabled at the time of creation, otherwise remains disabled.
-* ``g_action``: Policer action for the packet with green color.
-* ``y_action``: Policer action for the packet with yellow color.
-* ``r_action``: Policer action for the packet with red color.
 * ``stats_mask``: Mask of statistics counter types to be enabled for the
   meter object.
 * ``shared``:  When this parameter has a non-zero value, the meter object is

@@ -38,6 +38,7 @@
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
 #include <rte_flow.h>
+#include <rte_mtr.h>
 #include <rte_errno.h>
 #ifdef RTE_NET_IXGBE
 #include <rte_pmd_ixgbe.h>
@@ -52,6 +53,7 @@
 #include <rte_hexdump.h>
 
 #include "testpmd.h"
+#include "cmdline_mtr.h"
 
 #define ETHDEV_FWVERS_LEN 32
 
@@ -1796,6 +1798,36 @@ port_flow_tunnel_offload_cmd_release(portid_t port_id,
 		pft->items = NULL;
 		pft->pmd_items = NULL;
 	}
+}
+
+/** Add port meter policy */
+int
+port_meter_policy_add(portid_t port_id, uint32_t policy_id,
+			const struct rte_flow_action *actions)
+{
+	struct rte_mtr_error error;
+	const struct rte_flow_action *act = actions;
+	const struct rte_flow_action *start;
+	struct rte_mtr_meter_policy_params policy;
+	uint32_t i = 0, act_n;
+	int ret;
+
+	for (i = 0; i < RTE_COLORS; i++) {
+		for (act_n = 0, start = act;
+			act->type != RTE_FLOW_ACTION_TYPE_END; act++)
+			act_n++;
+		if (act_n && act->type == RTE_FLOW_ACTION_TYPE_END)
+			policy.actions[i] = start;
+		else
+			policy.actions[i] = NULL;
+		act++;
+	}
+	ret = rte_mtr_meter_policy_add(port_id,
+			policy_id,
+			&policy, &error);
+	if (ret)
+		print_mtr_err_msg(&error);
+	return ret;
 }
 
 /** Validate flow rule. */

@@ -840,6 +840,8 @@ void port_flow_tunnel_list(portid_t port_id);
 void port_flow_tunnel_destroy(portid_t port_id, uint32_t tunnel_id);
 void port_flow_tunnel_create(portid_t port_id, const struct tunnel_ops *ops);
 int port_flow_isolate(portid_t port_id, int set);
+int port_meter_policy_add(portid_t port_id, uint32_t policy_id,
+		const struct rte_flow_action *actions);
 
 void rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id);
 void tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id);

@@ -235,6 +235,8 @@ New Features
     ``show port (port_id) rxq (queue_id) desc used count``
   * Added command to dump internal representation information of single flow.
     ``flow dump (port_id) rule (rule_id)``
+  * Added commands to create and delete meter policy.
+    ``add port meter policy (port_id) (policy_id) ...``
   * Added commands to construct conntrack context and relevant indirect
     action handle creation, update for conntrack action as well as conntrack
     item matching.
