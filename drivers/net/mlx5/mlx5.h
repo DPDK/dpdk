@@ -491,8 +491,13 @@ struct mlx5_aso_devx_mr {
 };
 
 struct mlx5_aso_sq_elem {
-	struct mlx5_aso_age_pool *pool;
-	uint16_t burst_size;
+	union {
+		struct {
+			struct mlx5_aso_age_pool *pool;
+			uint16_t burst_size;
+		};
+		struct mlx5_aso_mtr *mtr;
+	};
 };
 
 struct mlx5_aso_sq {
@@ -764,7 +769,6 @@ struct mlx5_aso_mtr_pools_mng {
 	volatile uint16_t n_valid; /* Number of valid pools. */
 	uint16_t n; /* Number of pools. */
 	rte_spinlock_t mtrsl; /* The ASO flow meter free list lock. */
-	struct mlx5_l3t_tbl *mtr_idx_tbl; /* Meter index lookup table. */
 	struct aso_meter_list meters; /* Free ASO flow meter list. */
 	struct mlx5_aso_sq sq; /*SQ using by ASO flow meter. */
 	struct mlx5_aso_mtr_pool **pools; /* ASO flow meter pool array. */
@@ -1195,6 +1199,7 @@ struct mlx5_priv {
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */
 	struct mlx5_mtr_profiles flow_meter_profiles; /* MTR profile list. */
 	struct mlx5_legacy_flow_meters flow_meters; /* MTR list. */
+	struct mlx5_l3t_tbl *mtr_idx_tbl; /* Meter index lookup table. */
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
 	struct mlx5_mp_id mp_id; /* ID of a multi-process process */
@@ -1258,6 +1263,7 @@ int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
 bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
 int mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh);
+int mlx5_aso_flow_mtrs_mng_init(struct mlx5_priv *priv);
 
 /* mlx5_ethdev.c */
 
@@ -1528,9 +1534,11 @@ eth_tx_burst_t mlx5_select_tx_function(struct rte_eth_dev *dev);
 
 /* mlx5_flow_aso.c */
 
-int mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh);
-int mlx5_aso_queue_start(struct mlx5_dev_ctx_shared *sh);
-int mlx5_aso_queue_stop(struct mlx5_dev_ctx_shared *sh);
-void mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh);
+int mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
+		enum mlx5_access_aso_opc_mod aso_opc_mod);
+int mlx5_aso_flow_hit_queue_poll_start(struct mlx5_dev_ctx_shared *sh);
+int mlx5_aso_flow_hit_queue_poll_stop(struct mlx5_dev_ctx_shared *sh);
+void mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh,
+		enum mlx5_access_aso_opc_mod aso_opc_mod);
 
 #endif /* RTE_PMD_MLX5_H_ */

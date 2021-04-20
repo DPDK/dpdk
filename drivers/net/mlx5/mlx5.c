@@ -403,7 +403,7 @@ mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh)
 		rte_errno = ENOMEM;
 		return -ENOMEM;
 	}
-	err = mlx5_aso_queue_init(sh);
+	err = mlx5_aso_queue_init(sh, ASO_OPC_MOD_FLOW_HIT);
 	if (err) {
 		mlx5_free(sh->aso_age_mng);
 		return -1;
@@ -425,8 +425,8 @@ mlx5_flow_aso_age_mng_close(struct mlx5_dev_ctx_shared *sh)
 {
 	int i, j;
 
-	mlx5_aso_queue_stop(sh);
-	mlx5_aso_queue_uninit(sh);
+	mlx5_aso_flow_hit_queue_poll_stop(sh);
+	mlx5_aso_queue_uninit(sh, ASO_OPC_MOD_FLOW_HIT);
 	if (sh->aso_age_mng->pools) {
 		struct mlx5_aso_age_pool *pool;
 
@@ -562,6 +562,66 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 		mng = LIST_FIRST(&sh->cmng.mem_mngs);
 	}
 	memset(&sh->cmng, 0, sizeof(sh->cmng));
+}
+
+/**
+ * Initialize the aso flow meters management structure.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_dev_ctx_shared object to free
+ */
+int
+mlx5_aso_flow_mtrs_mng_init(struct mlx5_priv *priv)
+{
+	if (!priv->mtr_idx_tbl) {
+		priv->mtr_idx_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_DWORD);
+		if (!priv->mtr_idx_tbl) {
+			DRV_LOG(ERR, "fail to create meter lookup table.");
+			rte_errno = ENOMEM;
+			return -ENOMEM;
+		}
+	}
+	if (!priv->sh->mtrmng) {
+		priv->sh->mtrmng = mlx5_malloc(MLX5_MEM_ZERO,
+			sizeof(*priv->sh->mtrmng),
+			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+		if (!priv->sh->mtrmng) {
+			DRV_LOG(ERR, "mlx5_aso_mtr_pools_mng allocation was failed.");
+			rte_errno = ENOMEM;
+			return -ENOMEM;
+		}
+		rte_spinlock_init(&priv->sh->mtrmng->mtrsl);
+		LIST_INIT(&priv->sh->mtrmng->meters);
+	}
+	return 0;
+}
+
+/**
+ * Close and release all the resources of
+ * the ASO flow meter management structure.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_dev_ctx_shared object to free.
+ */
+static void
+mlx5_aso_flow_mtrs_mng_close(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_aso_mtr_pool *mtr_pool;
+	struct mlx5_aso_mtr_pools_mng *mtrmng = sh->mtrmng;
+	uint32_t idx;
+
+	mlx5_aso_queue_uninit(sh, ASO_OPC_MOD_POLICER);
+	idx = mtrmng->n_valid;
+	while (idx--) {
+		mtr_pool = mtrmng->pools[idx];
+		claim_zero(mlx5_devx_cmd_destroy
+						(mtr_pool->devx_obj));
+		mtrmng->n_valid--;
+		mlx5_free(mtr_pool);
+	}
+	mlx5_free(sh->mtrmng->pools);
+	mlx5_free(sh->mtrmng);
+	sh->mtrmng = NULL;
 }
 
 /* Send FLOW_AGED event if needed. */
@@ -1113,6 +1173,8 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_flow_aso_age_mng_close(sh);
 		sh->aso_age_mng = NULL;
 	}
+	if (sh->mtrmng)
+		mlx5_aso_flow_mtrs_mng_close(sh);
 	mlx5_flow_ipool_destroy(sh);
 	mlx5_os_dev_shared_handler_uninstall(sh);
 	if (sh->cnt_id_tbl) {

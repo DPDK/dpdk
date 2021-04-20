@@ -811,7 +811,6 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 			struct rte_mtr_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_aso_mtr_pools_mng *mtrmng = priv->sh->mtrmng;
 	struct mlx5_flow_meter_info *fm;
 	const struct rte_flow_attr attr = {
 				.ingress = 1,
@@ -836,7 +835,7 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "Meter object is being used.");
 	if (priv->sh->meter_aso_en) {
-		if (mlx5_l3t_clear_entry(mtrmng->mtr_idx_tbl, meter_id))
+		if (mlx5_l3t_clear_entry(priv->mtr_idx_tbl, meter_id))
 			return -rte_mtr_error_set(error, EBUSY,
 				RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 				"Fail to delete ASO Meter in index table.");
@@ -1302,7 +1301,7 @@ mlx5_flow_meter_find(struct mlx5_priv *priv, uint32_t meter_id,
 			rte_spinlock_unlock(&mtrmng->mtrsl);
 			return NULL;
 		}
-		if (mlx5_l3t_get_entry(mtrmng->mtr_idx_tbl, meter_id, &data) ||
+		if (mlx5_l3t_get_entry(priv->mtr_idx_tbl, meter_id, &data) ||
 			!data.dword) {
 			rte_spinlock_unlock(&mtrmng->mtrsl);
 			return NULL;
@@ -1310,7 +1309,7 @@ mlx5_flow_meter_find(struct mlx5_priv *priv, uint32_t meter_id,
 		if (mtr_idx)
 			*mtr_idx = data.dword;
 		aso_mtr = mlx5_aso_meter_by_idx(priv, data.dword);
-		mlx5_l3t_clear_entry(mtrmng->mtr_idx_tbl, meter_id);
+		mlx5_l3t_clear_entry(priv->mtr_idx_tbl, meter_id);
 		if (meter_id == aso_mtr->fm.meter_id) {
 			rte_spinlock_unlock(&mtrmng->mtrsl);
 			return &aso_mtr->fm;

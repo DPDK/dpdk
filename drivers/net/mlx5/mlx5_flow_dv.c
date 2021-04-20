@@ -5962,6 +5962,11 @@ flow_dv_mtr_container_resize(struct rte_eth_dev *dev)
 		rte_errno = ENOMEM;
 		return -ENOMEM;
 	}
+	if (!mtrmng->n)
+		if (mlx5_aso_queue_init(priv->sh, ASO_OPC_MOD_POLICER)) {
+			mlx5_free(pools);
+			return -ENOMEM;
+		}
 	if (old_pools)
 		memcpy(pools, old_pools, mtrmng->n *
 				       sizeof(struct mlx5_aso_mtr_pool *));
@@ -10834,7 +10839,7 @@ flow_dv_aso_age_pools_resize(struct rte_eth_dev *dev)
 		mlx5_free(old_pools);
 	} else {
 		/* First ASO flow hit allocation - starting ASO data-path. */
-		int ret = mlx5_aso_queue_start(priv->sh);
+		int ret = mlx5_aso_flow_hit_queue_poll_start(priv->sh);
 
 		if (ret) {
 			mlx5_free(pools);
