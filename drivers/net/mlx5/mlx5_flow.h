@@ -564,8 +564,9 @@ struct mlx5_flow_tbl_data_entry {
 	uint32_t is_egress:1; /**< Egress table. */
 	uint32_t is_transfer:1; /**< Transfer table. */
 	uint32_t dummy:1; /**<  DR table. */
-	uint32_t reserve:27; /**< Reserved to future using. */
-	uint32_t table_id; /**< Table ID. */
+	uint32_t id:22; /**< Table ID. */
+	uint32_t reserve:5; /**< Reserved to future using. */
+	uint32_t level; /**< Table level. */
 };
 
 /* Sub rdma-core actions list. */
@@ -699,6 +700,7 @@ struct mlx5_flow_handle {
 /** Device flow structure only for DV flow creation. */
 struct mlx5_flow_dv_workspace {
 	uint32_t group; /**< The group index. */
+	uint32_t table_id; /**< Flow table identifier. */
 	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
 	int actions_n; /**< number of actions. */
 	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS]; /**< Action list. */
@@ -1059,6 +1061,7 @@ struct mlx5_flow_split_info {
 	uint32_t flow_idx; /**< This memory pool index to the flow. */
 	uint32_t prefix_mark; /**< Prefix subflow mark flag. */
 	uint64_t prefix_layers; /**< Prefix subflow layers. */
+	uint32_t table_id; /**< Flow table identifier. */
 };
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
@@ -1410,9 +1413,10 @@ int flow_dv_tbl_match_cb(struct mlx5_hlist *list,
 void flow_dv_tbl_remove_cb(struct mlx5_hlist *list,
 			   struct mlx5_hlist_entry *entry);
 struct mlx5_flow_tbl_resource *flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
-		uint32_t table_id, uint8_t egress, uint8_t transfer,
+		uint32_t table_level, uint8_t egress, uint8_t transfer,
 		bool external, const struct mlx5_flow_tunnel *tunnel,
-		uint32_t group_id, uint8_t dummy, struct rte_flow_error *error);
+		uint32_t group_id, uint8_t dummy,
+		uint32_t table_id, struct rte_flow_error *error);
 
 struct mlx5_hlist_entry *flow_dv_tag_create_cb(struct mlx5_hlist *list,
 					       uint64_t key, void *cb_ctx);

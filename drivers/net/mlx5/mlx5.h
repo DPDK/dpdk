@@ -779,10 +779,12 @@ struct mlx5_aso_mtr_pools_mng {
 union mlx5_flow_tbl_key {
 	struct {
 		/* Table ID should be at the lowest address. */
-		uint32_t table_id;	/**< ID of the table. */
-		uint16_t dummy;		/**< Dummy table for DV API. */
-		uint8_t domain;		/**< 1 - FDB, 0 - NIC TX/RX. */
-		uint8_t direction;	/**< 1 - egress, 0 - ingress. */
+		uint32_t level;	/**< Level of the table. */
+		uint32_t id:22;	/**< ID of the table. */
+		uint32_t dummy:1;	/**< Dummy table for DV API. */
+		uint32_t is_fdb:1;	/**< 1 - FDB, 0 - NIC TX/RX. */
+		uint32_t is_egress:1;	/**< 1 - egress, 0 - ingress. */
+		uint32_t reserved:7;	/**< must be zero for comparison. */
 	};
 	uint64_t v64;			/**< full 64bits value of key */
 };

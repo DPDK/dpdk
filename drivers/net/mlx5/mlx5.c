@@ -1271,9 +1271,12 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv __rte_unused)
 	 * because DV expect to see them even if they cannot be created by
 	 * RDMA-CORE.
 	 */
-	if (!flow_dv_tbl_resource_get(dev, 0, 0, 0, 0, NULL, 0, 1, &error) ||
-	    !flow_dv_tbl_resource_get(dev, 0, 1, 0, 0, NULL, 0, 1, &error) ||
-	    !flow_dv_tbl_resource_get(dev, 0, 0, 1, 0, NULL, 0, 1, &error)) {
+	if (!flow_dv_tbl_resource_get(dev, 0, 0, 0, 0,
+		NULL, 0, 1, 0, &error) ||
+	    !flow_dv_tbl_resource_get(dev, 0, 1, 0, 0,
+		NULL, 0, 1, 0, &error) ||
+	    !flow_dv_tbl_resource_get(dev, 0, 0, 1, 0,
+		NULL, 0, 1, 0, &error)) {
 		err = ENOMEM;
 		goto error;
 	}
