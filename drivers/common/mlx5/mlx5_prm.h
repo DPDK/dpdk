@@ -3382,6 +3382,12 @@ enum {
 /* The bits meter color use. */
 #define MLX5_MTR_COLOR_BITS 8
 
+/* The bit size of one register. */
+#define MLX5_REG_BITS 32
+
+/* Idle bits for non-color usage in color register. */
+#define MLX5_MTR_IDLE_BITS_IN_COLOR_REG (MLX5_REG_BITS - MLX5_MTR_COLOR_BITS)
+
 /* Length mode of dynamic flex parser graph node. */
 enum mlx5_parse_graph_node_len_mode {
 	MLX5_GRAPH_NODE_LEN_FIXED = 0x0,
