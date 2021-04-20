@@ -2831,24 +2831,6 @@ Set meter dscp table for the ethernet device::
    testpmd> set port meter dscp table (port_id) (mtr_id) [(dscp_tbl_entry0) \
    (dscp_tbl_entry1)...(dscp_tbl_entry63)]
 
-set port meter policer action
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set meter policer action for the ethernet device::
-
-   testpmd> set port meter policer action (port_id) (mtr_id) (action_mask) \
-   (action0) [(action1) (action1)]
-
-where:
-
-* ``action_mask``: Bit mask indicating which policer actions need to be
-  updated. One or more policer actions can be updated in a single function
-  invocation. To update the policer action associated with color C, bit
-  (1 << C) needs to be set in *action_mask* and element at position C
-  in the *actions* array needs to be valid.
-* ``actionx``: Policer action for the color x,
-  RTE_MTR_GREEN <= x < RTE_MTR_COLORS
-
 set port meter stats mask
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

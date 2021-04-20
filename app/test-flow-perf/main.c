@@ -928,13 +928,6 @@ create_meter_rule(int port_id, uint32_t counter)
 
 	/*create meter*/
 	params.meter_profile_id = default_prof_id;
-	params.action[RTE_COLOR_GREEN] =
-		MTR_POLICER_ACTION_COLOR_GREEN;
-	params.action[RTE_COLOR_YELLOW] =
-		MTR_POLICER_ACTION_COLOR_YELLOW;
-	params.action[RTE_COLOR_RED] =
-		MTR_POLICER_ACTION_DROP;
-
 	ret = rte_mtr_create(port_id, counter, &params, 1, &error);
 	if (ret != 0) {
 		printf("Port %u create meter idx(%d) error(%d) message: %s\n",

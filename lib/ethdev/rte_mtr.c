@@ -91,6 +91,40 @@ rte_mtr_meter_profile_delete(uint16_t port_id,
 		meter_profile_id, error);
 }
 
+/* MTR meter policy validate */
+int
+rte_mtr_meter_policy_validate(uint16_t port_id,
+	struct rte_mtr_meter_policy_params *policy,
+	struct rte_mtr_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	return RTE_MTR_FUNC(port_id, meter_policy_validate)(dev,
+		policy, error);
+}
+
+/* MTR meter policy add */
+int
+rte_mtr_meter_policy_add(uint16_t port_id,
+	uint32_t policy_id,
+	struct rte_mtr_meter_policy_params *policy,
+	struct rte_mtr_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	return RTE_MTR_FUNC(port_id, meter_policy_add)(dev,
+		policy_id, policy, error);
+}
+
+/** MTR meter policy delete */
+int
+rte_mtr_meter_policy_delete(uint16_t port_id,
+	uint32_t policy_id,
+	struct rte_mtr_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	return RTE_MTR_FUNC(port_id, meter_policy_delete)(dev,
+		policy_id, error);
+}
+
 /** MTR object create */
 int
 rte_mtr_create(uint16_t port_id,
@@ -149,6 +183,18 @@ rte_mtr_meter_profile_update(uint16_t port_id,
 		mtr_id, meter_profile_id, error);
 }
 
+/** MTR object meter policy update */
+int
+rte_mtr_meter_policy_update(uint16_t port_id,
+	uint32_t mtr_id,
+	uint32_t meter_policy_id,
+	struct rte_mtr_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	return RTE_MTR_FUNC(port_id, meter_policy_update)(dev,
+		mtr_id, meter_policy_id, error);
+}
+
 /** MTR object meter DSCP table update */
 int
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
@@ -159,19 +205,6 @@ rte_mtr_meter_dscp_table_update(uint16_t port_id,
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	return RTE_MTR_FUNC(port_id, meter_dscp_table_update)(dev,
 		mtr_id, dscp_table, error);
-}
-
-/** MTR object policer action update */
-int
-rte_mtr_policer_actions_update(uint16_t port_id,
-	uint32_t mtr_id,
-	uint32_t action_mask,
-	enum rte_mtr_policer_action *actions,
-	struct rte_mtr_error *error)
-{
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-	return RTE_MTR_FUNC(port_id, policer_actions_update)(dev,
-		mtr_id, action_mask, actions, error);
 }
 
 /** MTR object enabled stats update */

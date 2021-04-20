@@ -1166,6 +1166,7 @@ flow_rule_action_get(struct pmd_internals *softnic,
 {
 	struct softnic_table_action_profile *profile;
 	struct softnic_table_action_profile_params *params;
+	struct softnic_mtr_meter_policy *policy;
 	int n_jump_queue_rss_drop = 0;
 	int n_count = 0;
 	int n_mark = 0;
@@ -1621,15 +1622,25 @@ flow_rule_action_get(struct pmd_internals *softnic,
 					return -1;
 				}
 			}
-
+			/* Meter policy must exist */
+			policy = softnic_mtr_meter_policy_find(softnic,
+					m->params.meter_policy_id);
+			if (policy == NULL) {
+				rte_flow_error_set(error,
+						EINVAL,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						NULL,
+						"METER: fail to find meter policy");
+				return -1;
+			}
 			/* RTE_TABLE_ACTION_METER */
 			rule_action->mtr.mtr[0].meter_profile_id = meter_profile_id;
 			rule_action->mtr.mtr[0].policer[RTE_COLOR_GREEN] =
-				softnic_table_action_policer(m->params.action[RTE_COLOR_GREEN]);
+				policy->policer[RTE_COLOR_GREEN];
 			rule_action->mtr.mtr[0].policer[RTE_COLOR_YELLOW] =
-				softnic_table_action_policer(m->params.action[RTE_COLOR_YELLOW]);
+				policy->policer[RTE_COLOR_YELLOW];
 			rule_action->mtr.mtr[0].policer[RTE_COLOR_RED] =
-				softnic_table_action_policer(m->params.action[RTE_COLOR_RED]);
+				policy->policer[RTE_COLOR_RED];
 			rule_action->mtr.tc_mask = 1;
 			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_MTR;
 			break;

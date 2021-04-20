@@ -41,6 +41,22 @@ typedef int (*rte_mtr_meter_profile_delete_t)(struct rte_eth_dev *dev,
 	struct rte_mtr_error *error);
 /**< @internal MTR meter profile delete */
 
+typedef int (*rte_mtr_meter_policy_validate_t)(struct rte_eth_dev *dev,
+	struct rte_mtr_meter_policy_params *policy,
+	struct rte_mtr_error *error);
+/**< @internal MTR meter policy validate */
+
+typedef int (*rte_mtr_meter_policy_add_t)(struct rte_eth_dev *dev,
+	uint32_t policy_id,
+	struct rte_mtr_meter_policy_params *policy,
+	struct rte_mtr_error *error);
+/**< @internal MTR meter policy add */
+
+typedef int (*rte_mtr_meter_policy_delete_t)(struct rte_eth_dev *dev,
+	uint32_t policy_id,
+	struct rte_mtr_error *error);
+/**< @internal MTR meter policy delete */
+
 typedef int (*rte_mtr_create_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	struct rte_mtr_params *params,
@@ -69,18 +85,17 @@ typedef int (*rte_mtr_meter_profile_update_t)(struct rte_eth_dev *dev,
 	struct rte_mtr_error *error);
 /**< @internal MTR object meter profile update */
 
+typedef int (*rte_mtr_meter_policy_update_t)(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	uint32_t meter_policy_id,
+	struct rte_mtr_error *error);
+/**< @internal MTR object meter policy update */
+
 typedef int (*rte_mtr_meter_dscp_table_update_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
 	enum rte_color *dscp_table,
 	struct rte_mtr_error *error);
 /**< @internal MTR object meter DSCP table update */
-
-typedef int (*rte_mtr_policer_actions_update_t)(struct rte_eth_dev *dev,
-	uint32_t mtr_id,
-	uint32_t action_mask,
-	enum rte_mtr_policer_action *actions,
-	struct rte_mtr_error *error);
-/**< @internal MTR object policer action update*/
 
 typedef int (*rte_mtr_stats_update_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
@@ -124,14 +139,23 @@ struct rte_mtr_ops {
 	/** MTR object meter DSCP table update */
 	rte_mtr_meter_dscp_table_update_t meter_dscp_table_update;
 
-	/** MTR object policer action update */
-	rte_mtr_policer_actions_update_t policer_actions_update;
-
 	/** MTR object enabled stats update */
 	rte_mtr_stats_update_t stats_update;
 
 	/** MTR object stats read */
 	rte_mtr_stats_read_t stats_read;
+
+	/** MTR meter policy validate */
+	rte_mtr_meter_policy_validate_t meter_policy_validate;
+
+	/** MTR meter policy add */
+	rte_mtr_meter_policy_add_t meter_policy_add;
+
+	/** MTR meter policy delete */
+	rte_mtr_meter_policy_delete_t meter_policy_delete;
+
+	/** MTR object meter policy update */
+	rte_mtr_meter_policy_update_t meter_policy_update;
 };
 
 /**

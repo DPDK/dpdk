@@ -808,8 +808,8 @@ mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
 		/* Waiting for wqe resource. */
 		rte_delay_us_sleep(MLX5_ASO_WQE_CQE_RESPONSE_DELAY);
 	} while (--poll_wqe_times);
-	DRV_LOG(ERR, "Fail to send WQE for ASO meter %d",
-			mtr->fm.meter_id);
+	DRV_LOG(ERR, "Fail to send WQE for ASO meter offset %d",
+			mtr->offset);
 	return -1;
 }
 
@@ -844,7 +844,7 @@ mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh,
 		/* Waiting for CQE ready. */
 		rte_delay_us_sleep(MLX5_ASO_WQE_CQE_RESPONSE_DELAY);
 	} while (--poll_cqe_times);
-	DRV_LOG(ERR, "Fail to poll CQE ready for ASO meter %d",
-			mtr->fm.meter_id);
+	DRV_LOG(ERR, "Fail to poll CQE ready for ASO meter offset %d",
+			mtr->offset);
 	return -1;
 }

@@ -838,6 +838,8 @@ struct mlx5_legacy_flow_meter {
 	/* Must be the first in struct. */
 	TAILQ_ENTRY(mlx5_legacy_flow_meter) next;
 	/**< Pointer to the next flow meter structure. */
+	uint32_t meter_id;
+	/**< Meter id. */
 	uint32_t idx; /* Index to meter object. */
 };
 
@@ -1096,14 +1098,6 @@ typedef struct mlx5_meter_domains_infos *(*mlx5_flow_create_mtr_tbls_t)
 					    (struct rte_eth_dev *dev);
 typedef int (*mlx5_flow_destroy_mtr_tbls_t)(struct rte_eth_dev *dev,
 					struct mlx5_meter_domains_infos *tbls);
-typedef int (*mlx5_flow_create_policer_rules_t)
-					(struct rte_eth_dev *dev,
-					 struct mlx5_flow_meter_info *fm,
-					 const struct rte_flow_attr *attr);
-typedef int (*mlx5_flow_destroy_policer_rules_t)
-					(struct rte_eth_dev *dev,
-					 const struct mlx5_flow_meter_info *fm,
-					 const struct rte_flow_attr *attr);
 typedef uint32_t (*mlx5_flow_mtr_alloc_t)
 					    (struct rte_eth_dev *dev);
 typedef void (*mlx5_flow_mtr_free_t)(struct rte_eth_dev *dev,
@@ -1160,8 +1154,6 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_query_t query;
 	mlx5_flow_create_mtr_tbls_t create_mtr_tbls;
 	mlx5_flow_destroy_mtr_tbls_t destroy_mtr_tbls;
-	mlx5_flow_create_policer_rules_t prepare_policer_rules;
-	mlx5_flow_destroy_policer_rules_t destroy_policer_rules;
 	mlx5_flow_mtr_alloc_t create_meter;
 	mlx5_flow_mtr_free_t free_meter;
 	mlx5_flow_counter_alloc_t counter_alloc;
@@ -1391,12 +1383,6 @@ struct mlx5_meter_domains_infos *mlx5_flow_create_mtr_tbls
 					(struct rte_eth_dev *dev);
 int mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 			       struct mlx5_meter_domains_infos *tbl);
-int mlx5_flow_prepare_policer_rules(struct rte_eth_dev *dev,
-				   struct mlx5_flow_meter_info *fm,
-				   const struct rte_flow_attr *attr);
-int mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
-				    struct mlx5_flow_meter_info *fm,
-				    const struct rte_flow_attr *attr);
 int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);

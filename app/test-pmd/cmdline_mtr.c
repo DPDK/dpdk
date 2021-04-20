@@ -147,53 +147,6 @@ parse_meter_color_str(char *c_str, uint32_t *use_prev_meter_color,
 }
 
 static int
-string_to_policer_action(char *s)
-{
-	if ((strcmp(s, "G") == 0) || (strcmp(s, "g") == 0))
-		return MTR_POLICER_ACTION_COLOR_GREEN;
-
-	if ((strcmp(s, "Y") == 0) || (strcmp(s, "y") == 0))
-		return MTR_POLICER_ACTION_COLOR_YELLOW;
-
-	if ((strcmp(s, "R") == 0) || (strcmp(s, "r") == 0))
-		return MTR_POLICER_ACTION_COLOR_RED;
-
-	if ((strcmp(s, "D") == 0) || (strcmp(s, "d") == 0))
-		return MTR_POLICER_ACTION_DROP;
-
-	return -1;
-}
-
-static int
-parse_policer_action_string(char *p_str, uint32_t action_mask,
-	enum rte_mtr_policer_action actions[])
-{
-	char *token;
-	int count = __builtin_popcount(action_mask);
-	int g_color = 0, y_color = 0, action, i;
-
-	for (i = 0; i < count; i++) {
-		token = strtok_r(p_str, PARSE_DELIMITER, &p_str);
-		if (token ==  NULL)
-			return -1;
-
-		action = string_to_policer_action(token);
-		if (action == -1)
-			return -1;
-
-		if (g_color == 0 && (action_mask & 0x1)) {
-			actions[RTE_COLOR_GREEN] = action;
-			g_color = 1;
-		} else if (y_color == 0 && (action_mask & 0x2)) {
-			actions[RTE_COLOR_YELLOW] = action;
-			y_color = 1;
-		} else
-			actions[RTE_COLOR_RED] = action;
-	}
-	return 0;
-}
-
-static int
 parse_multi_token_string(char *t_str, uint16_t *port_id,
 	uint32_t *mtr_id, enum rte_color **dscp_table)
 {
@@ -302,10 +255,6 @@ static void cmd_show_port_meter_cap_parsed(void *parsed_result,
 		cap.color_aware_trtcm_rfc2698_supported);
 	printf("cap.color_aware_trtcm_rfc4115_supported %" PRId32 "\n",
 		cap.color_aware_trtcm_rfc4115_supported);
-	printf("cap.policer_action_recolor_supported %" PRId32 "\n",
-		cap.policer_action_recolor_supported);
-	printf("cap.policer_action_drop_supported %" PRId32 "\n",
-		cap.policer_action_drop_supported);
 	printf("cap.srtcm_rfc2697_byte_mode_supported %" PRId32 "\n",
 		cap.srtcm_rfc2697_byte_mode_supported);
 	printf("cap.srtcm_rfc2697_packet_mode_supported %" PRId32 "\n",
@@ -842,12 +791,6 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 	else
 		params.meter_enable = 0;
 
-	params.action[RTE_COLOR_GREEN] =
-		string_to_policer_action(res->g_action);
-	params.action[RTE_COLOR_YELLOW] =
-		string_to_policer_action(res->y_action);
-	params.action[RTE_COLOR_RED] =
-		string_to_policer_action(res->r_action);
 	params.stats_mask = res->statistics_mask;
 
 	ret = rte_mtr_create(port_id, mtr_id, &params, shared, &error);
@@ -1211,121 +1154,6 @@ cmdline_parse_inst_t cmd_set_port_meter_dscp_table = {
 		(void *)&cmd_set_port_meter_dscp_table_meter,
 		(void *)&cmd_set_port_meter_dscp_table_dscp_table,
 		(void *)&cmd_set_port_meter_dscp_table_token_string,
-		NULL,
-	},
-};
-
-/* *** Set Port Meter Policer Action *** */
-struct cmd_set_port_meter_policer_action_result {
-	cmdline_fixed_string_t set;
-	cmdline_fixed_string_t port;
-	cmdline_fixed_string_t meter;
-	cmdline_fixed_string_t policer;
-	cmdline_fixed_string_t action;
-	uint16_t port_id;
-	uint32_t mtr_id;
-	uint32_t action_mask;
-	cmdline_multi_string_t policer_action;
-};
-
-cmdline_parse_token_string_t cmd_set_port_meter_policer_action_set =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result, set, "set");
-cmdline_parse_token_string_t cmd_set_port_meter_policer_action_port =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result, port, "port");
-cmdline_parse_token_string_t cmd_set_port_meter_policer_action_meter =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result, meter,
-		"meter");
-cmdline_parse_token_string_t cmd_set_port_meter_policer_action_policer =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result, policer,
-		"policer");
-cmdline_parse_token_string_t cmd_set_port_meter_policer_action_action =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result, action,
-		"action");
-cmdline_parse_token_num_t cmd_set_port_meter_policer_action_port_id =
-	TOKEN_NUM_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result, port_id,
-		RTE_UINT16);
-cmdline_parse_token_num_t cmd_set_port_meter_policer_action_mtr_id =
-	TOKEN_NUM_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result, mtr_id,
-		RTE_UINT32);
-cmdline_parse_token_num_t cmd_set_port_meter_policer_action_action_mask =
-	TOKEN_NUM_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result, action_mask,
-		RTE_UINT32);
-cmdline_parse_token_string_t cmd_set_port_meter_policer_action_policer_action =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_meter_policer_action_result,
-		policer_action, TOKEN_STRING_MULTI);
-
-static void cmd_set_port_meter_policer_action_parsed(void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	__rte_unused void *data)
-{
-	struct cmd_set_port_meter_policer_action_result *res = parsed_result;
-	enum rte_mtr_policer_action *actions;
-	struct rte_mtr_error error;
-	uint32_t mtr_id = res->mtr_id;
-	uint32_t action_mask = res->action_mask;
-	uint16_t port_id = res->port_id;
-	char *p_str = res->policer_action;
-	int ret;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-
-	/* Check: action mask */
-	if (action_mask == 0 || (action_mask & (~0x7UL))) {
-		printf(" Policer action mask not correct (error)\n");
-		return;
-	}
-
-	/* Allocate memory for policer actions */
-	actions = (enum rte_mtr_policer_action *)malloc(RTE_COLORS *
-		sizeof(enum rte_mtr_policer_action));
-	if (actions == NULL) {
-		printf("Memory for policer actions not allocated (error)\n");
-		return;
-	}
-	/* Parse policer action string */
-	ret = parse_policer_action_string(p_str, action_mask, actions);
-	if (ret) {
-		printf(" Policer action string parse error\n");
-		free(actions);
-		return;
-	}
-
-	ret = rte_mtr_policer_actions_update(port_id, mtr_id,
-		action_mask, actions, &error);
-	if (ret != 0) {
-		free(actions);
-		print_err_msg(&error);
-		return;
-	}
-
-	free(actions);
-}
-
-cmdline_parse_inst_t cmd_set_port_meter_policer_action = {
-	.f = cmd_set_port_meter_policer_action_parsed,
-	.data = NULL,
-	.help_str = "set port meter policer action <port_id> <mtr_id> "
-		"<action_mask> <action0> [<action1> <action2>]",
-	.tokens = {
-		(void *)&cmd_set_port_meter_policer_action_set,
-		(void *)&cmd_set_port_meter_policer_action_port,
-		(void *)&cmd_set_port_meter_policer_action_meter,
-		(void *)&cmd_set_port_meter_policer_action_policer,
-		(void *)&cmd_set_port_meter_policer_action_action,
-		(void *)&cmd_set_port_meter_policer_action_port_id,
-		(void *)&cmd_set_port_meter_policer_action_mtr_id,
-		(void *)&cmd_set_port_meter_policer_action_action_mask,
-		(void *)&cmd_set_port_meter_policer_action_policer_action,
 		NULL,
 	},
 };

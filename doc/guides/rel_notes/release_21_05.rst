@@ -88,11 +88,12 @@ New Features
   * Added new field ``queue_state`` to ``rte_eth_txq_info`` structure to
     provide indicated Tx queue state.
 
-* **Added support for meter PPS profile.**
+* **Updated meter API.**
 
-  Added packet mode in the meter profile parameters data structures
-  to support metering traffic by packet per second (PPS),
-  in addition to the initial bytes per second (BPS) mode (value 0).
+  * Added packet mode in the meter profile parameters data structures
+    to support metering traffic by packet per second (PPS),
+    in addition to the initial bytes per second (BPS) mode (value 0).
+  * Added support of pre-defined meter policy via flow action list per color.
 
 * **Added packet integrity match to flow rules.**
 
@@ -307,6 +308,11 @@ API Changes
   are replaced with ``rte_flow_action_handle_*``.
   The action ``RTE_FLOW_ACTION_TYPE_SHARED`` is deprecated and can be
   replaced with ``RTE_FLOW_ACTION_TYPE_INDIRECT``.
+
+* ethdev: The experimental function ``rte_mtr_policer_actions_update()``,
+  the enum ``rte_mtr_policer_action``, and the struct members
+  ``policer_action_recolor_supported`` and ``policer_action_drop_supported``
+  have been removed.
 
 
 ABI Changes

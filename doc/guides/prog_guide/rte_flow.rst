@@ -2982,6 +2982,27 @@ The current conntrack context information could be queried via the
    | ``reserved``   | reserved bits                                   |
    +----------------+-------------------------------------------------+
 
+Action: ``METER_COLOR``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Color the packet to reflect the meter color result.
+
+The meter action must be configured before meter color action.
+Meter color action is set to a color to reflect the meter color result.
+Set the meter color in the mbuf to the selected color.
+The meter color action output color is the output color of the packet,
+which is set in the packet meta-data (i.e. struct ``rte_mbuf::sched::color``)
+
+.. _table_rte_flow_action_meter_color:
+
+.. table:: METER_COLOR
+
+   +-----------------+--------------+
+   | Field           | Value        |
+   +=================+==============+
+   | ``meter_color`` | Packet color |
+   +-----------------+--------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

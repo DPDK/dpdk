@@ -593,14 +593,6 @@ struct mlx5_dev_shared_port {
 /* Modify this value if enum rte_mtr_color changes. */
 #define RTE_MTR_DROPPED RTE_COLORS
 
-/* Meter policer statistics */
-struct mlx5_flow_policer_stats {
-	uint32_t pass_cnt;
-	/**< Color counter for pass. */
-	uint32_t drop_cnt;
-	/**< Color counter for drop. */
-};
-
 /* Meter table structure. */
 struct mlx5_meter_domain_info {
 	struct mlx5_flow_tbl_resource *tbl;
@@ -639,24 +631,12 @@ struct mlx5_meter_domains_infos {
 
 /* Meter parameter structure. */
 struct mlx5_flow_meter_info {
-	uint32_t meter_id;
-	/**< Meter id. */
 	struct mlx5_flow_meter_profile *profile;
 	/**< Meter profile parameters. */
 	rte_spinlock_t sl; /**< Meter action spinlock. */
-	/** Policer actions (per meter output color). */
-	enum rte_mtr_policer_action action[RTE_COLORS];
 	/** Set of stats counters to be enabled.
 	 * @see enum rte_mtr_stats_type
 	 */
-	uint32_t green_bytes:1;
-	/** Set green bytes stats to be enabled. */
-	uint32_t green_pkts:1;
-	/** Set green packets stats to be enabled. */
-	uint32_t red_bytes:1;
-	/** Set red bytes stats to be enabled. */
-	uint32_t red_pkts:1;
-	/** Set red packets stats to be enabled. */
 	uint32_t bytes_dropped:1;
 	/** Set bytes dropped stats to be enabled. */
 	uint32_t pkts_dropped:1;
@@ -691,8 +671,8 @@ struct mlx5_flow_meter_info {
 	uint32_t transfer:1;
 	struct mlx5_meter_domains_infos *mfts;
 	/**< Flow table created for this meter. */
-	struct mlx5_flow_policer_stats policer_stats;
-	/**< Meter policer statistics. */
+	uint32_t drop_cnt;
+	/**< Color counter for drop. */
 	uint32_t ref_cnt;
 	/**< Use count. */
 	struct mlx5_indexed_pool *flow_ipool;

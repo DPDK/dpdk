@@ -17427,7 +17427,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_del_port_meter,
 	(cmdline_parse_inst_t *)&cmd_set_port_meter_profile,
 	(cmdline_parse_inst_t *)&cmd_set_port_meter_dscp_table,
-	(cmdline_parse_inst_t *)&cmd_set_port_meter_policer_action,
 	(cmdline_parse_inst_t *)&cmd_set_port_meter_stats_mask,
 	(cmdline_parse_inst_t *)&cmd_show_port_meter_stats,
 	(cmdline_parse_inst_t *)&cmd_mcast_addr,

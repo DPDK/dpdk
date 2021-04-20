@@ -49,6 +49,7 @@
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_meter.h>
+#include <rte_flow.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -200,20 +201,16 @@ struct rte_mtr_meter_profile {
 };
 
 /**
- * Policer actions
+ * Meter policy
  */
-enum rte_mtr_policer_action {
-	/** Recolor the packet as green. */
-	MTR_POLICER_ACTION_COLOR_GREEN = 0,
-
-	/** Recolor the packet as yellow. */
-	MTR_POLICER_ACTION_COLOR_YELLOW,
-
-	/** Recolor the packet as red. */
-	MTR_POLICER_ACTION_COLOR_RED,
-
-	/** Drop the packet. */
-	MTR_POLICER_ACTION_DROP,
+struct rte_mtr_meter_policy_params {
+	/**
+	 * Policy action list per color.
+	 * actions[i] potentially represents a chain of rte_flow actions
+	 * terminated by the END action, exactly as specified by the rte_flow
+	 * API for the flow definition, and not just a single action.
+	 */
+	const struct rte_flow_action *actions[RTE_COLORS];
 };
 
 /**
@@ -257,13 +254,13 @@ struct rte_mtr_params {
 	 */
 	int meter_enable;
 
-	/** Policer actions (per meter output color). */
-	enum rte_mtr_policer_action action[RTE_COLORS];
-
 	/** Set of stats counters to be enabled.
 	 * @see enum rte_mtr_stats_type
 	 */
 	uint64_t stats_mask;
+
+	/** Meter policy ID. */
+	uint32_t meter_policy_id;
 };
 
 /**
@@ -350,6 +347,13 @@ struct rte_mtr_capabilities {
 	uint64_t meter_rate_max;
 
 	/**
+	 * Maximum number of policy objects that can have.
+	 * The value of 0 is invalid. Policy must be supported for meter.
+	 * The maximum value is *n_max*.
+	 */
+	uint64_t meter_policy_n_max;
+
+	/**
 	 * When non-zero, it indicates that color aware mode is supported for
 	 * the srTCM RFC 2697 metering algorithm.
 	 */
@@ -366,18 +370,6 @@ struct rte_mtr_capabilities {
 	 * the trTCM RFC 4115 metering algorithm.
 	 */
 	int color_aware_trtcm_rfc4115_supported;
-
-	/** When non-zero, it indicates that the policer packet recolor actions
-	 * are supported.
-	 * @see enum rte_mtr_policer_action
-	 */
-	int policer_action_recolor_supported;
-
-	/** When non-zero, it indicates that the policer packet drop action is
-	 * supported.
-	 * @see enum rte_mtr_policer_action
-	 */
-	int policer_action_drop_supported;
 
 	/**
 	 * srTCM rfc2697 byte mode supported.
@@ -447,6 +439,8 @@ enum rte_mtr_error_type {
 	RTE_MTR_ERROR_TYPE_STATS_MASK,
 	RTE_MTR_ERROR_TYPE_STATS,
 	RTE_MTR_ERROR_TYPE_SHARED,
+	RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+	RTE_MTR_ERROR_TYPE_METER_POLICY,
 };
 
 /**
@@ -528,6 +522,144 @@ __rte_experimental
 int
 rte_mtr_meter_profile_delete(uint16_t port_id,
 	uint32_t meter_profile_id,
+	struct rte_mtr_error *error);
+
+/**
+ * Check whether a meter policy can be created on a given port.
+ *
+ * The meter policy is validated for correctness and
+ * whether it could be accepted by the device given sufficient resources.
+ * The policy is checked against the current capability information
+ * meter_policy_n_max configuration.
+ * The policy may also optionally be validated against existing
+ * device policy resources.
+ * This function has no effect on the target device.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] policy
+ *   Associated action list per color.
+ *   list NULL is legal and means no special action.
+ *   (list terminated by the END action).
+ * @param[out] error
+ *   Error details. Filled in only on error, when not NULL.
+ * @return
+ *   0 on success, non-zero error code otherwise.
+ */
+__rte_experimental
+int
+rte_mtr_meter_policy_validate(uint16_t port_id,
+	struct rte_mtr_meter_policy_params *policy,
+	struct rte_mtr_error *error);
+
+/**
+ * Meter policy add
+ *
+ * Create a new meter policy. The new policy
+ * is used to create single or multiple MTR objects.
+ * The same policy can be used to create multiple MTR objects.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] policy_id
+ *   Policy identifier for the new meter policy.
+ * @param[in] policy
+ *   Associated actions per color.
+ *   list NULL is legal and means no special action.
+ *   Non-NULL list must be terminated.
+ *   (list terminated by the END action).
+ * @param[out] error
+ *   Error details. Filled in only on error, when not NULL.
+ * @return
+ *   0 on success, non-zero error code otherwise.
+ */
+__rte_experimental
+int
+rte_mtr_meter_policy_add(uint16_t port_id,
+	uint32_t policy_id,
+	struct rte_mtr_meter_policy_params *policy,
+	struct rte_mtr_error *error);
+
+/**
+ * Define meter policy action list:
+ * GREEN - GREEN, YELLOW - YELLOW, RED - RED
+ */
+#define rte_mtr_policy_pass_color(policy) \
+struct rte_mtr_meter_policy_params policy = \
+{ \
+	.actions[RTE_COLOR_GREEN] = (struct rte_flow_action[]) { \
+		{ \
+			.type = RTE_FLOW_ACTION_TYPE_METER_COLOR, \
+			.conf = &(struct rte_flow_action_meter_color) { \
+				.color = RTE_COLOR_GREEN, \
+			}, \
+		}, \
+		{ \
+			.type = RTE_FLOW_ACTION_TYPE_END, \
+		}, \
+	}, \
+	.actions[RTE_COLOR_YELLOW] = (struct rte_flow_action[]) { \
+		{ \
+			.type = RTE_FLOW_ACTION_TYPE_METER_COLOR, \
+			.conf = &(struct rte_flow_action_meter_color) { \
+				.color = RTE_COLOR_YELLOW, \
+			}, \
+		}, \
+		{ \
+		.type = RTE_FLOW_ACTION_TYPE_END, \
+		}, \
+	}, \
+	.actions[RTE_COLOR_RED] = (struct rte_flow_action[]) { \
+		{ \
+			.type = RTE_FLOW_ACTION_TYPE_METER_COLOR, \
+			.conf = &(struct rte_flow_action_meter_color) { \
+				.color = RTE_COLOR_RED, \
+			}, \
+		}, \
+		{ \
+			.type = RTE_FLOW_ACTION_TYPE_END, \
+		}, \
+	}, \
+}
+
+/**
+ * Define meter policy action list:
+ * GREEN - Do nothing, YELLOW - Do nothing, RED - DROP
+ */
+#define rte_mtr_policy_drop_red(policy) \
+struct rte_mtr_meter_policy_params policy = \
+{ \
+	.actions[RTE_COLOR_GREEN] = NULL, \
+	.actions[RTE_COLOR_YELLOW] = NULL, \
+	.actions[RTE_COLOR_RED] = (struct rte_flow_action[]) { \
+		{ \
+			.type = RTE_FLOW_ACTION_TYPE_DROP, \
+		}, \
+		{ \
+			.type = RTE_FLOW_ACTION_TYPE_END, \
+		}, \
+	}, \
+}
+
+/**
+ * Meter policy delete
+ *
+ * Delete an existing meter policy. This operation fails when there is
+ * currently at least one user (i.e. MTR object) of this policy.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] policy_id
+ *   Policy identifier.
+ * @param[out] error
+ *   Error details. Filled in only on error, when not NULL.
+ * @return
+ *   0 on success, non-zero error code otherwise.
+ */
+__rte_experimental
+int
+rte_mtr_meter_policy_delete(uint16_t port_id,
+	uint32_t policy_id,
 	struct rte_mtr_error *error);
 
 /**
@@ -655,6 +787,27 @@ rte_mtr_meter_profile_update(uint16_t port_id,
 	struct rte_mtr_error *error);
 
 /**
+ * MTR object meter policy update
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] mtr_id
+ *   MTR object ID. Needs to be valid.
+ * @param[in] meter_policy_id
+ *   Meter policy ID for the current MTR object. Needs to be valid.
+ * @param[out] error
+ *   Error details. Filled in only on error, when not NULL.
+ * @return
+ *   0 on success, non-zero error code otherwise.
+ */
+__rte_experimental
+int
+rte_mtr_meter_policy_update(uint16_t port_id,
+	uint32_t mtr_id,
+	uint32_t meter_policy_id,
+	struct rte_mtr_error *error);
+
+/**
  * MTR object DSCP table update
  *
  * @param[in] port_id
@@ -665,7 +818,7 @@ rte_mtr_meter_profile_update(uint16_t port_id,
  *   When non-NULL: it points to a pre-allocated and pre-populated table with
  *   exactly 64 elements providing the input color for each value of the
  *   IPv4/IPv6 Differentiated Services Code Point (DSCP) input packet field.
- *   When NULL: it is equivalent to setting this parameter to an “all-green”
+ *   When NULL: it is equivalent to setting this parameter to an "all-green"
  *   populated table (i.e. table with all the 64 elements set to green color).
  * @param[out] error
  *   Error details. Filled in only on error, when not NULL.
@@ -677,34 +830,6 @@ int
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
 	uint32_t mtr_id,
 	enum rte_color *dscp_table,
-	struct rte_mtr_error *error);
-
-/**
- * MTR object policer actions update
- *
- * @param[in] port_id
- *   The port identifier of the Ethernet device.
- * @param[in] mtr_id
- *   MTR object ID. Needs to be valid.
- * @param[in] action_mask
- *   Bit mask indicating which policer actions need to be updated. One or more
- *   policer actions can be updated in a single function invocation. To update
- *   the policer action associated with color C, bit (1 << C) needs to be set in
- *   *action_mask* and element at position C in the *actions* array needs to be
- *   valid.
- * @param[in] actions
- *   Pre-allocated and pre-populated array of policer actions.
- * @param[out] error
- *   Error details. Filled in only on error, when not NULL.
- * @return
- *   0 on success, non-zero error code otherwise.
- */
-__rte_experimental
-int
-rte_mtr_policer_actions_update(uint16_t port_id,
-	uint32_t mtr_id,
-	uint32_t action_mask,
-	enum rte_mtr_policer_action *actions,
 	struct rte_mtr_error *error);
 
 /**

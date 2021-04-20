@@ -33,6 +33,7 @@
 #include <rte_bitops.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
+#include <rte_meter.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -2392,6 +2393,14 @@ enum rte_flow_action_type {
 	 * @see struct rte_flow_action_conntrack.
 	 */
 	RTE_FLOW_ACTION_TYPE_CONNTRACK,
+
+	/**
+	 * Color the packet to reflect the meter color result.
+	 * Set the meter color in the mbuf to the selected color.
+	 *
+	 * See struct rte_flow_action_meter_color.
+	 */
+	RTE_FLOW_ACTION_TYPE_METER_COLOR,
 };
 
 /**
@@ -3136,6 +3145,19 @@ struct rte_flow_modify_conntrack {
 	uint32_t state:1;
 	/** Reserved bits for the future usage. */
 	uint32_t reserved:30;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_METER_COLOR
+ *
+ * The meter color should be set in the packet meta-data
+ * (i.e. struct rte_mbuf::sched::color).
+ */
+struct rte_flow_action_meter_color {
+	enum rte_color color; /**< Packet color. */
 };
 
 /**

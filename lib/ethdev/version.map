@@ -138,7 +138,6 @@ EXPERIMENTAL {
 	rte_mtr_meter_profile_add;
 	rte_mtr_meter_profile_delete;
 	rte_mtr_meter_profile_update;
-	rte_mtr_policer_actions_update;
 	rte_mtr_stats_read;
 	rte_mtr_stats_update;
 
@@ -246,6 +245,10 @@ EXPERIMENTAL {
 	rte_flow_action_handle_destroy;
 	rte_flow_action_handle_update;
 	rte_flow_action_handle_query;
+	rte_mtr_meter_policy_add;
+	rte_mtr_meter_policy_delete;
+	rte_mtr_meter_policy_update;
+	rte_mtr_meter_policy_validate;
 };
 
 INTERNAL {

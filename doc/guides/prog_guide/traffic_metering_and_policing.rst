@@ -56,18 +56,10 @@ The processing done for each input packet hitting an MTR object is:
   color blind mode, which is equivalent to considering all input packets
   initially colored as green.
 
-* Policing: There is a separate policer action configured for each meter
-  output color, which can:
-
-  * Drop the packet.
-
-  * Keep the same packet color: the policer output color matches the meter
-    output color (essentially a no-op action).
-
-  * Recolor the packet: the policer output color is set to a different color
-    than the meter output color. The policer output color is the output color
-    of the packet, which is set in the packet meta-data (i.e. struct
-    ``rte_mbuf::sched::color``).
+* There is a meter policy API to manage pre-defined policies for meter.
+  Any rte_flow action list can be configured per color for each policy.
+  A meter object configured with a policy executes the actions per packet
+  according to the packet color.
 
 * Statistics: The set of counters maintained for each MTR object is
   configurable and subject to the implementation support. This set includes

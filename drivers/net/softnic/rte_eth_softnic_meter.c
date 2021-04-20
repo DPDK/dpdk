@@ -65,27 +65,6 @@ softnic_mtr_meter_profile_find(struct pmd_internals *p,
 	return NULL;
 }
 
-enum rte_table_action_policer
-softnic_table_action_policer(enum rte_mtr_policer_action action)
-{
-	switch (action) {
-	case MTR_POLICER_ACTION_COLOR_GREEN:
-		return RTE_TABLE_ACTION_POLICER_COLOR_GREEN;
-
-		/* FALLTHROUGH */
-	case MTR_POLICER_ACTION_COLOR_YELLOW:
-		return RTE_TABLE_ACTION_POLICER_COLOR_YELLOW;
-
-		/* FALLTHROUGH */
-	case MTR_POLICER_ACTION_COLOR_RED:
-		return RTE_TABLE_ACTION_POLICER_COLOR_RED;
-
-		/* FALLTHROUGH */
-	default:
-		return RTE_TABLE_ACTION_POLICER_DROP;
-	}
-}
-
 static int
 meter_profile_check(struct rte_eth_dev *dev,
 	uint32_t meter_profile_id,
@@ -208,6 +187,160 @@ pmd_mtr_meter_profile_delete(struct rte_eth_dev *dev,
 	return 0;
 }
 
+struct softnic_mtr_meter_policy *
+softnic_mtr_meter_policy_find(struct pmd_internals *p,
+	uint32_t meter_policy_id)
+{
+	struct softnic_mtr_meter_policy_list *mpl = &p->mtr.meter_policies;
+	struct softnic_mtr_meter_policy *mp;
+
+	TAILQ_FOREACH(mp, mpl, node)
+		if (meter_policy_id == mp->meter_policy_id)
+			return mp;
+
+	return NULL;
+}
+
+/* MTR meter policy add */
+static int
+pmd_mtr_meter_policy_add(struct rte_eth_dev *dev,
+	uint32_t meter_policy_id,
+	struct rte_mtr_meter_policy_params *policy,
+	struct rte_mtr_error *error)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct softnic_mtr_meter_policy_list *mpl = &p->mtr.meter_policies;
+	struct softnic_mtr_meter_policy *mp;
+	const struct rte_flow_action *act;
+	const struct rte_flow_action_meter_color *recolor;
+	uint32_t i;
+	bool valid_act_found;
+
+	if (policy == NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_POLICY,
+			NULL,
+			"Null meter policy invalid");
+
+	/* Meter policy must not exist. */
+	mp = softnic_mtr_meter_policy_find(p, meter_policy_id);
+	if (mp != NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+			NULL,
+			"Meter policy already exists");
+
+	for (i = 0; i < RTE_COLORS; i++) {
+		if (policy->actions[i] == NULL)
+			return -rte_mtr_error_set(error,
+				EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY,
+				NULL,
+				"Null action list");
+		for (act = policy->actions[i], valid_act_found = false;
+		     act->type != RTE_FLOW_ACTION_TYPE_END; act++) {
+			if (act->type == RTE_FLOW_ACTION_TYPE_VOID)
+				continue;
+			/*
+			 * Support one (and one only) of
+			 * METER_COLOR or DROP action.
+			 */
+			if ((act->type != RTE_FLOW_ACTION_TYPE_METER_COLOR &&
+				act->type != RTE_FLOW_ACTION_TYPE_DROP) ||
+				valid_act_found)
+				return -rte_mtr_error_set(error,
+					EINVAL,
+					RTE_MTR_ERROR_TYPE_METER_POLICY,
+					NULL,
+					"Action invalid");
+			valid_act_found = true;
+		}
+		if (!valid_act_found)
+			return -rte_mtr_error_set(error,
+				EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY,
+				NULL,
+				"No valid action found");
+	}
+
+	/* Memory allocation */
+	mp = calloc(1, sizeof(struct softnic_mtr_meter_policy));
+	if (mp == NULL)
+		return -rte_mtr_error_set(error,
+			ENOMEM,
+			RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Memory alloc failed");
+
+	/* Fill in */
+	mp->meter_policy_id = meter_policy_id;
+	for (i = 0; i < RTE_COLORS; i++) {
+		mp->policer[i] = RTE_TABLE_ACTION_POLICER_DROP;
+		act = policy->actions[i];
+		if (!act)
+			continue;
+		if (act->type == RTE_FLOW_ACTION_TYPE_METER_COLOR) {
+			recolor = act->conf;
+			switch (recolor->color) {
+			case RTE_COLOR_GREEN:
+				mp->policer[i] =
+				RTE_TABLE_ACTION_POLICER_COLOR_GREEN;
+				break;
+			case RTE_COLOR_YELLOW:
+				mp->policer[i] =
+				RTE_TABLE_ACTION_POLICER_COLOR_YELLOW;
+				break;
+			case RTE_COLOR_RED:
+				mp->policer[i] =
+				RTE_TABLE_ACTION_POLICER_COLOR_RED;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	/* Add to list */
+	TAILQ_INSERT_TAIL(mpl, mp, node);
+
+	return 0;
+}
+
+/* MTR meter policy delete */
+static int
+pmd_mtr_meter_policy_delete(struct rte_eth_dev *dev,
+	uint32_t meter_policy_id,
+	struct rte_mtr_error *error)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct softnic_mtr_meter_policy *mp;
+
+	/* Meter policy must exist */
+	mp = softnic_mtr_meter_policy_find(p, meter_policy_id);
+	if (mp == NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+			NULL,
+			"Meter policy id invalid");
+
+	/* Check unused */
+	if (mp->n_users)
+		return -rte_mtr_error_set(error,
+			EBUSY,
+			RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+			NULL,
+			"Meter policy in use");
+
+	/* Remove from list */
+	TAILQ_REMOVE(&p->mtr.meter_policies, mp, node);
+	free(mp);
+
+	return 0;
+}
+
 struct softnic_mtr *
 softnic_mtr_find(struct pmd_internals *p, uint32_t mtr_id)
 {
@@ -275,6 +408,7 @@ pmd_mtr_create(struct rte_eth_dev *dev,
 	struct pmd_internals *p = dev->data->dev_private;
 	struct softnic_mtr_list *ml = &p->mtr.mtrs;
 	struct softnic_mtr_meter_profile *mp;
+	struct softnic_mtr_meter_policy *policy;
 	struct softnic_mtr *m;
 	int status;
 
@@ -291,6 +425,16 @@ pmd_mtr_create(struct rte_eth_dev *dev,
 			RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
 			NULL,
 			"Meter profile id not valid");
+
+	/* Meter policy must exist */
+	policy = softnic_mtr_meter_policy_find(p, params->meter_policy_id);
+	if (policy == NULL) {
+		return -rte_mtr_error_set(error,
+				EINVAL,
+				RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+				NULL,
+				"Meter policy id invalid");
+	}
 
 	/* Memory allocation */
 	m = calloc(1, sizeof(struct softnic_mtr));
@@ -310,6 +454,7 @@ pmd_mtr_create(struct rte_eth_dev *dev,
 
 	/* Update dependencies */
 	mp->n_users++;
+	policy->n_users++;
 
 	return 0;
 }
@@ -324,6 +469,7 @@ pmd_mtr_destroy(struct rte_eth_dev *dev,
 	struct softnic_mtr_list *ml = &p->mtr.mtrs;
 	struct softnic_mtr_meter_profile *mp;
 	struct softnic_mtr *m;
+	struct softnic_mtr_meter_policy *policy;
 
 	/* MTR object must exist */
 	m = softnic_mtr_find(p, mtr_id);
@@ -351,8 +497,18 @@ pmd_mtr_destroy(struct rte_eth_dev *dev,
 			NULL,
 			"MTR object meter profile invalid");
 
+	/* Meter policy must exist */
+	policy = softnic_mtr_meter_policy_find(p, m->params.meter_policy_id);
+	if (policy == NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+			NULL,
+			"MTR object meter policy invalid");
+
 	/* Update dependencies */
 	mp->n_users--;
+	policy->n_users--;
 
 	/* Remove from list */
 	TAILQ_REMOVE(ml, m, node);
@@ -514,18 +670,18 @@ pmd_mtr_meter_dscp_table_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/* MTR object policer action update */
+/* MTR object policy update */
 static int
-pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
+pmd_mtr_meter_policy_update(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
-	uint32_t action_mask,
-	enum rte_mtr_policer_action *actions,
+	uint32_t meter_policy_id,
 	struct rte_mtr_error *error)
 {
 	struct pmd_internals *p = dev->data->dev_private;
 	struct softnic_mtr *m;
 	uint32_t i;
 	int status;
+	struct softnic_mtr_meter_policy *mp_new, *mp_old;
 
 	/* MTR object id must be valid */
 	m = softnic_mtr_find(p, mtr_id);
@@ -536,28 +692,17 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 			NULL,
 			"MTR object id not valid");
 
-	/* Valid policer actions */
-	if (actions == NULL)
+	if (m->params.meter_policy_id == meter_policy_id)
+		return 0;
+
+	/* Meter policy must exist */
+	mp_new = softnic_mtr_meter_policy_find(p, meter_policy_id);
+	if (mp_new == NULL)
 		return -rte_mtr_error_set(error,
 			EINVAL,
-			RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+			RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
 			NULL,
-			"Invalid actions");
-
-	for (i = 0; i < RTE_COLORS; i++) {
-		if (action_mask & (1 << i)) {
-			if (actions[i] != MTR_POLICER_ACTION_COLOR_GREEN  &&
-				actions[i] != MTR_POLICER_ACTION_COLOR_YELLOW &&
-				actions[i] != MTR_POLICER_ACTION_COLOR_RED &&
-				actions[i] != MTR_POLICER_ACTION_DROP) {
-				return -rte_mtr_error_set(error,
-					EINVAL,
-					RTE_MTR_ERROR_TYPE_UNSPECIFIED,
-					NULL,
-					" Invalid action value");
-			}
-		}
-	}
+			"Meter policy id invalid");
 
 	/* MTR object owner valid? */
 	if (m->flow) {
@@ -569,9 +714,7 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 
 		/* Set action */
 		for (i = 0; i < RTE_COLORS; i++)
-			if (action_mask & (1 << i))
-				action.mtr.mtr[0].policer[i] =
-					softnic_table_action_policer(actions[i]);
+			action.mtr.mtr[0].policer[i] = mp_new->policer[i];
 
 		/* Re-add the rule */
 		status = softnic_pipeline_table_rule_add(p,
@@ -595,10 +738,20 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 			1, NULL, 1);
 	}
 
-	/* Meter: Update policer actions */
-	for (i = 0; i < RTE_COLORS; i++)
-		if (action_mask & (1 << i))
-			m->params.action[i] = actions[i];
+	mp_old = softnic_mtr_meter_policy_find(p, m->params.meter_policy_id);
+	if (mp_old == NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_POLICY_ID,
+			NULL,
+			"Old meter policy id invalid");
+
+	/* Meter: Set meter profile */
+	m->params.meter_policy_id = meter_policy_id;
+
+	/* Update dependencies*/
+	mp_old->n_users--;
+	mp_new->n_users++;
 
 	return 0;
 }
@@ -615,28 +768,40 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 
 /* MTR object stats read */
 static void
-mtr_stats_convert(struct softnic_mtr *m,
+mtr_stats_convert(struct pmd_internals *p,
+	struct softnic_mtr *m,
 	struct rte_table_action_mtr_counters_tc *in,
 	struct rte_mtr_stats *out,
 	uint64_t *out_mask)
 {
+	struct softnic_mtr_meter_policy *mp;
+
 	memset(&out, 0, sizeof(out));
 	*out_mask = 0;
+
+	/* Meter policy must exist */
+	mp = softnic_mtr_meter_policy_find(p, m->params.meter_policy_id);
+	if (mp == NULL)
+		return;
 
 	if (in->n_packets_valid) {
 		uint32_t i;
 
 		for (i = 0; i < RTE_COLORS; i++) {
-			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_GREEN)
+			if (mp->policer[i] ==
+				RTE_TABLE_ACTION_POLICER_COLOR_GREEN)
 				out->n_pkts[RTE_COLOR_GREEN] += in->n_packets[i];
 
-			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_YELLOW)
+			if (mp->policer[i] ==
+				RTE_TABLE_ACTION_POLICER_COLOR_YELLOW)
 				out->n_pkts[RTE_COLOR_YELLOW] += in->n_packets[i];
 
-			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_RED)
+			if (mp->policer[i] ==
+				RTE_TABLE_ACTION_POLICER_COLOR_RED)
 				out->n_pkts[RTE_COLOR_RED] += in->n_packets[i];
 
-			if (m->params.action[i] == MTR_POLICER_ACTION_DROP)
+			if (mp->policer[i] ==
+				RTE_TABLE_ACTION_POLICER_DROP)
 				out->n_pkts_dropped += in->n_packets[i];
 		}
 
@@ -647,16 +812,20 @@ mtr_stats_convert(struct softnic_mtr *m,
 		uint32_t i;
 
 		for (i = 0; i < RTE_COLORS; i++) {
-			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_GREEN)
+			if (mp->policer[i] ==
+				RTE_TABLE_ACTION_POLICER_COLOR_GREEN)
 				out->n_bytes[RTE_COLOR_GREEN] += in->n_bytes[i];
 
-			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_YELLOW)
+			if (mp->policer[i] ==
+				RTE_TABLE_ACTION_POLICER_COLOR_YELLOW)
 				out->n_bytes[RTE_COLOR_YELLOW] += in->n_bytes[i];
 
-			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_RED)
+			if (mp->policer[i] ==
+				RTE_TABLE_ACTION_POLICER_COLOR_RED)
 				out->n_bytes[RTE_COLOR_RED] += in->n_bytes[i];
 
-			if (m->params.action[i] == MTR_POLICER_ACTION_DROP)
+			if (mp->policer[i] ==
+				RTE_TABLE_ACTION_POLICER_DROP)
 				out->n_bytes_dropped += in->n_bytes[i];
 		}
 
@@ -722,7 +891,8 @@ pmd_mtr_stats_read(struct rte_eth_dev *dev,
 		struct rte_mtr_stats s;
 		uint64_t s_mask = 0;
 
-		mtr_stats_convert(m,
+		mtr_stats_convert(p,
+			m,
 			&counters.stats[0],
 			&s,
 			&s_mask);
@@ -743,6 +913,9 @@ const struct rte_mtr_ops pmd_mtr_ops = {
 	.meter_profile_add = pmd_mtr_meter_profile_add,
 	.meter_profile_delete = pmd_mtr_meter_profile_delete,
 
+	.meter_policy_add = pmd_mtr_meter_policy_add,
+	.meter_policy_delete = pmd_mtr_meter_policy_delete,
+
 	.create = pmd_mtr_create,
 	.destroy = pmd_mtr_destroy,
 	.meter_enable = NULL,
@@ -750,7 +923,7 @@ const struct rte_mtr_ops pmd_mtr_ops = {
 
 	.meter_profile_update = pmd_mtr_meter_profile_update,
 	.meter_dscp_table_update = pmd_mtr_meter_dscp_table_update,
-	.policer_actions_update = pmd_mtr_policer_actions_update,
+	.meter_policy_update = pmd_mtr_meter_policy_update,
 	.stats_update = NULL,
 
 	.stats_read = pmd_mtr_stats_read,
