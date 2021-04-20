@@ -199,8 +199,11 @@ sfc_mae_outer_rule_del(struct sfc_adapter *sa,
 	if (rule->refcnt != 0)
 		return;
 
-	SFC_ASSERT(rule->fw_rsrc.rule_id.id == EFX_MAE_RSRC_ID_INVALID);
-	SFC_ASSERT(rule->fw_rsrc.refcnt == 0);
+	if (rule->fw_rsrc.rule_id.id != EFX_MAE_RSRC_ID_INVALID ||
+	    rule->fw_rsrc.refcnt != 0) {
+		sfc_err(sa, "deleting outer_rule=%p abandons its FW resource: OR_ID=0x%08x, refcnt=%u",
+			rule, rule->fw_rsrc.rule_id.id, rule->fw_rsrc.refcnt);
+	}
 
 	efx_mae_match_spec_fini(sa->nic, rule->match_spec);
 
@@ -245,7 +248,7 @@ sfc_mae_outer_rule_enable(struct sfc_adapter *sa,
 	return 0;
 }
 
-static int
+static void
 sfc_mae_outer_rule_disable(struct sfc_adapter *sa,
 			   struct sfc_mae_outer_rule *rule)
 {
@@ -253,20 +256,24 @@ sfc_mae_outer_rule_disable(struct sfc_adapter *sa,
 	int rc;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
-	SFC_ASSERT(fw_rsrc->rule_id.id != EFX_MAE_RSRC_ID_INVALID);
-	SFC_ASSERT(fw_rsrc->refcnt != 0);
+
+	if (fw_rsrc->rule_id.id == EFX_MAE_RSRC_ID_INVALID ||
+	    fw_rsrc->refcnt == 0) {
+		sfc_err(sa, "failed to disable outer_rule=%p: already disabled; OR_ID=0x%08x, refcnt=%u",
+			rule, fw_rsrc->rule_id.id, fw_rsrc->refcnt);
+		return;
+	}
 
 	if (fw_rsrc->refcnt == 1) {
 		rc = efx_mae_outer_rule_remove(sa->nic, &fw_rsrc->rule_id);
-		if (rc != 0)
-			return rc;
-
+		if (rc != 0) {
+			sfc_err(sa, "failed to disable outer_rule=%p with OR_ID=0x%08x: %s",
+				rule, fw_rsrc->rule_id.id, strerror(rc));
+		}
 		fw_rsrc->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
 	}
 
 	--(fw_rsrc->refcnt);
-
-	return 0;
 }
 
 static struct sfc_mae_encap_header *
@@ -344,8 +351,12 @@ sfc_mae_encap_header_del(struct sfc_adapter *sa,
 	if (encap_header->refcnt != 0)
 		return;
 
-	SFC_ASSERT(encap_header->fw_rsrc.eh_id.id == EFX_MAE_RSRC_ID_INVALID);
-	SFC_ASSERT(encap_header->fw_rsrc.refcnt == 0);
+	if (encap_header->fw_rsrc.eh_id.id != EFX_MAE_RSRC_ID_INVALID ||
+	    encap_header->fw_rsrc.refcnt != 0) {
+		sfc_err(sa, "deleting encap_header=%p abandons its FW resource: EH_ID=0x%08x, refcnt=%u",
+			encap_header, encap_header->fw_rsrc.eh_id.id,
+			encap_header->fw_rsrc.refcnt);
+	}
 
 	TAILQ_REMOVE(&mae->encap_headers, encap_header, entries);
 	rte_free(encap_header->buf);
@@ -396,7 +407,7 @@ sfc_mae_encap_header_enable(struct sfc_adapter *sa,
 	return 0;
 }
 
-static int
+static void
 sfc_mae_encap_header_disable(struct sfc_adapter *sa,
 			     struct sfc_mae_encap_header *encap_header)
 {
@@ -404,26 +415,29 @@ sfc_mae_encap_header_disable(struct sfc_adapter *sa,
 	int rc;
 
 	if (encap_header == NULL)
-		return 0;
+		return;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	fw_rsrc = &encap_header->fw_rsrc;
 
-	SFC_ASSERT(fw_rsrc->eh_id.id != EFX_MAE_RSRC_ID_INVALID);
-	SFC_ASSERT(fw_rsrc->refcnt != 0);
+	if (fw_rsrc->eh_id.id == EFX_MAE_RSRC_ID_INVALID ||
+	    fw_rsrc->refcnt == 0) {
+		sfc_err(sa, "failed to disable encap_header=%p: already disabled; EH_ID=0x%08x, refcnt=%u",
+			encap_header, fw_rsrc->eh_id.id, fw_rsrc->refcnt);
+		return;
+	}
 
 	if (fw_rsrc->refcnt == 1) {
 		rc = efx_mae_encap_header_free(sa->nic, &fw_rsrc->eh_id);
-		if (rc != 0)
-			return rc;
-
+		if (rc != 0) {
+			sfc_err(sa, "failed to disable encap_header=%p with EH_ID=0x%08x: %s",
+				encap_header, fw_rsrc->eh_id.id, strerror(rc));
+		}
 		fw_rsrc->eh_id.id = EFX_MAE_RSRC_ID_INVALID;
 	}
 
 	--(fw_rsrc->refcnt);
-
-	return 0;
 }
 
 static struct sfc_mae_action_set *
@@ -489,8 +503,12 @@ sfc_mae_action_set_del(struct sfc_adapter *sa,
 	if (action_set->refcnt != 0)
 		return;
 
-	SFC_ASSERT(action_set->fw_rsrc.aset_id.id == EFX_MAE_RSRC_ID_INVALID);
-	SFC_ASSERT(action_set->fw_rsrc.refcnt == 0);
+	if (action_set->fw_rsrc.aset_id.id != EFX_MAE_RSRC_ID_INVALID ||
+	    action_set->fw_rsrc.refcnt != 0) {
+		sfc_err(sa, "deleting action_set=%p abandons its FW resource: AS_ID=0x%08x, refcnt=%u",
+			action_set, action_set->fw_rsrc.aset_id.id,
+			action_set->fw_rsrc.refcnt);
+	}
 
 	efx_mae_action_set_spec_fini(sa->nic, action_set->spec);
 	sfc_mae_encap_header_del(sa, action_set->encap_header);
@@ -520,7 +538,7 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 		rc = efx_mae_action_set_alloc(sa->nic, action_set->spec,
 					      &fw_rsrc->aset_id);
 		if (rc != 0) {
-			(void)sfc_mae_encap_header_disable(sa, encap_header);
+			sfc_mae_encap_header_disable(sa, encap_header);
 
 			return rc;
 		}
@@ -531,7 +549,7 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 	return 0;
 }
 
-static int
+static void
 sfc_mae_action_set_disable(struct sfc_adapter *sa,
 			   struct sfc_mae_action_set *action_set)
 {
@@ -539,24 +557,26 @@ sfc_mae_action_set_disable(struct sfc_adapter *sa,
 	int rc;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
-	SFC_ASSERT(fw_rsrc->aset_id.id != EFX_MAE_RSRC_ID_INVALID);
-	SFC_ASSERT(fw_rsrc->refcnt != 0);
+
+	if (fw_rsrc->aset_id.id == EFX_MAE_RSRC_ID_INVALID ||
+	    fw_rsrc->refcnt == 0) {
+		sfc_err(sa, "failed to disable action_set=%p: already disabled; AS_ID=0x%08x, refcnt=%u",
+			action_set, fw_rsrc->aset_id.id, fw_rsrc->refcnt);
+		return;
+	}
 
 	if (fw_rsrc->refcnt == 1) {
 		rc = efx_mae_action_set_free(sa->nic, &fw_rsrc->aset_id);
-		if (rc != 0)
-			return rc;
-
+		if (rc != 0) {
+			sfc_err(sa, "failed to disable action_set=%p with AS_ID=0x%08x: %s",
+				action_set, fw_rsrc->aset_id.id, strerror(rc));
+		}
 		fw_rsrc->aset_id.id = EFX_MAE_RSRC_ID_INVALID;
 
-		rc = sfc_mae_encap_header_disable(sa, action_set->encap_header);
-		if (rc != 0)
-			return rc;
+		sfc_mae_encap_header_disable(sa, action_set->encap_header);
 	}
 
 	--(fw_rsrc->refcnt);
-
-	return 0;
 }
 
 void
@@ -2850,11 +2870,11 @@ sfc_mae_flow_insert(struct sfc_adapter *sa,
 	return 0;
 
 fail_action_rule_insert:
-	(void)sfc_mae_action_set_disable(sa, action_set);
+	sfc_mae_action_set_disable(sa, action_set);
 
 fail_action_set_enable:
 	if (outer_rule != NULL)
-		(void)sfc_mae_outer_rule_disable(sa, outer_rule);
+		sfc_mae_outer_rule_disable(sa, outer_rule);
 
 fail_outer_rule_enable:
 	return rc;
@@ -2874,19 +2894,16 @@ sfc_mae_flow_remove(struct sfc_adapter *sa,
 	SFC_ASSERT(action_set != NULL);
 
 	rc = efx_mae_action_rule_remove(sa->nic, &spec_mae->rule_id);
-	if (rc != 0)
-		return rc;
-
+	if (rc != 0) {
+		sfc_err(sa, "failed to disable flow=%p with AR_ID=0x%08x: %s",
+			flow, spec_mae->rule_id.id, strerror(rc));
+	}
 	spec_mae->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
 
-	rc = sfc_mae_action_set_disable(sa, action_set);
-	if (rc != 0) {
-		sfc_err(sa, "failed to disable the action set (rc = %d)", rc);
-		/* Despite the error, proceed with outer rule removal. */
-	}
+	sfc_mae_action_set_disable(sa, action_set);
 
 	if (outer_rule != NULL)
-		return sfc_mae_outer_rule_disable(sa, outer_rule);
+		sfc_mae_outer_rule_disable(sa, outer_rule);
 
 	return 0;
 }
