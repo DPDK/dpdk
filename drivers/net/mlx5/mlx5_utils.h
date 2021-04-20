@@ -834,6 +834,91 @@ int32_t mlx5_l3t_clear_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx);
 int32_t mlx5_l3t_set_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx,
 			    union mlx5_l3t_data *data);
 
+static inline void *
+mlx5_l3t_get_next(struct mlx5_l3t_tbl *tbl, uint32_t *pos)
+{
+	struct mlx5_l3t_level_tbl *g_tbl, *m_tbl;
+	uint32_t i, j, k, g_start, m_start, e_start;
+	uint32_t idx = *pos;
+	void *e_tbl;
+	struct mlx5_l3t_entry_word *w_e_tbl;
+	struct mlx5_l3t_entry_dword *dw_e_tbl;
+	struct mlx5_l3t_entry_qword *qw_e_tbl;
+	struct mlx5_l3t_entry_ptr *ptr_e_tbl;
+
+	if (!tbl)
+		return NULL;
+	g_tbl = tbl->tbl;
+	if (!g_tbl)
+		return NULL;
+	g_start = (idx >> MLX5_L3T_GT_OFFSET) & MLX5_L3T_GT_MASK;
+	m_start = (idx >> MLX5_L3T_MT_OFFSET) & MLX5_L3T_MT_MASK;
+	e_start = idx & MLX5_L3T_ET_MASK;
+	for (i = g_start; i < MLX5_L3T_GT_SIZE; i++) {
+		m_tbl = g_tbl->tbl[i];
+		if (!m_tbl) {
+			/* Jump to new table, reset the sub table start. */
+			m_start = 0;
+			e_start = 0;
+			continue;
+		}
+		for (j = m_start; j < MLX5_L3T_MT_SIZE; j++) {
+			if (!m_tbl->tbl[j]) {
+				/*
+				 * Jump to new table, reset the sub table
+				 * start.
+				 */
+				e_start = 0;
+				continue;
+			}
+			e_tbl = m_tbl->tbl[j];
+			switch (tbl->type) {
+			case MLX5_L3T_TYPE_WORD:
+				w_e_tbl = (struct mlx5_l3t_entry_word *)e_tbl;
+				for (k = e_start; k < MLX5_L3T_ET_SIZE; k++) {
+					if (!w_e_tbl->entry[k].data)
+						continue;
+					*pos = (i << MLX5_L3T_GT_OFFSET) |
+					       (j << MLX5_L3T_MT_OFFSET) | k;
+					return (void *)&w_e_tbl->entry[k].data;
+				}
+				break;
+			case MLX5_L3T_TYPE_DWORD:
+				dw_e_tbl = (struct mlx5_l3t_entry_dword *)e_tbl;
+				for (k = e_start; k < MLX5_L3T_ET_SIZE; k++) {
+					if (!dw_e_tbl->entry[k].data)
+						continue;
+					*pos = (i << MLX5_L3T_GT_OFFSET) |
+					       (j << MLX5_L3T_MT_OFFSET) | k;
+					return (void *)&dw_e_tbl->entry[k].data;
+				}
+				break;
+			case MLX5_L3T_TYPE_QWORD:
+				qw_e_tbl = (struct mlx5_l3t_entry_qword *)e_tbl;
+				for (k = e_start; k < MLX5_L3T_ET_SIZE; k++) {
+					if (!qw_e_tbl->entry[k].data)
+						continue;
+					*pos = (i << MLX5_L3T_GT_OFFSET) |
+					       (j << MLX5_L3T_MT_OFFSET) | k;
+					return (void *)&qw_e_tbl->entry[k].data;
+				}
+				break;
+			default:
+				ptr_e_tbl = (struct mlx5_l3t_entry_ptr *)e_tbl;
+				for (k = e_start; k < MLX5_L3T_ET_SIZE; k++) {
+					if (!ptr_e_tbl->entry[k].data)
+						continue;
+					*pos = (i << MLX5_L3T_GT_OFFSET) |
+					       (j << MLX5_L3T_MT_OFFSET) | k;
+					return ptr_e_tbl->entry[k].data;
+				}
+				break;
+			}
+		}
+	}
+	return NULL;
+}
+
 /*
  * Macros for linked list based on indexed memory.
  * Example data structure:
@@ -908,5 +993,10 @@ struct {								\
 	     (idx) ? mlx5_ipool_get(pool, (idx)) : NULL; (elem);	\
 	     idx = (elem)->field.next, (elem) =				\
 	     (idx) ? mlx5_ipool_get(pool, idx) : NULL)
+
+#define MLX5_L3T_FOREACH(tbl, idx, entry)				\
+	for (idx = 0, (entry) = mlx5_l3t_get_next((tbl), &idx);		\
+	     (entry);							\
+	     idx++, (entry) = mlx5_l3t_get_next((tbl), &idx))
 
 #endif /* RTE_PMD_MLX5_UTILS_H_ */
