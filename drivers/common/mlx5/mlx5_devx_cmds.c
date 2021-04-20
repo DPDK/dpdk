@@ -696,6 +696,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->max_geneve_tlv_option_data_len = MLX5_GET(cmd_hca_cap, hcattr,
 			max_geneve_tlv_option_data_len);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
+	attr->qos.flow_meter_aso_sup = !!(MLX5_GET64(cmd_hca_cap, hcattr,
+					 general_obj_types) &
+			      MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_METER_ASO);
 	attr->vdpa.valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 					 general_obj_types) &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q);
@@ -783,6 +786,17 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				MLX5_GET(qos_cap, hcattr, packet_pacing);
 		attr->qos.wqe_rate_pp =
 				MLX5_GET(qos_cap, hcattr, wqe_rate_pp);
+		if (attr->qos.flow_meter_aso_sup) {
+			attr->qos.log_meter_aso_granularity =
+				MLX5_GET(qos_cap, hcattr,
+					log_meter_aso_granularity);
+			attr->qos.log_meter_aso_max_alloc =
+				MLX5_GET(qos_cap, hcattr,
+					log_meter_aso_max_alloc);
+			attr->qos.log_max_num_meter_aso =
+				MLX5_GET(qos_cap, hcattr,
+					log_max_num_meter_aso);
+		}
 	}
 	if (attr->vdpa.valid)
 		mlx5_devx_cmd_query_hca_vdpa_attr(ctx, &attr->vdpa);

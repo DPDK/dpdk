@@ -50,10 +50,18 @@ struct mlx5_hca_qos_attr {
 	 * Using older driver versions, flow_meter_old can be 1
 	 * while flow_meter is 0.
 	 */
+	uint32_t flow_meter_aso_sup:1;
+	/* Whether FLOW_METER_ASO Object is supported. */
 	uint8_t log_max_flow_meter;
 	/* Power of the maximum supported meters. */
 	uint8_t flow_meter_reg_c_ids;
 	/* Bitmap of the reg_Cs available for flow meter to use. */
+	uint32_t log_meter_aso_granularity:5;
+	/* Power of the minimum allocation granularity Object. */
+	uint32_t log_meter_aso_max_alloc:5;
+	/* Power of the maximum allocation granularity Object. */
+	uint32_t log_max_num_meter_aso:5;
+	/* Power of the maximum number of supported objects. */
 
 };
 
