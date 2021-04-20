@@ -1129,6 +1129,8 @@ enum {
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH)
 #define MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_HIT_ASO \
 			(1ULL << MLX5_GENERAL_OBJ_TYPE_FLOW_HIT_ASO)
+#define MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_METER_ASO \
+			(1ULL << MLX5_GENERAL_OBJ_TYPE_FLOW_METER_ASO)
 #define MLX5_GENERAL_OBJ_TYPES_CAP_GENEVE_TLV_OPT \
 			(1ULL << MLX5_OBJ_TYPE_GENEVE_TLV_OPT)
 
@@ -1514,7 +1516,15 @@ struct mlx5_ifc_qos_cap_bits {
 	u8 reserved_at_c0[0x10];
 	u8 max_qos_para_vport[0x10];
 	u8 max_tsar_bw_share[0x20];
-	u8 reserved_at_100[0x6e8];
+	u8 nic_element_type[0x10];
+	u8 nic_tsar_type[0x10];
+	u8 reserved_at_120[0x3];
+	u8 log_meter_aso_granularity[0x5];
+	u8 reserved_at_128[0x3];
+	u8 log_meter_aso_max_alloc[0x5];
+	u8 reserved_at_130[0x3];
+	u8 log_max_num_meter_aso[0x5];
+	u8 reserved_at_138[0x6b0];
 };
 
 struct mlx5_ifc_per_protocol_networking_offload_caps_bits {
@@ -2284,6 +2294,8 @@ struct mlx5_ifc_flow_meter_parameters_bits {
 	u8         eir_mantissa[0x8];
 	u8         reserved_at_8[0x60];		// 14h-1Ch
 };
+#define MLX5_IFC_FLOW_METER_PARAM_MASK UINT64_C(0x80FFFFFF)
+#define MLX5_IFC_FLOW_METER_DISABLE_CBS_CIR_VAL 0x14BF00C8
 
 enum {
 	MLX5_CQE_SIZE_64B = 0x0,
@@ -2411,6 +2423,7 @@ enum {
 	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
 	MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS = 0x001c,
 	MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH = 0x0022,
+	MLX5_GENERAL_OBJ_TYPE_FLOW_METER_ASO = 0x0024,
 	MLX5_GENERAL_OBJ_TYPE_FLOW_HIT_ASO = 0x0025,
 };
 
@@ -2419,7 +2432,9 @@ struct mlx5_ifc_general_obj_in_cmd_hdr_bits {
 	u8 reserved_at_10[0x20];
 	u8 obj_type[0x10];
 	u8 obj_id[0x20];
-	u8 reserved_at_60[0x20];
+	u8 reserved_at_60[0x3];
+	u8 log_obj_range[0x5];
+	u8 reserved_at_58[0x18];
 };
 
 struct mlx5_ifc_general_obj_out_cmd_hdr_bits {
@@ -2565,6 +2580,18 @@ struct mlx5_ifc_create_flow_hit_aso_in_bits {
 	struct mlx5_ifc_flow_hit_aso_bits flow_hit_aso;
 };
 
+struct mlx5_ifc_flow_meter_aso_bits {
+	u8 modify_field_select[0x40];
+	u8 reserved_at_40[0x48];
+	u8 access_pd[0x18];
+	u8 reserved_at_a0[0x160];
+	u8 parameters[0x200];
+};
+
+struct mlx5_ifc_create_flow_meter_aso_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_flow_meter_aso_bits flow_meter_aso;
+};
 enum mlx5_access_aso_opc_mod {
 	ASO_OPC_MOD_IPSEC = 0x0,
 	ASO_OPC_MOD_CONNECTION_TRACKING = 0x1,
@@ -2618,11 +2645,51 @@ struct mlx5_aso_cseg {
 	uint64_t data_mask;
 } __rte_packed;
 
-#define MLX5_ASO_WQE_DSEG_SIZE	0x40
+/* A meter data segment - 2 per ASO WQE. */
+struct mlx5_aso_mtr_dseg {
+	uint32_t v_bo_sc_bbog_mm;
+	/*
+	 * bit 31: valid, 30: bucket overflow, 28-29: start color,
+	 * 27: both buckets on green, 24-25: meter mode.
+	 */
+	uint32_t reserved;
+	uint32_t cbs_cir;
+	/*
+	 * bit 24-28: cbs_exponent, bit 16-23 cbs_mantissa,
+	 * bit 8-12: cir_exponent, bit 0-7 cir_mantissa.
+	 */
+	uint32_t c_tokens;
+	uint32_t ebs_eir;
+	/*
+	 * bit 24-28: ebs_exponent, bit 16-23 ebs_mantissa,
+	 * bit 8-12: eir_exponent, bit 0-7 eir_mantissa.
+	 */
+	uint32_t e_tokens;
+	uint64_t timestamp;
+} __rte_packed;
 
-/* ASO WQE Data segment. */
+#define ASO_DSEG_VALID_OFFSET 31
+#define ASO_DSEG_BO_OFFSET 30
+#define ASO_DSEG_SC_OFFSET 28
+#define ASO_DSEG_CBS_EXP_OFFSET 24
+#define ASO_DSEG_CBS_MAN_OFFSET 16
+#define ASO_DSEG_CIR_EXP_MASK 0x1F
+#define ASO_DSEG_CIR_EXP_OFFSET 8
+#define ASO_DSEG_EBS_EXP_OFFSET 24
+#define ASO_DSEG_EBS_MAN_OFFSET 16
+#define ASO_DSEG_EXP_MASK 0x1F
+#define ASO_DSEG_MAN_MASK 0xFF
+
+#define MLX5_ASO_WQE_DSEG_SIZE	0x40
+#define MLX5_ASO_METERS_PER_WQE 2
+#define MLX5_ASO_MTRS_PER_POOL 128
+
+/* ASO WQE data segment. */
 struct mlx5_aso_dseg {
-	uint8_t data[MLX5_ASO_WQE_DSEG_SIZE];
+	union {
+		uint8_t data[MLX5_ASO_WQE_DSEG_SIZE];
+		struct mlx5_aso_mtr_dseg mtrs[MLX5_ASO_METERS_PER_WQE];
+	};
 } __rte_packed;
 
 /* ASO WQE. */
