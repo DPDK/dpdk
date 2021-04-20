@@ -3,8 +3,8 @@
 
 dep = dependency('zlib', required: false, method: 'pkg-config')
 if not dep.found()
-	build = false
-	reason = 'missing dependency, "zlib"'
+    build = false
+    reason = 'missing dependency, "zlib"'
 endif
 
 deps += 'bus_vdev'

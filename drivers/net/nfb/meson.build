@@ -4,9 +4,9 @@
 # All rights reserved.
 
 if is_windows
-	build = false
-	reason = 'not supported on Windows'
-	subdir_done()
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
 endif
 
 dep = dependency('netcope-common', required: false, method: 'pkg-config')
@@ -14,4 +14,10 @@ reason = 'missing dependency, "libnfb"'
 build = dep.found()
 ext_deps += dep
 
-sources = files('nfb_rx.c', 'nfb_tx.c', 'nfb_stats.c', 'nfb_ethdev.c', 'nfb_rxmode.c')
+sources = files(
+        'nfb_ethdev.c',
+        'nfb_rx.c',
+        'nfb_rxmode.c',
+        'nfb_stats.c',
+        'nfb_tx.c',
+)

@@ -2,9 +2,9 @@
 # Copyright (C) 2019 Marvell International Ltd.
 
 if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
-	build = false
-	reason = 'only supported on 64-bit Linux'
-	subdir_done()
+    build = false
+    reason = 'only supported on 64-bit Linux'
+    subdir_done()
 endif
 
 deps += ['bus_pci']
@@ -14,12 +14,14 @@ deps += ['ethdev']
 deps += ['eventdev']
 deps += ['security']
 
-sources = files('otx2_cryptodev.c',
-		'otx2_cryptodev_capabilities.c',
-		'otx2_cryptodev_hw_access.c',
-		'otx2_cryptodev_mbox.c',
-		'otx2_cryptodev_ops.c',
-		'otx2_cryptodev_sec.c')
+sources = files(
+        'otx2_cryptodev.c',
+        'otx2_cryptodev_capabilities.c',
+        'otx2_cryptodev_hw_access.c',
+        'otx2_cryptodev_mbox.c',
+        'otx2_cryptodev_ops.c',
+        'otx2_cryptodev_sec.c',
+)
 
 includes += include_directories('../../common/cpt')
 includes += include_directories('../../common/octeontx2')

@@ -2,9 +2,9 @@
 # Copyright(c) 2010-2018 Intel Corporation
 
 if is_windows
-	build = false
-	reason = 'not supported on Windows'
-	subdir_done()
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
 endif
 
 deps += ['pci', 'kvargs', 'rawdev']

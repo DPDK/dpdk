@@ -3,21 +3,22 @@
 #
 
 if not dpdk_conf.get('RTE_ARCH_64')
-	build = false
-	reason = 'only supported on 64-bit'
-	subdir_done()
+    build = false
+    reason = 'only supported on 64-bit'
+    subdir_done()
 endif
 
-sources = files('otx2_worker.c',
-		'otx2_worker_dual.c',
-		'otx2_evdev.c',
-		'otx2_evdev_adptr.c',
-		'otx2_evdev_crypto_adptr.c',
-		'otx2_evdev_irq.c',
-		'otx2_evdev_selftest.c',
-		'otx2_tim_evdev.c',
-		'otx2_tim_worker.c'
-		)
+sources = files(
+        'otx2_worker.c',
+        'otx2_worker_dual.c',
+        'otx2_evdev.c',
+        'otx2_evdev_adptr.c',
+        'otx2_evdev_crypto_adptr.c',
+        'otx2_evdev_irq.c',
+        'otx2_evdev_selftest.c',
+        'otx2_tim_evdev.c',
+        'otx2_tim_worker.c',
+)
 
 deps += ['bus_pci', 'common_octeontx2', 'crypto_octeontx2', 'mempool_octeontx2', 'net_octeontx2']
 

@@ -2,25 +2,26 @@
 # Copyright(c) 2017 Cavium, Inc
 
 if is_windows
-	build = false
-	reason = 'not supported on Windows'
-	subdir_done()
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
 endif
 
 subdir('base')
 objs = [base_objs]
 
-sources = files('nicvf_rxtx.c',
-		'nicvf_ethdev.c',
-		'nicvf_svf.c'
+sources = files(
+        'nicvf_ethdev.c',
+        'nicvf_rxtx.c',
+        'nicvf_svf.c',
 )
 
 if cc.has_argument('-fno-prefetch-loop-arrays')
-	cflags += '-fno-prefetch-loop-arrays'
+    cflags += '-fno-prefetch-loop-arrays'
 endif
 
 if cc.has_argument('-Wno-maybe-uninitialized')
-	cflags += '-Wno-maybe-uninitialized'
+    cflags += '-Wno-maybe-uninitialized'
 endif
 
 includes += include_directories('base')

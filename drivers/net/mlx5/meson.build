@@ -3,66 +3,66 @@
 # Copyright 2018 Mellanox Technologies, Ltd
 
 if not (is_linux or is_windows)
-	build = false
-	reason = 'only supported on Linux and Windows'
-	subdir_done()
+    build = false
+    reason = 'only supported on Linux and Windows'
+    subdir_done()
 endif
 
 deps += ['hash', 'common_mlx5']
 sources = files(
-	'mlx5.c',
-	'mlx5_ethdev.c',
-	'mlx5_flow.c',
-	'mlx5_flow_meter.c',
-	'mlx5_flow_dv.c',
+        'mlx5.c',
+        'mlx5_ethdev.c',
+        'mlx5_flow.c',
+        'mlx5_flow_meter.c',
+        'mlx5_flow_dv.c',
         'mlx5_flow_age.c',
-	'mlx5_mac.c',
-	'mlx5_mr.c',
-	'mlx5_rss.c',
-	'mlx5_rx.c',
-	'mlx5_rxmode.c',
-	'mlx5_rxq.c',
-	'mlx5_rxtx.c',
-	'mlx5_stats.c',
-	'mlx5_trigger.c',
-	'mlx5_tx.c',
-	'mlx5_tx_empw.c',
-	'mlx5_tx_mpw.c',
-	'mlx5_tx_nompw.c',
-	'mlx5_tx_txpp.c',
-	'mlx5_txq.c',
-	'mlx5_txpp.c',
-	'mlx5_vlan.c',
-	'mlx5_utils.c',
-	'mlx5_devx.c',
+        'mlx5_mac.c',
+        'mlx5_mr.c',
+        'mlx5_rss.c',
+        'mlx5_rx.c',
+        'mlx5_rxmode.c',
+        'mlx5_rxq.c',
+        'mlx5_rxtx.c',
+        'mlx5_stats.c',
+        'mlx5_trigger.c',
+        'mlx5_tx.c',
+        'mlx5_tx_empw.c',
+        'mlx5_tx_mpw.c',
+        'mlx5_tx_nompw.c',
+        'mlx5_tx_txpp.c',
+        'mlx5_txq.c',
+        'mlx5_txpp.c',
+        'mlx5_vlan.c',
+        'mlx5_utils.c',
+        'mlx5_devx.c',
 )
 
 if is_linux
-	sources += files(
-		'mlx5_flow_verbs.c',
-	)
-	if (dpdk_conf.has('RTE_ARCH_X86_64')
-		or dpdk_conf.has('RTE_ARCH_ARM64')
-		or dpdk_conf.has('RTE_ARCH_PPC_64'))
-		sources += files('mlx5_rxtx_vec.c')
-	endif
+    sources += files(
+            'mlx5_flow_verbs.c',
+    )
+    if (dpdk_conf.has('RTE_ARCH_X86_64')
+        or dpdk_conf.has('RTE_ARCH_ARM64')
+        or dpdk_conf.has('RTE_ARCH_PPC_64'))
+        sources += files('mlx5_rxtx_vec.c')
+    endif
 endif
 
 cflags_options = [
-	'-std=c11',
-	'-Wno-strict-prototypes',
-	'-D_BSD_SOURCE',
-	'-D_DEFAULT_SOURCE',
-	'-D_XOPEN_SOURCE=600'
+        '-std=c11',
+        '-Wno-strict-prototypes',
+        '-D_BSD_SOURCE',
+        '-D_DEFAULT_SOURCE',
+        '-D_XOPEN_SOURCE=600',
 ]
 foreach option:cflags_options
-	if cc.has_argument(option)
-		cflags += option
-	endif
+    if cc.has_argument(option)
+        cflags += option
+    endif
 endforeach
 if get_option('buildtype').contains('debug')
-	cflags += [ '-pedantic', '-DPEDANTIC' ]
+    cflags += [ '-pedantic', '-DPEDANTIC' ]
 else
-	cflags += [ '-UPEDANTIC' ]
+    cflags += [ '-UPEDANTIC' ]
 endif
 subdir(exec_env)

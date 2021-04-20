@@ -3,8 +3,8 @@
 
 dep = dependency('libcrypto', required: false, method: 'pkg-config')
 if not dep.found()
-	build = false
-	reason = 'missing dependency, "libcrypto"'
+    build = false
+    reason = 'missing dependency, "libcrypto"'
 endif
 deps += 'bus_vdev'
 sources = files('rte_openssl_pmd.c', 'rte_openssl_pmd_ops.c')

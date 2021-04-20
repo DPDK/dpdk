@@ -3,9 +3,9 @@
 
 dep = dependency('libAArch64crypto', required: false, method: 'pkg-config')
 if not dep.found()
-	build = false
-	reason = 'missing dependency, "libAArch64crypto"'
-	subdir_done()
+    build = false
+    reason = 'missing dependency, "libAArch64crypto"'
+    subdir_done()
 endif
 
 ext_deps += dep

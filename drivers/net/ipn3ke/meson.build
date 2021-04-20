@@ -2,9 +2,9 @@
 # Copyright(c) 2019 Intel Corporation
 
 if is_windows
-	build = false
-	reason = 'not supported on Windows'
-	subdir_done()
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
 endif
 
 #
@@ -16,15 +16,17 @@ endif
 #
 
 if has_libfdt == 0
-	build = false
-	reason = 'missing dependency, "libfdt"'
-	subdir_done()
+    build = false
+    reason = 'missing dependency, "libfdt"'
+    subdir_done()
 endif
 
 includes += include_directories('../../raw/ifpga')
 
-sources += files('ipn3ke_ethdev.c',
-	'ipn3ke_representor.c',
-	'ipn3ke_tm.c',
-	'ipn3ke_flow.c')
+sources += files(
+        'ipn3ke_ethdev.c',
+        'ipn3ke_flow.c',
+        'ipn3ke_representor.c',
+        'ipn3ke_tm.c',
+)
 deps += ['bus_ifpga', 'ethdev', 'sched']

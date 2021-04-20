@@ -2,9 +2,9 @@
 # Copyright(c) 2018 Intel Corporation
 
 if is_windows
-	build = false
-	reason = 'not supported on Windows'
-	subdir_done()
+    build = false
+    reason = 'not supported on Windows'
+    subdir_done()
 endif
 
 build = dpdk_conf.has('RTE_LIB_VHOST')
