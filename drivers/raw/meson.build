@@ -2,12 +2,17 @@
 # Copyright 2018 NXP
 
 if is_windows
-	subdir_done()
+    subdir_done()
 endif
 
-drivers = ['dpaa2_cmdif', 'dpaa2_qdma',
-	'ifpga', 'ioat', 'ntb',
-	'octeontx2_dma',
-	'octeontx2_ep',
-	'skeleton']
+drivers = [
+        'dpaa2_cmdif',
+        'dpaa2_qdma',
+        'ifpga',
+        'ioat',
+        'ntb',
+        'octeontx2_dma',
+        'octeontx2_ep',
+        'skeleton',
+]
 std_deps = ['rawdev']

@@ -3,26 +3,26 @@
 
 # Defines the order of dependencies evaluation
 subdirs = [
-	'common',
-	'bus',
-	'common/cnxk', # depends on bus.
-	'common/mlx5', # depends on bus.
-	'common/qat', # depends on bus.
-	'common/sfc_efx', # depends on bus.
-	'mempool', # depends on common and bus.
-	'net',     # depends on common, bus, mempool
-	'raw',     # depends on common, bus and net.
-	'crypto',  # depends on common, bus and mempool (net in future).
-	'compress', # depends on common, bus, mempool.
-	'regex', # depends on common, bus, regexdev.
-	'vdpa',    # depends on common, bus and mempool.
-	'event',   # depends on common, bus, mempool and net.
-	'baseband', # depends on common and bus.
+        'common',
+        'bus',
+        'common/cnxk',    # depends on bus.
+        'common/mlx5',    # depends on bus.
+        'common/qat',     # depends on bus.
+        'common/sfc_efx', # depends on bus.
+        'mempool',        # depends on common and bus.
+        'net',            # depends on common, bus, mempool
+        'raw',            # depends on common, bus and net.
+        'crypto',         # depends on common, bus and mempool (net in future).
+        'compress',       # depends on common, bus, mempool.
+        'regex',          # depends on common, bus, regexdev.
+        'vdpa',           # depends on common, bus and mempool.
+        'event',          # depends on common, bus, mempool and net.
+        'baseband',       # depends on common and bus.
 ]
 
 if meson.is_cross_build()
-	disable_drivers += ',' + meson.get_cross_property('disable_drivers', '')
-	enable_drivers += ',' + meson.get_cross_property('enable_drivers', '')
+    disable_drivers += ',' + meson.get_cross_property('disable_drivers', '')
+    enable_drivers += ',' + meson.get_cross_property('enable_drivers', '')
 endif
 
 # add cmdline disabled drivers and meson disabled drivers together
@@ -33,7 +33,7 @@ disable_drivers = run_command(list_dir_globs, disable_drivers).stdout().split()
 enable_drivers = ',' + get_option('enable_drivers')
 enable_drivers = run_command(list_dir_globs, enable_drivers).stdout().split()
 if enable_drivers.length() == 0
-	enable_drivers = run_command(list_dir_globs, '*/*').stdout().split()
+    enable_drivers = run_command(list_dir_globs, '*/*').stdout().split()
 endif
 
 # these drivers must always be enabled, otherwise the build breaks
@@ -45,7 +45,7 @@ default_cflags += ['-DALLOW_EXPERIMENTAL_API']
 default_cflags += ['-DALLOW_INTERNAL_API']
 
 if cc.has_argument('-Wno-format-truncation')
-	default_cflags += '-Wno-format-truncation'
+    default_cflags += '-Wno-format-truncation'
 endif
 
 foreach subpath:subdirs

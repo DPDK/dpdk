@@ -2,4 +2,11 @@
 # Copyright(c) 2018 Cavium, Inc
 
 std_deps = ['eal']
-drivers = ['cpt', 'dpaax', 'iavf', 'mvep', 'octeontx', 'octeontx2']
+drivers = [
+        'cpt',
+        'dpaax',
+        'iavf',
+        'mvep',
+        'octeontx',
+        'octeontx2',
+]
