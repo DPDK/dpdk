@@ -59,7 +59,7 @@ Runtime Config Options
   ``sve``, if supported use the ``sve`` Rx function which indicates the
   sve algorithm.
   ``simple``, if supported use the ``simple`` Rx function which indicates
-  the scalar algorithm.
+  the scalar simple algorithm.
   ``common``, if supported use the ``common`` Rx function which indicates
   the scalar scattered algorithm.
 
