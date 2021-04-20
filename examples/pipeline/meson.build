@@ -8,15 +8,15 @@
 
 build = cc.has_header('sys/epoll.h')
 if not build
-	subdir_done()
+    subdir_done()
 endif
 
 deps += ['pipeline', 'bus_pci']
 allow_experimental_apis = true
 sources = files(
-	'cli.c',
-	'conn.c',
-	'main.c',
-	'obj.c',
-	'thread.c',
+        'cli.c',
+        'conn.c',
+        'main.c',
+        'obj.c',
+        'thread.c',
 )

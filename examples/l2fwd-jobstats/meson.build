@@ -9,5 +9,5 @@
 allow_experimental_apis = true
 deps += ['jobstats', 'timer']
 sources = files(
-	'main.c'
+        'main.c',
 )

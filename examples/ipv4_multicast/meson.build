@@ -9,5 +9,5 @@
 allow_experimental_apis = true
 deps += 'hash'
 sources = files(
-	'main.c'
+        'main.c',
 )

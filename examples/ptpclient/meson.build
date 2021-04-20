@@ -8,5 +8,5 @@
 
 allow_experimental_apis = true
 sources = files(
-	'ptpclient.c'
+        'ptpclient.c',
 )

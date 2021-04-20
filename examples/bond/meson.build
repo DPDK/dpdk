@@ -9,5 +9,5 @@
 deps += 'net_bond'
 allow_experimental_apis = true
 sources = files(
-	'main.c'
+        'main.c',
 )

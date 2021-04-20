@@ -9,5 +9,6 @@
 allow_experimental_apis = true
 deps += 'meter'
 sources = files(
-	'main.c', 'rte_policer.c'
+        'main.c',
+        'rte_policer.c',
 )

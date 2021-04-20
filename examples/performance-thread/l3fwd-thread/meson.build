@@ -8,7 +8,7 @@
 
 build = dpdk_conf.has('RTE_ARCH_X86_64')
 if not build
-	subdir_done()
+    subdir_done()
 endif
 
 deps += ['timer', 'lpm']
@@ -16,17 +16,17 @@ allow_experimental_apis = true
 
 # get the performance thread (pt) architecture subdir
 if dpdk_conf.has('RTE_ARCH_ARM64')
-	pt_arch_dir = '../common/arch/arm64'
+    pt_arch_dir = '../common/arch/arm64'
 else
-	pt_arch_dir = '../common/arch/x86'
+    pt_arch_dir = '../common/arch/x86'
 endif
 sources += files('main.c',
-	'../common/lthread.c',
-	'../common/lthread_cond.c',
-	'../common/lthread_diag.c',
-	'../common/lthread_mutex.c',
-	'../common/lthread_sched.c',
-	'../common/lthread_tls.c',
-	pt_arch_dir + '/ctx.c')
+    '../common/lthread.c',
+    '../common/lthread_cond.c',
+    '../common/lthread_diag.c',
+    '../common/lthread_mutex.c',
+    '../common/lthread_sched.c',
+    '../common/lthread_tls.c',
+    pt_arch_dir + '/ctx.c')
 
 includes += include_directories('../common', pt_arch_dir)

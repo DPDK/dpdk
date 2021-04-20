@@ -14,5 +14,6 @@ endif
 allow_experimental_apis = true
 deps += ['power', 'timer', 'lpm', 'hash', 'metrics', 'telemetry']
 sources = files(
-	'main.c', 'perf_core.c'
+        'main.c',
+        'perf_core.c',
 )

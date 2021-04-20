@@ -9,11 +9,11 @@
 allow_experimental_apis = true
 build = dpdk_conf.has('RTE_RAW_IOAT')
 if not build
-	subdir_done()
+    subdir_done()
 endif
 
 deps += ['raw_ioat']
 
 sources = files(
-	'ioatfwd.c'
+        'ioatfwd.c',
 )

@@ -8,6 +8,6 @@
 
 deps += ['graph', 'eal', 'lpm', 'ethdev', 'node' ]
 sources = files(
-	'main.c'
+        'main.c',
 )
 allow_experimental_apis = true

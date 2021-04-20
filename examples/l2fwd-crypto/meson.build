@@ -8,9 +8,9 @@
 
 deps += 'cryptodev'
 if dpdk_conf.has('RTE_CRYPTO_SCHEDULER')
-	deps += 'crypto_scheduler'
+    deps += 'crypto_scheduler'
 endif
 allow_experimental_apis = true
 sources = files(
-	'main.c'
+        'main.c',
 )
