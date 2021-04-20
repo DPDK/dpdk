@@ -540,56 +540,79 @@ static int
 mlx5_flow_meter_action_modify(struct mlx5_priv *priv,
 		struct mlx5_flow_meter_info *fm,
 		const struct mlx5_flow_meter_srtcm_rfc2697_prm *srtcm,
-		uint64_t modify_bits, uint32_t active_state)
+		uint64_t modify_bits, uint32_t active_state, uint32_t is_enable)
 {
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER
 	uint32_t in[MLX5_ST_SZ_DW(flow_meter_parameters)] = { 0 };
 	uint32_t *attr;
 	struct mlx5dv_dr_flow_meter_attr mod_attr = { 0 };
 	int ret;
+	struct mlx5_aso_mtr *aso_mtr = NULL;
 	uint32_t cbs_cir, ebs_eir, val;
 
-	/* Fill command parameters. */
-	mod_attr.reg_c_index = priv->mtr_color_reg - REG_C_0;
-	mod_attr.flow_meter_parameter = in;
-	mod_attr.flow_meter_parameter_sz =
-				MLX5_ST_SZ_BYTES(flow_meter_parameters);
-	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_ACTIVE)
-		mod_attr.active = !!active_state;
-	else
-		mod_attr.active = 0;
-	attr = in;
-	cbs_cir = rte_be_to_cpu_32(srtcm->cbs_cir);
-	ebs_eir = rte_be_to_cpu_32(srtcm->ebs_eir);
-	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CBS) {
-		val = (cbs_cir >> ASO_DSEG_CBS_EXP_OFFSET) & ASO_DSEG_EXP_MASK;
-		MLX5_SET(flow_meter_parameters, attr, cbs_exponent, val);
-		val = (cbs_cir >> ASO_DSEG_CBS_MAN_OFFSET) & ASO_DSEG_MAN_MASK;
-		MLX5_SET(flow_meter_parameters, attr, cbs_mantissa, val);
-	}
-	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CIR) {
-		val = (cbs_cir >> ASO_DSEG_CIR_EXP_OFFSET) & ASO_DSEG_EXP_MASK;
-		MLX5_SET(flow_meter_parameters, attr, cir_exponent, val);
-		val = cbs_cir & ASO_DSEG_MAN_MASK;
-		MLX5_SET(flow_meter_parameters, attr, cir_mantissa, val);
-	}
-	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_EBS) {
-		val = (ebs_eir >> ASO_DSEG_EBS_EXP_OFFSET) & ASO_DSEG_EXP_MASK;
-		MLX5_SET(flow_meter_parameters, attr, ebs_exponent, val);
-		val = (ebs_eir >> ASO_DSEG_EBS_MAN_OFFSET) & ASO_DSEG_MAN_MASK;
-		MLX5_SET(flow_meter_parameters, attr, ebs_mantissa, val);
-	}
-	/* Apply modifications to meter only if it was created. */
-	if (fm->mfts->meter_action) {
-		ret = mlx5_glue->dv_modify_flow_action_meter
-					(fm->mfts->meter_action, &mod_attr,
-					rte_cpu_to_be_64(modify_bits));
+	if (priv->sh->meter_aso_en) {
+		fm->is_enable = !!is_enable;
+		aso_mtr = container_of(fm, struct mlx5_aso_mtr, fm);
+		ret = mlx5_aso_meter_update_by_wqe(priv->sh, aso_mtr);
 		if (ret)
 			return ret;
+		ret = mlx5_aso_mtr_wait(priv->sh, aso_mtr);
+		if (ret)
+			return ret;
+	} else {
+		/* Fill command parameters. */
+		mod_attr.reg_c_index = priv->mtr_color_reg - REG_C_0;
+		mod_attr.flow_meter_parameter = in;
+		mod_attr.flow_meter_parameter_sz =
+				MLX5_ST_SZ_BYTES(flow_meter_parameters);
+		if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_ACTIVE)
+			mod_attr.active = !!active_state;
+		else
+			mod_attr.active = 0;
+		attr = in;
+		cbs_cir = rte_be_to_cpu_32(srtcm->cbs_cir);
+		ebs_eir = rte_be_to_cpu_32(srtcm->ebs_eir);
+		if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CBS) {
+			val = (cbs_cir >> ASO_DSEG_CBS_EXP_OFFSET) &
+				ASO_DSEG_EXP_MASK;
+			MLX5_SET(flow_meter_parameters, attr,
+				cbs_exponent, val);
+			val = (cbs_cir >> ASO_DSEG_CBS_MAN_OFFSET) &
+				ASO_DSEG_MAN_MASK;
+			MLX5_SET(flow_meter_parameters, attr,
+				cbs_mantissa, val);
+		}
+		if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_CIR) {
+			val = (cbs_cir >> ASO_DSEG_CIR_EXP_OFFSET) &
+				ASO_DSEG_EXP_MASK;
+			MLX5_SET(flow_meter_parameters, attr,
+				cir_exponent, val);
+			val = cbs_cir & ASO_DSEG_MAN_MASK;
+			MLX5_SET(flow_meter_parameters, attr,
+				cir_mantissa, val);
+		}
+		if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_EBS) {
+			val = (ebs_eir >> ASO_DSEG_EBS_EXP_OFFSET) &
+				ASO_DSEG_EXP_MASK;
+			MLX5_SET(flow_meter_parameters, attr,
+				ebs_exponent, val);
+			val = (ebs_eir >> ASO_DSEG_EBS_MAN_OFFSET) &
+				ASO_DSEG_MAN_MASK;
+			MLX5_SET(flow_meter_parameters, attr,
+				ebs_mantissa, val);
+		}
+		/* Apply modifications to meter only if it was created. */
+		if (fm->mfts->meter_action) {
+			ret = mlx5_glue->dv_modify_flow_action_meter
+					(fm->mfts->meter_action, &mod_attr,
+					rte_cpu_to_be_64(modify_bits));
+			if (ret)
+				return ret;
+		}
+		/* Update succeedded modify meter parameters. */
+		if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_ACTIVE)
+			fm->active_state = !!active_state;
 	}
-	/* Update succeedded modify meter parameters. */
-	if (modify_bits & MLX5_FLOW_METER_OBJ_MODIFY_FIELD_ACTIVE)
-		fm->active_state = !!active_state;
 	return 0;
 #else
 	(void)priv;
@@ -653,6 +676,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 		.type = "mlx5_flow_mtr_flow_id_pool",
 	};
 	struct mlx5_aso_mtr *aso_mtr;
+	union mlx5_l3t_data data;
 	uint32_t mtr_idx;
 	int ret;
 	uint8_t mtr_id_bits;
@@ -704,7 +728,6 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	fm->profile = fmp;
 	memcpy(fm->action, params->action, sizeof(params->action));
 	mlx5_flow_meter_stats_enable_update(fm, params->stats_mask);
-
 	/* Alloc policer counters. */
 	if (fm->green_bytes || fm->green_pkts) {
 		fm->policer_stats.pass_cnt = mlx5_counter_alloc(dev);
@@ -727,12 +750,23 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	if (!priv->sh->meter_aso_en)
 		TAILQ_INSERT_TAIL(fms, legacy_fm, next);
 	fm->active_state = 1; /* Config meter starts as active. */
+	fm->is_enable = 1;
 	fm->shared = !!shared;
 	__atomic_add_fetch(&fm->profile->ref_cnt, 1, __ATOMIC_RELAXED);
 	fm->flow_ipool = mlx5_ipool_create(&flow_ipool_cfg);
 	if (!fm->flow_ipool)
 		goto error;
 	rte_spinlock_init(&fm->sl);
+	/* If ASO meter supported, allocate ASO flow meter. */
+	if (priv->sh->meter_aso_en) {
+		aso_mtr = container_of(fm, struct mlx5_aso_mtr, fm);
+		ret = mlx5_aso_meter_update_by_wqe(priv->sh, aso_mtr);
+		if (ret)
+			goto error;
+		data.dword = mtr_idx;
+		if (mlx5_l3t_set_entry(priv->mtr_idx_tbl, meter_id, &data))
+			goto error;
+	}
 	return 0;
 error:
 	mlx5_flow_destroy_policer_rules(dev, fm, &attr);
@@ -878,12 +912,12 @@ mlx5_flow_meter_modify_state(struct mlx5_priv *priv,
 	int ret;
 
 	if (new_state == MLX5_FLOW_METER_DISABLE)
-		ret = mlx5_flow_meter_action_modify(priv, fm, &srtcm,
-						    modify_bits, 0);
+		ret = mlx5_flow_meter_action_modify(priv, fm,
+				&srtcm, modify_bits, 0, 0);
 	else
 		ret = mlx5_flow_meter_action_modify(priv, fm,
 						   &fm->profile->srtcm_prm,
-						    modify_bits, 0);
+						    modify_bits, 0, 1);
 	if (ret)
 		return -rte_mtr_error_set(error, -ret,
 					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
@@ -1031,7 +1065,7 @@ mlx5_flow_meter_profile_update(struct rte_eth_dev *dev,
 	if (fm->active_state == MLX5_FLOW_METER_DISABLE)
 		return 0;
 	ret = mlx5_flow_meter_action_modify(priv, fm, &fm->profile->srtcm_prm,
-					      modify_bits, fm->active_state);
+					      modify_bits, fm->active_state, 1);
 	if (ret) {
 		fm->profile = old_fmp;
 		return -rte_mtr_error_set(error, -ret,
@@ -1281,6 +1315,8 @@ mlx5_flow_meter_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
  *   Pointer to mlx5_priv.
  * @param meter_id
  *   Meter id.
+ * @param mtr_idx
+ *   Pointer to Meter index.
  *
  * @return
  *   Pointer to the profile found on success, NULL otherwise.
@@ -1297,10 +1333,6 @@ mlx5_flow_meter_find(struct mlx5_priv *priv, uint32_t meter_id,
 
 	if (priv->sh->meter_aso_en) {
 		rte_spinlock_lock(&mtrmng->mtrsl);
-		if (!mtrmng->n_valid) {
-			rte_spinlock_unlock(&mtrmng->mtrsl);
-			return NULL;
-		}
 		if (mlx5_l3t_get_entry(priv->mtr_idx_tbl, meter_id, &data) ||
 			!data.dword) {
 			rte_spinlock_unlock(&mtrmng->mtrsl);
@@ -1309,17 +1341,18 @@ mlx5_flow_meter_find(struct mlx5_priv *priv, uint32_t meter_id,
 		if (mtr_idx)
 			*mtr_idx = data.dword;
 		aso_mtr = mlx5_aso_meter_by_idx(priv, data.dword);
+		/* Remove reference taken by the mlx5_l3t_get_entry. */
 		mlx5_l3t_clear_entry(priv->mtr_idx_tbl, meter_id);
-		if (meter_id == aso_mtr->fm.meter_id) {
-			rte_spinlock_unlock(&mtrmng->mtrsl);
-			return &aso_mtr->fm;
-		}
+		MLX5_ASSERT(meter_id == aso_mtr->fm.meter_id);
 		rte_spinlock_unlock(&mtrmng->mtrsl);
-	} else {
-		TAILQ_FOREACH(legacy_fm, fms, next)
-			if (meter_id == legacy_fm->fm.meter_id)
-				return &legacy_fm->fm;
+		return &aso_mtr->fm;
 	}
+	TAILQ_FOREACH(legacy_fm, fms, next)
+		if (meter_id == legacy_fm->fm.meter_id) {
+			if (mtr_idx)
+				*mtr_idx = legacy_fm->idx;
+			return &legacy_fm->fm;
+		}
 	return NULL;
 }
 

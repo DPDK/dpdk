@@ -1540,5 +1540,9 @@ int mlx5_aso_flow_hit_queue_poll_start(struct mlx5_dev_ctx_shared *sh);
 int mlx5_aso_flow_hit_queue_poll_stop(struct mlx5_dev_ctx_shared *sh);
 void mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh,
 		enum mlx5_access_aso_opc_mod aso_opc_mod);
+int mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
+		struct mlx5_aso_mtr *mtr);
+int mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh,
+		struct mlx5_aso_mtr *mtr);
 
 #endif /* RTE_PMD_MLX5_H_ */

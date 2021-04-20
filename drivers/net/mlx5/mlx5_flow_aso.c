@@ -13,7 +13,6 @@
 #include "mlx5.h"
 #include "mlx5_flow.h"
 
-
 /**
  * Destroy Completion Queue used for ASO access.
  *
@@ -656,4 +655,186 @@ mlx5_aso_flow_hit_queue_poll_stop(struct mlx5_dev_ctx_shared *sh)
 		rte_pause();
 	}
 	return -rte_errno;
+}
+
+static uint16_t
+mlx5_aso_mtr_sq_enqueue_single(struct mlx5_aso_sq *sq,
+		struct mlx5_aso_mtr *aso_mtr)
+{
+	volatile struct mlx5_aso_wqe *wqe = NULL;
+	struct mlx5_flow_meter_info *fm = NULL;
+	uint16_t size = 1 << sq->log_desc_n;
+	uint16_t mask = size - 1;
+	uint16_t res = size - (uint16_t)(sq->head - sq->tail);
+	uint32_t dseg_idx = 0;
+	struct mlx5_aso_mtr_pool *pool = NULL;
+
+	if (unlikely(!res)) {
+		DRV_LOG(ERR, "Fail: SQ is full and no free WQE to send");
+		return 0;
+	}
+	wqe = &sq->sq_obj.aso_wqes[sq->head & mask];
+	rte_prefetch0(&sq->sq_obj.aso_wqes[(sq->head + 1) & mask]);
+	/* Fill next WQE. */
+	fm = &aso_mtr->fm;
+	sq->elts[sq->head & mask].mtr = aso_mtr;
+	pool = container_of(aso_mtr, struct mlx5_aso_mtr_pool,
+			mtrs[aso_mtr->offset]);
+	wqe->general_cseg.misc = rte_cpu_to_be_32(pool->devx_obj->id +
+			(aso_mtr->offset >> 1));
+	wqe->general_cseg.opcode = rte_cpu_to_be_32(MLX5_OPCODE_ACCESS_ASO |
+			(ASO_OPC_MOD_POLICER <<
+			WQE_CSEG_OPC_MOD_OFFSET) |
+			sq->pi << WQE_CSEG_WQE_INDEX_OFFSET);
+	/* There are 2 meters in one ASO cache line. */
+	dseg_idx = aso_mtr->offset & 0x1;
+	wqe->aso_cseg.data_mask =
+		RTE_BE64(MLX5_IFC_FLOW_METER_PARAM_MASK << (32 * !dseg_idx));
+	if (fm->is_enable) {
+		wqe->aso_dseg.mtrs[dseg_idx].cbs_cir =
+			fm->profile->srtcm_prm.cbs_cir;
+		wqe->aso_dseg.mtrs[dseg_idx].ebs_eir =
+			fm->profile->srtcm_prm.ebs_eir;
+	} else {
+		wqe->aso_dseg.mtrs[dseg_idx].cbs_cir =
+			RTE_BE32(MLX5_IFC_FLOW_METER_DISABLE_CBS_CIR_VAL);
+		wqe->aso_dseg.mtrs[dseg_idx].ebs_eir = 0;
+	}
+	sq->head++;
+	sq->pi += 2;/* Each WQE contains 2 WQEBB's. */
+	rte_io_wmb();
+	sq->sq_obj.db_rec[MLX5_SND_DBR] = rte_cpu_to_be_32(sq->pi);
+	rte_wmb();
+	*sq->uar_addr = *(volatile uint64_t *)wqe; /* Assume 64 bit ARCH. */
+	rte_wmb();
+	return 1;
+}
+
+static void
+mlx5_aso_mtrs_status_update(struct mlx5_aso_sq *sq, uint16_t aso_mtrs_nums)
+{
+	uint16_t size = 1 << sq->log_desc_n;
+	uint16_t mask = size - 1;
+	uint16_t i;
+	struct mlx5_aso_mtr *aso_mtr = NULL;
+	uint8_t exp_state = ASO_METER_WAIT;
+
+	for (i = 0; i < aso_mtrs_nums; ++i) {
+		aso_mtr = sq->elts[(sq->tail + i) & mask].mtr;
+		MLX5_ASSERT(aso_mtr);
+		(void)__atomic_compare_exchange_n(&aso_mtr->state,
+				&exp_state, ASO_METER_READY,
+				false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	}
+}
+
+static void
+mlx5_aso_mtr_completion_handle(struct mlx5_aso_sq *sq)
+{
+	struct mlx5_aso_cq *cq = &sq->cq;
+	volatile struct mlx5_cqe *restrict cqe;
+	const unsigned int cq_size = 1 << cq->log_desc_n;
+	const unsigned int mask = cq_size - 1;
+	uint32_t idx;
+	uint32_t next_idx = cq->cq_ci & mask;
+	const uint16_t max = (uint16_t)(sq->head - sq->tail);
+	uint16_t n = 0;
+	int ret;
+
+	if (unlikely(!max))
+		return;
+	do {
+		idx = next_idx;
+		next_idx = (cq->cq_ci + 1) & mask;
+		rte_prefetch0(&cq->cq_obj.cqes[next_idx]);
+		cqe = &cq->cq_obj.cqes[idx];
+		ret = check_cqe(cqe, cq_size, cq->cq_ci);
+		/*
+		 * Be sure owner read is done before any other cookie field or
+		 * opaque field.
+		 */
+		rte_io_rmb();
+		if (ret != MLX5_CQE_STATUS_SW_OWN) {
+			if (likely(ret == MLX5_CQE_STATUS_HW_OWN))
+				break;
+			mlx5_aso_cqe_err_handle(sq);
+		} else {
+			n++;
+		}
+		cq->cq_ci++;
+	} while (1);
+	if (likely(n)) {
+		mlx5_aso_mtrs_status_update(sq, n);
+		sq->tail += n;
+		rte_io_wmb();
+		cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
+	}
+}
+
+/**
+ * Update meter parameter by send WQE.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] priv
+ *   Pointer to mlx5 private data structure.
+ * @param[in] fm
+ *   Pointer to flow meter to be modified.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
+			struct mlx5_aso_mtr *mtr)
+{
+	struct mlx5_aso_sq *sq = &sh->mtrmng->sq;
+	uint32_t poll_wqe_times = MLX5_MTR_POLL_WQE_CQE_TIMES;
+
+	do {
+		mlx5_aso_mtr_completion_handle(sq);
+		if (mlx5_aso_mtr_sq_enqueue_single(sq, mtr))
+			return 0;
+		/* Waiting for wqe resource. */
+		rte_delay_us_sleep(MLX5_ASO_WQE_CQE_RESPONSE_DELAY);
+	} while (--poll_wqe_times);
+	DRV_LOG(ERR, "Fail to send WQE for ASO meter %d",
+			mtr->fm.meter_id);
+	return -1;
+}
+
+/**
+ * Wait for meter to be ready.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] priv
+ *   Pointer to mlx5 private data structure.
+ * @param[in] fm
+ *   Pointer to flow meter to be modified.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh,
+			struct mlx5_aso_mtr *mtr)
+{
+	struct mlx5_aso_sq *sq = &sh->mtrmng->sq;
+	uint32_t poll_cqe_times = MLX5_MTR_POLL_WQE_CQE_TIMES;
+
+	if (__atomic_load_n(&mtr->state, __ATOMIC_RELAXED) ==
+					    ASO_METER_READY)
+		return 0;
+	do {
+		mlx5_aso_mtr_completion_handle(sq);
+		if (__atomic_load_n(&mtr->state, __ATOMIC_RELAXED) ==
+					    ASO_METER_READY)
+			return 0;
+		/* Waiting for CQE ready. */
+		rte_delay_us_sleep(MLX5_ASO_WQE_CQE_RESPONSE_DELAY);
+	} while (--poll_cqe_times);
+	DRV_LOG(ERR, "Fail to poll CQE ready for ASO meter %d",
+			mtr->fm.meter_id);
+	return -1;
 }
