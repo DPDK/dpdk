@@ -19,10 +19,10 @@ The DPDK source code repository contains input files to build the API documentat
 The main directories that contain files related to documentation are shown below::
 
    lib
-   |-- librte_acl
-   |-- librte_cfgfile
-   |-- librte_cmdline
-   |-- librte_eal
+   |-- acl
+   |-- cfgfile
+   |-- cmdline
+   |-- eal
    |   |-- ...
    ...
    doc
@@ -40,7 +40,7 @@ The main directories that contain files related to documentation are shown below
 
 
 The API documentation is built from `Doxygen <http://www.doxygen.nl>`_ comments in the header files.
-These files are mainly in the ``lib/librte_*`` directories although some of the Poll Mode Drivers in ``drivers/net``
+These files are mainly in the ``lib/*`` directories although some of the Poll Mode Drivers in ``drivers/net``
 are also documented with Doxygen.
 
 The configuration files that are used to control the Doxygen output are in the ``doc/api`` directory.

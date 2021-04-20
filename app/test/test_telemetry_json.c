@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-#include "../../lib/librte_telemetry/telemetry_json.h"
+#include "../../lib/telemetry/telemetry_json.h"
 #include "test.h"
 
 static int

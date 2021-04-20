@@ -13,7 +13,7 @@ In terms of device flavor (type) support, DPDK currently has ethernet
 
 For a new type of device, for example an accelerator, there are not many
 options except:
-1. create another lib/librte_MySpecialDev, driver/MySpecialDrv and use it
+1. create another lib/MySpecialDev, driver/MySpecialDrv and use it
 through Bus/PMD model.
 2. Or, create a vdev and implement necessary custom APIs which are directly
 exposed from driver layer. However this may still require changes in bus code

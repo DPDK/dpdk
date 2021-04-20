@@ -12,8 +12,8 @@ Note that following licenses are not exceptions:-
 ---------------------------------------------------------------------------------------------------
 SPDX Identifier     TB Approval Date  GB Approval Date  File name
 ---------------------------------------------------------------------------------------------------
-1.MIT               10/23/2019        02/10/2020        lib/librte_eal/windows/include/dirent.h
-2.BSD-2-Clause      10/23/2019        12/18/2019        lib/librte_eal/windows/include/getopt.h
+1.MIT               10/23/2019        02/10/2020        lib/eal/windows/include/dirent.h
+2.BSD-2-Clause      10/23/2019        12/18/2019        lib/eal/windows/include/getopt.h
 3.ISC AND
-  BSD-2-Clause      10/23/2019        12/18/2019        lib/librte_eal/windows/getopt.c
+  BSD-2-Clause      10/23/2019        12/18/2019        lib/eal/windows/getopt.c
 ---------------------------------------------------------------------------------------------------

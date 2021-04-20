@@ -1517,9 +1517,9 @@ Source Files Location
 
 The source files for the DPDK dropper are located at:
 
-*   DPDK/lib/librte_sched/rte_red.h
+*   DPDK/lib/sched/rte_red.h
 
-*   DPDK/lib/librte_sched/rte_red.c
+*   DPDK/lib/sched/rte_red.c
 
 Integration with the DPDK QoS Scheduler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

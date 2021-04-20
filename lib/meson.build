@@ -114,8 +114,10 @@ foreach l:libraries
         deps += ['eal']
     endif
 
-    dir_name = 'librte_' + l
-    subdir(dir_name)
+    subdir(l)
+    if name != l
+        warning('Library name, "@0@", and directory name, "@1@", do not match'.format(name, l))
+    endif
 
     if not build
         dpdk_libs_disabled += name
@@ -128,7 +130,7 @@ foreach l:libraries
     foreach d:deps
         if not is_variable('shared_rte_' + d)
             error('Missing internal dependency "@0@" for @1@ [@2@]'
-                    .format(d, name, 'lib/' + dir_name))
+                    .format(d, name, 'lib/' + l))
         endif
         shared_deps += [get_variable('shared_rte_' + d)]
         static_deps += [get_variable('static_rte_' + d)]
@@ -144,7 +146,7 @@ foreach l:libraries
     dpdk_chkinc_headers += headers
 
     libname = 'rte_' + name
-    includes += include_directories(dir_name)
+    includes += include_directories(l)
 
     if is_windows and use_function_versioning
         message('@0@: Function versioning is not supported by Windows.'.format(name))
@@ -176,8 +178,8 @@ foreach l:libraries
         cflags += '-DRTE_BUILD_SHARED_LIB'
     endif
     version_map = '@0@/@1@/version.map'.format(
-            meson.current_source_dir(), dir_name)
-    implib = dir_name + '.dll.a'
+            meson.current_source_dir(), l)
+    implib = 'librte_' + l + '.dll.a'
 
     def_file = custom_target(libname + '_def',
             command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
@@ -236,6 +238,6 @@ foreach l:libraries
     set_variable('shared_rte_' + name, shared_dep)
     set_variable('static_rte_' + name, static_dep)
     if developer_mode
-        message('lib/@0@: Defining dependency "@1@"'.format(dir_name, name))
+        message('lib/@0@: Defining dependency "@1@"'.format(l, name))
     endif
 endforeach

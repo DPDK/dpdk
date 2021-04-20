@@ -759,7 +759,7 @@ Examples:
  * The virtio network PMD in ``drivers/net/virtio`` uses ``pmd.net.virtio``
  * The eventdev software poll mode driver in ``drivers/event/sw`` uses ``pmd.event.sw``
  * The octeontx mempool driver in ``drivers/mempool/octeontx`` uses ``pmd.mempool.octeontx``
- * The DPDK hash library in ``lib/librte_hash`` uses ``lib.hash``
+ * The DPDK hash library in ``lib/hash`` uses ``lib.hash``
 
 Specializations
 ~~~~~~~~~~~~~~~
@@ -926,7 +926,7 @@ name
 	If a library's .so or .a file differs from that given in the directory
 	name, the name should be specified using this variable. In practice,
 	since the convention is that for a library called ``librte_xyz.so``, the
-	sources are stored in a directory ``lib/librte_xyz``, this value should
+	sources are stored in a directory ``lib/xyz``, this value should
 	never be needed for new libraries.
 
 .. note::
