@@ -474,6 +474,12 @@ mlx5_flow_meter_validate(struct mlx5_priv *priv, uint32_t meter_id,
 					       MTR_POLICER_ACTION_COLOR_RED };
 	int i;
 
+	/* Meter must use global drop action. */
+	if (!priv->sh->dr_drop_action)
+		return -rte_mtr_error_set(error, ENOTSUP,
+					  RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+					  NULL,
+					  "No drop action ready for meter.");
 	/* Meter params must not be NULL. */
 	if (params == NULL)
 		return -rte_mtr_error_set(error, EINVAL,
@@ -630,9 +636,18 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 				.egress = 1,
 				.transfer = priv->config.dv_esw_en ? 1 : 0,
 			};
+	struct mlx5_indexed_pool_config flow_ipool_cfg = {
+		.size = 0,
+		.trunk_size = 64,
+		.need_lock = 1,
+		.type = "mlx5_flow_mtr_flow_id_pool",
+	};
 	int ret;
 	unsigned int i;
 	uint32_t idx = 0;
+	uint8_t mtr_id_bits;
+	uint8_t mtr_reg_bits = priv->mtr_reg_share ?
+				MLX5_MTR_IDLE_BITS_IN_COLOR_REG : MLX5_REG_BITS;
 
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -654,6 +669,13 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 		return -rte_mtr_error_set(error, ENOMEM,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "Memory alloc failed for meter.");
+	mtr_id_bits = MLX5_REG_BITS - __builtin_clz(idx);
+	if ((mtr_id_bits + priv->max_mtr_flow_bits) > mtr_reg_bits) {
+		DRV_LOG(ERR, "Meter number exceeds max limit.");
+		goto error;
+	}
+	if (mtr_id_bits > priv->max_mtr_bits)
+		priv->max_mtr_bits = mtr_id_bits;
 	fm->idx = idx;
 	/* Fill the flow meter parameters. */
 	fm->meter_id = meter_id;
@@ -667,10 +689,10 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 		if (!fm->policer_stats.cnt[i])
 			goto error;
 	}
-	fm->mfts = mlx5_flow_create_mtr_tbls(dev, fm);
+	fm->mfts = mlx5_flow_create_mtr_tbls(dev);
 	if (!fm->mfts)
 		goto error;
-	ret = mlx5_flow_create_policer_rules(dev, fm, &attr);
+	ret = mlx5_flow_prepare_policer_rules(dev, fm, &attr);
 	if (ret)
 		goto error;
 	/* Add to the flow meter list. */
@@ -679,6 +701,9 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	fm->shared = !!shared;
 	fm->policer_stats.stats_mask = params->stats_mask;
 	fm->profile->ref_cnt++;
+	fm->flow_ipool = mlx5_ipool_create(&flow_ipool_cfg);
+	if (!fm->flow_ipool)
+		goto error;
 	rte_spinlock_init(&fm->sl);
 	return 0;
 error:
@@ -749,6 +774,8 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 		if (fm->policer_stats.cnt[i])
 			mlx5_counter_free(dev, fm->policer_stats.cnt[i]);
 	/* Free meter flow table */
+	if (fm->flow_ipool)
+		mlx5_ipool_destroy(fm->flow_ipool);
 	mlx5_flow_destroy_policer_rules(dev, fm, &attr);
 	mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR], fm->idx);
@@ -1153,30 +1180,24 @@ mlx5_flow_meter_find(struct mlx5_priv *priv, uint32_t meter_id)
  *
  * @param [in] priv
  *  Pointer to mlx5 private data.
- * @param [in] meter_id
- *  Flow meter id.
+ * @param[in] fm
+ *   Pointer to flow meter.
  * @param [in] attr
  *  Pointer to flow attributes.
  * @param [out] error
  *  Pointer to error structure.
  *
- * @return the flow meter pointer, NULL otherwise.
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-struct mlx5_flow_meter *
-mlx5_flow_meter_attach(struct mlx5_priv *priv, uint32_t meter_id,
+int
+mlx5_flow_meter_attach(struct mlx5_priv *priv,
+		       struct mlx5_flow_meter *fm,
 		       const struct rte_flow_attr *attr,
 		       struct rte_flow_error *error)
 {
-	struct mlx5_flow_meter *fm;
 	int ret = 0;
 
-	fm = mlx5_flow_meter_find(priv, meter_id);
-	if (fm == NULL) {
-		rte_flow_error_set(error, ENOENT,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Meter object id not valid");
-		return fm;
-	}
 	rte_spinlock_lock(&fm->sl);
 	if (fm->mfts->meter_action) {
 		if (fm->shared &&
@@ -1210,7 +1231,7 @@ mlx5_flow_meter_attach(struct mlx5_priv *priv, uint32_t meter_id,
 				   fm->mfts->meter_action ?
 				   "Meter attr not match" :
 				   "Meter action create failed");
-	return ret ? NULL : fm;
+	return ret ? -rte_errno : 0;
 }
 
 /**

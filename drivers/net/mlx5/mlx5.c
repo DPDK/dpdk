@@ -277,10 +277,13 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 	},
 #endif
 	[MLX5_IPOOL_MTR] = {
+		/**
+		 * The ipool index should grow continually from small to big,
+		 * for meter idx, so not set grow_trunk to avoid meter index
+		 * not jump continually.
+		 */
 		.size = sizeof(struct mlx5_flow_meter),
 		.trunk_size = 64,
-		.grow_trunk = 3,
-		.grow_shift = 2,
 		.need_lock = 1,
 		.release_mem_en = 1,
 		.malloc = mlx5_malloc,

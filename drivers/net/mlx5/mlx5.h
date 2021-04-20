@@ -953,9 +953,9 @@ struct mlx5_priv {
 	unsigned int representor:1; /* Device is a port representor. */
 	unsigned int master:1; /* Device is a E-Switch master. */
 	unsigned int txpp_en:1; /* Tx packet pacing enabled. */
+	unsigned int sampler_en:1; /* Whether support sampler. */
 	unsigned int mtr_en:1; /* Whether support meter. */
 	unsigned int mtr_reg_share:1; /* Whether support meter REG_C share. */
-	unsigned int sampler_en:1; /* Whether support sampler. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
@@ -1012,6 +1012,10 @@ struct mlx5_priv {
 	uint32_t rss_shared_actions; /* RSS shared actions. */
 	struct mlx5_devx_obj *q_counters; /* DevX queue counter object. */
 	uint32_t counter_set_id; /* Queue counter ID to set in DevX objects. */
+	uint8_t max_mtr_bits;
+	/* Indicate how many bits are used by meter id at the most. */
+	uint8_t max_mtr_flow_bits;
+	/* Indicate how many bits are used by meter flow id at the most. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
@@ -1280,11 +1284,10 @@ int mlx5_pmd_socket_init(void);
 int mlx5_flow_meter_ops_get(struct rte_eth_dev *dev, void *arg);
 struct mlx5_flow_meter *mlx5_flow_meter_find(struct mlx5_priv *priv,
 					     uint32_t meter_id);
-struct mlx5_flow_meter *mlx5_flow_meter_attach
-					(struct mlx5_priv *priv,
-					 uint32_t meter_id,
-					 const struct rte_flow_attr *attr,
-					 struct rte_flow_error *error);
+int mlx5_flow_meter_attach(struct mlx5_priv *priv,
+			   struct mlx5_flow_meter *fm,
+			   const struct rte_flow_attr *attr,
+			   struct rte_flow_error *error);
 void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
 
 /* mlx5_os.c */

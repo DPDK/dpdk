@@ -78,7 +78,7 @@ enum mlx5_feature_name {
 	MLX5_APP_TAG,
 	MLX5_COPY_MARK,
 	MLX5_MTR_COLOR,
-	MLX5_MTR_SFX,
+	MLX5_MTR_ID,
 	MLX5_ASO_FLOW_HIT,
 };
 
@@ -654,7 +654,8 @@ struct mlx5_flow_handle {
 	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	void *drv_flow; /**< pointer to driver flow object. */
-	uint32_t split_flow_id:28; /**< Sub flow unique match flow id. */
+	uint32_t split_flow_id:27; /**< Sub flow unique match flow id. */
+	uint32_t is_meter_flow_id:1; /**< Indate if flow_id is for meter. */
 	uint32_t mark:1; /**< Metadate rxq mark flag. */
 	uint32_t fate_action:3; /**< Fate action type. */
 	union {
@@ -841,14 +842,16 @@ struct mlx5_meter_domain_info {
 	/**< Meter table. */
 	struct mlx5_flow_tbl_resource *sfx_tbl;
 	/**< Meter suffix table. */
-	void *any_matcher;
-	/**< Meter color not match default criteria. */
-	void *color_matcher;
-	/**< Meter color match criteria. */
+	struct mlx5_flow_dv_matcher *drop_matcher;
+	/**< Matcher for Drop. */
+	struct mlx5_flow_dv_matcher *color_matcher;
+	/**< Matcher for Color. */
 	void *jump_actn;
 	/**< Meter match action. */
-	void *policer_rules[RTE_MTR_DROPPED + 1];
-	/**< Meter policer for the match. */
+	void *green_rule;
+	/**< Meter green rule. */
+	void *drop_rule;
+	/**< Meter drop rule. */
 };
 
 /* Meter table set for TX RX FDB. */
@@ -861,10 +864,10 @@ struct mlx5_meter_domains_infos {
 	/**< RX meter table. */
 	struct mlx5_meter_domain_info transfer;
 	/**< FDB meter table. */
-	void *drop_actn;
-	/**< Drop action as not matched. */
-	void *count_actns[RTE_MTR_DROPPED + 1];
-	/**< Counters for match and unmatched statistics. */
+	void *green_count;
+	/**< Counters for green rule. */
+	void *drop_count;
+	/**< Counters for green rule. */
 	uint32_t fmp[MLX5_ST_SZ_DW(flow_meter_parameters)];
 	/**< Flow meter parameter. */
 	size_t fmp_size;
@@ -927,6 +930,8 @@ struct mlx5_flow_meter {
 	/**< Meter state. */
 	uint32_t shared:1;
 	/**< Meter shared or not. */
+	struct mlx5_indexed_pool *flow_ipool;
+	/**< Index pool for flow id. */
 };
 
 /* RFC2697 parameter structure. */
@@ -1165,6 +1170,7 @@ struct mlx5_flow_workspace {
 	struct mlx5_flow_rss_desc rss_desc;
 	uint32_t rssq_num; /* Allocated queue num in rss_desc. */
 	uint32_t flow_idx; /* Intermediate device flow index. */
+	struct mlx5_flow_meter *fm; /* Pointer to the meter in flow. */
 };
 
 struct mlx5_flow_split_info {
@@ -1205,8 +1211,7 @@ typedef int (*mlx5_flow_query_t)(struct rte_eth_dev *dev,
 				 void *data,
 				 struct rte_flow_error *error);
 typedef struct mlx5_meter_domains_infos *(*mlx5_flow_create_mtr_tbls_t)
-					    (struct rte_eth_dev *dev,
-					     const struct mlx5_flow_meter *fm);
+					    (struct rte_eth_dev *dev);
 typedef int (*mlx5_flow_destroy_mtr_tbls_t)(struct rte_eth_dev *dev,
 					struct mlx5_meter_domains_infos *tbls);
 typedef int (*mlx5_flow_create_policer_rules_t)
@@ -1269,7 +1274,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_query_t query;
 	mlx5_flow_create_mtr_tbls_t create_mtr_tbls;
 	mlx5_flow_destroy_mtr_tbls_t destroy_mtr_tbls;
-	mlx5_flow_create_policer_rules_t create_policer_rules;
+	mlx5_flow_create_policer_rules_t prepare_policer_rules;
 	mlx5_flow_destroy_policer_rules_t destroy_policer_rules;
 	mlx5_flow_counter_alloc_t counter_alloc;
 	mlx5_flow_counter_free_t counter_free;
@@ -1469,11 +1474,10 @@ int mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
 				  const struct rte_flow_item_ecpri *acc_mask,
 				  struct rte_flow_error *error);
 struct mlx5_meter_domains_infos *mlx5_flow_create_mtr_tbls
-					(struct rte_eth_dev *dev,
-					 const struct mlx5_flow_meter *fm);
+					(struct rte_eth_dev *dev);
 int mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 			       struct mlx5_meter_domains_infos *tbl);
-int mlx5_flow_create_policer_rules(struct rte_eth_dev *dev,
+int mlx5_flow_prepare_policer_rules(struct rte_eth_dev *dev,
 				   struct mlx5_flow_meter *fm,
 				   const struct rte_flow_attr *attr);
 int mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
