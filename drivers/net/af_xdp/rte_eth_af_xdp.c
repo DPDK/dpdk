@@ -273,7 +273,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	nb_pkts = xsk_ring_cons__peek(rx, nb_pkts, &idx_rx);
 
 	if (nb_pkts == 0) {
-		if (syscall_needed(&rxq->fq, rxq->busy_budget))
+		if (rx_syscall_needed(&rxq->fq, rxq->busy_budget))
 			(void)recvfrom(xsk_socket__fd(rxq->xsk), NULL, 0,
 				MSG_DONTWAIT, NULL, NULL);
 
@@ -456,7 +456,7 @@ kick_tx(struct pkt_tx_queue *txq, struct xsk_ring_cons *cq)
 
 	pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS, cq);
 
-	if (syscall_needed(&txq->tx, txq->pair->busy_budget))
+	if (tx_syscall_needed(&txq->tx))
 		while (send(xsk_socket__fd(txq->pair->xsk), NULL,
 			    0, MSG_DONTWAIT) < 0) {
 			/* some thing unexpected */

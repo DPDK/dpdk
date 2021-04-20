@@ -42,14 +42,24 @@ create_shared_socket(struct xsk_socket **xsk_ptr __rte_unused,
 
 #ifdef XDP_USE_NEED_WAKEUP
 static int
-syscall_needed(struct xsk_ring_prod *q, uint32_t busy_budget)
+rx_syscall_needed(struct xsk_ring_prod *q, uint32_t busy_budget)
 {
 	return xsk_ring_prod__needs_wakeup(q) | busy_budget;
 }
+static int
+tx_syscall_needed(struct xsk_ring_prod *q)
+{
+	return xsk_ring_prod__needs_wakeup(q);
+}
 #else
 static int
-syscall_needed(struct xsk_ring_prod *q __rte_unused, uint32_t busy_budget)
+rx_syscall_needed(struct xsk_ring_prod *q __rte_unused, uint32_t busy_budget)
 {
 	return busy_budget;
+}
+static int
+tx_syscall_needed(struct xsk_ring_prod *q __rte_unused)
+{
+	return 1;
 }
 #endif
