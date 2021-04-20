@@ -826,148 +826,17 @@ struct mlx5_flow {
 #define MLX5_FLOW_METER_DISABLE 0
 #define MLX5_FLOW_METER_ENABLE 1
 
+#define MLX5_ASO_CQE_RESPONSE_DELAY 10
+#define MLX5_MTR_POLL_CQE_TIMES    100000u
+
 #define MLX5_MAN_WIDTH 8
-/* Modify this value if enum rte_mtr_color changes. */
-#define RTE_MTR_DROPPED RTE_COLORS
-
-/* Meter policer statistics */
-struct mlx5_flow_policer_stats {
-	uint32_t pass_cnt;
-	/**< Color counter for pass. */
-	uint32_t drop_cnt;
-	/**< Color counter for drop. */
-};
-
-/* Meter table structure. */
-struct mlx5_meter_domain_info {
-	struct mlx5_flow_tbl_resource *tbl;
-	/**< Meter table. */
-	struct mlx5_flow_tbl_resource *sfx_tbl;
-	/**< Meter suffix table. */
-	struct mlx5_flow_dv_matcher *drop_matcher;
-	/**< Matcher for Drop. */
-	struct mlx5_flow_dv_matcher *color_matcher;
-	/**< Matcher for Color. */
-	void *jump_actn;
-	/**< Meter match action. */
-	void *green_rule;
-	/**< Meter green rule. */
-	void *drop_rule;
-	/**< Meter drop rule. */
-};
-
-/* Meter table set for TX RX FDB. */
-struct mlx5_meter_domains_infos {
-	uint32_t ref_cnt;
-	/**< Table user count. */
-	struct mlx5_meter_domain_info egress;
-	/**< TX meter table. */
-	struct mlx5_meter_domain_info ingress;
-	/**< RX meter table. */
-	struct mlx5_meter_domain_info transfer;
-	/**< FDB meter table. */
-	void *green_count;
-	/**< Counters for green rule. */
-	void *drop_count;
-	/**< Counters for green rule. */
-	uint32_t fmp[MLX5_ST_SZ_DW(flow_meter_parameters)];
-	/**< Flow meter parameter. */
-	size_t fmp_size;
-	/**< Flow meter parameter size. */
-	void *meter_action;
-	/**< Flow meter action. */
-};
-
-/* Meter parameter structure. */
-struct mlx5_flow_meter {
-	TAILQ_ENTRY(mlx5_flow_meter) next;
+/* Legacy Meter parameter structure. */
+struct mlx5_legacy_flow_meter {
+	struct mlx5_flow_meter_info fm;
+	/* Must be the first in struct. */
+	TAILQ_ENTRY(mlx5_legacy_flow_meter) next;
 	/**< Pointer to the next flow meter structure. */
 	uint32_t idx; /* Index to meter object. */
-	uint32_t meter_id;
-	/**< Meter id. */
-	struct mlx5_flow_meter_profile *profile;
-	/**< Meter profile parameters. */
-
-	rte_spinlock_t sl; /**< Meter action spinlock. */
-
-	/** Policer actions (per meter output color). */
-	enum rte_mtr_policer_action action[RTE_COLORS];
-
-	uint32_t green_bytes:1;
-	/** Set green bytes stats to be enabled. */
-	uint32_t green_pkts:1;
-	/** Set green packets stats to be enabled. */
-	uint32_t red_bytes:1;
-	/** Set red bytes stats to be enabled. */
-	uint32_t red_pkts:1;
-	/** Set red packets stats to be enabled. */
-	uint32_t bytes_dropped:1;
-	/** Set bytes dropped stats to be enabled. */
-	uint32_t pkts_dropped:1;
-	/** Set packets dropped stats to be enabled. */
-
-	/**< Rule applies to ingress traffic. */
-	uint32_t ingress:1;
-
-	/**< Rule applies to egress traffic. */
-	uint32_t egress:1;
-	/**
-	 * Instead of simply matching the properties of traffic as it would
-	 * appear on a given DPDK port ID, enabling this attribute transfers
-	 * a flow rule to the lowest possible level of any device endpoints
-	 * found in the pattern.
-	 *
-	 * When supported, this effectively enables an application to
-	 * re-route traffic not necessarily intended for it (e.g. coming
-	 * from or addressed to different physical ports, VFs or
-	 * applications) at the device level.
-	 *
-	 * It complements the behavior of some pattern items such as
-	 * RTE_FLOW_ITEM_TYPE_PHY_PORT and is meaningless without them.
-	 *
-	 * When transferring flow rules, ingress and egress attributes keep
-	 * their original meaning, as if processing traffic emitted or
-	 * received by the application.
-	 */
-	uint32_t transfer:1;
-	struct mlx5_meter_domains_infos *mfts;
-	/**< Flow table created for this meter. */
-	struct mlx5_flow_policer_stats policer_stats;
-	/**< Meter policer statistics. */
-	uint32_t ref_cnt;
-	/**< Use count. */
-	uint32_t active_state:1;
-	/**< Meter state. */
-	uint32_t shared:1;
-	/**< Meter shared or not. */
-	struct mlx5_indexed_pool *flow_ipool;
-	/**< Index pool for flow id. */
-};
-
-/* RFC2697 parameter structure. */
-struct mlx5_flow_meter_srtcm_rfc2697_prm {
-	/* green_saturation_value = cbs_mantissa * 2^cbs_exponent */
-	uint32_t cbs_exponent:5;
-	uint32_t cbs_mantissa:8;
-	/* cir = 8G * cir_mantissa * 1/(2^cir_exponent) Bytes/Sec */
-	uint32_t cir_exponent:5;
-	uint32_t cir_mantissa:8;
-	/* yellow _saturation_value = ebs_mantissa * 2^ebs_exponent */
-	uint32_t ebs_exponent:5;
-	uint32_t ebs_mantissa:8;
-};
-
-/* Flow meter profile structure. */
-struct mlx5_flow_meter_profile {
-	TAILQ_ENTRY(mlx5_flow_meter_profile) next;
-	/**< Pointer to the next flow meter structure. */
-	uint32_t meter_profile_id; /**< Profile id. */
-	struct rte_mtr_meter_profile profile; /**< Profile detail. */
-	union {
-		struct mlx5_flow_meter_srtcm_rfc2697_prm srtcm_prm;
-		/**< srtcm_rfc2697 struct. */
-	};
-	uint32_t ref_cnt; /**< Use count. */
 };
 
 #define MLX5_MAX_TUNNELS 256
@@ -1093,7 +962,7 @@ struct rte_flow {
 	/**< Device flow handles that are part of the flow. */
 	uint32_t drv_type:2; /**< Driver type. */
 	uint32_t tunnel:1;
-	uint32_t meter:16; /**< Holds flow meter id. */
+	uint32_t meter:24; /**< Holds flow meter id. */
 	uint32_t rix_mreg_copy;
 	/**< Index to metadata register copy table resource. */
 	uint32_t counter; /**< Holds flow counter. */
@@ -1180,7 +1049,7 @@ struct mlx5_flow_workspace {
 	struct mlx5_flow_rss_desc rss_desc;
 	uint32_t rssq_num; /* Allocated queue num in rss_desc. */
 	uint32_t flow_idx; /* Intermediate device flow index. */
-	struct mlx5_flow_meter *fm; /* Pointer to the meter in flow. */
+	struct mlx5_flow_meter_info *fm; /* Pointer to the meter in flow. */
 };
 
 struct mlx5_flow_split_info {
@@ -1226,12 +1095,16 @@ typedef int (*mlx5_flow_destroy_mtr_tbls_t)(struct rte_eth_dev *dev,
 					struct mlx5_meter_domains_infos *tbls);
 typedef int (*mlx5_flow_create_policer_rules_t)
 					(struct rte_eth_dev *dev,
-					 struct mlx5_flow_meter *fm,
+					 struct mlx5_flow_meter_info *fm,
 					 const struct rte_flow_attr *attr);
 typedef int (*mlx5_flow_destroy_policer_rules_t)
 					(struct rte_eth_dev *dev,
-					 const struct mlx5_flow_meter *fm,
+					 const struct mlx5_flow_meter_info *fm,
 					 const struct rte_flow_attr *attr);
+typedef uint32_t (*mlx5_flow_mtr_alloc_t)
+					    (struct rte_eth_dev *dev);
+typedef void (*mlx5_flow_mtr_free_t)(struct rte_eth_dev *dev,
+						uint32_t mtr_idx);
 typedef uint32_t (*mlx5_flow_counter_alloc_t)
 				   (struct rte_eth_dev *dev);
 typedef void (*mlx5_flow_counter_free_t)(struct rte_eth_dev *dev,
@@ -1286,6 +1159,8 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_destroy_mtr_tbls_t destroy_mtr_tbls;
 	mlx5_flow_create_policer_rules_t prepare_policer_rules;
 	mlx5_flow_destroy_policer_rules_t destroy_policer_rules;
+	mlx5_flow_mtr_alloc_t create_meter;
+	mlx5_flow_mtr_free_t free_meter;
 	mlx5_flow_counter_alloc_t counter_alloc;
 	mlx5_flow_counter_free_t counter_free;
 	mlx5_flow_counter_query_t counter_query;
@@ -1343,6 +1218,32 @@ tunnel_use_standard_attr_group_translate
 	}
 
 	return verdict;
+}
+
+/**
+ * Get DV flow aso meter by index.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] idx
+ *   mlx5 flow aso meter index in the container.
+ * @param[out] ppool
+ *   mlx5 flow aso meter pool in the container,
+ *
+ * @return
+ *   Pointer to the aso meter, NULL otherwise.
+ */
+static inline struct mlx5_aso_mtr *
+mlx5_aso_meter_by_idx(struct mlx5_priv *priv, uint32_t idx)
+{
+	struct mlx5_aso_mtr_pool *pool;
+	struct mlx5_aso_mtr_pools_mng *mtrmng = priv->sh->mtrmng;
+
+	/* Decrease to original index. */
+	idx--;
+	MLX5_ASSERT(idx / MLX5_ASO_MTRS_PER_POOL < mtrmng->n);
+	pool = mtrmng->pools[idx / MLX5_ASO_MTRS_PER_POOL];
+	return &pool->mtrs[idx % MLX5_ASO_MTRS_PER_POOL];
 }
 
 int mlx5_flow_group_to_table(struct rte_eth_dev *dev,
@@ -1488,10 +1389,10 @@ struct mlx5_meter_domains_infos *mlx5_flow_create_mtr_tbls
 int mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 			       struct mlx5_meter_domains_infos *tbl);
 int mlx5_flow_prepare_policer_rules(struct rte_eth_dev *dev,
-				   struct mlx5_flow_meter *fm,
+				   struct mlx5_flow_meter_info *fm,
 				   const struct rte_flow_attr *attr);
 int mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
-				    struct mlx5_flow_meter *fm,
+				    struct mlx5_flow_meter_info *fm,
 				    const struct rte_flow_attr *attr);
 int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
@@ -1587,12 +1488,11 @@ struct mlx5_aso_age_action *flow_aso_age_get_by_idx(struct rte_eth_dev *dev,
 int flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 					     const struct rte_flow_item *item,
 					     struct rte_flow_error *error);
-
 void flow_release_workspace(void *data);
 int mlx5_flow_os_init_workspace_once(void);
 void *mlx5_flow_os_get_specific_workspace(void);
 int mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data);
 void mlx5_flow_os_release_workspace(void);
-
-
+uint32_t mlx5_flow_mtr_alloc(struct rte_eth_dev *dev);
+void mlx5_flow_mtr_free(struct rte_eth_dev *dev, uint32_t mtr_idx);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

@@ -4359,6 +4359,8 @@ flow_create_split_inner(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Parent flow structure pointer.
  * @param[in] fm
  *   Pointer to flow meter structure.
  * @param[in] items
@@ -4371,10 +4373,6 @@ flow_create_split_inner(struct rte_eth_dev *dev,
  *   Suffix flow actions.
  * @param[out] actions_pre
  *   Prefix flow actions.
- * @param[out] pattern_sfx
- *   The pattern items for the suffix flow.
- * @param[out] tag_sfx
- *   Pointer to suffix flow tag.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  *
@@ -4383,7 +4381,8 @@ flow_create_split_inner(struct rte_eth_dev *dev,
  */
 static uint32_t
 flow_meter_split_prep(struct rte_eth_dev *dev,
-		      struct mlx5_flow_meter *fm,
+		      struct rte_flow *flow,
+		      struct mlx5_flow_meter_info *fm,
 		      const struct rte_flow_item items[],
 		      struct rte_flow_item sfx_items[],
 		      const struct rte_flow_action actions[],
@@ -4504,7 +4503,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 							    0, error),
 		.offset = mtr_id_offset,
 		.length = mtr_reg_bits,
-		.data = fm->idx,
+		.data = flow->meter,
 	};
 	/*
 	 * The color Reg bits used by flow_id are growing from
@@ -5240,9 +5239,10 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 	struct rte_flow_item *sfx_items = NULL;
 	struct mlx5_flow *dev_flow = NULL;
 	struct rte_flow_attr sfx_attr = *attr;
-	struct mlx5_flow_meter *fm = NULL;
+	struct mlx5_flow_meter_info *fm = NULL;
 	bool has_mtr = false;
 	uint32_t meter_id;
+	uint32_t mtr_idx = 0;
 	uint32_t mtr_tag_id = 0;
 	size_t act_size;
 	size_t item_size;
@@ -5254,14 +5254,13 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 						    &meter_id);
 	if (has_mtr) {
 		if (flow->meter) {
-			fm = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MTR],
-					    flow->meter);
+			fm = flow_dv_meter_find_by_idx(priv, flow->meter);
 			if (!fm)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 						NULL, "Meter not found.");
 		} else {
-			fm = mlx5_flow_meter_find(priv, meter_id);
+			fm = mlx5_flow_meter_find(priv, meter_id, &mtr_idx);
 			if (!fm)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -5270,7 +5269,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 						     &sfx_attr, error);
 			if (ret)
 				return -rte_errno;
-			flow->meter = fm->idx;
+			flow->meter = mtr_idx;
 		}
 		wks->fm = fm;
 		/* The prefix actions: meter, decap, encap, tag, end. */
@@ -5290,9 +5289,10 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		sfx_items = (struct rte_flow_item *)((char *)sfx_actions +
 			     act_size);
 		pre_actions = sfx_actions + actions_n;
-		mtr_tag_id = flow_meter_split_prep(dev, fm, items, sfx_items,
-						   actions, sfx_actions,
-						   pre_actions, error);
+		mtr_tag_id = flow_meter_split_prep(dev, flow, fm, items,
+						   sfx_items, actions,
+						   sfx_actions, pre_actions,
+						   error);
 		if (!mtr_tag_id) {
 			ret = -rte_errno;
 			goto exit;
@@ -6629,7 +6629,7 @@ mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
  */
 int
 mlx5_flow_prepare_policer_rules(struct rte_eth_dev *dev,
-			       struct mlx5_flow_meter *fm,
+			       struct mlx5_flow_meter_info *fm,
 			       const struct rte_flow_attr *attr)
 {
 	const struct mlx5_flow_driver_ops *fops;
@@ -6651,13 +6651,51 @@ mlx5_flow_prepare_policer_rules(struct rte_eth_dev *dev,
  */
 int
 mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
-				struct mlx5_flow_meter *fm,
+				struct mlx5_flow_meter_info *fm,
 				const struct rte_flow_attr *attr)
 {
 	const struct mlx5_flow_driver_ops *fops;
 
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
 	return fops->destroy_policer_rules(dev, fm, attr);
+}
+
+/**
+ * Allocate the needed aso flow meter id.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   Index to aso flow meter on success, NULL otherwise.
+ */
+uint32_t
+mlx5_flow_mtr_alloc(struct rte_eth_dev *dev)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->create_meter(dev);
+}
+
+/**
+ * Free the aso flow meter id.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_idx
+ *  Index to aso flow meter to be free.
+ *
+ * @return
+ *   0 on success.
+ */
+void
+mlx5_flow_mtr_free(struct rte_eth_dev *dev, uint32_t mtr_idx)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	fops->free_meter(dev, mtr_idx);
 }
 
 /**

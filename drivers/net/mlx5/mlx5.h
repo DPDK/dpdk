@@ -19,6 +19,7 @@
 #include <rte_interrupts.h>
 #include <rte_errno.h>
 #include <rte_flow.h>
+#include <rte_mtr.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -582,6 +583,193 @@ struct mlx5_dev_shared_port {
 	/* Aging information for per port. */
 };
 
+/*ASO flow meter structures*/
+/* Modify this value if enum rte_mtr_color changes. */
+#define RTE_MTR_DROPPED RTE_COLORS
+
+/* Meter policer statistics */
+struct mlx5_flow_policer_stats {
+	uint32_t pass_cnt;
+	/**< Color counter for pass. */
+	uint32_t drop_cnt;
+	/**< Color counter for drop. */
+};
+
+/* Meter table structure. */
+struct mlx5_meter_domain_info {
+	struct mlx5_flow_tbl_resource *tbl;
+	/**< Meter table. */
+	struct mlx5_flow_tbl_resource *sfx_tbl;
+	/**< Meter suffix table. */
+	struct mlx5_flow_dv_matcher *drop_matcher;
+	/**< Matcher for Drop. */
+	struct mlx5_flow_dv_matcher *color_matcher;
+	/**< Matcher for Color. */
+	void *jump_actn;
+	/**< Meter match action. */
+	void *green_rule;
+	/**< Meter green rule. */
+	void *drop_rule;
+	/**< Meter drop rule. */
+};
+
+/* Meter table set for TX RX FDB. */
+struct mlx5_meter_domains_infos {
+	uint32_t ref_cnt;
+	/**< Table user count. */
+	struct mlx5_meter_domain_info egress;
+	/**< TX meter table. */
+	struct mlx5_meter_domain_info ingress;
+	/**< RX meter table. */
+	struct mlx5_meter_domain_info transfer;
+	/**< FDB meter table. */
+	void *drop_actn;
+	/**< Drop action as not matched. */
+	void *green_count;
+	/**< Counters for green rule. */
+	void *drop_count;
+	/**< Counters for green rule. */
+	void *meter_action;
+	/**< Flow meter action. */
+};
+
+/* Meter parameter structure. */
+struct mlx5_flow_meter_info {
+	uint32_t meter_id;
+	/**< Meter id. */
+	struct mlx5_flow_meter_profile *profile;
+	/**< Meter profile parameters. */
+	rte_spinlock_t sl; /**< Meter action spinlock. */
+	/** Policer actions (per meter output color). */
+	enum rte_mtr_policer_action action[RTE_COLORS];
+	/** Set of stats counters to be enabled.
+	 * @see enum rte_mtr_stats_type
+	 */
+	uint32_t green_bytes:1;
+	/** Set green bytes stats to be enabled. */
+	uint32_t green_pkts:1;
+	/** Set green packets stats to be enabled. */
+	uint32_t red_bytes:1;
+	/** Set red bytes stats to be enabled. */
+	uint32_t red_pkts:1;
+	/** Set red packets stats to be enabled. */
+	uint32_t bytes_dropped:1;
+	/** Set bytes dropped stats to be enabled. */
+	uint32_t pkts_dropped:1;
+	/** Set packets dropped stats to be enabled. */
+	uint32_t active_state:1;
+	/**< Meter hw active state. */
+	uint32_t shared:1;
+	/**< Meter shared or not. */
+	uint32_t is_enable:1;
+	/**< Meter disable/enable state. */
+	uint32_t ingress:1;
+	/**< Rule applies to egress traffic. */
+	uint32_t egress:1;
+	/**
+	 * Instead of simply matching the properties of traffic as it would
+	 * appear on a given DPDK port ID, enabling this attribute transfers
+	 * a flow rule to the lowest possible level of any device endpoints
+	 * found in the pattern.
+	 *
+	 * When supported, this effectively enables an application to
+	 * re-route traffic not necessarily intended for it (e.g. coming
+	 * from or addressed to different physical ports, VFs or
+	 * applications) at the device level.
+	 *
+	 * It complements the behavior of some pattern items such as
+	 * RTE_FLOW_ITEM_TYPE_PHY_PORT and is meaningless without them.
+	 *
+	 * When transferring flow rules, ingress and egress attributes keep
+	 * their original meaning, as if processing traffic emitted or
+	 * received by the application.
+	 */
+	uint32_t transfer:1;
+	struct mlx5_meter_domains_infos *mfts;
+	/**< Flow table created for this meter. */
+	struct mlx5_flow_policer_stats policer_stats;
+	/**< Meter policer statistics. */
+	uint32_t ref_cnt;
+	/**< Use count. */
+	struct mlx5_indexed_pool *flow_ipool;
+	/**< Index pool for flow id. */
+};
+
+/* RFC2697 parameter structure. */
+struct mlx5_flow_meter_srtcm_rfc2697_prm {
+	rte_be32_t cbs_cir;
+	/*
+	 * bit 24-28: cbs_exponent, bit 16-23 cbs_mantissa,
+	 * bit 8-12: cir_exponent, bit 0-7 cir_mantissa.
+	 */
+	rte_be32_t ebs_eir;
+	/*
+	 * bit 24-28: ebs_exponent, bit 16-23 ebs_mantissa,
+	 * bit 8-12: eir_exponent, bit 0-7 eir_mantissa.
+	 */
+};
+
+/* Flow meter profile structure. */
+struct mlx5_flow_meter_profile {
+	TAILQ_ENTRY(mlx5_flow_meter_profile) next;
+	/**< Pointer to the next flow meter structure. */
+	uint32_t id; /**< Profile id. */
+	struct rte_mtr_meter_profile profile; /**< Profile detail. */
+	union {
+		struct mlx5_flow_meter_srtcm_rfc2697_prm srtcm_prm;
+		/**< srtcm_rfc2697 struct. */
+	};
+	uint32_t ref_cnt; /**< Use count. */
+};
+
+/* 2 meters in each ASO cache line */
+#define MLX5_MTRS_CONTAINER_RESIZE 64
+/*
+ * The pool index and offset of meter in the pool array makes up the
+ * meter index. In case the meter is from pool 0 and offset 0, it
+ * should plus 1 to avoid index 0, since 0 means invalid meter index
+ * currently.
+ */
+#define MLX5_MAKE_MTR_IDX(pi, offset) \
+		((pi) * MLX5_ASO_MTRS_PER_POOL + (offset) + 1)
+
+/*aso flow meter state*/
+enum mlx5_aso_mtr_state {
+	ASO_METER_FREE, /* In free list. */
+	ASO_METER_WAIT, /* ACCESS_ASO WQE in progress. */
+	ASO_METER_READY, /* CQE received. */
+};
+
+/* Generic aso_flow_meter information. */
+struct mlx5_aso_mtr {
+	LIST_ENTRY(mlx5_aso_mtr) next;
+	struct mlx5_flow_meter_info fm;
+	/**< Pointer to the next aso flow meter structure. */
+	uint8_t state; /**< ASO flow meter state. */
+	uint8_t offset;
+};
+
+/* Generic aso_flow_meter pool structure. */
+struct mlx5_aso_mtr_pool {
+	struct mlx5_aso_mtr mtrs[MLX5_ASO_MTRS_PER_POOL];
+	/*Must be the first in pool*/
+	struct mlx5_devx_obj *devx_obj;
+	/* The devx object of the minimum aso flow meter ID. */
+	uint32_t index; /* Pool index in management structure. */
+};
+
+LIST_HEAD(aso_meter_list, mlx5_aso_mtr);
+/* Pools management structure for ASO flow meter pools. */
+struct mlx5_aso_mtr_pools_mng {
+	volatile uint16_t n_valid; /* Number of valid pools. */
+	uint16_t n; /* Number of pools. */
+	rte_spinlock_t mtrsl; /* The ASO flow meter free list lock. */
+	struct mlx5_l3t_tbl *mtr_idx_tbl; /* Meter index lookup table. */
+	struct aso_meter_list meters; /* Free ASO flow meter list. */
+	struct mlx5_aso_sq sq; /*SQ using by ASO flow meter. */
+	struct mlx5_aso_mtr_pool **pools; /* ASO flow meter pool array. */
+};
+
 /* Table key of the hash organization. */
 union mlx5_flow_tbl_key {
 	struct {
@@ -708,6 +896,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t rq_ts_format:2; /* RQ timestamp formats supported. */
 	uint32_t sq_ts_format:2; /* SQ timestamp formats supported. */
 	uint32_t qp_ts_format:2; /* QP timestamp formats supported. */
+	uint32_t meter_aso_en:1; /* Flow Meter ASO is supported. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	void *ctx; /* Verbs/DV/DevX context. */
@@ -768,6 +957,8 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_geneve_tlv_option_resource *geneve_tlv_option_resource;
 	/* Management structure for geneve tlv option */
 	rte_spinlock_t geneve_tlv_opt_sl; /* Lock for geneve tlv resource */
+	struct mlx5_aso_mtr_pools_mng *mtrmng;
+	/* Meter pools management structure. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -785,7 +976,7 @@ struct mlx5_proc_priv {
 /* MTR profile list. */
 TAILQ_HEAD(mlx5_mtr_profiles, mlx5_flow_meter_profile);
 /* MTR list. */
-TAILQ_HEAD(mlx5_flow_meters, mlx5_flow_meter);
+TAILQ_HEAD(mlx5_legacy_flow_meters, mlx5_legacy_flow_meter);
 
 /* RSS description. */
 struct mlx5_flow_rss_desc {
@@ -1003,7 +1194,7 @@ struct mlx5_priv {
 	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */
 	struct mlx5_mtr_profiles flow_meter_profiles; /* MTR profile list. */
-	struct mlx5_flow_meters flow_meters; /* MTR list. */
+	struct mlx5_legacy_flow_meters flow_meters; /* MTR list. */
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
 	struct mlx5_mp_id mp_id; /* ID of a multi-process process */
@@ -1282,13 +1473,15 @@ int mlx5_pmd_socket_init(void);
 /* mlx5_flow_meter.c */
 
 int mlx5_flow_meter_ops_get(struct rte_eth_dev *dev, void *arg);
-struct mlx5_flow_meter *mlx5_flow_meter_find(struct mlx5_priv *priv,
-					     uint32_t meter_id);
+struct mlx5_flow_meter_info *mlx5_flow_meter_find(struct mlx5_priv *priv,
+		uint32_t meter_id, uint32_t *mtr_idx);
+struct mlx5_flow_meter_info *
+flow_dv_meter_find_by_idx(struct mlx5_priv *priv, uint32_t idx);
 int mlx5_flow_meter_attach(struct mlx5_priv *priv,
-			   struct mlx5_flow_meter *fm,
+			   struct mlx5_flow_meter_info *fm,
 			   const struct rte_flow_attr *attr,
 			   struct rte_flow_error *error);
-void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
+void mlx5_flow_meter_detach(struct mlx5_flow_meter_info *fm);
 
 /* mlx5_os.c */
 struct rte_pci_driver;
@@ -1333,7 +1526,7 @@ void mlx5_txpp_interrupt_handler(void *cb_arg);
 
 eth_tx_burst_t mlx5_select_tx_function(struct rte_eth_dev *dev);
 
-/* mlx5_flow_age.c */
+/* mlx5_flow_aso.c */
 
 int mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh);
 int mlx5_aso_queue_start(struct mlx5_dev_ctx_shared *sh);

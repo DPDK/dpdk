@@ -4866,7 +4866,7 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_meter *am = action->conf;
-	struct mlx5_flow_meter *fm;
+	struct mlx5_flow_meter_info *fm;
 
 	if (!am)
 		return rte_flow_error_set(error, EINVAL,
@@ -4886,7 +4886,7 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL,
 					  "meter action not supported");
-	fm = mlx5_flow_meter_find(priv, am->mtr_id);
+	fm = mlx5_flow_meter_find(priv, am->mtr_id, NULL);
 	if (!fm)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -5937,6 +5937,161 @@ flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t counter)
 				  cnt, next);
 		rte_spinlock_unlock(&priv->sh->cmng.csl[cnt_type]);
 	}
+}
+
+/**
+ * Resize a meter id container.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value and rte_errno is set.
+ */
+static int
+flow_dv_mtr_container_resize(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_mtr_pools_mng *mtrmng = priv->sh->mtrmng;
+	void *old_pools = mtrmng->pools;
+	uint32_t resize = mtrmng->n + MLX5_MTRS_CONTAINER_RESIZE;
+	uint32_t mem_size = sizeof(struct mlx5_aso_mtr_pool *) * resize;
+	void *pools = mlx5_malloc(MLX5_MEM_ZERO, mem_size, 0, SOCKET_ID_ANY);
+
+	if (!pools) {
+		rte_errno = ENOMEM;
+		return -ENOMEM;
+	}
+	if (old_pools)
+		memcpy(pools, old_pools, mtrmng->n *
+				       sizeof(struct mlx5_aso_mtr_pool *));
+	mtrmng->n = resize;
+	mtrmng->pools = pools;
+	if (old_pools)
+		mlx5_free(old_pools);
+	return 0;
+}
+
+/**
+ * Prepare a new meter and/or a new meter pool.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[out] mtr_free
+ *   Where to put the pointer of a new meter.g.
+ *
+ * @return
+ *   The meter pool pointer and @mtr_free is set on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_aso_mtr_pool *
+flow_dv_mtr_pool_create(struct rte_eth_dev *dev,
+			     struct mlx5_aso_mtr **mtr_free)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_mtr_pools_mng *mtrmng = priv->sh->mtrmng;
+	struct mlx5_aso_mtr_pool *pool = NULL;
+	struct mlx5_devx_obj *dcs = NULL;
+	uint32_t i;
+	uint32_t log_obj_size;
+
+	log_obj_size = rte_log2_u32(MLX5_ASO_MTRS_PER_POOL >> 1);
+	dcs = mlx5_devx_cmd_create_flow_meter_aso_obj(priv->sh->ctx,
+			priv->sh->pdn, log_obj_size);
+	if (!dcs) {
+		rte_errno = ENODATA;
+		return NULL;
+	}
+	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool), 0, SOCKET_ID_ANY);
+	if (!pool) {
+		rte_errno = ENOMEM;
+		claim_zero(mlx5_devx_cmd_destroy(dcs));
+		return NULL;
+	}
+	pool->devx_obj = dcs;
+	pool->index = mtrmng->n_valid;
+	if (pool->index == mtrmng->n && flow_dv_mtr_container_resize(dev)) {
+		mlx5_free(pool);
+		claim_zero(mlx5_devx_cmd_destroy(dcs));
+		return NULL;
+	}
+	mtrmng->pools[pool->index] = pool;
+	mtrmng->n_valid++;
+	for (i = 1; i < MLX5_ASO_MTRS_PER_POOL; ++i) {
+		pool->mtrs[i].offset = i;
+		pool->mtrs[i].fm.meter_id = UINT32_MAX;
+		LIST_INSERT_HEAD(&mtrmng->meters,
+						&pool->mtrs[i], next);
+	}
+	pool->mtrs[0].offset = 0;
+	pool->mtrs[0].fm.meter_id = UINT32_MAX;
+	*mtr_free = &pool->mtrs[0];
+	return pool;
+}
+
+/**
+ * Release a flow meter into pool.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] mtr_idx
+ *   Index to aso flow meter.
+ */
+static void
+flow_dv_aso_mtr_release_to_pool(struct rte_eth_dev *dev, uint32_t mtr_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_mtr_pools_mng *mtrmng = priv->sh->mtrmng;
+	struct mlx5_aso_mtr *aso_mtr = mlx5_aso_meter_by_idx(priv, mtr_idx);
+
+	MLX5_ASSERT(aso_mtr);
+	rte_spinlock_lock(&mtrmng->mtrsl);
+	memset(&aso_mtr->fm, 0, sizeof(struct mlx5_flow_meter_info));
+	aso_mtr->state = ASO_METER_FREE;
+	aso_mtr->fm.meter_id = UINT32_MAX;
+	LIST_INSERT_HEAD(&mtrmng->meters, aso_mtr, next);
+	rte_spinlock_unlock(&mtrmng->mtrsl);
+}
+
+/**
+ * Allocate a aso flow meter.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   Index to aso flow meter on success, 0 otherwise and rte_errno is set.
+ */
+static uint32_t
+flow_dv_mtr_alloc(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_mtr *mtr_free = NULL;
+	struct mlx5_aso_mtr_pools_mng *mtrmng = priv->sh->mtrmng;
+	struct mlx5_aso_mtr_pool *pool;
+	uint32_t mtr_idx = 0;
+
+	if (!priv->config.devx) {
+		rte_errno = ENOTSUP;
+		return 0;
+	}
+	/* Allocate the flow meter memory. */
+	/* Get free meters from management. */
+	rte_spinlock_lock(&mtrmng->mtrsl);
+	mtr_free = LIST_FIRST(&mtrmng->meters);
+	if (mtr_free)
+		LIST_REMOVE(mtr_free, next);
+	if (!mtr_free && !flow_dv_mtr_pool_create(dev, &mtr_free)) {
+		rte_spinlock_unlock(&mtrmng->mtrsl);
+		return 0;
+	}
+	mtr_free->state = ASO_METER_WAIT;
+	rte_spinlock_unlock(&mtrmng->mtrsl);
+	pool = container_of(mtr_free,
+					struct mlx5_aso_mtr_pool,
+					mtrs[mtr_free->offset]);
+	mtr_idx = MLX5_MAKE_MTR_IDX(pool->index, mtr_free->offset);
+	return mtr_idx;
 }
 
 /**
@@ -12584,7 +12739,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct mlx5_flow_handle *dev_handle;
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_meter *fm = NULL;
+	struct mlx5_flow_meter_info *fm = NULL;
 	uint32_t srss = 0;
 
 	if (!flow)
@@ -12595,8 +12750,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		flow->counter = 0;
 	}
 	if (flow->meter) {
-		fm = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MTR],
-				    flow->meter);
+		fm = flow_dv_meter_find_by_idx(priv, flow->meter);
 		if (fm)
 			mlx5_flow_meter_detach(fm);
 		flow->meter = 0;
@@ -13697,7 +13851,7 @@ flow_dv_destroy_domain_policer_rule(struct rte_eth_dev *dev,
  */
 static int
 flow_dv_destroy_policer_rules(struct rte_eth_dev *dev,
-			      const struct mlx5_flow_meter *fm,
+			      const struct mlx5_flow_meter_info *fm,
 			      const struct rte_flow_attr *attr)
 {
 	struct mlx5_meter_domains_infos *mtb = fm ? fm->mfts : NULL;
@@ -13720,6 +13874,8 @@ flow_dv_destroy_policer_rules(struct rte_eth_dev *dev,
  *   Pointer to Ethernet device.
  * @param[in] fm
  *   Pointer to flow meter structure.
+ * @param[in] mtr_idx
+ *   meter index.
  * @param[in] mtb
  *   Pointer to DV meter table set.
  * @param[out] drop_rule
@@ -13732,7 +13888,8 @@ flow_dv_destroy_policer_rules(struct rte_eth_dev *dev,
  */
 static int
 flow_dv_create_policer_forward_rule(struct rte_eth_dev *dev,
-				    struct mlx5_flow_meter *fm,
+				    struct mlx5_flow_meter_info *fm,
+				    uint32_t mtr_idx,
 				    struct mlx5_meter_domain_info *dtb,
 				    void **drop_rule,
 				    void **green_rule)
@@ -13780,7 +13937,7 @@ flow_dv_create_policer_forward_rule(struct rte_eth_dev *dev,
 	/* Create Drop flow, matching meter_id only. */
 	i = 0;
 	flow_dv_match_meta_reg(matcher.buf, value.buf, mtr_id_reg_c,
-			       (fm->idx << mtr_id_offset), UINT32_MAX);
+			       (mtr_idx << mtr_id_offset), UINT32_MAX);
 	if (mtb->drop_count)
 		actions[i++] = mtb->drop_count;
 	actions[i++] = priv->sh->dr_drop_action;
@@ -13794,7 +13951,7 @@ flow_dv_create_policer_forward_rule(struct rte_eth_dev *dev,
 	i = 0;
 	if (priv->mtr_reg_share) {
 		flow_dv_match_meta_reg(matcher.buf, value.buf, color_reg_c,
-				       ((fm->idx << mtr_id_offset) |
+				       ((mtr_idx << mtr_id_offset) |
 					rte_col_2_mlx5_col(RTE_COLOR_GREEN)),
 				       UINT32_MAX);
 	} else {
@@ -13802,7 +13959,7 @@ flow_dv_create_policer_forward_rule(struct rte_eth_dev *dev,
 				       rte_col_2_mlx5_col(RTE_COLOR_GREEN),
 				       UINT32_MAX);
 		flow_dv_match_meta_reg(matcher.buf, value.buf, mtr_id_reg_c,
-				       fm->idx, UINT32_MAX);
+				       mtr_idx, UINT32_MAX);
 	}
 	if (mtb->green_count)
 		actions[i++] = mtb->green_count;
@@ -13835,9 +13992,10 @@ error:
  */
 static int
 flow_dv_prepare_policer_rules(struct rte_eth_dev *dev,
-			      struct mlx5_flow_meter *fm,
+			      struct mlx5_flow_meter_info *fm,
 			      const struct rte_flow_attr *attr)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_meter_domains_infos *mtb = fm->mfts;
 	bool initialized = false;
 	struct mlx5_flow_counter *cnt;
@@ -13847,6 +14005,7 @@ flow_dv_prepare_policer_rules(struct rte_eth_dev *dev,
 	void *ingress_green_rule = NULL;
 	void *transfer_drop_rule = NULL;
 	void *transfer_green_rule = NULL;
+	uint32_t mtr_idx;
 	int ret;
 
 	/* Get the statistics counters for green/drop. */
@@ -13873,9 +14032,23 @@ flow_dv_prepare_policer_rules(struct rte_eth_dev *dev,
 	 */
 	if (mtb->egress.drop_rule)
 		initialized = true;
+	if (priv->sh->meter_aso_en) {
+		struct mlx5_aso_mtr *aso_mtr = NULL;
+		struct mlx5_aso_mtr_pool *pool;
+
+		aso_mtr = container_of(fm, struct mlx5_aso_mtr, fm);
+		pool = container_of(aso_mtr, struct mlx5_aso_mtr_pool,
+				    mtrs[aso_mtr->offset]);
+		mtr_idx = MLX5_MAKE_MTR_IDX(pool->index, aso_mtr->offset);
+	} else {
+		struct mlx5_legacy_flow_meter *legacy_fm;
+
+		legacy_fm = container_of(fm, struct mlx5_legacy_flow_meter, fm);
+		mtr_idx = legacy_fm->idx;
+	}
 	if (attr->egress) {
 		ret = flow_dv_create_policer_forward_rule(dev,
-				fm, &mtb->egress,
+				fm, mtr_idx, &mtb->egress,
 				&egress_drop_rule, &egress_green_rule);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create egress policer.");
@@ -13884,7 +14057,7 @@ flow_dv_prepare_policer_rules(struct rte_eth_dev *dev,
 	}
 	if (attr->ingress) {
 		ret = flow_dv_create_policer_forward_rule(dev,
-				fm, &mtb->ingress,
+				fm, mtr_idx, &mtb->ingress,
 				&ingress_drop_rule, &ingress_green_rule);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create ingress policer.");
@@ -13893,7 +14066,7 @@ flow_dv_prepare_policer_rules(struct rte_eth_dev *dev,
 	}
 	if (attr->transfer) {
 		ret = flow_dv_create_policer_forward_rule(dev,
-				fm, &mtb->transfer,
+				fm, mtr_idx, &mtb->transfer,
 				&transfer_drop_rule, &transfer_green_rule);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create transfer policer.");
@@ -14233,6 +14406,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.destroy_mtr_tbls = flow_dv_destroy_mtr_tbl,
 	.prepare_policer_rules = flow_dv_prepare_policer_rules,
 	.destroy_policer_rules = flow_dv_destroy_policer_rules,
+	.create_meter = flow_dv_mtr_alloc,
+	.free_meter = flow_dv_aso_mtr_release_to_pool,
 	.counter_alloc = flow_dv_counter_allocate,
 	.counter_free = flow_dv_counter_free,
 	.counter_query = flow_dv_counter_query,
