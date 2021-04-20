@@ -1012,3 +1012,49 @@ headers
 
 version
 	As above
+
+
+Meson Coding Style
+------------------
+
+The following guidelines apply to the build system code in meson.build files in DPDK.
+
+* Indentation should be using 4 spaces, no hard tabs.
+
+* Line continuations should be doubly-indented to ensure visible difference from normal indentation.
+  Any line continuations beyond the first may be singly indented to avoid large amounts of indentation.
+
+* Lists of files or components must be alphabetical unless doing so would cause errors.
+
+* Two formats are supported for lists of files or list of components:
+
+   * For a small number of list entries, generally 3 or fewer, all elements may be put on a single line.
+     In this case, the opening and closing braces of the list must be on the same line as the list items.
+     No trailing comma is put on the final list entry.
+   * For lists with more than 3 items,
+     it is recommended that the lists be put in the files with a *single* entry per line.
+     In this case, the opening brace, or ``files`` function call must be on a line on its own,
+     and the closing brace must similarly be on a line on its own at the end.
+     To help with readability of nested sublists, the closing brace should be dedented to appear
+     at the same level as the opening braced statement.
+     The final list entry must have a trailing comma,
+     so that adding a new entry to the list never modifies any other line in the list.
+
+Examples::
+
+    sources = files('file1.c', 'file2.c')
+
+    subdirs = ['dir1', 'dir2']
+
+    headers = files(
+            'header1.c',
+            'header2.c',
+            'header3.c',   # always include trailing comma
+    )                      # closing brace at indent level of opening brace
+
+    components = [
+            'comp1',
+            'comp2',
+            ...
+            'compN',
+    ]
