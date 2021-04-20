@@ -399,6 +399,12 @@ Limitations
   - Hairpin between two ports could only manual binding and explicit Tx flow mode. For single port hairpin, all the combinations of auto/manual binding and explicit/implicit Tx flow mode could be supported.
   - Hairpin in switchdev SR-IOV mode is not supported till now.
 
+- Meter:
+  - All the meter colors with drop action will be counted only by the global drop statistics.
+  - Green color is not supported with drop action.
+  - Yellow detection is not supported.
+  - Red color must be with drop action.
+
 Statistics
 ----------
 

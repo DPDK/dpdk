@@ -467,13 +467,6 @@ mlx5_flow_meter_validate(struct mlx5_priv *priv, uint32_t meter_id,
 			 struct rte_mtr_params *params,
 			 struct rte_mtr_error *error)
 {
-	static enum rte_mtr_policer_action
-				valid_recol_action[RTE_COLORS] = {
-					       MTR_POLICER_ACTION_COLOR_GREEN,
-					       MTR_POLICER_ACTION_COLOR_YELLOW,
-					       MTR_POLICER_ACTION_COLOR_RED };
-	int i;
-
 	/* Meter must use global drop action. */
 	if (!priv->sh->dr_drop_action)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -493,13 +486,18 @@ mlx5_flow_meter_validate(struct mlx5_priv *priv, uint32_t meter_id,
 					  "Previous meter color "
 					  "not supported.");
 	/* Validate policer settings. */
-	for (i = 0; i < RTE_COLORS; i++)
-		if (params->action[i] != valid_recol_action[i] &&
-		    params->action[i] != MTR_POLICER_ACTION_DROP)
-			return -rte_mtr_error_set
-					(error, ENOTSUP,
-					 action2error(params->action[i]), NULL,
-					 "Recolor action not supported.");
+	if (params->action[RTE_COLOR_RED] != MTR_POLICER_ACTION_DROP)
+		return -rte_mtr_error_set
+				(error, ENOTSUP,
+				 action2error(params->action[RTE_COLOR_RED]),
+				 NULL,
+				 "Red color only supports drop action.");
+	if (params->action[RTE_COLOR_GREEN] != MTR_POLICER_ACTION_COLOR_GREEN)
+		return -rte_mtr_error_set
+				(error, ENOTSUP,
+				 action2error(params->action[RTE_COLOR_GREEN]),
+				 NULL,
+				 "Green color only supports recolor green action.");
 	/* Validate meter id. */
 	if (mlx5_flow_meter_find(priv, meter_id))
 		return -rte_mtr_error_set(error, EEXIST,
@@ -605,6 +603,19 @@ mlx5_flow_meter_action_modify(struct mlx5_priv *priv,
 #endif
 }
 
+static void
+mlx5_flow_meter_stats_enable_update(struct mlx5_flow_meter *fm,
+				uint64_t stats_mask)
+{
+	fm->green_bytes = (stats_mask & RTE_MTR_STATS_N_BYTES_GREEN) ? 1 : 0;
+	fm->green_pkts = (stats_mask & RTE_MTR_STATS_N_PKTS_GREEN) ? 1 : 0;
+	fm->red_bytes = (stats_mask & RTE_MTR_STATS_N_BYTES_RED) ? 1 : 0;
+	fm->red_pkts = (stats_mask & RTE_MTR_STATS_N_PKTS_RED) ? 1 : 0;
+	fm->bytes_dropped =
+		(stats_mask & RTE_MTR_STATS_N_BYTES_DROPPED) ? 1 : 0;
+	fm->pkts_dropped = (stats_mask & RTE_MTR_STATS_N_PKTS_DROPPED) ? 1 : 0;
+}
+
 /**
  * Create meter rules.
  *
@@ -643,7 +654,6 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 		.type = "mlx5_flow_mtr_flow_id_pool",
 	};
 	int ret;
-	unsigned int i;
 	uint32_t idx = 0;
 	uint8_t mtr_id_bits;
 	uint8_t mtr_reg_bits = priv->mtr_reg_share ?
@@ -681,12 +691,18 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	fm->meter_id = meter_id;
 	fm->profile = fmp;
 	memcpy(fm->action, params->action, sizeof(params->action));
-	fm->stats_mask = params->stats_mask;
+	mlx5_flow_meter_stats_enable_update(fm, params->stats_mask);
 
 	/* Alloc policer counters. */
-	for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++) {
-		fm->policer_stats.cnt[i] = mlx5_counter_alloc(dev);
-		if (!fm->policer_stats.cnt[i])
+	if (fm->green_bytes || fm->green_pkts) {
+		fm->policer_stats.pass_cnt = mlx5_counter_alloc(dev);
+		if (!fm->policer_stats.pass_cnt)
+			goto error;
+	}
+	if (fm->red_bytes || fm->red_pkts ||
+	    fm->bytes_dropped || fm->pkts_dropped) {
+		fm->policer_stats.drop_cnt = mlx5_counter_alloc(dev);
+		if (!fm->policer_stats.drop_cnt)
 			goto error;
 	}
 	fm->mfts = mlx5_flow_create_mtr_tbls(dev);
@@ -699,7 +715,6 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	TAILQ_INSERT_TAIL(fms, fm, next);
 	fm->active_state = 1; /* Config meter starts as active. */
 	fm->shared = !!shared;
-	fm->policer_stats.stats_mask = params->stats_mask;
 	fm->profile->ref_cnt++;
 	fm->flow_ipool = mlx5_ipool_create(&flow_ipool_cfg);
 	if (!fm->flow_ipool)
@@ -710,9 +725,10 @@ error:
 	mlx5_flow_destroy_policer_rules(dev, fm, &attr);
 	mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
 	/* Free policer counters. */
-	for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++)
-		if (fm->policer_stats.cnt[i])
-			mlx5_counter_free(dev, fm->policer_stats.cnt[i]);
+	if (fm->policer_stats.pass_cnt)
+		mlx5_counter_free(dev, fm->policer_stats.pass_cnt);
+	if (fm->policer_stats.drop_cnt)
+		mlx5_counter_free(dev, fm->policer_stats.drop_cnt);
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR], idx);
 	return -rte_mtr_error_set(error, -ret,
 				  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
@@ -745,7 +761,6 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 				.egress = 1,
 				.transfer = priv->config.dv_esw_en ? 1 : 0,
 			};
-	unsigned int i;
 
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -770,9 +785,10 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 	/* Remove from the flow meter list. */
 	TAILQ_REMOVE(fms, fm, next);
 	/* Free policer counters. */
-	for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++)
-		if (fm->policer_stats.cnt[i])
-			mlx5_counter_free(dev, fm->policer_stats.cnt[i]);
+	if (fm->policer_stats.pass_cnt)
+		mlx5_counter_free(dev, fm->policer_stats.pass_cnt);
+	if (fm->policer_stats.drop_cnt)
+		mlx5_counter_free(dev, fm->policer_stats.drop_cnt);
 	/* Free meter flow table */
 	if (fm->flow_ipool)
 		mlx5_ipool_destroy(fm->flow_ipool);
@@ -1005,6 +1021,13 @@ mlx5_flow_meter_stats_update(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_meter *fm;
+	const struct rte_flow_attr attr = {
+				.ingress = 1,
+				.egress = 1,
+				.transfer = priv->config.dv_esw_en ? 1 : 0,
+			};
+	bool need_updated = false;
+	struct mlx5_flow_policer_stats old_policer_stats;
 
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -1016,7 +1039,70 @@ mlx5_flow_meter_stats_update(struct rte_eth_dev *dev,
 		return -rte_mtr_error_set(error, ENOENT,
 					  RTE_MTR_ERROR_TYPE_MTR_ID,
 					  NULL, "Meter object id not valid.");
-	fm->policer_stats.stats_mask = stats_mask;
+	old_policer_stats.pass_cnt = 0;
+	old_policer_stats.drop_cnt = 0;
+	if (!!((RTE_MTR_STATS_N_PKTS_GREEN |
+				RTE_MTR_STATS_N_BYTES_GREEN) & stats_mask) !=
+		!!fm->policer_stats.pass_cnt) {
+		need_updated = true;
+		if (fm->policer_stats.pass_cnt) {
+			old_policer_stats.pass_cnt = fm->policer_stats.pass_cnt;
+			fm->policer_stats.pass_cnt = 0;
+		} else {
+			fm->policer_stats.pass_cnt =
+				mlx5_counter_alloc(dev);
+			if (!fm->policer_stats.pass_cnt)
+				return -rte_mtr_error_set(error, ENOMEM,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Counter alloc failed for meter.");
+		}
+	}
+	if (!!((RTE_MTR_STATS_N_PKTS_RED | RTE_MTR_STATS_N_BYTES_RED |
+		RTE_MTR_STATS_N_PKTS_DROPPED | RTE_MTR_STATS_N_BYTES_DROPPED) &
+		stats_mask) !=
+		!!fm->policer_stats.drop_cnt) {
+		need_updated = true;
+		if (fm->policer_stats.drop_cnt) {
+			old_policer_stats.drop_cnt = fm->policer_stats.drop_cnt;
+			fm->policer_stats.drop_cnt = 0;
+		} else {
+			fm->policer_stats.drop_cnt =
+				mlx5_counter_alloc(dev);
+			if (!fm->policer_stats.drop_cnt)
+				return -rte_mtr_error_set(error, ENOMEM,
+					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Counter alloc failed for meter.");
+		}
+	}
+	if (need_updated) {
+		if (mlx5_flow_prepare_policer_rules(dev, fm, &attr)) {
+			if (fm->policer_stats.pass_cnt &&
+				fm->policer_stats.pass_cnt !=
+				old_policer_stats.pass_cnt)
+				mlx5_counter_free(dev,
+					fm->policer_stats.pass_cnt);
+			fm->policer_stats.pass_cnt =
+					old_policer_stats.pass_cnt;
+			if (fm->policer_stats.drop_cnt &&
+				fm->policer_stats.drop_cnt !=
+				old_policer_stats.drop_cnt)
+				mlx5_counter_free(dev,
+					fm->policer_stats.drop_cnt);
+			fm->policer_stats.pass_cnt =
+					old_policer_stats.pass_cnt;
+			return -rte_mtr_error_set(error, ENOTSUP,
+				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Failed to create meter policer rules.");
+		}
+		/* Free old policer counters. */
+		if (old_policer_stats.pass_cnt)
+			mlx5_counter_free(dev,
+				old_policer_stats.pass_cnt);
+		if (old_policer_stats.drop_cnt)
+			mlx5_counter_free(dev,
+				old_policer_stats.drop_cnt);
+	}
+	mlx5_flow_meter_stats_enable_update(fm, stats_mask);
 	return 0;
 }
 
@@ -1047,20 +1133,11 @@ mlx5_flow_meter_stats_read(struct rte_eth_dev *dev,
 			   int clear,
 			   struct rte_mtr_error *error)
 {
-	static uint64_t meter2mask[RTE_MTR_DROPPED + 1] = {
-		RTE_MTR_STATS_N_PKTS_GREEN | RTE_MTR_STATS_N_BYTES_GREEN,
-		RTE_MTR_STATS_N_PKTS_YELLOW | RTE_MTR_STATS_N_BYTES_YELLOW,
-		RTE_MTR_STATS_N_PKTS_RED | RTE_MTR_STATS_N_BYTES_RED,
-		RTE_MTR_STATS_N_PKTS_DROPPED | RTE_MTR_STATS_N_BYTES_DROPPED
-	};
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_meter *fm;
 	struct mlx5_flow_policer_stats *ps;
-	uint64_t pkts_dropped = 0;
-	uint64_t bytes_dropped = 0;
 	uint64_t pkts;
 	uint64_t bytes;
-	int i;
 	int ret = 0;
 
 	if (!priv->mtr_en)
@@ -1074,41 +1151,42 @@ mlx5_flow_meter_stats_read(struct rte_eth_dev *dev,
 					  RTE_MTR_ERROR_TYPE_MTR_ID,
 					  NULL, "Meter object id not valid.");
 	ps = &fm->policer_stats;
-	*stats_mask = ps->stats_mask;
-	for (i = 0; i < RTE_MTR_DROPPED; i++) {
-		if (*stats_mask & meter2mask[i]) {
-			ret = mlx5_counter_query(dev, ps->cnt[i], clear, &pkts,
+	*stats_mask = 0;
+	if (fm->green_bytes)
+		*stats_mask |= RTE_MTR_STATS_N_BYTES_GREEN;
+	if (fm->green_pkts)
+		*stats_mask |= RTE_MTR_STATS_N_PKTS_GREEN;
+	if (fm->red_bytes)
+		*stats_mask |= RTE_MTR_STATS_N_BYTES_RED;
+	if (fm->red_pkts)
+		*stats_mask |= RTE_MTR_STATS_N_PKTS_RED;
+	if (fm->bytes_dropped)
+		*stats_mask |= RTE_MTR_STATS_N_BYTES_DROPPED;
+	if (fm->pkts_dropped)
+		*stats_mask |= RTE_MTR_STATS_N_PKTS_DROPPED;
+	memset(stats, 0, sizeof(*stats));
+	if (ps->pass_cnt) {
+		ret = mlx5_counter_query(dev, ps->pass_cnt, clear, &pkts,
 						 &bytes);
-			if (ret)
-				goto error;
-			if (fm->action[i] == MTR_POLICER_ACTION_DROP) {
-				pkts_dropped += pkts;
-				bytes_dropped += bytes;
-			}
-			/* If need to read the packets, set it. */
-			if ((1 << i) & (*stats_mask & meter2mask[i]))
-				stats->n_pkts[i] = pkts;
-			/* If need to read the bytes, set it. */
-			if ((1 << (RTE_MTR_DROPPED + 1 + i)) &
-			   (*stats_mask & meter2mask[i]))
-				stats->n_bytes[i] = bytes;
-		}
-	}
-	/* Dropped packets/bytes are treated differently. */
-	if (*stats_mask & meter2mask[i]) {
-		ret = mlx5_counter_query(dev, ps->cnt[i], clear, &pkts,
-					 &bytes);
 		if (ret)
 			goto error;
-		pkts += pkts_dropped;
-		bytes += bytes_dropped;
 		/* If need to read the packets, set it. */
-		if ((*stats_mask & meter2mask[i]) &
-		   RTE_MTR_STATS_N_PKTS_DROPPED)
+		if (fm->green_pkts)
+			stats->n_pkts[RTE_COLOR_GREEN] = pkts;
+		/* If need to read the bytes, set it. */
+		if (fm->green_bytes)
+			stats->n_bytes[RTE_COLOR_GREEN] = bytes;
+	}
+	if (ps->drop_cnt) {
+		ret = mlx5_counter_query(dev, ps->drop_cnt, clear, &pkts,
+						 &bytes);
+		if (ret)
+			goto error;
+		/* If need to read the packets, set it. */
+		if (fm->pkts_dropped)
 			stats->n_pkts_dropped = pkts;
 		/* If need to read the bytes, set it. */
-		if ((*stats_mask & meter2mask[i]) &
-		   RTE_MTR_STATS_N_BYTES_DROPPED)
+		if (fm->bytes_dropped)
 			stats->n_bytes_dropped = bytes;
 	}
 	return 0;
@@ -1284,7 +1362,6 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 				.transfer = priv->config.dv_esw_en ? 1 : 0,
 			};
 	void *tmp;
-	uint32_t i;
 
 	TAILQ_FOREACH_SAFE(fm, fms, next, tmp) {
 		/* Meter object must not have any owner. */
@@ -1300,10 +1377,10 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 		/* Remove from list. */
 		TAILQ_REMOVE(fms, fm, next);
 		/* Free policer counters. */
-		for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++)
-			if (fm->policer_stats.cnt[i])
-				mlx5_counter_free(dev,
-						  fm->policer_stats.cnt[i]);
+		if (fm->policer_stats.pass_cnt)
+			mlx5_counter_free(dev, fm->policer_stats.pass_cnt);
+		if (fm->policer_stats.drop_cnt)
+			mlx5_counter_free(dev, fm->policer_stats.drop_cnt);
 		/* Free meter flow table. */
 		mlx5_flow_destroy_policer_rules(dev, fm, &attr);
 		mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);

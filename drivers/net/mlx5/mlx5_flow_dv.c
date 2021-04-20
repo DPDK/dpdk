@@ -13848,17 +13848,17 @@ flow_dv_prepare_policer_rules(struct rte_eth_dev *dev,
 	int ret;
 
 	/* Get the statistics counters for green/drop. */
-	if (fm->policer_stats.cnt[RTE_COLOR_GREEN]) {
+	if (fm->policer_stats.pass_cnt) {
 		cnt = flow_dv_counter_get_by_idx(dev,
-					fm->policer_stats.cnt[RTE_COLOR_GREEN],
+					fm->policer_stats.pass_cnt,
 					NULL);
 		mtb->green_count = cnt->action;
 	} else {
 		mtb->green_count = NULL;
 	}
-	if (fm->policer_stats.cnt[RTE_MTR_DROPPED]) {
+	if (fm->policer_stats.drop_cnt) {
 		cnt = flow_dv_counter_get_by_idx(dev,
-					fm->policer_stats.cnt[RTE_MTR_DROPPED],
+					fm->policer_stats.drop_cnt,
 					NULL);
 		mtb->drop_count = cnt->action;
 	} else {

@@ -830,10 +830,10 @@ struct mlx5_flow {
 
 /* Meter policer statistics */
 struct mlx5_flow_policer_stats {
-	uint32_t cnt[RTE_COLORS + 1];
-	/**< Color counter, extra for drop. */
-	uint64_t stats_mask;
-	/**< Statistics mask for the colors. */
+	uint32_t pass_cnt;
+	/**< Color counter for pass. */
+	uint32_t drop_cnt;
+	/**< Color counter for drop. */
 };
 
 /* Meter table structure. */
@@ -891,10 +891,18 @@ struct mlx5_flow_meter {
 	/** Policer actions (per meter output color). */
 	enum rte_mtr_policer_action action[RTE_COLORS];
 
-	/** Set of stats counters to be enabled.
-	 * @see enum rte_mtr_stats_type
-	 */
-	uint64_t stats_mask;
+	uint32_t green_bytes:1;
+	/** Set green bytes stats to be enabled. */
+	uint32_t green_pkts:1;
+	/** Set green packets stats to be enabled. */
+	uint32_t red_bytes:1;
+	/** Set red bytes stats to be enabled. */
+	uint32_t red_pkts:1;
+	/** Set red packets stats to be enabled. */
+	uint32_t bytes_dropped:1;
+	/** Set bytes dropped stats to be enabled. */
+	uint32_t pkts_dropped:1;
+	/** Set packets dropped stats to be enabled. */
 
 	/**< Rule applies to ingress traffic. */
 	uint32_t ingress:1;
