@@ -598,7 +598,7 @@ alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 		if (dev->virtqueue[i])
 			continue;
 
-		vq = rte_malloc(NULL, sizeof(struct vhost_virtqueue), 0);
+		vq = rte_zmalloc(NULL, sizeof(struct vhost_virtqueue), 0);
 		if (vq == NULL) {
 			VHOST_LOG_CONFIG(ERR,
 				"Failed to allocate memory for vring:%u.\n", i);
