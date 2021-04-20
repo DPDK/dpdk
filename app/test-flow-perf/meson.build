@@ -2,10 +2,10 @@
 # Copyright(c) 2020 Mellanox Technologies, Ltd
 
 sources = files(
-	'actions_gen.c',
-	'flow_gen.c',
-	'items_gen.c',
-	'main.c',
+        'actions_gen.c',
+        'flow_gen.c',
+        'items_gen.c',
+        'main.c',
 )
 
 deps += ['ethdev']
