@@ -3,9 +3,9 @@
 
 sources = files('rte_distributor.c', 'rte_distributor_single.c')
 if arch_subdir == 'x86'
-	sources += files('rte_distributor_match_sse.c')
+    sources += files('rte_distributor_match_sse.c')
 else
-	sources += files('rte_distributor_match_generic.c')
+    sources += files('rte_distributor_match_generic.c')
 endif
 headers = files('rte_distributor.h')
 deps += ['mbuf']
