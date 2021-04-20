@@ -385,7 +385,7 @@ hns3_tm_leaf_node_param_check(struct rte_eth_dev *dev __rte_unused,
 		return -EINVAL;
 	}
 
-	if (params->leaf.cman) {
+	if (params->leaf.cman != RTE_TM_CMAN_TAIL_DROP) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS_CMAN;
 		error->message = "congestion management not supported";
 		return -EINVAL;
