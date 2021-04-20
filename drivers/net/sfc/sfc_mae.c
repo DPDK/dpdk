@@ -149,6 +149,7 @@ sfc_mae_outer_rule_attach(struct sfc_adapter *sa,
 	TAILQ_FOREACH(rule, &mae->outer_rules, entries) {
 		if (efx_mae_match_specs_equal(rule->match_spec, match_spec) &&
 		    rule->encap_type == encap_type) {
+			sfc_dbg(sa, "attaching to outer_rule=%p", rule);
 			++(rule->refcnt);
 			return rule;
 		}
@@ -182,6 +183,8 @@ sfc_mae_outer_rule_add(struct sfc_adapter *sa,
 
 	*rulep = rule;
 
+	sfc_dbg(sa, "added outer_rule=%p", rule);
+
 	return 0;
 }
 
@@ -209,6 +212,8 @@ sfc_mae_outer_rule_del(struct sfc_adapter *sa,
 
 	TAILQ_REMOVE(&mae->outer_rules, rule, entries);
 	rte_free(rule);
+
+	sfc_dbg(sa, "deleted outer_rule=%p", rule);
 }
 
 static int
@@ -228,8 +233,11 @@ sfc_mae_outer_rule_enable(struct sfc_adapter *sa,
 		rc = efx_mae_outer_rule_insert(sa->nic, rule->match_spec,
 					       rule->encap_type,
 					       &fw_rsrc->rule_id);
-		if (rc != 0)
+		if (rc != 0) {
+			sfc_err(sa, "failed to enable outer_rule=%p: %s",
+				rule, strerror(rc));
 			return rc;
+		}
 	}
 
 	rc = efx_mae_match_spec_outer_rule_id_set(match_spec_action,
@@ -240,7 +248,15 @@ sfc_mae_outer_rule_enable(struct sfc_adapter *sa,
 							&fw_rsrc->rule_id);
 			fw_rsrc->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
 		}
+
+		sfc_err(sa, "can't match on outer rule ID: %s", strerror(rc));
+
 		return rc;
+	}
+
+	if (fw_rsrc->refcnt == 0) {
+		sfc_dbg(sa, "enabled outer_rule=%p: OR_ID=0x%08x",
+			rule, fw_rsrc->rule_id.id);
 	}
 
 	++(fw_rsrc->refcnt);
@@ -266,7 +282,10 @@ sfc_mae_outer_rule_disable(struct sfc_adapter *sa,
 
 	if (fw_rsrc->refcnt == 1) {
 		rc = efx_mae_outer_rule_remove(sa->nic, &fw_rsrc->rule_id);
-		if (rc != 0) {
+		if (rc == 0) {
+			sfc_dbg(sa, "disabled outer_rule=%p with OR_ID=0x%08x",
+				rule, fw_rsrc->rule_id.id);
+		} else {
 			sfc_err(sa, "failed to disable outer_rule=%p with OR_ID=0x%08x: %s",
 				rule, fw_rsrc->rule_id.id, strerror(rc));
 		}
@@ -289,6 +308,8 @@ sfc_mae_encap_header_attach(struct sfc_adapter *sa,
 		if (encap_header->size == bounce_eh->size &&
 		    memcmp(encap_header->buf, bounce_eh->buf,
 			   bounce_eh->size) == 0) {
+			sfc_dbg(sa, "attaching to encap_header=%p",
+				encap_header);
 			++(encap_header->refcnt);
 			return encap_header;
 		}
@@ -331,6 +352,8 @@ sfc_mae_encap_header_add(struct sfc_adapter *sa,
 
 	*encap_headerp = encap_header;
 
+	sfc_dbg(sa, "added encap_header=%p", encap_header);
+
 	return 0;
 }
 
@@ -361,6 +384,8 @@ sfc_mae_encap_header_del(struct sfc_adapter *sa,
 	TAILQ_REMOVE(&mae->encap_headers, encap_header, entries);
 	rte_free(encap_header->buf);
 	rte_free(encap_header);
+
+	sfc_dbg(sa, "deleted encap_header=%p", encap_header);
 }
 
 static int
@@ -387,8 +412,11 @@ sfc_mae_encap_header_enable(struct sfc_adapter *sa,
 						encap_header->buf,
 						encap_header->size,
 						&fw_rsrc->eh_id);
-		if (rc != 0)
+		if (rc != 0) {
+			sfc_err(sa, "failed to enable encap_header=%p: %s",
+				encap_header, strerror(rc));
 			return rc;
+		}
 	}
 
 	rc = efx_mae_action_set_fill_in_eh_id(action_set_spec,
@@ -399,7 +427,15 @@ sfc_mae_encap_header_enable(struct sfc_adapter *sa,
 							&fw_rsrc->eh_id);
 			fw_rsrc->eh_id.id = EFX_MAE_RSRC_ID_INVALID;
 		}
+
+		sfc_err(sa, "can't fill in encap. header ID: %s", strerror(rc));
+
 		return rc;
+	}
+
+	if (fw_rsrc->refcnt == 0) {
+		sfc_dbg(sa, "enabled encap_header=%p: EH_ID=0x%08x",
+			encap_header, fw_rsrc->eh_id.id);
 	}
 
 	++(fw_rsrc->refcnt);
@@ -430,7 +466,10 @@ sfc_mae_encap_header_disable(struct sfc_adapter *sa,
 
 	if (fw_rsrc->refcnt == 1) {
 		rc = efx_mae_encap_header_free(sa->nic, &fw_rsrc->eh_id);
-		if (rc != 0) {
+		if (rc == 0) {
+			sfc_dbg(sa, "disabled encap_header=%p with EH_ID=0x%08x",
+				encap_header, fw_rsrc->eh_id.id);
+		} else {
 			sfc_err(sa, "failed to disable encap_header=%p with EH_ID=0x%08x: %s",
 				encap_header, fw_rsrc->eh_id.id, strerror(rc));
 		}
@@ -453,6 +492,7 @@ sfc_mae_action_set_attach(struct sfc_adapter *sa,
 	TAILQ_FOREACH(action_set, &mae->action_sets, entries) {
 		if (action_set->encap_header == encap_header &&
 		    efx_mae_action_set_specs_equal(action_set->spec, spec)) {
+			sfc_dbg(sa, "attaching to action_set=%p", action_set);
 			++(action_set->refcnt);
 			return action_set;
 		}
@@ -486,6 +526,8 @@ sfc_mae_action_set_add(struct sfc_adapter *sa,
 
 	*action_setp = action_set;
 
+	sfc_dbg(sa, "added action_set=%p", action_set);
+
 	return 0;
 }
 
@@ -514,6 +556,8 @@ sfc_mae_action_set_del(struct sfc_adapter *sa,
 	sfc_mae_encap_header_del(sa, action_set->encap_header);
 	TAILQ_REMOVE(&mae->action_sets, action_set, entries);
 	rte_free(action_set);
+
+	sfc_dbg(sa, "deleted action_set=%p", action_set);
 }
 
 static int
@@ -540,8 +584,14 @@ sfc_mae_action_set_enable(struct sfc_adapter *sa,
 		if (rc != 0) {
 			sfc_mae_encap_header_disable(sa, encap_header);
 
+			sfc_err(sa, "failed to enable action_set=%p: %s",
+				action_set, strerror(rc));
+
 			return rc;
 		}
+
+		sfc_dbg(sa, "enabled action_set=%p: AS_ID=0x%08x",
+			action_set, fw_rsrc->aset_id.id);
 	}
 
 	++(fw_rsrc->refcnt);
@@ -567,7 +617,10 @@ sfc_mae_action_set_disable(struct sfc_adapter *sa,
 
 	if (fw_rsrc->refcnt == 1) {
 		rc = efx_mae_action_set_free(sa->nic, &fw_rsrc->aset_id);
-		if (rc != 0) {
+		if (rc == 0) {
+			sfc_dbg(sa, "disabled action_set=%p with AS_ID=0x%08x",
+				action_set, fw_rsrc->aset_id.id);
+		} else {
 			sfc_err(sa, "failed to disable action_set=%p with AS_ID=0x%08x: %s",
 				action_set, fw_rsrc->aset_id.id, strerror(rc));
 		}
@@ -2867,6 +2920,9 @@ sfc_mae_flow_insert(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_action_rule_insert;
 
+	sfc_dbg(sa, "enabled flow=%p: AR_ID=0x%08x",
+		flow, spec_mae->rule_id.id);
+
 	return 0;
 
 fail_action_rule_insert:
@@ -2898,6 +2954,8 @@ sfc_mae_flow_remove(struct sfc_adapter *sa,
 		sfc_err(sa, "failed to disable flow=%p with AR_ID=0x%08x: %s",
 			flow, spec_mae->rule_id.id, strerror(rc));
 	}
+	sfc_dbg(sa, "disabled flow=%p with AR_ID=0x%08x",
+		flow, spec_mae->rule_id.id);
 	spec_mae->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
 
 	sfc_mae_action_set_disable(sa, action_set);

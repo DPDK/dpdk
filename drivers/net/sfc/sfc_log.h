@@ -73,6 +73,14 @@ extern uint32_t sfc_logtype_driver;
 			_sa->priv.logtype_main, __VA_ARGS__);		\
 	} while (0)
 
+#define sfc_dbg(sa, ...) \
+	do {								\
+		const struct sfc_adapter *_sa = (sa);			\
+									\
+		SFC_LOG(_sa->priv.shared, RTE_LOG_DEBUG,		\
+			_sa->priv.logtype_main, __VA_ARGS__);		\
+	} while (0)
+
 #define sfc_log_init(sa, ...) \
 	do {								\
 		const struct sfc_adapter *_sa = (sa);			\
