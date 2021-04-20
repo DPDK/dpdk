@@ -81,6 +81,23 @@ if is_windows
     ] # only supported libraries for windows
 endif
 
+optional_libs = [
+    'kni',
+    'power',
+    'vhost',
+]
+
+disabled_libs = []
+opt_disabled_libs = run_command(list_dir_globs, get_option('disable_libs')).stdout().split()
+foreach l:opt_disabled_libs
+    if not optional_libs.contains(l)
+        warning('Cannot disable mandatory library "@0@"'.format(l))
+        continue
+    endif
+    disabled_libs += l
+endforeach
+
+
 default_cflags = machine_args
 default_cflags += ['-DALLOW_EXPERIMENTAL_API']
 default_cflags += ['-DALLOW_INTERNAL_API']
@@ -114,7 +131,12 @@ foreach l:libraries
         deps += ['eal']
     endif
 
-    subdir(l)
+    if disabled_libs.contains(l)
+        build = false
+        reason = 'explicitly disabled via build config'
+    else
+        subdir(l)
+    endif
     if name != l
         warning('Library name, "@0@", and directory name, "@1@", do not match'.format(name, l))
     endif
