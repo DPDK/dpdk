@@ -9,44 +9,76 @@
 # given as a dep, no need to mention ring. This is especially true for the
 # core libs which are widely reused, so their deps are kept to a minimum.
 libraries = [
-	'kvargs', # eal depends on kvargs
-	'telemetry', # basic info querying
-	'eal', # everything depends on eal
-	'ring',
-	'rcu', # rcu depends on ring
-	'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci', # core
-	'cmdline',
-	'metrics', # bitrate/latency stats depends on this
-	'hash',    # efd depends on this
-	'timer',   # eventdev depends on this
-	'acl', 'bbdev', 'bitratestats', 'cfgfile',
-	'compressdev', 'cryptodev',
-	'distributor', 'efd', 'eventdev',
-	'gro', 'gso', 'ip_frag', 'jobstats',
-	'kni', 'latencystats', 'lpm', 'member',
-	'power', 'pdump', 'rawdev', 'regexdev',
-	'rib', 'reorder', 'sched', 'security', 'stack', 'vhost',
-	# ipsec lib depends on net, crypto and security
-	'ipsec',
-	#fib lib depends on rib
-	'fib',
-	# add pkt framework libs which use other libs from above
-	'port', 'table', 'pipeline',
-	# flow_classify lib depends on pkt framework table lib
-	'flow_classify', 'bpf', 'graph', 'node']
+        'kvargs', # eal depends on kvargs
+        'telemetry', # basic info querying
+        'eal', # everything depends on eal
+        'ring',
+        'rcu', # rcu depends on ring
+        'mempool',
+        'mbuf',
+        'net',
+        'meter',
+        'ethdev',
+        'pci', # core
+        'cmdline',
+        'metrics', # bitrate/latency stats depends on this
+        'hash',    # efd depends on this
+        'timer',   # eventdev depends on this
+        'acl',
+        'bbdev',
+        'bitratestats',
+        'cfgfile',
+        'compressdev',
+        'cryptodev',
+        'distributor',
+        'efd',
+        'eventdev',
+        'gro',
+        'gso',
+        'ip_frag',
+        'jobstats',
+        'kni',
+        'latencystats',
+        'lpm',
+        'member',
+        'power',
+        'pdump',
+        'rawdev',
+        'regexdev',
+        'rib',
+        'reorder',
+        'sched',
+        'security',
+        'stack',
+        'vhost',
+        'ipsec', # ipsec lib depends on net, crypto and security
+        'fib', #fib lib depends on rib
+        'port', # pkt framework libs which use other libs from above
+        'table',
+        'pipeline',
+        'flow_classify', # flow_classify lib depends on pkt framework table lib
+        'bpf',
+        'graph',
+        'node',
+]
 
 if is_windows
-	libraries = [
-		'kvargs',
-		'telemetry',
-		'eal',
-		'ring',
-		'rcu',
-		'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci',
-		'cmdline',
-		'hash',
-		'cfgfile',
-	] # only supported libraries for windows
+    libraries = [
+            'kvargs',
+            'telemetry',
+            'eal',
+            'ring',
+            'rcu',
+            'mempool',
+            'mbuf',
+            'net',
+            'meter',
+            'ethdev',
+            'pci',
+            'cmdline',
+            'hash',
+            'cfgfile',
+    ] # only supported libraries for windows
 endif
 
 default_cflags = machine_args
