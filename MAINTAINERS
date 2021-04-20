@@ -87,6 +87,7 @@ F: devtools/checkpatches.sh
 F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
+F: devtools/update-patches.py
 F: devtools/words-case.txt
 F: license/
 F: .editorconfig
