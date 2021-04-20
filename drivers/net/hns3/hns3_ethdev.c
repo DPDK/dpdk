@@ -7268,11 +7268,11 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 	if (!kvlist)
 		return;
 
-	rte_kvargs_process(kvlist, HNS3_DEVARG_RX_FUNC_HINT,
+	(void)rte_kvargs_process(kvlist, HNS3_DEVARG_RX_FUNC_HINT,
 			   &hns3_parse_io_hint_func, &rx_func_hint);
-	rte_kvargs_process(kvlist, HNS3_DEVARG_TX_FUNC_HINT,
+	(void)rte_kvargs_process(kvlist, HNS3_DEVARG_TX_FUNC_HINT,
 			   &hns3_parse_io_hint_func, &tx_func_hint);
-	rte_kvargs_process(kvlist, HNS3_DEVARG_DEV_CAPS_MASK,
+	(void)rte_kvargs_process(kvlist, HNS3_DEVARG_DEV_CAPS_MASK,
 			   &hns3_parse_dev_caps_mask, &dev_caps_mask);
 	rte_kvargs_free(kvlist);
 
