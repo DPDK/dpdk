@@ -208,9 +208,9 @@ The following is an overview of some key Vhost API functions:
 
 * ``rte_vhost_async_channel_register(vid, queue_id, features, ops)``
 
-  Register a vhost queue with async copy device channel.
-  Following device ``features`` must be specified together with the
-  registration:
+  Register a vhost queue with async copy device channel after vring
+  is enabled. Following device ``features`` must be specified together
+  with the registration:
 
   * ``async_inorder``
 
@@ -244,6 +244,14 @@ The following is an overview of some key Vhost API functions:
 * ``rte_vhost_async_channel_unregister(vid, queue_id)``
 
   Unregister the async copy device channel from a vhost queue.
+  Unregistration will fail, if the vhost queue has in-flight
+  packets that are not completed.
+
+  Unregister async copy devices in vring_state_changed() may
+  fail, as this API tries to acquire the spinlock of vhost
+  queue. The recommended way is to unregister async copy
+  devices for all vhost queues in destroy_device(), when a
+  virtio device is paused or shut down.
 
 * ``rte_vhost_submit_enqueue_burst(vid, queue_id, pkts, count, comp_pkts, comp_count)``
 
