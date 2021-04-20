@@ -274,6 +274,7 @@ mlx5_aso_sq_create(void *ctx, struct mlx5_aso_sq *sq, int socket,
 	sq->tail = 0;
 	sq->sqn = sq->sq_obj.sq->id;
 	sq->uar_addr = mlx5_os_get_devx_uar_reg_addr(uar);
+	rte_spinlock_init(&sq->sqsl);
 	return 0;
 error:
 	mlx5_aso_destroy_sq(sq);
@@ -665,12 +666,15 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_aso_sq *sq,
 	struct mlx5_flow_meter_info *fm = NULL;
 	uint16_t size = 1 << sq->log_desc_n;
 	uint16_t mask = size - 1;
-	uint16_t res = size - (uint16_t)(sq->head - sq->tail);
+	uint16_t res;
 	uint32_t dseg_idx = 0;
 	struct mlx5_aso_mtr_pool *pool = NULL;
 
+	rte_spinlock_lock(&sq->sqsl);
+	res = size - (uint16_t)(sq->head - sq->tail);
 	if (unlikely(!res)) {
 		DRV_LOG(ERR, "Fail: SQ is full and no free WQE to send");
+		rte_spinlock_unlock(&sq->sqsl);
 		return 0;
 	}
 	wqe = &sq->sq_obj.aso_wqes[sq->head & mask];
@@ -707,6 +711,7 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_aso_sq *sq,
 	rte_wmb();
 	*sq->uar_addr = *(volatile uint64_t *)wqe; /* Assume 64 bit ARCH. */
 	rte_wmb();
+	rte_spinlock_unlock(&sq->sqsl);
 	return 1;
 }
 
@@ -737,12 +742,16 @@ mlx5_aso_mtr_completion_handle(struct mlx5_aso_sq *sq)
 	const unsigned int mask = cq_size - 1;
 	uint32_t idx;
 	uint32_t next_idx = cq->cq_ci & mask;
-	const uint16_t max = (uint16_t)(sq->head - sq->tail);
+	uint16_t max;
 	uint16_t n = 0;
 	int ret;
 
-	if (unlikely(!max))
+	rte_spinlock_lock(&sq->sqsl);
+	max = (uint16_t)(sq->head - sq->tail);
+	if (unlikely(!max)) {
+		rte_spinlock_unlock(&sq->sqsl);
 		return;
+	}
 	do {
 		idx = next_idx;
 		next_idx = (cq->cq_ci + 1) & mask;
@@ -769,6 +778,7 @@ mlx5_aso_mtr_completion_handle(struct mlx5_aso_sq *sq)
 		rte_io_wmb();
 		cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
 	}
+	rte_spinlock_unlock(&sq->sqsl);
 }
 
 /**
