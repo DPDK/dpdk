@@ -106,7 +106,6 @@
 #define HNS3_RXD_L3L4P_B			11
 
 #define HNS3_RXD_TS_VLD_B			14
-#define HNS3_RXD_LKBK_B				15
 #define HNS3_RXD_GRO_SIZE_S			16
 #define HNS3_RXD_GRO_SIZE_M			(0x3fff << HNS3_RXD_GRO_SIZE_S)
 
