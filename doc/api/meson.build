@@ -23,12 +23,12 @@ htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
 # false it would be impossible to install the docs.
 # So use a configure option for now.
 example = custom_target('examples.dox',
-	output: 'examples.dox',
-	command: [generate_examples, join_paths(meson.source_root(), 'examples'), '@OUTPUT@'],
-	depfile: 'examples.dox.d',
-	install: get_option('enable_docs'),
-	install_dir: htmldir,
-	build_by_default: get_option('enable_docs'))
+        output: 'examples.dox',
+        command: [generate_examples, join_paths(meson.source_root(), 'examples'), '@OUTPUT@'],
+        depfile: 'examples.dox.d',
+        install: get_option('enable_docs'),
+        install_dir: htmldir,
+        build_by_default: get_option('enable_docs'))
 
 cdata = configuration_data()
 cdata.set('VERSION', meson.project_version())
@@ -39,23 +39,23 @@ cdata.set('TOPDIR', meson.source_root())
 cdata.set('STRIP_FROM_PATH', meson.source_root())
 cdata.set('WARN_AS_ERROR', 'NO')
 if get_option('werror')
-	cdata.set('WARN_AS_ERROR', 'YES')
+    cdata.set('WARN_AS_ERROR', 'YES')
 endif
 
 doxy_conf = configure_file(input: 'doxy-api.conf.in',
-	output: 'doxy-api.conf',
-	configuration: cdata)
+        output: 'doxy-api.conf',
+        configuration: cdata)
 
 doxy_build = custom_target('doxygen',
-	depends: example,
-	depend_files: 'doxy-api-index.md',
-	input: doxy_conf,
-	output: 'html',
-	depfile: 'html.d',
-	command: [generate_doxygen, '@INPUT@', '@OUTPUT@', generate_css],
-	install: get_option('enable_docs'),
-	install_dir: htmldir,
-	build_by_default: get_option('enable_docs'))
+        depends: example,
+        depend_files: 'doxy-api-index.md',
+        input: doxy_conf,
+        output: 'html',
+        depfile: 'html.d',
+        command: [generate_doxygen, '@INPUT@', '@OUTPUT@', generate_css],
+        install: get_option('enable_docs'),
+        install_dir: htmldir,
+        build_by_default: get_option('enable_docs'))
 
 doc_targets += doxy_build
 doc_target_names += 'Doxygen_API'
