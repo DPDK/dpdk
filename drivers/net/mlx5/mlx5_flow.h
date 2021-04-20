@@ -54,6 +54,8 @@ struct mlx5_rte_flow_item_tag {
 /* Modify selected register. */
 struct mlx5_rte_flow_action_set_tag {
 	enum modify_reg id;
+	uint8_t offset;
+	uint8_t length;
 	uint32_t data;
 };
 

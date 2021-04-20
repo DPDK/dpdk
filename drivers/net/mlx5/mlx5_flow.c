@@ -4258,9 +4258,11 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	rte_memcpy(actions_rx, actions, sizeof(struct rte_flow_action));
 	actions_rx++;
 	set_tag = (void *)actions_rx;
-	set_tag->id = mlx5_flow_get_reg_id(dev, MLX5_HAIRPIN_RX, 0, NULL);
+	*set_tag = (struct mlx5_rte_flow_action_set_tag) {
+		.id = mlx5_flow_get_reg_id(dev, MLX5_HAIRPIN_RX, 0, NULL),
+		.data = flow_id,
+	};
 	MLX5_ASSERT(set_tag->id > REG_NON);
-	set_tag->data = flow_id;
 	tag_action->conf = set_tag;
 	/* Create Tx item list. */
 	rte_memcpy(actions_tx, actions, sizeof(struct rte_flow_action));
@@ -4496,6 +4498,14 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	set_tag = (struct mlx5_rte_flow_action_set_tag *)actions_pre;
 	tag_item_spec = (struct mlx5_rte_flow_item_tag *)sfx_items;
 	tag_item_mask = tag_item_spec + 1;
+	/* Both flow_id and meter_id share the same register. */
+	*set_tag = (struct mlx5_rte_flow_action_set_tag) {
+		.id = (enum modify_reg)mlx5_flow_get_reg_id(dev, MLX5_MTR_ID,
+							    0, error),
+		.offset = mtr_id_offset,
+		.length = mtr_reg_bits,
+		.data = fm->idx,
+	};
 	/*
 	 * The color Reg bits used by flow_id are growing from
 	 * msb to lsb, so must do bit reverse for flow_id val in RegC.
@@ -4503,13 +4513,9 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	for (shift = 0; shift < flow_id_bits; shift++)
 		flow_id_reversed = (flow_id_reversed << 1) |
 			      ((flow_id >> shift) & 0x1);
-	/* Both flow_id and meter_id share the same register. */
-	set_tag->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_ID, 0, error);
-	set_tag->data =
-		(fm->idx | (flow_id_reversed << (mtr_reg_bits - flow_id_bits)))
-		<< mtr_id_offset;
+	set_tag->data |= flow_id_reversed << (mtr_reg_bits - flow_id_bits);
 	tag_item_spec->id = set_tag->id;
-	tag_item_spec->data = set_tag->data;
+	tag_item_spec->data = set_tag->data << mtr_id_offset;
 	tag_item_mask->data = UINT32_MAX << mtr_id_offset;
 	tag_action->type = (enum rte_flow_action_type)
 				MLX5_RTE_FLOW_ACTION_TYPE_TAG;
@@ -4904,10 +4910,12 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 		ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, 0, error);
 		if (ret < 0)
 			return ret;
-		set_tag->id = ret;
 		mlx5_ipool_malloc(priv->sh->ipool
 				  [MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], &tag_id);
-		set_tag->data = tag_id;
+		*set_tag = (struct mlx5_rte_flow_action_set_tag) {
+			.id = ret,
+			.data = tag_id,
+		};
 		/* Prepare the suffix subflow items. */
 		tag_spec = (void *)(sfx_items + SAMPLE_SUFFIX_ITEM);
 		tag_spec->data = tag_id;
