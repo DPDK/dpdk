@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <poll.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <sys/socket.h>
@@ -273,10 +272,8 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	nb_pkts = xsk_ring_cons__peek(rx, nb_pkts, &idx_rx);
 
 	if (nb_pkts == 0) {
-		if (rx_syscall_needed(&rxq->fq, rxq->busy_budget))
-			(void)recvfrom(xsk_socket__fd(rxq->xsk), NULL, 0,
-				MSG_DONTWAIT, NULL, NULL);
-
+		rx_syscall_handler(&rxq->fq, rxq->busy_budget, &rxq->fds[0],
+				   rxq->xsk);
 		return 0;
 	}
 
@@ -346,8 +343,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	if (nb_pkts == 0) {
 #if defined(XDP_USE_NEED_WAKEUP)
 		if (xsk_ring_prod__needs_wakeup(fq))
-			(void)recvfrom(xsk_socket__fd(rxq->xsk), NULL, 0,
-				MSG_DONTWAIT, NULL, NULL);
+			(void)poll(rxq->fds, 1, 1000);
 #endif
 		return 0;
 	}
