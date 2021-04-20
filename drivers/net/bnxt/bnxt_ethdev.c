@@ -4080,9 +4080,6 @@ done:
 
 static void bnxt_cancel_fw_health_check(struct bnxt *bp)
 {
-	if (!bnxt_is_recovery_enabled(bp))
-		return;
-
 	rte_eal_alarm_cancel(bnxt_check_fw_health, (void *)bp);
 	bp->flags &= ~BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED;
 }
