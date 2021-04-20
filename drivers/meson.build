@@ -49,199 +49,193 @@ if cc.has_argument('-Wno-format-truncation')
 endif
 
 foreach subpath:subdirs
-	drivers = []
-	std_deps = []
+    drivers = []
+    std_deps = []
 
-	# subpath can be either "class" or "class/driver"
-	if subpath.contains('/')
-		driver_path = subpath.split('/')
-		class = driver_path[0]
-		drivers += driver_path[1]
-	else
-		class = subpath
-		subdir(class)
-	endif
+    # subpath can be either "class" or "class/driver"
+    if subpath.contains('/')
+        driver_path = subpath.split('/')
+        class = driver_path[0]
+        drivers += driver_path[1]
+    else
+        class = subpath
+        subdir(class)
+    endif
 
-	# save class name on first occurrence
-	if not dpdk_driver_classes.contains(class)
-		dpdk_driver_classes += class
-	endif
-	# get already enabled drivers of the same class
-	enabled_drivers = get_variable(class + '_drivers', [])
+    # save class name on first occurrence
+    if not dpdk_driver_classes.contains(class)
+        dpdk_driver_classes += class
+    endif
+    # get already enabled drivers of the same class
+    enabled_drivers = get_variable(class + '_drivers', [])
 
-	foreach drv:drivers
-		drv_path = join_paths(class, drv)
+    foreach drv:drivers
+        drv_path = join_paths(class, drv)
 
-		# set up empty variables used for build
-		build = true # set to false to disable, e.g. missing deps
-		reason = '<unknown reason>' # set if build == false to explain
-		name = drv
-		sources = []
-		headers = []
-		objs = []
-		cflags = default_cflags
-		includes = [include_directories(drv_path)]
-		# set up internal deps. Drivers can append/override as necessary
-		deps = std_deps
-		# ext_deps: Stores external library dependency got
-		# using dependency() (preferred) or find_library().
-		# For the find_library() case (but not with dependency()) we also
-		# need to specify the "-l" flags in pkgconfig_extra_libs variable
-		# too, so that it can be reflected in the pkgconfig output for
-		# static builds.
-		ext_deps = []
-		pkgconfig_extra_libs = []
+        # set up empty variables used for build
+        build = true # set to false to disable, e.g. missing deps
+        reason = '<unknown reason>' # set if build == false to explain
+        name = drv
+        sources = []
+        headers = []
+        objs = []
+        cflags = default_cflags
+        includes = [include_directories(drv_path)]
+        # set up internal deps. Drivers can append/override as necessary
+        deps = std_deps
+        # ext_deps: Stores external library dependency got
+        # using dependency() (preferred) or find_library().
+        # For the find_library() case (but not with dependency()) we also
+        # need to specify the "-l" flags in pkgconfig_extra_libs variable
+        # too, so that it can be reflected in the pkgconfig output for
+        # static builds.
+        ext_deps = []
+        pkgconfig_extra_libs = []
 
-		if not enable_drivers.contains(drv_path)
-			build = false
-			reason = 'not in enabled drivers build config'
-		elif disable_drivers.contains(drv_path)
-			if always_enable.contains(drv_path)
-				message('Driver @0@ cannot be disabled, not disabling.'.format(drv_path))
-			else
-				build = false
-				reason = 'explicitly disabled via build config'
-			endif
-		else
-			# pull in driver directory which should update all the local variables
-			subdir(drv_path)
-		endif
+        if not enable_drivers.contains(drv_path)
+            build = false
+            reason = 'not in enabled drivers build config'
+        elif disable_drivers.contains(drv_path)
+            if always_enable.contains(drv_path)
+                message('Driver @0@ cannot be disabled, not disabling.'.format(drv_path))
+            else
+                build = false
+                reason = 'explicitly disabled via build config'
+            endif
+        else
+            # pull in driver directory which should update all the local variables
+            subdir(drv_path)
+        endif
 
-		if build
-			# get dependency objs from strings
-			shared_deps = ext_deps
-			static_deps = ext_deps
-			foreach d:deps
-				if not is_variable('shared_rte_' + d)
-					build = false
-					reason = 'missing internal dependency, "@0@"'.format(d)
-					message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
-							.format(d, name, 'drivers/' + drv_path))
-				else
-					shared_deps += [get_variable('shared_rte_' + d)]
-					static_deps += [get_variable('static_rte_' + d)]
-				endif
-			endforeach
-		endif
+        if build
+            # get dependency objs from strings
+            shared_deps = ext_deps
+            static_deps = ext_deps
+            foreach d:deps
+                if not is_variable('shared_rte_' + d)
+                    build = false
+                    reason = 'missing internal dependency, "@0@"'.format(d)
+                    message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
+                            .format(d, name, 'drivers/' + drv_path))
+                else
+                    shared_deps += [get_variable('shared_rte_' + d)]
+                    static_deps += [get_variable('static_rte_' + d)]
+                endif
+            endforeach
+        endif
 
-		if not build
-			# some driver directories are placeholders which
-			# are never built, so we allow suppression of the
-			# component disable printout in those cases
-			if reason != ''
-				dpdk_drvs_disabled += drv_path
-				set_variable(drv_path.underscorify() +
-						'_disable_reason', reason)
-			endif
-		else
-			enabled_drivers += name
-			lib_name = '_'.join(['rte', class, name])
-			dpdk_conf.set(lib_name.to_upper(), 1)
+        if not build
+            # some driver directories are placeholders which
+            # are never built, so we allow suppression of the
+            # component disable printout in those cases
+            if reason != ''
+                dpdk_drvs_disabled += drv_path
+                set_variable(drv_path.underscorify() + '_disable_reason', reason)
+            endif
+            continue
+        endif
 
-			dpdk_extra_ldflags += pkgconfig_extra_libs
+        enabled_drivers += name
+        lib_name = '_'.join(['rte', class, name])
+        dpdk_conf.set(lib_name.to_upper(), 1)
 
-			install_headers(headers)
+        dpdk_extra_ldflags += pkgconfig_extra_libs
 
-			# generate pmdinfo sources by building a temporary
-			# lib and then running pmdinfogen on the contents of
-			# that lib. The final lib reuses the object files and
-			# adds in the new source file.
-			out_filename = lib_name + '.pmd.c'
-			tmp_lib = static_library('tmp_' + lib_name,
-					sources,
-					include_directories: includes,
-					dependencies: static_deps,
-					c_args: cflags)
-			objs += tmp_lib.extract_all_objects()
-			sources = custom_target(out_filename,
-					command: [pmdinfo, tmp_lib.full_path(),
-						'@OUTPUT@', pmdinfogen],
-					output: out_filename,
-					depends: [tmp_lib])
+        install_headers(headers)
 
-			# now build the static driver
-			static_lib = static_library(lib_name,
-				sources,
-				objects: objs,
-				include_directories: includes,
-				dependencies: static_deps,
-				c_args: cflags,
-				install: true)
+        # generate pmdinfo sources by building a temporary
+        # lib and then running pmdinfogen on the contents of
+        # that lib. The final lib reuses the object files and
+        # adds in the new source file.
+        out_filename = lib_name + '.pmd.c'
+        tmp_lib = static_library('tmp_' + lib_name, sources,
+                include_directories: includes,
+                dependencies: static_deps,
+                c_args: cflags)
+        objs += tmp_lib.extract_all_objects()
+        sources = custom_target(out_filename,
+                command: [pmdinfo, tmp_lib.full_path(), '@OUTPUT@', pmdinfogen],
+                output: out_filename,
+                depends: [tmp_lib])
 
-			# now build the shared driver
-			version_map = '@0@/@1@/version.map'.format(
-					meson.current_source_dir(),
-					drv_path)
-			implib = 'lib' + lib_name + '.dll.a'
+        # now build the static driver
+        static_lib = static_library(lib_name,
+                sources,
+                objects: objs,
+                include_directories: includes,
+                dependencies: static_deps,
+                c_args: cflags,
+                install: true)
 
-			def_file = custom_target(lib_name + '_def',
-				command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-				input: version_map,
-				output: '@0@_exports.def'.format(lib_name))
+        # now build the shared driver
+        version_map = '@0@/@1@/version.map'.format(meson.current_source_dir(), drv_path)
+        implib = 'lib' + lib_name + '.dll.a'
 
-			mingw_map = custom_target(lib_name + '_mingw',
-				command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-				input: version_map,
-				output: '@0@_mingw.map'.format(lib_name))
+        def_file = custom_target(lib_name + '_def',
+                command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+                input: version_map,
+                output: '@0@_exports.def'.format(lib_name))
 
-			lk_deps = [version_map, def_file, mingw_map]
-			if is_windows
-				if is_ms_linker
-					lk_args = ['-Wl,/def:' + def_file.full_path()]
-					if meson.version().version_compare('<0.54.0')
-						lk_args += ['-Wl,/implib:drivers\\' + implib]
-					endif
-				else
-					lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
-				endif
-			else
-				lk_args = ['-Wl,--version-script=' + version_map]
-				if developer_mode
-					# on unix systems check the output of the
-					# check-symbols.sh script, using it as a
-					# dependency of the .so build
-					lk_deps += custom_target(lib_name + '.sym_chk',
-						command: [check_symbols,
-							version_map, '@INPUT@'],
-						capture: true,
-						input: static_lib,
-						output: lib_name + '.sym_chk')
-				endif
-			endif
+        mingw_map = custom_target(lib_name + '_mingw',
+                command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+                input: version_map,
+                output: '@0@_mingw.map'.format(lib_name))
 
-			shared_lib = shared_library(lib_name,
-				sources,
-				objects: objs,
-				include_directories: includes,
-				dependencies: shared_deps,
-				c_args: cflags,
-				link_args: lk_args,
-				link_depends: lk_deps,
-				version: abi_version,
-				soversion: so_version,
-				install: true,
-				install_dir: driver_install_path)
+        lk_deps = [version_map, def_file, mingw_map]
+        if is_windows
+            if is_ms_linker
+                lk_args = ['-Wl,/def:' + def_file.full_path()]
+                if meson.version().version_compare('<0.54.0')
+                    lk_args += ['-Wl,/implib:drivers\\' + implib]
+                endif
+            else
+                lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
+            endif
+        else
+            lk_args = ['-Wl,--version-script=' + version_map]
+            if developer_mode
+                # on unix systems check the output of the
+                # check-symbols.sh script, using it as a
+                # dependency of the .so build
+                lk_deps += custom_target(lib_name + '.sym_chk',
+                        command: [check_symbols, version_map, '@INPUT@'],
+                        capture: true,
+                        input: static_lib,
+                        output: lib_name + '.sym_chk')
+            endif
+        endif
 
-			# create a dependency object and add it to the global dictionary so
-			# testpmd or other built-in apps can find it if necessary
-			shared_dep = declare_dependency(link_with: shared_lib,
-					include_directories: includes,
-					dependencies: shared_deps)
-			static_dep = declare_dependency(
-					include_directories: includes,
-					dependencies: static_deps)
+        shared_lib = shared_library(lib_name, sources,
+                objects: objs,
+                include_directories: includes,
+                dependencies: shared_deps,
+                c_args: cflags,
+                link_args: lk_args,
+                link_depends: lk_deps,
+                version: abi_version,
+                soversion: so_version,
+                install: true,
+                install_dir: driver_install_path)
 
-			dpdk_drivers += static_lib
+        # create a dependency object and add it to the global dictionary so
+        # testpmd or other built-in apps can find it if necessary
+        shared_dep = declare_dependency(link_with: shared_lib,
+                include_directories: includes,
+                dependencies: shared_deps)
+        static_dep = declare_dependency(
+                include_directories: includes,
+                dependencies: static_deps)
 
-			set_variable('shared_@0@'.format(lib_name), shared_dep)
-			set_variable('static_@0@'.format(lib_name), static_dep)
-			dependency_name = ''.join(lib_name.split('rte_'))
-			if developer_mode
-				message('drivers/@0@: Defining dependency "@1@"'.format(
-						drv_path, dependency_name))
-			endif
-		endif # build
-	endforeach
+        dpdk_drivers += static_lib
 
-	set_variable(class + '_drivers', enabled_drivers)
+        set_variable('shared_@0@'.format(lib_name), shared_dep)
+        set_variable('static_@0@'.format(lib_name), static_dep)
+        dependency_name = ''.join(lib_name.split('rte_'))
+        if developer_mode
+            message('drivers/@0@: Defining dependency "@1@"'.format(
+                    drv_path, dependency_name))
+        endif
+    endforeach
+
+    set_variable(class + '_drivers', enabled_drivers)
 endforeach
