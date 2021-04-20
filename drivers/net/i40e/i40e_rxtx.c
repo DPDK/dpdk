@@ -1481,6 +1481,43 @@ i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 /*********************************************************************
  *
+ *  TX simple prep functions
+ *
+ **********************************************************************/
+uint16_t
+i40e_simple_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+		      uint16_t nb_pkts)
+{
+	int i;
+	uint64_t ol_flags;
+	struct rte_mbuf *m;
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+
+		if (m->nb_segs != 1) {
+			rte_errno = EINVAL;
+			return i;
+		}
+
+		if (ol_flags & PKT_TX_OFFLOAD_MASK) {
+			rte_errno = ENOTSUP;
+			return i;
+		}
+
+		/* check the size of packet */
+		if (m->pkt_len < I40E_TX_MIN_PKT_LEN ||
+		    m->pkt_len > I40E_FRAME_SIZE_MAX) {
+			rte_errno = EINVAL;
+			return i;
+		}
+	}
+	return i;
+}
+
+/*********************************************************************
+ *
  *  TX prep functions
  *
  **********************************************************************/
@@ -3412,7 +3449,7 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 			PMD_INIT_LOG(DEBUG, "Simple tx finally be used.");
 			dev->tx_pkt_burst = i40e_xmit_pkts_simple;
 		}
-		dev->tx_pkt_prepare = NULL;
+		dev->tx_pkt_prepare = i40e_simple_prep_pkts;
 	} else {
 		PMD_INIT_LOG(DEBUG, "Xmit tx finally be used.");
 		dev->tx_pkt_burst = i40e_xmit_pkts;

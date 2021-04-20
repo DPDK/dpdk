@@ -208,6 +208,8 @@ uint16_t i40e_recv_scattered_pkts(void *rx_queue,
 uint16_t i40e_xmit_pkts(void *tx_queue,
 			struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
+uint16_t i40e_simple_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			       uint16_t nb_pkts);
 uint16_t i40e_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 int i40e_tx_queue_init(struct i40e_tx_queue *txq);
