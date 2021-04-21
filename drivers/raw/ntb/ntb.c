@@ -1080,6 +1080,10 @@ ntb_attr_set(struct rte_rawdev *dev, const char *attr_name,
 		if (hw->ntb_ops->spad_write == NULL)
 			return -ENOTSUP;
 		index = atoi(&attr_name[NTB_SPAD_USER_LEN]);
+		if (index < 0 || index >= NTB_SPAD_USER_MAX_NUM) {
+			NTB_LOG(ERR, "Invalid attribute (%s)", attr_name);
+			return -EINVAL;
+		}
 		(*hw->ntb_ops->spad_write)(dev, hw->spad_user_list[index],
 					   1, attr_value);
 		NTB_LOG(DEBUG, "Set attribute (%s) Value (%" PRIu64 ")",
@@ -1174,6 +1178,10 @@ ntb_attr_get(struct rte_rawdev *dev, const char *attr_name,
 		if (hw->ntb_ops->spad_read == NULL)
 			return -ENOTSUP;
 		index = atoi(&attr_name[NTB_SPAD_USER_LEN]);
+		if (index < 0 || index >= NTB_SPAD_USER_MAX_NUM) {
+			NTB_LOG(ERR, "Attribute (%s) out of range", attr_name);
+			return -EINVAL;
+		}
 		*attr_value = (*hw->ntb_ops->spad_read)(dev,
 				hw->spad_user_list[index], 0);
 		NTB_LOG(DEBUG, "Attribute (%s) Value (%" PRIu64 ")",
