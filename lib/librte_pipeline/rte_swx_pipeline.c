@@ -3624,7 +3624,7 @@ instr_mov_translate(struct rte_swx_pipeline *p,
 	char *dst = tokens[1], *src = tokens[2];
 	struct field *fdst, *fsrc;
 	uint64_t src_val;
-	uint32_t dst_struct_id, src_struct_id;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
 
 	CHECK(n_tokens == 3, EINVAL);
 
@@ -3889,7 +3889,7 @@ instr_alu_add_translate(struct rte_swx_pipeline *p,
 	char *dst = tokens[1], *src = tokens[2];
 	struct field *fdst, *fsrc;
 	uint64_t src_val;
-	uint32_t dst_struct_id, src_struct_id;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
 
 	CHECK(n_tokens == 3, EINVAL);
 
@@ -3942,7 +3942,7 @@ instr_alu_sub_translate(struct rte_swx_pipeline *p,
 	char *dst = tokens[1], *src = tokens[2];
 	struct field *fdst, *fsrc;
 	uint64_t src_val;
-	uint32_t dst_struct_id, src_struct_id;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
 
 	CHECK(n_tokens == 3, EINVAL);
 
@@ -4072,7 +4072,7 @@ instr_alu_shl_translate(struct rte_swx_pipeline *p,
 	char *dst = tokens[1], *src = tokens[2];
 	struct field *fdst, *fsrc;
 	uint64_t src_val;
-	uint32_t dst_struct_id, src_struct_id;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
 
 	CHECK(n_tokens == 3, EINVAL);
 
@@ -4125,7 +4125,7 @@ instr_alu_shr_translate(struct rte_swx_pipeline *p,
 	char *dst = tokens[1], *src = tokens[2];
 	struct field *fdst, *fsrc;
 	uint64_t src_val;
-	uint32_t dst_struct_id, src_struct_id;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
 
 	CHECK(n_tokens == 3, EINVAL);
 
@@ -4178,7 +4178,7 @@ instr_alu_and_translate(struct rte_swx_pipeline *p,
 	char *dst = tokens[1], *src = tokens[2];
 	struct field *fdst, *fsrc;
 	uint64_t src_val;
-	uint32_t dst_struct_id, src_struct_id;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
 
 	CHECK(n_tokens == 3, EINVAL);
 
@@ -4231,7 +4231,7 @@ instr_alu_or_translate(struct rte_swx_pipeline *p,
 	char *dst = tokens[1], *src = tokens[2];
 	struct field *fdst, *fsrc;
 	uint64_t src_val;
-	uint32_t dst_struct_id, src_struct_id;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
 
 	CHECK(n_tokens == 3, EINVAL);
 
@@ -4284,7 +4284,7 @@ instr_alu_xor_translate(struct rte_swx_pipeline *p,
 	char *dst = tokens[1], *src = tokens[2];
 	struct field *fdst, *fsrc;
 	uint64_t src_val;
-	uint32_t dst_struct_id, src_struct_id;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
 
 	CHECK(n_tokens == 3, EINVAL);
 
