@@ -1607,8 +1607,10 @@ i40e_flow_set_fdir_inset(struct i40e_pf *pf,
 
 	/* Check if the configuration is conflicted */
 	if (pf->fdir.inset_flag[pctype] &&
-	    memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t)))
-		return -1;
+	    memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t))) {
+		PMD_DRV_LOG(ERR, "Conflict with the first rule's input set.");
+		return -EINVAL;
+	}
 
 	if (pf->fdir.inset_flag[pctype] &&
 	    !memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t)))
@@ -1616,8 +1618,10 @@ i40e_flow_set_fdir_inset(struct i40e_pf *pf,
 
 	num = i40e_generate_inset_mask_reg(hw, input_set, mask_reg,
 						 I40E_INSET_MASK_NUM_REG);
-	if (num < 0)
+	if (num < 0) {
+		PMD_DRV_LOG(ERR, "Invalid pattern mask.");
 		return -EINVAL;
+	}
 
 	if (pf->support_multi_driver) {
 		for (i = 0; i < num; i++)
@@ -1762,18 +1766,15 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	i40e_fdir_filter_convert(filter, &check_filter);
 
 	if (add) {
-		if (filter->input.flow_ext.is_flex_flow) {
+		/* configure the input set for common PCTYPEs*/
+		if (!filter->input.flow_ext.customized_pctype) {
 			ret = i40e_flow_set_fdir_inset(pf, pctype,
 					filter->input.flow_ext.input_set);
-			if (ret == -1) {
-				PMD_DRV_LOG(ERR, "Conflict with the"
-					    " first rule's input set.");
-				return -EINVAL;
-			} else if (ret == -EINVAL) {
-				PMD_DRV_LOG(ERR, "Invalid pattern mask.");
-				return -EINVAL;
-			}
+			if (ret < 0)
+				return ret;
+		}
 
+		if (filter->input.flow_ext.is_flex_flow) {
 			for (i = 0; i < filter->input.flow_ext.raw_id; i++) {
 				layer_idx = filter->input.flow_ext.layer_idx;
 				field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + i;
