@@ -3207,7 +3207,7 @@ run_test(const struct bpf_test *tst)
 			printf("%s@%d: check_result(%s) failed, "
 				"error: %d(%s);\n",
 				__func__, __LINE__, tst->name,
-				rv, strerror(ret));
+				rv, strerror(rv));
 		}
 	}
 
