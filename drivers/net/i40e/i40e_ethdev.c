@@ -849,6 +849,8 @@ floating_veb_list_handler(__rte_unused const char *key,
 		idx = strtoul(floating_veb_value, &end, 10);
 		if (errno || end == NULL)
 			return -1;
+		if (idx < 0)
+			return -1;
 		while (isblank(*end))
 			end++;
 		if (*end == '-') {
