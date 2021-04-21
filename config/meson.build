@@ -180,13 +180,14 @@ endif
 
 # check for pcap
 pcap_dep = dependency('libpcap', required: false, method: 'pkg-config')
+pcap_lib = is_windows ? 'wpcap' : 'pcap'
 if not pcap_dep.found()
     # pcap got a pkg-config file only in 1.9.0
-    pcap_dep = cc.find_library('pcap', required: false)
+    pcap_dep = cc.find_library(pcap_lib, required: false)
 endif
 if pcap_dep.found() and cc.has_header('pcap.h', dependencies: pcap_dep)
     dpdk_conf.set('RTE_PORT_PCAP', 1)
-    dpdk_extra_ldflags += '-lpcap'
+    dpdk_extra_ldflags += '-l@0@'.format(pcap_lib)
 endif
 
 # for clang 32-bit compiles we need libatomic for 64-bit atomic ops

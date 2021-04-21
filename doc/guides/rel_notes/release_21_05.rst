@@ -177,6 +177,10 @@ New Features
 
 * **Enabled vmxnet3 PMD on Windows.**
 
+* **Enabled libpcap-based PMD on Windows.**
+
+   A libpcap distribution, such as Npcap or WinPcap, is required to run the PMD.
+
 * **Updated the AF_XDP driver.**
 
   * Added support for preferred busy polling.
