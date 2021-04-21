@@ -420,8 +420,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	err = mlx5_dev_check_sibling_config(priv, config);
 	if (err)
 		goto error;
-	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
-		(config->hw_csum ? "" : "not "));
 	DRV_LOG(DEBUG, "counters are not supported");
 	config->ind_table_max_size =
 		sh->device_attr.max_rwq_indirection_table_size;
@@ -464,6 +462,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			sh->cmng.relaxed_ordering_read =
 				config->hca_attr.relaxed_ordering_read;
 		}
+		config->hw_csum = config->hca_attr.csum_cap;
+		DRV_LOG(DEBUG, "checksum offloading is %ssupported",
+		    (config->hw_csum ? "" : "not "));
 	}
 	if (config->devx) {
 		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
