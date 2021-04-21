@@ -528,7 +528,6 @@ pcmd_mtu_callback(void *ptr_params,
 		printf("Error: Invalid port number %i\n", params->port);
 		return;
 	}
-	new_mtu = atoi(params->opt);
 	new_mtu = strtoul(params->opt, &ptr_parse_end, 10);
 	if (*ptr_parse_end != '\0' ||
 			new_mtu < RTE_ETHER_MIN_MTU ||
