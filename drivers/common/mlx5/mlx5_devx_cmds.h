@@ -102,6 +102,7 @@ struct mlx5_hca_attr {
 	uint32_t eth_net_offloads:1;
 	uint32_t eth_virt:1;
 	uint32_t wqe_vlan_insert:1;
+	uint32_t csum_cap:1;
 	uint32_t wqe_inline_mode:2;
 	uint32_t vport_inline_mode:3;
 	uint32_t tunnel_stateless_geneve_rx:1;

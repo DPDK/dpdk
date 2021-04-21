@@ -946,6 +946,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
 	attr->wqe_vlan_insert = MLX5_GET(per_protocol_networking_offload_caps,
 					 hcattr, wqe_vlan_insert);
+	attr->csum_cap = MLX5_GET(per_protocol_networking_offload_caps,
+					 hcattr, csum_cap);
 	attr->lro_cap = MLX5_GET(per_protocol_networking_offload_caps, hcattr,
 				 lro_cap);
 	attr->tunnel_lro_gre = MLX5_GET(per_protocol_networking_offload_caps,
