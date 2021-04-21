@@ -20,7 +20,9 @@
 
 #define strdup(str) _strdup(str)
 #define strtok_r(str, delim, saveptr) strtok_s(str, delim, saveptr)
+#ifndef RTE_TOOLCHAIN_GCC
 #define strncasecmp(s1, s2, count) _strnicmp(s1, s2, count)
+#endif
 
 #define open(path, flags, ...) _open(path, flags, ##__VA_ARGS__)
 #define read(fd, buf, n) _read(fd, buf, n)
