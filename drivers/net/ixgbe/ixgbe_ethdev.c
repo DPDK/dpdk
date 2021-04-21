@@ -3808,9 +3808,11 @@ ixgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 
 	etrack_id = (eeprom_verh << 16) | eeprom_verl;
 	ret = snprintf(fw_version, fw_size, "0x%08x", etrack_id);
+	if (ret < 0)
+		return -EINVAL;
 
 	ret += 1; /* add the size of '\0' */
-	if (fw_size < (u32)ret)
+	if (fw_size < (size_t)ret)
 		return ret;
 	else
 		return 0;

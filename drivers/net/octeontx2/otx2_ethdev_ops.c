@@ -453,7 +453,7 @@ otx2_nix_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
 	rc = strlcpy(fw_version, (char *)dev->mkex_pfl_name, rc);
 
 	rc += 1; /* Add the size of '\0' */
-	if (fw_size < (uint32_t)rc)
+	if (fw_size < (size_t)rc)
 		return rc;
 
 	return 0;

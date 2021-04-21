@@ -237,9 +237,6 @@ qede_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size)
 	static char ver_str[QEDE_PMD_DRV_VER_STR_SIZE];
 	size_t size;
 
-	if (fw_ver == NULL)
-		return 0;
-
 	if (IS_PF(edev))
 		snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%s",
 			 QEDE_PMD_FW_VERSION);

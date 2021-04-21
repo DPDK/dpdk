@@ -4579,10 +4579,12 @@ ice_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 			hw->flash.nvm.minor,
 			hw->flash.nvm.eetrack,
 			ver, build, patch);
+	if (ret < 0)
+		return -EINVAL;
 
 	/* add the size of '\0' */
 	ret += 1;
-	if (fw_size < (u32)ret)
+	if (fw_size < (size_t)ret)
 		return ret;
 	else
 		return 0;

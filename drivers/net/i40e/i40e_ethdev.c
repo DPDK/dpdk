@@ -3743,9 +3743,11 @@ i40e_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 		 ((hw->nvm.version >> 4) & 0xff),
 		 (hw->nvm.version & 0xf), hw->nvm.eetrack,
 		 ver, build, patch);
+	if (ret < 0)
+		return -EINVAL;
 
 	ret += 1; /* add the size of '\0' */
-	if (fw_size < (u32)ret)
+	if (fw_size < (size_t)ret)
 		return ret;
 	else
 		return 0;

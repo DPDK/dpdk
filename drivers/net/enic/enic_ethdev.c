@@ -1061,16 +1061,21 @@ static int enicpmd_dev_fw_version_get(struct rte_eth_dev *eth_dev,
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
-	if (fw_version == NULL || fw_size <= 0)
-		return -EINVAL;
+
 	enic = pmd_priv(eth_dev);
 	ret = vnic_dev_fw_info(enic->vdev, &info);
 	if (ret)
 		return ret;
-	snprintf(fw_version, fw_size, "%s %s",
+	ret = snprintf(fw_version, fw_size, "%s %s",
 		 info->fw_version, info->fw_build);
-	fw_version[fw_size - 1] = '\0';
-	return 0;
+	if (ret < 0)
+		return -EINVAL;
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (size_t)ret)
+		return ret;
+	else
+		return 0;
 }
 
 static const struct eth_dev_ops enicpmd_eth_dev_ops = {

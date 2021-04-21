@@ -218,15 +218,18 @@ ionic_dev_fw_version_get(struct rte_eth_dev *eth_dev,
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
 	struct ionic_adapter *adapter = lif->adapter;
+	int ret;
 
-	if (fw_version == NULL || fw_size <= 0)
+	ret = snprintf(fw_version, fw_size, "%s",
+		 adapter->fw_version);
+	if (ret < 0)
 		return -EINVAL;
 
-	snprintf(fw_version, fw_size, "%s",
-		 adapter->fw_version);
-	fw_version[fw_size - 1] = '\0';
-
-	return 0;
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (size_t)ret)
+		return ret;
+	else
+		return 0;
 }
 
 /*

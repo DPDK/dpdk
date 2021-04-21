@@ -2763,9 +2763,11 @@ bnxt_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 
 	ret = snprintf(fw_version, fw_size, "%d.%d.%d.%d",
 			fw_major, fw_minor, fw_updt, fw_rsvd);
+	if (ret < 0)
+		return -EINVAL;
 
 	ret += 1; /* add the size of '\0' */
-	if (fw_size < (uint32_t)ret)
+	if (fw_size < (size_t)ret)
 		return ret;
 	else
 		return 0;
