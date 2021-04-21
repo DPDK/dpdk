@@ -982,7 +982,8 @@ err_secondary:
 	}
 	if (devx_port.comp_mask & MLX5DV_DEVX_PORT_VPORT) {
 		priv->vport_id = devx_port.vport_num;
-	} else if (spawn->pf_bond >= 0) {
+	} else if (spawn->pf_bond >= 0 &&
+		   (switch_info->representor || switch_info->master)) {
 		DRV_LOG(ERR, "can't deduce vport index for port %d"
 			     " on bonding device %s",
 			     spawn->phys_port,
