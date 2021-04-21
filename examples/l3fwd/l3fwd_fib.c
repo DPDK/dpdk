@@ -179,8 +179,6 @@ fib_main_loop(__rte_unused void *dummy)
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 			US_PER_S * BURST_TX_DRAIN_US;
 
-	prev_tsc = 0;
-
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_conf[lcore_id];
 
@@ -200,9 +198,10 @@ fib_main_loop(__rte_unused void *dummy)
 				lcore_id, portid, queueid);
 	}
 
-	while (!force_quit) {
+	cur_tsc = rte_rdtsc();
+	prev_tsc = cur_tsc;
 
-		cur_tsc = rte_rdtsc();
+	while (!force_quit) {
 
 		/* TX burst queue drain. */
 		diff_tsc = cur_tsc - prev_tsc;
@@ -233,6 +232,8 @@ fib_main_loop(__rte_unused void *dummy)
 			/* Use fib to lookup port IDs and transmit them. */
 			fib_send_packets(nb_rx, pkts_burst,	portid, qconf);
 		}
+
+		cur_tsc = rte_rdtsc();
 	}
 
 	return 0;
