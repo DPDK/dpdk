@@ -2711,6 +2711,7 @@ int rte_eth_allmulticast_get(uint16_t port_id);
  *   - (0) if successful.
  *   - (-ENOTSUP) if the function is not supported in PMD driver.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
 
@@ -2726,6 +2727,7 @@ int rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
  *   - (0) if successful.
  *   - (-ENOTSUP) if the function is not supported in PMD driver.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link);
 
@@ -2761,7 +2763,7 @@ const char *rte_eth_link_speed_to_str(uint32_t link_speed);
  * @param eth_link
  *   Link status returned by rte_eth_link_get function
  * @return
- *   Number of bytes written to str array.
+ *   Number of bytes written to str array or -EINVAL if bad parameter.
  */
 __rte_experimental
 int rte_eth_link_to_str(char *str, size_t len,
@@ -2934,6 +2936,7 @@ int rte_eth_xstats_get_by_id(uint16_t port_id, const uint64_t *ids,
  *    -ENODEV for invalid port_id,
  *    -EIO if device is removed,
  *    -EINVAL if the xstat_name doesn't exist in port_id
+ *    -ENOMEM if bad parameter.
  */
 int rte_eth_xstats_get_id_by_name(uint16_t port_id, const char *xstat_name,
 		uint64_t *id);
@@ -3006,6 +3009,7 @@ int rte_eth_dev_set_rx_queue_stats_mapping(uint16_t port_id,
  * @return
  *   - (0) if successful
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
 
@@ -3050,6 +3054,7 @@ int rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
  *   - (0) if successful.
  *   - (-ENOTSUP) if support for dev_infos_get() does not exist for the device.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info);
 
@@ -3069,6 +3074,7 @@ int rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info);
  *   - (-ENOTSUP) if operation is not supported.
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
+ *   - (-EINVAL) if bad parameter.
  *   - (>0) if *fw_size* is not enough to store firmware version, return
  *          the size of the non truncated string.
  */
@@ -3112,6 +3118,7 @@ int rte_eth_dev_fw_version_get(uint16_t port_id,
  *           only num entries will be filled into the ptypes array, but the full
  *           count of supported ptypes will be returned.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_get_supported_ptypes(uint16_t port_id, uint32_t ptype_mask,
 				     uint32_t *ptypes, int num);
@@ -3162,6 +3169,7 @@ int rte_eth_dev_set_ptypes(uint16_t port_id, uint32_t ptype_mask,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_get_mtu(uint16_t port_id, uint16_t *mtu);
 
@@ -3356,7 +3364,7 @@ rte_eth_tx_buffer_init(struct rte_eth_dev_tx_buffer *buffer, uint16_t size);
  * @param userdata
  *   Arbitrary parameter to be passed to the callback function
  * @return
- *   0 on success, or -1 on error with rte_errno set appropriately
+ *   0 on success, or -EINVAL if bad parameter
  */
 int
 rte_eth_tx_buffer_set_err_callback(struct rte_eth_dev_tx_buffer *buffer,
@@ -3783,6 +3791,7 @@ int rte_eth_fec_set(uint16_t port_id, uint32_t fec_capa);
  *   - (-ENOTSUP) if hardware doesn't support flow control.
  *   - (-ENODEV)  if *port_id* invalid.
  *   - (-EIO)  if device is removed.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_flow_ctrl_get(uint16_t port_id,
 			      struct rte_eth_fc_conf *fc_conf);
@@ -3854,7 +3863,8 @@ int rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *mac_addr,
  *   - (0) if successful, or *mac_addr* didn't exist.
  *   - (-ENOTSUP) if hardware doesn't support.
  *   - (-ENODEV) if *port* invalid.
- *   - (-EADDRINUSE) if attempting to remove the default MAC address
+ *   - (-EADDRINUSE) if attempting to remove the default MAC address.
+ *   - (-EINVAL) if MAC address is invalid.
  */
 int rte_eth_dev_mac_addr_remove(uint16_t port_id,
 				struct rte_ether_addr *mac_addr);
@@ -4053,6 +4063,7 @@ int rte_eth_dev_rss_hash_update(uint16_t port_id,
  *   - (-ENODEV) if port identifier is invalid.
  *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support RSS.
+ *   - (-EINVAL) if bad parameter.
  */
 int
 rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
@@ -4121,6 +4132,7 @@ rte_eth_dev_udp_tunnel_port_delete(uint16_t port_id,
  *   - (-ENODEV) if port identifier is invalid.
  *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_get_dcb_info(uint16_t port_id,
 			     struct rte_eth_dcb_info *dcb_info);
@@ -4533,6 +4545,7 @@ rte_eth_dev_get_module_eeprom(uint16_t port_id,
  *   - (-EIO) if device is removed.
  *   - (-ENOTSUP) if PMD of *port_id* doesn't support multicast filtering.
  *   - (-ENOSPC) if *port_id* has not enough multicast filtering resources.
+ *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_set_mc_addr_list(uint16_t port_id,
 				 struct rte_ether_addr *mc_addr_set,
@@ -4637,6 +4650,7 @@ int rte_eth_timesync_adjust_time(uint16_t port_id, int64_t delta);
  *
  * @return
  *   - 0: Success.
+ *   - -EINVAL: Bad parameter.
  */
 int rte_eth_timesync_read_time(uint16_t port_id, struct timespec *time);
 
@@ -4703,6 +4717,7 @@ int rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *time);
  *   - 0: Success.
  *   - -ENODEV: The port ID is invalid.
  *   - -ENOTSUP: The function is not supported by the Ethernet driver.
+ *   - -EINVAL: if bad parameter.
  */
 __rte_experimental
 int
@@ -4806,6 +4821,7 @@ rte_eth_dev_get_sec_ctx(uint16_t port_id);
  * @return
  *   - (0) if successful.
  *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
  */
 __rte_experimental
 int rte_eth_dev_hairpin_capability_get(uint16_t port_id,
