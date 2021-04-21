@@ -366,8 +366,10 @@ dpaax_iova_table_dump(void)
 	}
 
 	DPAAX_DEBUG(" === Start of PA->VA Translation Table ===");
-	if (dpaax_iova_table_p == NULL)
+	if (dpaax_iova_table_p == NULL) {
 		DPAAX_DEBUG("\tNULL");
+		return;
+	}
 
 	entry = dpaax_iova_table_p->entries;
 	for (i = 0; i < dpaax_iova_table_p->count; i++) {
