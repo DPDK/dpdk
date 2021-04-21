@@ -432,6 +432,18 @@ error:
 	return -1;
 }
 
+static void
+set_thread_name(pthread_t id __rte_unused, const char *name __rte_unused)
+{
+#if defined RTE_EXEC_ENV_LINUX && defined __GLIBC__ && defined __GLIBC_PREREQ
+#if __GLIBC_PREREQ(2, 12)
+	pthread_setname_np(id, name);
+#endif
+#elif defined RTE_EXEC_ENV_FREEBSD
+	pthread_set_name_np(id, name);
+#endif
+}
+
 static int
 telemetry_legacy_init(void)
 {
@@ -463,7 +475,7 @@ telemetry_legacy_init(void)
 		return -1;
 	}
 	pthread_setaffinity_np(t_old, sizeof(*thread_cpuset), thread_cpuset);
-	pthread_setname_np(t_old, "telemetry-v1");
+	set_thread_name(t_old, "telemetry-v1");
 	TMTY_LOG(DEBUG, "Legacy telemetry socket initialized ok\n");
 	return 0;
 }
@@ -502,7 +514,7 @@ telemetry_v2_init(void)
 		return -1;
 	}
 	pthread_setaffinity_np(t_new, sizeof(*thread_cpuset), thread_cpuset);
-	pthread_setname_np(t_new, "telemetry-v2");
+	set_thread_name(t_new, "telemetry-v2");
 	atexit(unlink_sockets);
 
 	return 0;
