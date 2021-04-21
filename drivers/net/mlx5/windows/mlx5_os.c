@@ -359,11 +359,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	config->swp = 0;
 	config->ind_table_max_size =
 		sh->device_attr.max_rwq_indirection_table_size;
-	if (RTE_CACHE_LINE_SIZE == 128 &&
-	    !(device_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP))
-		cqe_comp = 0;
-	else
-		cqe_comp = 1;
+	cqe_comp = 0;
 	config->cqe_comp = cqe_comp;
 	DRV_LOG(DEBUG, "tunnel offloading is not supported");
 	config->tunnel_en = 0;
@@ -424,8 +420,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	err = mlx5_dev_check_sibling_config(priv, config);
 	if (err)
 		goto error;
-	config->hw_csum = !!(sh->device_attr.device_cap_flags_ex &
-			    IBV_DEVICE_RAW_IP_CSUM);
 	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
 		(config->hw_csum ? "" : "not "));
 	DRV_LOG(DEBUG, "counters are not supported");
@@ -439,19 +433,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config->ind_table_max_size = ETH_RSS_RETA_SIZE_512;
 	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
 		config->ind_table_max_size);
-	config->hw_vlan_strip = !!(sh->device_attr.raw_packet_caps &
-				  IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
 	DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
 		(config->hw_vlan_strip ? "" : "not "));
-	config->hw_fcs_strip = !!(sh->device_attr.raw_packet_caps &
-				 IBV_RAW_PACKET_CAP_SCATTER_FCS);
 	if (config->hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");
 		config->hw_padding = 0;
 	}
-	config->tso = (sh->device_attr.max_tso > 0 &&
-		      (sh->device_attr.tso_supported_qpts &
-		       (1 << IBV_QPT_RAW_PACKET)));
 	if (config->tso)
 		config->tso_max_payload_sz = sh->device_attr.max_tso;
 	DRV_LOG(DEBUG, "%sMPS is %s.",
