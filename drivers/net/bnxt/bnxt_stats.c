@@ -528,6 +528,8 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 
+		if (!rxq->rx_started)
+			continue;
 		rc = bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i,
 				     bnxt_stats, 1);
 		if (unlikely(rc))
@@ -543,6 +545,8 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 
+		if (!txq->tx_started)
+			continue;
 		rc = bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i,
 				     bnxt_stats, 0);
 		if (unlikely(rc))
