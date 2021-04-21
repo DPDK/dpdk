@@ -1524,6 +1524,13 @@ Where:
 
 * ``autoneg``: Change the auto-negotiation parameter.
 
+show flow control
+~~~~~~~~~~~~~~~~~
+
+show the link flow control parameter on a port::
+
+   testpmd> show port <port_id> flow_ctrl
+
 set pfc_ctrl rx
 ~~~~~~~~~~~~~~~
 

@@ -258,6 +258,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (port_id) fec_mode"
 			"	Show fec mode of a port.\n\n"
+
+			"show port (port_id) flow_ctrl"
+			"	Show flow control info of a port.\n\n"
 		);
 	}
 
@@ -6952,6 +6955,80 @@ cmdline_parse_inst_t cmd_set_allmulti_mode_one = {
 		(void *)&cmd_setallmulti_allmulti,
 		(void *)&cmd_setallmulti_portnum,
 		(void *)&cmd_setallmulti_mode,
+		NULL,
+	},
+};
+
+/* *** GET CURRENT ETHERNET LINK FLOW CONTROL *** */
+struct cmd_link_flow_ctrl_show {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t flow_ctrl;
+};
+
+cmdline_parse_token_string_t cmd_lfc_show_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_show,
+				show, "show");
+cmdline_parse_token_string_t cmd_lfc_show_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_show,
+				port, "port");
+cmdline_parse_token_num_t cmd_lfc_show_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_link_flow_ctrl_show,
+				port_id, RTE_UINT16);
+cmdline_parse_token_string_t cmd_lfc_show_flow_ctrl =
+	TOKEN_STRING_INITIALIZER(struct cmd_link_flow_ctrl_show,
+				flow_ctrl, "flow_ctrl");
+
+static void
+cmd_link_flow_ctrl_show_parsed(void *parsed_result,
+			      __rte_unused struct cmdline *cl,
+			      __rte_unused void *data)
+{
+	struct cmd_link_flow_ctrl_show *res = parsed_result;
+	static const char *info_border = "*********************";
+	struct rte_eth_fc_conf fc_conf;
+	bool rx_fc_en = false;
+	bool tx_fc_en = false;
+	int ret;
+
+	ret = rte_eth_dev_flow_ctrl_get(res->port_id, &fc_conf);
+	if (ret != 0) {
+		printf("Failed to get current flow ctrl information: err = %d\n",
+		       ret);
+		return;
+	}
+
+	if (fc_conf.mode == RTE_FC_RX_PAUSE || fc_conf.mode == RTE_FC_FULL)
+		rx_fc_en = true;
+	if (fc_conf.mode == RTE_FC_TX_PAUSE || fc_conf.mode == RTE_FC_FULL)
+		tx_fc_en = true;
+
+	printf("\n%s Flow control infos for port %-2d %s\n",
+		info_border, res->port_id, info_border);
+	printf("FC mode:\n");
+	printf("   Rx pause: %s\n", rx_fc_en ? "on" : "off");
+	printf("   Tx pause: %s\n", tx_fc_en ? "on" : "off");
+	printf("Autoneg: %s\n", fc_conf.autoneg ? "on" : "off");
+	printf("Pause time: 0x%x\n", fc_conf.pause_time);
+	printf("High waterline: 0x%x\n", fc_conf.high_water);
+	printf("Low waterline: 0x%x\n", fc_conf.low_water);
+	printf("Send XON: %s\n", fc_conf.send_xon ? "on" : "off");
+	printf("Forward MAC control frames: %s\n",
+		fc_conf.mac_ctrl_frame_fwd ? "on" : "off");
+	printf("\n%s**************   End  ***********%s\n",
+		info_border, info_border);
+}
+
+cmdline_parse_inst_t cmd_link_flow_control_show = {
+	.f = cmd_link_flow_ctrl_show_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> flow_ctrl",
+	.tokens = {
+		(void *)&cmd_lfc_show_show,
+		(void *)&cmd_lfc_show_port,
+		(void *)&cmd_lfc_show_portid,
+		(void *)&cmd_lfc_show_flow_ctrl,
 		NULL,
 	},
 };
@@ -17447,6 +17524,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_xon,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_macfwd,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_autoneg,
+	(cmdline_parse_inst_t *)&cmd_link_flow_control_show,
 	(cmdline_parse_inst_t *)&cmd_priority_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_config_dcb,
 	(cmdline_parse_inst_t *)&cmd_read_reg,
