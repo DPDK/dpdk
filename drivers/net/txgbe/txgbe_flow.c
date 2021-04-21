@@ -512,7 +512,7 @@ action:
 		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION,
-			item, "Not supported action.");
+			act, "Not supported action.");
 		return -rte_errno;
 	}
 	filter->queue =
