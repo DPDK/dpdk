@@ -148,6 +148,11 @@ intel_ntb_dev_init(const struct rte_rawdev *dev)
 
 	hw->mw_size = rte_zmalloc("ntb_mw_size",
 				  hw->mw_cnt * sizeof(uint64_t), 0);
+	if (hw->mw_size == NULL) {
+		NTB_LOG(ERR, "Cannot allocate memory for mw size.");
+		return -ENOMEM;
+	}
+
 	for (i = 0; i < hw->mw_cnt; i++) {
 		bar = intel_ntb_bar[i];
 		hw->mw_size[i] = hw->pci_dev->mem_resource[bar].len;

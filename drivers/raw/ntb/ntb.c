@@ -923,6 +923,11 @@ ntb_dev_start(struct rte_rawdev *dev)
 
 	hw->peer_mw_base = rte_zmalloc("ntb_peer_mw_base", hw->mw_cnt *
 					sizeof(uint64_t), 0);
+	if (hw->peer_mw_base == NULL) {
+		NTB_LOG(ERR, "Cannot allocate memory for peer mw base.");
+		ret = -ENOMEM;
+		goto err_q_init;
+	}
 
 	if (hw->ntb_ops->spad_read == NULL) {
 		ret = -ENOTSUP;
