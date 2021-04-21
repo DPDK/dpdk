@@ -1748,7 +1748,7 @@ parse_ep_config(const char *q_arg)
 	int hgh_edpi;
 
 	ep_med_edpi = EMPTY_POLL_MED_THRESHOLD;
-	ep_hgh_edpi = EMPTY_POLL_MED_THRESHOLD;
+	ep_hgh_edpi = EMPTY_POLL_HGH_THRESHOLD;
 
 	strlcpy(s, p, sizeof(s));
 
@@ -1771,7 +1771,7 @@ parse_ep_config(const char *q_arg)
 		if (med_edpi > 0)
 			ep_med_edpi = med_edpi;
 
-		if (med_edpi > 0)
+		if (hgh_edpi > 0)
 			ep_hgh_edpi = hgh_edpi;
 
 	} else {
