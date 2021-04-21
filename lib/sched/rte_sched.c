@@ -1249,7 +1249,6 @@ rte_sched_subport_config(struct rte_sched_port *port,
 #ifdef RTE_SCHED_SUBPORT_TC_OV
 		/* TC oversubscription */
 		s->tc_ov_wm_min = port->mtu;
-		s->tc_ov_wm = s->tc_ov_wm_max;
 		s->tc_ov_period_id = 0;
 		s->tc_ov = 0;
 		s->tc_ov_n = 0;
@@ -1277,6 +1276,7 @@ rte_sched_subport_config(struct rte_sched_port *port,
 #ifdef RTE_SCHED_SUBPORT_TC_OV
 		s->tc_ov_wm_max = rte_sched_time_ms_to_bytes(profile->tc_period,
 							s->pipe_tc_be_rate_max);
+		s->tc_ov_wm = s->tc_ov_wm_max;
 #endif
 		s->profile = subport_profile_id;
 
