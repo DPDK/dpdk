@@ -2828,8 +2828,11 @@ hns3_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
 				      HNS3_FW_VERSION_BYTE1_S),
 		       hns3_get_field(version, HNS3_FW_VERSION_BYTE0_M,
 				      HNS3_FW_VERSION_BYTE0_S));
+	if (ret < 0)
+		return -EINVAL;
+
 	ret += 1; /* add the size of '\0' */
-	if (fw_size < (uint32_t)ret)
+	if (fw_size < (size_t)ret)
 		return ret;
 	else
 		return 0;

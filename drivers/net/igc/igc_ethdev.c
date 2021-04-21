@@ -1476,9 +1476,11 @@ eth_igc_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 				 fw.eep_build);
 		}
 	}
+	if (ret < 0)
+		return -EINVAL;
 
 	ret += 1; /* add the size of '\0' */
-	if (fw_size < (u32)ret)
+	if (fw_size < (size_t)ret)
 		return ret;
 	else
 		return 0;

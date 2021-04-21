@@ -46,14 +46,6 @@ sfc_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 	int ret;
 	int rc;
 
-	/*
-	 * Return value of the callback is likely supposed to be
-	 * equal to or greater than 0, nevertheless, if an error
-	 * occurs, it will be desirable to pass it to the caller
-	 */
-	if ((fw_version == NULL) || (fw_size == 0))
-		return -EINVAL;
-
 	rc = efx_nic_get_fw_version(sa->nic, &enfi);
 	if (rc != 0)
 		return -rc;

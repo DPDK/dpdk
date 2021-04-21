@@ -623,9 +623,6 @@ int axgbe_dev_fw_version_get(struct rte_eth_dev *eth_dev,
 	pdata = (struct axgbe_port *)eth_dev->data->dev_private;
 	hw_feat = &pdata->hw_feat;
 
-	if (fw_version == NULL)
-		return -EINVAL;
-
 	ret = snprintf(fw_version, fw_size, "%d.%d.%d",
 			AXGMAC_GET_BITS(hw_feat->version, MAC_VR, USERVER),
 			AXGMAC_GET_BITS(hw_feat->version, MAC_VR, DEVID),
@@ -634,7 +631,6 @@ int axgbe_dev_fw_version_get(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 
 	ret += 1; /* add the size of '\0' */
-
 	if (fw_size < (size_t)ret)
 		return ret;
 	else

@@ -226,9 +226,11 @@ dpaa2_fw_version_get(struct rte_eth_dev *dev,
 		       mc_ver_info.major,
 		       mc_ver_info.minor,
 		       mc_ver_info.revision);
+	if (ret < 0)
+		return -EINVAL;
 
 	ret += 1; /* add the size of '\0' */
-	if (fw_size < (uint32_t)ret)
+	if (fw_size < (size_t)ret)
 		return ret;
 	else
 		return 0;
