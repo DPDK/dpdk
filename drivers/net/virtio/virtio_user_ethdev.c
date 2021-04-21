@@ -584,7 +584,7 @@ vdpa_dynamic_major_num(void)
 {
 	FILE *fp;
 	char *line = NULL;
-	size_t size;
+	size_t size = 0;
 	char name[11];
 	bool found = false;
 	uint32_t num;
@@ -604,6 +604,7 @@ vdpa_dynamic_major_num(void)
 			break;
 		}
 	}
+	free(line);
 	fclose(fp);
 	return found ? num : UNNAMED_MAJOR;
 }
