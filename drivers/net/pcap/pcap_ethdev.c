@@ -6,16 +6,6 @@
 
 #include <time.h>
 
-#include <net/if.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-
-#if defined(RTE_EXEC_ENV_FREEBSD)
-#include <sys/sysctl.h>
-#include <net/if_dl.h>
-#endif
-
 #include <pcap.h>
 
 #include <rte_cycles.h>
@@ -26,7 +16,8 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_bus_vdev.h>
-#include <rte_string_fns.h>
+
+#include "pcap_osdep.h"
 
 #define RTE_ETH_PCAP_SNAPSHOT_LEN 65535
 #define RTE_ETH_PCAP_SNAPLEN RTE_ETHER_MAX_JUMBO_FRAME_LEN
@@ -47,7 +38,7 @@
 #define RTE_PMD_PCAP_MAX_QUEUES 16
 
 static char errbuf[PCAP_ERRBUF_SIZE];
-static struct timeval start_time;
+static struct timespec start_time;
 static uint64_t start_cycles;
 static uint64_t hz;
 static uint8_t iface_idx;
@@ -355,17 +346,21 @@ eth_null_rx(void *queue __rte_unused,
 
 #define NSEC_PER_SEC	1000000000L
 
+/*
+ * This function stores nanoseconds in `tv_usec` field of `struct timeval`,
+ * because `ts` goes directly to nanosecond-precision dump.
+ */
 static inline void
 calculate_timestamp(struct timeval *ts) {
 	uint64_t cycles;
-	struct timeval cur_time;
+	struct timespec cur_time;
 
 	cycles = rte_get_timer_cycles() - start_cycles;
 	cur_time.tv_sec = cycles / hz;
-	cur_time.tv_usec = (cycles % hz) * NSEC_PER_SEC / hz;
+	cur_time.tv_nsec = (cycles % hz) * NSEC_PER_SEC / hz;
 
 	ts->tv_sec = start_time.tv_sec + cur_time.tv_sec;
-	ts->tv_usec = start_time.tv_usec + cur_time.tv_usec;
+	ts->tv_usec = start_time.tv_nsec + cur_time.tv_nsec;
 	if (ts->tv_usec >= NSEC_PER_SEC) {
 		ts->tv_usec -= NSEC_PER_SEC;
 		ts->tv_sec += 1;
@@ -884,7 +879,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 
 	if (internals->infinite_rx) {
 		struct pmd_process_private *pp;
-		char ring_name[NAME_MAX];
+		char ring_name[RTE_RING_NAMESIZE];
 		static uint32_t ring_number;
 		uint64_t pcap_pkt_count = 0;
 		struct rte_mbuf *bufs[1];
@@ -1262,84 +1257,20 @@ static int
 eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
 		const unsigned int numa_node)
 {
-#if defined(RTE_EXEC_ENV_LINUX)
 	void *mac_addrs;
-	struct ifreq ifr;
-	int if_fd = socket(AF_INET, SOCK_DGRAM, 0);
+	struct rte_ether_addr mac;
 
-	if (if_fd == -1)
+	if (osdep_iface_mac_get(if_name, &mac) < 0)
 		return -1;
-
-	rte_strscpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name));
-	if (ioctl(if_fd, SIOCGIFHWADDR, &ifr)) {
-		close(if_fd);
-		return -1;
-	}
 
 	mac_addrs = rte_zmalloc_socket(NULL, RTE_ETHER_ADDR_LEN, 0, numa_node);
-	if (!mac_addrs) {
-		close(if_fd);
+	if (mac_addrs == NULL)
 		return -1;
-	}
 
 	PMD_LOG(INFO, "Setting phy MAC for %s", if_name);
+	rte_memcpy(mac_addrs, mac.addr_bytes, RTE_ETHER_ADDR_LEN);
 	eth_dev->data->mac_addrs = mac_addrs;
-	rte_memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
-			ifr.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
-
-	close(if_fd);
-
 	return 0;
-
-#elif defined(RTE_EXEC_ENV_FREEBSD)
-	void *mac_addrs;
-	struct if_msghdr *ifm;
-	struct sockaddr_dl *sdl;
-	int mib[6];
-	size_t len = 0;
-	char *buf;
-
-	mib[0] = CTL_NET;
-	mib[1] = AF_ROUTE;
-	mib[2] = 0;
-	mib[3] = AF_LINK;
-	mib[4] = NET_RT_IFLIST;
-	mib[5] = if_nametoindex(if_name);
-
-	if (sysctl(mib, 6, NULL, &len, NULL, 0) < 0)
-		return -1;
-
-	if (len == 0)
-		return -1;
-
-	buf = rte_malloc(NULL, len, 0);
-	if (!buf)
-		return -1;
-
-	if (sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
-		rte_free(buf);
-		return -1;
-	}
-	ifm = (struct if_msghdr *)buf;
-	sdl = (struct sockaddr_dl *)(ifm + 1);
-
-	mac_addrs = rte_zmalloc_socket(NULL, RTE_ETHER_ADDR_LEN, 0, numa_node);
-	if (!mac_addrs) {
-		rte_free(buf);
-		return -1;
-	}
-
-	PMD_LOG(INFO, "Setting phy MAC for %s", if_name);
-	eth_dev->data->mac_addrs = mac_addrs;
-	rte_memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
-			LLADDR(sdl), RTE_ETHER_ADDR_LEN);
-
-	rte_free(buf);
-
-	return 0;
-#else
-	return -1;
-#endif
 }
 
 static int
@@ -1401,7 +1332,8 @@ eth_from_pcaps(struct rte_vdev_device *vdev,
 	internals->single_iface = single_iface;
 
 	if (single_iface) {
-		internals->if_index = if_nametoindex(rx_queues->queue[0].name);
+		internals->if_index =
+			osdep_iface_index_get(rx_queues->queue[0].name);
 
 		/* phy_mac arg is applied only only if "iface" devarg is provided */
 		if (rx_queues->phy_mac) {
@@ -1454,7 +1386,7 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	name = rte_vdev_device_name(dev);
 	PMD_LOG(INFO, "Initializing pmd_pcap for %s", name);
 
-	gettimeofday(&start_time, NULL);
+	timespec_get(&start_time, TIME_UTC);
 	start_cycles = rte_get_timer_cycles();
 	hz = rte_get_timer_hz();
 
