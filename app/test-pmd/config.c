@@ -365,6 +365,19 @@ nic_xstats_clear(portid_t port_id)
 	}
 }
 
+static const char *
+get_queue_state_name(uint8_t queue_state)
+{
+	if (queue_state == RTE_ETH_QUEUE_STATE_STOPPED)
+		return "stopped";
+	else if (queue_state == RTE_ETH_QUEUE_STATE_STARTED)
+		return "started";
+	else if (queue_state == RTE_ETH_QUEUE_STATE_HAIRPIN)
+		return "hairpin";
+	else
+		return "unknown";
+}
+
 void
 rx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 {
@@ -395,6 +408,7 @@ rx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 		(qinfo.conf.rx_deferred_start != 0) ? "on" : "off");
 	printf("\nRX scattered packets: %s",
 		(qinfo.scattered_rx != 0) ? "on" : "off");
+	printf("\nRx queue state: %s", get_queue_state_name(qinfo.queue_state));
 	if (qinfo.rx_buf_size != 0)
 		printf("\nRX buffer size: %hu", qinfo.rx_buf_size);
 	printf("\nNumber of RXDs: %hu", qinfo.nb_desc);
@@ -435,6 +449,7 @@ tx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 	printf("\nTX deferred start: %s",
 		(qinfo.conf.tx_deferred_start != 0) ? "on" : "off");
 	printf("\nNumber of TXDs: %hu", qinfo.nb_desc);
+	printf("\nTx queue state: %s", get_queue_state_name(qinfo.queue_state));
 
 	if (rte_eth_tx_burst_mode_get(port_id, queue_id, &mode) == 0)
 		printf("\nBurst mode: %s%s",
