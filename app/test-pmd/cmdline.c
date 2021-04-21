@@ -908,6 +908,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Register a dynf and Set/clear this flag on Tx. "
 			"Testpmd will set this value to any Tx packet "
 			"sent from this port\n\n"
+
+			"port cleanup (port_id) txq (queue_id) (free_cnt)\n"
+			"    Cleanup txq mbufs for a specific Tx queue\n\n"
 		);
 	}
 
@@ -2454,6 +2457,90 @@ cmdline_parse_inst_t cmd_config_rss_hash_key = {
 		(void *)&cmd_config_rss_hash_key_rss_hash_key,
 		(void *)&cmd_config_rss_hash_key_rss_type,
 		(void *)&cmd_config_rss_hash_key_value,
+		NULL,
+	},
+};
+
+/* *** cleanup txq mbufs *** */
+struct cmd_cleanup_txq_mbufs_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t name;
+	uint16_t port_id;
+	uint16_t queue_id;
+	uint32_t free_cnt;
+};
+
+static void
+cmd_cleanup_txq_mbufs_parsed(void *parsed_result,
+			     __rte_unused struct cmdline *cl,
+			     __rte_unused void *data)
+{
+	struct cmd_cleanup_txq_mbufs_result *res = parsed_result;
+	uint16_t port_id = res->port_id;
+	uint16_t queue_id = res->queue_id;
+	uint32_t free_cnt = res->free_cnt;
+	struct rte_eth_txq_info qinfo;
+	int ret;
+
+	if (test_done == 0) {
+		printf("Please stop forwarding first\n");
+		return;
+	}
+
+	if (rte_eth_tx_queue_info_get(port_id, queue_id, &qinfo)) {
+		printf("Failed to get port %u Tx queue %u info\n",
+		       port_id, queue_id);
+		return;
+	}
+
+	if (qinfo.queue_state != RTE_ETH_QUEUE_STATE_STARTED) {
+		printf("Tx queue %u not started\n", queue_id);
+		return;
+	}
+
+	ret = rte_eth_tx_done_cleanup(port_id, queue_id, free_cnt);
+	if (ret < 0) {
+		printf("Failed to cleanup mbuf for port %u Tx queue %u "
+		       "error desc: %s(%d)\n",
+		       port_id, queue_id, strerror(-ret), ret);
+		return;
+	}
+
+	printf("Cleanup port %u Tx queue %u mbuf nums: %u\n",
+	       port_id, queue_id, ret);
+}
+
+cmdline_parse_token_string_t cmd_cleanup_txq_mbufs_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_cleanup_txq_mbufs_result, port,
+				 "port");
+cmdline_parse_token_string_t cmd_cleanup_txq_mbufs_cleanup =
+	TOKEN_STRING_INITIALIZER(struct cmd_cleanup_txq_mbufs_result, keyword,
+				 "cleanup");
+cmdline_parse_token_num_t cmd_cleanup_txq_mbufs_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_cleanup_txq_mbufs_result, port_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t cmd_cleanup_txq_mbufs_txq =
+	TOKEN_STRING_INITIALIZER(struct cmd_cleanup_txq_mbufs_result, name,
+				 "txq");
+cmdline_parse_token_num_t cmd_cleanup_txq_mbufs_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_cleanup_txq_mbufs_result, queue_id,
+			      RTE_UINT16);
+cmdline_parse_token_num_t cmd_cleanup_txq_mbufs_free_cnt =
+	TOKEN_NUM_INITIALIZER(struct cmd_cleanup_txq_mbufs_result, free_cnt,
+			      RTE_UINT32);
+
+cmdline_parse_inst_t cmd_cleanup_txq_mbufs = {
+	.f = cmd_cleanup_txq_mbufs_parsed,
+	.data = NULL,
+	.help_str = "port cleanup <port_id> txq <queue_id> <free_cnt>",
+	.tokens = {
+		(void *)&cmd_cleanup_txq_mbufs_port,
+		(void *)&cmd_cleanup_txq_mbufs_cleanup,
+		(void *)&cmd_cleanup_txq_mbufs_port_id,
+		(void *)&cmd_cleanup_txq_mbufs_txq,
+		(void *)&cmd_cleanup_txq_mbufs_queue_id,
+		(void *)&cmd_cleanup_txq_mbufs_free_cnt,
 		NULL,
 	},
 };
@@ -17413,6 +17500,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_showport_rss_hash,
 	(cmdline_parse_inst_t *)&cmd_showport_rss_hash_key,
 	(cmdline_parse_inst_t *)&cmd_config_rss_hash_key,
+	(cmdline_parse_inst_t *)&cmd_cleanup_txq_mbufs,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
 #ifdef RTE_NET_I40E

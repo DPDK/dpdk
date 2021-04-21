@@ -2436,6 +2436,15 @@ hash of input [IP] packets received on port::
                      ipv6-udp-ex <string of hex digits \
                      (variable length, NIC dependent)>)
 
+port cleanup txq mbufs
+~~~~~~~~~~~~~~~~~~~~~~
+
+To cleanup txq mbufs currently cached by driver::
+
+   testpmd> port cleanup (port_id) txq (queue_id) (free_cnt)
+
+If the value of ``free_cnt`` is 0, driver should free all cached mbufs.
+
 Device Functions
 ----------------
 

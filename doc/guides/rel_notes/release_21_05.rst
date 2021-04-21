@@ -233,6 +233,8 @@ New Features
     ``dpdk-testpmd -- --eth-link-speed N``
   * Added command to display Rx queue used descriptor count.
     ``show port (port_id) rxq (queue_id) desc used count``
+  * Added command to cleanup a Tx queue's mbuf on a port.
+    ``port cleanup (port_id) txq (queue_id) (free_cnt)``
   * Added command to dump internal representation information of single flow.
     ``flow dump (port_id) rule (rule_id)``
   * Added commands to create and delete meter policy.
