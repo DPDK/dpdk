@@ -446,16 +446,19 @@ scan_next:
 void
 hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_cmq_ring *crq = &hw->cmq.crq;
 	struct hns3_mbx_pf_to_vf_cmd *req;
 	struct hns3_cmd_desc *desc;
 	uint16_t *msg_q;
+	bool handle_out;
 	uint8_t opcode;
 	uint16_t flag;
 	rte_spinlock_lock(&hw->cmq.crq.lock);
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY ||
-	    !rte_thread_is_intr()) {
+	handle_out = (rte_eal_process_type() != RTE_PROC_PRIMARY ||
+		      !rte_thread_is_intr()) && hns->is_vf;
+	if (handle_out) {
 		/*
 		 * Currently, any threads in the primary and secondary processes
 		 * could send mailbox sync request, so it will need to process
@@ -499,7 +502,8 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			continue;
 		}
 
-		if (desc->opcode == 0) {
+		handle_out = hns->is_vf && desc->opcode == 0;
+		if (handle_out) {
 			/* Message already processed by other thread */
 			crq->desc[crq->next_to_use].flag = 0;
 			hns3_mbx_ring_ptr_move_crq(crq);
