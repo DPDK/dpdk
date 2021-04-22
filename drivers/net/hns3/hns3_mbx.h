@@ -5,8 +5,6 @@
 #ifndef _HNS3_MBX_H_
 #define _HNS3_MBX_H_
 
-#define HNS3_MBX_VF_MSG_DATA_NUM	16
-
 enum HNS3_MBX_OPCODE {
 	HNS3_MBX_RESET = 0x01,          /* (VF -> PF) assert reset */
 	HNS3_MBX_ASSERTING_RESET,       /* (PF -> VF) PF is asserting reset */
@@ -80,8 +78,6 @@ enum hns3_mbx_link_fail_subcode {
 
 #define HNS3_MBX_MAX_MSG_SIZE	16
 #define HNS3_MBX_MAX_RESP_DATA_SIZE	8
-#define HNS3_MBX_RING_MAP_BASIC_MSG_NUM	3
-#define HNS3_MBX_RING_NODE_VARIABLE_NUM	3
 
 enum {
 	HNS3_MBX_RESP_MATCHING_SCHEME_OF_ORIGINAL = 0,
@@ -145,12 +141,6 @@ struct hns3_vf_bind_vector_msg {
 	uint8_t vector_id;
 	uint8_t ring_num;
 	struct hns3_ring_chain_param param[HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM];
-};
-
-struct hns3_vf_rst_cmd {
-	uint8_t dest_vfid;
-	uint8_t vf_rst;
-	uint8_t rsv[22];
 };
 
 struct hns3_pf_rst_done_cmd {
