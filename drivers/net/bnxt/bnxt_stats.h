@@ -18,11 +18,6 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_xstat *xstats, unsigned int n);
 int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev);
-int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
-				uint64_t *values, unsigned int limit);
-int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
-				struct rte_eth_xstat_name *xstats_names,
-				const uint64_t *ids, unsigned int limit);
 
 struct bnxt_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
