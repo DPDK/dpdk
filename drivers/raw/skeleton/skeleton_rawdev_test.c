@@ -295,6 +295,7 @@ test_rawdev_attr_set_get(void)
 	dummy_value = &set_value;
 	*dummy_value = 200;
 	ret = rte_rawdev_set_attr(test_dev_id, "Test2", (uintptr_t)dummy_value);
+	RTE_TEST_ASSERT(!ret, "Unable to set an attribute (Test2)");
 
 	/* Check if attributes have been set */
 	ret = rte_rawdev_get_attr(test_dev_id, "Test1", &ret_value);
