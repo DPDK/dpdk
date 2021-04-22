@@ -3467,6 +3467,8 @@ bond_remove(struct rte_vdev_device *dev)
 		ret = bond_ethdev_stop(eth_dev);
 		bond_ethdev_close(eth_dev);
 	}
+	if (internals->kvlist != NULL)
+		rte_kvargs_free(internals->kvlist);
 	rte_eth_dev_release_port(eth_dev);
 
 	return ret;
