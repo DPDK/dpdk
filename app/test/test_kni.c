@@ -563,7 +563,11 @@ test_kni(void)
 	closedir(dir);
 
 	/* Initialize KNI subsystem */
-	rte_kni_init(KNI_TEST_MAX_PORTS);
+	ret = rte_kni_init(KNI_TEST_MAX_PORTS);
+	if (ret < 0) {
+		printf("fail to initialize KNI subsystem\n");
+		return -1;
+	}
 
 	if (test_kni_allocate_lcores() < 0) {
 		printf("No enough lcores for kni processing\n");
