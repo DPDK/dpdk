@@ -593,13 +593,6 @@ struct bnxt_rep_info {
 				     DEV_RX_OFFLOAD_SCATTER | \
 				     DEV_RX_OFFLOAD_RSS_HASH)
 
-#define  MAX_TABLE_SUPPORT 4
-#define  MAX_DIR_SUPPORT   2
-struct bnxt_dmabuf_info {
-	uint32_t entry_num;
-	int      fd[MAX_DIR_SUPPORT][MAX_TABLE_SUPPORT];
-};
-
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 
 struct bnxt_flow_stat_info {
@@ -809,7 +802,6 @@ struct bnxt {
 	uint16_t		port_svif;
 
 	struct tf		tfp;
-	struct bnxt_dmabuf_info dmabuf;
 	struct bnxt_ulp_context	*ulp_ctx;
 	struct bnxt_flow_stat_info *flow_stat;
 	uint8_t			flow_xstat;
