@@ -952,6 +952,7 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 
 		/* merge flags */
 		__m256i mbuf_flags = _mm256_set1_epi32(0);
+		__m256i vlan_flags = _mm256_setzero_si256();
 
 		if (offload) {
 #if defined(IAVF_RX_CSUM_OFFLOAD) || defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
@@ -1010,19 +1011,33 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 			 * If RSS(bit12)/VLAN(bit13) are set,
 			 * shuffle moves appropriate flags in place.
 			 */
-			const __m256i rss_vlan_flags_shuf = _mm256_set_epi8(0, 0, 0, 0,
-					0, 0, 0, 0,
-					0, 0, 0, 0,
-					PKT_RX_RSS_HASH | PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-					PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-					PKT_RX_RSS_HASH, 0,
-					/* end up 128-bits */
-					0, 0, 0, 0,
-					0, 0, 0, 0,
-					0, 0, 0, 0,
-					PKT_RX_RSS_HASH | PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-					PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
-					PKT_RX_RSS_HASH, 0);
+			const __m256i rss_flags_shuf = _mm256_set_epi8
+					(0, 0, 0, 0,
+					 0, 0, 0, 0,
+					 0, 0, 0, 0,
+					 PKT_RX_RSS_HASH, 0,
+					 PKT_RX_RSS_HASH, 0,
+					 /* end up 128-bits */
+					 0, 0, 0, 0,
+					 0, 0, 0, 0,
+					 0, 0, 0, 0,
+					 PKT_RX_RSS_HASH, 0,
+					 PKT_RX_RSS_HASH, 0);
+
+			const __m256i vlan_flags_shuf = _mm256_set_epi8
+					(0, 0, 0, 0,
+					 0, 0, 0, 0,
+					 0, 0, 0, 0,
+					 PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
+					 PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
+					 0, 0,
+					 /* end up 128-bits */
+					 0, 0, 0, 0,
+					 0, 0, 0, 0,
+					 0, 0, 0, 0,
+					 PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
+					 PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED,
+					 0, 0);
 #endif
 
 #if defined(IAVF_RX_CSUM_OFFLOAD) || defined(IAVF_RX_VLAN_OFFLOAD) || defined(IAVF_RX_RSS_OFFLOAD)
@@ -1044,9 +1059,18 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 			/* set rss and vlan flags */
 			const __m256i rss_vlan_flag_bits =
 				_mm256_srli_epi32(flag_bits, 12);
-			const __m256i rss_vlan_flags =
-				_mm256_shuffle_epi8(rss_vlan_flags_shuf,
+			const __m256i rss_flags =
+				_mm256_shuffle_epi8(rss_flags_shuf,
 						    rss_vlan_flag_bits);
+
+			if (rxq->rx_flags == IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG1)
+				vlan_flags =
+					_mm256_shuffle_epi8(vlan_flags_shuf,
+							    rss_vlan_flag_bits);
+
+			const __m256i rss_vlan_flags =
+				_mm256_or_si256(rss_flags, vlan_flags);
+
 #endif
 
 #ifdef IAVF_RX_CSUM_OFFLOAD
@@ -1114,7 +1138,8 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 			 * will cause performance drop to get into this context.
 			 */
 			if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
-			    DEV_RX_OFFLOAD_RSS_HASH) {
+			    DEV_RX_OFFLOAD_RSS_HASH ||
+			    rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
 				/* load bottom half of every 32B desc */
 				const __m128i raw_desc_bh7 =
 					_mm_load_si128
@@ -1165,36 +1190,144 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 						(_mm256_castsi128_si256(raw_desc_bh0),
 						 raw_desc_bh1, 1);
 
-				/**
-				 * to shift the 32b RSS hash value to the
-				 * highest 32b of each 128b before mask
-				 */
-				__m256i rss_hash6_7 =
-					_mm256_slli_epi64(raw_desc_bh6_7, 32);
-				__m256i rss_hash4_5 =
-					_mm256_slli_epi64(raw_desc_bh4_5, 32);
-				__m256i rss_hash2_3 =
-					_mm256_slli_epi64(raw_desc_bh2_3, 32);
-				__m256i rss_hash0_1 =
-					_mm256_slli_epi64(raw_desc_bh0_1, 32);
+				if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
+						DEV_RX_OFFLOAD_RSS_HASH) {
+					/**
+					 * to shift the 32b RSS hash value to the
+					 * highest 32b of each 128b before mask
+					 */
+					__m256i rss_hash6_7 =
+						_mm256_slli_epi64
+						(raw_desc_bh6_7, 32);
+					__m256i rss_hash4_5 =
+						_mm256_slli_epi64
+						(raw_desc_bh4_5, 32);
+					__m256i rss_hash2_3 =
+						_mm256_slli_epi64
+						(raw_desc_bh2_3, 32);
+					__m256i rss_hash0_1 =
+						_mm256_slli_epi64
+						(raw_desc_bh0_1, 32);
 
-				__m256i rss_hash_msk =
-					_mm256_set_epi32(0xFFFFFFFF, 0, 0, 0,
-							 0xFFFFFFFF, 0, 0, 0);
+					const __m256i rss_hash_msk =
+						_mm256_set_epi32
+						(0xFFFFFFFF, 0, 0, 0,
+						 0xFFFFFFFF, 0, 0, 0);
 
-				rss_hash6_7 = _mm256_and_si256
+					rss_hash6_7 = _mm256_and_si256
 						(rss_hash6_7, rss_hash_msk);
-				rss_hash4_5 = _mm256_and_si256
+					rss_hash4_5 = _mm256_and_si256
 						(rss_hash4_5, rss_hash_msk);
-				rss_hash2_3 = _mm256_and_si256
+					rss_hash2_3 = _mm256_and_si256
 						(rss_hash2_3, rss_hash_msk);
-				rss_hash0_1 = _mm256_and_si256
+					rss_hash0_1 = _mm256_and_si256
 						(rss_hash0_1, rss_hash_msk);
 
-				mb6_7 = _mm256_or_si256(mb6_7, rss_hash6_7);
-				mb4_5 = _mm256_or_si256(mb4_5, rss_hash4_5);
-				mb2_3 = _mm256_or_si256(mb2_3, rss_hash2_3);
-				mb0_1 = _mm256_or_si256(mb0_1, rss_hash0_1);
+					mb6_7 = _mm256_or_si256
+						(mb6_7, rss_hash6_7);
+					mb4_5 = _mm256_or_si256
+						(mb4_5, rss_hash4_5);
+					mb2_3 = _mm256_or_si256
+						(mb2_3, rss_hash2_3);
+					mb0_1 = _mm256_or_si256
+						(mb0_1, rss_hash0_1);
+				}
+
+				if (rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
+					/* merge the status/error-1 bits into one register */
+					const __m256i status1_4_7 =
+						_mm256_unpacklo_epi32
+						(raw_desc_bh6_7,
+						 raw_desc_bh4_5);
+					const __m256i status1_0_3 =
+						_mm256_unpacklo_epi32
+						(raw_desc_bh2_3,
+						 raw_desc_bh0_1);
+
+					const __m256i status1_0_7 =
+						_mm256_unpacklo_epi64
+						(status1_4_7, status1_0_3);
+
+					const __m256i l2tag2p_flag_mask =
+						_mm256_set1_epi32
+						(1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S);
+
+					__m256i l2tag2p_flag_bits =
+						_mm256_and_si256
+						(status1_0_7,
+						 l2tag2p_flag_mask);
+
+					l2tag2p_flag_bits =
+						_mm256_srli_epi32
+						(l2tag2p_flag_bits,
+						 IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S);
+
+					const __m256i l2tag2_flags_shuf =
+						_mm256_set_epi8
+							(0, 0, 0, 0,
+							 0, 0, 0, 0,
+							 0, 0, 0, 0,
+							 0, 0, 0, 0,
+							 /* end up 128-bits */
+							 0, 0, 0, 0,
+							 0, 0, 0, 0,
+							 0, 0, 0, 0,
+							 0, 0,
+							 PKT_RX_VLAN |
+							 PKT_RX_VLAN_STRIPPED,
+							 0);
+
+					vlan_flags =
+						_mm256_shuffle_epi8
+							(l2tag2_flags_shuf,
+							 l2tag2p_flag_bits);
+
+					/* merge with vlan_flags */
+					mbuf_flags = _mm256_or_si256
+							(mbuf_flags,
+							 vlan_flags);
+
+					/* L2TAG2_2 */
+					__m256i vlan_tci6_7 =
+						_mm256_slli_si256
+							(raw_desc_bh6_7, 4);
+					__m256i vlan_tci4_5 =
+						_mm256_slli_si256
+							(raw_desc_bh4_5, 4);
+					__m256i vlan_tci2_3 =
+						_mm256_slli_si256
+							(raw_desc_bh2_3, 4);
+					__m256i vlan_tci0_1 =
+						_mm256_slli_si256
+							(raw_desc_bh0_1, 4);
+
+					const __m256i vlan_tci_msk =
+						_mm256_set_epi32
+						(0, 0xFFFF0000, 0, 0,
+						 0, 0xFFFF0000, 0, 0);
+
+					vlan_tci6_7 = _mm256_and_si256
+							(vlan_tci6_7,
+							 vlan_tci_msk);
+					vlan_tci4_5 = _mm256_and_si256
+							(vlan_tci4_5,
+							 vlan_tci_msk);
+					vlan_tci2_3 = _mm256_and_si256
+							(vlan_tci2_3,
+							 vlan_tci_msk);
+					vlan_tci0_1 = _mm256_and_si256
+							(vlan_tci0_1,
+							 vlan_tci_msk);
+
+					mb6_7 = _mm256_or_si256
+							(mb6_7, vlan_tci6_7);
+					mb4_5 = _mm256_or_si256
+							(mb4_5, vlan_tci4_5);
+					mb2_3 = _mm256_or_si256
+							(mb2_3, vlan_tci2_3);
+					mb0_1 = _mm256_or_si256
+							(mb0_1, vlan_tci0_1);
+				}
 			} /* if() on RSS hash parsing */
 #endif
 		}
