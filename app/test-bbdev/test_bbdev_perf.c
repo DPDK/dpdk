@@ -957,6 +957,9 @@ init_op_data_objs(struct rte_bbdev_op_data *bufs,
 			if ((op_type == DATA_INPUT) && large_input) {
 				/* Allocate a fake overused mbuf */
 				data = rte_malloc(NULL, seg->length, 0);
+				TEST_ASSERT_NOT_NULL(data,
+					"rte malloc failed with %u bytes",
+					seg->length);
 				memcpy(data, seg->addr, seg->length);
 				m_head->buf_addr = data;
 				m_head->buf_iova = rte_malloc_virt2iova(data);
