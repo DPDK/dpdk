@@ -4564,7 +4564,7 @@ cmd_config_queue_tx_offloads(struct rte_port *port)
 	int k;
 
 	/* Apply queue tx offloads configuration */
-	for (k = 0; k < port->dev_info.max_rx_queues; k++)
+	for (k = 0; k < port->dev_info.max_tx_queues; k++)
 		port->tx_conf[k].offloads =
 			port->dev_conf.txmode.offloads;
 }
