@@ -828,6 +828,12 @@ test_flow_classify(void)
 	cls_params.name = "flow_classifier";
 	cls_params.socket_id = 0;
 	cls->cls = rte_flow_classifier_create(&cls_params);
+	if (cls->cls == NULL) {
+		printf("Line %i: flow classifier create has failed!\n",
+		       __LINE__);
+		rte_free(cls);
+		return TEST_FAILED;
+	}
 
 	/* initialise ACL table params */
 	table_acl_params.n_rule_fields = RTE_DIM(ipv4_defs);
