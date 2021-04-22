@@ -539,8 +539,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			hns3_handle_promisc_info(hw, req->msg[1]);
 			break;
 		default:
-			hns3_err(hw,
-				 "VF received unsupported(%u) mbx msg from PF",
+			hns3_err(hw, "received unsupported(%u) mbx msg",
 				 req->msg[0]);
 			break;
 		}
