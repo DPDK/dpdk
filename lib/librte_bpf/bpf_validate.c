@@ -1115,7 +1115,7 @@ eval_jcc(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 		eval_jsgt_jsle(trd, trs, frd, frs);
 	else if (op == EBPF_JSLE)
 		eval_jsgt_jsle(frd, frs, trd, trs);
-	else if (op == EBPF_JLT)
+	else if (op == EBPF_JSLT)
 		eval_jslt_jsge(trd, trs, frd, frs);
 	else if (op == EBPF_JSGE)
 		eval_jslt_jsge(frd, frs, trd, trs);
