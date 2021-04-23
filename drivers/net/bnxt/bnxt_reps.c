@@ -104,7 +104,7 @@ bnxt_rep_rx_burst(void *rx_queue,
 static uint16_t
 bnxt_rep_tx_burst(void *tx_queue,
 		     struct rte_mbuf **tx_pkts,
-		     __rte_unused uint16_t nb_pkts)
+		     uint16_t nb_pkts)
 {
 	struct bnxt_vf_rep_tx_queue *vfr_txq = tx_queue;
 	struct bnxt_tx_queue *ptxq;
@@ -548,7 +548,7 @@ int bnxt_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-int bnxt_rep_dev_configure_op(__rte_unused struct rte_eth_dev *eth_dev)
+int bnxt_rep_dev_configure_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt_representor *rep_bp = eth_dev->data->dev_private;
 
