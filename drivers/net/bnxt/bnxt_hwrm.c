@@ -1899,8 +1899,7 @@ int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	return rc;
 }
 
-int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
-				unsigned int idx __rte_unused)
+static int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 {
 	int rc;
 	struct hwrm_stat_ctx_alloc_input req = {.req_type = 0 };
@@ -1923,8 +1922,7 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 	return rc;
 }
 
-int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
-				unsigned int idx __rte_unused)
+static int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 {
 	int rc;
 	struct hwrm_stat_ctx_free_input req = {.req_type = 0 };
@@ -2594,7 +2592,7 @@ bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
 				bp->grp_info[i].fw_stats_ctx = -1;
 		}
 		if (cpr->hw_stats_ctx_id != HWRM_NA_SIGNATURE) {
-			rc = bnxt_hwrm_stat_ctx_free(bp, cpr, i);
+			rc = bnxt_hwrm_stat_ctx_free(bp, cpr);
 			cpr->hw_stats_ctx_id = HWRM_NA_SIGNATURE;
 			if (rc)
 				return rc;
@@ -2621,7 +2619,7 @@ int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp)
 			cpr = rxq->cp_ring;
 		}
 
-		rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr, i);
+		rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
 
 		if (rc)
 			return rc;
