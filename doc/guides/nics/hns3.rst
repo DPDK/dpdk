@@ -67,6 +67,9 @@ Runtime Config Options
   be first checked, if meets, use the ``vec``. Then, ``simple``, at last
   ``common``.
 
+  For example::
+  -a 0000:7d:00.0,rx_func_hint=simple
+
 - ``tx_func_hint`` (default ``none``)
 
   Used to select Tx burst function, supported value are ``vec``, ``sve``,
@@ -84,6 +87,9 @@ Runtime Config Options
   be first checked, if meets, use the ``vec``. Then, ``simple``, at last
   ``common``.
 
+  For example::
+  -a 0000:7d:00.0,tx_func_hint=common
+
 - ``dev_caps_mask`` (default ``0``)
 
   Used to mask the capability which queried from firmware.
@@ -92,6 +98,9 @@ Runtime Config Options
   firmware, and the args value is 0xF which means the bit0~bit3 should be
   masked off, then the capability will be 0xFFF0.
   Its main purpose is to debug and avoid problems.
+
+  For example::
+  -a 0000:7d:00.0,dev_caps_mask=0xF
 
 Driver compilation and testing
 ------------------------------
