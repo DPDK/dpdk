@@ -206,6 +206,7 @@ add_memseg_list(const struct rte_memseg_list *msl, void *arg)
 static int
 vhost_kernel_set_memory_table(struct virtio_user_dev *dev)
 {
+	uint32_t i;
 	struct vhost_kernel_data *data = dev->backend_data;
 	struct vhost_memory_kernel *vm;
 	int ret;
@@ -227,9 +228,14 @@ vhost_kernel_set_memory_table(struct virtio_user_dev *dev)
 	if (ret < 0)
 		goto err_free;
 
-	ret = vhost_kernel_ioctl(data->vhostfds[0], VHOST_SET_MEM_TABLE, vm);
-	if (ret < 0)
-		goto err_free;
+	for (i = 0; i < dev->max_queue_pairs; ++i) {
+		if (data->vhostfds[i] < 0)
+			continue;
+
+		ret = vhost_kernel_ioctl(data->vhostfds[i], VHOST_SET_MEM_TABLE, vm);
+		if (ret < 0)
+			goto err_free;
+	}
 
 	free(vm);
 
