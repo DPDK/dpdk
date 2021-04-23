@@ -310,7 +310,7 @@ parse_hex_string(char *src, uint8_t *dst, uint32_t *size)
 }
 
 int
-parse_lcores_list(bool lcores[], const char *corelist)
+parse_lcores_list(bool lcores[], int lcores_num, const char *corelist)
 {
 	int i, idx = 0;
 	int min, max;
@@ -332,6 +332,8 @@ parse_lcores_list(bool lcores[], const char *corelist)
 		if (*corelist == '\0')
 			return -1;
 		idx = strtoul(corelist, &end, 10);
+		if (idx < 0 || idx > lcores_num)
+			return -1;
 
 		if (end == NULL)
 			return -1;
@@ -343,7 +345,7 @@ parse_lcores_list(bool lcores[], const char *corelist)
 			max = idx;
 			if (min == RTE_MAX_LCORE)
 				min = idx;
-			for (idx = min; idx <= max; idx++) {
+			for (idx = min; idx < max; idx++) {
 				if (lcores[idx] == 1)
 					return -E2BIG;
 				lcores[idx] = 1;
