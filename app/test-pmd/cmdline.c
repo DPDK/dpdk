@@ -2808,6 +2808,10 @@ cmd_setup_rxtx_queue_parsed(
 		if (!numa_support || socket_id == NUMA_NO_CONFIG)
 			socket_id = port->socket_id;
 
+		if (port->nb_tx_desc[res->qid] < tx_pkt_nb_segs) {
+			printf("Failed to setup TX queue: not enough descriptors\n");
+			return;
+		}
 		ret = rte_eth_tx_queue_setup(res->portid,
 					     res->qid,
 					     port->nb_tx_desc[res->qid],
