@@ -4895,8 +4895,6 @@ hns3_update_link_status(struct hns3_hw *hw)
 	if (state != hw->mac.link_status) {
 		hw->mac.link_status = state;
 		hns3_warn(hw, "Link status change to %s!", state ? "up" : "down");
-		hns3_config_mac_tnl_int(hw,
-					state == ETH_LINK_UP ? true : false);
 		return true;
 	}
 
