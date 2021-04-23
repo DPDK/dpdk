@@ -16,7 +16,7 @@
  * VNIC Functions
  */
 
-void prandom_bytes(void *dest_ptr, size_t len)
+void bnxt_prandom_bytes(void *dest_ptr, size_t len)
 {
 	char *dest = (char *)dest_ptr;
 	uint64_t rb;
@@ -172,7 +172,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 				HW_HASH_KEY_SIZE);
 		vnic->mc_list_dma_addr = vnic->rss_hash_key_dma_addr +
 				HW_HASH_KEY_SIZE;
-		prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
+		bnxt_prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
 	}
 
 	return 0;
