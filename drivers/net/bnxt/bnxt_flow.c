@@ -1404,8 +1404,8 @@ skip_vnic_alloc:
 				/* If hash key has not been specified,
 				 * use random hash key.
 				 */
-				prandom_bytes(vnic->rss_hash_key,
-					      HW_HASH_KEY_SIZE);
+				bnxt_prandom_bytes(vnic->rss_hash_key,
+						   HW_HASH_KEY_SIZE);
 			} else {
 				if (rss->key_len > HW_HASH_KEY_SIZE)
 					memcpy(vnic->rss_hash_key,
