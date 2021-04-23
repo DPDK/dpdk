@@ -514,6 +514,8 @@ kni_config_promiscusity(uint16_t port_id, uint8_t to_on)
 static int
 kni_config_allmulticast(uint16_t port_id, uint8_t to_on)
 {
+	int ret;
+
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		RTE_LOG(ERR, KNI, "Invalid port id %d\n", port_id);
 		return -EINVAL;
@@ -523,11 +525,16 @@ kni_config_allmulticast(uint16_t port_id, uint8_t to_on)
 		port_id, to_on);
 
 	if (to_on)
-		rte_eth_allmulticast_enable(port_id);
+		ret = rte_eth_allmulticast_enable(port_id);
 	else
-		rte_eth_allmulticast_disable(port_id);
+		ret = rte_eth_allmulticast_disable(port_id);
+	if (ret != 0)
+		RTE_LOG(ERR, KNI,
+			"Failed to %s allmulticast mode for port %u: %s\n",
+			to_on ? "enable" : "disable", port_id,
+			rte_strerror(-ret));
 
-	return 0;
+	return ret;
 }
 
 int
