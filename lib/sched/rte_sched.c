@@ -961,9 +961,9 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	/* Allocate memory to store the subport profile */
 	port->subport_profiles  = rte_zmalloc_socket("subport_profile", size2,
 					RTE_CACHE_LINE_SIZE, params->socket);
-	if (port == NULL) {
+	if (port->subport_profiles == NULL) {
 		RTE_LOG(ERR, SCHED, "%s: Memory allocation fails\n", __func__);
-
+		rte_free(port);
 		return NULL;
 	}
 
