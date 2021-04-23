@@ -218,7 +218,7 @@ evt_parse_plcores(struct evt_options *opt, const char *corelist)
 {
 	int ret;
 
-	ret = parse_lcores_list(opt->plcores, corelist);
+	ret = parse_lcores_list(opt->plcores, RTE_MAX_LCORE, corelist);
 	if (ret == -E2BIG)
 		evt_err("duplicate lcores in plcores");
 
@@ -230,7 +230,7 @@ evt_parse_work_lcores(struct evt_options *opt, const char *corelist)
 {
 	int ret;
 
-	ret = parse_lcores_list(opt->wlcores, corelist);
+	ret = parse_lcores_list(opt->wlcores, RTE_MAX_LCORE, corelist);
 	if (ret == -E2BIG)
 		evt_err("duplicate lcores in wlcores");
 
