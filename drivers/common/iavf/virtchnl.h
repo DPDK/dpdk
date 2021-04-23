@@ -1432,6 +1432,8 @@ enum virtchnl_proto_hdr_type {
 	VIRTCHNL_PROTO_HDR_PFCP,
 	VIRTCHNL_PROTO_HDR_GTPC,
 	VIRTCHNL_PROTO_HDR_ECPRI,
+	VIRTCHNL_PROTO_HDR_L2TPV2,
+	VIRTCHNL_PROTO_HDR_PPP,
 };
 
 /* Protocol header field within a protocol header. */
