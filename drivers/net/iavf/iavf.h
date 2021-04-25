@@ -336,6 +336,7 @@ int iavf_fdir_check(struct iavf_adapter *adapter,
 		struct iavf_fdir_conf *filter);
 int iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 			 struct virtchnl_rss_cfg *rss_cfg, bool add);
+int iavf_get_hena_caps(struct iavf_adapter *adapter, uint64_t *caps);
 int iavf_set_hena(struct iavf_adapter *adapter, uint64_t hena);
 int iavf_rss_hash_set(struct iavf_adapter *ad, uint64_t rss_hf, bool add);
 int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,

@@ -246,6 +246,107 @@ iavf_set_mc_addr_list(struct rte_eth_dev *dev,
 }
 
 static int
+iavf_config_rss_hf(struct iavf_adapter *adapter, uint64_t rss_hf)
+{
+	static const uint64_t map_hena_rss[] = {
+		/* IPv4 */
+		[IAVF_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP] =
+				ETH_RSS_NONFRAG_IPV4_UDP,
+		[IAVF_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP] =
+				ETH_RSS_NONFRAG_IPV4_UDP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV4_UDP] =
+				ETH_RSS_NONFRAG_IPV4_UDP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK] =
+				ETH_RSS_NONFRAG_IPV4_TCP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV4_TCP] =
+				ETH_RSS_NONFRAG_IPV4_TCP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV4_SCTP] =
+				ETH_RSS_NONFRAG_IPV4_SCTP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV4_OTHER] =
+				ETH_RSS_NONFRAG_IPV4_OTHER,
+		[IAVF_FILTER_PCTYPE_FRAG_IPV4] = ETH_RSS_FRAG_IPV4,
+
+		/* IPv6 */
+		[IAVF_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP] =
+				ETH_RSS_NONFRAG_IPV6_UDP,
+		[IAVF_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP] =
+				ETH_RSS_NONFRAG_IPV6_UDP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV6_UDP] =
+				ETH_RSS_NONFRAG_IPV6_UDP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK] =
+				ETH_RSS_NONFRAG_IPV6_TCP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV6_TCP] =
+				ETH_RSS_NONFRAG_IPV6_TCP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV6_SCTP] =
+				ETH_RSS_NONFRAG_IPV6_SCTP,
+		[IAVF_FILTER_PCTYPE_NONF_IPV6_OTHER] =
+				ETH_RSS_NONFRAG_IPV6_OTHER,
+		[IAVF_FILTER_PCTYPE_FRAG_IPV6] = ETH_RSS_FRAG_IPV6,
+
+		/* L2 Payload */
+		[IAVF_FILTER_PCTYPE_L2_PAYLOAD] = ETH_RSS_L2_PAYLOAD
+	};
+
+	const uint64_t ipv4_rss = ETH_RSS_NONFRAG_IPV4_UDP |
+				  ETH_RSS_NONFRAG_IPV4_TCP |
+				  ETH_RSS_NONFRAG_IPV4_SCTP |
+				  ETH_RSS_NONFRAG_IPV4_OTHER |
+				  ETH_RSS_FRAG_IPV4;
+
+	const uint64_t ipv6_rss = ETH_RSS_NONFRAG_IPV6_UDP |
+				  ETH_RSS_NONFRAG_IPV6_TCP |
+				  ETH_RSS_NONFRAG_IPV6_SCTP |
+				  ETH_RSS_NONFRAG_IPV6_OTHER |
+				  ETH_RSS_FRAG_IPV6;
+
+	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(adapter);
+	uint64_t caps = 0, hena = 0, valid_rss_hf = 0;
+	uint32_t i;
+	int ret;
+
+	ret = iavf_get_hena_caps(adapter, &caps);
+	if (ret)
+		return ret;
+	/**
+	 * ETH_RSS_IPV4 and ETH_RSS_IPV6 can be considered as 2
+	 * generalizations of all other IPv4 and IPv6 RSS types.
+	 */
+	if (rss_hf & ETH_RSS_IPV4)
+		rss_hf |= ipv4_rss;
+
+	if (rss_hf & ETH_RSS_IPV6)
+		rss_hf |= ipv6_rss;
+
+	RTE_BUILD_BUG_ON(RTE_DIM(map_hena_rss) > sizeof(uint64_t) * CHAR_BIT);
+
+	for (i = 0; i < RTE_DIM(map_hena_rss); i++) {
+		uint64_t bit = BIT_ULL(i);
+
+		if ((caps & bit) && (map_hena_rss[i] & rss_hf)) {
+			valid_rss_hf |= map_hena_rss[i];
+			hena |= bit;
+		}
+	}
+
+	ret = iavf_set_hena(adapter, hena);
+	if (ret)
+		return ret;
+
+	if (valid_rss_hf & ipv4_rss)
+		valid_rss_hf |= rss_hf & ETH_RSS_IPV4;
+
+	if (valid_rss_hf & ipv6_rss)
+		valid_rss_hf |= rss_hf & ETH_RSS_IPV6;
+
+	if (rss_hf & ~valid_rss_hf)
+		PMD_DRV_LOG(WARNING, "Unsupported rss_hf 0x%" PRIx64,
+			    rss_hf & ~valid_rss_hf);
+
+	vf->rss_hf = valid_rss_hf;
+	return 0;
+}
+
+static int
 iavf_init_rss(struct iavf_adapter *adapter)
 {
 	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(adapter);
@@ -301,6 +402,10 @@ iavf_init_rss(struct iavf_adapter *adapter)
 			PMD_DRV_LOG(ERR, "fail to set default RSS");
 			return ret;
 		}
+	} else {
+		ret = iavf_config_rss_hf(adapter, rss_conf->rss_hf);
+		if (ret != -ENOTSUP)
+			return ret;
 	}
 
 	return 0;
@@ -1282,6 +1387,10 @@ iavf_dev_rss_hash_update(struct rte_eth_dev *dev,
 			PMD_DRV_LOG(ERR, "fail to set new RSS");
 			return ret;
 		}
+	} else {
+		ret = iavf_config_rss_hf(adapter, rss_conf->rss_hf);
+		if (ret != -ENOTSUP)
+			return ret;
 	}
 
 	return 0;
@@ -2096,7 +2205,7 @@ iavf_default_rss_disable(struct iavf_adapter *adapter)
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	int ret = 0;
 
-	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF) {
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
 		/* Set hena = 0 to ask PF to cleanup all existing RSS. */
 		ret = iavf_set_hena(adapter, 0);
 		if (ret)

@@ -1496,6 +1496,30 @@ iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 }
 
 int
+iavf_get_hena_caps(struct iavf_adapter *adapter, uint64_t *caps)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct iavf_cmd_info args;
+	int err;
+
+	args.ops = VIRTCHNL_OP_GET_RSS_HENA_CAPS;
+	args.in_args = NULL;
+	args.in_args_size = 0;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_GET_RSS_HENA_CAPS");
+		return err;
+	}
+
+	*caps = ((struct virtchnl_rss_hena *)args.out_buffer)->hena;
+	return 0;
+}
+
+int
 iavf_set_hena(struct iavf_adapter *adapter, uint64_t hena)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
