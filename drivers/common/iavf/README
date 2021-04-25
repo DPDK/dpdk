@@ -6,7 +6,7 @@ Intel® IAVF driver
 =================
 
 This directory contains source code of FreeBSD IAVF driver of version
-cid-avf.2021.01.12.tar.gz released by the team which develops
+cid-avf.2021.04.29.tar.gz released by the team which develops
 basic drivers for any IAVF NIC. The directory of base/ contains the
 original source package.
 
