@@ -227,13 +227,19 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 			rte_delay_ms(ASQ_DELAY_MS);
 			/* If don't read msg or read sys event, continue */
 		} while (i++ < MAX_TRY_TIMES);
-		/* If there's no response is received, clear command */
-		if (i >= MAX_TRY_TIMES  ||
-		    vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
-			err = -1;
-			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
-				    " for cmd %d", vf->cmd_retval, args->ops);
+
+		if (i >= MAX_TRY_TIMES) {
+			PMD_DRV_LOG(ERR, "No response for cmd %d", args->ops);
 			_clear_cmd(vf);
+			err = -EIO;
+		} else if (vf->cmd_retval ==
+			   VIRTCHNL_STATUS_ERR_NOT_SUPPORTED) {
+			PMD_DRV_LOG(ERR, "Cmd %d not supported", args->ops);
+			err = -ENOTSUP;
+		} else if (vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
+			PMD_DRV_LOG(ERR, "Return failure %d for cmd %d",
+				    vf->cmd_retval, args->ops);
+			err = -EINVAL;
 		}
 		break;
 	}

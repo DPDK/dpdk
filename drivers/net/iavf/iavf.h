@@ -136,7 +136,7 @@ struct iavf_info {
 	uint64_t supported_rxdid;
 	uint8_t *proto_xtr; /* proto xtr type for all queues */
 	volatile enum virtchnl_ops pend_cmd; /* pending command not finished */
-	uint32_t cmd_retval; /* return value of the cmd response from PF */
+	int cmd_retval; /* return value of the cmd response from PF */
 	uint8_t *aq_resp; /* buffer to store the adminq response from PF */
 
 	/* Event from pf */
@@ -255,7 +255,7 @@ struct iavf_cmd_info {
  * _atomic_set_cmd successfully.
  */
 static inline void
-_notify_cmd(struct iavf_info *vf, uint32_t msg_ret)
+_notify_cmd(struct iavf_info *vf, int msg_ret)
 {
 	vf->cmd_retval = msg_ret;
 	rte_wmb();
