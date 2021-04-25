@@ -362,14 +362,6 @@ iavf_init_rss(struct iavf_adapter *adapter)
 		PMD_DRV_LOG(DEBUG, "RSS is not supported");
 		return -ENOTSUP;
 	}
-	if (adapter->eth_dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
-		PMD_DRV_LOG(WARNING, "RSS is enabled by PF by default");
-		/* set all lut items to default queue */
-		for (i = 0; i < vf->vf_res->rss_lut_size; i++)
-			vf->rss_lut[i] = 0;
-		ret = iavf_configure_rss_lut(adapter);
-		return ret;
-	}
 
 	/* configure RSS key */
 	if (!rss_conf->rss_key) {
