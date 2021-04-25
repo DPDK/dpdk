@@ -2709,6 +2709,15 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev,
 	struct rte_eth_link new_link;
 	int ret;
 
+	/* When port is stopped, report link down. */
+	if (eth_dev->data->dev_started == 0) {
+		new_link.link_autoneg = mac->link_autoneg;
+		new_link.link_duplex = mac->link_duplex;
+		new_link.link_speed = ETH_SPEED_NUM_NONE;
+		new_link.link_status = ETH_LINK_DOWN;
+		goto out;
+	}
+
 	ret = hns3_update_port_link_info(eth_dev);
 	if (ret) {
 		mac->link_status = ETH_LINK_DOWN;
@@ -2718,6 +2727,7 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev,
 	memset(&new_link, 0, sizeof(new_link));
 	hns3_setup_linkstatus(eth_dev, &new_link);
 
+out:
 	return rte_eth_linkstatus_set(eth_dev, &new_link);
 }
 
