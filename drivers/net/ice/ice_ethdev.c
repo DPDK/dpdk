@@ -3642,7 +3642,7 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	}
 
 	dev_info->rx_queue_offload_capa = 0;
-	dev_info->tx_queue_offload_capa = 0;
+	dev_info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	dev_info->reta_size = pf->hash_lut_size;
 	dev_info->hash_key_size = (VSIQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
