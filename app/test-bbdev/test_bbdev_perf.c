@@ -372,14 +372,14 @@ check_dev_cap(const struct rte_bbdev_info *dev_info)
 			if (nb_harq_inputs > cap->num_buffers_hard_out) {
 				printf(
 					"Too many HARQ inputs defined: %u, max: %u\n",
-					nb_hard_outputs,
+					nb_harq_inputs,
 					cap->num_buffers_hard_out);
 				return TEST_FAILED;
 			}
 			if (nb_harq_outputs > cap->num_buffers_hard_out) {
 				printf(
 					"Too many HARQ outputs defined: %u, max: %u\n",
-					nb_hard_outputs,
+					nb_harq_outputs,
 					cap->num_buffers_hard_out);
 				return TEST_FAILED;
 			}
