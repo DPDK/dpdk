@@ -303,6 +303,28 @@ _F_(match_check_process)(struct acl_flow_avx512 *flow, uint32_t fm[2],
 	}
 }
 
+static inline void
+_F_(reset_flow_vars)(_T_simd di[2], _T_simd idx[2], _T_simd pdata[4],
+	_T_simd tr_lo[2], _T_simd tr_hi[2])
+{
+	di[0] = _M_SI_(setzero)();
+	di[1] = _M_SI_(setzero)();
+
+	idx[0] = _M_SI_(setzero)();
+	idx[1] = _M_SI_(setzero)();
+
+	pdata[0] = _M_SI_(setzero)();
+	pdata[1] = _M_SI_(setzero)();
+	pdata[2] = _M_SI_(setzero)();
+	pdata[3] = _M_SI_(setzero)();
+
+	tr_lo[0] = _M_SI_(setzero)();
+	tr_lo[1] = _M_SI_(setzero)();
+
+	tr_hi[0] = _M_SI_(setzero)();
+	tr_hi[1] = _M_SI_(setzero)();
+}
+
 /*
  * Perform search for up to (2 * _N_) flows in parallel.
  * Use two sets of metadata, each serves _N_ flows max.
@@ -312,6 +334,8 @@ _F_(search_trie)(struct acl_flow_avx512 *flow)
 {
 	uint32_t fm[2];
 	_T_simd di[2], idx[2], in[2], pdata[4], tr_lo[2], tr_hi[2];
+
+	_F_(reset_flow_vars)(di, idx, pdata, tr_lo, tr_hi);
 
 	/* first 1B load */
 	_F_(start_flow)(flow, _SIMD_MASK_BIT_, _SIMD_MASK_MAX_,
