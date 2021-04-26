@@ -3373,6 +3373,38 @@ static int bnxt_get_tx_ts(struct bnxt *bp, uint64_t *ts)
 	return 0;
 }
 
+static int bnxt_clr_rx_ts(struct bnxt *bp, uint64_t *last_ts)
+{
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+	struct bnxt_pf_info *pf = bp->pf;
+	uint16_t port_id;
+	int i = 0;
+	uint32_t fifo;
+
+	if (!ptp || (bp->flags & BNXT_FLAG_THOR_CHIP))
+		return -EINVAL;
+
+	port_id = pf->port_id;
+	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
+	while ((fifo & BNXT_PTP_RX_FIFO_PENDING) && (i < BNXT_PTP_RX_PND_CNT)) {
+		rte_write32(1 << port_id, (uint8_t *)bp->bar0 +
+			    ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO_ADV]);
+		fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+					ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
+		*last_ts = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+					ptp->rx_mapped_regs[BNXT_PTP_RX_TS_L]));
+		*last_ts |= (uint64_t)rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+					ptp->rx_mapped_regs[BNXT_PTP_RX_TS_H])) << 32;
+		i++;
+	}
+
+	if (i >= BNXT_PTP_RX_PND_CNT)
+		return -EBUSY;
+
+	return 0;
+}
+
 static int bnxt_get_rx_ts(struct bnxt *bp, uint64_t *ts)
 {
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
@@ -3391,10 +3423,8 @@ static int bnxt_get_rx_ts(struct bnxt *bp, uint64_t *ts)
 
 	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
 				   ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
-	if (fifo & BNXT_PTP_RX_FIFO_PENDING) {
-/*		bnxt_clr_rx_ts(bp);	  TBD  */
-		return -EBUSY;
-	}
+	if (fifo & BNXT_PTP_RX_FIFO_PENDING)
+		return bnxt_clr_rx_ts(bp, ts);
 
 	*ts = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
 				ptp->rx_mapped_regs[BNXT_PTP_RX_TS_L]));
