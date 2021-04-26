@@ -9557,7 +9557,7 @@ dump_socket_mem(FILE *f)
 	fprintf(f,
 		"Total   : size(M) total: %.6lf alloc: %.6lf(%.3lf%%) free: %.6lf \tcount alloc: %-4u free: %u\n",
 		(double)total / (1024 * 1024), (double)alloc / (1024 * 1024),
-		(double)alloc * 100 / (double)total,
+		total ? ((double)alloc * 100 / (double)total) : 0,
 		(double)free / (1024 * 1024),
 		n_alloc, n_free);
 	if (last_allocs)
