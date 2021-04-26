@@ -808,7 +808,7 @@ static const struct ice_dummy_pkt_offsets dummy_ipv6_gtpu_ipv6_tcp_packet_offset
 	{ ICE_UDP_OF,		54 },
 	{ ICE_GTP,		62 },
 	{ ICE_IPV6_IL,		82 },
-	{ ICE_TCP_IL,		102 },
+	{ ICE_TCP_IL,		122 },
 	{ ICE_PROTOCOL_LAST,	0 },
 };
 
@@ -865,7 +865,7 @@ static const struct ice_dummy_pkt_offsets dummy_ipv6_gtpu_ipv6_udp_packet_offset
 	{ ICE_UDP_OF,		54 },
 	{ ICE_GTP,		62 },
 	{ ICE_IPV6_IL,		82 },
-	{ ICE_UDP_ILOS,		102 },
+	{ ICE_UDP_ILOS,		122 },
 	{ ICE_PROTOCOL_LAST,	0 },
 };
 
