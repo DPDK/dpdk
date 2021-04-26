@@ -68,38 +68,38 @@
 	ICE_INSET_IPV6_HOP_LIMIT | ICE_INSET_IPV6_TC | \
 	ICE_INSET_UDP_DST_PORT | ICE_INSET_UDP_SRC_PORT)
 #define ICE_SW_INSET_DIST_NVGRE_IPV4 ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_DMAC | ICE_INSET_TUN_NVGRE_TNI | ICE_INSET_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_DMAC | ICE_INSET_NVGRE_TNI | ICE_INSET_IPV4_DST)
 #define ICE_SW_INSET_DIST_VXLAN_IPV4 ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_DMAC | ICE_INSET_TUN_VXLAN_VNI | ICE_INSET_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_DMAC | ICE_INSET_VXLAN_VNI | ICE_INSET_IPV4_DST)
 #define ICE_SW_INSET_DIST_NVGRE_IPV4_TCP ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT | \
-	ICE_INSET_TUN_DMAC | ICE_INSET_TUN_NVGRE_TNI | ICE_INSET_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT | \
+	ICE_INSET_DMAC | ICE_INSET_NVGRE_TNI | ICE_INSET_IPV4_DST)
 #define ICE_SW_INSET_DIST_NVGRE_IPV4_UDP ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT | \
-	ICE_INSET_TUN_DMAC | ICE_INSET_TUN_NVGRE_TNI | ICE_INSET_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT | \
+	ICE_INSET_DMAC | ICE_INSET_NVGRE_TNI | ICE_INSET_IPV4_DST)
 #define ICE_SW_INSET_DIST_VXLAN_IPV4_TCP ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT | \
-	ICE_INSET_TUN_DMAC | ICE_INSET_TUN_VXLAN_VNI | ICE_INSET_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT | \
+	ICE_INSET_DMAC | ICE_INSET_VXLAN_VNI | ICE_INSET_IPV4_DST)
 #define ICE_SW_INSET_DIST_VXLAN_IPV4_UDP ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT | \
-	ICE_INSET_TUN_DMAC | ICE_INSET_TUN_VXLAN_VNI | ICE_INSET_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT | \
+	ICE_INSET_DMAC | ICE_INSET_VXLAN_VNI | ICE_INSET_IPV4_DST)
 #define ICE_SW_INSET_PERM_TUNNEL_IPV4 ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_IPV4_PROTO | ICE_INSET_TUN_IPV4_TOS)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_IPV4_PROTO | ICE_INSET_IPV4_TOS)
 #define ICE_SW_INSET_PERM_TUNNEL_IPV4_TCP ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT | \
-	ICE_INSET_TUN_IPV4_TOS)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT | \
+	ICE_INSET_IPV4_TOS)
 #define ICE_SW_INSET_PERM_TUNNEL_IPV4_UDP ( \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT | \
-	ICE_INSET_TUN_IPV4_TOS)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT | \
+	ICE_INSET_IPV4_TOS)
 #define ICE_SW_INSET_MAC_PPPOE  ( \
 	ICE_INSET_VLAN_OUTER | ICE_INSET_VLAN_INNER | \
 	ICE_INSET_DMAC | ICE_INSET_ETHERTYPE | ICE_INSET_PPPOE_SESSION)
@@ -143,72 +143,72 @@
 	ICE_SW_INSET_MAC_IPV6 | ICE_INSET_GTPU_TEID)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_IPV4 ( \
 	ICE_INSET_DMAC | ICE_INSET_GTPU_TEID | \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4 ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_IPV4 | ICE_INSET_GTPU_QFI)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_IPV6 ( \
 	ICE_INSET_DMAC | ICE_INSET_GTPU_TEID | \
-	ICE_INSET_TUN_IPV6_SRC | ICE_INSET_TUN_IPV6_DST)
+	ICE_INSET_IPV6_SRC | ICE_INSET_IPV6_DST)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6 ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_IPV6 | ICE_INSET_GTPU_QFI)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_IPV4 ( \
 	ICE_INSET_DMAC | ICE_INSET_GTPU_TEID | \
-	ICE_INSET_TUN_IPV4_SRC | ICE_INSET_TUN_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4 ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_IPV4 | ICE_INSET_GTPU_QFI)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_IPV6 ( \
 	ICE_INSET_DMAC | ICE_INSET_GTPU_TEID | \
-	ICE_INSET_TUN_IPV6_SRC | ICE_INSET_TUN_IPV6_DST)
+	ICE_INSET_IPV6_SRC | ICE_INSET_IPV6_DST)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6 ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_IPV6 | ICE_INSET_GTPU_QFI)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_IPV4_UDP ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_IPV4 | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4_UDP ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4 | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_IPV4_TCP ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_IPV4 | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4_TCP ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV4 | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_IPV6_UDP ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_IPV6 | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6_UDP ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6 | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_IPV6_TCP ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_IPV6 | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6_TCP ( \
 	ICE_SW_INSET_MAC_IPV4_GTPU_EH_IPV6 | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_IPV4_UDP ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_IPV4 | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4_UDP ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4 | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_IPV4_TCP ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_IPV4 | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4_TCP ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV4 | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_IPV6_UDP ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_IPV6 | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6_UDP ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6 | \
-	ICE_INSET_TUN_UDP_SRC_PORT | ICE_INSET_TUN_UDP_DST_PORT)
+	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_IPV6_TCP ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_IPV6 | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 #define ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6_TCP ( \
 	ICE_SW_INSET_MAC_IPV6_GTPU_EH_IPV6 | \
-	ICE_INSET_TUN_TCP_SRC_PORT | ICE_INSET_TUN_TCP_DST_PORT)
+	ICE_INSET_TCP_SRC_PORT | ICE_INSET_TCP_DST_PORT)
 
 struct sw_meta {
 	struct ice_adv_lkup_elem *list;
@@ -553,7 +553,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
 					if (a[j] && tunnel_valid) {
 						input_set |=
-							ICE_INSET_TUN_SMAC;
+							ICE_INSET_SMAC;
 						break;
 					} else if (a[j]) {
 						input_set |=
@@ -564,7 +564,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
 					if (b[j] && tunnel_valid) {
 						input_set |=
-							ICE_INSET_TUN_DMAC;
+							ICE_INSET_DMAC;
 						break;
 					} else if (b[j]) {
 						input_set |=
@@ -637,19 +637,19 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				if (tunnel_valid) {
 					if (ipv4_mask->hdr.type_of_service)
 						input_set |=
-							ICE_INSET_TUN_IPV4_TOS;
+							ICE_INSET_IPV4_TOS;
 					if (ipv4_mask->hdr.src_addr)
 						input_set |=
-							ICE_INSET_TUN_IPV4_SRC;
+							ICE_INSET_IPV4_SRC;
 					if (ipv4_mask->hdr.dst_addr)
 						input_set |=
-							ICE_INSET_TUN_IPV4_DST;
+							ICE_INSET_IPV4_DST;
 					if (ipv4_mask->hdr.time_to_live)
 						input_set |=
-							ICE_INSET_TUN_IPV4_TTL;
+							ICE_INSET_IPV4_TTL;
 					if (ipv4_mask->hdr.next_proto_id)
 						input_set |=
-						ICE_INSET_TUN_IPV4_PROTO;
+						ICE_INSET_IPV4_PROTO;
 				} else {
 					if (ipv4_mask->hdr.src_addr)
 						input_set |= ICE_INSET_IPV4_SRC;
@@ -729,7 +729,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					if (ipv6_mask->hdr.src_addr[j] &&
 						tunnel_valid) {
 						input_set |=
-						ICE_INSET_TUN_IPV6_SRC;
+						ICE_INSET_IPV6_SRC;
 						break;
 					} else if (ipv6_mask->hdr.src_addr[j]) {
 						input_set |= ICE_INSET_IPV6_SRC;
@@ -740,7 +740,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					if (ipv6_mask->hdr.dst_addr[j] &&
 						tunnel_valid) {
 						input_set |=
-						ICE_INSET_TUN_IPV6_DST;
+						ICE_INSET_IPV6_DST;
 						break;
 					} else if (ipv6_mask->hdr.dst_addr[j]) {
 						input_set |= ICE_INSET_IPV6_DST;
@@ -750,14 +750,14 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				if (ipv6_mask->hdr.proto &&
 					tunnel_valid)
 					input_set |=
-						ICE_INSET_TUN_IPV6_NEXT_HDR;
+						ICE_INSET_IPV6_NEXT_HDR;
 				else if (ipv6_mask->hdr.proto)
 					input_set |=
 						ICE_INSET_IPV6_NEXT_HDR;
 				if (ipv6_mask->hdr.hop_limits &&
 					tunnel_valid)
 					input_set |=
-						ICE_INSET_TUN_IPV6_HOP_LIMIT;
+						ICE_INSET_IPV6_HOP_LIMIT;
 				else if (ipv6_mask->hdr.hop_limits)
 					input_set |=
 						ICE_INSET_IPV6_HOP_LIMIT;
@@ -766,7 +766,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						(RTE_IPV6_HDR_TC_MASK)) &&
 					tunnel_valid)
 					input_set |=
-							ICE_INSET_TUN_IPV6_TC;
+							ICE_INSET_IPV6_TC;
 				else if (ipv6_mask->hdr.vtc_flow &
 						rte_cpu_to_be_32
 						(RTE_IPV6_HDR_TC_MASK))
@@ -851,10 +851,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				if (tunnel_valid) {
 					if (udp_mask->hdr.src_port)
 						input_set |=
-						ICE_INSET_TUN_UDP_SRC_PORT;
+						ICE_INSET_UDP_SRC_PORT;
 					if (udp_mask->hdr.dst_port)
 						input_set |=
-						ICE_INSET_TUN_UDP_DST_PORT;
+						ICE_INSET_UDP_DST_PORT;
 				} else {
 					if (udp_mask->hdr.src_port)
 						input_set |=
@@ -912,10 +912,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				if (tunnel_valid) {
 					if (tcp_mask->hdr.src_port)
 						input_set |=
-						ICE_INSET_TUN_TCP_SRC_PORT;
+						ICE_INSET_TCP_SRC_PORT;
 					if (tcp_mask->hdr.dst_port)
 						input_set |=
-						ICE_INSET_TUN_TCP_DST_PORT;
+						ICE_INSET_TCP_DST_PORT;
 				} else {
 					if (tcp_mask->hdr.src_port)
 						input_set |=
@@ -959,10 +959,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				if (tunnel_valid) {
 					if (sctp_mask->hdr.src_port)
 						input_set |=
-						ICE_INSET_TUN_SCTP_SRC_PORT;
+						ICE_INSET_SCTP_SRC_PORT;
 					if (sctp_mask->hdr.dst_port)
 						input_set |=
-						ICE_INSET_TUN_SCTP_DST_PORT;
+						ICE_INSET_SCTP_DST_PORT;
 				} else {
 					if (sctp_mask->hdr.src_port)
 						input_set |=
@@ -1021,7 +1021,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						(vxlan_mask->vni[1] << 8) |
 						vxlan_mask->vni[0];
 					input_set |=
-						ICE_INSET_TUN_VXLAN_VNI;
+						ICE_INSET_VXLAN_VNI;
 					input_set_byte += 2;
 				}
 				t++;
@@ -1059,7 +1059,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						(nvgre_mask->tni[1] << 8) |
 						nvgre_mask->tni[0];
 					input_set |=
-						ICE_INSET_TUN_NVGRE_TNI;
+						ICE_INSET_NVGRE_TNI;
 					input_set_byte += 2;
 				}
 				t++;
