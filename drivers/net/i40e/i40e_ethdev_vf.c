@@ -216,6 +216,7 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.mtu_set              = i40evf_dev_mtu_set,
 	.mac_addr_set         = i40evf_set_default_mac_addr,
 	.tx_done_cleanup      = i40e_tx_done_cleanup,
+	.get_monitor_addr     = i40e_get_monitor_addr
 };
 
 /*
