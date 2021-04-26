@@ -105,6 +105,7 @@ F: buildtools/call-sphinx-build.py
 F: buildtools/list-dir-globs.py
 F: buildtools/pkg-config/
 F: buildtools/symlink-drivers-solibs.sh
+F: buildtools/symlink-drivers-solibs.py
 F: devtools/test-meson-builds.sh
 F: devtools/check-meson.py
 
