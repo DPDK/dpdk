@@ -104,6 +104,7 @@ F: buildtools/list-dir-globs.py
 F: buildtools/pkg-config/
 F: buildtools/symlink-drivers-solibs.sh
 F: devtools/test-meson-builds.sh
+F: devtools/check-meson.py
 
 Public CI
 M: Aaron Conole <aconole@redhat.com>
