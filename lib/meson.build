@@ -82,9 +82,9 @@ if is_windows
 endif
 
 optional_libs = [
-    'kni',
-    'power',
-    'vhost',
+        'kni',
+        'power',
+        'vhost',
 ]
 
 disabled_libs = []

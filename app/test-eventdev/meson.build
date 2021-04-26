@@ -14,6 +14,6 @@ sources = files(
         'test_perf_queue.c',
         'test_pipeline_atq.c',
         'test_pipeline_common.c',
-        'test_pipeline_queue.c'
+        'test_pipeline_queue.c',
 )
 deps += 'eventdev'

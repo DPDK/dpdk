@@ -4,7 +4,7 @@
 sources = [
         'nicvf_hw.c',
         'nicvf_mbox.c',
-        'nicvf_bsvf.c'
+        'nicvf_bsvf.c',
 ]
 
 c_args = cflags

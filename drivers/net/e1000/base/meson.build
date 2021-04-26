@@ -19,7 +19,7 @@ sources = [
         'e1000_nvm.c',
         'e1000_osdep.c',
         'e1000_phy.c',
-        'e1000_vf.c'
+        'e1000_vf.c',
 ]
 
 error_cflags = ['-Wno-uninitialized', '-Wno-unused-parameter',

@@ -16,5 +16,5 @@ sources = files(
         'bcmfs_sym_capabilities.c',
         'bcmfs_sym_session.c',
         'bcmfs_sym.c',
-        'bcmfs_sym_engine.c'
+        'bcmfs_sym_engine.c',
 )

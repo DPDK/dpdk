@@ -19,13 +19,13 @@ extra_flags = []
 
 # Enable more warnings
 extra_flags += [
-        '-Wdisabled-optimization'
+        '-Wdisabled-optimization',
 ]
 
 # Compiler and version dependent flags
 extra_flags += [
         '-Waggregate-return',
-        '-Wbad-function-cast'
+        '-Wbad-function-cast',
 ]
 
 foreach flag: extra_flags

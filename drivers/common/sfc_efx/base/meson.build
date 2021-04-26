@@ -70,7 +70,7 @@ extra_flags = [
         '-Wno-unused-parameter',
         '-Wno-unused-variable',
         '-Wno-empty-body',
-        '-Wno-unused-but-set-variable'
+        '-Wno-unused-but-set-variable',
 ]
 
 c_args = cflags

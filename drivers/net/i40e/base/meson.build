@@ -8,7 +8,7 @@ sources = [
         'i40e_diag.c',
         'i40e_hmc.c',
         'i40e_lan_hmc.c',
-        'i40e_nvm.c'
+        'i40e_nvm.c',
 ]
 
 error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',

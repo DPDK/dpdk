@@ -4,7 +4,7 @@
 sources = [
         'octeontx_pkovf.c',
         'octeontx_pkivf.c',
-        'octeontx_bgx.c'
+        'octeontx_bgx.c',
 ]
 
 depends = ['ethdev', 'mempool_octeontx']

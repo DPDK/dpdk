@@ -14,7 +14,7 @@ sources = [
         'ixgbe_phy.c',
         'ixgbe_vf.c',
         'ixgbe_x540.c',
-        'ixgbe_x550.c'
+        'ixgbe_x550.c',
 ]
 
 error_cflags = ['-Wno-unused-value',

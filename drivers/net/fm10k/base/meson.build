@@ -7,7 +7,7 @@ sources = [
         'fm10k_mbx.c',
         'fm10k_pf.c',
         'fm10k_tlv.c',
-        'fm10k_vf.c'
+        'fm10k_vf.c',
 ]
 
 error_cflags = ['-Wno-unused-parameter', '-Wno-unused-value',

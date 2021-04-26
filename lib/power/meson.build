@@ -19,6 +19,6 @@ headers = files(
         'rte_power.h',
         'rte_power_empty_poll.h',
         'rte_power_pmd_mgmt.h',
-        'rte_power_guest_channel.h'
+        'rte_power_guest_channel.h',
 )
 deps += ['timer', 'ethdev']

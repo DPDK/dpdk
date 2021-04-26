@@ -36,5 +36,5 @@ deps += ['mbuf', 'port', 'lpm', 'hash', 'acl']
 indirect_headers += files(
         'rte_lru_arm64.h',
         'rte_lru_x86.h',
-        'rte_table_hash_func_arm64.h'
+        'rte_table_hash_func_arm64.h',
 )

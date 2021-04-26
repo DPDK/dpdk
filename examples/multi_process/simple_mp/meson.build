@@ -8,5 +8,6 @@
 
 allow_experimental_apis = true
 sources = files(
-        'mp_commands.c', 'main.c'
+        'mp_commands.c',
+        'main.c',
 )
