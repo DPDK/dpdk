@@ -605,6 +605,7 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.rss_hash_update      = ixgbe_dev_rss_hash_update,
 	.rss_hash_conf_get    = ixgbe_dev_rss_hash_conf_get,
 	.tx_done_cleanup      = ixgbe_dev_tx_done_cleanup,
+	.get_monitor_addr     = ixgbe_get_monitor_addr,
 };
 
 /* store statistics names and its offset in stats structure */
