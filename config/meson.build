@@ -61,6 +61,10 @@ if not is_windows
 	meson.add_install_script('../buildtools/symlink-drivers-solibs.sh',
 			get_option('libdir'),
 			pmd_subdir_opt)
+elif meson.version().version_compare('>=0.55.0')
+	# 0.55.0 is required to use external program with add_install_script
+	meson.add_install_script(py3, '../buildtools/symlink-drivers-solibs.py',
+			get_option('libdir'), pmd_subdir_opt, get_option('bindir'))
 endif
 
 # set the machine type and cflags for it
