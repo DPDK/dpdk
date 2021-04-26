@@ -1779,5 +1779,5 @@ out:
 	return ret;
 }
 
-RTE_LOG_REGISTER(vhost_config_log_level, lib.vhost.config, INFO);
-RTE_LOG_REGISTER(vhost_data_log_level, lib.vhost.data, WARNING);
+RTE_LOG_REGISTER_SUFFIX(vhost_config_log_level, config, INFO);
+RTE_LOG_REGISTER_SUFFIX(vhost_data_log_level, data, WARNING);

@@ -472,4 +472,4 @@ static struct rte_bus rte_ifpga_bus = {
 };
 
 RTE_REGISTER_BUS(IFPGA_BUS_NAME, rte_ifpga_bus);
-RTE_LOG_REGISTER(ifpga_bus_logtype, bus.ifpga, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(ifpga_bus_logtype, NOTICE);

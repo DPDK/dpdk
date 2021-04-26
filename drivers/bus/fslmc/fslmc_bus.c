@@ -666,4 +666,4 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 };
 
 RTE_REGISTER_BUS(FSLMC_BUS_NAME, rte_fslmc_bus.bus);
-RTE_LOG_REGISTER(dpaa2_logtype_bus, bus.fslmc, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(dpaa2_logtype_bus, NOTICE);

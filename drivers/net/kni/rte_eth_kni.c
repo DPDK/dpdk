@@ -68,7 +68,7 @@ static const struct rte_eth_link pmd_link = {
 };
 static int is_kni_initialized;
 
-RTE_LOG_REGISTER(eth_kni_logtype, pmd.net.kni, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(eth_kni_logtype, NOTICE);
 
 #define PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, eth_kni_logtype, \

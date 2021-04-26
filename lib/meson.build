@@ -178,6 +178,7 @@ foreach l:libraries
     if use_function_versioning
         cflags += '-DRTE_USE_FUNCTION_VERSIONING'
     endif
+    cflags += '-DRTE_LOG_DEFAULT_LOGTYPE=lib.' + l
 
     # first build static lib
     static_lib = static_library(libname,

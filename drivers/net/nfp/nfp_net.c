@@ -3847,8 +3847,8 @@ RTE_PMD_REGISTER_PCI_TABLE(net_nfp_pf, pci_id_nfp_pf_net_map);
 RTE_PMD_REGISTER_PCI_TABLE(net_nfp_vf, pci_id_nfp_vf_net_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_pf, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_vf, "* igb_uio | uio_pci_generic | vfio");
-RTE_LOG_REGISTER(nfp_logtype_init, pmd.net.nfp.init, NOTICE);
-RTE_LOG_REGISTER(nfp_logtype_driver, pmd.net.nfp.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(nfp_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(nfp_logtype_driver, driver, NOTICE);
 /*
  * Local variables:
  * c-file-style: "Linux"

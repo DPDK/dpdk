@@ -2925,19 +2925,19 @@ RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ena, ENA_DEVARG_LARGE_LLQ_HDR "=<0|1>");
-RTE_LOG_REGISTER(ena_logtype_init, pmd.net.ena.init, NOTICE);
-RTE_LOG_REGISTER(ena_logtype_driver, pmd.net.ena.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_driver, driver, NOTICE);
 #ifdef RTE_LIBRTE_ENA_DEBUG_RX
-RTE_LOG_REGISTER(ena_logtype_rx, pmd.net.ena.rx, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_rx, rx, NOTICE);
 #endif
 #ifdef RTE_LIBRTE_ENA_DEBUG_TX
-RTE_LOG_REGISTER(ena_logtype_tx, pmd.net.ena.tx, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_tx, tx, NOTICE);
 #endif
 #ifdef RTE_LIBRTE_ENA_DEBUG_TX_FREE
-RTE_LOG_REGISTER(ena_logtype_tx_free, pmd.net.ena.tx_free, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_tx_free, tx_free, NOTICE);
 #endif
 #ifdef RTE_LIBRTE_ENA_COM_DEBUG
-RTE_LOG_REGISTER(ena_logtype_com, pmd.net.ena.com, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(ena_logtype_com, com, NOTICE);
 #endif
 
 /******************************************************************************

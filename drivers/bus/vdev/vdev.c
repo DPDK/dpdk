@@ -637,4 +637,4 @@ static struct rte_bus rte_vdev_bus = {
 };
 
 RTE_REGISTER_BUS(vdev, rte_vdev_bus);
-RTE_LOG_REGISTER(vdev_logtype_bus, bus.vdev, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(vdev_logtype_bus, NOTICE);

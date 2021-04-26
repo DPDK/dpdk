@@ -9,4 +9,7 @@ drivers = [
         'vdev',
         'vmbus',
 ]
+
 std_deps = ['eal']
+
+log_prefix = 'bus'

@@ -817,5 +817,5 @@ RTE_PMD_REGISTER_KMOD_DEP(net_bnx2x, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnx2xvf, pci_id_bnx2xvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_bnx2xvf, "* igb_uio | vfio-pci");
-RTE_LOG_REGISTER(bnx2x_logtype_init, pmd.net.bnx2x.init, NOTICE);
-RTE_LOG_REGISTER(bnx2x_logtype_driver, pmd.net.bnx2x.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(bnx2x_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(bnx2x_logtype_driver, driver, NOTICE);

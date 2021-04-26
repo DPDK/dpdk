@@ -373,6 +373,15 @@ int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
 		 RTE_LOGTYPE_ ## t, # t ": " __VA_ARGS__) :	\
 	 0)
 
+#define RTE_LOG_REGISTER_IMPL(type, name, level)			    \
+int type;								    \
+RTE_INIT(__##type)							    \
+{									    \
+	type = rte_log_register_type_and_pick_level(name, RTE_LOG_##level); \
+	if (type < 0)                                                       \
+		type = RTE_LOGTYPE_EAL;                                     \
+}
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
@@ -389,15 +398,29 @@ int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
  * @param level
  *   Log level. A value between EMERG (1) and DEBUG (8).
  */
-#define RTE_LOG_REGISTER(type, name, level)				\
-int type;								\
-RTE_INIT(__##type)							\
-{									\
-	type = rte_log_register_type_and_pick_level(RTE_STR(name),	\
-						    RTE_LOG_##level);	\
-	if (type < 0)                                                   \
-		type = RTE_LOGTYPE_EAL;                                 \
-}
+#define RTE_LOG_REGISTER(type, name, level) \
+	RTE_LOG_REGISTER_IMPL(type, RTE_STR(name), level)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * This is an equivalent to RTE_LOG_REGISTER, but relying on the build system
+ * to select the right format for the logtype.
+ */
+#define RTE_LOG_REGISTER_DEFAULT(type, level) \
+	RTE_LOG_REGISTER_IMPL(type, RTE_STR(RTE_LOG_DEFAULT_LOGTYPE), level)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * This is an equivalent to RTE_LOG_REGISTER, but relying on the build system
+ * to select the right prefix for the logtype.
+ */
+#define RTE_LOG_REGISTER_SUFFIX(type, suffix, level)			      \
+	RTE_LOG_REGISTER_IMPL(type,					      \
+		 RTE_STR(RTE_LOG_DEFAULT_LOGTYPE) "." RTE_STR(suffix), level)
 
 #ifdef __cplusplus
 }

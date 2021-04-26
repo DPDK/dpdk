@@ -11,4 +11,7 @@ drivers = [
         'ring',
         'stack',
 ]
+
 std_deps = ['mempool']
+
+log_prefix = 'mempool'

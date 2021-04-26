@@ -29,7 +29,7 @@
 
 
 /* BBDev library logging ID */
-RTE_LOG_REGISTER(bbdev_logtype, lib.bbdev, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(bbdev_logtype, NOTICE);
 
 /* Helper macro for logging */
 #define rte_bbdev_log(level, fmt, ...) \

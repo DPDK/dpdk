@@ -71,7 +71,7 @@ static const struct vic_speed_capa {
 #define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
 #define ENIC_DEVARG_REPRESENTOR "representor"
 
-RTE_LOG_REGISTER(enic_pmd_logtype, pmd.net.enic, INFO);
+RTE_LOG_REGISTER_DEFAULT(enic_pmd_logtype, INFO);
 
 static int
 enicpmd_dev_flow_ops_get(struct rte_eth_dev *dev,

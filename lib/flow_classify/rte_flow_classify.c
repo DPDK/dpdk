@@ -667,4 +667,4 @@ rte_flow_classifier_query(struct rte_flow_classifier *cls,
 	return ret;
 }
 
-RTE_LOG_REGISTER(librte_flow_classify_logtype, lib.flow_classify, INFO);
+RTE_LOG_REGISTER_DEFAULT(librte_flow_classify_logtype, INFO);

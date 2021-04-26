@@ -1019,4 +1019,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_MRVL_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(mrvl_crypto_drv, cryptodev_mrvl_pmd_drv.driver,
 		cryptodev_driver_id);
-RTE_LOG_REGISTER(mrvl_logtype_driver, pmd.crypto.mvsam, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(mrvl_logtype_driver, NOTICE);

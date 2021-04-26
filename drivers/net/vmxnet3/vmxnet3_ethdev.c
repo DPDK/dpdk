@@ -1491,5 +1491,5 @@ vmxnet3_interrupt_handler(void *param)
 RTE_PMD_REGISTER_PCI(net_vmxnet3, rte_vmxnet3_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_vmxnet3, pci_id_vmxnet3_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_vmxnet3, "* igb_uio | uio_pci_generic | vfio-pci");
-RTE_LOG_REGISTER(vmxnet3_logtype_init, pmd.net.vmxnet3.init, NOTICE);
-RTE_LOG_REGISTER(vmxnet3_logtype_driver, pmd.net.vmxnet3.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(vmxnet3_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(vmxnet3_logtype_driver, driver, NOTICE);

@@ -1151,4 +1151,4 @@ RTE_PMD_REGISTER_PARAM_STRING(event_sw, NUMA_NODE_ARG "=<int> "
 		SCHED_QUANTA_ARG "=<int>" CREDIT_QUANTA_ARG "=<int>"
 		MIN_BURST_SIZE_ARG "=<int>" DEQ_BURST_SIZE_ARG "=<int>"
 		REFIL_ONCE_ARG "=<int>");
-RTE_LOG_REGISTER(eventdev_sw_log_level, pmd.event.sw, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(eventdev_sw_log_level, NOTICE);

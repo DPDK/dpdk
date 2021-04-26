@@ -1296,4 +1296,4 @@ static struct rte_pci_driver rte_ionic_pmd = {
 RTE_PMD_REGISTER_PCI(net_ionic, rte_ionic_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ionic, pci_id_ionic_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ionic, "* igb_uio | uio_pci_generic | vfio-pci");
-RTE_LOG_REGISTER(ionic_logtype, pmd.net.ionic, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(ionic_logtype, NOTICE);

@@ -60,7 +60,7 @@
 #define PF_XDP AF_XDP
 #endif
 
-RTE_LOG_REGISTER(af_xdp_logtype, pmd.net.af_xdp, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
 
 #define AF_XDP_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, af_xdp_logtype,	\

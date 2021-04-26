@@ -47,9 +47,9 @@ enum octeontx_link_speed {
 	OCTEONTX_LINK_SPEED_RESERVE2
 };
 
-RTE_LOG_REGISTER(otx_net_logtype_mbox, pmd.net.octeontx.mbox, NOTICE);
-RTE_LOG_REGISTER(otx_net_logtype_init, pmd.net.octeontx.init, NOTICE);
-RTE_LOG_REGISTER(otx_net_logtype_driver, pmd.net.octeontx.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(otx_net_logtype_mbox, mbox, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(otx_net_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(otx_net_logtype_driver, driver, NOTICE);
 
 /* Parse integer from integer argument */
 static int

@@ -28,7 +28,7 @@ static struct rte_pci_driver ioat_pmd_drv;
 #define IOAT_DEVICE_ID_BDXF	0x6f2F
 #define IOAT_DEVICE_ID_ICX	0x0b00
 
-RTE_LOG_REGISTER(ioat_pmd_logtype, pmd.raw.ioat, INFO);
+RTE_LOG_REGISTER_DEFAULT(ioat_pmd_logtype, INFO);
 
 #define DESC_SZ sizeof(struct rte_ioat_generic_hw_desc)
 #define COMPLETION_SZ sizeof(__m128i)

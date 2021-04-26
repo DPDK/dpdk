@@ -21,7 +21,6 @@
 #include "mlx5_rxp_csrs.h"
 
 #define MLX5_REGEX_DRIVER_NAME regex_mlx5
-#define MLX5_REGEX_LOG_NAME    pmd.regex.mlx5
 
 int mlx5_regex_logtype;
 
@@ -275,7 +274,7 @@ RTE_INIT(rte_mlx5_regex_init)
 		mlx5_pci_driver_register(&mlx5_regex_driver);
 }
 
-RTE_LOG_REGISTER(mlx5_regex_logtype, MLX5_REGEX_LOG_NAME, NOTICE)
+RTE_LOG_REGISTER_DEFAULT(mlx5_regex_logtype, NOTICE)
 RTE_PMD_EXPORT_NAME(MLX5_REGEX_DRIVER_NAME, __COUNTER__);
 RTE_PMD_REGISTER_PCI_TABLE(MLX5_REGEX_DRIVER_NAME, mlx5_regex_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(MLX5_REGEX_DRIVER_NAME, "* ib_uverbs & mlx5_core & mlx5_ib");

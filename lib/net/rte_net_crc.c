@@ -76,7 +76,7 @@ static uint16_t max_simd_bitwidth;
 	rte_log(RTE_LOG_ ## level, libnet_logtype, "%s(): " fmt "\n",	\
 		__func__, ## args)
 
-RTE_LOG_REGISTER(libnet_logtype, lib.net, INFO);
+RTE_LOG_REGISTER_DEFAULT(libnet_logtype, INFO);
 
 /* Scalar handling */
 

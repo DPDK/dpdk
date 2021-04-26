@@ -639,4 +639,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_KASUMI_PMD,
 RTE_PMD_REGISTER_CRYPTO_DRIVER(kasumi_crypto_drv,
 		cryptodev_kasumi_pmd_drv.driver, cryptodev_driver_id);
 
-RTE_LOG_REGISTER(kasumi_logtype_driver, pmd.crypto.kasumi, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(kasumi_logtype_driver, NOTICE);

@@ -580,4 +580,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_ZUC_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(zuc_crypto_drv, cryptodev_zuc_pmd_drv.driver,
 		cryptodev_driver_id);
-RTE_LOG_REGISTER(zuc_logtype_driver, pmd.crypto.zuc, INFO);
+RTE_LOG_REGISTER_DEFAULT(zuc_logtype_driver, INFO);

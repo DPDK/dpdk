@@ -19,7 +19,7 @@
 
 #include "rte_eth_vhost.h"
 
-RTE_LOG_REGISTER(vhost_logtype, pmd.net.vhost, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(vhost_logtype, NOTICE);
 
 #define VHOST_LOG(level, ...) \
 	rte_log(RTE_LOG_ ## level, vhost_logtype, __VA_ARGS__)

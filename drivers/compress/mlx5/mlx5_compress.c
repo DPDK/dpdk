@@ -23,7 +23,6 @@
 #include "mlx5_compress_utils.h"
 
 #define MLX5_COMPRESS_DRIVER_NAME mlx5_compress
-#define MLX5_COMPRESS_LOG_NAME    pmd.compress.mlx5
 #define MLX5_COMPRESS_MAX_QPS 1024
 #define MLX5_COMP_MAX_WIN_SIZE_CONF 6u
 
@@ -873,7 +872,7 @@ RTE_INIT(rte_mlx5_compress_init)
 		mlx5_pci_driver_register(&mlx5_compress_driver);
 }
 
-RTE_LOG_REGISTER(mlx5_compress_logtype, MLX5_COMPRESS_LOG_NAME, NOTICE)
+RTE_LOG_REGISTER_DEFAULT(mlx5_compress_logtype, NOTICE)
 RTE_PMD_EXPORT_NAME(MLX5_COMPRESS_DRIVER_NAME, __COUNTER__);
 RTE_PMD_REGISTER_PCI_TABLE(MLX5_COMPRESS_DRIVER_NAME, mlx5_compress_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(MLX5_COMPRESS_DRIVER_NAME, "* ib_uverbs & mlx5_core & mlx5_ib");

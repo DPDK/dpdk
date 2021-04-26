@@ -6191,7 +6191,7 @@ bool is_bnxt_supported(struct rte_eth_dev *dev)
 	return is_device_supported(dev, &bnxt_rte_pmd);
 }
 
-RTE_LOG_REGISTER(bnxt_logtype_driver, pmd.net.bnxt.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(bnxt_logtype_driver, driver, NOTICE);
 RTE_PMD_REGISTER_PCI(net_bnxt, bnxt_rte_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnxt, bnxt_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_bnxt, "* igb_uio | uio_pci_generic | vfio-pci");

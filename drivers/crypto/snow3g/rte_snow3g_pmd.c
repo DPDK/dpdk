@@ -653,4 +653,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SNOW3G_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(snow3g_crypto_drv,
 		cryptodev_snow3g_pmd_drv.driver, cryptodev_driver_id);
-RTE_LOG_REGISTER(snow3g_logtype_driver, pmd.crypto.snow3g, INFO);
+RTE_LOG_REGISTER_DEFAULT(snow3g_logtype_driver, INFO);

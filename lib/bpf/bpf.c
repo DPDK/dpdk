@@ -53,4 +53,4 @@ bpf_jit(struct rte_bpf *bpf)
 	return rc;
 }
 
-RTE_LOG_REGISTER(rte_bpf_logtype, lib.bpf, INFO);
+RTE_LOG_REGISTER_DEFAULT(rte_bpf_logtype, INFO);

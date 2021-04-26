@@ -528,7 +528,7 @@ handle_ports_stats_values_by_name(const char *cmd __rte_unused,
 	return used;
 }
 
-RTE_LOG_REGISTER(metrics_log_level, lib.metrics, ERR);
+RTE_LOG_REGISTER_DEFAULT(metrics_log_level, ERR);
 
 RTE_INIT(metrics_ctor)
 {

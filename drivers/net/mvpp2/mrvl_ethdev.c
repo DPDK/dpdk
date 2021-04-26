@@ -3309,4 +3309,4 @@ static struct rte_vdev_driver pmd_mrvl_drv = {
 
 RTE_PMD_REGISTER_VDEV(net_mvpp2, pmd_mrvl_drv);
 RTE_PMD_REGISTER_ALIAS(net_mvpp2, eth_mvpp2);
-RTE_LOG_REGISTER(mrvl_logtype, pmd.net.mvpp2, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(mrvl_logtype, NOTICE);

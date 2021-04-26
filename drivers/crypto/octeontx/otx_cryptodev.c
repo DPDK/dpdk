@@ -111,4 +111,4 @@ RTE_PMD_REGISTER_PCI_TABLE(CRYPTODEV_NAME_OCTEONTX_PMD, pci_id_cpt_table);
 RTE_PMD_REGISTER_KMOD_DEP(CRYPTODEV_NAME_OCTEONTX_PMD, "vfio-pci");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(otx_cryptodev_drv, otx_cryptodev_pmd.driver,
 		otx_cryptodev_driver_id);
-RTE_LOG_REGISTER(otx_cpt_logtype, pmd.crypto.octeontx, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(otx_cpt_logtype, NOTICE);

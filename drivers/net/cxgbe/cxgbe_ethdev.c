@@ -1474,5 +1474,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cxgbe,
 			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY "=<0|1> "
 			      CXGBE_DEVARG_PF_FILTER_MODE "=<uint32> "
 			      CXGBE_DEVARG_PF_FILTER_MASK "=<uint32> ");
-RTE_LOG_REGISTER(cxgbe_logtype, pmd.net.cxgbe, NOTICE);
-RTE_LOG_REGISTER(cxgbe_mbox_logtype, pmd.net.cxgbe.mbox, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cxgbe_logtype, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cxgbe_mbox_logtype, mbox, NOTICE);

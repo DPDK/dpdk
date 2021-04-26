@@ -12,7 +12,7 @@
 
 #include "rte_pdump.h"
 
-RTE_LOG_REGISTER(pdump_logtype, lib.pdump, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(pdump_logtype, NOTICE);
 
 /* Macro for printing using RTE_LOG */
 #define PDUMP_LOG(level, fmt, args...)				\

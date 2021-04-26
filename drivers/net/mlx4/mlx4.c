@@ -1319,7 +1319,7 @@ glue_error:
 #endif
 
 /* Initialize driver log type. */
-RTE_LOG_REGISTER(mlx4_logtype, pmd.net.mlx4, NOTICE)
+RTE_LOG_REGISTER_DEFAULT(mlx4_logtype, NOTICE)
 
 /**
  * Driver initialization routine.

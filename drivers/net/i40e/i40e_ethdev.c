@@ -12449,13 +12449,13 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 	return ret;
 }
 
-RTE_LOG_REGISTER(i40e_logtype_init, pmd.net.i40e.init, NOTICE);
-RTE_LOG_REGISTER(i40e_logtype_driver, pmd.net.i40e.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(i40e_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(i40e_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX
-RTE_LOG_REGISTER(i40e_logtype_rx, pmd.net.i40e.rx, DEBUG);
+RTE_LOG_REGISTER_SUFFIX(i40e_logtype_rx, rx, DEBUG);
 #endif
 #ifdef RTE_ETHDEV_DEBUG_TX
-RTE_LOG_REGISTER(i40e_logtype_tx, pmd.net.i40e.tx, DEBUG);
+RTE_LOG_REGISTER_SUFFIX(i40e_logtype_tx, tx, DEBUG);
 #endif
 
 RTE_PMD_REGISTER_PARAM_STRING(net_i40e,

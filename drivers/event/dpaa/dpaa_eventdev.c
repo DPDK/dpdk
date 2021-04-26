@@ -46,7 +46,7 @@
  * Eventqueue = Channel Instance
  * 1 Eventdev can have N Eventqueue
  */
-RTE_LOG_REGISTER(dpaa_logtype_eventdev, pmd.event.dpaa, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(dpaa_logtype_eventdev, NOTICE);
 
 #define DISABLE_INTR_MODE "disable_intr"
 

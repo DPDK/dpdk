@@ -29,9 +29,9 @@
 #define DATA_MZ_NAME_MAX_LEN 64
 #define DATA_MZ_NAME_FORMAT "rte_event_timer_adapter_data_%d"
 
-RTE_LOG_REGISTER(evtim_logtype, lib.eventdev.adapter.timer, NOTICE);
-RTE_LOG_REGISTER(evtim_buffer_logtype, lib.eventdev.adapter.timer, NOTICE);
-RTE_LOG_REGISTER(evtim_svc_logtype, lib.eventdev.adapter.timer.svc, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(evtim_logtype, adapter.timer, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(evtim_buffer_logtype, adapter.timer, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(evtim_svc_logtype, adapter.timer.svc, NOTICE);
 
 static struct rte_event_timer_adapter adapters[RTE_EVENT_TIMER_ADAPTER_NUM_MAX];
 

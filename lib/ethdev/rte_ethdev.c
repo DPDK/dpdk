@@ -6294,7 +6294,7 @@ rte_eth_representor_info_get(uint16_t port_id,
 	return eth_err(port_id, (*dev->dev_ops->representor_info_get)(dev, info));
 }
 
-RTE_LOG_REGISTER(rte_eth_dev_logtype, lib.ethdev, INFO);
+RTE_LOG_REGISTER_DEFAULT(rte_eth_dev_logtype, INFO);
 
 RTE_INIT(ethdev_init_telemetry)
 {

@@ -21,5 +21,5 @@ bcmfs_hexdump_log(uint32_t level, uint32_t logtype, const char *title,
 	return 0;
 }
 
-RTE_LOG_REGISTER(bcmfs_conf_logtype, pmd.crypto.bcmfs.config, NOTICE)
-RTE_LOG_REGISTER(bcmfs_dp_logtype, pmd.crypto.bcmfs.fp, NOTICE)
+RTE_LOG_REGISTER_SUFFIX(bcmfs_conf_logtype, config, NOTICE)
+RTE_LOG_REGISTER_SUFFIX(bcmfs_dp_logtype, fp, NOTICE)

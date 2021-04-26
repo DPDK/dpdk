@@ -3778,4 +3778,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_bonding,
 	"up_delay=<int> "
 	"down_delay=<int>");
 
+/* We can't use RTE_LOG_REGISTER_DEFAULT because of the forced name for
+ * this library, see meson.build.
+ */
 RTE_LOG_REGISTER(bond_logtype, pmd.net.bonding, NOTICE);

@@ -1015,4 +1015,4 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ark,
 			      ARK_PKTGEN_ARG "=<filename> "
 			      ARK_PKTCHKR_ARG "=<filename> "
 			      ARK_PKTDIR_ARG "=<bitmap>");
-RTE_LOG_REGISTER(ark_logtype, pmd.net.ark, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(ark_logtype, NOTICE);

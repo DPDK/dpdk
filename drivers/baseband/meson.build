@@ -12,3 +12,5 @@ drivers = [
         'null',
         'turbo_sw',
 ]
+
+log_prefix = 'pmd.bb'

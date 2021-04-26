@@ -80,7 +80,7 @@ static const struct softnic_conn_params conn_params_default = {
 	.msg_handle_arg = NULL,
 };
 
-RTE_LOG_REGISTER(pmd_softnic_logtype, pmd.net.softnic, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(pmd_softnic_logtype, NOTICE);
 
 #define PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, pmd_softnic_logtype, \

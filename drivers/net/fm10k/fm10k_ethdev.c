@@ -3285,11 +3285,11 @@ static struct rte_pci_driver rte_pmd_fm10k = {
 RTE_PMD_REGISTER_PCI(net_fm10k, rte_pmd_fm10k);
 RTE_PMD_REGISTER_PCI_TABLE(net_fm10k, pci_id_fm10k_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_fm10k, "* igb_uio | uio_pci_generic | vfio-pci");
-RTE_LOG_REGISTER(fm10k_logtype_init, pmd.net.fm10k.init, NOTICE);
-RTE_LOG_REGISTER(fm10k_logtype_driver, pmd.net.fm10k.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(fm10k_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(fm10k_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX
-RTE_LOG_REGISTER(fm10k_logtype_rx, pmd.net.fm10k.rx, DEBUG);
+RTE_LOG_REGISTER_SUFFIX(fm10k_logtype_rx, rx, DEBUG);
 #endif
 #ifdef RTE_ETHDEV_DEBUG_TX
-RTE_LOG_REGISTER(fm10k_logtype_tx, pmd.net.fm10k.tx, DEBUG);
+RTE_LOG_REGISTER_SUFFIX(fm10k_logtype_tx, tx, DEBUG);
 #endif

@@ -6,5 +6,5 @@
 
 #include "igc_logs.h"
 
-RTE_LOG_REGISTER(igc_logtype_init, pmd.net.igc.init, INFO);
-RTE_LOG_REGISTER(igc_logtype_driver, pmd.net.igc.driver, INFO);
+RTE_LOG_REGISTER_SUFFIX(igc_logtype_init, init, INFO);
+RTE_LOG_REGISTER_SUFFIX(igc_logtype_driver, driver, INFO);

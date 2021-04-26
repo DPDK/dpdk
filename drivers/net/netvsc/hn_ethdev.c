@@ -1296,8 +1296,8 @@ static struct rte_vmbus_driver rte_netvsc_pmd = {
 
 RTE_PMD_REGISTER_VMBUS(net_netvsc, rte_netvsc_pmd);
 RTE_PMD_REGISTER_KMOD_DEP(net_netvsc, "* uio_hv_generic");
-RTE_LOG_REGISTER(hn_logtype_init, pmd.net.netvsc.init, NOTICE);
-RTE_LOG_REGISTER(hn_logtype_driver, pmd.net.netvsc.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(hn_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(hn_logtype_driver, driver, NOTICE);
 RTE_PMD_REGISTER_PARAM_STRING(net_netvsc,
 			      NETVSC_ARG_LATENCY "=<uint32> "
 			      NETVSC_ARG_RXBREAK "=<uint32> "

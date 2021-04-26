@@ -2309,4 +2309,4 @@ avp_dev_stats_reset(struct rte_eth_dev *eth_dev)
 
 RTE_PMD_REGISTER_PCI(net_avp, rte_avp_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_avp, pci_id_avp_map);
-RTE_LOG_REGISTER(avp_logtype_driver, pmd.net.avp.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(avp_logtype_driver, driver, NOTICE);

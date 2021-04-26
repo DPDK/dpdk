@@ -39,7 +39,7 @@ static inline void mlx5_cpu_id(unsigned int level,
 }
 #endif
 
-RTE_LOG_REGISTER(mlx5_common_logtype, pmd.common.mlx5, NOTICE)
+RTE_LOG_REGISTER_DEFAULT(mlx5_common_logtype, NOTICE)
 
 static bool mlx5_common_initialized;
 

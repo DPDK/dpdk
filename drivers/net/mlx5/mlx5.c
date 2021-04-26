@@ -2442,7 +2442,7 @@ static struct mlx5_pci_driver mlx5_driver = {
 };
 
 /* Initialize driver log type. */
-RTE_LOG_REGISTER(mlx5_logtype, pmd.net.mlx5, NOTICE)
+RTE_LOG_REGISTER_DEFAULT(mlx5_logtype, NOTICE)
 
 /**
  * Driver initialization routine.

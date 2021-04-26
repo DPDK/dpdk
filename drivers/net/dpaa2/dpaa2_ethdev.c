@@ -2895,4 +2895,4 @@ RTE_PMD_REGISTER_PARAM_STRING(net_dpaa2,
 		DRIVER_NO_PREFETCH_MODE "=<int>"
 		DRIVER_TX_CONF "=<int>"
 		DRIVER_ERROR_QUEUE "=<int>");
-RTE_LOG_REGISTER(dpaa2_logtype_pmd, pmd.net.dpaa2, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(dpaa2_logtype_pmd, NOTICE);

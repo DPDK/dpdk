@@ -297,4 +297,4 @@ struct rte_vmbus_bus rte_vmbus_bus = {
 };
 
 RTE_REGISTER_BUS(vmbus, rte_vmbus_bus.bus);
-RTE_LOG_REGISTER(vmbus_logtype_bus, bus.vmbus, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(vmbus_logtype_bus, NOTICE);

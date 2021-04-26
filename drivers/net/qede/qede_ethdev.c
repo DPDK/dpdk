@@ -2892,5 +2892,5 @@ RTE_PMD_REGISTER_KMOD_DEP(net_qede, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PCI(net_qede_vf, rte_qedevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_qede_vf, pci_id_qedevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_qede_vf, "* igb_uio | vfio-pci");
-RTE_LOG_REGISTER(qede_logtype_init, pmd.net.qede.init, NOTICE);
-RTE_LOG_REGISTER(qede_logtype_driver, pmd.net.qede.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(qede_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(qede_logtype_driver, driver, NOTICE);

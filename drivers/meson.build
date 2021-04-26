@@ -51,6 +51,7 @@ endif
 foreach subpath:subdirs
     drivers = []
     std_deps = []
+    log_prefix = ''
 
     # subpath can be either "class" or "class/driver"
     if subpath.contains('/')
@@ -68,6 +69,12 @@ foreach subpath:subdirs
     endif
     # get already enabled drivers of the same class
     enabled_drivers = get_variable(class + '_drivers', [])
+
+    # default log prefix can be defined per class
+    if log_prefix == ''
+        # default log name is pmd.class.driver
+        log_prefix = 'pmd.' + class
+    endif
 
     foreach drv:drivers
         drv_path = join_paths(class, drv)
@@ -137,6 +144,7 @@ foreach subpath:subdirs
 
         enabled_drivers += name
         lib_name = '_'.join(['rte', class, name])
+        cflags += '-DRTE_LOG_DEFAULT_LOGTYPE=' + '.'.join([log_prefix, name])
         dpdk_conf.set(lib_name.to_upper(), 1)
 
         dpdk_extra_ldflags += pkgconfig_extra_libs

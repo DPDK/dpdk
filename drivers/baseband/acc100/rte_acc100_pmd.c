@@ -24,9 +24,9 @@
 #include "rte_acc100_pmd.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-RTE_LOG_REGISTER(acc100_logtype, pmd.bb.acc100, DEBUG);
+RTE_LOG_REGISTER_DEFAULT(acc100_logtype, DEBUG);
 #else
-RTE_LOG_REGISTER(acc100_logtype, pmd.bb.acc100, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(acc100_logtype, NOTICE);
 #endif
 
 /* Write to MMIO register address */

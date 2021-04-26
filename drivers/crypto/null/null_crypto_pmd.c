@@ -248,4 +248,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_NULL_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(null_crypto_drv, cryptodev_null_pmd_drv.driver,
 		cryptodev_driver_id);
-RTE_LOG_REGISTER(null_logtype_driver, pmd.crypto.null, INFO);
+RTE_LOG_REGISTER_DEFAULT(null_logtype_driver, INFO);

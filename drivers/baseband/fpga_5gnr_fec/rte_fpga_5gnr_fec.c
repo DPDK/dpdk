@@ -24,9 +24,9 @@
 #include "rte_pmd_fpga_5gnr_fec.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-RTE_LOG_REGISTER(fpga_5gnr_fec_logtype, pmd.bb.fpga_5gnr_fec, DEBUG);
+RTE_LOG_REGISTER_DEFAULT(fpga_5gnr_fec_logtype, DEBUG);
 #else
-RTE_LOG_REGISTER(fpga_5gnr_fec_logtype, pmd.bb.fpga_5gnr_fec, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(fpga_5gnr_fec_logtype, NOTICE);
 #endif
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG

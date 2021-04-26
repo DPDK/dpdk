@@ -51,9 +51,9 @@ static void nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic,
 static int nicvf_vlan_offload_config(struct rte_eth_dev *dev, int mask);
 static int nicvf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 
-RTE_LOG_REGISTER(nicvf_logtype_mbox, pmd.net.thunderx.mbox, NOTICE);
-RTE_LOG_REGISTER(nicvf_logtype_init, pmd.net.thunderx.init, NOTICE);
-RTE_LOG_REGISTER(nicvf_logtype_driver, pmd.net.thunderx.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(nicvf_logtype_mbox, mbox, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(nicvf_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(nicvf_logtype_driver, driver, NOTICE);
 
 static void
 nicvf_link_status_update(struct nicvf *nic,

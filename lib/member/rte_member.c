@@ -297,4 +297,4 @@ rte_member_reset(const struct rte_member_setsum *setsum)
 	}
 }
 
-RTE_LOG_REGISTER(librte_member_logtype, lib.member, DEBUG);
+RTE_LOG_REGISTER_DEFAULT(librte_member_logtype, DEBUG);

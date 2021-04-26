@@ -22,7 +22,7 @@
 
 static uint8_t timvf_enable_stats;
 
-RTE_LOG_REGISTER(otx_logtype_ssovf, pmd.event.octeontx, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(otx_logtype_ssovf, NOTICE);
 
 /* SSOPF Mailbox messages */
 

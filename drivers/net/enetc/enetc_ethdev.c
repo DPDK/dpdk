@@ -960,4 +960,4 @@ static struct rte_pci_driver rte_enetc_pmd = {
 RTE_PMD_REGISTER_PCI(net_enetc, rte_enetc_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enetc, pci_id_enetc_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enetc, "* vfio-pci");
-RTE_LOG_REGISTER(enetc_logtype_pmd, pmd.net.enetc, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(enetc_logtype_pmd, NOTICE);

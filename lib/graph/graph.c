@@ -578,4 +578,4 @@ rte_graph_max_count(void)
 	return graph_id;
 }
 
-RTE_LOG_REGISTER(rte_graph_logtype, lib.graph, INFO);
+RTE_LOG_REGISTER_DEFAULT(rte_graph_logtype, INFO);

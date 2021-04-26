@@ -2278,4 +2278,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_OPENSSL_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(openssl_crypto_drv,
 		cryptodev_openssl_pmd_drv.driver, cryptodev_driver_id);
-RTE_LOG_REGISTER(openssl_logtype_driver, pmd.crypto.openssl, INFO);
+RTE_LOG_REGISTER_DEFAULT(openssl_logtype_driver, INFO);

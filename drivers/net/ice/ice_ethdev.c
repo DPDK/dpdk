@@ -5372,11 +5372,11 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ice,
 			      ICE_SAFE_MODE_SUPPORT_ARG "=<0|1>"
 			      ICE_PIPELINE_MODE_SUPPORT_ARG "=<0|1>");
 
-RTE_LOG_REGISTER(ice_logtype_init, pmd.net.ice.init, NOTICE);
-RTE_LOG_REGISTER(ice_logtype_driver, pmd.net.ice.driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(ice_logtype_init, init, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(ice_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX
-RTE_LOG_REGISTER(ice_logtype_rx, pmd.net.ice.rx, DEBUG);
+RTE_LOG_REGISTER_SUFFIX(ice_logtype_rx, rx, DEBUG);
 #endif
 #ifdef RTE_ETHDEV_DEBUG_TX
-RTE_LOG_REGISTER(ice_logtype_tx, pmd.net.ice.tx, DEBUG);
+RTE_LOG_REGISTER_SUFFIX(ice_logtype_tx, tx, DEBUG);
 #endif

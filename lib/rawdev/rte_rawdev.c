@@ -627,7 +627,7 @@ handle_dev_xstats(const char *cmd __rte_unused,
 	return 0;
 }
 
-RTE_LOG_REGISTER(librawdev_logtype, lib.rawdev, INFO);
+RTE_LOG_REGISTER_DEFAULT(librawdev_logtype, INFO);
 
 RTE_INIT(librawdev_init_telemetry)
 {

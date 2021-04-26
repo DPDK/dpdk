@@ -4,4 +4,4 @@
 
 #include "node_private.h"
 
-RTE_LOG_REGISTER(rte_node_logtype, lib.node, INFO);
+RTE_LOG_REGISTER_DEFAULT(rte_node_logtype, INFO);

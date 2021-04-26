@@ -5,7 +5,7 @@
 #include "ssovf_evdev.h"
 #include "timvf_evdev.h"
 
-RTE_LOG_REGISTER(otx_logtype_timvf, pmd.event.octeontx.timer, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(otx_logtype_timvf, timer, NOTICE);
 
 static struct rte_eventdev *event_dev;
 
