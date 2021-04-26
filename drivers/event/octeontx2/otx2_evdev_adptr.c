@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(C) 2019 Marvell International Ltd.
+ * Copyright(C) 2019-2021 Marvell.
  */
 
 #include "otx2_evdev.h"
