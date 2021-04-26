@@ -40,35 +40,6 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 
 	bp->nr_vnics = 0;
 
-	/* Single queue mode */
-	if (bp->rx_cp_nr_rings < 2) {
-		vnic = &bp->vnic_info[0];
-		if (!vnic) {
-			PMD_DRV_LOG(ERR, "VNIC alloc failed\n");
-			rc = -ENOMEM;
-			goto err_out;
-		}
-		vnic->flags |= BNXT_VNIC_INFO_BCAST;
-		bp->nr_vnics++;
-
-		rxq = bp->eth_dev->data->rx_queues[0];
-		rxq->vnic = vnic;
-
-		vnic->func_default = true;
-		vnic->start_grp_id = 0;
-		vnic->end_grp_id = vnic->start_grp_id;
-		filter = bnxt_alloc_filter(bp);
-		if (!filter) {
-			PMD_DRV_LOG(ERR, "L2 filter alloc failed\n");
-			rc = -ENOMEM;
-			goto err_out;
-		}
-		filter->mac_index = 0;
-		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
-		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
-		goto out;
-	}
-
 	/* Multi-queue mode */
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB_RSS) {
 		/* VMDq ONLY, VMDq+RSS, VMDq+DCB, VMDq+DCB+RSS */
@@ -163,7 +134,6 @@ skip_filter_allocation:
 		end_grp_id += nb_q_per_grp;
 	}
 
-out:
 	bp->rx_num_qs_per_vnic = nb_q_per_grp;
 
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
