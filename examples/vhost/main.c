@@ -55,9 +55,6 @@
 
 #define INVALID_PORT_ID 0xFF
 
-/* Maximum long option length for option parsing. */
-#define MAX_LONG_OPT_SZ 64
-
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
 
@@ -97,7 +94,7 @@ static int builtin_net_driver;
 
 static int async_vhost_driver;
 
-static char dma_type[MAX_LONG_OPT_SZ];
+static char *dma_type;
 
 /* Specify timeout (in useconds) between retries on RX. */
 static uint32_t burst_rx_delay_time = BURST_RX_WAIT_US;
@@ -201,7 +198,7 @@ struct vhost_bufftable *vhost_txbuff[RTE_MAX_LCORE * MAX_VHOST_DEVICE];
 static inline int
 open_dma(const char *value)
 {
-	if (strncmp(dma_type, "ioat", 4) == 0)
+	if (dma_type != NULL && strncmp(dma_type, "ioat", 4) == 0)
 		return open_ioat(value);
 
 	return -1;
@@ -669,7 +666,7 @@ us_vhost_parse_args(int argc, char **argv)
 			break;
 
 		case OPT_DMA_TYPE_NUM:
-			strcpy(dma_type, optarg);
+			dma_type = optarg;
 			break;
 
 		case OPT_DMAS_NUM:
@@ -1472,7 +1469,7 @@ new_device(int vid)
 		struct rte_vhost_async_features f;
 		struct rte_vhost_async_channel_ops channel_ops;
 
-		if (strncmp(dma_type, "ioat", 4) == 0) {
+		if (dma_type != NULL && strncmp(dma_type, "ioat", 4) == 0) {
 			channel_ops.transfer_data = ioat_transfer_data_cb;
 			channel_ops.check_completed_copies =
 				ioat_check_completed_copies_cb;
