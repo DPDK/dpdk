@@ -36,6 +36,8 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
 	MLX5_RTE_FLOW_ACTION_TYPE_TUNNEL_SET,
 	MLX5_RTE_FLOW_ACTION_TYPE_AGE,
+	MLX5_RTE_FLOW_ACTION_TYPE_JUMP,
+	MLX5_RTE_FLOW_ACTION_TYPE_COUNT,
 };
 
 #define MLX5_INDIRECT_ACTION_TYPE_OFFSET 30
@@ -1047,6 +1049,8 @@ struct mlx5_flow_workspace {
 	uint32_t rssq_num; /* Allocated queue num in rss_desc. */
 	uint32_t flow_idx; /* Intermediate device flow index. */
 	struct mlx5_flow_meter_info *fm; /* Pointer to the meter in flow. */
+	uint32_t skip_matcher_reg:1;
+	/* Indicates if need to skip matcher register in translate. */
 };
 
 struct mlx5_flow_split_info {

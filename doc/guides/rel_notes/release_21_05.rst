@@ -164,6 +164,7 @@ New Features
 
   * Added support for VXLAN and NVGRE encap as sample actions.
   * Support push VLAN on ingress traffic and pop VLAN on egress traffic in E-Switch mode.
+  * Added support for pre-defined meter policy API.
   * Added support for ASO (Advanced Steering Operation) meter.
 
 * **Updated NXP DPAA driver.**

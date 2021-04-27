@@ -7439,6 +7439,7 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
 
 	MLX5_ASSERT(wks);
+	wks->skip_matcher_reg = 0;
 	/* In case of corrupting the memory. */
 	if (wks->flow_idx >= MLX5_NUM_MAX_DEV_FLOWS) {
 		rte_flow_error_set(error, ENOSPC,
@@ -11270,6 +11271,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		int action_type = actions->type;
 		const struct rte_flow_action *found_action = NULL;
 		uint32_t jump_group = 0;
+		struct mlx5_flow_counter *cnt;
 
 		if (!mlx5_flow_os_action_supported(action_type))
 			return rte_flow_error_set(error, ENOTSUP,
@@ -11450,6 +11452,12 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				age = action->conf;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
+			cnt = flow_dv_counter_get_by_idx(dev,
+				(uint32_t)(uintptr_t)action->conf, NULL);
+			MLX5_ASSERT(cnt != NULL);
+			dev_flow->dv.actions[actions_n++] = cnt->action;
+			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			dev_flow->dv.actions[actions_n++] =
 						priv->sh->pop_vlan_action;
@@ -11553,6 +11561,11 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			}
 			/* If decap is followed by encap, handle it at encap. */
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_JUMP:
+			dev_flow->dv.actions[actions_n++] =
+				(void *)(uintptr_t)action->conf;
+			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			jump_group = ((const struct rte_flow_action_jump *)
@@ -12109,6 +12122,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	}
 	dev_flow->dv.actions_n = actions_n;
 	dev_flow->act_flags = action_flags;
+	if (wks->skip_matcher_reg)
+		return 0;
 	/* Register matcher. */
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);
