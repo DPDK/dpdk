@@ -624,6 +624,9 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
  * address, and so on). This function is given as a callback function to
  * rte_mempool_obj_iter() or rte_mempool_create() at pool creation time.
  *
+ * This function expects that the mempool private area was previously
+ * initialized with rte_pktmbuf_pool_init().
+ *
  * @param mp
  *   The mempool from which mbufs originate.
  * @param opaque_arg
@@ -639,7 +642,7 @@ void rte_pktmbuf_init(struct rte_mempool *mp, void *opaque_arg,
 		      void *m, unsigned i);
 
 /**
- * A  packet mbuf pool constructor.
+ * A packet mbuf pool constructor.
  *
  * This function initializes the mempool private data in the case of a
  * pktmbuf pool. This private data is needed by the driver. The
@@ -647,6 +650,9 @@ void rte_pktmbuf_init(struct rte_mempool *mp, void *opaque_arg,
  * can be given as a callback function to rte_mempool_create() at
  * pool creation. It can be extended by the user, for example, to
  * provide another packet size.
+ *
+ * The mempool private area size must be at least equal to
+ * sizeof(struct rte_pktmbuf_pool_private).
  *
  * @param mp
  *   The mempool from which mbufs originate.

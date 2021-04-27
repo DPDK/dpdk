@@ -43,6 +43,8 @@ rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
 	struct rte_pktmbuf_pool_private default_mbp_priv;
 	uint16_t roomsz;
 
+	RTE_ASSERT(mp->private_data_size >=
+		   sizeof(struct rte_pktmbuf_pool_private));
 	RTE_ASSERT(mp->elt_size >= sizeof(struct rte_mbuf));
 
 	/* if no structure is provided, assume no mbuf private area */
@@ -82,6 +84,9 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 {
 	struct rte_mbuf *m = _m;
 	uint32_t mbuf_size, buf_len, priv_size;
+
+	RTE_ASSERT(mp->private_data_size >=
+		   sizeof(struct rte_pktmbuf_pool_private));
 
 	priv_size = rte_pktmbuf_priv_size(mp);
 	mbuf_size = sizeof(struct rte_mbuf) + priv_size;
