@@ -711,44 +711,12 @@ struct mlx5_flow_meter_def_policy {
 	/* Jump action per color. */
 };
 
-/* Meter table structure. */
-struct mlx5_meter_domain_info {
-	struct mlx5_flow_tbl_resource *tbl;
-	/**< Meter table. */
-	struct mlx5_flow_tbl_resource *sfx_tbl;
-	/**< Meter suffix table. */
-	struct mlx5_flow_dv_matcher *drop_matcher;
-	/**< Matcher for Drop. */
-	struct mlx5_flow_dv_matcher *color_matcher;
-	/**< Matcher for Color. */
-	void *jump_actn;
-	/**< Meter match action. */
-	void *green_rule;
-	/**< Meter green rule. */
-	void *drop_rule;
-	/**< Meter drop rule. */
-};
-
-/* Meter table set for TX RX FDB. */
-struct mlx5_meter_domains_infos {
-	uint32_t ref_cnt;
-	/**< Table user count. */
-	struct mlx5_meter_domain_info egress;
-	/**< TX meter table. */
-	struct mlx5_meter_domain_info ingress;
-	/**< RX meter table. */
-	struct mlx5_meter_domain_info transfer;
-	/**< FDB meter table. */
-	void *drop_actn;
-	/**< Drop action as not matched. */
-	void *green_count;
-	/**< Counters for green rule. */
-	void *drop_count;
-	/**< Counters for green rule. */
-};
-
 /* Meter parameter structure. */
 struct mlx5_flow_meter_info {
+	uint32_t meter_id;
+	/**< Meter id. */
+	uint32_t policy_id;
+	/* Policy id, the first sub_policy idx. */
 	struct mlx5_flow_meter_profile *profile;
 	/**< Meter profile parameters. */
 	rte_spinlock_t sl; /**< Meter action spinlock. */
@@ -787,8 +755,10 @@ struct mlx5_flow_meter_info {
 	 * received by the application.
 	 */
 	uint32_t transfer:1;
-	struct mlx5_meter_domains_infos *mfts;
-	/**< Flow table created for this meter. */
+	uint32_t def_policy:1;
+	/* Meter points to default policy. */
+	void *drop_rule[MLX5_MTR_DOMAIN_MAX];
+	/* Meter drop rule in drop table. */
 	uint32_t drop_cnt;
 	/**< Color counter for drop. */
 	uint32_t ref_cnt;
@@ -798,6 +768,11 @@ struct mlx5_flow_meter_info {
 	void *meter_action;
 	/**< Flow meter action. */
 };
+
+/* PPS(packets per second) map to BPS(Bytes per second).
+ * HW treat packet as 128bytes in PPS mode
+ */
+#define MLX5_MTRS_PPS_MAP_BPS_SHIFT 7
 
 /* RFC2697 parameter structure. */
 struct mlx5_flow_meter_srtcm_rfc2697_prm {
@@ -887,12 +862,17 @@ struct mlx5_flow_mtr_mng {
 	/* Policy index lookup table. */
 	struct mlx5_flow_tbl_resource *drop_tbl[MLX5_MTR_DOMAIN_MAX];
 	/* Meter drop table. */
-	struct mlx5_flow_dv_matcher *drop_matcher[MLX5_MTR_DOMAIN_MAX];
+	struct mlx5_flow_dv_matcher *
+			drop_matcher[MLX5_MTR_DOMAIN_MAX][MLX5_REG_BITS];
 	/* Matcher meter in drop table. */
 	struct mlx5_flow_dv_matcher *def_matcher[MLX5_MTR_DOMAIN_MAX];
 	/* Default matcher in drop table. */
 	void *def_rule[MLX5_MTR_DOMAIN_MAX];
 	/* Default rule in drop table. */
+	uint8_t max_mtr_bits;
+	/* Indicate how many bits are used by meter id at the most. */
+	uint8_t max_mtr_flow_bits;
+	/* Indicate how many bits are used by meter flow id at the most. */
 };
 
 /* Table key of the hash organization. */
@@ -1331,10 +1311,6 @@ struct mlx5_priv {
 	uint32_t rss_shared_actions; /* RSS shared actions. */
 	struct mlx5_devx_obj *q_counters; /* DevX queue counter object. */
 	uint32_t counter_set_id; /* Queue counter ID to set in DevX objects. */
-	uint8_t max_mtr_bits;
-	/* Indicate how many bits are used by meter id at the most. */
-	uint8_t max_mtr_flow_bits;
-	/* Indicate how many bits are used by meter flow id at the most. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

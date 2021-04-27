@@ -4496,14 +4496,14 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	flow_id = tag_id - 1;
 	flow_id_bits = MLX5_REG_BITS - __builtin_clz(flow_id);
 	flow_id_bits = flow_id_bits ? flow_id_bits : 1;
-	if ((flow_id_bits + priv->max_mtr_bits) > mtr_reg_bits) {
+	if ((flow_id_bits + priv->sh->mtrmng->max_mtr_bits) > mtr_reg_bits) {
 		mlx5_ipool_free(fm->flow_ipool, tag_id);
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				"Meter flow id exceeds max limit.");
 	}
-	if (flow_id_bits > priv->max_mtr_flow_bits)
-		priv->max_mtr_flow_bits = flow_id_bits;
+	if (flow_id_bits > priv->sh->mtrmng->max_mtr_flow_bits)
+		priv->sh->mtrmng->max_mtr_flow_bits = flow_id_bits;
 	/* Prepare the suffix subflow items. */
 	tag_item = sfx_items++;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
@@ -6786,15 +6786,18 @@ mlx5_flow_create_def_policy(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device.
  *
  * @return
- *   Pointer to table set on success, NULL otherwise.
+ *   0 on success, -1 otherwise.
  */
-struct mlx5_meter_domains_infos *
-mlx5_flow_create_mtr_tbls(struct rte_eth_dev *dev)
+int
+mlx5_flow_create_mtr_tbls(struct rte_eth_dev *dev,
+			struct mlx5_flow_meter_info *fm,
+			uint32_t mtr_idx,
+			uint8_t domain_bitmap)
 {
 	const struct mlx5_flow_driver_ops *fops;
 
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
-	return fops->create_mtr_tbls(dev);
+	return fops->create_mtr_tbls(dev, fm, mtr_idx, domain_bitmap);
 }
 
 /**
@@ -6804,18 +6807,15 @@ mlx5_flow_create_mtr_tbls(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device.
  * @param[in] tbl
  *   Pointer to the meter table set.
- *
- * @return
- *   0 on success.
  */
-int
+void
 mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
-			   struct mlx5_meter_domains_infos *tbls)
+			   struct mlx5_flow_meter_info *fm)
 {
 	const struct mlx5_flow_driver_ops *fops;
 
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
-	return fops->destroy_mtr_tbls(dev, tbls);
+	fops->destroy_mtr_tbls(dev, fm);
 }
 
 /**

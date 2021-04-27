@@ -4860,11 +4860,14 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 				uint64_t action_flags,
 				const struct rte_flow_action *action,
 				const struct rte_flow_attr *attr,
+				bool *def_policy,
 				struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_meter *am = action->conf;
 	struct mlx5_flow_meter_info *fm;
+	struct mlx5_flow_meter_policy *mtr_policy;
+	struct mlx5_flow_mtr_mng *mtrmng = priv->sh->mtrmng;
 
 	if (!am)
 		return rte_flow_error_set(error, EINVAL,
@@ -4895,10 +4898,40 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 	      (!fm->ingress && !attr->ingress && attr->egress) ||
 	      (!fm->egress && !attr->egress && attr->ingress)))
 		return rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+			"Flow attributes domain are either invalid "
+			"or have a domain conflict with current "
+			"meter attributes");
+	if (fm->def_policy) {
+		if (!((attr->transfer &&
+			mtrmng->def_policy[MLX5_MTR_DOMAIN_TRANSFER]) ||
+			(attr->egress &&
+			mtrmng->def_policy[MLX5_MTR_DOMAIN_EGRESS]) ||
+			(attr->ingress &&
+			mtrmng->def_policy[MLX5_MTR_DOMAIN_INGRESS])))
+			return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "Flow attributes are either invalid "
-					  "or have a conflict with current "
-					  "meter attributes");
+					  "Flow attributes domain "
+					  "have a conflict with current "
+					  "meter domain attributes");
+		*def_policy = true;
+	} else {
+		mtr_policy = mlx5_flow_meter_policy_find(dev,
+						fm->policy_id, NULL);
+		if (!mtr_policy)
+			return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Invalid policy id for meter ");
+		if (!((attr->transfer && mtr_policy->transfer) ||
+			(attr->egress && mtr_policy->egress) ||
+			(attr->ingress && mtr_policy->ingress)))
+			return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Flow attributes domain "
+					  "have a conflict with current "
+					  "meter domain attributes");
+		*def_policy = false;
+	}
 	return 0;
 }
 
@@ -6288,6 +6321,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		.fdb_def_rule = !!priv->fdb_def_rule,
 	};
 	const struct rte_eth_hairpin_conf *conf;
+	bool def_policy = false;
 
 	if (items == NULL)
 		return -1;
@@ -6629,6 +6663,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  actions, "too many actions");
+		if (action_flags &
+			MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY)
+			return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "meter action with policy "
+				"must be the last action");
 		switch (type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -7044,10 +7084,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			ret = mlx5_flow_validate_action_meter(dev,
 							      action_flags,
 							      actions, attr,
+							      &def_policy,
 							      error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_METER;
+			if (!def_policy)
+				action_flags |=
+				MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY;
 			++actions_n;
 			/* Meter action will add one more TAG action. */
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
@@ -7304,6 +7348,36 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						 RTE_FLOW_ERROR_TYPE_ACTION,
 						 NULL, "no support for "
 						 "multiple VLAN actions");
+		}
+	}
+	if (action_flags & MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY) {
+		if ((action_flags & (MLX5_FLOW_FATE_ACTIONS &
+			~MLX5_FLOW_ACTION_METER_WITH_TERMINATED_POLICY)) &&
+			attr->ingress)
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "fate action not supported for "
+				"meter with policy");
+		if (attr->egress) {
+			if (action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL, "modify header action in egress "
+					"cannot be done before meter action");
+			if (action_flags & MLX5_FLOW_ACTION_ENCAP)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL, "encap action in egress "
+					"cannot be done before meter action");
+			if (action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL, "push vlan action in egress "
+					"cannot be done before meter action");
 		}
 	}
 	/*
@@ -14132,38 +14206,24 @@ flow_dv_query(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
- * @param[in] tbl
- *   Pointer to the meter table set.
- *
- * @return
- *   Always 0.
+ * @param[in] fm
+ *   Meter information table.
  */
-static int
-flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
-			struct mlx5_meter_domains_infos *tbl)
+static void
+flow_dv_destroy_mtr_tbls(struct rte_eth_dev *dev,
+			struct mlx5_flow_meter_info *fm)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_meter_domains_infos *mtd =
-				(struct mlx5_meter_domains_infos *)tbl;
+	int i;
 
-	if (!mtd || !priv->config.dv_flow_en)
-		return 0;
-	if (mtd->egress.tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev), mtd->egress.tbl);
-	if (mtd->egress.sfx_tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev), mtd->egress.sfx_tbl);
-	if (mtd->ingress.tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev), mtd->ingress.tbl);
-	if (mtd->ingress.sfx_tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev),
-					     mtd->ingress.sfx_tbl);
-	if (mtd->transfer.tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev), mtd->transfer.tbl);
-	if (mtd->transfer.sfx_tbl)
-		flow_dv_tbl_resource_release(MLX5_SH(dev),
-					     mtd->transfer.sfx_tbl);
-	mlx5_free(mtd);
-	return 0;
+	if (!fm || !priv->config.dv_flow_en)
+		return;
+	for (i = 0; i < MLX5_MTR_DOMAIN_MAX; i++) {
+		if (fm->drop_rule[i]) {
+			claim_zero(mlx5_flow_os_destroy_flow(fm->drop_rule[i]));
+			fm->drop_rule[i] = NULL;
+		}
+	}
 }
 
 static void
@@ -14172,7 +14232,7 @@ flow_dv_destroy_mtr_drop_tbls(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_mtr_mng *mtrmng = priv->sh->mtrmng;
 	struct mlx5_flow_tbl_data_entry *tbl;
-	int i;
+	int i, j;
 
 	for (i = 0; i < MLX5_MTR_DOMAIN_MAX; i++) {
 		if (mtrmng->def_rule[i]) {
@@ -14187,12 +14247,16 @@ flow_dv_destroy_mtr_drop_tbls(struct rte_eth_dev *dev)
 				      &mtrmng->def_matcher[i]->entry);
 			mtrmng->def_matcher[i] = NULL;
 		}
-		if (mtrmng->drop_matcher[i]) {
-			tbl = container_of(mtrmng->drop_matcher[i]->tbl,
-				struct mlx5_flow_tbl_data_entry, tbl);
-			mlx5_cache_unregister(&tbl->matchers,
-				      &mtrmng->drop_matcher[i]->entry);
-			mtrmng->drop_matcher[i] = NULL;
+		for (j = 0; j < MLX5_REG_BITS; j++) {
+			if (mtrmng->drop_matcher[i][j]) {
+				tbl =
+				container_of(mtrmng->drop_matcher[i][j]->tbl,
+					     struct mlx5_flow_tbl_data_entry,
+					     tbl);
+				mlx5_cache_unregister(&tbl->matchers,
+					&mtrmng->drop_matcher[i][j]->entry);
+				mtrmng->drop_matcher[i][j] = NULL;
+			}
 		}
 		if (mtrmng->drop_tbl[i]) {
 			flow_dv_tbl_resource_release(MLX5_SH(dev),
@@ -14645,96 +14709,169 @@ flow_dv_create_def_policy(struct rte_eth_dev *dev)
 }
 
 /**
- * Create specify domain meter table and suffix table.
- *
- * @param[in] dev
- *   Pointer to Ethernet device.
- * @param[in,out] mtb
- *   Pointer to DV meter table set.
- * @param[in] egress
- *   Table attribute.
- * @param[in] transfer
- *   Table attribute.
- *
- * @return
- *   0 on success, -1 otherwise.
- */
-static int
-flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
-			   struct mlx5_meter_domains_infos *mtb,
-			   uint8_t egress, uint8_t transfer)
-{
-	struct rte_flow_error error;
-	struct mlx5_meter_domain_info *dtb;
-
-	if (transfer)
-		dtb = &mtb->transfer;
-	else if (egress)
-		dtb = &mtb->egress;
-	else
-		dtb = &mtb->ingress;
-	/* Create the meter suffix table with SUFFIX level. */
-	dtb->sfx_tbl = flow_dv_tbl_resource_get(dev,
-					MLX5_FLOW_TABLE_LEVEL_METER,
-					egress, transfer, false, NULL, 0,
-					0, MLX5_MTR_TABLE_ID_SUFFIX, &error);
-	if (!dtb->sfx_tbl) {
-		DRV_LOG(ERR, "Failed to create meter suffix table.");
-		return -1;
-	}
-	return 0;
-}
-
-/**
- * Create the needed meter and suffix tables.
+ * Create the needed meter tables.
  * Lock free, (mutex should be acquired by caller).
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
- *
+ * @param[in] fm
+ *   Meter information table.
+ * @param[in] mtr_idx
+ *   Meter index.
+ * @param[in] domain_bitmap
+ *   Domain bitmap.
  * @return
- *   Pointer to table set on success, NULL otherwise and rte_errno is set.
+ *   0 on success, -1 otherwise.
  */
-static struct mlx5_meter_domains_infos *
-flow_dv_create_mtr_tbl(struct rte_eth_dev *dev)
+static int
+flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
+			struct mlx5_flow_meter_info *fm,
+			uint32_t mtr_idx,
+			uint8_t domain_bitmap)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_meter_domains_infos *mtb;
-	int ret;
+	struct mlx5_flow_mtr_mng *mtrmng = priv->sh->mtrmng;
+	struct rte_flow_error error;
+	struct mlx5_flow_tbl_data_entry *tbl_data;
+	uint8_t egress, transfer;
+	void *actions[METER_ACTIONS];
+	int domain, ret, i;
+	struct mlx5_flow_counter *cnt;
+	struct mlx5_flow_dv_match_params value = {
+		.size = sizeof(value.buf) -
+		MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+	};
+	struct mlx5_flow_dv_match_params matcher_para = {
+		.size = sizeof(matcher_para.buf) -
+		MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+	};
+	int mtr_id_reg_c = mlx5_flow_get_reg_id(dev, MLX5_MTR_ID,
+						     0, &error);
+	uint32_t mtr_id_mask = (UINT32_C(1) << mtrmng->max_mtr_bits) - 1;
+	uint8_t mtr_id_offset = priv->mtr_reg_share ? MLX5_MTR_COLOR_BITS : 0;
+	struct mlx5_cache_entry *entry;
+	struct mlx5_flow_dv_matcher matcher = {
+		.mask = {
+			.size = sizeof(matcher.mask.buf) -
+			MLX5_ST_SZ_BYTES(fte_match_set_misc4),
+		},
+	};
+	struct mlx5_flow_dv_matcher *drop_matcher;
+	struct mlx5_flow_cb_ctx ctx = {
+		.error = &error,
+		.data = &matcher,
+	};
 
-	if (!priv->mtr_en) {
+	if (!priv->mtr_en || mtr_id_reg_c < 0) {
 		rte_errno = ENOTSUP;
-		return NULL;
+		return -1;
 	}
-	mtb = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*mtb), 0, SOCKET_ID_ANY);
-	if (!mtb) {
-		DRV_LOG(ERR, "Failed to allocate memory for meter.");
-		return NULL;
-	}
-	/* Egress meter table. */
-	ret = flow_dv_prepare_mtr_tables(dev, mtb, 1, 0);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to prepare egress meter table.");
-		goto error_exit;
-	}
-	/* Ingress meter table. */
-	ret = flow_dv_prepare_mtr_tables(dev, mtb, 0, 0);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to prepare ingress meter table.");
-		goto error_exit;
-	}
-	/* FDB meter table. */
-	if (priv->config.dv_esw_en) {
-		ret = flow_dv_prepare_mtr_tables(dev, mtb, 0, 1);
+	for (domain = 0; domain < MLX5_MTR_DOMAIN_MAX; domain++) {
+		if (!(domain_bitmap & (1 << domain)) ||
+			(mtrmng->def_rule[domain] && !fm->drop_cnt))
+			continue;
+		egress = (domain == MLX5_MTR_DOMAIN_EGRESS) ? 1 : 0;
+		transfer = (domain == MLX5_MTR_DOMAIN_TRANSFER) ? 1 : 0;
+		/* Create the drop table with METER DROP level. */
+		if (!mtrmng->drop_tbl[domain]) {
+			mtrmng->drop_tbl[domain] = flow_dv_tbl_resource_get(dev,
+					MLX5_FLOW_TABLE_LEVEL_METER,
+					egress, transfer, false, NULL, 0,
+					0, MLX5_MTR_TABLE_ID_DROP, &error);
+			if (!mtrmng->drop_tbl[domain]) {
+				DRV_LOG(ERR, "Failed to create meter drop table.");
+				goto policy_error;
+			}
+		}
+		/* Create default matcher in drop table. */
+		matcher.tbl = mtrmng->drop_tbl[domain],
+		tbl_data = container_of(mtrmng->drop_tbl[domain],
+				struct mlx5_flow_tbl_data_entry, tbl);
+		if (!mtrmng->def_matcher[domain]) {
+			flow_dv_match_meta_reg(matcher.mask.buf, value.buf,
+				       (enum modify_reg)mtr_id_reg_c,
+				       0, 0);
+			matcher.priority = MLX5_MTRS_DEFAULT_RULE_PRIORITY;
+			matcher.crc = rte_raw_cksum
+					((const void *)matcher.mask.buf,
+					matcher.mask.size);
+			entry = mlx5_cache_register(&tbl_data->matchers, &ctx);
+			if (!entry) {
+				DRV_LOG(ERR, "Failed to register meter "
+				"drop default matcher.");
+				goto policy_error;
+			}
+			mtrmng->def_matcher[domain] = container_of(entry,
+			struct mlx5_flow_dv_matcher, entry);
+		}
+		/* Create default rule in drop table. */
+		if (!mtrmng->def_rule[domain]) {
+			i = 0;
+			actions[i++] = priv->sh->dr_drop_action;
+			flow_dv_match_meta_reg(matcher_para.buf, value.buf,
+				(enum modify_reg)mtr_id_reg_c, 0, 0);
+			ret = mlx5_flow_os_create_flow
+				(mtrmng->def_matcher[domain]->matcher_object,
+				(void *)&value, i, actions,
+				&mtrmng->def_rule[domain]);
+			if (ret) {
+				DRV_LOG(ERR, "Failed to create meter "
+				"default drop rule for drop table.");
+				goto policy_error;
+			}
+		}
+		if (!fm->drop_cnt)
+			continue;
+		MLX5_ASSERT(mtrmng->max_mtr_bits);
+		if (!mtrmng->drop_matcher[domain][mtrmng->max_mtr_bits - 1]) {
+			/* Create matchers for Drop. */
+			flow_dv_match_meta_reg(matcher.mask.buf, value.buf,
+					(enum modify_reg)mtr_id_reg_c, 0,
+					(mtr_id_mask << mtr_id_offset));
+			matcher.priority = MLX5_REG_BITS - mtrmng->max_mtr_bits;
+			matcher.crc = rte_raw_cksum
+					((const void *)matcher.mask.buf,
+					matcher.mask.size);
+			entry = mlx5_cache_register(&tbl_data->matchers, &ctx);
+			if (!entry) {
+				DRV_LOG(ERR,
+				"Failed to register meter drop matcher.");
+				goto policy_error;
+			}
+			mtrmng->drop_matcher[domain][mtrmng->max_mtr_bits - 1] =
+				container_of(entry, struct mlx5_flow_dv_matcher,
+					     entry);
+		}
+		drop_matcher =
+			mtrmng->drop_matcher[domain][mtrmng->max_mtr_bits - 1];
+		/* Create drop rule, matching meter_id only. */
+		flow_dv_match_meta_reg(matcher_para.buf, value.buf,
+				(enum modify_reg)mtr_id_reg_c,
+				(mtr_idx << mtr_id_offset), UINT32_MAX);
+		i = 0;
+		cnt = flow_dv_counter_get_by_idx(dev,
+					fm->drop_cnt, NULL);
+		actions[i++] = cnt->action;
+		actions[i++] = priv->sh->dr_drop_action;
+		ret = mlx5_flow_os_create_flow(drop_matcher->matcher_object,
+					       (void *)&value, i, actions,
+					       &fm->drop_rule[domain]);
 		if (ret) {
-			DRV_LOG(ERR, "Failed to prepare fdb meter table.");
-			goto error_exit;
+			DRV_LOG(ERR, "Failed to create meter "
+				"drop rule for drop table.");
+				goto policy_error;
 		}
 	}
-	return mtb;
-error_exit:
-	flow_dv_destroy_mtr_tbl(dev, mtb);
-	return NULL;
+	return 0;
+policy_error:
+	for (i = 0; i < MLX5_MTR_DOMAIN_MAX; i++) {
+		if (fm->drop_rule[i]) {
+			claim_zero(mlx5_flow_os_destroy_flow
+				(fm->drop_rule[i]));
+			fm->drop_rule[i] = NULL;
+		}
+	}
+	return -1;
 }
 
 /**
@@ -15315,8 +15452,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.remove = flow_dv_remove,
 	.destroy = flow_dv_destroy,
 	.query = flow_dv_query,
-	.create_mtr_tbls = flow_dv_create_mtr_tbl,
-	.destroy_mtr_tbls = flow_dv_destroy_mtr_tbl,
+	.create_mtr_tbls = flow_dv_create_mtr_tbls,
+	.destroy_mtr_tbls = flow_dv_destroy_mtr_tbls,
 	.destroy_mtr_drop_tbls = flow_dv_destroy_mtr_drop_tbls,
 	.create_meter = flow_dv_mtr_alloc,
 	.free_meter = flow_dv_aso_mtr_release_to_pool,

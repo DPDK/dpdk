@@ -1299,13 +1299,14 @@ err_secondary:
 			if (log_obj_size >=
 			config->hca_attr.qos.log_meter_aso_granularity &&
 			log_obj_size <=
-			config->hca_attr.qos.log_meter_aso_max_alloc) {
+			config->hca_attr.qos.log_meter_aso_max_alloc)
 				sh->meter_aso_en = 1;
-				err = mlx5_aso_flow_mtrs_mng_init(priv->sh);
-				if (err) {
-					err = -err;
-					goto error;
-				}
+		}
+		if (priv->mtr_en) {
+			err = mlx5_aso_flow_mtrs_mng_init(priv->sh);
+			if (err) {
+				err = -err;
+				goto error;
 			}
 		}
 #endif
