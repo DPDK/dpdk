@@ -3325,8 +3325,9 @@ bond_probe(struct rte_vdev_device *dev)
 	const char *name;
 	struct bond_dev_private *internals;
 	struct rte_kvargs *kvlist;
-	uint8_t bonding_mode, socket_id/*, agg_mode*/;
-	int  arg_count, port_id;
+	uint8_t bonding_mode;
+	int arg_count, port_id;
+	int socket_id;
 	uint8_t agg_mode;
 	struct rte_eth_dev *eth_dev;
 
