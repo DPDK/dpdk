@@ -89,6 +89,7 @@ struct rte_vhost_async_channel_ops {
 struct async_inflight_info {
 	struct rte_mbuf *mbuf;
 	uint16_t descs; /* num of descs inflight */
+	uint16_t nr_buffers; /* num of buffers inflight for packed ring */
 };
 
 /**

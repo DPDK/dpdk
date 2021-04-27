@@ -340,17 +340,17 @@ cleanup_device(struct virtio_net *dev, int destroy)
 static void
 vhost_free_async_mem(struct vhost_virtqueue *vq)
 {
-	if (vq->async_pkts_info)
-		rte_free(vq->async_pkts_info);
-	if (vq->async_descs_split)
-		rte_free(vq->async_descs_split);
-	if (vq->it_pool)
-		rte_free(vq->it_pool);
-	if (vq->vec_pool)
-		rte_free(vq->vec_pool);
+	rte_free(vq->async_pkts_info);
+
+	rte_free(vq->async_buffers_packed);
+	vq->async_buffers_packed = NULL;
+	rte_free(vq->async_descs_split);
+	vq->async_descs_split = NULL;
+
+	rte_free(vq->it_pool);
+	rte_free(vq->vec_pool);
 
 	vq->async_pkts_info = NULL;
-	vq->async_descs_split = NULL;
 	vq->it_pool = NULL;
 	vq->vec_pool = NULL;
 }
@@ -360,10 +360,10 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	if (vq_is_packed(dev))
 		rte_free(vq->shadow_used_packed);
-	else {
+	else
 		rte_free(vq->shadow_used_split);
-		vhost_free_async_mem(vq);
-	}
+
+	vhost_free_async_mem(vq);
 	rte_free(vq->batch_copy_elems);
 	if (vq->iotlb_pool)
 		rte_mempool_free(vq->iotlb_pool);
@@ -1626,10 +1626,9 @@ int rte_vhost_async_channel_register(int vid, uint16_t queue_id,
 	if (unlikely(vq == NULL || !dev->async_copy))
 		return -1;
 
-	/* packed queue is not supported */
-	if (unlikely(vq_is_packed(dev) || !f.async_inorder)) {
+	if (unlikely(!f.async_inorder)) {
 		VHOST_LOG_CONFIG(ERR,
-			"async copy is not supported on packed queue or non-inorder mode "
+			"async copy is not supported on non-inorder mode "
 			"(vid %d, qid: %d)\n", vid, queue_id);
 		return -1;
 	}
@@ -1661,22 +1660,58 @@ int rte_vhost_async_channel_register(int vid, uint16_t queue_id,
 	vq->async_pkts_info = rte_malloc_socket(NULL,
 			vq->size * sizeof(struct async_inflight_info),
 			RTE_CACHE_LINE_SIZE, node);
+	if (!vq->async_pkts_info) {
+		vhost_free_async_mem(vq);
+		VHOST_LOG_CONFIG(ERR,
+			"async register failed: cannot allocate memory for async_pkts_info "
+			"(vid %d, qid: %d)\n", vid, queue_id);
+		goto reg_out;
+	}
+
 	vq->it_pool = rte_malloc_socket(NULL,
 			VHOST_MAX_ASYNC_IT * sizeof(struct rte_vhost_iov_iter),
 			RTE_CACHE_LINE_SIZE, node);
+	if (!vq->it_pool) {
+		vhost_free_async_mem(vq);
+		VHOST_LOG_CONFIG(ERR,
+			"async register failed: cannot allocate memory for it_pool "
+			"(vid %d, qid: %d)\n", vid, queue_id);
+		goto reg_out;
+	}
+
 	vq->vec_pool = rte_malloc_socket(NULL,
 			VHOST_MAX_ASYNC_VEC * sizeof(struct iovec),
 			RTE_CACHE_LINE_SIZE, node);
-	vq->async_descs_split = rte_malloc_socket(NULL,
-			vq->size * sizeof(struct vring_used_elem),
-			RTE_CACHE_LINE_SIZE, node);
-	if (!vq->async_descs_split || !vq->async_pkts_info ||
-		!vq->it_pool || !vq->vec_pool) {
+	if (!vq->vec_pool) {
 		vhost_free_async_mem(vq);
 		VHOST_LOG_CONFIG(ERR,
-				"async register failed: cannot allocate memory for vq data "
-				"(vid %d, qid: %d)\n", vid, queue_id);
+			"async register failed: cannot allocate memory for vec_pool "
+			"(vid %d, qid: %d)\n", vid, queue_id);
 		goto reg_out;
+	}
+
+	if (vq_is_packed(dev)) {
+		vq->async_buffers_packed = rte_malloc_socket(NULL,
+			vq->size * sizeof(struct vring_used_elem_packed),
+			RTE_CACHE_LINE_SIZE, node);
+		if (!vq->async_buffers_packed) {
+			vhost_free_async_mem(vq);
+			VHOST_LOG_CONFIG(ERR,
+				"async register failed: cannot allocate memory for async buffers "
+				"(vid %d, qid: %d)\n", vid, queue_id);
+			goto reg_out;
+		}
+	} else {
+		vq->async_descs_split = rte_malloc_socket(NULL,
+			vq->size * sizeof(struct vring_used_elem),
+			RTE_CACHE_LINE_SIZE, node);
+		if (!vq->async_descs_split) {
+			vhost_free_async_mem(vq);
+			VHOST_LOG_CONFIG(ERR,
+				"async register failed: cannot allocate memory for async descs "
+				"(vid %d, qid: %d)\n", vid, queue_id);
+			goto reg_out;
+		}
 	}
 
 	vq->async_ops.check_completed_copies = ops->check_completed_copies;

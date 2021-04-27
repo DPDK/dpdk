@@ -196,6 +196,10 @@ New Features
 
   * Added support for preferred busy polling.
 
+* **Added support for vhost async packed ring data path.**
+
+  Added packed ring support for async vhost.
+
 * **Added support of multiple data-units in cryptodev API.**
 
   The cryptodev library has been enhanced to allow operations on multiple

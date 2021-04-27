@@ -201,9 +201,18 @@ struct vhost_virtqueue {
 	uint16_t	async_pkts_idx;
 	uint16_t	async_pkts_inflight_n;
 	uint16_t	async_last_pkts_n;
-	struct vring_used_elem  *async_descs_split;
-	uint16_t async_desc_idx;
-	uint16_t last_async_desc_idx;
+	union {
+		struct vring_used_elem  *async_descs_split;
+		struct vring_used_elem_packed *async_buffers_packed;
+	};
+	union {
+		uint16_t async_desc_idx_split;
+		uint16_t async_buffer_idx_packed;
+	};
+	union {
+		uint16_t last_async_desc_idx_split;
+		uint16_t last_async_buffer_idx_packed;
+	};
 
 	/* vq async features */
 	bool		async_inorder;
