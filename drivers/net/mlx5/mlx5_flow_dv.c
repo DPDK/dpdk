@@ -14875,6 +14875,150 @@ policy_error:
 }
 
 /**
+ * Find the policy table for prefix table with RSS.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_policy
+ *   Pointer to meter policy table.
+ * @param[in] rss_desc
+ *   Pointer to rss_desc
+ * @return
+ *   Pointer to table set on success, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_flow_meter_sub_policy *
+flow_dv_meter_sub_policy_rss_prepare(struct rte_eth_dev *dev,
+		struct mlx5_flow_meter_policy *mtr_policy,
+		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS])
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_meter_sub_policy *sub_policy = NULL;
+	uint32_t sub_policy_idx = 0;
+	uint32_t hrxq_idx[MLX5_MTR_RTE_COLORS] = {0};
+	uint32_t i, j;
+	struct mlx5_hrxq *hrxq;
+	struct mlx5_flow_handle dh;
+	struct mlx5_meter_policy_action_container *act_cnt;
+	uint32_t domain = MLX5_MTR_DOMAIN_INGRESS;
+	uint16_t sub_policy_num;
+
+	rte_spinlock_lock(&mtr_policy->sl);
+	for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
+		if (!rss_desc[i])
+			continue;
+		hrxq_idx[i] = mlx5_hrxq_get(dev, rss_desc[i]);
+		if (!hrxq_idx[i]) {
+			rte_spinlock_unlock(&mtr_policy->sl);
+			return NULL;
+		}
+	}
+	sub_policy_num = (mtr_policy->sub_policy_num >>
+			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &
+			MLX5_MTR_SUB_POLICY_NUM_MASK;
+	for (i = 0; i < sub_policy_num;
+		i++) {
+		for (j = 0; j < MLX5_MTR_RTE_COLORS; j++) {
+			if (rss_desc[j] &&
+				hrxq_idx[j] !=
+			mtr_policy->sub_policys[domain][i]->rix_hrxq[j])
+				break;
+		}
+		if (j >= MLX5_MTR_RTE_COLORS) {
+			/*
+			 * Found the sub policy table with
+			 * the same queue per color
+			 */
+			rte_spinlock_unlock(&mtr_policy->sl);
+			for (j = 0; j < MLX5_MTR_RTE_COLORS; j++)
+				mlx5_hrxq_release(dev, hrxq_idx[j]);
+			return mtr_policy->sub_policys[domain][i];
+		}
+	}
+	/* Create sub policy. */
+	if (!mtr_policy->sub_policys[domain][0]->rix_hrxq[0]) {
+		/* Reuse the first dummy sub_policy*/
+		sub_policy = mtr_policy->sub_policys[domain][0];
+		sub_policy_idx = sub_policy->idx;
+	} else {
+		sub_policy = mlx5_ipool_zmalloc
+				(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
+				&sub_policy_idx);
+		if (!sub_policy ||
+			sub_policy_idx > MLX5_MAX_SUB_POLICY_TBL_NUM) {
+			for (i = 0; i < MLX5_MTR_RTE_COLORS; i++)
+				mlx5_hrxq_release(dev, hrxq_idx[i]);
+			goto rss_sub_policy_error;
+		}
+		sub_policy->idx = sub_policy_idx;
+		sub_policy->main_policy = mtr_policy;
+	}
+	for (i = 0; i < MLX5_MTR_RTE_COLORS; i++) {
+		if (!rss_desc[i])
+			continue;
+		sub_policy->rix_hrxq[i] = hrxq_idx[i];
+		/*
+		 * Overwrite the last action from
+		 * RSS action to Queue action.
+		 */
+		hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+			      hrxq_idx[i]);
+		if (!hrxq) {
+			DRV_LOG(ERR, "Failed to create policy hrxq");
+			goto rss_sub_policy_error;
+		}
+		act_cnt = &mtr_policy->act_cnt[i];
+		if (act_cnt->rix_mark || act_cnt->modify_hdr) {
+			memset(&dh, 0, sizeof(struct mlx5_flow_handle));
+			if (act_cnt->rix_mark)
+				dh.mark = 1;
+			dh.fate_action = MLX5_FLOW_FATE_QUEUE;
+			dh.rix_hrxq = hrxq_idx[i];
+			flow_drv_rxq_flags_set(dev, &dh);
+		}
+	}
+	if (__flow_dv_create_policy_acts_rules(dev, mtr_policy,
+		sub_policy, domain)) {
+		DRV_LOG(ERR, "Failed to create policy "
+			"rules per domain.");
+		goto rss_sub_policy_error;
+	}
+	if (sub_policy != mtr_policy->sub_policys[domain][0]) {
+		i = (mtr_policy->sub_policy_num >>
+			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &
+			MLX5_MTR_SUB_POLICY_NUM_MASK;
+		mtr_policy->sub_policys[domain][i] = sub_policy;
+		i++;
+		if (i > MLX5_MTR_RSS_MAX_SUB_POLICY)
+			goto rss_sub_policy_error;
+		mtr_policy->sub_policy_num &= ~(MLX5_MTR_SUB_POLICY_NUM_MASK <<
+			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain));
+		mtr_policy->sub_policy_num |=
+			(i & MLX5_MTR_SUB_POLICY_NUM_MASK) <<
+			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain);
+	}
+	rte_spinlock_unlock(&mtr_policy->sl);
+	return sub_policy;
+rss_sub_policy_error:
+	if (sub_policy) {
+		__flow_dv_destroy_sub_policy_rules(dev, sub_policy);
+		if (sub_policy != mtr_policy->sub_policys[domain][0]) {
+			i = (mtr_policy->sub_policy_num >>
+			(MLX5_MTR_SUB_POLICY_NUM_SHIFT * domain)) &
+			MLX5_MTR_SUB_POLICY_NUM_MASK;
+			mtr_policy->sub_policys[domain][i] = NULL;
+			mlx5_ipool_free
+			(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
+					sub_policy->idx);
+		}
+	}
+	if (sub_policy_idx)
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR_POLICY],
+			sub_policy_idx);
+	rte_spinlock_unlock(&mtr_policy->sl);
+	return NULL;
+}
+
+/**
  * Validate the batch counter support in root table.
  *
  * Create a simple flow with invalid counter and drop action on root table to
@@ -15464,6 +15608,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.destroy_policy_rules = flow_dv_destroy_policy_rules,
 	.create_def_policy = flow_dv_create_def_policy,
 	.destroy_def_policy = flow_dv_destroy_def_policy,
+	.meter_sub_policy_rss_prepare = flow_dv_meter_sub_policy_rss_prepare,
 	.counter_alloc = flow_dv_counter_allocate,
 	.counter_free = flow_dv_counter_free,
 	.counter_query = flow_dv_counter_query,

@@ -1094,6 +1094,11 @@ typedef int (*mlx5_flow_create_mtr_tbls_t)(struct rte_eth_dev *dev,
 typedef void (*mlx5_flow_destroy_mtr_tbls_t)(struct rte_eth_dev *dev,
 				struct mlx5_flow_meter_info *fm);
 typedef void (*mlx5_flow_destroy_mtr_drop_tbls_t)(struct rte_eth_dev *dev);
+typedef struct mlx5_flow_meter_sub_policy *
+	(*mlx5_flow_meter_sub_policy_rss_prepare_t)
+		(struct rte_eth_dev *dev,
+		struct mlx5_flow_meter_policy *mtr_policy,
+		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS]);
 typedef uint32_t (*mlx5_flow_mtr_alloc_t)
 					    (struct rte_eth_dev *dev);
 typedef void (*mlx5_flow_mtr_free_t)(struct rte_eth_dev *dev,
@@ -1186,6 +1191,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_destroy_policy_rules_t destroy_policy_rules;
 	mlx5_flow_create_def_policy_t create_def_policy;
 	mlx5_flow_destroy_def_policy_t destroy_def_policy;
+	mlx5_flow_meter_sub_policy_rss_prepare_t meter_sub_policy_rss_prepare;
 	mlx5_flow_counter_alloc_t counter_alloc;
 	mlx5_flow_counter_free_t counter_free;
 	mlx5_flow_counter_query_t counter_query;
@@ -1417,6 +1423,10 @@ int mlx5_flow_create_mtr_tbls(struct rte_eth_dev *dev,
 void mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 			       struct mlx5_flow_meter_info *fm);
 void mlx5_flow_destroy_mtr_drop_tbls(struct rte_eth_dev *dev);
+struct mlx5_flow_meter_sub_policy *mlx5_flow_meter_sub_policy_rss_prepare
+		(struct rte_eth_dev *dev,
+		struct mlx5_flow_meter_policy *mtr_policy,
+		struct mlx5_flow_rss_desc *rss_desc[MLX5_MTR_RTE_COLORS]);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
 int mlx5_action_handle_flush(struct rte_eth_dev *dev);
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
