@@ -166,6 +166,7 @@ New Features
   * Support push VLAN on ingress traffic and pop VLAN on egress traffic in E-Switch mode.
   * Added support for pre-defined meter policy API.
   * Added support for ASO (Advanced Steering Operation) meter.
+  * Added support for ASO metering by PPS (packet per second).
 
 * **Updated NXP DPAA driver.**
 

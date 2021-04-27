@@ -191,7 +191,6 @@ mlx5_aso_mtr_init_sq(struct mlx5_aso_sq *sq)
 	volatile struct mlx5_aso_wqe *restrict wqe;
 	int i;
 	int size = 1 << sq->log_desc_n;
-	uint32_t idx;
 
 	/* All the next fields state should stay constant. */
 	for (i = 0, wqe = &sq->sq_obj.aso_wqes[0]; i < size; ++i, ++wqe) {
@@ -204,11 +203,6 @@ mlx5_aso_mtr_init_sq(struct mlx5_aso_sq *sq)
 			 (BYTEWISE_64BYTE << ASO_CSEG_DATA_MASK_MODE_OFFSET));
 		wqe->general_cseg.flags = RTE_BE32(MLX5_COMP_ALWAYS <<
 							 MLX5_COMP_MODE_OFFSET);
-		for (idx = 0; idx < MLX5_ASO_METERS_PER_WQE;
-			idx++)
-			wqe->aso_dseg.mtrs[idx].v_bo_sc_bbog_mm =
-				RTE_BE32((1 << ASO_DSEG_VALID_OFFSET) |
-				(MLX5_FLOW_COLOR_GREEN << ASO_DSEG_SC_OFFSET));
 	}
 }
 
@@ -664,6 +658,7 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_aso_sq *sq,
 {
 	volatile struct mlx5_aso_wqe *wqe = NULL;
 	struct mlx5_flow_meter_info *fm = NULL;
+	struct mlx5_flow_meter_profile *fmp;
 	uint16_t size = 1 << sq->log_desc_n;
 	uint16_t mask = size - 1;
 	uint16_t res;
@@ -704,6 +699,16 @@ mlx5_aso_mtr_sq_enqueue_single(struct mlx5_aso_sq *sq,
 			RTE_BE32(MLX5_IFC_FLOW_METER_DISABLE_CBS_CIR_VAL);
 		wqe->aso_dseg.mtrs[dseg_idx].ebs_eir = 0;
 	}
+	fmp = fm->profile;
+	if (fmp->profile.packet_mode)
+		wqe->aso_dseg.mtrs[dseg_idx].v_bo_sc_bbog_mm =
+				RTE_BE32((1 << ASO_DSEG_VALID_OFFSET) |
+				(MLX5_FLOW_COLOR_GREEN << ASO_DSEG_SC_OFFSET) |
+				(MLX5_METER_MODE_PKT << ASO_DSEG_MTR_MODE));
+	else
+		wqe->aso_dseg.mtrs[dseg_idx].v_bo_sc_bbog_mm =
+				RTE_BE32((1 << ASO_DSEG_VALID_OFFSET) |
+				(MLX5_FLOW_COLOR_GREEN << ASO_DSEG_SC_OFFSET));
 	sq->head++;
 	sq->pi += 2;/* Each WQE contains 2 WQEBB's. */
 	rte_io_wmb();

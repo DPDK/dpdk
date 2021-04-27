@@ -144,13 +144,19 @@ mlx5_flow_meter_profile_validate(struct rte_eth_dev *dev,
 	if (profile->alg == RTE_MTR_SRTCM_RFC2697) {
 		if (priv->config.hca_attr.qos.flow_meter_old) {
 			/* Verify support for flow meter parameters. */
-			if (profile->srtcm_rfc2697.cir > 0 &&
-			    profile->srtcm_rfc2697.cir <= MLX5_SRTCM_CIR_MAX &&
-			    profile->srtcm_rfc2697.cbs > 0 &&
-			    profile->srtcm_rfc2697.cbs <= MLX5_SRTCM_CBS_MAX &&
-			    profile->srtcm_rfc2697.ebs <= MLX5_SRTCM_EBS_MAX)
-				return 0;
-			else
+			if (priv->sh->meter_aso_en && profile->packet_mode) {
+				if (profile->srtcm_rfc2697.cir > 0 &&
+					(profile->srtcm_rfc2697.cir <<
+					MLX5_MTRS_PPS_MAP_BPS_SHIFT)
+					<= MLX5_SRTCM_CIR_MAX &&
+					profile->srtcm_rfc2697.cbs > 0 &&
+					(profile->srtcm_rfc2697.cbs <<
+					MLX5_MTRS_PPS_MAP_BPS_SHIFT)
+					<= MLX5_SRTCM_CBS_MAX &&
+					(profile->srtcm_rfc2697.ebs <<
+					MLX5_MTRS_PPS_MAP_BPS_SHIFT)
+					<= MLX5_SRTCM_EBS_MAX)
+					return 0;
 				return -rte_mtr_error_set
 					     (error, ENOTSUP,
 					      RTE_MTR_ERROR_TYPE_MTR_PARAMS,
@@ -158,6 +164,22 @@ mlx5_flow_meter_profile_validate(struct rte_eth_dev *dev,
 					      profile->srtcm_rfc2697.ebs ?
 					      "Metering value ebs must be 0." :
 					      "Invalid metering parameters.");
+			}
+			if (profile->srtcm_rfc2697.cir > 0 &&
+				profile->srtcm_rfc2697.cir <=
+						MLX5_SRTCM_CIR_MAX &&
+				profile->srtcm_rfc2697.cbs > 0 &&
+				profile->srtcm_rfc2697.cbs <=
+						MLX5_SRTCM_CBS_MAX &&
+				profile->srtcm_rfc2697.ebs <=
+						MLX5_SRTCM_EBS_MAX)
+				return 0;
+			return -rte_mtr_error_set(error, ENOTSUP,
+					RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+					NULL,
+					profile->srtcm_rfc2697.ebs ?
+					"Metering value ebs must be 0." :
+					"Invalid metering parameters.");
 		}
 	}
 	return -rte_mtr_error_set(error, ENOTSUP,
@@ -241,20 +263,36 @@ mlx5_flow_meter_xbs_man_exp_calc(uint64_t xbs, uint8_t *man, uint8_t *exp)
  */
 static int
 mlx5_flow_meter_param_fill(struct mlx5_flow_meter_profile *fmp,
-			  struct rte_mtr_error *error)
+			struct mlx5_priv *priv, struct rte_mtr_error *error)
 {
 	struct mlx5_flow_meter_srtcm_rfc2697_prm *srtcm = &fmp->srtcm_prm;
 	uint8_t man, exp;
 	uint32_t cbs_exp, cbs_man, cir_exp, cir_man;
 	uint32_t ebs_exp, ebs_man;
+	uint64_t cir, cbs, ebs;
 
 	if (fmp->profile.alg != RTE_MTR_SRTCM_RFC2697)
 		return -rte_mtr_error_set(error, ENOTSUP,
 				RTE_MTR_ERROR_TYPE_METER_PROFILE,
 				NULL, "Metering algorithm not supported.");
+	if (!priv->sh->meter_aso_en && fmp->profile.packet_mode)
+		return -rte_mtr_error_set(error, ENOTSUP,
+			RTE_MTR_ERROR_TYPE_METER_PROFILE,
+			NULL, "Metering algorithm packet mode not supported.");
+	if (priv->sh->meter_aso_en && fmp->profile.packet_mode) {
+		cir = fmp->profile.srtcm_rfc2697.cir <<
+				MLX5_MTRS_PPS_MAP_BPS_SHIFT;
+		cbs = fmp->profile.srtcm_rfc2697.cbs <<
+				MLX5_MTRS_PPS_MAP_BPS_SHIFT;
+		ebs = fmp->profile.srtcm_rfc2697.ebs <<
+				MLX5_MTRS_PPS_MAP_BPS_SHIFT;
+	} else {
+		cir = fmp->profile.srtcm_rfc2697.cir;
+		cbs = fmp->profile.srtcm_rfc2697.cbs;
+		ebs = fmp->profile.srtcm_rfc2697.ebs;
+	}
 	/* cir = 8G * cir_mantissa * 1/(2^cir_exponent)) Bytes/Sec */
-	mlx5_flow_meter_cir_man_exp_calc(fmp->profile.srtcm_rfc2697.cir,
-				    &man, &exp);
+	mlx5_flow_meter_cir_man_exp_calc(cir, &man, &exp);
 	/* Check if cir mantissa is too large. */
 	if (exp > ASO_DSEG_CIR_EXP_MASK)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -264,8 +302,7 @@ mlx5_flow_meter_param_fill(struct mlx5_flow_meter_profile *fmp,
 	cir_man = man;
 	cir_exp = exp;
 	 /* cbs = cbs_mantissa * 2^cbs_exponent */
-	mlx5_flow_meter_xbs_man_exp_calc(fmp->profile.srtcm_rfc2697.cbs,
-				    &man, &exp);
+	mlx5_flow_meter_xbs_man_exp_calc(cbs, &man, &exp);
 	/* Check if cbs mantissa is too large. */
 	if (exp > ASO_DSEG_EXP_MASK)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -278,8 +315,7 @@ mlx5_flow_meter_param_fill(struct mlx5_flow_meter_profile *fmp,
 				cbs_man << ASO_DSEG_CBS_MAN_OFFSET |
 				cir_exp << ASO_DSEG_CIR_EXP_OFFSET |
 				cir_man);
-	mlx5_flow_meter_xbs_man_exp_calc(fmp->profile.srtcm_rfc2697.ebs,
-				    &man, &exp);
+	mlx5_flow_meter_xbs_man_exp_calc(ebs, &man, &exp);
 	/* Check if ebs mantissa is too large. */
 	if (exp > ASO_DSEG_EXP_MASK)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -319,11 +355,15 @@ mlx5_flow_mtr_cap_get(struct rte_eth_dev *dev,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "Meter is not supported");
 	memset(cap, 0, sizeof(*cap));
-	if (priv->sh->meter_aso_en)
+	if (priv->sh->meter_aso_en) {
 		/* 2 meters per one ASO cache line. */
 		cap->n_max = 1 << (qattr->log_max_num_meter_aso + 1);
-	else
+		cap->srtcm_rfc2697_packet_mode_supported = 1;
+	} else {
 		cap->n_max = 1 << qattr->log_max_flow_meter;
+		cap->srtcm_rfc2697_packet_mode_supported = 0;
+	}
+	cap->srtcm_rfc2697_byte_mode_supported = 1;
 	cap->n_shared_max = cap->n_max;
 	cap->identical = 1;
 	cap->shared_identical = 1;
@@ -384,7 +424,7 @@ mlx5_flow_meter_profile_add(struct rte_eth_dev *dev,
 	fmp->id = meter_profile_id;
 	fmp->profile = *profile;
 	/* Fill the flow meter parameters for the PRM. */
-	ret = mlx5_flow_meter_param_fill(fmp, error);
+	ret = mlx5_flow_meter_param_fill(fmp, priv, error);
 	if (ret)
 		goto error;
 	/* Add to list. */

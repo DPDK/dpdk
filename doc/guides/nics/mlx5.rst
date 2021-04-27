@@ -416,6 +416,7 @@ Limitations
      - green: QUEUE, RSS, PORT_ID, JUMP, MARK and SET_TAG.
      - yellow: must be empty.
      - RED: must be DROP.
+  - meter profile packet mode is supported.
 
 Statistics
 ----------

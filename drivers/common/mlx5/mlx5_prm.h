@@ -2414,6 +2414,13 @@ struct mlx5_ifc_flow_meter_parameters_bits {
 #define MLX5_IFC_FLOW_METER_DISABLE_CBS_CIR_VAL 0x14BF00C8
 
 enum {
+	MLX5_METER_MODE_IP_LEN = 0x0,
+	MLX5_METER_MODE_L2_LEN = 0x1,
+	MLX5_METER_MODE_L2_IPG_LEN = 0x2,
+	MLX5_METER_MODE_PKT = 0x3,
+};
+
+enum {
 	MLX5_CQE_SIZE_64B = 0x0,
 	MLX5_CQE_SIZE_128B = 0x1,
 };
@@ -2878,6 +2885,7 @@ struct mlx5_aso_mtr_dseg {
 #define ASO_DSEG_VALID_OFFSET 31
 #define ASO_DSEG_BO_OFFSET 30
 #define ASO_DSEG_SC_OFFSET 28
+#define ASO_DSEG_MTR_MODE 24
 #define ASO_DSEG_CBS_EXP_OFFSET 24
 #define ASO_DSEG_CBS_MAN_OFFSET 16
 #define ASO_DSEG_CIR_EXP_MASK 0x1F
