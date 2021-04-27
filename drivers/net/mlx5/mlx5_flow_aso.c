@@ -311,11 +311,11 @@ mlx5_aso_queue_init(struct mlx5_dev_ctx_shared *sh,
 		mlx5_aso_age_init_sq(&sh->aso_age_mng->aso_sq);
 		break;
 	case ASO_OPC_MOD_POLICER:
-		if (mlx5_aso_sq_create(sh->ctx, &sh->mtrmng->sq, 0,
+		if (mlx5_aso_sq_create(sh->ctx, &sh->mtrmng->pools_mng.sq, 0,
 				  sh->tx_uar, sh->pdn, MLX5_ASO_QUEUE_LOG_DESC,
 				  sh->sq_ts_format))
 			return -1;
-		mlx5_aso_mtr_init_sq(&sh->mtrmng->sq);
+		mlx5_aso_mtr_init_sq(&sh->mtrmng->pools_mng.sq);
 		break;
 	default:
 		DRV_LOG(ERR, "Unknown ASO operation mode");
@@ -342,7 +342,7 @@ mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh,
 		sq = &sh->aso_age_mng->aso_sq;
 		break;
 	case ASO_OPC_MOD_POLICER:
-		sq = &sh->mtrmng->sq;
+		sq = &sh->mtrmng->pools_mng.sq;
 		break;
 	default:
 		DRV_LOG(ERR, "Unknown ASO operation mode");
@@ -798,7 +798,7 @@ int
 mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh,
 			struct mlx5_aso_mtr *mtr)
 {
-	struct mlx5_aso_sq *sq = &sh->mtrmng->sq;
+	struct mlx5_aso_sq *sq = &sh->mtrmng->pools_mng.sq;
 	uint32_t poll_wqe_times = MLX5_MTR_POLL_WQE_CQE_TIMES;
 
 	do {
@@ -830,7 +830,7 @@ int
 mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh,
 			struct mlx5_aso_mtr *mtr)
 {
-	struct mlx5_aso_sq *sq = &sh->mtrmng->sq;
+	struct mlx5_aso_sq *sq = &sh->mtrmng->pools_mng.sq;
 	uint32_t poll_cqe_times = MLX5_MTR_POLL_WQE_CQE_TIMES;
 
 	if (__atomic_load_n(&mtr->state, __ATOMIC_RELAXED) ==

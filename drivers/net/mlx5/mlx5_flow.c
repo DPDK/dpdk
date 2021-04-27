@@ -1028,7 +1028,7 @@ flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
  * @param[in] dev_handle
  *   Pointer to device flow handle structure.
  */
-static void
+void
 flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 		       struct mlx5_flow_handle *dev_handle)
 {
@@ -4479,8 +4479,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		actions_pre++;
 		jump_data = (struct rte_flow_action_jump *)actions_pre;
 		jump_data->group = attr->transfer ?
-				(MLX5_FLOW_TABLE_LEVEL_METER - 1) :
-				 MLX5_FLOW_TABLE_LEVEL_METER;
+				(MLX5_FLOW_TABLE_LEVEL_POLICY - 1) :
+				 MLX5_FLOW_TABLE_LEVEL_POLICY;
 		hw_mtr_action->conf = jump_data;
 		actions_pre = (struct rte_flow_action *)(jump_data + 1);
 	} else {
@@ -5087,8 +5087,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	if (qrss) {
 		/* Check if it is in meter suffix table. */
 		mtr_sfx = attr->group == (attr->transfer ?
-			  (MLX5_FLOW_TABLE_LEVEL_SUFFIX - 1) :
-			  MLX5_FLOW_TABLE_LEVEL_SUFFIX);
+			  (MLX5_FLOW_TABLE_LEVEL_METER - 1) :
+			  MLX5_FLOW_TABLE_LEVEL_METER);
 		/*
 		 * Q/RSS action on NIC Rx should be split in order to pass by
 		 * the mreg copy table (RX_CP_TBL) and then it jumps to the
@@ -5352,8 +5352,8 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		dev_flow->handle->is_meter_flow_id = 1;
 		/* Setting the sfx group atrr. */
 		sfx_attr.group = sfx_attr.transfer ?
-				(MLX5_FLOW_TABLE_LEVEL_SUFFIX - 1) :
-				 MLX5_FLOW_TABLE_LEVEL_SUFFIX;
+				(MLX5_FLOW_TABLE_LEVEL_METER - 1) :
+				 MLX5_FLOW_TABLE_LEVEL_METER;
 		flow_split_info->prefix_layers =
 				flow_get_prefix_layer_flags(dev_flow);
 		flow_split_info->prefix_mark = dev_flow->handle->mark;
@@ -6617,6 +6617,169 @@ mlx5_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
 }
 
 /**
+ * Validate meter policy actions.
+ * Dispatcher for action type specific validation.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] action
+ *   The meter policy action object to validate.
+ * @param[in] attr
+ *   Attributes of flow to determine steering domain.
+ * @param[out] is_rss
+ *   Is RSS or not.
+ * @param[out] domain_bitmap
+ *   Domain bitmap.
+ * @param[out] is_def_policy
+ *   Is default policy or not.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+int
+mlx5_flow_validate_mtr_acts(struct rte_eth_dev *dev,
+			const struct rte_flow_action *actions[RTE_COLORS],
+			struct rte_flow_attr *attr,
+			bool *is_rss,
+			uint8_t *domain_bitmap,
+			bool *is_def_policy,
+			struct rte_mtr_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->validate_mtr_acts(dev, actions, attr,
+			is_rss, domain_bitmap, is_def_policy, error);
+}
+
+/**
+ * Destroy the meter table set.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] mtr_policy
+ *   Meter policy struct.
+ */
+void
+mlx5_flow_destroy_mtr_acts(struct rte_eth_dev *dev,
+		      struct mlx5_flow_meter_policy *mtr_policy)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	fops->destroy_mtr_acts(dev, mtr_policy);
+}
+
+/**
+ * Create policy action, lock free,
+ * (mutex should be acquired by caller).
+ * Dispatcher for action type specific call.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] mtr_policy
+ *   Meter policy struct.
+ * @param[in] action
+ *   Action specification used to create meter actions.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+int
+mlx5_flow_create_mtr_acts(struct rte_eth_dev *dev,
+		      struct mlx5_flow_meter_policy *mtr_policy,
+		      const struct rte_flow_action *actions[RTE_COLORS],
+		      struct rte_mtr_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->create_mtr_acts(dev, mtr_policy, actions, error);
+}
+
+/**
+ * Create policy rules, lock free,
+ * (mutex should be acquired by caller).
+ * Dispatcher for action type specific call.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] mtr_policy
+ *   Meter policy struct.
+ *
+ * @return
+ *   0 on success, -1 otherwise.
+ */
+int
+mlx5_flow_create_policy_rules(struct rte_eth_dev *dev,
+			     struct mlx5_flow_meter_policy *mtr_policy)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->create_policy_rules(dev, mtr_policy);
+}
+
+/**
+ * Destroy policy rules, lock free,
+ * (mutex should be acquired by caller).
+ * Dispatcher for action type specific call.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] mtr_policy
+ *   Meter policy struct.
+ */
+void
+mlx5_flow_destroy_policy_rules(struct rte_eth_dev *dev,
+			     struct mlx5_flow_meter_policy *mtr_policy)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	fops->destroy_policy_rules(dev, mtr_policy);
+}
+
+/**
+ * Destroy the default policy table set.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_flow_destroy_def_policy(struct rte_eth_dev *dev)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	fops->destroy_def_policy(dev);
+}
+
+/**
+ * Destroy the default policy table set.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 on success, -1 otherwise.
+ */
+int
+mlx5_flow_create_def_policy(struct rte_eth_dev *dev)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	return fops->create_def_policy(dev);
+}
+
+/**
  * Create the needed meter and suffix tables.
  *
  * @param[in] dev
@@ -6653,6 +6816,21 @@ mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
 	return fops->destroy_mtr_tbls(dev, tbls);
+}
+
+/**
+ * Destroy the global meter drop table.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_flow_destroy_mtr_drop_tbls(struct rte_eth_dev *dev)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+	fops->destroy_mtr_drop_tbls(dev);
 }
 
 /**

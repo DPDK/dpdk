@@ -55,6 +55,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_RTE_FLOW, /* Pool for rte_flow. */
 	MLX5_IPOOL_RSS_EXPANTION_FLOW_ID, /* Pool for Queue/RSS flow ID. */
 	MLX5_IPOOL_RSS_SHARED_ACTIONS, /* Pool for RSS shared actions. */
+	MLX5_IPOOL_MTR_POLICY, /* Pool for meter policy resource. */
 	MLX5_IPOOL_MAX,
 };
 
@@ -589,9 +590,126 @@ struct mlx5_dev_shared_port {
 	/* Aging information for per port. */
 };
 
+/*
+ * Max number of actions per DV flow.
+ * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
+ * in rdma-core file providers/mlx5/verbs.c.
+ */
+#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
+
 /*ASO flow meter structures*/
 /* Modify this value if enum rte_mtr_color changes. */
 #define RTE_MTR_DROPPED RTE_COLORS
+/* Yellow is not supported. */
+#define MLX5_MTR_RTE_COLORS (RTE_COLOR_GREEN + 1)
+/* table_id 22 bits in mlx5_flow_tbl_key so limit policy number. */
+#define MLX5_MAX_SUB_POLICY_TBL_NUM 0x3FFFFF
+#define MLX5_INVALID_POLICY_ID UINT32_MAX
+/* Suffix table_id on MLX5_FLOW_TABLE_LEVEL_METER. */
+#define MLX5_MTR_TABLE_ID_SUFFIX 1
+/* Drop table_id on MLX5_FLOW_TABLE_LEVEL_METER. */
+#define MLX5_MTR_TABLE_ID_DROP 2
+
+enum mlx5_meter_domain {
+	MLX5_MTR_DOMAIN_INGRESS,
+	MLX5_MTR_DOMAIN_EGRESS,
+	MLX5_MTR_DOMAIN_TRANSFER,
+	MLX5_MTR_DOMAIN_MAX,
+};
+#define MLX5_MTR_DOMAIN_INGRESS_BIT  (1 << MLX5_MTR_DOMAIN_INGRESS)
+#define MLX5_MTR_DOMAIN_EGRESS_BIT   (1 << MLX5_MTR_DOMAIN_EGRESS)
+#define MLX5_MTR_DOMAIN_TRANSFER_BIT (1 << MLX5_MTR_DOMAIN_TRANSFER)
+#define MLX5_MTR_ALL_DOMAIN_BIT      (MLX5_MTR_DOMAIN_INGRESS_BIT | \
+					MLX5_MTR_DOMAIN_EGRESS_BIT | \
+					MLX5_MTR_DOMAIN_TRANSFER_BIT)
+
+/*
+ * Meter sub-policy structure.
+ * Each RSS TIR in meter policy need its own sub-policy resource.
+ */
+struct mlx5_flow_meter_sub_policy {
+	uint32_t main_policy_id:1;
+	/* Main policy id is same as this sub_policy id. */
+	uint32_t idx:31;
+	/* Index to sub_policy ipool entity. */
+	void *main_policy;
+	/* Point to struct mlx5_flow_meter_policy. */
+	struct mlx5_flow_tbl_resource *tbl_rsc;
+	/* The sub-policy table resource. */
+	uint32_t rix_hrxq[MLX5_MTR_RTE_COLORS];
+	/* Index to TIR resource. */
+	struct mlx5_flow_tbl_resource *jump_tbl[MLX5_MTR_RTE_COLORS];
+	/* Meter jump/drop table. */
+	struct mlx5_flow_dv_matcher *color_matcher[RTE_COLORS];
+	/* Matcher for Color. */
+	void *color_rule[RTE_COLORS];
+	/* Meter green/yellow/drop rule. */
+};
+
+struct mlx5_meter_policy_acts {
+	uint8_t actions_n;
+	/* Number of actions. */
+	void *dv_actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
+	/* Action list. */
+};
+
+struct mlx5_meter_policy_action_container {
+	uint32_t rix_mark;
+	/* Index to the mark action. */
+	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
+	/* Pointer to modify header resource in cache. */
+	uint8_t fate_action;
+	/* Fate action type. */
+	union {
+		struct rte_flow_action *rss;
+		/* Rss action configuration. */
+		uint32_t rix_port_id_action;
+		/* Index to port ID action resource. */
+		void *dr_jump_action[MLX5_MTR_DOMAIN_MAX];
+		/* Jump/drop action per color. */
+	};
+};
+
+/* Flow meter policy parameter structure. */
+struct mlx5_flow_meter_policy {
+	uint32_t is_rss:1;
+	/* Is RSS policy table. */
+	uint32_t ingress:1;
+	/* Rule applies to ingress domain. */
+	uint32_t egress:1;
+	/* Rule applies to egress domain. */
+	uint32_t transfer:1;
+	/* Rule applies to transfer domain. */
+	rte_spinlock_t sl;
+	uint32_t ref_cnt;
+	/* Use count. */
+	struct mlx5_meter_policy_action_container act_cnt[MLX5_MTR_RTE_COLORS];
+	/* Policy actions container. */
+	void *dr_drop_action[MLX5_MTR_DOMAIN_MAX];
+	/* drop action for red color. */
+	uint16_t sub_policy_num;
+	/* Count sub policy tables, 3 bits per domain. */
+	struct mlx5_flow_meter_sub_policy **sub_policys[MLX5_MTR_DOMAIN_MAX];
+	/* Sub policy table array must be the end of struct. */
+};
+
+/* The maximum sub policy is relate to struct mlx5_rss_hash_fields[]. */
+#define MLX5_MTR_RSS_MAX_SUB_POLICY 7
+#define MLX5_MTR_SUB_POLICY_NUM_SHIFT  3
+#define MLX5_MTR_SUB_POLICY_NUM_MASK  0x7
+#define MLX5_MTRS_DEFAULT_RULE_PRIORITY 0xFFFF
+
+/* Flow meter default policy parameter structure.
+ * Policy index 0 is reserved by default policy table.
+ * Action per color as below:
+ * green - do nothing, yellow - do nothing, red - drop
+ */
+struct mlx5_flow_meter_def_policy {
+	struct mlx5_flow_meter_sub_policy sub_policy;
+	/* Policy rules jump to other tables. */
+	void *dr_jump_action[RTE_COLORS];
+	/* Jump action per color. */
+};
 
 /* Meter table structure. */
 struct mlx5_meter_domain_info {
@@ -755,6 +873,28 @@ struct mlx5_aso_mtr_pools_mng {
 	struct mlx5_aso_mtr_pool **pools; /* ASO flow meter pool array. */
 };
 
+/* Meter management structure for global flow meter resource. */
+struct mlx5_flow_mtr_mng {
+	struct mlx5_aso_mtr_pools_mng pools_mng;
+	/* Pools management structure for ASO flow meter pools. */
+	struct mlx5_flow_meter_def_policy *def_policy[MLX5_MTR_DOMAIN_MAX];
+	/* Default policy table. */
+	uint32_t def_policy_id;
+	/* Default policy id. */
+	uint32_t def_policy_ref_cnt;
+	/** def_policy meter use count. */
+	struct mlx5_l3t_tbl *policy_idx_tbl;
+	/* Policy index lookup table. */
+	struct mlx5_flow_tbl_resource *drop_tbl[MLX5_MTR_DOMAIN_MAX];
+	/* Meter drop table. */
+	struct mlx5_flow_dv_matcher *drop_matcher[MLX5_MTR_DOMAIN_MAX];
+	/* Matcher meter in drop table. */
+	struct mlx5_flow_dv_matcher *def_matcher[MLX5_MTR_DOMAIN_MAX];
+	/* Default matcher in drop table. */
+	void *def_rule[MLX5_MTR_DOMAIN_MAX];
+	/* Default rule in drop table. */
+};
+
 /* Table key of the hash organization. */
 union mlx5_flow_tbl_key {
 	struct {
@@ -781,9 +921,9 @@ struct mlx5_flow_tbl_resource {
 #define MLX5_FLOW_MREG_ACT_TABLE_GROUP (MLX5_MAX_TABLES - 1)
 #define MLX5_FLOW_MREG_CP_TABLE_GROUP (MLX5_MAX_TABLES - 2)
 /* Tables for metering splits should be added here. */
-#define MLX5_FLOW_TABLE_LEVEL_SUFFIX (MLX5_MAX_TABLES - 3)
-#define MLX5_FLOW_TABLE_LEVEL_METER (MLX5_MAX_TABLES - 4)
-#define MLX5_MAX_TABLES_EXTERNAL MLX5_FLOW_TABLE_LEVEL_METER
+#define MLX5_FLOW_TABLE_LEVEL_METER (MLX5_MAX_TABLES - 3)
+#define MLX5_FLOW_TABLE_LEVEL_POLICY (MLX5_MAX_TABLES - 4)
+#define MLX5_MAX_TABLES_EXTERNAL MLX5_FLOW_TABLE_LEVEL_POLICY
 #define MLX5_MAX_TABLES_FDB UINT16_MAX
 #define MLX5_FLOW_TABLE_FACTOR 10
 
@@ -944,8 +1084,8 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_geneve_tlv_option_resource *geneve_tlv_option_resource;
 	/* Management structure for geneve tlv option */
 	rte_spinlock_t geneve_tlv_opt_sl; /* Lock for geneve tlv resource */
-	struct mlx5_aso_mtr_pools_mng *mtrmng;
-	/* Meter pools management structure. */
+	struct mlx5_flow_mtr_mng *mtrmng;
+	/* Meter management structure. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -1246,7 +1386,7 @@ int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
 bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
 int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
 int mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh);
-int mlx5_aso_flow_mtrs_mng_init(struct mlx5_priv *priv);
+int mlx5_aso_flow_mtrs_mng_init(struct mlx5_dev_ctx_shared *sh);
 
 /* mlx5_ethdev.c */
 
@@ -1472,6 +1612,12 @@ int mlx5_flow_meter_attach(struct mlx5_priv *priv,
 			   struct rte_flow_error *error);
 void mlx5_flow_meter_detach(struct mlx5_priv *priv,
 			    struct mlx5_flow_meter_info *fm);
+struct mlx5_flow_meter_policy *mlx5_flow_meter_policy_find
+		(struct rte_eth_dev *dev,
+		uint32_t policy_id,
+		uint32_t *policy_idx);
+int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
+			  struct rte_mtr_error *error);
 
 /* mlx5_os.c */
 struct rte_pci_driver;

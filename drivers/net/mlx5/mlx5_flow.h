@@ -690,13 +690,6 @@ struct mlx5_flow_handle {
 #define MLX5_FLOW_HANDLE_VERBS_SIZE (sizeof(struct mlx5_flow_handle))
 #endif
 
-/*
- * Max number of actions per DV flow.
- * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
- * in rdma-core file providers/mlx5/verbs.c.
- */
-#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
-
 /** Device flow structure only for DV flow creation. */
 struct mlx5_flow_dv_workspace {
 	uint32_t group; /**< The group index. */
@@ -1098,6 +1091,7 @@ typedef struct mlx5_meter_domains_infos *(*mlx5_flow_create_mtr_tbls_t)
 					    (struct rte_eth_dev *dev);
 typedef int (*mlx5_flow_destroy_mtr_tbls_t)(struct rte_eth_dev *dev,
 					struct mlx5_meter_domains_infos *tbls);
+typedef void (*mlx5_flow_destroy_mtr_drop_tbls_t)(struct rte_eth_dev *dev);
 typedef uint32_t (*mlx5_flow_mtr_alloc_t)
 					    (struct rte_eth_dev *dev);
 typedef void (*mlx5_flow_mtr_free_t)(struct rte_eth_dev *dev,
@@ -1143,6 +1137,32 @@ typedef int (*mlx5_flow_sync_domain_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t domains,
 			 uint32_t flags);
+typedef int (*mlx5_flow_validate_mtr_acts_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_action *actions[RTE_COLORS],
+			 struct rte_flow_attr *attr,
+			 bool *is_rss,
+			 uint8_t *domain_bitmap,
+			 bool *is_def_policy,
+			 struct rte_mtr_error *error);
+typedef int (*mlx5_flow_create_mtr_acts_t)
+			(struct rte_eth_dev *dev,
+		      struct mlx5_flow_meter_policy *mtr_policy,
+		      const struct rte_flow_action *actions[RTE_COLORS],
+		      struct rte_mtr_error *error);
+typedef void (*mlx5_flow_destroy_mtr_acts_t)
+			(struct rte_eth_dev *dev,
+		      struct mlx5_flow_meter_policy *mtr_policy);
+typedef int (*mlx5_flow_create_policy_rules_t)
+			(struct rte_eth_dev *dev,
+			  struct mlx5_flow_meter_policy *mtr_policy);
+typedef void (*mlx5_flow_destroy_policy_rules_t)
+			(struct rte_eth_dev *dev,
+			  struct mlx5_flow_meter_policy *mtr_policy);
+typedef int (*mlx5_flow_create_def_policy_t)
+			(struct rte_eth_dev *dev);
+typedef void (*mlx5_flow_destroy_def_policy_t)
+			(struct rte_eth_dev *dev);
 
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
@@ -1154,8 +1174,16 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_query_t query;
 	mlx5_flow_create_mtr_tbls_t create_mtr_tbls;
 	mlx5_flow_destroy_mtr_tbls_t destroy_mtr_tbls;
+	mlx5_flow_destroy_mtr_drop_tbls_t destroy_mtr_drop_tbls;
 	mlx5_flow_mtr_alloc_t create_meter;
 	mlx5_flow_mtr_free_t free_meter;
+	mlx5_flow_validate_mtr_acts_t validate_mtr_acts;
+	mlx5_flow_create_mtr_acts_t create_mtr_acts;
+	mlx5_flow_destroy_mtr_acts_t destroy_mtr_acts;
+	mlx5_flow_create_policy_rules_t create_policy_rules;
+	mlx5_flow_destroy_policy_rules_t destroy_policy_rules;
+	mlx5_flow_create_def_policy_t create_def_policy;
+	mlx5_flow_destroy_def_policy_t destroy_def_policy;
 	mlx5_flow_counter_alloc_t counter_alloc;
 	mlx5_flow_counter_free_t counter_free;
 	mlx5_flow_counter_query_t counter_query;
@@ -1232,12 +1260,13 @@ static inline struct mlx5_aso_mtr *
 mlx5_aso_meter_by_idx(struct mlx5_priv *priv, uint32_t idx)
 {
 	struct mlx5_aso_mtr_pool *pool;
-	struct mlx5_aso_mtr_pools_mng *mtrmng = priv->sh->mtrmng;
+	struct mlx5_aso_mtr_pools_mng *pools_mng =
+				&priv->sh->mtrmng->pools_mng;
 
 	/* Decrease to original index. */
 	idx--;
-	MLX5_ASSERT(idx / MLX5_ASO_MTRS_PER_POOL < mtrmng->n);
-	pool = mtrmng->pools[idx / MLX5_ASO_MTRS_PER_POOL];
+	MLX5_ASSERT(idx / MLX5_ASO_MTRS_PER_POOL < pools_mng->n);
+	pool = pools_mng->pools[idx / MLX5_ASO_MTRS_PER_POOL];
 	return &pool->mtrs[idx % MLX5_ASO_MTRS_PER_POOL];
 }
 
@@ -1383,8 +1412,7 @@ struct mlx5_meter_domains_infos *mlx5_flow_create_mtr_tbls
 					(struct rte_eth_dev *dev);
 int mlx5_flow_destroy_mtr_tbls(struct rte_eth_dev *dev,
 			       struct mlx5_meter_domains_infos *tbl);
-int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
-			  struct rte_mtr_error *error);
+void mlx5_flow_destroy_mtr_drop_tbls(struct rte_eth_dev *dev);
 int mlx5_flow_dv_discover_counter_offset_support(struct rte_eth_dev *dev);
 int mlx5_action_handle_flush(struct rte_eth_dev *dev);
 void mlx5_release_tunnel_hub(struct mlx5_dev_ctx_shared *sh, uint16_t port_id);
@@ -1485,4 +1513,25 @@ int mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data);
 void mlx5_flow_os_release_workspace(void);
 uint32_t mlx5_flow_mtr_alloc(struct rte_eth_dev *dev);
 void mlx5_flow_mtr_free(struct rte_eth_dev *dev, uint32_t mtr_idx);
+int mlx5_flow_validate_mtr_acts(struct rte_eth_dev *dev,
+			const struct rte_flow_action *actions[RTE_COLORS],
+			struct rte_flow_attr *attr,
+			bool *is_rss,
+			uint8_t *domain_bitmap,
+			bool *is_def_policy,
+			struct rte_mtr_error *error);
+void mlx5_flow_destroy_mtr_acts(struct rte_eth_dev *dev,
+		      struct mlx5_flow_meter_policy *mtr_policy);
+int mlx5_flow_create_mtr_acts(struct rte_eth_dev *dev,
+		      struct mlx5_flow_meter_policy *mtr_policy,
+		      const struct rte_flow_action *actions[RTE_COLORS],
+		      struct rte_mtr_error *error);
+int mlx5_flow_create_policy_rules(struct rte_eth_dev *dev,
+			     struct mlx5_flow_meter_policy *mtr_policy);
+void mlx5_flow_destroy_policy_rules(struct rte_eth_dev *dev,
+			     struct mlx5_flow_meter_policy *mtr_policy);
+int mlx5_flow_create_def_policy(struct rte_eth_dev *dev);
+void mlx5_flow_destroy_def_policy(struct rte_eth_dev *dev);
+void flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
+		       struct mlx5_flow_handle *dev_handle);
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

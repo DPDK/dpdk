@@ -352,6 +352,20 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.free = mlx5_free,
 		.type = "mlx5_shared_action_rss",
 	},
+	[MLX5_IPOOL_MTR_POLICY] = {
+		/**
+		 * The ipool index should grow continually from small to big,
+		 * for policy idx, so not set grow_trunk to avoid policy index
+		 * not jump continually.
+		 */
+		.size = sizeof(struct mlx5_flow_meter_sub_policy),
+		.trunk_size = 64,
+		.need_lock = 1,
+		.release_mem_en = 1,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
+		.type = "mlx5_meter_policy_ipool",
+	},
 };
 
 
@@ -571,27 +585,25 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
  *   Pointer to mlx5_dev_ctx_shared object to free
  */
 int
-mlx5_aso_flow_mtrs_mng_init(struct mlx5_priv *priv)
+mlx5_aso_flow_mtrs_mng_init(struct mlx5_dev_ctx_shared *sh)
 {
-	if (!priv->mtr_idx_tbl) {
-		priv->mtr_idx_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_DWORD);
-		if (!priv->mtr_idx_tbl) {
-			DRV_LOG(ERR, "fail to create meter lookup table.");
-			rte_errno = ENOMEM;
-			return -ENOMEM;
-		}
-	}
-	if (!priv->sh->mtrmng) {
-		priv->sh->mtrmng = mlx5_malloc(MLX5_MEM_ZERO,
-			sizeof(*priv->sh->mtrmng),
+	if (!sh->mtrmng) {
+		sh->mtrmng = mlx5_malloc(MLX5_MEM_ZERO,
+			sizeof(*sh->mtrmng),
 			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
-		if (!priv->sh->mtrmng) {
-			DRV_LOG(ERR, "mlx5_aso_mtr_pools_mng allocation was failed.");
+		if (!sh->mtrmng) {
+			DRV_LOG(ERR,
+			"meter management allocation was failed.");
 			rte_errno = ENOMEM;
 			return -ENOMEM;
 		}
-		rte_spinlock_init(&priv->sh->mtrmng->mtrsl);
-		LIST_INIT(&priv->sh->mtrmng->meters);
+		if (sh->meter_aso_en) {
+			rte_spinlock_init(&sh->mtrmng->pools_mng.mtrsl);
+			LIST_INIT(&sh->mtrmng->pools_mng.meters);
+			sh->mtrmng->policy_idx_tbl =
+				mlx5_l3t_create(MLX5_L3T_TYPE_DWORD);
+		}
+		sh->mtrmng->def_policy_id = MLX5_INVALID_POLICY_ID;
 	}
 	return 0;
 }
@@ -607,31 +619,34 @@ static void
 mlx5_aso_flow_mtrs_mng_close(struct mlx5_dev_ctx_shared *sh)
 {
 	struct mlx5_aso_mtr_pool *mtr_pool;
-	struct mlx5_aso_mtr_pools_mng *mtrmng = sh->mtrmng;
+	struct mlx5_flow_mtr_mng *mtrmng = sh->mtrmng;
 	uint32_t idx;
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_ASO
 	struct mlx5_aso_mtr *aso_mtr;
 	int i;
 #endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO */
 
-	mlx5_aso_queue_uninit(sh, ASO_OPC_MOD_POLICER);
-	idx = mtrmng->n_valid;
-	while (idx--) {
-		mtr_pool = mtrmng->pools[idx];
+	if (sh->meter_aso_en) {
+		mlx5_aso_queue_uninit(sh, ASO_OPC_MOD_POLICER);
+		idx = mtrmng->pools_mng.n_valid;
+		while (idx--) {
+			mtr_pool = mtrmng->pools_mng.pools[idx];
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_ASO
-		for (i = 0; i < MLX5_ASO_MTRS_PER_POOL; i++) {
-			aso_mtr = &mtr_pool->mtrs[i];
-			if (aso_mtr->fm.meter_action)
-				claim_zero(mlx5_glue->destroy_flow_action
-						(aso_mtr->fm.meter_action));
-		}
+			for (i = 0; i < MLX5_ASO_MTRS_PER_POOL; i++) {
+				aso_mtr = &mtr_pool->mtrs[i];
+				if (aso_mtr->fm.meter_action)
+					claim_zero
+					(mlx5_glue->destroy_flow_action
+					(aso_mtr->fm.meter_action));
+			}
 #endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO */
-		claim_zero(mlx5_devx_cmd_destroy
+			claim_zero(mlx5_devx_cmd_destroy
 						(mtr_pool->devx_obj));
-		mtrmng->n_valid--;
-		mlx5_free(mtr_pool);
+			mtrmng->pools_mng.n_valid--;
+			mlx5_free(mtr_pool);
+		}
+		mlx5_free(sh->mtrmng->pools_mng.pools);
 	}
-	mlx5_free(sh->mtrmng->pools);
 	mlx5_free(sh->mtrmng);
 	sh->mtrmng = NULL;
 }
