@@ -211,6 +211,9 @@ eth_kni_close(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	ret = eth_kni_dev_stop(eth_dev);
+	if (ret)
+		PMD_LOG(WARNING, "Not able to stop kni for %s",
+			eth_dev->data->name);
 
 	/* mac_addrs must not be freed alone because part of dev_private */
 	eth_dev->data->mac_addrs = NULL;
