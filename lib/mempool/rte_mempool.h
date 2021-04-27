@@ -273,20 +273,11 @@ struct rte_mempool {
 #define __MEMPOOL_STAT_ADD(mp, name, n) do {                    \
 		unsigned __lcore_id = rte_lcore_id();           \
 		if (__lcore_id < RTE_MAX_LCORE) {               \
-			mp->stats[__lcore_id].name##_objs += n;	\
-			mp->stats[__lcore_id].name##_bulk += 1;	\
+			mp->stats[__lcore_id].name += n;        \
 		}                                               \
 	} while(0)
-#define __MEMPOOL_CONTIG_BLOCKS_STAT_ADD(mp, name, n) do {                    \
-		unsigned int __lcore_id = rte_lcore_id();       \
-		if (__lcore_id < RTE_MAX_LCORE) {               \
-			mp->stats[__lcore_id].name##_blks += n;	\
-			mp->stats[__lcore_id].name##_bulk += 1;	\
-		}                                               \
-	} while (0)
 #else
 #define __MEMPOOL_STAT_ADD(mp, name, n) do {} while(0)
-#define __MEMPOOL_CONTIG_BLOCKS_STAT_ADD(mp, name, n) do {} while (0)
 #endif
 
 /**
@@ -1288,7 +1279,8 @@ __mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
 	void **cache_objs;
 
 	/* increment stat now, adding in mempool always success */
-	__MEMPOOL_STAT_ADD(mp, put, n);
+	__MEMPOOL_STAT_ADD(mp, put_bulk, 1);
+	__MEMPOOL_STAT_ADD(mp, put_objs, n);
 
 	/* No cache provided or if put would overflow mem allocated for cache */
 	if (unlikely(cache == NULL || n > RTE_MEMPOOL_CACHE_MAX_SIZE))
@@ -1446,7 +1438,8 @@ __mempool_generic_get(struct rte_mempool *mp, void **obj_table,
 
 	cache->len -= n;
 
-	__MEMPOOL_STAT_ADD(mp, get_success, n);
+	__MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
+	__MEMPOOL_STAT_ADD(mp, get_success_objs, n);
 
 	return 0;
 
@@ -1455,10 +1448,13 @@ ring_dequeue:
 	/* get remaining objects from ring */
 	ret = rte_mempool_ops_dequeue_bulk(mp, obj_table, n);
 
-	if (ret < 0)
-		__MEMPOOL_STAT_ADD(mp, get_fail, n);
-	else
-		__MEMPOOL_STAT_ADD(mp, get_success, n);
+	if (ret < 0) {
+		__MEMPOOL_STAT_ADD(mp, get_fail_bulk, 1);
+		__MEMPOOL_STAT_ADD(mp, get_fail_objs, n);
+	} else {
+		__MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
+		__MEMPOOL_STAT_ADD(mp, get_success_objs, n);
+	}
 
 	return ret;
 }
@@ -1581,11 +1577,13 @@ rte_mempool_get_contig_blocks(struct rte_mempool *mp,
 
 	ret = rte_mempool_ops_dequeue_contig_blocks(mp, first_obj_table, n);
 	if (ret == 0) {
-		__MEMPOOL_CONTIG_BLOCKS_STAT_ADD(mp, get_success, n);
+		__MEMPOOL_STAT_ADD(mp, get_success_bulk, 1);
+		__MEMPOOL_STAT_ADD(mp, get_success_blks, n);
 		__mempool_contig_blocks_check_cookies(mp, first_obj_table, n,
 						      1);
 	} else {
-		__MEMPOOL_CONTIG_BLOCKS_STAT_ADD(mp, get_fail, n);
+		__MEMPOOL_STAT_ADD(mp, get_fail_bulk, 1);
+		__MEMPOOL_STAT_ADD(mp, get_fail_blks, n);
 	}
 
 	rte_mempool_trace_get_contig_blocks(mp, first_obj_table, n);
