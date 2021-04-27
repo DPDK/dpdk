@@ -2587,6 +2587,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 					    iavf_xmit_pkts_vec_avx2 :
 					    iavf_xmit_pkts_vec;
 		}
+		dev->tx_pkt_prepare = NULL;
 #ifdef CC_AVX512_SUPPORT
 		if (use_avx512) {
 			if (check_ret == IAVF_VECTOR_PATH) {
@@ -2595,12 +2596,12 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 					    dev->data->port_id);
 			} else {
 				dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx512_offload;
+				dev->tx_pkt_prepare = iavf_prep_pkts;
 				PMD_DRV_LOG(DEBUG, "Using AVX512 OFFLOAD Vector Tx (port %d).",
 					    dev->data->port_id);
 			}
 		}
 #endif
-		dev->tx_pkt_prepare = NULL;
 
 		for (i = 0; i < dev->data->nb_tx_queues; i++) {
 			txq = dev->data->tx_queues[i];
