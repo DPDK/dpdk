@@ -355,7 +355,7 @@ hns3_link_fail_parse(struct hns3_hw *hw, uint8_t link_fail_code)
 
 static void
 hns3_handle_link_change_event(struct hns3_hw *hw,
-			      struct hns3_mbx_pf_to_vf_cmd *req)
+				struct hns3_mbx_vf_to_pf_cmd *req)
 {
 #define LINK_STATUS_OFFSET     1
 #define LINK_FAIL_CODE_OFFSET  2
@@ -524,7 +524,14 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			hns3_mbx_handler(hw);
 			break;
 		case HNS3_MBX_PUSH_LINK_STATUS:
-			hns3_handle_link_change_event(hw, req);
+			/*
+			 * This message is reported by the firmware and is
+			 * reported in 'struct hns3_mbx_vf_to_pf_cmd' format.
+			 * Therefore, we should cast the req variable to
+			 * 'struct hns3_mbx_vf_to_pf_cmd' and then process it.
+			 */
+			hns3_handle_link_change_event(hw,
+				(struct hns3_mbx_vf_to_pf_cmd *)req);
 			break;
 		case HNS3_MBX_PUSH_VLAN_INFO:
 			/*
