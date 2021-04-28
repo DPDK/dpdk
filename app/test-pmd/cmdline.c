@@ -1607,13 +1607,13 @@ cmd_config_speed_specific_parsed(void *parsed_result,
 	struct cmd_config_speed_specific *res = parsed_result;
 	uint32_t link_speed;
 
-	if (!all_ports_stopped()) {
-		printf("Please stop all ports first\n");
-		return;
-	}
-
 	if (port_id_is_invalid(res->id, ENABLED_WARN))
 		return;
+
+	if (!port_is_stopped(res->id)) {
+		printf("Please stop port %d first\n", res->id);
+		return;
+	}
 
 	if (parse_and_check_speed_duplex(res->value1, res->value2,
 			&link_speed) < 0)
