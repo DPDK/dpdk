@@ -4203,17 +4203,45 @@ hns3_tx_check_simple_support(struct rte_eth_dev *dev)
 	return (offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE));
 }
 
+static bool
+hns3_get_tx_prep_needed(struct rte_eth_dev *dev)
+{
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	/* always perform tx_prepare when debug */
+	return true;
+#else
+#define HNS3_DEV_TX_CSKUM_TSO_OFFLOAD_MASK (\
+		DEV_TX_OFFLOAD_IPV4_CKSUM | \
+		DEV_TX_OFFLOAD_TCP_CKSUM | \
+		DEV_TX_OFFLOAD_UDP_CKSUM | \
+		DEV_TX_OFFLOAD_SCTP_CKSUM | \
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | \
+		DEV_TX_OFFLOAD_OUTER_UDP_CKSUM | \
+		DEV_TX_OFFLOAD_TCP_TSO | \
+		DEV_TX_OFFLOAD_VXLAN_TNL_TSO | \
+		DEV_TX_OFFLOAD_GRE_TNL_TSO | \
+		DEV_TX_OFFLOAD_GENEVE_TNL_TSO)
+
+	uint64_t tx_offload = dev->data->dev_conf.txmode.offloads;
+	if (tx_offload & HNS3_DEV_TX_CSKUM_TSO_OFFLOAD_MASK)
+		return true;
+
+	return false;
+#endif
+}
+
 static eth_tx_burst_t
 hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	bool vec_allowed, sve_allowed, simple_allowed;
-	bool vec_support;
+	bool vec_support, tx_prepare_needed;
 
 	vec_support = hns3_tx_check_vec_support(dev) == 0;
 	vec_allowed = vec_support && hns3_get_default_vec_support();
 	sve_allowed = vec_support && hns3_get_sve_support();
 	simple_allowed = hns3_tx_check_simple_support(dev);
+	tx_prepare_needed = hns3_get_tx_prep_needed(dev);
 
 	*prep = NULL;
 
@@ -4224,7 +4252,8 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 	if (hns->tx_func_hint == HNS3_IO_FUNC_HINT_SIMPLE && simple_allowed)
 		return hns3_xmit_pkts_simple;
 	if (hns->tx_func_hint == HNS3_IO_FUNC_HINT_COMMON) {
-		*prep = hns3_prep_pkts;
+		if (tx_prepare_needed)
+			*prep = hns3_prep_pkts;
 		return hns3_xmit_pkts;
 	}
 
@@ -4233,7 +4262,8 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 	if (simple_allowed)
 		return hns3_xmit_pkts_simple;
 
-	*prep = hns3_prep_pkts;
+	if (tx_prepare_needed)
+		*prep = hns3_prep_pkts;
 	return hns3_xmit_pkts;
 }
 
