@@ -3315,12 +3315,12 @@ cmd_config_dcb_parsed(void *parsed_result,
 		ret = init_port_dcb_config(port_id, DCB_ENABLED,
 				(enum rte_eth_nb_tcs)res->num_tcs,
 				pfc_en);
-
-
 	if (ret != 0) {
 		printf("Cannot initialize network ports.\n");
 		return;
 	}
+
+	fwd_config_setup();
 
 	cmd_reconfig_device_queue(port_id, 1, 1);
 }
