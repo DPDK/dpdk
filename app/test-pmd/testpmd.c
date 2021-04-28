@@ -245,9 +245,6 @@ uint16_t mb_mempool_cache = DEF_MBUF_CACHE; /**< Size of mbuf mempool cache. */
 /* current configuration is in DCB or not,0 means it is not in DCB mode */
 uint8_t dcb_config = 0;
 
-/* Whether the dcb is in testing status */
-uint8_t dcb_test = 0;
-
 /*
  * Configurable number of RX/TX queues.
  */
@@ -2149,8 +2146,7 @@ start_packet_forwarding(int with_tx_first)
 		return;
 	}
 
-
-	if(dcb_test) {
+	if (dcb_config) {
 		for (i = 0; i < nb_fwd_ports; i++) {
 			pt_id = fwd_ports_ids[i];
 			port = &ports[pt_id];
@@ -2458,8 +2454,6 @@ start_port(portid_t pid)
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return 0;
 
-	if(dcb_config)
-		dcb_test = 1;
 	RTE_ETH_FOREACH_DEV(pi) {
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
@@ -2696,11 +2690,6 @@ stop_port(portid_t pid)
 	int need_check_link_status = 0;
 	portid_t peer_pl[RTE_MAX_ETHPORTS];
 	int peer_pi;
-
-	if (dcb_test) {
-		dcb_test = 0;
-		dcb_config = 0;
-	}
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return;
@@ -3604,8 +3593,6 @@ init_port_dcb_config(portid_t pid,
 	rte_port = &ports[pid];
 
 	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
-	/* Enter DCB configuration status */
-	dcb_config = 1;
 
 	port_conf.rxmode = rte_port->dev_conf.rxmode;
 	port_conf.txmode = rte_port->dev_conf.txmode;
@@ -3672,6 +3659,9 @@ init_port_dcb_config(portid_t pid,
 		return retval;
 
 	rte_port->dcb_flag = 1;
+
+	/* Enter DCB configuration status */
+	dcb_config = 1;
 
 	return 0;
 }
