@@ -908,15 +908,9 @@ static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
 #define MSEC_PER_SEC              1000L
 #define USEC_PER_MSEC             1000L
 
-static inline uint64_t
-get_timeofday_ms(void)
-{
-	struct timeval tv;
-
-	(void)gettimeofday(&tv, NULL);
-
-	return (uint64_t)tv.tv_sec * MSEC_PER_SEC + tv.tv_usec / USEC_PER_MSEC;
-}
+void hns3_clock_gettime(struct timeval *tv);
+uint64_t hns3_clock_calctime_ms(struct timeval *tv);
+uint64_t hns3_clock_gettime_ms(void);
 
 static inline uint64_t
 hns3_atomic_test_bit(unsigned int nr, volatile uint64_t *addr)

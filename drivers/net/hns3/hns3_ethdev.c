@@ -5491,7 +5491,7 @@ hns3_wait_hardware_ready(struct hns3_adapter *hns)
 	if (wait_data->result == HNS3_WAIT_SUCCESS)
 		return 0;
 	else if (wait_data->result == HNS3_WAIT_TIMEOUT) {
-		gettimeofday(&tv, NULL);
+		hns3_clock_gettime(&tv);
 		hns3_warn(hw, "Reset step4 hardware not ready after reset time=%ld.%.6ld",
 			  tv.tv_sec, tv.tv_usec);
 		return -ETIME;
@@ -5501,7 +5501,7 @@ hns3_wait_hardware_ready(struct hns3_adapter *hns)
 	wait_data->hns = hns;
 	wait_data->check_completion = is_pf_reset_done;
 	wait_data->end_ms = (uint64_t)HNS3_RESET_WAIT_CNT *
-				      HNS3_RESET_WAIT_MS + get_timeofday_ms();
+				HNS3_RESET_WAIT_MS + hns3_clock_gettime_ms();
 	wait_data->interval = HNS3_RESET_WAIT_MS * USEC_PER_MSEC;
 	wait_data->count = HNS3_RESET_WAIT_CNT;
 	wait_data->result = HNS3_WAIT_REQUEST;
@@ -5540,7 +5540,7 @@ hns3_msix_process(struct hns3_adapter *hns, enum hns3_reset_level reset_level)
 	struct timeval tv;
 	uint32_t val;
 
-	gettimeofday(&tv, NULL);
+	hns3_clock_gettime(&tv);
 	if (hns3_read_dev(hw, HNS3_GLOBAL_RESET_REG) ||
 	    hns3_read_dev(hw, HNS3_FUN_RST_ING)) {
 		hns3_warn(hw, "Don't process msix during resetting time=%ld.%.6ld",
@@ -5834,12 +5834,11 @@ hns3_reset_service(void *param)
 	 */
 	reset_level = hns3_get_reset_level(hns, &hw->reset.pending);
 	if (reset_level != HNS3_NONE_RESET) {
-		gettimeofday(&tv_start, NULL);
+		hns3_clock_gettime(&tv_start);
 		ret = hns3_reset_process(hns, reset_level);
-		gettimeofday(&tv, NULL);
+		hns3_clock_gettime(&tv);
 		timersub(&tv, &tv_start, &tv_delta);
-		msec = tv_delta.tv_sec * MSEC_PER_SEC +
-		       tv_delta.tv_usec / USEC_PER_MSEC;
+		msec = hns3_clock_calctime_ms(&tv_delta);
 		if (msec > HNS3_RESET_PROCESS_MS)
 			hns3_err(hw, "%d handle long time delta %" PRIu64
 				     " ms time=%ld.%.6ld",
@@ -6181,6 +6180,39 @@ hns3_query_dev_fec_info(struct hns3_hw *hw)
 		hns3_err(hw, "query device FEC info failed, ret = %d", ret);
 
 	return ret;
+}
+
+void
+hns3_clock_gettime(struct timeval *tv)
+{
+#ifdef CLOCK_MONOTONIC_RAW /* Defined in glibc bits/time.h */
+#define CLOCK_TYPE CLOCK_MONOTONIC_RAW
+#else
+#define CLOCK_TYPE CLOCK_MONOTONIC
+#endif
+#define NSEC_TO_USEC_DIV 1000
+
+	struct timespec spec;
+	(void)clock_gettime(CLOCK_TYPE, &spec);
+
+	tv->tv_sec = spec.tv_sec;
+	tv->tv_usec = spec.tv_nsec / NSEC_TO_USEC_DIV;
+}
+
+uint64_t
+hns3_clock_calctime_ms(struct timeval *tv)
+{
+	return (uint64_t)tv->tv_sec * MSEC_PER_SEC +
+		tv->tv_usec / USEC_PER_MSEC;
+}
+
+uint64_t
+hns3_clock_gettime_ms(void)
+{
+	struct timeval tv;
+
+	hns3_clock_gettime(&tv);
+	return hns3_clock_calctime_ms(&tv);
 }
 
 static const struct eth_dev_ops hns3_eth_dev_ops = {

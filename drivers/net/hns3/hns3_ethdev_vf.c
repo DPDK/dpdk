@@ -2370,7 +2370,7 @@ hns3vf_wait_hardware_ready(struct hns3_adapter *hns)
 		hns3_warn(hw, "hardware is ready, delay 1 sec for PF reset complete");
 		return -EAGAIN;
 	} else if (wait_data->result == HNS3_WAIT_TIMEOUT) {
-		gettimeofday(&tv, NULL);
+		hns3_clock_gettime(&tv);
 		hns3_warn(hw, "Reset step4 hardware not ready after reset time=%ld.%.6ld",
 			  tv.tv_sec, tv.tv_usec);
 		return -ETIME;
@@ -2380,7 +2380,7 @@ hns3vf_wait_hardware_ready(struct hns3_adapter *hns)
 	wait_data->hns = hns;
 	wait_data->check_completion = is_vf_reset_done;
 	wait_data->end_ms = (uint64_t)HNS3VF_RESET_WAIT_CNT *
-				      HNS3VF_RESET_WAIT_MS + get_timeofday_ms();
+				HNS3VF_RESET_WAIT_MS + hns3_clock_gettime_ms();
 	wait_data->interval = HNS3VF_RESET_WAIT_MS * USEC_PER_MSEC;
 	wait_data->count = HNS3VF_RESET_WAIT_CNT;
 	wait_data->result = HNS3_WAIT_REQUEST;
@@ -2626,12 +2626,11 @@ hns3vf_reset_service(void *param)
 	 */
 	reset_level = hns3vf_get_reset_level(hw, &hw->reset.pending);
 	if (reset_level != HNS3_NONE_RESET) {
-		gettimeofday(&tv_start, NULL);
+		hns3_clock_gettime(&tv_start);
 		hns3_reset_process(hns, reset_level);
-		gettimeofday(&tv, NULL);
+		hns3_clock_gettime(&tv);
 		timersub(&tv, &tv_start, &tv_delta);
-		msec = tv_delta.tv_sec * MSEC_PER_SEC +
-		       tv_delta.tv_usec / USEC_PER_MSEC;
+		msec = hns3_clock_calctime_ms(&tv_delta);
 		if (msec > HNS3_RESET_PROCESS_MS)
 			hns3_err(hw, "%d handle long time delta %" PRIu64
 				 " ms time=%ld.%.6ld",
