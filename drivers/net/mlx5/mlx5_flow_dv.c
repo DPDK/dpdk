@@ -1391,7 +1391,7 @@ mlx5_flow_item_field_width(enum rte_flow_field_id field)
 	case RTE_FLOW_FIELD_TCP_ACK_NUM:
 		return 32;
 	case RTE_FLOW_FIELD_TCP_FLAGS:
-		return 6;
+		return 9;
 	case RTE_FLOW_FIELD_UDP_PORT_SRC:
 	case RTE_FLOW_FIELD_UDP_PORT_DST:
 		return 16;
@@ -1713,10 +1713,10 @@ mlx5_flow_field_id_to_modify_info
 						     (32 - width));
 		break;
 	case RTE_FLOW_FIELD_TCP_FLAGS:
-		info[idx] = (struct field_modify_info){1, 0,
+		info[idx] = (struct field_modify_info){2, 0,
 					MLX5_MODI_OUT_TCP_FLAGS};
 		if (mask)
-			mask[idx] = 0x3f >> (6 - width);
+			mask[idx] = rte_cpu_to_be_16(0x1ff >> (9 - width));
 		break;
 	case RTE_FLOW_FIELD_UDP_PORT_SRC:
 		info[idx] = (struct field_modify_info){2, 0,
