@@ -3270,6 +3270,7 @@ cmd_config_dcb_parsed(void *parsed_result,
                         __rte_unused void *data)
 {
 	struct cmd_config_dcb *res = parsed_result;
+	struct rte_eth_dcb_info dcb_info;
 	portid_t port_id = res->port_id;
 	struct rte_port *port;
 	uint8_t pfc_en;
@@ -3292,6 +3293,14 @@ cmd_config_dcb_parsed(void *parsed_result,
 		printf("nb_cores shouldn't be less than number of TCs.\n");
 		return;
 	}
+
+	/* Check whether the port supports the report of DCB info. */
+	ret = rte_eth_dev_get_dcb_info(port_id, &dcb_info);
+	if (ret == -ENOTSUP) {
+		printf("rte_eth_dev_get_dcb_info not supported.\n");
+		return;
+	}
+
 	if (!strncmp(res->pfc_en, "on", 2))
 		pfc_en = 1;
 	else
