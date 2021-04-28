@@ -196,6 +196,7 @@ quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 	rte_mempool_put_bulk(p, (void *)bufs, num_workers);
 
 	rte_distributor_process(d, NULL, 0);
+	rte_distributor_flush(d);
 	rte_eal_mp_wait_lcore();
 	quit = 0;
 	worker_idx = 0;
