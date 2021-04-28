@@ -3344,6 +3344,10 @@ icmp_echo_config_setup(void)
 void
 fwd_config_setup(void)
 {
+	struct rte_port *port;
+	portid_t pt_id;
+	unsigned int i;
+
 	cur_fwd_config.fwd_eng = cur_fwd_eng;
 	if (strcmp(cur_fwd_eng->fwd_mode_name, "icmpecho") == 0) {
 		icmp_echo_config_setup();
@@ -3351,9 +3355,24 @@ fwd_config_setup(void)
 	}
 
 	if ((nb_rxq > 1) && (nb_txq > 1)){
-		if (dcb_config)
+		if (dcb_config) {
+			for (i = 0; i < nb_fwd_ports; i++) {
+				pt_id = fwd_ports_ids[i];
+				port = &ports[pt_id];
+				if (!port->dcb_flag) {
+					printf("In DCB mode, all forwarding ports must "
+						"be configured in this mode.\n");
+					return;
+				}
+			}
+			if (nb_fwd_lcores == 1) {
+				printf("In DCB mode,the nb forwarding cores "
+					"should be larger than 1.\n");
+				return;
+			}
+
 			dcb_fwd_config_setup();
-		else
+		} else
 			rss_fwd_config_setup();
 	}
 	else

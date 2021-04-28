@@ -2120,9 +2120,7 @@ start_packet_forwarding(int with_tx_first)
 {
 	port_fwd_begin_t port_fwd_begin;
 	port_fwd_end_t  port_fwd_end;
-	struct rte_port *port;
 	unsigned int i;
-	portid_t   pt_id;
 
 	if (strcmp(cur_fwd_eng->fwd_mode_name, "rxonly") == 0 && !nb_rxq)
 		rte_exit(EXIT_FAILURE, "rxq are 0, cannot use rxonly fwd mode\n");
@@ -2144,23 +2142,6 @@ start_packet_forwarding(int with_tx_first)
 	if (test_done == 0) {
 		printf("Packet forwarding already started\n");
 		return;
-	}
-
-	if (dcb_config) {
-		for (i = 0; i < nb_fwd_ports; i++) {
-			pt_id = fwd_ports_ids[i];
-			port = &ports[pt_id];
-			if (!port->dcb_flag) {
-				printf("In DCB mode, all forwarding ports must "
-                                       "be configured in this mode.\n");
-				return;
-			}
-		}
-		if (nb_fwd_lcores == 1) {
-			printf("In DCB mode,the nb forwarding cores "
-                               "should be larger than 1.\n");
-			return;
-		}
 	}
 	test_done = 0;
 
