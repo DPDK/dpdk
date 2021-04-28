@@ -16,9 +16,6 @@
 #include "hns3_dcb.h"
 #include "hns3_mp.h"
 
-#define HNS3_DEFAULT_PORT_CONF_BURST_SIZE	32
-#define HNS3_DEFAULT_PORT_CONF_QUEUES_NUM	1
-
 #define HNS3_SERVICE_INTERVAL		1000000 /* us */
 #define HNS3_SERVICE_QUICK_INTERVAL	10
 #define HNS3_INVALID_PVID		0xFFFF

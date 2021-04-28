@@ -1027,6 +1027,11 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->reta_size = hw->rss_ind_tbl_size;
 	info->hash_key_size = HNS3_RSS_KEY_SIZE;
 	info->flow_type_rss_offloads = HNS3_ETH_RSS_SUPPORT;
+
+	info->default_rxportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
+	info->default_txportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
+	info->default_rxportconf.nb_queues = HNS3_DEFAULT_PORT_CONF_QUEUES_NUM;
+	info->default_txportconf.nb_queues = HNS3_DEFAULT_PORT_CONF_QUEUES_NUM;
 	info->default_rxportconf.ring_size = HNS3_DEFAULT_RING_DESC;
 	info->default_txportconf.ring_size = HNS3_DEFAULT_RING_DESC;
 
