@@ -10,10 +10,6 @@
 #include "hns3_intr.h"
 #include "hns3_logs.h"
 
-#define hns3_is_csq(ring) ((ring)->flag & HNS3_TYPE_CSQ)
-
-#define cmq_ring_to_dev(ring)   (&(ring)->dev->pdev->dev)
-
 static int
 hns3_ring_space(struct hns3_cmq_ring *ring)
 {
