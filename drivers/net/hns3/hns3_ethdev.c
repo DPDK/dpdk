@@ -5841,7 +5841,7 @@ hns3_reset_service(void *param)
 		msec = tv_delta.tv_sec * MSEC_PER_SEC +
 		       tv_delta.tv_usec / USEC_PER_MSEC;
 		if (msec > HNS3_RESET_PROCESS_MS)
-			hns3_err(hw, "%d handle long time delta %" PRIx64
+			hns3_err(hw, "%d handle long time delta %" PRIu64
 				     " ms time=%ld.%.6ld",
 				 hw->reset.level, msec,
 				 tv.tv_sec, tv.tv_usec);
