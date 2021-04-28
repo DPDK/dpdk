@@ -1576,10 +1576,6 @@ init_config(void)
 		fwd_lcores[lc_id]->gso_ctx.flag = 0;
 	}
 
-	/* Configuration of packet forwarding streams. */
-	if (init_fwd_streams() < 0)
-		rte_exit(EXIT_FAILURE, "FAIL from init_fwd_streams()\n");
-
 	fwd_config_setup();
 
 	/* create a gro context for each lcore */
