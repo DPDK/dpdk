@@ -191,8 +191,8 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 					ICP_QAT_FW_COMP_EOP
 				      : ICP_QAT_FW_COMP_NOT_EOP,
 				ICP_QAT_FW_COMP_NOT_BFINAL,
-				ICP_QAT_FW_COMP_NO_CNV,
-				ICP_QAT_FW_COMP_NO_CNV_RECOVERY);
+				ICP_QAT_FW_COMP_CNV,
+				ICP_QAT_FW_COMP_CNV_RECOVERY);
 	}
 
 	/* common for sgl and flat buffers */
@@ -603,7 +603,8 @@ qat_comp_process_response(void **op, uint8_t *resp, void *op_cookie,
 			rx_op->status = RTE_COMP_OP_STATUS_ERROR;
 			rx_op->debug_status = ERR_CODE_QAT_COMP_WRONG_FW;
 			*op = (void *)rx_op;
-			QAT_DP_LOG(ERR, "QAT has wrong firmware");
+			QAT_DP_LOG(ERR,
+					"This QAT hardware doesn't support compression operation");
 			++(*dequeue_err_count);
 			return 1;
 		}
