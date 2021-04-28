@@ -29,7 +29,7 @@ struct qat_dev_cmd_param {
 enum qat_comp_num_im_buffers {
 	QAT_NUM_INTERM_BUFS_GEN1 = 12,
 	QAT_NUM_INTERM_BUFS_GEN2 = 20,
-	QAT_NUM_INTERM_BUFS_GEN3 = 20
+	QAT_NUM_INTERM_BUFS_GEN3 = 64
 };
 
 struct qat_device_info {
