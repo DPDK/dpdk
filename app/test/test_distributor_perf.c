@@ -188,9 +188,10 @@ quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 	rte_mempool_get_bulk(p, (void *)bufs, num_workers);
 
 	quit = 1;
-	for (i = 0; i < num_workers; i++)
+	for (i = 0; i < num_workers; i++) {
 		bufs[i]->hash.usr = i << 1;
-	rte_distributor_process(d, bufs, num_workers);
+		rte_distributor_process(d, &bufs[i], 1);
+	}
 
 	rte_mempool_put_bulk(p, (void *)bufs, num_workers);
 
