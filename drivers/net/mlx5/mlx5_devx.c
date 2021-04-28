@@ -1113,7 +1113,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->wqe_pi = 0;
 	txq_data->wqe_comp = 0;
 	txq_data->wqe_thres = txq_data->wqe_s / MLX5_TX_COMP_THRESH_INLINE_DIV;
-	txq_data->qp_db = txq_obj->sq_obj.db_rec;
+	txq_data->qp_db = &txq_obj->sq_obj.db_rec[MLX5_SND_DBR];
 	*txq_data->qp_db = 0;
 	txq_data->qp_num_8s = txq_obj->sq_obj.sq->id << 8;
 	/* Change Send Queue state to Ready-to-Send. */
