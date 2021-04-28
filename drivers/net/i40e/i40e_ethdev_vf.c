@@ -2081,7 +2081,9 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 				continue;
 			rte_memcpy(list->list[j].addr, addr->addr_bytes,
 					 sizeof(addr->addr_bytes));
-			list->list[j].type = VIRTCHNL_ETHER_ADDR_EXTRA;
+			list->list[j].type = (j == 0 ?
+					      VIRTCHNL_ETHER_ADDR_PRIMARY :
+					      VIRTCHNL_ETHER_ADDR_EXTRA);
 			PMD_DRV_LOG(DEBUG, "add/rm mac:%x:%x:%x:%x:%x:%x",
 				    addr->addr_bytes[0], addr->addr_bytes[1],
 				    addr->addr_bytes[2], addr->addr_bytes[3],
