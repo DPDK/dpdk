@@ -925,6 +925,9 @@ static int bnxt_vnic_prep(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	uint64_t rx_offloads = dev_conf->rxmode.offloads;
 	int rc;
 
+	if (bp->nr_vnics > bp->max_vnics - 1)
+		return -ENOMEM;
+
 	rc = bnxt_vnic_grp_alloc(bp, vnic);
 	if (rc)
 		goto ret;
@@ -1543,6 +1546,7 @@ bnxt_flow_validate(struct rte_eth_dev *dev,
 			bnxt_hwrm_vnic_ctx_free(bp, vnic);
 			bnxt_hwrm_vnic_free(bp, vnic);
 			vnic->rx_queue_cnt = 0;
+			bp->nr_vnics--;
 			PMD_DRV_LOG(DEBUG, "Free VNIC\n");
 		}
 	}
@@ -2001,6 +2005,7 @@ done:
 
 			bnxt_hwrm_vnic_free(bp, vnic);
 			vnic->rx_queue_cnt = 0;
+			bp->nr_vnics--;
 		}
 	} else {
 		rte_flow_error_set(error, -ret,
