@@ -3008,6 +3008,21 @@ rss_fwd_config_setup(void)
 	}
 }
 
+static uint16_t
+get_fwd_port_total_tc_num(void)
+{
+	struct rte_eth_dcb_info dcb_info;
+	uint16_t total_tc_num = 0;
+	unsigned int i;
+
+	for (i = 0; i < nb_fwd_ports; i++) {
+		(void)rte_eth_dev_get_dcb_info(fwd_ports_ids[i], &dcb_info);
+		total_tc_num += dcb_info.nb_tcs;
+	}
+
+	return total_tc_num;
+}
+
 /**
  * For the DCB forwarding test, each core is assigned on each traffic class.
  *
@@ -3027,12 +3042,16 @@ dcb_fwd_config_setup(void)
 	lcoreid_t  lc_id;
 	uint16_t nb_rx_queue, nb_tx_queue;
 	uint16_t i, j, k, sm_id = 0;
+	uint16_t total_tc_num;
 	uint8_t tc = 0;
 
 	cur_fwd_config.nb_fwd_lcores = (lcoreid_t) nb_fwd_lcores;
 	cur_fwd_config.nb_fwd_ports = nb_fwd_ports;
 	cur_fwd_config.nb_fwd_streams =
 		(streamid_t) (nb_rxq * cur_fwd_config.nb_fwd_ports);
+	total_tc_num = get_fwd_port_total_tc_num();
+	if (cur_fwd_config.nb_fwd_lcores > total_tc_num)
+		cur_fwd_config.nb_fwd_lcores = total_tc_num;
 
 	/* reinitialize forwarding streams */
 	init_fwd_streams();
