@@ -217,6 +217,8 @@ vhost_flush_enqueue_batch_packed(struct virtio_net *dev,
 {
 	uint16_t i;
 	uint16_t flags;
+	uint16_t last_used_idx = vq->last_used_idx;
+	struct vring_packed_desc *desc_base = &vq->desc_packed[last_used_idx];
 
 	if (vq->shadow_used_idx) {
 		do_data_copy_enqueue(dev, vq);
@@ -226,16 +228,17 @@ vhost_flush_enqueue_batch_packed(struct virtio_net *dev,
 	flags = PACKED_DESC_ENQUEUE_USED_FLAG(vq->used_wrap_counter);
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
-		vq->desc_packed[vq->last_used_idx + i].id = ids[i];
-		vq->desc_packed[vq->last_used_idx + i].len = lens[i];
+		desc_base[i].id = ids[i];
+		desc_base[i].len = lens[i];
 	}
 
 	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 
-	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
-		vq->desc_packed[vq->last_used_idx + i].flags = flags;
+	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		desc_base[i].flags = flags;
+	}
 
-	vhost_log_cache_used_vring(dev, vq, vq->last_used_idx *
+	vhost_log_cache_used_vring(dev, vq, last_used_idx *
 				   sizeof(struct vring_packed_desc),
 				   sizeof(struct vring_packed_desc) *
 				   PACKED_BATCH_SIZE);
