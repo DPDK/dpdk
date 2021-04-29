@@ -163,6 +163,7 @@ New Features
   Updated the Mellanox mlx5 driver with new features and improvements, including:
 
   * Added support for VXLAN and NVGRE encap as sample actions.
+  * Added support for flow COUNT action handle.
   * Support push VLAN on ingress traffic and pop VLAN on egress traffic in E-Switch mode.
   * Added support for pre-defined meter policy API.
   * Added support for ASO (Advanced Steering Operation) meter.

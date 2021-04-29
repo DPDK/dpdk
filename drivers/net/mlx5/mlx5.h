@@ -291,7 +291,7 @@ struct mlx5_drop {
 #define MLX5_MAX_PENDING_QUERIES 4
 #define MLX5_CNT_CONTAINER_RESIZE 64
 #define MLX5_CNT_SHARED_OFFSET 0x80000000
-#define IS_SHARED_CNT(cnt) (!!((cnt) & MLX5_CNT_SHARED_OFFSET))
+#define IS_LEGACY_SHARED_CNT(cnt) (!!((cnt) & MLX5_CNT_SHARED_OFFSET))
 #define IS_BATCH_CNT(cnt) (((cnt) & (MLX5_CNT_SHARED_OFFSET - 1)) >= \
 			   MLX5_CNT_BATCH_OFFSET)
 #define MLX5_CNT_SIZE (sizeof(struct mlx5_flow_counter))
@@ -353,7 +353,10 @@ struct flow_counter_stats {
 
 /* Shared counters information for counters. */
 struct mlx5_flow_counter_shared {
-	uint32_t id; /**< User counter ID. */
+	union {
+		uint32_t refcnt; /* Only for shared action management. */
+		uint32_t id; /* User counter ID for legacy sharing. */
+	};
 };
 
 /* Shared counter configuration. */

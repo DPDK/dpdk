@@ -193,7 +193,7 @@
 #define MLX5_HAIRPIN_JUMBO_LOG_SIZE (14 + 2)
 
 /* Maximum number of indirect actions supported by rte_flow */
-#define MLX5_MAX_INDIRECT_ACTIONS 2
+#define MLX5_MAX_INDIRECT_ACTIONS 3
 
 /*
  * Linux definition of static_assert is found in /usr/include/assert.h.

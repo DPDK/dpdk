@@ -1692,10 +1692,15 @@ Supported hardware offloads
    |                       | |               | | rdma-core 33  |
    |                       | |               | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
-   | Age                   | |  DPDK 20.11   | | DPDK 20.11    |
-   |                       | |  OFED 5.2     | | OFED 5.2      |
-   |                       | |  rdma-core 32 | | rdma-core 32  |
-   |                       | |  ConnectX-6 Dx| | ConnectX-6 Dx |
+   | Age                   | | DPDK 20.11    | | DPDK 20.11    |
+   |                       | | OFED 5.2      | | OFED 5.2      |
+   |                       | | rdma-core 32  | | rdma-core 32  |
+   |                       | | ConnectX-6 Dx | | ConnectX-6 Dx |
+   +-----------------------+-----------------+-----------------+
+   | Count                 | | DPDK 21.05    | | DPDK 21.05    |
+   |                       | | OFED 4.6      | | OFED 4.6      |
+   |                       | | rdma-core 24  | | rdma-core 23  |
+   |                       | | ConnectX-5    | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
 
 Notes for metadata
