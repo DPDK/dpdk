@@ -130,6 +130,47 @@ static void ice_cache_vlan_mode(struct ice_hw *hw)
 }
 
 /**
+ * ice_pkg_supports_dvm - find out if DDP supports DVM
+ * @hw: pointer to the HW structure
+ */
+static bool ice_pkg_supports_dvm(struct ice_hw *hw)
+{
+	enum ice_status status;
+	bool pkg_supports_dvm;
+
+	status = ice_pkg_get_supported_vlan_mode(hw, &pkg_supports_dvm);
+	if (status) {
+		ice_debug(hw, ICE_DBG_PKG, "Failed to get supported VLAN mode, status %d\n",
+			  status);
+		return false;
+	}
+
+	return pkg_supports_dvm;
+}
+
+/**
+ * ice_fw_supports_dvm - find out if FW supports DVM
+ * @hw: pointer to the HW structure
+ */
+static bool ice_fw_supports_dvm(struct ice_hw *hw)
+{
+	struct ice_aqc_get_vlan_mode get_vlan_mode = { 0 };
+	enum ice_status status;
+
+	/* If firmware returns success, then it supports DVM, else it only
+	 * supports SVM
+	 */
+	status = ice_aq_get_vlan_mode(hw, &get_vlan_mode);
+	if (status) {
+		ice_debug(hw, ICE_DBG_NVM, "Failed to get VLAN mode, status %d\n",
+			  status);
+		return false;
+	}
+
+	return true;
+}
+
+/**
  * ice_is_dvm_supported - check if Double VLAN Mode is supported
  * @hw: pointer to the hardware structure
  *
@@ -141,27 +182,13 @@ static void ice_cache_vlan_mode(struct ice_hw *hw)
  */
 static bool ice_is_dvm_supported(struct ice_hw *hw)
 {
-	struct ice_aqc_get_vlan_mode get_vlan_mode = { 0 };
-	enum ice_status status;
-	bool pkg_supports_dvm;
-
-	status = ice_pkg_get_supported_vlan_mode(hw, &pkg_supports_dvm);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PKG, "Failed to get supported VLAN mode, status %d\n",
-			  status);
+	if (!ice_pkg_supports_dvm(hw)) {
+		ice_debug(hw, ICE_DBG_PKG, "DDP doesn't support DVM\n");
 		return false;
 	}
 
-	if (!pkg_supports_dvm)
-		return false;
-
-	/* If firmware returns success, then it supports DVM, else it only
-	 * supports SVM
-	 */
-	status = ice_aq_get_vlan_mode(hw, &get_vlan_mode);
-	if (status) {
-		ice_debug(hw, ICE_DBG_NVM, "Failed to get VLAN mode, status %d\n",
-			  status);
+	if (!ice_fw_supports_dvm(hw)) {
+		ice_debug(hw, ICE_DBG_PKG, "FW doesn't support DVM\n");
 		return false;
 	}
 
@@ -376,6 +403,30 @@ enum ice_status ice_set_vlan_mode(struct ice_hw *hw)
 }
 
 /**
+ * ice_print_dvm_not_supported - print if DDP and/or FW doesn't support DVM
+ * @hw: pointer to the HW structure
+ *
+ * The purpose of this function is to print that  QinQ is not supported due to
+ * incompatibilty from the DDP and/or FW. This will give a hint to the user to
+ * update one and/or both components if they expect QinQ functionality.
+ */
+static void ice_print_dvm_not_supported(struct ice_hw *hw)
+{
+	bool pkg_supports_dvm = ice_pkg_supports_dvm(hw);
+	bool fw_supports_dvm = ice_fw_supports_dvm(hw);
+
+	if (!fw_supports_dvm && !pkg_supports_dvm)
+		ice_info(hw, "QinQ functionality cannot be enabled on this device. "
+			     "Update your DDP package and NVM to versions that support QinQ.\n");
+	else if (!pkg_supports_dvm)
+		ice_info(hw, "QinQ functionality cannot be enabled on this device. "
+			     "Update your DDP package to a version that supports QinQ.\n");
+	else if (!fw_supports_dvm)
+		ice_info(hw, "QinQ functionality cannot be enabled on this device. "
+			     "Update your NVM to a version that supports QinQ.\n");
+}
+
+/**
  * ice_post_pkg_dwnld_vlan_mode_cfg - configure VLAN mode after DDP download
  * @hw: pointer to the HW structure
  *
@@ -394,4 +445,6 @@ void ice_post_pkg_dwnld_vlan_mode_cfg(struct ice_hw *hw)
 
 	if (ice_is_dvm_ena(hw))
 		ice_change_proto_id_to_dvm();
+	else
+		ice_print_dvm_not_supported(hw);
 }
