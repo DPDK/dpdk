@@ -549,11 +549,13 @@ mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh)
 		age_info = &sh->port[i].age_info;
 		if (!MLX5_AGE_GET(age_info, MLX5_AGE_EVENT_NEW))
 			continue;
-		if (MLX5_AGE_GET(age_info, MLX5_AGE_TRIGGER))
+		MLX5_AGE_UNSET(age_info, MLX5_AGE_EVENT_NEW);
+		if (MLX5_AGE_GET(age_info, MLX5_AGE_TRIGGER)) {
+			MLX5_AGE_UNSET(age_info, MLX5_AGE_TRIGGER);
 			rte_eth_dev_callback_process
 				(&rte_eth_devices[sh->port[i].devx_ih_port_id],
 				RTE_ETH_EVENT_FLOW_AGED, NULL);
-		age_info->flags = 0;
+		}
 	}
 }
 
@@ -562,7 +564,7 @@ mlx5_age_event_prepare(struct mlx5_dev_ctx_shared *sh)
  *
  * @param[in] sh
  *   Pointer to mlx5_dev_ctx_shared object.
- * @param[in] sh
+ * @param[in] config
  *   Pointer to user dev config.
  */
 static void

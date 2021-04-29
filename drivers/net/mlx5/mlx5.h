@@ -538,6 +538,8 @@ struct mlx5_aso_age_mng {
 #define MLX5_AGE_TRIGGER		2
 #define MLX5_AGE_SET(age_info, BIT) \
 	((age_info)->flags |= (1 << (BIT)))
+#define MLX5_AGE_UNSET(age_info, BIT) \
+	((age_info)->flags &= ~(1 << (BIT)))
 #define MLX5_AGE_GET(age_info, BIT) \
 	((age_info)->flags & (1 << (BIT)))
 #define GET_PORT_AGE_INFO(priv) \
