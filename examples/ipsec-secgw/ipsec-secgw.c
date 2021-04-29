@@ -426,7 +426,7 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 			return;
 		}
 
-		switch (iph6->proto) {
+		switch (next_proto) {
 		case IPPROTO_ESP:
 			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
 			break;
