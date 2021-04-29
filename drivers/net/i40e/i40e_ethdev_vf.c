@@ -1237,7 +1237,7 @@ i40evf_reset_vf(struct rte_eth_dev *dev)
 	  * it to ACTIVE. In this duration, vf may not catch the moment that
 	  * COMPLETE is set. So, for vf, we'll try to wait a long time.
 	  */
-	rte_delay_ms(200);
+	rte_delay_ms(500);
 
 	ret = i40evf_check_vf_reset_done(dev);
 	if (ret) {
