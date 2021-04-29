@@ -1448,7 +1448,7 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 	}
 
 	memset(name, 0, sizeof(name));
-	snprintf(name, RTE_RAWDEV_NAME_MAX_LEN, "IFPGA:%02x:%02x.%x",
+	snprintf(name, RTE_RAWDEV_NAME_MAX_LEN, IFPGA_RAWDEV_NAME_FMT,
 		pci_dev->addr.bus, pci_dev->addr.devid, pci_dev->addr.function);
 
 	IFPGA_RAWDEV_PMD_INFO("Init %s on NUMA node %d", name, rte_socket_id());
@@ -1551,7 +1551,7 @@ ifpga_rawdev_destroy(struct rte_pci_device *pci_dev)
 	}
 
 	memset(name, 0, sizeof(name));
-	snprintf(name, RTE_RAWDEV_NAME_MAX_LEN, "IFPGA:%x:%02x.%x",
+	snprintf(name, RTE_RAWDEV_NAME_MAX_LEN, IFPGA_RAWDEV_NAME_FMT,
 		pci_dev->addr.bus, pci_dev->addr.devid, pci_dev->addr.function);
 
 	IFPGA_RAWDEV_PMD_INFO("Closing %s on NUMA node %d",

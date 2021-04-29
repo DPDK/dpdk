@@ -34,7 +34,7 @@ rte_pmd_ifpga_get_dev_id(const char *pci_addr, uint16_t *dev_id)
 		return -EINVAL;
 	}
 
-	snprintf(rdev_name, RTE_RAWDEV_NAME_MAX_LEN, "IFPGA:%02x:%02x.%x",
+	snprintf(rdev_name, RTE_RAWDEV_NAME_MAX_LEN, IFPGA_RAWDEV_NAME_FMT,
 		addr.bus, addr.devid, addr.function);
 	rdev = rte_rawdev_pmd_get_named_dev(rdev_name);
 	if (!rdev) {
