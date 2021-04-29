@@ -2654,6 +2654,9 @@ hns3_recv_scattered_pkts(void *rx_queue,
 			continue;
 		}
 
+		if (unlikely(bd_base_info & BIT(HNS3_RXD_TS_VLD_B)))
+			hns3_rx_ptp_timestamp_handle(rxq, first_seg, rxdp);
+
 		/*
 		 * The last buffer of the received packet. packet len from
 		 * buffer description may contains CRC len, packet len should
@@ -2703,6 +2706,9 @@ hns3_recv_scattered_pkts(void *rx_queue,
 
 		first_seg->packet_type = hns3_rx_calc_ptype(rxq,
 						l234_info, ol_info);
+
+		if (first_seg->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC)
+			rxm->ol_flags |= PKT_RX_IEEE1588_PTP;
 
 		hns3_rxd_to_vlan_tci(rxq, first_seg, l234_info, &rxd);
 
