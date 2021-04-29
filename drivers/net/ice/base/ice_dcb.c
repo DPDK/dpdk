@@ -1207,7 +1207,140 @@ ice_add_ieee_app_pri_tlv(struct ice_lldp_org_tlv *tlv,
 }
 
 /**
- * ice_add_dcb_tlv - Add all IEEE TLVs
+ * ice_add_dscp_up_tlv - Prepare DSCP to UP TLV
+ * @tlv: location to build the TLV data
+ * @dcbcfg: location of data to convert to TLV
+ */
+static void
+ice_add_dscp_up_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
+{
+	u8 *buf = tlv->tlvinfo;
+	u32 ouisubtype;
+	u16 typelen;
+	int i;
+
+	typelen = ((ICE_TLV_TYPE_ORG << ICE_LLDP_TLV_TYPE_S) |
+		   ICE_DSCP_UP_TLV_LEN);
+	tlv->typelen = HTONS(typelen);
+
+	ouisubtype = (u32)((ICE_DSCP_OUI << ICE_LLDP_TLV_OUI_S) |
+			   ICE_DSCP_SUBTYPE_DSCP2UP);
+	tlv->ouisubtype = HTONL(ouisubtype);
+
+	/* bytes 0 - 63 - IPv4 DSCP2UP LUT */
+	for (i = 0; i < ICE_DSCP_NUM_VAL; i++) {
+		/* IPv4 mapping */
+		buf[i] = dcbcfg->dscp_map[i];
+		/* IPv6 mapping */
+		buf[i + ICE_DSCP_IPV6_OFFSET] = dcbcfg->dscp_map[i];
+	}
+
+	/* byte 64 - IPv4 untagged traffic */
+	buf[i] = 0;
+
+	/* byte 144 - IPv6 untagged traffic */
+	buf[i + ICE_DSCP_IPV6_OFFSET] = 0;
+}
+
+#define ICE_BYTES_PER_TC	8
+/**
+ * ice_add_dscp_enf_tlv - Prepare DSCP Enforcement TLV
+ * @tlv: location to build the TLV data
+ */
+static void
+ice_add_dscp_enf_tlv(struct ice_lldp_org_tlv *tlv)
+{
+	u8 *buf = tlv->tlvinfo;
+	u32 ouisubtype;
+	u16 typelen;
+
+	typelen = ((ICE_TLV_TYPE_ORG << ICE_LLDP_TLV_TYPE_S) |
+		   ICE_DSCP_ENF_TLV_LEN);
+	tlv->typelen = HTONS(typelen);
+
+	ouisubtype = (u32)((ICE_DSCP_OUI << ICE_LLDP_TLV_OUI_S) |
+			   ICE_DSCP_SUBTYPE_ENFORCE);
+	tlv->ouisubtype = HTONL(ouisubtype);
+
+	/* Allow all DSCP values to be valid for all TC's (IPv4 and IPv6) */
+	memset(buf, 0, 2 * (ICE_MAX_TRAFFIC_CLASS * ICE_BYTES_PER_TC));
+}
+
+/**
+ * ice_add_dscp_tc_bw_tlv - Prepare DSCP BW for TC TLV
+ * @tlv: location to build the TLV data
+ * @dcbcfg: location of the data to convert to TLV
+ */
+static void
+ice_add_dscp_tc_bw_tlv(struct ice_lldp_org_tlv *tlv,
+		       struct ice_dcbx_cfg *dcbcfg)
+{
+	struct ice_dcb_ets_cfg *etscfg;
+	u8 *buf = tlv->tlvinfo;
+	u32 ouisubtype;
+	u8 offset = 0;
+	u16 typelen;
+	int i;
+
+	typelen = ((ICE_TLV_TYPE_ORG << ICE_LLDP_TLV_TYPE_S) |
+		   ICE_DSCP_TC_BW_TLV_LEN);
+	tlv->typelen = HTONS(typelen);
+
+	ouisubtype = (u32)((ICE_DSCP_OUI << ICE_LLDP_TLV_OUI_S) |
+			   ICE_DSCP_SUBTYPE_TCBW);
+	tlv->ouisubtype = HTONL(ouisubtype);
+
+	/* First Octet after subtype
+	 * ----------------------------
+	 * | RSV | CBS | RSV | Max TCs |
+	 * | 1b  | 1b  | 3b  | 3b      |
+	 * ----------------------------
+	 */
+	etscfg = &dcbcfg->etscfg;
+	buf[0] = etscfg->maxtcs & ICE_IEEE_ETS_MAXTC_M;
+
+	/* bytes 1 - 4 reserved */
+	offset = 5;
+
+	/* TC BW table
+	 * bytes 0 - 7 for TC 0 - 7
+	 *
+	 * TSA Assignment table
+	 * bytes 8 - 15 for TC 0 - 7
+	 */
+	for (i = 0; i < ICE_MAX_TRAFFIC_CLASS; i++) {
+		buf[offset] = etscfg->tcbwtable[i];
+		buf[offset + ICE_MAX_TRAFFIC_CLASS] = etscfg->tsatable[i];
+		offset++;
+	}
+}
+
+/**
+ * ice_add_dscp_pfc_tlv - Prepare DSCP PFC TLV
+ * @tlv: Fill PFC TLV in IEEE format
+ * @dcbcfg: Local store which holds the PFC CFG data
+ */
+static void
+ice_add_dscp_pfc_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
+{
+	u8 *buf = tlv->tlvinfo;
+	u32 ouisubtype;
+	u16 typelen;
+
+	typelen = ((ICE_TLV_TYPE_ORG << ICE_LLDP_TLV_TYPE_S) |
+		   ICE_DSCP_PFC_TLV_LEN);
+	tlv->typelen = HTONS(typelen);
+
+	ouisubtype = (u32)((ICE_DSCP_OUI << ICE_LLDP_TLV_OUI_S) |
+			   ICE_DSCP_SUBTYPE_PFC);
+	tlv->ouisubtype = HTONL(ouisubtype);
+
+	buf[0] = dcbcfg->pfc.pfccap & 0xF;
+	buf[1] = dcbcfg->pfc.pfcena & 0xF;
+}
+
+/**
+ * ice_add_dcb_tlv - Add all IEEE or DSCP TLVs
  * @tlv: Fill TLV data in IEEE format
  * @dcbcfg: Local store which holds the DCB Config
  * @tlvid: Type of IEEE TLV
@@ -1218,21 +1351,41 @@ static void
 ice_add_dcb_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg,
 		u16 tlvid)
 {
-	switch (tlvid) {
-	case ICE_IEEE_TLV_ID_ETS_CFG:
-		ice_add_ieee_ets_tlv(tlv, dcbcfg);
-		break;
-	case ICE_IEEE_TLV_ID_ETS_REC:
-		ice_add_ieee_etsrec_tlv(tlv, dcbcfg);
-		break;
-	case ICE_IEEE_TLV_ID_PFC_CFG:
-		ice_add_ieee_pfc_tlv(tlv, dcbcfg);
-		break;
-	case ICE_IEEE_TLV_ID_APP_PRI:
-		ice_add_ieee_app_pri_tlv(tlv, dcbcfg);
-		break;
-	default:
-		break;
+	if (dcbcfg->pfc_mode == ICE_QOS_MODE_VLAN) {
+		switch (tlvid) {
+		case ICE_IEEE_TLV_ID_ETS_CFG:
+			ice_add_ieee_ets_tlv(tlv, dcbcfg);
+			break;
+		case ICE_IEEE_TLV_ID_ETS_REC:
+			ice_add_ieee_etsrec_tlv(tlv, dcbcfg);
+			break;
+		case ICE_IEEE_TLV_ID_PFC_CFG:
+			ice_add_ieee_pfc_tlv(tlv, dcbcfg);
+			break;
+		case ICE_IEEE_TLV_ID_APP_PRI:
+			ice_add_ieee_app_pri_tlv(tlv, dcbcfg);
+			break;
+		default:
+			break;
+		}
+	} else {
+		/* pfc_mode == ICE_QOS_MODE_DSCP */
+		switch (tlvid) {
+		case ICE_TLV_ID_DSCP_UP:
+			ice_add_dscp_up_tlv(tlv, dcbcfg);
+			break;
+		case ICE_TLV_ID_DSCP_ENF:
+			ice_add_dscp_enf_tlv(tlv);
+			break;
+		case ICE_TLV_ID_DSCP_TC_BW:
+			ice_add_dscp_tc_bw_tlv(tlv, dcbcfg);
+			break;
+		case ICE_TLV_ID_DSCP_TO_PFC:
+			ice_add_dscp_pfc_tlv(tlv, dcbcfg);
+			break;
+		default:
+			break;
+		}
 	}
 }
 
