@@ -2401,13 +2401,11 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	check_ret = iavf_rx_vec_dev_check(dev);
 	if (check_ret >= 0 &&
 	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		if (check_ret == IAVF_VECTOR_PATH) {
-			use_sse = true;
-			if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
-			     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
-			    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
-				use_avx2 = true;
-		}
+		use_sse = true;
+		if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
+		     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
+			use_avx2 = true;
 
 #ifdef CC_AVX512_SUPPORT
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
