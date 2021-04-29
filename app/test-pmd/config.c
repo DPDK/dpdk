@@ -1618,90 +1618,99 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 {
 	struct rte_flow_error error;
 	struct port_indirect_action *pia;
-	uint64_t default_data;
-	void *data = NULL;
-	int ret = 0;
+	union {
+		struct rte_flow_query_count count;
+		struct rte_flow_query_age age;
+		struct rte_flow_action_conntrack ct;
+	} query;
 
 	pia = action_get_by_id(port_id, id);
 	if (!pia)
 		return -EINVAL;
 	switch (pia->type) {
 	case RTE_FLOW_ACTION_TYPE_AGE:
-		data = &default_data;
+	case RTE_FLOW_ACTION_TYPE_COUNT:
 		break;
 	default:
-		printf("Indirect action %u (type: %d) on port %u doesn't"
-		       " support query\n", id, pia->type, port_id);
-		return -1;
+		printf("Indirect action %u (type: %d) on port %u doesn't support query\n",
+		       id, pia->type, port_id);
+		return -ENOTSUP;
 	}
-	if (rte_flow_action_handle_query(port_id, pia->handle, data, &error))
-		ret = port_flow_complain(&error);
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x55, sizeof(error));
+	memset(&query, 0, sizeof(query));
+	if (rte_flow_action_handle_query(port_id, pia->handle, &query, &error))
+		return port_flow_complain(&error);
 	switch (pia->type) {
 	case RTE_FLOW_ACTION_TYPE_AGE:
-		if (!ret) {
-			struct rte_flow_query_age *resp = data;
-
-			printf("AGE:\n"
-			       " aged: %u\n"
-			       " sec_since_last_hit_valid: %u\n"
-			       " sec_since_last_hit: %" PRIu32 "\n",
-			       resp->aged,
-			       resp->sec_since_last_hit_valid,
-			       resp->sec_since_last_hit);
-		}
-		data = NULL;
+		printf("Indirect AGE action:\n"
+		       " aged: %u\n"
+		       " sec_since_last_hit_valid: %u\n"
+		       " sec_since_last_hit: %" PRIu32 "\n",
+		       query.age.aged,
+		       query.age.sec_since_last_hit_valid,
+		       query.age.sec_since_last_hit);
+		break;
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		printf("Indirect COUNT action:\n"
+		       " hits_set: %u\n"
+		       " bytes_set: %u\n"
+		       " hits: %" PRIu64 "\n"
+		       " bytes: %" PRIu64 "\n",
+		       query.count.hits_set,
+		       query.count.bytes_set,
+		       query.count.hits,
+		       query.count.bytes);
 		break;
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-		if (!ret) {
-			struct rte_flow_action_conntrack *ct = data;
-
-			printf("Conntrack Context:\n"
-			       "  Peer: %u, Flow dir: %s, Enable: %u\n"
-			       "  Live: %u, SACK: %u, CACK: %u\n"
-			       "  Packet dir: %s, Liberal: %u, State: %u\n"
-			       "  Factor: %u, Retrans: %u, TCP flags: %u\n"
-			       "  Last Seq: %u, Last ACK: %u\n"
-			       "  Last Win: %u, Last End: %u\n",
-			       ct->peer_port,
-			       ct->is_original_dir ? "Original" : "Reply",
-			       ct->enable, ct->live_connection,
-			       ct->selective_ack, ct->challenge_ack_passed,
-			       ct->last_direction ? "Original" : "Reply",
-			       ct->liberal_mode, ct->state,
-			       ct->max_ack_window, ct->retransmission_limit,
-			       ct->last_index, ct->last_seq, ct->last_ack,
-			       ct->last_window, ct->last_end);
-			printf("  Original Dir:\n"
-			       "    scale: %u, fin: %u, ack seen: %u\n"
-			       " unacked data: %u\n    Sent end: %u,"
-			       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
-			       ct->original_dir.scale,
-			       ct->original_dir.close_initiated,
-			       ct->original_dir.last_ack_seen,
-			       ct->original_dir.data_unacked,
-			       ct->original_dir.sent_end,
-			       ct->original_dir.reply_end,
-			       ct->original_dir.max_win,
-			       ct->original_dir.max_ack);
-			printf("  Reply Dir:\n"
-			       "    scale: %u, fin: %u, ack seen: %u\n"
-			       " unacked data: %u\n    Sent end: %u,"
-			       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
-			       ct->reply_dir.scale,
-			       ct->reply_dir.close_initiated,
-			       ct->reply_dir.last_ack_seen,
-			       ct->reply_dir.data_unacked,
-			       ct->reply_dir.sent_end, ct->reply_dir.reply_end,
-			       ct->reply_dir.max_win, ct->reply_dir.max_ack);
-		}
-		data = NULL;
+		printf("Conntrack Context:\n"
+		       "  Peer: %u, Flow dir: %s, Enable: %u\n"
+		       "  Live: %u, SACK: %u, CACK: %u\n"
+		       "  Packet dir: %s, Liberal: %u, State: %u\n"
+		       "  Factor: %u, Retrans: %u, TCP flags: %u\n"
+		       "  Last Seq: %u, Last ACK: %u\n"
+		       "  Last Win: %u, Last End: %u\n",
+		       query.ct.peer_port,
+		       query.ct.is_original_dir ? "Original" : "Reply",
+		       query.ct.enable, query.ct.live_connection,
+		       query.ct.selective_ack, query.ct.challenge_ack_passed,
+		       query.ct.last_direction ? "Original" : "Reply",
+		       query.ct.liberal_mode, query.ct.state,
+		       query.ct.max_ack_window, query.ct.retransmission_limit,
+		       query.ct.last_index, query.ct.last_seq,
+		       query.ct.last_ack, query.ct.last_window,
+		       query.ct.last_end);
+		printf("  Original Dir:\n"
+		       "    scale: %u, fin: %u, ack seen: %u\n"
+		       " unacked data: %u\n    Sent end: %u,"
+		       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
+		       query.ct.original_dir.scale,
+		       query.ct.original_dir.close_initiated,
+		       query.ct.original_dir.last_ack_seen,
+		       query.ct.original_dir.data_unacked,
+		       query.ct.original_dir.sent_end,
+		       query.ct.original_dir.reply_end,
+		       query.ct.original_dir.max_win,
+		       query.ct.original_dir.max_ack);
+		printf("  Reply Dir:\n"
+		       "    scale: %u, fin: %u, ack seen: %u\n"
+		       " unacked data: %u\n    Sent end: %u,"
+		       "    Reply end: %u, Max win: %u, Max ACK: %u\n",
+		       query.ct.reply_dir.scale,
+		       query.ct.reply_dir.close_initiated,
+		       query.ct.reply_dir.last_ack_seen,
+		       query.ct.reply_dir.data_unacked,
+		       query.ct.reply_dir.sent_end,
+		       query.ct.reply_dir.reply_end,
+		       query.ct.reply_dir.max_win,
+		       query.ct.reply_dir.max_ack);
 		break;
 	default:
-		printf("Indirect action %u (type: %d) on port %u doesn't"
-		       " support query\n", id, pia->type, port_id);
-		ret = -1;
+		printf("Indirect action %u (type: %d) on port %u doesn't support query\n",
+		       id, pia->type, port_id);
+		break;
 	}
-	return ret;
+	return 0;
 }
 
 static struct port_flow_tunnel *
