@@ -197,19 +197,11 @@ option::
 
    meson soc_build -Dplatform=<target_soc>
 
-Substitute <target_soc> with one of the supported SoCs::
+Substitute <target_soc> with one of the supported SoCs
 
-   generic:     Generic un-optimized build for all aarch64 machines.
-   armada:      Marvell ARMADA
-   bluefield:   NVIDIA BlueField
-   dpaa:        NXP DPAA
-   emag:        Ampere eMAG
-   graviton2:   AWS Graviton2
-   n1sdp:       Arm Neoverse N1SDP
-   octeontx2:   Marvell OCTEON TX2
-   stingray:    Broadcom Stingray
-   thunderx2:   Marvell ThunderX2 T99
-   thunderxt88: Marvell ThunderX T88
+.. literalinclude:: ../../../config/arm/meson.build
+   :start-after: Start of SoCs list
+   :end-before: End of SoCs list
 
 These SoCs are also used in cross files, e.g.::
 

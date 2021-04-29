@@ -321,6 +321,27 @@ soc_thunderxt88 = {
     'part_number': '0xa1'
 }
 
+'''
+Start of SoCs list
+generic:     Generic un-optimized build for all aarch64 machines.
+armada:      Marvell ARMADA
+bluefield:   NVIDIA BlueField
+cn10k:       Marvell OCTEON 10
+dpaa:        NXP DPAA
+emag:        Ampere eMAG
+graviton2:   AWS Graviton2
+kunpeng920:  HiSilicon Kunpeng 920
+kunpeng930:  HiSilicon Kunpeng 930
+n1sdp:       Arm Neoverse N1SDP
+n2:          Arm Neoverse N2
+octeontx2:   Marvell OCTEON TX2
+stingray:    Broadcom Stingray
+thunderx2:   Marvell ThunderX2 T99
+thunderxt88: Marvell ThunderX T88
+End of SoCs list
+'''
+# The string above is included in the documentation, keep it in sync with the
+# SoCs list below.
 socs = {
     'generic': soc_generic,
     'armada': soc_armada,
