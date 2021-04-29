@@ -449,6 +449,19 @@ struct ice_hw_common_caps {
 #define ICE_NVM_MGMT_SEC_REV_DISABLED		BIT(0)
 #define ICE_NVM_MGMT_UPDATE_DISABLED		BIT(1)
 #define ICE_NVM_MGMT_UNIFIED_UPD_SUPPORT	BIT(3)
+
+	/* External topology device images within the NVM */
+#define ICE_EXT_TOPO_DEV_IMG_COUNT	4
+	u32 ext_topo_dev_img_ver_high[ICE_EXT_TOPO_DEV_IMG_COUNT];
+	u32 ext_topo_dev_img_ver_low[ICE_EXT_TOPO_DEV_IMG_COUNT];
+	u8 ext_topo_dev_img_part_num[ICE_EXT_TOPO_DEV_IMG_COUNT];
+#define ICE_EXT_TOPO_DEV_IMG_PART_NUM_S	8
+#define ICE_EXT_TOPO_DEV_IMG_PART_NUM_M	\
+		MAKEMASK(0xFF, ICE_EXT_TOPO_DEV_IMG_PART_NUM_S)
+	bool ext_topo_dev_img_load_en[ICE_EXT_TOPO_DEV_IMG_COUNT];
+#define ICE_EXT_TOPO_DEV_IMG_LOAD_EN	BIT(0)
+	bool ext_topo_dev_img_prog_en[ICE_EXT_TOPO_DEV_IMG_COUNT];
+#define ICE_EXT_TOPO_DEV_IMG_PROG_EN	BIT(1)
 };
 
 /* Function specific capabilities */

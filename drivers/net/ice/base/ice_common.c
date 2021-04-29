@@ -237,11 +237,13 @@ ice_aq_get_link_topo_handle(struct ice_port_info *pi, u8 node_type,
 
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_link_topo);
 
-	cmd->addr.node_type_ctx = (ICE_AQC_LINK_TOPO_NODE_CTX_PORT <<
-				   ICE_AQC_LINK_TOPO_NODE_CTX_S);
+	cmd->addr.topo_params.node_type_ctx =
+		(ICE_AQC_LINK_TOPO_NODE_CTX_PORT <<
+		 ICE_AQC_LINK_TOPO_NODE_CTX_S);
 
 	/* set node type */
-	cmd->addr.node_type_ctx |= (ICE_AQC_LINK_TOPO_NODE_TYPE_M & node_type);
+	cmd->addr.topo_params.node_type_ctx |=
+		(ICE_AQC_LINK_TOPO_NODE_TYPE_M & node_type);
 
 	return ice_aq_send_cmd(pi->hw, &desc, NULL, 0, cd);
 }
@@ -2000,6 +2002,47 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 		ice_debug(hw, ICE_DBG_INIT, "%s: max_mtu = %d\n",
 			  prefix, caps->max_mtu);
 		break;
+	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG0:
+	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG1:
+	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG2:
+	case ICE_AQC_CAPS_EXT_TOPO_DEV_IMG3:
+	{
+		u8 index = cap - ICE_AQC_CAPS_EXT_TOPO_DEV_IMG0;
+
+		if (index >= ICE_EXT_TOPO_DEV_IMG_COUNT)
+			break;
+
+		caps->ext_topo_dev_img_ver_high[index] = number;
+		caps->ext_topo_dev_img_ver_low[index] = logical_id;
+		caps->ext_topo_dev_img_part_num[index] =
+			(phys_id & ICE_EXT_TOPO_DEV_IMG_PART_NUM_M) >>
+			ICE_EXT_TOPO_DEV_IMG_PART_NUM_S;
+		caps->ext_topo_dev_img_load_en[index] =
+			(phys_id & ICE_EXT_TOPO_DEV_IMG_LOAD_EN) != 0;
+		caps->ext_topo_dev_img_prog_en[index] =
+			(phys_id & ICE_EXT_TOPO_DEV_IMG_PROG_EN) != 0;
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: ext_topo_dev_img_ver_high[%d] = %d\n",
+			  prefix, index,
+			  caps->ext_topo_dev_img_ver_high[index]);
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: ext_topo_dev_img_ver_low[%d] = %d\n",
+			  prefix, index,
+			  caps->ext_topo_dev_img_ver_low[index]);
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: ext_topo_dev_img_part_num[%d] = %d\n",
+			  prefix, index,
+			  caps->ext_topo_dev_img_part_num[index]);
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: ext_topo_dev_img_load_en[%d] = %d\n",
+			  prefix, index,
+			  caps->ext_topo_dev_img_load_en[index]);
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: ext_topo_dev_img_prog_en[%d] = %d\n",
+			  prefix, index,
+			  caps->ext_topo_dev_img_prog_en[index]);
+		break;
+	}
 	default:
 		/* Not one of the recognized common capabilities */
 		found = false;
@@ -3362,6 +3405,76 @@ ice_aq_sff_eeprom(struct ice_hw *hw, u16 lport, u8 bus_addr,
 
 	status = ice_aq_send_cmd(hw, &desc, data, length, cd);
 	return status;
+}
+
+/**
+ * ice_aq_prog_topo_dev_nvm
+ * @hw: pointer to the hardware structure
+ * @topo_params: pointer to structure storing topology parameters for a device
+ * @cd: pointer to command details structure or NULL
+ *
+ * Program Topology Device NVM (0x06F2)
+ *
+ */
+enum ice_status
+ice_aq_prog_topo_dev_nvm(struct ice_hw *hw,
+			 struct ice_aqc_link_topo_params *topo_params,
+			 struct ice_sq_cd *cd)
+{
+	struct ice_aqc_prog_topo_dev_nvm *cmd;
+	struct ice_aq_desc desc;
+
+	cmd = &desc.params.prog_topo_dev_nvm;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_prog_topo_dev_nvm);
+
+	ice_memcpy(&cmd->topo_params, topo_params, sizeof(*topo_params),
+		   ICE_NONDMA_TO_NONDMA);
+
+	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+}
+
+/**
+ * ice_aq_read_topo_dev_nvm
+ * @hw: pointer to the hardware structure
+ * @topo_params: pointer to structure storing topology parameters for a device
+ * @start_address: byte offset in the topology device NVM
+ * @data: pointer to data buffer
+ * @data_size: number of bytes to be read from the topology device NVM
+ * @cd: pointer to command details structure or NULL
+ * Read Topology Device NVM (0x06F3)
+ *
+ */
+enum ice_status
+ice_aq_read_topo_dev_nvm(struct ice_hw *hw,
+			 struct ice_aqc_link_topo_params *topo_params,
+			 u32 start_address, u8 *data, u8 data_size,
+			 struct ice_sq_cd *cd)
+{
+	struct ice_aqc_read_topo_dev_nvm *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+
+	if (!data || data_size == 0 ||
+	    data_size > ICE_AQC_READ_TOPO_DEV_NVM_DATA_READ_SIZE)
+		return ICE_ERR_PARAM;
+
+	cmd = &desc.params.read_topo_dev_nvm;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_read_topo_dev_nvm);
+
+	desc.datalen = data_size;
+	ice_memcpy(&cmd->topo_params, topo_params, sizeof(*topo_params),
+		   ICE_NONDMA_TO_NONDMA);
+	cmd->start_address = CPU_TO_LE32(start_address);
+
+	status = ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+	if (status)
+		return status;
+
+	ice_memcpy(data, cmd->data_read, data_size, ICE_NONDMA_TO_NONDMA);
+
+	return ICE_SUCCESS;
 }
 
 /**
