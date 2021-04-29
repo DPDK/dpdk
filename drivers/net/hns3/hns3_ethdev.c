@@ -5608,12 +5608,14 @@ hns3_do_start(struct hns3_adapter *hns, bool reset_queue)
 
 	ret = hns3_apply_link_speed(hw);
 	if (ret)
-		goto err_config_mac_mode;
+		goto err_set_link_speed;
 
 	return 0;
 
-err_config_mac_mode:
+err_set_link_speed:
 	(void)hns3_cfg_mac_mode(hw, false);
+
+err_config_mac_mode:
 	hns3_dev_release_mbufs(hns);
 	/*
 	 * Here is exception handling, hns3_reset_all_tqps will have the
