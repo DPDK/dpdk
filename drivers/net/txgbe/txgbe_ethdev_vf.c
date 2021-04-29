@@ -1115,7 +1115,7 @@ txgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct txgbe_hw *hw;
 	uint32_t max_frame = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
-	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
+	struct rte_eth_dev_data *dev_data = dev->data;
 
 	hw = TXGBE_DEV_HW(dev);
 
@@ -1123,13 +1123,15 @@ txgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 			max_frame > RTE_ETHER_MAX_JUMBO_FRAME_LEN)
 		return -EINVAL;
 
-	/* refuse mtu that requires the support of scattered packets when this
-	 * feature has not been enabled before.
+	/* If device is started, refuse mtu that requires the support of
+	 * scattered packets when this feature has not been enabled before.
 	 */
-	if (!(rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER) &&
+	if (dev_data->dev_started && !dev_data->scattered_rx &&
 	    (max_frame + 2 * TXGBE_VLAN_TAG_SIZE >
-	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM))
+	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
+		PMD_INIT_LOG(ERR, "Stop port first.");
 		return -EINVAL;
+	}
 
 	/*
 	 * When supported by the underlying PF driver, use the TXGBE_VF_SET_MTU
