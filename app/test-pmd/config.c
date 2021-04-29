@@ -1626,7 +1626,6 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 	if (!pia)
 		return -EINVAL;
 	switch (pia->type) {
-	case RTE_FLOW_ACTION_TYPE_RSS:
 	case RTE_FLOW_ACTION_TYPE_AGE:
 		data = &default_data;
 		break;
@@ -1638,12 +1637,6 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 	if (rte_flow_action_handle_query(port_id, pia->handle, data, &error))
 		ret = port_flow_complain(&error);
 	switch (pia->type) {
-	case RTE_FLOW_ACTION_TYPE_RSS:
-		if (!ret)
-			printf("Shared RSS action:\n\trefs:%u\n",
-			       *((uint32_t *)data));
-		data = NULL;
-		break;
 	case RTE_FLOW_ACTION_TYPE_AGE:
 		if (!ret) {
 			struct rte_flow_query_age *resp = data;
