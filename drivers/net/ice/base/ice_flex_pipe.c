@@ -1242,10 +1242,7 @@ ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
 	status = ice_dwnld_cfg_bufs(hw, ice_buf_tbl->buf_array,
 				    LE32_TO_CPU(ice_buf_tbl->buf_count));
 
-	ice_cache_vlan_mode(hw);
-
-	if (ice_is_dvm_ena(hw))
-		ice_change_proto_id_to_dvm();
+	ice_post_pkg_dwnld_vlan_mode_cfg(hw);
 
 	return status;
 }

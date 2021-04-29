@@ -124,7 +124,7 @@ bool ice_is_dvm_ena(struct ice_hw *hw)
  * configuration lock has been released because all ports on a device need to
  * cache the VLAN mode.
  */
-void ice_cache_vlan_mode(struct ice_hw *hw)
+static void ice_cache_vlan_mode(struct ice_hw *hw)
 {
 	hw->dvm_ena = ice_aq_is_dvm_ena(hw) ? true : false;
 }
@@ -373,4 +373,25 @@ enum ice_status ice_set_vlan_mode(struct ice_hw *hw)
 		return ICE_SUCCESS;
 
 	return ice_set_svm(hw);
+}
+
+/**
+ * ice_post_pkg_dwnld_vlan_mode_cfg - configure VLAN mode after DDP download
+ * @hw: pointer to the HW structure
+ *
+ * This function is meant to configure any VLAN mode specific functionality
+ * after the global configuration lock has been released and the DDP has been
+ * downloaded.
+ *
+ * Since only one PF downloads the DDP and configures the VLAN mode there needs
+ * to be a way to configure the other PFs after the DDP has been downloaded and
+ * the global configuration lock has been released. All such code should go in
+ * this function.
+ */
+void ice_post_pkg_dwnld_vlan_mode_cfg(struct ice_hw *hw)
+{
+	ice_cache_vlan_mode(hw);
+
+	if (ice_is_dvm_ena(hw))
+		ice_change_proto_id_to_dvm();
 }
