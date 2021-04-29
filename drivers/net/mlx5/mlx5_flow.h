@@ -146,6 +146,9 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_LAYER_GENEVE_OPT (UINT64_C(1) << 32)
 #define MLX5_FLOW_LAYER_GTP_PSC (UINT64_C(1) << 33)
 
+/* INTEGRITY item bit */
+#define MLX5_FLOW_ITEM_INTEGRITY (UINT64_C(1) << 34)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -1011,6 +1014,14 @@ struct rte_flow {
 	(MLX5_RSS_HASH_IPV6 | IBV_RX_HASH_DST_PORT_TCP)
 #define MLX5_RSS_HASH_NONE 0ULL
 
+
+/* extract next protocol type from Ethernet & VLAN headers */
+#define MLX5_ETHER_TYPE_FROM_HEADER(_s, _m, _itm, _prt) do { \
+	(_prt) = ((const struct _s *)(_itm)->mask)->_m;       \
+	(_prt) &= ((const struct _s *)(_itm)->spec)->_m;      \
+	(_prt) = rte_be_to_cpu_16((_prt));                    \
+} while (0)
+
 /* array of valid combinations of RX Hash fields for RSS */
 static const uint64_t mlx5_rss_hash_fields[] = {
 	MLX5_RSS_HASH_IPV4,
@@ -1281,6 +1292,24 @@ mlx5_aso_meter_by_idx(struct mlx5_priv *priv, uint32_t idx)
 	MLX5_ASSERT(idx / MLX5_ASO_MTRS_PER_POOL < pools_mng->n);
 	pool = pools_mng->pools[idx / MLX5_ASO_MTRS_PER_POOL];
 	return &pool->mtrs[idx % MLX5_ASO_MTRS_PER_POOL];
+}
+
+static __rte_always_inline const struct rte_flow_item *
+mlx5_find_end_item(const struct rte_flow_item *item)
+{
+	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++);
+	return item;
+}
+
+static __rte_always_inline bool
+mlx5_validate_integrity_item(const struct rte_flow_item_integrity *item)
+{
+	struct rte_flow_item_integrity test = *item;
+	test.l3_ok = 0;
+	test.l4_ok = 0;
+	test.ipv4_csum_ok = 0;
+	test.l4_csum_ok = 0;
+	return (test.value == 0);
 }
 
 int mlx5_flow_group_to_table(struct rte_eth_dev *dev,

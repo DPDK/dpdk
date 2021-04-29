@@ -268,6 +268,31 @@ struct field_modify_info modify_tcp[] = {
 	{0, 0, 0},
 };
 
+static const struct rte_flow_item *
+mlx5_flow_find_tunnel_item(const struct rte_flow_item *item)
+{
+	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		switch (item->type) {
+		default:
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+		case RTE_FLOW_ITEM_TYPE_GRE:
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+			return item;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			if (item[1].type == RTE_FLOW_ITEM_TYPE_IPV4 ||
+			    item[1].type == RTE_FLOW_ITEM_TYPE_IPV6)
+				return item;
+			break;
+		}
+	}
+	return NULL;
+}
+
 static void
 mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item __rte_unused,
 			  uint8_t next_protocol, uint64_t *item_flags,
@@ -6270,6 +6295,158 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static uint16_t
+mlx5_flow_locate_proto_l3(const struct rte_flow_item **head,
+			  const struct rte_flow_item *end)
+{
+	const struct rte_flow_item *item = *head;
+	uint16_t l3_protocol;
+
+	for (; item != end; item++) {
+		switch (item->type) {
+		default:
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			l3_protocol = RTE_ETHER_TYPE_IPV4;
+			goto l3_ok;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			l3_protocol = RTE_ETHER_TYPE_IPV6;
+			goto l3_ok;
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			if (item->mask && item->spec) {
+				MLX5_ETHER_TYPE_FROM_HEADER(rte_flow_item_eth,
+							    type, item,
+							    l3_protocol);
+				if (l3_protocol == RTE_ETHER_TYPE_IPV4 ||
+				    l3_protocol == RTE_ETHER_TYPE_IPV6)
+					goto l3_ok;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			if (item->mask && item->spec) {
+				MLX5_ETHER_TYPE_FROM_HEADER(rte_flow_item_vlan,
+							    inner_type, item,
+							    l3_protocol);
+				if (l3_protocol == RTE_ETHER_TYPE_IPV4 ||
+				    l3_protocol == RTE_ETHER_TYPE_IPV6)
+					goto l3_ok;
+			}
+			break;
+		}
+	}
+	return 0;
+l3_ok:
+	*head = item;
+	return l3_protocol;
+}
+
+static uint8_t
+mlx5_flow_locate_proto_l4(const struct rte_flow_item **head,
+			  const struct rte_flow_item *end)
+{
+	const struct rte_flow_item *item = *head;
+	uint8_t l4_protocol;
+
+	for (; item != end; item++) {
+		switch (item->type) {
+		default:
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			l4_protocol = IPPROTO_TCP;
+			goto l4_ok;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			l4_protocol = IPPROTO_UDP;
+			goto l4_ok;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			if (item->mask && item->spec) {
+				const struct rte_flow_item_ipv4 *mask, *spec;
+
+				mask = (typeof(mask))item->mask;
+				spec = (typeof(spec))item->spec;
+				l4_protocol = mask->hdr.next_proto_id &
+					      spec->hdr.next_proto_id;
+				if (l4_protocol == IPPROTO_TCP ||
+				    l4_protocol == IPPROTO_UDP)
+					goto l4_ok;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			if (item->mask && item->spec) {
+				const struct rte_flow_item_ipv6 *mask, *spec;
+				mask = (typeof(mask))item->mask;
+				spec = (typeof(spec))item->spec;
+				l4_protocol = mask->hdr.proto & spec->hdr.proto;
+				if (l4_protocol == IPPROTO_TCP ||
+				    l4_protocol == IPPROTO_UDP)
+					goto l4_ok;
+			}
+			break;
+		}
+	}
+	return 0;
+l4_ok:
+	*head = item;
+	return l4_protocol;
+}
+
+static int
+flow_dv_validate_item_integrity(struct rte_eth_dev *dev,
+				const struct rte_flow_item *rule_items,
+				const struct rte_flow_item *integrity_item,
+				struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *tunnel_item, *end_item, *item = rule_items;
+	const struct rte_flow_item_integrity *mask = (typeof(mask))
+						     integrity_item->mask;
+	const struct rte_flow_item_integrity *spec = (typeof(spec))
+						     integrity_item->spec;
+	uint32_t protocol;
+
+	if (!priv->config.hca_attr.pkt_integrity_match)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  integrity_item,
+					  "packet integrity integrity_item not supported");
+	if (!mask)
+		mask = &rte_flow_item_integrity_mask;
+	if (!mlx5_validate_integrity_item(mask))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  integrity_item,
+					  "unsupported integrity filter");
+	tunnel_item = mlx5_flow_find_tunnel_item(rule_items);
+	if (spec->level > 1) {
+		if (!tunnel_item)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  integrity_item,
+						  "missing tunnel item");
+		item = tunnel_item;
+		end_item = mlx5_find_end_item(tunnel_item);
+	} else {
+		end_item = tunnel_item ? tunnel_item :
+			   mlx5_find_end_item(integrity_item);
+	}
+	if (mask->l3_ok || mask->ipv4_csum_ok) {
+		protocol = mlx5_flow_locate_proto_l3(&item, end_item);
+		if (!protocol)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  integrity_item,
+						  "missing L3 protocol");
+	}
+	if (mask->l4_ok || mask->l4_csum_ok) {
+		protocol = mlx5_flow_locate_proto_l4(&item, end_item);
+		if (!protocol)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  integrity_item,
+						  "missing L4 protocol");
+	}
+	return 0;
+}
+
 /**
  * Internal validation function. For validating both actions and items.
  *
@@ -6360,6 +6537,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		.fdb_def_rule = !!priv->fdb_def_rule,
 	};
 	const struct rte_eth_hairpin_conf *conf;
+	const struct rte_flow_item *rule_items = items;
 	bool def_policy = false;
 
 	if (items == NULL)
@@ -6682,6 +6860,18 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_LAYER_ECPRI;
+			break;
+		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
+			if (item_flags & MLX5_FLOW_ITEM_INTEGRITY)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM,
+					 NULL, "multiple integrity items not supported");
+			ret = flow_dv_validate_item_integrity(dev, rule_items,
+							      items, error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_ITEM_INTEGRITY;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -11168,6 +11358,121 @@ flow_dv_translate_create_aso_age(struct rte_eth_dev *dev,
 	return age_idx;
 }
 
+static void
+flow_dv_translate_integrity_l4(const struct rte_flow_item_integrity *mask,
+			       const struct rte_flow_item_integrity *value,
+			       void *headers_m, void *headers_v)
+{
+	if (mask->l4_ok) {
+		/* application l4_ok filter aggregates all hardware l4 filters
+		 * therefore hw l4_checksum_ok must be implicitly added here.
+		 */
+		struct rte_flow_item_integrity local_item;
+
+		local_item.l4_csum_ok = 1;
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok,
+			 local_item.l4_csum_ok);
+		if (value->l4_ok) {
+			/* application l4_ok = 1 matches sets both hw flags
+			 * l4_ok and l4_checksum_ok flags to 1.
+			 */
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+				 l4_checksum_ok, local_item.l4_csum_ok);
+			MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_ok,
+				 mask->l4_ok);
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, l4_ok,
+				 value->l4_ok);
+		} else {
+			/* application l4_ok = 0 matches on hw flag
+			 * l4_checksum_ok = 0 only.
+			 */
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+				 l4_checksum_ok, 0);
+		}
+	} else if (mask->l4_csum_ok) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, l4_checksum_ok,
+			 mask->l4_csum_ok);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ipv4_checksum_ok,
+			 value->l4_csum_ok);
+	}
+}
+
+static void
+flow_dv_translate_integrity_l3(const struct rte_flow_item_integrity *mask,
+			       const struct rte_flow_item_integrity *value,
+			       void *headers_m, void *headers_v,
+			       bool is_ipv4)
+{
+	if (mask->l3_ok) {
+		/* application l3_ok filter aggregates all hardware l3 filters
+		 * therefore hw ipv4_checksum_ok must be implicitly added here.
+		 */
+		struct rte_flow_item_integrity local_item;
+
+		local_item.ipv4_csum_ok = !!is_ipv4;
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ipv4_checksum_ok,
+			 local_item.ipv4_csum_ok);
+		if (value->l3_ok) {
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+				 ipv4_checksum_ok, local_item.ipv4_csum_ok);
+			MLX5_SET(fte_match_set_lyr_2_4, headers_m, l3_ok,
+				 mask->l3_ok);
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, l3_ok,
+				 value->l3_ok);
+		} else {
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v,
+				 ipv4_checksum_ok, 0);
+		}
+	} else if (mask->ipv4_csum_ok) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ipv4_checksum_ok,
+			 mask->ipv4_csum_ok);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ipv4_checksum_ok,
+			 value->ipv4_csum_ok);
+	}
+}
+
+static void
+flow_dv_translate_item_integrity(void *matcher, void *key,
+				 const struct rte_flow_item *head_item,
+				 const struct rte_flow_item *integrity_item)
+{
+	const struct rte_flow_item_integrity *mask = integrity_item->mask;
+	const struct rte_flow_item_integrity *value = integrity_item->spec;
+	const struct rte_flow_item *tunnel_item, *end_item, *item;
+	void *headers_m;
+	void *headers_v;
+	uint32_t l3_protocol;
+
+	if (!value)
+		return;
+	if (!mask)
+		mask = &rte_flow_item_integrity_mask;
+	if (value->level > 1) {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 inner_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, inner_headers);
+	} else {
+		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
+					 outer_headers);
+		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	}
+	tunnel_item = mlx5_flow_find_tunnel_item(head_item);
+	if (value->level > 1) {
+		/* tunnel item was verified during the item validation */
+		item = tunnel_item;
+		end_item = mlx5_find_end_item(tunnel_item);
+	} else {
+		item = head_item;
+		end_item = tunnel_item ? tunnel_item :
+			   mlx5_find_end_item(integrity_item);
+	}
+	l3_protocol = mask->l3_ok ?
+		      mlx5_flow_locate_proto_l3(&item, end_item) : 0;
+	flow_dv_translate_integrity_l3(mask, value, headers_m, headers_v,
+				       l3_protocol == RTE_ETHER_TYPE_IPV4);
+	flow_dv_translate_integrity_l4(mask, value, headers_m, headers_v);
+}
+
 /**
  * Prepares DV flow counter with aging configuration.
  * Gets it by index when exists, creates a new one when doesn't.
@@ -11290,6 +11595,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		.skip_scale = dev_flow->skip_scale &
 			(1 << MLX5_SCALE_FLOW_GROUP_BIT),
 	};
+	const struct rte_flow_item *head_item = items;
 
 	if (!wks)
 		return rte_flow_error_set(error, ENOMEM,
@@ -12127,6 +12433,11 @@ flow_dv_translate(struct rte_eth_dev *dev,
 						     match_value, items);
 			/* No other protocol should follow eCPRI layer. */
 			last_item = MLX5_FLOW_LAYER_ECPRI;
+			break;
+		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
+			flow_dv_translate_item_integrity(match_mask,
+							 match_value,
+							 head_item, items);
 			break;
 		default:
 			break;

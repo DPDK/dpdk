@@ -107,6 +107,7 @@ Features
 - 21844 flow priorities for ingress or egress flow groups greater than 0 and for any transfer
   flow group.
 - Flow metering, including meter policy API.
+- Flow integrity offload API.
 
 Limitations
 -----------
@@ -417,6 +418,20 @@ Limitations
      - yellow: must be empty.
      - RED: must be DROP.
   - meter profile packet mode is supported.
+
+- Integrity:
+
+  - Integrity offload is enabled for **ConnectX-6** family.
+  - Verification bits provided by the hardware are ``l3_ok``, ``ipv4_csum_ok``, ``l4_ok``, ``l4_csum_ok``.
+  - ``level`` value 0 references outer headers.
+  - Multiple integrity items not supported in a single flow rule.
+  - Flow rule items supplied by application must explicitly specify network headers referred by integrity item.
+    For example, if integrity item mask sets ``l4_ok`` or ``l4_csum_ok`` bits, reference to L4 network header,
+    TCP or UDP, must be in the rule pattern as well::
+
+      flow create 0 ingress pattern integrity level is 0 value mask l3_ok value spec l3_ok / eth / ipv6 / end …
+      or
+      flow create 0 ingress pattern integrity level is 0 value mask l4_ok value spec 0 / eth / ipv4 proto is udp / end …
 
 Statistics
 ----------
