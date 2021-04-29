@@ -44,11 +44,24 @@ Prerequisites
 - Get the information about Kunpeng920 chip using
   `<https://www.hisilicon.com/en/products/Kunpeng>`_.
 
-- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to
+  setup the basic DPDK environment.
 
+
+Pre-Installation Configuration
+------------------------------
+
+Config File Options
+~~~~~~~~~~~~~~~~~~~
+
+The following options can be modified in the ``config/rte_config.h`` file.
+
+- ``RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF`` (default ``256``)
+
+  Number of MAX queues reserved for PF.
 
 Runtime Config Options
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 - ``rx_func_hint`` (default ``none``)
 
