@@ -17,6 +17,9 @@ softnic_mtr_init(struct pmd_internals *p)
 	/* Initialize meter profiles list */
 	TAILQ_INIT(&p->mtr.meter_profiles);
 
+	/* Initialize meter policies list */
+	TAILQ_INIT(&p->mtr.meter_policies);
+
 	/* Initialize MTR objects list */
 	TAILQ_INIT(&p->mtr.mtrs);
 
