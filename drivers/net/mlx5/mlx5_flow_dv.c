@@ -7143,6 +7143,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 									   NULL,
 			  "Shared ASO age action is not supported for group 0");
+			if (action_flags & MLX5_FLOW_ACTION_AGE)
+				return rte_flow_error_set
+						  (error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   NULL,
+						   "duplicate age actions set");
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			++actions_n;
 			break;
@@ -11163,6 +11169,47 @@ flow_dv_translate_create_aso_age(struct rte_eth_dev *dev,
 }
 
 /**
+ * Prepares DV flow counter with aging configuration.
+ * Gets it by index when exists, creates a new one when doesn't.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] dev_flow
+ *   Pointer to the mlx5_flow.
+ * @param[in, out] flow
+ *   Pointer to the sub flow.
+ * @param[in] count
+ *   Pointer to the counter action configuration.
+ * @param[in] age
+ *   Pointer to the aging action configuration.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   Pointer to the counter, NULL otherwise.
+ */
+static struct mlx5_flow_counter *
+flow_dv_prepare_counter(struct rte_eth_dev *dev,
+			struct mlx5_flow *dev_flow,
+			struct rte_flow *flow,
+			const struct rte_flow_action_count *count,
+			const struct rte_flow_action_age *age,
+			struct rte_flow_error *error)
+{
+	if (!flow->counter) {
+		flow->counter = flow_dv_translate_create_counter(dev, dev_flow,
+								 count, age);
+		if (!flow->counter) {
+			rte_flow_error_set(error, rte_errno,
+					   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					   "cannot create counter object.");
+			return NULL;
+		}
+	}
+	return flow_dv_counter_get_by_idx(dev, flow->counter, NULL);
+}
+
+/**
  * Fill the flow with DV spec, lock free
  * (mutex should be acquired by caller).
  *
@@ -11215,7 +11262,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	} mhdr_dummy;
 	struct mlx5_flow_dv_modify_hdr_resource *mhdr_res = &mhdr_dummy.res;
 	const struct rte_flow_action_count *count = NULL;
-	const struct rte_flow_action_age *age = NULL;
+	const struct rte_flow_action_age *non_shared_age = NULL;
 	union flow_dv_attr flow_attr = { .attr = 0 };
 	uint32_t tag_be;
 	union mlx5_flow_tbl_key tbl_key;
@@ -11230,6 +11277,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	const struct rte_flow_action_sample *sample = NULL;
 	struct mlx5_flow_sub_actions_list *sample_act;
 	uint32_t sample_act_pos = UINT32_MAX;
+	uint32_t age_act_pos = UINT32_MAX;
 	uint32_t num_of_dest = 0;
 	int tmp_actions_n = 0;
 	uint32_t table;
@@ -11452,7 +11500,12 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			age_act = flow_aso_age_get_by_idx(dev, flow->age);
 			__atomic_fetch_add(&age_act->refcnt, 1,
 					   __ATOMIC_RELAXED);
-			dev_flow->dv.actions[actions_n++] = age_act->dr_action;
+			age_act_pos = actions_n++;
+			action_flags |= MLX5_FLOW_ACTION_AGE;
+			break;
+		case RTE_FLOW_ACTION_TYPE_AGE:
+			non_shared_age = action->conf;
+			age_act_pos = actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_AGE;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
@@ -11464,31 +11517,6 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			/* Save information first, will apply later. */
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			break;
-		case RTE_FLOW_ACTION_TYPE_AGE:
-			if (priv->sh->flow_hit_aso_en && attr->group) {
-				/*
-				 * Create one shared age action, to be used
-				 * by all sub-flows.
-				 */
-				if (!flow->age) {
-					flow->age =
-						flow_dv_translate_create_aso_age
-							(dev, action->conf,
-							 error);
-					if (!flow->age)
-						return rte_flow_error_set
-						(error, rte_errno,
-						 RTE_FLOW_ERROR_TYPE_ACTION,
-						 NULL,
-						 "can't create ASO age action");
-				}
-				dev_flow->dv.actions[actions_n++] =
-					  (flow_aso_age_get_by_idx
-						(dev, flow->age))->dr_action;
-				action_flags |= MLX5_FLOW_ACTION_AGE;
-				break;
-			}
-			/* Fall-through */
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			if (!dev_conf->devx) {
 				return rte_flow_error_set
@@ -11498,10 +11526,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					       "count action not supported");
 			}
 			/* Save information first, will apply later. */
-			if (actions->type == RTE_FLOW_ACTION_TYPE_COUNT)
-				count = action->conf;
-			else
-				age = action->conf;
+			count = action->conf;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
@@ -11801,27 +11826,57 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				dev_flow->dv.actions[modify_action_position] =
 					handle->dvh.modify_hdr->action;
 			}
+			/*
+			 * Handle AGE and COUNT action by single HW counter
+			 * when they are not shared.
+			 */
+			if (action_flags & MLX5_FLOW_ACTION_AGE) {
+				if ((non_shared_age &&
+				     count && !count->shared) ||
+				    !(priv->sh->flow_hit_aso_en &&
+				      attr->group)) {
+					/* Creates age by counters. */
+					cnt_act = flow_dv_prepare_counter
+								(dev, dev_flow,
+								 flow, count,
+								 non_shared_age,
+								 error);
+					if (!cnt_act)
+						return -rte_errno;
+					dev_flow->dv.actions[age_act_pos] =
+								cnt_act->action;
+					break;
+				}
+				if (!flow->age && non_shared_age) {
+					flow->age =
+						flow_dv_translate_create_aso_age
+								(dev,
+								 non_shared_age,
+								 error);
+					if (!flow->age)
+						return rte_flow_error_set
+						    (error, rte_errno,
+						     RTE_FLOW_ERROR_TYPE_ACTION,
+						     NULL,
+						     "can't create ASO age action");
+				}
+				age_act = flow_aso_age_get_by_idx(dev,
+								  flow->age);
+				dev_flow->dv.actions[age_act_pos] =
+							     age_act->dr_action;
+			}
 			if (action_flags & MLX5_FLOW_ACTION_COUNT) {
 				/*
 				 * Create one count action, to be used
 				 * by all sub-flows.
 				 */
-				if (!flow->counter) {
-					flow->counter =
-						flow_dv_translate_create_counter
-							(dev, dev_flow, count,
-							 age);
-					if (!flow->counter)
-						return rte_flow_error_set
-						(error, rte_errno,
-						 RTE_FLOW_ERROR_TYPE_ACTION,
-						 NULL, "cannot create counter"
-						 " object.");
-				}
-				dev_flow->dv.actions[actions_n] =
-					  (flow_dv_counter_get_by_idx(dev,
-					  flow->counter, NULL))->action;
-				actions_n++;
+				cnt_act = flow_dv_prepare_counter(dev, dev_flow,
+								  flow, count,
+								  NULL, error);
+				if (!cnt_act)
+					return -rte_errno;
+				dev_flow->dv.actions[actions_n++] =
+								cnt_act->action;
 			}
 		default:
 			break;
