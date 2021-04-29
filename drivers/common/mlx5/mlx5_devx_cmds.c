@@ -699,6 +699,29 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 	return parse_flex_obj;
 }
 
+static int
+mlx5_devx_query_pkt_integrity_match(void *hcattr)
+{
+	return MLX5_GET(flow_table_nic_cap, hcattr,
+			ft_field_support_2_nic_receive.inner_l3_ok) &&
+	       MLX5_GET(flow_table_nic_cap, hcattr,
+			ft_field_support_2_nic_receive.inner_l4_ok) &&
+	       MLX5_GET(flow_table_nic_cap, hcattr,
+			ft_field_support_2_nic_receive.outer_l3_ok) &&
+	       MLX5_GET(flow_table_nic_cap, hcattr,
+			ft_field_support_2_nic_receive.outer_l4_ok) &&
+	       MLX5_GET(flow_table_nic_cap, hcattr,
+			ft_field_support_2_nic_receive
+				.inner_ipv4_checksum_ok) &&
+	       MLX5_GET(flow_table_nic_cap, hcattr,
+			ft_field_support_2_nic_receive.inner_l4_checksum_ok) &&
+	       MLX5_GET(flow_table_nic_cap, hcattr,
+			ft_field_support_2_nic_receive
+				.outer_ipv4_checksum_ok) &&
+	       MLX5_GET(flow_table_nic_cap, hcattr,
+			ft_field_support_2_nic_receive.outer_l4_checksum_ok);
+}
+
 /**
  * Query HCA attributes.
  * Using those attributes we can check on run time if the device
@@ -918,10 +941,10 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		return -1;
 	}
 	hcattr = MLX5_ADDR_OF(query_hca_cap_out, out, capability);
-	attr->log_max_ft_sampler_num =
-			MLX5_GET(flow_table_nic_cap,
-			hcattr, flow_table_properties.log_max_ft_sampler_num);
-
+	attr->log_max_ft_sampler_num = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 flow_table_properties_nic_receive.log_max_ft_sampler_num);
+	attr->pkt_integrity_match = mlx5_devx_query_pkt_integrity_match(hcattr);
 	/* Query HCA offloads for Ethernet protocol. */
 	memset(in, 0, sizeof(in));
 	memset(out, 0, sizeof(out));

@@ -899,7 +899,12 @@ struct mlx5_ifc_fte_match_set_lyr_2_4_bits {
 	u8 tcp_flags[0x9];
 	u8 tcp_sport[0x10];
 	u8 tcp_dport[0x10];
-	u8 reserved_at_c0[0x18];
+	u8 reserved_at_c0[0x10];
+	u8 ipv4_ihl[0x4];
+	u8 l3_ok[0x1];
+	u8 l4_ok[0x1];
+	u8 ipv4_checksum_ok[0x1];
+	u8 l4_checksum_ok[0x1];
 	u8 ip_ttl_hoplimit[0x8];
 	u8 udp_sport[0x10];
 	u8 udp_dport[0x10];
@@ -1772,9 +1777,35 @@ struct mlx5_ifc_roce_caps_bits {
 	u8 reserved_at_20[0x7e0];
 };
 
+/*
+ * Table 1872 - Flow Table Fields Supported 2 Format
+ */
+struct mlx5_ifc_ft_fields_support_2_bits {
+	u8 reserved_at_0[0x14];
+	u8 inner_ipv4_ihl[0x1];
+	u8 outer_ipv4_ihl[0x1];
+	u8 psp_syndrome[0x1];
+	u8 inner_l3_ok[0x1];
+	u8 inner_l4_ok[0x1];
+	u8 outer_l3_ok[0x1];
+	u8 outer_l4_ok[0x1];
+	u8 psp_header[0x1];
+	u8 inner_ipv4_checksum_ok[0x1];
+	u8 inner_l4_checksum_ok[0x1];
+	u8 outer_ipv4_checksum_ok[0x1];
+	u8 outer_l4_checksum_ok[0x1];
+};
+
 struct mlx5_ifc_flow_table_nic_cap_bits {
-	u8	   reserved_at_0[0x200];
-	struct mlx5_ifc_flow_table_prop_layout_bits flow_table_properties;
+	u8 reserved_at_0[0x200];
+	struct mlx5_ifc_flow_table_prop_layout_bits
+	       flow_table_properties_nic_receive;
+	struct mlx5_ifc_flow_table_prop_layout_bits
+	       flow_table_properties_unused[5];
+	u8 reserved_at_1C0[0x200];
+	u8 header_modify_nic_receive[0x400];
+	struct mlx5_ifc_ft_fields_support_2_bits
+	       ft_field_support_2_nic_receive;
 };
 
 union mlx5_ifc_hca_cap_union_bits {
