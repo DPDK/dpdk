@@ -2197,8 +2197,9 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 	if (rc)
 		return rc;
 
-	if (!BNXT_SINGLE_PF(bp) || BNXT_VF(bp)) {
-		PMD_DRV_LOG(ERR, "Flow Control Settings cannot be modified\n");
+	if (!BNXT_SINGLE_PF(bp)) {
+		PMD_DRV_LOG(ERR,
+			    "Flow Control Settings cannot be modified on VF or on shared PF\n");
 		return -ENOTSUP;
 	}
 
@@ -2994,9 +2995,8 @@ bnxt_vlan_pvid_set_op(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	if (rc)
 		return rc;
 
-	if (!BNXT_SINGLE_PF(bp) || BNXT_VF(bp)) {
-		PMD_DRV_LOG(ERR,
-			"PVID cannot be modified for this function\n");
+	if (!BNXT_SINGLE_PF(bp)) {
+		PMD_DRV_LOG(ERR, "PVID cannot be modified on VF or on shared PF\n");
 		return -ENOTSUP;
 	}
 	bp->vlan = on ? pvid : 0;
