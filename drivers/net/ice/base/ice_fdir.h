@@ -42,10 +42,12 @@
 
 #define ICE_MAC_ETHTYPE_OFFSET		12
 #define ICE_IPV4_TOS_OFFSET		15
+#define ICE_IPV4_ID_OFFSET		18
 #define ICE_IPV4_TTL_OFFSET		22
 #define ICE_IPV6_TC_OFFSET		14
 #define ICE_IPV6_HLIM_OFFSET		21
 #define ICE_IPV6_PROTO_OFFSET		20
+#define ICE_IPV6_ID_OFFSET		58
 /* For TUN inner (without inner MAC) */
 #define ICE_IPV4_NO_MAC_TOS_OFFSET	1
 #define ICE_IPV4_NO_MAC_TTL_OFFSET	8
@@ -158,6 +160,7 @@ struct ice_fdir_v4 {
 	u8 ip_ver;
 	u8 proto;
 	u8 ttl;
+	__be16 packet_id;
 };
 
 #define ICE_IPV6_ADDR_LEN_AS_U32		4
@@ -172,6 +175,7 @@ struct ice_fdir_v6 {
 	u8 tc;
 	u8 proto;
 	u8 hlim;
+	__be32 packet_id;
 };
 
 struct ice_fdir_udp_gtp {

@@ -518,6 +518,25 @@ static const u8 ice_fdir_ipv4_udp_ecpri_tp0_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const u8 ice_fdir_ipv6_frag_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x86, 0xDD, 0x60, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x2C, 0x40, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3B, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+static const u8 ice_fdir_ipv4_frag_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00,
+	0x00, 0x14, 0x00, 0x00, 0x20, 0x00, 0x40, 0x10,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00
+};
+
 static const u8 ice_fdir_tcpv6_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x86, 0xDD, 0x60, 0x00,
@@ -715,6 +734,16 @@ static const struct ice_fdir_base_pkt ice_fdir_pkt[] = {
 		ICE_FLTR_PTYPE_NONF_IPV4_OTHER,
 		sizeof(ice_fdir_ipv4_pkt), ice_fdir_ipv4_pkt,
 		sizeof(ice_fdir_ip4_tun_pkt), ice_fdir_ip4_tun_pkt,
+	},
+	{
+		ICE_FLTR_PTYPE_FRAG_IPV4,
+		sizeof(ice_fdir_ipv4_frag_pkt), ice_fdir_ipv4_frag_pkt,
+		sizeof(ice_fdir_ipv4_frag_pkt), ice_fdir_ipv4_frag_pkt,
+	},
+	{
+		ICE_FLTR_PTYPE_FRAG_IPV6,
+		sizeof(ice_fdir_ipv6_frag_pkt), ice_fdir_ipv6_frag_pkt,
+		sizeof(ice_fdir_ipv6_frag_pkt), ice_fdir_ipv6_frag_pkt,
 	},
 	{
 		ICE_FLTR_PTYPE_NONF_IPV4_GTPU,
@@ -1808,6 +1837,23 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				  input->ip.v6.proto);
 		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
 		break;
+	case ICE_FLTR_PTYPE_FRAG_IPV4:
+		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
+				   input->ip.v4.src_ip);
+		ice_pkt_insert_u32(loc, ICE_IPV4_SRC_ADDR_OFFSET,
+				   input->ip.v4.dst_ip);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
+		ice_pkt_insert_u16(loc, ICE_IPV4_ID_OFFSET,
+				   input->ip.v4.packet_id);
+		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
+		ice_pkt_insert_u8(loc, ICE_IPV4_PROTO_OFFSET,
+				  input->ip.v4.proto);
+		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
+		break;
+	case ICE_FLTR_PTYPE_FRAG_IPV6:
+		ice_pkt_insert_u32(loc, ICE_IPV6_ID_OFFSET,
+				   input->ip.v6.packet_id);
+		break;
 	default:
 		return ICE_ERR_PARAM;
 	}
@@ -1838,7 +1884,8 @@ ice_fdir_get_prgm_pkt(struct ice_fdir_fltr *input, u8 *pkt, bool frag)
  */
 bool ice_fdir_has_frag(enum ice_fltr_ptype flow)
 {
-	if (flow == ICE_FLTR_PTYPE_NONF_IPV4_OTHER)
+	if (flow == ICE_FLTR_PTYPE_FRAG_IPV4 ||
+	    flow == ICE_FLTR_PTYPE_FRAG_IPV6)
 		return true;
 	else
 		return false;
