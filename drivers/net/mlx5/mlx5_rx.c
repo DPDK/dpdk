@@ -269,6 +269,25 @@ mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return rx_queue_count(rxq);
 }
 
+int mlx5_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
+{
+	struct mlx5_rxq_data *rxq = rx_queue;
+	const unsigned int cqe_num = 1 << rxq->cqe_n;
+	const unsigned int cqe_mask = cqe_num - 1;
+	const uint16_t idx = rxq->cq_ci & cqe_num;
+	volatile struct mlx5_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
+
+	if (unlikely(rxq->cqes == NULL)) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	pmc->addr = &cqe->op_own;
+	pmc->val =  !!idx;
+	pmc->mask = MLX5_CQE_OWNER_MASK;
+	pmc->size = sizeof(uint8_t);
+	return 0;
+}
+
 /**
  * Translate RX completion flags to packet type.
  *
