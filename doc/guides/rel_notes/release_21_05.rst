@@ -183,6 +183,7 @@ New Features
 
   * Added support for txgbevf PMD.
   * Support device arguments to handle AN training for backplane NICs.
+  * Added support for VXLAN-GPE.
 
 * **Enabled vmxnet3 PMD on Windows.**
 

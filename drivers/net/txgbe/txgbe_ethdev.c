@@ -4995,7 +4995,6 @@ txgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			break;
 		}
 		wr32(hw, TXGBE_VXLANPORT, udp_tunnel->udp_port);
-		wr32(hw, TXGBE_VXLANPORTGPE, udp_tunnel->udp_port);
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
 		if (udp_tunnel->udp_port == 0) {
@@ -5012,6 +5011,14 @@ txgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			break;
 		}
 		wr32(hw, TXGBE_TEREDOPORT, udp_tunnel->udp_port);
+		break;
+	case RTE_TUNNEL_TYPE_VXLAN_GPE:
+		if (udp_tunnel->udp_port == 0) {
+			PMD_DRV_LOG(ERR, "Add VxLAN port 0 is not allowed.");
+			ret = -EINVAL;
+			break;
+		}
+		wr32(hw, TXGBE_VXLANPORTGPE, udp_tunnel->udp_port);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid tunnel type");
@@ -5046,7 +5053,6 @@ txgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 			break;
 		}
 		wr32(hw, TXGBE_VXLANPORT, 0);
-		wr32(hw, TXGBE_VXLANPORTGPE, 0);
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
 		cur_port = (uint16_t)rd32(hw, TXGBE_GENEVEPORT);
@@ -5067,6 +5073,16 @@ txgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 			break;
 		}
 		wr32(hw, TXGBE_TEREDOPORT, 0);
+		break;
+	case RTE_TUNNEL_TYPE_VXLAN_GPE:
+		cur_port = (uint16_t)rd32(hw, TXGBE_VXLANPORTGPE);
+		if (cur_port != udp_tunnel->udp_port) {
+			PMD_DRV_LOG(ERR, "Port %u does not exist.",
+					udp_tunnel->udp_port);
+			ret = -EINVAL;
+			break;
+		}
+		wr32(hw, TXGBE_VXLANPORTGPE, 0);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid tunnel type");

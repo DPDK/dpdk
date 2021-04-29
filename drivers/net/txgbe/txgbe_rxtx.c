@@ -58,6 +58,7 @@ static const u64 TXGBE_TX_OFFLOAD_MASK = (PKT_TX_IP_CKSUM |
 		PKT_TX_TCP_SEG |
 		PKT_TX_TUNNEL_MASK |
 		PKT_TX_OUTER_IP_CKSUM |
+		PKT_TX_OUTER_UDP_CKSUM |
 #ifdef RTE_LIB_SECURITY
 		PKT_TX_SEC_OFFLOAD |
 #endif
@@ -389,6 +390,7 @@ txgbe_set_xmit_ctx(struct txgbe_tx_queue *txq,
 			/* for non UDP / GRE tunneling, set to 0b */
 			break;
 		case PKT_TX_TUNNEL_VXLAN:
+		case PKT_TX_TUNNEL_VXLAN_GPE:
 		case PKT_TX_TUNNEL_GENEVE:
 			tunnel_seed |= TXGBE_TXD_ETYPE_UDP;
 			break;
@@ -580,7 +582,6 @@ tx_desc_ol_flags_to_ptid(uint64_t oflags, uint32_t ptype)
 		ptype |= RTE_PTYPE_L2_ETHER |
 			 RTE_PTYPE_L3_IPV4 |
 			 RTE_PTYPE_TUNNEL_VXLAN_GPE;
-		ptype |= RTE_PTYPE_INNER_L2_ETHER;
 		break;
 	case PKT_TX_TUNNEL_IPIP:
 	case PKT_TX_TUNNEL_IP:
@@ -2220,7 +2221,8 @@ txgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 
 	tx_offload_capa |= DEV_TX_OFFLOAD_MACSEC_INSERT;
 
-	tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+	tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+			   DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
 
 #ifdef RTE_LIB_SECURITY
 	if (dev->security_ctx)
