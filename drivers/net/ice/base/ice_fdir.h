@@ -83,12 +83,20 @@
 
 #define ICE_FDIR_MAX_FLTRS		16384
 
-/* IP v4 has 2 flag bits that enable fragment processing: DF and MF. DF
+/* IPv4 has 2 flag bits that enable fragment processing: DF and MF. DF
  * requests that the packet not be fragmented. MF indicates that a packet has
- * been fragmented.
+ * been fragmented, except that for the last fragment has a non-zero
+ * Fragment Offset field with zero MF.
  */
-#define ICE_FDIR_IPV4_PKT_FLAG_DF		0x20
-#define ICE_FDIR_IPV4_PKT_FLAG_MF		0x40
+#define ICE_FDIR_IPV4_PKT_FLAG_MF		0x20
+#define ICE_FDIR_IPV4_PKT_FLAG_MF_SHIFT	8
+#define ICE_FDIR_IPV4_PKT_FLAG_DF		0x40
+
+/* For IPv6 fragmented packets, all fragments except the last have
+ * the MF flag set.
+ */
+#define ICE_FDIR_IPV6_PKT_FLAG_MF		0x100
+#define ICE_FDIR_IPV6_PKT_FLAG_MF_SHIFT	8
 
 enum ice_fltr_prgm_desc_dest {
 	ICE_FLTR_PRGM_DESC_DEST_DROP_PKT,
