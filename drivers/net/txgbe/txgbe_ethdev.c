@@ -930,34 +930,10 @@ static int
 eth_txgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
-	struct rte_eth_dev *pf_ethdev;
-	struct rte_eth_devargs eth_da;
-	int retval;
-
-	if (pci_dev->device.devargs) {
-		retval = rte_eth_devargs_parse(pci_dev->device.devargs->args,
-				&eth_da);
-		if (retval)
-			return retval;
-	} else {
-		memset(&eth_da, 0, sizeof(eth_da));
-	}
-
-	retval = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
+	return rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
 			sizeof(struct txgbe_adapter),
 			eth_dev_pci_specific_init, pci_dev,
 			eth_txgbe_dev_init, NULL);
-
-	if (retval || eth_da.nb_representor_ports < 1)
-		return retval;
-	if (eth_da.type != RTE_ETH_REPRESENTOR_VF)
-		return -ENOTSUP;
-
-	pf_ethdev = rte_eth_dev_allocated(pci_dev->device.name);
-	if (pf_ethdev == NULL)
-		return -ENODEV;
-
-	return 0;
 }
 
 static int eth_txgbe_pci_remove(struct rte_pci_device *pci_dev)
@@ -966,7 +942,7 @@ static int eth_txgbe_pci_remove(struct rte_pci_device *pci_dev)
 
 	ethdev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (!ethdev)
-		return -ENODEV;
+		return 0;
 
 	return rte_eth_dev_destroy(ethdev, eth_txgbe_dev_uninit);
 }
