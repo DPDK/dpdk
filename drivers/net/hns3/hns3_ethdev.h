@@ -980,13 +980,13 @@ static inline void hns3_write_reg(void *base, uint32_t reg, uint32_t value)
 }
 
 /*
- * The optimized function for writing registers used in the '.rx_pkt_burst' and
- * '.tx_pkt_burst' ops implementation function.
+ * The optimized function for writing registers reduces one address addition
+ * calculation, it was used in the '.rx_pkt_burst' and '.tx_pkt_burst' ops
+ * implementation function.
  */
 static inline void hns3_write_reg_opt(volatile void *addr, uint32_t value)
 {
-	rte_io_wmb();
-	rte_write32_relaxed(rte_cpu_to_le_32(value), addr);
+	rte_write32(rte_cpu_to_le_32(value), addr);
 }
 
 static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
