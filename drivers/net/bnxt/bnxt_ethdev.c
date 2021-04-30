@@ -4138,13 +4138,17 @@ uint32_t bnxt_read_fw_status_reg(struct bnxt *bp, uint32_t index)
 	struct bnxt_error_recovery_info *info = bp->recovery_info;
 	uint32_t reg = info->status_regs[index];
 	uint32_t type, offset, val = 0;
+	int ret = 0;
 
 	type = BNXT_FW_STATUS_REG_TYPE(reg);
 	offset = BNXT_FW_STATUS_REG_OFF(reg);
 
 	switch (type) {
 	case BNXT_FW_STATUS_REG_TYPE_CFG:
-		rte_pci_read_config(bp->pdev, &val, sizeof(val), offset);
+		ret = rte_pci_read_config(bp->pdev, &val, sizeof(val), offset);
+		if (ret < 0)
+			PMD_DRV_LOG(ERR, "Failed to read PCI offset %#x",
+				    offset);
 		break;
 	case BNXT_FW_STATUS_REG_TYPE_GRC:
 		offset = info->mapped_status_regs[index];
