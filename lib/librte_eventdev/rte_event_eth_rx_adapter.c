@@ -1288,6 +1288,7 @@ rxa_create_intr_thread(struct rte_event_eth_rx_adapter *rx_adapter)
 		return 0;
 
 	RTE_EDEV_LOG_ERR("Failed to create interrupt thread err = %d\n", err);
+	rte_free(rx_adapter->epoll_events);
 error:
 	rte_ring_free(rx_adapter->intr_ring);
 	rx_adapter->intr_ring = NULL;
