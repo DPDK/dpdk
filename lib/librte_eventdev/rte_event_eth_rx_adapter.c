@@ -1284,10 +1284,8 @@ rxa_create_intr_thread(struct rte_event_eth_rx_adapter *rx_adapter)
 
 	err = rte_ctrl_thread_create(&rx_adapter->rx_intr_thread, thread_name,
 				NULL, rxa_intr_thread, rx_adapter);
-	if (!err) {
-		rte_thread_setname(rx_adapter->rx_intr_thread, thread_name);
+	if (!err)
 		return 0;
-	}
 
 	RTE_EDEV_LOG_ERR("Failed to create interrupt thread err = %d\n", err);
 error:
