@@ -3972,7 +3972,7 @@ static int bnxt_restore_mac_filters(struct bnxt *bp)
 	struct rte_ether_addr *addr;
 	uint64_t pool_mask;
 	uint32_t pool = 0;
-	uint16_t i;
+	uint32_t i;
 	int rc;
 
 	if (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp))
