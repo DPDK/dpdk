@@ -2613,8 +2613,6 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 		.offloads = 0,
 	};
 
-	info->vmdq_queue_num = 0;
-
 	info->reta_size = hw->rss_ind_tbl_size;
 	info->hash_key_size = HNS3_RSS_KEY_SIZE;
 	info->flow_type_rss_offloads = HNS3_ETH_RSS_SUPPORT;
@@ -2882,8 +2880,6 @@ hns3_parse_cfg(struct hns3_cfg *cfg, struct hns3_cmd_desc *desc)
 	req = (struct hns3_cfg_param_cmd *)desc[0].data;
 
 	/* get the configuration */
-	cfg->vmdq_vport_num = hns3_get_field(rte_le_to_cpu_32(req->param[0]),
-					     HNS3_CFG_VMDQ_M, HNS3_CFG_VMDQ_S);
 	cfg->tc_num = hns3_get_field(rte_le_to_cpu_32(req->param[0]),
 				     HNS3_CFG_TC_NUM_M, HNS3_CFG_TC_NUM_S);
 	cfg->tqp_desc_num = hns3_get_field(rte_le_to_cpu_32(req->param[0]),

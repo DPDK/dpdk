@@ -148,7 +148,6 @@ struct hns3_tc_queue_info {
 };
 
 struct hns3_cfg {
-	uint8_t vmdq_vport_num;
 	uint8_t tc_num;
 	uint16_t tqp_desc_num;
 	uint16_t rx_buf_len;
