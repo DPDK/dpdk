@@ -1345,14 +1345,7 @@ enable_tm_err_intr(struct hns3_adapter *hns, bool en)
 	}
 
 	/* configure TM QCN hw errors */
-	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_TM_QCN_MEM_INT_CFG, true);
-	ret = hns3_cmd_send(hw, &desc, 1);
-	if (ret) {
-		hns3_err(hw, "fail to read TM QCN CFG status, ret = %d\n", ret);
-		return ret;
-	}
-
-	hns3_cmd_reuse_desc(&desc, false);
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_TM_QCN_MEM_INT_CFG, false);
 	if (en)
 		desc.data[1] = rte_cpu_to_le_32(HNS3_TM_QCN_MEM_ERR_INT_EN);
 
