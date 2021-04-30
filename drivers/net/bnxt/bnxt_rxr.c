@@ -966,7 +966,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
 	if (alloc_failed) {
-		uint16_t cnt;
+		int cnt;
 
 		for (cnt = 0; cnt < nb_rx_pkts + nb_rep_rx_pkts; cnt++) {
 			struct rte_mbuf **rx_buf;
