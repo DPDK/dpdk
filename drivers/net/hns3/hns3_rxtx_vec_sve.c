@@ -292,12 +292,11 @@ hns3_recv_pkts_vec_sve(void *__restrict rx_queue,
 {
 	struct hns3_rx_queue *rxq = rx_queue;
 	struct hns3_desc *rxdp = &rxq->rx_ring[rxq->next_to_use];
-	uint64_t bd_err_mask;  /* bit mask indicate whick pkts is error */
+	uint64_t pkt_err_mask;  /* bit mask indicate whick pkts is error */
 	uint16_t nb_rx;
 
 	rte_prefetch_non_temporal(rxdp);
 
-	nb_pkts = RTE_MIN(nb_pkts, HNS3_DEFAULT_RX_BURST);
 	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, HNS3_SVE_DEFAULT_DESCS_PER_LOOP);
 
 	if (rxq->rx_rearm_nb > HNS3_DEFAULT_RXQ_REARM_THRESH)
@@ -309,10 +308,31 @@ hns3_recv_pkts_vec_sve(void *__restrict rx_queue,
 
 	hns3_rx_prefetch_mbuf_sve(&rxq->sw_ring[rxq->next_to_use]);
 
-	bd_err_mask = 0;
-	nb_rx = hns3_recv_burst_vec_sve(rxq, rx_pkts, nb_pkts, &bd_err_mask);
-	if (unlikely(bd_err_mask))
-		nb_rx = hns3_rx_reassemble_pkts(rx_pkts, nb_rx, bd_err_mask);
+	if (likely(nb_pkts <= HNS3_DEFAULT_RX_BURST)) {
+		pkt_err_mask = 0;
+		nb_rx = hns3_recv_burst_vec_sve(rxq, rx_pkts, nb_pkts,
+						&pkt_err_mask);
+		nb_rx = hns3_rx_reassemble_pkts(rx_pkts, nb_rx, pkt_err_mask);
+		return nb_rx;
+	}
+
+	nb_rx = 0;
+	while (nb_pkts > 0) {
+		uint16_t ret, n;
+
+		n = RTE_MIN(nb_pkts, HNS3_DEFAULT_RX_BURST);
+		pkt_err_mask = 0;
+		ret = hns3_recv_burst_vec_sve(rxq, &rx_pkts[nb_rx], n,
+					      &pkt_err_mask);
+		nb_pkts -= ret;
+		nb_rx += hns3_rx_reassemble_pkts(&rx_pkts[nb_rx], ret,
+						 pkt_err_mask);
+		if (ret < n)
+			break;
+
+		if (rxq->rx_rearm_nb > HNS3_DEFAULT_RXQ_REARM_THRESH)
+			hns3_rxq_rearm_mbuf_sve(rxq);
+	}
 
 	return nb_rx;
 }
