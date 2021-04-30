@@ -1042,7 +1042,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
 	if (alloc_failed) {
-		uint16_t cnt;
+		int cnt;
 
 		rx_raw_prod = RING_NEXT(rx_raw_prod);
 		for (cnt = 0; cnt < nb_rx_pkts + nb_rep_rx_pkts; cnt++) {
