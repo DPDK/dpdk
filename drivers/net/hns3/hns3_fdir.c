@@ -336,6 +336,8 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 	    BIT(INNER_IP_PROTO) | BIT(INNER_IP_TOS) |
 	    BIT(INNER_SRC_IP) | BIT(INNER_DST_IP) |
 	    BIT(INNER_SRC_PORT) | BIT(INNER_DST_PORT);
+	hns3_dbg(hw, "fdir tuple: inner<vlan_tag1 eth_type ip_src ip_dst "
+		  "ip_proto ip_tos l4_src_port l4_dst_port>");
 
 	/* If use max 400bit key, we can support tuples for ether type */
 	if (pf->fdir.fd_cfg.max_key_length == MAX_KEY_LENGTH) {
@@ -345,6 +347,9 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 		    BIT(OUTER_DST_PORT) | BIT(INNER_VLAN_TAG2) |
 		    BIT(OUTER_TUN_VNI) | BIT(OUTER_TUN_FLOW_ID) |
 		    BIT(OUTER_ETH_TYPE) | BIT(OUTER_IP_PROTO);
+		hns3_dbg(hw, "fdir tuple more: inner<dst_mac src_mac "
+			  "vlan_tag2 sctp_tag> outer<eth_type ip_proto "
+			  "l4_src_port l4_dst_port tun_vni tun_flow_id>");
 	}
 
 	/* roce_type is used to filter roce frames
@@ -352,6 +357,7 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 	 */
 	key_cfg->meta_data_active = BIT(DST_VPORT) | BIT(TUNNEL_PACKET) |
 	    BIT(VLAN_NUMBER);
+	hns3_dbg(hw, "fdir meta data: dst_vport tunnel_packet vlan_number");
 
 	ret = hns3_get_fd_allocation(hw,
 				     &pf->fdir.fd_cfg.rule_num[HNS3_FD_STAGE_1],
@@ -360,6 +366,13 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 				     &pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_2]);
 	if (ret)
 		return ret;
+
+	hns3_dbg(hw, "fdir: stage1<rules-%u counters-%u> stage2<rules-%u "
+		  "counters=%u>",
+		  pf->fdir.fd_cfg.rule_num[HNS3_FD_STAGE_1],
+		  pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_1],
+		  pf->fdir.fd_cfg.rule_num[HNS3_FD_STAGE_2],
+		  pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_2]);
 
 	return hns3_set_fd_key_config(hns);
 }
