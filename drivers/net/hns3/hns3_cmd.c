@@ -241,7 +241,7 @@ hns3_is_special_opcode(uint16_t opcode)
 				  HNS3_OPC_QUERY_ALL_ERR_INFO,};
 	uint32_t i;
 
-	for (i = 0; i < ARRAY_SIZE(spec_opcode); i++)
+	for (i = 0; i < RTE_DIM(spec_opcode); i++)
 		if (spec_opcode[i] == opcode)
 			return true;
 
@@ -272,7 +272,7 @@ hns3_cmd_convert_err_code(uint16_t desc_ret)
 
 	uint32_t i;
 
-	for (i = 0; i < ARRAY_SIZE(hns3_cmdq_status); i++)
+	for (i = 0; i < RTE_DIM(hns3_cmdq_status); i++)
 		if (hns3_cmdq_status[i].imp_errcode == desc_ret)
 			return hns3_cmdq_status[i].linux_errcode;
 

@@ -1054,37 +1054,37 @@ hns3_parse_normal(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	case RTE_FLOW_ITEM_TYPE_ETH:
 		ret = hns3_parse_eth(item, rule, error);
 		step_mngr->items = L2_next_items;
-		step_mngr->count = ARRAY_SIZE(L2_next_items);
+		step_mngr->count = RTE_DIM(L2_next_items);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VLAN:
 		ret = hns3_parse_vlan(item, rule, error);
 		step_mngr->items = L2_next_items;
-		step_mngr->count = ARRAY_SIZE(L2_next_items);
+		step_mngr->count = RTE_DIM(L2_next_items);
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV4:
 		ret = hns3_parse_ipv4(item, rule, error);
 		step_mngr->items = L3_next_items;
-		step_mngr->count = ARRAY_SIZE(L3_next_items);
+		step_mngr->count = RTE_DIM(L3_next_items);
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV6:
 		ret = hns3_parse_ipv6(item, rule, error);
 		step_mngr->items = L3_next_items;
-		step_mngr->count = ARRAY_SIZE(L3_next_items);
+		step_mngr->count = RTE_DIM(L3_next_items);
 		break;
 	case RTE_FLOW_ITEM_TYPE_TCP:
 		ret = hns3_parse_tcp(item, rule, error);
 		step_mngr->items = L4_next_items;
-		step_mngr->count = ARRAY_SIZE(L4_next_items);
+		step_mngr->count = RTE_DIM(L4_next_items);
 		break;
 	case RTE_FLOW_ITEM_TYPE_UDP:
 		ret = hns3_parse_udp(item, rule, error);
 		step_mngr->items = L4_next_items;
-		step_mngr->count = ARRAY_SIZE(L4_next_items);
+		step_mngr->count = RTE_DIM(L4_next_items);
 		break;
 	case RTE_FLOW_ITEM_TYPE_SCTP:
 		ret = hns3_parse_sctp(item, rule, error);
 		step_mngr->items = L4_next_items;
-		step_mngr->count = ARRAY_SIZE(L4_next_items);
+		step_mngr->count = RTE_DIM(L4_next_items);
 		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
@@ -1188,7 +1188,7 @@ hns3_parse_fdir_filter(struct rte_eth_dev *dev,
 					  "Fdir not supported in VF");
 
 	step_mngr.items = first_items;
-	step_mngr.count = ARRAY_SIZE(first_items);
+	step_mngr.count = RTE_DIM(first_items);
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->type == RTE_FLOW_ITEM_TYPE_VOID)
 			continue;
@@ -1202,7 +1202,7 @@ hns3_parse_fdir_filter(struct rte_eth_dev *dev,
 			if (ret)
 				return ret;
 			step_mngr.items = tunnel_next_items;
-			step_mngr.count = ARRAY_SIZE(tunnel_next_items);
+			step_mngr.count = RTE_DIM(tunnel_next_items);
 		} else {
 			ret = hns3_parse_normal(item, rule, &step_mngr, error);
 			if (ret)

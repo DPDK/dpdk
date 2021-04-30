@@ -2206,8 +2206,8 @@ hns3_handle_type_reg_error_data(struct hns3_hw *hw,
 	type_id = err_info->type_id & HNS3_ERR_TYPE_MASK;
 	is_ras = err_info->type_id >> HNS3_ERR_TYPE_IS_RAS_OFFSET;
 
-	total_module = ARRAY_SIZE(hns3_hw_module_name);
-	total_type = ARRAY_SIZE(hns3_hw_error_type);
+	total_module = RTE_DIM(hns3_hw_module_name);
+	total_type = RTE_DIM(hns3_hw_error_type);
 
 	hns3_err(hw, "total_module:%u, total_type:%u",
 		 total_module, total_type);
