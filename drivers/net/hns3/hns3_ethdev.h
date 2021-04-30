@@ -858,17 +858,17 @@ enum {
 
 #define HNS3_DEVARG_DEV_CAPS_MASK	"dev_caps_mask"
 
-#define HNS3_DEV_SUPPORT_DCB_B			0x0
-#define HNS3_DEV_SUPPORT_COPPER_B		0x1
-#define HNS3_DEV_SUPPORT_UDP_GSO_B		0x2
-#define HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B	0x3
-#define HNS3_DEV_SUPPORT_PTP_B			0x4
-#define HNS3_DEV_SUPPORT_TX_PUSH_B		0x5
-#define HNS3_DEV_SUPPORT_INDEP_TXRX_B		0x6
-#define HNS3_DEV_SUPPORT_STASH_B		0x7
-#define HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B	0x9
-#define HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B	0xA
-#define HNS3_DEV_SUPPORT_RAS_IMP_B		0xB
+enum {
+	HNS3_DEV_SUPPORT_DCB_B,
+	HNS3_DEV_SUPPORT_COPPER_B,
+	HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B,
+	HNS3_DEV_SUPPORT_PTP_B,
+	HNS3_DEV_SUPPORT_INDEP_TXRX_B,
+	HNS3_DEV_SUPPORT_STASH_B,
+	HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B,
+	HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B,
+	HNS3_DEV_SUPPORT_RAS_IMP_B,
+};
 
 #define hns3_dev_dcb_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
@@ -877,10 +877,6 @@ enum {
 #define hns3_dev_copper_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_COPPER_B)
 
-/* Support UDP GSO offload */
-#define hns3_dev_udp_gso_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_UDP_GSO_B)
-
 /* Support the queue region action rule of flow directory */
 #define hns3_dev_fd_queue_region_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B)
@@ -888,9 +884,6 @@ enum {
 /* Support PTP timestamp offload */
 #define hns3_dev_ptp_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_PTP_B)
-
-#define hns3_dev_tx_push_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_TX_PUSH_B)
 
 /* Support to Independently enable/disable/reset Tx or Rx queues */
 #define hns3_dev_indep_txrx_supported(hw) \

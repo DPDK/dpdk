@@ -419,21 +419,14 @@ hns3_get_caps_name(uint32_t caps_id)
 		enum HNS3_CAPS_BITS caps;
 		const char *name;
 	} dev_caps[] = {
-		{ HNS3_CAPS_UDP_GSO_B,         "udp_gso"         },
-		{ HNS3_CAPS_ATR_B,             "atr"             },
 		{ HNS3_CAPS_FD_QUEUE_REGION_B, "fd_queue_region" },
 		{ HNS3_CAPS_PTP_B,             "ptp"             },
-		{ HNS3_CAPS_INT_QL_B,          "int_ql"          },
-		{ HNS3_CAPS_SIMPLE_BD_B,       "simple_bd"       },
-		{ HNS3_CAPS_TX_PUSH_B,         "tx_push"         },
 		{ HNS3_CAPS_PHY_IMP_B,         "phy_imp"         },
 		{ HNS3_CAPS_TQP_TXRX_INDEP_B,  "tqp_txrx_indep"  },
 		{ HNS3_CAPS_HW_PAD_B,          "hw_pad"          },
 		{ HNS3_CAPS_STASH_B,           "stash"           },
 		{ HNS3_CAPS_UDP_TUNNEL_CSUM_B, "udp_tunnel_csum" },
 		{ HNS3_CAPS_RAS_IMP_B,         "ras_imp"         },
-		{ HNS3_CAPS_FEC_B,             "fec"             },
-		{ HNS3_CAPS_PAUSE_B,           "pause"           },
 		{ HNS3_CAPS_RXD_ADV_LAYOUT_B,  "rxd_adv_layout"  }
 	};
 	uint32_t i;
@@ -480,8 +473,6 @@ hns3_parse_capability(struct hns3_hw *hw,
 {
 	uint32_t caps = rte_le_to_cpu_32(cmd->caps[0]);
 
-	if (hns3_get_bit(caps, HNS3_CAPS_UDP_GSO_B))
-		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_UDP_GSO_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_FD_QUEUE_REGION_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B,
 			     1);
@@ -498,8 +489,6 @@ hns3_parse_capability(struct hns3_hw *hw,
 			hns3_warn(hw, "ignore PTP capability due to lack of "
 				  "rxd advanced layout capability.");
 	}
-	if (hns3_get_bit(caps, HNS3_CAPS_TX_PUSH_B))
-		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_TX_PUSH_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_PHY_IMP_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_COPPER_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_TQP_TXRX_INDEP_B))
