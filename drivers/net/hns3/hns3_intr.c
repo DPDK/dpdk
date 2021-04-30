@@ -1934,7 +1934,7 @@ hns3_clear_reset_level(struct hns3_hw *hw, uint64_t *levels)
 	if (merge_cnt != hw->reset.stats.merge_cnt)
 		hns3_warn(hw,
 			  "No need to do low-level reset after %s reset. "
-			  "merge cnt: %" PRIx64 " total merge cnt: %" PRIx64,
+			  "merge cnt: %" PRIu64 " total merge cnt: %" PRIu64,
 			  reset_string[hw->reset.level],
 			  hw->reset.stats.merge_cnt - merge_cnt,
 			  hw->reset.stats.merge_cnt);
@@ -1954,7 +1954,7 @@ hns3_reset_err_handle(struct hns3_adapter *hns)
 		hw->reset.attempts = 0;
 		hw->reset.stats.fail_cnt++;
 		hns3_warn(hw, "%s reset fail because new Reset is pending "
-			      "attempts:%" PRIx64,
+			      "attempts:%" PRIu64,
 			  reset_string[hw->reset.level],
 			  hw->reset.stats.fail_cnt);
 		hw->reset.level = HNS3_NONE_RESET;
@@ -1981,10 +1981,10 @@ hns3_reset_err_handle(struct hns3_adapter *hns)
 reset_fail:
 	hw->reset.attempts = 0;
 	hw->reset.stats.fail_cnt++;
-	hns3_warn(hw, "%s reset fail fail_cnt:%" PRIx64 " success_cnt:%" PRIx64
-		  " global_cnt:%" PRIx64 " imp_cnt:%" PRIx64
-		  " request_cnt:%" PRIx64 " exec_cnt:%" PRIx64
-		  " merge_cnt:%" PRIx64 "adapter_state:%d",
+	hns3_warn(hw, "%s reset fail fail_cnt:%" PRIu64 " success_cnt:%" PRIu64
+		  " global_cnt:%" PRIu64 " imp_cnt:%" PRIu64
+		  " request_cnt:%" PRIu64 " exec_cnt:%" PRIu64
+		  " merge_cnt:%" PRIu64 "adapter_state:%d",
 		  reset_string[hw->reset.level], hw->reset.stats.fail_cnt,
 		  hw->reset.stats.success_cnt, hw->reset.stats.global_cnt,
 		  hw->reset.stats.imp_cnt, hw->reset.stats.request_cnt,
@@ -2100,10 +2100,10 @@ hns3_reset_post(struct hns3_adapter *hns)
 		rte_spinlock_unlock(&hw->lock);
 		hns3_clock_gettime(&tv);
 		timersub(&tv, &hw->reset.start_time, &tv_delta);
-		hns3_warn(hw, "%s reset done fail_cnt:%" PRIx64
-			  " success_cnt:%" PRIx64 " global_cnt:%" PRIx64
-			  " imp_cnt:%" PRIx64 " request_cnt:%" PRIx64
-			  " exec_cnt:%" PRIx64 " merge_cnt:%" PRIx64,
+		hns3_warn(hw, "%s reset done fail_cnt:%" PRIu64
+			  " success_cnt:%" PRIu64 " global_cnt:%" PRIu64
+			  " imp_cnt:%" PRIu64 " request_cnt:%" PRIu64
+			  " exec_cnt:%" PRIu64 " merge_cnt:%" PRIu64,
 			  reset_string[hw->reset.level],
 			  hw->reset.stats.fail_cnt, hw->reset.stats.success_cnt,
 			  hw->reset.stats.global_cnt, hw->reset.stats.imp_cnt,
