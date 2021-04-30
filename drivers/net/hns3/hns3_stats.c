@@ -1325,7 +1325,7 @@ hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	len = cnt_stats * sizeof(struct rte_eth_xstat);
 	values_copy = rte_zmalloc("hns3_xstats_values", len, 0);
 	if (values_copy == NULL) {
-		hns3_err(hw, "Failed to allocate %" PRIx64 " bytes needed "
+		hns3_err(hw, "Failed to allocate 0x%" PRIx64 " bytes needed "
 			     "to store statistics values", len);
 		return -ENOMEM;
 	}
@@ -1347,7 +1347,7 @@ hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 
 	for (i = 0; i < size; i++) {
 		if (ids[i] >= cnt_stats) {
-			hns3_err(hw, "ids[%u] (%" PRIx64 ") is invalid, "
+			hns3_err(hw, "ids[%u] (%" PRIu64 ") is invalid, "
 				     "should < %u", i, ids[i], cnt_stats);
 			rte_free(values_copy);
 			return -EINVAL;
@@ -1406,7 +1406,7 @@ hns3_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 	len = cnt_stats * sizeof(struct rte_eth_xstat_name);
 	names_copy = rte_zmalloc("hns3_xstats_names", len, 0);
 	if (names_copy == NULL) {
-		hns3_err(hw, "Failed to allocate %" PRIx64 " bytes needed "
+		hns3_err(hw, "Failed to allocate 0x%" PRIx64 " bytes needed "
 			     "to store statistics names", len);
 		return -ENOMEM;
 	}
@@ -1415,7 +1415,7 @@ hns3_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 
 	for (i = 0; i < size; i++) {
 		if (ids[i] >= cnt_stats) {
-			hns3_err(hw, "ids[%u] (%" PRIx64 ") is invalid, "
+			hns3_err(hw, "ids[%u] (%" PRIu64 ") is invalid, "
 				     "should < %u", i, ids[i], cnt_stats);
 			rte_free(names_copy);
 			return -EINVAL;
