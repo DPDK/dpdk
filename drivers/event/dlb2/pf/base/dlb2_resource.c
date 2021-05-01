@@ -5,7 +5,6 @@
 #include "dlb2_user.h"
 
 #include "dlb2_hw_types.h"
-#include "dlb2_mbox.h"
 #include "dlb2_osdep.h"
 #include "dlb2_osdep_bitmap.h"
 #include "dlb2_osdep_types.h"
