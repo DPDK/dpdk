@@ -257,3 +257,69 @@ void dlb2_clr_pmcsr_disable(struct dlb2_hw *hw, enum dlb2_hw_ver ver)
 	DLB2_CSR_WR(hw, DLB2_CM_CFG_PM_PMCSR_DISABLE(ver), pmcsr_dis);
 }
 
+/**
+ * dlb2_hw_get_num_resources() - query the PCI function's available resources
+ * @hw: dlb2_hw handle for a particular device.
+ * @arg: pointer to resource counts.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * This function returns the number of available resources for the PF or for a
+ * VF.
+ *
+ * A vdev can be either an SR-IOV virtual function or a Scalable IOV virtual
+ * device.
+ *
+ * Return:
+ * Returns 0 upon success, -EINVAL if vdev_req is true and vdev_id is
+ * invalid.
+ */
+int dlb2_hw_get_num_resources(struct dlb2_hw *hw,
+			      struct dlb2_get_num_resources_args *arg,
+			      bool vdev_req,
+			      unsigned int vdev_id)
+{
+	struct dlb2_function_resources *rsrcs;
+	struct dlb2_bitmap *map;
+	int i;
+
+	if (vdev_req && vdev_id >= DLB2_MAX_NUM_VDEVS)
+		return -EINVAL;
+
+	if (vdev_req)
+		rsrcs = &hw->vdev[vdev_id];
+	else
+		rsrcs = &hw->pf;
+
+	arg->num_sched_domains = rsrcs->num_avail_domains;
+
+	arg->num_ldb_queues = rsrcs->num_avail_ldb_queues;
+
+	arg->num_ldb_ports = 0;
+	for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++)
+		arg->num_ldb_ports += rsrcs->num_avail_ldb_ports[i];
+
+	arg->num_cos_ldb_ports[0] = rsrcs->num_avail_ldb_ports[0];
+	arg->num_cos_ldb_ports[1] = rsrcs->num_avail_ldb_ports[1];
+	arg->num_cos_ldb_ports[2] = rsrcs->num_avail_ldb_ports[2];
+	arg->num_cos_ldb_ports[3] = rsrcs->num_avail_ldb_ports[3];
+
+	arg->num_dir_ports = rsrcs->num_avail_dir_pq_pairs;
+
+	arg->num_atomic_inflights = rsrcs->num_avail_aqed_entries;
+
+	map = rsrcs->avail_hist_list_entries;
+
+	arg->num_hist_list_entries = dlb2_bitmap_count(map);
+
+	arg->max_contiguous_hist_list_entries =
+		dlb2_bitmap_longest_set_range(map);
+
+	if (hw->ver == DLB2_HW_V2) {
+		arg->num_ldb_credits = rsrcs->num_avail_qed_entries;
+		arg->num_dir_credits = rsrcs->num_avail_dqed_entries;
+	} else {
+		arg->num_credits = rsrcs->num_avail_entries;
+	}
+	return 0;
+}

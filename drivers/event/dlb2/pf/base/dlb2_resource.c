@@ -58,54 +58,6 @@ void dlb2_hw_enable_sparse_dir_cq_mode(struct dlb2_hw *hw)
 	DLB2_CSR_WR(hw, DLB2_CHP_CFG_CHP_CSR_CTRL, r0.val);
 }
 
-int dlb2_hw_get_num_resources(struct dlb2_hw *hw,
-			      struct dlb2_get_num_resources_args *arg,
-			      bool vdev_req,
-			      unsigned int vdev_id)
-{
-	struct dlb2_function_resources *rsrcs;
-	struct dlb2_bitmap *map;
-	int i;
-
-	if (vdev_req && vdev_id >= DLB2_MAX_NUM_VDEVS)
-		return -EINVAL;
-
-	if (vdev_req)
-		rsrcs = &hw->vdev[vdev_id];
-	else
-		rsrcs = &hw->pf;
-
-	arg->num_sched_domains = rsrcs->num_avail_domains;
-
-	arg->num_ldb_queues = rsrcs->num_avail_ldb_queues;
-
-	arg->num_ldb_ports = 0;
-	for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++)
-		arg->num_ldb_ports += rsrcs->num_avail_ldb_ports[i];
-
-	arg->num_cos_ldb_ports[0] = rsrcs->num_avail_ldb_ports[0];
-	arg->num_cos_ldb_ports[1] = rsrcs->num_avail_ldb_ports[1];
-	arg->num_cos_ldb_ports[2] = rsrcs->num_avail_ldb_ports[2];
-	arg->num_cos_ldb_ports[3] = rsrcs->num_avail_ldb_ports[3];
-
-	arg->num_dir_ports = rsrcs->num_avail_dir_pq_pairs;
-
-	arg->num_atomic_inflights = rsrcs->num_avail_aqed_entries;
-
-	map = rsrcs->avail_hist_list_entries;
-
-	arg->num_hist_list_entries = dlb2_bitmap_count(map);
-
-	arg->max_contiguous_hist_list_entries =
-		dlb2_bitmap_longest_set_range(map);
-
-	arg->num_ldb_credits = rsrcs->num_avail_qed_entries;
-
-	arg->num_dir_credits = rsrcs->num_avail_dqed_entries;
-
-	return 0;
-}
-
 void dlb2_hw_enable_sparse_ldb_cq_mode(struct dlb2_hw *hw)
 {
 	union dlb2_chp_cfg_chp_csr_ctrl r0;

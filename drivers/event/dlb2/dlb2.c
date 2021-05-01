@@ -132,17 +132,25 @@ dlb2_hw_query_resources(struct dlb2_eventdev *dlb2)
 	evdev_dlb2_default_info.max_event_ports =
 		dlb2->hw_rsrc_query_results.num_ldb_ports;
 
-	evdev_dlb2_default_info.max_num_events =
-		dlb2->hw_rsrc_query_results.num_ldb_credits;
-
+	if (dlb2->version == DLB2_HW_V2_5) {
+		evdev_dlb2_default_info.max_num_events =
+			dlb2->hw_rsrc_query_results.num_credits;
+	} else {
+		evdev_dlb2_default_info.max_num_events =
+			dlb2->hw_rsrc_query_results.num_ldb_credits;
+	}
 	/* Save off values used when creating the scheduling domain. */
 
 	handle->info.num_sched_domains =
 		dlb2->hw_rsrc_query_results.num_sched_domains;
 
-	handle->info.hw_rsrc_max.nb_events_limit =
-		dlb2->hw_rsrc_query_results.num_ldb_credits;
-
+	if (dlb2->version == DLB2_HW_V2_5) {
+		handle->info.hw_rsrc_max.nb_events_limit =
+			dlb2->hw_rsrc_query_results.num_credits;
+	} else {
+		handle->info.hw_rsrc_max.nb_events_limit =
+			dlb2->hw_rsrc_query_results.num_ldb_credits;
+	}
 	handle->info.hw_rsrc_max.num_queues =
 		dlb2->hw_rsrc_query_results.num_ldb_queues +
 		dlb2->hw_rsrc_query_results.num_dir_ports;
