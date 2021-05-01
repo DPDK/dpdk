@@ -95,7 +95,7 @@ dlb2_device_traffic_stat_get(struct dlb2_eventdev *dlb2,
 	int i;
 	uint64_t val = 0;
 
-	for (i = 0; i < DLB2_MAX_NUM_PORTS; i++) {
+	for (i = 0; i < DLB2_MAX_NUM_PORTS(dlb2->version); i++) {
 		struct dlb2_eventdev_port *port = &dlb2->ev_ports[i];
 
 		if (!port->setup_done)
@@ -269,7 +269,7 @@ dlb2_get_threshold_stat(struct dlb2_eventdev *dlb2, int qid, int stat)
 	int port = 0;
 	uint64_t tally = 0;
 
-	for (port = 0; port < DLB2_MAX_NUM_PORTS; port++)
+	for (port = 0; port < DLB2_MAX_NUM_PORTS(dlb2->version); port++)
 		tally += dlb2->ev_ports[port].stats.queue[qid].qid_depth[stat];
 
 	return tally;
@@ -281,7 +281,7 @@ dlb2_get_enq_ok_stat(struct dlb2_eventdev *dlb2, int qid)
 	int port = 0;
 	uint64_t enq_ok_tally = 0;
 
-	for (port = 0; port < DLB2_MAX_NUM_PORTS; port++)
+	for (port = 0; port < DLB2_MAX_NUM_PORTS(dlb2->version); port++)
 		enq_ok_tally += dlb2->ev_ports[port].stats.queue[qid].enq_ok;
 
 	return enq_ok_tally;
@@ -561,8 +561,8 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 
 	/* other vars */
 	const unsigned int count = RTE_DIM(dev_stats) +
-			DLB2_MAX_NUM_PORTS * RTE_DIM(port_stats) +
-			DLB2_MAX_NUM_QUEUES * RTE_DIM(qid_stats);
+		DLB2_MAX_NUM_PORTS(dlb2->version) * RTE_DIM(port_stats) +
+		DLB2_MAX_NUM_QUEUES(dlb2->version) * RTE_DIM(qid_stats);
 	unsigned int i, port, qid, stat_id = 0;
 
 	dlb2->xstats = rte_zmalloc_socket(NULL,
@@ -583,7 +583,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 	}
 	dlb2->xstats_count_mode_dev = stat_id;
 
-	for (port = 0; port < DLB2_MAX_NUM_PORTS; port++) {
+	for (port = 0; port < DLB2_MAX_NUM_PORTS(dlb2->version); port++) {
 		dlb2->xstats_offset_for_port[port] = stat_id;
 
 		uint32_t count_offset = stat_id;
@@ -605,7 +605,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 
 	dlb2->xstats_count_mode_port = stat_id - dlb2->xstats_count_mode_dev;
 
-	for (qid = 0; qid < DLB2_MAX_NUM_QUEUES; qid++) {
+	for (qid = 0; qid < DLB2_MAX_NUM_QUEUES(dlb2->version); qid++) {
 		uint32_t count_offset = stat_id;
 
 		dlb2->xstats_offset_for_qid[qid] = stat_id;
@@ -658,16 +658,15 @@ dlb2_eventdev_xstats_get_names(const struct rte_eventdev *dev,
 		xstats_mode_count = dlb2->xstats_count_mode_dev;
 		break;
 	case RTE_EVENT_DEV_XSTATS_PORT:
-		if (queue_port_id >= DLB2_MAX_NUM_PORTS)
+		if (queue_port_id >= DLB2_MAX_NUM_PORTS(dlb2->version))
 			break;
 		xstats_mode_count = dlb2->xstats_count_per_port[queue_port_id];
 		start_offset = dlb2->xstats_offset_for_port[queue_port_id];
 		break;
 	case RTE_EVENT_DEV_XSTATS_QUEUE:
-#if (DLB2_MAX_NUM_QUEUES <= 255) /* max 8 bit value */
-		if (queue_port_id >= DLB2_MAX_NUM_QUEUES)
+		if (queue_port_id >= DLB2_MAX_NUM_QUEUES(dlb2->version) &&
+		    (DLB2_MAX_NUM_QUEUES(dlb2->version) <= 255))
 			break;
-#endif
 		xstats_mode_count = dlb2->xstats_count_per_qid[queue_port_id];
 		start_offset = dlb2->xstats_offset_for_qid[queue_port_id];
 		break;
@@ -709,13 +708,13 @@ dlb2_xstats_update(struct dlb2_eventdev *dlb2,
 		xstats_mode_count = dlb2->xstats_count_mode_dev;
 		break;
 	case RTE_EVENT_DEV_XSTATS_PORT:
-		if (queue_port_id >= DLB2_MAX_NUM_PORTS)
+		if (queue_port_id >= DLB2_MAX_NUM_PORTS(dlb2->version))
 			goto invalid_value;
 		xstats_mode_count = dlb2->xstats_count_per_port[queue_port_id];
 		break;
 	case RTE_EVENT_DEV_XSTATS_QUEUE:
-#if (DLB2_MAX_NUM_QUEUES <= 255) /* max 8 bit value */
-		if (queue_port_id >= DLB2_MAX_NUM_QUEUES)
+#if (DLB2_MAX_NUM_QUEUES(DLB2_HW_V2_5) <= 255) /* max 8 bit value */
+		if (queue_port_id >= DLB2_MAX_NUM_QUEUES(dlb2->version))
 			goto invalid_value;
 #endif
 		xstats_mode_count = dlb2->xstats_count_per_qid[queue_port_id];
@@ -936,12 +935,13 @@ dlb2_eventdev_xstats_reset(struct rte_eventdev *dev,
 		break;
 	case RTE_EVENT_DEV_XSTATS_PORT:
 		if (queue_port_id == -1) {
-			for (i = 0; i < DLB2_MAX_NUM_PORTS; i++) {
+			for (i = 0; i < DLB2_MAX_NUM_PORTS(dlb2->version);
+					i++) {
 				if (dlb2_xstats_reset_port(dlb2, i,
 							   ids, nb_ids))
 					return -EINVAL;
 			}
-		} else if (queue_port_id < DLB2_MAX_NUM_PORTS) {
+		} else if (queue_port_id < DLB2_MAX_NUM_PORTS(dlb2->version)) {
 			if (dlb2_xstats_reset_port(dlb2, queue_port_id,
 						   ids, nb_ids))
 				return -EINVAL;
@@ -949,12 +949,13 @@ dlb2_eventdev_xstats_reset(struct rte_eventdev *dev,
 		break;
 	case RTE_EVENT_DEV_XSTATS_QUEUE:
 		if (queue_port_id == -1) {
-			for (i = 0; i < DLB2_MAX_NUM_QUEUES; i++) {
+			for (i = 0; i < DLB2_MAX_NUM_QUEUES(dlb2->version);
+					i++) {
 				if (dlb2_xstats_reset_queue(dlb2, i,
 							    ids, nb_ids))
 					return -EINVAL;
 			}
-		} else if (queue_port_id < DLB2_MAX_NUM_QUEUES) {
+		} else if (queue_port_id < DLB2_MAX_NUM_QUEUES(dlb2->version)) {
 			if (dlb2_xstats_reset_queue(dlb2, queue_port_id,
 						    ids, nb_ids))
 				return -EINVAL;

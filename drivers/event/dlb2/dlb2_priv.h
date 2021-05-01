@@ -33,19 +33,31 @@
 
 /* Begin HW related defines and structs */
 
+#define DLB2_HW_V2 0
+#define DLB2_HW_V2_5 1
 #define DLB2_MAX_NUM_DOMAINS 32
 #define DLB2_MAX_NUM_VFS 16
 #define DLB2_MAX_NUM_LDB_QUEUES 32
 #define DLB2_MAX_NUM_LDB_PORTS 64
-#define DLB2_MAX_NUM_DIR_PORTS 64
-#define DLB2_MAX_NUM_DIR_QUEUES 64
+#define DLB2_MAX_NUM_DIR_PORTS_V2		DLB2_MAX_NUM_DIR_QUEUES_V2
+#define DLB2_MAX_NUM_DIR_PORTS_V2_5		DLB2_MAX_NUM_DIR_QUEUES_V2_5
+#define DLB2_MAX_NUM_DIR_PORTS(ver)		(ver == DLB2_HW_V2 ? \
+						 DLB2_MAX_NUM_DIR_PORTS_V2 : \
+						 DLB2_MAX_NUM_DIR_PORTS_V2_5)
+#define DLB2_MAX_NUM_DIR_QUEUES_V2		64 /* DIR == directed */
+#define DLB2_MAX_NUM_DIR_QUEUES_V2_5		96
+/* When needed for array sizing, the DLB 2.5 macro is used */
+#define DLB2_MAX_NUM_DIR_QUEUES(ver)		(ver == DLB2_HW_V2 ? \
+						 DLB2_MAX_NUM_DIR_QUEUES_V2 : \
+						 DLB2_MAX_NUM_DIR_QUEUES_V2_5)
 #define DLB2_MAX_NUM_FLOWS (64 * 1024)
 #define DLB2_MAX_NUM_LDB_CREDITS (8 * 1024)
-#define DLB2_MAX_NUM_DIR_CREDITS (2 * 1024)
+#define DLB2_MAX_NUM_DIR_CREDITS(ver)		(ver == DLB2_HW_V2 ? 4096 : 0)
+#define DLB2_MAX_NUM_CREDITS(ver)		(ver == DLB2_HW_V2 ? \
+						 0 : DLB2_MAX_NUM_LDB_CREDITS)
 #define DLB2_MAX_NUM_LDB_CREDIT_POOLS 64
 #define DLB2_MAX_NUM_DIR_CREDIT_POOLS 64
 #define DLB2_MAX_NUM_HIST_LIST_ENTRIES 2048
-#define DLB2_MAX_NUM_AQOS_ENTRIES 2048
 #define DLB2_MAX_NUM_QIDS_PER_LDB_CQ 8
 #define DLB2_QID_PRIORITIES 8
 #define DLB2_MAX_DEVICE_PATH 32
@@ -67,6 +79,11 @@
 #define DLB2_MIN_HARDWARE_CQ_DEPTH 8
 #define DLB2_NUM_HIST_LIST_ENTRIES_PER_LDB_PORT \
 	DLB2_MAX_CQ_DEPTH
+
+#define DLB2_HW_DEVICE_FROM_PCI_ID(_pdev) \
+	(((_pdev->id.device_id == PCI_DEVICE_ID_INTEL_DLB2_5_PF) ||        \
+	  (_pdev->id.device_id == PCI_DEVICE_ID_INTEL_DLB2_5_VF))   ?   \
+		DLB2_HW_V2_5 : DLB2_HW_V2)
 
 /*
  * Static per queue/port provisioning values
@@ -109,6 +126,8 @@ enum dlb2_hw_queue_types {
 	DLB2_NUM_QUEUE_TYPES /* Must be last */
 };
 
+#define DLB2_COMBINED_POOL DLB2_LDB_QUEUE
+
 #define PORT_TYPE(p) ((p)->is_directed ? DLB2_DIR_PORT : DLB2_LDB_PORT)
 
 /* Do not change - must match hardware! */
@@ -127,8 +146,15 @@ struct dlb2_hw_rsrcs {
 	uint32_t num_ldb_queues;	/* Number of available ldb queues */
 	uint32_t num_ldb_ports;         /* Number of load balanced ports */
 	uint32_t num_dir_ports;         /* Number of directed ports */
-	uint32_t num_ldb_credits;       /* Number of load balanced credits */
-	uint32_t num_dir_credits;       /* Number of directed credits */
+	union {
+		struct {
+			uint32_t num_ldb_credits; /* Number of ldb credits */
+			uint32_t num_dir_credits; /* Number of dir credits */
+		};
+		struct {
+			uint32_t num_credits; /* Number of combined credits */
+		};
+	};
 	uint32_t reorder_window_size;   /* Size of reorder window */
 };
 
@@ -292,9 +318,17 @@ struct dlb2_port {
 	enum dlb2_token_pop_mode token_pop_mode;
 	union dlb2_port_config cfg;
 	uint32_t *credit_pool[DLB2_NUM_QUEUE_TYPES]; /* use __atomic builtins */
-	uint16_t cached_ldb_credits;
-	uint16_t ldb_credits;
-	uint16_t cached_dir_credits;
+	union {
+		struct {
+			uint16_t cached_ldb_credits;
+			uint16_t ldb_credits;
+			uint16_t cached_dir_credits;
+		};
+		struct {
+			uint16_t cached_credits;
+			uint16_t credits;
+		};
+	};
 	bool int_armed;
 	uint16_t owed_tokens;
 	int16_t issued_releases;
@@ -325,11 +359,22 @@ struct process_local_port_data {
 
 struct dlb2_eventdev;
 
+struct dlb2_port_low_level_io_functions {
+	void (*pp_enqueue_four)(void *qe4, void *pp_addr);
+};
+
 struct dlb2_config {
 	int configured;
 	int reserved;
-	uint32_t num_ldb_credits;
-	uint32_t num_dir_credits;
+	union {
+		struct {
+			uint32_t num_ldb_credits;
+			uint32_t num_dir_credits;
+		};
+		struct {
+			uint32_t num_credits;
+		};
+	};
 	struct dlb2_create_sched_domain_args resources;
 };
 
@@ -354,10 +399,18 @@ struct dlb2_hw_dev {
 
 /* Begin DLB2 PMD Eventdev related defines and structs */
 
-#define DLB2_MAX_NUM_QUEUES \
-	(DLB2_MAX_NUM_DIR_QUEUES + DLB2_MAX_NUM_LDB_QUEUES)
+#define DLB2_MAX_NUM_QUEUES(ver)                                \
+	(DLB2_MAX_NUM_DIR_QUEUES(ver) + DLB2_MAX_NUM_LDB_QUEUES)
 
-#define DLB2_MAX_NUM_PORTS (DLB2_MAX_NUM_DIR_PORTS + DLB2_MAX_NUM_LDB_PORTS)
+#define DLB2_MAX_NUM_PORTS(ver) \
+	(DLB2_MAX_NUM_DIR_PORTS(ver) + DLB2_MAX_NUM_LDB_PORTS)
+
+#define DLB2_MAX_NUM_DIR_QUEUES_V2_5 96
+#define DLB2_MAX_NUM_DIR_PORTS_V2_5 DLB2_MAX_NUM_DIR_QUEUES_V2_5
+#define DLB2_MAX_NUM_QUEUES_ALL \
+	(DLB2_MAX_NUM_DIR_QUEUES_V2_5 + DLB2_MAX_NUM_LDB_QUEUES)
+#define DLB2_MAX_NUM_PORTS_ALL \
+	(DLB2_MAX_NUM_DIR_PORTS_V2_5 + DLB2_MAX_NUM_LDB_PORTS)
 #define DLB2_MAX_INPUT_QUEUE_DEPTH 256
 
 /** Structure to hold the queue to port link establishment attributes */
@@ -377,8 +430,15 @@ struct dlb2_traffic_stats {
 	uint64_t tx_ok;
 	uint64_t total_polls;
 	uint64_t zero_polls;
-	uint64_t tx_nospc_ldb_hw_credits;
-	uint64_t tx_nospc_dir_hw_credits;
+	union {
+		struct {
+			uint64_t tx_nospc_ldb_hw_credits;
+			uint64_t tx_nospc_dir_hw_credits;
+		};
+		struct {
+			uint64_t tx_nospc_hw_credits;
+		};
+	};
 	uint64_t tx_nospc_inflight_max;
 	uint64_t tx_nospc_new_event_limit;
 	uint64_t tx_nospc_inflight_credits;
@@ -411,7 +471,7 @@ struct dlb2_port_stats {
 	uint64_t tx_invalid;
 	uint64_t rx_sched_cnt[DLB2_NUM_HW_SCHED_TYPES];
 	uint64_t rx_sched_invalid;
-	struct dlb2_queue_stats queue[DLB2_MAX_NUM_QUEUES];
+	struct dlb2_queue_stats queue[DLB2_MAX_NUM_QUEUES_ALL];
 };
 
 struct dlb2_eventdev_port {
@@ -462,16 +522,16 @@ enum dlb2_run_state {
 };
 
 struct dlb2_eventdev {
-	struct dlb2_eventdev_port ev_ports[DLB2_MAX_NUM_PORTS];
-	struct dlb2_eventdev_queue ev_queues[DLB2_MAX_NUM_QUEUES];
-	uint8_t qm_ldb_to_ev_queue_id[DLB2_MAX_NUM_QUEUES];
-	uint8_t qm_dir_to_ev_queue_id[DLB2_MAX_NUM_QUEUES];
+	struct dlb2_eventdev_port ev_ports[DLB2_MAX_NUM_PORTS_ALL];
+	struct dlb2_eventdev_queue ev_queues[DLB2_MAX_NUM_QUEUES_ALL];
+	uint8_t qm_ldb_to_ev_queue_id[DLB2_MAX_NUM_QUEUES_ALL];
+	uint8_t qm_dir_to_ev_queue_id[DLB2_MAX_NUM_QUEUES_ALL];
 	/* store num stats and offset of the stats for each queue */
-	uint16_t xstats_count_per_qid[DLB2_MAX_NUM_QUEUES];
-	uint16_t xstats_offset_for_qid[DLB2_MAX_NUM_QUEUES];
+	uint16_t xstats_count_per_qid[DLB2_MAX_NUM_QUEUES_ALL];
+	uint16_t xstats_offset_for_qid[DLB2_MAX_NUM_QUEUES_ALL];
 	/* store num stats and offset of the stats for each port */
-	uint16_t xstats_count_per_port[DLB2_MAX_NUM_PORTS];
-	uint16_t xstats_offset_for_port[DLB2_MAX_NUM_PORTS];
+	uint16_t xstats_count_per_port[DLB2_MAX_NUM_PORTS_ALL];
+	uint16_t xstats_offset_for_port[DLB2_MAX_NUM_PORTS_ALL];
 	struct dlb2_get_num_resources_args hw_rsrc_query_results;
 	uint32_t xstats_count_mode_queue;
 	struct dlb2_hw_dev qm_instance; /* strictly hw related */
@@ -487,8 +547,15 @@ struct dlb2_eventdev {
 	int num_dir_credits_override;
 	volatile enum dlb2_run_state run_state;
 	uint16_t num_dir_queues; /* total num of evdev dir queues requested */
-	uint16_t num_dir_credits;
-	uint16_t num_ldb_credits;
+	union {
+		struct {
+			uint16_t num_dir_credits;
+			uint16_t num_ldb_credits;
+		};
+		struct {
+			uint16_t num_credits;
+		};
+	};
 	uint16_t num_queues; /* total queues */
 	uint16_t num_ldb_queues; /* total num of evdev ldb queues requested */
 	uint16_t num_ports; /* total num of evdev ports requested */
@@ -499,21 +566,28 @@ struct dlb2_eventdev {
 	bool defer_sched;
 	enum dlb2_cq_poll_modes poll_mode;
 	uint8_t revision;
+	uint8_t version;
 	bool configured;
-	uint16_t max_ldb_credits;
-	uint16_t max_dir_credits;
-
-	/* force hw credit pool counters into exclusive cache lines */
-
-	/* use __atomic builtins */ /* shared hw cred */
-	uint32_t ldb_credit_pool __rte_cache_aligned;
-	/* use __atomic builtins */ /* shared hw cred */
-	uint32_t dir_credit_pool __rte_cache_aligned;
+	union {
+		struct {
+			uint16_t max_ldb_credits;
+			uint16_t max_dir_credits;
+			/* use __atomic builtins */ /* shared hw cred */
+			uint32_t ldb_credit_pool __rte_cache_aligned;
+			/* use __atomic builtins */ /* shared hw cred */
+			uint32_t dir_credit_pool __rte_cache_aligned;
+		};
+		struct {
+			uint16_t max_credits;
+			/* use __atomic builtins */ /* shared hw cred */
+			uint32_t credit_pool __rte_cache_aligned;
+		};
+	};
 };
 
 /* used for collecting and passing around the dev args */
 struct dlb2_qid_depth_thresholds {
-	int val[DLB2_MAX_NUM_QUEUES];
+	int val[DLB2_MAX_NUM_QUEUES_ALL];
 };
 
 struct dlb2_devargs {
@@ -568,7 +642,8 @@ uint32_t dlb2_get_queue_depth(struct dlb2_eventdev *dlb2,
 
 int dlb2_parse_params(const char *params,
 		      const char *name,
-		      struct dlb2_devargs *dlb2_args);
+		      struct dlb2_devargs *dlb2_args,
+		      uint8_t version);
 
 /* Extern globals */
 extern struct process_local_port_data dlb2_port[][DLB2_NUM_PORT_TYPES];

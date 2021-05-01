@@ -211,7 +211,7 @@ int dlb2_resource_init(struct dlb2_hw *hw)
 			      &port->func_list);
 	}
 
-	hw->pf.num_avail_dir_pq_pairs = DLB2_MAX_NUM_DIR_PORTS;
+	hw->pf.num_avail_dir_pq_pairs = DLB2_MAX_NUM_DIR_PORTS(hw->ver);
 	for (i = 0; i < hw->pf.num_avail_dir_pq_pairs; i++) {
 		list = &hw->rsrcs.dir_pq_pairs[i].func_list;
 
@@ -219,7 +219,9 @@ int dlb2_resource_init(struct dlb2_hw *hw)
 	}
 
 	hw->pf.num_avail_qed_entries = DLB2_MAX_NUM_LDB_CREDITS;
-	hw->pf.num_avail_dqed_entries = DLB2_MAX_NUM_DIR_CREDITS;
+	hw->pf.num_avail_dqed_entries =
+		DLB2_MAX_NUM_DIR_CREDITS(hw->ver);
+
 	hw->pf.num_avail_aqed_entries = DLB2_MAX_NUM_AQED_ENTRIES;
 
 	ret = dlb2_bitmap_alloc(&hw->pf.avail_hist_list_entries,
@@ -258,7 +260,7 @@ int dlb2_resource_init(struct dlb2_hw *hw)
 		hw->rsrcs.ldb_ports[i].id.vdev_owned = false;
 	}
 
-	for (i = 0; i < DLB2_MAX_NUM_DIR_PORTS; i++) {
+	for (i = 0; i < DLB2_MAX_NUM_DIR_PORTS(hw->ver); i++) {
 		hw->rsrcs.dir_pq_pairs[i].id.phys_id = i;
 		hw->rsrcs.dir_pq_pairs[i].id.vdev_owned = false;
 	}
@@ -2372,7 +2374,7 @@ static void dlb2_domain_disable_dir_vpps(struct dlb2_hw *hw,
 		else
 			virt_id = port->id.phys_id;
 
-		offs = vdev_id * DLB2_MAX_NUM_DIR_PORTS + virt_id;
+		offs = vdev_id * DLB2_MAX_NUM_DIR_PORTS(hw->ver) + virt_id;
 
 		DLB2_CSR_WR(hw, DLB2_SYS_VF_DIR_VPP_V(offs), r1.val);
 	}
@@ -2505,7 +2507,8 @@ static void
 dlb2_domain_disable_dir_queue_write_perms(struct dlb2_hw *hw,
 					  struct dlb2_hw_domain *domain)
 {
-	int domain_offset = domain->id.phys_id * DLB2_MAX_NUM_DIR_PORTS;
+	int domain_offset = domain->id.phys_id *
+		DLB2_MAX_NUM_DIR_PORTS(hw->ver);
 	struct dlb2_list_entry *iter;
 	struct dlb2_dir_pq_pair *queue;
 	RTE_SET_USED(iter);
@@ -2521,7 +2524,8 @@ dlb2_domain_disable_dir_queue_write_perms(struct dlb2_hw *hw,
 		DLB2_CSR_WR(hw, DLB2_SYS_DIR_VASQID_V(idx), r0.val);
 
 		if (queue->id.vdev_owned) {
-			idx = queue->id.vdev_id * DLB2_MAX_NUM_DIR_PORTS +
+			idx = queue->id.vdev_id *
+				DLB2_MAX_NUM_DIR_PORTS(hw->ver) +
 				queue->id.virt_id;
 
 			DLB2_CSR_WR(hw,
@@ -2960,7 +2964,8 @@ __dlb2_domain_reset_dir_port_registers(struct dlb2_hw *hw,
 		else
 			virt_id = port->id.phys_id;
 
-		offs = port->id.vdev_id * DLB2_MAX_NUM_DIR_PORTS + virt_id;
+		offs = port->id.vdev_id * DLB2_MAX_NUM_DIR_PORTS(hw->ver)
+			+ virt_id;
 
 		DLB2_CSR_WR(hw,
 			    DLB2_SYS_VF_DIR_VPP2PP(offs),
@@ -4483,7 +4488,8 @@ dlb2_log_create_dir_port_args(struct dlb2_hw *hw,
 }
 
 static struct dlb2_dir_pq_pair *
-dlb2_get_domain_used_dir_pq(u32 id,
+dlb2_get_domain_used_dir_pq(struct dlb2_hw *hw,
+			    u32 id,
 			    bool vdev_req,
 			    struct dlb2_hw_domain *domain)
 {
@@ -4491,7 +4497,7 @@ dlb2_get_domain_used_dir_pq(u32 id,
 	struct dlb2_dir_pq_pair *port;
 	RTE_SET_USED(iter);
 
-	if (id >= DLB2_MAX_NUM_DIR_PORTS)
+	if (id >= DLB2_MAX_NUM_DIR_PORTS(hw->ver))
 		return NULL;
 
 	DLB2_DOM_LIST_FOR(domain->used_dir_pq_pairs, port, iter)
@@ -4537,7 +4543,8 @@ dlb2_verify_create_dir_port_args(struct dlb2_hw *hw,
 	if (args->queue_id != -1) {
 		struct dlb2_dir_pq_pair *queue;
 
-		queue = dlb2_get_domain_used_dir_pq(args->queue_id,
+		queue = dlb2_get_domain_used_dir_pq(hw,
+						    args->queue_id,
 						    vdev_req,
 						    domain);
 
@@ -4617,7 +4624,7 @@ static void dlb2_dir_port_configure_pp(struct dlb2_hw *hw,
 
 		r1.field.pp = port->id.phys_id;
 
-		offs = vdev_id * DLB2_MAX_NUM_DIR_PORTS + virt_id;
+		offs = vdev_id * DLB2_MAX_NUM_DIR_PORTS(hw->ver) + virt_id;
 
 		DLB2_CSR_WR(hw, DLB2_SYS_VF_DIR_VPP2PP(offs), r1.val);
 
@@ -4856,7 +4863,8 @@ int dlb2_hw_create_dir_port(struct dlb2_hw *hw,
 	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
 
 	if (args->queue_id != -1)
-		port = dlb2_get_domain_used_dir_pq(args->queue_id,
+		port = dlb2_get_domain_used_dir_pq(hw,
+						   args->queue_id,
 						   vdev_req,
 						   domain);
 	else
@@ -4912,7 +4920,7 @@ static void dlb2_configure_dir_queue(struct dlb2_hw *hw,
 	/* QID write permissions are turned on when the domain is started */
 	r0.field.vasqid_v = 0;
 
-	offs = domain->id.phys_id * DLB2_MAX_NUM_DIR_QUEUES +
+	offs = domain->id.phys_id * DLB2_MAX_NUM_DIR_QUEUES(hw->ver) +
 		queue->id.phys_id;
 
 	DLB2_CSR_WR(hw, DLB2_SYS_DIR_VASQID_V(offs), r0.val);
@@ -4934,7 +4942,8 @@ static void dlb2_configure_dir_queue(struct dlb2_hw *hw,
 		union dlb2_sys_vf_dir_vqid_v r3 = { {0} };
 		union dlb2_sys_vf_dir_vqid2qid r4 = { {0} };
 
-		offs = vdev_id * DLB2_MAX_NUM_DIR_QUEUES + queue->id.virt_id;
+		offs = vdev_id * DLB2_MAX_NUM_DIR_QUEUES(hw->ver)
+			+ queue->id.virt_id;
 
 		r3.field.vqid_v = 1;
 
@@ -5000,7 +5009,8 @@ dlb2_verify_create_dir_queue_args(struct dlb2_hw *hw,
 	if (args->port_id != -1) {
 		struct dlb2_dir_pq_pair *port;
 
-		port = dlb2_get_domain_used_dir_pq(args->port_id,
+		port = dlb2_get_domain_used_dir_pq(hw,
+						   args->port_id,
 						   vdev_req,
 						   domain);
 
@@ -5071,7 +5081,8 @@ int dlb2_hw_create_dir_queue(struct dlb2_hw *hw,
 	}
 
 	if (args->port_id != -1)
-		queue = dlb2_get_domain_used_dir_pq(args->port_id,
+		queue = dlb2_get_domain_used_dir_pq(hw,
+						    args->port_id,
 						    vdev_req,
 						    domain);
 	else
@@ -5919,7 +5930,7 @@ dlb2_hw_start_domain(struct dlb2_hw *hw,
 
 		r0.field.vasqid_v = 1;
 
-		offs = domain->id.phys_id * DLB2_MAX_NUM_DIR_PORTS +
+		offs = domain->id.phys_id * DLB2_MAX_NUM_DIR_PORTS(hw->ver) +
 			dir_queue->id.phys_id;
 
 		DLB2_CSR_WR(hw, DLB2_SYS_DIR_VASQID_V(offs), r0.val);
@@ -5971,7 +5982,7 @@ int dlb2_hw_get_dir_queue_depth(struct dlb2_hw *hw,
 
 	id = args->queue_id;
 
-	queue = dlb2_get_domain_used_dir_pq(id, vdev_req, domain);
+	queue = dlb2_get_domain_used_dir_pq(hw, id, vdev_req, domain);
 	if (queue == NULL) {
 		resp->status = DLB2_ST_INVALID_QID;
 		return -EINVAL;

@@ -59,7 +59,8 @@ static struct rte_event_dev_info evdev_dlb2_default_info = {
 	.max_event_port_enqueue_depth = DLB2_MAX_ENQUEUE_DEPTH,
 	.max_event_port_links = DLB2_MAX_NUM_QIDS_PER_LDB_CQ,
 	.max_num_events = DLB2_MAX_NUM_LDB_CREDITS,
-	.max_single_link_event_port_queue_pairs = DLB2_MAX_NUM_DIR_PORTS,
+	.max_single_link_event_port_queue_pairs =
+		DLB2_MAX_NUM_DIR_PORTS(DLB2_HW_V2),
 	.event_dev_cap = (RTE_EVENT_DEV_CAP_QUEUE_QOS |
 			  RTE_EVENT_DEV_CAP_EVENT_QOS |
 			  RTE_EVENT_DEV_CAP_BURST_MODE |
@@ -69,7 +70,7 @@ static struct rte_event_dev_info evdev_dlb2_default_info = {
 };
 
 struct process_local_port_data
-dlb2_port[DLB2_MAX_NUM_PORTS][DLB2_NUM_PORT_TYPES];
+dlb2_port[DLB2_MAX_NUM_PORTS_ALL][DLB2_NUM_PORT_TYPES];
 
 static void
 dlb2_free_qe_mem(struct dlb2_port *qm_port)
@@ -97,7 +98,7 @@ dlb2_init_queue_depth_thresholds(struct dlb2_eventdev *dlb2,
 {
 	int q;
 
-	for (q = 0; q < DLB2_MAX_NUM_QUEUES; q++) {
+	for (q = 0; q < DLB2_MAX_NUM_QUEUES(dlb2->version); q++) {
 		if (qid_depth_thresholds[q] != 0)
 			dlb2->ev_queues[q].depth_threshold =
 				qid_depth_thresholds[q];
@@ -247,9 +248,9 @@ set_num_dir_credits(const char *key __rte_unused,
 		return ret;
 
 	if (*num_dir_credits < 0 ||
-	    *num_dir_credits > DLB2_MAX_NUM_DIR_CREDITS) {
+	    *num_dir_credits > DLB2_MAX_NUM_DIR_CREDITS(DLB2_HW_V2)) {
 		DLB2_LOG_ERR("dlb2: num_dir_credits must be between 0 and %d\n",
-			     DLB2_MAX_NUM_DIR_CREDITS);
+			     DLB2_MAX_NUM_DIR_CREDITS(DLB2_HW_V2));
 		return -EINVAL;
 	}
 
@@ -306,7 +307,6 @@ set_cos(const char *key __rte_unused,
 	return 0;
 }
 
-
 static int
 set_qid_depth_thresh(const char *key __rte_unused,
 		     const char *value,
@@ -327,7 +327,7 @@ set_qid_depth_thresh(const char *key __rte_unused,
 	 */
 	if (sscanf(value, "all:%d", &thresh) == 1) {
 		first = 0;
-		last = DLB2_MAX_NUM_QUEUES - 1;
+		last = DLB2_MAX_NUM_QUEUES(DLB2_HW_V2) - 1;
 	} else if (sscanf(value, "%d-%d:%d", &first, &last, &thresh) == 3) {
 		/* we have everything we need */
 	} else if (sscanf(value, "%d:%d", &first, &thresh) == 2) {
@@ -337,7 +337,56 @@ set_qid_depth_thresh(const char *key __rte_unused,
 		return -EINVAL;
 	}
 
-	if (first > last || first < 0 || last >= DLB2_MAX_NUM_QUEUES) {
+	if (first > last || first < 0 ||
+		last >= DLB2_MAX_NUM_QUEUES(DLB2_HW_V2)) {
+		DLB2_LOG_ERR("Error parsing qid depth devarg, invalid qid value\n");
+		return -EINVAL;
+	}
+
+	if (thresh < 0 || thresh > DLB2_MAX_QUEUE_DEPTH_THRESHOLD) {
+		DLB2_LOG_ERR("Error parsing qid depth devarg, threshold > %d\n",
+			     DLB2_MAX_QUEUE_DEPTH_THRESHOLD);
+		return -EINVAL;
+	}
+
+	for (i = first; i <= last; i++)
+		qid_thresh->val[i] = thresh; /* indexed by qid */
+
+	return 0;
+}
+
+static int
+set_qid_depth_thresh_v2_5(const char *key __rte_unused,
+			  const char *value,
+			  void *opaque)
+{
+	struct dlb2_qid_depth_thresholds *qid_thresh = opaque;
+	int first, last, thresh, i;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	/* command line override may take one of the following 3 forms:
+	 * qid_depth_thresh=all:<threshold_value> ... all queues
+	 * qid_depth_thresh=qidA-qidB:<threshold_value> ... a range of queues
+	 * qid_depth_thresh=qid:<threshold_value> ... just one queue
+	 */
+	if (sscanf(value, "all:%d", &thresh) == 1) {
+		first = 0;
+		last = DLB2_MAX_NUM_QUEUES(DLB2_HW_V2_5) - 1;
+	} else if (sscanf(value, "%d-%d:%d", &first, &last, &thresh) == 3) {
+		/* we have everything we need */
+	} else if (sscanf(value, "%d:%d", &first, &thresh) == 2) {
+		last = first;
+	} else {
+		DLB2_LOG_ERR("Error parsing qid depth devarg. Should be all:val, qid-qid:val, or qid:val\n");
+		return -EINVAL;
+	}
+
+	if (first > last || first < 0 ||
+		last >= DLB2_MAX_NUM_QUEUES(DLB2_HW_V2_5)) {
 		DLB2_LOG_ERR("Error parsing qid depth devarg, invalid qid value\n");
 		return -EINVAL;
 	}
@@ -521,7 +570,7 @@ dlb2_hw_reset_sched_domain(const struct rte_eventdev *dev, bool reconfig)
 	for (i = 0; i < dlb2->num_queues; i++)
 		dlb2->ev_queues[i].qm_queue.config_state = config_state;
 
-	for (i = 0; i < DLB2_MAX_NUM_QUEUES; i++)
+	for (i = 0; i < DLB2_MAX_NUM_QUEUES(DLB2_HW_V2_5); i++)
 		dlb2->ev_queues[i].setup_done = false;
 
 	dlb2->num_ports = 0;
@@ -1453,7 +1502,7 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 
 	dlb2 = dlb2_pmd_priv(dev);
 
-	if (ev_port_id >= DLB2_MAX_NUM_PORTS)
+	if (ev_port_id >= DLB2_MAX_NUM_PORTS(dlb2->version))
 		return -EINVAL;
 
 	if (port_conf->dequeue_depth >
@@ -3895,7 +3944,7 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 	}
 
 	/* Initialize each port's token pop mode */
-	for (i = 0; i < DLB2_MAX_NUM_PORTS; i++)
+	for (i = 0; i < DLB2_MAX_NUM_PORTS(dlb2->version); i++)
 		dlb2->ev_ports[i].qm_port.token_pop_mode = AUTO_POP;
 
 	rte_spinlock_init(&dlb2->qm_instance.resource_lock);
@@ -3945,7 +3994,8 @@ dlb2_secondary_eventdev_probe(struct rte_eventdev *dev,
 int
 dlb2_parse_params(const char *params,
 		  const char *name,
-		  struct dlb2_devargs *dlb2_args)
+		  struct dlb2_devargs *dlb2_args,
+		  uint8_t version)
 {
 	int ret = 0;
 	static const char * const args[] = { NUMA_NODE_ARG,
@@ -3984,17 +4034,18 @@ dlb2_parse_params(const char *params,
 				return ret;
 			}
 
-			ret = rte_kvargs_process(kvlist,
+			if (version == DLB2_HW_V2) {
+				ret = rte_kvargs_process(kvlist,
 					DLB2_NUM_DIR_CREDITS,
 					set_num_dir_credits,
 					&dlb2_args->num_dir_credits_override);
-			if (ret != 0) {
-				DLB2_LOG_ERR("%s: Error parsing num_dir_credits parameter",
-					     name);
-				rte_kvargs_free(kvlist);
-				return ret;
+				if (ret != 0) {
+					DLB2_LOG_ERR("%s: Error parsing num_dir_credits parameter",
+						     name);
+					rte_kvargs_free(kvlist);
+					return ret;
+				}
 			}
-
 			ret = rte_kvargs_process(kvlist, DEV_ID_ARG,
 						 set_dev_id,
 						 &dlb2_args->dev_id);
@@ -4005,11 +4056,19 @@ dlb2_parse_params(const char *params,
 				return ret;
 			}
 
-			ret = rte_kvargs_process(
+			if (version == DLB2_HW_V2) {
+				ret = rte_kvargs_process(
 					kvlist,
 					DLB2_QID_DEPTH_THRESH_ARG,
 					set_qid_depth_thresh,
 					&dlb2_args->qid_depth_thresholds);
+			} else {
+				ret = rte_kvargs_process(
+					kvlist,
+					DLB2_QID_DEPTH_THRESH_ARG,
+					set_qid_depth_thresh_v2_5,
+					&dlb2_args->qid_depth_thresholds);
+			}
 			if (ret != 0) {
 				DLB2_LOG_ERR("%s: Error parsing qid_depth_thresh parameter",
 					     name);
