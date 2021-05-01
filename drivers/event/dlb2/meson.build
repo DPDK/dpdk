@@ -15,7 +15,6 @@ sources = files(
         'pf/dlb2_main.c',
         'pf/dlb2_pf.c',
         'pf/base/dlb2_resource.c',
-        'pf/base/dlb2_resource_new.c',
         'rte_pmd_dlb2.c',
         'dlb2_selftest.c',
 )
