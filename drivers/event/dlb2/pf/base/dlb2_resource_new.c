@@ -4443,3 +4443,417 @@ int dlb2_hw_create_ldb_port(struct dlb2_hw *hw,
 
 	return 0;
 }
+
+static void
+dlb2_log_create_dir_port_args(struct dlb2_hw *hw,
+			      u32 domain_id,
+			      uintptr_t cq_dma_base,
+			      struct dlb2_create_dir_port_args *args,
+			      bool vdev_req,
+			      unsigned int vdev_id)
+{
+	DLB2_HW_DBG(hw, "DLB2 create directed port arguments:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from vdev %d)\n", vdev_id);
+	DLB2_HW_DBG(hw, "\tDomain ID:                 %d\n",
+		    domain_id);
+	DLB2_HW_DBG(hw, "\tCQ depth:                  %d\n",
+		    args->cq_depth);
+	DLB2_HW_DBG(hw, "\tCQ base address:           0x%lx\n",
+		    cq_dma_base);
+}
+
+static struct dlb2_dir_pq_pair *
+dlb2_get_domain_used_dir_pq(struct dlb2_hw *hw,
+			    u32 id,
+			    bool vdev_req,
+			    struct dlb2_hw_domain *domain)
+{
+	struct dlb2_list_entry *iter;
+	struct dlb2_dir_pq_pair *port;
+	RTE_SET_USED(iter);
+
+	if (id >= DLB2_MAX_NUM_DIR_PORTS(hw->ver))
+		return NULL;
+
+	DLB2_DOM_LIST_FOR(domain->used_dir_pq_pairs, port, iter) {
+		if ((!vdev_req && port->id.phys_id == id) ||
+		    (vdev_req && port->id.virt_id == id))
+			return port;
+	}
+
+	return NULL;
+}
+
+static int
+dlb2_verify_create_dir_port_args(struct dlb2_hw *hw,
+				 u32 domain_id,
+				 uintptr_t cq_dma_base,
+				 struct dlb2_create_dir_port_args *args,
+				 struct dlb2_cmd_response *resp,
+				 bool vdev_req,
+				 unsigned int vdev_id,
+				 struct dlb2_hw_domain **out_domain,
+				 struct dlb2_dir_pq_pair **out_port)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_dir_pq_pair *pq;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB2_ST_DOMAIN_NOT_CONFIGURED;
+		return -EINVAL;
+	}
+
+	if (domain->started) {
+		resp->status = DLB2_ST_DOMAIN_STARTED;
+		return -EINVAL;
+	}
+
+	if (args->queue_id != -1) {
+		/*
+		 * If the user claims the queue is already configured, validate
+		 * the queue ID, its domain, and whether the queue is
+		 * configured.
+		 */
+		pq = dlb2_get_domain_used_dir_pq(hw,
+						 args->queue_id,
+						 vdev_req,
+						 domain);
+
+		if (!pq || pq->domain_id.phys_id != domain->id.phys_id ||
+		    !pq->queue_configured) {
+			resp->status = DLB2_ST_INVALID_DIR_QUEUE_ID;
+			return -EINVAL;
+		}
+	} else {
+		/*
+		 * If the port's queue is not configured, validate that a free
+		 * port-queue pair is available.
+		 */
+		pq = DLB2_DOM_LIST_HEAD(domain->avail_dir_pq_pairs,
+					typeof(*pq));
+		if (!pq) {
+			resp->status = DLB2_ST_DIR_PORTS_UNAVAILABLE;
+			return -EINVAL;
+		}
+	}
+
+	/* Check cache-line alignment */
+	if ((cq_dma_base & 0x3F) != 0) {
+		resp->status = DLB2_ST_INVALID_CQ_VIRT_ADDR;
+		return -EINVAL;
+	}
+
+	if (!dlb2_cq_depth_is_valid(args->cq_depth)) {
+		resp->status = DLB2_ST_INVALID_CQ_DEPTH;
+		return -EINVAL;
+	}
+
+	*out_domain = domain;
+	*out_port = pq;
+
+	return 0;
+}
+
+static void dlb2_dir_port_configure_pp(struct dlb2_hw *hw,
+				       struct dlb2_hw_domain *domain,
+				       struct dlb2_dir_pq_pair *port,
+				       bool vdev_req,
+				       unsigned int vdev_id)
+{
+	u32 reg = 0;
+
+	DLB2_BITS_SET(reg, domain->id.phys_id, DLB2_SYS_DIR_PP2VAS_VAS);
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_PP2VAS(port->id.phys_id), reg);
+
+	if (vdev_req) {
+		unsigned int offs;
+		u32 virt_id;
+
+		/*
+		 * DLB uses producer port address bits 17:12 to determine the
+		 * producer port ID. In Scalable IOV mode, PP accesses come
+		 * through the PF MMIO window for the physical producer port,
+		 * so for translation purposes the virtual and physical port
+		 * IDs are equal.
+		 */
+		if (hw->virt_mode == DLB2_VIRT_SRIOV)
+			virt_id = port->id.virt_id;
+		else
+			virt_id = port->id.phys_id;
+
+		reg = 0;
+		DLB2_BITS_SET(reg, port->id.phys_id, DLB2_SYS_VF_DIR_VPP2PP_PP);
+		offs = vdev_id * DLB2_MAX_NUM_DIR_PORTS(hw->ver) + virt_id;
+		DLB2_CSR_WR(hw, DLB2_SYS_VF_DIR_VPP2PP(offs), reg);
+
+		reg = 0;
+		DLB2_BITS_SET(reg, vdev_id, DLB2_SYS_DIR_PP2VDEV_VDEV);
+		DLB2_CSR_WR(hw, DLB2_SYS_DIR_PP2VDEV(port->id.phys_id), reg);
+
+		reg = 0;
+		DLB2_BIT_SET(reg, DLB2_SYS_VF_DIR_VPP_V_VPP_V);
+		DLB2_CSR_WR(hw, DLB2_SYS_VF_DIR_VPP_V(offs), reg);
+	}
+
+	reg = 0;
+	DLB2_BIT_SET(reg, DLB2_SYS_DIR_PP_V_PP_V);
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_PP_V(port->id.phys_id), reg);
+}
+
+static int dlb2_dir_port_configure_cq(struct dlb2_hw *hw,
+				      struct dlb2_hw_domain *domain,
+				      struct dlb2_dir_pq_pair *port,
+				      uintptr_t cq_dma_base,
+				      struct dlb2_create_dir_port_args *args,
+				      bool vdev_req,
+				      unsigned int vdev_id)
+{
+	u32 reg = 0;
+	u32 ds = 0;
+
+	/* The CQ address is 64B-aligned, and the DLB only wants bits [63:6] */
+	DLB2_BITS_SET(reg, cq_dma_base >> 6, DLB2_SYS_DIR_CQ_ADDR_L_ADDR_L);
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_CQ_ADDR_L(port->id.phys_id), reg);
+
+	reg = cq_dma_base >> 32;
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_CQ_ADDR_U(port->id.phys_id), reg);
+
+	/*
+	 * 'ro' == relaxed ordering. This setting allows DLB2 to write
+	 * cache lines out-of-order (but QEs within a cache line are always
+	 * updated in-order).
+	 */
+	reg = 0;
+	DLB2_BITS_SET(reg, vdev_id, DLB2_SYS_DIR_CQ2VF_PF_RO_VF);
+	DLB2_BITS_SET(reg, !vdev_req && (hw->virt_mode != DLB2_VIRT_SIOV),
+		 DLB2_SYS_DIR_CQ2VF_PF_RO_IS_PF);
+	DLB2_BIT_SET(reg, DLB2_SYS_DIR_CQ2VF_PF_RO_RO);
+
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_CQ2VF_PF_RO(port->id.phys_id), reg);
+
+	if (args->cq_depth <= 8) {
+		ds = 1;
+	} else if (args->cq_depth == 16) {
+		ds = 2;
+	} else if (args->cq_depth == 32) {
+		ds = 3;
+	} else if (args->cq_depth == 64) {
+		ds = 4;
+	} else if (args->cq_depth == 128) {
+		ds = 5;
+	} else if (args->cq_depth == 256) {
+		ds = 6;
+	} else if (args->cq_depth == 512) {
+		ds = 7;
+	} else if (args->cq_depth == 1024) {
+		ds = 8;
+	} else {
+		DLB2_HW_ERR(hw,
+			    "[%s():%d] Internal error: invalid CQ depth\n",
+			    __func__, __LINE__);
+		return -EFAULT;
+	}
+
+	reg = 0;
+	DLB2_BITS_SET(reg, ds,
+		      DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT);
+	DLB2_CSR_WR(hw,
+		    DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL(hw->ver, port->id.phys_id),
+		    reg);
+
+	/*
+	 * To support CQs with depth less than 8, program the token count
+	 * register with a non-zero initial value. Operations such as domain
+	 * reset must take this initial value into account when quiescing the
+	 * CQ.
+	 */
+	port->init_tkn_cnt = 0;
+
+	if (args->cq_depth < 8) {
+		reg = 0;
+		port->init_tkn_cnt = 8 - args->cq_depth;
+
+		DLB2_BITS_SET(reg, port->init_tkn_cnt,
+			      DLB2_LSP_CQ_DIR_TKN_CNT_COUNT);
+		DLB2_CSR_WR(hw,
+			    DLB2_LSP_CQ_DIR_TKN_CNT(hw->ver, port->id.phys_id),
+			    reg);
+	} else {
+		DLB2_CSR_WR(hw,
+			    DLB2_LSP_CQ_DIR_TKN_CNT(hw->ver, port->id.phys_id),
+			    DLB2_LSP_CQ_DIR_TKN_CNT_RST);
+	}
+
+	reg = 0;
+	DLB2_BITS_SET(reg, ds,
+		      DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_TOKEN_DEPTH_SELECT_V2);
+	DLB2_CSR_WR(hw,
+		    DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI(hw->ver,
+						      port->id.phys_id),
+		    reg);
+
+	/* Reset the CQ write pointer */
+	DLB2_CSR_WR(hw,
+		    DLB2_CHP_DIR_CQ_WPTR(hw->ver, port->id.phys_id),
+		    DLB2_CHP_DIR_CQ_WPTR_RST);
+
+	/* Virtualize the PPID */
+	reg = 0;
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_CQ_FMT(port->id.phys_id), reg);
+
+	/*
+	 * Address translation (AT) settings: 0: untranslated, 2: translated
+	 * (see ATS spec regarding Address Type field for more details)
+	 */
+	if (hw->ver == DLB2_HW_V2) {
+		reg = 0;
+		DLB2_CSR_WR(hw, DLB2_SYS_DIR_CQ_AT(port->id.phys_id), reg);
+	}
+
+	if (vdev_req && hw->virt_mode == DLB2_VIRT_SIOV) {
+		DLB2_BITS_SET(reg, hw->pasid[vdev_id],
+			      DLB2_SYS_DIR_CQ_PASID_PASID);
+		DLB2_BIT_SET(reg, DLB2_SYS_DIR_CQ_PASID_FMT2);
+	}
+
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_CQ_PASID(hw->ver, port->id.phys_id), reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, domain->id.phys_id, DLB2_CHP_DIR_CQ2VAS_CQ2VAS);
+	DLB2_CSR_WR(hw, DLB2_CHP_DIR_CQ2VAS(hw->ver, port->id.phys_id), reg);
+
+	return 0;
+}
+
+static int dlb2_configure_dir_port(struct dlb2_hw *hw,
+				   struct dlb2_hw_domain *domain,
+				   struct dlb2_dir_pq_pair *port,
+				   uintptr_t cq_dma_base,
+				   struct dlb2_create_dir_port_args *args,
+				   bool vdev_req,
+				   unsigned int vdev_id)
+{
+	int ret;
+
+	ret = dlb2_dir_port_configure_cq(hw,
+					 domain,
+					 port,
+					 cq_dma_base,
+					 args,
+					 vdev_req,
+					 vdev_id);
+
+	if (ret)
+		return ret;
+
+	dlb2_dir_port_configure_pp(hw,
+				   domain,
+				   port,
+				   vdev_req,
+				   vdev_id);
+
+	dlb2_dir_port_cq_enable(hw, port);
+
+	port->enabled = true;
+
+	port->port_configured = true;
+
+	return 0;
+}
+
+/**
+ * dlb2_hw_create_dir_port() - create a directed port
+ * @hw: dlb2_hw handle for a particular device.
+ * @domain_id: domain ID.
+ * @args: port creation arguments.
+ * @cq_dma_base: base address of the CQ memory. This can be a PA or an IOVA.
+ * @resp: response structure.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * This function creates a directed port.
+ *
+ * A vdev can be either an SR-IOV virtual function or a Scalable IOV virtual
+ * device.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error. If successful, resp->id
+ * contains the port ID.
+ *
+ * resp->id contains a virtual ID if vdev_req is true.
+ *
+ * Errors:
+ * EINVAL - A requested resource is unavailable, a credit setting is invalid, a
+ *	    pointer address is not properly aligned, the domain is not
+ *	    configured, or the domain has already been started.
+ * EFAULT - Internal error (resp->status not set).
+ */
+int dlb2_hw_create_dir_port(struct dlb2_hw *hw,
+			    u32 domain_id,
+			    struct dlb2_create_dir_port_args *args,
+			    uintptr_t cq_dma_base,
+			    struct dlb2_cmd_response *resp,
+			    bool vdev_req,
+			    unsigned int vdev_id)
+{
+	struct dlb2_dir_pq_pair *port;
+	struct dlb2_hw_domain *domain;
+	int ret;
+
+	dlb2_log_create_dir_port_args(hw,
+				      domain_id,
+				      cq_dma_base,
+				      args,
+				      vdev_req,
+				      vdev_id);
+
+	/*
+	 * Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	ret = dlb2_verify_create_dir_port_args(hw,
+					       domain_id,
+					       cq_dma_base,
+					       args,
+					       resp,
+					       vdev_req,
+					       vdev_id,
+					       &domain,
+					       &port);
+	if (ret)
+		return ret;
+
+	ret = dlb2_configure_dir_port(hw,
+				      domain,
+				      port,
+				      cq_dma_base,
+				      args,
+				      vdev_req,
+				      vdev_id);
+	if (ret)
+		return ret;
+
+	/*
+	 * Configuration succeeded, so move the resource from the 'avail' to
+	 * the 'used' list (if it's not already there).
+	 */
+	if (args->queue_id == -1) {
+		dlb2_list_del(&domain->avail_dir_pq_pairs, &port->domain_list);
+
+		dlb2_list_add(&domain->used_dir_pq_pairs, &port->domain_list);
+	}
+
+	resp->status = 0;
+	resp->id = (vdev_req) ? port->id.virt_id : port->id.phys_id;
+
+	return 0;
+}
