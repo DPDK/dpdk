@@ -7,553 +7,550 @@
 
 #include "dlb2_osdep_types.h"
 
-#define DLB2_FUNC_PF_VF2PF_MAILBOX_BYTES 256
-#define DLB2_FUNC_PF_VF2PF_MAILBOX(vf_id, x) \
+#define DLB2_PF_VF2PF_MAILBOX_BYTES 256
+#define DLB2_PF_VF2PF_MAILBOX(vf_id, x) \
 	(0x1000 + 0x4 * (x) + (vf_id) * 0x10000)
-#define DLB2_FUNC_PF_VF2PF_MAILBOX_RST 0x0
-union dlb2_func_pf_vf2pf_mailbox {
-	struct {
-		u32 msg : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_PF_VF2PF_MAILBOX_RST 0x0
 
-#define DLB2_FUNC_PF_VF2PF_MAILBOX_ISR(vf_id) \
+#define DLB2_PF_VF2PF_MAILBOX_MSG	0xFFFFFFFF
+#define DLB2_PF_VF2PF_MAILBOX_MSG_LOC	0
+
+#define DLB2_PF_VF2PF_MAILBOX_ISR(vf_id) \
 	(0x1f00 + (vf_id) * 0x10000)
-#define DLB2_FUNC_PF_VF2PF_MAILBOX_ISR_RST 0x0
-union dlb2_func_pf_vf2pf_mailbox_isr {
-	struct {
-		u32 vf0_isr : 1;
-		u32 vf1_isr : 1;
-		u32 vf2_isr : 1;
-		u32 vf3_isr : 1;
-		u32 vf4_isr : 1;
-		u32 vf5_isr : 1;
-		u32 vf6_isr : 1;
-		u32 vf7_isr : 1;
-		u32 vf8_isr : 1;
-		u32 vf9_isr : 1;
-		u32 vf10_isr : 1;
-		u32 vf11_isr : 1;
-		u32 vf12_isr : 1;
-		u32 vf13_isr : 1;
-		u32 vf14_isr : 1;
-		u32 vf15_isr : 1;
-		u32 rsvd0 : 16;
-	} field;
-	u32 val;
-};
+#define DLB2_PF_VF2PF_MAILBOX_ISR_RST 0x0
 
-#define DLB2_FUNC_PF_VF2PF_FLR_ISR(vf_id) \
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF0_ISR	0x00000001
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF1_ISR	0x00000002
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF2_ISR	0x00000004
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF3_ISR	0x00000008
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF4_ISR	0x00000010
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF5_ISR	0x00000020
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF6_ISR	0x00000040
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF7_ISR	0x00000080
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF8_ISR	0x00000100
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF9_ISR	0x00000200
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF10_ISR	0x00000400
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF11_ISR	0x00000800
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF12_ISR	0x00001000
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF13_ISR	0x00002000
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF14_ISR	0x00004000
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF15_ISR	0x00008000
+#define DLB2_PF_VF2PF_MAILBOX_ISR_RSVD0	0xFFFF0000
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF0_ISR_LOC	0
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF1_ISR_LOC	1
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF2_ISR_LOC	2
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF3_ISR_LOC	3
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF4_ISR_LOC	4
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF5_ISR_LOC	5
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF6_ISR_LOC	6
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF7_ISR_LOC	7
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF8_ISR_LOC	8
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF9_ISR_LOC	9
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF10_ISR_LOC	10
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF11_ISR_LOC	11
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF12_ISR_LOC	12
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF13_ISR_LOC	13
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF14_ISR_LOC	14
+#define DLB2_PF_VF2PF_MAILBOX_ISR_VF15_ISR_LOC	15
+#define DLB2_PF_VF2PF_MAILBOX_ISR_RSVD0_LOC		16
+
+#define DLB2_PF_VF2PF_FLR_ISR(vf_id) \
 	(0x1f04 + (vf_id) * 0x10000)
-#define DLB2_FUNC_PF_VF2PF_FLR_ISR_RST 0x0
-union dlb2_func_pf_vf2pf_flr_isr {
-	struct {
-		u32 vf0_isr : 1;
-		u32 vf1_isr : 1;
-		u32 vf2_isr : 1;
-		u32 vf3_isr : 1;
-		u32 vf4_isr : 1;
-		u32 vf5_isr : 1;
-		u32 vf6_isr : 1;
-		u32 vf7_isr : 1;
-		u32 vf8_isr : 1;
-		u32 vf9_isr : 1;
-		u32 vf10_isr : 1;
-		u32 vf11_isr : 1;
-		u32 vf12_isr : 1;
-		u32 vf13_isr : 1;
-		u32 vf14_isr : 1;
-		u32 vf15_isr : 1;
-		u32 rsvd0 : 16;
-	} field;
-	u32 val;
-};
+#define DLB2_PF_VF2PF_FLR_ISR_RST 0x0
 
-#define DLB2_FUNC_PF_VF2PF_ISR_PEND(vf_id) \
+#define DLB2_PF_VF2PF_FLR_ISR_VF0_ISR	0x00000001
+#define DLB2_PF_VF2PF_FLR_ISR_VF1_ISR	0x00000002
+#define DLB2_PF_VF2PF_FLR_ISR_VF2_ISR	0x00000004
+#define DLB2_PF_VF2PF_FLR_ISR_VF3_ISR	0x00000008
+#define DLB2_PF_VF2PF_FLR_ISR_VF4_ISR	0x00000010
+#define DLB2_PF_VF2PF_FLR_ISR_VF5_ISR	0x00000020
+#define DLB2_PF_VF2PF_FLR_ISR_VF6_ISR	0x00000040
+#define DLB2_PF_VF2PF_FLR_ISR_VF7_ISR	0x00000080
+#define DLB2_PF_VF2PF_FLR_ISR_VF8_ISR	0x00000100
+#define DLB2_PF_VF2PF_FLR_ISR_VF9_ISR	0x00000200
+#define DLB2_PF_VF2PF_FLR_ISR_VF10_ISR	0x00000400
+#define DLB2_PF_VF2PF_FLR_ISR_VF11_ISR	0x00000800
+#define DLB2_PF_VF2PF_FLR_ISR_VF12_ISR	0x00001000
+#define DLB2_PF_VF2PF_FLR_ISR_VF13_ISR	0x00002000
+#define DLB2_PF_VF2PF_FLR_ISR_VF14_ISR	0x00004000
+#define DLB2_PF_VF2PF_FLR_ISR_VF15_ISR	0x00008000
+#define DLB2_PF_VF2PF_FLR_ISR_RSVD0		0xFFFF0000
+#define DLB2_PF_VF2PF_FLR_ISR_VF0_ISR_LOC	0
+#define DLB2_PF_VF2PF_FLR_ISR_VF1_ISR_LOC	1
+#define DLB2_PF_VF2PF_FLR_ISR_VF2_ISR_LOC	2
+#define DLB2_PF_VF2PF_FLR_ISR_VF3_ISR_LOC	3
+#define DLB2_PF_VF2PF_FLR_ISR_VF4_ISR_LOC	4
+#define DLB2_PF_VF2PF_FLR_ISR_VF5_ISR_LOC	5
+#define DLB2_PF_VF2PF_FLR_ISR_VF6_ISR_LOC	6
+#define DLB2_PF_VF2PF_FLR_ISR_VF7_ISR_LOC	7
+#define DLB2_PF_VF2PF_FLR_ISR_VF8_ISR_LOC	8
+#define DLB2_PF_VF2PF_FLR_ISR_VF9_ISR_LOC	9
+#define DLB2_PF_VF2PF_FLR_ISR_VF10_ISR_LOC	10
+#define DLB2_PF_VF2PF_FLR_ISR_VF11_ISR_LOC	11
+#define DLB2_PF_VF2PF_FLR_ISR_VF12_ISR_LOC	12
+#define DLB2_PF_VF2PF_FLR_ISR_VF13_ISR_LOC	13
+#define DLB2_PF_VF2PF_FLR_ISR_VF14_ISR_LOC	14
+#define DLB2_PF_VF2PF_FLR_ISR_VF15_ISR_LOC	15
+#define DLB2_PF_VF2PF_FLR_ISR_RSVD0_LOC	16
+
+#define DLB2_PF_VF2PF_ISR_PEND(vf_id) \
 	(0x1f10 + (vf_id) * 0x10000)
-#define DLB2_FUNC_PF_VF2PF_ISR_PEND_RST 0x0
-union dlb2_func_pf_vf2pf_isr_pend {
-	struct {
-		u32 isr_pend : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+#define DLB2_PF_VF2PF_ISR_PEND_RST 0x0
 
-#define DLB2_FUNC_PF_PF2VF_MAILBOX_BYTES 64
-#define DLB2_FUNC_PF_PF2VF_MAILBOX(vf_id, x) \
+#define DLB2_PF_VF2PF_ISR_PEND_ISR_PEND	0x00000001
+#define DLB2_PF_VF2PF_ISR_PEND_RSVD0		0xFFFFFFFE
+#define DLB2_PF_VF2PF_ISR_PEND_ISR_PEND_LOC	0
+#define DLB2_PF_VF2PF_ISR_PEND_RSVD0_LOC	1
+
+#define DLB2_PF_PF2VF_MAILBOX_BYTES 64
+#define DLB2_PF_PF2VF_MAILBOX(vf_id, x) \
 	(0x2000 + 0x4 * (x) + (vf_id) * 0x10000)
-#define DLB2_FUNC_PF_PF2VF_MAILBOX_RST 0x0
-union dlb2_func_pf_pf2vf_mailbox {
-	struct {
-		u32 msg : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_PF_PF2VF_MAILBOX_RST 0x0
 
-#define DLB2_FUNC_PF_PF2VF_MAILBOX_ISR(vf_id) \
+#define DLB2_PF_PF2VF_MAILBOX_MSG	0xFFFFFFFF
+#define DLB2_PF_PF2VF_MAILBOX_MSG_LOC	0
+
+#define DLB2_PF_PF2VF_MAILBOX_ISR(vf_id) \
 	(0x2f00 + (vf_id) * 0x10000)
-#define DLB2_FUNC_PF_PF2VF_MAILBOX_ISR_RST 0x0
-union dlb2_func_pf_pf2vf_mailbox_isr {
-	struct {
-		u32 vf0_isr : 1;
-		u32 vf1_isr : 1;
-		u32 vf2_isr : 1;
-		u32 vf3_isr : 1;
-		u32 vf4_isr : 1;
-		u32 vf5_isr : 1;
-		u32 vf6_isr : 1;
-		u32 vf7_isr : 1;
-		u32 vf8_isr : 1;
-		u32 vf9_isr : 1;
-		u32 vf10_isr : 1;
-		u32 vf11_isr : 1;
-		u32 vf12_isr : 1;
-		u32 vf13_isr : 1;
-		u32 vf14_isr : 1;
-		u32 vf15_isr : 1;
-		u32 rsvd0 : 16;
-	} field;
-	u32 val;
-};
+#define DLB2_PF_PF2VF_MAILBOX_ISR_RST 0x0
 
-#define DLB2_FUNC_PF_VF_RESET_IN_PROGRESS(vf_id) \
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF0_ISR	0x00000001
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF1_ISR	0x00000002
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF2_ISR	0x00000004
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF3_ISR	0x00000008
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF4_ISR	0x00000010
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF5_ISR	0x00000020
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF6_ISR	0x00000040
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF7_ISR	0x00000080
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF8_ISR	0x00000100
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF9_ISR	0x00000200
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF10_ISR	0x00000400
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF11_ISR	0x00000800
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF12_ISR	0x00001000
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF13_ISR	0x00002000
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF14_ISR	0x00004000
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF15_ISR	0x00008000
+#define DLB2_PF_PF2VF_MAILBOX_ISR_RSVD0	0xFFFF0000
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF0_ISR_LOC	0
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF1_ISR_LOC	1
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF2_ISR_LOC	2
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF3_ISR_LOC	3
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF4_ISR_LOC	4
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF5_ISR_LOC	5
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF6_ISR_LOC	6
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF7_ISR_LOC	7
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF8_ISR_LOC	8
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF9_ISR_LOC	9
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF10_ISR_LOC	10
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF11_ISR_LOC	11
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF12_ISR_LOC	12
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF13_ISR_LOC	13
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF14_ISR_LOC	14
+#define DLB2_PF_PF2VF_MAILBOX_ISR_VF15_ISR_LOC	15
+#define DLB2_PF_PF2VF_MAILBOX_ISR_RSVD0_LOC		16
+
+#define DLB2_PF_VF_RESET_IN_PROGRESS(vf_id) \
 	(0x3000 + (vf_id) * 0x10000)
-#define DLB2_FUNC_PF_VF_RESET_IN_PROGRESS_RST 0xffff
-union dlb2_func_pf_vf_reset_in_progress {
-	struct {
-		u32 vf0_reset_in_progress : 1;
-		u32 vf1_reset_in_progress : 1;
-		u32 vf2_reset_in_progress : 1;
-		u32 vf3_reset_in_progress : 1;
-		u32 vf4_reset_in_progress : 1;
-		u32 vf5_reset_in_progress : 1;
-		u32 vf6_reset_in_progress : 1;
-		u32 vf7_reset_in_progress : 1;
-		u32 vf8_reset_in_progress : 1;
-		u32 vf9_reset_in_progress : 1;
-		u32 vf10_reset_in_progress : 1;
-		u32 vf11_reset_in_progress : 1;
-		u32 vf12_reset_in_progress : 1;
-		u32 vf13_reset_in_progress : 1;
-		u32 vf14_reset_in_progress : 1;
-		u32 vf15_reset_in_progress : 1;
-		u32 rsvd0 : 16;
-	} field;
-	u32 val;
-};
+#define DLB2_PF_VF_RESET_IN_PROGRESS_RST 0xffff
 
-#define DLB2_MSIX_MEM_VECTOR_CTRL(x) \
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF0_RESET_IN_PROGRESS	0x00000001
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF1_RESET_IN_PROGRESS	0x00000002
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF2_RESET_IN_PROGRESS	0x00000004
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF3_RESET_IN_PROGRESS	0x00000008
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF4_RESET_IN_PROGRESS	0x00000010
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF5_RESET_IN_PROGRESS	0x00000020
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF6_RESET_IN_PROGRESS	0x00000040
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF7_RESET_IN_PROGRESS	0x00000080
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF8_RESET_IN_PROGRESS	0x00000100
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF9_RESET_IN_PROGRESS	0x00000200
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF10_RESET_IN_PROGRESS	0x00000400
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF11_RESET_IN_PROGRESS	0x00000800
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF12_RESET_IN_PROGRESS	0x00001000
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF13_RESET_IN_PROGRESS	0x00002000
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF14_RESET_IN_PROGRESS	0x00004000
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF15_RESET_IN_PROGRESS	0x00008000
+#define DLB2_PF_VF_RESET_IN_PROGRESS_RSVD0			0xFFFF0000
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF0_RESET_IN_PROGRESS_LOC	0
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF1_RESET_IN_PROGRESS_LOC	1
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF2_RESET_IN_PROGRESS_LOC	2
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF3_RESET_IN_PROGRESS_LOC	3
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF4_RESET_IN_PROGRESS_LOC	4
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF5_RESET_IN_PROGRESS_LOC	5
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF6_RESET_IN_PROGRESS_LOC	6
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF7_RESET_IN_PROGRESS_LOC	7
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF8_RESET_IN_PROGRESS_LOC	8
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF9_RESET_IN_PROGRESS_LOC	9
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF10_RESET_IN_PROGRESS_LOC	10
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF11_RESET_IN_PROGRESS_LOC	11
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF12_RESET_IN_PROGRESS_LOC	12
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF13_RESET_IN_PROGRESS_LOC	13
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF14_RESET_IN_PROGRESS_LOC	14
+#define DLB2_PF_VF_RESET_IN_PROGRESS_VF15_RESET_IN_PROGRESS_LOC	15
+#define DLB2_PF_VF_RESET_IN_PROGRESS_RSVD0_LOC			16
+
+#define DLB2_MSIX_VECTOR_CTRL(x) \
 	(0x100000c + (x) * 0x10)
-#define DLB2_MSIX_MEM_VECTOR_CTRL_RST 0x1
-union dlb2_msix_mem_vector_ctrl {
-	struct {
-		u32 vec_mask : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+#define DLB2_MSIX_VECTOR_CTRL_RST 0x1
+
+#define DLB2_MSIX_VECTOR_CTRL_VEC_MASK	0x00000001
+#define DLB2_MSIX_VECTOR_CTRL_RSVD0		0xFFFFFFFE
+#define DLB2_MSIX_VECTOR_CTRL_VEC_MASK_LOC	0
+#define DLB2_MSIX_VECTOR_CTRL_RSVD0_LOC	1
 
 #define DLB2_IOSF_FUNC_VF_BAR_DSBL(x) \
 	(0x20 + (x) * 0x4)
 #define DLB2_IOSF_FUNC_VF_BAR_DSBL_RST 0x0
-union dlb2_iosf_func_vf_bar_dsbl {
-	struct {
-		u32 func_vf_bar_dis : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
 
-#define DLB2_SYS_TOTAL_VAS 0x1000011c
+#define DLB2_IOSF_FUNC_VF_BAR_DSBL_FUNC_VF_BAR_DIS	0x00000001
+#define DLB2_IOSF_FUNC_VF_BAR_DSBL_RSVD0		0xFFFFFFFE
+#define DLB2_IOSF_FUNC_VF_BAR_DSBL_FUNC_VF_BAR_DIS_LOC	0
+#define DLB2_IOSF_FUNC_VF_BAR_DSBL_RSVD0_LOC			1
+
+#define DLB2_V2SYS_TOTAL_VAS 0x1000011c
+#define DLB2_V2_5SYS_TOTAL_VAS 0x10000114
+#define DLB2_SYS_TOTAL_VAS(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2SYS_TOTAL_VAS : \
+	 DLB2_V2_5SYS_TOTAL_VAS)
 #define DLB2_SYS_TOTAL_VAS_RST 0x20
-union dlb2_sys_total_vas {
-	struct {
-		u32 total_vas : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_SYS_TOTAL_DIR_PORTS 0x10000118
-#define DLB2_SYS_TOTAL_DIR_PORTS_RST 0x40
-union dlb2_sys_total_dir_ports {
-	struct {
-		u32 total_dir_ports : 32;
-	} field;
-	u32 val;
-};
-
-#define DLB2_SYS_TOTAL_LDB_PORTS 0x10000114
-#define DLB2_SYS_TOTAL_LDB_PORTS_RST 0x40
-union dlb2_sys_total_ldb_ports {
-	struct {
-		u32 total_ldb_ports : 32;
-	} field;
-	u32 val;
-};
-
-#define DLB2_SYS_TOTAL_DIR_QID 0x10000110
-#define DLB2_SYS_TOTAL_DIR_QID_RST 0x40
-union dlb2_sys_total_dir_qid {
-	struct {
-		u32 total_dir_qid : 32;
-	} field;
-	u32 val;
-};
-
-#define DLB2_SYS_TOTAL_LDB_QID 0x1000010c
-#define DLB2_SYS_TOTAL_LDB_QID_RST 0x20
-union dlb2_sys_total_ldb_qid {
-	struct {
-		u32 total_ldb_qid : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_SYS_TOTAL_VAS_TOTAL_VAS	0xFFFFFFFF
+#define DLB2_SYS_TOTAL_VAS_TOTAL_VAS_LOC	0
 
 #define DLB2_SYS_TOTAL_DIR_CRDS 0x10000108
 #define DLB2_SYS_TOTAL_DIR_CRDS_RST 0x1000
-union dlb2_sys_total_dir_crds {
-	struct {
-		u32 total_dir_credits : 32;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_TOTAL_DIR_CRDS_TOTAL_DIR_CREDITS	0xFFFFFFFF
+#define DLB2_SYS_TOTAL_DIR_CRDS_TOTAL_DIR_CREDITS_LOC	0
 
 #define DLB2_SYS_TOTAL_LDB_CRDS 0x10000104
 #define DLB2_SYS_TOTAL_LDB_CRDS_RST 0x2000
-union dlb2_sys_total_ldb_crds {
-	struct {
-		u32 total_ldb_credits : 32;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_TOTAL_LDB_CRDS_TOTAL_LDB_CREDITS	0xFFFFFFFF
+#define DLB2_SYS_TOTAL_LDB_CRDS_TOTAL_LDB_CREDITS_LOC	0
 
 #define DLB2_SYS_ALARM_PF_SYND2 0x10000508
 #define DLB2_SYS_ALARM_PF_SYND2_RST 0x0
-union dlb2_sys_alarm_pf_synd2 {
-	struct {
-		u32 lock_id : 16;
-		u32 meas : 1;
-		u32 debug : 7;
-		u32 cq_pop : 1;
-		u32 qe_uhl : 1;
-		u32 qe_orsp : 1;
-		u32 qe_valid : 1;
-		u32 cq_int_rearm : 1;
-		u32 dsi_error : 1;
-		u32 rsvd0 : 2;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_ALARM_PF_SYND2_LOCK_ID	0x0000FFFF
+#define DLB2_SYS_ALARM_PF_SYND2_MEAS		0x00010000
+#define DLB2_SYS_ALARM_PF_SYND2_DEBUG	0x00FE0000
+#define DLB2_SYS_ALARM_PF_SYND2_CQ_POP	0x01000000
+#define DLB2_SYS_ALARM_PF_SYND2_QE_UHL	0x02000000
+#define DLB2_SYS_ALARM_PF_SYND2_QE_ORSP	0x04000000
+#define DLB2_SYS_ALARM_PF_SYND2_QE_VALID	0x08000000
+#define DLB2_SYS_ALARM_PF_SYND2_CQ_INT_REARM	0x10000000
+#define DLB2_SYS_ALARM_PF_SYND2_DSI_ERROR	0x20000000
+#define DLB2_SYS_ALARM_PF_SYND2_RSVD0	0xC0000000
+#define DLB2_SYS_ALARM_PF_SYND2_LOCK_ID_LOC		0
+#define DLB2_SYS_ALARM_PF_SYND2_MEAS_LOC		16
+#define DLB2_SYS_ALARM_PF_SYND2_DEBUG_LOC		17
+#define DLB2_SYS_ALARM_PF_SYND2_CQ_POP_LOC		24
+#define DLB2_SYS_ALARM_PF_SYND2_QE_UHL_LOC		25
+#define DLB2_SYS_ALARM_PF_SYND2_QE_ORSP_LOC		26
+#define DLB2_SYS_ALARM_PF_SYND2_QE_VALID_LOC		27
+#define DLB2_SYS_ALARM_PF_SYND2_CQ_INT_REARM_LOC	28
+#define DLB2_SYS_ALARM_PF_SYND2_DSI_ERROR_LOC	29
+#define DLB2_SYS_ALARM_PF_SYND2_RSVD0_LOC		30
 
 #define DLB2_SYS_ALARM_PF_SYND1 0x10000504
 #define DLB2_SYS_ALARM_PF_SYND1_RST 0x0
-union dlb2_sys_alarm_pf_synd1 {
-	struct {
-		u32 dsi : 16;
-		u32 qid : 8;
-		u32 qtype : 2;
-		u32 qpri : 3;
-		u32 msg_type : 3;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_ALARM_PF_SYND1_DSI		0x0000FFFF
+#define DLB2_SYS_ALARM_PF_SYND1_QID		0x00FF0000
+#define DLB2_SYS_ALARM_PF_SYND1_QTYPE	0x03000000
+#define DLB2_SYS_ALARM_PF_SYND1_QPRI		0x1C000000
+#define DLB2_SYS_ALARM_PF_SYND1_MSG_TYPE	0xE0000000
+#define DLB2_SYS_ALARM_PF_SYND1_DSI_LOC	0
+#define DLB2_SYS_ALARM_PF_SYND1_QID_LOC	16
+#define DLB2_SYS_ALARM_PF_SYND1_QTYPE_LOC	24
+#define DLB2_SYS_ALARM_PF_SYND1_QPRI_LOC	26
+#define DLB2_SYS_ALARM_PF_SYND1_MSG_TYPE_LOC	29
 
 #define DLB2_SYS_ALARM_PF_SYND0 0x10000500
 #define DLB2_SYS_ALARM_PF_SYND0_RST 0x0
-union dlb2_sys_alarm_pf_synd0 {
-	struct {
-		u32 syndrome : 8;
-		u32 rtype : 2;
-		u32 rsvd0 : 3;
-		u32 is_ldb : 1;
-		u32 cls : 2;
-		u32 aid : 6;
-		u32 unit : 4;
-		u32 source : 4;
-		u32 more : 1;
-		u32 valid : 1;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_ALARM_PF_SYND0_SYNDROME	0x000000FF
+#define DLB2_SYS_ALARM_PF_SYND0_RTYPE	0x00000300
+#define DLB2_SYS_ALARM_PF_SYND0_RSVD0	0x00001C00
+#define DLB2_SYS_ALARM_PF_SYND0_IS_LDB	0x00002000
+#define DLB2_SYS_ALARM_PF_SYND0_CLS		0x0000C000
+#define DLB2_SYS_ALARM_PF_SYND0_AID		0x003F0000
+#define DLB2_SYS_ALARM_PF_SYND0_UNIT		0x03C00000
+#define DLB2_SYS_ALARM_PF_SYND0_SOURCE	0x3C000000
+#define DLB2_SYS_ALARM_PF_SYND0_MORE		0x40000000
+#define DLB2_SYS_ALARM_PF_SYND0_VALID	0x80000000
+#define DLB2_SYS_ALARM_PF_SYND0_SYNDROME_LOC	0
+#define DLB2_SYS_ALARM_PF_SYND0_RTYPE_LOC	8
+#define DLB2_SYS_ALARM_PF_SYND0_RSVD0_LOC	10
+#define DLB2_SYS_ALARM_PF_SYND0_IS_LDB_LOC	13
+#define DLB2_SYS_ALARM_PF_SYND0_CLS_LOC	14
+#define DLB2_SYS_ALARM_PF_SYND0_AID_LOC	16
+#define DLB2_SYS_ALARM_PF_SYND0_UNIT_LOC	22
+#define DLB2_SYS_ALARM_PF_SYND0_SOURCE_LOC	26
+#define DLB2_SYS_ALARM_PF_SYND0_MORE_LOC	30
+#define DLB2_SYS_ALARM_PF_SYND0_VALID_LOC	31
 
 #define DLB2_SYS_VF_LDB_VPP_V(x) \
 	(0x10000f00 + (x) * 0x1000)
 #define DLB2_SYS_VF_LDB_VPP_V_RST 0x0
-union dlb2_sys_vf_ldb_vpp_v {
-	struct {
-		u32 vpp_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_VF_LDB_VPP_V_VPP_V	0x00000001
+#define DLB2_SYS_VF_LDB_VPP_V_RSVD0	0xFFFFFFFE
+#define DLB2_SYS_VF_LDB_VPP_V_VPP_V_LOC	0
+#define DLB2_SYS_VF_LDB_VPP_V_RSVD0_LOC	1
 
 #define DLB2_SYS_VF_LDB_VPP2PP(x) \
 	(0x10000f04 + (x) * 0x1000)
 #define DLB2_SYS_VF_LDB_VPP2PP_RST 0x0
-union dlb2_sys_vf_ldb_vpp2pp {
-	struct {
-		u32 pp : 6;
-		u32 rsvd0 : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_VF_LDB_VPP2PP_PP	0x0000003F
+#define DLB2_SYS_VF_LDB_VPP2PP_RSVD0	0xFFFFFFC0
+#define DLB2_SYS_VF_LDB_VPP2PP_PP_LOC	0
+#define DLB2_SYS_VF_LDB_VPP2PP_RSVD0_LOC	6
 
 #define DLB2_SYS_VF_DIR_VPP_V(x) \
 	(0x10000f08 + (x) * 0x1000)
 #define DLB2_SYS_VF_DIR_VPP_V_RST 0x0
-union dlb2_sys_vf_dir_vpp_v {
-	struct {
-		u32 vpp_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_VF_DIR_VPP_V_VPP_V	0x00000001
+#define DLB2_SYS_VF_DIR_VPP_V_RSVD0	0xFFFFFFFE
+#define DLB2_SYS_VF_DIR_VPP_V_VPP_V_LOC	0
+#define DLB2_SYS_VF_DIR_VPP_V_RSVD0_LOC	1
 
 #define DLB2_SYS_VF_DIR_VPP2PP(x) \
 	(0x10000f0c + (x) * 0x1000)
 #define DLB2_SYS_VF_DIR_VPP2PP_RST 0x0
-union dlb2_sys_vf_dir_vpp2pp {
-	struct {
-		u32 pp : 6;
-		u32 rsvd0 : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_VF_DIR_VPP2PP_PP	0x0000003F
+#define DLB2_SYS_VF_DIR_VPP2PP_RSVD0	0xFFFFFFC0
+#define DLB2_SYS_VF_DIR_VPP2PP_PP_LOC	0
+#define DLB2_SYS_VF_DIR_VPP2PP_RSVD0_LOC	6
 
 #define DLB2_SYS_VF_LDB_VQID_V(x) \
 	(0x10000f10 + (x) * 0x1000)
 #define DLB2_SYS_VF_LDB_VQID_V_RST 0x0
-union dlb2_sys_vf_ldb_vqid_v {
-	struct {
-		u32 vqid_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_VF_LDB_VQID_V_VQID_V	0x00000001
+#define DLB2_SYS_VF_LDB_VQID_V_RSVD0		0xFFFFFFFE
+#define DLB2_SYS_VF_LDB_VQID_V_VQID_V_LOC	0
+#define DLB2_SYS_VF_LDB_VQID_V_RSVD0_LOC	1
 
 #define DLB2_SYS_VF_LDB_VQID2QID(x) \
 	(0x10000f14 + (x) * 0x1000)
 #define DLB2_SYS_VF_LDB_VQID2QID_RST 0x0
-union dlb2_sys_vf_ldb_vqid2qid {
-	struct {
-		u32 qid : 5;
-		u32 rsvd0 : 27;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_VF_LDB_VQID2QID_QID		0x0000001F
+#define DLB2_SYS_VF_LDB_VQID2QID_RSVD0	0xFFFFFFE0
+#define DLB2_SYS_VF_LDB_VQID2QID_QID_LOC	0
+#define DLB2_SYS_VF_LDB_VQID2QID_RSVD0_LOC	5
 
 #define DLB2_SYS_LDB_QID2VQID(x) \
 	(0x10000f18 + (x) * 0x1000)
 #define DLB2_SYS_LDB_QID2VQID_RST 0x0
-union dlb2_sys_ldb_qid2vqid {
-	struct {
-		u32 vqid : 5;
-		u32 rsvd0 : 27;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_QID2VQID_VQID	0x0000001F
+#define DLB2_SYS_LDB_QID2VQID_RSVD0	0xFFFFFFE0
+#define DLB2_SYS_LDB_QID2VQID_VQID_LOC	0
+#define DLB2_SYS_LDB_QID2VQID_RSVD0_LOC	5
 
 #define DLB2_SYS_VF_DIR_VQID_V(x) \
 	(0x10000f1c + (x) * 0x1000)
 #define DLB2_SYS_VF_DIR_VQID_V_RST 0x0
-union dlb2_sys_vf_dir_vqid_v {
-	struct {
-		u32 vqid_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_VF_DIR_VQID_V_VQID_V	0x00000001
+#define DLB2_SYS_VF_DIR_VQID_V_RSVD0		0xFFFFFFFE
+#define DLB2_SYS_VF_DIR_VQID_V_VQID_V_LOC	0
+#define DLB2_SYS_VF_DIR_VQID_V_RSVD0_LOC	1
 
 #define DLB2_SYS_VF_DIR_VQID2QID(x) \
 	(0x10000f20 + (x) * 0x1000)
 #define DLB2_SYS_VF_DIR_VQID2QID_RST 0x0
-union dlb2_sys_vf_dir_vqid2qid {
-	struct {
-		u32 qid : 6;
-		u32 rsvd0 : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_VF_DIR_VQID2QID_QID		0x0000003F
+#define DLB2_SYS_VF_DIR_VQID2QID_RSVD0	0xFFFFFFC0
+#define DLB2_SYS_VF_DIR_VQID2QID_QID_LOC	0
+#define DLB2_SYS_VF_DIR_VQID2QID_RSVD0_LOC	6
 
 #define DLB2_SYS_LDB_VASQID_V(x) \
 	(0x10000f24 + (x) * 0x1000)
 #define DLB2_SYS_LDB_VASQID_V_RST 0x0
-union dlb2_sys_ldb_vasqid_v {
-	struct {
-		u32 vasqid_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_VASQID_V_VASQID_V	0x00000001
+#define DLB2_SYS_LDB_VASQID_V_RSVD0		0xFFFFFFFE
+#define DLB2_SYS_LDB_VASQID_V_VASQID_V_LOC	0
+#define DLB2_SYS_LDB_VASQID_V_RSVD0_LOC	1
 
 #define DLB2_SYS_DIR_VASQID_V(x) \
 	(0x10000f28 + (x) * 0x1000)
 #define DLB2_SYS_DIR_VASQID_V_RST 0x0
-union dlb2_sys_dir_vasqid_v {
-	struct {
-		u32 vasqid_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_VASQID_V_VASQID_V	0x00000001
+#define DLB2_SYS_DIR_VASQID_V_RSVD0		0xFFFFFFFE
+#define DLB2_SYS_DIR_VASQID_V_VASQID_V_LOC	0
+#define DLB2_SYS_DIR_VASQID_V_RSVD0_LOC	1
 
 #define DLB2_SYS_ALARM_VF_SYND2(x) \
 	(0x10000f48 + (x) * 0x1000)
 #define DLB2_SYS_ALARM_VF_SYND2_RST 0x0
-union dlb2_sys_alarm_vf_synd2 {
-	struct {
-		u32 lock_id : 16;
-		u32 debug : 8;
-		u32 cq_pop : 1;
-		u32 qe_uhl : 1;
-		u32 qe_orsp : 1;
-		u32 qe_valid : 1;
-		u32 isz : 1;
-		u32 dsi_error : 1;
-		u32 dlbrsvd : 2;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_ALARM_VF_SYND2_LOCK_ID	0x0000FFFF
+#define DLB2_SYS_ALARM_VF_SYND2_DEBUG	0x00FF0000
+#define DLB2_SYS_ALARM_VF_SYND2_CQ_POP	0x01000000
+#define DLB2_SYS_ALARM_VF_SYND2_QE_UHL	0x02000000
+#define DLB2_SYS_ALARM_VF_SYND2_QE_ORSP	0x04000000
+#define DLB2_SYS_ALARM_VF_SYND2_QE_VALID	0x08000000
+#define DLB2_SYS_ALARM_VF_SYND2_ISZ		0x10000000
+#define DLB2_SYS_ALARM_VF_SYND2_DSI_ERROR	0x20000000
+#define DLB2_SYS_ALARM_VF_SYND2_DLBRSVD	0xC0000000
+#define DLB2_SYS_ALARM_VF_SYND2_LOCK_ID_LOC		0
+#define DLB2_SYS_ALARM_VF_SYND2_DEBUG_LOC		16
+#define DLB2_SYS_ALARM_VF_SYND2_CQ_POP_LOC		24
+#define DLB2_SYS_ALARM_VF_SYND2_QE_UHL_LOC		25
+#define DLB2_SYS_ALARM_VF_SYND2_QE_ORSP_LOC		26
+#define DLB2_SYS_ALARM_VF_SYND2_QE_VALID_LOC		27
+#define DLB2_SYS_ALARM_VF_SYND2_ISZ_LOC		28
+#define DLB2_SYS_ALARM_VF_SYND2_DSI_ERROR_LOC	29
+#define DLB2_SYS_ALARM_VF_SYND2_DLBRSVD_LOC		30
 
 #define DLB2_SYS_ALARM_VF_SYND1(x) \
 	(0x10000f44 + (x) * 0x1000)
 #define DLB2_SYS_ALARM_VF_SYND1_RST 0x0
-union dlb2_sys_alarm_vf_synd1 {
-	struct {
-		u32 dsi : 16;
-		u32 qid : 8;
-		u32 qtype : 2;
-		u32 qpri : 3;
-		u32 msg_type : 3;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_ALARM_VF_SYND1_DSI		0x0000FFFF
+#define DLB2_SYS_ALARM_VF_SYND1_QID		0x00FF0000
+#define DLB2_SYS_ALARM_VF_SYND1_QTYPE	0x03000000
+#define DLB2_SYS_ALARM_VF_SYND1_QPRI		0x1C000000
+#define DLB2_SYS_ALARM_VF_SYND1_MSG_TYPE	0xE0000000
+#define DLB2_SYS_ALARM_VF_SYND1_DSI_LOC	0
+#define DLB2_SYS_ALARM_VF_SYND1_QID_LOC	16
+#define DLB2_SYS_ALARM_VF_SYND1_QTYPE_LOC	24
+#define DLB2_SYS_ALARM_VF_SYND1_QPRI_LOC	26
+#define DLB2_SYS_ALARM_VF_SYND1_MSG_TYPE_LOC	29
 
 #define DLB2_SYS_ALARM_VF_SYND0(x) \
 	(0x10000f40 + (x) * 0x1000)
 #define DLB2_SYS_ALARM_VF_SYND0_RST 0x0
-union dlb2_sys_alarm_vf_synd0 {
-	struct {
-		u32 syndrome : 8;
-		u32 rtype : 2;
-		u32 vf_synd0_parity : 1;
-		u32 vf_synd1_parity : 1;
-		u32 vf_synd2_parity : 1;
-		u32 is_ldb : 1;
-		u32 cls : 2;
-		u32 aid : 6;
-		u32 unit : 4;
-		u32 source : 4;
-		u32 more : 1;
-		u32 valid : 1;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_ALARM_VF_SYND0_SYNDROME		0x000000FF
+#define DLB2_SYS_ALARM_VF_SYND0_RTYPE		0x00000300
+#define DLB2_SYS_ALARM_VF_SYND0_VF_SYND0_PARITY	0x00000400
+#define DLB2_SYS_ALARM_VF_SYND0_VF_SYND1_PARITY	0x00000800
+#define DLB2_SYS_ALARM_VF_SYND0_VF_SYND2_PARITY	0x00001000
+#define DLB2_SYS_ALARM_VF_SYND0_IS_LDB		0x00002000
+#define DLB2_SYS_ALARM_VF_SYND0_CLS			0x0000C000
+#define DLB2_SYS_ALARM_VF_SYND0_AID			0x003F0000
+#define DLB2_SYS_ALARM_VF_SYND0_UNIT			0x03C00000
+#define DLB2_SYS_ALARM_VF_SYND0_SOURCE		0x3C000000
+#define DLB2_SYS_ALARM_VF_SYND0_MORE			0x40000000
+#define DLB2_SYS_ALARM_VF_SYND0_VALID		0x80000000
+#define DLB2_SYS_ALARM_VF_SYND0_SYNDROME_LOC		0
+#define DLB2_SYS_ALARM_VF_SYND0_RTYPE_LOC		8
+#define DLB2_SYS_ALARM_VF_SYND0_VF_SYND0_PARITY_LOC	10
+#define DLB2_SYS_ALARM_VF_SYND0_VF_SYND1_PARITY_LOC	11
+#define DLB2_SYS_ALARM_VF_SYND0_VF_SYND2_PARITY_LOC	12
+#define DLB2_SYS_ALARM_VF_SYND0_IS_LDB_LOC		13
+#define DLB2_SYS_ALARM_VF_SYND0_CLS_LOC		14
+#define DLB2_SYS_ALARM_VF_SYND0_AID_LOC		16
+#define DLB2_SYS_ALARM_VF_SYND0_UNIT_LOC		22
+#define DLB2_SYS_ALARM_VF_SYND0_SOURCE_LOC		26
+#define DLB2_SYS_ALARM_VF_SYND0_MORE_LOC		30
+#define DLB2_SYS_ALARM_VF_SYND0_VALID_LOC		31
 
 #define DLB2_SYS_LDB_QID_CFG_V(x) \
 	(0x10000f58 + (x) * 0x1000)
 #define DLB2_SYS_LDB_QID_CFG_V_RST 0x0
-union dlb2_sys_ldb_qid_cfg_v {
-	struct {
-		u32 sn_cfg_v : 1;
-		u32 fid_cfg_v : 1;
-		u32 rsvd0 : 30;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_QID_CFG_V_SN_CFG_V	0x00000001
+#define DLB2_SYS_LDB_QID_CFG_V_FID_CFG_V	0x00000002
+#define DLB2_SYS_LDB_QID_CFG_V_RSVD0		0xFFFFFFFC
+#define DLB2_SYS_LDB_QID_CFG_V_SN_CFG_V_LOC	0
+#define DLB2_SYS_LDB_QID_CFG_V_FID_CFG_V_LOC	1
+#define DLB2_SYS_LDB_QID_CFG_V_RSVD0_LOC	2
 
 #define DLB2_SYS_LDB_QID_ITS(x) \
 	(0x10000f54 + (x) * 0x1000)
 #define DLB2_SYS_LDB_QID_ITS_RST 0x0
-union dlb2_sys_ldb_qid_its {
-	struct {
-		u32 qid_its : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_QID_ITS_QID_ITS	0x00000001
+#define DLB2_SYS_LDB_QID_ITS_RSVD0	0xFFFFFFFE
+#define DLB2_SYS_LDB_QID_ITS_QID_ITS_LOC	0
+#define DLB2_SYS_LDB_QID_ITS_RSVD0_LOC	1
 
 #define DLB2_SYS_LDB_QID_V(x) \
 	(0x10000f50 + (x) * 0x1000)
 #define DLB2_SYS_LDB_QID_V_RST 0x0
-union dlb2_sys_ldb_qid_v {
-	struct {
-		u32 qid_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_QID_V_QID_V	0x00000001
+#define DLB2_SYS_LDB_QID_V_RSVD0	0xFFFFFFFE
+#define DLB2_SYS_LDB_QID_V_QID_V_LOC	0
+#define DLB2_SYS_LDB_QID_V_RSVD0_LOC	1
 
 #define DLB2_SYS_DIR_QID_ITS(x) \
 	(0x10000f64 + (x) * 0x1000)
 #define DLB2_SYS_DIR_QID_ITS_RST 0x0
-union dlb2_sys_dir_qid_its {
-	struct {
-		u32 qid_its : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_QID_ITS_QID_ITS	0x00000001
+#define DLB2_SYS_DIR_QID_ITS_RSVD0	0xFFFFFFFE
+#define DLB2_SYS_DIR_QID_ITS_QID_ITS_LOC	0
+#define DLB2_SYS_DIR_QID_ITS_RSVD0_LOC	1
 
 #define DLB2_SYS_DIR_QID_V(x) \
 	(0x10000f60 + (x) * 0x1000)
 #define DLB2_SYS_DIR_QID_V_RST 0x0
-union dlb2_sys_dir_qid_v {
-	struct {
-		u32 qid_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_QID_V_QID_V	0x00000001
+#define DLB2_SYS_DIR_QID_V_RSVD0	0xFFFFFFFE
+#define DLB2_SYS_DIR_QID_V_QID_V_LOC	0
+#define DLB2_SYS_DIR_QID_V_RSVD0_LOC	1
 
 #define DLB2_SYS_LDB_CQ_AI_DATA(x) \
 	(0x10000fa8 + (x) * 0x1000)
 #define DLB2_SYS_LDB_CQ_AI_DATA_RST 0x0
-union dlb2_sys_ldb_cq_ai_data {
-	struct {
-		u32 cq_ai_data : 32;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ_AI_DATA_CQ_AI_DATA	0xFFFFFFFF
+#define DLB2_SYS_LDB_CQ_AI_DATA_CQ_AI_DATA_LOC	0
 
 #define DLB2_SYS_LDB_CQ_AI_ADDR(x) \
 	(0x10000fa4 + (x) * 0x1000)
 #define DLB2_SYS_LDB_CQ_AI_ADDR_RST 0x0
-union dlb2_sys_ldb_cq_ai_addr {
-	struct {
-		u32 rsvd1 : 2;
-		u32 cq_ai_addr : 18;
-		u32 rsvd0 : 12;
-	} field;
-	u32 val;
-};
 
-#define DLB2_SYS_LDB_CQ_PASID(x) \
+#define DLB2_SYS_LDB_CQ_AI_ADDR_RSVD1	0x00000003
+#define DLB2_SYS_LDB_CQ_AI_ADDR_CQ_AI_ADDR	0x000FFFFC
+#define DLB2_SYS_LDB_CQ_AI_ADDR_RSVD0	0xFFF00000
+#define DLB2_SYS_LDB_CQ_AI_ADDR_RSVD1_LOC		0
+#define DLB2_SYS_LDB_CQ_AI_ADDR_CQ_AI_ADDR_LOC	2
+#define DLB2_SYS_LDB_CQ_AI_ADDR_RSVD0_LOC		20
+
+#define DLB2_V2SYS_LDB_CQ_PASID(x) \
 	(0x10000fa0 + (x) * 0x1000)
+#define DLB2_V2_5SYS_LDB_CQ_PASID(x) \
+	(0x10000f9c + (x) * 0x1000)
+#define DLB2_SYS_LDB_CQ_PASID(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2SYS_LDB_CQ_PASID(x) : \
+	 DLB2_V2_5SYS_LDB_CQ_PASID(x))
 #define DLB2_SYS_LDB_CQ_PASID_RST 0x0
-union dlb2_sys_ldb_cq_pasid {
-	struct {
-		u32 pasid : 20;
-		u32 exe_req : 1;
-		u32 priv_req : 1;
-		u32 fmt2 : 1;
-		u32 rsvd0 : 9;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ_PASID_PASID		0x000FFFFF
+#define DLB2_SYS_LDB_CQ_PASID_EXE_REQ	0x00100000
+#define DLB2_SYS_LDB_CQ_PASID_PRIV_REQ	0x00200000
+#define DLB2_SYS_LDB_CQ_PASID_FMT2		0x00400000
+#define DLB2_SYS_LDB_CQ_PASID_RSVD0		0xFF800000
+#define DLB2_SYS_LDB_CQ_PASID_PASID_LOC	0
+#define DLB2_SYS_LDB_CQ_PASID_EXE_REQ_LOC	20
+#define DLB2_SYS_LDB_CQ_PASID_PRIV_REQ_LOC	21
+#define DLB2_SYS_LDB_CQ_PASID_FMT2_LOC	22
+#define DLB2_SYS_LDB_CQ_PASID_RSVD0_LOC	23
 
 #define DLB2_SYS_LDB_CQ_AT(x) \
 	(0x10000f9c + (x) * 0x1000)
 #define DLB2_SYS_LDB_CQ_AT_RST 0x0
-union dlb2_sys_ldb_cq_at {
-	struct {
-		u32 cq_at : 2;
-		u32 rsvd0 : 30;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ_AT_CQ_AT	0x00000003
+#define DLB2_SYS_LDB_CQ_AT_RSVD0	0xFFFFFFFC
+#define DLB2_SYS_LDB_CQ_AT_CQ_AT_LOC	0
+#define DLB2_SYS_LDB_CQ_AT_RSVD0_LOC	2
 
 #define DLB2_SYS_LDB_CQ_ISR(x) \
 	(0x10000f98 + (x) * 0x1000)
@@ -563,497 +560,891 @@ union dlb2_sys_ldb_cq_at {
 #define DLB2_CQ_ISR_MODE_MSI  1
 #define DLB2_CQ_ISR_MODE_MSIX 2
 #define DLB2_CQ_ISR_MODE_ADI  3
-union dlb2_sys_ldb_cq_isr {
-	struct {
-		u32 vector : 6;
-		u32 vf : 4;
-		u32 en_code : 2;
-		u32 rsvd0 : 20;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ_ISR_VECTOR	0x0000003F
+#define DLB2_SYS_LDB_CQ_ISR_VF	0x000003C0
+#define DLB2_SYS_LDB_CQ_ISR_EN_CODE	0x00000C00
+#define DLB2_SYS_LDB_CQ_ISR_RSVD0	0xFFFFF000
+#define DLB2_SYS_LDB_CQ_ISR_VECTOR_LOC	0
+#define DLB2_SYS_LDB_CQ_ISR_VF_LOC		6
+#define DLB2_SYS_LDB_CQ_ISR_EN_CODE_LOC	10
+#define DLB2_SYS_LDB_CQ_ISR_RSVD0_LOC	12
 
 #define DLB2_SYS_LDB_CQ2VF_PF_RO(x) \
 	(0x10000f94 + (x) * 0x1000)
 #define DLB2_SYS_LDB_CQ2VF_PF_RO_RST 0x0
-union dlb2_sys_ldb_cq2vf_pf_ro {
-	struct {
-		u32 vf : 4;
-		u32 is_pf : 1;
-		u32 ro : 1;
-		u32 rsvd0 : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ2VF_PF_RO_VF		0x0000000F
+#define DLB2_SYS_LDB_CQ2VF_PF_RO_IS_PF	0x00000010
+#define DLB2_SYS_LDB_CQ2VF_PF_RO_RO		0x00000020
+#define DLB2_SYS_LDB_CQ2VF_PF_RO_RSVD0	0xFFFFFFC0
+#define DLB2_SYS_LDB_CQ2VF_PF_RO_VF_LOC	0
+#define DLB2_SYS_LDB_CQ2VF_PF_RO_IS_PF_LOC	4
+#define DLB2_SYS_LDB_CQ2VF_PF_RO_RO_LOC	5
+#define DLB2_SYS_LDB_CQ2VF_PF_RO_RSVD0_LOC	6
 
 #define DLB2_SYS_LDB_PP_V(x) \
 	(0x10000f90 + (x) * 0x1000)
 #define DLB2_SYS_LDB_PP_V_RST 0x0
-union dlb2_sys_ldb_pp_v {
-	struct {
-		u32 pp_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_PP_V_PP_V	0x00000001
+#define DLB2_SYS_LDB_PP_V_RSVD0	0xFFFFFFFE
+#define DLB2_SYS_LDB_PP_V_PP_V_LOC	0
+#define DLB2_SYS_LDB_PP_V_RSVD0_LOC	1
 
 #define DLB2_SYS_LDB_PP2VDEV(x) \
 	(0x10000f8c + (x) * 0x1000)
 #define DLB2_SYS_LDB_PP2VDEV_RST 0x0
-union dlb2_sys_ldb_pp2vdev {
-	struct {
-		u32 vdev : 4;
-		u32 rsvd0 : 28;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_PP2VDEV_VDEV	0x0000000F
+#define DLB2_SYS_LDB_PP2VDEV_RSVD0	0xFFFFFFF0
+#define DLB2_SYS_LDB_PP2VDEV_VDEV_LOC	0
+#define DLB2_SYS_LDB_PP2VDEV_RSVD0_LOC	4
 
 #define DLB2_SYS_LDB_PP2VAS(x) \
 	(0x10000f88 + (x) * 0x1000)
 #define DLB2_SYS_LDB_PP2VAS_RST 0x0
-union dlb2_sys_ldb_pp2vas {
-	struct {
-		u32 vas : 5;
-		u32 rsvd0 : 27;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_PP2VAS_VAS	0x0000001F
+#define DLB2_SYS_LDB_PP2VAS_RSVD0	0xFFFFFFE0
+#define DLB2_SYS_LDB_PP2VAS_VAS_LOC		0
+#define DLB2_SYS_LDB_PP2VAS_RSVD0_LOC	5
 
 #define DLB2_SYS_LDB_CQ_ADDR_U(x) \
 	(0x10000f84 + (x) * 0x1000)
 #define DLB2_SYS_LDB_CQ_ADDR_U_RST 0x0
-union dlb2_sys_ldb_cq_addr_u {
-	struct {
-		u32 addr_u : 32;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ_ADDR_U_ADDR_U	0xFFFFFFFF
+#define DLB2_SYS_LDB_CQ_ADDR_U_ADDR_U_LOC	0
 
 #define DLB2_SYS_LDB_CQ_ADDR_L(x) \
 	(0x10000f80 + (x) * 0x1000)
 #define DLB2_SYS_LDB_CQ_ADDR_L_RST 0x0
-union dlb2_sys_ldb_cq_addr_l {
-	struct {
-		u32 rsvd0 : 6;
-		u32 addr_l : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ_ADDR_L_RSVD0		0x0000003F
+#define DLB2_SYS_LDB_CQ_ADDR_L_ADDR_L	0xFFFFFFC0
+#define DLB2_SYS_LDB_CQ_ADDR_L_RSVD0_LOC	0
+#define DLB2_SYS_LDB_CQ_ADDR_L_ADDR_L_LOC	6
 
 #define DLB2_SYS_DIR_CQ_FMT(x) \
 	(0x10000fec + (x) * 0x1000)
 #define DLB2_SYS_DIR_CQ_FMT_RST 0x0
-union dlb2_sys_dir_cq_fmt {
-	struct {
-		u32 keep_pf_ppid : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_FMT_KEEP_PF_PPID	0x00000001
+#define DLB2_SYS_DIR_CQ_FMT_RSVD0		0xFFFFFFFE
+#define DLB2_SYS_DIR_CQ_FMT_KEEP_PF_PPID_LOC	0
+#define DLB2_SYS_DIR_CQ_FMT_RSVD0_LOC	1
 
 #define DLB2_SYS_DIR_CQ_AI_DATA(x) \
 	(0x10000fe8 + (x) * 0x1000)
 #define DLB2_SYS_DIR_CQ_AI_DATA_RST 0x0
-union dlb2_sys_dir_cq_ai_data {
-	struct {
-		u32 cq_ai_data : 32;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_AI_DATA_CQ_AI_DATA	0xFFFFFFFF
+#define DLB2_SYS_DIR_CQ_AI_DATA_CQ_AI_DATA_LOC	0
 
 #define DLB2_SYS_DIR_CQ_AI_ADDR(x) \
 	(0x10000fe4 + (x) * 0x1000)
 #define DLB2_SYS_DIR_CQ_AI_ADDR_RST 0x0
-union dlb2_sys_dir_cq_ai_addr {
-	struct {
-		u32 rsvd1 : 2;
-		u32 cq_ai_addr : 18;
-		u32 rsvd0 : 12;
-	} field;
-	u32 val;
-};
 
-#define DLB2_SYS_DIR_CQ_PASID(x) \
+#define DLB2_SYS_DIR_CQ_AI_ADDR_RSVD1	0x00000003
+#define DLB2_SYS_DIR_CQ_AI_ADDR_CQ_AI_ADDR	0x000FFFFC
+#define DLB2_SYS_DIR_CQ_AI_ADDR_RSVD0	0xFFF00000
+#define DLB2_SYS_DIR_CQ_AI_ADDR_RSVD1_LOC		0
+#define DLB2_SYS_DIR_CQ_AI_ADDR_CQ_AI_ADDR_LOC	2
+#define DLB2_SYS_DIR_CQ_AI_ADDR_RSVD0_LOC		20
+
+#define DLB2_V2SYS_DIR_CQ_PASID(x) \
 	(0x10000fe0 + (x) * 0x1000)
+#define DLB2_V2_5SYS_DIR_CQ_PASID(x) \
+	(0x10000fdc + (x) * 0x1000)
+#define DLB2_SYS_DIR_CQ_PASID(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2SYS_DIR_CQ_PASID(x) : \
+	 DLB2_V2_5SYS_DIR_CQ_PASID(x))
 #define DLB2_SYS_DIR_CQ_PASID_RST 0x0
-union dlb2_sys_dir_cq_pasid {
-	struct {
-		u32 pasid : 20;
-		u32 exe_req : 1;
-		u32 priv_req : 1;
-		u32 fmt2 : 1;
-		u32 rsvd0 : 9;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_PASID_PASID		0x000FFFFF
+#define DLB2_SYS_DIR_CQ_PASID_EXE_REQ	0x00100000
+#define DLB2_SYS_DIR_CQ_PASID_PRIV_REQ	0x00200000
+#define DLB2_SYS_DIR_CQ_PASID_FMT2		0x00400000
+#define DLB2_SYS_DIR_CQ_PASID_RSVD0		0xFF800000
+#define DLB2_SYS_DIR_CQ_PASID_PASID_LOC	0
+#define DLB2_SYS_DIR_CQ_PASID_EXE_REQ_LOC	20
+#define DLB2_SYS_DIR_CQ_PASID_PRIV_REQ_LOC	21
+#define DLB2_SYS_DIR_CQ_PASID_FMT2_LOC	22
+#define DLB2_SYS_DIR_CQ_PASID_RSVD0_LOC	23
 
 #define DLB2_SYS_DIR_CQ_AT(x) \
 	(0x10000fdc + (x) * 0x1000)
 #define DLB2_SYS_DIR_CQ_AT_RST 0x0
-union dlb2_sys_dir_cq_at {
-	struct {
-		u32 cq_at : 2;
-		u32 rsvd0 : 30;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_AT_CQ_AT	0x00000003
+#define DLB2_SYS_DIR_CQ_AT_RSVD0	0xFFFFFFFC
+#define DLB2_SYS_DIR_CQ_AT_CQ_AT_LOC	0
+#define DLB2_SYS_DIR_CQ_AT_RSVD0_LOC	2
 
 #define DLB2_SYS_DIR_CQ_ISR(x) \
 	(0x10000fd8 + (x) * 0x1000)
 #define DLB2_SYS_DIR_CQ_ISR_RST 0x0
-union dlb2_sys_dir_cq_isr {
-	struct {
-		u32 vector : 6;
-		u32 vf : 4;
-		u32 en_code : 2;
-		u32 rsvd0 : 20;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_ISR_VECTOR	0x0000003F
+#define DLB2_SYS_DIR_CQ_ISR_VF	0x000003C0
+#define DLB2_SYS_DIR_CQ_ISR_EN_CODE	0x00000C00
+#define DLB2_SYS_DIR_CQ_ISR_RSVD0	0xFFFFF000
+#define DLB2_SYS_DIR_CQ_ISR_VECTOR_LOC	0
+#define DLB2_SYS_DIR_CQ_ISR_VF_LOC		6
+#define DLB2_SYS_DIR_CQ_ISR_EN_CODE_LOC	10
+#define DLB2_SYS_DIR_CQ_ISR_RSVD0_LOC	12
 
 #define DLB2_SYS_DIR_CQ2VF_PF_RO(x) \
 	(0x10000fd4 + (x) * 0x1000)
 #define DLB2_SYS_DIR_CQ2VF_PF_RO_RST 0x0
-union dlb2_sys_dir_cq2vf_pf_ro {
-	struct {
-		u32 vf : 4;
-		u32 is_pf : 1;
-		u32 ro : 1;
-		u32 rsvd0 : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ2VF_PF_RO_VF		0x0000000F
+#define DLB2_SYS_DIR_CQ2VF_PF_RO_IS_PF	0x00000010
+#define DLB2_SYS_DIR_CQ2VF_PF_RO_RO		0x00000020
+#define DLB2_SYS_DIR_CQ2VF_PF_RO_RSVD0	0xFFFFFFC0
+#define DLB2_SYS_DIR_CQ2VF_PF_RO_VF_LOC	0
+#define DLB2_SYS_DIR_CQ2VF_PF_RO_IS_PF_LOC	4
+#define DLB2_SYS_DIR_CQ2VF_PF_RO_RO_LOC	5
+#define DLB2_SYS_DIR_CQ2VF_PF_RO_RSVD0_LOC	6
 
 #define DLB2_SYS_DIR_PP_V(x) \
 	(0x10000fd0 + (x) * 0x1000)
 #define DLB2_SYS_DIR_PP_V_RST 0x0
-union dlb2_sys_dir_pp_v {
-	struct {
-		u32 pp_v : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_PP_V_PP_V	0x00000001
+#define DLB2_SYS_DIR_PP_V_RSVD0	0xFFFFFFFE
+#define DLB2_SYS_DIR_PP_V_PP_V_LOC	0
+#define DLB2_SYS_DIR_PP_V_RSVD0_LOC	1
 
 #define DLB2_SYS_DIR_PP2VDEV(x) \
 	(0x10000fcc + (x) * 0x1000)
 #define DLB2_SYS_DIR_PP2VDEV_RST 0x0
-union dlb2_sys_dir_pp2vdev {
-	struct {
-		u32 vdev : 4;
-		u32 rsvd0 : 28;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_PP2VDEV_VDEV	0x0000000F
+#define DLB2_SYS_DIR_PP2VDEV_RSVD0	0xFFFFFFF0
+#define DLB2_SYS_DIR_PP2VDEV_VDEV_LOC	0
+#define DLB2_SYS_DIR_PP2VDEV_RSVD0_LOC	4
 
 #define DLB2_SYS_DIR_PP2VAS(x) \
 	(0x10000fc8 + (x) * 0x1000)
 #define DLB2_SYS_DIR_PP2VAS_RST 0x0
-union dlb2_sys_dir_pp2vas {
-	struct {
-		u32 vas : 5;
-		u32 rsvd0 : 27;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_PP2VAS_VAS	0x0000001F
+#define DLB2_SYS_DIR_PP2VAS_RSVD0	0xFFFFFFE0
+#define DLB2_SYS_DIR_PP2VAS_VAS_LOC		0
+#define DLB2_SYS_DIR_PP2VAS_RSVD0_LOC	5
 
 #define DLB2_SYS_DIR_CQ_ADDR_U(x) \
 	(0x10000fc4 + (x) * 0x1000)
 #define DLB2_SYS_DIR_CQ_ADDR_U_RST 0x0
-union dlb2_sys_dir_cq_addr_u {
-	struct {
-		u32 addr_u : 32;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_ADDR_U_ADDR_U	0xFFFFFFFF
+#define DLB2_SYS_DIR_CQ_ADDR_U_ADDR_U_LOC	0
 
 #define DLB2_SYS_DIR_CQ_ADDR_L(x) \
 	(0x10000fc0 + (x) * 0x1000)
 #define DLB2_SYS_DIR_CQ_ADDR_L_RST 0x0
-union dlb2_sys_dir_cq_addr_l {
-	struct {
-		u32 rsvd0 : 6;
-		u32 addr_l : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_ADDR_L_RSVD0		0x0000003F
+#define DLB2_SYS_DIR_CQ_ADDR_L_ADDR_L	0xFFFFFFC0
+#define DLB2_SYS_DIR_CQ_ADDR_L_RSVD0_LOC	0
+#define DLB2_SYS_DIR_CQ_ADDR_L_ADDR_L_LOC	6
+
+#define DLB2_SYS_PM_SMON_COMP_MASK1 0x10003024
+#define DLB2_SYS_PM_SMON_COMP_MASK1_RST 0xffffffff
+
+#define DLB2_SYS_PM_SMON_COMP_MASK1_COMP_MASK1	0xFFFFFFFF
+#define DLB2_SYS_PM_SMON_COMP_MASK1_COMP_MASK1_LOC	0
+
+#define DLB2_SYS_PM_SMON_COMP_MASK0 0x10003020
+#define DLB2_SYS_PM_SMON_COMP_MASK0_RST 0xffffffff
+
+#define DLB2_SYS_PM_SMON_COMP_MASK0_COMP_MASK0	0xFFFFFFFF
+#define DLB2_SYS_PM_SMON_COMP_MASK0_COMP_MASK0_LOC	0
+
+#define DLB2_SYS_PM_SMON_MAX_TMR 0x1000301c
+#define DLB2_SYS_PM_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_SYS_PM_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_SYS_PM_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_SYS_PM_SMON_TMR 0x10003018
+#define DLB2_SYS_PM_SMON_TMR_RST 0x0
+
+#define DLB2_SYS_PM_SMON_TMR_TIMER_VAL	0xFFFFFFFF
+#define DLB2_SYS_PM_SMON_TMR_TIMER_VAL_LOC	0
+
+#define DLB2_SYS_PM_SMON_ACTIVITYCNTR1 0x10003014
+#define DLB2_SYS_PM_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_SYS_PM_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_SYS_PM_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_SYS_PM_SMON_ACTIVITYCNTR0 0x10003010
+#define DLB2_SYS_PM_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_SYS_PM_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_SYS_PM_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_SYS_PM_SMON_COMPARE1 0x1000300c
+#define DLB2_SYS_PM_SMON_COMPARE1_RST 0x0
+
+#define DLB2_SYS_PM_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_SYS_PM_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_SYS_PM_SMON_COMPARE0 0x10003008
+#define DLB2_SYS_PM_SMON_COMPARE0_RST 0x0
+
+#define DLB2_SYS_PM_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_SYS_PM_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_SYS_PM_SMON_CFG1 0x10003004
+#define DLB2_SYS_PM_SMON_CFG1_RST 0x0
+
+#define DLB2_SYS_PM_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_SYS_PM_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_SYS_PM_SMON_CFG1_RSVD	0xFFFF0000
+#define DLB2_SYS_PM_SMON_CFG1_MODE0_LOC	0
+#define DLB2_SYS_PM_SMON_CFG1_MODE1_LOC	8
+#define DLB2_SYS_PM_SMON_CFG1_RSVD_LOC	16
+
+#define DLB2_SYS_PM_SMON_CFG0 0x10003000
+#define DLB2_SYS_PM_SMON_CFG0_RST 0x40000000
+
+#define DLB2_SYS_PM_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_SYS_PM_SMON_CFG0_RSVD2			0x0000000E
+#define DLB2_SYS_PM_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_SYS_PM_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_SYS_PM_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_SYS_PM_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_SYS_PM_SMON_CFG0_SMON_MODE		0x0000F000
+#define DLB2_SYS_PM_SMON_CFG0_STOPCOUNTEROVFL	0x00010000
+#define DLB2_SYS_PM_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_SYS_PM_SMON_CFG0_STATCOUNTER0OVFL	0x00040000
+#define DLB2_SYS_PM_SMON_CFG0_STATCOUNTER1OVFL	0x00080000
+#define DLB2_SYS_PM_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_SYS_PM_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_SYS_PM_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_SYS_PM_SMON_CFG0_RSVD1			0x00800000
+#define DLB2_SYS_PM_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_SYS_PM_SMON_CFG0_RSVD0			0x20000000
+#define DLB2_SYS_PM_SMON_CFG0_VERSION		0xC0000000
+#define DLB2_SYS_PM_SMON_CFG0_SMON_ENABLE_LOC		0
+#define DLB2_SYS_PM_SMON_CFG0_RSVD2_LOC			1
+#define DLB2_SYS_PM_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_SYS_PM_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_SYS_PM_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_SYS_PM_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_SYS_PM_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_SYS_PM_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_SYS_PM_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_SYS_PM_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_SYS_PM_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_SYS_PM_SMON_CFG0_STOPTIMEROVFL_LOC		20
+#define DLB2_SYS_PM_SMON_CFG0_INTTIMEROVFL_LOC		21
+#define DLB2_SYS_PM_SMON_CFG0_STATTIMEROVFL_LOC		22
+#define DLB2_SYS_PM_SMON_CFG0_RSVD1_LOC			23
+#define DLB2_SYS_PM_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_SYS_PM_SMON_CFG0_RSVD0_LOC			29
+#define DLB2_SYS_PM_SMON_CFG0_VERSION_LOC			30
+
+#define DLB2_SYS_SMON_COMP_MASK1(x) \
+	(0x18002024 + (x) * 0x40)
+#define DLB2_SYS_SMON_COMP_MASK1_RST 0xffffffff
+
+#define DLB2_SYS_SMON_COMP_MASK1_COMP_MASK1	0xFFFFFFFF
+#define DLB2_SYS_SMON_COMP_MASK1_COMP_MASK1_LOC	0
+
+#define DLB2_SYS_SMON_COMP_MASK0(x) \
+	(0x18002020 + (x) * 0x40)
+#define DLB2_SYS_SMON_COMP_MASK0_RST 0xffffffff
+
+#define DLB2_SYS_SMON_COMP_MASK0_COMP_MASK0	0xFFFFFFFF
+#define DLB2_SYS_SMON_COMP_MASK0_COMP_MASK0_LOC	0
+
+#define DLB2_SYS_SMON_MAX_TMR(x) \
+	(0x1800201c + (x) * 0x40)
+#define DLB2_SYS_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_SYS_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_SYS_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_SYS_SMON_TMR(x) \
+	(0x18002018 + (x) * 0x40)
+#define DLB2_SYS_SMON_TMR_RST 0x0
+
+#define DLB2_SYS_SMON_TMR_TIMER_VAL	0xFFFFFFFF
+#define DLB2_SYS_SMON_TMR_TIMER_VAL_LOC	0
+
+#define DLB2_SYS_SMON_ACTIVITYCNTR1(x) \
+	(0x18002014 + (x) * 0x40)
+#define DLB2_SYS_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_SYS_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_SYS_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_SYS_SMON_ACTIVITYCNTR0(x) \
+	(0x18002010 + (x) * 0x40)
+#define DLB2_SYS_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_SYS_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_SYS_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_SYS_SMON_COMPARE1(x) \
+	(0x1800200c + (x) * 0x40)
+#define DLB2_SYS_SMON_COMPARE1_RST 0x0
+
+#define DLB2_SYS_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_SYS_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_SYS_SMON_COMPARE0(x) \
+	(0x18002008 + (x) * 0x40)
+#define DLB2_SYS_SMON_COMPARE0_RST 0x0
+
+#define DLB2_SYS_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_SYS_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_SYS_SMON_CFG1(x) \
+	(0x18002004 + (x) * 0x40)
+#define DLB2_SYS_SMON_CFG1_RST 0x0
+
+#define DLB2_SYS_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_SYS_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_SYS_SMON_CFG1_RSVD	0xFFFF0000
+#define DLB2_SYS_SMON_CFG1_MODE0_LOC	0
+#define DLB2_SYS_SMON_CFG1_MODE1_LOC	8
+#define DLB2_SYS_SMON_CFG1_RSVD_LOC	16
+
+#define DLB2_SYS_SMON_CFG0(x) \
+	(0x18002000 + (x) * 0x40)
+#define DLB2_SYS_SMON_CFG0_RST 0x40000000
+
+#define DLB2_SYS_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_SYS_SMON_CFG0_RSVD2			0x0000000E
+#define DLB2_SYS_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_SYS_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_SYS_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_SYS_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_SYS_SMON_CFG0_SMON_MODE			0x0000F000
+#define DLB2_SYS_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_SYS_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_SYS_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_SYS_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_SYS_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_SYS_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_SYS_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_SYS_SMON_CFG0_RSVD1			0x00800000
+#define DLB2_SYS_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_SYS_SMON_CFG0_RSVD0			0x20000000
+#define DLB2_SYS_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_SYS_SMON_CFG0_SMON_ENABLE_LOC			0
+#define DLB2_SYS_SMON_CFG0_RSVD2_LOC				1
+#define DLB2_SYS_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_SYS_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_SYS_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_SYS_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_SYS_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_SYS_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_SYS_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_SYS_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_SYS_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_SYS_SMON_CFG0_STOPTIMEROVFL_LOC			20
+#define DLB2_SYS_SMON_CFG0_INTTIMEROVFL_LOC			21
+#define DLB2_SYS_SMON_CFG0_STATTIMEROVFL_LOC			22
+#define DLB2_SYS_SMON_CFG0_RSVD1_LOC				23
+#define DLB2_SYS_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_SYS_SMON_CFG0_RSVD0_LOC				29
+#define DLB2_SYS_SMON_CFG0_VERSION_LOC			30
 
 #define DLB2_SYS_INGRESS_ALARM_ENBL 0x10000300
 #define DLB2_SYS_INGRESS_ALARM_ENBL_RST 0x0
-union dlb2_sys_ingress_alarm_enbl {
-	struct {
-		u32 illegal_hcw : 1;
-		u32 illegal_pp : 1;
-		u32 illegal_pasid : 1;
-		u32 illegal_qid : 1;
-		u32 disabled_qid : 1;
-		u32 illegal_ldb_qid_cfg : 1;
-		u32 rsvd0 : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_HCW		0x00000001
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_PP		0x00000002
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_PASID		0x00000004
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_QID		0x00000008
+#define DLB2_SYS_INGRESS_ALARM_ENBL_DISABLED_QID		0x00000010
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_LDB_QID_CFG	0x00000020
+#define DLB2_SYS_INGRESS_ALARM_ENBL_RSVD0			0xFFFFFFC0
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_HCW_LOC		0
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_PP_LOC		1
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_PASID_LOC	2
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_QID_LOC		3
+#define DLB2_SYS_INGRESS_ALARM_ENBL_DISABLED_QID_LOC		4
+#define DLB2_SYS_INGRESS_ALARM_ENBL_ILLEGAL_LDB_QID_CFG_LOC	5
+#define DLB2_SYS_INGRESS_ALARM_ENBL_RSVD0_LOC		6
 
 #define DLB2_SYS_MSIX_ACK 0x10000400
 #define DLB2_SYS_MSIX_ACK_RST 0x0
-union dlb2_sys_msix_ack {
-	struct {
-		u32 msix_0_ack : 1;
-		u32 msix_1_ack : 1;
-		u32 rsvd0 : 30;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_MSIX_ACK_MSIX_0_ACK	0x00000001
+#define DLB2_SYS_MSIX_ACK_MSIX_1_ACK	0x00000002
+#define DLB2_SYS_MSIX_ACK_RSVD0	0xFFFFFFFC
+#define DLB2_SYS_MSIX_ACK_MSIX_0_ACK_LOC	0
+#define DLB2_SYS_MSIX_ACK_MSIX_1_ACK_LOC	1
+#define DLB2_SYS_MSIX_ACK_RSVD0_LOC		2
 
 #define DLB2_SYS_MSIX_PASSTHRU 0x10000404
 #define DLB2_SYS_MSIX_PASSTHRU_RST 0x0
-union dlb2_sys_msix_passthru {
-	struct {
-		u32 msix_0_passthru : 1;
-		u32 msix_1_passthru : 1;
-		u32 rsvd0 : 30;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_MSIX_PASSTHRU_MSIX_0_PASSTHRU	0x00000001
+#define DLB2_SYS_MSIX_PASSTHRU_MSIX_1_PASSTHRU	0x00000002
+#define DLB2_SYS_MSIX_PASSTHRU_RSVD0			0xFFFFFFFC
+#define DLB2_SYS_MSIX_PASSTHRU_MSIX_0_PASSTHRU_LOC	0
+#define DLB2_SYS_MSIX_PASSTHRU_MSIX_1_PASSTHRU_LOC	1
+#define DLB2_SYS_MSIX_PASSTHRU_RSVD0_LOC		2
 
 #define DLB2_SYS_MSIX_MODE 0x10000408
 #define DLB2_SYS_MSIX_MODE_RST 0x0
 /* MSI-X Modes */
 #define DLB2_MSIX_MODE_PACKED     0
 #define DLB2_MSIX_MODE_COMPRESSED 1
-union dlb2_sys_msix_mode {
-	struct {
-		u32 mode : 1;
-		u32 poll_mode : 1;
-		u32 poll_mask : 1;
-		u32 poll_lock : 1;
-		u32 rsvd0 : 28;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_MSIX_MODE_MODE_V2	0x00000001
+#define DLB2_SYS_MSIX_MODE_POLL_MODE_V2	0x00000002
+#define DLB2_SYS_MSIX_MODE_POLL_MASK_V2	0x00000004
+#define DLB2_SYS_MSIX_MODE_POLL_LOCK_V2	0x00000008
+#define DLB2_SYS_MSIX_MODE_RSVD0_V2	0xFFFFFFF0
+#define DLB2_SYS_MSIX_MODE_MODE_V2_LOC	0
+#define DLB2_SYS_MSIX_MODE_POLL_MODE_V2_LOC	1
+#define DLB2_SYS_MSIX_MODE_POLL_MASK_V2_LOC	2
+#define DLB2_SYS_MSIX_MODE_POLL_LOCK_V2_LOC	3
+#define DLB2_SYS_MSIX_MODE_RSVD0_V2_LOC	4
+
+#define DLB2_SYS_MSIX_MODE_MODE_V2_5	0x00000001
+#define DLB2_SYS_MSIX_MODE_IMS_POLLING_V2_5	0x00000002
+#define DLB2_SYS_MSIX_MODE_RSVD0_V2_5	0xFFFFFFFC
+#define DLB2_SYS_MSIX_MODE_MODE_V2_5_LOC		0
+#define DLB2_SYS_MSIX_MODE_IMS_POLLING_V2_5_LOC	1
+#define DLB2_SYS_MSIX_MODE_RSVD0_V2_5_LOC		2
 
 #define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS 0x10000440
 #define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_RST 0x0
-union dlb2_sys_dir_cq_31_0_occ_int_sts {
-	struct {
-		u32 cq_0_occ_int : 1;
-		u32 cq_1_occ_int : 1;
-		u32 cq_2_occ_int : 1;
-		u32 cq_3_occ_int : 1;
-		u32 cq_4_occ_int : 1;
-		u32 cq_5_occ_int : 1;
-		u32 cq_6_occ_int : 1;
-		u32 cq_7_occ_int : 1;
-		u32 cq_8_occ_int : 1;
-		u32 cq_9_occ_int : 1;
-		u32 cq_10_occ_int : 1;
-		u32 cq_11_occ_int : 1;
-		u32 cq_12_occ_int : 1;
-		u32 cq_13_occ_int : 1;
-		u32 cq_14_occ_int : 1;
-		u32 cq_15_occ_int : 1;
-		u32 cq_16_occ_int : 1;
-		u32 cq_17_occ_int : 1;
-		u32 cq_18_occ_int : 1;
-		u32 cq_19_occ_int : 1;
-		u32 cq_20_occ_int : 1;
-		u32 cq_21_occ_int : 1;
-		u32 cq_22_occ_int : 1;
-		u32 cq_23_occ_int : 1;
-		u32 cq_24_occ_int : 1;
-		u32 cq_25_occ_int : 1;
-		u32 cq_26_occ_int : 1;
-		u32 cq_27_occ_int : 1;
-		u32 cq_28_occ_int : 1;
-		u32 cq_29_occ_int : 1;
-		u32 cq_30_occ_int : 1;
-		u32 cq_31_occ_int : 1;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_0_OCC_INT	0x00000001
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_1_OCC_INT	0x00000002
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_2_OCC_INT	0x00000004
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_3_OCC_INT	0x00000008
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_4_OCC_INT	0x00000010
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_5_OCC_INT	0x00000020
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_6_OCC_INT	0x00000040
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_7_OCC_INT	0x00000080
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_8_OCC_INT	0x00000100
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_9_OCC_INT	0x00000200
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_10_OCC_INT	0x00000400
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_11_OCC_INT	0x00000800
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_12_OCC_INT	0x00001000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_13_OCC_INT	0x00002000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_14_OCC_INT	0x00004000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_15_OCC_INT	0x00008000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_16_OCC_INT	0x00010000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_17_OCC_INT	0x00020000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_18_OCC_INT	0x00040000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_19_OCC_INT	0x00080000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_20_OCC_INT	0x00100000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_21_OCC_INT	0x00200000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_22_OCC_INT	0x00400000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_23_OCC_INT	0x00800000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_24_OCC_INT	0x01000000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_25_OCC_INT	0x02000000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_26_OCC_INT	0x04000000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_27_OCC_INT	0x08000000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_28_OCC_INT	0x10000000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_29_OCC_INT	0x20000000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_30_OCC_INT	0x40000000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_31_OCC_INT	0x80000000
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_0_OCC_INT_LOC	0
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_1_OCC_INT_LOC	1
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_2_OCC_INT_LOC	2
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_3_OCC_INT_LOC	3
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_4_OCC_INT_LOC	4
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_5_OCC_INT_LOC	5
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_6_OCC_INT_LOC	6
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_7_OCC_INT_LOC	7
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_8_OCC_INT_LOC	8
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_9_OCC_INT_LOC	9
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_10_OCC_INT_LOC	10
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_11_OCC_INT_LOC	11
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_12_OCC_INT_LOC	12
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_13_OCC_INT_LOC	13
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_14_OCC_INT_LOC	14
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_15_OCC_INT_LOC	15
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_16_OCC_INT_LOC	16
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_17_OCC_INT_LOC	17
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_18_OCC_INT_LOC	18
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_19_OCC_INT_LOC	19
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_20_OCC_INT_LOC	20
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_21_OCC_INT_LOC	21
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_22_OCC_INT_LOC	22
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_23_OCC_INT_LOC	23
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_24_OCC_INT_LOC	24
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_25_OCC_INT_LOC	25
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_26_OCC_INT_LOC	26
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_27_OCC_INT_LOC	27
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_28_OCC_INT_LOC	28
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_29_OCC_INT_LOC	29
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_30_OCC_INT_LOC	30
+#define DLB2_SYS_DIR_CQ_31_0_OCC_INT_STS_CQ_31_OCC_INT_LOC	31
 
 #define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS 0x10000444
 #define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_RST 0x0
-union dlb2_sys_dir_cq_63_32_occ_int_sts {
-	struct {
-		u32 cq_32_occ_int : 1;
-		u32 cq_33_occ_int : 1;
-		u32 cq_34_occ_int : 1;
-		u32 cq_35_occ_int : 1;
-		u32 cq_36_occ_int : 1;
-		u32 cq_37_occ_int : 1;
-		u32 cq_38_occ_int : 1;
-		u32 cq_39_occ_int : 1;
-		u32 cq_40_occ_int : 1;
-		u32 cq_41_occ_int : 1;
-		u32 cq_42_occ_int : 1;
-		u32 cq_43_occ_int : 1;
-		u32 cq_44_occ_int : 1;
-		u32 cq_45_occ_int : 1;
-		u32 cq_46_occ_int : 1;
-		u32 cq_47_occ_int : 1;
-		u32 cq_48_occ_int : 1;
-		u32 cq_49_occ_int : 1;
-		u32 cq_50_occ_int : 1;
-		u32 cq_51_occ_int : 1;
-		u32 cq_52_occ_int : 1;
-		u32 cq_53_occ_int : 1;
-		u32 cq_54_occ_int : 1;
-		u32 cq_55_occ_int : 1;
-		u32 cq_56_occ_int : 1;
-		u32 cq_57_occ_int : 1;
-		u32 cq_58_occ_int : 1;
-		u32 cq_59_occ_int : 1;
-		u32 cq_60_occ_int : 1;
-		u32 cq_61_occ_int : 1;
-		u32 cq_62_occ_int : 1;
-		u32 cq_63_occ_int : 1;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_32_OCC_INT	0x00000001
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_33_OCC_INT	0x00000002
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_34_OCC_INT	0x00000004
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_35_OCC_INT	0x00000008
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_36_OCC_INT	0x00000010
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_37_OCC_INT	0x00000020
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_38_OCC_INT	0x00000040
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_39_OCC_INT	0x00000080
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_40_OCC_INT	0x00000100
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_41_OCC_INT	0x00000200
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_42_OCC_INT	0x00000400
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_43_OCC_INT	0x00000800
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_44_OCC_INT	0x00001000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_45_OCC_INT	0x00002000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_46_OCC_INT	0x00004000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_47_OCC_INT	0x00008000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_48_OCC_INT	0x00010000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_49_OCC_INT	0x00020000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_50_OCC_INT	0x00040000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_51_OCC_INT	0x00080000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_52_OCC_INT	0x00100000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_53_OCC_INT	0x00200000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_54_OCC_INT	0x00400000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_55_OCC_INT	0x00800000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_56_OCC_INT	0x01000000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_57_OCC_INT	0x02000000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_58_OCC_INT	0x04000000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_59_OCC_INT	0x08000000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_60_OCC_INT	0x10000000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_61_OCC_INT	0x20000000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_62_OCC_INT	0x40000000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_63_OCC_INT	0x80000000
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_32_OCC_INT_LOC	0
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_33_OCC_INT_LOC	1
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_34_OCC_INT_LOC	2
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_35_OCC_INT_LOC	3
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_36_OCC_INT_LOC	4
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_37_OCC_INT_LOC	5
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_38_OCC_INT_LOC	6
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_39_OCC_INT_LOC	7
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_40_OCC_INT_LOC	8
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_41_OCC_INT_LOC	9
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_42_OCC_INT_LOC	10
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_43_OCC_INT_LOC	11
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_44_OCC_INT_LOC	12
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_45_OCC_INT_LOC	13
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_46_OCC_INT_LOC	14
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_47_OCC_INT_LOC	15
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_48_OCC_INT_LOC	16
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_49_OCC_INT_LOC	17
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_50_OCC_INT_LOC	18
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_51_OCC_INT_LOC	19
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_52_OCC_INT_LOC	20
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_53_OCC_INT_LOC	21
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_54_OCC_INT_LOC	22
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_55_OCC_INT_LOC	23
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_56_OCC_INT_LOC	24
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_57_OCC_INT_LOC	25
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_58_OCC_INT_LOC	26
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_59_OCC_INT_LOC	27
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_60_OCC_INT_LOC	28
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_61_OCC_INT_LOC	29
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_62_OCC_INT_LOC	30
+#define DLB2_SYS_DIR_CQ_63_32_OCC_INT_STS_CQ_63_OCC_INT_LOC	31
 
 #define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS 0x10000460
 #define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_RST 0x0
-union dlb2_sys_ldb_cq_31_0_occ_int_sts {
-	struct {
-		u32 cq_0_occ_int : 1;
-		u32 cq_1_occ_int : 1;
-		u32 cq_2_occ_int : 1;
-		u32 cq_3_occ_int : 1;
-		u32 cq_4_occ_int : 1;
-		u32 cq_5_occ_int : 1;
-		u32 cq_6_occ_int : 1;
-		u32 cq_7_occ_int : 1;
-		u32 cq_8_occ_int : 1;
-		u32 cq_9_occ_int : 1;
-		u32 cq_10_occ_int : 1;
-		u32 cq_11_occ_int : 1;
-		u32 cq_12_occ_int : 1;
-		u32 cq_13_occ_int : 1;
-		u32 cq_14_occ_int : 1;
-		u32 cq_15_occ_int : 1;
-		u32 cq_16_occ_int : 1;
-		u32 cq_17_occ_int : 1;
-		u32 cq_18_occ_int : 1;
-		u32 cq_19_occ_int : 1;
-		u32 cq_20_occ_int : 1;
-		u32 cq_21_occ_int : 1;
-		u32 cq_22_occ_int : 1;
-		u32 cq_23_occ_int : 1;
-		u32 cq_24_occ_int : 1;
-		u32 cq_25_occ_int : 1;
-		u32 cq_26_occ_int : 1;
-		u32 cq_27_occ_int : 1;
-		u32 cq_28_occ_int : 1;
-		u32 cq_29_occ_int : 1;
-		u32 cq_30_occ_int : 1;
-		u32 cq_31_occ_int : 1;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_0_OCC_INT	0x00000001
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_1_OCC_INT	0x00000002
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_2_OCC_INT	0x00000004
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_3_OCC_INT	0x00000008
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_4_OCC_INT	0x00000010
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_5_OCC_INT	0x00000020
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_6_OCC_INT	0x00000040
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_7_OCC_INT	0x00000080
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_8_OCC_INT	0x00000100
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_9_OCC_INT	0x00000200
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_10_OCC_INT	0x00000400
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_11_OCC_INT	0x00000800
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_12_OCC_INT	0x00001000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_13_OCC_INT	0x00002000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_14_OCC_INT	0x00004000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_15_OCC_INT	0x00008000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_16_OCC_INT	0x00010000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_17_OCC_INT	0x00020000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_18_OCC_INT	0x00040000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_19_OCC_INT	0x00080000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_20_OCC_INT	0x00100000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_21_OCC_INT	0x00200000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_22_OCC_INT	0x00400000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_23_OCC_INT	0x00800000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_24_OCC_INT	0x01000000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_25_OCC_INT	0x02000000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_26_OCC_INT	0x04000000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_27_OCC_INT	0x08000000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_28_OCC_INT	0x10000000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_29_OCC_INT	0x20000000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_30_OCC_INT	0x40000000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_31_OCC_INT	0x80000000
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_0_OCC_INT_LOC	0
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_1_OCC_INT_LOC	1
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_2_OCC_INT_LOC	2
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_3_OCC_INT_LOC	3
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_4_OCC_INT_LOC	4
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_5_OCC_INT_LOC	5
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_6_OCC_INT_LOC	6
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_7_OCC_INT_LOC	7
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_8_OCC_INT_LOC	8
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_9_OCC_INT_LOC	9
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_10_OCC_INT_LOC	10
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_11_OCC_INT_LOC	11
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_12_OCC_INT_LOC	12
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_13_OCC_INT_LOC	13
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_14_OCC_INT_LOC	14
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_15_OCC_INT_LOC	15
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_16_OCC_INT_LOC	16
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_17_OCC_INT_LOC	17
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_18_OCC_INT_LOC	18
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_19_OCC_INT_LOC	19
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_20_OCC_INT_LOC	20
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_21_OCC_INT_LOC	21
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_22_OCC_INT_LOC	22
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_23_OCC_INT_LOC	23
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_24_OCC_INT_LOC	24
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_25_OCC_INT_LOC	25
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_26_OCC_INT_LOC	26
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_27_OCC_INT_LOC	27
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_28_OCC_INT_LOC	28
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_29_OCC_INT_LOC	29
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_30_OCC_INT_LOC	30
+#define DLB2_SYS_LDB_CQ_31_0_OCC_INT_STS_CQ_31_OCC_INT_LOC	31
 
 #define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS 0x10000464
 #define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_RST 0x0
-union dlb2_sys_ldb_cq_63_32_occ_int_sts {
-	struct {
-		u32 cq_32_occ_int : 1;
-		u32 cq_33_occ_int : 1;
-		u32 cq_34_occ_int : 1;
-		u32 cq_35_occ_int : 1;
-		u32 cq_36_occ_int : 1;
-		u32 cq_37_occ_int : 1;
-		u32 cq_38_occ_int : 1;
-		u32 cq_39_occ_int : 1;
-		u32 cq_40_occ_int : 1;
-		u32 cq_41_occ_int : 1;
-		u32 cq_42_occ_int : 1;
-		u32 cq_43_occ_int : 1;
-		u32 cq_44_occ_int : 1;
-		u32 cq_45_occ_int : 1;
-		u32 cq_46_occ_int : 1;
-		u32 cq_47_occ_int : 1;
-		u32 cq_48_occ_int : 1;
-		u32 cq_49_occ_int : 1;
-		u32 cq_50_occ_int : 1;
-		u32 cq_51_occ_int : 1;
-		u32 cq_52_occ_int : 1;
-		u32 cq_53_occ_int : 1;
-		u32 cq_54_occ_int : 1;
-		u32 cq_55_occ_int : 1;
-		u32 cq_56_occ_int : 1;
-		u32 cq_57_occ_int : 1;
-		u32 cq_58_occ_int : 1;
-		u32 cq_59_occ_int : 1;
-		u32 cq_60_occ_int : 1;
-		u32 cq_61_occ_int : 1;
-		u32 cq_62_occ_int : 1;
-		u32 cq_63_occ_int : 1;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_32_OCC_INT	0x00000001
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_33_OCC_INT	0x00000002
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_34_OCC_INT	0x00000004
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_35_OCC_INT	0x00000008
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_36_OCC_INT	0x00000010
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_37_OCC_INT	0x00000020
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_38_OCC_INT	0x00000040
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_39_OCC_INT	0x00000080
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_40_OCC_INT	0x00000100
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_41_OCC_INT	0x00000200
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_42_OCC_INT	0x00000400
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_43_OCC_INT	0x00000800
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_44_OCC_INT	0x00001000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_45_OCC_INT	0x00002000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_46_OCC_INT	0x00004000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_47_OCC_INT	0x00008000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_48_OCC_INT	0x00010000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_49_OCC_INT	0x00020000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_50_OCC_INT	0x00040000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_51_OCC_INT	0x00080000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_52_OCC_INT	0x00100000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_53_OCC_INT	0x00200000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_54_OCC_INT	0x00400000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_55_OCC_INT	0x00800000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_56_OCC_INT	0x01000000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_57_OCC_INT	0x02000000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_58_OCC_INT	0x04000000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_59_OCC_INT	0x08000000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_60_OCC_INT	0x10000000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_61_OCC_INT	0x20000000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_62_OCC_INT	0x40000000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_63_OCC_INT	0x80000000
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_32_OCC_INT_LOC	0
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_33_OCC_INT_LOC	1
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_34_OCC_INT_LOC	2
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_35_OCC_INT_LOC	3
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_36_OCC_INT_LOC	4
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_37_OCC_INT_LOC	5
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_38_OCC_INT_LOC	6
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_39_OCC_INT_LOC	7
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_40_OCC_INT_LOC	8
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_41_OCC_INT_LOC	9
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_42_OCC_INT_LOC	10
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_43_OCC_INT_LOC	11
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_44_OCC_INT_LOC	12
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_45_OCC_INT_LOC	13
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_46_OCC_INT_LOC	14
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_47_OCC_INT_LOC	15
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_48_OCC_INT_LOC	16
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_49_OCC_INT_LOC	17
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_50_OCC_INT_LOC	18
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_51_OCC_INT_LOC	19
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_52_OCC_INT_LOC	20
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_53_OCC_INT_LOC	21
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_54_OCC_INT_LOC	22
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_55_OCC_INT_LOC	23
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_56_OCC_INT_LOC	24
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_57_OCC_INT_LOC	25
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_58_OCC_INT_LOC	26
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_59_OCC_INT_LOC	27
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_60_OCC_INT_LOC	28
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_61_OCC_INT_LOC	29
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_62_OCC_INT_LOC	30
+#define DLB2_SYS_LDB_CQ_63_32_OCC_INT_STS_CQ_63_OCC_INT_LOC	31
 
 #define DLB2_SYS_DIR_CQ_OPT_CLR 0x100004c0
 #define DLB2_SYS_DIR_CQ_OPT_CLR_RST 0x0
-union dlb2_sys_dir_cq_opt_clr {
-	struct {
-		u32 cq : 6;
-		u32 rsvd0 : 26;
-	} field;
-	u32 val;
-};
+
+#define DLB2_SYS_DIR_CQ_OPT_CLR_CQ		0x0000003F
+#define DLB2_SYS_DIR_CQ_OPT_CLR_RSVD0	0xFFFFFFC0
+#define DLB2_SYS_DIR_CQ_OPT_CLR_CQ_LOC	0
+#define DLB2_SYS_DIR_CQ_OPT_CLR_RSVD0_LOC	6
 
 #define DLB2_SYS_ALARM_HW_SYND 0x1000050c
 #define DLB2_SYS_ALARM_HW_SYND_RST 0x0
-union dlb2_sys_alarm_hw_synd {
-	struct {
-		u32 syndrome : 8;
-		u32 rtype : 2;
-		u32 alarm : 1;
-		u32 cwd : 1;
-		u32 vf_pf_mb : 1;
-		u32 rsvd0 : 1;
-		u32 cls : 2;
-		u32 aid : 6;
-		u32 unit : 4;
-		u32 source : 4;
-		u32 more : 1;
-		u32 valid : 1;
-	} field;
-	u32 val;
-};
 
-#define DLB2_AQED_PIPE_QID_FID_LIM(x) \
+#define DLB2_SYS_ALARM_HW_SYND_SYNDROME	0x000000FF
+#define DLB2_SYS_ALARM_HW_SYND_RTYPE		0x00000300
+#define DLB2_SYS_ALARM_HW_SYND_ALARM		0x00000400
+#define DLB2_SYS_ALARM_HW_SYND_CWD		0x00000800
+#define DLB2_SYS_ALARM_HW_SYND_VF_PF_MB	0x00001000
+#define DLB2_SYS_ALARM_HW_SYND_RSVD0		0x00002000
+#define DLB2_SYS_ALARM_HW_SYND_CLS		0x0000C000
+#define DLB2_SYS_ALARM_HW_SYND_AID		0x003F0000
+#define DLB2_SYS_ALARM_HW_SYND_UNIT		0x03C00000
+#define DLB2_SYS_ALARM_HW_SYND_SOURCE	0x3C000000
+#define DLB2_SYS_ALARM_HW_SYND_MORE		0x40000000
+#define DLB2_SYS_ALARM_HW_SYND_VALID		0x80000000
+#define DLB2_SYS_ALARM_HW_SYND_SYNDROME_LOC	0
+#define DLB2_SYS_ALARM_HW_SYND_RTYPE_LOC	8
+#define DLB2_SYS_ALARM_HW_SYND_ALARM_LOC	10
+#define DLB2_SYS_ALARM_HW_SYND_CWD_LOC	11
+#define DLB2_SYS_ALARM_HW_SYND_VF_PF_MB_LOC	12
+#define DLB2_SYS_ALARM_HW_SYND_RSVD0_LOC	13
+#define DLB2_SYS_ALARM_HW_SYND_CLS_LOC	14
+#define DLB2_SYS_ALARM_HW_SYND_AID_LOC	16
+#define DLB2_SYS_ALARM_HW_SYND_UNIT_LOC	22
+#define DLB2_SYS_ALARM_HW_SYND_SOURCE_LOC	26
+#define DLB2_SYS_ALARM_HW_SYND_MORE_LOC	30
+#define DLB2_SYS_ALARM_HW_SYND_VALID_LOC	31
+
+#define DLB2_AQED_QID_FID_LIM(x) \
 	(0x20000000 + (x) * 0x1000)
-#define DLB2_AQED_PIPE_QID_FID_LIM_RST 0x7ff
-union dlb2_aqed_pipe_qid_fid_lim {
-	struct {
-		u32 qid_fid_limit : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
+#define DLB2_AQED_QID_FID_LIM_RST 0x7ff
 
-#define DLB2_AQED_PIPE_QID_HID_WIDTH(x) \
+#define DLB2_AQED_QID_FID_LIM_QID_FID_LIMIT	0x00001FFF
+#define DLB2_AQED_QID_FID_LIM_RSVD0		0xFFFFE000
+#define DLB2_AQED_QID_FID_LIM_QID_FID_LIMIT_LOC	0
+#define DLB2_AQED_QID_FID_LIM_RSVD0_LOC		13
+
+#define DLB2_AQED_QID_HID_WIDTH(x) \
 	(0x20080000 + (x) * 0x1000)
-#define DLB2_AQED_PIPE_QID_HID_WIDTH_RST 0x0
-union dlb2_aqed_pipe_qid_hid_width {
-	struct {
-		u32 compress_code : 3;
-		u32 rsvd0 : 29;
-	} field;
-	u32 val;
-};
+#define DLB2_AQED_QID_HID_WIDTH_RST 0x0
 
-#define DLB2_AQED_PIPE_CFG_ARB_WEIGHTS_TQPRI_ATM_0 0x24000004
-#define DLB2_AQED_PIPE_CFG_ARB_WEIGHTS_TQPRI_ATM_0_RST 0xfefcfaf8
-union dlb2_aqed_pipe_cfg_arb_weights_tqpri_atm_0 {
-	struct {
-		u32 pri0 : 8;
-		u32 pri1 : 8;
-		u32 pri2 : 8;
-		u32 pri3 : 8;
-	} field;
-	u32 val;
-};
+#define DLB2_AQED_QID_HID_WIDTH_COMPRESS_CODE	0x00000007
+#define DLB2_AQED_QID_HID_WIDTH_RSVD0		0xFFFFFFF8
+#define DLB2_AQED_QID_HID_WIDTH_COMPRESS_CODE_LOC	0
+#define DLB2_AQED_QID_HID_WIDTH_RSVD0_LOC		3
+
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0 0x24000004
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_RST 0xfefcfaf8
+
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI0	0x000000FF
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI1	0x0000FF00
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI2	0x00FF0000
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI3	0xFF000000
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI0_LOC	0
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI1_LOC	8
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI2_LOC	16
+#define DLB2_AQED_CFG_ARB_WEIGHTS_TQPRI_ATM_0_PRI3_LOC	24
+
+#define DLB2_AQED_SMON_ACTIVITYCNTR0 0x2c00004c
+#define DLB2_AQED_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_AQED_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_AQED_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_AQED_SMON_ACTIVITYCNTR1 0x2c000050
+#define DLB2_AQED_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_AQED_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_AQED_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_AQED_SMON_COMPARE0 0x2c000054
+#define DLB2_AQED_SMON_COMPARE0_RST 0x0
+
+#define DLB2_AQED_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_AQED_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_AQED_SMON_COMPARE1 0x2c000058
+#define DLB2_AQED_SMON_COMPARE1_RST 0x0
+
+#define DLB2_AQED_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_AQED_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_AQED_SMON_CFG0 0x2c00005c
+#define DLB2_AQED_SMON_CFG0_RST 0x40000000
+
+#define DLB2_AQED_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_AQED_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_AQED_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_AQED_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_AQED_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_AQED_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_AQED_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_AQED_SMON_CFG0_SMON_MODE		0x0000F000
+#define DLB2_AQED_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_AQED_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_AQED_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_AQED_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_AQED_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_AQED_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_AQED_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_AQED_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_AQED_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_AQED_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_AQED_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_AQED_SMON_CFG0_SMON_ENABLE_LOC			0
+#define DLB2_AQED_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC		1
+#define DLB2_AQED_SMON_CFG0_RSVZ0_LOC			2
+#define DLB2_AQED_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_AQED_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_AQED_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_AQED_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_AQED_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_AQED_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_AQED_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_AQED_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_AQED_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_AQED_SMON_CFG0_STOPTIMEROVFL_LOC		20
+#define DLB2_AQED_SMON_CFG0_INTTIMEROVFL_LOC			21
+#define DLB2_AQED_SMON_CFG0_STATTIMEROVFL_LOC		22
+#define DLB2_AQED_SMON_CFG0_RSVZ1_LOC			23
+#define DLB2_AQED_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_AQED_SMON_CFG0_RSVZ2_LOC			29
+#define DLB2_AQED_SMON_CFG0_VERSION_LOC			30
+
+#define DLB2_AQED_SMON_CFG1 0x2c000060
+#define DLB2_AQED_SMON_CFG1_RST 0x0
+
+#define DLB2_AQED_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_AQED_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_AQED_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_AQED_SMON_CFG1_MODE0_LOC	0
+#define DLB2_AQED_SMON_CFG1_MODE1_LOC	8
+#define DLB2_AQED_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_AQED_SMON_MAX_TMR 0x2c000064
+#define DLB2_AQED_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_AQED_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_AQED_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_AQED_SMON_TMR 0x2c000068
+#define DLB2_AQED_SMON_TMR_RST 0x0
+
+#define DLB2_AQED_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_AQED_SMON_TMR_TIMER_LOC	0
 
 #define DLB2_ATM_QID2CQIDIX_00(x) \
 	(0x30080000 + (x) * 0x1000)
@@ -1061,1467 +1452,2853 @@ union dlb2_aqed_pipe_cfg_arb_weights_tqpri_atm_0 {
 #define DLB2_ATM_QID2CQIDIX(x, y) \
 	(DLB2_ATM_QID2CQIDIX_00(x) + 0x80000 * (y))
 #define DLB2_ATM_QID2CQIDIX_NUM 16
-union dlb2_atm_qid2cqidix_00 {
-	struct {
-		u32 cq_p0 : 8;
-		u32 cq_p1 : 8;
-		u32 cq_p2 : 8;
-		u32 cq_p3 : 8;
-	} field;
-	u32 val;
-};
+
+#define DLB2_ATM_QID2CQIDIX_00_CQ_P0	0x000000FF
+#define DLB2_ATM_QID2CQIDIX_00_CQ_P1	0x0000FF00
+#define DLB2_ATM_QID2CQIDIX_00_CQ_P2	0x00FF0000
+#define DLB2_ATM_QID2CQIDIX_00_CQ_P3	0xFF000000
+#define DLB2_ATM_QID2CQIDIX_00_CQ_P0_LOC	0
+#define DLB2_ATM_QID2CQIDIX_00_CQ_P1_LOC	8
+#define DLB2_ATM_QID2CQIDIX_00_CQ_P2_LOC	16
+#define DLB2_ATM_QID2CQIDIX_00_CQ_P3_LOC	24
 
 #define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN 0x34000004
 #define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_RST 0xfffefdfc
-union dlb2_atm_cfg_arb_weights_rdy_bin {
-	struct {
-		u32 bin0 : 8;
-		u32 bin1 : 8;
-		u32 bin2 : 8;
-		u32 bin3 : 8;
-	} field;
-	u32 val;
-};
+
+#define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN0	0x000000FF
+#define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN1	0x0000FF00
+#define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN2	0x00FF0000
+#define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN3	0xFF000000
+#define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN0_LOC	0
+#define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN1_LOC	8
+#define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN2_LOC	16
+#define DLB2_ATM_CFG_ARB_WEIGHTS_RDY_BIN_BIN3_LOC	24
 
 #define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN 0x34000008
 #define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_RST 0xfffefdfc
-union dlb2_atm_cfg_arb_weights_sched_bin {
-	struct {
-		u32 bin0 : 8;
-		u32 bin1 : 8;
-		u32 bin2 : 8;
-		u32 bin3 : 8;
-	} field;
-	u32 val;
-};
+
+#define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN0	0x000000FF
+#define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN1	0x0000FF00
+#define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN2	0x00FF0000
+#define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN3	0xFF000000
+#define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN0_LOC	0
+#define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN1_LOC	8
+#define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN2_LOC	16
+#define DLB2_ATM_CFG_ARB_WEIGHTS_SCHED_BIN_BIN3_LOC	24
+
+#define DLB2_ATM_SMON_ACTIVITYCNTR0 0x3c000050
+#define DLB2_ATM_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_ATM_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_ATM_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_ATM_SMON_ACTIVITYCNTR1 0x3c000054
+#define DLB2_ATM_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_ATM_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_ATM_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_ATM_SMON_COMPARE0 0x3c000058
+#define DLB2_ATM_SMON_COMPARE0_RST 0x0
+
+#define DLB2_ATM_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_ATM_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_ATM_SMON_COMPARE1 0x3c00005c
+#define DLB2_ATM_SMON_COMPARE1_RST 0x0
+
+#define DLB2_ATM_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_ATM_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_ATM_SMON_CFG0 0x3c000060
+#define DLB2_ATM_SMON_CFG0_RST 0x40000000
+
+#define DLB2_ATM_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_ATM_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_ATM_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_ATM_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_ATM_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_ATM_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_ATM_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_ATM_SMON_CFG0_SMON_MODE			0x0000F000
+#define DLB2_ATM_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_ATM_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_ATM_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_ATM_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_ATM_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_ATM_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_ATM_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_ATM_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_ATM_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_ATM_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_ATM_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_ATM_SMON_CFG0_SMON_ENABLE_LOC			0
+#define DLB2_ATM_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC		1
+#define DLB2_ATM_SMON_CFG0_RSVZ0_LOC				2
+#define DLB2_ATM_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_ATM_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_ATM_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_ATM_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_ATM_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_ATM_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_ATM_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_ATM_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_ATM_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_ATM_SMON_CFG0_STOPTIMEROVFL_LOC			20
+#define DLB2_ATM_SMON_CFG0_INTTIMEROVFL_LOC			21
+#define DLB2_ATM_SMON_CFG0_STATTIMEROVFL_LOC			22
+#define DLB2_ATM_SMON_CFG0_RSVZ1_LOC				23
+#define DLB2_ATM_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_ATM_SMON_CFG0_RSVZ2_LOC				29
+#define DLB2_ATM_SMON_CFG0_VERSION_LOC			30
+
+#define DLB2_ATM_SMON_CFG1 0x3c000064
+#define DLB2_ATM_SMON_CFG1_RST 0x0
+
+#define DLB2_ATM_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_ATM_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_ATM_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_ATM_SMON_CFG1_MODE0_LOC	0
+#define DLB2_ATM_SMON_CFG1_MODE1_LOC	8
+#define DLB2_ATM_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_ATM_SMON_MAX_TMR 0x3c000068
+#define DLB2_ATM_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_ATM_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_ATM_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_ATM_SMON_TMR 0x3c00006c
+#define DLB2_ATM_SMON_TMR_RST 0x0
+
+#define DLB2_ATM_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_ATM_SMON_TMR_TIMER_LOC	0
 
 #define DLB2_CHP_CFG_DIR_VAS_CRD(x) \
 	(0x40000000 + (x) * 0x1000)
 #define DLB2_CHP_CFG_DIR_VAS_CRD_RST 0x0
-union dlb2_chp_cfg_dir_vas_crd {
-	struct {
-		u32 count : 14;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
+
+#define DLB2_CHP_CFG_DIR_VAS_CRD_COUNT	0x00003FFF
+#define DLB2_CHP_CFG_DIR_VAS_CRD_RSVD0	0xFFFFC000
+#define DLB2_CHP_CFG_DIR_VAS_CRD_COUNT_LOC	0
+#define DLB2_CHP_CFG_DIR_VAS_CRD_RSVD0_LOC	14
 
 #define DLB2_CHP_CFG_LDB_VAS_CRD(x) \
 	(0x40080000 + (x) * 0x1000)
 #define DLB2_CHP_CFG_LDB_VAS_CRD_RST 0x0
-union dlb2_chp_cfg_ldb_vas_crd {
-	struct {
-		u32 count : 15;
-		u32 rsvd0 : 17;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_ORD_QID_SN(x) \
+#define DLB2_CHP_CFG_LDB_VAS_CRD_COUNT	0x00007FFF
+#define DLB2_CHP_CFG_LDB_VAS_CRD_RSVD0	0xFFFF8000
+#define DLB2_CHP_CFG_LDB_VAS_CRD_COUNT_LOC	0
+#define DLB2_CHP_CFG_LDB_VAS_CRD_RSVD0_LOC	15
+
+#define DLB2_V2CHP_ORD_QID_SN(x) \
 	(0x40100000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_ORD_QID_SN(x) \
+	(0x40080000 + (x) * 0x1000)
+#define DLB2_CHP_ORD_QID_SN(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_ORD_QID_SN(x) : \
+	 DLB2_V2_5CHP_ORD_QID_SN(x))
 #define DLB2_CHP_ORD_QID_SN_RST 0x0
-union dlb2_chp_ord_qid_sn {
-	struct {
-		u32 sn : 10;
-		u32 rsvd0 : 22;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_ORD_QID_SN_MAP(x) \
+#define DLB2_CHP_ORD_QID_SN_SN	0x000003FF
+#define DLB2_CHP_ORD_QID_SN_RSVD0	0xFFFFFC00
+#define DLB2_CHP_ORD_QID_SN_SN_LOC		0
+#define DLB2_CHP_ORD_QID_SN_RSVD0_LOC	10
+
+#define DLB2_V2CHP_ORD_QID_SN_MAP(x) \
 	(0x40180000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_ORD_QID_SN_MAP(x) \
+	(0x40100000 + (x) * 0x1000)
+#define DLB2_CHP_ORD_QID_SN_MAP(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_ORD_QID_SN_MAP(x) : \
+	 DLB2_V2_5CHP_ORD_QID_SN_MAP(x))
 #define DLB2_CHP_ORD_QID_SN_MAP_RST 0x0
-union dlb2_chp_ord_qid_sn_map {
-	struct {
-		u32 mode : 3;
-		u32 slot : 4;
-		u32 rsvz0 : 1;
-		u32 grp : 1;
-		u32 rsvz1 : 1;
-		u32 rsvd0 : 22;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_SN_CHK_ENBL(x) \
+#define DLB2_CHP_ORD_QID_SN_MAP_MODE		0x00000007
+#define DLB2_CHP_ORD_QID_SN_MAP_SLOT		0x00000078
+#define DLB2_CHP_ORD_QID_SN_MAP_RSVZ0	0x00000080
+#define DLB2_CHP_ORD_QID_SN_MAP_GRP		0x00000100
+#define DLB2_CHP_ORD_QID_SN_MAP_RSVZ1	0x00000200
+#define DLB2_CHP_ORD_QID_SN_MAP_RSVD0	0xFFFFFC00
+#define DLB2_CHP_ORD_QID_SN_MAP_MODE_LOC	0
+#define DLB2_CHP_ORD_QID_SN_MAP_SLOT_LOC	3
+#define DLB2_CHP_ORD_QID_SN_MAP_RSVZ0_LOC	7
+#define DLB2_CHP_ORD_QID_SN_MAP_GRP_LOC	8
+#define DLB2_CHP_ORD_QID_SN_MAP_RSVZ1_LOC	9
+#define DLB2_CHP_ORD_QID_SN_MAP_RSVD0_LOC	10
+
+#define DLB2_V2CHP_SN_CHK_ENBL(x) \
 	(0x40200000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_SN_CHK_ENBL(x) \
+	(0x40180000 + (x) * 0x1000)
+#define DLB2_CHP_SN_CHK_ENBL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_SN_CHK_ENBL(x) : \
+	 DLB2_V2_5CHP_SN_CHK_ENBL(x))
 #define DLB2_CHP_SN_CHK_ENBL_RST 0x0
-union dlb2_chp_sn_chk_enbl {
-	struct {
-		u32 en : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_DIR_CQ_DEPTH(x) \
+#define DLB2_CHP_SN_CHK_ENBL_EN	0x00000001
+#define DLB2_CHP_SN_CHK_ENBL_RSVD0	0xFFFFFFFE
+#define DLB2_CHP_SN_CHK_ENBL_EN_LOC		0
+#define DLB2_CHP_SN_CHK_ENBL_RSVD0_LOC	1
+
+#define DLB2_V2CHP_DIR_CQ_DEPTH(x) \
 	(0x40280000 + (x) * 0x1000)
-#define DLB2_CHP_DIR_CQ_DEPTH_RST 0x0
-union dlb2_chp_dir_cq_depth {
-	struct {
-		u32 depth : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
-
-#define DLB2_CHP_DIR_CQ_INT_DEPTH_THRSH(x) \
+#define DLB2_V2_5CHP_DIR_CQ_DEPTH(x) \
 	(0x40300000 + (x) * 0x1000)
-#define DLB2_CHP_DIR_CQ_INT_DEPTH_THRSH_RST 0x0
-union dlb2_chp_dir_cq_int_depth_thrsh {
-	struct {
-		u32 depth_threshold : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_DIR_CQ_DEPTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_DEPTH(x) : \
+	 DLB2_V2_5CHP_DIR_CQ_DEPTH(x))
+#define DLB2_CHP_DIR_CQ_DEPTH_RST 0x0
 
-#define DLB2_CHP_DIR_CQ_INT_ENB(x) \
+#define DLB2_CHP_DIR_CQ_DEPTH_DEPTH	0x00001FFF
+#define DLB2_CHP_DIR_CQ_DEPTH_RSVD0	0xFFFFE000
+#define DLB2_CHP_DIR_CQ_DEPTH_DEPTH_LOC	0
+#define DLB2_CHP_DIR_CQ_DEPTH_RSVD0_LOC	13
+
+#define DLB2_V2CHP_DIR_CQ_INT_DEPTH_THRSH(x) \
+	(0x40300000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_DIR_CQ_INT_DEPTH_THRSH(x) \
 	(0x40380000 + (x) * 0x1000)
+#define DLB2_CHP_DIR_CQ_INT_DEPTH_THRSH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_INT_DEPTH_THRSH(x) : \
+	 DLB2_V2_5CHP_DIR_CQ_INT_DEPTH_THRSH(x))
+#define DLB2_CHP_DIR_CQ_INT_DEPTH_THRSH_RST 0x0
+
+#define DLB2_CHP_DIR_CQ_INT_DEPTH_THRSH_DEPTH_THRESHOLD	0x00001FFF
+#define DLB2_CHP_DIR_CQ_INT_DEPTH_THRSH_RSVD0		0xFFFFE000
+#define DLB2_CHP_DIR_CQ_INT_DEPTH_THRSH_DEPTH_THRESHOLD_LOC	0
+#define DLB2_CHP_DIR_CQ_INT_DEPTH_THRSH_RSVD0_LOC		13
+
+#define DLB2_V2CHP_DIR_CQ_INT_ENB(x) \
+	(0x40380000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_DIR_CQ_INT_ENB(x) \
+	(0x40400000 + (x) * 0x1000)
+#define DLB2_CHP_DIR_CQ_INT_ENB(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_INT_ENB(x) : \
+	 DLB2_V2_5CHP_DIR_CQ_INT_ENB(x))
 #define DLB2_CHP_DIR_CQ_INT_ENB_RST 0x0
-union dlb2_chp_dir_cq_int_enb {
-	struct {
-		u32 en_tim : 1;
-		u32 en_depth : 1;
-		u32 rsvd0 : 30;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_DIR_CQ_TMR_THRSH(x) \
+#define DLB2_CHP_DIR_CQ_INT_ENB_EN_TIM	0x00000001
+#define DLB2_CHP_DIR_CQ_INT_ENB_EN_DEPTH	0x00000002
+#define DLB2_CHP_DIR_CQ_INT_ENB_RSVD0	0xFFFFFFFC
+#define DLB2_CHP_DIR_CQ_INT_ENB_EN_TIM_LOC	0
+#define DLB2_CHP_DIR_CQ_INT_ENB_EN_DEPTH_LOC	1
+#define DLB2_CHP_DIR_CQ_INT_ENB_RSVD0_LOC	2
+
+#define DLB2_V2CHP_DIR_CQ_TMR_THRSH(x) \
 	(0x40480000 + (x) * 0x1000)
-#define DLB2_CHP_DIR_CQ_TMR_THRSH_RST 0x1
-union dlb2_chp_dir_cq_tmr_thrsh {
-	struct {
-		u32 thrsh_0 : 1;
-		u32 thrsh_13_1 : 13;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
-
-#define DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL(x) \
+#define DLB2_V2_5CHP_DIR_CQ_TMR_THRSH(x) \
 	(0x40500000 + (x) * 0x1000)
-#define DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL_RST 0x0
-union dlb2_chp_dir_cq_tkn_depth_sel {
-	struct {
-		u32 token_depth_select : 4;
-		u32 rsvd0 : 28;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_DIR_CQ_TMR_THRSH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_TMR_THRSH(x) : \
+	 DLB2_V2_5CHP_DIR_CQ_TMR_THRSH(x))
+#define DLB2_CHP_DIR_CQ_TMR_THRSH_RST 0x1
 
-#define DLB2_CHP_DIR_CQ_WD_ENB(x) \
+#define DLB2_CHP_DIR_CQ_TMR_THRSH_THRSH_0	0x00000001
+#define DLB2_CHP_DIR_CQ_TMR_THRSH_THRSH_13_1	0x00003FFE
+#define DLB2_CHP_DIR_CQ_TMR_THRSH_RSVD0	0xFFFFC000
+#define DLB2_CHP_DIR_CQ_TMR_THRSH_THRSH_0_LOC	0
+#define DLB2_CHP_DIR_CQ_TMR_THRSH_THRSH_13_1_LOC	1
+#define DLB2_CHP_DIR_CQ_TMR_THRSH_RSVD0_LOC		14
+
+#define DLB2_V2CHP_DIR_CQ_TKN_DEPTH_SEL(x) \
+	(0x40500000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_DIR_CQ_TKN_DEPTH_SEL(x) \
 	(0x40580000 + (x) * 0x1000)
-#define DLB2_CHP_DIR_CQ_WD_ENB_RST 0x0
-union dlb2_chp_dir_cq_wd_enb {
-	struct {
-		u32 wd_enable : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_TKN_DEPTH_SEL(x) : \
+	 DLB2_V2_5CHP_DIR_CQ_TKN_DEPTH_SEL(x))
+#define DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL_RST 0x0
 
-#define DLB2_CHP_DIR_CQ_WPTR(x) \
+#define DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT	0x0000000F
+#define DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL_RSVD0			0xFFFFFFF0
+#define DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT_LOC	0
+#define DLB2_CHP_DIR_CQ_TKN_DEPTH_SEL_RSVD0_LOC		4
+
+#define DLB2_V2CHP_DIR_CQ_WD_ENB(x) \
+	(0x40580000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_DIR_CQ_WD_ENB(x) \
 	(0x40600000 + (x) * 0x1000)
-#define DLB2_CHP_DIR_CQ_WPTR_RST 0x0
-union dlb2_chp_dir_cq_wptr {
-	struct {
-		u32 write_pointer : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_DIR_CQ_WD_ENB(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_WD_ENB(x) : \
+	 DLB2_V2_5CHP_DIR_CQ_WD_ENB(x))
+#define DLB2_CHP_DIR_CQ_WD_ENB_RST 0x0
 
-#define DLB2_CHP_DIR_CQ2VAS(x) \
+#define DLB2_CHP_DIR_CQ_WD_ENB_WD_ENABLE	0x00000001
+#define DLB2_CHP_DIR_CQ_WD_ENB_RSVD0		0xFFFFFFFE
+#define DLB2_CHP_DIR_CQ_WD_ENB_WD_ENABLE_LOC	0
+#define DLB2_CHP_DIR_CQ_WD_ENB_RSVD0_LOC	1
+
+#define DLB2_V2CHP_DIR_CQ_WPTR(x) \
+	(0x40600000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_DIR_CQ_WPTR(x) \
 	(0x40680000 + (x) * 0x1000)
-#define DLB2_CHP_DIR_CQ2VAS_RST 0x0
-union dlb2_chp_dir_cq2vas {
-	struct {
-		u32 cq2vas : 5;
-		u32 rsvd0 : 27;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_DIR_CQ_WPTR(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_WPTR(x) : \
+	 DLB2_V2_5CHP_DIR_CQ_WPTR(x))
+#define DLB2_CHP_DIR_CQ_WPTR_RST 0x0
 
-#define DLB2_CHP_HIST_LIST_BASE(x) \
+#define DLB2_CHP_DIR_CQ_WPTR_WRITE_POINTER	0x00001FFF
+#define DLB2_CHP_DIR_CQ_WPTR_RSVD0		0xFFFFE000
+#define DLB2_CHP_DIR_CQ_WPTR_WRITE_POINTER_LOC	0
+#define DLB2_CHP_DIR_CQ_WPTR_RSVD0_LOC		13
+
+#define DLB2_V2CHP_DIR_CQ2VAS(x) \
+	(0x40680000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_DIR_CQ2VAS(x) \
 	(0x40700000 + (x) * 0x1000)
-#define DLB2_CHP_HIST_LIST_BASE_RST 0x0
-union dlb2_chp_hist_list_base {
-	struct {
-		u32 base : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_DIR_CQ2VAS(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ2VAS(x) : \
+	 DLB2_V2_5CHP_DIR_CQ2VAS(x))
+#define DLB2_CHP_DIR_CQ2VAS_RST 0x0
 
-#define DLB2_CHP_HIST_LIST_LIM(x) \
+#define DLB2_CHP_DIR_CQ2VAS_CQ2VAS	0x0000001F
+#define DLB2_CHP_DIR_CQ2VAS_RSVD0	0xFFFFFFE0
+#define DLB2_CHP_DIR_CQ2VAS_CQ2VAS_LOC	0
+#define DLB2_CHP_DIR_CQ2VAS_RSVD0_LOC	5
+
+#define DLB2_V2CHP_HIST_LIST_BASE(x) \
+	(0x40700000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_HIST_LIST_BASE(x) \
 	(0x40780000 + (x) * 0x1000)
-#define DLB2_CHP_HIST_LIST_LIM_RST 0x0
-union dlb2_chp_hist_list_lim {
-	struct {
-		u32 limit : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_HIST_LIST_BASE(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_HIST_LIST_BASE(x) : \
+	 DLB2_V2_5CHP_HIST_LIST_BASE(x))
+#define DLB2_CHP_HIST_LIST_BASE_RST 0x0
 
-#define DLB2_CHP_HIST_LIST_POP_PTR(x) \
+#define DLB2_CHP_HIST_LIST_BASE_BASE		0x00001FFF
+#define DLB2_CHP_HIST_LIST_BASE_RSVD0	0xFFFFE000
+#define DLB2_CHP_HIST_LIST_BASE_BASE_LOC	0
+#define DLB2_CHP_HIST_LIST_BASE_RSVD0_LOC	13
+
+#define DLB2_V2CHP_HIST_LIST_LIM(x) \
+	(0x40780000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_HIST_LIST_LIM(x) \
 	(0x40800000 + (x) * 0x1000)
-#define DLB2_CHP_HIST_LIST_POP_PTR_RST 0x0
-union dlb2_chp_hist_list_pop_ptr {
-	struct {
-		u32 pop_ptr : 13;
-		u32 generation : 1;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_HIST_LIST_LIM(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_HIST_LIST_LIM(x) : \
+	 DLB2_V2_5CHP_HIST_LIST_LIM(x))
+#define DLB2_CHP_HIST_LIST_LIM_RST 0x0
 
-#define DLB2_CHP_HIST_LIST_PUSH_PTR(x) \
+#define DLB2_CHP_HIST_LIST_LIM_LIMIT	0x00001FFF
+#define DLB2_CHP_HIST_LIST_LIM_RSVD0	0xFFFFE000
+#define DLB2_CHP_HIST_LIST_LIM_LIMIT_LOC	0
+#define DLB2_CHP_HIST_LIST_LIM_RSVD0_LOC	13
+
+#define DLB2_V2CHP_HIST_LIST_POP_PTR(x) \
+	(0x40800000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_HIST_LIST_POP_PTR(x) \
 	(0x40880000 + (x) * 0x1000)
-#define DLB2_CHP_HIST_LIST_PUSH_PTR_RST 0x0
-union dlb2_chp_hist_list_push_ptr {
-	struct {
-		u32 push_ptr : 13;
-		u32 generation : 1;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_HIST_LIST_POP_PTR(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_HIST_LIST_POP_PTR(x) : \
+	 DLB2_V2_5CHP_HIST_LIST_POP_PTR(x))
+#define DLB2_CHP_HIST_LIST_POP_PTR_RST 0x0
 
-#define DLB2_CHP_LDB_CQ_DEPTH(x) \
+#define DLB2_CHP_HIST_LIST_POP_PTR_POP_PTR		0x00001FFF
+#define DLB2_CHP_HIST_LIST_POP_PTR_GENERATION	0x00002000
+#define DLB2_CHP_HIST_LIST_POP_PTR_RSVD0		0xFFFFC000
+#define DLB2_CHP_HIST_LIST_POP_PTR_POP_PTR_LOC	0
+#define DLB2_CHP_HIST_LIST_POP_PTR_GENERATION_LOC	13
+#define DLB2_CHP_HIST_LIST_POP_PTR_RSVD0_LOC		14
+
+#define DLB2_V2CHP_HIST_LIST_PUSH_PTR(x) \
+	(0x40880000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_HIST_LIST_PUSH_PTR(x) \
 	(0x40900000 + (x) * 0x1000)
+#define DLB2_CHP_HIST_LIST_PUSH_PTR(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_HIST_LIST_PUSH_PTR(x) : \
+	 DLB2_V2_5CHP_HIST_LIST_PUSH_PTR(x))
+#define DLB2_CHP_HIST_LIST_PUSH_PTR_RST 0x0
+
+#define DLB2_CHP_HIST_LIST_PUSH_PTR_PUSH_PTR		0x00001FFF
+#define DLB2_CHP_HIST_LIST_PUSH_PTR_GENERATION	0x00002000
+#define DLB2_CHP_HIST_LIST_PUSH_PTR_RSVD0		0xFFFFC000
+#define DLB2_CHP_HIST_LIST_PUSH_PTR_PUSH_PTR_LOC	0
+#define DLB2_CHP_HIST_LIST_PUSH_PTR_GENERATION_LOC	13
+#define DLB2_CHP_HIST_LIST_PUSH_PTR_RSVD0_LOC	14
+
+#define DLB2_V2CHP_LDB_CQ_DEPTH(x) \
+	(0x40900000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_LDB_CQ_DEPTH(x) \
+	(0x40a80000 + (x) * 0x1000)
+#define DLB2_CHP_LDB_CQ_DEPTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_DEPTH(x) : \
+	 DLB2_V2_5CHP_LDB_CQ_DEPTH(x))
 #define DLB2_CHP_LDB_CQ_DEPTH_RST 0x0
-union dlb2_chp_ldb_cq_depth {
-	struct {
-		u32 depth : 11;
-		u32 rsvd0 : 21;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_LDB_CQ_INT_DEPTH_THRSH(x) \
+#define DLB2_CHP_LDB_CQ_DEPTH_DEPTH	0x000007FF
+#define DLB2_CHP_LDB_CQ_DEPTH_RSVD0	0xFFFFF800
+#define DLB2_CHP_LDB_CQ_DEPTH_DEPTH_LOC	0
+#define DLB2_CHP_LDB_CQ_DEPTH_RSVD0_LOC	11
+
+#define DLB2_V2CHP_LDB_CQ_INT_DEPTH_THRSH(x) \
 	(0x40980000 + (x) * 0x1000)
-#define DLB2_CHP_LDB_CQ_INT_DEPTH_THRSH_RST 0x0
-union dlb2_chp_ldb_cq_int_depth_thrsh {
-	struct {
-		u32 depth_threshold : 11;
-		u32 rsvd0 : 21;
-	} field;
-	u32 val;
-};
-
-#define DLB2_CHP_LDB_CQ_INT_ENB(x) \
-	(0x40a00000 + (x) * 0x1000)
-#define DLB2_CHP_LDB_CQ_INT_ENB_RST 0x0
-union dlb2_chp_ldb_cq_int_enb {
-	struct {
-		u32 en_tim : 1;
-		u32 en_depth : 1;
-		u32 rsvd0 : 30;
-	} field;
-	u32 val;
-};
-
-#define DLB2_CHP_LDB_CQ_TMR_THRSH(x) \
+#define DLB2_V2_5CHP_LDB_CQ_INT_DEPTH_THRSH(x) \
 	(0x40b00000 + (x) * 0x1000)
-#define DLB2_CHP_LDB_CQ_TMR_THRSH_RST 0x1
-union dlb2_chp_ldb_cq_tmr_thrsh {
-	struct {
-		u32 thrsh_0 : 1;
-		u32 thrsh_13_1 : 13;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_LDB_CQ_INT_DEPTH_THRSH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_INT_DEPTH_THRSH(x) : \
+	 DLB2_V2_5CHP_LDB_CQ_INT_DEPTH_THRSH(x))
+#define DLB2_CHP_LDB_CQ_INT_DEPTH_THRSH_RST 0x0
 
-#define DLB2_CHP_LDB_CQ_TKN_DEPTH_SEL(x) \
+#define DLB2_CHP_LDB_CQ_INT_DEPTH_THRSH_DEPTH_THRESHOLD	0x000007FF
+#define DLB2_CHP_LDB_CQ_INT_DEPTH_THRSH_RSVD0		0xFFFFF800
+#define DLB2_CHP_LDB_CQ_INT_DEPTH_THRSH_DEPTH_THRESHOLD_LOC	0
+#define DLB2_CHP_LDB_CQ_INT_DEPTH_THRSH_RSVD0_LOC		11
+
+#define DLB2_V2CHP_LDB_CQ_INT_ENB(x) \
+	(0x40a00000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_LDB_CQ_INT_ENB(x) \
 	(0x40b80000 + (x) * 0x1000)
-#define DLB2_CHP_LDB_CQ_TKN_DEPTH_SEL_RST 0x0
-union dlb2_chp_ldb_cq_tkn_depth_sel {
-	struct {
-		u32 token_depth_select : 4;
-		u32 rsvd0 : 28;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_LDB_CQ_INT_ENB(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_INT_ENB(x) : \
+	 DLB2_V2_5CHP_LDB_CQ_INT_ENB(x))
+#define DLB2_CHP_LDB_CQ_INT_ENB_RST 0x0
 
-#define DLB2_CHP_LDB_CQ_WD_ENB(x) \
-	(0x40c00000 + (x) * 0x1000)
-#define DLB2_CHP_LDB_CQ_WD_ENB_RST 0x0
-union dlb2_chp_ldb_cq_wd_enb {
-	struct {
-		u32 wd_enable : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_LDB_CQ_INT_ENB_EN_TIM	0x00000001
+#define DLB2_CHP_LDB_CQ_INT_ENB_EN_DEPTH	0x00000002
+#define DLB2_CHP_LDB_CQ_INT_ENB_RSVD0	0xFFFFFFFC
+#define DLB2_CHP_LDB_CQ_INT_ENB_EN_TIM_LOC	0
+#define DLB2_CHP_LDB_CQ_INT_ENB_EN_DEPTH_LOC	1
+#define DLB2_CHP_LDB_CQ_INT_ENB_RSVD0_LOC	2
 
-#define DLB2_CHP_LDB_CQ_WPTR(x) \
+#define DLB2_V2CHP_LDB_CQ_TMR_THRSH(x) \
+	(0x40b00000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_LDB_CQ_TMR_THRSH(x) \
 	(0x40c80000 + (x) * 0x1000)
-#define DLB2_CHP_LDB_CQ_WPTR_RST 0x0
-union dlb2_chp_ldb_cq_wptr {
-	struct {
-		u32 write_pointer : 11;
-		u32 rsvd0 : 21;
-	} field;
-	u32 val;
-};
+#define DLB2_CHP_LDB_CQ_TMR_THRSH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_TMR_THRSH(x) : \
+	 DLB2_V2_5CHP_LDB_CQ_TMR_THRSH(x))
+#define DLB2_CHP_LDB_CQ_TMR_THRSH_RST 0x1
 
-#define DLB2_CHP_LDB_CQ2VAS(x) \
+#define DLB2_CHP_LDB_CQ_TMR_THRSH_THRSH_0	0x00000001
+#define DLB2_CHP_LDB_CQ_TMR_THRSH_THRSH_13_1	0x00003FFE
+#define DLB2_CHP_LDB_CQ_TMR_THRSH_RSVD0	0xFFFFC000
+#define DLB2_CHP_LDB_CQ_TMR_THRSH_THRSH_0_LOC	0
+#define DLB2_CHP_LDB_CQ_TMR_THRSH_THRSH_13_1_LOC	1
+#define DLB2_CHP_LDB_CQ_TMR_THRSH_RSVD0_LOC		14
+
+#define DLB2_V2CHP_LDB_CQ_TKN_DEPTH_SEL(x) \
+	(0x40b80000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_LDB_CQ_TKN_DEPTH_SEL(x) \
 	(0x40d00000 + (x) * 0x1000)
+#define DLB2_CHP_LDB_CQ_TKN_DEPTH_SEL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_TKN_DEPTH_SEL(x) : \
+	 DLB2_V2_5CHP_LDB_CQ_TKN_DEPTH_SEL(x))
+#define DLB2_CHP_LDB_CQ_TKN_DEPTH_SEL_RST 0x0
+
+#define DLB2_CHP_LDB_CQ_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT	0x0000000F
+#define DLB2_CHP_LDB_CQ_TKN_DEPTH_SEL_RSVD0			0xFFFFFFF0
+#define DLB2_CHP_LDB_CQ_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT_LOC	0
+#define DLB2_CHP_LDB_CQ_TKN_DEPTH_SEL_RSVD0_LOC		4
+
+#define DLB2_V2CHP_LDB_CQ_WD_ENB(x) \
+	(0x40c00000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_LDB_CQ_WD_ENB(x) \
+	(0x40d80000 + (x) * 0x1000)
+#define DLB2_CHP_LDB_CQ_WD_ENB(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_WD_ENB(x) : \
+	 DLB2_V2_5CHP_LDB_CQ_WD_ENB(x))
+#define DLB2_CHP_LDB_CQ_WD_ENB_RST 0x0
+
+#define DLB2_CHP_LDB_CQ_WD_ENB_WD_ENABLE	0x00000001
+#define DLB2_CHP_LDB_CQ_WD_ENB_RSVD0		0xFFFFFFFE
+#define DLB2_CHP_LDB_CQ_WD_ENB_WD_ENABLE_LOC	0
+#define DLB2_CHP_LDB_CQ_WD_ENB_RSVD0_LOC	1
+
+#define DLB2_V2CHP_LDB_CQ_WPTR(x) \
+	(0x40c80000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_LDB_CQ_WPTR(x) \
+	(0x40e00000 + (x) * 0x1000)
+#define DLB2_CHP_LDB_CQ_WPTR(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_WPTR(x) : \
+	 DLB2_V2_5CHP_LDB_CQ_WPTR(x))
+#define DLB2_CHP_LDB_CQ_WPTR_RST 0x0
+
+#define DLB2_CHP_LDB_CQ_WPTR_WRITE_POINTER	0x000007FF
+#define DLB2_CHP_LDB_CQ_WPTR_RSVD0		0xFFFFF800
+#define DLB2_CHP_LDB_CQ_WPTR_WRITE_POINTER_LOC	0
+#define DLB2_CHP_LDB_CQ_WPTR_RSVD0_LOC		11
+
+#define DLB2_V2CHP_LDB_CQ2VAS(x) \
+	(0x40d00000 + (x) * 0x1000)
+#define DLB2_V2_5CHP_LDB_CQ2VAS(x) \
+	(0x40e80000 + (x) * 0x1000)
+#define DLB2_CHP_LDB_CQ2VAS(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ2VAS(x) : \
+	 DLB2_V2_5CHP_LDB_CQ2VAS(x))
 #define DLB2_CHP_LDB_CQ2VAS_RST 0x0
-union dlb2_chp_ldb_cq2vas {
-	struct {
-		u32 cq2vas : 5;
-		u32 rsvd0 : 27;
-	} field;
-	u32 val;
-};
+
+#define DLB2_CHP_LDB_CQ2VAS_CQ2VAS	0x0000001F
+#define DLB2_CHP_LDB_CQ2VAS_RSVD0	0xFFFFFFE0
+#define DLB2_CHP_LDB_CQ2VAS_CQ2VAS_LOC	0
+#define DLB2_CHP_LDB_CQ2VAS_RSVD0_LOC	5
 
 #define DLB2_CHP_CFG_CHP_CSR_CTRL 0x44000008
 #define DLB2_CHP_CFG_CHP_CSR_CTRL_RST 0x180002
-union dlb2_chp_cfg_chp_csr_ctrl {
-	struct {
-		u32 int_cor_alarm_dis : 1;
-		u32 int_cor_synd_dis : 1;
-		u32 int_uncr_alarm_dis : 1;
-		u32 int_unc_synd_dis : 1;
-		u32 int_inf0_alarm_dis : 1;
-		u32 int_inf0_synd_dis : 1;
-		u32 int_inf1_alarm_dis : 1;
-		u32 int_inf1_synd_dis : 1;
-		u32 int_inf2_alarm_dis : 1;
-		u32 int_inf2_synd_dis : 1;
-		u32 int_inf3_alarm_dis : 1;
-		u32 int_inf3_synd_dis : 1;
-		u32 int_inf4_alarm_dis : 1;
-		u32 int_inf4_synd_dis : 1;
-		u32 int_inf5_alarm_dis : 1;
-		u32 int_inf5_synd_dis : 1;
-		u32 dlb_cor_alarm_enable : 1;
-		u32 cfg_64bytes_qe_ldb_cq_mode : 1;
-		u32 cfg_64bytes_qe_dir_cq_mode : 1;
-		u32 pad_write_ldb : 1;
-		u32 pad_write_dir : 1;
-		u32 pad_first_write_ldb : 1;
-		u32 pad_first_write_dir : 1;
-		u32 rsvz0 : 9;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_DIR_CQ_INTR_ARMED0 0x4400005c
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_COR_ALARM_DIS		0x00000001
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_COR_SYND_DIS		0x00000002
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_UNCR_ALARM_DIS		0x00000004
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_UNC_SYND_DIS		0x00000008
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF0_ALARM_DIS		0x00000010
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF0_SYND_DIS		0x00000020
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF1_ALARM_DIS		0x00000040
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF1_SYND_DIS		0x00000080
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF2_ALARM_DIS		0x00000100
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF2_SYND_DIS		0x00000200
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF3_ALARM_DIS		0x00000400
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF3_SYND_DIS		0x00000800
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF4_ALARM_DIS		0x00001000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF4_SYND_DIS		0x00002000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF5_ALARM_DIS		0x00004000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF5_SYND_DIS		0x00008000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_DLB_COR_ALARM_ENABLE	0x00010000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_CFG_64BYTES_QE_LDB_CQ_MODE	0x00020000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_CFG_64BYTES_QE_DIR_CQ_MODE	0x00040000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_PAD_WRITE_LDB		0x00080000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_PAD_WRITE_DIR		0x00100000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_PAD_FIRST_WRITE_LDB	0x00200000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_PAD_FIRST_WRITE_DIR	0x00400000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_RSVZ0			0xFF800000
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_COR_ALARM_DIS_LOC		0
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_COR_SYND_DIS_LOC		1
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_UNCR_ALARM_DIS_LOC		2
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_UNC_SYND_DIS_LOC		3
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF0_ALARM_DIS_LOC		4
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF0_SYND_DIS_LOC		5
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF1_ALARM_DIS_LOC		6
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF1_SYND_DIS_LOC		7
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF2_ALARM_DIS_LOC		8
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF2_SYND_DIS_LOC		9
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF3_ALARM_DIS_LOC		10
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF3_SYND_DIS_LOC		11
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF4_ALARM_DIS_LOC		12
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF4_SYND_DIS_LOC		13
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF5_ALARM_DIS_LOC		14
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_INT_INF5_SYND_DIS_LOC		15
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_DLB_COR_ALARM_ENABLE_LOC		16
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_CFG_64BYTES_QE_LDB_CQ_MODE_LOC	17
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_CFG_64BYTES_QE_DIR_CQ_MODE_LOC	18
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_PAD_WRITE_LDB_LOC			19
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_PAD_WRITE_DIR_LOC			20
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_PAD_FIRST_WRITE_LDB_LOC		21
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_PAD_FIRST_WRITE_DIR_LOC		22
+#define DLB2_CHP_CFG_CHP_CSR_CTRL_RSVZ0_LOC				23
+
+#define DLB2_V2CHP_DIR_CQ_INTR_ARMED0 0x4400005c
+#define DLB2_V2_5CHP_DIR_CQ_INTR_ARMED0 0x4400004c
+#define DLB2_CHP_DIR_CQ_INTR_ARMED0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_INTR_ARMED0 : \
+	 DLB2_V2_5CHP_DIR_CQ_INTR_ARMED0)
 #define DLB2_CHP_DIR_CQ_INTR_ARMED0_RST 0x0
-union dlb2_chp_dir_cq_intr_armed0 {
-	struct {
-		u32 armed : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_DIR_CQ_INTR_ARMED1 0x44000060
+#define DLB2_CHP_DIR_CQ_INTR_ARMED0_ARMED	0xFFFFFFFF
+#define DLB2_CHP_DIR_CQ_INTR_ARMED0_ARMED_LOC	0
+
+#define DLB2_V2CHP_DIR_CQ_INTR_ARMED1 0x44000060
+#define DLB2_V2_5CHP_DIR_CQ_INTR_ARMED1 0x44000050
+#define DLB2_CHP_DIR_CQ_INTR_ARMED1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_DIR_CQ_INTR_ARMED1 : \
+	 DLB2_V2_5CHP_DIR_CQ_INTR_ARMED1)
 #define DLB2_CHP_DIR_CQ_INTR_ARMED1_RST 0x0
-union dlb2_chp_dir_cq_intr_armed1 {
-	struct {
-		u32 armed : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL 0x44000084
+#define DLB2_CHP_DIR_CQ_INTR_ARMED1_ARMED	0xFFFFFFFF
+#define DLB2_CHP_DIR_CQ_INTR_ARMED1_ARMED_LOC	0
+
+#define DLB2_V2CHP_CFG_DIR_CQ_TIMER_CTL 0x44000084
+#define DLB2_V2_5CHP_CFG_DIR_CQ_TIMER_CTL 0x44000088
+#define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_DIR_CQ_TIMER_CTL : \
+	 DLB2_V2_5CHP_CFG_DIR_CQ_TIMER_CTL)
 #define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL_RST 0x0
-union dlb2_chp_cfg_dir_cq_timer_ctl {
-	struct {
-		u32 sample_interval : 8;
-		u32 enb : 1;
-		u32 rsvz0 : 23;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_DIR_WDTO_0 0x44000088
+#define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL_SAMPLE_INTERVAL	0x000000FF
+#define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL_ENB			0x00000100
+#define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL_RSVZ0			0xFFFFFE00
+#define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL_SAMPLE_INTERVAL_LOC	0
+#define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL_ENB_LOC		8
+#define DLB2_CHP_CFG_DIR_CQ_TIMER_CTL_RSVZ0_LOC		9
+
+#define DLB2_V2CHP_CFG_DIR_WDTO_0 0x44000088
+#define DLB2_V2_5CHP_CFG_DIR_WDTO_0 0x4400008c
+#define DLB2_CHP_CFG_DIR_WDTO_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_DIR_WDTO_0 : \
+	 DLB2_V2_5CHP_CFG_DIR_WDTO_0)
 #define DLB2_CHP_CFG_DIR_WDTO_0_RST 0x0
-union dlb2_chp_cfg_dir_wdto_0 {
-	struct {
-		u32 wdto : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_DIR_WDTO_1 0x4400008c
+#define DLB2_CHP_CFG_DIR_WDTO_0_WDTO	0xFFFFFFFF
+#define DLB2_CHP_CFG_DIR_WDTO_0_WDTO_LOC	0
+
+#define DLB2_V2CHP_CFG_DIR_WDTO_1 0x4400008c
+#define DLB2_V2_5CHP_CFG_DIR_WDTO_1 0x44000090
+#define DLB2_CHP_CFG_DIR_WDTO_1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_DIR_WDTO_1 : \
+	 DLB2_V2_5CHP_CFG_DIR_WDTO_1)
 #define DLB2_CHP_CFG_DIR_WDTO_1_RST 0x0
-union dlb2_chp_cfg_dir_wdto_1 {
-	struct {
-		u32 wdto : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_DIR_WD_DISABLE0 0x44000098
+#define DLB2_CHP_CFG_DIR_WDTO_1_WDTO	0xFFFFFFFF
+#define DLB2_CHP_CFG_DIR_WDTO_1_WDTO_LOC	0
+
+#define DLB2_V2CHP_CFG_DIR_WD_DISABLE0 0x44000098
+#define DLB2_V2_5CHP_CFG_DIR_WD_DISABLE0 0x440000a4
+#define DLB2_CHP_CFG_DIR_WD_DISABLE0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_DIR_WD_DISABLE0 : \
+	 DLB2_V2_5CHP_CFG_DIR_WD_DISABLE0)
 #define DLB2_CHP_CFG_DIR_WD_DISABLE0_RST 0xffffffff
-union dlb2_chp_cfg_dir_wd_disable0 {
-	struct {
-		u32 wd_disable : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_DIR_WD_DISABLE1 0x4400009c
+#define DLB2_CHP_CFG_DIR_WD_DISABLE0_WD_DISABLE	0xFFFFFFFF
+#define DLB2_CHP_CFG_DIR_WD_DISABLE0_WD_DISABLE_LOC	0
+
+#define DLB2_V2CHP_CFG_DIR_WD_DISABLE1 0x4400009c
+#define DLB2_V2_5CHP_CFG_DIR_WD_DISABLE1 0x440000a8
+#define DLB2_CHP_CFG_DIR_WD_DISABLE1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_DIR_WD_DISABLE1 : \
+	 DLB2_V2_5CHP_CFG_DIR_WD_DISABLE1)
 #define DLB2_CHP_CFG_DIR_WD_DISABLE1_RST 0xffffffff
-union dlb2_chp_cfg_dir_wd_disable1 {
-	struct {
-		u32 wd_disable : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL 0x440000a0
+#define DLB2_CHP_CFG_DIR_WD_DISABLE1_WD_DISABLE	0xFFFFFFFF
+#define DLB2_CHP_CFG_DIR_WD_DISABLE1_WD_DISABLE_LOC	0
+
+#define DLB2_V2CHP_CFG_DIR_WD_ENB_INTERVAL 0x440000a0
+#define DLB2_V2_5CHP_CFG_DIR_WD_ENB_INTERVAL 0x440000b0
+#define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_DIR_WD_ENB_INTERVAL : \
+	 DLB2_V2_5CHP_CFG_DIR_WD_ENB_INTERVAL)
 #define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL_RST 0x0
-union dlb2_chp_cfg_dir_wd_enb_interval {
-	struct {
-		u32 sample_interval : 28;
-		u32 enb : 1;
-		u32 rsvz0 : 3;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_DIR_WD_THRESHOLD 0x440000ac
+#define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL_SAMPLE_INTERVAL	0x0FFFFFFF
+#define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL_ENB			0x10000000
+#define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL_RSVZ0		0xE0000000
+#define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL_SAMPLE_INTERVAL_LOC	0
+#define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL_ENB_LOC		28
+#define DLB2_CHP_CFG_DIR_WD_ENB_INTERVAL_RSVZ0_LOC		29
+
+#define DLB2_V2CHP_CFG_DIR_WD_THRESHOLD 0x440000ac
+#define DLB2_V2_5CHP_CFG_DIR_WD_THRESHOLD 0x440000c0
+#define DLB2_CHP_CFG_DIR_WD_THRESHOLD(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_DIR_WD_THRESHOLD : \
+	 DLB2_V2_5CHP_CFG_DIR_WD_THRESHOLD)
 #define DLB2_CHP_CFG_DIR_WD_THRESHOLD_RST 0x0
-union dlb2_chp_cfg_dir_wd_threshold {
-	struct {
-		u32 wd_threshold : 8;
-		u32 rsvz0 : 24;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_LDB_CQ_INTR_ARMED0 0x440000b0
+#define DLB2_CHP_CFG_DIR_WD_THRESHOLD_WD_THRESHOLD	0x000000FF
+#define DLB2_CHP_CFG_DIR_WD_THRESHOLD_RSVZ0		0xFFFFFF00
+#define DLB2_CHP_CFG_DIR_WD_THRESHOLD_WD_THRESHOLD_LOC	0
+#define DLB2_CHP_CFG_DIR_WD_THRESHOLD_RSVZ0_LOC		8
+
+#define DLB2_V2CHP_LDB_CQ_INTR_ARMED0 0x440000b0
+#define DLB2_V2_5CHP_LDB_CQ_INTR_ARMED0 0x440000c4
+#define DLB2_CHP_LDB_CQ_INTR_ARMED0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_INTR_ARMED0 : \
+	 DLB2_V2_5CHP_LDB_CQ_INTR_ARMED0)
 #define DLB2_CHP_LDB_CQ_INTR_ARMED0_RST 0x0
-union dlb2_chp_ldb_cq_intr_armed0 {
-	struct {
-		u32 armed : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_LDB_CQ_INTR_ARMED1 0x440000b4
+#define DLB2_CHP_LDB_CQ_INTR_ARMED0_ARMED	0xFFFFFFFF
+#define DLB2_CHP_LDB_CQ_INTR_ARMED0_ARMED_LOC	0
+
+#define DLB2_V2CHP_LDB_CQ_INTR_ARMED1 0x440000b4
+#define DLB2_V2_5CHP_LDB_CQ_INTR_ARMED1 0x440000c8
+#define DLB2_CHP_LDB_CQ_INTR_ARMED1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_LDB_CQ_INTR_ARMED1 : \
+	 DLB2_V2_5CHP_LDB_CQ_INTR_ARMED1)
 #define DLB2_CHP_LDB_CQ_INTR_ARMED1_RST 0x0
-union dlb2_chp_ldb_cq_intr_armed1 {
-	struct {
-		u32 armed : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL 0x440000d8
+#define DLB2_CHP_LDB_CQ_INTR_ARMED1_ARMED	0xFFFFFFFF
+#define DLB2_CHP_LDB_CQ_INTR_ARMED1_ARMED_LOC	0
+
+#define DLB2_V2CHP_CFG_LDB_CQ_TIMER_CTL 0x440000d8
+#define DLB2_V2_5CHP_CFG_LDB_CQ_TIMER_CTL 0x440000ec
+#define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_LDB_CQ_TIMER_CTL : \
+	 DLB2_V2_5CHP_CFG_LDB_CQ_TIMER_CTL)
 #define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL_RST 0x0
-union dlb2_chp_cfg_ldb_cq_timer_ctl {
-	struct {
-		u32 sample_interval : 8;
-		u32 enb : 1;
-		u32 rsvz0 : 23;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_LDB_WDTO_0 0x440000dc
+#define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL_SAMPLE_INTERVAL	0x000000FF
+#define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL_ENB			0x00000100
+#define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL_RSVZ0			0xFFFFFE00
+#define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL_SAMPLE_INTERVAL_LOC	0
+#define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL_ENB_LOC		8
+#define DLB2_CHP_CFG_LDB_CQ_TIMER_CTL_RSVZ0_LOC		9
+
+#define DLB2_V2CHP_CFG_LDB_WDTO_0 0x440000dc
+#define DLB2_V2_5CHP_CFG_LDB_WDTO_0 0x440000f0
+#define DLB2_CHP_CFG_LDB_WDTO_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_LDB_WDTO_0 : \
+	 DLB2_V2_5CHP_CFG_LDB_WDTO_0)
 #define DLB2_CHP_CFG_LDB_WDTO_0_RST 0x0
-union dlb2_chp_cfg_ldb_wdto_0 {
-	struct {
-		u32 wdto : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_LDB_WDTO_1 0x440000e0
+#define DLB2_CHP_CFG_LDB_WDTO_0_WDTO	0xFFFFFFFF
+#define DLB2_CHP_CFG_LDB_WDTO_0_WDTO_LOC	0
+
+#define DLB2_V2CHP_CFG_LDB_WDTO_1 0x440000e0
+#define DLB2_V2_5CHP_CFG_LDB_WDTO_1 0x440000f4
+#define DLB2_CHP_CFG_LDB_WDTO_1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_LDB_WDTO_1 : \
+	 DLB2_V2_5CHP_CFG_LDB_WDTO_1)
 #define DLB2_CHP_CFG_LDB_WDTO_1_RST 0x0
-union dlb2_chp_cfg_ldb_wdto_1 {
-	struct {
-		u32 wdto : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_LDB_WD_DISABLE0 0x440000ec
+#define DLB2_CHP_CFG_LDB_WDTO_1_WDTO	0xFFFFFFFF
+#define DLB2_CHP_CFG_LDB_WDTO_1_WDTO_LOC	0
+
+#define DLB2_V2CHP_CFG_LDB_WD_DISABLE0 0x440000ec
+#define DLB2_V2_5CHP_CFG_LDB_WD_DISABLE0 0x44000100
+#define DLB2_CHP_CFG_LDB_WD_DISABLE0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_LDB_WD_DISABLE0 : \
+	 DLB2_V2_5CHP_CFG_LDB_WD_DISABLE0)
 #define DLB2_CHP_CFG_LDB_WD_DISABLE0_RST 0xffffffff
-union dlb2_chp_cfg_ldb_wd_disable0 {
-	struct {
-		u32 wd_disable : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_LDB_WD_DISABLE1 0x440000f0
+#define DLB2_CHP_CFG_LDB_WD_DISABLE0_WD_DISABLE	0xFFFFFFFF
+#define DLB2_CHP_CFG_LDB_WD_DISABLE0_WD_DISABLE_LOC	0
+
+#define DLB2_V2CHP_CFG_LDB_WD_DISABLE1 0x440000f0
+#define DLB2_V2_5CHP_CFG_LDB_WD_DISABLE1 0x44000104
+#define DLB2_CHP_CFG_LDB_WD_DISABLE1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_LDB_WD_DISABLE1 : \
+	 DLB2_V2_5CHP_CFG_LDB_WD_DISABLE1)
 #define DLB2_CHP_CFG_LDB_WD_DISABLE1_RST 0xffffffff
-union dlb2_chp_cfg_ldb_wd_disable1 {
-	struct {
-		u32 wd_disable : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL 0x440000f4
+#define DLB2_CHP_CFG_LDB_WD_DISABLE1_WD_DISABLE	0xFFFFFFFF
+#define DLB2_CHP_CFG_LDB_WD_DISABLE1_WD_DISABLE_LOC	0
+
+#define DLB2_V2CHP_CFG_LDB_WD_ENB_INTERVAL 0x440000f4
+#define DLB2_V2_5CHP_CFG_LDB_WD_ENB_INTERVAL 0x44000108
+#define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_LDB_WD_ENB_INTERVAL : \
+	 DLB2_V2_5CHP_CFG_LDB_WD_ENB_INTERVAL)
 #define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL_RST 0x0
-union dlb2_chp_cfg_ldb_wd_enb_interval {
-	struct {
-		u32 sample_interval : 28;
-		u32 enb : 1;
-		u32 rsvz0 : 3;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CHP_CFG_LDB_WD_THRESHOLD 0x44000100
+#define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL_SAMPLE_INTERVAL	0x0FFFFFFF
+#define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL_ENB			0x10000000
+#define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL_RSVZ0		0xE0000000
+#define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL_SAMPLE_INTERVAL_LOC	0
+#define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL_ENB_LOC		28
+#define DLB2_CHP_CFG_LDB_WD_ENB_INTERVAL_RSVZ0_LOC		29
+
+#define DLB2_V2CHP_CFG_LDB_WD_THRESHOLD 0x44000100
+#define DLB2_V2_5CHP_CFG_LDB_WD_THRESHOLD 0x44000114
+#define DLB2_CHP_CFG_LDB_WD_THRESHOLD(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CHP_CFG_LDB_WD_THRESHOLD : \
+	 DLB2_V2_5CHP_CFG_LDB_WD_THRESHOLD)
 #define DLB2_CHP_CFG_LDB_WD_THRESHOLD_RST 0x0
-union dlb2_chp_cfg_ldb_wd_threshold {
-	struct {
-		u32 wd_threshold : 8;
-		u32 rsvz0 : 24;
-	} field;
-	u32 val;
-};
+
+#define DLB2_CHP_CFG_LDB_WD_THRESHOLD_WD_THRESHOLD	0x000000FF
+#define DLB2_CHP_CFG_LDB_WD_THRESHOLD_RSVZ0		0xFFFFFF00
+#define DLB2_CHP_CFG_LDB_WD_THRESHOLD_WD_THRESHOLD_LOC	0
+#define DLB2_CHP_CFG_LDB_WD_THRESHOLD_RSVZ0_LOC		8
+
+#define DLB2_CHP_SMON_COMPARE0 0x4c000000
+#define DLB2_CHP_SMON_COMPARE0_RST 0x0
+
+#define DLB2_CHP_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_CHP_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_CHP_SMON_COMPARE1 0x4c000004
+#define DLB2_CHP_SMON_COMPARE1_RST 0x0
+
+#define DLB2_CHP_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_CHP_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_CHP_SMON_CFG0 0x4c000008
+#define DLB2_CHP_SMON_CFG0_RST 0x40000000
+
+#define DLB2_CHP_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_CHP_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_CHP_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_CHP_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_CHP_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_CHP_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_CHP_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_CHP_SMON_CFG0_SMON_MODE			0x0000F000
+#define DLB2_CHP_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_CHP_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_CHP_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_CHP_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_CHP_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_CHP_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_CHP_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_CHP_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_CHP_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_CHP_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_CHP_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_CHP_SMON_CFG0_SMON_ENABLE_LOC			0
+#define DLB2_CHP_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC		1
+#define DLB2_CHP_SMON_CFG0_RSVZ0_LOC				2
+#define DLB2_CHP_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_CHP_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_CHP_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_CHP_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_CHP_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_CHP_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_CHP_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_CHP_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_CHP_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_CHP_SMON_CFG0_STOPTIMEROVFL_LOC			20
+#define DLB2_CHP_SMON_CFG0_INTTIMEROVFL_LOC			21
+#define DLB2_CHP_SMON_CFG0_STATTIMEROVFL_LOC			22
+#define DLB2_CHP_SMON_CFG0_RSVZ1_LOC				23
+#define DLB2_CHP_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_CHP_SMON_CFG0_RSVZ2_LOC				29
+#define DLB2_CHP_SMON_CFG0_VERSION_LOC			30
+
+#define DLB2_CHP_SMON_CFG1 0x4c00000c
+#define DLB2_CHP_SMON_CFG1_RST 0x0
+
+#define DLB2_CHP_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_CHP_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_CHP_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_CHP_SMON_CFG1_MODE0_LOC	0
+#define DLB2_CHP_SMON_CFG1_MODE1_LOC	8
+#define DLB2_CHP_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_CHP_SMON_ACTIVITYCNTR0 0x4c000010
+#define DLB2_CHP_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_CHP_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_CHP_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_CHP_SMON_ACTIVITYCNTR1 0x4c000014
+#define DLB2_CHP_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_CHP_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_CHP_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_CHP_SMON_MAX_TMR 0x4c000018
+#define DLB2_CHP_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_CHP_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_CHP_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_CHP_SMON_TMR 0x4c00001c
+#define DLB2_CHP_SMON_TMR_RST 0x0
+
+#define DLB2_CHP_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_CHP_SMON_TMR_TIMER_LOC	0
 
 #define DLB2_CHP_CTRL_DIAG_02 0x4c000028
 #define DLB2_CHP_CTRL_DIAG_02_RST 0x1555
-union dlb2_chp_ctrl_diag_02 {
-	struct {
-		u32 egress_credit_status_empty : 1;
-		u32 egress_credit_status_afull : 1;
-		u32 chp_outbound_hcw_pipe_credit_status_empty : 1;
-		u32 chp_outbound_hcw_pipe_credit_status_afull : 1;
-		u32 chp_lsp_ap_cmp_pipe_credit_status_empty : 1;
-		u32 chp_lsp_ap_cmp_pipe_credit_status_afull : 1;
-		u32 chp_lsp_tok_pipe_credit_status_empty : 1;
-		u32 chp_lsp_tok_pipe_credit_status_afull : 1;
-		u32 chp_rop_pipe_credit_status_empty : 1;
-		u32 chp_rop_pipe_credit_status_afull : 1;
-		u32 qed_to_cq_pipe_credit_status_empty : 1;
-		u32 qed_to_cq_pipe_credit_status_afull : 1;
-		u32 egress_lsp_token_credit_status_empty : 1;
-		u32 egress_lsp_token_credit_status_afull : 1;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
+
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_CREDIT_STATUS_EMPTY_V2	0x00000001
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_CREDIT_STATUS_AFULL_V2	0x00000002
+#define DLB2_CHP_CTRL_DIAG_02_CHP_OUT_HCW_PIPE_CREDIT_STATUS_EMPTY_V2 0x04
+#define DLB2_CHP_CTRL_DIAG_02_CHP_OUT_HCW_PIPE_CREDIT_STATUS_AFULL_V2 0x08
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_AP_CMP_PIPE_CREDIT_STATUS_EMPTY_V2 0x0010
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_AP_CMP_PIPE_CREDIT_STATUS_AFULL_V2 0x0020
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOK_PIPE_CREDIT_STATUS_EMPTY_V2    0x0040
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOK_PIPE_CREDIT_STATUS_AFULL_V2    0x0080
+#define DLB2_CHP_CTRL_DIAG_02_CHP_ROP_PIPE_CREDIT_STATUS_EMPTY_V2	 0x0100
+#define DLB2_CHP_CTRL_DIAG_02_CHP_ROP_PIPE_CREDIT_STATUS_AFULL_V2	 0x0200
+#define DLB2_CHP_CTRL_DIAG_02_QED_TO_CQ_PIPE_CREDIT_STATUS_EMPTY_V2	0x0400
+#define DLB2_CHP_CTRL_DIAG_02_QED_TO_CQ_PIPE_CREDIT_STATUS_AFULL_V2	0x0800
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_LSP_TOKEN_CREDIT_STATUS_EMPTY_V2    0x1000
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_LSP_TOKEN_CREDIT_STATUS_AFULL_V2    0x2000
+#define DLB2_CHP_CTRL_DIAG_02_RSVD0_V2				    0xFFFFC000
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_CREDIT_STATUS_EMPTY_V2_LOC	    0
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_CREDIT_STATUS_AFULL_V2_LOC	    1
+#define DLB2_CHP_CTRL_DIAG_02_CHP_OUT_HCW_PIPE_CREDIT_STATUS_EMPTY_V2_LOC 2
+#define DLB2_CHP_CTRL_DIAG_02_CHP_OUT_HCW_PIPE_CREDIT_STATUS_AFULL_V2_LOC 3
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_AP_CMP_PIPE_CREDIT_STATUS_EMPTY_V2_LOC 4
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_AP_CMP_PIPE_CREDIT_STATUS_AFULL_V2_LOC 5
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOK_PIPE_CREDIT_STATUS_EMPTY_V2_LOC    6
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOK_PIPE_CREDIT_STATUS_AFULL_V2_LOC    7
+#define DLB2_CHP_CTRL_DIAG_02_CHP_ROP_PIPE_CREDIT_STATUS_EMPTY_V2_LOC	  8
+#define DLB2_CHP_CTRL_DIAG_02_CHP_ROP_PIPE_CREDIT_STATUS_AFULL_V2_LOC	  9
+#define DLB2_CHP_CTRL_DIAG_02_QED_TO_CQ_PIPE_CREDIT_STATUS_EMPTY_V2_LOC	  10
+#define DLB2_CHP_CTRL_DIAG_02_QED_TO_CQ_PIPE_CREDIT_STATUS_AFULL_V2_LOC	  11
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_LSP_TOKEN_CREDIT_STATUS_EMPTY_V2_LOC 12
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_LSP_TOKEN_CREDIT_STATUS_AFULL_V2_LOC 13
+#define DLB2_CHP_CTRL_DIAG_02_RSVD0_V2_LOC				  14
+
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_CREDIT_STATUS_EMPTY_V2_5	     0x00000001
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_CREDIT_STATUS_AFULL_V2_5	     0x00000002
+#define DLB2_CHP_CTRL_DIAG_02_CHP_OUT_HCW_PIPE_CREDIT_STATUS_EMPTY_V2_5  4
+#define DLB2_CHP_CTRL_DIAG_02_CHP_OUT_HCW_PIPE_CREDIT_STATUS_AFULL_V2_5  8
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_AP_CMP_PIPE_CREDIT_STATUS_EMPTY_V2_5 0x10
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_AP_CMP_PIPE_CREDIT_STATUS_AFULL_V2_5 0x20
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOK_PIPE_CREDIT_STATUS_EMPTY_V2_5	0x0040
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOK_PIPE_CREDIT_STATUS_AFULL_V2_5	0x0080
+#define DLB2_CHP_CTRL_DIAG_02_CHP_ROP_PIPE_CREDIT_STATUS_EMPTY_V2_5 0x00000100
+#define DLB2_CHP_CTRL_DIAG_02_CHP_ROP_PIPE_CREDIT_STATUS_AFULL_V2_5 0x00000200
+#define DLB2_CHP_CTRL_DIAG_02_QED_TO_CQ_PIPE_CREDIT_STATUS_EMPTY_V2_5 0x0400
+#define DLB2_CHP_CTRL_DIAG_02_QED_TO_CQ_PIPE_CREDIT_STATUS_AFULL_V2_5 0x0800
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_LSP_TOKEN_CREDIT_STATUS_EMPTY_V2_5 0x1000
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_LSP_TOKEN_CREDIT_STATUS_AFULL_V2_5 0x2000
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOKEN_QB_STATUS_SIZE_V2_5	    0x0001C000
+#define DLB2_CHP_CTRL_DIAG_02_FREELIST_SIZE_V2_5		    0xFFFE0000
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_CREDIT_STATUS_EMPTY_V2_5_LOC 0
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_CREDIT_STATUS_AFULL_V2_5_LOC 1
+#define DLB2_CHP_CTRL_DIAG_02_CHP_OUT_HCW_PIPE_CREDIT_STATUS_EMPTY_V2_5_LOC 2
+#define DLB2_CHP_CTRL_DIAG_02_CHP_OUT_HCW_PIPE_CREDIT_STATUS_AFULL_V2_5_LOC 3
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_AP_CMP_PIPE_CREDIT_STATUS_EMPTY_V2_5_LOC 4
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_AP_CMP_PIPE_CREDIT_STATUS_AFULL_V2_5_LOC 5
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOK_PIPE_CREDIT_STATUS_EMPTY_V2_5_LOC    6
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOK_PIPE_CREDIT_STATUS_AFULL_V2_5_LOC 7
+#define DLB2_CHP_CTRL_DIAG_02_CHP_ROP_PIPE_CREDIT_STATUS_EMPTY_V2_5_LOC	    8
+#define DLB2_CHP_CTRL_DIAG_02_CHP_ROP_PIPE_CREDIT_STATUS_AFULL_V2_5_LOC	    9
+#define DLB2_CHP_CTRL_DIAG_02_QED_TO_CQ_PIPE_CREDIT_STATUS_EMPTY_V2_5_LOC   10
+#define DLB2_CHP_CTRL_DIAG_02_QED_TO_CQ_PIPE_CREDIT_STATUS_AFULL_V2_5_LOC   11
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_LSP_TOKEN_CREDIT_STATUS_EMPTY_V2_5_LOC 12
+#define DLB2_CHP_CTRL_DIAG_02_EGRESS_LSP_TOKEN_CREDIT_STATUS_AFULL_V2_5_LOC 13
+#define DLB2_CHP_CTRL_DIAG_02_CHP_LSP_TOKEN_QB_STATUS_SIZE_V2_5_LOC	    14
+#define DLB2_CHP_CTRL_DIAG_02_FREELIST_SIZE_V2_5_LOC			    17
 
 #define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0 0x54000000
 #define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_RST 0xfefcfaf8
-union dlb2_dp_cfg_arb_weights_tqpri_dir_0 {
-	struct {
-		u32 pri0 : 8;
-		u32 pri1 : 8;
-		u32 pri2 : 8;
-		u32 pri3 : 8;
-	} field;
-	u32 val;
-};
+
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI0	0x000000FF
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI1	0x0000FF00
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI2	0x00FF0000
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI3	0xFF000000
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI0_LOC	0
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI1_LOC	8
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI2_LOC	16
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_0_PRI3_LOC	24
 
 #define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_1 0x54000004
 #define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_1_RST 0x0
-union dlb2_dp_cfg_arb_weights_tqpri_dir_1 {
-	struct {
-		u32 rsvz0 : 32;
-	} field;
-	u32 val;
-};
+
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_1_RSVZ0	0xFFFFFFFF
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_DIR_1_RSVZ0_LOC	0
 
 #define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0 0x54000008
 #define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_RST 0xfefcfaf8
-union dlb2_dp_cfg_arb_weights_tqpri_replay_0 {
-	struct {
-		u32 pri0 : 8;
-		u32 pri1 : 8;
-		u32 pri2 : 8;
-		u32 pri3 : 8;
-	} field;
-	u32 val;
-};
+
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI0	0x000000FF
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI1	0x0000FF00
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI2	0x00FF0000
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI3	0xFF000000
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI0_LOC	0
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI1_LOC	8
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI2_LOC	16
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI3_LOC	24
 
 #define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1 0x5400000c
 #define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1_RST 0x0
-union dlb2_dp_cfg_arb_weights_tqpri_replay_1 {
-	struct {
-		u32 rsvz0 : 32;
-	} field;
-	u32 val;
-};
+
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1_RSVZ0	0xFFFFFFFF
+#define DLB2_DP_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1_RSVZ0_LOC	0
 
 #define DLB2_DP_DIR_CSR_CTRL 0x54000010
 #define DLB2_DP_DIR_CSR_CTRL_RST 0x0
-union dlb2_dp_dir_csr_ctrl {
-	struct {
-		u32 int_cor_alarm_dis : 1;
-		u32 int_cor_synd_dis : 1;
-		u32 int_uncr_alarm_dis : 1;
-		u32 int_unc_synd_dis : 1;
-		u32 int_inf0_alarm_dis : 1;
-		u32 int_inf0_synd_dis : 1;
-		u32 int_inf1_alarm_dis : 1;
-		u32 int_inf1_synd_dis : 1;
-		u32 int_inf2_alarm_dis : 1;
-		u32 int_inf2_synd_dis : 1;
-		u32 int_inf3_alarm_dis : 1;
-		u32 int_inf3_synd_dis : 1;
-		u32 int_inf4_alarm_dis : 1;
-		u32 int_inf4_synd_dis : 1;
-		u32 int_inf5_alarm_dis : 1;
-		u32 int_inf5_synd_dis : 1;
-		u32 rsvz0 : 16;
-	} field;
-	u32 val;
-};
 
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_ATQ_0 0x84000000
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_RST 0xfefcfaf8
-union dlb2_nalb_pipe_cfg_arb_weights_tqpri_atq_0 {
-	struct {
-		u32 pri0 : 8;
-		u32 pri1 : 8;
-		u32 pri2 : 8;
-		u32 pri3 : 8;
-	} field;
-	u32 val;
-};
+#define DLB2_DP_DIR_CSR_CTRL_INT_COR_ALARM_DIS	0x00000001
+#define DLB2_DP_DIR_CSR_CTRL_INT_COR_SYND_DIS	0x00000002
+#define DLB2_DP_DIR_CSR_CTRL_INT_UNCR_ALARM_DIS	0x00000004
+#define DLB2_DP_DIR_CSR_CTRL_INT_UNC_SYND_DIS	0x00000008
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF0_ALARM_DIS	0x00000010
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF0_SYND_DIS	0x00000020
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF1_ALARM_DIS	0x00000040
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF1_SYND_DIS	0x00000080
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF2_ALARM_DIS	0x00000100
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF2_SYND_DIS	0x00000200
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF3_ALARM_DIS	0x00000400
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF3_SYND_DIS	0x00000800
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF4_ALARM_DIS	0x00001000
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF4_SYND_DIS	0x00002000
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF5_ALARM_DIS	0x00004000
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF5_SYND_DIS	0x00008000
+#define DLB2_DP_DIR_CSR_CTRL_RSVZ0			0xFFFF0000
+#define DLB2_DP_DIR_CSR_CTRL_INT_COR_ALARM_DIS_LOC	0
+#define DLB2_DP_DIR_CSR_CTRL_INT_COR_SYND_DIS_LOC	1
+#define DLB2_DP_DIR_CSR_CTRL_INT_UNCR_ALARM_DIS_LOC	2
+#define DLB2_DP_DIR_CSR_CTRL_INT_UNC_SYND_DIS_LOC	3
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF0_ALARM_DIS_LOC	4
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF0_SYND_DIS_LOC	5
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF1_ALARM_DIS_LOC	6
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF1_SYND_DIS_LOC	7
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF2_ALARM_DIS_LOC	8
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF2_SYND_DIS_LOC	9
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF3_ALARM_DIS_LOC	10
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF3_SYND_DIS_LOC	11
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF4_ALARM_DIS_LOC	12
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF4_SYND_DIS_LOC	13
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF5_ALARM_DIS_LOC	14
+#define DLB2_DP_DIR_CSR_CTRL_INT_INF5_SYND_DIS_LOC	15
+#define DLB2_DP_DIR_CSR_CTRL_RSVZ0_LOC		16
 
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_ATQ_1 0x84000004
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_ATQ_1_RST 0x0
-union dlb2_nalb_pipe_cfg_arb_weights_tqpri_atq_1 {
-	struct {
-		u32 rsvz0 : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_DP_SMON_ACTIVITYCNTR0 0x5c000058
+#define DLB2_DP_SMON_ACTIVITYCNTR0_RST 0x0
 
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_NALB_0 0x84000008
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_NALB_0_RST 0xfefcfaf8
-union dlb2_nalb_pipe_cfg_arb_weights_tqpri_nalb_0 {
-	struct {
-		u32 pri0 : 8;
-		u32 pri1 : 8;
-		u32 pri2 : 8;
-		u32 pri3 : 8;
-	} field;
-	u32 val;
-};
+#define DLB2_DP_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_DP_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
 
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_NALB_1 0x8400000c
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_NALB_1_RST 0x0
-union dlb2_nalb_pipe_cfg_arb_weights_tqpri_nalb_1 {
-	struct {
-		u32 rsvz0 : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_DP_SMON_ACTIVITYCNTR1 0x5c00005c
+#define DLB2_DP_SMON_ACTIVITYCNTR1_RST 0x0
 
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0 0x84000010
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_RST 0xfefcfaf8
-union dlb2_nalb_pipe_cfg_arb_weights_tqpri_replay_0 {
-	struct {
-		u32 pri0 : 8;
-		u32 pri1 : 8;
-		u32 pri2 : 8;
-		u32 pri3 : 8;
-	} field;
-	u32 val;
-};
+#define DLB2_DP_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_DP_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
 
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1 0x84000014
-#define DLB2_NALB_PIPE_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1_RST 0x0
-union dlb2_nalb_pipe_cfg_arb_weights_tqpri_replay_1 {
-	struct {
-		u32 rsvz0 : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_DP_SMON_COMPARE0 0x5c000060
+#define DLB2_DP_SMON_COMPARE0_RST 0x0
 
-#define DLB2_RO_PIPE_GRP_0_SLT_SHFT(x) \
+#define DLB2_DP_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_DP_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_DP_SMON_COMPARE1 0x5c000064
+#define DLB2_DP_SMON_COMPARE1_RST 0x0
+
+#define DLB2_DP_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_DP_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_DP_SMON_CFG0 0x5c000068
+#define DLB2_DP_SMON_CFG0_RST 0x40000000
+
+#define DLB2_DP_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_DP_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_DP_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_DP_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_DP_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_DP_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_DP_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_DP_SMON_CFG0_SMON_MODE			0x0000F000
+#define DLB2_DP_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_DP_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_DP_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_DP_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_DP_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_DP_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_DP_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_DP_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_DP_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_DP_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_DP_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_DP_SMON_CFG0_SMON_ENABLE_LOC		0
+#define DLB2_DP_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC	1
+#define DLB2_DP_SMON_CFG0_RSVZ0_LOC			2
+#define DLB2_DP_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_DP_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_DP_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_DP_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_DP_SMON_CFG0_SMON_MODE_LOC		12
+#define DLB2_DP_SMON_CFG0_STOPCOUNTEROVFL_LOC	16
+#define DLB2_DP_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_DP_SMON_CFG0_STATCOUNTER0OVFL_LOC	18
+#define DLB2_DP_SMON_CFG0_STATCOUNTER1OVFL_LOC	19
+#define DLB2_DP_SMON_CFG0_STOPTIMEROVFL_LOC		20
+#define DLB2_DP_SMON_CFG0_INTTIMEROVFL_LOC		21
+#define DLB2_DP_SMON_CFG0_STATTIMEROVFL_LOC		22
+#define DLB2_DP_SMON_CFG0_RSVZ1_LOC			23
+#define DLB2_DP_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_DP_SMON_CFG0_RSVZ2_LOC			29
+#define DLB2_DP_SMON_CFG0_VERSION_LOC		30
+
+#define DLB2_DP_SMON_CFG1 0x5c00006c
+#define DLB2_DP_SMON_CFG1_RST 0x0
+
+#define DLB2_DP_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_DP_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_DP_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_DP_SMON_CFG1_MODE0_LOC	0
+#define DLB2_DP_SMON_CFG1_MODE1_LOC	8
+#define DLB2_DP_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_DP_SMON_MAX_TMR 0x5c000070
+#define DLB2_DP_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_DP_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_DP_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_DP_SMON_TMR 0x5c000074
+#define DLB2_DP_SMON_TMR_RST 0x0
+
+#define DLB2_DP_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_DP_SMON_TMR_TIMER_LOC	0
+
+#define DLB2_DQED_SMON_ACTIVITYCNTR0 0x6c000024
+#define DLB2_DQED_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_DQED_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_DQED_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_DQED_SMON_ACTIVITYCNTR1 0x6c000028
+#define DLB2_DQED_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_DQED_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_DQED_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_DQED_SMON_COMPARE0 0x6c00002c
+#define DLB2_DQED_SMON_COMPARE0_RST 0x0
+
+#define DLB2_DQED_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_DQED_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_DQED_SMON_COMPARE1 0x6c000030
+#define DLB2_DQED_SMON_COMPARE1_RST 0x0
+
+#define DLB2_DQED_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_DQED_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_DQED_SMON_CFG0 0x6c000034
+#define DLB2_DQED_SMON_CFG0_RST 0x40000000
+
+#define DLB2_DQED_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_DQED_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_DQED_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_DQED_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_DQED_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_DQED_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_DQED_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_DQED_SMON_CFG0_SMON_MODE		0x0000F000
+#define DLB2_DQED_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_DQED_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_DQED_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_DQED_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_DQED_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_DQED_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_DQED_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_DQED_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_DQED_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_DQED_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_DQED_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_DQED_SMON_CFG0_SMON_ENABLE_LOC			0
+#define DLB2_DQED_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC		1
+#define DLB2_DQED_SMON_CFG0_RSVZ0_LOC			2
+#define DLB2_DQED_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_DQED_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_DQED_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_DQED_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_DQED_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_DQED_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_DQED_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_DQED_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_DQED_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_DQED_SMON_CFG0_STOPTIMEROVFL_LOC		20
+#define DLB2_DQED_SMON_CFG0_INTTIMEROVFL_LOC			21
+#define DLB2_DQED_SMON_CFG0_STATTIMEROVFL_LOC		22
+#define DLB2_DQED_SMON_CFG0_RSVZ1_LOC			23
+#define DLB2_DQED_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_DQED_SMON_CFG0_RSVZ2_LOC			29
+#define DLB2_DQED_SMON_CFG0_VERSION_LOC			30
+
+#define DLB2_DQED_SMON_CFG1 0x6c000038
+#define DLB2_DQED_SMON_CFG1_RST 0x0
+
+#define DLB2_DQED_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_DQED_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_DQED_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_DQED_SMON_CFG1_MODE0_LOC	0
+#define DLB2_DQED_SMON_CFG1_MODE1_LOC	8
+#define DLB2_DQED_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_DQED_SMON_MAX_TMR 0x6c00003c
+#define DLB2_DQED_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_DQED_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_DQED_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_DQED_SMON_TMR 0x6c000040
+#define DLB2_DQED_SMON_TMR_RST 0x0
+
+#define DLB2_DQED_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_DQED_SMON_TMR_TIMER_LOC	0
+
+#define DLB2_QED_SMON_ACTIVITYCNTR0 0x7c000024
+#define DLB2_QED_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_QED_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_QED_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_QED_SMON_ACTIVITYCNTR1 0x7c000028
+#define DLB2_QED_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_QED_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_QED_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_QED_SMON_COMPARE0 0x7c00002c
+#define DLB2_QED_SMON_COMPARE0_RST 0x0
+
+#define DLB2_QED_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_QED_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_QED_SMON_COMPARE1 0x7c000030
+#define DLB2_QED_SMON_COMPARE1_RST 0x0
+
+#define DLB2_QED_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_QED_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_QED_SMON_CFG0 0x7c000034
+#define DLB2_QED_SMON_CFG0_RST 0x40000000
+
+#define DLB2_QED_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_QED_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_QED_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_QED_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_QED_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_QED_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_QED_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_QED_SMON_CFG0_SMON_MODE			0x0000F000
+#define DLB2_QED_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_QED_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_QED_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_QED_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_QED_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_QED_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_QED_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_QED_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_QED_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_QED_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_QED_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_QED_SMON_CFG0_SMON_ENABLE_LOC			0
+#define DLB2_QED_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC		1
+#define DLB2_QED_SMON_CFG0_RSVZ0_LOC				2
+#define DLB2_QED_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_QED_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_QED_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_QED_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_QED_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_QED_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_QED_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_QED_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_QED_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_QED_SMON_CFG0_STOPTIMEROVFL_LOC			20
+#define DLB2_QED_SMON_CFG0_INTTIMEROVFL_LOC			21
+#define DLB2_QED_SMON_CFG0_STATTIMEROVFL_LOC			22
+#define DLB2_QED_SMON_CFG0_RSVZ1_LOC				23
+#define DLB2_QED_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_QED_SMON_CFG0_RSVZ2_LOC				29
+#define DLB2_QED_SMON_CFG0_VERSION_LOC			30
+
+#define DLB2_QED_SMON_CFG1 0x7c000038
+#define DLB2_QED_SMON_CFG1_RST 0x0
+
+#define DLB2_QED_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_QED_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_QED_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_QED_SMON_CFG1_MODE0_LOC	0
+#define DLB2_QED_SMON_CFG1_MODE1_LOC	8
+#define DLB2_QED_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_QED_SMON_MAX_TMR 0x7c00003c
+#define DLB2_QED_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_QED_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_QED_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_QED_SMON_TMR 0x7c000040
+#define DLB2_QED_SMON_TMR_RST 0x0
+
+#define DLB2_QED_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_QED_SMON_TMR_TIMER_LOC	0
+
+#define DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0 0x84000000
+#define DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0 0x74000000
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0 : \
+	 DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0)
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_RST 0xfefcfaf8
+
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI0	0x000000FF
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI1	0x0000FF00
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI2	0x00FF0000
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI3	0xFF000000
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI0_LOC	0
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI1_LOC	8
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI2_LOC	16
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_0_PRI3_LOC	24
+
+#define DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_1 0x84000004
+#define DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_1 0x74000004
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_1 : \
+	 DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_1)
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_1_RST 0x0
+
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_1_RSVZ0	0xFFFFFFFF
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_ATQ_1_RSVZ0_LOC	0
+
+#define DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0 0x84000008
+#define DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0 0x74000008
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0 : \
+	 DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0)
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_RST 0xfefcfaf8
+
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI0	0x000000FF
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI1	0x0000FF00
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI2	0x00FF0000
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI3	0xFF000000
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI0_LOC	0
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI1_LOC	8
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI2_LOC	16
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_0_PRI3_LOC	24
+
+#define DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_1 0x8400000c
+#define DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_1 0x7400000c
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_1 : \
+	 DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_1)
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_1_RST 0x0
+
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_1_RSVZ0	0xFFFFFFFF
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_NALB_1_RSVZ0_LOC	0
+
+#define DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0 0x84000010
+#define DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0 0x74000010
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0 : \
+	 DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0)
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_RST 0xfefcfaf8
+
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI0	0x000000FF
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI1	0x0000FF00
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI2	0x00FF0000
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI3	0xFF000000
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI0_LOC	0
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI1_LOC	8
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI2_LOC	16
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_0_PRI3_LOC	24
+
+#define DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1 0x84000014
+#define DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1 0x74000014
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1 : \
+	 DLB2_V2_5NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1)
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1_RST 0x0
+
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1_RSVZ0	0xFFFFFFFF
+#define DLB2_NALB_CFG_ARB_WEIGHTS_TQPRI_REPLAY_1_RSVZ0_LOC	0
+
+#define DLB2_NALB_SMON_ACTIVITYCNTR0 0x8c000064
+#define DLB2_NALB_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_NALB_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_NALB_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_NALB_SMON_ACTIVITYCNTR1 0x8c000068
+#define DLB2_NALB_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_NALB_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_NALB_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_NALB_SMON_COMPARE0 0x8c00006c
+#define DLB2_NALB_SMON_COMPARE0_RST 0x0
+
+#define DLB2_NALB_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_NALB_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_NALB_SMON_COMPARE1 0x8c000070
+#define DLB2_NALB_SMON_COMPARE1_RST 0x0
+
+#define DLB2_NALB_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_NALB_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_NALB_SMON_CFG0 0x8c000074
+#define DLB2_NALB_SMON_CFG0_RST 0x40000000
+
+#define DLB2_NALB_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_NALB_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_NALB_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_NALB_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_NALB_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_NALB_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_NALB_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_NALB_SMON_CFG0_SMON_MODE		0x0000F000
+#define DLB2_NALB_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_NALB_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_NALB_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_NALB_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_NALB_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_NALB_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_NALB_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_NALB_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_NALB_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_NALB_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_NALB_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_NALB_SMON_CFG0_SMON_ENABLE_LOC			0
+#define DLB2_NALB_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC		1
+#define DLB2_NALB_SMON_CFG0_RSVZ0_LOC			2
+#define DLB2_NALB_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_NALB_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_NALB_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_NALB_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_NALB_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_NALB_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_NALB_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_NALB_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_NALB_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_NALB_SMON_CFG0_STOPTIMEROVFL_LOC		20
+#define DLB2_NALB_SMON_CFG0_INTTIMEROVFL_LOC			21
+#define DLB2_NALB_SMON_CFG0_STATTIMEROVFL_LOC		22
+#define DLB2_NALB_SMON_CFG0_RSVZ1_LOC			23
+#define DLB2_NALB_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_NALB_SMON_CFG0_RSVZ2_LOC			29
+#define DLB2_NALB_SMON_CFG0_VERSION_LOC			30
+
+#define DLB2_NALB_SMON_CFG1 0x8c000078
+#define DLB2_NALB_SMON_CFG1_RST 0x0
+
+#define DLB2_NALB_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_NALB_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_NALB_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_NALB_SMON_CFG1_MODE0_LOC	0
+#define DLB2_NALB_SMON_CFG1_MODE1_LOC	8
+#define DLB2_NALB_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_NALB_SMON_MAX_TMR 0x8c00007c
+#define DLB2_NALB_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_NALB_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_NALB_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_NALB_SMON_TMR 0x8c000080
+#define DLB2_NALB_SMON_TMR_RST 0x0
+
+#define DLB2_NALB_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_NALB_SMON_TMR_TIMER_LOC	0
+
+#define DLB2_V2RO_GRP_0_SLT_SHFT(x) \
 	(0x96000000 + (x) * 0x4)
-#define DLB2_RO_PIPE_GRP_0_SLT_SHFT_RST 0x0
-union dlb2_ro_pipe_grp_0_slt_shft {
-	struct {
-		u32 change : 10;
-		u32 rsvd0 : 22;
-	} field;
-	u32 val;
-};
+#define DLB2_V2_5RO_GRP_0_SLT_SHFT(x) \
+	(0x86000000 + (x) * 0x4)
+#define DLB2_RO_GRP_0_SLT_SHFT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2RO_GRP_0_SLT_SHFT(x) : \
+	 DLB2_V2_5RO_GRP_0_SLT_SHFT(x))
+#define DLB2_RO_GRP_0_SLT_SHFT_RST 0x0
 
-#define DLB2_RO_PIPE_GRP_1_SLT_SHFT(x) \
+#define DLB2_RO_GRP_0_SLT_SHFT_CHANGE	0x000003FF
+#define DLB2_RO_GRP_0_SLT_SHFT_RSVD0		0xFFFFFC00
+#define DLB2_RO_GRP_0_SLT_SHFT_CHANGE_LOC	0
+#define DLB2_RO_GRP_0_SLT_SHFT_RSVD0_LOC	10
+
+#define DLB2_V2RO_GRP_1_SLT_SHFT(x) \
 	(0x96010000 + (x) * 0x4)
-#define DLB2_RO_PIPE_GRP_1_SLT_SHFT_RST 0x0
-union dlb2_ro_pipe_grp_1_slt_shft {
-	struct {
-		u32 change : 10;
-		u32 rsvd0 : 22;
-	} field;
-	u32 val;
-};
+#define DLB2_V2_5RO_GRP_1_SLT_SHFT(x) \
+	(0x86010000 + (x) * 0x4)
+#define DLB2_RO_GRP_1_SLT_SHFT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2RO_GRP_1_SLT_SHFT(x) : \
+	 DLB2_V2_5RO_GRP_1_SLT_SHFT(x))
+#define DLB2_RO_GRP_1_SLT_SHFT_RST 0x0
 
-#define DLB2_RO_PIPE_GRP_SN_MODE 0x94000000
-#define DLB2_RO_PIPE_GRP_SN_MODE_RST 0x0
-union dlb2_ro_pipe_grp_sn_mode {
-	struct {
-		u32 sn_mode_0 : 3;
-		u32 rszv0 : 5;
-		u32 sn_mode_1 : 3;
-		u32 rszv1 : 21;
-	} field;
-	u32 val;
-};
+#define DLB2_RO_GRP_1_SLT_SHFT_CHANGE	0x000003FF
+#define DLB2_RO_GRP_1_SLT_SHFT_RSVD0		0xFFFFFC00
+#define DLB2_RO_GRP_1_SLT_SHFT_CHANGE_LOC	0
+#define DLB2_RO_GRP_1_SLT_SHFT_RSVD0_LOC	10
 
-#define DLB2_RO_PIPE_CFG_CTRL_GENERAL_0 0x9c000000
-#define DLB2_RO_PIPE_CFG_CTRL_GENERAL_0_RST 0x0
-union dlb2_ro_pipe_cfg_ctrl_general_0 {
-	struct {
-		u32 unit_single_step_mode : 1;
-		u32 rr_en : 1;
-		u32 rszv0 : 30;
-	} field;
-	u32 val;
-};
+#define DLB2_V2RO_GRP_SN_MODE 0x94000000
+#define DLB2_V2_5RO_GRP_SN_MODE 0x84000000
+#define DLB2_RO_GRP_SN_MODE(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2RO_GRP_SN_MODE : \
+	 DLB2_V2_5RO_GRP_SN_MODE)
+#define DLB2_RO_GRP_SN_MODE_RST 0x0
 
-#define DLB2_LSP_CQ2PRIOV(x) \
+#define DLB2_RO_GRP_SN_MODE_SN_MODE_0	0x00000007
+#define DLB2_RO_GRP_SN_MODE_RSZV0		0x000000F8
+#define DLB2_RO_GRP_SN_MODE_SN_MODE_1	0x00000700
+#define DLB2_RO_GRP_SN_MODE_RSZV1		0xFFFFF800
+#define DLB2_RO_GRP_SN_MODE_SN_MODE_0_LOC	0
+#define DLB2_RO_GRP_SN_MODE_RSZV0_LOC	3
+#define DLB2_RO_GRP_SN_MODE_SN_MODE_1_LOC	8
+#define DLB2_RO_GRP_SN_MODE_RSZV1_LOC	11
+
+#define DLB2_V2RO_CFG_CTRL_GENERAL_0 0x9c000000
+#define DLB2_V2_5RO_CFG_CTRL_GENERAL_0 0x8c000000
+#define DLB2_RO_CFG_CTRL_GENERAL_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2RO_CFG_CTRL_GENERAL_0 : \
+	 DLB2_V2_5RO_CFG_CTRL_GENERAL_0)
+#define DLB2_RO_CFG_CTRL_GENERAL_0_RST 0x0
+
+#define DLB2_RO_CFG_CTRL_GENERAL_0_UNIT_SINGLE_STEP_MODE	0x00000001
+#define DLB2_RO_CFG_CTRL_GENERAL_0_RR_EN			0x00000002
+#define DLB2_RO_CFG_CTRL_GENERAL_0_RSZV0			0xFFFFFFFC
+#define DLB2_RO_CFG_CTRL_GENERAL_0_UNIT_SINGLE_STEP_MODE_LOC	0
+#define DLB2_RO_CFG_CTRL_GENERAL_0_RR_EN_LOC			1
+#define DLB2_RO_CFG_CTRL_GENERAL_0_RSZV0_LOC			2
+
+#define DLB2_RO_SMON_ACTIVITYCNTR0 0x9c000030
+#define DLB2_RO_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_RO_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_RO_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_RO_SMON_ACTIVITYCNTR1 0x9c000034
+#define DLB2_RO_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_RO_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_RO_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_RO_SMON_COMPARE0 0x9c000038
+#define DLB2_RO_SMON_COMPARE0_RST 0x0
+
+#define DLB2_RO_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_RO_SMON_COMPARE0_COMPARE0_LOC	0
+
+#define DLB2_RO_SMON_COMPARE1 0x9c00003c
+#define DLB2_RO_SMON_COMPARE1_RST 0x0
+
+#define DLB2_RO_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_RO_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_RO_SMON_CFG0 0x9c000040
+#define DLB2_RO_SMON_CFG0_RST 0x40000000
+
+#define DLB2_RO_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_RO_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_RO_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_RO_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_RO_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_RO_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_RO_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_RO_SMON_CFG0_SMON_MODE			0x0000F000
+#define DLB2_RO_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_RO_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_RO_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_RO_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_RO_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_RO_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_RO_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_RO_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_RO_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_RO_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_RO_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_RO_SMON_CFG0_SMON_ENABLE_LOC		0
+#define DLB2_RO_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC	1
+#define DLB2_RO_SMON_CFG0_RSVZ0_LOC			2
+#define DLB2_RO_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_RO_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_RO_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_RO_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_RO_SMON_CFG0_SMON_MODE_LOC		12
+#define DLB2_RO_SMON_CFG0_STOPCOUNTEROVFL_LOC	16
+#define DLB2_RO_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_RO_SMON_CFG0_STATCOUNTER0OVFL_LOC	18
+#define DLB2_RO_SMON_CFG0_STATCOUNTER1OVFL_LOC	19
+#define DLB2_RO_SMON_CFG0_STOPTIMEROVFL_LOC		20
+#define DLB2_RO_SMON_CFG0_INTTIMEROVFL_LOC		21
+#define DLB2_RO_SMON_CFG0_STATTIMEROVFL_LOC		22
+#define DLB2_RO_SMON_CFG0_RSVZ1_LOC			23
+#define DLB2_RO_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_RO_SMON_CFG0_RSVZ2_LOC			29
+#define DLB2_RO_SMON_CFG0_VERSION_LOC		30
+
+#define DLB2_RO_SMON_CFG1 0x9c000044
+#define DLB2_RO_SMON_CFG1_RST 0x0
+
+#define DLB2_RO_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_RO_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_RO_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_RO_SMON_CFG1_MODE0_LOC	0
+#define DLB2_RO_SMON_CFG1_MODE1_LOC	8
+#define DLB2_RO_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_RO_SMON_MAX_TMR 0x9c000048
+#define DLB2_RO_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_RO_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_RO_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_RO_SMON_TMR 0x9c00004c
+#define DLB2_RO_SMON_TMR_RST 0x0
+
+#define DLB2_RO_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_RO_SMON_TMR_TIMER_LOC	0
+
+#define DLB2_V2LSP_CQ2PRIOV(x) \
 	(0xa0000000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ2PRIOV(x) \
+	(0x90000000 + (x) * 0x1000)
+#define DLB2_LSP_CQ2PRIOV(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ2PRIOV(x) : \
+	 DLB2_V2_5LSP_CQ2PRIOV(x))
 #define DLB2_LSP_CQ2PRIOV_RST 0x0
-union dlb2_lsp_cq2priov {
-	struct {
-		u32 prio : 24;
-		u32 v : 8;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ2QID0(x) \
+#define DLB2_LSP_CQ2PRIOV_PRIO	0x00FFFFFF
+#define DLB2_LSP_CQ2PRIOV_V		0xFF000000
+#define DLB2_LSP_CQ2PRIOV_PRIO_LOC	0
+#define DLB2_LSP_CQ2PRIOV_V_LOC	24
+
+#define DLB2_V2LSP_CQ2QID0(x) \
 	(0xa0080000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ2QID0(x) \
+	(0x90080000 + (x) * 0x1000)
+#define DLB2_LSP_CQ2QID0(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ2QID0(x) : \
+	 DLB2_V2_5LSP_CQ2QID0(x))
 #define DLB2_LSP_CQ2QID0_RST 0x0
-union dlb2_lsp_cq2qid0 {
-	struct {
-		u32 qid_p0 : 7;
-		u32 rsvd3 : 1;
-		u32 qid_p1 : 7;
-		u32 rsvd2 : 1;
-		u32 qid_p2 : 7;
-		u32 rsvd1 : 1;
-		u32 qid_p3 : 7;
-		u32 rsvd0 : 1;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ2QID1(x) \
+#define DLB2_LSP_CQ2QID0_QID_P0	0x0000007F
+#define DLB2_LSP_CQ2QID0_RSVD3	0x00000080
+#define DLB2_LSP_CQ2QID0_QID_P1	0x00007F00
+#define DLB2_LSP_CQ2QID0_RSVD2	0x00008000
+#define DLB2_LSP_CQ2QID0_QID_P2	0x007F0000
+#define DLB2_LSP_CQ2QID0_RSVD1	0x00800000
+#define DLB2_LSP_CQ2QID0_QID_P3	0x7F000000
+#define DLB2_LSP_CQ2QID0_RSVD0	0x80000000
+#define DLB2_LSP_CQ2QID0_QID_P0_LOC	0
+#define DLB2_LSP_CQ2QID0_RSVD3_LOC	7
+#define DLB2_LSP_CQ2QID0_QID_P1_LOC	8
+#define DLB2_LSP_CQ2QID0_RSVD2_LOC	15
+#define DLB2_LSP_CQ2QID0_QID_P2_LOC	16
+#define DLB2_LSP_CQ2QID0_RSVD1_LOC	23
+#define DLB2_LSP_CQ2QID0_QID_P3_LOC	24
+#define DLB2_LSP_CQ2QID0_RSVD0_LOC	31
+
+#define DLB2_V2LSP_CQ2QID1(x) \
 	(0xa0100000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ2QID1(x) \
+	(0x90100000 + (x) * 0x1000)
+#define DLB2_LSP_CQ2QID1(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ2QID1(x) : \
+	 DLB2_V2_5LSP_CQ2QID1(x))
 #define DLB2_LSP_CQ2QID1_RST 0x0
-union dlb2_lsp_cq2qid1 {
-	struct {
-		u32 qid_p4 : 7;
-		u32 rsvd3 : 1;
-		u32 qid_p5 : 7;
-		u32 rsvd2 : 1;
-		u32 qid_p6 : 7;
-		u32 rsvd1 : 1;
-		u32 qid_p7 : 7;
-		u32 rsvd0 : 1;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_DIR_DSBL(x) \
+#define DLB2_LSP_CQ2QID1_QID_P4	0x0000007F
+#define DLB2_LSP_CQ2QID1_RSVD3	0x00000080
+#define DLB2_LSP_CQ2QID1_QID_P5	0x00007F00
+#define DLB2_LSP_CQ2QID1_RSVD2	0x00008000
+#define DLB2_LSP_CQ2QID1_QID_P6	0x007F0000
+#define DLB2_LSP_CQ2QID1_RSVD1	0x00800000
+#define DLB2_LSP_CQ2QID1_QID_P7	0x7F000000
+#define DLB2_LSP_CQ2QID1_RSVD0	0x80000000
+#define DLB2_LSP_CQ2QID1_QID_P4_LOC	0
+#define DLB2_LSP_CQ2QID1_RSVD3_LOC	7
+#define DLB2_LSP_CQ2QID1_QID_P5_LOC	8
+#define DLB2_LSP_CQ2QID1_RSVD2_LOC	15
+#define DLB2_LSP_CQ2QID1_QID_P6_LOC	16
+#define DLB2_LSP_CQ2QID1_RSVD1_LOC	23
+#define DLB2_LSP_CQ2QID1_QID_P7_LOC	24
+#define DLB2_LSP_CQ2QID1_RSVD0_LOC	31
+
+#define DLB2_V2LSP_CQ_DIR_DSBL(x) \
 	(0xa0180000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_DIR_DSBL(x) \
+	(0x90180000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_DIR_DSBL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_DIR_DSBL(x) : \
+	 DLB2_V2_5LSP_CQ_DIR_DSBL(x))
 #define DLB2_LSP_CQ_DIR_DSBL_RST 0x1
-union dlb2_lsp_cq_dir_dsbl {
-	struct {
-		u32 disabled : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_DIR_TKN_CNT(x) \
+#define DLB2_LSP_CQ_DIR_DSBL_DISABLED	0x00000001
+#define DLB2_LSP_CQ_DIR_DSBL_RSVD0		0xFFFFFFFE
+#define DLB2_LSP_CQ_DIR_DSBL_DISABLED_LOC	0
+#define DLB2_LSP_CQ_DIR_DSBL_RSVD0_LOC	1
+
+#define DLB2_V2LSP_CQ_DIR_TKN_CNT(x) \
 	(0xa0200000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_DIR_TKN_CNT(x) \
+	(0x90200000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_DIR_TKN_CNT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_DIR_TKN_CNT(x) : \
+	 DLB2_V2_5LSP_CQ_DIR_TKN_CNT(x))
 #define DLB2_LSP_CQ_DIR_TKN_CNT_RST 0x0
-union dlb2_lsp_cq_dir_tkn_cnt {
-	struct {
-		u32 count : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI(x) \
+#define DLB2_LSP_CQ_DIR_TKN_CNT_COUNT	0x00001FFF
+#define DLB2_LSP_CQ_DIR_TKN_CNT_RSVD0	0xFFFFE000
+#define DLB2_LSP_CQ_DIR_TKN_CNT_COUNT_LOC	0
+#define DLB2_LSP_CQ_DIR_TKN_CNT_RSVD0_LOC	13
+
+#define DLB2_V2LSP_CQ_DIR_TKN_DEPTH_SEL_DSI(x) \
 	(0xa0280000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_DIR_TKN_DEPTH_SEL_DSI(x) \
+	(0x90280000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_DIR_TKN_DEPTH_SEL_DSI(x) : \
+	 DLB2_V2_5LSP_CQ_DIR_TKN_DEPTH_SEL_DSI(x))
 #define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_RST 0x0
-union dlb2_lsp_cq_dir_tkn_depth_sel_dsi {
-	struct {
-		u32 token_depth_select : 4;
-		u32 disable_wb_opt : 1;
-		u32 ignore_depth : 1;
-		u32 rsvd0 : 26;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_DIR_TOT_SCH_CNTL(x) \
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_TOKEN_DEPTH_SELECT_V2	0x0000000F
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_DISABLE_WB_OPT_V2	0x00000010
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_IGNORE_DEPTH_V2	0x00000020
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_RSVD0_V2		0xFFFFFFC0
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_TOKEN_DEPTH_SELECT_V2_LOC	0
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_DISABLE_WB_OPT_V2_LOC	4
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_IGNORE_DEPTH_V2_LOC	5
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_RSVD0_V2_LOC		6
+
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_TOKEN_DEPTH_SELECT_V2_5 0x0000000F
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_DISABLE_WB_OPT_V2_5	0x00000010
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_RSVD0_V2_5		0xFFFFFFE0
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_TOKEN_DEPTH_SELECT_V2_5_LOC	0
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_DISABLE_WB_OPT_V2_5_LOC	4
+#define DLB2_LSP_CQ_DIR_TKN_DEPTH_SEL_DSI_RSVD0_V2_5_LOC		5
+
+#define DLB2_V2LSP_CQ_DIR_TOT_SCH_CNTL(x) \
 	(0xa0300000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_DIR_TOT_SCH_CNTL(x) \
+	(0x90300000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_DIR_TOT_SCH_CNTL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_DIR_TOT_SCH_CNTL(x) : \
+	 DLB2_V2_5LSP_CQ_DIR_TOT_SCH_CNTL(x))
 #define DLB2_LSP_CQ_DIR_TOT_SCH_CNTL_RST 0x0
-union dlb2_lsp_cq_dir_tot_sch_cntl {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_DIR_TOT_SCH_CNTH(x) \
+#define DLB2_LSP_CQ_DIR_TOT_SCH_CNTL_COUNT	0xFFFFFFFF
+#define DLB2_LSP_CQ_DIR_TOT_SCH_CNTL_COUNT_LOC	0
+
+#define DLB2_V2LSP_CQ_DIR_TOT_SCH_CNTH(x) \
 	(0xa0380000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_DIR_TOT_SCH_CNTH(x) \
+	(0x90380000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_DIR_TOT_SCH_CNTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_DIR_TOT_SCH_CNTH(x) : \
+	 DLB2_V2_5LSP_CQ_DIR_TOT_SCH_CNTH(x))
 #define DLB2_LSP_CQ_DIR_TOT_SCH_CNTH_RST 0x0
-union dlb2_lsp_cq_dir_tot_sch_cnth {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_LDB_DSBL(x) \
+#define DLB2_LSP_CQ_DIR_TOT_SCH_CNTH_COUNT	0xFFFFFFFF
+#define DLB2_LSP_CQ_DIR_TOT_SCH_CNTH_COUNT_LOC	0
+
+#define DLB2_V2LSP_CQ_LDB_DSBL(x) \
 	(0xa0400000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_LDB_DSBL(x) \
+	(0x90400000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_LDB_DSBL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_LDB_DSBL(x) : \
+	 DLB2_V2_5LSP_CQ_LDB_DSBL(x))
 #define DLB2_LSP_CQ_LDB_DSBL_RST 0x1
-union dlb2_lsp_cq_ldb_dsbl {
-	struct {
-		u32 disabled : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_LDB_INFL_CNT(x) \
+#define DLB2_LSP_CQ_LDB_DSBL_DISABLED	0x00000001
+#define DLB2_LSP_CQ_LDB_DSBL_RSVD0		0xFFFFFFFE
+#define DLB2_LSP_CQ_LDB_DSBL_DISABLED_LOC	0
+#define DLB2_LSP_CQ_LDB_DSBL_RSVD0_LOC	1
+
+#define DLB2_V2LSP_CQ_LDB_INFL_CNT(x) \
 	(0xa0480000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_LDB_INFL_CNT(x) \
+	(0x90480000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_LDB_INFL_CNT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_LDB_INFL_CNT(x) : \
+	 DLB2_V2_5LSP_CQ_LDB_INFL_CNT(x))
 #define DLB2_LSP_CQ_LDB_INFL_CNT_RST 0x0
-union dlb2_lsp_cq_ldb_infl_cnt {
-	struct {
-		u32 count : 12;
-		u32 rsvd0 : 20;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_LDB_INFL_LIM(x) \
+#define DLB2_LSP_CQ_LDB_INFL_CNT_COUNT	0x00000FFF
+#define DLB2_LSP_CQ_LDB_INFL_CNT_RSVD0	0xFFFFF000
+#define DLB2_LSP_CQ_LDB_INFL_CNT_COUNT_LOC	0
+#define DLB2_LSP_CQ_LDB_INFL_CNT_RSVD0_LOC	12
+
+#define DLB2_V2LSP_CQ_LDB_INFL_LIM(x) \
 	(0xa0500000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_LDB_INFL_LIM(x) \
+	(0x90500000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_LDB_INFL_LIM(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_LDB_INFL_LIM(x) : \
+	 DLB2_V2_5LSP_CQ_LDB_INFL_LIM(x))
 #define DLB2_LSP_CQ_LDB_INFL_LIM_RST 0x0
-union dlb2_lsp_cq_ldb_infl_lim {
-	struct {
-		u32 limit : 12;
-		u32 rsvd0 : 20;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_LDB_TKN_CNT(x) \
+#define DLB2_LSP_CQ_LDB_INFL_LIM_LIMIT	0x00000FFF
+#define DLB2_LSP_CQ_LDB_INFL_LIM_RSVD0	0xFFFFF000
+#define DLB2_LSP_CQ_LDB_INFL_LIM_LIMIT_LOC	0
+#define DLB2_LSP_CQ_LDB_INFL_LIM_RSVD0_LOC	12
+
+#define DLB2_V2LSP_CQ_LDB_TKN_CNT(x) \
 	(0xa0580000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_LDB_TKN_CNT(x) \
+	(0x90600000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_LDB_TKN_CNT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_LDB_TKN_CNT(x) : \
+	 DLB2_V2_5LSP_CQ_LDB_TKN_CNT(x))
 #define DLB2_LSP_CQ_LDB_TKN_CNT_RST 0x0
-union dlb2_lsp_cq_ldb_tkn_cnt {
-	struct {
-		u32 token_count : 11;
-		u32 rsvd0 : 21;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL(x) \
+#define DLB2_LSP_CQ_LDB_TKN_CNT_TOKEN_COUNT	0x000007FF
+#define DLB2_LSP_CQ_LDB_TKN_CNT_RSVD0	0xFFFFF800
+#define DLB2_LSP_CQ_LDB_TKN_CNT_TOKEN_COUNT_LOC	0
+#define DLB2_LSP_CQ_LDB_TKN_CNT_RSVD0_LOC		11
+
+#define DLB2_V2LSP_CQ_LDB_TKN_DEPTH_SEL(x) \
 	(0xa0600000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_LDB_TKN_DEPTH_SEL(x) \
+	(0x90680000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_LDB_TKN_DEPTH_SEL(x) : \
+	 DLB2_V2_5LSP_CQ_LDB_TKN_DEPTH_SEL(x))
 #define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_RST 0x0
-union dlb2_lsp_cq_ldb_tkn_depth_sel {
-	struct {
-		u32 token_depth_select : 4;
-		u32 ignore_depth : 1;
-		u32 rsvd0 : 27;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_LDB_TOT_SCH_CNTL(x) \
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT_V2	0x0000000F
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_IGNORE_DEPTH_V2	0x00000010
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_RSVD0_V2		0xFFFFFFE0
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT_V2_LOC	0
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_IGNORE_DEPTH_V2_LOC		4
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_RSVD0_V2_LOC			5
+
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT_V2_5	0x0000000F
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_RSVD0_V2_5		0xFFFFFFF0
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_TOKEN_DEPTH_SELECT_V2_5_LOC	0
+#define DLB2_LSP_CQ_LDB_TKN_DEPTH_SEL_RSVD0_V2_5_LOC			4
+
+#define DLB2_V2LSP_CQ_LDB_TOT_SCH_CNTL(x) \
 	(0xa0680000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_LDB_TOT_SCH_CNTL(x) \
+	(0x90700000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_LDB_TOT_SCH_CNTL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_LDB_TOT_SCH_CNTL(x) : \
+	 DLB2_V2_5LSP_CQ_LDB_TOT_SCH_CNTL(x))
 #define DLB2_LSP_CQ_LDB_TOT_SCH_CNTL_RST 0x0
-union dlb2_lsp_cq_ldb_tot_sch_cntl {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CQ_LDB_TOT_SCH_CNTH(x) \
+#define DLB2_LSP_CQ_LDB_TOT_SCH_CNTL_COUNT	0xFFFFFFFF
+#define DLB2_LSP_CQ_LDB_TOT_SCH_CNTL_COUNT_LOC	0
+
+#define DLB2_V2LSP_CQ_LDB_TOT_SCH_CNTH(x) \
 	(0xa0700000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_CQ_LDB_TOT_SCH_CNTH(x) \
+	(0x90780000 + (x) * 0x1000)
+#define DLB2_LSP_CQ_LDB_TOT_SCH_CNTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CQ_LDB_TOT_SCH_CNTH(x) : \
+	 DLB2_V2_5LSP_CQ_LDB_TOT_SCH_CNTH(x))
 #define DLB2_LSP_CQ_LDB_TOT_SCH_CNTH_RST 0x0
-union dlb2_lsp_cq_ldb_tot_sch_cnth {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_DIR_MAX_DEPTH(x) \
+#define DLB2_LSP_CQ_LDB_TOT_SCH_CNTH_COUNT	0xFFFFFFFF
+#define DLB2_LSP_CQ_LDB_TOT_SCH_CNTH_COUNT_LOC	0
+
+#define DLB2_V2LSP_QID_DIR_MAX_DEPTH(x) \
 	(0xa0780000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_DIR_MAX_DEPTH(x) \
+	(0x90800000 + (x) * 0x1000)
+#define DLB2_LSP_QID_DIR_MAX_DEPTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_DIR_MAX_DEPTH(x) : \
+	 DLB2_V2_5LSP_QID_DIR_MAX_DEPTH(x))
 #define DLB2_LSP_QID_DIR_MAX_DEPTH_RST 0x0
-union dlb2_lsp_qid_dir_max_depth {
-	struct {
-		u32 depth : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_DIR_TOT_ENQ_CNTL(x) \
+#define DLB2_LSP_QID_DIR_MAX_DEPTH_DEPTH	0x00001FFF
+#define DLB2_LSP_QID_DIR_MAX_DEPTH_RSVD0	0xFFFFE000
+#define DLB2_LSP_QID_DIR_MAX_DEPTH_DEPTH_LOC	0
+#define DLB2_LSP_QID_DIR_MAX_DEPTH_RSVD0_LOC	13
+
+#define DLB2_V2LSP_QID_DIR_TOT_ENQ_CNTL(x) \
 	(0xa0800000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_DIR_TOT_ENQ_CNTL(x) \
+	(0x90880000 + (x) * 0x1000)
+#define DLB2_LSP_QID_DIR_TOT_ENQ_CNTL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_DIR_TOT_ENQ_CNTL(x) : \
+	 DLB2_V2_5LSP_QID_DIR_TOT_ENQ_CNTL(x))
 #define DLB2_LSP_QID_DIR_TOT_ENQ_CNTL_RST 0x0
-union dlb2_lsp_qid_dir_tot_enq_cntl {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_DIR_TOT_ENQ_CNTH(x) \
+#define DLB2_LSP_QID_DIR_TOT_ENQ_CNTL_COUNT	0xFFFFFFFF
+#define DLB2_LSP_QID_DIR_TOT_ENQ_CNTL_COUNT_LOC	0
+
+#define DLB2_V2LSP_QID_DIR_TOT_ENQ_CNTH(x) \
 	(0xa0880000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_DIR_TOT_ENQ_CNTH(x) \
+	(0x90900000 + (x) * 0x1000)
+#define DLB2_LSP_QID_DIR_TOT_ENQ_CNTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_DIR_TOT_ENQ_CNTH(x) : \
+	 DLB2_V2_5LSP_QID_DIR_TOT_ENQ_CNTH(x))
 #define DLB2_LSP_QID_DIR_TOT_ENQ_CNTH_RST 0x0
-union dlb2_lsp_qid_dir_tot_enq_cnth {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_DIR_ENQUEUE_CNT(x) \
+#define DLB2_LSP_QID_DIR_TOT_ENQ_CNTH_COUNT	0xFFFFFFFF
+#define DLB2_LSP_QID_DIR_TOT_ENQ_CNTH_COUNT_LOC	0
+
+#define DLB2_V2LSP_QID_DIR_ENQUEUE_CNT(x) \
 	(0xa0900000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_DIR_ENQUEUE_CNT(x) \
+	(0x90980000 + (x) * 0x1000)
+#define DLB2_LSP_QID_DIR_ENQUEUE_CNT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_DIR_ENQUEUE_CNT(x) : \
+	 DLB2_V2_5LSP_QID_DIR_ENQUEUE_CNT(x))
 #define DLB2_LSP_QID_DIR_ENQUEUE_CNT_RST 0x0
-union dlb2_lsp_qid_dir_enqueue_cnt {
-	struct {
-		u32 count : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_DIR_DEPTH_THRSH(x) \
+#define DLB2_LSP_QID_DIR_ENQUEUE_CNT_COUNT	0x00001FFF
+#define DLB2_LSP_QID_DIR_ENQUEUE_CNT_RSVD0	0xFFFFE000
+#define DLB2_LSP_QID_DIR_ENQUEUE_CNT_COUNT_LOC	0
+#define DLB2_LSP_QID_DIR_ENQUEUE_CNT_RSVD0_LOC	13
+
+#define DLB2_V2LSP_QID_DIR_DEPTH_THRSH(x) \
 	(0xa0980000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_DIR_DEPTH_THRSH(x) \
+	(0x90a00000 + (x) * 0x1000)
+#define DLB2_LSP_QID_DIR_DEPTH_THRSH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_DIR_DEPTH_THRSH(x) : \
+	 DLB2_V2_5LSP_QID_DIR_DEPTH_THRSH(x))
 #define DLB2_LSP_QID_DIR_DEPTH_THRSH_RST 0x0
-union dlb2_lsp_qid_dir_depth_thrsh {
-	struct {
-		u32 thresh : 13;
-		u32 rsvd0 : 19;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_AQED_ACTIVE_CNT(x) \
+#define DLB2_LSP_QID_DIR_DEPTH_THRSH_THRESH	0x00001FFF
+#define DLB2_LSP_QID_DIR_DEPTH_THRSH_RSVD0	0xFFFFE000
+#define DLB2_LSP_QID_DIR_DEPTH_THRSH_THRESH_LOC	0
+#define DLB2_LSP_QID_DIR_DEPTH_THRSH_RSVD0_LOC	13
+
+#define DLB2_V2LSP_QID_AQED_ACTIVE_CNT(x) \
 	(0xa0a00000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_AQED_ACTIVE_CNT(x) \
+	(0x90b80000 + (x) * 0x1000)
+#define DLB2_LSP_QID_AQED_ACTIVE_CNT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_AQED_ACTIVE_CNT(x) : \
+	 DLB2_V2_5LSP_QID_AQED_ACTIVE_CNT(x))
 #define DLB2_LSP_QID_AQED_ACTIVE_CNT_RST 0x0
-union dlb2_lsp_qid_aqed_active_cnt {
-	struct {
-		u32 count : 12;
-		u32 rsvd0 : 20;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_AQED_ACTIVE_LIM(x) \
+#define DLB2_LSP_QID_AQED_ACTIVE_CNT_COUNT	0x00000FFF
+#define DLB2_LSP_QID_AQED_ACTIVE_CNT_RSVD0	0xFFFFF000
+#define DLB2_LSP_QID_AQED_ACTIVE_CNT_COUNT_LOC	0
+#define DLB2_LSP_QID_AQED_ACTIVE_CNT_RSVD0_LOC	12
+
+#define DLB2_V2LSP_QID_AQED_ACTIVE_LIM(x) \
 	(0xa0a80000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_AQED_ACTIVE_LIM(x) \
+	(0x90c00000 + (x) * 0x1000)
+#define DLB2_LSP_QID_AQED_ACTIVE_LIM(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_AQED_ACTIVE_LIM(x) : \
+	 DLB2_V2_5LSP_QID_AQED_ACTIVE_LIM(x))
 #define DLB2_LSP_QID_AQED_ACTIVE_LIM_RST 0x0
-union dlb2_lsp_qid_aqed_active_lim {
-	struct {
-		u32 limit : 12;
-		u32 rsvd0 : 20;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_ATM_TOT_ENQ_CNTL(x) \
+#define DLB2_LSP_QID_AQED_ACTIVE_LIM_LIMIT	0x00000FFF
+#define DLB2_LSP_QID_AQED_ACTIVE_LIM_RSVD0	0xFFFFF000
+#define DLB2_LSP_QID_AQED_ACTIVE_LIM_LIMIT_LOC	0
+#define DLB2_LSP_QID_AQED_ACTIVE_LIM_RSVD0_LOC	12
+
+#define DLB2_V2LSP_QID_ATM_TOT_ENQ_CNTL(x) \
 	(0xa0b00000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_ATM_TOT_ENQ_CNTL(x) \
+	(0x90c80000 + (x) * 0x1000)
+#define DLB2_LSP_QID_ATM_TOT_ENQ_CNTL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_ATM_TOT_ENQ_CNTL(x) : \
+	 DLB2_V2_5LSP_QID_ATM_TOT_ENQ_CNTL(x))
 #define DLB2_LSP_QID_ATM_TOT_ENQ_CNTL_RST 0x0
-union dlb2_lsp_qid_atm_tot_enq_cntl {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_ATM_TOT_ENQ_CNTH(x) \
+#define DLB2_LSP_QID_ATM_TOT_ENQ_CNTL_COUNT	0xFFFFFFFF
+#define DLB2_LSP_QID_ATM_TOT_ENQ_CNTL_COUNT_LOC	0
+
+#define DLB2_V2LSP_QID_ATM_TOT_ENQ_CNTH(x) \
 	(0xa0b80000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_ATM_TOT_ENQ_CNTH(x) \
+	(0x90d00000 + (x) * 0x1000)
+#define DLB2_LSP_QID_ATM_TOT_ENQ_CNTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_ATM_TOT_ENQ_CNTH(x) : \
+	 DLB2_V2_5LSP_QID_ATM_TOT_ENQ_CNTH(x))
 #define DLB2_LSP_QID_ATM_TOT_ENQ_CNTH_RST 0x0
-union dlb2_lsp_qid_atm_tot_enq_cnth {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_ATQ_ENQUEUE_CNT(x) \
-	(0xa0c00000 + (x) * 0x1000)
-#define DLB2_LSP_QID_ATQ_ENQUEUE_CNT_RST 0x0
-union dlb2_lsp_qid_atq_enqueue_cnt {
-	struct {
-		u32 count : 14;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
+#define DLB2_LSP_QID_ATM_TOT_ENQ_CNTH_COUNT	0xFFFFFFFF
+#define DLB2_LSP_QID_ATM_TOT_ENQ_CNTH_COUNT_LOC	0
 
-#define DLB2_LSP_QID_LDB_ENQUEUE_CNT(x) \
+#define DLB2_V2LSP_QID_LDB_ENQUEUE_CNT(x) \
 	(0xa0c80000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_LDB_ENQUEUE_CNT(x) \
+	(0x90e00000 + (x) * 0x1000)
+#define DLB2_LSP_QID_LDB_ENQUEUE_CNT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_LDB_ENQUEUE_CNT(x) : \
+	 DLB2_V2_5LSP_QID_LDB_ENQUEUE_CNT(x))
 #define DLB2_LSP_QID_LDB_ENQUEUE_CNT_RST 0x0
-union dlb2_lsp_qid_ldb_enqueue_cnt {
-	struct {
-		u32 count : 14;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_LDB_INFL_CNT(x) \
+#define DLB2_LSP_QID_LDB_ENQUEUE_CNT_COUNT	0x00003FFF
+#define DLB2_LSP_QID_LDB_ENQUEUE_CNT_RSVD0	0xFFFFC000
+#define DLB2_LSP_QID_LDB_ENQUEUE_CNT_COUNT_LOC	0
+#define DLB2_LSP_QID_LDB_ENQUEUE_CNT_RSVD0_LOC	14
+
+#define DLB2_V2LSP_QID_LDB_INFL_CNT(x) \
 	(0xa0d00000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_LDB_INFL_CNT(x) \
+	(0x90e80000 + (x) * 0x1000)
+#define DLB2_LSP_QID_LDB_INFL_CNT(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_LDB_INFL_CNT(x) : \
+	 DLB2_V2_5LSP_QID_LDB_INFL_CNT(x))
 #define DLB2_LSP_QID_LDB_INFL_CNT_RST 0x0
-union dlb2_lsp_qid_ldb_infl_cnt {
-	struct {
-		u32 count : 12;
-		u32 rsvd0 : 20;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_LDB_INFL_LIM(x) \
+#define DLB2_LSP_QID_LDB_INFL_CNT_COUNT	0x00000FFF
+#define DLB2_LSP_QID_LDB_INFL_CNT_RSVD0	0xFFFFF000
+#define DLB2_LSP_QID_LDB_INFL_CNT_COUNT_LOC	0
+#define DLB2_LSP_QID_LDB_INFL_CNT_RSVD0_LOC	12
+
+#define DLB2_V2LSP_QID_LDB_INFL_LIM(x) \
 	(0xa0d80000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_LDB_INFL_LIM(x) \
+	(0x90f00000 + (x) * 0x1000)
+#define DLB2_LSP_QID_LDB_INFL_LIM(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_LDB_INFL_LIM(x) : \
+	 DLB2_V2_5LSP_QID_LDB_INFL_LIM(x))
 #define DLB2_LSP_QID_LDB_INFL_LIM_RST 0x0
-union dlb2_lsp_qid_ldb_infl_lim {
-	struct {
-		u32 limit : 12;
-		u32 rsvd0 : 20;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID2CQIDIX_00(x) \
+#define DLB2_LSP_QID_LDB_INFL_LIM_LIMIT	0x00000FFF
+#define DLB2_LSP_QID_LDB_INFL_LIM_RSVD0	0xFFFFF000
+#define DLB2_LSP_QID_LDB_INFL_LIM_LIMIT_LOC	0
+#define DLB2_LSP_QID_LDB_INFL_LIM_RSVD0_LOC	12
+
+#define DLB2_V2LSP_QID2CQIDIX_00(x) \
 	(0xa0e00000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID2CQIDIX_00(x) \
+	(0x90f80000 + (x) * 0x1000)
+#define DLB2_LSP_QID2CQIDIX_00(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID2CQIDIX_00(x) : \
+	 DLB2_V2_5LSP_QID2CQIDIX_00(x))
 #define DLB2_LSP_QID2CQIDIX_00_RST 0x0
-#define DLB2_LSP_QID2CQIDIX(x, y) \
-	(DLB2_LSP_QID2CQIDIX_00(x) + 0x80000 * (y))
+#define DLB2_LSP_QID2CQIDIX(ver, x, y) \
+	(DLB2_LSP_QID2CQIDIX_00(ver, x) + 0x80000 * (y))
 #define DLB2_LSP_QID2CQIDIX_NUM 16
-union dlb2_lsp_qid2cqidix_00 {
-	struct {
-		u32 cq_p0 : 8;
-		u32 cq_p1 : 8;
-		u32 cq_p2 : 8;
-		u32 cq_p3 : 8;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID2CQIDIX2_00(x) \
+#define DLB2_LSP_QID2CQIDIX_00_CQ_P0	0x000000FF
+#define DLB2_LSP_QID2CQIDIX_00_CQ_P1	0x0000FF00
+#define DLB2_LSP_QID2CQIDIX_00_CQ_P2	0x00FF0000
+#define DLB2_LSP_QID2CQIDIX_00_CQ_P3	0xFF000000
+#define DLB2_LSP_QID2CQIDIX_00_CQ_P0_LOC	0
+#define DLB2_LSP_QID2CQIDIX_00_CQ_P1_LOC	8
+#define DLB2_LSP_QID2CQIDIX_00_CQ_P2_LOC	16
+#define DLB2_LSP_QID2CQIDIX_00_CQ_P3_LOC	24
+
+#define DLB2_V2LSP_QID2CQIDIX2_00(x) \
 	(0xa1600000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID2CQIDIX2_00(x) \
+	(0x91780000 + (x) * 0x1000)
+#define DLB2_LSP_QID2CQIDIX2_00(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID2CQIDIX2_00(x) : \
+	 DLB2_V2_5LSP_QID2CQIDIX2_00(x))
 #define DLB2_LSP_QID2CQIDIX2_00_RST 0x0
-#define DLB2_LSP_QID2CQIDIX2(x, y) \
-	(DLB2_LSP_QID2CQIDIX2_00(x) + 0x80000 * (y))
+#define DLB2_LSP_QID2CQIDIX2(ver, x, y) \
+	(DLB2_LSP_QID2CQIDIX2_00(ver, x) + 0x80000 * (y))
 #define DLB2_LSP_QID2CQIDIX2_NUM 16
-union dlb2_lsp_qid2cqidix2_00 {
-	struct {
-		u32 cq_p0 : 8;
-		u32 cq_p1 : 8;
-		u32 cq_p2 : 8;
-		u32 cq_p3 : 8;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_LDB_REPLAY_CNT(x) \
-	(0xa1e00000 + (x) * 0x1000)
-#define DLB2_LSP_QID_LDB_REPLAY_CNT_RST 0x0
-union dlb2_lsp_qid_ldb_replay_cnt {
-	struct {
-		u32 count : 14;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
+#define DLB2_LSP_QID2CQIDIX2_00_CQ_P0	0x000000FF
+#define DLB2_LSP_QID2CQIDIX2_00_CQ_P1	0x0000FF00
+#define DLB2_LSP_QID2CQIDIX2_00_CQ_P2	0x00FF0000
+#define DLB2_LSP_QID2CQIDIX2_00_CQ_P3	0xFF000000
+#define DLB2_LSP_QID2CQIDIX2_00_CQ_P0_LOC	0
+#define DLB2_LSP_QID2CQIDIX2_00_CQ_P1_LOC	8
+#define DLB2_LSP_QID2CQIDIX2_00_CQ_P2_LOC	16
+#define DLB2_LSP_QID2CQIDIX2_00_CQ_P3_LOC	24
 
-#define DLB2_LSP_QID_NALDB_MAX_DEPTH(x) \
+#define DLB2_V2LSP_QID_NALDB_MAX_DEPTH(x) \
 	(0xa1f00000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_NALDB_MAX_DEPTH(x) \
+	(0x92080000 + (x) * 0x1000)
+#define DLB2_LSP_QID_NALDB_MAX_DEPTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_NALDB_MAX_DEPTH(x) : \
+	 DLB2_V2_5LSP_QID_NALDB_MAX_DEPTH(x))
 #define DLB2_LSP_QID_NALDB_MAX_DEPTH_RST 0x0
-union dlb2_lsp_qid_naldb_max_depth {
-	struct {
-		u32 depth : 14;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTL(x) \
+#define DLB2_LSP_QID_NALDB_MAX_DEPTH_DEPTH	0x00003FFF
+#define DLB2_LSP_QID_NALDB_MAX_DEPTH_RSVD0	0xFFFFC000
+#define DLB2_LSP_QID_NALDB_MAX_DEPTH_DEPTH_LOC	0
+#define DLB2_LSP_QID_NALDB_MAX_DEPTH_RSVD0_LOC	14
+
+#define DLB2_V2LSP_QID_NALDB_TOT_ENQ_CNTL(x) \
 	(0xa1f80000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_NALDB_TOT_ENQ_CNTL(x) \
+	(0x92100000 + (x) * 0x1000)
+#define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTL(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_NALDB_TOT_ENQ_CNTL(x) : \
+	 DLB2_V2_5LSP_QID_NALDB_TOT_ENQ_CNTL(x))
 #define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTL_RST 0x0
-union dlb2_lsp_qid_naldb_tot_enq_cntl {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTH(x) \
+#define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTL_COUNT	0xFFFFFFFF
+#define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTL_COUNT_LOC	0
+
+#define DLB2_V2LSP_QID_NALDB_TOT_ENQ_CNTH(x) \
 	(0xa2000000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_NALDB_TOT_ENQ_CNTH(x) \
+	(0x92180000 + (x) * 0x1000)
+#define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_NALDB_TOT_ENQ_CNTH(x) : \
+	 DLB2_V2_5LSP_QID_NALDB_TOT_ENQ_CNTH(x))
 #define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTH_RST 0x0
-union dlb2_lsp_qid_naldb_tot_enq_cnth {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_ATM_DEPTH_THRSH(x) \
+#define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTH_COUNT	0xFFFFFFFF
+#define DLB2_LSP_QID_NALDB_TOT_ENQ_CNTH_COUNT_LOC	0
+
+#define DLB2_V2LSP_QID_ATM_DEPTH_THRSH(x) \
 	(0xa2080000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_ATM_DEPTH_THRSH(x) \
+	(0x92200000 + (x) * 0x1000)
+#define DLB2_LSP_QID_ATM_DEPTH_THRSH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_ATM_DEPTH_THRSH(x) : \
+	 DLB2_V2_5LSP_QID_ATM_DEPTH_THRSH(x))
 #define DLB2_LSP_QID_ATM_DEPTH_THRSH_RST 0x0
-union dlb2_lsp_qid_atm_depth_thrsh {
-	struct {
-		u32 thresh : 14;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_NALDB_DEPTH_THRSH(x) \
+#define DLB2_LSP_QID_ATM_DEPTH_THRSH_THRESH	0x00003FFF
+#define DLB2_LSP_QID_ATM_DEPTH_THRSH_RSVD0	0xFFFFC000
+#define DLB2_LSP_QID_ATM_DEPTH_THRSH_THRESH_LOC	0
+#define DLB2_LSP_QID_ATM_DEPTH_THRSH_RSVD0_LOC	14
+
+#define DLB2_V2LSP_QID_NALDB_DEPTH_THRSH(x) \
 	(0xa2100000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_NALDB_DEPTH_THRSH(x) \
+	(0x92280000 + (x) * 0x1000)
+#define DLB2_LSP_QID_NALDB_DEPTH_THRSH(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_NALDB_DEPTH_THRSH(x) : \
+	 DLB2_V2_5LSP_QID_NALDB_DEPTH_THRSH(x))
 #define DLB2_LSP_QID_NALDB_DEPTH_THRSH_RST 0x0
-union dlb2_lsp_qid_naldb_depth_thrsh {
-	struct {
-		u32 thresh : 14;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_QID_ATM_ACTIVE(x) \
+#define DLB2_LSP_QID_NALDB_DEPTH_THRSH_THRESH	0x00003FFF
+#define DLB2_LSP_QID_NALDB_DEPTH_THRSH_RSVD0		0xFFFFC000
+#define DLB2_LSP_QID_NALDB_DEPTH_THRSH_THRESH_LOC	0
+#define DLB2_LSP_QID_NALDB_DEPTH_THRSH_RSVD0_LOC	14
+
+#define DLB2_V2LSP_QID_ATM_ACTIVE(x) \
 	(0xa2180000 + (x) * 0x1000)
+#define DLB2_V2_5LSP_QID_ATM_ACTIVE(x) \
+	(0x92300000 + (x) * 0x1000)
+#define DLB2_LSP_QID_ATM_ACTIVE(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_QID_ATM_ACTIVE(x) : \
+	 DLB2_V2_5LSP_QID_ATM_ACTIVE(x))
 #define DLB2_LSP_QID_ATM_ACTIVE_RST 0x0
-union dlb2_lsp_qid_atm_active {
-	struct {
-		u32 count : 14;
-		u32 rsvd0 : 18;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0 0xa4000008
+#define DLB2_LSP_QID_ATM_ACTIVE_COUNT	0x00003FFF
+#define DLB2_LSP_QID_ATM_ACTIVE_RSVD0	0xFFFFC000
+#define DLB2_LSP_QID_ATM_ACTIVE_COUNT_LOC	0
+#define DLB2_LSP_QID_ATM_ACTIVE_RSVD0_LOC	14
+
+#define DLB2_V2LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0 0xa4000008
+#define DLB2_V2_5LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0 0x94000008
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0 : \
+	 DLB2_V2_5LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0)
 #define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_RST 0x0
-union dlb2_lsp_cfg_arb_weight_atm_nalb_qid_0 {
-	struct {
-		u32 pri0_weight : 8;
-		u32 pri1_weight : 8;
-		u32 pri2_weight : 8;
-		u32 pri3_weight : 8;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1 0xa400000c
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI0_WEIGHT	0x000000FF
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI1_WEIGHT	0x0000FF00
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI2_WEIGHT	0x00FF0000
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI3_WEIGHT	0xFF000000
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI0_WEIGHT_LOC	0
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI1_WEIGHT_LOC	8
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI2_WEIGHT_LOC	16
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_0_PRI3_WEIGHT_LOC	24
+
+#define DLB2_V2LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1 0xa400000c
+#define DLB2_V2_5LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1 0x9400000c
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1 : \
+	 DLB2_V2_5LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1)
 #define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_RST 0x0
-union dlb2_lsp_cfg_arb_weight_atm_nalb_qid_1 {
-	struct {
-		u32 rsvz0 : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0 0xa4000014
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_RSVZ0_V2	0xFFFFFFFF
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_RSVZ0_V2_LOC	0
+
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_PRI4_WEIGHT_V2_5	0x000000FF
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_PRI5_WEIGHT_V2_5	0x0000FF00
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_PRI6_WEIGHT_V2_5	0x00FF0000
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_PRI7_WEIGHT_V2_5	0xFF000000
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_PRI4_WEIGHT_V2_5_LOC	0
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_PRI5_WEIGHT_V2_5_LOC	8
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_PRI6_WEIGHT_V2_5_LOC	16
+#define DLB2_LSP_CFG_ARB_WEIGHT_ATM_NALB_QID_1_PRI7_WEIGHT_V2_5_LOC	24
+
+#define DLB2_V2LSP_CFG_ARB_WEIGHT_LDB_QID_0 0xa4000014
+#define DLB2_V2_5LSP_CFG_ARB_WEIGHT_LDB_QID_0 0x94000014
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CFG_ARB_WEIGHT_LDB_QID_0 : \
+	 DLB2_V2_5LSP_CFG_ARB_WEIGHT_LDB_QID_0)
 #define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_RST 0x0
-union dlb2_lsp_cfg_arb_weight_ldb_qid_0 {
-	struct {
-		u32 pri0_weight : 8;
-		u32 pri1_weight : 8;
-		u32 pri2_weight : 8;
-		u32 pri3_weight : 8;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1 0xa4000018
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI0_WEIGHT	0x000000FF
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI1_WEIGHT	0x0000FF00
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI2_WEIGHT	0x00FF0000
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI3_WEIGHT	0xFF000000
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI0_WEIGHT_LOC	0
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI1_WEIGHT_LOC	8
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI2_WEIGHT_LOC	16
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_0_PRI3_WEIGHT_LOC	24
+
+#define DLB2_V2LSP_CFG_ARB_WEIGHT_LDB_QID_1 0xa4000018
+#define DLB2_V2_5LSP_CFG_ARB_WEIGHT_LDB_QID_1 0x94000018
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CFG_ARB_WEIGHT_LDB_QID_1 : \
+	 DLB2_V2_5LSP_CFG_ARB_WEIGHT_LDB_QID_1)
 #define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_RST 0x0
-union dlb2_lsp_cfg_arb_weight_ldb_qid_1 {
-	struct {
-		u32 rsvz0 : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_LDB_SCHED_CTRL 0xa400002c
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_RSVZ0_V2	0xFFFFFFFF
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_RSVZ0_V2_LOC	0
+
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_PRI4_WEIGHT_V2_5	0x000000FF
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_PRI5_WEIGHT_V2_5	0x0000FF00
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_PRI6_WEIGHT_V2_5	0x00FF0000
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_PRI7_WEIGHT_V2_5	0xFF000000
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_PRI4_WEIGHT_V2_5_LOC	0
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_PRI5_WEIGHT_V2_5_LOC	8
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_PRI6_WEIGHT_V2_5_LOC	16
+#define DLB2_LSP_CFG_ARB_WEIGHT_LDB_QID_1_PRI7_WEIGHT_V2_5_LOC	24
+
+#define DLB2_V2LSP_LDB_SCHED_CTRL 0xa400002c
+#define DLB2_V2_5LSP_LDB_SCHED_CTRL 0x9400002c
+#define DLB2_LSP_LDB_SCHED_CTRL(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_LDB_SCHED_CTRL : \
+	 DLB2_V2_5LSP_LDB_SCHED_CTRL)
 #define DLB2_LSP_LDB_SCHED_CTRL_RST 0x0
-union dlb2_lsp_ldb_sched_ctrl {
-	struct {
-		u32 cq : 8;
-		u32 qidix : 3;
-		u32 value : 1;
-		u32 nalb_haswork_v : 1;
-		u32 rlist_haswork_v : 1;
-		u32 slist_haswork_v : 1;
-		u32 inflight_ok_v : 1;
-		u32 aqed_nfull_v : 1;
-		u32 rsvz0 : 15;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_DIR_SCH_CNT_L 0xa4000034
+#define DLB2_LSP_LDB_SCHED_CTRL_CQ			0x000000FF
+#define DLB2_LSP_LDB_SCHED_CTRL_QIDIX		0x00000700
+#define DLB2_LSP_LDB_SCHED_CTRL_VALUE		0x00000800
+#define DLB2_LSP_LDB_SCHED_CTRL_NALB_HASWORK_V	0x00001000
+#define DLB2_LSP_LDB_SCHED_CTRL_RLIST_HASWORK_V	0x00002000
+#define DLB2_LSP_LDB_SCHED_CTRL_SLIST_HASWORK_V	0x00004000
+#define DLB2_LSP_LDB_SCHED_CTRL_INFLIGHT_OK_V	0x00008000
+#define DLB2_LSP_LDB_SCHED_CTRL_AQED_NFULL_V		0x00010000
+#define DLB2_LSP_LDB_SCHED_CTRL_RSVZ0		0xFFFE0000
+#define DLB2_LSP_LDB_SCHED_CTRL_CQ_LOC		0
+#define DLB2_LSP_LDB_SCHED_CTRL_QIDIX_LOC		8
+#define DLB2_LSP_LDB_SCHED_CTRL_VALUE_LOC		11
+#define DLB2_LSP_LDB_SCHED_CTRL_NALB_HASWORK_V_LOC	12
+#define DLB2_LSP_LDB_SCHED_CTRL_RLIST_HASWORK_V_LOC	13
+#define DLB2_LSP_LDB_SCHED_CTRL_SLIST_HASWORK_V_LOC	14
+#define DLB2_LSP_LDB_SCHED_CTRL_INFLIGHT_OK_V_LOC	15
+#define DLB2_LSP_LDB_SCHED_CTRL_AQED_NFULL_V_LOC	16
+#define DLB2_LSP_LDB_SCHED_CTRL_RSVZ0_LOC		17
+
+#define DLB2_V2LSP_DIR_SCH_CNT_L 0xa4000034
+#define DLB2_V2_5LSP_DIR_SCH_CNT_L 0x94000034
+#define DLB2_LSP_DIR_SCH_CNT_L(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_DIR_SCH_CNT_L : \
+	 DLB2_V2_5LSP_DIR_SCH_CNT_L)
 #define DLB2_LSP_DIR_SCH_CNT_L_RST 0x0
-union dlb2_lsp_dir_sch_cnt_l {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_DIR_SCH_CNT_H 0xa4000038
+#define DLB2_LSP_DIR_SCH_CNT_L_COUNT	0xFFFFFFFF
+#define DLB2_LSP_DIR_SCH_CNT_L_COUNT_LOC	0
+
+#define DLB2_V2LSP_DIR_SCH_CNT_H 0xa4000038
+#define DLB2_V2_5LSP_DIR_SCH_CNT_H 0x94000038
+#define DLB2_LSP_DIR_SCH_CNT_H(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_DIR_SCH_CNT_H : \
+	 DLB2_V2_5LSP_DIR_SCH_CNT_H)
 #define DLB2_LSP_DIR_SCH_CNT_H_RST 0x0
-union dlb2_lsp_dir_sch_cnt_h {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_LDB_SCH_CNT_L 0xa400003c
+#define DLB2_LSP_DIR_SCH_CNT_H_COUNT	0xFFFFFFFF
+#define DLB2_LSP_DIR_SCH_CNT_H_COUNT_LOC	0
+
+#define DLB2_V2LSP_LDB_SCH_CNT_L 0xa400003c
+#define DLB2_V2_5LSP_LDB_SCH_CNT_L 0x9400003c
+#define DLB2_LSP_LDB_SCH_CNT_L(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_LDB_SCH_CNT_L : \
+	 DLB2_V2_5LSP_LDB_SCH_CNT_L)
 #define DLB2_LSP_LDB_SCH_CNT_L_RST 0x0
-union dlb2_lsp_ldb_sch_cnt_l {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_LDB_SCH_CNT_H 0xa4000040
+#define DLB2_LSP_LDB_SCH_CNT_L_COUNT	0xFFFFFFFF
+#define DLB2_LSP_LDB_SCH_CNT_L_COUNT_LOC	0
+
+#define DLB2_V2LSP_LDB_SCH_CNT_H 0xa4000040
+#define DLB2_V2_5LSP_LDB_SCH_CNT_H 0x94000040
+#define DLB2_LSP_LDB_SCH_CNT_H(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_LDB_SCH_CNT_H : \
+	 DLB2_V2_5LSP_LDB_SCH_CNT_H)
 #define DLB2_LSP_LDB_SCH_CNT_H_RST 0x0
-union dlb2_lsp_ldb_sch_cnt_h {
-	struct {
-		u32 count : 32;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CFG_SHDW_CTRL 0xa4000070
+#define DLB2_LSP_LDB_SCH_CNT_H_COUNT	0xFFFFFFFF
+#define DLB2_LSP_LDB_SCH_CNT_H_COUNT_LOC	0
+
+#define DLB2_V2LSP_CFG_SHDW_CTRL 0xa4000070
+#define DLB2_V2_5LSP_CFG_SHDW_CTRL 0x94000070
+#define DLB2_LSP_CFG_SHDW_CTRL(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CFG_SHDW_CTRL : \
+	 DLB2_V2_5LSP_CFG_SHDW_CTRL)
 #define DLB2_LSP_CFG_SHDW_CTRL_RST 0x0
-union dlb2_lsp_cfg_shdw_ctrl {
-	struct {
-		u32 transfer : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CFG_SHDW_RANGE_COS(x) \
+#define DLB2_LSP_CFG_SHDW_CTRL_TRANSFER	0x00000001
+#define DLB2_LSP_CFG_SHDW_CTRL_RSVD0		0xFFFFFFFE
+#define DLB2_LSP_CFG_SHDW_CTRL_TRANSFER_LOC	0
+#define DLB2_LSP_CFG_SHDW_CTRL_RSVD0_LOC	1
+
+#define DLB2_V2LSP_CFG_SHDW_RANGE_COS(x) \
 	(0xa4000074 + (x) * 4)
+#define DLB2_V2_5LSP_CFG_SHDW_RANGE_COS(x) \
+	(0x94000074 + (x) * 4)
+#define DLB2_LSP_CFG_SHDW_RANGE_COS(ver, x) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CFG_SHDW_RANGE_COS(x) : \
+	 DLB2_V2_5LSP_CFG_SHDW_RANGE_COS(x))
 #define DLB2_LSP_CFG_SHDW_RANGE_COS_RST 0x40
-union dlb2_lsp_cfg_shdw_range_cos {
-	struct {
-		u32 bw_range : 9;
-		u32 rsvz0 : 22;
-		u32 no_extra_credit : 1;
-	} field;
-	u32 val;
-};
 
-#define DLB2_LSP_CFG_CTRL_GENERAL_0 0xac000000
+#define DLB2_LSP_CFG_SHDW_RANGE_COS_BW_RANGE		0x000001FF
+#define DLB2_LSP_CFG_SHDW_RANGE_COS_RSVZ0		0x7FFFFE00
+#define DLB2_LSP_CFG_SHDW_RANGE_COS_NO_EXTRA_CREDIT	0x80000000
+#define DLB2_LSP_CFG_SHDW_RANGE_COS_BW_RANGE_LOC		0
+#define DLB2_LSP_CFG_SHDW_RANGE_COS_RSVZ0_LOC		9
+#define DLB2_LSP_CFG_SHDW_RANGE_COS_NO_EXTRA_CREDIT_LOC	31
+
+#define DLB2_V2LSP_CFG_CTRL_GENERAL_0 0xac000000
+#define DLB2_V2_5LSP_CFG_CTRL_GENERAL_0 0x9c000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2LSP_CFG_CTRL_GENERAL_0 : \
+	 DLB2_V2_5LSP_CFG_CTRL_GENERAL_0)
 #define DLB2_LSP_CFG_CTRL_GENERAL_0_RST 0x0
-union dlb2_lsp_cfg_ctrl_general_0 {
-	struct {
-		u32 disab_atq_empty_arb : 1;
-		u32 inc_tok_unit_idle : 1;
-		u32 disab_rlist_pri : 1;
-		u32 inc_cmp_unit_idle : 1;
-		u32 rsvz0 : 2;
-		u32 dir_single_op : 1;
-		u32 dir_half_bw : 1;
-		u32 dir_single_out : 1;
-		u32 dir_disab_multi : 1;
-		u32 atq_single_op : 1;
-		u32 atq_half_bw : 1;
-		u32 atq_single_out : 1;
-		u32 atq_disab_multi : 1;
-		u32 dirrpl_single_op : 1;
-		u32 dirrpl_half_bw : 1;
-		u32 dirrpl_single_out : 1;
-		u32 lbrpl_single_op : 1;
-		u32 lbrpl_half_bw : 1;
-		u32 lbrpl_single_out : 1;
-		u32 ldb_single_op : 1;
-		u32 ldb_half_bw : 1;
-		u32 ldb_disab_multi : 1;
-		u32 atm_single_sch : 1;
-		u32 atm_single_cmp : 1;
-		u32 ldb_ce_tog_arb : 1;
-		u32 rsvz1 : 1;
-		u32 smon0_valid_sel : 2;
-		u32 smon0_value_sel : 1;
-		u32 smon0_compare_sel : 2;
-	} field;
-	u32 val;
-};
 
-#define DLB2_CFG_MSTR_DIAG_RESET_STS 0xb4000000
-#define DLB2_CFG_MSTR_DIAG_RESET_STS_RST 0x80000bff
-union dlb2_cfg_mstr_diag_reset_sts {
-	struct {
-		u32 chp_pf_reset_done : 1;
-		u32 rop_pf_reset_done : 1;
-		u32 lsp_pf_reset_done : 1;
-		u32 nalb_pf_reset_done : 1;
-		u32 ap_pf_reset_done : 1;
-		u32 dp_pf_reset_done : 1;
-		u32 qed_pf_reset_done : 1;
-		u32 dqed_pf_reset_done : 1;
-		u32 aqed_pf_reset_done : 1;
-		u32 sys_pf_reset_done : 1;
-		u32 pf_reset_active : 1;
-		u32 flrsm_state : 7;
-		u32 rsvd0 : 13;
-		u32 dlb_proc_reset_done : 1;
-	} field;
-	u32 val;
-};
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DISAB_ATQ_EMPTY_ARB_V2	0x00000001
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_INC_TOK_UNIT_IDLE_V2	0x00000002
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DISAB_RLIST_PRI_V2	0x00000004
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_INC_CMP_UNIT_IDLE_V2	0x00000008
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_RSVZ0_V2		0x00000030
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_SINGLE_OP_V2	0x00000040
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_HALF_BW_V2	0x00000080
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_SINGLE_OUT_V2	0x00000100
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_DISAB_MULTI_V2	0x00000200
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_SINGLE_OP_V2	0x00000400
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_HALF_BW_V2	0x00000800
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_SINGLE_OUT_V2	0x00001000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_DISAB_MULTI_V2	0x00002000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_SINGLE_OP_V2	0x00004000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_HALF_BW_V2	0x00008000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_SINGLE_OUT_V2	0x00010000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_SINGLE_OP_V2	0x00020000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_HALF_BW_V2	0x00040000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_SINGLE_OUT_V2	0x00080000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_SINGLE_OP_V2	0x00100000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_HALF_BW_V2	0x00200000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_DISAB_MULTI_V2	0x00400000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATM_SINGLE_SCH_V2	0x00800000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATM_SINGLE_CMP_V2	0x01000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_CE_TOG_ARB_V2	0x02000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_RSVZ1_V2		0x04000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_VALID_SEL_V2	0x18000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_VALUE_SEL_V2	0x20000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_COMPARE_SEL_V2	0xC0000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DISAB_ATQ_EMPTY_ARB_V2_LOC	0
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_INC_TOK_UNIT_IDLE_V2_LOC		1
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DISAB_RLIST_PRI_V2_LOC		2
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_INC_CMP_UNIT_IDLE_V2_LOC		3
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_RSVZ0_V2_LOC			4
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_SINGLE_OP_V2_LOC		6
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_HALF_BW_V2_LOC		7
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_SINGLE_OUT_V2_LOC		8
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_DISAB_MULTI_V2_LOC		9
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_SINGLE_OP_V2_LOC		10
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_HALF_BW_V2_LOC		11
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_SINGLE_OUT_V2_LOC		12
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_DISAB_MULTI_V2_LOC		13
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_SINGLE_OP_V2_LOC		14
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_HALF_BW_V2_LOC		15
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_SINGLE_OUT_V2_LOC		16
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_SINGLE_OP_V2_LOC		17
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_HALF_BW_V2_LOC		18
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_SINGLE_OUT_V2_LOC		19
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_SINGLE_OP_V2_LOC		20
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_HALF_BW_V2_LOC		21
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_DISAB_MULTI_V2_LOC		22
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATM_SINGLE_SCH_V2_LOC		23
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATM_SINGLE_CMP_V2_LOC		24
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_CE_TOG_ARB_V2_LOC		25
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_RSVZ1_V2_LOC			26
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_VALID_SEL_V2_LOC		27
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_VALUE_SEL_V2_LOC		29
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_COMPARE_SEL_V2_LOC		30
 
-#define DLB2_CFG_MSTR_CFG_DIAGNOSTIC_IDLE_STATUS 0xb4000004
-#define DLB2_CFG_MSTR_CFG_DIAGNOSTIC_IDLE_STATUS_RST 0x9d0fffff
-union dlb2_cfg_mstr_cfg_diagnostic_idle_status {
-	struct {
-		u32 chp_pipeidle : 1;
-		u32 rop_pipeidle : 1;
-		u32 lsp_pipeidle : 1;
-		u32 nalb_pipeidle : 1;
-		u32 ap_pipeidle : 1;
-		u32 dp_pipeidle : 1;
-		u32 qed_pipeidle : 1;
-		u32 dqed_pipeidle : 1;
-		u32 aqed_pipeidle : 1;
-		u32 sys_pipeidle : 1;
-		u32 chp_unit_idle : 1;
-		u32 rop_unit_idle : 1;
-		u32 lsp_unit_idle : 1;
-		u32 nalb_unit_idle : 1;
-		u32 ap_unit_idle : 1;
-		u32 dp_unit_idle : 1;
-		u32 qed_unit_idle : 1;
-		u32 dqed_unit_idle : 1;
-		u32 aqed_unit_idle : 1;
-		u32 sys_unit_idle : 1;
-		u32 rsvd1 : 4;
-		u32 mstr_cfg_ring_idle : 1;
-		u32 mstr_cfg_mstr_idle : 1;
-		u32 mstr_flr_clkreq_b : 1;
-		u32 mstr_proc_idle : 1;
-		u32 mstr_proc_idle_masked : 1;
-		u32 rsvd0 : 2;
-		u32 dlb_func_idle : 1;
-	} field;
-	u32 val;
-};
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DISAB_ATQ_EMPTY_ARB_V2_5	0x00000001
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_INC_TOK_UNIT_IDLE_V2_5	0x00000002
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DISAB_RLIST_PRI_V2_5	0x00000004
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_INC_CMP_UNIT_IDLE_V2_5	0x00000008
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ENAB_IF_THRESH_V2_5	0x00000010
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_RSVZ0_V2_5		0x00000020
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_SINGLE_OP_V2_5	0x00000040
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_HALF_BW_V2_5	0x00000080
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_SINGLE_OUT_V2_5	0x00000100
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_DISAB_MULTI_V2_5	0x00000200
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_SINGLE_OP_V2_5	0x00000400
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_HALF_BW_V2_5	0x00000800
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_SINGLE_OUT_V2_5	0x00001000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_DISAB_MULTI_V2_5	0x00002000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_SINGLE_OP_V2_5	0x00004000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_HALF_BW_V2_5	0x00008000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_SINGLE_OUT_V2_5	0x00010000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_SINGLE_OP_V2_5	0x00020000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_HALF_BW_V2_5	0x00040000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_SINGLE_OUT_V2_5	0x00080000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_SINGLE_OP_V2_5	0x00100000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_HALF_BW_V2_5	0x00200000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_DISAB_MULTI_V2_5	0x00400000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATM_SINGLE_SCH_V2_5	0x00800000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATM_SINGLE_CMP_V2_5	0x01000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_CE_TOG_ARB_V2_5	0x02000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_RSVZ1_V2_5		0x04000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_VALID_SEL_V2_5	0x18000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_VALUE_SEL_V2_5	0x20000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_COMPARE_SEL_V2_5	0xC0000000
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DISAB_ATQ_EMPTY_ARB_V2_5_LOC	0
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_INC_TOK_UNIT_IDLE_V2_5_LOC	1
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DISAB_RLIST_PRI_V2_5_LOC		2
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_INC_CMP_UNIT_IDLE_V2_5_LOC	3
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ENAB_IF_THRESH_V2_5_LOC		4
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_RSVZ0_V2_5_LOC			5
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_SINGLE_OP_V2_5_LOC		6
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_HALF_BW_V2_5_LOC		7
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_SINGLE_OUT_V2_5_LOC		8
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIR_DISAB_MULTI_V2_5_LOC		9
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_SINGLE_OP_V2_5_LOC		10
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_HALF_BW_V2_5_LOC		11
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_SINGLE_OUT_V2_5_LOC		12
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATQ_DISAB_MULTI_V2_5_LOC		13
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_SINGLE_OP_V2_5_LOC	14
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_HALF_BW_V2_5_LOC		15
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_DIRRPL_SINGLE_OUT_V2_5_LOC	16
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_SINGLE_OP_V2_5_LOC		17
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_HALF_BW_V2_5_LOC		18
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LBRPL_SINGLE_OUT_V2_5_LOC	19
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_SINGLE_OP_V2_5_LOC		20
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_HALF_BW_V2_5_LOC		21
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_DISAB_MULTI_V2_5_LOC		22
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATM_SINGLE_SCH_V2_5_LOC		23
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_ATM_SINGLE_CMP_V2_5_LOC		24
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_LDB_CE_TOG_ARB_V2_5_LOC		25
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_RSVZ1_V2_5_LOC			26
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_VALID_SEL_V2_5_LOC		27
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_VALUE_SEL_V2_5_LOC		29
+#define DLB2_LSP_CFG_CTRL_GENERAL_0_SMON0_COMPARE_SEL_V2_5_LOC	30
 
-#define DLB2_CFG_MSTR_CFG_PM_STATUS 0xb4000014
-#define DLB2_CFG_MSTR_CFG_PM_STATUS_RST 0x100403e
-union dlb2_cfg_mstr_cfg_pm_status {
-	struct {
-		u32 prochot : 1;
-		u32 pgcb_dlb_idle : 1;
-		u32 pgcb_dlb_pg_rdy_ack_b : 1;
-		u32 pmsm_pgcb_req_b : 1;
-		u32 pgbc_pmc_pg_req_b : 1;
-		u32 pmc_pgcb_pg_ack_b : 1;
-		u32 pmc_pgcb_fet_en_b : 1;
-		u32 pgcb_fet_en_b : 1;
-		u32 rsvz0 : 1;
-		u32 rsvz1 : 1;
-		u32 fuse_force_on : 1;
-		u32 fuse_proc_disable : 1;
-		u32 rsvz2 : 1;
-		u32 rsvz3 : 1;
-		u32 pm_fsm_d0tod3_ok : 1;
-		u32 pm_fsm_d3tod0_ok : 1;
-		u32 dlb_in_d3 : 1;
-		u32 rsvz4 : 7;
-		u32 pmsm : 8;
-	} field;
-	u32 val;
-};
+#define DLB2_LSP_SMON_COMPARE0 0xac000048
+#define DLB2_LSP_SMON_COMPARE0_RST 0x0
 
-#define DLB2_CFG_MSTR_CFG_PM_PMCSR_DISABLE 0xb4000018
-#define DLB2_CFG_MSTR_CFG_PM_PMCSR_DISABLE_RST 0x1
-union dlb2_cfg_mstr_cfg_pm_pmcsr_disable {
-	struct {
-		u32 disable : 1;
-		u32 rsvz0 : 31;
-	} field;
-	u32 val;
-};
+#define DLB2_LSP_SMON_COMPARE0_COMPARE0	0xFFFFFFFF
+#define DLB2_LSP_SMON_COMPARE0_COMPARE0_LOC	0
 
-#define DLB2_FUNC_VF_VF2PF_MAILBOX_BYTES 256
-#define DLB2_FUNC_VF_VF2PF_MAILBOX(x) \
+#define DLB2_LSP_SMON_COMPARE1 0xac00004c
+#define DLB2_LSP_SMON_COMPARE1_RST 0x0
+
+#define DLB2_LSP_SMON_COMPARE1_COMPARE1	0xFFFFFFFF
+#define DLB2_LSP_SMON_COMPARE1_COMPARE1_LOC	0
+
+#define DLB2_LSP_SMON_CFG0 0xac000050
+#define DLB2_LSP_SMON_CFG0_RST 0x40000000
+
+#define DLB2_LSP_SMON_CFG0_SMON_ENABLE		0x00000001
+#define DLB2_LSP_SMON_CFG0_SMON_0TRIGGER_ENABLE	0x00000002
+#define DLB2_LSP_SMON_CFG0_RSVZ0			0x0000000C
+#define DLB2_LSP_SMON_CFG0_SMON0_FUNCTION		0x00000070
+#define DLB2_LSP_SMON_CFG0_SMON0_FUNCTION_COMPARE	0x00000080
+#define DLB2_LSP_SMON_CFG0_SMON1_FUNCTION		0x00000700
+#define DLB2_LSP_SMON_CFG0_SMON1_FUNCTION_COMPARE	0x00000800
+#define DLB2_LSP_SMON_CFG0_SMON_MODE			0x0000F000
+#define DLB2_LSP_SMON_CFG0_STOPCOUNTEROVFL		0x00010000
+#define DLB2_LSP_SMON_CFG0_INTCOUNTEROVFL		0x00020000
+#define DLB2_LSP_SMON_CFG0_STATCOUNTER0OVFL		0x00040000
+#define DLB2_LSP_SMON_CFG0_STATCOUNTER1OVFL		0x00080000
+#define DLB2_LSP_SMON_CFG0_STOPTIMEROVFL		0x00100000
+#define DLB2_LSP_SMON_CFG0_INTTIMEROVFL		0x00200000
+#define DLB2_LSP_SMON_CFG0_STATTIMEROVFL		0x00400000
+#define DLB2_LSP_SMON_CFG0_RSVZ1			0x00800000
+#define DLB2_LSP_SMON_CFG0_TIMER_PRESCALE		0x1F000000
+#define DLB2_LSP_SMON_CFG0_RSVZ2			0x20000000
+#define DLB2_LSP_SMON_CFG0_VERSION			0xC0000000
+#define DLB2_LSP_SMON_CFG0_SMON_ENABLE_LOC			0
+#define DLB2_LSP_SMON_CFG0_SMON_0TRIGGER_ENABLE_LOC		1
+#define DLB2_LSP_SMON_CFG0_RSVZ0_LOC				2
+#define DLB2_LSP_SMON_CFG0_SMON0_FUNCTION_LOC		4
+#define DLB2_LSP_SMON_CFG0_SMON0_FUNCTION_COMPARE_LOC	7
+#define DLB2_LSP_SMON_CFG0_SMON1_FUNCTION_LOC		8
+#define DLB2_LSP_SMON_CFG0_SMON1_FUNCTION_COMPARE_LOC	11
+#define DLB2_LSP_SMON_CFG0_SMON_MODE_LOC			12
+#define DLB2_LSP_SMON_CFG0_STOPCOUNTEROVFL_LOC		16
+#define DLB2_LSP_SMON_CFG0_INTCOUNTEROVFL_LOC		17
+#define DLB2_LSP_SMON_CFG0_STATCOUNTER0OVFL_LOC		18
+#define DLB2_LSP_SMON_CFG0_STATCOUNTER1OVFL_LOC		19
+#define DLB2_LSP_SMON_CFG0_STOPTIMEROVFL_LOC			20
+#define DLB2_LSP_SMON_CFG0_INTTIMEROVFL_LOC			21
+#define DLB2_LSP_SMON_CFG0_STATTIMEROVFL_LOC			22
+#define DLB2_LSP_SMON_CFG0_RSVZ1_LOC				23
+#define DLB2_LSP_SMON_CFG0_TIMER_PRESCALE_LOC		24
+#define DLB2_LSP_SMON_CFG0_RSVZ2_LOC				29
+#define DLB2_LSP_SMON_CFG0_VERSION_LOC			30
+
+#define DLB2_LSP_SMON_CFG1 0xac000054
+#define DLB2_LSP_SMON_CFG1_RST 0x0
+
+#define DLB2_LSP_SMON_CFG1_MODE0	0x000000FF
+#define DLB2_LSP_SMON_CFG1_MODE1	0x0000FF00
+#define DLB2_LSP_SMON_CFG1_RSVZ0	0xFFFF0000
+#define DLB2_LSP_SMON_CFG1_MODE0_LOC	0
+#define DLB2_LSP_SMON_CFG1_MODE1_LOC	8
+#define DLB2_LSP_SMON_CFG1_RSVZ0_LOC	16
+
+#define DLB2_LSP_SMON_ACTIVITYCNTR0 0xac000058
+#define DLB2_LSP_SMON_ACTIVITYCNTR0_RST 0x0
+
+#define DLB2_LSP_SMON_ACTIVITYCNTR0_COUNTER0	0xFFFFFFFF
+#define DLB2_LSP_SMON_ACTIVITYCNTR0_COUNTER0_LOC	0
+
+#define DLB2_LSP_SMON_ACTIVITYCNTR1 0xac00005c
+#define DLB2_LSP_SMON_ACTIVITYCNTR1_RST 0x0
+
+#define DLB2_LSP_SMON_ACTIVITYCNTR1_COUNTER1	0xFFFFFFFF
+#define DLB2_LSP_SMON_ACTIVITYCNTR1_COUNTER1_LOC	0
+
+#define DLB2_LSP_SMON_MAX_TMR 0xac000060
+#define DLB2_LSP_SMON_MAX_TMR_RST 0x0
+
+#define DLB2_LSP_SMON_MAX_TMR_MAXVALUE	0xFFFFFFFF
+#define DLB2_LSP_SMON_MAX_TMR_MAXVALUE_LOC	0
+
+#define DLB2_LSP_SMON_TMR 0xac000064
+#define DLB2_LSP_SMON_TMR_RST 0x0
+
+#define DLB2_LSP_SMON_TMR_TIMER	0xFFFFFFFF
+#define DLB2_LSP_SMON_TMR_TIMER_LOC	0
+
+#define DLB2_V2CM_DIAG_RESET_STS 0xb4000000
+#define DLB2_V2_5CM_DIAG_RESET_STS 0xa4000000
+#define DLB2_CM_DIAG_RESET_STS(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 V2CM_DIAG_RESET_STS : \
+	 V2_5CM_DIAG_RESET_STS)
+#define DLB2_CM_DIAG_RESET_STS_RST 0x80000bff
+
+#define DLB2_CM_DIAG_RESET_STS_CHP_PF_RESET_DONE	0x00000001
+#define DLB2_CM_DIAG_RESET_STS_ROP_PF_RESET_DONE	0x00000002
+#define DLB2_CM_DIAG_RESET_STS_LSP_PF_RESET_DONE	0x00000004
+#define DLB2_CM_DIAG_RESET_STS_NALB_PF_RESET_DONE	0x00000008
+#define DLB2_CM_DIAG_RESET_STS_AP_PF_RESET_DONE	0x00000010
+#define DLB2_CM_DIAG_RESET_STS_DP_PF_RESET_DONE	0x00000020
+#define DLB2_CM_DIAG_RESET_STS_QED_PF_RESET_DONE	0x00000040
+#define DLB2_CM_DIAG_RESET_STS_DQED_PF_RESET_DONE	0x00000080
+#define DLB2_CM_DIAG_RESET_STS_AQED_PF_RESET_DONE	0x00000100
+#define DLB2_CM_DIAG_RESET_STS_SYS_PF_RESET_DONE	0x00000200
+#define DLB2_CM_DIAG_RESET_STS_PF_RESET_ACTIVE	0x00000400
+#define DLB2_CM_DIAG_RESET_STS_FLRSM_STATE		0x0003F800
+#define DLB2_CM_DIAG_RESET_STS_RSVD0			0x7FFC0000
+#define DLB2_CM_DIAG_RESET_STS_DLB_PROC_RESET_DONE	0x80000000
+#define DLB2_CM_DIAG_RESET_STS_CHP_PF_RESET_DONE_LOC		0
+#define DLB2_CM_DIAG_RESET_STS_ROP_PF_RESET_DONE_LOC		1
+#define DLB2_CM_DIAG_RESET_STS_LSP_PF_RESET_DONE_LOC		2
+#define DLB2_CM_DIAG_RESET_STS_NALB_PF_RESET_DONE_LOC	3
+#define DLB2_CM_DIAG_RESET_STS_AP_PF_RESET_DONE_LOC		4
+#define DLB2_CM_DIAG_RESET_STS_DP_PF_RESET_DONE_LOC		5
+#define DLB2_CM_DIAG_RESET_STS_QED_PF_RESET_DONE_LOC		6
+#define DLB2_CM_DIAG_RESET_STS_DQED_PF_RESET_DONE_LOC	7
+#define DLB2_CM_DIAG_RESET_STS_AQED_PF_RESET_DONE_LOC	8
+#define DLB2_CM_DIAG_RESET_STS_SYS_PF_RESET_DONE_LOC		9
+#define DLB2_CM_DIAG_RESET_STS_PF_RESET_ACTIVE_LOC		10
+#define DLB2_CM_DIAG_RESET_STS_FLRSM_STATE_LOC		11
+#define DLB2_CM_DIAG_RESET_STS_RSVD0_LOC			18
+#define DLB2_CM_DIAG_RESET_STS_DLB_PROC_RESET_DONE_LOC	31
+
+#define DLB2_V2CM_CFG_DIAGNOSTIC_IDLE_STATUS 0xb4000004
+#define DLB2_V2_5CM_CFG_DIAGNOSTIC_IDLE_STATUS 0xa4000004
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CM_CFG_DIAGNOSTIC_IDLE_STATUS : \
+	 DLB2_V2_5CM_CFG_DIAGNOSTIC_IDLE_STATUS)
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_RST 0x9d0fffff
+
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_CHP_PIPEIDLE		0x00000001
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_ROP_PIPEIDLE		0x00000002
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_LSP_PIPEIDLE		0x00000004
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_NALB_PIPEIDLE	0x00000008
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_AP_PIPEIDLE		0x00000010
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DP_PIPEIDLE		0x00000020
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_QED_PIPEIDLE		0x00000040
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DQED_PIPEIDLE	0x00000080
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_AQED_PIPEIDLE	0x00000100
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_SYS_PIPEIDLE		0x00000200
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_CHP_UNIT_IDLE	0x00000400
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_ROP_UNIT_IDLE	0x00000800
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_LSP_UNIT_IDLE	0x00001000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_NALB_UNIT_IDLE	0x00002000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_AP_UNIT_IDLE		0x00004000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DP_UNIT_IDLE		0x00008000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_QED_UNIT_IDLE	0x00010000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DQED_UNIT_IDLE	0x00020000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_AQED_UNIT_IDLE	0x00040000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_SYS_UNIT_IDLE	0x00080000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_RSVD1		0x00F00000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_CFG_RING_IDLE	0x01000000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_CFG_MSTR_IDLE	0x02000000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_FLR_CLKREQ_B	0x04000000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_PROC_IDLE	0x08000000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_PROC_IDLE_MASKED 0x10000000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_RSVD0		 0x60000000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DLB_FUNC_IDLE	 0x80000000
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_CHP_PIPEIDLE_LOC		0
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_ROP_PIPEIDLE_LOC		1
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_LSP_PIPEIDLE_LOC		2
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_NALB_PIPEIDLE_LOC		3
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_AP_PIPEIDLE_LOC		4
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DP_PIPEIDLE_LOC		5
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_QED_PIPEIDLE_LOC		6
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DQED_PIPEIDLE_LOC		7
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_AQED_PIPEIDLE_LOC		8
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_SYS_PIPEIDLE_LOC		9
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_CHP_UNIT_IDLE_LOC		10
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_ROP_UNIT_IDLE_LOC		11
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_LSP_UNIT_IDLE_LOC		12
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_NALB_UNIT_IDLE_LOC	13
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_AP_UNIT_IDLE_LOC		14
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DP_UNIT_IDLE_LOC		15
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_QED_UNIT_IDLE_LOC		16
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DQED_UNIT_IDLE_LOC	17
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_AQED_UNIT_IDLE_LOC	18
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_SYS_UNIT_IDLE_LOC		19
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_RSVD1_LOC			20
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_CFG_RING_IDLE_LOC	24
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_CFG_MSTR_IDLE_LOC	25
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_FLR_CLKREQ_B_LOC	26
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_PROC_IDLE_LOC	27
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_MSTR_PROC_IDLE_MASKED_LOC	28
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_RSVD0_LOC			29
+#define DLB2_CM_CFG_DIAGNOSTIC_IDLE_STATUS_DLB_FUNC_IDLE_LOC		31
+
+#define DLB2_V2CM_CFG_PM_STATUS 0xb4000014
+#define DLB2_V2_5CM_CFG_PM_STATUS 0xa4000014
+#define DLB2_CM_CFG_PM_STATUS(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CM_CFG_PM_STATUS : \
+	 DLB2_V2_5CM_CFG_PM_STATUS)
+#define DLB2_CM_CFG_PM_STATUS_RST 0x100403e
+
+#define DLB2_CM_CFG_PM_STATUS_PROCHOT		0x00000001
+#define DLB2_CM_CFG_PM_STATUS_PGCB_DLB_IDLE		0x00000002
+#define DLB2_CM_CFG_PM_STATUS_PGCB_DLB_PG_RDY_ACK_B	0x00000004
+#define DLB2_CM_CFG_PM_STATUS_PMSM_PGCB_REQ_B	0x00000008
+#define DLB2_CM_CFG_PM_STATUS_PGBC_PMC_PG_REQ_B	0x00000010
+#define DLB2_CM_CFG_PM_STATUS_PMC_PGCB_PG_ACK_B	0x00000020
+#define DLB2_CM_CFG_PM_STATUS_PMC_PGCB_FET_EN_B	0x00000040
+#define DLB2_CM_CFG_PM_STATUS_PGCB_FET_EN_B		0x00000080
+#define DLB2_CM_CFG_PM_STATUS_RSVZ0			0x00000100
+#define DLB2_CM_CFG_PM_STATUS_RSVZ1			0x00000200
+#define DLB2_CM_CFG_PM_STATUS_FUSE_FORCE_ON		0x00000400
+#define DLB2_CM_CFG_PM_STATUS_FUSE_PROC_DISABLE	0x00000800
+#define DLB2_CM_CFG_PM_STATUS_RSVZ2			0x00001000
+#define DLB2_CM_CFG_PM_STATUS_RSVZ3			0x00002000
+#define DLB2_CM_CFG_PM_STATUS_PM_FSM_D0TOD3_OK	0x00004000
+#define DLB2_CM_CFG_PM_STATUS_PM_FSM_D3TOD0_OK	0x00008000
+#define DLB2_CM_CFG_PM_STATUS_DLB_IN_D3		0x00010000
+#define DLB2_CM_CFG_PM_STATUS_RSVZ4			0x00FE0000
+#define DLB2_CM_CFG_PM_STATUS_PMSM			0xFF000000
+#define DLB2_CM_CFG_PM_STATUS_PROCHOT_LOC			0
+#define DLB2_CM_CFG_PM_STATUS_PGCB_DLB_IDLE_LOC		1
+#define DLB2_CM_CFG_PM_STATUS_PGCB_DLB_PG_RDY_ACK_B_LOC	2
+#define DLB2_CM_CFG_PM_STATUS_PMSM_PGCB_REQ_B_LOC		3
+#define DLB2_CM_CFG_PM_STATUS_PGBC_PMC_PG_REQ_B_LOC		4
+#define DLB2_CM_CFG_PM_STATUS_PMC_PGCB_PG_ACK_B_LOC		5
+#define DLB2_CM_CFG_PM_STATUS_PMC_PGCB_FET_EN_B_LOC		6
+#define DLB2_CM_CFG_PM_STATUS_PGCB_FET_EN_B_LOC		7
+#define DLB2_CM_CFG_PM_STATUS_RSVZ0_LOC			8
+#define DLB2_CM_CFG_PM_STATUS_RSVZ1_LOC			9
+#define DLB2_CM_CFG_PM_STATUS_FUSE_FORCE_ON_LOC		10
+#define DLB2_CM_CFG_PM_STATUS_FUSE_PROC_DISABLE_LOC		11
+#define DLB2_CM_CFG_PM_STATUS_RSVZ2_LOC			12
+#define DLB2_CM_CFG_PM_STATUS_RSVZ3_LOC			13
+#define DLB2_CM_CFG_PM_STATUS_PM_FSM_D0TOD3_OK_LOC		14
+#define DLB2_CM_CFG_PM_STATUS_PM_FSM_D3TOD0_OK_LOC		15
+#define DLB2_CM_CFG_PM_STATUS_DLB_IN_D3_LOC			16
+#define DLB2_CM_CFG_PM_STATUS_RSVZ4_LOC			17
+#define DLB2_CM_CFG_PM_STATUS_PMSM_LOC			24
+
+#define DLB2_V2CM_CFG_PM_PMCSR_DISABLE 0xb4000018
+#define DLB2_V2_5CM_CFG_PM_PMCSR_DISABLE 0xa4000018
+#define DLB2_CM_CFG_PM_PMCSR_DISABLE(ver) \
+	(ver == DLB2_HW_V2 ? \
+	 DLB2_V2CM_CFG_PM_PMCSR_DISABLE : \
+	 DLB2_V2_5CM_CFG_PM_PMCSR_DISABLE)
+#define DLB2_CM_CFG_PM_PMCSR_DISABLE_RST 0x1
+
+#define DLB2_CM_CFG_PM_PMCSR_DISABLE_DISABLE	0x00000001
+#define DLB2_CM_CFG_PM_PMCSR_DISABLE_RSVZ0	0xFFFFFFFE
+#define DLB2_CM_CFG_PM_PMCSR_DISABLE_DISABLE_LOC	0
+#define DLB2_CM_CFG_PM_PMCSR_DISABLE_RSVZ0_LOC	1
+
+#define DLB2_VF_VF2PF_MAILBOX_BYTES 256
+#define DLB2_VF_VF2PF_MAILBOX(x) \
 	(0x1000 + (x) * 0x4)
-#define DLB2_FUNC_VF_VF2PF_MAILBOX_RST 0x0
-union dlb2_func_vf_vf2pf_mailbox {
-	struct {
-		u32 msg : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_VF_VF2PF_MAILBOX_RST 0x0
 
-#define DLB2_FUNC_VF_VF2PF_MAILBOX_ISR 0x1f00
-#define DLB2_FUNC_VF_VF2PF_MAILBOX_ISR_RST 0x0
-#define DLB2_FUNC_VF_SIOV_VF2PF_MAILBOX_ISR_TRIGGER 0x8000
-union dlb2_func_vf_vf2pf_mailbox_isr {
-	struct {
-		u32 isr : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+#define DLB2_VF_VF2PF_MAILBOX_MSG	0xFFFFFFFF
+#define DLB2_VF_VF2PF_MAILBOX_MSG_LOC	0
 
-#define DLB2_FUNC_VF_PF2VF_MAILBOX_BYTES 64
-#define DLB2_FUNC_VF_PF2VF_MAILBOX(x) \
+#define DLB2_VF_VF2PF_MAILBOX_ISR 0x1f00
+#define DLB2_VF_VF2PF_MAILBOX_ISR_RST 0x0
+#define DLB2_VF_SIOV_MBOX_ISR_TRIGGER 0x8000
+
+#define DLB2_VF_VF2PF_MAILBOX_ISR_ISR	0x00000001
+#define DLB2_VF_VF2PF_MAILBOX_ISR_RSVD0	0xFFFFFFFE
+#define DLB2_VF_VF2PF_MAILBOX_ISR_ISR_LOC	0
+#define DLB2_VF_VF2PF_MAILBOX_ISR_RSVD0_LOC	1
+
+#define DLB2_VF_PF2VF_MAILBOX_BYTES 64
+#define DLB2_VF_PF2VF_MAILBOX(x) \
 	(0x2000 + (x) * 0x4)
-#define DLB2_FUNC_VF_PF2VF_MAILBOX_RST 0x0
-union dlb2_func_vf_pf2vf_mailbox {
-	struct {
-		u32 msg : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_VF_PF2VF_MAILBOX_RST 0x0
 
-#define DLB2_FUNC_VF_PF2VF_MAILBOX_ISR 0x2f00
-#define DLB2_FUNC_VF_PF2VF_MAILBOX_ISR_RST 0x0
-union dlb2_func_vf_pf2vf_mailbox_isr {
-	struct {
-		u32 pf_isr : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+#define DLB2_VF_PF2VF_MAILBOX_MSG	0xFFFFFFFF
+#define DLB2_VF_PF2VF_MAILBOX_MSG_LOC	0
 
-#define DLB2_FUNC_VF_VF_MSI_ISR_PEND 0x2f10
-#define DLB2_FUNC_VF_VF_MSI_ISR_PEND_RST 0x0
-union dlb2_func_vf_vf_msi_isr_pend {
-	struct {
-		u32 isr_pend : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_VF_PF2VF_MAILBOX_ISR 0x2f00
+#define DLB2_VF_PF2VF_MAILBOX_ISR_RST 0x0
 
-#define DLB2_FUNC_VF_VF_RESET_IN_PROGRESS 0x3000
-#define DLB2_FUNC_VF_VF_RESET_IN_PROGRESS_RST 0x1
-union dlb2_func_vf_vf_reset_in_progress {
-	struct {
-		u32 reset_in_progress : 1;
-		u32 rsvd0 : 31;
-	} field;
-	u32 val;
-};
+#define DLB2_VF_PF2VF_MAILBOX_ISR_PF_ISR	0x00000001
+#define DLB2_VF_PF2VF_MAILBOX_ISR_RSVD0	0xFFFFFFFE
+#define DLB2_VF_PF2VF_MAILBOX_ISR_PF_ISR_LOC	0
+#define DLB2_VF_PF2VF_MAILBOX_ISR_RSVD0_LOC	1
 
-#define DLB2_FUNC_VF_VF_MSI_ISR 0x4000
-#define DLB2_FUNC_VF_VF_MSI_ISR_RST 0x0
-union dlb2_func_vf_vf_msi_isr {
-	struct {
-		u32 vf_msi_isr : 32;
-	} field;
-	u32 val;
-};
+#define DLB2_VF_VF_MSI_ISR_PEND 0x2f10
+#define DLB2_VF_VF_MSI_ISR_PEND_RST 0x0
+
+#define DLB2_VF_VF_MSI_ISR_PEND_ISR_PEND	0xFFFFFFFF
+#define DLB2_VF_VF_MSI_ISR_PEND_ISR_PEND_LOC	0
+
+#define DLB2_VF_VF_RESET_IN_PROGRESS 0x3000
+#define DLB2_VF_VF_RESET_IN_PROGRESS_RST 0x1
+
+#define DLB2_VF_VF_RESET_IN_PROGRESS_RESET_IN_PROGRESS	0x00000001
+#define DLB2_VF_VF_RESET_IN_PROGRESS_RSVD0			0xFFFFFFFE
+#define DLB2_VF_VF_RESET_IN_PROGRESS_RESET_IN_PROGRESS_LOC	0
+#define DLB2_VF_VF_RESET_IN_PROGRESS_RSVD0_LOC		1
+
+#define DLB2_VF_VF_MSI_ISR 0x4000
+#define DLB2_VF_VF_MSI_ISR_RST 0x0
+
+#define DLB2_VF_VF_MSI_ISR_VF_MSI_ISR	0xFFFFFFFF
+#define DLB2_VF_VF_MSI_ISR_VF_MSI_ISR_LOC	0
+
+#define DLB2_SYS_TOTAL_CREDITS 0x10000100
+#define DLB2_SYS_TOTAL_CREDITS_RST 0x4000
+
+#define DLB2_SYS_TOTAL_CREDITS_TOTAL_CREDITS	0xFFFFFFFF
+#define DLB2_SYS_TOTAL_CREDITS_TOTAL_CREDITS_LOC	0
+
+#define DLB2_SYS_LDB_CQ_AI_ADDR_U(x) \
+	(0x10000fa4 + (x) * 0x1000)
+#define DLB2_SYS_LDB_CQ_AI_ADDR_U_RST 0x0
+
+#define DLB2_SYS_LDB_CQ_AI_ADDR_U_CQ_AI_ADDR_U	0xFFFFFFFF
+#define DLB2_SYS_LDB_CQ_AI_ADDR_U_CQ_AI_ADDR_U_LOC	0
+
+#define DLB2_SYS_LDB_CQ_AI_ADDR_L(x) \
+	(0x10000fa0 + (x) * 0x1000)
+#define DLB2_SYS_LDB_CQ_AI_ADDR_L_RST 0x0
+
+#define DLB2_SYS_LDB_CQ_AI_ADDR_L_RSVD0		0x00000003
+#define DLB2_SYS_LDB_CQ_AI_ADDR_L_CQ_AI_ADDR_L	0xFFFFFFFC
+#define DLB2_SYS_LDB_CQ_AI_ADDR_L_RSVD0_LOC		0
+#define DLB2_SYS_LDB_CQ_AI_ADDR_L_CQ_AI_ADDR_L_LOC	2
+
+#define DLB2_SYS_DIR_CQ_AI_ADDR_U(x) \
+	(0x10000fe4 + (x) * 0x1000)
+#define DLB2_SYS_DIR_CQ_AI_ADDR_U_RST 0x0
+
+#define DLB2_SYS_DIR_CQ_AI_ADDR_U_CQ_AI_ADDR_U	0xFFFFFFFF
+#define DLB2_SYS_DIR_CQ_AI_ADDR_U_CQ_AI_ADDR_U_LOC	0
+
+#define DLB2_SYS_DIR_CQ_AI_ADDR_L(x) \
+	(0x10000fe0 + (x) * 0x1000)
+#define DLB2_SYS_DIR_CQ_AI_ADDR_L_RST 0x0
+
+#define DLB2_SYS_DIR_CQ_AI_ADDR_L_RSVD0		0x00000003
+#define DLB2_SYS_DIR_CQ_AI_ADDR_L_CQ_AI_ADDR_L	0xFFFFFFFC
+#define DLB2_SYS_DIR_CQ_AI_ADDR_L_RSVD0_LOC		0
+#define DLB2_SYS_DIR_CQ_AI_ADDR_L_CQ_AI_ADDR_L_LOC	2
+
+#define DLB2_SYS_WB_DIR_CQ_STATE(x) \
+	(0x11c00000 + (x) * 0x1000)
+#define DLB2_SYS_WB_DIR_CQ_STATE_RST 0x0
+
+#define DLB2_SYS_WB_DIR_CQ_STATE_WB0_V	0x00000001
+#define DLB2_SYS_WB_DIR_CQ_STATE_WB1_V	0x00000002
+#define DLB2_SYS_WB_DIR_CQ_STATE_WB2_V	0x00000004
+#define DLB2_SYS_WB_DIR_CQ_STATE_DIR_OPT	0x00000008
+#define DLB2_SYS_WB_DIR_CQ_STATE_CQ_OPT_CLR	0x00000010
+#define DLB2_SYS_WB_DIR_CQ_STATE_RSVD0	0xFFFFFFE0
+#define DLB2_SYS_WB_DIR_CQ_STATE_WB0_V_LOC		0
+#define DLB2_SYS_WB_DIR_CQ_STATE_WB1_V_LOC		1
+#define DLB2_SYS_WB_DIR_CQ_STATE_WB2_V_LOC		2
+#define DLB2_SYS_WB_DIR_CQ_STATE_DIR_OPT_LOC		3
+#define DLB2_SYS_WB_DIR_CQ_STATE_CQ_OPT_CLR_LOC	4
+#define DLB2_SYS_WB_DIR_CQ_STATE_RSVD0_LOC		5
+
+#define DLB2_SYS_WB_LDB_CQ_STATE(x) \
+	(0x11d00000 + (x) * 0x1000)
+#define DLB2_SYS_WB_LDB_CQ_STATE_RST 0x0
+
+#define DLB2_SYS_WB_LDB_CQ_STATE_WB0_V	0x00000001
+#define DLB2_SYS_WB_LDB_CQ_STATE_WB1_V	0x00000002
+#define DLB2_SYS_WB_LDB_CQ_STATE_WB2_V	0x00000004
+#define DLB2_SYS_WB_LDB_CQ_STATE_RSVD1	0x00000008
+#define DLB2_SYS_WB_LDB_CQ_STATE_CQ_OPT_CLR	0x00000010
+#define DLB2_SYS_WB_LDB_CQ_STATE_RSVD0	0xFFFFFFE0
+#define DLB2_SYS_WB_LDB_CQ_STATE_WB0_V_LOC		0
+#define DLB2_SYS_WB_LDB_CQ_STATE_WB1_V_LOC		1
+#define DLB2_SYS_WB_LDB_CQ_STATE_WB2_V_LOC		2
+#define DLB2_SYS_WB_LDB_CQ_STATE_RSVD1_LOC		3
+#define DLB2_SYS_WB_LDB_CQ_STATE_CQ_OPT_CLR_LOC	4
+#define DLB2_SYS_WB_LDB_CQ_STATE_RSVD0_LOC		5
+
+#define DLB2_CHP_CFG_VAS_CRD(x) \
+	(0x40000000 + (x) * 0x1000)
+#define DLB2_CHP_CFG_VAS_CRD_RST 0x0
+
+#define DLB2_CHP_CFG_VAS_CRD_COUNT	0x00007FFF
+#define DLB2_CHP_CFG_VAS_CRD_RSVD0	0xFFFF8000
+#define DLB2_CHP_CFG_VAS_CRD_COUNT_LOC	0
+#define DLB2_CHP_CFG_VAS_CRD_RSVD0_LOC	15
+
+#define DLB2_LSP_CFG_CQ_LDB_WU_LIMIT(x) \
+	(0x90b00000 + (x) * 0x1000)
+#define DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_RST 0x0
+
+#define DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_LIMIT	0x00007FFF
+#define DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_V	0x00008000
+#define DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_RSVD0	0xFFFF0000
+#define DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_LIMIT_LOC	0
+#define DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_V_LOC		15
+#define DLB2_LSP_CFG_CQ_LDB_WU_LIMIT_RSVD0_LOC	16
 
 #endif /* __DLB2_REGS_H */

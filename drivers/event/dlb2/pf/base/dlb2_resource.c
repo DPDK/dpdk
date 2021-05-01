@@ -8,7 +8,7 @@
 #include "dlb2_osdep.h"
 #include "dlb2_osdep_bitmap.h"
 #include "dlb2_osdep_types.h"
-#include "dlb2_regs_new.h"
+#include "dlb2_regs.h"
 #include "dlb2_resource.h"
 
 #include "../../dlb2_priv.h"

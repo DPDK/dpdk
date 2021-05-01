@@ -13,7 +13,7 @@
 #include <rte_malloc.h>
 #include <rte_errno.h>
 
-#include "base/dlb2_regs_new.h"
+#include "base/dlb2_regs.h"
 #include "base/dlb2_hw_types.h"
 #include "base/dlb2_resource.h"
 #include "base/dlb2_osdep.h"

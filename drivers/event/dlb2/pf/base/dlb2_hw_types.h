@@ -10,7 +10,7 @@
 
 #include "dlb2_osdep_list.h"
 #include "dlb2_osdep_types.h"
-#include "dlb2_regs_new.h"
+#include "dlb2_regs.h"
 
 #define DLB2_BITS_SET(x, val, mask)	(x = ((x) & ~(mask))     \
 				 | (((val) << (mask##_LOC)) & (mask)))
