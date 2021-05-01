@@ -316,6 +316,66 @@ set_cos(const char *key __rte_unused,
 }
 
 static int
+set_poll_interval(const char *key __rte_unused,
+	const char *value,
+	void *opaque)
+{
+	int *poll_interval = opaque;
+	int ret;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	ret = dlb2_string_to_int(poll_interval, value);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static int
+set_sw_credit_quanta(const char *key __rte_unused,
+	const char *value,
+	void *opaque)
+{
+	int *sw_credit_quanta = opaque;
+	int ret;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	ret = dlb2_string_to_int(sw_credit_quanta, value);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static int
+set_default_depth_thresh(const char *key __rte_unused,
+	const char *value,
+	void *opaque)
+{
+	int *default_depth_thresh = opaque;
+	int ret;
+
+	if (value == NULL || opaque == NULL) {
+		DLB2_LOG_ERR("NULL pointer\n");
+		return -EINVAL;
+	}
+
+	ret = dlb2_string_to_int(default_depth_thresh, value);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static int
 set_qid_depth_thresh(const char *key __rte_unused,
 		     const char *value,
 		     void *opaque)
@@ -667,15 +727,8 @@ dlb2_eventdev_configure(const struct rte_eventdev *dev)
 	}
 
 	/* Does this platform support umonitor/umwait? */
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_WAITPKG)) {
-		if (RTE_LIBRTE_PMD_DLB2_UMWAIT_CTL_STATE != 0 &&
-		    RTE_LIBRTE_PMD_DLB2_UMWAIT_CTL_STATE != 1) {
-			DLB2_LOG_ERR("invalid value (%d) for RTE_LIBRTE_PMD_DLB2_UMWAIT_CTL_STATE, must be 0 or 1.\n",
-				     RTE_LIBRTE_PMD_DLB2_UMWAIT_CTL_STATE);
-			return -EINVAL;
-		}
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_WAITPKG))
 		dlb2->umwait_allowed = true;
-	}
 
 	rsrcs->num_dir_ports = config->nb_single_link_event_port_queues;
 	rsrcs->num_ldb_ports  = config->nb_event_ports - rsrcs->num_dir_ports;
@@ -930,8 +983,9 @@ dlb2_hw_create_ldb_queue(struct dlb2_eventdev *dlb2,
 	}
 
 	if (ev_queue->depth_threshold == 0) {
-		cfg.depth_threshold = RTE_PMD_DLB2_DEFAULT_DEPTH_THRESH;
-		ev_queue->depth_threshold = RTE_PMD_DLB2_DEFAULT_DEPTH_THRESH;
+		cfg.depth_threshold = dlb2->default_depth_thresh;
+		ev_queue->depth_threshold =
+			dlb2->default_depth_thresh;
 	} else
 		cfg.depth_threshold = ev_queue->depth_threshold;
 
@@ -1623,7 +1677,7 @@ dlb2_eventdev_port_setup(struct rte_eventdev *dev,
 		  RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
 	ev_port->outstanding_releases = 0;
 	ev_port->inflight_credits = 0;
-	ev_port->credit_update_quanta = RTE_LIBRTE_PMD_DLB2_SW_CREDIT_QUANTA;
+	ev_port->credit_update_quanta = dlb2->sw_credit_quanta;
 	ev_port->dlb2 = dlb2; /* reverse link */
 
 	/* Tear down pre-existing port->queue links */
@@ -1718,8 +1772,9 @@ dlb2_hw_create_dir_queue(struct dlb2_eventdev *dlb2,
 	cfg.port_id = qm_port_id;
 
 	if (ev_queue->depth_threshold == 0) {
-		cfg.depth_threshold = RTE_PMD_DLB2_DEFAULT_DEPTH_THRESH;
-		ev_queue->depth_threshold = RTE_PMD_DLB2_DEFAULT_DEPTH_THRESH;
+		cfg.depth_threshold = dlb2->default_depth_thresh;
+		ev_queue->depth_threshold =
+			dlb2->default_depth_thresh;
 	} else
 		cfg.depth_threshold = ev_queue->depth_threshold;
 
@@ -2747,7 +2802,7 @@ op_check:
 	DLB2_INC_STAT(ev_port->stats.tx_op_cnt[ev->op], 1);
 	DLB2_INC_STAT(ev_port->stats.traffic.tx_ok, 1);
 
-#ifndef RTE_LIBRTE_PMD_DLB2_QUELL_STATS
+#ifndef RTE_LIBRTE_PMD_DLB_QUELL_STATS
 	if (ev->op != RTE_EVENT_OP_RELEASE) {
 		DLB2_INC_STAT(ev_port->stats.queue[ev->queue_id].enq_ok, 1);
 		DLB2_INC_STAT(ev_port->stats.tx_sched_cnt[*sched_type], 1);
@@ -3070,7 +3125,7 @@ dlb2_dequeue_wait(struct dlb2_eventdev *dlb2,
 
 		DLB2_INC_STAT(ev_port->stats.traffic.rx_umonitor_umwait, 1);
 	} else {
-		uint64_t poll_interval = RTE_LIBRTE_PMD_DLB2_POLL_INTERVAL;
+		uint64_t poll_interval = dlb2->poll_interval;
 		uint64_t curr_ticks = rte_get_timer_cycles();
 		uint64_t init_ticks = curr_ticks;
 
@@ -4025,6 +4080,9 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 	dlb2->max_num_events_override = dlb2_args->max_num_events;
 	dlb2->num_dir_credits_override = dlb2_args->num_dir_credits_override;
 	dlb2->qm_instance.cos_id = dlb2_args->cos_id;
+	dlb2->poll_interval = dlb2_args->poll_interval;
+	dlb2->sw_credit_quanta = dlb2_args->sw_credit_quanta;
+	dlb2->default_depth_thresh = dlb2_args->default_depth_thresh;
 
 	err = dlb2_iface_open(&dlb2->qm_instance, name);
 	if (err < 0) {
@@ -4125,6 +4183,9 @@ dlb2_parse_params(const char *params,
 					     DEV_ID_ARG,
 					     DLB2_QID_DEPTH_THRESH_ARG,
 					     DLB2_COS_ARG,
+					     DLB2_POLL_INTERVAL_ARG,
+					     DLB2_SW_CREDIT_QUANTA_ARG,
+					     DLB2_DEPTH_THRESH_ARG,
 					     NULL };
 
 	if (params != NULL && params[0] != '\0') {
@@ -4202,6 +4263,37 @@ dlb2_parse_params(const char *params,
 						 &dlb2_args->cos_id);
 			if (ret != 0) {
 				DLB2_LOG_ERR("%s: Error parsing cos parameter",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist, DLB2_POLL_INTERVAL_ARG,
+						 set_poll_interval,
+						 &dlb2_args->poll_interval);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing poll interval parameter",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist,
+						 DLB2_SW_CREDIT_QUANTA_ARG,
+						 set_sw_credit_quanta,
+						 &dlb2_args->sw_credit_quanta);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing sw xredit quanta parameter",
+					     name);
+				rte_kvargs_free(kvlist);
+				return ret;
+			}
+
+			ret = rte_kvargs_process(kvlist, DLB2_DEPTH_THRESH_ARG,
+					set_default_depth_thresh,
+					&dlb2_args->default_depth_thresh);
+			if (ret != 0) {
+				DLB2_LOG_ERR("%s: Error parsing set depth thresh parameter",
 					     name);
 				rte_kvargs_free(kvlist);
 				return ret;

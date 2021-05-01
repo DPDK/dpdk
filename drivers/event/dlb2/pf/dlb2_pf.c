@@ -615,7 +615,10 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		.max_num_events = DLB2_MAX_NUM_LDB_CREDITS,
 		.num_dir_credits_override = -1,
 		.qid_depth_thresholds = { {0} },
-		.cos_id = DLB2_COS_DEFAULT
+		.cos_id = DLB2_COS_DEFAULT,
+		.poll_interval = DLB2_POLL_INTERVAL_DEFAULT,
+		.sw_credit_quanta = DLB2_SW_CREDIT_QUANTA_DEFAULT,
+		.default_depth_thresh = DLB2_DEPTH_THRESH_DEFAULT
 	};
 	struct dlb2_eventdev *dlb2;
 

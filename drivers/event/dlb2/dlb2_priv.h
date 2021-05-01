@@ -22,6 +22,11 @@
 
 #define EVDEV_DLB2_NAME_PMD dlb2_event
 
+/* Default values for command line devargs */
+#define DLB2_POLL_INTERVAL_DEFAULT 1000
+#define DLB2_SW_CREDIT_QUANTA_DEFAULT 32
+#define DLB2_DEPTH_THRESH_DEFAULT 256
+
 /*  command line arg strings */
 #define NUMA_NODE_ARG "numa_node"
 #define DLB2_MAX_NUM_EVENTS "max_num_events"
@@ -30,6 +35,9 @@
 #define DLB2_DEFER_SCHED_ARG "defer_sched"
 #define DLB2_QID_DEPTH_THRESH_ARG "qid_depth_thresh"
 #define DLB2_COS_ARG "cos"
+#define DLB2_POLL_INTERVAL_ARG "poll_interval"
+#define DLB2_SW_CREDIT_QUANTA_ARG "sw_credit_quanta"
+#define DLB2_DEPTH_THRESH_ARG "default_depth_thresh"
 
 /* Begin HW related defines and structs */
 
@@ -570,6 +578,9 @@ struct dlb2_eventdev {
 	bool global_dequeue_wait; /* Not using per dequeue wait if true */
 	bool defer_sched;
 	enum dlb2_cq_poll_modes poll_mode;
+	int poll_interval;
+	int sw_credit_quanta;
+	int default_depth_thresh;
 	uint8_t revision;
 	uint8_t version;
 	bool configured;
@@ -603,6 +614,9 @@ struct dlb2_devargs {
 	int defer_sched;
 	struct dlb2_qid_depth_thresholds qid_depth_thresholds;
 	enum dlb2_cos cos_id;
+	int poll_interval;
+	int sw_credit_quanta;
+	int default_depth_thresh;
 };
 
 /* End Eventdev related defines and structs */
