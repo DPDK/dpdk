@@ -18,6 +18,7 @@ enum dlb2_error {
 	DLB2_ST_LDB_QUEUES_UNAVAILABLE,
 	DLB2_ST_LDB_CREDITS_UNAVAILABLE,
 	DLB2_ST_DIR_CREDITS_UNAVAILABLE,
+	DLB2_ST_CREDITS_UNAVAILABLE,
 	DLB2_ST_SEQUENCE_NUMBERS_UNAVAILABLE,
 	DLB2_ST_INVALID_DOMAIN_ID,
 	DLB2_ST_INVALID_QID_INFLIGHT_ALLOCATION,
@@ -57,6 +58,7 @@ static const char dlb2_error_strings[][128] = {
 	"DLB2_ST_LDB_QUEUES_UNAVAILABLE",
 	"DLB2_ST_LDB_CREDITS_UNAVAILABLE",
 	"DLB2_ST_DIR_CREDITS_UNAVAILABLE",
+	"DLB2_ST_CREDITS_UNAVAILABLE",
 	"DLB2_ST_SEQUENCE_NUMBERS_UNAVAILABLE",
 	"DLB2_ST_INVALID_DOMAIN_ID",
 	"DLB2_ST_INVALID_QID_INFLIGHT_ALLOCATION",
@@ -170,8 +172,15 @@ struct dlb2_create_sched_domain_args {
 	__u32 num_dir_ports;
 	__u32 num_atomic_inflights;
 	__u32 num_hist_list_entries;
-	__u32 num_ldb_credits;
-	__u32 num_dir_credits;
+	union {
+		struct {
+			__u32 num_ldb_credits;
+			__u32 num_dir_credits;
+		};
+		struct {
+			__u32 num_credits;
+		};
+	};
 	__u8 cos_strict;
 	__u8 padding1[3];
 };
