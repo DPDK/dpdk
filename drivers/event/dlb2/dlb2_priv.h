@@ -38,6 +38,7 @@
 #define DLB2_POLL_INTERVAL_ARG "poll_interval"
 #define DLB2_SW_CREDIT_QUANTA_ARG "sw_credit_quanta"
 #define DLB2_DEPTH_THRESH_ARG "default_depth_thresh"
+#define DLB2_VECTOR_OPTS_DISAB_ARG "vector_opts_disable"
 
 /* Begin HW related defines and structs */
 
@@ -205,9 +206,9 @@ enum dlb2_enqueue_type {
 /* hw-specific format - do not change */
 
 struct dlb2_event_type {
-	uint8_t major:4;
-	uint8_t unused:4;
-	uint8_t sub;
+	uint16_t major:4;
+	uint16_t unused:4;
+	uint16_t sub:8;
 };
 
 union dlb2_opaque_data {
@@ -351,6 +352,12 @@ struct dlb2_port {
 	uint16_t cq_idx_unmasked;
 	uint16_t cq_depth_mask;
 	uint16_t gen_bit_shift;
+	uint64_t cq_rolling_mask; /*
+				   * rotate to always have right expected
+				   * gen bits
+				   */
+	uint64_t cq_rolling_mask_2;
+	void *cq_addr_cached; /* avoid multiple refs */
 	enum dlb2_port_state state;
 	enum dlb2_configuration_state config_state;
 	int num_mapped_qids;
@@ -360,6 +367,7 @@ struct dlb2_port {
 	struct dlb2_cq_pop_qe *consume_qe;
 	struct dlb2_eventdev *dlb2; /* back ptr */
 	struct dlb2_eventdev_port *ev_port; /* back ptr */
+	bool use_scalar; /* force usage of scalar code */
 };
 
 /* Per-process per-port mmio and memory pointers */
@@ -513,9 +521,9 @@ struct dlb2_queue {
 	uint32_t num_qid_inflights; /* User config */
 	uint32_t num_atm_inflights; /* User config */
 	enum dlb2_configuration_state config_state;
-	int sched_type; /* LB queue only */
-	uint32_t id;
-	bool is_directed;
+	int  sched_type; /* LB queue only */
+	uint8_t id;
+	bool	 is_directed;
 };
 
 struct dlb2_eventdev_queue {
@@ -558,6 +566,7 @@ struct dlb2_eventdev {
 	uint32_t new_event_limit;
 	int max_num_events_override;
 	int num_dir_credits_override;
+	bool vector_opts_disabled;
 	volatile enum dlb2_run_state run_state;
 	uint16_t num_dir_queues; /* total num of evdev dir queues requested */
 	union {
@@ -617,6 +626,7 @@ struct dlb2_devargs {
 	int poll_interval;
 	int sw_credit_quanta;
 	int default_depth_thresh;
+	bool vector_opts_disabled;
 };
 
 /* End Eventdev related defines and structs */
