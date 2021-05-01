@@ -181,6 +181,7 @@ struct dlb2_ldb_port {
 	u32 hist_list_entry_base;
 	u32 hist_list_entry_limit;
 	u32 ref_cnt;
+	u8 cq_depth;
 	u8 init_tkn_cnt;
 	u8 num_pending_removals;
 	u8 num_mappings;
