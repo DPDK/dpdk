@@ -32,13 +32,11 @@
 #include <rte_memory.h>
 #include <rte_string_fns.h>
 
-#define DLB2_USE_NEW_HEADERS /* TEMPORARY FOR MERGE */
-
 #include "../dlb2_priv.h"
 #include "../dlb2_iface.h"
 #include "../dlb2_inline_fns.h"
 #include "dlb2_main.h"
-#include "base/dlb2_hw_types_new.h"
+#include "base/dlb2_hw_types.h"
 #include "base/dlb2_osdep.h"
 #include "base/dlb2_resource.h"
 

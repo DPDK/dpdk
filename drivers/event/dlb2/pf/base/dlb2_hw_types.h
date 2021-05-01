@@ -2,14 +2,21 @@
  * Copyright(c) 2016-2020 Intel Corporation
  */
 
-#ifndef __DLB2_HW_TYPES_H
-#define __DLB2_HW_TYPES_H
+#ifndef __DLB2_HW_TYPES_NEW_H
+#define __DLB2_HW_TYPES_NEW_H
 
 #include "../../dlb2_priv.h"
 #include "dlb2_user.h"
 
 #include "dlb2_osdep_list.h"
 #include "dlb2_osdep_types.h"
+#include "dlb2_regs_new.h"
+
+#define DLB2_BITS_SET(x, val, mask)	(x = ((x) & ~(mask))     \
+				 | (((val) << (mask##_LOC)) & (mask)))
+#define DLB2_BITS_CLR(x, mask)	(x &= ~(mask))
+#define DLB2_BIT_SET(x, mask)	((x) |= (mask))
+#define DLB2_BITS_GET(x, mask)	(((x) & (mask)) >> (mask##_LOC))
 
 #define DLB2_MAX_NUM_VDEVS			16
 #define DLB2_MAX_NUM_SEQUENCE_NUMBER_GROUPS	2
@@ -141,7 +148,7 @@ struct dlb2_dir_pq_pair {
 };
 
 enum dlb2_qid_map_state {
-	/* The slot doesn't contain a valid queue mapping */
+	/* The slot does not contain a valid queue mapping */
 	DLB2_QUEUE_UNMAPPED,
 	/* The slot contains a valid queue mapping */
 	DLB2_QUEUE_MAPPED,
@@ -174,6 +181,7 @@ struct dlb2_ldb_port {
 	u32 hist_list_entry_base;
 	u32 hist_list_entry_limit;
 	u32 ref_cnt;
+	u8 cq_depth;
 	u8 init_tkn_cnt;
 	u8 num_pending_removals;
 	u8 num_mappings;
@@ -245,8 +253,15 @@ struct dlb2_hw_domain {
 	u32 avail_hist_list_entries;
 	u32 hist_list_entry_base;
 	u32 hist_list_entry_offset;
-	u32 num_ldb_credits;
-	u32 num_dir_credits;
+	union {
+		struct {
+			u32 num_ldb_credits;
+			u32 num_dir_credits;
+		};
+		struct {
+			u32 num_credits;
+		};
+	};
 	u32 num_avail_aqed_entries;
 	u32 num_used_aqed_entries;
 	struct dlb2_resource_id id;
@@ -269,8 +284,15 @@ struct dlb2_function_resources {
 	u32 num_avail_ldb_queues;
 	u32 num_avail_ldb_ports[DLB2_NUM_COS_DOMAINS];
 	u32 num_avail_dir_pq_pairs;
-	u32 num_avail_qed_entries;
-	u32 num_avail_dqed_entries;
+	union {
+		struct {
+			u32 num_avail_qed_entries;
+			u32 num_avail_dqed_entries;
+		};
+		struct {
+			u32 num_avail_entries;
+		};
+	};
 	u32 num_avail_aqed_entries;
 	u8 locked; /* (VDEV only) */
 };
@@ -332,4 +354,4 @@ struct dlb2_hw {
 	unsigned int pasid[DLB2_MAX_NUM_VDEVS];
 };
 
-#endif /* __DLB2_HW_TYPES_H */
+#endif /* __DLB2_HW_TYPES_NEW_H */
