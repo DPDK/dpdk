@@ -6089,3 +6089,42 @@ unsigned int dlb2_finish_map_qid_procedures(struct dlb2_hw *hw)
 
 	return num;
 }
+
+/**
+ * dlb2_hw_enable_sparse_dir_cq_mode() - enable sparse mode for directed ports.
+ * @hw: dlb2_hw handle for a particular device.
+ *
+ * This function must be called prior to configuring scheduling domains.
+ */
+
+void dlb2_hw_enable_sparse_dir_cq_mode(struct dlb2_hw *hw)
+{
+	u32 ctrl;
+
+	ctrl = DLB2_CSR_RD(hw, DLB2_CHP_CFG_CHP_CSR_CTRL);
+
+	DLB2_BIT_SET(ctrl,
+		     DLB2_CHP_CFG_CHP_CSR_CTRL_CFG_64BYTES_QE_DIR_CQ_MODE);
+
+	DLB2_CSR_WR(hw, DLB2_CHP_CFG_CHP_CSR_CTRL, ctrl);
+}
+
+/**
+ * dlb2_hw_enable_sparse_ldb_cq_mode() - enable sparse mode for load-balanced
+ *	ports.
+ * @hw: dlb2_hw handle for a particular device.
+ *
+ * This function must be called prior to configuring scheduling domains.
+ */
+void dlb2_hw_enable_sparse_ldb_cq_mode(struct dlb2_hw *hw)
+{
+	u32 ctrl;
+
+	ctrl = DLB2_CSR_RD(hw, DLB2_CHP_CFG_CHP_CSR_CTRL);
+
+	DLB2_BIT_SET(ctrl,
+		     DLB2_CHP_CFG_CHP_CSR_CTRL_CFG_64BYTES_QE_LDB_CQ_MODE);
+
+	DLB2_CSR_WR(hw, DLB2_CHP_CFG_CHP_CSR_CTRL, ctrl);
+}
+
