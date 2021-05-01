@@ -2173,6 +2173,11 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				(volatile struct iavf_tx_context_desc *)
 							&txr[tx_id];
 
+			/* clear QW0 or the previous writeback value
+			 * may impact next write
+			 */
+			*(volatile uint64_t *)ctx_txd = 0;
+
 			txn = &sw_ring[txe->next_id];
 			RTE_MBUF_PREFETCH_TO_FREE(txn->mbuf);
 			if (txe->mbuf) {
