@@ -4857,3 +4857,204 @@ int dlb2_hw_create_dir_port(struct dlb2_hw *hw,
 
 	return 0;
 }
+
+static void dlb2_configure_dir_queue(struct dlb2_hw *hw,
+				     struct dlb2_hw_domain *domain,
+				     struct dlb2_dir_pq_pair *queue,
+				     struct dlb2_create_dir_queue_args *args,
+				     bool vdev_req,
+				     unsigned int vdev_id)
+{
+	unsigned int offs;
+	u32 reg = 0;
+
+	/* QID write permissions are turned on when the domain is started */
+	offs = domain->id.phys_id * DLB2_MAX_NUM_DIR_QUEUES(hw->ver) +
+		queue->id.phys_id;
+
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_VASQID_V(offs), reg);
+
+	/* Don't timestamp QEs that pass through this queue */
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_QID_ITS(queue->id.phys_id), reg);
+
+	reg = 0;
+	DLB2_BITS_SET(reg, args->depth_threshold,
+		      DLB2_LSP_QID_DIR_DEPTH_THRSH_THRESH);
+	DLB2_CSR_WR(hw,
+		    DLB2_LSP_QID_DIR_DEPTH_THRSH(hw->ver, queue->id.phys_id),
+		    reg);
+
+	if (vdev_req) {
+		offs = vdev_id * DLB2_MAX_NUM_DIR_QUEUES(hw->ver) +
+			queue->id.virt_id;
+
+		reg = 0;
+		DLB2_BIT_SET(reg, DLB2_SYS_VF_DIR_VQID_V_VQID_V);
+		DLB2_CSR_WR(hw, DLB2_SYS_VF_DIR_VQID_V(offs), reg);
+
+		reg = 0;
+		DLB2_BITS_SET(reg, queue->id.phys_id,
+			      DLB2_SYS_VF_DIR_VQID2QID_QID);
+		DLB2_CSR_WR(hw, DLB2_SYS_VF_DIR_VQID2QID(offs), reg);
+	}
+
+	reg = 0;
+	DLB2_BIT_SET(reg, DLB2_SYS_DIR_QID_V_QID_V);
+	DLB2_CSR_WR(hw, DLB2_SYS_DIR_QID_V(queue->id.phys_id), reg);
+
+	queue->queue_configured = true;
+}
+
+static void
+dlb2_log_create_dir_queue_args(struct dlb2_hw *hw,
+			       u32 domain_id,
+			       struct dlb2_create_dir_queue_args *args,
+			       bool vdev_req,
+			       unsigned int vdev_id)
+{
+	DLB2_HW_DBG(hw, "DLB2 create directed queue arguments:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from vdev %d)\n", vdev_id);
+	DLB2_HW_DBG(hw, "\tDomain ID: %d\n", domain_id);
+	DLB2_HW_DBG(hw, "\tPort ID:   %d\n", args->port_id);
+}
+
+static int
+dlb2_verify_create_dir_queue_args(struct dlb2_hw *hw,
+				  u32 domain_id,
+				  struct dlb2_create_dir_queue_args *args,
+				  struct dlb2_cmd_response *resp,
+				  bool vdev_req,
+				  unsigned int vdev_id,
+				  struct dlb2_hw_domain **out_domain,
+				  struct dlb2_dir_pq_pair **out_queue)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_dir_pq_pair *pq;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB2_ST_DOMAIN_NOT_CONFIGURED;
+		return -EINVAL;
+	}
+
+	if (domain->started) {
+		resp->status = DLB2_ST_DOMAIN_STARTED;
+		return -EINVAL;
+	}
+
+	/*
+	 * If the user claims the port is already configured, validate the port
+	 * ID, its domain, and whether the port is configured.
+	 */
+	if (args->port_id != -1) {
+		pq = dlb2_get_domain_used_dir_pq(hw,
+						 args->port_id,
+						 vdev_req,
+						 domain);
+
+		if (!pq || pq->domain_id.phys_id != domain->id.phys_id ||
+		    !pq->port_configured) {
+			resp->status = DLB2_ST_INVALID_PORT_ID;
+			return -EINVAL;
+		}
+	} else {
+		/*
+		 * If the queue's port is not configured, validate that a free
+		 * port-queue pair is available.
+		 */
+		pq = DLB2_DOM_LIST_HEAD(domain->avail_dir_pq_pairs,
+					typeof(*pq));
+		if (!pq) {
+			resp->status = DLB2_ST_DIR_QUEUES_UNAVAILABLE;
+			return -EINVAL;
+		}
+	}
+
+	*out_domain = domain;
+	*out_queue = pq;
+
+	return 0;
+}
+
+/**
+ * dlb2_hw_create_dir_queue() - create a directed queue
+ * @hw: dlb2_hw handle for a particular device.
+ * @domain_id: domain ID.
+ * @args: queue creation arguments.
+ * @resp: response structure.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * This function creates a directed queue.
+ *
+ * A vdev can be either an SR-IOV virtual function or a Scalable IOV virtual
+ * device.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error. If successful, resp->id
+ * contains the queue ID.
+ *
+ * resp->id contains a virtual ID if vdev_req is true.
+ *
+ * Errors:
+ * EINVAL - A requested resource is unavailable, the domain is not configured,
+ *	    or the domain has already been started.
+ * EFAULT - Internal error (resp->status not set).
+ */
+int dlb2_hw_create_dir_queue(struct dlb2_hw *hw,
+			     u32 domain_id,
+			     struct dlb2_create_dir_queue_args *args,
+			     struct dlb2_cmd_response *resp,
+			     bool vdev_req,
+			     unsigned int vdev_id)
+{
+	struct dlb2_dir_pq_pair *queue;
+	struct dlb2_hw_domain *domain;
+	int ret;
+
+	dlb2_log_create_dir_queue_args(hw, domain_id, args, vdev_req, vdev_id);
+
+	/*
+	 * Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	ret = dlb2_verify_create_dir_queue_args(hw,
+						domain_id,
+						args,
+						resp,
+						vdev_req,
+						vdev_id,
+						&domain,
+						&queue);
+	if (ret)
+		return ret;
+
+	dlb2_configure_dir_queue(hw, domain, queue, args, vdev_req, vdev_id);
+
+	/*
+	 * Configuration succeeded, so move the resource from the 'avail' to
+	 * the 'used' list (if it's not already there).
+	 */
+	if (args->port_id == -1) {
+		dlb2_list_del(&domain->avail_dir_pq_pairs,
+			      &queue->domain_list);
+
+		dlb2_list_add(&domain->used_dir_pq_pairs,
+			      &queue->domain_list);
+	}
+
+	resp->status = 0;
+
+	resp->id = (vdev_req) ? queue->id.virt_id : queue->id.phys_id;
+
+	return 0;
+}
+
