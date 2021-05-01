@@ -5058,3 +5058,421 @@ int dlb2_hw_create_dir_queue(struct dlb2_hw *hw,
 	return 0;
 }
 
+static bool
+dlb2_port_find_slot_with_pending_map_queue(struct dlb2_ldb_port *port,
+					   struct dlb2_ldb_queue *queue,
+					   int *slot)
+{
+	int i;
+
+	for (i = 0; i < DLB2_MAX_NUM_QIDS_PER_LDB_CQ; i++) {
+		struct dlb2_ldb_port_qid_map *map = &port->qid_map[i];
+
+		if (map->state == DLB2_QUEUE_UNMAP_IN_PROG_PENDING_MAP &&
+		    map->pending_qid == queue->id.phys_id)
+			break;
+	}
+
+	*slot = i;
+
+	return (i < DLB2_MAX_NUM_QIDS_PER_LDB_CQ);
+}
+
+static int dlb2_verify_map_qid_slot_available(struct dlb2_ldb_port *port,
+					      struct dlb2_ldb_queue *queue,
+					      struct dlb2_cmd_response *resp)
+{
+	enum dlb2_qid_map_state state;
+	int i;
+
+	/* Unused slot available? */
+	if (port->num_mappings < DLB2_MAX_NUM_QIDS_PER_LDB_CQ)
+		return 0;
+
+	/*
+	 * If the queue is already mapped (from the application's perspective),
+	 * this is simply a priority update.
+	 */
+	state = DLB2_QUEUE_MAPPED;
+	if (dlb2_port_find_slot_queue(port, state, queue, &i))
+		return 0;
+
+	state = DLB2_QUEUE_MAP_IN_PROG;
+	if (dlb2_port_find_slot_queue(port, state, queue, &i))
+		return 0;
+
+	if (dlb2_port_find_slot_with_pending_map_queue(port, queue, &i))
+		return 0;
+
+	/*
+	 * If the slot contains an unmap in progress, it's considered
+	 * available.
+	 */
+	state = DLB2_QUEUE_UNMAP_IN_PROG;
+	if (dlb2_port_find_slot(port, state, &i))
+		return 0;
+
+	state = DLB2_QUEUE_UNMAPPED;
+	if (dlb2_port_find_slot(port, state, &i))
+		return 0;
+
+	resp->status = DLB2_ST_NO_QID_SLOTS_AVAILABLE;
+	return -EINVAL;
+}
+
+static struct dlb2_ldb_queue *
+dlb2_get_domain_ldb_queue(u32 id,
+			  bool vdev_req,
+			  struct dlb2_hw_domain *domain)
+{
+	struct dlb2_list_entry *iter;
+	struct dlb2_ldb_queue *queue;
+	RTE_SET_USED(iter);
+
+	if (id >= DLB2_MAX_NUM_LDB_QUEUES)
+		return NULL;
+
+	DLB2_DOM_LIST_FOR(domain->used_ldb_queues, queue, iter) {
+		if ((!vdev_req && queue->id.phys_id == id) ||
+		    (vdev_req && queue->id.virt_id == id))
+			return queue;
+	}
+
+	return NULL;
+}
+
+static struct dlb2_ldb_port *
+dlb2_get_domain_used_ldb_port(u32 id,
+			      bool vdev_req,
+			      struct dlb2_hw_domain *domain)
+{
+	struct dlb2_list_entry *iter;
+	struct dlb2_ldb_port *port;
+	int i;
+	RTE_SET_USED(iter);
+
+	if (id >= DLB2_MAX_NUM_LDB_PORTS)
+		return NULL;
+
+	for (i = 0; i < DLB2_NUM_COS_DOMAINS; i++) {
+		DLB2_DOM_LIST_FOR(domain->used_ldb_ports[i], port, iter) {
+			if ((!vdev_req && port->id.phys_id == id) ||
+			    (vdev_req && port->id.virt_id == id))
+				return port;
+		}
+
+		DLB2_DOM_LIST_FOR(domain->avail_ldb_ports[i], port, iter) {
+			if ((!vdev_req && port->id.phys_id == id) ||
+			    (vdev_req && port->id.virt_id == id))
+				return port;
+		}
+	}
+
+	return NULL;
+}
+
+static void dlb2_ldb_port_change_qid_priority(struct dlb2_hw *hw,
+					      struct dlb2_ldb_port *port,
+					      int slot,
+					      struct dlb2_map_qid_args *args)
+{
+	u32 cq2priov;
+
+	/* Read-modify-write the priority and valid bit register */
+	cq2priov = DLB2_CSR_RD(hw,
+			       DLB2_LSP_CQ2PRIOV(hw->ver, port->id.phys_id));
+
+	cq2priov |= (1 << (slot + DLB2_LSP_CQ2PRIOV_V_LOC)) &
+		    DLB2_LSP_CQ2PRIOV_V;
+	cq2priov |= ((args->priority & 0x7) << slot * 3) &
+		    DLB2_LSP_CQ2PRIOV_PRIO;
+
+	DLB2_CSR_WR(hw, DLB2_LSP_CQ2PRIOV(hw->ver, port->id.phys_id), cq2priov);
+
+	dlb2_flush_csr(hw);
+
+	port->qid_map[slot].priority = args->priority;
+}
+
+static int dlb2_verify_map_qid_args(struct dlb2_hw *hw,
+				    u32 domain_id,
+				    struct dlb2_map_qid_args *args,
+				    struct dlb2_cmd_response *resp,
+				    bool vdev_req,
+				    unsigned int vdev_id,
+				    struct dlb2_hw_domain **out_domain,
+				    struct dlb2_ldb_port **out_port,
+				    struct dlb2_ldb_queue **out_queue)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_queue *queue;
+	struct dlb2_ldb_port *port;
+	int id;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB2_ST_DOMAIN_NOT_CONFIGURED;
+		return -EINVAL;
+	}
+
+	id = args->port_id;
+
+	port = dlb2_get_domain_used_ldb_port(id, vdev_req, domain);
+
+	if (!port || !port->configured) {
+		resp->status = DLB2_ST_INVALID_PORT_ID;
+		return -EINVAL;
+	}
+
+	if (args->priority >= DLB2_QID_PRIORITIES) {
+		resp->status = DLB2_ST_INVALID_PRIORITY;
+		return -EINVAL;
+	}
+
+	queue = dlb2_get_domain_ldb_queue(args->qid, vdev_req, domain);
+
+	if (!queue || !queue->configured) {
+		resp->status = DLB2_ST_INVALID_QID;
+		return -EINVAL;
+	}
+
+	if (queue->domain_id.phys_id != domain->id.phys_id) {
+		resp->status = DLB2_ST_INVALID_QID;
+		return -EINVAL;
+	}
+
+	if (port->domain_id.phys_id != domain->id.phys_id) {
+		resp->status = DLB2_ST_INVALID_PORT_ID;
+		return -EINVAL;
+	}
+
+	*out_domain = domain;
+	*out_queue = queue;
+	*out_port = port;
+
+	return 0;
+}
+
+static void dlb2_log_map_qid(struct dlb2_hw *hw,
+			     u32 domain_id,
+			     struct dlb2_map_qid_args *args,
+			     bool vdev_req,
+			     unsigned int vdev_id)
+{
+	DLB2_HW_DBG(hw, "DLB2 map QID arguments:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from vdev %d)\n", vdev_id);
+	DLB2_HW_DBG(hw, "\tDomain ID: %d\n",
+		    domain_id);
+	DLB2_HW_DBG(hw, "\tPort ID:   %d\n",
+		    args->port_id);
+	DLB2_HW_DBG(hw, "\tQueue ID:  %d\n",
+		    args->qid);
+	DLB2_HW_DBG(hw, "\tPriority:  %d\n",
+		    args->priority);
+}
+
+/**
+ * dlb2_hw_map_qid() - map a load-balanced queue to a load-balanced port
+ * @hw: dlb2_hw handle for a particular device.
+ * @domain_id: domain ID.
+ * @args: map QID arguments.
+ * @resp: response structure.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * This function configures the DLB to schedule QEs from the specified queue
+ * to the specified port. Each load-balanced port can be mapped to up to 8
+ * queues; each load-balanced queue can potentially map to all the
+ * load-balanced ports.
+ *
+ * A successful return does not necessarily mean the mapping was configured. If
+ * this function is unable to immediately map the queue to the port, it will
+ * add the requested operation to a per-port list of pending map/unmap
+ * operations, and (if it's not already running) launch a kernel thread that
+ * periodically attempts to process all pending operations. In a sense, this is
+ * an asynchronous function.
+ *
+ * This asynchronicity creates two views of the state of hardware: the actual
+ * hardware state and the requested state (as if every request completed
+ * immediately). If there are any pending map/unmap operations, the requested
+ * state will differ from the actual state. All validation is performed with
+ * respect to the pending state; for instance, if there are 8 pending map
+ * operations for port X, a request for a 9th will fail because a load-balanced
+ * port can only map up to 8 queues.
+ *
+ * A vdev can be either an SR-IOV virtual function or a Scalable IOV virtual
+ * device.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error.
+ *
+ * Errors:
+ * EINVAL - A requested resource is unavailable, invalid port or queue ID, or
+ *	    the domain is not configured.
+ * EFAULT - Internal error (resp->status not set).
+ */
+int dlb2_hw_map_qid(struct dlb2_hw *hw,
+		    u32 domain_id,
+		    struct dlb2_map_qid_args *args,
+		    struct dlb2_cmd_response *resp,
+		    bool vdev_req,
+		    unsigned int vdev_id)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_queue *queue;
+	enum dlb2_qid_map_state st;
+	struct dlb2_ldb_port *port;
+	int ret, i;
+	u8 prio;
+
+	dlb2_log_map_qid(hw, domain_id, args, vdev_req, vdev_id);
+
+	/*
+	 * Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	ret = dlb2_verify_map_qid_args(hw,
+				       domain_id,
+				       args,
+				       resp,
+				       vdev_req,
+				       vdev_id,
+				       &domain,
+				       &port,
+				       &queue);
+	if (ret)
+		return ret;
+
+	prio = args->priority;
+
+	/*
+	 * If there are any outstanding detach operations for this port,
+	 * attempt to complete them. This may be necessary to free up a QID
+	 * slot for this requested mapping.
+	 */
+	if (port->num_pending_removals)
+		dlb2_domain_finish_unmap_port(hw, domain, port);
+
+	ret = dlb2_verify_map_qid_slot_available(port, queue, resp);
+	if (ret)
+		return ret;
+
+	/* Hardware requires disabling the CQ before mapping QIDs. */
+	if (port->enabled)
+		dlb2_ldb_port_cq_disable(hw, port);
+
+	/*
+	 * If this is only a priority change, don't perform the full QID->CQ
+	 * mapping procedure
+	 */
+	st = DLB2_QUEUE_MAPPED;
+	if (dlb2_port_find_slot_queue(port, st, queue, &i)) {
+		if (prio != port->qid_map[i].priority) {
+			dlb2_ldb_port_change_qid_priority(hw, port, i, args);
+			DLB2_HW_DBG(hw, "DLB2 map: priority change\n");
+		}
+
+		st = DLB2_QUEUE_MAPPED;
+		ret = dlb2_port_slot_state_transition(hw, port, queue, i, st);
+		if (ret)
+			return ret;
+
+		goto map_qid_done;
+	}
+
+	st = DLB2_QUEUE_UNMAP_IN_PROG;
+	if (dlb2_port_find_slot_queue(port, st, queue, &i)) {
+		if (prio != port->qid_map[i].priority) {
+			dlb2_ldb_port_change_qid_priority(hw, port, i, args);
+			DLB2_HW_DBG(hw, "DLB2 map: priority change\n");
+		}
+
+		st = DLB2_QUEUE_MAPPED;
+		ret = dlb2_port_slot_state_transition(hw, port, queue, i, st);
+		if (ret)
+			return ret;
+
+		goto map_qid_done;
+	}
+
+	/*
+	 * If this is a priority change on an in-progress mapping, don't
+	 * perform the full QID->CQ mapping procedure.
+	 */
+	st = DLB2_QUEUE_MAP_IN_PROG;
+	if (dlb2_port_find_slot_queue(port, st, queue, &i)) {
+		port->qid_map[i].priority = prio;
+
+		DLB2_HW_DBG(hw, "DLB2 map: priority change only\n");
+
+		goto map_qid_done;
+	}
+
+	/*
+	 * If this is a priority change on a pending mapping, update the
+	 * pending priority
+	 */
+	if (dlb2_port_find_slot_with_pending_map_queue(port, queue, &i)) {
+		port->qid_map[i].pending_priority = prio;
+
+		DLB2_HW_DBG(hw, "DLB2 map: priority change only\n");
+
+		goto map_qid_done;
+	}
+
+	/*
+	 * If all the CQ's slots are in use, then there's an unmap in progress
+	 * (guaranteed by dlb2_verify_map_qid_slot_available()), so add this
+	 * mapping to pending_map and return. When the removal is completed for
+	 * the slot's current occupant, this mapping will be performed.
+	 */
+	if (!dlb2_port_find_slot(port, DLB2_QUEUE_UNMAPPED, &i)) {
+		if (dlb2_port_find_slot(port, DLB2_QUEUE_UNMAP_IN_PROG, &i)) {
+			enum dlb2_qid_map_state new_st;
+
+			port->qid_map[i].pending_qid = queue->id.phys_id;
+			port->qid_map[i].pending_priority = prio;
+
+			new_st = DLB2_QUEUE_UNMAP_IN_PROG_PENDING_MAP;
+
+			ret = dlb2_port_slot_state_transition(hw, port, queue,
+							      i, new_st);
+			if (ret)
+				return ret;
+
+			DLB2_HW_DBG(hw, "DLB2 map: map pending removal\n");
+
+			goto map_qid_done;
+		}
+	}
+
+	/*
+	 * If the domain has started, a special "dynamic" CQ->queue mapping
+	 * procedure is required in order to safely update the CQ<->QID tables.
+	 * The "static" procedure cannot be used when traffic is flowing,
+	 * because the CQ<->QID tables cannot be updated atomically and the
+	 * scheduler won't see the new mapping unless the queue's if_status
+	 * changes, which isn't guaranteed.
+	 */
+	ret = dlb2_ldb_port_map_qid(hw, domain, port, queue, prio);
+
+	/* If ret is less than zero, it's due to an internal error */
+	if (ret < 0)
+		return ret;
+
+map_qid_done:
+	if (port->enabled)
+		dlb2_ldb_port_cq_enable(hw, port);
+
+	resp->status = 0;
+
+	return 0;
+}
