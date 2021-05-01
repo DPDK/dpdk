@@ -6039,3 +6039,53 @@ int dlb2_hw_get_ldb_queue_depth(struct dlb2_hw *hw,
 
 	return 0;
 }
+
+/**
+ * dlb2_finish_unmap_qid_procedures() - finish any pending unmap procedures
+ * @hw: dlb2_hw handle for a particular device.
+ *
+ * This function attempts to finish any outstanding unmap procedures.
+ * This function should be called by the kernel thread responsible for
+ * finishing map/unmap procedures.
+ *
+ * Return:
+ * Returns the number of procedures that weren't completed.
+ */
+unsigned int dlb2_finish_unmap_qid_procedures(struct dlb2_hw *hw)
+{
+	int i, num = 0;
+
+	/* Finish queue unmap jobs for any domain that needs it */
+	for (i = 0; i < DLB2_MAX_NUM_DOMAINS; i++) {
+		struct dlb2_hw_domain *domain = &hw->domains[i];
+
+		num += dlb2_domain_finish_unmap_qid_procedures(hw, domain);
+	}
+
+	return num;
+}
+
+/**
+ * dlb2_finish_map_qid_procedures() - finish any pending map procedures
+ * @hw: dlb2_hw handle for a particular device.
+ *
+ * This function attempts to finish any outstanding map procedures.
+ * This function should be called by the kernel thread responsible for
+ * finishing map/unmap procedures.
+ *
+ * Return:
+ * Returns the number of procedures that weren't completed.
+ */
+unsigned int dlb2_finish_map_qid_procedures(struct dlb2_hw *hw)
+{
+	int i, num = 0;
+
+	/* Finish queue map jobs for any domain that needs it */
+	for (i = 0; i < DLB2_MAX_NUM_DOMAINS; i++) {
+		struct dlb2_hw_domain *domain = &hw->domains[i];
+
+		num += dlb2_domain_finish_map_qid_procedures(hw, domain);
+	}
+
+	return num;
+}
