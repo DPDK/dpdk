@@ -40,7 +40,7 @@
 #include "dlb2_main.h"
 #include "base/dlb2_hw_types_new.h"
 #include "base/dlb2_osdep.h"
-#include "base/dlb2_resource_new.h"
+#include "base/dlb2_resource.h"
 
 static const char *event_dlb2_pf_name = RTE_STR(EVDEV_DLB2_NAME_PMD);
 

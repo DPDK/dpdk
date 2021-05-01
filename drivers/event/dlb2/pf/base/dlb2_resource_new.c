@@ -11,7 +11,7 @@
 #include "dlb2_osdep_bitmap.h"
 #include "dlb2_osdep_types.h"
 #include "dlb2_regs_new.h"
-#include "dlb2_resource_new.h" /* TEMP FOR UPSTREAMPATCHES */
+#include "dlb2_resource.h"
 
 #include "../../dlb2_priv.h"
 #include "../../dlb2_inline_fns.h"
