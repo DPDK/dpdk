@@ -65,17 +65,6 @@ static inline void dlb2_flush_csr(struct dlb2_hw *hw)
 	DLB2_CSR_RD(hw, DLB2_SYS_TOTAL_VAS);
 }
 
-static u32 dlb2_dir_queue_depth(struct dlb2_hw *hw,
-				struct dlb2_dir_pq_pair *queue)
-{
-	union dlb2_lsp_qid_dir_enqueue_cnt r0;
-
-	r0.val = DLB2_CSR_RD(hw,
-			     DLB2_LSP_QID_DIR_ENQUEUE_CNT(queue->id.phys_id));
-
-	return r0.field.count;
-}
-
 static void dlb2_ldb_port_cq_enable(struct dlb2_hw *hw,
 				    struct dlb2_ldb_port *port)
 {
@@ -106,24 +95,6 @@ static void dlb2_ldb_port_cq_disable(struct dlb2_hw *hw,
 	DLB2_CSR_WR(hw, DLB2_LSP_CQ_LDB_DSBL(port->id.phys_id), reg.val);
 
 	dlb2_flush_csr(hw);
-}
-
-static u32 dlb2_ldb_queue_depth(struct dlb2_hw *hw,
-				struct dlb2_ldb_queue *queue)
-{
-	union dlb2_lsp_qid_aqed_active_cnt r0;
-	union dlb2_lsp_qid_atm_active r1;
-	union dlb2_lsp_qid_ldb_enqueue_cnt r2;
-
-	r0.val = DLB2_CSR_RD(hw,
-			     DLB2_LSP_QID_AQED_ACTIVE_CNT(queue->id.phys_id));
-	r1.val = DLB2_CSR_RD(hw,
-			     DLB2_LSP_QID_ATM_ACTIVE(queue->id.phys_id));
-
-	r2.val = DLB2_CSR_RD(hw,
-			     DLB2_LSP_QID_LDB_ENQUEUE_CNT(queue->id.phys_id));
-
-	return r0.field.count + r1.field.count + r2.field.count;
 }
 
 static struct dlb2_ldb_queue *
@@ -1204,134 +1175,3 @@ int dlb2_set_group_sequence_numbers(struct dlb2_hw *hw,
 	return 0;
 }
 
-static struct dlb2_dir_pq_pair *
-dlb2_get_domain_used_dir_pq(struct dlb2_hw *hw,
-			    u32 id,
-			    bool vdev_req,
-			    struct dlb2_hw_domain *domain)
-{
-	struct dlb2_list_entry *iter;
-	struct dlb2_dir_pq_pair *port;
-	RTE_SET_USED(iter);
-
-	if (id >= DLB2_MAX_NUM_DIR_PORTS(hw->ver))
-		return NULL;
-
-	DLB2_DOM_LIST_FOR(domain->used_dir_pq_pairs, port, iter)
-		if ((!vdev_req && port->id.phys_id == id) ||
-		    (vdev_req && port->id.virt_id == id))
-			return port;
-
-	return NULL;
-}
-
-static struct dlb2_ldb_queue *
-dlb2_get_domain_ldb_queue(u32 id,
-			  bool vdev_req,
-			  struct dlb2_hw_domain *domain)
-{
-	struct dlb2_list_entry *iter;
-	struct dlb2_ldb_queue *queue;
-	RTE_SET_USED(iter);
-
-	if (id >= DLB2_MAX_NUM_LDB_QUEUES)
-		return NULL;
-
-	DLB2_DOM_LIST_FOR(domain->used_ldb_queues, queue, iter)
-		if ((!vdev_req && queue->id.phys_id == id) ||
-		    (vdev_req && queue->id.virt_id == id))
-			return queue;
-
-	return NULL;
-}
-
-static void dlb2_log_get_dir_queue_depth(struct dlb2_hw *hw,
-					 u32 domain_id,
-					 u32 queue_id,
-					 bool vdev_req,
-					 unsigned int vf_id)
-{
-	DLB2_HW_DBG(hw, "DLB get directed queue depth:\n");
-	if (vdev_req)
-		DLB2_HW_DBG(hw, "(Request from VF %d)\n", vf_id);
-	DLB2_HW_DBG(hw, "\tDomain ID: %d\n", domain_id);
-	DLB2_HW_DBG(hw, "\tQueue ID: %d\n", queue_id);
-}
-
-int dlb2_hw_get_dir_queue_depth(struct dlb2_hw *hw,
-				u32 domain_id,
-				struct dlb2_get_dir_queue_depth_args *args,
-				struct dlb2_cmd_response *resp,
-				bool vdev_req,
-				unsigned int vdev_id)
-{
-	struct dlb2_dir_pq_pair *queue;
-	struct dlb2_hw_domain *domain;
-	int id;
-
-	id = domain_id;
-
-	dlb2_log_get_dir_queue_depth(hw, domain_id, args->queue_id,
-				     vdev_req, vdev_id);
-
-	domain = dlb2_get_domain_from_id(hw, id, vdev_req, vdev_id);
-	if (domain == NULL) {
-		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
-		return -EINVAL;
-	}
-
-	id = args->queue_id;
-
-	queue = dlb2_get_domain_used_dir_pq(hw, id, vdev_req, domain);
-	if (queue == NULL) {
-		resp->status = DLB2_ST_INVALID_QID;
-		return -EINVAL;
-	}
-
-	resp->id = dlb2_dir_queue_depth(hw, queue);
-
-	return 0;
-}
-
-static void dlb2_log_get_ldb_queue_depth(struct dlb2_hw *hw,
-					 u32 domain_id,
-					 u32 queue_id,
-					 bool vdev_req,
-					 unsigned int vf_id)
-{
-	DLB2_HW_DBG(hw, "DLB get load-balanced queue depth:\n");
-	if (vdev_req)
-		DLB2_HW_DBG(hw, "(Request from VF %d)\n", vf_id);
-	DLB2_HW_DBG(hw, "\tDomain ID: %d\n", domain_id);
-	DLB2_HW_DBG(hw, "\tQueue ID: %d\n", queue_id);
-}
-
-int dlb2_hw_get_ldb_queue_depth(struct dlb2_hw *hw,
-				u32 domain_id,
-				struct dlb2_get_ldb_queue_depth_args *args,
-				struct dlb2_cmd_response *resp,
-				bool vdev_req,
-				unsigned int vdev_id)
-{
-	struct dlb2_hw_domain *domain;
-	struct dlb2_ldb_queue *queue;
-
-	dlb2_log_get_ldb_queue_depth(hw, domain_id, args->queue_id,
-				     vdev_req, vdev_id);
-
-	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
-	if (domain == NULL) {
-		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
-		return -EINVAL;
-	}
-
-	queue = dlb2_get_domain_ldb_queue(args->queue_id, vdev_req, domain);
-	if (queue == NULL) {
-		resp->status = DLB2_ST_INVALID_QID;
-		return -EINVAL;
-	}
-
-	resp->id = dlb2_ldb_queue_depth(hw, queue);
-
-	return 0;
-}

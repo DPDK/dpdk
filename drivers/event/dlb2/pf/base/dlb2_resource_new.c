@@ -5904,3 +5904,138 @@ dlb2_hw_start_domain(struct dlb2_hw *hw,
 
 	return 0;
 }
+
+static void dlb2_log_get_dir_queue_depth(struct dlb2_hw *hw,
+					 u32 domain_id,
+					 u32 queue_id,
+					 bool vdev_req,
+					 unsigned int vf_id)
+{
+	DLB2_HW_DBG(hw, "DLB get directed queue depth:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from VF %d)\n", vf_id);
+	DLB2_HW_DBG(hw, "\tDomain ID: %d\n", domain_id);
+	DLB2_HW_DBG(hw, "\tQueue ID: %d\n", queue_id);
+}
+
+/**
+ * dlb2_hw_get_dir_queue_depth() - returns the depth of a directed queue
+ * @hw: dlb2_hw handle for a particular device.
+ * @domain_id: domain ID.
+ * @args: queue depth args
+ * @resp: response structure.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * This function returns the depth of a directed queue.
+ *
+ * A vdev can be either an SR-IOV virtual function or a Scalable IOV virtual
+ * device.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error. If successful, resp->id
+ * contains the depth.
+ *
+ * Errors:
+ * EINVAL - Invalid domain ID or queue ID.
+ */
+int dlb2_hw_get_dir_queue_depth(struct dlb2_hw *hw,
+				u32 domain_id,
+				struct dlb2_get_dir_queue_depth_args *args,
+				struct dlb2_cmd_response *resp,
+				bool vdev_req,
+				unsigned int vdev_id)
+{
+	struct dlb2_dir_pq_pair *queue;
+	struct dlb2_hw_domain *domain;
+	int id;
+
+	id = domain_id;
+
+	dlb2_log_get_dir_queue_depth(hw, domain_id, args->queue_id,
+				     vdev_req, vdev_id);
+
+	domain = dlb2_get_domain_from_id(hw, id, vdev_req, vdev_id);
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	id = args->queue_id;
+
+	queue = dlb2_get_domain_used_dir_pq(hw, id, vdev_req, domain);
+	if (!queue) {
+		resp->status = DLB2_ST_INVALID_QID;
+		return -EINVAL;
+	}
+
+	resp->id = dlb2_dir_queue_depth(hw, queue);
+
+	return 0;
+}
+
+static void dlb2_log_get_ldb_queue_depth(struct dlb2_hw *hw,
+					 u32 domain_id,
+					 u32 queue_id,
+					 bool vdev_req,
+					 unsigned int vf_id)
+{
+	DLB2_HW_DBG(hw, "DLB get load-balanced queue depth:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from VF %d)\n", vf_id);
+	DLB2_HW_DBG(hw, "\tDomain ID: %d\n", domain_id);
+	DLB2_HW_DBG(hw, "\tQueue ID: %d\n", queue_id);
+}
+
+/**
+ * dlb2_hw_get_ldb_queue_depth() - returns the depth of a load-balanced queue
+ * @hw: dlb2_hw handle for a particular device.
+ * @domain_id: domain ID.
+ * @args: queue depth args
+ * @resp: response structure.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * This function returns the depth of a load-balanced queue.
+ *
+ * A vdev can be either an SR-IOV virtual function or a Scalable IOV virtual
+ * device.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error. If successful, resp->id
+ * contains the depth.
+ *
+ * Errors:
+ * EINVAL - Invalid domain ID or queue ID.
+ */
+int dlb2_hw_get_ldb_queue_depth(struct dlb2_hw *hw,
+				u32 domain_id,
+				struct dlb2_get_ldb_queue_depth_args *args,
+				struct dlb2_cmd_response *resp,
+				bool vdev_req,
+				unsigned int vdev_id)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_queue *queue;
+
+	dlb2_log_get_ldb_queue_depth(hw, domain_id, args->queue_id,
+				     vdev_req, vdev_id);
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	queue = dlb2_get_domain_ldb_queue(args->queue_id, vdev_req, domain);
+	if (!queue) {
+		resp->status = DLB2_ST_INVALID_QID;
+		return -EINVAL;
+	}
+
+	resp->id = dlb2_ldb_queue_depth(hw, queue);
+
+	return 0;
+}
