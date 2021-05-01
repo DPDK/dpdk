@@ -5476,3 +5476,301 @@ map_qid_done:
 
 	return 0;
 }
+
+static void dlb2_log_unmap_qid(struct dlb2_hw *hw,
+			       u32 domain_id,
+			       struct dlb2_unmap_qid_args *args,
+			       bool vdev_req,
+			       unsigned int vdev_id)
+{
+	DLB2_HW_DBG(hw, "DLB2 unmap QID arguments:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from vdev %d)\n", vdev_id);
+	DLB2_HW_DBG(hw, "\tDomain ID: %d\n",
+		    domain_id);
+	DLB2_HW_DBG(hw, "\tPort ID:   %d\n",
+		    args->port_id);
+	DLB2_HW_DBG(hw, "\tQueue ID:  %d\n",
+		    args->qid);
+	if (args->qid < DLB2_MAX_NUM_LDB_QUEUES)
+		DLB2_HW_DBG(hw, "\tQueue's num mappings:  %d\n",
+			    hw->rsrcs.ldb_queues[args->qid].num_mappings);
+}
+
+static int dlb2_verify_unmap_qid_args(struct dlb2_hw *hw,
+				      u32 domain_id,
+				      struct dlb2_unmap_qid_args *args,
+				      struct dlb2_cmd_response *resp,
+				      bool vdev_req,
+				      unsigned int vdev_id,
+				      struct dlb2_hw_domain **out_domain,
+				      struct dlb2_ldb_port **out_port,
+				      struct dlb2_ldb_queue **out_queue)
+{
+	enum dlb2_qid_map_state state;
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_queue *queue;
+	struct dlb2_ldb_port *port;
+	int slot;
+	int id;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB2_ST_DOMAIN_NOT_CONFIGURED;
+		return -EINVAL;
+	}
+
+	id = args->port_id;
+
+	port = dlb2_get_domain_used_ldb_port(id, vdev_req, domain);
+
+	if (!port || !port->configured) {
+		resp->status = DLB2_ST_INVALID_PORT_ID;
+		return -EINVAL;
+	}
+
+	if (port->domain_id.phys_id != domain->id.phys_id) {
+		resp->status = DLB2_ST_INVALID_PORT_ID;
+		return -EINVAL;
+	}
+
+	queue = dlb2_get_domain_ldb_queue(args->qid, vdev_req, domain);
+
+	if (!queue || !queue->configured) {
+		DLB2_HW_ERR(hw, "[%s()] Can't unmap unconfigured queue %d\n",
+			    __func__, args->qid);
+		resp->status = DLB2_ST_INVALID_QID;
+		return -EINVAL;
+	}
+
+	/*
+	 * Verify that the port has the queue mapped. From the application's
+	 * perspective a queue is mapped if it is actually mapped, the map is
+	 * in progress, or the map is blocked pending an unmap.
+	 */
+	state = DLB2_QUEUE_MAPPED;
+	if (dlb2_port_find_slot_queue(port, state, queue, &slot))
+		goto done;
+
+	state = DLB2_QUEUE_MAP_IN_PROG;
+	if (dlb2_port_find_slot_queue(port, state, queue, &slot))
+		goto done;
+
+	if (dlb2_port_find_slot_with_pending_map_queue(port, queue, &slot))
+		goto done;
+
+	resp->status = DLB2_ST_INVALID_QID;
+	return -EINVAL;
+
+done:
+	*out_domain = domain;
+	*out_port = port;
+	*out_queue = queue;
+
+	return 0;
+}
+
+/**
+ * dlb2_hw_unmap_qid() - Unmap a load-balanced queue from a load-balanced port
+ * @hw: dlb2_hw handle for a particular device.
+ * @domain_id: domain ID.
+ * @args: unmap QID arguments.
+ * @resp: response structure.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * This function configures the DLB to stop scheduling QEs from the specified
+ * queue to the specified port.
+ *
+ * A successful return does not necessarily mean the mapping was removed. If
+ * this function is unable to immediately unmap the queue from the port, it
+ * will add the requested operation to a per-port list of pending map/unmap
+ * operations, and (if it's not already running) launch a kernel thread that
+ * periodically attempts to process all pending operations. See
+ * dlb2_hw_map_qid() for more details.
+ *
+ * A vdev can be either an SR-IOV virtual function or a Scalable IOV virtual
+ * device.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error.
+ *
+ * Errors:
+ * EINVAL - A requested resource is unavailable, invalid port or queue ID, or
+ *	    the domain is not configured.
+ * EFAULT - Internal error (resp->status not set).
+ */
+int dlb2_hw_unmap_qid(struct dlb2_hw *hw,
+		      u32 domain_id,
+		      struct dlb2_unmap_qid_args *args,
+		      struct dlb2_cmd_response *resp,
+		      bool vdev_req,
+		      unsigned int vdev_id)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_queue *queue;
+	enum dlb2_qid_map_state st;
+	struct dlb2_ldb_port *port;
+	bool unmap_complete;
+	int i, ret;
+
+	dlb2_log_unmap_qid(hw, domain_id, args, vdev_req, vdev_id);
+
+	/*
+	 * Verify that hardware resources are available before attempting to
+	 * satisfy the request. This simplifies the error unwinding code.
+	 */
+	ret = dlb2_verify_unmap_qid_args(hw,
+					 domain_id,
+					 args,
+					 resp,
+					 vdev_req,
+					 vdev_id,
+					 &domain,
+					 &port,
+					 &queue);
+	if (ret)
+		return ret;
+
+	/*
+	 * If the queue hasn't been mapped yet, we need to update the slot's
+	 * state and re-enable the queue's inflights.
+	 */
+	st = DLB2_QUEUE_MAP_IN_PROG;
+	if (dlb2_port_find_slot_queue(port, st, queue, &i)) {
+		/*
+		 * Since the in-progress map was aborted, re-enable the QID's
+		 * inflights.
+		 */
+		if (queue->num_pending_additions == 0)
+			dlb2_ldb_queue_set_inflight_limit(hw, queue);
+
+		st = DLB2_QUEUE_UNMAPPED;
+		ret = dlb2_port_slot_state_transition(hw, port, queue, i, st);
+		if (ret)
+			return ret;
+
+		goto unmap_qid_done;
+	}
+
+	/*
+	 * If the queue mapping is on hold pending an unmap, we simply need to
+	 * update the slot's state.
+	 */
+	if (dlb2_port_find_slot_with_pending_map_queue(port, queue, &i)) {
+		st = DLB2_QUEUE_UNMAP_IN_PROG;
+		ret = dlb2_port_slot_state_transition(hw, port, queue, i, st);
+		if (ret)
+			return ret;
+
+		goto unmap_qid_done;
+	}
+
+	st = DLB2_QUEUE_MAPPED;
+	if (!dlb2_port_find_slot_queue(port, st, queue, &i)) {
+		DLB2_HW_ERR(hw,
+			    "[%s()] Internal error: no available CQ slots\n",
+			    __func__);
+		return -EFAULT;
+	}
+
+	/*
+	 * QID->CQ mapping removal is an asynchronous procedure. It requires
+	 * stopping the DLB2 from scheduling this CQ, draining all inflights
+	 * from the CQ, then unmapping the queue from the CQ. This function
+	 * simply marks the port as needing the queue unmapped, and (if
+	 * necessary) starts the unmapping worker thread.
+	 */
+	dlb2_ldb_port_cq_disable(hw, port);
+
+	st = DLB2_QUEUE_UNMAP_IN_PROG;
+	ret = dlb2_port_slot_state_transition(hw, port, queue, i, st);
+	if (ret)
+		return ret;
+
+	/*
+	 * Attempt to finish the unmapping now, in case the port has no
+	 * outstanding inflights. If that's not the case, this will fail and
+	 * the unmapping will be completed at a later time.
+	 */
+	unmap_complete = dlb2_domain_finish_unmap_port(hw, domain, port);
+
+	/*
+	 * If the unmapping couldn't complete immediately, launch the worker
+	 * thread (if it isn't already launched) to finish it later.
+	 */
+	if (!unmap_complete && !os_worker_active(hw))
+		os_schedule_work(hw);
+
+unmap_qid_done:
+	resp->status = 0;
+
+	return 0;
+}
+
+static void
+dlb2_log_pending_port_unmaps_args(struct dlb2_hw *hw,
+				  struct dlb2_pending_port_unmaps_args *args,
+				  bool vdev_req,
+				  unsigned int vdev_id)
+{
+	DLB2_HW_DBG(hw, "DLB unmaps in progress arguments:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from VF %d)\n", vdev_id);
+	DLB2_HW_DBG(hw, "\tPort ID: %d\n", args->port_id);
+}
+
+/**
+ * dlb2_hw_pending_port_unmaps() - returns the number of unmap operations in
+ *	progress.
+ * @hw: dlb2_hw handle for a particular device.
+ * @domain_id: domain ID.
+ * @args: number of unmaps in progress args
+ * @resp: response structure.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error. If successful, resp->id
+ * contains the number of unmaps in progress.
+ *
+ * Errors:
+ * EINVAL - Invalid port ID.
+ */
+int dlb2_hw_pending_port_unmaps(struct dlb2_hw *hw,
+				u32 domain_id,
+				struct dlb2_pending_port_unmaps_args *args,
+				struct dlb2_cmd_response *resp,
+				bool vdev_req,
+				unsigned int vdev_id)
+{
+	struct dlb2_hw_domain *domain;
+	struct dlb2_ldb_port *port;
+
+	dlb2_log_pending_port_unmaps_args(hw, args, vdev_req, vdev_id);
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	port = dlb2_get_domain_used_ldb_port(args->port_id, vdev_req, domain);
+	if (!port || !port->configured) {
+		resp->status = DLB2_ST_INVALID_PORT_ID;
+		return -EINVAL;
+	}
+
+	resp->id = port->num_pending_removals;
+
+	return 0;
+}
