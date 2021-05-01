@@ -16,7 +16,11 @@
 #include <rte_log.h>
 #include <rte_spinlock.h>
 #include "../dlb2_main.h"
+
+/* TEMPORARY inclusion of both headers for merge */
+#include "dlb2_resource_new.h"
 #include "dlb2_resource.h"
+
 #include "../../dlb2_log.h"
 #include "../../dlb2_user.h"
 

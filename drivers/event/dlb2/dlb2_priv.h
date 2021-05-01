@@ -114,6 +114,11 @@
 #define EV_TO_DLB2_PRIO(x) ((x) >> 5)
 #define DLB2_TO_EV_PRIO(x) ((x) << 5)
 
+enum dlb2_hw_ver {
+	DLB2_HW_VER_2,
+	DLB2_HW_VER_2_5,
+};
+
 enum dlb2_hw_port_types {
 	DLB2_LDB_PORT,
 	DLB2_DIR_PORT,
