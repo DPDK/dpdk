@@ -436,8 +436,13 @@ dlb2_eventdev_info_get(struct rte_eventdev *dev,
 	 */
 	evdev_dlb2_default_info.max_event_ports += dlb2->num_ldb_ports;
 	evdev_dlb2_default_info.max_event_queues += dlb2->num_ldb_queues;
-	evdev_dlb2_default_info.max_num_events += dlb2->max_ldb_credits;
-
+	if (dlb2->version == DLB2_HW_V2_5) {
+		evdev_dlb2_default_info.max_num_events +=
+			dlb2->max_credits;
+	} else {
+		evdev_dlb2_default_info.max_num_events +=
+			dlb2->max_ldb_credits;
+	}
 	evdev_dlb2_default_info.max_event_queues =
 		RTE_MIN(evdev_dlb2_default_info.max_event_queues,
 			RTE_EVENT_MAX_QUEUES_PER_DEV);
@@ -451,7 +456,8 @@ dlb2_eventdev_info_get(struct rte_eventdev *dev,
 
 static int
 dlb2_hw_create_sched_domain(struct dlb2_hw_dev *handle,
-			    const struct dlb2_hw_rsrcs *resources_asked)
+			    const struct dlb2_hw_rsrcs *resources_asked,
+			    uint8_t device_version)
 {
 	int ret = 0;
 	struct dlb2_create_sched_domain_args *cfg;
@@ -468,8 +474,10 @@ dlb2_hw_create_sched_domain(struct dlb2_hw_dev *handle,
 	/* DIR ports and queues */
 
 	cfg->num_dir_ports = resources_asked->num_dir_ports;
-
-	cfg->num_dir_credits = resources_asked->num_dir_credits;
+	if (device_version == DLB2_HW_V2_5)
+		cfg->num_credits = resources_asked->num_credits;
+	else
+		cfg->num_dir_credits = resources_asked->num_dir_credits;
 
 	/* LDB queues */
 
@@ -509,8 +517,8 @@ dlb2_hw_create_sched_domain(struct dlb2_hw_dev *handle,
 		break;
 	}
 
-	cfg->num_ldb_credits =
-		resources_asked->num_ldb_credits;
+	if (device_version == DLB2_HW_V2)
+		cfg->num_ldb_credits = resources_asked->num_ldb_credits;
 
 	cfg->num_atomic_inflights =
 		DLB2_NUM_ATOMIC_INFLIGHTS_PER_QUEUE *
@@ -519,14 +527,24 @@ dlb2_hw_create_sched_domain(struct dlb2_hw_dev *handle,
 	cfg->num_hist_list_entries = resources_asked->num_ldb_ports *
 		DLB2_NUM_HIST_LIST_ENTRIES_PER_LDB_PORT;
 
-	DLB2_LOG_DBG("sched domain create - ldb_qs=%d, ldb_ports=%d, dir_ports=%d, atomic_inflights=%d, hist_list_entries=%d, ldb_credits=%d, dir_credits=%d\n",
-		     cfg->num_ldb_queues,
-		     resources_asked->num_ldb_ports,
-		     cfg->num_dir_ports,
-		     cfg->num_atomic_inflights,
-		     cfg->num_hist_list_entries,
-		     cfg->num_ldb_credits,
-		     cfg->num_dir_credits);
+	if (device_version == DLB2_HW_V2_5) {
+		DLB2_LOG_DBG("sched domain create - ldb_qs=%d, ldb_ports=%d, dir_ports=%d, atomic_inflights=%d, hist_list_entries=%d, credits=%d\n",
+			     cfg->num_ldb_queues,
+			     resources_asked->num_ldb_ports,
+			     cfg->num_dir_ports,
+			     cfg->num_atomic_inflights,
+			     cfg->num_hist_list_entries,
+			     cfg->num_credits);
+	} else {
+		DLB2_LOG_DBG("sched domain create - ldb_qs=%d, ldb_ports=%d, dir_ports=%d, atomic_inflights=%d, hist_list_entries=%d, ldb_credits=%d, dir_credits=%d\n",
+			     cfg->num_ldb_queues,
+			     resources_asked->num_ldb_ports,
+			     cfg->num_dir_ports,
+			     cfg->num_atomic_inflights,
+			     cfg->num_hist_list_entries,
+			     cfg->num_ldb_credits,
+			     cfg->num_dir_credits);
+	}
 
 	/* Configure the QM */
 
@@ -606,7 +624,6 @@ dlb2_eventdev_configure(const struct rte_eventdev *dev)
 	 */
 	if (dlb2->configured) {
 		dlb2_hw_reset_sched_domain(dev, true);
-
 		ret = dlb2_hw_query_resources(dlb2);
 		if (ret) {
 			DLB2_LOG_ERR("get resources err=%d, devid=%d\n",
@@ -665,20 +682,26 @@ dlb2_eventdev_configure(const struct rte_eventdev *dev)
 	/* 1 dir queue per dir port */
 	rsrcs->num_ldb_queues = config->nb_event_queues - rsrcs->num_dir_ports;
 
-	/* Scale down nb_events_limit by 4 for directed credits, since there
-	 * are 4x as many load-balanced credits.
-	 */
-	rsrcs->num_ldb_credits = 0;
-	rsrcs->num_dir_credits = 0;
+	if (dlb2->version == DLB2_HW_V2_5) {
+		rsrcs->num_credits = 0;
+		if (rsrcs->num_ldb_queues || rsrcs->num_dir_ports)
+			rsrcs->num_credits = config->nb_events_limit;
+	} else {
+		/* Scale down nb_events_limit by 4 for directed credits,
+		 * since there are 4x as many load-balanced credits.
+		 */
+		rsrcs->num_ldb_credits = 0;
+		rsrcs->num_dir_credits = 0;
 
-	if (rsrcs->num_ldb_queues)
-		rsrcs->num_ldb_credits = config->nb_events_limit;
-	if (rsrcs->num_dir_ports)
-		rsrcs->num_dir_credits = config->nb_events_limit / 4;
-	if (dlb2->num_dir_credits_override != -1)
-		rsrcs->num_dir_credits = dlb2->num_dir_credits_override;
+		if (rsrcs->num_ldb_queues)
+			rsrcs->num_ldb_credits = config->nb_events_limit;
+		if (rsrcs->num_dir_ports)
+			rsrcs->num_dir_credits = config->nb_events_limit / 4;
+		if (dlb2->num_dir_credits_override != -1)
+			rsrcs->num_dir_credits = dlb2->num_dir_credits_override;
+	}
 
-	if (dlb2_hw_create_sched_domain(handle, rsrcs) < 0) {
+	if (dlb2_hw_create_sched_domain(handle, rsrcs, dlb2->version) < 0) {
 		DLB2_LOG_ERR("dlb2_hw_create_sched_domain failed\n");
 		return -ENODEV;
 	}
@@ -693,10 +716,15 @@ dlb2_eventdev_configure(const struct rte_eventdev *dev)
 	dlb2->num_ldb_ports = dlb2->num_ports - dlb2->num_dir_ports;
 	dlb2->num_ldb_queues = dlb2->num_queues - dlb2->num_dir_ports;
 	dlb2->num_dir_queues = dlb2->num_dir_ports;
-	dlb2->ldb_credit_pool = rsrcs->num_ldb_credits;
-	dlb2->max_ldb_credits = rsrcs->num_ldb_credits;
-	dlb2->dir_credit_pool = rsrcs->num_dir_credits;
-	dlb2->max_dir_credits = rsrcs->num_dir_credits;
+	if (dlb2->version == DLB2_HW_V2_5) {
+		dlb2->credit_pool = rsrcs->num_credits;
+		dlb2->max_credits = rsrcs->num_credits;
+	} else {
+		dlb2->ldb_credit_pool = rsrcs->num_ldb_credits;
+		dlb2->max_ldb_credits = rsrcs->num_ldb_credits;
+		dlb2->dir_credit_pool = rsrcs->num_dir_credits;
+		dlb2->max_dir_credits = rsrcs->num_dir_credits;
+	}
 
 	dlb2->configured = true;
 
@@ -1170,8 +1198,9 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 	struct dlb2_port *qm_port = NULL;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	uint32_t qm_port_id;
-	uint16_t ldb_credit_high_watermark;
-	uint16_t dir_credit_high_watermark;
+	uint16_t ldb_credit_high_watermark = 0;
+	uint16_t dir_credit_high_watermark = 0;
+	uint16_t credit_high_watermark = 0;
 
 	if (handle == NULL)
 		return -EINVAL;
@@ -1206,15 +1235,18 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 	/* User controls the LDB high watermark via enqueue depth. The DIR high
 	 * watermark is equal, unless the directed credit pool is too small.
 	 */
-	ldb_credit_high_watermark = enqueue_depth;
-
-	/* If there are no directed ports, the kernel driver will ignore this
-	 * port's directed credit settings. Don't use enqueue_depth if it would
-	 * require more directed credits than are available.
-	 */
-	dir_credit_high_watermark =
-		RTE_MIN(enqueue_depth,
-			handle->cfg.num_dir_credits / dlb2->num_ports);
+	if (dlb2->version == DLB2_HW_V2) {
+		ldb_credit_high_watermark = enqueue_depth;
+		/* If there are no directed ports, the kernel driver will
+		 * ignore this port's directed credit settings. Don't use
+		 * enqueue_depth if it would require more directed credits
+		 * than are available.
+		 */
+		dir_credit_high_watermark =
+			RTE_MIN(enqueue_depth,
+				handle->cfg.num_dir_credits / dlb2->num_ports);
+	} else
+		credit_high_watermark = enqueue_depth;
 
 	/* Per QM values */
 
@@ -1249,8 +1281,12 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 
 	qm_port->id = qm_port_id;
 
-	qm_port->cached_ldb_credits = 0;
-	qm_port->cached_dir_credits = 0;
+	if (dlb2->version == DLB2_HW_V2) {
+		qm_port->cached_ldb_credits = 0;
+		qm_port->cached_dir_credits = 0;
+	} else
+		qm_port->cached_credits = 0;
+
 	/* CQs with depth < 8 use an 8-entry queue, but withhold credits so
 	 * the effective depth is smaller.
 	 */
@@ -1298,17 +1334,26 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 	qm_port->state = PORT_STARTED; /* enabled at create time */
 	qm_port->config_state = DLB2_CONFIGURED;
 
-	qm_port->dir_credits = dir_credit_high_watermark;
-	qm_port->ldb_credits = ldb_credit_high_watermark;
-	qm_port->credit_pool[DLB2_DIR_QUEUE] = &dlb2->dir_credit_pool;
-	qm_port->credit_pool[DLB2_LDB_QUEUE] = &dlb2->ldb_credit_pool;
+	if (dlb2->version == DLB2_HW_V2) {
+		qm_port->dir_credits = dir_credit_high_watermark;
+		qm_port->ldb_credits = ldb_credit_high_watermark;
+		qm_port->credit_pool[DLB2_DIR_QUEUE] = &dlb2->dir_credit_pool;
+		qm_port->credit_pool[DLB2_LDB_QUEUE] = &dlb2->ldb_credit_pool;
 
-	DLB2_LOG_DBG("dlb2: created ldb port %d, depth = %d, ldb credits=%d, dir credits=%d\n",
-		     qm_port_id,
-		     dequeue_depth,
-		     qm_port->ldb_credits,
-		     qm_port->dir_credits);
+		DLB2_LOG_DBG("dlb2: created ldb port %d, depth = %d, ldb credits=%d, dir credits=%d\n",
+			     qm_port_id,
+			     dequeue_depth,
+			     qm_port->ldb_credits,
+			     qm_port->dir_credits);
+	} else {
+		qm_port->credits = credit_high_watermark;
+		qm_port->credit_pool[DLB2_COMBINED_POOL] = &dlb2->credit_pool;
 
+		DLB2_LOG_DBG("dlb2: created ldb port %d, depth = %d, credits=%d\n",
+			     qm_port_id,
+			     dequeue_depth,
+			     qm_port->credits);
+	}
 	rte_spinlock_unlock(&handle->resource_lock);
 
 	return 0;
@@ -1356,8 +1401,9 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 	struct dlb2_port *qm_port = NULL;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	uint32_t qm_port_id;
-	uint16_t ldb_credit_high_watermark;
-	uint16_t dir_credit_high_watermark;
+	uint16_t ldb_credit_high_watermark = 0;
+	uint16_t dir_credit_high_watermark = 0;
+	uint16_t credit_high_watermark = 0;
 
 	if (dlb2 == NULL || handle == NULL)
 		return -EINVAL;
@@ -1386,14 +1432,16 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 	/* User controls the LDB high watermark via enqueue depth. The DIR high
 	 * watermark is equal, unless the directed credit pool is too small.
 	 */
-	ldb_credit_high_watermark = enqueue_depth;
-
-	/* Don't use enqueue_depth if it would require more directed credits
-	 * than are available.
-	 */
-	dir_credit_high_watermark =
-		RTE_MIN(enqueue_depth,
-			handle->cfg.num_dir_credits / dlb2->num_ports);
+	if (dlb2->version == DLB2_HW_V2) {
+		ldb_credit_high_watermark = enqueue_depth;
+		/* Don't use enqueue_depth if it would require more directed
+		 * credits than are available.
+		 */
+		dir_credit_high_watermark =
+			RTE_MIN(enqueue_depth,
+				handle->cfg.num_dir_credits / dlb2->num_ports);
+	} else
+		credit_high_watermark = enqueue_depth;
 
 	/* Per QM values */
 
@@ -1430,8 +1478,12 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 
 	qm_port->id = qm_port_id;
 
-	qm_port->cached_ldb_credits = 0;
-	qm_port->cached_dir_credits = 0;
+	if (dlb2->version == DLB2_HW_V2) {
+		qm_port->cached_ldb_credits = 0;
+		qm_port->cached_dir_credits = 0;
+	} else
+		qm_port->cached_credits = 0;
+
 	/* CQs with depth < 8 use an 8-entry queue, but withhold credits so
 	 * the effective depth is smaller.
 	 */
@@ -1467,17 +1519,26 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 	qm_port->state = PORT_STARTED; /* enabled at create time */
 	qm_port->config_state = DLB2_CONFIGURED;
 
-	qm_port->dir_credits = dir_credit_high_watermark;
-	qm_port->ldb_credits = ldb_credit_high_watermark;
-	qm_port->credit_pool[DLB2_DIR_QUEUE] = &dlb2->dir_credit_pool;
-	qm_port->credit_pool[DLB2_LDB_QUEUE] = &dlb2->ldb_credit_pool;
+	if (dlb2->version == DLB2_HW_V2) {
+		qm_port->dir_credits = dir_credit_high_watermark;
+		qm_port->ldb_credits = ldb_credit_high_watermark;
+		qm_port->credit_pool[DLB2_DIR_QUEUE] = &dlb2->dir_credit_pool;
+		qm_port->credit_pool[DLB2_LDB_QUEUE] = &dlb2->ldb_credit_pool;
 
-	DLB2_LOG_DBG("dlb2: created dir port %d, depth = %d cr=%d,%d\n",
-		     qm_port_id,
-		     dequeue_depth,
-		     dir_credit_high_watermark,
-		     ldb_credit_high_watermark);
+		DLB2_LOG_DBG("dlb2: created dir port %d, depth = %d cr=%d,%d\n",
+			     qm_port_id,
+			     dequeue_depth,
+			     dir_credit_high_watermark,
+			     ldb_credit_high_watermark);
+	} else {
+		qm_port->credits = credit_high_watermark;
+		qm_port->credit_pool[DLB2_COMBINED_POOL] = &dlb2->credit_pool;
 
+		DLB2_LOG_DBG("dlb2: created dir port %d, depth = %d cr=%d\n",
+			     qm_port_id,
+			     dequeue_depth,
+			     credit_high_watermark);
+	}
 	rte_spinlock_unlock(&handle->resource_lock);
 
 	return 0;
@@ -2297,6 +2358,24 @@ dlb2_check_enqueue_hw_dir_credits(struct dlb2_port *qm_port)
 	return 0;
 }
 
+static inline int
+dlb2_check_enqueue_hw_credits(struct dlb2_port *qm_port)
+{
+	if (unlikely(qm_port->cached_credits == 0)) {
+		qm_port->cached_credits =
+			dlb2_port_credits_get(qm_port,
+					      DLB2_COMBINED_POOL);
+		if (unlikely(qm_port->cached_credits == 0)) {
+			DLB2_INC_STAT(
+			qm_port->ev_port->stats.traffic.tx_nospc_hw_credits, 1);
+			DLB2_LOG_DBG("credits exhausted\n");
+			return 1; /* credits exhausted */
+		}
+	}
+
+	return 0;
+}
+
 static __rte_always_inline void
 dlb2_pp_write(struct dlb2_enqueue_qe *qe4,
 	      struct process_local_port_data *port_data)
@@ -2565,12 +2644,19 @@ dlb2_event_enqueue_prep(struct dlb2_eventdev_port *ev_port,
 	if (!qm_queue->is_directed) {
 		/* Load balanced destination queue */
 
-		if (dlb2_check_enqueue_hw_ldb_credits(qm_port)) {
-			rte_errno = -ENOSPC;
-			return 1;
+		if (dlb2->version == DLB2_HW_V2) {
+			if (dlb2_check_enqueue_hw_ldb_credits(qm_port)) {
+				rte_errno = -ENOSPC;
+				return 1;
+			}
+			cached_credits = &qm_port->cached_ldb_credits;
+		} else {
+			if (dlb2_check_enqueue_hw_credits(qm_port)) {
+				rte_errno = -ENOSPC;
+				return 1;
+			}
+			cached_credits = &qm_port->cached_credits;
 		}
-		cached_credits = &qm_port->cached_ldb_credits;
-
 		switch (ev->sched_type) {
 		case RTE_SCHED_TYPE_ORDERED:
 			DLB2_LOG_DBG("dlb2: put_qe: RTE_SCHED_TYPE_ORDERED\n");
@@ -2602,12 +2688,19 @@ dlb2_event_enqueue_prep(struct dlb2_eventdev_port *ev_port,
 	} else {
 		/* Directed destination queue */
 
-		if (dlb2_check_enqueue_hw_dir_credits(qm_port)) {
-			rte_errno = -ENOSPC;
-			return 1;
+		if (dlb2->version == DLB2_HW_V2) {
+			if (dlb2_check_enqueue_hw_dir_credits(qm_port)) {
+				rte_errno = -ENOSPC;
+				return 1;
+			}
+			cached_credits = &qm_port->cached_dir_credits;
+		} else {
+			if (dlb2_check_enqueue_hw_credits(qm_port)) {
+				rte_errno = -ENOSPC;
+				return 1;
+			}
+			cached_credits = &qm_port->cached_credits;
 		}
-		cached_credits = &qm_port->cached_dir_credits;
-
 		DLB2_LOG_DBG("dlb2: put_qe: RTE_SCHED_TYPE_DIRECTED\n");
 
 		*sched_type = DLB2_SCHED_DIRECTED;
@@ -2891,20 +2984,40 @@ dlb2_port_credits_inc(struct dlb2_port *qm_port, int num)
 
 	/* increment port credits, and return to pool if exceeds threshold */
 	if (!qm_port->is_directed) {
-		qm_port->cached_ldb_credits += num;
-		if (qm_port->cached_ldb_credits >= 2 * batch_size) {
-			__atomic_fetch_add(
-				qm_port->credit_pool[DLB2_LDB_QUEUE],
-				batch_size, __ATOMIC_SEQ_CST);
-			qm_port->cached_ldb_credits -= batch_size;
+		if (qm_port->dlb2->version == DLB2_HW_V2) {
+			qm_port->cached_ldb_credits += num;
+			if (qm_port->cached_ldb_credits >= 2 * batch_size) {
+				__atomic_fetch_add(
+					qm_port->credit_pool[DLB2_LDB_QUEUE],
+					batch_size, __ATOMIC_SEQ_CST);
+				qm_port->cached_ldb_credits -= batch_size;
+			}
+		} else {
+			qm_port->cached_credits += num;
+			if (qm_port->cached_credits >= 2 * batch_size) {
+				__atomic_fetch_add(
+				      qm_port->credit_pool[DLB2_COMBINED_POOL],
+				      batch_size, __ATOMIC_SEQ_CST);
+				qm_port->cached_credits -= batch_size;
+			}
 		}
 	} else {
-		qm_port->cached_dir_credits += num;
-		if (qm_port->cached_dir_credits >= 2 * batch_size) {
-			__atomic_fetch_add(
-				qm_port->credit_pool[DLB2_DIR_QUEUE],
-				batch_size, __ATOMIC_SEQ_CST);
-			qm_port->cached_dir_credits -= batch_size;
+		if (qm_port->dlb2->version == DLB2_HW_V2) {
+			qm_port->cached_dir_credits += num;
+			if (qm_port->cached_dir_credits >= 2 * batch_size) {
+				__atomic_fetch_add(
+					qm_port->credit_pool[DLB2_DIR_QUEUE],
+					batch_size, __ATOMIC_SEQ_CST);
+				qm_port->cached_dir_credits -= batch_size;
+			}
+		} else {
+			qm_port->cached_credits += num;
+			if (qm_port->cached_credits >= 2 * batch_size) {
+				__atomic_fetch_add(
+				      qm_port->credit_pool[DLB2_COMBINED_POOL],
+				      batch_size, __ATOMIC_SEQ_CST);
+				qm_port->cached_credits -= batch_size;
+			}
 		}
 	}
 }
