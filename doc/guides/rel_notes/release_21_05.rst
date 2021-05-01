@@ -230,6 +230,10 @@ New Features
     the events across multiple stages.
   * This also reduced the scheduling overhead on a event device.
 
+* **Updated Intel DLB2 driver.**
+
+  * Added support for v2.5 device.
+
 * **Added Predictable RSS functionality to the Toeplitz hash library.**
 
   Added feature for finding collisions of the Toeplitz hash function -

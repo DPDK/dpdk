@@ -1,10 +1,11 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2020 Intel Corporation.
 
-Driver for the Intel® Dynamic Load Balancer (DLB2)
-==================================================
+Driver for the Intel® Dynamic Load Balancer (DLB)
+=================================================
 
-The DPDK dlb poll mode driver supports the Intel® Dynamic Load Balancer.
+The DPDK DLB poll mode driver supports the Intel® Dynamic Load Balancer,
+hardware versions 2.0 and 2.5.
 
 Prerequisites
 -------------
@@ -15,34 +16,34 @@ the basic DPDK environment.
 Configuration
 -------------
 
-The DLB2 PF PMD is a user-space PMD that uses VFIO to gain direct
+The DLB PF PMD is a user-space PMD that uses VFIO to gain direct
 device access. To use this operation mode, the PCIe PF device must be bound
 to a DPDK-compatible VFIO driver, such as vfio-pci.
 
 Eventdev API Notes
 ------------------
 
-The DLB2 provides the functions of a DPDK event device; specifically, it
+The DLB PMD provides the functions of a DPDK event device; specifically, it
 supports atomic, ordered, and parallel scheduling events from queues to ports.
-However, the DLB2 hardware is not a perfect match to the eventdev API. Some DLB2
+However, the DLB hardware is not a perfect match to the eventdev API. Some DLB
 features are abstracted by the PMD such as directed ports.
 
-In general the dlb PMD is designed for ease-of-use and does not require a
+In general the DLB PMD is designed for ease-of-use and does not require a
 detailed understanding of the hardware, but these details are important when
 writing high-performance code. This section describes the places where the
-eventdev API and DLB2 misalign.
+eventdev API and DLB misalign.
 
 Scheduling Domain Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-There are 32 scheduling domainis the DLB2.
+DLB supports 32 scheduling domains.
 When one is configured, it allocates load-balanced and
 directed queues, ports, credits, and other hardware resources. Some
 resource allocations are user-controlled -- the number of queues, for example
 -- and others, like credit pools (one directed and one load-balanced pool per
 scheduling domain), are not.
 
-The DLB2 is a closed system eventdev, and as such the ``nb_events_limit`` device
+The DLB is a closed system eventdev, and as such the ``nb_events_limit`` device
 setup argument and the per-port ``new_event_threshold`` argument apply as
 defined in the eventdev header file. The limit is applied to all enqueues,
 regardless of whether it will consume a directed or load-balanced credit.
@@ -67,7 +68,7 @@ If the ``RTE_EVENT_QUEUE_CFG_ALL_TYPES`` flag is not set, schedule_type
 dictates the queue's scheduling type.
 
 The ``nb_atomic_order_sequences`` queue configuration field sets the ordered
-queue's reorder buffer size.  DLB2 has 4 groups of ordered queues, where each
+queue's reorder buffer size.  DLB has 2 groups of ordered queues, where each
 group is configured to contain either 1 queue with 1024 reorder entries, 2
 queues with 512 reorder entries, and so on down to 32 queues with 32 entries.
 
@@ -75,57 +76,22 @@ When a load-balanced queue is created, the PMD will configure a new sequence
 number group on-demand if num_sequence_numbers does not match a pre-existing
 group with available reorder buffer entries. If all sequence number groups are
 in use, no new group will be created and queue configuration will fail. (Note
-that when the PMD is used with a virtual DLB2 device, it cannot change the
+that when the PMD is used with a virtual DLB device, it cannot change the
 sequence number configuration.)
 
-The queue's ``nb_atomic_flows`` parameter is ignored by the DLB2 PMD, because
-the DLB2 does not limit the number of flows a queue can track. In the DLB2, all
-load-balanced queues can use the full 16-bit flow ID range.
-
-Load-Balanced Queues
-~~~~~~~~~~~~~~~~~~~~
-
-A load-balanced queue can support atomic and ordered scheduling, or atomic and
-unordered scheduling, but not atomic and unordered and ordered scheduling. A
-queue's scheduling types are controlled by the event queue configuration.
-
-If the user sets the ``RTE_EVENT_QUEUE_CFG_ALL_TYPES`` flag, the
-``nb_atomic_order_sequences`` determines the supported scheduling types.
-With non-zero ``nb_atomic_order_sequences``, the queue is configured for atomic
-and ordered scheduling. In this case, ``RTE_SCHED_TYPE_PARALLEL`` scheduling is
-supported by scheduling those events as ordered events.  Note that when the
-event is dequeued, its sched_type will be ``RTE_SCHED_TYPE_ORDERED``. Else if
-``nb_atomic_order_sequences`` is zero, the queue is configured for atomic and
-unordered scheduling. In this case, ``RTE_SCHED_TYPE_ORDERED`` is unsupported.
-
-If the ``RTE_EVENT_QUEUE_CFG_ALL_TYPES`` flag is not set, schedule_type
-dictates the queue's scheduling type.
-
-The ``nb_atomic_order_sequences`` queue configuration field sets the ordered
-queue's reorder buffer size.  DLB2 has 4 groups of ordered queues, where each
-group is configured to contain either 1 queue with 1024 reorder entries, 2
-queues with 512 reorder entries, and so on down to 32 queues with 32 entries.
-
-When a load-balanced queue is created, the PMD will configure a new sequence
-number group on-demand if num_sequence_numbers does not match a pre-existing
-group with available reorder buffer entries. If all sequence number groups are
-in use, no new group will be created and queue configuration will fail. (Note
-that when the PMD is used with a virtual DLB2 device, it cannot change the
-sequence number configuration.)
-
-The queue's ``nb_atomic_flows`` parameter is ignored by the DLB2 PMD, because
-the DLB2 does not limit the number of flows a queue can track. In the DLB2, all
+The queue's ``nb_atomic_flows`` parameter is ignored by the DLB PMD, because
+the DLB does not limit the number of flows a queue can track. In the DLB, all
 load-balanced queues can use the full 16-bit flow ID range.
 
 Load-balanced and Directed Ports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-DLB2 ports come in two flavors: load-balanced and directed. The eventdev API
+DLB ports come in two flavors: load-balanced and directed. The eventdev API
 does not have the same concept, but it has a similar one: ports and queues that
 are singly-linked (i.e. linked to a single queue or port, respectively).
 
 The ``rte_event_dev_info_get()`` function reports the number of available
-event ports and queues (among other things). For the DLB2 PMD, max_event_ports
+event ports and queues (among other things). For the DLB PMD, max_event_ports
 and max_event_queues report the number of available load-balanced ports and
 queues, and max_single_link_event_port_queue_pairs reports the number of
 available directed ports and queues.
@@ -151,31 +117,38 @@ only be linked to a single directed queue (and vice versa), and that link
 cannot change after the eventdev is started.
 
 The eventdev API does not have a directed scheduling type. To support directed
-traffic, the dlb PMD detects when an event is being sent to a directed queue
+traffic, the DLB PMD detects when an event is being sent to a directed queue
 and overrides its scheduling type. Note that the originally selected scheduling
 type (atomic, ordered, or parallel) is not preserved, and an event's sched_type
 will be set to ``RTE_SCHED_TYPE_ATOMIC`` when it is dequeued from a directed
 port.
 
+Finally, even though all 3 event types are supported on the same QID by
+converting unordered events to ordered, such use should be discouraged as much
+as possible, since mixing types on the same queue uses valuable reorder
+resources, and orders events which do not require ordering.
+
 Flow ID
 ~~~~~~~
 
 The flow ID field is preserved in the event when it is scheduled in the
-DLB2.
+DLB.
 
 Hardware Credits
 ~~~~~~~~~~~~~~~~
 
-DLB2 uses a hardware credit scheme to prevent software from overflowing hardware
+DLB uses a hardware credit scheme to prevent software from overflowing hardware
 event storage, with each unit of storage represented by a credit. A port spends
 a credit to enqueue an event, and hardware refills the ports with credits as the
-events are scheduled to ports. Refills come from credit pools, and each port is
-a member of a load-balanced credit pool and a directed credit pool. The
-load-balanced credits are used to enqueue to load-balanced queues, and directed
-credits are used for directed queues.
+events are scheduled to ports. Refills come from credit pools.
 
-A DLB2 eventdev contains one load-balanced and one directed credit pool. These
-pools' sizes are controlled by the nb_events_limit field in struct
+For DLB v2.5, there is a single credit pool used for both load balanced and
+directed traffic.
+
+For DLB v2.0, each port is a member of both a load-balanced credit pool and a
+directed credit pool. The load-balanced credits are used to enqueue to
+load-balanced queues, and directed credits are used for directed queues.
+These pools' sizes are controlled by the nb_events_limit field in struct
 rte_event_dev_config. The load-balanced pool is sized to contain
 nb_events_limit credits, and the directed pool is sized to contain
 nb_events_limit/4 credits. The directed pool size can be overridden with the
@@ -183,7 +156,7 @@ num_dir_credits vdev argument, like so:
 
     .. code-block:: console
 
-       --vdev=dlb1_event,num_dir_credits=<value>
+       --vdev=dlb2_event,num_dir_credits=<value>
 
 This can be used if the default allocation is too low or too high for the
 specific application needs. The PMD also supports a vdev arg that limits the
@@ -191,17 +164,17 @@ max_num_events reported by rte_event_dev_info_get():
 
     .. code-block:: console
 
-       --vdev=dlb1_event,max_num_events=<value>
+       --vdev=dlb2_event,max_num_events=<value>
 
 By default, max_num_events is reported as the total available load-balanced
-credits. If multiple DLB2-based applications are being used, it may be desirable
+credits. If multiple DLB-based applications are being used, it may be desirable
 to control how many load-balanced credits each application uses, particularly
 when application(s) are written to configure nb_events_limit equal to the
 reported max_num_events.
 
 Each port is a member of both credit pools. A port's credit allocation is
 defined by its low watermark, high watermark, and refill quanta. These three
-parameters are calculated by the dlb PMD like so:
+parameters are calculated by the DLB PMD like so:
 
 - The load-balanced high watermark is set to the port's enqueue_depth.
   The directed high watermark is set to the minimum of the enqueue_depth and
@@ -220,16 +193,16 @@ order to reach the limit.
 
 If a port attempts to enqueue and has no credits available, the enqueue
 operation will fail and the application must retry the enqueue. Credits are
-replenished asynchronously by the DLB2 hardware.
+replenished asynchronously by the DLB hardware.
 
 Software Credits
 ~~~~~~~~~~~~~~~~
 
-The DLB2 is a "closed system" event dev, and the DLB2 PMD layers a software
+The DLB is a "closed system" event dev, and the DLB PMD layers a software
 credit scheme on top of the hardware credit scheme in order to comply with
 the per-port backpressure described in the eventdev API.
 
-The DLB2's hardware scheme is local to a queue/pipeline stage: a port spends a
+The DLB's hardware scheme is local to a queue/pipeline stage: a port spends a
 credit when it enqueues to a queue, and credits are later replenished after the
 events are dequeued and released.
 
@@ -249,8 +222,8 @@ credits are used to enqueue to a load-balanced queue, and directed credits are
 used to enqueue to a directed queue.
 
 The out-of-credit situations are typically transient, and an eventdev
-application using the DLB2 ought to retry its enqueues if they fail.
-If enqueue fails, DLB2 PMD sets rte_errno as follows:
+application using the DLB ought to retry its enqueues if they fail.
+If enqueue fails, DLB PMD sets rte_errno as follows:
 
 - -ENOSPC: Credit exhaustion (either hardware or software)
 - -EINVAL: Invalid argument, such as port ID, queue ID, or sched_type.
@@ -272,21 +245,27 @@ the port's dequeue_depth).
 Priority
 ~~~~~~~~
 
-The DLB2 supports event priority and per-port queue service priority, as
-described in the eventdev header file. The DLB2 does not support 'global' event
+The DLB supports event priority and per-port queue service priority, as
+described in the eventdev header file. The DLB does not support 'global' event
 queue priority established at queue creation time.
 
-DLB2 supports 8 event and queue service priority levels. For both priority
-types, the PMD uses the upper three bits of the priority field to determine the
-DLB2 priority, discarding the 5 least significant bits. The 5 least significant
-event priority bits are not preserved when an event is enqueued.
+DLB supports 4 event and queue service priority levels. For both priority types,
+the PMD uses the upper three bits of the priority field to determine the DLB
+priority, discarding the 5 least significant bits. But least significant bit out
+of 3 priority bits is effectively ignored for binning into 4 priorities. The
+discarded 5 least significant event priority bits are not preserved when an event
+is enqueued.
+
+Note that event priority only works within the same event type.
+When atomic and ordered or unordered events are enqueued to same QID, priority
+across the types is always equal, and both types are served in a round robin manner.
 
 Reconfiguration
 ~~~~~~~~~~~~~~~
 
 The Eventdev API allows one to reconfigure a device, its ports, and its queues
 by first stopping the device, calling the configuration function(s), then
-restarting the device. The DLB2 does not support configuring an individual queue
+restarting the device. The DLB does not support configuring an individual queue
 or port without first reconfiguring the entire device, however, so there are
 certain reconfiguration sequences that are valid in the eventdev API but not
 supported by the PMD.
@@ -317,9 +296,9 @@ before its ports or queues can be.
 Deferred Scheduling
 ~~~~~~~~~~~~~~~~~~~
 
-The DLB2 PMD's default behavior for managing a CQ is to "pop" the CQ once per
+The DLB PMD's default behavior for managing a CQ is to "pop" the CQ once per
 dequeued event before returning from rte_event_dequeue_burst(). This frees the
-corresponding entries in the CQ, which enables the DLB2 to schedule more events
+corresponding entries in the CQ, which enables the DLB to schedule more events
 to it.
 
 To support applications seeking finer-grained scheduling control -- for example
@@ -333,12 +312,12 @@ To enable deferred scheduling, use the defer_sched vdev argument like so:
 
     .. code-block:: console
 
-       --vdev=dlb1_event,defer_sched=on
+       --vdev=dlb2_event,defer_sched=on
 
 Atomic Inflights Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the last stage prior to scheduling an atomic event to a CQ, DLB2 holds the
+In the last stage prior to scheduling an atomic event to a CQ, DLB holds the
 inflight event in a temporary buffer that is divided among load-balanced
 queues. If a queue's atomic buffer storage fills up, this can result in
 head-of-line-blocking. For example:
@@ -361,12 +340,12 @@ increase a vdev's per-queue atomic-inflight allocation to (for example) 64:
 
     .. code-block:: console
 
-       --vdev=dlb1_event,atm_inflights=64
+       --vdev=dlb2_event,atm_inflights=64
 
 QID Depth Threshold
 ~~~~~~~~~~~~~~~~~~~
 
-DLB2 supports setting and tracking queue depth thresholds. Hardware uses
+DLB supports setting and tracking queue depth thresholds. Hardware uses
 the thresholds to track how full a queue is compared to its threshold.
 Four buckets are used
 
@@ -375,7 +354,7 @@ Four buckets are used
 - Greater than 75%, but less than or equal to 100% of depth threshold
 - Greater than 100% of depth thresholds
 
-Per queue threshold metrics are tracked in the DLB2 xstats, and are also
+Per queue threshold metrics are tracked in the DLB xstats, and are also
 returned in the impl_opaque field of each received event.
 
 The per qid threshold can be specified as part of the device args, and
@@ -391,12 +370,12 @@ shown below.
 Class of service
 ~~~~~~~~~~~~~~~~
 
-DLB2 supports provisioning the DLB2 bandwidth into 4 classes of service.
+DLB supports provisioning the DLB bandwidth into 4 classes of service.
 
-- Class 4 corresponds to 40% of the DLB2 hardware bandwidth
-- Class 3 corresponds to 30% of the DLB2 hardware bandwidth
-- Class 2 corresponds to 20% of the DLB2 hardware bandwidth
-- Class 1 corresponds to 10% of the DLB2 hardware bandwidth
+- Class 4 corresponds to 40% of the DLB hardware bandwidth
+- Class 3 corresponds to 30% of the DLB hardware bandwidth
+- Class 2 corresponds to 20% of the DLB hardware bandwidth
+- Class 1 corresponds to 10% of the DLB hardware bandwidth
 - Class 0 corresponds to don't care
 
 The classes are applied globally to the set of ports contained in this
