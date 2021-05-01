@@ -5774,3 +5774,133 @@ int dlb2_hw_pending_port_unmaps(struct dlb2_hw *hw,
 
 	return 0;
 }
+
+static int dlb2_verify_start_domain_args(struct dlb2_hw *hw,
+					 u32 domain_id,
+					 struct dlb2_cmd_response *resp,
+					 bool vdev_req,
+					 unsigned int vdev_id,
+					 struct dlb2_hw_domain **out_domain)
+{
+	struct dlb2_hw_domain *domain;
+
+	domain = dlb2_get_domain_from_id(hw, domain_id, vdev_req, vdev_id);
+
+	if (!domain) {
+		resp->status = DLB2_ST_INVALID_DOMAIN_ID;
+		return -EINVAL;
+	}
+
+	if (!domain->configured) {
+		resp->status = DLB2_ST_DOMAIN_NOT_CONFIGURED;
+		return -EINVAL;
+	}
+
+	if (domain->started) {
+		resp->status = DLB2_ST_DOMAIN_STARTED;
+		return -EINVAL;
+	}
+
+	*out_domain = domain;
+
+	return 0;
+}
+
+static void dlb2_log_start_domain(struct dlb2_hw *hw,
+				  u32 domain_id,
+				  bool vdev_req,
+				  unsigned int vdev_id)
+{
+	DLB2_HW_DBG(hw, "DLB2 start domain arguments:\n");
+	if (vdev_req)
+		DLB2_HW_DBG(hw, "(Request from vdev %d)\n", vdev_id);
+	DLB2_HW_DBG(hw, "\tDomain ID: %d\n", domain_id);
+}
+
+/**
+ * dlb2_hw_start_domain() - start a scheduling domain
+ * @hw: dlb2_hw handle for a particular device.
+ * @domain_id: domain ID.
+ * @arg: start domain arguments.
+ * @resp: response structure.
+ * @vdev_req: indicates whether this request came from a vdev.
+ * @vdev_id: If vdev_req is true, this contains the vdev's ID.
+ *
+ * This function starts a scheduling domain, which allows applications to send
+ * traffic through it. Once a domain is started, its resources can no longer be
+ * configured (besides QID remapping and port enable/disable).
+ *
+ * A vdev can be either an SR-IOV virtual function or a Scalable IOV virtual
+ * device.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error.
+ *
+ * Errors:
+ * EINVAL - the domain is not configured, or the domain is already started.
+ */
+int
+dlb2_hw_start_domain(struct dlb2_hw *hw,
+		     u32 domain_id,
+		     struct dlb2_start_domain_args *args,
+		     struct dlb2_cmd_response *resp,
+		     bool vdev_req,
+		     unsigned int vdev_id)
+{
+	struct dlb2_list_entry *iter;
+	struct dlb2_dir_pq_pair *dir_queue;
+	struct dlb2_ldb_queue *ldb_queue;
+	struct dlb2_hw_domain *domain;
+	int ret;
+	RTE_SET_USED(args);
+	RTE_SET_USED(iter);
+
+	dlb2_log_start_domain(hw, domain_id, vdev_req, vdev_id);
+
+	ret = dlb2_verify_start_domain_args(hw,
+					    domain_id,
+					    resp,
+					    vdev_req,
+					    vdev_id,
+					    &domain);
+	if (ret)
+		return ret;
+
+	/*
+	 * Enable load-balanced and directed queue write permissions for the
+	 * queues this domain owns. Without this, the DLB2 will drop all
+	 * incoming traffic to those queues.
+	 */
+	DLB2_DOM_LIST_FOR(domain->used_ldb_queues, ldb_queue, iter) {
+		u32 vasqid_v = 0;
+		unsigned int offs;
+
+		DLB2_BIT_SET(vasqid_v, DLB2_SYS_LDB_VASQID_V_VASQID_V);
+
+		offs = domain->id.phys_id * DLB2_MAX_NUM_LDB_QUEUES +
+			ldb_queue->id.phys_id;
+
+		DLB2_CSR_WR(hw, DLB2_SYS_LDB_VASQID_V(offs), vasqid_v);
+	}
+
+	DLB2_DOM_LIST_FOR(domain->used_dir_pq_pairs, dir_queue, iter) {
+		u32 vasqid_v = 0;
+		unsigned int offs;
+
+		DLB2_BIT_SET(vasqid_v, DLB2_SYS_DIR_VASQID_V_VASQID_V);
+
+		offs = domain->id.phys_id * DLB2_MAX_NUM_DIR_PORTS(hw->ver) +
+			dir_queue->id.phys_id;
+
+		DLB2_CSR_WR(hw, DLB2_SYS_DIR_VASQID_V(offs), vasqid_v);
+	}
+
+	dlb2_flush_csr(hw);
+
+	domain->started = true;
+
+	resp->status = 0;
+
+	return 0;
+}
