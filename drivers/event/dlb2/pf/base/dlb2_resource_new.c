@@ -6128,3 +6128,108 @@ void dlb2_hw_enable_sparse_ldb_cq_mode(struct dlb2_hw *hw)
 	DLB2_CSR_WR(hw, DLB2_CHP_CFG_CHP_CSR_CTRL, ctrl);
 }
 
+/**
+ * dlb2_get_group_sequence_numbers() - return a group's number of SNs per queue
+ * @hw: dlb2_hw handle for a particular device.
+ * @group_id: sequence number group ID.
+ *
+ * This function returns the configured number of sequence numbers per queue
+ * for the specified group.
+ *
+ * Return:
+ * Returns -EINVAL if group_id is invalid, else the group's SNs per queue.
+ */
+int dlb2_get_group_sequence_numbers(struct dlb2_hw *hw, u32 group_id)
+{
+	if (group_id >= DLB2_MAX_NUM_SEQUENCE_NUMBER_GROUPS)
+		return -EINVAL;
+
+	return hw->rsrcs.sn_groups[group_id].sequence_numbers_per_queue;
+}
+
+/**
+ * dlb2_get_group_sequence_number_occupancy() - return a group's in-use slots
+ * @hw: dlb2_hw handle for a particular device.
+ * @group_id: sequence number group ID.
+ *
+ * This function returns the group's number of in-use slots (i.e. load-balanced
+ * queues using the specified group).
+ *
+ * Return:
+ * Returns -EINVAL if group_id is invalid, else the group's SNs per queue.
+ */
+int dlb2_get_group_sequence_number_occupancy(struct dlb2_hw *hw, u32 group_id)
+{
+	if (group_id >= DLB2_MAX_NUM_SEQUENCE_NUMBER_GROUPS)
+		return -EINVAL;
+
+	return dlb2_sn_group_used_slots(&hw->rsrcs.sn_groups[group_id]);
+}
+
+static void dlb2_log_set_group_sequence_numbers(struct dlb2_hw *hw,
+						u32 group_id,
+						u32 val)
+{
+	DLB2_HW_DBG(hw, "DLB2 set group sequence numbers:\n");
+	DLB2_HW_DBG(hw, "\tGroup ID: %u\n", group_id);
+	DLB2_HW_DBG(hw, "\tValue:    %u\n", val);
+}
+
+/**
+ * dlb2_set_group_sequence_numbers() - assign a group's number of SNs per queue
+ * @hw: dlb2_hw handle for a particular device.
+ * @group_id: sequence number group ID.
+ * @val: requested amount of sequence numbers per queue.
+ *
+ * This function configures the group's number of sequence numbers per queue.
+ * val can be a power-of-two between 32 and 1024, inclusive. This setting can
+ * be configured until the first ordered load-balanced queue is configured, at
+ * which point the configuration is locked.
+ *
+ * Return:
+ * Returns 0 upon success; -EINVAL if group_id or val is invalid, -EPERM if an
+ * ordered queue is configured.
+ */
+int dlb2_set_group_sequence_numbers(struct dlb2_hw *hw,
+				    u32 group_id,
+				    u32 val)
+{
+	const u32 valid_allocations[] = {64, 128, 256, 512, 1024};
+	struct dlb2_sn_group *group;
+	u32 sn_mode = 0;
+	int mode;
+
+	if (group_id >= DLB2_MAX_NUM_SEQUENCE_NUMBER_GROUPS)
+		return -EINVAL;
+
+	group = &hw->rsrcs.sn_groups[group_id];
+
+	/*
+	 * Once the first load-balanced queue using an SN group is configured,
+	 * the group cannot be changed.
+	 */
+	if (group->slot_use_bitmap != 0)
+		return -EPERM;
+
+	for (mode = 0; mode < DLB2_MAX_NUM_SEQUENCE_NUMBER_MODES; mode++)
+		if (val == valid_allocations[mode])
+			break;
+
+	if (mode == DLB2_MAX_NUM_SEQUENCE_NUMBER_MODES)
+		return -EINVAL;
+
+	group->mode = mode;
+	group->sequence_numbers_per_queue = val;
+
+	DLB2_BITS_SET(sn_mode, hw->rsrcs.sn_groups[0].mode,
+		 DLB2_RO_GRP_SN_MODE_SN_MODE_0);
+	DLB2_BITS_SET(sn_mode, hw->rsrcs.sn_groups[1].mode,
+		 DLB2_RO_GRP_SN_MODE_SN_MODE_1);
+
+	DLB2_CSR_WR(hw, DLB2_RO_GRP_SN_MODE(hw->ver), sn_mode);
+
+	dlb2_log_set_group_sequence_numbers(hw, group_id, val);
+
+	return 0;
+}
+

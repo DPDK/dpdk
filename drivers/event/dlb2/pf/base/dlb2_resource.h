@@ -792,8 +792,8 @@ int dlb2_get_group_sequence_number_occupancy(struct dlb2_hw *hw,
  * ordered queue is configured.
  */
 int dlb2_set_group_sequence_numbers(struct dlb2_hw *hw,
-				    unsigned int group_id,
-				    unsigned long val);
+				    u32 group_id,
+				    u32 val);
 
 /**
  * dlb2_reset_domain() - reset a scheduling domain
