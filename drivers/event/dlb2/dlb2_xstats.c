@@ -9,6 +9,7 @@
 
 #include "dlb2_priv.h"
 #include "dlb2_inline_fns.h"
+#include "pf/base/dlb2_regs.h"
 
 enum dlb2_xstats_type {
 	/* common to device and port */
@@ -21,6 +22,7 @@ enum dlb2_xstats_type {
 	zero_polls,			/**< Call dequeue burst and return 0 */
 	tx_nospc_ldb_hw_credits,	/**< Insufficient LDB h/w credits */
 	tx_nospc_dir_hw_credits,	/**< Insufficient DIR h/w credits */
+	tx_nospc_hw_credits,		/**< Insufficient h/w credits */
 	tx_nospc_inflight_max,		/**< Reach the new_event_threshold */
 	tx_nospc_new_event_limit,	/**< Insufficient s/w credits */
 	tx_nospc_inflight_credits,	/**< Port has too few s/w credits */
@@ -29,6 +31,7 @@ enum dlb2_xstats_type {
 	inflight_events,
 	ldb_pool_size,
 	dir_pool_size,
+	pool_size,
 	/* port specific */
 	tx_new,				/**< Send an OP_NEW event */
 	tx_fwd,				/**< Send an OP_FORWARD event */
@@ -129,6 +132,9 @@ dlb2_device_traffic_stat_get(struct dlb2_eventdev *dlb2,
 		case tx_nospc_dir_hw_credits:
 			val += port->stats.traffic.tx_nospc_dir_hw_credits;
 			break;
+		case tx_nospc_hw_credits:
+			val += port->stats.traffic.tx_nospc_hw_credits;
+			break;
 		case tx_nospc_inflight_max:
 			val += port->stats.traffic.tx_nospc_inflight_max;
 			break;
@@ -159,6 +165,7 @@ get_dev_stat(struct dlb2_eventdev *dlb2, uint16_t obj_idx __rte_unused,
 	case zero_polls:
 	case tx_nospc_ldb_hw_credits:
 	case tx_nospc_dir_hw_credits:
+	case tx_nospc_hw_credits:
 	case tx_nospc_inflight_max:
 	case tx_nospc_new_event_limit:
 	case tx_nospc_inflight_credits:
@@ -171,6 +178,8 @@ get_dev_stat(struct dlb2_eventdev *dlb2, uint16_t obj_idx __rte_unused,
 		return dlb2->num_ldb_credits;
 	case dir_pool_size:
 		return dlb2->num_dir_credits;
+	case pool_size:
+		return dlb2->num_credits;
 	default: return -1;
 	}
 }
@@ -202,6 +211,9 @@ get_port_stat(struct dlb2_eventdev *dlb2, uint16_t obj_idx,
 
 	case tx_nospc_dir_hw_credits:
 		return ev_port->stats.traffic.tx_nospc_dir_hw_credits;
+
+	case tx_nospc_hw_credits:
+		return ev_port->stats.traffic.tx_nospc_hw_credits;
 
 	case tx_nospc_inflight_max:
 		return ev_port->stats.traffic.tx_nospc_inflight_max;
@@ -357,6 +369,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		"zero_polls",
 		"tx_nospc_ldb_hw_credits",
 		"tx_nospc_dir_hw_credits",
+		"tx_nospc_hw_credits",
 		"tx_nospc_inflight_max",
 		"tx_nospc_new_event_limit",
 		"tx_nospc_inflight_credits",
@@ -364,6 +377,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		"inflight_events",
 		"ldb_pool_size",
 		"dir_pool_size",
+		"pool_size",
 	};
 	static const enum dlb2_xstats_type dev_types[] = {
 		rx_ok,
@@ -375,6 +389,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		zero_polls,
 		tx_nospc_ldb_hw_credits,
 		tx_nospc_dir_hw_credits,
+		tx_nospc_hw_credits,
 		tx_nospc_inflight_max,
 		tx_nospc_new_event_limit,
 		tx_nospc_inflight_credits,
@@ -382,6 +397,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		inflight_events,
 		ldb_pool_size,
 		dir_pool_size,
+		pool_size,
 	};
 	/* Note: generated device stats are not allowed to be reset. */
 	static const uint8_t dev_reset_allowed[] = {
@@ -394,6 +410,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		0, /* zero_polls */
 		0, /* tx_nospc_ldb_hw_credits */
 		0, /* tx_nospc_dir_hw_credits */
+		0, /* tx_nospc_hw_credits */
 		0, /* tx_nospc_inflight_max */
 		0, /* tx_nospc_new_event_limit */
 		0, /* tx_nospc_inflight_credits */
@@ -401,6 +418,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		0, /* inflight_events */
 		0, /* ldb_pool_size */
 		0, /* dir_pool_size */
+		0, /* pool_size */
 	};
 	static const char * const port_stats[] = {
 		"is_configured",
@@ -415,6 +433,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		"zero_polls",
 		"tx_nospc_ldb_hw_credits",
 		"tx_nospc_dir_hw_credits",
+		"tx_nospc_hw_credits",
 		"tx_nospc_inflight_max",
 		"tx_nospc_new_event_limit",
 		"tx_nospc_inflight_credits",
@@ -448,6 +467,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		zero_polls,
 		tx_nospc_ldb_hw_credits,
 		tx_nospc_dir_hw_credits,
+		tx_nospc_hw_credits,
 		tx_nospc_inflight_max,
 		tx_nospc_new_event_limit,
 		tx_nospc_inflight_credits,
@@ -481,6 +501,7 @@ dlb2_xstats_init(struct dlb2_eventdev *dlb2)
 		1, /* zero_polls */
 		1, /* tx_nospc_ldb_hw_credits */
 		1, /* tx_nospc_dir_hw_credits */
+		1, /* tx_nospc_hw_credits */
 		1, /* tx_nospc_inflight_max */
 		1, /* tx_nospc_new_event_limit */
 		1, /* tx_nospc_inflight_credits */
@@ -935,8 +956,8 @@ dlb2_eventdev_xstats_reset(struct rte_eventdev *dev,
 		break;
 	case RTE_EVENT_DEV_XSTATS_PORT:
 		if (queue_port_id == -1) {
-			for (i = 0; i < DLB2_MAX_NUM_PORTS(dlb2->version);
-					i++) {
+			for (i = 0;
+			     i < DLB2_MAX_NUM_PORTS(dlb2->version); i++) {
 				if (dlb2_xstats_reset_port(dlb2, i,
 							   ids, nb_ids))
 					return -EINVAL;
@@ -949,8 +970,8 @@ dlb2_eventdev_xstats_reset(struct rte_eventdev *dev,
 		break;
 	case RTE_EVENT_DEV_XSTATS_QUEUE:
 		if (queue_port_id == -1) {
-			for (i = 0; i < DLB2_MAX_NUM_QUEUES(dlb2->version);
-					i++) {
+			for (i = 0;
+			     i < DLB2_MAX_NUM_QUEUES(dlb2->version); i++) {
 				if (dlb2_xstats_reset_queue(dlb2, i,
 							    ids, nb_ids))
 					return -EINVAL;
@@ -1048,6 +1069,9 @@ dlb2_eventdev_dump(struct rte_eventdev *dev, FILE *f)
 	fprintf(f, "\tnum_dir_credits = %u\n",
 		dlb2->hw_rsrc_query_results.num_dir_credits);
 
+	fprintf(f, "\tnum_credits = %u\n",
+		dlb2->hw_rsrc_query_results.num_credits);
+
 	/* Port level information */
 
 	for (i = 0; i < dlb2->num_ports; i++) {
@@ -1102,6 +1126,12 @@ dlb2_eventdev_dump(struct rte_eventdev *dev, FILE *f)
 		fprintf(f, "\tdir_credits = %u\n",
 			p->qm_port.dir_credits);
 
+		fprintf(f, "\tcached_credits = %u\n",
+			p->qm_port.cached_credits);
+
+		fprintf(f, "\tdir_credits = %u\n",
+			p->qm_port.credits);
+
 		fprintf(f, "\tgenbit=%d, cq_idx=%d, cq_depth=%d\n",
 			p->qm_port.gen_bit,
 			p->qm_port.cq_idx,
@@ -1138,6 +1168,9 @@ dlb2_eventdev_dump(struct rte_eventdev *dev, FILE *f)
 
 		fprintf(f, "\t\ttx_nospc_dir_hw_credits %" PRIu64 "\n",
 			p->stats.traffic.tx_nospc_dir_hw_credits);
+
+		fprintf(f, "\t\ttx_nospc_hw_credits %" PRIu64 "\n",
+			p->stats.traffic.tx_nospc_hw_credits);
 
 		fprintf(f, "\t\ttx_nospc_inflight_max %" PRIu64 "\n",
 			p->stats.traffic.tx_nospc_inflight_max);
