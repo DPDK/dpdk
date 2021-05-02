@@ -29,7 +29,7 @@
 
 /**
  * @file
- * PCI probing under linux (VFIO version)
+ * PCI probing using Linux VFIO.
  *
  * This code tries to determine if the PCI device is bound to VFIO driver,
  * and initialize it (map BARs, set up interrupts) if that's the case.

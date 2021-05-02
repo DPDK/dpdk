@@ -8,8 +8,7 @@
 
 /**
  * @file
- *
- * RTE PCI Bus Interface
+ * PCI device & driver interface
  */
 
 #ifdef __cplusplus

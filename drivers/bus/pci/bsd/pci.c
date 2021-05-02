@@ -45,14 +45,7 @@
 
 /**
  * @file
- * PCI probing under BSD
- *
- * This code is used to simulate a PCI probe by parsing information in
- * sysfs. Moreover, when a registered driver matches a device, the
- * kernel driver currently using it is unloaded and replaced by
- * nic_uio module, which is a very minimal userland driver for Intel
- * network card, only providing access to PCI BAR to applications, and
- * enabling bus master.
+ * PCI probing under BSD.
  */
 
 extern struct rte_pci_bus rte_pci_bus;

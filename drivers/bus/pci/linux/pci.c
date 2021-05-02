@@ -21,11 +21,7 @@
 
 /**
  * @file
- * PCI probing under linux
- *
- * This code is used to simulate a PCI probe by parsing information in sysfs.
- * When a registered device matches a driver, it is then initialized with
- * IGB_UIO driver (or doesn't initialize, if the device wasn't bound to it).
+ * PCI probing using Linux sysfs.
  */
 
 extern struct rte_pci_bus rte_pci_bus;
