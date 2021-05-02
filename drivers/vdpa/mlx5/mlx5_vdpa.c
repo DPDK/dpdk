@@ -44,7 +44,7 @@
 
 #define MLX5_VDPA_MAX_RETRIES 20
 #define MLX5_VDPA_USEC 1000
-#define MLX5_VDPA_DEFAULT_NO_TRAFFIC_TIME_S 2LLU
+#define MLX5_VDPA_DEFAULT_NO_TRAFFIC_MAX 16LLU
 
 TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
 					      TAILQ_HEAD_INITIALIZER(priv_list);
@@ -604,7 +604,7 @@ mlx5_vdpa_args_check_handler(const char *key, const char *val, void *opaque)
 	} else if (strcmp(key, "event_us") == 0) {
 		priv->event_us = (uint32_t)tmp;
 	} else if (strcmp(key, "no_traffic_time") == 0) {
-		priv->no_traffic_time_s = (uint32_t)tmp;
+		priv->no_traffic_max = (uint32_t)tmp;
 	} else if (strcmp(key, "event_core") == 0) {
 		if (tmp >= (unsigned long)n_cores)
 			DRV_LOG(WARNING, "Invalid event_core %s.", val);
@@ -630,7 +630,7 @@ mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
 	priv->event_mode = MLX5_VDPA_EVENT_MODE_FIXED_TIMER;
 	priv->event_us = 0;
 	priv->event_core = -1;
-	priv->no_traffic_time_s = MLX5_VDPA_DEFAULT_NO_TRAFFIC_TIME_S;
+	priv->no_traffic_max = MLX5_VDPA_DEFAULT_NO_TRAFFIC_MAX;
 	if (devargs == NULL)
 		return;
 	kvlist = rte_kvargs_parse(devargs->args, NULL);
@@ -643,7 +643,7 @@ mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
 		priv->event_us = MLX5_VDPA_DEFAULT_TIMER_STEP_US;
 	DRV_LOG(DEBUG, "event mode is %d.", priv->event_mode);
 	DRV_LOG(DEBUG, "event_us is %u us.", priv->event_us);
-	DRV_LOG(DEBUG, "no traffic time is %u s.", priv->no_traffic_time_s);
+	DRV_LOG(DEBUG, "no traffic max is %u.", priv->no_traffic_max);
 }
 
 /**

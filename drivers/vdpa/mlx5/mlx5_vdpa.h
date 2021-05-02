@@ -120,16 +120,13 @@ struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	uint8_t configured;
 	pthread_mutex_t vq_config_lock;
-	uint64_t last_traffic_tic;
+	uint64_t no_traffic_counter;
 	pthread_t timer_tid;
-	pthread_mutex_t timer_lock;
-	pthread_cond_t timer_cond;
-	volatile uint8_t timer_on;
 	int event_mode;
 	int event_core; /* Event thread cpu affinity core. */
 	uint32_t event_us;
 	uint32_t timer_delay_us;
-	uint32_t no_traffic_time_s;
+	uint32_t no_traffic_max;
 	uint8_t hw_latency_mode; /* Hardware CQ moderation mode. */
 	uint16_t hw_max_latency_us; /* Hardware CQ moderation period in usec. */
 	uint16_t hw_max_pending_comp; /* Hardware CQ moderation counter. */
@@ -146,7 +143,6 @@ struct mlx5_vdpa_priv {
 	struct mlx5dv_devx_event_channel *eventc;
 	struct mlx5dv_devx_event_channel *err_chnl;
 	struct mlx5dv_devx_uar *uar;
-	struct rte_intr_handle intr_handle;
 	struct rte_intr_handle err_intr_handle;
 	struct mlx5_devx_obj *td;
 	struct mlx5_devx_obj *tiss[16]; /* TIS list for each LAG port. */

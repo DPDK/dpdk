@@ -36,17 +36,6 @@ mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 	}
 #ifdef HAVE_IBV_DEVX_EVENT
 	if (priv->eventc) {
-		union {
-			struct mlx5dv_devx_async_event_hdr event_resp;
-			uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr)
-									 + 128];
-		} out;
-
-		/* Clean all pending events. */
-		while (mlx5_glue->devx_get_event(priv->eventc, &out.event_resp,
-		       sizeof(out.buf)) >=
-		       (ssize_t)sizeof(out.event_resp.cookie))
-			;
 		mlx5_os_devx_destroy_event_channel(priv->eventc);
 		priv->eventc = NULL;
 	}
@@ -57,8 +46,6 @@ mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 {
-	int flags, ret;
-
 	if (priv->eventc)
 		return 0;
 	priv->eventc = mlx5_os_devx_create_event_channel(priv->ctx,
@@ -67,12 +54,6 @@ mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to create event channel %d.",
 			rte_errno);
-		goto error;
-	}
-	flags = fcntl(priv->eventc->fd, F_GETFL);
-	ret = fcntl(priv->eventc->fd, F_SETFL, flags | O_NONBLOCK);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to change event channel FD.");
 		goto error;
 	}
 	/*
@@ -238,122 +219,112 @@ mlx5_vdpa_timer_sleep(struct mlx5_vdpa_priv *priv, uint32_t max)
 		sched_yield();
 }
 
-static void *
-mlx5_vdpa_poll_handle(void *arg)
+/* Notify virtio device for specific virtq new traffic. */
+static uint32_t
+mlx5_vdpa_queue_complete(struct mlx5_vdpa_cq *cq)
 {
-	struct mlx5_vdpa_priv *priv = arg;
-	int i;
-	struct mlx5_vdpa_cq *cq;
-	uint32_t max;
-	uint64_t current_tic;
+	uint32_t comp = 0;
 
-	pthread_mutex_lock(&priv->timer_lock);
-	while (!priv->timer_on)
-		pthread_cond_wait(&priv->timer_cond, &priv->timer_lock);
-	pthread_mutex_unlock(&priv->timer_lock);
-	priv->timer_delay_us = priv->event_mode ==
-					    MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER ?
-					      MLX5_VDPA_DEFAULT_TIMER_DELAY_US :
-								 priv->event_us;
-	while (1) {
-		max = 0;
-		pthread_mutex_lock(&priv->vq_config_lock);
-		for (i = 0; i < priv->nr_virtqs; i++) {
-			cq = &priv->virtqs[i].eqp.cq;
-			if (cq->cq_obj.cq && !cq->armed) {
-				uint32_t comp = mlx5_vdpa_cq_poll(cq);
-
-				if (comp) {
-					/* Notify guest for descs consuming. */
-					if (cq->callfd != -1)
-						eventfd_write(cq->callfd,
-							      (eventfd_t)1);
-					if (comp > max)
-						max = comp;
-				}
-			}
+	if (cq->cq_obj.cq) {
+		comp = mlx5_vdpa_cq_poll(cq);
+		if (comp) {
+			if (cq->callfd != -1)
+				eventfd_write(cq->callfd, (eventfd_t)1);
+			cq->armed = 0;
 		}
-		current_tic = rte_rdtsc();
-		if (!max) {
-			/* No traffic ? stop timer and load interrupts. */
-			if (current_tic - priv->last_traffic_tic >=
-			    rte_get_timer_hz() * priv->no_traffic_time_s) {
-				DRV_LOG(DEBUG, "Device %s traffic was stopped.",
-					priv->vdev->device->name);
-				mlx5_vdpa_arm_all_cqs(priv);
-				pthread_mutex_unlock(&priv->vq_config_lock);
-				pthread_mutex_lock(&priv->timer_lock);
-				priv->timer_on = 0;
-				while (!priv->timer_on)
-					pthread_cond_wait(&priv->timer_cond,
-							  &priv->timer_lock);
-				pthread_mutex_unlock(&priv->timer_lock);
-				priv->timer_delay_us = priv->event_mode ==
-					    MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER ?
-					      MLX5_VDPA_DEFAULT_TIMER_DELAY_US :
-								 priv->event_us;
-				continue;
-			}
-		} else {
-			priv->last_traffic_tic = current_tic;
-		}
-		pthread_mutex_unlock(&priv->vq_config_lock);
-		mlx5_vdpa_timer_sleep(priv, max);
 	}
-	return NULL;
+	return comp;
 }
 
-static void
-mlx5_vdpa_interrupt_handler(void *cb_arg)
+/* Notify virtio device for any virtq new traffic. */
+static uint32_t
+mlx5_vdpa_queues_complete(struct mlx5_vdpa_priv *priv)
 {
-	struct mlx5_vdpa_priv *priv = cb_arg;
+	int i;
+	uint32_t max = 0;
+
+	for (i = 0; i < priv->nr_virtqs; i++) {
+		struct mlx5_vdpa_cq *cq = &priv->virtqs[i].eqp.cq;
+		uint32_t comp = mlx5_vdpa_queue_complete(cq);
+
+		if (comp > max)
+			max = comp;
+	}
+	return max;
+}
+
+/* Wait on all CQs channel for completion event. */
+static struct mlx5_vdpa_cq *
+mlx5_vdpa_event_wait(struct mlx5_vdpa_priv *priv __rte_unused)
+{
 #ifdef HAVE_IBV_DEVX_EVENT
 	union {
 		struct mlx5dv_devx_async_event_hdr event_resp;
 		uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr) + 128];
 	} out;
+	int ret = mlx5_glue->devx_get_event(priv->eventc, &out.event_resp,
+					    sizeof(out.buf));
 
-	pthread_mutex_lock(&priv->vq_config_lock);
-	while (mlx5_glue->devx_get_event(priv->eventc, &out.event_resp,
-					 sizeof(out.buf)) >=
-				       (ssize_t)sizeof(out.event_resp.cookie)) {
-		struct mlx5_vdpa_cq *cq = (struct mlx5_vdpa_cq *)
-					       (uintptr_t)out.event_resp.cookie;
-		struct mlx5_vdpa_event_qp *eqp = container_of(cq,
-						 struct mlx5_vdpa_event_qp, cq);
-		struct mlx5_vdpa_virtq *virtq = container_of(eqp,
-						   struct mlx5_vdpa_virtq, eqp);
-
-		if (!virtq->enable)
-			continue;
-		mlx5_vdpa_cq_poll(cq);
-		/* Notify guest for descs consuming. */
-		if (cq->callfd != -1)
-			eventfd_write(cq->callfd, (eventfd_t)1);
-		if (priv->event_mode == MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT) {
-			mlx5_vdpa_cq_arm(priv, cq);
-			pthread_mutex_unlock(&priv->vq_config_lock);
-			return;
-		}
-		/* Don't arm again - timer will take control. */
-		DRV_LOG(DEBUG, "Device %s virtq %d cq %d event was captured."
-			" Timer is %s, cq ci is %u.\n",
-			priv->vdev->device->name,
-			(int)virtq->index, cq->cq_obj.cq->id,
-			priv->timer_on ? "on" : "off", cq->cq_ci);
-		cq->armed = 0;
-	}
+	if (ret >= 0)
+		return (struct mlx5_vdpa_cq *)(uintptr_t)out.event_resp.cookie;
+	DRV_LOG(INFO, "Got error in devx_get_event, ret = %d, errno = %d.",
+		ret, errno);
 #endif
+	return NULL;
+}
 
-	/* Traffic detected: make sure timer is on. */
-	priv->last_traffic_tic = rte_rdtsc();
-	pthread_mutex_lock(&priv->timer_lock);
-	if (!priv->timer_on) {
-		priv->timer_on = 1;
-		pthread_cond_signal(&priv->timer_cond);
+static void *
+mlx5_vdpa_event_handle(void *arg)
+{
+	struct mlx5_vdpa_priv *priv = arg;
+	struct mlx5_vdpa_cq *cq;
+	uint32_t max;
+
+	switch (priv->event_mode) {
+	case MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER:
+	case MLX5_VDPA_EVENT_MODE_FIXED_TIMER:
+		priv->timer_delay_us = priv->event_us;
+		while (1) {
+			pthread_mutex_lock(&priv->vq_config_lock);
+			max = mlx5_vdpa_queues_complete(priv);
+			if (max == 0 && priv->no_traffic_counter++ >=
+			    priv->no_traffic_max) {
+				DRV_LOG(DEBUG, "Device %s traffic was stopped.",
+					priv->vdev->device->name);
+				mlx5_vdpa_arm_all_cqs(priv);
+				do {
+					pthread_mutex_unlock
+							(&priv->vq_config_lock);
+					cq = mlx5_vdpa_event_wait(priv);
+					pthread_mutex_lock
+							(&priv->vq_config_lock);
+					if (cq == NULL ||
+					       mlx5_vdpa_queue_complete(cq) > 0)
+						break;
+				} while (1);
+				priv->timer_delay_us = priv->event_us;
+				priv->no_traffic_counter = 0;
+			} else if (max != 0) {
+				priv->no_traffic_counter = 0;
+			}
+			pthread_mutex_unlock(&priv->vq_config_lock);
+			mlx5_vdpa_timer_sleep(priv, max);
+		}
+		return NULL;
+	case MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT:
+		do {
+			cq = mlx5_vdpa_event_wait(priv);
+			if (cq != NULL) {
+				pthread_mutex_lock(&priv->vq_config_lock);
+				if (mlx5_vdpa_queue_complete(cq) > 0)
+					mlx5_vdpa_cq_arm(priv, cq);
+				pthread_mutex_unlock(&priv->vq_config_lock);
+			}
+		} while (1);
+		return NULL;
+	default:
+		return NULL;
 	}
-	pthread_mutex_unlock(&priv->timer_lock);
-	pthread_mutex_unlock(&priv->vq_config_lock);
 }
 
 static void
@@ -511,80 +482,45 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 	if (!priv->eventc)
 		/* All virtqs are in poll mode. */
 		return 0;
-	if (priv->event_mode != MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT) {
-		pthread_mutex_init(&priv->timer_lock, NULL);
-		pthread_cond_init(&priv->timer_cond, NULL);
-		priv->timer_on = 0;
-		pthread_attr_init(&attr);
-		ret = pthread_attr_setschedpolicy(&attr, SCHED_RR);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to set thread sched policy = RR.");
-			return -1;
-		}
-		ret = pthread_attr_setschedparam(&attr, &sp);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to set thread priority.");
-			return -1;
-		}
-		ret = pthread_create(&priv->timer_tid, &attr,
-				     mlx5_vdpa_poll_handle, (void *)priv);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to create timer thread.");
-			return -1;
-		}
-		CPU_ZERO(&cpuset);
-		if (priv->event_core != -1)
-			CPU_SET(priv->event_core, &cpuset);
-		else
-			cpuset = rte_lcore_cpuset(rte_get_main_lcore());
-		ret = pthread_setaffinity_np(priv->timer_tid,
-					     sizeof(cpuset), &cpuset);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to set thread affinity.");
-			goto error;
-		}
-		snprintf(name, sizeof(name), "vDPA-mlx5-%d", priv->vid);
-		ret = rte_thread_setname(priv->timer_tid, name);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to set timer thread name.");
-			return -1;
-		}
+	pthread_attr_init(&attr);
+	ret = pthread_attr_setschedpolicy(&attr, SCHED_RR);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to set thread sched policy = RR.");
+		return -1;
 	}
-	priv->intr_handle.fd = priv->eventc->fd;
-	priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
-	if (rte_intr_callback_register(&priv->intr_handle,
-				       mlx5_vdpa_interrupt_handler, priv)) {
-		priv->intr_handle.fd = 0;
-		DRV_LOG(ERR, "Failed to register CQE interrupt %d.", rte_errno);
-		goto error;
+	ret = pthread_attr_setschedparam(&attr, &sp);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to set thread priority.");
+		return -1;
 	}
+	ret = pthread_create(&priv->timer_tid, &attr, mlx5_vdpa_event_handle,
+			     (void *)priv);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to create timer thread.");
+		return -1;
+	}
+	CPU_ZERO(&cpuset);
+	if (priv->event_core != -1)
+		CPU_SET(priv->event_core, &cpuset);
+	else
+		cpuset = rte_lcore_cpuset(rte_get_main_lcore());
+	ret = pthread_setaffinity_np(priv->timer_tid, sizeof(cpuset), &cpuset);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to set thread affinity.");
+		return -1;
+	}
+	snprintf(name, sizeof(name), "vDPA-mlx5-%d", priv->vid);
+	ret = rte_thread_setname(priv->timer_tid, name);
+	if (ret)
+		DRV_LOG(DEBUG, "Cannot set timer thread name.");
 	return 0;
-error:
-	mlx5_vdpa_cqe_event_unset(priv);
-	return -1;
 }
 
 void
 mlx5_vdpa_cqe_event_unset(struct mlx5_vdpa_priv *priv)
 {
-	int retries = MLX5_VDPA_INTR_RETRIES;
-	int ret = -EAGAIN;
 	void *status;
 
-	if (priv->intr_handle.fd) {
-		while (retries-- && ret == -EAGAIN) {
-			ret = rte_intr_callback_unregister(&priv->intr_handle,
-						    mlx5_vdpa_interrupt_handler,
-						    priv);
-			if (ret == -EAGAIN) {
-				DRV_LOG(DEBUG, "Try again to unregister fd %d "
-					"of CQ interrupt, retries = %d.",
-					priv->intr_handle.fd, retries);
-				rte_pause();
-			}
-		}
-		memset(&priv->intr_handle, 0, sizeof(priv->intr_handle));
-	}
 	if (priv->timer_tid) {
 		pthread_cancel(priv->timer_tid);
 		pthread_join(priv->timer_tid, &status);

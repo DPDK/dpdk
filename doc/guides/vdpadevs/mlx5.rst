@@ -129,10 +129,10 @@ Driver options
 
 - ``no_traffic_time`` parameter [int]
 
-  A nonzero value defines the traffic off time, in seconds, that moves the
-  driver to no-traffic mode. In this mode the timer events are stopped and
-  interrupts are configured to the device in order to notify traffic for the
-  driver. Default value is 2s.
+  A nonzero value defines the traffic off time, in polling cycle time units,
+  that moves the driver to no-traffic mode. In this mode the polling is stopped
+  and interrupts are configured to the device in order to notify traffic for the
+  driver. Default value is 16.
 
 - ``event_core`` parameter [int]
 
