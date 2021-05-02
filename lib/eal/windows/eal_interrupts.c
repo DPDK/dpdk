@@ -10,6 +10,7 @@
 static pthread_t intr_thread;
 
 static HANDLE intr_iocp;
+static HANDLE intr_thread_handle;
 
 static void
 eal_intr_process(const OVERLAPPED_ENTRY *event)
@@ -17,9 +18,27 @@ eal_intr_process(const OVERLAPPED_ENTRY *event)
 	RTE_SET_USED(event);
 }
 
+static int
+eal_intr_thread_handle_init(void)
+{
+	DWORD thread_id = GetCurrentThreadId();
+
+	intr_thread_handle = OpenThread(THREAD_ALL_ACCESS, FALSE, thread_id);
+	if (intr_thread_handle == NULL) {
+		RTE_LOG_WIN32_ERR("OpenThread(%lu)", thread_id);
+		return -1;
+	}
+	return 0;
+}
+
 static void *
 eal_intr_thread_main(LPVOID arg __rte_unused)
 {
+	if (eal_intr_thread_handle_init() < 0) {
+		RTE_LOG(ERR, EAL, "Cannot open interrupt thread handle\n");
+		goto cleanup;
+	}
+
 	while (1) {
 		OVERLAPPED_ENTRY events[16];
 		ULONG event_count, i;
@@ -46,6 +65,10 @@ eal_intr_thread_main(LPVOID arg __rte_unused)
 			eal_intr_process(&events[i]);
 	}
 
+	CloseHandle(intr_thread_handle);
+	intr_thread_handle = NULL;
+
+cleanup:
 	intr_thread = 0;
 
 	CloseHandle(intr_iocp);
@@ -93,15 +116,8 @@ rte_intr_rx_ctl(__rte_unused struct rte_intr_handle *intr_handle,
 int
 eal_intr_thread_schedule(void (*func)(void *arg), void *arg)
 {
-	HANDLE handle;
-
-	handle = OpenThread(THREAD_ALL_ACCESS, FALSE, intr_thread);
-	if (handle == NULL) {
-		RTE_LOG_WIN32_ERR("OpenThread(%llu)", intr_thread);
-		return -ENOENT;
-	}
-
-	if (!QueueUserAPC((PAPCFUNC)(ULONG_PTR)func, handle, (ULONG_PTR)arg)) {
+	if (!QueueUserAPC((PAPCFUNC)(ULONG_PTR)func,
+			intr_thread_handle, (ULONG_PTR)arg)) {
 		RTE_LOG_WIN32_ERR("QueueUserAPC()");
 		return -EINVAL;
 	}
