@@ -46,8 +46,11 @@ eal_intr_thread_main(LPVOID arg __rte_unused)
 			eal_intr_process(&events[i]);
 	}
 
+	intr_thread = 0;
+
 	CloseHandle(intr_iocp);
 	intr_iocp = NULL;
+
 	return NULL;
 }
 
