@@ -7,6 +7,8 @@
 #include "eal_private.h"
 #include "eal_windows.h"
 
+#define IOCP_KEY_SHUTDOWN UINT32_MAX
+
 static pthread_t intr_thread;
 
 static HANDLE intr_iocp;
@@ -34,12 +36,14 @@ eal_intr_thread_handle_init(void)
 static void *
 eal_intr_thread_main(LPVOID arg __rte_unused)
 {
+	bool finished = false;
+
 	if (eal_intr_thread_handle_init() < 0) {
 		RTE_LOG(ERR, EAL, "Cannot open interrupt thread handle\n");
 		goto cleanup;
 	}
 
-	while (1) {
+	while (!finished) {
 		OVERLAPPED_ENTRY events[16];
 		ULONG event_count, i;
 		BOOL result;
@@ -61,8 +65,13 @@ eal_intr_thread_main(LPVOID arg __rte_unused)
 			continue;
 		}
 
-		for (i = 0; i < event_count; i++)
+		for (i = 0; i < event_count; i++) {
+			if (events[i].lpCompletionKey == IOCP_KEY_SHUTDOWN) {
+				finished = true;
+				break;
+			}
 			eal_intr_process(&events[i]);
+		}
 	}
 
 	CloseHandle(intr_thread_handle);
@@ -123,6 +132,19 @@ eal_intr_thread_schedule(void (*func)(void *arg), void *arg)
 	}
 
 	return 0;
+}
+
+void
+eal_intr_thread_cancel(void)
+{
+	if (!PostQueuedCompletionStatus(
+			intr_iocp, 0, IOCP_KEY_SHUTDOWN, NULL)) {
+		RTE_LOG_WIN32_ERR("PostQueuedCompletionStatus()");
+		RTE_LOG(ERR, EAL, "Cannot cancel interrupt thread\n");
+		return;
+	}
+
+	WaitForSingleObject(intr_thread_handle, INFINITE);
 }
 
 int

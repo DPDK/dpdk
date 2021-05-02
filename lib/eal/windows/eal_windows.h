@@ -68,6 +68,11 @@ unsigned int eal_socket_numa_node(unsigned int socket_id);
 int eal_intr_thread_schedule(void (*func)(void *arg), void *arg);
 
 /**
+ * Request interrupt thread to stop and wait its termination.
+ */
+void eal_intr_thread_cancel(void);
+
+/**
  * Open virt2phys driver interface device.
  *
  * @return 0 on success, (-1) on failure.
