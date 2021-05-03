@@ -36,6 +36,7 @@ extern "C" {
 /* support only linear buffers (no chained mbufs) */
 #define RTE_VHOST_USER_LINEARBUF_SUPPORT	(1ULL << 6)
 #define RTE_VHOST_USER_ASYNC_COPY	(1ULL << 7)
+#define RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS	(1ULL << 8)
 
 /* Features. */
 #ifndef VIRTIO_NET_F_GUEST_ANNOUNCE

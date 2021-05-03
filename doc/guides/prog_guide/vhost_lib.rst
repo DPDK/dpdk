@@ -118,6 +118,18 @@ The following is an overview of some key Vhost API functions:
 
     It is disabled by default.
 
+  - ``RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS``
+
+    Since v16.04, the vhost library forwards checksum and gso requests for
+    packets received from a virtio driver by filling Tx offload metadata in
+    the mbuf. This behavior is inconsistent with other drivers but it is left
+    untouched for existing applications that might rely on it.
+
+    This flag disables the legacy behavior and instead ask vhost to simply
+    populate Rx offload metadata in the mbuf.
+
+    It is disabled by default.
+
 * ``rte_vhost_driver_set_features(path, features)``
 
   This function sets the feature bits the vhost-user driver supports. The
