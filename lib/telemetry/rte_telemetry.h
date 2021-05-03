@@ -10,8 +10,6 @@
 #ifndef _RTE_TELEMETRY_H_
 #define _RTE_TELEMETRY_H_
 
-/** Maximum number of telemetry callbacks. */
-#define TELEMETRY_MAX_CALLBACKS 64
 /** Maximum length for string used in object. */
 #define RTE_TEL_MAX_STRING_LEN 64
 /** Maximum length of string. */

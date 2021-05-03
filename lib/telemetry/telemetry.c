@@ -27,6 +27,9 @@
 #define MAX_OUTPUT_LEN (1024 * 16)
 #define MAX_CONNECTIONS 10
 
+/** Maximum number of telemetry callbacks. */
+#define TELEMETRY_MAX_CALLBACKS 64
+
 #ifndef RTE_EXEC_ENV_WINDOWS
 static void *
 client_handler(void *socket);
