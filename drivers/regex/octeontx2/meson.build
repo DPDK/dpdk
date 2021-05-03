@@ -12,7 +12,6 @@ lib = cc.find_library('librxp_compiler', required: false)
 if lib.found()
     ext_deps += lib
     ext_deps += cc.find_library('libstdc++', required: true)
-    includes += include_directories(inc_dir)
     cflags += ['-DREE_COMPILER_SDK']
 endif
 
