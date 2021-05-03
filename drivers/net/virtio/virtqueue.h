@@ -622,10 +622,12 @@ virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 			uint8_t offload)
 {
 	if (offload) {
-		if (cookie->ol_flags & PKT_TX_TCP_SEG)
-			cookie->ol_flags |= PKT_TX_TCP_CKSUM;
+		uint64_t csum_l4 = cookie->ol_flags & PKT_TX_L4_MASK;
 
-		switch (cookie->ol_flags & PKT_TX_L4_MASK) {
+		if (cookie->ol_flags & PKT_TX_TCP_SEG)
+			csum_l4 |= PKT_TX_TCP_CKSUM;
+
+		switch (csum_l4) {
 		case PKT_TX_UDP_CKSUM:
 			hdr->csum_start = cookie->l2_len + cookie->l3_len;
 			hdr->csum_offset = offsetof(struct rte_udp_hdr,
