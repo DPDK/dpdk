@@ -83,7 +83,8 @@ extern "C" {
  * Deprecated.
  * This flag has been renamed, use PKT_RX_OUTER_IP_CKSUM_BAD instead.
  */
-#define PKT_RX_EIP_CKSUM_BAD PKT_RX_OUTER_IP_CKSUM_BAD
+#define PKT_RX_EIP_CKSUM_BAD \
+	RTE_DEPRECATED(PKT_RX_EIP_CKSUM_BAD) PKT_RX_OUTER_IP_CKSUM_BAD
 
 /**
  * A vlan has been stripped by the hardware and its tci is saved in
