@@ -4275,6 +4275,8 @@ reset:
 	bp->flags |= BNXT_FLAG_FATAL_ERROR;
 	bp->flags |= BNXT_FLAG_FW_RESET;
 
+	bnxt_stop_rxtx(bp);
+
 	PMD_DRV_LOG(ERR, "Detected FW dead condition\n");
 
 	if (bnxt_is_master_func(bp))
