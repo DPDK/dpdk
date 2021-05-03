@@ -20,6 +20,7 @@
 #include <rte_log.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
+#include <rte_net.h>
 #include <rte_vhost.h>
 #include <rte_ip.h>
 #include <rte_tcp.h>
@@ -911,33 +912,34 @@ find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	return 0;
 }
 
-static uint16_t
-get_psd_sum(void *l3_hdr, uint64_t ol_flags)
-{
-	if (ol_flags & PKT_TX_IPV4)
-		return rte_ipv4_phdr_cksum(l3_hdr, ol_flags);
-	else /* assume ethertype == RTE_ETHER_TYPE_IPV6 */
-		return rte_ipv6_phdr_cksum(l3_hdr, ol_flags);
-}
-
 static void virtio_tx_offload(struct rte_mbuf *m)
 {
+	struct rte_net_hdr_lens hdr_lens;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
+	uint32_t ptype;
 	void *l3_hdr;
-	struct rte_ipv4_hdr *ipv4_hdr = NULL;
-	struct rte_tcp_hdr *tcp_hdr = NULL;
-	struct rte_ether_hdr *eth_hdr =
-		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
-	l3_hdr = (char *)eth_hdr + m->l2_len;
+	ptype = rte_net_get_ptype(m, &hdr_lens, RTE_PTYPE_ALL_MASK);
+	m->l2_len = hdr_lens.l2_len;
+	m->l3_len = hdr_lens.l3_len;
+	m->l4_len = hdr_lens.l4_len;
 
-	if (m->ol_flags & PKT_TX_IPV4) {
+	l3_hdr = rte_pktmbuf_mtod_offset(m, void *, m->l2_len);
+	tcp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_tcp_hdr *,
+		m->l2_len + m->l3_len);
+
+	m->ol_flags |= PKT_TX_TCP_SEG;
+	if ((ptype & RTE_PTYPE_L3_MASK) == RTE_PTYPE_L3_IPV4) {
+		m->ol_flags |= PKT_TX_IPV4;
+		m->ol_flags |= PKT_TX_IP_CKSUM;
 		ipv4_hdr = l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
-		m->ol_flags |= PKT_TX_IP_CKSUM;
+		tcp_hdr->cksum = rte_ipv4_phdr_cksum(l3_hdr, m->ol_flags);
+	} else { /* assume ethertype == RTE_ETHER_TYPE_IPV6 */
+		m->ol_flags |= PKT_TX_IPV6;
+		tcp_hdr->cksum = rte_ipv6_phdr_cksum(l3_hdr, m->ol_flags);
 	}
-
-	tcp_hdr = (struct rte_tcp_hdr *)((char *)l3_hdr + m->l3_len);
-	tcp_hdr->cksum = get_psd_sum(l3_hdr, m->ol_flags);
 }
 
 static inline void
@@ -1039,7 +1041,7 @@ queue2nic:
 		m->vlan_tci = vlan_tag;
 	}
 
-	if (m->ol_flags & PKT_TX_TCP_SEG)
+	if (m->ol_flags & PKT_RX_LRO)
 		virtio_tx_offload(m);
 
 	tx_q->m_table[tx_q->len++] = m;
@@ -1503,7 +1505,7 @@ main(int argc, char *argv[])
 	int ret, i;
 	uint16_t portid;
 	static pthread_t tid;
-	uint64_t flags = 0;
+	uint64_t flags = RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
 
 	signal(SIGINT, sigint_handler);
 

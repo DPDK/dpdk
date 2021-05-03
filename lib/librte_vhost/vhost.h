@@ -27,15 +27,17 @@
 #include "rte_vhost_async.h"
 
 /* Used to indicate that the device is running on a data core */
-#define VIRTIO_DEV_RUNNING 1
+#define VIRTIO_DEV_RUNNING ((uint32_t)1 << 0)
 /* Used to indicate that the device is ready to operate */
-#define VIRTIO_DEV_READY 2
+#define VIRTIO_DEV_READY ((uint32_t)1 << 1)
 /* Used to indicate that the built-in vhost net device backend is enabled */
-#define VIRTIO_DEV_BUILTIN_VIRTIO_NET 4
+#define VIRTIO_DEV_BUILTIN_VIRTIO_NET ((uint32_t)1 << 2)
 /* Used to indicate that the device has its own data path and configured */
-#define VIRTIO_DEV_VDPA_CONFIGURED 8
+#define VIRTIO_DEV_VDPA_CONFIGURED ((uint32_t)1 << 3)
 /* Used to indicate that the feature negotiation failed */
-#define VIRTIO_DEV_FEATURES_FAILED 16
+#define VIRTIO_DEV_FEATURES_FAILED ((uint32_t)1 << 4)
+/* Used to indicate that the virtio_net tx code should fill TX ol_flags */
+#define VIRTIO_DEV_LEGACY_OL_FLAGS ((uint32_t)1 << 5)
 
 /* Backend value set by guest. */
 #define VIRTIO_DEV_STOPPED -1
@@ -672,7 +674,7 @@ int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 void vhost_attach_vdpa_device(int vid, struct rte_vdpa_device *dev);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
-void vhost_set_builtin_virtio_net(int vid, bool enable);
+void vhost_setup_virtio_net(int vid, bool enable, bool legacy_ol_flags);
 void vhost_enable_extbuf(int vid);
 void vhost_enable_linearbuf(int vid);
 int vhost_enable_guest_notification(struct virtio_net *dev,

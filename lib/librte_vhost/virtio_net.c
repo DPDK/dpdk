@@ -8,6 +8,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
+#include <rte_net.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
 #include <rte_vhost.h>
@@ -1844,14 +1845,11 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 }
 
 static __rte_always_inline void
-vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
+vhost_dequeue_offload_legacy(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 {
 	uint16_t l4_proto = 0;
 	void *l4_hdr = NULL;
 	struct rte_tcp_hdr *tcp_hdr = NULL;
-
-	if (hdr->flags == 0 && hdr->gso_type == VIRTIO_NET_HDR_GSO_NONE)
-		return;
 
 	parse_ethernet(m, &l4_proto, &l4_hdr);
 	if (hdr->flags == VIRTIO_NET_HDR_F_NEEDS_CSUM) {
@@ -1897,6 +1895,94 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 	}
 }
 
+static __rte_always_inline void
+vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m,
+	bool legacy_ol_flags)
+{
+	struct rte_net_hdr_lens hdr_lens;
+	int l4_supported = 0;
+	uint32_t ptype;
+
+	if (hdr->flags == 0 && hdr->gso_type == VIRTIO_NET_HDR_GSO_NONE)
+		return;
+
+	if (legacy_ol_flags) {
+		vhost_dequeue_offload_legacy(hdr, m);
+		return;
+	}
+
+	m->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
+
+	ptype = rte_net_get_ptype(m, &hdr_lens, RTE_PTYPE_ALL_MASK);
+	m->packet_type = ptype;
+	if ((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP ||
+	    (ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP ||
+	    (ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_SCTP)
+		l4_supported = 1;
+
+	/* According to Virtio 1.1 spec, the device only needs to look at
+	 * VIRTIO_NET_HDR_F_NEEDS_CSUM in the packet transmission path.
+	 * This differs from the processing incoming packets path where the
+	 * driver could rely on VIRTIO_NET_HDR_F_DATA_VALID flag set by the
+	 * device.
+	 *
+	 * 5.1.6.2.1 Driver Requirements: Packet Transmission
+	 * The driver MUST NOT set the VIRTIO_NET_HDR_F_DATA_VALID and
+	 * VIRTIO_NET_HDR_F_RSC_INFO bits in flags.
+	 *
+	 * 5.1.6.2.2 Device Requirements: Packet Transmission
+	 * The device MUST ignore flag bits that it does not recognize.
+	 */
+	if (hdr->flags & VIRTIO_NET_HDR_F_NEEDS_CSUM) {
+		uint32_t hdrlen;
+
+		hdrlen = hdr_lens.l2_len + hdr_lens.l3_len + hdr_lens.l4_len;
+		if (hdr->csum_start <= hdrlen && l4_supported != 0) {
+			m->ol_flags |= PKT_RX_L4_CKSUM_NONE;
+		} else {
+			/* Unknown proto or tunnel, do sw cksum. We can assume
+			 * the cksum field is in the first segment since the
+			 * buffers we provided to the host are large enough.
+			 * In case of SCTP, this will be wrong since it's a CRC
+			 * but there's nothing we can do.
+			 */
+			uint16_t csum = 0, off;
+
+			if (rte_raw_cksum_mbuf(m, hdr->csum_start,
+					rte_pktmbuf_pkt_len(m) - hdr->csum_start, &csum) < 0)
+				return;
+			if (likely(csum != 0xffff))
+				csum = ~csum;
+			off = hdr->csum_offset + hdr->csum_start;
+			if (rte_pktmbuf_data_len(m) >= off + 1)
+				*rte_pktmbuf_mtod_offset(m, uint16_t *, off) = csum;
+		}
+	}
+
+	if (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
+		if (hdr->gso_size == 0)
+			return;
+
+		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
+		case VIRTIO_NET_HDR_GSO_TCPV4:
+		case VIRTIO_NET_HDR_GSO_TCPV6:
+			if ((ptype & RTE_PTYPE_L4_MASK) != RTE_PTYPE_L4_TCP)
+				break;
+			m->ol_flags |= PKT_RX_LRO | PKT_RX_L4_CKSUM_NONE;
+			m->tso_segsz = hdr->gso_size;
+			break;
+		case VIRTIO_NET_HDR_GSO_UDP:
+			if ((ptype & RTE_PTYPE_L4_MASK) != RTE_PTYPE_L4_UDP)
+				break;
+			m->ol_flags |= PKT_RX_LRO | PKT_RX_L4_CKSUM_NONE;
+			m->tso_segsz = hdr->gso_size;
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 static __rte_noinline void
 copy_vnet_hdr_from_desc(struct virtio_net_hdr *hdr,
 		struct buf_vector *buf_vec)
@@ -1921,7 +2007,8 @@ copy_vnet_hdr_from_desc(struct virtio_net_hdr *hdr,
 static __rte_always_inline int
 copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		  struct buf_vector *buf_vec, uint16_t nr_vec,
-		  struct rte_mbuf *m, struct rte_mempool *mbuf_pool)
+		  struct rte_mbuf *m, struct rte_mempool *mbuf_pool,
+		  bool legacy_ol_flags)
 {
 	uint32_t buf_avail, buf_offset;
 	uint64_t buf_addr, buf_len;
@@ -2054,7 +2141,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	m->pkt_len    += mbuf_offset;
 
 	if (hdr)
-		vhost_dequeue_offload(hdr, m);
+		vhost_dequeue_offload(hdr, m, legacy_ol_flags);
 
 out:
 
@@ -2137,9 +2224,11 @@ virtio_dev_pktmbuf_alloc(struct virtio_net *dev, struct rte_mempool *mp,
 	return NULL;
 }
 
-static __rte_noinline uint16_t
+__rte_always_inline
+static uint16_t
 virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
-	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
+	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count,
+	bool legacy_ol_flags)
 {
 	uint16_t i;
 	uint16_t free_entries;
@@ -2199,7 +2288,7 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		}
 
 		err = copy_desc_to_mbuf(dev, vq, buf_vec, nr_vec, pkts[i],
-				mbuf_pool);
+				mbuf_pool, legacy_ol_flags);
 		if (unlikely(err)) {
 			rte_pktmbuf_free(pkts[i]);
 			if (!allocerr_warned) {
@@ -2225,6 +2314,24 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 
 	return (i - dropped);
+}
+
+__rte_noinline
+static uint16_t
+virtio_dev_tx_split_legacy(struct virtio_net *dev,
+	struct vhost_virtqueue *vq, struct rte_mempool *mbuf_pool,
+	struct rte_mbuf **pkts, uint16_t count)
+{
+	return virtio_dev_tx_split(dev, vq, mbuf_pool, pkts, count, true);
+}
+
+__rte_noinline
+static uint16_t
+virtio_dev_tx_split_compliant(struct virtio_net *dev,
+	struct vhost_virtqueue *vq, struct rte_mempool *mbuf_pool,
+	struct rte_mbuf **pkts, uint16_t count)
+{
+	return virtio_dev_tx_split(dev, vq, mbuf_pool, pkts, count, false);
 }
 
 static __rte_always_inline int
@@ -2307,7 +2414,8 @@ static __rte_always_inline int
 virtio_dev_tx_batch_packed(struct virtio_net *dev,
 			   struct vhost_virtqueue *vq,
 			   struct rte_mempool *mbuf_pool,
-			   struct rte_mbuf **pkts)
+			   struct rte_mbuf **pkts,
+			   bool legacy_ol_flags)
 {
 	uint16_t avail_idx = vq->last_avail_idx;
 	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
@@ -2331,7 +2439,7 @@ virtio_dev_tx_batch_packed(struct virtio_net *dev,
 	if (virtio_net_with_host_offload(dev)) {
 		vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
 			hdr = (struct virtio_net_hdr *)(desc_addrs[i]);
-			vhost_dequeue_offload(hdr, pkts[i]);
+			vhost_dequeue_offload(hdr, pkts[i], legacy_ol_flags);
 		}
 	}
 
@@ -2352,7 +2460,8 @@ vhost_dequeue_single_packed(struct virtio_net *dev,
 			    struct rte_mempool *mbuf_pool,
 			    struct rte_mbuf **pkts,
 			    uint16_t *buf_id,
-			    uint16_t *desc_count)
+			    uint16_t *desc_count,
+			    bool legacy_ol_flags)
 {
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 	uint32_t buf_len;
@@ -2379,7 +2488,7 @@ vhost_dequeue_single_packed(struct virtio_net *dev,
 	}
 
 	err = copy_desc_to_mbuf(dev, vq, buf_vec, nr_vec, *pkts,
-				mbuf_pool);
+				mbuf_pool, legacy_ol_flags);
 	if (unlikely(err)) {
 		if (!allocerr_warned) {
 			VHOST_LOG_DATA(ERR,
@@ -2398,14 +2507,15 @@ static __rte_always_inline int
 virtio_dev_tx_single_packed(struct virtio_net *dev,
 			    struct vhost_virtqueue *vq,
 			    struct rte_mempool *mbuf_pool,
-			    struct rte_mbuf **pkts)
+			    struct rte_mbuf **pkts,
+			    bool legacy_ol_flags)
 {
 
 	uint16_t buf_id, desc_count = 0;
 	int ret;
 
 	ret = vhost_dequeue_single_packed(dev, vq, mbuf_pool, pkts, &buf_id,
-					&desc_count);
+					&desc_count, legacy_ol_flags);
 
 	if (likely(desc_count > 0)) {
 		if (virtio_net_is_inorder(dev))
@@ -2421,12 +2531,14 @@ virtio_dev_tx_single_packed(struct virtio_net *dev,
 	return ret;
 }
 
-static __rte_noinline uint16_t
+__rte_always_inline
+static uint16_t
 virtio_dev_tx_packed(struct virtio_net *dev,
 		     struct vhost_virtqueue *__rte_restrict vq,
 		     struct rte_mempool *mbuf_pool,
 		     struct rte_mbuf **__rte_restrict pkts,
-		     uint32_t count)
+		     uint32_t count,
+		     bool legacy_ol_flags)
 {
 	uint32_t pkt_idx = 0;
 	uint32_t remained = count;
@@ -2436,7 +2548,8 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 
 		if (remained >= PACKED_BATCH_SIZE) {
 			if (!virtio_dev_tx_batch_packed(dev, vq, mbuf_pool,
-							&pkts[pkt_idx])) {
+							&pkts[pkt_idx],
+							legacy_ol_flags)) {
 				pkt_idx += PACKED_BATCH_SIZE;
 				remained -= PACKED_BATCH_SIZE;
 				continue;
@@ -2444,7 +2557,8 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 		}
 
 		if (virtio_dev_tx_single_packed(dev, vq, mbuf_pool,
-						&pkts[pkt_idx]))
+						&pkts[pkt_idx],
+						legacy_ol_flags))
 			break;
 		pkt_idx++;
 		remained--;
@@ -2459,6 +2573,24 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 	}
 
 	return pkt_idx;
+}
+
+__rte_noinline
+static uint16_t
+virtio_dev_tx_packed_legacy(struct virtio_net *dev,
+	struct vhost_virtqueue *__rte_restrict vq, struct rte_mempool *mbuf_pool,
+	struct rte_mbuf **__rte_restrict pkts, uint32_t count)
+{
+	return virtio_dev_tx_packed(dev, vq, mbuf_pool, pkts, count, true);
+}
+
+__rte_noinline
+static uint16_t
+virtio_dev_tx_packed_compliant(struct virtio_net *dev,
+	struct vhost_virtqueue *__rte_restrict vq, struct rte_mempool *mbuf_pool,
+	struct rte_mbuf **__rte_restrict pkts, uint32_t count)
+{
+	return virtio_dev_tx_packed(dev, vq, mbuf_pool, pkts, count, false);
 }
 
 uint16_t
@@ -2536,10 +2668,17 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		count -= 1;
 	}
 
-	if (vq_is_packed(dev))
-		count = virtio_dev_tx_packed(dev, vq, mbuf_pool, pkts, count);
-	else
-		count = virtio_dev_tx_split(dev, vq, mbuf_pool, pkts, count);
+	if (vq_is_packed(dev)) {
+		if (dev->flags & VIRTIO_DEV_LEGACY_OL_FLAGS)
+			count = virtio_dev_tx_packed_legacy(dev, vq, mbuf_pool, pkts, count);
+		else
+			count = virtio_dev_tx_packed_compliant(dev, vq, mbuf_pool, pkts, count);
+	} else {
+		if (dev->flags & VIRTIO_DEV_LEGACY_OL_FLAGS)
+			count = virtio_dev_tx_split_legacy(dev, vq, mbuf_pool, pkts, count);
+		else
+			count = virtio_dev_tx_split_compliant(dev, vq, mbuf_pool, pkts, count);
+	}
 
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))

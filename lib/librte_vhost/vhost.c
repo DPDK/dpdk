@@ -742,7 +742,7 @@ vhost_set_ifname(int vid, const char *if_name, unsigned int if_len)
 }
 
 void
-vhost_set_builtin_virtio_net(int vid, bool enable)
+vhost_setup_virtio_net(int vid, bool enable, bool compliant_ol_flags)
 {
 	struct virtio_net *dev = get_device(vid);
 
@@ -753,6 +753,10 @@ vhost_set_builtin_virtio_net(int vid, bool enable)
 		dev->flags |= VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 	else
 		dev->flags &= ~VIRTIO_DEV_BUILTIN_VIRTIO_NET;
+	if (!compliant_ol_flags)
+		dev->flags |= VIRTIO_DEV_LEGACY_OL_FLAGS;
+	else
+		dev->flags &= ~VIRTIO_DEV_LEGACY_OL_FLAGS;
 }
 
 void

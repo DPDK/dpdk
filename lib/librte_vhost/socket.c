@@ -42,6 +42,7 @@ struct vhost_user_socket {
 	bool extbuf;
 	bool linearbuf;
 	bool async_copy;
+	bool net_compliant_ol_flags;
 
 	/*
 	 * The "supported_features" indicates the feature bits the
@@ -224,7 +225,8 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	size = strnlen(vsocket->path, PATH_MAX);
 	vhost_set_ifname(vid, vsocket->path, size);
 
-	vhost_set_builtin_virtio_net(vid, vsocket->use_builtin_virtio_net);
+	vhost_setup_virtio_net(vid, vsocket->use_builtin_virtio_net,
+		vsocket->net_compliant_ol_flags);
 
 	vhost_attach_vdpa_device(vid, vsocket->vdpa_dev);
 
@@ -877,6 +879,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->extbuf = flags & RTE_VHOST_USER_EXTBUF_SUPPORT;
 	vsocket->linearbuf = flags & RTE_VHOST_USER_LINEARBUF_SUPPORT;
 	vsocket->async_copy = flags & RTE_VHOST_USER_ASYNC_COPY;
+	vsocket->net_compliant_ol_flags = flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
 
 	if (vsocket->async_copy &&
 		(flags & (RTE_VHOST_USER_IOMMU_SUPPORT |
