@@ -134,7 +134,7 @@ virtqueue_enqueue_batch_packed_vec(struct virtnet_tx *txvq,
 		virtio_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
 			hdr = rte_pktmbuf_mtod_offset(tx_pkts[i],
 					struct virtio_net_hdr *, -head_size);
-			virtqueue_xmit_offload(hdr, tx_pkts[i], true);
+			virtqueue_xmit_offload(hdr, tx_pkts[i]);
 		}
 	}
 
