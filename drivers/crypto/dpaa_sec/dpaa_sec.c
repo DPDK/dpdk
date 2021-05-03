@@ -1717,6 +1717,13 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 	uint32_t index, flags[DPAA_SEC_BURST] = {0};
 	struct qman_fq *inq[DPAA_SEC_BURST];
 
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
+		if (rte_dpaa_portal_init((void *)0)) {
+			DPAA_SEC_ERR("Failure in affining portal");
+			return 0;
+		}
+	}
+
 	while (nb_ops) {
 		frames_to_send = (nb_ops > DPAA_SEC_BURST) ?
 				DPAA_SEC_BURST : nb_ops;
@@ -1916,6 +1923,13 @@ dpaa_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 {
 	uint16_t num_rx;
 	struct dpaa_sec_qp *dpaa_qp = (struct dpaa_sec_qp *)qp;
+
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
+		if (rte_dpaa_portal_init((void *)0)) {
+			DPAA_SEC_ERR("Failure in affining portal");
+			return 0;
+		}
+	}
 
 	num_rx = dpaa_sec_deq(dpaa_qp, ops, nb_ops);
 
