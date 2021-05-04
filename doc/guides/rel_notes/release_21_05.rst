@@ -75,6 +75,8 @@ New Features
     net, crypto and event PMD's.
   * Added mempool/cnxk driver which provides the support for the integrated
     mempool device.
+  * Added event/cnxk driver which provides the support for integrated event
+    device.
 
 * **Enhanced ethdev representor syntax.**
 

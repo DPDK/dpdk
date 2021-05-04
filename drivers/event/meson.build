@@ -6,6 +6,7 @@ if is_windows
 endif
 
 drivers = [
+        'cnxk',
         'dlb2',
         'dpaa',
         'dpaa2',
