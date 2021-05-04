@@ -161,6 +161,11 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	plt_write64((uint64_t)tim_ring->bkt, tim_ring->base + TIM_LF_RING_BASE);
 	plt_write64(tim_ring->aura, tim_ring->base + TIM_LF_RING_AURA);
 
+	/* Update SSO xae count. */
+	cnxk_sso_updt_xae_cnt(cnxk_sso_pmd_priv(dev->event_dev), tim_ring,
+			      RTE_EVENT_TYPE_TIMER);
+	cnxk_sso_xae_reconfigure(dev->event_dev);
+
 	plt_tim_dbg(
 		"Total memory used %" PRIu64 "MB\n",
 		(uint64_t)(((tim_ring->nb_chunks * tim_ring->chunk_sz) +

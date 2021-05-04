@@ -77,6 +77,9 @@ cnxk_sso_xaq_allocate(struct cnxk_sso_evdev *dev)
 	xaq_cnt = dev->nb_event_queues * CNXK_SSO_XAQ_CACHE_CNT;
 	if (dev->xae_cnt)
 		xaq_cnt += dev->xae_cnt / dev->sso.xae_waes;
+	else if (dev->adptr_xae_cnt)
+		xaq_cnt += (dev->adptr_xae_cnt / dev->sso.xae_waes) +
+			   (CNXK_SSO_XAQ_SLACK * dev->nb_event_queues);
 	else
 		xaq_cnt += (dev->sso.iue / dev->sso.xae_waes) +
 			   (CNXK_SSO_XAQ_SLACK * dev->nb_event_queues);
@@ -123,6 +126,36 @@ alloc_fail:
 	rte_mempool_free(dev->xaq_pool);
 	rte_memzone_free(mz);
 	return rc;
+}
+
+int
+cnxk_sso_xae_reconfigure(struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	int rc = 0;
+
+	if (event_dev->data->dev_started)
+		event_dev->dev_ops->dev_stop(event_dev);
+
+	rc = roc_sso_hwgrp_release_xaq(&dev->sso, dev->nb_event_queues);
+	if (rc < 0) {
+		plt_err("Failed to release XAQ %d", rc);
+		return rc;
+	}
+
+	rte_mempool_free(dev->xaq_pool);
+	dev->xaq_pool = NULL;
+	rc = cnxk_sso_xaq_allocate(dev);
+	if (rc < 0) {
+		plt_err("Failed to alloc XAQ %d", rc);
+		return rc;
+	}
+
+	rte_mb();
+	if (event_dev->data->dev_started)
+		event_dev->dev_ops->dev_start(event_dev);
+
+	return 0;
 }
 
 int

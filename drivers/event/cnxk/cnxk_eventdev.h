@@ -81,6 +81,10 @@ struct cnxk_sso_evdev {
 	uint64_t nb_xaq_cfg;
 	rte_iova_t fc_iova;
 	struct rte_mempool *xaq_pool;
+	uint64_t adptr_xae_cnt;
+	uint16_t tim_adptr_ring_cnt;
+	uint16_t *timer_adptr_rings;
+	uint64_t *timer_adptr_sz;
 	/* Dev args */
 	uint32_t xae_cnt;
 	uint8_t qos_queue_cnt;
@@ -190,7 +194,10 @@ cnxk_sso_hws_get_cookie(void *ws)
 }
 
 /* Configuration functions */
+int cnxk_sso_xae_reconfigure(struct rte_eventdev *event_dev);
 int cnxk_sso_xaq_allocate(struct cnxk_sso_evdev *dev);
+void cnxk_sso_updt_xae_cnt(struct cnxk_sso_evdev *dev, void *data,
+			   uint32_t event_type);
 
 /* Common ops API. */
 int cnxk_sso_init(struct rte_eventdev *event_dev);
