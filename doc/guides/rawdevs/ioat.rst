@@ -106,6 +106,14 @@ For devices bound to a suitable DPDK-supported VFIO/UIO driver, the HW devices w
 be found as part of the device scan done at application initialization time without
 the need to pass parameters to the application.
 
+For Intel\ |reg| DSA devices, DPDK will automatically configure the device with the
+maximum number of workqueues available on it, partitioning all resources equally
+among the queues.
+If fewer workqueues are required, then the ``max_queues`` parameter may be passed to
+the device driver on the EAL commandline, via the ``allowlist`` or ``-a`` flag e.g.::
+
+	$ dpdk-test -a <b:d:f>,max_queues=4
+
 If the device is bound to the IDXD kernel driver (and previously configured with sysfs),
 then a specific work queue needs to be passed to the application via a vdev parameter.
 This vdev parameter take the driver name and work queue name as parameters.

@@ -4,6 +4,7 @@
 
 #include <rte_bus_pci.h>
 #include <rte_memzone.h>
+#include <rte_devargs.h>
 
 #include "ioat_private.h"
 #include "ioat_spec.h"
@@ -123,7 +124,8 @@ static const struct rte_rawdev_ops idxd_pci_ops = {
 #define IDXD_PORTAL_SIZE (4096 * 4)
 
 static int
-init_pci_device(struct rte_pci_device *dev, struct idxd_rawdev *idxd)
+init_pci_device(struct rte_pci_device *dev, struct idxd_rawdev *idxd,
+		unsigned int max_queues)
 {
 	struct idxd_pci_common *pci;
 	uint8_t nb_groups, nb_engines, nb_wqs;
@@ -178,6 +180,16 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_rawdev *idxd)
 	}
 	for (i = 0; i < nb_wqs; i++)
 		idxd_get_wq_cfg(pci, i)[0] = 0;
+
+	/* limit queues if necessary */
+	if (max_queues != 0 && nb_wqs > max_queues) {
+		nb_wqs = max_queues;
+		if (nb_engines > max_queues)
+			nb_engines = max_queues;
+		if (nb_groups > max_queues)
+			nb_engines = max_queues;
+		IOAT_PMD_DEBUG("Limiting queues to %u", nb_wqs);
+	}
 
 	/* put each engine into a separate group to avoid reordering */
 	if (nb_groups > nb_engines)
@@ -242,12 +254,23 @@ idxd_rawdev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 	uint8_t nb_wqs;
 	int qid, ret = 0;
 	char name[PCI_PRI_STR_SIZE];
+	unsigned int max_queues = 0;
 
 	rte_pci_device_name(&dev->addr, name, sizeof(name));
 	IOAT_PMD_INFO("Init %s on NUMA node %d", name, dev->device.numa_node);
 	dev->device.driver = &drv->driver;
 
-	ret = init_pci_device(dev, &idxd);
+	if (dev->device.devargs && dev->device.devargs->args[0] != '\0') {
+		/* if the number of devargs grows beyond just 1, use rte_kvargs */
+		if (sscanf(dev->device.devargs->args,
+				"max_queues=%u", &max_queues) != 1) {
+			IOAT_PMD_ERR("Invalid device parameter: '%s'",
+					dev->device.devargs->args);
+			return -1;
+		}
+	}
+
+	ret = init_pci_device(dev, &idxd, max_queues);
 	if (ret < 0) {
 		IOAT_PMD_ERR("Error initializing PCI hardware");
 		return ret;
@@ -353,3 +376,4 @@ RTE_PMD_REGISTER_PCI(IDXD_PMD_RAWDEV_NAME_PCI, idxd_pmd_drv_pci);
 RTE_PMD_REGISTER_PCI_TABLE(IDXD_PMD_RAWDEV_NAME_PCI, pci_id_idxd_map);
 RTE_PMD_REGISTER_KMOD_DEP(IDXD_PMD_RAWDEV_NAME_PCI,
 			  "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(rawdev_idxd_pci, "max_queues=0");
