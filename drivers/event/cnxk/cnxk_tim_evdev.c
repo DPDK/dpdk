@@ -246,6 +246,73 @@ cnxk_tim_ring_free(struct rte_event_timer_adapter *adptr)
 	return 0;
 }
 
+static void
+cnxk_tim_calibrate_start_tsc(struct cnxk_tim_ring *tim_ring)
+{
+#define CNXK_TIM_CALIB_ITER 1E6
+	uint32_t real_bkt, bucket;
+	int icount, ecount = 0;
+	uint64_t bkt_cyc;
+
+	for (icount = 0; icount < CNXK_TIM_CALIB_ITER; icount++) {
+		real_bkt = plt_read64(tim_ring->base + TIM_LF_RING_REL) >> 44;
+		bkt_cyc = cnxk_tim_cntvct();
+		bucket = (bkt_cyc - tim_ring->ring_start_cyc) /
+			 tim_ring->tck_int;
+		bucket = bucket % (tim_ring->nb_bkts);
+		tim_ring->ring_start_cyc =
+			bkt_cyc - (real_bkt * tim_ring->tck_int);
+		if (bucket != real_bkt)
+			ecount++;
+	}
+	tim_ring->last_updt_cyc = bkt_cyc;
+	plt_tim_dbg("Bucket mispredict %3.2f distance %d\n",
+		    100 - (((double)(icount - ecount) / (double)icount) * 100),
+		    bucket - real_bkt);
+}
+
+static int
+cnxk_tim_ring_start(const struct rte_event_timer_adapter *adptr)
+{
+	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
+	struct cnxk_tim_evdev *dev = cnxk_tim_priv_get();
+	int rc;
+
+	if (dev == NULL)
+		return -ENODEV;
+
+	rc = roc_tim_lf_enable(&dev->tim, tim_ring->ring_id,
+			       &tim_ring->ring_start_cyc, NULL);
+	if (rc < 0)
+		return rc;
+
+	tim_ring->tck_int = NSEC2TICK(tim_ring->tck_nsec, cnxk_tim_cntfrq());
+	tim_ring->tot_int = tim_ring->tck_int * tim_ring->nb_bkts;
+	tim_ring->fast_div = rte_reciprocal_value_u64(tim_ring->tck_int);
+	tim_ring->fast_bkt = rte_reciprocal_value_u64(tim_ring->nb_bkts);
+
+	cnxk_tim_calibrate_start_tsc(tim_ring);
+
+	return rc;
+}
+
+static int
+cnxk_tim_ring_stop(const struct rte_event_timer_adapter *adptr)
+{
+	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
+	struct cnxk_tim_evdev *dev = cnxk_tim_priv_get();
+	int rc;
+
+	if (dev == NULL)
+		return -ENODEV;
+
+	rc = roc_tim_lf_disable(&dev->tim, tim_ring->ring_id);
+	if (rc < 0)
+		plt_err("Failed to disable timer ring");
+
+	return rc;
+}
+
 static int
 cnxk_tim_stats_get(const struct rte_event_timer_adapter *adapter,
 		   struct rte_event_timer_adapter_stats *stats)
@@ -278,13 +345,14 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	struct cnxk_tim_evdev *dev = cnxk_tim_priv_get();
 
 	RTE_SET_USED(flags);
-	RTE_SET_USED(ops);
 
 	if (dev == NULL)
 		return -ENODEV;
 
 	cnxk_tim_ops.init = cnxk_tim_ring_create;
 	cnxk_tim_ops.uninit = cnxk_tim_ring_free;
+	cnxk_tim_ops.start = cnxk_tim_ring_start;
+	cnxk_tim_ops.stop = cnxk_tim_ring_stop;
 	cnxk_tim_ops.get_info = cnxk_tim_ring_info_get;
 
 	if (dev->enable_stats) {
@@ -295,6 +363,7 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	/* Store evdev pointer for later use. */
 	dev->event_dev = (struct rte_eventdev *)(uintptr_t)evdev;
 	*caps = RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT;
+	*ops = &cnxk_tim_ops;
 
 	return 0;
 }
