@@ -63,6 +63,24 @@ cn10k_sso_init_hws_mem(void *arg, uint8_t port_id)
 	return ws;
 }
 
+static int
+cn10k_sso_hws_link(void *arg, void *port, uint16_t *map, uint16_t nb_link)
+{
+	struct cnxk_sso_evdev *dev = arg;
+	struct cn10k_sso_hws *ws = port;
+
+	return roc_sso_hws_link(&dev->sso, ws->hws_id, map, nb_link);
+}
+
+static int
+cn10k_sso_hws_unlink(void *arg, void *port, uint16_t *map, uint16_t nb_link)
+{
+	struct cnxk_sso_evdev *dev = arg;
+	struct cn10k_sso_hws *ws = port;
+
+	return roc_sso_hws_unlink(&dev->sso, ws->hws_id, map, nb_link);
+}
+
 static void
 cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t *grps_base)
 {
@@ -83,9 +101,12 @@ cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t *grps_base)
 static void
 cn10k_sso_hws_release(void *arg, void *hws)
 {
+	struct cnxk_sso_evdev *dev = arg;
 	struct cn10k_sso_hws *ws = hws;
+	int i;
 
-	RTE_SET_USED(arg);
+	for (i = 0; i < dev->nb_event_queues; i++)
+		roc_sso_hws_unlink(&dev->sso, ws->hws_id, (uint16_t *)&i, 1);
 	memset(ws, 0, sizeof(*ws));
 }
 
@@ -149,6 +170,12 @@ cn10k_sso_dev_configure(const struct rte_eventdev *event_dev)
 	if (rc < 0)
 		goto cnxk_rsrc_fini;
 
+	/* Restore any prior port-queue mapping. */
+	cnxk_sso_restore_links(event_dev, cn10k_sso_hws_link);
+
+	dev->configured = 1;
+	rte_mb();
+
 	return 0;
 cnxk_rsrc_fini:
 	roc_sso_rsrc_fini(&dev->sso);
@@ -184,6 +211,38 @@ free:
 	rte_free(gws_cookie);
 }
 
+static int
+cn10k_sso_port_link(struct rte_eventdev *event_dev, void *port,
+		    const uint8_t queues[], const uint8_t priorities[],
+		    uint16_t nb_links)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint16_t hwgrp_ids[nb_links];
+	uint16_t link;
+
+	RTE_SET_USED(priorities);
+	for (link = 0; link < nb_links; link++)
+		hwgrp_ids[link] = queues[link];
+	nb_links = cn10k_sso_hws_link(dev, port, hwgrp_ids, nb_links);
+
+	return (int)nb_links;
+}
+
+static int
+cn10k_sso_port_unlink(struct rte_eventdev *event_dev, void *port,
+		      uint8_t queues[], uint16_t nb_unlinks)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint16_t hwgrp_ids[nb_unlinks];
+	uint16_t unlink;
+
+	for (unlink = 0; unlink < nb_unlinks; unlink++)
+		hwgrp_ids[unlink] = queues[unlink];
+	nb_unlinks = cn10k_sso_hws_unlink(dev, port, hwgrp_ids, nb_unlinks);
+
+	return (int)nb_unlinks;
+}
+
 static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.dev_infos_get = cn10k_sso_info_get,
 	.dev_configure = cn10k_sso_dev_configure,
@@ -193,6 +252,9 @@ static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.port_def_conf = cnxk_sso_port_def_conf,
 	.port_setup = cn10k_sso_port_setup,
 	.port_release = cn10k_sso_port_release,
+	.port_link = cn10k_sso_port_link,
+	.port_unlink = cn10k_sso_port_unlink,
+	.timeout_ticks = cnxk_sso_timeout_ticks,
 };
 
 static int

@@ -17,8 +17,9 @@
 #define CNXK_SSO_XAE_CNT  "xae_cnt"
 #define CNXK_SSO_GGRP_QOS "qos"
 
-#define NSEC2USEC(__ns) ((__ns) / 1E3)
-#define USEC2NSEC(__us) ((__us)*1E3)
+#define NSEC2USEC(__ns)		((__ns) / 1E3)
+#define USEC2NSEC(__us)		((__us)*1E3)
+#define NSEC2TICK(__ns, __freq) (((__ns) * (__freq)) / 1E9)
 
 #define CNXK_SSO_MAX_HWGRP     (RTE_EVENT_MAX_QUEUES_PER_DEV + 1)
 #define CNXK_SSO_FC_NAME       "cnxk_evdev_xaq_fc"
@@ -33,6 +34,8 @@
 typedef void *(*cnxk_sso_init_hws_mem_t)(void *dev, uint8_t port_id);
 typedef void (*cnxk_sso_hws_setup_t)(void *dev, void *ws, uintptr_t *grp_base);
 typedef void (*cnxk_sso_hws_release_t)(void *dev, void *ws);
+typedef int (*cnxk_sso_link_t)(void *dev, void *ws, uint16_t *map,
+			       uint16_t nb_link);
 
 struct cnxk_sso_qos {
 	uint16_t queue;
@@ -48,6 +51,7 @@ struct cnxk_sso_evdev {
 	uint8_t is_timeout_deq;
 	uint8_t nb_event_queues;
 	uint8_t nb_event_ports;
+	uint8_t configured;
 	uint32_t deq_tmo_ns;
 	uint32_t min_dequeue_timeout_ns;
 	uint32_t max_dequeue_timeout_ns;
@@ -169,6 +173,8 @@ int cnxk_sso_dev_validate(const struct rte_eventdev *event_dev);
 int cnxk_setup_event_ports(const struct rte_eventdev *event_dev,
 			   cnxk_sso_init_hws_mem_t init_hws_mem,
 			   cnxk_sso_hws_setup_t hws_setup);
+void cnxk_sso_restore_links(const struct rte_eventdev *event_dev,
+			    cnxk_sso_link_t link_fn);
 void cnxk_sso_queue_def_conf(struct rte_eventdev *event_dev, uint8_t queue_id,
 			     struct rte_event_queue_conf *queue_conf);
 int cnxk_sso_queue_setup(struct rte_eventdev *event_dev, uint8_t queue_id,
@@ -178,5 +184,7 @@ void cnxk_sso_port_def_conf(struct rte_eventdev *event_dev, uint8_t port_id,
 			    struct rte_event_port_conf *port_conf);
 int cnxk_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
 			cnxk_sso_hws_setup_t hws_setup_fn);
+int cnxk_sso_timeout_ticks(struct rte_eventdev *event_dev, uint64_t ns,
+			   uint64_t *tmo_ticks);
 
 #endif /* __CNXK_EVENTDEV_H__ */

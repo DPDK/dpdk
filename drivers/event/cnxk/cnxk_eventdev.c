@@ -161,6 +161,32 @@ hws_fini:
 	return -ENOMEM;
 }
 
+void
+cnxk_sso_restore_links(const struct rte_eventdev *event_dev,
+		       cnxk_sso_link_t link_fn)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint16_t *links_map, hwgrp[CNXK_SSO_MAX_HWGRP];
+	int i, j;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		uint16_t nb_hwgrp = 0;
+
+		links_map = event_dev->data->links_map;
+		/* Point links_map to this port specific area */
+		links_map += (i * RTE_EVENT_MAX_QUEUES_PER_DEV);
+
+		for (j = 0; j < dev->nb_event_queues; j++) {
+			if (links_map[j] == 0xdead)
+				continue;
+			hwgrp[nb_hwgrp] = j;
+			nb_hwgrp++;
+		}
+
+		link_fn(dev, event_dev->data->ports[i], hwgrp, nb_hwgrp);
+	}
+}
+
 int
 cnxk_sso_dev_validate(const struct rte_eventdev *event_dev)
 {
@@ -286,6 +312,16 @@ cnxk_sso_port_setup(struct rte_eventdev *event_dev, uint8_t port_id,
 	hws_setup_fn(dev, event_dev->data->ports[port_id], grps_base);
 	plt_sso_dbg("Port=%d ws=%p", port_id, event_dev->data->ports[port_id]);
 	rte_mb();
+
+	return 0;
+}
+
+int
+cnxk_sso_timeout_ticks(struct rte_eventdev *event_dev, uint64_t ns,
+		       uint64_t *tmo_ticks)
+{
+	RTE_SET_USED(event_dev);
+	*tmo_ticks = NSEC2TICK(ns, rte_get_timer_hz());
 
 	return 0;
 }
