@@ -3299,6 +3299,10 @@ enum {
 
 enum {
 	MLX5_REGISTER_ID_MTUTC  = 0x9055,
+	MLX5_CRYPTO_OPERATIONAL_REGISTER_ID = 0xC002,
+	MLX5_CRYPTO_COMMISSIONING_REGISTER_ID = 0xC003,
+	MLX5_IMPORT_KEK_HANDLE_REGISTER_ID = 0xC004,
+	MLX5_CREDENTIAL_HANDLE_REGISTER_ID = 0xC005,
 };
 
 struct mlx5_ifc_register_mtutc_bits {
@@ -3315,6 +3319,43 @@ struct mlx5_ifc_register_mtutc_bits {
 
 #define MLX5_MTUTC_TIMESTAMP_MODE_INTERNAL_TIMER 0
 #define MLX5_MTUTC_TIMESTAMP_MODE_REAL_TIME 1
+
+struct mlx5_ifc_crypto_operational_register_bits {
+	u8 wrapped_crypto_operational[0x1];
+	u8 reserved_at_1[0x1b];
+	u8 kek_size[0x4];
+	u8 reserved_at_20[0x20];
+	u8 credential[0x140];
+	u8 kek[0x100];
+	u8 reserved_at_280[0x180];
+};
+
+struct mlx5_ifc_crypto_commissioning_register_bits {
+	u8 token[0x1]; /* TODO: add size after PRM update */
+};
+
+struct mlx5_ifc_import_kek_handle_register_bits {
+	struct mlx5_ifc_crypto_login_bits crypto_login_object;
+	struct mlx5_ifc_import_kek_bits import_kek_object;
+	u8 reserved_at_200[0x4];
+	u8 write_operation[0x4];
+	u8 import_kek_id[0x18];
+	u8 reserved_at_220[0xe0];
+};
+
+struct mlx5_ifc_credential_handle_register_bits {
+	struct mlx5_ifc_crypto_login_bits crypto_login_object;
+	struct mlx5_ifc_credential_bits credential_object;
+	u8 reserved_at_200[0x4];
+	u8 write_operation[0x4];
+	u8 credential_id[0x18];
+	u8 reserved_at_220[0xe0];
+};
+
+enum {
+	MLX5_REGISTER_ADD_OPERATION = 0x1,
+	MLX5_REGISTER_DELETE_OPERATION = 0x2,
+};
 
 struct mlx5_ifc_parse_graph_arc_bits {
 	u8 start_inner_tunnel[0x1];
