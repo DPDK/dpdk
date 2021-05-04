@@ -124,8 +124,10 @@ rte_ioat_fence(int dev_id);
  *
  * @param dev_id
  *   The rawdev device id of the ioat instance
+ * @return
+ *   0 on success. Non-zero return on error.
  */
-static inline void
+static inline int
 __rte_experimental
 rte_ioat_perform_ops(int dev_id);
 

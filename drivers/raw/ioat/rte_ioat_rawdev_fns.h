@@ -291,7 +291,7 @@ __ioat_fence(int dev_id)
 /*
  * Trigger hardware to begin performing enqueued operations
  */
-static __rte_always_inline void
+static __rte_always_inline int
 __ioat_perform_ops(int dev_id)
 {
 	struct rte_ioat_rawdev *ioat =
@@ -301,6 +301,8 @@ __ioat_perform_ops(int dev_id)
 	rte_compiler_barrier();
 	*ioat->doorbell = ioat->next_write;
 	ioat->xstats.started = ioat->xstats.enqueued;
+
+	return 0;
 }
 
 /**
@@ -462,7 +464,7 @@ __idxd_movdir64b(volatile void *dst, const void *src)
 			: "a" (dst), "d" (src));
 }
 
-static __rte_always_inline void
+static __rte_always_inline int
 __idxd_perform_ops(int dev_id)
 {
 	struct rte_idxd_rawdev *idxd =
@@ -470,7 +472,7 @@ __idxd_perform_ops(int dev_id)
 	struct rte_idxd_desc_batch *b = &idxd->batch_ring[idxd->next_batch];
 
 	if (b->submitted || b->op_count == 0)
-		return;
+		return 0;
 	b->hdl_end = idxd->next_free_hdl;
 	b->comp.status = 0;
 	b->submitted = 1;
@@ -480,6 +482,7 @@ __idxd_perform_ops(int dev_id)
 	if (++idxd->next_batch == idxd->batch_ring_sz)
 		idxd->next_batch = 0;
 	idxd->xstats.started = idxd->xstats.enqueued;
+	return 0;
 }
 
 static __rte_always_inline int
@@ -558,7 +561,7 @@ rte_ioat_fence(int dev_id)
 		return __ioat_fence(dev_id);
 }
 
-static inline void
+static inline int
 rte_ioat_perform_ops(int dev_id)
 {
 	enum rte_ioat_dev_type *type =
