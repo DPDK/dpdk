@@ -412,6 +412,72 @@ struct mlx5_cqe_ts {
 	uint8_t op_own;
 };
 
+enum {
+	MLX5_BSF_SIZE_16B = 0x0,
+	MLX5_BSF_SIZE_32B = 0x1,
+	MLX5_BSF_SIZE_64B = 0x2,
+	MLX5_BSF_SIZE_128B = 0x3,
+};
+
+enum {
+	MLX5_BSF_P_TYPE_SIGNATURE = 0x0,
+	MLX5_BSF_P_TYPE_CRYPTO = 0x1,
+};
+
+enum {
+	MLX5_ENCRYPTION_ORDER_ENCRYPTED_WIRE_SIGNATURE = 0x0,
+	MLX5_ENCRYPTION_ORDER_ENCRYPTED_MEMORY_SIGNATURE = 0x1,
+	MLX5_ENCRYPTION_ORDER_ENCRYPTED_RAW_WIRE = 0x2,
+	MLX5_ENCRYPTION_ORDER_ENCRYPTED_RAW_MEMORY = 0x3,
+};
+
+enum {
+	MLX5_ENCRYPTION_STANDARD_AES_XTS = 0x0,
+};
+
+enum {
+	MLX5_BLOCK_SIZE_512B	= 0x1,
+	MLX5_BLOCK_SIZE_520B	= 0x2,
+	MLX5_BLOCK_SIZE_4096B	= 0x3,
+	MLX5_BLOCK_SIZE_4160B	= 0x4,
+	MLX5_BLOCK_SIZE_1MB	= 0x5,
+	MLX5_BLOCK_SIZE_4048B	= 0x6,
+};
+
+#define MLX5_BSF_SIZE_OFFSET		30
+#define MLX5_BSF_P_TYPE_OFFSET		24
+#define MLX5_ENCRYPTION_ORDER_OFFSET	16
+#define MLX5_BLOCK_SIZE_OFFSET		24
+
+struct mlx5_wqe_umr_bsf_seg {
+	/*
+	 * bs_bpt_eo_es contains:
+	 * bs	bsf_size		2 bits at MLX5_BSF_SIZE_OFFSET
+	 * bpt	bsf_p_type		2 bits at MLX5_BSF_P_TYPE_OFFSET
+	 * eo	encryption_order	4 bits at MLX5_ENCRYPTION_ORDER_OFFSET
+	 * es	encryption_standard	4 bits at offset 0
+	 */
+	uint32_t bs_bpt_eo_es;
+	uint32_t raw_data_size;
+	/*
+	 * bsp_res contains:
+	 * bsp	crypto_block_size_pointer	8 bits at MLX5_BLOCK_SIZE_OFFSET
+	 * res	reserved 24 bits
+	 */
+	uint32_t bsp_res;
+	uint32_t reserved0;
+	uint8_t xts_initial_tweak[16];
+	/*
+	 * res_dp contains:
+	 * res	reserved 8 bits
+	 * dp	dek_pointer		24 bits at offset 0
+	 */
+	uint32_t res_dp;
+	uint32_t reserved1;
+	uint64_t keytag;
+	uint32_t reserved2[4];
+} __rte_packed;
+
 /* GGA */
 /* MMO metadata segment */
 
