@@ -420,4 +420,145 @@ __retry:
 	return 0;
 }
 
+static inline uint16_t
+cnxk_tim_cpy_wrk(uint16_t index, uint16_t cpy_lmt, struct cnxk_tim_ent *chunk,
+		 struct rte_event_timer **const tim,
+		 const struct cnxk_tim_ent *const ents,
+		 const struct cnxk_tim_bkt *const bkt)
+{
+	for (; index < cpy_lmt; index++) {
+		*chunk = *(ents + index);
+		tim[index]->impl_opaque[0] = (uintptr_t)chunk++;
+		tim[index]->impl_opaque[1] = (uintptr_t)bkt;
+		tim[index]->state = RTE_EVENT_TIMER_ARMED;
+	}
+
+	return index;
+}
+
+/* Burst mode functions */
+static inline int
+cnxk_tim_add_entry_brst(struct cnxk_tim_ring *const tim_ring,
+			const uint16_t rel_bkt,
+			struct rte_event_timer **const tim,
+			const struct cnxk_tim_ent *ents,
+			const uint16_t nb_timers, const uint8_t flags)
+{
+	struct cnxk_tim_ent *chunk = NULL;
+	struct cnxk_tim_bkt *mirr_bkt;
+	struct cnxk_tim_bkt *bkt;
+	uint16_t chunk_remainder;
+	uint16_t index = 0;
+	uint64_t lock_sema;
+	int16_t rem, crem;
+	uint8_t lock_cnt;
+
+__retry:
+	cnxk_tim_get_target_bucket(tim_ring, rel_bkt, &bkt, &mirr_bkt);
+
+	/* Only one thread beyond this. */
+	lock_sema = cnxk_tim_bkt_inc_lock(bkt);
+	lock_cnt = (uint8_t)((lock_sema >> TIM_BUCKET_W1_S_LOCK) &
+			     TIM_BUCKET_W1_M_LOCK);
+
+	if (lock_cnt) {
+		cnxk_tim_bkt_dec_lock(bkt);
+#ifdef RTE_ARCH_ARM64
+		asm volatile(PLT_CPU_FEATURE_PREAMBLE
+			     "		ldxrb %w[lock_cnt], [%[lock]]	\n"
+			     "		tst %w[lock_cnt], 255		\n"
+			     "		beq dne%=			\n"
+			     "		sevl				\n"
+			     "rty%=:	wfe				\n"
+			     "		ldxrb %w[lock_cnt], [%[lock]]	\n"
+			     "		tst %w[lock_cnt], 255		\n"
+			     "		bne rty%=			\n"
+			     "dne%=:					\n"
+			     : [lock_cnt] "=&r"(lock_cnt)
+			     : [lock] "r"(&bkt->lock)
+			     : "memory");
+#else
+		while (__atomic_load_n(&bkt->lock, __ATOMIC_RELAXED))
+			;
+#endif
+		goto __retry;
+	}
+
+	/* Bucket related checks. */
+	if (unlikely(cnxk_tim_bkt_get_hbt(lock_sema))) {
+		if (cnxk_tim_bkt_get_nent(lock_sema) != 0) {
+			uint64_t hbt_state;
+#ifdef RTE_ARCH_ARM64
+			asm volatile(PLT_CPU_FEATURE_PREAMBLE
+				     "		ldxr %[hbt], [%[w1]]	\n"
+				     "		tbz %[hbt], 33, dne%=	\n"
+				     "		sevl			\n"
+				     "rty%=:	wfe			\n"
+				     "		ldxr %[hbt], [%[w1]]	\n"
+				     "		tbnz %[hbt], 33, rty%=	\n"
+				     "dne%=:				\n"
+				     : [hbt] "=&r"(hbt_state)
+				     : [w1] "r"((&bkt->w1))
+				     : "memory");
+#else
+			do {
+				hbt_state = __atomic_load_n(&bkt->w1,
+							    __ATOMIC_RELAXED);
+			} while (hbt_state & BIT_ULL(33));
+#endif
+
+			if (!(hbt_state & BIT_ULL(34))) {
+				cnxk_tim_bkt_dec_lock(bkt);
+				goto __retry;
+			}
+		}
+	}
+
+	chunk_remainder = cnxk_tim_bkt_fetch_rem(lock_sema);
+	rem = chunk_remainder - nb_timers;
+	if (rem < 0) {
+		crem = tim_ring->nb_chunk_slots - chunk_remainder;
+		if (chunk_remainder && crem) {
+			chunk = ((struct cnxk_tim_ent *)
+					 mirr_bkt->current_chunk) +
+				crem;
+
+			index = cnxk_tim_cpy_wrk(index, chunk_remainder, chunk,
+						 tim, ents, bkt);
+			cnxk_tim_bkt_sub_rem(bkt, chunk_remainder);
+			cnxk_tim_bkt_add_nent(bkt, chunk_remainder);
+		}
+
+		if (flags & CNXK_TIM_ENA_FB)
+			chunk = cnxk_tim_refill_chunk(bkt, mirr_bkt, tim_ring);
+		if (flags & CNXK_TIM_ENA_DFB)
+			chunk = cnxk_tim_insert_chunk(bkt, mirr_bkt, tim_ring);
+
+		if (unlikely(chunk == NULL)) {
+			cnxk_tim_bkt_dec_lock(bkt);
+			rte_errno = ENOMEM;
+			tim[index]->state = RTE_EVENT_TIMER_ERROR;
+			return crem;
+		}
+		*(uint64_t *)(chunk + tim_ring->nb_chunk_slots) = 0;
+		mirr_bkt->current_chunk = (uintptr_t)chunk;
+		cnxk_tim_cpy_wrk(index, nb_timers, chunk, tim, ents, bkt);
+
+		rem = nb_timers - chunk_remainder;
+		cnxk_tim_bkt_set_rem(bkt, tim_ring->nb_chunk_slots - rem);
+		cnxk_tim_bkt_add_nent(bkt, rem);
+	} else {
+		chunk = (struct cnxk_tim_ent *)mirr_bkt->current_chunk;
+		chunk += (tim_ring->nb_chunk_slots - chunk_remainder);
+
+		cnxk_tim_cpy_wrk(index, nb_timers, chunk, tim, ents, bkt);
+		cnxk_tim_bkt_sub_rem(bkt, nb_timers);
+		cnxk_tim_bkt_add_nent(bkt, nb_timers);
+	}
+
+	cnxk_tim_bkt_dec_lock(bkt);
+
+	return nb_timers;
+}
+
 #endif /* __CNXK_TIM_WORKER_H__ */

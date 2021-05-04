@@ -88,7 +88,14 @@ cnxk_tim_set_fp_ops(struct cnxk_tim_ring *tim_ring)
 #undef FP
 	};
 
+	const rte_event_timer_arm_tmo_tick_burst_t arm_tmo_burst[2] = {
+#define FP(_name, _f1, flags) [_f1] = cnxk_tim_arm_tmo_tick_burst_##_name,
+		TIM_ARM_TMO_FASTPATH_MODES
+#undef FP
+	};
+
 	cnxk_tim_ops.arm_burst = arm_burst[tim_ring->ena_dfb][prod_flag];
+	cnxk_tim_ops.arm_tmo_tick_burst = arm_tmo_burst[tim_ring->ena_dfb];
 }
 
 static void

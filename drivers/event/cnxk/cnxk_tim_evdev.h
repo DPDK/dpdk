@@ -217,11 +217,23 @@ cnxk_tim_cntfrq(void)
 	FP(fb_sp, 1, 0, CNXK_TIM_ENA_FB | CNXK_TIM_SP)                         \
 	FP(fb_mp, 1, 1, CNXK_TIM_ENA_FB | CNXK_TIM_MP)
 
+#define TIM_ARM_TMO_FASTPATH_MODES                                             \
+	FP(dfb, 0, CNXK_TIM_ENA_DFB)                                           \
+	FP(fb, 1, CNXK_TIM_ENA_FB)
+
 #define FP(_name, _f2, _f1, flags)                                             \
 	uint16_t cnxk_tim_arm_burst_##_name(                                   \
 		const struct rte_event_timer_adapter *adptr,                   \
 		struct rte_event_timer **tim, const uint16_t nb_timers);
 TIM_ARM_FASTPATH_MODES
+#undef FP
+
+#define FP(_name, _f1, flags)                                                  \
+	uint16_t cnxk_tim_arm_tmo_tick_burst_##_name(                          \
+		const struct rte_event_timer_adapter *adptr,                   \
+		struct rte_event_timer **tim, const uint64_t timeout_tick,     \
+		const uint16_t nb_timers);
+TIM_ARM_TMO_FASTPATH_MODES
 #undef FP
 
 int cnxk_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
