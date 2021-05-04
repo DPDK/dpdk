@@ -38,6 +38,7 @@
 #define CNXK_TIM_CHNK_SLOTS  "tim_chnk_slots"
 #define CNXK_TIM_STATS_ENA   "tim_stats_ena"
 #define CNXK_TIM_RINGS_LMT   "tim_rings_lmt"
+#define CNXK_TIM_RING_CTL    "tim_ring_ctl"
 
 #define CNXK_TIM_SP	   0x1
 #define CNXK_TIM_MP	   0x2
@@ -75,6 +76,13 @@
 #define TIM_BUCKET_SEMA_WLOCK                                                  \
 	(TIM_BUCKET_CHUNK_REMAIN | (1ull << TIM_BUCKET_W1_S_LOCK))
 
+struct cnxk_tim_ctl {
+	uint16_t ring;
+	uint16_t chunk_slots;
+	uint16_t disable_npa;
+	uint16_t enable_stats;
+};
+
 struct cnxk_tim_evdev {
 	struct roc_tim tim;
 	struct rte_eventdev *event_dev;
@@ -85,6 +93,8 @@ struct cnxk_tim_evdev {
 	uint16_t chunk_slots;
 	uint16_t min_ring_cnt;
 	uint8_t enable_stats;
+	uint16_t ring_ctl_cnt;
+	struct cnxk_tim_ctl *ring_ctl_data;
 };
 
 enum cnxk_tim_clk_src {
