@@ -263,6 +263,10 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	MLX5_SET(create_mkey_in, in, pg_access, attr->pg_access);
 	MLX5_SET(mkc, mkc, lw, 0x1);
 	MLX5_SET(mkc, mkc, lr, 0x1);
+	if (attr->set_remote_rw) {
+		MLX5_SET(mkc, mkc, rw, 0x1);
+		MLX5_SET(mkc, mkc, rr, 0x1);
+	}
 	MLX5_SET(mkc, mkc, qpn, 0xffffff);
 	MLX5_SET(mkc, mkc, pd, attr->pd);
 	MLX5_SET(mkc, mkc, mkey_7_0, attr->umem_id & 0xFF);
@@ -273,6 +277,11 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	MLX5_SET(mkc, mkc, relaxed_ordering_read, attr->relaxed_ordering_read);
 	MLX5_SET64(mkc, mkc, start_addr, attr->addr);
 	MLX5_SET64(mkc, mkc, len, attr->size);
+	MLX5_SET(mkc, mkc, crypto_en, attr->crypto_en);
+	if (attr->crypto_en) {
+		MLX5_SET(mkc, mkc, bsf_en, attr->crypto_en);
+		MLX5_SET(mkc, mkc, bsf_octword_size, 4);
+	}
 	mkey->obj = mlx5_glue->devx_obj_create(ctx, in, in_size_dw * 4, out,
 					       sizeof(out));
 	if (!mkey->obj) {

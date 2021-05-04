@@ -32,6 +32,8 @@ struct mlx5_devx_mkey_attr {
 	uint32_t relaxed_ordering_write:1;
 	uint32_t relaxed_ordering_read:1;
 	uint32_t umr_en:1;
+	uint32_t crypto_en:2;
+	uint32_t set_remote_rw:1;
 	struct mlx5_klm *klm_array;
 	int klm_num;
 };
