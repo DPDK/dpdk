@@ -10,7 +10,9 @@ endif
 
 sources = files(
         'cn9k_eventdev.c',
+        'cn9k_worker.c',
         'cn10k_eventdev.c',
+        'cn10k_worker.c',
         'cnxk_eventdev.c',
 )
 

@@ -29,6 +29,16 @@
 #define CNXK_SSO_XAQ_CACHE_CNT (0x7)
 #define CNXK_SSO_XAQ_SLACK     (8)
 
+#define CNXK_TT_FROM_TAG(x)	    (((x) >> 32) & SSO_TT_EMPTY)
+#define CNXK_TT_FROM_EVENT(x)	    (((x) >> 38) & SSO_TT_EMPTY)
+#define CNXK_EVENT_TYPE_FROM_TAG(x) (((x) >> 28) & 0xf)
+#define CNXK_SUB_EVENT_FROM_TAG(x)  (((x) >> 20) & 0xff)
+#define CNXK_CLR_SUB_EVENT(x)	    (~(0xffu << 20) & x)
+#define CNXK_GRP_FROM_TAG(x)	    (((x) >> 36) & 0x3ff)
+#define CNXK_SWTAG_PEND(x)	    (BIT_ULL(62) & x)
+
+#define CN9K_SSOW_GET_BASE_ADDR(_GW) ((_GW)-SSOW_LF_GWS_OP_GET_WORK0)
+
 #define CN10K_GW_MODE_NONE     0
 #define CN10K_GW_MODE_PREF     1
 #define CN10K_GW_MODE_PREF_WFE 2
