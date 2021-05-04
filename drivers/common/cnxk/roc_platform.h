@@ -23,9 +23,14 @@
 #include "roc_bits.h"
 
 #if defined(__ARM_FEATURE_SVE)
-#define PLT_CPU_FEATURE_PREAMBLE ".cpu generic+crc+lse+sve\n"
+#define PLT_CPU_FEATURE_PREAMBLE                                               \
+	".arch_extension crc\n"                                                \
+	".arch_extension lse\n"                                                \
+	".arch_extension sve\n"
 #else
-#define PLT_CPU_FEATURE_PREAMBLE ".cpu generic+crc+lse\n"
+#define PLT_CPU_FEATURE_PREAMBLE                                               \
+	".arch_extension crc\n"                                                \
+	".arch_extension lse\n"
 #endif
 
 #define PLT_ASSERT		 RTE_ASSERT
