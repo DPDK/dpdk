@@ -206,6 +206,7 @@ test_enqueue_copies(int dev_id)
 		if (rte_ioat_completed_ops(dev_id, max_completions, (void *)&completed[0],
 				(void *)&completed[max_completions]) != max_ops) {
 			PRINT_ERR("Error with rte_ioat_completed_ops\n");
+			rte_rawdev_dump(dev_id, stdout);
 			return -1;
 		}
 		if (completed[0] != src || completed[max_completions] != dst) {

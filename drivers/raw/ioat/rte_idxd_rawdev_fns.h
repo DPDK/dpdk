@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 /*
- * Defines used in the data path for interacting with hardware.
+ * Defines used in the data path for interacting with IDXD hardware.
  */
 #define IDXD_CMD_OP_SHIFT 24
 enum rte_idxd_ops {
@@ -78,26 +78,6 @@ struct rte_idxd_completion {
 	uint32_t invalid_flags;
 } __rte_aligned(32);
 
-#define BATCH_SIZE 64
-
-/**
- * Structure used inside the driver for building up and submitting
- * a batch of operations to the DSA hardware.
- */
-struct rte_idxd_desc_batch {
-	struct rte_idxd_completion comp; /* the completion record for batch */
-
-	uint16_t submitted;
-	uint16_t op_count;
-	uint16_t hdl_end;
-
-	struct rte_idxd_hw_desc batch_desc;
-
-	/* batches must always have 2 descriptors, so put a null at the start */
-	struct rte_idxd_hw_desc null_desc;
-	struct rte_idxd_hw_desc ops[BATCH_SIZE];
-};
-
 /**
  * structure used to save the "handles" provided by the user to be
  * returned to the user on job completion.
@@ -117,51 +97,65 @@ struct rte_idxd_rawdev {
 
 	void *portal; /* address to write the batch descriptor */
 
-	/* counters to track the batches and the individual op handles */
-	uint16_t batch_ring_sz;  /* size of batch ring */
-	uint16_t hdl_ring_sz;    /* size of the user hdl ring */
+	struct rte_ioat_rawdev_config cfg;
+	rte_iova_t desc_iova; /* base address of desc ring, needed for completions */
 
-	uint16_t next_batch;     /* where we write descriptor ops */
-	uint16_t next_completed; /* batch where we read completions */
-	uint16_t next_ret_hdl;   /* the next user hdl to return */
-	uint16_t last_completed_hdl; /* the last user hdl that has completed */
-	uint16_t next_free_hdl;  /* where the handle for next op will go */
-	uint16_t hdls_disable;   /* disable tracking completion handles */
+	/* counters to track the batches */
+	unsigned short max_batches;
+	unsigned short batch_idx_read;
+	unsigned short batch_idx_write;
+	unsigned short *batch_idx_ring; /* store where each batch ends */
 
+	/* track descriptors and handles */
+	unsigned short desc_ring_mask;
+	unsigned short hdls_avail; /* handles for ops completed */
+	unsigned short hdls_read; /* the read pointer for hdls/desc rings */
+	unsigned short batch_start; /* start+size == write pointer for hdls/desc */
+	unsigned short batch_size;
+
+	struct rte_idxd_hw_desc *desc_ring;
 	struct rte_idxd_user_hdl *hdl_ring;
-	struct rte_idxd_desc_batch *batch_ring;
 };
 
+static __rte_always_inline rte_iova_t
+__desc_idx_to_iova(struct rte_idxd_rawdev *idxd, uint16_t n)
+{
+	return idxd->desc_iova + (n * sizeof(struct rte_idxd_hw_desc));
+}
+
 static __rte_always_inline int
-__idxd_write_desc(int dev_id, const struct rte_idxd_hw_desc *desc,
+__idxd_write_desc(int dev_id,
+		const uint32_t op_flags,
+		const rte_iova_t src,
+		const rte_iova_t dst,
+		const uint32_t size,
 		const struct rte_idxd_user_hdl *hdl)
 {
 	struct rte_idxd_rawdev *idxd =
 			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
-	struct rte_idxd_desc_batch *b = &idxd->batch_ring[idxd->next_batch];
+	uint16_t write_idx = idxd->batch_start + idxd->batch_size;
 
-	/* check for room in the handle ring */
-	if (((idxd->next_free_hdl + 1) & (idxd->hdl_ring_sz - 1)) == idxd->next_ret_hdl)
+	/* first check batch ring space then desc ring space */
+	if ((idxd->batch_idx_read == 0 && idxd->batch_idx_write == idxd->max_batches) ||
+			idxd->batch_idx_write + 1 == idxd->batch_idx_read)
+		goto failed;
+	if (((write_idx + 1) & idxd->desc_ring_mask) == idxd->hdls_read)
 		goto failed;
 
-	/* check for space in current batch */
-	if (b->op_count >= BATCH_SIZE)
-		goto failed;
+	/* write desc and handle. Note, descriptors don't wrap */
+	idxd->desc_ring[write_idx].pasid = 0;
+	idxd->desc_ring[write_idx].op_flags = op_flags | IDXD_FLAG_COMPLETION_ADDR_VALID;
+	idxd->desc_ring[write_idx].completion = __desc_idx_to_iova(idxd, write_idx);
+	idxd->desc_ring[write_idx].src = src;
+	idxd->desc_ring[write_idx].dst = dst;
+	idxd->desc_ring[write_idx].size = size;
 
-	/* check that we can actually use the current batch */
-	if (b->submitted)
-		goto failed;
-
-	/* write the descriptor */
-	b->ops[b->op_count++] = *desc;
-
-	/* store the completion details */
-	if (!idxd->hdls_disable)
-		idxd->hdl_ring[idxd->next_free_hdl] = *hdl;
-	if (++idxd->next_free_hdl == idxd->hdl_ring_sz)
-		idxd->next_free_hdl = 0;
+	idxd->hdl_ring[write_idx & idxd->desc_ring_mask] = *hdl;
+	idxd->batch_size++;
 
 	idxd->xstats.enqueued++;
+
+	rte_prefetch0_write(&idxd->desc_ring[write_idx + 1]);
 	return 1;
 
 failed:
@@ -174,53 +168,42 @@ static __rte_always_inline int
 __idxd_enqueue_fill(int dev_id, uint64_t pattern, rte_iova_t dst,
 		unsigned int length, uintptr_t dst_hdl)
 {
-	const struct rte_idxd_hw_desc desc = {
-			.op_flags =  (idxd_op_fill << IDXD_CMD_OP_SHIFT) |
-				IDXD_FLAG_CACHE_CONTROL,
-			.src = pattern,
-			.dst = dst,
-			.size = length
-	};
 	const struct rte_idxd_user_hdl hdl = {
 			.dst = dst_hdl
 	};
-	return __idxd_write_desc(dev_id, &desc, &hdl);
+	return __idxd_write_desc(dev_id,
+			(idxd_op_fill << IDXD_CMD_OP_SHIFT) | IDXD_FLAG_CACHE_CONTROL,
+			pattern, dst, length, &hdl);
 }
 
 static __rte_always_inline int
 __idxd_enqueue_copy(int dev_id, rte_iova_t src, rte_iova_t dst,
 		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
 {
-	const struct rte_idxd_hw_desc desc = {
-			.op_flags =  (idxd_op_memmove << IDXD_CMD_OP_SHIFT) |
-				IDXD_FLAG_CACHE_CONTROL,
-			.src = src,
-			.dst = dst,
-			.size = length
-	};
 	const struct rte_idxd_user_hdl hdl = {
 			.src = src_hdl,
 			.dst = dst_hdl
 	};
-	return __idxd_write_desc(dev_id, &desc, &hdl);
+	return __idxd_write_desc(dev_id,
+			(idxd_op_memmove << IDXD_CMD_OP_SHIFT) | IDXD_FLAG_CACHE_CONTROL,
+			src, dst, length, &hdl);
 }
 
 static __rte_always_inline int
 __idxd_fence(int dev_id)
 {
-	static const struct rte_idxd_hw_desc fence = {
-			.op_flags = IDXD_FLAG_FENCE
-	};
 	static const struct rte_idxd_user_hdl null_hdl;
-	return __idxd_write_desc(dev_id, &fence, &null_hdl);
+	/* only op field needs filling - zero src, dst and length */
+	return __idxd_write_desc(dev_id, IDXD_FLAG_FENCE, 0, 0, 0, &null_hdl);
 }
 
 static __rte_always_inline void
-__idxd_movdir64b(volatile void *dst, const void *src)
+__idxd_movdir64b(volatile void *dst, const struct rte_idxd_hw_desc *src)
 {
 	asm volatile (".byte 0x66, 0x0f, 0x38, 0xf8, 0x02"
 			:
-			: "a" (dst), "d" (src));
+			: "a" (dst), "d" (src)
+			: "memory");
 }
 
 static __rte_always_inline int
@@ -228,19 +211,49 @@ __idxd_perform_ops(int dev_id)
 {
 	struct rte_idxd_rawdev *idxd =
 			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
-	struct rte_idxd_desc_batch *b = &idxd->batch_ring[idxd->next_batch];
+	/* write completion to last desc in the batch */
+	uint16_t comp_idx = idxd->batch_start + idxd->batch_size - 1;
+	if (comp_idx > idxd->desc_ring_mask) {
+		comp_idx &= idxd->desc_ring_mask;
+		*((uint64_t *)&idxd->desc_ring[comp_idx]) = 0; /* zero start of desc */
+	}
 
-	if (b->submitted || b->op_count == 0)
+	if (idxd->batch_size == 0)
 		return 0;
-	b->hdl_end = idxd->next_free_hdl;
-	b->comp.status = 0;
-	b->submitted = 1;
-	b->batch_desc.size = b->op_count + 1;
-	__idxd_movdir64b(idxd->portal, &b->batch_desc);
 
-	if (++idxd->next_batch == idxd->batch_ring_sz)
-		idxd->next_batch = 0;
-	idxd->xstats.started = idxd->xstats.enqueued;
+	_mm_sfence(); /* fence before writing desc to device */
+	if (idxd->batch_size > 1) {
+		struct rte_idxd_hw_desc batch_desc = {
+				.op_flags = (idxd_op_batch << IDXD_CMD_OP_SHIFT) |
+					IDXD_FLAG_COMPLETION_ADDR_VALID |
+					IDXD_FLAG_REQUEST_COMPLETION,
+				.desc_addr = __desc_idx_to_iova(idxd, idxd->batch_start),
+				.completion = __desc_idx_to_iova(idxd, comp_idx),
+				.size = idxd->batch_size,
+		};
+
+		__idxd_movdir64b(idxd->portal, &batch_desc);
+	} else {
+		/* special case batch size of 1, as not allowed by HW */
+		/* comp_idx == batch_start */
+		struct rte_idxd_hw_desc *desc = &idxd->desc_ring[comp_idx];
+		desc->op_flags |= IDXD_FLAG_COMPLETION_ADDR_VALID |
+				IDXD_FLAG_REQUEST_COMPLETION;
+		desc->completion = __desc_idx_to_iova(idxd, comp_idx);
+
+		__idxd_movdir64b(idxd->portal, desc);
+	}
+
+	idxd->xstats.started += idxd->batch_size;
+
+	idxd->batch_start += idxd->batch_size;
+	idxd->batch_start &= idxd->desc_ring_mask;
+	idxd->batch_size = 0;
+
+	idxd->batch_idx_ring[idxd->batch_idx_write++] = comp_idx;
+	if (idxd->batch_idx_write > idxd->max_batches)
+		idxd->batch_idx_write = 0;
+
 	return 0;
 }
 
@@ -250,35 +263,39 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops,
 {
 	struct rte_idxd_rawdev *idxd =
 			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
-	struct rte_idxd_desc_batch *b = &idxd->batch_ring[idxd->next_completed];
-	uint16_t h_idx = idxd->next_ret_hdl;
-	int n = 0;
+	unsigned short n, h_idx;
 
-	while (b->submitted && b->comp.status != 0) {
-		idxd->last_completed_hdl = b->hdl_end;
-		b->submitted = 0;
-		b->op_count = 0;
-		if (++idxd->next_completed == idxd->batch_ring_sz)
-			idxd->next_completed = 0;
-		b = &idxd->batch_ring[idxd->next_completed];
+	while (idxd->batch_idx_read != idxd->batch_idx_write) {
+		uint16_t idx_to_chk = idxd->batch_idx_ring[idxd->batch_idx_read];
+		volatile struct rte_idxd_completion *comp_to_chk =
+				(struct rte_idxd_completion *)&idxd->desc_ring[idx_to_chk];
+		if (comp_to_chk->status == 0)
+			break;
+		/* avail points to one after the last one written */
+		idxd->hdls_avail = (idx_to_chk + 1) & idxd->desc_ring_mask;
+		idxd->batch_idx_read++;
+		if (idxd->batch_idx_read > idxd->max_batches)
+			idxd->batch_idx_read = 0;
 	}
 
-	if (!idxd->hdls_disable)
-		for (n = 0; n < max_ops && h_idx != idxd->last_completed_hdl; n++) {
-			src_hdls[n] = idxd->hdl_ring[h_idx].src;
-			dst_hdls[n] = idxd->hdl_ring[h_idx].dst;
-			if (++h_idx == idxd->hdl_ring_sz)
-				h_idx = 0;
-		}
-	else
-		while (h_idx != idxd->last_completed_hdl) {
-			n++;
-			if (++h_idx == idxd->hdl_ring_sz)
-				h_idx = 0;
-		}
+	if (idxd->cfg.hdls_disable) {
+		n = (idxd->hdls_avail < idxd->hdls_read) ?
+				(idxd->hdls_avail + idxd->desc_ring_mask + 1 - idxd->hdls_read) :
+				(idxd->hdls_avail - idxd->hdls_read);
+		idxd->hdls_read = idxd->hdls_avail;
+		goto out;
+	}
 
-	idxd->next_ret_hdl = h_idx;
+	for (n = 0, h_idx = idxd->hdls_read;
+			n < max_ops && h_idx != idxd->hdls_avail; n++) {
+		src_hdls[n] = idxd->hdl_ring[h_idx].src;
+		dst_hdls[n] = idxd->hdl_ring[h_idx].dst;
+		if (++h_idx > idxd->desc_ring_mask)
+			h_idx = 0;
+	}
+	idxd->hdls_read = h_idx;
 
+out:
 	idxd->xstats.completed += n;
 	return n;
 }

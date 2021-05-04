@@ -90,7 +90,7 @@ idxd_pci_dev_start(struct rte_rawdev *dev)
 		return 0;
 	}
 
-	if (idxd->public.batch_ring == NULL) {
+	if (idxd->public.desc_ring == NULL) {
 		IOAT_PMD_ERR("WQ %d has not been fully configured", idxd->qid);
 		return -EINVAL;
 	}
@@ -337,7 +337,8 @@ idxd_rawdev_destroy(const char *name)
 	/* free device memory */
 	IOAT_PMD_DEBUG("Freeing device driver memory");
 	rdev->dev_private = NULL;
-	rte_free(idxd->public.batch_ring);
+	rte_free(idxd->public.batch_idx_ring);
+	rte_free(idxd->public.desc_ring);
 	rte_free(idxd->public.hdl_ring);
 	rte_memzone_free(idxd->mz);
 

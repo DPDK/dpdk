@@ -84,21 +84,21 @@ idxd_dev_dump(struct rte_rawdev *dev, FILE *f)
 	fprintf(f, "Driver: %s\n\n", dev->driver_name);
 
 	fprintf(f, "Portal: %p\n", rte_idxd->portal);
-	fprintf(f, "Batch Ring size: %u\n", rte_idxd->batch_ring_sz);
-	fprintf(f, "Comp Handle Ring size: %u\n\n", rte_idxd->hdl_ring_sz);
+	fprintf(f, "Config: {ring_size: %u, hdls_disable: %u}\n\n",
+			rte_idxd->cfg.ring_size, rte_idxd->cfg.hdls_disable);
 
-	fprintf(f, "Next batch: %u\n", rte_idxd->next_batch);
-	fprintf(f, "Next batch to be completed: %u\n", rte_idxd->next_completed);
-	for (i = 0; i < rte_idxd->batch_ring_sz; i++) {
-		struct rte_idxd_desc_batch *b = &rte_idxd->batch_ring[i];
-		fprintf(f, "Batch %u @%p: submitted=%u, op_count=%u, hdl_end=%u\n",
-				i, b, b->submitted, b->op_count, b->hdl_end);
-	}
+	fprintf(f, "max batches: %u\n", rte_idxd->max_batches);
+	fprintf(f, "batch idx read: %u\n", rte_idxd->batch_idx_read);
+	fprintf(f, "batch idx write: %u\n", rte_idxd->batch_idx_write);
+	fprintf(f, "batch idxes:");
+	for (i = 0; i < rte_idxd->max_batches + 1; i++)
+		fprintf(f, "%u ", rte_idxd->batch_idx_ring[i]);
+	fprintf(f, "\n\n");
 
-	fprintf(f, "\n");
-	fprintf(f, "Next free hdl: %u\n", rte_idxd->next_free_hdl);
-	fprintf(f, "Last completed hdl: %u\n", rte_idxd->last_completed_hdl);
-	fprintf(f, "Next returned hdl: %u\n", rte_idxd->next_ret_hdl);
+	fprintf(f, "hdls read: %u\n", rte_idxd->max_batches);
+	fprintf(f, "hdls avail: %u\n", rte_idxd->hdls_avail);
+	fprintf(f, "batch start: %u\n", rte_idxd->batch_start);
+	fprintf(f, "batch size: %u\n", rte_idxd->batch_size);
 
 	return 0;
 }
@@ -114,10 +114,8 @@ idxd_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 	if (info_size != sizeof(*cfg))
 		return -EINVAL;
 
-	if (cfg != NULL) {
-		cfg->ring_size = rte_idxd->hdl_ring_sz;
-		cfg->hdls_disable = rte_idxd->hdls_disable;
-	}
+	if (cfg != NULL)
+		*cfg = rte_idxd->cfg;
 	return 0;
 }
 
@@ -129,8 +127,6 @@ idxd_dev_configure(const struct rte_rawdev *dev,
 	struct rte_idxd_rawdev *rte_idxd = &idxd->public;
 	struct rte_ioat_rawdev_config *cfg = config;
 	uint16_t max_desc = cfg->ring_size;
-	uint16_t max_batches = max_desc / BATCH_SIZE;
-	uint16_t i;
 
 	if (config_size != sizeof(*cfg))
 		return -EINVAL;
@@ -140,47 +136,34 @@ idxd_dev_configure(const struct rte_rawdev *dev,
 		return -EAGAIN;
 	}
 
-	rte_idxd->hdls_disable = cfg->hdls_disable;
+	rte_idxd->cfg = *cfg;
 
-	/* limit the batches to what can be stored in hardware */
-	if (max_batches > idxd->max_batches) {
-		IOAT_PMD_DEBUG("Ring size of %u is too large for this device, need to limit to %u batches of %u",
-				max_desc, idxd->max_batches, BATCH_SIZE);
-		max_batches = idxd->max_batches;
-		max_desc = max_batches * BATCH_SIZE;
-	}
 	if (!rte_is_power_of_2(max_desc))
 		max_desc = rte_align32pow2(max_desc);
-	IOAT_PMD_DEBUG("Rawdev %u using %u descriptors in %u batches",
-			dev->dev_id, max_desc, max_batches);
+	IOAT_PMD_DEBUG("Rawdev %u using %u descriptors",
+			dev->dev_id, max_desc);
+	rte_idxd->desc_ring_mask = max_desc - 1;
 
 	/* in case we are reconfiguring a device, free any existing memory */
-	rte_free(rte_idxd->batch_ring);
+	rte_free(rte_idxd->desc_ring);
 	rte_free(rte_idxd->hdl_ring);
 
-	rte_idxd->batch_ring = rte_zmalloc(NULL,
-			sizeof(*rte_idxd->batch_ring) * max_batches, 0);
-	if (rte_idxd->batch_ring == NULL)
+	/* allocate the descriptor ring at 2x size as batches can't wrap */
+	rte_idxd->desc_ring = rte_zmalloc(NULL,
+			sizeof(*rte_idxd->desc_ring) * max_desc * 2, 0);
+	if (rte_idxd->desc_ring == NULL)
 		return -ENOMEM;
+	rte_idxd->desc_iova = rte_mem_virt2iova(rte_idxd->desc_ring);
 
 	rte_idxd->hdl_ring = rte_zmalloc(NULL,
 			sizeof(*rte_idxd->hdl_ring) * max_desc, 0);
 	if (rte_idxd->hdl_ring == NULL) {
-		rte_free(rte_idxd->batch_ring);
-		rte_idxd->batch_ring = NULL;
+		rte_free(rte_idxd->desc_ring);
+		rte_idxd->desc_ring = NULL;
 		return -ENOMEM;
 	}
-	rte_idxd->batch_ring_sz = max_batches;
-	rte_idxd->hdl_ring_sz = max_desc;
-
-	for (i = 0; i < rte_idxd->batch_ring_sz; i++) {
-		struct rte_idxd_desc_batch *b = &rte_idxd->batch_ring[i];
-		b->batch_desc.completion = rte_mem_virt2iova(&b->comp);
-		b->batch_desc.desc_addr = rte_mem_virt2iova(&b->null_desc);
-		b->batch_desc.op_flags = (idxd_op_batch << IDXD_CMD_OP_SHIFT) |
-				IDXD_FLAG_COMPLETION_ADDR_VALID |
-				IDXD_FLAG_REQUEST_COMPLETION;
-	}
+	rte_idxd->hdls_read = rte_idxd->batch_start = 0;
+	rte_idxd->batch_size = 0;
 
 	return 0;
 }
@@ -191,6 +174,7 @@ idxd_rawdev_create(const char *name, struct rte_device *dev,
 		   const struct rte_rawdev_ops *ops)
 {
 	struct idxd_rawdev *idxd;
+	struct rte_idxd_rawdev *public;
 	struct rte_rawdev *rawdev = NULL;
 	const struct rte_memzone *mz = NULL;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
@@ -245,13 +229,30 @@ idxd_rawdev_create(const char *name, struct rte_device *dev,
 
 	idxd = rawdev->dev_private;
 	*idxd = *base_idxd; /* copy over the main fields already passed in */
-	idxd->public.type = RTE_IDXD_DEV;
 	idxd->rawdev = rawdev;
 	idxd->mz = mz;
+
+	public = &idxd->public;
+	public->type = RTE_IDXD_DEV;
+	public->max_batches = idxd->max_batches;
+	public->batch_idx_read = 0;
+	public->batch_idx_write = 0;
+	/* allocate batch index ring. The +1 is because we can never fully use
+	 * the ring, otherwise read == write means both full and empty.
+	 */
+	public->batch_idx_ring = rte_zmalloc(NULL,
+			sizeof(uint16_t) * (idxd->max_batches + 1), 0);
+	if (public->batch_idx_ring == NULL) {
+		IOAT_PMD_ERR("Unable to reserve memory for batch data\n");
+		ret = -ENOMEM;
+		goto cleanup;
+	}
 
 	return 0;
 
 cleanup:
+	if (mz)
+		rte_memzone_free(mz);
 	if (rawdev)
 		rte_rawdev_pmd_release(rawdev);
 
