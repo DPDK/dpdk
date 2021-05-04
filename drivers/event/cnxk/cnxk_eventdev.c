@@ -326,6 +326,14 @@ cnxk_sso_timeout_ticks(struct rte_eventdev *event_dev, uint64_t ns,
 	return 0;
 }
 
+void
+cnxk_sso_dump(struct rte_eventdev *event_dev, FILE *f)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	roc_sso_dump(&dev->sso, dev->sso.nb_hws, dev->sso.nb_hwgrp, f);
+}
+
 static void
 cnxk_handle_event(void *arg, struct rte_event event)
 {

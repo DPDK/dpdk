@@ -211,5 +211,10 @@ void cnxk_sso_stop(struct rte_eventdev *event_dev,
 		   cnxk_sso_hws_reset_t reset_fn,
 		   cnxk_sso_hws_flush_t flush_fn);
 int cnxk_sso_close(struct rte_eventdev *event_dev, cnxk_sso_unlink_t unlink_fn);
+int cnxk_sso_selftest(const char *dev_name);
+void cnxk_sso_dump(struct rte_eventdev *event_dev, FILE *f);
+
+/* CN9K */
+void cn9k_sso_set_rsrc(void *arg);
 
 #endif /* __CNXK_EVENTDEV_H__ */

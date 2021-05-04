@@ -401,6 +401,12 @@ cn10k_sso_close(struct rte_eventdev *event_dev)
 	return cnxk_sso_close(event_dev, cn10k_sso_hws_unlink);
 }
 
+static int
+cn10k_sso_selftest(void)
+{
+	return cnxk_sso_selftest(RTE_STR(event_cn10k));
+}
+
 static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.dev_infos_get = cn10k_sso_info_get,
 	.dev_configure = cn10k_sso_dev_configure,
@@ -414,9 +420,11 @@ static struct rte_eventdev_ops cn10k_sso_dev_ops = {
 	.port_unlink = cn10k_sso_port_unlink,
 	.timeout_ticks = cnxk_sso_timeout_ticks,
 
+	.dump = cnxk_sso_dump,
 	.dev_start = cn10k_sso_start,
 	.dev_stop = cn10k_sso_stop,
 	.dev_close = cn10k_sso_close,
+	.dev_selftest = cn10k_sso_selftest,
 };
 
 static int
